@@ -4,7 +4,8 @@ static const char *usage_msg = "\n"
 "  test-date show [time_t]...\n"
 "  test-date parse [date]...\n"
 "  test-date parse-to-timestamp [date]...\n"
-"  test-date approxidate_relative [date]...\n";
+"  test-date approxidate_relative [date]...\n"
+"  test-date approxidate_careful [date]...\n";
 
 static void show_dates(char **argv, struct timeval *now)
 {
@@ -69,7 +70,7 @@ static void parse_approxidate_careful(char **argv)
 	for (; *argv; argv++) {
 		time_t t;
 		t = approxidate_careful(*argv, NULL);
-		printf("%s -> %s\n", *argv, show_date(t, -700, DATE_ISO8601));
+		printf("%s -> %s\n", *argv, show_date(t, 0, DATE_ISO8601));
 	}
 }
 

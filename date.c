@@ -59,6 +59,28 @@ static int tm_to_time_t(const struct tm *tm, time_t *time)
 	return 0;
 }
 
+static void set_time_to_0_if_time_is_invalid(struct tm *tm)
+{
+	if (tm->tm_hour < 0 || tm->tm_min < 0 || tm->tm_sec < 0) {
+		tm->tm_hour = 0;
+		tm->tm_min = 0;
+		tm->tm_sec = 0;
+	}
+}
+
+static int days_between(struct tm from, struct tm to)
+{
+	set_time_to_0_if_time_is_invalid(&from);
+	set_time_to_0_if_time_is_invalid(&to);
+
+	time_t time_t_from, time_t_to;
+	tm_to_time_t(&from, &time_t_from);
+	tm_to_time_t(&to, &time_t_to);
+
+	return (time_t_to - time_t_from) / (24*60*60L);
+}
+
+
 static const char *month_names[] = {
 	"January", "February", "March", "April", "May", "June",
 	"July", "August", "September", "October", "November", "December"
@@ -416,17 +438,15 @@ static int is_date(int year, int month, int day, struct tm *now_tm, time_t now, 
 			r->tm_year = year + 100;
 		else
 			return 0;
-		if (!now_tm)
-			return 1;
 
-		if (tm_to_time_t(r, &specified))
+		if (!now_tm)
 			return 1;
 
 		/* Be it commit time or author time, it does not make
 		 * sense to specify timestamp way into the future.  Make
 		 * sure it is not later than ten days from now...
 		 */
-		if ((specified != -1) && (now + 10*24*3600 < specified))
+		if (days_between(*now_tm, *r) > 10)
 			return 0;
 		tm->tm_mon = r->tm_mon;
 		tm->tm_mday = r->tm_mday;
