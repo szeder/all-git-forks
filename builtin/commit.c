@@ -606,7 +606,7 @@ static void determine_author_info(struct strbuf *author_ident)
 	if (force_date) {
 		struct strbuf date_buf = STRBUF_INIT;
 		if (parse_force_date(force_date, &date_buf))
-			die(_("invalid date format: %s"), force_date);
+			die(_("invalid date format (commit.c): %s"), force_date);
 		set_ident_var(&date, strbuf_detach(&date_buf, NULL));
 	}
 

@@ -252,10 +252,10 @@ int split_ident_line(struct ident_split *split, const char *line, int len)
 	if (line + len <= cp)
 		goto person_only;
 	split->date_begin = cp;
-	span = strspn(cp, "0123456789");
-	if (!span)
+	char *end;
+	if (!strtol(split->date_begin, &end, 10))
 		goto person_only;
-	split->date_end = split->date_begin + span;
+	split->date_end = end;
 	for (cp = split->date_end; cp < line + len && isspace(*cp); cp++)
 		;
 	if (line + len <= cp || (*cp != '+' && *cp != '-'))
@@ -331,7 +331,7 @@ const char *fmt_ident(const char *name, const char *email,
 		strbuf_addch(&ident, ' ');
 		if (date_str && date_str[0]) {
 			if (parse_date(date_str, &ident) < 0)
-				die("invalid date format: %s", date_str);
+				die("invalid date format (ident): %s", date_str);
 		}
 		else
 			strbuf_addstr(&ident, ident_default_date());

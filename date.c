@@ -357,27 +357,22 @@ static int match_string(const char *date, const char *str)
 	return i;
 }
 
-static int skip_alpha(const char *date)
-{
-	int i = 0;
-	do {
-		i++;
-	} while (isalpha(date[i]));
-	return i;
-}
-
 /*
 * Parse month, weekday, or timezone name
 */
-static int match_alpha(const char *date, struct tm *tm, int *offset)
+static int match_alpha(const char *date, struct tm *tm, int *offset, int *parsed_chars)
 {
+	if (!isalpha(date[0]))
+		return -1;
+
 	int i;
 
 	for (i = 0; i < 12; i++) {
 		int match = match_string(date, month_names[i]);
 		if (match >= 3) {
 			tm->tm_mon = i;
-			return match;
+			*parsed_chars = match;
+			return 0;			
 		}
 	}
 
@@ -385,7 +380,8 @@ static int match_alpha(const char *date, struct tm *tm, int *offset)
 		int match = match_string(date, weekday_names[i]);
 		if (match >= 3) {
 			tm->tm_wday = i;
-			return match;
+			*parsed_chars = match;
+			return 0;
 		}
 	}
 
@@ -401,22 +397,24 @@ static int match_alpha(const char *date, struct tm *tm, int *offset)
 			if (*offset == -1)
 				*offset = 60*off;
 
-			return match;
+			*parsed_chars = match;
+			return 0;
 		}
 	}
 
 	if (match_string(date, "PM") == 2) {
 		tm->tm_hour = (tm->tm_hour % 12) + 12;
-		return 2;
+		*parsed_chars = 2;
+		return 0;
 	}
 
 	if (match_string(date, "AM") == 2) {
 		tm->tm_hour = (tm->tm_hour % 12) + 0;
-		return 2;
+		*parsed_chars = 2;
+		return 0;
 	}
 
-	/* BAD CRAP */
-	return skip_alpha(date);
+	return -1;
 }
 
 enum DateFormat { INVALID=0, YYYY_MM_DD, YYYY_DD_MM, DD_MM_YYYY, MM_DD_YYYY };
@@ -632,26 +630,37 @@ static inline int nodate(struct tm *tm)
 /*
  * We've seen a digit. Time? Year? Date?
  */
-static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt)
+static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt, int *parsed_chars)
 {
+	if (!((isdigit(date[0]) || date[0] == '-' || date[0] == '+') && isdigit(date[1])))
+		return -1;
+
 	int n;
 	char *end;
-	unsigned long num;
+	long num;
 
-	num = strtoul(date, &end, 10);
+	num = strtol(date, &end, 10);
 
 	/*
 	 * Seconds since 1970? We trigger on that for any numbers with
 	 * more than 8 digits. This is because we don't want to rule out
 	 * numbers like 20070606 as a YYYYMMDD date.
 	 */
-	if (num >= 100000000 && nodate(tm)) {
+	if ((num >= 100000000 || num <= -100000000)  && nodate(tm)) {
 		time_t time = num;
 		if (gmtime_r(&time, tm)) {
 			*tm_gmt = 1;
-			return end - date;
+			*parsed_chars = end - date;
+			return 0;
 		}
 	}
+
+	/*
+	 * Numbers starting with a sign has to represent an epoch value,
+	 * which is parsed above.
+	 */
+	if (date[0] == '-' || date[1] == '+')
+		return -1;
 
 	/*
 	 * Check for special formats: num[-.:/]num[same]num
@@ -663,8 +672,10 @@ static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt
 	case '-':
 		if (isdigit(end[1])) {
 			int match = match_multi_number(num, *end, date, end, tm, 0);
-			if (match)
-				return match;
+			if (match) {
+				*parsed_chars = match;
+				return 0;
+			}
 		}
 	}
 
@@ -686,15 +697,18 @@ static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt
 			*offset = hours*60 + minutes;
 		} else if (num > 1900 && num < 2100)
 			tm->tm_year = num - 1900;
-		return n;
+		*parsed_chars = n;
+		return 0;
 	}
 
 	/*
 	 * Ignore lots of numerals. We took care of 4-digit years above.
 	 * Days or months must be one or two digits.
 	 */
-	if (n > 2)
-		return n;
+	if (n > 2) {
+		*parsed_chars = n;
+		return 0;
+	}
 
 	/*
 	 * NOTE! We will give precedence to day-of-month over month or
@@ -705,29 +719,36 @@ static int match_digit(const char *date, struct tm *tm, int *offset, int *tm_gmt
 	 */
 	if (num > 0 && num < 32 && tm->tm_mday < 0) {
 		tm->tm_mday = num;
-		return n;
+		*parsed_chars = n;
+		return 0;
 	}
 
 	/* Two-digit year? */
 	if (n == 2 && tm->tm_year < 0) {
 		if (num < 10 && tm->tm_mday >= 0) {
 			tm->tm_year = num + 100;
-			return n;
+			*parsed_chars = n;
+			return 0;
 		}
 		if (num >= 70) {
 			tm->tm_year = num;
-			return n;
+			*parsed_chars = n;
+			return 0;
 		}
 	}
 
 	if (num > 0 && num < 13 && tm->tm_mon < 0)
 		tm->tm_mon = num-1;
 
-	return n;
+	*parsed_chars = n;
+	return 0;
 }
 
-static int match_tz(const char *date, int *offp)
+static int match_tz(const char *date, int *offp, int *parsed_chars)
 {
+	if (!((date[0] == '-' || date[0] == '+') && isdigit(date[1])))
+		return -1;
+
 	char *end;
 	int hour = strtoul(date + 1, &end, 10);
 	int n = end - (date + 1);
@@ -759,8 +780,12 @@ static int match_tz(const char *date, int *offp)
 		if (*date == '-')
 			offset = -offset;
 		*offp = offset;
+		*parsed_chars = end - date;
+		return 0;
+	} else {
+		*parsed_chars = 0;
+		return -1;
 	}
-	return end - date;
 }
 
 static void date_string(time_t date, int offset, struct strbuf *buf)
@@ -781,13 +806,13 @@ static void date_string(time_t date, int offset, struct strbuf *buf)
 static int match_object_header_date(const char *date, time_t *timestamp, int *offset)
 {
 	char *end;
-	unsigned long stamp;
+	long stamp;
 	int ofs;
 
-	if (*date < '0' || '9' < *date)
+	if ((*date < '0' || '9' < *date) && !(*date == '+' || *date == '-'))
 		return -1;
-	stamp = strtoul(date, &end, 10);
-	if (*end != ' ' || stamp == ULONG_MAX || (end[1] != '+' && end[1] != '-'))
+	stamp = strtol(date, &end, 10);
+	if (*end != ' ' || stamp == LONG_MAX || (end[1] != '+' && end[1] != '-'))
 		return -1;
 	date = end + 2;
 	ofs = strtol(date, &end, 10);
@@ -830,26 +855,20 @@ int parse_date_basic(const char *date, time_t *timestamp, int *offset)
 	    !match_object_header_date(date + 1, timestamp, offset))
 		return 0; /* success */
 	for (;;) {
-		int match = 0;
+		int parsed_chars = 0;
 		unsigned char c = *date;
 
 		/* Stop at end of string or newline */
 		if (!c || c == '\n')
 			break;
 
-		if (isalpha(c))
-			match = match_alpha(date, &tm, offset);
-		else if (isdigit(c))
-			match = match_digit(date, &tm, offset, &tm_gmt);
-		else if ((c == '-' || c == '+') && isdigit(date[1]))
-			match = match_tz(date, offset);
-
-		if (!match) {
-			/* BAD CRAP */
-			match = 1;
+		if (match_alpha(date, &tm, offset, &parsed_chars) &&
+			match_tz(date, offset, &parsed_chars) &&
+			match_digit(date, &tm, offset, &tm_gmt, &parsed_chars)) {
+			parsed_chars = 1;
 		}
 
-		date += match;
+		date += parsed_chars;
 	}
 
 	/* do not use mktime(), which uses local timezone, here */
@@ -1210,7 +1229,7 @@ static void pending_number(struct tm *tm, int *num)
 		else if (tm->tm_mon < 0 && number < 13)
 			tm->tm_mon = number-1;
 		else if (tm->tm_year < 0) {
-			if (number > 1969 && number < 2100)
+			if (number > YEAR_MIN && number < YEAR_MAX)
 				tm->tm_year = number - 1900;
 			else if (number > 69 && number < 100)
 				tm->tm_year = number;
