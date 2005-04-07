@@ -447,7 +447,45 @@ test_expect_success "don't fetch submodule when newly recorded commits are alrea
 		git fetch >../actual.out 2>../actual.err
 	) &&
 	! test -s actual.out &&
-	test_i18ncmp expect.err actual.err
+	test_i18ncmp expect.err actual.err &&
+	(
+		cd submodule &&
+		git checkout -q master
+	)
+'
+
+test_expect_success "'fetch.recurseSubmodules=on-demand' works also without .gitmodule entry" '
+	(
+		cd downstream &&
+		git fetch --recurse-submodules
+	) &&
+	add_upstream_commit &&
+	head1=$(git rev-parse --short HEAD) &&
+	git add submodule &&
+	git rm .gitmodules &&
+	git commit -m "new submodule without .gitmodules" &&
+	head2=$(git rev-parse --short HEAD) &&
+	echo "From $pwd/." > expect.err.2 &&
+	echo "   $head1..$head2  master     -> origin/master" >> expect.err.2 &&
+	head -2 expect.err >> expect.err.2 &&
+	(
+		cd downstream &&
+		rm .gitmodules &&
+		git config fetch.recurseSubmodules on-demand &&
+		git config submodule.fake.url abcd &&
+		git config --unset submodule.submodule.url &&
+		git fetch >../actual.out 2>../actual.err
+	) &&
+	(
+		cd downstream &&
+		git config --unset fetch.recurseSubmodules &&
+		git reset --hard
+	) &&
+	test_i18ncmp expect.out.sub actual.out &&
+	test_i18ncmp expect.err.2 actual.err
+	git checkout HEAD^ -- .gitmodules &&
+	git add .gitmodules &&
+	git commit -m "new submodule restored .gitmodules"
 '
 
 test_expect_success "fetch new commits when submodule got renamed" '

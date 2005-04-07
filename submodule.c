@@ -15,6 +15,7 @@
 
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static struct string_list changed_submodule_names;
+static struct string_list changed_submodule_paths;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -537,8 +538,17 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 			continue;
 
 		submodule = submodule_from_path(commit_sha1, p->two->path);
-		if (!submodule)
+		if (!submodule) {
+			/* fallback for submodules without .gitmodule entry */
+			if (S_ISGITLINK(p->one->mode)) {
+				struct string_list_item *path;
+				path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
+				if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
+					string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
+			}
+
 			continue;
+		}
 
 		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule->name);
 		if (name_item)
@@ -687,6 +697,21 @@ static int do_fetch_submodule(const char *prefix, const char *path,
 	return result;
 }
 
+static int is_submodule_changed(const struct submodule *submodule,
+				const char *path)
+{
+	struct string_list_item *changed;
+
+	if (!submodule)
+		changed = unsorted_string_list_lookup(&changed_submodule_paths,
+						      path);
+	else
+		changed = unsorted_string_list_lookup(&changed_submodule_names,
+						      submodule->name);
+
+	return changed ? 1 : 0;
+}
+
 int fetch_populated_submodules(const struct argv_array *options,
 			       const char *prefix, int command_line_option,
 			       int quiet)
@@ -714,7 +739,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 		default:
 		case RECURSE_SUBMODULES_DEFAULT:
 		case RECURSE_SUBMODULES_ON_DEMAND:
-			if (!submodule || !unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
+			if (!is_submodule_changed(submodule, ce->name))
 				continue;
 			default_argv = "on-demand";
 			break;
@@ -736,6 +761,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	 * well.
 	 */
 	string_list_clear(&changed_submodule_names, 1);
+	string_list_clear(&changed_submodule_paths, 1);
 	return result;
 }
 
