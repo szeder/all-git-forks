@@ -532,32 +532,34 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		struct string_list_item *name_item;
+		struct string_list *list;
+		const char *to_append;
 		const struct submodule *submodule;
 
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
 
 		submodule = submodule_from_path(commit_sha1, p->two->path);
-		if (!submodule) {
+		if (submodule) {
+			list = &changed_submodule_names;
+			to_append = submodule->name;
+		} else {
 			/* fallback for submodules without .gitmodule entry */
 			if (S_ISGITLINK(p->one->mode)) {
-				struct string_list_item *path;
-				path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
-				if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
-					string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
-			}
-
-			continue;
+				list = &changed_submodule_paths;
+				to_append = p->two->path;
+			} else
+				continue;
 		}
 
-		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule->name);
+		name_item = unsorted_string_list_lookup(list, to_append);
 		if (name_item)
 			continue;
 
 		if (is_submodule_commit_present(p->two->path, p->two->sha1))
 			continue;
 
-		string_list_append(&changed_submodule_names, xstrdup(submodule->name));
+		string_list_append(list, xstrdup(to_append));
 	}
 }
 
