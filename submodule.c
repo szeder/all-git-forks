@@ -15,6 +15,7 @@
 
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static struct string_list changed_submodule_names;
+static struct string_list changed_submodule_paths;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -537,8 +538,17 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 			continue;
 
 		submodule = submodule_from_path(commit_sha1, p->two->path);
-		if (!submodule)
+		if (!submodule) {
+			/* fallback for submodules without .gitmodule entry */
+			if (S_ISGITLINK(p->one->mode)) {
+				struct string_list_item *path;
+				path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
+				if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
+					string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
+			}
+
 			continue;
+		}
 
 		name_item = unsorted_string_list_lookup(&changed_submodule_names, submodule->name);
 		if (name_item)
@@ -682,7 +692,12 @@ int fetch_populated_submodules(const struct argv_array *options,
 				    gitmodules_is_unmerged)
 					continue;
 				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
-					if (!unsorted_string_list_lookup(&changed_submodule_names, submodule->name))
+					struct string_list_item *changed;
+					if (submodule)
+						changed = unsorted_string_list_lookup(&changed_submodule_names, submodule->name);
+					else
+						changed = unsorted_string_list_lookup(&changed_submodule_paths, ce->name);
+					if (!changed)
 						continue;
 					default_argv = "on-demand";
 				}
@@ -720,6 +735,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 	argv_array_clear(&argv);
 out:
 	string_list_clear(&changed_submodule_names, 1);
+	string_list_clear(&changed_submodule_paths, 1);
 	return result;
 }
 
