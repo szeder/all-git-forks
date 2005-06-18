@@ -210,6 +210,9 @@ if (!defined $action || $action eq "summary") {
 } elsif ($action eq "shortlog") {
 	git_shortlog();
 	exit;
+} elsif ($action eq "snapshot") {
+	git_snapshot();
+	exit;
 } else {
 	undef $action;
 	die_error(undef, "Unknown action.");
@@ -319,10 +322,10 @@ EOF
 sub git_page_nav {
 	my ($current, $suppress, $head, $treehead, $treebase, $extra) = @_;
 	$extra = '' if !defined $extra;
-	my @navs = qw(summary shortlog log commit commitdiff tree);
+	my @navs = qw(summary shortlog log commit commitdiff tree snapshot);
 	my %arg = map { $_, ''} @navs;
 	if (defined $head) {
-		for (qw(shortlog log commit commitdiff)) {
+		for (qw(shortlog log commit commitdiff snapshot)) {
 			$arg{$_} = ";h=$head";
 		}
 	}
@@ -2024,4 +2027,79 @@ sub git_shortlog {
 	}
 	print "</table\n>";
 	git_footer_html();
+}
+
+sub git_snapshot {
+	if (!defined $hash) {
+		$hash = git_read_hash("$project/HEAD");
+	}
+	my %co = git_read_commit($hash);
+	if (!%co) {
+		die_error(undef, "Unknown commit object.");
+	}
+	my $st = $cgi->param('st');
+	if (defined $st) {
+		return git_serve_snapshot($st);
+	}
+
+	git_header_html();
+	git_page_nav('snapshot', '', $hash, $co{'tree'}, $hash);
+	print "<div>\n" .
+	      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$hash", -class => "title"}, escapeHTML($co{'title'})) . "\n" .
+	      "</div>\n";
+	print "<table cellspacing=\"0\">\n" .
+	      "<tr>\n" .
+	      "<th>Type</th>\n" .
+	      "<th></th>\n" .
+	      "</tr>\n";
+	my %types = (
+		'Bzipped tar archive' => 'tar.bz2',
+		'Gzipped tar archive' => 'tar.gz',
+	);
+	my $alternate = 0;
+	for my $type (sort keys %types) {
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		print "<td>$type</td>";
+		$cgi->param("a", "snapshot");
+		print "<td>" .
+		      $cgi->startform(-method => "get", -action => "$my_uri") .
+		      $cgi->hidden(-name => "p") . "\n" .
+		      $cgi->hidden(-name => "a") . "\n" .
+		      $cgi->hidden(-name => "h",
+				   -value => $hash) . "\n" .
+		      $cgi->hidden(-name => "st", 
+				   -value => $types{$type}) . "\n" .
+		      $cgi->submit(-label => 'Download') . "\n" .
+		      $cgi->end_form() . "\n" .
+		      "</td>";
+	        print "</tr>\n";
+	}
+	print "</table>\n";
+	git_footer_html();
+	return;
+}
+
+sub git_serve_snapshot {
+	my ($st) = @_;
+	my %info = (
+		'tar.bz2' => [ 'application/x-bzip2', 'bzip2' ],
+		'tar.gz' => [ 'application/x-gzip', 'gzip' ],
+	);
+	if (!exists $info{$st}) {
+		die_error(undef, "Unknown snapshot type.");
+	}
+	my ($type, $zip) = @{$info{$st}};
+	print $cgi->header(-type => $type, 
+			   -attachment => "$project-$hash.$st");
+	open my $fd, "-|", "$gitbin/git-tar-tree $hash '$project-$hash' | $zip" 
+		or return;
+	undef $/;
+	print <$fd>;
+	$/ = "\n";
+	close $fd;
 }
