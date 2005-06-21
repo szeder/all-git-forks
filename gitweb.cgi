@@ -630,7 +630,11 @@ sub chop_str {
 	$str =~ m/^(.{0,$len}[^ \/\-_:\.@]{0,$add_len})/;
 	my $chopped = $1;
 	if ($chopped ne $str) {
-		$chopped .= " ...";
+		if (length($str) > length($chopped)+4) {
+			$chopped .= " ...";
+		} else {
+			$chopped = $str;
+		}
 	}
 	return $chopped;
 }
