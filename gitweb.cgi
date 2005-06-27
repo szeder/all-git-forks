@@ -2068,9 +2068,9 @@ sub git_snapshot {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
-		print "<td>$type</td>";
+		print "<td style=\"vertical-align:baseline\">$type</td>";
 		$cgi->param("a", "snapshot");
-		print "<td>" .
+		print "<td style=\"vertical-align:baseline\">" .
 		      $cgi->startform(-method => "get", -action => "$my_uri") .
 		      $cgi->hidden(-name => "p") . "\n" .
 		      $cgi->hidden(-name => "a") . "\n" .
