@@ -2057,8 +2057,9 @@ sub git_snapshot {
 	      "<th></th>\n" .
 	      "</tr>\n";
 	my %types = (
-		'Bzipped tar archive' => 'tar.bz2',
-		'Gzipped tar archive' => 'tar.gz',
+		'Source tree (bzipped tar archive)' => 'tar.bz2',
+		'Source tree (gzipped tar archive)' => 'tar.gz',
+		'Git tree (pack file)' => 'pack',
 	);
 	my $alternate = 0;
 	for my $type (sort keys %types) {
@@ -2093,6 +2094,7 @@ sub git_serve_snapshot {
 	my %info = (
 		'tar.bz2' => [ 'application/x-bzip2', 'bzip2' ],
 		'tar.gz' => [ 'application/x-gzip', 'gzip' ],
+		'pack' => [ 'application/x-git-pack' ],
 	);
 	if (!exists $info{$st}) {
 		die_error(undef, "Unknown snapshot type.");
@@ -2100,7 +2102,10 @@ sub git_serve_snapshot {
 	my ($type, $zip) = @{$info{$st}};
 	print $cgi->header(-type => $type, 
 			   -attachment => "$project-$hash.$st");
-	open my $fd, "-|", "$gitbin/git-tar-tree $hash '$project-$hash' | $zip" 
+	open my $fd, "-|", ($st eq 'pack' ?
+		"$gitbin/git-rev-list --max-count=1 --objects $hash | ". 
+			"$gitbin/git-pack-objects --stdout" :
+		"$gitbin/git-tar-tree $hash '$project-$hash' | $zip")
 		or return;
 	undef $/;
 	print <$fd>;
