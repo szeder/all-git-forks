@@ -39,6 +39,24 @@ my $home_text =		"indextext.html";
 #my $projects_list = $projectroot;
 my $projects_list = "index/index.aux";
 
+my $config = "gitweb.cfg";
+
+if (-f $config) {
+	my %vars = (
+		projectroot => \$projectroot,
+		gitbin => \$gitbin,
+	);
+	open my $cfg, '<', $config or die_error(undef, "Cannot open $config");
+	while (<$cfg>) {
+		chomp;
+		next unless /^(\w+):\s*(.*)$/;
+		my ($var, $val) = ($1, $2);
+		$val = $1 if $val =~ /^'([^']*)'/;
+		${$vars{$var}} = $val if exists $vars{$var};
+	}
+	close $cfg;
+}
+
 # input validation and dispatch
 my $action = $cgi->param('a');
 if (defined $action) {
