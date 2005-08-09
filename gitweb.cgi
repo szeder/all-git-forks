@@ -1092,15 +1092,7 @@ sub git_summary {
 sub git_tag {
 	my $head = git_read_hash("$project/HEAD");
 	git_header_html();
-	print "<div class=\"page_nav\">\n" .
-	      $cgi->a({-href => "$my_uri?p=$project;a=summary"}, "summary") .
-	      " | " . $cgi->a({-href => "$my_uri?p=$project;a=shortlog"}, "shortlog") .
-	      " | " . $cgi->a({-href => "$my_uri?p=$project;a=log"}, "log") .
-	      " | " . $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$head"}, "commit") .
-	      " | " . $cgi->a({-href => "$my_uri?p=$project;a=commitdiff;h=$head"}, "commitdiff") .
-	      " | " . $cgi->a({-href => "$my_uri?p=$project;a=tree;hb=$head"}, "tree") . "<br/>\n" .
-	      "<br/>\n" .
-	      "</div>\n";
+	git_page_nav('', '', $head, undef, $head);
 	my %tag = git_read_tag($hash);
 	print "<div>\n" .
 	      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$hash", -class => "title"}, escapeHTML($tag{'name'})) . "\n" .
