@@ -1269,9 +1269,9 @@ sub git_get_hash_by_path {
 }
 
 sub git_blob {
+	$hash_base ||= git_read_hash("$project/HEAD");
 	if (!defined $hash && defined $file_name) {
-		my $base = $hash_base || git_read_hash("$project/HEAD");
-		$hash = git_get_hash_by_path($base, $file_name, "blob");
+		$hash = git_get_hash_by_path($hash_base, $file_name, "blob");
 	}
 	open my $fd, "-|", "$gitbin/git-cat-file blob $hash" or die_error(undef, "Open failed.");
 	my $base = $file_name || "";
