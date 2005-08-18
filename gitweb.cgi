@@ -1426,8 +1426,7 @@ sub git_rss {
 		      "</title>\n" .
 		      "<pubDate>$cd{'rfc2822'}</pubDate>\n" .
 		      "<link>" . escapeHTML("$my_url?p=$project;a=commit;h=$commit") . "</link>\n" .
-		      "<description>" . escapeHTML($co{'title'}) . "</description>\n" .
-		      "<content:encoded>" .
+		      "<description>" .
 		      "<![CDATA[\n";
 		my $comment = $co{'comment'};
 		foreach my $line (@$comment) {
@@ -1442,7 +1441,7 @@ sub git_rss {
 			print "$file<br/>\n";
 		}
 		print "]]>\n" .
-		      "</content:encoded>\n" .
+		      "</description>\n" .
 		      "</item>\n";
 	}
 	print "</channel></rss>";
