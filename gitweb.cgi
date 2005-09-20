@@ -15,7 +15,7 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"243";
+my $version =		"245";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
@@ -485,21 +485,28 @@ sub git_read_commit {
 
 	my @commit_lines;
 	my %co;
-	my @parents;
 
 	if (defined $commit_text) {
 		@commit_lines = @$commit_text;
 	} else {
-		open my $fd, "-|", "$gitbin/git-cat-file commit $commit_id" or return;
-		@commit_lines = map { chomp; $_ } <$fd>;
+		$/ = "\0";
+		open my $fd, "-|", "$gitbin/git-rev-list --header --parents --max-count=1 $commit_id" or return;
+		@commit_lines = split '\n', <$fd>;
 		close $fd or return;
+		$/ = "\n";
+		pop @commit_lines;
 	}
+	my $header = shift @commit_lines;
+	if (!($header =~ m/^[0-9a-fA-F]{40}/)) {
+		return;
+	}
+	($co{'id'}, my @parents) = split ' ', $header;
+	$co{'parents'} = \@parents;
+	$co{'parent'} = $parents[0];
 	while (my $line = shift @commit_lines) {
 		last if $line eq "\n";
 		if ($line =~ m/^tree ([0-9a-fA-F]{40})$/) {
 			$co{'tree'} = $1;
-		} elsif ($line =~ m/^parent ([0-9a-fA-F]{40})$/) {
-			push @parents, $1;
 		} elsif ($line =~ m/^author (.*) ([0-9]+) (.*)$/) {
 			$co{'author'} = $1;
 			$co{'author_epoch'} = $2;
@@ -518,12 +525,9 @@ sub git_read_commit {
 		}
 	}
 	if (!defined $co{'tree'}) {
-		return undef
+		return;
 	};
-	$co{'id'} = $commit_id;
-	$co{'parents'} = \@parents;
-	$co{'parent'} = $parents[0];
-	$co{'comment'} = \@commit_lines;
+
 	foreach my $title (@commit_lines) {
 		if ($title ne "") {
 			$co{'title'} = chop_str($title, 80, 5);
@@ -548,6 +552,11 @@ sub git_read_commit {
 			last;
 		}
 	}
+	# remove added spaces
+	foreach my $line (@commit_lines) {
+		$line =~ s/^    //;
+	}
+	$co{'comment'} = \@commit_lines;
 
 	my $age = time - $co{'committer_epoch'};
 	$co{'age'} = $age;
@@ -1609,7 +1618,7 @@ sub git_commit {
 	      "</tr>\n";
 	print "<tr><td>committer</td><td>" . escapeHTML($co{'committer'}) . "</td></tr>\n";
 	print "<tr><td></td><td> $cd{'rfc2822'}" . sprintf(" (%02d:%02d %s)", $cd{'hour_local'}, $cd{'minute_local'}, $cd{'tz_local'}) . "</td></tr>\n";
-	print "<tr><td>commit</td><td style=\"font-family:monospace\">$hash</td></tr>\n";
+	print "<tr><td>commit</td><td style=\"font-family:monospace\">$co{'id'}</td></tr>\n";
 	print "<tr>" .
 	      "<td>tree</td>" .
 	      "<td style=\"font-family:monospace\">" .
@@ -1686,7 +1695,7 @@ sub git_commit {
 				$mode_chng = sprintf(" with mode: %04o", (oct $to_mode) & 0777);
 			}
 			print "<td>" .
-			      $cgi->a({-href => "$my_uri?p=$project;a=blob;h=$to_id;hp=$hash;f=$file", -class => "list"}, escapeHTML($file)) . "</td>\n" .
+			      $cgi->a({-href => "$my_uri?p=$project;a=blob;h=$to_id;hb=$hash;f=$file", -class => "list"}, escapeHTML($file)) . "</td>\n" .
 			      "<td><span style=\"color: #008000;\">[new " . file_type($to_mode) . "$mode_chng]</span></td>\n" .
 			      "<td class=\"link\">" . $cgi->a({-href => "$my_uri?p=$project;a=blob;h=$to_id;hb=$hash;f=$file"}, "blob") . "</td>\n";
 		} elsif ($status eq "D") {
@@ -2022,7 +2031,7 @@ sub git_search {
 	my $alternate = 0;
 	if ($commit_search) {
 		$/ = "\0";
-		open my $fd, "-|", "$gitbin/git-rev-list --header $hash";
+		open my $fd, "-|", "$gitbin/git-rev-list --header --parents $hash" or next;
 		while (my $commit_text = <$fd>) {
 			if (!grep m/$searchtext/i, $commit_text) {
 				next;
@@ -2034,8 +2043,7 @@ sub git_search {
 				next;
 			}
 			my @commit_lines = split "\n", $commit_text;
-			my $commit = shift @commit_lines;
-			my %co = git_read_commit($commit, \@commit_lines);
+			my %co = git_read_commit(undef, \@commit_lines);
 			if (!%co) {
 				next;
 			}
@@ -2048,7 +2056,7 @@ sub git_search {
 			print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 			      "<td><i>" . escapeHTML(chop_str($co{'author_name'}, 15, 5)) . "</i></td>\n" .
 			      "<td>" .
-			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list"}, "<b>" . escapeHTML(chop_str($co{'title'}, 50)) . "</b><br/>");
+			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$co{'id'}", -class => "list"}, "<b>" . escapeHTML(chop_str($co{'title'}, 50)) . "</b><br/>");
 			my $comment = $co{'comment'};
 			foreach my $line (@$comment) {
 				if ($line =~ m/^(.*)($searchtext)(.*)$/i) {
@@ -2063,8 +2071,8 @@ sub git_search {
 			}
 			print "</td>\n" .
 			      "<td class=\"link\">" .
-			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit"}, "commit") .
-			      " | " . $cgi->a({-href => "$my_uri?p=$project;a=tree;h=$co{'tree'};hb=$commit"}, "tree");
+			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$co{'id'}"}, "commit") .
+			      " | " . $cgi->a({-href => "$my_uri?p=$project;a=tree;h=$co{'tree'};hb=$co{'id'}"}, "tree");
 			print "</td>\n" .
 			      "</tr>\n";
 		}
