@@ -15,7 +15,7 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"237";
+my $version =		"239";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
@@ -71,6 +71,14 @@ if (defined $action) {
 	} elsif ($action eq "opml") {
 		git_opml();
 		exit;
+	}
+}
+
+my $order = $cgi->param('o');
+if (defined $order) {
+	if ($order =~ m/[^a-zA-Z0-9_]/) {
+		undef $order;
+		die_error(undef, "Invalid order parameter.");
 	}
 }
 
@@ -249,7 +257,7 @@ body { font-family: sans-serif; font-size: 12px; margin:0px; border:solid #d9d8d
 a { color:#0000cc; }
 a:hover, a:visited, a:active { color:#880000; }
 div.page_header { height:25px; padding:8px; font-size:18px; font-weight:bold; background-color:#d9d8d1; }
-div.page_header a:visited { color:#0000cc; }
+div.page_header a:visited, a.header { color:#0000cc; }
 div.page_header a:hover { color:#880000; }
 div.page_nav { padding:8px; }
 div.page_nav a:visited { color:#0000cc; }
@@ -356,7 +364,7 @@ sub git_footer_html {
 		}
 		print $cgi->a({-href => "$my_uri?p=$project;a=rss", -class => "rss_logo"}, "RSS") . "\n";
 	} else {
-		print $cgi->a({-href => "$my_uri?a=opml", -class => "rss_logo"}, "RSS") . "\n";
+		print $cgi->a({-href => "$my_uri?a=opml", -class => "rss_logo"}, "OPML") . "\n";
 	}
 	print "</div>\n" .
 	      "</body>\n" .
@@ -799,8 +807,29 @@ sub git_read_projects {
 
 sub git_project_list {
 	my @list = git_read_projects();
+	my @projects;
 	if (!@list) {
 		die_error(undef, "No project found.");
+	}
+	foreach my $pr (@list) {
+		my $head = git_read_hash("$pr->{'path'}/HEAD");
+		if (!defined $head) {
+			next;
+		}
+		$ENV{'GIT_DIR'} = "$projectroot/$pr->{'path'}";
+		my %co = git_read_commit($head);
+		if (!%co) {
+			next;
+		}
+		$pr->{'commit'} = \%co;
+		if (!defined $pr->{'descr'}) {
+			my $descr = git_read_description($pr->{'path'}) || "";
+			$pr->{'descr'} = chop_str($descr, 25, 5);
+		}
+		if (!defined $pr->{'owner'}) {
+			$pr->{'owner'} = get_file_owner("$projectroot/$pr->{'path'}") || "";
+		}
+		push @projects, $pr;
 	}
 	git_header_html();
 	if (-f $home_text) {
@@ -811,53 +840,57 @@ sub git_project_list {
 		print "</div>\n";
 	}
 	print "<table cellspacing=\"0\">\n" .
-	      "<tr>\n" .
-	      "<th>Project</th>\n" .
-	      "<th>Description</th>\n" .
-	      "<th>Owner</th>\n" .
-	      "<th>last change</th>\n" .
-	      "<th></th>\n" .
+	      "<tr>\n";
+	if (!defined($order) || (defined($order) && ($order eq "project"))) {
+		@projects = sort {$a->{'path'} cmp $b->{'path'}} @projects;
+		print "<th>Project</th>\n";
+	} else {
+		print "<th>" . $cgi->a({-class => "header", -href => "$my_uri?o=project"}, "Project") . "</th>\n";
+	}
+	if (defined($order) && ($order eq "descr")) {
+		@projects = sort {$a->{'descr'} cmp $b->{'descr'}} @projects;
+		print "<th>Description</th>\n";
+	} else {
+		print "<th>" . $cgi->a({-class => "header", -href => "$my_uri?o=descr"}, "Description") . "</th>\n";
+	}
+	if (defined($order) && ($order eq "owner")) {
+		@projects = sort {$a->{'owner'} cmp $b->{'owner'}} @projects;
+		print "<th>Owner</th>\n";
+	} else {
+		print "<th>" . $cgi->a({-class => "header", -href => "$my_uri?o=owner"}, "Owner") . "</th>\n";
+	}
+	if (defined($order) && ($order eq "age")) {
+		@projects = sort {$a->{'commit'}{'age'} <=> $b->{'commit'}{'age'}} @projects;
+		print "<th>Last Change</th>\n";
+	} else {
+		print "<th>" . $cgi->a({-class => "header", -href => "$my_uri?o=age"}, "Last Change") . "</th>\n";
+	}
+	print "<th></th>\n" .
 	      "</tr>\n";
 	my $alternate = 0;
-	foreach my $pr (@list) {
-		my %proj = %$pr;
-		my $head = git_read_hash("$proj{'path'}/HEAD");
-		if (!defined $head) {
-			next;
-		}
-		$ENV{'GIT_DIR'} = "$projectroot/$proj{'path'}";
-		my %co = git_read_commit($head);
-		if (!%co) {
-			next;
-		}
-		my $descr = git_read_description($proj{'path'}) || "";
-		$descr = chop_str($descr, 25, 5);
-		# get directory owner if not already specified
-		if (!defined $proj{'owner'}) {
-			$proj{'owner'} = get_file_owner("$projectroot/$proj{'path'}") || "";
-		}
+	foreach my $pr (@projects) {
 		if ($alternate) {
 			print "<tr class=\"dark\">\n";
 		} else {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
-		print "<td>" . $cgi->a({-href => "$my_uri?p=$proj{'path'};a=summary", -class => "list"}, escapeHTML($proj{'path'})) . "</td>\n" .
-		      "<td>$descr</td>\n" .
-		      "<td><i>" . chop_str($proj{'owner'}, 15) . "</i></td>\n";
+		print "<td>" . $cgi->a({-href => "$my_uri?p=$pr->{'path'};a=summary", -class => "list"}, escapeHTML($pr->{'path'})) . "</td>\n" .
+		      "<td>$pr->{'descr'}</td>\n" .
+		      "<td><i>" . chop_str($pr->{'owner'}, 15) . "</i></td>\n";
 		my $colored_age;
-		if ($co{'age'} < 60*60*2) {
-			$colored_age = "<span style =\"color: #009900;\"><b><i>$co{'age_string'}</i></b></span>";
-		} elsif ($co{'age'} < 60*60*24*2) {
-			$colored_age = "<span style =\"color: #009900;\"><i>$co{'age_string'}</i></span>";
+		if ($pr->{'commit'}{'age'} < 60*60*2) {
+			$colored_age = "<span style =\"color: #009900;\"><b><i>$pr->{'commit'}{'age_string'}</i></b></span>";
+		} elsif ($pr->{'commit'}{'age'} < 60*60*24*2) {
+			$colored_age = "<span style =\"color: #009900;\"><i>$pr->{'commit'}{'age_string'}</i></span>";
 		} else {
-			$colored_age = "<i>$co{'age_string'}</i>";
+			$colored_age = "<i>$pr->{'commit'}{'age_string'}</i>";
 		}
 		print "<td>$colored_age</td>\n" .
 		      "<td class=\"link\">" .
-		      $cgi->a({-href => "$my_uri?p=$proj{'path'};a=summary"}, "summary") .
-		      " | " . $cgi->a({-href => "$my_uri?p=$proj{'path'};a=shortlog"}, "shortlog") .
-		      " | " . $cgi->a({-href => "$my_uri?p=$proj{'path'};a=log"}, "log") .
+		      $cgi->a({-href => "$my_uri?p=$pr->{'path'};a=summary"}, "summary") .
+		      " | " . $cgi->a({-href => "$my_uri?p=$pr->{'path'};a=shortlog"}, "shortlog") .
+		      " | " . $cgi->a({-href => "$my_uri?p=$pr->{'path'};a=log"}, "log") .
 		      "</td>\n" .
 		      "</tr>\n";
 	}
@@ -1364,10 +1397,9 @@ sub git_tree {
 
 sub git_rss {
 	# http://www.notestips.com/80256B3A007F2692/1/NAMO5P9UPQ
-	open my $fd, "-|", "$gitbin/git-rev-list --max-count=20 " . git_read_hash("$project/HEAD") or die_error(undef, "Open failed.");
+	open my $fd, "-|", "$gitbin/git-rev-list --max-count=150 " . git_read_hash("$project/HEAD") or die_error(undef, "Open failed.");
 	my (@revlist) = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading rev-list failed.");
-
 	print $cgi->header(-type => 'text/xml', -charset => 'utf-8');
 	print "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n".
 	      "<rss version=\"2.0\" xmlns:content=\"http://purl.org/rss/1.0/modules/content/\">\n";
@@ -1377,9 +1409,17 @@ sub git_rss {
 	      "<description>$project log</description>\n".
 	      "<language>en</language>\n";
 
-	foreach my $commit (@revlist) {
+	for (my $i = 0; $i <= $#revlist; $i++) {
+		my $commit = $revlist[$i];
 		my %co = git_read_commit($commit);
+		# we read 150, we always show 30 and the ones more recent than 48 hours
+		if (($i >= 20) && ((time - $co{'committer_epoch'}) > 48*60*60)) {
+			last;
+		}
 		my %cd = date_str($co{'committer_epoch'});
+		open $fd, "-|", "$gitbin/git-diff-tree -r $co{'parent'} $co{'id'}" or next;
+		my @difftree = map { chomp; $_ } <$fd>;
+		close $fd or next;
 		print "<item>\n" .
 		      "<title>" .
 		      sprintf("%d %s %02d:%02d", $cd{'mday'}, $cd{'month'}, $cd{'hour'}, $cd{'minute'}) . " - " . escapeHTML($co{'title'}) .
@@ -1392,6 +1432,14 @@ sub git_rss {
 		my $comment = $co{'comment'};
 		foreach my $line (@$comment) {
 			print "$line<br/>\n";
+		}
+		print "<br/>\n";
+		foreach my $line (@difftree) {
+			if (!($line =~ m/^:([0-7]{6}) ([0-7]{6}) ([0-9a-fA-F]{40}) ([0-9a-fA-F]{40}) (.)([0-9]{0,3})\t(.*)$/)) {
+				next;
+			}
+			my $file = $7;
+			print "$file<br/>\n";
 		}
 		print "]]>\n" .
 		      "</content:encoded>\n" .
