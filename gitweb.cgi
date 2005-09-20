@@ -15,14 +15,14 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"239";
+my $version =		"243";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
 
 # absolute fs-path which will be prepended to the project path
-my $projectroot =	"/pub/scm";
-$projectroot = "/home/kay/public_html/pub/scm";
+#my $projectroot =	"/pub/scm";
+my $projectroot = "/home/kay/public_html/pub/scm";
 
 # location of the git-core binaries
 my $gitbin =		"/usr/bin";
@@ -61,7 +61,7 @@ if (-f $config) {
 # input validation and dispatch
 my $action = $cgi->param('a');
 if (defined $action) {
-	if ($action =~ m/[^0-9a-zA-Z\.\-_]+/) {
+	if ($action =~ m/[^0-9a-zA-Z\.\-_]/) {
 		undef $action;
 		die_error(undef, "Invalid action parameter.");
 	}
@@ -76,7 +76,7 @@ if (defined $action) {
 
 my $order = $cgi->param('o');
 if (defined $order) {
-	if ($order =~ m/[^a-zA-Z0-9_]/) {
+	if ($order =~ m/[^0-9a-zA-Z_]/) {
 		undef $order;
 		die_error(undef, "Invalid order parameter.");
 	}
@@ -84,13 +84,9 @@ if (defined $order) {
 
 my $project = $cgi->param('p');
 if (defined $project) {
-	if ($project =~ m/(^|\/)(|\.|\.\.)($|\/)/) {
-		undef $project;
-		die_error(undef, "Non-canonical project parameter.");
-	}
-	if ($project =~ m/[^a-zA-Z0-9_\.\/\-\+\#\~]/) {
-		undef $project;
-		die_error(undef, "Invalid character in project parameter.");
+	$project = validate_input($project);
+	if (!defined($project)) {
+		die_error(undef, "Invalid project parameter.");
 	}
 	if (!(-d "$projectroot/$project")) {
 		undef $project;
@@ -109,54 +105,39 @@ if (defined $project) {
 
 my $file_name = $cgi->param('f');
 if (defined $file_name) {
-	if ($file_name =~ m/(^|\/)(|\.|\.\.)($|\/)/) {
-		undef $file_name;
-		die_error(undef, "Non-canonical file parameter.");
-	}
-	if ($file_name =~ m/[^a-zA-Z0-9_\.\/\-\+\#\~\:\!]/) {
-		undef $file_name;
-		die_error(undef, "Invalid character in file parameter.");
+	$file_name = validate_input($file_name);
+	if (!defined($file_name)) {
+		die_error(undef, "Invalid file parameter.");
 	}
 }
 
 my $hash = $cgi->param('h');
 if (defined $hash) {
-	if (!($hash =~ m/^[0-9a-fA-F]{40}$/)) {
-		if ($hash =~ m/(^|\/)(|\.|\.\.)($|\/)/) {
-			undef $hash;
-			die_error(undef, "Non-canonical hash parameter.");
-		}
-		if ($hash =~ m/[^a-zA-Z0-9_\.\/\-\+\#\~\:\!]/) {
-			undef $hash;
-			die_error(undef, "Invalid character in hash parameter.");
-		}
-		# replace branch-name with hash
-		my $branchlist = git_read_refs("refs/heads");
-		foreach my $entry (@$branchlist) {
-			my %branch = %$entry;
-			if ($branch{'name'} eq $hash) {
-				$hash = $branch{'id'};
-				last;
-			}
-		}
+	$hash = validate_input($hash);
+	if (!defined($hash)) {
+		die_error(undef, "Invalid hash parameter.");
 	}
 }
 
 my $hash_parent = $cgi->param('hp');
-if (defined $hash_parent && !($hash_parent =~ m/^[0-9a-fA-F]{40}$/)) {
-	undef $hash_parent;
-	die_error(undef, "Invalid hash_parent parameter.");
+if (defined $hash_parent) {
+	$hash_parent = validate_input($hash_parent);
+	if (!defined($hash_parent)) {
+		die_error(undef, "Invalid hash parent parameter.");
+	}
 }
 
 my $hash_base = $cgi->param('hb');
-if (defined $hash_base && !($hash_base =~ m/^[0-9a-fA-F]{40}$/)) {
-	undef $hash_base;
-	die_error(undef, "Invalid parent hash parameter.");
+if (defined $hash_base) {
+	$hash_base = validate_input($hash_base);
+	if (!defined($hash_base)) {
+		die_error(undef, "Invalid hash base parameter.");
+	}
 }
 
 my $page = $cgi->param('pg');
 if (defined $page) {
-	if ($page =~ m/^[^0-9]+$/) {
+	if ($page =~ m/[^0-9]$/) {
 		undef $page;
 		die_error(undef, "Invalid page parameter.");
 	}
@@ -169,6 +150,21 @@ if (defined $searchtext) {
 		die_error(undef, "Invalid search parameter.");
 	}
 	$searchtext = quotemeta $searchtext;
+}
+
+sub validate_input {
+	my $input = shift;
+
+	if ($input =~ m/^[0-9a-fA-F]{40}$/) {
+		return $input;
+	}
+	if ($input =~ m/(^|\/)(|\.|\.\.)($|\/)/) {
+		return undef;
+	}
+	if ($input =~ m/[^a-zA-Z0-9_\.\/\-\+\#\~]/) {
+		return undef;
+	}
+	return $input;
 }
 
 if (!defined $action || $action eq "summary") {
@@ -530,7 +526,7 @@ sub git_read_commit {
 	$co{'comment'} = \@commit_lines;
 	foreach my $title (@commit_lines) {
 		if ($title ne "") {
-			$co{'title'} = chop_str($title, 80);
+			$co{'title'} = chop_str($title, 80, 5);
 			# remove leading stuff of merges to make the interesting part visible
 			if (length($title) > 50) {
 				$title =~ s/^Automatic //;
@@ -548,7 +544,7 @@ sub git_read_commit {
 					$title =~ s/\/pub\/scm//;
 				}
 			}
-			$co{'title_short'} = chop_str($title, 50);
+			$co{'title_short'} = chop_str($title, 50, 5);
 			last;
 		}
 	}
@@ -663,16 +659,15 @@ sub chop_str {
 	my $len = shift;
 	my $add_len = shift || 10;
 
-	$str =~ m/^(.{0,$len}[^ \/\-_:\.@]{0,$add_len})/;
-	my $chopped = $1;
-	if ($chopped ne $str) {
-		if (length($str) > length($chopped)+4) {
-			$chopped .= " ...";
-		} else {
-			$chopped = $str;
-		}
+	# allow only $len chars, but don't cut a word if it would fit in $add_len
+	# if it doesn't fit, cut it if it's still longer than the dots we would add
+	$str =~ m/^(.{0,$len}[^ \/\-_:\.@]{0,$add_len})(.*)/;
+	my $body = $1;
+	my $tail = $2;
+	if (length($tail) > 4) {
+		$tail = " ...";
 	}
-	return $chopped;
+	return "$body$tail";
 }
 
 sub file_type {
@@ -1015,10 +1010,15 @@ sub git_summary {
 		if ($i-- > 0) {
 			print "<td><i>$co{'age_string'}</i></td>\n" .
 			      "<td><i>" . escapeHTML(chop_str($co{'author_name'}, 10)) . "</i></td>\n" .
-			      "<td>" .
-			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list"},
-			      "<b>" . escapeHTML($co{'title_short'}) . "</b>") .
-			      "</td>\n" .
+			      "<td>";
+			if (length($co{'title_short'}) < length($co{'title'})) {
+				print $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list", -title => "$co{'title'}"},
+			              "<b>" . escapeHTML($co{'title_short'}) . "</b>");
+			} else {
+				print $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list"},
+				      "<b>" . escapeHTML($co{'title'}) . "</b>");
+			}
+			print "</td>\n" .
 			      "<td class=\"link\">" .
 			      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit"}, "commit") .
 			      " | " . $cgi->a({-href => "$my_uri?p=$project;a=commitdiff;h=$commit"}, "commitdiff") .
@@ -2090,7 +2090,7 @@ sub git_search {
 					next;
 				}
 				push @files, \%set;
-			} elsif ($line =~ m/^([0-9a-fA-F]{40}) /){
+			} elsif ($line =~ m/^([0-9a-fA-F]{40})$/){
 				if (%co) {
 					if ($alternate) {
 						print "<tr class=\"dark\">\n";
@@ -2177,8 +2177,15 @@ sub git_shortlog {
 		$alternate ^= 1;
 		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 		      "<td><i>" . escapeHTML(chop_str($co{'author_name'}, 10)) . "</i></td>\n" .
-		      "<td>" . $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list"}, "<b>" .
-		      escapeHTML($co{'title_short'}) . "</b>") . "</td>\n" .
+		      "<td>";
+		if (length($co{'title_short'}) < length($co{'title'})) {
+			print $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list", -title => "$co{'title'}"},
+			      "<b>" . escapeHTML($co{'title_short'}) . "</b>");
+		} else {
+			print $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit", -class => "list"},
+			      "<b>" . escapeHTML($co{'title_short'}) . "</b>");
+		}
+		print "</td>\n" .
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$commit"}, "commit") .
 		      " | " . $cgi->a({-href => "$my_uri?p=$project;a=commitdiff;h=$commit"}, "commitdiff") .
