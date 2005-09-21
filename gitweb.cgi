@@ -15,7 +15,7 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"245";
+my $version =		"246";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
@@ -318,11 +318,19 @@ EOF
 		if (!defined $searchtext) {
 			$searchtext = "";
 		}
+		my $search_hash;
+		if (defined $hash) {
+			$search_hash = $hash;
+		} else {
+			$search_hash  = "HEAD";
+		}
 		$cgi->param("a", "search");
+		$cgi->param("h", $search_hash);
 		print $cgi->startform(-method => "get", -action => "$my_uri") .
 		      "<div class=\"search\">\n" .
 		      $cgi->hidden(-name => "p") . "\n" .
 		      $cgi->hidden(-name => "a") . "\n" .
+		      $cgi->hidden(-name => "h") . "\n" .
 		      $cgi->textfield(-name => "s", -value => $searchtext) . "\n" .
 		      "</div>" .
 		      $cgi->end_form() . "\n";
