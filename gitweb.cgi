@@ -5,7 +5,7 @@
 # (C) 2005, Kay Sievers <kay.sievers@vrfy.org>
 # (C) 2005, Christian Gierke <ch@gierke.de>
 #
-# This program is licensed under the GPL v2, or a later version
+# This program is licensed under the GPLv2
 
 use strict;
 use warnings;
@@ -15,7 +15,7 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"246";
+my $version =		"247";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
@@ -170,8 +170,8 @@ sub validate_input {
 if (!defined $action || $action eq "summary") {
 	git_summary();
 	exit;
-} elsif ($action eq "branches") {
-	git_branches();
+} elsif ($action eq "heads") {
+	git_heads();
 	exit;
 } elsif ($action eq "tags") {
 	git_tags();
@@ -1101,15 +1101,15 @@ sub git_summary {
 		print "</table\n>";
 	}
 
-	my $branchlist = git_read_refs("refs/heads");
-	if (defined @$branchlist) {
+	my $headlist = git_read_refs("refs/heads");
+	if (defined @$headlist) {
 		print "<div>\n" .
-		      $cgi->a({-href => "$my_uri?p=$project;a=branches", -class => "title"}, "branches") .
+		      $cgi->a({-href => "$my_uri?p=$project;a=heads", -class => "title"}, "heads") .
 		      "</div>\n";
 		my $i = 16;
 		print "<table cellspacing=\"0\">\n";
 		my $alternate = 0;
-		foreach my $entry (@$branchlist) {
+		foreach my $entry (@$headlist) {
 			my %tag = %$entry;
 			if ($alternate) {
 				print "<tr class=\"dark\">\n";
@@ -1129,7 +1129,7 @@ sub git_summary {
 				      "</td>\n" .
 				      "</tr>";
 			} else {
-				print "<td>" . $cgi->a({-href => "$my_uri?p=$project;a=branches"}, "...") . "</td>\n" .
+				print "<td>" . $cgi->a({-href => "$my_uri?p=$project;a=heads"}, "...") . "</td>\n" .
 				"</tr>";
 				last;
 			}
@@ -1221,7 +1221,7 @@ sub git_tags {
 	git_footer_html();
 }
 
-sub git_branches {
+sub git_heads {
 	my $head = git_read_hash("$project/HEAD");
 	git_header_html();
 	git_page_nav('', '', $head, undef, $head);
