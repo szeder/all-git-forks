@@ -15,7 +15,7 @@ use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
 
 my $cgi = new CGI;
-my $version =		"247";
+my $version =		"248";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link = "";
@@ -229,6 +229,7 @@ if (!defined $action || $action eq "summary") {
 
 sub git_header_html {
 	my $status = shift || "200 OK";
+	my $expires = shift;
 
 	my $title = "git";
 	if (defined $project) {
@@ -237,7 +238,7 @@ sub git_header_html {
 			$title .= "/$action";
 		}
 	}
-	print $cgi->header(-type=>'text/html',  -charset => 'utf-8', -status=> $status);
+	print $cgi->header(-type=>'text/html',  -charset => 'utf-8', -status=> $status, -expires => $expires);
 	print <<EOF;
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -1291,12 +1292,16 @@ sub git_blob {
 		$hash = git_get_hash_by_path($hash_base, $file_name, "blob");
 	}
 	open my $fd, "-|", "$gitbin/git-cat-file blob $hash" or die_error(undef, "Open failed.");
-	my $base = $file_name || "";
 	git_header_html();
 	if (defined $hash_base && (my %co = git_read_commit($hash_base))) {
+		my $plain_url;
+		if (defined $file_name) {
+			$plain_url = $cgi->a({-href => "$my_uri?p=$project;a=blob_plain;h=$hash;f=$file_name"}, "plain");
+		} else {
+			$plain_url = $cgi->a({-href => "$my_uri?p=$project;a=blob_plain;h=$hash"}, "plain");
+		}
 		git_page_nav('', '', $hash_base, $co{'tree'}, $hash_base,
-			$cgi->a({-href => "$my_uri?p=$project;a=blob_plain;h=$hash"}, "plain")
-		);
+			    $plain_url);
 		print "<div>" .
 		      $cgi->a({-href => "$my_uri?p=$project;a=commit;h=$hash_base", -class => "title"}, escapeHTML($co{'title'})) .
 		      "</div>\n";
@@ -1327,7 +1332,11 @@ sub git_blob {
 }
 
 sub git_blob_plain {
-	print $cgi->header(-type => "text/plain", -charset => 'utf-8');
+	my $save_as = "$hash.txt";
+	if (defined $file_name) {
+		$save_as = $file_name;
+	}
+	print $cgi->header(-type => "text/plain", -charset => 'utf-8', '-content-disposition' => "inline; filename=\"$save_as\"");
 	open my $fd, "-|", "$gitbin/git-cat-file blob $hash" or return;
 	undef $/;
 	print <$fd>;
@@ -1600,7 +1609,13 @@ sub git_commit {
 	open my $fd, "-|", "$gitbin/git-diff-tree -r -M $root $parent $hash" or die_error(undef, "Open failed.");
 	@difftree = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading diff-tree failed.");
-	git_header_html();
+
+	# non-textual hash id's can be cached
+	my $expires;
+	if ($hash =~ m/^[0-9a-fA-F]{40}$/) {
+		$expires = "+1d";
+	}
+	git_header_html(undef, $expires);
 	git_page_nav('commit', defined $co{'parent'} ? '' : 'commitdiff',
 		$hash, $co{'tree'}, $hash);
 	if (defined $co{'parent'}) {
@@ -1817,7 +1832,12 @@ sub git_commitdiff {
 	my (@difftree) = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading diff-tree failed.");
 
-	git_header_html();
+	# non-textual hash id's can be cached
+	my $expires;
+	if ($hash =~ m/^[0-9a-fA-F]{40}$/) {
+		$expires = "+1d";
+	}
+	git_header_html(undef, $expires);
 	git_page_nav('commitdiff', '', $hash, $co{'tree'}, $hash,
 		$cgi->a({-href => "$my_uri?p=$project;a=commitdiff_plain;h=$hash;hp=$hash_parent"}, "plain")
 	);
@@ -1911,7 +1931,7 @@ sub git_commitdiff_plain {
 	}
 	close $fd;
 
-	print $cgi->header(-type => "text/plain", -charset => 'utf-8');
+	print $cgi->header(-type => "text/plain", -charset => 'utf-8', '-content-disposition' => "inline; filename=\"git-$hash.patch\"");
 	my %co = git_read_commit($hash);
 	my %ad = date_str($co{'author_epoch'}, $co{'author_tz'});
 	my $comment = $co{'comment'};
