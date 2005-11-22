@@ -12,7 +12,6 @@ use warnings;
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser);
-use Encode;
 use Fcntl ':mode';
 
 my $cgi = new CGI;
@@ -239,7 +238,10 @@ sub esc_url {
 sub esc_html {
 	my $str = shift;
 	$str = escapeHTML($str);
-	$str = decode("utf8", $str, Encode::FB_DEFAULT);
+	eval { require Encode };
+	unless ($@) {
+	    $str = Encode::decode("utf8", $str, eval "Encode::FB_DEFAULT");
+	}
 	return $str;
 }
 
@@ -1475,8 +1477,13 @@ sub git_rss {
 		      "<content:encoded>" .
 		      "<![CDATA[\n";
 		my $comment = $co{'comment'};
+		eval { require Encode };
+		my $have_encode = !$@;
 		foreach my $line (@$comment) {
-			$line = decode("utf8", $line, Encode::FB_DEFAULT);
+			if ($have_encode) {
+			    $line = Encode::decode("utf8", $line, 
+					eval "Encode::FB_DEFAULT");
+			}
 			print "$line<br/>\n";
 		}
 		print "<br/>\n";
