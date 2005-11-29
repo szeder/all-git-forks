@@ -13,7 +13,7 @@ use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
-binmode STDOUT, ':utf8';
+eval { binmode STDOUT, ':utf8'; };
 
 my $cgi = new CGI;
 my $version =		"254";
