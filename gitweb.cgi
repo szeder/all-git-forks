@@ -13,9 +13,10 @@ use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser);
 use Fcntl ':mode';
+binmode STDOUT, ':utf8';
 
 my $cgi = new CGI;
-my $version =		"252";
+my $version =		"254";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link =		"";
@@ -237,11 +238,11 @@ sub esc_url {
 
 sub esc_html {
 	my $str = shift;
-	$str = escapeHTML($str);
 	eval { require Encode };
 	unless ($@) {
 	    $str = Encode::decode("utf8", $str, eval "Encode::FB_DEFAULT");
 	}
+	$str = escapeHTML($str);
 	return $str;
 }
 
@@ -762,6 +763,7 @@ sub date_str {
 
 # git-logo (cached in browser for one day)
 sub git_logo {
+	binmode STDOUT, ':raw';
 	print $cgi->header(-type => 'image/png', -expires => '+1d');
 	# cat git-logo.png | hexdump -e '16/1 " %02x"  "\n"' | sed 's/ /\\x/g'
 	print	"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52" .
