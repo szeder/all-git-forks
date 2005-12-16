@@ -16,7 +16,7 @@ use Fcntl ':mode';
 eval { binmode STDOUT, ':utf8'; };
 
 my $cgi = new CGI;
-my $version =		"257";
+my $version =		"261";
 my $my_url =		$cgi->url();
 my $my_uri =		$cgi->url(-absolute => 1);
 my $rss_link =		"";
@@ -334,6 +334,10 @@ a.rss_logo {
 	text-align:center; text-decoration:none;
 }
 a.rss_logo:hover { background-color:#ee5500; }
+span.tag {
+	padding:0px 4px; font-size:10px; font-weight:normal;
+	background-color:#ffffaa; border:1px solid; border-color:#ffffcc #ffee00 #ffee00 #ffffcc;
+}
 </style>
 </head>
 <body>
@@ -571,6 +575,7 @@ sub git_read_commit {
 	};
 
 	foreach my $title (@commit_lines) {
+		$title =~ s/^    //;
 		if ($title ne "") {
 			$co{'title'} = chop_str($title, 80, 5);
 			# remove leading stuff of merges to make the interesting part visible
@@ -945,6 +950,26 @@ sub git_project_list {
 	git_footer_html();
 }
 
+sub read_info_ref {
+	my $type = shift || "";
+	my %refs;
+	# 5dc01c595e6c6ec9ccda4f6f69c131c0dd945f8c	refs/tags/v2.6.11
+	# c39ae07f393806ccf406ef966e9a15afc43cc36a	refs/tags/v2.6.11^{}
+	open my $fd, "$projectroot/$project/info/refs" or return;
+	while (my $line = <$fd>) {
+		chomp($line);
+		if ($line =~ m/^([0-9a-fA-F]{40})\t.*$type\/([^\^]+)/) {
+			if (defined $refs{$1}) {
+				$refs{$1} .= " / $2";
+			} else {
+				$refs{$1} = $2;
+			}
+		}
+	}
+	close $fd or return;
+	return \%refs;
+}
+
 sub git_read_refs {
 	my $ref_dir = shift;
 	my @reflist;
@@ -1033,6 +1058,7 @@ sub git_summary {
 		$owner = get_file_owner("$projectroot/$project");
 	}
 
+	my $refs = read_info_ref();
 	git_header_html();
 	git_page_nav('summary', '', $head);
 	print "<div class=\"title\">&nbsp;</div>\n";
@@ -1060,15 +1086,19 @@ sub git_summary {
 		}
 		$alternate ^= 1;
 		if ($i-- > 0) {
+			my $ref = "";
+			if (defined $refs->{$commit}) {
+				$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
+			}
 			print "<td><i>$co{'age_string'}</i></td>\n" .
 			      "<td><i>" . esc_html(chop_str($co{'author_name'}, 10)) . "</i></td>\n" .
 			      "<td>";
 			if (length($co{'title_short'}) < length($co{'title'})) {
 				print $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list", -title => "$co{'title'}"},
-			              "<b>" . esc_html($co{'title_short'}) . "</b>");
+			              "<b>" . esc_html($co{'title_short'}) . "$ref</b>");
 			} else {
 				print $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list"},
-				      "<b>" . esc_html($co{'title'}) . "</b>");
+				      "<b>" . esc_html($co{'title'}) . "$ref</b>");
 			}
 			print "</td>\n" .
 			      "<td class=\"link\">" .
@@ -1396,6 +1426,11 @@ sub git_tree {
 	close $fd or die_error(undef, "Reading tree failed.");
 	$/ = "\n";
 
+	my $refs = read_info_ref();
+	my $ref = "";
+	if (defined $refs->{$hash_base}) {
+		$ref = " <span class=\"tag\">" . esc_html($refs->{$hash_base}) . "</span>";
+	}
 	git_header_html();
 	my $base_key = "";
 	my $base = "";
@@ -1403,7 +1438,7 @@ sub git_tree {
 		$base_key = ";hb=$hash_base";
 		git_page_nav('tree', '', $hash_base);
 		print "<div>\n" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$hash_base"), -class => "title"}, esc_html($co{'title'})) . "\n" .
+		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$hash_base"), -class => "title"}, esc_html($co{'title'}) . $ref) . "\n" .
 		      "</div>\n";
 	} else {
 		print "<div class=\"page_nav\">\n";
@@ -1563,6 +1598,7 @@ sub git_log {
 	if (!defined $page) {
 		$page = 0;
 	}
+	my $refs = read_info_ref();
 	git_header_html();
 	my $extra = '';
 	my $limit = sprintf("--max-count=%i", (100 * ($page+1)));
@@ -1597,13 +1633,17 @@ sub git_log {
 	}
 	for (my $i = ($page * 100); $i <= $#revlist; $i++) {
 		my $commit = $revlist[$i];
+		my $ref = "";
+		if (defined $refs->{$commit}) {
+			$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
+		}
 		my %co = git_read_commit($commit);
 		next if !%co;
 		my %ad = date_str($co{'author_epoch'});
 		print "<div>\n" .
 		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "title"},
-		      "<span class=\"age\">$co{'age_string'}</span>" . esc_html($co{'title'})) . "\n" .
-		      "</div>\n";
+		      "<span class=\"age\">$co{'age_string'}</span>" . esc_html($co{'title'}) . $ref) . "\n";
+		print "</div>\n";
 		print "<div class=\"title_text\">\n" .
 		      "<div class=\"log_link\">\n" .
 		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit")}, "commit") .
@@ -1661,12 +1701,17 @@ sub git_commit {
 	if ($hash =~ m/^[0-9a-fA-F]{40}$/) {
 		$expires = "+1d";
 	}
+	my $refs = read_info_ref();
+	my $ref = "";
+	if (defined $refs->{$hash}) {
+		$ref = " <span class=\"tag\">" . esc_html($refs->{$hash}) . "</span>";
+	}
 	git_header_html(undef, $expires);
 	git_page_nav('commit', defined $co{'parent'} ? '' : 'commitdiff',
 		$hash, $co{'tree'}, $hash);
 	if (defined $co{'parent'}) {
 		print "<div>\n" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commitdiff;h=$hash"), -class => "title"}, esc_html($co{'title'})) . "\n" .
+		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commitdiff;h=$hash"), -class => "title"}, esc_html($co{'title'}) . $ref) . "\n" .
 		      "</div>\n";
 	} else {
 		print "<div>\n" .
@@ -1883,12 +1928,17 @@ sub git_commitdiff {
 	if ($hash =~ m/^[0-9a-fA-F]{40}$/) {
 		$expires = "+1d";
 	}
+	my $refs = read_info_ref();
+	my $ref = "";
+	if (defined $refs->{$hash}) {
+		$ref = " <span class=\"tag\">" . esc_html($refs->{$hash}) . "</span>";
+	}
 	git_header_html(undef, $expires);
 	git_page_nav('commitdiff', '', $hash, $co{'tree'}, $hash,
 		$cgi->a({-href => "$my_uri?". esc_param("p=$project;a=commitdiff_plain;h=$hash;hp=$hash_parent")}, "plain")
 	);
 	print "<div>\n" .
-	      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$hash"), -class => "title"}, esc_html($co{'title'})) . "\n" .
+	      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$hash"), -class => "title"}, esc_html($co{'title'}) . $ref) . "\n" .
 	      "</div>\n";
 	print "<div class=\"page_body\">\n";
 	my $comment = $co{'comment'};
@@ -1959,23 +2009,18 @@ sub git_commitdiff_plain {
 
 	# try to figure out the next tag after this commit
 	my $tagname;
-	my %taghash;
-	my $tags = git_read_refs("refs/tags");
-	foreach my $entry (@$tags) {
-		my %tag = %$entry;
-		$taghash{$tag{'refid'}} = $tag{'name'};
-	}
+	my $refs = read_info_ref("tags");
 	open $fd, "-|", "$gitbin/git-rev-list HEAD";
-	while (my $commit = <$fd>) {
-		chomp $commit;
-		if ($taghash{$commit}) {
-			$tagname = $taghash{$commit};
+	chomp (my (@commits) = <$fd>);
+	close $fd;
+	foreach my $commit (@commits) {
+		if (defined $refs->{$commit}) {
+			$tagname = $refs->{$commit}
 		}
 		if ($commit eq $hash) {
 			last;
 		}
 	}
-	close $fd;
 
 	print $cgi->header(-type => "text/plain", -charset => 'utf-8', '-content-disposition' => "inline; filename=\"git-$hash.patch\"");
 	my %co = git_read_commit($hash);
@@ -1991,7 +2036,7 @@ sub git_commitdiff_plain {
 	      "\n";
 
 	foreach my $line (@$comment) {;
-		print "  $line\n";
+		print "$line\n";
 	}
 	print "---\n\n";
 
@@ -2019,6 +2064,7 @@ sub git_history {
 	if (!%co) {
 		die_error(undef, "Unknown commit object.");
 	}
+	my $refs = read_info_ref();
 	git_header_html();
 	git_page_nav('', '', $hash, $co{'tree'}, $hash);
 	print "<div>\n" .
@@ -2040,6 +2086,10 @@ sub git_history {
 			if (!%co) {
 				next;
 			}
+			my $ref = "";
+			if (defined $refs->{$commit}) {
+				$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
+			}
 			if ($alternate) {
 				print "<tr class=\"dark\">\n";
 			} else {
@@ -2049,7 +2099,7 @@ sub git_history {
 			print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 			      "<td><i>" . esc_html(chop_str($co{'author_name'}, 15, 3)) . "</i></td>\n" .
 			      "<td>" . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list"}, "<b>" .
-			      esc_html(chop_str($co{'title'}, 50)) . "</b>") . "</td>\n" .
+			      esc_html(chop_str($co{'title'}, 50)) . "$ref</b>") . "</td>\n" .
 			      "<td class=\"link\">" .
 			      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit")}, "commit") .
 			      " | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commitdiff;h=$commit")}, "commitdiff") .
@@ -2216,6 +2266,7 @@ sub git_shortlog {
 	if (!defined $page) {
 		$page = 0;
 	}
+	my $refs = read_info_ref();
 	git_header_html();
 	git_page_nav('shortlog', '', $hash, $hash, $hash);
 
@@ -2250,6 +2301,10 @@ sub git_shortlog {
 	my $alternate = 0;
 	for (my $i = ($page * 100); $i <= $#revlist; $i++) {
 		my $commit = $revlist[$i];
+		my $ref = "";
+		if (defined $refs->{$commit}) {
+			$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
+		}
 		my %co = git_read_commit($commit);
 		my %ad = date_str($co{'author_epoch'});
 		if ($alternate) {
@@ -2263,10 +2318,10 @@ sub git_shortlog {
 		      "<td>";
 		if (length($co{'title_short'}) < length($co{'title'})) {
 			print $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list", -title => "$co{'title'}"},
-			      "<b>" . esc_html($co{'title_short'}) . "</b>");
+			      "<b>" . esc_html($co{'title_short'}) . "$ref</b>");
 		} else {
 			print $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list"},
-			      "<b>" . esc_html($co{'title_short'}) . "</b>");
+			      "<b>" . esc_html($co{'title_short'}) . "$ref</b>");
 		}
 		print "</td>\n" .
 		      "<td class=\"link\">" .
