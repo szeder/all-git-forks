@@ -1508,7 +1508,10 @@ sub git_rss {
 				next;
 			}
 			my $file = validate_input(unquote($7));
-			$file = decode("utf8", $file, Encode::FB_DEFAULT);
+			if ($have_encode) {
+			    $file = Encode::decode("utf8", $file, 
+					eval "Encode::FB_DEFAULT");
+			}
 			print "$file<br/>\n";
 		}
 		print "]]>\n" .
