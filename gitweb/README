@@ -1,5 +1,25 @@
 GIT web Interface
 
+*** NOTE ***
+This version of gitweb was modified for use by the XMMS2 project and is not
+the official version by Kay Sievers. For more info, contact eleusis@xmms.org
+
+Changes incude:
+- Support for commit snapshots
+  - You need to set the appropriate configuration variables in
+    snapshot.cgi in order to use that script.
+- Support for commit tags (http://wiki.xmms2.xmms.se/index.php/ChangeLog_Format)
+- Refactored navbar
+- Grouping of projects by category in the project list (via $GIT_DIR/category)
+- Code syntax highlighting (requires 'highlight' utility by André Simon - http://www.andre-simon.de/doku/highlight/en/highlight.html)
+- Support for anchors at lines with function definitions and variable 
+declarations using etags (tested with exuberant-ctags in etags mode) in blob
+view. For example, http://git.xmms.se/?p=xmms2-devel.git;a=blob;h=d5c558e3b2b2885566083b99f8fcbc6d2f1476e6;hb=3474a907ac32739a2f1e296de7de261dc137c849;f=src/xmms/plsplugins.c#xmms_playlist_plugin_verify
+To use this feature, set the $etagsbin variable to the command used to run
+etags; to disable it, set it to "" (empty string).
+
+*** Original README follows ***
+
 The one working on:
   http://www.kernel.org/git/
 
