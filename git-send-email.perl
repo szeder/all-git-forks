@@ -24,7 +24,8 @@ use Data::Dumper;
 
 # most mail servers generate the Date: header, but not all...
 $ENV{LC_ALL} = 'C';
-use POSIX qw/strftime/;
+use POSIX qw/strftime setlocale LC_ALL/;
+setlocale( &LC_ALL, 'C' );
 
 my $have_email_valid = eval { require Email::Valid; 1 };
 my $smtp;
