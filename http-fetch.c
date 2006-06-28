@@ -123,7 +123,7 @@ static size_t fwrite_sha1_file(void *ptr, size_t eltsize, size_t nmemb,
 	struct object_request *obj_req = (struct object_request *)data;
 	do {
 		ssize_t retval = write(obj_req->local,
-				       ptr + posn, size - posn);
+				       (char *) ptr + posn, size - posn);
 		if (retval < 0)
 			return posn;
 		posn += retval;
@@ -584,8 +584,8 @@ static void process_alternates_response(void *callback_data)
 			// skip 'objects' at end
 			if (okay) {
 				target = xmalloc(serverlen + posn - i - 6);
-				safe_strncpy(target, base, serverlen);
-				safe_strncpy(target + serverlen, data + i, posn - i - 6);
+				strlcpy(target, base, serverlen);
+				strlcpy(target + serverlen, data + i, posn - i - 6);
 				if (get_verbosely)
 					fprintf(stderr,
 						"Also look at %s\n", target);
@@ -727,7 +727,7 @@ xml_cdata(void *userData, const XML_Char *s, int len)
 	if (ctx->cdata)
 		free(ctx->cdata);
 	ctx->cdata = xmalloc(len + 1);
-	safe_strncpy(ctx->cdata, s, len + 1);
+	strlcpy(ctx->cdata, s, len + 1);
 }
 
 static int remote_ls(struct alt_base *repo, const char *path, int flags,
@@ -1136,13 +1136,14 @@ int fetch(unsigned char *sha1)
 
 static inline int needs_quote(int ch)
 {
-	switch (ch) {
-	case '/': case '-': case '.':
-	case 'A'...'Z':	case 'a'...'z':	case '0'...'9':
+	if (((ch >= 'A') && (ch <= 'Z'))
+			|| ((ch >= 'a') && (ch <= 'z'))
+			|| ((ch >= '0') && (ch <= '9'))
+			|| (ch == '/')
+			|| (ch == '-')
+			|| (ch == '.'))
 		return 0;
-	default:
-		return 1;
-	}
+	return 1;
 }
 
 static inline int hex(int v)

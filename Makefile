@@ -26,6 +26,8 @@ all:
 #
 # Define NO_STRCASESTR if you don't have strcasestr.
 #
+# Define NO_STRLCPY if you don't have strlcpy.
+#
 # Define NO_SETENV if you don't have setenv in the C library.
 #
 # Define NO_SYMLINK_HEAD if you never want .git/HEAD to be a symbolic link.
@@ -144,34 +146,33 @@ SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
 
 # The ones that do not have to link with lcrypto, lz nor xdiff.
 SIMPLE_PROGRAMS = \
-	git-mailsplit$X \
-	git-stripspace$X git-daemon$X
+	git-daemon$X
 
 # ... and all the rest that could be moved out of bindir to gitexecdir
 PROGRAMS = \
-	git-checkout-index$X git-clone-pack$X \
+	git-checkout-index$X \
 	git-convert-objects$X git-fetch-pack$X git-fsck-objects$X \
 	git-hash-object$X git-index-pack$X git-local-fetch$X \
-	git-mailinfo$X git-merge-base$X \
+	git-merge-base$X \
 	git-merge-index$X git-mktag$X git-mktree$X git-pack-objects$X git-patch-id$X \
 	git-peek-remote$X git-prune-packed$X git-receive-pack$X \
 	git-send-pack$X git-shell$X \
 	git-show-index$X git-ssh-fetch$X \
 	git-ssh-upload$X git-unpack-file$X \
-	git-unpack-objects$X git-update-index$X git-update-server-info$X \
-	git-upload-pack$X git-verify-pack$X git-write-tree$X \
-	git-update-ref$X git-symbolic-ref$X \
+	git-unpack-objects$X git-update-server-info$X \
+	git-upload-pack$X git-verify-pack$X \
+	git-symbolic-ref$X \
 	git-name-rev$X git-pack-redundant$X git-repo-config$X git-var$X \
 	git-describe$X git-merge-tree$X git-blame$X git-imap-send$X
 
-BUILT_INS = git-log$X git-whatchanged$X git-show$X \
-	git-count-objects$X git-diff$X git-push$X \
-	git-grep$X git-add$X git-rm$X git-rev-list$X \
-	git-check-ref-format$X git-rev-parse$X \
+BUILT_INS = git-log$X git-whatchanged$X git-show$X git-update-ref$X \
+	git-count-objects$X git-diff$X git-push$X git-mailsplit$X \
+	git-grep$X git-add$X git-rm$X git-rev-list$X git-stripspace$X \
+	git-check-ref-format$X git-rev-parse$X git-mailinfo$X \
 	git-init-db$X git-tar-tree$X git-upload-tar$X git-format-patch$X \
 	git-ls-files$X git-ls-tree$X git-get-tar-commit-id$X \
-	git-read-tree$X git-commit-tree$X \
-	git-apply$X git-show-branch$X git-diff-files$X \
+	git-read-tree$X git-commit-tree$X git-write-tree$X \
+	git-apply$X git-show-branch$X git-diff-files$X git-update-index$X \
 	git-diff-index$X git-diff-stages$X git-diff-tree$X git-cat-file$X
 
 # what 'all' will build and 'install' will install, in gitexecdir
@@ -222,12 +223,13 @@ BUILTIN_OBJS = \
 	builtin-log.o builtin-help.o builtin-count.o builtin-diff.o builtin-push.o \
 	builtin-grep.o builtin-add.o builtin-rev-list.o builtin-check-ref-format.o \
 	builtin-rm.o builtin-init-db.o builtin-rev-parse.o \
-	builtin-tar-tree.o builtin-upload-tar.o \
-	builtin-ls-files.o builtin-ls-tree.o \
-	builtin-read-tree.o builtin-commit-tree.o \
+	builtin-tar-tree.o builtin-upload-tar.o builtin-update-index.o \
+	builtin-ls-files.o builtin-ls-tree.o builtin-write-tree.o \
+	builtin-read-tree.o builtin-commit-tree.o builtin-mailinfo.o \
 	builtin-apply.o builtin-show-branch.o builtin-diff-files.o \
 	builtin-diff-index.o builtin-diff-stages.o builtin-diff-tree.o \
-	builtin-cat-file.o
+	builtin-cat-file.o builtin-mailsplit.o builtin-stripspace.o \
+	builtin-update-ref.o
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
 LIBS = $(GITLIBS) -lz
@@ -240,9 +242,13 @@ LIBS = $(GITLIBS) -lz
 # because maintaining the nesting to match is a pain.  If
 # we had "elif" things would have been much nicer...
 
+ifeq ($(uname_S),Linux)
+	NO_STRLCPY = YesPlease
+endif
 ifeq ($(uname_S),Darwin)
 	NEEDS_SSL_WITH_CRYPTO = YesPlease
 	NEEDS_LIBICONV = YesPlease
+	NO_STRLCPY = YesPlease
 	## fink
 	ifeq ($(shell test -d /sw/lib && echo y),y)
 		ALL_CFLAGS += -I/sw/include
@@ -259,6 +265,7 @@ ifeq ($(uname_S),SunOS)
 	NEEDS_NSL = YesPlease
 	SHELL_PATH = /bin/bash
 	NO_STRCASESTR = YesPlease
+	NO_STRLCPY = YesPlease
 	ifeq ($(uname_R),5.8)
 		NEEDS_LIBICONV = YesPlease
 		NO_UNSETENV = YesPlease
@@ -276,6 +283,7 @@ ifeq ($(uname_O),Cygwin)
 	NO_D_TYPE_IN_DIRENT = YesPlease
 	NO_D_INO_IN_DIRENT = YesPlease
 	NO_STRCASESTR = YesPlease
+	NO_STRLCPY = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	# There are conflicting reports about this.
@@ -305,12 +313,14 @@ ifeq ($(uname_S),NetBSD)
 endif
 ifeq ($(uname_S),AIX)
 	NO_STRCASESTR=YesPlease
+	NO_STRLCPY = YesPlease
 	NEEDS_LIBICONV=YesPlease
 endif
 ifeq ($(uname_S),IRIX64)
 	NO_IPV6=YesPlease
 	NO_SETENV=YesPlease
 	NO_STRCASESTR=YesPlease
+	NO_STRLCPY = YesPlease
 	NO_SOCKADDR_STORAGE=YesPlease
 	SHELL_PATH=/usr/gnu/bin/bash
 	ALL_CFLAGS += -DPATH_MAX=1024
@@ -380,9 +390,7 @@ ifdef NEEDS_LIBICONV
 	else
 		ICONV_LINK =
 	endif
-	LIB_4_ICONV = $(ICONV_LINK) -liconv
-else
-	LIB_4_ICONV =
+	LIBS += $(ICONV_LINK) -liconv
 endif
 ifdef NEEDS_SOCKET
 	LIBS += -lsocket
@@ -404,6 +412,10 @@ endif
 ifdef NO_STRCASESTR
 	COMPAT_CFLAGS += -DNO_STRCASESTR
 	COMPAT_OBJS += compat/strcasestr.o
+endif
+ifdef NO_STRLCPY
+	COMPAT_CFLAGS += -DNO_STRLCPY
+	COMPAT_OBJS += compat/strlcpy.o
 endif
 ifdef NO_SETENV
 	COMPAT_CFLAGS += -DNO_SETENV
@@ -472,7 +484,6 @@ PYTHON_PATH_SQ = $(subst ','\'',$(PYTHON_PATH))
 GIT_PYTHON_DIR_SQ = $(subst ','\'',$(GIT_PYTHON_DIR))
 
 ALL_CFLAGS += -DSHA1_HEADER='$(SHA1_HEADER_SQ)' $(COMPAT_CFLAGS)
-ALL_CFLAGS += -DDEFAULT_GIT_TEMPLATE_DIR='"$(template_dir_SQ)"'
 LIB_OBJS += $(COMPAT_OBJS)
 export prefix TAR INSTALL DESTDIR SHELL_PATH template_dir
 ### Build rules
@@ -548,6 +559,8 @@ git$X git.spec \
 
 exec_cmd.o: exec_cmd.c GIT-CFLAGS
 	$(CC) -o $*.o -c $(ALL_CFLAGS) '-DGIT_EXEC_PATH="$(gitexecdir_SQ)"' $<
+builtin-init-db.o: builtin-init-db.c GIT-CFLAGS
+	$(CC) -o $*.o -c $(ALL_CFLAGS) -DDEFAULT_GIT_TEMPLATE_DIR='"$(template_dir_SQ)"' $<
 
 http.o: http.c GIT-CFLAGS
 	$(CC) -o $*.o -c $(ALL_CFLAGS) -DGIT_USER_AGENT='"git/$(GIT_VERSION)"' $<
@@ -564,10 +577,6 @@ $(SIMPLE_PROGRAMS) : $(LIB_FILE)
 $(SIMPLE_PROGRAMS) : git-%$X : %.o
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIB_FILE) $(SIMPLE_LIB)
-
-git-mailinfo$X: mailinfo.o $(LIB_FILE)
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
-		$(LIB_FILE) $(SIMPLE_LIB) $(LIB_4_ICONV)
 
 git-local-fetch$X: fetch.o
 git-ssh-fetch$X: rsh.o fetch.o
@@ -587,7 +596,7 @@ git-http-push$X: revision.o http.o http-push.o $(LIB_FILE)
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
 $(LIB_OBJS) $(BUILTIN_OBJS): $(LIB_H)
-$(patsubst git-%$X,%.o,$(PROGRAMS)): $(GITLIBS)
+$(patsubst git-%$X,%.o,$(PROGRAMS)): $(LIB_H) $(wildcard */*.h)
 $(DIFF_OBJS): diffcore.h
 
 $(LIB_FILE): $(LIB_OBJS)
@@ -611,7 +620,7 @@ tags:
 	find . -name '*.[hcS]' -print | xargs ctags -a
 
 ### Detect prefix changes
-TRACK_CFLAGS = $(subst ','\'',$(ALL_CFLAGS)):$(GIT_VERSION):\
+TRACK_CFLAGS = $(subst ','\'',$(ALL_CFLAGS)):$(GIT_PYTHON_DIR_SQ):\
              $(bindir_SQ):$(gitexecdir_SQ):$(template_dir_SQ):$(prefix_SQ)
 
 GIT-CFLAGS: .FORCE-GIT-CFLAGS

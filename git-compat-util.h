@@ -40,6 +40,10 @@ extern void usage(const char *err) NORETURN;
 extern void die(const char *err, ...) NORETURN __attribute__((format (printf, 1, 2)));
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
+extern void set_usage_routine(void (*routine)(const char *err) NORETURN);
+extern void set_die_routine(void (*routine)(const char *err, va_list params) NORETURN);
+extern void set_error_routine(void (*routine)(const char *err, va_list params));
+
 #ifdef NO_MMAP
 
 #ifndef PROT_READ
@@ -73,6 +77,11 @@ extern void gitunsetenv(const char *);
 #ifdef NO_STRCASESTR
 #define strcasestr gitstrcasestr
 extern char *gitstrcasestr(const char *haystack, const char *needle);
+#endif
+
+#ifdef NO_STRLCPY
+#define strlcpy gitstrlcpy
+extern size_t gitstrlcpy(char *, const char *, size_t);
 #endif
 
 static inline void *xmalloc(size_t size)

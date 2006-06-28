@@ -16,7 +16,8 @@
 
 static void prepend_to_path(const char *dir, int len)
 {
-	char *path, *old_path = getenv("PATH");
+	const char *old_path = getenv("PATH");
+	char *path;
 	int path_len = len;
 
 	if (!old_path)
@@ -99,7 +100,7 @@ static int split_cmdline(char *cmdline, const char ***argv)
 
 static int handle_alias(int *argcp, const char ***argv)
 {
-	int nongit = 0, ret = 0;
+	int nongit = 0, ret = 0, saved_errno = errno;
 	const char *subdir;
 
 	subdir = setup_git_directory_gently(&nongit);
@@ -136,6 +137,8 @@ static int handle_alias(int *argcp, const char ***argv)
 
 	if (subdir)
 		chdir(subdir);
+
+	errno = saved_errno;
 
 	return ret;
 }
@@ -178,7 +181,13 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		{ "diff-stages", cmd_diff_stages },
 		{ "diff-tree", cmd_diff_tree },
 		{ "cat-file", cmd_cat_file },
-		{ "rev-parse", cmd_rev_parse }
+		{ "rev-parse", cmd_rev_parse },
+		{ "write-tree", cmd_write_tree },
+		{ "mailsplit", cmd_mailsplit },
+		{ "mailinfo", cmd_mailinfo },
+		{ "stripspace", cmd_stripspace },
+		{ "update-index", cmd_update_index },
+		{ "update-ref", cmd_update_ref }
 	};
 	int i;
 
@@ -200,7 +209,6 @@ int main(int argc, const char **argv, char **envp)
 {
 	const char *cmd = argv[0];
 	char *slash = strrchr(cmd, '/');
-	char git_command[PATH_MAX + 1];
 	const char *exec_path = NULL;
 	int done_alias = 0;
 
@@ -307,7 +315,7 @@ int main(int argc, const char **argv, char **envp)
 		cmd_usage(0, exec_path, "'%s' is not a git-command", cmd);
 
 	fprintf(stderr, "Failed to run command '%s': %s\n",
-		git_command, strerror(errno));
+		cmd, strerror(errno));
 
 	return 1;
 }

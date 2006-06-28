@@ -115,7 +115,7 @@ static void reopen_stdout(struct commit *commit, int nr, int keep_subject)
 	int len = 0;
 
 	if (output_directory) {
-		safe_strncpy(filename, output_directory, 1010);
+		strlcpy(filename, output_directory, 1010);
 		len = strlen(filename);
 		if (filename[len - 1] != '/')
 			filename[len++] = '/';
@@ -257,8 +257,8 @@ int cmd_format_patch(int argc, const char **argv, char **envp)
 			    output_directory);
 	}
 
-	if (rev.pending_objects && rev.pending_objects->next == NULL) {
-		rev.pending_objects->item->flags |= UNINTERESTING;
+	if (rev.pending.nr == 1) {
+		rev.pending.objects[0].item->flags |= UNINTERESTING;
 		add_head(&rev);
 	}
 

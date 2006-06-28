@@ -93,7 +93,7 @@ typedef struct {
 	char *data;
 	int len;
 	unsigned char flags;
-	unsigned char crlf:1;
+	unsigned int crlf:1;
 } msg_data_t;
 
 #define DRV_OK          0
@@ -242,7 +242,7 @@ socket_read( Socket_t *sock, char *buf, int len )
 }
 
 static int
-socket_write( Socket_t *sock, char *buf, int len )
+socket_write( Socket_t *sock, const char *buf, int len )
 {
 	int n = write( sock->fd, buf, len );
 	if (n != len) {

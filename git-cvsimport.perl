@@ -17,7 +17,7 @@ use strict;
 use warnings;
 use Getopt::Std;
 use File::Spec;
-use File::Temp qw(tempfile);
+use File::Temp qw(tempfile tmpnam);
 use File::Path qw(mkpath);
 use File::Basename qw(basename dirname);
 use Time::Local;
@@ -467,13 +467,7 @@ my $orig_git_index;
 $orig_git_index = $ENV{GIT_INDEX_FILE} if exists $ENV{GIT_INDEX_FILE};
 
 my %index; # holds filenames of one index per branch
-{   # init with an index for origin
-    my ($fh, $fn) = tempfile('gitXXXXXX', SUFFIX => '.idx',
-			     DIR => File::Spec->tmpdir());
-    close ($fh);
-    $index{$opt_o} = $fn;
-}
-$ENV{GIT_INDEX_FILE} = $index{$opt_o};
+
 unless(-d $git_dir) {
 	system("git-init-db");
 	die "Cannot init the GIT db at $git_tree: $?\n" if $?;
@@ -499,17 +493,6 @@ unless(-d $git_dir) {
 	}
 	$orig_branch = $last_branch;
 	$tip_at_start = `git-rev-parse --verify HEAD`;
-
-	# populate index
-	unless ($index{$last_branch}) {
-	    my ($fh, $fn) = tempfile('gitXXXXXX', SUFFIX => '.idx',
-				     DIR => File::Spec->tmpdir());
-	    close ($fh);
-	    $index{$last_branch} = $fn;
-	}
-	$ENV{GIT_INDEX_FILE} = $index{$last_branch};
-	system('git-read-tree', $last_branch);
-	die "read-tree failed: $?\n" if $?;
 
 	# Get the last import timestamps
 	opendir(D,"$git_dir/refs/heads");
@@ -627,6 +610,27 @@ my(@old,@new,@skipped,%ignorebranch);
 $ignorebranch{'#CVSPS_NO_BRANCH'} = 1;
 
 sub commit {
+	if ($branch eq $opt_o && !$index{branch} && !get_headref($branch, $git_dir)) {
+	    # looks like an initial commit
+	    # use the index primed by git-init-db
+	    $ENV{GIT_INDEX_FILE} = '.git/index';
+	    $index{$branch} = '.git/index';
+	} else {
+	    # use an index per branch to speed up
+	    # imports of projects with many branches
+	    unless ($index{$branch}) {
+		$index{$branch} = tmpnam();
+		$ENV{GIT_INDEX_FILE} = $index{$branch};
+		if ($ancestor) {
+		    system("git-read-tree", $ancestor);
+		} else {
+		    system("git-read-tree", $branch);
+		}
+		die "read-tree failed: $?\n" if $?;
+	    }
+	}
+        $ENV{GIT_INDEX_FILE} = $index{$branch};
+
 	update_index(@old, @new);
 	@old = @new = ();
 	my $tree = write_tree();
@@ -815,20 +819,6 @@ while(<CVS>) {
 			close(H)
 				or die "Could not write branch $branch: $!";
 		}
-		if(($ancestor || $branch) ne $last_branch) {
-			print "Switching from $last_branch to $branch\n" if $opt_v;
-			unless ($index{$branch}) {
-			    my ($fh, $fn) = tempfile('gitXXXXXX', SUFFIX => '.idx',
-						     DIR => File::Spec->tmpdir());
-			    close ($fh);
-			    $index{$branch} = $fn;
-			    $ENV{GIT_INDEX_FILE} = $index{$branch};
-			    system("git-read-tree", $branch);
-			    die "read-tree failed: $?\n" if $?;
-			} else {
-			    $ENV{GIT_INDEX_FILE} = $index{$branch};
-		        }
-		}
 		$last_branch = $branch if $branch ne $last_branch;
 		$state = 9;
 	} elsif($state == 8) {
@@ -892,7 +882,9 @@ while(<CVS>) {
 commit() if $branch and $state != 11;
 
 foreach my $git_index (values %index) {
-    unlink($git_index);
+    if ($git_index ne '.git/index') {
+	unlink($git_index);
+    }
 }
 
 if (defined $orig_git_index) {

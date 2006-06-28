@@ -196,7 +196,7 @@ static size_t fwrite_sha1_file(void *ptr, size_t eltsize, size_t nmemb,
 	struct transfer_request *request = (struct transfer_request *)data;
 	do {
 		ssize_t retval = write(request->local_fileno,
-				       ptr + posn, size - posn);
+				       (char *) ptr + posn, size - posn);
 		if (retval < 0)
 			return posn;
 		posn += retval;
@@ -1077,13 +1077,14 @@ static int fetch_indices(void)
 
 static inline int needs_quote(int ch)
 {
-	switch (ch) {
-	case '/': case '-': case '.':
-	case 'A'...'Z':	case 'a'...'z':	case '0'...'9':
+	if (((ch >= 'A') && (ch <= 'Z'))
+			|| ((ch >= 'a') && (ch <= 'z'))
+			|| ((ch >= '0') && (ch <= '9'))
+			|| (ch == '/')
+			|| (ch == '-')
+			|| (ch == '.'))
 		return 0;
-	default:
-		return 1;
-	}
+	return 1;
 }
 
 static inline int hex(int v)
@@ -1171,7 +1172,7 @@ static void one_remote_object(const char *hex)
 
 	obj->flags |= REMOTE;
 	if (!object_list_contains(objects, obj))
-		add_object(obj, &objects, NULL, "");
+		object_list_insert(obj, &objects);
 }
 
 static void handle_lockprop_ctx(struct xml_ctx *ctx, int tag_closed)
@@ -1270,10 +1271,10 @@ xml_cdata(void *userData, const XML_Char *s, int len)
 	if (ctx->cdata)
 		free(ctx->cdata);
 	ctx->cdata = xmalloc(len + 1);
-	safe_strncpy(ctx->cdata, s, len + 1);
+	strlcpy(ctx->cdata, s, len + 1);
 }
 
-static struct remote_lock *lock_remote(char *path, long timeout)
+static struct remote_lock *lock_remote(const char *path, long timeout)
 {
 	struct active_request_slot *slot;
 	struct slot_results results;
@@ -1472,7 +1473,7 @@ static void process_ls_object(struct remote_ls_ctx *ls)
 		return;
 	path += 8;
 	obj_hex = xmalloc(strlen(path));
-	safe_strncpy(obj_hex, path, 3);
+	strlcpy(obj_hex, path, 3);
 	strcpy(obj_hex + 2, path + 3);
 	one_remote_object(obj_hex);
 	free(obj_hex);
@@ -1699,6 +1700,15 @@ static int locking_available(void)
 	return lock_flags;
 }
 
+struct object_list **add_one_object(struct object *obj, struct object_list **p)
+{
+	struct object_list *entry = xmalloc(sizeof(struct object_list));
+	entry->item = obj;
+	entry->next = *p;
+	*p = entry;
+	return &entry->next;
+}
+
 static struct object_list **process_blob(struct blob *blob,
 					 struct object_list **p,
 					 struct name_path *path,
@@ -1712,8 +1722,7 @@ static struct object_list **process_blob(struct blob *blob,
 		return p;
 
 	obj->flags |= SEEN;
-	name = strdup(name);
-	return add_object(obj, p, path, name);
+	return add_one_object(obj, p);
 }
 
 static struct object_list **process_tree(struct tree *tree,
@@ -1735,7 +1744,7 @@ static struct object_list **process_tree(struct tree *tree,
 
 	obj->flags |= SEEN;
 	name = strdup(name);
-	p = add_object(obj, p, NULL, name);
+	p = add_one_object(obj, p);
 	me.up = path;
 	me.elem = name;
 	me.elem_len = strlen(name);
@@ -1756,8 +1765,9 @@ static struct object_list **process_tree(struct tree *tree,
 
 static int get_delta(struct rev_info *revs, struct remote_lock *lock)
 {
+	int i;
 	struct commit *commit;
-	struct object_list **p = &objects, *pending;
+	struct object_list **p = &objects;
 	int count = 0;
 
 	while ((commit = get_revision(revs)) != NULL) {
@@ -1767,15 +1777,16 @@ static int get_delta(struct rev_info *revs, struct remote_lock *lock)
 			count += add_send_request(&commit->object, lock);
 	}
 
-	for (pending = revs->pending_objects; pending; pending = pending->next) {
-		struct object *obj = pending->item;
-		const char *name = pending->name;
+	for (i = 0; i < revs->pending.nr; i++) {
+		struct object_array_entry *entry = revs->pending.objects + i;
+		struct object *obj = entry->item;
+		const char *name = entry->name;
 
 		if (obj->flags & (UNINTERESTING | SEEN))
 			continue;
 		if (obj->type == TYPE_TAG) {
 			obj->flags |= SEEN;
-			p = add_object(obj, p, NULL, name);
+			p = add_one_object(obj, p);
 			continue;
 		}
 		if (obj->type == TYPE_TREE) {
@@ -2119,7 +2130,7 @@ static int remote_exists(const char *path)
 	return -1;
 }
 
-static void fetch_symref(char *path, char **symref, unsigned char *sha1)
+static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 {
 	char *url;
 	struct buffer buffer;
@@ -2161,7 +2172,7 @@ static void fetch_symref(char *path, char **symref, unsigned char *sha1)
 	/* If it's a symref, set the refname; otherwise try for a sha1 */
 	if (!strncmp((char *)buffer.buffer, "ref: ", 5)) {
 		*symref = xmalloc(buffer.posn - 5);
-		safe_strncpy(*symref, (char *)buffer.buffer + 5, buffer.posn - 5);
+		strlcpy(*symref, (char *)buffer.buffer + 5, buffer.posn - 5);
 	} else {
 		get_sha1_hex(buffer.buffer, sha1);
 	}
