@@ -136,3 +136,7 @@ git-core.spec
 *.py[co]
 config.mak
 git-blame
+autom4te.cache
+config.log
+config.status
+configure
