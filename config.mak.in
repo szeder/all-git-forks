@@ -8,5 +8,11 @@ bindir = @bindir@
 template_dir = @datadir@/git-core/templates/
 GIT_PYTHON_DIR = @datadir@/git-core/python
 
+mandir=@mandir@
+
 srcdir = @srcdir@
 VPATH = @srcdir@
+
+export exec_prefix mandir
+export srcdir VPATH
+
