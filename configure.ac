@@ -54,9 +54,3 @@ AC_CONFIG_FILES(["${config_file}":"${config_in}":"${config_append}"])
 AC_OUTPUT
 
 rm -f "${config_append}"
-
-cat <<_ACEOF
-
-Add '-include ${config_file}' to your config.mak, 
-or rename ${config_file} to config.mak
-_ACEOF
