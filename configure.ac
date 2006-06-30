@@ -6,7 +6,7 @@ AC_INIT([git], [1.4.0], [git@vger.kernel.org])
 
 AC_CONFIG_SRCDIR([git.c])
 
-config_file=config.mak.auto
+config_file=config.mak.autogen
 config_append=config.mak.append
 config_in=config.mak.in
 
