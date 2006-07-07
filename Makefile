@@ -131,7 +131,7 @@ SCRIPT_SH = \
 
 SCRIPT_PERL = \
 	git-archimport.perl git-cvsimport.perl git-relink.perl \
-	git-shortlog.perl git-fmt-merge-msg.perl git-rerere.perl \
+	git-shortlog.perl git-rerere.perl \
 	git-annotate.perl git-cvsserver.perl \
 	git-svnimport.perl git-mv.perl git-cvsexportcommit.perl \
 	git-send-email.perl
@@ -142,7 +142,7 @@ SCRIPT_PYTHON = \
 SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
 	  $(patsubst %.perl,%,$(SCRIPT_PERL)) \
 	  $(patsubst %.py,%,$(SCRIPT_PYTHON)) \
-	  git-cherry-pick git-status
+	  git-cherry-pick git-status git-instaweb
 
 # The ones that do not have to link with lcrypto, lz nor xdiff.
 SIMPLE_PROGRAMS = \
@@ -173,7 +173,8 @@ BUILT_INS = git-log$X git-whatchanged$X git-show$X git-update-ref$X \
 	git-ls-files$X git-ls-tree$X git-get-tar-commit-id$X \
 	git-read-tree$X git-commit-tree$X git-write-tree$X \
 	git-apply$X git-show-branch$X git-diff-files$X git-update-index$X \
-	git-diff-index$X git-diff-stages$X git-diff-tree$X git-cat-file$X
+	git-diff-index$X git-diff-stages$X git-diff-tree$X git-cat-file$X \
+	git-fmt-merge-msg$X
 
 # what 'all' will build and 'install' will install, in gitexecdir
 ALL_PROGRAMS = $(PROGRAMS) $(SIMPLE_PROGRAMS) $(SCRIPTS)
@@ -229,7 +230,7 @@ BUILTIN_OBJS = \
 	builtin-apply.o builtin-show-branch.o builtin-diff-files.o \
 	builtin-diff-index.o builtin-diff-stages.o builtin-diff-tree.o \
 	builtin-cat-file.o builtin-mailsplit.o builtin-stripspace.o \
-	builtin-update-ref.o
+	builtin-update-ref.o builtin-fmt-merge-msg.o
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
 LIBS = $(GITLIBS) -lz
@@ -545,6 +546,20 @@ git-status: git-commit
 	cp $< $@+
 	mv $@+ $@
 
+git-instaweb: git-instaweb.sh gitweb/gitweb.cgi gitweb/gitweb.css
+	rm -f $@ $@+
+	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
+	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
+	    -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
+	    -e 's/@@NO_PYTHON@@/$(NO_PYTHON)/g' \
+	    -e '/@@GITWEB_CGI@@/rgitweb/gitweb.cgi' \
+	    -e '/@@GITWEB_CGI@@/d' \
+	    -e '/@@GITWEB_CSS@@/rgitweb/gitweb.css' \
+	    -e '/@@GITWEB_CSS@@/d' \
+	    $@.sh > $@+
+	chmod +x $@+
+	mv $@+ $@
+
 # These can record GIT_VERSION
 git$X git.spec \
 	$(patsubst %.sh,%,$(SCRIPT_SH)) \
@@ -587,11 +602,11 @@ git-ssh-push$X: rsh.o
 git-imap-send$X: imap-send.o $(LIB_FILE)
 
 http.o http-fetch.o http-push.o: http.h
-git-http-fetch$X: fetch.o http.o http-fetch.o $(LIB_FILE)
+git-http-fetch$X: fetch.o http.o http-fetch.o $(GITLIBS)
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
-git-http-push$X: revision.o http.o http-push.o $(LIB_FILE)
+git-http-push$X: revision.o http.o http-push.o $(GITLIBS)
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
@@ -649,6 +664,12 @@ test-delta$X: test-delta.c diff-delta.o patch-delta.o
 
 test-dump-cache-tree$X: dump-cache-tree.o $(GITLIBS)
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
+
+test-sha1$X: test-sha1.o $(GITLIBS)
+	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
+
+check-sha1:: test-sha1$X
+	./test-sha1.sh
 
 check:
 	for i in *.c; do sparse $(ALL_CFLAGS) $(SPARSE_FLAGS) $$i || exit; done
