@@ -13,6 +13,7 @@
 
 static int use_size_cache;
 
+static int diff_detect_rename_default = 0;
 static int diff_rename_limit_default = -1;
 static int diff_use_color_default = 0;
 
@@ -43,12 +44,12 @@ enum color_diff {
 #define COLOR_WHITE   "\033[37m"
 
 static const char *diff_colors[] = {
-	[DIFF_RESET]    = COLOR_RESET,
-	[DIFF_PLAIN]    = COLOR_NORMAL,
-	[DIFF_METAINFO] = COLOR_BOLD,
-	[DIFF_FRAGINFO] = COLOR_CYAN,
-	[DIFF_FILE_OLD] = COLOR_RED,
-	[DIFF_FILE_NEW] = COLOR_GREEN,
+	COLOR_RESET,
+	COLOR_NORMAL,
+	COLOR_BOLD,
+	COLOR_CYAN,
+	COLOR_RED,
+	COLOR_GREEN
 };
 
 static int parse_diff_color_slot(const char *var, int ofs)
@@ -101,7 +102,13 @@ static const char *parse_diff_color_value(const char *value, const char *var)
 	die("bad config value '%s' for variable '%s'", value, var);
 }
 
-int git_diff_config(const char *var, const char *value)
+/*
+ * These are to give UI layer defaults.
+ * The core-level commands such as git-diff-files should
+ * never be affected by the setting of diff.renames
+ * the user happens to have in the configuration file.
+ */
+int git_diff_ui_config(const char *var, const char *value)
 {
 	if (!strcmp(var, "diff.renamelimit")) {
 		diff_rename_limit_default = git_config_int(var, value);
@@ -110,14 +117,30 @@ int git_diff_config(const char *var, const char *value)
 	if (!strcmp(var, "diff.color")) {
 		if (!value)
 			diff_use_color_default = 1; /* bool */
-		else if (!strcasecmp(value, "auto"))
-			diff_use_color_default = isatty(1);
+		else if (!strcasecmp(value, "auto")) {
+			diff_use_color_default = 0;
+			if (isatty(1) || pager_in_use) {
+				char *term = getenv("TERM");
+				if (term && strcmp(term, "dumb"))
+					diff_use_color_default = 1;
+			}
+		}
 		else if (!strcasecmp(value, "never"))
 			diff_use_color_default = 0;
 		else if (!strcasecmp(value, "always"))
 			diff_use_color_default = 1;
 		else
 			diff_use_color_default = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "diff.renames")) {
+		if (!value)
+			diff_detect_rename_default = DIFF_DETECT_RENAME;
+		else if (!strcasecmp(value, "copies") ||
+			 !strcasecmp(value, "copy"))
+			diff_detect_rename_default = DIFF_DETECT_COPY;
+		else if (git_config_bool(var,value))
+			diff_detect_rename_default = DIFF_DETECT_RENAME;
 		return 0;
 	}
 	if (!strncmp(var, "diff.color.", 11)) {
@@ -329,7 +352,9 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	}
 	if (len > 0 && line[len-1] == '\n')
 		len--;
-	printf("%s%.*s%s\n", set, (int) len, line, reset);
+	fputs (set, stdout);
+	fwrite (line, len, 1, stdout);
+	puts (reset);
 }
 
 static char *pprint_rename(const char *a, const char *b)
@@ -721,7 +746,7 @@ static void builtin_diff(const char *name_a,
 	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
 		die("unable to read files to diff");
 
-	if (mmfile_is_binary(&mf1) || mmfile_is_binary(&mf2)) {
+	if (!o->text && (mmfile_is_binary(&mf1) || mmfile_is_binary(&mf2))) {
 		/* Quite common confusing case */
 		if (mf1.size == mf2.size &&
 		    !memcmp(mf1.ptr, mf2.ptr, mf1.size))
@@ -1429,6 +1454,7 @@ void diff_setup(struct diff_options *options)
 	options->change = diff_change;
 	options->add_remove = diff_addremove;
 	options->color_diff = diff_use_color_default;
+	options->detect_rename = diff_detect_rename_default;
 }
 
 int diff_setup_done(struct diff_options *options)
@@ -1559,6 +1585,9 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->output_format |= DIFF_FORMAT_PATCH;
 		options->full_index = options->binary = 1;
 	}
+	else if (!strcmp(arg, "-a") || !strcmp(arg, "--text")) {
+		options->text = 1;
+	}
 	else if (!strcmp(arg, "--name-only"))
 		options->output_format |= DIFF_FORMAT_NAME;
 	else if (!strcmp(arg, "--name-status"))
@@ -1608,10 +1637,14 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	}
 	else if (!strcmp(arg, "--color"))
 		options->color_diff = 1;
+	else if (!strcmp(arg, "--no-color"))
+		options->color_diff = 0;
 	else if (!strcmp(arg, "-w") || !strcmp(arg, "--ignore-all-space"))
 		options->xdl_opts |= XDF_IGNORE_WHITESPACE;
 	else if (!strcmp(arg, "-b") || !strcmp(arg, "--ignore-space-change"))
 		options->xdl_opts |= XDF_IGNORE_WHITESPACE_CHANGE;
+	else if (!strcmp(arg, "--no-renames"))
+		options->detect_rename = 0;
 	else
 		return 0;
 	return 1;

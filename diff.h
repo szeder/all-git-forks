@@ -42,6 +42,7 @@ struct diff_options {
 	unsigned recursive:1,
 		 tree_in_recursive:1,
 		 binary:1,
+		 text:1,
 		 full_index:1,
 		 silent_on_remove:1,
 		 find_copies_harder:1,
@@ -122,7 +123,7 @@ extern int diff_scoreopt_parse(const char *opt);
 #define DIFF_SETUP_USE_CACHE		2
 #define DIFF_SETUP_USE_SIZE_CACHE	4
 
-extern int git_diff_config(const char *var, const char *value);
+extern int git_diff_ui_config(const char *var, const char *value);
 extern void diff_setup(struct diff_options *);
 extern int diff_opt_parse(struct diff_options *, const char **, int);
 extern int diff_setup_done(struct diff_options *);
@@ -161,7 +162,8 @@ extern void diffcore_std_no_resolve(struct diff_options *);
 "  -O<file>      reorder diffs according to the <file>.\n" \
 "  -S<string>    find filepair whose only one side contains the string.\n" \
 "  --pickaxe-all\n" \
-"                show all files diff when -S is used and hit is found.\n"
+"                show all files diff when -S is used and hit is found.\n" \
+"  -a  --text    treat all files as text.\n"
 
 extern int diff_queue_is_empty(void);
 extern void diff_flush(struct diff_options*);

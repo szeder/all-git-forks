@@ -33,6 +33,10 @@ all:
 # Define NO_SYMLINK_HEAD if you never want .git/HEAD to be a symbolic link.
 # Enable it on Windows.  By default, symrefs are still used.
 #
+# Define NO_SVN_TESTS if you want to skip time-consuming SVN interoperability
+# tests.  These tests take up a significant amount of the total test time
+# but are not needed unless you plan to talk to SVN repos.
+#
 # Define PPC_SHA1 environment variable when running make to make use of
 # a bundled SHA1 routine optimized for PowerPC.
 #
@@ -60,7 +64,7 @@ all:
 # Define NO_ACCURATE_DIFF if your diff program at least sometimes misses
 # a missing newline at the end of the file.
 #
-# Define NO_PYTHON if you want to loose all benefits of the recursive merge.
+# Define NO_PYTHON if you want to lose all benefits of the recursive merge.
 #
 # Define COLLISION_CHECK below if you believe that SHA1's
 # 1461501637330902918203684832716283019655932542976 hashes do not give you
@@ -134,7 +138,7 @@ SCRIPT_PERL = \
 	git-shortlog.perl git-rerere.perl \
 	git-annotate.perl git-cvsserver.perl \
 	git-svnimport.perl git-mv.perl git-cvsexportcommit.perl \
-	git-send-email.perl
+	git-send-email.perl git-svn.perl
 
 SCRIPT_PYTHON = \
 	git-merge-recursive.py
@@ -469,7 +473,7 @@ ifdef NO_ACCURATE_DIFF
 	ALL_CFLAGS += -DNO_ACCURATE_DIFF
 endif
 
-# Shell quote (do not use $(call) to accomodate ancient setups);
+# Shell quote (do not use $(call) to accommodate ancient setups);
 
 SHA1_HEADER_SQ = $(subst ','\'',$(SHA1_HEADER))
 
@@ -514,6 +518,7 @@ common-cmds.h: Documentation/git-*.txt
 $(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh
 	rm -f $@ $@+
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
+	    -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
 	    -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
 	    -e 's/@@NO_PYTHON@@/$(NO_PYTHON)/g' \
@@ -552,9 +557,9 @@ git-instaweb: git-instaweb.sh gitweb/gitweb.cgi gitweb/gitweb.css
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
 	    -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
 	    -e 's/@@NO_PYTHON@@/$(NO_PYTHON)/g' \
-	    -e '/@@GITWEB_CGI@@/rgitweb/gitweb.cgi' \
+	    -e '/@@GITWEB_CGI@@/r gitweb/gitweb.cgi' \
 	    -e '/@@GITWEB_CGI@@/d' \
-	    -e '/@@GITWEB_CSS@@/rgitweb/gitweb.css' \
+	    -e '/@@GITWEB_CSS@@/r gitweb/gitweb.css' \
 	    -e '/@@GITWEB_CSS@@/d' \
 	    $@.sh > $@+
 	chmod +x $@+
@@ -652,6 +657,7 @@ GIT-CFLAGS: .FORCE-GIT-CFLAGS
 # with that.
 
 export NO_PYTHON
+export NO_SVN_TESTS
 
 test: all
 	$(MAKE) -C t/ all

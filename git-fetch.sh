@@ -11,6 +11,7 @@ LF='
 '
 IFS="$LF"
 
+rloga=fetch
 no_tags=
 tags=
 append=
@@ -51,6 +52,9 @@ do
 	-k|--k|--ke|--kee|--keep)
 		keep=--keep
 		;;
+	--reflog-action=*)
+		rloga=`expr "z$1" : 'z-[^=]*=\(.*\)'`
+		;;
 	-*)
 		usage
 		;;
@@ -74,6 +78,9 @@ remote=$(get_remote_url "$@")
 refs=
 rref=
 rsync_slurped_objects=
+
+rloga="$rloga $remote_nick"
+test "$remote_nick" = "$remote" || rloga="$rloga $remote"
 
 if test "" = "$append"
 then
@@ -149,11 +156,12 @@ fast_forward_local () {
 			[ "$verbose" ] && echo >&2 "* $1: same as $3"
 		else
 			echo >&2 "* $1: updating with $3"
+			git-update-ref -m "$rloga: updating tag" "$1" "$2"
 		fi
 	else
 		echo >&2 "* $1: storing $3"
+		git-update-ref -m "$rloga: storing tag" "$1" "$2"
 	fi
-	git-update-ref "$1" "$2"
 	;;
 
     refs/heads/* | refs/remotes/*)
@@ -174,7 +182,7 @@ fast_forward_local () {
 	    *,$local)
 		echo >&2 "* $1: fast forward to $3"
 		echo >&2 "  from $local to $2"
-		git-update-ref "$1" "$2" "$local"
+		git-update-ref -m "$rloga: fast-forward" "$1" "$2" "$local"
 		;;
 	    *)
 		false
@@ -184,7 +192,7 @@ fast_forward_local () {
 		case ",$force,$single_force," in
 		*,t,*)
 			echo >&2 "  forcing update."
-			git-update-ref "$1" "$2" "$local"
+			git-update-ref -m "$rloga: forced-update" "$1" "$2" "$local"
 			;;
 		*)
 			echo >&2 "  not updating."
@@ -194,7 +202,7 @@ fast_forward_local () {
 	    }
 	else
 	    echo >&2 "* $1: storing $3"
-	    git-update-ref "$1" "$2"
+	    git-update-ref -m "$rloga: storing head" "$1" "$2"
 	fi
 	;;
     esac
@@ -278,7 +286,7 @@ fetch_main () {
 	  head="ref: $remote_name"
 	  while (expr "z$head" : "zref:" && expr $depth \< $max_depth) >/dev/null
 	  do
-	    remote_name_quoted=$(perl -e '
+	    remote_name_quoted=$(@@PERL@@ -e '
 	      my $u = $ARGV[0];
               $u =~ s/^ref:\s*//;
 	      $u =~ s{([^-a-zA-Z0-9/.])}{sprintf"%%%02x",ord($1)}eg;
@@ -422,7 +430,9 @@ case ",$update_head_ok,$orig_head," in
 	curr_head=$(git-rev-parse --verify HEAD 2>/dev/null)
 	if test "$curr_head" != "$orig_head"
 	then
-	    	git-update-ref HEAD "$orig_head"
+	    git-update-ref \
+			-m "$rloga: Undoing incorrectly fetched HEAD." \
+			HEAD "$orig_head"
 		die "Cannot fetch into the current branch."
 	fi
 	;;

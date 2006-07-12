@@ -219,8 +219,6 @@ int safe_create_leading_directories(char *path);
 char *enter_repo(char *path, int strict);
 
 /* Read and unpack a sha1 file into memory, write memory to a sha1 file */
-extern int unpack_sha1_header(z_stream *stream, void *map, unsigned long mapsize, void *buffer, unsigned long size);
-extern int parse_sha1_header(char *hdr, char *type, unsigned long *sizep);
 extern int sha1_object_info(const unsigned char *, char *, unsigned long *);
 extern void * unpack_sha1_file(void *map, unsigned long mapsize, char *type, unsigned long *size);
 extern void * read_sha1_file(const unsigned char *sha1, char *type, unsigned long *size);
@@ -382,6 +380,7 @@ extern int receive_keep_pack(int fd[2], const char *me, int quiet, int);
 
 /* pager.c */
 extern void setup_pager(void);
+extern int pager_in_use;
 
 /* base85 */
 int decode_85(char *dst, char *line, int linelen);

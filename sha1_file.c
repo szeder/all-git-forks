@@ -453,7 +453,7 @@ int use_packed_git(struct packed_git *p)
 {
 	if (!p->pack_size) {
 		struct stat st;
-		// We created the struct before we had the pack
+		/* We created the struct before we had the pack */
 		stat(p->pack_name, &st);
 		if (!S_ISREG(st.st_mode))
 			die("packfile %s not a regular file", p->pack_name);
@@ -684,7 +684,7 @@ static void *map_sha1_file_internal(const unsigned char *sha1,
 	return map;
 }
 
-int unpack_sha1_header(z_stream *stream, void *map, unsigned long mapsize, void *buffer, unsigned long size)
+static int unpack_sha1_header(z_stream *stream, void *map, unsigned long mapsize, void *buffer, unsigned long size)
 {
 	/* Get the data stream */
 	memset(stream, 0, sizeof(*stream));
@@ -720,7 +720,7 @@ static void *unpack_sha1_rest(z_stream *stream, void *buffer, unsigned long size
  * too permissive for what we want to check. So do an anal
  * object header parse by hand.
  */
-int parse_sha1_header(char *hdr, char *type, unsigned long *sizep)
+static int parse_sha1_header(char *hdr, char *type, unsigned long *sizep)
 {
 	int i;
 	unsigned long size;
@@ -1504,7 +1504,7 @@ static void *repack_object(const unsigned char *sha1, unsigned long *objsize)
 	int hdrlen;
 	void *buf;
 
-	// need to unpack and recompress it by itself
+	/* need to unpack and recompress it by itself */
 	unpacked = read_packed_sha1(sha1, type, &len);
 
 	hdrlen = sprintf(hdr, "%s %lu", type, len) + 1;
@@ -1660,7 +1660,7 @@ int has_sha1_file(const unsigned char *sha1)
 
 /*
  * reads from fd as long as possible into a supplied buffer of size bytes.
- * If neccessary the buffer's size is increased using realloc()
+ * If necessary the buffer's size is increased using realloc()
  *
  * returns 0 if anything went fine and -1 otherwise
  *
