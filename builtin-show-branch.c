@@ -89,6 +89,8 @@ static int name_first_parent_chain(struct commit *c)
 			name_parent(c, p);
 			i++;
 		}
+		else
+			break;
 		c = p;
 	}
 	return i;
@@ -548,7 +550,7 @@ static int omit_in_dense(struct commit *commit, struct commit **rev, int n)
 	return 0;
 }
 
-int cmd_show_branch(int ac, const char **av, char **envp)
+int cmd_show_branch(int ac, const char **av, const char *prefix)
 {
 	struct commit *rev[MAX_REVS], *commit;
 	struct commit_list *list = NULL, *seen = NULL;
@@ -571,7 +573,6 @@ int cmd_show_branch(int ac, const char **av, char **envp)
 	int topics = 0;
 	int dense = 1;
 
-	setup_git_directory();
 	git_config(git_show_branch_config);
 
 	/* If nothing is specified, try the default first */

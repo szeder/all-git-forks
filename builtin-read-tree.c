@@ -507,7 +507,7 @@ static int merged_entry(struct cache_entry *merge, struct cache_entry *old)
 	}
 
 	merge->ce_flags &= ~htons(CE_STAGEMASK);
-	add_cache_entry(merge, ADD_CACHE_OK_TO_ADD);
+	add_cache_entry(merge, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 	return 1;
 }
 
@@ -518,7 +518,7 @@ static int deleted_entry(struct cache_entry *ce, struct cache_entry *old)
 	else
 		verify_absent(ce->name, "removed");
 	ce->ce_mode = 0;
-	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD);
+	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 	invalidate_ce_path(ce);
 	return 1;
 }
@@ -870,7 +870,7 @@ static const char read_tree_usage[] = "git-read-tree (<sha> | [[-m [--aggressive
 
 static struct lock_file lock_file;
 
-int cmd_read_tree(int argc, const char **argv, char **envp)
+int cmd_read_tree(int argc, const char **argv, const char *prefix)
 {
 	int i, newfd, stage = 0;
 	unsigned char sha1[20];
@@ -882,7 +882,6 @@ int cmd_read_tree(int argc, const char **argv, char **envp)
 	state.quiet = 1;
 	state.refresh_cache = 1;
 
-	setup_git_directory();
 	git_config(git_default_config);
 
 	newfd = hold_lock_file_for_update(&lock_file, get_index_file());
