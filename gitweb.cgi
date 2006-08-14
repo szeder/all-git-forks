@@ -1470,9 +1470,11 @@ sub git_blob {
 		my $plainLink;
 		if (defined $file_name) {
 			$plainLink = $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob_plain;h=$hash;f=$file_name")}, "plain") .
-			" | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob;hb=HEAD;f=$file_name")}, "head") . "<br/>\n";
+			" | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob;hb=HEAD;f=$file_name")}, "head") .
+			" | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=history;h=$hash_base;f=$file_name")}, "history") . "<br/>\n";
 		} else {
-			$plainLink = $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob_plain;h=$hash")}, "plain") . "<br/>\n";
+			$plainLink = $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob_plain;h=$hash")}, "plain") .
+			" | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=history;h=$hash_base;f=$file_name")}, "history") . "<br/>\n";
 		}
 		print git_navbar($project, $hash_base, "blob", $plainLink);
 		print "<div>" .
@@ -1999,7 +2001,9 @@ sub git_blobdiff {
 	mkdir($git_temp, 0700);
 	git_header_html();
 	if (defined $hash_base && (my %co = git_read_commit($hash_base))) {
-		print git_navbar($project, $hash_base, "blobdiff", $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blobdiff_plain;h=$hash;hp=$hash_parent")}, "plain"));
+		my $navExtra = $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blobdiff_plain;h=$hash;hp=$hash_parent")}, "plain") .
+		" | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=history;h=$hash_base;f=$file_name")}, "history") . "<br/>\n";
+		print git_navbar($project, $hash_base, "blobdiff", $navExtra);
 		print "<div>\n" .
 		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$hash_base"), -class => "title"}, esc_html($co{'title'})) . "\n" .
 		      "</div>\n";
