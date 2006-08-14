@@ -2188,49 +2188,43 @@ sub git_history {
 	      "</div>\n";
 	print "<div class=\"page_path\"><b>/" . esc_html($file_name) . "</b><br/></div>\n";
 
-	open my $fd, "-|", "$gitbin/git-rev-list $hash | $gitbin/git-diff-tree -r --stdin \'$file_name\'";
-	my $commit;
+	open my $fd, "-|", "$gitbin/git-rev-list --all -- $file_name";
+
 	print "<table cellspacing=\"0\">\n";
 	my $alternate = 0;
-	while (my $line = <$fd>) {
-		if ($line =~ m/^([0-9a-fA-F]{40})/){
-			$commit = $1;
+	while (my $commit = <$fd>) {
+		my %co = git_read_commit($commit);
+		if (!%co) {
 			next;
 		}
-		if ($line =~ m/^:([0-7]{6}) ([0-7]{6}) ([0-9a-fA-F]{40}) ([0-9a-fA-F]{40}) (.)\t(.*)$/ && (defined $commit)) {
-			my %co = git_read_commit($commit);
-			if (!%co) {
-				next;
-			}
-			my $ref = "";
-			if (defined $refs->{$commit}) {
-				$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
-			}
-			if ($alternate) {
-				print "<tr class=\"dark\">\n";
-			} else {
-				print "<tr class=\"light\">\n";
-			}
-			$alternate ^= 1;
-			print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
-			      "<td><i>" . esc_html(chop_str($co{'author_name'}, 15, 3)) . "</i></td>\n" .
-			      "<td>" . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list"}, "<b>" .
-			      committags(esc_html(chop_str($co{'title'}, 50))) . "$ref</b>") . "</td>\n" .
-			      "<td class=\"link\">" .
-			      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit")}, "commit") .
-			      " | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commitdiff;h=$commit")}, "commitdiff") .
-			      " | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob;hb=$commit;f=$file_name")}, "blob");
-			my $blob = git_get_hash_by_path($hash, $file_name);
-			my $blob_parent = git_get_hash_by_path($commit, $file_name);
-			if (defined $blob && defined $blob_parent && $blob ne $blob_parent) {
-				print " | " .
-				$cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blobdiff;h=$blob;hp=$blob_parent;hb=$commit;f=$file_name")},
-				"diff to current");
-			}
-			print "</td>\n" .
-			      "</tr>\n";
-			undef $commit;
+		my $ref = "";
+		if (defined $refs->{$commit}) {
+			$ref = " <span class=\"tag\">" . esc_html($refs->{$commit}) . "</span>";
 		}
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
+		      "<td><i>" . esc_html(chop_str($co{'author_name'}, 15, 3)) . "</i></td>\n" .
+		      "<td>" . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit"), -class => "list"}, "<b>" .
+		      committags(esc_html(chop_str($co{'title'}, 50))) . "$ref</b>") . "</td>\n" .
+		      "<td class=\"link\">" .
+		      $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commit;h=$commit")}, "commit") .
+		      " | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=commitdiff;h=$commit")}, "commitdiff") .
+		      " | " . $cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blob;hb=$commit;f=$file_name")}, "blob");
+		my $blob = git_get_hash_by_path($hash, $file_name);
+		my $blob_parent = git_get_hash_by_path($commit, $file_name);
+		if (defined $blob && defined $blob_parent && $blob ne $blob_parent) {
+			print " | " .
+			$cgi->a({-href => "$my_uri?" . esc_param("p=$project;a=blobdiff;h=$blob;hp=$blob_parent;hb=$commit;f=$file_name")},
+			"diff to current");
+		}
+		print "</td>\n" .
+		      "</tr>\n";
+		undef $commit;
 	}
 	print "</table>\n";
 	close $fd;
