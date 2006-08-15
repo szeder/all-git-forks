@@ -25,7 +25,7 @@ my $rss_link =		"";
 
 # absolute fs-path which will be prepended to the project path
 #my $projectroot =	"/pub/scm";
-my $projectroot =	"/xmms2";
+my $projectroot =	"/home/kay/public_html/pub/scm";
 
 # location of the git-core binaries
 my $gitbin =		"/usr/bin";
@@ -40,8 +40,8 @@ my $home_link =		$my_uri;
 my $home_text =		"indextext.html";
 
 # source of projects list
-my $projects_list =	$projectroot;
-#my $projects_list =	"index/index.aux";
+#my $projects_list =	$projectroot;
+my $projects_list =	"index/index.aux";
 
 # where to find etags
 my $etagsbin = "etags";
@@ -413,13 +413,6 @@ sub git_footer_html {
 		print $cgi->a({-href => "$my_uri?" . esc_param("a=opml"), -class => "rss_logo"}, "OPML") . "\n";
 	}
 	print "</div>\n" .
-	      "<script src=\"http://www.google-analytics.com/urchin.js\" type=\"
-text/javascript\">
-             </script>
-             <script type=\"text/javascript\">
-             _uacct = \"UA-111889-2\";
-             urchinTracker();
-             </script>" .
 	      "</body>\n" .
 	      "</html>";
 }
