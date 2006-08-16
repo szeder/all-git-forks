@@ -9,10 +9,10 @@ static const char send_pack_usage[] =
 "git-send-pack [--all] [--exec=git-receive-pack] <remote> [<head>...]\n"
 "  --all and explicit <head> specification are mutually exclusive.";
 static const char *exec = "git-receive-pack";
-static int verbose = 0;
-static int send_all = 0;
-static int force_update = 0;
-static int use_thin_pack = 0;
+static int verbose;
+static int send_all;
+static int force_update;
+static int use_thin_pack;
 
 static int is_zero_sha1(const unsigned char *sha1)
 {
@@ -111,7 +111,7 @@ static void rev_list(int fd, struct ref *refs)
 	exec_rev_list(refs);
 }
 
-static int pack_objects(int fd, struct ref *refs)
+static void pack_objects(int fd, struct ref *refs)
 {
 	pid_t rev_list_pid;
 
@@ -126,7 +126,6 @@ static int pack_objects(int fd, struct ref *refs)
 	 * We don't wait for the rev-list pipeline in the parent:
 	 * we end up waiting for the other end instead
 	 */
-	return 0;
 }
 
 static void unmark_and_free(struct commit_list *list, unsigned int mark)

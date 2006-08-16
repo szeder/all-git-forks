@@ -14,12 +14,12 @@ static const char upload_pack_usage[] = "git-upload-pack [--strict] [--timeout=n
 #define THEY_HAVE (1U << 0)
 #define OUR_REF (1U << 1)
 #define WANTED (1U << 2)
-static int multi_ack = 0, nr_our_refs = 0;
-static int use_thin_pack = 0;
+static int multi_ack, nr_our_refs;
+static int use_thin_pack;
 static struct object_array have_obj;
 static struct object_array want_obj;
-static unsigned int timeout = 0;
-static int use_sideband = 0;
+static unsigned int timeout;
+static int use_sideband;
 
 static void reset_timeout(void)
 {
@@ -459,18 +459,17 @@ static int send_ref(const char *refname, const unsigned char *sha1)
 	return 0;
 }
 
-static int upload_pack(void)
+static void upload_pack(void)
 {
 	reset_timeout();
 	head_ref(send_ref);
 	for_each_ref(send_ref);
 	packet_flush(1);
 	receive_needs();
-	if (!want_obj.nr)
-		return 0;
-	get_common_commits();
-	create_pack_file();
-	return 0;
+	if (want_obj.nr) {
+		get_common_commits();
+		create_pack_file();
+	}
 }
 
 int main(int argc, char **argv)

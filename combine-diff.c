@@ -7,13 +7,6 @@
 #include "xdiff-interface.h"
 #include "log-tree.h"
 
-static int uninteresting(struct diff_filepair *p)
-{
-	if (diff_unmodified_pair(p))
-		return 1;
-	return 0;
-}
-
 static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr, int n, int num_parent)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -25,7 +18,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 		for (i = 0; i < q->nr; i++) {
 			int len;
 			const char *path;
-			if (uninteresting(q->queue[i]))
+			if (diff_unmodified_pair(q->queue[i]))
 				continue;
 			path = q->queue[i]->two->path;
 			len = strlen(path);
@@ -57,7 +50,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			const char *path;
 			int len;
 
-			if (uninteresting(q->queue[i]))
+			if (diff_unmodified_pair(q->queue[i]))
 				continue;
 			path = q->queue[i]->two->path;
 			len = strlen(path);
@@ -101,7 +94,7 @@ static char *grab_blob(const unsigned char *sha1, unsigned long *size)
 {
 	char *blob;
 	char type[20];
-	if (!memcmp(sha1, null_sha1, 20)) {
+	if (is_null_sha1(sha1)) {
 		/* deleted blob */
 		*size = 0;
 		return xcalloc(1, 1);
@@ -618,7 +611,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 	struct sline *sline; /* survived lines */
 	int mode_differs = 0;
 	int i, show_hunks;
-	int working_tree_file = !memcmp(elem->sha1, null_sha1, 20);
+	int working_tree_file = is_null_sha1(elem->sha1);
 	int abbrev = opt->full_index ? 40 : DEFAULT_ABBREV;
 	mmfile_t result_file;
 

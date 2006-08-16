@@ -19,16 +19,16 @@
 #define CACHE_EXT(s) ( (s[0]<<24)|(s[1]<<16)|(s[2]<<8)|(s[3]) )
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 
-struct cache_entry **active_cache = NULL;
+struct cache_entry **active_cache;
 static time_t index_file_timestamp;
-unsigned int active_nr = 0, active_alloc = 0, active_cache_changed = 0;
+unsigned int active_nr, active_alloc, active_cache_changed;
 
-struct cache_tree *active_cache_tree = NULL;
+struct cache_tree *active_cache_tree;
 
-int cache_errno = 0;
+int cache_errno;
 
-static void *cache_mmap = NULL;
-static size_t cache_mmap_size = 0;
+static void *cache_mmap;
+static size_t cache_mmap_size;
 
 /*
  * This only updates the "non-critical" parts of the directory
@@ -880,10 +880,8 @@ static int write_index_ext_header(SHA_CTX *context, int fd,
 {
 	ext = htonl(ext);
 	sz = htonl(sz);
-	if ((ce_write(context, fd, &ext, 4) < 0) ||
-	    (ce_write(context, fd, &sz, 4) < 0))
-		return -1;
-	return 0;
+	return ((ce_write(context, fd, &ext, 4) < 0) ||
+		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
 static int ce_flush(SHA_CTX *context, int fd)
@@ -905,9 +903,7 @@ static int ce_flush(SHA_CTX *context, int fd)
 	/* Append the SHA1 signature at the end */
 	SHA1_Final(write_buffer + left, context);
 	left += 20;
-	if (write(fd, write_buffer, left) != left)
-		return -1;
-	return 0;
+	return (write(fd, write_buffer, left) != left) ? -1 : 0;
 }
 
 static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
