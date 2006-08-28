@@ -1341,6 +1341,16 @@ sub git_print_header_div {
 	      "\n</div>\n";
 }
 
+#sub git_print_authorship (\%) {
+sub git_print_authorship {
+	my $co = shift;
+
+	my %ad = parse_date($co->{'author_epoch'});
+	print "<div class=\"author_date\">" .
+	      esc_html($co->{'author_name'}) .
+	      " [$ad{'rfc2822'}]</div>\n";
+}
+
 sub git_print_page_path {
 	my $name = shift;
 	my $type = shift;
@@ -2914,6 +2924,7 @@ sub git_commitdiff {
 		git_header_html(undef, $expires);
 		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
+		git_print_authorship(\%co);
 		print "<div class=\"page_body\">\n";
 		print "<div class=\"log\">\n";
 		git_print_simplified_log($co{'comment'}, 1); # skip title
