@@ -62,6 +62,7 @@ git-merge-tree
 git-merge-octopus
 git-merge-one-file
 git-merge-ours
+git-merge-recur
 git-merge-recursive
 git-merge-resolve
 git-merge-stupid
@@ -124,6 +125,7 @@ git-verify-pack
 git-verify-tag
 git-whatchanged
 git-write-tree
+git-zip-tree
 git-core-*/?*
 gitweb/gitweb.cgi
 test-date
