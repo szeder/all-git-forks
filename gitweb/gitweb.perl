@@ -1447,6 +1447,7 @@ sub git_difftree_body {
 
 	print "<table class=\"diff_tree\">\n";
 	my $alternate = 0;
+	my $patchno = 0;
 	foreach my $line (@{$difftree}) {
 		my %diff = parse_difftree_raw_line($line);
 
@@ -1487,8 +1488,14 @@ sub git_difftree_body {
 			      "<td class=\"link\">" .
 			      $cgi->a({-href => href(action=>"blob", hash=>$diff{'to_id'},
 			                             hash_base=>$hash, file_name=>$diff{'file'})},
-			              "blob") .
-			      "</td>\n";
+			              "blob");
+			if ($action == "commitdiff") {
+				# link to patch
+				$patchno++;
+				print " | " .
+				      $cgi->a({-href => "#patch$patchno"}, "patch");
+			}
+			print "</td>\n";
 
 		} elsif ($diff{'status'} eq "D") { # deleted
 			my $mode_chng = "<span class=\"file_status deleted\">[deleted $from_file_type]</span>";
@@ -1502,8 +1509,14 @@ sub git_difftree_body {
 			      $cgi->a({-href => href(action=>"blob", hash=>$diff{'from_id'},
 			                             hash_base=>$parent, file_name=>$diff{'file'})},
 			              "blob") .
-			      " | " .
-			      $cgi->a({-href => href(action=>"history", hash_base=>$parent,
+			      " | ";
+			if ($action == "commitdiff") {
+				# link to patch
+				$patchno++;
+				print " | " .
+				      $cgi->a({-href => "#patch$patchno"}, "patch");
+			}
+			print $cgi->a({-href => href(action=>"history", hash_base=>$parent,
 			                             file_name=>$diff{'file'})},
 			              "history") .
 			      "</td>\n";
@@ -1539,16 +1552,23 @@ sub git_difftree_body {
 			print "</td>\n" .
 			      "<td>$mode_chnge</td>\n" .
 			      "<td class=\"link\">" .
-				$cgi->a({-href => href(action=>"blob", hash=>$diff{'to_id'},
-				                       hash_base=>$hash, file_name=>$diff{'file'})},
-				        "blob");
+			      $cgi->a({-href => href(action=>"blob", hash=>$diff{'to_id'},
+			                             hash_base=>$hash, file_name=>$diff{'file'})},
+			              "blob");
 			if ($diff{'to_id'} ne $diff{'from_id'}) { # modified
-				print " | " .
-					$cgi->a({-href => href(action=>"blobdiff",
-					                       hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
-					                       hash_base=>$hash, hash_parent_base=>$parent,
-					                       file_name=>$diff{'file'})},
-					        "diff");
+				if ($action == "commitdiff") {
+					# link to patch
+					$patchno++;
+					print " | " .
+						$cgi->a({-href => "#patch$patchno"}, "patch");
+				} else {
+					print " | " .
+						$cgi->a({-href => href(action=>"blobdiff",
+						                       hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
+						                       hash_base=>$hash, hash_parent_base=>$parent,
+						                       file_name=>$diff{'file'})},
+						        "diff");
+				}
 			}
 			print " | " .
 				$cgi->a({-href => href(action=>"history",
@@ -1578,12 +1598,19 @@ sub git_difftree_body {
 			                             hash=>$diff{'to_id'}, file_name=>$diff{'to_file'})},
 			              "blob");
 			if ($diff{'to_id'} ne $diff{'from_id'}) {
-				print " | " .
-					$cgi->a({-href => href(action=>"blobdiff",
-					                       hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
-					                       hash_base=>$hash, hash_parent_base=>$parent,
-					                       file_name=>$diff{'to_file'}, file_parent=>$diff{'from_file'})},
-					        "diff");
+				if ($action == "commitdiff") {
+					# link to patch
+					$patchno++;
+					print " | " .
+						$cgi->a({-href => "#patch$patchno"}, "patch");
+				} else {
+					print " | " .
+						$cgi->a({-href => href(action=>"blobdiff",
+						                       hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
+						                       hash_base=>$hash, hash_parent_base=>$parent,
+						                       file_name=>$diff{'to_file'}, file_parent=>$diff{'from_file'})},
+						        "diff");
+				}
 			}
 			print "</td>\n";
 
@@ -1616,7 +1643,7 @@ sub git_patchset_body {
 				# first patch in patchset
 				$patch_found = 1;
 			}
-			print "<div class=\"patch\">\n";
+			print "<div class=\"patch\" id=\"patch". ($patch_idx+1) ."\">\n";
 
 			if (ref($difftree->[$patch_idx]) eq "HASH") {
 				$diffinfo = $difftree->[$patch_idx];
@@ -2958,8 +2985,8 @@ TEXT
 
 	# write patch
 	if ($format eq 'html') {
-		#git_difftree_body(\@difftree, $hash, $hash_parent);
-		#print "<br/>\n";
+		git_difftree_body(\@difftree, $hash, $hash_parent);
+		print "<br/>\n";
 
 		git_patchset_body($fd, \@difftree, $hash, $hash_parent);
 		close $fd;
