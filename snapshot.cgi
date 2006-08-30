@@ -48,6 +48,9 @@ class Snapshot:
 
 		if (commitID == "HEAD"):
 			self.commitID = file("%s/HEAD" % git_dir).read().rstrip()
+			if not valid_hash(self.commitID) and self.commitID.startswith("ref:"):
+				ref = self.commitID.split()[1]
+				self.commitID = file("%s/%s" % (git_dir, ref)).read().rstrip()
 			redirect("%s/%s-snapshot-%s.tar.bz2" % (
 			os.environ["SCRIPT_NAME"], treename, self.commitID))
 			sys.exit()
