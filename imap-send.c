@@ -110,7 +110,6 @@ static char *next_arg( char ** );
 
 static void free_generic_messages( message_t * );
 
-static int nfvasprintf( char **str, const char *fmt, va_list va );
 static int nfsnprintf( char *buf, int blen, const char *fmt, ... );
 
 
@@ -372,21 +371,6 @@ free_generic_messages( message_t *msgs )
 }
 
 static int
-git_vasprintf( char **strp, const char *fmt, va_list ap )
-{
-	int len;
-	char tmp[1024];
-
-	if ((len = vsnprintf( tmp, sizeof(tmp), fmt, ap )) < 0 || !(*strp = xmalloc( len + 1 )))
-		return -1;
-	if (len >= (int)sizeof(tmp))
-		vsprintf( *strp, fmt, ap );
-	else
-		memcpy( *strp, tmp, len + 1 );
-	return len;
-}
-
-static int
 nfsnprintf( char *buf, int blen, const char *fmt, ... )
 {
 	int ret;
@@ -396,15 +380,6 @@ nfsnprintf( char *buf, int blen, const char *fmt, ... )
 	if (blen <= 0 || (unsigned)(ret = vsnprintf( buf, blen, fmt, va )) >= (unsigned)blen)
 		die( "Fatal: buffer too small. Please report a bug.\n");
 	va_end( va );
-	return ret;
-}
-
-static int
-nfvasprintf( char **str, const char *fmt, va_list va )
-{
-	int ret = git_vasprintf( str, fmt, va );
-	if (ret < 0)
-		die( "Fatal: Out of memory\n");
 	return ret;
 }
 
@@ -1032,7 +1007,7 @@ imap_open_store( imap_server_conf_t *srvc )
 			 * getpass() returns a pointer to a static buffer.  make a copy
 			 * for long term storage.
 			 */
-			srvc->pass = strdup( arg );
+			srvc->pass = xstrdup( arg );
 		}
 		if (CAP(NOLOGIN)) {
 			fprintf( stderr, "Skipping account %s@%s, server forbids LOGIN\n", srvc->user, srvc->host );
@@ -1288,7 +1263,7 @@ git_imap_config(const char *key, const char *val)
 	key += sizeof imap_key - 1;
 
 	if (!strcmp( "folder", key )) {
-		imap_folder = strdup( val );
+		imap_folder = xstrdup( val );
 	} else if (!strcmp( "host", key )) {
 		{
 			if (!strncmp( "imap:", val, 5 ))
@@ -1298,16 +1273,16 @@ git_imap_config(const char *key, const char *val)
 		}
 		if (!strncmp( "//", val, 2 ))
 			val += 2;
-		server.host = strdup( val );
+		server.host = xstrdup( val );
 	}
 	else if (!strcmp( "user", key ))
-		server.user = strdup( val );
+		server.user = xstrdup( val );
 	else if (!strcmp( "pass", key ))
-		server.pass = strdup( val );
+		server.pass = xstrdup( val );
 	else if (!strcmp( "port", key ))
 		server.port = git_config_int( key, val );
 	else if (!strcmp( "tunnel", key ))
-		server.tunnel = strdup( val );
+		server.tunnel = xstrdup( val );
 	return 0;
 }
 
