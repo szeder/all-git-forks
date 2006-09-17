@@ -296,6 +296,7 @@ my %actions = (
 	# those below don't need $project
 	"opml" => \&git_opml,
 	"project_list" => \&git_project_list,
+	"project_index" => \&git_project_index,
 );
 
 if (defined $project) {
@@ -325,11 +326,12 @@ sub href(%) {
 		hash_base => "hb",
 		hash_parent_base => "hpb",
 		page => "pg",
+		order => "o",
 		searchtext => "s",
 	);
 	my %mapping = @mapping;
 
-	$params{"project"} ||= $project;
+	$params{'project'} = $project unless exists $params{'project'};
 
 	my @result = ();
 	for (my $i = 0; $i < @mapping; $i += 2) {
@@ -676,19 +678,6 @@ sub git_get_hash_by_path {
 ## ......................................................................
 ## git utility functions, directly accessing git repository
 
-# assumes that PATH is not symref
-sub git_get_hash_by_ref {
-	my $path = shift;
-
-	open my $fd, "$projectroot/$path" or return undef;
-	my $head = <$fd>;
-	close $fd;
-	chomp $head;
-	if ($head =~ m/^[0-9a-fA-F]{40}$/) {
-		return $head;
-	}
-}
-
 sub git_get_project_description {
 	my $path = shift;
 
@@ -715,16 +704,26 @@ sub git_get_projects_list {
 	if (-d $projects_list) {
 		# search in directory
 		my $dir = $projects_list;
-		opendir my ($dh), $dir or return undef;
-		while (my $dir = readdir($dh)) {
-			if (-e "$projectroot/$dir/HEAD") {
-				my $pr = {
-					path => $dir,
-				};
-				push @list, $pr
-			}
-		}
-		closedir($dh);
+		my $pfxlen = length("$dir");
+
+		File::Find::find({
+			follow_fast => 1, # follow symbolic links
+			dangling_symlinks => 0, # ignore dangling symlinks, silently
+			wanted => sub {
+				# skip project-list toplevel, if we get it.
+				return if (m!^[/.]$!);
+				# only directories can be git repositories
+				return unless (-d $_);
+
+				my $subdir = substr($File::Find::name, $pfxlen + 1);
+				# we check related file in $projectroot
+				if (-e "$projectroot/$subdir/HEAD") {
+					push @list, { path => $subdir };
+					$File::Find::prune = 1;
+				}
+			},
+		}, "$dir");
+
 	} elsif (-f $projects_list) {
 		# read from file(url-encoded):
 		# 'git%2Fgit.git Linus+Torvalds'
@@ -1088,17 +1087,27 @@ sub git_get_refs_list {
 	my @reflist;
 
 	my @refs;
-	my $pfxlen = length("$projectroot/$project/$ref_dir");
-	File::Find::find(sub {
-		return if (/^\./);
-		if (-f $_) {
-			push @refs, substr($File::Find::name, $pfxlen + 1);
+	open my $fd, "-|", $GIT, "peek-remote", "$projectroot/$project/"
+		or return;
+	while (my $line = <$fd>) {
+		chomp $line;
+		if ($line =~ m/^([0-9a-fA-F]{40})\t$ref_dir\/?([^\^]+)$/) {
+			push @refs, { hash => $1, name => $2 };
+		} elsif ($line =~ m/^[0-9a-fA-F]{40}\t$ref_dir\/?(.*)\^\{\}$/ &&
+		         $1 eq $refs[-1]{'name'}) {
+			# most likely a tag is followed by its peeled
+			# (deref) one, and when that happens we know the
+			# previous one was of type 'tag'.
+			$refs[-1]{'type'} = "tag";
 		}
-	}, "$projectroot/$project/$ref_dir");
+	}
+	close $fd;
 
-	foreach my $ref_file (@refs) {
-		my $ref_id = git_get_hash_by_ref("$project/$ref_dir/$ref_file");
-		my $type = git_get_type($ref_id) || next;
+	foreach my $ref (@refs) {
+		my $ref_file = $ref->{'name'};
+		my $ref_id   = $ref->{'hash'};
+
+		my $type = $ref->{'type'} || git_get_type($ref_id) || next;
 		my %ref_item = parse_ref($ref_file, $ref_id, $type);
 
 		push @reflist, \%ref_item;
@@ -1246,6 +1255,13 @@ EOF
 		printf('<link rel="alternate" title="%s log" '.
 		       'href="%s" type="application/rss+xml"/>'."\n",
 		       esc_param($project), href(action=>"rss"));
+	} else {
+		printf('<link rel="alternate" title="%s projects list" '.
+		       'href="%s" type="text/plain; charset=utf-8"/>'."\n",
+		       $site_name, href(project=>undef, action=>"project_index"));
+		printf('<link rel="alternate" title="%s projects logs" '.
+		       'href="%s" type="text/x-opml"/>'."\n",
+		       $site_name, href(project=>undef, action=>"opml"));
 	}
 	if (defined $favicon) {
 		print qq(<link rel="shortcut icon" href="$favicon" type="image/png"/>\n);
@@ -1296,9 +1312,13 @@ sub git_footer_html {
 		if (defined $descr) {
 			print "<div class=\"page_footer_text\">" . esc_html($descr) . "</div>\n";
 		}
-		print $cgi->a({-href => href(action=>"rss"), -class => "rss_logo"}, "RSS") . "\n";
+		print $cgi->a({-href => href(action=>"rss"),
+		              -class => "rss_logo"}, "RSS") . "\n";
 	} else {
-		print $cgi->a({-href => href(action=>"opml"), -class => "rss_logo"}, "OPML") . "\n";
+		print $cgi->a({-href => href(project=>undef, action=>"opml"),
+		              -class => "rss_logo"}, "OPML") . " ";
+		print $cgi->a({-href => href(project=>undef, action=>"project_index"),
+		              -class => "rss_logo"}, "TXT") . "\n";
 	}
 	print "</div>\n" .
 	      "</body>\n" .
@@ -2145,7 +2165,7 @@ sub git_project_list {
 		print "<th>Project</th>\n";
 	} else {
 		print "<th>" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("o=project"),
+		      $cgi->a({-href => href(project=>undef, order=>'project'),
 		               -class => "header"}, "Project") .
 		      "</th>\n";
 	}
@@ -2154,7 +2174,7 @@ sub git_project_list {
 		print "<th>Description</th>\n";
 	} else {
 		print "<th>" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("o=descr"),
+		      $cgi->a({-href => href(project=>undef, order=>'descr'),
 		               -class => "header"}, "Description") .
 		      "</th>\n";
 	}
@@ -2163,7 +2183,7 @@ sub git_project_list {
 		print "<th>Owner</th>\n";
 	} else {
 		print "<th>" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("o=owner"),
+		      $cgi->a({-href => href(project=>undef, order=>'owner'),
 		               -class => "header"}, "Owner") .
 		      "</th>\n";
 	}
@@ -2172,7 +2192,7 @@ sub git_project_list {
 		print "<th>Last Change</th>\n";
 	} else {
 		print "<th>" .
-		      $cgi->a({-href => "$my_uri?" . esc_param("o=age"),
+		      $cgi->a({-href => href(project=>undef, order=>'age'),
 		               -class => "header"}, "Last Change") .
 		      "</th>\n";
 	}
@@ -2201,6 +2221,30 @@ sub git_project_list {
 	}
 	print "</table>\n";
 	git_footer_html();
+}
+
+sub git_project_index {
+	my @projects = git_get_projects_list();
+
+	print $cgi->header(
+		-type => 'text/plain',
+		-charset => 'utf-8',
+		-content_disposition => qq(inline; filename="index.aux"));
+
+	foreach my $pr (@projects) {
+		if (!exists $pr->{'owner'}) {
+			$pr->{'owner'} = get_file_owner("$projectroot/$project");
+		}
+
+		my ($path, $owner) = ($pr->{'path'}, $pr->{'owner'});
+		# quote as in CGI::Util::encode, but keep the slash, and use '+' for ' '
+		$path  =~ s/([^a-zA-Z0-9_.\-\/ ])/sprintf("%%%02X", ord($1))/eg;
+		$owner =~ s/([^a-zA-Z0-9_.\-\/ ])/sprintf("%%%02X", ord($1))/eg;
+		$path  =~ s/ /\+/g;
+		$owner =~ s/ /\+/g;
+
+		print "$path $owner\n";
+	}
 }
 
 sub git_summary {
