@@ -719,7 +719,7 @@ sub git_get_hash_by_path {
 	my $base = shift;
 	my $path = shift || return undef;
 
-	my $tree = $base;
+	$path =~ s,/+$,,;
 
 	open my $fd, "-|", git_cmd(), "ls-tree", $base, "--", $path
 		or die_error(undef, "Open git-ls-tree failed");
