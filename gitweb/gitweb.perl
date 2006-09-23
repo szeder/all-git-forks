@@ -173,6 +173,118 @@ sub feature_pickaxe {
 	return ($_[0]);
 }
 
+# You define site-wide comittags defaults here; override them with
+# $GITWEB_CONFIG as necessary.
+our %committags = (
+	# 'committag' => {
+	# 	'pattern' => regexp (use 'qr' quote-like operator)
+	# 	'sub' => committag-sub (subroutine),
+	# 	'enabled' => is given committag enabled,
+	# fields below can be defined, but don't need to
+	# 	'options' => [ default options...] (array reference),
+	# 	'insubject' => should given committag be enabled in commit/tag subject,
+	# 	'islink' => if the result is hyperlink,
+	# }
+	#
+	# You should ensure that enabled committags cannot overlap
+	#
+	# The committag subroutine is called with match for pattern,
+	# and options if they are defined. Match is replaced by return
+	# value of committag-sub.
+
+	'commitsha' => {
+		'pattern' => qr/[0-9a-fA-F]{40}/,
+		'enabled' => 1,
+		'islink'  => 1,
+		'sub' => \&tag_commit_id},
+
+	'mantis' => {
+		'pattern' => qr/(BUG|FEATURE)\(\d+\)/,
+		'enabled' => 1,
+		'insubject' => 1,
+		'islink' => 1,
+		'options' => [ 'http://bugs.xmms2.xmms.se/view.php?id=' ],
+		'sub' => \&tag_bugtracker},
+
+	'bugzilla' => {
+		'pattern' => qr/bug(&nbsp;)+\(\d+\)/,
+		'enabled' => 1,
+		'insubject' => 1,
+		'islink' => 1,
+		'options' => [ 'http://bugzilla.kernel.org/show_bug.cgi?id=' ],
+		'sub' => \&tag_bugtracker},
+
+	'URL' => {
+		'pattern' => qr!(http|ftp)s?://[a-zA-Z0-9_%./]+!,
+		'enabled' => 1,
+		'islink' => 1,
+		'sub' => \&tag_url},
+
+	'message_id' => {
+		'pattern' => qr/(message|msg)[- ]?id&nbsp;&lt;([^&]*)&rt;/i,
+		'enabled' => 1,
+		'options' => [
+			'http://news.gmane.org/find-root.php?message_id=',
+			\&quote_msgid_gmane ],
+		'sub' => \&tag_msgid},
+);
+
+sub tag_commit_id {
+	my $hash_text = shift;
+
+	if (git_get_type($hash_text) eq "commit") {
+		return $cgi->a({-href => href(action=>"commit", hash=>$hash_text),
+		               -class => "text"}, $hash_text);
+	}
+
+	return;
+}
+
+sub tag_bugtracker {
+	my $match = shift;
+	my $URL = shift || return $match;
+	my ($issue) = $match =~ m/(\d+)/;
+
+	return $match if (!defined $issue);
+
+	return $cgi->a({-href => "$URL$issue"}, $match);
+}
+
+sub tag_url {
+	my $url_text = shift;
+
+	return $cgi->a({-href => $url_text}, $url_text);
+}
+
+sub quote_msgid_gmane {
+	my $msgid = shift || return;
+
+	return '<'.(quotemeta $msgid).'>';
+}
+
+sub quote_msgid_marc {
+	my $msgid = shift || return;
+	my ($user, $host) = split(/\@/, $msgid, 2);
+	$host =~ s/\./ ! /g;
+
+	return $user.' () '.$host;
+}
+
+
+sub tag_msgid {
+	my $text = shift;
+	my $URL = shift || return $text;
+	my $repl = shift;
+
+	my ($msgid) =~ m/&lt;([^&]*)&rt;/;
+	my $msgid_url = (ref($repl) eq "CODE") ? $repl->($msgid) : $msgid;
+	my $link = $cgi->a({-href => "$URL$msgid_url"}, $msgid);
+
+	$text =~ s/$msgid/$link/;
+
+	return $text;
+}
+
 # rename detection options for git-diff and git-diff-tree
 # - default is '-M', with the cost proportional to
 #   (number of removed files) * (number of new files).
@@ -190,6 +302,10 @@ do $GITWEB_CONFIG if -e $GITWEB_CONFIG;
 our $git_version = qx($GIT --version) =~ m/git version (.*)$/ ? $1 : "unknown";
 
 $projects_list ||= $projectroot;
+
+# enabled committags, and committags enabled for subject
+our @committags  = grep { $committags{$_}{'enabled'} } keys %committags;
+our @subjecttags = grep { $committags{$_}{'insubject'} } @committags;
 
 # ======================================================================
 # input validation and dispatch
@@ -577,17 +693,42 @@ sub file_type {
 # format line of commit message or tag comment
 sub format_log_line_html {
 	my $line = shift;
+	my @tags = @_;
+	my $a_attr;
+	my %subst;
+
+	if (!@tags) {
+		@tags = @committags;
+	} else {
+		$a_attr = ref($tags[0]) eq "HASH" ? shift @tags : undef;
+	}
 
 	$line = esc_html($line);
 	$line =~ s/ /&nbsp;/g;
-	if ($line =~ m/([0-9a-fA-F]{40})/) {
-		my $hash_text = $1;
-		if (git_get_type($hash_text) eq "commit") {
-			my $link =
-				$cgi->a({-href => href(action=>"commit", hash=>$hash_text),
-				        -class => "text"}, $hash_text);
-			$line =~ s/$hash_text/$link/;
+
+	foreach my $ct (@tags) {
+		next unless exists $committags{$ct};
+		my $wrap = $a_attr && %$a_attr && $committags{$ct}{'islink'};
+		my @opts =
+			exists $committags{$ct}{'options'} ?
+			@{$committags{$ct}{'options'}} :
+			();
+
+		while ($line =~ m/($committags{$ct}{'pattern'})/gc) {
+			my $match = $1;
+			my $repl = $committags{$ct}{'sub'}->($match, @opts);
+			next unless $repl;
+
+			if ($wrap) {
+				$repl = $cgi->end_a() . $repl . $cgi->start_a($a_attr);
+			}
+
+			$subst{quotemeta $match} = $repl;
 		}
+	}
+
+	while (my ($from, $to) = each %subst) {
+		$line =~ s/$from/$to/g;
 	}
 	return $line;
 }
@@ -626,12 +767,13 @@ sub format_subject_html {
 	$extra = '' unless defined($extra);
 
 	if (length($short) < length($long)) {
-		return $cgi->a({-href => $href, -class => "list subject",
-		                -title => $long},
-		       esc_html($short) . $extra);
+		my $a_attr = {-href => $href, -class => "list subject", -title => $long};
+		return $cgi->a($a_attr,
+		       format_log_line_html($short, $a_attr, @subjecttags) . $extra);
 	} else {
-		return $cgi->a({-href => $href, -class => "list subject"},
-		       esc_html($long)  . $extra);
+		my $a_attr = {-href => $href, -class => "list subject"};
+		return $cgi->a($a_attr,
+		       format_log_line_html($long,  $a_attr, @subjecttags) . $extra);
 	}
 }
 
@@ -693,9 +835,9 @@ sub git_get_type {
 
 	open my $fd, "-|", git_cmd(), "cat-file", '-t', $hash or return;
 	my $type = <$fd>;
-	close $fd or return;
+	close $fd or return "unknown";
 	chomp $type;
-	return $type;
+	return ($type || "unknown");
 }
 
 sub git_get_project_config {
@@ -1585,7 +1727,7 @@ sub git_print_log ($;%) {
 			$empty = 0;
 		}
 
-		print format_log_line_html($line) . "<br/>\n";
+		print format_log_line_html($line, @committags) . "<br/>\n";
 	}
 
 	if ($opts{'-final_empty_line'}) {
