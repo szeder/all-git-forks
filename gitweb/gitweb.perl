@@ -212,19 +212,9 @@ if (defined $project) {
 	}
 }
 
+# We have to handle those containing any characters:
 our $file_name = $cgi->param('f');
-if (defined $file_name) {
-	if (!validate_input($file_name)) {
-		die_error(undef, "Invalid file parameter");
-	}
-}
-
 our $file_parent = $cgi->param('fp');
-if (defined $file_parent) {
-	if (!validate_input($file_parent)) {
-		die_error(undef, "Invalid file parent parameter");
-	}
-}
 
 our $hash = $cgi->param('h');
 if (defined $hash) {
@@ -305,7 +295,7 @@ sub evaluate_path_info {
 			$action  ||= "blob_plain";
 		}
 		$hash_base ||= validate_input($refname);
-		$file_name ||= validate_input($pathname);
+		$file_name ||= $pathname;
 	} elsif (defined $refname) {
 		# we got "project.git/branch"
 		$action ||= "shortlog";
@@ -416,7 +406,7 @@ sub validate_input {
 # correct, but quoted slashes look too horrible in bookmarks
 sub esc_param {
 	my $str = shift;
-	$str =~ s/([^A-Za-z0-9\-_.~();\/;?:@&=])/sprintf("%%%02X", ord($1))/eg;
+	$str =~ s/([^A-Za-z0-9\-_.~()\/:@])/sprintf("%%%02X", ord($1))/eg;
 	$str =~ s/\+/%2B/g;
 	$str =~ s/ /\+/g;
 	return $str;
@@ -718,6 +708,7 @@ sub git_get_project_config {
 sub git_get_hash_by_path {
 	my $base = shift;
 	my $path = shift || return undef;
+	my $type = shift;
 
 	my $tree = $base;
 
@@ -728,6 +719,10 @@ sub git_get_hash_by_path {
 
 	#'100644 blob 0fa3f3a66fb6a137f6ec2c19351ed4d807070ffa	panic.c'
 	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t(.+)$/;
+	if (defined $type && $type ne $2) {
+		# type doesn't match
+		return undef;
+	}
 	return $3;
 }
 
@@ -747,7 +742,7 @@ sub git_get_project_description {
 sub git_get_project_url_list {
 	my $path = shift;
 
-	open my $fd, "$projectroot/$path/cloneurl" or return undef;
+	open my $fd, "$projectroot/$path/cloneurl" or return;
 	my @git_project_url_list = map { chomp; $_ } <$fd>;
 	close $fd;
 
@@ -1277,7 +1272,7 @@ sub git_header_html {
 		if (defined $action) {
 			$title .= "/$action";
 			if (defined $file_name) {
-				$title .= " - $file_name";
+				$title .= " - " . esc_html($file_name);
 				if ($action eq "tree" && $file_name !~ m|/$|) {
 					$title .= "/";
 				}
@@ -1515,14 +1510,14 @@ sub git_print_page_path {
 
 		print "<div class=\"page_path\">";
 		print $cgi->a({-href => href(action=>"tree", hash_base=>$hb),
-			      -title => '/'}, '/');
-		print " ";
+			      -title => 'tree root'}, "[$project]");
+		print " / ";
 		foreach my $dir (@dirname) {
 			$fullname .= ($fullname ? '/' : '') . $dir;
 			print $cgi->a({-href => href(action=>"tree", file_name=>$fullname,
 			                             hash_base=>$hb),
-			              -title => $fullname}, esc_html($dir . '/'));
-			print " ";
+			              -title => $fullname}, esc_html($dir));
+			print " / ";
 		}
 		if (defined $type && $type eq 'blob') {
 			print $cgi->a({-href => href(action=>"blob_plain", file_name=>$file_name,
@@ -1531,7 +1526,7 @@ sub git_print_page_path {
 		} elsif (defined $type && $type eq 'tree') {
 			print $cgi->a({-href => href(action=>"tree", file_name=>$file_name,
 			                             hash_base=>$hb),
-			              -title => $name}, esc_html($basename . '/'));
+			              -title => $name}, esc_html($basename));
 		} else {
 			print esc_html($basename);
 		}
@@ -1970,9 +1965,6 @@ sub git_shortlog_body {
 	# uses global variable $project
 	my ($revlist, $from, $to, $refs, $extra) = @_;
 
-	my ($ctype, $suffix, $command) = gitweb_check_feature('snapshot');
-	my $have_snapshot = (defined $ctype && defined $suffix);
-
 	$from = 0 unless defined $from;
 	$to = $#{$revlist} if (!defined $to || $#{$revlist} < $to);
 
@@ -1998,10 +1990,8 @@ sub git_shortlog_body {
 		print "</td>\n" .
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => href(action=>"commit", hash=>$commit)}, "commit") . " | " .
-		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff");
-		if ($have_snapshot) {
-			print " | " .  $cgi->a({-href => href(action=>"snapshot", hash=>$commit)}, "snapshot");
-		}
+		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff") . " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree");
 		print "</td>\n" .
 		      "</tr>\n";
 	}
@@ -2163,7 +2153,8 @@ sub git_heads_body {
 		      "</td>\n" .
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => href(action=>"shortlog", hash=>$tag{'name'})}, "shortlog") . " | " .
-		      $cgi->a({-href => href(action=>"log", hash=>$tag{'name'})}, "log") .
+		      $cgi->a({-href => href(action=>"log", hash=>$tag{'name'})}, "log") . " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$tag{'name'}, hash_base=>$tag{'name'})}, "tree") .
 		      "</td>\n" .
 		      "</tr>";
 	}
@@ -2277,7 +2268,8 @@ sub git_project_list {
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary")}, "summary")   . " | " .
 		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"shortlog")}, "shortlog") . " | " .
-		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") .
+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") . " | " .
+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"tree")}, "tree") .
 		      "</td>\n" .
 		      "</tr>\n";
 	}
@@ -2428,15 +2420,18 @@ sub git_blame2 {
 	if ($ftype !~ "blob") {
 		die_error("400 Bad Request", "Object is not a blob");
 	}
-	open ($fd, "-|", git_cmd(), "blame", '-l', $file_name, $hash_base)
+	open ($fd, "-|", git_cmd(), "blame", '-l', '--', $file_name, $hash_base)
 		or die_error(undef, "Open git-blame failed");
 	git_header_html();
 	my $formats_nav =
 		$cgi->a({-href => href(action=>"blob", hash=>$hash, hash_base=>$hash_base, file_name=>$file_name)},
 		        "blob") .
 		" | " .
+		$cgi->a({-href => href(action=>"history", hash=>$hash, hash_base=>$hash_base, file_name=>$file_name)},
+			"history") .
+		" | " .
 		$cgi->a({-href => href(action=>"blame", file_name=>$file_name)},
-		        "head");
+		        "HEAD");
 	git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
 	git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 	git_print_page_path($file_name, $ftype, $hash_base);
@@ -2501,8 +2496,11 @@ sub git_blame {
 		$cgi->a({-href => href(action=>"blob", hash=>$hash, hash_base=>$hash_base, file_name=>$file_name)},
 		        "blob") .
 		" | " .
+		$cgi->a({-href => href(action=>"history", hash=>$hash, hash_base=>$hash_base, file_name=>$file_name)},
+			"history") .
+		" | " .
 		$cgi->a({-href => href(action=>"blame", file_name=>$file_name)},
-		        "head");
+		        "HEAD");
 	git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
 	git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 	git_print_page_path($file_name, 'blob', $hash_base);
@@ -2676,16 +2674,20 @@ sub git_blob {
 					" | ";
 			}
 			$formats_nav .=
+				$cgi->a({-href => href(action=>"history", hash_base=>$hash_base,
+				                       hash=>$hash, file_name=>$file_name)},
+				        "history") .
+				" | " .
 				$cgi->a({-href => href(action=>"blob_plain",
 				                       hash=>$hash, file_name=>$file_name)},
-				        "plain") .
+				        "raw") .
 				" | " .
 				$cgi->a({-href => href(action=>"blob",
 				                       hash_base=>"HEAD", file_name=>$file_name)},
-				        "head");
+				        "HEAD");
 		} else {
 			$formats_nav .=
-				$cgi->a({-href => href(action=>"blob_plain", hash=>$hash)}, "plain");
+				$cgi->a({-href => href(action=>"blob_plain", hash=>$hash)}, "raw");
 		}
 		git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
 		git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
@@ -2711,6 +2713,9 @@ sub git_blob {
 }
 
 sub git_tree {
+	my ($ctype, $suffix, $command) = gitweb_check_feature('snapshot');
+	my $have_snapshot = (defined $ctype && defined $suffix);
+
 	if (!defined $hash) {
 		$hash = git_get_head_hash($project);
 		if (defined $file_name) {
@@ -2734,7 +2739,23 @@ sub git_tree {
 	my $base = "";
 	my ($have_blame) = gitweb_check_feature('blame');
 	if (defined $hash_base && (my %co = parse_commit($hash_base))) {
-		git_print_page_nav('tree','', $hash_base);
+		my @views_nav = ();
+		if (defined $file_name) {
+			push @views_nav,
+				$cgi->a({-href => href(action=>"history", hash_base=>$hash_base,
+				                       hash=>$hash, file_name=>$file_name)},
+				        "history"),
+				$cgi->a({-href => href(action=>"tree",
+				                       hash_base=>"HEAD", file_name=>$file_name)},
+				        "HEAD"),
+		}
+		if ($have_snapshot) {
+			# FIXME: Should be available when we have no hash base as well.
+			push @views_nav,
+				$cgi->a({-href => href(action=>"snapshot", hash=>$hash)},
+					"snapshot");
+		}
+		git_print_page_nav('tree','', $hash_base, undef, undef, join(' | ', @views_nav));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash_base);
 	} else {
 		undef $hash_base;
@@ -2839,6 +2860,8 @@ sub git_log {
 		      $cgi->a({-href => href(action=>"commit", hash=>$commit)}, "commit") .
 		      " | " .
 		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff") .
+		      " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree") .
 		      "<br/>\n" .
 		      "</div>\n" .
 		      "<i>" . esc_html($co{'author_name'}) .  " [$ad{'rfc2822'}]</i><br/>\n" .
@@ -2879,17 +2902,22 @@ sub git_commit {
 	my ($ctype, $suffix, $command) = gitweb_check_feature('snapshot');
 	my $have_snapshot = (defined $ctype && defined $suffix);
 
-	my $formats_nav = '';
+	my @views_nav = ();
 	if (defined $file_name && defined $co{'parent'}) {
 		my $parent = $co{'parent'};
-		$formats_nav .=
+		push @views_nav,
 			$cgi->a({-href => href(action=>"blame", hash_parent=>$parent, file_name=>$file_name)},
 			        "blame");
+	}
+	if (defined $co{'parent'}) {
+		push @views_nav,
+			$cgi->a({-href => href(action=>"shortlog", hash=>$hash)}, "shortlog"),
+			$cgi->a({-href => href(action=>"log", hash=>$hash)}, "log");
 	}
 	git_header_html(undef, $expires);
 	git_print_page_nav('commit', defined $co{'parent'} ? '' : 'commitdiff',
 	                   $hash, $co{'tree'}, $hash,
-	                   $formats_nav);
+	                   join (' | ', @views_nav));
 
 	if (defined $co{'parent'}) {
 		git_print_header_div('commitdiff', esc_html($co{'title'}) . $ref, $hash);
@@ -3034,12 +3062,12 @@ sub git_blobdiff {
 		if (defined $file_name) {
 			if (defined $file_parent) {
 				$diffinfo{'status'} = '2';
-				$diffinfo{'from_file'} = $file_parent;
-				$diffinfo{'to_file'}   = $file_name;
+				$diffinfo{'from_file'} = esc_html($file_parent);
+				$diffinfo{'to_file'}   = esc_html($file_name);
 			} else { # assume not renamed
 				$diffinfo{'status'} = '1';
-				$diffinfo{'from_file'} = $file_name;
-				$diffinfo{'to_file'}   = $file_name;
+				$diffinfo{'from_file'} = esc_html($file_name);
+				$diffinfo{'to_file'}   = esc_html($file_name);
 			}
 		} else { # no filename given
 			$diffinfo{'status'} = '2';
@@ -3068,7 +3096,7 @@ sub git_blobdiff {
 			                       hash=>$hash, hash_parent=>$hash_parent,
 			                       hash_base=>$hash_base, hash_parent_base=>$hash_parent_base,
 			                       file_name=>$file_name, file_parent=>$file_parent)},
-			        "plain");
+			        "raw");
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
 			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
@@ -3088,7 +3116,7 @@ sub git_blobdiff {
 			-type => 'text/plain',
 			-charset => 'utf-8',
 			-expires => $expires,
-			-content_disposition => qq(inline; filename="${file_name}.patch"));
+			-content_disposition => qq(inline; filename=") . quotemeta($file_name) . qq(.patch"));
 
 		print "X-Git-Url: " . $cgi->self_url() . "\n\n";
 
@@ -3171,7 +3199,7 @@ sub git_commitdiff {
 		my $formats_nav =
 			$cgi->a({-href => href(action=>"commitdiff_plain",
 			                       hash=>$hash, hash_parent=>$hash_parent)},
-			        "plain");
+			        "raw");
 
 		git_header_html(undef, $expires);
 		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
@@ -3538,7 +3566,7 @@ XML
 			if (!($line =~ m/^:([0-7]{6}) ([0-7]{6}) ([0-9a-fA-F]{40}) ([0-9a-fA-F]{40}) (.)([0-9]{0,3})\t(.*)$/)) {
 				next;
 			}
-			my $file = validate_input(unquote($7));
+			my $file = esc_html(unquote($7));
 			$file = decode("utf8", $file, Encode::FB_DEFAULT);
 			print "$file<br/>\n";
 		}
