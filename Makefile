@@ -234,7 +234,7 @@ LIB_FILE=libgit.a
 XDIFF_LIB=xdiff/lib.a
 
 LIB_H = \
-	archive.h blob.h cache.h commit.h csum-file.h delta.h \
+	archive.h blob.h cache.h commit.h csum-file.h delta.h grep.h \
 	diff.h object.h pack.h pkt-line.h quote.h refs.h list-objects.h sideband.h \
 	run-command.h strbuf.h tag.h tree.h git-compat-util.h revision.h \
 	tree-walk.h log-tree.h dir.h path-list.h unpack-trees.h builtin.h
@@ -246,15 +246,17 @@ DIFF_OBJS = \
 
 LIB_OBJS = \
 	blob.o commit.o connect.o csum-file.o cache-tree.o base85.o \
-	date.o diff-delta.o entry.o exec_cmd.o ident.o lockfile.o \
+	date.o diff-delta.o entry.o exec_cmd.o ident.o \
+	interpolate.o \
+	lockfile.o \
 	object.o pack-check.o patch-delta.o path.o pkt-line.o sideband.o \
 	quote.o read-cache.o refs.o run-command.o dir.o object-refs.o \
 	server-info.o setup.o sha1_file.o sha1_name.o strbuf.o \
 	tag.o tree.o usage.o config.o environment.o ctype.o copy.o \
 	fetch-clone.o revision.o pager.o tree-walk.o xdiff-interface.o \
-	write_or_die.o trace.o list-objects.o \
+	write_or_die.o trace.o list-objects.o grep.o \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
-	color.o wt-status.o archive-zip.o
+	color.o wt-status.o archive-zip.o archive-tar.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -298,7 +300,6 @@ BUILTIN_OBJS = \
 	builtin-update-index.o \
 	builtin-update-ref.o \
 	builtin-upload-archive.o \
-	builtin-upload-tar.o \
 	builtin-verify-pack.o \
 	builtin-write-tree.o
 
