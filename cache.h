@@ -261,6 +261,7 @@ extern int add_file_to_index(struct index_state *, const char *path, int verbose
 extern int ce_same_name(struct cache_entry *a, struct cache_entry *b);
 extern int ie_match_stat(struct index_state *, struct cache_entry *, struct stat *, int);
 extern int ie_modified(struct index_state *, struct cache_entry *, struct stat *, int);
+extern int pathname_included(const char **, const char *, int);
 extern int ce_path_match(const struct cache_entry *ce, const char **pathspec);
 extern int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object, enum object_type type, const char *path);
 extern int read_pipe(int fd, char** return_buf, unsigned long* return_size);
