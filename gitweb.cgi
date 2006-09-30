@@ -1496,7 +1496,7 @@ sub git_blob {
 		if (defined $tags{$nr}) {
 			my @tagList = @{$tags{$nr}};
 			foreach my $tag (@tagList) {
-				$line =~ s/$tag/<a name=\"$tag\" href=\"#$tag\">$tag<\/a>/;
+				$line =~ s/\Q^$tag/<a name=\"$tag\" href=\"#$tag\">$tag<\/a>/;
 			}
 		}
 
