@@ -46,13 +46,16 @@ our $home_text = "++GITWEB_HOMETEXT++";
 
 # URI of default stylesheet
 our $stylesheet = "++GITWEB_CSS++";
-# URI of GIT logo
+# URI of GIT logo (72x27 size)
 our $logo = "++GITWEB_LOGO++";
 # URI of GIT favicon, assumed to be image/png type
 our $favicon = "++GITWEB_FAVICON++";
 
-our $githelp_url = "http://git.or.cz/";
-our $githelp_label = "git homepage";
+# URI and label (title) of GIT logo link
+#our $logo_url = "http://www.kernel.org/pub/software/scm/git/docs/";
+#our $logo_label = "git documentation";
+our $logo_url = "http://git.or.cz/";
+our $logo_label = "git homepage";
 
 # source of projects list
 our $projects_list = "++GITWEB_LIST++";
@@ -443,6 +446,12 @@ sub validate_refname {
 	return $input;
 }
 
+# very thin wrapper for decode("utf8", $str, Encode::FB_DEFAULT);
+sub to_utf8 {
+	my $str = shift;
+	return decode("utf8", $str, Encode::FB_DEFAULT);
+}
+
 # quote unsafe chars, but keep the slash, even when it's not
 # correct, but quoted slashes look too horrible in bookmarks
 sub esc_param {
@@ -465,7 +474,7 @@ sub esc_url {
 # replace invalid utf8 character with SUBSTITUTION sequence
 sub esc_html {
 	my $str = shift;
-	$str = decode("utf8", $str, Encode::FB_DEFAULT);
+	$str = to_utf8($str);
 	$str = escapeHTML($str);
 	$str =~ s/\014/^L/g; # escape FORM FEED (FF) character (e.g. in COPYING file)
 	$str =~ s/\033/^[/g; # "escape" ESCAPE (\e) character (e.g. commit 20a3847d8a5032ce41f90dcc68abfb36e6fee9b1)
@@ -668,7 +677,7 @@ sub format_subject_html {
 
 	if (length($short) < length($long)) {
 		return $cgi->a({-href => $href, -class => "list subject",
-		                -title => decode("utf8", $long, Encode::FB_DEFAULT)},
+		                -title => to_utf8($long)},
 		       esc_html($short) . $extra);
 	} else {
 		return $cgi->a({-href => $href, -class => "list subject"},
@@ -845,7 +854,7 @@ sub git_get_projects_list {
 			    -e "$projectroot/$path/$export_ok")) {
 				my $pr = {
 					path => $path,
-					owner => decode("utf8", $owner, Encode::FB_DEFAULT),
+					owner => to_utf8($owner),
 				};
 				push @list, $pr
 			}
@@ -874,7 +883,7 @@ sub git_get_project_owner {
 			$pr = unescape($pr);
 			$ow = unescape($ow);
 			if ($pr eq $project) {
-				$owner = decode("utf8", $ow, Encode::FB_DEFAULT);
+				$owner = to_utf8($ow);
 				last;
 			}
 		}
@@ -1065,6 +1074,9 @@ sub parse_commit {
 			last;
 		}
 	}
+	if ($co{'title'} eq "") {
+		$co{'title'} = $co{'title_short'} = '(no commit message)';
+	}
 	# remove added spaces
 	foreach my $line (@commit_lines) {
 		$line =~ s/^    //;
@@ -1236,7 +1248,7 @@ sub get_file_owner {
 	}
 	my $owner = $gcos;
 	$owner =~ s/[,;].*$//;
-	return decode("utf8", $owner, Encode::FB_DEFAULT);
+	return to_utf8($owner);
 }
 
 ## ......................................................................
@@ -1376,11 +1388,9 @@ EOF
 	print "</head>\n" .
 	      "<body>\n" .
 	      "<div class=\"page_header\">\n" .
-	      "<a href=\"" . esc_html($githelp_url) .
-	      "\" title=\"" . esc_html($githelp_label) .
-	      "\">" .
-	      "<img src=\"$logo\" width=\"72\" height=\"27\" alt=\"git\" style=\"float:right; border-width:0px;\"/>" .
-	      "</a>\n";
+	      $cgi->a({-href => esc_url($logo_url),
+	               -title => $logo_label},
+	              qq(<img src="$logo" width="72" height="27" alt="git" class="logo"/>));
 	print $cgi->a({-href => esc_url($home_link)}, $home_link_str) . " / ";
 	if (defined $project) {
 		print $cgi->a({-href => href(action=>"summary")}, esc_html($project));
@@ -1916,14 +1926,14 @@ sub git_patchset_body {
 				print "<div class=\"diff_info\">" . file_type($diffinfo->{'to_mode'}) . ":" .
 				      $cgi->a({-href => href(action=>"blob", hash_base=>$hash,
 				                             hash=>$diffinfo->{'to_id'}, file_name=>$diffinfo->{'file'})},
-				              $diffinfo->{'to_id'}) . "(new)" .
+				              $diffinfo->{'to_id'}) . " (new)" .
 				      "</div>\n"; # class="diff_info"
 
 			} elsif ($diffinfo->{'status'} eq "D") { # deleted
 				print "<div class=\"diff_info\">" . file_type($diffinfo->{'from_mode'}) . ":" .
 				      $cgi->a({-href => href(action=>"blob", hash_base=>$hash_parent,
 				                             hash=>$diffinfo->{'from_id'}, file_name=>$diffinfo->{'file'})},
-				              $diffinfo->{'from_id'}) . "(deleted)" .
+				              $diffinfo->{'from_id'}) . " (deleted)" .
 				      "</div>\n"; # class="diff_info"
 
 			} elsif ($diffinfo->{'status'} eq "R" || # renamed
@@ -2027,8 +2037,10 @@ sub git_shortlog_body {
 		print "</td>\n" .
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff") . " | " .
-		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree") . " | " .
-		      $cgi->a({-href => href(action=>"snapshot", hash=>$commit)}, "snapshot");
+		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree");
+		if (gitweb_have_snapshot()) {
+			print " | " . $cgi->a({-href => href(action=>"snapshot", hash=>$commit)}, "snapshot");
+		}
 		print "</td>\n" .
 		      "</tr>\n";
 	}
@@ -2946,7 +2958,7 @@ sub git_commit {
 			        "blame");
 	}
 	git_header_html(undef, $expires);
-	git_print_page_nav('commit', defined $co{'parent'} ? '' : 'commitdiff',
+	git_print_page_nav('commit', '',
 	                   $hash, $co{'tree'}, $hash,
 	                   join (' | ', @views_nav));
 
@@ -3589,7 +3601,7 @@ XML
 		      "<![CDATA[\n";
 		my $comment = $co{'comment'};
 		foreach my $line (@$comment) {
-			$line = decode("utf8", $line, Encode::FB_DEFAULT);
+			$line = to_utf8($line);
 			print "$line<br/>\n";
 		}
 		print "<br/>\n";
@@ -3598,7 +3610,7 @@ XML
 				next;
 			}
 			my $file = esc_html(unquote($7));
-			$file = decode("utf8", $file, Encode::FB_DEFAULT);
+			$file = to_utf8($file);
 			print "$file<br/>\n";
 		}
 		print "]]>\n" .
