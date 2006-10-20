@@ -360,7 +360,7 @@ static int gitdiff_hdrend(const char *line, struct patch *patch)
 static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, const char *oldnew)
 {
 	if (!orig_name && !isnull)
-		return find_name(line, NULL, 1, 0);
+		return find_name(line, NULL, 1, TERM_TAB);
 
 	if (orig_name) {
 		int len;
@@ -370,7 +370,7 @@ static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, 
 		len = strlen(name);
 		if (isnull)
 			die("git-apply: bad git-diff - expected /dev/null, got %s on line %d", name, linenr);
-		another = find_name(line, NULL, 1, 0);
+		another = find_name(line, NULL, 1, TERM_TAB);
 		if (!another || memcmp(another, name, len))
 			die("git-apply: bad git-diff - inconsistent %s filename on line %d", oldnew, linenr);
 		free(another);
@@ -934,6 +934,7 @@ static int parse_fragment(char *line, unsigned long size, struct patch *patch, s
 		switch (*line) {
 		default:
 			return -1;
+		case '\n': /* newer GNU diff, an empty context line */
 		case ' ':
 			oldlines--;
 			newlines--;
@@ -1623,6 +1624,14 @@ static int apply_one_fragment(struct buffer_desc *desc, struct fragment *frag, i
 				first = '-';
 		}
 		switch (first) {
+		case '\n':
+			/* Newer GNU diff, empty context line */
+			if (plen < 0)
+				/* ... followed by '\No newline'; nothing */
+				break;
+			old[oldsize++] = '\n';
+			new[newsize++] = '\n';
+			break;
 		case ' ':
 		case '-':
 			memcpy(old + oldsize, patch + 1, plen);
