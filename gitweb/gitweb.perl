@@ -3289,7 +3289,7 @@ sub git_commitdiff {
 			                       hash=>$hash, hash_parent=>$hash_parent)},
 			        "raw");
 
-		if (defined $hash_parent) {
+		if (defined $hash_parent && substr($hash_parent, 0, 1) ne '-') {
 			# commitdiff with two commits given
 			$formats_nav .=
 				' (' .
@@ -3310,6 +3310,15 @@ sub git_commitdiff {
 				')';
 		} else {
 			# merge commit
+			$formats_nav .= ' | ';
+			if (defined $hash_parent && $hash_parent eq '-m') {
+				$formats_nav .= 'all parents';
+			} else {
+				$formats_nav .=
+					$cgi->a({-href => href(action=>"commitdiff",
+					                       hash=>$hash, hash_parent=>'-m')},
+					        'all parents');
+			}
 			$formats_nav .=
 				' (' .
 				join(' ', map {
