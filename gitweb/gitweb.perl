@@ -3291,15 +3291,11 @@ sub git_commitdiff {
 
 		if (defined $hash_parent) {
 			# commitdiff with two commits given
-			my $hash_parent_short = $hash_parent;
-			if ($hash_parent =~ m/^[0-9a-fA-F]{40}$/) {
-				$hash_parent_short = substr($hash_parent, 0, 7);
-			}
 			$formats_nav .=
-				' (from: ' .
+				' (' .
 				$cgi->a({-href => href(action=>"commitdiff",
 				                       hash=>$hash_parent)},
-				        esc_html($hash_parent_short)) .
+				        'from') .
 				')';
 		} elsif (!$co{'parent'}) {
 			# --root commitdiff
@@ -3307,19 +3303,19 @@ sub git_commitdiff {
 		} elsif (scalar @{$co{'parents'}} == 1) {
 			# single parent commit
 			$formats_nav .=
-				' (parent: ' .
+				' (' .
 				$cgi->a({-href => href(action=>"commitdiff",
 				                       hash=>$co{'parent'})},
-				        esc_html(substr($co{'parent'}, 0, 7))) .
+				        'parent') .
 				')';
 		} else {
 			# merge commit
 			$formats_nav .=
-				' (merge: ' .
+				' (' .
 				join(' ', map {
 					$cgi->a({-href => href(action=>"commitdiff",
 					                       hash=>$_)},
-					        esc_html(substr($_, 0, 7)));
+					        'parent');
 				} @{$co{'parents'}} ) .
 				')';
 		}
