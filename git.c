@@ -219,6 +219,7 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		int option;
 	} commands[] = {
 		{ "add", cmd_add, RUN_SETUP },
+		{ "annotate", cmd_annotate, },
 		{ "apply", cmd_apply },
 		{ "archive", cmd_archive },
 		{ "cat-file", cmd_cat_file, RUN_SETUP },
@@ -232,6 +233,7 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		{ "diff-stages", cmd_diff_stages, RUN_SETUP },
 		{ "diff-tree", cmd_diff_tree, RUN_SETUP },
 		{ "fmt-merge-msg", cmd_fmt_merge_msg, RUN_SETUP },
+		{ "for-each-ref", cmd_for_each_ref, RUN_SETUP },
 		{ "format-patch", cmd_format_patch, RUN_SETUP },
 		{ "get-tar-commit-id", cmd_get_tar_commit_id },
 		{ "grep", cmd_grep, RUN_SETUP },
