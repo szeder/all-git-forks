@@ -51,12 +51,8 @@ our $site_footer = "++GITWEB_SITE_FOOTER++";
 
 # URI of stylesheets
 our @stylesheets = ("++GITWEB_CSS++");
-our $stylesheet;
-# default is not to define style sheet, but it can be overwritten later
-undef $stylesheet;
-
-# URI of default stylesheet
-our $stylesheet = "++GITWEB_CSS++";
+# URI of a single stylesheet, which can be overridden in GITWEB_CONFIG.
+our $stylesheet = undef;
 # URI of GIT logo (72x27 size)
 our $logo = "++GITWEB_LOGO++";
 # URI of GIT favicon, assumed to be image/png type
@@ -80,7 +76,7 @@ our $strict_export = "++GITWEB_STRICT_EXPORT++";
 
 # list of git base URLs used for URL to where fetch project from,
 # i.e. full URL is "$git_base_url/$project"
-our @git_base_url_list = ("++GITWEB_BASE_URL++");
+our @git_base_url_list = grep { $_ ne '' } ("++GITWEB_BASE_URL++");
 
 # default blob_plain mimetype and default charset for text/plain blob
 our $default_blob_plain_mimetype = 'text/plain';
@@ -3133,13 +3129,11 @@ sub git_commit {
 	if (!defined $parent) {
 		$parent = "--root";
 	}
-	open my $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts, $parent, $hash
+	open my $fd, "-|", git_cmd(), "diff-tree", '-r', "--no-commit-id",
+		@diff_opts, $parent, $hash
 		or die_error(undef, "Open git-diff-tree failed");
 	my @difftree = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading git-diff-tree failed");
-
-	# filter out commit ID output
-	@difftree = grep(!/^[0-9a-fA-F]{40}$/, @difftree);
 
 	# non-textual hash id's can be cached
 	my $expires;
@@ -3411,15 +3405,14 @@ sub git_commitdiff {
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
+			"--no-commit-id",
 			"--patch-with-raw", "--full-index", $hash_parent, $hash
 			or die_error(undef, "Open git-diff-tree failed");
 
 		while (chomp(my $line = <$fd>)) {
 			# empty line ends raw part of diff-tree output
 			last unless $line;
-			# filter out commit ID output
-			push @difftree, $line
-				unless $line =~ m/^[0-9a-fA-F]{40}$/;
+			push @difftree, $line;
 		}
 
 	} elsif ($format eq 'plain') {
