@@ -1,3 +1,4 @@
+# -*-Shell-script-*-
 #
 # bash completion support for core Git.
 #
