@@ -860,7 +860,7 @@ sub git_get_hash_by_path {
 	close $fd or return undef;
 
 	#'100644 blob 0fa3f3a66fb6a137f6ec2c19351ed4d807070ffa	panic.c'
-	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t(.+)$/;
+	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t/;
 	if (defined $type && $type ne $2) {
 		# type doesn't match
 		return undef;
@@ -1111,7 +1111,9 @@ sub parse_commit {
 		@commit_lines = @$commit_text;
 	} else {
 		local $/ = "\0";
-		open my $fd, "-|", git_cmd(), "rev-list", "--header", "--parents", "--max-count=1", $commit_id
+		open my $fd, "-|", git_cmd(), "rev-list",
+			"--header", "--parents", "--max-count=1",
+			$commit_id, "--"
 			or return;
 		@commit_lines = split '\n', <$fd>;
 		close $fd or return;
@@ -1275,7 +1277,7 @@ sub parse_ls_tree_line ($;%) {
 	my %res;
 
 	#'100644 blob 0fa3f3a66fb6a137f6ec2c19351ed4d807070ffa	panic.c'
-	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t(.+)$/;
+	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t(.+)$/s;
 
 	$res{'mode'} = $1;
 	$res{'type'} = $2;
@@ -1292,47 +1294,88 @@ sub parse_ls_tree_line ($;%) {
 ## ......................................................................
 ## parse to array of hashes functions
 
-sub git_get_refs_list {
-	my $type = shift || "";
-	my %refs;
-	my @reflist;
+sub git_get_heads_list {
+	my $limit = shift;
+	my @headslist;
 
-	my @refs;
-	open my $fd, "-|", $GIT, "peek-remote", "$projectroot/$project/"
+	open my $fd, '-|', git_cmd(), 'for-each-ref',
+		($limit ? '--count='.($limit+1) : ()), '--sort=-committerdate',
+		'--format=%(objectname) %(refname) %(subject)%00%(committer)',
+		'refs/heads'
 		or return;
 	while (my $line = <$fd>) {
-		chomp $line;
-		if ($line =~ m/^([0-9a-fA-F]{40})\trefs\/($type\/?([^\^]+))(\^\{\})?$/) {
-			if (defined $refs{$1}) {
-				push @{$refs{$1}}, $2;
-			} else {
-				$refs{$1} = [ $2 ];
-			}
+		my %ref_item;
 
-			if (! $4) { # unpeeled, direct reference
-				push @refs, { hash => $1, name => $3 }; # without type
-			} elsif ($3 eq $refs[-1]{'name'}) {
-				# most likely a tag is followed by its peeled
-				# (deref) one, and when that happens we know the
-				# previous one was of type 'tag'.
-				$refs[-1]{'type'} = "tag";
-			}
+		chomp $line;
+		my ($refinfo, $committerinfo) = split(/\0/, $line);
+		my ($hash, $name, $title) = split(' ', $refinfo, 3);
+		my ($committer, $epoch, $tz) =
+			($committerinfo =~ /^(.*) ([0-9]+) (.*)$/);
+		$name =~ s!^refs/heads/!!;
+
+		$ref_item{'name'}  = $name;
+		$ref_item{'id'}    = $hash;
+		$ref_item{'title'} = $title || '(no commit message)';
+		$ref_item{'epoch'} = $epoch;
+		if ($epoch) {
+			$ref_item{'age'} = age_string(time - $ref_item{'epoch'});
+		} else {
+			$ref_item{'age'} = "unknown";
 		}
+
+		push @headslist, \%ref_item;
 	}
 	close $fd;
 
-	foreach my $ref (@refs) {
-		my $ref_file = $ref->{'name'};
-		my $ref_id   = $ref->{'hash'};
+	return wantarray ? @headslist : \@headslist;
+}
 
-		my $type = $ref->{'type'} || git_get_type($ref_id) || next;
-		my %ref_item = parse_ref($ref_file, $ref_id, $type);
+sub git_get_tags_list {
+	my $limit = shift;
+	my @tagslist;
 
-		push @reflist, \%ref_item;
+	open my $fd, '-|', git_cmd(), 'for-each-ref',
+		($limit ? '--count='.($limit+1) : ()), '--sort=-creatordate',
+		'--format=%(objectname) %(objecttype) %(refname) '.
+		'%(*objectname) %(*objecttype) %(subject)%00%(creator)',
+		'refs/tags'
+		or return;
+	while (my $line = <$fd>) {
+		my %ref_item;
+
+		chomp $line;
+		my ($refinfo, $creatorinfo) = split(/\0/, $line);
+		my ($id, $type, $name, $refid, $reftype, $title) = split(' ', $refinfo, 6);
+		my ($creator, $epoch, $tz) =
+			($creatorinfo =~ /^(.*) ([0-9]+) (.*)$/);
+		$name =~ s!^refs/tags/!!;
+
+		$ref_item{'type'} = $type;
+		$ref_item{'id'} = $id;
+		$ref_item{'name'} = $name;
+		if ($type eq "tag") {
+			$ref_item{'subject'} = $title;
+			$ref_item{'reftype'} = $reftype;
+			$ref_item{'refid'}   = $refid;
+		} else {
+			$ref_item{'reftype'} = $type;
+			$ref_item{'refid'}   = $id;
+		}
+
+		if ($type eq "tag" || $type eq "commit") {
+			$ref_item{'epoch'} = $epoch;
+			if ($epoch) {
+				$ref_item{'age'} = age_string(time - $ref_item{'epoch'});
+			} else {
+				$ref_item{'age'} = "unknown";
+			}
+		}
+
+		push @tagslist, \%ref_item;
 	}
-	# sort refs by age
-	@reflist = sort {$b->{'epoch'} <=> $a->{'epoch'}} @reflist;
-	return (\@reflist, \%refs);
+	close $fd;
+
+	return wantarray ? @tagslist : \@tagslist;
 }
 
 ## ----------------------------------------------------------------------
@@ -2262,8 +2305,7 @@ sub git_tags_body {
 	for (my $i = $from; $i <= $to; $i++) {
 		my $entry = $taglist->[$i];
 		my %tag = %$entry;
-		my $comment_lines = $tag{'comment'};
-		my $comment = shift @$comment_lines;
+		my $comment = $tag{'subject'};
 		my $comment_short;
 		if (defined $comment) {
 			$comment_short = chop_str($comment, 30, 5);
@@ -2296,7 +2338,7 @@ sub git_tags_body {
 		      $cgi->a({-href => href(action=>$tag{'reftype'}, hash=>$tag{'refid'})}, $tag{'reftype'});
 		if ($tag{'reftype'} eq "commit") {
 			print " | " . $cgi->a({-href => href(action=>"shortlog", hash=>$tag{'name'})}, "shortlog") .
-			      " | " . $cgi->a({-href => href(action=>"log", hash=>$tag{'refid'})}, "log");
+			      " | " . $cgi->a({-href => href(action=>"log", hash=>$tag{'name'})}, "log");
 		} elsif ($tag{'reftype'} eq "blob") {
 			print " | " . $cgi->a({-href => href(action=>"blob_plain", hash=>$tag{'refid'})}, "raw");
 		}
@@ -2321,23 +2363,23 @@ sub git_heads_body {
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
 		my $entry = $headlist->[$i];
-		my %tag = %$entry;
-		my $curr = $tag{'id'} eq $head;
+		my %ref = %$entry;
+		my $curr = $ref{'id'} eq $head;
 		if ($alternate) {
 			print "<tr class=\"dark\">\n";
 		} else {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
-		print "<td><i>$tag{'age'}</i></td>\n" .
-		      ($tag{'id'} eq $head ? "<td class=\"current_head\">" : "<td>") .
-		      $cgi->a({-href => href(action=>"shortlog", hash=>$tag{'name'}),
-		               -class => "list name"},esc_html($tag{'name'})) .
+		print "<td><i>$ref{'age'}</i></td>\n" .
+		      ($curr ? "<td class=\"current_head\">" : "<td>") .
+		      $cgi->a({-href => href(action=>"shortlog", hash=>$ref{'name'}),
+		               -class => "list name"},esc_html($ref{'name'})) .
 		      "</td>\n" .
 		      "<td class=\"link\">" .
-		      $cgi->a({-href => href(action=>"shortlog", hash=>$tag{'name'})}, "shortlog") . " | " .
-		      $cgi->a({-href => href(action=>"log", hash=>$tag{'name'})}, "log") . " | " .
-		      $cgi->a({-href => href(action=>"tree", hash=>$tag{'name'}, hash_base=>$tag{'name'})}, "tree") .
+		      $cgi->a({-href => href(action=>"shortlog", hash=>$ref{'name'})}, "shortlog") . " | " .
+		      $cgi->a({-href => href(action=>"log", hash=>$ref{'name'})}, "log") . " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$ref{'name'}, hash_base=>$ref{'name'})}, "tree") .
 		      "</td>\n" .
 		      "</tr>";
 	}
@@ -2487,18 +2529,9 @@ sub git_summary {
 
 	my $owner = git_get_project_owner($project);
 
-	my ($reflist, $refs) = git_get_refs_list();
-
-	my @taglist;
-	my @headlist;
-	foreach my $ref (@$reflist) {
-		if ($ref->{'name'} =~ s!^heads/!!) {
-			push @headlist, $ref;
-		} else {
-			$ref->{'name'} =~ s!^tags/!!;
-			push @taglist, $ref;
-		}
-	}
+	my $refs = git_get_references();
+	my @taglist  = git_get_tags_list(15);
+	my @headlist = git_get_heads_list(15);
 
 	git_header_html();
 	git_print_page_nav('summary','', $head);
@@ -2529,7 +2562,7 @@ sub git_summary {
 	}
 
 	open my $fd, "-|", git_cmd(), "rev-list", "--max-count=17",
-		git_get_head_hash($project)
+		git_get_head_hash($project), "--"
 		or die_error(undef, "Open git-rev-list failed");
 	my @revlist = map { chomp; $_ } <$fd>;
 	close $fd;
@@ -2659,7 +2692,7 @@ HTML
 		print "<tr class=\"$rev_color[$current_color]\">\n";
 		if ($group_size) {
 			print "<td class=\"sha1\"";
-			print " title=\"$author, $date\"";
+			print " title=\"". esc_html($author) . ", $date\"";
 			print " rowspan=\"$group_size\"" if ($group_size > 1);
 			print ">";
 			print $cgi->a({-href => href(action=>"commit",
@@ -2790,9 +2823,9 @@ sub git_tags {
 	git_print_page_nav('','', $head,undef,$head);
 	git_print_header_div('summary', $project);
 
-	my ($taglist) = git_get_refs_list("tags");
-	if (@$taglist) {
-		git_tags_body($taglist);
+	my @tagslist = git_get_tags_list();
+	if (@tagslist) {
+		git_tags_body(\@tagslist);
 	}
 	git_footer_html();
 }
@@ -2803,9 +2836,9 @@ sub git_heads {
 	git_print_page_nav('','', $head,undef,$head);
 	git_print_header_div('summary', $project);
 
-	my ($headlist) = git_get_refs_list("heads");
-	if (@$headlist) {
-		git_heads_body($headlist, $head);
+	my @headslist = git_get_heads_list();
+	if (@headslist) {
+		git_heads_body(\@headslist, $head);
 	}
 	git_footer_html();
 }
@@ -3072,7 +3105,7 @@ sub git_log {
 	my $refs = git_get_references();
 
 	my $limit = sprintf("--max-count=%i", (100 * ($page+1)));
-	open my $fd, "-|", git_cmd(), "rev-list", $limit, $hash
+	open my $fd, "-|", git_cmd(), "rev-list", $limit, $hash, "--"
 		or die_error(undef, "Open git-rev-list failed");
 	my @revlist = map { chomp; $_ } <$fd>;
 	close $fd;
@@ -3130,7 +3163,7 @@ sub git_commit {
 		$parent = "--root";
 	}
 	open my $fd, "-|", git_cmd(), "diff-tree", '-r', "--no-commit-id",
-		@diff_opts, $parent, $hash
+		@diff_opts, $parent, $hash, "--"
 		or die_error(undef, "Open git-diff-tree failed");
 	my @difftree = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading git-diff-tree failed");
@@ -3235,7 +3268,8 @@ sub git_blobdiff {
 	if (defined $hash_base && defined $hash_parent_base) {
 		if (defined $file_name) {
 			# read raw output
-			open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts, $hash_parent_base, $hash_base,
+			open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
+				$hash_parent_base, $hash_base,
 				"--", $file_name
 				or die_error(undef, "Open git-diff-tree failed");
 			@difftree = map { chomp; $_ } <$fd>;
@@ -3249,7 +3283,8 @@ sub git_blobdiff {
 			# try to find filename from $hash
 
 			# read filtered raw output
-			open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts, $hash_parent_base, $hash_base
+			open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
+				$hash_parent_base, $hash_base, "--"
 				or die_error(undef, "Open git-diff-tree failed");
 			@difftree =
 				# ':100644 100644 03b21826... 3b93d5e7... M	ls-files.c'
@@ -3319,7 +3354,8 @@ sub git_blobdiff {
 		}
 
 		# open patch output
-		open $fd, "-|", git_cmd(), "diff", '-p', @diff_opts, $hash_parent, $hash
+		open $fd, "-|", git_cmd(), "diff", '-p', @diff_opts,
+			$hash_parent, $hash, "--"
 			or die_error(undef, "Open git-diff failed");
 	} else  {
 		die_error('404 Not Found', "Missing one of the blob diff parameters")
@@ -3450,8 +3486,8 @@ sub git_commitdiff {
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
-			"--no-commit-id",
-			"--patch-with-raw", "--full-index", $hash_parent, $hash
+			"--no-commit-id", "--patch-with-raw", "--full-index",
+			$hash_parent, $hash, "--"
 			or die_error(undef, "Open git-diff-tree failed");
 
 		while (chomp(my $line = <$fd>)) {
@@ -3462,7 +3498,7 @@ sub git_commitdiff {
 
 	} elsif ($format eq 'plain') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
-			'-p', $hash_parent, $hash
+			'-p', $hash_parent, $hash, "--"
 			or die_error(undef, "Open git-diff-tree failed");
 
 	} else {
@@ -3639,7 +3675,9 @@ sub git_search {
 	my $alternate = 1;
 	if ($searchtype eq 'commit' or $searchtype eq 'author' or $searchtype eq 'committer') {
 		$/ = "\0";
-		open my $fd, "-|", git_cmd(), "rev-list", "--header", "--parents", $hash or next;
+		open my $fd, "-|", git_cmd(), "rev-list",
+			"--header", "--parents", $hash, "--"
+			or next;
 		while (my $commit_text = <$fd>) {
 			if (!grep m/$searchtext/i, $commit_text) {
 				next;
@@ -3785,7 +3823,7 @@ sub git_shortlog {
 	my $refs = git_get_references();
 
 	my $limit = sprintf("--max-count=%i", (100 * ($page+1)));
-	open my $fd, "-|", git_cmd(), "rev-list", $limit, $hash
+	open my $fd, "-|", git_cmd(), "rev-list", $limit, $hash, "--"
 		or die_error(undef, "Open git-rev-list failed");
 	my @revlist = map { chomp; $_ } <$fd>;
 	close $fd;
@@ -3813,7 +3851,8 @@ sub git_shortlog {
 
 sub git_rss {
 	# http://www.notestips.com/80256B3A007F2692/1/NAMO5P9UPQ
-	open my $fd, "-|", git_cmd(), "rev-list", "--max-count=150", git_get_head_hash($project)
+	open my $fd, "-|", git_cmd(), "rev-list", "--max-count=150",
+		git_get_head_hash($project), "--"
 		or die_error(undef, "Open git-rev-list failed");
 	my @revlist = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading git-rev-list failed");
@@ -3837,7 +3876,7 @@ XML
 		}
 		my %cd = parse_date($co{'committer_epoch'});
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
-			$co{'parent'}, $co{'id'}
+			$co{'parent'}, $co{'id'}, "--"
 			or next;
 		my @difftree = map { chomp; $_ } <$fd>;
 		close $fd
