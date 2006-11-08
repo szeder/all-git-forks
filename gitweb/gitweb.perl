@@ -160,6 +160,21 @@ our %feature = (
 	'pathinfo' => {
 		'override' => 0,
 		'default' => [0]},
+
+	# Make gitweb consider projects in project root subdirectories
+	# to be forks of existing projects. Given project $projname.git,
+	# projects matching $projname/*.git will not be shown in the main
+	# projects list, instead a '+' mark will be added to $projname
+	# there and a 'forks' view will be enabled for the project, listing
+	# all the forks. This feature is supported only if project list
+	# is taken from a directory, not file.
+
+	# To enable system wide have in $GITWEB_CONFIG
+	# $feature{'forks'}{'default'} = [1];
+	# Project specific override is not supported.
+	'forks' => {
+		'override' => 0,
+		'default' => [0]},
 );
 
 sub gitweb_check_feature {
@@ -405,6 +420,7 @@ my %actions = (
 	"commitdiff" => \&git_commitdiff,
 	"commitdiff_plain" => \&git_commitdiff_plain,
 	"commit" => \&git_commit,
+	"forks" => \&git_forks,
 	"heads" => \&git_heads,
 	"history" => \&git_history,
 	"log" => \&git_log,
@@ -554,12 +570,17 @@ sub esc_url {
 }
 
 # replace invalid utf8 character with SUBSTITUTION sequence
-sub esc_html {
+sub esc_html ($;%) {
 	my $str = shift;
+	my %opts = @_;
+
 	$str = to_utf8($str);
 	$str = escapeHTML($str);
 	$str =~ s/\014/^L/g; # escape FORM FEED (FF) character (e.g. in COPYING file)
 	$str =~ s/\033/^[/g; # "escape" ESCAPE (\e) character (e.g. commit 20a3847d8a5032ce41f90dcc68abfb36e6fee9b1)
+	if ($opts{'-nbsp'}) {
+		$str =~ s/ /&nbsp;/g;
+	}
 	return $str;
 }
 
@@ -784,7 +805,7 @@ sub format_diff_line {
 		$diff_class = " incomplete";
 	}
 	$line = untabify($line);
-	return "<div class=\"diff$diff_class\">" . esc_html($line) . "</div>\n";
+	return "<div class=\"diff$diff_class\">" . esc_html($line, -nbsp=>1) . "</div>\n";
 }
 
 ## ----------------------------------------------------------------------
@@ -892,12 +913,20 @@ sub git_get_project_url_list {
 }
 
 sub git_get_projects_list {
+	my ($filter) = @_;
 	my @list;
+
+	$filter ||= '';
+	$filter =~ s/\.git$//;
 
 	if (-d $projects_list) {
 		# search in directory
-		my $dir = $projects_list;
+		my $dir = $projects_list . ($filter ? "/$filter" : '');
+		# remove the trailing "/"
+		$dir =~ s!/+$!!;
 		my $pfxlen = length("$dir");
+
+		my $check_forks = gitweb_check_feature('forks');
 
 		File::Find::find({
 			follow_fast => 1, # follow symbolic links
@@ -910,8 +939,10 @@ sub git_get_projects_list {
 
 				my $subdir = substr($File::Find::name, $pfxlen + 1);
 				# we check related file in $projectroot
-				if (check_export_ok("$projectroot/$subdir")) {
-					push @list, { path => $subdir };
+				if ($check_forks and $subdir =~ m#/.#) {
+					$File::Find::prune = 1;
+				} elsif (check_export_ok("$projectroot/$filter/$subdir")) {
+					push @list, { path => ($filter ? "$filter/" : '') . $subdir };
 					$File::Find::prune = 1;
 				}
 			},
@@ -1986,19 +2017,19 @@ sub git_difftree_body {
 			print "</td>\n";
 			print "<td>$mode_chnge</td>\n";
 			print "<td class=\"link\">";
-			if ($diff{'to_id'} ne $diff{'from_id'}) { # modified
-				if ($action eq 'commitdiff') {
-					# link to patch
-					$patchno++;
-					print $cgi->a({-href => "#patch$patchno"}, "patch");
-				} else {
-					print $cgi->a({-href => href(action=>"blobdiff",
-					                             hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
-					                             hash_base=>$hash, hash_parent_base=>$parent,
-					                             file_name=>$diff{'file'})},
-					              "diff");
-				}
-				print " | ";
+			if ($action eq 'commitdiff') {
+				# link to patch
+				$patchno++;
+				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				      " | ";
+			} elsif ($diff{'to_id'} ne $diff{'from_id'}) {
+				# "commit" view and modified file (not onlu mode changed)
+				print $cgi->a({-href => href(action=>"blobdiff",
+				                             hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
+				                             hash_base=>$hash, hash_parent_base=>$parent,
+				                             file_name=>$diff{'file'})},
+				              "diff") .
+				      " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff{'to_id'},
 						     hash_base=>$hash, file_name=>$diff{'file'})},
@@ -2029,19 +2060,19 @@ sub git_difftree_body {
 			              -class => "list"}, esc_html($diff{'from_file'})) .
 			      " with " . (int $diff{'similarity'}) . "% similarity$mode_chng]</span></td>\n" .
 			      "<td class=\"link\">";
-			if ($diff{'to_id'} ne $diff{'from_id'}) {
-				if ($action eq 'commitdiff') {
-					# link to patch
-					$patchno++;
-					print $cgi->a({-href => "#patch$patchno"}, "patch");
-				} else {
-					print $cgi->a({-href => href(action=>"blobdiff",
-					                             hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
-					                             hash_base=>$hash, hash_parent_base=>$parent,
-					                             file_name=>$diff{'to_file'}, file_parent=>$diff{'from_file'})},
-					              "diff");
-				}
-				print " | ";
+			if ($action eq 'commitdiff') {
+				# link to patch
+				$patchno++;
+				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				      " | ";
+			} elsif ($diff{'to_id'} ne $diff{'from_id'}) {
+				# "commit" view and modified file (not only pure rename or copy)
+				print $cgi->a({-href => href(action=>"blobdiff",
+				                             hash=>$diff{'to_id'}, hash_parent=>$diff{'from_id'},
+				                             hash_base=>$hash, hash_parent_base=>$parent,
+				                             file_name=>$diff{'to_file'}, file_parent=>$diff{'from_file'})},
+				              "diff") .
+				      " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff{'from_id'},
 						     hash_base=>$parent, file_name=>$diff{'from_file'})},
@@ -2091,13 +2122,6 @@ sub git_patchset_body {
 				$diffinfo = parse_difftree_raw_line($difftree->[$patch_idx]);
 			}
 			$patch_idx++;
-
-			# for now, no extended header, hence we skip empty patches
-			# companion to	next LINE if $in_header;
-			if ($diffinfo->{'from_id'} eq $diffinfo->{'to_id'}) { # no change
-				$in_header = 1;
-				next LINE;
-			}
 
 			if ($diffinfo->{'status'} eq "A") { # added
 				print "<div class=\"diff_info\">" . file_type($diffinfo->{'to_mode'}) . ":" .
@@ -2184,6 +2208,124 @@ sub git_patchset_body {
 }
 
 # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+sub git_project_list_body {
+	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+
+	my $check_forks = gitweb_check_feature('forks');
+
+	my @projects;
+	foreach my $pr (@$projlist) {
+		my (@aa) = git_get_last_activity($pr->{'path'});
+		unless (@aa) {
+			next;
+		}
+		($pr->{'age'}, $pr->{'age_string'}) = @aa;
+		if (!defined $pr->{'descr'}) {
+			my $descr = git_get_project_description($pr->{'path'}) || "";
+			$pr->{'descr'} = chop_str($descr, 25, 5);
+		}
+		if (!defined $pr->{'owner'}) {
+			$pr->{'owner'} = get_file_owner("$projectroot/$pr->{'path'}") || "";
+		}
+		if ($check_forks) {
+			my $pname = $pr->{'path'};
+			$pname =~ s/\.git$//;
+			$pr->{'forks'} = -d "$projectroot/$pname";
+		}
+		push @projects, $pr;
+	}
+
+	$order ||= "project";
+	$from = 0 unless defined $from;
+	$to = $#projects if (!defined $to || $#projects < $to);
+
+	print "<table class=\"project_list\">\n";
+	unless ($no_header) {
+		print "<tr>\n";
+		if ($check_forks) {
+			print "<th></th>\n";
+		}
+		if ($order eq "project") {
+			@projects = sort {$a->{'path'} cmp $b->{'path'}} @projects;
+			print "<th>Project</th>\n";
+		} else {
+			print "<th>" .
+			      $cgi->a({-href => href(project=>undef, order=>'project'),
+				       -class => "header"}, "Project") .
+			      "</th>\n";
+		}
+		if ($order eq "descr") {
+			@projects = sort {$a->{'descr'} cmp $b->{'descr'}} @projects;
+			print "<th>Description</th>\n";
+		} else {
+			print "<th>" .
+			      $cgi->a({-href => href(project=>undef, order=>'descr'),
+				       -class => "header"}, "Description") .
+			      "</th>\n";
+		}
+		if ($order eq "owner") {
+			@projects = sort {$a->{'owner'} cmp $b->{'owner'}} @projects;
+			print "<th>Owner</th>\n";
+		} else {
+			print "<th>" .
+			      $cgi->a({-href => href(project=>undef, order=>'owner'),
+				       -class => "header"}, "Owner") .
+			      "</th>\n";
+		}
+		if ($order eq "age") {
+			@projects = sort {$a->{'age'} <=> $b->{'age'}} @projects;
+			print "<th>Last Change</th>\n";
+		} else {
+			print "<th>" .
+			      $cgi->a({-href => href(project=>undef, order=>'age'),
+				       -class => "header"}, "Last Change") .
+			      "</th>\n";
+		}
+		print "<th></th>\n" .
+		      "</tr>\n";
+	}
+	my $alternate = 1;
+	for (my $i = $from; $i <= $to; $i++) {
+		my $pr = $projects[$i];
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		if ($check_forks) {
+			print "<td>";
+			if ($pr->{'forks'}) {
+				print $cgi->a({-href => href(project=>$pr->{'path'}, action=>"forks")}, "+");
+			}
+			print "</td>\n";
+		}
+		print "<td>" . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary"),
+		                        -class => "list"}, esc_html($pr->{'path'})) . "</td>\n" .
+		      "<td>" . esc_html($pr->{'descr'}) . "</td>\n" .
+		      "<td><i>" . chop_str($pr->{'owner'}, 15) . "</i></td>\n";
+		print "<td class=\"". age_class($pr->{'age'}) . "\">" .
+		      $pr->{'age_string'} . "</td>\n" .
+		      "<td class=\"link\">" .
+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary")}, "summary")   . " | " .
+		      $cgi->a({-href => '/git-browser/by-commit.html?r='.$pr->{'path'}}, "graphiclog") . " | " .
+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") . " | " .
+		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"tree")}, "tree") .
+		      ($pr->{'forks'} ? " | " . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"forks")}, "forks") : '') .
+		      "</td>\n" .
+		      "</tr>\n";
+	}
+	if (defined $extra) {
+		print "<tr>\n";
+		if ($check_forks) {
+			print "<td></td>\n";
+		}
+		print "<td colspan=\"5\">$extra</td>\n" .
+		      "</tr>\n";
+	}
+	print "</table>\n";
+}
 
 sub git_shortlog_body {
 	# uses global variable $project
@@ -2402,24 +2544,8 @@ sub git_project_list {
 	}
 
 	my @list = git_get_projects_list();
-	my @projects;
 	if (!@list) {
 		die_error(undef, "No projects found");
-	}
-	foreach my $pr (@list) {
-		my (@aa) = git_get_last_activity($pr->{'path'});
-		unless (@aa) {
-			next;
-		}
-		($pr->{'age'}, $pr->{'age_string'}) = @aa;
-		if (!defined $pr->{'descr'}) {
-			my $descr = git_get_project_description($pr->{'path'}) || "";
-			$pr->{'descr'} = chop_str($descr, 25, 5);
-		}
-		if (!defined $pr->{'owner'}) {
-			$pr->{'owner'} = get_file_owner("$projectroot/$pr->{'path'}") || "";
-		}
-		push @projects, $pr;
 	}
 
 	git_header_html();
@@ -2430,75 +2556,30 @@ sub git_project_list {
 		close $fd;
 		print "</div>\n";
 	}
-	print "<table class=\"project_list\">\n" .
-	      "<tr>\n";
-	$order ||= "project";
-	if ($order eq "project") {
-		@projects = sort {$a->{'path'} cmp $b->{'path'}} @projects;
-		print "<th>Project</th>\n";
-	} else {
-		print "<th>" .
-		      $cgi->a({-href => href(project=>undef, order=>'project'),
-		               -class => "header"}, "Project") .
-		      "</th>\n";
+	git_project_list_body(\@list, $order);
+	git_footer_html();
+}
+
+sub git_forks {
+	my $order = $cgi->param('o');
+	if (defined $order && $order !~ m/project|descr|owner|age/) {
+		die_error(undef, "Unknown order parameter");
 	}
-	if ($order eq "descr") {
-		@projects = sort {$a->{'descr'} cmp $b->{'descr'}} @projects;
-		print "<th>Description</th>\n";
-	} else {
-		print "<th>" .
-		      $cgi->a({-href => href(project=>undef, order=>'descr'),
-		               -class => "header"}, "Description") .
-		      "</th>\n";
+
+	my @list = git_get_projects_list($project);
+	if (!@list) {
+		die_error(undef, "No forks found");
 	}
-	if ($order eq "owner") {
-		@projects = sort {$a->{'owner'} cmp $b->{'owner'}} @projects;
-		print "<th>Owner</th>\n";
-	} else {
-		print "<th>" .
-		      $cgi->a({-href => href(project=>undef, order=>'owner'),
-		               -class => "header"}, "Owner") .
-		      "</th>\n";
-	}
-	if ($order eq "age") {
-		@projects = sort {$a->{'age'} <=> $b->{'age'}} @projects;
-		print "<th>Last Change</th>\n";
-	} else {
-		print "<th>" .
-		      $cgi->a({-href => href(project=>undef, order=>'age'),
-		               -class => "header"}, "Last Change") .
-		      "</th>\n";
-	}
-	print "<th></th>\n" .
-	      "</tr>\n";
-	my $alternate = 1;
-	foreach my $pr (@projects) {
-		if ($alternate) {
-			print "<tr class=\"dark\">\n";
-		} else {
-			print "<tr class=\"light\">\n";
-		}
-		$alternate ^= 1;
-		print "<td>" . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary"),
-		                        -class => "list"}, esc_html($pr->{'path'})) . "</td>\n" .
-		      "<td>" . esc_html($pr->{'descr'}) . "</td>\n" .
-		      "<td><i>" . chop_str($pr->{'owner'}, 15) . "</i></td>\n";
-		print "<td class=\"". age_class($pr->{'age'}) . "\">" .
-		      $pr->{'age_string'} . "</td>\n" .
-		      "<td class=\"link\">" .
-		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary")}, "summary")   . " | " .
-		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"shortlog")}, "shortlog") . " | " .
-		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") . " | " .
-		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"tree")}, "tree") .
-		      "</td>\n" .
-		      "</tr>\n";
-	}
-	print "</table>\n";
+
+	git_header_html();
+	git_print_page_nav('','');
+	git_print_header_div('summary', "$project forks");
+	git_project_list_body(\@list, $order);
 	git_footer_html();
 }
 
 sub git_project_index {
-	my @projects = git_get_projects_list();
+	my @projects = git_get_projects_list($project);
 
 	print $cgi->header(
 		-type => 'text/plain',
@@ -2532,6 +2613,10 @@ sub git_summary {
 	my $refs = git_get_references();
 	my @taglist  = git_get_tags_list(15);
 	my @headlist = git_get_heads_list(15);
+	my @forklist;
+	if (gitweb_check_feature('forks')) {
+		@forklist = git_get_projects_list($project);
+	}
 
 	git_header_html();
 	git_print_page_nav('summary','', $head);
@@ -2580,6 +2665,13 @@ sub git_summary {
 		git_print_header_div('heads');
 		git_heads_body(\@headlist, $head, 0, 15,
 		               $cgi->a({-href => href(action=>"heads")}, "..."));
+	}
+
+	if (@forklist) {
+		git_print_header_div('forks');
+		git_project_list_body(\@forklist, undef, 0, 15,
+		                      $cgi->a({-href => href(action=>"forks")}, "..."),
+				      'noheader');
 	}
 
 	git_footer_html();
@@ -2951,7 +3043,7 @@ sub git_blob {
 		$nr++;
 		$line = untabify($line);
 		printf "<div class=\"pre\"><a id=\"l%i\" href=\"#l%i\" class=\"linenr\">%4i</a> %s</div>\n",
-		       $nr, $nr, $nr, esc_html($line);
+		       $nr, $nr, $nr, esc_html($line, -nbsp=>1);
 	}
 	close $fd
 		or print "Reading blob failed.\n";

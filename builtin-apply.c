@@ -43,7 +43,7 @@ static int apply_verbosely;
 static int no_add;
 static int show_index_info;
 static int line_termination = '\n';
-static unsigned long p_context = -1;
+static unsigned long p_context = ULONG_MAX;
 static const char apply_usage[] =
 "git-apply [--stat] [--numstat] [--summary] [--check] [--index] [--cached] [--apply] [--no-add] [--index-info] [--allow-binary-replacement] [--reverse] [--reject] [--verbose] [-z] [-pNUM] [-CNUM] [--whitespace=<nowarn|warn|error|error-all|strip>] <patch>...";
 
@@ -1043,10 +1043,14 @@ static int parse_single_patch(char *line, unsigned long size, struct patch *patc
 		 * then not having oldlines means the patch is creation,
 		 * and not having newlines means the patch is deletion.
 		 */
-		if (patch->is_new < 0 && !oldlines)
+		if (patch->is_new < 0 && !oldlines) {
 			patch->is_new = 1;
-		if (patch->is_delete < 0 && !newlines)
+			patch->old_name = NULL;
+		}
+		if (patch->is_delete < 0 && !newlines) {
 			patch->is_delete = 1;
+			patch->new_name = NULL;
+		}
 	}
 
 	if (0 < patch->is_new && oldlines)
