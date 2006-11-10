@@ -663,7 +663,7 @@ void prepare_packed_git(void)
 	prepare_packed_git_run_once = 1;
 }
 
-static void reprepare_packed_git(void)
+void reprepare_packed_git(void)
 {
 	prepare_packed_git_run_once = 0;
 	prepare_packed_git();
@@ -1203,6 +1203,24 @@ unsigned long find_pack_entry_one(const unsigned char *sha1,
 	return 0;
 }
 
+static int matches_pack_name(struct packed_git *p, const char *ig)
+{
+	const char *last_c, *c;
+
+	if (!strcmp(p->pack_name, ig))
+		return 0;
+
+	for (c = p->pack_name, last_c = c; *c;)
+		if (*c == '/')
+			last_c = ++c;
+		else
+			++c;
+	if (!strcmp(last_c, ig))
+		return 0;
+
+	return 1;
+}
+
 static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e, const char **ignore_packed)
 {
 	struct packed_git *p;
@@ -1214,7 +1232,7 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e, cons
 		if (ignore_packed) {
 			const char **ig;
 			for (ig = ignore_packed; *ig; ig++)
-				if (!strcmp(p->pack_name, *ig))
+				if (!matches_pack_name(p, *ig))
 					break;
 			if (*ig)
 				continue;
@@ -1437,8 +1455,7 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 	unlink(tmpfile);
 	if (ret) {
 		if (ret != EEXIST) {
-			fprintf(stderr, "unable to write sha1 filename %s: %s\n", filename, strerror(ret));
-			return -1;
+			return error("unable to write sha1 filename %s: %s\n", filename, strerror(ret));
 		}
 		/* FIXME!!! Collision check here ? */
 	}
@@ -1548,16 +1565,17 @@ int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned cha
 	}
 
 	if (errno != ENOENT) {
-		fprintf(stderr, "sha1 file %s: %s\n", filename, strerror(errno));
-		return -1;
+		return error("sha1 file %s: %s\n", filename, strerror(errno));
 	}
 
 	snprintf(tmpfile, sizeof(tmpfile), "%s/obj_XXXXXX", get_object_directory());
 
 	fd = mkstemp(tmpfile);
 	if (fd < 0) {
-		fprintf(stderr, "unable to create temporary sha1 filename %s: %s\n", tmpfile, strerror(errno));
-		return -1;
+		if (errno == EPERM)
+			return error("insufficient permission for adding an object to repository database %s\n", get_object_directory());
+		else
+			return error("unable to create temporary sha1 filename %s: %s\n", tmpfile, strerror(errno));
 	}
 
 	/* Set it up */
@@ -1672,9 +1690,12 @@ int write_sha1_from_fd(const unsigned char *sha1, int fd, char *buffer,
 	snprintf(tmpfile, sizeof(tmpfile), "%s/obj_XXXXXX", get_object_directory());
 
 	local = mkstemp(tmpfile);
-	if (local < 0)
-		return error("Couldn't open %s for %s",
-			     tmpfile, sha1_to_hex(sha1));
+	if (local < 0) {
+		if (errno == EPERM)
+			return error("insufficient permission for adding an object to repository database %s\n", get_object_directory());
+		else
+			return error("unable to create temporary sha1 filename %s: %s\n", tmpfile, strerror(errno));
+	}
 
 	memset(&stream, 0, sizeof(stream));
 
