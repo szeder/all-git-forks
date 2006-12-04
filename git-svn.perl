@@ -60,6 +60,7 @@ nag_lib() unless $_use_lib;
 my $_optimize_commits = 1 unless $ENV{GIT_SVN_NO_OPTIMIZE_COMMITS};
 my $sha1 = qr/[a-f\d]{40}/;
 my $sha1_short = qr/[a-f\d]{4,40}/;
+my $_esc_color = qr/(?:\033\[(?:(?:\d+;)*\d*)?m)*/;
 my ($_revision,$_stdin,$_no_ignore_ext,$_no_stop_copy,$_help,$_rmdir,$_edit,
 	$_find_copies_harder, $_l, $_cp_similarity, $_cp_remote,
 	$_repack, $_repack_nr, $_repack_flags, $_q,
@@ -68,7 +69,8 @@ my ($_revision,$_stdin,$_no_ignore_ext,$_no_stop_copy,$_help,$_rmdir,$_edit,
 	$_limit, $_verbose, $_incremental, $_oneline, $_l_fmt, $_show_commit,
 	$_version, $_upgrade, $_authors, $_branch_all_refs, @_opt_m,
 	$_merge, $_strategy, $_dry_run, $_ignore_nodate, $_non_recursive,
-	$_username, $_config_dir, $_no_auth_cache);
+	$_username, $_config_dir, $_no_auth_cache, $_xfer_delta,
+	$_pager, $_color);
 my (@_branch_from, %tree_map, %users, %rusers, %equiv);
 my ($_svn_co_url_revs, $_svn_pg_peg_revs);
 my @repo_path_split_cache;
@@ -122,7 +124,12 @@ my %cmd = (
 			  'no-graft-copy' => \$_no_graft_copy } ],
 	'multi-init' => [ \&multi_init,
 			'Initialize multiple trees (like git-svnimport)',
-			{ %multi_opts, %fc_opts } ],
+			{ %multi_opts, %init_opts,
+			 'revision|r=i' => \$_revision,
+			 'username=s' => \$_username,
+			 'config-dir=s' => \$_config_dir,
+			 'no-auth-cache' => \$_no_auth_cache,
+			} ],
 	'multi-fetch' => [ \&multi_fetch,
 			'Fetch multiple trees (like git-svnimport)',
 			\%fc_opts ],
@@ -135,6 +142,8 @@ my %cmd = (
 			  'show-commit' => \$_show_commit,
 			  'non-recursive' => \$_non_recursive,
 			  'authors-file|A=s' => \$_authors,
+			  'color' => \$_color,
+			  'pager=s' => \$_pager,
 			} ],
 	'commit-diff' => [ \&commit_diff, 'Commit a diff between two trees',
 			{ 'message|m=s' => \$_message,
@@ -759,16 +768,17 @@ sub show_log {
 		}
 	}
 
+	config_pager();
 	my $pid = open(my $log,'-|');
 	defined $pid or croak $!;
 	if (!$pid) {
 		exec(git_svn_log_cmd($r_min,$r_max), @args) or croak $!;
 	}
-	setup_pager();
+	run_pager();
 	my (@k, $c, $d);
 
 	while (<$log>) {
-		if (/^commit ($sha1_short)/o) {
+		if (/^${_esc_color}commit ($sha1_short)/o) {
 			my $cmt = $1;
 			if ($c && cmt_showable($c) && $c->{r} != $r_last) {
 				$r_last = $c->{r};
@@ -777,25 +787,25 @@ sub show_log {
 			}
 			$d = undef;
 			$c = { c => $cmt };
-		} elsif (/^author (.+) (\d+) ([\-\+]?\d+)$/) {
+		} elsif (/^${_esc_color}author (.+) (\d+) ([\-\+]?\d+)$/) {
 			get_author_info($c, $1, $2, $3);
-		} elsif (/^(?:tree|parent|committer) /) {
+		} elsif (/^${_esc_color}(?:tree|parent|committer) /) {
 			# ignore
-		} elsif (/^:\d{6} \d{6} $sha1_short/o) {
+		} elsif (/^${_esc_color}:\d{6} \d{6} $sha1_short/o) {
 			push @{$c->{raw}}, $_;
-		} elsif (/^[ACRMDT]\t/) {
+		} elsif (/^${_esc_color}[ACRMDT]\t/) {
 			# we could add $SVN->{svn_path} here, but that requires
 			# remote access at the moment (repo_path_split)...
-			s#^([ACRMDT])\t#   $1 #;
+			s#^(${_esc_color})([ACRMDT])\t#$1   $2 #;
 			push @{$c->{changed}}, $_;
-		} elsif (/^diff /) {
+		} elsif (/^${_esc_color}diff /) {
 			$d = 1;
 			push @{$c->{diff}}, $_;
 		} elsif ($d) {
 			push @{$c->{diff}}, $_;
-		} elsif (/^    (git-svn-id:.+)$/) {
+		} elsif (/^${_esc_color}    (git-svn-id:.+)$/) {
 			($c->{url}, $c->{r}, undef) = extract_metadata($1);
-		} elsif (s/^    //) {
+		} elsif (s/^${_esc_color}    //) {
 			push @{$c->{l}}, $_;
 		}
 	}
@@ -901,12 +911,30 @@ sub cmt_showable {
 	return defined $c->{r};
 }
 
+sub log_use_color {
+	return 1 if $_color;
+	my $dc;
+	chomp($dc = `git-repo-config --get diff.color`);
+	if ($dc eq 'auto') {
+		if (-t *STDOUT || (defined $_pager &&
+		    `git-repo-config --bool --get pager.color` !~ /^false/)) {
+			return ($ENV{TERM} && $ENV{TERM} ne 'dumb');
+		}
+		return 0;
+	}
+	return 0 if $dc eq 'never';
+	return 1 if $dc eq 'always';
+	chomp($dc = `git-repo-config --bool --get diff.color`);
+	$dc eq 'true';
+}
+
 sub git_svn_log_cmd {
 	my ($r_min, $r_max) = @_;
 	my @cmd = (qw/git-log --abbrev-commit --pretty=raw
 			--default/, "refs/remotes/$GIT_SVN");
 	push @cmd, '-r' unless $_non_recursive;
 	push @cmd, qw/--raw --name-status/ if $_verbose;
+	push @cmd, '--color' if log_use_color();
 	return @cmd unless defined $r_max;
 	if ($r_max == $r_min) {
 		push @cmd, '--max-count=1';
@@ -1152,7 +1180,7 @@ sub graft_file_copy_lib {
 	while (1) {
 		my $pool = SVN::Pool->new;
 		libsvn_get_log(libsvn_dup_ra($SVN), [$path],
-		               $min, $max, 0, 1, 1,
+		               $min, $max, 0, 2, 1,
 			sub {
 				libsvn_graft_file_copies($grafts, $tree_paths,
 							$path, @_);
@@ -2533,14 +2561,18 @@ sub tz_to_s_offset {
 	return ($1 * 60) + ($tz * 3600);
 }
 
-sub setup_pager { # translated to Perl from pager.c
-	return unless (-t *STDOUT);
-	my $pager = $ENV{PAGER};
-	if (!defined $pager) {
-		$pager = 'less';
-	} elsif (length $pager == 0 || $pager eq 'cat') {
-		return;
+# adapted from pager.c
+sub config_pager {
+	$_pager ||= $ENV{GIT_PAGER} || $ENV{PAGER};
+	if (!defined $_pager) {
+		$_pager = 'less';
+	} elsif (length $_pager == 0 || $_pager eq 'cat') {
+		$_pager = undef;
 	}
+}
+
+sub run_pager {
+	return unless -t *STDOUT;
 	pipe my $rfd, my $wfd or return;
 	defined(my $pid = fork) or croak $!;
 	if (!$pid) {
@@ -2548,8 +2580,8 @@ sub setup_pager { # translated to Perl from pager.c
 		return;
 	}
 	open STDIN, '<&', $rfd or croak $!;
-	$ENV{LESS} ||= '-S';
-	exec $pager or croak "Can't run pager: $!\n";;
+	$ENV{LESS} ||= 'FRSX';
+	exec $_pager or croak "Can't run pager: $! ($_pager)\n";
 }
 
 sub get_author_info {
@@ -2675,6 +2707,9 @@ sub libsvn_load {
 		require SVN::Ra;
 		require SVN::Delta;
 		push @SVN::Git::Editor::ISA, 'SVN::Delta::Editor';
+		push @SVN::Git::Fetcher::ISA, 'SVN::Delta::Editor';
+		*SVN::Git::Fetcher::process_rm = *process_rm;
+		*SVN::Git::Fetcher::safe_qx = *safe_qx;
 		my $kill_stupid_warnings = $SVN::Node::none.$SVN::Node::file.
 					$SVN::Node::dir.$SVN::Node::unknown.
 					$SVN::Node::none.$SVN::Node::file.
@@ -2822,9 +2857,18 @@ sub libsvn_connect {
 	    SVN::Client::get_username_prompt_provider(
 	      \&_username_prompt, 2),
 	  ]);
+	my $config = SVN::Core::config_get_config($_config_dir);
 	my $ra = SVN::Ra->new(url => $url, auth => $baton,
+	                      config => $config,
 	                      pool => SVN::Pool->new,
 	                      auth_provider_callbacks => $callbacks);
+
+	my $df = $ENV{GIT_SVN_DELTA_FETCH};
+	if (defined $df) {
+		$_xfer_delta = $df;
+	} else {
+		$_xfer_delta = ($url =~ m#^file://#) ? undef : 1;
+	}
 	$ra->{svn_path} = $url;
 	$ra->{repos_root} = $ra->get_repos_root;
 	$ra->{svn_path} =~ s#^\Q$ra->{repos_root}\E/*##;
@@ -2834,8 +2878,8 @@ sub libsvn_connect {
 
 sub libsvn_dup_ra {
 	my ($ra) = @_;
-	SVN::Ra->new(map { $_ => $ra->{$_} }
-	             qw/url auth auth_provider_callbacks repos_root svn_path/);
+	SVN::Ra->new(map { $_ => $ra->{$_} } qw/config url
+	             auth auth_provider_callbacks repos_root svn_path/);
 }
 
 sub libsvn_get_file {
@@ -2894,7 +2938,7 @@ sub libsvn_log_entry {
 }
 
 sub process_rm {
-	my ($gui, $last_commit, $f) = @_;
+	my ($gui, $last_commit, $f, $q) = @_;
 	# remove entire directories.
 	if (safe_qx('git-ls-tree',$last_commit,'--',$f) =~ /^040000 tree/) {
 		defined(my $pid = open my $ls, '-|') or croak $!;
@@ -2905,17 +2949,40 @@ sub process_rm {
 		local $/ = "\0";
 		while (<$ls>) {
 			print $gui '0 ',0 x 40,"\t",$_ or croak $!;
+			print "\tD\t$_\n" unless $q;
 		}
+		print "\tD\t$f/\n" unless $q;
 		close $ls or croak $?;
 	} else {
 		print $gui '0 ',0 x 40,"\t",$f,"\0" or croak $!;
+		print "\tD\t$f\n" unless $q;
 	}
 }
 
 sub libsvn_fetch {
+	$_xfer_delta ? libsvn_fetch_delta(@_) : libsvn_fetch_full(@_);
+}
+
+sub libsvn_fetch_delta {
+	my ($last_commit, $paths, $rev, $author, $date, $msg) = @_;
+	my $pool = SVN::Pool->new;
+	my $ed = SVN::Git::Fetcher->new({ c => $last_commit, q => $_q });
+	my $reporter = $SVN->do_update($rev, '', 1, $ed, $pool);
+	my @lock = $SVN::Core::VERSION ge '1.2.0' ? (undef) : ();
+	my (undef, $last_rev, undef) = cmt_metadata($last_commit);
+	$reporter->set_path('', $last_rev, 0, @lock, $pool);
+	$reporter->finish_report($pool);
+	$pool->clear;
+	unless ($ed->{git_commit_ok}) {
+		die "SVN connection failed somewhere...\n";
+	}
+	libsvn_log_entry($rev, $author, $date, $msg, [$last_commit]);
+}
+
+sub libsvn_fetch_full {
 	my ($last_commit, $paths, $rev, $author, $date, $msg) = @_;
 	open my $gui, '| git-update-index -z --index-info' or croak $!;
-	my @amr;
+	my %amr;
 	my $p = $SVN->{svn_path};
 	foreach my $f (keys %$paths) {
 		my $m = $paths->{$f}->action();
@@ -2926,8 +2993,7 @@ sub libsvn_fetch {
 			$f =~ s#^/##;
 		}
 		if ($m =~ /^[DR]$/) {
-			print "\t$m\t$f\n" unless $_q;
-			process_rm($gui, $last_commit, $f);
+			process_rm($gui, $last_commit, $f, $_q);
 			next if $m eq 'D';
 			# 'R' can be file replacements, too, right?
 		}
@@ -2935,7 +3001,7 @@ sub libsvn_fetch {
 		my $t = $SVN->check_path($f, $rev, $pool);
 		if ($t == $SVN::Node::file) {
 			if ($m =~ /^[AMR]$/) {
-				push @amr, [ $m, $f ];
+				$amr{$f} = $m;
 			} else {
 				die "Unrecognized action: $m, ($f r$rev)\n";
 			}
@@ -2943,13 +3009,13 @@ sub libsvn_fetch {
 			my @traversed = ();
 			libsvn_traverse($gui, '', $f, $rev, \@traversed);
 			foreach (@traversed) {
-				push @amr, [ $m, $_ ]
+				$amr{$_} = $m;
 			}
 		}
 		$pool->clear;
 	}
-	foreach (@amr) {
-		libsvn_get_file($gui, $_->[1], $rev, $_->[0]);
+	foreach (keys %amr) {
+		libsvn_get_file($gui, $_, $rev, $amr{$_});
 	}
 	close $gui or croak $?;
 	return libsvn_log_entry($rev, $author, $date, $msg, [$last_commit]);
@@ -3068,7 +3134,7 @@ sub revisions_eq {
 		# should be OK to use Pool here (r1 - r0) should be small
 		my $pool = SVN::Pool->new;
 		libsvn_get_log($SVN, [$path], $r0, $r1,
-				0, 1, 1, sub {$nr++}, $pool);
+				0, 0, 1, sub {$nr++}, $pool);
 		$pool->clear;
 	} else {
 		my ($url, undef) = repo_path_split($SVN_URL);
@@ -3131,7 +3197,11 @@ sub libsvn_find_parent_branch {
 		unlink $GIT_SVN_INDEX;
 		print STDERR "Found branch parent: ($GIT_SVN) $parent\n";
 		sys(qw/git-read-tree/, $parent);
-		return libsvn_fetch($parent, $paths, $rev,
+		# I can't seem to get do_switch() to work correctly with
+		# the SWIG interface (TypeError when passing switch_url...),
+		# so we'll unconditionally bypass the delta interface here
+		# for now
+		return libsvn_fetch_full($parent, $paths, $rev,
 					$author, $date, $msg);
 	}
 	print STDERR "Nope, branch point not imported or unknown\n";
@@ -3140,6 +3210,7 @@ sub libsvn_find_parent_branch {
 
 sub libsvn_get_log {
 	my ($ra, @args) = @_;
+	$args[4]-- if $args[4] && $_xfer_delta && ! $_follow_parent;
 	if ($SVN::Core::VERSION le '1.2.0') {
 		splice(@args, 3, 1);
 	}
@@ -3151,9 +3222,22 @@ sub libsvn_new_tree {
 		return $log_entry;
 	}
 	my ($paths, $rev, $author, $date, $msg) = @_;
-	open my $gui, '| git-update-index -z --index-info' or croak $!;
-	libsvn_traverse($gui, '', $SVN->{svn_path}, $rev);
-	close $gui or croak $?;
+	if ($_xfer_delta) {
+		my $pool = SVN::Pool->new;
+		my $ed = SVN::Git::Fetcher->new({q => $_q});
+		my $reporter = $SVN->do_update($rev, '', 1, $ed, $pool);
+		my @lock = $SVN::Core::VERSION ge '1.2.0' ? (undef) : ();
+		$reporter->set_path('', $rev, 1, @lock, $pool);
+		$reporter->finish_report($pool);
+		$pool->clear;
+		unless ($ed->{git_commit_ok}) {
+			die "SVN connection failed somewhere...\n";
+		}
+	} else {
+		open my $gui, '| git-update-index -z --index-info' or croak $!;
+		libsvn_traverse($gui, '', $SVN->{svn_path}, $rev);
+		close $gui or croak $?;
+	}
 	return libsvn_log_entry($rev, $author, $date, $msg);
 }
 
@@ -3237,11 +3321,11 @@ sub libsvn_commit_cb {
 
 sub libsvn_ls_fullurl {
 	my $fullurl = shift;
-	$SVN ||= libsvn_connect($fullurl);
+	my $ra = libsvn_connect($fullurl);
 	my @ret;
 	my $pool = SVN::Pool->new;
-	my ($dirent, undef, undef) = $SVN->get_dir($SVN->{svn_path},
-						$SVN->get_latest_revnum, $pool);
+	my $r = defined $_revision ? $_revision : $ra->get_latest_revnum;
+	my ($dirent, undef, undef) = $ra->get_dir('', $r, $pool);
 	foreach my $d (keys %$dirent) {
 		if ($dirent->{$d}->kind == $SVN::Node::dir) {
 			push @ret, "$d/"; # add '/' for compat with cli svn
@@ -3322,6 +3406,142 @@ sub copy_remote_ref {
 		die "Unable to find remote reference: ",
 				"refs/remotes/$GIT_SVN on $origin\n";
 	}
+}
+package SVN::Git::Fetcher;
+use vars qw/@ISA/;
+use strict;
+use warnings;
+use Carp qw/croak/;
+use IO::File qw//;
+
+# file baton members: path, mode_a, mode_b, pool, fh, blob, base
+sub new {
+	my ($class, $git_svn) = @_;
+	my $self = SVN::Delta::Editor->new;
+	bless $self, $class;
+	open my $gui, '| git-update-index -z --index-info' or croak $!;
+	$self->{gui} = $gui;
+	$self->{c} = $git_svn->{c} if exists $git_svn->{c};
+	$self->{q} = $git_svn->{q};
+	require Digest::MD5;
+	$self;
+}
+
+sub delete_entry {
+	my ($self, $path, $rev, $pb) = @_;
+	process_rm($self->{gui}, $self->{c}, $path, $self->{q});
+	undef;
+}
+
+sub open_file {
+	my ($self, $path, $pb, $rev) = @_;
+	my ($mode, $blob) = (safe_qx('git-ls-tree',$self->{c},'--',$path)
+	                     =~ /^(\d{6}) blob ([a-f\d]{40})\t/);
+	{ path => $path, mode_a => $mode, mode_b => $mode, blob => $blob,
+	  pool => SVN::Pool->new, action => 'M' };
+}
+
+sub add_file {
+	my ($self, $path, $pb, $cp_path, $cp_rev) = @_;
+	{ path => $path, mode_a => 100644, mode_b => 100644,
+	  pool => SVN::Pool->new, action => 'A' };
+}
+
+sub change_file_prop {
+	my ($self, $fb, $prop, $value) = @_;
+	if ($prop eq 'svn:executable') {
+		if ($fb->{mode_b} != 120000) {
+			$fb->{mode_b} = defined $value ? 100755 : 100644;
+		}
+	} elsif ($prop eq 'svn:special') {
+		$fb->{mode_b} = defined $value ? 120000 : 100644;
+	}
+	undef;
+}
+
+sub apply_textdelta {
+	my ($self, $fb, $exp) = @_;
+	my $fh = IO::File->new_tmpfile;
+	$fh->autoflush(1);
+	# $fh gets auto-closed() by SVN::TxDelta::apply(),
+	# (but $base does not,) so dup() it for reading in close_file
+	open my $dup, '<&', $fh or croak $!;
+	my $base = IO::File->new_tmpfile;
+	$base->autoflush(1);
+	if ($fb->{blob}) {
+		defined (my $pid = fork) or croak $!;
+		if (!$pid) {
+			open STDOUT, '>&', $base or croak $!;
+			print STDOUT 'link ' if ($fb->{mode_a} == 120000);
+			exec qw/git-cat-file blob/, $fb->{blob} or croak $!;
+		}
+		waitpid $pid, 0;
+		croak $? if $?;
+
+		if (defined $exp) {
+			seek $base, 0, 0 or croak $!;
+			my $md5 = Digest::MD5->new;
+			$md5->addfile($base);
+			my $got = $md5->hexdigest;
+			die "Checksum mismatch: $fb->{path} $fb->{blob}\n",
+			    "expected: $exp\n",
+			    "     got: $got\n" if ($got ne $exp);
+		}
+	}
+	seek $base, 0, 0 or croak $!;
+	$fb->{fh} = $dup;
+	$fb->{base} = $base;
+	[ SVN::TxDelta::apply($base, $fh, undef, $fb->{path}, $fb->{pool}) ];
+}
+
+sub close_file {
+	my ($self, $fb, $exp) = @_;
+	my $hash;
+	my $path = $fb->{path};
+	if (my $fh = $fb->{fh}) {
+		seek($fh, 0, 0) or croak $!;
+		my $md5 = Digest::MD5->new;
+		$md5->addfile($fh);
+		my $got = $md5->hexdigest;
+		die "Checksum mismatch: $path\n",
+		    "expected: $exp\n    got: $got\n" if ($got ne $exp);
+		seek($fh, 0, 0) or croak $!;
+		if ($fb->{mode_b} == 120000) {
+			read($fh, my $buf, 5) == 5 or croak $!;
+			$buf eq 'link ' or die "$path has mode 120000",
+			                       "but is not a link\n";
+		}
+		defined(my $pid = open my $out,'-|') or die "Can't fork: $!\n";
+		if (!$pid) {
+			open STDIN, '<&', $fh or croak $!;
+			exec qw/git-hash-object -w --stdin/ or croak $!;
+		}
+		chomp($hash = do { local $/; <$out> });
+		close $out or croak $!;
+		close $fh or croak $!;
+		$hash =~ /^[a-f\d]{40}$/ or die "not a sha1: $hash\n";
+		close $fb->{base} or croak $!;
+	} else {
+		$hash = $fb->{blob} or die "no blob information\n";
+	}
+	$fb->{pool}->clear;
+	my $gui = $self->{gui};
+	print $gui "$fb->{mode_b} $hash\t$path\0" or croak $!;
+	print "\t$fb->{action}\t$path\n" if $fb->{action} && ! $self->{q};
+	undef;
+}
+
+sub abort_edit {
+	my $self = shift;
+	close $self->{gui};
+	$self->SUPER::abort_edit(@_);
+}
+
+sub close_edit {
+	my $self = shift;
+	close $self->{gui} or croak $!;
+	$self->{git_commit_ok} = 1;
+	$self->SUPER::close_edit(@_);
 }
 
 package SVN::Git::Editor;
