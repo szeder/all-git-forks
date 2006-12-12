@@ -32,11 +32,16 @@ BEGIN {
 	# use appropriate mod_perl modules (conditional use)
 	if (MP_GEN == 2) {
 		require Apache2::RequestRec;
+		require Apache2::ServerRec;
+		require Apache2::Response;
 		require Apache2::Const;
+		Apache2::RequestRec->import();
+		Apache2::ServerRec->import();
 		Apache2::Const->import(-compile => qw(:common :http));
 	} elsif (MP_GEN == 1) {
 		require Apache;
 		require Apache::Constants;
+		import Apache;
 		Apache::Constants->import(qw(:common :http));
 	}
 
@@ -48,7 +53,15 @@ BEGIN {
 my $r;
 $r = shift @_ if MP_GEN;
 
-our $cgi = new CGI;
+our $cgi;
+if ((MP_GEN == 1 && $CGI::VERSION >= 2.93) ||
+    (MP_GEN == 2 && $CGI::VERSION >= 3.11)) {
+	# CGI.pm is new enough
+	$cgi = new CGI($r);
+} else {
+	$cgi = new CGI;
+}
+
 our $version = "++GIT_VERSION++";
 our $my_url = $cgi->url();
 our $my_uri = $cgi->url(-absolute => 1);
@@ -70,7 +83,8 @@ our $home_link_str = "++GITWEB_HOME_LINK_STR++";
 # name of your site or organization to appear in page titles
 # replace this with something more descriptive for clearer bookmarks
 our $site_name = "++GITWEB_SITENAME++"
-                 || ($ENV{'SERVER_NAME'} || "Untitled") . " Git";
+                 || (($r ? $r->server()->server_hostname() : $ENV{'SERVER_NAME'})
+                     || "Untitled") . " Git";
 
 # filename of html text to include at top of each page
 our $site_header = "++GITWEB_SITE_HEADER++";
@@ -403,7 +417,7 @@ if (defined $searchtype) {
 # now read PATH_INFO and use it as alternative to parameters
 sub evaluate_path_info {
 	return if defined $project;
-	my $path_info = $ENV{"PATH_INFO"};
+	my $path_info = $r ? $r->path_info() : $ENV{'PATH_INFO'};
 	return if !$path_info;
 	$path_info =~ s,^/+,,;
 	return if !$path_info;
