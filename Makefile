@@ -279,6 +279,7 @@ BUILTIN_OBJS = \
 	builtin-ls-tree.o \
 	builtin-mailinfo.o \
 	builtin-mailsplit.o \
+	builtin-merge-file.o \
 	builtin-mv.o \
 	builtin-name-rev.o \
 	builtin-pack-objects.o \
@@ -326,18 +327,6 @@ ifeq ($(uname_S),Darwin)
 	NEEDS_SSL_WITH_CRYPTO = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NO_STRLCPY = YesPlease
-	ifndef NO_FINK
-		ifeq ($(shell test -d /sw/lib && echo y),y)
-			BASIC_CFLAGS += -I/sw/include
-			BASIC_LDFLAGS += -L/sw/lib
-		endif
-	endif
-	ifndef NO_DARWIN_PORTS
-		ifeq ($(shell test -d /opt/local/lib && echo y),y)
-			BASIC_CFLAGS += -I/opt/local/include
-			BASIC_LDFLAGS += -L/opt/local/lib
-		endif
-	endif
 endif
 ifeq ($(uname_S),SunOS)
 	NEEDS_SOCKET = YesPlease
@@ -414,6 +403,21 @@ endif
 
 -include config.mak.autogen
 -include config.mak
+
+ifeq ($(uname_S),Darwin)
+	ifndef NO_FINK
+		ifeq ($(shell test -d /sw/lib && echo y),y)
+			BASIC_CFLAGS += -I/sw/include
+			BASIC_LDFLAGS += -L/sw/lib
+		endif
+	endif
+	ifndef NO_DARWIN_PORTS
+		ifeq ($(shell test -d /opt/local/lib && echo y),y)
+			BASIC_CFLAGS += -I/opt/local/include
+			BASIC_LDFLAGS += -L/opt/local/lib
+		endif
+	endif
+endif
 
 ifndef NO_CURL
 	ifdef CURLDIR
@@ -734,7 +738,8 @@ $(DIFF_OBJS): diffcore.h
 $(LIB_FILE): $(LIB_OBJS)
 	rm -f $@ && $(AR) rcs $@ $(LIB_OBJS)
 
-XDIFF_OBJS=xdiff/xdiffi.o xdiff/xprepare.o xdiff/xutils.o xdiff/xemit.o
+XDIFF_OBJS=xdiff/xdiffi.o xdiff/xprepare.o xdiff/xutils.o xdiff/xemit.o \
+	xdiff/xmerge.o
 $(XDIFF_OBJS): xdiff/xinclude.h xdiff/xmacros.h xdiff/xdiff.h xdiff/xtypes.h \
 	xdiff/xutils.h xdiff/xprepare.h xdiff/xdiffi.h xdiff/xemit.h
 

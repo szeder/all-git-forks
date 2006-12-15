@@ -60,7 +60,7 @@ int git_diff_ui_config(const char *var, const char *value)
 		diff_rename_limit_default = git_config_int(var, value);
 		return 0;
 	}
-	if (!strcmp(var, "diff.color")) {
+	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
 		diff_use_color_default = git_config_colorbool(var, value);
 		return 0;
 	}
@@ -74,7 +74,7 @@ int git_diff_ui_config(const char *var, const char *value)
 			diff_detect_rename_default = DIFF_DETECT_RENAME;
 		return 0;
 	}
-	if (!strncmp(var, "diff.color.", 11)) {
+	if (!strncmp(var, "diff.color.", 11) || !strncmp(var, "color.diff.", 11)) {
 		int slot = parse_diff_color_slot(var, 11);
 		color_parse(value, var, diff_colors[slot]);
 		return 0;
@@ -802,7 +802,10 @@ static void show_numstat(struct diffstat_t* data, struct diff_options *options)
 	for (i = 0; i < data->nr; i++) {
 		struct diffstat_file *file = data->files[i];
 
-		printf("%d\t%d\t", file->added, file->deleted);
+		if (file->is_binary)
+			printf("-\t-\t");
+		else
+			printf("%d\t%d\t", file->added, file->deleted);
 		if (options->line_termination &&
 		    quote_c_style(file->name, NULL, NULL, 0))
 			quote_c_style(file->name, NULL, stdout, 0);

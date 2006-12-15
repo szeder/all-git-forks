@@ -163,7 +163,7 @@ static void wt_status_print_changed_cb(struct diff_queue_struct *q,
 	int i;
 	if (q->nr)
 		wt_status_print_header("Changed but not updated",
-				"use git-update-index to mark for commit");
+				"use git-add on files to include for commit");
 	for (i = 0; i < q->nr; i++)
 		wt_status_print_filepair(WT_STATUS_CHANGED, q->queue[i]);
 	if (q->nr)
@@ -297,11 +297,11 @@ void wt_status_print(struct wt_status *s)
 
 int git_status_config(const char *k, const char *v)
 {
-	if (!strcmp(k, "status.color")) {
+	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
 		wt_status_use_color = git_config_colorbool(k, v);
 		return 0;
 	}
-	if (!strncmp(k, "status.color.", 13)) {
+	if (!strncmp(k, "status.color.", 13) || !strncmp(k, "color.status", 13)) {
 		int slot = parse_status_slot(k, 13);
 		color_parse(v, k, wt_status_colors[slot]);
 	}

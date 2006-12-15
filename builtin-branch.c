@@ -5,17 +5,70 @@
  * Based on git-branch.sh by Junio C Hamano.
  */
 
+#include "color.h"
 #include "cache.h"
 #include "refs.h"
 #include "commit.h"
 #include "builtin.h"
 
 static const char builtin_branch_usage[] =
-"git-branch (-d | -D) <branchname> | [-l] [-f] <branchname> [<start-point>] | [-r | -a] [-v] [--abbrev=<length>] ";
+  "git-branch (-d | -D) <branchname> | [-l] [-f] <branchname> [<start-point>] | (-m | -M) [<oldbranch>] <newbranch> | [-r | -a] [-v [--abbrev=<length>]]";
 
 
 static const char *head;
 static unsigned char head_sha1[20];
+
+static int branch_use_color;
+static char branch_colors[][COLOR_MAXLEN] = {
+	"\033[m",	/* reset */
+	"",		/* PLAIN (normal) */
+	"\033[31m",	/* REMOTE (red) */
+	"",		/* LOCAL (normal) */
+	"\033[32m",	/* CURRENT (green) */
+};
+enum color_branch {
+	COLOR_BRANCH_RESET = 0,
+	COLOR_BRANCH_PLAIN = 1,
+	COLOR_BRANCH_REMOTE = 2,
+	COLOR_BRANCH_LOCAL = 3,
+	COLOR_BRANCH_CURRENT = 4,
+};
+
+static int parse_branch_color_slot(const char *var, int ofs)
+{
+	if (!strcasecmp(var+ofs, "plain"))
+		return COLOR_BRANCH_PLAIN;
+	if (!strcasecmp(var+ofs, "reset"))
+		return COLOR_BRANCH_RESET;
+	if (!strcasecmp(var+ofs, "remote"))
+		return COLOR_BRANCH_REMOTE;
+	if (!strcasecmp(var+ofs, "local"))
+		return COLOR_BRANCH_LOCAL;
+	if (!strcasecmp(var+ofs, "current"))
+		return COLOR_BRANCH_CURRENT;
+	die("bad config variable '%s'", var);
+}
+
+int git_branch_config(const char *var, const char *value)
+{
+	if (!strcmp(var, "color.branch")) {
+		branch_use_color = git_config_colorbool(var, value);
+		return 0;
+	}
+	if (!strncmp(var, "color.branch.", 13)) {
+		int slot = parse_branch_color_slot(var, 13);
+		color_parse(value, var, branch_colors[slot]);
+		return 0;
+	}
+	return git_default_config(var, value);
+}
+
+const char *branch_get_color(enum color_branch ix)
+{
+	if (branch_use_color)
+		return branch_colors[ix];
+	return "";
+}
 
 static int in_merge_bases(const unsigned char *sha1,
 			  struct commit *rev1,
@@ -183,6 +236,7 @@ static void print_ref_list(int kinds, int verbose, int abbrev)
 	int i;
 	char c;
 	struct ref_list ref_list;
+	int color;
 
 	memset(&ref_list, 0, sizeof(ref_list));
 	ref_list.kinds = kinds;
@@ -191,18 +245,38 @@ static void print_ref_list(int kinds, int verbose, int abbrev)
 	qsort(ref_list.list, ref_list.index, sizeof(struct ref_item), ref_cmp);
 
 	for (i = 0; i < ref_list.index; i++) {
+		switch( ref_list.list[i].kind ) {
+			case REF_LOCAL_BRANCH:
+				color = COLOR_BRANCH_LOCAL;
+				break;
+			case REF_REMOTE_BRANCH:
+				color = COLOR_BRANCH_REMOTE;
+				break;
+			default:
+				color = COLOR_BRANCH_PLAIN;
+				break;
+		}
+
 		c = ' ';
 		if (ref_list.list[i].kind == REF_LOCAL_BRANCH &&
-				!strcmp(ref_list.list[i].name, head))
+				!strcmp(ref_list.list[i].name, head)) {
 			c = '*';
+			color = COLOR_BRANCH_CURRENT;
+		}
 
 		if (verbose) {
-			printf("%c %-*s", c, ref_list.maxwidth,
-			       ref_list.list[i].name);
+			printf("%c %s%-*s%s", c,
+					branch_get_color(color),
+					ref_list.maxwidth,
+					ref_list.list[i].name,
+					branch_get_color(COLOR_BRANCH_RESET));
 			print_ref_info(ref_list.list[i].sha1, abbrev);
 		}
 		else
-			printf("%c %s\n", c, ref_list.list[i].name);
+			printf("%c %s%s%s\n", c,
+					branch_get_color(color),
+					ref_list.list[i].name,
+					branch_get_color(COLOR_BRANCH_RESET));
 	}
 
 	free_ref_list(&ref_list);
@@ -245,15 +319,47 @@ static void create_branch(const char *name, const char *start,
 		die("Failed to write ref: %s.", strerror(errno));
 }
 
+static void rename_branch(const char *oldname, const char *newname, int force)
+{
+	char oldref[PATH_MAX], newref[PATH_MAX], logmsg[PATH_MAX*2 + 100];
+	unsigned char sha1[20];
+
+	if (snprintf(oldref, sizeof(oldref), "refs/heads/%s", oldname) > sizeof(oldref))
+		die("Old branchname too long");
+
+	if (check_ref_format(oldref))
+		die("Invalid branch name: %s", oldref);
+
+	if (snprintf(newref, sizeof(newref), "refs/heads/%s", newname) > sizeof(newref))
+		die("New branchname too long");
+
+	if (check_ref_format(newref))
+		die("Invalid branch name: %s", newref);
+
+	if (resolve_ref(newref, sha1, 1, NULL) && !force)
+		die("A branch named '%s' already exists.", newname);
+
+	snprintf(logmsg, sizeof(logmsg), "Branch: renamed %s to %s",
+		 oldref, newref);
+
+	if (rename_ref(oldref, newref, logmsg))
+		die("Branch rename failed");
+
+	if (!strcmp(oldname, head) && create_symref("HEAD", newref))
+		die("Branch renamed to %s, but HEAD is not updated!", newname);
+}
+
 int cmd_branch(int argc, const char **argv, const char *prefix)
 {
 	int delete = 0, force_delete = 0, force_create = 0;
+	int rename = 0, force_rename = 0;
 	int verbose = 0, abbrev = DEFAULT_ABBREV;
 	int reflog = 0;
 	int kinds = REF_LOCAL_BRANCH;
 	int i;
 
-	git_config(git_default_config);
+	setup_ident();
+	git_config(git_branch_config);
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -277,6 +383,15 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			force_create = 1;
 			continue;
 		}
+		if (!strcmp(arg, "-m")) {
+			rename = 1;
+			continue;
+		}
+		if (!strcmp(arg, "-M")) {
+			rename = 1;
+			force_rename = 1;
+			continue;
+		}
 		if (!strcmp(arg, "-r")) {
 			kinds = REF_REMOTE_BRANCH;
 			continue;
@@ -297,8 +412,20 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			verbose = 1;
 			continue;
 		}
+		if (!strcmp(arg, "--color")) {
+			branch_use_color = 1;
+			continue;
+		}
+		if (!strcmp(arg, "--no-color")) {
+			branch_use_color = 0;
+			continue;
+		}
 		usage(builtin_branch_usage);
 	}
+
+	if ((delete && rename) || (delete && force_create) ||
+	    (rename && force_create))
+		usage(builtin_branch_usage);
 
 	head = xstrdup(resolve_ref("HEAD", head_sha1, 0, NULL));
 	if (!head)
@@ -311,6 +438,10 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		delete_branches(argc - i, argv + i, force_delete);
 	else if (i == argc)
 		print_ref_list(kinds, verbose, abbrev);
+	else if (rename && (i == argc - 1))
+		rename_branch(head, argv[i], force_rename);
+	else if (rename && (i == argc - 2))
+		rename_branch(argv[i], argv[i + 1], force_rename);
 	else if (i == argc - 1)
 		create_branch(argv[i], head, force_create, reflog);
 	else if (i == argc - 2)
