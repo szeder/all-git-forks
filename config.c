@@ -6,7 +6,6 @@
  *
  */
 #include "cache.h"
-#include <regex.h>
 
 #define MAXNAME (256)
 
@@ -746,4 +745,75 @@ out_free:
 	return ret;
 }
 
+int git_config_rename_section(const char *old_name, const char *new_name)
+{
+	int ret = 0;
+	char *config_filename;
+	struct lock_file *lock = xcalloc(sizeof(struct lock_file), 1);
+	int out_fd;
+	char buf[1024];
+
+	config_filename = getenv("GIT_CONFIG");
+	if (!config_filename) {
+		config_filename = getenv("GIT_CONFIG_LOCAL");
+		if (!config_filename)
+			config_filename  = git_path("config");
+	}
+	config_filename = xstrdup(config_filename);
+	out_fd = hold_lock_file_for_update(lock, config_filename, 0);
+	if (out_fd < 0) {
+		ret = error("Could not lock config file!");
+		goto out;
+	}
+
+	if (!(config_file = fopen(config_filename, "rb"))) {
+		ret = error("Could not open config file!");
+		goto out;
+	}
+
+	while (fgets(buf, sizeof(buf), config_file)) {
+		int i;
+		for (i = 0; buf[i] && isspace(buf[i]); i++)
+			; /* do nothing */
+		if (buf[i] == '[') {
+			/* it's a section */
+			int j = 0, dot = 0;
+			for (i++; buf[i] && buf[i] != ']'; i++) {
+				if (!dot && isspace(buf[i])) {
+					dot = 1;
+					if (old_name[j++] != '.')
+						break;
+					for (i++; isspace(buf[i]); i++)
+						; /* do nothing */
+					if (buf[i] != '"')
+						break;
+					continue;
+				}
+				if (buf[i] == '\\' && dot)
+					i++;
+				else if (buf[i] == '"' && dot) {
+					for (i++; isspace(buf[i]); i++)
+						; /* do_nothing */
+					break;
+				}
+				if (buf[i] != old_name[j++])
+					break;
+			}
+			if (buf[i] == ']') {
+				/* old_name matches */
+				ret++;
+				store.baselen = strlen(new_name);
+				store_write_section(out_fd, new_name);
+				continue;
+			}
+		}
+		write(out_fd, buf, strlen(buf));
+	}
+	fclose(config_file);
+	if (close(out_fd) || commit_lock_file(lock) < 0)
+		ret = error("Cannot commit config file!");
+ out:
+	free(config_filename);
+	return ret;
+}
 
