@@ -128,6 +128,12 @@ our %feature = (
 		#         => [content-encoding, suffix, program]
 		'default' => ['x-gzip', 'gz', 'gzip']},
 
+	# Enable text search, which will list the commits which match author,
+	# committer or commit text to a given string.  Enabled by default.
+	'search' => {
+		'override' => 0,
+		'default' => [1]},
+
 	# Enable the pickaxe search, which will list the commits that modified
 	# a given string in a file. This can be practical and quite faster
 	# alternative to 'blame', but still potentially CPU-intensive.
@@ -350,6 +356,9 @@ our $searchtext = $cgi->param('s');
 if (defined $searchtext) {
 	if ($searchtext =~ m/[^a-zA-Z0-9_\.\/\-\+\:\@ ]/) {
 		die_error(undef, "Invalid search parameter");
+	}
+	if (length($searchtext) < 2) {
+		die_error(undef, "At least two characters are required for search parameter");
 	}
 	$searchtext = quotemeta $searchtext;
 }
@@ -1139,8 +1148,9 @@ sub git_get_last_activity {
 
 	$git_dir = "$projectroot/$path";
 	open($fd, "-|", git_cmd(), 'for-each-ref',
-	     '--format=%(refname) %(committer)',
+	     '--format=%(committer)',
 	     '--sort=-committerdate',
+	     '--count=1',
 	     'refs/heads') or return;
 	my $most_recent = <$fd>;
 	close $fd or return;
@@ -1726,6 +1736,9 @@ EOF
 			print " / $action";
 		}
 		print "\n";
+	}
+	my ($have_search) = gitweb_check_feature('search');
+	if ((defined $project) && ($have_search)) {
 		if (!defined $searchtext) {
 			$searchtext = "";
 		}
@@ -2635,6 +2648,8 @@ sub git_shortlog_body {
 	# uses global variable $project
 	my ($revlist, $from, $to, $refs, $extra) = @_;
 
+	my $have_snapshot = gitweb_have_snapshot();
+
 	$from = 0 unless defined $from;
 	$to = $#{$revlist} if (!defined $to || $#{$revlist} < $to);
 
@@ -2662,7 +2677,7 @@ sub git_shortlog_body {
 		      $cgi->a({-href => href(action=>"commit", hash=>$commit)}, "commit") . " | " .
 		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff") . " | " .
 		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree");
-		if (gitweb_have_snapshot()) {
+		if ($have_snapshot) {
 			print " | " . $cgi->a({-href => href(action=>"snapshot", hash=>$commit)}, "snapshot");
 		}
 		print "</td>\n" .
@@ -2837,6 +2852,58 @@ sub git_heads_body {
 	print "</table>\n";
 }
 
+sub git_search_grep_body {
+	my ($greplist, $from, $to, $extra) = @_;
+	$from = 0 unless defined $from;
+	$to = $#{$greplist} if (!defined $to || $#{$greplist} < $to);
+
+	print "<table class=\"grep\" cellspacing=\"0\">\n";
+	my $alternate = 1;
+	for (my $i = $from; $i <= $to; $i++) {
+		my $commit = $greplist->[$i];
+		my %co = parse_commit($commit);
+		if (!%co) {
+			next;
+		}
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
+		      "<td><i>" . esc_html(chop_str($co{'author_name'}, 15, 5)) . "</i></td>\n" .
+		      "<td>" .
+		      $cgi->a({-href => href(action=>"commit", hash=>$co{'id'}), -class => "list subject"},
+			       esc_html(chop_str($co{'title'}, 50)) . "<br/>");
+		my $comment = $co{'comment'};
+		foreach my $line (@$comment) {
+			if ($line =~ m/^(.*)($searchtext)(.*)$/i) {
+				my $lead = esc_html($1) || "";
+				$lead = chop_str($lead, 30, 10);
+				my $match = esc_html($2) || "";
+				my $trail = esc_html($3) || "";
+				$trail = chop_str($trail, 30, 10);
+				my $text = "$lead<span class=\"match\">$match</span>$trail";
+				print chop_str($text, 80, 5) . "<br/>\n";
+			}
+		}
+		print "</td>\n" .
+		      "<td class=\"link\">" .
+		      $cgi->a({-href => href(action=>"commit", hash=>$co{'id'})}, "commit") .
+		      " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$co{'tree'}, hash_base=>$co{'id'})}, "tree");
+		print "</td>\n" .
+		      "</tr>\n";
+	}
+	if (defined $extra) {
+		print "<tr>\n" .
+		      "<td colspan=\"3\">$extra</td>\n" .
+		      "</tr>\n";
+	}
+	print "</table>\n";
+}
+
 ## ======================================================================
 ## ======================================================================
 ## actions
@@ -2908,9 +2975,9 @@ sub git_project_index {
 
 sub git_summary {
 	my $descr = git_get_project_description($project) || "none";
-	my $head = git_get_head_hash($project);
-	my %co = parse_commit($head);
+	my %co = parse_commit("HEAD");
 	my %cd = parse_date($co{'committer_epoch'}, $co{'committer_tz'});
+	my $head = $co{'id'};
 
 	my $owner = git_get_project_owner($project);
 
@@ -2957,7 +3024,7 @@ sub git_summary {
 	# we need to request one more than 16 (0..15) to check if
 	# those 16 are all
 	open my $fd, "-|", git_cmd(), "rev-list", "--max-count=17",
-		git_get_head_hash($project), "--"
+		$head, "--"
 		or die_error(undef, "Open git-rev-list failed");
 	my @revlist = map { chomp; $_ } <$fd>;
 	close $fd;
@@ -2983,6 +3050,7 @@ sub git_summary {
 	if (@forklist) {
 		git_print_header_div('forks');
 		git_project_list_body(\@forklist, undef, 0, 15,
+		                      $#forklist <= 15 ? undef :
 		                      $cgi->a({-href => href(action=>"forks")}, "..."),
 				      'noheader');
 	}
@@ -4144,6 +4212,10 @@ sub git_history {
 }
 
 sub git_search {
+	my ($have_search) = gitweb_check_feature('search');
+	if (!$have_search) {
+		die_error('403 Permission denied', "Permission denied");
+	}
 	if (!defined $searchtext) {
 		die_error(undef, "Text field empty");
 	}
@@ -4153,6 +4225,9 @@ sub git_search {
 	my %co = parse_commit($hash);
 	if (!%co) {
 		die_error(undef, "Unknown commit object");
+	}
+	if (!defined $page) {
+		$page = 0;
 	}
 
 	$searchtype ||= 'commit';
@@ -4166,66 +4241,68 @@ sub git_search {
 	}
 
 	git_header_html();
-	git_print_page_nav('','', $hash,$co{'tree'},$hash);
-	git_print_header_div('commit', esc_html($co{'title'}), $hash);
 
-	print "<table cellspacing=\"0\">\n";
-	my $alternate = 1;
 	if ($searchtype eq 'commit' or $searchtype eq 'author' or $searchtype eq 'committer') {
-		$/ = "\0";
-		open my $fd, "-|", git_cmd(), "rev-list",
-			"--header", "--parents", $hash, "--"
-			or next;
-		while (my $commit_text = <$fd>) {
-			if (!grep m/$searchtext/i, $commit_text) {
-				next;
-			}
-			if ($searchtype eq 'author' && !grep m/\nauthor .*$searchtext/i, $commit_text) {
-				next;
-			}
-			if ($searchtype eq 'committer' && !grep m/\ncommitter .*$searchtext/i, $commit_text) {
-				next;
-			}
-			my @commit_lines = split "\n", $commit_text;
-			my %co = parse_commit(undef, \@commit_lines);
-			if (!%co) {
-				next;
-			}
-			if ($alternate) {
-				print "<tr class=\"dark\">\n";
-			} else {
-				print "<tr class=\"light\">\n";
-			}
-			$alternate ^= 1;
-			print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
-			      "<td><i>" . esc_html(chop_str($co{'author_name'}, 15, 5)) . "</i></td>\n" .
-			      "<td>" .
-			      $cgi->a({-href => href(action=>"commit", hash=>$co{'id'}), -class => "list subject"},
-			               esc_html(chop_str($co{'title'}, 50)) . "<br/>");
-			my $comment = $co{'comment'};
-			foreach my $line (@$comment) {
-				if ($line =~ m/^(.*)($searchtext)(.*)$/i) {
-					my $lead = esc_html($1) || "";
-					$lead = chop_str($lead, 30, 10);
-					my $match = esc_html($2) || "";
-					my $trail = esc_html($3) || "";
-					$trail = chop_str($trail, 30, 10);
-					my $text = "$lead<span class=\"match\">$match</span>$trail";
-					print chop_str($text, 80, 5) . "<br/>\n";
-				}
-			}
-			print "</td>\n" .
-			      "<td class=\"link\">" .
-			      $cgi->a({-href => href(action=>"commit", hash=>$co{'id'})}, "commit") .
-			      " | " .
-			      $cgi->a({-href => href(action=>"tree", hash=>$co{'tree'}, hash_base=>$co{'id'})}, "tree");
-			print "</td>\n" .
-			      "</tr>\n";
+		my $greptype;
+		if ($searchtype eq 'commit') {
+			$greptype = "--grep=";
+		} elsif ($searchtype eq 'author') {
+			$greptype = "--author=";
+		} elsif ($searchtype eq 'committer') {
+			$greptype = "--committer=";
 		}
+		open my $fd, "-|", git_cmd(), "rev-list",
+			("--max-count=" . (100 * ($page+1))),
+			($greptype . $searchtext),
+			$hash, "--"
+			or next;
+		my @revlist = map { chomp; $_ } <$fd>;
 		close $fd;
+
+		my $paging_nav = '';
+		if ($page > 0) {
+			$paging_nav .=
+				$cgi->a({-href => href(action=>"search", hash=>$hash,
+						       searchtext=>$searchtext, searchtype=>$searchtype)},
+					"first");
+			$paging_nav .= " &sdot; " .
+				$cgi->a({-href => href(action=>"search", hash=>$hash,
+						       searchtext=>$searchtext, searchtype=>$searchtype,
+						       page=>$page-1),
+					 -accesskey => "p", -title => "Alt-p"}, "prev");
+		} else {
+			$paging_nav .= "first";
+			$paging_nav .= " &sdot; prev";
+		}
+		if ($#revlist >= (100 * ($page+1)-1)) {
+			$paging_nav .= " &sdot; " .
+				$cgi->a({-href => href(action=>"search", hash=>$hash,
+						       searchtext=>$searchtext, searchtype=>$searchtype,
+						       page=>$page+1),
+					 -accesskey => "n", -title => "Alt-n"}, "next");
+		} else {
+			$paging_nav .= " &sdot; next";
+		}
+		my $next_link = '';
+		if ($#revlist >= (100 * ($page+1)-1)) {
+			$next_link =
+				$cgi->a({-href => href(action=>"search", hash=>$hash,
+						       searchtext=>$searchtext, searchtype=>$searchtype,
+						       page=>$page+1),
+					 -accesskey => "n", -title => "Alt-n"}, "next");
+		}
+
+		git_print_page_nav('','', $hash,$co{'tree'},$hash, $paging_nav);
+		git_print_header_div('commit', esc_html($co{'title'}), $hash);
+		git_search_grep_body(\@revlist, ($page * 100), $#revlist, $next_link);
 	}
 
 	if ($searchtype eq 'pickaxe') {
+		git_print_page_nav('','', $hash,$co{'tree'},$hash);
+		git_print_header_div('commit', esc_html($co{'title'}), $hash);
+
+		print "<table cellspacing=\"0\">\n";
+		my $alternate = 1;
 		$/ = "\n";
 		my $git_command = git_cmd_str();
 		open my $fd, "-|", "$git_command rev-list $hash | " .
@@ -4280,8 +4357,9 @@ sub git_search {
 			}
 		}
 		close $fd;
+
+		print "</table>\n";
 	}
-	print "</table>\n";
 	git_footer_html();
 }
 

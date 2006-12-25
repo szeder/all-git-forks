@@ -343,6 +343,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 static void add_parents_to_list(struct rev_info *revs, struct commit *commit, struct commit_list **list)
 {
 	struct commit_list *parent = commit->parents;
+	unsigned left_flag;
 
 	if (commit->object.flags & ADDED)
 		return;
@@ -387,6 +388,7 @@ static void add_parents_to_list(struct rev_info *revs, struct commit *commit, st
 	if (revs->no_walk)
 		return;
 
+	left_flag = (commit->object.flags & SYMMETRIC_LEFT);
 	parent = commit->parents;
 	while (parent) {
 		struct commit *p = parent->item;
@@ -394,6 +396,7 @@ static void add_parents_to_list(struct rev_info *revs, struct commit *commit, st
 		parent = parent->next;
 
 		parse_commit(p);
+		p->object.flags |= left_flag;
 		if (p->object.flags & SEEN)
 			continue;
 		p->object.flags |= SEEN;
@@ -523,6 +526,7 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	revs->prefix = prefix;
 	revs->max_age = -1;
 	revs->min_age = -1;
+	revs->skip_count = -1;
 	revs->max_count = -1;
 
 	revs->prune_fn = NULL;
@@ -639,7 +643,7 @@ int handle_revision_arg(const char *arg, struct rev_info *revs,
 				add_pending_commit_list(revs, exclude,
 							flags_exclude);
 				free_commit_list(exclude);
-				a->object.flags |= flags;
+				a->object.flags |= flags | SYMMETRIC_LEFT;
 			} else
 				a->object.flags |= flags_exclude;
 			b->object.flags |= flags;
@@ -759,6 +763,10 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->max_count = atoi(arg + 12);
 				continue;
 			}
+			if (!strncmp(arg, "--skip=", 7)) {
+				revs->skip_count = atoi(arg + 7);
+				continue;
+			}
 			/* accept -<digit>, like traditional "head" */
 			if ((*arg == '-') && isdigit(arg[1])) {
 				revs->max_count = atoi(arg + 1);
@@ -847,6 +855,10 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 			}
 			if (!strcmp(arg, "--boundary")) {
 				revs->boundary = 1;
+				continue;
+			}
+			if (!strcmp(arg, "--left-right")) {
+				revs->left_right = 1;
 				continue;
 			}
 			if (!strcmp(arg, "--objects")) {
@@ -1122,22 +1134,10 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 			   commit->buffer, strlen(commit->buffer));
 }
 
-struct commit *get_revision(struct rev_info *revs)
+static struct commit *get_revision_1(struct rev_info *revs)
 {
-	struct commit_list *list = revs->commits;
-
-	if (!list)
+	if (!revs->commits)
 		return NULL;
-
-	/* Check the max_count ... */
-	switch (revs->max_count) {
-	case -1:
-		break;
-	case 0:
-		return NULL;
-	default:
-		revs->max_count--;
-	}
 
 	do {
 		struct commit_list *entry = revs->commits;
@@ -1204,4 +1204,29 @@ struct commit *get_revision(struct rev_info *revs)
 		return commit;
 	} while (revs->commits);
 	return NULL;
+}
+
+struct commit *get_revision(struct rev_info *revs)
+{
+	struct commit *c = NULL;
+
+	if (0 < revs->skip_count) {
+		while ((c = get_revision_1(revs)) != NULL) {
+			if (revs->skip_count-- <= 0)
+				break;
+		}
+	}
+
+	/* Check the max_count ... */
+	switch (revs->max_count) {
+	case -1:
+		break;
+	case 0:
+		return NULL;
+	default:
+		revs->max_count--;
+	}
+	if (c)
+		return c;
+	return get_revision_1(revs);
 }

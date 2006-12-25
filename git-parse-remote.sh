@@ -7,18 +7,7 @@ GIT_DIR=$(git-rev-parse --git-dir 2>/dev/null) || :;
 get_data_source () {
 	case "$1" in
 	*/*)
-		# Not so fast.	This could be the partial URL shorthand...
-		token=$(expr "z$1" : 'z\([^/]*\)/')
-		remainder=$(expr "z$1" : 'z[^/]*/\(.*\)')
-		if test "$(git-repo-config --get "remote.$token.url")"
-		then
-			echo config-partial
-		elif test -f "$GIT_DIR/branches/$token"
-		then
-			echo branches-partial
-		else
-			echo ''
-		fi
+		echo ''
 		;;
 	*)
 		if test "$(git-repo-config --get "remote.$1.url")"
@@ -40,12 +29,7 @@ get_remote_url () {
 	data_source=$(get_data_source "$1")
 	case "$data_source" in
 	'')
-		echo "$1" ;;
-	config-partial)
-		token=$(expr "z$1" : 'z\([^/]*\)/')
-		remainder=$(expr "z$1" : 'z[^/]*/\(.*\)')
-		url=$(git-repo-config --get "remote.$token.url")
-		echo "$url/$remainder"
+		echo "$1"
 		;;
 	config)
 		git-repo-config --get "remote.$1.url"
@@ -54,14 +38,10 @@ get_remote_url () {
 		sed -ne '/^URL: */{
 			s///p
 			q
-		}' "$GIT_DIR/remotes/$1" ;;
+		}' "$GIT_DIR/remotes/$1"
+		;;
 	branches)
-		sed -e 's/#.*//' "$GIT_DIR/branches/$1" ;;
-	branches-partial)
-		token=$(expr "z$1" : 'z\([^/]*\)/')
-		remainder=$(expr "z$1" : 'z[^/]*/\(.*\)')
-		url=$(sed -e 's/#.*//' "$GIT_DIR/branches/$token")
-		echo "$url/$remainder"
+		sed -e 's/#.*//' "$GIT_DIR/branches/$1"
 		;;
 	*)
 		die "internal error: get-remote-url $1" ;;
@@ -77,7 +57,7 @@ get_default_remote () {
 get_remote_default_refs_for_push () {
 	data_source=$(get_data_source "$1")
 	case "$data_source" in
-	'' | config-partial | branches | branches-partial)
+	'' | branches)
 		;; # no default push mapping, just send matching refs.
 	config)
 		git-repo-config --get-all "remote.$1.push" ;;
@@ -132,11 +112,12 @@ canon_refs_list_for_fetch () {
 	# or the first one otherwise; add prefix . to the rest
 	# to prevent the secondary branches to be merged by default.
 	merge_branches=
-	found_mergeref=
 	curr_branch=
 	if test "$1" = "-d"
 	then
 		shift ; remote="$1" ; shift
+		set x $(expand_refs_wildcard "$@")
+		shift
 		if test "$remote" = "$(get_default_remote)"
 		then
 			curr_branch=$(git-symbolic-ref HEAD | \
@@ -144,8 +125,6 @@ canon_refs_list_for_fetch () {
 			merge_branches=$(git-repo-config \
 			    --get-all "branch.${curr_branch}.merge")
 		fi
-		set x $(expand_refs_wildcard "$@")
-		shift
 	fi
 	for ref
 	do
@@ -171,10 +150,6 @@ canon_refs_list_for_fetch () {
 			    dot_prefix= && break
 			done
 		fi
-		if test -z $dot_prefix
-		then
-			found_mergeref=true
-		fi
 		case "$remote" in
 		'') remote=HEAD ;;
 		refs/heads/* | refs/tags/* | refs/remotes/*) ;;
@@ -195,18 +170,13 @@ canon_refs_list_for_fetch () {
 		fi
 		echo "${dot_prefix}${force}${remote}:${local}"
 	done
-	if test -z "$found_mergeref" -a "$curr_branch"
-	then
-		echo >&2 "Warning: No merge candidate found because value of config option
-         \"branch.${curr_branch}.merge\" does not match any remote branch fetched."
-	fi
 }
 
 # Returns list of src: (no store), or src:dst (store)
 get_remote_default_refs_for_fetch () {
 	data_source=$(get_data_source "$1")
 	case "$data_source" in
-	'' | config-partial | branches-partial)
+	'')
 		echo "HEAD:" ;;
 	config)
 		canon_refs_list_for_fetch -d "$1" \

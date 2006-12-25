@@ -11,8 +11,10 @@
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
+#if !defined(__APPLE__) && !defined(__FreeBSD__)
 #define _XOPEN_SOURCE 600 /* glibc2 and AIX 5.3L need 500, OpenBSD needs 600 for S_ISLNK() */
 #define _XOPEN_SOURCE_EXTENDED 1 /* AIX 5.3L needs this */
+#endif
 #define _GNU_SOURCE
 #define _BSD_SOURCE
 
@@ -69,10 +71,12 @@
 extern void usage(const char *err) NORETURN;
 extern void die(const char *err, ...) NORETURN __attribute__((format (printf, 1, 2)));
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern void warn(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
 extern void set_usage_routine(void (*routine)(const char *err) NORETURN);
 extern void set_die_routine(void (*routine)(const char *err, va_list params) NORETURN);
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
+extern void set_warn_routine(void (*routine)(const char *warn, va_list params));
 
 #ifdef NO_MMAP
 
@@ -83,10 +87,10 @@ extern void set_error_routine(void (*routine)(const char *err, va_list params));
 #define MAP_FAILED ((void*)-1)
 #endif
 
-#define mmap gitfakemmap
-#define munmap gitfakemunmap
-extern void *gitfakemmap(void *start, size_t length, int prot , int flags, int fd, off_t offset);
-extern int gitfakemunmap(void *start, size_t length);
+#define mmap git_mmap
+#define munmap git_munmap
+extern void *git_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
+extern int git_munmap(void *start, size_t length);
 
 #else /* NO_MMAP */
 
