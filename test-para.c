@@ -3,78 +3,30 @@
 #include "tree.h"
 #include "tree-walk.h"
 #include "para-walk.h"
-
-/* test */
-
-static void show_one(const char *type, const char *name, int namelen, const unsigned char *hash, unsigned mode)
-{
-	printf("%s %06o %.*s\t%.*s\n", type, mode, 7, sha1_to_hex(hash), namelen, name);
-}
-
-static const char test_para_usage[] =
-"test-para [--[no-](tree|work|index)] [--] [<tree>...]";
+#include "commit.h"
+#include "diff.h"
+#include "revision.h"
 
 int main(int ac, const char **av)
 {
 	struct para_walk w;
-	unsigned char head[20];
-	unsigned char trees[64][20];
-	int num_tree = 0, i, using_head, show_all = 0;
-	int index_wanted = 1, work_wanted = 1, tree_wanted = 0;
+	unsigned char head[1][20];
 	const char *prefix;
 	const char **pathspec;
+	struct combine_diff_path *cdp;
 
 	prefix = setup_git_directory();
 	read_cache();
-	get_sha1("HEAD", head);
+	get_sha1("HEAD", head[0]);
 
-	while (1 < ac && !strncmp(av[1], "--", 2)) {
-		if (!strcmp(av[1] + 2, "all"))
-			show_all = 1;
-		else if (!strcmp(av[1] + 2, "tree"))
-			tree_wanted = 1;
-		else if (!strcmp(av[1] + 2, "work"))
-			work_wanted = 1;
-		else if (!strcmp(av[1] + 2, "index"))
-			index_wanted = 1;
-		else if (!strcmp(av[1] + 2, "no-tree"))
-			tree_wanted = 0;
-		else if (!strcmp(av[1] + 2, "no-work"))
-			work_wanted = 0;
-		else if (!strcmp(av[1] + 2, "no-index"))
-			index_wanted = 0;
-		else if (!av[1][2])
-			break;
-		else
-			usage(test_para_usage);
-		ac--;
-		av++;
-	}
-
-	for (i = 1; i < ac; i++) {
-		if (!strcmp(av[i], "--")) {
-			i++;
-			break; /* the rest are pathspecs */
-		}
-		if (get_sha1(av[i], trees[num_tree]))
-			die("%s: not a valid object name", av[i]);
-		num_tree++;
-	}
-	if (!num_tree) {
-		memcpy(trees[0], head, 20);
-		num_tree = 1;
-		using_head = 1;
-	}
-	else
-		using_head = 0;
-	if (av[i])
-		pathspec = get_pathspec(prefix, av + i);
+	if (2 <= ac)
+		pathspec = get_pathspec(prefix, av + 1);
 	else
 		pathspec = NULL;
 
-	init_para_walk(&w, pathspec, index_wanted, work_wanted,
-		       num_tree, trees);
+	cdp = xcalloc(1, combine_diff_path_size(2, 0));
 
+	init_para_walk(&w, pathspec, 1, 1, 1, head);
 	while (!extract_para_walk(&w)) {
 		int i;
 		int any_different = 0;
@@ -83,11 +35,6 @@ int main(int ac, const char **av)
 
 		for (i = 0; !any_different && i < w.num_trees + 2; i++) {
 			struct para_walk_entry *e;
-
-			if ((!index_wanted && i == 0) ||
-			    (!work_wanted && i == 1))
-				continue;
-
 			e = &w.peek[i];
 			if (!same_entry)
 				same_entry = e;
@@ -102,53 +49,38 @@ int main(int ac, const char **av)
 				all_are_trees = 0;
 		}
 
-		if (show_all ||
-		    (any_different && !(!tree_wanted && all_are_trees)) ) {
+		if ((any_different && !all_are_trees)) {
 			/* Show them when there is a difference,
 			 * except that we do not show the entry
 			 * everybody is a tree but different without
 			 * --tree.
 			 */
-			struct para_walk_entry *e;
-			const char *z;
+			if (any_different) {
+				struct rev_info rev;
+				memset(&rev, 0, sizeof(rev));
+				rev.diffopt.output_format = DIFF_FORMAT_PATCH;
 
-			if (!any_different) {
-				e = same_entry;
-				z = "same   ";
-				show_one(z, e->name, e->namelen,
-					 e->hash, e->mode);
+				cdp->path = strdup(w.peek[0].name);
+				cdp->len = w.peek[0].namelen;
+
+				/*
+				 * treat HEAD (peek[2]) and index (peek[0])
+				 * as parents of work tree (peek[1]) and
+				 * run combined diff.
+				 */
+				cdp->mode = w.peek[1].mode;
+				hashcpy(cdp->sha1, w.peek[1].hash);
+
+				/* HEAD */
+				cdp->parent[0].mode = w.peek[2].mode;
+				hashcpy(cdp->parent[0].sha1, w.peek[2].hash);
+				/* index */
+				cdp->parent[1].mode = w.peek[0].mode;
+				hashcpy(cdp->parent[1].sha1, w.peek[0].hash);
+
+				show_combined_diff(cdp, 2, 0, &rev);
+				free(cdp->path);
 			}
-			else
-				for (i = 0; i < w.num_trees + 2; i++) {
-					char numbuf[10];
-
-					if ((!index_wanted && i == 0) ||
-					    (!work_wanted && i == 1))
-						continue;
-
-					e = &w.peek[i];
-					switch (i) {
-					case 0:
-						z = "index  ";
-						break;
-					case 1:
-						z = "work   ";
-						break;
-					default:
-						if (using_head) {
-							z = "HEAD   ";
-						}
-						else {
-							sprintf(numbuf,
-								"tree %2d",
-								i - 1);
-							z = numbuf;
-						}
-						break;
-					}
-					show_one(z, e->name, e->namelen,
-						 e->hash, e->mode);
-				}
 		}
 
 		if (!any_different && all_are_trees)
