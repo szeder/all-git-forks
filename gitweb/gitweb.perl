@@ -35,13 +35,17 @@ BEGIN {
 		require Apache2::ServerRec;
 		require Apache2::Response;
 		require Apache2::Const;
+		require APR::Date;
 		Apache2::RequestRec->import();
 		Apache2::ServerRec->import();
 		Apache2::Const->import(-compile => qw(:common :http));
+		APR::Date->import();
 	} elsif (MP_GEN == 1) {
 		require Apache;
 		require Apache::Constants;
+		require Apache::File;
 		import Apache;
+		import Apache::File;
 		Apache::Constants->import(qw(:common :http));
 	}
 
@@ -1727,11 +1731,129 @@ sub blob_mimetype {
 sub http_header {
 	my @header = @_;
 
-	print $cgi->header(@header);
+	if (MP_GEN) {
+		my %header = @header;
+		my $cache_validator;
+
+		## special cases ##
+		# -status
+		$r->status_line($header{-status})
+			if $header{-status};
+		delete $header{-status} if exists $header{-status};
+		# -type and -charset
+		if ($header{-type} || $header{-charset}) {
+			my $type = $header{-type} || 'text/html';
+			$type .= "; charset=$header{-charset}"
+				if $type =~ m!^text/! and $type !~ /\bcharset\b/ and $header{-charset};
+
+			$r->content_type($type);
+		}
+		delete $header{-type} if exists $header{-type};
+		delete $header{-charset} if exists $header{-charset};
+		# -content_encoding
+		$r->content_encoding($header{-content_encoding})
+			if $header{-content_encoding};
+		delete $header{-content_encoding} if exists $header{-content_encoding};
+		# -expires
+		if ($header{-expires}) {
+			my $expires = CGI::Util::expires($header{-expires}, 'http');
+			if (MP_GEN == 1) {
+				$r->header_out('Expires', $expires);
+			} else {
+				$r->headers_out->add('Expires', $expires);
+			}
+		}
+		delete $header{-expires} if exists $header{-expires};
+		# -last_modified
+		if ($header{-last_modified}) {
+			$cache_validator ||= 1;
+			if (MP_GEN == 1) {
+				$r->header_out('Last-Modified', $header{-last_modified});
+			} else {
+				$r->set_last_modified(APR::Date::parse_http($header{-last_modified}));
+			}
+		}
+		delete $header{-last_modified} if exists $header{-last_modified};
+
+		## other headers ##
+		while (my ($key, $value) = each %header) {
+			$key =~ s/^-//; # -content_disposition -> content_disposition
+			$key =~ s/_/-/; #  content_disposition -> content-disposition
+			$key =~ s/(\w)(\w*)/\u$1$2/g;
+			                #  content-disposition -> Content-Disposition
+
+			if (MP_GEN == 1) {
+				$r->header_out($key, $value);
+			} else {
+				$r->headers_out->add($key, $value);
+			}
+		}
+		$cache_validator ||= (exists $header{-ETag} || exists $header{-etag});
+
+		## send headers / flush ##
+		if (MP_GEN == 1) {
+			$r->send_http_headers();
+
+			## validate cache ##
+			if ($cache_validator &&
+			    (my $rc = $r->meets_conditions()) != Apache::Constant::OK) {
+				return $rc;
+			}
+		} else {
+			$r->rflush();
+
+			## validate cache ##
+			if ($cache_validator &&
+			    (my $rc = $r->meets_conditions()) != Apache2::Const::OK) {
+				return $rc;
+			}
+		}
+	} else {
+		print $cgi->header(@header);
+	}
 
 	# Optimization: skip generating the body if client asks only
 	# for HTTP header (e.g. cache validation).
-	return if ($cgi->request_method() eq 'HEAD');
+	if (MP_GEN == 2) {
+		return Apache2::Const::OK   if $r->header_only();
+	} elsif (MP_GEN == 1) {
+		return Apache::Constant::OK if $r->header_only();
+	} else {
+		return if ($cgi->request_method() eq 'HEAD');
+	}
+}
+
+sub http_redirect {
+	my @params = @_;
+	my %params;
+	if (@params % 2 == 0) {
+		%params = @params;
+	}
+	my $uri = $params{-uri} || $params{-url} || $params{-location}
+		|| $params[0] || $cgi->self_url;
+	my $status = $params{-status};
+
+	if (MP_GEN == 1) {
+		$r->header_out('Location', $uri);
+		if (defined $status) {
+			$r->status_line($status);
+		} else {
+			$r->status(Apache::Constant::REDIRECT);
+		}
+
+		$r->send_http_headers();
+	} elsif (MP_GEN == 2) {
+		$r->headers_out->add('Location', $uri);
+		if (defined $status) {
+			$r->status_line($status);
+		} else {
+			$r->status(Apache2::Const::REDIRECT);
+		}
+
+		$r->rflush();
+	} else {
+		print $cgi->redirect(@params);
+	}
 }
 
 sub git_header_html {
@@ -1853,7 +1975,8 @@ EOF
 		      $cgi->hidden(-name => "a") . "\n" .
 		      $cgi->hidden(-name => "h") . "\n" .
 		      $cgi->popup_menu(-name => 'st', -default => 'commit',
-				       -values => ['commit', 'author', 'committer', 'pickaxe']) .
+		                       -values => ['commit', 'author', 'committer',
+		                       gitweb_check_feature('pickaxe') ? 'pickaxe' : ()]) .
 		      $cgi->sup($cgi->a({-href => href(action=>"search_help")}, "?")) .
 		      " search:\n",
 		      $cgi->textfield(-name => "s", -value => $searchtext) . "\n" .
@@ -3900,10 +4023,10 @@ sub git_object {
 		die_error('404 Not Found', "Not enough information to find object");
 	}
 
-	print $cgi->redirect(-uri => href(action=>$type, -full=>1,
-	                                  hash=>$hash, hash_base=>$hash_base,
-	                                  file_name=>$file_name),
-	                     -status => '302 Found');
+	http_redirect(-uri => href(action=>$type, -full=>1,
+	                           hash=>$hash, hash_base=>$hash_base,
+	                           file_name=>$file_name),
+	              -status => '302 Found');
 }
 
 sub git_blobdiff {
