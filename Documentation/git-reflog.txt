@@ -22,9 +22,10 @@ updated.  This command is to manage the information recorded in it.
 The subcommand "expire" is used to prune older reflog entries.
 Entries older than `expire` time, or entries older than
 `expire-unreachable` time and are not reachable from the current
-tip, are removed from the reflog.  This is typically not used
+tip, are removed from the reflog.  Entries which refer to
+commits that are no longer in the repository are pruned
+regardless of their age.  This command is typically not used
 directly by the end users -- instead, see gitlink:git-gc[1].
-
 
 
 OPTIONS
