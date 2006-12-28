@@ -157,7 +157,7 @@ BASIC_LDFLAGS =
 SCRIPT_SH = \
 	git-bisect.sh git-checkout.sh \
 	git-clean.sh git-clone.sh git-commit.sh \
-	git-fetch.sh \
+	git-fetch.sh git-gc.sh \
 	git-ls-remote.sh \
 	git-merge-one-file.sh git-parse-remote.sh \
 	git-pull.sh git-rebase.sh \
@@ -250,8 +250,7 @@ LIB_OBJS = \
 	revision.o pager.o tree-walk.o xdiff-interface.o \
 	write_or_die.o trace.o list-objects.o grep.o \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
-	color.o wt-status.o archive-zip.o archive-tar.o \
-	utf8.o
+	color.o wt-status.o archive-zip.o archive-tar.o shallow.o utf8.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -360,8 +359,8 @@ ifeq ($(uname_O),Cygwin)
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
 	# There are conflicting reports about this.
 	# On some boxes NO_MMAP is needed, and not so elsewhere.
-	# Try uncommenting this if you see things break -- YMMV.
-	# NO_MMAP = YesPlease
+	# Try commenting this out if you suspect MMAP is more efficient
+	NO_MMAP = YesPlease
 	NO_IPV6 = YesPlease
 	X = .exe
 endif
