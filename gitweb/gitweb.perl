@@ -1682,7 +1682,17 @@ sub blob_mimetype {
 }
 
 ## ======================================================================
-## functions printing HTML: header, footer, error page
+## functions printing HTTP or HTML: header, footer, error page
+
+sub http_header {
+	my @header = @_;
+
+	print $cgi->header(@header);
+
+	# Optimization: skip generating the body if client asks only
+	# for HTTP header (e.g. cache validation).
+	return if ($cgi->request_method() eq 'HEAD');
+}
 
 sub git_header_html {
 	my $status = shift || "200 OK";
@@ -1713,8 +1723,11 @@ sub git_header_html {
 	} else {
 		$content_type = 'text/html';
 	}
-	print $cgi->header(-type=>$content_type, -charset => 'utf-8',
-	                   -status=> $status, -expires => $expires);
+	http_header(
+		-type => $content_type,
+		-charset => 'utf-8',
+		-status => $status,
+		-expires => $expires);
 	my $mod_perl_version = $ENV{'MOD_PERL'} ? " $ENV{'MOD_PERL'}" : '';
 	print <<EOF;
 <?xml version="1.0" encoding="utf-8"?>
@@ -2988,7 +3001,7 @@ sub git_forks {
 sub git_project_index {
 	my @projects = git_get_projects_list($project);
 
-	print $cgi->header(
+	http_header(
 		-type => 'text/plain',
 		-charset => 'utf-8',
 		-content_disposition => 'inline; filename="index.aux"');
@@ -3380,7 +3393,7 @@ sub git_blob_plain {
 		$save_as .= '.txt';
 	}
 
-	print $cgi->header(
+	http_header(
 		-type => "$type",
 		-expires=>$expires,
 		-content_disposition => 'inline; filename="' . "$save_as" . '"');
@@ -3596,10 +3609,9 @@ sub git_snapshot {
 
 	my $filename = basename($project) . "-$hash.tar.$suffix";
 
-	print $cgi->header(
+	http_header(
 		-type => "application/$ctype",
-		-content_disposition => 'inline; filename="' . "$filename" . '"',
-		-status => '200 OK');
+		-content_disposition => 'inline; filename="' . "$filename" . '"');
 
 	my $git = git_cmd_str();
 	my $name = $project;
@@ -3984,7 +3996,7 @@ sub git_blobdiff {
 		}
 
 	} elsif ($format eq 'plain') {
-		print $cgi->header(
+		http_header(
 			-type => 'text/plain',
 			-charset => 'utf-8',
 			-expires => $expires,
@@ -4133,7 +4145,7 @@ sub git_commitdiff {
 		my $tagname = git_get_rev_name_tags($hash);
 		my $filename = basename($project) . "-$hash.patch";
 
-		print $cgi->header(
+		http_header(
 			-type => 'text/plain',
 			-charset => 'utf-8',
 			-expires => $expires,
@@ -4470,12 +4482,12 @@ sub git_feed {
 	if (defined($commitlist[0])) {
 		%latest_commit = %{$commitlist[0]};
 		%latest_date   = parse_date($latest_commit{'author_epoch'});
-		print $cgi->header(
+		http_header(
 			-type => $content_type,
 			-charset => 'utf-8',
 			-last_modified => $latest_date{'rfc2822'});
 	} else {
-		print $cgi->header(
+		http_header(
 			-type => $content_type,
 			-charset => 'utf-8');
 	}
@@ -4675,7 +4687,9 @@ sub git_atom {
 sub git_opml {
 	my @list = git_get_projects_list();
 
-	print $cgi->header(-type => 'text/xml', -charset => 'utf-8');
+	http_header(
+		-type => 'text/xml',
+		-charset => 'utf-8');
 	print <<XML;
 <?xml version="1.0" encoding="utf-8"?>
 <opml version="1.0">
