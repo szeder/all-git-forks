@@ -18,9 +18,35 @@ use File::Find qw();
 use File::Basename qw(basename);
 binmode STDOUT, ':utf8';
 
+# Set the constant MP_GEN to 0 if mod_perl is not available,
+# to 1 if running under mod_perl 1.0
+# and 2 for mod_perl 2.0
+use constant {
+	MP_GEN => ($ENV{'MOD_PERL'}
+	           ? ( exists $ENV{'MOD_PERL_API_VERSION'} and 
+	                      $ENV{'MOD_PERL_API_VERSION'} >= 2 ) ? 2 : 1
+	           : 0),
+};
+
 BEGIN {
-	CGI->compile() if $ENV{MOD_PERL};
+	# use appropriate mod_perl modules (conditional use)
+	if (MP_GEN == 2) {
+		require Apache2::RequestRec;
+		require Apache2::Const;
+		Apache2::Const->import(-compile => qw(:common :http));
+	} elsif (MP_GEN == 1) {
+		require Apache;
+		require Apache::Constants;
+		Apache::Constants->import(qw(:common :http));
+	}
+
+	# precompile CGI for mod_perl
+	CGI->compile() if MP_GEN;
 }
+
+# mod_perl request
+my $r;
+$r = shift @_ if MP_GEN;
 
 our $cgi = new CGI;
 our $version = "++GIT_VERSION++";
