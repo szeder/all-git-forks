@@ -11,7 +11,7 @@ SYNOPSIS
 [verse]
 'git-clone' [--template=<template_directory>] [-l [-s]] [-q] [-n] [--bare]
 	  [-o <name>] [-u <upload-pack>] [--reference <repository>]
-	  <repository> [<directory>]
+	  [--depth=<depth>] <repository> [<directory>]
 
 DESCRIPTION
 -----------
@@ -30,6 +30,7 @@ This default configuration is achieved by creating references to
 the remote branch heads under `$GIT_DIR/refs/remotes/origin` and
 by initializing `remote.origin.url` and `remote.origin.fetch`
 configuration variables.
+
 
 OPTIONS
 -------
@@ -75,16 +76,13 @@ OPTIONS
 	Also the branch heads at the remote are copied directly
 	to corresponding local branch heads, without mapping
 	them to `refs/remotes/origin/`.  When this option is
-	used, neither the `origin` branch nor the default
-	`remotes/origin` file is created.
+	used, neither remote-tracking branches nor the related
+	configuration variables are created.
 
 --origin <name>::
 -o <name>::
-	Instead of using the branch name 'origin' to keep track
-	of the upstream repository, use <name> instead.  Note
-	that the shorthand name stored in `remotes/origin` is
-	not affected, but the local branch name to pull the
-	remote `master` branch into is.
+	Instead of using the remote name 'origin' to keep track
+	of the upstream repository, use <name> instead.
 
 --upload-pack <upload-pack>::
 -u <upload-pack>::
@@ -97,6 +95,15 @@ OPTIONS
 	Specify the directory from which templates will be used;
 	if unset the templates are taken from the installation
 	defined default, typically `/usr/share/git-core/templates`.
+
+--depth=<depth>::
+	Create a 'shallow' clone with a history truncated to the
+	specified number of revs.  A shallow repository has
+	number of limitations (you cannot clone or fetch from
+	it, nor push from nor into it), but is adequate if you
+	want to only look at near the tip of a large project
+	with a long history, and would want to send in a fixes
+	as patches.
 
 <repository>::
 	The (possibly remote) repository to clone from.  It can
