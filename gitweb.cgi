@@ -83,8 +83,25 @@ sub committags_real {
 		}
 		$aEnd = "<a $class href=\"$href\">";
 	}
-	$a =~ s!BUG\(([0-9]*)\)!$aStart<a href="http://bugs.xmms2.xmms.se/view.php?id=$1">BUG($1)</a>$aEnd!g;
-	$a =~ s!FEATURE\(([0-9]*)\)!$aStart<a href="http://bugs.xmms2.xmms.se/view.php?id=$1">FEATURE($1)</a>$aEnd!g;
+
+	$a =~ s!
+		(?<=BUG\()
+		([\d,\s]+)
+		(?=\))
+		!
+		join q{, }, map {
+			qq[$aStart<a href="http://bugs.xmms2.xmms.se/view.php?id=$_">$_</a>$aEnd]
+		} split /,\s*/, $1 !xge;
+
+	$a =~ s!
+		(?<=FEATURE\()
+		([\d,\s]+)
+		(?=\))
+		!
+		join q{, }, map {
+			qq[$aStart<a href="http://bugs.xmms2.xmms.se/view.php?id=$_">$_</a>$aEnd]
+		} split /,\s*/, $1 !xge;
+
 	$a =~ s!RELEASE: (.*)!RELEASE: $aStart<a href="http://wiki.xmms2.xmms.se/index.php/Release:$1">$1</a>$aEnd!g;
 	return $a;
 }
