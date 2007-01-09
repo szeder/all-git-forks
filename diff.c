@@ -1341,10 +1341,8 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		fd = open(s->path, O_RDONLY);
 		if (fd < 0)
 			goto err_empty;
-		s->data = mmap(NULL, s->size, PROT_READ, MAP_PRIVATE, fd, 0);
+		s->data = xmmap(NULL, s->size, PROT_READ, MAP_PRIVATE, fd, 0);
 		close(fd);
-		if (s->data == MAP_FAILED)
-			goto err_empty;
 		s->should_munmap = 1;
 	}
 	else {
@@ -2875,10 +2873,12 @@ void diff_change(struct diff_options *options,
 }
 
 void diff_unmerge(struct diff_options *options,
-		  const char *path)
+		  const char *path,
+		  unsigned mode, const unsigned char *sha1)
 {
 	struct diff_filespec *one, *two;
 	one = alloc_filespec(path);
 	two = alloc_filespec(path);
-	diff_queue(&diff_queued_diff, one, two);
+	fill_filespec(one, sha1, mode);
+	diff_queue(&diff_queued_diff, one, two)->is_unmerged = 1;
 }
