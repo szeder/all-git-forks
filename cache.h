@@ -127,7 +127,8 @@ extern int cache_errno;
 #define CONFIG_LOCAL_ENVIRONMENT "GIT_CONFIG_LOCAL"
 #define EXEC_PATH_ENVIRONMENT "GIT_EXEC_PATH"
 
-extern int is_bare_git_dir(const char *dir);
+extern int is_bare_repository_cfg;
+extern int is_bare_repository(void);
 extern const char *get_git_dir(void);
 extern char *get_object_directory(void);
 extern char *get_refs_directory(void);
@@ -299,7 +300,7 @@ extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern int read_ref(const char *filename, unsigned char *sha1);
 extern const char *resolve_ref(const char *path, unsigned char *sha1, int, int *);
 extern int create_symref(const char *ref, const char *refs_heads_master);
-extern int validate_symref(const char *ref);
+extern int validate_headref(const char *ref);
 
 extern int base_name_compare(const char *name1, int len1, int mode1, const char *name2, int len2, int mode2);
 extern int cache_name_compare(const char *name1, int len1, const char *name2, int len2);
@@ -432,10 +433,12 @@ extern char *git_commit_encoding;
 extern char *git_log_output_encoding;
 
 extern int copy_fd(int ifd, int ofd);
+extern int read_in_full(int fd, void *buf, size_t count);
 extern void read_or_die(int fd, void *buf, size_t count);
-extern int write_in_full(int fd, const void *buf, size_t count, const char *);
+extern int write_in_full(int fd, const void *buf, size_t count);
 extern void write_or_die(int fd, const void *buf, size_t count);
 extern int write_or_whine(int fd, const void *buf, size_t count, const char *msg);
+extern int write_or_whine_pipe(int fd, const void *buf, size_t count, const char *msg);
 
 /* pager.c */
 extern void setup_pager(void);

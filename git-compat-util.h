@@ -107,6 +107,11 @@ extern int git_munmap(void *start, size_t length);
 #define DEFAULT_PACKED_GIT_LIMIT \
 	((1024L * 1024L) * (sizeof(void*) >= 8 ? 8192 : 256))
 
+#ifdef NO_PREAD
+#define pread git_pread
+extern ssize_t git_pread(int fd, void *buf, size_t count, off_t offset);
+#endif
+
 #ifdef NO_SETENV
 #define setenv gitsetenv
 extern int gitsetenv(const char *, const char *, int);
@@ -197,6 +202,8 @@ static inline void *xmmap(void *start, size_t length,
 {
 	void *ret = mmap(start, length, prot, flags, fd, offset);
 	if (ret == MAP_FAILED) {
+		if (!length)
+			return NULL;
 		release_pack_memory(length);
 		ret = mmap(start, length, prot, flags, fd, offset);
 		if (ret == MAP_FAILED)

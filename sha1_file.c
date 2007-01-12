@@ -22,6 +22,12 @@
 #endif
 #endif
 
+#ifdef NO_C99_FORMAT
+#define SZ_FMT "lu"
+#else
+#define SZ_FMT "zu"
+#endif
+
 const unsigned char null_sha1[20];
 
 static unsigned int sha1_file_open_flag = O_NOATIME;
@@ -407,9 +413,9 @@ struct packed_git *packed_git;
 void pack_report()
 {
 	fprintf(stderr,
-		"pack_report: getpagesize()            = %10lu\n"
-		"pack_report: core.packedGitWindowSize = %10lu\n"
-		"pack_report: core.packedGitLimit      = %10lu\n",
+		"pack_report: getpagesize()            = %10" SZ_FMT "\n"
+		"pack_report: core.packedGitWindowSize = %10" SZ_FMT "\n"
+		"pack_report: core.packedGitLimit      = %10" SZ_FMT "\n",
 		page_size,
 		packed_git_window_size,
 		packed_git_limit);
@@ -417,7 +423,8 @@ void pack_report()
 		"pack_report: pack_used_ctr            = %10u\n"
 		"pack_report: pack_mmap_calls          = %10u\n"
 		"pack_report: pack_open_windows        = %10u / %10u\n"
-		"pack_report: pack_mapped              = %10lu / %10lu\n",
+		"pack_report: pack_mapped              = "
+			"%10" SZ_FMT " / %10" SZ_FMT "\n",
 		pack_used_ctr,
 		pack_mmap_calls,
 		pack_open_windows, peak_pack_open_windows,
@@ -1611,20 +1618,8 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 
 static int write_buffer(int fd, const void *buf, size_t len)
 {
-	while (len) {
-		ssize_t size;
-
-		size = write(fd, buf, len);
-		if (!size)
-			return error("file write: disk full");
-		if (size < 0) {
-			if (errno == EINTR || errno == EAGAIN)
-				continue;
-			return error("file write error (%s)", strerror(errno));
-		}
-		len -= size;
-		buf = (char *) buf + size;
-	}
+	if (write_in_full(fd, buf, len) < 0)
+		return error("file write error (%s)", strerror(errno));
 	return 0;
 }
 
@@ -1869,7 +1864,7 @@ int write_sha1_from_fd(const unsigned char *sha1, int fd, char *buffer,
 			if (ret != Z_OK)
 				break;
 		}
-		size = read(fd, buffer + *bufposn, bufsize - *bufposn);
+		size = xread(fd, buffer + *bufposn, bufsize - *bufposn);
 		if (size <= 0) {
 			close(local);
 			unlink(tmpfile);
