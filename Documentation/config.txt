@@ -2,7 +2,12 @@ CONFIGURATION FILE
 ------------------
 
 The git configuration file contains a number of variables that affect
-the git command's behavior. They can be used by both the git plumbing
+the git command's behavior. `.git/config` file for each repository
+is used to store the information for that repository, and
+`$HOME/.gitconfig` is used to store per user information to give
+fallback values for `.git/config` file.
+
+They can be used by both the git plumbing
 and the porcelains. The variables are divided into sections, where
 in the fully qualified variable name the variable itself is the last
 dot-separated segment and the section name is everything before the last
@@ -320,6 +325,13 @@ log.showroot::
 merge.summary::
 	Whether to include summaries of merged commits in newly created
 	merge commit messages. False by default.
+
+merge.verbosity::
+	Controls the amount of output shown by the recursive merge
+	strategy.  Level 0 outputs nothing except a final error
+	message if conflicts were detected. Level 1 outputs only
+	conflicts, 2 outputs conflicts and file changes.  Level 5 and
+	above outputs debugging information.  The default is level 2.
 
 pack.window::
 	The size of the window used by gitlink:git-pack-objects[1] when no

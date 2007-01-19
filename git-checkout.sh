@@ -135,11 +135,7 @@ fi
 
 # We are switching branches and checking out trees, so
 # we *NEED* to be at the toplevel.
-cdup=$(git-rev-parse --show-cdup)
-if test ! -z "$cdup"
-then
-	cd "$cdup"
-fi
+cd_to_toplevel
 
 [ -z "$new" ] && new=$old && new_name="$old_name"
 
@@ -205,8 +201,9 @@ else
     	git diff-files --name-only | git update-index --remove --stdin &&
 	work=`git write-tree` &&
 	git read-tree --reset -u $new &&
-	git read-tree -m -u --aggressive --exclude-per-directory=.gitignore $old $new $work ||
-	exit
+	eval GITHEAD_$new=${new_name:-${branch:-$new}} GITHEAD_$work=local &&
+	export GITHEAD_$new GITHEAD_$work &&
+	git merge-recursive $old -- $new $work || exit
 
 	if result=`git write-tree 2>/dev/null`
 	then
