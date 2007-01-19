@@ -4,16 +4,12 @@ use strict;
 use warnings;
 
 use Text::Balanced qw(extract_delimited);
-#require Tie::Memoize;
-use Data::Dumper;
-
 
 
 sub read_config {
 	my $configfile = shift;
+	my $section = shift;
 	my %config;
-
-	print "$configfile\n";
 
 	open my $fd, $configfile
 		or die "Cannot open $configfile: $!";
@@ -26,6 +22,7 @@ sub read_config {
 			# section without subsection
 
 			my $sect = lc($1);
+			$line = $2;
 
 			$sectfull = $sect;
 
@@ -34,11 +31,16 @@ sub read_config {
 
 			my $sect = lc($1);
 			my $subsect = $2;
+			$line = $3;
 			$subsect =~ s/\\(.)/$1/g;
 
 			$sectfull = "$sect.$subsect";
 
-		} elsif ($line =~ m/\s*(\w+)\s*=\s*(.*?)\s*$/) {
+		}
+
+		# if instead of elsif to cover the following situation:
+		#  [section] var = value
+		if ($line =~ m/\s*(\w+)\s*=\s*(.*?)\s*$/) {
 			# variable assignment
 
 			my $key = lc($1);
@@ -95,24 +97,20 @@ sub read_config {
 	close $fd
 		or die "Cannot close $configfile: $!";
 
-	print "\n";
-	print '-' x 40, "\n";
-
-	#print Dumper(\%config);
-	foreach my $ckey (sort keys %config) {
-		foreach my $cvalue (@{$config{$ckey}}) {
-			if (defined $cvalue) {
-				print "$ckey=$cvalue!\n";
-			} else {
-				print "$ckey!\n";
-			}
-		}
-	}
-
-	print "\n";
-	print '-' x 40, "\n";
-	print `GIT_CONFIG=$configfile git repo-config --list`;
+	return wantarray ? %config : \%config;
 }
 
-read_config("/home/jnareb/git/.git/config");
-read_config("/tmp/jnareb/gitconfig");
+my %config;
+
+%config = read_config("~/git/.git/config");
+%config = read_config("/tmp/jnareb/gitconfig");
+
+foreach my $ckey (sort keys %config) {
+	foreach my $cvalue (@{$config{$ckey}}) {
+		if (defined $cvalue) {
+			print "$ckey=$cvalue\n";
+		} else {
+			print "$ckey\n";
+		}
+	}
+}
