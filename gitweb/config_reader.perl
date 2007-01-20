@@ -5,18 +5,48 @@ use warnings;
 
 use Text::Balanced qw(extract_delimited);
 
+sub unq {
+	my $seq = shift;
+	my %es = ( # character escape codes, aka escape sequences
+		't' => "\t",   # tab            (HT, TAB)
+		'n' => "\n",   # newline        (NL)
+		'r' => "\r",   # return         (CR)
+		'f' => "\f",   # form feed      (FF)
+		'b' => "\b",   # backspace      (BS)
+		'a' => "\a",   # alarm (bell)   (BEL)
+		'e' => "\e",   # escape         (ESC)
+		'v' => "\013", # vertical tab   (VT)
+	);
+
+	if ($seq =~ m/^[0-7]{1,3}$/) {
+		# octal char sequence
+		return chr(oct($seq));
+	} elsif (exists $es{$seq}) {
+		# C escape sequence, aka character escape code
+		return $es{$seq}
+	}
+	# quoted ordinary character
+	return $seq;
+}
 
 sub read_config {
 	my $configfile = shift;
-	my $section = shift;
 	my %config;
 
 	open my $fd, $configfile
 		or die "Cannot open $configfile: $!";
 
 	my $sectfull;
+ LINE:
 	while (my $line = <$fd>) {
 		chomp $line;
+
+		# actually git-repo-config allows continuation only on values
+		# this allow continuation of _any_ type of line, including comments
+		if ($line =~ s/\\//) {
+			$line .= <$fd>;
+			redo LINE unless eof;
+		}
 
 		if ($line =~ m/^\s*\[\s*([^][:space:]]*)\s*\](.*)$/) {
 			# section without subsection
