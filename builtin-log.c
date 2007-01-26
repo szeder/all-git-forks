@@ -352,7 +352,7 @@ static void get_patch_ids(struct rev_info *rev, struct diff_options *options, co
 
 static void gen_message_id(char *dest, unsigned int length, char *base)
 {
-	const char *committer = git_committer_info(1);
+	const char *committer = git_committer_info(-1);
 	const char *email_start = strrchr(committer, '<');
 	const char *email_end = strrchr(committer, '>');
 	if(!email_start || !email_end || email_start > email_end - 1)
@@ -476,7 +476,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (!rev.diffopt.text)
 		rev.diffopt.binary = 1;
 
-	if (!output_directory)
+	if (!output_directory && !use_stdout)
 		output_directory = prefix;
 
 	if (output_directory) {

@@ -424,17 +424,17 @@ newline 123'
 test_expect_success 'value with newline' 'git repo-config key.sub value.with\\\
 newline'
 
-cat > .git/config << EOF
+cat > .git/config <<\EOF
 [section]
-	; comment \\
-	continued = cont\\
+	; comment \
+	continued = cont\
 inued
-	noncont   = not continued ; \\
-	quotecont = "cont;\\
+	noncont   = not continued ; \
+	quotecont = "cont;\
 inued"
 EOF
 
-cat > expect <<EOF
+cat > expect <<\EOF
 section.continued=continued
 section.noncont=not continued
 section.quotecont=cont;inued
