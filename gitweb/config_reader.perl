@@ -5,27 +5,23 @@ use warnings;
 
 use Text::Balanced qw(extract_delimited);
 
-sub unq {
+sub config_unq {
 	my $seq = shift;
 	my %es = ( # character escape codes, aka escape sequences
 		't' => "\t",   # tab            (HT, TAB)
 		'n' => "\n",   # newline        (NL)
-		'r' => "\r",   # return         (CR)
-		'f' => "\f",   # form feed      (FF)
 		'b' => "\b",   # backspace      (BS)
-		'a' => "\a",   # alarm (bell)   (BEL)
-		'e' => "\e",   # escape         (ESC)
-		'v' => "\013", # vertical tab   (VT)
+
+		'"' => '"',    # escaped doublequote (quoting character)
+		'\' => '\',    # escaped backslash (escape character)
 	);
 
-	if ($seq =~ m/^[0-7]{1,3}$/) {
-		# octal char sequence
-		return chr(oct($seq));
-	} elsif (exists $es{$seq}) {
+	if (exists $es{$seq}) {
 		# C escape sequence, aka character escape code
 		return $es{$seq}
 	}
-	# quoted ordinary character
+	# other character escaped
+	# we should error out (if we did validating)
 	return $seq;
 }
 
@@ -48,7 +44,7 @@ sub read_config {
 			redo LINE unless eof;
 		}
 
-		if ($line =~ m/^\s*\[\s*([^][:space:]]*)\s*\](.*)$/) {
+		if ($line =~ m/^\s*\[([^][:space:]]*)\](.*)$/) {
 			# section without subsection
 
 			my $sect = lc($1);
@@ -56,13 +52,13 @@ sub read_config {
 
 			$sectfull = $sect;
 
-		} elsif ($line =~ m/\s*\[([^][:space:]]*)\s"((?:\\.|[^"])*)"\](.*)$/) {
+		} elsif ($line =~ m/\s*\[([^][:space:]]*) "((?:\\.|[^"])*)"\](.*)$/) {
 			# section with subsection
 
 			my $sect = lc($1);
 			my $subsect = $2;
 			$line = $3;
-			$subsect =~ s/\\(.)/$1/g;
+			$subsect =~ s/\\(.)/$1/g; # this does not validate
 
 			$sectfull = "$sect.$subsect";
 
