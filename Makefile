@@ -26,7 +26,7 @@ NONTCL_LIBFILES = \
 #end NONTCL_LIBFILES
 
 ifndef SHELL_PATH
-	SHELL_PATH = /bin/sh
+	SHELL_PATH = $(shell cd /bin && pwd -W)/sh
 endif
 
 ifndef gitexecdir
