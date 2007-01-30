@@ -571,12 +571,11 @@ static int fsck_cache_tree(struct cache_tree *it)
 	return err;
 }
 
-int main(int argc, char **argv)
+int cmd_fsck(int argc, char **argv, const char *prefix)
 {
 	int i, heads;
 
 	track_object_refs = 1;
-	setup_git_directory();
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -606,7 +605,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 		if (*arg == '-')
-			usage("git-fsck-objects [--tags] [--root] [[--unreachable] [--cache] [--full] [--strict] <head-sha1>*]");
+			usage("git-fsck [--tags] [--root] [[--unreachable] [--cache] [--full] [--strict] <head-sha1>*]");
 	}
 
 	fsck_head_link();
