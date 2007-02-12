@@ -8,13 +8,18 @@ git-reflog - Manage reflog information
 
 SYNOPSIS
 --------
-[verse]
-'git-reflog' expire [--dry-run] [--stale-fix]
-	[--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...
-
+'git reflog' <subcommand> <options>
 
 DESCRIPTION
 -----------
+The command takes various subcommands, and different options
+depending on the subcommand:
+
+[verse]
+git reflog expire [--dry-run] [--stale-fix]
+	[--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...
+
+git reflog [show] [log-options]
 
 Reflog is a mechanism to record when the tip of branches are
 updated.  This command is to manage the information recorded in it.
@@ -27,6 +32,10 @@ commits that are no longer in the repository are pruned
 regardless of their age.  This command is typically not used
 directly by the end users -- instead, see gitlink:git-gc[1].
 
+The subcommand "show" (which is also the default, in the absense of any
+subcommands) will take all the normal log options, and show the log of
+the current branch. It is basically an alias for 'git log -g --abbrev-commit
+--pretty=oneline', see gitlink:git-log[1].
 
 OPTIONS
 -------
