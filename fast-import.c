@@ -1308,7 +1308,7 @@ static int update_branch(struct branch *b)
 			return error("Branch %s is missing commits.", b->name);
 		}
 
-		if (!in_merge_bases(old_cmit, new_cmit)) {
+		if (!in_merge_bases(old_cmit, &new_cmit, 1)) {
 			unlock_ref(lock);
 			warn("Not updating %s"
 				" (new tip %s does not contain %s)",
@@ -1667,8 +1667,10 @@ static void cmd_from(struct branch *b)
 	if (strncmp("from ", command_buf.buf, 5))
 		return;
 
-	if (b->last_commit)
-		die("Can't reinitailize branch %s", b->name);
+	if (b->branch_tree.tree) {
+		release_tree_content_recursive(b->branch_tree.tree);
+		b->branch_tree.tree = NULL;
+	}
 
 	from = strchr(command_buf.buf, ' ') + 1;
 	s = lookup_branch(from);
@@ -1936,7 +1938,9 @@ static void cmd_reset_branch(void)
 	sp = strchr(command_buf.buf, ' ') + 1;
 	b = lookup_branch(sp);
 	if (b) {
-		b->last_commit = 0;
+		hashclr(b->sha1);
+		hashclr(b->branch_tree.versions[0].sha1);
+		hashclr(b->branch_tree.versions[1].sha1);
 		if (b->branch_tree.tree) {
 			release_tree_content_recursive(b->branch_tree.tree);
 			b->branch_tree.tree = NULL;
