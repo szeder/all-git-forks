@@ -1,6 +1,8 @@
 #ifndef GIT_COMPAT_UTIL_H
 #define GIT_COMPAT_UTIL_H
 
+#define _FILE_OFFSET_BITS 64
+
 #ifndef FLEX_ARRAY
 #if defined(__GNUC__) && (__GNUC__ < 3)
 #define FLEX_ARRAY 0
@@ -277,6 +279,11 @@ static inline int sane_case(int x, int high)
 	if (sane_istest(x, GIT_ALPHA))
 		x = (x & ~0x20) | high;
 	return x;
+}
+
+static inline int prefixcmp(const char *str, const char *prefix)
+{
+	return strncmp(str, prefix, strlen(prefix));
 }
 
 #endif
