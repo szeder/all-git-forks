@@ -19,13 +19,33 @@ test_expect_success setup '
 '
 
 # Also handcraft GNU diff output; note this has trailing whitespace.
-cat >gpatch.file <<\EOF
+cat >gpatch.file <<\EOF &&
 --- file1	2007-02-21 01:04:24.000000000 -0800
 +++ file1+	2007-02-21 01:07:44.000000000 -0800
 @@ -1 +1 @@
 -A
 +B 
 EOF
+
+sed -e 's|file1|sub/&|' gpatch.file >gpatch-sub.file &&
+sed -e '
+	/^--- /s|file1|a/sub/&|
+	/^+++ /s|file1|b/sub/&|
+' gpatch.file >gpatch-ab-sub.file &&
+
+check_result () {
+	if grep " " "$1"
+	then
+		echo "Eh?"
+		false
+	elif grep B "$1"
+	then
+		echo Happy
+	else
+		echo "Huh?"
+		false
+	fi
+}
 
 test_expect_success 'apply --whitespace=strip' '
 
@@ -34,17 +54,7 @@ test_expect_success 'apply --whitespace=strip' '
 	git update-index --refresh &&
 
 	git apply --whitespace=strip patch.file &&
-	if grep " " sub/file1
-	then
-		echo "Eh?"
-		false
-	elif grep B sub/file1
-	then
-		echo Happy
-	else
-		echo "Huh?"
-		false
-	fi
+	check_result sub/file1
 '
 
 test_expect_success 'apply --whitespace=strip from config' '
@@ -55,16 +65,7 @@ test_expect_success 'apply --whitespace=strip from config' '
 
 	git config apply.whitespace strip &&
 	git apply patch.file &&
-	if grep " " sub/file1
-	then
-		echo "Eh?"
-		false
-	elif grep B sub/file1
-	then
-		echo Happy
-	else
-		echo Happy
-	fi
+	check_result sub/file1
 '
 
 D=`pwd`
@@ -78,18 +79,8 @@ test_expect_success 'apply --whitespace=strip in subdir' '
 	git update-index --refresh &&
 
 	cd sub &&
-	git apply --whitespace=strip -p2 ../patch.file &&
-	if grep " " file1
-	then
-		echo "Eh?"
-		false
-	elif grep B file1
-	then
-		echo Happy
-	else
-		echo "Huh?"
-		false
-	fi
+	git apply --whitespace=strip ../patch.file &&
+	check_result file1
 '
 
 test_expect_success 'apply --whitespace=strip from config in subdir' '
@@ -101,18 +92,8 @@ test_expect_success 'apply --whitespace=strip from config in subdir' '
 	git update-index --refresh &&
 
 	cd sub &&
-	git apply -p2 ../patch.file &&
-	if grep " " file1
-	then
-		echo "Eh?"
-		false
-	elif grep B file1
-	then
-		echo Happy
-	else
-		echo "Huh?"
-		false
-	fi
+	git apply ../patch.file &&
+	check_result file1
 '
 
 test_expect_success 'same in subdir but with traditional patch input' '
@@ -124,18 +105,58 @@ test_expect_success 'same in subdir but with traditional patch input' '
 	git update-index --refresh &&
 
 	cd sub &&
-	git apply -p0 ../gpatch.file &&
-	if grep " " file1
-	then
-		echo "Eh?"
-		false
-	elif grep B file1
-	then
-		echo Happy
-	else
-		echo "Huh?"
-		false
-	fi
+	git apply ../gpatch.file &&
+	check_result file1
+'
+
+test_expect_success 'same but with traditional patch input of depth 1' '
+
+	cd "$D" &&
+	git config apply.whitespace strip &&
+	rm -f sub/file1 &&
+	cp saved sub/file1 &&
+	git update-index --refresh &&
+
+	cd sub &&
+	git apply ../gpatch-sub.file &&
+	check_result file1
+'
+
+test_expect_success 'same but with traditional patch input of depth 2' '
+
+	cd "$D" &&
+	git config apply.whitespace strip &&
+	rm -f sub/file1 &&
+	cp saved sub/file1 &&
+	git update-index --refresh &&
+
+	cd sub &&
+	git apply ../gpatch-ab-sub.file &&
+	check_result file1
+'
+
+test_expect_success 'same but with traditional patch input of depth 1' '
+
+	cd "$D" &&
+	git config apply.whitespace strip &&
+	rm -f sub/file1 &&
+	cp saved sub/file1 &&
+	git update-index --refresh &&
+
+	git apply -p0 gpatch-sub.file &&
+	check_result sub/file1
+'
+
+test_expect_success 'same but with traditional patch input of depth 2' '
+
+	cd "$D" &&
+	git config apply.whitespace strip &&
+	rm -f sub/file1 &&
+	cp saved sub/file1 &&
+	git update-index --refresh &&
+
+	git apply gpatch-ab-sub.file &&
+	check_result sub/file1
 '
 
 test_done

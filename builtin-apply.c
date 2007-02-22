@@ -28,6 +28,7 @@ static int newfd = -1;
 
 static int unidiff_zero;
 static int p_value = 1;
+static int p_value_known;
 static int check_index;
 static int write_index;
 static int cached;
@@ -144,6 +145,7 @@ struct patch {
 	unsigned long deflate_origlen;
 	int lines_added, lines_deleted;
 	int score;
+	unsigned int is_toplevel_relative:1;
 	unsigned int inaccurate_eof:1;
 	unsigned int is_binary:1;
 	unsigned int is_copy:1;
@@ -311,10 +313,53 @@ static char *find_name(const char *line, char *def, int p_value, int terminate)
 	return name;
 }
 
+static int count_slashes(const char *cp)
+{
+	int cnt = 0;
+	char ch;
+
+	while ((ch = *cp++))
+		if (ch == '/')
+			cnt++;
+	return cnt;
+}
+
+/*
+ * Given the string after "--- " or "+++ ", guess the appropriate
+ * p_value for the given patch.
+ */
+static int guess_p_value(const char *nameline)
+{
+	char *name, *cp;
+	int val = -1;
+
+	if (is_dev_null(nameline))
+		return -1;
+	name = find_name(nameline, NULL, 0, TERM_SPACE | TERM_TAB);
+	if (!name)
+		return -1;
+	cp = strchr(name, '/');
+	if (!cp)
+		val = 0;
+	else if (prefix) {
+		/*
+		 * Does it begin with "a/$our-prefix" and such?  Then this is
+		 * very likely to apply to our directory.
+		 */
+		if (!strncmp(name, prefix, prefix_length))
+			val = count_slashes(prefix);
+		else {
+			cp++;
+			if (!strncmp(cp, prefix, prefix_length))
+				val = count_slashes(prefix) + 1;
+		}
+	}
+	free(name);
+	return val;
+}
+
 /*
  * Get the name etc info from the --/+++ lines of a traditional patch header
- *
- * NOTE! This hardcodes "-p1" behaviour in filename detection.
  *
  * FIXME! The end-of-filename heuristics are kind of screwy. For existing
  * files, we can happily check the index for a match, but for creating a
@@ -326,6 +371,16 @@ static void parse_traditional_patch(const char *first, const char *second, struc
 
 	first += 4;	/* skip "--- " */
 	second += 4;	/* skip "+++ " */
+	if (!p_value_known) {
+		int p, q;
+		p = guess_p_value(first);
+		q = guess_p_value(second);
+		if (p < 0) p = q;
+		if (0 <= p && p == q) {
+			p_value = p;
+			p_value_known = 1;
+		}
+	}
 	if (is_dev_null(first)) {
 		patch->is_new = 1;
 		patch->is_delete = 0;
@@ -362,7 +417,7 @@ static int gitdiff_hdrend(const char *line, struct patch *patch)
 static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, const char *oldnew)
 {
 	if (!orig_name && !isnull)
-		return find_name(line, NULL, p_value, TERM_TAB);
+		return find_name(line, NULL, 1, TERM_TAB);
 
 	if (orig_name) {
 		int len;
@@ -372,7 +427,7 @@ static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, 
 		len = strlen(name);
 		if (isnull)
 			die("git-apply: bad git-diff - expected /dev/null, got %s on line %d", name, linenr);
-		another = find_name(line, NULL, p_value, TERM_TAB);
+		another = find_name(line, NULL, 1, TERM_TAB);
 		if (!another || memcmp(another, name, len))
 			die("git-apply: bad git-diff - inconsistent %s filename on line %d", oldnew, linenr);
 		free(another);
@@ -427,28 +482,28 @@ static int gitdiff_newfile(const char *line, struct patch *patch)
 static int gitdiff_copysrc(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->old_name = find_name(line, NULL, p_value-1, 0);
+	patch->old_name = find_name(line, NULL, 0, 0);
 	return 0;
 }
 
 static int gitdiff_copydst(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->new_name = find_name(line, NULL, p_value-1, 0);
+	patch->new_name = find_name(line, NULL, 0, 0);
 	return 0;
 }
 
 static int gitdiff_renamesrc(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->old_name = find_name(line, NULL, p_value-1, 0);
+	patch->old_name = find_name(line, NULL, 0, 0);
 	return 0;
 }
 
 static int gitdiff_renamedst(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->new_name = find_name(line, NULL, p_value-1, 0);
+	patch->new_name = find_name(line, NULL, 0, 0);
 	return 0;
 }
 
@@ -787,6 +842,7 @@ static int find_header(char *line, unsigned long size, int *hdrsize, struct patc
 {
 	unsigned long offset, len;
 
+	patch->is_toplevel_relative = 0;
 	patch->is_rename = patch->is_copy = 0;
 	patch->is_new = patch->is_delete = -1;
 	patch->old_mode = patch->new_mode = 0;
@@ -831,6 +887,7 @@ static int find_header(char *line, unsigned long size, int *hdrsize, struct patc
 					die("git diff header lacks filename information (line %d)", linenr);
 				patch->old_name = patch->new_name = patch->def_name;
 			}
+			patch->is_toplevel_relative = 1;
 			*hdrsize = git_hdr_len;
 			return offset;
 		}
@@ -2520,6 +2577,12 @@ static int use_patch(struct patch *p)
 			return 0;
 		x = x->next;
 	}
+	if (0 < prefix_length) {
+		int pathlen = strlen(pathname);
+		if (pathlen <= prefix_length ||
+		    memcmp(prefix, pathname, prefix_length))
+			return 0;
+	}
 	return 1;
 }
 
@@ -2534,7 +2597,7 @@ static void prefix_one(char **name)
 
 static void prefix_patches(struct patch *p)
 {
-	if (!prefix)
+	if (!prefix || p->is_toplevel_relative)
 		return;
 	for ( ; p; p = p->next) {
 		if (p->new_name == p->old_name) {
@@ -2668,6 +2731,7 @@ int cmd_apply(int argc, const char **argv, const char *unused_prefix)
 		}
 		if (!prefixcmp(arg, "-p")) {
 			p_value = atoi(arg + 2);
+			p_value_known = 1;
 			continue;
 		}
 		if (!strcmp(arg, "--no-add")) {
