@@ -210,11 +210,16 @@ int run_diff_files_cmd(struct rev_info *revs, int argc, const char **argv)
 	if (revs->max_count == -2) {
 		if (revs->diffopt.nr_paths != 2)
 			return error("need two files/directories with --no-index");
-		queue_diff(&revs->diffopt, revs->diffopt.paths[0],
-				revs->diffopt.paths[1]);
+		if (queue_diff(&revs->diffopt, revs->diffopt.paths[0],
+				revs->diffopt.paths[1]))
+			return -1;
 		diffcore_std(&revs->diffopt);
 		diff_flush(&revs->diffopt);
-		return 0;
+		/*
+		 * The return code for --no-index imitates diff(1):
+		 * 0 = no changes, 1 = changes, else error
+		 */
+		return revs->diffopt.found_changes;
 	}
 
 	if (read_cache() < 0) {
@@ -248,17 +253,27 @@ int run_diff_files(struct rev_info *revs, int silent_on_removed)
 
 			path_len = ce_namelen(ce);
 
-			dpath = xmalloc (combine_diff_path_size (5, path_len));
+			dpath = xmalloc(combine_diff_path_size(5, path_len));
 			dpath->path = (char *) &(dpath->parent[5]);
 
 			dpath->next = NULL;
 			dpath->len = path_len;
 			memcpy(dpath->path, ce->name, path_len);
 			dpath->path[path_len] = '\0';
-			dpath->mode = 0;
 			hashclr(dpath->sha1);
 			memset(&(dpath->parent[0]), 0,
-					sizeof(struct combine_diff_parent)*5);
+			       sizeof(struct combine_diff_parent)*5);
+
+			if (lstat(ce->name, &st) < 0) {
+				if (errno != ENOENT && errno != ENOTDIR) {
+					perror(ce->name);
+					continue;
+				}
+				if (silent_on_removed)
+					continue;
+			}
+			else
+				dpath->mode = canon_mode(st.st_mode);
 
 			while (i < entries) {
 				struct cache_entry *nce = active_cache[i];
