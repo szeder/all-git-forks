@@ -92,14 +92,14 @@ struct sline {
 static char *grab_blob(const unsigned char *sha1, unsigned long *size)
 {
 	char *blob;
-	char type[20];
+	enum object_type type;
 	if (is_null_sha1(sha1)) {
 		/* deleted blob */
 		*size = 0;
 		return xcalloc(1, 1);
 	}
-	blob = read_sha1_file(sha1, type, size);
-	if (strcmp(type, blob_type))
+	blob = read_sha1_file(sha1, &type, size);
+	if (type != OBJ_BLOB)
 		die("object '%s' is not a blob!", sha1_to_hex(sha1));
 	return blob;
 }
@@ -684,7 +684,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 			goto deleted_file;
 
 		if (S_ISLNK(st.st_mode)) {
-			int len = st.st_size;
+			size_t len = st.st_size;
 			result_size = len;
 			result = xmalloc(len + 1);
 			if (result_size != readlink(elem->path, result, len)) {
@@ -697,8 +697,8 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 		}
 		else if (0 <= (fd = open(elem->path, O_RDONLY)) &&
 			 !fstat(fd, &st)) {
-			int len = st.st_size;
-			int sz = 0;
+			size_t len = st.st_size;
+			size_t sz = 0;
 
 			elem->mode = canon_mode(st.st_mode);
 			result_size = len;
