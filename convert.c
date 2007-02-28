@@ -8,6 +8,89 @@
  * translation when the "auto_crlf" option is set.
  */
 
+/*
+ * Auto and forced CRLF conversion
+ */
+
+/*
+ * Copy *in to *out while stripping '\r' from it.  The caller should
+ * make sure that out is large enough.
+ */
+static int convi_crlf_real(char *in, char *out, unsigned long isize)
+{
+	do {
+		unsigned char c = *in++;
+		if (c != '\r')
+			*out++ = c;
+	} while (--isize);
+	return 1;
+}
+
+/*
+ * Copy *in to *out while munging '\r\n' to '\n'.  The caller should
+ * make sure that out is large enough.
+ */
+static int convo_crlf_real(char *in, char *out, unsigned long isize)
+{
+	unsigned char last = 0;
+	do {
+		unsigned char c = *in++;
+		if (c == '\n' && last != '\r')
+			*out++ = '\r';
+		*out++ = c;
+		last = c;
+	} while (--isize);
+	return 1;
+}
+
+/*
+ * Forced CRLF conversion.
+ */
+static int convi_crlf(const char *path, char **bufp, unsigned long *sizep)
+{
+	unsigned long size, cr, i, nsize;
+	char *buf, *nbuf;
+
+	size = *sizep;
+	buf = *bufp;
+	for (i = cr = 0; i < size; i++) {
+		unsigned char c = buf[i];
+		if (c == '\r')
+			cr++;
+	}
+	nsize = size - cr;
+	*sizep = nsize;
+	nbuf = xmalloc(nsize);
+	*bufp = nbuf;
+	return convi_crlf_real(buf, nbuf, size);
+}
+
+static int convo_crlf(const char *path, char **bufp, unsigned long *sizep)
+{
+	unsigned long size, cr, i, nsize;
+	unsigned char last;
+	char *buf, *nbuf;
+
+	size = *sizep;
+	buf = *bufp;
+	last = 0;
+
+	for (i = cr = 0; i < size; i++) {
+		unsigned char c = buf[i];
+		if (c == '\n' && last != '\r')
+			cr++;
+		last = c;
+	}
+	nsize = size + cr;
+	nbuf = xmalloc(nsize);
+	*sizep = nsize;
+	*bufp = nbuf;
+	return convo_crlf_real(buf, nbuf, size);
+}
+
+/*
+ * Auto CRLF conversion.
+ */
 struct text_stat {
 	/* CR, LF and CRLF counts */
 	unsigned cr, lf, crlf;
@@ -52,9 +135,6 @@ static void gather_stats(const char *buf, unsigned long size, struct text_stat *
 	}
 }
 
-/*
- * The same heuristics as diff.c::mmfile_is_binary()
- */
 static int is_binary(unsigned long size, struct text_stat *stats)
 {
 
@@ -72,17 +152,12 @@ static int is_binary(unsigned long size, struct text_stat *stats)
 	return 0;
 }
 
-int convert_to_git(const char *path, char **bufp, unsigned long *sizep)
+static int convi_autocrlf(const char *path, char **bufp, unsigned long *sizep)
 {
 	char *buffer, *nbuf;
 	unsigned long size, nsize;
 	struct text_stat stats;
 
-	/*
-	 * FIXME! Other pluggable conversions should go here,
-	 * based on filename patterns. Right now we just do the
-	 * stupid auto-CRLF one.
-	 */
 	if (!auto_crlf)
 		return 0;
 
@@ -117,29 +192,17 @@ int convert_to_git(const char *path, char **bufp, unsigned long *sizep)
 	 */
 	nsize = size - stats.crlf;
 	nbuf = xmalloc(nsize);
-	*bufp = nbuf;
 	*sizep = nsize;
-	do {
-		unsigned char c = *buffer++;
-		if (c != '\r')
-			*nbuf++ = c;
-	} while (--size);
-
-	return 1;
+	*bufp = nbuf;
+	return convi_crlf_real(buffer, nbuf, size);
 }
 
-int convert_to_working_tree(const char *path, char **bufp, unsigned long *sizep)
+static int convo_autocrlf(const char *path, char **bufp, unsigned long *sizep)
 {
 	char *buffer, *nbuf;
 	unsigned long size, nsize;
 	struct text_stat stats;
-	unsigned char last;
 
-	/*
-	 * FIXME! Other pluggable conversions should go here,
-	 * based on filename patterns. Right now we just do the
-	 * stupid auto-CRLF one.
-	 */
 	if (auto_crlf <= 0)
 		return 0;
 
@@ -171,16 +234,58 @@ int convert_to_working_tree(const char *path, char **bufp, unsigned long *sizep)
 	 */
 	nsize = size + stats.lf - stats.crlf;
 	nbuf = xmalloc(nsize);
-	*bufp = nbuf;
 	*sizep = nsize;
-	last = 0;
-	do {
-		unsigned char c = *buffer++;
-		if (c == '\n' && last != '\r')
-			*nbuf++ = '\r';
-		*nbuf++ = c;
-		last = c;
-	} while (--size);
+	*bufp = nbuf;
+	return convo_crlf_real(buffer, nbuf, size);
+}
 
-	return 1;
+/*
+ * Other conversions come here
+ */
+
+/******************************************************************/
+
+typedef int (*convi_fn)(const char *, char **, unsigned long *);
+typedef int (*convo_fn)(const char *, char **, unsigned long *);
+
+static convi_fn pathattr_find_conv_i(const char *path)
+{
+	/* A silly example */
+	if (!fnmatch("*.dos-txt", path, 0))
+		return convi_crlf;
+	return NULL;
+}
+
+static convo_fn pathattr_find_conv_o(const char *path)
+{
+	/* A silly example */
+	if (!fnmatch("*.dos-txt", path, 0))
+		return convo_crlf;
+	return NULL;
+}
+
+/*
+ * Main entry points
+ */
+int convert_to_git(const char *path, char **bufp, unsigned long *sizep)
+{
+	if (path) {
+		convi_fn conv_i = pathattr_find_conv_i(path);
+		if (conv_i)
+			return conv_i(path, bufp, sizep);
+	}
+	/* Fallback */
+	return convi_autocrlf(path, bufp, sizep);
+}
+
+int convert_to_working_tree(const char *path, char **bufp,
+			    unsigned long *sizep)
+{
+	if (path) {
+		convi_fn conv_o = pathattr_find_conv_o(path);
+		if (conv_o)
+			return conv_o(path, bufp, sizep);
+	}
+	/* Fallback */
+	return convo_autocrlf(path, bufp, sizep);
 }
