@@ -181,16 +181,18 @@ static int append_fetch_head(FILE *fp,
 	remote_len = i + 1;
 	if (4 < i && !strncmp(".git", remote + i - 3, 4))
 		remote_len = i - 3;
-	note_len = sprintf(note, "%s\t%s\t",
-			   sha1_to_hex(commit ? commit->object.sha1 : sha1),
-			   not_for_merge ? "not-for-merge" : "");
+
+	note_len = 0;
 	if (*what) {
 		if (*kind)
 			note_len += sprintf(note + note_len, "%s ", kind);
 		note_len += sprintf(note + note_len, "'%s' of ", what);
 	}
 	note_len += sprintf(note + note_len, "%.*s", remote_len, remote);
-	fprintf(fp, "%s\n", note);
+	fprintf(fp, "%s\t%s\t%s\n",
+		sha1_to_hex(commit ? commit->object.sha1 : sha1),
+		not_for_merge ? "not-for-merge" : "",
+		note);
 	return update_local_ref(local_name, head, note, verbose, force);
 }
 
@@ -467,12 +469,6 @@ int cmd_fetch__tool(int argc, const char **argv, const char *prefix)
 					   verbose, force);
 		fclose(fp);
 		return result;
-	}
-	if (!strcmp("update-local-ref", argv[1])) {
-		if (argc != 5)
-			return error("update-local-ref takes 3 args");
-		return update_local_ref(argv[2], argv[3], argv[4],
-					verbose, force);
 	}
 	if (!strcmp("native-store", argv[1])) {
 		int result;
