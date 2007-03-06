@@ -11,7 +11,7 @@ SYNOPSIS
 [verse]
 'git-format-patch' [-n | -k] [-o <dir> | --stdout] [--thread]
 	           [--attach[=<boundary>] | --inline[=<boundary>]]
-	           [-s | --signoff] [--diff-options] [--start-number <n>]
+	           [-s | --signoff] [<common diff options>] [--start-number <n>]
 		   [--in-reply-to=Message-Id] [--suffix=.<sfx>]
 		   [--ignore-if-in-upstream]
 		   <since>[..<until>]
@@ -47,6 +47,8 @@ reference.
 
 OPTIONS
 -------
+include::diff-options.txt[]
+
 -o|--output-directory <dir>::
 	Use <dir> to store the resulting files, instead of the
 	current working directory.
