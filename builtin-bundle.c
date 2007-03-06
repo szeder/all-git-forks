@@ -160,7 +160,28 @@ static int fork_with_pipe(const char **argv, int *in, int *out)
 	return pid;
 }
 
-static int verify_bundle(struct bundle_header *header)
+static int list_refs(struct ref_list *r, int argc, const char **argv)
+{
+	int i;
+
+	for (i = 0; i < r->nr; i++) {
+		if (argc > 1) {
+			int j;
+			for (j = 1; j < argc; j++)
+				if (!strcmp(r->list[i].name, argv[j]))
+					break;
+			if (j == argc)
+				continue;
+		}
+		printf("%s %s\n", sha1_to_hex(r->list[i].sha1),
+				r->list[i].name);
+	}
+	return 0;
+}
+
+#define PREREQ_MARK (1u<<16)
+
+static int verify_bundle(struct bundle_header *header, int verbose)
 {
 	/*
 	 * Do fast check, then if any prereqs are missing then go line by line
@@ -179,7 +200,7 @@ static int verify_bundle(struct bundle_header *header)
 		struct ref_list_entry *e = p->list + i;
 		struct object *o = parse_object(e->sha1);
 		if (o) {
-			o->flags |= BOUNDARY_SHOW;
+			o->flags |= PREREQ_MARK;
 			add_pending_object(&revs, o, e->name);
 			continue;
 		}
@@ -187,7 +208,7 @@ static int verify_bundle(struct bundle_header *header)
 			error(message);
 		error("%s %s", sha1_to_hex(e->sha1), e->name);
 	}
-	if (revs.pending.nr == 0)
+	if (revs.pending.nr != p->nr)
 		return ret;
 	req_nr = revs.pending.nr;
 	setup_revisions(2, argv, &revs, NULL);
@@ -202,7 +223,7 @@ static int verify_bundle(struct bundle_header *header)
 
 	i = req_nr;
 	while (i && (commit = get_revision(&revs)))
-		if (commit->object.flags & BOUNDARY_SHOW)
+		if (commit->object.flags & PREREQ_MARK)
 			i--;
 
 	for (i = 0; i < req_nr; i++)
@@ -216,27 +237,24 @@ static int verify_bundle(struct bundle_header *header)
 	for (i = 0; i < refs.nr; i++)
 		clear_commit_marks((struct commit *)refs.objects[i].item, -1);
 
+	if (verbose) {
+		struct ref_list *r;
+
+		r = &header->references;
+		printf("The bundle contains %d ref%s\n",
+		       r->nr, (1 < r->nr) ? "s" : "");
+		list_refs(r, 0, NULL);
+		r = &header->prerequisites;
+		printf("The bundle requires these %d ref%s\n",
+		       r->nr, (1 < r->nr) ? "s" : "");
+		list_refs(r, 0, NULL);
+	}
 	return ret;
 }
 
 static int list_heads(struct bundle_header *header, int argc, const char **argv)
 {
-	int i;
-	struct ref_list *r = &header->references;
-
-	for (i = 0; i < r->nr; i++) {
-		if (argc > 1) {
-			int j;
-			for (j = 1; j < argc; j++)
-				if (!strcmp(r->list[i].name, argv[j]))
-					break;
-			if (j == argc)
-				continue;
-		}
-		printf("%s %s\n", sha1_to_hex(r->list[i].sha1),
-				r->list[i].name);
-	}
-	return 0;
+	return list_refs(&header->references, argc, argv);
 }
 
 static void show_commit(struct commit *commit)
@@ -277,6 +295,7 @@ static int create_bundle(struct bundle_header *header, const char *path,
 	int pid, in, out, i, status;
 	char buffer[1024];
 	struct rev_info revs;
+	struct object_array tips;
 
 	bundle_fd = (!strcmp(path, "-") ? 1 :
 			open(path, O_CREAT | O_WRONLY, 0666));
@@ -314,19 +333,23 @@ static int create_bundle(struct bundle_header *header, const char *path,
 	argc = setup_revisions(argc, argv, &revs, NULL);
 	if (argc > 1)
 		return error("unrecognized argument: %s'", argv[1]);
+
+	memset(&tips, 0, sizeof(tips));
 	for (i = 0; i < revs.pending.nr; i++) {
 		struct object_array_entry *e = revs.pending.objects + i;
-		if (!(e->item->flags & UNINTERESTING)) {
-			unsigned char sha1[20];
-			char *ref;
-			if (dwim_ref(e->name, strlen(e->name), sha1, &ref) != 1)
-				continue;
-			write_or_die(bundle_fd, sha1_to_hex(e->item->sha1), 40);
-			write_or_die(bundle_fd, " ", 1);
-			write_or_die(bundle_fd, ref, strlen(ref));
-			write_or_die(bundle_fd, "\n", 1);
-			free(ref);
-		}
+		unsigned char sha1[20];
+		char *ref;
+
+		if (e->item->flags & UNINTERESTING)
+			continue;
+		if (dwim_ref(e->name, strlen(e->name), sha1, &ref) != 1)
+			continue;
+		write_or_die(bundle_fd, sha1_to_hex(e->item->sha1), 40);
+		write_or_die(bundle_fd, " ", 1);
+		write_or_die(bundle_fd, ref, strlen(ref));
+		write_or_die(bundle_fd, "\n", 1);
+		add_object_array(e->item, e->name, &tips);
+		free(ref);
 	}
 
 	/* end header */
@@ -354,7 +377,22 @@ static int create_bundle(struct bundle_header *header, const char *path,
 			return -1;
 	if (!WIFEXITED(status) || WEXITSTATUS(status))
 		return error ("pack-objects died");
-	return 0;
+
+	/*
+	 * Make sure the refs we wrote out is correct; --max-count and
+	 * other limiting options could have prevented all the tips
+	 * from getting output.
+	 */
+	status = 0;
+	for (i = 0; i < tips.nr; i++) {
+		if (!(tips.objects[i].item->flags & SHOWN)) {
+			status = 1;
+			error("%s: not included in the resulting pack",
+			      tips.objects[i].name);
+		}
+	}
+
+	return status;
 }
 
 static int unbundle(struct bundle_header *header, int bundle_fd,
@@ -363,7 +401,7 @@ static int unbundle(struct bundle_header *header, int bundle_fd,
 	const char *argv_index_pack[] = {"index-pack", "--stdin", NULL};
 	int pid, status, dev_null;
 
-	if (verify_bundle(header))
+	if (verify_bundle(header, 0))
 		return -1;
 	dev_null = open("/dev/null", O_WRONLY);
 	pid = fork_with_pipe(argv_index_pack, &bundle_fd, &dev_null);
@@ -407,7 +445,7 @@ int cmd_bundle(int argc, const char **argv, const char *prefix)
 
 	if (!strcmp(cmd, "verify")) {
 		close(bundle_fd);
-		if (verify_bundle(&header))
+		if (verify_bundle(&header, 1))
 			return 1;
 		fprintf(stderr, "%s is okay\n", bundle_file);
 		return 0;
@@ -427,4 +465,3 @@ int cmd_bundle(int argc, const char **argv, const char *prefix)
 	} else
 		usage(bundle_usage);
 }
-
