@@ -13,7 +13,7 @@ sub config_unq {
 		'b' => "\b",   # backspace      (BS)
 
 		'"' => '"',    # escaped doublequote (quoting character)
-		'\' => '\',    # escaped backslash (escape character)
+		"\\" => "\\",  # escaped backslash (escape character)
 	);
 
 	if (exists $es{$seq}) {
@@ -37,13 +37,6 @@ sub read_config {
 	while (my $line = <$fd>) {
 		chomp $line;
 
-		# actually git-repo-config allows continuation only on values
-		# this allow continuation of _any_ type of line, including comments
-		if ($line =~ s/\\//) {
-			$line .= <$fd>;
-			redo LINE unless eof;
-		}
-
 		if ($line =~ m/^\s*\[([^][:space:]]*)\](.*)$/) {
 			# section without subsection
 
@@ -64,8 +57,9 @@ sub read_config {
 
 		}
 
-		# if instead of elsif to cover the following situation:
+		# if instead of elsif to cover the following situations:
 		#  [section] var = value
+		#  [section "subsection"] var = value
 		if ($line =~ m/\s*(\w+)\s*=\s*(.*?)\s*$/) {
 			# variable assignment
 
@@ -76,8 +70,17 @@ sub read_config {
 			my ($next, $remainder, $prefix) = qw();
 		DELIM: {
 				do {
-					($next, $remainder, $prefix) =
-						extract_delimited($rhs, '"', qr/(?:\\.|[^"])*/);
+					if ($rhs =~ m/^((:?\\[\\"]|[^\";#])*)(?:\"([^\\\"]*(?:\\.[^\\\"]*)*)(?:\"|\\$))(.*)$/g) {
+						# ^((?:\\.|[^"])*) <-- $prefix
+						# (?:\"([^\\\"]*(?:\\.[^\\\"]*)*)(?:\"|\\$)) <-- $next
+						# (.*)$ <-- $remainder
+						$prefix = $1;
+						$next   = $2;
+						$remainder = $3;
+					} else {
+						$prefix = $next = '';
+						$remainder = $rhs;
+					}
 
 					if ($prefix =~ s/\s*[;#].*$//) {
 						# comment in unquoted part
@@ -128,7 +131,7 @@ sub read_config {
 
 my %config;
 
-%config = read_config("~/git/.git/config");
+#%config = read_config("~/git/.git/config");
 %config = read_config("/tmp/jnareb/gitconfig");
 
 foreach my $ckey (sort keys %config) {
