@@ -81,7 +81,7 @@ static int handle_line(char *line)
 	if (len < 43 || line[40] != '\t')
 		return 1;
 
-	if (!strncmp(line + 41, "not-for-merge", 13))
+	if (!prefixcmp(line + 41, "not-for-merge"))
 		return 0;
 
 	if (line[41] != '\t')
@@ -119,15 +119,15 @@ static int handle_line(char *line)
 	if (pulling_head) {
 		origin = xstrdup(src);
 		src_data->head_status |= 1;
-	} else if (!strncmp(line, "branch ", 7)) {
+	} else if (!prefixcmp(line, "branch ")) {
 		origin = xstrdup(line + 7);
 		append_to_list(&src_data->branch, origin, NULL);
 		src_data->head_status |= 2;
-	} else if (!strncmp(line, "tag ", 4)) {
+	} else if (!prefixcmp(line, "tag ")) {
 		origin = line;
 		append_to_list(&src_data->tag, xstrdup(origin + 4), NULL);
 		src_data->head_status |= 2;
-	} else if (!strncmp(line, "remote branch ", 14)) {
+	} else if (!prefixcmp(line, "remote branch ")) {
 		origin = xstrdup(line + 14);
 		append_to_list(&src_data->r_branch, origin, NULL);
 		src_data->head_status |= 2;
@@ -259,13 +259,15 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 		else if (!strcmp(argv[1], "--no-summary"))
 			merge_summary = 0;
 		else if (!strcmp(argv[1], "-F") || !strcmp(argv[1], "--file")) {
-			if (argc < 2)
+			if (argc < 3)
 				die ("Which file?");
 			if (!strcmp(argv[2], "-"))
 				in = stdin;
 			else {
 				fclose(in);
 				in = fopen(argv[2], "r");
+				if (!in)
+					die("cannot open %s", argv[2]);
 			}
 			argc--; argv++;
 		} else
@@ -280,7 +282,7 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 	current_branch = resolve_ref("HEAD", head_sha1, 1, NULL);
 	if (!current_branch)
 		die("No current branch");
-	if (!strncmp(current_branch, "refs/heads/", 11))
+	if (!prefixcmp(current_branch, "refs/heads/"))
 		current_branch += 11;
 
 	while (fgets(line, sizeof(line), in)) {

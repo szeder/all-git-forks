@@ -8,7 +8,7 @@ git-diff - Show changes between commits, commit and working tree, etc
 
 SYNOPSIS
 --------
-'git-diff' [ --diff-options ] <commit>{0,2} [--] [<path>...]
+'git-diff' [<common diff options>] <commit>{0,2} [--] [<path>...]
 
 DESCRIPTION
 -----------
@@ -22,6 +22,10 @@ tree and the index file, or the index file and the working tree.
 	words, the differences are what you _could_ tell git to
 	further add to the index but you still haven't.  You can
 	stage these changes by using gitlink:git-add[1].
+
+	If exactly two paths are given, and at least one is untracked,
+	compare the two files / directories. This behavior can be
+	forced by --no-index.
 
 'git-diff' [--options] --cached [<commit>] [--] [<path>...]::
 

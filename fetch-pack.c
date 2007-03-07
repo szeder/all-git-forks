@@ -15,8 +15,9 @@ static int quiet;
 static int verbose;
 static int fetch_all;
 static int depth;
+static int no_progress;
 static const char fetch_pack_usage[] =
-"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--upload-pack=<git-upload-pack>] [--depth=<n>] [-v] [<host>:]<directory> [<refs>...]";
+"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
 static const char *uploadpack = "git-upload-pack";
 
 #define COMPLETE	(1U << 0)
@@ -173,12 +174,13 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 		}
 
 		if (!fetching)
-			packet_write(fd[1], "want %s%s%s%s%s%s\n",
+			packet_write(fd[1], "want %s%s%s%s%s%s%s\n",
 				     sha1_to_hex(remote),
 				     (multi_ack ? " multi_ack" : ""),
 				     (use_sideband == 2 ? " side-band-64k" : ""),
 				     (use_sideband == 1 ? " side-band" : ""),
 				     (use_thin_pack ? " thin-pack" : ""),
+				     (no_progress ? " no-progress" : ""),
 				     " ofs-delta");
 		else
 			packet_write(fd[1], "want %s\n", sha1_to_hex(remote));
@@ -198,13 +200,13 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 		int len;
 
 		while ((len = packet_read_line(fd[0], line, sizeof(line)))) {
-			if (!strncmp("shallow ", line, 8)) {
+			if (!prefixcmp(line, "shallow ")) {
 				if (get_sha1_hex(line + 8, sha1))
 					die("invalid shallow line: %s", line);
 				register_shallow(sha1);
 				continue;
 			}
-			if (!strncmp("unshallow ", line, 10)) {
+			if (!prefixcmp(line, "unshallow ")) {
 				if (get_sha1_hex(line + 10, sha1))
 					die("invalid unshallow line: %s", line);
 				if (!lookup_object(sha1))
@@ -346,7 +348,7 @@ static void filter_refs(struct ref **refs, int nr_match, char **match)
 		    check_ref_format(ref->name + 5))
 			; /* trash */
 		else if (fetch_all &&
-			 (!depth || strncmp(ref->name, "refs/tags/", 10) )) {
+			 (!depth || prefixcmp(ref->name, "refs/tags/") )) {
 			*newtail = ref;
 			ref->next = NULL;
 			newtail = &ref->next;
@@ -521,7 +523,7 @@ static int get_pack(int xd[2])
 	if (do_keep) {
 		*av++ = "index-pack";
 		*av++ = "--stdin";
-		if (!quiet)
+		if (!quiet && !no_progress)
 			*av++ = "-v";
 		if (use_thin_pack)
 			*av++ = "--fix-thin";
@@ -683,11 +685,11 @@ int main(int argc, char **argv)
 		char *arg = argv[i];
 
 		if (*arg == '-') {
-			if (!strncmp("--upload-pack=", arg, 14)) {
+			if (!prefixcmp(arg, "--upload-pack=")) {
 				uploadpack = arg + 14;
 				continue;
 			}
-			if (!strncmp("--exec=", arg, 7)) {
+			if (!prefixcmp(arg, "--exec=")) {
 				uploadpack = arg + 7;
 				continue;
 			}
@@ -712,10 +714,14 @@ int main(int argc, char **argv)
 				verbose = 1;
 				continue;
 			}
-			if (!strncmp("--depth=", arg, 8)) {
+			if (!prefixcmp(arg, "--depth=")) {
 				depth = strtol(arg + 8, NULL, 0);
 				if (stat(git_path("shallow"), &st))
 					st.st_mtime = 0;
+				continue;
+			}
+			if (!strcmp("--no-progress", arg)) {
+				no_progress = 1;
 				continue;
 			}
 			usage(fetch_pack_usage);

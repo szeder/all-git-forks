@@ -116,6 +116,8 @@ void mark_parents_uninteresting(struct commit *commit)
 
 void add_pending_object(struct rev_info *revs, struct object *obj, const char *name)
 {
+	if (revs->no_walk && (obj->flags & UNINTERESTING))
+		die("object ranges do not make sense when not walking revisions");
 	add_object_array(obj, name, &revs->pending);
 	if (revs->reflog_info && obj->type == OBJ_COMMIT)
 		add_reflog_for_walk(revs->reflog_info,
@@ -480,7 +482,7 @@ static int handle_one_ref(const char *path, const unsigned char *sha1, int flag,
 	struct all_refs_cb *cb = cb_data;
 	struct object *object = get_reference(cb->all_revs, path, sha1,
 					      cb->all_flags);
-	add_pending_object(cb->all_revs, object, "");
+	add_pending_object(cb->all_revs, object, path);
 	return 0;
 }
 
@@ -813,11 +815,11 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 		const char *arg = argv[i];
 		if (*arg == '-') {
 			int opts;
-			if (!strncmp(arg, "--max-count=", 12)) {
+			if (!prefixcmp(arg, "--max-count=")) {
 				revs->max_count = atoi(arg + 12);
 				continue;
 			}
-			if (!strncmp(arg, "--skip=", 7)) {
+			if (!prefixcmp(arg, "--skip=")) {
 				revs->skip_count = atoi(arg + 7);
 				continue;
 			}
@@ -832,31 +834,31 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->max_count = atoi(argv[++i]);
 				continue;
 			}
-			if (!strncmp(arg,"-n",2)) {
+			if (!prefixcmp(arg, "-n")) {
 				revs->max_count = atoi(arg + 2);
 				continue;
 			}
-			if (!strncmp(arg, "--max-age=", 10)) {
+			if (!prefixcmp(arg, "--max-age=")) {
 				revs->max_age = atoi(arg + 10);
 				continue;
 			}
-			if (!strncmp(arg, "--since=", 8)) {
+			if (!prefixcmp(arg, "--since=")) {
 				revs->max_age = approxidate(arg + 8);
 				continue;
 			}
-			if (!strncmp(arg, "--after=", 8)) {
+			if (!prefixcmp(arg, "--after=")) {
 				revs->max_age = approxidate(arg + 8);
 				continue;
 			}
-			if (!strncmp(arg, "--min-age=", 10)) {
+			if (!prefixcmp(arg, "--min-age=")) {
 				revs->min_age = atoi(arg + 10);
 				continue;
 			}
-			if (!strncmp(arg, "--before=", 9)) {
+			if (!prefixcmp(arg, "--before=")) {
 				revs->min_age = approxidate(arg + 9);
 				continue;
 			}
-			if (!strncmp(arg, "--until=", 8)) {
+			if (!prefixcmp(arg, "--until=")) {
 				revs->min_age = approxidate(arg + 8);
 				continue;
 			}
@@ -944,7 +946,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->num_ignore_packed = 0;
 				continue;
 			}
-			if (!strncmp(arg, "--unpacked=", 11)) {
+			if (!prefixcmp(arg, "--unpacked=")) {
 				revs->unpacked = 1;
 				add_ignore_packed(revs, arg+11);
 				continue;
@@ -980,7 +982,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->verbose_header = 1;
 				continue;
 			}
-			if (!strncmp(arg, "--pretty", 8)) {
+			if (!prefixcmp(arg, "--pretty")) {
 				revs->verbose_header = 1;
 				revs->commit_format = get_commit_format(arg+8);
 				continue;
@@ -1005,7 +1007,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->abbrev = DEFAULT_ABBREV;
 				continue;
 			}
-			if (!strncmp(arg, "--abbrev=", 9)) {
+			if (!prefixcmp(arg, "--abbrev=")) {
 				revs->abbrev = strtoul(arg + 9, NULL, 10);
 				if (revs->abbrev < MINIMUM_ABBREV)
 					revs->abbrev = MINIMUM_ABBREV;
@@ -1034,15 +1036,15 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 			/*
 			 * Grepping the commit log
 			 */
-			if (!strncmp(arg, "--author=", 9)) {
+			if (!prefixcmp(arg, "--author=")) {
 				add_header_grep(revs, "author", arg+9);
 				continue;
 			}
-			if (!strncmp(arg, "--committer=", 12)) {
+			if (!prefixcmp(arg, "--committer=")) {
 				add_header_grep(revs, "committer", arg+12);
 				continue;
 			}
-			if (!strncmp(arg, "--grep=", 7)) {
+			if (!prefixcmp(arg, "--grep=")) {
 				add_message_grep(revs, arg+7);
 				continue;
 			}
@@ -1050,7 +1052,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				all_match = 1;
 				continue;
 			}
-			if (!strncmp(arg, "--encoding=", 11)) {
+			if (!prefixcmp(arg, "--encoding=")) {
 				arg += 11;
 				if (strcmp(arg, "none"))
 					git_log_output_encoding = strdup(arg);
@@ -1233,9 +1235,15 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		 */
 		if (!revs->limited) {
 			if (revs->max_age != -1 &&
-			    (commit->date < revs->max_age))
-				continue;
-			add_parents_to_list(revs, commit, &revs->commits);
+			    (commit->date < revs->max_age)) {
+				if (revs->boundary)
+					commit->object.flags |=
+						BOUNDARY_SHOW | BOUNDARY;
+				else
+					continue;
+			} else
+				add_parents_to_list(revs, commit,
+						&revs->commits);
 		}
 		if (commit->object.flags & SHOWN)
 			continue;
@@ -1336,7 +1344,18 @@ struct commit *get_revision(struct rev_info *revs)
 	case -1:
 		break;
 	case 0:
-		return NULL;
+		if (revs->boundary) {
+			struct commit_list *list = revs->commits;
+			while (list) {
+				list->item->object.flags |=
+					BOUNDARY_SHOW | BOUNDARY;
+				list = list->next;
+			}
+			/* all remaining commits are boundary commits */
+			revs->max_count = -1;
+			revs->limited = 1;
+		} else
+			return NULL;
 	default:
 		revs->max_count--;
 	}

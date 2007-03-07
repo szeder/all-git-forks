@@ -13,6 +13,7 @@ git-archive
 git-bisect
 git-blame
 git-branch
+git-bundle
 git-cat-file
 git-check-ref-format
 git-checkout
@@ -139,6 +140,7 @@ git-whatchanged
 git-write-tree
 git-core-*/?*
 gitweb/gitweb.cgi
+test-chmtime
 test-date
 test-delta
 test-dump-cache-tree

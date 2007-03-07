@@ -48,7 +48,7 @@ static int handle_options(const char*** argv, int* argc)
 		/*
 		 * Check remaining flags.
 		 */
-		if (!strncmp(cmd, "--exec-path", 11)) {
+		if (!prefixcmp(cmd, "--exec-path")) {
 			cmd += 11;
 			if (*cmd == '=')
 				git_set_exec_path(cmd + 1);
@@ -66,7 +66,7 @@ static int handle_options(const char*** argv, int* argc)
 			setenv(GIT_DIR_ENVIRONMENT, (*argv)[1], 1);
 			(*argv)++;
 			(*argc)--;
-		} else if (!strncmp(cmd, "--git-dir=", 10)) {
+		} else if (!prefixcmp(cmd, "--git-dir=")) {
 			setenv(GIT_DIR_ENVIRONMENT, cmd + 10, 1);
 		} else if (!strcmp(cmd, "--bare")) {
 			static char git_dir[PATH_MAX+1];
@@ -88,7 +88,7 @@ static char *alias_string;
 
 static int git_alias_config(const char *var, const char *value)
 {
-	if (!strncmp(var, "alias.", 6) && !strcmp(var + 6, alias_command)) {
+	if (!prefixcmp(var, "alias.") && !strcmp(var + 6, alias_command)) {
 		alias_string = xstrdup(value);
 	}
 	return 0;
@@ -226,9 +226,10 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		{ "add", cmd_add, RUN_SETUP | NOT_BARE },
 		{ "annotate", cmd_annotate, USE_PAGER },
 		{ "apply", cmd_apply },
-		{ "archive", cmd_archive },
+		{ "archive", cmd_archive, RUN_SETUP },
 		{ "blame", cmd_blame, RUN_SETUP },
 		{ "branch", cmd_branch, RUN_SETUP },
+		{ "bundle", cmd_bundle },
 		{ "cat-file", cmd_cat_file, RUN_SETUP },
 		{ "checkout-index", cmd_checkout_index, RUN_SETUP },
 		{ "check-ref-format", cmd_check_ref_format },
@@ -237,8 +238,8 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		{ "config", cmd_config },
 		{ "count-objects", cmd_count_objects, RUN_SETUP },
 		{ "describe", cmd_describe, RUN_SETUP },
-		{ "diff", cmd_diff, RUN_SETUP | USE_PAGER },
-		{ "diff-files", cmd_diff_files, RUN_SETUP },
+		{ "diff", cmd_diff, USE_PAGER },
+		{ "diff-files", cmd_diff_files },
 		{ "diff-index", cmd_diff_index, RUN_SETUP },
 		{ "diff-tree", cmd_diff_tree, RUN_SETUP },
 		{ "fmt-merge-msg", cmd_fmt_merge_msg, RUN_SETUP },
@@ -247,7 +248,7 @@ static void handle_internal_command(int argc, const char **argv, char **envp)
 		{ "fsck", cmd_fsck, RUN_SETUP },
 		{ "fsck-objects", cmd_fsck, RUN_SETUP },
 		{ "get-tar-commit-id", cmd_get_tar_commit_id },
-		{ "grep", cmd_grep, RUN_SETUP },
+		{ "grep", cmd_grep, RUN_SETUP | USE_PAGER },
 		{ "help", cmd_help },
 		{ "init", cmd_init_db },
 		{ "init-db", cmd_init_db },
@@ -348,7 +349,7 @@ int main(int argc, const char **argv, char **envp)
 	 * So we just directly call the internal command handler, and
 	 * die if that one cannot handle it.
 	 */
-	if (!strncmp(cmd, "git-", 4)) {
+	if (!prefixcmp(cmd, "git-")) {
 		cmd += 4;
 		argv[0] = cmd;
 		handle_internal_command(argc, argv, envp);
@@ -360,7 +361,7 @@ int main(int argc, const char **argv, char **envp)
 	argc--;
 	handle_options(&argv, &argc);
 	if (argc > 0) {
-		if (!strncmp(argv[0], "--", 2))
+		if (!prefixcmp(argv[0], "--"))
 			argv[0] += 2;
 	} else {
 		/* Default command: "help" */

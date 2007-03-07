@@ -12,7 +12,7 @@
 #include "builtin.h"
 
 static const char builtin_branch_usage[] =
-  "git-branch [-r] (-d | -D) <branchname> | [-l] [-f] <branchname> [<start-point>] | (-m | -M) [<oldbranch>] <newbranch> | [--color | --no-color] [-r | -a] [-v [--abbrev=<length>]]";
+  "git-branch [-r] (-d | -D) <branchname> | [-l] [-f] <branchname> [<start-point>] | (-m | -M) [<oldbranch>] <newbranch> | [--color | --no-color] [-r | -a] [-v [--abbrev=<length> | --no-abbrev]]";
 
 #define REF_UNKNOWN_TYPE    0x00
 #define REF_LOCAL_BRANCH    0x01
@@ -59,7 +59,7 @@ int git_branch_config(const char *var, const char *value)
 		branch_use_color = git_config_colorbool(var, value);
 		return 0;
 	}
-	if (!strncmp(var, "color.branch.", 13)) {
+	if (!prefixcmp(var, "color.branch.")) {
 		int slot = parse_branch_color_slot(var, 13);
 		color_parse(value, var, branch_colors[slot]);
 		return 0;
@@ -178,13 +178,13 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 	int len;
 
 	/* Detect kind */
-	if (!strncmp(refname, "refs/heads/", 11)) {
+	if (!prefixcmp(refname, "refs/heads/")) {
 		kind = REF_LOCAL_BRANCH;
 		refname += 11;
-	} else if (!strncmp(refname, "refs/remotes/", 13)) {
+	} else if (!prefixcmp(refname, "refs/remotes/")) {
 		kind = REF_REMOTE_BRANCH;
 		refname += 13;
-	} else if (!strncmp(refname, "refs/tags/", 10)) {
+	} else if (!prefixcmp(refname, "refs/tags/")) {
 		kind = REF_TAG;
 		refname += 10;
 	}
@@ -446,8 +446,16 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			reflog = 1;
 			continue;
 		}
-		if (!strncmp(arg, "--abbrev=", 9)) {
-			abbrev = atoi(arg+9);
+		if (!prefixcmp(arg, "--no-abbrev")) {
+			abbrev = 0;
+			continue;
+		}
+		if (!prefixcmp(arg, "--abbrev=")) {
+			abbrev = strtoul(arg + 9, NULL, 10);
+			if (abbrev < MINIMUM_ABBREV)
+				abbrev = MINIMUM_ABBREV;
+			else if (abbrev > 40)
+				abbrev = 40;
 			continue;
 		}
 		if (!strcmp(arg, "-v")) {
@@ -476,7 +484,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		detached = 1;
 	}
 	else {
-		if (strncmp(head, "refs/heads/", 11))
+		if (prefixcmp(head, "refs/heads/"))
 			die("HEAD not found below refs/heads!");
 		head += 11;
 	}

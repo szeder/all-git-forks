@@ -1,6 +1,8 @@
 #ifndef GIT_COMPAT_UTIL_H
 #define GIT_COMPAT_UTIL_H
 
+#define _FILE_OFFSET_BITS 64
+
 #ifndef FLEX_ARRAY
 #if defined(__GNUC__) && (__GNUC__ < 3)
 #define FLEX_ARRAY 0
@@ -47,9 +49,15 @@
 #include <netdb.h>
 #include <pwd.h>
 #include <inttypes.h>
+#if defined(__CYGWIN__)
+#undef _XOPEN_SOURCE
+#include <grp.h>
+#define _XOPEN_SOURCE 600
+#else
 #undef _ALL_SOURCE /* AIX 5.3L defines a struct list with _ALL_SOURCE. */
 #include <grp.h>
 #define _ALL_SOURCE 1
+#endif
 
 #ifndef NO_ICONV
 #include <iconv.h>
@@ -137,6 +145,11 @@ extern char *gitstrcasestr(const char *haystack, const char *needle);
 #ifdef NO_STRLCPY
 #define strlcpy gitstrlcpy
 extern size_t gitstrlcpy(char *, const char *, size_t);
+#endif
+
+#ifdef NO_STRTOUMAX
+#define strtoumax gitstrtoumax
+extern uintmax_t gitstrtoumax(const char *, char **, int);
 #endif
 
 extern void release_pack_memory(size_t);
@@ -272,6 +285,11 @@ static inline int sane_case(int x, int high)
 	if (sane_istest(x, GIT_ALPHA))
 		x = (x & ~0x20) | high;
 	return x;
+}
+
+static inline int prefixcmp(const char *str, const char *prefix)
+{
+	return strncmp(str, prefix, strlen(prefix));
 }
 
 #endif

@@ -269,6 +269,11 @@ int git_default_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.symlinks")) {
+		has_symlinks = git_config_bool(var, value);
+		return 0;
+	}
+
 	if (!strcmp(var, "core.bare")) {
 		is_bare_repository_cfg = git_config_bool(var, value);
 		return 0;
@@ -323,6 +328,15 @@ int git_default_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.packedgitlimit")) {
 		packed_git_limit = git_config_int(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.autocrlf")) {
+		if (value && !strcasecmp(value, "input")) {
+			auto_crlf = -1;
+			return 0;
+		}
+		auto_crlf = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -385,6 +399,8 @@ int git_config(config_fn_t fn)
 	 * config file otherwise. */
 	filename = getenv(CONFIG_ENVIRONMENT);
 	if (!filename) {
+		if (!access(ETC_GITCONFIG, R_OK))
+			ret += git_config_from_file(fn, ETC_GITCONFIG);
 		home = getenv("HOME");
 		filename = getenv(CONFIG_LOCAL_ENVIRONMENT);
 		if (!filename)

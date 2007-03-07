@@ -254,12 +254,15 @@ esac
 
 for s in $use_strategies
 do
-	case " $s " in
-	*" $no_trivial_merge_strategies "*)
-		index_merge=f
-		break
-		;;
-	esac
+	for nt in $no_trivial_merge_strategies
+	do
+		case " $s " in
+		*" $nt "*)
+			index_merge=f
+			break
+			;;
+		esac
+	done
 done
 
 case "$#" in
@@ -291,7 +294,7 @@ f,*)
 	git-update-index --refresh 2>/dev/null
 	new_head=$(git-rev-parse --verify "$1^0") &&
 	git-read-tree -v -m -u --exclude-per-directory=.gitignore $head "$new_head" &&
-	finish "$new_head" "Fast forward"
+	finish "$new_head" "Fast forward" || exit
 	dropsave
 	exit 0
 	;;
