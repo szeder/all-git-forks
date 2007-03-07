@@ -79,9 +79,9 @@ do
 	shift
 done
 
+origin=$(get_default_remote)
 case "$#" in
 0)
-	origin=$(get_default_remote)
 	test -n "$(get_remote_url ${origin})" ||
 		die "Where do you want to fetch from today?"
 	set x $origin ; shift ;;
@@ -103,6 +103,8 @@ if test "" = "$append"
 then
 	: >"$GIT_DIR/FETCH_HEAD"
 fi
+: >"$GIT_DIR/FETCH_FETCHED"
+trap 'rm -f "$GIT_DIR"/FETCH_FETCHED' 0 1 2 3 15
 
 # Global that is reused later
 ls_remote_result=$(git ls-remote $exec "$remote") ||
@@ -145,7 +147,7 @@ then
 		  git-show-ref --exclude-existing=refs/tags/ |
 	          while read sha1 name
 		  do
-			echo ".${name}:${name}"
+			echo "${name}:${name}"
 		  done` || exit
 	if test "$#" -gt 1
 	then
@@ -182,7 +184,7 @@ fetch_native () {
 	test -n "$force" && flags="$flags -f"
 	GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION" \
 		git-fetch--tool $flags native-store \
-			"$remote" "$remote_nick" "$refs"
+			"$remote" "$refs"
       )
     ) || exit
 
@@ -199,13 +201,6 @@ fetch_dumb () {
 
       # These are relative path from $GIT_DIR, typically starting at refs/
       # but may be HEAD
-      if expr "z$ref" : 'z\.' >/dev/null
-      then
-	  not_for_merge=t
-	  ref=$(expr "z$ref" : 'z\.\(.*\)')
-      else
-	  not_for_merge=
-      fi
       if expr "z$ref" : 'z+' >/dev/null
       then
 	  single_force=t
@@ -283,7 +278,7 @@ fetch_dumb () {
       esac
 
       append_fetch_head "$head" "$remote" \
-	  "$remote_name" "$remote_nick" "$local_name" "$not_for_merge" || exit
+	  "$remote_name" "$remote_nick" "$local_name" || exit
 
   done
 
@@ -316,7 +311,7 @@ case "$no_tags$tags" in
 		do
 			git-cat-file -t "$sha1" >/dev/null 2>&1 || continue
 			echo >&2 "Auto-following $name"
-			echo ".${name}:${name}"
+			echo "${name}:${name}"
 		done)
 	esac
 	case "$taglist" in
@@ -344,3 +339,62 @@ case "$orig_head" in
 	fi
 	;;
 esac
+# Generate $GIT_DIR/FETCH_HEAD
+case ",$#,$remote_nick," in
+,1,$origin,)
+	# Fetch default: merge the branches in branch.*.merge that match
+	#                the fetched ones or the first one
+	curr_branch=$(git-symbolic-ref -q HEAD | sed -e 's|^refs/heads/||')
+	merge_branches=$(git-config \
+		--get-all "branch.${curr_branch}.merge" | sort -u)
+	fetch_branches=$(get_remote_default_refs_for_fetch -n $remote_nick |
+		sed -e 's/:.*$//g' -e 's/^+//' | sort -u)
+	test -n "$merge_branches" && test -n "$fetch_branches" &&
+	merge_branches=$(printf '%s\n%s' "$merge_branches" "$fetch_branches" |
+		sort | uniq -d)
+
+	[ -z "$merge_branches" ] ||
+	test "$(get_data_source $remote_nick)" = branches && merge_first=yes;;
+,1,$remote,)
+	# Remote is a URL, merge the default branch HEAD
+	merge_branches=HEAD;;
+,1,*)
+	# Remote is a shorthand diferent from the default,
+	# merge the first fetched branch
+	merge_first=yes ;;
+*)
+	# Merge the branches given in the command line
+	merge_branches=$(for ref in $(get_remote_refs_for_fetch "$@") ; do
+		expr "z$ref" : 'z.*:' >/dev/null || ref="${ref}:"
+		echo "$(expr "z$ref" : 'z\([^:]*\):')"; done);;
+esac
+
+if test "$merge_first" = "yes" ; then
+    merge_branches=
+    # Do not merge the first branch if it was specified with a glob
+    test "$(get_remote_default_refs_for_fetch -t $remote_nick)" != "explicit" &&
+    merge_first=
+else
+    merge_branches=$(canon_refs_list_for_fetch $merge_branches | sed 's/:.*$//g')
+fi
+
+while IFS='	' read hash ref note ; do
+	# 2.6.11-tree tag would not be happy to be fed to resolve.
+	if git-cat-file commit "$hash" >/dev/null 2>&1
+	then
+		hashc=$(git-rev-parse --verify "$hash^0") || exit
+		remote_branch=$(expr "z$ref" : 'z\([^:]*\):')
+		for merge_branch in $merge_branches ; do
+			[ "$merge_branch" = "$remote_branch" ] &&
+			echo "$hashc		$note" && continue 2
+		done
+	else
+		echo "$hash	not-for-merge	$note" && continue
+	fi
+	if ! test "$merge_first" || test "$merge_first" = "done" ; then
+		echo "$hash	not-for-merge	$note"
+	else
+		echo "$hash		$note"
+		merge_first=done
+	fi
+done < "$GIT_DIR"/FETCH_FETCHED >> "$GIT_DIR/FETCH_HEAD"
