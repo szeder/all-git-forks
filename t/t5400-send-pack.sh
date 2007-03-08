@@ -108,8 +108,8 @@ test_expect_success \
 	cd victim &&
 	git-config receive.denyNonFastforwards true &&
 	cd .. &&
-	git-update-ref refs/heads/master master^ &&
-	git-send-pack --force ./victim/.git/ master &&
+	git-update-ref refs/heads/master master^ || return 1
+	git-send-pack --force ./victim/.git/ master && return 1
 	! git diff .git/refs/heads/master victim/.git/refs/heads/master
 '
 

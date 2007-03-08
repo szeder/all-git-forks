@@ -133,10 +133,6 @@ Format of STDIN stream:
 #define PACK_ID_BITS 16
 #define MAX_PACK_ID ((1<<PACK_ID_BITS)-1)
 
-#ifndef PRIuMAX
-#define PRIuMAX "llu"
-#endif
-
 struct object_entry
 {
 	struct object_entry *next;
@@ -253,7 +249,7 @@ typedef enum {
 
 /* Configured limits on output */
 static unsigned long max_depth = 10;
-static unsigned long max_packsize = (1LL << 32) - 1;
+static off_t max_packsize = (1LL << 32) - 1;
 static int force_update;
 
 /* Stats and misc. counters */
@@ -757,7 +753,7 @@ static char *create_index(void)
 static char *keep_pack(char *curr_index_name)
 {
 	static char name[PATH_MAX];
-	static char *keep_msg = "fast-import";
+	static const char *keep_msg = "fast-import";
 	int keep_fd;
 
 	chmod(pack_data->pack_name, 0444);
@@ -1531,7 +1527,7 @@ static void unload_one_branch(void)
 {
 	while (cur_active_branches
 		&& cur_active_branches >= max_active_branches) {
-		unsigned long min_commit = ULONG_MAX;
+		uintmax_t min_commit = ULONG_MAX;
 		struct branch *e, *l = NULL, *p = NULL;
 
 		for (e = active_branches; e; e = e->active_next_branch) {

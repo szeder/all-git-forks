@@ -138,8 +138,7 @@ static int update_local_ref(const char *name,
 
 static int append_fetch_head(FILE *fp,
 			     const char *head, const char *remote,
-			     const char *remote_name, const char *remote_nick,
-			     const char *local_name, int not_for_merge,
+			     const char *remote_name, const char *local_name,
 			     int verbose, int force)
 {
 	struct commit *commit;
@@ -151,8 +150,6 @@ static int append_fetch_head(FILE *fp,
 	if (get_sha1(head, sha1))
 		return error("Not a valid object name: %s", head);
 	commit = lookup_commit_reference(sha1);
-	if (!commit)
-		not_for_merge = 1;
 
 	if (!strcmp(remote_name, "HEAD")) {
 		kind = "";
@@ -189,9 +186,9 @@ static int append_fetch_head(FILE *fp,
 		note_len += sprintf(note + note_len, "'%s' of ", what);
 	}
 	note_len += sprintf(note + note_len, "%.*s", remote_len, remote);
-	fprintf(fp, "%s\t%s\t%s\n",
+	fprintf(fp, "%s\t%s:%s\t%s\n",
 		sha1_to_hex(commit ? commit->object.sha1 : sha1),
-		not_for_merge ? "not-for-merge" : "",
+		remote_name, local_name,
 		note);
 	return update_local_ref(local_name, head, note, verbose, force);
 }
@@ -211,14 +208,14 @@ static void remove_keep_on_signal(int signo)
 }
 
 static char *find_local_name(const char *remote_name, const char *refs,
-			     int *force_p, int *not_for_merge_p)
+			     int *force_p)
 {
 	const char *ref = refs;
 	int len = strlen(remote_name);
 
 	while (ref) {
 		const char *next;
-		int single_force, not_for_merge;
+		int single_force;
 
 		while (*ref == '\n')
 			ref++;
@@ -226,18 +223,10 @@ static char *find_local_name(const char *remote_name, const char *refs,
 			break;
 		next = strchr(ref, '\n');
 
-		single_force = not_for_merge = 0;
+		single_force = 0;
 		if (*ref == '+') {
 			single_force = 1;
 			ref++;
-		}
-		if (*ref == '.') {
-			not_for_merge = 1;
-			ref++;
-			if (*ref == '+') {
-				single_force = 1;
-				ref++;
-			}
 		}
 		if (!strncmp(remote_name, ref, len) && ref[len] == ':') {
 			const char *local_part = ref + len + 1;
@@ -252,7 +241,6 @@ static char *find_local_name(const char *remote_name, const char *refs,
 			memcpy(ret, local_part, retlen);
 			ret[retlen] = 0;
 			*force_p = single_force;
-			*not_for_merge_p = not_for_merge;
 			return ret;
 		}
 		ref = next;
@@ -262,7 +250,6 @@ static char *find_local_name(const char *remote_name, const char *refs,
 
 static int fetch_native_store(FILE *fp,
 			      const char *remote,
-			      const char *remote_nick,
 			      const char *refs,
 			      int verbose, int force)
 {
@@ -276,7 +263,7 @@ static int fetch_native_store(FILE *fp,
 		int len;
 		char *cp;
 		char *local_name;
-		int single_force, not_for_merge;
+		int single_force;
 
 		for (cp = buffer; *cp && !isspace(*cp); cp++)
 			;
@@ -298,12 +285,11 @@ static int fetch_native_store(FILE *fp,
 		}
 
 		local_name = find_local_name(cp, refs,
-					     &single_force, &not_for_merge);
+					     &single_force);
 		if (!local_name)
 			continue;
 		err |= append_fetch_head(fp,
-					 buffer, remote, cp, remote_nick,
-					 local_name, not_for_merge,
+					 buffer, remote, cp, local_name,
 					 verbose, force || single_force);
 	}
 	return err;
@@ -336,8 +322,6 @@ static int parse_reflist(const char *reflist)
 			break;
 		for (next = ref; *next && !isspace(*next); next++)
 			;
-		if (*ref == '.')
-			ref++;
 		if (*ref == '+')
 			ref++;
 		colon = strchr(ref, ':');
@@ -460,12 +444,11 @@ int cmd_fetch__tool(int argc, const char **argv, const char *prefix)
 		int result;
 		FILE *fp;
 
-		if (argc != 8)
-			return error("append-fetch-head takes 6 args");
-		fp = fopen(git_path("FETCH_HEAD"), "a");
+		if (argc != 6)
+			return error("append-fetch-head takes 4 args");
+		fp = fopen(git_path("FETCH_FETCHED"), "a");
 		result = append_fetch_head(fp, argv[2], argv[3],
 					   argv[4], argv[5],
-					   argv[6], !!argv[7][0],
 					   verbose, force);
 		fclose(fp);
 		return result;
@@ -474,10 +457,10 @@ int cmd_fetch__tool(int argc, const char **argv, const char *prefix)
 		int result;
 		FILE *fp;
 
-		if (argc != 5)
-			return error("fetch-native-store takes 3 args");
-		fp = fopen(git_path("FETCH_HEAD"), "a");
-		result = fetch_native_store(fp, argv[2], argv[3], argv[4],
+		if (argc != 4)
+			return error("fetch-native-store takes 2 args");
+		fp = fopen(git_path("FETCH_FETCHED"), "a");
+		result = fetch_native_store(fp, argv[2], argv[3],
 					    verbose, force);
 		fclose(fp);
 		return result;
