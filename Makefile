@@ -606,18 +606,30 @@ endif
 ifdef NO_PERL_MAKEMAKER
 	export NO_PERL_MAKEMAKER
 endif
+
+QUIET_SUBDIR0  = $(MAKE) -C # space to separate -C and subdir
+QUIET_SUBDIR1  =
+
+ifneq ($(findstring $(MAKEFLAGS),w),w)
+PRINT_DIR = --no-print-directory
+else # "make -w"
+NO_SUBDIR = :
+endif
+
+ifneq ($(findstring $(MAKEFLAGS),s),s)
 ifndef V
-	QUIET_CC       = @echo '   ' CC $<;
+	QUIET_CC       = @echo '   ' CC $@;
 	QUIET_AR       = @echo '   ' AR $@;
 	QUIET_LINK     = @echo '   ' LINK $@;
 	QUIET_BUILT_IN = @echo '   ' BUILTIN $@;
 	QUIET_GEN      = @echo '   ' GEN $@;
 	QUIET_SUBDIR0  = @subdir=
-	QUIET_SUBDIR1  = ;echo '   ' SUBDIR $$subdir; $(MAKE) -C$$subdir
+	QUIET_SUBDIR1  = ;$(NO_SUBDIR) echo '   ' SUBDIR $$subdir; \
+			 $(MAKE) $(PRINT_DIR) -C $$subdir
 	export V
-else
-	QUIET_SUBDIR0  = $(MAKE) -C
-	QUIET_SUBDIR1  =
+	export QUIET_GEN
+	export QUIET_BUILT_IN
+endif
 endif
 
 # Shell quote (do not use $(call) to accommodate ancient setups);
@@ -687,7 +699,7 @@ $(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh
 $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 
 perl/perl.mak: GIT-CFLAGS
-	$(MAKE) -C perl PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
+	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
 $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	$(QUIET_GEN)rm -f $@ $@+ && \
