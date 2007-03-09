@@ -268,9 +268,9 @@ static int create_bundle(struct bundle_header *header, const char *path,
 	struct rev_info revs;
 
 	bundle_fd = (!strcmp(path, "-") ? 1 :
-			open(path, O_CREAT | O_WRONLY, 0666));
+			open(path, O_CREAT | O_EXCL | O_WRONLY, 0666));
 	if (bundle_fd < 0)
-		return error("Could not write to '%s'", path);
+		return error("Could not create '%s': %s", path, strerror(errno));
 
 	/* write signature */
 	write_or_die(bundle_fd, bundle_signature, strlen(bundle_signature));
@@ -328,11 +328,9 @@ static int create_bundle(struct bundle_header *header, const char *path,
 		 * other limiting options could have prevented all the tips
 		 * from getting output.
 		 */
-		if (!(e->item->flags & SHOWN)) {
-			warn("ref '%s' is excluded by the rev-list options",
+		if (!(e->item->flags & SHOWN))
+			die("ref '%s' is excluded by the rev-list options",
 				e->name);
-			continue;
-		}
 		write_or_die(bundle_fd, sha1_to_hex(e->item->sha1), 40);
 		write_or_die(bundle_fd, " ", 1);
 		write_or_die(bundle_fd, ref, strlen(ref));
@@ -374,7 +372,8 @@ static int create_bundle(struct bundle_header *header, const char *path,
 static int unbundle(struct bundle_header *header, int bundle_fd,
 		int argc, const char **argv)
 {
-	const char *argv_index_pack[] = {"index-pack", "--stdin", NULL};
+	const char *argv_index_pack[] = {"index-pack",
+		"--fix-thin", "--stdin", NULL};
 	int pid, status, dev_null;
 
 	if (verify_bundle(header, 0))
