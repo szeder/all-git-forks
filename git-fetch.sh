@@ -284,7 +284,7 @@ fetch_dumb () {
       esac
 
       append_fetch_head "$head" "$remote" \
-	  "$remote_name" "$remote_nick" "$local_name" || exit
+	  "$remote_name" "$local_name" || exit
 
   done
 
