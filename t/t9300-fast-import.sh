@@ -117,7 +117,7 @@ test_expect_success \
 		--import-marks=marks.out \
 		--export-marks=marks.new \
 		</dev/null &&
-	diff -u expect marks.new'
+	git diff -u expect marks.new'
 
 ###
 ### series B

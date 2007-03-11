@@ -84,13 +84,13 @@ test_expect_success 'pre-receive hook arguments' '
 	echo \
 	 refs/heads/master $commit0 $commit1 \
 	 refs/heads/tofail $commit1 $commit0 \
-	| diff - victim/.git/pre-receive.args
+	| git diff - victim/.git/pre-receive.args
 '
 
 test_expect_success 'update hook arguments' '
 	(echo refs/heads/master $commit0 $commit1;
 	 echo refs/heads/tofail $commit1 $commit0
-	) | diff - victim/.git/update.args
+	) | git diff - victim/.git/update.args
 '
 
 test_expect_success 'post-receive hook arguments' '
@@ -128,7 +128,7 @@ STDERR post-update
 EOF
 test_expect_success 'send-pack stderr contains hook messages' '
 	egrep ^STD send.err >actual &&
-	diff - actual <expect
+	git diff - actual <expect
 '
 
 test_done

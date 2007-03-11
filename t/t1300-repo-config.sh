@@ -405,7 +405,7 @@ weird
 EOF
 
 test_expect_success "section was removed properly" \
-	"diff -u expect .git/config"
+	"git diff -u expect .git/config"
 
 test_expect_success numbers '
 
