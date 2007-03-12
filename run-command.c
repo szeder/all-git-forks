@@ -2,30 +2,67 @@
 #include "run-command.h"
 #include "exec_cmd.h"
 
-int run_command_v_opt(const char **argv, int flags)
+int start_command(struct child_process *cmd)
 {
-	pid_t pid = fork();
+	int need_in = !cmd->no_stdin && cmd->in < 0;
+	int fdin[2];
 
-	if (pid < 0)
+	if (need_in) {
+		if (pipe(fdin) < 0)
+			return -ERR_RUN_COMMAND_PIPE;
+		cmd->in = fdin[1];
+		cmd->close_in = 1;
+	}
+
+	cmd->pid = fork();
+	if (cmd->pid < 0) {
+		if (need_in) {
+			close(fdin[0]);
+			close(fdin[1]);
+		}
 		return -ERR_RUN_COMMAND_FORK;
-	if (!pid) {
-		if (flags & RUN_COMMAND_NO_STDIN) {
+	}
+
+	if (!cmd->pid) {
+		if (cmd->no_stdin) {
 			int fd = open("/dev/null", O_RDWR);
 			dup2(fd, 0);
 			close(fd);
+		} else if (need_in) {
+			dup2(fdin[0], 0);
+			close(fdin[0]);
+			close(fdin[1]);
+		} else if (cmd->in) {
+			dup2(cmd->in, 0);
+			close(cmd->in);
 		}
-		if (flags & RUN_COMMAND_STDOUT_TO_STDERR)
+
+		if (cmd->stdout_to_stderr)
 			dup2(2, 1);
-		if (flags & RUN_GIT_CMD) {
-			execv_git_cmd(argv);
+		if (cmd->git_cmd) {
+			execv_git_cmd(cmd->argv);
 		} else {
-			execvp(argv[0], (char *const*) argv);
+			execvp(cmd->argv[0], (char *const*) cmd->argv);
 		}
-		die("exec %s failed.", argv[0]);
+		die("exec %s failed.", cmd->argv[0]);
 	}
+
+	if (need_in)
+		close(fdin[0]);
+	else if (cmd->in)
+		close(cmd->in);
+
+	return 0;
+}
+
+int finish_command(struct child_process *cmd)
+{
+	if (cmd->close_in)
+		close(cmd->in);
+
 	for (;;) {
 		int status, code;
-		pid_t waiting = waitpid(pid, &status, 0);
+		pid_t waiting = waitpid(cmd->pid, &status, 0);
 
 		if (waiting < 0) {
 			if (errno == EINTR)
@@ -33,7 +70,7 @@ int run_command_v_opt(const char **argv, int flags)
 			error("waitpid failed (%s)", strerror(errno));
 			return -ERR_RUN_COMMAND_WAITPID;
 		}
-		if (waiting != pid)
+		if (waiting != cmd->pid)
 			return -ERR_RUN_COMMAND_WAITPID_WRONG_PID;
 		if (WIFSIGNALED(status))
 			return -ERR_RUN_COMMAND_WAITPID_SIGNAL;
@@ -47,47 +84,21 @@ int run_command_v_opt(const char **argv, int flags)
 	}
 }
 
-int run_command_v(const char **argv)
+int run_command(struct child_process *cmd)
 {
-	return run_command_v_opt(argv, 0);
+	int code = start_command(cmd);
+	if (code)
+		return code;
+	return finish_command(cmd);
 }
 
-static int run_command_va_opt(int opt, const char *cmd, va_list param)
+int run_command_v_opt(const char **argv, int opt)
 {
-	int argc;
-	const char *argv[MAX_RUN_COMMAND_ARGS];
-	const char *arg;
-
-	argv[0] = (char*) cmd;
-	argc = 1;
-	while (argc < MAX_RUN_COMMAND_ARGS) {
-		arg = argv[argc++] = va_arg(param, char *);
-		if (!arg)
-			break;
-	}
-	if (MAX_RUN_COMMAND_ARGS <= argc)
-		return error("too many args to run %s", cmd);
-	return run_command_v_opt(argv, opt);
-}
-
-int run_command_opt(int opt, const char *cmd, ...)
-{
-	va_list params;
-	int r;
-
-	va_start(params, cmd);
-	r = run_command_va_opt(opt, cmd, params);
-	va_end(params);
-	return r;
-}
-
-int run_command(const char *cmd, ...)
-{
-	va_list params;
-	int r;
-
-	va_start(params, cmd);
-	r = run_command_va_opt(0, cmd, params);
-	va_end(params);
-	return r;
+	struct child_process cmd;
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.argv = argv;
+	cmd.no_stdin = opt & RUN_COMMAND_NO_STDIN ? 1 : 0;
+	cmd.git_cmd = opt & RUN_GIT_CMD ? 1 : 0;
+	cmd.stdout_to_stderr = opt & RUN_COMMAND_STDOUT_TO_STDERR ? 1 : 0;
+	return run_command(&cmd);
 }
