@@ -1808,7 +1808,7 @@ void *read_object_with_reference(const unsigned char *sha1,
 	}
 }
 
-static void write_sha1_file_prepare(void *buf, unsigned long len,
+static void write_sha1_file_prepare(const void *buf, unsigned long len,
                                     const char *type, unsigned char *sha1,
                                     char *hdr, int *hdrlen)
 {
@@ -1936,7 +1936,7 @@ static void setup_object_header(z_stream *stream, const char *type, unsigned lon
 	stream->avail_out -= hdrlen;
 }
 
-int hash_sha1_file(void *buf, unsigned long len, const char *type,
+int hash_sha1_file(const void *buf, unsigned long len, const char *type,
                    unsigned char *sha1)
 {
 	char hdr[32];
@@ -1947,7 +1947,7 @@ int hash_sha1_file(void *buf, unsigned long len, const char *type,
 
 int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned char *returnsha1)
 {
-	int size;
+	int size, ret;
 	unsigned char *compressed;
 	z_stream stream;
 	unsigned char sha1[20];
@@ -2007,9 +2007,14 @@ int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned cha
 	/* Then the data itself.. */
 	stream.next_in = buf;
 	stream.avail_in = len;
-	while (deflate(&stream, Z_FINISH) == Z_OK)
-		/* nothing */;
-	deflateEnd(&stream);
+	ret = deflate(&stream, Z_FINISH);
+	if (ret != Z_STREAM_END)
+		die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
+
+	ret = deflateEnd(&stream);
+	if (ret != Z_OK)
+		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
+
 	size = stream.total_out;
 
 	if (write_buffer(fd, compressed, size) < 0)
