@@ -2,30 +2,108 @@
 #include "run-command.h"
 #include "exec_cmd.h"
 
-int run_command_v_opt(const char **argv, int flags)
+static inline void close_pair(int fd[2])
 {
-	pid_t pid = fork();
+	close(fd[0]);
+	close(fd[1]);
+}
 
-	if (pid < 0)
-		return -ERR_RUN_COMMAND_FORK;
-	if (!pid) {
-		if (flags & RUN_COMMAND_NO_STDIN) {
-			int fd = open("/dev/null", O_RDWR);
-			dup2(fd, 0);
-			close(fd);
-		}
-		if (flags & RUN_COMMAND_STDOUT_TO_STDERR)
-			dup2(2, 1);
-		if (flags & RUN_GIT_CMD) {
-			execv_git_cmd(argv);
-		} else {
-			execvp(argv[0], (char *const*) argv);
-		}
-		die("exec %s failed.", argv[0]);
+static inline void dup_devnull(int to)
+{
+	int fd = open("/dev/null", O_RDWR);
+	dup2(fd, to);
+	close(fd);
+}
+
+int start_command(struct child_process *cmd)
+{
+	int need_in, need_out;
+	int fdin[2], fdout[2];
+
+	need_in = !cmd->no_stdin && cmd->in < 0;
+	if (need_in) {
+		if (pipe(fdin) < 0)
+			return -ERR_RUN_COMMAND_PIPE;
+		cmd->in = fdin[1];
+		cmd->close_in = 1;
 	}
+
+	need_out = !cmd->no_stdout
+		&& !cmd->stdout_to_stderr
+		&& cmd->out < 0;
+	if (need_out) {
+		if (pipe(fdout) < 0) {
+			if (need_in)
+				close_pair(fdin);
+			return -ERR_RUN_COMMAND_PIPE;
+		}
+		cmd->out = fdout[0];
+		cmd->close_out = 1;
+	}
+
+	cmd->pid = fork();
+	if (cmd->pid < 0) {
+		if (need_in)
+			close_pair(fdin);
+		if (need_out)
+			close_pair(fdout);
+		return -ERR_RUN_COMMAND_FORK;
+	}
+
+	if (!cmd->pid) {
+		if (cmd->no_stdin)
+			dup_devnull(0);
+		else if (need_in) {
+			dup2(fdin[0], 0);
+			close_pair(fdin);
+		} else if (cmd->in) {
+			dup2(cmd->in, 0);
+			close(cmd->in);
+		}
+
+		if (cmd->no_stdout)
+			dup_devnull(1);
+		else if (cmd->stdout_to_stderr)
+			dup2(2, 1);
+		else if (need_out) {
+			dup2(fdout[1], 1);
+			close_pair(fdout);
+		} else if (cmd->out > 1) {
+			dup2(cmd->out, 1);
+			close(cmd->out);
+		}
+
+		if (cmd->git_cmd) {
+			execv_git_cmd(cmd->argv);
+		} else {
+			execvp(cmd->argv[0], (char *const*) cmd->argv);
+		}
+		die("exec %s failed.", cmd->argv[0]);
+	}
+
+	if (need_in)
+		close(fdin[0]);
+	else if (cmd->in)
+		close(cmd->in);
+
+	if (need_out)
+		close(fdout[1]);
+	else if (cmd->out > 1)
+		close(cmd->out);
+
+	return 0;
+}
+
+int finish_command(struct child_process *cmd)
+{
+	if (cmd->close_in)
+		close(cmd->in);
+	if (cmd->close_out)
+		close(cmd->out);
+
 	for (;;) {
 		int status, code;
-		pid_t waiting = waitpid(pid, &status, 0);
+		pid_t waiting = waitpid(cmd->pid, &status, 0);
 
 		if (waiting < 0) {
 			if (errno == EINTR)
@@ -33,7 +111,7 @@ int run_command_v_opt(const char **argv, int flags)
 			error("waitpid failed (%s)", strerror(errno));
 			return -ERR_RUN_COMMAND_WAITPID;
 		}
-		if (waiting != pid)
+		if (waiting != cmd->pid)
 			return -ERR_RUN_COMMAND_WAITPID_WRONG_PID;
 		if (WIFSIGNALED(status))
 			return -ERR_RUN_COMMAND_WAITPID_SIGNAL;
@@ -47,47 +125,21 @@ int run_command_v_opt(const char **argv, int flags)
 	}
 }
 
-int run_command_v(const char **argv)
+int run_command(struct child_process *cmd)
 {
-	return run_command_v_opt(argv, 0);
+	int code = start_command(cmd);
+	if (code)
+		return code;
+	return finish_command(cmd);
 }
 
-static int run_command_va_opt(int opt, const char *cmd, va_list param)
+int run_command_v_opt(const char **argv, int opt)
 {
-	int argc;
-	const char *argv[MAX_RUN_COMMAND_ARGS];
-	const char *arg;
-
-	argv[0] = (char*) cmd;
-	argc = 1;
-	while (argc < MAX_RUN_COMMAND_ARGS) {
-		arg = argv[argc++] = va_arg(param, char *);
-		if (!arg)
-			break;
-	}
-	if (MAX_RUN_COMMAND_ARGS <= argc)
-		return error("too many args to run %s", cmd);
-	return run_command_v_opt(argv, opt);
-}
-
-int run_command_opt(int opt, const char *cmd, ...)
-{
-	va_list params;
-	int r;
-
-	va_start(params, cmd);
-	r = run_command_va_opt(opt, cmd, params);
-	va_end(params);
-	return r;
-}
-
-int run_command(const char *cmd, ...)
-{
-	va_list params;
-	int r;
-
-	va_start(params, cmd);
-	r = run_command_va_opt(0, cmd, params);
-	va_end(params);
-	return r;
+	struct child_process cmd;
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.argv = argv;
+	cmd.no_stdin = opt & RUN_COMMAND_NO_STDIN ? 1 : 0;
+	cmd.git_cmd = opt & RUN_GIT_CMD ? 1 : 0;
+	cmd.stdout_to_stderr = opt & RUN_COMMAND_STDOUT_TO_STDERR ? 1 : 0;
+	return run_command(&cmd);
 }

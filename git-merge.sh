@@ -108,6 +108,10 @@ merge_name () {
 		git-show-ref -q --verify "refs/heads/$truname" 2>/dev/null
 	then
 		echo "$rh		branch '$truname' (early part) of ."
+	elif test "$remote" = "FETCH_HEAD" -a -r "$GIT_DIR/FETCH_HEAD"
+	then
+		sed -e 's/	not-for-merge	/		/' -e 1q \
+			"$GIT_DIR/FETCH_HEAD"
 	else
 		echo "$rh		commit '$remote'"
 	fi
@@ -292,9 +296,14 @@ f,*)
 	# Again the most common case of merging one remote.
 	echo "Updating $(git-rev-parse --short $head)..$(git-rev-parse --short $1)"
 	git-update-index --refresh 2>/dev/null
+	msg="Fast forward"
+	if test -n "$have_message"
+	then
+		msg="$msg (no commit created; -m option ignored)"
+	fi
 	new_head=$(git-rev-parse --verify "$1^0") &&
 	git-read-tree -v -m -u --exclude-per-directory=.gitignore $head "$new_head" &&
-	finish "$new_head" "Fast forward" || exit
+	finish "$new_head" "$msg" || exit
 	dropsave
 	exit 0
 	;;

@@ -228,6 +228,7 @@ extern const char *apply_default_whitespace;
 extern int zlib_compression_level;
 extern size_t packed_git_window_size;
 extern size_t packed_git_limit;
+extern size_t delta_base_cache_limit;
 extern int auto_crlf;
 
 #define GIT_REPO_VERSION 0
@@ -281,9 +282,8 @@ char *enter_repo(char *path, int strict);
 
 /* Read and unpack a sha1 file into memory, write memory to a sha1 file */
 extern int sha1_object_info(const unsigned char *, unsigned long *);
-extern void * unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type, unsigned long *size);
 extern void * read_sha1_file(const unsigned char *sha1, enum object_type *type, unsigned long *size);
-extern int hash_sha1_file(void *buf, unsigned long len, const char *type, unsigned char *sha1);
+extern int hash_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *sha1);
 extern int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned char *return_sha1);
 extern int pretend_sha1_file(void *, unsigned long, enum object_type, unsigned char *);
 
@@ -372,9 +372,11 @@ struct pack_window {
 extern struct packed_git {
 	struct packed_git *next;
 	struct pack_window *windows;
-	uint32_t *index_base;
+	const void *index_data;
 	off_t index_size;
 	off_t pack_size;
+	time_t mtime;
+	int index_version;
 	int pack_fd;
 	int pack_local;
 	unsigned char sha1[20];
@@ -412,7 +414,7 @@ extern int server_supports(const char *feature);
 
 extern struct packed_git *parse_pack_index(unsigned char *sha1);
 extern struct packed_git *parse_pack_index_file(const unsigned char *sha1,
-						char *idx_path);
+						const char *idx_path);
 
 extern void prepare_packed_git(void);
 extern void reprepare_packed_git(void);
@@ -424,7 +426,7 @@ extern struct packed_git *find_sha1_pack(const unsigned char *sha1,
 extern void pack_report(void);
 extern unsigned char* use_pack(struct packed_git *, struct pack_window **, off_t, unsigned int *);
 extern void unuse_pack(struct pack_window **);
-extern struct packed_git *add_packed_git(char *, int, int);
+extern struct packed_git *add_packed_git(const char *, int, int);
 extern uint32_t num_packed_objects(const struct packed_git *p);
 extern int nth_packed_object_sha1(const struct packed_git *, uint32_t, unsigned char*);
 extern off_t find_pack_entry_one(const unsigned char *, struct packed_git *);
@@ -450,7 +452,7 @@ extern int check_repository_format_version(const char *var, const char *value);
 extern char git_default_email[MAX_GITNAME];
 extern char git_default_name[MAX_GITNAME];
 
-extern char *git_commit_encoding;
+extern const char *git_commit_encoding;
 extern const char *git_log_output_encoding;
 
 extern int copy_fd(int ifd, int ofd);
@@ -481,6 +483,7 @@ extern struct tag *alloc_tag_node(void);
 extern void alloc_report(void);
 
 /* trace.c */
+extern int nfasprintf(char **str, const char *fmt, ...);
 extern int nfvasprintf(char **str, const char *fmt, va_list va);
 extern void trace_printf(const char *format, ...);
 extern void trace_argv_printf(const char **argv, int count, const char *format, ...);

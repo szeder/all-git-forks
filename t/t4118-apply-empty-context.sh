@@ -23,7 +23,8 @@ test_expect_success setup '
 	cat file2 >file2.orig
 	git add file1 file2 &&
 	sed -e "/^B/d" <file1.orig >file1 &&
-	sed -e "/^B/d" <file2.orig >file2 &&
+	sed -e "/^[BQ]/d" <file2.orig >file2 &&
+	echo Q | tr -d "\\012" >>file2 &&
 	cat file1 >file1.mods &&
 	cat file2 >file2.mods &&
 	git diff |
@@ -37,7 +38,7 @@ test_expect_success 'apply --numstat' '
 		echo "0	1	file1" &&
 		echo "0	1	file2"
 	} >expect &&
-	diff -u expect actual
+	git diff expect actual
 
 '
 
@@ -47,8 +48,8 @@ test_expect_success 'apply --apply' '
 	cat file2.orig >file2 &&
 	git update-index file1 file2 &&
 	git apply --index diff.output &&
-	diff -u file1.mods file1 &&
-	diff -u file2.mods file2
+	git diff file1.mods file1 &&
+	git diff file2.mods file2
 '
 
 test_done

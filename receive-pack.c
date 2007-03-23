@@ -67,47 +67,11 @@ struct command {
 
 static struct command *commands;
 
-static const char update_hook[] = "hooks/update";
 static const char pre_receive_hook[] = "hooks/pre-receive";
 static const char post_receive_hook[] = "hooks/post-receive";
 
-static int run_hook(const char *hook_name,
-	struct command *first_cmd,
-	int single)
+static int hook_status(int code, const char *hook_name)
 {
-	struct command *cmd;
-	int argc, code;
-	const char **argv;
-
-	for (argc = 0, cmd = first_cmd; cmd; cmd = cmd->next) {
-		if (!cmd->error_string)
-			argc += 3;
-		if (single)
-			break;
-	}
-
-	if (!argc || access(hook_name, X_OK) < 0)
-		return 0;
-
-	argv = xmalloc(sizeof(*argv) * (2 + argc));
-	argv[0] = hook_name;
-	for (argc = 1, cmd = first_cmd; cmd; cmd = cmd->next) {
-		if (!cmd->error_string) {
-			argv[argc++] = xstrdup(cmd->ref_name);
-			argv[argc++] = xstrdup(sha1_to_hex(cmd->old_sha1));
-			argv[argc++] = xstrdup(sha1_to_hex(cmd->new_sha1));
-		}
-		if (single)
-			break;
-	}
-	argv[argc] = NULL;
-
-	code = run_command_v_opt(argv,
-		RUN_COMMAND_NO_STDIN | RUN_COMMAND_STDOUT_TO_STDERR);
-	while (--argc > 0)
-		free((char*)argv[argc]);
-	free(argv);
-
 	switch (code) {
 	case 0:
 		return 0;
@@ -115,6 +79,8 @@ static int run_hook(const char *hook_name,
 		return error("hook fork failed");
 	case -ERR_RUN_COMMAND_EXEC:
 		return error("hook execute failed");
+	case -ERR_RUN_COMMAND_PIPE:
+		return error("hook pipe failed");
 	case -ERR_RUN_COMMAND_WAITPID:
 		return error("waitpid failed");
 	case -ERR_RUN_COMMAND_WAITPID_WRONG_PID:
@@ -127,6 +93,69 @@ static int run_hook(const char *hook_name,
 		error("%s exited with error code %d", hook_name, -code);
 		return -code;
 	}
+}
+
+static int run_hook(const char *hook_name)
+{
+	static char buf[sizeof(commands->old_sha1) * 2 + PATH_MAX + 4];
+	struct command *cmd;
+	struct child_process proc;
+	const char *argv[2];
+	int have_input = 0, code;
+
+	for (cmd = commands; !have_input && cmd; cmd = cmd->next) {
+		if (!cmd->error_string)
+			have_input = 1;
+	}
+
+	if (!have_input || access(hook_name, X_OK) < 0)
+		return 0;
+
+	argv[0] = hook_name;
+	argv[1] = NULL;
+
+	memset(&proc, 0, sizeof(proc));
+	proc.argv = argv;
+	proc.in = -1;
+	proc.stdout_to_stderr = 1;
+
+	code = start_command(&proc);
+	if (code)
+		return hook_status(code, hook_name);
+	for (cmd = commands; cmd; cmd = cmd->next) {
+		if (!cmd->error_string) {
+			size_t n = snprintf(buf, sizeof(buf), "%s %s %s\n",
+				sha1_to_hex(cmd->old_sha1),
+				sha1_to_hex(cmd->new_sha1),
+				cmd->ref_name);
+			if (write_in_full(proc.in, buf, n) != n)
+				break;
+		}
+	}
+	return hook_status(finish_command(&proc), hook_name);
+}
+
+static int run_update_hook(struct command *cmd)
+{
+	static const char update_hook[] = "hooks/update";
+	struct child_process proc;
+	const char *argv[5];
+
+	if (access(update_hook, X_OK) < 0)
+		return 0;
+
+	argv[0] = update_hook;
+	argv[1] = cmd->ref_name;
+	argv[2] = sha1_to_hex(cmd->old_sha1);
+	argv[3] = sha1_to_hex(cmd->new_sha1);
+	argv[4] = NULL;
+
+	memset(&proc, 0, sizeof(proc));
+	proc.argv = argv;
+	proc.no_stdin = 1;
+	proc.stdout_to_stderr = 1;
+
+	return hook_status(run_command(&proc), update_hook);
 }
 
 static const char *update(struct command *cmd)
@@ -165,7 +194,7 @@ static const char *update(struct command *cmd)
 			return "non-fast forward";
 		}
 	}
-	if (run_hook(update_hook, cmd, 1)) {
+	if (run_update_hook(cmd)) {
 		error("hook declined to update %s", name);
 		return "hook declined";
 	}
@@ -238,7 +267,7 @@ static void execute_commands(const char *unpacker_error)
 		return;
 	}
 
-	if (run_hook(pre_receive_hook, commands, 0)) {
+	if (run_hook(pre_receive_hook)) {
 		while (cmd) {
 			cmd->error_string = "pre-receive hook declined";
 			cmd = cmd->next;
@@ -353,10 +382,10 @@ static const char *unpack(void)
 		}
 	} else {
 		const char *keeper[6];
-		int fd[2], s, len, status;
-		pid_t pid;
+		int s, len, status;
 		char keep_arg[256];
 		char packname[46];
+		struct child_process ip;
 
 		s = sprintf(keep_arg, "--keep=receive-pack %i on ", getpid());
 		if (gethostname(keep_arg + s, sizeof(keep_arg) - s))
@@ -368,20 +397,12 @@ static const char *unpack(void)
 		keeper[3] = hdr_arg;
 		keeper[4] = keep_arg;
 		keeper[5] = NULL;
-
-		if (pipe(fd) < 0)
-			return "index-pack pipe failed";
-		pid = fork();
-		if (pid < 0)
+		memset(&ip, 0, sizeof(ip));
+		ip.argv = keeper;
+		ip.out = -1;
+		ip.git_cmd = 1;
+		if (start_command(&ip))
 			return "index-pack fork failed";
-		if (!pid) {
-			dup2(fd[1], 1);
-			close(fd[1]);
-			close(fd[0]);
-			execv_git_cmd(keeper);
-			die("execv of index-pack failed");
-		}
-		close(fd[1]);
 
 		/*
 		 * The first thing we expects from index-pack's output
@@ -391,9 +412,8 @@ static const char *unpack(void)
 		 * later on.  If we don't get that then tough luck with it.
 		 */
 		for (len = 0;
-		     len < 46 && (s = xread(fd[0], packname+len, 46-len)) > 0;
+		     len < 46 && (s = xread(ip.out, packname+len, 46-len)) > 0;
 		     len += s);
-		close(fd[0]);
 		if (len == 46 && packname[45] == '\n' &&
 		    memcmp(packname, "keep\t", 5) == 0) {
 			char path[PATH_MAX];
@@ -403,14 +423,8 @@ static const char *unpack(void)
 			pack_lockfile = xstrdup(path);
 		}
 
-		/* Then wrap our index-pack process. */
-		while (waitpid(pid, &status, 0) < 0)
-			if (errno != EINTR)
-				return "waitpid failed";
-		if (WIFEXITED(status)) {
-			int code = WEXITSTATUS(status);
-			if (code)
-				return "index-pack exited with error code";
+		status = finish_command(&ip);
+		if (!status) {
 			reprepare_packed_git();
 			return NULL;
 		}
@@ -493,7 +507,7 @@ int main(int argc, char **argv)
 			unlink(pack_lockfile);
 		if (report_status)
 			report(unpack_status);
-		run_hook(post_receive_hook, commands, 0);
+		run_hook(post_receive_hook);
 		run_update_post_hook(commands);
 	}
 	return 0;

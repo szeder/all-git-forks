@@ -378,7 +378,7 @@ static int grep_tree(struct grep_opt *opt, const char **paths,
 			 * decide if we want to descend into "abc"
 			 * directory.
 			 */
-			strcpy(path_buf + len + entry.pathlen, "/");
+			strcpy(path_buf + len + tree_entry_len(entry.path, entry.sha1), "/");
 
 		if (!pathspec_matches(paths, down))
 			;
@@ -388,11 +388,13 @@ static int grep_tree(struct grep_opt *opt, const char **paths,
 			enum object_type type;
 			struct tree_desc sub;
 			void *data;
-			data = read_sha1_file(entry.sha1, &type, &sub.size);
+			unsigned long size;
+
+			data = read_sha1_file(entry.sha1, &type, &size);
 			if (!data)
 				die("unable to read tree (%s)",
 				    sha1_to_hex(entry.sha1));
-			sub.buf = data;
+			init_tree_desc(&sub, data, size);
 			hit |= grep_tree(opt, paths, &sub, tree_name, down);
 			free(data);
 		}
@@ -408,12 +410,13 @@ static int grep_object(struct grep_opt *opt, const char **paths,
 	if (obj->type == OBJ_COMMIT || obj->type == OBJ_TREE) {
 		struct tree_desc tree;
 		void *data;
+		unsigned long size;
 		int hit;
 		data = read_object_with_reference(obj->sha1, tree_type,
-						  &tree.size, NULL);
+						  &size, NULL);
 		if (!data)
 			die("unable to read tree (%s)", sha1_to_hex(obj->sha1));
-		tree.buf = data;
+		init_tree_desc(&tree, data, size);
 		hit = grep_tree(opt, paths, &tree, name, "");
 		free(data);
 		return hit;
@@ -430,6 +433,19 @@ static const char emsg_missing_context_len[] =
 "missing context length argument";
 static const char emsg_missing_argument[] =
 "option requires an argument -%s";
+
+static int strtoul_ui(char const *s, unsigned int *result)
+{
+	unsigned long ul;
+	char *p;
+
+	errno = 0;
+	ul = strtoul(s, &p, 10);
+	if (errno || *p || p == s || (unsigned int) ul != ul)
+		return -1;
+	*result = ul;
+	return 0;
+}
 
 int cmd_grep(int argc, const char **argv, const char *prefix)
 {
@@ -553,7 +569,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 				scan = arg + 1;
 				break;
 			}
-			if (sscanf(scan, "%u", &num) != 1)
+			if (strtoul_ui(scan, &num))
 				die(emsg_invalid_context_len, scan);
 			switch (arg[1]) {
 			case 'A':

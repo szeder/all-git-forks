@@ -30,22 +30,28 @@ static int read_directory(const char *path, struct path_list *list)
 	return 0;
 }
 
+static int get_mode(const char *path, int *mode)
+{
+	struct stat st;
+
+	if (!path || !strcmp(path, "/dev/null"))
+		*mode = 0;
+	else if (!strcmp(path, "-"))
+		*mode = ntohl(create_ce_mode(0666));
+	else if (stat(path, &st))
+		return error("Could not access '%s'", path);
+	else
+		*mode = st.st_mode;
+	return 0;
+}
+
 static int queue_diff(struct diff_options *o,
 		const char *name1, const char *name2)
 {
-	struct stat st;
 	int mode1 = 0, mode2 = 0;
 
-	if (name1) {
-		if (stat(name1, &st))
-			return error("Could not access '%s'", name1);
-		mode1 = st.st_mode;
-	}
-	if (name2) {
-		if (stat(name2, &st))
-			return error("Could not access '%s'", name2);
-		mode2 = st.st_mode;
-	}
+	if (get_mode(name1, &mode1) || get_mode(name2, &mode2))
+		return -1;
 
 	if (mode1 && mode2 && S_ISDIR(mode1) != S_ISDIR(mode2))
 		return error("file/directory conflict: %s, %s", name1, name2);
@@ -164,8 +170,10 @@ static int handle_diff_files_args(struct rev_info *revs,
 		else if (!strcmp(argv[1], "--theirs"))
 			revs->max_count = 3;
 		else if (!strcmp(argv[1], "-n") ||
-				!strcmp(argv[1], "--no-index"))
+				!strcmp(argv[1], "--no-index")) {
 			revs->max_count = -2;
+			revs->diffopt.exit_with_status = 1;
+		}
 		else if (!strcmp(argv[1], "-q"))
 			*silent = 1;
 		else
@@ -224,13 +232,14 @@ int setup_diff_no_index(struct rev_info *revs,
 {
 	int i;
 	for (i = 1; i < argc; i++)
-		if (argv[i][0] != '-')
+		if (argv[i][0] != '-' || argv[i][1] == '\0')
 			break;
 		else if (!strcmp(argv[i], "--")) {
 			i++;
 			break;
 		} else if (i < argc - 3 && !strcmp(argv[i], "--no-index")) {
 			i = argc - 3;
+			revs->diffopt.exit_with_status = 1;
 			break;
 		}
 	if (argc != i + 2 || (!is_outside_repo(argv[i + 1], nongit, prefix) &&
@@ -254,9 +263,15 @@ int setup_diff_no_index(struct rev_info *revs,
 
 		revs->diffopt.paths = xcalloc(2, sizeof(char*));
 		for (i = 0; i < 2; i++) {
-			const char *p;
-			p = prefix_filename(prefix, len, argv[argc - 2 + i]);
-			revs->diffopt.paths[i] = xstrdup(p);
+			const char *p = argv[argc - 2 + i];
+			/*
+			 * stdin should be spelled as '-'; if you have
+			 * path that is '-', spell it as ./-.
+			 */
+			p = (strcmp(p, "-")
+			     ? xstrdup(prefix_filename(prefix, len, p))
+			     : p);
+			revs->diffopt.paths[i] = p;
 		}
 	}
 	else
@@ -308,6 +323,9 @@ int run_diff_files(struct rev_info *revs, int silent_on_removed)
 		unsigned int oldmode, newmode;
 		struct cache_entry *ce = active_cache[i];
 		int changed;
+
+		if (revs->diffopt.quiet && revs->diffopt.has_changes)
+			break;
 
 		if (!ce_path_match(ce, revs->prune_data))
 			continue;
@@ -549,6 +567,9 @@ static int diff_cache(struct rev_info *revs,
 	while (entries) {
 		struct cache_entry *ce = *ac;
 		int same = (entries > 1) && ce_same_name(ce, ac[1]);
+
+		if (revs->diffopt.quiet && revs->diffopt.has_changes)
+			break;
 
 		if (!ce_path_match(ce, pathspec))
 			goto skip_entry;

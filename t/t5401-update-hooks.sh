@@ -25,8 +25,8 @@ test_expect_success setup '
 
 cat >victim/.git/hooks/pre-receive <<'EOF'
 #!/bin/sh
-echo "$@" >>$GIT_DIR/pre-receive.args
-read x; printf "$x" >$GIT_DIR/pre-receive.stdin
+printf "$@" >>$GIT_DIR/pre-receive.args
+cat - >$GIT_DIR/pre-receive.stdin
 echo STDOUT pre-receive
 echo STDERR pre-receive >&2
 EOF
@@ -44,8 +44,8 @@ chmod u+x victim/.git/hooks/update
 
 cat >victim/.git/hooks/post-receive <<'EOF'
 #!/bin/sh
-echo "$@" >>$GIT_DIR/post-receive.args
-read x; printf "$x" >$GIT_DIR/post-receive.stdin
+printf "$@" >>$GIT_DIR/post-receive.args
+cat - >$GIT_DIR/post-receive.stdin
 echo STDOUT post-receive
 echo STDERR post-receive >&2
 EOF
@@ -80,34 +80,36 @@ test_expect_success 'hooks ran' '
 	test -f victim/.git/post-update.stdin
 '
 
-test_expect_success 'pre-receive hook arguments' '
-	echo \
-	 refs/heads/master $commit0 $commit1 \
-	 refs/heads/tofail $commit1 $commit0 \
-	| diff - victim/.git/pre-receive.args
+test_expect_success 'pre-receive hook input' '
+	(echo $commit0 $commit1 refs/heads/master;
+	 echo $commit1 $commit0 refs/heads/tofail
+	) | git diff - victim/.git/pre-receive.stdin
 '
 
 test_expect_success 'update hook arguments' '
 	(echo refs/heads/master $commit0 $commit1;
 	 echo refs/heads/tofail $commit1 $commit0
-	) | diff - victim/.git/update.args
+	) | git diff - victim/.git/update.args
 '
 
-test_expect_success 'post-receive hook arguments' '
-	echo refs/heads/master $commit0 $commit1 |
-	diff - victim/.git/post-receive.args
+test_expect_success 'post-receive hook input' '
+	echo $commit0 $commit1 refs/heads/master |
+	git diff - victim/.git/post-receive.stdin
 '
 
 test_expect_success 'post-update hook arguments' '
 	echo refs/heads/master |
-	diff -u - victim/.git/post-update.args
+	git diff - victim/.git/post-update.args
 '
 
 test_expect_success 'all hook stdin is /dev/null' '
-	! test -s victim/.git/pre-receive.stdin &&
 	! test -s victim/.git/update.stdin &&
-	! test -s victim/.git/post-receive.stdin &&
 	! test -s victim/.git/post-update.stdin
+'
+
+test_expect_success 'all *-receive hook args are empty' '
+	! test -s victim/.git/pre-receive.args &&
+	! test -s victim/.git/post-receive.args
 '
 
 test_expect_failure 'send-pack produced no output' '
@@ -128,7 +130,7 @@ STDERR post-update
 EOF
 test_expect_success 'send-pack stderr contains hook messages' '
 	egrep ^STD send.err >actual &&
-	diff - actual <expect
+	git diff - actual <expect
 '
 
 test_done

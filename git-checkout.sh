@@ -12,6 +12,7 @@ new=
 new_name=
 force=
 branch=
+track=
 newbranch=
 newbranch_log=
 merge=
@@ -33,7 +34,10 @@ while [ "$#" != "0" ]; do
 			die "git checkout: we do not like '$newbranch' as a branch name."
 		;;
 	"-l")
-		newbranch_log=1
+		newbranch_log=-l
+		;;
+	"--track"|"--no-track")
+		track="$arg"
 		;;
 	"-f")
 		force=1
@@ -84,6 +88,11 @@ while [ "$#" != "0" ]; do
 		;;
     esac
 done
+
+case "$newbranch,$track" in
+,--*)
+	die "git checkout: --track and --no-track require -b"
+esac
 
 case "$force$merge" in
 11)
@@ -154,6 +163,13 @@ cd_to_toplevel
 detached=
 detach_warn=
 
+describe_detached_head () {
+	test -n "$quiet" || {
+		printf >&2 "$1 "
+		GIT_PAGER= git log >&2 -1 --pretty=oneline --abbrev-commit "$2"
+	}
+}
+
 if test -z "$branch$newbranch" && test "$new" != "$old"
 then
 	detached="$new"
@@ -164,9 +180,9 @@ If you want to create a new branch from this checkout, you may do so
 (now or later) by using -b with the checkout command again. Example:
   git checkout -b <new_branch_name>"
 	fi
-elif test -z "$oldbranch" && test -z "$quiet"
+elif test -z "$oldbranch"
 then
-	echo >&2 "Previous HEAD position was $old"
+	describe_detached_head 'Previous HEAD position was' "$old"
 fi
 
 if [ "X$old" = X ]
@@ -196,7 +212,7 @@ else
 	work=`git write-tree` &&
 	git read-tree --reset -u $new || exit
 
-	eval GITHEAD_$new=${new_name:-${branch:-$new}} &&
+	eval GITHEAD_$new='${new_name:-${branch:-$new}}' &&
 	eval GITHEAD_$work=local &&
 	export GITHEAD_$new GITHEAD_$work &&
 	git merge-recursive $old -- $new $work
@@ -235,18 +251,19 @@ fi
 #
 if [ "$?" -eq 0 ]; then
 	if [ "$newbranch" ]; then
-		if [ "$newbranch_log" ]; then
-			mkdir -p $(dirname "$GIT_DIR/logs/refs/heads/$newbranch")
-			touch "$GIT_DIR/logs/refs/heads/$newbranch"
-		fi
-		git-update-ref -m "checkout: Created from $new_name" "refs/heads/$newbranch" $new || exit
+		git-branch $track $newbranch_log "$newbranch" "$new_name" || exit
 		branch="$newbranch"
 	fi
 	if test -n "$branch"
 	then
 		GIT_DIR="$GIT_DIR" git-symbolic-ref -m "checkout: moving to $branch" HEAD "refs/heads/$branch"
-		if test -z "$quiet"
+		if test -n "$quiet"
 		then
+			true	# nothing
+		elif test "refs/heads/$branch" = "$oldbranch"
+		then
+			echo >&2 "Already on branch \"$branch\""
+		else
 			echo >&2 "Switched to${newbranch:+ a new} branch \"$branch\""
 		fi
 	elif test -n "$detached"
@@ -265,6 +282,7 @@ if [ "$?" -eq 0 ]; then
 		then
 			echo >&2 "$detach_warn"
 		fi
+		describe_detached_head 'HEAD is now at' HEAD
 	fi
 	rm -f "$GIT_DIR/MERGE_HEAD"
 else

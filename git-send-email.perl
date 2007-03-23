@@ -65,8 +65,8 @@ Options:
                   Defaults to on.
 
    --no-signed-off-cc Suppress the automatic addition of email addresses
-                 that appear in a Signed-off-by: line, to the cc: list.
-		 Note: Using this option is not recommended.
+                 that appear in Signed-off-by: or Cc: lines to the cc:
+                 list.  Note: Using this option is not recommended.
 
    --smtp-server  If set, specifies the outgoing SMTP server to use.
                   Defaults to localhost.
@@ -147,6 +147,16 @@ my $term = eval {
 };
 if ($@) {
 	$term = new FakeTerm "$@: going non-interactive";
+}
+
+my $def_chain = $repo->config_boolean('sendemail.chainreplyto');
+if ($def_chain and $def_chain eq 'false') {
+    $chain_reply_to = 0;
+}
+
+@bcclist = $repo->config('sendemail.bcc');
+if (!@bcclist or !$bcclist[0]) {
+    @bcclist = ();
 }
 
 # Begin by accumulating all the variables (defined above), that we will end up
@@ -562,8 +572,8 @@ foreach my $t (@files) {
 			}
 		} else {
 			$message .=  $_;
-			if (/^Signed-off-by: (.*)$/i && !$no_signed_off_cc) {
-				my $c = $1;
+			if (/^(Signed-off-by|Cc): (.*)$/i && !$no_signed_off_cc) {
+				my $c = $2;
 				chomp $c;
 				push @cc, $c;
 				printf("(sob) Adding cc: %s from line '%s'\n",

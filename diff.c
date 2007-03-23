@@ -1364,6 +1364,32 @@ static struct sha1_size_cache *locate_size_cache(unsigned char *sha1,
 	return e;
 }
 
+static int populate_from_stdin(struct diff_filespec *s)
+{
+#define INCREMENT 1024
+	char *buf;
+	unsigned long size;
+	int got;
+
+	size = 0;
+	buf = NULL;
+	while (1) {
+		buf = xrealloc(buf, size + INCREMENT);
+		got = xread(0, buf + size, INCREMENT);
+		if (!got)
+			break; /* EOF */
+		if (got < 0)
+			return error("error while reading from stdin %s",
+				     strerror(errno));
+		size += got;
+	}
+	s->should_munmap = 0;
+	s->data = buf;
+	s->size = size;
+	s->should_free = 1;
+	return 0;
+}
+
 /*
  * While doing rename detection and pickaxe operation, we may need to
  * grab the data for the blob (or file) for our own in-core comparison.
@@ -1388,6 +1414,9 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		int fd;
 		char *buf;
 		unsigned long size;
+
+		if (!strcmp(s->path, "-"))
+			return populate_from_stdin(s);
 
 		if (lstat(s->path, &st) < 0) {
 			if (errno == ENOENT) {
@@ -1690,6 +1719,10 @@ static void diff_fill_sha1_info(struct diff_filespec *one)
 	if (DIFF_FILE_VALID(one)) {
 		if (!one->sha1_valid) {
 			struct stat st;
+			if (!strcmp(one->path, "-")) {
+				hashcpy(one->sha1, null_sha1);
+				return;
+			}
 			if (lstat(one->path, &st) < 0)
 				die("stat %s", one->path);
 			if (index_path(one->sha1, one->path, &st, 0))
@@ -1925,6 +1958,23 @@ int diff_setup_done(struct diff_options *options)
 	if (options->abbrev <= 0 || 40 < options->abbrev)
 		options->abbrev = 40; /* full */
 
+	/*
+	 * It does not make sense to show the first hit we happened
+	 * to have found.  It does not make sense not to return with
+	 * exit code in such a case either.
+	 */
+	if (options->quiet) {
+		options->output_format = DIFF_FORMAT_NO_OUTPUT;
+		options->exit_with_status = 1;
+	}
+
+	/*
+	 * If we postprocess in diffcore, we cannot simply return
+	 * upon the first hit.  We need to run diff as usual.
+	 */
+	if (options->pickaxe || options->filter)
+		options->quiet = 0;
+
 	return 0;
 }
 
@@ -2101,6 +2151,10 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->color_diff = options->color_diff_words = 1;
 	else if (!strcmp(arg, "--no-renames"))
 		options->detect_rename = 0;
+	else if (!strcmp(arg, "--exit-code"))
+		options->exit_with_status = 1;
+	else if (!strcmp(arg, "--quiet"))
+		options->quiet = 1;
 	else
 		return 0;
 	return 1;
@@ -2865,6 +2919,8 @@ static void diffcore_apply_filter(const char *filter)
 
 void diffcore_std(struct diff_options *options)
 {
+	if (options->quiet)
+		return;
 	if (options->break_opt != -1)
 		diffcore_break(options->break_opt);
 	if (options->detect_rename)
@@ -2877,17 +2933,10 @@ void diffcore_std(struct diff_options *options)
 		diffcore_order(options->orderfile);
 	diff_resolve_rename_copy();
 	diffcore_apply_filter(options->filter);
+
+	options->has_changes = !!diff_queued_diff.nr;
 }
 
-
-void diffcore_std_no_resolve(struct diff_options *options)
-{
-	if (options->pickaxe)
-		diffcore_pickaxe(options->pickaxe, options->pickaxe_opts);
-	if (options->orderfile)
-		diffcore_order(options->orderfile);
-	diffcore_apply_filter(options->filter);
-}
 
 void diff_addremove(struct diff_options *options,
 		    int addremove, unsigned mode,
@@ -2924,6 +2973,7 @@ void diff_addremove(struct diff_options *options,
 		fill_filespec(two, sha1, mode);
 
 	diff_queue(&diff_queued_diff, one, two);
+	options->has_changes = 1;
 }
 
 void diff_change(struct diff_options *options,
@@ -2949,6 +2999,7 @@ void diff_change(struct diff_options *options,
 	fill_filespec(two, new_sha1, new_mode);
 
 	diff_queue(&diff_queued_diff, one, two);
+	options->has_changes = 1;
 }
 
 void diff_unmerge(struct diff_options *options,
