@@ -88,45 +88,6 @@ struct origin {
 };
 
 /*
- * Given an origin, prepare mmfile_t structure to be used by the
- * diff machinery
- */
-static char *fill_origin_blob(struct origin *o, mmfile_t *file)
-{
-	if (!o->file.ptr) {
-		enum object_type type;
-		num_read_blob++;
-		file->ptr = read_sha1_file(o->blob_sha1, &type,
-					   (unsigned long *)(&(file->size)));
-		o->file = *file;
-	}
-	else
-		*file = o->file;
-	return file->ptr;
-}
-
-/*
- * Origin is refcounted and usually we keep the blob contents to be
- * reused.
- */
-static inline struct origin *origin_incref(struct origin *o)
-{
-	if (o)
-		o->refcnt++;
-	return o;
-}
-
-static void origin_decref(struct origin *o)
-{
-	if (o && --o->refcnt <= 0) {
-		if (o->file.ptr)
-			free(o->file.ptr);
-		memset(o, 0, sizeof(*o));
-		free(o);
-	}
-}
-
-/*
  * Each group of lines is described by a blame_entry; it can be split
  * as we pass blame to the parents.  They form a linked list in the
  * scoreboard structure, sorted by the target line number.
@@ -186,6 +147,45 @@ struct scoreboard {
 	int num_lines;
 	int *lineno;
 };
+
+/*
+ * Given an origin, prepare mmfile_t structure to be used by the
+ * diff machinery
+ */
+static char *fill_origin_blob(struct origin *o, mmfile_t *file)
+{
+	if (!o->file.ptr) {
+		enum object_type type;
+		num_read_blob++;
+		file->ptr = read_sha1_file(o->blob_sha1, &type,
+					   (unsigned long *)(&(file->size)));
+		o->file = *file;
+	}
+	else
+		*file = o->file;
+	return file->ptr;
+}
+
+/*
+ * Origin is refcounted and usually we keep the blob contents to be
+ * reused.
+ */
+static inline struct origin *origin_incref(struct origin *o)
+{
+	if (o)
+		o->refcnt++;
+	return o;
+}
+
+static void origin_decref(struct origin *o)
+{
+	if (o && --o->refcnt <= 0) {
+		if (o->file.ptr)
+			free(o->file.ptr);
+		memset(o, 0, sizeof(*o));
+		free(o);
+	}
+}
 
 static inline int same_suspect(struct origin *a, struct origin *b)
 {
