@@ -81,6 +81,7 @@ static unsigned blame_copy_score;
  */
 struct origin {
 	int refcnt;
+	unsigned hashval;
 	struct commit *commit;
 	mmfile_t file;
 	unsigned char blob_sha1[20];
@@ -146,7 +147,124 @@ struct scoreboard {
 	/* look-up a line in the final buffer */
 	int num_lines;
 	int *lineno;
+
+	/*
+	 * collection of origins that appear on ent list, hashed for
+	 * quick lookup.
+	 */
+	int origin_nr, origin_alloc;
+	struct origin **origin_hash;
 };
+
+static unsigned origin_hash_value(struct commit *commit, const char *path)
+{
+	int i;
+	unsigned hash = 0;
+	const unsigned char *cp;
+
+	for (cp = commit->object.sha1, i = 0; i < 8 ; i++)
+		hash = (hash << 8) + (hash >> 24) + *cp++;
+	for (cp = (const unsigned char *)path; *cp; cp++)
+		hash = (hash << 8) + (hash >> 24) + *cp++;
+	return hash;
+}
+
+static struct origin *lookup_origin(struct scoreboard *sb, struct commit *c,
+				    const char *path)
+{
+	unsigned hashval, ix;
+
+	if (!sb->origin_hash)
+		return NULL;
+	hashval = origin_hash_value(c, path);
+	ix = hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *origin = sb->origin_hash[ix];
+		if (!origin)
+			return NULL;
+		if (origin != (struct origin *)sb) {
+			if (!origin || origin->hashval != hashval)
+				return NULL;
+			if (origin->commit == c && !strcmp(origin->path, path))
+				return origin;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
+
+static void unhash_origin(struct scoreboard *sb, struct origin *origin)
+{
+	unsigned hashval, ix;
+
+	if (!sb->origin_hash)
+		return;
+	hashval = origin->hashval;
+	ix = hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *o = sb->origin_hash[ix];
+		if (!o)
+			return;
+		if (o == origin) {
+			sb->origin_hash[ix] = (struct origin *)sb;
+			return;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
+
+static void rehash_origin(struct scoreboard *sb)
+{
+	int alloc, ix, newnr;
+	struct origin **newhash;
+
+	alloc = sb->origin_alloc ? (sb->origin_alloc * 2) : 1024;
+	newhash = xcalloc(alloc, sizeof(struct origin *));
+	newnr = 0;
+	for (ix = sb->origin_alloc; 0 <= --ix; ) {
+		struct origin *o = sb->origin_hash[ix];
+		unsigned pos;
+
+		if (!o || (o == (struct origin *) sb))
+			continue;
+		pos = o->hashval % alloc;
+		while (1) {
+			struct origin *n = newhash[pos];
+			if (!n) {
+				newnr++;
+				newhash[pos] = o;
+				break;
+			}
+			if (alloc <= ++pos)
+				pos = 0;
+		}
+	}
+	free(sb->origin_hash);
+	sb->origin_hash = newhash;
+	sb->origin_nr = newnr;
+	sb->origin_alloc = alloc;
+}
+
+static void hash_origin(struct scoreboard *sb, struct origin *origin)
+{
+	unsigned ix;
+
+	if (!sb->origin_alloc || (sb->origin_alloc < sb->origin_nr * 2))
+		rehash_origin(sb);
+	origin->hashval = origin_hash_value(origin->commit, origin->path);
+	ix = origin->hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *o = sb->origin_hash[ix];
+		if (!o) {
+			sb->origin_hash[ix] = origin;
+			sb->origin_nr++;
+			return;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
 
 /*
  * Given an origin, prepare mmfile_t structure to be used by the
@@ -180,6 +298,7 @@ static inline struct origin *origin_incref(struct origin *o)
 static void origin_decref(struct origin *o, struct scoreboard *sb)
 {
 	if (o && --o->refcnt <= 0) {
+		unhash_origin(sb, o);
 		if (o->file.ptr)
 			free(o->file.ptr);
 		memset(o, 0, sizeof(*o));
@@ -249,14 +368,12 @@ static struct origin *get_origin(struct scoreboard *sb,
 				 struct commit *commit,
 				 const char *path)
 {
-	struct blame_entry *e;
-
-	for (e = sb->ent; e; e = e->next) {
-		if (e->suspect->commit == commit &&
-		    !strcmp(e->suspect->path, path))
-			return origin_incref(e->suspect);
-	}
-	return make_origin(commit, path);
+	struct origin *o = lookup_origin(sb, commit, path);
+	if (o)
+		return origin_incref(o);
+	o = make_origin(commit, path);
+	hash_origin(sb, o);
+	return o;
 }
 
 /*
