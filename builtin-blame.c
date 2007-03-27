@@ -177,7 +177,7 @@ static inline struct origin *origin_incref(struct origin *o)
 	return o;
 }
 
-static void origin_decref(struct origin *o)
+static void origin_decref(struct origin *o, struct scoreboard *sb)
 {
 	if (o && --o->refcnt <= 0) {
 		if (o->file.ptr)
@@ -215,7 +215,7 @@ static void coalesce(struct scoreboard *sb)
 			ent->next = next->next;
 			if (ent->next)
 				ent->next->prev = ent;
-			origin_decref(next->suspect);
+			origin_decref(next->suspect, sb);
 			free(next);
 			ent->score = 0;
 			next = ent; /* again */
@@ -597,14 +597,15 @@ static void add_blame_entry(struct scoreboard *sb, struct blame_entry *e)
  * scoreboard.  The origin of dst loses a refcnt while the origin of src
  * gains one.
  */
-static void dup_entry(struct blame_entry *dst, struct blame_entry *src)
+static void dup_entry(struct blame_entry *dst, struct blame_entry *src,
+		      struct scoreboard *sb)
 {
 	struct blame_entry *p, *n;
 
 	p = dst->prev;
 	n = dst->next;
 	origin_incref(src->suspect);
-	origin_decref(dst->suspect);
+	origin_decref(dst->suspect, sb);
 	memcpy(dst, src, sizeof(*src));
 	dst->prev = p;
 	dst->next = n;
@@ -686,7 +687,7 @@ static void split_blame(struct scoreboard *sb,
 
 	if (split[0].suspect && split[2].suspect) {
 		/* The first part (reuse storage for the existing entry e) */
-		dup_entry(e, &split[0]);
+		dup_entry(e, &split[0], sb);
 
 		/* The last part -- me */
 		new_entry = xmalloc(sizeof(*new_entry));
@@ -703,10 +704,10 @@ static void split_blame(struct scoreboard *sb,
 		 * The parent covers the entire area; reuse storage for
 		 * e and replace it with the parent.
 		 */
-		dup_entry(e, &split[1]);
+		dup_entry(e, &split[1], sb);
 	else if (split[0].suspect) {
 		/* me and then parent */
-		dup_entry(e, &split[0]);
+		dup_entry(e, &split[0], sb);
 
 		new_entry = xmalloc(sizeof(*new_entry));
 		memcpy(new_entry, &(split[1]), sizeof(struct blame_entry));
@@ -714,7 +715,7 @@ static void split_blame(struct scoreboard *sb,
 	}
 	else {
 		/* parent and then me */
-		dup_entry(e, &split[1]);
+		dup_entry(e, &split[1], sb);
 
 		new_entry = xmalloc(sizeof(*new_entry));
 		memcpy(new_entry, &(split[2]), sizeof(struct blame_entry));
@@ -748,12 +749,12 @@ static void split_blame(struct scoreboard *sb,
  * After splitting the blame, the origins used by the
  * on-stack blame_entry should lose one refcnt each.
  */
-static void decref_split(struct blame_entry *split)
+static void decref_split(struct blame_entry *split, struct scoreboard *sb)
 {
 	int i;
 
 	for (i = 0; i < 3; i++)
-		origin_decref(split[i].suspect);
+		origin_decref(split[i].suspect, sb);
 }
 
 /*
@@ -769,7 +770,7 @@ static void blame_overlap(struct scoreboard *sb, struct blame_entry *e,
 	split_overlap(split, e, tlno, plno, same, parent);
 	if (split[1].suspect)
 		split_blame(sb, split, e);
-	decref_split(split);
+	decref_split(split, sb);
 }
 
 /*
@@ -893,7 +894,7 @@ static void copy_split_if_better(struct scoreboard *sb,
 
 	for (i = 0; i < 3; i++)
 		origin_incref(this[i].suspect);
-	decref_split(best_so_far);
+	decref_split(best_so_far, sb);
 	memcpy(best_so_far, this, sizeof(struct blame_entry [3]));
 }
 
@@ -926,7 +927,7 @@ static void handle_split(struct scoreboard *sb,
 		same += ent->s_lno;
 		split_overlap(this, ent, tlno, plno, same, parent);
 		copy_split_if_better(sb, split, this);
-		decref_split(this);
+		decref_split(this, sb);
 	}
 }
 
@@ -1012,7 +1013,7 @@ static int find_move_in_parent(struct scoreboard *sb,
 				split_blame(sb, split, e);
 				made_progress = 1;
 			}
-			decref_split(split);
+			decref_split(split, sb);
 		}
 	}
 	return 0;
@@ -1128,9 +1129,9 @@ static int find_copy_in_parent(struct scoreboard *sb,
 						  norigin, this, &file_p);
 				copy_split_if_better(sb, blame_list[j].split,
 						     this);
-				decref_split(this);
+				decref_split(this, sb);
 			}
-			origin_decref(norigin);
+			origin_decref(norigin, sb);
 		}
 
 		for (j = 0; j < num_ents; j++) {
@@ -1140,7 +1141,7 @@ static int find_copy_in_parent(struct scoreboard *sb,
 				split_blame(sb, split, blame_list[j].ent);
 				made_progress = 1;
 			}
-			decref_split(split);
+			decref_split(split, sb);
 		}
 		free(blame_list);
 
@@ -1175,7 +1176,7 @@ static void pass_whole_blame(struct scoreboard *sb,
 		if (!same_suspect(e->suspect, origin))
 			continue;
 		origin_incref(porigin);
-		origin_decref(e->suspect);
+		origin_decref(e->suspect, sb);
 		e->suspect = porigin;
 	}
 }
@@ -1214,7 +1215,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 				continue;
 			if (!hashcmp(porigin->blob_sha1, origin->blob_sha1)) {
 				pass_whole_blame(sb, origin, porigin);
-				origin_decref(porigin);
+				origin_decref(porigin, sb);
 				goto finish;
 			}
 			for (j = same = 0; j < i; j++)
@@ -1227,7 +1228,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 			if (!same)
 				parent_origin[i] = porigin;
 			else
-				origin_decref(porigin);
+				origin_decref(porigin, sb);
 		}
 	}
 
@@ -1271,7 +1272,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 
  finish:
 	for (i = 0; i < MAXPARENT; i++)
-		origin_decref(parent_origin[i]);
+		origin_decref(parent_origin[i], sb);
 }
 
 /*
@@ -1505,7 +1506,7 @@ static void assign_blame(struct scoreboard *sb, struct rev_info *revs, int opt)
 		for (ent = sb->ent; ent; ent = ent->next)
 			if (same_suspect(ent->suspect, suspect))
 				found_guilty_entry(ent);
-		origin_decref(suspect);
+		origin_decref(suspect, sb);
 
 		if (DEBUG) /* sanity */
 			sanity_check_refcnt(sb);
