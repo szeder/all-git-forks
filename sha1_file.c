@@ -2020,7 +2020,8 @@ int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned cha
 	if (write_buffer(fd, compressed, size) < 0)
 		die("unable to write sha1 file");
 	fchmod(fd, 0444);
-	close(fd);
+	if (close(fd))
+		die("unable to write sha1 file");
 	free(compressed);
 
 	return move_temp_to_file(tmpfile, filename);
@@ -2155,7 +2156,8 @@ int write_sha1_from_fd(const unsigned char *sha1, int fd, char *buffer,
 	inflateEnd(&stream);
 
 	fchmod(local, 0444);
-	close(local);
+	if (close(local) != 0)
+		die("unable to write sha1 file");
 	SHA1_Final(real_sha1, &c);
 	if (ret != Z_STREAM_END) {
 		unlink(tmpfile);
