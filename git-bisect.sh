@@ -173,7 +173,7 @@ bisect_reset() {
 	   else
 	       branch=master
 	   fi ;;
-	1) test -f "$GIT_DIR/refs/heads/$1" || {
+	1) git-show-ref --verify --quiet -- "refs/heads/$1" || {
 	       echo >&2 "$1 does not seem to be a valid branch"
 	       exit 1
 	   }
@@ -223,6 +223,14 @@ bisect_replay () {
 }
 
 bisect_run () {
+    # Check that we have everything to run correctly.
+    test -d "$GIT_DIR/refs/bisect" || {
+	echo >&2 'You need to start by "git bisect start".'
+	echo >&2 'And then by "git bisect bad" and "git bisect good".'
+	exit 1
+    }
+    bisect_next_check fail
+
     while true
     do
       echo "running $@"
