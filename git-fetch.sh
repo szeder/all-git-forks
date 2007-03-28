@@ -253,7 +253,7 @@ fetch_per_ref () {
 		die "No such ref $remote_name at $remote"
 	  echo >&2 "Fetching $remote_name from $remote using $proto"
 	  case "$quiet" in '') v=-v ;; *) v= ;; esac
-	  git-http-fetch $v -a "$head" "$remote/" || exit
+	  git-http-fetch $v -a "$head" "$remote" || exit
 	  ;;
       rsync://*)
 	  test -n "$shallow_depth" &&
