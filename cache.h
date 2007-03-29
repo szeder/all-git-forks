@@ -128,6 +128,8 @@ static inline unsigned int ce_mode_from_stat(struct cache_entry *ce, unsigned in
 extern struct cache_entry **active_cache;
 extern unsigned int active_nr, active_alloc, active_cache_changed;
 extern struct cache_tree *active_cache_tree;
+extern unsigned char active_cache_base[20];
+extern int active_cache_base_valid;
 extern int cache_errno;
 
 enum object_type {
