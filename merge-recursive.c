@@ -1386,6 +1386,9 @@ int main(int argc, char *argv[])
 	}
 	clean = merge(h1, h2, branch1, branch2, ca, &result);
 
+	hashcpy(active_cache_base, h1->object.sha1);
+	active_cache_base_valid = 1;
+
 	if (active_cache_changed &&
 	    (write_cache(index_fd, active_cache, active_nr) ||
 	     close(index_fd) || commit_lock_file(lock)))

@@ -31,6 +31,7 @@ static int read_cache_unmerged(void)
 	struct cache_entry *last = NULL;
 
 	read_cache();
+	active_cache_base_valid = 0;
 	dst = active_cache;
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *ce = active_cache[i];
