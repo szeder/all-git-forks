@@ -617,6 +617,23 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 				verbose = 1;
 				continue;
 			}
+			if (!strcmp(path, "--set-base")) {
+				unsigned char sha1[20];
+				if (argc <= ++i)
+					die("git-update-index: --set-base <sha1>");
+				if (get_sha1_hex(argv[i], sha1))
+					die("git-update-index: --set-base: malformed object name '%s'", argv[i]);
+				active_cache_changed = 1;
+				active_cache_base_valid = 1;
+				hashcpy(active_cache_base, sha1);
+				continue;
+			}
+			if (!strcmp(path, "--get-base")) {
+				if (active_cache_base_valid)
+					printf("%s\n",
+					       sha1_to_hex(active_cache_base));
+				continue;
+			}
 			if (!strcmp(path, "-h") || !strcmp(path, "--help"))
 				usage(update_index_usage);
 			die("unknown option %s", path);

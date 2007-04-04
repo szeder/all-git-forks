@@ -17,6 +17,7 @@ SYNOPSIS
 	     [--assume-unchanged | --no-assume-unchanged]
 	     [--really-refresh] [--unresolve] [--again | -g]
 	     [--info-only] [--index-info]
+	     [--get-base] [--set-base <base>]
 	     [-z] [--stdin]
 	     [--verbose]
 	     [--] [<file>]\*
@@ -109,6 +110,17 @@ OPTIONS
 	Instead of taking list of paths from the command line,
 	read list of paths from the standard input.  Paths are
 	separated by LF (i.e. one path per line) by default.
+
+--get-base::
+	The index can record which commit object its state was
+	initialized from (hence expected to have as the first
+	parent commit for the next commit).  This option reads
+	the commit object name and writes it to the standard
+	output.
+
+--set-base <base>::
+	This option records the commit object name in the index,
+	later to be retrieved with the `--get-base` option.
 
 --verbose::
         Report what is being added and removed from index.

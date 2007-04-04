@@ -25,6 +25,22 @@ refuse_partial () {
 	exit 1
 }
 
+check_base () {
+	quiet="$1"
+	if HEAD=`git rev-parse --verify HEAD 2>/dev/null` &&
+	   BASE=`git update-index --get-base` &&
+	   test -n "$BASE" &&
+	   test "$BASE" != "$HEAD"
+	then
+		test -z "$quiet" || exit 1
+		ours=`git show -s --pretty=oneline --abbrev-commit $BASE`
+		theirs=`git show -s --pretty=oneline --abbrev-commit $HEAD`
+		echo >&2 "* The index is based on '$ours', however, the HEAD"
+		echo >&2 "  points at different commit '$theirs'"
+		exit 1
+	fi
+}
+
 THIS_INDEX="$GIT_DIR/index"
 NEXT_INDEX="$GIT_DIR/next-index$$"
 rm -f "$NEXT_INDEX"
@@ -39,6 +55,10 @@ run_status () {
 	# NEXT_INDEX exists, that is the index file used to
 	# make the commit.  Otherwise we are using as-is commit
 	# so the regular index file is what we use to compare.
+
+	# We want a subshell, as we do not want to affect others with
+	# GIT_INDEX_FILE environment.
+	(
 	if test '' != "$TMP_INDEX"
 	then
 		GIT_INDEX_FILE="$TMP_INDEX"
@@ -57,6 +77,7 @@ run_status () {
 		${verbose:+--verbose} \
 		${amend:+--amend} \
 		${untracked_files:+--untracked}
+	)
 }
 
 trap '
@@ -320,6 +341,10 @@ t,,[1-9]*)
 ,,t,0)
 	die "No paths with -i does not make sense." ;;
 esac
+
+################################################################
+# Check for a case where HEAD was updated underneath us.
+check_base || exit
 
 ################################################################
 # Prepare index to have a tree to be committed
@@ -610,6 +635,10 @@ if cnt=`grep -v -i '^Signed-off-by' "$GIT_DIR"/COMMIT_MSG |
 	wc -l` &&
    test 0 -lt $cnt
 then
+	# Check for a case where HEAD was updated underneath us
+	# while we were editing the message.
+	check_base || exit
+
 	if test -z "$TMP_INDEX"
 	then
 		tree=$(GIT_INDEX_FILE="$USE_INDEX" git-write-tree)
@@ -626,7 +655,8 @@ then
 		mv "$NEXT_INDEX" "$THIS_INDEX"
 	else
 		: ;# happy
-	fi
+	fi &&
+	git update-index --set-base $commit
 else
 	echo >&2 "* no commit message?  aborting commit."
 	false
