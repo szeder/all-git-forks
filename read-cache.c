@@ -27,8 +27,6 @@ struct cache_tree *active_cache_tree;
 unsigned char active_cache_base[20];
 int active_cache_base_valid;
 
-int cache_errno;
-
 static void *cache_mmap;
 static size_t cache_mmap_size;
 
@@ -330,7 +328,7 @@ int remove_file_from_cache(const char *path)
 	return 0;
 }
 
-int add_file_to_index(const char *path, int verbose)
+int add_file_to_cache(const char *path, int verbose)
 {
 	int size, namelen;
 	struct stat st;
@@ -668,14 +666,15 @@ int add_cache_entry(struct cache_entry *ce, int option)
  * For example, you'd want to do this after doing a "git-read-tree",
  * to link up the stat cache details with the proper files.
  */
-struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
+static struct cache_entry *refresh_cache_ent(struct cache_entry *ce, int really, int *err)
 {
 	struct stat st;
 	struct cache_entry *updated;
 	int changed, size;
 
 	if (lstat(ce->name, &st) < 0) {
-		cache_errno = errno;
+		if (err)
+			*err = errno;
 		return NULL;
 	}
 
@@ -689,7 +688,8 @@ struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
 	}
 
 	if (ce_modified(ce, &st, really)) {
-		cache_errno = EINVAL;
+		if (err)
+			*err = EINVAL;
 		return NULL;
 	}
 
@@ -721,6 +721,8 @@ int refresh_cache(unsigned int flags)
 
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *ce, *new;
+		int cache_errno = 0;
+
 		ce = active_cache[i];
 		if (ce_stage(ce)) {
 			while ((i < active_nr) &&
@@ -734,7 +736,7 @@ int refresh_cache(unsigned int flags)
 			continue;
 		}
 
-		new = refresh_cache_entry(ce, really);
+		new = refresh_cache_ent(ce, really, &cache_errno);
 		if (new == ce)
 			continue;
 		if (!new) {
@@ -760,6 +762,11 @@ int refresh_cache(unsigned int flags)
 		active_cache[i] = new;
 	}
 	return has_errors;
+}
+
+struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
+{
+	return refresh_cache_ent(ce, really, NULL);
 }
 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
