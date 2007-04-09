@@ -8,7 +8,7 @@ git-read-tree - Reads tree information into the index
 
 SYNOPSIS
 --------
-'git-read-tree' (<tree-ish> | [[-m [--aggressive] | --reset | --prefix=<prefix>] [-u | -i]] [--exclude-per-directory=<gitignore>] [--index-output=<file>] <tree-ish1> [<tree-ish2> [<tree-ish3>]])
+'git-read-tree' (<tree-ish> | [[-m [--aggressive] | --reset | --prefix=<prefix>] [-u | -i]] [--exclude-per-directory=<gitignore>] [--index-output=<file>] [--set-base=<commit>] <tree-ish1> [<tree-ish2> [<tree-ish3>]])
 
 
 DESCRIPTION
@@ -97,6 +97,10 @@ OPTIONS
 	file itself, and you need write permission to the
 	directories the index file and index output file are
 	located in.
+
+--set-base=<commit>::
+	This option records the commit object name in the index,
+	later to be retrieved with the `git-update-index --get-base`.
 
 <tree-ish#>::
 	The id of the tree object(s) to be read/merged.

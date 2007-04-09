@@ -71,7 +71,7 @@ then
 		die "Cannot do a soft reset in the middle of a merge."
 	fi
 else
-	git-read-tree --reset $update "$rev" || exit
+	git-read-tree --reset $update --set-base="$rev" "$rev" || exit
 fi
 
 # Any resets update HEAD to the head being switched to.
@@ -93,10 +93,11 @@ case "$reset_type" in
 	}
 	;;
 --soft )
-	;; # Nothing else to do
+	git-update-index --set-base "$rev"
+	;;
 --mixed )
 	# Report what has not been updated.
-	git-update-index --refresh
+	git-update-index --set-base "$rev" --refresh
 	;;
 esac
 
