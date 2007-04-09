@@ -8,7 +8,7 @@ git-read-tree - Reads tree information into the index
 
 SYNOPSIS
 --------
-'git-read-tree' (<tree-ish> | [[-m [--aggressive] | --reset | --prefix=<prefix>] [-u | -i]] [--exclude-per-directory=<gitignore>] <tree-ish1> [<tree-ish2> [<tree-ish3>]])
+'git-read-tree' (<tree-ish> | [[-m [--aggressive] | --reset | --prefix=<prefix>] [-u | -i]] [--exclude-per-directory=<gitignore>] [--set-base=<commit>] <tree-ish1> [<tree-ish2> [<tree-ish3>]])
 
 
 DESCRIPTION
@@ -85,6 +85,10 @@ OPTIONS
 	option tells the command to read per-directory exclude
 	file (usually '.gitignore') and allows such an untracked
 	but explicitly ignored file to be overwritten.
+
+--set-base=<commit>::
+	This option records the commit object name in the index,
+	later to be retrieved with the `git-update-index --get-base`.
 
 <tree-ish#>::
 	The id of the tree object(s) to be read/merged.
