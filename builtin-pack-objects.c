@@ -44,6 +44,7 @@ struct object_entry {
 				 * be used as the base objectto delta huge
 				 * objects against.
 				 */
+	uint32_t crc32;		/* crc of raw pack data for this object */
 };
 
 /*
@@ -164,17 +165,37 @@ static int cmp_offset(const void *a_, const void *b_)
 static void prepare_pack_revindex(struct pack_revindex *rix)
 {
 	struct packed_git *p = rix->p;
-	int num_ent = num_packed_objects(p);
+	int num_ent = p->num_objects;
 	int i;
 	const char *index = p->index_data;
 
-	index += 4 * 256;
 	rix->revindex = xmalloc(sizeof(*rix->revindex) * (num_ent + 1));
-	for (i = 0; i < num_ent; i++) {
-		uint32_t hl = *((uint32_t *)(index + 24 * i));
-		rix->revindex[i].offset = ntohl(hl);
-		rix->revindex[i].nr = i;
+	index += 4 * 256;
+
+	if (p->index_version > 1) {
+		const uint32_t *off_32 =
+			(uint32_t *)(index + 8 + p->num_objects * (20 + 4));
+		const uint32_t *off_64 = off_32 + p->num_objects;
+		for (i = 0; i < num_ent; i++) {
+			uint32_t off = ntohl(*off_32++);
+			if (!(off & 0x80000000)) {
+				rix->revindex[i].offset = off;
+			} else {
+				rix->revindex[i].offset =
+					((uint64_t)ntohl(*off_64++)) << 32;
+				rix->revindex[i].offset |=
+					ntohl(*off_64++);
+			}
+			rix->revindex[i].nr = i;
+		}
+	} else {
+		for (i = 0; i < num_ent; i++) {
+			uint32_t hl = *((uint32_t *)(index + 24 * i));
+			rix->revindex[i].offset = ntohl(hl);
+			rix->revindex[i].nr = i;
+		}
 	}
+
 	/* This knows the pack format -- the 20-byte trailer
 	 * follows immediately after the last object data.
 	 */
@@ -198,7 +219,7 @@ static struct revindex_entry * find_packed_object(struct packed_git *p,
 		prepare_pack_revindex(rix);
 	revindex = rix->revindex;
 	lo = 0;
-	hi = num_packed_objects(p) + 1;
+	hi = p->num_objects + 1;
 	do {
 		int mi = (lo + hi) / 2;
 		if (revindex[mi].offset == ofs) {
@@ -210,12 +231,6 @@ static struct revindex_entry * find_packed_object(struct packed_git *p,
 			lo = mi + 1;
 	} while (lo < hi);
 	die("internal error: pack revindex corrupt");
-}
-
-static off_t find_packed_object_size(struct packed_git *p, off_t ofs)
-{
-	struct revindex_entry *entry = find_packed_object(p, ofs);
-	return entry[1].offset - ofs;
 }
 
 static const unsigned char *find_packed_object_name(struct packed_git *p,
@@ -300,6 +315,28 @@ static int check_pack_inflate(struct packed_git *p,
 		stream.total_in == len) ? 0 : -1;
 }
 
+static int check_pack_crc(struct packed_git *p, struct pack_window **w_curs,
+			  off_t offset, off_t len, unsigned int nr)
+{
+	const uint32_t *index_crc;
+	uint32_t data_crc = crc32(0, Z_NULL, 0);
+
+	do {
+		unsigned int avail;
+		void *data = use_pack(p, w_curs, offset, &avail);
+		if (avail > len)
+			avail = len;
+		data_crc = crc32(data_crc, data, avail);
+		offset += avail;
+		len -= avail;
+	} while (len);
+
+	index_crc = p->index_data;
+	index_crc += 2 + 256 + p->num_objects * (20/4) + nr;
+
+	return data_crc != ntohl(*index_crc);
+}
+
 static void copy_pack_data(struct sha1file *f,
 		struct packed_git *p,
 		struct pack_window **w_curs,
@@ -369,7 +406,7 @@ static int revalidate_loose_object(struct object_entry *entry,
 	return check_loose_inflate(map, mapsize, size);
 }
 
-static off_t write_object(struct sha1file *f,
+static unsigned long write_object(struct sha1file *f,
 				  struct object_entry *entry)
 {
 	unsigned long size;
@@ -380,6 +417,9 @@ static off_t write_object(struct sha1file *f,
 	off_t datalen;
 	enum object_type obj_type;
 	int to_reuse = 0;
+
+	if (!pack_to_stdout)
+		crc32_begin(f);
 
 	obj_type = entry->type;
 	if (! entry->in_pack)
@@ -461,6 +501,7 @@ static off_t write_object(struct sha1file *f,
 	else {
 		struct packed_git *p = entry->in_pack;
 		struct pack_window *w_curs = NULL;
+		struct revindex_entry *revidx;
 		off_t offset;
 
 		if (entry->delta) {
@@ -483,12 +524,17 @@ static off_t write_object(struct sha1file *f,
 			hdrlen += 20;
 		}
 
-		offset = entry->in_pack_offset + entry->in_pack_header_size;
-		datalen = find_packed_object_size(p, entry->in_pack_offset)
-				- entry->in_pack_header_size;
-		if (!pack_to_stdout && check_pack_inflate(p, &w_curs,
-				offset, datalen, entry->size))
-			die("corrupt delta in pack %s", sha1_to_hex(entry->sha1));
+		offset = entry->in_pack_offset;
+		revidx = find_packed_object(p, offset);
+		datalen = revidx[1].offset - offset;
+		if (!pack_to_stdout && p->index_version > 1 &&
+		    check_pack_crc(p, &w_curs, offset, datalen, revidx->nr))
+			die("bad packed object CRC for %s", sha1_to_hex(entry->sha1));
+		offset += entry->in_pack_header_size;
+		datalen -= entry->in_pack_header_size;
+		if (!pack_to_stdout && p->index_version == 1 &&
+		    check_pack_inflate(p, &w_curs, offset, datalen, entry->size))
+			die("corrupt packed object for %s", sha1_to_hex(entry->sha1));
 		copy_pack_data(f, p, &w_curs, offset, datalen);
 		unuse_pack(&w_curs);
 		reused++;
@@ -496,6 +542,8 @@ static off_t write_object(struct sha1file *f,
 	if (entry->delta)
 		written_delta++;
 	written++;
+	if (!pack_to_stdout)
+		entry->crc32 = crc32_end(f);
 	return hdrlen + datalen;
 }
 
@@ -503,23 +551,30 @@ static off_t write_one(struct sha1file *f,
 			       struct object_entry *e,
 			       off_t offset)
 {
+	unsigned long size;
+
+	/* offset is non zero if object is written already. */
 	if (e->offset || e->preferred_base)
-		/* offset starts from header size and cannot be zero
-		 * if it is written already.
-		 */
 		return offset;
-	/* if we are deltified, write out its base object first. */
+
+	/* if we are deltified, write out base object first. */
 	if (e->delta)
 		offset = write_one(f, e->delta, offset);
+
 	e->offset = offset;
-	return offset + write_object(f, e);
+	size = write_object(f, e);
+
+	/* make sure off_t is sufficiently large not to wrap */
+	if (offset > offset + size)
+		die("pack too large for current definition of off_t");
+	return offset + size;
 }
 
-static void write_pack_file(void)
+static off_t write_pack_file(void)
 {
 	uint32_t i;
 	struct sha1file *f;
-	off_t offset;
+	off_t offset, last_obj_offset = 0;
 	struct pack_header hdr;
 	unsigned last_percent = 999;
 	int do_progress = progress;
@@ -542,6 +597,7 @@ static void write_pack_file(void)
 	if (!nr_result)
 		goto done;
 	for (i = 0; i < nr_objects; i++) {
+		last_obj_offset = offset;
 		offset = write_one(f, objects + i, offset);
 		if (do_progress) {
 			unsigned percent = written * 100 / nr_result;
@@ -559,9 +615,14 @@ static void write_pack_file(void)
 	if (written != nr_result)
 		die("wrote %u objects while expecting %u", written, nr_result);
 	sha1close(f, pack_file_sha1, 1);
+
+	return last_obj_offset;
 }
 
-static void write_index_file(void)
+static uint32_t index_default_version = 1;
+static uint32_t index_off32_limit = 0x7fffffff;
+
+static void write_index_file(off_t last_obj_offset)
 {
 	uint32_t i;
 	struct sha1file *f = sha1create("%s-%s.%s", base_name,
@@ -569,6 +630,18 @@ static void write_index_file(void)
 	struct object_entry **list = sorted_by_sha;
 	struct object_entry **last = list + nr_result;
 	uint32_t array[256];
+	uint32_t index_version;
+
+	/* if last object's offset is >= 2^31 we should use index V2 */
+	index_version = (last_obj_offset >> 31) ? 2 : index_default_version;
+
+	/* index versions 2 and above need a header */
+	if (index_version >= 2) {
+		struct pack_idx_header hdr;
+		hdr.idx_signature = htonl(PACK_IDX_SIGNATURE);
+		hdr.idx_version = htonl(index_version);
+		sha1write(f, &hdr, sizeof(hdr));
+	}
 
 	/*
 	 * Write the first-level table (the list is sorted,
@@ -594,10 +667,49 @@ static void write_index_file(void)
 	list = sorted_by_sha;
 	for (i = 0; i < nr_result; i++) {
 		struct object_entry *entry = *list++;
-		uint32_t offset = htonl(entry->offset);
-		sha1write(f, &offset, 4);
+		if (index_version < 2) {
+			uint32_t offset = htonl(entry->offset);
+			sha1write(f, &offset, 4);
+		}
 		sha1write(f, entry->sha1, 20);
 	}
+
+	if (index_version >= 2) {
+		unsigned int nr_large_offset = 0;
+
+		/* write the crc32 table */
+		list = sorted_by_sha;
+		for (i = 0; i < nr_objects; i++) {
+			struct object_entry *entry = *list++;
+			uint32_t crc32_val = htonl(entry->crc32);
+			sha1write(f, &crc32_val, 4);
+		}
+
+		/* write the 32-bit offset table */
+		list = sorted_by_sha;
+		for (i = 0; i < nr_objects; i++) {
+			struct object_entry *entry = *list++;
+			uint32_t offset = (entry->offset <= index_off32_limit) ?
+				entry->offset : (0x80000000 | nr_large_offset++);
+			offset = htonl(offset);
+			sha1write(f, &offset, 4);
+		}
+
+		/* write the large offset table */
+		list = sorted_by_sha;
+		while (nr_large_offset) {
+			struct object_entry *entry = *list++;
+			uint64_t offset = entry->offset;
+			if (offset > index_off32_limit) {
+				uint32_t split[2];
+				split[0]        = htonl(offset >> 32);
+				split[1] = htonl(offset & 0xffffffff);
+				sha1write(f, split, 8);
+				nr_large_offset--;
+			}
+		}
+	}
+
 	sha1write(f, pack_file_sha1, 20);
 	sha1close(f, NULL, 1);
 }
@@ -1014,7 +1126,7 @@ static void check_object(struct object_entry *entry)
 				ofs = c & 127;
 				while (c & 128) {
 					ofs += 1;
-					if (!ofs || ofs & ~(~0UL >> 7))
+					if (!ofs || MSB(ofs, 7))
 						die("delta base offset overflow in pack for %s",
 						    sha1_to_hex(entry->sha1));
 					c = buf[used_0++];
@@ -1627,6 +1739,17 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			rp_av[1] = "--objects-edge";
 			continue;
 		}
+		if (!prefixcmp(arg, "--index-version=")) {
+			char *c;
+			index_default_version = strtoul(arg + 16, &c, 10);
+			if (index_default_version > 2)
+				die("bad %s", arg);
+			if (*c == ',')
+				index_off32_limit = strtoul(c+1, &c, 0);
+			if (*c || index_off32_limit & 0x80000000)
+				die("bad %s", arg);
+			continue;
+		}
 		usage(pack_usage);
 	}
 
@@ -1685,6 +1808,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	if (reuse_cached_pack(object_list_sha1))
 		;
 	else {
+		off_t last_obj_offset;
 		if (nr_result)
 			prepare_pack(window, depth);
 		if (progress == 1 && pack_to_stdout) {
@@ -1694,9 +1818,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			signal(SIGALRM, SIG_IGN );
 			progress_update = 0;
 		}
-		write_pack_file();
+		last_obj_offset = write_pack_file();
 		if (!pack_to_stdout) {
-			write_index_file();
+			write_index_file(last_obj_offset);
 			puts(sha1_to_hex(object_list_sha1));
 		}
 	}
