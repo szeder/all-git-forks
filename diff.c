@@ -2796,6 +2796,13 @@ void diff_flush(struct diff_options *options)
 	if (!q->nr)
 		goto free_queue;
 
+	if (options->warning) {
+		const char *reset, *set;
+		set = diff_get_color(options->color_diff, DIFF_WHITESPACE);
+		reset = diff_get_color(options->color_diff, DIFF_RESET);
+		printf("%s%s%s\n", set, options->warning, reset);
+	}
+
 	if (output_format & (DIFF_FORMAT_RAW |
 			     DIFF_FORMAT_NAME |
 			     DIFF_FORMAT_NAME_STATUS |
