@@ -14,6 +14,8 @@
 USAGE='<msg> <patch> <info> [<signoff>]'
 . git-sh-setup
 
+check_base || exit
+
 case "$#" in 3|4) ;; *) usage ;; esac
 
 final=.dotest/final-commit
@@ -205,6 +207,7 @@ parent=$(git-rev-parse --verify HEAD) &&
 commit=$(git-commit-tree $tree -p $parent <"$final") || exit 1
 echo Committed: $commit
 git-update-ref -m "applypatch: $SUBJECT" HEAD $commit $parent || exit
+git update-index --set-base "$commit"
 
 if test -x "$GIT_DIR"/hooks/post-applypatch
 then
