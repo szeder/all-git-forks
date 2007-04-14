@@ -1589,6 +1589,7 @@ sub do_git_commit {
 	if ($commit !~ /^$::sha1$/o) {
 		die "Failed to commit, invalid sha1: $commit\n";
 	}
+	command_noisy('update-index', '--set-base', $commit);
 
 	$self->rev_db_set($log_entry->{revision}, $commit, 1);
 
