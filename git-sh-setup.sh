@@ -28,22 +28,6 @@ set_reflog_action() {
 	fi
 }
 
-check_base () {
-	quiet="$1"
-	if HEAD=`git rev-parse --verify HEAD 2>/dev/null` &&
-	   BASE=`git update-index --get-base` &&
-	   test -n "$BASE" &&
-	   test "$BASE" != "$HEAD"
-	then
-		test -z "$quiet" || exit 1
-		ours=`git show -s --pretty=oneline --abbrev-commit $BASE`
-		theirs=`git show -s --pretty=oneline --abbrev-commit $HEAD`
-		echo >&2 "* The index is based on '$ours', however, the HEAD"
-		echo >&2 "  points at different commit '$theirs'"
-		exit 1
-	fi
-}
-
 is_bare_repository () {
 	git-config --bool --get core.bare ||
 	case "$GIT_DIR" in

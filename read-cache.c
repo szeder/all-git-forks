@@ -18,15 +18,12 @@
 
 #define CACHE_EXT(s) ( (s[0]<<24)|(s[1]<<16)|(s[2]<<8)|(s[3]) )
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
-#define CACHE_EXT_BASE 0x42415345	/* "BASE" */
 
 struct cache_entry **active_cache;
 static time_t index_file_timestamp;
 unsigned int active_nr, active_alloc, active_cache_changed;
 
 struct cache_tree *active_cache_tree;
-unsigned char active_cache_base[20];
-int active_cache_base_valid;
 
 static void *cache_mmap;
 static size_t cache_mmap_size;
@@ -823,11 +820,6 @@ static int read_index_extension(const char *ext, void *data, unsigned long sz)
 	case CACHE_EXT_TREE:
 		active_cache_tree = cache_tree_read(data, sz);
 		break;
-	case CACHE_EXT_BASE:
-		if (sz != 40 || get_sha1_hex(data, active_cache_base))
-			return error("malformed base commit recorded in index");
-		active_cache_base_valid = 1;
-		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -882,7 +874,6 @@ int read_cache_from(const char *path)
 	active_nr = ntohl(hdr->hdr_entries);
 	active_alloc = alloc_nr(active_nr);
 	active_cache = xcalloc(active_alloc, sizeof(struct cache_entry *));
-	active_cache_base_valid = 0;
 
 	offset = sizeof(*hdr);
 	for (i = 0; i < active_nr; i++) {
@@ -920,7 +911,7 @@ int discard_cache(void)
 {
 	int ret;
 
-	active_cache_base_valid = active_nr = active_cache_changed = 0;
+	active_nr = active_cache_changed = 0;
 	index_file_timestamp = 0;
 	cache_tree_free(&active_cache_tree);
 	if (cache_mmap == NULL)
@@ -1088,13 +1079,5 @@ int write_cache(int newfd, struct cache_entry **cache, int entries)
 			return -1;
 		}
 	}
-	if (active_cache_base_valid) {
-		char *hex = sha1_to_hex(active_cache_base);
-		unsigned int len = 40;
-		if (write_index_ext_header(&c, newfd, CACHE_EXT_BASE, len) ||
-		    ce_write(&c, newfd, hex, len))
-			return -1;
-	}
-
 	return ce_flush(&c, newfd);
 }

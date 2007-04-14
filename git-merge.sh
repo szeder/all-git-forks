@@ -80,7 +80,6 @@ finish () {
 			;;
 		*)
 			git-update-ref -m "$rlogm" HEAD "$1" "$head" || exit 1
-			git-update-index --set-base "$1"
 			;;
 		esac
 		;;
@@ -168,8 +167,6 @@ do
 	shift
 done
 
-BASE=`git update-index --get-base`
-
 # This could be traditional "merge <msg> HEAD <commit>..."  and the
 # way we can tell it is to see if the second token is HEAD, but some
 # people might have misused the interface and used a committish that
@@ -199,16 +196,8 @@ then
 	rh=$(git rev-parse --verify "$1^0") ||
 		die "$1 - not something we can merge"
 
-	# If somebody pushed :refs/heads/$current_branch in the meantime
-	# then we are in trouble.
-	if test -n "$BASE"
-	then
-		die "Your index is based on '$BASE' commit, but the branch you were on disappeared."
-	fi
-
 	git-update-ref -m "initial pull" HEAD "$rh" "" &&
 	git-read-tree --reset -u HEAD
-	git update-index --set-base $rh
 	exit
 
 else
@@ -228,10 +217,6 @@ else
 	merge_msg="${merge_msg:+$merge_msg$LF$LF}$merge_name"
 fi
 head=$(git-rev-parse --verify "$head_arg"^0) || usage
-if test -n "$BASE" && test "$head" != "$BASE"
-then
-	die "Your index is based on '$BASE' commit, but the branch tip you are on is at '$head'"
-fi
 
 # All the rest are remote heads
 test "$#" = 0 && usage ;# we need at least one remote head.

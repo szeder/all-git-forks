@@ -48,7 +48,6 @@ struct diff_options {
 	const char *orderfile;
 	const char *pickaxe;
 	const char *single_follow;
-	const char *warning;
 	unsigned recursive:1,
 		 tree_in_recursive:1,
 		 binary:1,

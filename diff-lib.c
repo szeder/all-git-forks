@@ -664,14 +664,6 @@ int run_diff_index(struct rev_info *revs, int cached)
 	const char *tree_name;
 	int match_missing = 0;
 
-	/* Check for gremlins */
-	if (active_cache_base_valid &&
-	    revs->pending.objects->item->type == OBJ_COMMIT &&
-	    revs->pending.objects->name &&
-	    !strcmp(revs->pending.objects->name, "HEAD") &&
-	    hashcmp(active_cache_base, revs->pending.objects->item->sha1))
-		revs->diffopt.warning = "WARNING: HEAD and index BASE do not match";
-
 	/* 
 	 * Backward compatibility wart - "diff-index -m" does
 	 * not mean "do not ignore merges", but totally different.

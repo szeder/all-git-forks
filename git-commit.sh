@@ -39,10 +39,6 @@ run_status () {
 	# NEXT_INDEX exists, that is the index file used to
 	# make the commit.  Otherwise we are using as-is commit
 	# so the regular index file is what we use to compare.
-
-	# We want a subshell, as we do not want to affect others with
-	# GIT_INDEX_FILE environment.
-	(
 	if test '' != "$TMP_INDEX"
 	then
 		GIT_INDEX_FILE="$TMP_INDEX"
@@ -61,7 +57,6 @@ run_status () {
 		${verbose:+--verbose} \
 		${amend:+--amend} \
 		${untracked_files:+--untracked}
-	)
 }
 
 trap '
@@ -325,10 +320,6 @@ t,,[1-9]*)
 ,,t,0)
 	die "No paths with -i does not make sense." ;;
 esac
-
-################################################################
-# Check for a case where HEAD was updated underneath us.
-check_base || exit
 
 ################################################################
 # Prepare index to have a tree to be committed
@@ -619,10 +610,6 @@ if cnt=`grep -v -i '^Signed-off-by' "$GIT_DIR"/COMMIT_MSG |
 	wc -l` &&
    test 0 -lt $cnt
 then
-	# Check for a case where HEAD was updated underneath us
-	# while we were editing the message.
-	check_base || exit
-
 	if test -z "$TMP_INDEX"
 	then
 		tree=$(GIT_INDEX_FILE="$USE_INDEX" git-write-tree)
@@ -639,8 +626,7 @@ then
 		mv "$NEXT_INDEX" "$THIS_INDEX"
 	else
 		: ;# happy
-	fi &&
-	git update-index --set-base $commit
+	fi
 else
 	echo >&2 "* no commit message?  aborting commit."
 	false

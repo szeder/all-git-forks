@@ -31,7 +31,6 @@ static int read_cache_unmerged(void)
 	struct cache_entry *last = NULL;
 
 	read_cache();
-	active_cache_base_valid = 0;
 	dst = active_cache;
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *ce = active_cache[i];
@@ -93,8 +92,6 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 {
 	int i, newfd, stage = 0;
 	unsigned char sha1[20];
-	unsigned char newbase[20];
-	int newbase_set = 0;
 	struct unpack_trees_options opts;
 
 	memset(&opts, 0, sizeof(opts));
@@ -162,15 +159,6 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 			opts.merge = 1;
 			stage = 1;
 			read_cache_unmerged();
-			continue;
-		}
-
-		if (!prefixcmp(arg, "--set-base=")) {
-			if (get_sha1_hex(arg+11, newbase) ||
-			    sha1_object_info(newbase, NULL) != OBJ_COMMIT)
-				die("Specified base is not a valid commit object name '%s'",
-				    arg);
-			newbase_set = 1;
 			continue;
 		}
 
@@ -278,18 +266,10 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	 * "-m ent" or "--reset ent" form), we can obtain a fully
 	 * valid cache-tree because the index must match exactly
 	 * what came from the tree.
-	 *
-	 * Also when we read from a single commit with --reset, the
-	 * index will be used to build a commit on top of it.
 	 */
 	if (trees && trees->item && !opts.prefix && (!opts.merge || (stage == 2))) {
 		cache_tree_free(&active_cache_tree);
 		prime_cache_tree();
-	}
-
-	if (newbase_set) {
-		active_cache_base_valid = 1;
-		hashcpy(active_cache_base, newbase);
 	}
 
 	if (write_cache(newfd, active_cache, active_nr) ||

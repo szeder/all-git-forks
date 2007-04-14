@@ -13,7 +13,6 @@ git var GIT_COMMITTER_IDENT >/dev/null || exit
 
 stop_here () {
     echo "$1" >"$dotest/next"
-    test -n "$BASE" && git update-index --set-base "$BASE"
     exit 1
 }
 
@@ -157,9 +156,6 @@ do
 	break ;;
 	esac
 done
-
-check_base || exit
-BASE=`git rev-parse --verify HEAD`
 
 # If the dotest directory exists, but we have finished applying all the
 # patches in them, clear it out.
@@ -465,7 +461,6 @@ do
 	git-update-ref -m "$GIT_REFLOG_ACTION: $SUBJECT" HEAD $commit $parent ||
 	stop_here $this
 
-	BASE=$commit
 	if test -x "$GIT_DIR"/hooks/post-applypatch
 	then
 		"$GIT_DIR"/hooks/post-applypatch
@@ -473,6 +468,5 @@ do
 
 	go_next
 done
-test -n "$BASE" && git update-index --set-base "$BASE"
 
 rm -fr "$dotest"
