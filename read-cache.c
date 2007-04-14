@@ -123,9 +123,9 @@ static int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
 		if (ce_compare_link(ce, xsize_t(st->st_size)))
 			return DATA_CHANGED;
 		break;
-	case S_IFDIRLNK:
-		/* No need to do anything, we did the exact compare in "match_stat_basic" */
-		break;
+	case S_IFDIR:
+		if (S_ISDIRLNK(ntohl(ce->ce_mode)))
+			return 0;
 	default:
 		return TYPE_CHANGED;
 	}
@@ -156,7 +156,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 			changed |= TYPE_CHANGED;
 		else if (ce_compare_gitlink(ce))
 			changed |= DATA_CHANGED;
-		break;
+		return changed;
 	default:
 		die("internal error: ce_mode is %o", ntohl(ce->ce_mode));
 	}
