@@ -355,6 +355,11 @@ and returns the process output as a string."
          (if index-file `(("GIT_INDEX_FILE" . ,index-file)) nil)
          "read-tree" (if tree (list tree))))
 
+(defun git-update-base (base)
+  "Set index base."
+  (apply #'git-call-process-env nil nil "update-index" "--set-base" val)
+  base)
+
 (defun git-write-tree (&optional index-file)
   "Call git-write-tree and return the resulting tree SHA1 as a string."
   (git-get-string-sha1
@@ -389,17 +394,18 @@ and returns the process output as a string."
         (setq log-start (point-min)))
       (setq log-end (point-max))
       (setq coding-system-for-write buffer-file-coding-system))
-    (git-get-string-sha1
-     (with-output-to-string
-       (with-current-buffer standard-output
-         (let ((env `(("GIT_AUTHOR_NAME" . ,author-name)
-                      ("GIT_AUTHOR_EMAIL" . ,author-email)
-                      ("GIT_COMMITTER_NAME" . ,(git-get-committer-name))
-                      ("GIT_COMMITTER_EMAIL" . ,(git-get-committer-email)))))
-           (when author-date (push `("GIT_AUTHOR_DATE" . ,author-date) env))
-           (apply #'git-run-command-region
-                  buffer log-start log-end env
-                  "commit-tree" tree (nreverse args))))))))
+    (git-update-base
+     (git-get-string-sha1
+      (with-output-to-string
+	(with-current-buffer standard-output
+	  (let ((env `(("GIT_AUTHOR_NAME" . ,author-name)
+		       ("GIT_AUTHOR_EMAIL" . ,author-email)
+		       ("GIT_COMMITTER_NAME" . ,(git-get-committer-name))
+		       ("GIT_COMMITTER_EMAIL" . ,(git-get-committer-email)))))
+	    (when author-date (push `("GIT_AUTHOR_DATE" . ,author-date) env))
+	    (apply #'git-run-command-region
+		   buffer log-start log-end env
+		   "commit-tree" tree (nreverse args)))))))))
 
 (defun git-empty-db-p ()
   "Check if the git db is empty (no commit done yet)."

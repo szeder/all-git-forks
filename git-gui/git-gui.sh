@@ -1331,6 +1331,13 @@ A rescan will be automatically started now.
 		unlock_index
 		return
 	}
+	set cmd [list git update-index --set-base $cmt_id]
+	if {[catch {eval exec $cmd} err]} {
+		error_popup "update-index --set-base failed:\n\n$err"
+		set ui_status_value {Commit failed.}
+		unlock_index
+		return
+	}
 
 	# -- Cleanup after ourselves.
 	#
