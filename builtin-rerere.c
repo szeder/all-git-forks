@@ -78,6 +78,13 @@ static void append_line(struct buffer *buffer, const char *line)
 	buffer->nr += len;
 }
 
+static void clear_buffer(struct buffer *buffer)
+{
+	free(buffer->ptr);
+	buffer->ptr = NULL;
+	buffer->nr = buffer->alloc = 0;
+}
+
 static int handle_file(const char *path,
 	 unsigned char *sha1, const char *output)
 {
@@ -110,10 +117,13 @@ static int handle_file(const char *path,
 		else if (!prefixcmp(buf, "======="))
 			hunk = 2;
 		else if (!prefixcmp(buf, ">>>>>>> ")) {
+			int one_is_longer = (one->nr > two->nr);
+			int common_len = one_is_longer ? two->nr : one->nr;
+			int cmp = memcmp(one->ptr, two->ptr, common_len);
+
 			hunk_no++;
 			hunk = 0;
-			if (memcmp(one->ptr, two->ptr, one->nr < two->nr ?
-						one->nr : two->nr) > 0) {
+			if ((cmp > 0) || ((cmp == 0) && one_is_longer)) {
 				struct buffer *swap = one;
 				one = two;
 				two = swap;
@@ -131,6 +141,8 @@ static int handle_file(const char *path,
 				SHA1_Update(&ctx, two->ptr, two->nr);
 				SHA1_Update(&ctx, "\0", 1);
 			}
+			clear_buffer(one);
+			clear_buffer(two);
 		} else if (hunk == 1)
 			append_line(one, buf);
 		else if (hunk == 2)

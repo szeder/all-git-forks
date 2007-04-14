@@ -77,7 +77,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 	git_config(git_default_config);
 
-	newfd = hold_lock_file_for_update(&lock_file, get_index_file(), 1);
+	newfd = hold_locked_index(&lock_file, 1);
 	if (read_cache() < 0)
 		die("index file corrupt");
 
@@ -273,7 +273,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 		for (i = 0; i < added.nr; i++) {
 			const char *path = added.items[i].path;
-			add_file_to_index(path, verbose);
+			add_file_to_cache(path, verbose);
 		}
 
 		for (i = 0; i < deleted.nr; i++) {
@@ -285,7 +285,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 		if (active_cache_changed) {
 			if (write_cache(newfd, active_cache, active_nr) ||
 			    close(newfd) ||
-			    commit_lock_file(&lock_file))
+			    commit_locked_index(&lock_file))
 				die("Unable to write new index file");
 		}
 	}

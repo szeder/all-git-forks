@@ -149,7 +149,7 @@ int parse_archive_args(int argc, const char **argv, struct archiver *ar)
 {
 	const char *extra_argv[MAX_EXTRA_ARGS];
 	int extra_argc = 0;
-	const char *format = NULL; /* might want to default to "tar" */
+	const char *format = "tar";
 	const char *base = "";
 	int verbose = 0;
 	int i;
@@ -190,8 +190,6 @@ int parse_archive_args(int argc, const char **argv, struct archiver *ar)
 	/* We need at least one parameter -- tree-ish */
 	if (argc - 1 < i)
 		usage(archive_usage);
-	if (!format)
-		die("You must specify an archive format");
 	if (init_archiver(format, ar) < 0)
 		die("Unknown archive format '%s'", format);
 
@@ -252,6 +250,8 @@ int cmd_archive(int argc, const char **argv, const char *prefix)
 
 	memset(&ar, 0, sizeof(ar));
 	tree_idx = parse_archive_args(argc, argv, &ar);
+	if (prefix == NULL)
+		prefix = setup_git_directory();
 
 	argv += tree_idx;
 	parse_treeish_arg(argv, &ar.args, prefix);

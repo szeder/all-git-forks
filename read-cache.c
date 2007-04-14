@@ -24,8 +24,6 @@ unsigned int active_nr, active_alloc, active_cache_changed;
 
 struct cache_tree *active_cache_tree;
 
-int cache_errno;
-
 static void *cache_mmap;
 static size_t cache_mmap_size;
 
@@ -327,7 +325,7 @@ int remove_file_from_cache(const char *path)
 	return 0;
 }
 
-int add_file_to_index(const char *path, int verbose)
+int add_file_to_cache(const char *path, int verbose)
 {
 	int size, namelen;
 	struct stat st;
@@ -487,6 +485,8 @@ static int has_file_name(const struct cache_entry *ce, int pos, int ok_to_replac
 			continue;
 		if (p->name[len] != '/')
 			continue;
+		if (!ce_stage(p) && !p->ce_mode)
+			continue;
 		retval = -1;
 		if (!ok_to_replace)
 			break;
@@ -519,26 +519,37 @@ static int has_dir_name(const struct cache_entry *ce, int pos, int ok_to_replace
 
 		pos = cache_name_pos(name, ntohs(create_ce_flags(len, stage)));
 		if (pos >= 0) {
-			retval = -1;
-			if (!ok_to_replace)
-				break;
-			remove_cache_entry_at(pos);
-			continue;
+			/*
+			 * Found one, but not so fast.  This could
+			 * be a marker that says "I was here, but
+			 * I am being removed".  Such an entry is
+			 * not a part of the resulting tree, and
+			 * it is Ok to have a directory at the same
+			 * path.
+			 */
+			if (stage || active_cache[pos]->ce_mode) {
+				retval = -1;
+				if (!ok_to_replace)
+					break;
+				remove_cache_entry_at(pos);
+				continue;
+			}
 		}
+		else
+			pos = -pos-1;
 
 		/*
 		 * Trivial optimization: if we find an entry that
 		 * already matches the sub-directory, then we know
 		 * we're ok, and we can exit.
 		 */
-		pos = -pos-1;
 		while (pos < active_nr) {
 			struct cache_entry *p = active_cache[pos];
 			if ((ce_namelen(p) <= len) ||
 			    (p->name[len] != '/') ||
 			    memcmp(p->name, name, len))
 				break; /* not our subdirectory */
-			if (ce_stage(p) == stage)
+			if (ce_stage(p) == stage && (stage || p->ce_mode))
 				/* p is at the same stage as our entry, and
 				 * is a subdirectory of what we are looking
 				 * at, so we cannot have conflicts at our
@@ -562,12 +573,21 @@ static int has_dir_name(const struct cache_entry *ce, int pos, int ok_to_replace
  */
 static int check_file_directory_conflict(const struct cache_entry *ce, int pos, int ok_to_replace)
 {
+	int retval;
+
+	/*
+	 * When ce is an "I am going away" entry, we allow it to be added
+	 */
+	if (!ce_stage(ce) && !ce->ce_mode)
+		return 0;
+
 	/*
 	 * We check if the path is a sub-path of a subsequent pathname
 	 * first, since removing those will not change the position
-	 * in the array
+	 * in the array.
 	 */
-	int retval = has_file_name(ce, pos, ok_to_replace);
+	retval = has_file_name(ce, pos, ok_to_replace);
+
 	/*
 	 * Then check if the path might have a clashing sub-directory
 	 * before it.
@@ -643,14 +663,15 @@ int add_cache_entry(struct cache_entry *ce, int option)
  * For example, you'd want to do this after doing a "git-read-tree",
  * to link up the stat cache details with the proper files.
  */
-struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
+static struct cache_entry *refresh_cache_ent(struct cache_entry *ce, int really, int *err)
 {
 	struct stat st;
 	struct cache_entry *updated;
 	int changed, size;
 
 	if (lstat(ce->name, &st) < 0) {
-		cache_errno = errno;
+		if (err)
+			*err = errno;
 		return NULL;
 	}
 
@@ -664,7 +685,8 @@ struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
 	}
 
 	if (ce_modified(ce, &st, really)) {
-		cache_errno = EINVAL;
+		if (err)
+			*err = EINVAL;
 		return NULL;
 	}
 
@@ -696,6 +718,8 @@ int refresh_cache(unsigned int flags)
 
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *ce, *new;
+		int cache_errno = 0;
+
 		ce = active_cache[i];
 		if (ce_stage(ce)) {
 			while ((i < active_nr) &&
@@ -709,7 +733,7 @@ int refresh_cache(unsigned int flags)
 			continue;
 		}
 
-		new = refresh_cache_entry(ce, really);
+		new = refresh_cache_ent(ce, really, &cache_errno);
 		if (new == ce)
 			continue;
 		if (!new) {
@@ -735,6 +759,11 @@ int refresh_cache(unsigned int flags)
 		active_cache[i] = new;
 	}
 	return has_errors;
+}
+
+struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
+{
+	return refresh_cache_ent(ce, really, NULL);
 }
 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)

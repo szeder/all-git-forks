@@ -50,8 +50,16 @@ test_expect_success \
      git-commit-tree $treeid </dev/null)'
 
 test_expect_success \
+    'git-archive' \
+    'git-archive HEAD >b.tar'
+
+test_expect_success \
     'git-tar-tree' \
-    'git-tar-tree HEAD >b.tar'
+    'git-tar-tree HEAD >b2.tar'
+
+test_expect_success \
+    'git-archive vs. git-tar-tree' \
+    'diff b.tar b2.tar'
 
 test_expect_success \
     'validate file modification time' \
@@ -129,5 +137,9 @@ test_expect_success \
 test_expect_success \
     'validate file contents with prefix' \
     'diff -r a e/prefix/a'
+
+test_expect_success \
+    'git-archive --list outside of a git repo' \
+    'GIT_DIR=some/non-existing/directory git-archive --list'
 
 test_done

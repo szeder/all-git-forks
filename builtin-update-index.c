@@ -60,7 +60,7 @@ static int mark_valid(const char *path)
 	return -1;
 }
 
-static int add_file_to_cache(const char *path)
+static int process_file(const char *path)
 {
 	int size, namelen, option, status;
 	struct cache_entry *ce;
@@ -210,7 +210,7 @@ static void update_one(const char *path, const char *prefix, int prefix_length)
 		report("remove '%s'", path);
 		goto free_return;
 	}
-	if (add_file_to_cache(p))
+	if (process_file(p))
 		die("Unable to process file %s", path);
 	report("add '%s'", path);
  free_return:
@@ -227,6 +227,7 @@ static void read_index_info(int line_termination)
 		char *path_name;
 		unsigned char sha1[20];
 		unsigned int mode;
+		unsigned long ul;
 		int stage;
 
 		/* This reads lines formatted in one of three formats:
@@ -249,9 +250,12 @@ static void read_index_info(int line_termination)
 		if (buf.eof)
 			break;
 
-		mode = strtoul(buf.buf, &ptr, 8);
-		if (ptr == buf.buf || *ptr != ' ')
+		errno = 0;
+		ul = strtoul(buf.buf, &ptr, 8);
+		if (ptr == buf.buf || *ptr != ' '
+		    || errno || (unsigned int) ul != ul)
 			goto bad_line;
+		mode = ul;
 
 		tab = strchr(ptr, '\t');
 		if (!tab || tab - ptr < 41)
@@ -495,7 +499,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
 	lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	newfd = hold_lock_file_for_update(lock_file, get_index_file(), 0);
+	newfd = hold_locked_index(lock_file, 0);
 	if (newfd < 0)
 		lock_error = errno;
 
@@ -547,7 +551,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 				if (i+3 >= argc)
 					die("git-update-index: --cacheinfo <mode> <sha1> <path>");
 
-				if ((sscanf(argv[i+1], "%o", &mode) != 1) ||
+				if ((strtoul_ui(argv[i+1], 8, &mode) != 1) ||
 				    get_sha1_hex(argv[i+2], sha1) ||
 				    add_cacheinfo(mode, sha1, argv[i+3], 0))
 					die("git-update-index: --cacheinfo"
@@ -661,7 +665,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			    get_index_file(), strerror(lock_error));
 		}
 		if (write_cache(newfd, active_cache, active_nr) ||
-		    close(newfd) || commit_lock_file(lock_file))
+		    close(newfd) || commit_locked_index(lock_file))
 			die("Unable to write new index file");
 	}
 

@@ -87,7 +87,7 @@ static void fill_directory(struct dir_struct *dir, const char **pathspec)
 	}
 
 	/* Read the directory and prune it */
-	read_directory(dir, path, base, baselen);
+	read_directory(dir, path, base, baselen, pathspec);
 	if (pathspec)
 		prune_directory(dir, pathspec, baselen);
 }
@@ -133,7 +133,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	git_config(git_add_config);
 
-	newfd = hold_lock_file_for_update(&lock_file, get_index_file(), 1);
+	newfd = hold_locked_index(&lock_file, 1);
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -205,11 +205,11 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	}
 
 	for (i = 0; i < dir.nr; i++)
-		add_file_to_index(dir.entries[i]->name, verbose);
+		add_file_to_cache(dir.entries[i]->name, verbose);
 
 	if (active_cache_changed) {
 		if (write_cache(newfd, active_cache, active_nr) ||
-		    close(newfd) || commit_lock_file(&lock_file))
+		    close(newfd) || commit_locked_index(&lock_file))
 			die("Unable to write new index file");
 	}
 

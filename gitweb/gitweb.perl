@@ -19,7 +19,7 @@ use File::Basename qw(basename);
 binmode STDOUT, ':utf8';
 
 BEGIN {
-	CGI->compile() if $ENV{MOD_PERL};
+	CGI->compile() if $ENV{'MOD_PERL'};
 }
 
 our $cgi = new CGI;
@@ -70,6 +70,10 @@ our $logo_label = "git homepage";
 
 # source of projects list
 our $projects_list = "++GITWEB_LIST++";
+
+# default order of projects list
+# valid values are none, project, descr, owner, and age
+our $default_projects_order = "project";
 
 # show repository only if this file exists
 # (only effective if this variable evaluates to true)
@@ -176,8 +180,8 @@ our %feature = (
 	# projects matching $projname/*.git will not be shown in the main
 	# projects list, instead a '+' mark will be added to $projname
 	# there and a 'forks' view will be enabled for the project, listing
-	# all the forks. This feature is supported only if project list
-	# is taken from a directory, not file.
+	# all the forks. If project list is taken from a file, forks have
+	# to be listed after the main project.
 
 	# To enable system wide have in $GITWEB_CONFIG
 	# $feature{'forks'}{'default'} = [1];
@@ -1047,14 +1051,14 @@ sub git_get_projects_list {
 	$filter ||= '';
 	$filter =~ s/\.git$//;
 
+	my ($check_forks) = gitweb_check_feature('forks');
+
 	if (-d $projects_list) {
 		# search in directory
 		my $dir = $projects_list . ($filter ? "/$filter" : '');
 		# remove the trailing "/"
 		$dir =~ s!/+$!!;
 		my $pfxlen = length("$dir");
-
-		my ($check_forks) = gitweb_check_feature('forks');
 
 		File::Find::find({
 			follow_fast => 1, # follow symbolic links
@@ -1081,7 +1085,9 @@ sub git_get_projects_list {
 		# 'git%2Fgit.git Linus+Torvalds'
 		# 'libs%2Fklibc%2Fklibc.git H.+Peter+Anvin'
 		# 'linux%2Fhotplug%2Fudev.git Greg+Kroah-Hartman'
+		my %paths;
 		open my ($fd), $projects_list or return;
+	PROJECT:
 		while (my $line = <$fd>) {
 			chomp $line;
 			my ($path, $owner) = split ' ', $line;
@@ -1094,11 +1100,27 @@ sub git_get_projects_list {
 				# looking for forks;
 				my $pfx = substr($path, 0, length($filter));
 				if ($pfx ne $filter) {
-					next;
+					next PROJECT;
 				}
 				my $sfx = substr($path, length($filter));
 				if ($sfx !~ /^\/.*\.git$/) {
-					next;
+					next PROJECT;
+				}
+			} elsif ($check_forks) {
+			PATH:
+				foreach my $filter (keys %paths) {
+					# looking for forks;
+					my $pfx = substr($path, 0, length($filter));
+					if ($pfx ne $filter) {
+						next PATH;
+					}
+					my $sfx = substr($path, length($filter));
+					if ($sfx !~ /^\/.*\.git$/) {
+						next PATH;
+					}
+					# is a fork, don't include it in
+					# the list
+					next PROJECT;
 				}
 			}
 			if (check_export_ok("$projectroot/$path")) {
@@ -1106,12 +1128,13 @@ sub git_get_projects_list {
 					path => $path,
 					owner => to_utf8($owner),
 				};
-				push @list, $pr
+				push @list, $pr;
+				(my $forks_path = $path) =~ s/\.git$//;
+				$paths{$forks_path}++;
 			}
 		}
 		close $fd;
 	}
-	@list = sort {$a->{'path'} cmp $b->{'path'}} @list;
 	return @list;
 }
 
@@ -1800,7 +1823,7 @@ EOF
 		      $cgi->hidden(-name => "a") . "\n" .
 		      $cgi->hidden(-name => "h") . "\n" .
 		      $cgi->popup_menu(-name => 'st', -default => 'commit',
-				       -values => ['commit', 'author', 'committer', 'pickaxe']) .
+		                       -values => ['commit', 'author', 'committer', 'pickaxe']) .
 		      $cgi->sup($cgi->a({-href => href(action=>"search_help")}, "?")) .
 		      " search:\n",
 		      $cgi->textfield(-name => "s", -value => $searchtext) . "\n" .
@@ -1870,16 +1893,16 @@ sub git_print_page_nav {
 	my %arg = map { $_ => {action=>$_} } @navs;
 	if (defined $head) {
 		for (qw(commit commitdiff)) {
-			$arg{$_}{hash} = $head;
+			$arg{$_}{'hash'} = $head;
 		}
 		if ($current =~ m/^(tree | log | shortlog | commit | commitdiff | search)$/x) {
 			for (qw(shortlog log)) {
-				$arg{$_}{hash} = $head;
+				$arg{$_}{'hash'} = $head;
 			}
 		}
 	}
-	$arg{tree}{hash} = $treehead if defined $treehead;
-	$arg{tree}{hash_base} = $treebase if defined $treebase;
+	$arg{'tree'}{'hash'} = $treehead if defined $treehead;
+	$arg{'tree'}{'hash_base'} = $treebase if defined $treebase;
 
 	print "<div class=\"page_nav\">\n" .
 		(join " | ",
@@ -1927,9 +1950,9 @@ sub git_print_header_div {
 	my ($action, $title, $hash, $hash_base) = @_;
 	my %args = ();
 
-	$args{action} = $action;
-	$args{hash} = $hash if $hash;
-	$args{hash_base} = $hash_base if $hash_base;
+	$args{'action'} = $action;
+	$args{'hash'} = $hash if $hash;
+	$args{'hash_base'} = $hash_base if $hash_base;
 
 	print "<div class=\"header\">\n" .
 	      $cgi->a({-href => href(%args), -class => "title"},
@@ -2598,7 +2621,7 @@ sub git_project_list_body {
 		push @projects, $pr;
 	}
 
-	$order ||= "project";
+	$order ||= $default_projects_order;
 	$from = 0 unless defined $from;
 	$to = $#projects if (!defined $to || $#projects < $to);
 
@@ -2957,7 +2980,7 @@ sub git_search_grep_body {
 
 sub git_project_list {
 	my $order = $cgi->param('o');
-	if (defined $order && $order !~ m/project|descr|owner|age/) {
+	if (defined $order && $order !~ m/none|project|descr|owner|age/) {
 		die_error(undef, "Unknown order parameter");
 	}
 
@@ -2980,7 +3003,7 @@ sub git_project_list {
 
 sub git_forks {
 	my $order = $cgi->param('o');
-	if (defined $order && $order !~ m/project|descr|owner|age/) {
+	if (defined $order && $order !~ m/none|project|descr|owner|age/) {
 		die_error(undef, "Unknown order parameter");
 	}
 
@@ -3095,7 +3118,7 @@ sub git_summary {
 		git_project_list_body(\@forklist, undef, 0, 15,
 		                      $#forklist <= 15 ? undef :
 		                      $cgi->a({-href => href(action=>"forks")}, "..."),
-				      'noheader');
+		                      'noheader');
 	}
 
 	git_footer_html();
@@ -3202,7 +3225,7 @@ HTML
 		my $rev = substr($full_rev, 0, 8);
 		my $author = $meta->{'author'};
 		my %date = parse_date($meta->{'author-time'},
-				      $meta->{'author-tz'});
+		                      $meta->{'author-tz'});
 		my $date = $date{'iso-tz'};
 		if ($group_size) {
 			$current_color = ++$current_color % $num_colors;
@@ -3214,9 +3237,9 @@ HTML
 			print " rowspan=\"$group_size\"" if ($group_size > 1);
 			print ">";
 			print $cgi->a({-href => href(action=>"commit",
-						     hash=>$full_rev,
-						     file_name=>$file_name)},
-				      esc_html($rev));
+			                             hash=>$full_rev,
+			                             file_name=>$file_name)},
+			              esc_html($rev));
 			print "</td>\n";
 		}
 		open (my $dd, "-|", git_cmd(), "rev-parse", "$full_rev^")
@@ -3225,13 +3248,13 @@ HTML
 		close $dd;
 		chomp($parent_commit);
 		my $blamed = href(action => 'blame',
-				  file_name => $meta->{'filename'},
-				  hash_base => $parent_commit);
+		                  file_name => $meta->{'filename'},
+		                  hash_base => $parent_commit);
 		print "<td class=\"linenr\">";
 		print $cgi->a({ -href => "$blamed#l$orig_lineno",
-				-id => "l$lineno",
-				-class => "linenr" },
-			      esc_html($lineno));
+		                -id => "l$lineno",
+		                -class => "linenr" },
+		              esc_html($lineno));
 		print "</td>";
 		print "<td class=\"pre\">" . esc_html($data) . "</td>\n";
 		print "</tr>\n";
@@ -3621,7 +3644,7 @@ sub git_snapshot {
 	my $name = $project;
 	$name =~ s/\047/\047\\\047\047/g;
 	open my $fd, "-|",
-	"$git archive --format=tar --prefix=\'$name\'/ $hash | $command"
+		"$git archive --format=tar --prefix=\'$name\'/ $hash | $command"
 		or die_error(undef, "Execute git-tar-tree failed");
 	binmode STDOUT, ':raw';
 	print <$fd>;
@@ -3734,7 +3757,7 @@ sub git_commit {
 		# difftree output is not printed for merges
 		open my $fd, "-|", git_cmd(), "diff-tree", '-r', "--no-commit-id",
 			@diff_opts, $parent, $hash, "--"
-				or die_error(undef, "Open git-diff-tree failed");
+			or die_error(undef, "Open git-diff-tree failed");
 		@difftree = map { chomp; $_ } <$fd>;
 		close $fd or die_error(undef, "Reading git-diff-tree failed");
 	}
@@ -3934,7 +3957,8 @@ sub git_blobdiff {
 
 		# open patch output
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
-			'-p', $hash_parent_base, $hash_base,
+			'-p', ($format eq 'html' ? "--full-index" : ()),
+			$hash_parent_base, $hash_base,
 			"--", (defined $file_parent ? $file_parent : ()), $file_name
 			or die_error(undef, "Open git-diff-tree failed");
 	}
@@ -3969,7 +3993,8 @@ sub git_blobdiff {
 		}
 
 		# open patch output
-		open $fd, "-|", git_cmd(), "diff", '-p', @diff_opts,
+		open $fd, "-|", git_cmd(), "diff", @diff_opts,
+			'-p', ($format eq 'html' ? "--full-index" : ()),
 			$hash_parent, $hash, "--"
 			or die_error(undef, "Open git-diff failed");
 	} else  {
@@ -4304,13 +4329,13 @@ sub git_search {
 		if ($page > 0) {
 			$paging_nav .=
 				$cgi->a({-href => href(action=>"search", hash=>$hash,
-						       searchtext=>$searchtext, searchtype=>$searchtype)},
-					"first");
+				                       searchtext=>$searchtext, searchtype=>$searchtype)},
+				        "first");
 			$paging_nav .= " &sdot; " .
 				$cgi->a({-href => href(action=>"search", hash=>$hash,
-						       searchtext=>$searchtext, searchtype=>$searchtype,
-						       page=>$page-1),
-					 -accesskey => "p", -title => "Alt-p"}, "prev");
+				                       searchtext=>$searchtext, searchtype=>$searchtype,
+				                       page=>$page-1),
+				         -accesskey => "p", -title => "Alt-p"}, "prev");
 		} else {
 			$paging_nav .= "first";
 			$paging_nav .= " &sdot; prev";
@@ -4318,9 +4343,9 @@ sub git_search {
 		if ($#commitlist >= 100) {
 			$paging_nav .= " &sdot; " .
 				$cgi->a({-href => href(action=>"search", hash=>$hash,
-						       searchtext=>$searchtext, searchtype=>$searchtype,
-						       page=>$page+1),
-					 -accesskey => "n", -title => "Alt-n"}, "next");
+				                       searchtext=>$searchtext, searchtype=>$searchtype,
+				                       page=>$page+1),
+				         -accesskey => "n", -title => "Alt-n"}, "next");
 		} else {
 			$paging_nav .= " &sdot; next";
 		}
@@ -4328,9 +4353,9 @@ sub git_search {
 		if ($#commitlist >= 100) {
 			$next_link =
 				$cgi->a({-href => href(action=>"search", hash=>$hash,
-						       searchtext=>$searchtext, searchtype=>$searchtype,
-						       page=>$page+1),
-					 -accesskey => "n", -title => "Alt-n"}, "next");
+				                       searchtext=>$searchtext, searchtype=>$searchtype,
+				                       page=>$page+1),
+				         -accesskey => "n", -title => "Alt-n"}, "next");
 		}
 
 		git_print_page_nav('','', $hash,$co{'tree'},$hash, $paging_nav);
