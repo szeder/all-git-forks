@@ -15,6 +15,7 @@
 #include "unpack-trees.h"
 #include "path-list.h"
 #include "xdiff-interface.h"
+#include "attr.h"
 
 static int subtree_merge;
 
@@ -682,6 +683,160 @@ static void fill_mm(const unsigned char *sha1, mmfile_t *mm)
 	mm->size = size;
 }
 
+/* Low-level merge functions */
+typedef int (*ll_merge_fn)(mmfile_t *orig,
+			   mmfile_t *src1, const char *name1,
+			   mmfile_t *src2, const char *name2,
+			   mmbuffer_t *result);
+
+static int ll_xdl_merge(mmfile_t *orig,
+			mmfile_t *src1, const char *name1,
+			mmfile_t *src2, const char *name2,
+			mmbuffer_t *result)
+{
+	xpparam_t xpp;
+
+	memset(&xpp, 0, sizeof(xpp));
+	return xdl_merge(orig,
+			 src1, name1,
+			 src2, name2,
+			 &xpp, XDL_MERGE_ZEALOUS,
+			 result);
+}
+
+static int ll_union_merge(mmfile_t *orig,
+			  mmfile_t *src1, const char *name1,
+			  mmfile_t *src2, const char *name2,
+			  mmbuffer_t *result)
+{
+	char *src, *dst;
+	long size;
+	const int marker_size = 7;
+
+	int status = ll_xdl_merge(orig, src1, NULL, src2, NULL, result);
+	if (status <= 0)
+		return status;
+	size = result->size;
+	src = dst = result->ptr;
+	while (size) {
+		char ch;
+		if ((marker_size < size) &&
+		    (*src == '<' || *src == '=' || *src == '>')) {
+			int i;
+			ch = *src;
+			for (i = 0; i < marker_size; i++)
+				if (src[i] != ch)
+					goto not_a_marker;
+			if (src[marker_size] != '\n')
+				goto not_a_marker;
+			src += marker_size + 1;
+			size -= marker_size + 1;
+			continue;
+		}
+	not_a_marker:
+		do {
+			ch = *src++;
+			*dst++ = ch;
+			size--;
+		} while (ch != '\n' && size);
+	}
+	result->size = dst - result->ptr;
+	return 0;
+}
+
+static int ll_binary_merge(mmfile_t *orig,
+			   mmfile_t *src1, const char *name1,
+			   mmfile_t *src2, const char *name2,
+			   mmbuffer_t *result)
+{
+	/*
+	 * The tentative merge result is "ours" for the final round,
+	 * or common ancestor for an internal merge.  Still return
+	 * "conflicted merge" status.
+	 */
+	mmfile_t *stolen = index_only ? orig : src1;
+
+	result->ptr = stolen->ptr;
+	result->size = stolen->size;
+	stolen->ptr = NULL;
+	return 1;
+}
+
+static struct {
+	const char *name;
+	ll_merge_fn fn;
+} ll_merge_fns[] = {
+	{ "text", ll_xdl_merge },
+	{ "binary", ll_binary_merge },
+	{ "union", ll_union_merge },
+	{ NULL, NULL },
+};
+
+static ll_merge_fn find_ll_merge_fn(void *merge_attr)
+{
+	const char *name;
+	int i;
+
+	if (ATTR_TRUE(merge_attr) || ATTR_UNSET(merge_attr))
+		return ll_xdl_merge;
+	else if (ATTR_FALSE(merge_attr))
+		return ll_binary_merge;
+
+	/* Otherwise merge_attr may name the merge function */
+	name = merge_attr;
+	for (i = 0; ll_merge_fns[i].name; i++)
+		if (!strcmp(ll_merge_fns[i].name, name))
+			return ll_merge_fns[i].fn;
+
+	/* default to the 3-way */
+	return ll_xdl_merge;
+}
+
+static void *git_path_check_merge(const char *path)
+{
+	static struct git_attr_check attr_merge_check;
+
+	if (!attr_merge_check.attr)
+		attr_merge_check.attr = git_attr("merge", 5);
+
+	if (git_checkattr(path, 1, &attr_merge_check))
+		return ATTR__UNSET;
+	return attr_merge_check.value;
+}
+
+static int ll_merge(mmbuffer_t *result_buf,
+		    struct diff_filespec *o,
+		    struct diff_filespec *a,
+		    struct diff_filespec *b,
+		    const char *branch1,
+		    const char *branch2)
+{
+	mmfile_t orig, src1, src2;
+	char *name1, *name2;
+	int merge_status;
+	void *merge_attr;
+	ll_merge_fn fn;
+
+	name1 = xstrdup(mkpath("%s:%s", branch1, a->path));
+	name2 = xstrdup(mkpath("%s:%s", branch2, b->path));
+
+	fill_mm(o->sha1, &orig);
+	fill_mm(a->sha1, &src1);
+	fill_mm(b->sha1, &src2);
+
+	merge_attr = git_path_check_merge(a->path);
+	fn = find_ll_merge_fn(merge_attr);
+
+	merge_status = fn(&orig, &src1, name1, &src2, name2, result_buf);
+
+	free(name1);
+	free(name2);
+	free(orig.ptr);
+	free(src1.ptr);
+	free(src2.ptr);
+	return merge_status;
+}
+
 static struct merge_file_info merge_file(struct diff_filespec *o,
 		struct diff_filespec *a, struct diff_filespec *b,
 		const char *branch1, const char *branch2)
@@ -710,30 +865,11 @@ static struct merge_file_info merge_file(struct diff_filespec *o,
 		else if (sha_eq(b->sha1, o->sha1))
 			hashcpy(result.sha, a->sha1);
 		else if (S_ISREG(a->mode)) {
-			mmfile_t orig, src1, src2;
 			mmbuffer_t result_buf;
-			xpparam_t xpp;
-			char *name1, *name2;
 			int merge_status;
 
-			name1 = xstrdup(mkpath("%s:%s", branch1, a->path));
-			name2 = xstrdup(mkpath("%s:%s", branch2, b->path));
-
-			fill_mm(o->sha1, &orig);
-			fill_mm(a->sha1, &src1);
-			fill_mm(b->sha1, &src2);
-
-			memset(&xpp, 0, sizeof(xpp));
-			merge_status = xdl_merge(&orig,
-						 &src1, name1,
-						 &src2, name2,
-						 &xpp, XDL_MERGE_ZEALOUS,
-						 &result_buf);
-			free(name1);
-			free(name2);
-			free(orig.ptr);
-			free(src1.ptr);
-			free(src2.ptr);
+			merge_status = ll_merge(&result_buf, o, a, b,
+						branch1, branch2);
 
 			if ((merge_status < 0) || !result_buf.ptr)
 				die("Failed to execute internal merge");
