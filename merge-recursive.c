@@ -832,6 +832,9 @@ static int ll_ext_merge(const struct ll_merge_driver *fn,
 	int status, fd, i;
 	struct stat st;
 
+	if (fn->cmdline == NULL)
+		die("custom merge driver %s lacks command line.", fn->name);
+
 	result->ptr = NULL;
 	result->size = 0;
 	create_temp(orig, temp[0]);
@@ -902,7 +905,7 @@ static int read_merge_config(const char *var, const char *value)
 	 * especially, we do not want to look at variables such as
 	 * "merge.summary", "merge.tool", and "merge.verbosity".
 	 */
-	if (prefixcmp(var, "merge.") || (ep = strrchr(var, '.')) == var + 6)
+	if (prefixcmp(var, "merge.") || (ep = strrchr(var, '.')) == var + 5)
 		return 0;
 
 	/*
@@ -1044,13 +1047,8 @@ static int ll_merge(mmbuffer_t *result_buf,
 	ll_driver_name = git_path_check_merge(a->path);
 	driver = find_ll_merge_driver(ll_driver_name);
 
-	if (index_only && driver->recursive) {
-		void *merge_attr;
-
-		ll_driver_name = driver->recursive;
-		merge_attr = git_attr(ll_driver_name, strlen(ll_driver_name));
-		driver = find_ll_merge_driver(merge_attr);
-	}
+	if (index_only && driver->recursive)
+		driver = find_ll_merge_driver(driver->recursive);
 	merge_status = driver->fn(driver, a->path,
 				  &orig, &src1, name1, &src2, name2,
 				  result_buf);
