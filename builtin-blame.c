@@ -16,6 +16,7 @@
 #include "quote.h"
 #include "xdiff-interface.h"
 #include "cache-tree.h"
+#include "log-tree.h"
 #include "path-list.h"
 #include "mailmap.h"
 
@@ -34,6 +35,7 @@ static char blame_usage[] =
 "  -L n,m              Process only line range n,m, counting from 1\n"
 "  -M, -C              Find line movements within and across files\n"
 "  --incremental       Show blame entries as we find them, incrementally\n"
+"  --log               Show blame entries as a log\n"
 "  --contents file     Use <file>'s contents as the final image\n"
 "  -S revs-file        Use revisions from revs-file instead of calling git-rev-list\n";
 
@@ -46,6 +48,7 @@ static int show_root;
 static int blank_boundary;
 static int incremental;
 static int cmd_is_annotate;
+static int log;
 static int xdl_opts = XDF_NEED_MINIMAL;
 static struct path_list mailmap;
 
@@ -1549,10 +1552,10 @@ static void write_filename_info(const char *path)
  * The blame_entry is found to be guilty for the range.  Mark it
  * as such, and show it in incremental output.
  */
-static void found_guilty_entry(struct blame_entry *ent)
+static int found_guilty_entry(struct blame_entry *ent)
 {
 	if (ent->guilty)
-		return;
+		return 0;
 	ent->guilty = 1;
 	if (incremental) {
 		struct origin *suspect = ent->suspect;
@@ -1578,6 +1581,7 @@ static void found_guilty_entry(struct blame_entry *ent)
 		}
 		write_filename_info(suspect->path);
 	}
+	return 1;
 }
 
 /*
@@ -1591,6 +1595,7 @@ static void assign_blame(struct scoreboard *sb, struct rev_info *revs, int opt)
 		struct blame_entry *ent;
 		struct commit *commit;
 		struct origin *suspect = NULL;
+		int blamed = 0;
 
 		/* find one suspect to break down */
 		for (ent = sb->ent; !suspect && ent; ent = ent->next)
@@ -1622,7 +1627,9 @@ static void assign_blame(struct scoreboard *sb, struct rev_info *revs, int opt)
 		/* Take responsibility for the remaining entries */
 		for (ent = sb->ent; ent; ent = ent->next)
 			if (same_suspect(ent->suspect, suspect))
-				found_guilty_entry(ent);
+				blamed |= found_guilty_entry(ent);
+		if (log && blamed)
+			log_tree_commit(revs, suspect->commit);
 		origin_decref(suspect, sb);
 
 		if (DEBUG) /* sanity */
@@ -2257,7 +2264,6 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	cmd_is_annotate = !strcmp(argv[0], "annotate");
 
 	git_config(git_blame_config);
-	save_commit_buffer = 0;
 
 	opt = 0;
 	seen_dashdash = 0;
@@ -2321,6 +2327,8 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		}
 		else if (!strcmp("--incremental", arg))
 			incremental = 1;
+		else if (!strcmp("--log", arg))
+			log = 1;
 		else if (!strcmp("--score-debug", arg))
 			output_option |= OUTPUT_SHOW_SCORE;
 		else if (!strcmp("-f", arg) ||
@@ -2442,6 +2450,11 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&revs, NULL);
 	setup_revisions(unk, argv, &revs, NULL);
+	revs.abbrev = DEFAULT_ABBREV;
+	revs.commit_format = CMIT_FMT_DEFAULT;
+	revs.verbose_header = 1;
+	revs.always_show_header = 1;
+
 	memset(&sb, 0, sizeof(sb));
 
 	/*
@@ -2535,7 +2548,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	assign_blame(&sb, &revs, opt);
 
-	if (incremental)
+	if (incremental || log)
 		return 0;
 
 	coalesce(&sb);
