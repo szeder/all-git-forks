@@ -79,25 +79,24 @@ static int is_binary(unsigned long size, struct text_stat *stats)
 	return 0;
 }
 
-static int crlf_to_git(const char *path, char **bufp, unsigned long *sizep, int action)
+static char *crlf_to_git(const char *path, const char *src, unsigned long *sizep, int action)
 {
-	char *buffer, *nbuf;
+	char *buffer, *dst;
 	unsigned long size, nsize;
 	struct text_stat stats;
 
 	if ((action == CRLF_BINARY) || (action == CRLF_GUESS && !auto_crlf))
-		return 0;
+		return NULL;
 
 	size = *sizep;
 	if (!size)
-		return 0;
-	buffer = *bufp;
+		return NULL;
 
-	gather_stats(buffer, size, &stats);
+	gather_stats(src, size, &stats);
 
 	/* No CR? Nothing to convert, regardless. */
 	if (!stats.cr)
-		return 0;
+		return NULL;
 
 	if (action == CRLF_GUESS) {
 		/*
@@ -106,13 +105,13 @@ static int crlf_to_git(const char *path, char **bufp, unsigned long *sizep, int 
 		 * stuff?
 		 */
 		if (stats.cr != stats.crlf)
-			return 0;
+			return NULL;
 
 		/*
 		 * And add some heuristics for binary vs text, of course...
 		 */
 		if (is_binary(size, &stats))
-			return 0;
+			return NULL;
 	}
 
 	/*
@@ -120,10 +119,10 @@ static int crlf_to_git(const char *path, char **bufp, unsigned long *sizep, int 
 	 * to let the caller know that we switched buffers on it.
 	 */
 	nsize = size - stats.crlf;
-	nbuf = xmalloc(nsize);
-	*bufp = nbuf;
+	buffer = xmalloc(nsize);
 	*sizep = nsize;
 
+	dst = buffer;
 	if (action == CRLF_GUESS) {
 		/*
 		 * If we guessed, we already know we rejected a file with
@@ -131,54 +130,53 @@ static int crlf_to_git(const char *path, char **bufp, unsigned long *sizep, int 
 		 * follow it.
 		 */
 		do {
-			unsigned char c = *buffer++;
+			unsigned char c = *src++;
 			if (c != '\r')
-				*nbuf++ = c;
+				*dst++ = c;
 		} while (--size);
 	} else {
 		do {
-			unsigned char c = *buffer++;
+			unsigned char c = *src++;
 			if (! (c == '\r' && (1 < size && *buffer == '\n')))
-				*nbuf++ = c;
+				*dst++ = c;
 		} while (--size);
 	}
 
-	return 1;
+	return buffer;
 }
 
-static int crlf_to_worktree(const char *path, char **bufp, unsigned long *sizep, int action)
+static char *crlf_to_worktree(const char *path, const char *src, unsigned long *sizep, int action)
 {
-	char *buffer, *nbuf;
+	char *buffer, *dst;
 	unsigned long size, nsize;
 	struct text_stat stats;
 	unsigned char last;
 
 	if ((action == CRLF_BINARY) || (action == CRLF_INPUT) ||
 	    (action == CRLF_GUESS && auto_crlf <= 0))
-		return 0;
+		return NULL;
 
 	size = *sizep;
 	if (!size)
-		return 0;
-	buffer = *bufp;
+		return NULL;
 
-	gather_stats(buffer, size, &stats);
+	gather_stats(src, size, &stats);
 
 	/* No LF? Nothing to convert, regardless. */
 	if (!stats.lf)
-		return 0;
+		return NULL;
 
 	/* Was it already in CRLF format? */
 	if (stats.lf == stats.crlf)
-		return 0;
+		return NULL;
 
 	if (action == CRLF_GUESS) {
 		/* If we have any bare CR characters, we're not going to touch it */
 		if (stats.cr != stats.crlf)
-			return 0;
+			return NULL;
 
 		if (is_binary(size, &stats))
-			return 0;
+			return NULL;
 	}
 
 	/*
@@ -186,22 +184,23 @@ static int crlf_to_worktree(const char *path, char **bufp, unsigned long *sizep,
 	 * to let the caller know that we switched buffers on it.
 	 */
 	nsize = size + stats.lf - stats.crlf;
-	nbuf = xmalloc(nsize);
-	*bufp = nbuf;
+	buffer = xmalloc(nsize);
 	*sizep = nsize;
 	last = 0;
+
+	dst = buffer;
 	do {
-		unsigned char c = *buffer++;
+		unsigned char c = *src++;
 		if (c == '\n' && last != '\r')
-			*nbuf++ = '\r';
-		*nbuf++ = c;
+			*dst++ = '\r';
+		*dst++ = c;
 		last = c;
 	} while (--size);
 
-	return 1;
+	return buffer;
 }
 
-static void setup_crlf_check(struct git_attr_check *check)
+static void setup_convert_check(struct git_attr_check *check)
 {
 	static struct git_attr *attr_crlf;
 
@@ -210,33 +209,41 @@ static void setup_crlf_check(struct git_attr_check *check)
 	check->attr = attr_crlf;
 }
 
-static int git_path_check_crlf(const char *path)
+static int git_path_check_crlf(const char *path, struct git_attr_check *check)
 {
-	struct git_attr_check attr_crlf_check;
+	const char *value = check->value;
 
-	setup_crlf_check(&attr_crlf_check);
-
-	if (!git_checkattr(path, 1, &attr_crlf_check)) {
-		const char *value = attr_crlf_check.value;
-		if (ATTR_TRUE(value))
-			return CRLF_TEXT;
-		else if (ATTR_FALSE(value))
-			return CRLF_BINARY;
-		else if (ATTR_UNSET(value))
-			;
-		else if (!strcmp(value, "input"))
-			return CRLF_INPUT;
-		/* fallthru */
-	}
+	if (ATTR_TRUE(value))
+		return CRLF_TEXT;
+	else if (ATTR_FALSE(value))
+		return CRLF_BINARY;
+	else if (ATTR_UNSET(value))
+		;
+	else if (!strcmp(value, "input"))
+		return CRLF_INPUT;
 	return CRLF_GUESS;
 }
 
-int convert_to_git(const char *path, char **bufp, unsigned long *sizep)
+char *convert_to_git(const char *path, const char *src, unsigned long *sizep)
 {
-	return crlf_to_git(path, bufp, sizep, git_path_check_crlf(path));
+	struct git_attr_check check[1];
+	int crlf = CRLF_GUESS;
+
+	setup_convert_check(check);
+	if (!git_checkattr(path, 1, check)) {
+		crlf = git_path_check_crlf(path, check);
+	}
+	return crlf_to_git(path, src, sizep, crlf);
 }
 
-int convert_to_working_tree(const char *path, char **bufp, unsigned long *sizep)
+char *convert_to_working_tree(const char *path, const char *src, unsigned long *sizep)
 {
-	return crlf_to_worktree(path, bufp, sizep, git_path_check_crlf(path));
+	struct git_attr_check check[1];
+	int crlf = CRLF_GUESS;
+
+	setup_convert_check(check);
+	if (!git_checkattr(path, 1, check)) {
+		crlf = git_path_check_crlf(path, check);
+	}
+	return crlf_to_worktree(path, src, sizep, crlf);
 }
