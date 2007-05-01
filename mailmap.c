@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "path-list.h"
+#include "mailmap.h"
 
 int read_mailmap(struct path_list *map, const char *filename, char **repo_abbrev)
 {
@@ -16,6 +17,9 @@ int read_mailmap(struct path_list *map, const char *filename, char **repo_abbrev
 			static const char abbrev[] = "# repo-abbrev:";
 			int abblen = sizeof(abbrev) - 1;
 			int len = strlen(buffer);
+
+			if (!repo_abbrev)
+				continue;
 
 			if (len && buffer[len - 1] == '\n')
 				buffer[--len] = 0;
@@ -80,7 +84,7 @@ int map_email(struct path_list *map, const char *email, char *name, int maxlen)
 		free(mailbuf);
 	if (item != NULL) {
 		const char *realname = (const char *)item->util;
-		strncpy(name, realname, maxlen);
+		strlcpy(name, realname, maxlen);
 		return 1;
 	}
 	return 0;
