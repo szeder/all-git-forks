@@ -95,7 +95,7 @@ static void show_commit(struct commit *commit)
 		static char pretty_header[16384];
 		pretty_print_commit(revs.commit_format, commit, ~0,
 				    pretty_header, sizeof(pretty_header),
-				    revs.abbrev, NULL, NULL, revs.relative_date);
+				    revs.abbrev, NULL, NULL, revs.date_mode);
 		printf("%s%c", pretty_header, hdr_termination);
 	}
 	fflush(stdout);
@@ -113,6 +113,10 @@ static void show_object(struct object_array_entry *p)
 	 * confuse downstream git-pack-objects very badly.
 	 */
 	const char *ep = strchr(p->name, '\n');
+
+	if (p->item->type == OBJ_BLOB && !has_sha1_file(p->item->sha1))
+		die("missing blob object '%s'", sha1_to_hex(p->item->sha1));
+
 	if (ep) {
 		printf("%s %.*s\n", sha1_to_hex(p->item->sha1),
 		       (int) (ep - p->name),

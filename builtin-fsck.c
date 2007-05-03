@@ -219,6 +219,7 @@ static int fsck_tree(struct tree *item)
 {
 	int retval;
 	int has_full_path = 0;
+	int has_empty_name = 0;
 	int has_zero_pad = 0;
 	int has_bad_modes = 0;
 	int has_dup_entries = 0;
@@ -242,6 +243,8 @@ static int fsck_tree(struct tree *item)
 
 		if (strchr(name, '/'))
 			has_full_path = 1;
+		if (!*name)
+			has_empty_name = 1;
 		has_zero_pad |= *(char *)desc.buffer == '0';
 		update_tree_entry(&desc);
 
@@ -253,6 +256,7 @@ static int fsck_tree(struct tree *item)
 		case S_IFREG | 0644:
 		case S_IFLNK:
 		case S_IFDIR:
+		case S_IFDIRLNK:
 			break;
 		/*
 		 * This is nonstandard, but we had a few of these
@@ -289,6 +293,9 @@ static int fsck_tree(struct tree *item)
 	retval = 0;
 	if (has_full_path) {
 		objwarning(&item->object, "contains full pathnames");
+	}
+	if (has_empty_name) {
+		objwarning(&item->object, "contains empty pathname");
 	}
 	if (has_zero_pad) {
 		objwarning(&item->object, "contains zero-padded file modes");
@@ -661,7 +668,7 @@ int cmd_fsck(int argc, char **argv, const char *prefix)
 			verify_pack(p, 0);
 
 		for (p = packed_git; p; p = p->next) {
-			uint32_t i, num = num_packed_objects(p);
+			uint32_t i, num = p->num_objects;
 			for (i = 0; i < num; i++)
 				fsck_sha1(nth_packed_object_sha1(p, i));
 		}
@@ -703,8 +710,14 @@ int cmd_fsck(int argc, char **argv, const char *prefix)
 		int i;
 		read_cache();
 		for (i = 0; i < active_nr; i++) {
-			struct blob *blob = lookup_blob(active_cache[i]->sha1);
+			unsigned int mode;
+			struct blob *blob;
 			struct object *obj;
+
+			mode = ntohl(active_cache[i]->ce_mode);
+			if (S_ISDIRLNK(mode))
+				continue;
+			blob = lookup_blob(active_cache[i]->sha1);
 			if (!blob)
 				continue;
 			obj = &blob->object;

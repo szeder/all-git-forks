@@ -4,6 +4,8 @@
 #include "log-tree.h"
 #include "reflog-walk.h"
 
+struct decoration name_decoration = { "object names" };
+
 static void show_parents(struct commit *commit, int abbrev)
 {
 	struct commit_list *p;
@@ -11,6 +13,23 @@ static void show_parents(struct commit *commit, int abbrev)
 		struct commit *parent = p->item;
 		printf(" %s", diff_unique_abbrev(parent->object.sha1, abbrev));
 	}
+}
+
+static void show_decorations(struct commit *commit)
+{
+	const char *prefix;
+	struct name_decoration *decoration;
+
+	decoration = lookup_decoration(&name_decoration, &commit->object);
+	if (!decoration)
+		return;
+	prefix = " (";
+	while (decoration) {
+		printf("%s%s", prefix, decoration->name);
+		prefix = ", ";
+		decoration = decoration->next;
+	}
+	putchar(')');
 }
 
 /*
@@ -136,6 +155,7 @@ void show_log(struct rev_info *opt, const char *sep)
 		fputs(diff_unique_abbrev(commit->object.sha1, abbrev_commit), stdout);
 		if (opt->parents)
 			show_parents(commit, abbrev_commit);
+		show_decorations(commit);
 		putchar(opt->diffopt.line_termination);
 		return;
 	}
@@ -240,13 +260,14 @@ void show_log(struct rev_info *opt, const char *sep)
 			printf(" (from %s)",
 			       diff_unique_abbrev(parent->object.sha1,
 						  abbrev_commit));
+		show_decorations(commit);
 		printf("%s",
 		       diff_get_color(opt->diffopt.color_diff, DIFF_RESET));
 		putchar(opt->commit_format == CMIT_FMT_ONELINE ? ' ' : '\n');
 		if (opt->reflog_info) {
 			show_reflog_message(opt->reflog_info,
 				    opt->commit_format == CMIT_FMT_ONELINE,
-				    opt->relative_date);
+				    opt->date_mode);
 			if (opt->commit_format == CMIT_FMT_ONELINE) {
 				printf("%s", sep);
 				return;
@@ -259,7 +280,7 @@ void show_log(struct rev_info *opt, const char *sep)
 	 */
 	len = pretty_print_commit(opt->commit_format, commit, ~0u, this_header,
 				  sizeof(this_header), abbrev, subject,
-				  extra_headers, opt->relative_date);
+				  extra_headers, opt->date_mode);
 
 	if (opt->add_signoff)
 		len = append_signoff(this_header, sizeof(this_header), len,

@@ -22,8 +22,10 @@ SYNOPSIS
 	     [ \--topo-order ]
 	     [ \--parents ]
 	     [ \--left-right ]
+	     [ \--cherry-pick ]
 	     [ \--encoding[=<encoding>] ]
 	     [ \--(author|committer|grep)=<pattern> ]
+	     [ \--date={local|relative|default} ]
 	     [ [\--objects | \--objects-edge] [ \--unpacked ] ]
 	     [ \--pretty | \--header ]
 	     [ \--bisect ]
@@ -89,9 +91,20 @@ include::pretty-formats.txt[]
 
 --relative-date::
 
-	Show dates relative to the current time, e.g. "2 hours ago".
+	Synonym for `--date=relative`.
+
+--date={relative,local,default}::
+
 	Only takes effect for dates shown in human-readable format, such
 	as when using "--pretty".
++
+`--date=relative` shows dates relative to the current time,
+e.g. "2 hours ago".
++
+`--date=local` shows timestamps in user's local timezone.
++
+`--date=default` shows timestamps in the original timezone
+(either committer's or author's).
 
 --header::
 
@@ -223,6 +236,20 @@ limiting may be applied.
 
 	In addition to the '<commit>' listed on the command
 	line, read them from the standard input.
+
+--cherry-pick::
+
+	Omit any commit that introduces the same change as
+	another commit on the "other side" when the set of
+	commits are limited with symmetric difference.
++
+For example, if you have two branches, `A` and `B`, a usual way
+to list all commits on only one side of them is with
+`--left-right`, like the example above in the description of
+that option.  It however shows the commits that were cherry-picked
+from the other branch (for example, "3rd on b" may be cherry-picked
+from branch A).  With this option, such pairs of commits are
+excluded from the output.
 
 -g, --walk-reflogs::
 

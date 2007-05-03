@@ -4,6 +4,8 @@
 #include "pkt-line.h"
 #include "utf8.h"
 #include "interpolate.h"
+#include "diff.h"
+#include "revision.h"
 
 int save_commit_buffer = 1;
 
@@ -96,12 +98,8 @@ struct commit *lookup_commit_reference(const unsigned char *sha1)
 struct commit *lookup_commit(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
-	if (!obj) {
-		struct commit *ret = alloc_commit_node();
-		created_object(sha1, &ret->object);
-		ret->object.type = OBJ_COMMIT;
-		return ret;
-	}
+	if (!obj)
+		return create_object(sha1, OBJ_COMMIT, alloc_commit_node());
 	if (!obj->type)
 		obj->type = OBJ_COMMIT;
 	return check_commit(obj, sha1, 0);
@@ -528,7 +526,7 @@ static int add_rfc2047(char *buf, const char *line, int len,
 }
 
 static int add_user_info(const char *what, enum cmit_fmt fmt, char *buf,
-			 const char *line, int relative_date,
+			 const char *line, enum date_mode dmode,
 			 const char *encoding)
 {
 	char *date;
@@ -571,7 +569,7 @@ static int add_user_info(const char *what, enum cmit_fmt fmt, char *buf,
 	switch (fmt) {
 	case CMIT_FMT_MEDIUM:
 		ret += sprintf(buf + ret, "Date:   %s\n",
-			       show_date(time, tz, relative_date));
+			       show_date(time, tz, dmode));
 		break;
 	case CMIT_FMT_EMAIL:
 		ret += sprintf(buf + ret, "Date: %s\n",
@@ -579,7 +577,7 @@ static int add_user_info(const char *what, enum cmit_fmt fmt, char *buf,
 		break;
 	case CMIT_FMT_FULLER:
 		ret += sprintf(buf + ret, "%sDate: %s\n", what,
-			       show_date(time, tz, relative_date));
+			       show_date(time, tz, dmode));
 		break;
 	default:
 		/* notin' */
@@ -808,7 +806,8 @@ static long format_commit_message(const struct commit *commit,
 		{ "%Cgreen" },	/* green */
 		{ "%Cblue" },	/* blue */
 		{ "%Creset" },	/* reset color */
-		{ "%n" }	/* newline */
+		{ "%n" },	/* newline */
+		{ "%m" },	/* left/right/bottom */
 	};
 	enum interp_index {
 		IHASH = 0, IHASH_ABBREV,
@@ -824,14 +823,15 @@ static long format_commit_message(const struct commit *commit,
 		ISUBJECT,
 		IBODY,
 		IRED, IGREEN, IBLUE, IRESET_COLOR,
-		INEWLINE
+		INEWLINE,
+		ILEFT_RIGHT,
 	};
 	struct commit_list *p;
 	char parents[1024];
 	int i;
 	enum { HEADER, SUBJECT, BODY } state;
 
-	if (INEWLINE + 1 != ARRAY_SIZE(table))
+	if (ILEFT_RIGHT + 1 != ARRAY_SIZE(table))
 		die("invalid interp table!");
 
 	/* these are independent of the commit */
@@ -852,6 +852,12 @@ static long format_commit_message(const struct commit *commit,
 	interp_set_entry(table, ITREE_ABBREV,
 			find_unique_abbrev(commit->tree->object.sha1,
 				DEFAULT_ABBREV));
+	interp_set_entry(table, ILEFT_RIGHT,
+			 (commit->object.flags & BOUNDARY)
+			 ? "-"
+			 : (commit->object.flags & SYMMETRIC_LEFT)
+			 ? "<"
+			 : ">");
 
 	parents[1] = 0;
 	for (i = 0, p = commit->parents;
@@ -913,7 +919,7 @@ unsigned long pretty_print_commit(enum cmit_fmt fmt,
 				  char *buf, unsigned long space,
 				  int abbrev, const char *subject,
 				  const char *after_subject,
-				  int relative_date)
+				  enum date_mode dmode)
 {
 	int hdr = 1, body = 0, seen_title = 0;
 	unsigned long offset = 0;
@@ -1017,14 +1023,14 @@ unsigned long pretty_print_commit(enum cmit_fmt fmt,
 				offset += add_user_info("Author", fmt,
 							buf + offset,
 							line + 7,
-							relative_date,
+							dmode,
 							encoding);
 			if (!memcmp(line, "committer ", 10) &&
 			    (fmt == CMIT_FMT_FULL || fmt == CMIT_FMT_FULLER))
 				offset += add_user_info("Commit", fmt,
 							buf + offset,
 							line + 10,
-							relative_date,
+							dmode,
 							encoding);
 			continue;
 		}

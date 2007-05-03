@@ -15,6 +15,8 @@
 #include "unpack-trees.h"
 #include "path-list.h"
 #include "xdiff-interface.h"
+#include "interpolate.h"
+#include "attr.h"
 
 static int subtree_merge;
 
@@ -95,11 +97,6 @@ static struct path_list current_directory_set = {NULL, 0, 0, 1};
 static int call_depth = 0;
 static int verbosity = 2;
 static int buffer_output = 1;
-static int do_progress = 1;
-static unsigned last_percent;
-static unsigned merged_cnt;
-static unsigned total_cnt;
-static volatile sig_atomic_t progress_update;
 static struct output_buffer *output_list, *output_end;
 
 static int show (int v)
@@ -171,39 +168,6 @@ static void output_commit_title(struct commit *commit)
 				; /* do nothing */
 			printf("%.*s\n", len, s);
 		}
-	}
-}
-
-static void progress_interval(int signum)
-{
-	progress_update = 1;
-}
-
-static void setup_progress_signal(void)
-{
-	struct sigaction sa;
-	struct itimerval v;
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = progress_interval;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	sigaction(SIGALRM, &sa, NULL);
-
-	v.it_interval.tv_sec = 1;
-	v.it_interval.tv_usec = 0;
-	v.it_value = v.it_interval;
-	setitimer(ITIMER_REAL, &v, NULL);
-}
-
-static void display_progress()
-{
-	unsigned percent = total_cnt ? merged_cnt * 100 / total_cnt : 0;
-	if (progress_update || percent != last_percent) {
-		fprintf(stderr, "%4u%% (%u/%u) done\r",
-			percent, merged_cnt, total_cnt);
-		progress_update = 0;
-		last_percent = percent;
 	}
 }
 
@@ -377,14 +341,11 @@ static struct path_list *get_unmerged(void)
 	int i;
 
 	unmerged->strdup_paths = 1;
-	total_cnt += active_nr;
 
-	for (i = 0; i < active_nr; i++, merged_cnt++) {
+	for (i = 0; i < active_nr; i++) {
 		struct path_list_item *item;
 		struct stage_data *e;
 		struct cache_entry *ce = active_cache[i];
-		if (do_progress)
-			display_progress();
 		if (!ce_stage(ce))
 			continue;
 
@@ -574,6 +535,31 @@ static void flush_buffer(int fd, const char *buf, unsigned long size)
 	}
 }
 
+static int make_room_for_path(const char *path)
+{
+	int status;
+	const char *msg = "failed to create path '%s'%s";
+
+	status = mkdir_p(path, 0777);
+	if (status) {
+		if (status == -3) {
+			/* something else exists */
+			error(msg, path, ": perhaps a D/F conflict?");
+			return -1;
+		}
+		die(msg, path, "");
+	}
+
+	/* Successful unlink is good.. */
+	if (!unlink(path))
+		return 0;
+	/* .. and so is no existing file */
+	if (errno == ENOENT)
+		return 0;
+	/* .. but not some other error (who really cares what?) */
+	return error(msg, path, ": perhaps a D/F conflict?");
+}
+
 static void update_file_flags(const unsigned char *sha,
 			      unsigned mode,
 			      const char *path,
@@ -594,11 +580,12 @@ static void update_file_flags(const unsigned char *sha,
 		if (type != OBJ_BLOB)
 			die("blob expected for %s '%s'", sha1_to_hex(sha), path);
 
+		if (make_room_for_path(path) < 0) {
+			update_wd = 0;
+			goto update_index;
+		}
 		if (S_ISREG(mode) || (!has_symlinks && S_ISLNK(mode))) {
 			int fd;
-			if (mkdir_p(path, 0777))
-				die("failed to create path %s: %s", path, strerror(errno));
-			unlink(path);
 			if (mode & 0100)
 				mode = 0777;
 			else
@@ -620,6 +607,7 @@ static void update_file_flags(const unsigned char *sha,
 			die("do not know what to do with %06o %s '%s'",
 			    mode, sha1_to_hex(sha), path);
 	}
+ update_index:
 	if (update_cache)
 		add_cacheinfo(mode, sha, path, 0, update_wd, ADD_CACHE_OK_TO_ADD);
 }
@@ -659,6 +647,384 @@ static void fill_mm(const unsigned char *sha1, mmfile_t *mm)
 	mm->size = size;
 }
 
+/*
+ * Customizable low-level merge drivers support.
+ */
+
+struct ll_merge_driver;
+typedef int (*ll_merge_fn)(const struct ll_merge_driver *,
+			   const char *path,
+			   mmfile_t *orig,
+			   mmfile_t *src1, const char *name1,
+			   mmfile_t *src2, const char *name2,
+			   mmbuffer_t *result);
+
+struct ll_merge_driver {
+	const char *name;
+	const char *description;
+	ll_merge_fn fn;
+	const char *recursive;
+	struct ll_merge_driver *next;
+	char *cmdline;
+};
+
+/*
+ * Built-in low-levels
+ */
+static int ll_xdl_merge(const struct ll_merge_driver *drv_unused,
+			const char *path_unused,
+			mmfile_t *orig,
+			mmfile_t *src1, const char *name1,
+			mmfile_t *src2, const char *name2,
+			mmbuffer_t *result)
+{
+	xpparam_t xpp;
+
+	memset(&xpp, 0, sizeof(xpp));
+	return xdl_merge(orig,
+			 src1, name1,
+			 src2, name2,
+			 &xpp, XDL_MERGE_ZEALOUS,
+			 result);
+}
+
+static int ll_union_merge(const struct ll_merge_driver *drv_unused,
+			  const char *path_unused,
+			  mmfile_t *orig,
+			  mmfile_t *src1, const char *name1,
+			  mmfile_t *src2, const char *name2,
+			  mmbuffer_t *result)
+{
+	char *src, *dst;
+	long size;
+	const int marker_size = 7;
+
+	int status = ll_xdl_merge(drv_unused, path_unused,
+				  orig, src1, NULL, src2, NULL, result);
+	if (status <= 0)
+		return status;
+	size = result->size;
+	src = dst = result->ptr;
+	while (size) {
+		char ch;
+		if ((marker_size < size) &&
+		    (*src == '<' || *src == '=' || *src == '>')) {
+			int i;
+			ch = *src;
+			for (i = 0; i < marker_size; i++)
+				if (src[i] != ch)
+					goto not_a_marker;
+			if (src[marker_size] != '\n')
+				goto not_a_marker;
+			src += marker_size + 1;
+			size -= marker_size + 1;
+			continue;
+		}
+	not_a_marker:
+		do {
+			ch = *src++;
+			*dst++ = ch;
+			size--;
+		} while (ch != '\n' && size);
+	}
+	result->size = dst - result->ptr;
+	return 0;
+}
+
+static int ll_binary_merge(const struct ll_merge_driver *drv_unused,
+			   const char *path_unused,
+			   mmfile_t *orig,
+			   mmfile_t *src1, const char *name1,
+			   mmfile_t *src2, const char *name2,
+			   mmbuffer_t *result)
+{
+	/*
+	 * The tentative merge result is "ours" for the final round,
+	 * or common ancestor for an internal merge.  Still return
+	 * "conflicted merge" status.
+	 */
+	mmfile_t *stolen = index_only ? orig : src1;
+
+	result->ptr = stolen->ptr;
+	result->size = stolen->size;
+	stolen->ptr = NULL;
+	return 1;
+}
+
+#define LL_BINARY_MERGE 0
+#define LL_TEXT_MERGE 1
+#define LL_UNION_MERGE 2
+static struct ll_merge_driver ll_merge_drv[] = {
+	{ "binary", "built-in binary merge", ll_binary_merge },
+	{ "text", "built-in 3-way text merge", ll_xdl_merge },
+	{ "union", "built-in union merge", ll_union_merge },
+};
+
+static void create_temp(mmfile_t *src, char *path)
+{
+	int fd;
+
+	strcpy(path, ".merge_file_XXXXXX");
+	fd = mkstemp(path);
+	if (fd < 0)
+		die("unable to create temp-file");
+	if (write_in_full(fd, src->ptr, src->size) != src->size)
+		die("unable to write temp-file");
+	close(fd);
+}
+
+/*
+ * User defined low-level merge driver support.
+ */
+static int ll_ext_merge(const struct ll_merge_driver *fn,
+			const char *path,
+			mmfile_t *orig,
+			mmfile_t *src1, const char *name1,
+			mmfile_t *src2, const char *name2,
+			mmbuffer_t *result)
+{
+	char temp[3][50];
+	char cmdbuf[2048];
+	struct interp table[] = {
+		{ "%O" },
+		{ "%A" },
+		{ "%B" },
+	};
+	struct child_process child;
+	const char *args[20];
+	int status, fd, i;
+	struct stat st;
+
+	if (fn->cmdline == NULL)
+		die("custom merge driver %s lacks command line.", fn->name);
+
+	result->ptr = NULL;
+	result->size = 0;
+	create_temp(orig, temp[0]);
+	create_temp(src1, temp[1]);
+	create_temp(src2, temp[2]);
+
+	interp_set_entry(table, 0, temp[0]);
+	interp_set_entry(table, 1, temp[1]);
+	interp_set_entry(table, 2, temp[2]);
+
+	output(1, "merging %s using %s", path,
+	       fn->description ? fn->description : fn->name);
+
+	interpolate(cmdbuf, sizeof(cmdbuf), fn->cmdline, table, 3);
+
+	memset(&child, 0, sizeof(child));
+	child.argv = args;
+	args[0] = "sh";
+	args[1] = "-c";
+	args[2] = cmdbuf;
+	args[3] = NULL;
+
+	status = run_command(&child);
+	if (status < -ERR_RUN_COMMAND_FORK)
+		; /* failure in run-command */
+	else
+		status = -status;
+	fd = open(temp[1], O_RDONLY);
+	if (fd < 0)
+		goto bad;
+	if (fstat(fd, &st))
+		goto close_bad;
+	result->size = st.st_size;
+	result->ptr = xmalloc(result->size + 1);
+	if (read_in_full(fd, result->ptr, result->size) != result->size) {
+		free(result->ptr);
+		result->ptr = NULL;
+		result->size = 0;
+	}
+ close_bad:
+	close(fd);
+ bad:
+	for (i = 0; i < 3; i++)
+		unlink(temp[i]);
+	return status;
+}
+
+/*
+ * merge.default and merge.driver configuration items
+ */
+static struct ll_merge_driver *ll_user_merge, **ll_user_merge_tail;
+static const char *default_ll_merge;
+
+static int read_merge_config(const char *var, const char *value)
+{
+	struct ll_merge_driver *fn;
+	const char *ep, *name;
+	int namelen;
+
+	if (!strcmp(var, "merge.default")) {
+		if (value)
+			default_ll_merge = strdup(value);
+		return 0;
+	}
+
+	/*
+	 * We are not interested in anything but "merge.<name>.variable";
+	 * especially, we do not want to look at variables such as
+	 * "merge.summary", "merge.tool", and "merge.verbosity".
+	 */
+	if (prefixcmp(var, "merge.") || (ep = strrchr(var, '.')) == var + 5)
+		return 0;
+
+	/*
+	 * Find existing one as we might be processing merge.<name>.var2
+	 * after seeing merge.<name>.var1.
+	 */
+	name = var + 6;
+	namelen = ep - name;
+	for (fn = ll_user_merge; fn; fn = fn->next)
+		if (!strncmp(fn->name, name, namelen) && !fn->name[namelen])
+			break;
+	if (!fn) {
+		char *namebuf;
+		fn = xcalloc(1, sizeof(struct ll_merge_driver));
+		namebuf = xmalloc(namelen + 1);
+		memcpy(namebuf, name, namelen);
+		namebuf[namelen] = 0;
+		fn->name = namebuf;
+		fn->fn = ll_ext_merge;
+		fn->next = NULL;
+		*ll_user_merge_tail = fn;
+		ll_user_merge_tail = &(fn->next);
+	}
+
+	ep++;
+
+	if (!strcmp("name", ep)) {
+		if (!value)
+			return error("%s: lacks value", var);
+		fn->description = strdup(value);
+		return 0;
+	}
+
+	if (!strcmp("driver", ep)) {
+		if (!value)
+			return error("%s: lacks value", var);
+		/*
+		 * merge.<name>.driver specifies the command line:
+		 *
+		 *	command-line
+		 *
+		 * The command-line will be interpolated with the following
+		 * tokens and is given to the shell:
+		 *
+		 *    %O - temporary file name for the merge base.
+		 *    %A - temporary file name for our version.
+		 *    %B - temporary file name for the other branches' version.
+		 *
+		 * The external merge driver should write the results in the
+		 * file named by %A, and signal that it has done with zero exit
+		 * status.
+		 */
+		fn->cmdline = strdup(value);
+		return 0;
+	}
+
+	if (!strcmp("recursive", ep)) {
+		if (!value)
+			return error("%s: lacks value", var);
+		fn->recursive = strdup(value);
+		return 0;
+	}
+
+	return 0;
+}
+
+static void initialize_ll_merge(void)
+{
+	if (ll_user_merge_tail)
+		return;
+	ll_user_merge_tail = &ll_user_merge;
+	git_config(read_merge_config);
+}
+
+static const struct ll_merge_driver *find_ll_merge_driver(const char *merge_attr)
+{
+	struct ll_merge_driver *fn;
+	const char *name;
+	int i;
+
+	initialize_ll_merge();
+
+	if (ATTR_TRUE(merge_attr))
+		return &ll_merge_drv[LL_TEXT_MERGE];
+	else if (ATTR_FALSE(merge_attr))
+		return &ll_merge_drv[LL_BINARY_MERGE];
+	else if (ATTR_UNSET(merge_attr)) {
+		if (!default_ll_merge)
+			return &ll_merge_drv[LL_TEXT_MERGE];
+		else
+			name = default_ll_merge;
+	}
+	else
+		name = merge_attr;
+
+	for (fn = ll_user_merge; fn; fn = fn->next)
+		if (!strcmp(fn->name, name))
+			return fn;
+
+	for (i = 0; i < ARRAY_SIZE(ll_merge_drv); i++)
+		if (!strcmp(ll_merge_drv[i].name, name))
+			return &ll_merge_drv[i];
+
+	/* default to the 3-way */
+	return &ll_merge_drv[LL_TEXT_MERGE];
+}
+
+static const char *git_path_check_merge(const char *path)
+{
+	static struct git_attr_check attr_merge_check;
+
+	if (!attr_merge_check.attr)
+		attr_merge_check.attr = git_attr("merge", 5);
+
+	if (git_checkattr(path, 1, &attr_merge_check))
+		return NULL;
+	return attr_merge_check.value;
+}
+
+static int ll_merge(mmbuffer_t *result_buf,
+		    struct diff_filespec *o,
+		    struct diff_filespec *a,
+		    struct diff_filespec *b,
+		    const char *branch1,
+		    const char *branch2)
+{
+	mmfile_t orig, src1, src2;
+	char *name1, *name2;
+	int merge_status;
+	const char *ll_driver_name;
+	const struct ll_merge_driver *driver;
+
+	name1 = xstrdup(mkpath("%s:%s", branch1, a->path));
+	name2 = xstrdup(mkpath("%s:%s", branch2, b->path));
+
+	fill_mm(o->sha1, &orig);
+	fill_mm(a->sha1, &src1);
+	fill_mm(b->sha1, &src2);
+
+	ll_driver_name = git_path_check_merge(a->path);
+	driver = find_ll_merge_driver(ll_driver_name);
+
+	if (index_only && driver->recursive)
+		driver = find_ll_merge_driver(driver->recursive);
+	merge_status = driver->fn(driver, a->path,
+				  &orig, &src1, name1, &src2, name2,
+				  result_buf);
+
+	free(name1);
+	free(name2);
+	free(orig.ptr);
+	free(src1.ptr);
+	free(src2.ptr);
+	return merge_status;
+}
+
 static struct merge_file_info merge_file(struct diff_filespec *o,
 		struct diff_filespec *a, struct diff_filespec *b,
 		const char *branch1, const char *branch2)
@@ -687,30 +1053,11 @@ static struct merge_file_info merge_file(struct diff_filespec *o,
 		else if (sha_eq(b->sha1, o->sha1))
 			hashcpy(result.sha, a->sha1);
 		else if (S_ISREG(a->mode)) {
-			mmfile_t orig, src1, src2;
 			mmbuffer_t result_buf;
-			xpparam_t xpp;
-			char *name1, *name2;
 			int merge_status;
 
-			name1 = xstrdup(mkpath("%s:%s", branch1, a->path));
-			name2 = xstrdup(mkpath("%s:%s", branch2, b->path));
-
-			fill_mm(o->sha1, &orig);
-			fill_mm(a->sha1, &src1);
-			fill_mm(b->sha1, &src2);
-
-			memset(&xpp, 0, sizeof(xpp));
-			merge_status = xdl_merge(&orig,
-						 &src1, name1,
-						 &src2, name2,
-						 &xpp, XDL_MERGE_ZEALOUS,
-						 &result_buf);
-			free(name1);
-			free(name2);
-			free(orig.ptr);
-			free(src1.ptr);
-			free(src2.ptr);
+			merge_status = ll_merge(&result_buf, o, a, b,
+						branch1, branch2);
 
 			if ((merge_status < 0) || !result_buf.ptr)
 				die("Failed to execute internal merge");
@@ -995,20 +1342,31 @@ static int process_renames(struct path_list *a_renames,
 				mfi = merge_file(o, a, b,
 						a_branch, b_branch);
 
-				if (mfi.merge || !mfi.clean)
-					output(1, "Renamed %s => %s", ren1_src, ren1_dst);
-				if (mfi.merge)
-					output(2, "Auto-merged %s", ren1_dst);
-				if (!mfi.clean) {
-					output(1, "CONFLICT (rename/modify): Merge conflict in %s",
-					       ren1_dst);
-					clean_merge = 0;
+				if (mfi.clean &&
+				    sha_eq(mfi.sha, ren1->pair->two->sha1) &&
+				    mfi.mode == ren1->pair->two->mode)
+					/*
+					 * This messaged is part of
+					 * t6022 test. If you change
+					 * it update the test too.
+					 */
+					output(3, "Skipped %s (merged same as existing)", ren1_dst);
+				else {
+					if (mfi.merge || !mfi.clean)
+						output(1, "Renamed %s => %s", ren1_src, ren1_dst);
+					if (mfi.merge)
+						output(2, "Auto-merged %s", ren1_dst);
+					if (!mfi.clean) {
+						output(1, "CONFLICT (rename/modify): Merge conflict in %s",
+						       ren1_dst);
+						clean_merge = 0;
 
-					if (!index_only)
-						update_stages(ren1_dst,
-								o, a, b, 1);
+						if (!index_only)
+							update_stages(ren1_dst,
+								      o, a, b, 1);
+					}
+					update_file(mfi.clean, mfi.sha, mfi.mode, ren1_dst);
 				}
-				update_file(mfi.clean, mfi.sha, mfi.mode, ren1_dst);
 			}
 		}
 	}
@@ -1018,9 +1376,9 @@ static int process_renames(struct path_list *a_renames,
 	return clean_merge;
 }
 
-static unsigned char *has_sha(const unsigned char *sha)
+static unsigned char *stage_sha(const unsigned char *sha, unsigned mode)
 {
-	return is_null_sha1(sha) ? NULL: (unsigned char *)sha;
+	return (is_null_sha1(sha) || mode == 0) ? NULL: (unsigned char *)sha;
 }
 
 /* Per entry merge function */
@@ -1033,12 +1391,12 @@ static int process_entry(const char *path, struct stage_data *entry,
 	print_index_entry("\tpath: ", entry);
 	*/
 	int clean_merge = 1;
-	unsigned char *o_sha = has_sha(entry->stages[1].sha);
-	unsigned char *a_sha = has_sha(entry->stages[2].sha);
-	unsigned char *b_sha = has_sha(entry->stages[3].sha);
 	unsigned o_mode = entry->stages[1].mode;
 	unsigned a_mode = entry->stages[2].mode;
 	unsigned b_mode = entry->stages[3].mode;
+	unsigned char *o_sha = stage_sha(entry->stages[1].sha, o_mode);
+	unsigned char *a_sha = stage_sha(entry->stages[2].sha, a_mode);
+	unsigned char *b_sha = stage_sha(entry->stages[3].sha, b_mode);
 
 	if (o_sha && (!a_sha || !b_sha)) {
 		/* Case A: Deleted in one */
@@ -1139,6 +1497,12 @@ static int process_entry(const char *path, struct stage_data *entry,
 				update_file_flags(mfi.sha, mfi.mode, path,
 					      0 /* update_cache */, 1 /* update_working_directory */);
 		}
+	} else if (!o_sha && !a_sha && !b_sha) {
+		/*
+		 * this entry was deleted altogether. a_mode == 0 means
+		 * we had that path and want to actively remove it.
+		 */
+		remove_file(1, path, !a_mode);
 	} else
 		die("Fatal merge failure, shouldn't happen.");
 
@@ -1185,15 +1549,12 @@ static int merge_trees(struct tree *head,
 		re_merge = get_renames(merge, common, head, merge, entries);
 		clean = process_renames(re_head, re_merge,
 				branch1, branch2);
-		total_cnt += entries->nr;
-		for (i = 0; i < entries->nr; i++, merged_cnt++) {
+		for (i = 0; i < entries->nr; i++) {
 			const char *path = entries->items[i].path;
 			struct stage_data *e = entries->items[i].util;
 			if (!e->processed
 				&& !process_entry(path, e, branch1, branch2))
 				clean = 0;
-			if (do_progress)
-				display_progress();
 		}
 
 		path_list_clear(re_merge, 0);
@@ -1301,15 +1662,6 @@ static int merge(struct commit *h1,
 		commit_list_insert(h1, &(*result)->parents);
 		commit_list_insert(h2, &(*result)->parents->next);
 	}
-	if (!call_depth && do_progress) {
-		/* Make sure we end at 100% */
-		if (!total_cnt)
-			total_cnt = 1;
-		merged_cnt = total_cnt;
-		progress_update = 1;
-		display_progress();
-		fputc('\n', stderr);
-	}
 	flush_output();
 	return clean;
 }
@@ -1386,12 +1738,8 @@ int main(int argc, char *argv[])
 	}
 	if (argc - i != 3) /* "--" "<head>" "<remote>" */
 		die("Not handling anything other than two heads merge.");
-	if (verbosity >= 5) {
+	if (verbosity >= 5)
 		buffer_output = 0;
-		do_progress = 0;
-	}
-	else
-		do_progress = isatty(1);
 
 	branch1 = argv[++i];
 	branch2 = argv[++i];
@@ -1402,8 +1750,6 @@ int main(int argc, char *argv[])
 	branch1 = better_branch_name(branch1);
 	branch2 = better_branch_name(branch2);
 
-	if (do_progress)
-		setup_progress_signal();
 	if (show(3))
 		printf("Merging %s with %s\n", branch1, branch2);
 

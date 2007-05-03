@@ -105,11 +105,13 @@ static void grow_object_hash(void)
 	obj_hash_size = new_hash_size;
 }
 
-void created_object(const unsigned char *sha1, struct object *obj)
+void *create_object(const unsigned char *sha1, int type, void *o)
 {
+	struct object *obj = o;
+
 	obj->parsed = 0;
 	obj->used = 0;
-	obj->type = OBJ_NONE;
+	obj->type = type;
 	obj->flags = 0;
 	hashcpy(obj->sha1, sha1);
 
@@ -118,25 +120,14 @@ void created_object(const unsigned char *sha1, struct object *obj)
 
 	insert_obj_hash(obj, obj_hash, obj_hash_size);
 	nr_objs++;
+	return obj;
 }
-
-union any_object {
-	struct object object;
-	struct commit commit;
-	struct tree tree;
-	struct blob blob;
-	struct tag tag;
-};
 
 struct object *lookup_unknown_object(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
-	if (!obj) {
-		union any_object *ret = xcalloc(1, sizeof(*ret));
-		created_object(sha1, &ret->object);
-		ret->object.type = OBJ_NONE;
-		return &ret->object;
-	}
+	if (!obj)
+		obj = create_object(sha1, OBJ_NONE, alloc_object_node());
 	return obj;
 }
 
@@ -240,6 +231,11 @@ int object_list_contains(struct object_list *list, struct object *obj)
 
 void add_object_array(struct object *obj, const char *name, struct object_array *array)
 {
+	add_object_array_with_mode(obj, name, array, S_IFINVALID);
+}
+
+void add_object_array_with_mode(struct object *obj, const char *name, struct object_array *array, unsigned mode)
+{
 	unsigned nr = array->nr;
 	unsigned alloc = array->alloc;
 	struct object_array_entry *objects = array->objects;
@@ -252,5 +248,6 @@ void add_object_array(struct object *obj, const char *name, struct object_array 
 	}
 	objects[nr].item = obj;
 	objects[nr].name = name;
+	objects[nr].mode = mode;
 	array->nr = ++nr;
 }

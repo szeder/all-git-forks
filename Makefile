@@ -141,7 +141,12 @@ prefix = $(HOME)
 bindir = $(prefix)/bin
 gitexecdir = $(bindir)
 template_dir = $(prefix)/share/git-core/templates/
-ETC_GITCONFIG = $(prefix)/etc/gitconfig
+ifeq ($(prefix),/usr)
+sysconfdir = /etc
+else
+sysconfdir = $(prefix)/etc
+endif
+ETC_GITCONFIG = $(sysconfdir)/gitconfig
 # DESTDIR=
 
 # default configuration for gitweb
@@ -160,7 +165,7 @@ GITWEB_FAVICON = git-favicon.png
 GITWEB_SITE_HEADER =
 GITWEB_SITE_FOOTER =
 
-export prefix bindir gitexecdir template_dir
+export prefix bindir gitexecdir template_dir sysconfdir
 
 CC = gcc
 AR = ar
@@ -283,7 +288,7 @@ LIB_H = \
 	diff.h object.h pack.h pkt-line.h quote.h refs.h list-objects.h sideband.h \
 	run-command.h strbuf.h tag.h tree.h git-compat-util.h revision.h \
 	tree-walk.h log-tree.h dir.h path-list.h unpack-trees.h builtin.h \
-	utf8.h reflog-walk.h
+	utf8.h reflog-walk.h patch-ids.h attr.h decorate.h progress.h mailmap.h
 
 DIFF_OBJS = \
 	diff.o diff-lib.o diffcore-break.o diffcore-order.o \
@@ -295,8 +300,9 @@ LIB_OBJS = \
 	date.o diff-delta.o entry.o exec_cmd.o ident.o \
 	interpolate.o \
 	lockfile.o \
-	object.o pack-check.o patch-delta.o path.o pkt-line.o sideband.o \
-	reachable.o reflog-walk.o \
+	patch-ids.o \
+	object.o pack-check.o pack-write.o patch-delta.o path.o pkt-line.o \
+	sideband.o reachable.o reflog-walk.o \
 	quote.o read-cache.o refs.o run-command.o dir.o object-refs.o \
 	server-info.o setup.o sha1_file.o sha1_name.o strbuf.o \
 	tag.o tree.o usage.o config.o environment.o ctype.o copy.o \
@@ -304,7 +310,7 @@ LIB_OBJS = \
 	write_or_die.o trace.o list-objects.o grep.o match-trees.o \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
 	color.o wt-status.o archive-zip.o archive-tar.o shallow.o utf8.o \
-	convert.o
+	convert.o attr.o decorate.o progress.o mailmap.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -315,6 +321,7 @@ BUILTIN_OBJS = \
 	builtin-branch.o \
 	builtin-bundle.o \
 	builtin-cat-file.o \
+	builtin-check-attr.o \
 	builtin-checkout-index.o \
 	builtin-check-ref-format.o \
 	builtin-commit-tree.o \
@@ -926,13 +933,17 @@ endif
 
 ### Testing rules
 
+TEST_PROGRAMS = test-chmtime$X test-genrandom$X
+
+all:: $(TEST_PROGRAMS)
+
 # GNU make supports exporting all variables by "export" without parameters.
 # However, the environment gets quite big, and some programs have problems
 # with that.
 
 export NO_SVN_TESTS
 
-test: all test-chmtime$X
+test: all
 	$(MAKE) -C t/ all
 
 test-date$X: test-date.c date.o ctype.o
@@ -951,6 +962,9 @@ test-match-trees$X: test-match-trees.o $(GITLIBS)
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
 
 test-chmtime$X: test-chmtime.c
+	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $<
+
+test-genrandom$X: test-genrandom.c
 	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $<
 
 check-sha1:: test-sha1$X
@@ -1028,9 +1042,10 @@ dist-doc:
 	gzip -n -9 -f $(htmldocs).tar
 	:
 	rm -fr .doc-tmp-dir
-	mkdir .doc-tmp-dir .doc-tmp-dir/man1 .doc-tmp-dir/man7
+	mkdir -p .doc-tmp-dir/man1 .doc-tmp-dir/man5 .doc-tmp-dir/man7
 	$(MAKE) -C Documentation DESTDIR=./ \
 		man1dir=../.doc-tmp-dir/man1 \
+		man5dir=../.doc-tmp-dir/man5 \
 		man7dir=../.doc-tmp-dir/man7 \
 		install
 	cd .doc-tmp-dir && $(TAR) cf ../$(manpages).tar .
@@ -1041,7 +1056,7 @@ dist-doc:
 
 clean:
 	rm -f *.o mozilla-sha1/*.o arm/*.o ppc/*.o compat/*.o xdiff/*.o \
-		test-chmtime$X $(LIB_FILE) $(XDIFF_LIB)
+		test-chmtime$X test-genrandom$X $(LIB_FILE) $(XDIFF_LIB)
 	rm -f $(ALL_PROGRAMS) $(BUILT_INS) git$X
 	rm -f *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h TAGS tags
 	rm -rf autom4te.cache

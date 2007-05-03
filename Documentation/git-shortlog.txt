@@ -7,8 +7,9 @@ git-shortlog - Summarize 'git log' output
 
 SYNOPSIS
 --------
+[verse]
 git-log --pretty=short | 'git-shortlog' [-h] [-n] [-s]
-git-shortlog [-n|--number] [-s|--summary] [<committish>...]
+git-shortlog [-n|--numbered] [-s|--summary] [<committish>...]
 
 DESCRIPTION
 -----------
@@ -21,19 +22,20 @@ Additionally, "[PATCH]" will be stripped from the commit description.
 OPTIONS
 -------
 
--h::
+-h, \--help::
 	Print a short usage message and exit.
 
--n::
+-n, \--numbered::
 	Sort output according to the number of commits per author instead
 	of author alphabetic order.
 
--s::
+-s, \--summary::
 	Suppress commit description and provide a commit count summary only.
 
 FILES
 -----
-'.mailmap'::
+
+.mailmap::
 	If this file exists, it will be used for mapping author email
 	addresses to a real author name. One mapping per line, first
 	the author name followed by the email address enclosed by

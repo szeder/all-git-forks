@@ -52,6 +52,26 @@ foreach my $tar_file (@ARGV)
 			Z8 Z1 Z100 Z6
 			Z2 Z32 Z32 Z8 Z8 Z*', $_;
 		last unless $name;
+		if ($name eq '././@LongLink') {
+			# GNU tar extension
+			if (read(I, $_, 512) != 512) {
+				die ('Short archive');
+			}
+			$name = unpack 'Z257', $_;
+			next unless $name;
+
+			my $dummy;
+			if (read(I, $_, 512) != 512) {
+				die ('Short archive');
+			}
+			($dummy, $mode, $uid, $gid, $size, $mtime,
+			$chksum, $typeflag, $linkname, $magic,
+			$version, $uname, $gname, $devmajor, $devminor,
+			$prefix) = unpack 'Z100 Z8 Z8 Z8 Z12 Z12
+			Z8 Z1 Z100 Z6
+			Z2 Z32 Z32 Z8 Z8 Z*', $_;
+		}
+		next if $name =~ m{/\z};
 		$mode = oct $mode;
 		$size = oct $size;
 		$mtime = oct $mtime;
@@ -64,7 +84,12 @@ foreach my $tar_file (@ARGV)
 		}
 		print FI "\n";
 
-		my $path = "$prefix$name";
+		my $path;
+		if ($prefix) {
+			$path = "$prefix/$name";
+		} else {
+			$path = "$name";
+		}
 		$files{$path} = [$next_mark++, $mode];
 
 		$commit_time = $mtime if $mtime > $commit_time;

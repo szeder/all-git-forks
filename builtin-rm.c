@@ -10,7 +10,7 @@
 #include "tree-walk.h"
 
 static const char builtin_rm_usage[] =
-"git-rm [-f] [-n] [-r] [--cached] [--] <file>...";
+"git-rm [-f] [-n] [-r] [--cached] [--ignore-unmatch] [--quiet] [--] <file>...";
 
 static struct {
 	int nr, alloc;
@@ -104,7 +104,8 @@ static struct lock_file lock_file;
 int cmd_rm(int argc, const char **argv, const char *prefix)
 {
 	int i, newfd;
-	int show_only = 0, force = 0, index_only = 0, recursive = 0;
+	int show_only = 0, force = 0, index_only = 0, recursive = 0, quiet = 0;
+	int ignore_unmatch = 0;
 	const char **pathspec;
 	char *seen;
 
@@ -132,6 +133,10 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 			force = 1;
 		else if (!strcmp(arg, "-r"))
 			recursive = 1;
+		else if (!strcmp(arg, "--quiet"))
+			quiet = 1;
+		else if (!strcmp(arg, "--ignore-unmatch"))
+			ignore_unmatch = 1;
 		else
 			usage(builtin_rm_usage);
 	}
@@ -153,14 +158,24 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 
 	if (pathspec) {
 		const char *match;
+		int seen_any = 0;
 		for (i = 0; (match = pathspec[i]) != NULL ; i++) {
-			if (!seen[i])
-				die("pathspec '%s' did not match any files",
-				    match);
+			if (!seen[i]) {
+				if (!ignore_unmatch) {
+					die("pathspec '%s' did not match any files",
+					    match);
+				}
+			}
+			else {
+				seen_any = 1;
+			}
 			if (!recursive && seen[i] == MATCHED_RECURSIVELY)
 				die("not removing '%s' recursively without -r",
 				    *match ? match : ".");
 		}
+
+		if (! seen_any)
+			exit(0);
 	}
 
 	/*
@@ -168,7 +183,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 * must match; but the file can already been removed, since
 	 * this sequence is a natural "novice" way:
 	 *
-	 *	rm F; git fm F
+	 *	rm F; git rm F
 	 *
 	 * Further, if HEAD commit exists, "diff-index --cached" must
 	 * report no changes unless forced.
@@ -187,7 +202,8 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 */
 	for (i = 0; i < list.nr; i++) {
 		const char *path = list.name[i];
-		printf("rm '%s'\n", path);
+		if (!quiet)
+			printf("rm '%s'\n", path);
 
 		if (remove_file_from_cache(path))
 			die("git-rm: unable to remove %s", path);
