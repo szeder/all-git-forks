@@ -703,6 +703,7 @@ struct diffstat_t {
 	int alloc;
 	struct diffstat_file {
 		char *name;
+		char *from_name;
 		unsigned is_unmerged:1;
 		unsigned is_binary:1;
 		unsigned is_renamed:1;
@@ -722,12 +723,13 @@ static struct diffstat_file *diffstat_add(struct diffstat_t *diffstat,
 				diffstat->alloc * sizeof(x));
 	}
 	diffstat->files[diffstat->nr++] = x;
+	x->name = xstrdup(name_a);
 	if (name_b) {
-		x->name = pprint_rename(name_a, name_b);
+		x->from_name = xstrdup(name_b);
 		x->is_renamed = 1;
 	}
 	else
-		x->name = xstrdup(name_a);
+		x->from_name = NULL;
 	return x;
 }
 
@@ -805,7 +807,7 @@ static void show_stats(struct diffstat_t* data, struct diff_options *options)
 		struct diffstat_file *file = data->files[i];
 		int change = file->added + file->deleted;
 
-		if (!file->is_renamed) {  /* renames are already quoted by pprint_rename */
+		if (!file->is_renamed) {  /* renames are quoted by pprint_rename */
 			len = quote_c_style(file->name, NULL, NULL, 0);
 			if (len) {
 				char *qname = xmalloc(len + 1);
@@ -813,6 +815,10 @@ static void show_stats(struct diffstat_t* data, struct diff_options *options)
 				free(file->name);
 				file->name = qname;
 			}
+		} else {
+			char *qname = pprint_rename(file->name, file->from_name);
+			free(file->name);
+			file->name = qname;
 		}
 
 		len = strlen(file->name);
@@ -949,11 +955,19 @@ static void show_numstat(struct diffstat_t* data, struct diff_options *options)
 			printf("-\t-\t");
 		else
 			printf("%d\t%d\t", file->added, file->deleted);
-		if (options->line_termination && !file->is_renamed &&
+		if (options->line_termination &&
 		    quote_c_style(file->name, NULL, NULL, 0))
 			quote_c_style(file->name, NULL, stdout, 0);
 		else
 			fputs(file->name, stdout);
+		if (file->is_renamed) {
+			printf("%s", options->line_termination ? "\t" : "\0\0");
+			if (options->line_termination &&
+			    quote_c_style(file->from_name, NULL, NULL, 0))
+				quote_c_style(file->from_name, NULL, stdout, 0);
+			else
+				fputs(file->from_name, stdout);
+		}
 		putchar(options->line_termination);
 	}
 }
