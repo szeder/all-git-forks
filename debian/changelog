@@ -1,0 +1,748 @@
+git-core (1:1.5.1.4-1) unstable; urgency=medium
+
+  * new upstream point release.
+  * debian/diff/pager-vs-less.diff: rename to
+    0001-pager.c-fallback-to-pager-not-less-if-PAGER-is.diff; adapt.
+  * debian/diff/0002-Optimize-directory-listing-with-pathspec-limiter.diff:
+    new: Optimize directory listing with pathspec limiter (closes: #420671).
+  * debian/git-daemon-run.postinst: restart git-daemon service if it was
+    running.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 09 May 2007 08:48:50 +0000
+
+git-core (1:1.5.1.3-1) unstable; urgency=low
+
+  * new upstream point release.
+    * git-add tried to optimize by finding common leading directories
+      across its arguments but botched, causing very confused behaviour
+      (closes: #420671).
+    * Documentation/git-reset.txt: suggest git commit --amend in example
+      (closes: #420112).
+    * unofficial rpm.spec file shipped with git was letting ETC_GITCONFIG
+      set to /usr/etc/gitconfig.  Tweak the official Makefile to make it
+      harder for distro people to make the same mistake, by setting the
+      variable to /etc/gitconfig if prefix is set to /usr (closes:
+      #420675).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 01 May 2007 08:59:06 +0000
+
+git-core (1:1.5.1.2-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 22 Apr 2007 13:31:05 +0000
+
+git-core (1:1.5.1.1-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+  * debian/diff/0010-rename-contrib-hooks-post-receieve-email-to-contrib.diff:
+    remove; applied upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 12 Apr 2007 09:05:44 +0000
+
+git-core (1:1.5.1-1) unstable; urgency=low
+
+  * new upstream release.
+    * git-svn got almost a rewrite (closes: #416372).
+  * debian/diff/git-cvsserver-update-hook.diff: remove; included upstream.
+  * debian/diff/Documentation-git-svnimport.txt-fix-typo.diff,
+    debian/diff/http-fetch-don-t-use-double-slash-as-directory-sepa.diff,
+    debian/diff/Documentation-git-rev-parse.txt-fix-example-in-SPEC.diff:
+    remove; applied upstream.
+  * debian/diff/GNU-Hurd.diff: remove; obsolete.
+  * debian/git-daemon-run.postrm: check for deluser being available, if
+    not, print warning and don't remove system user (closes: #416755).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement, and git shortlog.
+  * debian/diff/0010-rename-contrib-hooks-post-receieve-email-to-contrib.diff:
+    new; rename contrib/hooks/post-receieve-email to contrib/hooks/post-
+    receive-email.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed,  4 Apr 2007 11:56:18 +0000
+
+git-core (1:1.5.0.6-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/http-fetch-don-t-use-double-slash-as-directory-sepa.diff:
+    new, cherry-pick'ed from upstream master: http-fetch: don't use
+    double-slash as directory separator in URLs (closes: #409887).
+  * debian/diff/Documentation-git-svnimport.txt-fix-typo.diff: new:
+    Documentation/git-svnimport.txt: fix typo.
+  * debian/diff/Documentation-git-rev-parse.txt-fix-example-in-SPEC.diff:
+    new Documentation/git-rev-parse.txt: fix example in SPECIFYING RANGES
+    (closes: #404795).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 29 Mar 2007 10:51:00 +0000
+
+git-core (1:1.5.0.5-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/rules: make sure subdirectories of /usr/share/doc/git-core/ are
+    mode 0755 (closes: #415328); remove .gitignore file(s) from
+    /usr/share/doc/git-core/ (closes: #413913).
+  * debian/control: git-svn: Depends: libterm-readkey-perl (thx Pierre
+    Habouzit, closes: #415475).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 21 Mar 2007 17:02:27 +0000
+
+git-core (1:1.5.0.3-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/cvsexportcommit-.msg.diff: remove; applied upstream.
+  * debian/git-core.docs, debian/git-doc.docs: add RelNotes.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  5 Mar 2007 19:44:05 +0000
+
+git-core (1:1.5.0.2-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/control: git-core: Conflicts: qgit (<< 1.5.5) (closes: #412452).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+  * debian/diff/cvsexportcommit-.msg.diff: new; don't cleanup .msg if not
+    yet committed to cvs (closes: #412732).
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 28 Feb 2007 15:50:53 +0000
+
+git-core (1:1.5.0.1-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/git-cvsserver-update-hook.diff: new from upstream pu branch:
+    Have git-cvsserver call hooks/update before really altering the ref.
+  * debian/control: git-cvs: Depends: libdbd-sqlite3-perl (git-cvsserver).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 25 Feb 2007 11:38:34 +0000
+
+git-core (1:1.5.0-1) experimental; urgency=low
+
+  * new upstream release.
+  * debian/diff/archimport-empty-dir.diff: remove; applied upstream.
+  * debian/diff/pager-vs-less.diff, debian/diff/Add-install-lib-target.diff:
+    adapt.
+  * debian/control: new package git-gui, the git graphical user interface;
+    git-core: no longer Depends:, Build-Depends: rcs; git-core: Suggests:
+    git-gui.
+  * debian/rules: new package git-gui.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements and git shortlog.
+  * debian/git-daemon/run: don't limit git-daemon's memory resources.
+  * debian/control, debian/rules: remove git-core-dev package again,
+    libgit.a is not a publically usable/useful library at this moment, as
+    its internal API is not cast in stone yet.
+  * debian/diff/Add-install-lib-target.diff: remove; there's no git-core-dev
+    package.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 16 Feb 2007 07:18:44 +0000
+
+git-core (1:1.5.0~rc3-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff/Add-install-lib-target.diff: new; add install-lib target to
+    install libgit.a library plus header files (thx Luca Falavigna).
+  * debian/rules: new package git-core-dev; remove obsolete
+    WITH_SEND_EMAIL=1, OPTIMIZE="..." from $(OPTS); remove
+    WITH_OWN_SUBPROCESS_PY=1 from $(OPTS), it's no longer necessary (thx
+    Luca Falavigna; closes: #403731); make git-p4import.pl available through
+    /usr/share/doc/git-core/contrib/ (closes: #403387); minor cleanup.
+  * debian/control: new package git-core-dev (thx Luca Falavigna; closes:
+    #407722); no longer Build-Depends: python; git-core: no longer Recommends:
+    python, Suggests: git-core-dev; update short and long descriptions
+    (closes: #406323); git-arch: Depends: tla, instead of Suggests:.
+  * debian/diff/GNU-Hurd.diff: adapt.
+  * debian/diff/archimport-empty-dir.diff: new; git-archimport: initial import
+    needs empty directory (closes: #400508).
+  * debian/gitweb.README.Debian: typo.
+
+ -- Gerrit Pape <pape@smarden.org>  Sat,  3 Feb 2007 09:32:48 +0000
+
+git-core (1:1.4.4.4-1) unstable; urgency=low
+
+  * new upstream release, important fixes:
+    * pack-check.c::verify_packfile(): don't run SHA-1 update on huge data.
+    * Fix infinite loop when deleting multiple packed refs.
+    * diff --check: fix off by one error.
+  * debian/diff/0001-spurious-.sp-in-manpages.diff: remove; included in
+    upstream version.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue,  9 Jan 2007 19:43:56 +0000
+
+git-core (1:1.4.4.3-1) unstable; urgency=medium
+
+  * new upstream release (closes: #404796); important fixes:
+    * Make sure the empty tree exists when needed in merge-recursive; the
+      error message may make the user think that their database is corrupt
+      when its actually not.
+    * Don't use memcpy when source and dest. buffers may overlap.
+    * cvsserver: Avoid miscounting bytes in Perl v5.8.x; this breaks the
+      counting of bytes for the CVS protocol, resulting in the client
+      expecting less data than we actually send, and storing truncated files.
+  * debian/diff/0001-spurious-.sp-in-manpages.diff: new from upstream git;
+    work around spurious .sp in manpages (closes: #388370).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 29 Dec 2006 07:38:15 +0000
+
+git-core (1:1.4.4.2-1) unstable; urgency=low
+
+  * new upstream release.
+    * fixes FTBFS on m68k (thx Roman Zippel, closes: #402022).
+  * 0001-archive-zip-don-t-use-sizeof-struct.diff,
+    0002-git-svn-error-out-from-dcommit-on-a-parent-less-commit.diff,
+    0003-git-svn-correctly-handle-revision-0-in-SVN-repositories.diff,
+    0004-git-svn-preserve-uncommitted-changes-after-dcommit.diff,
+    0005-Increase-length-of-function-name-buffer.diff: remove; obsolete.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements and git log | git shortlog.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri,  8 Dec 2006 19:13:49 +0000
+
+git-core (1:1.4.4.1-1) unstable; urgency=low
+
+  * new upstream release (closes: #400191).
+  * 0001-archive-zip-don-t-use-sizeof-struct.diff: new from upstream git;
+    replaces debian/diff/not-packed-structs.diff.
+  * 0002-git-svn-error-out-from-dcommit-on-a-parent-less-commit.diff,
+    0003-git-svn-correctly-handle-revision-0-in-SVN-repositories.diff,
+    0004-git-svn-preserve-uncommitted-changes-after-dcommit.diff,
+    0005-Increase-length-of-function-name-buffer.diff: new from upstream
+    git.
+  * debian/diff/genindex.diff: new; support subdirs in gitweb example index
+    generator (thx David Nusinow; closes: #400284).
+  * debian/diff/GNU-Hurd.diff, debian/diff/pager-vs-less.diff: adapt.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Nov 2006 14:31:39 +0000
+
+git-core (1:1.4.4-2) unstable; urgency=low
+
+  * debian/diff/not-packed-structs.diff: new; don't use sizeof(struct ...),
+    size doesn't match on arm (fixes selftests failure on arm).
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 22 Nov 2006 23:31:11 +0000
+
+git-core (1:1.4.4-1) unstable; urgency=low
+
+  * new upstream release (closes: #399575).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+  * debian/control: Build-Depends: unzip (for selftests).
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 21 Nov 2006 09:43:37 +0000
+
+git-core (1:1.4.3.5-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 13 Nov 2006 17:46:50 +0000
+
+git-core (1:1.4.3.3-2) unstable; urgency=medium
+
+  * debian/git-daemon-run.postinst: don't make the log service system user
+    gitlog member of group adm, but nogroup; gitlog's home directory is
+    /nonexistent (thx Florian Weimer, closes: #396687).
+  * debian/git-daemon/log/run: make /var/log/git-daemon log directory mode
+    2750, owner gitlog:adm.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  6 Nov 2006 20:12:08 +0000
+
+git-core (1:1.4.3.3-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/diff/0001-Set-HOME-for-selftests.diff: remove; applied upstream.
+  * debian/control: git-core: Depends: libdigest-sha1-perl (closes: #395304,
+    thx Ichthyostega).
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 31 Oct 2006 07:31:21 +0000
+
+git-core (1:1.4.3.2-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/diff/gitweb.conf.diff: remove; obsolete.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+  * debian/rules: add 'GITWEB_CONFIG=/etc/gitweb.conf mandir=/usr/share/man
+    OPTIMIZE="-O2 -g -Wall" INSTALLDIRS=vendor' to build OPTS, adapt paths;
+    git-arch: don't include git-archive, git-upload-archive; gitweb: install
+    git-logo.png, git-favicon.png; git-core: properly install new Git.pm
+    plus man page.
+  * debian/diff/0001-Set-HOME-for-selftests.diff: new; set $HOME for
+    selftests (fixes build/selftest failures).
+  * debian/control: git-core: Depends: liberror-perl.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 24 Oct 2006 16:32:35 +0000
+
+git-core (1:1.4.2.3-2) unstable; urgency=low
+
+  * debian/control: new package git-daemon-run: provide a git-daemon
+    service; git-core: no longer Suggests: runit, Depends: adduser, the
+    git-daemon-run package now Depends: runit, adduser.
+  * debian/debian/git-core.postinst, debian/git-daemon-run.postrm,
+    debian/git-daemon-run.prerm: new; manage gitlog user and git-daemon
+    service (closes: #388144).
+  * debian/git-core.postinst: no longer adduser gitlog, git-daemon-run
+    package does now.
+  * debian/git-core.postrm: remove; obsolete.
+  * debian/rules: install git-daemon service directory in the new
+    git-daemon-run package instead of the git-core package.
+  * debian/git-core.conffiles: rename to debian/git-daemon-run.conffiles.
+  * debian/git-core.README.Debian: adapt.
+  * debian/control: git-core: Suggests: git-daemon-run.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun,  8 Oct 2006 09:29:50 +0000
+
+git-core (1:1.4.2.3-1) unstable; urgency=medium
+
+  * new upstream release.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+  * debian/diff/t3403-skip-3-7.diff: remove; git-am is fixed upstream.
+  * debian/gitweb.conf: add $stylesheet = "/gitweb.css" (thx Christian
+    Kujau, closes: #383065).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun,  8 Oct 2006 07:31:03 +0000
+
+git-core (1:1.4.2.1-1) unstable; urgency=low
+
+  * new upstream release (closes: #386820, #387405).
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcements.
+  * debian/diff/GNU-Hurd.diff: new; make the build process detect and
+    support the Debian GNU/Hurd architecture (thx Cyril Brulebois, closes:
+    #379841).
+  * debian/diff/GNU-kFreeBSD.diff: remove; applied upstream.
+  * debian/rules: gitweb: install gitweb.css into /var/www/ instead of
+    /usr/share/doc/gitweb/ (thx Matthijs Melchior, closes: #383065).
+  * debian/gitweb.docs: remove; obsolete.
+  * debian/examples/index.aux-generation: example script to generate an
+    optional index.aux file for the use with gitweb (thx Matthew Wilcox,
+    #383219).
+  * debian/gitweb.examples: new; install debian/examples/index.aux-generation
+    (#383219).
+  * debian/git-core.README.Debian: new; hints on how to set up a
+    git.example.org server providing git://, rsync://, http:// access to
+    repositories from Matthew Wilcox (thx!, closes: #383219).
+  * debian/gitweb.README.Debian: cleanup; refer to git-core.README.Debian.
+  * debian/control: git-svn: Depends: libsvn-perl | libsvn-core-perl (thx
+    Peter Samuelson); git-core, git-doc: Suggests: gitweb; gitweb:
+    Recommends: git-doc.
+  * debian/diff/pager-vs-less.diff, debian/diff/gitweb.conf.diff: adapt.
+  * debian/git-daemon/: new; git-daemon service directory for the use with
+    runit.
+  * debian/control: Build-Depends: subversion, libsvn-perl | libsvn-core-perl
+    (for git-svn selftests); git-core: Suggests: runit, Depends: adduser.
+  * debian/diff/t3403-skip-3-7.diff: new; skip selftests 3,7 in t3403 as
+    they fail without a terminal connected.
+  * debian/git-core.conffiles: new; add /etc/sv/git-daemon/run,
+    /etc/sv/git-daemon/log/run.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 15 Sep 2006 12:46:58 +0000
+
+git-core (1:1.4.1.1-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/diff/GNU-kFreeBSD.diff: new; make the build process detect and
+    support the Debian GNU/kFreeBSD architecture (thx Petr Salinger, closes:
+    #380209).
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 29 Jul 2006 15:31:04 +0000
+
+git-core (1:1.4.1-2) unstable; urgency=low
+
+  * adopt package gitweb, now included in git-core upstream source (thx
+    Andres Salomon):
+    * debian/control, debian/rules: build gitweb package.
+    * debian/copyright: adapt.
+    * debian/gitweb.README.Debian, debian/gitweb.conf, debian/gitweb.docs:
+      new; taken from Andres' gitweb package.
+    * debian/diff/gitweb.conf.diff: new; adapt Andres' gitweb.conf.patch.
+    * debian/gitweb.conffiles: new; /etc/gitweb.conf.
+  * debian/changelog: use epoch 1 to supersede gitweb-264 package version.
+  * debian/rules: set DESTDIR in environment, not build flags.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 27 Jul 2006 21:44:06 +0000
+
+git-core (1.4.1-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/changelog.upstream: upstream changes taken from mailing list
+    announcement.
+  * debian/rules: user same build flags and prefix to $(MAKE) in build
+    and install target to prevent rebuild in install target.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 11 Jul 2006 21:38:33 +0000
+
+git-core (1.4.0-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/changelog.upstream: new; upstream changes taken from mailing
+    list announcement.
+  * debian/rules: install debian/changelog.upstream as upstream changelog.
+  * debian/diff/pager-vs-less.diff: adapt.
+  * debian/control: Standards-Version: 3.7.2.0.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 14 Jun 2006 17:04:56 +0000
+
+git-core (1.3.3-2) unstable; urgency=medium
+
+  * debian/control: git-core: Depends: perl-modules (closes: #369737).
+  * debian/diff/pager-vs-less.diff: new; fallback to `pager` not `less`
+    if $PAGER is unset (closes: #369742).
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 10 Jun 2006 11:18:48 +0000
+
+git-core (1.3.3-1) unstable; urgency=low
+
+  * new upstream release.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 25 May 2006 10:46:00 +0000
+
+git-core (1.3.2-1) unstable; urgency=low
+
+  * new upstream release.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 10 May 2006 20:41:39 +0000
+
+git-core (1.3.1-1) unstable; urgency=low
+
+  * new upstream release (closes: #364678).
+  * debian/rules: install contrib/ directory into /usr/share/doc/git-core/.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  1 May 2006 13:01:42 +0000
+
+git-core (1.2.6-1) unstable; urgency=low
+
+  * new upstream release.
+  * debian/control: git-cvs: Depends: cvsps (>> 2.1-0).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 16 Apr 2006 14:37:53 +0000
+
+git-core (1.2.4-1) unstable; urgency=low
+
+  * new upstream release (closes: #354563).
+
+ -- Gerrit Pape <pape@smarden.org>  Fri,  3 Mar 2006 21:33:58 +0000
+
+git-core (1.2.1-1) unstable; urgency=low
+
+  * new upstream release (closes: #353041).
+  * debian/control: git-core: Recommends: ssh-client instead of
+    openssh-client (closes: #350708).
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 16 Feb 2006 09:33:42 +0000
+
+git-core (1.1.5-1) unstable; urgency=high
+
+  * new upstream release.
+    * checkout: do not make a temporary copy of symlink target.
+      If the index records an insanely long symbolic link, copying
+      into the temporary would overflow the buffer (noticed by Mark
+      Wooding). (closes: #350274).
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 28 Jan 2006 20:16:44 +0000
+
+git-core (1.1.3-1) unstable; urgency=low
+
+  * new upstream release.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 16 Jan 2006 10:19:37 +0000
+
+git-core (1.0.8-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/t6001-rev-lisge-order.sh.diff: remove; applied upstream.
+  * debian/control: Build-Depends: libcurl3-gnutls-dev | libcurl3-dev,
+    python, asciidoc (>> 7.0.2-3) (ease backport to sarge, thx Norbert
+    Tretkowski, closes: #344929).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  9 Jan 2006 19:19:36 +0000
+
+git-core (1.0.6-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/t6001-rev-list-merge-order.sh.diff: new: fix skipping
+    merge-order test with NO_OPENSSL=1.
+  * debian/rules: re-enable git-rev-list --merge-order selftests.
+  * debian/control: git-svn: Depends: libwww-perl (closes: #345045).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  2 Jan 2006 20:25:57 +0000
+
+git-core (1.0.5-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/rules: don't take upstream changelog from upstream
+    debian/changelog.
+  * debian/changelog.upstream: remove again.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 27 Dec 2005 13:25:53 +0000
+
+git-core (1.0.3-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/changelog.upstream: new: upstream changelog taken from upstream
+    debian/changelog.
+  * debian/rules: install debian/changelog.upstream as upstream changelog;
+    remove obsolete VERSION variable.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 23 Dec 2005 14:58:14 +0000
+
+git-core (1.0.0-1) unstable; urgency=medium
+
+  * new upstream release: GIT 1.0.0.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 21 Dec 2005 16:17:18 +0000
+
+git-core (0.99.9n-1) unstable; urgency=low
+
+  * new upstream version: GIT 0.99.9n aka 1.0rc6.
+  * debian/rules: rename git program in git-core package to git-scm,
+    handle /usr/bin/git program through update-alternatives (as suggested
+    by Ian Beckwith, see #342363).
+  * debian/control: git-core: Conflicts: git (<< 4.3.20-8) (closes:
+    #342363).
+  * debian/git-core.postinst, debian/git-core.prerm: new: run
+    update-alternatives --install /usr/bin/git git /usr/bin/git-scm with
+    priority 70 on configure, and --remove on remove respectively.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 15 Dec 2005 11:24:51 +0000
+
+git-core (0.99.9m-1) unstable; urgency=low
+
+  * new upstream version: GIT 0.99.9m aka 1.0rc5.
+    * sets PYTHONPATH for selftests (fixes autobuild test failures).
+  * switch from tarball-in-tarball approach to original upstream tarball.
+  * debian/changelog: add changelog history, Junio C Hamano, Ryan Anderson,
+    Eric Biederman previously were maintaining this package unofficially.
+  * debian/control: Build-Depends: rcs (for selftests); git-core:
+    Recommends: patch, less, Suggests: cogito; git-arch: Suggests: tla,
+    bazzar; git-cvs: Depends: cvsps, Suggests: cvs; git-svn: Depends:
+    libsvn-core-perl (closes:#342617), Suggests: subversion; git-email:
+    Depends: libmail-sendmail-perl, libemail-valod-perl; update short
+    description (lots taken from upstream unofficial package, thx).
+  * debian/git-core.docs, debian/git-doc.docs: adapt.
+  * debian/rules: adapt; remove target unpack; add target patch; adapt
+    target clean.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 14 Dec 2005 19:48:41 +0000
+
+git-core (0.99.9l-1) unstable; urgency=low
+
+  * new upstream version.
+  * debian/rules: apply diffs with patch -p1.
+  * debian/control, debian/rules: split off git-arch, git-cvs, git-svn,
+    git-email packages, as suggested by upstream:
+    http://article.gmane.org/gmane.comp.version-control.git/13185
+  * debian/git-doc.docs: get docs from temporary install directory;
+    include *.txt docs.
+  * debian/control: git-doc: Section: doc; Suggests: git-core, git-arch,
+    git-cvs, git-svn, git-email, gitk; git-core: Suggests: git-arch,
+    git-cvs, git-svn, git-email, gitk.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon,  5 Dec 2005 18:04:37 +0000
+
+git-core (0.99.9k-1) unstable; urgency=low
+
+  * new upstream version.
+  * debian/implicit: update to revision 1.11.
+  * debian/git-doc.docs: add git/Documentation/howto,
+    git/Documentation/technical (closes: #341178).
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 29 Nov 2005 21:45:53 +0000
+
+git-core (0.99.9j-1) unstable; urgency=low
+
+  * initial version.
+  * debian/control: git-core: Replaces: cogito (<< 0.16rc2-0); cogito >=
+    0.16rc2-0 no longer includes the git core components, but depends on
+    the git-core package (see #338789).
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 18 Nov 2005 22:26:36 +0000
+
+git-core (0.99.9j-0) unstable; urgency=low
+
+  * GIT 0.99.9j aka 1.0rc3
+
+ -- Junio C Hamano <junkio@cox.net>  Wed, 16 Nov 2005 20:39:55 -0800
+
+git-core (0.99.9i-0) unstable; urgency=low
+
+  * GIT 0.99.9i aka 1.0rc2
+
+ -- Junio C Hamano <junkio@cox.net>  Mon, 14 Nov 2005 18:38:27 -0800
+
+git-core (0.99.9h-0) unstable; urgency=low
+
+  * GIT 0.99.9h
+
+ -- Junio C Hamano <junkio@cox.net>  Fri, 11 Nov 2005 22:33:18 -0800
+
+git-core (0.99.9g-0) unstable; urgency=low
+
+  * GIT 0.99.9g
+
+ -- Junio C Hamano <junkio@cox.net>  Wed,  9 Nov 2005 21:01:55 -0800
+
+git-core (0.99.9f-0) unstable; urgency=low
+
+  * GIT 0.99.9f
+
+ -- Junio C Hamano <junkio@cox.net>  Tue,  8 Nov 2005 01:21:52 -0800
+
+git-core (0.99.9e-0) unstable; urgency=low
+
+  * GIT 0.99.9e
+
+ -- Junio C Hamano <junkio@cox.net>  Sun,  6 Nov 2005 18:37:18 -0800
+
+git-core (0.99.9d-0) unstable; urgency=low
+
+  * GIT 0.99.9d
+
+ -- Junio C Hamano <junkio@cox.net>  Sat,  5 Nov 2005 11:46:37 -0800
+
+git-core (0.99.9c-0) unstable; urgency=low
+
+  * GIT 0.99.9c
+
+ -- Junio C Hamano <junkio@cox.net>  Thu,  3 Nov 2005 15:44:54 -0800
+
+git-core (0.99.9b-0) unstable; urgency=low
+
+  * GIT 0.99.9b
+
+ -- Junio C Hamano <junkio@cox.net>  Tue,  1 Nov 2005 21:39:39 -0800
+
+git-core (0.99.9a-0) unstable; urgency=low
+
+  * GIT 0.99.9a
+
+ -- Junio C Hamano <junkio@cox.net>  Sun, 30 Oct 2005 15:03:32 -0800
+
+git-core (0.99.9.GIT-2) unstable; urgency=low
+
+  * Build Dependency did not include libexpat-dev.
+
+ -- Junio C Hamano <junkio@cox.net>  Sun, 13 Nov 2005 01:55:34 -0800
+
+git-core (0.99.9.GIT-1) unstable; urgency=low
+
+  * Do not scatter txt and html documentation into feature
+    subpackages.  Do place man pages into them.
+  * Capture more cvs stuff into git-cvs package.
+
+ -- Junio C Hamano <junkio@cox.net>  Tue,  8 Nov 2005 01:19:06 -0800
+
+git-core (0.99.9.GIT-0) unstable; urgency=low
+
+  * Test Build.
+
+ -- Junio C Hamano <junkio@cox.net>  Sat,  5 Nov 2005 11:18:13 -0800
+
+git-core (0.99.9-1) unstable; urgency=low
+
+  * Split the git-core binary package into core, doc, and foreign SCM
+    interoperability modules.
+
+ -- Junio C Hamano <junkio@cox.net>  Sat,  5 Nov 2005 11:18:13 -0800
+
+git-core (0.99.9-0) unstable; urgency=low
+
+  * GIT 0.99.9
+
+ -- Junio C Hamano <junkio@cox.net>  Sat, 29 Oct 2005 14:34:30 -0700
+
+git-core (0.99.8-0) unstable; urgency=low
+
+  * GIT 0.99.8
+
+ -- Junio C Hamano <junkio@cox.net>  Sun,  2 Oct 2005 12:54:26 -0700
+
+git-core (0.99.7-0) unstable; urgency=low
+
+  * GIT 0.99.7
+
+ -- Junio C Hamano <junkio@cox.net>  Sat, 10 Sep 2005 18:36:39 -0700
+
+git-core (0.99.6-0) unstable; urgency=low
+
+  * GIT 0.99.6
+
+ -- Junio C Hamano <junkio@cox.net>  Wed, 24 Aug 2005 23:09:35 -0700
+
+git-core (0.99.5-1) unstable; urgency=low
+
+  * Enable git-send-email on Debian.  There is no reason to shy
+    away from it, since we have the necessary Perl modules available.
+
+ -- Junio C Hamano <junkio@cox.net>  Thu, 25 Aug 2005 14:16:59 -0700
+
+git-core (0.99.5-0) unstable; urgency=low
+
+  * GIT 0.99.5
+
+ -- Junio C Hamano <junkio@cox.net>  Wed, 10 Aug 2005 22:05:00 -0700
+
+git-core (0.99.4-4) unstable; urgency=low
+
+  * Mark git-tk as architecture neutral.
+
+ -- Junio C Hamano <junkio@cox.net>  Fri, 12 Aug 2005 13:25:00 -0700
+
+git-core (0.99.4-3) unstable; urgency=low
+
+  * Split off gitk.
+  * Do not depend on diff which is an essential package.
+  * Use dh_movefiles, not dh_install, to stage two subpackages.
+
+ -- Matthias Urlichs <smurf@debian.org>  Thu, 11 Aug 2005 01:43:24 +0200
+
+git-core (0.99.4-2) unstable; urgency=low
+
+  * Git 0.99.4 official release.
+
+ -- Junio C Hamano <junkio@cox.net>  Wed, 10 Aug 2005 15:00:00 -0700
+
+git-core (0.99.4-1) unstable; urgency=low
+
+  * Pass prefix down to the submake when building.
+
+ -- Junio C Hamano <junkio@cox.net>  Sat, 6 Aug 2005 13:00:00 -0700
+
+git-core (0.99-2) unstable; urgency=low
+
+  * Conflict with the GNU Interactive Tools package, which also installs
+    /usr/bin/git.
+  * Use the Mozilla SHA1 code and/or the PPC assembly in preference to
+    OpenSSL.  This is only a partial fix for the license issues with OpenSSL.
+  * Minor tweaks to the Depends.
+
+ -- Ryan Anderson <ryan@michonline.com>  Sat, 23 Jul 2005 14:15:00 -0400
+
+git-core (0.99-1) unstable; urgency=low
+
+  * Update deb package support to build correctly. 
+
+ -- Ryan Anderson <ryan@michonline.com>  Thu, 21 Jul 2005 02:03:32 -0400
+
+git-core (0.99-0) unstable; urgency=low
+
+  * Initial deb package support
+
+ -- Eric Biederman <ebiederm@xmission.com>  Tue, 12 Jul 2005 10:57:51 -0600

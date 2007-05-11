@@ -1,0 +1,29 @@
+This package was debianized by Sebastian Kuzminsky <seb@highlab.com>
+on Thu, 5 May 2005 10:27:14 -0600,
+and was adopted by Gerrit Pape <pape@smarden.org>
+on Wed, 16 Nov 2005 19:37:14 +0000.
+
+The gitweb package was debianized by Andres Salomon <dilinger@debian.org>
+on Fri, 20 May 2005 11:23:12 -0400,
+and adopted to be included in this package
+on Thu, 27 Jul 2006 21:43:38 +0000.
+
+git-core was downloaded from http://www.kernel.org/pub/software/scm/git/
+
+Upstream authors: Linus Torvalds and many others
+
+Copyright:
+
+This software is copyright (c) 2005, Linus Torvalds and others.
+
+You can redistribute this software and/or modify it under the terms of
+the GNU General Public License as published by the Free Software
+Foundation; version 2 dated June, 1991.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+On Debian systems, the complete text of the GNU General Public License
+can be found in /usr/share/common-licenses/GPL-2 file.

@@ -1,0 +1,193 @@
+#!/usr/bin/make -f
+
+ARCH ?=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+CC =gcc
+CFLAGS =-g -Wall
+STRIP =strip
+OPTS =NO_OPENSSL=1 GITWEB_CONFIG=/etc/gitweb.conf prefix=/usr \
+  mandir=/usr/share/man INSTALLDIRS=vendor
+
+ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+  STRIP =: strip
+endif
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+  CFLAGS +=-O0
+else
+  CFLAGS +=-O2
+endif
+ifeq (powerpc,$(ARCH))
+  OPTS +=PPC_SHA1=1
+else
+ifeq (arm,$(ARCH))
+  OPTS +=ARM_SHA1=1
+endif
+endif
+
+TMP =$(shell pwd)/tmp
+GIT =$(shell pwd)/debian/git
+
+patch: deb-checkdir patch-stamp
+patch-stamp:
+	for i in `ls -1r debian/diff/*.diff || :`; do \
+	  patch -p1 <$$i || exit 1; \
+	done
+	touch patch-stamp
+
+build: deb-checkdir build-arch-stamp build-indep-stamp
+build-arch-stamp: patch-stamp
+	-gcc -v
+	DESTDIR='$(GIT)'-core $(MAKE) all test \
+	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	$(MAKE) -CDocumentation man
+	touch build-arch-stamp
+build-indep-stamp: build-arch-stamp
+	$(MAKE) -CDocumentation man html
+	touch build-indep-stamp
+
+clean: deb-checkdir deb-checkuid
+	$(MAKE) clean
+	! test -e patch-stamp || \
+	  for i in `ls -1 debian/diff/*.diff || :`; do patch -p1 -R <$$i; done
+	rm -rf '$(TMP)'
+	rm -f patch-stamp build-arch-stamp build-indep-stamp
+	rm -rf '$(GIT)'-core '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
+	  '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui \
+	  '$(GIT)'k '$(GIT)'web
+	rm -f debian/files debian/substvars changelog
+
+install: install-arch install-indep
+install-arch: deb-checkdir deb-checkuid build-arch-stamp
+	# git-core
+	rm -rf '$(GIT)-core'
+	install -d -m0755 '$(GIT)'-core/usr/bin
+	DESTDIR='$(GIT)'-core $(MAKE) install install-doc \
+	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	install -d -m0755 '$(GIT)'-core/var/cache/git
+	rm -f '$(GIT)'-core/usr/share/perl5/Error.pm
+	rm -f '$(GIT)'-core/usr/share/man/man3/private-Error.3pm
+	rm -rf '$(GIT)'-core/usr/lib
+	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
+	# don't include arch, cvs, svn, email tools, and gitk program
+	for i in git-archimport git-cvs git-svn git-send-email gitk git-gui \
+	 git-citool; do \
+	  rm -f '$(GIT)'-core/usr/bin/$$i*; \
+	done
+	# handle git program through alternatives mechanism (see #342363),
+	# rename to git-scm
+	mv -f '$(GIT)'-core/usr/bin/git '$(GIT)'-core/usr/bin/git-scm
+	for i in '$(GIT)'-core/usr/bin/*; do \
+	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
+	done
+	# don't include arch, cvs, svn, email, and gitk man pages
+	for i in git-archimport git-cvs git-svn git-send-email gitk; do \
+	  rm -f '$(GIT)'-core/usr/share/man/man1/$$i*; \
+	done
+	chmod 0644 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
+	gzip -9 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
+	# contrib
+	install -d -m0755 '$(GIT)'-core/usr/share/doc/git-core
+	cp -R contrib '$(GIT)'-core/usr/share/doc/git-core/
+	install git-p4import.py '$(GIT)'-core/usr/share/doc/git-core/contrib/
+	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type f | \
+	  xargs chmod 0644
+	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type d | \
+	  xargs chmod 0755
+	find '$(GIT)'-core/usr/share/doc/git-core/ -name .gitignore | \
+	  xargs rm -f
+	# upstream changelog
+	test -r changelog || ln -s debian/changelog.upstream changelog
+
+install-indep: build-arch-stamp build-indep-stamp
+	rm -rf '$(TMP)'
+	install -d -m0755 '$(TMP)'
+	DESTDIR='$(TMP)' $(MAKE) install install-doc \
+	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
+	  2>/dev/null
+	# git-doc
+	rm -rf '$(GIT)'-doc
+	install -d -m0755 '$(GIT)'-doc
+	# git-cvs, git-svn
+	for i in cvs svn; do \
+	  rm -rf '$(GIT)'-$$i && \
+	  install -d -m0755 '$(GIT)'-$$i/usr/bin && \
+	  install -m0755 '$(TMP)'/usr/bin/git-$$i* '$(GIT)'-$$i/usr/bin/ && \
+	  install -d -m0755 '$(GIT)'-$$i/usr/share/man/man1 && \
+	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
+	    '$(GIT)'-$$i/usr/share/man/man1/ && \
+	  gzip -9 '$(GIT)'-$$i/usr/share/man/man1/*.1 || exit 1; \
+	done
+	# git-arch
+	rm -rf '$(GIT)'-arch
+	install -d -m0755 '$(GIT)'-arch/usr/bin
+	install -m0755 '$(TMP)'/usr/bin/git-archimport '$(GIT)'-arch/usr/bin/
+	install -d -m0755 '$(GIT)'-arch/usr/share/man/man1
+	install -m0644 '$(TMP)'/usr/share/man/man1/git-archimport.1 \
+	  '$(GIT)'-arch/usr/share/man/man1/
+	gzip -9 '$(GIT)'-arch/usr/share/man/man1/*.1
+	# git-email
+	rm -rf '$(GIT)'-email
+	install -d -m0755 '$(GIT)'-email/usr/bin
+	install -m0755 '$(TMP)'/usr/bin/git-send-email '$(GIT)'-email/usr/bin/
+	install -d -m0755 '$(GIT)'-email/usr/share/man/man1
+	install -m0644 '$(TMP)'/usr/share/man/man1/git-send-email.1 \
+	  '$(GIT)'-email/usr/share/man/man1/
+	gzip -9 '$(GIT)'-email/usr/share/man/man1/*.1
+	# git-daemon-run
+	rm -rf '$(GIT)'-daemon-run
+	install -d -m0755 '$(GIT)'-daemon-run/etc/sv/git-daemon/log
+	install -m0755 debian/git-daemon/run \
+	  '$(GIT)'-daemon-run/etc/sv/git-daemon/run
+	install -m0755 debian/git-daemon/log/run \
+	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/run
+	ln -s /var/run/sv.git-daemon \
+	  '$(GIT)'-daemon-run/etc/sv/git-daemon/supervise
+	ln -s /var/run/sv.git-daemon.log \
+	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/supervise
+	# git-gui
+	rm -rf '$(GIT)'-gui
+	install -d -m0755 '$(GIT)'-gui/usr/bin
+	install -m0755 '$(TMP)'/usr/bin/git-gui '$(GIT)'-gui/usr/bin/
+	install -m0755 '$(TMP)'/usr/bin/git-citool '$(GIT)'-gui/usr/bin/
+	# gitk
+	rm -rf '$(GIT)'k
+	install -d -m0755 '$(GIT)'k/usr/bin
+	install -m0755 '$(TMP)'/usr/bin/gitk '$(GIT)'k/usr/bin/gitk
+	install -d -m0755 '$(GIT)'k/usr/share/man/man1
+	install -m0644 '$(TMP)'/usr/share/man/man1/gitk.1 \
+	  '$(GIT)'k/usr/share/man/man1/
+	gzip -9 '$(GIT)'k/usr/share/man/man1/*.1
+	# gitweb
+	rm -rf '$(GIT)'web
+	install -d -m0755 '$(GIT)'web/usr/lib/cgi-bin
+	install -m0755 gitweb/gitweb.cgi '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
+	install -d -m0755 '$(GIT)'web/var/www
+	install -m0644 gitweb/gitweb.css '$(GIT)'web/var/www/gitweb.css
+	install -m0644 gitweb/git-favicon.png \
+	  '$(GIT)'web/var/www/git-favicon.png
+	install -m0644 gitweb/git-logo.png '$(GIT)'web/var/www/git-logo.png
+	install -d -m0755 '$(GIT)'web/etc
+	install -m0644 debian/gitweb.conf '$(GIT)'web/etc/gitweb.conf
+	install -d -m0755 '$(GIT)'web/var/cache/git/
+	# upstream changelog
+	test -r changelog || ln -s debian/changelog.upstream changelog
+
+binary: binary-arch binary-indep
+binary-arch: install-arch git-core.deb
+	rm -f debian/substvars
+	dpkg-shlibdeps '$(GIT)'-core/usr/bin/*
+	dpkg-gencontrol -isp -pgit-core -P'$(GIT)'-core
+	dpkg -b '$(GIT)'-core ..
+binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
+	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb
+	rm -f debian/substvars
+	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web; do \
+	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
+	  dpkg -b '$(GIT)'$$i .. || exit 1; \
+	done
+
+.PHONY: patch build clean install install-arch install-indep binary \
+	  binary-arch binary-indep
+
+include debian/implicit
