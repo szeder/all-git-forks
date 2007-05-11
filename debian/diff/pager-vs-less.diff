@@ -1,0 +1,13 @@
+diff --git a/pager.c b/pager.c
+index 4587fbb..f9d4387 100644
+--- a/pager.c
++++ b/pager.c
+@@ -34,7 +34,7 @@ void setup_pager(void)
+ 	if (!pager)
+ 		pager = getenv("PAGER");
+ 	if (!pager)
+-		pager = "less";
++		pager = "pager";
+ 	else if (!*pager || !strcmp(pager, "cat"))
+ 		return;
+ 

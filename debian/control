@@ -1,0 +1,196 @@
+Source: git-core
+Section: devel
+Priority: optional
+Maintainer: Gerrit Pape <pape@smarden.org>
+Build-Depends: libz-dev, libcurl3-gnutls-dev | libcurl3-dev, asciidoc (>> 7.0.2-3), xmlto, libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip
+Standards-Version: 3.7.2.0
+
+Package: git-core
+Architecture: any
+Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl
+Recommends: git-doc, patch, less, rsync, curl, ssh-client
+Suggests: git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb, cogito
+Replaces: cogito (<< 0.16rc2-0)
+Conflicts: git (<< 4.3.20-8), qgit (<< 1.5.5)
+Description: fast, scalable, distributed revision control system
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides the git core components.
+
+Package: git-doc
+Section: doc
+Architecture: all
+Suggests: git-core, git-arch, git-cvs, git-svn, git-email, gitk, gitweb
+Description: fast, scalable, distributed revision control system (documentation)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides the documentation.
+
+Package: git-arch
+Architecture: all
+Depends: git-core (= ${Source-Version}), tla
+Recommends: git-doc
+Suggests: bazaar
+Replaces: cogito (<< 0.16rc2-0)
+Description: fast, scalable, distributed revision control system (arch interoperability)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides tools for importing development history from arch
+ repositories.
+
+Package: git-cvs
+Architecture: all
+Depends: git-core (= ${Source-Version}), cvsps (>> 2.1-0), libdbd-sqlite3-perl
+Recommends: git-doc
+Suggests: cvs
+Replaces: cogito (<< 0.16rc2-0)
+Description: fast, scalable, distributed revision control system (cvs interoperability)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides tools for importing development history from cvs
+ repositories.
+
+Package: git-svn
+Architecture: all
+Depends: git-core (= ${Source-Version}), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
+Recommends: git-doc
+Suggests: subversion
+Replaces: cogito (<< 0.16rc2-0)
+Description: fast, scalable, distributed revision control system (svn interoperability)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides tools for importing development history from
+ subversion repositories.
+
+Package: git-p4
+Architecture: all
+Depends: git-core (= ${Source-Version}), python
+Recommends: git-doc
+Description: fast, scalable, distributed revision control system (p4 interoperability)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides tools for importing development history from
+ perforce repositories.
+
+Package: git-email
+Architecture: all
+Depends: git-core (= ${Source-Version}), libmail-sendmail-perl, libemail-valid-perl
+Recommends: git-doc
+Replaces: cogito (<< 0.16rc2-0)
+Description: fast, scalable, distributed revision control system (email add-on)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides tools for sending series of patch emails.
+
+Package: git-daemon-run
+Architecture: all
+Depends: git-core (= ${Source-Version}), runit, adduser
+Description: fast, scalable, distributed revision control system (git-daemon service)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides a git-daemon service.
+
+Package: git-gui
+Architecture: all
+Depends: git-core (= ${Source-Version}), tk8.4
+Recommends: git-doc
+Description: fast, scalable, distributed revision control system (GUI)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides the git graphical user interface.
+
+Package: gitk
+Architecture: all
+Depends: git-core (= ${Source-Version}), tk8.4
+Recommends: git-doc
+Replaces: cogito (<< 0.16rc2-0)
+Description: fast, scalable, distributed revision control system (revision tree visualizer)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides the gitk program, a tcl/tk revision tree visualizer.
+
+Package: gitweb
+Architecture: all
+Depends: git-core (= ${Source-Version}), perl
+Recommends: git-doc
+Description: fast, scalable, distributed revision control system (web interface)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used mainly for various open
+ source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides a web interface for browsing git repositories.

@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+test "$1" = 'configure' || exit 0
+
+getent passwd gitlog >/dev/null || \
+  adduser --system --home /nonexistent --no-create-home gitlog
+
+# enable git-daemon service
+test -e /var/service/git-daemon || test -h /var/service/git-daemon || \
+  ln -s /etc/sv/git-daemon /var/service/ || exit 1
