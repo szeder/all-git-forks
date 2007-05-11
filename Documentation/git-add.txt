@@ -7,7 +7,8 @@ git-add - Add file contents to the changeset to be committed next
 
 SYNOPSIS
 --------
-'git-add' [-n] [-v] [-f] [--interactive | -i] [-u] [--] <file>...
+'git-add' [-n] [-v] [-f] (-u [[--] <file>...] | [--] <file>...)
+'git-add' (--interactive | -i)
 
 DESCRIPTION
 -----------
