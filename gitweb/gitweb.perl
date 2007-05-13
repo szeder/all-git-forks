@@ -1060,6 +1060,11 @@ sub git_get_hash_by_path {
 	my $line = <$fd>;
 	close $fd or return undef;
 
+	if (!defined $line) {
+		# there is no tree or hash given by $path at $base
+		return undef;
+	}
+
 	#'100644 blob 0fa3f3a66fb6a137f6ec2c19351ed4d807070ffa	panic.c'
 	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t/;
 	if (defined $type && $type ne $2) {
@@ -1376,8 +1381,12 @@ sub parse_commit_text {
 
 	pop @commit_lines; # Remove '\0'
 
+	if (! @commit_lines) {
+		return;
+	}
+
 	my $header = shift @commit_lines;
-	if (!($header =~ m/^[0-9a-fA-F]{40}/)) {
+	if ($header !~ m/^[0-9a-fA-F]{40}/) {
 		return;
 	}
 	($co{'id'}, my @parents) = split ' ', $header;
@@ -2660,9 +2669,10 @@ sub git_patchset_body {
 		# check if current patch belong to current raw line
 		# and parse raw git-diff line if needed
 		if (defined $diffinfo &&
+		    defined $from_id && defined $to_id &&
 		    from_ids_eq($diffinfo->{'from_id'}, $from_id) &&
 		    $diffinfo->{'to_id'} eq $to_id) {
-			# this is split patch
+			# this is continuation of a split patch
 			print "<div class=\"patch cont\">\n";
 		} else {
 			# advance raw git-diff output if needed
@@ -3408,6 +3418,11 @@ sub git_tag {
 	git_header_html();
 	git_print_page_nav('','', $head,undef,$head);
 	my %tag = parse_tag($hash);
+
+	if (! %tag) {
+		die_error(undef, "Unknown tag object");
+	}
+
 	git_print_header_div('commit', esc_html($tag{'name'}), $hash);
 	print "<div class=\"title_text\">\n" .
 	      "<table cellspacing=\"0\">\n" .
