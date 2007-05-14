@@ -2,8 +2,9 @@ git-core (1:1.5.1.4-1.1) unstable; urgency=low
 
   * debian/diff/0000-maint-branch-from-20070514.diff: new; snapshot upstream
     maint branch 20070514.
+  * deian/rules: reverse order when applying diffs (fix typo).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 14 May 2007 13:05:56 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 14 May 2007 13:07:05 +0000
 
 git-core (1:1.5.1.4-1) unstable; urgency=medium
 
