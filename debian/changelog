@@ -1,10 +1,10 @@
-git-core (1:1.5.2~rc3-0) experimental; urgency=low
+git-core (1:1.5.2~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.
   * debian/diff/0002-Optimize-directory-listing-with-pathspec-limiter.diff:
     remove; included upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 14 May 2007 09:32:16 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 14 May 2007 09:38:06 +0000
 
 git-core (1:1.5.1.4-1) unstable; urgency=medium
 
