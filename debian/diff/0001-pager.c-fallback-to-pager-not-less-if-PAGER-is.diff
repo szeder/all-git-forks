@@ -1,0 +1,26 @@
+From 10c8016d374a005738dea166a0f2e22cf0853b7c Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Wed, 9 May 2007 08:36:16 +0000
+Subject: [PATCH] pager.c: fallback to 'pager' not 'less' if $PAGER is unset.
+
+http://bugs.debian.org/369742
+---
+ pager.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/pager.c b/pager.c
+index 5f280ab..35202d3 100644
+--- a/pager.c
++++ b/pager.c
+@@ -34,7 +34,7 @@ void setup_pager(void)
+ 	if (!pager)
+ 		pager = getenv("PAGER");
+ 	if (!pager)
+-		pager = "less";
++		pager = "pager";
+ 	else if (!*pager || !strcmp(pager, "cat"))
+ 		return;
+ 
+-- 
+1.5.1.3
+

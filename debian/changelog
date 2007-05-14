@@ -1,3 +1,15 @@
+git-core (1:1.5.1.4-1) unstable; urgency=medium
+
+  * new upstream point release.
+  * debian/diff/pager-vs-less.diff: rename to
+    0001-pager.c-fallback-to-pager-not-less-if-PAGER-is.diff; adapt.
+  * debian/diff/0002-Optimize-directory-listing-with-pathspec-limiter.diff:
+    new: Optimize directory listing with pathspec limiter (closes: #420671).
+  * debian/git-daemon-run.postinst: restart git-daemon service if it was
+    running.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 09 May 2007 08:48:50 +0000
+
 git-core (1:1.5.2~rc2-1) experimental; urgency=low
 
   * new upstream release candidate.
