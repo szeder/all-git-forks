@@ -3,8 +3,10 @@ git-core (1:1.5.2~rc3-1.1) experimental; urgency=low
   * debian/diff/0000-maint-branch-from-20070514.diff: remove; obsolete.
   * debian/control: package git-p4: Section: contrib/devel (closes:
     #422755).
+  * debian/control: package git-p4: Depends: git-core (>= ${source:Version})
+    instead of (= ${Source-Version}) (to support binNMUs).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 15 May 2007 12:23:40 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 15 May 2007 12:33:06 +0000
 
 git-core (1:1.5.1.4-2) unstable; urgency=low
 

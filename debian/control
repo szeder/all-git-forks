@@ -100,7 +100,7 @@ Description: fast, scalable, distributed revision control system (svn interopera
 Package: git-p4
 Section: contrib/devel
 Architecture: all
-Depends: git-core (= ${Source-Version}), python
+Depends: git-core (>= ${source:Version}), python
 Recommends: git-doc
 Description: fast, scalable, distributed revision control system (p4 interoperability)
  Git is popular version control system designed to handle very large
