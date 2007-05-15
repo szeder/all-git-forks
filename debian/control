@@ -42,7 +42,7 @@ Description: fast, scalable, distributed revision control system (documentation)
 
 Package: git-arch
 Architecture: all
-Depends: git-core (= ${Source-Version}), tla
+Depends: git-core (>= ${source:Version}), tla
 Recommends: git-doc
 Suggests: bazaar
 Replaces: cogito (<< 0.16rc2-0)
@@ -61,7 +61,7 @@ Description: fast, scalable, distributed revision control system (arch interoper
 
 Package: git-cvs
 Architecture: all
-Depends: git-core (= ${Source-Version}), cvsps (>> 2.1-0), libdbd-sqlite3-perl
+Depends: git-core (>= ${source:Version}), cvsps (>> 2.1-0), libdbd-sqlite3-perl
 Recommends: git-doc
 Suggests: cvs
 Replaces: cogito (<< 0.16rc2-0)
@@ -80,7 +80,7 @@ Description: fast, scalable, distributed revision control system (cvs interopera
 
 Package: git-svn
 Architecture: all
-Depends: git-core (= ${Source-Version}), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
+Depends: git-core (>= ${source:Version}), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
 Recommends: git-doc
 Suggests: subversion
 Replaces: cogito (<< 0.16rc2-0)
@@ -116,7 +116,7 @@ Description: fast, scalable, distributed revision control system (p4 interoperab
 
 Package: git-email
 Architecture: all
-Depends: git-core (= ${Source-Version}), libmail-sendmail-perl, libemail-valid-perl
+Depends: git-core (>= ${source:Version}), libmail-sendmail-perl, libemail-valid-perl
 Recommends: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (email add-on)
@@ -133,7 +133,7 @@ Description: fast, scalable, distributed revision control system (email add-on)
 
 Package: git-daemon-run
 Architecture: all
-Depends: git-core (= ${Source-Version}), runit, adduser
+Depends: git-core (>= ${source:Version}), runit, adduser
 Description: fast, scalable, distributed revision control system (git-daemon service)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used mainly for various open
@@ -148,7 +148,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
 
 Package: git-gui
 Architecture: all
-Depends: git-core (= ${Source-Version}), tk8.4
+Depends: git-core (>= ${source:Version}), tk8.4
 Recommends: git-doc
 Description: fast, scalable, distributed revision control system (GUI)
  Git is popular version control system designed to handle very large
@@ -164,7 +164,7 @@ Description: fast, scalable, distributed revision control system (GUI)
 
 Package: gitk
 Architecture: all
-Depends: git-core (= ${Source-Version}), tk8.4
+Depends: git-core (>= ${source:Version}), tk8.4
 Recommends: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)
@@ -181,7 +181,7 @@ Description: fast, scalable, distributed revision control system (revision tree 
 
 Package: gitweb
 Architecture: all
-Depends: git-core (= ${Source-Version}), perl
+Depends: git-core (>= ${source:Version}), perl
 Recommends: git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
