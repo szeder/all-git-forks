@@ -98,6 +98,7 @@ Description: fast, scalable, distributed revision control system (svn interopera
  subversion repositories.
 
 Package: git-p4
+Section: contrib/devel
 Architecture: all
 Depends: git-core (= ${Source-Version}), python
 Recommends: git-doc
