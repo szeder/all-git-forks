@@ -146,6 +146,19 @@ our %feature = (
 		'override' => 0,
 		'default' => [1]},
 
+	# Enable grep search, which will list the files in currently selected
+	# tree containing the given string. Enabled by default. This can be
+	# potentially CPU-intensive, of course.
+
+	# To enable system wide have in $GITWEB_CONFIG
+	# $feature{'grep'}{'default'} = [1];
+	# To have project specific config enable override in $GITWEB_CONFIG
+	# $feature{'grep'}{'override'} = 1;
+	# and in project config gitweb.grep = 0|1;
+	'grep' => {
+		'override' => 0,
+		'default' => [1]},
+
 	# Enable the pickaxe search, which will list the commits that modified
 	# a given string in a file. This can be practical and quite faster
 	# alternative to 'blame', but still potentially CPU-intensive.
@@ -243,6 +256,18 @@ sub gitweb_have_snapshot {
 	my $have_snapshot = (defined $ctype && defined $suffix);
 
 	return $have_snapshot;
+}
+
+sub feature_grep {
+	my ($val) = git_get_project_config('grep', '--bool');
+
+	if ($val eq 'true') {
+		return (1);
+	} elsif ($val eq 'false') {
+		return (0);
+	}
+
+	return ($_[0]);
 }
 
 sub feature_pickaxe {
@@ -364,10 +389,17 @@ if (defined $page) {
 	}
 }
 
+our $searchtype = $cgi->param('st');
+if (defined $searchtype) {
+	if ($searchtype =~ m/[^a-z]/) {
+		die_error(undef, "Invalid searchtype parameter");
+	}
+}
+
 our $searchtext = $cgi->param('s');
 our $search_regexp;
 if (defined $searchtext) {
-	if ($searchtext =~ m/[^a-zA-Z0-9_\.\/\-\+\:\@ ]/) {
+	if ($searchtype ne 'grep' and $searchtype ne 'pickaxe' and $searchtext =~ m/[^a-zA-Z0-9_\.\/\-\+\:\@ ]/) {
 		die_error(undef, "Invalid search parameter");
 	}
 	if (length($searchtext) < 2) {
@@ -1114,7 +1146,9 @@ sub git_get_project_description {
 	open my $fd, "$projectroot/$path/description" or return undef;
 	my $descr = <$fd>;
 	close $fd;
-	chomp $descr;
+	if (defined $descr) {
+		chomp $descr;
+	}
 	return $descr;
 }
 
@@ -1901,6 +1935,8 @@ EOF
 		}
 		print "\n";
 	}
+	print "</div>\n";
+
 	my ($have_search) = gitweb_check_feature('search');
 	if ((defined $project) && ($have_search)) {
 		if (!defined $searchtext) {
@@ -1923,14 +1959,13 @@ EOF
 		      $cgi->hidden(-name => "a") . "\n" .
 		      $cgi->hidden(-name => "h") . "\n" .
 		      $cgi->popup_menu(-name => 'st', -default => 'commit',
-		                       -values => ['commit', 'author', 'committer', 'pickaxe']) .
+		                       -values => ['commit', 'grep', 'author', 'committer', 'pickaxe']) .
 		      $cgi->sup($cgi->a({-href => href(action=>"search_help")}, "?")) .
 		      " search:\n",
 		      $cgi->textfield(-name => "s", -value => $searchtext) . "\n" .
 		      "</div>" .
 		      $cgi->end_form() . "\n";
 	}
-	print "</div>\n";
 }
 
 sub git_footer_html {
@@ -2720,8 +2755,9 @@ sub git_patchset_body {
 					delete $from{'href'};
 				}
 			}
+
 			$to{'file'} = $diffinfo->{'to_file'} || $diffinfo->{'file'};
-			if ($diffinfo->{'status'} ne "D") { # not deleted file
+			if ($diffinfo->{'to_id'} ne ('0' x 40)) { # file exists in result
 				$to{'href'} = href(action=>"blob", hash_base=>$hash,
 				                   hash=>$diffinfo->{'to_id'},
 				                   file_name=>$to{'file'});
@@ -2877,7 +2913,14 @@ sub git_patchset_body {
 	} continue {
 		print "</div>\n"; # class="patch"
 	}
-	print "<div class=\"diff nodifferences\">No differences found</div>\n" if (!$patch_number);
+
+	if ($patch_number == 0) {
+		if (@hash_parents > 1) {
+			print "<div class=\"diff nodifferences\">Trivial merge</div>\n";
+		} else {
+			print "<div class=\"diff nodifferences\">No differences found</div>\n";
+		}
+	}
 
 	print "</div>\n"; # class="patchset"
 }
@@ -4615,6 +4658,12 @@ sub git_search {
 			die_error('403 Permission denied', "Permission denied");
 		}
 	}
+	if ($searchtype eq 'grep') {
+		my ($have_grep) = gitweb_check_feature('grep');
+		if (!$have_grep) {
+			die_error('403 Permission denied', "Permission denied");
+		}
+	}
 
 	git_header_html();
 
@@ -4676,8 +4725,10 @@ sub git_search {
 		my $alternate = 1;
 		$/ = "\n";
 		my $git_command = git_cmd_str();
+		my $searchqtext = $searchtext;
+		$searchqtext =~ s/'/'\\''/;
 		open my $fd, "-|", "$git_command rev-list $hash | " .
-			"$git_command diff-tree -r --stdin -S\'$searchtext\'";
+			"$git_command diff-tree -r --stdin -S\'$searchqtext\'";
 		undef %co;
 		my @files;
 		while (my $line = <$fd>) {
@@ -4731,6 +4782,73 @@ sub git_search {
 
 		print "</table>\n";
 	}
+
+	if ($searchtype eq 'grep') {
+		git_print_page_nav('','', $hash,$co{'tree'},$hash);
+		git_print_header_div('commit', esc_html($co{'title'}), $hash);
+
+		print "<table cellspacing=\"0\">\n";
+		my $alternate = 1;
+		my $matches = 0;
+		$/ = "\n";
+		open my $fd, "-|", git_cmd(), 'grep', '-n', '-i', '-E', $searchtext, $co{'tree'};
+		my $lastfile = '';
+		while (my $line = <$fd>) {
+			chomp $line;
+			my ($file, $lno, $ltext, $binary);
+			last if ($matches++ > 1000);
+			if ($line =~ /^Binary file (.+) matches$/) {
+				$file = $1;
+				$binary = 1;
+			} else {
+				(undef, $file, $lno, $ltext) = split(/:/, $line, 4);
+			}
+			if ($file ne $lastfile) {
+				$lastfile and print "</td></tr>\n";
+				if ($alternate++) {
+					print "<tr class=\"dark\">\n";
+				} else {
+					print "<tr class=\"light\">\n";
+				}
+				print "<td class=\"list\">".
+					$cgi->a({-href => href(action=>"blob", hash=>$co{'hash'},
+							       file_name=>"$file"),
+						-class => "list"}, esc_path($file));
+				print "</td><td>\n";
+				$lastfile = $file;
+			}
+			if ($binary) {
+				print "<div class=\"binary\">Binary file</div>\n";
+			} else {
+				$ltext = untabify($ltext);
+				if ($ltext =~ m/^(.*)($searchtext)(.*)$/i) {
+					$ltext = esc_html($1, -nbsp=>1);
+					$ltext .= '<span class="match">';
+					$ltext .= esc_html($2, -nbsp=>1);
+					$ltext .= '</span>';
+					$ltext .= esc_html($3, -nbsp=>1);
+				} else {
+					$ltext = esc_html($ltext, -nbsp=>1);
+				}
+				print "<div class=\"pre\">" .
+					$cgi->a({-href => href(action=>"blob", hash=>$co{'hash'},
+							       file_name=>"$file").'#l'.$lno,
+						-class => "linenr"}, sprintf('%4i', $lno))
+					. ' ' .  $ltext . "</div>\n";
+			}
+		}
+		if ($lastfile) {
+			print "</td></tr>\n";
+			if ($matches > 1000) {
+				print "<div class=\"diff nodifferences\">Too many matches, listing trimmed</div>\n";
+			}
+		} else {
+			print "<div class=\"diff nodifferences\">No matches found</div>\n";
+		}
+		close $fd;
+
+		print "</table>\n";
+	}
 	git_footer_html();
 }
 
@@ -4741,6 +4859,20 @@ sub git_search_help {
 <dl>
 <dt><b>commit</b></dt>
 <dd>The commit messages and authorship information will be scanned for the given string.</dd>
+EOT
+	my ($have_grep) = gitweb_check_feature('grep');
+	if ($have_grep) {
+		print <<EOT;
+<dt><b>grep</b></dt>
+<dd>All files in the currently selected tree (HEAD unless you are explicitly browsing
+    a different one) are searched for the given
+<a href="http://en.wikipedia.org/wiki/Regular_expression">regular expression</a>
+(POSIX extended) and the matches are listed. On large
+trees, this search can take a while and put some strain on the server, so please use it with
+some consideration.</dd>
+EOT
+	}
+	print <<EOT;
 <dt><b>author</b></dt>
 <dd>Name and e-mail of the change author and date of birth of the patch will be scanned for the given string.</dd>
 <dt><b>committer</b></dt>
