@@ -1,3 +1,9 @@
+git-core (1:1.5.2-0) unstable; urgency=low
+
+  * new upstream release.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 21 May 2007 13:28:58 +0000
+
 git-core (1:1.5.2~rc3-2) experimental; urgency=low
 
   * debian/diff/0000-maint-branch-from-20070514.diff: remove; obsolete.
