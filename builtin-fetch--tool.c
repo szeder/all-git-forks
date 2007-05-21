@@ -6,11 +6,11 @@
 
 static char *get_stdin(void)
 {
-	int offset = 0;
+	size_t offset = 0;
 	char *data = xmalloc(CHUNK_SIZE);
 
 	while (1) {
-		int cnt = xread(0, data + offset, CHUNK_SIZE);
+		ssize_t cnt = xread(0, data + offset, CHUNK_SIZE);
 		if (cnt < 0)
 			die("error reading standard input: %s",
 			    strerror(errno));
@@ -42,7 +42,7 @@ static int update_ref(const char *action,
 	if (!rla)
 		rla = "(reflog update)";
 	snprintf(msg, sizeof(msg), "%s: %s", rla, action);
-	lock = lock_any_ref_for_update(refname, oldval);
+	lock = lock_any_ref_for_update(refname, oldval, 0);
 	if (!lock)
 		return 1;
 	if (write_ref_sha1(lock, sha1, msg) < 0)

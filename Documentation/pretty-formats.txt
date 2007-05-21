@@ -16,8 +16,8 @@ Here are some additional details for each format:
 * 'oneline'
 
 	  <sha1> <title line>
-
-	  This is designed to be as compact as possible.
++
+This is designed to be as compact as possible.
 
 * 'short'
 

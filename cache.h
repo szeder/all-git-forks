@@ -273,7 +273,6 @@ extern void rollback_lock_file(struct lock_file *);
 extern int delete_ref(const char *, const unsigned char *sha1);
 
 /* Environment bits from configuration mechanism */
-extern int use_legacy_headers;
 extern int trust_executable_bit;
 extern int has_symlinks;
 extern int assume_unchanged;
@@ -283,6 +282,8 @@ extern int warn_ambiguous_refs;
 extern int shared_repository;
 extern const char *apply_default_whitespace;
 extern int zlib_compression_level;
+extern int core_compression_level;
+extern int core_compression_seen;
 extern size_t packed_git_window_size;
 extern size_t packed_git_limit;
 extern size_t delta_base_cache_limit;
@@ -354,7 +355,6 @@ extern int move_temp_to_file(const char *tmpfile, const char *filename);
 extern int has_sha1_pack(const unsigned char *sha1, const char **ignore);
 extern int has_sha1_file(const unsigned char *sha1);
 extern void *map_sha1_file(const unsigned char *sha1, unsigned long *);
-extern int legacy_loose_object(unsigned char *);
 
 extern int has_pack_file(const unsigned char *sha1);
 extern int has_pack_index(const unsigned char *sha1);
@@ -463,7 +463,8 @@ struct ref {
 #define REF_HEADS	(1u << 1)
 #define REF_TAGS	(1u << 2)
 
-extern pid_t git_connect(int fd[2], char *url, const char *prog);
+#define CONNECT_VERBOSE       (1u << 0)
+extern pid_t git_connect(int fd[2], char *url, const char *prog, int flags);
 extern int finish_connect(pid_t pid);
 extern int path_match(const char *path, int nr, char **match);
 extern int match_refs(struct ref *src, struct ref *dst, struct ref ***dst_tail,
@@ -548,6 +549,7 @@ extern void trace_argv_printf(const char **argv, int count, const char *format, 
 /* convert.c */
 extern char *convert_to_git(const char *path, const char *src, unsigned long *sizep);
 extern char *convert_to_working_tree(const char *path, const char *src, unsigned long *sizep);
+extern void *convert_sha1_file(const char *path, const unsigned char *sha1, unsigned int mode, enum object_type *type, unsigned long *size);
 
 /* match-trees.c */
 void shift_tree(const unsigned char *, const unsigned char *, unsigned char *, int);
