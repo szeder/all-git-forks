@@ -1,6 +1,0 @@
-#!/bin/sh
-set -e
-
-test "$1" = 'configure' || exit 0
-
-update-alternatives --install /usr/bin/git git /usr/bin/git-scm 70

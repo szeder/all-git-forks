@@ -1,8 +1,14 @@
 git-core (1:1.5.2-0) unstable; urgency=low
 
   * new upstream release.
+  * /usr/bin/git transition (thx Ian Beckwith!):
+    * debian/git-core.preinst: new; remove /usr/bin/git alternative if
+      upgrading from versions older than 1:1.5.2~rc3-2.
+    * debian/git-core.prerm, debian/git-core.postinst: remove; no longer
+      handle /usr/bin/git alternative through update-alternatives.
+    * debian/rules: no longer install git program as git-scm.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 21 May 2007 13:28:58 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 22 May 2007 14:15:32 +0000
 
 git-core (1:1.5.2~rc3-2) experimental; urgency=low
 

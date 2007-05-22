@@ -74,9 +74,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/bin/$$i*; \
 	done
-	# handle git program through alternatives mechanism (see #342363),
-	# rename to git-scm
-	mv -f '$(GIT)'-core/usr/bin/git '$(GIT)'-core/usr/bin/git-scm
 	for i in '$(GIT)'-core/usr/bin/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
