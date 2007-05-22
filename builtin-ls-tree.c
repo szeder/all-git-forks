@@ -62,7 +62,7 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 	const char *type = blob_type;
 	unsigned long size;
 
-	if (S_ISDIRLNK(mode)) {
+	if (S_ISGITLINK(mode)) {
 		/*
 		 * Maybe we want to have some recursive version here?
 		 *
