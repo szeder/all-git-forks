@@ -1,5 +1,6 @@
 git-core (1:1.5.2-0) unstable; urgency=low
 
+  * merge branch debian-experimental.
   * new upstream release.
   * /usr/bin/git transition (thx Ian Beckwith!):
     * debian/git-core.preinst: new; remove /usr/bin/git alternative if
@@ -8,7 +9,7 @@ git-core (1:1.5.2-0) unstable; urgency=low
       handle /usr/bin/git alternative through update-alternatives.
     * debian/rules: no longer install git program as git-scm.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 22 May 2007 14:15:32 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 22 May 2007 14:50:37 +0000
 
 git-core (1:1.5.2~rc3-2) experimental; urgency=low
 
