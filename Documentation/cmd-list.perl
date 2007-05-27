@@ -178,6 +178,7 @@ git-ssh-fetch                           synchingrepositories
 git-ssh-upload                          synchingrepositories
 git-status                              mainporcelain
 git-stripspace                          purehelpers
+git-submodule                           mainporcelain
 git-svn                                 foreignscminterface
 git-svnimport                           foreignscminterface
 git-symbolic-ref                        plumbingmanipulators
