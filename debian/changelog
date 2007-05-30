@@ -1,15 +1,18 @@
-git-core (1:1.5.2-0) unstable; urgency=low
+git-core (1:1.5.2-1) unstable; urgency=low
 
   * merge branch debian-experimental.
   * new upstream release.
-  * /usr/bin/git transition (thx Ian Beckwith!):
+    * gitweb: choose appropriate view for file type if a= parameter missing
+      (closes: #410465).
+    * git fetch -q is supported (closes: #423165).
+  * /usr/bin/git transition (thx Ian Beckwith!).
     * debian/git-core.preinst: new; remove /usr/bin/git alternative if
       upgrading from versions older than 1:1.5.2~rc3-2.
     * debian/git-core.prerm, debian/git-core.postinst: remove; no longer
       handle /usr/bin/git alternative through update-alternatives.
     * debian/rules: no longer install git program as git-scm.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 22 May 2007 14:50:37 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 30 May 2007 12:38:45 +0000
 
 git-core (1:1.5.2~rc3-2) experimental; urgency=low
 
