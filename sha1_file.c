@@ -33,7 +33,7 @@ const unsigned char null_sha1[20];
 
 static unsigned int sha1_file_open_flag = O_NOATIME;
 
-signed char hexval_table[256] = {
+const signed char hexval_table[256] = {
 	 -1, -1, -1, -1, -1, -1, -1, -1,		/* 00-07 */
 	 -1, -1, -1, -1, -1, -1, -1, -1,		/* 08-0f */
 	 -1, -1, -1, -1, -1, -1, -1, -1,		/* 10-17 */
@@ -1687,20 +1687,25 @@ static int matches_pack_name(struct packed_git *p, const char *ig)
 
 static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e, const char **ignore_packed)
 {
+	static struct packed_git *last_found = (void *)1;
 	struct packed_git *p;
 	off_t offset;
 
 	prepare_packed_git();
+	if (!packed_git)
+		return 0;
+	p = (last_found == (void *)1) ? packed_git : last_found;
 
-	for (p = packed_git; p; p = p->next) {
+	do {
 		if (ignore_packed) {
 			const char **ig;
 			for (ig = ignore_packed; *ig; ig++)
 				if (!matches_pack_name(p, *ig))
 					break;
 			if (*ig)
-				continue;
+				goto next;
 		}
+
 		offset = find_pack_entry_one(sha1, p);
 		if (offset) {
 			/*
@@ -1713,14 +1718,23 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e, cons
 			 */
 			if (p->pack_fd == -1 && open_packed_git(p)) {
 				error("packfile %s cannot be accessed", p->pack_name);
-				continue;
+				goto next;
 			}
 			e->offset = offset;
 			e->p = p;
 			hashcpy(e->sha1, sha1);
+			last_found = p;
 			return 1;
 		}
-	}
+
+		next:
+		if (p == last_found)
+			p = packed_git;
+		else
+			p = p->next;
+		if (p == last_found)
+			p = p->next;
+	} while (p);
 	return 0;
 }
 
