@@ -7,6 +7,7 @@ Git is a fast distributed revision control system.
 This manual is designed to be readable by someone with basic unix
 command-line skills, but no previous knowledge of git.
 
+// Shouldn't section labels beging with capital letter?
 <<repositories-and-branches>> and <<exploring-git-history>> explain how
 to fetch and study a project using git--read these chapters to learn how
 to build and test a particular version of a software project, search for
@@ -24,6 +25,7 @@ pages.  For a command such as "git clone", just use
 $ man git-clone
 ------------------------------------------------
 
+// is this "without any explanation" really needed?
 See also <<git-quick-start>> for a brief overview of git commands,
 without any explanation.
 
@@ -47,6 +49,7 @@ to download a copy of an existing repository for a project that you
 are interested in.  If you don't already have a project in mind, here
 are some interesting examples:
 
+// git is I think around 18MB download nowadays
 ------------------------------------------------
 	# git itself (approx. 10MB download):
 $ git clone git://git.kernel.org/pub/scm/git/git.git
@@ -75,20 +78,25 @@ collection of files.  It stores the history as a compressed
 collection of interrelated snapshots (versions) of the project's
 contents.
 
+// Here person new to SCM wouldn't know what "branch" is
 A single git repository may contain multiple branches.  It keeps track
 of them by keeping a list of <<def_head,heads>> which reference the
 latest version on each branch; the gitlink:git-branch[1] command shows
 you the list of branch heads:
 
+// git branch -a mentioned, perhaps? particularly with
+// separate remote setup which is now default
 ------------------------------------------------
 $ git branch
 * master
 ------------------------------------------------
 
+// single _local_ branch head?
 A freshly cloned repository contains a single branch head, by default
 named "master", with the working directory initialized to the state of
 the project referred to by that branch head.
 
+// Tag is named version
 Most projects also use <<def_tag,tags>>.  Tags, like heads, are
 references into the project's history, and can be listed using the
 gitlink:git-tag[1] command:
@@ -113,6 +121,8 @@ while heads are expected to advance as development progresses.
 Create a new branch head pointing to one of these versions and check it
 out using gitlink:git-checkout[1]:
 
+// or "git checkout v2.6.13" with the detached HEAD support
+// or reference to further section
 ------------------------------------------------
 $ git checkout -b new v2.6.13
 ------------------------------------------------
@@ -134,11 +144,13 @@ the current branch to point at v2.6.17 instead, with
 $ git reset --hard v2.6.17
 ------------------------------------------------
 
+// with reflog, and reflog protection, not _that_ carefully
 Note that if the current branch head was your only reference to a
 particular point in history, then resetting that branch may leave you
 with no way to find the history it used to point to; so use this command
 carefully.
 
+// Either level up, or sth. See title of next section
 [[understanding-commits]]
 Understanding History: Commits
 ------------------------------
@@ -195,6 +207,7 @@ In fact, in <<git-internals>> we shall see that everything stored in git
 history, including file data and directory contents, is stored in an object
 with a name that is a hash of its contents.
 
+// perhaps: "Understanding history: parents, and reachability"
 [[understanding-reachability]]
 Understanding history: commits, parents, and reachability
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -352,6 +365,7 @@ $ git branch -r
   origin/todo
 ------------------------------------------------
 
+// yYou can checkout to detached head
 You cannot check out these remote-tracking branches, but you can
 examine them on a branch of your own, just as you would a tag:
 
@@ -447,6 +461,7 @@ gitlink:git-config[1] for details.)
 Exploring git history
 =====================
 
+// Repetition (?)
 Git is best thought of as a tool for storing the history of a
 collection of files.  It does this by storing compressed snapshots of
 the contents of a file heirarchy, together with "commits" which show
@@ -519,12 +534,15 @@ which will run gitk and label the commit it chose with a marker that
 says "bisect".  Chose a safe-looking commit nearby, note its commit
 id, and check it out with:
 
+// or use "git bisect next", not documented except usage string
+// see: "git bisect -h"
 -------------------------------------------------
 $ git reset --hard fb47ddb2db...
 -------------------------------------------------
 
 then test, run "bisect good" or "bisect bad" as appropriate, and
 continue.
+// mention logfile, and automatic scripting?
 
 [[naming-commits]]
 Naming commits
@@ -590,6 +608,7 @@ name for that commit:
 $ git rev-parse origin
 e05db0fd4f31dde7005f075a84f96b360d05984b
 -------------------------------------------------
+// Mention reflog here?
 
 [[creating-tags]]
 Creating tags
@@ -620,6 +639,7 @@ can also make more specific requests:
 -------------------------------------------------
 $ git log v2.5..	# commits since (not reachable from) v2.5
 $ git log test..master	# commits reachable from master but not test
+//                      # think: between test and master
 $ git log master..test	# ...reachable from test but not master
 $ git log master...test	# ...reachable from either test or master,
 			#    but not both
@@ -658,6 +678,8 @@ Generating diffs
 You can generate diffs between any two versions using
 gitlink:git-diff[1]:
 
+// better use "git diff master test"; the A..B syntax is only helper
+// to make copy'n paste, and changing log to diff easier
 -------------------------------------------------
 $ git diff master..test
 -------------------------------------------------
@@ -672,6 +694,7 @@ will generate a file with a patch for each commit reachable from test
 but not from master.  Note that if master also has commits which are
 not reachable from test, then the combined result of these patches
 will not be the same as the diff produced by the git-diff example.
+// History diagram?
 
 [[viewing-old-file-versions]]
 Viewing old file versions
@@ -885,6 +908,7 @@ Creating a changelog and tarball for a software release
 The gitlink:git-archive[1] command can create a tar or zip archive from
 any version of a project; for example:
 
+// --format=tar is now the default
 -------------------------------------------------
 $ git archive --format=tar --prefix=project/ HEAD | gzip >latest.tar.gz
 -------------------------------------------------
@@ -921,6 +945,7 @@ echo "git diff --stat --summary -M v$last v$new > ../diffstat-$new"
 and then he just cut-and-pastes the output commands after verifying that
 they look OK.
 
+// No label for this section
 Finding commits referencing a file with given content
 -----------------------------------------------------
 
@@ -1063,6 +1088,7 @@ $ git commit -a
 
 will update the index with any files that you've modified or removed
 and create a commit, all in one step.
+// "git add -u"?
 
 A number of commands are useful for keeping track of what you're
 about to commit:
@@ -1375,6 +1401,7 @@ commit present in the one is already contained in the other--then git
 just performs a "fast forward"; the head of the current branch is moved
 forward to point at the head of the merged-in branch, without any new
 commits being created.
+// History graph
 
 [[fixing-mistakes]]
 Fixing mistakes
@@ -1487,6 +1514,7 @@ which will display the given version of the file.
 Ensuring good performance
 -------------------------
 
+// Loose objects are also compressed; you mean deltaified here
 On large repositories, git depends on compression to keep the history
 information from taking up to much space on disk or in memory.
 
@@ -1556,6 +1584,7 @@ Fortunately, git also keeps a log, called a "reflog", of all the
 previous values of each branch.  So in this case you can still find the
 old history using, for example, 
 
+// "git show master@{1}" or "git log -g master"
 -------------------------------------------------
 $ git log master@{1}
 -------------------------------------------------
@@ -1681,10 +1710,12 @@ gitlink:git-branch[1] and gitlink:git-checkout[1] can be used to
 automatically set the default remote branch to pull from at the time
 that a branch is created:
 
+// git checkout --track -b maint origin/maint
 -------------------------------------------------
 $ git checkout --track -b origin/maint maint
 -------------------------------------------------
 
+// example of commit message, c.f. merge.summary
 In addition to saving you keystrokes, "git pull" also helps you by
 producing a default commit message documenting the branch and
 repository that you pulled from.
@@ -1713,6 +1744,7 @@ just be to send them as patches in email:
 
 First, use gitlink:git-format-patch[1]; for example:
 
+// Better I think would be to say "git format-patch origin.."
 -------------------------------------------------
 $ git format-patch origin
 -------------------------------------------------
@@ -1814,6 +1846,7 @@ $ git clone --bare ~/proj proj.git
 $ touch proj.git/git-daemon-export-ok
 -------------------------------------------------
 
+// "bare" and "pure" ("mirror"), no separate remotes
 The resulting directory proj.git contains a "bare" git repository--it is
 just the contents of the ".git" directory, without any files checked out
 around it.
@@ -1892,6 +1925,7 @@ The simplest way to do this is using gitlink:git-push[1] and ssh; to
 update the remote branch named "master" with the latest state of your
 branch named "master", run
 
+// host:path notation, or user@host:path notation preferred
 -------------------------------------------------
 $ git push ssh://yourserver.com/~you/proj.git master:master
 -------------------------------------------------
@@ -1962,6 +1996,7 @@ advantages over the central shared repository:
 	- The lack of a central group of "committers" means there is
 	  less need for formal decisions about who is "in" and who is
 	  "out".
+// Network of trust, private groupworks
 
 [[setting-up-gitweb]]
 Allowing web browsing of a repository
@@ -2107,6 +2142,7 @@ well chosen names you picked for each of them, you may forget what
 they are for, or what status they are in.  To get a reminder of what
 changes are in a specific branch, use:
 
+// git shortlog linux..branchname
 -------------------------------------------------
 $ git log linux..branchname | git-shortlog
 -------------------------------------------------
@@ -2147,6 +2183,7 @@ branch and then merge into each of the test and release branches.  For
 these changes, just apply directly to the "release" branch, and then
 merge that into the "test" branch.
 
+// Or just "git request-pull origin <URL> release"
 To create diffstat and shortlog summaries of changes to include in a "please
 pull" request to Linus you can use:
 
@@ -2156,6 +2193,8 @@ $ git diff --stat origin..release
 
 and
 
+// why -p for shortlog?
+// git shortlog origin..release
 -------------------------------------------------
 $ git log -p origin..release | git shortlog
 -------------------------------------------------
@@ -2280,6 +2319,7 @@ Rewriting history and maintaining patch series
 Normally commits are only added to a project, never taken away or
 replaced.  Git is designed with this assumption, and violating it will
 cause git's merge machinery (for example) to do the wrong thing.
+// Perhaps history graph here? Or reference to further section?
 
 However, there is a situation in which it can be useful to violate this
 assumption.
@@ -2749,6 +2789,7 @@ about the data in the object.  It's worth noting that the SHA1 hash
 that is used to name the object is the hash of the original data
 plus this header, so `sha1sum` 'file' does not match the object name
 for 'file'.
+// how to get sha1 id using sha1sum by hand?
 (Historical note: in the dawn of the age of git the hash
 was the sha1 of the 'compressed' object.)
 
@@ -2788,6 +2829,7 @@ file is associated with in any way.
 
 A blob is typically created when gitlink:git-update-index[1]
 is run, and its data can be accessed by gitlink:git-cat-file[1].
+// git-add and git-show is porcelain way
 
 [[tree-object]]
 Tree Object
@@ -2854,6 +2896,7 @@ rename information or file mode change information.  All of that is
 implicit in the trees involved (the result tree, and the result trees
 of the parents), and describing that makes no sense in this idiotic
 file manager.
+// Old: idiotic file manager. Perhaps "why no file ids" instead?
 
 A commit is created with gitlink:git-commit-tree[1] and
 its data can be accessed by gitlink:git-cat-file[1].
@@ -2915,6 +2958,7 @@ gitlink:git-verify-tag[1].
 The "index" aka "Current Directory Cache"
 -----------------------------------------
 
+// Directory cache -> index
 The index is a simple binary file, which contains an efficient
 representation of the contents of a virtual directory.  It
 does so by a simple array that associates a set of names, dates,
@@ -3184,6 +3228,7 @@ $ git-cat-file commit HEAD
 -------------------------------------------------
 
 to see what the top commit was.
+// git-show is now universal porcelain, with exception of tags
 
 [[merging-multiple-trees]]
 Merging multiple trees
@@ -3348,6 +3393,7 @@ Pack pack-3e54ad29d5b2e05838c75df582c65257b8d08e1c created.
 
 You can then run
 
+// git prune-packed ?
 ------------------------------------------------
 $ git prune
 ------------------------------------------------
