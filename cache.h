@@ -359,8 +359,8 @@ extern void *map_sha1_file(const unsigned char *sha1, unsigned long *);
 extern int has_pack_file(const unsigned char *sha1);
 extern int has_pack_index(const unsigned char *sha1);
 
-extern signed char hexval_table[256];
-static inline unsigned int hexval(unsigned int c)
+extern const signed char hexval_table[256];
+static inline unsigned int hexval(unsigned char c)
 {
 	return hexval_table[c];
 }
@@ -467,8 +467,6 @@ struct ref {
 extern pid_t git_connect(int fd[2], char *url, const char *prog, int flags);
 extern int finish_connect(pid_t pid);
 extern int path_match(const char *path, int nr, char **match);
-extern int match_refs(struct ref *src, struct ref *dst, struct ref ***dst_tail,
-		      int nr_refspec, char **refspec, int all);
 extern int get_ack(int fd, unsigned char *result_sha1);
 extern struct ref **get_remote_heads(int in, struct ref **list, int nr_match, char **match, unsigned int flags);
 extern int server_supports(const char *feature);
@@ -485,10 +483,11 @@ extern struct packed_git *find_sha1_pack(const unsigned char *sha1,
 					 struct packed_git *packs);
 
 extern void pack_report(void);
+extern int open_pack_index(struct packed_git *);
 extern unsigned char* use_pack(struct packed_git *, struct pack_window **, off_t, unsigned int *);
 extern void unuse_pack(struct pack_window **);
 extern struct packed_git *add_packed_git(const char *, int, int);
-extern const unsigned char *nth_packed_object_sha1(const struct packed_git *, uint32_t);
+extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t);
 extern off_t find_pack_entry_one(const unsigned char *, struct packed_git *);
 extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, unsigned long *);
 extern unsigned long unpack_object_header_gently(const unsigned char *buf, unsigned long len, enum object_type *type, unsigned long *sizep);
