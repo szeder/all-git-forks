@@ -1,4 +1,4 @@
-git-core (1:1.5.2.1-0) unstable; urgency=low
+git-core (1:1.5.2.1-1) unstable; urgency=low
 
   * new upstream point release.
     * Create a new manpage for the gitignore format, and reference it
