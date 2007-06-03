@@ -1,0 +1,98 @@
+From 0fbc280475a4fab60a4c186fb01def65ff57a6a3 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Tue, 22 May 2007 09:36:39 +0000
+Subject: [PATCH] gitk: properly resolve ambiguity if argument is both, revision and filename
+
+If a repository contains a file and a branch with the same name, have
+gitk recognize the '--' separator as final command line argument, as
+documented in gitk(1); previously 'gitk <name> --' failed.  Additionally
+have gitk insert '--' automatically for views created or edited through
+the View menu.
+
+The bug was noticed and reported by Josh Triplett through
+ http://bugs.debian.org/425491
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+---
+ gitk |   15 +++++++++------
+ 1 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/gitk b/gitk
+index a57e84c..7e8d426 100755
+--- a/gitk
++++ b/gitk
+@@ -19,15 +19,12 @@ proc gitdir {} {
+ proc start_rev_list {view} {
+     global startmsecs nextupdate
+     global commfd leftover tclencoding datemode
+-    global viewargs viewfiles commitidx
++    global viewargs viewfiles viewargsep commitidx
+ 
+     set startmsecs [clock clicks -milliseconds]
+     set nextupdate [expr {$startmsecs + 100}]
+     set commitidx($view) 0
+-    set args $viewargs($view)
+-    if {$viewfiles($view) ne {}} {
+-	set args [concat $args "--" $viewfiles($view)]
+-    }
++    set args [concat $viewargs($view) $viewargsep($view) $viewfiles($view)]
+     set order "--topo-order"
+     if {$datemode} {
+ 	set order "--date-order"
+@@ -1536,7 +1533,7 @@ proc allviewmenus {n op args} {
+ proc newviewok {top n} {
+     global nextviewnum newviewperm newviewname newishighlight
+     global viewname viewfiles viewperm selectedview curview
+-    global viewargs newviewargs viewhlmenu
++    global viewargs viewargsep newviewargs viewhlmenu
+ 
+     if {[catch {
+ 	set newargs [shellsplit $newviewargs($n)]
+@@ -1560,6 +1557,7 @@ proc newviewok {top n} {
+ 	set viewperm($n) $newviewperm($n)
+ 	set viewfiles($n) $files
+ 	set viewargs($n) $newargs
++	set viewargsep($n) "--"
+ 	addviewmenu $n
+ 	if {!$newishighlight} {
+ 	    after idle showview $n
+@@ -1579,6 +1577,7 @@ proc newviewok {top n} {
+ 	if {$files ne $viewfiles($n) || $newargs ne $viewargs($n)} {
+ 	    set viewfiles($n) $files
+ 	    set viewargs($n) $newargs
++	    set viewargsep($n) "--"
+ 	    if {$curview == $n} {
+ 		after idle updatecommits
+ 	    }
+@@ -6316,10 +6315,12 @@ if {![file isdirectory $gitdir]} {
+ }
+ 
+ set cmdline_files {}
++set cmdline_sep ""
+ set i [lsearch -exact $revtreeargs "--"]
+ if {$i >= 0} {
+     set cmdline_files [lrange $revtreeargs [expr {$i + 1}] end]
+     set revtreeargs [lrange $revtreeargs 0 [expr {$i - 1}]]
++    set cmdline_sep "--"
+ } elseif {$revtreeargs ne {}} {
+     if {[catch {
+ 	set f [eval exec git rev-parse --no-revs --no-flags $revtreeargs]
+@@ -6357,6 +6358,7 @@ set selectedhlview None
+ set viewfiles(0) {}
+ set viewperm(0) 0
+ set viewargs(0) {}
++set viewargsep(0) {}
+ 
+ set cmdlineok 0
+ set stopped 0
+@@ -6375,6 +6377,7 @@ if {$cmdline_files ne {} || $revtreeargs ne {}} {
+     set viewname(1) "Command line"
+     set viewfiles(1) $cmdline_files
+     set viewargs(1) $revtreeargs
++    set viewargsep(1) $cmdline_sep
+     set viewperm(1) 0
+     addviewmenu 1
+     .bar.view entryconf Edit* -state normal
+-- 
+1.5.2
+

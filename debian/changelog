@@ -3,8 +3,11 @@ git-core (1:1.5.2.1-0) unstable; urgency=low
   * new upstream point release.
     * Create a new manpage for the gitignore format, and reference it
       elsewhere (thx Josh Triplett, closes: #427078).
+  * debian/diff/0002-gitk-properly-resolve-ambiguity-if-argument-is-both.diff:
+    new; properly resolve ambiguity if argument is both, revision and
+    filename (closes: #425491).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:32:33 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:40:09 +0000
 
 git-core (1:1.5.2-1) unstable; urgency=low
 
