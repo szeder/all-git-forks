@@ -1,3 +1,11 @@
+git-core (1:1.5.2.1-0) unstable; urgency=low
+
+  * new upstream point release.
+    * Create a new manpage for the gitignore format, and reference it
+      elsewhere (thx Josh Triplett, closes: #427078).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:32:33 +0000
+
 git-core (1:1.5.2-1) unstable; urgency=low
 
   * merge branch debian-experimental.
