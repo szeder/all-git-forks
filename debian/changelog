@@ -9,8 +9,11 @@ git-core (1:1.5.2.1-0) unstable; urgency=low
   * debian/control: git-core: Conflicts: git (<< 4.3.20-11) (/usr/bin/git
     transition).
   * debian/git-daemon-run.README.Debian: new (#422139).
+  * debian/control: all Architecture: all packages: Depends: git-core
+    (= ${source:Version}) instead of (>= ...); this makes it no longer
+    support binNMUs (closes: #425494, reopens: #423041).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:52:48 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 10:09:53 +0000
 
 git-core (1:1.5.2-1) unstable; urgency=low
 
