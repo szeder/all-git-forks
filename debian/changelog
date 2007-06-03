@@ -8,8 +8,9 @@ git-core (1:1.5.2.1-0) unstable; urgency=low
     filename (closes: #425491).
   * debian/control: git-core: Conflicts: git (<< 4.3.20-11) (/usr/bin/git
     transition).
+  * debian/git-daemon-run.README.Debian: new (#422139).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:42:51 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:52:48 +0000
 
 git-core (1:1.5.2-1) unstable; urgency=low
 
