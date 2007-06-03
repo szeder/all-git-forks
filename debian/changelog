@@ -6,8 +6,10 @@ git-core (1:1.5.2.1-0) unstable; urgency=low
   * debian/diff/0002-gitk-properly-resolve-ambiguity-if-argument-is-both.diff:
     new; properly resolve ambiguity if argument is both, revision and
     filename (closes: #425491).
+  * debian/control: git-core: Conflicts: git (<< 4.3.20-11) (/usr/bin/git
+    transition).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:40:09 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:42:51 +0000
 
 git-core (1:1.5.2-1) unstable; urgency=low
 
