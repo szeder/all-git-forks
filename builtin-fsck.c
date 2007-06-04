@@ -359,6 +359,20 @@ static int fsck_commit(struct commit *commit)
 static int fsck_tag(struct tag *tag)
 {
 	struct object *tagged = tag->tagged;
+	enum object_type type;
+	unsigned long size;
+	char *data = (char *) read_sha1_file(tag->object.sha1, &type, &size);
+	if (!data)
+		return objerror(&tag->object, "could not read tag");
+	if (type != OBJ_TAG) {
+		free(data);
+		return objerror(&tag->object, "not a tag (internal error)");
+	}
+	if (parse_and_verify_tag_buffer(0, data, size, 1)) { /* thoroughly verify tag object */
+		free(data);
+		return objerror(&tag->object, "failed thorough tag object verification");
+	}
+	free(data);
 
 	if (verbose)
 		fprintf(stderr, "Checking tag %s\n",
