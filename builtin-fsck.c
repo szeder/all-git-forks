@@ -359,6 +359,20 @@ static int fsck_commit(struct commit *commit)
 static int fsck_tag(struct tag *tag)
 {
 	struct object *tagged = tag->tagged;
+	enum object_type type;
+	unsigned long size;
+	char *data = (char *) read_sha1_file(tag->object.sha1, &type, &size);
+	if (!data)
+		return objerror(&tag->object, "could not read tag");
+	if (type != OBJ_TAG) {
+		free(data);
+		return objerror(&tag->object, "not a tag (internal error)");
+	}
+	if (parse_and_verify_tag_buffer(0, data, size, 1)) { /* thoroughly verify tag object */
+		free(data);
+		return objerror(&tag->object, "failed thorough tag object verification");
+	}
+	free(data);
 
 	if (verbose)
 		fprintf(stderr, "Checking tag %s\n",
@@ -527,6 +541,25 @@ static int fsck_handle_reflog(const char *logname, const unsigned char *sha1, in
 	return 0;
 }
 
+static void fsck_verify_ref_to_tag_object(const char *refname, struct object *obj)
+{
+	/* Verify that refname matches the name stored in obj's "tag" header */
+	struct tag *tagobj = (struct tag *) parse_object(obj->sha1);
+	size_t tagname_len = strlen(tagobj->tag);
+	size_t refname_len = strlen(refname);
+
+	if (!tagname_len) return; /* No tag name stored in tagobj. Nothing to do. */
+
+	if (tagname_len < refname_len &&
+	    !memcmp(tagobj->tag, refname + (refname_len - tagname_len), tagname_len) &&
+	    refname[(refname_len - tagname_len) - 1] == '/') {
+		/* OK: tag name is "$name", and refname ends with "/$name" */
+		return;
+	}
+	else
+		error("%s: Mismatch between tag ref and tag object's name %s", refname, tagobj->tag);
+}
+
 static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
 	struct object *obj;
@@ -541,6 +574,8 @@ static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int f
 		/* We'll continue with the rest despite the error.. */
 		return 0;
 	}
+	if (obj->type == OBJ_TAG) /* ref to tag object */
+		fsck_verify_ref_to_tag_object(refname, obj);
 	default_refs++;
 	obj->used = 1;
 	mark_reachable(obj, REACHABLE);

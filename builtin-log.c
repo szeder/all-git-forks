@@ -181,7 +181,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 			printf("%stag %s%s\n\n",
 					diff_get_color(rev.diffopt.color_diff,
 						DIFF_COMMIT),
-					t->tag,
+					*(t->tag) ? t->tag : name,
 					diff_get_color(rev.diffopt.color_diff,
 						DIFF_RESET));
 			ret = show_object(o->sha1, 1);
