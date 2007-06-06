@@ -206,10 +206,10 @@ SCRIPT_SH = \
 	git-repack.sh git-request-pull.sh git-reset.sh \
 	git-sh-setup.sh \
 	git-tag.sh git-verify-tag.sh \
-	git-applymbox.sh git-applypatch.sh git-am.sh \
+	git-am.sh \
 	git-merge.sh git-merge-stupid.sh git-merge-octopus.sh \
 	git-merge-resolve.sh git-merge-ours.sh \
-	git-lost-found.sh git-quiltimport.sh
+	git-lost-found.sh git-quiltimport.sh git-submodule.sh
 
 SCRIPT_PERL = \
 	git-add--interactive.perl \
@@ -1051,8 +1051,9 @@ dist-doc:
 
 clean:
 	rm -f *.o mozilla-sha1/*.o arm/*.o ppc/*.o compat/*.o xdiff/*.o \
-		test-chmtime$X test-genrandom$X $(LIB_FILE) $(XDIFF_LIB)
+		$(LIB_FILE) $(XDIFF_LIB)
 	rm -f $(ALL_PROGRAMS) $(BUILT_INS) git$X
+	rm -f $(TEST_PROGRAMS)
 	rm -f *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h TAGS tags
 	rm -rf autom4te.cache
 	rm -f configure config.log config.mak.autogen config.mak.append config.status config.cache
