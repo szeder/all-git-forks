@@ -42,15 +42,6 @@
 #	does this in the '.git-rewrite/' directory but you can override
 #	that choice by this parameter.
 #
-# -r STARTREV:: The commit id to start the rewrite at
-#	Normally, the command will rewrite the entire history. If you
-#	pass this argument, though, this will be the first commit it
-#	will rewrite and keep the previous commits intact.
-#
-# -k KEEPREV:: A commit id until which _not_ to rewrite history
-#	If you pass this argument, this commit and all of its
-#	predecessors are kept intact.
-#
 # Filters
 # ~~~~~~~
 # The filters are applied in the order as listed below. The COMMAND
@@ -164,32 +155,37 @@
 # and all children of the merge will become merge commits with P1,P2
 # as their parents instead of the merge commit.
 #
-# To restrict rewriting to only part of the history, use -r or -k or both.
+# To restrict rewriting to only part of the history, specify a revision
+# range in addition to the new branch name. The new branch name will
+# point to the top-most revision that a 'git rev-list' of this range
+# will print.
+#
 # Consider this history:
 #
 #	     D--E--F--G--H
 #	    /     /
 #	A--B-----C
 #
-# To rewrite only commits F,G,H, use:
+# To rewrite commits D,E,F,G,H, use:
 #
-#	git-filter-branch -r F ...
+#	git-filter-branch ... new-H C..H
 #
 # To rewrite commits E,F,G,H, use one of these:
 #
-#	git-filter-branch -r E -k C ...
-#	git-filter-branch -k D -k C ...
+#	git-filter-branch ... new-H C..H --not D
+#	git-filter-branch ... new-H D..H --not C
 
 # Testsuite: TODO
 
 set -e
 
-USAGE="git-filter-branch [-d TEMPDIR] [-r STARTREV]... [-k KEEPREV]... [-s SRCBRANCH] [FILTERS] DESTBRANCH"
+USAGE="git-filter-branch [-d TEMPDIR] [FILTERS] DESTBRANCH [REV-RANGE]"
 . git-sh-setup
 
 map()
 {
-	[ -r "$workdir/../map/$1" ] || return 1
+	# if it was not rewritten, take the original
+	test -r "$workdir/../map/$1" || echo "$1"
 	cat "$workdir/../map/$1"
 }
 
@@ -232,7 +228,6 @@ get_parents () {
 }
 
 tempdir=.git-rewrite
-unchanged=" "
 filter_env=
 filter_tree=
 filter_index=
@@ -240,7 +235,6 @@ filter_parent=
 filter_msg=cat
 filter_commit='git-commit-tree "$@"'
 filter_tag_name=
-srcbranch=HEAD
 while case "$#" in 0) usage;; esac
 do
 	case "$1" in
@@ -265,12 +259,6 @@ do
 	-d)
 		tempdir="$OPTARG"
 		;;
-	-r)
-		unchanged="$(get_parents "$OPTARG") $unchanged"
-		;;
-	-k)
-		unchanged="$(git-rev-parse "$OPTARG"^{commit}) $unchanged"
-		;;
 	--env-filter)
 		filter_env="$OPTARG"
 		;;
@@ -292,9 +280,6 @@ do
 	--tag-name-filter)
 		filter_tag_name="$OPTARG"
 		;;
-	-s)
-		srcbranch="$OPTARG"
-		;;
 	*)
 		usage
 		;;
@@ -302,6 +287,7 @@ do
 done
 
 dstbranch="$1"
+shift
 test -n "$dstbranch" || die "missing branch name"
 git-show-ref "refs/heads/$dstbranch" 2> /dev/null &&
 	die "branch $dstbranch already exists"
@@ -327,19 +313,14 @@ ret=0
 
 mkdir ../map # map old->new commit ids for rewriting parents
 
-# seed with identity mappings for the parents where we start off
-for commit in $unchanged; do
-	echo $commit > ../map/$commit
-done
-
-git-rev-list --reverse --topo-order $srcbranch --not $unchanged >../revs
+git-rev-list --reverse --topo-order --default HEAD "$@" >../revs
 commits=$(cat ../revs | wc -l | tr -d " ")
 
 test $commits -eq 0 && die "Found nothing to rewrite"
 
 i=0
 while read commit; do
-	i=$((i+1))
+	i=$(($i+1))
 	printf "$commit ($i/$commits) "
 
 	git-read-tree -i -m $commit
@@ -367,13 +348,9 @@ while read commit; do
 
 	parentstr=
 	for parent in $(get_parents $commit); do
-		if [ -r "../map/$parent" ]; then
-			for reparent in $(cat "../map/$parent"); do
-				parentstr="$parentstr -p $reparent"
-			done
-		else
-			die "assertion failed: parent $parent for commit $commit not found in rewritten ones"
-		fi
+		for reparent in $(map "$parent"); do
+			parentstr="$parentstr -p $reparent"
+		done
 	done
 	if [ "$filter_parent" ]; then
 		parentstr="$(echo "$parentstr" | eval "$filter_parent")"
@@ -385,12 +362,21 @@ while read commit; do
 		tee ../map/$commit
 done <../revs
 
-git-update-ref refs/heads/"$dstbranch" $(head -n 1 ../map/$(tail -n 1 ../revs))
-if [ "$(cat ../map/$(tail -n 1 ../revs) | wc -l)" -gt 1 ]; then
-	echo "WARNING: Your commit filter caused the head commit to expand to several rewritten commits. Only the first such commit was recorded as the current $dstbranch head but you will need to resolve the situation now (probably by manually merging the other commits). These are all the commits:" >&2
-	sed 's/^/	/' ../map/$(tail -n 1 ../revs) >&2
-	ret=1
-fi
+src_head=$(tail -n 1 ../revs)
+target_head=$(head -n 1 ../map/$src_head)
+case "$target_head" in
+'')
+	echo Nothing rewritten
+	;;
+*)
+	git-update-ref refs/heads/"$dstbranch" $target_head
+	if [ $(cat ../map/$src_head | wc -l) -gt 1 ]; then
+		echo "WARNING: Your commit filter caused the head commit to expand to several rewritten commits. Only the first such commit was recorded as the current $dstbranch head but you will need to resolve the situation now (probably by manually merging the other commits). These are all the commits:" >&2
+		sed 's/^/	/' ../map/$src_head >&2
+		ret=1
+	fi
+	;;
+esac
 
 if [ "$filter_tag_name" ]; then
 	git-for-each-ref --format='%(objectname) %(objecttype) %(refname)' refs/tags |
