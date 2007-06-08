@@ -140,4 +140,3 @@ test_expect_success 'binary files cannot be merged' '
 '
 
 test_done
-

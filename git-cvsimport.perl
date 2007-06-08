@@ -153,7 +153,7 @@ my $cvs_tree;
 if ($#ARGV == 0) {
 	$cvs_tree = $ARGV[0];
 } elsif (-f 'CVS/Repository') {
-	open my $f, '<', 'CVS/Repository' or 
+	open my $f, '<', 'CVS/Repository' or
 	    die 'Failed to open CVS/Repository';
 	$cvs_tree = <$f>;
 	chomp $cvs_tree;
@@ -442,7 +442,7 @@ sub file {
 	my ($self,$fn,$rev) = @_;
 	my $res;
 
-	my ($fh, $name) = tempfile('gitcvs.XXXXXX', 
+	my ($fh, $name) = tempfile('gitcvs.XXXXXX',
 		    DIR => File::Spec->tmpdir(), UNLINK => 1);
 
 	$self->_file($fn,$rev) and $res = $self->_line($fh);
@@ -528,8 +528,8 @@ sub is_sha1 {
 
 sub get_headref ($$) {
     my $name    = shift;
-    my $git_dir = shift; 
-    
+    my $git_dir = shift;
+
     my $f = "$git_dir/$remote/$name";
     if (open(my $fh, $f)) {
 	    chomp(my $r = <$fh>);
