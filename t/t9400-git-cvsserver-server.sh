@@ -110,6 +110,68 @@ test_expect_success 'pserver authentication failure (login/non-anonymous user)' 
    tail -n1 log | grep -q "^I HATE YOU$"'
 
 
+# misuse pserver authentication for testing of req_Root
+
+cat >request-relative  <<EOF
+BEGIN AUTH REQUEST
+gitcvs.git
+anonymous
+
+END AUTH REQUEST
+EOF
+
+cat >request-conflict  <<EOF
+BEGIN AUTH REQUEST
+$SERVERDIR
+anonymous
+
+END AUTH REQUEST
+Root $WORKDIR
+EOF
+
+test_expect_success 'req_Root failure (relative pathname)' \
+  'if cat request-relative | git-cvsserver pserver >log 2>&1
+   then
+       echo unexpected success
+       false
+   else
+       true
+   fi &&
+   tail log | grep -q "^error 1 Root must be an absolute pathname$"'
+
+test_expect_success 'req_Root failure (conflicting roots)' \
+  'cat request-conflict | git-cvsserver pserver >log 2>&1 &&
+   tail log | grep -q "^error 1 Conflicting roots specified$"'
+
+test_expect_success 'req_Root (strict paths)' \
+  'cat request-anonymous | git-cvsserver --strict-paths pserver $SERVERDIR >log 2>&1 &&
+   tail -n1 log | grep -q "^I LOVE YOU$"'
+
+test_expect_failure 'req_Root failure (strict-paths)' \
+  'cat request-anonymous | git-cvsserver --strict-paths pserver $WORKDIR >log 2>&1'
+
+test_expect_success 'req_Root (w/o strict-paths)' \
+  'cat request-anonymous | git-cvsserver pserver $WORKDIR/ >log 2>&1 &&
+   tail -n1 log | grep -q "^I LOVE YOU$"'
+
+test_expect_failure 'req_Root failure (w/o strict-paths)' \
+  'cat request-anonymous | git-cvsserver pserver $WORKDIR/gitcvs >log 2>&1'
+
+cat >request-base  <<EOF
+BEGIN AUTH REQUEST
+/gitcvs.git
+anonymous
+
+END AUTH REQUEST
+EOF
+
+test_expect_success 'req_Root (base-path)' \
+  'cat request-base | git-cvsserver --strict-paths --base-path $WORKDIR/ pserver $SERVERDIR >log 2>&1 &&
+   tail -n1 log | grep -q "^I LOVE YOU$"'
+
+test_expect_failure 'req_Root failure (base-path)' \
+  'cat request-anonymous | git-cvsserver --strict-paths --base-path $WORKDIR pserver $SERVERDIR >log 2>&1'
+
 #--------------
 # CONFIG TESTS
 #--------------
