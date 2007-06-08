@@ -34,7 +34,7 @@ too short for a tag
 EOF
 
 cat >expect.pat <<EOF
-^error: .* size .*$
+^error: .*size wrong.*$
 EOF
 
 check_verify_failure 'Tag object length check'
@@ -46,8 +46,6 @@ cat >tag.sig <<EOF
 xxxxxx 139e9b33986b1c2670fff52c5067603117b3e895
 type tag
 tag mytag
-tagger foo
-
 EOF
 
 cat >expect.pat <<EOF
@@ -63,8 +61,6 @@ cat >tag.sig <<EOF
 object zz9e9b33986b1c2670fff52c5067603117b3e895
 type tag
 tag mytag
-tagger foo
-
 EOF
 
 cat >expect.pat <<EOF
@@ -80,8 +76,6 @@ cat >tag.sig <<EOF
 object 779e9b33986b1c2670fff52c5067603117b3e895
 xxxx tag
 tag mytag
-tagger foo
-
 EOF
 
 cat >expect.pat <<EOF
@@ -97,7 +91,7 @@ echo "object 779e9b33986b1c2670fff52c5067603117b3e895" >tag.sig
 printf "type tagsssssssssssssssssssssssssssssss" >>tag.sig
 
 cat >expect.pat <<EOF
-^error: char48: .*"[\]n" after "type"$
+^error: char48: .*"[\]n"$
 EOF
 
 check_verify_failure '"type" line eol check'
@@ -109,12 +103,10 @@ cat >tag.sig <<EOF
 object 779e9b33986b1c2670fff52c5067603117b3e895
 type tag
 xxx mytag
-tagger foo
-
 EOF
 
 cat >expect.pat <<EOF
-^error: char57: .*$
+^error: char57: no "tag " found$
 EOF
 
 check_verify_failure '"tag" line label check #1'
@@ -126,27 +118,21 @@ cat >tag.sig <<EOF
 object 779e9b33986b1c2670fff52c5067603117b3e895
 type taggggggggggggggggggggggggggggggg
 tag
-keywords foo
-tagger bar@baz.com
-
 EOF
 
 cat >expect.pat <<EOF
-^error: char87: .*$
+^error: char87: no "tag " found$
 EOF
 
 check_verify_failure '"tag" line label check #2'
 
 ############################################################
-#  8. type line type name length check
+#  8. type line type-name length check
 
 cat >tag.sig <<EOF
 object 779e9b33986b1c2670fff52c5067603117b3e895
 type taggggggggggggggggggggggggggggggg
 tag mytag
-keywords foo
-tagger bar@baz.com
-
 EOF
 
 cat >expect.pat <<EOF
@@ -162,9 +148,6 @@ cat >tag.sig <<EOF
 object 779e9b33986b1c2670fff52c5067603117b3e895
 type tagggg
 tag mytag
-keywords foo
-tagger bar@baz.com
-
 EOF
 
 cat >expect.pat <<EOF
@@ -174,15 +157,12 @@ EOF
 check_verify_failure 'verify object (SHA1/type) check'
 
 ############################################################
-# 10. verify tag name check
+# 10. verify tag-name check
 
 cat >tag.sig <<EOF
 object $head
 type commit
 tag my	tag
-keywords foo
-tagger bar@baz.com
-
 EOF
 
 cat >expect.pat <<EOF
@@ -192,212 +172,56 @@ EOF
 check_verify_failure 'verify tag-name check'
 
 ############################################################
-# 11. keywords line label check #1
+# 11. tagger line label check #1
 
 cat >tag.sig <<EOF
 object $head
 type commit
 tag mytag
-xxxxxxxx foo
-tagger bar@baz.com
-
 EOF
 
 cat >expect.pat <<EOF
-^error: char70: .*$
-EOF
-
-check_verify_failure '"keywords" line label check #1'
-
-############################################################
-# 12. keywords line label check #2
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords
-tagger bar@baz.com
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char70: .*$
-EOF
-
-check_verify_failure '"keywords" line label check #2'
-
-############################################################
-# 13. keywords line check #1
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords foo bar	baz
-tagger bar@baz.com
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char83: .*$
-EOF
-
-check_verify_failure '"keywords" line check #1'
-
-############################################################
-# 14. keywords line check #2
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords foo,bar	baz
-tagger bar@baz.com
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char87: .*$
-EOF
-
-check_verify_failure '"keywords" line check #2'
-
-############################################################
-# 15. keywords line check #3
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords foo,,bar
-tagger bar@baz.com
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char83: .*$
-EOF
-
-check_verify_failure '"keywords" line check #3'
-
-############################################################
-# 16. tagger line label check #1
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char70: .*$
+^error: char70: could not find "tagger"$
 EOF
 
 check_verify_failure '"tagger" line label check #1'
 
 ############################################################
-# 17. tagger line label check #2
+# 12. tagger line label check #2
 
 cat >tag.sig <<EOF
 object $head
 type commit
 tag mytag
-xxxxxx bar@baz.com
-
+tagger
 EOF
 
 cat >expect.pat <<EOF
-^error: char70: .*$
+^error: char70: could not find "tagger"$
 EOF
 
 check_verify_failure '"tagger" line label check #2'
 
 ############################################################
-# 18. tagger line label check #3
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords foo
-tagger
-
-EOF
-
-cat >expect.pat <<EOF
-^error: char83: .*$
-EOF
-
-check_verify_failure '"tagger" line label check #3'
-
-############################################################
-# 19. create valid tag #1
+# 13. create valid tag
 
 cat >tag.sig <<EOF
 object $head
 type commit
 tag mytag
 tagger another@example.com
-
 EOF
 
 test_expect_success \
-    'create valid tag #1' \
+    'create valid tag' \
     'git-mktag <tag.sig >.git/refs/tags/mytag 2>message'
 
 ############################################################
-# 20. check mytag
+# 14. check mytag
 
 test_expect_success \
     'check mytag' \
     'git-tag -l | grep mytag'
-
-############################################################
-# 21. create valid tag #2
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tagger another@example.com
-
-EOF
-
-test_expect_success \
-    'create valid tag #2' \
-    'git-mktag <tag.sig >.git/refs/tags/mytag 2>message'
-
-############################################################
-# 22. create valid tag #3
-
-cat >tag.sig <<EOF
-object $head
-type commit
-keywords foo,bar,baz,spam,spam,spam,spam,spam,spam,spam,spam
-tagger another@example.com
-
-EOF
-
-test_expect_success \
-    'create valid tag #3' \
-    'git-mktag <tag.sig >.git/refs/tags/mytag 2>message'
-
-############################################################
-# 23. create valid tag #4
-
-cat >tag.sig <<EOF
-object $head
-type commit
-tag mytag
-keywords note
-tagger another@example.com
-
-EOF
-
-test_expect_success \
-    'create valid tag #4' \
-    'git-mktag <tag.sig >.git/refs/tags/mytag 2>message'
 
 
 test_done
