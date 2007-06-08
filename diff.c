@@ -2117,6 +2117,8 @@ static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *va
 	return 1;
 }
 
+static int diff_scoreopt_parse(const char *opt);
+
 int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 {
 	const char *arg = av[0];
@@ -2288,7 +2290,7 @@ static int parse_num(const char **cp_p)
 	return (int)((num >= scale) ? MAX_SCORE : (MAX_SCORE * num / scale));
 }
 
-int diff_scoreopt_parse(const char *opt)
+static int diff_scoreopt_parse(const char *opt)
 {
 	int opt1, opt2, cmd;
 
@@ -3045,7 +3047,7 @@ void diff_addremove(struct diff_options *options,
 	 * entries to the diff-core.  They will be prefixed
 	 * with something like '=' or '*' (I haven't decided
 	 * which but should not make any difference).
-	 * Feeding the same new and old to diff_change() 
+	 * Feeding the same new and old to diff_change()
 	 * also has the same effect.
 	 * Before the final output happens, they are pruned after
 	 * merged into rename/copy pairs as appropriate.
@@ -3072,7 +3074,7 @@ void diff_change(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
-		 const char *base, const char *path) 
+		 const char *base, const char *path)
 {
 	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;
