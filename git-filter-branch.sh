@@ -119,6 +119,10 @@
 #	attached, the rewritten tag won't have it. Sorry. (It is by
 #	definition impossible to preserve signatures at any rate, though.)
 #
+# --subdirectory-filter DIRECTORY:: Only regard the history, as seen by
+#	the given subdirectory. The result will contain that directory as
+#	its project root.
+#
 # EXAMPLE USAGE
 # -------------
 # Suppose you want to remove a file (containing confidential information
@@ -222,11 +226,6 @@ set_ident () {
 	echo "[ -n \"\$GIT_${uid}_NAME\" ] || export GIT_${uid}_NAME=\"\${GIT_${uid}_EMAIL%%@*}\""
 }
 
-# list all parent's object names for a given commit
-get_parents () {
-	git-rev-list -1 --parents "$1" | sed "s/^[0-9a-f]*//"
-}
-
 tempdir=.git-rewrite
 filter_env=
 filter_tree=
@@ -235,6 +234,7 @@ filter_parent=
 filter_msg=cat
 filter_commit='git-commit-tree "$@"'
 filter_tag_name=
+filter_subdir=
 while case "$#" in 0) usage;; esac
 do
 	case "$1" in
@@ -280,6 +280,9 @@ do
 	--tag-name-filter)
 		filter_tag_name="$OPTARG"
 		;;
+	--subdirectory-filter)
+		filter_subdir="$OPTARG"
+		;;
 	*)
 		usage
 		;;
@@ -313,17 +316,31 @@ ret=0
 
 mkdir ../map # map old->new commit ids for rewriting parents
 
-git-rev-list --reverse --topo-order --default HEAD "$@" >../revs
+case "$filter_subdir" in
+"")
+	git-rev-list --reverse --topo-order --default HEAD \
+		--parents "$@"
+	;;
+*)
+	git-rev-list --reverse --topo-order --default HEAD \
+		--parents --full-history "$@" -- "$filter_subdir"
+esac > ../revs
 commits=$(cat ../revs | wc -l | tr -d " ")
 
 test $commits -eq 0 && die "Found nothing to rewrite"
 
 i=0
-while read commit; do
+while read commit parents; do
 	i=$(($i+1))
 	printf "$commit ($i/$commits) "
 
-	git-read-tree -i -m $commit
+	case "$filter_subdir" in
+	"")
+		git-read-tree -i -m $commit
+		;;
+	*)
+		git-read-tree -i -m $commit:"$filter_subdir"
+	esac
 
 	export GIT_COMMIT=$commit
 	git-cat-file commit "$commit" >../commit
@@ -347,7 +364,7 @@ while read commit; do
 	eval "$filter_index" < /dev/null
 
 	parentstr=
-	for parent in $(get_parents $commit); do
+	for parent in $parents; do
 		for reparent in $(map "$parent"); do
 			parentstr="$parentstr -p $reparent"
 		done
@@ -362,7 +379,7 @@ while read commit; do
 		tee ../map/$commit
 done <../revs
 
-src_head=$(tail -n 1 ../revs)
+src_head=$(tail -n 1 ../revs | sed -e 's/ .*//')
 target_head=$(head -n 1 ../map/$src_head)
 case "$target_head" in
 '')
