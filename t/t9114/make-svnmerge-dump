@@ -12,7 +12,7 @@ then
    sm=svnmerge.py
 else
    [ -f svnmerge.py ] ||
-      wget http://svn.collab.net/repos/svn/trunk/contrib/client-side/svnmerge.py
+      wget http://svn.collab.net/repos/svn/trunk/contrib/client-side/svnmerge/svnmerge.py
    sm="python `pwd`/svnmerge.py"
 fi
 
