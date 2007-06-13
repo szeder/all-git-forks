@@ -1457,7 +1457,7 @@ sub tmp_config {
 	my (@args) = @_;
 	my $old_def_config = "$ENV{GIT_DIR}/svn/config";
 	my $config = "$ENV{GIT_DIR}/svn/.metadata";
-	if (-e $old_def_config && ! -e $config) {
+	if (! -f $config && -f $old_def_config) {
 		rename $old_def_config, $config or
 		       die "Failed rename $old_def_config => $config: $!\n";
 	}
@@ -3072,11 +3072,8 @@ sub gs_do_switch {
 	$editor->{git_commit_ok};
 }
 
-sub gs_fetch_loop_common {
-	my ($self, $base, $head, $gsv, $globs) = @_;
-	return if ($base > $head);
-	my $inc = $_log_window_size;
-	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+sub longest_common_path {
+	my ($gsv, $globs) = @_;
 	my %common;
 	my $common_max = scalar @$gsv;
 
@@ -3108,6 +3105,15 @@ sub gs_fetch_loop_common {
 			last;
 		}
 	}
+	$longest_path;
+}
+
+sub gs_fetch_loop_common {
+	my ($self, $base, $head, $gsv, $globs) = @_;
+	return if ($base > $head);
+	my $inc = $_log_window_size;
+	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+	my $longest_path = longest_common_path($gsv, $globs);
 	while (1) {
 		my %revs;
 		my $err;
