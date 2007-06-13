@@ -413,7 +413,7 @@ static size_t peak_pack_mapped;
 static size_t pack_mapped;
 struct packed_git *packed_git;
 
-void pack_report()
+void pack_report(void)
 {
 	fprintf(stderr,
 		"pack_report: getpagesize()            = %10" SZ_FMT "\n"
@@ -959,7 +959,7 @@ int check_sha1_signature(const unsigned char *sha1, void *map, unsigned long siz
 	return hashcmp(sha1, real_sha1) ? -1 : 0;
 }
 
-void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+static void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 {
 	struct stat st;
 	void *map;

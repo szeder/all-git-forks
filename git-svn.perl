@@ -372,16 +372,9 @@ sub cmd_dcommit {
 		die "Unable to determine upstream SVN information from ",
 		    "$head history\n";
 	}
-	my $c = $refs[-1];
 	my $last_rev;
-	foreach my $d (@refs) {
-		if (!verify_ref("$d~1")) {
-			fatal "Commit $d\n",
-			      "has no parent commit, and therefore ",
-			      "nothing to diff against.\n",
-			      "You should be working from a repository ",
-			      "originally created by git-svn\n";
-		}
+	my ($linear_refs, $parents) = linearize_history($gs, \@refs);
+	foreach my $d (@$linear_refs) {
 		unless (defined $last_rev) {
 			(undef, $last_rev, undef) = cmt_metadata("$d~1");
 			unless (defined $last_rev) {
@@ -403,6 +396,9 @@ sub cmd_dcommit {
 			                svn_path => '');
 			if (!SVN::Git::Editor->new(\%ed_opts)->apply_diff) {
 				print "No changes\n$d~1 == $d\n";
+			} elsif ($parents->{$d} && @{$parents->{$d}}) {
+				$gs->{inject_parents_dcommit}->{$last_rev} =
+				                               $parents->{$d};
 			}
 		}
 	}
@@ -819,6 +815,59 @@ sub working_head_info {
 	}
 	command_close_pipe($fh, $ctx);
 	(undef, undef, undef, undef);
+}
+
+sub read_commit_parents {
+	my ($parents, $c) = @_;
+	my ($fh, $ctx) = command_output_pipe(qw/cat-file commit/, $c);
+	while (<$fh>) {
+		chomp;
+		last if '';
+		/^parent ($sha1)/ or next;
+		push @{$parents->{$c}}, $1;
+	}
+	close $fh; # break the pipe
+}
+
+sub linearize_history {
+	my ($gs, $refs) = @_;
+	my %parents;
+	foreach my $c (@$refs) {
+		read_commit_parents(\%parents, $c);
+	}
+
+	my @linear_refs;
+	my %skip = ();
+	my $last_svn_commit = $gs->last_commit;
+	foreach my $c (reverse @$refs) {
+		next if $c eq $last_svn_commit;
+		last if $skip{$c};
+
+		unshift @linear_refs, $c;
+		$skip{$c} = 1;
+
+		# we only want the first parent to diff against for linear
+		# history, we save the rest to inject when we finalize the
+		# svn commit
+		my $fp_a = verify_ref("$c~1");
+		my $fp_b = shift @{$parents{$c}} if $parents{$c};
+		if (!$fp_a || !$fp_b) {
+			die "Commit $c\n",
+			    "has no parent commit, and therefore ",
+			    "nothing to diff against.\n",
+			    "You should be working from a repository ",
+			    "originally created by git-svn\n";
+		}
+		if ($fp_a ne $fp_b) {
+			die "$c~1 = $fp_a, however parsing commit $c ",
+			    "revealed that:\n$c~1 = $fp_b\nBUG!\n";
+		}
+
+		foreach my $p (@{$parents{$c}}) {
+			$skip{$p} = 1;
+		}
+	}
+	(\@linear_refs, \%parents);
 }
 
 package Git::SVN;
@@ -1457,7 +1506,7 @@ sub tmp_config {
 	my (@args) = @_;
 	my $old_def_config = "$ENV{GIT_DIR}/svn/config";
 	my $config = "$ENV{GIT_DIR}/svn/.metadata";
-	if (-e $old_def_config && ! -e $config) {
+	if (! -f $config && -f $old_def_config) {
 		rename $old_def_config, $config or
 		       die "Failed rename $old_def_config => $config: $!\n";
 	}
@@ -1540,6 +1589,11 @@ sub get_commit_parents {
 	}
 	if (my $cur = ::verify_ref($self->refname.'^0')) {
 		push @tmp, $cur;
+	}
+	if (my $ipd = $self->{inject_parents_dcommit}) {
+		if (my $commit = delete $ipd->{$log_entry->{revision}}) {
+			push @tmp, @$commit;
+		}
 	}
 	push @tmp, $_ foreach (@{$log_entry->{parents}}, @tmp);
 	while (my $p = shift @tmp) {
@@ -3072,11 +3126,8 @@ sub gs_do_switch {
 	$editor->{git_commit_ok};
 }
 
-sub gs_fetch_loop_common {
-	my ($self, $base, $head, $gsv, $globs) = @_;
-	return if ($base > $head);
-	my $inc = $_log_window_size;
-	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+sub longest_common_path {
+	my ($gsv, $globs) = @_;
 	my %common;
 	my $common_max = scalar @$gsv;
 
@@ -3108,6 +3159,15 @@ sub gs_fetch_loop_common {
 			last;
 		}
 	}
+	$longest_path;
+}
+
+sub gs_fetch_loop_common {
+	my ($self, $base, $head, $gsv, $globs) = @_;
+	return if ($base > $head);
+	my $inc = $_log_window_size;
+	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
+	my $longest_path = longest_common_path($gsv, $globs);
 	while (1) {
 		my %revs;
 		my $err;
