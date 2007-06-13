@@ -144,8 +144,8 @@ STRIP ?= strip
 prefix = $(HOME)
 bindir = $(prefix)/bin
 gitexecdir = $(bindir)
-sharedir = $(prefix)/share/
-template_dir = $(sharedir)/git-core/templates/
+sharedir = $(prefix)/share
+template_dir = $(sharedir)/git-core/templates
 ifeq ($(prefix),/usr)
 sysconfdir = /etc
 else
@@ -845,6 +845,8 @@ git$X git.spec \
 
 %.o: %.c GIT-CFLAGS
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) $<
+%.s: %.c GIT-CFLAGS
+	$(QUIET_CC)$(CC) -S $(ALL_CFLAGS) $<
 %.o: %.S
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) $<
 
