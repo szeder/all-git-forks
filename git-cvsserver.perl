@@ -130,6 +130,11 @@ if (@ARGV) {
 # everything else is a directory
 $state->{allowed_roots} = [ @ARGV ];
 
+# don't export the whole system unless the users requests it
+if ($state->{'export-all'} && !@{$state->{allowed_roots}}) {
+    die "--export-all can only be used together with an explicit whitelist\n";
+}
+
 # if we are called with a pserver argument,
 # deal with the authentication cat before entering the
 # main loop
@@ -212,15 +217,17 @@ sub req_Root
 	return 0;
     }
 
+    my $cvsroot = $state->{'base-path'} || '';
+    $cvsroot =~ s#/+$##;
+    $cvsroot .= $data;
+
     if ($state->{CVSROOT}
-	&& ($state->{CVSROOT} ne $data)) {
+	&& ($state->{CVSROOT} ne $cvsroot)) {
 	print "error 1 Conflicting roots specified\n";
 	return 0;
     }
 
-    $state->{CVSROOT} = $state->{'base-path'} || '';
-    $state->{CVSROOT} =~ s#/+$##;
-    $state->{CVSROOT} .= $data;
+    $state->{CVSROOT} = $cvsroot;
 
     $ENV{GIT_DIR} = $state->{CVSROOT} . "/";
 
@@ -274,7 +281,8 @@ sub req_Root
 
     my $enabled = ($cfg->{gitcvs}{$state->{method}}{enabled}
 		   || $cfg->{gitcvs}{enabled});
-    unless ($enabled && $enabled =~ /^\s*(1|true|yes)\s*$/i) {
+    unless ($state->{'export-all'} ||
+	    ($enabled && $enabled =~ /^\s*(1|true|yes)\s*$/i)) {
         print "E GITCVS emulation needs to be enabled on this repo\n";
         print "E the repo config file needs a [gitcvs] section added, and the parameter 'enabled' set to 1\n";
         print "E \n";
