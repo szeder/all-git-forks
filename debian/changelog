@@ -5,8 +5,12 @@ git-core (1:1.5.2.2-1) unstable; urgency=low
       #427502).
   * debian/diff/0003-git-branch-track-fix-tracking-branch-computation.diff:
     remove; applied upstream.
+  * debian/versions.upstream: new; ordered list of upstream versions,
+    starting with 1.0.0.
+  * debian/changelog.upstream.sh: new; create changelog.upstream from git
+    shortlog using debian/versions.upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 18 Jun 2007 11:43:50 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 18 Jun 2007 12:41:38 +0000
 
 git-core (1:1.5.2.1-2) unstable; urgency=low
 
