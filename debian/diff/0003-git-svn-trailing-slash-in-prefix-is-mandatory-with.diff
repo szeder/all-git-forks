@@ -1,0 +1,43 @@
+From fe8c46cfa158a6c81ee81408e6765152d3d8cc20 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Mon, 18 Jun 2007 21:50:21 +0000
+Subject: [PATCH] git-svn: trailing slash in prefix is mandatory with --branches/-b
+
+Make clear in the documentation that when using --branches/-b and
+--prefix with 'init', the prefix must include a trailing slash.
+This matches the actual behavior of git-svn, e.g.:
+
+ $ git svn init -Ttrunk -treleases -bbranches --prefix xxx \
+     http://svn.sacredchao.net/svn/quodlibet/
+ --prefix='xxx' must have a trailing slash '/'
+ $
+
+This was noticed by R. Vanicat and reported through
+ http://bugs.debian.org/429443
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+---
+ Documentation/git-svn.txt |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/Documentation/git-svn.txt b/Documentation/git-svn.txt
+index c0d7d95..0a210e4 100644
+--- a/Documentation/git-svn.txt
++++ b/Documentation/git-svn.txt
+@@ -66,9 +66,10 @@ COMMANDS
+ 	to the names of remotes if trunk/branches/tags are
+ 	specified.  The prefix does not automatically include a
+ 	trailing slash, so be sure you include one in the
+-	argument if that is what you want.  This is useful if
+-	you wish to track multiple projects that share a common
+-	repository.
++	argument if that is what you want.  If --branches/-b is
++	specified, the prefix must include a trailing slash.
++	Setting a prefix is useful if you wish to track multiple
++	projects that share a common repository.
+ 
+ 'fetch'::
+ 	Fetch unfetched revisions from the Subversion remote we are
+-- 
+1.5.2.1
+
