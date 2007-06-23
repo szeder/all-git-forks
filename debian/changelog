@@ -1,3 +1,12 @@
+git-core (1:1.5.2.2-2) unstable; urgency=low
+
+  * debian/control: all Architecture: all packages: Depends: git-core (>>
+    ${source:Upstream-Version}, git-core (<< ${source:Upstream-Version}-.)
+    instead of (= ${source:Version}) to support binNMUs (closes: #423041,
+    #430128).
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 23 Jun 2007 14:02:36 +0000
+
 git-core (1:1.5.2.2-1) unstable; urgency=low
 
   * new upstream point release.
