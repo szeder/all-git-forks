@@ -1279,20 +1279,56 @@ sub git_get_type {
 	return $type;
 }
 
-sub git_get_project_config {
-	my ($key, $type) = @_;
+BEGIN {
+	my %config;
+	my $first_run = 0;
+	sub git_get_project_config {
+		my ($key, $type) = @_;
 
-	return unless ($key);
-	$key =~ s/^gitweb\.//;
-	return if ($key =~ m/\W/);
+		if ($first_run) {
+			open my $fd, "-|", git_cmd(), "config", "--null",
+				"--get-regexp", "^gitweb\."
+				or return;
 
-	my @x = (git_cmd(), 'config');
-	if (defined $type) { push @x, $type; }
-	push @x, "--get";
-	push @x, "gitweb.$key";
-	my $val = qx(@x);
-	chomp $val;
-	return ($val);
+			local $/ = "\0";
+			while (my $line = <$fd>) {
+				chomp $line;
+				my ($fqkey, $value) = split(/\n/, $line, 2);
+				# single value keys are saved as $config{<key>} = <value>
+				# multi value as $config{<key>} = [ <value1>, <value2>,... ]
+				if (exists $config{$fqkey}) {
+					if (ref($config{$fqkey}) ne 'ARRAY') {
+						$config{$fqkey} = [ $config{$fqkey} ];
+					}
+					push @{$config{$fqkey}}, $value;
+				} else {
+					$config{$fqkey} = $value;
+				}
+			}
+
+			$first_run = 0;
+		}
+
+		if ($type eq '--bool') {
+			if (exists $config{"gitweb.$key"} &&
+			    (!defined $config{"gitweb.$key"} ||
+			     $config{"gitweb.$key"} == 1   ||
+			     $config{"gitweb.$key"} =~ /^(yes|true)$/i) {
+			}
+		} elsif ($type eq '--int') {
+		}
+		return unless ($key);
+		$key =~ s/^gitweb\.//;
+		return if ($key =~ m/\W/);
+
+		my @x = (git_cmd(), 'config');
+		if (defined $type) { push @x, $type; }
+		push @x, "--get";
+		push @x, "gitweb.$key";
+		my $val = qx(@x);
+		chomp $val;
+		return ($val);
+	}
 }
 
 # get hash of given path at given ref
