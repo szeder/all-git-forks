@@ -2026,7 +2026,8 @@ int hash_sha1_file(const void *buf, unsigned long len, const char *type,
 	return 0;
 }
 
-int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned char *returnsha1)
+int write_sha1_file_maybe(void *buf, unsigned long len, const char *type,
+			  int dup_ok, unsigned char *returnsha1)
 {
 	int size, ret;
 	unsigned char *compressed;
@@ -2037,14 +2038,15 @@ int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned cha
 	char hdr[32];
 	int fd, hdrlen;
 
-	/* Normally if we have it in the pack then we do not bother writing
-	 * it out into .git/objects/??/?{38} file.
+	/* Normally if in a pack (or any where else) then we do not write
+	 * it out into .git/objects/??/?{38} file,  but with dup_ok != 0
+	 * we only avoid over-writing a loose blob in the local repo.
 	 */
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
 	filename = sha1_file_name(sha1);
 	if (returnsha1)
 		hashcpy(returnsha1, sha1);
-	if (has_sha1_file(sha1))
+	if (!dup_ok && has_sha1_file(sha1))
 		return 0;
 	fd = open(filename, O_RDONLY);
 	if (fd >= 0) {
@@ -2107,6 +2109,12 @@ int write_sha1_file(void *buf, unsigned long len, const char *type, unsigned cha
 	free(compressed);
 
 	return move_temp_to_file(tmpfile, filename);
+}
+
+int write_sha1_file(void *buf, unsigned long len, const char *type,
+		    unsigned char *returnsha1)
+{
+	return write_sha1_file_maybe(buf, len, type, 0, returnsha1);
 }
 
 /*

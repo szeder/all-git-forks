@@ -10,13 +10,16 @@
 #include "progress.h"
 
 static int dry_run, quiet, recover, has_errors;
-static const char unpack_usage[] = "git-unpack-objects [-n] [-q] [-r] < pack-file";
+static const char unpack_usage[] =
+"git-unpack-objects [-n] [-q] [-r] [-f] [--min-blob-size=N] < pack-file";
 
 /* We always read in 4kB chunks. */
 static unsigned char buffer[4096];
 static unsigned int offset, len;
 static off_t consumed_bytes;
 static SHA_CTX ctx;
+static int force = 0;
+uint32_t min_blob_size;
 
 /*
  * Make sure at least "min" bytes are available in the buffer, and
@@ -131,7 +134,18 @@ static void added_object(unsigned nr, enum object_type type,
 static void write_object(unsigned nr, enum object_type type,
 			 void *buf, unsigned long size)
 {
-	if (write_sha1_file(buf, size, typename(type), obj_list[nr].sha1) < 0)
+	/*
+	 * We never need to write it when it's too small.
+	 * Otherwise,  without -f,  we write it only when
+	 * it does not exist in the repository in any form.
+	 * Finally,  with -f,  we write it only when it does
+	 * not exist in the local repository as a loose object.
+	 * In all cases we fill in obj_list[nr].sha1 .
+	 */
+	if (size < min_blob_size)
+		hash_sha1_file(buf, size, typename(type), obj_list[nr].sha1);
+	else if (write_sha1_file_maybe(buf, size, typename(type),
+				       force, obj_list[nr].sha1) < 0)
 		die("failed to write object");
 	added_object(nr, type, buf, size);
 }
@@ -359,6 +373,17 @@ int cmd_unpack_objects(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(arg, "-r")) {
 				recover = 1;
+				continue;
+			}
+			if (!strcmp(arg, "-f")) {
+				force = 1;
+				continue;
+			}
+			if (!prefixcmp(arg, "--min-blob-size=")) {
+				char *end;
+				min_blob_size = strtoul(arg+16, &end, 0) * 1024;
+				if (!arg[16] || *end)
+					usage(unpack_usage);
 				continue;
 			}
 			if (!prefixcmp(arg, "--pack_header=")) {

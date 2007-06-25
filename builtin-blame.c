@@ -16,6 +16,7 @@
 #include "quote.h"
 #include "xdiff-interface.h"
 #include "cache-tree.h"
+#include "log-tree.h"
 #include "path-list.h"
 #include "mailmap.h"
 
@@ -34,6 +35,7 @@ static char blame_usage[] =
 "  -L n,m              Process only line range n,m, counting from 1\n"
 "  -M, -C              Find line movements within and across files\n"
 "  --incremental       Show blame entries as we find them, incrementally\n"
+"  --log               Show blame entries as a log\n"
 "  --contents file     Use <file>'s contents as the final image\n"
 "  -S revs-file        Use revisions from revs-file instead of calling git-rev-list\n";
 
@@ -46,6 +48,7 @@ static int show_root;
 static int blank_boundary;
 static int incremental;
 static int cmd_is_annotate;
+static int log;
 static int xdl_opts = XDF_NEED_MINIMAL;
 static struct path_list mailmap;
 
@@ -81,50 +84,12 @@ static unsigned blame_copy_score;
  */
 struct origin {
 	int refcnt;
+	unsigned hashval;
 	struct commit *commit;
 	mmfile_t file;
 	unsigned char blob_sha1[20];
 	char path[FLEX_ARRAY];
 };
-
-/*
- * Given an origin, prepare mmfile_t structure to be used by the
- * diff machinery
- */
-static char *fill_origin_blob(struct origin *o, mmfile_t *file)
-{
-	if (!o->file.ptr) {
-		enum object_type type;
-		num_read_blob++;
-		file->ptr = read_sha1_file(o->blob_sha1, &type,
-					   (unsigned long *)(&(file->size)));
-		o->file = *file;
-	}
-	else
-		*file = o->file;
-	return file->ptr;
-}
-
-/*
- * Origin is refcounted and usually we keep the blob contents to be
- * reused.
- */
-static inline struct origin *origin_incref(struct origin *o)
-{
-	if (o)
-		o->refcnt++;
-	return o;
-}
-
-static void origin_decref(struct origin *o)
-{
-	if (o && --o->refcnt <= 0) {
-		if (o->file.ptr)
-			free(o->file.ptr);
-		memset(o, 0, sizeof(*o));
-		free(o);
-	}
-}
 
 /*
  * Each group of lines is described by a blame_entry; it can be split
@@ -185,7 +150,164 @@ struct scoreboard {
 	/* look-up a line in the final buffer */
 	int num_lines;
 	int *lineno;
+
+	/*
+	 * collection of origins that appear on ent list, hashed for
+	 * quick lookup.
+	 */
+	int origin_nr, origin_alloc;
+	struct origin **origin_hash;
 };
+
+static unsigned origin_hash_value(struct commit *commit, const char *path)
+{
+	int i;
+	unsigned hash = 0;
+	const unsigned char *cp;
+
+	for (cp = commit->object.sha1, i = 0; i < 8 ; i++)
+		hash = (hash << 8) + (hash >> 24) + *cp++;
+	for (cp = (const unsigned char *)path; *cp; cp++)
+		hash = (hash << 8) + (hash >> 24) + *cp++;
+	return hash;
+}
+
+static struct origin *lookup_origin(struct scoreboard *sb, struct commit *c,
+				    const char *path)
+{
+	unsigned hashval, ix;
+
+	if (!sb->origin_hash)
+		return NULL;
+	hashval = origin_hash_value(c, path);
+	ix = hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *origin = sb->origin_hash[ix];
+		if (!origin)
+			return NULL;
+		if (origin != (struct origin *)sb) {
+			if (!origin || origin->hashval != hashval)
+				return NULL;
+			if (origin->commit == c && !strcmp(origin->path, path))
+				return origin;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
+
+static void unhash_origin(struct scoreboard *sb, struct origin *origin)
+{
+	unsigned hashval, ix;
+
+	if (!sb->origin_hash)
+		return;
+	hashval = origin->hashval;
+	ix = hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *o = sb->origin_hash[ix];
+		if (!o)
+			return;
+		if (o == origin) {
+			sb->origin_hash[ix] = (struct origin *)sb;
+			return;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
+
+static void rehash_origin(struct scoreboard *sb)
+{
+	int alloc, ix, newnr;
+	struct origin **newhash;
+
+	alloc = sb->origin_alloc ? (sb->origin_alloc * 2) : 1024;
+	newhash = xcalloc(alloc, sizeof(struct origin *));
+	newnr = 0;
+	for (ix = sb->origin_alloc; 0 <= --ix; ) {
+		struct origin *o = sb->origin_hash[ix];
+		unsigned pos;
+
+		if (!o || (o == (struct origin *) sb))
+			continue;
+		pos = o->hashval % alloc;
+		while (1) {
+			struct origin *n = newhash[pos];
+			if (!n) {
+				newnr++;
+				newhash[pos] = o;
+				break;
+			}
+			if (alloc <= ++pos)
+				pos = 0;
+		}
+	}
+	free(sb->origin_hash);
+	sb->origin_hash = newhash;
+	sb->origin_nr = newnr;
+	sb->origin_alloc = alloc;
+}
+
+static void hash_origin(struct scoreboard *sb, struct origin *origin)
+{
+	unsigned ix;
+
+	if (!sb->origin_alloc || (sb->origin_alloc < sb->origin_nr * 2))
+		rehash_origin(sb);
+	origin->hashval = origin_hash_value(origin->commit, origin->path);
+	ix = origin->hashval % sb->origin_alloc;
+	while (1) {
+		struct origin *o = sb->origin_hash[ix];
+		if (!o) {
+			sb->origin_hash[ix] = origin;
+			sb->origin_nr++;
+			return;
+		}
+		if (sb->origin_alloc <= ++ix)
+			ix = 0;
+	}
+}
+
+/*
+ * Given an origin, prepare mmfile_t structure to be used by the
+ * diff machinery
+ */
+static char *fill_origin_blob(struct origin *o, mmfile_t *file)
+{
+	if (!o->file.ptr) {
+		enum object_type type;
+		num_read_blob++;
+		file->ptr = read_sha1_file(o->blob_sha1, &type,
+					   (unsigned long *)(&(file->size)));
+		o->file = *file;
+	}
+	else
+		*file = o->file;
+	return file->ptr;
+}
+
+/*
+ * Origin is refcounted and usually we keep the blob contents to be
+ * reused.
+ */
+static inline struct origin *origin_incref(struct origin *o)
+{
+	if (o)
+		o->refcnt++;
+	return o;
+}
+
+static void origin_decref(struct origin *o, struct scoreboard *sb)
+{
+	if (o && --o->refcnt <= 0) {
+		unhash_origin(sb, o);
+		if (o->file.ptr)
+			free(o->file.ptr);
+		memset(o, 0, sizeof(*o));
+		free(o);
+	}
+}
 
 static inline int same_suspect(struct origin *a, struct origin *b)
 {
@@ -215,7 +337,7 @@ static void coalesce(struct scoreboard *sb)
 			ent->next = next->next;
 			if (ent->next)
 				ent->next->prev = ent;
-			origin_decref(next->suspect);
+			origin_decref(next->suspect, sb);
 			free(next);
 			ent->score = 0;
 			next = ent; /* again */
@@ -249,14 +371,12 @@ static struct origin *get_origin(struct scoreboard *sb,
 				 struct commit *commit,
 				 const char *path)
 {
-	struct blame_entry *e;
-
-	for (e = sb->ent; e; e = e->next) {
-		if (e->suspect->commit == commit &&
-		    !strcmp(e->suspect->path, path))
-			return origin_incref(e->suspect);
-	}
-	return make_origin(commit, path);
+	struct origin *o = lookup_origin(sb, commit, path);
+	if (o)
+		return origin_incref(o);
+	o = make_origin(commit, path);
+	hash_origin(sb, o);
+	return o;
 }
 
 /*
@@ -597,14 +717,15 @@ static void add_blame_entry(struct scoreboard *sb, struct blame_entry *e)
  * scoreboard.  The origin of dst loses a refcnt while the origin of src
  * gains one.
  */
-static void dup_entry(struct blame_entry *dst, struct blame_entry *src)
+static void dup_entry(struct blame_entry *dst, struct blame_entry *src,
+		      struct scoreboard *sb)
 {
 	struct blame_entry *p, *n;
 
 	p = dst->prev;
 	n = dst->next;
 	origin_incref(src->suspect);
-	origin_decref(dst->suspect);
+	origin_decref(dst->suspect, sb);
 	memcpy(dst, src, sizeof(*src));
 	dst->prev = p;
 	dst->next = n;
@@ -686,7 +807,7 @@ static void split_blame(struct scoreboard *sb,
 
 	if (split[0].suspect && split[2].suspect) {
 		/* The first part (reuse storage for the existing entry e) */
-		dup_entry(e, &split[0]);
+		dup_entry(e, &split[0], sb);
 
 		/* The last part -- me */
 		new_entry = xmalloc(sizeof(*new_entry));
@@ -703,10 +824,10 @@ static void split_blame(struct scoreboard *sb,
 		 * The parent covers the entire area; reuse storage for
 		 * e and replace it with the parent.
 		 */
-		dup_entry(e, &split[1]);
+		dup_entry(e, &split[1], sb);
 	else if (split[0].suspect) {
 		/* me and then parent */
-		dup_entry(e, &split[0]);
+		dup_entry(e, &split[0], sb);
 
 		new_entry = xmalloc(sizeof(*new_entry));
 		memcpy(new_entry, &(split[1]), sizeof(struct blame_entry));
@@ -714,7 +835,7 @@ static void split_blame(struct scoreboard *sb,
 	}
 	else {
 		/* parent and then me */
-		dup_entry(e, &split[1]);
+		dup_entry(e, &split[1], sb);
 
 		new_entry = xmalloc(sizeof(*new_entry));
 		memcpy(new_entry, &(split[2]), sizeof(struct blame_entry));
@@ -748,12 +869,12 @@ static void split_blame(struct scoreboard *sb,
  * After splitting the blame, the origins used by the
  * on-stack blame_entry should lose one refcnt each.
  */
-static void decref_split(struct blame_entry *split)
+static void decref_split(struct blame_entry *split, struct scoreboard *sb)
 {
 	int i;
 
 	for (i = 0; i < 3; i++)
-		origin_decref(split[i].suspect);
+		origin_decref(split[i].suspect, sb);
 }
 
 /*
@@ -769,7 +890,7 @@ static void blame_overlap(struct scoreboard *sb, struct blame_entry *e,
 	split_overlap(split, e, tlno, plno, same, parent);
 	if (split[1].suspect)
 		split_blame(sb, split, e);
-	decref_split(split);
+	decref_split(split, sb);
 }
 
 /*
@@ -893,7 +1014,7 @@ static void copy_split_if_better(struct scoreboard *sb,
 
 	for (i = 0; i < 3; i++)
 		origin_incref(this[i].suspect);
-	decref_split(best_so_far);
+	decref_split(best_so_far, sb);
 	memcpy(best_so_far, this, sizeof(struct blame_entry [3]));
 }
 
@@ -926,7 +1047,7 @@ static void handle_split(struct scoreboard *sb,
 		same += ent->s_lno;
 		split_overlap(this, ent, tlno, plno, same, parent);
 		copy_split_if_better(sb, split, this);
-		decref_split(this);
+		decref_split(this, sb);
 	}
 }
 
@@ -1012,7 +1133,7 @@ static int find_move_in_parent(struct scoreboard *sb,
 				split_blame(sb, split, e);
 				made_progress = 1;
 			}
-			decref_split(split);
+			decref_split(split, sb);
 		}
 	}
 	return 0;
@@ -1128,9 +1249,9 @@ static int find_copy_in_parent(struct scoreboard *sb,
 						  norigin, this, &file_p);
 				copy_split_if_better(sb, blame_list[j].split,
 						     this);
-				decref_split(this);
+				decref_split(this, sb);
 			}
-			origin_decref(norigin);
+			origin_decref(norigin, sb);
 		}
 
 		for (j = 0; j < num_ents; j++) {
@@ -1140,7 +1261,7 @@ static int find_copy_in_parent(struct scoreboard *sb,
 				split_blame(sb, split, blame_list[j].ent);
 				made_progress = 1;
 			}
-			decref_split(split);
+			decref_split(split, sb);
 		}
 		free(blame_list);
 
@@ -1175,7 +1296,7 @@ static void pass_whole_blame(struct scoreboard *sb,
 		if (!same_suspect(e->suspect, origin))
 			continue;
 		origin_incref(porigin);
-		origin_decref(e->suspect);
+		origin_decref(e->suspect, sb);
 		e->suspect = porigin;
 	}
 }
@@ -1214,7 +1335,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 				continue;
 			if (!hashcmp(porigin->blob_sha1, origin->blob_sha1)) {
 				pass_whole_blame(sb, origin, porigin);
-				origin_decref(porigin);
+				origin_decref(porigin, sb);
 				goto finish;
 			}
 			for (j = same = 0; j < i; j++)
@@ -1227,7 +1348,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 			if (!same)
 				parent_origin[i] = porigin;
 			else
-				origin_decref(porigin);
+				origin_decref(porigin, sb);
 		}
 	}
 
@@ -1271,7 +1392,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 
  finish:
 	for (i = 0; i < MAXPARENT; i++)
-		origin_decref(parent_origin[i]);
+		origin_decref(parent_origin[i], sb);
 }
 
 /*
@@ -1431,10 +1552,10 @@ static void write_filename_info(const char *path)
  * The blame_entry is found to be guilty for the range.  Mark it
  * as such, and show it in incremental output.
  */
-static void found_guilty_entry(struct blame_entry *ent)
+static int found_guilty_entry(struct blame_entry *ent)
 {
 	if (ent->guilty)
-		return;
+		return 0;
 	ent->guilty = 1;
 	if (incremental) {
 		struct origin *suspect = ent->suspect;
@@ -1460,6 +1581,7 @@ static void found_guilty_entry(struct blame_entry *ent)
 		}
 		write_filename_info(suspect->path);
 	}
+	return 1;
 }
 
 /*
@@ -1473,6 +1595,7 @@ static void assign_blame(struct scoreboard *sb, struct rev_info *revs, int opt)
 		struct blame_entry *ent;
 		struct commit *commit;
 		struct origin *suspect = NULL;
+		int blamed = 0;
 
 		/* find one suspect to break down */
 		for (ent = sb->ent; !suspect && ent; ent = ent->next)
@@ -1504,8 +1627,10 @@ static void assign_blame(struct scoreboard *sb, struct rev_info *revs, int opt)
 		/* Take responsibility for the remaining entries */
 		for (ent = sb->ent; ent; ent = ent->next)
 			if (same_suspect(ent->suspect, suspect))
-				found_guilty_entry(ent);
-		origin_decref(suspect);
+				blamed |= found_guilty_entry(ent);
+		if (log && blamed)
+			log_tree_commit(revs, suspect->commit);
+		origin_decref(suspect, sb);
 
 		if (DEBUG) /* sanity */
 			sanity_check_refcnt(sb);
@@ -2139,7 +2264,6 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	cmd_is_annotate = !strcmp(argv[0], "annotate");
 
 	git_config(git_blame_config);
-	save_commit_buffer = 0;
 
 	opt = 0;
 	seen_dashdash = 0;
@@ -2203,6 +2327,8 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		}
 		else if (!strcmp("--incremental", arg))
 			incremental = 1;
+		else if (!strcmp("--log", arg))
+			log = 1;
 		else if (!strcmp("--score-debug", arg))
 			output_option |= OUTPUT_SHOW_SCORE;
 		else if (!strcmp("-f", arg) ||
@@ -2324,6 +2450,11 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&revs, NULL);
 	setup_revisions(unk, argv, &revs, NULL);
+	revs.abbrev = DEFAULT_ABBREV;
+	revs.commit_format = CMIT_FMT_DEFAULT;
+	revs.verbose_header = 1;
+	revs.always_show_header = 1;
+
 	memset(&sb, 0, sizeof(sb));
 
 	/*
@@ -2417,7 +2548,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	assign_blame(&sb, &revs, opt);
 
-	if (incremental)
+	if (incremental || log)
 		return 0;
 
 	coalesce(&sb);

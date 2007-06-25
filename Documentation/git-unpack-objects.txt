@@ -8,7 +8,7 @@ git-unpack-objects - Unpack objects from a packed archive
 
 SYNOPSIS
 --------
-'git-unpack-objects' [-n] [-q] [-r] <pack-file
+'git-unpack-objects' [-n] [-q] [-r] [-f] [--min-blob-size=N] <pack-file
 
 
 DESCRIPTION
@@ -17,9 +17,12 @@ Read a packed archive (.pack) from the standard input, expanding
 the objects contained within and writing them into the repository in
 "loose" (one object per file) format.
 
-Objects that already exist in the repository will *not* be unpacked
-from the pack-file.  Therefore, nothing will be unpacked if you use
-this command on a pack-file that exists within the target repository.
+By default,  objects that already exist in the repository will *not*
+be unpacked from the pack-file.  Therefore, nothing will be unpacked
+if you use this command on a pack-file that exists within the target
+repository,  unless you specify -f.  If an object already exists
+unpacked in the repository,  it will not be replaced with the copy
+from the pack,  with or without -f.
 
 Please see the `git-repack` documentation for options to generate
 new packs and replace existing ones.
@@ -39,6 +42,18 @@ OPTIONS
 	the first corruption.  This flag tells it to keep going
 	and make the best effort to recover as many objects as
 	possible.
+
+-f::
+	Allow loose objects to be created in the same repository that
+	contains the packfile.
+
+--min-blob-size=<n>::
+	Smallest loose object to create,  expressed in kB.
+	Blobs smaller than this will not be unpacked.  Default is 0.
+	If you specify this option with a deltified source packfile,
+	the source packfile should reside in the current repository
+	so delta bases too small to unpack are still accessible,  and
+	therefore -f will be needed for anything to be written.
 
 
 Author
