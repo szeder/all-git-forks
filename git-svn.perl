@@ -1761,16 +1761,8 @@ sub find_parent_branch {
 	print STDERR  "Found possible branch point: ",
 	              "$new_url => ", $self->full_url, ", $r\n";
 	$branch_from =~ s#^/##;
-	my $gs = Git::SVN->find_by_url($new_url, $repos_root, $branch_from);
-	unless ($gs) {
-		my $ref_id = $self->{ref_id};
-		$ref_id =~ s/\@\d+$//;
-		$ref_id .= "\@$r";
-		# just grow a tail if we're not unique enough :x
-		$ref_id .= '-' while find_ref($ref_id);
-		print STDERR "Initializing parent: $ref_id\n";
-		$gs = Git::SVN->init($new_url, '', $ref_id, $ref_id, 1);
-	}
+	my $gs = other_gs($new_url, $repos_root, $branch_from, $r,
+		$self->{ref_id});
 	my ($r0, $parent) = $gs->find_rev_before($r, 1);
 	if (!defined $r0 || !defined $parent) {
 		my ($base, $head) = parse_revision_argument(0, $r);
@@ -1883,6 +1875,21 @@ sub parse_svn_date {
 	                                    (\d\d)\:(\d\d)\:(\d\d).\d+Z$/x) or
 	                                 croak "Unable to parse date: $date\n";
 	"+0000 $Y-$m-$d $H:$M:$S";
+}
+
+sub other_gs {
+	my ($new_url, $repos_root, $branch_from, $r, $old_ref_id) = @_;
+	my $gs = Git::SVN->find_by_url($new_url, $repos_root, $branch_from);
+	unless ($gs) {
+		my $ref_id = $old_ref_id;
+		$ref_id =~ s/\@\d+$//;
+		$ref_id .= "\@$r";
+		# just grow a tail if we're not unique enough :x
+		$ref_id .= '-' while find_ref($ref_id);
+		print STDERR "Initializing parent: $ref_id\n";
+		$gs = Git::SVN->init($new_url, '', $ref_id, $ref_id, 1);
+	}
+	$gs
 }
 
 sub check_author {
