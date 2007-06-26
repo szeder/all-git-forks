@@ -8,7 +8,7 @@ test_description='git-svn svk merge tickets'
 . ./lib-git-svn.sh
 
 test_expect_success 'load svk depot' "
-	svnadmin load -q $rawsvnrepo < ../t9113/svk-merge.dump &&
+	svnadmin load -q $rawsvnrepo < ../t9115/svk-merge.dump &&
 	git-svn init --minimize-url -R svkmerge \
 	  -T trunk -b branches $svnrepo &&
 	git-svn fetch --all
