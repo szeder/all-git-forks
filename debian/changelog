@@ -2,8 +2,11 @@ git-core (1:1.5.2.2-2.1) unstable; urgency=low
 
   * debian/rules: move /usr/share/git-gui/ from git-core package into
     git-gui package (thx Ansgar Burchardt, closes: #430530).
+  * debian/diff/0004-git-cvsimport-force-checkout-of-working-tree-after-i.diff:
+    new; git-cvsimport: force checkout of working tree after initial import
+    (closes: #430903).
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:27:13 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:37:10 +0000
 
 git-core (1:1.5.2.2-2) unstable; urgency=low
 
