@@ -15,7 +15,12 @@ endif
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
   CFLAGS +=-O0
 else
+# workaround #427907
+ifeq (hppa,$(ARCH))
+  CFLAGS +=-O0
+else
   CFLAGS +=-O2
+endif
 endif
 ifeq (powerpc,$(ARCH))
   OPTS +=PPC_SHA1=1
