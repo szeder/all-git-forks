@@ -77,6 +77,10 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	for i in '$(GIT)'-core/usr/bin/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
+	# don't include git-gui's tcl files
+	rm -f '$(GIT)'-core/usr/share/git-gui/lib/*
+	rmdir '$(GIT)'-core/usr/share/git-gui/lib
+	rmdir '$(GIT)'-core/usr/share/git-gui
 	# don't include arch, cvs, svn, email, and gitk man pages
 	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk; do \
 	  rm -f '$(GIT)'-core/usr/share/man/man1/$$i*; \
@@ -149,6 +153,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-gui/usr/bin
 	install -m0755 '$(TMP)'/usr/bin/git-gui '$(GIT)'-gui/usr/bin/
 	install -m0755 '$(TMP)'/usr/bin/git-citool '$(GIT)'-gui/usr/bin/
+	install -d -m0755 '$(GIT)'-gui/usr/share/git-gui/lib
+	install -m0644 '$(TMP)'/usr/share/git-gui/lib/* \
+	  '$(GIT)'-gui/usr/share/git-gui/lib/
 	# gitk
 	rm -rf '$(GIT)'k
 	install -d -m0755 '$(GIT)'k/usr/bin
