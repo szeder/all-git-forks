@@ -1,4 +1,4 @@
-git-core (1:1.5.2.2-2.1) unstable; urgency=low
+git-core (1:1.5.2.2-3) unstable; urgency=low
 
   * debian/rules: move /usr/share/git-gui/ from git-core package into
     git-gui package (thx Ansgar Burchardt, closes: #430530).
@@ -12,7 +12,7 @@ git-core (1:1.5.2.2-2.1) unstable; urgency=low
   * debian/rules: workaround #427907: compile with -O0 instead of -O2 on hppa
     (#429389).
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:52:20 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:54:39 +0000
 
 git-core (1:1.5.2.2-2) unstable; urgency=low
 
