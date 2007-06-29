@@ -8,8 +8,9 @@ git-core (1:1.5.2.2-2.1) unstable; urgency=low
   * debian/diff/0005-git-gui-properly-popup-error-if-gitk-should-be-start.diff:
     new; git-gui: properly popup error if gitk should be started but is not
     installed (#429810).
+  * debian/control: git-gui: Recommends: gitk (closes: #429810).
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:42:12 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 29 Jun 2007 12:44:04 +0000
 
 git-core (1:1.5.2.2-2) unstable; urgency=low
 
