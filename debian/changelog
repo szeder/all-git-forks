@@ -3,8 +3,12 @@ git-core (1:1.5.3~rc0-0) experimental; urgency=low
   * new upstream release candidate.
   * debian/changelog.upstream.sh: run git shortlog with option --no-merges.
   * debian/versions.upstream, debian/changelog.upstream: update.
+  * debian/diff/0003-git-svn-trailing-slash-in-prefix-is-mandatory-with.diff,
+    debian/diff/0004-git-cvsimport-force-checkout-of-working-tree-after-i.diff:
+    remove; applied upstream.
+  * debian/diff/00*.diff: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 03 Jul 2007 08:33:01 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 03 Jul 2007 09:02:21 +0000
 
 git-core (1:1.5.2.3-1) unstable; urgency=low
 
