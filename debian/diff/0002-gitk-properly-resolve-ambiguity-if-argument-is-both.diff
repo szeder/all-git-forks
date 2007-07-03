@@ -1,4 +1,4 @@
-From 0fbc280475a4fab60a4c186fb01def65ff57a6a3 Mon Sep 17 00:00:00 2001
+From 44f01b2bcc19c77a776a331964088e878e2b165b Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Tue, 22 May 2007 09:36:39 +0000
 Subject: [PATCH] gitk: properly resolve ambiguity if argument is both, revision and filename
@@ -94,5 +94,5 @@ index a57e84c..7e8d426 100755
      addviewmenu 1
      .bar.view entryconf Edit* -state normal
 -- 
-1.5.2
+1.5.2.2
 

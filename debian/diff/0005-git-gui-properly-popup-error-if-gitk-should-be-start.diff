@@ -1,4 +1,4 @@
-From 018181a9f323ebadf75c5eb2967bb454cdf4088b Mon Sep 17 00:00:00 2001
+From bf0b960afd35ab46131f733c6b1f6398cc003886 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 29 Jun 2007 12:41:35 +0000
 Subject: [PATCH] git-gui: properly popup error if gitk should be started but is not installed
@@ -19,10 +19,10 @@ Signed-off-by: Gerrit Pape <pape@smarden.org>
  1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/git-gui/git-gui.sh b/git-gui/git-gui.sh
-index 97de595..3caed63 100755
+index 4fbc408..05e47e8 100755
 --- a/git-gui/git-gui.sh
 +++ b/git-gui/git-gui.sh
-@@ -1046,10 +1046,10 @@ proc do_gitk {revs} {
+@@ -1047,10 +1047,10 @@ proc do_gitk {revs} {
  		append cmd { }
  		append cmd $revs
  	}
