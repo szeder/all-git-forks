@@ -150,6 +150,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
 Package: git-gui
 Architecture: all
 Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.4
+Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: git-doc, gitk
 Description: fast, scalable, distributed revision control system (GUI)
  Git is popular version control system designed to handle very large

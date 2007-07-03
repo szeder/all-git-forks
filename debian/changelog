@@ -1,8 +1,10 @@
 git-core (1:1.5.2.3-0) unstable; urgency=low
 
   * new upstream point release.
+  * debian/control: package git-gui: Replaces: git-core (<< 1:1.5.2.2-3)
+    (thx Frank Lichtenheld, closes: #431481).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 03 Jul 2007 07:41:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 03 Jul 2007 07:47:04 +0000
 
 git-core (1:1.5.2.2-3) unstable; urgency=low
 
