@@ -74,7 +74,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -f '$(GIT)'-core/usr/share/man/man3/private-Error.3pm
 	rm -rf '$(GIT)'-core/usr/lib
 	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
-	# don't include arch, cvs, svn, email tools, and gitk program
+	# don't include arch, cvs, svn, email, gui tools, and gitk program
 	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk \
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/bin/$$i*; \
@@ -86,8 +86,9 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -f '$(GIT)'-core/usr/share/git-gui/lib/*
 	rmdir '$(GIT)'-core/usr/share/git-gui/lib
 	rmdir '$(GIT)'-core/usr/share/git-gui
-	# don't include arch, cvs, svn, email, and gitk man pages
-	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk; do \
+	# don't include arch, cvs, svn, email, gui, and gitk man pages
+	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk \
+	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/share/man/man1/$$i*; \
 	done
 	chmod 0644 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
@@ -158,6 +159,12 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-gui/usr/bin
 	install -m0755 '$(TMP)'/usr/bin/git-gui '$(GIT)'-gui/usr/bin/
 	install -m0755 '$(TMP)'/usr/bin/git-citool '$(GIT)'-gui/usr/bin/
+	install -d -m0755 '$(GIT)'-gui/usr/share/man/man1
+	for i in gui citool, do \
+	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
+	    '$(GIT)'-gui/usr/share/man/man1/; \
+	done
+	gzip -9 '$(GIT)'-gui/usr/share/man/man1/*.1
 	install -d -m0755 '$(GIT)'-gui/usr/share/git-gui/lib
 	install -m0644 '$(TMP)'/usr/share/git-gui/lib/* \
 	  '$(GIT)'-gui/usr/share/git-gui/lib/
