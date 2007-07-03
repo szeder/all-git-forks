@@ -7,7 +7,7 @@ git-core (1:1.5.3~rc0-1) experimental; urgency=low
     debian/diff/0004-git-cvsimport-force-checkout-of-working-tree-after-i.diff:
     remove; applied upstream.
   * debian/diff/00*.diff: adapt.
-  * debia/rules: put git-gui, git-citool man pages into package git-gui.
+  * debian/rules: put git-gui, git-citool man pages into package git-gui.
 
  -- Gerrit Pape <pape@smarden.org>  Tue, 03 Jul 2007 10:01:12 +0000
 

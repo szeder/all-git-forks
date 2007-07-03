@@ -160,7 +160,7 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0755 '$(TMP)'/usr/bin/git-gui '$(GIT)'-gui/usr/bin/
 	install -m0755 '$(TMP)'/usr/bin/git-citool '$(GIT)'-gui/usr/bin/
 	install -d -m0755 '$(GIT)'-gui/usr/share/man/man1
-	for i in gui citool, do \
+	for i in gui citool; do \
 	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
 	    '$(GIT)'-gui/usr/share/man/man1/; \
 	done
