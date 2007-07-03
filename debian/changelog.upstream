@@ -1,3 +1,716 @@
+Version v1.5.3-rc0; changes since v1.5.2.3:
+-------------------------------------------
+
+Adam Roben (3):
+      git-send-email: Add --threaded option
+      git-send-email: make options easier to configure.
+      format-patch: Add format.subjectprefix config option
+
+Alex Riesen (11):
+      Fix the progress code to output LF only when it is really needed
+      Add run_command_v_opt_cd: chdir into a directory before exec
+      Add ability to specify environment extension to run_command
+      Allow environment variables to be unset in the processes started by run_command
+      Verbose connect messages to show the IP addresses used
+      Add another verbosity level to git-fetch
+      Add a configuration option to control diffstat after merge
+      Fix push with refspecs containing wildcards
+      Do not use h_errno after connect(2): the function does not set it
+      cvsserver: Actually implement --export-all
+      Avoid perl in t1300-repo-config
+
+Alexandre Julliard (1):
+      pack-check: Sort entries by pack offset before unpacking them.
+
+Alexandre Vassalotti (1):
+      git-tag: Fix "can't shift that many".
+
+Andy Parkins (1):
+      Make git-prune submodule aware (and fix a SEGFAULT in the process)
+
+Andy Whitcroft (3):
+      cvsimport: add support for new style remote layout
+      cvsimport: update documentation to include separate remotes option
+      cvsimport: add <remote>/HEAD reference in separate remotes more
+
+Aneesh Kumar K.V (2):
+      gitview: Fix the blame interface.
+      gitview: run blame with -C -C
+
+Benjamin Sergeant (1):
+      git-p4 fails when cloning a p4 depo.
+
+Brian Gernhardt (1):
+      Fix t5516-fetch for systems where `wc -l` outputs whitespace.
+
+Carlos Rica (3):
+      Fix git-stripspace to process correctly long lines and spaces.
+      Add test script for git-stripspace.
+      Add test-script for git-tag
+
+Dan McGee (1):
+      git-mergetool: Allow gvimdiff to be used as a mergetool
+
+Dana L. How (8):
+      Custom compression levels for objects and packs
+      Alter sha1close() 3rd argument to request flush only
+      git-repack --max-pack-size: new file statics and code restructuring
+      git-repack --max-pack-size: write_{object,one}() respect pack limit
+      git-repack --max-pack-size: split packs as asked by write_{object,one}()
+      git-repack --max-pack-size: add option parsing to enable feature
+      pack-objects: clarification & option checks for --max-pack-size
+      Ensure git-repack -a -d --max-pack-size=N deletes correct packs
+
+Daniel Barkalow (6):
+      Move remote parsing into a library file out of builtin-push.
+      Move refspec parser from connect.c and cache.h to remote.{c,h}
+      Add handlers for fetch-side configuration of remotes.
+      Update local tracking refs when pushing
+      Move refspec pattern matching to match_refs().
+      Fix pushing to a pattern with no dst
+
+Dave O'Neill (1):
+      Generate tags with correct timestamp (git-svnimport)
+
+Elvis Pranskevichus (1):
+      Use git-tag in git-cvsimport
+
+Emil Medve (1):
+      git-submodule: Instead of using only annotated tags, use any tags.
+
+Eric Wong (4):
+      git-svn: cleanup: factor out longest_common_path() function
+      git-svn: test for creating new directories over svn://
+      git-svn: reduce stat() calls for a backwards compatibility check
+      git-svn: allow dcommit to retain local merge information
+
+Fernando J. Pereda (1):
+      Teach mailsplit about Maildir's
+
+Frank Lichtenheld (11):
+      t9400: Add test cases for config file handling
+      t9400: Add some more cvs update tests
+      t9400: Add some basic pserver tests
+      t9400: Work around CVS' deficiencies
+      cvsserver: Handle 'cvs login'
+      cvsserver: Make req_Root more critical of its input data
+      cvsserver: Add some useful commandline options
+      cvsserver: Let --base-path and pserver get along just fine
+      cvsserver: Actually implement --export-all
+      config: Add --null/-z option for null-delimted output
+      config: add support for --bool and --int while setting values
+
+Geert Bosch (1):
+      Unify write_index_file functions
+
+Gerrit Pape (3):
+      git-branch: cleanup config file when deleting branches
+      git-svn: trailing slash in prefix is mandatory with --branches/-b
+      git-cvsimport: force checkout of working tree after initial import
+
+Han-Wen Nienhuys (28):
+      Cleanups
+      reformatting: break long lines.
+      rename apply() to applyCommit(); apply is a python builtin
+      add .dotest to .gitignore
+      Robustness fixes for pipes
+      cleanup
+      minor cleanups
+      clone and sync --keep-path to keep perforce path to module.
+      use string.strip() iso. slicing.
+      use strip() iso. slicing for removing \n
+      add --verbose to all commands.
+      Extract multiple paths concurrently.
+      Diverse cleanups
+      remove global .gitdir
+      Read p4 files in one batch.
+      Thinko, fix buglet.
+      store p4 user cache in home directory.
+      thinko.
+      read files before creating the commit.
+      don't p4 print deleted files.
+      only run p4 print if necessary
+      use p4CmdList() to get file contents in Python dicts. This is more robust.
+      Cleanups & import into p4/master for local import
+      remove debug print
+      thinko: really ignore deleted files.
+      look for 'text' and 'binary' files.
+      print error message when p4 print fails (eg. due to permission problems)
+      also strip p4/ from local imports.
+
+Ismail Dönmez (1):
+      Change default man page path to /usr/share/man
+
+Jakub Narebski (16):
+      gitweb: Add test t9500 for gitweb (as standalone script)
+      Add an option to git-ls-tree to display also the size of blob
+      gitweb: Provide links to commitdiff to each parent in 'commitdiff' view
+      gitweb: Improve "next" link in commitdiff view
+      gitweb: Split git_patchset_body into separate subroutines
+      gitweb: Create special from-file/to-file header for combined diff
+      gitweb: Add links to blobdiffs in from-file/to-file header for merges
+      gitweb: '--cc' for merges in 'commitdiff' view
+      Document git rev-list --full-history
+      Document git read-tree --trivial
+      Document git rev-parse --is-inside-git-dir
+      Document git reflog --stale-fix
+      Document git rev-list --timestamp
+      Use tabs for indenting definition list for options in git-log.txt
+      Document git log --abbrev-commit, as a kind of pretty option
+      Document git log --full-diff
+
+James Bowes (2):
+      Add colour support in rebase and merge tree diff stats output.
+      rev-parse: Identify short sha1 sums correctly.
+
+Jeff King (12):
+      cmd_log_init: remove parsing of --encoding command line parameter
+      refactor dir_add_name
+      dir_struct: add collect_ignored option
+      builtin-add: simplify (and increase accuracy of) exclude handling
+      Fix ALLOC_GROW off-by-one
+      Fix ALLOC_GROW calls with obsolete semantics
+      git-stash: fix "no arguments" case in documentation
+      git-stash: fix "can't shift that many" with no arguments
+      git-stash: don't complain when listing in a repo with no stash
+      Documentation: quote {non-attributes} for asciidoc
+      Documentation: quote {non-attributes} for asciidoc
+      Documentation: minor cleanups to branch/checkout wording
+
+Jeffrey C. Ollie (2):
+      Add an option to quiet git-init.
+      Quiet the output from git-init when cloning, if requested.
+
+Jim Meyering (4):
+      Don't dereference a strdup-returned NULL
+      detect close failure on just-written file handles
+      Don't ignore a pack-refs write failure
+      git-log: detect dup and fdopen failure
+
+Johan Herland (1):
+      Remove unnecessary code and comments on non-existing 8kB tag object restriction
+
+Johannes Schindelin (23):
+      Update to SubmittingPatches
+      Add git-filter-branch
+      git-fsck: learn about --verbose
+      Move buffer_is_binary() to xdiff-interface.h
+      merge-recursive: refuse to merge binary files
+      git-merge-file: refuse to merge binary files
+      filter-branch: use $(($i+1)) instead of $((i+1))
+      filter-branch: fix behaviour of '-k'
+      t5000: skip ZIP tests if unzip was not found
+      Teach filter-branch about subdirectory filtering
+      Teach diff to imply --find-copies-harder upon -C -C
+      pp_header(): work around possible memory corruption
+      diffcore-rename: favour identical basenames
+      filter-branch: add example to move everything into a subdirectory
+      Move the pick_author code to git-sh-setup
+      Teach rebase an interactive mode
+      rebase -i: several cleanups
+      rebase -i: provide reasonable reflog for the rebased branch
+      Teach rebase -i about --preserve-merges
+      t7004: ship trustdb to avoid gpg warnings
+      git add: respect core.filemode with unmerged entries
+      Make '!' aliases more useful
+      git-fsck: add --lost-found option
+
+Johannes Sixt (9):
+      filter-branch: Use rev-list arguments to specify revision ranges.
+      filter-branch: also don't fail in map() if a commit cannot be mapped
+      Makefile: Remove git-merge-base from PROGRAMS.
+      filter-branch: Simplify parent computation.
+      filter-branch: subdirectory filter needs --full-history
+      Avoid double-slash in path names that depend on $(sharedir).
+      Remove trailing slash from $(template_dir).
+      git-remote show: Also shorten non-fast-forward refs in the 'push' listing
+      Test 'git add' for unmerged entries when core.symlinks=false.
+
+Jon Loeliger (1):
+      Add the --numbered-files option to git-format-patch.
+
+Jonas Fonseca (2):
+      Fix git-am(1) synopsis formatting
+      git-rebase: suggest to use git-add instead of git-update-index
+
+Josh Triplett (1):
+      Fix typo in git-mergetool
+
+Julian Phillips (2):
+      Makefile: Use generic rule to build test programs
+      new-workdir: handle rev-parse --git-dir not always giving full path
+
+Junio C Hamano (48):
+      git-apply: Fix removal of new trailing blank lines.
+      pack-objects: pass fullname down to add_object_entry()
+      Teach "delta" attribute to pack-objects.
+      builtin-pack-objects: remove unnecessary code for no-delta
+      Fix command line parameter parser of revert/cherry-pick
+      Remove git-applypatch
+      mailsplit: fix for more than one input files
+      Add DLH to .mailmap
+      Release Notes: start preparing for 1.5.3
+      git-apply: what is detected and fixed is not just trailing spaces.
+      t7003: make test repeatable
+      git-branch --track: fix tracking branch computation.
+      War on whitespace
+      Test wildcard push/fetch
+      More missing static
+      More missing static
+      Even more missing static
+      remote.c: refactor match_explicit_refs()
+      remote.c: refactor creation of new dst ref
+      remote.c: minor clean-up of match_explicit()
+      remote.c: fix "git push" weak match disambiguation
+      remote.c: "git-push frotz" should update what matches at the source.
+      git-push: Update description of refspecs and add examples
+      git-blame: do not indent with spaces.
+      git-blame -w: ignore whitespace
+      mktag: minimally update the description.
+      Lift 16kB limit of log message output
+      Extend --pretty=oneline to cover the first paragraph,
+      Makefile: common-cmds.h depends on generate-cmdlist.sh script
+      Makefile: allow generating git.o for debugging purposes
+      -Wold-style-definition fix
+      More static
+      Documentation: update "stale" links for 1.5.2.2
+      INSTALL: explain how to build documentation
+      Two trivial -Wcast-qual fixes
+      git-send-email: Do not make @-less message ID
+      Add core.quotepath configuration variable.
+      Update draft Release Notes for 1.5.3
+      diffcore_count_changes: pass diffcore_filespec
+      diffcore_filespec: add is_binary
+      diffcore-delta.c: update the comment on the algorithm.
+      diffcore-delta.c: Ignore CR in CRLF for text files
+      git-stash: require "save" to be explicit and update documentation
+      Update public documentation links for 1.5.2.3
+      "git-push $URL" without refspecs pushes only matching branches
+      Rewrite "git-frotz" to "git frotz"
+      git-stash: make "save" the default action again.
+      Mark disused commit walkers officially deprecated.
+
+Kevin Green (1):
+      git-p4: check for existence of repo dir before trying to create
+
+Lars Hjemli (10):
+      Add git-submodule command
+      Add basic test-script for git-submodule
+      git-submodule: move cloning into a separate function
+      git-submodule: clone during update, not during init
+      t7400: barf if git-submodule removes or replaces a file
+      git-submodule: remember to checkout after clone
+      Rename sections from "module" to "submodule" in .gitmodules
+      git-submodule: give submodules proper names
+      Add gitmodules(5)
+      gitmodules(5): remove leading period from synopsis
+
+Linus Torvalds (9):
+      Make "git gc" pack all refs by default
+      Make the pack-refs interfaces usable from outside
+      Makefile: add an explicit rule for building assembly output
+      Finally implement "git log --follow"
+      Fix up "git log --follow" a bit..
+      Clean up internal command handling
+      Check for IO errors after running a command
+      git: Try a bit harder not to lose errno in stdio
+      Start deprecating "git-command" in favor of "git command"
+
+Marco Costalba (1):
+      Teach 'git-apply --whitespace=strip' to remove empty lines at the end of file
+
+Marius Storm-Olsen (7):
+      Make the command call silent
+      Replace \r\n with \n when importing from p4 on Windows
+      Ensure that the commit message is Windows formated (CRLF) before invoking the editor.
+      Fix git-p4 clone (defaultDestination)
+      Fix single branch import into remotes
+      Exclude the HEAD symbolic ref from the list of known branches
+      Only use double quotes on Windows
+
+Mark Levedahl (6):
+      gitk: Make selection highlight color configurable
+      gitk: Update fontsize in patch / tree list
+      gitk: Allow specifying tabstop as other than default 8 characters.
+      gitweb.perl - Optionally send archives as .zip files
+      gitk: Use a spinbox for setting tabstop settings
+      gitk: Update selection background colorbar in prefs dialog
+
+Martin Koegler (5):
+      builtin-pack-objects: don't fail, if delta is not possible
+      git-pack-objects: cache small deltas between big objects
+      builtin-pack-object: cache small deltas
+      diff-delta: use realloc instead of xrealloc
+      gitweb: Handle non UTF-8 text better
+
+Martin Waitz (1):
+      rename dirlink to gitlink.
+
+Matthias Lederhofer (18):
+      add git-filter-branch to .gitignore
+      make clean should remove all the test programs too
+      filter-branch: prevent filters from reading from stdin
+      chmod +x git-filter-branch.sh
+      rev-parse: document --is-inside-git-dir
+      rev-parse: introduce --is-bare-repository
+      test git rev-parse
+      introduce GIT_WORK_TREE to specify the work tree
+      Use new semantics of is_bare/inside_git_dir/inside_work_tree
+      extend rev-parse test for --is-inside-work-tree
+      test GIT_WORK_TREE
+      setup_git_directory: fix segfault if repository is found in cwd
+      filter-branch: always export GIT_DIR if it is set
+      gitweb: change filename/directory name of snapshots
+      make git barf when an alias changes environment variables
+      make dist: include configure script in tarball
+      ignore git-rebase--interactive
+      getenv/setenv: use constants if available
+
+Matthijs Melchior (1):
+      Teach git-tag about showing tag annotations.
+
+Michael Ellerman (2):
+      gitview: Use new-style classes
+      gitview: Define __slots__ for Commit
+
+Michael Hendricks (1):
+      Correctly document the name of the global excludes file configuration
+
+Michael Krelin (1):
+      git-svn: honor ~/.subversion/ client cert file settings.
+
+Michael S. Tsirkin (1):
+      connect: display connection progress
+
+Nanako Shiraishi (1):
+      Cloning from a repo without "current branch"
+
+Nicolas Pitre (8):
+      allow for undeltified objects not to be reused
+      make "repack -f" imply "pack-objects --no-reuse-object"
+      deprecate the new loose object header format
+      fixes to output of git-verify-pack -v
+      improve delta long block matching with big files
+      update diff-delta.c copyright
+      fix repack with --max-pack-size
+      always start looking up objects in the last used pack first
+
+Paul Mackerras (18):
+      gitk: Use the -q flag to git checkout
+      gitk: New infrastructure for working out branches & previous/next tags
+      gitk: Don't try to list large numbers of tags or heads in the details pane
+      gitk: Add some more comments to the optimize_rows procedure
+      gitk: Improve the behaviour of the initial selection
+      gitk: Implement a simple scheduler for the compute-intensive stuff
+      gitk: Cope with commit messages with carriage-returns and initial blank lines
+      gitk: Disable the head context menu entries for the checked-out branch
+      gitk: Store ids in rowrangelist and idrowranges rather than row numbers
+      gitk: New algorithm for drawing the graph lines
+      gitk: Show local uncommitted changes as a fake commit
+      gitk: Speed up the reading of references
+      gitk: Get rid of the childlist variable
+      gitk: Add a "reset branch to here" row context-menu operation
+      gitk: Limit how often we change the canvas scrolling region
+      gitk: Fix bug causing nearby tags/heads to sometimes not be displayed
+      gitk: Improve handling of whitespace and special chars in filenames
+      gitk: Add a progress bar to show progress while resetting
+
+Petr Baudis (2):
+      git-rev-list: Add regexp tuning options
+      git-applymbox: Remove command
+
+Pierre Habouzit (3):
+      $EMAIL is a last resort fallback, as it's system-wide.
+      Active_nr is unsigned, hence can't be < 0
+      Missing statics.
+
+Quy Tonthat (1):
+      git.spec: RPM failed, looking for wrong files.
+
+Randal L. Schwartz (1):
+      Add test-sha1 to .gitignore.
+
+René Scharfe (3):
+      t5000: silence unzip availability check
+      diffcore-rename: don't change similarity index based on basename equality
+      diff: round down similarity index
+
+Robin Rosenberg (1):
+      Add option to cvs update before export
+
+Sam Vilain (3):
+      git-svn: avoid string eval for defining functions
+      git-svn: use git-log rather than rev-list | xargs cat-file
+      git-svn: cache max revision in rev_db databases
+
+Shawn O. Pearce (24):
+      Teach git-describe how to run name-rev
+      Lazily open pack index files on demand
+      Micro-optimize prepare_alt_odb
+      Attempt to delay prepare_alt_odb during get_sha1
+      git gui 0.8.0
+      git-gui: GUI support for running 'git remote prune <name>'
+      git-gui: Show the git-gui library path in 'About git-gui'
+      git-gui: Enable verbose Tcl loading earlier
+      git-gui: Provide fatal error if library is unavailable
+      git-gui: Disable tearoff menus on Windows, Mac OS X
+      git-gui: Allow users to rename branches through 'branch -m'
+      git-gui: Allow users to delete remote branches
+      git-gui: Expose the merge.diffstat configuration option
+      Allow contrib new-workdir to link into bare repositories
+      Test for recent rev-parse $abbrev_sha1 regression
+      Simplify index access condition in count-objects, pack-redundant
+      Ensure the pack index is opened before access
+      Style nit - don't put space after function names
+      git-gui: Internalize symbolic-ref HEAD reading logic
+      git-gui: Quiet our installation process
+      Avoid src:dst syntax as default bash completion for git push
+      Document git-gui, git-citool as mainporcelain manual pages
+      Teach bash how to complete +refspec on git-push
+      Correct usages of sed in git-tag for Mac OS X
+
+Simon Hausmann (223):
+      Initial import of a python script to import changesets from Perforce into git.
+      Added basic support for specifying the depot path to import from as well as the range of perforce changes.
+      Slightly improved help usage output and made specifying the trailing slash for the depot path optional.
+      Implemented basic support for converting the date of the perforce change to the git format. The timezone isn't correctly set up yet though.
+      Some fixes to the timezone conversion between the date of a perforce change and the git commit.
+      Speed up the import of individual files from Perforce into git by passing the output of "p4 print" directly to git fast-import. Also try to set the mode of the file in git correctly based on file type heuristics.
+      Removed unused p4cat function and added helper function for the perforce python interface (p4Cmd).
+      Changed the import mechanism to write to git fast-import through a pipe instead of having p4-fast-export write to stdout and let the caller connect it to git fast-import.
+      Minor code cleanups and ported some p4 interfacing code over to the p4 python mode.
+      Instead of parsing the output of "p4 users" use the python objects of "p4 -G users".
+      Ported the remaining functions that parsed p4 shell output over to the p4 python interface.
+      Avoid calling fstat for every imported file (slow!) and instead read the file data first into the python process and use the length of the bytes read for the size field of git fast-import.
+      Permit calling p4-fast-export with a depot path that has the typical ... wildcard at the end.
+      Fixed displaying import progress by calling flush on stdout.
+      Create a git tag for every changeset imported from perforce.
+      Fix file permissions of p4-fast-export.py to be executable.
+      Started working on incremental imports from Perforce.
+      Simplify the incremental import by elimination the need for a temporary import branch.
+      Code cleanups, move the code to create a commit with fast-import into a separate function out of the main loop.
+      Initial support for importing a directory from Perforce at a specified revision.
+      Minor cleanups and print an error message of git fast-import if it fails.
+      Fixed incremental imports by using the correct "from" command instead of "merge" with git fast-import.
+      Make incremental imports easier to use by storing the p4 depot path after an import in .git/config and re-using it when we're invoked again later.
+      Make specifying the revision ranges more convenient.
+      Fix calculation of the newest imported revision for #head imports.
+      Catch io exceptions from git fast-import again and print the error message.
+      Made the name of the git branch used for the perforce import configurable through a new --branch=<name> commandline option.
+      Added a little helper script to debug the output of the p4 python interface.
+      Minor code cleanups.
+      Avoid the excessive use of git tags for every perforce change and instead just create one git tag for the last imported change.
+      Changed the default git import branch from "p4" to "master".
+      Added a little helper script to remove unused tags from the perforce import.
+      Create lightweight git tags (using the "reset" trick) for the incremental import instead of full-blown ones. Also fix parsing the output of git name-rev for figuring out the last imported p4 change number.
+      Cleanups, remove unused variable.
+      Code cleanups.
+      Started work on p4 branch detection (experimental!).
+      More fixes in heuristic p4 branch detection based on common path components.
+      After marking a p4 branch as merged don't ever merge it in git again.
+      Set git fast-import marks for every imported change for future use.
+      When trying to map p4 integrations to git merges just record it as a single merge with the newest p4 change as secondary parent.
+      Make it possible to specify the p4 changes to import through a text file (for debugging) and made various improvements to the branch/merge heuristic detection.
+      Use sets.Set() instead of set() to run also with older versions of Python.
+      Fix single-branch imports by skipping the branch/merge detection correctly.
+      Added p4 delete behavioural emulation as todo item.
+      Added support for --silent so that p4-fast-export can be called from cronjobs.
+      More work in --silent support.
+      Don't print a plain newline at the end of the execution (avoids bogus cron error mails).
+      Adjust the output parsing of git name-rev to handle the output of the latest git version.
+      Work in progress on detecting branches.
+      Changed --known-branches to take a file as argument instead of a comma separated list.
+      Fixed p4-debug file extension.
+      Make the p4 data/command cache configurable through the --cache-debug commandline option.
+      Minor code cleanups.
+      More code cleanups and preparations for more branch detection heuristics.
+      More work on branch detection by implementing changeIsBranchMerge().
+      Reduce the number of false "merges" by skipping "branch from" entries in the integrated output as well as by ignoring integrations of future (newer) changes.
+      Split up the cache commandline options into (command) cache and data cache.
+      First version of a new script to submit changes back to perforce from git repositories.
+      Fix git-dir option and allow reading log substitutions from a file
+      Lots of bugfixes to p4-git-sync.
+      Automatically operate on a temporary branch, needed for cherry-pick to work when applying changes to
+      Be nice and use /usr/bin/env python for the git-p4 scripts
+      Ignore Apple resource files when importing from perforce to git.
+      Auto-detect the current git branch before submitting back to perforce.
+      Use p4 revert ... instead of revert -a ... after submitting, to make sure the p4 checkout is clean.
+      Default to interactive syncing
+      Improved the git dir detection.
+      Pass the right number of arguments to commit, fixes single-branch imports.
+      Start moving the git-p4 tools into one single script.
+      Provide a little bit of help description for the git-p4 "tools".
+      First (untested) attempt at migrating p4-git-sync into the final git-p4 script
+      Part of the code is copyright by Trolltech ASA.
+      sync-to-perforce is now called submit and fixed the gitdir check a little bit
+      Completely untested "merge" of p4-fast-export.py into git-p4.py
+      Added missing "self"s to make the script evaluate correctly.
+      Fixed the initial version import by getting the file index correct by correctly skipping deleted files.
+      Removed p4-fast-export and p4-git-sync as they've been integrated into git-p4 now.
+      Start of the git-p4 documentation.
+      Documentation enhancements.
+      Added experimental but super-fast --apply-as-patch option to git-p4 submit
+      Fix support for deletions in git-p4 submit when using --apply-as-patch by filtering out deletions in the diff-tree output.
+      Made --apply-as-patch the default for git-p4 submit as it's significantly faster.
+      Make it possible to invoke git-p4 from within subdirectories of a git working tree.
+      Don't show the submit template and the diff first in less but show it in $editor right away
+      Removed the .py extension from git-p4 as it's annoying to type every time.
+      Changed the format of the imported log message slightly, so that it's easier to parse again.
+      Changed the default branch for imports from "master" to "p4"
+      Added some helper function(s) to parse the depot path and change number from the log message
+      Helper function to check the existance of a revision
+      Set the default branch in run, not in the constructor
+      Brand new smart incremental import that doesn't need tags or git repo-config :)
+      Make it possible to run git-p4 submit from within the git repository
+      Use the new incremental import style by default
+      Different versions of p4 have different output for the where command ;(
+      Minor cosmetic fixlet for the git-p4 submit sync question.
+      Prefer git command over git-command.
+      Don't try to parse any options with git-p4 debug but pass it straight on to p4
+      git-p4 debug doesn't need a git repository
+      Added support for mapping p4 labels to git tags
+      Fix variable usage in tag import
+      Fix the docs for git-p4 submit and turn git-p4 submit --master=foo into
+      Fix "compilation" :)
+      Clean up python class names.
+      Added git-p4 rebase convenience
+      Provide a tree summary after git-p4 rebase
+      Turn off potentially slow label detection by default
+      Honor --silent for labels
+      Added git-p4 clone convenience command
+      Fix file determination for #head imports
+      fix variable usage (oops)
+      Added a simple example of usage to the "documentation" :)
+      Allow for convenient rebasing after git-p4 submit
+      Print an error message of some sort if git fast-import fails.
+      Fix the timezone formatting. Now qgit also displays (parses) it correctly.
+      Removed the old patch apply code from git-p4 submit.
+      Slightly improved formatting of the raw_input questions.
+      A new attempt at fixing the child-fast-import-process-not-finished race condition
+      Handle patch errors in git-p4 submit better.
+      Doc cleanups.
+      Micro cleanup
+      cleanup, renamed self.globalPrefix to self.depotPath
+      Cleanup, removed the old tagging code
+      Document some implementation details, for the curious... :)
+      Use the subprocess module instead of popen2 to make it work on Windows.
+      Added a little .bat wrapper from Marius
+      Make sure all popen calls use binary mode (for Windows) and
+      Make submitting work on Windows.
+      Converted to unix newlines
+      Fix git-p4 clone //depot/project (head import)
+      Make git-p4 work with bare repositories.
+      Added the possibility of skipping patches during git-p4 submit
+      Give a better hint if git-p4 submit fails
+      Fix calling git-p4 rebase from within a subdirectory (git rebase wants to be in toplevel)
+      A little todo note before I forget it :), based on a suggestion from Lars.
+      Fixing syncing (gitdir discovery / cd) for bare repositories
+      Always pass a sha1 for the initial parent so that git-fast-import doesn't think
+      Clean up code duplication for revision parsing and fix previous commit to not
+      Removed cleantags command. It doesn't have any meaning anymore.
+      Removed ancient and unused code to find the last imported revision from previous imports
+      Create the origin based import branch using git update-ref instead of git branch
+      Changed the default p4 import branch to be refs/remotes/p4/{HEAD,master}
+      Bite the bullet and automatically convert old style refs/heads/p4 repositories
+      Added support for git-p4 sync/rebase --with-origin. See git-p4.txt for details :)
+      Removed todo item that is implemented :)
+      Fix branch setup after initial clone.
+      Removed unused cache variables.
+      Started rewriting the branch detection, based on "p4 branches" and "p4 branch -o foo".
+      Give branches a nice project prefix and don't bail out on clone if we failed
+      More work on the incremental importing of multiple branches.
+      Cleanup/speed up the branch<> file split and removed change range limitation that I added
+      More cleanups and speedups for labels and branches
+      Removed unused variable, more cleanups
+      Cache the output of "p4 users" for faster syncs on high latency links.
+      Fix gitdir not being set when cloning. Needed for writing the p4 users cache.
+      Oops, not only /set/ gitdir on clone, also set it /correctly/ :)
+      Use git format-patch and git apply --apply when extracting patches from git and
+      Added support for git-p4 submit --direct (experimental)
+      Specifying --detect-branches is now only needed for the initial clone/sync.
+      Had an idea for debugging, record it :)
+      Another (potentially life-saving) idea for submit --direct
+      Improved output for multi branch imports and noted another little todo item
+      Fix conversion from old style heads/p4 to remotes/p4/master
+      Fix error detection with git-p4 submit when the requested depot path is not in the client view.
+      Fix git symbolic-ref warning on initial clone
+      Detect with git-p4 submit --direct when there are no changes in the working directory
+      Make git-p4 submit --direct safer by also creating a git commit
+      Added a rollback command for debugging. It sets back the heads of the p4 branches to the specified p4 change number or earlier.
+      Fix branch detection in multi-branch imports
+      Fixes for rollback, delete branches that did not exist at the specified p4 change
+      Added support for importing multiple branches into refs/heads instead of just refs/remotes
+      Added support for --max-changes=<count> to ease import debugging
+      Use refs/heads/* instead of refs/heads/p4/* for local imports
+      Doc updates
+      Avoid calling git symbolic-ref refs/heads/p4//HEAD (double slash)
+      Make rollback work with locally imported branches
+      Don't make len(p4Cmd("p4 changes -m 1 //foo/...")) == 0 succeed when the p4 command itself failed.
+      Oops, fill the /list/ correct with the p4 exit code.
+      Catch p4 errors in rollback early enough (before deleting refs!)
+      Fix p4 execution in git-p4 rollback.
+      Fix multi-branch import with --silent.
+      Load the user map from p4 only once at run-time.
+      Fix creating the remotes/p4 branches based on origin/* for the multi-branch import
+      Forgot to remove this return statement from debugging
+      Added support for --with-origin with multi-branch imports
+      Oops, fix --with-origin to /really/ also call git fetch :)
+      Avoid creating non-p4 branches in remotes/p4 off of remotes/origin
+      Make git-p4 work with packed refs (don't use os.path.exists to check for the
+      Make --with-origin also work without origin :)
+      Make --with-origin the default for syncing.
+      Shortcut the case where we have no origin branch
+      Forgot to remove this TODO item when I made --with-origin the default :)
+      Added git-p4 submit --trust-me-like-a-fool for the adventurous users :)
+      Fix creation of refs/remotes/p4/HEAD symbolic ref
+      Fix my email address, this isn't really KDE related :)
+      In *_pipe print the command that failed if it fails.
+      Fix typo in listExistingP4Branches that broke sync.
+      Fix support for "depot-path" in older git-p4 imports
+      Fix common path "calculation" from logs of multiple branches.
+      Don't attempt to set the initialParent on multi-branch imports (useless).
+      Hack to make the multi-branch import work again with self.depotPaths now that
+      Fix git-p4 rebase
+      Fix git-p4 submit
+      Fix depot-path determination for git-p4 submit
+      Make clone behave like git clone by default again.
+      Make git-p4 submit detect the correct reference (origin) branch when
+      Only get the expensive branch mapping from the p4 server when not
+      Fixed the check to make sure to exclude the HEAD symbolic refs when updating
+      Fix updating/creating remotes/p4/* heads from origin/p4/*
+      Fix project name guessing
+      Fix depot-paths encoding for multi-path imports (don't split up //depot/path/foo)
+      Fix support for explicit disabling of syncing with the origin
+      Write out the options tag in the log message of imports only if we actually have
+      Provide some information for single branch imports where the commits go
+      Mention remotes/p4/master also in the documentation.
+      git-p4 submit: Fix missing quotes around p4 commands to make them work with spaces in filenames
+      Moved the code from git-p4 submit to figure out the upstream branch point
+      Fix git-p4 rebase to detect the correct upstream branch instead of unconditionally
+      Fix initial multi-branch import.
+      Fix the branch mapping detection to be independent from the order of the "p4 branches" output.
+      Warn about conflicting p4 branch mappings and use the first one found.
+      Added git-p4 branches command that shows the mapping of perforce depot paths to imported git branches.
+      Make it possible to specify the HEAD for the internal findUpstreamBranchPoint function.
+      git-new-workdir: Fix shell warning about operator == used with test.
+
+Sven Verdoolaege (4):
+      git-update-ref: add --no-deref option for overwriting/detaching ref
+      t9500: skip gitweb tests if perl version is too old
+      git-submodule: provide easy way of adding new submodules
+      git-clone: fetch possibly detached HEAD over dumb http
+
+Theodore Ts'o (4):
+      Add --aggressive option to 'git gc'
+      Fix minor grammatical typos in the git-gc man page
+      git-mergetool: Make default selection of merge-tool more intelligent
+      Don't fflush(stdout) when it's not helpful
+
+しらいしななこ (2):
+      Add git-stash script
+      Document git-stash
+
+
 Version v1.5.2.3; changes since v1.5.2.2:
 -----------------------------------------
 
@@ -5,8 +718,7 @@ Frank Lichtenheld (2):
       config: Complete documentation of --get-regexp
       config: Change output of --get-regexp for valueless keys
 
-Junio C Hamano (2):
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
+Junio C Hamano (1):
       GIT 1.5.2.3
 
 Linus Torvalds (1):
@@ -58,12 +770,8 @@ Johannes Schindelin (2):
 Johannes Sixt (1):
       Accept dates before 2000/01/01 when specified as seconds since the epoch
 
-Junio C Hamano (10):
+Junio C Hamano (6):
       checkout: do not get confused with ambiguous tag/branch names
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
-      Merge branch 'sv/objfixes' into maint
-      Merge branch 'ar/clone' into maint
       $EMAIL is a last resort fallback, as it's system-wide.
       git-branch --track: fix tracking branch computation.
       Avoid diff cost on "git log -z"
@@ -200,23 +908,12 @@ Jonas Fonseca (2):
 Josh Triplett (1):
       Create a new manpage for the gitignore format, and reference it elsewhere
 
-Junio C Hamano (17):
+Junio C Hamano (6):
       annotate: make it work from subdirectories.
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'maint-1.5.1' into maint
       git-cvsserver: fix disabling service via per-method config
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
       name-rev: tolerate clock skew in committer dates
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'master' of git://repo.or.cz/git/fastimport into maint
       git-commit: use printf '%s\n' instead of echo on user-supplied strings
       Add tests for the last two fixes.
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
-      Merge branch 'maint-1.5.1' into maint
-      Merge branch 'maint-1.5.1' into maint
       GIT 1.5.2.1
 
 Kristian Høgsberg (1):
@@ -333,34 +1030,21 @@ Johannes Schindelin (2):
       import-tars: Use the "Link indicator" to identify directories
       Add a birdview-on-the-source-code section to the user manual
 
-Junio C Hamano (29):
+Junio C Hamano (16):
       Minor copyediting on Release Notes for 1.5.2
       Add has_symlink_leading_path() function.
       apply: do not get confused by symlinks in the middle
       read-tree -m -u: avoid getting confused by intermediate symlinks.
       checkout: allow detaching to HEAD even when switching to the tip of a branch
-      Merge branch 'maint'
       git-config: do not forget seeing "a.b.var" means we are out of "a.var" section.
       Link to HTML version of external doc if available
-      Merge branch 'maint'
       Fix git-clone buglet for remote case.
       Prepare for 1.5.1.5 Release Notes
-      Merge branch 'maint'
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
-      Merge branch 'maint'
       gitweb: fix another use of undefined value
-      Merge branch 'master' of git://repo.or.cz/git-gui
-      Merge branch 'maint'
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
       GIT v1.5.1.5
-      Merge 1.5.1.5 in
       Add link to 1.5.1.5 release notes.
-      Merge branch 'sp/cvsexport'
       Documentation/git.txt: Update links to older documentation pages.
-      Merge branch 'maint'
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
       GIT 1.5.1.6
-      Merge branch 'maint' to synchronize with 1.5.1.6
       git-cvsserver: exit with 1 upon "I HATE YOU"
       GIT 1.5.2
 
@@ -449,28 +1133,16 @@ Jeff King (1):
 Johannes Sixt (1):
       git-gui: Call changes "Staged" and "Unstaged" in file list titles.
 
-Junio C Hamano (22):
-      Merge git://git2.kernel.org/pub/scm/gitk/gitk into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
-      Merge branch 'maint'
-      Merge branch 'master' of git://repo.or.cz/git-gui
+Junio C Hamano (10):
       diff: release blobs after generating textual diff.
       diff.c: do not use a separate "size cache".
       diff -M: release the preimage candidate blobs after rename detection.
       diff -S: release the image after looking for needle in it
       GIT v1.5.1.4
-      Merge branch 'maint'
       Update documentation links to point at 1.5.1.4
-      Merge branch 'jn/gitweb'
-      Merge branch 'jc/diffopt'
-      Merge branch 'fl/cvsserver'
       t9400: skip cvsserver test if Perl SQLite interface is unavailable
       git-clone: don't get fooled by $PWD
       .mailmap: add some aliases
-      Merge branch 'maint'
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
-      Merge branch 'maint'
-      Merge branch 'master' of git://repo.or.cz/git-gui
       GIT v1.5.2-rc3
 
 Matthieu Moy (2):
@@ -500,10 +1172,9 @@ Richard P. Curnow (2):
       Fix documentation of tag in git-fast-import.txt
       Fix documentation of tag in git-fast-import.txt
 
-Shawn O. Pearce (36):
+Shawn O. Pearce (32):
       git-gui: Correctly handle UTF-8 encoded commit messages
       git-gui: Allow spaces in path to 'wish'
-      Merge branch 'maint'
       git-gui: Include the subject in the status bar after commit
       git-gui: Warn users before making an octopus merge
       git-gui: Correct line wrapping for too many branch message
@@ -519,9 +1190,7 @@ Shawn O. Pearce (36):
       git-gui: Show all possible branches for merge
       git-gui: Include commit id/subject in merge choices
       git-gui: Use vi-like keys in merge dialog
-      Merge branch 'master' of git://repo.or.cz/git-gui
       Remove duplicate exports from Makefile
-      Merge branch 'maint'
       git-gui: Allow shift-{k,j} to select a range of branches to merge
       git-gui: Define a simple class/method system
       git-gui: Convert browser, console to "class" format
@@ -533,7 +1202,6 @@ Shawn O. Pearce (36):
       git-gui: Cleanup minor nits in blame code
       git-gui: Format author/committer times in ISO format
       Use .git/MERGE_MSG in cherry-pick/revert
-      Merge branch 'gfi-maint' into maint
       git-gui: Paperbag fix blame in subdirectory
       git gui 0.7.0
       Correct error message in revert/cherry-pick
@@ -587,16 +1255,12 @@ Johannes Schindelin (1):
 Jonas Fonseca (1):
       git-tag(1): -v option is a subcommand; fix code block
 
-Junio C Hamano (10):
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
-      Merge branch 'maint'
+Junio C Hamano (6):
       blame: use .mailmap unconditionally
       diff.c: fix "size cache" handling.
-      Merge branch 'maint'
       blame: Notice a wholesale incorporation of an existing file.
       blame: -C -C -C
       Add test for blame corner cases.
-      Merge branch 'maint'
       GIT v1.5.2-rc2
 
 Karl Hasselström (2):
@@ -609,8 +1273,7 @@ Linus Torvalds (1):
 Martin Koegler (1):
       Fix compilation of test-delta
 
-Shawn O. Pearce (4):
-      Merge branch 'gfi-maint' into gfi-master
+Shawn O. Pearce (3):
       Reuse fixup_pack_header_footer in index-pack
       Don't use seq in tests, not everyone has it
       Improve request-pull to handle non-rebased branches
@@ -678,43 +1341,31 @@ Josh Triplett (5):
 Julian Phillips (1):
       http.c: Fix problem with repeated calls of http_init
 
-Junio C Hamano (37):
+Junio C Hamano (25):
       Move index-related variables into a structure.
       Make read-cache.c "the_index" free.
       Document "diff=driver" attribute
       t5302: avoid using tail -c
       t6030: grab commit object name as we go
       Build RPM with ETC_GITCONFIG=/etc/gitconfig
-      Merge branch 'maint'
       Diff between two blobs should take mode changes into account now.
       t/test-lib.sh: Protect ourselves from common misconfiguration
       gitattributes documentation: clarify overriding
       applymbox & quiltimport: typofix.
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
-      Merge branch 'maint'
-      Merge branch 'mk/diff'
-      Merge branch 'jc/the-index'
       Add 'ident' conversion.
       Add 'filter' attribute and external filter driver definition.
       Add --date={local,relative,default}
       Start preparing for 1.5.1.3
-      Merge branch 'maint'
-      Merge branch 'maint'
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
       Do not barf on too long action description
       Update .mailmap with "Michael"
       Fix import-tars fix.
-      Merge branch 'maint'
-      Merge commit 'gfi/master'
       blame -s: suppress author name and time.
       Split out mailmap handling out of shortlog
       Apply mailmap in git-blame output.
       Make macros to prevent double-inclusion in headers consistent.
       Make sure test-genrandom and test-chmtime are builtas part of the main build.
-      Merge branch 'jc/attr'
       Fix symlink handling in git-svn, related to PerlIO
       GIT v1.5.1.3
-      Merge branch 'maint'
       GIT v1.5.2-rc1
 
 Luiz Fernando N. Capitulino (5):
@@ -755,12 +1406,10 @@ Robin H. Johnson (10):
 Sami Farin (1):
       fast-import: size_t vs ssize_t
 
-Shawn O. Pearce (6):
+Shawn O. Pearce (4):
       Don't repack existing objects in fast-import
       Actually handle some-low memory conditions
       Don't allow empty pathnames in fast-import
-      Merge commit 'jc/maint' into gfi-maint
-      Merge branch 'gfi-maint' into gfi-master
       Catch empty pathnames in trees during fsck
 
 Uwe Kleine-König (1):
@@ -854,13 +1503,12 @@ Johannes Schindelin (1):
 Julian Phillips (1):
       refs.c: add a function to sort a ref list, rather then sorting on add
 
-Junio C Hamano (127):
+Junio C Hamano (83):
       git-fetch: add --quiet
       t6002: minor spelling fix.
       git-rev-list: add --bisect-vars option.
       git-rev-list --bisect: optimization
       t6004: add a bit more path optimization test.
-      Merge branch 'master' into jc/bisect
       rev-list --bisect: Fix "halfway" optimization.
       make the previous optimization work also on path-limited rev-list --bisect
       Documentation: unbreak user-manual.
@@ -868,12 +1516,6 @@ Junio C Hamano (127):
       checkout: allow detaching to HEAD even when switching to the tip of a branch
       _GIT_INDEX_OUTPUT: allow plumbing to output to an alternative index file.
       git-read-tree --index-output=<file>
-      Merge branch 'lt/dirwalk'
-      Merge branch 'post1.5.1/p4'
-      Merge branch 'post1.5.1/tcltk'
-      Merge branch 'post1.5.1/blame.el'
-      Merge branch 'fl/doc'
-      Merge branch 'jc/bisect'
       add_cache_entry(): removal of file foo does not conflict with foo/bar
       unpack_trees.c: pass unpack_trees_options structure to keep_entry() as well.
       unpack-trees: get rid of *indpos parameter.
@@ -886,25 +1528,13 @@ Junio C Hamano (127):
       Rename internal function "add_file_to_cache" in builtin-update-index.c
       Rename static variable write_index to update_index in builtin-apply.c
       Rename add_file_to_index() to add_file_to_cache()
-      Merge branch 'maint'
       git-bisect: modernization
       t6030: add a bit more tests to git-bisect
       git-bisect: allow bisecting with only one bad commit.
-      Merge branch 'maint'
-      Merge branch 'jc/checkout' (early part)
-      Merge branch 'cc/bisect'
-      Merge branch 'fp/make-j'
-      Merge branch 'jc/index-output'
       git-push reports the URL after failing.
       git-push to multiple locations does not stop at the first failure
       A new merge stragety 'subtree'.
-      Merge branch 'maint'
-      Merge branch 'jc/read-tree-df' (early part)
       Start 1.5.2 cycle by prepareing RelNotes for it.
-      Merge branch 'maint'
-      Merge branch 'js/fetch-progress'
-      Merge branch 'jc/merge-subtree'
-      Merge branch 'jc/push'
       shortlog -w: make wrap-line behaviour optional.
       t1000: fix case table.
       Treat D/F conflict entry more carefully in unpack-trees.c::threeway_merge()
@@ -913,17 +1543,11 @@ Junio C Hamano (127):
       t3030: merge-recursive backend test.
       git-fetch--tool pick-rref
       git-fetch: use fetch--tool pick-rref to avoid local fetch from alternate
-      Merge branch 'maint'
-      Merge branch 'maint'
       Add %m to '--pretty=format:'
       Refactor patch-id filtering out of git-cherry and git-format-patch.
       git-log --cherry-pick A...B
       Documentation: --cherry-pick
       Fix git {log,show,...} --pretty=email
-      Merge branch 'maint'
-      Merge branch 'jc/cherry'
-      Replace a pair of patches with updated ones for subproject support.
-      Merge branch 'maint'
       Add basic infrastructure to assign attributes to paths
       Define 'crlf' attribute.
       Teach 'diff' about 'diff' attribute.
@@ -933,47 +1557,28 @@ Junio C Hamano (127):
       attribute macro support
       Define a built-in attribute macro "binary".
       Change attribute negation marker from '!' to '-'.
-      Merge branch 'maint'
-      Merge branch 'maint'
       send-email: do not leave an empty CC: line if no cc is present.
-      Merge branch 'js/wrap-log'
       Make sure quickfetch is not fooled with a previous, incomplete fetch.
       Allow more than true/false to attributes.
       merge-recursive: separate out xdl_merge() interface.
       git-gui: Honor TCLTK_PATH if supplied
       Allow specifying specialized merge-backend per path.
       Add a demonstration/test of customized merge.
-      Merge branch 'jc/read-tree-df'
-      Merge branch 'master' of git://repo.or.cz/git-gui
-      Merge branch 'maint'
       Update draft release notes for 1.5.2 with accumulated changes.
-      Merge branch 'maint'
-      Merge branch 'fl/cvsserver'
       Custom low-level merge driver support.
       Allow the default low-level merge driver to be configured.
       Custom low-level merge driver: change the configuration scheme.
       Allow low-level driver to specify different behaviour during internal merge.
       Fix funny types used in attribute value representation
-      Merge branch 'maint'
       Counto-fix in merge-recursive
       Simplify code to find recursive merge driver.
-      Merge branch 'maint'
       Documentation: support manual section (5) - file formats.
       Update 'crlf' attribute semantics.
       Document gitattributes(5)
-      Merge branch 'maint'
       git-add -u: match the index with working tree.
       Fix bogus linked-list management for user defined merge drivers.
       convert.c: restructure the attribute checking part.
       lockfile: record the primary process.
-      Merge branch 'maint'
-      Merge branch 'jc/quickfetch'
-      Merge branch 'jp/refs'
-      Merge branch 'np/pack'
-      Merge branch 'lt/gitlink'
-      Merge branch 'jc/attr'
-      Merge branch 'jc/add'
-      Merge branch 'lt/objalloc'
       Update documentation links to point at v1.5.1.2
       Documentation/Makefile: fix section (5) installation
       Update draft release notes for v1.5.2
@@ -1060,11 +1665,10 @@ Robin H. Johnson (2):
       Add custom subject prefix support to format-patch (take 3)
       Add testcase for format-patch --subject-prefix (take 3)
 
-Shawn O. Pearce (9):
+Shawn O. Pearce (8):
       Always bind the return key to the default button
       Fix lost-found to show commits only referenced by reflogs
       Don't yap about merge-subtree during make
-      Merge branch 'er/ui'
       git-gui: Display the directory basename in the title
       Revert "Allow wish interpreter to be defined with TCLTK_PATH"
       Contribute a fairly paranoid update hook
@@ -1097,8 +1701,7 @@ J. Bruce Fields (4):
 Johan Herland (1):
       user-manual: Add section on ignoring files
 
-Junio C Hamano (2):
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
+Junio C Hamano (1):
       GIT 1.5.1.6
 
 Matthias Kestenholz (2):
@@ -1154,16 +1757,13 @@ Johannes Schindelin (2):
       import-tars: Use the "Link indicator" to identify directories
       Add a birdview-on-the-source-code section to the user manual
 
-Junio C Hamano (10):
+Junio C Hamano (7):
       git-clone: don't get fooled by $PWD
       .mailmap: add some aliases
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
       checkout: allow detaching to HEAD even when switching to the tip of a branch
       git-config: do not forget seeing "a.b.var" means we are out of "a.var" section.
       Fix git-clone buglet for remote case.
       Prepare for 1.5.1.5 Release Notes
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
       GIT v1.5.1.5
 
 Marco Costalba (1):
@@ -1187,9 +1787,8 @@ Richard P. Curnow (2):
       Fix documentation of tag in git-fast-import.txt
       Fix documentation of tag in git-fast-import.txt
 
-Shawn O. Pearce (2):
+Shawn O. Pearce (1):
       Properly handle '0' filenames in import-tars
-      Merge branch 'gfi-maint' into maint
 
 Steffen Prohaska (3):
       tiny fix in documentation of git-clone
@@ -1249,14 +1848,11 @@ Jeff King (1):
 Johannes Schindelin (1):
       Teach import-tars about GNU tar's @LongLink extension.
 
-Junio C Hamano (8):
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
+Junio C Hamano (5):
       diff.c: fix "size cache" handling.
       blame: Notice a wholesale incorporation of an existing file.
       blame: -C -C -C
       Add test for blame corner cases.
-      Merge git://git2.kernel.org/pub/scm/gitk/gitk into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
       GIT v1.5.1.4
 
 Karl Hasselström (2):
@@ -1326,11 +1922,10 @@ Josh Triplett (3):
 Julian Phillips (1):
       http.c: Fix problem with repeated calls of http_init
 
-Junio C Hamano (9):
+Junio C Hamano (8):
       Build RPM with ETC_GITCONFIG=/etc/gitconfig
       applymbox & quiltimport: typofix.
       Start preparing for 1.5.1.3
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
       Do not barf on too long action description
       Update .mailmap with "Michael"
       Fix import-tars fix.
@@ -1352,10 +1947,9 @@ Robin H. Johnson (10):
       Document --dry-run and envelope-sender for git-send-email.
       Sanitize @to recipients.
 
-Shawn O. Pearce (4):
+Shawn O. Pearce (3):
       Actually handle some-low memory conditions
       Don't allow empty pathnames in fast-import
-      Merge commit 'jc/maint' into gfi-maint
       Catch empty pathnames in trees during fsck
 
 
@@ -1416,10 +2010,8 @@ J. Bruce Fields (7):
 Jim Meyering (1):
       sscanf/strtoul: parse integers robustly
 
-Junio C Hamano (6):
+Junio C Hamano (4):
       Do not default to --no-index when given two directories.
-      Merge git://git2.kernel.org/pub/scm/gitk/gitk into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
       Start preparing for 1.5.1.2
       git-clone: fix dumb protocol transport to clone from pack-pruned ref
       GIT 1.5.1.2
@@ -1554,15 +2146,12 @@ Jakub Narebski (2):
 Julian Phillips (1):
       contrib/workdir: add a simple script to create a working directory
 
-Junio C Hamano (9):
-      Merge branch 'master' of git://repo.or.cz/git/mergetool.git
-      Merge branch 'maint'
+Junio C Hamano (6):
       Update draft release notes for 1.5.1
       Do not bother documenting fetch--tool
       Hopefully final update to the draft Release Notes, preparing for 1.5.1
       rerere should not repeat the earlier hunks in later ones
       GIT 1.5.0.7
-      Merge 1.5.0.7 in
       GIT 1.5.1
 
 Nicolas Pitre (1):
@@ -1623,13 +2212,12 @@ Jim Meyering (1):
 Johannes Schindelin (1):
       t4118: be nice to non-GNU sed
 
-Junio C Hamano (8):
+Junio C Hamano (7):
       Document git-log --first-parent
       sha1_file.c (write_sha1_file): Detect close failure
       git-commit: "read-tree -m HEAD" is not the right way to read-tree quickly
       Fix "--pretty=format:" for parent related items.
       GIT 1.5.0.6
-      Merge branch 'maint' to synchronize with 1.5.0.6
       Update main git.html page to point at 1.5.0.6 documentation
       GIT 1.5.1-rc3
 
@@ -1696,30 +2284,21 @@ Johannes Schindelin (5):
 Johannes Sixt (1):
       Teach git-remote to list pushed branches.
 
-Junio C Hamano (24):
+Junio C Hamano (15):
       git-log --first-parent: show only the first parent log
       blame: micro-optimize cmp_suspect()
-      Merge git://git2.kernel.org/pub/scm/gitk/gitk
       blame: cmp_suspect is not "cmp" anymore.
       Teach tree_entry_interesting() that the tree entries are sorted.
       tree-diff: avoid strncmp()
       tree_entry_interesting(): allow it to say "everything is interesting"
       git-rebase: make 'rebase HEAD branch' work as expected.
-      Merge branch 'maint'
-      Merge git://git2.kernel.org/pub/scm/gitk/gitk
       git-apply: Do not free the wrong buffer when we convert the data for writeout
       checkout: report where the new HEAD is upon detaching HEAD
       git-bisect: typofix
       git-bisect.sh: properly dq $GIT_DIR
       Fix path-limited "rev-list --bisect" termination condition.
-      Merge branch 'maint'
       git-am documentation: describe what is taken from where.
-      Merge branch 'maint'
-      Merge branch 'js/remote-show-push'
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
-      Merge branch 'maint'
       Update README to point at a few key periodical messages to the list
-      Merge branch 'jc/fpl'
       GIT 1.5.1-rc2
 
 Li Yang (1):
@@ -2000,116 +2579,67 @@ Julian Phillips (5):
       git-branch: improve abbreviation of sha1s in verbose mode
       git-branch: document new --no-abbrev option
 
-Junio C Hamano (158):
+Junio C Hamano (80):
       git-diff/git-apply: make diff output a bit friendlier to GNU patch (part 2)
       Make merge-base a built-in.
       Allow in_merge_bases() to take more than one reference commits.
       Remove git-resolve.
       Remove git-diff-stages.
       Add link to v1.5.0 documentation.
-      Merge branch 'jc/deprecate'
-      Merge branch 'jc/merge-base' (early part)
-      Merge branch 'jc/diff-apply-patch'
-      Merge branch 'js/reverse'
       blame: --show-stats for easier optimization work.
       git-fetch: split fetch_main into fetch_dumb and fetch_native
       git-fetch--tool: start rewriting parts of git-fetch in C.
       git-fetch: move more code into C.
       git-fetch: rewrite another shell loop in C
       git-fetch: rewrite expand_ref_wildcard in C
-      Merge branch 'maint'
       Document --ignore-space-at-eol option.
       Add RelNotes 1.5.1
       Point top-level RelNotes link at 1.5.1 release notes being prepared.
       t0020: add test for auto-crlf
-      Merge branch 'maint'
       remotes.not-origin.tagopt
-      Merge branch 'maint'
-      Merge branch 'maint'
       Teach 'git apply' to look at $GIT_DIR/config
       Teach core.autocrlf to 'git apply'
-      Merge branch 'maint'
       Update draft release notes for 1.5.1
       Teach 'git apply' to look at $HOME/.gitconfig even outside of a repository
-      Merge branch 'maint'
-      Merge branch 'ap/cvsserver'
-      Merge branch 'maint'
-      Merge branch 'jc/fetch-notags'
-      Merge branch 'js/diff-color-check'
       git-apply: do not lose cwd when run from a subdirectory.
       git-apply: require -p<n> when working in a subdirectory.
       Link 1.5.0.1 documentation from the main page.
-      Merge branch 'maint'
       Add prefixcmp()
       Mechanical conversion to use prefixcmp()
       prefixcmp(): fix-up mechanical conversion.
       prefixcmp(): fix-up leftover strncmp().
-      Merge branch 'js/name-rev-fix'
-      Merge branch 'fk/autoconf'
       t4119: add test for traditional patch and different p_value
       Fix botched "leak fix"
-      Merge branch 'maint'
       git-apply: notice "diff --git" patch again
       git-apply: guess correct -p<n> value for non-git patches.
       t4119: test autocomputing -p<n> for traditional diff input.
       git-status: do not be totally useless in a read-only repository.
       update-index: do not die too early in a read-only repository.
       run_diff_{files,index}(): update calling convention.
-      Merge branch 'maint'
-      Merge branches 'lt/crlf' and 'jc/apply-config'
       .mailmap maintenance after pulling from git-svn
       bundle: reword missing prerequisite error message
-      Merge branch 'maint'
-      Merge branch 'js/etc-config'
-      Merge branch 'js/no-limit-boundary'
-      Merge branch 'js/apply'
-      Evil Merge branch 'jc/status' (early part) into js/diff-ni
       git-fetch--tool takes flags before the subcommand.
-      Merge branch 'maint'
       diff --cached: give more sensible error message when HEAD is yet to be created.
-      Merge branch 'maint'
-      Merge branch 'maint'
       Documentation: link in 1.5.0.2 material to the top documentation page.
-      Merge branch 'master' into js/diff-ni
-      Merge branch 'maint'
-      Merge branch 'np/types' into jc/fetch
       builtin-fetch--tool: adjust to updated sha1_object_info().
       Make 'cvs ci' lockless in git-cvsserver by using git-update-ref
       fetch--tool: fix uninitialized buffer when reading from stdin
-      Merge branch 'maint'
-      Merge branch 'js/diff-ni' (early part)
-      Merge branch 'mc/sendmail'
       builtin-fetch--tool: make sure not to overstep ls-remote-result buffer.
-      Merge branch 'np/types'
       index_fd(): use enum object_type instead of type name string.
       index_fd(): pass optional path parameter as hint for blob conversion
       index_fd(): convert blob only if it is a regular file.
-      Merge branch 'maint'
-      Merge branch 'js/bundle'
-      Merge branch 'js/commit-by-name'
       Add recent changes to draft 1.5.1 release notes.
       git-fetch: retire update-local-ref which is not used anymore.
       builtin-fetch--tool: fix reflog notes.
-      Merge branch 'maint'
-      Merge branch 'js/commit-format'
-      Merge branch 'maint'
-      Merge branch 'maint'
-      Merge branch 'js/diff-ni' (early part)
       diff-ni: allow running from a subdirectory.
       diff-ni: fix the diff with standard input
       .gitignore: add git-fetch--tool
-      Merge branch 'maint'
-      Merge branch 'js/symlink'
-      Merge branch 'js/fetch-progress' (early part)
       format-patch --attach: not folding some long headers.
       Post 1.5.0.3 cleanup
       fsck: fix broken loose object check.
       unpack_sha1_file(): detect corrupt loose object files.
       fsck: exit with non-zero status upon errors
-      Merge branch 'master-for-junio' of git://repo.or.cz/git/fastimport; branch 'maint'
-      Merge branch 'maint'
       git-bundle: fix pack generation.
-      Merge branch 'maint'
       revision walker: Fix --boundary when limited
       revision traversal: retire BOUNDARY_SHOW
       git-bundle: various fixups
@@ -2117,46 +2647,17 @@ Junio C Hamano (158):
       git-bundle: make verify a bit more chatty.
       revision --boundary: fix stupid typo
       revision --boundary: fix uncounted case.
-      Merge branch 'maint'
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
-      Merge branch 'js/config-rename'
-      Merge branch 'maint'
-      Merge branch 'sp/make'
-      Merge branch 'js/revert-cherry'
-      Merge branch 'pb/commit-i'
-      Merge branch 'jc/fsck'
-      Merge branch 'js/diff-ni'
-      Merge branch 'js/attach'
       Fix broken create_branch() in builtin-branch.
       prepare_packed_git(): sort packs by age and localness.
-      Merge branch 'jc/boundary'
-      Merge branch 'maint'
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
-      Merge branch 'maint'
-      Merge branch 'master' of git://repo.or.cz/git-gui
-      Merge branch 'master' of git://repo.or.cz/git/mergetool
       Documentation: add git-mergetool to the command list.
       shortlog: prompt when reading from terminal by mistake
-      Merge branch 'pb/branch-track'
-      Merge branch 'maint'
-      Merge branch 'jb/per-user-exclude'
-      Merge branch 'dz/mailinfo'
-      Merge branch 'jc/fetch'
-      Merge branch 'jc/repack'
-      Merge GIT 1.5.0.4
       Remove unused diffcore_std_no_resolve
       diff --quiet
       Teach --quiet to diff backends.
       revision.c: explain what tree_difference does
       try-to-simplify-commit: use diff-tree --quiet machinery.
       applymbox: brown paper bag fix.
-      Merge branch 'maint'
-      Merge 1.5.0.5 in from 'maint'
-      Merge branch 'ar/diff'
       Update main git.html page to point at 1.5.0.5 documentation
-      Merge branch 'sp/run-command'
-      Merge branch 'fl/cvsserver'
-      Merge branch 'jb/gc'
       Fix merge-index
       GIT 1.5.1-rc1
 
@@ -2216,9 +2717,8 @@ Santi Béjar (2):
 Sergey Vlasov (1):
       Documentation/git-svn.txt: Fix formatting errors
 
-Shawn O. Pearce (46):
+Shawn O. Pearce (43):
       Cleanup check_valid in commit-tree.
-      Merge branch 'maint'
       cherry-pick: Bug fix 'cherry picked from' message.
       Make 'make' quieter while building git
       Make 'make' quiet by default
@@ -2247,8 +2747,6 @@ Shawn O. Pearce (46):
       Refactor run_command error handling in receive-pack
       Split back out update_hook handling in receive-pack
       Change {pre,post}-receive hooks to use stdin
-      Merge branch 'maint'
-      Merge branch 'maint'
       Remove unnecessary casts from fast-import
       Simplify closing two fds at once in run-command.c
       Fix t5510-fetch's use of sed
@@ -2318,8 +2816,7 @@ Jim Meyering (1):
 Johannes Schindelin (1):
       t4118: be nice to non-GNU sed
 
-Junio C Hamano (3):
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
+Junio C Hamano (2):
       git-commit: "read-tree -m HEAD" is not the right way to read-tree quickly
       GIT 1.5.0.6
 
@@ -2376,13 +2873,8 @@ Johannes Schindelin (2):
       Begin SubmittingPatches with a check list
       make t8001 work on Mac OS X again
 
-Junio C Hamano (8):
-      Merge branch 'maint-for-junio' of git://repo.or.cz/git/fastimport into maint
+Junio C Hamano (3):
       git-commit: cd to top before showing the final stat
-      Merge branch 'master' of git://repo.or.cz/git-gui into maint
-      Merge branch 'maint' of git://linux-nfs.org/~bfields/git into maint
-      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
-      Merge branch 'maint' of git://repo.or.cz/git/fastimport into maint
       git-checkout: fix "eval" used for merge labelling.
       GIT 1.5.0.4
 
@@ -2519,18 +3011,15 @@ Jason Riedy (3):
 Johannes Schindelin (1):
       git-diff: fix combined diff
 
-Junio C Hamano (14):
-      Merge branch 'master' of git://repo.or.cz/git-gui into maint
+Junio C Hamano (11):
       Reword git-am 3-way fallback failure message.
       diff-patch: Avoid emitting double-slashes in textual patch.
       Don't modify CREDITS-FILE if it hasn't changed.
-      Merge git://repo.or.cz/git-gui into maint
       rerere: do not skip two conflicted paths next to each other.
       rerere: do not deal with symlinks.
       Add Release Notes to prepare for 1.5.0.2
       merge-index: fix longstanding bug in merging symlinks
       merge-recursive: fix longstanding bug in merging symlinks
-      Merge branch 'jc/merge-symlink' into maint
       diff --cc: fix display of symlink conflicts during a merge.
       Documentation: describe "-f/-t/-m" options to "git-remote add"
       GIT 1.5.0.2
@@ -2583,7 +3072,7 @@ Fredrik Kuivinen (2):
       Read the config in rev-list
       Documentation/i18n.txt: it is i18n.commitencoding not core.commitencoding
 
-Junio C Hamano (16):
+Junio C Hamano (15):
       Documentation: Drop full-stop from git-fast-import title.
       cmd-list: add git-remote
       Makefile: update check-docs target
@@ -2597,7 +3086,6 @@ Junio C Hamano (16):
       pretend-sha1: grave bugfix.
       git-merge: minor fix for no_trivial_merge_strategies.
       Do not take mode bits from index after type change.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk into maint
       Update draft release notes for 1.5.0.1
       GIT 1.5.0.1
 
@@ -2662,27 +3150,22 @@ Johannes Schindelin (5):
       log --reflog: use dwim_log
       git-gc: run pack-refs by default unless the repo is bare
 
-Junio C Hamano (22):
+Junio C Hamano (17):
       create_symref(): create leading directories as needed.
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
       reflog: handle $name => remotes/%s/HEAD mapping consistently for logs
       Documentation/git-pull: describe default behaviour and config interactions
       git-fetch: document automatic tag following.
       wt_status_prepare(): clean up structure initialization.
       diff_flush_name(): take struct diff_options parameter.
       t4016: test quoting funny pathnames in diff output
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
       Documentation: git-rebase -C<n>
       Teach git-am to pass -p option down to git-apply
       Add discussion section to git-tag documentation.
-      Merge git-gui
-      Merge branch 'master' of git://repo.or.cz/git-gui
       Add RPM target for git-gui
       Do not forget to pack objects reachable from HEAD reflog.
       for-each-reflog: not having $GIT_DIR/logs directory is not an error.
       "git-fetch --tags $URL" should not overwrite existing tags
       Documentation: Moving out of detached HEAD does not warn anymore.
-      Merge branch 'master' of git://repo.or.cz/git-gui
       Add release notes to the distribution.
       GIT 1.5.0
 
@@ -3073,7 +3556,7 @@ Johannes Schindelin (4):
       Commands requiring a work tree must not run in GIT_DIR
       fast-import: Fix compile warnings
 
-Junio C Hamano (41):
+Junio C Hamano (36):
       create_symref(): do not assume pathname from git_path() persists long enough
       detached HEAD -- finishing touches
       Use "git checkout -q" in git-bisect
@@ -3084,10 +3567,8 @@ Junio C Hamano (41):
       honor GIT_REFLOG_ACTION in git-commit
       Why is it bad to rewind a branch that has already been pushed out?
       combine-diff: special case --unified=0
-      Merge branch 'master' into np/dreflog
       show-branch -g: default to the current branch.
       git-clone --reference: saner handling of borrowed symrefs.
-      Merge branch 'np/dreflog'
       Revert "Allow branch.*.merge to talk about remote tracking branches."
       Rename get_ident() to fmt_ident() and make it available to outside
       t9200: Work around HFS+ issues.
@@ -3104,13 +3585,10 @@ Junio C Hamano (41):
       annotate: fix for cvsserver.
       S_IFLNK != 0140000
       Remove contrib/colordiff
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
       Add deprecation notices.
       Remove git-merge-recur
       git-clone --reference: work well with pack-ref'ed reference repository
-      Merge branch 'master' of git://repo.or.cz/git/fastimport
       for-each-reflog: fix case for empty log directory
-      Merge branch 'ml/gitk' (early part)
       t4200: skip gc-rerere test on systems with non GNU date.
       git-add -i: update removed path correctly.
       Documentation: Add gfi to the main command list.
@@ -3153,7 +3631,7 @@ Pavel Roskin (2):
 Robin Rosenberg (1):
       Why is it bad to rewind a branch that has already been pushed out?
 
-Shawn O. Pearce (115):
+Shawn O. Pearce (113):
       Created fast-import, a tool to quickly generating a pack from blobs.
       Added automatic index generation to fast-import.
       Cleaned up memory allocation for object_entry structs.
@@ -3192,7 +3670,6 @@ Shawn O. Pearce (115):
       Fix repository corruption when using marks for modified blobs.
       Support creation of merge commits in fast-import.
       Allow creating branches without committing in fast-import.
-      Merge branch 'master' into sp/fast-import
       Improve reuse of sha1_file library within fast-import.
       Misc. type cleanups within fast-import.
       Restructure fast-import to support creating multiple packfiles.
@@ -3223,7 +3700,6 @@ Shawn O. Pearce (115):
       Create test case for fast-import.
       Reduce value duplication in t9300-fast-import.
       Accept 'inline' file data in fast-import commit structure.
-      Merge branch 'master' into sp/gfi
       Pull out remote listing functions in git-remote.
       Teach 'git remote' how to cleanup stale tracking branches.
       Cleanup prepare_packed_git_one to reuse install_packed_git.
@@ -3316,7 +3792,7 @@ David Kågedal (1):
 Eric Wong (1):
       git-svn: remove leading slash when printing removed directories
 
-J. Bruce Fields (32):
+J. Bruce Fields (31):
       Documentation: add git user's manual
       Documentation: expand preface and todo's
       Documentation: git-rebase discussion, miscellaneous user-manual updates
@@ -3327,7 +3803,6 @@ J. Bruce Fields (32):
       user manual: answer some comments from Junio
       user-manual: replace init-db by init
       user-manual: reindent
-      Merge branch 'master' of git://git.kernel.org/pub/scm/git/git
       user-manual:  rewrap, fix heading levels
       user-manual: add "quick start" as chapter 1
       user-manual: minor quickstart reorganization
@@ -3371,7 +3846,7 @@ Johannes Schindelin (2):
 Johannes Sixt (1):
       Add a missing fork() error check.
 
-Junio C Hamano (44):
+Junio C Hamano (43):
       User manual: fix typos in examples
       Documentation/tutorial-2: Fix interesting typo in an example.
       Revert "prune: --grace=time"
@@ -3412,7 +3887,6 @@ Junio C Hamano (44):
       Documentation: "git-checkout <tree> <path>" takes any tree-ish
       t9200: Re-code non-ascii path test in UTF-8
       t9200: do not test -x bit if the filesystem does not support it.
-      Merge branch 'master' of git://linux-nfs.org/~bfields/git
       git main documentation: point at the user's manual.
       Do not use hardcoded path to xhmtl.xsl to generate user's manual
       GIT v1.5.0-rc3
@@ -3506,7 +3980,7 @@ Johannes Schindelin (9):
       --walk-reflogs: actually find the right commit by date.
       --walk-reflogs: do not crash with cyclic reflog ancestry
 
-Junio C Hamano (73):
+Junio C Hamano (69):
       reflog-expire: brown paper bag fix.
       merge-recursive: do not report the resulting tree object name
       Explain "Not a git repository: '.git'".
@@ -3520,14 +3994,10 @@ Junio C Hamano (73):
       git-commit documentation: -a adds and also removes
       Consistent message encoding while reusing log from an existing commit.
       More tests in t3901.
-      Merge branch 'jc/subdir'
-      Merge branch 'sp/merge' (early part)
-      Merge branch 'jc/int'
       git log documentation: teach -<n> form.
       Add describe test.
       Documentation: merge-output is not too verbose now.
       Use merge-recursive in git-revert/git-cherry-pick
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       git reflog expire: document --stale-fix option.
       Fix git-fetch while on detached HEAD not to give needlessly alarming errors
       git-push documentation: remaining bits
@@ -3747,7 +4217,7 @@ Johannes Schindelin (9):
       Sanitize for_each_reflog_ent()
       Fix t1410 for core.filemode==false
 
-Junio C Hamano (127):
+Junio C Hamano (106):
       We should make sure that the protocol is still extensible.
       Why does it mean we do not have to register shallow if we have one?
       Why didn't we mark want_obj as ~UNINTERESTING in the old code?
@@ -3758,7 +4228,6 @@ Junio C Hamano (127):
       reflog: fix warning message.
       Move in_merge_bases() to commit.c
       git reflog expire
-      Merge branch 'master' into jc/fsck-reflog
       reflog expire: prune commits that are not incomplete
       reflog expire: do not punt on tags that point at non commits.
       show-branch --reflog: add documentation.
@@ -3768,30 +4237,23 @@ Junio C Hamano (127):
       i18n.logToUTF8: convert commit log message to UTF-8
       Teach log family --encoding
       everyday: update for v1.5.0
-      Merge branch 'jc/fsck-reflog'
       count-objects -v: show number of packs as well.
       rerere gc: honor configuration and document it
       git-reflog: gc.* configuration and documentation.
       everyday: replace a few 'prune' and 'repack' with 'gc'
-      Merge branch 'master' into js/shallow
       Use 'repack -a -d -l' instead of 'repack -a -d' in git-gc
       Set NO_MMAP for Cygwin by default
       UTF-8: introduce i18n.logoutputencoding.
-      Merge branch 'sp/gc'
       gcc does not necessarily pass runtime libpath with -R
       Work around http-fetch built with cURL 7.16.0
       Rename t3900 test vector file
-      Merge branch 'js/shallow'
-      Merge branch 'jc/make'
       t3900: test conversion to non UTF-8 as well
       GIT_SKIP_TESTS: allow users to omit tests that are known to break
       core.logallrefupdates: log remotes/ tracking branches.
       Allow non-fast-forward of remote tracking branches in default clone
-      Merge branch 'jc/utf8'
       t5400 send-pack test: try a bit more nontrivial transfer.
       Revert "read_directory: show_both option."
       Fix 'git add' with .gitignore
-      Merge branch 'jc/curl'
       pack-objects: fix use of use_pack().
       mmap: set FD_CLOEXEC for file descriptors we keep open for mmap()
       send-pack: fix pipeline.
@@ -3804,8 +4266,6 @@ Junio C Hamano (127):
       commit-tree: cope with different ways "utf-8" can be spelled.
       i18n: drop "encoding" header in the output after re-coding.
       Documentation/config.txt (and repo-config manpage): mark-up fix.
-      Merge branch 'master' into sp/mmap
-      Merge branch 'jc/send-pack-pipeline'
       Update documentation for update hook.
       send-pack.c: use is_null_sha1()
       send-pack: tell pack-objects to use its internal rev-list.
@@ -3814,7 +4274,6 @@ Junio C Hamano (127):
       Update send-pack pipeline documentation.
       fail pull/merge early in the middle of conflicted merge
       git-fetch: remove .keep file at the end.
-      Merge branch 'sp/merge' (early part)
       Strongly discourage --update-head-ok in fetch-options documentation.
       Update clone/fetch documentation with --depth (shallow clone) option
       Remove unused variable (git-commit.sh)
@@ -3823,7 +4282,6 @@ Junio C Hamano (127):
       tutorial: misc updates.
       git-verify-tag: make sure we remove temporary file.
       pack-check.c::verify_packfile(): don't run SHA-1 update on huge data
-      Merge branch 'maint'
       rerere: Fix removal of already resolved path.
       git-remote
       builtin-prune: memory diet.
@@ -3835,10 +4293,7 @@ Junio C Hamano (127):
       reflog --fix-stale: do not check the same trees and commits repeatedly.
       diff-index --cached --raw: show tree entry on the LHS for unmerged entries.
       git-reset <tree> -- <path> restores absense of <path> in <tree>
-      Merge branch 'jc/remote'
-      Merge branch 'jr/status'
       Spell default packedgitlimit slightly differently
-      Merge branch 'sp/mmap'
       Move initialization of log_all_ref_updates
       Introduce is_bare_repository() and core.bare configuration variable
       git-fetch: allow updating the current branch in a bare repository.
@@ -3850,12 +4305,10 @@ Junio C Hamano (127):
       git-checkout: fix branch name output from the command
       --utf8 is now default for 'git-am'
       --prune is now default for 'pack-refs'
-      Merge branch 'jc/reflog'
       rm git-rerere.perl -- it is now a built-in.
       merge-base: do not leak commit list
       Do not ignore a detected patchfile brokenness.
       Fix "Do not ignore a detected patchfile brokenness."
-      Merge branch 'maint'
       builtin-archive: do not free a tree held by the object layer.
       git-checkout: safety check for detached HEAD checks existing refs
       git-checkout: handle local changes sanely when detaching HEAD
@@ -3863,16 +4316,12 @@ Junio C Hamano (127):
       -u is now default for 'git-applymbox'
       -u is now default for 'git-mailinfo'.
       Makefile: remove $foo when $foo.exe is built/installed.
-      Merge branch 'js/reflog'
       merge-recursive: do not use on-file index when not needed.
       Document git-init
       index-pack: write-or-die instead of unchecked write-in-full.
       config-set: check write-in-full returns in set_multivar
       git-rm: do not fail on already removed file.
       git-status: wording update to deal with deleted files.
-      Merge branch 'jc/detached-head'
-      Merge branch 'ar/merge-recursive'
-      Merge branch 'jc/bare'
       plug a few leaks in revision walking used in describe.
       GIT v1.5.0-rc1
 
@@ -4157,7 +4606,7 @@ Josef Weidendorfer (2):
       Add branch.*.merge warning and documentation update
       Move "no merge candidate" warning into git-pull
 
-Junio C Hamano (172):
+Junio C Hamano (115):
       upload-pack: stop the other side when they have more roots than we do.
       apply --numstat: mark binary diffstat with - -, not 0 0
       pack-objects: tweak "do not even attempt delta" heuristics
@@ -4170,14 +4619,7 @@ Junio C Hamano (172):
       git-fetch: fix dumb protocol transport to fetch from pack-pruned ref
       git-fetch: allow glob pattern in refspec
       refs outside refs/{heads,tags} match less strongly.
-      Merge branch 'jc/upload-pack'
       Typefix builtin-prune.c::prune_object()
-      Merge branch 'ap/prune'
-      Merge branch 'ap/branch-ref-display'
-      Merge branch 'jc/numstat'
-      Merge branch 'jc/pack-heuristics'
-      Merge branch 'pb/diffroot'
-      Merge branch 'jn/web'
       Allow git push to delete remote ref.
       gitweb: (style) use chomp without parentheses consistently.
       git-clone: stop dumb protocol from copying refs outside heads/ and tags/.
@@ -4186,74 +4628,42 @@ Junio C Hamano (172):
       git-shortlog: make common repository prefix configurable with .mailmap
       git-commit: show --summary after successful commit.
       git-fetch: exit with non-zero status when fast-forward check fails
-      Merge branch 'master' into jc/globfetch
       git-fetch: allow forcing glob pattern in refspec
       fetch-pack: do not barf when duplicate re patterns are given
-      Merge branch 'jn/web'
       grep: do not skip unmerged entries when grepping in the working tree.
-      Merge branch 'jc/pack-peeled'
       git-merge: tighten error checking.
       git-merge: do not leak rev-parse output used for checking internally.
-      Merge branch 'jc/merge'
-      Merge branch 'jc/push-delete-ref'
-      Merge branch 'js/shortlog'
       cvsimport: style fixup.
-      Merge branch 'maint'
-      Merge branch 'jc/globfetch'
-      Merge branch 'maint'
-      Merge master.kernel.org:/pub/scm/gitk/gitk
       git-merge: fix confusion between tag and branch
-      Merge branch 'maint'
       xmerge: make return value from xdl_merge() more usable.
       merge-recursive: use xdl_merge().
-      Merge branch 'maint'
       read-tree: further loosen "working file will be lost" check.
       Loosen "working file will be lost" check in Porcelain-ish
       read-tree: document --exclude-per-directory
-      Merge branch 'maint'
-      Merge
       git-merge: squelch needless error message.
       git-merge: fix "fix confusion between tag and branch" for real
-      Merge branch 'maint'
       Fix perl/ build.
       git-rerere: add 'gc' command.
       Documentation/git-commit: rewrite to make it more end-user friendly.
       git-commit: allow --only to lose what was staged earlier.
-      Merge branch 'maint'
       shortlog: remove "[PATCH]" prefix from shortlog output
       shortlog: fix segfault on empty authorname
       diff --numstat: show binary with '-' to match "apply --numstat"
       add test case for recursive merge
-      Merge branch 'maint'
-      Merge branch 'master' into js/merge
       git-push: document removal of remote ref with :<dst> pathspec
-      Merge branch 'maint'
       Revert "git-diff: Introduce --index and deprecate --cached."
       git merge: reword failure message.
       spurious .sp in manpages
       git-push: accept tag <tag> as advertised.
       send-pack: tighten checks for remote names
-      Merge branch 'js/merge'
       branch --color: change default color selection.
-      Merge branch 'ap/branch'
-      Merge branch 'rr/cvsexportcommit'
-      Merge branch 'jc/numstat'
-      Merge branch 'ap/clone-origin'
-      Merge branch 'jc/commit-careful'
-      Merge branch 'lh/branch-rename'
-      Merge branch 'np/addcommit'
-      Merge branch 'ew/rerere'
-      Merge branch 'jc/read-tree-ignore'
       git-blame: show lines attributed to boundary commits differently.
       config documentation: group color items together.
       git-svn: allow both diff.color and color.diff
-      Merge branch 'jc/diff--cached'
       Update git-diff documentation
-      Merge branch 'maint'
       git-fetch: make it work from within a subdirectory.
       git-reset: make it work from within a subdirectory.
       git-reset [--mixed] <tree> [--] <paths>...
-      Merge branch 'js/show'
       merge: give a bit prettier merge message to "merge branch~$n"
       git-clone: use wildcard specification for tracking branches
       git-pull: refuse default merge without branch.*.merge
@@ -4270,10 +4680,6 @@ Junio C Hamano (172):
       Teach show-branch how to show ref-log data.
       git-fetch: Avoid reading packed refs over and over again
       avoid accessing _all_ loose refs in git-show-ref --verify
-      Merge branch 'jn/web' (early part)
-      Merge branch 'js/branch-config'
-      Merge branch 'jc/reflog' (early part)
-      Merge branch 'jc/blame-boundary'
       show-ref: fix --quiet --verify
       show-ref: fix --verify --hash=length
       parse-remote::expand_refs_wildcard()
@@ -4286,25 +4692,17 @@ Junio C Hamano (172):
       git-add --interactive
       git-add --interactive: hunk splitting
       Revert "fix testsuite: make sure they use templates freshly built from the source"
-      Merge branch 'jc/test-clone' into jc/clone
       Do not create $GIT_DIR/remotes/ directory anymore.
       Use preprocessor constants for environment variable names.
       Revert "Make left-right automatic."
       fix populate-filespec
       config_rename_section: fix FILE* leak
       simplify inclusion of system header files.
-      Merge branch 'maint'
       revision: --skip=<n>
       git-add: error out when given no arguments.
       compat/inet_ntop: do not use u_int
-      Merge branch 'jc/clone'
-      Merge branch 'jc/branch-remove-remote'
-      Merge branch 'jc/blame'
-      Merge branch 'jc/leftright'
       diff documentation: mostly talk about <commit>
-      Merge branch 'ew/svn-pm'
       Revert "git-pull: refuse default merge without branch.*.merge"
-      Merge branch 'maint'
       parse-remote: mark all refs not for merge only when fetching more than one
       _XOPEN_SOURCE problem also exists on FreeBSD
       commit-tree: do not overflow MAXPARENT
@@ -4313,12 +4711,8 @@ Junio C Hamano (172):
       Do not support "partial URL shorthand" anymore.
       Really fix headers for __FreeBSD__
       git-tag: lose exit after die
-      Merge branch 'js/rerere'
-      Merge branch 'sb/merge-friendly'
       Allow branch.*.merge to talk about remote tracking branches.
       git-add --interactive: add documentation
-      Merge branch 'jc/git-add--interactive'
-      Merge branch 'jc/skip-count'
       match_pathspec() -- return how well the spec matched
       git-rm: update to saner semantics
       t3600: update the test for updated git rm
@@ -4327,8 +4721,6 @@ Junio C Hamano (172):
       git-add: add ignored files when asked explicitly.
       git-add: warn when adding an ignored file with an explicit request.
       git-add -f: allow adding otherwise ignored files.
-      Merge branch 'rf/web'
-      Merge branch 'jc/bm'
       GIT v1.5.0 preview
 
 Lars Hjemli (4):
@@ -4568,8 +4960,7 @@ Johannes Sixt (2):
 Jonas Fonseca (1):
       git-update-index(1): fix use of quoting in section title
 
-Junio C Hamano (2):
-      Merge branch 'maint'
+Junio C Hamano (1):
       GIT 1.4.4
 
 Robin Rosenberg (1):
@@ -4589,25 +4980,20 @@ Jakub Narebski (3):
       gitweb: Use character or octal escape codes (and add span.cntrl) in esc_path
       gitweb: New improved patchset view
 
-Junio C Hamano (19):
+Junio C Hamano (14):
       gitweb: fix disabling of "forks"
       gitweb: minimally fix "fork" support.
       gitweb: do not give blame link unconditionally in diff-tree view
       git-status: quote LF in its output
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       git-pickaxe: retire pickaxe
       gitweb: protect blob and diff output lines from controls.
       gitweb: protect commit messages from controls.
       gitweb: fix unmatched div in commitdiff
-      Merge branch 'maint'
       Documentation: move blame examples
-      Merge branch 'maint'
       git-annotate: no need to exec blame; it is built-in now.
       git-annotate: fix -S on graft file with comments.
       path-list: fix path-list-insert return value
-      Merge branch 'maint'
       git-cvsserver: read from git with -z to get non-ASCII pathnames.
-      Merge branch 'maint'
       GIT 1.4.4-rc2
 
 OGAWA Hirofumi (1):
@@ -4707,7 +5093,7 @@ Johannes Schindelin (3):
 Jonas Fonseca (1):
       Add man page for git-show-ref
 
-Junio C Hamano (153):
+Junio C Hamano (96):
       Add git-for-each-ref: helper for language bindings
       Fix t1400-update-ref test minimally
       fsck-objects: adjust to resolve_ref() clean-up.
@@ -4716,19 +5102,13 @@ Junio C Hamano (153):
       Tell between packed, unpacked and symbolic refs.
       pack-refs: do not pack symbolic refs.
       git-pack-refs --prune
-      Merge branch 'lt/refs' into jc/for-each-ref-with-lt-refs
-      Merge branch 'lt/refs' into jc/lt-ref2-with-lt-refs
       pack-refs: fix git_path() usage.
       lock_ref_sha1_basic: remove unused parameter "plen".
-      Merge branch 'jc/for-each-ref-with-lt-refs' into jc/ref-locking
-      Merge branch 'jc/lt-ref2-with-lt-refs' into jc/ref-locking
       Clean-up lock-ref implementation
       update-ref: -d flag and ref creation safety.
       update a few Porcelain-ish for ref lock safety.
       Teach receive-pack about ref-log
       receive-pack: call setup_ident before git_config
-      Merge branch 'jc/for-each-ref' into jc/ref-locking
-      Merge branch 'master' into lj/refs
       grep --all-match
       teach revision walker about --all-match.
       git-diff/git-apply: make diff output a bit friendlier to GNU patch (part 1)
@@ -4739,10 +5119,8 @@ Junio C Hamano (153):
       delete_ref(): delete packed ref
       git-branch: remove D/F check done by hand.
       show-ref --hash=len, --abbrev=len, and --abbrev
-      Merge branch 'sb/fetch' into jc/refs-and-fetch
       git-fetch: adjust to packed-refs.
       Fix refs.c;:repack_without_ref() clean-up path
-      Merge branch 'master' into lj/refs
       gitweb: make leftmost column of blame less cluttered.
       git-fetch: do not look into $GIT_DIR/refs to see if a tag exists.
       pack-refs: use lockfile as everybody else does.
@@ -4757,7 +5135,6 @@ Junio C Hamano (153):
       ref-log: allow ref@{count} syntax.
       git-send-email: real name with period need to be dq-quoted on From: line
       git-blame --porcelain
-      Merge branch 'jc/blame' into jc/web-blame
       gitweb: use blame --porcelain
       Make git-send-email detect mbox-style patches more readily
       core.logallrefupdates create new log file only for branch heads.
@@ -4765,29 +5142,14 @@ Junio C Hamano (153):
       core.logallrefupdates thinko-fix
       pack-objects: document --delta-base-offset option
       blame: Document and add help text for -f, -n, and -p
-      Merge branch 'jc/blame' into jc/web-blame
       gitweb: spell "blame --porcelain" with -p
       git-repack: repo.usedeltabaseoffset
       diff --numstat
       gitweb: use for-each-ref to show the latest activity across branches
-      Merge branch 'rs/zip'
-      Merge branch 'sk/svn'
-      Merge branch 'sb/fetch'
-      Merge branch 'rs/rebase'
-      Merge branch 'mw/send-email'
-      Merge branch 'pb/bisect'
-      Merge branch 'jc/diff-numstat'
-      Merge early part of branch 'jc/diff-apply-patch'
-      Merge branch 'jc/grep'
-      Merge branch 'jc/send-email'
-      Merge branch 'js/diff'
-      Merge branch 'mw/pathinfo'
       ref-log: fix D/F conflict coming from deleted refs.
-      Merge branch 'maint'
       git-pickaxe: blame rewritten.
       git-pickaxe -M: blame line movements within a file.
       git-pickaxe -C: blame cut-and-pasted lines.
-      Merge branch 'maint'
       git-pickaxe: pagenate output by default.
       git-pickaxe: fix nth_line()
       git-pickaxe: improve "best match" heuristics
@@ -4796,22 +5158,8 @@ Junio C Hamano (153):
       git-pickaxe: do not confuse two origins that are the same.
       git-pickaxe: get rid of wasteful find_origin().
       git-pickaxe: swap comparison loop used for -C
-      Merge branch 'maint'
-      Merge branch 'np/pack'
-      Merge branch 'maint'
-      Merge branch 'master' into jc/web
       sha1_name.c: avoid compilation warnings.
       t3200: git-branch testsuite update
-      Merge branch 'maint'
-      Merge branch 'jc/web-blame'
-      Merge for-each-ref to sync gitweb fully with 'next'
-      Merge branch 'jc/web'
-      Merge branch 'aw/cvsimport'
-      Merge branch 'maint'
-      Merge branch 'jc/combined'
-      Merge branch 'jc/combined'
-      Merge branch 'jc/reflog' into lj/refs
-      Merge branch 'maint'
       tests: merge-recursive is usable without Python
       merge: loosen overcautious "working file will be lost" check.
       merge-recursive: use abbreviated commit object name.
@@ -4820,46 +5168,27 @@ Junio C Hamano (153):
       t6022: ignoring untracked files by merge-recursive when they do not matter
       Documentation: fix git-format-patch mark-up and link it from git.txt
       send-pack --keep: do not explode into loose objects on the receiving end.
-      Merge early part of branch 'np/index-pack' into sp/keep-pack
       git-pickaxe: WIP to refcount origin structure.
       git-pickaxe: allow -Ln,m as well as -L n,m
       git-pickaxe: refcount origin correctly in find_copy_in_parent()
       git-pickaxe: tighten sanity checks.
       Revert "send-pack --keep: do not explode into loose objects on the receiving end."
       git-pickaxe: split find_origin() into find_rename() and find_origin().
-      Merge branch 'maint'
       git-pickaxe: cache one already found path per commit.
       Introduce a new revision set operator <rev>^!
-      Merge branch 'lj/refs'
-      Merge branch 'jc/refs-and-fetch'
-      Merge branch 'rs/cherry'
       branch: work in subdirectories.
-      Merge branch 'maint'
       for-each-ref: "creator" and "creatordate" fields
-      Merge branch 'maint'
-      Merge branch 'sp/keep-pack' into np/index-pack
-      Merge branch 'master' into np/index-pack
-      Merge branch 'maint'
       git-pickaxe: rename detection optimization
       git-pickaxe: simplify Octopus merges further
       git-pickaxe: re-scan the blob after making progress with -M
       git-pickaxe: re-scan the blob after making progress with -C
-      Merge branch 'pb/web'
-      Merge branch 'lt/push-config'
-      Merge branch 'np/verbose-push'
       git-pickaxe: fix origin refcounting
-      Merge branch 'maint'
       cherry is built-in, do not ship git-cherry.sh
       git-blame: add internal statistics to count read blobs.
       git-pickaxe: optimize by avoiding repeated read_sha1_file().
       Document git-pack-refs and link it to git(7).
       git-pickaxe: -L /regexp/,/regexp/
-      Merge branch 'maint'
-      Merge branch 'np/index-pack'
-      Merge branch 'jc/read-tree'
       git-pickaxe: allow "-L <something>,+N"
-      Merge branch 'jc/pickaxe'
-      Merge branch 'maint'
       GIT 1.4.3-rc1
 
 Karl Hasselström (1):
@@ -5043,12 +5372,11 @@ Jan Harkes (1):
 Johannes Schindelin (1):
       link_temp_to_file: call adjust_shared_perm() only when we created the directory
 
-Junio C Hamano (10):
+Junio C Hamano (9):
       Documentation: clarify refname disambiguation rules.
       combine-diff: a few more finishing touches.
       combine-diff: fix hunk_comment_line logic.
       combine-diff: honour --no-commit-id
-      Merge branch 'jc/combined' into maint
       Surround "#define DEBUG 0" with "#ifndef DEBUG..#endif"
       quote.c: ensure the same quoting across platforms.
       revision traversal: --unpacked does not limit commit list anymore.
@@ -5153,9 +5481,8 @@ Version v1.4.3; changes since v1.4.3-rc3:
 Andy Whitcroft (1):
       add proper dependancies on the xdiff source
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       Revert "move pack creation to version 3"
-      Merge branch 'maint'
 
 Linus Torvalds (1):
       Fix hash function in xdiff library
@@ -5192,14 +5519,13 @@ Johannes Schindelin (3):
       cvsserver: Show correct letters for modified, removed and added files
       cvsserver: fix "cvs diff" in a subdirectory
 
-Junio C Hamano (7):
+Junio C Hamano (6):
       Add WEBDAV timeout to http-fetch.
       git-fetch --update-head-ok typofix
       git-pull: we say commit X, not X commit.
       git.spec.in: perl subpackage is installed in perl_vendorlib not vendorarch
       apply --numstat -z: line termination fix.
       t4015: work-around here document problem on Cygwin.
-      Merge branch 'jc/http'
 
 Martin Waitz (1):
       paginate git-diff by default
@@ -5237,11 +5563,10 @@ Franck Bui-Huu (1):
 Jakub Narebski (1):
       gitweb: Cleanup Git logo and Git logo target generation
 
-Junio C Hamano (10):
+Junio C Hamano (9):
       Makefile: install and clean merge-recur, still.
       git-mv: invalidate the removed path properly in cache-tree
       git-push: .git/remotes/ file does not require SP after colon
-      Merge branch 'maint'
       escape tilde in Documentation/git-rev-parse.txt
       tar-tree deprecation: we eat our own dog food.
       gitweb: Make the Git logo link target to point to the homepage
@@ -5586,7 +5911,7 @@ Jonas Fonseca (21):
       Fix trivial typos and inconsistencies in hooks documentation
       gitk(1): mention --all
 
-Junio C Hamano (191):
+Junio C Hamano (125):
       Perl interface: add build-time configuration to allow building with -fPIC
       Perl interface: make testsuite work again.
       perl: fix make clean
@@ -5601,12 +5926,10 @@ Junio C Hamano (191):
       upload-pack: use object pointer not copy of sha1 to keep track of has/needs.
       upload-pack: lift MAX_NEEDS and MAX_HAS limitation
       recur vs recursive: help testing without touching too many stuff.
-      Merge branch 'lt/unitype' into js/c-merge-recursive
       sha1_file.c: expose map_sha1_file() interface.
       pack-objects: reuse deflated data from new-style loose objects.
       unpack-objects: read configuration data upon startup.
       Makefile: git-merge-recur depends on xdiff libraries.
-      Merge branch 'js/read-tree' into js/c-merge-recursive
       gitweb: There can be more than two levels of subdirectories
       gitweb: an obvious cut and paste error.
       gitweb: fix use of uninitialized value.
@@ -5622,87 +5945,49 @@ Junio C Hamano (191):
       autoconf: fix NEEDS_SSL_WITH_CRYPTO
       autoconf: NO_IPV6
       Racy git: avoid having to be always too careful
-      Merge branch 'master' into pb/gitpm
-      Merge branch 'master' into mk/rename
       read-cache: tweak racy-git delay logic
       autoconf: clean temporary file mak.append
-      Merge branch 'master' into mk/rename
       git-grep: show pathnames relative to the current directory
-      Merge branch 'master' into js/c-merge-recursive
-      Merge branch 'ml/pager'
-      Merge branch 'mk/rename'
-      Merge branch 'jc/grep'
-      Merge branch 'jn/conf'
-      Merge branch 'lt/web'
-      Merge branch 'jn/web'
-      Merge branch 'js/color-diff'
-      Merge branch 'js/http-mb'
-      Merge branch 'js/read-tree'
-      Merge branch 'jc/pack-objects'
-      Merge branch 'th/diff-extra'
-      Merge branch 'jc/racy-delay'
-      Merge branch 'jc/upload-pack'
       upload-pack: minor clean-up in multi-ack logic
       Fix type of combine-diff.c::show_patch_diff()
-      Merge branch 'maint'
       Remove combine-diff.c::uninteresting()
       t4116 apply --reverse test
       git-apply --reverse: simplify reverse option.
       git-apply --binary: clean up and prepare for --reverse
-      Merge branch 'master' into pb/gitpm
       avoid nanosleep(2)
-      Merge branch 'maint'
       Documentation/technical/racy-git.txt
       Add check program "git-check-racy"
       Remove the "delay writing to avoid runtime penalty of racy-git avoidance"
       builtin-grep: remove unused debugging cruft.
-      Merge branch 'maint'
-      Merge branch 'jc/racy'
-      Merge branch 'jc/format-patch'
       builtin-apply --reverse: two bugfixes.
       diff.c: make binary patch reversible.
       apply --reverse: tie it all together.
       git-apply --reject
       git-apply --reject: send rejects to .rej files.
       git-apply --verbose
-      Merge branch 'maint'
       apply --reject: count hunks starting from 1, not 0
       Convert memset(hash,0,20) to hashclr(hash).
-      Merge branch 'gl/cleanup' into gl/cleanup-next
       hashcpy/hashcmp remaining bits.
       builtin-grep.c: remove unused debugging piece.
       update-index -g
-      Merge branch 'gl/cleanup'
-      Merge branch 'master' into gl/web
       git-apply --reject: finishing touches.
-      Merge branch 'jc/apply'
-      Merge branch 'ts/daemon'
-      Merge branch 'js/c-merge-recursive'
-      Merge branch 'gl/cleanup-next'
       free(NULL) is perfectly valid.
       daemon: prepare for multiple services.
       daemon: add upload-tar service.
       multi-service daemon: documentation
-      Merge branch 'gl/web'
-      Merge early part of branch 'jc/daemon'
       t5710: fix two thinkos.
       Constness tightening for move/link_temp_to_file()
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       consolidate two copies of new style object header parsing code.
       pack-objects: re-validate data we copy from elsewhere.
-      Merge branch 'master' into cc/trace
       Revert "Convert git-annotate to use Git.pm"
       Revert "Git.pm: Introduce fast get_object() method"
       Revert "Make it possible to set up libgit directly (instead of from the environment)"
       pack-objects: fix thinko in revalidate code
       more lightweight revalidation while reusing deflated stream in packing
       unpack-objects desperately salvages objects from a corrupt pack
-      Merge branch 'jc/pack'
       revision.c: allow injecting revision parameters after setup_revisions().
       Teach rev-list an option to read revs from the standard input.
-      Merge branch 'pm/diff'
       Revert "daemon: add upload-tar service."
-      Merge branch 'jc/daemon'
       Make apply --binary a no-op.
       diff --binary generates full index on binary files.
       Separate object listing routines out of rev-list
@@ -5717,17 +6002,12 @@ Junio C Hamano (191):
       Add --verbose to git-archive
       Teach --exec to git-archive --remote
       Prepare larger packet buffer for upload-pack protocol.
-      Merge branch 'jc/sideband' into jc/archive
       Add sideband status report to git-archive protocol
       upload-archive: monitor child communication more carefully.
       builtin-archive.c: rename remote_request() to extract_remote_arg()
       pack-objects: document --revs, --unpacked and --all.
       http-fetch: fix alternates handling.
-      Merge branch 'aw/send-pack'
-      Merge branch 'jc/binary'
       unpack-objects -r: call it "recover".
-      Merge branch 'jc/unpack'
-      Merge branches 'maint' and 'jc/http'
       Document git-grep -[Hh]
       Define fallback PATH_MAX on systems that do not define one in <limits.h>
       Fix git-am safety checks
@@ -5735,12 +6015,6 @@ Junio C Hamano (191):
       Add ftp:// protocol support for git-http-fetch
       t1400: make test debuggable.
       apply --unidiff-zero: loosen sanity checks for --unidiff=0 patches
-      Merge branch 'jc/archive'
-      Merge branch 'jk/diff'
-      Merge branch 'jc/am'
-      Merge branch 'jc/pack'
-      Merge part of branch 'jc/upload-pack'
-      Merge branch 'sk/ftp'
       builtin-grep: make pieces of it available as library.
       revision traversal: prepare for commit log match.
       revision traversal: --author, --committer, and --grep.
@@ -5752,31 +6026,16 @@ Junio C Hamano (191):
       diff.c: second war on whitespace.
       git-apply: second war on whitespace.
       Add t5510 to test per branch configuration affecting git-fetch.
-      Merge branch 'jl/daemon'
-      Merge branch 'sb/branch-attributes'
-      Merge branch 'jc/filter-commit'
       Remove upload-tar and make git-tar-tree a thin wrapper to git-archive
-      Merge early parts of branch 'np/pack'
-      Merge branch 'sk/svnimport'
       Deprecate merge-recursive.py
       diff --stat: allow custom diffstat output width.
       diff --stat: color output.
       An illustration of rev-list --parents --pretty=raw
       grep: free expressions and patterns when done.
       grep: fix --fixed-strings combined with expression.
-      Merge branch 'jc/deprecate-recursive'
-      Merge branch 'jc/repack'
-      Merge branch 'jc/whitespace'
-      Merge branch 'sp/void'
-      Merge branch 'cc/branch-test'
-      Merge branch 'jl/virtual'
       Contributed bash completion support for core Git tools.
       git-diff -B output fix.
       Remove -fPIC which was only needed for Git.xs
-      Merge branch 'lt/web'
-      Merge branch 'jc/diff-stat'
-      Merge branch 'jc/gitpm'
-      Merge branch 'maint'
       GIT 1.4.3-rc1
 
 Linus Torvalds (10):
@@ -6056,19 +6315,15 @@ Eric Wong (3):
       git-svn: bugfix: allow SVN:: lib users to track the root of the repository
       git-svn: split the path from the url correctly with limited perms
 
-Junio C Hamano (12):
+Junio C Hamano (8):
       git-apply: applying a patch to make a symlink shorter.
       combine-diff: use color
       Fix git-diff A...B
       builtin-apply: remove unused increment
-      Merge branch 'rn/push-dav'
       git-sh-setup: do not use repo-config to test the git directory
-      Merge branch 'rj/header'
       git-am: give better diagnostics when the patch does not apply during --3way
       Better error message when we are unable to lock the index file
       t/t4013: fix futzing with the version string.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      GIT 1.4.2
 
 Matthias Lederhofer (1):
       upload-pack: fix timeout in create_pack_file
@@ -6108,10 +6363,9 @@ Johannes Schindelin (1):
 Jonas Fonseca (1):
       Update git-init-db(1) and documentation of core.sharedRepository
 
-Junio C Hamano (14):
+Junio C Hamano (13):
       Cygwin needs NO_C99_FORMAT???
       Further clean-up: usage() vs die()
-      Merge branch 'jc/c99'
       Makefile: Cygwin does not seem to need NO_STRLCPY
       Fix "grep -w"
       debugging: XMALLOC_POISON
@@ -6190,30 +6444,16 @@ Johannes Schindelin (16):
 Josef Weidendorfer (1):
       Extend testing git-mv for renaming of subdirectories
 
-Junio C Hamano (33):
+Junio C Hamano (18):
       git-diff A...B to (usually) mean "git-diff `git-merge-base A B` B"
       t4112: simplify the test and remove unneeded working tree file.
-      Merge branch 'pb/configure'
       lost-found: use fsck-objects --full
       git-reset: detect update-ref error and report it.
       log and diff family: honor config even from subdirectories
       git-apply -R: binary patches are irreversible for now.
       t4103: fix binary patch application test.
-      Merge branch 'jc/diff'
-      Merge branch 'js/alias-p'
-      Merge branch 'js/cvs'
-      Merge branch 'lt/web'
-      Merge branch 'pb/multi-fetch'
-      Merge branch 'lt/setup' into __/setup-n-mv
-      Merge branch 'jn/make'
-      Merge branch 'js/mv'
-      Merge branch '__/setup-n-mv'
-      Merge branch 'lt/web'
       git-checkout: allow "checkout HEAD -- path"
       Builtins: control the use of pager from the command table.
-      Merge branch 'jc/checkout'
-      Merge branch 'ml/pager'
-      Merge branch 'rs/rebase'
       fetch/clone: mark messages from remote side stand out.
       Fix "git diff blob1 blob2" showing the diff in reverse.
       read-tree: shadowed variable fix.
@@ -6221,7 +6461,6 @@ Junio C Hamano (33):
       diff.c: do not use pathname comparison to tell renames
       Show both blob names from "git diff blob1 blob2"
       sideband: do not use color, just say "remote:"
-      Merge branch 'jc/sideband'
       Documentation/git.txt: link git-svn and git-instaweb from the main page.
       GIT 1.4.2-rc3
 
@@ -6323,7 +6562,7 @@ Josh Triplett (3):
       Add option to enable threading headers
       Add option to set initial In-Reply-To/References
 
-Junio C Hamano (13):
+Junio C Hamano (8):
       fetch/clone: check return status from ls-remote
       builtin-log: typefix for recent format-patch changes.
       checkout -f failed to check out a file if an existing directory interfered.
@@ -6332,11 +6571,6 @@ Junio C Hamano (13):
       apply: handle type-changing patch correctly.
       git-fetch: fix --keep vs --thin
       unpack-objects: remove stale and confusing comment
-      Merge branch 'lt/objformat'
-      Merge branch 'jc/read-tree'
-      Merge branch 'ew/apply'
-      Merge branch 'jt/format-patch'
-      Merge branch 'jc/clone-bind-failure'
 
 Linus Torvalds (1):
       sha1_file: add the ability to parse objects in "pack file format"
@@ -6422,22 +6656,17 @@ Johannes Schindelin (7):
 Jonas Fonseca (1):
       Documentation/urls.txt: Use substitution to escape square brackets
 
-Junio C Hamano (79):
+Junio C Hamano (49):
       Makefile: add framework to verify and bench sha1 implementations.
       test-sha1: test hashing large buffer
       t4013: add tests for diff/log family output options.
       t4013: add more tests around -c and --cc
-      Merge branch 'jc/diff-test' into th/diff
       Fix some more diff options changes.
       t4013 test updates for new output code.
       combine-diff.c: type sanity.
-      Merge branch 'jc/diff-test-updates' into th/diff
       format-patch: fix diff format option implementation
       t4013: add format-patch tests.
-      Merge branch 'jc/diff-test' into th/diff
-      Merge branch 'jc/diff-test' into jc/diff-test-updates
       t4013: note improvements brought by the new output code.
-      Merge branch 'jc/diff-test-updates' into th/diff
       gitweb: optimize per-file history generation
       gitweb: optimize per-file history generation
       t4013: add "diff" UI program tests.
@@ -6445,7 +6674,6 @@ Junio C Hamano (79):
       commit.c: do not redefine UNINTERESTING bit.
       get_merge_bases: clean up even when there is no common commit.
       revert clear-commit-marks for now.
-      Merge branch 'master' into js/merge-base
       boolean: accept yes and no as well
       send-email: do not barf when Term::ReadLine does not like your terminal
       t6200: fmt-merge-msg test.
@@ -6453,20 +6681,11 @@ Junio C Hamano (79):
       git-grep: fix exit code when we use external grep.
       git-grep: use a bit more specific error messages.
       Re-fix clear_commit_marks().
-      Merge branch 'js/fmt-merge-msg'
-      Merge branch 'jc/grepfix'
-      Merge branch 'th/diff'
-      Merge branch 'jc/diff-test'
-      Merge branch 'jc/sha1'
-      Merge branch 'jc/fmt-merge-msg-test'
-      Merge branch 'lt/gitweb'
       git-grep: boolean expression on pattern matching.
       git-reset: complain and exit upon seeing an unknown parameter.
       mailinfo: assume input is latin-1 on the header as we do for the body
-      Merge branch 'ew/instaweb'
       diffcore-rename: try matching up renames without populating filespec first.
       builtin-rev-parse.c: constness tightening
-      Merge branch 'js/merge-base'
       show-branch: match documentation and usage
       rev-parse documentation: talk about range notation.
       git-svn: migrate out of contrib (follow-up)
@@ -6475,33 +6694,18 @@ Junio C Hamano (79):
       git log -p --merge [[--] paths...]
       colored diff: diff.color = auto fix
       diff: do not use configuration magic at the core-level
-      Merge branch 'sf/diff'
       "git -p cmd" to page anywhere
       merge-base: update the clean-up postprocessing
-      Merge branch 'ew/svn'
-      Merge branch 'ew/diff'
-      Merge branch 'jc/mailinfo'
-      Merge branch 'jc/grep'
-      Merge branch 'jc/rename'
-      Merge branch 'lt/gitweb'
-      Merge branch 'jc/show-merge'
       fmt-merge-msg fix
-      Merge branch 'lt/merge-tree'
-      Merge branch 'lt/prune'
-      Merge branch 'js/merge-base'
       Fix grammatical error in git-revert
       git-repack: avoid redirecting stderr into git-pack-objects
       test-lib: unset GIT_TRACE
-      Merge branch 'ml/trace'
       t4013 diff format tests update
       Adjust t4013 tests to corrected format-patch.
       Documentation: Fix ssh://[user@]host.xz URL
       builtin-prune.c: forgot TYPE => OBJ changes.
-      Merge branch 'sp/lazy-mkdir'
-      Merge branch 'lt/unitype'
       Documentation/Makefile: product depends on asciidoc.conf
       show-branch: fix performance problem.
-      Merge branch 'sp/reflog'
 
 Linus Torvalds (7):
       xdiff: generate "anti-diffs" aka what is common to two files
@@ -6638,15 +6842,12 @@ Johannes Schindelin (4):
       t4014: fix for whitespace from "wc -l"
       format-patch: use clear_commit_marks() instead of some ad-hockery
 
-Junio C Hamano (9):
+Junio C Hamano (6):
       git-repack: Be careful when updating the same pack as an existing one.
       t4014: add format-patch --ignore-if-in-upstream test
       t4014: fix test commit labels.
       diff.c: fix get_patch_id()
-      Merge branch 'js/patch'
-      Merge branch 'jc/repack'
       Racy GIT (part #3)
-      Merge branch 'jc/test-3402'
       upload-pack.c: <sys/poll.h> includes <ctype.h> on OpenBSD 3.8
 
 Linus Torvalds (4):
@@ -6700,20 +6901,14 @@ Johannes Schindelin (5):
       apply: replace NO_ACCURATE_DIFF with --inaccurate-eof runtime flag.
       Save errno in handle_alias()
 
-Junio C Hamano (18):
+Junio C Hamano (12):
       Makefile: do not recompile main programs when libraries have changed.
       usage: minimum type fix.
-      Merge branch 'pb/error'
       git-pull: abort when fmt-merge-msg fails.
       git-merge --squash
       diff --color: use reset sequence when we mean reset.
       repo-config: fix printing of bool
       diff --color: use $GIT_DIR/config
-      Merge branch 'ew/rebase'
-      Merge branch 'js/diff'
-      Merge branch 'ml/cvsimport'
-      Merge branch 'jc/diff'
-      Merge branch 'jc/squash'
       combine-diff.c: type sanity
       connect.c: remove unused parameters from tcp_connect and proxy_connect
       connect.c: check the commit buffer boundary while parsing.
@@ -6838,282 +7033,38 @@ Johannes Schindelin (6):
       repo-config: Fix late-night bug
       git_config: access() returns 0 on success, not > 0
 
-Junio C Hamano (275):
-      Merge branch 'js/diffstat' into next
-      Merge branch 'master' into next
-      Merge branch 'js/diffstat' into next
-      Merge branch 'jc/fix5500' into next
-      Merge branch 'jc/bottomless' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'master' into next
+Junio C Hamano (31):
       Revert all the rev-list option parsing changes.
-      Merge branch 'jc/logopt' into next
       Clean-up Geert's similarity fingerprint code.
-      Merge branch 'jc/simpack' into next
       Extract "log [diff options]" parser out.
-      Merge branch 'jc/logopt' into next
       whatchanged options parser fix.
       Built-in git-whatchanged
-      Merge branch 'jc/logopt' into next
-      Merge branch 'lt/show' into next
-      Merge branch 'js/diffstat' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'jc/pager-cat' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'master' into next
       Geert's similarity
       Try using Geert similarity code in pack-objects.
-      Merge branch 'jc/boundary' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'lt/logopt' into next
-      Merge branch 'master' into next
-      Merge branch 'sh/daemon' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'lt/xsha1' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/unresolve' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/unresolve' into next
-      Stop carrying Geert's similarity estimator.
-      Merge branch 'master' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'jc/color' into next
-      Merge branch 'jc/cc-stat' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'ar/chmod-series' into next
-      Merge part of 'jc/cache-tree'
-      Merge branch 'master' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'np/delta' into next
-      Merge branch 'pb/config' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'jc/diffstat' into next
-      Merge branch 'pb/config' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'nh/fetch-http' into next
-      Merge branch 'se/rebase' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'master' into next
       Retire rabinpoly fingerprinting code
       Fix mismerged update-index from jc/cache-tree branch.
-      Merge branch 'jc/pathcheck' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'np/delta' into next
-      Merge branch 'jc/count' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'master' into next
-      Merge branch 'np/delta' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'lt/push' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'lt/push' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/xsha1-2' into next
-      Merge branch 'jc/xsha1' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/cache-tree' into next
       read-tree: --prefix=<path>/ option.
       write-tree: --prefix=<path>
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/logs' into next
-      Merge branch 'jc/count' into next
-      Merge branch 'jc/show-branch-dense' into next
-      Merge branch 'lt/push' into next
-      Merge branch 'js/remoteconfig' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'js/remoteconfig' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'master' into next
-      Merge branch 'js/repoconfig' into next
-      Merge branch 'np/delta' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/symref' into next
-      Merge branch 'jc/count' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'js/repoconfig' into next
-      Merge branch 'master' into next
-      Merge branch 'js/fetchconfig' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'js/fmt-patch' into next
-      Merge branch 'jc/bindiff' into next
-      Merge branch 'jc/bindiff' into next
-      Merge branch 'jc/reupdate' into next
-      Merge branch 'jc/reupdate' into next
-      Merge branch 'js/fmt-patch' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'mw/alternates' into next
-      Merge branch 'jc/gitlink' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/xsha1' into next
-      Merge branch 'jc/bindiff' into next
-      Merge branch 'jc/clean' into next
-      Merge branch 'ml/cvs' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/config' into next
-      Merge branch 'lt/diff' into next
-      Merge branch 'lt/oneway' into next
-      Merge branch 'se/rev-parse' into next
-      Merge branch 'se/rebase' into next
-      Merge branch 'se/diff' into next
-      Merge branch 'lt/oneway' into next
-      Merge branch 'jc/apply' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'se/tag' into next
-      Merge branch 'lt/oneway' into next
-      Merge branch 'np/pack' into next
-      Merge branch 'ew/send-email' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'jc/apply' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'np/pack' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'ew/pretty-fmt' into next
       read-tree: reorganize bind_merge code.
-      Merge branch 'jc/gitlink' into next
-      Merge branch 'lt/dirwalk' into next
-      Merge branch 'jc/grep' into next
-      Merge branch 'lt/grep' into next
-      Merge branch 'jc/read-tree-safety' into next
-      Merge branch 'jc/apply' into next
-      Merge branch 'sp/reflog' into next
-      Merge branch 'lt/dirwalk' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/dirwalk' into next
-      Merge branch 'lt/dirwalk' into next
-      Merge branch 'ts/doctar' into next
-      Merge branch 'eb/quilt' into next
-      Merge branch 'lt/dirwalk' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/tartree' into next
-      Merge branch 'jc/dirwalk-n-cache-tree' into next
-      Merge branch 'js/fmt-patch' into next
-      Merge branch 'js/fmt-patch' into next
-      Merge branch 'jc/mailinfo' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/fetch-sorted' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'se/http' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/dirwalk-n-cache-tree' into next
-      Merge branch 'jc/builtin-n-tar-tree' into next
-      Merge branch 'be/tag' into next
-      Merge branch 'eb/mailinfo' into next
-      Merge branch 'sp/reflog' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/apply' into next
-      Merge branch 'sp/reflog' into next
       fetch-pack: give up after getting too many "ack continue"
-      Merge branch 'jc/fetchupload' into next
-      Merge branch 'sp/reflog' into next
-      Merge branch 'ew/tests' into next
-      Merge branch 'eb/mailinfo' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/cache-tree' into next
-      Merge branch 'jc/lt-tree-n-cache-tree' into next
-      Merge branch 'jc/lt-tree-n-cache-tree' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/tree-2' into next
-      Merge branch 'ff/svnimport' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'sp/reflog' into next
-      Merge branch 'nh/http' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'lt/tree-2' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/fmt-patch' into next
-      Merge branch 'vb/sendemail' into next
-      Merge branch 'new' of git://git.kernel.org/pub/scm/gitk/gitk into next
       Fix earlier mismerges.
-      Merge branch 'js/alias' into next
-      Merge branch 'master' into next
-      Merge branch 'vb/sendemail' into next
-      Merge branch 'vb/sendemail' into next
-      Merge branch 'jc/lockfile' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
-      Merge branch 'pe/date' into next
       shared repository: optionally allow reading to "others".
-      Merge branch 'jc/shared' into next
-      Merge branch 'master' into next
       gitk: rereadrefs needs listrefs
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge git://git.bogomips.org/git-svn
       fix git alias
       t5100: mailinfo and mailsplit tests.
       mailinfo: ignore blanks after in-body headers.
-      Merge branch 'js/diff'
-      Merge branch 'pe/date'
-      Merge branch 'jc/rw-prefix'
-      Merge early part of branch 'jc/fetchupload'
-      Merge branch 'eb/mail' into next
-      Merge branch 'yl/build' into next
-      Merge branch 'master' into next
-      Merge branch 'eb/mail'
-      Merge branch 'jc/shared'
-      Merge branch 'yl/build'
-      Merge branch 'pb/config' into next
-      Merge branch 'jn/web' into next
-      Merge early parts of branch 'ls/am'
-      Merge early parts of branch 'ff/c99'
       fix rfc2047 formatter.
       xdiff: minor changes to match libxdiff-0.21
       Restore SIGCHLD to SIG_DFL where we care about waitpid().
-      Merge branches 'js/lsfix', 'pb/config' and 'jn/web' into next
-      Merge branch 'lt/objlist' into next
-      Merge branch 'jc/waitpid' into next
-      Merge branch 'pb/config' into next
-      Merge branch 'jn/web' into next
-      Merge branch 'master' into next
-      Merge branch 'jn/web' into next
-      Merge branch 'jn/web' into next
       checkout -f: do not leave untracked working tree files.
-      Merge branch 'master' into next
-      Merge branch 'jn/web' into next
       upload-pack: avoid sending an incomplete pack upon failure
       upload-pack: prepare for sideband message support.
       Retire git-clone-pack
       upload-pack/fetch-pack: support side-band communication
-      Merge branch 'jc/upload-corrupt' into next
-      Merge branch 'ff/c99' into next
       Add renaming-rebase test.
-      Merge branch 'ew/rebase' into next
       daemon: send stderr to /dev/null instead of closing.
-      Merge branch 'jn/web' into next
-      Merge branch 'jc/upload-corrupt' into next
-      Merge branch 'master' into next
       rebase --merge: fix for rebasing more than 7 commits.
       Makefile: do not force unneeded recompilation upon GIT_VERSION changes
-      Merge branch 'lt/objlist'
-      Merge branch 'pb/config'
-      Merge branch 'ff/c99'
-      Merge branch 'jc/waitpid'
-      Merge branch 'jn/web' into next
-      Merge branch 'ew/rebase' into next
-      Merge branch 'jc/upload-corrupt'
-      Merge early parts of branch 'js/diff'
-      Merge branch 'jn/web'
-      Merge branch 'ew/rebase'
-      Merge branch 'js/lsfix'
-      Merge branch 'master' into next
 
 Linus Torvalds (9):
       Tentative built-in "git show"
@@ -7181,14 +7132,13 @@ Version v1.4.0; changes since v1.4.0-rc2:
 Horst H. von Brand (1):
       Fix formatting of Documentation/git-clone.txt
 
-Junio C Hamano (8):
+Junio C Hamano (7):
       allow working in repositories with textual symref HEAD
       git-clone: fix duplicated "master" in $GIT_DIR/remotes/origin
       git-rm: honor -n flag.
       builtin-init-db: spell the in-program configuration variable in lowercase.
       shared repository - add a few missing calls to adjust_shared_perm().
       git-clone: fix --bare over dumb-http
-      Merge git://git.kernel.org/pub/scm/git/gitweb
       GIT 1.4.0
 
 Kay Sievers (143):
@@ -7373,7 +7323,7 @@ Jonas Fonseca (2):
       Misc doc improvements
       Document git-ls-tree --fullname
 
-Junio C Hamano (16):
+Junio C Hamano (12):
       git alias: try alias last.
       send-email: be more lenient and just catch obvious mistakes.
       send-email: a bit more careful domain regexp.
@@ -7382,10 +7332,6 @@ Junio C Hamano (16):
       Make index file locking code reusable to others.
       refs.c: convert it to use lockfile interface.
       ref-log: style fixes.
-      Merge branch 'vb/sendemail'
-      Merge branch 'js/alias'
-      Merge branch 'jc/lockfile'
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       Documentation: add missing docs make check-docs found.
       make clean: remove dist-doc targets.
       Documentation: git-ls-tree (typofix)
@@ -7395,9 +7341,8 @@ Nick Hengeveld (2):
       HTTP cleanup
       http-fetch: fix possible segfault
 
-Paul Mackerras (14):
+Paul Mackerras (12):
       gitk: Make a row of controls for controlling highlighting
-      Merge branch 'master' into new
       gitk: Highlight entries in the file list as well
       gitk: Highlight paths of interest in tree view as well
       gitk: First cut at a search function in the patch/file display window
@@ -7406,7 +7351,6 @@ Paul Mackerras (14):
       gitk: Fix bug in highlight stuff when no line is selected
       gitk: Provide ability to highlight based on relationship to selected commit
       gitk: Add a goto next/previous highlighted commit function
-      Merge branch 'master' into new
       gitk: Show nearby tags
       gitk: Show branch name(s) as well, if "show nearby tags" is enabled
       gitk: Re-read the descendent/ancestor tag & head info on update
@@ -7547,41 +7491,30 @@ Johannes Schindelin (25):
 Josef Weidendorfer (1):
       gitk: Add a visual tag for remote refs
 
-Junio C Hamano (268):
+Junio C Hamano (156):
       Fix up default abbrev in setup_revisions() argument parser.
       Fix up rev-list option parsing.
       Split init_revisions() out of setup_revisions()
       rev-list option parser fix.
       Built-in git-whatchanged.
       Do not fork PAGER=cat
-      Merge branch 'master' into lt/logopt
       Simplify common default options setup for built-in log family.
       log/whatchanged/show - log formatting cleanup.
       rev-list --header: output format fix
       git.c: LOGSIZE is unused after log printing cleanup.
       combine-diff: show diffstat with the first parent.
       Fix "git log --stat": make sure to set recursive with --stat.
-      Merge branch 'lt/logopt'
-      Merge branch 'jc/pager-cat'
       Tentative built-in format-patch.
-      Merge branch 'fix'
       sha1_name.c: prepare to make get_tree_entry() reusable from others.
       sha1_name.c: no need to include diff.h; tree-walk.h will do.
       get_tree_entry(): make it available from tree-walk
       Minor tweak on subject line in --pretty=email
       diff: move diff.c to diff-lib.c to make room.
-      Merge branch 'maint'
-      Merge branch 'lt/xsha1'
       Add git-unresolve <paths>...
       diff --stat: do not drop rename information.
       git-update-index --unresolve
-      Merge branch 'fix'
       rename internal format-patch wip
-      Merge branch 'fix'
-      Merge branch 'fix'
-      Merge branch 'master' into jc/fmt-patch
       Makefile: dependency for builtin-help.o
-      Merge branch 'jc/diff'
       Add colordiff for git to contrib/colordiff.
       Fix "git show --stat"
       Libify diff-files.
@@ -7594,47 +7527,31 @@ Junio C Hamano (268):
       Invalidate cache-tree entries for touched paths in git-apply.
       Use cache-tree in update-index.
       Add test-dump-cache-tree
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge branch 'jc/color'
-      Merge branch 'jc/unresolve'
-      Merge branch 'jc/cc-stat'
-      Merge branch 'sh/daemon'
-      Merge branch 'ar/chmod-series'
       cache-tree: protect against "git prune".
       index: make the index file format extensible.
-      Merge branch 'fix'
       Teach fsck-objects about cache-tree.
       cache-tree: sort the subtree entries.
       test-dump-cache-tree: report number of subtrees.
       Makefile: remove and create libgit.a from scratch.
-      Merge branch 'jc/diff'
       diff --stat: show complete rewrites consistently.
       git-cvsserver: typofixes
       t0000-basic: Add ls-tree recursive test back.
       Makefile: remove and create xdiff library from scratch.
       commit-tree: allow generic object name for the tree as well.
-      Merge branch 'master' into jc/cache-tree
-      Merge branch 'fix'
       revision parsing: make "rev -- paths" checks stronger.
       t0000-basic: more commit-tree tests.
-      Merge branch 'master' into jc/cache-tree
       update-index: when --unresolve, smudge the relevant cache-tree entries.
       read-tree: teach 1 and 2 way merges about cache-tree.
       read-tree: teach 1-way merege and plain read to prime cache-tree.
       diff-index: fix compilation warnings.
-      Merge branch 'jc/diffstat'
-      Merge branch 'pb/config'
-      Merge branch 'fix'
       cache_tree_update: give an option to update cache-tree only.
       test-dump-cache-tree: validate the cached data as well.
       pack-objects: update size heuristucs.
       built-in count-objects.
       cache-tree.c: typefix
-      Merge branch 'fix'
       built-in diff.
       built-in diff: assorted updates.
       builtin-diff.c: die() formatting type fix.
-      Merge branch 'fix'
       Fix builtin-push to honor Push: lines in remotes file.
       Extended SHA1 -- "rev^@" syntax to mean "all parents"
       get_sha1(): :path and :[0-3]:path to extract from index.
@@ -7644,11 +7561,6 @@ Junio C Hamano (268):
       builtin-grep: support '-l' option.
       builtin-grep: do not use setup_revisions()
       fsck-objects: mark objects reachable from cache-tree
-      Merge branch 'se/rebase'
-      Merge branch 'nh/fetch-http'
-      Merge branch 'jc/pathcheck'
-      Merge branch 'jc/pack'
-      Merge branch 'jc/xsha1-2'
       builtin-count-objects: make it official.
       builtin-diff: call it "git-diff", really.
       builtin-log/whatchanged/show: make them official.
@@ -7656,35 +7568,23 @@ Junio C Hamano (268):
       builtin-push: make it official.
       builtin-grep: printf %.*s length is int, not ptrdiff_t.
       Revert "fetch, pull: ask config for remote information"
-      Merge branch 'fix'
       builtin-grep: allow -<n> and -[ABC]<n> notation for context lines.
       builtin-grep: allow more than one patterns.
       builtin-grep: support -c (--count).
       builtin-grep: support -w (--word-regexp).
       builtin-grep: tighten path wildcard vs tree traversal.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       core.prefersymlinkrefs: use symlinks for .git/HEAD
       repo-config: readability fixups.
       builtin-count-objects: open packs when running -v
       Fix test-dump-cache-tree in one-tree disappeared case.
       read-tree: invalidate cache-tree entry when a new index entry is added.
       cache-tree: a bit more debugging support.
-      Merge branch 'fix'
       builtin-grep: terminate correctly at EOF
       builtin-grep: binary files -a and -I
       fsck-objects: do not segfault on missing tree in cache-tree
       builtin-grep: -L (--files-without-match).
-      Merge branch 'maint'
-      Merge branch 'js/remoteconfig'
-      Merge branch 'jc/count'
-      Merge branch 'js/repoconfig'
-      Merge branch 'jc/diff'
-      Merge branch 'jc/symref'
-      Merge branch 'jc/show-branch-dense'
-      Merge branch 'jc/logs'
       Makefile: do not link rev-list any specially.
       delta: stricter constness
-      Merge branch 'fix'
       pack-object: squelch eye-candy on non-tty
       binary patch.
       binary diff: further updates.
@@ -7694,75 +7594,31 @@ Junio C Hamano (268):
       update-index --again
       update-index --again: take optional pathspecs
       binary diff and apply: testsuite.
-      Merge branch 'master' into js/fmt-patch
-      Merge branch 'fix'
       Teach -f <file> option to builtin-grep.
       builtin-grep: documentation
       get_sha1() - fix infinite loop on nonexistent stage.
-      Merge branch 'fix'
       Teach git-clean optional <paths>... parameters.
       builtin-grep: tighten argument parsing.
-      Merge branch 'tojunio' of http://locke.catalyst.net.nz/git/git-martinlanghoff into ml/cvs
-      Merge branch 'fix'
-      Merge branch 'jc/bindiff'
-      Merge branch 'np/delta'
-      Merge branch 'jc/again'
-      Merge branch 'jc/xsha1'
-      Merge branch 'mw/alternates'
-      Merge branch 'jc/clean'
       builtin-grep: typofix
       builtin-grep: -w fix
       builtin-grep: -F (--fixed-strings)
       checkout: use --aggressive when running a 3-way merge (-m).
-      Merge branch 'fix'
-      Merge branch 'lt/fix-config' into lt/config
-      Merge branch 'fix'
-      Merge branch 'ml/cvs'
-      Merge branch 'fix'
       diffstat rename squashing fix.
       read-tree -u one-way merge fix to check out locally modified paths.
-      Merge branch 'fix'
       apply --numstat: show new name, not old name.
       builtin-grep: unparse more command line options.
-      Merge branch 'fix'
       apply --cached: apply a patch without using working tree.
       git-am: use apply --cached
-      Merge branch 'lt/diff'
-      Merge branch 'jc/grep'
-      Merge branch 'lt/config'
-      Merge branch 'ew/send-email'
-      Merge branch 'lt/oneway'
       builtin-diff: fix comparison between two blobs.
-      Merge branch 'se/rebase'
-      Merge branch 'se/diff'
-      Merge branch 'se/rev-parse'
-      Merge branch 'se/tag'
       merge-base: Clarify the comments on post processing.
-      Merge branch 'np/pack'
-      Merge branch 'maint'
       read-tree -m -u: do not overwrite or remove untracked working tree files.
       builtin-grep: workaround for non GNU grep.
       Revert "builtin-grep: workaround for non GNU grep."
-      Merge branch 'jc/apply'
-      Merge branch 'ew/pretty-fmt'
       apply --cached: do not check newly added file in the working tree
-      Merge branch 'maint'
       builtin-add: fix unmatched pathspec warnings.
       builtin-diff: do not say files are renamed when blob and file are given
-      Merge early part of 'sp/reflog' branch
-      Merge part of 'js/fmt-patch' for RFC2822 dates into 'sp/reflog'
-      Merge branch 'ts/doctar'
-      Merge branch 'lt/grep'
-      Merge branch 'jc/grep'
-      Merge branch 'eb/quilt'
-      Merge branch 'jc/apply'
-      Merge branch 'jc/read-tree-safety'
       Fix build procedure for builtin-init-db
-      Merge branch 'js/fetchconfig'
       built-in tar-tree and remote tar-tree
-      Merge branch 'jc/cache-tree' into jc/dirwalk-n-cache-tree
-      Merge branch 'lt/dirwalk' into jc/dirwalk-n-cache-tree
-      Merge branch 'master' into js/fmt-patch
       git-format-patch: now built-in.
       checkdiff_consume: strtol parameter fix.
       git-rebase: use canonical A..B syntax to format-patch
@@ -7774,47 +7630,23 @@ Junio C Hamano (268):
       fetch-pack: output refs in the order they were given on the command line.
       Tutorial #2: broken link fix.
       builtin-rm: squelch compiler warnings.
-      Merge branch 'jc/tartree' into jc/builtin-n-tar-tree
       cvsimport: do not barf on creation of an empty file.
-      Merge branch 'lt/dirwalk'
-      Merge branch 'jc/fetch-sorted'
-      Merge branch 'jc/builtin-n-tar-tree'
-      Merge branch 'js/fmt-patch'
-      Merge branch 'be/tag'
-      Merge branch 'jc/fmt-patch'
       apply: force matching at the beginning.
-      Merge branch 'master' into lt/apply
       fetch.c: remove an unused variable and dead code.
-      Merge branch 'master' into sp/reflog
       ls-remote: fix rsync:// to report HEAD
       mailinfo: More carefully parse header lines in read_one_header_line()
       gitk: start-up bugfix
       built-in format-patch: various fixups.
       format-patch: -n and -k are mutually exclusive.
       Let git-clone to pass --template=dir option to git-init-db.
-      Merge branch 'eb/mailinfo'
-      Merge branch 'jc/mailinfo'
       git-fetch: avoid using "case ... in (arm)"
-      Merge branch 'jc/dirwalk-n-cache-tree' into jc/cache-tree
-      Merge branch 'lt/tree' into jc/lt-tree-n-cache-tree
-      Merge branch 'jc/cache-tree'
-      Merge branch 'lt/apply'
       adjust to the rebased series by Linus.
-      Merge branch 'jc/lt-tree-n-cache-tree' into lt/tree-2
       send-email: do not pass bogus address to local sendmail binary
-      Merge branch 'ew/tests'
       format-patch --signoff
       fetch.c: do not pass uninitialized lock to unlock_ref().
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge branch 'nh/http'
       fetch.c: do not call process_tree() from process_tree().
-      Merge branch 'ds/doc' into jc/fmt-patch
       fetch: do not report "same" unless -verbose.
-      Merge branch 'jc/fmt-patch'
       read-tree --reset: update working tree file for conflicted paths.
-      Merge branch 'ff/svnimport'
-      Merge branch 'sp/reflog'
-      Merge branch 'lt/tree-2'
       rev-parse: tighten constness properly.
 
 Linus Torvalds (60):
@@ -7883,13 +7715,10 @@ Lukas Sandström (2):
       Make git-check-format-ref a builtin.
       SubmittingPatches: The download location of External Editor has moved
 
-Martin Langhoff (10):
+Martin Langhoff (7):
       git-cvsexportcommit: Add -f(orce) and -m(essage prefix) flags, small cleanups.
-      Merge with git://kernel.org/pub/scm/git/git.git
-      Merge with git://kernel.org/pub/scm/git/git.git
       cvsserver: use git-rev-list instead of git-log
       cvsserver: use git-rev-list instead of git-log
-      Merge with git://kernel.org/pub/scm/git/git.git
       cvsimport: minor fixups
       cvsimport: replace anonymous sub ref with a normal sub
       cvsimport: introduce -L<imit> option to workaround memory leaks
@@ -7931,19 +7760,16 @@ Nicolas Pitre (10):
       pack-object: slightly more efficient
       improve depth heuristic for maximum delta size
 
-Paul Mackerras (22):
+Paul Mackerras (19):
       gitk: Implement multiple views
       gitk: Make File->Update work properly again
-      Merge branch 'master' into new
       gitk: Fix various bugs in the view support
       gitk: Don't reread git-rev-list output from scratch on view switch
       gitk: Remember the view in the history list
       gitk: Let git-rev-list do the argument list parsing
       gitk: Use git-rev-parse only to identify file/dir names on cmd line
-      Merge branch 'master' into new
       gitk: Implement "permanent" views (stored in ~/.gitk)
       gitk: add menu item for editing the current view
-      Merge branch 'new'
       gitk: Use a text widget for the file list
       gitk: Add a tree-browsing mode
       gitk: Basic support for highlighting one view within another
@@ -8077,14 +7903,12 @@ Eric Wong (2):
 Johannes Schindelin (1):
       repo-config: trim white-space before comment
 
-Junio C Hamano (8):
+Junio C Hamano (6):
       core.prefersymlinkrefs: use symlinks for .git/HEAD
       repo-config: document what value_regexp does a bit more clearly.
       Fix repo-config set-multivar error return path.
       Documentation: {caret} fixes (git-rev-list.txt)
       checkout: use --aggressive when running a 3-way merge (-m).
-      Merge branch 'fix' into maint
-      Merge branch 'fix' into maint
       Fix pack-index issue on 64-bit platforms a bit more portably.
 
 Linus Torvalds (3):
@@ -8201,16 +8025,13 @@ Johannes Schindelin (2):
 Jonas Fonseca (1):
       Add git-annotate(1) and git-blame(1)
 
-Junio C Hamano (12):
+Junio C Hamano (9):
       rev-list --bisect: limit list before bisecting.
       diff-tree: typefix.
       diff --stat: do not do its own three-dashes.
       diff-files --stat: do not dump core with unmerged index.
       reading $GIT_DIR/info/graft - skip comments correctly.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       rev-list --boundary: show boundary commits even when limited otherwise.
-      Merge branch 'jc/bottomless'
-      Merge branch 'jc/boundary'
       packed_object_info_detail(): check for corrupt packfile.
       diff --stat: make sure to set recursive.
       GIT 1.3.0
@@ -8249,58 +8070,26 @@ Johannes Schindelin (2):
       diff-options: add --stat (take 2)
       diff-options: add --stat (take 2)
 
-Junio C Hamano (66):
-      Merge branch 'lt/fix-sol-pack' into next
-      Merge branch 'jc/clone' into next
-      Merge branch 'lt/fix-sol-pack' into next
-      Merge early part of 'jc/combine' branch
-      Merge branch 'pe/cleanup' into next
-      Merge branch 'pb/regex' into next
-      Merge branch 'jc/combine' into next
-      Merge branch 'pb/regex' into next
-      Merge branch 'nh/http' into next
-      Merge branches 'master' and 'jc/combine' into next
-      Merge branch 'jc/combine' into next
-      Merge branch 'nh/http' into next
-      Merge branch 'jc/blame' into next
-      Merge branch 'jc/date' into next
-      Merge branch 'master' into next
-      Merge branch 'kh/svn' into next
-      Merge branch 'jc/blame' into next
-      Merge branch 'ew/rev-abbrev' into next
-      Merge branch 'jc/thinpack' into next
-      Merge branch 'master' into next
-      Merge branch 'master' into next
+Junio C Hamano (31):
       git-log: match rev-list --abbrev and --abbrev-commit
       diff: fix output of total-rewrite diff.
       diffcore-rename: fix merging back a broken pair.
       log-tree: separate major part of diff-tree.
       git log [diff-tree options]...
-      Merge branch 'jc/diff' into next
       Retire diffcore-pathspec.
-      Merge branch 'lt/rev'
-      Merge branch 'master' into jc/diff
       tree-diff: do not assume we use only one pathspec
       git log --full-diff
       Retire git-log.sh
       blame and friends: adjust to multiple pathspec change.
       Retire git-log.sh (take#2)
       diff-* --patch-with-raw
-      Merge branch 'jc/withraw' into next
-      Merge branch 'eb/apply' into next
       Retire git-log.sh (take #3)
-      Merge branch 'jc/withraw' into next
-      Merge branch 'ds/index' into next
       combine-diff: do not lose hunks with only deletion at end.
       combine-diff: fix hunks at the end (take #2).
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/combine' into next
       Retire t5501-old-fetch-and-upload test.
       git-commit: do not muck with commit message when no_edit is set.
       stripspace: make sure not to leave an incomplete line.
       combine-diff: type fix.
-      Merge branch 'master' into jc/combine
-      Merge branch 'jc/combine' into next
       Documentation: add a couple of missing docs.
       Makefile: $(MAKE) check-docs
       git-log: do not output excess blank line between commits
@@ -8312,9 +8101,6 @@ Junio C Hamano (66):
       Retire git-log.sh (take #4)
       git-log <diff-options> <paths> documentation
       "git cmd -h" for shell scripts.
-      Merge branch 'jc/fix5500'
-      Merge branch 'js/diffstat'
-      Merge branch 'dl/xdiff'
       GIT v1.3.0-rc4
 
 Linus Torvalds (4):
@@ -8349,17 +8135,13 @@ Johannes Schindelin (3):
 Jon Loeliger (1):
       Added Packing Heursitics IRC writeup.
 
-Junio C Hamano (28):
+Junio C Hamano (16):
       git-clone: fix handling of upsteram whose HEAD does not point at master.
       combine-diff: use built-in xdiff.
       parse_date(): fix parsing 03/10/2006
       combine-diff: refactor built-in xdiff interface.
       diff_flush(): leakfix.
-      Merge branch 'fix'
       combine-diff: move the code to parse hunk-header into common library.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge branch 'pb/regex'
-      Merge branch 'jc/clone'
       blame: use built-in xdiff
       date parsing: be friendlier to our European friends.
       blame.c: fix completely broken ancestry traversal.
@@ -8369,14 +8151,6 @@ Junio C Hamano (28):
       Thin pack generation: optimization.
       rev-list --abbrev-commit
       count-delta: match get_delta_hdr_size() changes.
-      Merge branch 'maint'
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge branch 'jc/blame'
-      Merge branch 'ew/rev-abbrev'
-      Merge branch 'nh/http'
-      Merge branch 'jc/date'
-      Merge branch 'jc/thinpack'
-      Merge branch 'kh/svn'
       GIT 1.3.0-rc3
 
 Karl Hasselström (1):
@@ -8445,7 +8219,7 @@ Jason Riedy (2):
 Jim Radford (1):
       fix repacking with lots of tags
 
-Junio C Hamano (18):
+Junio C Hamano (14):
       rev-list --no-merges: argument parsing fix.
       rev-list: memory usage reduction.
       rev-list --boundary
@@ -8453,16 +8227,12 @@ Junio C Hamano (18):
       revision.c "..B" syntax: constness fix
       assume unchanged git: diff-index fix.
       tree/diff header cleanup.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       rev-list --boundary: fix re-injecting boundary commits.
       Makefile: many programs now depend on xdiff/lib.a having been built.
       revision: --topo-order and --unpacked
       revision: simplify argument parsing.
       revision: --max-age alone does not need limit_list() anymore.
       safe_fgets() - even more anal fgets()
-      Merge branch 'lt/fix-sol-pack'
-      Merge branch 'pe/cleanup'
-      Merge in xdiff cleanup pieces
       GIT 1.3.0-rc2
 
 Linus Torvalds (5):
@@ -8664,361 +8434,143 @@ Jonas Fonseca (2):
 Josef Weidendorfer (1):
       git-mv: fix moves into a subdir from outside
 
-Junio C Hamano (355):
+Junio C Hamano (137):
       "Assume unchanged" git
       "Assume unchanged" git: do not set CE_VALID with --refresh
       ls-files: debugging aid for CE_VALID changes.
-      Merge branches 'jc/nostat' and 'jc/empty-commit'
-      Merge branch 'jc/ls-files-o'
       "Assume unchanged" git: --really-refresh fix.
-      Merge branch 'jc/nostat'
-      Merge branch 'lt/diff-tree'
-      Merge branch 'master'
-      Merge branch 'jc/status'
-      Merge branch 'lt/diff-tree'
-      Merge branch 'master'
-      Merge branch 'master'
       ls-files: split "show-valid-bit" into a different option.
       "assume unchanged" git: documentation.
-      Merge branch 'jc/nostat'
-      Merge branch 'master'
-      Merge branch 'master'
-      Merge branch 'pb/bisect'
-      Merge branch 'master'
       cache_name_compare() compares name and stage, nothing else.
       git-commit: Now --only semantics is the default.
       rebase: allow a hook to refuse rebasing.
-      Merge branch 'jc/nostat'
-      Merge branch 'jc/rebase'
-      Merge branch 'jc/commit'
-      Merge branch 'ra/email'
-      Merge branch 'pb/bisect'
-      Merge some proposed fixes
-      Merge branch 'master'
       commit: detect misspelled pathspec while making a partial commit.
       rebase: allow rebasing onto different base.
-      Merge branch 'ra/email'
-      Merge branch 'jc/rebase'
-      Merge branch 'jc/commit'
-      Merge branch 'kh/svn'
-      Merge branch 'master'
-      Merge branch 'fix'
-      Merge branch 'jc/rebase-limit'
       ls-files --error-unmatch pathspec error reporting fix.
       Detect misspelled pathspec to git-add
-      Merge branch 'jc/add'
       packed objects: minor cleanup
-      Merge fixes up to 1.2.1
-      Merge branch 'jc/add'
-      Merge master to get fixes up to 1.2.1
       topo-order: make --date-order optional.
-      Merge branch 'jc/topo'
-      Merge branch 'lt/merge-tree'
       pack-objects: reuse data from existing packs.
       pack-objects: finishing touches.
       git-repack: allow passing a couple of flags to pack-objects.
-      Merge branch 'jc/pack-reuse'
       git-tag: -l to list tags (usability).
       Add contrib/README.
       SubmittingPatches: note on whitespaces
-      Merge branch 'fix'
-      Merge branch 'js/portable'
       pack-objects: avoid delta chains that are too long.
-      Merge branch 'jc/pack-reuse'
-      Merge branch 'jc/rebase-limit'
-      Merge branch 'jc/topo'
       Make "empty ident" error message a bit more helpful.
-      Merge branch 'jc/ident'
-      Merge branch 'fix'
       Delay "empty ident" errors until they really matter.
       Keep Porcelainish from failing by broken ident after making changes.
       fmt-merge-msg: say which branch things were merged into unless 'master'
-      Merge fixes up to GIT 1.2.2
-      Merge branch 'jc/merge-msg' into next
-      Merge branch 'jc/ident' into next
-      Merge part of js/portable into next
       Allow git-mv to accept ./ in paths.
-      Merge branch 'jc/mv' into next
       Documentation: fix typo in rev-parse --short option description.
       fmt-merge-msg: do not add excess newline at the end.
-      Merge branch 'jc/merge-msg' into next
-      Merge branch 'jc/mv'
-      Merge branch 'jc/merge-msg'
-      Merge branch 'js/portable' into next
       rev-list --objects-edge
-      Merge branch 'jc/rev-list' into next
       Thin pack - create packfile with missing delta base.
       send-pack --thin: use "thin pack" delta transfer.
-      Merge branch 'jc/pack-thin' into next
       Add git-push --thin.
       Use thin pack transfer in "git fetch".
-      Merge branch 'jc/pack-thin' into next
       fmt-merge-msg: avoid open "-|" list form for Perl 5.6
       rerere: avoid open "-|" list form for Perl 5.6
       send-email: avoid open "-|" list form for Perl 5.6
       svnimport: avoid open "-|" list form for Perl 5.6
       cvsimport: avoid open "-|" list form for Perl 5.6
-      Merge branch 'ra/anno' into next
-      Merge branch 'jc/perl' into next
       Fix fmt-merge-msg counting.
       cherry-pick/revert: error-help message rewording.
-      Merge branch 'jc/ident'
-      Merge branch 'lt/merge-tree'
       git-mktree: reverse of git-ls-tree.
-      Merge part of jc/portable branch
-      Merge branch 'pj/portable' into next
-      Merge branch 'fk/blame' into next
-      Merge branch 'pj/portable'
-      Merge branch 'js/portable'
-      Merge branch 'jc/nostat'
-      Merge branch 'jc/pack-reuse'
-      Merge branch 'jc/perl'
-      Merge branch 'fix'
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge part of np/delta
       rev-list.c: fix non-grammatical comments.
       send-pack: do not give up when remote has insanely large number of refs.
-      Merge branch 'jc/send-insane-refs' into next
-      Merge branch 'ra/anno' into next
-      Merge branch 'ml/cvs' into next
       gitview: ls-remote invocation shellquote safety.
-      Merge fixes up to GIT 1.2.3
-      Merge master to get fixes up to GIT 1.2.3
-      Merge branch 'cw/remove' into next
-      Merge branch 'ra/anno'
-      Merge branch 'ml/cvs'
-      Merge branches 'maint', 'jc/fix-co-candy' and 'jc/fix-rename-leak' into next
       pack-objects: thin pack micro-optimization.
       pack-objects: use full pathname to help hashing with "thin" pack.
       count-delta: tweak counting of copied source material.
-      Merge branch 'np/delta' into next
-      Merge part of pack-thin branch
       count-delta: fix counting of copied source.
       Tweak break/merge score to adjust to the new delta generation code.
-      Merge branch 'ak/gitview'
-      Merge fixes early for next maint series.
-      Merge branch 'jc/send-insane-refs'
-      Merge branch 'ar/win'
       pack-objects: allow "thin" packs to exceed depth limits
       rev-list --objects-edge: remove duplicated edge commit output.
       rev-list --objects: use full pathname to help hashing.
       pack-objects: hash basename and direname a bit differently.
-      Merge fixes from master
       Revert "diff-delta: produce optimal pack data"
-      Merge branch 'np/delta' into next
-      Merge fix bits from jc/rev-list
-      Merge branches 'jc/rev-list' and 'jc/pack-thin' into next
-      Merge fixes early for next maint series.
-      Merge branch 'master' into next
       Build and install git-mailinfo.
-      Merge branches 'jc/rev-list' and 'jc/pack-thin'
-      Merge branch 'master' into next
-      Merge branches 'jc/rev-list' and 'jc/pack-thin'
-      Merge branch 'master' into next
-      Merge branch 'maint'
-      Merge branch 'lt/rev-list' into next
       rev-list split: minimum fixup.
-      Merge branch 'lt/rev-list' into next
       apply --whitespace fixes and enhancements.
-      Merge branch 'lt/apply' into next
-      Merge branch 'kh/svnimport' into next
       apply: squelch excessive errors and --whitespace=error-all
       apply --whitespace: configuration option.
-      Merge part of kh/svnimport branch into master
-      Merge branch 'kh/svnimport' into next
-      Merge branch 'lt/apply' into next
-      Merge branch 'lt/rev-list' into next
-      Merge branch 'master' into next
       git-apply --whitespace=nowarn
       Revert "Revert "diff-delta: produce optimal pack data""
       git-apply: war on whitespace -- finishing touches.
-      Merge branch 'lt/apply' into next
-      Merge part of np/delta
       diffcore-break: micro-optimize by avoiding delta between identical files.
       diffcore-rename: split out the delta counting code.
       diffcore-delta: stop using deltifier for packing.
       git-am: --whitespace=x option.
-      Merge branch 'cvsserver' of http://locke.catalyst.net.nz/git/git-martinlanghoff; branch 'master' into next
-      Merge branch 'js/refs' into next
-      Merge branch 'lt/apply' into next
-      Merge part of 'sp/checkout' into next
-      Merge part of 'jc/diff' into next
       diff-delta: cull collided hash bucket more aggressively.
-      Merge branch 'lt/rev-list' into next
       git-log (internal): add approxidate.
       git-log (internal): more options.
-      Merge branch 'lt/rev-list' into next
-      Merge git-mv fixes from 'maint'
-      Merge early parts of 'np/delta' branch
-      Merge branch 'lt/apply'
       Pretty-print tagger dates.
-      Up to date with GIT 1.2.4 fixes
-      Merge branch 'jc/diff' into next
-      Pull GIT 1.2.4 fixes from master
-      Merge branch 'jc/tag' into next
-      Merge branch 'ml/cvsserver' into next
-      Merge branch 'js/refs'
-      Merge branch 'kh/svnimport'
-      Merge branch 'np/delta' into next
-      Merge part of 'jc/diff'
-      Merge branch 'jc/tag'
-      Merge branch 'ml/cvsserver' into next
-      Merge branch 'maint'
-      Merge branch 'master' into next
       war on whitespaces: documentation.
       Documentation: read-tree --aggressive
       Documentation: rev-list --objects-edge
       annotate: resurrect raw timestamps.
-      Merge branch 'ml/cvsserver'
-      Merge part of 'lt/rev-list' into 'fk/blame'
       setup_revisions(): handle -n<n> and -<n> internally.
       GIT-VERSION-GEN: squelch unneeded error from "cat version"
       show-branch --topics
       git-commit --amend
       git-commit: make sure we protect against races.
-      Merge branch 'jc/diff'
-      Merge branch 'master' into next
-      Merge branch 'lt/rev-list' into next
-      Merge branch 'fk/blame' into next
       diffcore-rename: similarity estimator fix.
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/delta' into next
-      Merge branch 'cvsserver' of http://locke.catalyst.net.nz/git/git-martinlanghoff; branch 'ml/cvsserver' into next
       show-branch --topics: omit more uninteresting commits.
-      Merge branch 'tl/anno' into next
-      Merge branch 'maint'
-      Merge branch 'tl/anno'
-      Merge branch 'master' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'lt/rev-list' into next
-      Merge branch 'fk/blame' into next
-      Merge part of 'sp/checkout'
-      Merge tag 'ko-next' into next
-      Merge branch 'lt/rev-list'
-      Merge branch 'fk/blame'
-      Merge branch 'master' into next
       count-delta: no need for this anymore.
       diffcore-break: similarity estimator fix.
       diffcore-delta: make change counter to byte oriented again.
-      Merge branch 'jc/diff' into next
-      Merge branch 'master' into next
-      Merge part of 'sp/checkout'
-      Merge jc/diff leftover bits.
-      Cauterize dropped or duplicate bits from next.
-      Merge branch 'master' into next
-      Merge branch 'jc/diff' into next
       git-commit --amend: allow empty commit.
-      Merge branch 'sp/checkout' into next
       Const tightening.
-      Merge branch 'master' into next
       verify-pack -v: show delta-chain histogram.
       blame: avoid -lm by not using log().
       blame and annotate: show localtime with timezone.
       blame: avoid "diff -u0".
-      Merge part of 'jc/pack' into 'next'
       annotate/blame tests updates.
       annotate-blame test: don't "source", but say "."
       annotate-blame test: add evil merge.
-      Merge branch 'fd/asciidoc' into next
       blame: unbreak "diff -U 0".
       annotate-blame: tests incomplete lines.
-      Merge branch 'master' into next
       pack-objects: simplify "thin" pack.
-      Merge branch 'fd/asciidoc'
-      Merge branch 'jc/pack' into next
-      Merge branch 'sp/checkout'
-      Merge branch 'master' into next
-      Merge branch 'master' into next
       Use #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
       refs.c::do_for_each_ref(): Finish error message lines with "\n"
       fsck-objects: Remove --standalone
-      Merge branch 'jc/fsck' into next
       Fix t1200 test for breakage caused by removal of full-stop at the end of fast-forward message.
       try_to_simplify_commit(): do not skip inspecting tree change at boundary.
       repack: prune loose objects when -d is given
-      Merge branch 'fk/blame' into next
-      Merge branch 'ew/remote' into next
-      Merge branch 'nh/http' into next
       git-diff: -p disables rename detection.
       diffcore-rename: somewhat optimized.
-      Merge branch 'jc/diff' into next
-      Merge branch 'master' into next
       revision traversal: --remove-empty fix.
-      Merge branch 'jc/empty' into next
       revision traversal: --remove-empty fix (take #2).
       diffcore-delta: make the hash a bit denser.
-      Merge branch 'jc/empty' into next
-      Merge branch 'jc/diff' into next
       diffcore-delta: tweak hashbase value.
-      Merge branch 'jc/diff' into next
-      Merge branch 'jc/diff' into next
-      Merge branch 'fk/blame'
-      Merge branch 'nh/http'
-      Merge branch 'jc/fsck'
-      Merge branch 'jc/pack'
-      Merge branch 'lt/diff' into next
-      Merge branch 'master' into next
-      Merge branch 'lt/diff' into next
-      Merge branch 'master' into next
       cvsimport: honor -i and non -i upon subsequent imports
       fetch: exit non-zero when fast-forward check fails.
-      Merge branch 'ew/abbrev' into next
-      Merge branch 'jc/fetch' into next
-      Merge branch 'jc/cvsimport' into next
-      Merge branch 'master' into next
-      Merge branch 'jc/empty'
       cvsimport: fix reading from rev-parse
-      Merge branch 'jc/cvsimport' into next
       git-pull: run repo-config with dash form.
-      Merge branch 'master' into next
-      Merge branch 'master' into next
       unpack_delta_entry(): reduce memory footprint.
       generate-cmdlist: style cleanups.
       revamp git-clone.
       git-merge knows some strategies want to skip trivial merges
-      Merge branch 'jc/clone' into next
-      Merge branch 'jc/merge' into next
       http-fetch: nicer warning for a server with unreliable 404 status
       core.warnambiguousrefs: warns when "name" is used and both "name" branch and tag exists.
       revamp git-clone (take #2).
-      Merge branch 'jc/clone' into next
-      Merge branch 'jc/name' into next
       get_sha1_basic(): try refs/... and finally refs/remotes/$foo/HEAD
       clone: record the remote primary branch with remotes/$origin/HEAD
-      Merge branch 'jc/name' into next
-      Merge branch 'jc/clone' into next
       http-push.c: squelch C90 warnings.
       git-apply: do not barf when updating an originally empty file.
       rev-list --timestamp
       git-clone: typofix.
-      Merge branch 'jc/clone' into next
-      Merge branch 'jc/revlist' into next
       git-pull: further safety while on tracking branch.
       git-pull: reword "impossible to fast-forward" message.
-      Merge branch 'jc/pull' into next
       sha1_name: warning ambiguous refs.
       sha1_name: make core.warnambiguousrefs the default.
       send-email: Identify author at the top when sending e-mail
-      Merge branch 'jc/fetch'
-      Merge branch 'jc/pull'
-      Merge branch 'jc/cvsimport'
-      Merge branch 'jc/name' into next
       commit-tree: check return value from write_sha1_file()
       built-in diff: minimum tweaks
-      Merge branch 'rs/tar-tree' into next
-      Merge branch 'lt/diffgen' into next
-      Merge branch 'ew/email' into next
       true built-in diff: run everything in-core.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
-      Merge branch 'lt/diffgen' into next
-      Merge branch 'jc/merge'
-      Merge branches 'jc/clone' and 'jc/name'
       git-push: make --thin pack transfer the default.
-      Merge branch 'jc/thin' into next
       add clean and ignore rules for xdiff/
-      Merge branch 'master' into next
-      Merge branch 'lt/diffgen' into next
-      Merge branch ak/svn
       GIT 1.3.0 rc1
 
 Karl Hasselström (7):
@@ -9244,13 +8796,11 @@ Josef Weidendorfer (2):
       git-mv: Allow -h without repo & fix error message
       git-mv: fixes for path handling
 
-Junio C Hamano (16):
+Junio C Hamano (13):
       checkout - eye candy.
       Give no terminating LF to error() function.
       diffcore-rename: plug memory leak.
       git-am: do not allow empty commits by mistake.
-      Merge branches 'jc/fix-co-candy', 'jc/fix-rename-leak' and 'ar/fix-win' into maint
-      Merge branch 'fix' into maint
       sample hooks template.
       apply --whitespace fixes and enhancements.
       apply: squelch excessive errors and --whitespace=error-all
@@ -9260,7 +8810,6 @@ Junio C Hamano (16):
       git-am: --whitespace=x option.
       diffcore-break: micro-optimize by avoiding delta between identical files.
       Allow git-mv to accept ./ in paths.
-      Merge branch 'lt/fix-apply' into maint
 
 Linus Torvalds (1):
       The war on trailing whitespace
@@ -9398,14 +8947,12 @@ Johannes Schindelin (1):
 Jon Loeliger (1):
       Add --diff-filter= documentation paragraph
 
-Junio C Hamano (133):
+Junio C Hamano (112):
       show-branch: take default arguments from configuration file.
-      Merge fixes up to GIT 1.1.1
       git-describe: default to HEAD
       Makefile: add 'strip' target
       octopus: allow criss-cross and clarify the message when it rejects
       Fix the installation location.
-      Merge fixes up to GIT 1.1.2
       checkout: automerge local changes while switching branches.
       checkout: merge local modifications while switching branches.
       git-push: avoid falling back on pushing "matching" refs.
@@ -9416,13 +8963,9 @@ Junio C Hamano (133):
       Documentation: show-branch.
       show-branch: make the current branch and merge commits stand out.
       show-branch: --current includes the current branch.
-      Merge branches 'jc/checkout', 'jc/format-patch', 'jc/octopus', 'jc/sb' and 'jc/clone'
       cvsimport: ease migration from CVSROOT/users format
-      Merge branch 'fix'
-      Merge fixes up to GIT 1.1.3
       git-push: fix --tags and document it.
       Allow building of RPM from interim snapshot.
-      Merge fixes up to GIT 1.1.4
       Revert "git-push: avoid falling back on pushing "matching" refs."
       Makefile: do not assume lack of IPV6 means no sockaddr_storage.
       fsck-objects: support platforms without d_ino in struct dirent.
@@ -9436,10 +8979,8 @@ Junio C Hamano (133):
       git-clone: PG13 --naked option to --bare.
       clone: do not create remotes/origin nor origin branch in a bare repository.
       clone: do not accept more than one -o option.
-      Merge branches 'jc/clone', 'md/env' and 'mo/path'
       tests: adjust breakage by stricter rev-parse
       git-fetch --upload-pack: disambiguate.
-      Merge fixes up to GIT 1.1.5
       merge: seed the commit message with list of conflicted files.
       diff-tree -c: show a merge commit a bit more sensibly.
       diff-tree --cc: denser combined diff output for a merge commit.
@@ -9459,12 +9000,9 @@ Junio C Hamano (133):
       pretty_print_commit: honor grafts.
       diff --abbrev=<n> option fix.
       rev-parse: make "whatchanged -- git-fetch-script" work again.
-      Merge lt/revlist,jc/diff,jc/revparse,jc/abbrev
       diff-files -c/--cc: combine only when both ours and theirs exist.
       Documentation: diff -c/--cc
-      Merge fixes up to GIT 1.1.6
       documentation: cvs migration - typofix.
-      Merge branches 'bf/doc' and 'db/tartree'
       update-index --index-info: allow stage 0 entries.
       rev-list: omit duplicated parents.
       combine-diff: reuse diff from the same blob.
@@ -9480,7 +9018,6 @@ Junio C Hamano (133):
       whitespace cleanup.
       get_sha1_1: allow octopus^12 to be properly parsed.
       git-merge: Properly quote $merge_msg variable.
-      Merge branches 'jc/sha1', 'jc/diff' and 'jc/ws'
       Do not fall back on vi on dumb terminals.
       diff-index: make --cc a synonym for -p for now.
       git-diff: use --cc instead of -p.
@@ -9489,9 +9026,6 @@ Junio C Hamano (133):
       daemon: extend user-relative path notation.
       combine-diff: remove misguided --show-empty hack.
       git-diff-tree --stdin: show all parents.
-      Merge branches 'jc/daemon' and 'mw/http'
-      Merge branches 'lt/show' and 'lt/revlist'
-      Merge branch 'jc/diff'
       git-diff: do not fall back on --cc when -[123], --ours etc. are given.
       core-tutorial: adjust to recent reality.
       combine-diff: do not send NULL to printf
@@ -9503,7 +9037,6 @@ Junio C Hamano (133):
       git-rerere: reuse recorded resolve.
       git-commit: revamp the git-commit semantics.
       git-commit: finishing touches.
-      Merge git://git.kernel.org/pub/scm/gitk/gitk
       Do not allow empty name or email.
       t6000: fix a careless test library add-on.
       ls-files: honour per-directory ignore file from higher directories.
@@ -9511,22 +9044,17 @@ Junio C Hamano (133):
       call git_config() after setup_git_directory()
       combine-diff: move formatting logic to show_combined_diff()
       count-delta.c: Match the delta data semantics change in version 3.
-      Merge branch 'jc/ls-files-o'
       git-status -v
       find_unique_abbrev() simplification.
       combine-diff: Record diff status a bit more faithfully
-      Merge branch 'jc/empty-commit'
       rev-list: default to abbreviate merge parent names under --pretty.
       git-commit -v: have patch at the end.
-      Merge branch 'lt/diff-tree'
       Define GIT_(AUTHOR|COMMITTER)_(NAME|EMAIL) to known values.
       fetch-clone progress: finishing touches.
       Only call git-rerere if $GIT_DIR/rr-cache exists.
       t5500: adjust to change in pack-object reporting behaviour.
       diff-tree: do not default to -c
       Avoid using "git-var -l" until it gets fixed.
-      Merge branch 'jc/fixdiff'
-      Merge branch 'pb/repo'
       hashtable-based objects: minimum fixups.
       Make pack-objects chattier.
       git-commit: show dirtiness including index.
@@ -9632,18 +9160,15 @@ Fredrik Kuivinen (2):
 J. Bruce Fields (1):
       git push -f documentation
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       pre-commit sample hook: do not barf on the initial import
-      GIT 1.1.6
 
 
 Version v1.1.5; changes since v1.1.4:
 -------------------------------------
 
-Junio C Hamano (3):
+Junio C Hamano (1):
       checkout: do not make a temporary copy of symlink target.
-      GIT 1.0.13
-      GIT 1.1.5
 
 
 Version v1.1.4; changes since v1.1.3:
@@ -9652,21 +9177,16 @@ Version v1.1.4; changes since v1.1.3:
 Johannes Schindelin (1):
       git-fetch-pack: really do not ask for funny refs
 
-Junio C Hamano (3):
+Junio C Hamano (1):
       Revert "check_packed_git_idx(): check integrity of the idx file itself."
-      GIT 1.0.12
-      GIT 1.1.4
 
 
 Version v1.1.3; changes since v1.1.2:
 -------------------------------------
 
-Junio C Hamano (5):
+Junio C Hamano (2):
       diffcore-break/diffcore-rename: integer overflow.
-      GIT 1.0.11
-      Merge branch 'fixo/1.0'
       describe: omit clearing marks on the last one.
-      GIT 1.1.3
 
 
 Version v1.1.2; changes since v1.1.1:
@@ -9675,16 +9195,13 @@ Version v1.1.2; changes since v1.1.1:
 J. Bruce Fields (1):
       Documentation: clarify fetch parameter descriptions.
 
-Junio C Hamano (9):
-      GIT 1.0.9
+Junio C Hamano (6):
       update-index: work with c-quoted name
       describe: do not silently ignore indescribable commits
       name-rev: do not omit leading components of ref name.
       show-branch: handle [] globs as well.
       Documentation: git-commit -a
       Documentation: git-reset - interrupted workflow.
-      GIT 1.0.10
-      GIT 1.1.2
 
 Tom Prince (1):
       Add git-describe to .gitignore.
@@ -9699,9 +9216,8 @@ H. Peter Anvin (1):
 Johannes Schindelin (1):
       glossary: explain "master" and "origin"
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       GIT-VERSION-GEN: detect dirty tree and mark the version accordingly.
-      GIT 1.1.1
 
 
 Version v1.1.0; changes since v1.0.12:
@@ -9715,24 +9231,17 @@ Johannes Schindelin (3):
 John Ellson (1):
       Make GIT-VERSION-GEN tolerate missing git describe command
 
-Junio C Hamano (33):
+Junio C Hamano (23):
       Post 1.0.0 development track.
-      Merge branch 'fixes'
       Versioning scheme changes.
       merge-recursive: conflicting rename case.
-      Merge branch 'fixes'
       whatchanged: customize diff-tree output
-      Merge in fixes up to 1.0.3 maintenance branch.
       rev-parse: --show-cdup
       check_packed_git_idx(): check integrity of the idx file itself.
       checkout: sometimes work from a subdirectory.
       ls-tree: chomp leading directories when run from a subdirectory
-      Adjust to ls-tree --full-name when run from a subdirectory.
       git-clone: do not special case dumb http.
-      Merge fixes up to GIT 1.0.4
       Tutorial: mention shared repository management.
-      Merge branch 'jc/checkout'
-      Merge fixes up to GIT 1.0.5
       git-describe: really prefer tags only.
       git-describe: use find_unique_abbrev()
       git-describe: --tags and --abbrev
@@ -9740,15 +9249,12 @@ Junio C Hamano (33):
       git-describe: documentation.
       Makefile: use git-describe to mark the git version.
       send-pack/receive-pack: allow errors to be reported back to pusher.
-      Merge fixes up to GIT 1.0.6
-      Merge fixes up to GIT 1.0.7
       git-fetch: auto-following tags.
       ls-files --others --directory: fix a bug with index entry ordering
       ls-files --others --directory: give trailing slash
       git-status: use ls-files --others --directory for untracked list.
       ls-files --others --directory: test
       describe: allow more than one revs to be named.
-      GIT 1.1.0
 
 Linus Torvalds (2):
       Add a "git-describe" command
@@ -9775,17 +9281,15 @@ Version v1.0.12; changes since v1.0.11:
 Johannes Schindelin (1):
       git-fetch-pack: really do not ask for funny refs
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       Revert "check_packed_git_idx(): check integrity of the idx file itself."
-      GIT 1.0.12
 
 
 Version v1.0.11; changes since v1.0.10:
 ---------------------------------------
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       diffcore-break/diffcore-rename: integer overflow.
-      GIT 1.0.11
 
 
 Version v1.0.10; changes since v1.0.9:
@@ -9794,13 +9298,12 @@ Version v1.0.10; changes since v1.0.9:
 J. Bruce Fields (1):
       Documentation: clarify fetch parameter descriptions.
 
-Junio C Hamano (6):
+Junio C Hamano (5):
       update-index: work with c-quoted name
       name-rev: do not omit leading components of ref name.
       show-branch: handle [] globs as well.
       Documentation: git-commit -a
       Documentation: git-reset - interrupted workflow.
-      GIT 1.0.10
 
 
 Version v1.0.9; changes since v1.0.8:
@@ -9809,9 +9312,6 @@ Version v1.0.9; changes since v1.0.8:
 Johannes Schindelin (1):
       glossary: explain "master" and "origin"
 
-Junio C Hamano (1):
-      GIT 1.0.9
-
 
 Version v1.0.8; changes since v1.0.7:
 -------------------------------------
@@ -9819,7 +9319,7 @@ Version v1.0.8; changes since v1.0.7:
 Joe English (1):
       Substitute "/" with $opt_s in tag names as well as branch names
 
-Junio C Hamano (8):
+Junio C Hamano (7):
       unpack-objects: default to quiet if stderr is not a tty.
       Retire debian/ directory.
       prune: do not show error from pack-redundant when no packs are found.
@@ -9827,7 +9327,6 @@ Junio C Hamano (8):
       tar-tree: finish honoring extractor's umask in git-tar-tree.
       revert/cherry-pick: handle single quote in author name.
       mailsplit: allow empty input from stdin
-      GIT 1.0.8
 
 Yann Dirson (3):
       Teach cvsexportcommit to add new files
@@ -9872,14 +9371,13 @@ Jonas Fonseca (2):
       git-init-db(1): Describe --shared and the idempotent nature of init-db
       Wrap synopsis lines and use [verse] to keep formatting
 
-Junio C Hamano (7):
+Junio C Hamano (6):
       Documentation: spell.
       code comments: spell
       ?alloc: do not return NULL when asked for zero bytes
       git-fetch --tags: reject malformed tags.
       format-patch/commit: Quote single quote in the author name properly.
       t3300: skip when filesystem does not like TAB in filenames.
-      GIT 1.0.7
 
 Linus Torvalds (1):
       Fix nasty approxidate bug
@@ -9888,11 +9386,10 @@ Linus Torvalds (1):
 Version v1.0.6; changes since v1.0.5:
 -------------------------------------
 
-Junio C Hamano (4):
+Junio C Hamano (3):
       Guard a test against wc that pads its output with whitespace
       Fix bogus tests on rev-list output.
       Do not mark tags fetched via --tags flag as mergeable
-      GIT 1.0.6
 
 Sam Ravnborg (1):
       copy_fd: close ifd on error
@@ -9907,22 +9404,20 @@ Eric Wong (1):
 Johannes Schindelin (1):
       Handle symlinks graciously
 
-Junio C Hamano (3):
+Junio C Hamano (2):
       avoid asking ?alloc() for zero bytes.
       t5300: avoid false failures.
-      GIT 1.0.5
 
 
 Version v1.0.4; changes since v1.0.3:
 -------------------------------------
 
-Junio C Hamano (6):
+Junio C Hamano (5):
       check_packed_git_idx(): check integrity of the idx file itself.
       show-branch: usability updates.
       merge --no-commit: tweak message
       ls-files --full-name: usage string and documentation.
       mailinfo: iconv does not like "latin-1" -- should spell it "latin1"
-      GIT 1.0.4
 
 
 Version v1.0.3; changes since v1.0.0b:
@@ -9935,9 +9430,8 @@ Johannes Schindelin (2):
       git-format-patch should show the correct version
       sha1_to_hex: properly terminate the SHA1
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       send-pack: reword non-fast-forward error message.
-      GIT 1.0.3
 
 Nick Hengeveld (1):
       Fix for http-fetch from file:// URLs
@@ -9949,9 +9443,8 @@ Pavel Roskin (1):
 Version v1.0.0b; changes since v1.0.0a:
 ---------------------------------------
 
-Junio C Hamano (2):
+Junio C Hamano (1):
       server-info: skip empty lines.
-      GIT 1.0.0b
 
 Pavel Roskin (1):
       quote.c: Make loop control more readable.
