@@ -7,7 +7,7 @@ while read new; do
   echo "Version $new; changes since $old:"
   echo "Version $new; changes since $old:" |tr '[:print:]' -
   echo
-  git shortlog "$old".."$new"
+  git shortlog --no-merges "$old".."$new"
   echo
   cat debian/changelog.upstream
   mv debian/changelog.upstream."$new" debian/changelog.upstream
