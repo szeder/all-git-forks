@@ -1,3 +1,36 @@
+Version v1.5.2.3; changes since v1.5.2.2:
+-----------------------------------------
+
+Frank Lichtenheld (2):
+      config: Complete documentation of --get-regexp
+      config: Change output of --get-regexp for valueless keys
+
+Junio C Hamano (2):
+      Merge branch 'maint' of git://repo.or.cz/git-gui into maint
+      GIT 1.5.2.3
+
+Linus Torvalds (1):
+      Fix zero-object version-2 packs
+
+Matt Kraai (1):
+      Correct the name of NO_R_TO_GCC_LINKER in the comment describing it.
+
+Sam Vilain (3):
+      cleanup merge-base test script
+      repack: improve documentation on -a option
+      git-remote: document -n
+
+Shawn O. Pearce (5):
+      git-gui: Correctly install to /usr/bin on Cygwin
+      git-gui: Bind Tab/Shift-Tab to cycle between panes in blame
+      git-gui: Don't require $DISPLAY just to get --version
+      git-gui: Don't nice git blame on MSYS as nice is not supported
+      git-gui: Don't require a .pvcsrc to create Tools/Migrate menu hack
+
+Sven Verdoolaege (1):
+      Ignore submodule commits when fetching over dumb protocols
+
+
 Version v1.5.2.2; changes since v1.5.2.1:
 -----------------------------------------
 
