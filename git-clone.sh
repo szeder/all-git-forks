@@ -2,7 +2,7 @@
 #
 # Copyright (c) 2005, Linus Torvalds
 # Copyright (c) 2005, Junio C Hamano
-# 
+#
 # Clone a repository into a different directory that does not yet exist.
 
 # See git-sh-setup why.
@@ -43,7 +43,7 @@ clone_dumb_http () {
 	clone_tmp="$GIT_DIR/clone-tmp" &&
 	mkdir -p "$clone_tmp" || exit 1
 	if [ -n "$GIT_CURL_FTP_NO_EPSV" -o \
-		"`git-config --bool http.noEPSV`" = true ]; then
+		"`git config --bool http.noEPSV`" = true ]; then
 		curl_extra_args="${curl_extra_args} --disable-epsv"
 	fi
 	http_fetch "$1/info/refs" "$clone_tmp/refs" ||
@@ -72,6 +72,17 @@ Perhaps git-update-server-info needs to be run there?"
 	rm -fr "$clone_tmp"
 	http_fetch "$1/HEAD" "$GIT_DIR/REMOTE_HEAD" ||
 	rm -f "$GIT_DIR/REMOTE_HEAD"
+	if test -f "$GIT_DIR/REMOTE_HEAD"; then
+		head_sha1=`cat "$GIT_DIR/REMOTE_HEAD"`
+		case "$head_sha1" in
+		'ref: refs/'*)
+			;;
+		*)
+			git-http-fetch $v -a "$head_sha1" "$1" ||
+			rm -f "$GIT_DIR/REMOTE_HEAD"
+			;;
+		esac
+	fi
 }
 
 quiet=
@@ -98,7 +109,7 @@ while
 	*,--na|*,--nak|*,--nake|*,--naked|\
 	*,-b|*,--b|*,--ba|*,--bar|*,--bare) bare=yes ;;
 	*,-l|*,--l|*,--lo|*,--loc|*,--loca|*,--local) use_local=yes ;;
-        *,-s|*,--s|*,--sh|*,--sha|*,--shar|*,--share|*,--shared) 
+        *,-s|*,--s|*,--sh|*,--sha|*,--shar|*,--share|*,--shared)
           local_shared=yes; use_local=yes ;;
 	1,--template) usage ;;
 	*,--template)
@@ -121,7 +132,7 @@ while
 		*/*)
 		    die "'$2' is not suitable for an origin name"
 		esac
-		git-check-ref-format "heads/$2" ||
+		git check-ref-format "heads/$2" ||
 		    die "'$2' is not suitable for a branch name"
 		test -z "$origin_override" ||
 		    die "Do not give more than one --origin options."
@@ -184,7 +195,7 @@ yes)
 	GIT_DIR="$D" ;;
 *)
 	GIT_DIR="$D/.git" ;;
-esac && export GIT_DIR && git-init ${template+"$template"} || usage
+esac && export GIT_DIR && git init $quiet ${template+"$template"} || usage
 
 if test -n "$reference"
 then
@@ -334,7 +345,7 @@ then
 		*)
 			continue ;;
 		esac
-		git-update-ref -m "clone: from $repo" "$destname" "$sha1" ""
+		git update-ref -m "clone: from $repo" "$destname" "$sha1" ""
 	done < "$GIT_DIR/CLONE_HEAD"
 fi
 
@@ -377,37 +388,42 @@ then
 		)
 	)
 
+	# Upstream URL
+	git config remote."$origin".url "$repo" &&
+
+	# Set up the mappings to track the remote branches.
+	git config remote."$origin".fetch \
+		"+refs/heads/*:$remote_top/*" '^$' &&
+
 	# Write out remote.$origin config, and update our "$head_points_at".
 	case "$head_points_at" in
 	?*)
 		# Local default branch
-		git-symbolic-ref HEAD "refs/heads/$head_points_at" &&
+		git symbolic-ref HEAD "refs/heads/$head_points_at" &&
 
 		# Tracking branch for the primary branch at the remote.
-		origin_track="$remote_top/$head_points_at" &&
-		git-update-ref HEAD "$head_sha1" &&
+		git update-ref HEAD "$head_sha1" &&
 
-		# Upstream URL
-		git-config remote."$origin".url "$repo" &&
-
-		# Set up the mappings to track the remote branches.
-		git-config remote."$origin".fetch \
-			"+refs/heads/*:$remote_top/*" '^$' &&
 		rm -f "refs/remotes/$origin/HEAD"
-		git-symbolic-ref "refs/remotes/$origin/HEAD" \
+		git symbolic-ref "refs/remotes/$origin/HEAD" \
 			"refs/remotes/$origin/$head_points_at" &&
 
-		git-config branch."$head_points_at".remote "$origin" &&
-		git-config branch."$head_points_at".merge "refs/heads/$head_points_at"
+		git config branch."$head_points_at".remote "$origin" &&
+		git config branch."$head_points_at".merge "refs/heads/$head_points_at"
+		;;
+	'')
+		# Source had detached HEAD pointing nowhere
+		git update-ref --no-deref HEAD "$head_sha1" &&
+		rm -f "refs/remotes/$origin/HEAD"
+		;;
 	esac
 
 	case "$no_checkout" in
 	'')
 		test "z$quiet" = z -a "z$no_progress" = z && v=-v || v=
-		git-read-tree -m -u $v HEAD HEAD
+		git read-tree -m -u $v HEAD HEAD
 	esac
 fi
 rm -f "$GIT_DIR/CLONE_HEAD" "$GIT_DIR/REMOTE_HEAD"
 
 trap - 0
-

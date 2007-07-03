@@ -5,7 +5,7 @@
 # Copyright (c) 2006 Theodore Y. Ts'o
 #
 # This file is licensed under the GPL v2, or a later version
-# at the discretion of Junio C Hammano.
+# at the discretion of Junio C Hamano.
 #
 
 USAGE='[--tool=tool] [file to merge] ...'
@@ -65,14 +65,14 @@ resolve_symlink_merge () {
 	read ans
 	case "$ans" in
 	    [lL]*)
-		git-checkout-index -f --stage=2 -- "$path"
-		git-add -- "$path"
+		git checkout-index -f --stage=2 -- "$path"
+		git add -- "$path"
 		cleanup_temp_files --save-backup
 		return
 		;;
 	    [rR]*)
-		git-checkout-index -f --stage=3 -- "$path"
-		git-add -- "$path"
+		git checkout-index -f --stage=3 -- "$path"
+		git add -- "$path"
 		cleanup_temp_files --save-backup
 		return
 		;;
@@ -93,12 +93,12 @@ resolve_deleted_merge () {
 	read ans
 	case "$ans" in
 	    [mMcC]*)
-		git-add -- "$path"
+		git add -- "$path"
 		cleanup_temp_files --save-backup
 		return
 		;;
 	    [dD]*)
-		git-rm -- "$path" > /dev/null
+		git rm -- "$path" > /dev/null
 		cleanup_temp_files
 		return
 		;;
@@ -140,7 +140,7 @@ remove_backup () {
 merge_file () {
     path="$1"
 
-    f=`git-ls-files -u -- "$path"`
+    f=`git ls-files -u -- "$path"`
     if test -z "$f" ; then
 	if test ! -f "$path" ; then
 	    echo "$path: file not found"
@@ -215,6 +215,12 @@ merge_file () {
 	    check_unchanged
 	    save_backup
 	    ;;
+	gvimdiff)
+		touch "$BACKUP"
+		gvimdiff -f -- "$LOCAL" "$path" "$REMOTE"
+		check_unchanged
+		save_backup
+		;;
 	xxdiff)
 	    touch "$BACKUP"
 	    if base_present ; then
@@ -291,9 +297,9 @@ do
 done
 
 if test -z "$merge_tool"; then
-    merge_tool=`git-config merge.tool`
+    merge_tool=`git config merge.tool`
     case "$merge_tool" in
-	kdiff3 | tkdiff | xxdiff | meld | opendiff | emerge | vimdiff | "")
+	kdiff3 | tkdiff | xxdiff | meld | opendiff | emerge | vimdiff | gvimdiff | "")
 	    ;; # happy
 	*)
 	    echo >&2 "git config option merge.tool set to unknown tool: $merge_tool"
@@ -304,28 +310,42 @@ if test -z "$merge_tool"; then
 fi
 
 if test -z "$merge_tool" ; then
-    if type kdiff3 >/dev/null 2>&1 && test -n "$DISPLAY"; then
-	merge_tool="kdiff3";
-    elif type tkdiff >/dev/null 2>&1 && test -n "$DISPLAY"; then
-	merge_tool=tkdiff
-    elif type xxdiff >/dev/null 2>&1 && test -n "$DISPLAY"; then
-	merge_tool=xxdiff
-    elif type meld >/dev/null 2>&1 && test -n "$DISPLAY"; then
-	merge_tool=meld
-    elif type opendiff >/dev/null 2>&1; then
-	merge_tool=opendiff
-    elif type emacs >/dev/null 2>&1; then
-	merge_tool=emerge
-    elif type vimdiff >/dev/null 2>&1; then
-	merge_tool=vimdiff
-    else
+    if test -n "$DISPLAY"; then
+        merge_tool_candidates="kdiff3 tkdiff xxdiff meld gvimdiff"
+        if test -n "$GNOME_DESKTOP_SESSION_ID" ; then
+            merge_tool_candidates="meld $merge_tool_candidates"
+        fi
+        if test "$KDE_FULL_SESSION" = "true"; then
+            merge_tool_candidates="kdiff3 $merge_tool_candidates"
+        fi
+    fi
+    if echo "${VISUAL:-$EDITOR}" | grep 'emacs' > /dev/null 2>&1; then
+        merge_tool_candidates="$merge_tool_candidates emerge"
+    fi
+    if echo "${VISUAL:-$EDITOR}" | grep 'vim' > /dev/null 2>&1; then
+        merge_tool_candidates="$merge_tool_candidates vimdiff"
+    fi
+    merge_tool_candidates="$merge_tool_candidates opendiff emerge vimdiff"
+    echo "merge tool candidates: $merge_tool_candidates"
+    for i in $merge_tool_candidates; do
+        if test $i = emerge ; then
+            cmd=emacs
+        else
+            cmd=$i
+        fi
+        if type $cmd > /dev/null 2>&1; then
+            merge_tool=$i
+            break
+        fi
+    done
+    if test -z "$merge_tool" ; then
 	echo "No available merge resolution programs available."
 	exit 1
     fi
 fi
 
 case "$merge_tool" in
-    kdiff3|tkdiff|meld|xxdiff|vimdiff|opendiff)
+    kdiff3|tkdiff|meld|xxdiff|vimdiff|gvimdiff|opendiff)
 	if ! type "$merge_tool" > /dev/null 2>&1; then
 	    echo "The merge tool $merge_tool is not available"
 	    exit 1

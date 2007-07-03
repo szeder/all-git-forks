@@ -271,25 +271,32 @@ int excluded(struct dir_struct *dir, const char *pathname)
 	return 0;
 }
 
-struct dir_entry *dir_add_name(struct dir_struct *dir, const char *pathname, int len)
-{
+static struct dir_entry *dir_entry_new(const char *pathname, int len) {
 	struct dir_entry *ent;
 
-	if (cache_name_pos(pathname, len) >= 0)
-		return NULL;
-
-	if (dir->nr == dir->alloc) {
-		int alloc = alloc_nr(dir->alloc);
-		dir->alloc = alloc;
-		dir->entries = xrealloc(dir->entries, alloc*sizeof(ent));
-	}
 	ent = xmalloc(sizeof(*ent) + len + 1);
-	ent->ignored = ent->ignored_dir = 0;
 	ent->len = len;
 	memcpy(ent->name, pathname, len);
 	ent->name[len] = 0;
-	dir->entries[dir->nr++] = ent;
 	return ent;
+}
+
+struct dir_entry *dir_add_name(struct dir_struct *dir, const char *pathname, int len)
+{
+	if (cache_name_pos(pathname, len) >= 0)
+		return NULL;
+
+	ALLOC_GROW(dir->entries, dir->nr+1, dir->alloc);
+	return dir->entries[dir->nr++] = dir_entry_new(pathname, len);
+}
+
+struct dir_entry *dir_add_ignored(struct dir_struct *dir, const char *pathname, int len)
+{
+	if (cache_name_pos(pathname, len) >= 0)
+		return NULL;
+
+	ALLOC_GROW(dir->ignored, dir->ignored_nr+1, dir->ignored_alloc);
+	return dir->ignored[dir->ignored_nr++] = dir_entry_new(pathname, len);
 }
 
 enum exist_status {
@@ -321,7 +328,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
 			break;
 		if (endchar == '/')
 			return index_directory;
-		if (!endchar && S_ISDIRLNK(ntohl(ce->ce_mode)))
+		if (!endchar && S_ISGITLINK(ntohl(ce->ce_mode)))
 			return index_gitdir;
 	}
 	return index_nonexistent;
@@ -356,7 +363,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
  *      also true and the directory is empty, in which case
  *      we just ignore it entirely.
  *  (b) if it looks like a git directory, and we don't have
- *      'no_dirlinks' set we treat it as a gitlink, and show it
+ *      'no_gitlinks' set we treat it as a gitlink, and show it
  *      as a directory.
  *  (c) otherwise, we recurse into it.
  */
@@ -383,7 +390,7 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
 	case index_nonexistent:
 		if (dir->show_other_directories)
 			break;
-		if (!dir->no_dirlinks) {
+		if (!dir->no_gitlinks) {
 			unsigned char sha1[20];
 			if (resolve_gitlink_ref(dirname, "HEAD", sha1) == 0)
 				return show_directory;
@@ -420,6 +427,18 @@ static int simplify_away(const char *path, int pathlen, const struct path_simpli
 			simplify++;
 		}
 		return 1;
+	}
+	return 0;
+}
+
+static int in_pathspec(const char *path, int len, const struct path_simplify *simplify)
+{
+	if (simplify) {
+		for (; simplify->path; simplify++) {
+			if (len == simplify->len
+			    && !memcmp(path, simplify->path, len))
+				return 1;
+		}
 	}
 	return 0;
 }
@@ -464,6 +483,9 @@ static int read_directory_recursive(struct dir_struct *dir, const char *path, co
 				continue;
 
 			exclude = excluded(dir, fullname);
+			if (exclude && dir->collect_ignored
+			    && in_pathspec(fullname, baselen + len, simplify))
+				dir_add_ignored(dir, fullname, baselen + len);
 			if (exclude != dir->show_ignored) {
 				if (!dir->show_ignored || DTYPE(de) != DT_DIR) {
 					continue;
@@ -610,6 +632,7 @@ int read_directory(struct dir_struct *dir, const char *path, const char *base, i
 	read_directory_recursive(dir, path, base, baselen, 0, simplify);
 	free_simplify(simplify);
 	qsort(dir->entries, dir->nr, sizeof(struct dir_entry *), cmp_name);
+	qsort(dir->ignored, dir->ignored_nr, sizeof(struct dir_entry *), cmp_name);
 	return dir->nr;
 }
 

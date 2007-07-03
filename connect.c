@@ -4,6 +4,7 @@
 #include "quote.h"
 #include "refs.h"
 #include "run-command.h"
+#include "remote.h"
 
 static char *server_capabilities;
 
@@ -128,245 +129,6 @@ int path_match(const char *path, int nr, char **match)
 	return 0;
 }
 
-struct refspec {
-	char *src;
-	char *dst;
-	char force;
-};
-
-/*
- * A:B means fast forward remote B with local A.
- * +A:B means overwrite remote B with local A.
- * +A is a shorthand for +A:A.
- * A is a shorthand for A:A.
- * :B means delete remote B.
- */
-static struct refspec *parse_ref_spec(int nr_refspec, char **refspec)
-{
-	int i;
-	struct refspec *rs = xcalloc(sizeof(*rs), (nr_refspec + 1));
-	for (i = 0; i < nr_refspec; i++) {
-		char *sp, *dp, *ep;
-		sp = refspec[i];
-		if (*sp == '+') {
-			rs[i].force = 1;
-			sp++;
-		}
-		ep = strchr(sp, ':');
-		if (ep) {
-			dp = ep + 1;
-			*ep = 0;
-		}
-		else
-			dp = sp;
-		rs[i].src = sp;
-		rs[i].dst = dp;
-	}
-	rs[nr_refspec].src = rs[nr_refspec].dst = NULL;
-	return rs;
-}
-
-static int count_refspec_match(const char *pattern,
-			       struct ref *refs,
-			       struct ref **matched_ref)
-{
-	int patlen = strlen(pattern);
-	struct ref *matched_weak = NULL;
-	struct ref *matched = NULL;
-	int weak_match = 0;
-	int match = 0;
-
-	for (weak_match = match = 0; refs; refs = refs->next) {
-		char *name = refs->name;
-		int namelen = strlen(name);
-		int weak_match;
-
-		if (namelen < patlen ||
-		    memcmp(name + namelen - patlen, pattern, patlen))
-			continue;
-		if (namelen != patlen && name[namelen - patlen - 1] != '/')
-			continue;
-
-		/* A match is "weak" if it is with refs outside
-		 * heads or tags, and did not specify the pattern
-		 * in full (e.g. "refs/remotes/origin/master") or at
-		 * least from the toplevel (e.g. "remotes/origin/master");
-		 * otherwise "git push $URL master" would result in
-		 * ambiguity between remotes/origin/master and heads/master
-		 * at the remote site.
-		 */
-		if (namelen != patlen &&
-		    patlen != namelen - 5 &&
-		    prefixcmp(name, "refs/heads/") &&
-		    prefixcmp(name, "refs/tags/")) {
-			/* We want to catch the case where only weak
-			 * matches are found and there are multiple
-			 * matches, and where more than one strong
-			 * matches are found, as ambiguous.  One
-			 * strong match with zero or more weak matches
-			 * are acceptable as a unique match.
-			 */
-			matched_weak = refs;
-			weak_match++;
-		}
-		else {
-			matched = refs;
-			match++;
-		}
-	}
-	if (!matched) {
-		*matched_ref = matched_weak;
-		return weak_match;
-	}
-	else {
-		*matched_ref = matched;
-		return match;
-	}
-}
-
-static void link_dst_tail(struct ref *ref, struct ref ***tail)
-{
-	**tail = ref;
-	*tail = &ref->next;
-	**tail = NULL;
-}
-
-static struct ref *try_explicit_object_name(const char *name)
-{
-	unsigned char sha1[20];
-	struct ref *ref;
-	int len;
-
-	if (!*name) {
-		ref = xcalloc(1, sizeof(*ref) + 20);
-		strcpy(ref->name, "(delete)");
-		hashclr(ref->new_sha1);
-		return ref;
-	}
-	if (get_sha1(name, sha1))
-		return NULL;
-	len = strlen(name) + 1;
-	ref = xcalloc(1, sizeof(*ref) + len);
-	memcpy(ref->name, name, len);
-	hashcpy(ref->new_sha1, sha1);
-	return ref;
-}
-
-static int match_explicit_refs(struct ref *src, struct ref *dst,
-			       struct ref ***dst_tail, struct refspec *rs)
-{
-	int i, errs;
-	for (i = errs = 0; rs[i].src; i++) {
-		struct ref *matched_src, *matched_dst;
-
-		matched_src = matched_dst = NULL;
-		switch (count_refspec_match(rs[i].src, src, &matched_src)) {
-		case 1:
-			break;
-		case 0:
-			/* The source could be in the get_sha1() format
-			 * not a reference name.  :refs/other is a
-			 * way to delete 'other' ref at the remote end.
-			 */
-			matched_src = try_explicit_object_name(rs[i].src);
-			if (matched_src)
-				break;
-			errs = 1;
-			error("src refspec %s does not match any.",
-			      rs[i].src);
-			break;
-		default:
-			errs = 1;
-			error("src refspec %s matches more than one.",
-			      rs[i].src);
-			break;
-		}
-		switch (count_refspec_match(rs[i].dst, dst, &matched_dst)) {
-		case 1:
-			break;
-		case 0:
-			if (!memcmp(rs[i].dst, "refs/", 5)) {
-				int len = strlen(rs[i].dst) + 1;
-				matched_dst = xcalloc(1, sizeof(*dst) + len);
-				memcpy(matched_dst->name, rs[i].dst, len);
-				link_dst_tail(matched_dst, dst_tail);
-			}
-			else if (!strcmp(rs[i].src, rs[i].dst) &&
-				 matched_src) {
-				/* pushing "master:master" when
-				 * remote does not have master yet.
-				 */
-				int len = strlen(matched_src->name) + 1;
-				matched_dst = xcalloc(1, sizeof(*dst) + len);
-				memcpy(matched_dst->name, matched_src->name,
-				       len);
-				link_dst_tail(matched_dst, dst_tail);
-			}
-			else {
-				errs = 1;
-				error("dst refspec %s does not match any "
-				      "existing ref on the remote and does "
-				      "not start with refs/.", rs[i].dst);
-			}
-			break;
-		default:
-			errs = 1;
-			error("dst refspec %s matches more than one.",
-			      rs[i].dst);
-			break;
-		}
-		if (errs)
-			continue;
-		if (matched_dst->peer_ref) {
-			errs = 1;
-			error("dst ref %s receives from more than one src.",
-			      matched_dst->name);
-		}
-		else {
-			matched_dst->peer_ref = matched_src;
-			matched_dst->force = rs[i].force;
-		}
-	}
-	return -errs;
-}
-
-static struct ref *find_ref_by_name(struct ref *list, const char *name)
-{
-	for ( ; list; list = list->next)
-		if (!strcmp(list->name, name))
-			return list;
-	return NULL;
-}
-
-int match_refs(struct ref *src, struct ref *dst, struct ref ***dst_tail,
-	       int nr_refspec, char **refspec, int all)
-{
-	struct refspec *rs = parse_ref_spec(nr_refspec, refspec);
-
-	if (nr_refspec)
-		return match_explicit_refs(src, dst, dst_tail, rs);
-
-	/* pick the remainder */
-	for ( ; src; src = src->next) {
-		struct ref *dst_peer;
-		if (src->peer_ref)
-			continue;
-		dst_peer = find_ref_by_name(dst, src->name);
-		if ((dst_peer && dst_peer->peer_ref) || (!dst_peer && !all))
-			continue;
-		if (!dst_peer) {
-			/* Create a new one and link it */
-			int len = strlen(src->name) + 1;
-			dst_peer = xcalloc(1, sizeof(*dst_peer) + len);
-			memcpy(dst_peer->name, src->name, len);
-			hashcpy(dst_peer->new_sha1, src->new_sha1);
-			link_dst_tail(dst_peer, dst_tail);
-		}
-		dst_peer->peer_ref = src;
-	}
-	return 0;
-}
-
 enum protocol {
 	PROTO_LOCAL = 1,
 	PROTO_SSH,
@@ -391,16 +153,34 @@ static enum protocol get_protocol(const char *name)
 
 #ifndef NO_IPV6
 
+static const char *ai_name(const struct addrinfo *ai)
+{
+	static char addr[INET_ADDRSTRLEN];
+	if ( AF_INET == ai->ai_family ) {
+		struct sockaddr_in *in;
+		in = (struct sockaddr_in *)ai->ai_addr;
+		inet_ntop(ai->ai_family, &in->sin_addr, addr, sizeof(addr));
+	} else if ( AF_INET6 == ai->ai_family ) {
+		struct sockaddr_in6 *in;
+		in = (struct sockaddr_in6 *)ai->ai_addr;
+		inet_ntop(ai->ai_family, &in->sin6_addr, addr, sizeof(addr));
+	} else {
+		strcpy(addr, "(unknown)");
+	}
+	return addr;
+}
+
 /*
  * Returns a connected socket() fd, or else die()s.
  */
-static int git_tcp_connect_sock(char *host)
+static int git_tcp_connect_sock(char *host, int flags)
 {
 	int sockfd = -1, saved_errno = 0;
 	char *colon, *end;
 	const char *port = STR(DEFAULT_GIT_PORT);
 	struct addrinfo hints, *ai0, *ai;
 	int gai;
+	int cnt = 0;
 
 	if (host[0] == '[') {
 		end = strchr(host + 1, ']');
@@ -425,9 +205,15 @@ static int git_tcp_connect_sock(char *host)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "Looking up %s ... ", host);
+
 	gai = getaddrinfo(host, port, &hints, &ai);
 	if (gai)
 		die("Unable to look up %s (port %s) (%s)", host, port, gai_strerror(gai));
+
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
 
 	for (ai0 = ai; ai; ai = ai->ai_next) {
 		sockfd = socket(ai->ai_family,
@@ -438,10 +224,17 @@ static int git_tcp_connect_sock(char *host)
 		}
 		if (connect(sockfd, ai->ai_addr, ai->ai_addrlen) < 0) {
 			saved_errno = errno;
+			fprintf(stderr, "%s[%d: %s]: errno=%s\n",
+				host,
+				cnt,
+				ai_name(ai),
+				strerror(saved_errno));
 			close(sockfd);
 			sockfd = -1;
 			continue;
 		}
+		if (flags & CONNECT_VERBOSE)
+			fprintf(stderr, "%s ", ai_name(ai));
 		break;
 	}
 
@@ -449,6 +242,9 @@ static int git_tcp_connect_sock(char *host)
 
 	if (sockfd < 0)
 		die("unable to connect a socket (%s)", strerror(saved_errno));
+
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "done.\n");
 
 	return sockfd;
 }
@@ -458,7 +254,7 @@ static int git_tcp_connect_sock(char *host)
 /*
  * Returns a connected socket() fd, or else die()s.
  */
-static int git_tcp_connect_sock(char *host)
+static int git_tcp_connect_sock(char *host, int flags)
 {
 	int sockfd = -1, saved_errno = 0;
 	char *colon, *end;
@@ -467,6 +263,7 @@ static int git_tcp_connect_sock(char *host)
 	struct sockaddr_in sa;
 	char **ap;
 	unsigned int nport;
+	int cnt;
 
 	if (host[0] == '[') {
 		end = strchr(host + 1, ']');
@@ -485,6 +282,9 @@ static int git_tcp_connect_sock(char *host)
 		port = colon + 1;
 	}
 
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "Looking up %s ... ", host);
+
 	he = gethostbyname(host);
 	if (!he)
 		die("Unable to look up %s (%s)", host, hstrerror(h_errno));
@@ -497,7 +297,10 @@ static int git_tcp_connect_sock(char *host)
 		nport = se->s_port;
 	}
 
-	for (ap = he->h_addr_list; *ap; ap++) {
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
+
+	for (cnt = 0, ap = he->h_addr_list; *ap; ap++, cnt++) {
 		sockfd = socket(he->h_addrtype, SOCK_STREAM, 0);
 		if (sockfd < 0) {
 			saved_errno = errno;
@@ -511,15 +314,26 @@ static int git_tcp_connect_sock(char *host)
 
 		if (connect(sockfd, (struct sockaddr *)&sa, sizeof sa) < 0) {
 			saved_errno = errno;
+			fprintf(stderr, "%s[%d: %s]: errno=%s\n",
+				host,
+				cnt,
+				inet_ntoa(*(struct in_addr *)&sa.sin_addr),
+				strerror(saved_errno));
 			close(sockfd);
 			sockfd = -1;
 			continue;
 		}
+		if (flags & CONNECT_VERBOSE)
+			fprintf(stderr, "%s ",
+				inet_ntoa(*(struct in_addr *)&sa.sin_addr));
 		break;
 	}
 
 	if (sockfd < 0)
 		die("unable to connect a socket (%s)", strerror(saved_errno));
+
+	if (flags & CONNECT_VERBOSE)
+		fprintf(stderr, "done.\n");
 
 	return sockfd;
 }
@@ -527,9 +341,9 @@ static int git_tcp_connect_sock(char *host)
 #endif /* NO_IPV6 */
 
 
-static void git_tcp_connect(int fd[2], char *host)
+static void git_tcp_connect(int fd[2], char *host, int flags)
 {
-	int sockfd = git_tcp_connect_sock(host);
+	int sockfd = git_tcp_connect_sock(host, flags);
 
 	fd[0] = sockfd;
 	fd[1] = dup(sockfd);
@@ -574,7 +388,7 @@ static int git_proxy_command_options(const char *var, const char *value)
 		}
 		if (0 <= matchlen) {
 			/* core.gitproxy = none for kernel.org */
-			if (matchlen == 4 && 
+			if (matchlen == 4 &&
 			    !memcmp(value, "none", 4))
 				matchlen = 0;
 			git_proxy_command = xmalloc(matchlen + 1);
@@ -646,7 +460,7 @@ static void git_proxy_connect(int fd[2], char *host)
  *
  * Does not return a negative value on error; it just dies.
  */
-pid_t git_connect(int fd[2], char *url, const char *prog)
+pid_t git_connect(int fd[2], char *url, const char *prog, int flags)
 {
 	char *host, *path = url;
 	char *end;
@@ -719,7 +533,7 @@ pid_t git_connect(int fd[2], char *url, const char *prog)
 		if (git_use_proxy(host))
 			git_proxy_connect(fd, host);
 		else
-			git_tcp_connect(fd, host);
+			git_tcp_connect(fd, host, flags);
 		/*
 		 * Separate original protocol components prog and path
 		 * from extended components with a NUL byte.
@@ -773,6 +587,7 @@ pid_t git_connect(int fd[2], char *url, const char *prog)
 			unsetenv(ALTERNATE_DB_ENVIRONMENT);
 			unsetenv(DB_ENVIRONMENT);
 			unsetenv(GIT_DIR_ENVIRONMENT);
+			unsetenv(GIT_WORK_TREE_ENVIRONMENT);
 			unsetenv(GRAFT_ENVIRONMENT);
 			unsetenv(INDEX_ENVIRONMENT);
 			execlp("sh", "sh", "-c", command, NULL);

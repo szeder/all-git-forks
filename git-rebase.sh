@@ -3,7 +3,7 @@
 # Copyright (c) 2005 Junio C Hamano.
 #
 
-USAGE='[-v] [--onto <newbase>] <upstream> [<branch>]'
+USAGE='[--interactive | -i] [-v] [--onto <newbase>] <upstream> [<branch>]'
 LONG_USAGE='git-rebase replaces <branch> with a new branch of the
 same name.  When the --onto option is provided the new branch starts
 out with a HEAD equal to <newbase>, otherwise it is equal to <upstream>
@@ -51,15 +51,15 @@ continue_merge () {
 	test -n "$prev_head" || die "prev_head must be defined"
 	test -d "$dotest" || die "$dotest directory does not exist"
 
-	unmerged=$(git-ls-files -u)
+	unmerged=$(git ls-files -u)
 	if test -n "$unmerged"
 	then
 		echo "You still have unmerged paths in your index"
-		echo "did you forget update-index?"
+		echo "did you forget to use git add?"
 		die "$RESOLVEMSG"
 	fi
 
-	if ! git-diff-index --quiet HEAD
+	if ! git diff-index --quiet HEAD
 	then
 		if ! git-commit -C "`cat $dotest/current`"
 		then
@@ -71,10 +71,10 @@ continue_merge () {
 	else
 		printf "Already applied: %0${prec}d" $msgnum
 	fi
-	echo ' '`git-rev-list --pretty=oneline -1 HEAD | \
+	echo ' '`git rev-list --pretty=oneline -1 HEAD | \
 				sed 's/^[a-f0-9]\+ //'`
 
-	prev_head=`git-rev-parse HEAD^0`
+	prev_head=`git rev-parse HEAD^0`
 	# save the resulting commit so we can read-tree on it later
 	echo "$prev_head" > "$dotest/prev_head"
 
@@ -86,8 +86,8 @@ continue_merge () {
 call_merge () {
 	cmt="$(cat $dotest/cmt.$1)"
 	echo "$cmt" > "$dotest/current"
-	hd=$(git-rev-parse --verify HEAD)
-	cmt_name=$(git-symbolic-ref HEAD)
+	hd=$(git rev-parse --verify HEAD)
+	cmt_name=$(git symbolic-ref HEAD)
 	msgnum=$(cat $dotest/msgnum)
 	end=$(cat $dotest/end)
 	eval GITHEAD_$cmt='"${cmt_name##refs/heads/}~$(($end - $msgnum))"'
@@ -101,7 +101,7 @@ call_merge () {
 		return
 		;;
 	1)
-		test -d "$GIT_DIR/rr-cache" && git-rerere
+		test -d "$GIT_DIR/rr-cache" && git rerere
 		die "$RESOLVEMSG"
 		;;
 	2)
@@ -120,13 +120,23 @@ finish_rb_merge () {
 	echo "All done."
 }
 
+is_interactive () {
+	test -f "$dotest"/interactive ||
+	while case $#,"$1" in 0,|*,-i|*,--interactive) break ;; esac
+	do
+		shift
+	done && test -n "$1"
+}
+
+is_interactive "$@" && exec git-rebase--interactive "$@"
+
 while case "$#" in 0) break ;; esac
 do
 	case "$1" in
 	--continue)
-		git-diff-files --quiet || {
+		git diff-files --quiet || {
 			echo "You must edit all merge conflicts and then"
-			echo "mark them as resolved using git update-index"
+			echo "mark them as resolved using git add"
 			exit 1
 		}
 		if test -d "$dotest"
@@ -152,7 +162,7 @@ do
 		then
 			if test -d "$GIT_DIR/rr-cache"
 			then
-				git-rerere clear
+				git rerere clear
 			fi
 			prev_head="`cat $dotest/prev_head`"
 			end="`cat $dotest/end`"
@@ -173,7 +183,7 @@ do
 	--abort)
 		if test -d "$GIT_DIR/rr-cache"
 		then
-			git-rerere clear
+			git rerere clear
 		fi
 		if test -d "$dotest"
 		then
@@ -249,8 +259,8 @@ else
 fi
 
 # The tree must be really really clean.
-git-update-index --refresh || exit
-diff=$(git-diff-index --cached --name-status -r HEAD)
+git update-index --refresh || exit
+diff=$(git diff-index --cached --name-status -r HEAD)
 case "$diff" in
 ?*)	echo "cannot rebase: your index is not up-to-date"
 	echo "$diff"
@@ -265,7 +275,7 @@ upstream=`git rev-parse --verify "${upstream_name}^0"` ||
 
 # Make sure the branch to rebase onto is valid.
 onto_name=${newbase-"$upstream_name"}
-onto=$(git-rev-parse --verify "${onto_name}^0") || exit
+onto=$(git rev-parse --verify "${onto_name}^0") || exit
 
 # If a hook exists, give it a chance to interrupt
 if test -x "$GIT_DIR/hooks/pre-rebase"
@@ -291,13 +301,13 @@ case "$#" in
 	fi
 	;;
 esac
-branch=$(git-rev-parse --verify "${branch_name}^0") || exit
+branch=$(git rev-parse --verify "${branch_name}^0") || exit
 
 # Now we are rebasing commits $upstream..$branch on top of $onto
 
 # Check if we are already based on $onto, but this should be
 # done only when upstream and onto are the same.
-mb=$(git-merge-base "$onto" "$branch")
+mb=$(git merge-base "$onto" "$branch")
 if test "$upstream" = "$onto" && test "$mb" = "$onto"
 then
 	echo >&2 "Current branch $branch_name is up to date."
@@ -307,7 +317,8 @@ fi
 if test -n "$verbose"
 then
 	echo "Changes from $mb to $onto:"
-	git-diff-tree --stat --summary "$mb" "$onto"
+	# We want color (if set), but no pager
+	GIT_PAGER='' git diff --stat --summary "$mb" "$onto"
 fi
 
 # Rewind the head to "$onto"; this saves our current head in ORIG_HEAD.
@@ -324,7 +335,7 @@ fi
 
 if test -z "$do_merge"
 then
-	git-format-patch -k --stdout --full-index --ignore-if-in-upstream "$upstream"..ORIG_HEAD |
+	git format-patch -k --stdout --full-index --ignore-if-in-upstream "$upstream"..ORIG_HEAD |
 	git am $git_am_opt --binary -3 -k --resolvemsg="$RESOLVEMSG"
 	exit $?
 fi
@@ -335,11 +346,11 @@ fi
 mkdir -p "$dotest"
 echo "$onto" > "$dotest/onto"
 echo "$onto_name" > "$dotest/onto_name"
-prev_head=`git-rev-parse HEAD^0`
+prev_head=`git rev-parse HEAD^0`
 echo "$prev_head" > "$dotest/prev_head"
 
 msgnum=0
-for cmt in `git-rev-list --reverse --no-merges "$upstream"..ORIG_HEAD`
+for cmt in `git rev-list --reverse --no-merges "$upstream"..ORIG_HEAD`
 do
 	msgnum=$(($msgnum + 1))
 	echo "$cmt" > "$dotest/cmt.$msgnum"

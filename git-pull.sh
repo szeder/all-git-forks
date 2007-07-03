@@ -22,6 +22,9 @@ do
 	-n|--n|--no|--no-|--no-s|--no-su|--no-sum|--no-summ|\
 		--no-summa|--no-summar|--no-summary)
 		no_summary=-n ;;
+	--summary)
+		no_summary=$1
+		;;
 	--no-c|--no-co|--no-com|--no-comm|--no-commi|--no-commit)
 		no_commit=--no-commit ;;
 	--sq|--squ|--squa|--squas|--squash)
@@ -51,10 +54,10 @@ do
 	shift
 done
 
-orig_head=$(git-rev-parse --verify HEAD 2>/dev/null)
+orig_head=$(git rev-parse --verify HEAD 2>/dev/null)
 git-fetch --update-head-ok "$@" || exit 1
 
-curr_head=$(git-rev-parse --verify HEAD 2>/dev/null)
+curr_head=$(git rev-parse --verify HEAD 2>/dev/null)
 if test "$curr_head" != "$orig_head"
 then
 	# The fetch involved updating the current branch.
@@ -66,8 +69,8 @@ then
 	echo >&2 "Warning: fetch updated the current branch head."
 	echo >&2 "Warning: fast forwarding your working tree from"
 	echo >&2 "Warning: commit $orig_head."
-	git-update-index --refresh 2>/dev/null
-	git-read-tree -u -m "$orig_head" "$curr_head" ||
+	git update-index --refresh 2>/dev/null
+	git read-tree -u -m "$orig_head" "$curr_head" ||
 		die 'Cannot fast-forward your working tree.
 After making sure that you saved anything precious from
 $ git diff '$orig_head'
@@ -83,7 +86,7 @@ merge_head=$(sed -e '/	not-for-merge	/d' \
 
 case "$merge_head" in
 '')
-	curr_branch=$(git-symbolic-ref -q HEAD)
+	curr_branch=$(git symbolic-ref -q HEAD)
 	case $? in
 	  0) ;;
 	  1) echo >&2 "You are not currently on a branch; you must explicitly"
@@ -110,11 +113,11 @@ esac
 
 if test -z "$orig_head"
 then
-	git-update-ref -m "initial pull" HEAD $merge_head "" &&
-	git-read-tree --reset -u HEAD || exit 1
+	git update-ref -m "initial pull" HEAD $merge_head "" &&
+	git read-tree --reset -u HEAD || exit 1
 	exit
 fi
 
-merge_name=$(git-fmt-merge-msg <"$GIT_DIR/FETCH_HEAD") || exit
+merge_name=$(git fmt-merge-msg <"$GIT_DIR/FETCH_HEAD") || exit
 exec git-merge $no_summary $no_commit $squash $strategy_args \
 	"$merge_name" HEAD $merge_head

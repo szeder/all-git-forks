@@ -114,7 +114,7 @@ static const unsigned char* get_rev(void)
 		commit->object.flags |= POPPED;
 		if (!(commit->object.flags & COMMON))
 			non_common_revs--;
-	
+
 		parents = commit->parents;
 
 		if (commit->object.flags & COMMON) {
@@ -733,7 +733,7 @@ int main(int argc, char **argv)
 	}
 	if (!dest)
 		usage(fetch_pack_usage);
-	pid = git_connect(fd, dest, uploadpack);
+	pid = git_connect(fd, dest, uploadpack, verbose ? CONNECT_VERBOSE : 0);
 	if (pid < 0)
 		return 1;
 	if (heads && nr_heads)

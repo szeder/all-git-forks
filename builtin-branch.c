@@ -55,7 +55,7 @@ static int parse_branch_color_slot(const char *var, int ofs)
 	die("bad config variable '%s'", var);
 }
 
-int git_branch_config(const char *var, const char *value)
+static int git_branch_config(const char *var, const char *value)
 {
 	if (!strcmp(var, "color.branch")) {
 		branch_use_color = git_config_colorbool(var, value);
@@ -72,7 +72,7 @@ int git_branch_config(const char *var, const char *value)
 	return git_default_config(var, value);
 }
 
-const char *branch_get_color(enum color_branch ix)
+static const char *branch_get_color(enum color_branch ix)
 {
 	if (branch_use_color)
 		return branch_colors[ix];
@@ -85,6 +85,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds)
 	unsigned char sha1[20];
 	char *name = NULL;
 	const char *fmt, *remote;
+	char section[PATH_MAX];
 	int i;
 	int ret = 0;
 
@@ -152,9 +153,13 @@ static int delete_branches(int argc, const char **argv, int force, int kinds)
 			error("Error deleting %sbranch '%s'", remote,
 			       argv[i]);
 			ret = 1;
-		} else
+		} else {
 			printf("Deleted %sbranch %s.\n", remote, argv[i]);
-
+			snprintf(section, sizeof(section), "branch.%s",
+				 argv[i]);
+			if (git_config_rename_section(section, NULL) < 0)
+				warning("Update of config-file failed");
+		}
 	}
 
 	if (name)
@@ -242,7 +247,6 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 	char c;
 	int color;
 	struct commit *commit;
-	char subject[256];
 
 	switch (item->kind) {
 	case REF_LOCAL_BRANCH:
@@ -263,17 +267,23 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 	}
 
 	if (verbose) {
+		char *subject = NULL;
+		unsigned long subject_len = 0;
+		const char *sub = " **** invalid ref ****";
+
 		commit = lookup_commit(item->sha1);
-		if (commit && !parse_commit(commit))
+		if (commit && !parse_commit(commit)) {
 			pretty_print_commit(CMIT_FMT_ONELINE, commit, ~0,
-					    subject, sizeof(subject), 0,
+					    &subject, &subject_len, 0,
 					    NULL, NULL, 0);
-		else
-			strcpy(subject, " **** invalid ref ****");
+			sub = subject;
+		}
 		printf("%c %s%-*s%s %s %s\n", c, branch_get_color(color),
 		       maxwidth, item->name,
 		       branch_get_color(COLOR_BRANCH_RESET),
-		       find_unique_abbrev(item->sha1, abbrev), subject);
+		       find_unique_abbrev(item->sha1, abbrev), sub);
+		if (subject)
+			free(subject);
 	} else {
 		printf("%c %s%s%s\n", c, branch_get_color(color), item->name,
 		       branch_get_color(COLOR_BRANCH_RESET));
@@ -477,7 +487,7 @@ static void create_branch(const char *name, const char *start_name,
 		die("Not a valid branch point: '%s'.", start_name);
 	hashcpy(sha1, commit->object.sha1);
 
-	lock = lock_any_ref_for_update(ref, NULL);
+	lock = lock_any_ref_for_update(ref, NULL, 0);
 	if (!lock)
 		die("Failed to lock ref for update: %s.", strerror(errno));
 

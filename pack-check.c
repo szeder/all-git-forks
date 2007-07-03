@@ -1,6 +1,23 @@
 #include "cache.h"
 #include "pack.h"
 
+struct idx_entry
+{
+	const unsigned char *sha1;
+	off_t                offset;
+};
+
+static int compare_entries(const void *e1, const void *e2)
+{
+	const struct idx_entry *entry1 = e1;
+	const struct idx_entry *entry2 = e2;
+	if (entry1->offset < entry2->offset)
+		return -1;
+	if (entry1->offset > entry2->offset)
+		return 1;
+	return 0;
+}
+
 static int verify_packfile(struct packed_git *p,
 		struct pack_window **w_curs)
 {
@@ -11,6 +28,7 @@ static int verify_packfile(struct packed_git *p,
 	off_t offset = 0, pack_sig = p->pack_size - 20;
 	uint32_t nr_objects, i;
 	int err;
+	struct idx_entry *entries;
 
 	/* Note that the pack header checks are actually performed by
 	 * use_pack when it first opens the pack file.  If anything
@@ -41,44 +59,48 @@ static int verify_packfile(struct packed_git *p,
 	 * we do not do scan-streaming check on the pack file.
 	 */
 	nr_objects = p->num_objects;
+	entries = xmalloc(nr_objects * sizeof(*entries));
+	/* first sort entries by pack offset, since unpacking them is more efficient that way */
+	for (i = 0; i < nr_objects; i++) {
+		entries[i].sha1 = nth_packed_object_sha1(p, i);
+		if (!entries[i].sha1)
+			die("internal error pack-check nth-packed-object");
+		entries[i].offset = find_pack_entry_one(entries[i].sha1, p);
+		if (!entries[i].offset)
+			die("internal error pack-check find-pack-entry-one");
+	}
+	qsort(entries, nr_objects, sizeof(*entries), compare_entries);
+
 	for (i = 0, err = 0; i < nr_objects; i++) {
-		const unsigned char *sha1;
 		void *data;
 		enum object_type type;
 		unsigned long size;
-		off_t offset;
 
-		sha1 = nth_packed_object_sha1(p, i);
-		if (!sha1)
-			die("internal error pack-check nth-packed-object");
-		offset = find_pack_entry_one(sha1, p);
-		if (!offset)
-			die("internal error pack-check find-pack-entry-one");
-		data = unpack_entry(p, offset, &type, &size);
+		data = unpack_entry(p, entries[i].offset, &type, &size);
 		if (!data) {
 			err = error("cannot unpack %s from %s",
-				    sha1_to_hex(sha1), p->pack_name);
+				    sha1_to_hex(entries[i].sha1), p->pack_name);
 			continue;
 		}
-		if (check_sha1_signature(sha1, data, size, typename(type))) {
+		if (check_sha1_signature(entries[i].sha1, data, size, typename(type))) {
 			err = error("packed %s from %s is corrupt",
-				    sha1_to_hex(sha1), p->pack_name);
+				    sha1_to_hex(entries[i].sha1), p->pack_name);
 			free(data);
 			continue;
 		}
 		free(data);
 	}
+	free(entries);
 
 	return err;
 }
 
 
-#define MAX_CHAIN 40
+#define MAX_CHAIN 50
 
 static void show_pack_info(struct packed_git *p)
 {
-	uint32_t nr_objects, i, chain_histogram[MAX_CHAIN];
-
+	uint32_t nr_objects, i, chain_histogram[MAX_CHAIN+1];
 	nr_objects = p->num_objects;
 	memset(chain_histogram, 0, sizeof(chain_histogram));
 
@@ -109,31 +131,36 @@ static void show_pack_info(struct packed_git *p)
 			printf("%-6s %lu %"PRIuMAX" %u %s\n",
 			       type, size, (uintmax_t)offset,
 			       delta_chain_length, sha1_to_hex(base_sha1));
-			if (delta_chain_length < MAX_CHAIN)
+			if (delta_chain_length <= MAX_CHAIN)
 				chain_histogram[delta_chain_length]++;
 			else
 				chain_histogram[0]++;
 		}
 	}
 
-	for (i = 0; i < MAX_CHAIN; i++) {
+	for (i = 0; i <= MAX_CHAIN; i++) {
 		if (!chain_histogram[i])
 			continue;
-		printf("chain length %s %d: %d object%s\n",
-		       i ? "=" : ">=",
-		       i ? i : MAX_CHAIN,
-		       chain_histogram[i],
-		       1 < chain_histogram[i] ? "s" : "");
+		printf("chain length = %d: %d object%s\n", i,
+		       chain_histogram[i], chain_histogram[i] > 1 ? "s" : "");
 	}
+	if (chain_histogram[0])
+		printf("chain length > %d: %d object%s\n", MAX_CHAIN,
+		       chain_histogram[0], chain_histogram[0] > 1 ? "s" : "");
 }
 
 int verify_pack(struct packed_git *p, int verbose)
 {
-	off_t index_size = p->index_size;
-	const unsigned char *index_base = p->index_data;
+	off_t index_size;
+	const unsigned char *index_base;
 	SHA_CTX ctx;
 	unsigned char sha1[20];
 	int ret;
+
+	if (open_pack_index(p))
+		return error("packfile %s index not opened", p->pack_name);
+	index_size = p->index_size;
+	index_base = p->index_data;
 
 	ret = 0;
 	/* Verify SHA1 sum of the index file */

@@ -3,7 +3,7 @@
 # Copyright (c) 2006 Johannes E. Schindelin
 #
 
-test_description='git-rerere
+test_description='git rerere
 '
 
 . ./test-lib.sh
@@ -148,5 +148,3 @@ test_expect_success 'old records rest in peace' \
 	"test ! -f $rr/preimage && test ! -f $rr2/preimage"
 
 test_done
-
-

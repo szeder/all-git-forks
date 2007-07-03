@@ -40,8 +40,8 @@
  * happens that everybody shares the same bit representation
  * in the UNIX world (and apparently wider too..)
  */
-#define S_IFDIRLNK	0160000
-#define S_ISDIRLNK(m)	(((m) & S_IFMT) == S_IFDIRLNK)
+#define S_IFGITLINK	0160000
+#define S_ISGITLINK(m)	(((m) & S_IFMT) == S_IFGITLINK)
 
 /*
  * Intensive research over the course of many years has shown that
@@ -123,8 +123,8 @@ static inline unsigned int create_ce_mode(unsigned int mode)
 {
 	if (S_ISLNK(mode))
 		return htonl(S_IFLNK);
-	if (S_ISDIR(mode) || S_ISDIRLNK(mode))
-		return htonl(S_IFDIRLNK);
+	if (S_ISDIR(mode) || S_ISGITLINK(mode))
+		return htonl(S_IFGITLINK);
 	return htonl(S_IFREG | ce_permissions(mode));
 }
 static inline unsigned int ce_mode_from_stat(struct cache_entry *ce, unsigned int mode)
@@ -142,7 +142,7 @@ static inline unsigned int ce_mode_from_stat(struct cache_entry *ce, unsigned in
 }
 #define canon_mode(mode) \
 	(S_ISREG(mode) ? (S_IFREG | ce_permissions(mode)) : \
-	S_ISLNK(mode) ? S_IFLNK : S_ISDIR(mode) ? S_IFDIR : S_IFDIRLNK)
+	S_ISLNK(mode) ? S_IFLNK : S_ISDIR(mode) ? S_IFDIR : S_IFGITLINK)
 
 #define cache_entry_size(len) ((offsetof(struct cache_entry,name) + (len) + 8) & ~7)
 
@@ -192,6 +192,7 @@ enum object_type {
 };
 
 #define GIT_DIR_ENVIRONMENT "GIT_DIR"
+#define GIT_WORK_TREE_ENVIRONMENT "GIT_WORK_TREE"
 #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 #define DB_ENVIRONMENT "GIT_OBJECT_DIRECTORY"
 #define INDEX_ENVIRONMENT "GIT_INDEX_FILE"
@@ -207,6 +208,7 @@ enum object_type {
 extern int is_bare_repository_cfg;
 extern int is_bare_repository(void);
 extern int is_inside_git_dir(void);
+extern int is_inside_work_tree(void);
 extern const char *get_git_dir(void);
 extern char *get_object_directory(void);
 extern char *get_refs_directory(void);
@@ -224,6 +226,24 @@ extern void verify_filename(const char *prefix, const char *name);
 extern void verify_non_filename(const char *prefix, const char *name);
 
 #define alloc_nr(x) (((x)+16)*3/2)
+
+/*
+ * Realloc the buffer pointed at by variable 'x' so that it can hold
+ * at least 'nr' entries; the number of entries currently allocated
+ * is 'alloc', using the standard growing factor alloc_nr() macro.
+ *
+ * DO NOT USE any expression with side-effect for 'x' or 'alloc'.
+ */
+#define ALLOC_GROW(x, nr, alloc) \
+	do { \
+		if ((nr) > alloc) { \
+			if (alloc_nr(alloc) < (nr)) \
+				alloc = (nr); \
+			else \
+				alloc = alloc_nr(alloc); \
+			x = xrealloc((x), alloc * sizeof(*(x))); \
+		} \
+	} while(0)
 
 /* Initialize and use the cache information */
 extern int read_index(struct index_state *);
@@ -273,8 +293,8 @@ extern void rollback_lock_file(struct lock_file *);
 extern int delete_ref(const char *, const unsigned char *sha1);
 
 /* Environment bits from configuration mechanism */
-extern int use_legacy_headers;
 extern int trust_executable_bit;
+extern int quote_path_fully;
 extern int has_symlinks;
 extern int assume_unchanged;
 extern int prefer_symlink_refs;
@@ -283,6 +303,8 @@ extern int warn_ambiguous_refs;
 extern int shared_repository;
 extern const char *apply_default_whitespace;
 extern int zlib_compression_level;
+extern int core_compression_level;
+extern int core_compression_seen;
 extern size_t packed_git_window_size;
 extern size_t packed_git_limit;
 extern size_t delta_base_cache_limit;
@@ -353,8 +375,6 @@ extern int move_temp_to_file(const char *tmpfile, const char *filename);
 
 extern int has_sha1_pack(const unsigned char *sha1, const char **ignore);
 extern int has_sha1_file(const unsigned char *sha1);
-extern void *map_sha1_file(const unsigned char *sha1, unsigned long *);
-extern int legacy_loose_object(unsigned char *);
 
 extern int has_pack_file(const unsigned char *sha1);
 extern int has_pack_index(const unsigned char *sha1);
@@ -463,11 +483,10 @@ struct ref {
 #define REF_HEADS	(1u << 1)
 #define REF_TAGS	(1u << 2)
 
-extern pid_t git_connect(int fd[2], char *url, const char *prog);
+#define CONNECT_VERBOSE       (1u << 0)
+extern pid_t git_connect(int fd[2], char *url, const char *prog, int flags);
 extern int finish_connect(pid_t pid);
 extern int path_match(const char *path, int nr, char **match);
-extern int match_refs(struct ref *src, struct ref *dst, struct ref ***dst_tail,
-		      int nr_refspec, char **refspec, int all);
 extern int get_ack(int fd, unsigned char *result_sha1);
 extern struct ref **get_remote_heads(int in, struct ref **list, int nr_match, char **match, unsigned int flags);
 extern int server_supports(const char *feature);
@@ -480,14 +499,15 @@ extern void prepare_packed_git(void);
 extern void reprepare_packed_git(void);
 extern void install_packed_git(struct packed_git *pack);
 
-extern struct packed_git *find_sha1_pack(const unsigned char *sha1, 
+extern struct packed_git *find_sha1_pack(const unsigned char *sha1,
 					 struct packed_git *packs);
 
 extern void pack_report(void);
+extern int open_pack_index(struct packed_git *);
 extern unsigned char* use_pack(struct packed_git *, struct pack_window **, off_t, unsigned int *);
 extern void unuse_pack(struct pack_window **);
 extern struct packed_git *add_packed_git(const char *, int, int);
-extern const unsigned char *nth_packed_object_sha1(const struct packed_git *, uint32_t);
+extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t);
 extern off_t find_pack_entry_one(const unsigned char *, struct packed_git *);
 extern void *unpack_entry(struct packed_git *, off_t, enum object_type *, unsigned long *);
 extern unsigned long unpack_object_header_gently(const unsigned char *buf, unsigned long len, enum object_type *type, unsigned long *sizep);
@@ -515,6 +535,8 @@ extern char git_default_name[MAX_GITNAME];
 extern const char *git_commit_encoding;
 extern const char *git_log_output_encoding;
 
+/* IO helper functions */
+extern void maybe_flush_or_die(FILE *, const char *);
 extern int copy_fd(int ifd, int ofd);
 extern int read_in_full(int fd, void *buf, size_t count);
 extern int write_in_full(int fd, const void *buf, size_t count);

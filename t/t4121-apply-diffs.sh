@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='git-apply for contextually independent diffs'
+test_description='git apply for contextually independent diffs'
 . ./test-lib.sh
 
 echo '1
@@ -30,4 +30,3 @@ test_expect_success \
 	'( git diff test~2 test~1; git diff test~1 test~0 )| git apply'
 
 test_done
-

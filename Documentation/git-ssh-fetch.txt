@@ -13,6 +13,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
+THIS COMMAND IS DEPRECATED.
+
 Pulls from a remote repository over ssh connection, invoking
 git-ssh-upload on the other end. It functions identically to
 git-ssh-upload, aside from which end you run it on.
@@ -48,4 +50,3 @@ Documentation by David Greaves, Junio C Hamano and the git-list <git@vger.kernel
 GIT
 ---
 Part of the gitlink:git[7] suite
-

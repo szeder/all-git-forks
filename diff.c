@@ -1460,7 +1460,7 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 	if (size_only && 0 < s->size)
 		return 0;
 
-	if (S_ISDIRLNK(s->mode))
+	if (S_ISGITLINK(s->mode))
 		return diff_populate_gitlink(s, size_only);
 
 	if (!s->sha1_valid ||
@@ -1813,6 +1813,11 @@ static void diff_fill_sha1_info(struct diff_filespec *one)
 		hashclr(one->sha1);
 }
 
+static int similarity_index(struct diff_filepair *p)
+{
+	return p->score * 100 / MAX_SCORE;
+}
+
 static void run_diff(struct diff_filepair *p, struct diff_options *o)
 {
 	const char *pgm = external_diff();
@@ -1847,23 +1852,20 @@ static void run_diff(struct diff_filepair *p, struct diff_options *o)
 				"similarity index %d%%\n"
 				"copy from %s\n"
 				"copy to %s\n",
-				(int)(0.5 + p->score * 100.0/MAX_SCORE),
-				name_munged, other_munged);
+				similarity_index(p), name_munged, other_munged);
 		break;
 	case DIFF_STATUS_RENAMED:
 		len += snprintf(msg + len, sizeof(msg) - len,
 				"similarity index %d%%\n"
 				"rename from %s\n"
 				"rename to %s\n",
-				(int)(0.5 + p->score * 100.0/MAX_SCORE),
-				name_munged, other_munged);
+				similarity_index(p), name_munged, other_munged);
 		break;
 	case DIFF_STATUS_MODIFIED:
 		if (p->score) {
 			len += snprintf(msg + len, sizeof(msg) - len,
 					"dissimilarity index %d%%\n",
-					(int)(0.5 + p->score *
-					      100.0/MAX_SCORE));
+					similarity_index(p));
 			complete_rewrite = 1;
 			break;
 		}
@@ -2103,6 +2105,8 @@ static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *va
 	return 1;
 }
 
+static int diff_scoreopt_parse(const char *opt);
+
 int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 {
 	const char *arg = av[0];
@@ -2199,6 +2203,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->detect_rename = DIFF_DETECT_RENAME;
 	}
 	else if (!prefixcmp(arg, "-C")) {
+		if (options->detect_rename == DIFF_DETECT_COPY)
+			options->find_copies_harder = 1;
 		if ((options->rename_score =
 		     diff_scoreopt_parse(arg)) == -1)
 			return -1;
@@ -2206,6 +2212,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	}
 	else if (!strcmp(arg, "--find-copies-harder"))
 		options->find_copies_harder = 1;
+	else if (!strcmp(arg, "--follow"))
+		options->follow_renames = 1;
 	else if (!strcmp(arg, "--abbrev"))
 		options->abbrev = DEFAULT_ABBREV;
 	else if (!prefixcmp(arg, "--abbrev=")) {
@@ -2274,7 +2282,7 @@ static int parse_num(const char **cp_p)
 	return (int)((num >= scale) ? MAX_SCORE : (MAX_SCORE * num / scale));
 }
 
-int diff_scoreopt_parse(const char *opt)
+static int diff_scoreopt_parse(const char *opt)
 {
 	int opt1, opt2, cmd;
 
@@ -2381,8 +2389,7 @@ static void diff_flush_raw(struct diff_filepair *p,
 	}
 
 	if (p->score)
-		sprintf(status, "%c%03d", p->status,
-			(int)(0.5 + p->score * 100.0/MAX_SCORE));
+		sprintf(status, "%c%03d", p->status, similarity_index(p));
 	else {
 		status[0] = p->status;
 		status[1] = 0;
@@ -2664,8 +2671,7 @@ static void show_rename_copy(const char *renamecopy, struct diff_filepair *p)
 {
 	char *names = pprint_rename(p->one->path, p->two->path);
 
-	printf(" %s %s (%d%%)\n", renamecopy, names,
-	       (int)(0.5 + p->score * 100.0/MAX_SCORE));
+	printf(" %s %s (%d%%)\n", renamecopy, names, similarity_index(p));
 	free(names);
 	show_mode_change(p, 0);
 }
@@ -2689,7 +2695,7 @@ static void diff_summary(struct diff_filepair *p)
 		if (p->score) {
 			char *name = quote_one(p->two->path);
 			printf(" rewrite %s (%d%%)\n", name,
-				(int)(0.5 + p->score * 100.0/MAX_SCORE));
+			       similarity_index(p));
 			free(name);
 			show_mode_change(p, 0);
 		} else	show_mode_change(p, 1);
@@ -2999,6 +3005,22 @@ void diffcore_std(struct diff_options *options)
 {
 	if (options->quiet)
 		return;
+
+	/*
+	 * break/rename count similarity differently depending on
+	 * the binary-ness.
+	 */
+	if ((options->break_opt != -1) || (options->detect_rename)) {
+		struct diff_queue_struct *q = &diff_queued_diff;
+		int i;
+
+		for (i = 0; i < q->nr; i++) {
+			struct diff_filepair *p = q->queue[i];
+			p->one->is_binary = file_is_binary(p->one);
+			p->two->is_binary = file_is_binary(p->two);
+		}
+	}
+
 	if (options->break_opt != -1)
 		diffcore_break(options->break_opt);
 	if (options->detect_rename)
@@ -3031,7 +3053,7 @@ void diff_addremove(struct diff_options *options,
 	 * entries to the diff-core.  They will be prefixed
 	 * with something like '=' or '*' (I haven't decided
 	 * which but should not make any difference).
-	 * Feeding the same new and old to diff_change() 
+	 * Feeding the same new and old to diff_change()
 	 * also has the same effect.
 	 * Before the final output happens, they are pruned after
 	 * merged into rename/copy pairs as appropriate.
@@ -3058,7 +3080,7 @@ void diff_change(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
-		 const char *base, const char *path) 
+		 const char *base, const char *path)
 {
 	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;

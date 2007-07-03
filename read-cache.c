@@ -92,7 +92,7 @@ static int ce_compare_gitlink(struct cache_entry *ce)
 
 	/*
 	 * We don't actually require that the .git directory
-	 * under DIRLNK directory be a valid git directory. It
+	 * under GITLINK directory be a valid git directory. It
 	 * might even be missing (in case nobody populated that
 	 * sub-project).
 	 *
@@ -115,7 +115,7 @@ static int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
 			return DATA_CHANGED;
 		break;
 	case S_IFDIR:
-		if (S_ISDIRLNK(ntohl(ce->ce_mode)))
+		if (S_ISGITLINK(ntohl(ce->ce_mode)))
 			return 0;
 	default:
 		return TYPE_CHANGED;
@@ -142,7 +142,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 		    (has_symlinks || !S_ISREG(st->st_mode)))
 			changed |= TYPE_CHANGED;
 		break;
-	case S_IFDIRLNK:
+	case S_IFGITLINK:
 		if (!S_ISDIR(st->st_mode))
 			changed |= TYPE_CHANGED;
 		else if (ce_compare_gitlink(ce))
@@ -166,7 +166,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 		changed |= MTIME_CHANGED;
 	if (ce->ce_ctime.nsec != htonl(st->st_ctim.tv_nsec))
 		changed |= CTIME_CHANGED;
-#endif	
+#endif
 
 	if (ce->ce_uid != htonl(st->st_uid) ||
 	    ce->ce_gid != htonl(st->st_gid))
@@ -350,6 +350,34 @@ int remove_file_from_index(struct index_state *istate, const char *path)
 	return 0;
 }
 
+static int compare_name(struct cache_entry *ce, const char *path, int namelen)
+{
+	return namelen != ce_namelen(ce) || memcmp(path, ce->name, namelen);
+}
+
+static int index_name_pos_also_unmerged(struct index_state *istate,
+	const char *path, int namelen)
+{
+	int pos = index_name_pos(istate, path, namelen);
+	struct cache_entry *ce;
+
+	if (pos >= 0)
+		return pos;
+
+	/* maybe unmerged? */
+	pos = -1 - pos;
+	if (pos >= istate->cache_nr ||
+			compare_name((ce = istate->cache[pos]), path, namelen))
+		return -1;
+
+	/* order of preference: stage 2, 1, 3 */
+	if (ce_stage(ce) == 1 && pos + 1 < istate->cache_nr &&
+			ce_stage((ce = istate->cache[pos + 1])) == 2 &&
+			!compare_name(ce, path, namelen))
+		pos++;
+	return pos;
+}
+
 int add_file_to_index(struct index_state *istate, const char *path, int verbose)
 {
 	int size, namelen;
@@ -380,7 +408,7 @@ int add_file_to_index(struct index_state *istate, const char *path, int verbose)
 		 * from it, otherwise assume unexecutable regular file.
 		 */
 		struct cache_entry *ent;
-		int pos = index_name_pos(istate, path, namelen);
+		int pos = index_name_pos_also_unmerged(istate, path, namelen);
 
 		ent = (0 <= pos) ? istate->cache[pos] : NULL;
 		ce->ce_mode = ce_mode_from_stat(ent, st.st_mode);
@@ -597,7 +625,7 @@ static int has_dir_name(struct index_state *istate,
  * is being added, or we already have path and path/file is being
  * added.  Either one would result in a nonsense tree that has path
  * twice when git-write-tree tries to write it out.  Prevent it.
- * 
+ *
  * If ok-to-replace is specified, we remove the conflicting entries
  * from the cache so the caller should recompute the insert position.
  * When this happens, we return non-zero.
@@ -970,8 +998,8 @@ static int ce_write(SHA_CTX *context, int fd, void *data, unsigned int len)
 		write_buffer_len = buffered;
 		len -= partial;
 		data = (char *) data + partial;
- 	}
- 	return 0;
+	}
+	return 0;
 }
 
 static int write_index_ext_header(SHA_CTX *context, int fd,
@@ -1037,7 +1065,7 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 		 * size to zero here, then the object name recorded
 		 * in index is the 6-byte file but the cached stat information
 		 * becomes zero --- which would then match what we would
-		 * obtain from the filesystem next time we stat("frotz"). 
+		 * obtain from the filesystem next time we stat("frotz").
 		 *
 		 * However, the second update-index, before calling
 		 * this function, notices that the cached size is 6

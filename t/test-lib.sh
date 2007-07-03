@@ -26,6 +26,7 @@ GIT_COMMITTER_EMAIL=committer@example.com
 GIT_COMMITTER_NAME='C O Mitter'
 unset GIT_DIFF_OPTS
 unset GIT_DIR
+unset GIT_WORK_TREE
 unset GIT_EXTERNAL_DIFF
 unset GIT_INDEX_FILE
 unset GIT_OBJECT_DIRECTORY
@@ -232,7 +233,7 @@ test_create_repo () {
 	mv .git/hooks .git/hooks-disabled
 	cd "$owd"
 }
-	
+
 test_done () {
 	trap - exit
 	case "$test_failure" in

@@ -7,7 +7,7 @@
 #include "builtin.h"
 
 #ifndef DEFAULT_GIT_TEMPLATE_DIR
-#define DEFAULT_GIT_TEMPLATE_DIR "/usr/share/git-core/templates/"
+#define DEFAULT_GIT_TEMPLATE_DIR "/usr/share/git-core/templates"
 #endif
 
 #ifdef NO_TRUSTABLE_FILEMODE
@@ -40,7 +40,8 @@ static int copy_file(const char *dst, const char *src, int mode)
 		return fdo;
 	}
 	status = copy_fd(fdi, fdo);
-	close(fdo);
+	if (close(fdo) != 0)
+		return error("%s: write error: %s", dst, strerror(errno));
 
 	if (!status && adjust_shared_perm(dst))
 		return -1;
@@ -265,7 +266,7 @@ static int create_default_files(const char *git_dir, const char *template_path)
 }
 
 static const char init_db_usage[] =
-"git-init [--template=<template-directory>] [--shared]";
+"git-init [-q | --quiet] [--template=<template-directory>] [--shared]";
 
 /*
  * If you want to, you can share the DB area with any number of branches.
@@ -280,6 +281,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	const char *template_dir = NULL;
 	char *path;
 	int len, i, reinit;
+	int quiet = 0;
 
 	for (i = 1; i < argc; i++, argv++) {
 		const char *arg = argv[1];
@@ -289,6 +291,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 			shared_repository = PERM_GROUP;
 		else if (!prefixcmp(arg, "--shared="))
 			shared_repository = git_config_perm("arg", arg+9);
+		else if (!strcmp(arg, "-q") || !strcmp(arg, "--quiet"))
+		        quiet = 1;
 		else
 			usage(init_db_usage);
 	}
@@ -335,10 +339,11 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		git_config_set("receive.denyNonFastforwards", "true");
 	}
 
-	printf("%s%s Git repository in %s/\n",
-		reinit ? "Reinitialized existing" : "Initialized empty",
-		shared_repository ? " shared" : "",
-		git_dir);
+	if (!quiet)
+		printf("%s%s Git repository in %s/\n",
+		       reinit ? "Reinitialized existing" : "Initialized empty",
+		       shared_repository ? " shared" : "",
+		       git_dir);
 
 	return 0;
 }

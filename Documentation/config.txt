@@ -117,6 +117,18 @@ core.fileMode::
 	the working copy are ignored; useful on broken filesystems like FAT.
 	See gitlink:git-update-index[1]. True by default.
 
+core.quotepath::
+	The commands that output paths (e.g. `ls-files`,
+	`diff`), when not given the `-z` option, will quote
+	"unusual" characters in the pathname by enclosing the
+	pathname in a double-quote pair and with backslashes the
+	same way strings in C source code are quoted.  If this
+	variable is set to false, the bytes higher than 0x80 are
+	not quoted but output as verbatim.  Note that double
+	quote, backslash and control characters are always
+	quoted without `-z` regardless of the setting of this
+	variable.
+
 core.autocrlf::
 	If true, makes git convert `CRLF` at the end of lines in text files to
 	`LF` when reading from the filesystem, and convert in reverse when
@@ -172,6 +184,13 @@ repository that ends in "/.git" is assumed to be not bare (bare =
 false), while all other repositories are assumed to be bare (bare
 = true).
 
+core.worktree::
+	Set the path to the working tree.  The value will not be
+	used in combination with repositories found automatically in
+	a .git directory (i.e. $GIT_DIR is not set).
+	This can be overriden by the GIT_WORK_TREE environment
+	variable and the '--work-tree' command line option.
+
 core.logAllRefUpdates::
 	Updates to a ref <ref> is logged to the file
 	"$GIT_DIR/logs/<ref>", by appending the new and old
@@ -204,23 +223,16 @@ core.warnAmbiguousRefs::
 	and might match multiple refs in the .git/refs/ tree. True by default.
 
 core.compression::
-	An integer -1..9, indicating the compression level for objects that
-	are not in a pack file. -1 is the zlib and git default. 0 means no
-	compression, and 1..9 are various speed/size tradeoffs, 9 being
-	slowest.
+	An integer -1..9, indicating a default compression level.
+	-1 is the zlib default. 0 means no compression,
+	and 1..9 are various speed/size tradeoffs, 9 being slowest.
 
-core.legacyheaders::
-	A boolean which
-	changes the format of loose objects so that they are more
-	efficient to pack and to send out of the repository over git
-	native protocol, since v1.4.2.  However, loose objects
-	written in the new format cannot be read by git older than
-	that version; people fetching from your repository using
-	older versions of git over dumb transports (e.g. http)
-	will also be affected.
-+
-To let git use the new loose object format, you have to
-set core.legacyheaders to false.
+core.loosecompression::
+	An integer -1..9, indicating the compression level for objects that
+	are not in a pack file. -1 is the zlib default. 0 means no
+	compression, and 1..9 are various speed/size tradeoffs, 9 being
+	slowest.  If not set,  defaults to core.compression.  If that is
+	not set,  defaults to 0 (best speed).
 
 core.packedGitWindowSize::
 	Number of bytes of a pack file to map into memory in a
@@ -263,7 +275,7 @@ You probably do not need to adjust this value.
 +
 Common unit suffixes of 'k', 'm', or 'g' are supported.
 
-core.excludeFile::
+core.excludesfile::
 	In addition to '.gitignore' (per-directory) and
 	'.git/info/exclude', git looks into this file for patterns
 	of files which are not meant to be tracked.  See
@@ -396,6 +408,11 @@ format.suffix::
 	The default for format-patch is to output files with the suffix
 	`.patch`. Use this variable to change that suffix (make sure to
 	include the dot if you want it).
+
+gc.aggressiveWindow::
+	The window size parameter used in the delta compression
+	algorithm used by 'git gc --aggressive'.  This defaults
+	to 10.
 
 gc.packrefs::
 	`git gc` does not run `git pack-refs` in a bare repository by
@@ -533,7 +550,7 @@ merge.summary::
 merge.tool::
 	Controls which merge resolution program is used by
 	gitlink:git-mergetool[l].  Valid values are: "kdiff3", "tkdiff",
-	"meld", "xxdiff", "emerge", "vimdiff", and "opendiff"
+	"meld", "xxdiff", "emerge", "vimdiff", "gvimdiff", and "opendiff".
 
 merge.verbosity::
 	Controls the amount of output shown by the recursive merge
@@ -562,6 +579,22 @@ pack.window::
 pack.depth::
 	The maximum delta depth used by gitlink:git-pack-objects[1] when no
 	maximum depth is given on the command line. Defaults to 50.
+
+pack.compression::
+	An integer -1..9, indicating the compression level for objects
+	in a pack file. -1 is the zlib default. 0 means no
+	compression, and 1..9 are various speed/size tradeoffs, 9 being
+	slowest.  If not set,  defaults to core.compression.  If that is
+	not set,  defaults to -1.
+
+pack.deltaCacheSize::
+	The maxium memory in bytes used for caching deltas in
+	gitlink:git-pack-objects[1].
+	A value of 0 means no limit. Defaults to 0.
+
+pack.deltaCacheLimit::
+	The maxium size of a delta, that is cached in
+	gitlink:git-pack-objects[1]. Defaults to 1000.
 
 pull.octopus::
 	The default merge strategy to use when pulling multiple branches
@@ -668,5 +701,3 @@ receive.denyNonFastForwards::
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
 	not set, the value of this variable is used instead.
-
-

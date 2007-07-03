@@ -146,8 +146,8 @@ STRIP ?= strip
 prefix = $(HOME)
 bindir = $(prefix)/bin
 gitexecdir = $(bindir)
-sharedir = $(prefix)/share/
-template_dir = $(sharedir)/git-core/templates/
+sharedir = $(prefix)/share
+template_dir = $(sharedir)/git-core/templates
 ifeq ($(prefix),/usr)
 sysconfdir = /etc
 else
@@ -204,14 +204,16 @@ SCRIPT_SH = \
 	git-fetch.sh \
 	git-ls-remote.sh \
 	git-merge-one-file.sh git-mergetool.sh git-parse-remote.sh \
-	git-pull.sh git-rebase.sh \
+	git-pull.sh git-rebase.sh git-rebase--interactive.sh \
 	git-repack.sh git-request-pull.sh git-reset.sh \
 	git-sh-setup.sh \
 	git-tag.sh git-verify-tag.sh \
-	git-applymbox.sh git-applypatch.sh git-am.sh \
+	git-am.sh \
 	git-merge.sh git-merge-stupid.sh git-merge-octopus.sh \
 	git-merge-resolve.sh git-merge-ours.sh \
-	git-lost-found.sh git-quiltimport.sh
+	git-lost-found.sh git-quiltimport.sh git-submodule.sh \
+	git-filter-branch.sh \
+	git-stash.sh
 
 SCRIPT_PERL = \
 	git-add--interactive.perl \
@@ -240,7 +242,6 @@ PROGRAMS = \
 	git-convert-objects$X git-fetch-pack$X \
 	git-hash-object$X git-index-pack$X git-local-fetch$X \
 	git-fast-import$X \
-	git-merge-base$X \
 	git-daemon$X \
 	git-merge-index$X git-mktag$X git-mktree$X git-patch-id$X \
 	git-peek-remote$X git-receive-pack$X \
@@ -298,7 +299,8 @@ LIB_H = \
 	diff.h object.h pack.h pkt-line.h quote.h refs.h list-objects.h sideband.h \
 	run-command.h strbuf.h tag.h tree.h git-compat-util.h revision.h \
 	tree-walk.h log-tree.h dir.h path-list.h unpack-trees.h builtin.h \
-	utf8.h reflog-walk.h patch-ids.h attr.h decorate.h progress.h mailmap.h
+	utf8.h reflog-walk.h patch-ids.h attr.h decorate.h progress.h \
+	mailmap.h remote.h
 
 DIFF_OBJS = \
 	diff.o diff-lib.o diffcore-break.o diffcore-order.o \
@@ -320,7 +322,7 @@ LIB_OBJS = \
 	write_or_die.o trace.o list-objects.o grep.o match-trees.o \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
 	color.o wt-status.o archive-zip.o archive-tar.o shallow.o utf8.o \
-	convert.o attr.o decorate.o progress.o mailmap.o symlinks.o
+	convert.o attr.o decorate.o progress.o mailmap.o symlinks.o remote.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -746,9 +748,13 @@ gitk-wish: gitk GIT-GUI-VARS
 	chmod +x $@+ && \
 	mv -f $@+ $@
 
-git$X: git.c common-cmds.h $(BUILTIN_OBJS) $(GITLIBS) GIT-CFLAGS
+git.o: git.c common-cmds.h GIT-CFLAGS
+	$(QUIET_CC)$(CC) -DGIT_VERSION='"$(GIT_VERSION)"' \
+		$(ALL_CFLAGS) -c $(filter %.c,$^)
+
+git$X: git.o $(BUILTIN_OBJS) $(GITLIBS)
 	$(QUIET_LINK)$(CC) -DGIT_VERSION='"$(GIT_VERSION)"' \
-		$(ALL_CFLAGS) -o $@ $(filter %.c,$^) \
+		$(ALL_CFLAGS) -o $@ $(filter %.c,$^) git.o \
 		$(BUILTIN_OBJS) $(ALL_LDFLAGS) $(LIBS)
 
 help.o: common-cmds.h
@@ -758,6 +764,8 @@ git-merge-subtree$X: git-merge-recursive$X
 
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)rm -f $@ && ln git$X $@
+
+common-cmds.h: ./generate-cmdlist.sh
 
 common-cmds.h: $(wildcard Documentation/git-*.txt)
 	$(QUIET_GEN)./generate-cmdlist.sh > $@+ && mv $@+ $@
@@ -856,6 +864,8 @@ git$X git.spec \
 
 %.o: %.c GIT-CFLAGS
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) $<
+%.s: %.c GIT-CFLAGS
+	$(QUIET_CC)$(CC) -S $(ALL_CFLAGS) $<
 %.o: %.S
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) $<
 
@@ -952,7 +962,7 @@ endif
 
 ### Testing rules
 
-TEST_PROGRAMS = test-chmtime$X test-genrandom$X
+TEST_PROGRAMS = test-chmtime$X test-genrandom$X test-date$X test-delta$X test-sha1$X test-match-trees$X
 
 all:: $(TEST_PROGRAMS)
 
@@ -965,26 +975,12 @@ export NO_SVN_TESTS
 test: all
 	$(MAKE) -C t/ all
 
-test-date$X: test-date.c date.o ctype.o
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) test-date.c date.o ctype.o
+test-date$X: date.o ctype.o
 
-test-delta$X: test-delta.o diff-delta.o patch-delta.o $(GITLIBS)
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
+test-delta$X: diff-delta.o patch-delta.o
 
-test-dump-cache-tree$X: dump-cache-tree.o $(GITLIBS)
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
-
-test-sha1$X: test-sha1.o $(GITLIBS)
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
-
-test-match-trees$X: test-match-trees.o $(GITLIBS)
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
-
-test-chmtime$X: test-chmtime.c
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $<
-
-test-genrandom$X: test-genrandom.c
-	$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $<
+test-%$X: test-%.o $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
 
 check-sha1:: test-sha1$X
 	./test-sha1.sh
@@ -992,7 +988,8 @@ check-sha1:: test-sha1$X
 check: common-cmds.h
 	for i in *.c; do sparse $(ALL_CFLAGS) $(SPARSE_FLAGS) $$i || exit; done
 
-
+remove-dashes:
+	./fixup-builtins $(BUILT_INS)
 
 ### Installation rules
 
@@ -1034,15 +1031,16 @@ git.spec: git.spec.in
 	mv $@+ $@
 
 GIT_TARNAME=git-$(GIT_VERSION)
-dist: git.spec git-archive
+dist: git.spec git-archive configure
 	./git-archive --format=tar \
 		--prefix=$(GIT_TARNAME)/ HEAD^{tree} > $(GIT_TARNAME).tar
 	@mkdir -p $(GIT_TARNAME)
-	@cp git.spec $(GIT_TARNAME)
+	@cp git.spec configure $(GIT_TARNAME)
 	@echo $(GIT_VERSION) > $(GIT_TARNAME)/version
 	@$(MAKE) -C git-gui TARDIR=../$(GIT_TARNAME)/git-gui dist-version
 	$(TAR) rf $(GIT_TARNAME).tar \
 		$(GIT_TARNAME)/git.spec \
+		$(GIT_TARNAME)/configure \
 		$(GIT_TARNAME)/version \
 		$(GIT_TARNAME)/git-gui/version
 	@rm -rf $(GIT_TARNAME)
@@ -1075,8 +1073,9 @@ dist-doc:
 
 clean:
 	rm -f *.o mozilla-sha1/*.o arm/*.o ppc/*.o compat/*.o xdiff/*.o \
-		test-chmtime$X test-genrandom$X $(LIB_FILE) $(XDIFF_LIB)
+		$(LIB_FILE) $(XDIFF_LIB)
 	rm -f $(ALL_PROGRAMS) $(BUILT_INS) git$X
+	rm -f $(TEST_PROGRAMS)
 	rm -f *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h TAGS tags
 	rm -rf autom4te.cache
 	rm -f configure config.log config.mak.autogen config.mak.append config.status config.cache

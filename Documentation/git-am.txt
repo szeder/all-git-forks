@@ -12,7 +12,7 @@ SYNOPSIS
 'git-am' [--signoff] [--dotest=<dir>] [--keep] [--utf8 | --no-utf8]
          [--3way] [--interactive] [--binary]
          [--whitespace=<option>] [-C<n>] [-p<n>]
-         <mbox>...
+         <mbox>|<Maildir>...
 'git-am' [--skip | --resolved]
 
 DESCRIPTION
@@ -23,9 +23,10 @@ current branch.
 
 OPTIONS
 -------
-<mbox>...::
+<mbox>|<Maildir>...::
 	The list of mailbox files to read patches from. If you do not
-	supply this argument, reads from the standard input.
+	supply this argument, reads from the standard input. If you supply
+	directories, they'll be treated as Maildirs.
 
 -s, --signoff::
 	Add `Signed-off-by:` line to the commit message, using
@@ -126,8 +127,7 @@ is terminated before the first occurrence of such a line.
 
 When initially invoking it, you give it names of the mailboxes
 to crunch.  Upon seeing the first patch that does not apply, it
-aborts in the middle, just like 'git-applymbox' does.  You can
-recover from this in one of two ways:
+aborts in the middle,.  You can recover from this in one of two ways:
 
 . skip the current patch by re-running the command with '--skip'
   option.
@@ -144,7 +144,7 @@ names.
 
 SEE ALSO
 --------
-gitlink:git-applymbox[1], gitlink:git-applypatch[1], gitlink:git-apply[1].
+gitlink:git-apply[1].
 
 
 Author
@@ -158,4 +158,3 @@ Documentation by Petr Baudis, Junio C Hamano and the git-list <git@vger.kernel.o
 GIT
 ---
 Part of the gitlink:git[7] suite
-

@@ -15,9 +15,9 @@ unless ($ENV{GIT_DIR} && -r $ENV{GIT_DIR}){
     die "GIT_DIR is not defined or is unreadable";
 }
 
-our ($opt_h, $opt_P, $opt_p, $opt_v, $opt_c, $opt_f, $opt_a, $opt_m, $opt_d);
+our ($opt_h, $opt_P, $opt_p, $opt_v, $opt_c, $opt_f, $opt_a, $opt_m, $opt_d, $opt_u);
 
-getopts('hPpvcfam:d:');
+getopts('uhPpvcfam:d:');
 
 $opt_h && usage();
 
@@ -178,6 +178,10 @@ foreach my $f (@files) {
 
 my %cvsstat;
 if (@canstatusfiles) {
+    if ($opt_u) {
+      my @updated = safe_pipe_capture(@cvs, 'update', @canstatusfiles);
+      print @updated;
+    }
     my @cvsoutput;
     @cvsoutput= safe_pipe_capture(@cvs, 'status', @canstatusfiles);
     my $matchcount = 0;
@@ -193,7 +197,7 @@ if (@canstatusfiles) {
 # ... validate new files,
 foreach my $f (@afiles) {
     if (defined ($cvsstat{$f}) and $cvsstat{$f} ne "Unknown") {
- 	$dirty = 1;
+	$dirty = 1;
 	warn "File $f is already known in your CVS checkout -- perhaps it has been added by another user. Or this may indicate that it exists on a different branch. If this is the case, use -f to force the merge.\n";
 	warn "Status was: $cvsstat{$f}\n";
     }

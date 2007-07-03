@@ -49,9 +49,8 @@ test_expect_success 'rebase --skip with --merge' '
 	'
 
 test_expect_success 'merge and reference trees equal' \
-	'test -z "`git-diff-tree skip-merge skip-reference`"'
+	'test -z "`git diff-tree skip-merge skip-reference`"'
 
 test_debug 'gitk --all & sleep 1'
 
 test_done
-

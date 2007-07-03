@@ -20,7 +20,7 @@ static inline int need_bs_quote(char c)
 	return (c == '\'' || c == '!');
 }
 
-size_t sq_quote_buf(char *dst, size_t n, const char *src)
+static size_t sq_quote_buf(char *dst, size_t n, const char *src)
 {
 	char c;
 	char *bp = dst;
@@ -60,18 +60,6 @@ void sq_quote_print(FILE *stream, const char *src)
 		}
 	}
 	fputc('\'', stream);
-}
-
-char *sq_quote(const char *src)
-{
-	char *buf;
-	size_t cnt;
-
-	cnt = sq_quote_buf(NULL, 0, src) + 1;
-	buf = xmalloc(cnt);
-	sq_quote_buf(buf, cnt, src);
-
-	return buf;
 }
 
 char *sq_quote_argv(const char** argv, int count)
@@ -200,7 +188,8 @@ static int quote_c_style_counted(const char *name, int namelen,
 #define EMITQ() EMIT('\\')
 
 	const char *sp;
-	int ch, count = 0, needquote = 0;
+	unsigned char ch;
+	int count = 0, needquote = 0;
 
 	if (!no_dq)
 		EMIT('"');
@@ -209,7 +198,7 @@ static int quote_c_style_counted(const char *name, int namelen,
 		if (!ch)
 			break;
 		if ((ch < ' ') || (ch == '"') || (ch == '\\') ||
-		    (ch >= 0177)) {
+		    (quote_path_fully && (ch >= 0177))) {
 			needquote = 1;
 			switch (ch) {
 			case '\a': EMITQ(); ch = 'a'; break;

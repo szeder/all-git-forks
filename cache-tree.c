@@ -326,7 +326,7 @@ static int update_one(struct cache_tree *it,
 			mode = ntohl(ce->ce_mode);
 			entlen = pathlen - baselen;
 		}
-		if (mode != S_IFDIRLNK && !missing_ok && !has_sha1_file(sha1))
+		if (mode != S_IFGITLINK && !missing_ok && !has_sha1_file(sha1))
 			return error("invalid object %s", sha1_to_hex(sha1));
 
 		if (!ce->ce_mode)
@@ -478,7 +478,7 @@ static struct cache_tree *read_one(const char **buffer, unsigned long *size_p)
 	if (0 <= it->entry_count) {
 		if (size < 20)
 			goto free_return;
-		hashcpy(it->sha1, (unsigned char*)buf);
+		hashcpy(it->sha1, (const unsigned char*)buf);
 		buf += 20;
 		size -= 20;
 	}

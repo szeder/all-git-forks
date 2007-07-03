@@ -61,7 +61,7 @@ do
 		quiet=--quiet
 		;;
 	-v|--verbose)
-		verbose=Yes
+		verbose="$verbose"Yes
 		;;
 	-k|--k|--ke|--kee|--keep)
 		keep='-k -k'
@@ -117,20 +117,20 @@ append_fetch_head () {
 	test -n "$verbose" && flags="$flags$LF-v"
 	test -n "$force$single_force" && flags="$flags$LF-f"
 	GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION" \
-		git-fetch--tool $flags append-fetch-head "$@"
+		git fetch--tool $flags append-fetch-head "$@"
 }
 
 # updating the current HEAD with git-fetch in a bare
 # repository is always fine.
 if test -z "$update_head_ok" && test $(is_bare_repository) = false
 then
-	orig_head=$(git-rev-parse --verify HEAD 2>/dev/null)
+	orig_head=$(git rev-parse --verify HEAD 2>/dev/null)
 fi
 
 # Allow --notags from remote.$1.tagopt
 case "$tags$no_tags" in
 '')
-	case "$(git-config --get "remote.$1.tagopt")" in
+	case "$(git config --get "remote.$1.tagopt")" in
 	--no-tags)
 		no_tags=t ;;
 	esac
@@ -146,7 +146,7 @@ if test "$tags"
 then
 	taglist=`IFS='	' &&
 		  echo "$ls_remote_result" |
-		  git-show-ref --exclude-existing=refs/tags/ |
+		  git show-ref --exclude-existing=refs/tags/ |
 	          while read sha1 name
 		  do
 			echo ".${name}:${name}"
@@ -163,18 +163,18 @@ fi
 
 fetch_all_at_once () {
 
-  eval=$(echo "$1" | git-fetch--tool parse-reflist "-")
+  eval=$(echo "$1" | git fetch--tool parse-reflist "-")
   eval "$eval"
 
     ( : subshell because we muck with IFS
       IFS=" 	$LF"
       (
 	if test "$remote" = . ; then
-	    git-show-ref $rref || echo failed "$remote"
+	    git show-ref $rref || echo failed "$remote"
 	elif test -f "$remote" ; then
 	    test -n "$shallow_depth" &&
 		die "shallow clone with bundle is not supported"
-	    git-bundle unbundle "$remote" $rref ||
+	    git bundle unbundle "$remote" $rref ||
 	    echo failed "$remote"
 	else
 		if	test -d "$remote" &&
@@ -190,19 +190,25 @@ fetch_all_at_once () {
 			# connected to our repository's tips, in which
 			# case we do not have to do any fetch.
 			theirs=$(echo "$ls_remote_result" | \
-				git-fetch--tool -s pick-rref "$rref" "-") &&
+				git fetch--tool -s pick-rref "$rref" "-") &&
 
 			# This will barf when $theirs reach an object that
 			# we do not have in our repository.  Otherwise,
 			# we already have everything the fetch would bring in.
-			git-rev-list --objects $theirs --not --all \
+			git rev-list --objects $theirs --not --all \
 				>/dev/null 2>/dev/null
 		then
 			echo "$ls_remote_result" | \
-				git-fetch--tool pick-rref "$rref" "-"
+				git fetch--tool pick-rref "$rref" "-"
 		else
+			flags=
+			case $verbose in
+			YesYes*)
+			    flags="-v"
+			    ;;
+			esac
 			git-fetch-pack --thin $exec $keep $shallow_depth \
-				$quiet $no_progress "$remote" $rref ||
+				$quiet $no_progress $flags "$remote" $rref ||
 			echo failed "$remote"
 		fi
 	fi
@@ -212,7 +218,7 @@ fetch_all_at_once () {
 	test -n "$verbose" && flags="$flags -v"
 	test -n "$force" && flags="$flags -f"
 	GIT_REFLOG_ACTION="$GIT_REFLOG_ACTION" \
-		git-fetch--tool $flags native-store \
+		git fetch--tool $flags native-store \
 			"$remote" "$remote_nick" "$refs"
       )
     ) || exit
@@ -259,13 +265,13 @@ fetch_per_ref () {
 	      curl_extra_args="-k"
 	  fi
 	  if [ -n "$GIT_CURL_FTP_NO_EPSV" -o \
-		"`git-config --bool http.noEPSV`" = true ]; then
+		"`git config --bool http.noEPSV`" = true ]; then
 	      noepsv_opt="--disable-epsv"
 	  fi
 
 	  # Find $remote_name from ls-remote output.
 	  head=$(echo "$ls_remote_result" | \
-		git-fetch--tool -s pick-rref "$remote_name" "-")
+		git fetch--tool -s pick-rref "$remote_name" "-")
 	  expr "z$head" : "z$_x40\$" >/dev/null ||
 		die "No such ref $remote_name at $remote"
 	  echo >&2 "Fetching $remote_name from $remote using $proto"
@@ -277,7 +283,7 @@ fetch_per_ref () {
 		die "shallow clone with rsync not supported"
 	  TMP_HEAD="$GIT_DIR/TMP_HEAD"
 	  rsync -L -q "$remote/$remote_name" "$TMP_HEAD" || exit 1
-	  head=$(git-rev-parse --verify TMP_HEAD)
+	  head=$(git rev-parse --verify TMP_HEAD)
 	  rm -f "$TMP_HEAD"
 	  case "$quiet" in '') v=-v ;; *) v= ;; esac
 	  test "$rsync_slurped_objects" || {
@@ -336,10 +342,10 @@ case "$no_tags$tags" in
 		# using local tracking branch.
 		taglist=$(IFS='	' &&
 		echo "$ls_remote_result" |
-		git-show-ref --exclude-existing=refs/tags/ |
+		git show-ref --exclude-existing=refs/tags/ |
 		while read sha1 name
 		do
-			git-cat-file -t "$sha1" >/dev/null 2>&1 || continue
+			git cat-file -t "$sha1" >/dev/null 2>&1 || continue
 			echo >&2 "Auto-following $name"
 			echo ".${name}:${name}"
 		done)
@@ -359,10 +365,10 @@ case "$orig_head" in
 '')
 	;;
 ?*)
-	curr_head=$(git-rev-parse --verify HEAD 2>/dev/null)
+	curr_head=$(git rev-parse --verify HEAD 2>/dev/null)
 	if test "$curr_head" != "$orig_head"
 	then
-	    git-update-ref \
+	    git update-ref \
 			-m "$GIT_REFLOG_ACTION: Undoing incorrectly fetched HEAD." \
 			HEAD "$orig_head"
 		die "Cannot fetch into the current branch."

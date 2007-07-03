@@ -117,7 +117,7 @@ static void show_other_files(struct dir_struct *dir)
 		if (0 <= pos)
 			continue;	/* exact match */
 		pos = -pos - 1;
-		if (pos < active_nr) { 
+		if (pos < active_nr) {
 			ce = active_cache[pos];
 			if (ce_namelen(ce) == len &&
 			    !memcmp(ce->name, ent->name, len))
@@ -470,7 +470,7 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 	}
 
 	if (require_work_tree &&
-			(is_bare_repository() || is_inside_git_dir()))
+			(!is_inside_work_tree() || is_inside_git_dir()))
 		die("This operation must be run in a work tree");
 
 	pathspec = get_pathspec(prefix, argv + i);

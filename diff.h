@@ -55,6 +55,7 @@ struct diff_options {
 		 full_index:1,
 		 silent_on_remove:1,
 		 find_copies_harder:1,
+		 follow_renames:1,
 		 color_diff:1,
 		 color_diff_words:1,
 		 has_changes:1,
@@ -154,8 +155,6 @@ extern void diff_unmerge(struct diff_options *,
 			 const char *path,
 			 unsigned mode,
 			 const unsigned char *sha1);
-
-extern int diff_scoreopt_parse(const char *opt);
 
 #define DIFF_SETUP_REVERSE      	1
 #define DIFF_SETUP_USE_CACHE		2

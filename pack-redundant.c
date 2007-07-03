@@ -81,7 +81,7 @@ static struct llist * llist_copy(struct llist *list)
 {
 	struct llist *ret;
 	struct llist_item *new, *old, *prev;
-	
+
 	llist_init(&ret);
 
 	if ((ret->size = list->size) == 0)
@@ -100,7 +100,7 @@ static struct llist * llist_copy(struct llist *list)
 	}
 	new->next = NULL;
 	ret->back = new;
-	
+
 	return ret;
 }
 
@@ -549,6 +549,9 @@ static struct pack_list * add_pack(struct packed_git *p)
 
 	l.pack = p;
 	llist_init(&l.all_objects);
+
+	if (open_pack_index(p))
+		return NULL;
 
 	base = p->index_data;
 	base += 256 * 4 + ((p->index_version < 2) ? 4 : 8);

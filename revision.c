@@ -114,12 +114,7 @@ void mark_parents_uninteresting(struct commit *commit)
 	}
 }
 
-void add_pending_object(struct rev_info *revs, struct object *obj, const char *name)
-{
-	add_pending_object_with_mode(revs, obj, name, S_IFINVALID);
-}
-
-void add_pending_object_with_mode(struct rev_info *revs, struct object *obj, const char *name, unsigned mode)
+static void add_pending_object_with_mode(struct rev_info *revs, struct object *obj, const char *name, unsigned mode)
 {
 	if (revs->no_walk && (obj->flags & UNINTERESTING))
 		die("object ranges do not make sense when not walking revisions");
@@ -127,6 +122,11 @@ void add_pending_object_with_mode(struct rev_info *revs, struct object *obj, con
 	if (revs->reflog_info && obj->type == OBJ_COMMIT)
 		add_reflog_for_walk(revs->reflog_info,
 				(struct commit *)obj, name);
+}
+
+void add_pending_object(struct rev_info *revs, struct object *obj, const char *name)
+{
+	add_pending_object_with_mode(revs, obj, name, S_IFINVALID);
 }
 
 static struct object *get_reference(struct rev_info *revs, const char *name, const unsigned char *sha1, unsigned int flags)
@@ -262,7 +262,7 @@ static void file_change(struct diff_options *options,
 	options->has_changes = 1;
 }
 
-int rev_compare_tree(struct rev_info *revs, struct tree *t1, struct tree *t2)
+static int rev_compare_tree(struct rev_info *revs, struct tree *t1, struct tree *t2)
 {
 	if (!t1)
 		return REV_TREE_NEW;
@@ -276,7 +276,7 @@ int rev_compare_tree(struct rev_info *revs, struct tree *t1, struct tree *t2)
 	return tree_difference;
 }
 
-int rev_same_tree_as_empty(struct rev_info *revs, struct tree *t1)
+static int rev_same_tree_as_empty(struct rev_info *revs, struct tree *t1)
 {
 	int retval;
 	void *tree;
@@ -667,7 +667,6 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	revs->min_age = -1;
 	revs->skip_count = -1;
 	revs->max_count = -1;
-	revs->subject_prefix = "PATCH";
 
 	revs->prune_fn = NULL;
 	revs->prune_data = NULL;
@@ -881,6 +880,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 	const char **unrecognized = argv + 1;
 	int left = 1;
 	int all_match = 0;
+	int regflags = 0;
 
 	/* First, search for "--" */
 	seen_dashdash = 0;
@@ -1152,6 +1152,14 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				add_message_grep(revs, arg+7);
 				continue;
 			}
+			if (!prefixcmp(arg, "--extended-regexp")) {
+				regflags |= REG_EXTENDED;
+				continue;
+			}
+			if (!prefixcmp(arg, "--regexp-ignore-case")) {
+				regflags |= REG_ICASE;
+				continue;
+			}
 			if (!strcmp(arg, "--all-match")) {
 				all_match = 1;
 				continue;
@@ -1201,6 +1209,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 		}
 	}
 
+	if (revs->grep_filter)
+		revs->grep_filter->regflags |= regflags;
+
 	if (show_merge)
 		prepare_show_merge(revs);
 	if (def && !revs->pending.nr) {
@@ -1218,7 +1229,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 
 	if (revs->prune_data) {
 		diff_tree_setup_paths(revs->prune_data, &revs->pruning);
-		revs->prune_fn = try_to_simplify_commit;
+		/* Can't prune commits with rename following: the paths change.. */
+		if (!revs->diffopt.follow_renames)
+			revs->prune_fn = try_to_simplify_commit;
 		if (!revs->full_diff)
 			diff_tree_setup_paths(revs->prune_data, &revs->diffopt);
 	}

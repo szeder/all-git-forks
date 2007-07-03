@@ -150,7 +150,7 @@ static struct ref_list *sort_ref_list(struct ref_list *list)
  * Future: need to be in "struct repository"
  * when doing a full libification.
  */
-struct cached_refs {
+static struct cached_refs {
 	char did_loose;
 	char did_packed;
 	struct ref_list *loose;
@@ -603,15 +603,20 @@ int get_ref_sha1(const char *ref, unsigned char *sha1)
 
 static inline int bad_ref_char(int ch)
 {
-	return (((unsigned) ch) <= ' ' ||
-		ch == '~' || ch == '^' || ch == ':' ||
-		/* 2.13 Pattern Matching Notation */
-		ch == '?' || ch == '*' || ch == '[');
+	if (((unsigned) ch) <= ' ' ||
+	    ch == '~' || ch == '^' || ch == ':')
+		return 1;
+	/* 2.13 Pattern Matching Notation */
+	if (ch == '?' || ch == '[') /* Unsupported */
+		return 1;
+	if (ch == '*') /* Supported at the end */
+		return 2;
+	return 0;
 }
 
 int check_ref_format(const char *ref)
 {
-	int ch, level;
+	int ch, level, bad_type;
 	const char *cp = ref;
 
 	level = 0;
@@ -622,13 +627,19 @@ int check_ref_format(const char *ref)
 			return -1; /* should not end with slashes */
 
 		/* we are at the beginning of the path component */
-		if (ch == '.' || bad_ref_char(ch))
+		if (ch == '.')
 			return -1;
+		bad_type = bad_ref_char(ch);
+		if (bad_type) {
+			return (bad_type == 2 && !*cp) ? -3 : -1;
+		}
 
 		/* scan the rest of the path component */
 		while ((ch = *cp++) != 0) {
-			if (bad_ref_char(ch))
-				return -1;
+			bad_type = bad_ref_char(ch);
+			if (bad_type) {
+				return (bad_type == 2 && !*cp) ? -3 : -1;
+			}
 			if (ch == '/')
 				break;
 			if (ch == '.' && *cp == '.')
@@ -736,19 +747,20 @@ static int is_refname_available(const char *ref, const char *oldref,
 	return 1;
 }
 
-static struct ref_lock *lock_ref_sha1_basic(const char *ref, const unsigned char *old_sha1, int *flag)
+static struct ref_lock *lock_ref_sha1_basic(const char *ref, const unsigned char *old_sha1, int flags, int *type_p)
 {
 	char *ref_file;
 	const char *orig_ref = ref;
 	struct ref_lock *lock;
 	struct stat st;
 	int last_errno = 0;
+	int type;
 	int mustexist = (old_sha1 && !is_null_sha1(old_sha1));
 
 	lock = xcalloc(1, sizeof(struct ref_lock));
 	lock->lock_fd = -1;
 
-	ref = resolve_ref(ref, lock->old_sha1, mustexist, flag);
+	ref = resolve_ref(ref, lock->old_sha1, mustexist, &type);
 	if (!ref && errno == EISDIR) {
 		/* we are trying to lock foo but we used to
 		 * have foo/bar which now does not exist;
@@ -761,8 +773,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *ref, const unsigned char
 			error("there are still refs under '%s'", orig_ref);
 			goto error_return;
 		}
-		ref = resolve_ref(orig_ref, lock->old_sha1, mustexist, flag);
+		ref = resolve_ref(orig_ref, lock->old_sha1, mustexist, &type);
 	}
+	if (type_p)
+	    *type_p = type;
 	if (!ref) {
 		last_errno = errno;
 		error("unable to resolve reference %s: %s",
@@ -780,10 +794,15 @@ static struct ref_lock *lock_ref_sha1_basic(const char *ref, const unsigned char
 
 	lock->lk = xcalloc(1, sizeof(struct lock_file));
 
+	if (flags & REF_NODEREF)
+		ref = orig_ref;
 	lock->ref_name = xstrdup(ref);
 	lock->orig_ref_name = xstrdup(orig_ref);
 	ref_file = git_path("%s", ref);
-	lock->force_write = lstat(ref_file, &st) && errno == ENOENT;
+	if (lstat(ref_file, &st) && errno == ENOENT)
+		lock->force_write = 1;
+	if ((flags & REF_NODEREF) && (type & REF_ISSYMREF))
+		lock->force_write = 1;
 
 	if (safe_create_leading_directories(ref_file)) {
 		last_errno = errno;
@@ -806,14 +825,14 @@ struct ref_lock *lock_ref_sha1(const char *ref, const unsigned char *old_sha1)
 	if (check_ref_format(ref))
 		return NULL;
 	strcpy(refpath, mkpath("refs/%s", ref));
-	return lock_ref_sha1_basic(refpath, old_sha1, NULL);
+	return lock_ref_sha1_basic(refpath, old_sha1, 0, NULL);
 }
 
-struct ref_lock *lock_any_ref_for_update(const char *ref, const unsigned char *old_sha1)
+struct ref_lock *lock_any_ref_for_update(const char *ref, const unsigned char *old_sha1, int flags)
 {
 	if (check_ref_format(ref) == -1)
 		return NULL;
-	return lock_ref_sha1_basic(ref, old_sha1, NULL);
+	return lock_ref_sha1_basic(ref, old_sha1, flags, NULL);
 }
 
 static struct lock_file packlock;
@@ -858,7 +877,7 @@ int delete_ref(const char *refname, const unsigned char *sha1)
 	struct ref_lock *lock;
 	int err, i, ret = 0, flag = 0;
 
-	lock = lock_ref_sha1_basic(refname, sha1, &flag);
+	lock = lock_ref_sha1_basic(refname, sha1, 0, &flag);
 	if (!lock)
 		return 1;
 	if (!(flag & REF_ISPACKED)) {
@@ -909,7 +928,7 @@ int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 	if (!is_refname_available(newref, oldref, get_loose_refs(), 0))
 		return 1;
 
-	lock = lock_ref_sha1_basic(renamed_ref, NULL, NULL);
+	lock = lock_ref_sha1_basic(renamed_ref, NULL, 0, NULL);
 	if (!lock)
 		return error("unable to lock %s", renamed_ref);
 	lock->force_write = 1;
@@ -963,7 +982,7 @@ int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 	}
 	logmoved = log;
 
-	lock = lock_ref_sha1_basic(newref, NULL, NULL);
+	lock = lock_ref_sha1_basic(newref, NULL, 0, NULL);
 	if (!lock) {
 		error("unable to lock %s for update", newref);
 		goto rollback;
@@ -979,7 +998,7 @@ int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 	return 0;
 
  rollback:
-	lock = lock_ref_sha1_basic(oldref, NULL, NULL);
+	lock = lock_ref_sha1_basic(oldref, NULL, 0, NULL);
 	if (!lock) {
 		error("unable to lock %s for rollback", oldref);
 		goto rollbacklog;
@@ -1087,8 +1106,7 @@ static int log_ref_write(const char *ref_name, const unsigned char *old_sha1,
 		len += sprintf(logrec + len - 1, "\t%.*s\n", msglen, msg) - 1;
 	written = len <= maxlen ? write_in_full(logfd, logrec, len) : -1;
 	free(logrec);
-	close(logfd);
-	if (written != len)
+	if (close(logfd) != 0 || written != len)
 		return error("Unable to append to %s", log_file);
 	return 0;
 }
@@ -1185,8 +1203,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 		goto error_free_return;
 	}
 	written = write_in_full(fd, ref, len);
-	close(fd);
-	if (written != len) {
+	if (close(fd) != 0 || written != len) {
 		error("Unable to write to %s", lockpath);
 		goto error_unlink_return;
 	}

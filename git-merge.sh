@@ -3,7 +3,7 @@
 # Copyright (c) 2005 Junio C Hamano
 #
 
-USAGE='[-n] [--no-commit] [--squash] [-s <strategy>] [-m=<merge-message>] <commit>+'
+USAGE='[-n] [--summary] [--no-commit] [--squash] [-s <strategy>] [-m=<merge-message>] <commit>+'
 
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
@@ -31,7 +31,7 @@ dropsave() {
 
 savestate() {
 	# Stash away any local modifications.
-	git-diff-index -z --name-only $head |
+	git diff-index -z --name-only $head |
 	cpio -0 -o >"$GIT_DIR/MERGE_SAVE"
 }
 
@@ -40,7 +40,7 @@ restorestate() {
 	then
 		git reset --hard $head >/dev/null
 		cpio -iuv <"$GIT_DIR/MERGE_SAVE"
-		git-update-index --refresh >/dev/null
+		git update-index --refresh >/dev/null
 	fi
 }
 
@@ -57,7 +57,7 @@ finish_up_to_date () {
 squash_message () {
 	echo Squashed commit of the following:
 	echo
-	git-log --no-merges ^"$head" $remote
+	git log --no-merges ^"$head" $remote
 }
 
 finish () {
@@ -79,7 +79,7 @@ finish () {
 			echo "No merge message -- not updating HEAD"
 			;;
 		*)
-			git-update-ref -m "$rlogm" HEAD "$1" "$head" || exit 1
+			git update-ref -m "$rlogm" HEAD "$1" "$head" || exit 1
 			;;
 		esac
 		;;
@@ -88,24 +88,24 @@ finish () {
 	'')
 		;;
 	?*)
-		case "$no_summary" in
-		'')
-			git-diff-tree --stat --summary -M "$head" "$1"
-			;;
-		esac
+		if test "$show_diffstat" = t
+		then
+			# We want color (if set), but no pager
+			GIT_PAGER='' git diff --stat --summary -M "$head" "$1"
+		fi
 		;;
 	esac
 }
 
 merge_name () {
 	remote="$1"
-	rh=$(git-rev-parse --verify "$remote^0" 2>/dev/null) || return
-	bh=$(git-show-ref -s --verify "refs/heads/$remote" 2>/dev/null)
+	rh=$(git rev-parse --verify "$remote^0" 2>/dev/null) || return
+	bh=$(git show-ref -s --verify "refs/heads/$remote" 2>/dev/null)
 	if test "$rh" = "$bh"
 	then
 		echo "$rh		branch '$remote' of ."
 	elif truname=$(expr "$remote" : '\(.*\)~[1-9][0-9]*$') &&
-		git-show-ref -q --verify "refs/heads/$truname" 2>/dev/null
+		git show-ref -q --verify "refs/heads/$truname" 2>/dev/null
 	then
 		echo "$rh		branch '$truname' (early part) of ."
 	elif test "$remote" = "FETCH_HEAD" -a -r "$GIT_DIR/FETCH_HEAD"
@@ -125,7 +125,9 @@ do
 	case "$1" in
 	-n|--n|--no|--no-|--no-s|--no-su|--no-sum|--no-summ|\
 		--no-summa|--no-summar|--no-summary)
-		no_summary=t ;;
+		show_diffstat=false ;;
+	--summary)
+		show_diffstat=t ;;
 	--sq|--squ|--squa|--squas|--squash)
 		squash=t no_commit=t ;;
 	--no-c|--no-co|--no-com|--no-comm|--no-commi|--no-commit)
@@ -167,6 +169,11 @@ do
 	shift
 done
 
+if test -z "$show_diffstat"; then
+    test "$(git config --bool merge.diffstat)" = false && show_diffstat=false
+    test -z "$show_diffstat" && show_diffstat=t
+fi
+
 # This could be traditional "merge <msg> HEAD <commit>..."  and the
 # way we can tell it is to see if the second token is HEAD, but some
 # people might have misused the interface and used a committish that
@@ -174,15 +181,15 @@ done
 # have "-m" so it is an additional safety measure to check for it.
 
 if test -z "$have_message" &&
-	second_token=$(git-rev-parse --verify "$2^0" 2>/dev/null) &&
-	head_commit=$(git-rev-parse --verify "HEAD" 2>/dev/null) &&
+	second_token=$(git rev-parse --verify "$2^0" 2>/dev/null) &&
+	head_commit=$(git rev-parse --verify "HEAD" 2>/dev/null) &&
 	test "$second_token" = "$head_commit"
 then
 	merge_msg="$1"
 	shift
 	head_arg="$1"
 	shift
-elif ! git-rev-parse --verify HEAD >/dev/null 2>&1
+elif ! git rev-parse --verify HEAD >/dev/null 2>&1
 then
 	# If the merged head is a valid one there is no reason to
 	# forbid "git merge" into a branch yet to be born.  We do
@@ -196,8 +203,8 @@ then
 	rh=$(git rev-parse --verify "$1^0") ||
 		die "$1 - not something we can merge"
 
-	git-update-ref -m "initial pull" HEAD "$rh" "" &&
-	git-read-tree --reset -u HEAD
+	git update-ref -m "initial pull" HEAD "$rh" "" &&
+	git read-tree --reset -u HEAD
 	exit
 
 else
@@ -212,11 +219,11 @@ else
 	merge_name=$(for remote
 		do
 			merge_name "$remote"
-		done | git-fmt-merge-msg
+		done | git fmt-merge-msg
 	)
 	merge_msg="${merge_msg:+$merge_msg$LF$LF}$merge_name"
 fi
-head=$(git-rev-parse --verify "$head_arg"^0) || usage
+head=$(git rev-parse --verify "$head_arg"^0) || usage
 
 # All the rest are remote heads
 test "$#" = 0 && usage ;# we need at least one remote head.
@@ -225,7 +232,7 @@ set_reflog_action "merge $*"
 remoteheads=
 for remote
 do
-	remotehead=$(git-rev-parse --verify "$remote"^0 2>/dev/null) ||
+	remotehead=$(git rev-parse --verify "$remote"^0 2>/dev/null) ||
 	    die "$remote - not something we can merge"
 	remoteheads="${remoteheads}$remotehead "
 	eval GITHEAD_$remotehead='"$remote"'
@@ -237,7 +244,7 @@ case "$use_strategies" in
 '')
 	case "$#" in
 	1)
-		var="`git-config --get pull.twohead`"
+		var="`git config --get pull.twohead`"
 		if test -n "$var"
 		then
 			use_strategies="$var"
@@ -245,7 +252,7 @@ case "$use_strategies" in
 			use_strategies="$default_twohead_strategies"
 		fi ;;
 	*)
-		var="`git-config --get pull.octopus`"
+		var="`git config --get pull.octopus`"
 		if test -n "$var"
 		then
 			use_strategies="$var"
@@ -271,10 +278,10 @@ done
 
 case "$#" in
 1)
-	common=$(git-merge-base --all $head "$@")
+	common=$(git merge-base --all $head "$@")
 	;;
 *)
-	common=$(git-show-branch --merge-base $head "$@")
+	common=$(git show-branch --merge-base $head "$@")
 	;;
 esac
 echo "$head" >"$GIT_DIR/ORIG_HEAD"
@@ -294,15 +301,15 @@ f,*)
 	;;
 ?,1,"$head",*)
 	# Again the most common case of merging one remote.
-	echo "Updating $(git-rev-parse --short $head)..$(git-rev-parse --short $1)"
-	git-update-index --refresh 2>/dev/null
+	echo "Updating $(git rev-parse --short $head)..$(git rev-parse --short $1)"
+	git update-index --refresh 2>/dev/null
 	msg="Fast forward"
 	if test -n "$have_message"
 	then
 		msg="$msg (no commit created; -m option ignored)"
 	fi
-	new_head=$(git-rev-parse --verify "$1^0") &&
-	git-read-tree -v -m -u --exclude-per-directory=.gitignore $head "$new_head" &&
+	new_head=$(git rev-parse --verify "$1^0") &&
+	git read-tree -v -m -u --exclude-per-directory=.gitignore $head "$new_head" &&
 	finish "$new_head" "$msg" || exit
 	dropsave
 	exit 0
@@ -314,7 +321,7 @@ f,*)
 ?,1,*,)
 	# We are not doing octopus, not fast forward, and have only
 	# one common.
-	git-update-index --refresh 2>/dev/null
+	git update-index --refresh 2>/dev/null
 	case " $use_strategies " in
 	*' recursive '*|*' recur '*)
 		: run merge later
@@ -323,13 +330,13 @@ f,*)
 		# See if it is really trivial.
 		git var GIT_COMMITTER_IDENT >/dev/null || exit
 		echo "Trying really trivial in-index merge..."
-		if git-read-tree --trivial -m -u -v $common $head "$1" &&
-		   result_tree=$(git-write-tree)
+		if git read-tree --trivial -m -u -v $common $head "$1" &&
+		   result_tree=$(git write-tree)
 		then
 			echo "Wonderful."
 			result_commit=$(
 				printf '%s\n' "$merge_msg" |
-				git-commit-tree $result_tree -p HEAD -p "$1"
+				git commit-tree $result_tree -p HEAD -p "$1"
 			) || exit
 			finish "$result_commit" "In-index merge"
 			dropsave
@@ -343,7 +350,7 @@ f,*)
 	up_to_date=t
 	for remote
 	do
-		common_one=$(git-merge-base --all $head $remote)
+		common_one=$(git merge-base --all $head $remote)
 		if test "$common_one" != "$remote"
 		then
 			up_to_date=f
@@ -412,8 +419,8 @@ do
 	if test "$exit" -eq 1
 	then
 	    cnt=`{
-		git-diff-files --name-only
-		git-ls-files --unmerged
+		git diff-files --name-only
+		git ls-files --unmerged
 	    } | wc -l`
 	    if test $best_cnt -le 0 -o $cnt -le $best_cnt
 	    then
@@ -425,15 +432,15 @@ do
     }
 
     # Automerge succeeded.
-    result_tree=$(git-write-tree) && break
+    result_tree=$(git write-tree) && break
 done
 
 # If we have a resulting tree, that means the strategy module
 # auto resolved the merge cleanly.
 if test '' != "$result_tree"
 then
-    parents=$(git-show-branch --independent "$head" "$@" | sed -e 's/^/-p /')
-    result_commit=$(printf '%s\n' "$merge_msg" | git-commit-tree $result_tree $parents) || exit
+    parents=$(git show-branch --independent "$head" "$@" | sed -e 's/^/-p /')
+    result_commit=$(printf '%s\n' "$merge_msg" | git commit-tree $result_tree $parents) || exit
     finish "$result_commit" "Merge made by $wt_strategy."
     dropsave
     exit 0
@@ -491,7 +498,7 @@ Conflicts:
 	} >>"$GIT_DIR/MERGE_MSG"
 	if test -d "$GIT_DIR/rr-cache"
 	then
-		git-rerere
+		git rerere
 	fi
 	die "Automatic merge failed; fix conflicts and then commit the result."
 fi
