@@ -96,7 +96,7 @@ ifndef V
 	REMOVE_F1 = && echo '   ' REMOVE `basename "$$dst"` && $(RM_RF) "$$dst"
 endif
 
-TCLTK_PATH ?= wish
+TCLTK_PATH ?= wish84
 ifeq (./,$(dir $(TCLTK_PATH)))
 	TCL_PATH ?= $(subst wish,tclsh,$(TCLTK_PATH))
 else
