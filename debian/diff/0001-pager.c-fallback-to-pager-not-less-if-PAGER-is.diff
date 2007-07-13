@@ -1,4 +1,4 @@
-From 7c85e9c37b50eb809530e7b06a74cda5afdaad70 Mon Sep 17 00:00:00 2001
+From 556e26c6ef71fa50945f81998eaf1cb716097269 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Wed, 9 May 2007 08:36:16 +0000
 Subject: [PATCH] pager.c: fallback to 'pager' not 'less' if $PAGER is unset.
@@ -22,5 +22,5 @@ index 5f280ab..35202d3 100644
  		return;
  
 -- 
-1.5.2.2
+1.5.2.3
 
