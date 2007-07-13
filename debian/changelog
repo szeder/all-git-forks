@@ -1,4 +1,4 @@
-git-core (1:1.5.2.4-0) unstable; urgency=low
+git-core (1:1.5.2.4-1) unstable; urgency=low
 
   * new upstream point release.
   * debian/rules: add ASCIIDOC8=YesPlease to OPTS (closes: #432560).
@@ -7,8 +7,9 @@ git-core (1:1.5.2.4-0) unstable; urgency=low
     remove; merged upstream.
   * debian/control: Build-Depends: libcurl4-gnutls-dev | libcurl3-gnutsl-dev
     (closes: #432812).
+  * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 14:06:42 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 14:49:59 +0000
 
 git-core (1:1.5.2.3-1) unstable; urgency=low
 
