@@ -3,6 +3,7 @@
 
 USAGE='[ | list | show | apply | clear]'
 
+SUBDIRECTORY_OK=Yes
 . git-sh-setup
 require_work_tree
 
@@ -23,6 +24,8 @@ clear_stash () {
 }
 
 save_stash () {
+	stash_msg="$1"
+
 	if no_changes
 	then
 		echo >&2 'No local changes to save'
@@ -55,11 +58,11 @@ save_stash () {
 
 	# state of the working tree
 	w_tree=$( (
+		rm -f "$TMP-index" &&
+		cp -p ${GIT_INDEX_FILE-"$GIT_DIR/index"} "$TMP-index" &&
 		GIT_INDEX_FILE="$TMP-index" &&
 		export GIT_INDEX_FILE &&
-
-		rm -f "$TMP-index" &&
-		git read-tree $i_tree &&
+		git read-tree -m $i_tree &&
 		git add -u &&
 		git write-tree &&
 		rm -f "$TMP-index"
@@ -67,13 +70,19 @@ save_stash () {
 		die "Cannot save the current worktree state"
 
 	# create the stash
-	w_commit=$(printf 'WIP on %s' "$msg" |
+	if test -z "$stash_msg"
+	then
+		stash_msg=$(printf 'WIP on %s' "$msg")
+	else
+		stash_msg=$(printf 'On %s: %s' "$branch" "$stash_msg")
+	fi
+	w_commit=$(printf '%s\n' "$stash_msg" |
 		git commit-tree $w_tree -p $b_commit -p $i_commit) ||
 		die "Cannot record working tree state"
 
-	git update-ref -m "$msg" $ref_stash $w_commit ||
+	git update-ref -m "$stash_msg" $ref_stash $w_commit ||
 		die "Cannot save the current status"
-	printf >&2 'Saved WIP on %s\n' "$msg"
+	printf >&2 'Saved "%s"\n' "$stash_msg"
 }
 
 have_stash () {
@@ -103,6 +112,13 @@ apply_stash () {
 	git diff-files --quiet ||
 		die 'Cannot restore on top of a dirty state'
 
+	unstash_index=
+	case "$1" in
+	--index)
+		unstash_index=t
+		shift
+	esac
+
 	# current index state
 	c_tree=$(git write-tree) ||
 		die 'Cannot apply a stash in the middle of a merge'
@@ -111,6 +127,15 @@ apply_stash () {
 	w_tree=$(git rev-parse --verify "$s:") &&
 	b_tree=$(git rev-parse --verify "$s^:") ||
 		die "$*: no valid stashed state found"
+
+	test -z "$unstash_index" || {
+		git diff --binary $s^2^..$s^2 | git apply --cached
+		test $? -ne 0 &&
+			die 'Conflicts in index. Try without --index.'
+		unstashed_index_tree=$(git-write-tree) ||
+			die 'Could not save index tree'
+		git reset
+	}
 
 	eval "
 		GITHEAD_$w_tree='Stashed changes' &&
@@ -129,9 +154,12 @@ apply_stash () {
 			die "Cannot unstage modified files"
 		git-status
 		rm -f "$a"
+		test -z "$unstash_index" || git read-tree $unstashed_index_tree
 	else
 		# Merge conflict; keep the exit status from merge-recursive
-		exit
+		status=$?
+		test -z "$unstash_index" || echo 'Index was not unstashed.' >&2
+		exit $status
 	fi
 }
 
@@ -157,9 +185,14 @@ apply)
 clear)
 	clear_stash
 	;;
-save | '')
-	save_stash && git-reset --hard
+help | usage)
+	usage
 	;;
 *)
-	usage
+	if test $# -gt 0 && test "$1" = save
+	then
+		shift
+	fi
+	save_stash "$*" && git-reset --hard
+	;;
 esac

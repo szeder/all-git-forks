@@ -521,7 +521,10 @@ typedef int (*config_fn_t)(const char *, const char *);
 extern int git_default_config(const char *, const char *);
 extern int git_config_from_file(config_fn_t fn, const char *);
 extern int git_config(config_fn_t fn);
+extern int git_parse_long(const char *, long *);
+extern int git_parse_ulong(const char *, unsigned long *);
 extern int git_config_int(const char *, const char *);
+extern unsigned long git_config_ulong(const char *, const char *);
 extern int git_config_bool(const char *, const char *);
 extern int git_config_set(const char *, const char *);
 extern int git_config_set_multivar(const char *, const char *, const char *, int);
@@ -546,6 +549,7 @@ extern int write_or_whine_pipe(int fd, const void *buf, size_t count, const char
 
 /* pager.c */
 extern void setup_pager(void);
+extern char *pager_program;
 extern int pager_in_use;
 extern int pager_use_color;
 

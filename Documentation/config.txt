@@ -281,6 +281,10 @@ core.excludesfile::
 	of files which are not meant to be tracked.  See
 	gitlink:gitignore[5].
 
+core.pager::
+	The command that git will use to paginate output.  Can be overridden
+	with the `GIT_PAGER` environment variable.
+
 alias.*::
 	Command aliases for the gitlink:git[1] command wrapper - e.g.
 	after defining "alias.last = cat-file commit HEAD", the invocation
@@ -444,6 +448,11 @@ gc.rerereunresolved::
 	kept for this many days when `git rerere gc` is run.
 	The default is 15 days.  See gitlink:git-rerere[1].
 
+rerere.enabled::
+	Activate recording of resolved conflicts, so that identical
+	conflict hunks can be resolved automatically, should they
+	be encountered again.  See gitlink:git-rerere[1].
+
 gitcvs.enabled::
 	Whether the cvs server interface is enabled for this repository.
 	See gitlink:git-cvsserver[1].
@@ -579,6 +588,12 @@ pack.window::
 pack.depth::
 	The maximum delta depth used by gitlink:git-pack-objects[1] when no
 	maximum depth is given on the command line. Defaults to 50.
+
+pack.windowMemory::
+	The window memory size limit used by gitlink:git-pack-objects[1]
+	when no limit is given on the command line.  The value can be
+	suffixed with "k", "m", or "g".  Defaults to 0, meaning no
+	limit.
 
 pack.compression::
 	An integer -1..9, indicating the compression level for objects

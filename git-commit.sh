@@ -458,16 +458,18 @@ fi | git stripspace >"$GIT_DIR"/COMMIT_EDITMSG
 
 case "$signoff" in
 t)
-	need_blank_before_signoff=
+	sign=$(git-var GIT_COMMITTER_IDENT | sed -e '
+		s/>.*/>/
+		s/^/Signed-off-by: /
+		')
+	blank_before_signoff=
 	tail -n 1 "$GIT_DIR"/COMMIT_EDITMSG |
-	grep 'Signed-off-by:' >/dev/null || need_blank_before_signoff=yes
-	{
-		test -z "$need_blank_before_signoff" || echo
-		git-var GIT_COMMITTER_IDENT | sed -e '
-			s/>.*/>/
-			s/^/Signed-off-by: /
-		'
-	} >>"$GIT_DIR"/COMMIT_EDITMSG
+	grep 'Signed-off-by:' >/dev/null || blank_before_signoff='
+'
+	tail -n 1 "$GIT_DIR"/COMMIT_EDITMSG |
+	grep "$sign"$ >/dev/null ||
+	printf '%s%s\n' "$blank_before_signoff" "$sign" \
+		>>"$GIT_DIR"/COMMIT_EDITMSG
 	;;
 esac
 
@@ -610,10 +612,7 @@ rm -f "$GIT_DIR/COMMIT_MSG" "$GIT_DIR/COMMIT_EDITMSG" "$GIT_DIR/SQUASH_MSG"
 
 cd_to_toplevel
 
-if test -d "$GIT_DIR/rr-cache"
-then
-	git rerere
-fi
+git rerere
 
 if test "$ret" = 0
 then

@@ -23,6 +23,9 @@ REWRITTEN="$DOTEST"/rewritten
 PRESERVE_MERGES=
 STRATEGY=
 VERBOSE=
+test -d "$REWRITTEN" && PRESERVE_MERGES=t
+test -f "$DOTEST"/strategy && STRATEGY="$(cat "$DOTEST"/strategy)"
+test -f "$DOTEST"/verbose && VERBOSE=t
 
 warn () {
 	echo "$*" >&2
@@ -59,6 +62,10 @@ make_patch () {
 }
 
 die_with_patch () {
+	test -f "$DOTEST"/message ||
+		git cat-file commit $sha1 | sed "1,/^$/d" > "$DOTEST"/message
+	test -f "$DOTEST"/author-script ||
+		get_author_ident_from_commit $sha1 > "$DOTEST"/author-script
 	make_patch "$1"
 	die "$2"
 }
@@ -140,10 +147,7 @@ pick_one_preserving_merges () {
 			if ! git merge $STRATEGY -m "$msg" $new_parents
 			then
 				echo "$msg" > "$GIT_DIR"/MERGE_MSG
-				warn Error redoing merge $sha1
-				warn
-				warn After fixup, please use
-				die "$author_script git commit"
+				die Error redoing merge $sha1
 			fi
 			;;
 		*)
@@ -154,11 +158,12 @@ pick_one_preserving_merges () {
 }
 
 do_next () {
+	test -f "$DOTEST"/message && rm "$DOTEST"/message
+	test -f "$DOTEST"/author-script && rm "$DOTEST"/author-script
 	read command sha1 rest < "$TODO"
 	case "$command" in
 	\#|'')
 		mark_action_done
-		continue
 		;;
 	pick)
 		comment_for_reflog pick
@@ -201,6 +206,7 @@ do_next () {
 		git cat-file commit $sha1 | sed -e '1,/^$/d' >> "$MSG"
 		git reset --soft HEAD^
 		author_script=$(get_author_ident_from_commit $sha1)
+		echo "$author_script" > "$DOTEST"/author-script
 		case $failed in
 		f)
 			# This is like --amend, but with a different message
@@ -212,10 +218,6 @@ do_next () {
 			cp "$MSG" "$GIT_DIR"/MERGE_MSG
 			warn
 			warn "Could not apply $sha1... $rest"
-			warn "After you fixed that, commit the result with"
-			warn
-			warn "  $(echo $author_script | tr '\012' ' ') \\"
-			warn "	  git commit -F \"$GIT_DIR\"/MERGE_MSG -e"
 			die_with_patch $sha1 ""
 		esac
 		;;
@@ -240,7 +242,10 @@ do_next () {
 	fi &&
 	message="$GIT_REFLOG_ACTION: $HEADNAME onto $SHORTONTO)" &&
 	git update-ref -m "$message" $HEADNAME $NEWHEAD $OLDHEAD &&
-	git symbolic-ref HEAD $HEADNAME &&
+	git symbolic-ref HEAD $HEADNAME && {
+		test ! -f "$DOTEST"/verbose ||
+			git diff --stat $(cat "$DOTEST"/head)..HEAD
+	} &&
 	rm -rf "$DOTEST" &&
 	warn "Successfully rebased and updated $HEADNAME."
 
@@ -252,9 +257,6 @@ do_rest () {
 	do
 		do_next
 	done
-	test -f "$DOTEST"/verbose &&
-		git diff --stat $(cat "$DOTEST"/head)..HEAD
-	exit
 }
 
 while case $# in 0) break ;; esac
@@ -264,6 +266,15 @@ do
 		comment_for_reflog continue
 
 		test -d "$DOTEST" || die "No interactive rebase running"
+
+		# commit if necessary
+		git rev-parse --verify HEAD > /dev/null &&
+		git update-index --refresh &&
+		git diff-files --quiet &&
+		! git diff-index --cached --quiet HEAD &&
+		. "$DOTEST"/author-script &&
+		export GIT_AUTHOR_NAME GIT_AUTHOR_NAME GIT_AUTHOR_DATE &&
+		git commit -F "$DOTEST"/message -e
 
 		require_clean_work_tree
 		do_rest
@@ -358,6 +369,7 @@ do
 		echo $HEAD > "$DOTEST"/head
 		echo $UPSTREAM > "$DOTEST"/upstream
 		echo $ONTO > "$DOTEST"/onto
+		test -z "$STRATEGY" || echo "$STRATEGY" > "$DOTEST"/strategy
 		test t = "$VERBOSE" && : > "$DOTEST"/verbose
 		if [ t = "$PRESERVE_MERGES" ]
 		then
@@ -389,6 +401,9 @@ do
 #  pick = use commit
 #  edit = use commit, but stop for amending
 #  squash = use commit, but meld into previous commit
+#
+# If you remove a line here THAT COMMIT WILL BE LOST.
+#
 EOF
 		git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
 			--abbrev=7 --reverse $UPSTREAM..$HEAD | \
