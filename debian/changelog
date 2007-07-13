@@ -3,8 +3,10 @@ git-core (1:1.5.2.4-0) unstable; urgency=low
   * new upstream point release.
   * debian/rules: add ASCIIDOC8=YesPlease to OPTS (closes: #432560).
   * debian/control: Build-Depends: asciidoc (>> 8.0.0).
+  * debian/diff/????-git-gui-properly-popup-error-if-gitk-should-be-start.diff:
+    remove; merged upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 13:56:57 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 13:58:55 +0000
 
 git-core (1:1.5.2.3-1) unstable; urgency=low
 

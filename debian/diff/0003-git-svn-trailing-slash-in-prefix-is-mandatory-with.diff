@@ -1,4 +1,4 @@
-From c4db87f9fdd700905b1404ecb9da2f892e22e9e8 Mon Sep 17 00:00:00 2001
+From f2dfc68fac1caf8fa917f5bf0f00550769b46adc Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 18 Jun 2007 21:50:21 +0000
 Subject: [PATCH] git-svn: trailing slash in prefix is mandatory with --branches/-b
@@ -39,5 +39,5 @@ index c0d7d95..0a210e4 100644
  'fetch'::
  	Fetch unfetched revisions from the Subversion remote we are
 -- 
-1.5.2.2
+1.5.2.3
 
