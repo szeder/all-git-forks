@@ -7,12 +7,13 @@ git-core (1:1.5.3~rc1-1) unstable; urgency=low
   * merge branch debian-sid.
   * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 15:11:37 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 19:16:36 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 
   * new upstream point release.
-  * debian/rules: add ASCIIDOC8=YesPlease to OPTS (closes: #432560).
+  * debian/rules: build documentation with ASCIIDOC8=YesPlease (closes:
+    #432560).
   * debian/control: Build-Depends: asciidoc (>> 8.0.0).
   * debian/diff/????-git-gui-properly-popup-error-if-gitk-should-be-start.diff:
     remove; merged upstream.
@@ -20,7 +21,7 @@ git-core (1:1.5.2.4-1) unstable; urgency=low
     (closes: #432812).
   * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 14:49:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 19:13:38 +0000
 
 git-core (1:1.5.3~rc0-1) experimental; urgency=low
 
