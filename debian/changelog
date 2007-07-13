@@ -1,12 +1,13 @@
-git-core (1:1.5.3~rc1-0) unstable; urgency=low
+git-core (1:1.5.3~rc1-1) unstable; urgency=low
 
   * new upstream release candidate.
     * git-commit: don't add multiple Signed-off-by: from the same identity
       (closes: #430851).
     * Fix core.sharedRepository = 2 (closes: #432698).
   * merge branch debian-sid.
+  * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 15:07:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 13 Jul 2007 15:11:37 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 

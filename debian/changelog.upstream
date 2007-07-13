@@ -1,4 +1,244 @@
-Version v1.5.3-rc0; changes since v1.5.2.3:
+Version v1.5.3-rc1; changes since v1.5.3-rc0:
+---------------------------------------------
+
+Alecs King (1):
+      fix remote.origin.url in tutorial.txt
+
+Alex Riesen (4):
+      Handle missing prefix for "Subject:" as if no prefix given
+      Handle format.subjectprefix for every command which accepts --pretty
+      Fix t5516 to create test repo without hooks
+      Add -v|--verbose to git remote to show remote url
+
+Andrew Ruder (2):
+      Remove USE_PAGER from git-pickaxe and git-annotate
+      Add urls.txt to git-clone man page
+
+Andy Parkins (1):
+      user-manual: grammar and style fixes
+
+Brian Downing (10):
+      pack-objects: Prefer shallower deltas if the size is equal
+      gitk: Fix for tree view ending in nested directories
+      Pack information tool
+      Correct shebang line for contrib/stats/packinfo.pl
+      Don't try to delta if target is much smaller than source
+      Support fetching the memory usage of a delta index
+      Add functions for parsing integers with size suffixes
+      Add pack-objects window memory usage limit
+      Add --window-memory option to git-repack
+      Add documentation for --window-memory, pack.windowMemory
+
+Brian Gernhardt (1):
+      Add core.pager config variable.
+
+CJ van den Berg (1):
+      git-submodule: Fix two instances of the same typo
+
+Carlos Rica (5):
+      t7004: Skip tests for signed tags in an old version of gpg.
+      t0030: Remove repeated instructions and add missing &&
+      t0030: Add tests with consecutive text lines and others with spaces added.
+      t7004: Add tests for the git tag -n option.
+      Function stripspace now gets a buffer instead file descriptors.
+
+Daniel Barkalow (2):
+      Add allocation and freeing functions for struct refs
+      Some cosmetic changes to remote library
+
+David Kastrup (1):
+      Add missing functions to contrib/emacs/vc-git.el
+
+Eric Wong (1):
+      git-svn: fix blocking with svn:// servers after do_switch
+
+Frank Lichtenheld (1):
+      cvsserver: always initialize state in argsplit()
+
+Gerrit Pape (2):
+      git-gui: properly popup error if gitk should be started but is not installed
+      git-commit: don't add multiple Signed-off-by: from the same identity
+
+J. Bruce Fields (2):
+      tutorial: Fix typo
+      user-manual: more explanation of push and pull usage
+
+James Bowes (1):
+      stash: allow running from a subdirectory
+
+Jim Meyering (1):
+      Don't smash stack when $GIT_ALTERNATE_OBJECT_DIRECTORIES is too long
+
+Johannes Schindelin (24):
+      diff --no-index: fix --name-status with added files
+      glossary: add 'reflog'
+      Document git-filter-branch
+      Add diff-option --ext-diff
+      filter-branch: add a test for the commit removal example
+      filter-branch: make output nicer
+      filter-branch: a few more touch ups to the man page
+      filter-branch documentation: clarify which filters are eval'ed
+      filter-branch: fail gracefully when a filter fails
+      Future-proof source for changes in xdemitconf_t
+      Teach git-stash to "apply --index"
+      Enable "git rerere" by the config variable rerere.enabled
+      git-branch: default to --track
+      Fix "apply --reverse" with regard to whitespace
+      branch.autosetupmerge: allow boolean values, or "all"
+      rebase -i: handle --continue more like non-interactive rebase
+      rebase -i: actually show the diffstat when being verbose
+      rebase -i: remember the settings of -v, -s and -p when interrupted
+      rebase -i: put a nice warning into the todo list
+      rerere: record resolution even if file is not in merge base
+      Fix core.sharedRepository = 2
+      Fix --cherry-pick with given paths
+      Add for_each_remote() function, and extend remote_find_tracking()
+      branch --track: code cleanup and saner handling of local branches
+
+Johannes Sixt (3):
+      filter-branch: Avoid an error message in the map function.
+      filter-branch documentation: some more touch-ups.
+      Allow rebase to run if upstream is completely merged
+
+Jonas Fonseca (1):
+      fsck --lost-found writes to subdirectories in .git/lost-found/
+
+Junio C Hamano (22):
+      Update draft Release Notes for 1.5.3
+      Update reflog message created for stashes
+      Do not check if getcwd() result begins with a slash.
+      Fix git-stash(1) markup.
+      git-stash: allow more descriptive reminder message when saving
+      Introduce diff_filespec_is_binary()
+      Per-path attribute based hunk header selection.
+      Fix configuration syntax to specify customized hunk header patterns.
+      diff: honor binariness specified in attributes
+      gitweb: make repeated calls to git_get_project_owner() bearable
+      diff.c: make built-in hunk header pattern a separate table
+      git-gui: use "blame -w -C -C" for "where did it come from, originally?"
+      git-stash: try reusing cached stat info as much as possible
+      Fix merge-one-file for our-side-added/our-side-removed cases
+      Document custom hunk header selection
+      revision.c: remove duplicated parents after history simplification
+      Revert 88494423 (removal of duplicate parents in the output codepath)
+      Re-code builtin-branch.c in UTF-8
+      Teach read-tree 2-way merge to ignore intermediate symlinks
+      GIT 1.5.2.4
+      Update list of older git docs
+      GIT v1.5.3-rc1
+
+Lars Hjemli (1):
+      git-submodule(1): update description and key names
+
+Marcus Fritzsch (1):
+      Fixed a formulation mistake in Documentation/user-manual.txt
+
+Matt Kraai (3):
+      Prefer EMAIL to username@hostname.
+      Change "added.moved or removed" to "added, moved or removed" in
+      Add [verse] to the SYNOPSIS section of git-submodule.txt.
+
+Matt McCutchen (3):
+      gitweb: make search form generate pathinfo-style URLs
+      gitweb: make "No commits" in project list gray, not bold green
+      Makefile: rebuild git.o on version change, clean up git$X flags
+
+Matthias Lederhofer (3):
+      git-init: set core.worktree if GIT_WORK_TREE is specified
+      git-clone: split up long &&-command-chain and use a function for cleanup
+      make git-clone GIT_WORK_TREE aware
+
+Michael Hendricks (2):
+      git-send-email: allow an email alias for --from
+      gitweb: configurable width for the projects list Description column
+
+Miklos Vajna (3):
+      Document -<n> for git-format-patch
+      gitweb: prefer git_get_project_owner() over get_file_owner()
+      gitweb: new cgi parameter: opt
+
+Nicolas Pitre (3):
+      apply delta depth bias to already deltified objects
+      script to display a distribution of longest common hash prefixes
+      reduce git-pack-objects memory usage a little more
+
+Paul Mackerras (6):
+      gitk: Fix the find and highlight functions
+      gitk: Fix bug in the anc_or_desc routine
+      gitk: Remove the unused stopfindproc function
+      gitk: Fix bug causing "can't read commitrow(0,n)" error
+      gitk: Use git log and add support for --left-right
+      gitk: Improve handling of -- and ambiguous arguments
+
+René Scharfe (1):
+      diff-lib.c: don't strdup twice
+
+Sean Estabrooks (1):
+      Alter git-checkout reflog message to include "from" branch
+
+Shawn O. Pearce (46):
+      git-gui: Unlock the index when cancelling merge dialog
+      git-gui: Start blame windows as tall as possible
+      git-gui: Correct resizing of remote branch delete dialog
+      git-gui: Don't bind F5/M1-R in all windows
+      git-gui: Bind M1-P to push action
+      git-gui: Include a Push action on the left toolbar
+      git-gui: Ensure windows shortcuts always have .bat extension
+      git-gui: Honor rerere.enabled configuration option
+      git-gui: New Git version check support routine
+      git-gui: Skip nicknames when selecting author initials
+      git-gui: Teach class system to support [$this cmd] syntax
+      git-gui: Abstract the revision picker into a mega widget
+      git-gui: Refactor the delete branch dialog to use class system
+      git-gui: Optimize for newstyle refs/remotes layout
+      git-gui: Maintain remote and source ref for tracking branches
+      git-gui: Allow users to match remote branch names locally
+      git-gui: Fast-forward existing branch in branch create dialog
+      git-gui: Enhance choose_rev to handle hundreds of branches
+      git-gui: Sort tags descending by tagger date
+      git-gui: Option to default new branches to match tracking branches
+      git-gui: Automatically refresh tracking branches when needed
+      git-gui: Better handling of detached HEAD
+      git-gui: Refactor our ui_status_value update technique
+      git-gui: Refactor branch switch to support detached head
+      git-gui: Unabbreviate commit SHA-1s prior to display
+      git-gui: Default selection to first matching ref
+      git-gui: Allow double-click in checkout dialog to start checkout
+      git-gui: Extract blame viewer status bar into mega-widget
+      git-gui: Change the main window progress bar to use status_bar
+      git-gui: Show a progress meter for checking out files
+      git-gui: Always use absolute path to all git executables
+      git-gui: Correct gitk installation location
+      git-gui: Assume unfound commands are known by git wrapper
+      git-gui: Treat `git version` as `git --version`
+      git-gui: Perform our own magic shbang detection on Windows
+      git-gui: Teach console widget to use git_read
+      git-gui: Improve the Windows and Mac OS X shortcut creators
+      git-gui: Correct ls-tree buffering problem in browser
+      git-gui: Don't linewrap within console windows
+      git-gui: Paper bag fix for Cygwin shortcut creation
+      git-gui: Use sh.exe in Cygwin shortcuts
+      git-gui: Include a space in Cygwin shortcut command lines
+      Clarify documentation of fast-import's D subcommand
+      Support wholesale directory renames in fast-import
+      git-gui: Work around bad interaction between Tcl and cmd.exe on ^{tree}
+      git-gui: Change prior tree SHA-1 verification to use git_read
+
+Steffen Prohaska (1):
+      filter-branch: added missing warn function
+
+Steven Walter (1):
+      Documentation for git-log --follow
+
+Uwe Kleine-König (2):
+      stash: end commit log with a newline
+      repack: don't report "Nothing new to pack." if -q is given
+
+William Pursell (1):
+      user-manual: fix directory name in git-archive example
+
+
+Version v1.5.3-rc0; changes since v1.5.2.4:
 -------------------------------------------
 
 Adam Roben (3):
@@ -24,9 +264,6 @@ Alexandre Julliard (1):
 
 Alexandre Vassalotti (1):
       git-tag: Fix "can't shift that many".
-
-Andy Parkins (1):
-      Make git-prune submodule aware (and fix a SEGFAULT in the process)
 
 Andy Whitcroft (3):
       cvsimport: add support for new style remote layout
@@ -373,17 +610,16 @@ Michael Ellerman (2):
       gitview: Use new-style classes
       gitview: Define __slots__ for Commit
 
-Michael Hendricks (1):
-      Correctly document the name of the global excludes file configuration
-
 Michael Krelin (1):
       git-svn: honor ~/.subversion/ client cert file settings.
 
 Michael S. Tsirkin (1):
       connect: display connection progress
 
-Nanako Shiraishi (1):
+Nanako Shiraishi (3):
       Cloning from a repo without "current branch"
+      Add git-stash script
+      Document git-stash
 
 Nicolas Pitre (8):
       allow for undeltified objects not to be reused
@@ -706,9 +942,53 @@ Theodore Ts'o (4):
       git-mergetool: Make default selection of merge-tool more intelligent
       Don't fflush(stdout) when it's not helpful
 
-しらいしななこ (2):
-      Add git-stash script
-      Document git-stash
+
+Version v1.5.2.4; changes since v1.5.2.3:
+-----------------------------------------
+
+Andy Parkins (2):
+      Make git-prune submodule aware (and fix a SEGFAULT in the process)
+      user-manual: grammar and style fixes
+
+Gerrit Pape (1):
+      git-gui: properly popup error if gitk should be started but is not installed
+
+J. Bruce Fields (2):
+      tutorial: Fix typo
+      user-manual: more explanation of push and pull usage
+
+Jim Meyering (1):
+      Don't smash stack when $GIT_ALTERNATE_OBJECT_DIRECTORIES is too long
+
+Johannes Schindelin (3):
+      diff --no-index: fix --name-status with added files
+      glossary: add 'reflog'
+      Fix "apply --reverse" with regard to whitespace
+
+Junio C Hamano (2):
+      Teach read-tree 2-way merge to ignore intermediate symlinks
+      GIT 1.5.2.4
+
+Michael Hendricks (1):
+      Correctly document the name of the global excludes file configuration
+
+Miklos Vajna (1):
+      Document -<n> for git-format-patch
+
+Shawn O. Pearce (10):
+      git-gui: Unlock the index when cancelling merge dialog
+      git-gui: Don't bind F5/M1-R in all windows
+      git-gui: Bind M1-P to push action
+      git-gui: Include a Push action on the left toolbar
+      git-gui: Ensure windows shortcuts always have .bat extension
+      git-gui: Skip nicknames when selecting author initials
+      git-gui: Correct ls-tree buffering problem in browser
+      git-gui: Don't linewrap within console windows
+      Clarify documentation of fast-import's D subcommand
+      git-gui: Work around bad interaction between Tcl and cmd.exe on ^{tree}
+
+William Pursell (1):
+      user-manual: fix directory name in git-archive example
 
 
 Version v1.5.2.3; changes since v1.5.2.2:
