@@ -19,28 +19,40 @@ do
     case "$1" in
     -a)
 	annotate=1
+	shift
 	;;
     -s)
 	annotate=1
 	signed=1
+	shift
 	;;
     -f)
 	force=1
+	shift
 	;;
     -n)
-        case $2 in
-	-*)	LINES=1 	# no argument
+        case "$#,$2" in
+	1,* | *,-*)
+		LINES=1 	# no argument
 		;;
 	*)	shift
 		LINES=$(expr "$1" : '\([0-9]*\)')
 		[ -z "$LINES" ] && LINES=1 # 1 line is default when -n is used
 		;;
 	esac
+	shift
 	;;
     -l)
 	list=1
 	shift
-	PATTERN="$1"	# select tags by shell pattern, not re
+	case $# in
+	0)	PATTERN=
+		;;
+	*)
+		PATTERN="$1"	# select tags by shell pattern, not re
+		shift
+		;;
+	esac
 	git rev-parse --symbolic --tags | sort |
 	    while read TAG
 	    do
@@ -51,12 +63,16 @@ do
 		[ "$LINES" -le 0 ] && { echo "$TAG"; continue ;}
 		OBJTYPE=$(git cat-file -t "$TAG")
 		case $OBJTYPE in
-		tag)	ANNOTATION=$(git cat-file tag "$TAG" |
-				       sed -e '1,/^$/d' \
-					   -e '/^-----BEGIN PGP SIGNATURE-----$/Q' )
-			printf "%-15s %s\n" "$TAG" "$ANNOTATION" |
-			  sed -e '2,$s/^/    /' \
-			      -e "${LINES}q"
+		tag)
+			ANNOTATION=$(git cat-file tag "$TAG" |
+				sed -e '1,/^$/d' |
+				sed -n -e "
+					/^-----BEGIN PGP SIGNATURE-----\$/q
+					2,\$s/^/    /
+					p
+					${LINES}q
+				")
+			printf "%-15s %s\n" "$TAG" "$ANNOTATION"
 			;;
 		*)      echo "$TAG"
 			;;
@@ -70,7 +86,9 @@ do
 	if test "$#" = "0"; then
 	    die "error: option -m needs an argument"
 	else
+	    message="$1"
 	    message_given=1
+	    shift
 	fi
 	;;
     -F)
@@ -81,25 +99,31 @@ do
 	else
 	    message="$(cat "$1")"
 	    message_given=1
+	    shift
 	fi
 	;;
     -u)
 	annotate=1
 	signed=1
 	shift
-	username="$1"
+	if test "$#" = "0"; then
+	    die "error: option -u needs an argument"
+	else
+	    username="$1"
+	    shift
+	fi
 	;;
     -d)
 	shift
 	had_error=0
 	for tag
 	do
-		cur=$(git-show-ref --verify --hash -- "refs/tags/$tag") || {
+		cur=$(git show-ref --verify --hash -- "refs/tags/$tag") || {
 			echo >&2 "Seriously, what tag are you talking about?"
 			had_error=1
 			continue
 		}
-		git-update-ref -m 'tag: delete' -d "refs/tags/$tag" "$cur" || {
+		git update-ref -m 'tag: delete' -d "refs/tags/$tag" "$cur" || {
 			had_error=1
 			continue
 		}
@@ -110,7 +134,7 @@ do
     -v)
 	shift
 	tag_name="$1"
-	tag=$(git-show-ref --verify --hash -- "refs/tags/$tag_name") ||
+	tag=$(git show-ref --verify --hash -- "refs/tags/$tag_name") ||
 		die "Seriously, what tag are you talking about?"
 	git-verify-tag -v "$tag"
 	exit $?
@@ -122,7 +146,6 @@ do
 	break
 	;;
     esac
-    shift
 done
 
 [ -n "$list" ] && exit 0
@@ -130,21 +153,21 @@ done
 name="$1"
 [ "$name" ] || usage
 prev=0000000000000000000000000000000000000000
-if git-show-ref --verify --quiet -- "refs/tags/$name"
+if git show-ref --verify --quiet -- "refs/tags/$name"
 then
     test -n "$force" || die "tag '$name' already exists"
     prev=`git rev-parse "refs/tags/$name"`
 fi
 shift
-git-check-ref-format "tags/$name" ||
+git check-ref-format "tags/$name" ||
 	die "we do not like '$name' as a tag name."
 
-object=$(git-rev-parse --verify --default HEAD "$@") || exit 1
-type=$(git-cat-file -t $object) || exit 1
+object=$(git rev-parse --verify --default HEAD "$@") || exit 1
+type=$(git cat-file -t $object) || exit 1
 tagger=$(git-var GIT_COMMITTER_IDENT) || exit 1
 
 test -n "$username" ||
-	username=$(git-repo-config user.signingkey) ||
+	username=$(git repo-config user.signingkey) ||
 	username=$(expr "z$tagger" : 'z\(.*>\)')
 
 trap 'rm -f "$GIT_DIR"/TAG_TMP* "$GIT_DIR"/TAG_FINALMSG "$GIT_DIR"/TAG_EDITMSG' 0
@@ -160,7 +183,7 @@ if [ "$annotate" ]; then
     fi
 
     grep -v '^#' <"$GIT_DIR"/TAG_EDITMSG |
-    git-stripspace >"$GIT_DIR"/TAG_FINALMSG
+    git stripspace >"$GIT_DIR"/TAG_FINALMSG
 
     [ -s "$GIT_DIR"/TAG_FINALMSG -o -n "$message_given" ] || {
 	echo >&2 "No tag message?"

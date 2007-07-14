@@ -304,7 +304,7 @@ it easier:
 $ git remote add bob /home/bob/myrepo
 ------------------------------------------------
 
-With this, you can perform the first operation alone using the
+With this, Alice can perform the first operation alone using the
 "git fetch" command without merging them with her own branch,
 using:
 
@@ -354,7 +354,7 @@ used for pulls:
 
 -------------------------------------
 $ git config --get remote.origin.url
-/home/bob/myrepo
+/home/alice/project
 -------------------------------------
 
 (The complete configuration created by git-clone is visible using

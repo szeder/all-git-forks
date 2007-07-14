@@ -1106,8 +1106,7 @@ static int log_ref_write(const char *ref_name, const unsigned char *old_sha1,
 		len += sprintf(logrec + len - 1, "\t%.*s\n", msglen, msg) - 1;
 	written = len <= maxlen ? write_in_full(logfd, logrec, len) : -1;
 	free(logrec);
-	close(logfd);
-	if (written != len)
+	if (close(logfd) != 0 || written != len)
 		return error("Unable to append to %s", log_file);
 	return 0;
 }
@@ -1204,8 +1203,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 		goto error_free_return;
 	}
 	written = write_in_full(fd, ref, len);
-	close(fd);
-	if (written != len) {
+	if (close(fd) != 0 || written != len) {
 		error("Unable to write to %s", lockpath);
 		goto error_unlink_return;
 	}
@@ -1302,7 +1300,7 @@ int read_ref_at(const char *ref, unsigned long at_time, int cnt, unsigned char *
 				if (hashcmp(logged_sha1, sha1)) {
 					fprintf(stderr,
 						"warning: Log %s has gap after %s.\n",
-						logfile, show_rfc2822_date(date, tz));
+						logfile, show_date(date, tz, DATE_RFC2822));
 				}
 			}
 			else if (date == at_time) {
@@ -1315,7 +1313,7 @@ int read_ref_at(const char *ref, unsigned long at_time, int cnt, unsigned char *
 				if (hashcmp(logged_sha1, sha1)) {
 					fprintf(stderr,
 						"warning: Log %s unexpectedly ended on %s.\n",
-						logfile, show_rfc2822_date(date, tz));
+						logfile, show_date(date, tz, DATE_RFC2822));
 				}
 			}
 			munmap(log_mapped, mapsz);

@@ -374,16 +374,9 @@ sub cmd_dcommit {
 		die "Unable to determine upstream SVN information from ",
 		    "$head history\n";
 	}
-	my $c = $refs[-1];
 	my $last_rev;
-	foreach my $d (@refs) {
-		if (!verify_ref("$d~1")) {
-			fatal "Commit $d\n",
-			      "has no parent commit, and therefore ",
-			      "nothing to diff against.\n",
-			      "You should be working from a repository ",
-			      "originally created by git-svn\n";
-		}
+	my ($linear_refs, $parents) = linearize_history($gs, \@refs);
+	foreach my $d (@$linear_refs) {
 		unless (defined $last_rev) {
 			(undef, $last_rev, undef) = cmt_metadata("$d~1");
 			unless (defined $last_rev) {
@@ -405,6 +398,9 @@ sub cmd_dcommit {
 			                svn_path => '');
 			if (!SVN::Git::Editor->new(\%ed_opts)->apply_diff) {
 				print "No changes\n$d~1 == $d\n";
+			} elsif ($parents->{$d} && @{$parents->{$d}}) {
+				$gs->{inject_parents_dcommit}->{$last_rev} =
+				                               $parents->{$d};
 			}
 		}
 	}
@@ -596,8 +592,7 @@ sub post_fetch_checkout {
 	my $index = $ENV{GIT_INDEX_FILE} || "$ENV{GIT_DIR}/index";
 	return if -f $index;
 
-	chomp(my $bare = `git config --bool --get core.bare`);
-	return if $bare eq 'true';
+	return if command_oneline(qw/rev-parse --is-inside-work-tree/) eq 'false';
 	return if command_oneline(qw/rev-parse --is-inside-git-dir/) eq 'true';
 	command_noisy(qw/read-tree -m -u -v HEAD HEAD/);
 	print STDERR "Checked out HEAD:\n  ",
@@ -787,12 +782,12 @@ sub read_repo_config {
 
 sub extract_metadata {
 	my $id = shift or return (undef, undef, undef);
-	my ($url, $rev, $uuid) = ($id =~ /^git-svn-id:\s(\S+?)\@(\d+)
+	my ($url, $rev, $uuid) = ($id =~ /^\s*git-svn-id:\s+(.*)\@(\d+)
 							\s([a-f\d\-]+)$/x);
 	if (!defined $rev || !$uuid || !$url) {
 		# some of the original repositories I made had
 		# identifiers like this:
-		($rev, $uuid) = ($id =~/^git-svn-id:\s(\d+)\@([a-f\d\-]+)/);
+		($rev, $uuid) = ($id =~/^\s*git-svn-id:\s(\d+)\@([a-f\d\-]+)/);
 	}
 	return ($url, $rev, $uuid);
 }
@@ -804,23 +799,85 @@ sub cmt_metadata {
 
 sub working_head_info {
 	my ($head, $refs) = @_;
-	my ($fh, $ctx) = command_output_pipe('rev-list', $head);
-	while (my $hash = <$fh>) {
-		chomp($hash);
-		my ($url, $rev, $uuid) = cmt_metadata($hash);
+	my ($fh, $ctx) = command_output_pipe('log', $head);
+	my $hash;
+	my %max;
+	while (<$fh>) {
+		if ( m{^commit ($::sha1)$} ) {
+			unshift @$refs, $hash if $hash and $refs;
+			$hash = $1;
+			next;
+		}
+		next unless s{^\s*(git-svn-id:)}{$1};
+		my ($url, $rev, $uuid) = extract_metadata($_);
 		if (defined $url && defined $rev) {
+			next if $max{$url} and $max{$url} < $rev;
 			if (my $gs = Git::SVN->find_by_url($url)) {
 				my $c = $gs->rev_db_get($rev);
 				if ($c && $c eq $hash) {
 					close $fh; # break the pipe
 					return ($url, $rev, $uuid, $gs);
+				} else {
+					$max{$url} ||= $gs->rev_db_max;
 				}
 			}
 		}
-		unshift @$refs, $hash if $refs;
 	}
 	command_close_pipe($fh, $ctx);
 	(undef, undef, undef, undef);
+}
+
+sub read_commit_parents {
+	my ($parents, $c) = @_;
+	my ($fh, $ctx) = command_output_pipe(qw/cat-file commit/, $c);
+	while (<$fh>) {
+		chomp;
+		last if '';
+		/^parent ($sha1)/ or next;
+		push @{$parents->{$c}}, $1;
+	}
+	close $fh; # break the pipe
+}
+
+sub linearize_history {
+	my ($gs, $refs) = @_;
+	my %parents;
+	foreach my $c (@$refs) {
+		read_commit_parents(\%parents, $c);
+	}
+
+	my @linear_refs;
+	my %skip = ();
+	my $last_svn_commit = $gs->last_commit;
+	foreach my $c (reverse @$refs) {
+		next if $c eq $last_svn_commit;
+		last if $skip{$c};
+
+		unshift @linear_refs, $c;
+		$skip{$c} = 1;
+
+		# we only want the first parent to diff against for linear
+		# history, we save the rest to inject when we finalize the
+		# svn commit
+		my $fp_a = verify_ref("$c~1");
+		my $fp_b = shift @{$parents{$c}} if $parents{$c};
+		if (!$fp_a || !$fp_b) {
+			die "Commit $c\n",
+			    "has no parent commit, and therefore ",
+			    "nothing to diff against.\n",
+			    "You should be working from a repository ",
+			    "originally created by git-svn\n";
+		}
+		if ($fp_a ne $fp_b) {
+			die "$c~1 = $fp_a, however parsing commit $c ",
+			    "revealed that:\n$c~1 = $fp_b\nBUG!\n";
+		}
+
+		foreach my $p (@{$parents{$c}}) {
+			$skip{$p} = 1;
+		}
+	}
+	(\@linear_refs, \%parents);
 }
 
 package Git::SVN;
@@ -1543,6 +1600,11 @@ sub get_commit_parents {
 	if (my $cur = ::verify_ref($self->refname.'^0')) {
 		push @tmp, $cur;
 	}
+	if (my $ipd = $self->{inject_parents_dcommit}) {
+		if (my $commit = delete $ipd->{$log_entry->{revision}}) {
+			push @tmp, @$commit;
+		}
+	}
 	push @tmp, $_ foreach (@{$log_entry->{parents}}, @tmp);
 	while (my $p = shift @tmp) {
 		next if $seen{$p};
@@ -1966,16 +2028,19 @@ sub rebuild {
 		return;
 	}
 	print "Rebuilding $db_path ...\n";
-	my ($rev_list, $ctx) = command_output_pipe("rev-list", $self->refname);
+	my ($log, $ctx) = command_output_pipe("log", $self->refname);
 	my $latest;
 	my $full_url = $self->full_url;
 	remove_username($full_url);
 	my $svn_uuid;
-	while (<$rev_list>) {
-		chomp;
-		my $c = $_;
-		die "Non-SHA1: $c\n" unless $c =~ /^$::sha1$/o;
-		my ($url, $rev, $uuid) = ::cmt_metadata($c);
+	my $c;
+	while (<$log>) {
+		if ( m{^commit ($::sha1)$} ) {
+			$c = $1;
+			next;
+		}
+		next unless s{^\s*(git-svn-id:)}{$1};
+		my ($url, $rev, $uuid) = ::extract_metadata($_);
 		remove_username($url);
 
 		# ignore merges (from set-tree)
@@ -1993,7 +2058,7 @@ sub rebuild {
 		$self->rev_db_set($rev, $c);
 		print "r$rev = $c\n";
 	}
-	command_close_pipe($rev_list, $ctx);
+	command_close_pipe($log, $ctx);
 	print "Done rebuilding $db_path\n";
 }
 
@@ -2925,6 +2990,7 @@ sub new {
 	    SVN::Client::get_ssl_server_trust_file_provider(),
 	    SVN::Client::get_simple_prompt_provider(
 	      \&Git::SVN::Prompt::simple, 2),
+	    SVN::Client::get_ssl_client_cert_file_provider(),
 	    SVN::Client::get_ssl_client_cert_prompt_provider(
 	      \&Git::SVN::Prompt::ssl_client_cert, 2),
 	    SVN::Client::get_ssl_client_cert_pw_prompt_provider(
@@ -2936,6 +3002,7 @@ sub new {
 	      \&Git::SVN::Prompt::username, 2),
 	  ]);
 	my $config = SVN::Core::config_get_config($config_dir);
+	$RA = undef;
 	my $self = SVN::Ra->new(url => $url, auth => $baton,
 	                      config => $config,
 			      pool => SVN::Pool->new,

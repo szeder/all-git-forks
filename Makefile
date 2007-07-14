@@ -94,9 +94,9 @@ all::
 # Define OLD_ICONV if your library has an old iconv(), where the second
 # (input buffer pointer) parameter is declared with type (const char **).
 #
-# Define NO_R_TO_GCC if your gcc does not like "-R/path/lib" that
-# tells runtime paths to dynamic libraries; "-Wl,-rpath=/path/lib"
-# is used instead.
+# Define NO_R_TO_GCC_LINKER if your gcc does not like "-R/path/lib"
+# that tells runtime paths to dynamic libraries;
+# "-Wl,-rpath=/path/lib" is used instead.
 #
 # Define USE_NSEC below if you want git to care about sub-second file mtimes
 # and ctimes. Note that you need recent glibc (at least 2.2.4) for this, and
@@ -204,14 +204,16 @@ SCRIPT_SH = \
 	git-fetch.sh \
 	git-ls-remote.sh \
 	git-merge-one-file.sh git-mergetool.sh git-parse-remote.sh \
-	git-pull.sh git-rebase.sh \
+	git-pull.sh git-rebase.sh git-rebase--interactive.sh \
 	git-repack.sh git-request-pull.sh git-reset.sh \
 	git-sh-setup.sh \
 	git-tag.sh git-verify-tag.sh \
 	git-am.sh \
 	git-merge.sh git-merge-stupid.sh git-merge-octopus.sh \
 	git-merge-resolve.sh git-merge-ours.sh \
-	git-lost-found.sh git-quiltimport.sh git-submodule.sh
+	git-lost-found.sh git-quiltimport.sh git-submodule.sh \
+	git-filter-branch.sh \
+	git-stash.sh
 
 SCRIPT_PERL = \
 	git-add--interactive.perl \
@@ -751,8 +753,7 @@ git.o: git.c common-cmds.h GIT-CFLAGS
 		$(ALL_CFLAGS) -c $(filter %.c,$^)
 
 git$X: git.o $(BUILTIN_OBJS) $(GITLIBS)
-	$(QUIET_LINK)$(CC) -DGIT_VERSION='"$(GIT_VERSION)"' \
-		$(ALL_CFLAGS) -o $@ $(filter %.c,$^) git.o \
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ git.o \
 		$(BUILTIN_OBJS) $(ALL_LDFLAGS) $(LIBS)
 
 help.o: common-cmds.h
@@ -855,7 +856,7 @@ configure: configure.ac
 	rm -f $<+
 
 # These can record GIT_VERSION
-git$X git.spec \
+git.o git.spec \
 	$(patsubst %.sh,%,$(SCRIPT_SH)) \
 	$(patsubst %.perl,%,$(SCRIPT_PERL)) \
 	: GIT-VERSION-FILE
@@ -986,7 +987,8 @@ check-sha1:: test-sha1$X
 check: common-cmds.h
 	for i in *.c; do sparse $(ALL_CFLAGS) $(SPARSE_FLAGS) $$i || exit; done
 
-
+remove-dashes:
+	./fixup-builtins $(BUILT_INS)
 
 ### Installation rules
 
@@ -1028,15 +1030,16 @@ git.spec: git.spec.in
 	mv $@+ $@
 
 GIT_TARNAME=git-$(GIT_VERSION)
-dist: git.spec git-archive
+dist: git.spec git-archive configure
 	./git-archive --format=tar \
 		--prefix=$(GIT_TARNAME)/ HEAD^{tree} > $(GIT_TARNAME).tar
 	@mkdir -p $(GIT_TARNAME)
-	@cp git.spec $(GIT_TARNAME)
+	@cp git.spec configure $(GIT_TARNAME)
 	@echo $(GIT_VERSION) > $(GIT_TARNAME)/version
 	@$(MAKE) -C git-gui TARDIR=../$(GIT_TARNAME)/git-gui dist-version
 	$(TAR) rf $(GIT_TARNAME).tar \
 		$(GIT_TARNAME)/git.spec \
+		$(GIT_TARNAME)/configure \
 		$(GIT_TARNAME)/version \
 		$(GIT_TARNAME)/git-gui/version
 	@rm -rf $(GIT_TARNAME)

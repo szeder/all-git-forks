@@ -17,6 +17,7 @@ test_expect_success setup '
 	export GIT_AUTHOR_DATE GIT_COMMITTER_DATE &&
 
 	mkdir dir &&
+	mkdir dir2 &&
 	for i in 1 2 3; do echo $i; done >file0 &&
 	for i in A B; do echo $i; done >dir/sub &&
 	cat file0 >file2 &&
@@ -242,6 +243,8 @@ format-patch --inline --stdout initial..side
 format-patch --inline --stdout initial..master^
 format-patch --inline --stdout initial..master
 format-patch --inline --stdout --subject-prefix=TESTCASE initial..master
+config format.subjectprefix DIFFERENT_PREFIX
+format-patch --inline --stdout initial..master^^
 
 diff --abbrev initial..side
 diff -r initial..side
@@ -252,6 +255,7 @@ diff --patch-with-stat initial..side
 diff --patch-with-raw initial..side
 diff --patch-with-stat -r initial..side
 diff --patch-with-raw -r initial..side
+diff --name-status dir2 dir
 EOF
 
 test_done

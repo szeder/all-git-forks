@@ -16,6 +16,7 @@
 #include "refs.h"
 
 static int default_show_root = 1;
+static const char *fmt_patch_subject_prefix = "PATCH";
 
 /* this is in builtin-diff.c */
 void add_head(struct rev_info *revs);
@@ -55,9 +56,15 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 	rev->commit_format = CMIT_FMT_DEFAULT;
 	rev->verbose_header = 1;
 	rev->show_root_diff = default_show_root;
+	rev->subject_prefix = fmt_patch_subject_prefix;
 	argc = setup_revisions(argc, argv, rev, "HEAD");
 	if (rev->diffopt.pickaxe || rev->diffopt.filter)
 		rev->always_show_header = 0;
+	if (rev->diffopt.follow_renames) {
+		rev->always_show_header = 0;
+		if (rev->diffopt.nr_paths != 1)
+			usage("git logs can only follow renames on one pathname at a time");
+	}
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		if (!strcmp(arg, "--decorate")) {
@@ -89,6 +96,12 @@ static int cmd_log_walk(struct rev_info *rev)
 
 static int git_log_config(const char *var, const char *value)
 {
+	if (!strcmp(var, "format.subjectprefix")) {
+		if (!value)
+			die("format.subjectprefix without value");
+		fmt_patch_subject_prefix = xstrdup(value);
+		return 0;
+	}
 	if (!strcmp(var, "log.showroot")) {
 		default_show_root = git_config_bool(var, value);
 		return 0;
@@ -285,6 +298,7 @@ static int git_format_config(const char *var, const char *value)
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
 		return 0;
 	}
+
 	return git_log_config(var, value);
 }
 
@@ -454,6 +468,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	rev.diffopt.msg_sep = "";
 	rev.diffopt.recursive = 1;
 
+	rev.subject_prefix = fmt_patch_subject_prefix;
 	rev.extra_headers = extra_headers;
 
 	/*
@@ -584,7 +599,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		get_patch_ids(&rev, &ids, prefix);
 
 	if (!use_stdout)
-		realstdout = fdopen(dup(1), "w");
+		realstdout = xfdopen(xdup(1), "w");
 
 	prepare_revision_walk(&rev);
 	while ((commit = get_revision(&rev)) != NULL) {
@@ -742,11 +757,13 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 			sign = '-';
 
 		if (verbose) {
-			static char buf[16384];
+			char *buf = NULL;
+			unsigned long buflen = 0;
 			pretty_print_commit(CMIT_FMT_ONELINE, commit, ~0,
-			                    buf, sizeof(buf), 0, NULL, NULL, 0);
+			                    &buf, &buflen, 0, NULL, NULL, 0);
 			printf("%c %s %s\n", sign,
 			       sha1_to_hex(commit->object.sha1), buf);
+			free(buf);
 		}
 		else {
 			printf("%c %s\n", sign,

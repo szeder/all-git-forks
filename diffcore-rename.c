@@ -119,10 +119,26 @@ static int is_exact_match(struct diff_filespec *src,
 	return 0;
 }
 
+static int basename_same(struct diff_filespec *src, struct diff_filespec *dst)
+{
+	int src_len = strlen(src->path), dst_len = strlen(dst->path);
+	while (src_len && dst_len) {
+		char c1 = src->path[--src_len];
+		char c2 = dst->path[--dst_len];
+		if (c1 != c2)
+			return 0;
+		if (c1 == '/')
+			return 1;
+	}
+	return (!src_len || src->path[src_len - 1] == '/') &&
+		(!dst_len || dst->path[dst_len - 1] == '/');
+}
+
 struct diff_score {
 	int src; /* index in rename_src */
 	int dst; /* index in rename_dst */
 	int score;
+	int name_score;
 };
 
 static int estimate_similarity(struct diff_filespec *src,
@@ -174,8 +190,7 @@ static int estimate_similarity(struct diff_filespec *src,
 
 	delta_limit = (unsigned long)
 		(base_size * (MAX_SCORE-minimum_score) / MAX_SCORE);
-	if (diffcore_count_changes(src->data, src->size,
-				   dst->data, dst->size,
+	if (diffcore_count_changes(src, dst,
 				   &src->cnt_data, &dst->cnt_data,
 				   delta_limit,
 				   &src_copied, &literal_added))
@@ -224,6 +239,10 @@ static void record_rename_pair(int dst_index, int src_index, int score)
 static int score_compare(const void *a_, const void *b_)
 {
 	const struct diff_score *a = a_, *b = b_;
+
+	if (a->score == b->score)
+		return b->name_score - a->name_score;
+
 	return b->score - a->score;
 }
 
@@ -295,9 +314,22 @@ void diffcore_rename(struct diff_options *options)
 			if (rename_dst[i].pair)
 				continue; /* dealt with an earlier round */
 			for (j = 0; j < rename_src_nr; j++) {
+				int k;
 				struct diff_filespec *one = rename_src[j].one;
 				if (!is_exact_match(one, two, contents_too))
 					continue;
+
+				/* see if there is a basename match, too */
+				for (k = j; k < rename_src_nr; k++) {
+					one = rename_src[k].one;
+					if (basename_same(one, two) &&
+						is_exact_match(one, two,
+							contents_too)) {
+						j = k;
+						break;
+					}
+				}
+
 				record_rename_pair(i, j, (int)MAX_SCORE);
 				rename_count++;
 				break; /* we are done with this entry */
@@ -329,6 +361,7 @@ void diffcore_rename(struct diff_options *options)
 			m->dst = i;
 			m->score = estimate_similarity(one, two,
 						       minimum_score);
+			m->name_score = basename_same(one, two);
 			diff_free_filespec_data(one);
 		}
 		/* We do not need the text anymore */

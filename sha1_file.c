@@ -352,10 +352,14 @@ static void read_info_alternates(const char * relative_base, int depth)
 	char *map;
 	size_t mapsz;
 	struct stat st;
-	char path[PATH_MAX];
+	const char alt_file_name[] = "info/alternates";
+	/* Given that relative_base is no longer than PATH_MAX,
+	   ensure that "path" has enough space to append "/", the
+	   file name, "info/alternates", and a trailing NUL.  */
+	char path[PATH_MAX + 1 + sizeof alt_file_name];
 	int fd;
 
-	sprintf(path, "%s/info/alternates", relative_base);
+	sprintf(path, "%s/%s", relative_base, alt_file_name);
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return;
@@ -510,7 +514,10 @@ static int check_packed_git_idx(const char *path,  struct packed_git *p)
 		 * for offsets larger than 2^31.
 		 */
 		unsigned long min_size = 8 + 4*256 + nr*(20 + 4 + 4) + 20 + 20;
-		if (idx_size < min_size || idx_size > min_size + (nr - 1)*8) {
+		unsigned long max_size = min_size;
+		if (nr)
+			max_size += (nr - 1)*8;
+		if (idx_size < min_size || idx_size > max_size) {
 			munmap(idx_map, idx_size);
 			return error("wrong index file size in %s", path);
 		}
@@ -833,7 +840,10 @@ void install_packed_git(struct packed_git *pack)
 
 static void prepare_packed_git_one(char *objdir, int local)
 {
-	char path[PATH_MAX];
+	/* Ensure that this buffer is large enough so that we can
+	   append "/pack/" without clobbering the stack even if
+	   strlen(objdir) were PATH_MAX.  */
+	char path[PATH_MAX + 1 + 4 + 1 + 1];
 	int len;
 	DIR *dir;
 	struct dirent *de;
@@ -853,6 +863,9 @@ static void prepare_packed_git_one(char *objdir, int local)
 		struct packed_git *p;
 
 		if (!has_extension(de->d_name, ".idx"))
+			continue;
+
+		if (len + namelen + 1 > sizeof(path))
 			continue;
 
 		/* Don't reopen a pack we already have. */

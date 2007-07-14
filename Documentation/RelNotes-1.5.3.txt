@@ -1,16 +1,51 @@
-GIT v1.5.3 Release Notes (draft)
+GIT v1.5.3 Release Notes
 ========================
 
 Updates since v1.5.2
 --------------------
 
-* An initial interation of Porcelain level superproject support
-  started to take shape.
+* The commit walkers other than http are officially deprecated,
+  but still supported for now.
 
-* Thee are a handful pack-objects changes to help you cope better with
-  repositories with pathologically large blobs in them.
+* The submodule support has Porcelain layer.
+
+* There are a handful pack-objects changes to help you cope better
+  with repositories with pathologically large blobs in them.
+
+* For people who need to import from Perforce, a front-end for
+  fast-import is in contrib/fast-import/.
+
+* Comes with git-gui 0.8.0.
+
+* Comes with updated gitk.
 
 * New commands and options.
+
+  - The hunk header output from "git diff" family can be customized
+    with the attributes mechanism.  See gitattributes(5) for details.
+
+  - "git stash" allows you to quickly save away your work in
+    progress and replay it later on an updated state.
+
+  - "git rebase" learned an "interactive" mode that let you
+    pick and reorder which commits to rebuild.
+
+  - "git fsck" can save its findings in $GIT_DIR/lost-found,
+    without a separate invocation of "git lost-found" command.
+
+  - $GIT_WORK_TREE environment variable can be used together with
+    $GIT_DIR to work in a subdirectory of a working tree that is
+    not located at "$GIT_DIR/..".
+
+  - "git log" learned a new option "--follow", to follow
+    renaming history of a single file.
+
+  - "git-filter-branch" lets you rewrite the revision history of
+    the current branch, creating a new branch. You can specify a
+    number of filters to modify the commits, files and trees.
+
+  - "git-cvsserver" learned new options (--base-path, --export-all,
+    --strict-paths) inspired by git-daemon.
 
   - "git-submodule" command helps you manage the projects from
     the superproject that contain them.
@@ -36,9 +71,59 @@ Updates since v1.5.2
   - "git repack" can be told to split resulting packs to avoid
     exceeding limit specified with "--max-pack-size".
 
+  - "git fsck" gained --verbose option.  This is really really
+    verbose but it might help you identify exact commit that is
+    corrupt in your repository.
+
+  - "git format-patch" learned --numbered-files option.  This
+    may be useful for MH users.
+
+  - "git format-patch" learned format.subjectprefix configuration
+    variable, which serves the same purpose as "--subject-prefix"
+    option.
+
+  - "git tag -n -l" shows tag annotations while listing tags.
+
+  - "git cvsimport" can optionally use the separate-remote layout.
+
+  - "git blame" can be told to see through commits that change
+    whitespaces and indentation levels with "-w" option.
+
+  - "git send-email" can be told not to thread the messages when
+    sending out more than one patches.
+
+  - "git config" learned NUL terminated output format via -z to
+    help scripts.
+
+  - "git init -q" makes the command quieter.
+
 * Updated behavior of existing commands.
 
-  - "git push" pretends that you immediately fetched back from
+  - "git svn dcommit" retains local merge information.
+
+  - "git config" to set values also honors type flags like --bool
+    and --int.
+
+  - core.quotepath configuration can be used to make textual git
+    output to emit most of the characters in the path literally.
+
+  - "git mergetool" chooses its backend more wisely, taking
+    notice of its environment such as use of X, Gnome/KDE, etc.
+
+  - "gitweb" shows merge commits a lot nicer than before.  The
+    default view uses more compact --cc format, while the UI
+    allows to choose normal diff with any parent.
+
+  - snapshot files "gitweb" creates from a repository at
+    $path/$project/.git are more useful.  We use $project part
+    in the filename, which we used to discard.
+
+  - "git cvsimport" creates lightweight tags; there is no
+    interesting information we can record in an annotated tag,
+    and the handcrafted ones the old code created was not
+    properly formed anyway.
+
+  - "git-push" pretends that you immediately fetched back from
     the remote by updating corresponding remote tracking
     branches if you have any.
 
@@ -48,36 +133,64 @@ Updates since v1.5.2
   - "git-apply --whitespace=strip" removes blank lines added at
     the end of the file.
 
-  - fetch over git native protocols with -v shows connection
-    status, and the IP address of the other end, to help
-    diagnosing problems.
+  - "git-fetch" over git native protocols with "-v" option shows
+    connection status, and the IP address of the other end, to
+    help diagnosing problems.
 
-  - core.legacyheaders is no more, although we still can read
-    objects created in a new loose object format.
+  - We used to have core.legacyheaders configuration, when
+    set to false, allowed git to write loose objects in a format
+    that mimicks the format used by objects stored in packs.  It
+    turns out that this was not so useful.  Although we will
+    continue to read objects written in that format, we do not
+    honor that configuration anymore and create loose objects in
+    the legacy/traditional format.
+
+  - "--find-copies-harder" option to diff family can now be
+    spelled as "-C -C" for brevity.
 
   - "git-mailsplit" (hence "git-am") can read from Maildir
     formatted mailboxes.
 
-  - "git cvsserver" does not barf upon seeing "cvs login"
+  - "git-cvsserver" does not barf upon seeing "cvs login"
     request.
 
   - "pack-objects" honors "delta" attribute set in
     .gitattributes.  It does not attempt to deltify blobs that
     come from paths with delta attribute set to false.
 
-  - new-workdir script (in contrib) can now be used with a bare
-    repository.
+  - "new-workdir" script (in contrib) can now be used with a
+    bare repository.
 
+  - "git-mergetool" learned to use gvimdiff.
+
+  - "gitview" (in contrib) has a better blame interface.
+
+  - "git log" and friends did not handle a commit log message
+    that is larger than 16kB; they do now.
+
+  - "--pretty=oneline" output format for "git log" and friends
+    deals with "malformed" commit log messages that have more
+    than one lines in the first paragraph better.  We used to
+    show the first line, cutting the title at mid-sentence; we
+    concatenate them into a single line and treat the result as
+    "oneline".
 
 * Builds
 
-  -
+  - old-style function definitions (most notably, a function
+    without parameter defined with "func()", not "func(void)")
+    have been eradicated.
 
 * Performance Tweaks
 
   - git-pack-objects avoids re-deltification cost by caching
     small enough delta results it creates while looking for the
     best delta candidates.
+
+  - git-pack-objects learned a new heuristcs to prefer delta
+    that is shallower in depth over the smallest delta
+    possible.  This improves both overall packfile access
+    performance and packfile density.
 
   - diff-delta code that is used for packing has been improved
     to work better on big files.
@@ -88,6 +201,10 @@ Updates since v1.5.2
     the object requested the last time, which exploits the
     locality of references.
 
+  - verifying pack contents done by "git fsck --full" got boost
+    by carefully choosing the order to verify objects in them.
+
+
 Fixes since v1.5.2
 ------------------
 
@@ -96,14 +213,11 @@ this release, unless otherwise noted.
 
 * Bugfixes
 
-  - ....  This has not
-    been backported to 1.5.2.x series, as it is rather an
-    intrusive change.
-
+  - "gitweb" had trouble handling non UTF-8 text with older
+    Encode.pm Perl module.
 
 --
 exec >/var/tmp/1
-O=v1.5.2-45-ged82edc
-O=v1.5.2-172-g1a8b769
+O=v1.5.3-rc1
 echo O=`git describe refs/heads/master`
 git shortlog --no-merges $O..refs/heads/master ^refs/heads/maint
