@@ -1,3 +1,72 @@
+Version v1.5.3-rc2; changes since v1.5.3-rc1:
+---------------------------------------------
+
+Alex Riesen (1):
+      Fix git-rebase -i to allow squashing of fast-forwardable commits
+
+Emil Medve (1):
+      Use $(RM) in Makefiles instead of 'rm -f'
+
+Eric Wong (1):
+      git-svn: remove leading slashes from fetch lines in the generate config
+
+Greg KH (1):
+      make git-send-email.perl handle email addresses with no names when Email::Valid is present
+
+Jakub Narebski (3):
+      Update git-merge documentation.
+      Document long options '--message=<msg>' and '--no-commit'
+      Document git commit --untracked-files and --verbose
+
+Jim Meyering (1):
+      git-cvsserver: detect/diagnose write failure, etc.
+
+Josh Triplett (1):
+      Remove useless uses of cat, and replace with filename arguments
+
+Junio C Hamano (7):
+      Make show_rfc2822_date() just another date output format.
+      Wire new date formats to --date=<format> parser.
+      Document new --date=<format>
+      Add contrib/stats/mailmap.pl script
+      Update .mailmap
+      Documentation/git-commit-tree: remove description of a nonexistent limitation
+      GIT v1.5.3-rc2
+
+Marius Storm-Olsen (1):
+      Fix git-p4 on Windows to not use the Posix sysconf function.
+
+Matthieu Moy (1):
+      More permissive "git-rm --cached" behavior without -f.
+
+Nicolas Pitre (1):
+      Pack-objects: properly initialize the depth value
+
+Paul Mackerras (1):
+      gitk: Fix bug introduced by previous commit
+
+Peter Hagervall (1):
+      Make every builtin-*.c file #include "builtin.h"
+
+Robin Rosenberg (1):
+      Support output ISO 8601 format dates
+
+Sean Estabrooks (3):
+      Remove "WITH_P4IMPORT" knob from the Makefile
+      Remove p4 rpm from git.spec.in.
+      Demote git-p4import to contrib status.
+
+Shawn O. Pearce (2):
+      Correct trivial typo in fast-import documentation
+      Teach fast-import to recursively copy files/directories
+
+Stephen Rothwell (1):
+      send-email: discard blank around address in extract_valid_address as well.
+
+Sven Verdoolaege (1):
+      lockfile.c: schedule remove_lock_file only once.
+
+
 Version v1.5.3-rc1; changes since v1.5.3-rc0:
 ---------------------------------------------
 
@@ -1123,7 +1192,7 @@ Shawn O. Pearce (47):
       git-gui: Give amend precedence to HEAD over MERGE_MSG
       git-gui: Save geometry before the window layout is damaged
 
-william pursell (1):
+William Pursell (1):
       Make command description imperative statement, not third-person present.
 
 
@@ -1310,11 +1379,12 @@ Johannes Schindelin (2):
       import-tars: Use the "Link indicator" to identify directories
       Add a birdview-on-the-source-code section to the user manual
 
-Junio C Hamano (16):
+Junio C Hamano (17):
       Minor copyediting on Release Notes for 1.5.2
       Add has_symlink_leading_path() function.
       apply: do not get confused by symlinks in the middle
       read-tree -m -u: avoid getting confused by intermediate symlinks.
+      t9400: Use the repository config and nothing else.
       checkout: allow detaching to HEAD even when switching to the tip of a branch
       git-config: do not forget seeing "a.b.var" means we are out of "a.var" section.
       Link to HTML version of external doc if available
@@ -1327,9 +1397,6 @@ Junio C Hamano (16):
       GIT 1.5.1.6
       git-cvsserver: exit with 1 upon "I HATE YOU"
       GIT 1.5.2
-
-Junio Hamano (1):
-      t9400: Use the repository config and nothing else.
 
 Lars Hjemli (1):
       git-archive: don't die when repository uses subprojects
@@ -3882,11 +3949,11 @@ Mark Levedahl (2):
       gitk - remove trailing whitespace from a few lines.
       Make gitk work reasonably well on Cygwin.
 
+Michael Coleman (1):
+      Fix some documentation typos and grammar
+
 Michele Ballabio (1):
       Documentation: add KMail in SubmittingPatches
-
-Mike Coleman (1):
-      Fix some documentation typos and grammar
 
 Nicolas Pitre (14):
       make reflog filename independent from struct ref_lock

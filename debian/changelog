@@ -5,8 +5,9 @@ git-core (1:1.5.3~rc2-1) experimental; urgency=low
     remove; obsolete.
   * debian/control, debian/rules: remove git-p4 package again, moved into
     contrib/ upstream; see /usr/share/doc/git-core/contrib/p4import/.
+  * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 20 Jul 2007 08:43:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 20 Jul 2007 08:47:45 +0000
 
 git-core (1:1.5.3~rc1-1) experimental; urgency=low
 
