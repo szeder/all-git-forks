@@ -97,24 +97,6 @@ Description: fast, scalable, distributed revision control system (svn interopera
  This package provides tools for importing development history from
  subversion repositories.
 
-Package: git-p4
-Section: contrib/devel
-Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), python
-Recommends: git-doc
-Description: fast, scalable, distributed revision control system (p4 interoperability)
- Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
- .
- Git falls in the category of distributed source code management tools.
- Every Git working directory is a full-fledged repository with full
- revision tracking capabilities, not dependent on network access or a
- central server.
- .
- This package provides tools for importing development history from
- perforce repositories.
-
 Package: git-email
 Architecture: all
 Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), libmail-sendmail-perl, libemail-valid-perl

@@ -58,8 +58,8 @@ clean: deb-checkdir deb-checkuid
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'-core '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
-	  '$(GIT)'-svn '$(GIT)'-p4 '$(GIT)'-email '$(GIT)'-daemon-run \
-	  '$(GIT)'-gui '$(GIT)'k '$(GIT)'web
+	  '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui \
+	  '$(GIT)'k '$(GIT)'web
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
@@ -75,7 +75,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -rf '$(GIT)'-core/usr/lib
 	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
 	# don't include arch, cvs, svn, email, gui tools, and gitk program
-	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk \
+	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/bin/$$i*; \
 	done
@@ -87,7 +87,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rmdir '$(GIT)'-core/usr/share/git-gui/lib
 	rmdir '$(GIT)'-core/usr/share/git-gui
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
-	for i in git-archimport git-cvs git-svn git-p4 git-send-email gitk \
+	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/share/man/man1/$$i*; \
 	done
@@ -115,8 +115,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-doc
 	rm -rf '$(GIT)'-doc
 	install -d -m0755 '$(GIT)'-doc
-	# git-cvs, git-svn, git-p4
-	for i in cvs svn p4; do \
+	# git-cvs, git-svn
+	for i in cvs svn; do \
 	  rm -rf '$(GIT)'-$$i && \
 	  install -d -m0755 '$(GIT)'-$$i/usr/bin && \
 	  install -m0755 '$(TMP)'/usr/bin/git-$$i* '$(GIT)'-$$i/usr/bin/ && \
@@ -198,10 +198,9 @@ binary-arch: install-arch git-core.deb
 	dpkg-gencontrol -isp -pgit-core -P'$(GIT)'-core
 	dpkg -b '$(GIT)'-core ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
-	  git-p4.deb git-daemon-run.deb git-email.deb git-gui.deb gitk.deb \
-	  gitweb.deb
+	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb
 	rm -f debian/substvars
-	for i in -doc -arch -cvs -svn -p4 -daemon-run -email -gui k web; do \
+	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done
