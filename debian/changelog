@@ -1,8 +1,10 @@
 git-core (1:1.5.3~rc2-0) experimental; urgency=low
 
   * new upstream release candidate.
+  * debian/diff/????-Pack-objects-properly-initialize-the-depth-value.diff:
+    remove; obsolete.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 20 Jul 2007 07:35:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 20 Jul 2007 07:35:48 +0000
 
 git-core (1:1.5.3~rc1-1) experimental; urgency=low
 
