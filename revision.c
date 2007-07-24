@@ -1165,11 +1165,13 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				add_message_grep(revs, arg+7);
 				continue;
 			}
-			if (!prefixcmp(arg, "--extended-regexp")) {
+			if (!strcmp(arg, "--extended-regexp") ||
+			    !strcmp(arg, "-E")) {
 				regflags |= REG_EXTENDED;
 				continue;
 			}
-			if (!prefixcmp(arg, "--regexp-ignore-case")) {
+			if (!strcmp(arg, "--regexp-ignore-case") ||
+			    !strcmp(arg, "-i")) {
 				regflags |= REG_ICASE;
 				continue;
 			}
@@ -1187,6 +1189,14 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 			}
 			if (!strcmp(arg, "--reverse")) {
 				revs->reverse ^= 1;
+				continue;
+			}
+			if (!strcmp(arg, "--no-walk")) {
+				revs->no_walk = 1;
+				continue;
+			}
+			if (!strcmp(arg, "--do-walk")) {
+				revs->no_walk = 0;
 				continue;
 			}
 
@@ -1323,16 +1333,17 @@ static enum rewrite_result rewrite_one(struct rev_info *revs, struct commit **pp
 
 static void remove_duplicate_parents(struct commit *commit)
 {
-	struct commit_list *p;
-	struct commit_list **pp = &commit->parents;
+	struct commit_list **pp, *p;
 
 	/* Examine existing parents while marking ones we have seen... */
-	for (p = commit->parents; p; p = p->next) {
+	pp = &commit->parents;
+	while ((p = *pp) != NULL) {
 		struct commit *parent = p->item;
-		if (parent->object.flags & TMP_MARK)
+		if (parent->object.flags & TMP_MARK) {
+			*pp = p->next;
 			continue;
+		}
 		parent->object.flags |= TMP_MARK;
-		*pp = p;
 		pp = &p->next;
 	}
 	/* ... and clear the temporary mark */

@@ -740,7 +740,7 @@ sub load_authors {
 	my $log = $cmd eq 'log';
 	while (<$authors>) {
 		chomp;
-		next unless /^(\S+?|\(no author\))\s*=\s*(.+?)\s*<(.+)>\s*$/;
+		next unless /^(.+?|\(no author\))\s*=\s*(.+?)\s*<(.+)>\s*$/;
 		my ($user, $name, $email) = ($1, $2, $3);
 		if ($log) {
 			$Git::SVN::Log::rusers{"$name <$email>"} = $user;
@@ -1026,7 +1026,9 @@ sub read_all_remotes {
 	my $r = {};
 	foreach (grep { s/^svn-remote\.// } command(qw/config -l/)) {
 		if (m!^(.+)\.fetch=\s*(.*)\s*:\s*refs/remotes/(.+)\s*$!) {
-			$r->{$1}->{fetch}->{$2} = $3;
+			my ($remote, $local_ref, $remote_ref) = ($1, $2, $3);
+			$local_ref =~ s{^/}{};
+			$r->{$remote}->{fetch}->{$local_ref} = $remote_ref;
 		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
 			$r->{$1}->{url} = $2;
 		} elsif (m!^(.+)\.(branches|tags)=
@@ -1146,6 +1148,7 @@ sub init_remote_config {
 	unless ($no_write) {
 		command_noisy('config',
 			      "svn-remote.$self->{repo_id}.url", $url);
+		$self->{path} =~ s{^/}{};
 		command_noisy('config', '--add',
 			      "svn-remote.$self->{repo_id}.fetch",
 			      "$self->{path}:".$self->refname);
@@ -2721,6 +2724,9 @@ sub repo_path {
 
 sub url_path {
 	my ($self, $path) = @_;
+	if ($self->{url} =~ m#^https?://#) {
+		$path =~ s/([^a-zA-Z0-9_.-])/uc sprintf("%%%02x",ord($1))/eg;
+	}
 	$self->{url} . '/' . $self->repo_path($path);
 }
 
