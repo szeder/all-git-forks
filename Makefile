@@ -219,7 +219,7 @@ SCRIPT_PERL = \
 	git-archimport.perl git-cvsimport.perl git-relink.perl \
 	git-cvsserver.perl git-remote.perl \
 	git-svnimport.perl git-cvsexportcommit.perl \
-	git-send-email.perl git-svn.perl
+	git-send-email.perl git-svn.perl git-serve.perl
 
 SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
 	  $(patsubst %.perl,%,$(SCRIPT_PERL)) \
