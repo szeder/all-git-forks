@@ -432,6 +432,7 @@ if (defined $hash_base) {
 
 my %allowed_options = (
 	"--no-merges" => [ qw(rss atom log shortlog history) ],
+	"-l" => [ qw(tree) ],
 );
 
 our @extra_options = $cgi->param('opt');
@@ -4230,8 +4231,12 @@ sub git_tree {
 			$hash = $hash_base;
 		}
 	}
+	my %href_opt;
+	%href_opt = (extra_options => "-l") if @extra_options;
+	@extra_options = () unless @extra_options;
+
 	$/ = "\0";
-	open my $fd, "-|", git_cmd(), "ls-tree", '-z', $hash
+	open my $fd, "-|", git_cmd(), "ls-tree", '-z', @extra_options, $hash
 		or die_error(undef, "Open git-ls-tree failed");
 	my @entries = map { chomp; $_ } <$fd>;
 	close $fd or die_error(undef, "Reading tree failed");
@@ -4249,7 +4254,7 @@ sub git_tree {
 				$cgi->a({-href => href(action=>"history", hash_base=>$hash_base,
 				                       hash=>$hash, file_name=>$file_name)},
 				        "history"),
-				$cgi->a({-href => href(action=>"tree",
+				$cgi->a({-href => href(action=>"tree", %href_opt,
 				                       hash_base=>"HEAD", file_name=>$file_name)},
 				        "HEAD"),
 		}
@@ -4293,7 +4298,7 @@ sub git_tree {
 		print '<td class="mode">' . mode_str('040000') . "</td>\n";
 		print '<td class="list">';
 		print $cgi->a({-href => href(action=>"tree", hash_base=>$hash_base,
-		                             file_name=>$up)},
+		                             file_name=>$up, %href_opt)},
 		              "..");
 		print "</td>\n";
 		print "<td class=\"link\"></td>\n";
@@ -4301,7 +4306,7 @@ sub git_tree {
 		print "</tr>\n";
 	}
 	foreach my $line (@entries) {
-		my %t = parse_ls_tree_line($line, -z => 1);
+		my %t = parse_ls_tree_line($line, -z => 1, -l => @extra_options);
 
 		if ($alternate) {
 			print "<tr class=\"dark\">\n";
