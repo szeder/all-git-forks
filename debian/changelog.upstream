@@ -1,3 +1,103 @@
+Version v1.5.3-rc3; changes since v1.5.3-rc2:
+---------------------------------------------
+
+Adam Roben (1):
+      Add GIT_EDITOR environment and core.editor configuration variables
+
+Alexandre Julliard (2):
+      git.el: Support for incremental status updates.
+      git.el: Pass an explicit argument to enable smerge-mode.
+
+Carlos Rica (1):
+      Rename read_pipe() with read_fd() and make its buffer nul-terminated.
+
+David Kastrup (2):
+      contrib/emacs/Makefile: Also install .el files.
+      Documentation/gitignore.txt: Fix the seriously misleading priority explanation
+
+Eric Wong (1):
+      git-svn: fix commiting renames over DAV with funky file names
+
+Francis Moreau (1):
+      Fix git-branch documentation when using remote refs
+
+Jakub Narebski (3):
+      gitweb cleanup: Move @diff_opts declaration earlier
+      gitweb: Fix support for legacy gitweb config for snapshots
+      gitweb: More detailed error messages for snapshot format
+
+Jim Meyering (1):
+      pretty-options.txt: tiny doc fix
+
+Johannes Schindelin (11):
+      filter-branch: get rid of "set -e"
+      rebase -i: call editor just once for a multi-squash
+      fsck --lost-found: write blob's contents, not their SHA-1
+      mailinfo: fix 'fatal: cannot convert from utf-8 to utf-8'
+      Shut "git rebase -i" up when no --verbose was given
+      rebase -i: exchange all "if [ .. ]" by "if test .."
+      filter-branch: Big syntax change; support rewriting multiple refs
+      Teach revision machinery about --no-walk
+      git log -g: Complain, but do not fail, when no reflogs are there
+      Teach approxidate() to understand "never"
+      git am: skip pine's internal folder data
+
+Julian Phillips (1):
+      Force listingblocks to be monospaced in manpages
+
+Junio C Hamano (8):
+      Update INSTALL
+      Do not expect unlink(2) to fail on a directory.
+      Fix VISUAL/EDITOR preference order in Documentation/config.txt.
+      Synonyms: -i == --regexp-ignore-case, -E == --extended-regexp
+      Mark user-manual as UTF-8
+      user-manual: fix typolets.
+      t9200: Be careful when checking CVS/Entries
+      GIT 1.5.3-rc3
+
+Kumar Gala (1):
+      send-email: Update regex parsing for pine aliases
+
+Linus Torvalds (2):
+      Do a better job at guessing unknown character sets
+      Fix up duplicate parents removal
+
+Marco Costalba (1):
+      Avoid to duplicate commit message when is not encoded
+
+Matt McCutchen (1):
+      gitweb: snapshot cleanups & support for offering multiple formats
+
+Nanako Shiraishi (1):
+      Document "git stash message..."
+
+René Scharfe (2):
+      filter-branch: fix dash complaining about "Missing '))'"
+      cleanup unpack-trees.c: shrink struct tree_entry_list
+
+Richard MUSIL (1):
+      git-svn: Minimalistic patch which allows svn usernames with space(s).
+
+Robin Rosenberg (1):
+      cvsexportcommit: avoid racy CVS problem.
+
+Scott Lamb (2):
+      git-p4: use subprocess in p4CmdList
+      git-p4: input to "p4 files" by stdin instead of arguments
+
+Simon Hausmann (3):
+      git-p4: Cleanup, make listExistingP4Branches a global function for later use.
+      git-p4: Fix upstream branch detection for submit/rebase with multiple branches.
+      git-p4: Cleanup, used common function for listing imported p4 branches
+
+Steven Grimm (2):
+      Document how to tell git to not launch a pager
+      Teach git-commit about commit message templates.
+
+Sven Verdoolaege (1):
+      unpack-trees.c: assume submodules are clean during check-out
+
+
 Version v1.5.3-rc2; changes since v1.5.3-rc1:
 ---------------------------------------------
 
