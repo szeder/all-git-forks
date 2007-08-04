@@ -101,7 +101,7 @@ Example
 
 	# Proxy settings
 	[core]
-		gitProxy="ssh" for "ssh://kernel.org/"
+		gitProxy="ssh" for "kernel.org"
 		gitProxy=default-proxy ; for the rest
 
 Variables
@@ -392,6 +392,9 @@ color.status.<slot>::
 	`changed` (files which are changed but not added in the index),
 	or `untracked` (files which are not tracked by git). The values of
 	these variables may be specified as in color.branch.<slot>.
+
+commit.template::
+	Specify a file to use as the template for new commit messages.
 
 diff.renameLimit::
 	The number of files to consider when performing the copy/rename

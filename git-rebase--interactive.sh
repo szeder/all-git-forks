@@ -17,7 +17,7 @@ USAGE='(--continue | --abort | --skip | [--preserve-merges] [--verbose]
 require_work_tree
 
 DOTEST="$GIT_DIR/.dotest-merge"
-TODO="$DOTEST"/todo
+TODO="$DOTEST"/git-rebase-todo
 DONE="$DOTEST"/done
 MSG="$DOTEST"/message
 SQUASH_MSG="$DOTEST"/message-squash
@@ -250,16 +250,18 @@ do_next () {
 		case "$(peek_next_command)" in
 		squash)
 			EDIT_COMMIT=
+			USE_OUTPUT=output
 			cp "$MSG" "$SQUASH_MSG"
 		;;
 		*)
 			EDIT_COMMIT=-e
+			USE_OUTPUT=
 			test -f "$SQUASH_MSG" && rm "$SQUASH_MSG"
 		esac
 
 		failed=f
-		pick_one -n $sha1 || failed=t
 		output git reset --soft HEAD^
+		pick_one -n $sha1 || failed=t
 		author_script=$(get_author_ident_from_commit $sha1)
 		echo "$author_script" > "$DOTEST"/author-script
 		case $failed in
@@ -267,7 +269,7 @@ do_next () {
 			# This is like --amend, but with a different message
 			eval "$author_script"
 			export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE
-			output git commit -F "$MSG" $EDIT_COMMIT
+			$USE_OUTPUT git commit -F "$MSG" $EDIT_COMMIT
 			;;
 		t)
 			cp "$MSG" "$GIT_DIR"/MERGE_MSG
@@ -403,6 +405,7 @@ do
 
 		require_clean_work_tree
 
+		mkdir "$DOTEST" || die "Could not create temporary $DOTEST"
 		if test ! -z "$2"
 		then
 			output git show-ref --verify --quiet "refs/heads/$2" ||
@@ -416,7 +419,6 @@ do
 
 		test -z "$ONTO" && ONTO=$UPSTREAM
 
-		mkdir "$DOTEST" || die "Could not create temporary $DOTEST"
 		: > "$DOTEST"/interactive || die "Could not mark as interactive"
 		git symbolic-ref HEAD > "$DOTEST"/head-name ||
 			die "Could not get HEAD"
@@ -461,8 +463,9 @@ do
 #
 EOF
 		git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
-			--abbrev=7 --reverse $UPSTREAM..$HEAD | \
-			sed "s/^/pick /" >> "$TODO"
+			--abbrev=7 --reverse --left-right --cherry-pick \
+			$UPSTREAM...$HEAD | \
+			sed -n "s/^>/pick /p" >> "$TODO"
 
 		test -z "$(grep -ve '^$' -e '^#' < $TODO)" &&
 			die_abort "Nothing to do"
