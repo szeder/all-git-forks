@@ -411,6 +411,24 @@ parameter, <path>.
 
 other
 ~~~~~
+'GIT_CONFIG'::
+'GIT_CONFIG_LOCAL'::
+	Specifies config file.
+	See gitlink:git-config[1]
+
+'GIT_PROXY_COMMAND'::
+'GIT_SSL_NO_VERIFY'::
+'GIT_SSL_CERT'::
+'GIT_SSL_KEY'::
+'GIT_SSL_CAINFO'::
+'GIT_SSL_CAPATH'::
+'GIT_HTTP_MAX_REQUESTS'::
+'GIT_HTTP_LOW_SPEED_LIMIT'::
+'GIT_HTTP_LOW_SPEED_TIME'::
+'GIT_CURL_FTP_NO_EPSV'::
+	Overrides appropriate configuration variable.
+	See gitlink:git-config[1]
+
 'GIT_MERGE_VERBOSITY'::
 	A number controlling the amount of output shown by
 	the recursive merge strategy.  Overrides merge.verbosity.
