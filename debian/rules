@@ -7,7 +7,7 @@ CFLAGS =-g -Wall
 STRIP =strip
 OPTS =NO_OPENSSL=1 GITWEB_CONFIG=/etc/gitweb.conf prefix=/usr \
   mandir=/usr/share/man INSTALLDIRS=vendor WITH_P4IMPORT=1 \
-  PYTHON_PATH=/usr/bin/python
+  PYTHON_PATH=/usr/bin/pythonm TCLTK_PATH=/usr/bin/wish8.4
 
 ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
   STRIP =: strip
