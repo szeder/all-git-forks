@@ -1,3 +1,443 @@
+Version v1.5.3-rc6; changes since v1.5.3-rc5:
+---------------------------------------------
+
+Alex Riesen (2):
+      Fix whitespace in "Format of STDIN stream" of fast-import
+      Avoid using va_copy in fast-import: it seems to be unportable.
+
+Arjen Laarhoven (2):
+      gitk: Make the date/time display configurable
+      t1301-shared-repo.sh: fix 'stat' portability issue
+
+Brian Downing (1):
+      Clarify actual behavior of 'git add' and ignored files
+
+Brian Gernhardt (1):
+      Minor clarifications to git-filter-branch usage and doc
+
+Dave Watson (1):
+      Fix misspelling of 'suppress' in docs
+
+Eric Wong (1):
+      git-svn: fix log with single revision against a non-HEAD branch
+
+Johannes Sixt (1):
+      gitk: Handle 'copy from' and 'copy to' in diff headers.
+
+Junio C Hamano (10):
+      Fix "git add -u" data corruption.
+      GIT 1.5.2.5
+      Fix read-tree merging more than 3 trees using 3-way merge
+      Update documentation links for older releases.
+      git-clone: allow --bare clone
+      Documentation/git-rebase: fix an example
+      Clean-up read-tree error condition.
+      fast-import pull request
+      git clone: do not issue warning while cloning locally across filesystems
+      GIT 1.5.3-rc6
+
+Lars Hjemli (1):
+      git-submodule: re-enable 'status' as the default subcommand
+
+Linus Torvalds (2):
+      Make thin-pack generation subproject aware.
+      Take binary diffs into account for "git rebase"
+
+Lukas Sandström (1):
+      Add the word reflog to Documentation/config.txt:core.logAllRefUpdates
+
+Mark Levedahl (1):
+      git-completion.bash - add support for git-bundle
+
+Matthieu Moy (1):
+      Add and document a global --no-pager option for git.
+
+Mike Hommey (1):
+      Clarify commit-tree documentation
+
+Nicolas Pitre (1):
+      pack-objects: remove bogus arguments to delta_cacheable()
+
+Paul Mackerras (3):
+      gitk: Fix warning when removing a branch
+      gitk: Fix bug in fix for warning when removing a branch
+      gitk: Add a window to list branches, tags and other references
+
+René Scharfe (1):
+      path-list.c: always free strdup'ed paths
+
+Salikh Zakirov (1):
+      git-add -u paths... now works from subdirectory
+
+Sean Estabrooks (1):
+      Fix small typo in git send-email man page.
+
+Shawn O. Pearce (11):
+      git-gui: Avoid Tcl error in popup menu on diff viewer
+      Actually allow TAG_FIXUP branches in fast-import
+      Use handy ALLOC_GROW macro in fast-import when possible
+      Teach fast-import to ignore lines starting with '#'
+      Make trailing LF following fast-import `data` commands optional
+      Make trailing LF optional for all fast-import commands
+      Allow frontends to bidirectionally communicate with fast-import
+      Generate crash reports on die in fast-import
+      Include recent command history in fast-import crash reports
+      Correct documentation of 'reflog show' to explain it shows HEAD
+      Don't allow combination of -g and --reverse as it doesn't work
+
+Steffen Prohaska (1):
+      gitk: Let user easily specify lines of context in diff view
+
+Steven Grimm (1):
+      Document what the stage numbers in the :$n:path syntax mean.
+
+Sven Verdoolaege (1):
+      git-apply: apply submodule changes
+
+Väinö Järvelä (1):
+      git-gui: Added support for OS X right click
+
+
+Version v1.5.3-rc5; changes since v1.5.3-rc4:
+---------------------------------------------
+
+Adam Roben (1):
+      Documentation/git-svn: how to clone a git-svn-created repository
+
+Alberto Bertogli (1):
+      Allow git-svnimport to take "" as the trunk directory.
+
+Alex Riesen (3):
+      Fix filehandle leak in "git branch -D"
+      gitk: Continue and show error message in new repos
+      gitk: Show an error and exit if no .git could be found
+
+Alexandre Julliard (3):
+      git.el: Add support for interactive diffs.
+      git.el: Always set the current directory in the git-diff buffer.
+      git-add: Add support for --refresh option.
+
+Brian Downing (2):
+      cvsserver: Fix for work trees
+      Add read_cache to builtin-check-attr
+
+Brian Gernhardt (1):
+      Fix t5701-clone-local for white space from wc
+
+Carlos Rica (3):
+      Make git tag a builtin.
+      builtin-tag.c: Fix two memory leaks and minor notation changes.
+      Make verify-tag a builtin.
+
+David Kastrup (6):
+      Documentation/git-commit.txt: correct bad list formatting.
+      Add support for an info version of the user manual
+      INSTALL: explain info installation and dependencies.
+      Documentation/Makefile: remove cmd-list.made before redirecting to it.
+      git-sh-setup.sh: make GIT_DIR absolute
+      Add a test for git-commit being confused by relative GIT_DIR
+
+Gerrit Pape (1):
+      git-am: initialize variable $resume on startup
+
+J. Bruce Fields (4):
+      user-manual: update for new default --track behavior
+      user-manual: mention git-gui
+      documentation: use the word "index" in the git-add manual page
+      documentation: use the word "index" in the git-commit man page
+
+Jakub Narebski (1):
+      gitweb: Fix handling of $file_name in feed generation
+
+Johannes Schindelin (4):
+      launch_editor(): Heed GIT_EDITOR and core.editor settings
+      Teach "git stripspace" the --strip-comments option
+      checkout-index needs a working tree
+      Reinstate the old behaviour when GIT_DIR is set and GIT_WORK_TREE is unset
+
+Junio C Hamano (24):
+      git-clone: aggressively optimize local clone behaviour.
+      git-completion: add "git stash"
+      INSTALL: add warning on docbook-xsl 1.72 and 1.73
+      unpack-trees.c: assume submodules are clean during check-out
+      Fix install-doc-quick target
+      user-manual: mention git stash
+      setup.c:verify_non_filename(): don't die unnecessarily while disambiguating
+      pager: find out pager setting from configuration
+      Fix "make GZ=1 quick-install-doc"
+      Reorder the list of commands in the manual.
+      Fix formatting of git-blame documentation.
+      Fix an illustration in git-rev-parse.txt
+      tweak manpage formatting
+      Revert "tweak manpage formatting"
+      Optimize "diff --cached" performance.
+      allow git-bundle to create bottomless bundle
+      allow git-bundle to create bottomless bundle
+      t3404: fix "fake-editor"
+      builtin-bundle create - use lock_file
+      git-diff: squelch "empty" diffs
+      merge-recursive: do not rudely die on binary merge
+      attr.c: refactoring
+      attr.c: read .gitattributes from index as well.
+      GIT 1.5.3-rc5
+
+Jyotirmoy Bhattacharya (1):
+      Fixed git-push manpage
+
+Linus Torvalds (8):
+      connect: accept file:// URL scheme
+      apply: remove directory that becomes empty by renaming the last file away
+      Start moving unpack-trees to "struct tree_desc"
+      Fix "git commit directory/" performance anomaly
+      Move old index entry removal from "unpack_trees()" into the individual functions
+      Optimize the common cases of git-read-tree
+      Optimize the two-way merge of git-read-tree too
+      Optimize the three-way merge of git-read-tree
+
+Luiz Fernando N. Capitulino (3):
+      Avoid ambiguous error message if pack.idx header is wrong
+      Introduces xmkstemp()
+      Use xmkstemp() instead of mkstemp()
+
+Marco Costalba (1):
+      Add --log-size to git log to print message size
+
+Mark Levedahl (5):
+      builtin-bundle.c - use stream buffered input for rev-list
+      builtin-bundle - use buffered reads for bundle header
+      gitk: Enable selected patch text on Windows
+      gitk: Handle MouseWheel events on Windows
+      t3902 - skip test if file system doesn't support HT in names
+
+Paul Mackerras (4):
+      gitk: Add a context menu for file list entries
+      gitk: Fix bug causing the "can't unset idinlist(...)" error
+      gitk: Fix bug introduced in commit 67a4f1a7
+      gitk: Fix bug causing Tcl error when updating graph
+
+Randal L. Schwartz (1):
+      add "test-absolute-path" to .gitignore
+
+Reece H. Dunn (1):
+      git-p4: Fix the sorting of changelists when cloning a Perforce repository.
+
+René Scharfe (2):
+      diff: don't run pager if user asked for a diff style exit code
+      diff: squelch empty diffs even more
+
+Shawn O. Pearce (4):
+      Document GIT_SSH environment variable alongside other variables
+      Teach update-paranoid how to store ACLs organized by groups
+      Teach the update-paranoid to look at file differences
+      Use the empty tree for base diff in paranoid-update on new branches
+
+Simon Hausmann (2):
+      git-p4: Fix support for symlinks.
+      git-p4: Fix git-p4 submit to include only changed files in the perforce submit template.
+
+Steffen Prohaska (1):
+      Improved hint on how to set identity
+
+Steve Hoelzer (2):
+      git-stash documentation: stash numbering starts at zero, not one
+      git-stash documentation: add missing backtick
+
+Steven Grimm (1):
+      Add a note about the index being updated by git-status in some cases
+
+Uwe Kleine-König (3):
+      send-email: teach sanitize_address to do rfc2047 quoting
+      send-email: rfc822 forbids using <address@domain> without a non-empty "phrase"
+      send-email: get all the quoting of realnames right
+
+
+Version v1.5.3-rc4; changes since v1.5.3-rc3:
+---------------------------------------------
+
+Alex Riesen (4):
+      Add an option to specify a file to config builtin
+      Add a test for git-config --file
+      Make verse of git-config manpage more readable
+      Hack git-add--interactive to make it work with ActiveState Perl
+
+Alexandre Julliard (2):
+      git.el: Avoid using ewoc-set-data for compatibility with Emacs 21.
+      git.el: Take into account the core.excludesfile config option.
+
+Bradford C. Smith (2):
+      fully resolve symlinks when creating lockfiles
+      use lockfile.c routines in git_commit_set_multivar()
+
+Brian Gernhardt (1):
+      Document commit.template configuration variable.
+
+Christian Couder (1):
+      rev-list --bisect: fix allocation of "int*" instead of "int".
+
+Christian Stimming (1):
+      git-gui: Unify wording to say "to stage" instead of "to add"
+
+David Kastrup (3):
+      Makefile: use $(FIND) instead of find
+      git-sh-setup.sh: make GIT_EDITOR/core.editor/VISUAL/EDITOR accept commands
+      When generating manpages, delete outdated targets first.
+
+David Soria Parra (1):
+      Documentation/gitattributes.txt: typofix
+
+David Symonds (1):
+      Fix documentation for core.gitproxy to reflect code
+
+Han-Wen Nienhuys (2):
+      Sort output of "p4 change" in incremental import before further
+      Fix style nit in Python slicing.
+
+Jakub Narebski (3):
+      gitweb: Show submodule entries in the 'tree' view
+      gitweb: Simplify 'opt' parameter validation, add "no merges" feeds
+      gitweb: Allow for multivalued parameters passed to href subroutine
+
+Jeff King (2):
+      Documentation/git-diff: remove -r from --name-status example
+      git-diff: turn on recursion by default
+
+Jens Axboe (1):
+      --base-path-relaxed option
+
+Johannes Schindelin (11):
+      rebase -i: fix overzealous output redirection
+      rebase -i: fix interrupted squashing
+      white space fixes in setup.c
+      Add is_absolute_path() and make_absolute_path()
+      Add functions get_relative_cwd() and is_inside_dir()
+      Add set_git_dir() function
+      Clean up work-tree handling
+      get_relative_cwd(): clarify why it handles dir == NULL
+      rebase -i: ignore patches that are already in the upstream
+      rebase -i: fix for optional [branch] parameter
+      read-tree: remove unnecessary call to setup_git_directory()
+
+Julian Phillips (1):
+      git-gui: Handle git versions of the form n.n.n.GIT
+
+Junio C Hamano (23):
+      Make sure git-stash works from subdirectory.
+      gitweb: fix broken snapshot
+      git-submodule module_name: avoid using unwieldy "value_regexp" feature.
+      git-submodule: remove redundant call to git-describe
+      When locking in a symlinked repository, try to lock the original.
+      git_mkstemp(): be careful not to overflow the path buffer.
+      Update description of -z option.
+      git-stash: do not remove a ref by hand.
+      Add test for symlinked configuration file updates.
+      Fix git-stash apply --index
+      git-stash apply --index: optimize postprocessing
+      log_ref_write() -- do not chomp reflog message at the first LF
+      symbolic-ref, update-ref: do not refuse reflog message with LF
+      rebase: try not to munge commit log message
+      add_file_to_index: skip rehashing if the cached stat already matches
+      Unset GIT_EDITOR while running tests.
+      git.c: execution path
+      git-commit.sh: Permit the --amend message to be given with -m/-c/-C/-F.
+      RelNotes 1.5.3 updates before -rc4
+      Fix work-tree related breakages
+      gitweb: do not choke on recursive symlink
+      Fix bogus use of printf in t3700 test
+      GIT 1.5.3-rc4
+
+Kristian Høgsberg (1):
+      Add test case for basic commit functionality.
+
+Mark Levedahl (1):
+      gitk: Ignore ctrl-z as EOF on windows
+
+Nanako Shiraishi (1):
+      git-stash: Make sure reflog is created for refs/stash
+
+Nguyễn Thái Ngọc Duy (1):
+      git-write-tree should not crash if prefix does not exist
+
+Paul Mackerras (4):
+      gitk: Show changes in index and changes in working directory separately
+      gitk: Make the fake commit for the index changes green rather than magenta
+      gitk: Wait for the window to become visible after creating it
+      gitk: Fix bugs in the Find function
+
+Robert Ewald (1):
+      git-svn: Translate invalid characters in refname
+
+Robert Schiele (2):
+      add option to find zlib in custom path
+      make the name of the library directory a config option
+
+Robin Rosenberg (1):
+      Document --unified/-U option
+
+Seth Falcon (1):
+      Rename git-rebase interactive buffer: todo => git-rebase-todo
+
+Shawn O. Pearce (49):
+      git-gui: Skip -dirty suffix on core git versions
+      git-gui: Brown paper bag "dirty git version fix"
+      git-gui: Always disable the Tcl EOF character when reading
+      git-gui: Delay searching for 'nice' until its really asked for
+      git-gui: Don't crash in ask_popup if we haven't mapped main window yet
+      git-gui: Change our initial GC hint to be an estimate
+      git-gui: Let the user continue even if we cannot understand git version
+      git-gui: Delay the GC hint until after we are running
+      git-gui: Move feature option selection before GIT_DIR init
+      git-gui: Allow blame/browser subcommands on bare repositories
+      git-gui: Allow browser subcommand to start in subdirectory
+      git-gui: Allow users to browse any branch, not just the current one
+      git-gui: Clarify the visualize history menu options
+      git-gui: Increase the default height of the revision picker
+      git-gui: Convert merge dialog to use class system
+      Don't offer my special Tools/Migrate hack unless in multicommit
+      git-gui: Bind Ctrl/Cmd-M to merge action
+      git-gui: Avoid unnecessary global statements when possible
+      git-gui: Translate standard encoding names to Tcl ones
+      git-gui: Don't show blame tooltips that we have no data for
+      git-gui: Completely remove support for creating octopus merges
+      git-gui: Automatically backup the user's commit buffer
+      git-gui: Save the merge base during checkout_op processing
+      git-gui: Factor out common fast-forward merge case
+      git-gui: Simplify error case for unsupported merge types
+      git-gui: Skip unnecessary read-tree work during checkout
+      git-gui: Internally allow fetch without storing for future pull support
+      git-gui: Completely remove my Tools/Migrate hack
+      git-gui: Fix unnecessary fast-forward during checkout
+      gitk: Bind keyboard actions to the command key on Mac OS
+      git-gui: Clarify meaning of add tracked menu option
+      git-gui: Paper bag fix quitting crash after commit
+      git-gui: Refactor diff popup into a procedure to ease i18n work
+      git-gui: Refactor current branch menu items to make i18n easier
+      git-gui: Avoid unnecessary symbolic-ref call during checkout
+      git-gui: Save remote urls obtained from config/remotes setup
+      git-gui: Display commit/tag/remote info in tooltip of revision picker
+      git-gui: Show ref last update times in revision chooser tooltips
+      git-gui: Replace merge dialog with our revision picker widget
+      git-gui: Cleanup bindings within merge dialog
+      git-gui: Format tracking branch merges as though they were pulls
+      git-gui: Remove usernames from absolute SSH urls during merging
+      git-gui: Don't kill modified commit message buffer with merge templates
+      git-gui: Honor core.excludesfile when listing extra files
+      git-gui: Use progress bar while resetting/aborting files
+      git-gui: Make sure remotes are loaded when picking revisions
+      git-gui: Don't offer to stage hunks from untracked files
+      git-gui: Use more modern looking icons in the tree browser
+      git-gui: Minor refactoring of merge command line in merge support
+
+Simon Hausmann (1):
+      git-p4: Fix p4 user cache population on Windows.
+
+Steve Hoelzer (1):
+      Try to be consistent with capitalization in the documentation
+
+Thomas Schwinge (2):
+      Don't rely on unspecified behavior
+      Support building on GNU/Hurd
+
+
 Version v1.5.3-rc3; changes since v1.5.3-rc2:
 ---------------------------------------------
 
@@ -407,7 +847,7 @@ William Pursell (1):
       user-manual: fix directory name in git-archive example
 
 
-Version v1.5.3-rc0; changes since v1.5.2.4:
+Version v1.5.3-rc0; changes since v1.5.2.5:
 -------------------------------------------
 
 Adam Roben (3):
@@ -1110,6 +1550,28 @@ Theodore Ts'o (4):
       Fix minor grammatical typos in the git-gc man page
       git-mergetool: Make default selection of merge-tool more intelligent
       Don't fflush(stdout) when it's not helpful
+
+
+Version v1.5.2.5; changes since v1.5.2.4:
+-----------------------------------------
+
+Christian Couder (1):
+      rev-list --bisect: fix allocation of "int*" instead of "int".
+
+Julian Phillips (1):
+      Force listingblocks to be monospaced in manpages
+
+Junio C Hamano (4):
+      Do not expect unlink(2) to fail on a directory.
+      setup.c:verify_non_filename(): don't die unnecessarily while disambiguating
+      Fix "git add -u" data corruption.
+      GIT 1.5.2.5
+
+Linus Torvalds (1):
+      apply: remove directory that becomes empty by renaming the last file away
+
+Salikh Zakirov (1):
+      git-add -u paths... now works from subdirectory
 
 
 Version v1.5.2.4; changes since v1.5.2.3:

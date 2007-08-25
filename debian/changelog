@@ -1,8 +1,21 @@
 git-core (1:1.5.3~rc6-1) experimental; urgency=low
 
   * new upstream release candidate.
+  * merge branch debian-sid.
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 18:29:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 18:34:32 +0000
+
+git-core (1:1.5.2.5-1) unstable; urgency=low
+
+  * debian/control: fix typo in Build-Depends: libcurl4-gnutls-dev |
+    libcurl3-gnutls-dev (thx Mikael Eriksson, closes: #433196).
+  * new upstream point release.
+  * debian/rules: add TCLTK_PATH=/usr/bin/wish8.4 to OPTS (closes: #438662).
+  * dbian/control: git-core: Depends: cpio (closes: #438057).
+  * debian/git-core.README.Debian: fix typos (closes: #438932).
+  * debian/versions.upstream, debian/changelog.upstream: adapt.
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:56:20 +0000
 
 git-core (1:1.5.3~rc3-1) experimental; urgency=low
 
