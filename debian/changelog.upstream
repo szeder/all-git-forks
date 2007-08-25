@@ -1,3 +1,25 @@
+Version v1.5.2.5; changes since v1.5.2.4:
+-----------------------------------------
+
+Christian Couder (1):
+      rev-list --bisect: fix allocation of "int*" instead of "int".
+
+Julian Phillips (1):
+      Force listingblocks to be monospaced in manpages
+
+Junio C Hamano (4):
+      Do not expect unlink(2) to fail on a directory.
+      setup.c:verify_non_filename(): don't die unnecessarily while disambiguating
+      Fix "git add -u" data corruption.
+      GIT 1.5.2.5
+
+Linus Torvalds (1):
+      apply: remove directory that becomes empty by renaming the last file away
+
+Salikh Zakirov (1):
+      git-add -u paths... now works from subdirectory
+
+
 Version v1.5.2.4; changes since v1.5.2.3:
 -----------------------------------------
 

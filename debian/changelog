@@ -6,8 +6,9 @@ git-core (1:1.5.2.5-1) unstable; urgency=low
   * debian/rules: add TCLTK_PATH=/usr/bin/wish8.4 to OPTS (closes: #438662).
   * dbian/control: git-core: Depends: cpio (closes: #438057).
   * debian/git-core.README.Debian: fix typos (closes: #438932).
+  * debian/versions.upstream, debian/changelog.upstream: adapt.
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:54:00 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:56:20 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 
