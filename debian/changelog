@@ -1,9 +1,10 @@
-git-core (1:1.5.2.4-1.1) unstable; urgency=low
+git-core (1:1.5.2.5-0) unstable; urgency=low
 
   * debian/control: fix typo in Build-Depends: libcurl4-gnutls-dev |
     libcurl3-gnutls-dev (thx Mikael Eriksson, closes: #433196).
+  * new upstream point release.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 16 Jul 2007 11:17:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:30:49 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 
