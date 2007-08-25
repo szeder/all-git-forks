@@ -4,8 +4,11 @@ git-core (1:1.5.3~rc6-1) experimental; urgency=low
   * merge branch debian-sid.
   * debian/diff/0002-git-merge-do-up-to-date-check-also-for-all-strategie.diff:
     new; http://article.gmane.org/gmane.comp.version-control.git/55981.
+  * debian/diff/0003-git-sh-setup.sh-fallback-to-editor-not-vi-if-VI.diff:
+    new; git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR
+    are unset (thx Mike Hommey, closes: #438793).
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 18:51:21 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 19:48:43 +0000
 
 git-core (1:1.5.2.5-1) unstable; urgency=low
 
