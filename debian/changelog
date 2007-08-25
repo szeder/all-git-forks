@@ -22,6 +22,12 @@ git-core (1:1.5.2.5-1) unstable; urgency=low
 
  -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:56:20 +0000
 
+git-core (1:1.5.3~rc4-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 04 Aug 2007 13:02:05 +0000
+
 git-core (1:1.5.3~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.
