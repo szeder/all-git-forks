@@ -92,9 +92,13 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	done
 	chmod 0644 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
 	gzip -9 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
+	# bash completion
+	install -d -m0755 contrib/completion/git-completion.bash \
+	  '$(GIT)'-core/etc/bash_completion.d/git
 	# contrib
 	install -d -m0755 '$(GIT)'-core/usr/share/doc/git-core
 	cp -R contrib '$(GIT)'-core/usr/share/doc/git-core/
+	rm '$(GIT)'-core/usr/share/doc/git-core/contrib/git-completion.bash
 	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type f | \
 	  xargs chmod 0644
 	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type d | \
