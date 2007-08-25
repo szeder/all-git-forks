@@ -4,8 +4,9 @@ git-core (1:1.5.2.5-0) unstable; urgency=low
     libcurl3-gnutls-dev (thx Mikael Eriksson, closes: #433196).
   * new upstream point release.
   * debian/rules: add TCLTK_PATH=/usr/bin/wish8.4 to OPTS (closes: #438662).
+  * dbian/control: git-core: Depends: cpio (closes: #438057).
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:38:46 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:47:07 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 
