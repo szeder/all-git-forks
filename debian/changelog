@@ -1,4 +1,4 @@
-git-core (1:1.5.2.5-0) unstable; urgency=low
+git-core (1:1.5.2.5-1) unstable; urgency=low
 
   * debian/control: fix typo in Build-Depends: libcurl4-gnutls-dev |
     libcurl3-gnutls-dev (thx Mikael Eriksson, closes: #433196).
@@ -7,7 +7,7 @@ git-core (1:1.5.2.5-0) unstable; urgency=low
   * dbian/control: git-core: Depends: cpio (closes: #438057).
   * debian/git-core.README.Debian: fix typos (closes: #438932).
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:52:16 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 17:54:00 +0000
 
 git-core (1:1.5.2.4-1) unstable; urgency=low
 
