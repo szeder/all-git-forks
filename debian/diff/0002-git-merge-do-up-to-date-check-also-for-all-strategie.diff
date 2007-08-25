@@ -1,0 +1,195 @@
+From 41704fa594e8d3b576548f63f868300f273123d2 Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Sat, 25 Aug 2007 18:50:35 +0000
+Subject: [PATCH] git-merge: do up-to-date check also for all strategies
+
+This clarifies the logic to omit fast-forward check and omit
+trivial merge before running the specified strategy.
+
+The "index_merge" variable started out as a flag to say "do not
+do anything clever", but when recursive was changed to skip the
+trivial merge, the semantics were changed and the variable alone
+does not make sense anymore.
+
+This splits the variable into two, allow_fast_forward (which is
+almost always true, and avoids making a merge commit when the
+other commit is a descendant of our branch, but is set to false
+for ours and subtree) and allow_trivial_merge (which is false
+for ours, recursive and subtree).
+
+Unlike the earlier implementation, the "ours" strategy allows an
+up-to-date condition.  When we are up-to-date, the result will
+be our commit, and by definition, we will have our tree as the
+result.
+
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+---
+ git-merge.sh                |   35 +++++++++++--------
+ t/t6028-merge-up-to-date.sh |   77 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 97 insertions(+), 15 deletions(-)
+ create mode 100755 t/t6028-merge-up-to-date.sh
+
+diff --git a/git-merge.sh b/git-merge.sh
+index 5ccf282..3a01db0 100755
+--- a/git-merge.sh
++++ b/git-merge.sh
+@@ -19,10 +19,12 @@ LF='
+ all_strategies='recur recursive octopus resolve stupid ours subtree'
+ default_twohead_strategies='recursive'
+ default_octopus_strategies='octopus'
+-no_trivial_merge_strategies='ours subtree'
++no_fast_forward_strategies='subtree ours'
++no_trivial_strategies='recursive recur subtree ours'
+ use_strategies=
+ 
+-index_merge=t
++allow_fast_forward=t
++allow_trivial_merge=t
+ 
+ dropsave() {
+ 	rm -f -- "$GIT_DIR/MERGE_HEAD" "$GIT_DIR/MERGE_MSG" \
+@@ -265,11 +267,20 @@ esac
+ 
+ for s in $use_strategies
+ do
+-	for nt in $no_trivial_merge_strategies
++	for ss in $no_fast_forward_strategies
+ 	do
+ 		case " $s " in
+-		*" $nt "*)
+-			index_merge=f
++		*" $ss "*)
++			allow_fast_forward=f
++			break
++			;;
++		esac
++	done
++	for ss in $no_trivial_strategies
++	do
++		case " $s " in
++		*" $ss "*)
++			allow_trivial_merge=f
+ 			break
+ 			;;
+ 		esac
+@@ -286,10 +297,7 @@ case "$#" in
+ esac
+ echo "$head" >"$GIT_DIR/ORIG_HEAD"
+ 
+-case "$index_merge,$#,$common,$no_commit" in
+-f,*)
+-	# We've been told not to try anything clever.  Skip to real merge.
+-	;;
++case "$allow_fast_forward,$#,$common,$no_commit" in
+ ?,*,'',*)
+ 	# No common ancestors found. We need a real merge.
+ 	;;
+@@ -299,7 +307,7 @@ f,*)
+ 	finish_up_to_date "Already up-to-date."
+ 	exit 0
+ 	;;
+-?,1,"$head",*)
++t,1,"$head",*)
+ 	# Again the most common case of merging one remote.
+ 	echo "Updating $(git rev-parse --short $head)..$(git rev-parse --short $1)"
+ 	git update-index --refresh 2>/dev/null
+@@ -322,11 +330,8 @@ f,*)
+ 	# We are not doing octopus, not fast forward, and have only
+ 	# one common.
+ 	git update-index --refresh 2>/dev/null
+-	case " $use_strategies " in
+-	*' recursive '*|*' recur '*)
+-		: run merge later
+-		;;
+-	*)
++	case "$allow_trivial_merge" in
++	t)
+ 		# See if it is really trivial.
+ 		git var GIT_COMMITTER_IDENT >/dev/null || exit
+ 		echo "Trying really trivial in-index merge..."
+diff --git a/t/t6028-merge-up-to-date.sh b/t/t6028-merge-up-to-date.sh
+new file mode 100755
+index 0000000..f8f3e3f
+--- /dev/null
++++ b/t/t6028-merge-up-to-date.sh
+@@ -0,0 +1,77 @@
++#!/bin/sh
++
++test_description='merge fast forward and up to date'
++
++. ./test-lib.sh
++
++test_expect_success setup '
++	>file &&
++	git add file &&
++	test_tick &&
++	git commit -m initial &&
++	git tag c0 &&
++
++	echo second >file &&
++	git add file &&
++	test_tick &&
++	git commit -m second &&
++	git tag c1 &&
++	git branch test
++'
++
++test_expect_success 'merge -s recursive up-to-date' '
++
++	git reset --hard c1 &&
++	test_tick &&
++	git merge -s recursive c0 &&
++	expect=$(git rev-parse c1) &&
++	current=$(git rev-parse HEAD) &&
++	test "$expect" = "$current"
++
++'
++
++test_expect_success 'merge -s recursive fast-forward' '
++
++	git reset --hard c0 &&
++	test_tick &&
++	git merge -s recursive c1 &&
++	expect=$(git rev-parse c1) &&
++	current=$(git rev-parse HEAD) &&
++	test "$expect" = "$current"
++
++'
++
++test_expect_success 'merge -s ours up-to-date' '
++
++	git reset --hard c1 &&
++	test_tick &&
++	git merge -s ours c0 &&
++	expect=$(git rev-parse c1) &&
++	current=$(git rev-parse HEAD) &&
++	test "$expect" = "$current"
++
++'
++
++test_expect_success 'merge -s ours fast-forward' '
++
++	git reset --hard c0 &&
++	test_tick &&
++	git merge -s ours c1 &&
++	expect=$(git rev-parse c0^{tree}) &&
++	current=$(git rev-parse HEAD^{tree}) &&
++	test "$expect" = "$current"
++
++'
++
++test_expect_success 'merge -s subtree up-to-date' '
++
++	git reset --hard c1 &&
++	test_tick &&
++	git merge -s subtree c0 &&
++	expect=$(git rev-parse c1) &&
++	current=$(git rev-parse HEAD) &&
++	test "$expect" = "$current"
++
++'
++
++test_done
+-- 
+debian.1.5.3_rc4.1-dirty
+

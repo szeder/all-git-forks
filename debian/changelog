@@ -2,8 +2,10 @@ git-core (1:1.5.3~rc6-1) experimental; urgency=low
 
   * new upstream release candidate.
   * merge branch debian-sid.
+  * debian/diff/0002-git-merge-do-up-to-date-check-also-for-all-strategie.diff:
+    new; http://article.gmane.org/gmane.comp.version-control.git/55981.
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 18:34:32 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 25 Aug 2007 18:51:21 +0000
 
 git-core (1:1.5.2.5-1) unstable; urgency=low
 
