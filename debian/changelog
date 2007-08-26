@@ -1,8 +1,8 @@
-git-core (1:1.5.2.5-1.1) unstable; urgency=low
+git-core (1:1.5.2.5-2) unstable; urgency=low
 
   * debian/git-core.conffiles: new; add /etc/bash_completion.d/git.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 09:46:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 09:49:39 +0000
 
 git-core (1:1.5.2.5-1) unstable; urgency=low
 
