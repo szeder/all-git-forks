@@ -1,12 +1,13 @@
-From 35cd878391ba96118c568977fb1a0189c698604a Mon Sep 17 00:00:00 2001
+From 77261911028c8fbad105ef77c60ce9f8b65e2b61 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
 
 http://bugs.debian.org/438793
 ---
- git-sh-setup.sh |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ git-sh-setup.sh   |    2 +-
+ t/t7005-editor.sh |   14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
 index 185c5c6..6999f25 100755
@@ -21,6 +22,65 @@ index 185c5c6..6999f25 100755
  }
  
  is_bare_repository () {
+diff --git a/t/t7005-editor.sh b/t/t7005-editor.sh
+index 28643b0..be55b21 100755
+--- a/t/t7005-editor.sh
++++ b/t/t7005-editor.sh
+@@ -4,15 +4,15 @@ test_description='GIT_EDITOR, core.editor, and stuff'
+ 
+ . ./test-lib.sh
+ 
+-for i in GIT_EDITOR core_editor EDITOR VISUAL vi
++for i in GIT_EDITOR core_editor EDITOR VISUAL editor
+ do
+ 	cat >e-$i.sh <<-EOF
+ 	echo "Edited by $i" >"\$1"
+ 	EOF
+ 	chmod +x e-$i.sh
+ done
+-unset vi
+-mv e-vi.sh vi
++unset editor 
++mv e-editor.sh editor
+ PATH=".:$PATH"
+ unset EDITOR VISUAL GIT_EDITOR
+ 
+@@ -20,7 +20,7 @@ test_expect_success setup '
+ 
+ 	msg="Hand edited" &&
+ 	echo "$msg" >expect &&
+-	git add vi &&
++	git add editor &&
+ 	test_tick &&
+ 	git commit -m "$msg" &&
+ 	git show -s --pretty=oneline |
+@@ -31,7 +31,7 @@ test_expect_success setup '
+ 
+ TERM=dumb
+ export TERM
+-test_expect_success 'dumb should error out when falling back on vi' '
++test_expect_success 'dumb should error out when falling back on editor' '
+ 
+ 	if git commit --amend
+ 	then
+@@ -44,7 +44,7 @@ test_expect_success 'dumb should error out when falling back on vi' '
+ 
+ TERM=vt100
+ export TERM
+-for i in vi EDITOR VISUAL core_editor GIT_EDITOR
++for i in editor EDITOR VISUAL core_editor GIT_EDITOR
+ do
+ 	echo "Edited by $i" >expect
+ 	unset EDITOR VISUAL GIT_EDITOR
+@@ -68,7 +68,7 @@ done
+ 
+ unset EDITOR VISUAL GIT_EDITOR
+ git config --unset-all core.editor
+-for i in vi EDITOR VISUAL core_editor GIT_EDITOR
++for i in editor EDITOR VISUAL core_editor GIT_EDITOR
+ do
+ 	echo "Edited by $i" >expect
+ 	case "$i" in
 -- 
 debian.1.5.3_rc4.1-dirty
 
