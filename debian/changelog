@@ -11,6 +11,12 @@ git-core (1:1.5.3~rc6-1) experimental; urgency=low
 
  -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 08:20:17 +0000
 
+git-core (1:1.5.2.5-2) unstable; urgency=low
+
+  * debian/git-core.conffiles: new; add /etc/bash_completion.d/git.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 09:49:39 +0000
+
 git-core (1:1.5.2.5-1) unstable; urgency=low
 
   * debian/control: fix typo in Build-Depends: libcurl4-gnutls-dev |
