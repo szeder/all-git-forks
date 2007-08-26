@@ -1,6 +1,7 @@
 git-core (1:1.5.3~rc6-1) experimental; urgency=low
 
   * new upstream release candidate.
+    * git-am: initialize variable $resume on startup (closes: #435807).
   * merge branch debian-sid.
   * debian/diff/0002-git-merge-do-up-to-date-check-also-for-all-strategie.diff:
     new; http://article.gmane.org/gmane.comp.version-control.git/55981.
@@ -8,7 +9,7 @@ git-core (1:1.5.3~rc6-1) experimental; urgency=low
     new; git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR
     are unset (thx Mike Hommey, closes: #438793).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 07:48:54 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Aug 2007 08:20:17 +0000
 
 git-core (1:1.5.2.5-1) unstable; urgency=low
 
