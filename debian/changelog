@@ -4,7 +4,7 @@ git-core (1:1.5.3~rc7-1) experimental; urgency=low
   * debian/diff/0002-git-merge-do-up-to-date-check-also-for-all-strategie.diff:
     remove; included upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 29 Aug 2007 11:17:16 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 29 Aug 2007 12:22:16 +0000
 
 git-core (1:1.5.3~rc6-1) experimental; urgency=low
 

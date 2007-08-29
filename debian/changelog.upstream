@@ -1,3 +1,110 @@
+Version v1.5.3-rc7; changes since v1.5.3-rc6:
+---------------------------------------------
+
+Alex Riesen (1):
+      Fix git-remote for ActiveState Perl
+
+Alexandre Julliard (1):
+      git.el: Avoid a lisp error when there's no current branch (detached HEAD).
+
+Brian Hetro (5):
+      Documentation: For consistency, use CVS instead of cvs.
+      Documentation: Correct various misspellings and typos.
+      Make usage documentation for git-am consistent.
+      Make usage documentation for git-add consistent.
+      When nothing to git-commit, honor the git-status color setting.
+
+David Kastrup (4):
+      diff-delta.c: Fix broken skip calculation.
+      Documentation/user-manual.txt: fix a few omissions of gitlink commands.
+      Documentation/user-manual.txt: fix a few omissions of gitlink commands.
+      git-svn.txt: fix an obvious misspelling.
+
+David Kågedal (1):
+      git.el: Added colors for dark background
+
+Eric Wong (2):
+      git-svn: update documentation with CAVEATS section
+      git-svn: dcommit prints out the URL to be committed to
+
+J. Bruce Fields (5):
+      user-manual: edit "ignoring files" for conciseness
+      user-manual: minor editing for conciseness
+      user-manual: introduce the word "commit" earlier
+      user-manual: use pithier example commit
+      user-manual: fix incorrect header level
+
+Jakub Narebski (1):
+      gitweb: Fix escaping HTML of project owner in 'projects_list' and
+
+Jari Aalto (1):
+      git-tag(1): Remove duplicate text
+
+Johannes Schindelin (2):
+      rebase -i: fix squashing corner case
+      name-rev: Fix non-shortest description
+
+Junio C Hamano (11):
+      blame: check return value from read_sha1_file()
+      pack-objects: check return value from read_sha1_file()
+      RelNotes draft for 1.5.3 update.
+      Fix initialization of a bare repository
+      git --bare cmd: do not unconditionally nuke GIT_DIR
+      git-merge: do up-to-date check also for all strategies
+      Porcelain level "log" family should recurse when diffing.
+      "format-patch --root rev" is the way to show everything.
+      Documentation/git-diff: A..B and A...B cannot take tree-ishes
+      format-patch documentation: reword to hint "--root <one-commit>" more clearly
+      GIT 1.5.3-rc7
+
+Linus Torvalds (1):
+      Fix racy-git handling in git-write-tree.
+
+Mike Hommey (1):
+      Describe two-dot and three-dot notation for diff endpoints.
+
+Petr Baudis (4):
+      gitweb: Fix searchbox positioning
+      gitweb: Lift any characters restriction on searched strings
+      git-add: Make the "tried to add ignored file" error message less confusing
+      git-add: Make the filename globbing note a bit clearer
+
+Quy Tonthat (1):
+      Fix breakage in git-rev-list.txt
+
+René Scharfe (1):
+      Documentation: update tar.umask default
+
+Sean Estabrooks (1):
+      Reset terminal attributes when terminating git send-email
+
+Shawn O. Pearce (13):
+      git-gui: Fix window manager problems on ion3
+      git-gui: Allow git-merge to use branch names in conflict markers
+      git-gui: Paper bag fix "Stage Hunk For Commit" in diff context menu
+      git-gui: Fix "unoptimized loading" to not cause git-gui to crash
+      Fix new-workdir (again) to work on bare repositories
+      Suggest unsetting core.bare when using new-workdir on a bare repository
+      Update bash completion with new 1.5.3 command line options
+      Teach bash to complete ref arguments to git-describe
+      Teach bash about git-submodule and its subcommands
+      git-gui: Refactor diff pane popup support for future improvements
+      git-gui: Do not offer to stage three-way diff hunks into the index
+      git-gui: Correct 'git gui blame' in a subdirectory
+      Don't segfault if we failed to inflate a packed delta
+
+Simon Hausmann (2):
+      git-p4: Make 'git-p4 branches' work after an initial clone with git clone from an origin-updated repository.
+      git-p4: Fix warnings about non-existant refs/remotes/p4/HEAD ref when running git-p4 sync the first time after a git clone.
+
+Stefan Sperling (1):
+      Document -u option in git-svnimport man page
+
+martin f. krafft (2):
+      git-svn init/clone --stdlayout option to default-init trunk/tags/branches
+      Install man3 manpages to $PREFIX/share/man/man3 even for site installs
+
+
 Version v1.5.3-rc6; changes since v1.5.3-rc5:
 ---------------------------------------------
 
