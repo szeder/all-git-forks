@@ -1,4 +1,4 @@
-From 77261911028c8fbad105ef77c60ce9f8b65e2b61 Mon Sep 17 00:00:00 2001
+From 4953d5b4a7e591ed312a174f711ae3e88e8dc1ba Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
@@ -23,7 +23,7 @@ index 185c5c6..6999f25 100755
  
  is_bare_repository () {
 diff --git a/t/t7005-editor.sh b/t/t7005-editor.sh
-index 28643b0..be55b21 100755
+index 28643b0..540c125 100755
 --- a/t/t7005-editor.sh
 +++ b/t/t7005-editor.sh
 @@ -4,15 +4,15 @@ test_description='GIT_EDITOR, core.editor, and stuff'
@@ -40,7 +40,7 @@ index 28643b0..be55b21 100755
  done
 -unset vi
 -mv e-vi.sh vi
-+unset editor 
++unset editor
 +mv e-editor.sh editor
  PATH=".:$PATH"
  unset EDITOR VISUAL GIT_EDITOR
@@ -82,5 +82,5 @@ index 28643b0..be55b21 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-debian.1.5.3_rc4.1-dirty
+1.5.3.GIT
 
