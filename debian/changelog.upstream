@@ -1,3 +1,69 @@
+Version v1.5.3; changes since v1.5.3-rc7:
+-----------------------------------------
+
+Alex Riesen (1):
+      Temporary fix for stack smashing in mailinfo
+
+Carlos Rica (1):
+      git-tag: Fix -l option to use better shell style globs.
+
+Eric Wong (1):
+      git-svn: fix dcommit clobbering upstream when committing multiple changes
+
+Giuseppe Bilotta (2):
+      git-filter-branch: more detailed USAGE
+      git-filter-branch: document --original option
+
+Joe Perches (1):
+      git-send-email --cc-cmd
+
+Johannes Schindelin (5):
+      completion: also complete git-log's --left-right and --cherry-pick option
+      filter-branch: fix remnants of old syntax in documentation
+      rebase -i: mention the option to split commits in the man page
+      filter-branch: provide the convenience functions also for commit filters
+      filter-branch: introduce convenience function "skip_commit"
+
+Johannes Sixt (1):
+      rebase -m: Fix incorrect short-logs of already applied commits.
+
+Junio C Hamano (13):
+      git-daemon(1): assorted improvements.
+      ls-files --error-unmatch: do not barf if the same pattern is given twice.
+      Makefile: do not allow gnu make to remove test-*.o files
+      filter-branch: make sure orig_namespace ends with a single slash.
+      git-init: autodetect core.symlinks
+      Make "git-log --" without paths behave the same as "git-log" without --
+      Hopefully the final update to draft release notes for 1.5.3.
+      git-svn: Protect against "diff.color = true".
+      git-diff: resurrect the traditional empty "diff --git" behaviour
+      Avoid one-or-more (\+) non BRE in sed scripts.
+      Documentation: minor AsciiDoc mark-up fixes.
+      Update my contact address as the maintainer.
+      GIT 1.5.3
+
+Luben Tuikov (1):
+      URL: allow port specification in ssh:// URLs
+
+Miles Bader (1):
+      Make git-archimport log entries more consistent
+
+Nicolas Pitre (1):
+      fix same sized delta logic
+
+Paul Mackerras (1):
+      gitk: Fix bug causing undefined variable error when cherry-picking
+
+Robin Rosenberg (1):
+      Mention -m as an abbreviation for --merge
+
+Shawn O. Pearce (1):
+      Teach bash about completing arguments for git-tag
+
+Tom Clarke (1):
+      Fixing comment in merge strategies
+
+
 Version v1.5.3-rc7; changes since v1.5.3-rc6:
 ---------------------------------------------
 
