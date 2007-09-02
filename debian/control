@@ -100,7 +100,7 @@ Description: fast, scalable, distributed revision control system (svn interopera
 
 Package: git-email
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), libmail-sendmail-perl
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.)
 Recommends: git-doc, libemail-valid-perl
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (email add-on)
