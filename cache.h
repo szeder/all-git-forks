@@ -173,7 +173,7 @@ extern struct index_state the_index;
 #define remove_cache_entry_at(pos) remove_index_entry_at(&the_index, (pos))
 #define remove_file_from_cache(path) remove_file_from_index(&the_index, (path))
 #define add_file_to_cache(path, verbose) add_file_to_index(&the_index, (path), (verbose))
-#define refresh_cache(flags) refresh_index(&the_index, flags)
+#define refresh_cache(flags) refresh_index(&the_index, (flags), NULL, NULL)
 #define ce_match_stat(ce, st, really) ie_match_stat(&the_index, (ce), (st), (really))
 #define ce_modified(ce, st, really) ie_modified(&the_index, (ce), (st), (really))
 #endif
@@ -208,12 +208,15 @@ enum object_type {
 extern int is_bare_repository_cfg;
 extern int is_bare_repository(void);
 extern int is_inside_git_dir(void);
+extern char *git_work_tree_cfg;
 extern int is_inside_work_tree(void);
 extern const char *get_git_dir(void);
 extern char *get_object_directory(void);
 extern char *get_refs_directory(void);
 extern char *get_index_file(void);
 extern char *get_graft_file(void);
+extern int set_git_dir(const char *path);
+extern const char *get_git_work_tree(void);
 
 #define ALTERNATE_DB_ENVIRONMENT "GIT_ALTERNATE_OBJECT_DIRECTORIES"
 
@@ -255,6 +258,7 @@ extern int index_name_pos(struct index_state *, const char *name, int namelen);
 #define ADD_CACHE_OK_TO_ADD 1		/* Ok to add */
 #define ADD_CACHE_OK_TO_REPLACE 2	/* Ok to replace file/directory */
 #define ADD_CACHE_SKIP_DFCHECK 4	/* Ok to skip DF conflict checks */
+#define ADD_CACHE_JUST_APPEND 8		/* Append only; tree.c::read_tree() */
 extern int add_index_entry(struct index_state *, struct cache_entry *ce, int option);
 extern struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really);
 extern int remove_index_entry_at(struct index_state *, int pos);
@@ -274,7 +278,7 @@ extern void fill_stat_cache_info(struct cache_entry *ce, struct stat *st);
 #define REFRESH_UNMERGED	0x0002	/* allow unmerged */
 #define REFRESH_QUIET		0x0004	/* be quiet about it */
 #define REFRESH_IGNORE_MISSING	0x0008	/* ignore non-existent */
-extern int refresh_index(struct index_state *, unsigned int flags);
+extern int refresh_index(struct index_state *, unsigned int flags, const char **pathspec, char *seen);
 
 struct lock_file {
 	struct lock_file *next;
@@ -358,6 +362,11 @@ int git_config_perm(const char *var, const char *value);
 int adjust_shared_perm(const char *path);
 int safe_create_leading_directories(char *path);
 char *enter_repo(char *path, int strict);
+static inline int is_absolute_path(const char *path)
+{
+	return path[0] == '/';
+}
+const char *make_absolute_path(const char *path);
 
 /* Read and unpack a sha1 file into memory, write memory to a sha1 file */
 extern int sha1_object_info(const unsigned char *, unsigned long *);
@@ -560,6 +569,8 @@ extern char *pager_program;
 extern int pager_in_use;
 extern int pager_use_color;
 
+extern char *editor_program;
+
 /* base85 */
 int decode_85(char *dst, const char *line, int linelen);
 void encode_85(char *buf, const unsigned char *data, int bytes);
@@ -582,6 +593,9 @@ extern void trace_argv_printf(const char **argv, int count, const char *format, 
 extern char *convert_to_git(const char *path, const char *src, unsigned long *sizep);
 extern char *convert_to_working_tree(const char *path, const char *src, unsigned long *sizep);
 extern void *convert_sha1_file(const char *path, const unsigned char *sha1, unsigned int mode, enum object_type *type, unsigned long *size);
+
+/* diff.c */
+extern int diff_auto_refresh_index;
 
 /* match-trees.c */
 void shift_tree(const unsigned char *, const unsigned char *, unsigned char *, int);

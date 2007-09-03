@@ -4,7 +4,7 @@
 #include "quote.h"
 
 const char git_usage_string[] =
-	"git [--version] [--exec-path[=GIT_EXEC_PATH]] [-p|--paginate] [--bare] [--git-dir=GIT_DIR] [--work-tree=GIT_WORK_TREE] [--help] COMMAND [ARGS]";
+	"git [--version] [--exec-path[=GIT_EXEC_PATH]] [-p|--paginate|--no-pager] [--bare] [--git-dir=GIT_DIR] [--work-tree=GIT_WORK_TREE] [--help] COMMAND [ARGS]";
 
 static void prepend_to_path(const char *dir, int len)
 {
@@ -58,6 +58,10 @@ static int handle_options(const char*** argv, int* argc, int* envchanged)
 			}
 		} else if (!strcmp(cmd, "-p") || !strcmp(cmd, "--paginate")) {
 			setup_pager();
+		} else if (!strcmp(cmd, "--no-pager")) {
+			setenv("GIT_PAGER", "cat", 1);
+			if (envchanged)
+				*envchanged = 1;
 		} else if (!strcmp(cmd, "--git-dir")) {
 			if (*argc < 2) {
 				fprintf(stderr, "No directory given for --git-dir.\n" );
@@ -89,7 +93,8 @@ static int handle_options(const char*** argv, int* argc, int* envchanged)
 				*envchanged = 1;
 		} else if (!strcmp(cmd, "--bare")) {
 			static char git_dir[PATH_MAX+1];
-			setenv(GIT_DIR_ENVIRONMENT, getcwd(git_dir, sizeof(git_dir)), 1);
+			is_bare_repository_cfg = 1;
+			setenv(GIT_DIR_ENVIRONMENT, getcwd(git_dir, sizeof(git_dir)), 0);
 			if (envchanged)
 				*envchanged = 1;
 		} else {
@@ -272,9 +277,14 @@ static int run_command(struct cmd_struct *p, int argc, const char **argv)
 		prefix = setup_git_directory();
 	if (p->option & USE_PAGER)
 		setup_pager();
-	if ((p->option & NEED_WORK_TREE) &&
-	    (!is_inside_work_tree() || is_inside_git_dir()))
-		die("%s must be run in a work tree", p->cmd);
+	if (p->option & NEED_WORK_TREE) {
+		const char *work_tree = get_git_work_tree();
+		const char *git_dir = get_git_dir();
+		if (!is_absolute_path(git_dir))
+			set_git_dir(make_absolute_path(git_dir));
+		if (!work_tree || chdir(work_tree))
+			die("%s must be run in a work tree", p->cmd);
+	}
 	trace_argv_printf(argv, argc, "trace: built-in: git");
 
 	status = p->fn(argc, argv, prefix);
@@ -310,7 +320,8 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "branch", cmd_branch, RUN_SETUP },
 		{ "bundle", cmd_bundle },
 		{ "cat-file", cmd_cat_file, RUN_SETUP },
-		{ "checkout-index", cmd_checkout_index, RUN_SETUP },
+		{ "checkout-index", cmd_checkout_index,
+			RUN_SETUP | NEED_WORK_TREE},
 		{ "check-ref-format", cmd_check_ref_format },
 		{ "check-attr", cmd_check_attr, RUN_SETUP | NEED_WORK_TREE },
 		{ "cherry", cmd_cherry, RUN_SETUP },
@@ -319,7 +330,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "config", cmd_config },
 		{ "count-objects", cmd_count_objects, RUN_SETUP },
 		{ "describe", cmd_describe, RUN_SETUP },
-		{ "diff", cmd_diff, USE_PAGER },
+		{ "diff", cmd_diff },
 		{ "diff-files", cmd_diff_files },
 		{ "diff-index", cmd_diff_index, RUN_SETUP },
 		{ "diff-tree", cmd_diff_tree, RUN_SETUP },
@@ -363,11 +374,13 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "show", cmd_show, RUN_SETUP | USE_PAGER },
 		{ "stripspace", cmd_stripspace },
 		{ "symbolic-ref", cmd_symbolic_ref, RUN_SETUP },
+		{ "tag", cmd_tag, RUN_SETUP },
 		{ "tar-tree", cmd_tar_tree },
 		{ "unpack-objects", cmd_unpack_objects, RUN_SETUP },
 		{ "update-index", cmd_update_index, RUN_SETUP },
 		{ "update-ref", cmd_update_ref, RUN_SETUP },
 		{ "upload-archive", cmd_upload_archive },
+		{ "verify-tag", cmd_verify_tag, RUN_SETUP },
 		{ "version", cmd_version },
 		{ "whatchanged", cmd_whatchanged, RUN_SETUP | USE_PAGER },
 		{ "write-tree", cmd_write_tree, RUN_SETUP },
@@ -443,11 +456,11 @@ int main(int argc, const char **argv)
 	cmd = argv[0];
 
 	/*
-	 * We search for git commands in the following order:
-	 *  - git_exec_path()
-	 *  - the path of the "git" command if we could find it
-	 *    in $0
-	 *  - the regular PATH.
+	 * We execute external git command via execv_git_cmd(),
+	 * which looks at "--exec-path" option, GIT_EXEC_PATH
+	 * environment, and $(gitexecdir) in Makefile while built,
+	 * in this order.  For scripted commands, we prepend
+	 * the value of the exec_path variable to the PATH.
 	 */
 	if (exec_path)
 		prepend_to_path(exec_path, strlen(exec_path));

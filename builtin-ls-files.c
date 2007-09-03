@@ -469,9 +469,11 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 		break;
 	}
 
-	if (require_work_tree &&
-			(!is_inside_work_tree() || is_inside_git_dir()))
-		die("This operation must be run in a work tree");
+	if (require_work_tree && !is_inside_work_tree()) {
+		const char *work_tree = get_git_work_tree();
+		if (!work_tree || chdir(work_tree))
+			die("This operation must be run in a work tree");
+	}
 
 	pathspec = get_pathspec(prefix, argv + i);
 
@@ -509,8 +511,28 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 		 */
 		int num, errors = 0;
 		for (num = 0; pathspec[num]; num++) {
+			int other, found_dup;
+
 			if (ps_matched[num])
 				continue;
+			/*
+			 * The caller might have fed identical pathspec
+			 * twice.  Do not barf on such a mistake.
+			 */
+			for (found_dup = other = 0;
+			     !found_dup && pathspec[other];
+			     other++) {
+				if (other == num || !ps_matched[other])
+					continue;
+				if (!strcmp(pathspec[other], pathspec[num]))
+					/*
+					 * Ok, we have a match already.
+					 */
+					found_dup = 1;
+			}
+			if (found_dup)
+				continue;
+
 			error("pathspec '%s' did not match any file(s) known to git.",
 			      pathspec[num] + prefix_offset);
 			errors++;

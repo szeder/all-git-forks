@@ -29,7 +29,8 @@ set_reflog_action() {
 }
 
 git_editor() {
-	GIT_EDITOR=${GIT_EDITOR:-$(git config core.editor || echo ${VISUAL:-${EDITOR}})}
+	: "${GIT_EDITOR:=$(git config core.editor)}"
+	: "${GIT_EDITOR:=${VISUAL:-${EDITOR}}}"
 	case "$GIT_EDITOR,$TERM" in
 	,dumb)
 		echo >&2 "No editor specified in GIT_EDITOR, core.editor, VISUAL,"
@@ -40,7 +41,7 @@ git_editor() {
 		exit 1
 		;;
 	esac
-	"${GIT_EDITOR:-vi}" "$1"
+	eval "${GIT_EDITOR:=vi}" '"$@"'
 }
 
 is_bare_repository () {
@@ -59,8 +60,7 @@ cd_to_toplevel () {
 }
 
 require_work_tree () {
-	test $(git rev-parse --is-inside-work-tree) = true &&
-	test $(git rev-parse --is-inside-git-dir) = false ||
+	test $(git rev-parse --is-inside-work-tree) = true ||
 	die "fatal: $0 cannot be used without a working tree."
 }
 
@@ -116,6 +116,16 @@ then
 		exit $exit
 	}
 else
-	GIT_DIR=$(git rev-parse --git-dir) || exit
+	GIT_DIR=$(git rev-parse --git-dir) || {
+	    exit=$?
+	    echo >&2 "Failed to find a valid git directory."
+	    exit $exit
+	}
 fi
+
+test -n "$GIT_DIR" && GIT_DIR=$(cd "$GIT_DIR" && pwd) || {
+    echo >&2 "Unable to determine absolute path of git directory"
+    exit 1
+}
+
 : ${GIT_OBJECT_DIRECTORY="$GIT_DIR/objects"}

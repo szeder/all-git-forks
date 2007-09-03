@@ -2,8 +2,10 @@
 #
 # Copyright (c) 2005, 2006 Junio C Hamano
 
-USAGE='[--signoff] [--dotest=<dir>] [--utf8 | --no-utf8] [--binary] [--3way]
-  [--interactive] [--whitespace=<option>] [-C<n>] [-p<n>] <mbox>...
+USAGE='[--signoff] [--dotest=<dir>] [--keep] [--utf8 | --no-utf8]
+  [--3way] [--interactive] [--binary]
+  [--whitespace=<option>] [-C<n>] [-p<n>]
+  <mbox>|<Maildir>...
   or, when resuming [--skip | --resolved]'
 . git-sh-setup
 set_reflog_action am
@@ -103,7 +105,8 @@ It does not apply to blobs recorded in its index."
 }
 
 prec=4
-dotest=.dotest sign= utf8=t keep= skip= interactive= resolved= binary= resolvemsg=
+dotest=.dotest sign= utf8=t keep= skip= interactive= resolved= binary=
+resolvemsg= resume=
 git_apply_opt=
 
 while case "$#" in 0) break;; esac
@@ -284,6 +287,12 @@ do
 		git mailinfo $keep $utf8 "$dotest/msg" "$dotest/patch" \
 			<"$dotest/$msgnum" >"$dotest/info" ||
 			stop_here $this
+
+		# skip pine's internal folder data
+		grep '^Author: Mail System Internal Data$' \
+			<"$dotest"/info >/dev/null &&
+			go_next && continue
+
 		test -s $dotest/patch || {
 			echo "Patch is empty.  Was it split wrong?"
 			stop_here $this

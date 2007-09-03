@@ -436,12 +436,11 @@ my %allowed_options = (
 
 our @extra_options = $cgi->param('opt');
 if (defined @extra_options) {
-	foreach(@extra_options)
-	{
-		if (not grep(/^$_$/, keys %allowed_options)) {
+	foreach my $opt (@extra_options) {
+		if (not exists $allowed_options{$opt}) {
 			die_error(undef, "Invalid option parameter");
 		}
-		if (not grep(/^$action$/, @{$allowed_options{$_}})) {
+		if (not grep(/^$action$/, @{$allowed_options{$opt}})) {
 			die_error(undef, "Invalid option parameter for this action");
 		}
 	}
@@ -472,9 +471,6 @@ if (defined $searchtype) {
 our $searchtext = $cgi->param('s');
 our $search_regexp;
 if (defined $searchtext) {
-	if ($searchtype ne 'grep' and $searchtype ne 'pickaxe' and $searchtext =~ m/[^a-zA-Z0-9_\.\/\-\+\:\@ ]/) {
-		die_error(undef, "Invalid search parameter");
-	}
 	if (length($searchtext) < 2) {
 		die_error(undef, "At least two characters are required for search parameter");
 	}
@@ -598,7 +594,6 @@ sub href(%) {
 		action => "a",
 		file_name => "f",
 		file_parent => "fp",
-		extra_options => "opt",
 		hash => "h",
 		hash_parent => "hp",
 		hash_base => "hb",
@@ -608,6 +603,7 @@ sub href(%) {
 		searchtext => "s",
 		searchtype => "st",
 		snapshot_format => "sf",
+		extra_options => "opt",
 	);
 	my %mapping = @mapping;
 
@@ -630,7 +626,13 @@ sub href(%) {
 	for (my $i = 0; $i < @mapping; $i += 2) {
 		my ($name, $symbol) = ($mapping[$i], $mapping[$i+1]);
 		if (defined $params{$name}) {
-			push @result, $symbol . "=" . esc_param($params{$name});
+			if (ref($params{$name}) eq "ARRAY") {
+				foreach my $par (@{$params{$name}}) {
+					push @result, $symbol . "=" . esc_param($par);
+				}
+			} else {
+				push @result, $symbol . "=" . esc_param($params{$name});
+			}
 		}
 	}
 	$href .= "?" . join(';', @result) if scalar @result;
@@ -890,11 +892,25 @@ sub age_string {
 	return $age_str;
 }
 
+use constant {
+	S_IFINVALID => 0030000,
+	S_IFGITLINK => 0160000,
+};
+
+# submodule/subproject, a commit object reference
+sub S_ISGITLINK($) {
+	my $mode = shift;
+
+	return (($mode & S_IFMT) == S_IFGITLINK)
+}
+
 # convert file mode in octal to symbolic file mode string
 sub mode_str {
 	my $mode = oct shift;
 
-	if (S_ISDIR($mode & S_IFMT)) {
+	if (S_ISGITLINK($mode)) {
+		return 'm---------';
+	} elsif (S_ISDIR($mode & S_IFMT)) {
 		return 'drwxr-xr-x';
 	} elsif (S_ISLNK($mode)) {
 		return 'lrwxrwxrwx';
@@ -920,7 +936,9 @@ sub file_type {
 		$mode = oct $mode;
 	}
 
-	if (S_ISDIR($mode & S_IFMT)) {
+	if (S_ISGITLINK($mode)) {
+		return "submodule";
+	} elsif (S_ISDIR($mode & S_IFMT)) {
 		return "directory";
 	} elsif (S_ISLNK($mode)) {
 		return "symlink";
@@ -941,7 +959,9 @@ sub file_type_long {
 		$mode = oct $mode;
 	}
 
-	if (S_ISDIR($mode & S_IFMT)) {
+	if (S_ISGITLINK($mode)) {
+		return "submodule";
+	} elsif (S_ISDIR($mode & S_IFMT)) {
 		return "directory";
 	} elsif (S_ISLNK($mode)) {
 		return "symlink";
@@ -1492,6 +1512,7 @@ sub git_get_projects_list {
 
 		File::Find::find({
 			follow_fast => 1, # follow symbolic links
+			follow_skip => 2, # ignore duplicates
 			dangling_symlinks => 0, # ignore dangling symlinks, silently
 			wanted => sub {
 				# skip project-list toplevel, if we get it.
@@ -2267,9 +2288,17 @@ EOF
 		printf('<link rel="alternate" title="%s log RSS feed" '.
 		       'href="%s" type="application/rss+xml" />'."\n",
 		       esc_param($project), href(action=>"rss"));
+		printf('<link rel="alternate" title="%s log RSS feed (no merges)" '.
+		       'href="%s" type="application/rss+xml" />'."\n",
+		       esc_param($project), href(action=>"rss",
+		                                 extra_options=>"--no-merges"));
 		printf('<link rel="alternate" title="%s log Atom feed" '.
 		       'href="%s" type="application/atom+xml" />'."\n",
 		       esc_param($project), href(action=>"atom"));
+		printf('<link rel="alternate" title="%s log Atom feed (no merges)" '.
+		       'href="%s" type="application/atom+xml" />'."\n",
+		       esc_param($project), href(action=>"atom",
+		                                 extra_options=>"--no-merges"));
 	} else {
 		printf('<link rel="alternate" title="%s projects list" '.
 		       'href="%s" type="text/plain; charset=utf-8"/>'."\n",
@@ -2703,6 +2732,20 @@ sub git_print_tree_entry {
 		if (defined $hash_base) {
 			print " | " .
 			      $cgi->a({-href => href(action=>"history", hash_base=>$hash_base,
+			                             file_name=>"$basedir$t->{'name'}")},
+			              "history");
+		}
+		print "</td>\n";
+	} else {
+		# unknown object: we can only present history for it
+		# (this includes 'commit' object, i.e. submodule support)
+		print "<td class=\"list\">" .
+		      esc_path($t->{'name'}) .
+		      "</td>\n";
+		print "<td class=\"link\">";
+		if (defined $hash_base) {
+			print $cgi->a({-href => href(action=>"history",
+			                             hash_base=>$hash_base,
 			                             file_name=>"$basedir$t->{'name'}")},
 			              "history");
 		}
@@ -3376,7 +3419,7 @@ sub git_project_list_body {
 		      "<td>" . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary"),
 		                        -class => "list", -title => $pr->{'descr_long'}},
 		                        esc_html($pr->{'descr'})) . "</td>\n" .
-		      "<td><i>" . chop_str($pr->{'owner'}, 15) . "</i></td>\n";
+		      "<td><i>" . esc_html(chop_str($pr->{'owner'}, 15)) . "</i></td>\n";
 		print "<td class=\"". age_class($pr->{'age'}) . "\">" .
 		      (defined $pr->{'age_string'} ? $pr->{'age_string'} : "No commits") . "</td>\n" .
 		      "<td class=\"link\">" .
@@ -3752,7 +3795,7 @@ sub git_summary {
 	print "<div class=\"title\">&nbsp;</div>\n";
 	print "<table cellspacing=\"0\">\n" .
 	      "<tr><td>description</td><td>" . esc_html($descr) . "</td></tr>\n" .
-	      "<tr><td>owner</td><td>$owner</td></tr>\n";
+	      "<tr><td>owner</td><td>" . esc_html($owner) . "</td></tr>\n";
 	if (defined $cd{'rfc2822'}) {
 		print "<tr><td>last change</td><td>$cd{'rfc2822'}</td></tr>\n";
 	}
@@ -4317,9 +4360,16 @@ sub git_snapshot {
 	@supported_fmts = filter_snapshot_fmts(@supported_fmts);
 
 	my $format = $cgi->param('sf');
-	unless ($format =~ m/[a-z0-9]+/
-	        && exists($known_snapshot_formats{$format})
-	        && grep($_ eq $format, @supported_fmts)) {
+	if (!@supported_fmts) {
+		die_error('403 Permission denied', "Permission denied");
+	}
+	# default to first supported snapshot format
+	$format ||= $supported_fmts[0];
+	if ($format !~ m/^[a-z0-9]+$/) {
+		die_error(undef, "Invalid snapshot format parameter");
+	} elsif (!exists($known_snapshot_formats{$format})) {
+		die_error(undef, "Unknown snapshot format");
+	} elsif (!grep($_ eq $format, @supported_fmts)) {
 		die_error(undef, "Unsupported snapshot format");
 	}
 
@@ -4336,7 +4386,7 @@ sub git_snapshot {
 	my $cmd;
 	$filename .= "-$hash$known_snapshot_formats{$format}{'suffix'}";
 	$cmd = "$git_command archive " .
-		"--format=$known_snapshot_formats{$format}{'format'}" .
+		"--format=$known_snapshot_formats{$format}{'format'} " .
 		"--prefix=\'$name\'/ $hash";
 	if (exists $known_snapshot_formats{$format}{'compressor'}) {
 		$cmd .= ' | ' . join ' ', @{$known_snapshot_formats{$format}{'compressor'}};
@@ -5313,7 +5363,7 @@ sub git_feed {
 
 	# log/feed of current (HEAD) branch, log of given branch, history of file/directory
 	my $head = $hash || 'HEAD';
-	my @commitlist = parse_commits($head, 150);
+	my @commitlist = parse_commits($head, 150, 0, undef, $file_name);
 
 	my %latest_commit;
 	my %latest_date;

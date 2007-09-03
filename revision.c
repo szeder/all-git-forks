@@ -118,10 +118,11 @@ static void add_pending_object_with_mode(struct rev_info *revs, struct object *o
 {
 	if (revs->no_walk && (obj->flags & UNINTERESTING))
 		die("object ranges do not make sense when not walking revisions");
+	if (revs->reflog_info && obj->type == OBJ_COMMIT &&
+			add_reflog_for_walk(revs->reflog_info,
+				(struct commit *)obj, name))
+		return;
 	add_object_array_with_mode(obj, name, &revs->pending, mode);
-	if (revs->reflog_info && obj->type == OBJ_COMMIT)
-		add_reflog_for_walk(revs->reflog_info,
-				(struct commit *)obj, name);
 }
 
 void add_pending_object(struct rev_info *revs, struct object *obj, const char *name)
@@ -895,7 +896,8 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 			continue;
 		argv[i] = NULL;
 		argc = i;
-		revs->prune_data = get_pathspec(revs->prefix, argv + i + 1);
+		if (argv[i + 1])
+			revs->prune_data = get_pathspec(revs->prefix, argv + i + 1);
 		seen_dashdash = 1;
 		break;
 	}
@@ -1149,6 +1151,10 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 					die("unknown date format %s", arg);
 				continue;
 			}
+			if (!strcmp(arg, "--log-size")) {
+				revs->show_log_size = 1;
+				continue;
+			}
 
 			/*
 			 * Grepping the commit log
@@ -1271,6 +1277,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 		revs->grep_filter->all_match = all_match;
 		compile_grep_patterns(revs->grep_filter);
 	}
+
+	if (revs->reverse && revs->reflog_info)
+		die("cannot combine --reverse with --walk-reflogs");
 
 	return left;
 }

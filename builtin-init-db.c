@@ -174,36 +174,7 @@ static void copy_templates(const char *git_dir, int len, const char *template_di
 	closedir(dir);
 }
 
-/*
- * Get the full path to the working tree specified in $GIT_WORK_TREE
- * or NULL if no working tree is specified.
- */
-static const char *get_work_tree(void)
-{
-	const char *git_work_tree;
-	char cwd[PATH_MAX];
-	static char worktree[PATH_MAX];
-
-	git_work_tree = getenv(GIT_WORK_TREE_ENVIRONMENT);
-	if (!git_work_tree)
-		return NULL;
-	if (!getcwd(cwd, sizeof(cwd)))
-		die("Unable to read current working directory");
-	if (chdir(git_work_tree))
-		die("Cannot change directory to specified working tree '%s'",
-			git_work_tree);
-	if (git_work_tree[0] != '/') {
-		if (!getcwd(worktree, sizeof(worktree)))
-			die("Unable to read current working directory");
-		git_work_tree = worktree;
-	}
-	if (chdir(cwd))
-		die("Cannot come back to cwd");
-	return git_work_tree;
-}
-
-static int create_default_files(const char *git_dir, const char *git_work_tree,
-	const char *template_path)
+static int create_default_files(const char *git_dir, const char *template_path)
 {
 	unsigned len = strlen(git_dir);
 	static char path[PATH_MAX];
@@ -282,18 +253,71 @@ static int create_default_files(const char *git_dir, const char *git_work_tree,
 	}
 	git_config_set("core.filemode", filemode ? "true" : "false");
 
-	if (is_bare_repository() && !git_work_tree) {
+	if (is_bare_repository())
 		git_config_set("core.bare", "true");
-	}
 	else {
+		const char *work_tree = get_git_work_tree();
 		git_config_set("core.bare", "false");
 		/* allow template config file to override the default */
 		if (log_all_ref_updates == -1)
 		    git_config_set("core.logallrefupdates", "true");
-		if (git_work_tree)
-			git_config_set("core.worktree", git_work_tree);
+		if (work_tree != git_work_tree_cfg)
+			git_config_set("core.worktree", work_tree);
 	}
+
+	/* Check if symlink is supported in the work tree */
+	if (!reinit) {
+		path[len] = 0;
+		strcpy(path + len, "tXXXXXX");
+		if (!close(xmkstemp(path)) &&
+		    !unlink(path) &&
+		    !symlink("testing", path) &&
+		    !lstat(path, &st1) &&
+		    S_ISLNK(st1.st_mode))
+			unlink(path); /* good */
+		else
+			git_config_set("core.symlinks", "false");
+	}
+
 	return reinit;
+}
+
+static void guess_repository_type(const char *git_dir)
+{
+	char cwd[PATH_MAX];
+	const char *slash;
+
+	if (0 <= is_bare_repository_cfg)
+		return;
+	if (!git_dir)
+		return;
+
+	/*
+	 * "GIT_DIR=. git init" is always bare.
+	 * "GIT_DIR=`pwd` git init" too.
+	 */
+	if (!strcmp(".", git_dir))
+		goto force_bare;
+	if (!getcwd(cwd, sizeof(cwd)))
+		die("cannot tell cwd");
+	if (!strcmp(git_dir, cwd))
+		goto force_bare;
+	/*
+	 * "GIT_DIR=.git or GIT_DIR=something/.git is usually not.
+	 */
+	if (!strcmp(git_dir, ".git"))
+		return;
+	slash = strrchr(git_dir, '/');
+	if (slash && !strcmp(slash, "/.git"))
+		return;
+
+	/*
+	 * Otherwise it is often bare.  At this point
+	 * we are just guessing.
+	 */
+ force_bare:
+	is_bare_repository_cfg = 1;
+	return;
 }
 
 static const char init_db_usage[] =
@@ -308,7 +332,6 @@ static const char init_db_usage[] =
 int cmd_init_db(int argc, const char **argv, const char *prefix)
 {
 	const char *git_dir;
-	const char *git_work_tree;
 	const char *sha1_dir;
 	const char *template_dir = NULL;
 	char *path;
@@ -329,7 +352,28 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 			usage(init_db_usage);
 	}
 
-	git_work_tree = get_work_tree();
+	/*
+	 * GIT_WORK_TREE makes sense only in conjunction with GIT_DIR
+	 * without --bare.  Catch the error early.
+	 */
+	git_dir = getenv(GIT_DIR_ENVIRONMENT);
+	if ((!git_dir || is_bare_repository_cfg == 1)
+	    && getenv(GIT_WORK_TREE_ENVIRONMENT))
+		die("%s (or --work-tree=<directory>) not allowed without "
+		    "specifying %s (or --git-dir=<directory>)",
+		    GIT_WORK_TREE_ENVIRONMENT,
+		    GIT_DIR_ENVIRONMENT);
+
+	guess_repository_type(git_dir);
+
+	if (is_bare_repository_cfg <= 0) {
+		git_work_tree_cfg = xcalloc(PATH_MAX, 1);
+		if (!getcwd(git_work_tree_cfg, PATH_MAX))
+			die ("Cannot access current working directory.");
+		if (access(get_git_work_tree(), X_OK))
+			die ("Cannot access work tree '%s'",
+			     get_git_work_tree());
+	}
 
 	/*
 	 * Set up the default .git directory contents
@@ -346,7 +390,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	 */
 	check_repository_format();
 
-	reinit = create_default_files(git_dir, git_work_tree, template_dir);
+	reinit = create_default_files(git_dir, template_dir);
 
 	/*
 	 * And set up the object store.

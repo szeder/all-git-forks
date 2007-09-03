@@ -145,6 +145,8 @@ static enum protocol get_protocol(const char *name)
 		return PROTO_SSH;
 	if (!strcmp(name, "ssh+git"))
 		return PROTO_SSH;
+	if (!strcmp(name, "file"))
+		return PROTO_LOCAL;
 	die("I don't handle protocol '%s'", name);
 }
 
@@ -451,6 +453,22 @@ static void git_proxy_connect(int fd[2], char *host)
 
 #define MAX_CMD_LEN 1024
 
+char *get_port(char *host)
+{
+	char *end;
+	char *p = strchr(host, ':');
+
+	if (p) {
+		strtol(p+1, &end, 10);
+		if (*end == '\0') {
+			*p = '\0';
+			return p+1;
+		}
+	}
+
+	return NULL;
+}
+
 /*
  * This returns 0 if the transport protocol does not need fork(2),
  * or a process id if it does.  Once done, finish the connection
@@ -469,6 +487,7 @@ pid_t git_connect(int fd[2], char *url, const char *prog, int flags)
 	pid_t pid;
 	enum protocol protocol = PROTO_LOCAL;
 	int free_path = 0;
+	char *port = NULL;
 
 	/* Without this we cannot rely on waitpid() to tell
 	 * what happened to our children.
@@ -498,13 +517,13 @@ pid_t git_connect(int fd[2], char *url, const char *prog, int flags)
 		end = host;
 
 	path = strchr(end, c);
-	if (c == ':') {
-		if (path) {
+	if (path) {
+		if (c == ':') {
 			protocol = PROTO_SSH;
 			*path++ = '\0';
-		} else
-			path = host;
-	}
+		}
+	} else
+		path = end;
 
 	if (!path || !*path)
 		die("No path specified. See 'man git-pull' for valid url syntax");
@@ -524,6 +543,12 @@ pid_t git_connect(int fd[2], char *url, const char *prog, int flags)
 
 		*ptr = '\0';
 	}
+
+	/*
+	 * Add support for ssh port: ssh://host.xy:<port>/...
+	 */
+	if (protocol == PROTO_SSH && host != url)
+		port = get_port(host);
 
 	if (protocol == PROTO_GIT) {
 		/* These underlying connection commands die() if they
@@ -581,7 +606,12 @@ pid_t git_connect(int fd[2], char *url, const char *prog, int flags)
 				ssh_basename = ssh;
 			else
 				ssh_basename++;
-			execlp(ssh, ssh_basename, host, command, NULL);
+
+			if (!port)
+				execlp(ssh, ssh_basename, host, command, NULL);
+			else
+				execlp(ssh, ssh_basename, "-p", port, host,
+				       command, NULL);
 		}
 		else {
 			unsetenv(ALTERNATE_DB_ENVIRONMENT);

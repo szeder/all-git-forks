@@ -151,6 +151,7 @@ sysconfdir = /etc
 else
 sysconfdir = $(prefix)/etc
 endif
+lib = lib
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 # DESTDIR=
 
@@ -176,6 +177,7 @@ CC = gcc
 AR = ar
 RM = rm -f
 TAR = tar
+FIND = find
 INSTALL = install
 RPMBUILD = rpmbuild
 TCL_PATH = tclsh
@@ -206,7 +208,6 @@ SCRIPT_SH = \
 	git-pull.sh git-rebase.sh git-rebase--interactive.sh \
 	git-repack.sh git-request-pull.sh git-reset.sh \
 	git-sh-setup.sh \
-	git-tag.sh git-verify-tag.sh \
 	git-am.sh \
 	git-merge.sh git-merge-stupid.sh git-merge-octopus.sh \
 	git-merge-resolve.sh git-merge-ours.sh \
@@ -361,18 +362,20 @@ BUILTIN_OBJS = \
 	builtin-show-branch.o \
 	builtin-stripspace.o \
 	builtin-symbolic-ref.o \
+	builtin-tag.o \
 	builtin-tar-tree.o \
 	builtin-unpack-objects.o \
 	builtin-update-index.o \
 	builtin-update-ref.o \
 	builtin-upload-archive.o \
 	builtin-verify-pack.o \
+	builtin-verify-tag.o \
 	builtin-write-tree.o \
 	builtin-show-ref.o \
 	builtin-pack-refs.o
 
 GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
-EXTLIBS = -lz
+EXTLIBS =
 
 #
 # Platform specific tweaks
@@ -456,6 +459,10 @@ ifeq ($(uname_S),AIX)
 	NO_STRLCPY = YesPlease
 	NEEDS_LIBICONV=YesPlease
 endif
+ifeq ($(uname_S),GNU)
+	# GNU/Hurd
+	NO_STRLCPY=YesPlease
+endif
 ifeq ($(uname_S),IRIX64)
 	NO_IPV6=YesPlease
 	NO_SETENV=YesPlease
@@ -499,9 +506,9 @@ endif
 
 ifndef NO_CURL
 	ifdef CURLDIR
-		# Try "-Wl,-rpath=$(CURLDIR)/lib" in such a case.
+		# Try "-Wl,-rpath=$(CURLDIR)/$(lib)" in such a case.
 		BASIC_CFLAGS += -I$(CURLDIR)/include
-		CURL_LIBCURL = -L$(CURLDIR)/lib $(CC_LD_DYNPATH)$(CURLDIR)/lib -lcurl
+		CURL_LIBCURL = -L$(CURLDIR)/$(lib) $(CC_LD_DYNPATH)$(CURLDIR)/$(lib) -lcurl
 	else
 		CURL_LIBCURL = -lcurl
 	endif
@@ -517,11 +524,17 @@ ifndef NO_CURL
 	endif
 endif
 
+ifdef ZLIB_PATH
+	BASIC_CFLAGS += -I$(ZLIB_PATH)/include
+	EXTLIBS += -L$(ZLIB_PATH)/$(lib) $(CC_LD_DYNPATH)$(ZLIB_PATH)/$(lib)
+endif
+EXTLIBS += -lz
+
 ifndef NO_OPENSSL
 	OPENSSL_LIBSSL = -lssl
 	ifdef OPENSSLDIR
 		BASIC_CFLAGS += -I$(OPENSSLDIR)/include
-		OPENSSL_LINK = -L$(OPENSSLDIR)/lib $(CC_LD_DYNPATH)$(OPENSSLDIR)/lib
+		OPENSSL_LINK = -L$(OPENSSLDIR)/$(lib) $(CC_LD_DYNPATH)$(OPENSSLDIR)/$(lib)
 	else
 		OPENSSL_LINK =
 	endif
@@ -538,7 +551,7 @@ endif
 ifdef NEEDS_LIBICONV
 	ifdef ICONVDIR
 		BASIC_CFLAGS += -I$(ICONVDIR)/include
-		ICONV_LINK = -L$(ICONVDIR)/lib $(CC_LD_DYNPATH)$(ICONVDIR)/lib
+		ICONV_LINK = -L$(ICONVDIR)/$(lib) $(CC_LD_DYNPATH)$(ICONVDIR)/$(lib)
 	else
 		ICONV_LINK =
 	endif
@@ -901,13 +914,16 @@ perl/Makefile: perl/Git.pm perl/Makefile.PL GIT-CFLAGS
 doc:
 	$(MAKE) -C Documentation all
 
+info:
+	$(MAKE) -C Documentation info
+
 TAGS:
 	$(RM) TAGS
-	find . -name '*.[hcS]' -print | xargs etags -a
+	$(FIND) . -name '*.[hcS]' -print | xargs etags -a
 
 tags:
 	$(RM) tags
-	find . -name '*.[hcS]' -print | xargs ctags -a
+	$(FIND) . -name '*.[hcS]' -print | xargs ctags -a
 
 ### Detect prefix changes
 TRACK_CFLAGS = $(subst ','\'',$(ALL_CFLAGS)):\
@@ -936,7 +952,7 @@ endif
 
 ### Testing rules
 
-TEST_PROGRAMS = test-chmtime$X test-genrandom$X test-date$X test-delta$X test-sha1$X test-match-trees$X
+TEST_PROGRAMS = test-chmtime$X test-genrandom$X test-date$X test-delta$X test-sha1$X test-match-trees$X test-absolute-path$X
 
 all:: $(TEST_PROGRAMS)
 
@@ -952,6 +968,8 @@ test: all
 test-date$X: date.o ctype.o
 
 test-delta$X: diff-delta.o patch-delta.o
+
+.PRECIOUS: $(patsubst test-%$X,test-%.o,$(TEST_PROGRAMS))
 
 test-%$X: test-%.o $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
@@ -992,6 +1010,9 @@ endif
 
 install-doc:
 	$(MAKE) -C Documentation install
+
+install-info:
+	$(MAKE) -C Documentation install-info
 
 quick-install-doc:
 	$(MAKE) -C Documentation quick-install

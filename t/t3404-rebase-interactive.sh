@@ -61,26 +61,31 @@ test_expect_success 'setup' '
 	git tag I
 '
 
-cat > fake-editor.sh << EOF
+cat > fake-editor.sh <<\EOF
 #!/bin/sh
-test "\$1" = .git/COMMIT_EDITMSG && {
-	test -z "\$FAKE_COMMIT_MESSAGE" || echo "\$FAKE_COMMIT_MESSAGE" > "\$1"
-	test -z "\$FAKE_COMMIT_AMEND" || echo "\$FAKE_COMMIT_AMEND" >> "\$1"
+case "$1" in
+*/COMMIT_EDITMSG)
+	test -z "$FAKE_COMMIT_MESSAGE" || echo "$FAKE_COMMIT_MESSAGE" > "$1"
+	test -z "$FAKE_COMMIT_AMEND" || echo "$FAKE_COMMIT_AMEND" >> "$1"
 	exit
-}
-test -z "\$FAKE_LINES" && exit
-grep -v "^#" < "\$1" > "\$1".tmp
-rm "\$1"
-cat "\$1".tmp
+	;;
+esac
+test -z "$EXPECT_COUNT" ||
+	test "$EXPECT_COUNT" = $(sed -e '/^#/d' -e '/^$/d' < "$1" | wc -l) ||
+	exit
+test -z "$FAKE_LINES" && exit
+grep -v '^#' < "$1" > "$1".tmp
+rm -f "$1"
+cat "$1".tmp
 action=pick
-for line in \$FAKE_LINES; do
-	case \$line in
+for line in $FAKE_LINES; do
+	case $line in
 	squash)
-		action="\$line";;
+		action="$line";;
 	*)
-		echo sed -n "\${line}s/^pick/\$action/p"
-		sed -n "\${line}p" < "\$1".tmp
-		sed -n "\${line}s/^pick/\$action/p" < "\$1".tmp >> "\$1"
+		echo sed -n "${line}s/^pick/$action/p"
+		sed -n "${line}p" < "$1".tmp
+		sed -n "${line}s/^pick/$action/p" < "$1".tmp >> "$1"
 		action=pick;;
 	esac
 done
@@ -92,6 +97,14 @@ export VISUAL
 
 test_expect_success 'no changes are a nop' '
 	git rebase -i F &&
+	test $(git rev-parse I) = $(git rev-parse HEAD)
+'
+
+test_expect_success 'test the [branch] option' '
+	git checkout -b dead-end &&
+	git rm file6 &&
+	git commit -m "stop here" &&
+	git rebase -i F branch2 &&
 	test $(git rev-parse I) = $(git rev-parse HEAD)
 '
 
@@ -219,6 +232,69 @@ test_expect_success 'multi-squash only fires up editor once' '
 		git rebase -i $base &&
 	test $base = $(git rev-parse HEAD^) &&
 	test 1 = $(git show | grep ONCE | wc -l)
+'
+
+test_expect_success 'squash works as expected' '
+	for n in one two three four
+	do
+		echo $n >> file$n &&
+		git add file$n &&
+		git commit -m $n
+	done &&
+	one=$(git rev-parse HEAD~3) &&
+	FAKE_LINES="1 squash 3 2" git rebase -i HEAD~3 &&
+	test $one = $(git rev-parse HEAD~2)
+'
+
+test_expect_success 'interrupted squash works as expected' '
+	for n in one two three four
+	do
+		echo $n >> conflict &&
+		git add conflict &&
+		git commit -m $n
+	done &&
+	one=$(git rev-parse HEAD~3) &&
+	! FAKE_LINES="1 squash 3 2" git rebase -i HEAD~3 &&
+	(echo one; echo two; echo four) > conflict &&
+	git add conflict &&
+	! git rebase --continue &&
+	echo resolved > conflict &&
+	git add conflict &&
+	git rebase --continue &&
+	test $one = $(git rev-parse HEAD~2)
+'
+
+test_expect_success 'interrupted squash works as expected (case 2)' '
+	for n in one two three four
+	do
+		echo $n >> conflict &&
+		git add conflict &&
+		git commit -m $n
+	done &&
+	one=$(git rev-parse HEAD~3) &&
+	! FAKE_LINES="3 squash 1 2" git rebase -i HEAD~3 &&
+	(echo one; echo four) > conflict &&
+	git add conflict &&
+	! git rebase --continue &&
+	(echo one; echo two; echo four) > conflict &&
+	git add conflict &&
+	! git rebase --continue &&
+	echo resolved > conflict &&
+	git add conflict &&
+	git rebase --continue &&
+	test $one = $(git rev-parse HEAD~2)
+'
+
+test_expect_success 'ignore patch if in upstream' '
+	HEAD=$(git rev-parse HEAD) &&
+	git checkout -b has-cherry-picked HEAD^ &&
+	echo unrelated > file7 &&
+	git add file7 &&
+	test_tick &&
+	git commit -m "unrelated change" &&
+	git cherry-pick $HEAD &&
+	EXPECT_COUNT=1 git rebase -i $HEAD &&
+	test $HEAD = $(git rev-parse HEAD^)
 '
 
 test_done

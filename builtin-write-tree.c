@@ -52,6 +52,8 @@ int write_tree(unsigned char *sha1, int missing_ok, const char *prefix)
 	if (prefix) {
 		struct cache_tree *subtree =
 			cache_tree_find(active_cache_tree, prefix);
+		if (!subtree)
+			die("git-write-tree: prefix %s not found", prefix);
 		hashcpy(sha1, subtree->sha1);
 	}
 	else
@@ -70,6 +72,7 @@ int cmd_write_tree(int argc, const char **argv, const char *unused_prefix)
 	const char *prefix = NULL;
 	unsigned char sha1[20];
 
+	git_config(git_default_config);
 	while (1 < argc) {
 		const char *arg = argv[1];
 		if (!strcmp(arg, "--missing-ok"))

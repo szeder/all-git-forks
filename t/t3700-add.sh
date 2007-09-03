@@ -131,8 +131,8 @@ test_expect_success 'git add with filemode=0, symlinks=0 prefers stage 2 over st
 	(
 		echo "100644 $(git hash-object -w stage1) 1	file"
 		echo "100755 $(git hash-object -w stage2) 2	file"
-		echo "100644 $(printf $s | git hash-object -w -t blob --stdin) 1	symlink"
-		echo "120000 $(printf $s | git hash-object -w -t blob --stdin) 2	symlink"
+		echo "100644 $(printf 1 | git hash-object -w -t blob --stdin) 1	symlink"
+		echo "120000 $(printf 2 | git hash-object -w -t blob --stdin) 2	symlink"
 	) | git update-index --index-info &&
 	git config core.filemode 0 &&
 	git config core.symlinks 0 &&
@@ -141,6 +141,18 @@ test_expect_success 'git add with filemode=0, symlinks=0 prefers stage 2 over st
 	git add file symlink &&
 	git ls-files --stage | grep "^100755 .* 0	file$" &&
 	git ls-files --stage | grep "^120000 .* 0	symlink$"
+'
+
+test_expect_success 'git add --refresh' '
+	>foo && git add foo && git commit -a -m "commit all" &&
+	test -z "`git diff-index HEAD -- foo`" &&
+	git read-tree HEAD &&
+	case "`git diff-index HEAD -- foo`" in
+	:100644" "*"M	foo") echo ok;;
+	*) echo fail; (exit 1);;
+	esac &&
+	git add --refresh -- foo &&
+	test -z "`git diff-index HEAD -- foo`"
 '
 
 test_done
