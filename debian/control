@@ -76,8 +76,9 @@ Description: fast, scalable, distributed revision control system (cvs interopera
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides tools for importing development history from cvs
- repositories.
+ This package provides tools for interoperating with CVS repositories,
+ importing CVS development history, and providing CVS client access to
+ git repositories.
 
 Package: git-svn
 Architecture: all

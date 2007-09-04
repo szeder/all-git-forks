@@ -4,8 +4,9 @@ git-core (1:1.5.3-1.1) unstable; urgency=low
     #440699).
   * debian/git-daemon-run.README.Debian: improve.
   * debian/control: git-svn: improve long description.
+  * debian/control: git-cvs: improve long description.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 04 Sep 2007 08:23:33 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 04 Sep 2007 08:32:21 +0000
 
 git-core (1:1.5.3-1) unstable; urgency=low
 
