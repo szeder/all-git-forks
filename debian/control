@@ -23,7 +23,10 @@ Description: fast, scalable, distributed revision control system
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides the git core components.
+ This package provides the git main components with minimal dependencies.
+ Additional functionality, e.g. a graphical user interface and revision
+ tree visualizer, tools for interoperating with other VCS's, or a web
+ interface, is provided as separate git* packages.
 
 Package: git-doc
 Section: doc
