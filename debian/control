@@ -128,7 +128,9 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides a git-daemon service.
+ This package provides a git-daemon service.  git-daemon is a simple server
+ for git repositories, ideally suited for read-only updates, i.e., pulling
+ from git repositories through the network.
 
 Package: git-gui
 Architecture: all

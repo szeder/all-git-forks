@@ -1,3 +1,11 @@
+git-core (1:1.5.3-1.1) unstable; urgency=low
+
+  * debian/control: git-daemon-run: improve long description (closes:
+    #440699).
+  * debian/git-daemon-run.README.Debian: improve.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 04 Sep 2007 08:06:18 +0000
+
 git-core (1:1.5.3-1) unstable; urgency=low
 
   * merge branch debian-experimental.

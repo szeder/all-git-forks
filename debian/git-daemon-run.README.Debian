@@ -12,12 +12,13 @@ service to be picked up by runit, and check its status and logs:
 
 The git daemon by default looks into the directory /var/cache/git/ for
 repositories (this is configured in /etc/sv/git-daemon/run).  It expects
-the repositories' .git subdirectories in /var/cache/git/, symlinks
+the repositories' .git subdirectories in that directory, symlinks
 pointing to the corresponding subdirectories in the repositories are just
 fine, e.g.:
 
  ln -s ~pape/git/foo/.git /var/cache/git/foo.git
 
-Now git-clone git://git.example.org/git/repo will work.
+This makes 'git-clone git://git.example.org/git/foo' to clone the foo
+repository on remote machines work.
 
  -- Gerrit Pape <pape@smarden.org>  Sun, 03 Jun 2007 09:51:53 +0000
