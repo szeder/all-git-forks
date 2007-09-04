@@ -95,8 +95,8 @@ Description: fast, scalable, distributed revision control system (svn interopera
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides tools for importing development history from
- subversion repositories.
+ This package provides tools for interoperating with subversion repositories,
+ and importing SVN development history.
 
 Package: git-email
 Architecture: all
