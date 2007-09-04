@@ -1,3 +1,11 @@
+Version v1.5.3.1; changes since v1.5.3:
+---------------------------------------
+
+Junio C Hamano (2):
+      Typofix: 1.5.3 release notes
+      GIT 1.5.3.1: obsolete git-p4 in RPM spec file.
+
+
 Version v1.5.3; changes since v1.5.3-rc7:
 -----------------------------------------
 

@@ -1,4 +1,4 @@
-From 3f29d3e357beef3a4ade59805ab1052ce13e7407 Mon Sep 17 00:00:00 2001
+From 815fa03c61739559f7b908338ac9cd647861d37f Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
@@ -82,5 +82,5 @@ index 28643b0..540c125 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.3.GIT
+1.5.3
 
