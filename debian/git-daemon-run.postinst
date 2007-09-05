@@ -11,4 +11,4 @@ test -e /var/service/git-daemon || test -h /var/service/git-daemon || \
   exec ln -s /etc/sv/git-daemon /var/service/
 
 # restart git-daemon service if it was running
-sv restart git-daemon || :
+sv -v term git-daemon || :
