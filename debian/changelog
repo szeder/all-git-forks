@@ -2,8 +2,9 @@ git-core (1:1.5.3.1-1.1) unstable; urgency=low
 
   * debian/git-daemon-run.postinst: use 'sv -v term git-daemon' instead of
     'sv restart git-daemon' to restart git-daemon service if it was running.
+  * debian/control: git-core: no longer Suggests: cogito, which was removed.
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 05 Sep 2007 09:46:20 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 05 Sep 2007 13:41:33 +0000
 
 git-core (1:1.5.3.1-1) unstable; urgency=low
 
