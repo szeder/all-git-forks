@@ -4,8 +4,10 @@ git-core (1:1.5.3.1-1.1) unstable; urgency=low
     'sv restart git-daemon' to restart git-daemon service if it was running.
   * debian/control: git-core: no longer Suggests: cogito, which was removed.
   * debian/diff/genindex.diff: apply and remove.
+  * debian/gitweb.conf: comment out $home_link, and set to gitweb.cgi's
+    default (thx Ansgar Burchardt for the patch, closes: 441694).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 11 Sep 2007 08:34:24 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 11 Sep 2007 08:36:32 +0000
 
 git-core (1:1.5.3.1-1) unstable; urgency=low
 
