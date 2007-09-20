@@ -254,7 +254,7 @@ static char *find_name(const char *line, char *def, int p_value, int terminate)
 		if (name) {
 			char *cp = name;
 			while (p_value) {
-				cp = strchr(name, '/');
+				cp = strchr(cp, '/');
 				if (!cp)
 					break;
 				cp++;
@@ -1514,7 +1514,8 @@ static int find_offset(const char *buf, unsigned long size, const char *fragment
 	}
 
 	/* Exact line number? */
-	if (!memcmp(buf + start, fragment, fragsize))
+	if ((start + fragsize <= size) &&
+	    !memcmp(buf + start, fragment, fragsize))
 		return start;
 
 	/*
@@ -1641,15 +1642,22 @@ static int apply_line(char *output, const char *patch, int plen)
 
 	buf = output;
 	if (need_fix_leading_space) {
+		int consecutive_spaces = 0;
 		/* between patch[1..last_tab_in_indent] strip the
 		 * funny spaces, updating them to tab as needed.
 		 */
 		for (i = 1; i < last_tab_in_indent; i++, plen--) {
 			char ch = patch[i];
-			if (ch != ' ')
+			if (ch != ' ') {
+				consecutive_spaces = 0;
 				*output++ = ch;
-			else if ((i % 8) == 0)
-				*output++ = '\t';
+			} else {
+				consecutive_spaces++;
+				if (consecutive_spaces == 8) {
+					*output++ = '\t';
+					consecutive_spaces = 0;
+				}
+			}
 		}
 		fixed = 1;
 		i = last_tab_in_indent;
@@ -2226,6 +2234,20 @@ static int check_patch_list(struct patch *patch)
 	return err;
 }
 
+/* This function tries to read the sha1 from the current index */
+static int get_current_sha1(const char *path, unsigned char *sha1)
+{
+	int pos;
+
+	if (read_cache() < 0)
+		return -1;
+	pos = cache_name_pos(path, strlen(path));
+	if (pos < 0)
+		return -1;
+	hashcpy(sha1, active_cache[pos]->sha1);
+	return 0;
+}
+
 static void show_index_list(struct patch *list)
 {
 	struct patch *patch;
@@ -2242,8 +2264,16 @@ static void show_index_list(struct patch *list)
 		if (0 < patch->is_new)
 			sha1_ptr = null_sha1;
 		else if (get_sha1(patch->old_sha1_prefix, sha1))
-			die("sha1 information is lacking or useless (%s).",
-			    name);
+			/* git diff has no index line for mode/type changes */
+			if (!patch->lines_added && !patch->lines_deleted) {
+				if (get_current_sha1(patch->new_name, sha1) ||
+				    get_current_sha1(patch->old_name, sha1))
+					die("mode change for %s, which is not "
+						"in current HEAD", name);
+				sha1_ptr = sha1;
+			} else
+				die("sha1 information is lacking or useless "
+					"(%s).", name);
 		else
 			sha1_ptr = sha1;
 

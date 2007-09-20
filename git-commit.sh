@@ -379,8 +379,11 @@ t,)
 		then
 			refuse_partial "Cannot do a partial commit during a merge."
 		fi
+
 		TMP_INDEX="$GIT_DIR/tmp-index$$"
-		commit_only=`git ls-files --error-unmatch -- "$@"` || exit
+		W=
+		test -z "$initial_commit" && W=--with-tree=HEAD
+		commit_only=`git ls-files --error-unmatch $W -- "$@"` || exit
 
 		# Build a temporary index and update the real index
 		# the same way.
@@ -401,7 +404,7 @@ t,)
 		(
 			GIT_INDEX_FILE="$NEXT_INDEX"
 			export GIT_INDEX_FILE
-			git update-index --remove --stdin
+			git update-index --add --remove --stdin
 		) || exit
 		;;
 	esac
@@ -554,7 +557,7 @@ else
 	# we need to check if there is anything to commit
 	run_status >/dev/null
 fi
-if [ "$?" != "0" -a ! -f "$GIT_DIR/MERGE_HEAD" -a -z "$amend" ]
+if [ "$?" != "0" -a ! -f "$GIT_DIR/MERGE_HEAD" ]
 then
 	rm -f "$GIT_DIR/COMMIT_EDITMSG" "$GIT_DIR/SQUASH_MSG"
 	use_status_color=t
