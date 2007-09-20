@@ -1,3 +1,128 @@
+Version v1.5.3.2; changes since v1.5.3.1:
+-----------------------------------------
+
+Alexandre Julliard (1):
+      hooks--update: Explicitly check for all zeros for a deleted ref.
+
+Benoit Sigoure (1):
+      Add test to check recent fix to "git add -u"
+
+Carlos Rica (1):
+      git-tag -s must fail if gpg cannot sign the tag.
+
+David Kastrup (1):
+      git-send-email.perl: Add angle brackets to In-Reply-To if necessary
+
+Dmitry V. Levin (2):
+      Makefile: Add cache-tree.h to the headers list
+      git-commit: Disallow amend if it is going to produce an empty non-merge commit
+
+Eric Wong (3):
+      git-svn: fix "Malformed network data" with svn:// servers
+      git-svn: understand grafts when doing dcommit
+      Documentation/git-svn: updated design philosophy notes
+
+Gerrit Pape (2):
+      git-gui: lib/index.tcl: handle files with % in the filename properly
+      git-clone: improve error message if curl program is missing or not executable
+
+J. Bruce Fields (13):
+      user-manual: adjust section levels in "git internals"
+      user-manual: move object format details to hacking-git chapter
+      user-manual: rename "git internals" to "git concepts"
+      user-manual: create new "low-level git operations" chapter
+      user-manual: rewrite index discussion
+      user-manual: reorder commit, blob, tree discussion
+      user-manual: rewrite object database discussion
+      user-manual: move packfile and dangling object discussion
+      user-manual: fix introduction to packfiles
+      user-manual: todo updates and cleanup
+      documentation: replace Discussion section by link to user-manual chapter
+      core-tutorial: minor cleanup
+      git-apply: fix whitespace stripping
+
+Jari Aalto (1):
+      Documentation/git-archive.txt: a couple of clarifications.
+
+Jean-Luc Herren (1):
+      stash: end index commit log with a newline
+
+Jeff King (1):
+      git-push: documentation and tests for pushing only branches
+
+Johannes Schindelin (2):
+      revision walker: --cherry-pick is a limited operation
+      apply --index-info: fall back to current index for mode changes
+
+Junio C Hamano (13):
+      git-apply: do not read past the end of buffer
+      git-add -u: do not barf on type changes
+      git-format-patch --in-reply-to: accept <message@id> with angle brackets
+      diff --no-index: do not forget to run diff_setup_done()
+      Documentation/git-config.txt: AsciiDoc tweak to avoid leading dot
+      Split grep arguments in a way that does not requires to add /dev/null.
+      git-sh-setup: typofix in comments
+      send-email: make message-id generation a bit more robust
+      git-commit: Allow partial commit of file removal.
+      git-commit: partial commit of paths only removed from the index
+      Document ls-files --with-tree=<tree-ish>
+      t/t4014: test "am -3" with mode-only change.
+      GIT 1.5.3.2
+
+Linus Torvalds (1):
+      Fix the rename detection limit checking
+
+Matthias Urlichs (1):
+      git-svnimport: Use separate arguments in the pipe for git-rev-parse
+
+Michael Smith (1):
+      (cvs|svn)import: Ask git-tag to overwrite old tags.
+
+Michele Ballabio (2):
+      git-gui: show unstaged symlinks in diff viewer
+      git-gui: handle "deleted symlink" diff marker
+
+Mike Ralphson (1):
+      Documentation / grammer nit
+
+Nicolas Pitre (1):
+      fix doc for --compression argument to pack-objects
+
+Pierre Habouzit (1):
+      Fix lapsus in builtin-apply.c
+
+Ramsay Allan Jones (1):
+      Fix a test failure (t9500-*.sh) on cygwin
+
+Shawn O. Pearce (17):
+      git-gui: Correct starting of git-remote to handle -w option
+      git-gui: Fix detaching current branch during checkout
+      git-gui: Properly set the state of "Stage/Unstage Hunk" action
+      Don't allow contrib/workdir/git-new-workdir to trash existing dirs
+      Cleanup unnecessary file modifications in t1400-update-ref
+      Include a git-push example for creating a remote branch
+      git-gui: Disable Tk send in all git-gui sessions
+      git-gui: Avoid use of libdir in Makefile
+      git-gui: Assume untracked directories are Git submodules
+      git-gui: Trim trailing slashes from untracked submodule names
+      Make --no-thin the default in git-push to save server resources
+      git-gui: Don't delete send on Windows as it doesn't exist
+      git-gui: Make backporting changes from i18n version easier
+      git-gui: Font chooser to handle a large number of font families
+      git-gui: Provide 'uninstall' Makefile target to undo an installation
+      git-gui: Paper bag fix "Commit->Revert" format arguments
+      git-gui: Disable native platform text selection in "lists"
+
+Sven Verdoolaege (1):
+      git-diff: don't squelch the new SHA1 in submodule diffs
+
+Ulrik Sverdrup (1):
+      Remove duplicate note about removing commits with git-filter-branch
+
+Väinö Järvelä (1):
+      Fixed update-hook example allow-users format.
+
+
 Version v1.5.3.1; changes since v1.5.3:
 ---------------------------------------
 

@@ -1,4 +1,4 @@
-From 815fa03c61739559f7b908338ac9cd647861d37f Mon Sep 17 00:00:00 2001
+From 3f010bde4638db03186253c60461af4dac2183aa Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
@@ -10,7 +10,7 @@ http://bugs.debian.org/438793
  2 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 185c5c6..6999f25 100755
+index 3c325fd..894e171 100755
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -41,7 +41,7 @@ git_editor() {
@@ -82,5 +82,5 @@ index 28643b0..540c125 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.3
+1.5.3.1
 
