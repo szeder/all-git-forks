@@ -1,3 +1,72 @@
+Version v1.5.3.3; changes since v1.5.3.2:
+-----------------------------------------
+
+Carlos Rica (1):
+      Move make_cache_entry() from merge-recursive.c into read-cache.c
+
+Dan Nicholson (1):
+      quiltimport: Skip non-existent patches
+
+David Brown (1):
+      Detect exec bit in more cases.
+
+David Kastrup (1):
+      Supplant the "while case ... break ;; esac" idiom
+
+Eric Wong (1):
+      git-svn: don't attempt to spawn pager if we don't want one
+
+Glenn Rempe (1):
+      Fixed minor typo in t/t9001-send-email.sh test command line.
+
+J. Bruce Fields (1):
+      user-manual: don't assume refs are stored under .git/refs
+
+Jakub Narebski (2):
+      gitweb: Remove parse_from_to_diffinfo code from git_patchset_body
+      gitweb: No difftree output for trivial merge
+
+Jim Meyering (2):
+      unexpected Make output (e.g. from --debug) causes build failure
+      Do not over-quote the -f envelopesender value.
+
+Johannes Schindelin (1):
+      apply: get rid of --index-info in favor of --build-fake-ancestor
+
+Johannes Sixt (2):
+      gitattributes.txt: Remove a duplicated paragraph about 'ident' and 'crlf' interaction.
+      gitattributes.txt: Be more to the point in the filter driver description.
+
+Junio C Hamano (3):
+      Documentation/git-lost-found.txt: drop unnecessarily duplicated name.
+      Mergetool generating blank files (1.5.3)
+      GIT 1.5.3.3
+
+Linus Torvalds (1):
+      Fix revision log diff setup, avoid unnecessary diff generation
+
+Matt Kraai (2):
+      Move the paragraph specifying where the .idx and .pack files should be
+      Conjugate "search" correctly in the git-prune-packed man page.
+
+Michael Smith (1):
+      user-manual: Explain what submodules are good for.
+
+Miklos Vajna (2):
+      User Manual: add a chapter for submodules
+      git-bundle: fix commandline examples in the manpage
+
+Randy Dunlap (1):
+      core-tutorial: correct URL
+
+Shawn Bohrer (1):
+      Fix spelling of overridden in documentation
+
+Theodore Ts'o (2):
+      mergetool: fix emerge when running in a subdirectory
+      mergetool: Fix typo in options passed to kdiff3
+
+
 Version v1.5.3.2; changes since v1.5.3.1:
 -----------------------------------------
 
