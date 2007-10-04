@@ -1,3 +1,55 @@
+Version v1.5.3.4; changes since v1.5.3.3:
+-----------------------------------------
+
+Andy Parkins (1):
+      post-receive-hook: Remove the From field from the generated email header so that the pusher's name is used
+
+Carl Worth (1):
+      Add test case for ls-files --with-tree
+
+Federico Mena Quintero (4):
+      Say when --track is useful in the git-checkout docs.
+      Add documentation for --track and --no-track to the git-branch docs.
+      Note that git-branch will not automatically checkout the new branch
+      Make git-pull complain and give advice when there is nothing to merge with
+
+Jari Aalto (1):
+      git-remote: exit with non-zero status after detecting errors.
+
+Jean-Luc Herren (2):
+      git-add--interactive: Allow Ctrl-D to exit
+      git-add--interactive: Improve behavior on bogus input
+
+Jeff King (1):
+      diffcore-rename: cache file deltas
+
+Johan Herland (1):
+      Mention 'cpio' dependency in INSTALL
+
+Johannes Schindelin (2):
+      rebase -i: squash should retain the authorship of the _first_ commit
+      Fix typo in config.txt
+
+Junio C Hamano (5):
+      Whip post 1.5.3.3 maintenance series into shape.
+      git-commit: initialize TMP_INDEX just to be sure.
+      for-each-ref: fix %(numparent) and %(parent)
+      rename diff_free_filespec_data_large() to diff_free_filespec_blob()
+      GIT 1.5.3.4
+
+Keith Packard (1):
+      Must not modify the_index.cache as it may be passed to realloc at some point.
+
+Miklos Vajna (1):
+      git stash: document apply's --index switch
+
+Robert Schiele (1):
+      the ar tool is called gar on some systems
+
+Steffen Prohaska (1):
+      fixed link in documentation of diff-options
+
+
 Version v1.5.3.3; changes since v1.5.3.2:
 -----------------------------------------
 
