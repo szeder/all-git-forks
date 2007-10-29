@@ -35,6 +35,10 @@ our $GIT = "++GIT_BINDIR++/git";
 #our $projectroot = "/pub/scm";
 our $projectroot = "++GITWEB_PROJECTROOT++";
 
+# fs traversing limit for getting project list
+# the number is relative to the projectroot
+our $project_maxdepth = "++GITWEB_PROJECT_MAXDEPTH++";
+
 # target of the home link on top of all pages
 our $home_link = $my_uri || "/";
 
@@ -1509,6 +1513,7 @@ sub git_get_projects_list {
 		# remove the trailing "/"
 		$dir =~ s!/+$!!;
 		my $pfxlen = length("$dir");
+		my $pfxdepth = ($dir =~ tr!/!!);
 
 		File::Find::find({
 			follow_fast => 1, # follow symbolic links
@@ -1519,6 +1524,11 @@ sub git_get_projects_list {
 				return if (m!^[/.]$!);
 				# only directories can be git repositories
 				return unless (-d $_);
+				# don't traverse too deep (Find is super slow on os x)
+				if (($File::Find::name =~ tr!/!!) - $pfxdepth > $project_maxdepth) {
+					$File::Find::prune = 1;
+					return;
+				}
 
 				my $subdir = substr($File::Find::name, $pfxlen + 1);
 				# we check related file in $projectroot
@@ -2809,7 +2819,7 @@ sub git_difftree_body {
 	      "diff_tree\">\n";
 
 	# header only for combined diff in 'commitdiff' view
-	my $has_header = @parents > 1 && $action eq 'commitdiff';
+	my $has_header = @$difftree && @parents > 1 && $action eq 'commitdiff';
 	if ($has_header) {
 		# table header
 		print "<thead><tr>\n" .
@@ -3191,44 +3201,10 @@ sub git_patchset_body {
 				}
 			} until (!defined $to_name || $to_name eq $diffinfo->{'to_file'} ||
 			         $patch_idx > $#$difftree);
+
 			# modifies %from, %to hashes
 			parse_from_to_diffinfo($diffinfo, \%from, \%to, @hash_parents);
-			if ($diffinfo->{'nparents'}) {
-				# combined diff
-				$from{'file'} = [];
-				$from{'href'} = [];
-				fill_from_file_info($diffinfo, @hash_parents)
-					unless exists $diffinfo->{'from_file'};
-				for (my $i = 0; $i < $diffinfo->{'nparents'}; $i++) {
-					$from{'file'}[$i] = $diffinfo->{'from_file'}[$i] || $diffinfo->{'to_file'};
-					if ($diffinfo->{'status'}[$i] ne "A") { # not new (added) file
-						$from{'href'}[$i] = href(action=>"blob",
-						                         hash_base=>$hash_parents[$i],
-						                         hash=>$diffinfo->{'from_id'}[$i],
-						                         file_name=>$from{'file'}[$i]);
-					} else {
-						$from{'href'}[$i] = undef;
-					}
-				}
-			} else {
-				$from{'file'} = $diffinfo->{'from_file'} || $diffinfo->{'file'};
-				if ($diffinfo->{'status'} ne "A") { # not new (added) file
-					$from{'href'} = href(action=>"blob", hash_base=>$hash_parent,
-					                     hash=>$diffinfo->{'from_id'},
-					                     file_name=>$from{'file'});
-				} else {
-					delete $from{'href'};
-				}
-			}
 
-			$to{'file'} = $diffinfo->{'to_file'} || $diffinfo->{'file'};
-			if (!is_deleted($diffinfo)) { # file exists in result
-				$to{'href'} = href(action=>"blob", hash_base=>$hash,
-				                   hash=>$diffinfo->{'to_id'},
-				                   file_name=>$to{'file'});
-			} else {
-				delete $to{'href'};
-			}
 			# this is first patch for raw difftree line with $patch_idx index
 			# we index @$difftree array from 0, but number patches from 1
 			print "<div class=\"patch\" id=\"patch". ($patch_idx+1) ."\">\n";

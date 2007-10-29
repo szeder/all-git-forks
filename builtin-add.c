@@ -71,12 +71,8 @@ static void fill_directory(struct dir_struct *dir, const char **pathspec,
 	baselen = common_prefix(pathspec);
 	path = ".";
 	base = "";
-	if (baselen) {
-		char *common = xmalloc(baselen + 1);
-		memcpy(common, *pathspec, baselen);
-		common[baselen] = 0;
-		path = base = common;
-	}
+	if (baselen)
+		path = base = xmemdupz(*pathspec, baselen);
 
 	/* Read the directory and prune it */
 	read_directory(dir, path, base, baselen, pathspec);
@@ -95,14 +91,14 @@ static void update_callback(struct diff_queue_struct *q,
 		const char *path = p->one->path;
 		switch (p->status) {
 		default:
-			die("unexpacted diff status %c", p->status);
+			die("unexpected diff status %c", p->status);
 		case DIFF_STATUS_UNMERGED:
 		case DIFF_STATUS_MODIFIED:
+		case DIFF_STATUS_TYPE_CHANGED:
 			add_file_to_cache(path, verbose);
 			break;
 		case DIFF_STATUS_DELETED:
 			remove_file_from_cache(path);
-			cache_tree_invalidate_path(active_cache_tree, path);
 			if (verbose)
 				printf("remove '%s'\n", path);
 			break;

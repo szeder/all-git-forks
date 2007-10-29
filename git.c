@@ -187,19 +187,13 @@ static int handle_alias(int *argcp, const char ***argv)
 	if (alias_string) {
 		if (alias_string[0] == '!') {
 			if (*argcp > 1) {
-				int i, sz = PATH_MAX;
-				char *s = xmalloc(sz), *new_alias = s;
+				struct strbuf buf;
 
-				add_to_string(&s, &sz, alias_string, 0);
+				strbuf_init(&buf, PATH_MAX);
+				strbuf_addstr(&buf, alias_string);
+				sq_quote_argv(&buf, (*argv) + 1, *argcp - 1, PATH_MAX);
 				free(alias_string);
-				alias_string = new_alias;
-				for (i = 1; i < *argcp &&
-					!add_to_string(&s, &sz, " ", 0) &&
-					!add_to_string(&s, &sz, (*argv)[i], 1)
-					; i++)
-					; /* do nothing */
-				if (!sz)
-					die("Too many or long arguments");
+				alias_string = buf.buf;
 			}
 			trace_printf("trace: alias to shell cmd: %s => %s\n",
 				     alias_command, alias_string + 1);
@@ -334,6 +328,8 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "diff-files", cmd_diff_files },
 		{ "diff-index", cmd_diff_index, RUN_SETUP },
 		{ "diff-tree", cmd_diff_tree, RUN_SETUP },
+		{ "fetch", cmd_fetch, RUN_SETUP },
+		{ "fetch-pack", cmd_fetch_pack, RUN_SETUP },
 		{ "fetch--tool", cmd_fetch__tool, RUN_SETUP },
 		{ "fmt-merge-msg", cmd_fmt_merge_msg, RUN_SETUP },
 		{ "for-each-ref", cmd_for_each_ref, RUN_SETUP },
@@ -344,6 +340,9 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "get-tar-commit-id", cmd_get_tar_commit_id },
 		{ "grep", cmd_grep, RUN_SETUP | USE_PAGER },
 		{ "help", cmd_help },
+#ifndef NO_CURL
+		{ "http-fetch", cmd_http_fetch, RUN_SETUP },
+#endif
 		{ "init", cmd_init_db },
 		{ "init-db", cmd_init_db },
 		{ "log", cmd_log, RUN_SETUP | USE_PAGER },
@@ -364,6 +363,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "reflog", cmd_reflog, RUN_SETUP },
 		{ "repo-config", cmd_config },
 		{ "rerere", cmd_rerere, RUN_SETUP },
+		{ "reset", cmd_reset, RUN_SETUP },
 		{ "rev-list", cmd_rev_list, RUN_SETUP },
 		{ "rev-parse", cmd_rev_parse, RUN_SETUP },
 		{ "revert", cmd_revert, RUN_SETUP | NEED_WORK_TREE },
@@ -414,13 +414,14 @@ int main(int argc, const char **argv)
 	/*
 	 * Take the basename of argv[0] as the command
 	 * name, and the dirname as the default exec_path
-	 * if it's an absolute path and we don't have
-	 * anything better.
+	 * if we don't have anything better.
 	 */
 	if (slash) {
 		*slash++ = 0;
 		if (*cmd == '/')
 			exec_path = cmd;
+		else
+			exec_path = xstrdup(make_absolute_path(cmd));
 		cmd = slash;
 	}
 

@@ -42,6 +42,8 @@ if {[catch {package require Tcl 8.4} err]
 	exit 1
 }
 
+catch {rename send {}} ; # What an evil concept...
+
 ######################################################################
 ##
 ## enable verbose loading?
@@ -58,6 +60,18 @@ if {![catch {set _verbose $env(GITGUI_VERBOSE)}]} {
 		puts stderr "source    $name"
 		uplevel 1 real__source $name
 	}
+}
+
+######################################################################
+##
+## Fake internationalization to ease backporting of changes.
+
+proc mc {fmt args} {
+	set cmk [string first @@ $fmt]
+	if {$cmk > 0} {
+		set fmt [string range $fmt 0 [expr {$cmk - 1}]]
+	}
+	return [eval [list format $fmt] $args]
 }
 
 ######################################################################
@@ -261,7 +275,7 @@ proc _git_cmd {name} {
 			set s [gets $f]
 			close $f
 
-			switch -glob -- $s {
+			switch -glob -- [lindex $s 0] {
 			#!*sh     { set i sh     }
 			#!*perl   { set i perl   }
 			#!*python { set i python }
@@ -275,7 +289,7 @@ proc _git_cmd {name} {
 			if {$interp eq {}} {
 				error "git-$name requires $i (not in PATH)"
 			}
-			set v [list $interp $p]
+			set v [concat [list $interp] [lrange $s 1 end] [list $p]]
 		} else {
 			# Assume it is builtin to git somehow and we
 			# aren't actually able to see a file for it.
@@ -291,7 +305,7 @@ proc _which {what} {
 	global env _search_exe _search_path
 
 	if {$_search_path eq {}} {
-		if {[is_Cygwin]} {
+		if {[is_Cygwin] && [regexp {^(/|\.:)} $env(PATH)]} {
 			set _search_path [split [exec cygpath \
 				--windows \
 				--path \
@@ -467,6 +481,16 @@ proc tk_optionMenu {w varName args} {
 	return $m
 }
 
+proc rmsel_tag {text} {
+	$text tag conf sel \
+		-background [$text cget -background] \
+		-foreground [$text cget -foreground] \
+		-borderwidth 0
+	$text tag conf in_sel -background lightgray
+	bind $text <Motion> break
+	return $text
+}
+
 ######################################################################
 ##
 ## find git
@@ -474,7 +498,11 @@ proc tk_optionMenu {w varName args} {
 set _git  [_which git]
 if {$_git eq {}} {
 	catch {wm withdraw .}
-	error_popup "Cannot find git in PATH."
+	tk_messageBox \
+		-icon error \
+		-type ok \
+		-title [mc "git-gui: fatal error"] \
+		-message [mc "Cannot find git in PATH."]
 	exit 1
 }
 
@@ -510,6 +538,7 @@ regsub -- {-dirty$} $_git_version {} _git_version
 regsub {\.[0-9]+\.g[0-9a-f]+$} $_git_version {} _git_version
 regsub {\.rc[0-9]+$} $_git_version {} _git_version
 regsub {\.GIT$} $_git_version {} _git_version
+regsub {\.[a-zA-Z]+\.[0-9]+$} $_git_version {} _git_version
 
 if {![regexp {^[1-9]+(\.[0-9]+)+$} $_git_version]} {
 	catch {wm withdraw .}
@@ -879,6 +908,35 @@ proc rescan {after {honor_trustmtime 1}} {
 	}
 }
 
+if {[is_Cygwin]} {
+	set is_git_info_link {}
+	set is_git_info_exclude {}
+	proc have_info_exclude {} {
+		global is_git_info_link is_git_info_exclude
+
+		if {$is_git_info_link eq {}} {
+			set is_git_info_link [file isfile [gitdir info.lnk]]
+		}
+
+		if {$is_git_info_link} {
+			if {$is_git_info_exclude eq {}} {
+				if {[catch {exec test -f [gitdir info exclude]}]} {
+					set is_git_info_exclude 0
+				} else {
+					set is_git_info_exclude 1
+				}
+			}
+			return $is_git_info_exclude
+		} else {
+			return [file readable [gitdir info exclude]]
+		}
+	}
+} else {
+	proc have_info_exclude {} {
+		return [file readable [gitdir info exclude]]
+	}
+}
+
 proc rescan_stage2 {fd after} {
 	global rescan_active buf_rdi buf_rdf buf_rlo
 
@@ -889,9 +947,8 @@ proc rescan_stage2 {fd after} {
 	}
 
 	set ls_others [list --exclude-per-directory=.gitignore]
-	set info_exclude [gitdir info exclude]
-	if {[file readable $info_exclude]} {
-		lappend ls_others "--exclude-from=$info_exclude"
+	if {[have_info_exclude]} {
+		lappend ls_others "--exclude-from=[gitdir info exclude]"
 	}
 	set user_exclude [get_config core.excludesfile]
 	if {$user_exclude ne {} && [file readable $user_exclude]} {
@@ -1008,7 +1065,11 @@ proc read_ls_others {fd after} {
 	set pck [split $buf_rlo "\0"]
 	set buf_rlo [lindex $pck end]
 	foreach p [lrange $pck 0 end-1] {
-		merge_state [encoding convertfrom $p] ?O
+		set p [encoding convertfrom $p]
+		if {[string index $p end] eq {/}} {
+			set p [string range $p 0 end-1]
+		}
+		merge_state $p ?O
 	}
 	rescan_done $fd buf_rlo $after
 }
@@ -1065,11 +1126,17 @@ proc mapdesc {state path} {
 }
 
 proc ui_status {msg} {
-	$::main_status show $msg
+	global main_status
+	if {[info exists main_status]} {
+		$main_status show $msg
+	}
 }
 
 proc ui_ready {{test {}}} {
-	$::main_status show {Ready.} $test
+	global main_status
+	if {[info exists main_status]} {
+		$main_status show [mc "Ready."] $test
+	}
 }
 
 proc escape_path {path} {
@@ -1408,7 +1475,27 @@ proc do_gitk {revs} {
 	if {! [file exists $exe]} {
 		error_popup "Unable to start gitk:\n\n$exe does not exist"
 	} else {
+		global env
+
+		if {[info exists env(GIT_DIR)]} {
+			set old_GIT_DIR $env(GIT_DIR)
+		} else {
+			set old_GIT_DIR {}
+		}
+
+		set pwd [pwd]
+		cd [file dirname [gitdir]]
+		set env(GIT_DIR) [file tail [gitdir]]
+
 		eval exec $cmd $revs &
+
+		if {$old_GIT_DIR eq {}} {
+			unset env(GIT_DIR)
+		} else {
+			set env(GIT_DIR) $old_GIT_DIR
+		}
+		cd $pwd
+
 		ui_status $::starting_gitk_msg
 		after 10000 {
 			ui_ready $starting_gitk_msg
@@ -1620,7 +1707,7 @@ proc apply_config {} {
 		set font [lindex $option 1]
 		if {[catch {
 			foreach {cn cv} $repo_config(gui.$name) {
-				font configure $font $cn $cv
+				font configure $font $cn $cv -weight normal
 			}
 			} err]} {
 			error_popup "Invalid font specified in gui.$name:\n\n$err"
@@ -2133,8 +2220,8 @@ pack $ui_workdir -side left -fill both -expand 1
 .vpane.files add .vpane.files.workdir -sticky nsew
 
 foreach i [list $ui_index $ui_workdir] {
-	$i tag conf in_diff -background lightgray
-	$i tag conf in_sel  -background lightgray
+	rmsel_tag $i
+	$i tag conf in_diff -background [$i tag cget in_sel -background]
 }
 unset i
 
@@ -2441,20 +2528,17 @@ proc popup_diff_menu {ctxm x y X Y} {
 	set ::cursorX $x
 	set ::cursorY $y
 	if {$::ui_index eq $::current_diff_side} {
-		set s normal
 		set l "Unstage Hunk From Commit"
 	} else {
-		if {$current_diff_path eq {}
-			|| ![info exists file_states($current_diff_path)]
-			|| {_O} eq [lindex $file_states($current_diff_path) 0]} {
-			set s disabled
-		} else {
-			set s normal
-		}
 		set l "Stage Hunk For Commit"
 	}
-	if {$::is_3way_diff} {
+	if {$::is_3way_diff
+		|| $current_diff_path eq {}
+		|| ![info exists file_states($current_diff_path)]
+		|| {_O} eq [lindex $file_states($current_diff_path) 0]} {
 		set s disabled
+	} else {
+		set s normal
 	}
 	$ctxm entryconf $::ui_diff_applyhunk -state $s -label $l
 	tk_popup $ctxm $X $Y

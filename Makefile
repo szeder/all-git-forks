@@ -28,6 +28,8 @@ all::
 #
 # Define NO_STRCASESTR if you don't have strcasestr.
 #
+# Define NO_MEMMEM if you don't have memmem.
+#
 # Define NO_STRLCPY if you don't have strlcpy.
 #
 # Define NO_STRTOUMAX if you don't have strtoumax in the C library.
@@ -35,6 +37,8 @@ all::
 # strtoull, define NO_STRTOULL.
 #
 # Define NO_SETENV if you don't have setenv in the C library.
+#
+# Define NO_MKDTEMP if you don't have mkdtemp in the C library.
 #
 # Define NO_SYMLINK_HEAD if you never want .git/HEAD to be a symbolic link.
 # Enable it on Windows.  By default, symrefs are still used.
@@ -122,6 +126,9 @@ all::
 # If not set it defaults to the bare 'wish'. If it is set to the empty
 # string then NO_TCLTK will be forced (this is used by configure script).
 #
+# Define THREADED_DELTA_SEARCH if you have pthreads and wish to exploit
+# parallel delta searching when packing objects.
+#
 
 GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -160,6 +167,7 @@ GITWEB_CONFIG = gitweb_config.perl
 GITWEB_HOME_LINK_STR = projects
 GITWEB_SITENAME =
 GITWEB_PROJECTROOT = /pub/git
+GITWEB_PROJECT_MAXDEPTH = 2007
 GITWEB_EXPORT_OK =
 GITWEB_STRICT_EXPORT =
 GITWEB_BASE_URL =
@@ -202,11 +210,10 @@ BASIC_LDFLAGS =
 SCRIPT_SH = \
 	git-bisect.sh git-checkout.sh \
 	git-clean.sh git-clone.sh git-commit.sh \
-	git-fetch.sh \
 	git-ls-remote.sh \
 	git-merge-one-file.sh git-mergetool.sh git-parse-remote.sh \
 	git-pull.sh git-rebase.sh git-rebase--interactive.sh \
-	git-repack.sh git-request-pull.sh git-reset.sh \
+	git-repack.sh git-request-pull.sh \
 	git-sh-setup.sh \
 	git-am.sh \
 	git-merge.sh git-merge-stupid.sh git-merge-octopus.sh \
@@ -228,15 +235,15 @@ SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
 
 # ... and all the rest that could be moved out of bindir to gitexecdir
 PROGRAMS = \
-	git-convert-objects$X git-fetch-pack$X \
-	git-hash-object$X git-index-pack$X git-local-fetch$X \
+	git-fetch-pack$X \
+	git-hash-object$X git-index-pack$X \
 	git-fast-import$X \
 	git-daemon$X \
 	git-merge-index$X git-mktag$X git-mktree$X git-patch-id$X \
 	git-peek-remote$X git-receive-pack$X \
 	git-send-pack$X git-shell$X \
-	git-show-index$X git-ssh-fetch$X \
-	git-ssh-upload$X git-unpack-file$X \
+	git-show-index$X \
+	git-unpack-file$X \
 	git-update-server-info$X \
 	git-upload-pack$X \
 	git-pack-redundant$X git-var$X \
@@ -264,9 +271,6 @@ ifndef NO_TCLTK
 OTHER_PROGRAMS += gitk-wish
 endif
 
-# Backward compatibility -- to be removed after 1.0
-PROGRAMS += git-ssh-pull$X git-ssh-push$X
-
 # Set paths to tools early so that they can be used for version tests.
 ifndef SHELL_PATH
 	SHELL_PATH = /bin/sh
@@ -281,12 +285,12 @@ LIB_FILE=libgit.a
 XDIFF_LIB=xdiff/lib.a
 
 LIB_H = \
-	archive.h blob.h cache.h commit.h csum-file.h delta.h grep.h \
+	archive.h blob.h cache.h cache-tree.h commit.h csum-file.h delta.h grep.h \
 	diff.h object.h pack.h pkt-line.h quote.h refs.h list-objects.h sideband.h \
 	run-command.h strbuf.h tag.h tree.h git-compat-util.h revision.h \
 	tree-walk.h log-tree.h dir.h path-list.h unpack-trees.h builtin.h \
 	utf8.h reflog-walk.h patch-ids.h attr.h decorate.h progress.h \
-	mailmap.h remote.h
+	mailmap.h remote.h transport.h
 
 DIFF_OBJS = \
 	diff.o diff-lib.o diffcore-break.o diffcore-order.o \
@@ -308,7 +312,8 @@ LIB_OBJS = \
 	write_or_die.o trace.o list-objects.o grep.o match-trees.o \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
 	color.o wt-status.o archive-zip.o archive-tar.o shallow.o utf8.o \
-	convert.o attr.o decorate.o progress.o mailmap.o symlinks.o remote.o
+	convert.o attr.o decorate.o progress.o mailmap.o symlinks.o remote.o \
+	transport.o bundle.o walker.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -329,6 +334,8 @@ BUILTIN_OBJS = \
 	builtin-diff-files.o \
 	builtin-diff-index.o \
 	builtin-diff-tree.o \
+	builtin-fetch.o \
+	builtin-fetch-pack.o \
 	builtin-fetch--tool.o \
 	builtin-fmt-merge-msg.o \
 	builtin-for-each-ref.o \
@@ -353,6 +360,7 @@ BUILTIN_OBJS = \
 	builtin-reflog.o \
 	builtin-config.o \
 	builtin-rerere.o \
+	builtin-reset.o \
 	builtin-rev-list.o \
 	builtin-rev-parse.o \
 	builtin-revert.o \
@@ -396,23 +404,27 @@ ifeq ($(uname_S),Darwin)
 	NEEDS_LIBICONV = YesPlease
 	OLD_ICONV = UnfortunatelyYes
 	NO_STRLCPY = YesPlease
+	NO_MEMMEM = YesPlease
 endif
 ifeq ($(uname_S),SunOS)
 	NEEDS_SOCKET = YesPlease
 	NEEDS_NSL = YesPlease
 	SHELL_PATH = /bin/bash
 	NO_STRCASESTR = YesPlease
+	NO_MEMMEM = YesPlease
 	NO_HSTRERROR = YesPlease
 	ifeq ($(uname_R),5.8)
 		NEEDS_LIBICONV = YesPlease
 		NO_UNSETENV = YesPlease
 		NO_SETENV = YesPlease
+		NO_MKDTEMP = YesPlease
 		NO_C99_FORMAT = YesPlease
 		NO_STRTOUMAX = YesPlease
 	endif
 	ifeq ($(uname_R),5.9)
 		NO_UNSETENV = YesPlease
 		NO_SETENV = YesPlease
+		NO_MKDTEMP = YesPlease
 		NO_C99_FORMAT = YesPlease
 		NO_STRTOUMAX = YesPlease
 	endif
@@ -424,6 +436,7 @@ ifeq ($(uname_O),Cygwin)
 	NO_D_TYPE_IN_DIRENT = YesPlease
 	NO_D_INO_IN_DIRENT = YesPlease
 	NO_STRCASESTR = YesPlease
+	NO_MEMMEM = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
@@ -437,11 +450,13 @@ ifeq ($(uname_O),Cygwin)
 endif
 ifeq ($(uname_S),FreeBSD)
 	NEEDS_LIBICONV = YesPlease
+	NO_MEMMEM = YesPlease
 	BASIC_CFLAGS += -I/usr/local/include
 	BASIC_LDFLAGS += -L/usr/local/lib
 endif
 ifeq ($(uname_S),OpenBSD)
 	NO_STRCASESTR = YesPlease
+	NO_MEMMEM = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	BASIC_CFLAGS += -I/usr/local/include
 	BASIC_LDFLAGS += -L/usr/local/lib
@@ -456,6 +471,7 @@ ifeq ($(uname_S),NetBSD)
 endif
 ifeq ($(uname_S),AIX)
 	NO_STRCASESTR=YesPlease
+	NO_MEMMEM = YesPlease
 	NO_STRLCPY = YesPlease
 	NEEDS_LIBICONV=YesPlease
 endif
@@ -467,6 +483,7 @@ ifeq ($(uname_S),IRIX64)
 	NO_IPV6=YesPlease
 	NO_SETENV=YesPlease
 	NO_STRCASESTR=YesPlease
+	NO_MEMMEM = YesPlease
 	NO_STRLCPY = YesPlease
 	NO_SOCKADDR_STORAGE=YesPlease
 	SHELL_PATH=/usr/gnu/bin/bash
@@ -504,7 +521,9 @@ else
 	CC_LD_DYNPATH = -R
 endif
 
-ifndef NO_CURL
+ifdef NO_CURL
+	BASIC_CFLAGS += -DNO_CURL
+else
 	ifdef CURLDIR
 		# Try "-Wl,-rpath=$(CURLDIR)/$(lib)" in such a case.
 		BASIC_CFLAGS += -I$(CURLDIR)/include
@@ -512,7 +531,9 @@ ifndef NO_CURL
 	else
 		CURL_LIBCURL = -lcurl
 	endif
-	PROGRAMS += git-http-fetch$X
+	BUILTIN_OBJS += builtin-http-fetch.o
+	EXTLIBS += $(CURL_LIBCURL)
+	LIB_OBJS += http.o http-walker.o
 	curl_check := $(shell (echo 070908; curl-config --vernum) | sort -r | sed -ne 2p)
 	ifeq "$(curl_check)" "070908"
 		ifndef NO_EXPAT
@@ -594,6 +615,10 @@ ifdef NO_SETENV
 	COMPAT_CFLAGS += -DNO_SETENV
 	COMPAT_OBJS += compat/setenv.o
 endif
+ifdef NO_MKDTEMP
+	COMPAT_CFLAGS += -DNO_MKDTEMP
+	COMPAT_OBJS += compat/mkdtemp.o
+endif
 ifdef NO_UNSETENV
 	COMPAT_CFLAGS += -DNO_UNSETENV
 	COMPAT_OBJS += compat/unsetenv.o
@@ -660,6 +685,15 @@ endif
 ifdef NO_HSTRERROR
 	COMPAT_CFLAGS += -DNO_HSTRERROR
 	COMPAT_OBJS += compat/hstrerror.o
+endif
+ifdef NO_MEMMEM
+	COMPAT_CFLAGS += -DNO_MEMMEM
+	COMPAT_OBJS += compat/memmem.o
+endif
+
+ifdef THREADED_DELTA_SEARCH
+	BASIC_CFLAGS += -DTHREADED_DELTA_SEARCH
+	EXTLIBS += -lpthread
 endif
 
 ifeq ($(TCLTK_PATH),)
@@ -778,12 +812,12 @@ $(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh
 
 $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 
-perl/perl.mak: GIT-CFLAGS
+perl/perl.mak: GIT-CFLAGS perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
 $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	INSTLIBDIR=`$(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \
@@ -809,6 +843,7 @@ gitweb/gitweb.cgi: gitweb/gitweb.perl
 	    -e 's|++GITWEB_HOME_LINK_STR++|$(GITWEB_HOME_LINK_STR)|g' \
 	    -e 's|++GITWEB_SITENAME++|$(GITWEB_SITENAME)|g' \
 	    -e 's|++GITWEB_PROJECTROOT++|$(GITWEB_PROJECTROOT)|g' \
+	    -e 's|"++GITWEB_PROJECT_MAXDEPTH++"|$(GITWEB_PROJECT_MAXDEPTH)|g' \
 	    -e 's|++GITWEB_EXPORT_OK++|$(GITWEB_EXPORT_OK)|g' \
 	    -e 's|++GITWEB_STRICT_EXPORT++|$(GITWEB_STRICT_EXPORT)|g' \
 	    -e 's|++GITWEB_BASE_URL++|$(GITWEB_BASE_URL)|g' \
@@ -865,33 +900,22 @@ http.o: http.c GIT-CFLAGS
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) -DGIT_USER_AGENT='"git/$(GIT_VERSION)"' $<
 
 ifdef NO_EXPAT
-http-fetch.o: http-fetch.c http.h GIT-CFLAGS
+http-walker.o: http-walker.c http.h GIT-CFLAGS
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) -DNO_EXPAT $<
 endif
 
 git-%$X: %.o $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS)
 
-ssh-pull.o: ssh-fetch.c
-ssh-push.o: ssh-upload.c
-git-local-fetch$X: fetch.o
-git-ssh-fetch$X: rsh.o fetch.o
-git-ssh-upload$X: rsh.o
-git-ssh-pull$X: rsh.o fetch.o
-git-ssh-push$X: rsh.o
-
 git-imap-send$X: imap-send.o $(LIB_FILE)
 
-http.o http-fetch.o http-push.o: http.h
-git-http-fetch$X: fetch.o http.o http-fetch.o $(GITLIBS)
-	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
-		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
+http.o http-walker.o http-push.o: http.h
 
 git-http-push$X: revision.o http.o http-push.o $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
-$(LIB_OBJS) $(BUILTIN_OBJS) fetch.o: $(LIB_H)
+$(LIB_OBJS) $(BUILTIN_OBJS): $(LIB_H)
 $(patsubst git-%$X,%.o,$(PROGRAMS)): $(LIB_H) $(wildcard */*.h)
 $(DIFF_OBJS): diffcore.h
 
@@ -907,10 +931,6 @@ $(XDIFF_LIB): $(XDIFF_OBJS)
 	$(QUIET_AR)$(RM) $@ && $(AR) rcs $@ $(XDIFF_OBJS)
 
 
-perl/Makefile: perl/Git.pm perl/Makefile.PL GIT-CFLAGS
-	(cd perl && $(PERL_PATH) Makefile.PL \
-		PREFIX='$(prefix_SQ)')
-
 doc:
 	$(MAKE) -C Documentation all
 
@@ -924,6 +944,10 @@ TAGS:
 tags:
 	$(RM) tags
 	$(FIND) . -name '*.[hcS]' -print | xargs ctags -a
+
+cscope:
+	$(RM) cscope*
+	$(FIND) . -name '*.[hcS]' -print | xargs cscope -b
 
 ### Detect prefix changes
 TRACK_CFLAGS = $(subst ','\'',$(ALL_CFLAGS)):\
@@ -1066,14 +1090,17 @@ dist-doc:
 
 ### Cleaning rules
 
+distclean: clean
+	$(RM) configure
+
 clean:
 	$(RM) *.o mozilla-sha1/*.o arm/*.o ppc/*.o compat/*.o xdiff/*.o \
 		$(LIB_FILE) $(XDIFF_LIB)
 	$(RM) $(ALL_PROGRAMS) $(BUILT_INS) git$X
 	$(RM) $(TEST_PROGRAMS)
-	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h TAGS tags
+	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h TAGS tags cscope*
 	$(RM) -r autom4te.cache
-	$(RM) configure config.log config.mak.autogen config.mak.append config.status config.cache
+	$(RM) config.log config.mak.autogen config.mak.append config.status config.cache
 	$(RM) -r $(GIT_TARNAME) .doc-tmp-dir
 	$(RM) $(GIT_TARNAME).tar.gz git-core_$(GIT_VERSION)-*.tar.gz
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
@@ -1089,7 +1116,7 @@ endif
 	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-GUI-VARS
 
 .PHONY: all install clean strip
-.PHONY: .FORCE-GIT-VERSION-FILE TAGS tags .FORCE-GIT-CFLAGS
+.PHONY: .FORCE-GIT-VERSION-FILE TAGS tags cscope .FORCE-GIT-CFLAGS
 
 ### Check documentation
 #
@@ -1100,8 +1127,7 @@ check-docs::
 		git-merge-octopus | git-merge-ours | git-merge-recursive | \
 		git-merge-resolve | git-merge-stupid | \
 		git-add--interactive | git-fsck-objects | git-init-db | \
-		git-repo-config | git-fetch--tool | \
-		git-ssh-pull | git-ssh-push ) continue ;; \
+		git-repo-config | git-fetch--tool ) continue ;; \
 		esac ; \
 		test -f "Documentation/$$v.txt" || \
 		echo "no doc: $$v"; \
