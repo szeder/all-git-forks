@@ -504,8 +504,11 @@ static int match_explicit(struct ref *src, struct ref *dst,
 	if (!matched_src)
 		errs = 1;
 
-	if (dst_value == NULL)
+	if (!dst_value) {
+		if (!matched_src)
+			return errs;
 		dst_value = matched_src->name;
+	}
 
 	switch (count_refspec_match(dst_value, dst, &matched_dst)) {
 	case 1:
@@ -626,6 +629,8 @@ int match_refs(struct ref *src, struct ref *dst, struct ref ***dst_tail,
 			hashcpy(dst_peer->new_sha1, src->new_sha1);
 		}
 		dst_peer->peer_ref = src;
+		if (pat)
+			dst_peer->force = pat->force;
 	free_name:
 		free(dst_name);
 	}

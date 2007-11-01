@@ -78,7 +78,7 @@ mark_action_done () {
 
 make_patch () {
 	parent_sha1=$(git rev-parse --verify "$1"^ 2> /dev/null)
-	git diff "$parent_sha1".."$1" > "$DOTEST"/patch
+	git diff-tree -p "$parent_sha1".."$1" > "$DOTEST"/patch
 }
 
 die_with_patch () {
@@ -109,7 +109,7 @@ pick_one () {
 		sha1=$(git rev-parse --short $sha1)
 		output warn Fast forward to $sha1
 	else
-		output git cherry-pick $STRATEGY "$@"
+		output git cherry-pick "$@"
 	fi
 }
 
@@ -165,6 +165,8 @@ pick_one_preserving_merges () {
 			eval "$author_script"
 			msg="$(git cat-file commit $sha1 | \
 				sed -e '1,/^$/d' -e "s/[\"\\]/\\\\&/g")"
+			# No point in merging the first parent, that's HEAD
+			new_parents=${new_parents# $first_parent}
 			# NEEDSWORK: give rerere a chance
 			if ! output git merge $STRATEGY -m "$msg" $new_parents
 			then
@@ -173,7 +175,7 @@ pick_one_preserving_merges () {
 			fi
 			;;
 		*)
-			output git cherry-pick $STRATEGY "$@" ||
+			output git cherry-pick "$@" ||
 				die_with_patch $sha1 "Could not pick $sha1"
 		esac
 	esac
@@ -302,7 +304,7 @@ do_next () {
 	git update-ref -m "$message" $HEADNAME $NEWHEAD $OLDHEAD &&
 	git symbolic-ref HEAD $HEADNAME && {
 		test ! -f "$DOTEST"/verbose ||
-			git diff --stat $(cat "$DOTEST"/head)..HEAD
+			git diff-tree --stat $(cat "$DOTEST"/head)..HEAD
 	} &&
 	rm -rf "$DOTEST" &&
 	warn "Successfully rebased and updated $HEADNAME."
@@ -357,7 +359,6 @@ do
 		output git reset --hard && do_rest
 		;;
 	-s|--strategy)
-		shift
 		case "$#,$1" in
 		*,*=*)
 			STRATEGY="-s `expr "z$1" : 'z-[^=]*=\(.*\)'`" ;;
