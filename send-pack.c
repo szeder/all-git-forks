@@ -178,6 +178,35 @@ static int receive_status(int in)
 	return ret;
 }
 
+static void update_tracking_ref(struct remote *remote, struct ref *ref)
+{
+	struct refspec rs;
+	int will_delete_ref;
+
+	rs.src = ref->name;
+	rs.dst = NULL;
+
+	if (!ref->peer_ref)
+		return;
+
+	will_delete_ref = is_null_sha1(ref->peer_ref->new_sha1);
+
+	if (!will_delete_ref &&
+			!hashcmp(ref->old_sha1, ref->peer_ref->new_sha1))
+		return;
+
+	if (!remote_find_tracking(remote, &rs)) {
+		fprintf(stderr, "updating local tracking ref '%s'\n", rs.dst);
+		if (is_null_sha1(ref->peer_ref->new_sha1)) {
+			if (delete_ref(rs.dst, NULL))
+				error("Failed to delete");
+		} else
+			update_ref("update by push", rs.dst,
+					ref->new_sha1, NULL, 0, 0);
+		free(rs.dst);
+	}
+}
+
 static int send_pack(int in, int out, struct remote *remote, int nr_refspec, char **refspec)
 {
 	struct ref *ref;
@@ -268,9 +297,9 @@ static int send_pack(int in, int out, struct remote *remote, int nr_refspec, cha
 				 * commits at the remote end and likely
 				 * we were not up to date to begin with.
 				 */
-				error("remote '%s' is not a strict "
-				      "subset of local ref '%s'. "
-				      "maybe you are not up-to-date and "
+				error("remote '%s' is not an ancestor of\n"
+				      " local  '%s'.\n"
+				      " Maybe you are not up-to-date and "
 				      "need to pull first?",
 				      ref->name,
 				      ref->peer_ref->name);
@@ -306,22 +335,6 @@ static int send_pack(int in, int out, struct remote *remote, int nr_refspec, cha
 			fprintf(stderr, "\n  from %s\n  to   %s\n",
 				old_hex, new_hex);
 		}
-		if (remote && !dry_run) {
-			struct refspec rs;
-			rs.src = ref->name;
-			rs.dst = NULL;
-			if (!remote_find_tracking(remote, &rs)) {
-				fprintf(stderr, " Also local %s\n", rs.dst);
-				if (will_delete_ref) {
-					if (delete_ref(rs.dst, NULL)) {
-						error("Failed to delete");
-					}
-				} else
-					update_ref("update by push", rs.dst,
-						ref->new_sha1, NULL, 0, 0);
-				free(rs.dst);
-			}
-		}
 	}
 
 	packet_flush(out);
@@ -332,6 +345,11 @@ static int send_pack(int in, int out, struct remote *remote, int nr_refspec, cha
 	if (expect_status_report) {
 		if (receive_status(in))
 			ret = -4;
+	}
+
+	if (!dry_run && remote && ret == 0) {
+		for (ref = remote_refs; ref; ref = ref->next)
+			update_tracking_ref(remote, ref);
 	}
 
 	if (!new_refs && ret == 0)
@@ -366,7 +384,7 @@ int main(int argc, char **argv)
 	char *dest = NULL;
 	char **heads = NULL;
 	int fd[2], ret;
-	pid_t pid;
+	struct child_process *conn;
 	char *remote_name = NULL;
 	struct remote *remote = NULL;
 
@@ -434,12 +452,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	pid = git_connect(fd, dest, receivepack, verbose ? CONNECT_VERBOSE : 0);
-	if (pid < 0)
-		return 1;
+	conn = git_connect(fd, dest, receivepack, verbose ? CONNECT_VERBOSE : 0);
 	ret = send_pack(fd[0], fd[1], remote, nr_heads, heads);
 	close(fd[0]);
 	close(fd[1]);
-	ret |= finish_connect(pid);
+	ret |= finish_connect(conn);
 	return !!ret;
 }

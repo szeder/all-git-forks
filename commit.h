@@ -61,13 +61,15 @@ enum cmit_fmt {
 	CMIT_FMT_UNSPECIFIED,
 };
 
+extern int non_ascii(int);
 extern enum cmit_fmt get_commit_format(const char *arg);
 extern void format_commit_message(const struct commit *commit,
                                   const void *format, struct strbuf *sb);
 extern void pretty_print_commit(enum cmit_fmt fmt, const struct commit*,
                                 struct strbuf *,
                                 int abbrev, const char *subject,
-                                const char *after_subject, enum date_mode);
+                                const char *after_subject, enum date_mode,
+				int non_ascii_present);
 
 /** Removes the first commit from a list sorted by date, and adds all
  * of its parents.
@@ -128,4 +130,9 @@ extern struct commit_list *get_shallow_commits(struct object_array *heads,
 		int depth, int shallow_flag, int not_shallow_flag);
 
 int in_merge_bases(struct commit *, struct commit **, int);
+
+extern int interactive_add(void);
+extern void add_files_to_cache(int verbose, const char *prefix, const char **files);
+extern int rerere(void);
+
 #endif /* COMMIT_H */

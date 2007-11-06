@@ -9,6 +9,7 @@
 #include "xdiff-interface.h"
 #include "color.h"
 #include "attr.h"
+#include "run-command.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -1440,7 +1441,16 @@ struct diff_filespec *alloc_filespec(const char *path)
 	memset(spec, 0, sizeof(*spec));
 	spec->path = (char *)(spec + 1);
 	memcpy(spec->path, path, namelen+1);
+	spec->count = 1;
 	return spec;
+}
+
+void free_filespec(struct diff_filespec *spec)
+{
+	if (!--spec->count) {
+		diff_free_filespec_data(spec);
+		free(spec);
+	}
 }
 
 void fill_filespec(struct diff_filespec *spec, const unsigned char *sha1,
@@ -1752,40 +1762,6 @@ static void remove_tempfile_on_signal(int signo)
 	raise(signo);
 }
 
-static int spawn_prog(const char *pgm, const char **arg)
-{
-	pid_t pid;
-	int status;
-
-	fflush(NULL);
-	pid = fork();
-	if (pid < 0)
-		die("unable to fork");
-	if (!pid) {
-		execvp(pgm, (char *const*) arg);
-		exit(255);
-	}
-
-	while (waitpid(pid, &status, 0) < 0) {
-		if (errno == EINTR)
-			continue;
-		return -1;
-	}
-
-	/* Earlier we did not check the exit status because
-	 * diff exits non-zero if files are different, and
-	 * we are not interested in knowing that.  It was a
-	 * mistake which made it harder to quit a diff-*
-	 * session that uses the git-apply-patch-script as
-	 * the GIT_EXTERNAL_DIFF.  A custom GIT_EXTERNAL_DIFF
-	 * should also exit non-zero only when it wants to
-	 * abort the entire diff-* session.
-	 */
-	if (WIFEXITED(status) && !WEXITSTATUS(status))
-		return 0;
-	return -1;
-}
-
 /* An external diff command takes:
  *
  * diff-cmd name infile1 infile1-sha1 infile1-mode \
@@ -1838,7 +1814,8 @@ static void run_external_diff(const char *pgm,
 		*arg++ = name;
 	}
 	*arg = NULL;
-	retval = spawn_prog(pgm, spawn_arg);
+	fflush(NULL);
+	retval = run_command_v_opt(spawn_arg, 0);
 	remove_tempfile();
 	if (retval) {
 		fprintf(stderr, "external diff died, stopping at %s.\n", name);
@@ -2435,10 +2412,8 @@ struct diff_filepair *diff_queue(struct diff_queue_struct *queue,
 
 void diff_free_filepair(struct diff_filepair *p)
 {
-	diff_free_filespec_data(p->one);
-	diff_free_filespec_data(p->two);
-	free(p->one);
-	free(p->two);
+	free_filespec(p->one);
+	free_filespec(p->two);
 	free(p);
 }
 
@@ -2590,9 +2565,9 @@ void diff_debug_filepair(const struct diff_filepair *p, int i)
 {
 	diff_debug_filespec(p->one, i, "one");
 	diff_debug_filespec(p->two, i, "two");
-	fprintf(stderr, "score %d, status %c stays %d broken %d\n",
+	fprintf(stderr, "score %d, status %c rename_used %d broken %d\n",
 		p->score, p->status ? p->status : '?',
-		p->source_stays, p->broken_pair);
+		p->one->rename_used, p->broken_pair);
 }
 
 void diff_debug_queue(const char *msg, struct diff_queue_struct *q)
@@ -2610,8 +2585,8 @@ void diff_debug_queue(const char *msg, struct diff_queue_struct *q)
 
 static void diff_resolve_rename_copy(void)
 {
-	int i, j;
-	struct diff_filepair *p, *pp;
+	int i;
+	struct diff_filepair *p;
 	struct diff_queue_struct *q = &diff_queued_diff;
 
 	diff_debug_queue("resolve-rename-copy", q);
@@ -2633,27 +2608,21 @@ static void diff_resolve_rename_copy(void)
 		 * either in-place edit or rename/copy edit.
 		 */
 		else if (DIFF_PAIR_RENAME(p)) {
-			if (p->source_stays) {
-				p->status = DIFF_STATUS_COPIED;
-				continue;
-			}
-			/* See if there is some other filepair that
-			 * copies from the same source as us.  If so
-			 * we are a copy.  Otherwise we are either a
-			 * copy if the path stays, or a rename if it
-			 * does not, but we already handled "stays" case.
+			/*
+			 * A rename might have re-connected a broken
+			 * pair up, causing the pathnames to be the
+			 * same again. If so, that's not a rename at
+			 * all, just a modification..
+			 *
+			 * Otherwise, see if this source was used for
+			 * multiple renames, in which case we decrement
+			 * the count, and call it a copy.
 			 */
-			for (j = i + 1; j < q->nr; j++) {
-				pp = q->queue[j];
-				if (strcmp(pp->one->path, p->one->path))
-					continue; /* not us */
-				if (!DIFF_PAIR_RENAME(pp))
-					continue; /* not a rename/copy */
-				/* pp is a rename/copy from the same source */
+			if (!strcmp(p->one->path, p->two->path))
+				p->status = DIFF_STATUS_MODIFIED;
+			else if (--p->one->rename_used > 0)
 				p->status = DIFF_STATUS_COPIED;
-				break;
-			}
-			if (!p->status)
+			else
 				p->status = DIFF_STATUS_RENAMED;
 		}
 		else if (hashcmp(p->one->sha1, p->two->sha1) ||

@@ -48,15 +48,21 @@ static void add_merge_config(struct ref **head,
 		if (rm)
 			continue;
 
-		/* Not fetched to a tracking branch?  We need to fetch
+		/*
+		 * Not fetched to a tracking branch?  We need to fetch
 		 * it anyway to allow this branch's "branch.$name.merge"
-		 * to be honored by git-pull.
+		 * to be honored by git-pull, but we do not have to
+		 * fail if branch.$name.merge is misconfigured to point
+		 * at a nonexisting branch.  If we were indeed called by
+		 * git-pull, it will notice the misconfiguration because
+		 * there is no entry in the resulting FETCH_HEAD marked
+		 * for merging.
 		 */
 		refspec.src = branch->merge[i]->src;
 		refspec.dst = NULL;
 		refspec.pattern = 0;
 		refspec.force = 0;
-		get_fetch_map(remote_refs, &refspec, tail);
+		get_fetch_map(remote_refs, &refspec, tail, 1);
 		for (rm = *old_tail; rm; rm = rm->next)
 			rm->merge = 1;
 	}
@@ -75,7 +81,7 @@ static struct ref *get_ref_map(struct transport *transport,
 
 	if (ref_count || tags) {
 		for (i = 0; i < ref_count; i++) {
-			get_fetch_map(remote_refs, &refs[i], &tail);
+			get_fetch_map(remote_refs, &refs[i], &tail, 0);
 			if (refs[i].dst && refs[i].dst[0])
 				*autotags = 1;
 		}
@@ -88,7 +94,7 @@ static struct ref *get_ref_map(struct transport *transport,
 			refspec.dst = "refs/tags/";
 			refspec.pattern = 1;
 			refspec.force = 0;
-			get_fetch_map(remote_refs, &refspec, &tail);
+			get_fetch_map(remote_refs, &refspec, &tail, 0);
 		}
 	} else {
 		/* Use the defaults */
@@ -97,7 +103,7 @@ static struct ref *get_ref_map(struct transport *transport,
 		int has_merge = branch_has_merge_config(branch);
 		if (remote && (remote->fetch_refspec_nr || has_merge)) {
 			for (i = 0; i < remote->fetch_refspec_nr; i++) {
-				get_fetch_map(remote_refs, &remote->fetch[i], &tail);
+				get_fetch_map(remote_refs, &remote->fetch[i], &tail, 0);
 				if (remote->fetch[i].dst &&
 				    remote->fetch[i].dst[0])
 					*autotags = 1;
@@ -110,23 +116,19 @@ static struct ref *get_ref_map(struct transport *transport,
 			 * as given in branch.<name>.remote, we add the
 			 * ref given in branch.<name>.merge, too.
 			 */
-			if (has_merge && !strcmp(branch->remote_name,
-						remote->name))
+			if (has_merge &&
+			    !strcmp(branch->remote_name, remote->name))
 				add_merge_config(&ref_map, remote_refs, branch, &tail);
 		} else {
 			ref_map = get_remote_ref(remote_refs, "HEAD");
+			if (!ref_map)
+				die("Couldn't find remote ref HEAD");
 			ref_map->merge = 1;
 		}
 	}
 	ref_remove_duplicates(ref_map);
 
 	return ref_map;
-}
-
-static void show_new(enum object_type type, unsigned char *sha1_new)
-{
-	fprintf(stderr, "  %s: %s\n", typename(type),
-		find_unique_abbrev(sha1_new, DEFAULT_ABBREV));
 }
 
 static int s_update_ref(const char *action,
@@ -149,34 +151,38 @@ static int s_update_ref(const char *action,
 	return 0;
 }
 
+#define SUMMARY_WIDTH (2 * DEFAULT_ABBREV + 3)
+
 static int update_local_ref(struct ref *ref,
-			    const char *note,
-			    int verbose)
+			    const char *remote,
+			    int verbose,
+			    char *display)
 {
-	char oldh[41], newh[41];
 	struct commit *current = NULL, *updated;
 	enum object_type type;
 	struct branch *current_branch = branch_get(NULL);
+	const char *pretty_ref = ref->name + (
+		!prefixcmp(ref->name, "refs/heads/") ? 11 :
+		!prefixcmp(ref->name, "refs/tags/") ? 10 :
+		!prefixcmp(ref->name, "refs/remotes/") ? 13 :
+		0);
 
+	*display = 0;
 	type = sha1_object_info(ref->new_sha1, NULL);
 	if (type < 0)
 		die("object %s not found", sha1_to_hex(ref->new_sha1));
 
 	if (!*ref->name) {
 		/* Not storing */
-		if (verbose) {
-			fprintf(stderr, "* fetched %s\n", note);
-			show_new(type, ref->new_sha1);
-		}
+		if (verbose)
+			sprintf(display, "* branch %s -> FETCH_HEAD", remote);
 		return 0;
 	}
 
 	if (!hashcmp(ref->old_sha1, ref->new_sha1)) {
-		if (verbose) {
-			fprintf(stderr, "* %s: same as %s\n",
-				ref->name, note);
-			show_new(type, ref->new_sha1);
-		}
+		if (verbose)
+			sprintf(display, "= %-*s %s -> %s", SUMMARY_WIDTH,
+				"[up to date]", remote, pretty_ref);
 		return 0;
 	}
 
@@ -188,63 +194,65 @@ static int update_local_ref(struct ref *ref,
 		 * If this is the head, and it's not okay to update
 		 * the head, and the old value of the head isn't empty...
 		 */
-		fprintf(stderr,
-			" * %s: Cannot fetch into the current branch.\n",
-			ref->name);
+		sprintf(display, "! %-*s %s -> %s  (can't  fetch in current branch)",
+			SUMMARY_WIDTH, "[rejected]", remote, pretty_ref);
 		return 1;
 	}
 
 	if (!is_null_sha1(ref->old_sha1) &&
 	    !prefixcmp(ref->name, "refs/tags/")) {
-		fprintf(stderr, "* %s: updating with %s\n",
-			ref->name, note);
-		show_new(type, ref->new_sha1);
+		sprintf(display, "- %-*s %s -> %s",
+			SUMMARY_WIDTH, "[tag update]", remote, pretty_ref);
 		return s_update_ref("updating tag", ref, 0);
 	}
 
 	current = lookup_commit_reference_gently(ref->old_sha1, 1);
 	updated = lookup_commit_reference_gently(ref->new_sha1, 1);
 	if (!current || !updated) {
-		char *msg;
-		if (!strncmp(ref->name, "refs/tags/", 10))
+		const char *msg;
+		const char *what;
+		if (!strncmp(ref->name, "refs/tags/", 10)) {
 			msg = "storing tag";
-		else
+			what = "[new tag]";
+		}
+		else {
 			msg = "storing head";
-		fprintf(stderr, "* %s: storing %s\n",
-			ref->name, note);
-		show_new(type, ref->new_sha1);
+			what = "[new branch]";
+		}
+
+		sprintf(display, "* %-*s %s -> %s",
+			SUMMARY_WIDTH, what, remote, pretty_ref);
 		return s_update_ref(msg, ref, 0);
 	}
 
-	strcpy(oldh, find_unique_abbrev(current->object.sha1, DEFAULT_ABBREV));
-	strcpy(newh, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
-
 	if (in_merge_bases(current, &updated, 1)) {
-		fprintf(stderr, "* %s: fast forward to %s\n",
-			ref->name, note);
-		fprintf(stderr, "  old..new: %s..%s\n", oldh, newh);
+		char quickref[83];
+		strcpy(quickref, find_unique_abbrev(current->object.sha1, DEFAULT_ABBREV));
+		strcat(quickref, "..");
+		strcat(quickref, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
+		sprintf(display, "  %-*s %s -> %s  (fast forward)",
+			SUMMARY_WIDTH, quickref, remote, pretty_ref);
 		return s_update_ref("fast forward", ref, 1);
-	}
-	if (!force && !ref->force) {
-		fprintf(stderr,
-			"* %s: not updating to non-fast forward %s\n",
-			ref->name, note);
-		fprintf(stderr,
-			"  old...new: %s...%s\n", oldh, newh);
+	} else if (force || ref->force) {
+		char quickref[84];
+		strcpy(quickref, find_unique_abbrev(current->object.sha1, DEFAULT_ABBREV));
+		strcat(quickref, "...");
+		strcat(quickref, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
+		sprintf(display, "+ %-*s %s -> %s  (forced update)",
+			SUMMARY_WIDTH, quickref, remote, pretty_ref);
+		return s_update_ref("forced-update", ref, 1);
+	} else {
+		sprintf(display, "! %-*s %s -> %s  (non fast forward)",
+			SUMMARY_WIDTH, "[rejected]", remote, pretty_ref);
 		return 1;
 	}
-	fprintf(stderr,
-		"* %s: forcing update to non-fast forward %s\n",
-		ref->name, note);
-	fprintf(stderr, "  old...new: %s...%s\n", oldh, newh);
-	return s_update_ref("forced-update", ref, 1);
 }
 
 static void store_updated_refs(const char *url, struct ref *ref_map)
 {
 	FILE *fp;
 	struct commit *commit;
-	int url_len, i, note_len;
+	int url_len, i, note_len, shown_url = 0;
 	char note[1024];
 	const char *what, *kind;
 	struct ref *rm;
@@ -307,8 +315,17 @@ static void store_updated_refs(const char *url, struct ref *ref_map)
 			rm->merge ? "" : "not-for-merge",
 			note);
 
-		if (ref)
-			update_local_ref(ref, note, verbose);
+		if (ref) {
+			update_local_ref(ref, what, verbose, note);
+			if (*note) {
+				if (!shown_url) {
+					fprintf(stderr, "From %.*s\n",
+							url_len, url);
+					shown_url = 1;
+				}
+				fprintf(stderr, " %s\n", note);
+			}
+		}
 	}
 	fclose(fp);
 }
@@ -368,9 +385,6 @@ static struct ref *find_non_local_tags(struct transport *transport,
 		if (!path_list_has_path(&existing_refs, ref_name) &&
 		    !path_list_has_path(&new_refs, ref_name) &&
 		    lookup_object(ref->old_sha1)) {
-			fprintf(stderr, "Auto-following %s\n",
-				ref_name);
-
 			path_list_insert(ref_name, &new_refs);
 
 			rm = alloc_ref(strlen(ref_name) + 1);
@@ -509,7 +523,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			depth = argv[i];
 			continue;
 		}
-		if (!strcmp(arg, "--quiet")) {
+		if (!strcmp(arg, "--quiet") || !strcmp(arg, "-q")) {
 			quiet = 1;
 			continue;
 		}
