@@ -5,6 +5,7 @@ ARCH ?=$(shell dpkg-architecture -qDEB_HOST_ARCH)
 CC =gcc
 CFLAGS =-g -Wall
 STRIP =strip
+TEST =test
 OPTS =NO_OPENSSL=1 GITWEB_CONFIG=/etc/gitweb.conf prefix=/usr \
   mandir=/usr/share/man INSTALLDIRS=vendor WITH_P4IMPORT=1 \
   PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish8.4
@@ -22,6 +23,10 @@ else
   CFLAGS +=-O2
 endif
 endif
+ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
+  TEST =
+endif
+
 ifeq (powerpc,$(ARCH))
   OPTS +=PPC_SHA1=1
 else
@@ -43,7 +48,7 @@ patch-stamp:
 build: deb-checkdir build-arch-stamp build-indep-stamp
 build-arch-stamp: patch-stamp
 	-gcc -v
-	DESTDIR='$(GIT)'-core $(MAKE) all test \
+	DESTDIR='$(GIT)'-core $(MAKE) all $(TEST) \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	$(MAKE) -CDocumentation man ASCIIDOC8=YesPlease
 	touch build-arch-stamp
