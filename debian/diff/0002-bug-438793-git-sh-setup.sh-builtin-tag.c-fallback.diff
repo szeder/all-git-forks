@@ -1,14 +1,28 @@
-From 557eeb115ffd878cc76be206f412d7fad4dfe8a5 Mon Sep 17 00:00:00 2001
+From af5a0320dcd0d7aed89c686271f1ceef8ae38070 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
-Subject: [PATCH] git-sh-setup.sh: fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
+Subject: [PATCH] bug#438793: git-sh-setup.sh, builtin-tag.c: fallback to 'editor' not 'vi'
 
-http://bugs.debian.org/438793
+Fallback to 'editor', not 'vi', if $VISUAL and $EDITOR are unset.
 ---
+ builtin-tag.c     |    2 +-
  git-sh-setup.sh   |    2 +-
  t/t7005-editor.sh |   14 +++++++-------
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
+diff --git a/builtin-tag.c b/builtin-tag.c
+index 3a9d2ee..52b475c 100644
+--- a/builtin-tag.c
++++ b/builtin-tag.c
+@@ -41,7 +41,7 @@ static void launch_editor(const char *path, char **buffer, unsigned long *len)
+ 	}
+ 
+ 	if (!editor)
+-		editor = "vi";
++		editor = "editor";
+ 
+ 	memset(&child, 0, sizeof(child));
+ 	child.argv = args;
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
 index 3c325fd..894e171 100755
 --- a/git-sh-setup.sh
@@ -82,5 +96,5 @@ index 28643b0..540c125 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.3.4
+1.5.3.5
 
