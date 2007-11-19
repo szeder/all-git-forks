@@ -12,8 +12,11 @@ git-core (1:1.5.3.6-1) unstable; urgency=low
       -u (closes: #446495).
     * git-mailsplit: with maildirs not only process cur/, but also new/
       (closes: #447396).
+  * debian/diff/0004-contrib-hooks-post-receive-email-make-subject-prefix.diff:
+    new; cherry-pick'ed from master: contrib/hooks/post-receive-email: make
+    subject prefix configurable (closes: #428418).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 19 Nov 2007 12:24:45 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 19 Nov 2007 12:32:11 +0000
 
 git-core (1:1.5.3.5-1) unstable; urgency=low
 

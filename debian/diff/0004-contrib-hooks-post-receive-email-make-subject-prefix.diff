@@ -1,0 +1,78 @@
+From 3f0a4175117d8b40a62d40d30b5f119fa0bf16b6 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@innominate.com>
+Date: Mon, 19 Nov 2007 12:31:39 +0000
+Subject: [PATCH] contrib/hooks/post-receive-email: make subject prefix configurable
+
+Email subjects are prefixed with "[SCM] " by default, make this optionally
+configurable through the hooks.emailprefix config option.
+
+Suggested by martin f krafft through
+ http://bugs.debian.org/428418
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit e7509ee388480046a685f885431291f484de66de)
+
+Conflicts:
+
+	contrib/hooks/post-receive-email
+---
+ contrib/hooks/post-receive-email |   18 ++++++++++--------
+ 1 files changed, 10 insertions(+), 8 deletions(-)
+
+diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
+index 28a06c7..0307787 100644
+--- a/contrib/hooks/post-receive-email
++++ b/contrib/hooks/post-receive-email
+@@ -28,15 +28,17 @@
+ #   emails for every ref update.
+ # hooks.announcelist
+ #   This is the list that all pushes of annotated tags will go to.  Leave it
+-#   blank to default to the mailinglist field.  The announce emails lists the
+-#   short log summary of the changes since the last annotated tag.
+-# hook.envelopesender
+-#   If set then the -f option is passed to sendmail to allow the envelope sender
+-#   address to be set
++#   blank to default to the mailinglist field.  The announce emails lists
++#   the short log summary of the changes since the last annotated tag.
++# hooks.envelopesender
++#   If set then the -f option is passed to sendmail to allow the envelope
++#   sender address to be set
++# hooks.emailprefix
++#   All emails have their subjects prefixed with this prefix, or "[SCM]"
++#   if emailprefix is unset, to aid filtering
+ #
+ # Notes
+ # -----
+-# All emails have their subjects prefixed with "[SCM]" to aid filtering.
+ # All emails include the headers "X-Git-Refname", "X-Git-Oldrev",
+ # "X-Git-Newrev", and "X-Git-Reftype" to enable fine tuned filtering and
+ # give information for debugging.
+@@ -178,7 +180,7 @@ generate_email_header()
+ 	# Generate header
+ 	cat <<-EOF
+ 	To: $recipients
+-	Subject: ${EMAILPREFIX}$projectdesc $refname_type, $short_refname, ${change_type}d. $describe
++	Subject: ${emailprefix}$projectdesc $refname_type, $short_refname, ${change_type}d. $describe
+ 	X-Git-Refname: $refname
+ 	X-Git-Reftype: $refname_type
+ 	X-Git-Oldrev: $oldrev
+@@ -582,7 +584,6 @@ send_mail()
+ # ---------------------------- main()
+ 
+ # --- Constants
+-EMAILPREFIX="[SCM] "
+ LOGBEGIN="- Log -----------------------------------------------------------------"
+ LOGEND="-----------------------------------------------------------------------"
+ 
+@@ -606,6 +607,7 @@ fi
+ recipients=$(git repo-config hooks.mailinglist)
+ announcerecipients=$(git repo-config hooks.announcelist)
+ envelopesender=$(git-repo-config hooks.envelopesender)
++emailprefix=$(git-repo-config hooks.emailprefix || echo '[SCM] ')
+ 
+ # --- Main loop
+ # Allow dual mode: run from the command line just like the update hook, or if
+-- 
+1.5.3.4
+
