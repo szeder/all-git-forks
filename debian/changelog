@@ -1,4 +1,4 @@
-git-core (1:1.5.3.5-1.1) unstable; urgency=low
+git-core (1:1.5.3.6-1) unstable; urgency=low
 
   * debian/implicit: add proper dependencies to support 'parallel build'
     through make -j (thx Daniel Schepler for the patch).
@@ -7,8 +7,13 @@ git-core (1:1.5.3.5-1.1) unstable; urgency=low
   * debian/diff/0003-bug-448655-check-etc-mailname-if-author-email-is-un.diff:
     new; check /etc/mailname if author email is unknown (closes: #448655).
   * debian/gitweb.docs: new; install gitweb/README.
+  * new upstream point release.
+    * git-cvsimport: really convert underscores in branch names to dots with
+      -u (closes: #446495).
+    * git-mailsplit: with maildirs not only process cur/, but also new/
+      (closes: #447396).
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 08 Nov 2007 14:13:37 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 19 Nov 2007 12:24:45 +0000
 
 git-core (1:1.5.3.5-1) unstable; urgency=low
 
