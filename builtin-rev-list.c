@@ -26,6 +26,7 @@ static const char rev_list_usage[] =
 "    --remove-empty\n"
 "    --all\n"
 "    --stdin\n"
+"    --quiet\n"
 "  ordering output:\n"
 "    --topo-order\n"
 "    --date-order\n"
@@ -50,6 +51,7 @@ static int show_timestamp;
 static int hdr_termination;
 static const char *header_prefix;
 
+static void finish_commit(struct commit *commit);
 static void show_commit(struct commit *commit)
 {
 	if (show_timestamp)
@@ -93,12 +95,23 @@ static void show_commit(struct commit *commit)
 		strbuf_release(&buf);
 	}
 	maybe_flush_or_die(stdout, "stdout");
+	finish_commit(commit);
+}
+
+static void finish_commit(struct commit *commit)
+{
 	if (commit->parents) {
 		free_commit_list(commit->parents);
 		commit->parents = NULL;
 	}
 	free(commit->buffer);
 	commit->buffer = NULL;
+}
+
+static void finish_object(struct object_array_entry *p)
+{
+	if (p->item->type == OBJ_BLOB && !has_sha1_file(p->item->sha1))
+		die("missing blob object '%s'", sha1_to_hex(p->item->sha1));
 }
 
 static void show_object(struct object_array_entry *p)
@@ -108,9 +121,7 @@ static void show_object(struct object_array_entry *p)
 	 */
 	const char *ep = strchr(p->name, '\n');
 
-	if (p->item->type == OBJ_BLOB && !has_sha1_file(p->item->sha1))
-		die("missing blob object '%s'", sha1_to_hex(p->item->sha1));
-
+	finish_object(p);
 	if (ep) {
 		printf("%s %.*s\n", sha1_to_hex(p->item->sha1),
 		       (int) (ep - p->name),
@@ -142,7 +153,7 @@ static int count_distance(struct commit_list *entry)
 
 		if (commit->object.flags & (UNINTERESTING | COUNTED))
 			break;
-		if (!revs.prune_fn || (commit->object.flags & TREECHANGE))
+		if (!(commit->object.flags & TREESAME))
 			nr++;
 		commit->object.flags |= COUNTED;
 		p = commit->parents;
@@ -198,7 +209,7 @@ static inline int halfway(struct commit_list *p, int nr)
 	/*
 	 * Don't short-cut something we are not going to return!
 	 */
-	if (revs.prune_fn && !(p->item->object.flags & TREECHANGE))
+	if (p->item->object.flags & TREESAME)
 		return 0;
 	if (DEBUG_BISECT)
 		return 0;
@@ -234,7 +245,7 @@ static void show_list(const char *debug, int counted, int nr,
 		char *ep, *sp;
 
 		fprintf(stderr, "%c%c%c ",
-			(flags & TREECHANGE) ? 'T' : ' ',
+			(flags & TREESAME) ? ' ' : 'T',
 			(flags & UNINTERESTING) ? 'U' : ' ',
 			(flags & COUNTED) ? 'C' : ' ');
 		if (commit->util)
@@ -268,7 +279,7 @@ static struct commit_list *best_bisection(struct commit_list *list, int nr)
 		int distance;
 		unsigned flags = p->item->object.flags;
 
-		if (revs.prune_fn && !(flags & TREECHANGE))
+		if (flags & TREESAME)
 			continue;
 		distance = weight(p);
 		if (nr - distance < distance)
@@ -308,7 +319,7 @@ static struct commit_list *best_bisection_sorted(struct commit_list *list, int n
 		int distance;
 		unsigned flags = p->item->object.flags;
 
-		if (revs.prune_fn && !(flags & TREECHANGE))
+		if (flags & TREESAME)
 			continue;
 		distance = weight(p);
 		if (nr - distance < distance)
@@ -362,7 +373,7 @@ static struct commit_list *do_find_bisection(struct commit_list *list,
 		p->item->util = &weights[n++];
 		switch (count_interesting_parents(commit)) {
 		case 0:
-			if (!revs.prune_fn || (flags & TREECHANGE)) {
+			if (!(flags & TREESAME)) {
 				weight_set(p, 1);
 				counted++;
 				show_list("bisection 2 count one",
@@ -435,7 +446,7 @@ static struct commit_list *do_find_bisection(struct commit_list *list,
 			 * add one for p itself if p is to be counted,
 			 * otherwise inherit it from q directly.
 			 */
-			if (!revs.prune_fn || (flags & TREECHANGE)) {
+			if (!(flags & TREESAME)) {
 				weight_set(p, weight(q)+1);
 				counted++;
 				show_list("bisection 2 count one",
@@ -482,7 +493,7 @@ static struct commit_list *find_bisection(struct commit_list *list,
 			continue;
 		p->next = last;
 		last = p;
-		if (!revs.prune_fn || (flags & TREECHANGE))
+		if (!(flags & TREESAME))
 			nr++;
 		on_list++;
 	}
@@ -527,6 +538,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	int read_from_stdin = 0;
 	int bisect_show_vars = 0;
 	int bisect_find_all = 0;
+	int quiet = 0;
 
 	git_config(git_default_config);
 	init_revisions(&revs, prefix);
@@ -563,6 +575,10 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			if (read_from_stdin++)
 				die("--stdin given twice?");
 			read_revisions_from_stdin(&revs);
+			continue;
+		}
+		if (!strcmp(arg, "--quiet")) {
+			quiet = 1;
 			continue;
 		}
 		usage(rev_list_usage);
@@ -640,7 +656,9 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	traverse_commit_list(&revs, show_commit, show_object);
+	traverse_commit_list(&revs,
+		quiet ? finish_commit : show_commit,
+		quiet ? finish_object : show_object);
 
 	return 0;
 }

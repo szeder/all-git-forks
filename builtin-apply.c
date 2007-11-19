@@ -683,7 +683,6 @@ static char *git_header_name(char *line, int llen)
 			}
 		}
 	}
-	return NULL;
 }
 
 /* Verify that we recognize the lines following a git header */
@@ -1993,7 +1992,7 @@ static int verify_index_match(struct cache_entry *ce, struct stat *st)
 			return -1;
 		return 0;
 	}
-	return ce_match_stat(ce, st, 1);
+	return ce_match_stat(ce, st, CE_MATCH_IGNORE_VALID);
 }
 
 static int check_patch(struct patch *patch, struct patch *prev_patch)

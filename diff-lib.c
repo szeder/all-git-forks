@@ -121,7 +121,7 @@ static int queue_diff(struct diff_options *o,
 	} else {
 		struct diff_filespec *d1, *d2;
 
-		if (o->reverse_diff) {
+		if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
 			unsigned tmp;
 			const char *tmp_c;
 			tmp = mode1; mode1 = mode2; mode2 = tmp;
@@ -173,9 +173,10 @@ static int is_in_index(const char *path)
 }
 
 static int handle_diff_files_args(struct rev_info *revs,
-		int argc, const char **argv, int *silent)
+				  int argc, const char **argv,
+				  unsigned int *options)
 {
-	*silent = 0;
+	*options = 0;
 
 	/* revs->max_count == -2 means --no-index */
 	while (1 < argc && argv[1][0] == '-') {
@@ -188,11 +189,11 @@ static int handle_diff_files_args(struct rev_info *revs,
 		else if (!strcmp(argv[1], "-n") ||
 				!strcmp(argv[1], "--no-index")) {
 			revs->max_count = -2;
-			revs->diffopt.exit_with_status = 1;
-			revs->diffopt.no_index = 1;
+			DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);
+			DIFF_OPT_SET(&revs->diffopt, NO_INDEX);
 		}
 		else if (!strcmp(argv[1], "-q"))
-			*silent = 1;
+			*options |= DIFF_SILENT_ON_REMOVED;
 		else
 			return error("invalid option: %s", argv[1]);
 		argv++; argc--;
@@ -207,7 +208,7 @@ static int handle_diff_files_args(struct rev_info *revs,
 		if (!is_in_index(revs->diffopt.paths[0]) ||
 					!is_in_index(revs->diffopt.paths[1])) {
 			revs->max_count = -2;
-			revs->diffopt.no_index = 1;
+			DIFF_OPT_SET(&revs->diffopt, NO_INDEX);
 		}
 	}
 
@@ -258,7 +259,7 @@ int setup_diff_no_index(struct rev_info *revs,
 			break;
 		} else if (i < argc - 3 && !strcmp(argv[i], "--no-index")) {
 			i = argc - 3;
-			revs->diffopt.exit_with_status = 1;
+			DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);
 			break;
 		}
 	if (argc != i + 2 || (!is_outside_repo(argv[i + 1], nongit, prefix) &&
@@ -296,7 +297,7 @@ int setup_diff_no_index(struct rev_info *revs,
 	else
 		revs->diffopt.paths = argv + argc - 2;
 	revs->diffopt.nr_paths = 2;
-	revs->diffopt.no_index = 1;
+	DIFF_OPT_SET(&revs->diffopt, NO_INDEX);
 	revs->max_count = -2;
 	if (diff_setup_done(&revs->diffopt) < 0)
 		die("diff_setup_done failed");
@@ -305,12 +306,12 @@ int setup_diff_no_index(struct rev_info *revs,
 
 int run_diff_files_cmd(struct rev_info *revs, int argc, const char **argv)
 {
-	int silent_on_removed;
+	unsigned int options;
 
-	if (handle_diff_files_args(revs, argc, argv, &silent_on_removed))
+	if (handle_diff_files_args(revs, argc, argv, &options))
 		return -1;
 
-	if (revs->diffopt.no_index) {
+	if (DIFF_OPT_TST(&revs->diffopt, NO_INDEX)) {
 		if (revs->diffopt.nr_paths != 2)
 			return error("need two files/directories with --no-index");
 		if (queue_diff(&revs->diffopt, revs->diffopt.paths[0],
@@ -329,13 +330,16 @@ int run_diff_files_cmd(struct rev_info *revs, int argc, const char **argv)
 		perror("read_cache");
 		return -1;
 	}
-	return run_diff_files(revs, silent_on_removed);
+	return run_diff_files(revs, options);
 }
 
-int run_diff_files(struct rev_info *revs, int silent_on_removed)
+int run_diff_files(struct rev_info *revs, unsigned int option)
 {
 	int entries, i;
 	int diff_unmerged_stage = revs->max_count;
+	int silent_on_removed = option & DIFF_SILENT_ON_REMOVED;
+	unsigned ce_option = ((option & DIFF_RACY_IS_MODIFIED)
+			      ? CE_MATCH_RACY_IS_DIRTY : 0);
 
 	if (diff_unmerged_stage < 0)
 		diff_unmerged_stage = 2;
@@ -346,7 +350,8 @@ int run_diff_files(struct rev_info *revs, int silent_on_removed)
 		struct cache_entry *ce = active_cache[i];
 		int changed;
 
-		if (revs->diffopt.quiet && revs->diffopt.has_changes)
+		if (DIFF_OPT_TST(&revs->diffopt, QUIET) &&
+			DIFF_OPT_TST(&revs->diffopt, HAS_CHANGES))
 			break;
 
 		if (!ce_path_match(ce, revs->prune_data))
@@ -441,8 +446,8 @@ int run_diff_files(struct rev_info *revs, int silent_on_removed)
 				       ce->sha1, ce->name, NULL);
 			continue;
 		}
-		changed = ce_match_stat(ce, &st, 0);
-		if (!changed && !revs->diffopt.find_copies_harder)
+		changed = ce_match_stat(ce, &st, ce_option);
+		if (!changed && !DIFF_OPT_TST(&revs->diffopt, FIND_COPIES_HARDER))
 			continue;
 		oldmode = ntohl(ce->ce_mode);
 		newmode = ntohl(ce_mode_from_stat(ce, st.st_mode));
@@ -561,7 +566,7 @@ static int show_modified(struct rev_info *revs,
 
 	oldmode = old->ce_mode;
 	if (mode == oldmode && !hashcmp(sha1, old->sha1) &&
-	    !revs->diffopt.find_copies_harder)
+	    !DIFF_OPT_TST(&revs->diffopt, FIND_COPIES_HARDER))
 		return 0;
 
 	mode = ntohl(mode);
@@ -581,7 +586,8 @@ static int diff_cache(struct rev_info *revs,
 		struct cache_entry *ce = *ac;
 		int same = (entries > 1) && ce_same_name(ce, ac[1]);
 
-		if (revs->diffopt.quiet && revs->diffopt.has_changes)
+		if (DIFF_OPT_TST(&revs->diffopt, QUIET) &&
+			DIFF_OPT_TST(&revs->diffopt, HAS_CHANGES))
 			break;
 
 		if (!ce_path_match(ce, pathspec))

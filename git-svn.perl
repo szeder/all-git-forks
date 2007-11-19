@@ -390,6 +390,9 @@ sub cmd_set_tree {
 
 sub cmd_dcommit {
 	my $head = shift;
+	git_cmd_try { command_oneline(qw/diff-index --quiet HEAD/) }
+		'Cannot dcommit with a dirty index.  Commit your changes first, '
+		. "or stash them with `git stash'.\n";
 	$head ||= 'HEAD';
 	my @refs;
 	my ($url, $rev, $uuid, $gs) = working_head_info($head, \@refs);
@@ -422,6 +425,9 @@ sub cmd_dcommit {
 			my %ed_opts = ( r => $last_rev,
 			                log => get_commit_entry($d)->{log},
 			                ra => Git::SVN::Ra->new($gs->full_url),
+			                config => SVN::Core::config_get_config(
+			                        $Git::SVN::Ra::config_dir
+			                ),
 			                tree_a => "$d~1",
 			                tree_b => $d,
 			                editor_cb => sub {
@@ -2393,14 +2399,36 @@ sub rev_db_get {
 	$ret;
 }
 
+# Finds the first svn revision that exists on (if $eq_ok is true) or
+# before $rev for the current branch.  It will not search any lower
+# than $min_rev.  Returns the git commit hash and svn revision number
+# if found, else (undef, undef).
 sub find_rev_before {
-	my ($self, $rev, $eq_ok) = @_;
+	my ($self, $rev, $eq_ok, $min_rev) = @_;
 	--$rev unless $eq_ok;
-	while ($rev > 0) {
+	$min_rev ||= 1;
+	while ($rev >= $min_rev) {
 		if (my $c = $self->rev_db_get($rev)) {
 			return ($rev, $c);
 		}
 		--$rev;
+	}
+	return (undef, undef);
+}
+
+# Finds the first svn revision that exists on (if $eq_ok is true) or
+# after $rev for the current branch.  It will not search any higher
+# than $max_rev.  Returns the git commit hash and svn revision number
+# if found, else (undef, undef).
+sub find_rev_after {
+	my ($self, $rev, $eq_ok, $max_rev) = @_;
+	++$rev unless $eq_ok;
+	$max_rev ||= $self->rev_db_max();
+	while ($rev <= $max_rev) {
+		if (my $c = $self->rev_db_get($rev)) {
+			return ($rev, $c);
+		}
+		++$rev;
 	}
 	return (undef, undef);
 }
@@ -3220,6 +3248,25 @@ sub _auth_providers () {
 	]
 }
 
+sub escape_uri_only {
+	my ($uri) = @_;
+	my @tmp;
+	foreach (split m{/}, $uri) {
+		s/([^\w.-])/sprintf("%%%02X",ord($1))/eg;
+		push @tmp, $_;
+	}
+	join('/', @tmp);
+}
+
+sub escape_url {
+	my ($url) = @_;
+	if ($url =~ m#^(https?)://([^/]+)(.*)$#) {
+		my ($scheme, $domain, $uri) = ($1, $2, escape_uri_only($3));
+		$url = "$scheme://$domain$uri";
+	}
+	$url;
+}
+
 sub new {
 	my ($class, $url) = @_;
 	$url =~ s!/+$!!;
@@ -3252,10 +3299,11 @@ sub new {
 			$Git::SVN::Prompt::_no_auth_cache = 1;
 		}
 	} # no warnings 'once'
-	my $self = SVN::Ra->new(url => $url, auth => $baton,
+	my $self = SVN::Ra->new(url => escape_url($url), auth => $baton,
 	                      config => $config,
 			      pool => SVN::Pool->new,
 	                      auth_provider_callbacks => $callbacks);
+	$self->{url} = $url;
 	$self->{svn_path} = $url;
 	$self->{repos_root} = $self->get_repos_root;
 	$self->{svn_path} =~ s#^\Q$self->{repos_root}\E(/|$)##;
@@ -3381,7 +3429,7 @@ sub gs_do_switch {
 
 	my $full_url = $self->{url};
 	my $old_url = $full_url;
-	$full_url .= "/$path" if length $path;
+	$full_url .= '/' . escape_uri_only($path) if length $path;
 	my ($ra, $reparented);
 	if ($old_url ne $full_url) {
 		if ($old_url !~ m#^svn(\+ssh)?://#) {
@@ -3675,6 +3723,7 @@ package Git::SVN::Log;
 use strict;
 use warnings;
 use POSIX qw/strftime/;
+use constant commit_log_separator => ('-' x 72) . "\n";
 use vars qw/$TZ $limit $color $pager $non_recursive $verbose $oneline
             %rusers $show_commit $incremental/;
 my $l_fmt;
@@ -3768,19 +3817,19 @@ sub git_svn_log_cmd {
 			push @cmd, $c;
 		}
 	} elsif (defined $r_max) {
-		my ($c_min, $c_max);
-		$c_max = $gs->rev_db_get($r_max);
-		$c_min = $gs->rev_db_get($r_min);
-		if (defined $c_min && defined $c_max) {
-			if ($r_max > $r_max) {
-				push @cmd, "$c_min..$c_max";
-			} else {
-				push @cmd, "$c_max..$c_min";
-			}
-		} elsif ($r_max > $r_min) {
-			push @cmd, $c_max;
+		if ($r_max < $r_min) {
+			($r_min, $r_max) = ($r_max, $r_min);
+		}
+		my (undef, $c_max) = $gs->find_rev_before($r_max, 1, $r_min);
+		my (undef, $c_min) = $gs->find_rev_after($r_min, 1, $r_max);
+		# If there are no commits in the range, both $c_max and $c_min
+		# will be undefined.  If there is at least 1 commit in the
+		# range, both will be defined.
+		return () if !defined $c_min || !defined $c_max;
+		if ($c_min eq $c_max) {
+			push @cmd, '--max-count=1', $c_min;
 		} else {
-			push @cmd, $c_min;
+			push @cmd, '--boundary', "$c_min..$c_max";
 		}
 	}
 	return (@cmd, @files);
@@ -3888,7 +3937,7 @@ sub show_commit_changed_paths {
 
 sub show_commit_normal {
 	my ($c) = @_;
-	print '-' x72, "\nr$c->{r} | ";
+	print commit_log_separator, "r$c->{r} | ";
 	print "$c->{c} | " if $show_commit;
 	print "$c->{a} | ", strftime("%Y-%m-%d %H:%M:%S %z (%a, %d %b %Y)",
 				 localtime($c->{t_utc})), ' | ';
@@ -3949,12 +3998,16 @@ sub cmd_show_log {
 
 	config_pager();
 	@args = git_svn_log_cmd($r_min, $r_max, @args);
+	if (!@args) {
+		print commit_log_separator unless $incremental || $oneline;
+		return;
+	}
 	my $log = command_output_pipe(@args);
 	run_pager();
 	my (@k, $c, $d, $stat);
 	my $esc_color = qr/(?:\033\[(?:(?:\d+;)*\d*)?m)*/;
 	while (<$log>) {
-		if (/^${esc_color}commit ($::sha1_short)/o) {
+		if (/^${esc_color}commit -?($::sha1_short)/o) {
 			my $cmt = $1;
 			if ($c && cmt_showable($c) && $c->{r} != $r_last) {
 				$r_last = $c->{r};
@@ -3997,14 +4050,12 @@ sub cmd_show_log {
 		process_commit($c, $r_min, $r_max, \@k);
 	}
 	if (@k) {
-		my $swap = $r_max;
-		$r_max = $r_min;
-		$r_min = $swap;
+		($r_min, $r_max) = ($r_max, $r_min);
 		process_commit($_, $r_min, $r_max) foreach reverse @k;
 	}
 out:
 	close $log;
-	print '-' x72,"\n" unless $incremental || $oneline;
+	print commit_log_separator unless $incremental || $oneline;
 }
 
 package Git::SVN::Migration;
