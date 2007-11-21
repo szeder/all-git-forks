@@ -77,6 +77,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'-core/var/cache/git
 	rm -f '$(GIT)'-core/usr/share/perl5/Error.pm
 	rm -f '$(GIT)'-core/usr/share/man/man3/private-Error.3pm
+	$(MAKE) -C perl clean # get rid of perl.mak
 	rm -rf '$(GIT)'-core/usr/lib
 	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
 	# don't include arch, cvs, svn, email, gui tools, and gitk program

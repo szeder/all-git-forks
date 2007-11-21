@@ -1,3 +1,15 @@
+git-core (1:1.5.3.6-1.1) unstable; urgency=low
+
+  * Non-maintainer upload: Gerrit is currently changing home, and this bug is
+    preventing people from installing git, I took the initiative to fix it
+    before his return.
+  * debian/rules: force a $(MAKE) -C perl clean to remove the perl/perl.mak
+    that remembers our DESTDIR and makes perl modules be installed in
+    debian/git-core/ in the install-indep target again
+    (closes: #452077, #452078, #452080, #452111, #452324).
+
+ -- Pierre Habouzit <madcoder@debian.org>  Thu, 22 Nov 2007 00:40:08 +0100
+
 git-core (1:1.5.3.6-1) unstable; urgency=low
 
   * debian/implicit: add proper dependencies to support 'parallel build'
