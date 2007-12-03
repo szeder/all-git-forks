@@ -1,4 +1,4 @@
-From af5a0320dcd0d7aed89c686271f1ceef8ae38070 Mon Sep 17 00:00:00 2001
+From cbb51667cc69622c643fa5017d4cc98aab992231 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] bug#438793: git-sh-setup.sh, builtin-tag.c: fallback to 'editor' not 'vi'
@@ -37,10 +37,10 @@ index 3c325fd..894e171 100755
  
  is_bare_repository () {
 diff --git a/t/t7005-editor.sh b/t/t7005-editor.sh
-index 28643b0..540c125 100755
+index ed416e1..010ef84 100755
 --- a/t/t7005-editor.sh
 +++ b/t/t7005-editor.sh
-@@ -4,15 +4,15 @@ test_description='GIT_EDITOR, core.editor, and stuff'
+@@ -4,22 +4,22 @@ test_description='GIT_EDITOR, core.editor, and stuff'
  
  . ./test-lib.sh
  
@@ -56,10 +56,9 @@ index 28643b0..540c125 100755
 -mv e-vi.sh vi
 +unset editor
 +mv e-editor.sh editor
- PATH=".:$PATH"
  unset EDITOR VISUAL GIT_EDITOR
  
-@@ -20,7 +20,7 @@ test_expect_success setup '
+ test_expect_success setup '
  
  	msg="Hand edited" &&
  	echo "$msg" >expect &&
@@ -68,7 +67,7 @@ index 28643b0..540c125 100755
  	test_tick &&
  	git commit -m "$msg" &&
  	git show -s --pretty=oneline |
-@@ -31,7 +31,7 @@ test_expect_success setup '
+@@ -30,7 +30,7 @@ test_expect_success setup '
  
  TERM=dumb
  export TERM
@@ -77,7 +76,7 @@ index 28643b0..540c125 100755
  
  	if git commit --amend
  	then
-@@ -44,7 +44,7 @@ test_expect_success 'dumb should error out when falling back on vi' '
+@@ -43,7 +43,7 @@ test_expect_success 'dumb should error out when falling back on vi' '
  
  TERM=vt100
  export TERM
@@ -86,7 +85,7 @@ index 28643b0..540c125 100755
  do
  	echo "Edited by $i" >expect
  	unset EDITOR VISUAL GIT_EDITOR
-@@ -68,7 +68,7 @@ done
+@@ -67,7 +67,7 @@ done
  
  unset EDITOR VISUAL GIT_EDITOR
  git config --unset-all core.editor
@@ -96,5 +95,5 @@ index 28643b0..540c125 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.3.5
+1.5.3.4
 

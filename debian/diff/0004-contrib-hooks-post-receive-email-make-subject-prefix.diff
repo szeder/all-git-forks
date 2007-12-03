@@ -1,4 +1,4 @@
-From 3f0a4175117d8b40a62d40d30b5f119fa0bf16b6 Mon Sep 17 00:00:00 2001
+From 468593da81813c61f9de2c5760cda21286dccd5c Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@innominate.com>
 Date: Mon, 19 Nov 2007 12:31:39 +0000
 Subject: [PATCH] contrib/hooks/post-receive-email: make subject prefix configurable
