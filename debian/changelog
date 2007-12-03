@@ -1,8 +1,13 @@
 git-core (1:1.5.3.7-1) unstable; urgency=low
 
   * new upstream point release.
+  * debian/diff/0005-Don-t-cache-DESTDIR-in-perl-perl.mak.diff: new; don't
+    cache DESTDIR in perl/perl.mak (#452077).
+  * debian/rules: remove $(MAKE) -C perl clean to remove the perl/perl.mak
+    again, this is now handled through debian/diff/0005 (thx Pierre
+    Habouzit, #452077).
 
- -- Gerrit Pape <pape@smarden.org>  Mon,  3 Dec 2007 10:14:23 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon,  3 Dec 2007 10:17:11 +0000
 
 git-core (1:1.5.3.6-1.1) unstable; urgency=low
 

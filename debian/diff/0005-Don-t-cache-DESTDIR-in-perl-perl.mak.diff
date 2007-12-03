@@ -1,0 +1,48 @@
+From dbd65cbe1cc6c1c6afe5e06fd3e9a09ef48fe027 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@innominate.com>
+Date: Thu, 22 Nov 2007 08:28:58 +0000
+Subject: [PATCH] Don't cache DESTDIR in perl/perl.mak.
+
+---
+ Makefile         |    2 +-
+ perl/Makefile.PL |    6 +-----
+ 2 files changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index c72d40a..adc3863 100644
+--- a/Makefile
++++ b/Makefile
+@@ -996,7 +996,7 @@ install: all
+ 	$(INSTALL) $(ALL_PROGRAMS) '$(DESTDIR_SQ)$(gitexecdir_SQ)'
+ 	$(INSTALL) git$X '$(DESTDIR_SQ)$(bindir_SQ)'
+ 	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
+-	$(MAKE) -C perl prefix='$(prefix_SQ)' install
++	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
+ ifndef NO_TCLTK
+ 	$(INSTALL) gitk-wish '$(DESTDIR_SQ)$(bindir_SQ)'/gitk
+ 	$(MAKE) -C git-gui install
+diff --git a/perl/Makefile.PL b/perl/Makefile.PL
+index 6aecd89..320253e 100644
+--- a/perl/Makefile.PL
++++ b/perl/Makefile.PL
+@@ -17,9 +17,6 @@ if ($@ || $Error::VERSION < 0.15009) {
+ 	$pm{'private-Error.pm'} = '$(INST_LIBDIR)/Error.pm';
+ }
+ 
+-my %extra;
+-$extra{DESTDIR} = $ENV{DESTDIR} if $ENV{DESTDIR};
+-
+ # redirect stdout, otherwise the message "Writing perl.mak for Git"
+ # disrupts the output for the target 'instlibdir'
+ open STDOUT, ">&STDERR";
+@@ -29,6 +26,5 @@ WriteMakefile(
+ 	VERSION_FROM    => 'Git.pm',
+ 	PM		=> \%pm,
+ 	MAKEFILE	=> 'perl.mak',
+-	INSTALLSITEMAN3DIR => '$(SITEPREFIX)/share/man/man3',
+-	%extra
++	INSTALLSITEMAN3DIR => '$(SITEPREFIX)/share/man/man3'
+ );
+-- 
+1.5.3.4
+
