@@ -1,3 +1,10 @@
+git-core (1:1.5.3.7-1.1) unstable; urgency=low
+
+  * debian/control: for all packages: Suggests: git-doc instead of
+    Recommends: (thx Andrew Moise, closes: #455369).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 10 Dec 2007 14:38:10 +0000
+
 git-core (1:1.5.3.7-1) unstable; urgency=low
 
   * new upstream point release.
