@@ -1,0 +1,127 @@
+From 463af782ab113b6681112b1bee465bbf97acccb0 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Sat, 25 Aug 2007 19:47:58 +0000
+Subject: [PATCH] fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
+
+http://bugs.debian.org/438793
+---
+ builtin-tag.c              |    2 +-
+ contrib/fast-import/git-p4 |    2 +-
+ git-send-email.perl        |    2 +-
+ git-sh-setup.sh            |    2 +-
+ t/t7005-editor.sh          |   14 +++++++-------
+ 5 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/builtin-tag.c b/builtin-tag.c
+index 274901a..150b9b4 100644
+--- a/builtin-tag.c
++++ b/builtin-tag.c
+@@ -44,7 +44,7 @@ void launch_editor(const char *path, struct strbuf *buffer, const char *const *e
+ 	}
+ 
+ 	if (!editor)
+-		editor = "vi";
++		editor = "editor";
+ 
+ 	if (strcmp(editor, ":")) {
+ 		const char *args[] = { editor, path, NULL };
+diff --git a/contrib/fast-import/git-p4 b/contrib/fast-import/git-p4
+index c80a6da..17da0f0 100755
+--- a/contrib/fast-import/git-p4
++++ b/contrib/fast-import/git-p4
+@@ -695,7 +695,7 @@ class P4Submit(Command):
+                     tmpFile = os.fdopen(handle, "w+")
+                     tmpFile.write(submitTemplate + separatorLine + diff)
+                     tmpFile.close()
+-                    defaultEditor = "vi"
++                    defaultEditor = "editor"
+                     if platform.system() == "Windows":
+                         defaultEditor = "notepad"
+                     editor = os.environ.get("EDITOR", defaultEditor);
+diff --git a/git-send-email.perl b/git-send-email.perl
+index 1d6f466..32a6574 100755
+--- a/git-send-email.perl
++++ b/git-send-email.perl
+@@ -399,7 +399,7 @@ GIT: for the patch you are writing.
+ EOT
+ 	close(C);
+ 
+-	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "vi";
++	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "editor";
+ 	system($editor, $compose_filename);
+ 
+ 	open(C2,">",$compose_filename . ".final")
+diff --git a/git-sh-setup.sh b/git-sh-setup.sh
+index b366761..0d40b64 100755
+--- a/git-sh-setup.sh
++++ b/git-sh-setup.sh
+@@ -72,7 +72,7 @@ git_editor() {
+ 		exit 1
+ 		;;
+ 	esac
+-	eval "${GIT_EDITOR:=vi}" '"$@"'
++	eval "${GIT_EDITOR:=editor}" '"$@"'
+ }
+ 
+ is_bare_repository () {
+diff --git a/t/t7005-editor.sh b/t/t7005-editor.sh
+index 44228b5..391d9ee 100755
+--- a/t/t7005-editor.sh
++++ b/t/t7005-editor.sh
+@@ -6,22 +6,22 @@ test_description='GIT_EDITOR, core.editor, and stuff'
+ 
+ OLD_TERM="$TERM"
+ 
+-for i in GIT_EDITOR core_editor EDITOR VISUAL vi
++for i in GIT_EDITOR core_editor EDITOR VISUAL editor
+ do
+ 	cat >e-$i.sh <<-EOF
+ 	echo "Edited by $i" >"\$1"
+ 	EOF
+ 	chmod +x e-$i.sh
+ done
+-unset vi
+-mv e-vi.sh vi
++unset editor
++mv e-editor.sh editor
+ unset EDITOR VISUAL GIT_EDITOR
+ 
+ test_expect_success setup '
+ 
+ 	msg="Hand edited" &&
+ 	echo "$msg" >expect &&
+-	git add vi &&
++	git add editor &&
+ 	test_tick &&
+ 	git commit -m "$msg" &&
+ 	git show -s --pretty=oneline |
+@@ -32,7 +32,7 @@ test_expect_success setup '
+ 
+ TERM=dumb
+ export TERM
+-test_expect_success 'dumb should error out when falling back on vi' '
++test_expect_success 'dumb should error out when falling back on editor' '
+ 
+ 	if git commit --amend
+ 	then
+@@ -45,7 +45,7 @@ test_expect_success 'dumb should error out when falling back on vi' '
+ 
+ TERM=vt100
+ export TERM
+-for i in vi EDITOR VISUAL core_editor GIT_EDITOR
++for i in editor EDITOR VISUAL core_editor GIT_EDITOR
+ do
+ 	echo "Edited by $i" >expect
+ 	unset EDITOR VISUAL GIT_EDITOR
+@@ -69,7 +69,7 @@ done
+ 
+ unset EDITOR VISUAL GIT_EDITOR
+ git config --unset-all core.editor
+-for i in vi EDITOR VISUAL core_editor GIT_EDITOR
++for i in editor EDITOR VISUAL core_editor GIT_EDITOR
+ do
+ 	echo "Edited by $i" >expect
+ 	case "$i" in
+-- 
+1.5.3.4
+

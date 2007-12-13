@@ -1,3 +1,19 @@
+git-core (1:1.5.4~rc0-0) experimental; urgency=low
+
+  * new upstream release candidate.
+    * build with correct version information (on amd64, closes: #454935,
+      #454408).
+    * git-reset: add -q option to operate quietly (closes: #444933).
+    * gitk: disable colours when calling git log (closes: #454420).
+    * "git svnimport" was removed in favor of "git svn" (closes: #436930,
+      #447325, #447965, #451037).
+    * git-commit: allow grouping of short options (closes: #407241).
+  * debian/diff/0004-contrib-hooks-post-receive-email-make-subject-prefix.diff,
+    debian/diff/0005-Don-t-cache-DESTDIR-in-perl-perl.mak.diff: remove;
+    applied upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 13 Dec 2007 08:32:16 +0000
+
 git-core (1:1.5.3.7-1.1) unstable; urgency=low
 
   * debian/control: for all packages: Suggests: git-doc instead of
