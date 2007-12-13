@@ -11,7 +11,8 @@ struct interval {
 };
 
 /* auxiliary function for binary search in interval table */
-static int bisearch(ucs_char_t ucs, const struct interval *table, int max) {
+static int bisearch(ucs_char_t ucs, const struct interval *table, int max)
+{
 	int min = 0;
 	int mid;
 
@@ -283,7 +284,6 @@ int print_wrapped_text(const char *text, int indent, int indent2, int width)
 			text++;
 		}
 	}
-	return w;
 }
 
 int is_encoding_utf8(const char *name)

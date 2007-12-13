@@ -5,6 +5,7 @@
 # Copyright (c) 2007 Lars Hjemli
 
 USAGE='[--quiet] [--cached] [add <repo> [-b branch]|status|init|update] [--] [<path>...]'
+OPTIONS_SPEC=
 . git-sh-setup
 require_work_tree
 
@@ -37,6 +38,32 @@ get_repo_base() {
 			pwd
 		}
 	) 2>/dev/null
+}
+
+# Resolve relative url by appending to parent's url
+resolve_relative_url ()
+{
+	branch="$(git symbolic-ref HEAD 2>/dev/null)"
+	remote="$(git config branch.${branch#refs/heads/}.remote)"
+	remote="${remote:-origin}"
+	remoteurl="$(git config remote.$remote.url)" ||
+		die "remote ($remote) does not have a url in .git/config"
+	url="$1"
+	while test -n "$url"
+	do
+		case "$url" in
+		../*)
+			url="${url#../}"
+			remoteurl="${remoteurl%/*}"
+			;;
+		./*)
+			url="${url#./}"
+			;;
+		*)
+			break;;
+		esac
+	done
+	echo "$remoteurl/$url"
 }
 
 #
@@ -103,11 +130,19 @@ module_add()
 		usage
 	fi
 
-	# Turn the source into an absolute path if
-	# it is local
-	if base=$(get_repo_base "$repo"); then
-		repo="$base"
-	fi
+	case "$repo" in
+	./*|../*)
+		# dereference source url relative to parent's url
+		realrepo="$(resolve_relative_url $repo)" ;;
+	*)
+		# Turn the source into an absolute path if
+		# it is local
+		if base=$(get_repo_base "$repo"); then
+			repo="$base"
+		fi
+		realrepo=$repo
+		;;
+	esac
 
 	# Guess path from repo if not specified or strip trailing slashes
 	if test -z "$path"; then
@@ -122,8 +157,8 @@ module_add()
 	git ls-files --error-unmatch "$path" > /dev/null 2>&1 &&
 	die "'$path' already exists in the index"
 
-	module_clone "$path" "$repo" || exit
-	(unset GIT_DIR && cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) ||
+	module_clone "$path" "$realrepo" || exit
+	(unset GIT_DIR; cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) ||
 	die "Unable to checkout submodule '$path'"
 	git add "$path" ||
 	die "Failed to add submodule '$path'"
@@ -152,6 +187,13 @@ modules_init()
 		url=$(GIT_CONFIG=.gitmodules git config submodule."$name".url)
 		test -z "$url" &&
 		die "No url found for submodule path '$path' in .gitmodules"
+
+		# Possibly a url relative to parent
+		case "$url" in
+		./*|../*)
+			url="$(resolve_relative_url "$url")"
+			;;
+		esac
 
 		git config submodule."$name".url "$url" ||
 		die "Failed to register url for submodule path '$path'"
@@ -186,14 +228,14 @@ modules_update()
 			module_clone "$path" "$url" || exit
 			subsha1=
 		else
-			subsha1=$(unset GIT_DIR && cd "$path" &&
+			subsha1=$(unset GIT_DIR; cd "$path" &&
 				git rev-parse --verify HEAD) ||
 			die "Unable to find current revision in submodule path '$path'"
 		fi
 
 		if test "$subsha1" != "$sha1"
 		then
-			(unset GIT_DIR && cd "$path" && git-fetch &&
+			(unset GIT_DIR; cd "$path" && git-fetch &&
 				git-checkout -q "$sha1") ||
 			die "Unable to checkout '$sha1' in submodule path '$path'"
 
@@ -204,7 +246,7 @@ modules_update()
 
 set_name_rev () {
 	revname=$( (
-		unset GIT_DIR &&
+		unset GIT_DIR
 		cd "$1" && {
 			git describe "$2" 2>/dev/null ||
 			git describe --tags "$2" 2>/dev/null ||
@@ -243,7 +285,7 @@ modules_list()
 		else
 			if test -z "$cached"
 			then
-				sha1=$(unset GIT_DIR && cd "$path" && git rev-parse --verify HEAD)
+				sha1=$(unset GIT_DIR; cd "$path" && git rev-parse --verify HEAD)
 				set_name_rev "$path" "$sha1"
 			fi
 			say "+$sha1 $path$revname"

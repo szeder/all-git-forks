@@ -339,19 +339,13 @@ test_expect_success \
 '
 
 test_expect_success \
-	'trying to create tags giving many -m or -F options should fail' '
+	'trying to create tags giving both -m or -F options should fail' '
 	echo "message file 1" >msgfile1 &&
 	echo "message file 2" >msgfile2 &&
-	! tag_exists msgtag &&
-	! git-tag -m "message 1" -m "message 2" msgtag &&
-	! tag_exists msgtag &&
-	! git-tag -F msgfile1 -F msgfile2 msgtag &&
 	! tag_exists msgtag &&
 	! git-tag -m "message 1" -F msgfile1 msgtag &&
 	! tag_exists msgtag &&
 	! git-tag -F msgfile1 -m "message 1" msgtag &&
-	! tag_exists msgtag &&
-	! git-tag -F msgfile1 -m "message 1" -F msgfile2 msgtag &&
 	! tag_exists msgtag &&
 	! git-tag -m "message 1" -F msgfile1 -m "message 2" msgtag &&
 	! tag_exists msgtag
@@ -646,6 +640,46 @@ test_expect_success 'creating a signed tag with -m message should succeed' '
 	git diff expect actual
 '
 
+get_tag_header u-signed-tag $commit commit $time >expect
+echo 'Another message' >>expect
+echo '-----BEGIN PGP SIGNATURE-----' >>expect
+test_expect_success 'sign with a given key id' '
+
+	git tag -u committer@example.com -m "Another message" u-signed-tag &&
+	get_tag_msg u-signed-tag >actual &&
+	git diff expect actual
+
+'
+
+test_expect_success 'sign with an unknown id (1)' '
+
+	! git tag -u author@example.com -m "Another message" o-signed-tag
+
+'
+
+test_expect_success 'sign with an unknown id (2)' '
+
+	! git tag -u DEADBEEF -m "Another message" o-signed-tag
+
+'
+
+cat >fakeeditor <<'EOF'
+#!/bin/sh
+test -n "$1" && exec >"$1"
+echo A signed tag message
+echo from a fake editor.
+EOF
+chmod +x fakeeditor
+
+get_tag_header implied-sign $commit commit $time >expect
+./fakeeditor >>expect
+echo '-----BEGIN PGP SIGNATURE-----' >>expect
+test_expect_success '-u implies signed tag' '
+	GIT_EDITOR=./fakeeditor git-tag -u CDDE430D implied-sign &&
+	get_tag_msg implied-sign >actual &&
+	git diff expect actual
+'
+
 cat >sigmsgfile <<EOF
 Another signed tag
 message in a file.
@@ -670,6 +704,15 @@ echo '-----BEGIN PGP SIGNATURE-----' >>expect
 test_expect_success 'creating a signed tag with -F - should succeed' '
 	git-tag -s -F - stdin-signed-tag <siginputmsg &&
 	get_tag_msg stdin-signed-tag >actual &&
+	git diff expect actual
+'
+
+get_tag_header implied-annotate $commit commit $time >expect
+./fakeeditor >>expect
+echo '-----BEGIN PGP SIGNATURE-----' >>expect
+test_expect_success '-s implies annotated tag' '
+	GIT_EDITOR=./fakeeditor git-tag -s implied-annotate &&
+	get_tag_msg implied-annotate >actual &&
 	git diff expect actual
 '
 
@@ -1003,5 +1046,31 @@ rm -rf gpghome
 test_expect_failure \
 	'verify signed tag fails when public key is not present' \
 	'git-tag -v signed-tag'
+
+test_expect_failure \
+	'git-tag -a fails if tag annotation is empty' '
+	GIT_EDITOR=cat git tag -a initial-comment
+'
+
+test_expect_success \
+	'message in editor has initial comment' '
+	GIT_EDITOR=cat git tag -a initial-comment > actual
+	# check the first line --- should be empty
+	first=$(sed -e 1q <actual) &&
+	test -z "$first" &&
+	# remove commented lines from the remainder -- should be empty
+	rest=$(sed -e 1d -e '/^#/d' <actual) &&
+	test -z "$rest"
+'
+
+get_tag_header reuse $commit commit $time >expect
+echo "An annotation to be reused" >> expect
+test_expect_success \
+	'overwriting an annoted tag should use its previous body' '
+	git tag -a -m "An annotation to be reused" reuse &&
+	GIT_EDITOR=true git tag -f -a reuse &&
+	get_tag_msg reuse >actual &&
+	git diff expect actual
+'
 
 test_done

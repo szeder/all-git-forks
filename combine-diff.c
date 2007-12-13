@@ -650,10 +650,7 @@ static void dump_quoted_path(const char *prefix, const char *path,
 			     const char *c_meta, const char *c_reset)
 {
 	printf("%s%s", c_meta, prefix);
-	if (quote_c_style(path, NULL, NULL, 0))
-		quote_c_style(path, NULL, stdout, 0);
-	else
-		printf("%s", path);
+	quote_c_style(path, NULL, stdout, 0);
 	printf("%s\n", c_reset);
 }
 
@@ -667,7 +664,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 	int mode_differs = 0;
 	int i, show_hunks;
 	int working_tree_file = is_null_sha1(elem->sha1);
-	int abbrev = opt->full_index ? 40 : DEFAULT_ABBREV;
+	int abbrev = DIFF_OPT_TST(opt, FULL_INDEX) ? 40 : DEFAULT_ABBREV;
 	mmfile_t result_file;
 
 	context = opt->context;
@@ -787,7 +784,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 
 	if (show_hunks || mode_differs || working_tree_file) {
 		const char *abb;
-		int use_color = opt->color_diff;
+		int use_color = DIFF_OPT_TST(opt, COLOR_DIFF);
 		const char *c_meta = diff_get_color(use_color, DIFF_METAINFO);
 		const char *c_reset = diff_get_color(use_color, DIFF_RESET);
 		int added = 0;
@@ -839,7 +836,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 			dump_quoted_path("+++ /dev/", "null", c_meta, c_reset);
 		else
 			dump_quoted_path("+++ b/", elem->path, c_meta, c_reset);
-		dump_sline(sline, cnt, num_parent, opt->color_diff);
+		dump_sline(sline, cnt, num_parent, DIFF_OPT_TST(opt, COLOR_DIFF));
 	}
 	free(result);
 
@@ -900,16 +897,7 @@ static void show_raw_diff(struct combine_diff_path *p, int num_parent, struct re
 		putchar(inter_name_termination);
 	}
 
-	if (line_termination) {
-		if (quote_c_style(p->path, NULL, NULL, 0))
-			quote_c_style(p->path, NULL, stdout, 0);
-		else
-			printf("%s", p->path);
-		putchar(line_termination);
-	}
-	else {
-		printf("%s%c", p->path, line_termination);
-	}
+	write_name_quoted(p->path, stdout, line_termination);
 }
 
 void show_combined_diff(struct combine_diff_path *p,
@@ -941,8 +929,8 @@ void diff_tree_combined(const unsigned char *sha1,
 
 	diffopts = *opt;
 	diffopts.output_format = DIFF_FORMAT_NO_OUTPUT;
-	diffopts.recursive = 1;
-	diffopts.allow_external = 0;
+	DIFF_OPT_SET(&diffopts, RECURSIVE);
+	DIFF_OPT_CLR(&diffopts, ALLOW_EXTERNAL);
 
 	show_log_first = !!rev->loginfo && !rev->no_commit_id;
 	needsep = 0;

@@ -188,7 +188,7 @@ core.worktree::
 	Set the path to the working tree.  The value will not be
 	used in combination with repositories found automatically in
 	a .git directory (i.e. $GIT_DIR is not set).
-	This can be overriden by the GIT_WORK_TREE environment
+	This can be overridden by the GIT_WORK_TREE environment
 	variable and the '--work-tree' command line option.
 
 core.logAllRefUpdates::
@@ -295,6 +295,20 @@ core.pager::
 	The command that git will use to paginate output.  Can be overridden
 	with the `GIT_PAGER` environment variable.
 
+core.whitespace::
+	A comma separated list of common whitespace problems to
+	notice.  `git diff` will use `color.diff.whitespace` to
+	highlight them, and `git apply --whitespace=error` will
+	consider them as errors:
++
+* `trailing-space` treats trailing whitespaces at the end of the line
+  as an error (enabled by default).
+* `space-before-tab` treats a space character that appears immediately
+  before a tab character in the initial indent part of the line as an
+  error (enabled by default).
+* `indent-with-non-tab` treats a line that is indented with 8 or more
+  space characters that can be replaced with tab characters.
+
 alias.*::
 	Command aliases for the gitlink:git[1] command wrapper - e.g.
 	after defining "alias.last = cat-file commit HEAD", the invocation
@@ -326,10 +340,11 @@ branch.<name>.remote::
 	If this option is not given, `git fetch` defaults to remote "origin".
 
 branch.<name>.merge::
-	When in branch <name>, it tells `git fetch` the default refspec to
-	be marked for merging in FETCH_HEAD. The value has exactly to match
-	a remote part of one of the refspecs which are fetched from the remote
-	given by "branch.<name>.remote".
+	When in branch <name>, it tells `git fetch` the default
+	refspec to be marked for merging in FETCH_HEAD. The value is
+	handled like the remote part of a refspec, and must match a
+	ref which is fetched from the remote given by
+	"branch.<name>.remote".
 	The merge information is used by `git pull` (which at first calls
 	`git fetch`) to lookup the default branch for merging. Without
 	this option, `git pull` defaults to merge the first refspec fetched.
@@ -339,14 +354,27 @@ branch.<name>.merge::
 	branch.<name>.merge to the desired branch, and use the special setting
 	`.` (a period) for branch.<name>.remote.
 
+branch.<name>.mergeoptions::
+	Sets default options for merging into branch <name>. The syntax and
+	supported options are equal to that of gitlink:git-merge[1], but
+	option values containing whitespace characters are currently not
+	supported.
+
+branch.<name>.rebase::
+	When true, rebase the branch <name> on top of the fetched branch,
+	instead of merging the default branch from the default remote.
+	*NOTE*: this is a possibly dangerous operation; do *not* use
+	it unless you understand the implications (see gitlink:git-rebase[1]
+	for details).
+
 clean.requireForce::
-	A boolean to make git-clean do nothing unless given -f or -n.  Defaults
-	to false.
+	A boolean to make git-clean do nothing unless given -f
+	or -n.   Defaults to true.
 
 color.branch::
 	A boolean to enable/disable color in the output of
-	gitlink:git-branch[1]. May be set to `true` (or `always`),
-	`false` (or `never`) or `auto`, in which case colors are used
+	gitlink:git-branch[1]. May be set to `always`,
+	`false` (or `never`) or `auto` (or `true`), in which case colors are used
 	only when the output is to a terminal. Defaults to false.
 
 color.branch.<slot>::
@@ -364,17 +392,29 @@ second is the background.  The position of the attribute, if any,
 doesn't matter.
 
 color.diff::
-	When true (or `always`), always use colors in patch.
-	When false (or `never`), never.  When set to `auto`, use
-	colors only when the output is to the terminal.
+	When set to `always`, always use colors in patch.
+	When false (or `never`), never.  When set to `true` or `auto`, use
+	colors only when the output is to the terminal. Defaults to false.
 
 color.diff.<slot>::
 	Use customized color for diff colorization.  `<slot>` specifies
 	which part of the patch to use the specified color, and is one
 	of `plain` (context text), `meta` (metainformation), `frag`
 	(hunk header), `old` (removed lines), `new` (added lines),
-	`commit` (commit headers), or `whitespace` (highlighting dubious
-	whitespace).  The values of these variables may be specified as
+	`commit` (commit headers), or `whitespace` (highlighting
+	whitespace errors). The values of these variables may be specified as
+	in color.branch.<slot>.
+
+color.interactive::
+	When set to `always`, always use colors in `git add --interactive`.
+	When false (or `never`), never.  When set to `true` or `auto`, use
+	colors only when the output is to the terminal. Defaults to false.
+
+color.interactive.<slot>::
+	Use customized color for `git add --interactive`
+	output. `<slot>` may be `prompt`, `header`, or `help`, for
+	three distinct types of normal output from interactive
+	programs.  The values of these variables may be specified as
 	in color.branch.<slot>.
 
 color.pager::
@@ -383,8 +423,8 @@ color.pager::
 
 color.status::
 	A boolean to enable/disable color in the output of
-	gitlink:git-status[1]. May be set to `true` (or `always`),
-	`false` (or `never`) or `auto`, in which case colors are used
+	gitlink:git-status[1]. May be set to `always`,
+	`false` (or `never`) or `auto` (or `true`), in which case colors are used
 	only when the output is to a terminal. Defaults to false.
 
 color.status.<slot>::
@@ -427,6 +467,12 @@ fetch.unpackLimit::
 	pack from a push can make the push operation complete faster,
 	especially on slow filesystems.
 
+format.numbered::
+	A boolean which can enable sequence numbers in patch subjects.
+	Seting this option to "auto" will enable it only if there is
+	more than one patch.  See --numbered option in
+	gitlink:git-format-patch[1].
+
 format.headers::
 	Additional email headers to include in a patch to be submitted
 	by mail.  See gitlink:git-format-patch[1].
@@ -440,6 +486,19 @@ gc.aggressiveWindow::
 	The window size parameter used in the delta compression
 	algorithm used by 'git gc --aggressive'.  This defaults
 	to 10.
+
+gc.auto::
+	When there are approximately more than this many loose
+	objects in the repository, `git gc --auto` will pack them.
+	Some Porcelain commands use this command to perform a
+	light-weight garbage collection from time to time.  Setting
+	this to 0 disables it.
+
+gc.autopacklimit::
+	When there are more than this many packs that are not
+	marked with `*.keep` file in the repository, `git gc
+	--auto` consolidates them into one larger pack.  Setting
+	this to 0 disables this.
 
 gc.packrefs::
 	`git gc` does not run `git pack-refs` in a bare repository by
@@ -474,7 +533,9 @@ gc.rerereunresolved::
 rerere.enabled::
 	Activate recording of resolved conflicts, so that identical
 	conflict hunks can be resolved automatically, should they
-	be encountered again.  See gitlink:git-rerere[1].
+	be encountered again.  gitlink:git-rerere[1] command is by
+	default enabled, but can be disabled by setting this option to
+	false.
 
 gitcvs.enabled::
 	Whether the CVS server interface is enabled for this repository.
@@ -516,6 +577,11 @@ All gitcvs variables except for 'gitcvs.allbinary' can also be
 specified as 'gitcvs.<access_method>.<varname>' (where 'access_method'
 is one of "ext" and "pserver") to make them apply only for the given
 access method.
+
+http.proxy::
+	Override the HTTP proxy, normally configured using the 'http_proxy'
+	environment variable (see gitlink:curl[1]).  This can be overridden
+	on a per-remote basis; see remote.<name>.proxy
 
 http.sslVerify::
 	Whether to verify the SSL certificate when fetching or pushing
@@ -590,7 +656,7 @@ merge.verbosity::
 	message if conflicts were detected. Level 1 outputs only
 	conflicts, 2 outputs conflicts and file changes.  Level 5 and
 	above outputs debugging information.  The default is level 2.
-	Can be overriden by 'GIT_MERGE_VERBOSITY' environment variable.
+	Can be overridden by 'GIT_MERGE_VERBOSITY' environment variable.
 
 merge.<driver>.name::
 	Defines a human readable name for a custom low-level
@@ -634,8 +700,25 @@ pack.deltaCacheSize::
 	A value of 0 means no limit. Defaults to 0.
 
 pack.deltaCacheLimit::
-	The maxium size of a delta, that is cached in
+	The maximum size of a delta, that is cached in
 	gitlink:git-pack-objects[1]. Defaults to 1000.
+
+pack.threads::
+	Specifies the number of threads to spawn when searching for best
+	delta matches.  This requires that gitlink:git-pack-objects[1]
+	be compiled with pthreads otherwise this option is ignored with a
+	warning. This is meant to reduce packing time on multiprocessor
+	machines. The required amount of memory for the delta search window
+	is however multiplied by the number of threads.
+
+pack.indexVersion::
+	Specify the default pack index version.  Valid values are 1 for
+	legacy pack index used by Git versions prior to 1.5.2, and 2 for
+	the new pack index with capabilities for packs larger than 4 GB
+	as well as proper protection against the repacking of corrupted
+	packs.  Version 2 is selected and this config option ignored
+	whenever the corresponding pack is larger than 2 GB.  Otherwise
+	the default is 1.
 
 pull.octopus::
 	The default merge strategy to use when pulling multiple branches
@@ -647,6 +730,11 @@ pull.twohead::
 remote.<name>.url::
 	The URL of a remote repository.  See gitlink:git-fetch[1] or
 	gitlink:git-push[1].
+
+remote.<name>.proxy::
+	For remotes that require curl (http, https and ftp), the URL to
+	the proxy to use for that remote.  Set to the empty string to
+	disable proxying for that remote.
 
 remote.<name>.fetch::
 	The default set of "refspec" for gitlink:git-fetch[1]. See
@@ -687,6 +775,12 @@ show.difftree::
 showbranch.default::
 	The default set of branches for gitlink:git-show-branch[1].
 	See gitlink:git-show-branch[1].
+
+status.relativePaths::
+	By default, gitlink:git-status[1] shows paths relative to the
+	current directory. Setting this variable to `false` shows paths
+	relative to the repository root (this was the default for git
+	prior to v1.5.4).
 
 tar.umask::
 	This variable can be used to restrict the permission bits of

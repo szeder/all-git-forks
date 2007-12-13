@@ -1,9 +1,10 @@
 #!/bin/sh
 # Copyright (c) 2007, Nanako Shiraishi
 
-USAGE='[ | list | show | apply | clear]'
+USAGE='[  | save | list | show | apply | clear | create ]'
 
 SUBDIRECTORY_OK=Yes
+OPTIONS_SPEC=
 . git-sh-setup
 require_work_tree
 cd_to_toplevel
@@ -21,28 +22,22 @@ no_changes () {
 clear_stash () {
 	if current=$(git rev-parse --verify $ref_stash 2>/dev/null)
 	then
-		git update-ref -d refs/stash $current
+		git update-ref -d $ref_stash $current
 	fi
 }
 
-save_stash () {
+create_stash () {
 	stash_msg="$1"
 
 	if no_changes
 	then
-		echo >&2 'No local changes to save'
 		exit 0
 	fi
-	test -f "$GIT_DIR/logs/$ref_stash" ||
-		clear_stash || die "Cannot initialize stash"
-
-	# Make sure the reflog for stash is kept.
-	: >>"$GIT_DIR/logs/$ref_stash"
 
 	# state of the base commit
 	if b_commit=$(git rev-parse --verify HEAD)
 	then
-		head=$(git log --abbrev-commit --pretty=oneline -n 1 HEAD)
+		head=$(git log --no-color --abbrev-commit --pretty=oneline -n 1 HEAD --)
 	else
 		die "You do not have the initial commit yet"
 	fi
@@ -84,6 +79,23 @@ save_stash () {
 	w_commit=$(printf '%s\n' "$stash_msg" |
 		git commit-tree $w_tree -p $b_commit -p $i_commit) ||
 		die "Cannot record working tree state"
+}
+
+save_stash () {
+	stash_msg="$1"
+
+	if no_changes
+	then
+		echo >&2 'No local changes to save'
+		exit 0
+	fi
+	test -f "$GIT_DIR/logs/$ref_stash" ||
+		clear_stash || die "Cannot initialize stash"
+
+	create_stash "$stash_msg"
+
+	# Make sure the reflog for stash is kept.
+	: >>"$GIT_DIR/logs/$ref_stash"
 
 	git update-ref -m "$stash_msg" $ref_stash $w_commit ||
 		die "Cannot save the current status"
@@ -96,7 +108,7 @@ have_stash () {
 
 list_stash () {
 	have_stash || return 0
-	git log --pretty=oneline -g "$@" $ref_stash |
+	git log --no-color --pretty=oneline -g "$@" $ref_stash -- |
 	sed -n -e 's/^[.0-9a-f]* refs\///p'
 }
 
@@ -195,6 +207,10 @@ show)
 	shift
 	show_stash "$@"
 	;;
+save)
+	shift
+	save_stash "$*" && git-reset --hard
+	;;
 apply)
 	shift
 	apply_stash "$@"
@@ -202,14 +218,19 @@ apply)
 clear)
 	clear_stash
 	;;
-help | usage)
-	usage
-	;;
-*)
-	if test $# -gt 0 && test "$1" = save
+create)
+	if test $# -gt 0 && test "$1" = create
 	then
 		shift
 	fi
-	save_stash "$*" && git-reset --hard
+	create_stash "$*" && echo "$w_commit"
+	;;
+*)
+	if test $# -eq 0
+	then
+		save_stash && git-reset --hard
+	else
+		usage
+	fi
 	;;
 esac

@@ -1,5 +1,27 @@
+// Please don't remove this comment as asciidoc behaves badly when
+// the first non-empty line is ifdef/ifndef. The symptom is that
+// without this comment the <git-diff-core> attribute conditionally
+// defined below ends up being defined unconditionally.
+// Last checked with asciidoc 7.0.2.
+
+ifndef::git-format-patch[]
+ifndef::git-diff[]
+ifndef::git-log[]
+:git-diff-core: 1
+endif::git-log[]
+endif::git-diff[]
+endif::git-format-patch[]
+
+ifdef::git-format-patch[]
 -p::
-	Generate patch (see section on generating patches)
+	Generate patches without diffstat.
+endif::git-format-patch[]
+
+ifndef::git-format-patch[]
+-p::
+	Generate patch (see section on generating patches).
+	{git-diff? This is the default.}
+endif::git-format-patch[]
 
 -u::
 	Synonym for "-p".
@@ -13,6 +35,7 @@
 
 --raw::
 	Generate the raw format.
+	{git-diff-core? This is the default.}
 
 --patch-with-raw::
 	Synonym for "-p --raw".
@@ -41,6 +64,7 @@
 
 --patch-with-stat::
 	Synonym for "-p --stat".
+	{git-format-patch? This is the default.}
 
 -z::
 	NUL-line termination on output.  This affects the --raw
@@ -151,19 +175,19 @@
 	Shorthand for "--text".
 
 --ignore-space-at-eol::
-	Ignore changes in white spaces at EOL.
+	Ignore changes in whitespace at EOL.
 
 --ignore-space-change::
-	Ignore changes in amount of white space.  This ignores white
-	space at line end, and consider all other sequences of one or
-	more white space characters to be equivalent.
+	Ignore changes in amount of whitespace.  This ignores whitespace
+	at line end, and considers all other sequences of one or
+	more whitespace characters to be equivalent.
 
 -b::
 	Shorthand for "--ignore-space-change".
 
 --ignore-all-space::
-	Ignore white space when comparing lines.  This ignores
-	difference even if one line has white space where the other
+	Ignore whitespace when comparing lines.  This ignores
+	differences even if one line has whitespace where the other
 	line has none.
 
 -w::

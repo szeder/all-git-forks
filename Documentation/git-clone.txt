@@ -12,7 +12,7 @@ SYNOPSIS
 'git-clone' [--template=<template_directory>]
 	  [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare]
 	  [-o <name>] [-u <upload-pack>] [--reference <repository>]
-	  [--depth <depth>] <repository> [<directory>]
+	  [--depth <depth>] [--] <repository> [<directory>]
 
 DESCRIPTION
 -----------
@@ -130,6 +130,7 @@ OPTIONS
 	for "host.xz:foo/.git").  Cloning into an existing directory
 	is not allowed.
 
+:git-clone: 1
 include::urls.txt[]
 
 Examples

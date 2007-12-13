@@ -16,9 +16,40 @@ die() {
 	exit 1
 }
 
-usage() {
-	die "Usage: $0 $USAGE"
-}
+if test -n "$OPTIONS_SPEC"; then
+	usage() {
+		exec "$0" -h
+	}
+
+	parseopt_extra=
+	[ -n "$OPTIONS_KEEPDASHDASH" ] &&
+		parseopt_extra="--keep-dashdash"
+
+	eval "$(
+		echo "$OPTIONS_SPEC" |
+			git rev-parse --parseopt $parseopt_extra -- "$@" ||
+		echo exit $?
+	)"
+else
+	usage() {
+		die "Usage: $0 $USAGE"
+	}
+
+	if [ -z "$LONG_USAGE" ]
+	then
+		LONG_USAGE="Usage: $0 $USAGE"
+	else
+		LONG_USAGE="Usage: $0 $USAGE
+
+$LONG_USAGE"
+	fi
+
+	case "$1" in
+		-h|--h|--he|--hel|--help)
+		echo "$LONG_USAGE"
+		exit
+	esac
+fi
 
 set_reflog_action() {
 	if [ -z "${GIT_REFLOG_ACTION:+set}" ]
@@ -91,41 +122,33 @@ get_author_ident_from_commit () {
 	LANG=C LC_ALL=C sed -ne "$pick_author_script"
 }
 
-if [ -z "$LONG_USAGE" ]
+# Make sure we are in a valid repository of a vintage we understand,
+# if we require to be in a git repository.
+if test -n "$NONGIT_OK"
 then
-	LONG_USAGE="Usage: $0 $USAGE"
+	if git rev-parse --git-dir >/dev/null 2>&1
+	then
+		: ${GIT_DIR=.git}
+	fi
 else
-	LONG_USAGE="Usage: $0 $USAGE
-
-$LONG_USAGE"
-fi
-
-case "$1" in
-	-h|--h|--he|--hel|--help)
-	echo "$LONG_USAGE"
-	exit
-esac
-
-# Make sure we are in a valid repository of a vintage we understand.
-if [ -z "$SUBDIRECTORY_OK" ]
-then
-	: ${GIT_DIR=.git}
-	GIT_DIR=$(GIT_DIR="$GIT_DIR" git rev-parse --git-dir) || {
-		exit=$?
-		echo >&2 "You need to run this command from the toplevel of the working tree."
-		exit $exit
+	if [ -z "$SUBDIRECTORY_OK" ]
+	then
+		: ${GIT_DIR=.git}
+		test -z "$(git rev-parse --show-cdup)" || {
+			exit=$?
+			echo >&2 "You need to run this command from the toplevel of the working tree."
+			exit $exit
+		}
+	else
+		GIT_DIR=$(git rev-parse --git-dir) || {
+		    exit=$?
+		    echo >&2 "Failed to find a valid git directory."
+		    exit $exit
+		}
+	fi
+	test -n "$GIT_DIR" && GIT_DIR=$(cd "$GIT_DIR" && pwd) || {
+		echo >&2 "Unable to determine absolute path of git directory"
+		exit 1
 	}
-else
-	GIT_DIR=$(git rev-parse --git-dir) || {
-	    exit=$?
-	    echo >&2 "Failed to find a valid git directory."
-	    exit $exit
-	}
+	: ${GIT_OBJECT_DIRECTORY="$GIT_DIR/objects"}
 fi
-
-test -n "$GIT_DIR" && GIT_DIR=$(cd "$GIT_DIR" && pwd) || {
-    echo >&2 "Unable to determine absolute path of git directory"
-    exit 1
-}
-
-: ${GIT_OBJECT_DIRECTORY="$GIT_DIR/objects"}

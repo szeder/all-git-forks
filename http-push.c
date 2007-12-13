@@ -1,7 +1,6 @@
 #include "cache.h"
 #include "commit.h"
 #include "pack.h"
-#include "fetch.h"
 #include "tag.h"
 #include "blob.h"
 #include "http.h"
@@ -14,7 +13,7 @@
 #include <expat.h>
 
 static const char http_push_usage[] =
-"git-http-push [--all] [--force] [--verbose] <remote> [<head>...]\n";
+"git-http-push [--all] [--dry-run] [--force] [--verbose] <remote> [<head>...]\n";
 
 #ifndef XML_STATUS_OK
 enum XML_Status {
@@ -79,8 +78,9 @@ static struct curl_slist *no_pragma_header;
 static struct curl_slist *default_headers;
 
 static int push_verbosely;
-static int push_all;
+static int push_all = MATCH_REFS_NONE;
 static int force_all;
+static int dry_run;
 
 static struct object_list *objects;
 
@@ -433,7 +433,7 @@ static void start_fetch_packed(struct transfer_request *request)
 	packfile = fopen(request->tmpfile, "a");
 	if (!packfile) {
 		fprintf(stderr, "Unable to open local file %s for pack",
-			filename);
+			request->tmpfile);
 		remote->can_update_info_refs = 0;
 		free(url);
 		return;
@@ -795,38 +795,27 @@ static void finish_request(struct transfer_request *request)
 }
 
 #ifdef USE_CURL_MULTI
-void fill_active_slots(void)
+static int fill_active_slot(void *unused)
 {
 	struct transfer_request *request = request_queue_head;
-	struct transfer_request *next;
-	struct active_request_slot *slot = active_queue_head;
-	int num_transfers;
 
 	if (aborted)
-		return;
+		return 0;
 
-	while (active_requests < max_requests && request != NULL) {
-		next = request->next;
+	for (request = request_queue_head; request; request = request->next) {
 		if (request->state == NEED_FETCH) {
 			start_fetch_loose(request);
+			return 1;
 		} else if (pushing && request->state == NEED_PUSH) {
 			if (remote_dir_exists[request->obj->sha1[0]] == 1) {
 				start_put(request);
 			} else {
 				start_mkcol(request);
 			}
-			curl_multi_perform(curlm, &num_transfers);
+			return 1;
 		}
-		request = next;
 	}
-
-	while (slot != NULL) {
-		if (!slot->in_use && slot->curl != NULL) {
-			curl_easy_cleanup(slot->curl);
-			slot->curl = NULL;
-		}
-		slot = slot->next;
-	}
+	return 0;
 }
 #endif
 
@@ -952,7 +941,7 @@ static int fetch_index(unsigned char *sha1)
 	indexfile = fopen(tmpfile, "a");
 	if (!indexfile)
 		return error("Unable to open local file %s for pack index",
-			     filename);
+			     tmpfile);
 
 	slot = get_active_slot();
 	slot->results = &results;
@@ -1271,10 +1260,7 @@ xml_cdata(void *userData, const XML_Char *s, int len)
 {
 	struct xml_ctx *ctx = (struct xml_ctx *)userData;
 	free(ctx->cdata);
-	ctx->cdata = xmalloc(len + 1);
-	/* NB: 's' is not null-terminated, can not use strlcpy here */
-	memcpy(ctx->cdata, s, len);
-	ctx->cdata[len] = '\0';
+	ctx->cdata = xmemdupz(s, len);
 }
 
 static struct remote_lock *lock_remote(const char *path, long timeout)
@@ -1289,8 +1275,6 @@ static struct remote_lock *lock_remote(const char *path, long timeout)
 	char *ep;
 	char timeout_header[25];
 	struct remote_lock *lock = NULL;
-	XML_Parser parser = XML_ParserCreate(NULL);
-	enum XML_Status result;
 	struct curl_slist *dav_headers = NULL;
 	struct xml_ctx ctx;
 
@@ -1359,6 +1343,8 @@ static struct remote_lock *lock_remote(const char *path, long timeout)
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
 		if (results.curl_result == CURLE_OK) {
+			XML_Parser parser = XML_ParserCreate(NULL);
+			enum XML_Status result;
 			ctx.name = xcalloc(10, 1);
 			ctx.len = 0;
 			ctx.cdata = NULL;
@@ -1377,6 +1363,7 @@ static struct remote_lock *lock_remote(const char *path, long timeout)
 						XML_GetErrorCode(parser)));
 				lock->timeout = -1;
 			}
+			XML_ParserFree(parser);
 		}
 	} else {
 		fprintf(stderr, "Unable to start LOCK request\n");
@@ -1539,8 +1526,6 @@ static void remote_ls(const char *path, int flags,
 	struct buffer out_buffer;
 	char *in_data;
 	char *out_data;
-	XML_Parser parser = XML_ParserCreate(NULL);
-	enum XML_Status result;
 	struct curl_slist *dav_headers = NULL;
 	struct xml_ctx ctx;
 	struct remote_ls_ctx ls;
@@ -1583,6 +1568,8 @@ static void remote_ls(const char *path, int flags,
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
 		if (results.curl_result == CURLE_OK) {
+			XML_Parser parser = XML_ParserCreate(NULL);
+			enum XML_Status result;
 			ctx.name = xcalloc(10, 1);
 			ctx.len = 0;
 			ctx.cdata = NULL;
@@ -1601,6 +1588,7 @@ static void remote_ls(const char *path, int flags,
 					XML_ErrorString(
 						XML_GetErrorCode(parser)));
 			}
+			XML_ParserFree(parser);
 		}
 	} else {
 		fprintf(stderr, "Unable to start PROPFIND request\n");
@@ -1634,8 +1622,6 @@ static int locking_available(void)
 	struct buffer out_buffer;
 	char *in_data;
 	char *out_data;
-	XML_Parser parser = XML_ParserCreate(NULL);
-	enum XML_Status result;
 	struct curl_slist *dav_headers = NULL;
 	struct xml_ctx ctx;
 	int lock_flags = 0;
@@ -1672,6 +1658,8 @@ static int locking_available(void)
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
 		if (results.curl_result == CURLE_OK) {
+			XML_Parser parser = XML_ParserCreate(NULL);
+			enum XML_Status result;
 			ctx.name = xcalloc(10, 1);
 			ctx.len = 0;
 			ctx.cdata = NULL;
@@ -1690,6 +1678,7 @@ static int locking_available(void)
 						XML_GetErrorCode(parser)));
 				lock_flags = 0;
 			}
+			XML_ParserFree(parser);
 		}
 	} else {
 		fprintf(stderr, "Unable to start PROPFIND request\n");
@@ -2172,9 +2161,7 @@ static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 
 	/* If it's a symref, set the refname; otherwise try for a sha1 */
 	if (!prefixcmp((char *)buffer.buffer, "ref: ")) {
-		*symref = xmalloc(buffer.posn - 5);
-		memcpy(*symref, (char *)buffer.buffer + 5, buffer.posn - 6);
-		(*symref)[buffer.posn - 6] = '\0';
+		*symref = xmemdupz((char *)buffer.buffer + 5, buffer.posn - 6);
 	} else {
 		get_sha1_hex(buffer.buffer, sha1);
 	}
@@ -2257,7 +2244,11 @@ static int delete_remote_branch(char *pattern, int force)
 
 		/* Remote branch must be an ancestor of remote HEAD */
 		if (!verify_merge_base(head_sha1, remote_ref->old_sha1)) {
-			return error("The branch '%s' is not a strict subset of your current HEAD.\nIf you are sure you want to delete it, run:\n\t'git http-push -D %s %s'", remote_ref->name, remote->url, pattern);
+			return error("The branch '%s' is not an ancestor "
+				     "of your current HEAD.\n"
+				     "If you are sure you want to delete it,"
+				     " run:\n\t'git http-push -D %s %s'",
+				     remote_ref->name, remote->url, pattern);
 		}
 	}
 
@@ -2312,11 +2303,15 @@ int main(int argc, char **argv)
 
 		if (*arg == '-') {
 			if (!strcmp(arg, "--all")) {
-				push_all = 1;
+				push_all = MATCH_REFS_ALL;
 				continue;
 			}
 			if (!strcmp(arg, "--force")) {
 				force_all = 1;
+				continue;
+			}
+			if (!strcmp(arg, "--dry-run")) {
+				dry_run = 1;
 				continue;
 			}
 			if (!strcmp(arg, "--verbose")) {
@@ -2401,7 +2396,7 @@ int main(int argc, char **argv)
 	if (!remote_tail)
 		remote_tail = &remote_refs;
 	if (match_refs(local_refs, remote_refs, &remote_tail,
-		       nr_refspec, refspec, push_all))
+		       nr_refspec, (const char **) refspec, push_all))
 		return -1;
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n");
@@ -2429,16 +2424,17 @@ int main(int argc, char **argv)
 			if (!has_sha1_file(ref->old_sha1) ||
 			    !ref_newer(ref->peer_ref->new_sha1,
 				       ref->old_sha1)) {
-				/* We do not have the remote ref, or
+				/*
+				 * We do not have the remote ref, or
 				 * we know that the remote ref is not
 				 * an ancestor of what we are trying to
 				 * push.  Either way this can be losing
 				 * commits at the remote end and likely
 				 * we were not up to date to begin with.
 				 */
-				error("remote '%s' is not a strict "
-				      "subset of local ref '%s'. "
-				      "maybe you are not up-to-date and "
+				error("remote '%s' is not an ancestor of\n"
+				      "local '%s'.\n"
+				      "Maybe you are not up-to-date and "
 				      "need to pull first?",
 				      ref->name,
 				      ref->peer_ref->name);
@@ -2460,7 +2456,8 @@ int main(int argc, char **argv)
 		if (strcmp(ref->name, ref->peer_ref->name))
 			fprintf(stderr, " using '%s'", ref->peer_ref->name);
 		fprintf(stderr, "\n  from %s\n  to   %s\n", old_hex, new_hex);
-
+		if (dry_run)
+			continue;
 
 		/* Lock remote branch ref */
 		ref_lock = lock_remote(ref->name, LOCK_TIME);
@@ -2507,6 +2504,7 @@ int main(int argc, char **argv)
 				objects_to_send);
 #ifdef USE_CURL_MULTI
 		fill_active_slots();
+		add_fill_function(NULL, fill_active_slot);
 #endif
 		finish_all_active_slots();
 
@@ -2527,7 +2525,8 @@ int main(int argc, char **argv)
 	if (remote->has_info_refs && new_refs) {
 		if (info_ref_lock && remote->can_update_info_refs) {
 			fprintf(stderr, "Updating remote server info\n");
-			update_remote_info_refs(info_ref_lock);
+			if (!dry_run)
+				update_remote_info_refs(info_ref_lock);
 		} else {
 			fprintf(stderr, "Unable to update server info\n");
 		}
