@@ -13,8 +13,9 @@ git-core (1:1.5.4~rc0-1) experimental; urgency=low
     applied upstream.
   * debian/rules: install git-gui's lib/ directory plus subdirectory
     properly.
+  * debian/control: Build-Depends: gettext.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 13 Dec 2007 13:37:57 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 13 Dec 2007 14:08:45 +0000
 
 git-core (1:1.5.3.7-1.1) unstable; urgency=low
 
