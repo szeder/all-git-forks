@@ -88,9 +88,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
 	# don't include git-gui's tcl files
-	rm -f '$(GIT)'-core/usr/share/git-gui/lib/*
-	rmdir '$(GIT)'-core/usr/share/git-gui/lib
-	rmdir '$(GIT)'-core/usr/share/git-gui
+	rm -rf '$(GIT)'-core/usr/share/git-gui/
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
 	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \
@@ -175,9 +173,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	    '$(GIT)'-gui/usr/share/man/man1/; \
 	done
 	gzip -9 '$(GIT)'-gui/usr/share/man/man1/*.1
-	install -d -m0755 '$(GIT)'-gui/usr/share/git-gui/lib
-	install -m0644 '$(TMP)'/usr/share/git-gui/lib/* \
-	  '$(GIT)'-gui/usr/share/git-gui/lib/
+	install -d -m0755 '$(GIT)'-gui/usr/share/git-gui
+	cp -a '$(TMP)'/usr/share/git-gui/lib '$(GIT)'-gui/usr/share/git-gui/
 	# gitk
 	rm -rf '$(GIT)'k
 	install -d -m0755 '$(GIT)'k/usr/bin

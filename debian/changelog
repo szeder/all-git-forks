@@ -1,4 +1,4 @@
-git-core (1:1.5.4~rc0-0) experimental; urgency=low
+git-core (1:1.5.4~rc0-1) experimental; urgency=low
 
   * new upstream release candidate.
     * build with correct version information (on amd64, closes: #454935,
@@ -11,8 +11,10 @@ git-core (1:1.5.4~rc0-0) experimental; urgency=low
   * debian/diff/0004-contrib-hooks-post-receive-email-make-subject-prefix.diff,
     debian/diff/0005-Don-t-cache-DESTDIR-in-perl-perl.mak.diff: remove;
     applied upstream.
+  * debian/rules: install git-gui's lib/ directory plus subdirectory
+    properly.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 13 Dec 2007 08:32:16 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 13 Dec 2007 13:37:57 +0000
 
 git-core (1:1.5.3.7-1.1) unstable; urgency=low
 
