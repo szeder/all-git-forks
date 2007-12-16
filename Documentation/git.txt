@@ -101,9 +101,14 @@ OPTIONS
 
 --help::
 	Prints the synopsis and a list of the most commonly used
-	commands.  If a git command is named this option will bring up
-	the man-page for that command. If the option '--all' or '-a' is
-	given then all available commands are printed.
+	commands. If the option '--all' or '-a' is given then all
+	available commands are printed. If a git command is named this
+	option will bring up the manual page for that command.
++
+Other options are available to control how the manual page is
+displayed. See gitlink:git-help[1] for more information,
+because 'git --help ...' is converted internally into 'git
+help ...'.
 
 --exec-path::
 	Path to wherever your core git programs are installed.
@@ -147,6 +152,8 @@ introductions to the underlying git architecture.
 
 See also the link:howto-index.html[howto] documents for some useful
 examples.
+
+The internals are documented link:technical/api-index.html[here].
 
 GIT COMMANDS
 ------------
@@ -536,7 +543,7 @@ Authors
 -------
 * git's founding father is Linus Torvalds <torvalds@osdl.org>.
 * The current git nurse is Junio C Hamano <gitster@pobox.com>.
-* The git potty was written by Andres Ericsson <ae@op5.se>.
+* The git potty was written by Andreas Ericsson <ae@op5.se>.
 * General upbringing is handled by the git-list <git@vger.kernel.org>.
 
 Documentation

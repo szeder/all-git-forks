@@ -426,22 +426,9 @@ static int curl_transport_push(struct transport *transport, int refspec_nr, cons
 	return !!err;
 }
 
-static int missing__target(int code, int result)
-{
-	return	/* file:// URL -- do we ever use one??? */
-		(result == CURLE_FILE_COULDNT_READ_FILE) ||
-		/* http:// and https:// URL */
-		(code == 404 && result == CURLE_HTTP_RETURNED_ERROR) ||
-		/* ftp:// URL */
-		(code == 550 && result == CURLE_FTP_COULDNT_RETR_FILE)
-		;
-}
-
-#define missing_target(a) missing__target((a)->http_code, (a)->curl_result)
-
 static struct ref *get_refs_via_curl(struct transport *transport)
 {
-	struct buffer buffer;
+	struct strbuf buffer = STRBUF_INIT;
 	char *data, *start, *mid;
 	char *ref_name;
 	char *refs_url;
@@ -454,11 +441,6 @@ static struct ref *get_refs_via_curl(struct transport *transport)
 	struct ref *ref = NULL;
 	struct ref *last_ref = NULL;
 
-	data = xmalloc(4096);
-	buffer.size = 4096;
-	buffer.posn = 0;
-	buffer.buffer = data;
-
 	refs_url = xmalloc(strlen(transport->url) + 11);
 	sprintf(refs_url, "%s/info/refs", transport->url);
 
@@ -470,30 +452,33 @@ static struct ref *get_refs_via_curl(struct transport *transport)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_buffer);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, refs_url);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, NULL);
+	if (transport->remote->http_proxy)
+		curl_easy_setopt(slot->curl, CURLOPT_PROXY,
+				 transport->remote->http_proxy);
+
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
 		if (results.curl_result != CURLE_OK) {
+			strbuf_release(&buffer);
 			if (missing_target(&results)) {
-				free(buffer.buffer);
 				return NULL;
 			} else {
-				free(buffer.buffer);
 				error("%s", curl_errorstr);
 				return NULL;
 			}
 		}
 	} else {
-		free(buffer.buffer);
+		strbuf_release(&buffer);
 		error("Unable to start request");
 		return NULL;
 	}
 
 	http_cleanup();
 
-	data = buffer.buffer;
+	data = buffer.buf;
 	start = NULL;
 	mid = data;
-	while (i < buffer.posn) {
+	while (i < buffer.len) {
 		if (!start)
 			start = &data[i];
 		if (data[i] == '\t')
@@ -516,7 +501,7 @@ static struct ref *get_refs_via_curl(struct transport *transport)
 		i++;
 	}
 
-	free(buffer.buffer);
+	strbuf_release(&buffer);
 
 	return refs;
 }
@@ -655,7 +640,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 	free(heads);
 	free_refs(refs);
 	free(dest);
-	return 0;
+	return (refs ? 0 : -1);
 }
 
 static int git_transport_push(struct transport *transport, int refspec_nr, const char **refspec, int flags)

@@ -12,6 +12,7 @@ git-archive
 git-bisect
 git-blame
 git-branch
+git-browse--help
 git-bundle
 git-cat-file
 git-check-attr
@@ -35,6 +36,7 @@ git-diff-files
 git-diff-index
 git-diff-tree
 git-describe
+git-fast-export
 git-fast-import
 git-fetch
 git-fetch--tool
@@ -109,7 +111,6 @@ git-rev-list
 git-rev-parse
 git-revert
 git-rm
-git-runstatus
 git-send-email
 git-send-pack
 git-sh-setup
