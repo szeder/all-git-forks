@@ -121,7 +121,7 @@ unsigned check_and_emit_line(const char *line, int len, unsigned ws_rule,
 			     const char *reset, const char *ws)
 {
 	unsigned result = 0;
-	int leading_space = -1;
+	int written = 0;
 	int trailing_whitespace = -1;
 	int trailing_newline = 0;
 	int i;
@@ -146,44 +146,46 @@ unsigned check_and_emit_line(const char *line, int len, unsigned ws_rule,
 
 	/* Check for space before tab in initial indent. */
 	for (i = 0; i < len; i++) {
-		if (line[i] == '\t') {
-			if ((ws_rule & WS_SPACE_BEFORE_TAB) &&
-			    (leading_space != -1))
-				result |= WS_SPACE_BEFORE_TAB;
+		if (line[i] == ' ')
+			continue;
+		if (line[i] != '\t')
 			break;
-		}
-		else if (line[i] == ' ')
-			leading_space = i;
-		else
-			break;
+		if ((ws_rule & WS_SPACE_BEFORE_TAB) && written < i) {
+			result |= WS_SPACE_BEFORE_TAB;
+			if (stream) {
+				fputs(ws, stream);
+				fwrite(line + written, i - written, 1, stream);
+				fputs(reset, stream);
+			}
+		} else if (stream)
+			fwrite(line + written, i - written, 1, stream);
+		if (stream)
+			fwrite(line + i, 1, 1, stream);
+		written = i + 1;
 	}
 
 	/* Check for indent using non-tab. */
-	if ((ws_rule & WS_INDENT_WITH_NON_TAB) && leading_space >= 8)
+	if ((ws_rule & WS_INDENT_WITH_NON_TAB) && i - written >= 8) {
 		result |= WS_INDENT_WITH_NON_TAB;
+		if (stream) {
+			fputs(ws, stream);
+			fwrite(line + written, i - written, 1, stream);
+			fputs(reset, stream);
+		}
+		written = i;
+	}
 
 	if (stream) {
-		/* Highlight errors in leading whitespace. */
-		if ((result & WS_SPACE_BEFORE_TAB) ||
-		    (result & WS_INDENT_WITH_NON_TAB)) {
-			fputs(ws, stream);
-			fwrite(line, leading_space + 1, 1, stream);
-			fputs(reset, stream);
-			leading_space++;
-		}
-		else
-			leading_space = 0;
-
-		/* Now the rest of the line starts at leading_space.
+		/* Now the rest of the line starts at written.
 		 * The non-highlighted part ends at trailing_whitespace. */
 		if (trailing_whitespace == -1)
 			trailing_whitespace = len;
 
 		/* Emit non-highlighted (middle) segment. */
-		if (trailing_whitespace - leading_space > 0) {
+		if (trailing_whitespace - written > 0) {
 			fputs(set, stream);
-			fwrite(line + leading_space,
-			    trailing_whitespace - leading_space, 1, stream);
+			fwrite(line + written,
+			    trailing_whitespace - written, 1, stream);
 			fputs(reset, stream);
 		}
 

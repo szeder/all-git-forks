@@ -125,6 +125,14 @@ test_expect_success 'check mixed spaces and tabs in indent' '
 
 '
 
+test_expect_success 'check mixed tabs and spaces in indent' '
+
+	# This is indented with HT SP HT.
+	echo "	 	foo();" > x &&
+	git diff --check | grep "space before tab in indent"
+
+'
+
 test_expect_success 'check with no whitespace errors' '
 
 	git commit -m "snapshot" &&
@@ -298,7 +306,7 @@ test_expect_success 'check space before tab in indent (space-before-tab: on)' '
 test_expect_success 'check spaces as indentation (indent-with-non-tab: off)' '
 
 	git config core.whitespace "-indent-with-non-tab"
-	echo "                foo ();" > x &&
+	echo "        foo ();" > x &&
 	git diff --check
 
 '
@@ -306,9 +314,16 @@ test_expect_success 'check spaces as indentation (indent-with-non-tab: off)' '
 test_expect_success 'check spaces as indentation (indent-with-non-tab: on)' '
 
 	git config core.whitespace "indent-with-non-tab" &&
-	echo "                foo ();" > x &&
+	echo "        foo ();" > x &&
 	! git diff --check
 
 '
 
+test_expect_success 'check tabs and spaces as indentation (indent-with-non-tab: on)' '
+
+	git config core.whitespace "indent-with-non-tab" &&
+	echo "	                foo ();" > x &&
+	! git diff --check
+
+'
 test_done
