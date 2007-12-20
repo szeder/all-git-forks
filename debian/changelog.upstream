@@ -1,3 +1,149 @@
+Version v1.5.4-rc1; changes since v1.5.4-rc0:
+---------------------------------------------
+
+Andy Whitcroft (1):
+      git-svn: expand handling of From: and Signed-off-by:
+
+Charles Bailey (1):
+      Fix git-instaweb breakage on MacOS X due to the limited sed functionality
+
+Christian Couder (1):
+      git-help: add "help.format" config variable.
+
+David S. Miller (1):
+      fast-import: fix unalinged allocation and access
+
+Eric Wong (5):
+      git-svn: unlink internal index files after operations
+      git-svn: handle our top-level path being deleted and later re-added
+      git-svn: avoid leaving leftover committer/author info in rebase
+      git-svn: workaround a for broken symlinks in SVN
+      git-svn: avoid warning when run without arguments
+
+Finn Arne Gangstad (1):
+      Improved submodule merge support
+
+H.Merijn Brand (1):
+      the use of 'tr' in the test suite isn't really portable
+
+J. Bruce Fields (8):
+      whitespace: fix off-by-one error in non-space-in-indent checking
+      whitespace: reorganize initial-indent check
+      whitespace: minor cleanup
+      whitespace: fix initial-indent checking
+      whitespace: more accurate initial-indent highlighting
+      whitespace: fix config.txt description of indent-with-non-tab
+      builtin-apply: minor cleanup of whitespace detection
+      builtin-apply: stronger indent-with-on-tab fixing
+
+Jakub Narebski (2):
+      gitweb: disambiguate heads and tags withs the same name
+      gitweb: Teach "a=blob" action to be more lenient about blob/file mime type
+
+Jeff King (7):
+      cvsexportcommit: fix massive commits
+      trim_common_tail: brown paper bag fix.
+      teach bash completion to treat commands with "--" as a helper
+      rename git-browse--help to git-help--browse
+      clone: correctly report http_fetch errors
+      git-send-email: avoid duplicate message-ids
+      test "git clone -o"
+
+Jim Meyering (1):
+      git-filter-branch.sh: more portable tr usage: use \012, not \n.
+
+Johannes Schindelin (4):
+      Support config variable diff.external
+      Document diff.external and mergetool.<tool>.path
+      rebase -p -i: handle "no changes" gracefully
+      git show <tag>: show the tagger
+
+Johannes Sixt (4):
+      threaded pack-objects: Use condition variables for thread communication.
+      Plug a resource leak in threaded pack-objects code.
+      Clean up documentation that references deprecated 'git peek-remote'.
+      filter-branch: Remove broken and unnecessary summary of rewritten refs.
+
+Junio C Hamano (17):
+      git-commit: squelch needless message during an empty merge
+      xdl_diff: identify call sites.
+      xdi_diff: trim common trailing lines
+      diff --check: minor fixups
+      xdiff tail trimming: use correct type.
+      commit: allow --amend to reuse message from another commit
+      remote: Fix bogus make_branch() call in configuration reader.
+      Rename git-browse-help helper to git-browse--help
+      Retire git-runstatus for real.
+      Start preparing the API documents.
+      Update draft release notes for 1.5.4
+      Re-re-re-fix common tail optimization
+      builtin-commit: fix summary output.
+      builtin-commit: make summary output consistent with status
+      Documentation/git-submodule: refer to gitmodules(5)
+      builtin-blame.c: remove unneeded memclr()
+      GIT 1.5.4-rc1
+
+Kristian Høgsberg (1):
+      Use a strbuf for building up section header and key/value pair strings.
+
+Li Hong (1):
+      Fix a memory leak
+
+Linus Torvalds (1):
+      unpack-trees: FLEX_ARRAY fix
+
+Marco Roeland (1):
+      clone: fix options '-o' and '--origin' to be recognised again
+
+Mike Hommey (8):
+      Fix some more memory leaks in http-push.c
+      Fix random sha1 in error message in http-fetch and http-push
+      Remove the default_headers variable from http-push.c
+      Remove a CURLOPT_HTTPHEADER (un)setting
+      Avoid redundant declaration of missing_target()
+      Use strbuf in http code
+      Fix various memory leaks in http-push.c and http-walker.c
+      Move fetch_ref from http-push.c and http-walker.c to http.c
+
+Nicolas Pitre (3):
+      provide advance warning of some future pack default changes
+      fix style of a few comments in diff-delta.c
+      make 'git describe --all --contains' work
+
+Petr Baudis (1):
+      gitweb: Make config_to_multi return [] instead of [undef]
+
+Pierre Habouzit (1):
+      Fix segfault in diff-delta.c when FLEX_ARRAY is 1
+
+Ralf Wildenhues (1):
+      Fix some documentation typos.
+
+Sam Vilain (1):
+      Clarify error response from 'git fetch' for bad responses
+
+Sean Estabrooks (1):
+      Fix interactive rebase to preserve author email address
+
+Shawn Bohrer (1):
+      Fix spelling mistakes in user manual
+
+Shawn O. Pearce (2):
+      Avoid update hook during git-rebase --interactive
+      Catch and handle git-commit failures in git-rebase --interactive
+
+Wincent Colaiuta (6):
+      "diff --check" should affect exit status
+      Unify whitespace checking
+      Make "diff --check" output match "git apply"
+      Add tests for "git diff --check" with core.whitespace options
+      Use shorter error messages for whitespace problems
+      Test interaction between diff --check and --exit-code
+
+anonymous (1):
+      Documentation: describe pack idx v2
+
+
 Version v1.5.4-rc0; changes since v1.5.3.7:
 -------------------------------------------
 

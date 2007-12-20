@@ -1,4 +1,4 @@
-From 463af782ab113b6681112b1bee465bbf97acccb0 Mon Sep 17 00:00:00 2001
+From e8c412da13057b2cdc473124c237eeb91b3f112d Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
@@ -39,7 +39,7 @@ index c80a6da..17da0f0 100755
                          defaultEditor = "notepad"
                      editor = os.environ.get("EDITOR", defaultEditor);
 diff --git a/git-send-email.perl b/git-send-email.perl
-index 1d6f466..32a6574 100755
+index 248d035..282c089 100755
 --- a/git-send-email.perl
 +++ b/git-send-email.perl
 @@ -399,7 +399,7 @@ GIT: for the patch you are writing.
@@ -52,7 +52,7 @@ index 1d6f466..32a6574 100755
  
  	open(C2,">",$compose_filename . ".final")
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index b366761..0d40b64 100755
+index 270d559..56d8e78 100755
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -72,7 +72,7 @@ git_editor() {
