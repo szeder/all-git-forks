@@ -1,3 +1,12 @@
+git-core (1:1.5.4~rc2-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * shortlog manpage documentation: work around asciidoc markup issues
+      (closes: #447911).
+    * Fix $EDITOR regression introduced by rewrite in C (closes: #446845).
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 27 Dec 2007 08:45:01 +0000
+
 git-core (1:1.5.4~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.

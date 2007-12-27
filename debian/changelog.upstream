@@ -1,3 +1,74 @@
+Version v1.5.4-rc2; changes since v1.5.4-rc1:
+---------------------------------------------
+
+Alex Riesen (1):
+      Allow selection of different cleanup modes for commit messages
+
+Arjen Laarhoven (1):
+      Fix "git log --diff-filter" bug
+
+Charles Bailey (1):
+      Remove old generated files from .gitignore.
+
+Gustaf Hendeby (2):
+      Make git send-email accept $EDITOR with arguments
+      shortlog manpage documentation: work around asciidoc markup issues
+
+Jakub Narebski (1):
+      gitweb: fix whitespace in config_to_multi (indent with tab)
+
+Jeff King (2):
+      clean up 1.5.4 release notes
+      cvsimport: die on cvsps errors
+
+Jim Meyering (1):
+      Don't dereference NULL upon lookup failure.
+
+Johannes Schindelin (2):
+      Teach diff machinery to display other prefixes than "a/" and "b/"
+      Mention git-shell's "cvs" substitution in the RelNotes
+
+Junio C Hamano (14):
+      t4024: fix test script to use simpler sed pattern
+      fix git commit --amend -m "new message"
+      shell-scripts usage(): consistently exit with non-zero
+      Documentation: ls-files -v is about "assume unchanged".
+      Fix $EDITOR regression introduced by rewrite in C.
+      t7005: do not exit inside test.
+      builtin-commit: fix amending of the initial commit
+      builtin-commit: avoid double-negation in the code.
+      Documentation: describe 'union' low-level merge driver
+      Fix documentation of --first-parent in git-log and copy it to git-rev-list
+      combine-diff: Fix path quoting
+      Fix rewrite_diff() name quoting.
+      contrib: resurrect scripted git-revert.
+      GIT 1.5.4-rc2
+
+Linus Torvalds (1):
+      Re(-re)*fix trim_common_tail()
+
+Miklos Vajna (1):
+      everyday: replace 'prune' and 'repack' with 'gc'
+
+Pierre Habouzit (3):
+      git-tag: fix -l switch handling regression.
+      Force the sticked form for options with optional arguments.
+      parse-options: Add a gitcli(5) man page.
+
+René Scharfe (1):
+      Make "--pretty=format" parser a bit more careful.
+
+Shawn O. Pearce (2):
+      Reallow git-rebase --interactive --continue if commit is unnecessary
+      Improve error messages when int/long cannot be parsed from config
+
+Stefan Sperling (1):
+      Small comment fix for git-cvsimport.
+
+Wincent Colaiuta (1):
+      Emit helpful status for accidental "git stash" save
+
+
 Version v1.5.4-rc1; changes since v1.5.4-rc0:
 ---------------------------------------------
 

@@ -1,4 +1,4 @@
-From e8c412da13057b2cdc473124c237eeb91b3f112d Mon Sep 17 00:00:00 2001
+From 1033c088189f247eac2da471dbd9db3de4cdc1ac Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sat, 25 Aug 2007 19:47:58 +0000
 Subject: [PATCH] fallback to 'editor' not 'vi' if $VISUAL and $EDITOR are unset.
@@ -13,7 +13,7 @@ http://bugs.debian.org/438793
  5 files changed, 11 insertions(+), 11 deletions(-)
 
 diff --git a/builtin-tag.c b/builtin-tag.c
-index 274901a..150b9b4 100644
+index 03e7015..31cb31f 100644
 --- a/builtin-tag.c
 +++ b/builtin-tag.c
 @@ -44,7 +44,7 @@ void launch_editor(const char *path, struct strbuf *buffer, const char *const *e
@@ -24,7 +24,7 @@ index 274901a..150b9b4 100644
 +		editor = "editor";
  
  	if (strcmp(editor, ":")) {
- 		const char *args[] = { editor, path, NULL };
+ 		size_t len = strlen(editor);
 diff --git a/contrib/fast-import/git-p4 b/contrib/fast-import/git-p4
 index c80a6da..17da0f0 100755
 --- a/contrib/fast-import/git-p4
@@ -39,7 +39,7 @@ index c80a6da..17da0f0 100755
                          defaultEditor = "notepad"
                      editor = os.environ.get("EDITOR", defaultEditor);
 diff --git a/git-send-email.perl b/git-send-email.perl
-index 248d035..282c089 100755
+index e47994a..d847225 100755
 --- a/git-send-email.perl
 +++ b/git-send-email.perl
 @@ -399,7 +399,7 @@ GIT: for the patch you are writing.
@@ -48,14 +48,14 @@ index 248d035..282c089 100755
  
 -	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "vi";
 +	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "editor";
- 	system($editor, $compose_filename);
+ 	system('sh', '-c', '$0 $@', $editor, $compose_filename);
  
  	open(C2,">",$compose_filename . ".final")
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 270d559..56d8e78 100755
+index aae1409..e240f8b 100755
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
-@@ -72,7 +72,7 @@ git_editor() {
+@@ -73,7 +73,7 @@ git_editor() {
  		exit 1
  		;;
  	esac
@@ -65,7 +65,7 @@ index 270d559..56d8e78 100755
  
  is_bare_repository () {
 diff --git a/t/t7005-editor.sh b/t/t7005-editor.sh
-index 44228b5..391d9ee 100755
+index c1cec55..a33c38d 100755
 --- a/t/t7005-editor.sh
 +++ b/t/t7005-editor.sh
 @@ -6,22 +6,22 @@ test_description='GIT_EDITOR, core.editor, and stuff'
@@ -123,5 +123,5 @@ index 44228b5..391d9ee 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.3.4
+1.5.3.7
 
