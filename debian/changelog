@@ -1,9 +1,10 @@
-git-core (1:1.5.3.7-1.1) unstable; urgency=low
+git-core (1:1.5.3.7-1.2) unstable; urgency=low
 
   * debian/control: for all packages: Suggests: git-doc instead of
     Recommends: (thx Andrew Moise, closes: #455369).
+  * debian/control: add Vcs-Git: http://smarden.org/git/git.git/.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 10 Dec 2007 14:38:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 28 Dec 2007 11:13:49 +0000
 
 git-core (1:1.5.3.7-1) unstable; urgency=low
 
