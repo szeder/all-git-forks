@@ -30,11 +30,32 @@ const char *git_exec_path(void)
 }
 
 
+static const char *git_repo_exec_path(void)
+{
+	static char path_buffer[PATH_MAX + 1];
+	static char *path = NULL;
+	
+	if (!path) {
+		path = path_buffer;
+		path[0] = '\0';
+		if (get_git_dir()) {
+			strncat(path, get_git_dir(), PATH_MAX);
+			strncat(path, "/", PATH_MAX);
+			strncat(path, "bin", PATH_MAX);
+		}
+	}
+	
+	return path;
+}
+
+
 int execv_git_cmd(const char **argv)
 {
 	char git_command[PATH_MAX + 1];
 	int i;
-	const char *paths[] = { current_exec_path,
+	const char *paths[] = {
+				git_repo_exec_path(),
+				current_exec_path,
 				getenv(EXEC_PATH_ENVIRONMENT),
 				builtin_exec_path };
 
