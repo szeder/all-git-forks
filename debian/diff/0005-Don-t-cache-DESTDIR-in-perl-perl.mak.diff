@@ -1,4 +1,4 @@
-From dbd65cbe1cc6c1c6afe5e06fd3e9a09ef48fe027 Mon Sep 17 00:00:00 2001
+From f58c10f3a8d1fc196ff08dc82a57227a7ccb1cd6 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@innominate.com>
 Date: Thu, 22 Nov 2007 08:28:58 +0000
 Subject: [PATCH] Don't cache DESTDIR in perl/perl.mak.
@@ -44,5 +44,5 @@ index 6aecd89..320253e 100644
 +	INSTALLSITEMAN3DIR => '$(SITEPREFIX)/share/man/man3'
  );
 -- 
-1.5.3.4
+1.5.3.7
 

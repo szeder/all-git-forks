@@ -1,4 +1,4 @@
-From 468593da81813c61f9de2c5760cda21286dccd5c Mon Sep 17 00:00:00 2001
+From 0531cf31007a8b0a4dd55b9d2d1b277be1e5bd19 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@innominate.com>
 Date: Mon, 19 Nov 2007 12:31:39 +0000
 Subject: [PATCH] contrib/hooks/post-receive-email: make subject prefix configurable
@@ -74,5 +74,5 @@ index 28a06c7..0307787 100644
  # --- Main loop
  # Allow dual mode: run from the command line just like the update hook, or if
 -- 
-1.5.3.4
+1.5.3.7
 

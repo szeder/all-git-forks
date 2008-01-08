@@ -1,3 +1,32 @@
+Version v1.5.3.8; changes since v1.5.3.7:
+-----------------------------------------
+
+David Symonds (1):
+      Change from using email.com to example.com as example domain, as per RFC 2606.
+
+Eric Wong (2):
+      git-svn: support for funky branch and project names over HTTP(S)
+      git-svn: clarify the "Ignoring error from SVN" piece
+
+Jeff King (3):
+      t9600: test cvsimport from CVS working tree
+      clone: correctly report http_fetch errors
+      git-send-email: avoid duplicate message-ids
+
+Jim Meyering (1):
+      config.c:store_write_pair(): don't read the byte before a malloc'd buffer.
+
+Junio C Hamano (3):
+      git grep shows the same hit repeatedly for unmerged paths
+      git-am -i: report rewritten title
+      GIT 1.5.3.8
+
+Nguyễn Thái Ngọc Duy (3):
+      Add missing inside_work_tree setting in setup_git_directory_gently
+      Do check_repository_format() early
+      Do check_repository_format() early (re-fix)
+
+
 Version v1.5.3.7; changes since v1.5.3.6:
 -----------------------------------------
 
