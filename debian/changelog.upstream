@@ -215,7 +215,7 @@ anonymous (1):
       Documentation: describe pack idx v2
 
 
-Version v1.5.4-rc0; changes since v1.5.3.7:
+Version v1.5.4-rc0; changes since v1.5.3.8:
 -------------------------------------------
 
 Alex Riesen (12):
@@ -412,7 +412,7 @@ David Kastrup (3):
 David Reiss (1):
       git-svn: Fix a typo and add a comma in an error message in git-svn
 
-David Symonds (8):
+David Symonds (7):
       gitweb: Provide title attributes for abbreviated author names.
       gitweb: Refactor abbreviation-with-title-attribute code.
       gitweb: Use chop_and_escape_str in more places.
@@ -420,7 +420,6 @@ David Symonds (8):
       git-checkout: Support relative paths containing "..".
       git-checkout: Test for relative path use.
       Mention that git-rm can be an appropriate resolution as well as git-add.
-      Change from using email.com to example.com as example domain, as per RFC 2606.
 
 Denis Cheng (1):
       gitweb: the commitdiff is very commonly used, it's needed on search page, too
@@ -520,7 +519,7 @@ Jari Aalto (2):
       git-remote: exit with non-zero status after detecting error in "rm".
       On error, do not list all commands, but point to --help option
 
-Jeff King (37):
+Jeff King (36):
       contrib/fast-import: add perl version of simple example
       diffcore-rename: cache file deltas
       git-rebase: document suppression of duplicate commits
@@ -544,7 +543,6 @@ Jeff King (37):
       git-tag: test that -s implies an annotated tag
       Revert "t5516: test update of local refs on push"
       git-commit: clean up die messages
-      t9600: test cvsimport from CVS working tree
       Enable rewrite as well as rename detection in git-status
       quote_path: fix collapsing of relative paths
       t9600: require cvsps 2.1 to perform tests
@@ -562,9 +560,8 @@ Jeff King (37):
 Jeff Muizelaar (1):
       fix contrib/hooks/post-receive-email hooks.recipients error message
 
-Jim Meyering (2):
+Jim Meyering (1):
       hooks-pre-commit: use \t, rather than a literal TAB in regexp
-      config.c:store_write_pair(): don't read the byte before a malloc'd buffer.
 
 Johannes Schindelin (57):
       Add po/git-gui.pot
@@ -679,7 +676,7 @@ Josh England (4):
       post-checkout hook, tests, and docs
       Minor usage update in setgitperms.perl
 
-Junio C Hamano (159):
+Junio C Hamano (157):
       Keep last used delta base in the delta window
       git-gui po/README: Guide to translators
       Start 1.5.4 cycle
@@ -803,8 +800,6 @@ Junio C Hamano (159):
       t5510: add a bit more tests for fetch
       git-cvsserver runs hooks/post-update
       Revert "git-am: catch missing author date early."
-      git grep shows the same hit repeatedly for unmerged paths
-      git-am -i: report rewritten title
       Documentation: color.* = true means "auto"
       git config --get-colorbool
       Color support for "git-add -i"
@@ -980,12 +975,9 @@ Nanako Shiraishi (3):
       git-gui: Update Japanese strings
       Update ja.po for git-gui
 
-Nguyễn Thái Ngọc Duy (6):
+Nguyễn Thái Ngọc Duy (3):
       contrib/fast-import: add simple shell example
       git-sh-setup.sh: use "git rev-parse --show-cdup" to check for SUBDIRECTORY_OK
-      Add missing inside_work_tree setting in setup_git_directory_gently
-      Do check_repository_format() early
-      Do check_repository_format() early (re-fix)
       Remove repo version check from setup_git_directory
 
 Nicolas Pitre (42):
@@ -1432,6 +1424,35 @@ Xudong Guan (2):
 
 İsmail Dönmez (1):
       gitweb: use Perl built-in utf8 function for UTF-8 decoding.
+
+
+Version v1.5.3.8; changes since v1.5.3.7:
+-----------------------------------------
+
+David Symonds (1):
+      Change from using email.com to example.com as example domain, as per RFC 2606.
+
+Eric Wong (2):
+      git-svn: support for funky branch and project names over HTTP(S)
+      git-svn: clarify the "Ignoring error from SVN" piece
+
+Jeff King (3):
+      t9600: test cvsimport from CVS working tree
+      clone: correctly report http_fetch errors
+      git-send-email: avoid duplicate message-ids
+
+Jim Meyering (1):
+      config.c:store_write_pair(): don't read the byte before a malloc'd buffer.
+
+Junio C Hamano (3):
+      git grep shows the same hit repeatedly for unmerged paths
+      git-am -i: report rewritten title
+      GIT 1.5.3.8
+
+Nguyễn Thái Ngọc Duy (3):
+      Add missing inside_work_tree setting in setup_git_directory_gently
+      Do check_repository_format() early
+      Do check_repository_format() early (re-fix)
 
 
 Version v1.5.3.7; changes since v1.5.3.6:
