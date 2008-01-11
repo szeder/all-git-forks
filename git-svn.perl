@@ -197,8 +197,8 @@ for (my $i = 0; $i < @ARGV; $i++) {
 	}
 };
 
-# make sure we're always running
-unless ($cmd =~ /(?:clone|init|multi-init)$/) {
+# make sure we're always running at the top-level working directory
+unless ($cmd && $cmd =~ /(?:clone|init|multi-init)$/) {
 	unless (-d $ENV{GIT_DIR}) {
 		if ($git_dir_user_set) {
 			die "GIT_DIR=$ENV{GIT_DIR} explicitly set, ",
@@ -418,7 +418,7 @@ sub cmd_dcommit {
 		warn "Attempting to commit more than one change while ",
 		     "--no-rebase is enabled.\n",
 		     "If these changes depend on each other, re-running ",
-		     "without --no-rebase will be required."
+		     "without --no-rebase may be required."
 	}
 	while (1) {
 		my $d = shift @$linear_refs or last;
@@ -453,6 +453,7 @@ sub cmd_dcommit {
 				                               $parents->{$d};
 			}
 			$_fetch_all ? $gs->fetch_all : $gs->fetch;
+			$last_rev = $cmt_rev;
 			next if $_no_rebase;
 
 			# we always want to rebase against the current HEAD,
@@ -512,7 +513,6 @@ sub cmd_dcommit {
 				$parents = \%p;
 				$linear_refs = \@l;
 			}
-			$last_rev = $cmt_rev;
 		}
 	}
 	unlink $gs->{index};
@@ -1283,8 +1283,11 @@ BEGIN {
 	}
 }
 
-my %LOCKFILES;
-END { unlink keys %LOCKFILES if %LOCKFILES }
+my (%LOCKFILES, %INDEX_FILES);
+END {
+	unlink keys %LOCKFILES if %LOCKFILES;
+	unlink keys %INDEX_FILES if %INDEX_FILES;
+}
 
 sub resolve_local_globs {
 	my ($url, $fetch, $glob_spec) = @_;
@@ -1376,7 +1379,6 @@ sub fetch_all {
 
 	($base, $head) = parse_revision_argument($base, $head);
 	$ra->gs_fetch_loop_common($base, $head, \@gs, \@globs);
-	unlink $_->{index} foreach @gs;
 }
 
 sub read_all_remotes {
@@ -2052,6 +2054,43 @@ sub full_url {
 	$self->{url} . (length $self->{path} ? '/' . $self->{path} : '');
 }
 
+
+sub set_commit_header_env {
+	my ($log_entry) = @_;
+	my %env;
+	foreach my $ned (qw/NAME EMAIL DATE/) {
+		foreach my $ac (qw/AUTHOR COMMITTER/) {
+			$env{"GIT_${ac}_${ned}"} = $ENV{"GIT_${ac}_${ned}"};
+		}
+	}
+
+	$ENV{GIT_AUTHOR_NAME} = $log_entry->{name};
+	$ENV{GIT_AUTHOR_EMAIL} = $log_entry->{email};
+	$ENV{GIT_AUTHOR_DATE} = $ENV{GIT_COMMITTER_DATE} = $log_entry->{date};
+
+	$ENV{GIT_COMMITTER_NAME} = (defined $log_entry->{commit_name})
+						? $log_entry->{commit_name}
+						: $log_entry->{name};
+	$ENV{GIT_COMMITTER_EMAIL} = (defined $log_entry->{commit_email})
+						? $log_entry->{commit_email}
+						: $log_entry->{email};
+	\%env;
+}
+
+sub restore_commit_header_env {
+	my ($env) = @_;
+	foreach my $ned (qw/NAME EMAIL DATE/) {
+		foreach my $ac (qw/AUTHOR COMMITTER/) {
+			my $k = "GIT_${ac}_${ned}";
+			if (defined $env->{$k}) {
+				$ENV{$k} = $env->{$k};
+			} else {
+				delete $ENV{$k};
+			}
+		}
+	}
+}
+
 sub do_git_commit {
 	my ($self, $log_entry) = @_;
 	my $lr = $self->last_rev;
@@ -2064,17 +2103,7 @@ sub do_git_commit {
 		croak "$log_entry->{revision} = $c already exists! ",
 		      "Why are we refetching it?\n";
 	}
-	$ENV{GIT_AUTHOR_NAME} = $log_entry->{name};
-	$ENV{GIT_AUTHOR_EMAIL} = $log_entry->{email};
-	$ENV{GIT_AUTHOR_DATE} = $ENV{GIT_COMMITTER_DATE} = $log_entry->{date};
-
-	$ENV{GIT_COMMITTER_NAME} = (defined $log_entry->{commit_name})
-						? $log_entry->{commit_name}
-						: $log_entry->{name};
-	$ENV{GIT_COMMITTER_EMAIL} = (defined $log_entry->{commit_email})
-						? $log_entry->{commit_email}
-						: $log_entry->{email};
-
+	my $old_env = set_commit_header_env($log_entry);
 	my $tree = $log_entry->{tree};
 	if (!defined $tree) {
 		$tree = $self->tmp_index_do(sub {
@@ -2089,6 +2118,7 @@ sub do_git_commit {
 	defined(my $pid = open3(my $msg_fh, my $out_fh, '>&STDERR', @exec))
 	                                                           or croak $!;
 	print $msg_fh $log_entry->{log} or croak $!;
+	restore_commit_header_env($old_env);
 	unless ($self->no_metadata) {
 		print $msg_fh "\ngit-svn-id: $log_entry->{metadata}\n"
 		              or croak $!;
@@ -3149,9 +3179,15 @@ sub close_file {
 		}
 		sysseek($fh, 0, 0) or croak $!;
 		if ($fb->{mode_b} == 120000) {
-			sysread($fh, my $buf, 5) == 5 or croak $!;
-			$buf eq 'link ' or die "$path has mode 120000",
-			                       "but is not a link\n";
+			eval {
+				sysread($fh, my $buf, 5) == 5 or croak $!;
+				$buf eq 'link ' or die "$path has mode 120000",
+						       " but is not a link";
+			};
+			if ($@) {
+				warn "$@\n";
+				sysseek($fh, 0, 0) or croak $!;
+			}
 		}
 		defined(my $pid = open my $out,'-|') or die "Can't fork: $!\n";
 		if (!$pid) {
@@ -3911,6 +3947,7 @@ sub gs_fetch_loop_common {
 				if ($log_entry) {
 					$gs->do_git_commit($log_entry);
 				}
+				$INDEX_FILES{$gs->{index}} = 1;
 			}
 			foreach my $g (@$globs) {
 				my $k = "svn-remote.$g->{remote}." .
@@ -4048,6 +4085,10 @@ sub skip_unknown_revs {
 			warn "W: Ignoring error from SVN, path probably ",
 			     "does not exist: ($errno): ",
 			     $err->expanded_message,"\n";
+			warn "W: Do not be alarmed at the above message ",
+			     "git-svn is just searching aggressively for ",
+			     "old history.\n",
+			     "This may take a while on large repositories\n";
 			$ignored_err{$err_key} = 1;
 		}
 		return;

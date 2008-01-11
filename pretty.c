@@ -292,7 +292,18 @@ static void format_person_part(struct strbuf *sb, char part,
 	/* parse name */
 	for (end = 0; end < len && msg[end] != '<'; end++)
 		; /* do nothing */
+	/*
+	 * If it does not even have a '<' and '>', that is
+	 * quite a bogus commit author and we discard it;
+	 * this is in line with add_user_info() that is used
+	 * in the normal codepath.  When end points at the '<'
+	 * that we found, it should have matching '>' later,
+	 * which means start (beginning of email address) must
+	 * be strictly below len.
+	 */
 	start = end + 1;
+	if (start >= len - 1)
+		return;
 	while (end > 0 && isspace(msg[end - 1]))
 		end--;
 	if (part == 'n') {	/* name */
@@ -300,11 +311,8 @@ static void format_person_part(struct strbuf *sb, char part,
 		return;
 	}
 
-	if (start >= len)
-		return;
-
 	/* parse email */
-	for (end = start + 1; end < len && msg[end] != '>'; end++)
+	for (end = start; end < len && msg[end] != '>'; end++)
 		; /* do nothing */
 
 	if (end >= len)
@@ -412,7 +420,7 @@ static void parse_commit_header(struct format_commit_context *context)
 		if (i == eol) {
 			state++;
 			/* strip empty lines */
-			while (msg[eol + 1] == '\n')
+			while (msg[eol] == '\n' && msg[eol + 1] == '\n')
 				eol++;
 		} else if (!prefixcmp(msg + i, "author ")) {
 			context->author.off = i + 7;
@@ -425,6 +433,8 @@ static void parse_commit_header(struct format_commit_context *context)
 			context->encoding.len = eol - i - 9;
 		}
 		i = eol;
+		if (!msg[i])
+			break;
 	}
 	context->body_off = i;
 	context->commit_header_parsed = 1;

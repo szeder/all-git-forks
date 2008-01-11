@@ -10,6 +10,7 @@
 #include "color.h"
 #include "attr.h"
 #include "run-command.h"
+#include "utf8.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -58,14 +59,6 @@ static struct ll_diff_driver {
 	struct ll_diff_driver *next;
 	char *cmd;
 } *user_diff, **user_diff_tail;
-
-static void read_config_if_needed(void)
-{
-	if (!user_diff_tail) {
-		user_diff_tail = &user_diff;
-		git_config(git_diff_ui_config);
-	}
-}
 
 /*
  * Currently there is only "diff.<drivername>.command" variable;
@@ -174,14 +167,26 @@ int git_diff_ui_config(const char *var, const char *value)
 		if (ep != var + 4) {
 			if (!strcmp(ep, ".command"))
 				return parse_lldiff_command(var, ep, value);
-			if (!strcmp(ep, ".funcname"))
-				return parse_funcname_pattern(var, ep, value);
 		}
 	}
+
+	return git_diff_basic_config(var, value);
+}
+
+int git_diff_basic_config(const char *var, const char *value)
+{
 	if (!prefixcmp(var, "diff.color.") || !prefixcmp(var, "color.diff.")) {
 		int slot = parse_diff_color_slot(var, 11);
 		color_parse(value, var, diff_colors[slot]);
 		return 0;
+	}
+
+	if (!prefixcmp(var, "diff.")) {
+		const char *ep = strrchr(var, '.');
+		if (ep != var + 4) {
+			if (!strcmp(ep, ".funcname"))
+				return parse_funcname_pattern(var, ep, value);
+		}
 	}
 
 	return git_default_config(var, value);
@@ -290,28 +295,35 @@ static void emit_rewrite_diff(const char *name_a,
 			      const char *name_b,
 			      struct diff_filespec *one,
 			      struct diff_filespec *two,
-			      int color_diff)
+			      struct diff_options *o)
 {
 	int lc_a, lc_b;
+	int color_diff = DIFF_OPT_TST(o, COLOR_DIFF);
 	const char *name_a_tab, *name_b_tab;
 	const char *metainfo = diff_get_color(color_diff, DIFF_METAINFO);
 	const char *fraginfo = diff_get_color(color_diff, DIFF_FRAGINFO);
 	const char *old = diff_get_color(color_diff, DIFF_FILE_OLD);
 	const char *new = diff_get_color(color_diff, DIFF_FILE_NEW);
 	const char *reset = diff_get_color(color_diff, DIFF_RESET);
+	static struct strbuf a_name = STRBUF_INIT, b_name = STRBUF_INIT;
 
 	name_a += (*name_a == '/');
 	name_b += (*name_b == '/');
 	name_a_tab = strchr(name_a, ' ') ? "\t" : "";
 	name_b_tab = strchr(name_b, ' ') ? "\t" : "";
 
+	strbuf_reset(&a_name);
+	strbuf_reset(&b_name);
+	quote_two_c_style(&a_name, o->a_prefix, name_a, 0);
+	quote_two_c_style(&b_name, o->b_prefix, name_b, 0);
+
 	diff_populate_filespec(one, 0);
 	diff_populate_filespec(two, 0);
 	lc_a = count_lines(one->data, one->size);
 	lc_b = count_lines(two->data, two->size);
-	printf("%s--- a/%s%s%s\n%s+++ b/%s%s%s\n%s@@ -",
-	       metainfo, name_a, name_a_tab, reset,
-	       metainfo, name_b, name_b_tab, reset, fraginfo);
+	printf("%s--- %s%s%s\n%s+++ %s%s%s\n%s@@ -",
+	       metainfo, a_name.buf, name_a_tab, reset,
+	       metainfo, b_name.buf, name_b_tab, reset, fraginfo);
 	print_line_count(lc_a);
 	printf(" +");
 	print_line_count(lc_b);
@@ -458,10 +470,13 @@ static void diff_words_show(struct diff_words_data *diff_words)
 	}
 }
 
+typedef unsigned long (*sane_truncate_fn)(char *line, unsigned long len);
+
 struct emit_callback {
 	struct xdiff_emit_state xm;
 	int nparents, color_diff;
 	unsigned ws_rule;
+	sane_truncate_fn truncate;
 	const char **label_path;
 	struct diff_words_data *diff_words;
 	int *found_changesp;
@@ -514,6 +529,24 @@ static void emit_add_line(const char *reset, struct emit_callback *ecbdata, cons
 	}
 }
 
+static unsigned long sane_truncate_line(struct emit_callback *ecb, char *line, unsigned long len)
+{
+	const char *cp;
+	unsigned long allot;
+	size_t l = len;
+
+	if (ecb->truncate)
+		return ecb->truncate(line, len);
+	cp = line;
+	allot = l;
+	while (0 < l) {
+		(void) utf8_width(&cp, &l);
+		if (!cp)
+			break; /* truncated in the middle? */
+	}
+	return allot - l;
+}
+
 static void fn_out_consume(void *priv, char *line, unsigned long len)
 {
 	int i;
@@ -544,8 +577,11 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 		;
 	if (2 <= i && i < len && line[i] == ' ') {
 		ecbdata->nparents = i - 1;
+		len = sane_truncate_line(ecbdata, line, len);
 		emit_line(diff_get_color(ecbdata->color_diff, DIFF_FRAGINFO),
 			  reset, line, len);
+		if (line[len-1] != '\n')
+			putchar('\n');
 		return;
 	}
 
@@ -1147,7 +1183,6 @@ static const char *funcname_pattern(const char *ident)
 {
 	struct funcname_pattern *pp;
 
-	read_config_if_needed();
 	for (pp = funcname_pattern_list; pp; pp = pp->next)
 		if (!strcmp(ident, pp->name))
 			return pp->pattern;
@@ -1212,8 +1247,8 @@ static void builtin_diff(const char *name_a,
 	const char *set = diff_get_color_opt(o, DIFF_METAINFO);
 	const char *reset = diff_get_color_opt(o, DIFF_RESET);
 
-	a_one = quote_two("a/", name_a + (*name_a == '/'));
-	b_two = quote_two("b/", name_b + (*name_b == '/'));
+	a_one = quote_two(o->a_prefix, name_a + (*name_a == '/'));
+	b_two = quote_two(o->b_prefix, name_b + (*name_b == '/'));
 	lbl[0] = DIFF_FILE_VALID(one) ? a_one : "/dev/null";
 	lbl[1] = DIFF_FILE_VALID(two) ? b_two : "/dev/null";
 	printf("%sdiff --git %s %s%s\n", set, a_one, b_two, reset);
@@ -1242,8 +1277,7 @@ static void builtin_diff(const char *name_a,
 		if ((one->mode ^ two->mode) & S_IFMT)
 			goto free_ab_and_return;
 		if (complete_rewrite) {
-			emit_rewrite_diff(name_a, name_b, one, two,
-					DIFF_OPT_TST(o, COLOR_DIFF));
+			emit_rewrite_diff(name_a, name_b, one, two, o);
 			o->found_changes = 1;
 			goto free_ab_and_return;
 		}
@@ -1805,7 +1839,6 @@ static const char *external_diff_attr(const char *name)
 		    !ATTR_UNSET(value)) {
 			struct ll_diff_driver *drv;
 
-			read_config_if_needed();
 			for (drv = user_diff; drv; drv = drv->next)
 				if (!strcmp(drv->name, value))
 					return drv->cmd;
@@ -2020,6 +2053,9 @@ void diff_setup(struct diff_options *options)
 	else
 		DIFF_OPT_CLR(options, COLOR_DIFF);
 	options->detect_rename = diff_detect_rename_default;
+
+	options->a_prefix = "a/";
+	options->b_prefix = "b/";
 }
 
 int diff_setup_done(struct diff_options *options)
@@ -2291,6 +2327,12 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		else if (40 < options->abbrev)
 			options->abbrev = 40;
 	}
+	else if (!prefixcmp(arg, "--src-prefix="))
+		options->a_prefix = arg + 13;
+	else if (!prefixcmp(arg, "--dst-prefix="))
+		options->b_prefix = arg + 13;
+	else if (!strcmp(arg, "--no-prefix"))
+		options->a_prefix = options->b_prefix = "";
 	else
 		return 0;
 	return 1;

@@ -205,11 +205,20 @@ endif::git-format-patch[]
 
 --ext-diff::
 	Allow an external diff helper to be executed. If you set an
-	external diff driver with gitlink:gitattributes[5], you need
-	to use this option with gitlink:git-log[1] and friends.
+	external diff driver with linkgit:gitattributes[5], you need
+	to use this option with linkgit:git-log[1] and friends.
 
 --no-ext-diff::
 	Disallow external diff drivers.
+
+--src-prefix=<prefix>::
+	Show the given source prefix instead of "a/".
+
+--dst-prefix=<prefix>::
+	Show the given destination prefix instead of "b/".
+
+--no-prefix::
+	Do not show any source or destination prefix.
 
 For more detailed explanation on these common options, see also
 link:diffcore.html[diffcore documentation].
