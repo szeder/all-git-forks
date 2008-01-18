@@ -38,6 +38,8 @@ all::
 #
 # Define NO_SETENV if you don't have setenv in the C library.
 #
+# Define NO_UNSETENV if you don't have unsetenv in the C library.
+#
 # Define NO_MKDTEMP if you don't have mkdtemp in the C library.
 #
 # Define NO_SYMLINK_HEAD if you never want .git/HEAD to be a symbolic link.
@@ -1145,7 +1147,7 @@ check-docs::
 		case "$$v" in \
 		git-merge-octopus | git-merge-ours | git-merge-recursive | \
 		git-merge-resolve | git-merge-stupid | git-merge-subtree | \
-		git-fsck-objects | git-init-db | git-repo-config | \
+		git-fsck-objects | git-init-db | \
 		git-?*--?* ) continue ;; \
 		esac ; \
 		test -f "Documentation/$$v.txt" || \
@@ -1187,3 +1189,4 @@ check-docs::
 #
 check-builtins::
 	./check-builtins.sh
+

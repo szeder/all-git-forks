@@ -878,8 +878,9 @@ static char *keep_pack(char *curr_index_name)
 	keep_fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0600);
 	if (keep_fd < 0)
 		die("cannot create keep file");
-	write(keep_fd, keep_msg, strlen(keep_msg));
-	close(keep_fd);
+	write_or_die(keep_fd, keep_msg, strlen(keep_msg));
+	if (close(keep_fd))
+		die("failed to write keep file");
 
 	snprintf(name, sizeof(name), "%s/pack/pack-%s.pack",
 		 get_object_directory(), sha1_to_hex(pack_data->sha1));
@@ -916,6 +917,7 @@ static void end_packfile(void)
 		struct branch *b;
 		struct tag *t;
 
+		close_pack_windows(pack_data);
 		fixup_pack_header_footer(pack_data->pack_fd, pack_data->sha1,
 				    pack_data->pack_name, object_count);
 		close(pack_data->pack_fd);
@@ -925,7 +927,6 @@ static void end_packfile(void)
 		new_p = add_packed_git(idx_name, strlen(idx_name), 1);
 		if (!new_p)
 			die("core git rejected index %s", idx_name);
-		new_p->windows = old_p->windows;
 		all_packs[pack_id] = new_p;
 		install_packed_git(new_p);
 
@@ -1128,8 +1129,10 @@ static void *gfi_unpack_entry(
 {
 	enum object_type type;
 	struct packed_git *p = all_packs[oe->pack_id];
-	if (p == pack_data)
+	if (p == pack_data && p->pack_size < (pack_size + 20)) {
+		close_pack_windows(p);
 		p->pack_size = pack_size + 20;
+	}
 	return unpack_entry(p, oe->offset, &type, sizep);
 }
 
@@ -1544,11 +1547,27 @@ static void dump_marks(void)
 		return;
 	}
 
+	/*
+	 * Since the lock file was fdopen()'ed, it should not be close()'ed.
+	 * Assign -1 to the lock file descriptor so that commit_lock_file()
+	 * won't try to close() it.
+	 */
+	mark_lock.fd = -1;
+
 	dump_marks_helper(f, 0, marks);
-	fclose(f);
-	if (commit_lock_file(&mark_lock))
+	if (ferror(f) || fclose(f)) {
+		rollback_lock_file(&mark_lock);
 		failure |= error("Unable to write marks file %s: %s",
 			mark_file, strerror(errno));
+		return;
+	}
+
+	if (commit_lock_file(&mark_lock)) {
+		rollback_lock_file(&mark_lock);
+		failure |= error("Unable to commit marks file %s: %s",
+			mark_file, strerror(errno));
+		return;
+	}
 }
 
 static int read_next_command(void)
