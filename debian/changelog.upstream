@@ -1,3 +1,113 @@
+Version v1.5.4-rc4; changes since v1.5.4-rc3:
+---------------------------------------------
+
+Bill Lear (1):
+      Correct spelling in diff.c comment
+
+Brandon Casey (4):
+      close_lock_file(): new function in the lockfile API
+      Improve use of lockfile API
+      refs.c: rework ref_locks by abstracting from underlying struct lock_file
+      fast-import.c: don't try to commit marks file if write failed
+
+Christian Couder (2):
+      git-gui: Initial french translation
+      git-gui: add french glossary: glossary/fr.po
+
+Christian Stimming (4):
+      git-gui: Update glossary: add term "hunk"
+      git-gui: Update German translation
+      git-gui: Fix broken revert confirmation.
+      git-gui: Improve German translation.
+
+Dan McGee (3):
+      Remove usage of git- (dash) commands from email hook
+      cvsimport: remove last use of repo-config from git standard tools
+      Update git-completion for new 'remote rm' option
+
+Dave Peticolas (1):
+      Documentation: fix and clarify grammar in git-merge docs.
+
+Dmitry Potapov (1):
+      treat any file with NUL as binary
+
+Eric Wong (1):
+      git-svn: handle leading/trailing whitespace from svnsync revprops
+
+Grégoire Barbier (4):
+      http-push: disable http-push without USE_CURL_MULTI
+      http-push: fix webdav lock leak.
+      http-push: fail when info/refs exists and is already locked
+      http-push and http-fetch: handle URLs without trailing /
+
+Jakub Narebski (1):
+      autoconf: Add checking for unsetenv function
+
+Jean-Luc Herren (1):
+      Make default pre-commit hook less noisy
+
+Jeff King (5):
+      git-clean: fix off-by-one memory access when given no arguments
+      color unchanged lines as "plain" in "diff --color-words"
+      send-email: detect invocation errors earlier
+      send-email: validate patches before sending anything
+      send-email: add no-validate option
+
+Jim Meyering (2):
+      fast-import: Don't use a maybe-clobbered errno value
+      doc typo: s/prior committing/prior to committing/
+
+Johannes Schindelin (1):
+      gitk: make Ctrl "+" really increase the font size
+
+Junio C Hamano (8):
+      builtin-commit.c: remove useless check added by faulty cut and paste
+      Revert "builtin-commit.c: remove useless check added by faulty cut and paste"
+      Fix git-rerere documentation
+      Squelch bogus progress output from git-rebase--interactive
+      Document lockfile API
+      Officially deprecate repo-config.
+      http-push: clarify the reason of error from the initial PROPFIND request
+      GIT 1.5.4-rc4
+
+Kristian Høgsberg (1):
+      git-commit: fix double close(2) that can close a wrong file descriptor
+
+Lars Hjemli (1):
+      Move sha1_file_to_archive into libgit
+
+Linus Torvalds (4):
+      Fix performance regression for partial commits
+      Make builtin-commit.c more careful about parenthood
+      Make 'git fsck' complain about non-commit branches
+      Be more careful about updating refs
+
+Mark Drago (1):
+      hg-to-git: improve popen calls
+
+Mark Levedahl (1):
+      git-gui: Makefile - Handle $DESTDIR on Cygwin
+
+Martin Koegler (1):
+      parse_commit_buffer: tighten checks while parsing
+
+Miklos Vajna (3):
+      Add using merge subtree How-To
+      ls-remote: add -t and -h options.
+      Include rev-list options in git-log manpage.
+
+Peter Karlsson (1):
+      git-gui: Updated Swedish translation after mailing list review.
+
+Shawn O. Pearce (3):
+      git-gui: Allow 'Create New Repository' on existing directories
+      git-gui: Refresh file status description after hunk application
+      Fix random fast-import errors when compiled with NO_MMAP
+
+Thomas Zander (1):
+      core-tutorial typofix
+
+
 Version v1.5.4-rc3; changes since v1.5.4-rc2:
 ---------------------------------------------
 
