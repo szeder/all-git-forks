@@ -87,8 +87,10 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	for i in '$(GIT)'-core/usr/bin/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
-	# don't include git-gui's tcl files
+	# don't include git-gui's lib
 	rm -rf '$(GIT)'-core/usr/share/git-gui/
+	# don't include gitk's lib
+	rm -rf '$(GIT)'-core/usr/share/gitk/
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
 	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \
@@ -183,6 +185,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0644 '$(TMP)'/usr/share/man/man1/gitk.1 \
 	  '$(GIT)'k/usr/share/man/man1/
 	gzip -9 '$(GIT)'k/usr/share/man/man1/*.1
+	install -d -m0755 '$(GIT)'k/usr/share/gitk
+	cp -a '$(TMP)'/usr/share/gitk/lib '$(GIT)'k/usr/share/gitk/
 	# gitweb
 	rm -rf '$(GIT)'web
 	install -d -m0755 '$(GIT)'web/usr/lib/cgi-bin
