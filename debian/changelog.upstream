@@ -1,3 +1,70 @@
+Version v1.5.4-rc5; changes since v1.5.4-rc4:
+---------------------------------------------
+
+Alex Riesen (1):
+      Make t5710 more strict when creating nested repos
+
+Brandon Casey (1):
+      git-commit: exit non-zero if we fail to commit the index
+
+Eric Wong (1):
+      git-svn: default to repacking every 1000 commits
+
+Gustaf Hendeby (1):
+      send-email, fix breakage in combination with --compose
+
+Jakub Narebski (1):
+      autoconf: define NO_SYS_SELECT_H on systems without <sys/select.h>.
+
+Johannes Schindelin (1):
+      pull --rebase: be cleverer with rebased upstream branches
+
+Junio C Hamano (5):
+      git-submodule: rename shell functions for consistency
+      git-submodule: fix subcommand parser
+      git-submodule: add test for the subcommand parser fix
+      Clarify that http-push being temporarily disabled with older cURL
+      GIT 1.5.4-rc5
+
+Mike Hommey (2):
+      Add a missing dependency on http.h
+      Documentation: add a bit about sendemail.to configuration
+
+Miklos Vajna (2):
+      git-clone -s: document problems with git gc --prune
+      git pull manpage: don't include -n from fetch-options.txt
+
+Nicolas Pitre (1):
+      pack-objects: Fix segfault when object count is less than thread count
+
+Pierre Habouzit (1):
+      parse-options: catch likely typo in presense of aggregated options.
+
+Robert Schiele (2):
+      pre-POSIX.1-2001 systems do not have <sys/select.h>
+      Makefile: customization for supporting HP-UX
+
+Sam Vilain (1):
+      git-svn(1): update instructions for resuming a git-svn clone
+
+Shawn O. Pearce (10):
+      git-gui: Honor the standard commit-msg hook
+      git-gui: Correct window title for hook failure dialogs
+      git-gui: Consolidate hook execution code into a single function
+      git-gui: Correct encoding of glossary/fr.po to UTF-8
+      Teach fast-import to honor pack.compression and pack.depth
+      Document the hairy gfi_unpack_entry part of fast-import
+      git-gui: Work around random missing scrollbar in revision list
+      git-gui: Fallback to Tcl based po2msg.sh if msgfmt isn't available
+      git-gui: Make the statistics of po2msg match those of msgfmt
+      git-gui: Correctly cleanup msgfmt '1 message untranslated' output
+
+Steffen Prohaska (3):
+      submodule: Document the details of the command line syntax
+      t9400-git-cvsserver-server: Wrap setup into test case
+      cvsserver: Fix for histories with multiple roots
+
+
 Version v1.5.4-rc4; changes since v1.5.4-rc3:
 ---------------------------------------------
 
