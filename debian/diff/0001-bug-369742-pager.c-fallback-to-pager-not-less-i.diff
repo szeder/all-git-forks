@@ -1,7 +1,7 @@
-From fd9e6832bde12b0f55e6c191719763a376ec892f Mon Sep 17 00:00:00 2001
+From f934a25b5c9721c5224615b9d8cf27ba13838dd0 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Wed, 9 May 2007 08:36:16 +0000
-Subject: [PATCH] pager.c: fallback to 'pager' not 'less' if $PAGER is unset.
+Subject: [PATCH] bug#369742: pager.c: fallback to 'pager' not 'less' if $PAGER is unset.
 
 http://bugs.debian.org/369742
 ---

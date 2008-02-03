@@ -1,3 +1,54 @@
+Version v1.5.4; changes since v1.5.4-rc5:
+-----------------------------------------
+
+Brandon Casey (4):
+      git-relink: avoid hard linking in objects/info directory
+      filter-branch.sh: remove temporary directory on failure
+      filter-branch docs: remove brackets so not to imply revision arg is optional
+      filter-branch: assume HEAD if no revision supplied
+
+Bruno Ribas (1):
+      gitweb: Make use of the $git_dir variable at sub git_get_project_description
+
+Christian Couder (3):
+      Documentation: config: add "browser.<tool>.path".
+      Documentation: help: specify supported html browsers.
+      instaweb: use 'browser.<tool>.path' config option if it's set.
+
+Jakub Narebski (1):
+      gitweb: Add info about $projectroot and $projects_list to gitweb/README
+
+Jean-Luc Herren (1):
+      Documentation/git-cvsserver: Fix typo
+
+Jeff King (1):
+      t9001: add missing && operators
+
+Jim Meyering (1):
+      fix doc typos
+
+Johannes Schindelin (1):
+      Add test for rebase -i with commits that do not pass pre-commit
+
+Junio C Hamano (4):
+      reflog-expire: Avoid creating new files in a directory inside readdir(3) loop
+      Revert "filter-branch docs: remove brackets so not to imply revision arg is optional"
+      Fix "git checkout -b foo ':/substring'"
+      GIT 1.5.4
+
+Michele Ballabio (1):
+      Fix typo in a comment in t/test-lib.sh
+
+Miklos Vajna (1):
+      git rev-parse manpage: spelling fix
+
+Shawn O. Pearce (1):
+      Use 'printf %s $x' notation in t5401
+
+Yasushi SHOJI (1):
+      gitweb: Convert generated contents to utf8 in commitdiff_plain
+
+
 Version v1.5.4-rc5; changes since v1.5.4-rc4:
 ---------------------------------------------
 
