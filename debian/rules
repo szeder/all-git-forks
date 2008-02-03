@@ -48,8 +48,13 @@ patch-stamp:
 build: deb-checkdir build-arch-stamp build-indep-stamp
 build-arch-stamp: patch-stamp
 	-gcc -v
-	DESTDIR='$(GIT)'-core $(MAKE) all $(TEST) \
+	DESTDIR='$(GIT)'-core $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	test -z '$(TEST)' || \
+	  DESTDIR='$(GIT)'-core $(MAKE) $(TEST) \
+	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS) || \
+	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)'-core $(MAKE) $(TEST) \
+	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	$(MAKE) -CDocumentation man ASCIIDOC8=YesPlease
 	touch build-arch-stamp
 build-indep-stamp: build-arch-stamp

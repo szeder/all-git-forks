@@ -5,8 +5,10 @@ git-core (1:1.5.4-1) unstable; urgency=low
   * debian/git-core.README.Debian: add Alias'es for git-favicon.png and
     git-logo.png to the VirtualHost example (thx Frederic Briere, closes:
     #463732).
+  * debian/rules: target build-arch-stamp: re-run selftests with --verbose
+    on test failures.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Feb 2008 04:32:55 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Feb 2008 05:01:16 +0000
 
 git-core (1:1.5.4~rc5-1) experimental; urgency=low
 
