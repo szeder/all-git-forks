@@ -51,6 +51,8 @@ configuration that looks like this:
     CustomLog /var/log/apache-ssl/git.example.org-access.log combined
     Alias /robots.txt /var/www/cvs.robots.txt
     Alias /gitweb.css /var/www/gitweb.css
+    Alias /git-favicon.png /var/www/git-favicon.png
+    Alias /git-logo.png /var/www/git-logo.png
     Alias /git /var/cache/git
     ScriptAlias / /usr/lib/cgi-bin/gitweb.cgi
     RedirectMatch permanent "^/~(.*)$" "http://example.org/~$1" 

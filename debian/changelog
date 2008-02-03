@@ -2,8 +2,11 @@ git-core (1:1.5.4-1) unstable; urgency=low
 
   * merge branch debian-experimental.
   * new upstream release.
+  * debian/git-core.README.Debian: add Alias'es for git-favicon.png and
+    git-logo.png to the VirtualHost example (thx Frederic Briere, closes:
+    #463732).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 03 Feb 2008 04:25:01 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 03 Feb 2008 04:32:55 +0000
 
 git-core (1:1.5.4~rc5-1) experimental; urgency=low
 
