@@ -8,7 +8,7 @@ test_expect_success \
     'prepare reference tree' \
     'echo "1A quick brown fox jumps over the" >file &&
      echo "lazy dog" >>file &&
-     git add file
+     git add file &&
      GIT_AUTHOR_NAME="A" git commit -a -m "Initial."'
 
 test_expect_success \
@@ -20,9 +20,9 @@ test_expect_success \
       echo "  echo \"!\$a!\""
       echo "done >commandline"
       echo "cat > msgtxt"
-      ) >fake.sendmail
-     chmod +x ./fake.sendmail
-     git add fake.sendmail
+      ) >fake.sendmail &&
+     chmod +x ./fake.sendmail &&
+     git add fake.sendmail &&
      GIT_AUTHOR_NAME="A" git commit -a -m "Second."'
 
 test_expect_success 'Extract patches' '
@@ -76,6 +76,36 @@ test_expect_success 'Show all headers' '
 		-e "s/^\(X-Mailer:\).*/\1 X-MAILER-STRING/" \
 		>actual-show-all-headers &&
 	diff -u expected-show-all-headers actual-show-all-headers
+'
+
+z8=zzzzzzzz
+z64=$z8$z8$z8$z8$z8$z8$z8$z8
+z512=$z64$z64$z64$z64$z64$z64$z64$z64
+test_expect_success 'reject long lines' '
+	rm -f commandline &&
+	cp $patches longline.patch &&
+	echo $z512$z512 >>longline.patch &&
+	! git send-email \
+		--from="Example <nobody@example.com>" \
+		--to=nobody@example.com \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		$patches longline.patch \
+		2>errors &&
+	grep longline.patch errors
+'
+
+test_expect_success 'no patch was sent' '
+	! test -e commandline
+'
+
+test_expect_success 'allow long lines with --no-validate' '
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--to=nobody@example.com \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		--no-validate \
+		$patches longline.patch \
+		2>errors
 '
 
 test_done

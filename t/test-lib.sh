@@ -139,6 +139,8 @@ fi
 
 test_failure=0
 test_count=0
+test_fixed=0
+test_broken=0
 
 trap 'echo >&5 "FATAL: Unexpected exit with code $?"; exit 1' exit
 
@@ -171,6 +173,17 @@ test_failure_ () {
 	test "$immediate" = "" || { trap - exit; exit 1; }
 }
 
+test_known_broken_ok_ () {
+	test_count=$(expr "$test_count" + 1)
+	test_fixed=$(($test_fixed+1))
+	say_color "" "  FIXED $test_count: $@"
+}
+
+test_known_broken_failure_ () {
+	test_count=$(expr "$test_count" + 1)
+	test_broken=$(($test_broken+1))
+	say_color skip "  still broken $test_count: $@"
+}
 
 test_debug () {
 	test "$debug" = "" || eval "$1"
@@ -211,13 +224,13 @@ test_expect_failure () {
 	error "bug in the test script: not 2 parameters to test-expect-failure"
 	if ! test_skip "$@"
 	then
-		say >&3 "expecting failure: $2"
+		say >&3 "checking known breakage: $2"
 		test_run_ "$2"
-		if [ "$?" = 0 -a "$eval_ret" != 0 -a "$eval_ret" -lt 129 ]
+		if [ "$?" = 0 -a "$eval_ret" = 0 ]
 		then
-			test_ok_ "$1"
+			test_known_broken_ok_ "$1"
 		else
-			test_failure_ "$@"
+		    test_known_broken_failure_ "$1"
 		fi
 	fi
 	echo >&3 ""
@@ -257,7 +270,7 @@ test_expect_code () {
 	echo >&3 ""
 }
 
-# Most tests can use the created repository, but some amy need to create more.
+# Most tests can use the created repository, but some may need to create more.
 # Usage: test_create_repo <directory>
 test_create_repo () {
 	test "$#" = 1 ||
@@ -274,6 +287,18 @@ test_create_repo () {
 
 test_done () {
 	trap - exit
+
+	if test "$test_fixed" != 0
+	then
+		say_color pass "fixed $test_fixed known breakage(s)"
+	fi
+	if test "$test_broken" != 0
+	then
+		say_color error "still have $test_broken known breakage(s)"
+		msg="remaining $(($test_count-$test_broken)) test(s)"
+	else
+		msg="$test_count test(s)"
+	fi
 	case "$test_failure" in
 	0)
 		# We could:
@@ -284,11 +309,11 @@ test_done () {
 		# The Makefile provided will clean this test area so
 		# we will leave things as they are.
 
-		say_color pass "passed all $test_count test(s)"
+		say_color pass "passed all $msg"
 		exit 0 ;;
 
 	*)
-		say_color error "failed $test_failure among $test_count test(s)"
+		say_color error "failed $test_failure among $msg"
 		exit 1 ;;
 
 	esac

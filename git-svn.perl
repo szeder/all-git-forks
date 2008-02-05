@@ -1247,7 +1247,8 @@ use File::Path qw/mkpath/;
 use File::Copy qw/copy/;
 use IPC::Open3;
 
-my $_repack_nr;
+my ($_gc_nr, $_gc_period);
+
 # properties that we do not log:
 my %SKIP_PROP;
 BEGIN {
@@ -1408,10 +1409,9 @@ sub read_all_remotes {
 }
 
 sub init_vars {
-	if (defined $_repack) {
-		$_repack = 1000 if ($_repack <= 0);
-		$_repack_nr = $_repack;
-		$_repack_flags ||= '-d';
+	$_gc_nr = $_gc_period = 1000;
+	if (defined $_repack || defined $_repack_flags) {
+	       warn "Repack options are obsolete; they have no effect.\n";
 	}
 }
 
@@ -2098,6 +2098,10 @@ sub restore_commit_header_env {
 	}
 }
 
+sub gc {
+	command_noisy('gc', '--auto');
+};
+
 sub do_git_commit {
 	my ($self, $log_entry) = @_;
 	my $lr = $self->last_rev;
@@ -2151,12 +2155,9 @@ sub do_git_commit {
 		                   0, $self->svm_uuid);
 	}
 	print " = $commit ($self->{ref_id})\n";
-	if (defined $_repack && (--$_repack_nr == 0)) {
-		$_repack_nr = $_repack;
-		# repack doesn't use any arguments with spaces in them, does it?
-		print "Running git repack $_repack_flags ...\n";
-		command_noisy('repack', split(/\s+/, $_repack_flags));
-		print "Done repacking\n";
+	if (--$_gc_nr == 0) {
+		$_gc_nr = $_gc_period;
+		gc();
 	}
 	return $commit;
 }
@@ -3985,6 +3986,7 @@ sub gs_fetch_loop_common {
 		$max += $inc;
 		$max = $head if ($max > $head);
 	}
+	Git::SVN::gc();
 }
 
 sub match_globs {

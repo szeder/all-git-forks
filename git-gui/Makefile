@@ -67,7 +67,7 @@ ifndef V
 	QUIET_GEN      = $(QUIET)echo '   ' GEN '$@' &&
 	QUIET_INDEX    = $(QUIET)echo '   ' INDEX $(dir $@) &&
 	QUIET_MSGFMT0  = $(QUIET)printf '    MSGFMT %12s ' $@ && v=`
-	QUIET_MSGFMT1  = 2>&1` && echo "$$v" | sed -e 's/fuzzy translations/fuzzy/' | sed -e 's/ messages//g'
+	QUIET_MSGFMT1  = 2>&1` && echo "$$v" | sed -e 's/fuzzy translations/fuzzy/' | sed -e 's/ messages*//g'
 	QUIET_2DEVNULL = 2>/dev/null
 
 	INSTALL_D0 = dir=
@@ -110,7 +110,7 @@ TCLTK_PATH_SED = $(subst ','\'',$(subst \,\\,$(TCLTK_PATH)))
 
 gg_libdir ?= $(sharedir)/git-gui/lib
 libdir_SQ  = $(subst ','\'',$(gg_libdir))
-libdir_SED = $(subst ','\'',$(subst \,\\,$(gg_libdir)))
+libdir_SED = $(subst ','\'',$(subst \,\\,$(gg_libdir_sed_in)))
 exedir     = $(dir $(gitexecdir))share/git-gui/lib
 
 GITGUI_SCRIPT   := $$0
@@ -119,11 +119,12 @@ GITGUI_MACOSXAPP :=
 
 ifeq ($(uname_O),Cygwin)
 	GITGUI_SCRIPT := `cygpath --windows --absolute "$(GITGUI_SCRIPT)"`
-	gg_libdir := $(shell cygpath --windows --absolute "$(gg_libdir)")
+	gg_libdir_sed_in := $(shell cygpath --windows --absolute "$(gg_libdir)")
 else
 	ifeq ($(exedir),$(gg_libdir))
 		GITGUI_RELATIVE := 1
 	endif
+	gg_libdir_sed_in := $(gg_libdir)
 endif
 ifeq ($(uname_S),Darwin)
 	ifeq ($(shell test -d $(TKFRAMEWORK) && echo y),y)
@@ -197,6 +198,9 @@ ifdef NO_MSGFMT
 	MSGFMT ?= $(TCL_PATH) po/po2msg.sh
 else
 	MSGFMT ?= msgfmt
+	ifeq ($(shell $(MSGFMT) >/dev/null 2>&1 || echo $$?),127)
+		MSGFMT := $(TCL_PATH) po/po2msg.sh
+	endif
 endif
 
 msgsdir     = $(gg_libdir)/msgs

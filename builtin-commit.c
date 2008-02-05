@@ -122,19 +122,23 @@ static void rollback_index_files(void)
 	}
 }
 
-static void commit_index_files(void)
+static int commit_index_files(void)
 {
+	int err = 0;
+
 	switch (commit_style) {
 	case COMMIT_AS_IS:
 		break; /* nothing to do */
 	case COMMIT_NORMAL:
-		commit_lock_file(&index_lock);
+		err = commit_lock_file(&index_lock);
 		break;
 	case COMMIT_PARTIAL:
-		commit_lock_file(&index_lock);
+		err = commit_lock_file(&index_lock);
 		rollback_lock_file(&false_lock);
 		break;
 	}
+
+	return err;
 }
 
 /*
@@ -597,7 +601,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 
 		if (get_sha1(use_message, sha1))
 			die("could not lookup commit %s", use_message);
-		commit = lookup_commit(sha1);
+		commit = lookup_commit_reference(sha1);
 		if (!commit || parse_commit(commit))
 			die("could not parse commit %s", use_message);
 
@@ -926,7 +930,10 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	unlink(git_path("MERGE_HEAD"));
 	unlink(git_path("MERGE_MSG"));
 
-	commit_index_files();
+	if (commit_index_files())
+		die ("Repository has been updated, but unable to write\n"
+		     "new_index file. Check that disk is not full or quota is\n"
+		     "not exceeded, and then \"git reset HEAD\" to recover.");
 
 	rerere();
 	run_hook(get_index_file(), "post-commit", NULL);
