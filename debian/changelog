@@ -1,3 +1,10 @@
+git-core (1:1.5.4-1.1) unstable; urgency=low
+
+  * debian/control: Build-Depends: cvsps (for selftests, thx Marco Rodrigues,
+    closes: #463896).
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 05 Feb 2008 05:39:55 +0000
+
 git-core (1:1.5.4-1) unstable; urgency=low
 
   * merge branch debian-experimental.

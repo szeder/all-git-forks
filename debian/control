@@ -2,7 +2,7 @@ Source: git-core
 Section: devel
 Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
-Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>> 8.0.0), xmlto, libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip, tcl8.4, gettext, cvs, libdbd-sqlite3-perl
+Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>> 8.0.0), xmlto, libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip, tcl8.4, gettext, cvs, cvsps, libdbd-sqlite3-perl
 Standards-Version: 3.7.2.0
 Vcs-Git: http://smarden.org/git/git.git/
 
