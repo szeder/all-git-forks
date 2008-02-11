@@ -1,3 +1,28 @@
+Version v1.5.4.1; changes since v1.5.4:
+---------------------------------------
+
+Gerrit Pape (1):
+      INSTALL: git-merge no longer uses cpio
+
+Jari Aalto (1):
+      Documentation/git-stash.txt: Adjust SYNOPSIS command syntax (2)
+
+Junio C Hamano (3):
+      Update stale documentation links from the main documentation.
+      Fix "git-commit -C $tag"
+      gitattributes: fix relative path matching
+
+Jörg Sommer (2):
+      git-am: fix type in its usage string
+      git-remote documentation: fix synopsis to match description
+
+Tim Stoakes (1):
+      Fix typo in 'blame' documentation.
+
+Timo Hirvonen (1):
+      Fix parsing numeric color values
+
+
 Version v1.5.4; changes since v1.5.4-rc5:
 -----------------------------------------
 
