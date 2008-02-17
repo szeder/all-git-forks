@@ -2,7 +2,7 @@ Source: git-core
 Section: devel
 Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
-Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>> 8.0.0), xmlto, libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip, tcl8.4, gettext, cvs, cvsps, libdbd-sqlite3-perl
+Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>> 8.0.0), xmlto, libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip, tcl8.5, gettext, cvs, cvsps, libdbd-sqlite3-perl
 Standards-Version: 3.7.2.0
 Vcs-Git: http://smarden.org/git/git.git/
 
@@ -137,7 +137,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
 
 Package: git-gui
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.4
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.5
 Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
 Suggests: git-doc
@@ -155,7 +155,7 @@ Description: fast, scalable, distributed revision control system (GUI)
 
 Package: gitk
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.4
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.5
 Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)
