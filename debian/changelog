@@ -5,8 +5,9 @@ git-core (1:1.5.4.2-1) unstable; urgency=low
       message (thx Frédéric Brière, closes: #463468).
     * builtin-commit: remove .git/SQUASH_MSG upon successful commit (closes:
       #464656).
+  * debian/rules: change TCLTK_PATH to /usr/bin/wish8.5 in OPTS.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 17 Feb 2008 06:19:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 17 Feb 2008 06:37:14 +0000
 
 git-core (1:1.5.4.1-1) unstable; urgency=medium
 
