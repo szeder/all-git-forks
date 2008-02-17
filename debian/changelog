@@ -8,8 +8,14 @@ git-core (1:1.5.4.2-1) unstable; urgency=low
   * debian/rules: change TCLTK_PATH to /usr/bin/wish8.5 in OPTS.
   * debian/control: Build-Depends: tcl8.5; git-gui, gitk: Depends: tk8.5
     (closes: #456423).
+  * debian/git-daemon-run.postinst, debian/git-daemon-run.postrm,
+    debian/git-daemon-run.prerm: use runit's update-service program to
+    add/remove the git daemon service, instead of dealing with symlinks in
+    /var/service/ directly.
+  * debian/control: package git-daemon: Depends: runit (>= 1.8.0-2) (1st
+    version that provides the update-service program).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 17 Feb 2008 06:39:01 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 17 Feb 2008 18:48:00 +0000
 
 git-core (1:1.5.4.1-1) unstable; urgency=medium
 

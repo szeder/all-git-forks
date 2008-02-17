@@ -4,6 +4,4 @@ set -e
 test "$1" = 'remove' || test "$1" = 'deconfigure' || \
   test "$1" = 'failed-upgrade' || exit 0
 
-sv -w14 force-stop git-daemon || :
-
-test ! -h /var/service/git-daemon || rm -f /var/service/git-daemon
+update-service --remove /etc/sv/git-daemon || :

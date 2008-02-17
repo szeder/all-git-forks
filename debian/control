@@ -120,7 +120,7 @@ Description: fast, scalable, distributed revision control system (email add-on)
 
 Package: git-daemon-run
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), runit, adduser
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), runit (>= 1.8.0-2), adduser
 Description: fast, scalable, distributed revision control system (git-daemon service)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used mainly for various open
