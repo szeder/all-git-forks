@@ -163,10 +163,6 @@ install-indep: build-arch-stamp build-indep-stamp
 	  '$(GIT)'-daemon-run/etc/sv/git-daemon/run
 	install -m0755 debian/git-daemon/log/run \
 	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/run
-	ln -s /var/run/sv.git-daemon \
-	  '$(GIT)'-daemon-run/etc/sv/git-daemon/supervise
-	ln -s /var/run/sv.git-daemon.log \
-	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/supervise
 	install -d -m0755 '$(GIT)'-daemon-run/etc/init.d
 	ln -s /usr/bin/sv '$(GIT)'-daemon-run/etc/init.d/git-daemon
 	# git-gui

@@ -1,3 +1,12 @@
+git-core (1:1.5.4.2-2) unstable; urgency=low
+
+  * debian/rules: git-daemon-run: no longer include symlinks for ./supervise/
+    subdirectories, update-service now takes care of this.
+  * debian/git-daemon-run.postinst: remove ad re-add git-daemon service on
+    upgrade from <= 1.5.4.2-1.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 18 Feb 2008 22:22:14 +0000
+
 git-core (1:1.5.4.2-1) unstable; urgency=low
 
   * new upstream point release.
