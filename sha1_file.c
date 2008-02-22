@@ -1845,6 +1845,15 @@ static struct cached_object {
 } *cached_objects;
 static int cached_object_nr, cached_object_alloc;
 
+static struct cached_object empty_tree = {
+	/* empty tree sha1: 4b825dc642cb6eb9a060e54bf8d69288fbee4904 */
+	"\x4b\x82\x5d\xc6\x42\xcb\x6e\xb9\xa0\x60"
+	"\xe5\x4b\xf8\xd6\x92\x88\xfb\xee\x49\x04",
+	OBJ_TREE,
+	"",
+	0
+};
+
 static struct cached_object *find_cached_object(const unsigned char *sha1)
 {
 	int i;
@@ -1854,6 +1863,8 @@ static struct cached_object *find_cached_object(const unsigned char *sha1)
 		if (!hashcmp(co->sha1, sha1))
 			return co;
 	}
+	if (!hashcmp(sha1, empty_tree.sha1))
+		return &empty_tree;
 	return NULL;
 }
 
@@ -1943,7 +1954,8 @@ void *read_object_with_reference(const unsigned char *sha1,
 		}
 		ref_length = strlen(ref_type);
 
-		if (memcmp(buffer, ref_type, ref_length) ||
+		if (ref_length + 40 > isize ||
+		    memcmp(buffer, ref_type, ref_length) ||
 		    get_sha1_hex((char *) buffer + ref_length, actual_sha1)) {
 			free(buffer);
 			return NULL;
@@ -2358,7 +2370,8 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
 	if ((type == OBJ_BLOB) && S_ISREG(st->st_mode)) {
 		struct strbuf nbuf;
 		strbuf_init(&nbuf, 0);
-		if (convert_to_git(path, buf, size, &nbuf)) {
+		if (convert_to_git(path, buf, size, &nbuf,
+		                   write_object ? safe_crlf : 0)) {
 			munmap(buf, size);
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;

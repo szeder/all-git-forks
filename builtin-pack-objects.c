@@ -68,7 +68,7 @@ static int allow_ofs_delta;
 static const char *base_name;
 static int progress = 1;
 static int window = 10;
-static uint32_t pack_size_limit;
+static uint32_t pack_size_limit, pack_size_limit_cfg;
 static int depth = 50;
 static int delta_search_threads = 1;
 static int pack_to_stdout;
@@ -1867,6 +1867,10 @@ static int git_pack_config(const char *k, const char *v)
 			die("bad pack.indexversion=%d", pack_idx_default_version);
 		return 0;
 	}
+	if (!strcmp(k, "pack.packsizelimit")) {
+		pack_size_limit_cfg = git_config_ulong(k, v);
+		return 0;
+	}
 	return git_default_config(k, v);
 }
 
@@ -2029,7 +2033,8 @@ static void get_object_list(int ac, const char **av)
 			die("bad revision '%s'", line);
 	}
 
-	prepare_revision_walk(&revs);
+	if (prepare_revision_walk(&revs))
+		die("revision walk setup failed");
 	mark_edges_uninteresting(revs.commits, &revs, show_edge);
 	traverse_commit_list(&revs, show_commit, show_object);
 
@@ -2096,6 +2101,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		}
 		if (!prefixcmp(arg, "--max-pack-size=")) {
 			char *end;
+			pack_size_limit_cfg = 0;
 			pack_size_limit = strtoul(arg+16, &end, 0) * 1024 * 1024;
 			if (!arg[16] || *end)
 				usage(pack_usage);
@@ -2219,6 +2225,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 
 	if (pack_to_stdout != !base_name)
 		usage(pack_usage);
+
+	if (!pack_to_stdout && !pack_size_limit)
+		pack_size_limit = pack_size_limit_cfg;
 
 	if (pack_to_stdout && pack_size_limit)
 		die("--max-pack-size cannot be used to build a pack for transfer.");

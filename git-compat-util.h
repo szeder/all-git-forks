@@ -204,6 +204,11 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
                 const void *needle, size_t needlelen);
 #endif
 
+#ifdef FREAD_READS_DIRECTORIES
+#define fopen(a,b) git_fopen(a,b)
+extern FILE *git_fopen(const char*, const char*);
+#endif
+
 #ifdef __GLIBC_PREREQ
 #if __GLIBC_PREREQ(2, 1)
 #define HAVE_STRCHRNUL
@@ -425,5 +430,11 @@ static inline int strtol_i(char const *s, int base, int *result)
 	*result = ul;
 	return 0;
 }
+
+#ifdef INTERNAL_QSORT
+void git_qsort(void *base, size_t nmemb, size_t size,
+	       int(*compar)(const void *, const void *));
+#define qsort git_qsort
+#endif
 
 #endif

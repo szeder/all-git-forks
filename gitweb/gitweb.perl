@@ -611,6 +611,8 @@ sub href(%) {
 	);
 	my %mapping = @mapping;
 
+	$params{'project'} = $project unless exists $params{'project'};
+
 	if ($params{-replay}) {
 		while (my ($name, $symbol) = each %mapping) {
 			if (!exists $params{$name}) {
@@ -619,8 +621,6 @@ sub href(%) {
 			}
 		}
 	}
-
-	$params{'project'} = $project unless exists $params{'project'};
 
 	my ($use_pathinfo) = gitweb_check_feature('pathinfo');
 	if ($use_pathinfo) {
@@ -753,29 +753,40 @@ sub esc_path {
 # Make control characters "printable", using character escape codes (CEC)
 sub quot_cec {
 	my $cntrl = shift;
+	my %opts = @_;
 	my %es = ( # character escape codes, aka escape sequences
-		   "\t" => '\t',   # tab            (HT)
-		   "\n" => '\n',   # line feed      (LF)
-		   "\r" => '\r',   # carrige return (CR)
-		   "\f" => '\f',   # form feed      (FF)
-		   "\b" => '\b',   # backspace      (BS)
-		   "\a" => '\a',   # alarm (bell)   (BEL)
-		   "\e" => '\e',   # escape         (ESC)
-		   "\013" => '\v', # vertical tab   (VT)
-		   "\000" => '\0', # nul character  (NUL)
-		   );
+		"\t" => '\t',   # tab            (HT)
+		"\n" => '\n',   # line feed      (LF)
+		"\r" => '\r',   # carrige return (CR)
+		"\f" => '\f',   # form feed      (FF)
+		"\b" => '\b',   # backspace      (BS)
+		"\a" => '\a',   # alarm (bell)   (BEL)
+		"\e" => '\e',   # escape         (ESC)
+		"\013" => '\v', # vertical tab   (VT)
+		"\000" => '\0', # nul character  (NUL)
+	);
 	my $chr = ( (exists $es{$cntrl})
 		    ? $es{$cntrl}
 		    : sprintf('\%03o', ord($cntrl)) );
-	return "<span class=\"cntrl\">$chr</span>";
+	if ($opts{-nohtml}) {
+		return $chr;
+	} else {
+		return "<span class=\"cntrl\">$chr</span>";
+	}
 }
 
 # Alternatively use unicode control pictures codepoints,
 # Unicode "printable representation" (PR)
 sub quot_upr {
 	my $cntrl = shift;
+	my %opts = @_;
+
 	my $chr = sprintf('&#%04d;', 0x2400+ord($cntrl));
-	return "<span class=\"cntrl\">$chr</span>";
+	if ($opts{-nohtml}) {
+		return $chr;
+	} else {
+		return "<span class=\"cntrl\">$chr</span>";
+	}
 }
 
 # git may return quoted and escaped filenames
@@ -800,7 +811,7 @@ sub unquote {
 			return chr(oct($seq));
 		} elsif (exists $es{$seq}) {
 			# C escape sequence, aka character escape code
-			return $es{$seq}
+			return $es{$seq};
 		}
 		# quoted ordinary character
 		return $seq;
@@ -866,8 +877,8 @@ sub chop_and_escape_str {
 	if ($chopped eq $str) {
 		return esc_html($chopped);
 	} else {
-		return qq{<span title="} . esc_html($str) . qq{">} .
-			esc_html($chopped) . qq{</span>};
+		$str =~ s/([[:cntrl:]])/?/g;
+		return $cgi->span({-title=>$str}, esc_html($chopped));
 	}
 }
 
@@ -1620,7 +1631,7 @@ sub git_get_project_url_list {
 	my $path = shift;
 
 	$git_dir = "$projectroot/$path";
-	open my $fd, "$projectroot/$path/cloneurl"
+	open my $fd, "$git_dir/cloneurl"
 		or return wantarray ?
 		@{ config_to_multi(git_get_project_config('url')) } :
 		   config_to_multi(git_get_project_config('url'));
@@ -1759,6 +1770,7 @@ sub git_get_project_owner {
 	my $owner;
 
 	return undef unless $project;
+	$git_dir = "$projectroot/$project";
 
 	if (!defined $gitweb_project_owner) {
 		git_get_project_list_from_file();
@@ -1767,8 +1779,11 @@ sub git_get_project_owner {
 	if (exists $gitweb_project_owner->{$project}) {
 		$owner = $gitweb_project_owner->{$project};
 	}
+	if (!defined $owner){
+		$owner = git_get_project_config('owner');
+	}
 	if (!defined $owner) {
-		$owner = get_file_owner("$projectroot/$project");
+		$owner = get_file_owner("$git_dir");
 	}
 
 	return $owner;
