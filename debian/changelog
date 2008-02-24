@@ -6,8 +6,9 @@ git-core (1:1.5.4.3-1) unstable; urgency=low
   * debian/diff/0004-gitk-properly-deal-with-tag-names-containing-sl.diff:
     new: from upstream master: gitk: properly deal with tag names containing /
     (slash) (closes: #464104).
+  * debian/git-daemon-run.postrm: adapt paths in /var/.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 24 Feb 2008 13:58:26 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 24 Feb 2008 16:19:02 +0000
 
 git-core (1:1.5.4.2-2) unstable; urgency=low
 
