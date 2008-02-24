@@ -1,3 +1,42 @@
+Version v1.5.4.3; changes since v1.5.4.2:
+-----------------------------------------
+
+Gerrit Pape (1):
+      git-clone.sh: properly configure remote even if remote's head is dangling
+
+Jay Soffian (2):
+      git-gui: support Git Gui.app under OS X 10.5
+      send-email: squelch warning due to comparing undefined $_ to ""
+
+Jeff King (4):
+      push: indicate partialness of error message
+      Documentation/push: clarify matching refspec behavior
+      push: document the status output
+      hash: fix lookup_hash semantics
+
+Junio C Hamano (1):
+      GIT 1.5.4.3
+
+Kristian Høgsberg (1):
+      Rename git-core rpm to just git and rename the meta-pacakge to git-all.
+
+Miklos Vajna (1):
+      Documentation/git-stash: document options for git stash list
+
+Pekka Kaitaniemi (1):
+      Clarified the meaning of git-add -u in the documentation
+
+Shawn O. Pearce (5):
+      git-gui: Ensure error dialogs always appear over all other windows
+      git-gui: Paper bag fix error dialogs opening over the main window
+      git-gui: Default TCL_PATH to same location as TCLTK_PATH
+      git-gui: Avoid hardcoded Windows paths in Cygwin package files
+      git-gui: Focus insertion point at end of strings in repository chooser
+
+Wincent Colaiuta (1):
+      git-gui: relax "dirty" version detection
+
+
 Version v1.5.4.2; changes since v1.5.4.1:
 -----------------------------------------
 

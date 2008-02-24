@@ -1,3 +1,11 @@
+git-core (1:1.5.4.3-1) unstable; urgency=low
+
+  * new upstream point release.
+    * git-clone.sh: properly configure remote even if remote's head is
+      dangling (closes: #466581).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 24 Feb 2008 13:54:32 +0000
+
 git-core (1:1.5.4.2-2) unstable; urgency=low
 
   * debian/rules: git-daemon-run: no longer include symlinks for ./supervise/
