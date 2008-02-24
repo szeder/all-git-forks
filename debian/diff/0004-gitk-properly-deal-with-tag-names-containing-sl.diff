@@ -1,0 +1,43 @@
+From c154fdc4af5c1d5ce495ee51d5d9233f3656eb7d Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Mon, 11 Feb 2008 10:57:40 +0000
+Subject: [PATCH] [PATCH] gitk: properly deal with tag names containing / (slash)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+When creating a tag through gitk, and the tag name includes a slash (or
+slashes), gitk errors out in a popup window.  This patch makes gitk use
+'git tag' to create the tag instead of modifying files in refs/tags/,
+which fixes the issue; if 'git tag' throws an error, gitk pops up with
+the error message.
+
+The problem was reported by Frédéric Brière through
+ http://bugs.debian.org/464104
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+Signed-off-by: Paul Mackerras <paulus@samba.org>
+---
+ gitk-git/gitk |    6 +-----
+ 1 files changed, 1 insertions(+), 5 deletions(-)
+
+diff --git a/gitk-git/gitk b/gitk-git/gitk
+index 5560e4d..00d791f 100644
+--- a/gitk-git/gitk
++++ b/gitk-git/gitk
+@@ -6137,11 +6137,7 @@ proc domktag {} {
+ 	return
+     }
+     if {[catch {
+-	set dir [gitdir]
+-	set fname [file join $dir "refs/tags" $tag]
+-	set f [open $fname w]
+-	puts $f $id
+-	close $f
++	exec git tag $tag $id
+     } err]} {
+ 	error_popup "[mc "Error creating tag:"] $err"
+ 	return
+-- 
+1.5.4.2
+
