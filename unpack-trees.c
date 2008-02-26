@@ -301,7 +301,7 @@ static void check_updates(struct cache_entry **src, int nr,
 		}
 
 		progress = start_progress_delay("Checking out files",
-						total, 50, 2);
+						total, 50, 1);
 		cnt = 0;
 	}
 
@@ -590,7 +590,7 @@ static int merged_entry(struct cache_entry *merge, struct cache_entry *old,
 		 * a match.
 		 */
 		if (same(old, merge)) {
-			memcpy(merge, old, offsetof(struct cache_entry, name));
+			copy_cache_entry(merge, old);
 		} else {
 			verify_uptodate(old, o);
 			invalidate_ce_path(old);
