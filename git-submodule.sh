@@ -4,7 +4,7 @@
 #
 # Copyright (c) 2007 Lars Hjemli
 
-USAGE="[--quiet] [--cached] \
+USAGE="[--quiet] [--cached] [--module-name] \
 [add <repo> [-b branch]|status|init|update|summary [-n|--summary-limit <n>] [<commit>]] \
 [--] [<path>...]"
 OPTIONS_SPEC=
@@ -15,6 +15,7 @@ command=
 branch=
 quiet=
 cached=
+use_module_name=
 
 #
 # print stuff on stdout unless -q was specified
@@ -97,12 +98,23 @@ module_name()
        echo "$name"
 }
 
+module_path() {
+	git config submodule.$1.path ||
+	GIT_CONFIG=.gitmodules git config submodule.$1.path ||
+	echo "$1"
+}
+
 module_url() {
 	git config submodule.$1.url ||
 	GIT_CONFIG=.gitmodules git config submodule.$1.url
 }
 
 module_info() {
+	if test -n "$use_module_name"
+	then
+		module_info_by_name "$@"
+		return
+	fi
 	git ls-files --stage -- "$@" | grep -e '^160000 ' |
 	while read mode sha1 stage path
 	do
@@ -115,6 +127,50 @@ module_info() {
 			echo "$sha1	$path		"
 		fi
 	done
+}
+
+#
+# List all submodule info line by line by given names as follows
+# sha1<tab>path<tab>name<tab>url
+#
+# Here we assume that module names and paths don't contain space
+# characters
+#
+# $@ = module names
+# When names is not given, list all module info
+#
+module_info_by_name() {
+	if test $# = 0
+	then
+		names=$(
+		{
+			git config --get-regexp 'submodule.*.url'
+			git config -f .gitmodules --get-regexp 'submodule.*.url'
+		} | sed 's/submodule.\(.*\).url .*$/\1/' 2>/dev/null
+		)
+	else
+		names=$(module_children_names "$@")
+	fi
+	for name in $names
+	do
+		url=$(module_url "$name") || continue
+		path=$(module_path "$name")
+		sha1=$(git ls-files --stage "$path" |
+			grep "$path$" | grep '^160000' | awk '{print $2}')
+		test -z "$sha1" && sha1=0000000000000000000000000000000000000000
+		echo "$sha1	$path	$name	$url"
+	done
+}
+
+module_children_names() {
+	for name
+	do
+		echo "$name"
+		module_children_names $(
+			git config "submodules.$name"
+			git config -f .gitmodules "submodules.$name"
+		)
+	done | sort -u
 }
 
 #
@@ -233,7 +289,17 @@ cmd_add()
 		shift
 	done
 
-	module_add "$1" "$2"
+	if test -n "$use_module_name"
+	then
+		module_info "$@" |
+		while read sha1 path name url
+		do
+			module_add "$url" "$path"
+		done
+	else
+		module_add "$1" "$2"
+	fi
+
 }
 
 #
@@ -313,7 +379,11 @@ cmd_update()
 	while read sha1 path name url
 	do
 		test -n "$name" || exit
-		if test -z "$url"
+		if test $sha1 = 0000000000000000000000000000000000000000
+		then
+			say "Not a submodule: $name @ $path"
+			continue
+		elif test -z "$url"
 		then
 			# Only mention uninitialized submodules when its
 			# path have been specified
@@ -571,12 +641,15 @@ cmd_status()
 		esac
 		shift
 	done
-
 	module_info "$@" |
 	while read sha1 path name url
 	do
 		test -n "$name" || exit
-		if test -z "$url" || ! test -d "$path"/.git
+		if test $sha1 = 0000000000000000000000000000000000000000
+		then
+			say "*$sha1 $path"
+			continue
+		elif test -z "$url" || ! test -d "$path"/.git
 		then
 			say "-$sha1 $path"
 			continue;
@@ -621,6 +694,9 @@ do
 		;;
 	--cached)
 		cached="$1"
+		;;
+	-m|--module-name)
+		use_module_name=1
 		;;
 	--)
 		break
