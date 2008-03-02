@@ -252,6 +252,7 @@ extern struct index_state the_index;
 #define read_cache_from(path) read_index_from(&the_index, (path))
 #define write_cache(newfd, cache, entries) write_index(&the_index, (newfd))
 #define discard_cache() discard_index(&the_index)
+#define unmerged_cache() unmerged_index(&the_index)
 #define cache_name_pos(name, namelen) index_name_pos(&the_index,(name),(namelen))
 #define add_cache_entry(ce, option) add_index_entry(&the_index, (ce), (option))
 #define remove_cache_entry_at(pos) remove_index_entry_at(&the_index, (pos))
@@ -346,6 +347,7 @@ extern int read_index(struct index_state *);
 extern int read_index_from(struct index_state *, const char *path);
 extern int write_index(struct index_state *, int newfd);
 extern int discard_index(struct index_state *);
+extern int unmerged_index(struct index_state *);
 extern int verify_path(const char *path);
 extern int index_name_exists(struct index_state *istate, const char *name, int namelen);
 extern int index_name_pos(struct index_state *, const char *name, int namelen);
@@ -422,6 +424,15 @@ enum safe_crlf {
 };
 
 extern enum safe_crlf safe_crlf;
+
+enum branch_track {
+	BRANCH_TRACK_NEVER = 0,
+	BRANCH_TRACK_REMOTE,
+	BRANCH_TRACK_ALWAYS,
+	BRANCH_TRACK_EXPLICIT,
+};
+
+extern enum branch_track git_branch_track;
 
 #define GIT_REPO_VERSION 0
 extern int repository_format_version;
@@ -767,5 +778,7 @@ extern int ws_fix_copy(char *, const char *, int, unsigned, int *);
 int pathspec_match(const char **spec, char *matched, const char *filename, int skiplen);
 int report_path_error(const char *ps_matched, const char **pathspec, int prefix_offset);
 void overlay_tree_on_cache(const char *tree_name, const char *prefix);
+
+char *alias_lookup(const char *alias);
 
 #endif /* CACHE_H */
