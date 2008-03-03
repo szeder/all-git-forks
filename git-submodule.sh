@@ -193,15 +193,19 @@ module_clone()
 	# succeed but the rmdir will fail. We might want to fix this.
 	if test -d "$path"
 	then
-		rmdir "$path" 2>/dev/null ||
-		die "Directory '$path' exist, but is neither empty nor a git repository"
+		! rmdir "$path" 2>/dev/null &&
+		say "Directory '$path' exist, but is neither empty nor a git repository" &&
+		return 1
 	fi
 
 	test -e "$path" &&
-	die "A file already exist at path '$path'"
+	say "A file already exist at path '$path'" &&
+	return 1
 
-	git-clone -n "$url" "$path" ||
-	die "Clone of '$url' into submodule path '$path' failed"
+	! git-clone -n "$url" "$path" &&
+	say "Clone of '$url' into submodule path '$path' failed" &&
+	return 1
+	:
 }
 
 #
@@ -227,7 +231,8 @@ module_add() {
 	fi
 
 	git ls-files --error-unmatch "$path" > /dev/null 2>&1 &&
-	die "'$path' already exists in the index"
+	say "'$path' already exists in the index" &&
+	return 1
 
 	# perhaps the path exists and is already a git repo, else clone it
 	if test -e "$path"
@@ -237,21 +242,26 @@ module_add() {
 		then
 			echo "Adding existing repo at '$path' to the index"
 		else
-			die "'$path' already exists and is not a valid git repo"
+			say "'$path' already exists and is not a valid git repo"
+			return 1
 		fi
 	else
-		module_clone "$path" "$repo" || exit
-		(unset GIT_DIR; cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) ||
-		die "Unable to checkout submodule '$path'"
+		module_clone "$path" "$repo" || return 1
+		! (unset GIT_DIR; cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) &&
+		say "Unable to checkout submodule '$path'" &&
+		return 1
 	fi
 
-	git add "$path" ||
-	die "Failed to add submodule '$path'"
+	! git add "$path" &&
+	say "Failed to add submodule '$path'" &&
+	return 1
 
 	GIT_CONFIG=.gitmodules git config submodule."$path".path "$path" &&
 	GIT_CONFIG=.gitmodules git config submodule."$path".url "$repo" &&
-	git add .gitmodules ||
-	die "Failed to register submodule '$path'"
+	! git add .gitmodules &&
+	say "Failed to register submodule '$path'" &&
+	return 1
+	:
 }
 
 #
@@ -292,14 +302,17 @@ cmd_add()
 	if test -n "$use_module_name"
 	then
 		module_info "$@" |
+		{
+		exit_status=0
 		while read sha1 path name url
 		do
-			module_add "$url" "$path"
+			module_add "$url" "$path" || exit_status=1
 		done
+		test $exit_status = 0
+		}
 	else
 		module_add "$1" "$2"
 	fi
-
 }
 
 #
@@ -331,20 +344,30 @@ cmd_init()
 	done
 
 	module_info "$@" |
+	{
+	exit_status=0
 	while read sha1 path name url
 	do
-		test -n "$name" || exit
+		test -z "$name" && exit_status=1 && continue
 		test -z "$url" &&
-		die "No url found for submodule path '$path' in .gitmodules"
+		say "No url found for submodule path '$path' in .gitmodules" &&
+		exit_status=1 &&
+		continue
 		# Skip already registered paths
 		test -z "$(git config submodule.$name.url)" || continue
 
 		url=$(absolute_url "$url")
 		git config submodule."$name".url "$url" ||
-		die "Failed to register url for submodule path '$path'"
+		{
+		say "Failed to register url for submodule path '$path'"
+		exit_status=1
+		continue
+		}
 
 		say "Submodule '$name' ($url) registered for path '$path'"
 	done
+	exit $exit_status
+	}
 }
 
 #
@@ -379,9 +402,11 @@ cmd_update()
 	done
 
 	module_info "$@" |
+	{
+	exit_status=0
 	while read sha1 path name url
 	do
-		test -n "$name" || exit
+		test -z "$name" && exit_status=1 && continue
 		if test $sha1 = 0000000000000000000000000000000000000000
 		then
 			test -z "$force" &&
@@ -398,7 +423,7 @@ cmd_update()
 
 		if ! test -d "$path"/.git
 		then
-			module_clone "$path" "$url" || exit
+			! module_clone "$path" "$url" && exit_status=1 && continue
 			test "$sha1" = 0000000000000000000000000000000000000000 &&
 			(unset GIT_DIR; cd "$path" && git checkout -q master) &&
 			say "non-submodule cloned and master checked out: $name @ $path" &&
@@ -410,18 +435,28 @@ cmd_update()
 			continue
 			subsha1=$(unset GIT_DIR; cd "$path" &&
 				git rev-parse --verify HEAD) ||
-			die "Unable to find current revision in submodule path '$path'"
+			{
+				say "Unable to find current revision in submodule path '$path'"
+				exit_status=1
+				continue
+			}
 		fi
 
 		if test "$subsha1" != "$sha1"
 		then
 			(unset GIT_DIR; cd "$path" && git-fetch &&
 				git-checkout -q "$sha1") ||
-			die "Unable to checkout '$sha1' in submodule path '$path'"
+			{
+				say "Unable to checkout '$sha1' in submodule path '$path'"
+				exit_status=1
+				continue
+			}
 
 			say "Submodule path '$path': checked out '$sha1'"
 		fi
 	done
+	exit $exit_status
+	}
 }
 
 set_name_rev () {
@@ -653,9 +688,11 @@ cmd_status()
 		shift
 	done
 	module_info "$@" |
+	{
+	exit_status=0
 	while read sha1 path name url
 	do
-		test -n "$name" || exit
+		test -z "$name" && exit_status=1 && continue
 		if test $sha1 = 0000000000000000000000000000000000000000
 		then
 			say "*$sha1 $path"
@@ -678,6 +715,8 @@ cmd_status()
 			say "+$sha1 $path$revname"
 		fi
 	done
+	exit $exit_status
+	}
 }
 
 # This loop parses the command line arguments to find the
