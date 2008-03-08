@@ -305,7 +305,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 		free(path);
 	}
 
-	stripspace(buf, 1);
+	stripspace(buf, (-1));
 
 	if (!message && !buf->len)
 		die("no tag message?");

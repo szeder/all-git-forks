@@ -681,7 +681,7 @@ static int message_is_empty(struct strbuf *sb)
 
 	/* See if the template is just a prefix of the message. */
 	if (template_file && strbuf_read_file(&tmpl, template_file, 0) > 0) {
-		stripspace(&tmpl, cleanup_mode == CLEANUP_ALL);
+		stripspace(&tmpl, ((cleanup_mode == CLEANUP_ALL) ? (-1) : 0));
 		if (start + tmpl.len <= sb->len &&
 		    memcmp(tmpl.buf, sb->buf + start, tmpl.len) == 0)
 			start += tmpl.len;
@@ -1022,7 +1022,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	}
 
 	if (cleanup_mode != CLEANUP_NONE)
-		stripspace(&sb, cleanup_mode == CLEANUP_ALL);
+		stripspace(&sb, ((cleanup_mode == CLEANUP_ALL) ? (-1) : 0));
 	if (message_is_empty(&sb)) {
 		rollback_index_files();
 		fprintf(stderr, "Aborting commit due to empty commit message.\n");
