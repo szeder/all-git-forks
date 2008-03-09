@@ -13,6 +13,7 @@ i,interactive   run interactively
 b,binary        (historical option -- no-op)
 3,3way          allow fall back on 3way merging if needed
 s,signoff       add a Signed-off-by line to the commit message
+forge           forge a Signed-off-by line by the patch author
 u,utf8          recode into utf8 (default)
 k,keep          pass -k flag to git-mailinfo
 whitespace=     pass it through git-apply
@@ -139,7 +140,7 @@ add_signoff () {
 
 prec=4
 dotest="$GIT_DIR/rebase-apply"
-sign= utf8=t keep= skip= interactive= resolved= rebasing= abort=
+sign= forge= utf8=t keep= skip= interactive= resolved= rebasing= abort=
 resolvemsg= resume=
 git_apply_opt=
 
@@ -154,6 +155,8 @@ do
 		threeway=t ;;
 	-s|--signoff)
 		sign=t ;;
+	--forge)
+		forge=t ;;
 	-u|--utf8)
 		utf8=t ;; # this is now default
 	--no-utf8)
@@ -270,6 +273,7 @@ else
 	# -3 and -i can and must be given when resuming.
 	echo " $ws" >"$dotest/whitespace"
 	echo "$sign" >"$dotest/sign"
+	echo "$forge" >"$dotest/forge"
 	echo "$utf8" >"$dotest/utf8"
 	echo "$keep" >"$dotest/keep"
 	echo 1 >"$dotest/next"
@@ -311,6 +315,7 @@ then
 else
 	SIGNOFF=
 fi
+forge=$(cat "$dotest/forge")
 
 last=`cat "$dotest/last"`
 this=`cat "$dotest/next"`
@@ -392,6 +397,11 @@ do
 	case "$resume" in
 	'')
 	    ADD_SIGNOFF=
+	    if test -n "$forge"
+	    then
+		add_signoff "Signed-off-by: $GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>
+"
+	    fi
 	    if test -n "$SIGNOFF"
 	    then
 		add_signoff "$SIGNOFF"
