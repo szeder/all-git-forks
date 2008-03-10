@@ -1,3 +1,15 @@
+git-core (1:1.5.4.4-1) unstable; urgency=low
+
+  * new upstream point release.
+    * templates/Makefile: don't depend on local umask setting (closes:
+      #467518).
+    * Fix random crashes in http_cleanup() (closes: #468836).
+    * send-email: fix In-Reply-To regression (closes: #468153).
+    * git-merge.sh: better handling of combined --squash,--no-ff,--no-commit
+      options (closes: #468568).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 10 Mar 2008 10:38:51 +0000
+
 git-core (1:1.5.4.3-1) unstable; urgency=low
 
   * new upstream point release.

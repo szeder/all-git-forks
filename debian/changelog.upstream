@@ -1,3 +1,112 @@
+Version v1.5.4.4; changes since v1.5.4.3:
+-----------------------------------------
+
+Adeodato Simó (1):
+      Really make the LF after reset in fast-import optional
+
+Björn Steinbrink (1):
+      receive-pack: Initialize PATH to include exec-dir.
+
+Brandon Casey (1):
+      builtin-reflog.c: don't install new reflog on write failure
+
+Bryan Donlan (1):
+      Documentation/git-am.txt: Pass -r in the example invocation of rm -f .dotest
+
+Caio Marcelo de Oliveira Filho (1):
+      filter-branch documentation: non-zero exit status in command abort the filter
+
+Carl Worth (1):
+      Eliminate confusing "won't bisect on seeked tree" failure
+
+Daniel Barkalow (3):
+      Use a single implementation and API for copy_file()
+      Don't use GIT_CONFIG in t5505-remote
+      Correct name of diff_flush() in API documentation
+
+Gerrit Pape (2):
+      templates/Makefile: don't depend on local umask setting
+      git-merge.sh: better handling of combined --squash,--no-ff,--no-commit options
+
+Jay Soffian (2):
+      rev-parse: fix potential bus error with --parseopt option spec handling
+      send-email: fix In-Reply-To regression
+
+Jeff King (1):
+      revert: actually check for a dirty index
+
+Johan Herland (2):
+      Add testcase for 'git cvsexportcommit -w $cvsdir ...' with relative $GIT_DIR
+      Fix 'git cvsexportcommit -w $cvsdir ...' when used with relative $GIT_DIR
+
+Johannes Schindelin (4):
+      http-push: avoid invalid memory accesses
+      http-push: do not get confused by submodules
+      http-push: avoid a needless goto
+      cvsexportcommit: be graceful when "cvs status" reorders the arguments
+
+Johannes Sixt (2):
+      daemon: send more error messages to the syslog
+      daemon: ensure that base-path is an existing directory
+
+John Goerzen (1):
+      Fix dcommit, rebase when rewriteRoot is in use
+
+Jonathan del Strother (1):
+      Prompt to continue when editing during rebase --interactive
+
+Junio C Hamano (6):
+      Fix "git log --merge --left-right"
+      Start preparing for 1.5.4.4
+      tests: introduce test_must_fail
+      Update draft release notes for 1.5.4.4
+      test-lib: fix TERM to dumb for test repeatability
+      GIT 1.5.4.4
+
+Matthieu Moy (1):
+      Fix incorrect wording in git-merge.txt.
+
+Mike Hommey (2):
+      Set proxy override with http_init()
+      Fix random crashes in http_cleanup()
+
+Mike Ralphson (1):
+      Documentation cherry-pick: Fix cut-and-paste error
+
+Miklos Vajna (2):
+      Documentation/git-filter-branch: add a new msg-filter example
+      Documentation/git svn log: add a note about timezones.
+
+Pierre Habouzit (1):
+      unquote_c_style: fix off-by-one.
+
+Ping Yin (1):
+      git-submodule: Fix typo 'url' which should be '$url'
+
+Rémi Vanicat (1):
+      git.el: find the git-status buffer whatever its name is
+
+Santi Béjar (1):
+      ident.c: reword error message when the user name cannot be determined
+
+Sebastian Noack (1):
+      git-svn: Don't prompt for client cert password everytime.
+
+Shawn O. Pearce (6):
+      Ensure 'make dist' compiles git-archive.exe on Cygwin
+      Protect peel_ref fallback case from NULL parse_object result
+      Correct fast-export file mode strings to match fast-import standard
+      git-gui: Paper bag fix info dialog when no files are staged at commit
+      Fix 'git remote show' regression on empty repository in 1.5.4
+      git-gui: Gracefully fall back to po2msg.sh if msgfmt --tcl fails
+
+Steven Drake (1):
+      timezone_names[]: fixed the tz offset for New Zealand.
+
+Uwe Kleine-König (1):
+      config.txt: refer to --upload-pack and --receive-pack instead of --exec
+
+
 Version v1.5.4.3; changes since v1.5.4.2:
 -----------------------------------------
 
