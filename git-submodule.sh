@@ -82,6 +82,25 @@ module_name()
        echo "$name"
 }
 
+module_url() {
+	git config submodule.$1.url
+}
+
+module_info() {
+	git ls-files --stage -- "$@" | grep -e '^160000 ' |
+	while read mode sha1 stage path
+	do
+		name=$(module_name "$path")
+		if test -n "$name"
+		then
+			url=$(module_url "$name")
+			echo "$sha1	$path	$name	$url"
+		else
+			echo "$sha1	$path		"
+		fi
+	done
+}
+
 #
 # Clone a submodule
 #
@@ -232,12 +251,11 @@ cmd_init()
 		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
-	while read mode sha1 stage path
+	module_info "$@" |
+	while read sha1 path name url
 	do
+		test -n "$name" || exit
 		# Skip already registered paths
-		name=$(module_name "$path") || exit
-		url=$(git config submodule."$name".url)
 		test -z "$url" || continue
 
 		url=$(GIT_CONFIG=.gitmodules git config submodule."$name".url)
@@ -286,11 +304,10 @@ cmd_update()
 		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
-	while read mode sha1 stage path
+	module_info "$@" |
+	while read sha1 path name url
 	do
-		name=$(module_name "$path") || exit
-		url=$(git config submodule."$name".url)
+		test -n "$name" || exit
 		if test -z "$url"
 		then
 			# Only mention uninitialized submodules when its
@@ -550,11 +567,10 @@ cmd_status()
 		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
-	while read mode sha1 stage path
+	module_info "$@" |
+	while read sha1 path name url
 	do
-		name=$(module_name "$path") || exit
-		url=$(git config submodule."$name".url)
+		test -n "$name" || exit
 		if test -z "$url" || ! test -d "$path"/.git
 		then
 			say "-$sha1 $path"
