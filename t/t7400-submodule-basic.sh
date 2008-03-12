@@ -174,6 +174,35 @@ test_expect_success 'status should be "up-to-date" after update' '
 	git-submodule status | grep "^ $rev1"
 '
 
+test_expect_success 'status should be "modified" after submodule reset --hard HEAD@{1}' '
+	cd init &&
+	git reset --hard HEAD@{1}
+	rev2=$(git rev-parse HEAD) &&
+	cd .. &&
+	if test -z "$rev2"
+	then
+		echo "[OOPS] submodule git rev-parse returned nothing"
+		false
+	fi &&
+	git-submodule status | grep "^+$rev2"
+'
+
+test_expect_success 'update should checkout rev1 with falling back' '
+	git-config --unset submodule.example.url &&
+	GIT_CONFIG=.gitmodules git config submodule.example.url .subrepo &&
+	git-submodule update init &&
+	head=$(cd init && git rev-parse HEAD) &&
+	if test -z "$head"
+	then
+		echo "[OOPS] submodule git rev-parse returned nothing"
+		false
+	elif test "$head" != "$rev1"
+	then
+		echo "[OOPS] init did not checkout correct head"
+		false
+	fi
+'
+
 test_expect_success 'checkout superproject with subproject already present' '
 	git-checkout initial &&
 	git-checkout master

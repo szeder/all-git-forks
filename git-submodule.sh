@@ -98,7 +98,8 @@ module_name()
 }
 
 module_url() {
-	git config submodule.$1.url
+	git config submodule.$1.url ||
+	GIT_CONFIG=.gitmodules git config submodule.$1.url
 }
 
 module_info() {
@@ -256,12 +257,10 @@ cmd_init()
 	while read sha1 path name url
 	do
 		test -n "$name" || exit
-		# Skip already registered paths
-		test -z "$url" || continue
-
-		url=$(GIT_CONFIG=.gitmodules git config submodule."$name".url)
 		test -z "$url" &&
 		die "No url found for submodule path '$path' in .gitmodules"
+		# Skip already registered paths
+		test -z "$(git config submodule.$name.url)" || continue
 
 		url=$(absolute_url "$url")
 		git config submodule."$name".url "$url" ||
