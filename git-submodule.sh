@@ -65,6 +65,21 @@ resolve_relative_url ()
 	echo "$remoteurl/$url"
 }
 
+# Resolve relative url/path to absolute one
+absolute_url () {
+	case "$1" in
+	./*|../*)
+		# dereference source url relative to parent's url
+		url="$(resolve_relative_url $1)" ;;
+	*)
+		# Turn the source into an absolute path if it is local
+		url=$(get_repo_base "$1") ||
+		url=$1
+		;;
+	esac
+	echo "$url"
+}
+
 #
 # Map submodule path to submodule name
 #
@@ -112,7 +127,7 @@ module_info() {
 module_clone()
 {
 	path=$1
-	url=$2
+	url=$(absolute_url "$2")
 
 	# If there already is a directory at the submodule path,
 	# expect it to be empty (since that is the default checkout
@@ -195,21 +210,7 @@ cmd_add()
 			die "'$path' already exists and is not a valid git repo"
 		fi
 	else
-		case "$repo" in
-		./*|../*)
-			# dereference source url relative to parent's url
-			realrepo="$(resolve_relative_url $repo)" ;;
-		*)
-			# Turn the source into an absolute path if
-			# it is local
-			if base=$(get_repo_base "$repo"); then
-				repo="$base"
-			fi
-			realrepo=$repo
-			;;
-		esac
-
-		module_clone "$path" "$realrepo" || exit
+		module_clone "$path" "$repo" || exit
 		(unset GIT_DIR; cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) ||
 		die "Unable to checkout submodule '$path'"
 	fi
@@ -262,13 +263,7 @@ cmd_init()
 		test -z "$url" &&
 		die "No url found for submodule path '$path' in .gitmodules"
 
-		# Possibly a url relative to parent
-		case "$url" in
-		./*|../*)
-			url="$(resolve_relative_url "$url")"
-			;;
-		esac
-
+		url=$(absolute_url "$url")
 		git config submodule."$name".url "$url" ||
 		die "Failed to register url for submodule path '$path'"
 
