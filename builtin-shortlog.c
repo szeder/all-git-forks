@@ -70,11 +70,12 @@ static void insert_one_record(struct shortlog *log,
 	else
 		free(buffer);
 
+	/* Skip any leading whitespace, including any blank lines. */
+	while (*oneline && isspace(*oneline))
+		oneline++;
 	eol = strchr(oneline, '\n');
 	if (!eol)
 		eol = oneline + strlen(oneline);
-	while (*oneline && isspace(*oneline) && *oneline != '\n')
-		oneline++;
 	if (!prefixcmp(oneline, "[PATCH")) {
 		char *eob = strchr(oneline, ']');
 		if (eob && (!eol || eob < eol))
@@ -228,7 +229,9 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 {
 	struct shortlog log;
 	struct rev_info rev;
+	int nongit;
 
+	prefix = setup_git_directory_gently(&nongit);
 	shortlog_init(&log);
 
 	/* since -n is a shadowed rev argument, parse our args first */
@@ -258,7 +261,7 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 		die ("unrecognized argument: %s", argv[1]);
 
 	/* assume HEAD if from a tty */
-	if (!rev.pending.nr && isatty(0))
+	if (!nongit && !rev.pending.nr && isatty(0))
 		add_head_to_pending(&rev);
 	if (rev.pending.nr == 0) {
 		read_from_stdin(&log);

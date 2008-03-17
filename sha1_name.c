@@ -407,19 +407,54 @@ static int get_nth_ancestor(const char *name, int len,
 			    unsigned char *result, int generation)
 {
 	unsigned char sha1[20];
-	int ret = get_sha1_1(name, len, sha1);
+	struct commit *commit;
+	int ret;
+
+	ret = get_sha1_1(name, len, sha1);
 	if (ret)
 		return ret;
+	commit = lookup_commit_reference(sha1);
+	if (!commit)
+		return -1;
 
 	while (generation--) {
-		struct commit *commit = lookup_commit_reference(sha1);
-
-		if (!commit || parse_commit(commit) || !commit->parents)
+		if (parse_commit(commit) || !commit->parents)
 			return -1;
-		hashcpy(sha1, commit->parents->item->object.sha1);
+		commit = commit->parents->item;
 	}
-	hashcpy(result, sha1);
+	hashcpy(result, commit->object.sha1);
 	return 0;
+}
+
+struct object *peel_to_type(const char *name, int namelen,
+			    struct object *o, enum object_type expected_type)
+{
+	if (name && !namelen)
+		namelen = strlen(name);
+	if (!o) {
+		unsigned char sha1[20];
+		if (get_sha1_1(name, namelen, sha1))
+			return NULL;
+		o = parse_object(sha1);
+	}
+	while (1) {
+		if (!o || (!o->parsed && !parse_object(o->sha1)))
+			return NULL;
+		if (o->type == expected_type)
+			return o;
+		if (o->type == OBJ_TAG)
+			o = ((struct tag*) o)->tagged;
+		else if (o->type == OBJ_COMMIT)
+			o = &(((struct commit *) o)->tree->object);
+		else {
+			if (name)
+				error("%.*s: expected %s type, but the object "
+				      "dereferences to %s type",
+				      namelen, name, typename(expected_type),
+				      typename(o->type));
+			return NULL;
+		}
+	}
 }
 
 static int peel_onion(const char *name, int len, unsigned char *sha1)
@@ -473,32 +508,17 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 		hashcpy(sha1, o->sha1);
 	}
 	else {
-		/* At this point, the syntax look correct, so
+		/*
+		 * At this point, the syntax look correct, so
 		 * if we do not get the needed object, we should
 		 * barf.
 		 */
-
-		while (1) {
-			if (!o || (!o->parsed && !parse_object(o->sha1)))
-				return -1;
-			if (o->type == expected_type) {
-				hashcpy(sha1, o->sha1);
-				return 0;
-			}
-			if (o->type == OBJ_TAG)
-				o = ((struct tag*) o)->tagged;
-			else if (o->type == OBJ_COMMIT)
-				o = &(((struct commit *) o)->tree->object);
-			else
-				return error("%.*s: expected %s type, but the object dereferences to %s type",
-					     len, name, typename(expected_type),
-					     typename(o->type));
-			if (!o)
-				return -1;
-			if (!o->parsed)
-				if (!parse_object(o->sha1))
-					return -1;
+		o = peel_to_type(name, len, o, expected_type);
+		if (o) {
+			hashcpy(sha1, o->sha1);
+			return 0;
 		}
+		return -1;
 	}
 	return 0;
 }
@@ -528,9 +548,8 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1)
 	int ret, has_suffix;
 	const char *cp;
 
-	/* "name~3" is "name^^^",
-	 * "name~" and "name~0" are name -- not "name^0"!
-	 * "name^" is not "name^0"; it is "name^1".
+	/*
+	 * "name~3" is "name^^^", "name~" is "name~1", and "name^" is "name^1".
 	 */
 	has_suffix = 0;
 	for (cp = name + len - 1; name <= cp; cp--) {
@@ -548,11 +567,10 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1)
 		cp++;
 		while (cp < name + len)
 			num = num * 10 + *cp++ - '0';
-		if (has_suffix == '^') {
-			if (!num && len1 == len - 1)
-				num = 1;
+		if (!num && len1 == len - 1)
+			num = 1;
+		if (has_suffix == '^')
 			return get_parent(name, len1, sha1, num);
-		}
 		/* else if (has_suffix == '~') -- goes without saying */
 		return get_nth_ancestor(name, len1, sha1, num);
 	}

@@ -20,6 +20,7 @@
 
 static int default_show_root = 1;
 static const char *fmt_patch_subject_prefix = "PATCH";
+static const char *fmt_pretty;
 
 static void add_name_decoration(const char *prefix, const char *name, struct object *obj)
 {
@@ -54,6 +55,8 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 
 	rev->abbrev = DEFAULT_ABBREV;
 	rev->commit_format = CMIT_FMT_DEFAULT;
+	if (fmt_pretty)
+		rev->commit_format = get_commit_format(fmt_pretty);
 	rev->verbose_header = 1;
 	DIFF_OPT_SET(&rev->diffopt, RECURSIVE);
 	rev->show_root_diff = default_show_root;
@@ -221,6 +224,8 @@ static int cmd_log_walk(struct rev_info *rev)
 
 static int git_log_config(const char *var, const char *value)
 {
+	if (!strcmp(var, "format.pretty"))
+		return git_config_string(&fmt_pretty, var, value);
 	if (!strcmp(var, "format.subjectprefix")) {
 		if (!value)
 			config_error_nonbool(var);
@@ -657,6 +662,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	int i;
 	const char *encoding = "utf-8";
 	struct diff_options opts;
+	int need_8bit_cte = 0;
 
 	if (rev->commit_format != CMIT_FMT_EMAIL)
 		die("Cover letter needs email format");
@@ -667,7 +673,8 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 
 	head_sha1 = sha1_to_hex(head->object.sha1);
 
-	log_write_email_headers(rev, head_sha1, &subject_start, &extra_headers);
+	log_write_email_headers(rev, head_sha1, &subject_start, &extra_headers,
+				&need_8bit_cte);
 
 	committer = git_committer_info(0);
 
@@ -676,7 +683,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	pp_user_info(NULL, CMIT_FMT_EMAIL, &sb, committer, DATE_RFC2822,
 		     encoding);
 	pp_title_line(CMIT_FMT_EMAIL, &msg, &sb, subject_start, extra_headers,
-		      encoding, 0);
+		      encoding, need_8bit_cte);
 	pp_remainder(CMIT_FMT_EMAIL, &msg, &sb, 0);
 	printf("%s\n", sb.buf);
 

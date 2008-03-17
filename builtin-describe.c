@@ -21,6 +21,7 @@ static int longformat;
 static int abbrev = DEFAULT_ABBREV;
 static int max_candidates = 10;
 const char *pattern = NULL;
+static int always;
 
 struct commit_name {
 	struct tag *tag;
@@ -156,7 +157,7 @@ static void display_name(struct commit_name *n)
 {
 	if (n->prio == 2 && !n->tag) {
 		n->tag = lookup_tag(n->sha1);
-		if (parse_tag(n->tag) || !n->tag || !n->tag->tag)
+		if (!n->tag || parse_tag(n->tag) || !n->tag->tag)
 			die("annotated tag %s not available", n->path);
 		if (strcmp(n->tag->tag, n->path))
 			warning("tag '%s' is really '%s' here", n->tag->tag, n->path);
@@ -166,9 +167,11 @@ static void display_name(struct commit_name *n)
 		printf("%s", n->tag->tag);
 	else
 		printf("%s", n->path);
-	if (longformat)
-		printf("-0-g%s",
-		       find_unique_abbrev(n->tag->tagged->sha1, abbrev));
+}
+
+static void show_suffix(int depth, const unsigned char *sha1)
+{
+	printf("-%d-g%s", depth, find_unique_abbrev(sha1, abbrev));
 }
 
 static void describe(const char *arg, int last_one)
@@ -195,7 +198,12 @@ static void describe(const char *arg, int last_one)
 
 	n = cmit->util;
 	if (n) {
+		/*
+		 * Exact match to an existing ref.
+		 */
 		display_name(n);
+		if (longformat)
+			show_suffix(0, n->tag->tagged->sha1);
 		printf("\n");
 		return;
 	}
@@ -250,8 +258,14 @@ static void describe(const char *arg, int last_one)
 		}
 	}
 
-	if (!match_cnt)
-		die("cannot describe '%s'", sha1_to_hex(cmit->object.sha1));
+	if (!match_cnt) {
+		const unsigned char *sha1 = cmit->object.sha1;
+		if (always) {
+			printf("%s\n", find_unique_abbrev(sha1, abbrev));
+			return;
+		}
+		die("cannot describe '%s'", sha1_to_hex(sha1));
+	}
 
 	qsort(all_matches, match_cnt, sizeof(all_matches[0]), compare_pt);
 
@@ -281,8 +295,7 @@ static void describe(const char *arg, int last_one)
 
 	display_name(all_matches[0].name);
 	if (abbrev)
-		printf("-%d-g%s", all_matches[0].depth,
-		       find_unique_abbrev(cmit->object.sha1, abbrev));
+		show_suffix(all_matches[0].depth, cmit->object.sha1);
 	printf("\n");
 
 	if (!last_one)
@@ -305,6 +318,8 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 			    "consider <n> most recent tags (default: 10)"),
 		OPT_STRING(0, "match",       &pattern, "pattern",
 			   "only consider tags matching <pattern>"),
+		OPT_BOOLEAN(0, "always",     &always,
+			   "show abbreviated commit object as fallback"),
 		OPT_END(),
 	};
 
@@ -320,11 +335,13 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 		die("--long is incompatible with --abbrev=0");
 
 	if (contains) {
-		const char **args = xmalloc((6 + argc) * sizeof(char*));
+		const char **args = xmalloc((7 + argc) * sizeof(char*));
 		int i = 0;
 		args[i++] = "name-rev";
 		args[i++] = "--name-only";
 		args[i++] = "--no-undefined";
+		if (always)
+			args[i++] = "--always";
 		if (!all) {
 			args[i++] = "--tags";
 			if (pattern) {

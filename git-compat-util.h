@@ -68,6 +68,7 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <utime.h>
 #ifndef NO_SYS_SELECT_H
 #include <sys/select.h>
 #endif
@@ -207,6 +208,15 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
 #ifdef FREAD_READS_DIRECTORIES
 #define fopen(a,b) git_fopen(a,b)
 extern FILE *git_fopen(const char*, const char*);
+#endif
+
+#ifdef SNPRINTF_RETURNS_BOGUS
+#define snprintf git_snprintf
+extern int git_snprintf(char *str, size_t maxsize,
+			const char *format, ...);
+#define vsnprintf git_vsnprintf
+extern int git_vsnprintf(char *str, size_t maxsize,
+			 const char *format, va_list ap);
 #endif
 
 #ifdef __GLIBC_PREREQ
@@ -435,6 +445,12 @@ static inline int strtol_i(char const *s, int base, int *result)
 void git_qsort(void *base, size_t nmemb, size_t size,
 	       int(*compar)(const void *, const void *));
 #define qsort git_qsort
+#endif
+
+#ifndef DIR_HAS_BSD_GROUP_SEMANTICS
+# define FORCE_DIR_SET_GID S_ISGID
+#else
+# define FORCE_DIR_SET_GID 0
 #endif
 
 #endif

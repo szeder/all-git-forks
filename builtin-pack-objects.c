@@ -15,6 +15,7 @@
 #include "revision.h"
 #include "list-objects.h"
 #include "progress.h"
+#include "refs.h"
 
 #ifdef THREADED_DELTA_SEARCH
 #include "thread-utils.h"
@@ -27,7 +28,8 @@ git-pack-objects [{ -q | --progress | --all-progress }] \n\
 	[--window=N] [--window-memory=N] [--depth=N] \n\
 	[--no-reuse-delta] [--no-reuse-object] [--delta-base-offset] \n\
 	[--threads=N] [--non-empty] [--revs [--unpacked | --all]*] [--reflog] \n\
-	[--stdout | base-name] [--keep-unreachable] [<ref-list | <object-list]";
+	[--stdout | base-name] [--include-tag] [--keep-unreachable] \n\
+	[<ref-list | <object-list]";
 
 struct object_entry {
 	struct pack_idx_entry idx;
@@ -63,7 +65,7 @@ static struct pack_idx_entry **written_list;
 static uint32_t nr_objects, nr_alloc, nr_result, nr_written;
 
 static int non_empty;
-static int no_reuse_delta, no_reuse_object, keep_unreachable;
+static int no_reuse_delta, no_reuse_object, keep_unreachable, include_tag;
 static int local;
 static int incremental;
 static int allow_ofs_delta;
@@ -452,6 +454,7 @@ static void write_pack_file(void)
 	struct pack_header hdr;
 	int do_progress = progress >> pack_to_stdout;
 	uint32_t nr_remaining = nr_result;
+	time_t last_mtime = 0;
 
 	if (do_progress)
 		progress_state = start_progress("Writing objects", nr_result);
@@ -502,6 +505,7 @@ static void write_pack_file(void)
 
 		if (!pack_to_stdout) {
 			mode_t mode = umask(0);
+			struct stat st;
 			char *idx_tmp_name, tmpname[PATH_MAX];
 
 			umask(mode);
@@ -509,6 +513,7 @@ static void write_pack_file(void)
 
 			idx_tmp_name = write_idx_file(NULL, written_list,
 						      nr_written, sha1);
+
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.pack",
 				 base_name, sha1_to_hex(sha1));
 			if (adjust_perm(pack_tmp_name, mode))
@@ -517,6 +522,28 @@ static void write_pack_file(void)
 			if (rename(pack_tmp_name, tmpname))
 				die("unable to rename temporary pack file: %s",
 				    strerror(errno));
+
+			/*
+			 * Packs are runtime accessed in their mtime
+			 * order since newer packs are more likely to contain
+			 * younger objects.  So if we are creating multiple
+			 * packs then we should modify the mtime of later ones
+			 * to preserve this property.
+			 */
+			if (stat(tmpname, &st) < 0) {
+				warning("failed to stat %s: %s",
+					tmpname, strerror(errno));
+			} else if (!last_mtime) {
+				last_mtime = st.st_mtime;
+			} else {
+				struct utimbuf utb;
+				utb.actime = st.st_atime;
+				utb.modtime = --last_mtime;
+				if (utime(tmpname, &utb) < 0)
+					warning("failed utime() on %s: %s",
+						tmpname, strerror(errno));
+			}
+
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.idx",
 				 base_name, sha1_to_hex(sha1));
 			if (adjust_perm(idx_tmp_name, mode))
@@ -525,6 +552,7 @@ static void write_pack_file(void)
 			if (rename(idx_tmp_name, tmpname))
 				die("unable to rename temporary index file: %s",
 				    strerror(errno));
+
 			free(idx_tmp_name);
 			free(pack_tmp_name);
 			puts(sha1_to_hex(sha1));
@@ -1630,6 +1658,18 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 #define ll_find_deltas(l, s, w, d, p)	find_deltas(l, &s, w, d, p)
 #endif
 
+static int add_ref_tag(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+{
+	unsigned char peeled[20];
+
+	if (!prefixcmp(path, "refs/tags/") && /* is a tag? */
+	    !peel_ref(path, peeled)        && /* peelable? */
+	    !is_null_sha1(peeled)          && /* annotated tag? */
+	    locate_object_entry(peeled))      /* object packed? */
+		add_object_entry(sha1, OBJ_TAG, NULL, 0);
+	return 0;
+}
+
 static void prepare_pack(int window, int depth)
 {
 	struct object_entry **delta_list;
@@ -2033,6 +2073,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			keep_unreachable = 1;
 			continue;
 		}
+		if (!strcmp("--include-tag", arg)) {
+			include_tag = 1;
+			continue;
+		}
 		if (!strcmp("--unpacked", arg) ||
 		    !prefixcmp(arg, "--unpacked=") ||
 		    !strcmp("--reflog", arg) ||
@@ -2109,6 +2153,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		rp_av[rp_ac] = NULL;
 		get_object_list(rp_ac, rp_av);
 	}
+	if (include_tag && nr_result)
+		for_each_ref(add_ref_tag, NULL);
 	stop_progress(&progress_state);
 
 	if (non_empty && !nr_result)

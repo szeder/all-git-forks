@@ -3,12 +3,16 @@
 # Copyright (c) 2005 Junio C Hamano
 #
 
+# Keep the original TERM for say_color
+ORIGINAL_TERM=$TERM
+
 # For repeatability, reset the environment to known value.
 LANG=C
 LC_ALL=C
 PAGER=cat
 TZ=UTC
-export LANG LC_ALL PAGER TZ
+TERM=dumb
+export LANG LC_ALL PAGER TERM TZ
 EDITOR=:
 VISUAL=:
 unset GIT_EDITOR
@@ -38,6 +42,7 @@ export GIT_MERGE_VERBOSITY
 export GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME
 export GIT_COMMITTER_EMAIL GIT_COMMITTER_NAME
 export EDITOR VISUAL
+GIT_TEST_CMP=${GIT_TEST_CMP:-diff -u}
 
 # Protect ourselves from common misconfiguration to export
 # CDPATH into the environment
@@ -58,12 +63,14 @@ esac
 # This test checks if command xyzzy does the right thing...
 # '
 # . ./test-lib.sh
-
-[ "x$TERM" != "xdumb" ] &&
-	[ -t 1 ] &&
-	tput bold >/dev/null 2>&1 &&
-	tput setaf 1 >/dev/null 2>&1 &&
-	tput sgr0 >/dev/null 2>&1 &&
+[ "x$ORIGINAL_TERM" != "xdumb" ] && (
+		TERM=$ORIGINAL_TERM &&
+		export TERM &&
+		[ -t 1 ] &&
+		tput bold >/dev/null 2>&1 &&
+		tput setaf 1 >/dev/null 2>&1 &&
+		tput sgr0 >/dev/null 2>&1
+	) &&
 	color=t
 
 while test "$#" -ne 0
@@ -91,6 +98,9 @@ done
 
 if test -n "$color"; then
 	say_color () {
+		(
+		TERM=$ORIGINAL_TERM
+		export TERM
 		case "$1" in
 			error) tput bold; tput setaf 1;; # bold red
 			skip)  tput bold; tput setaf 2;; # bold green
@@ -101,6 +111,7 @@ if test -n "$color"; then
 		shift
 		echo "* $*"
 		tput sgr0
+		)
 	}
 else
 	say_color() {
@@ -290,6 +301,23 @@ test_expect_code () {
 test_must_fail () {
 	"$@"
 	test $? -gt 0 -a $? -le 128
+}
+
+# test_cmp is a helper function to compare actual and expected output.
+# You can use it like:
+#
+#	test_expect_success 'foo works' '
+#		echo expected >expected &&
+#		foo >actual &&
+#		test_cmp expected actual
+#	'
+#
+# This could be written as either "cmp" or "diff -u", but:
+# - cmp's output is not nearly as easy to read as diff -u
+# - not all diff versions understand "-u"
+
+test_cmp() {
+	$GIT_TEST_CMP "$@"
 }
 
 # Most tests can use the created repository, but some may need to create more.
