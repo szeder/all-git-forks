@@ -3,6 +3,13 @@ all::
 
 # Define V=1 to have a more verbose compile.
 #
+# Define SNPRINTF_RETURNS_BOGUS if your are on a system which snprintf()
+# or vsnprintf() return -1 instead of number of characters which would
+# have been written to the final string if enough space had been available.
+#
+# Define FREAD_READS_DIRECTORIES if your are on a system which succeeds
+# when attempting to read from an fopen'ed directory.
+#
 # Define NO_OPENSSL environment variable if you do not have OpenSSL.
 # This also implies MOZILLA_SHA1.
 #
@@ -137,6 +144,13 @@ all::
 # Define THREADED_DELTA_SEARCH if you have pthreads and wish to exploit
 # parallel delta searching when packing objects.
 #
+# Define INTERNAL_QSORT to use Git's implementation of qsort(), which
+# is a simplified version of the merge sort used in glibc. This is
+# recommended if Git triggers O(n^2) behavior in your platform's qsort().
+#
+# Define NO_EXTERNAL_GREP if you don't want "git grep" to ever call
+# your external grep (e.g., if your system lacks grep, if its grep is
+# broken, or spawning external process is slower than built-in grep git has).
 
 GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -219,7 +233,7 @@ BASIC_CFLAGS =
 BASIC_LDFLAGS =
 
 SCRIPT_SH = \
-	git-bisect.sh git-checkout.sh \
+	git-bisect.sh \
 	git-clone.sh \
 	git-merge-one-file.sh git-mergetool.sh git-parse-remote.sh \
 	git-pull.sh git-rebase.sh git-rebase--interactive.sh \
@@ -231,12 +245,12 @@ SCRIPT_SH = \
 	git-lost-found.sh git-quiltimport.sh git-submodule.sh \
 	git-filter-branch.sh \
 	git-stash.sh \
-	git-help--browse.sh
+	git-web--browse.sh
 
 SCRIPT_PERL = \
 	git-add--interactive.perl \
 	git-archimport.perl git-cvsimport.perl git-relink.perl \
-	git-cvsserver.perl git-remote.perl git-cvsexportcommit.perl \
+	git-cvsserver.perl git-cvsexportcommit.perl \
 	git-send-email.perl git-svn.perl
 
 SCRIPTS = $(patsubst %.sh,%,$(SCRIPT_SH)) \
@@ -258,22 +272,22 @@ PROGRAMS = \
 	git-upload-pack$X \
 	git-pack-redundant$X git-var$X \
 	git-merge-tree$X git-imap-send$X \
-	git-merge-recursive$X \
 	$(EXTRA_PROGRAMS)
 
 # Empty...
 EXTRA_PROGRAMS =
 
+# List built-in command $C whose implementation cmd_$C() is not in
+# builtin-$C.o but is linked in as part of some other command.
 BUILT_INS = \
 	git-format-patch$X git-show$X git-whatchanged$X git-cherry$X \
 	git-get-tar-commit-id$X git-init$X git-repo-config$X \
 	git-fsck-objects$X git-cherry-pick$X git-peek-remote$X git-status$X \
+	git-merge-subtree$X \
 	$(patsubst builtin-%.o,git-%$X,$(BUILTIN_OBJS))
 
 # what 'all' will build and 'install' will install, in gitexecdir
 ALL_PROGRAMS = $(PROGRAMS) $(SCRIPTS)
-
-ALL_PROGRAMS += git-merge-subtree$X
 
 # what 'all' will build but not install in gitexecdir
 OTHER_PROGRAMS = git$X gitweb/gitweb.cgi
@@ -297,7 +311,8 @@ LIB_H = \
 	run-command.h strbuf.h tag.h tree.h git-compat-util.h revision.h \
 	tree-walk.h log-tree.h dir.h path-list.h unpack-trees.h builtin.h \
 	utf8.h reflog-walk.h patch-ids.h attr.h decorate.h progress.h \
-	mailmap.h remote.h parse-options.h transport.h diffcore.h hash.h
+	mailmap.h remote.h parse-options.h transport.h diffcore.h hash.h ll-merge.h fsck.h \
+	pack-revindex.h
 
 DIFF_OBJS = \
 	diff.o diff-lib.o diffcore-break.o diffcore-order.o \
@@ -312,7 +327,7 @@ LIB_OBJS = \
 	patch-ids.o \
 	object.o pack-check.o pack-write.o patch-delta.o path.o pkt-line.o \
 	sideband.o reachable.o reflog-walk.o \
-	quote.o read-cache.o refs.o run-command.o dir.o object-refs.o \
+	quote.o read-cache.o refs.o run-command.o dir.o \
 	server-info.o setup.o sha1_file.o sha1_name.o strbuf.o \
 	tag.o tree.o usage.o config.o environment.o ctype.o copy.o \
 	revision.o pager.o tree-walk.o xdiff-interface.o \
@@ -320,7 +335,8 @@ LIB_OBJS = \
 	alloc.o merge-file.o path-list.o help.o unpack-trees.o $(DIFF_OBJS) \
 	color.o wt-status.o archive-zip.o archive-tar.o shallow.o utf8.o \
 	convert.o attr.o decorate.o progress.o mailmap.o symlinks.o remote.o \
-	transport.o bundle.o walker.o parse-options.o ws.o archive.o
+	transport.o bundle.o walker.o parse-options.o ws.o archive.o branch.o \
+	ll-merge.o alias.o fsck.o pack-revindex.o
 
 BUILTIN_OBJS = \
 	builtin-add.o \
@@ -332,6 +348,7 @@ BUILTIN_OBJS = \
 	builtin-bundle.o \
 	builtin-cat-file.o \
 	builtin-check-attr.o \
+	builtin-checkout.o \
 	builtin-checkout-index.o \
 	builtin-check-ref-format.o \
 	builtin-clean.o \
@@ -362,6 +379,7 @@ BUILTIN_OBJS = \
 	builtin-merge-base.o \
 	builtin-merge-file.o \
 	builtin-merge-ours.o \
+	builtin-merge-recursive.o \
 	builtin-mv.o \
 	builtin-name-rev.o \
 	builtin-pack-objects.o \
@@ -370,6 +388,7 @@ BUILTIN_OBJS = \
 	builtin-push.o \
 	builtin-read-tree.o \
 	builtin-reflog.o \
+	builtin-remote.o \
 	builtin-send-pack.o \
 	builtin-config.o \
 	builtin-rerere.o \
@@ -467,6 +486,7 @@ ifeq ($(uname_S),FreeBSD)
 	NO_MEMMEM = YesPlease
 	BASIC_CFLAGS += -I/usr/local/include
 	BASIC_LDFLAGS += -L/usr/local/lib
+	DIR_HAS_BSD_GROUP_SEMANTICS = YesPlease
 endif
 ifeq ($(uname_S),OpenBSD)
 	NO_STRCASESTR = YesPlease
@@ -618,6 +638,14 @@ endif
 ifdef NO_C99_FORMAT
 	BASIC_CFLAGS += -DNO_C99_FORMAT
 endif
+ifdef SNPRINTF_RETURNS_BOGUS
+	COMPAT_CFLAGS += -DSNPRINTF_RETURNS_BOGUS
+	COMPAT_OBJS += compat/snprintf.o
+endif
+ifdef FREAD_READS_DIRECTORIES
+	COMPAT_CFLAGS += -DFREAD_READS_DIRECTORIES
+	COMPAT_OBJS += compat/fopen.o
+endif
 ifdef NO_SYMLINK_HEAD
 	BASIC_CFLAGS += -DNO_SYMLINK_HEAD
 endif
@@ -722,10 +750,21 @@ ifdef NO_MEMMEM
 	COMPAT_CFLAGS += -DNO_MEMMEM
 	COMPAT_OBJS += compat/memmem.o
 endif
+ifdef INTERNAL_QSORT
+	COMPAT_CFLAGS += -DINTERNAL_QSORT
+	COMPAT_OBJS += compat/qsort.o
+endif
 
 ifdef THREADED_DELTA_SEARCH
 	BASIC_CFLAGS += -DTHREADED_DELTA_SEARCH
 	EXTLIBS += -lpthread
+	LIB_OBJS += thread-utils.o
+endif
+ifdef DIR_HAS_BSD_GROUP_SEMANTICS
+	COMPAT_CFLAGS += -DDIR_HAS_BSD_GROUP_SEMANTICS
+endif
+ifdef NO_EXTERNAL_GREP
+	BASIC_CFLAGS += -DNO_EXTERNAL_GREP
 endif
 
 ifeq ($(TCLTK_PATH),)
@@ -793,7 +832,7 @@ export TAR INSTALL DESTDIR SHELL_PATH
 
 ### Build rules
 
-all:: $(ALL_PROGRAMS) $(BUILT_INS) $(OTHER_PROGRAMS)
+all:: $(ALL_PROGRAMS) $(BUILT_INS) $(OTHER_PROGRAMS) GIT-BUILD-OPTIONS
 ifneq (,$X)
 	$(foreach p,$(patsubst %$X,%,$(filter %$X,$(ALL_PROGRAMS) $(BUILT_INS) git$X)), $(RM) '$p';)
 endif
@@ -819,11 +858,9 @@ git$X: git.o $(BUILTIN_OBJS) $(GITLIBS)
 
 help.o: help.c common-cmds.h GIT-CFLAGS
 	$(QUIET_CC)$(CC) -o $*.o -c $(ALL_CFLAGS) \
+		'-DGIT_HTML_PATH="$(htmldir_SQ)"' \
 		'-DGIT_MAN_PATH="$(mandir_SQ)"' \
 		'-DGIT_INFO_PATH="$(infodir_SQ)"' $<
-
-git-merge-subtree$X: git-merge-recursive$X
-	$(QUIET_BUILT_IN)$(RM) $@ && ln git-merge-recursive$X $@
 
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && ln git$X $@
@@ -836,10 +873,10 @@ common-cmds.h: $(wildcard Documentation/git-*.txt)
 $(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
+	    -e 's|@SHELL_PATH@|$(SHELL_PATH_SQ)|' \
 	    -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
 	    -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
-	    -e 's|@@HTMLDIR@@|$(htmldir_SQ)|g' \
 	    $@.sh >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
@@ -994,6 +1031,9 @@ GIT-CFLAGS: .FORCE-GIT-CFLAGS
 		echo 1>&2 "    * new build flags or prefix"; \
 		echo "$$FLAGS" >GIT-CFLAGS; \
             fi
+
+GIT-BUILD-OPTIONS: .FORCE-GIT-BUILD-OPTIONS
+	@echo SHELL_PATH=\''$(SHELL_PATH_SQ)'\' >$@
 
 ### Detect Tck/Tk interpreter path changes
 ifndef NO_TCLTK
@@ -1150,10 +1190,11 @@ ifndef NO_TCLTK
 	$(MAKE) -C gitk-git clean
 	$(MAKE) -C git-gui clean
 endif
-	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-GUI-VARS
+	$(RM) GIT-VERSION-FILE GIT-CFLAGS GIT-GUI-VARS GIT-BUILD-OPTIONS
 
 .PHONY: all install clean strip
 .PHONY: .FORCE-GIT-VERSION-FILE TAGS tags cscope .FORCE-GIT-CFLAGS
+.PHONY: .FORCE-GIT-BUILD-OPTIONS
 
 ### Check documentation
 #

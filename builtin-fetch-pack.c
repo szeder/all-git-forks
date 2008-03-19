@@ -7,6 +7,7 @@
 #include "pack.h"
 #include "sideband.h"
 #include "fetch-pack.h"
+#include "remote.h"
 #include "run-command.h"
 
 static int transfer_unpack_limit = -1;
@@ -17,7 +18,7 @@ static struct fetch_pack_args args = {
 };
 
 static const char fetch_pack_usage[] =
-"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
+"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
 
 #define COMPLETE	(1U << 0)
 #define COMMON		(1U << 1)
@@ -40,7 +41,8 @@ static void rev_list_push(struct commit *commit, int mark)
 		commit->object.flags |= mark;
 
 		if (!(commit->object.parsed))
-			parse_commit(commit);
+			if (parse_commit(commit))
+				return;
 
 		insert_by_date(commit, &rev_list);
 
@@ -82,7 +84,8 @@ static void mark_common(struct commit *commit,
 			if (!ancestors_only && !(o->flags & POPPED))
 				non_common_revs--;
 			if (!o->parsed && !dont_parse)
-				parse_commit(commit);
+				if (parse_commit(commit))
+					return;
 
 			for (parents = commit->parents;
 					parents;
@@ -102,19 +105,19 @@ static const unsigned char* get_rev(void)
 
 	while (commit == NULL) {
 		unsigned int mark;
-		struct commit_list* parents;
+		struct commit_list *parents = NULL;
 
 		if (rev_list == NULL || non_common_revs == 0)
 			return NULL;
 
 		commit = rev_list->item;
 		if (!(commit->object.parsed))
-			parse_commit(commit);
+			if (!parse_commit(commit))
+				parents = commit->parents;
+
 		commit->object.flags |= POPPED;
 		if (!(commit->object.flags & COMMON))
 			non_common_revs--;
-
-		parents = commit->parents;
 
 		if (commit->object.flags & COMMON) {
 			/* do not send "have", and ignore ancestors */
@@ -173,13 +176,14 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 		}
 
 		if (!fetching)
-			packet_write(fd[1], "want %s%s%s%s%s%s%s\n",
+			packet_write(fd[1], "want %s%s%s%s%s%s%s%s\n",
 				     sha1_to_hex(remote),
 				     (multi_ack ? " multi_ack" : ""),
 				     (use_sideband == 2 ? " side-band-64k" : ""),
 				     (use_sideband == 1 ? " side-band" : ""),
 				     (args.use_thin_pack ? " thin-pack" : ""),
 				     (args.no_progress ? " no-progress" : ""),
+				     (args.include_tag ? " include-tag" : ""),
 				     " ofs-delta");
 		else
 			packet_write(fd[1], "want %s\n", sha1_to_hex(remote));
@@ -211,7 +215,8 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 				if (!lookup_object(sha1))
 					die("object not found: %s", line);
 				/* make sure that it is parsed as shallow */
-				parse_object(sha1);
+				if (!parse_object(sha1))
+					die("error in object: %s", line);
 				if (unregister_shallow(sha1))
 					die("no shallow found: %s", line);
 				continue;
@@ -385,7 +390,6 @@ static int everything_local(struct ref **refs, int nr_match, char **match)
 	int retval;
 	unsigned long cutoff = 0;
 
-	track_object_refs = 0;
 	save_commit_buffer = 0;
 
 	for (ref = *refs; ref; ref = ref->next) {
@@ -537,8 +541,10 @@ static int get_pack(int xd[2], char **pack_lockfile)
 	cmd.git_cmd = 1;
 	if (start_command(&cmd))
 		die("fetch-pack: unable to fork off %s", argv[0]);
-	if (do_keep && pack_lockfile)
+	if (do_keep && pack_lockfile) {
 		*pack_lockfile = index_pack_lockfile(cmd.out);
+		close(cmd.out);
+	}
 
 	if (finish_command(&cmd))
 		die("%s failed", argv[0]);
@@ -548,14 +554,14 @@ static int get_pack(int xd[2], char **pack_lockfile)
 }
 
 static struct ref *do_fetch_pack(int fd[2],
+		const struct ref *orig_ref,
 		int nr_match,
 		char **match,
 		char **pack_lockfile)
 {
-	struct ref *ref;
+	struct ref *ref = copy_ref_list(orig_ref);
 	unsigned char sha1[20];
 
-	get_remote_heads(fd[0], &ref, 0, NULL, 0);
 	if (is_repository_shallow() && !server_supports("shallow"))
 		die("Server does not support shallow clients");
 	if (server_supports("multi_ack")) {
@@ -572,10 +578,6 @@ static struct ref *do_fetch_pack(int fd[2],
 		if (args.verbose)
 			fprintf(stderr, "Server supports side-band\n");
 		use_sideband = 1;
-	}
-	if (!ref) {
-		packet_flush(fd[1]);
-		die("no matching remote head");
 	}
 	if (everything_local(&ref, nr_match, match)) {
 		packet_flush(fd[1]);
@@ -650,8 +652,10 @@ static void fetch_pack_setup(void)
 int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 {
 	int i, ret, nr_heads;
-	struct ref *ref;
+	struct ref *ref = NULL;
 	char *dest = NULL, **heads;
+	int fd[2];
+	struct child_process *conn;
 
 	nr_heads = 0;
 	heads = NULL;
@@ -680,6 +684,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 				args.use_thin_pack = 1;
 				continue;
 			}
+			if (!strcmp("--include-tag", arg)) {
+				args.include_tag = 1;
+				continue;
+			}
 			if (!strcmp("--all", arg)) {
 				args.fetch_all = 1;
 				continue;
@@ -706,45 +714,20 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	if (!dest)
 		usage(fetch_pack_usage);
 
-	ref = fetch_pack(&args, dest, nr_heads, heads, NULL);
-	ret = !ref;
-
-	while (ref) {
-		printf("%s %s\n",
-		       sha1_to_hex(ref->old_sha1), ref->name);
-		ref = ref->next;
-	}
-
-	return ret;
-}
-
-struct ref *fetch_pack(struct fetch_pack_args *my_args,
-		const char *dest,
-		int nr_heads,
-		char **heads,
-		char **pack_lockfile)
-{
-	int i, ret;
-	int fd[2];
-	struct child_process *conn;
-	struct ref *ref;
-	struct stat st;
-
-	fetch_pack_setup();
-	memcpy(&args, my_args, sizeof(args));
-	if (args.depth > 0) {
-		if (stat(git_path("shallow"), &st))
-			st.st_mtime = 0;
-	}
-
 	conn = git_connect(fd, (char *)dest, args.uploadpack,
-                          args.verbose ? CONNECT_VERBOSE : 0);
-	if (heads && nr_heads)
-		nr_heads = remove_duplicates(nr_heads, heads);
-	ref = do_fetch_pack(fd, nr_heads, heads, pack_lockfile);
-	close(fd[0]);
-	close(fd[1]);
-	ret = finish_connect(conn);
+			   args.verbose ? CONNECT_VERBOSE : 0);
+	if (conn) {
+		get_remote_heads(fd[0], &ref, 0, NULL, 0);
+
+		ref = fetch_pack(&args, fd, conn, ref, dest, nr_heads, heads, NULL);
+		close(fd[0]);
+		close(fd[1]);
+		if (finish_connect(conn))
+			ref = NULL;
+	} else {
+		ref = NULL;
+	}
+	ret = !ref;
 
 	if (!ret && nr_heads) {
 		/* If the heads to pull were given, we should have
@@ -758,8 +741,42 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 				ret = 1;
 			}
 	}
+	while (ref) {
+		printf("%s %s\n",
+		       sha1_to_hex(ref->old_sha1), ref->name);
+		ref = ref->next;
+	}
 
-	if (!ret && args.depth > 0) {
+	return ret;
+}
+
+struct ref *fetch_pack(struct fetch_pack_args *my_args,
+		       int fd[], struct child_process *conn,
+		       const struct ref *ref,
+		const char *dest,
+		int nr_heads,
+		char **heads,
+		char **pack_lockfile)
+{
+	struct stat st;
+	struct ref *ref_cpy;
+
+	fetch_pack_setup();
+	memcpy(&args, my_args, sizeof(args));
+	if (args.depth > 0) {
+		if (stat(git_path("shallow"), &st))
+			st.st_mtime = 0;
+	}
+
+	if (heads && nr_heads)
+		nr_heads = remove_duplicates(nr_heads, heads);
+	if (!ref) {
+		packet_flush(fd[1]);
+		die("no matching remote head");
+	}
+	ref_cpy = do_fetch_pack(fd, ref, nr_heads, heads, pack_lockfile);
+
+	if (args.depth > 0) {
 		struct cache_time mtime;
 		char *shallow = git_path("shallow");
 		int fd;
@@ -787,8 +804,5 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 		}
 	}
 
-	if (ret)
-		ref = NULL;
-
-	return ref;
+	return ref_cpy;
 }
