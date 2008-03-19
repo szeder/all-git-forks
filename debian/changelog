@@ -1,3 +1,12 @@
+git-core (1:1.5.5~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * git-pull documentation: warn about the option order (closes: #463853).
+    * hash-object: cleanup handling of command line options (closes:
+      #464432).
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 19 Mar 2008 07:42:49 +0000
+
 git-core (1:1.5.4.4-1) unstable; urgency=low
 
   * new upstream point release.

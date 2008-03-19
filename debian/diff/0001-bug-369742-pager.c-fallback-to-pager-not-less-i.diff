@@ -1,4 +1,4 @@
-From a51570e1cc9e459df2b011989ffcd3cc281d2238 Mon Sep 17 00:00:00 2001
+From 2da1cba93647e5d462b30a83f6e3d2ba82272040 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Wed, 9 May 2007 08:36:16 +0000
 Subject: [PATCH] bug#369742: pager.c: fallback to 'pager' not 'less' if $PAGER is unset.
@@ -9,7 +9,7 @@ http://bugs.debian.org/369742
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/pager.c b/pager.c
-index 0376953..6a6afed 100644
+index ca002f9..1ee4566 100644
 --- a/pager.c
 +++ b/pager.c
 @@ -39,7 +39,7 @@ void setup_pager(void)
@@ -22,5 +22,5 @@ index 0376953..6a6afed 100644
  		return;
  
 -- 
-1.5.4.3
+1.5.4.4
 
