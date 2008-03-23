@@ -1,3 +1,62 @@
+Version v1.5.5-rc1; changes since v1.5.5-rc0:
+---------------------------------------------
+
+Brandon Casey (2):
+      builtin-gc.c: allow disabling all auto-gc'ing by assigning 0 to gc.auto
+      t/t7003-filter-branch.sh: use test_must_fail rather than '!'
+
+Daniel Barkalow (3):
+      Tighten refspec processing
+      Fix t3200 config
+      Fix tag following
+
+Eyvind Bernhardsen (2):
+      fast-import: Allow "reset" to delete a new branch without error
+      fast-import: Document the effect of "merge" with no "from" in a commit
+
+Johannes Schindelin (1):
+      remote show: do not show symbolic refs
+
+Junio C Hamano (10):
+      Makefile: DIFF_OBJS is not special at all these days
+      Makefile: flatten enumeration of headers, objects and programs
+      t1000: use "test_must_fail git frotz", not "! git frotz"
+      git-merge-one-file: fix longstanding stupid thinko
+      Test: catch if trash cannot be removed
+      Add tests to catch problems with un-unlinkable symlinks
+      Fix read-tree not to discard errors
+      remote.c: Fix overtight refspec validation
+      gc --auto: raise default auto pack limit from 20 to 50
+      GIT 1.5.5-rc1
+
+Kevin Ballard (4):
+      Add --reverse to the git-rev-list usage string
+      Document the sendemail.smtpserverport config variable
+      Don't try and percent-escape existing percent escapes in git-svn URIs
+      Make git-svn tests behave better on OS X
+
+Linus Torvalds (3):
+      Don't update unchanged merge entries
+      Fix possible Solaris problem in 'checkout_entry()'
+      Make revision limiting more robust against occasional bad commit dates
+
+Marius Storm-Olsen (1):
+      git-p4: Optimize the fetching of data from perforce.
+
+Miklos Vajna (1):
+      Documentation/git-merge: document subtree strategy.
+
+Nicolas Pitre (1):
+      make it easier for people who just want to get rid of 'git gc --auto'
+
+Ralf Wildenhues (1):
+      Improve description of git filter-branch.
+
+Shawn Bohrer (2):
+      git-p4: Unset P4DIFF environment variable when using 'p4 -du diff'
+      git-p4: Use P4EDITOR environment variable when set
+
+
 Version v1.5.5-rc0; changes since v1.5.4.4:
 -------------------------------------------
 
