@@ -111,7 +111,7 @@ Shawn Bohrer (2):
       git-p4: Use P4EDITOR environment variable when set
 
 
-Version v1.5.5-rc0; changes since v1.5.4.4:
+Version v1.5.5-rc0; changes since v1.5.4.5:
 -------------------------------------------
 
 Adam Piątyszek (1):
@@ -132,12 +132,6 @@ Alexandre Julliard (5):
 
 Andreas Ericsson (1):
       pack-objects: Add runtime detection of online CPU's
-
-Andy Whitcroft (1):
-      shortlog: take the first populated line of the description
-
-Bernt Hansen (1):
-      git-new-workdir: Share SVN meta data between work dirs and the repository
 
 Brandon Casey (13):
       builtin-reflog.c: fix typo that accesses an unset variable
@@ -200,10 +194,9 @@ Christian Stimming (4):
       git-gui: (i18n) Add newly added translation strings to template.
       git-gui: Update German translation.
 
-Clemens Buchacher (3):
+Clemens Buchacher (2):
       http-push: push <remote> :<branch> deletes remote branch
       http-push: add regression tests
-      merge-recursive: handle file mode changes
 
 Daniel Barkalow (33):
       Test :/string form for checkout
@@ -260,9 +253,8 @@ Dmitry Potapov (3):
       Make private quote_path() in wt-status.c available as quote_path_relative()
       git-clean: correct printing relative path
 
-Eric Wong (2):
+Eric Wong (1):
       git-svn: improve repository URL matching when following parents
-      git-svn: don't blindly append '*' to branch/tags config
 
 Florian La Roche (1):
       gitweb: Make feed entries point to commitdiff view
@@ -276,7 +268,7 @@ Gerrit Pape (4):
       builtin-tag.c: remove cruft
       hash-object: cleanup handling of command line options
 
-Jakub Narebski (12):
+Jakub Narebski (11):
       gitweb: Fix displaying unchopped argument in chop_and_escape_str
       gitweb: Add new option -nohtml to quot_xxx subroutines
       gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
@@ -288,7 +280,6 @@ Jakub Narebski (12):
       Documentation: Remove --{min,max}-age option from git-log(1)
       gitweb: Mark first match when searching commit messages
       gitweb: Fix and simplify pickaxe search
-      gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
 
 James Bowes (1):
       Add a BuildRequires for gettext in the spec file.
@@ -309,7 +300,7 @@ Jay Soffian (8):
 Jean-Luc Herren (1):
       fast-import: exit with proper message if not a git dir
 
-Jeff King (32):
+Jeff King (31):
       allow suppressing of global and system config
       fix config reading in tests
       hard-code the empty tree object
@@ -327,7 +318,6 @@ Jeff King (32):
       allow git-am to run in a subdirectory
       Add a test for read-tree -u --reset with a D/F conflict
       gitk: make autoselect optional
-      t0021: tr portability fix for Solaris
       tr portability fixes
       t0050: perl portability fix
       more tr portability test script fixes
@@ -350,7 +340,7 @@ Johan Herland (2):
       Add testcase for 'git cvsexportcommit -w $cvsdir ...' with relative $GIT_DIR
       Fix 'git cvsexportcommit -w $cvsdir ...' when used with relative $GIT_DIR
 
-Johannes Schindelin (24):
+Johannes Schindelin (21):
       Teach "git reflog" a subcommand to delete single entries
       Also use unpack_trees() in do_diff_cache()
       Fix "git clone" for git:// protocol
@@ -371,10 +361,7 @@ Johannes Schindelin (24):
       remote show: Clean up connection correctly if object fetch wasn't done
       remote: fix "update [group...]"
       builtin remote rm: remove symbolic refs, too
-      launch_editor(): allow spaces in the filename
       gc: call "prune --expire 2.weeks.ago" by default
-      git fetch: Take '-n' to mean '--no-tags'
-      merge-file: handle empty files gracefully
 
 Johannes Sixt (7):
       Fix misuse of prefix_path()
@@ -385,15 +372,14 @@ Johannes Sixt (7):
       start_command(), if .in/.out > 0, closes file descriptors, not the callers
       git-submodule summary: fix that some "wc" flavors produce leading spaces
 
-Jonas Fonseca (3):
+Jonas Fonseca (2):
       man pages are littered with .ft C and others
-      Make man page building quiet when DOCBOOK_XSL_172 is defined
       shortlog: do not require to run from inside a git repository
 
 Junichi Uekawa (1):
       git-blame.el: show the when, who and what in the minibuffer.
 
-Junio C Hamano (99):
+Junio C Hamano (93):
       index: be careful when handling long names
       Avoid running lstat(2) on the same cache entry.
       read-cache.c: fix a couple more CE_REMOVE conversion
@@ -478,19 +464,13 @@ Junio C Hamano (99):
       Revert part of d089eba (setup: sanitize absolute and funny paths in get_pathspec())
       git-clean: add tests for relative path
       send-email: --no-signed-off-cc should suppress 'sob' cc
-      filter-branch: handle "disappearing tree" case correctly in subdir filter
-      git-pull documentation: warn about the option order
       traverse_trees_recursive(): propagate merge errors up
       git-gui: Simplify MSGFMT setting in Makefile
-      quiltimport: fix misquoting of parsed -p<num> parameter
       Documentation/config: typofix
       Documentation/git-help: typofix
       read-tree() and unpack_trees(): use consistent limit
-      format-patch: generate MIME header as needed even when there is format.header
       Redo "add test_cmp function for test scripts"
       git-gui: Improve directions regarding POT update in po/README
-      rebase -m: do not trigger pre-commit verification
-      Start draft ReleaseNotes for 1.5.4.5
       Resurrect git-rerere to contrib/examples
       Update draft release notes for 1.5.5
 
@@ -507,7 +487,7 @@ Kristian Høgsberg (1):
 Lars Hjemli (1):
       Simplify setup of $GIT_DIR in git-sh-setup.sh
 
-Linus Torvalds (23):
+Linus Torvalds (22):
       Make on-disk index representation separate from in-core one
       Make run_diff_index() use unpack_trees(), not read_tree()
       Create pathname-based hash-table lookup into index
@@ -529,12 +509,7 @@ Linus Torvalds (23):
       Make 'unpack_trees()' have a separate source and destination index
       unpack_trees(): minor memory leak fix in unused destination index
       unpack_trees(): fix diff-index regression.
-      rev-parse: fix meaning of rev~ vs rev~0.
       Fix recent 'unpack_trees()'-related changes breaking 'git stash'
-
-Marc-Andre Lureau (2):
-      git-svn: fix find-rev error message when missing arg
-      git-cvsimport: fix merging with remote parent branch
 
 Marco Costalba (1):
       Avoid a useless prefix lookup in strbuf_expand()
@@ -593,13 +568,12 @@ Michele Ballabio (7):
       gitk: initial Italian translation
       git-gui: remove spurious "fuzzy" attributes in po/it.po
 
-Mike Hommey (6):
+Mike Hommey (5):
       Work around curl-gnutls not liking to be reinitialized
       Add test for git rebase --abort
       Documentation/git-rebase.txt: Add --strategy to synopsys
       git rebase --abort: always restore the right commit
       t3407-rebase-abort.sh: Enhance existing tests, and add test for rebase --merge
-      git rebase --abort: always restore the right commit
 
 Miklos Vajna (4):
       git-clean: handle errors if removing files fails
@@ -647,12 +621,11 @@ Philippe Bruhat (BooK (3):
       cvsimport: allow for multiple -M options
       cvsimport: document that -M can be used multiple times
 
-Pierre Habouzit (5):
+Pierre Habouzit (4):
       git-describe: Add a --match option to limit considered tags.
       git-name-rev: add a --(no-)undefined option.
       parse-opt: bring PARSE_OPT_HIDDEN and NONEG to git-rev-parse --parseopt
       parse-options: new option type to treat an option-like parameter as an argument.
-      git-quiltimport: better parser to grok "enhanced" series files.
 
 Ping Yin (5):
       git-submodule summary: code framework
@@ -766,14 +739,79 @@ Tor Arvid Lund (1):
 Uwe Kleine-König (1):
       rev-list: add --branches, --tags and --remotes
 
-Vineet Kumar (1):
-      Minor wording changes in the keyboard descriptions in git-add --interactive.
-
 Yann Dirson (1):
       Add an --argscmd flag to get the list of refs to show
 
 eric miao (1):
       git-gui: translate the remaining messages in zh_cn.po to chinese
+
+
+Version v1.5.4.5; changes since v1.5.4.4:
+-----------------------------------------
+
+Andy Whitcroft (1):
+      shortlog: take the first populated line of the description
+
+Bernt Hansen (1):
+      git-new-workdir: Share SVN meta data between work dirs and the repository
+
+Brandon Casey (1):
+      t/t3800-mktag.sh: use test_must_fail rather than '!'
+
+Clemens Buchacher (1):
+      merge-recursive: handle file mode changes
+
+Daniel Barkalow (2):
+      Tighten refspec processing
+      Fix branches file configuration
+
+Eric Wong (1):
+      git-svn: don't blindly append '*' to branch/tags config
+
+Guanqun Lu (1):
+      Fix the wrong output of `git-show v1.3.0~155^2~4` in documentation.
+
+Jakub Narebski (1):
+      gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
+
+Jeff King (2):
+      t0021: tr portability fix for Solaris
+      Documentation: clarify use of .git{ignore,attributes} versus .git/info/*
+
+Johannes Schindelin (3):
+      launch_editor(): allow spaces in the filename
+      git fetch: Take '-n' to mean '--no-tags'
+      merge-file: handle empty files gracefully
+
+Jonas Fonseca (1):
+      Make man page building quiet when DOCBOOK_XSL_172 is defined
+
+Junio C Hamano (9):
+      filter-branch: handle "disappearing tree" case correctly in subdir filter
+      git-pull documentation: warn about the option order
+      quiltimport: fix misquoting of parsed -p<num> parameter
+      format-patch: generate MIME header as needed even when there is format.header
+      rebase -m: do not trigger pre-commit verification
+      Start draft ReleaseNotes for 1.5.4.5
+      git-fetch test: test tracking fetch results, not just FETCH_HEAD
+      Update draft release notes for 1.5.4.5
+      GIT 1.5.4.5
+
+Linus Torvalds (1):
+      rev-parse: fix meaning of rev~ vs rev~0.
+
+Marc-Andre Lureau (2):
+      git-svn: fix find-rev error message when missing arg
+      git-cvsimport: fix merging with remote parent branch
+
+Mike Hommey (1):
+      git rebase --abort: always restore the right commit
+
+Pierre Habouzit (1):
+      git-quiltimport: better parser to grok "enhanced" series files.
+
+Vineet Kumar (1):
+      Minor wording changes in the keyboard descriptions in git-add --interactive.
 
 
 Version v1.5.4.4; changes since v1.5.4.3:
