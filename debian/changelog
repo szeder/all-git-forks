@@ -1,3 +1,13 @@
+git-core (1:1.5.5~rc2-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * t9600-cvsimport.sh: set HOME before checking for cvsps availability
+      (closes: #471969).
+    * imap-send: properly error out if imap.host is not set in config
+      (closes: #472632).
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 28 Mar 2008 08:53:30 +0000
+
 git-core (1:1.5.5~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.

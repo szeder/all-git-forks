@@ -1,3 +1,57 @@
+Version v1.5.5-rc2; changes since v1.5.5-rc1:
+---------------------------------------------
+
+Brandon Casey (1):
+      t/t3800-mktag.sh: use test_must_fail rather than '!'
+
+Daniel Barkalow (2):
+      Tighten refspec processing
+      Fix branches file configuration
+
+Dirk Süsserott (1):
+      Documentation: git-tag '-m'/'-F' implies '-a'
+
+Frank Lichtenheld (1):
+      t9600-cvsimport.sh: set HOME before checking for cvsps availability
+
+Gerrit Pape (1):
+      imap-send: properly error out if imap.host is not set in config
+
+Guanqun Lu (2):
+      Fix the wrong output of `git-show v1.3.0~155^2~4` in documentation.
+      Fix the wrong output of `git-show v1.3.0~155^2~4` in documentation.
+
+Jeff King (1):
+      Documentation: clarify use of .git{ignore,attributes} versus .git/info/*
+
+Johannes Schindelin (2):
+      RelNotes: mention checkout/branch's --track option, too
+      init: show "Reinit" message even in an (existing) empty repository
+
+Johannes Sixt (1):
+      builtin-remote: Fix missing newline at end of listing of pushed branches
+
+Julian Phillips (1):
+      Documentation/git-checkout: Update summary to reflect current abilities
+
+Junio C Hamano (7):
+      refspec: allow colon-less wildcard "refs/category/*"
+      git-fetch test: test tracking fetch results, not just FETCH_HEAD
+      test_must_fail: 129 is a valid error code from usage()
+      Update draft release notes for 1.5.4.5
+      Update draft release notes for 1.5.5
+      builtin-prune: protect objects listed on the command line
+      GIT 1.5.4.5
+
+Michele Ballabio (3):
+      parse-options.c: introduce OPT_DATE
+      Add tests for git-prune
+      builtin-prune.c: use parse_options()
+
+SZEDER Gábor (1):
+      Always set *nongit_ok in setup_git_directory_gently()
+
+
 Version v1.5.5-rc1; changes since v1.5.5-rc0:
 ---------------------------------------------
 
