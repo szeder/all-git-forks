@@ -1,3 +1,71 @@
+Version v1.5.4.5; changes since v1.5.4.4:
+-----------------------------------------
+
+Andy Whitcroft (1):
+      shortlog: take the first populated line of the description
+
+Bernt Hansen (1):
+      git-new-workdir: Share SVN meta data between work dirs and the repository
+
+Brandon Casey (1):
+      t/t3800-mktag.sh: use test_must_fail rather than '!'
+
+Clemens Buchacher (1):
+      merge-recursive: handle file mode changes
+
+Daniel Barkalow (2):
+      Tighten refspec processing
+      Fix branches file configuration
+
+Eric Wong (1):
+      git-svn: don't blindly append '*' to branch/tags config
+
+Guanqun Lu (1):
+      Fix the wrong output of `git-show v1.3.0~155^2~4` in documentation.
+
+Jakub Narebski (1):
+      gitweb: Fix bug in href(..., -replay=>1) when using 'pathinfo' form
+
+Jeff King (2):
+      t0021: tr portability fix for Solaris
+      Documentation: clarify use of .git{ignore,attributes} versus .git/info/*
+
+Johannes Schindelin (3):
+      launch_editor(): allow spaces in the filename
+      git fetch: Take '-n' to mean '--no-tags'
+      merge-file: handle empty files gracefully
+
+Jonas Fonseca (1):
+      Make man page building quiet when DOCBOOK_XSL_172 is defined
+
+Junio C Hamano (9):
+      filter-branch: handle "disappearing tree" case correctly in subdir filter
+      git-pull documentation: warn about the option order
+      quiltimport: fix misquoting of parsed -p<num> parameter
+      format-patch: generate MIME header as needed even when there is format.header
+      rebase -m: do not trigger pre-commit verification
+      Start draft ReleaseNotes for 1.5.4.5
+      git-fetch test: test tracking fetch results, not just FETCH_HEAD
+      Update draft release notes for 1.5.4.5
+      GIT 1.5.4.5
+
+Linus Torvalds (1):
+      rev-parse: fix meaning of rev~ vs rev~0.
+
+Marc-Andre Lureau (2):
+      git-svn: fix find-rev error message when missing arg
+      git-cvsimport: fix merging with remote parent branch
+
+Mike Hommey (1):
+      git rebase --abort: always restore the right commit
+
+Pierre Habouzit (1):
+      git-quiltimport: better parser to grok "enhanced" series files.
+
+Vineet Kumar (1):
+      Minor wording changes in the keyboard descriptions in git-add --interactive.
+
+
 Version v1.5.4.4; changes since v1.5.4.3:
 -----------------------------------------
 
