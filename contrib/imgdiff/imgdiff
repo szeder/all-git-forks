@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if test $# = 7; then
+	of="$2"
+	nf="$5"
+	echo "Image $1 changed"
+else
+	of="$1"
+	nf="$2"
+	echo "Images $of and $nf differ"
+fi
+
+d=$TMP/imgdiff$$.png
+
+trap 'rm -f "$d"' 0 1 2 15
+
+compare "$of" "$nf" "$d" &&
+imdisplay "$d"

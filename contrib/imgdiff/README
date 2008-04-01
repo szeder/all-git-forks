@@ -1,0 +1,35 @@
+This directory contains facilities that allow to highlight changes
+between two images.
+
+Prerequisites
+-------------
+
+ImageMagick - http://www.imagemagick.org/script/download.php
+
+
+Installation
+------------
+
+Copy the file imgdiff into a directory that is in your PATH
+
+
+Usage
+-----
+
+Activate imgdiff in your repository
+
+a.	Define a custom diff driver:
+
+		$ git config diff.imgdiff.command imgdiff
+
+b.	Use the custom driver for your images, i.e. put
+	a line like this in your .git/info/attributes:
+
+			*.png	diff=imgdiff
+
+Since this uses ImageMagick behind the scenes, all image formats
+are supported that your ImageMagick installation supports.
+
+You can also run the program from the command line like this:
+
+	$ imgdiff pictureold.png picturenew.png
