@@ -1,18 +1,36 @@
 #!/bin/sh
 
+d=$TMP/imgdiff$$.png
+
+trap 'rm -f "$d"' 0 1 2 15
+
 if test $# = 7; then
 	of="$2"
 	nf="$5"
-	echo "Image $1 changed"
+	case $3:$6 in
+	.:*)
+		echo "New image $1"
+		imdisplay "$nf"
+		exit
+		;;
+	*:.)
+		echo "Deleted image $1"
+		convert -size 140x80 xc:none -fill red \
+			-gravity NorthWest -draw "text 10,10 'Deleted'" \
+			-gravity SouthEast -draw "text 5,15 'Deleted'" \
+			miff:- | \
+		composite -tile - "$of" "$d" &&
+		imdisplay "$d"
+		exit
+		;;
+	*)
+		echo "Image $1 changed"
+	esac
 else
 	of="$1"
 	nf="$2"
 	echo "Images $of and $nf differ"
 fi
 
-d=$TMP/imgdiff$$.png
-
-trap 'rm -f "$d"' 0 1 2 15
-
-compare "$of" "$nf" "$d" &&
+compare -virtual-pixel black "$of" "$nf" "$d" &&
 imdisplay "$d"
