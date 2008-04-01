@@ -1,8 +1,10 @@
 #!/bin/sh
 
 d=$TMP/imgdiff$$.png
+a=$TMP/imgdiff$$a.miff
+b=$TMP/imgdiff$$b.miff
 
-trap 'rm -f "$d"' 0 1 2 15
+trap 'rm -f "$d" "$a" "$b"' 0 1 2 15
 
 if test $# = 7; then
 	of="$2"
@@ -32,5 +34,20 @@ else
 	echo "Images $of and $nf differ"
 fi
 
-compare -virtual-pixel black "$of" "$nf" "$d" &&
+# compute image sizes
+sa=$(identify "$of")
+sb=$(identify "$nf")
+sa=${sa#"$of "* }
+sb=${sb#"$nf "* }
+sa=${sa%% *}
+sb=${sb%% *}
+
+if test "$sa" != "$sb"; then
+	# sizes differ; must construct images of the same size
+	convert "xc:none[$sa!]" -scale "$sb<" "$of" -composite "$a" &&
+	convert "xc:none[$sa!]" -scale "$sb<" "$nf" -composite "$b"
+	of=$a
+	nf=$b
+fi &&
+compare "$of" "$nf" "$d" &&
 imdisplay "$d"
