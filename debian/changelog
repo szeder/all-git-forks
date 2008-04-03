@@ -1,8 +1,12 @@
 git-core (1:1.5.5~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.
+  * debian/diff/0004-gitweb-fallback-to-system-wide-config-file-if-defaul.diff:
+    new: gitweb: fallback to system-wide config file if default config does
+    not exist (closes: #450592).
+  * debian/rules: remove GITWEB_CONFIG=/etc/gitweb.conf from OPTS.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 03 Apr 2008 19:37:19 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 03 Apr 2008 19:43:33 +0000
 
 git-core (1:1.5.5~rc2-1) experimental; urgency=low
 
