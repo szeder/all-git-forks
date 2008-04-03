@@ -1,3 +1,62 @@
+Version v1.5.5-rc3; changes since v1.5.5-rc2:
+---------------------------------------------
+
+Brandon Casey (2):
+      mktag.c: improve verification of tagger field and tests
+      mktag.c: tweak validation of tagger field and adjust test script
+
+Bryan Donlan (1):
+      Silence cpio's "N blocks" output when cloning locally
+
+Christian Couder (1):
+      help: Add a missing OPT_END().
+
+Damien Diederen (7):
+      cvsserver: Respond to the 'editors' and 'watchers' commands
+      cvsserver: Only print the file part of the filename in status header
+      cvsserver: Do not include status output for subdirectories if -l is passed
+      cvsserver: Add a few tests for 'status' command
+      cvsserver: Implement update -p (print to stdout)
+      cvsserver: Add test for update -p
+      cvsserver: Use the user part of the email in log and annotate results
+
+Eric Wong (1):
+      git-svn: remove redundant slashes from show-ignore
+
+Johannes Sixt (3):
+      filter-branch: Test renaming directories in a tree-filter
+      verify-tag: Clean up the temporary file if gpg cannot be started.
+      t7004-tag: Skip more tests if gpg is not available.
+
+Jonathan del Strother (1):
+      git-gui: Add shortcut keys for Show More/Less Context
+
+Josh Elsasser (1):
+      Allow git-cvsserver database table name prefix to be specified.
+
+Junio C Hamano (5):
+      Add corner case tests for diff-index and diff-files
+      diff-index: careful when inspecting work tree items
+      diff-files: careful when inspecting work tree items
+      Accept git aliases outside a git repository
+      GIT 1.5.5-rc3
+
+Marius Storm-Olsen (1):
+      git-p4: Handle Windows EOLs properly after removal of p4 submit template handling.
+
+Paolo Bonzini (1):
+      git-cvsserver: handle change type T
+
+Shawn O. Pearce (1):
+      git-gui 0.10
+
+Teemu Likonen (1):
+      Describe the bug in handling filenames with funny characters in 'git add -i'
+
+veillette@yahoo.ca (1):
+      filter-branch: Fix renaming a directory in the tree-filter
+
+
 Version v1.5.5-rc2; changes since v1.5.5-rc1:
 ---------------------------------------------
 

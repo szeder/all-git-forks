@@ -1,3 +1,9 @@
+git-core (1:1.5.5~rc3-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 03 Apr 2008 19:37:19 +0000
+
 git-core (1:1.5.5~rc2-1) experimental; urgency=low
 
   * new upstream release candidate.
