@@ -1,3 +1,10 @@
+git-core (1:1.5.5~rc3-2) experimental; urgency=low
+
+  * debian/diff/0004-gitweb-fallback-to-system-wide-config-file-if-defaul.diff:
+    amend: properly apply GITWEB_CONFIG_SYSTEM to gitweb.cgi.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 04 Apr 2008 20:40:48 +0000
+
 git-core (1:1.5.5~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.

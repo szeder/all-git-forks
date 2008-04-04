@@ -1,4 +1,4 @@
-From 5207a3012477a996ea3bc039b7256d10eb0539f2 Mon Sep 17 00:00:00 2001
+From f8b9ddfdfcd32c52e33110b57627b39618642463 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Tue, 25 Mar 2008 23:38:13 +0000
 Subject: [PATCH] gitweb: fallback to system-wide config file if default config does not exist
@@ -18,14 +18,14 @@ See also
 
 Signed-off-by: Gerrit Pape <pape@smarden.org>
 ---
- Makefile           |    1 +
+ Makefile           |    2 ++
  gitweb/INSTALL     |    6 +++++-
  gitweb/README      |    9 ++++++++-
  gitweb/gitweb.perl |    7 ++++++-
- 4 files changed, 20 insertions(+), 3 deletions(-)
+ 4 files changed, 21 insertions(+), 3 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 7c70b00..a88acf6 100644
+index 7c70b00..78b7738 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -189,6 +189,7 @@ ETC_GITCONFIG = $(sysconfdir)/gitconfig
@@ -36,6 +36,14 @@ index 7c70b00..a88acf6 100644
  GITWEB_HOME_LINK_STR = projects
  GITWEB_SITENAME =
  GITWEB_PROJECTROOT = /pub/git
+@@ -1034,6 +1035,7 @@ gitweb/gitweb.cgi: gitweb/gitweb.perl
+ 	    -e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
+ 	    -e 's|++GIT_BINDIR++|$(bindir)|g' \
+ 	    -e 's|++GITWEB_CONFIG++|$(GITWEB_CONFIG)|g' \
++	    -e 's|++GITWEB_CONFIG_SYSTEM++|$(GITWEB_CONFIG_SYSTEM)|g' \
+ 	    -e 's|++GITWEB_HOME_LINK_STR++|$(GITWEB_HOME_LINK_STR)|g' \
+ 	    -e 's|++GITWEB_SITENAME++|$(GITWEB_SITENAME)|g' \
+ 	    -e 's|++GITWEB_PROJECTROOT++|$(GITWEB_PROJECTROOT)|g' \
 diff --git a/gitweb/INSTALL b/gitweb/INSTALL
 index 9cd5b0a..743f2d4 100644
 --- a/gitweb/INSTALL
