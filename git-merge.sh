@@ -150,9 +150,9 @@ merge_name () {
 parse_config () {
 	while test $# != 0; do
 		case "$1" in
-		-n|--no-stat|--no-summary)
+		-n|--no-stat)
 			show_diffstat=false ;;
-		--stat|--summary)
+		--stat)
 			show_diffstat=t ;;
 		--log|--no-log)
 			log_arg=$1 ;;
@@ -213,7 +213,6 @@ parse_config "$@"
 while test $args_left -lt $#; do shift; done
 
 if test -z "$show_diffstat"; then
-    test "$(git config --bool merge.diffstat)" = false && show_diffstat=false
     test "$(git config --bool merge.stat)" = false && show_diffstat=false
     test -z "$show_diffstat" && show_diffstat=t
 fi
