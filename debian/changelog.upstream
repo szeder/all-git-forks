@@ -1,3 +1,41 @@
+Version v1.5.5; changes since v1.5.5-rc3:
+-----------------------------------------
+
+Christian Couder (2):
+      git-gui: Update french translation
+      test suite: remove useless TERM cruft in "t7005-editor.sh"
+
+Eric Wong (1):
+      git-svn: fix following renamed paths when tracking a single path
+
+Gerrit Pape (1):
+      gitk: Fix changing colors through Edit->Preferences
+
+Jakub Narebski (1):
+      Revert "gitweb: Add 'status_str' to parse_difftree_raw_line output"
+
+Junio C Hamano (2):
+      Fix "git apply" to correctly enforce "match at the beginning"
+      GIT 1.5.5
+
+Kevin Ballard (1):
+      git-fetch: Don't trigger a bus error when given the refspec "tag"
+
+Michele Ballabio (1):
+      git-gui: use +/- instead of ]/[ to show more/less context in diff
+
+Pascal Obry (2):
+      Add interactive option in rebase command completion list.
+      Add prefix oriented completions for diff and format-patch commands.
+
+Peter Eriksen (2):
+      git-pack-objects.txt: Make wording slightly less ambiguous
+      Add description of OFS_DELTA to the pack format description
+
+Shawn O. Pearce (1):
+      git-gui: Switch keybindings for [ and ] to bracketleft and bracketright
+
+
 Version v1.5.5-rc3; changes since v1.5.5-rc2:
 ---------------------------------------------
 

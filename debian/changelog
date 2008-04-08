@@ -1,3 +1,13 @@
+git-core (1:1.5.5-1) unstable; urgency=low
+
+  * new upstream release.
+    * gitk: Fix changing colors through Edit->Preferences (closes: #472615).
+    * Revert "gitweb: Add 'status_str' to parse_difftree_raw_line output"
+      (closes: #469083).
+  * merge branch debian/experimental.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 08 Apr 2008 20:26:25 +0000
+
 git-core (1:1.5.5~rc3-2) experimental; urgency=low
 
   * debian/diff/0004-gitweb-fallback-to-system-wide-config-file-if-defaul.diff:
