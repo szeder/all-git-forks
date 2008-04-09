@@ -142,14 +142,15 @@ static int split_cmdline(char *cmdline, const char ***argv)
 
 static int handle_alias(int *argcp, const char ***argv)
 {
-	int nongit = 0, envchanged = 0, ret = 0, saved_errno = errno;
+	int envchanged = 0, ret = 0, saved_errno = errno;
 	const char *subdir;
 	int count, option_count;
 	const char** new_argv;
 	const char *alias_command;
 	char *alias_string;
+	int unused_nongit;
 
-	subdir = setup_git_directory_gently(&nongit);
+	subdir = setup_git_directory_gently(&unused_nongit);
 
 	alias_command = (*argv)[0];
 	alias_string = alias_lookup(alias_command);

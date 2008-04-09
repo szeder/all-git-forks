@@ -639,7 +639,9 @@ _git_diff ()
 			--find-copies-harder --pickaxe-all --pickaxe-regex
 			--text --ignore-space-at-eol --ignore-space-change
 			--ignore-all-space --exit-code --quiet --ext-diff
-			--no-ext-diff"
+			--no-ext-diff
+			--no-prefix --src-prefix= --dst-prefix=
+			"
 		return
 		;;
 	esac
@@ -696,6 +698,7 @@ _git_format_patch ()
 			--full-index --binary
 			--not --all
 			--cover-letter
+			--no-prefix --src-prefix= --dst-prefix=
 			"
 		return
 		;;
@@ -865,7 +868,7 @@ _git_rebase ()
 		return
 		;;
 	--*)
-		__gitcomp "--onto --merge --strategy"
+		__gitcomp "--onto --merge --strategy --interactive"
 		return
 	esac
 	__gitcomp "$(__git_refs)"
@@ -999,7 +1002,8 @@ _git_config ()
 		gitcvs.enabled
 		gitcvs.logfile
 		gitcvs.allbinary
-		gitcvs.dbname gitcvs.dbdriver gitcvs.dbuser gitcvs.dvpass
+		gitcvs.dbname gitcvs.dbdriver gitcvs.dbuser gitcvs.dbpass
+		gitcvs.dbtablenameprefix
 		gc.packrefs
 		gc.reflogexpire
 		gc.reflogexpireunreachable
