@@ -361,6 +361,9 @@ cmd_update()
 		-q|--quiet)
 			quiet=1
 			;;
+		-f | --force)
+			force="$1"
+			;;
 		--)
 			shift
 			break
@@ -381,7 +384,8 @@ cmd_update()
 		test -n "$name" || exit
 		if test $sha1 = 0000000000000000000000000000000000000000
 		then
-			say "Not a submodule: $name @ $path"
+			test -z "$force" &&
+			say "Not a submodule: $name @ $path" &&
 			continue
 		elif test -z "$url"
 		then
@@ -395,8 +399,15 @@ cmd_update()
 		if ! test -d "$path"/.git
 		then
 			module_clone "$path" "$url" || exit
+			test "$sha1" = 0000000000000000000000000000000000000000 &&
+			(unset GIT_DIR; cd "$path" && git checkout -q master) &&
+			say "non-submodule cloned and master checked out: $name @ $path" &&
+			continue
 			subsha1=
 		else
+			test "$sha1" = 0000000000000000000000000000000000000000 &&
+			say "non-submodule already cloned: $name @ $path" &&
+			continue
 			subsha1=$(unset GIT_DIR; cd "$path" &&
 				git rev-parse --verify HEAD) ||
 			die "Unable to find current revision in submodule path '$path'"
