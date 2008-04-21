@@ -1,3 +1,85 @@
+Version v1.5.5.1; changes since v1.5.5:
+---------------------------------------
+
+Alberto Bertogli (1):
+      builtin-apply: Show a more descriptive error on failure when opening a patch
+
+Björn Steinbrink (1):
+      Fix section about backdating tags in the git-tag docs
+
+Carlos Rica (2):
+      Fix documentation syntax of optional arguments in short options.
+      core-tutorial.txt: Fix showing the current behaviour.
+
+Christian Couder (4):
+      bisect: fix bad rev checking in "git bisect good"
+      bisect: report bad rev better
+      bisect: squelch "fatal: ref HEAD not a symref" misleading message
+      git-bisect: make "start", "good" and "skip" succeed or fail atomically
+
+Clifford Caoile (1):
+      Docs gitk: Explicitly mention the files that gitk uses (~/.gitk)
+
+Daniel Barkalow (1):
+      Fix config key miscount in url.*.insteadOf
+
+Dirk Suesserott (1):
+      Documentation/git-request-pull: Fixed a typo ("send" -> "end")
+
+Jakub Narebski (1):
+      gitweb: Fix 'history' view for deleted files with history
+
+Jeff King (1):
+      git-fetch: fix status output when not storing tracking ref
+
+Johannes Sixt (1):
+      Document option --only of git commit
+
+Jon Loeliger (1):
+      Clarify and fix English in "git-rm" documentation
+
+Jonas Fonseca (1):
+      git-remote: reject adding remotes with invalid names
+
+Junio C Hamano (7):
+      Document -w option to shortlog
+      Documentation/git-submodule: typofix
+      t7401: squelch garbage output
+      rebase: do not munge commit log message
+      git-am: minor cleanup
+      am: POSIX portability fix
+      GIT 1.5.5.1
+
+Linus Torvalds (2):
+      Ignore leading empty lines while summarizing merges
+      git-am: cope better with an empty Subject: line
+
+Mark Levedahl (1):
+      git-submodule - possibly use branch name to describe a module
+
+Matthieu Moy (1):
+      Document that WebDAV doesn't need git on the server, and works over SSL
+
+Michele Ballabio (1):
+      revision.c: make --date-order overriddable
+
+Pedro Melo (1):
+      Force the medium pretty format on calls to git log
+
+Ping Yin (1):
+      git-submodule: Avoid 'fatal: cannot describe' message
+
+René Scharfe (1):
+      git-archive: ignore prefix when checking file attribute
+
+Scott Collins (1):
+      Clarify documentation of git-cvsserver, particularly in relation to git-shell
+
+Shawn Bohrer (2):
+      git clean: Don't automatically remove directories when run within subdirectory
+      git clean: Add test to verify directories aren't removed with a prefix
+
+
 Version v1.5.5; changes since v1.5.5-rc3:
 -----------------------------------------
 
