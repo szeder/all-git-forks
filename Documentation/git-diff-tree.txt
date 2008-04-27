@@ -24,7 +24,6 @@ Note that "git-diff-tree" can use the tree encapsulated in a commit object.
 
 OPTIONS
 -------
-:git-diff-tree: 1
 include::diff-options.txt[]
 
 <tree-ish>::
@@ -105,10 +104,7 @@ include::pretty-options.txt[]
 	if the diff itself is empty.
 
 
-Pretty Formats
---------------
-
-For description of pretty formats see for example linkgit:git-show[1]
+include::pretty-formats.txt[]
 
 
 Limiting Output
