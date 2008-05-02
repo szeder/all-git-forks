@@ -24,6 +24,7 @@ static int diff_suppress_blank_empty;
 int diff_use_color_default = -1;
 static const char *external_diff_cmd_cfg;
 int diff_auto_refresh_index = 1;
+static const char *diff_non_word_chars = "";
 
 static char diff_colors[][COLOR_MAXLEN] = {
 	"\033[m",	/* reset */
@@ -152,6 +153,10 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "diff.external"))
 		return git_config_string(&external_diff_cmd_cfg, var, value);
+	if (!strcmp(var, "diff.nonwordchars")) {
+		diff_non_word_chars = value ? xstrdup(value) : "";
+		return 0;
+	}
 	if (!prefixcmp(var, "diff.")) {
 		const char *ep = strrchr(var, '.');
 
@@ -446,6 +451,11 @@ static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 	}
 }
 
+static int is_non_word_char(char c)
+{
+	return isspace(c) || !!strchr(diff_non_word_chars, c);
+}
+
 static void mmfile_copy_set_boundary(mmfile_t *dest, mmfile_t *src) {
 	int i;
 
@@ -453,7 +463,7 @@ static void mmfile_copy_set_boundary(mmfile_t *dest, mmfile_t *src) {
 	dest->ptr = xmalloc(dest->size);
 	memcpy(dest->ptr, src->ptr, dest->size);
 	for (i = 0; i < dest->size; i++)
-		if (isspace(dest->ptr[i]))
+		if (is_non_word_char(dest->ptr[i]))
 			dest->ptr[i] = '\n';
 }
 

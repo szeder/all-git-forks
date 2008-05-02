@@ -94,6 +94,7 @@ endif::git-format-patch[]
 
 --color-words::
 	Show colored word diff, i.e. color words which have changed.
+	The non-word characters can be configured with diff.nonwordchars.
 
 --no-renames::
 	Turn off rename detection, even when the configuration

@@ -585,6 +585,10 @@ diff.external::
 	you want to use an external diff program only on a subset of
 	your files, you	might want to use linkgit:gitattributes[5] instead.
 
+diff.nonwordchars::
+	Specify additional boundary characters other than spaces for
+	--color-words.
+
 diff.renameLimit::
 	The number of files to consider when performing the copy/rename
 	detection; equivalent to the 'git-diff' option '-l'.
