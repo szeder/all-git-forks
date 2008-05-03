@@ -411,28 +411,32 @@ static void print_word(FILE *file, struct diff_words_buffer *buffer, int len, in
 
 static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 {
-	struct diff_words_data *diff_words = priv;
+	struct diff_words_data *diff_words;
+	struct diff_words_buffer *dwb_minus, *dwb_plus;
+	FILE *outfile;
 
-	if (diff_words->minus.suppressed_newline) {
+	diff_words = priv;
+	dwb_minus = &(diff_words->minus);
+	dwb_plus = &(diff_words->plus);
+	outfile = diff_words->file;
+
+	if (dwp_minus->suppressed_newline) {
 		if (line[0] != '+')
-			putc('\n', diff_words->file);
-		diff_words->minus.suppressed_newline = 0;
+			putc('\n', outfile);
+		dwp_minus->suppressed_newline = 0;
 	}
 
 	len--;
 	switch (line[0]) {
 		case '-':
-			print_word(diff_words->file,
-				   &diff_words->minus, len, DIFF_FILE_OLD, 1);
+			print_word(outfile, dwb_minus, len, DIFF_FILE_OLD, 1);
 			break;
 		case '+':
-			print_word(diff_words->file,
-				   &diff_words->plus, len, DIFF_FILE_NEW, 0);
+			print_word(outfile, dwb_plus, len, DIFF_FILE_NEW, 0);
 			break;
 		case ' ':
-			print_word(diff_words->file,
-				   &diff_words->plus, len, DIFF_PLAIN, 0);
-			diff_words->minus.current += len;
+			print_word(outfile, dwb_plus, len, DIFF_PLAIN, 0);
+			dwb_minus->current += len;
 			break;
 	}
 }
