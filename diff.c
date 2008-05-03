@@ -437,6 +437,17 @@ static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 	}
 }
 
+static void mmfile_copy_set_boundary(mmfile_t *dest, mmfile_t *src) {
+	int i;
+
+	dest->size = src->size;
+	dest->ptr = xmalloc(dest->size);
+	memcpy(dest->ptr, src->ptr, dest->size);
+	for (i = 0; i < dest->size; i++)
+		if (isspace(dest->ptr[i]))
+			dest->ptr[i] = '\n';
+}
+
 /* this executes the word diff on the accumulated buffers */
 static void diff_words_show(struct diff_words_data *diff_words)
 {
@@ -444,23 +455,11 @@ static void diff_words_show(struct diff_words_data *diff_words)
 	xdemitconf_t xecfg;
 	xdemitcb_t ecb;
 	mmfile_t minus, plus;
-	int i;
 
 	memset(&xecfg, 0, sizeof(xecfg));
-	minus.size = diff_words->minus.text.size;
-	minus.ptr = xmalloc(minus.size);
-	memcpy(minus.ptr, diff_words->minus.text.ptr, minus.size);
-	for (i = 0; i < minus.size; i++)
-		if (isspace(minus.ptr[i]))
-			minus.ptr[i] = '\n';
+	mmfile_copy_set_boundary(&minus, &(diff_words->minus.text));
 	diff_words->minus.current = 0;
-
-	plus.size = diff_words->plus.text.size;
-	plus.ptr = xmalloc(plus.size);
-	memcpy(plus.ptr, diff_words->plus.text.ptr, plus.size);
-	for (i = 0; i < plus.size; i++)
-		if (isspace(plus.ptr[i]))
-			plus.ptr[i] = '\n';
+	mmfile_copy_set_boundary(&plus, &(diff_words->plus.text));
 	diff_words->plus.current = 0;
 
 	xpp.flags = XDF_NEED_MINIMAL;
