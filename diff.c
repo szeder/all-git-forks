@@ -417,7 +417,7 @@ static void print_word(FILE *file, struct diff_words_buffer *buffer, int len, in
 static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 {
 	struct diff_words_data *diff_words;
-	char lastchar_minus;
+	char lastchar_minus, lastchar_plus;
 	struct diff_words_buffer *dwb_minus, *dwb_plus;
 	FILE *outfile;
 
@@ -443,10 +443,18 @@ static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 			break;
 		case ' ':
 			lastchar_minus = dwb_minus->text.ptr[dwb_minus->current + len - 1];
-			print_word(outfile, dwb_plus, len, DIFF_PLAIN, 1);
-			dwb_minus->current += len;
-			if (lastchar_minus == '\n')
-				dwb_minus->suppressed_newline = 1;
+			lastchar_plus = dwb_plus->text.ptr[dwb_plus->current + len - 1];
+			if (lastchar_minus == lastchar_plus) {
+				print_word(outfile, dwb_plus, len, DIFF_PLAIN, 1);
+				dwb_minus->current += len;
+			}
+			else {
+				len--;
+				print_word(outfile, dwb_plus, len, DIFF_PLAIN, 1);
+				dwb_minus->current += len;
+				print_word(outfile, dwb_minus, 1, DIFF_FILE_OLD, 1);
+				print_word(outfile, dwb_plus, 1, DIFF_FILE_NEW, 1);
+			}
 			break;
 	}
 }
