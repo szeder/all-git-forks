@@ -45,12 +45,16 @@ static const char *git_repo_exec_path(void)
 {
 	static char path_buffer[PATH_MAX + 1];
 	static char *path = NULL;
+	char *git_dir;
+	int nongit_ok = 1; // ????
 	
 	if (!path) {
 		path = path_buffer;
 		path[0] = '\0';
-		if (get_git_dir()) {
-			strncat(path, get_git_dir(), PATH_MAX);
+		setup_git_directory_gently(&nongit_ok);
+		git_dir = get_git_dir();
+		if (!nongit_ok && git_dir) {
+			strncat(path, git_dir, PATH_MAX);
 			strncat(path, "/", PATH_MAX);
 			strncat(path, "bin", PATH_MAX);
 		}
