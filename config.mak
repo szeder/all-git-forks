@@ -1,6 +1,6 @@
 # vim: syntax=make
 # CFLAGS =
-bindir = $(prefix)/bin
+prefix = /usr/local
 ifeq ($(uname_O),Cygwin)
 	NO_MMAP = YesPlease
 endif
