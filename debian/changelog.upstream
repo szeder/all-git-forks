@@ -1,3 +1,105 @@
+Version v1.5.5.2; changes since v1.5.5.1:
+-----------------------------------------
+
+A Large Angry SCM (1):
+      git-repack: re-enable parsing of -n command line option
+
+Alex Riesen (2):
+      Use "=" instead of "==" in condition as it is more portable
+      Fix use after free() in builtin-fetch
+
+Andy Parkins (1):
+      post-receive-email: fix accidental removal of a trailing space in signature line
+
+Ariel Badichi (2):
+      copy.c: copy_fd - correctly report write errors
+      archive.c: format_subst - fixed bogus argument to memchr
+
+Brandon Casey (1):
+      git-clone.txt: Adjust note to --shared for new pruning behavior of git-gc
+
+Dan McGee (1):
+      Remove 'header' from --signoff option description
+
+Dmitry Potapov (1):
+      git-gc --prune is deprecated
+
+Dustin Sallings (1):
+      Documentation/config.txt: Mention branch.<name>.rebase applies to "git pull"
+
+Florian Ragwitz (1):
+      filter-branch: Documentation fix.
+
+Gerrit Pape (1):
+      diff-options.txt: document the new "--dirstat" option
+
+Heikki Orsila (1):
+      Add missing "short" alternative to --date in rev-list-options.txt
+
+Ian Hilt (1):
+      Documentation/git-describe.txt: make description more readable
+
+Jeff King (11):
+      Don't force imap.host to be set when imap.tunnel is set
+      t5516: remove ambiguity test (1)
+      doc/git-gc: add a note about what is collected
+      push: allow unqualified dest refspecs to DWIM
+      remote: create fetch config lines with '+'
+      fix reflog approxidate parsing bug
+      cvsimport: always pass user data to "system" as a list
+      checkout: don't rfc2047-encode oneline on detached HEAD
+      doc: clarify definition of "update" for git-add -u
+      doc/git-daemon: s/uploadarchive/uploadarch/
+      git-am: fix typo in usage message
+
+Johannes Sixt (2):
+      wt-status.h: declare global variables as extern
+      rev-parse --symbolic-full-name: don't print '^' if SHA1 is not a ref
+
+Jon Loeliger (2):
+      git-filter-branch: Clarify file removal example.
+      git-show.txt: Not very stubby these days.
+
+Junio C Hamano (3):
+      write-tree: properly detect failure to write tree objects
+      clone: detect and fail on excess parameters
+      fetch-pack: brown paper bag fix
+
+Linus Torvalds (1):
+      fetch-pack: do not stop traversing an already parsed commit
+
+Matt Graham (1):
+      Linked glossary from cvs-migration page
+
+Matthew Ogilvie (1):
+      gitattributes: Fix subdirectory attributes specified from root directory
+
+Michael Weber (1):
+      svn-git: Use binmode for reading/writing binary rev maps
+
+Miklos Vajna (1):
+      diff options documentation: refer to --diff-filter in --name-status
+
+Sam Vilain (1):
+      Amend git-push refspec documentation
+
+Shawn O. Pearce (1):
+      Clarify repack -n documentation
+
+Sitaram Chamarty (1):
+      builtin-commit.c: add -u as short name for --untracked-files
+
+Teemu Likonen (1):
+      bash: Add completion for git diff --base --ours --theirs
+
+Thomas Guyot-Sionnest (1):
+      git-svn bug with blank commits and author file
+
+martin f. krafft (2):
+      Escape project name in regexp
+      Escape project names before creating pathinfo URLs
+
+
 Version v1.5.5.1; changes since v1.5.5:
 ---------------------------------------
 
