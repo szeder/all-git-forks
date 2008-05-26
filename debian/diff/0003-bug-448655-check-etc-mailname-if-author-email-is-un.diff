@@ -1,4 +1,4 @@
-From f7a4fd2ebe63144221ba095f9174a6d599d41fee Mon Sep 17 00:00:00 2001
+From 0a29c3fd0e4be26c3a02e212e4822fd5fdbff80e Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
 Subject: [PATCH] bug#448655: check /etc/mailname if author email is unknown
@@ -11,7 +11,7 @@ only fallback if /etc/mailname cannot be opened or read.
  1 files changed, 21 insertions(+), 1 deletions(-)
 
 diff --git a/ident.c b/ident.c
-index ed44a53..2c8253d 100644
+index b35504a..917a5d6 100644
 --- a/ident.c
 +++ b/ident.c
 @@ -45,6 +45,8 @@ static void copy_gecos(const struct passwd *w, char *name, size_t sz)
