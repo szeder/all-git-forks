@@ -189,6 +189,7 @@ ETC_GITCONFIG = $(sysconfdir)/gitconfig
 
 # default configuration for gitweb
 GITWEB_CONFIG = gitweb_config.perl
+GITWEB_CONFIG_SYSTEM = /etc/gitweb.conf
 GITWEB_HOME_LINK_STR = projects
 GITWEB_SITENAME =
 GITWEB_PROJECTROOT = /pub/git
@@ -234,7 +235,6 @@ BASIC_LDFLAGS =
 
 SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-bisect.sh
-SCRIPT_SH += git-clone.sh
 SCRIPT_SH += git-filter-branch.sh
 SCRIPT_SH += git-lost-found.sh
 SCRIPT_SH += git-merge-octopus.sh
@@ -345,6 +345,7 @@ LIB_H += diff.h
 LIB_H += dir.h
 LIB_H += fsck.h
 LIB_H += git-compat-util.h
+LIB_H += graph.h
 LIB_H += grep.h
 LIB_H += hash.h
 LIB_H += list-objects.h
@@ -365,6 +366,7 @@ LIB_H += refs.h
 LIB_H += remote.h
 LIB_H += revision.h
 LIB_H += run-command.h
+LIB_H += sha1-lookup.h
 LIB_H += sideband.h
 LIB_H += strbuf.h
 LIB_H += tag.h
@@ -409,6 +411,7 @@ LIB_OBJS += entry.o
 LIB_OBJS += environment.o
 LIB_OBJS += exec_cmd.o
 LIB_OBJS += fsck.o
+LIB_OBJS += graph.o
 LIB_OBJS += grep.o
 LIB_OBJS += hash.o
 LIB_OBJS += help.o
@@ -421,6 +424,7 @@ LIB_OBJS += log-tree.o
 LIB_OBJS += mailmap.o
 LIB_OBJS += match-trees.o
 LIB_OBJS += merge-file.o
+LIB_OBJS += name-hash.o
 LIB_OBJS += object.o
 LIB_OBJS += pack-check.o
 LIB_OBJS += pack-revindex.o
@@ -445,6 +449,7 @@ LIB_OBJS += run-command.o
 LIB_OBJS += server-info.o
 LIB_OBJS += setup.o
 LIB_OBJS += sha1_file.o
+LIB_OBJS += sha1-lookup.o
 LIB_OBJS += sha1_name.o
 LIB_OBJS += shallow.o
 LIB_OBJS += sideband.o
@@ -478,6 +483,7 @@ BUILTIN_OBJS += builtin-check-ref-format.o
 BUILTIN_OBJS += builtin-checkout-index.o
 BUILTIN_OBJS += builtin-checkout.o
 BUILTIN_OBJS += builtin-clean.o
+BUILTIN_OBJS += builtin-clone.o
 BUILTIN_OBJS += builtin-commit-tree.o
 BUILTIN_OBJS += builtin-commit.o
 BUILTIN_OBJS += builtin-config.o
@@ -632,8 +638,12 @@ endif
 ifeq ($(uname_S),AIX)
 	NO_STRCASESTR=YesPlease
 	NO_MEMMEM = YesPlease
+	NO_MKDTEMP = YesPlease
 	NO_STRLCPY = YesPlease
+	FREAD_READS_DIRECTORIES = UnfortunatelyYes
+	INTERNAL_QSORT = UnfortunatelyYes
 	NEEDS_LIBICONV=YesPlease
+	BASIC_CFLAGS += -D_LARGE_FILES
 endif
 ifeq ($(uname_S),GNU)
 	# GNU/Hurd
@@ -1034,6 +1044,7 @@ gitweb/gitweb.cgi: gitweb/gitweb.perl
 	    -e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
 	    -e 's|++GIT_BINDIR++|$(bindir)|g' \
 	    -e 's|++GITWEB_CONFIG++|$(GITWEB_CONFIG)|g' \
+	    -e 's|++GITWEB_CONFIG_SYSTEM++|$(GITWEB_CONFIG_SYSTEM)|g' \
 	    -e 's|++GITWEB_HOME_LINK_STR++|$(GITWEB_HOME_LINK_STR)|g' \
 	    -e 's|++GITWEB_SITENAME++|$(GITWEB_SITENAME)|g' \
 	    -e 's|++GITWEB_PROJECTROOT++|$(GITWEB_PROJECTROOT)|g' \

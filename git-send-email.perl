@@ -168,7 +168,8 @@ my $envelope_sender;
 # Example reply to:
 #$initial_reply_to = ''; #<20050203173208.GA23964@foobar.com>';
 
-my $repo = Git->repository();
+my $repo = eval { Git->repository() };
+my @repo = $repo ? ($repo) : ();
 my $term = eval {
 	$ENV{"GIT_SEND_EMAIL_NOTTY"}
 		? new Term::ReadLine 'git-send-email', \*STDIN, \*STDOUT
@@ -202,6 +203,7 @@ my %config_settings = (
     "smtpuser" => \$smtp_authuser,
     "smtppass" => \$smtp_authpass,
     "to" => \@to,
+    "cc" => \@initial_cc,
     "cccmd" => \$cc_cmd,
     "aliasfiletype" => \$aliasfiletype,
     "bcc" => \@bcclist,
@@ -271,25 +273,25 @@ sub read_config {
 
 	foreach my $setting (keys %config_bool_settings) {
 		my $target = $config_bool_settings{$setting}->[0];
-		$$target = $repo->config_bool("$prefix.$setting") unless (defined $$target);
+		$$target = Git::config_bool(@repo, "$prefix.$setting") unless (defined $$target);
 	}
 
 	foreach my $setting (keys %config_settings) {
 		my $target = $config_settings{$setting};
 		if (ref($target) eq "ARRAY") {
 			unless (@$target) {
-				my @values = $repo->config("$prefix.$setting");
+				my @values = Git::config(@repo, "$prefix.$setting");
 				@$target = @values if (@values && defined $values[0]);
 			}
 		}
 		else {
-			$$target = $repo->config("$prefix.$setting") unless (defined $$target);
+			$$target = Git::config(@repo, "$prefix.$setting") unless (defined $$target);
 		}
 	}
 }
 
 # read configuration from [sendemail "$identity"], fall back on [sendemail]
-$identity = $repo->config("sendemail.identity") unless (defined $identity);
+$identity = Git::config(@repo, "sendemail.identity") unless (defined $identity);
 read_config("sendemail.$identity") if (defined $identity);
 read_config("sendemail");
 
@@ -327,8 +329,9 @@ if (0) {
 	}
 }
 
-my ($repoauthor) = $repo->ident_person('author');
-my ($repocommitter) = $repo->ident_person('committer');
+my ($repoauthor, $repocommitter);
+($repoauthor) = Git::ident_person(@repo, 'author');
+($repocommitter) = Git::ident_person(@repo, 'committer');
 
 # Verify the user input
 
@@ -415,7 +418,7 @@ if (@files) {
 
 my $prompting = 0;
 if (!defined $sender) {
-	$sender = $repoauthor || $repocommitter;
+	$sender = $repoauthor || $repocommitter || '';
 
 	while (1) {
 		$_ = $term->readline("Who should the emails appear to be from? [$sender] ");
@@ -509,8 +512,8 @@ GIT: for the patch you are writing.
 EOT
 	close(C);
 
-	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "vi";
-	system('sh', '-c', '$0 $@', $editor, $compose_filename);
+	my $editor = $ENV{GIT_EDITOR} || Git::config(@repo, "core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "vi";
+	system('sh', '-c', $editor.' "$@"', $editor, $compose_filename);
 
 	open(C2,">",$compose_filename . ".final")
 		or die "Failed to open $compose_filename.final : " . $!;
@@ -518,8 +521,30 @@ EOT
 	open(C,"<",$compose_filename)
 		or die "Failed to open $compose_filename : " . $!;
 
+	my $need_8bit_cte = file_has_nonascii($compose_filename);
+	my $in_body = 0;
 	while(<C>) {
 		next if m/^GIT: /;
+		if (!$in_body && /^\n$/) {
+			$in_body = 1;
+			if ($need_8bit_cte) {
+				print C2 "MIME-Version: 1.0\n",
+					 "Content-Type: text/plain; ",
+					   "charset=utf-8\n",
+					 "Content-Transfer-Encoding: 8bit\n";
+			}
+		}
+		if (!$in_body && /^MIME-Version:/i) {
+			$need_8bit_cte = 0;
+		}
+		if (!$in_body && /^Subject: ?(.*)/i) {
+			my $subject = $1;
+			$_ = "Subject: " .
+				($subject =~ /[^[:ascii:]]/ ?
+				 quote_rfc2047($subject) :
+				 $subject) .
+				"\n";
+		}
 		print C2 $_;
 	}
 	close(C);
@@ -610,6 +635,14 @@ sub unquote_rfc2047 {
 	return wantarray ? ($_, $encoding) : $_;
 }
 
+sub quote_rfc2047 {
+	local $_ = shift;
+	my $encoding = shift || 'utf-8';
+	s/([^-a-zA-Z0-9!*+\/])/sprintf("=%02X", ord($1))/eg;
+	s/(.*)/=\?$encoding\?q\?$1\?=/;
+	return $_;
+}
+
 # use the simplest quoting being able to handle the recipient
 sub sanitize_address
 {
@@ -627,13 +660,12 @@ sub sanitize_address
 
 	# rfc2047 is needed if a non-ascii char is included
 	if ($recipient_name =~ /[^[:ascii:]]/) {
-		$recipient_name =~ s/([^-a-zA-Z0-9!*+\/])/sprintf("=%02X", ord($1))/eg;
-		$recipient_name =~ s/(.*)/=\?utf-8\?q\?$1\?=/;
+		$recipient_name = quote_rfc2047($recipient_name);
 	}
 
 	# double quotes are needed if specials or CTLs are included
 	elsif ($recipient_name =~ /[][()<>@,;:\\".\000-\037\177]/) {
-		$recipient_name =~ s/(["\\\r])/\\$1/;
+		$recipient_name =~ s/(["\\\r])/\\$1/g;
 		$recipient_name = "\"$recipient_name\"";
 	}
 
@@ -955,4 +987,14 @@ sub validate_patch {
 		}
 	}
 	return undef;
+}
+
+sub file_has_nonascii {
+	my $fn = shift;
+	open(my $fh, '<', $fn)
+		or die "unable to open $fn: $!\n";
+	while (my $line = <$fh>) {
+		return 1 if $line =~ /[^[:ascii:]]/;
+	}
+	return 0;
 }

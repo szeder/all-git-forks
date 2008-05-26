@@ -127,14 +127,8 @@ static struct ref *get_ref_map(struct transport *transport,
 		/* Merge everything on the command line, but not --tags */
 		for (rm = ref_map; rm; rm = rm->next)
 			rm->merge = 1;
-		if (tags == TAGS_SET) {
-			struct refspec refspec;
-			refspec.src = "refs/tags/";
-			refspec.dst = "refs/tags/";
-			refspec.pattern = 1;
-			refspec.force = 0;
-			get_fetch_map(remote_refs, &refspec, &tail, 0);
-		}
+		if (tags == TAGS_SET)
+			get_fetch_map(remote_refs, tag_refspec, &tail, 0);
 	} else {
 		/* Use the defaults */
 		struct remote *remote = transport->remote;
@@ -360,12 +354,10 @@ static int store_updated_refs(const char *url, struct ref *ref_map)
 
 		if (ref)
 			update_local_ref(ref, what, verbose, note);
-		else if (verbose)
+		else
 			sprintf(note, "* %-*s %-*s -> FETCH_HEAD",
 				SUMMARY_WIDTH, *kind ? kind : "branch",
 				 REFCOL_WIDTH, *what ? what : "HEAD");
-		else
-			*note = '\0';
 		if (*note) {
 			if (!shown_url) {
 				fprintf(stderr, "From %.*s\n",
@@ -510,10 +502,8 @@ static void find_non_local_tags(struct transport *transport,
 		     will_fetch(head, ref->old_sha1))) {
 			path_list_insert(ref_name, &new_refs);
 
-			rm = alloc_ref(strlen(ref_name) + 1);
-			strcpy(rm->name, ref_name);
-			rm->peer_ref = alloc_ref(strlen(ref_name) + 1);
-			strcpy(rm->peer_ref->name, ref_name);
+			rm = alloc_ref_from_str(ref_name);
+			rm->peer_ref = alloc_ref_from_str(ref_name);
 			hashcpy(rm->old_sha1, ref_sha1);
 
 			**tail = rm;

@@ -4,7 +4,7 @@
 use warnings;
 use strict;
 use vars qw/	$AUTHOR $VERSION
-		$sha1 $sha1_short $_revision
+		$sha1 $sha1_short $_revision $_repository
 		$_q $_authors %users/;
 $AUTHOR = 'Eric Wong <normalperson@yhbt.net>';
 $VERSION = '@@GIT_VERSION@@';
@@ -65,7 +65,8 @@ my ($_stdin, $_help, $_edit,
 	$_template, $_shared,
 	$_version, $_fetch_all, $_no_rebase,
 	$_merge, $_strategy, $_dry_run, $_local,
-	$_prefix, $_no_checkout, $_url, $_verbose);
+	$_prefix, $_no_checkout, $_url, $_verbose,
+	$_git_format);
 $Git::SVN::_follow_parent = 1;
 my %remote_opts = ( 'username=s' => \$Git::SVN::Prompt::_username,
                     'config-dir=s' => \$Git::SVN::Ra::config_dir,
@@ -82,6 +83,7 @@ my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'repack-flags|repack-args|repack-opts=s' =>
 		   \$Git::SVN::_repack_flags,
 		'use-log-author' => \$Git::SVN::_use_log_author,
+		'add-author-from' => \$Git::SVN::_add_author_from,
 		%remote_opts );
 
 my ($_trunk, $_tags, $_branches, $_stdlayout);
@@ -188,7 +190,7 @@ my %cmd = (
 		    { 'url' => \$_url, } ],
 	'blame' => [ \&Git::SVN::Log::cmd_blame,
 	            "Show what revision and author last modified each line of a file",
-	            {} ],
+		    { 'git-format' => \$_git_format } ],
 );
 
 my $cmd;
@@ -220,12 +222,13 @@ unless ($cmd && $cmd =~ /(?:clone|init|multi-init)$/) {
 		}
 		$ENV{GIT_DIR} = $git_dir;
 	}
+	$_repository = Git->repository(Repository => $ENV{GIT_DIR});
 }
 
 my %opts = %{$cmd{$cmd}->[2]} if (defined $cmd);
 
 read_repo_config(\%opts);
-Getopt::Long::Configure('pass_through') if ($cmd && $cmd eq 'log');
+Getopt::Long::Configure('pass_through') if ($cmd && ($cmd eq 'log' || $cmd eq 'blame'));
 my $rv = GetOptions(%opts, 'help|H|h' => \$_help, 'version|V' => \$_version,
                     'minimize-connections' => \$Git::SVN::Migration::_minimize,
                     'id|i=s' => \$Git::SVN::default_ref_id,
@@ -301,6 +304,7 @@ sub do_git_init_db {
 			}
 		}
 		command_noisy(@init_db);
+		$_repository = Git->repository(Repository => ".git");
 	}
 	my $set;
 	my $pfx = "svn-remote.$Git::SVN::default_repo_id";
@@ -317,6 +321,7 @@ sub init_subdir {
 	mkpath([$repo_path]) unless -d $repo_path;
 	chdir $repo_path or die "Couldn't chdir to $repo_path: $!\n";
 	$ENV{GIT_DIR} = '.git';
+	$_repository = Git->repository(Repository => $ENV{GIT_DIR});
 }
 
 sub cmd_clone {
@@ -410,10 +415,12 @@ sub cmd_dcommit {
 	$head ||= 'HEAD';
 	my @refs;
 	my ($url, $rev, $uuid, $gs) = working_head_info($head, \@refs);
-	print "Committing to $url ...\n";
+	if ($url) {
+		print "Committing to $url ...\n";
+	}
 	unless ($gs) {
 		die "Unable to determine upstream SVN information from ",
-		    "$head history\n";
+		    "$head history.\nPerhaps the repository is empty.";
 	}
 	my $last_rev;
 	my ($linear_refs, $parents) = linearize_history($gs, \@refs);
@@ -612,7 +619,7 @@ sub cmd_create_ignore {
 		print GITIGNORE "$s\n";
 		close(GITIGNORE)
 		  or fatal("Failed to close `$ignore': $!");
-		command_noisy('add', $ignore);
+		command_noisy('add', '-f', $ignore);
 	});
 }
 
@@ -1009,16 +1016,27 @@ sub get_commit_entry {
 		my ($msg_fh, $ctx) = command_output_pipe('cat-file',
 		                                         $type, $treeish);
 		my $in_msg = 0;
+		my $author;
+		my $saw_from = 0;
 		while (<$msg_fh>) {
 			if (!$in_msg) {
 				$in_msg = 1 if (/^\s*$/);
+				$author = $1 if (/^author (.*>)/);
 			} elsif (/^git-svn-id: /) {
 				# skip this for now, we regenerate the
 				# correct one on re-fetch anyways
 				# TODO: set *:merge properties or like...
 			} else {
+				if (/^From:/ || /^Signed-off-by:/) {
+					$saw_from = 1;
+				}
 				print $log_fh $_ or croak $!;
 			}
+		}
+		if ($Git::SVN::_add_author_from && defined($author)
+		    && !$saw_from) {
+			print $log_fh "\nFrom: $author\n"
+			      or croak $!;
 		}
 		command_close_pipe($msg_fh, $ctx);
 	}
@@ -1246,7 +1264,7 @@ use constant rev_map_fmt => 'NH40';
 use vars qw/$default_repo_id $default_ref_id $_no_metadata $_follow_parent
             $_repack $_repack_flags $_use_svm_props $_head
             $_use_svnsync_props $no_reuse_existing $_minimize_url
-	    $_use_log_author/;
+	    $_use_log_author $_add_author_from/;
 use Carp qw/croak/;
 use File::Path qw/mkpath/;
 use File::Copy qw/copy/;
@@ -2426,13 +2444,15 @@ sub make_log_entry {
 			$name_field = $1;
 		}
 		if (!defined $name_field) {
-			#
+			if (!defined $email) {
+				$email = $name;
+			}
 		} elsif ($name_field =~ /(.*?)\s+<(.*)>/) {
 			($name, $email) = ($1, $2);
 		} elsif ($name_field =~ /(.*)@/) {
 			($name, $email) = ($1, $name_field);
 		} else {
-			($name, $email) = ($name_field, 'unknown');
+			($name, $email) = ($name_field, $name_field);
 		}
 	}
 	if (defined $headrev && $self->use_svm_props) {
@@ -3013,6 +3033,7 @@ use vars qw/@ISA/;
 use strict;
 use warnings;
 use Carp qw/croak/;
+use File::Temp qw/tempfile/;
 use IO::File qw//;
 
 # file baton members: path, mode_a, mode_b, pool, fh, blob, base
@@ -3168,14 +3189,9 @@ sub apply_textdelta {
 	my $base = IO::File->new_tmpfile;
 	$base->autoflush(1);
 	if ($fb->{blob}) {
-		defined (my $pid = fork) or croak $!;
-		if (!$pid) {
-			open STDOUT, '>&', $base or croak $!;
-			print STDOUT 'link ' if ($fb->{mode_a} == 120000);
-			exec qw/git-cat-file blob/, $fb->{blob} or croak $!;
-		}
-		waitpid $pid, 0;
-		croak $? if $?;
+		print $base 'link ' if ($fb->{mode_a} == 120000);
+		my $size = $::_repository->cat_blob($fb->{blob}, $base);
+		die "Failed to read object $fb->{blob}" unless $size;
 
 		if (defined $exp) {
 			seek $base, 0, 0 or croak $!;
@@ -3216,14 +3232,18 @@ sub close_file {
 				sysseek($fh, 0, 0) or croak $!;
 			}
 		}
-		defined(my $pid = open my $out,'-|') or die "Can't fork: $!\n";
-		if (!$pid) {
-			open STDIN, '<&', $fh or croak $!;
-			exec qw/git-hash-object -w --stdin/ or croak $!;
+
+		my ($tmp_fh, $tmp_filename) = File::Temp::tempfile(UNLINK => 1);
+		my $result;
+		while ($result = sysread($fh, my $string, 1024)) {
+			syswrite($tmp_fh, $string, $result);
 		}
-		chomp($hash = do { local $/; <$out> });
-		close $out or croak $!;
+		defined $result or croak $!;
+		close $tmp_fh or croak $!;
+
 		close $fh or croak $!;
+
+		$hash = $::_repository->hash_and_insert_object($tmp_filename);
 		$hash =~ /^[a-f\d]{40}$/ or die "not a sha1: $hash\n";
 		close $fb->{base} or croak $!;
 	} else {
@@ -3549,13 +3569,8 @@ sub chg_file {
 	} elsif ($m->{mode_a} =~ /^120/ && $m->{mode_b} !~ /^120/) {
 		$self->change_file_prop($fbat,'svn:special',undef);
 	}
-	defined(my $pid = fork) or croak $!;
-	if (!$pid) {
-		open STDOUT, '>&', $fh or croak $!;
-		exec qw/git-cat-file blob/, $m->{sha1_b} or croak $!;
-	}
-	waitpid $pid, 0;
-	croak $? if $?;
+	my $size = $::_repository->cat_blob($m->{sha1_b}, $fh);
+	croak "Failed to read object $m->{sha1_b}" unless $size;
 	$fh->flush == 0 or croak $!;
 	seek $fh, 0, 0 or croak $!;
 
@@ -3669,7 +3684,7 @@ sub escape_uri_only {
 	my ($uri) = @_;
 	my @tmp;
 	foreach (split m{/}, $uri) {
-		s/([^\w.%-]|%(?![a-fA-F0-9]{2}))/sprintf("%%%02X",ord($1))/eg;
+		s/([^\w.%+-]|%(?![a-fA-F0-9]{2}))/sprintf("%%%02X",ord($1))/eg;
 		push @tmp, $_;
 	}
 	join('/', @tmp);
@@ -4464,19 +4479,51 @@ out:
 }
 
 sub cmd_blame {
-	my $path = shift;
+	my $path = pop;
 
 	config_pager();
 	run_pager();
 
-	my ($fh, $ctx) = command_output_pipe('blame', @_, $path);
-	while (my $line = <$fh>) {
-		if ($line =~ /^\^?([[:xdigit:]]+)\s/) {
-			my (undef, $rev, undef) = ::cmt_metadata($1);
-			$rev = sprintf('%-10s', $rev);
-			$line =~ s/^\^?[[:xdigit:]]+(\s)/$rev$1/;
+	my ($fh, $ctx, $rev);
+
+	if ($_git_format) {
+		($fh, $ctx) = command_output_pipe('blame', @_, $path);
+		while (my $line = <$fh>) {
+			if ($line =~ /^\^?([[:xdigit:]]+)\s/) {
+				# Uncommitted edits show up as a rev ID of
+				# all zeros, which we can't look up with
+				# cmt_metadata
+				if ($1 !~ /^0+$/) {
+					(undef, $rev, undef) =
+						::cmt_metadata($1);
+					$rev = '0' if (!$rev);
+				} else {
+					$rev = '0';
+				}
+				$rev = sprintf('%-10s', $rev);
+				$line =~ s/^\^?[[:xdigit:]]+(\s)/$rev$1/;
+			}
+			print $line;
 		}
-		print $line;
+	} else {
+		($fh, $ctx) = command_output_pipe('blame', '-p', @_, 'HEAD',
+						  '--', $path);
+		my ($sha1);
+		my %authors;
+		while (my $line = <$fh>) {
+			if ($line =~ /^([[:xdigit:]]{40})\s\d+\s\d+/) {
+				$sha1 = $1;
+				(undef, $rev, undef) = ::cmt_metadata($1);
+				$rev = '0' if (!$rev);
+			}
+			elsif ($line =~ /^author (.*)/) {
+				$authors{$rev} = $1;
+				$authors{$rev} =~ s/\s/_/g;
+			}
+			elsif ($line =~ /^\t(.*)$/) {
+				printf("%6s %10s %s\n", $rev, $authors{$rev}, $1);
+			}
+		}
 	}
 	command_close_pipe($fh, $ctx);
 }

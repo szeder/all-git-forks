@@ -19,6 +19,8 @@ static const char * const builtin_remote_usage[] = {
 
 static int verbose;
 
+static int show_all(void);
+
 static inline int postfixcmp(const char *string, const char *postfix)
 {
 	int len1 = strlen(string), len2 = strlen(postfix);
@@ -116,6 +118,13 @@ static int add(int argc, const char **argv)
 			return 1;
 	}
 
+	if (mirror) {
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "remote.%s.mirror", name);
+		if (git_config_set(buf.buf, "yes"))
+			return 1;
+	}
+
 	if (fetch && fetch_remote(name))
 		return 1;
 
@@ -144,7 +153,7 @@ struct branch_info {
 
 static struct path_list branch_list;
 
-static int config_read_branches(const char *key, const char *value)
+static int config_read_branches(const char *key, const char *value, void *cb)
 {
 	if (!prefixcmp(key, "branch.")) {
 		char *name;
@@ -191,7 +200,7 @@ static void read_branches(void)
 {
 	if (branch_list.nr)
 		return;
-	git_config(config_read_branches);
+	git_config(config_read_branches, NULL);
 	sort_path_list(&branch_list);
 }
 
@@ -385,8 +394,11 @@ static int show_or_prune(int argc, const char **argv, int prune)
 
 	argc = parse_options(argc, argv, options, builtin_remote_usage, 0);
 
-	if (argc < 1)
+	if (argc < 1) {
+		if (!prune)
+			return show_all();
 		usage_with_options(builtin_remote_usage, options);
+	}
 
 	memset(&states, 0, sizeof(states));
 	for (; argc; argc--, argv++) {
@@ -502,7 +514,7 @@ struct remote_group {
 	struct path_list *list;
 } remote_group;
 
-static int get_remote_group(const char *key, const char *value)
+static int get_remote_group(const char *key, const char *value, void *cb)
 {
 	if (!prefixcmp(key, "remotes.") &&
 			!strcmp(key + 8, remote_group.name)) {
@@ -534,7 +546,7 @@ static int update(int argc, const char **argv)
 	remote_group.list = &list;
 	for (i = 1; i < argc; i++) {
 		remote_group.name = argv[i];
-		result = git_config(get_remote_group);
+		result = git_config(get_remote_group, NULL);
 	}
 
 	if (!result && !list.nr  && argc == 2 && !strcmp(argv[1], "default"))
