@@ -3,8 +3,11 @@ git-core (1:1.5.5.2-1) unstable; urgency=low
   * new upstream point release.
     * diff-options.txt: document the new "--dirstat" option (closes:
       #476437).
+  * debian/diff/0005-git-bisect.sh-don-t-accidentally-override...diff:
+    new: git-bisect.sh: don't accidentally override existing branch
+    "bisect" (closes: #478647).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 26 May 2008 16:26:21 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 26 May 2008 16:41:45 +0000
 
 git-core (1:1.5.5.1-1) unstable; urgency=low
 

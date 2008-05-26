@@ -1,0 +1,111 @@
+From 8e5155957d8fe76f9316940fd04ee0a35b95ae91 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Mon, 5 May 2008 07:43:00 +0000
+Subject: [PATCH] git-bisect.sh: don't accidentally override existing branch "bisect"
+
+If a branch named "bisect" or "new-bisect" already was created in the
+repo by other means than git bisect, doing a git bisect used to override
+the branch without a warning.  Now if the branch "bisect" or
+"new-bisect" already exists, and it was not created by git bisect itself,
+git bisect start fails with an appropriate error message.  Additionally,
+if checking out a new bisect state fails due to a merge problem, git
+bisect cleans up the temporary branch "new-bisect".
+
+The accidental override has been noticed by Andres Salomon, reported
+through
+ http://bugs.debian.org/478647
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit ee831f7ddfc40e9144208c93e24d20ff0ad69194)
+---
+ Documentation/git-bisect.txt |    2 +-
+ git-bisect.sh                |   19 ++++++++++++-------
+ t/t6030-bisect-porcelain.sh  |   18 ++++++++++++++++++
+ 3 files changed, 31 insertions(+), 8 deletions(-)
+
+diff --git a/Documentation/git-bisect.txt b/Documentation/git-bisect.txt
+index 96585ae..0855b98 100644
+--- a/Documentation/git-bisect.txt
++++ b/Documentation/git-bisect.txt
+@@ -78,7 +78,7 @@ Oh, and then after you want to reset to the original head, do a
+ $ git bisect reset
+ ------------------------------------------------
+ 
+-to get back to the master branch, instead of being in one of the
++to get back to the original branch, instead of being in one of the
+ bisection branches ("git bisect start" will do that for you too,
+ actually: it will reset the bisection state, and before it does that
+ it checks that you're not using some old bisection branch).
+diff --git a/git-bisect.sh b/git-bisect.sh
+index 8e57e9a..54bfd71 100755
+--- a/git-bisect.sh
++++ b/git-bisect.sh
+@@ -65,14 +65,19 @@ bisect_start() {
+ 	head=$(GIT_DIR="$GIT_DIR" git symbolic-ref -q HEAD) ||
+ 	head=$(GIT_DIR="$GIT_DIR" git rev-parse --verify HEAD) ||
+ 	die "Bad HEAD - I need a HEAD"
++	#
++	# Check that we either already have BISECT_START, or that the
++	# branches bisect, new-bisect don't exist, to not override them.
++	#
++	test -s "$GIT_DIR/BISECT_START" ||
++		if git show-ref --verify -q refs/heads/bisect ||
++		    git show-ref --verify -q refs/heads/new-bisect; then
++			die 'The branches "bisect" and "new-bisect" must not exist.'
++		fi
+ 	start_head=''
+ 	case "$head" in
+ 	refs/heads/bisect)
+-		if [ -s "$GIT_DIR/BISECT_START" ]; then
+-		    branch=`cat "$GIT_DIR/BISECT_START"`
+-		else
+-		    branch=master
+-		fi
++		branch=`cat "$GIT_DIR/BISECT_START"`
+ 		git checkout $branch || exit
+ 		;;
+ 	refs/heads/*|$_x40)
+@@ -324,8 +329,8 @@ bisect_next() {
+ 	exit_if_skipped_commits "$bisect_rev"
+ 
+ 	echo "Bisecting: $bisect_nr revisions left to test after this"
+-	git branch -f new-bisect "$bisect_rev"
+-	git checkout -q new-bisect || exit
++	git branch -D new-bisect 2> /dev/null
++	git checkout -q -b new-bisect "$bisect_rev" || exit
+ 	git branch -M new-bisect bisect
+ 	git show-branch "$bisect_rev"
+ }
+diff --git a/t/t6030-bisect-porcelain.sh b/t/t6030-bisect-porcelain.sh
+index 5e3e544..05f1e15 100755
+--- a/t/t6030-bisect-porcelain.sh
++++ b/t/t6030-bisect-porcelain.sh
+@@ -284,6 +284,24 @@ test_expect_success 'bisect starting with a detached HEAD' '
+ 
+ '
+ 
++test_expect_success 'bisect refuses to start if branch bisect exists' '
++	git bisect reset &&
++	git branch bisect &&
++	test_must_fail git bisect start &&
++	git branch -d bisect &&
++	git checkout -b bisect &&
++	test_must_fail git bisect start &&
++	git checkout master &&
++	git branch -d bisect
++'
++
++test_expect_success 'bisect refuses to start if branch new-bisect exists' '
++	git bisect reset &&
++	git branch new-bisect &&
++	test_must_fail git bisect start &&
++	git branch -d new-bisect
++'
++
+ #
+ #
+ test_done
+-- 
+1.5.5.1
+
