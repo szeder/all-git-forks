@@ -1,3 +1,13 @@
+git-core (1:1.5.5.3-1) unstable; urgency=low
+
+  * new upstream point release.
+    * commit --interactive: properly update the index before commiting
+      (closes: #480429).
+  * debian/diff/0005-git-bisect.sh-don-t-accidentally-override...diff:
+    remove; applied upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 28 May 2008 19:12:23 +0000
+
 git-core (1:1.5.5.2-1) unstable; urgency=low
 
   * new upstream point release.

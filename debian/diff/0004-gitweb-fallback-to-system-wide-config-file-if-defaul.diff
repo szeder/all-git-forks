@@ -1,4 +1,4 @@
-From c1858f0e662ba87986603b40f8dc910a5cf45a89 Mon Sep 17 00:00:00 2001
+From 48c38204a49737ca40dd7c726ea806d0caee4dc5 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Tue, 25 Mar 2008 23:38:13 +0000
 Subject: [PATCH] gitweb: fallback to system-wide config file if default config does not exist
@@ -88,7 +88,7 @@ index 2163071..8dfe335 100644
  optional features, stored in the '%features' variable.
  
 diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
-index 12843a4..f83567e 100755
+index 345acf4..6bc51c9 100755
 --- a/gitweb/gitweb.perl
 +++ b/gitweb/gitweb.perl
 @@ -369,7 +369,12 @@ sub filter_snapshot_fmts {
@@ -106,5 +106,5 @@ index 12843a4..f83567e 100755
  # version of the core git binary
  our $git_version = qx($GIT --version) =~ m/git version (.*)$/ ? $1 : "unknown";
 -- 
-1.5.5.1
+1.5.5.2
 
