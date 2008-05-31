@@ -3552,10 +3552,10 @@ sub git_patchset_body {
 
 # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-sub git_project_list_body {
-	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
-
-	my ($check_forks) = gitweb_check_feature('forks');
+# fill age, description, owner, forks (last one only if $check_forks)
+# for all projects in $projlist reference; fill projects info
+sub git_get_projects_details {
+	my ($projlist, $check_forks) = @_;
 
 	my @projects;
 	foreach my $pr (@$projlist) {
@@ -3585,6 +3585,15 @@ sub git_project_list_body {
 		}
 		push @projects, $pr;
 	}
+	return @projects;
+}
+
+sub git_project_list_body {
+	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+
+	my ($check_forks) = gitweb_check_feature('forks');
+
+	my @projects = git_get_projects_details($projlist, $check_forks);
 
 	$order ||= $default_projects_order;
 	$from = 0 unless defined $from;
