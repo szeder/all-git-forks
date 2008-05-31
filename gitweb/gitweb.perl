@@ -118,6 +118,20 @@ our $fallback_encoding = 'latin1';
 # - one might want to include '-B' option, e.g. '-B', '-M'
 our @diff_opts = ('-M'); # taken from git_commit
 
+# projects list cache for busy sites with many projects;
+# if you set this to non-zero, it will be used as the cached
+# index lifetime in minutes
+#
+# the cached list version is stored in $cache_dir/$cache_name and can
+# be tweaked by other scripts running with the same uid as gitweb -
+# use this ONLY at secure installations; only single gitweb project
+# root per system is supported, unless you tweak configuration!
+our $projlist_cache_lifetime = 0; # in minutes
+# FHS compliant $cache_dir would be "/var/cache/gitweb"
+our $cache_dir =
+	(defined $ENV{'TMPDIR'} ? $ENV{'TMPDIR'} : '/tmp').'/gitweb';
+our $projlist_cache_name = 'gitweb.index.cache';
+
 # information about snapshot formats that gitweb is capable of serving
 our %known_snapshot_formats = (
 	# name => {
@@ -3589,15 +3603,53 @@ sub git_get_projects_details {
 }
 
 sub git_project_list_body {
-	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+	my ($projlist, $order, $from, $to, $extra, $no_header, $cache_lifetime) = @_;
 
 	my ($check_forks) = gitweb_check_feature('forks');
 
-	my @projects = git_get_projects_details($projlist, $check_forks);
+	use File::stat;
+	use POSIX qw(:fcntl_h);
+	use Storable qw(store_fd retrieve);
+
+	my $cache_file = "$cache_dir/$projlist_cache_name";
+
+	my @projects;
+	my $stale = 0;
+	my $now = time();
+	my $cache_mtime;
+	if ($cache_lifetime && -f $cache_file) {
+		$cache_mtime = stat($cache_file)->mtime;
+	}
+	if (defined $cache_mtime && # caching is on and $cache_file exists
+	    $cache_mtime + $cache_lifetime*60 > $now &&
+	    (my $dump = retrieve($cache_file))) {
+		$stale = $now - $cache_mtime;
+		@projects = @$dump;
+	} else {
+		if (defined $cache_mtime) {
+			# Postpone timeout by two minutes so that we get
+			# enough time to do our job, or to be more exact
+			# make cache expire after two minutes from now.
+			my $time = $now - $cache_lifetime*60 + 120;
+			utime $time, $time, $cache_file;
+		}
+		@projects = git_get_projects_details($projlist, $check_forks);
+		if ($cache_lifetime &&
+		    (-d $cache_dir || mkdir($cache_dir, 0700)) &&
+		    sysopen(my $fd, "$cache_file.lock", O_WRONLY|O_CREAT|O_EXCL, 0600)) {
+			store_fd(\@projects, $fd);
+			close $fd;
+			rename "$cache_file.lock", $cache_file;
+		}
+	}
 
 	$order ||= $default_projects_order;
 	$from = 0 unless defined $from;
 	$to = $#projects if (!defined $to || $#projects < $to);
+
+	if ($cache_lifetime && $stale > 0) {
+		print "<div class=\"stale_info\">Cached version (${stale}s old)</div>\n";
+	}
 
 	print "<table class=\"project_list\">\n";
 	unless ($no_header) {
@@ -3981,7 +4033,7 @@ sub git_project_list {
 		close $fd;
 		print "</div>\n";
 	}
-	git_project_list_body(\@list, $order);
+	git_project_list_body(\@list, $order, undef, undef, undef, undef, $projlist_cache_lifetime);
 	git_footer_html();
 }
 

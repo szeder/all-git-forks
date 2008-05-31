@@ -214,6 +214,32 @@ not include variables usually directly set during build):
    ('-M'); set it to ('-C') or ('-C', '-C') to also detect copies, or
    set it to () if you don't want to have renames detection.
 
+Variables described below deal with caching in gitweb.  If you don't
+run gitweb installation on busy site with large number of repositories
+(projects) you probably don't need caching; by default caching is
+turned off.
+ * $projlist_cache_lifetime
+   Lifetime of in-gitweb cache for projects list page, in minutes.
+   By default set to 0, which means tha projects list caching is
+   turned off.
+ * $cache_dir, $projlist_cache_name
+   The cached list version (cache of Perl structure, not of final
+   output) is stored in "$cache_dir/$projlist_cache_name".  $cache_dir
+   should be writable only by processes with the same uid as gitweb
+   (usually web served uid); if $cache_dir does not exist gitweb would
+   try to create it.  Only single gitweb project root per system is
+   supported, unless gitweb instances for different projects root have
+   different configuration.
+
+   By default $cache_dir is set to "$TMPDIR/gitweb" if $TMPDIR
+   environment variable does exist, "/tmp/gitweb" otherwise.
+   Default name for $projlist_cache_name -s 'gitweb.index.cache';
+
+   NOTE: projects list cache file can be tweaked by other scripts
+   running with the same uid as gitweb; use this ONLY at secure
+   installations!!!
+
+
 Per-repository gitweb configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
