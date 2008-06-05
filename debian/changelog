@@ -1,3 +1,13 @@
+git-core (1:1.5.6~rc1-1) experimental; urgency=low
+
+  * new upstream release candidate.
+    * git-svn fails in prop_walk if $self->{path} is not empty (closes:
+      477393).
+    * gitweb: Fix "next" link on bottom of page (closes: #481902).
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Thu, 05 Jun 2008 10:03:58 +0000
+
 git-core (1:1.5.5.3-1) unstable; urgency=low
 
   * new upstream point release.

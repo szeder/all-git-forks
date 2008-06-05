@@ -1,4 +1,135 @@
-Version v1.5.6-rc0; changes since v1.5.5.2:
+Version v1.5.6-rc1; changes since v1.5.6-rc0:
+---------------------------------------------
+
+Adam Simpkins (2):
+      graph API: improve display of merge commits
+      graph API: avoid printing unnecessary padding before some octopus merges
+
+Christian Couder (2):
+      bisect: use "$GIT_DIR/BISECT_START" to check if we are bisecting
+      Documentation: convert "glossary" and "core-tutorial" to man pages
+
+Christian Engwer (1):
+      git-svn fails in prop_walk if $self->{path} is not empty
+
+Dmitry V. Levin (1):
+      builtin-fetch.c (store_updated_refs): Honor update_local_ref() return value
+
+Gerrit Pape (2):
+      Documentation/git-bundle.txt: fix synopsis
+      commit --interactive: properly update the index before commiting
+
+Jakub Narebski (2):
+      gitweb: Remove gitweb/test/ directory
+      gitweb: Fix "next" link on bottom of page
+
+Jamis Buck (1):
+      git-reset: honor -q and do not show progress message
+
+Jeff King (1):
+      clone: make sure we support the transport type
+
+Johannes Schindelin (1):
+      hg-to-git: add --verbose option
+
+Johannes Sixt (3):
+      t5700-clone-reference: Quote $U
+      Revert "filter-branch: subdirectory filter needs --full-history"
+      rebase --interactive: Compute upstream SHA1 before switching branches
+
+John J. Franey (1):
+      Clarify description of <repository> argument to pull/fetch for naming remotes.
+
+Junio C Hamano (25):
+      tests: do not use implicit "git diff --no-index"
+      diff-files: do not play --no-index games
+      "git diff": do not ignore index without --no-index
+      Update draft release notes for 1.5.6
+      log --graph: do not accept log --graphbogus
+      log --pretty: do not accept bogus "--prettyshort"
+      Release Notes for 1.5.5.2
+      Documentation/git.txt: link to 1.5.5.2 documentation.
+      Makefile: fix dependency on wt-status.h
+      show-branch --current: do not barf on detached HEAD
+      git-diff: allow  --no-index semantics a bit more
+      git diff --no-index: default to page like other diff frontends
+      GIT 1.5.5.3
+      t5100: Avoid filename "nul"
+      Git::cat_blob: allow using an empty blob to fix git-svn breakage
+      fix sha1_pack_index_name()
+      Manual subsection to refer to other pages is SEE ALSO
+      Documentation: git-cherry uses git-patch-id
+      "git checkout -- paths..." should error out when paths cannot be written
+      checkout: make reset_clean_to_new() not die by itself
+      checkout: consolidate reset_{to_new,clean_to_new}()
+      unpack_trees(): allow callers to differentiate worktree errors from merge errors
+      checkout: "best effort" checkout
+      commit: drop duplicated parents
+      GIT v1.5.6-rc1
+
+Karl Hasselström (3):
+      Add some tests for git update-ref -d
+      Fix path duplication in git svn commit-diff
+      Revert "git.el: Set process-environment instead of invoking env"
+
+Kevin Ballard (1):
+      Documentation/git-filter-branch.txt: Fix description of --commit-filter
+
+Lea Wiemann (5):
+      gitweb: only display "next" links in logs if there is a next page
+      t/test-lib.sh: resolve symlinks in working directory, for pathname comparisons
+      Git.pm: fix documentation of hash_object
+      glossary: improve a few links
+      Git.pm: fix return value of config method
+
+Linus Torvalds (2):
+      Make pack creation always fsync() the result
+      Remove now unnecessary 'sync()' calls
+
+Luciano Rocha (1):
+      git-init: accept --bare option
+
+Marius Storm-Olsen (2):
+      Clearify the documentation for core.ignoreStat
+      Add shortcut in refresh_cache_ent() for marked entries.
+
+Michele Ballabio (1):
+      Documentation: fix graph in git-rev-parse.txt
+
+Miklos Vajna (1):
+      Revision walking documentation: document most important functions
+
+Nicolas Pitre (1):
+      make verify-pack a bit more useful with bad packs
+
+Paolo Bonzini (1):
+      rollback lock files on more signals than just SIGINT
+
+Pieter de Bie (1):
+      builtin-fast-export: Only output a single parent per line
+
+Seth Falcon (1):
+      Add a --dry-run option to git-svn rebase
+
+Shawn O. Pearce (8):
+      git-gui: Add a --trace command line option
+      git-gui: Handle workdir detection when CYGWIN=nowinsymlinks
+      Don't diff empty tree on branch creation in paranoid update hook
+      Don't load missing ACL files in paranoid update hook
+      Ignore no-op changes in paranoid update hook
+      Remove unused remote_prefix member in builtin-remote
+      Make "git-remote prune" delete refs according to fetch specs
+      Make "git-remote rm" delete refs acccording to fetch specs
+
+Stephan Beyer (2):
+      Add test cases for git-am
+      Merge t4150-am-subdir.sh and t4151-am.sh into t4150-am.sh
+
+Twiinz (1):
+      git-gui: Vertically align textboxes with labels
+
+
+Version v1.5.6-rc0; changes since v1.5.5.3:
 -------------------------------------------
 
 Adam Roben (11):
@@ -81,7 +212,7 @@ Chris Frey (2):
 Chris Parsons (1):
       Updated status to show 'Not currently on any branch' in red
 
-Christian Couder (22):
+Christian Couder (21):
       bisect: add "git bisect help" subcommand to get a long usage string
       help: use man viewer path from "man.<tool>.path" config var
       documentation: help: add "man.<tool>.path" config variable
@@ -94,7 +225,6 @@ Christian Couder (22):
       Documentation: rename "hooks.txt" to "githooks.txt" and make it a man page
       Documentation: improve "add", "pull" and "format-patch" examples
       Documentation: bisect: add a few "git bisect run" examples
-      bisect: print an error message when "git rev-list --bisect-vars" fails
       rev-parse: add test script for "--verify"
       rev-parse: fix using "--default" with "--verify"
       rev-parse --verify: do not output anything on error
@@ -152,11 +282,10 @@ Frank Lichtenheld (4):
       Git.pm: Don't require repository instance for ident
       send-email: Don't require to be called in a repository
 
-Gerrit Pape (4):
+Gerrit Pape (3):
       gitweb: fallback to system-wide config file if default config does not exist
       gitweb: fallback to system-wide config file (fixup)
       gitk: Makefile/install: force permissions when installing files and dirs
-      git-bisect.sh: don't accidentally override existing branch "bisect"
 
 Govind Salinas (1):
       pretty.c: add %x00 format specifier.
@@ -178,16 +307,13 @@ Heikki Orsila (7):
       Add log.date config variable
       Remove redundant code, eliminate one static variable
 
-Horst H. von Brand (1):
-      Fix recipient santitization
-
 Imran M Yousuf (1):
       Use '-f' option to point to the .gitmodules file
 
 Jakub Narebski (1):
       gitweb: Use feed link according to current view
 
-Jeff King (14):
+Jeff King (12):
       add--interactive: ignore mode change in 'p'atch command
       add--interactive: allow user to choose mode update
       git-fetch: always show status of non-tracking-ref fetches
@@ -200,8 +326,6 @@ Jeff King (14):
       t5000: tar portability fix
       clone: bsd shell portability fix
       filter-branch: fix variable export logic
-      send-email: specify content-type of --compose body
-      send-email: rfc2047-quote subject lines with non-ascii characters
 
 Johan Herland (2):
       Add a test for another combination of --reference
@@ -455,6 +579,42 @@ Thomas Arcila (1):
 
 Trent Piepho (1):
       cvsexportcommit: Create config option for CVS dir
+
+
+Version v1.5.5.3; changes since v1.5.5.2:
+-----------------------------------------
+
+Christian Couder (1):
+      bisect: print an error message when "git rev-list --bisect-vars" fails
+
+Gerrit Pape (3):
+      git-bisect.sh: don't accidentally override existing branch "bisect"
+      Documentation/git-bundle.txt: fix synopsis
+      commit --interactive: properly update the index before commiting
+
+Horst H. von Brand (1):
+      Fix recipient santitization
+
+Jeff King (2):
+      send-email: specify content-type of --compose body
+      send-email: rfc2047-quote subject lines with non-ascii characters
+
+Johannes Sixt (1):
+      Revert "filter-branch: subdirectory filter needs --full-history"
+
+Junio C Hamano (3):
+      Release Notes for 1.5.5.2
+      show-branch --current: do not barf on detached HEAD
+      GIT 1.5.5.3
+
+Lea Wiemann (1):
+      gitweb: only display "next" links in logs if there is a next page
+
+Michele Ballabio (1):
+      Documentation: fix graph in git-rev-parse.txt
+
+Pieter de Bie (1):
+      builtin-fast-export: Only output a single parent per line
 
 
 Version v1.5.5.2; changes since v1.5.5.1:
