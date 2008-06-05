@@ -7,7 +7,8 @@ CFLAGS =-g -Wall
 STRIP =strip
 TEST =test
 OPTS =NO_OPENSSL=1 prefix=/usr mandir=/usr/share/man INSTALLDIRS=vendor \
-  WITH_P4IMPORT=1 PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish8.5
+  WITH_P4IMPORT=1 PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish8.5 \
+  THREADED_DELTA_SEARCH=1
 
 ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
   STRIP =: strip
