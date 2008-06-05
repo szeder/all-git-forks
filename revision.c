@@ -1197,12 +1197,17 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 				revs->verbose_header = 1;
 				continue;
 			}
-			if (!prefixcmp(arg, "--pretty")) {
+			if (!strcmp(arg, "--pretty")) {
 				revs->verbose_header = 1;
 				get_commit_format(arg+8, revs);
 				continue;
 			}
-			if (!prefixcmp(arg, "--graph")) {
+			if (!prefixcmp(arg, "--pretty=")) {
+				revs->verbose_header = 1;
+				get_commit_format(arg+9, revs);
+				continue;
+			}
+			if (!strcmp(arg, "--graph")) {
 				revs->topo_order = 1;
 				revs->rewrite_parents = 1;
 				revs->graph = graph_init(revs);
