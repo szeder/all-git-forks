@@ -95,5 +95,5 @@ index 2d919d6..ccb1361 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.5.1
+1.5.5.2
 
