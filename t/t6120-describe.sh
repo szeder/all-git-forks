@@ -108,7 +108,7 @@ warning: tag 'A' is really 'Q' here
 EOF
 check_describe A-* HEAD
 test_expect_success 'warning was displayed for Q' '
-	git diff err.expect err.actual
+	test_cmp err.expect err.actual
 '
 test_expect_success 'rename tag Q back to A' '
 	mv .git/refs/tags/Q .git/refs/tags/A
@@ -116,5 +116,27 @@ test_expect_success 'rename tag Q back to A' '
 
 test_expect_success 'pack tag refs' 'git pack-refs'
 check_describe A-* HEAD
+
+test_expect_success 'set-up matching pattern tests' '
+	git tag -a -m test-annotated test-annotated &&
+	echo >>file &&
+	test_tick &&
+	git commit -a -m "one more" &&
+	git tag test1-lightweight &&
+	echo >>file &&
+	test_tick &&
+	git commit -a -m "yet another" &&
+	git tag test2-lightweight &&
+	echo >>file &&
+	test_tick &&
+	git commit -a -m "even more"
+
+'
+
+check_describe "test-annotated-*" --match="test-*"
+
+check_describe "test1-lightweight-*" --tags --match="test1-*"
+
+check_describe "test2-lightweight-*" --tags --match="test2-*"
 
 test_done

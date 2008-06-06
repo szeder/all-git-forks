@@ -13,10 +13,11 @@ include::pretty-options.txt[]
 
 	Synonym for `--date=relative`.
 
---date={relative,local,default,iso,rfc}::
+--date={relative,local,default,iso,rfc,short}::
 
 	Only takes effect for dates shown in human-readable format, such
-	as when using "--pretty".
+	as when using "--pretty". `log.date` config variable sets a default
+	value for log command's --date option.
 +
 `--date=relative` shows dates relative to the current time,
 e.g. "2 hours ago".
@@ -33,17 +34,21 @@ format, often found in E-mail messages.
 `--date=default` shows timestamps in the original timezone
 (either committer's or author's).
 
+ifdef::git-rev-list[]
 --header::
 
 	Print the contents of the commit in raw-format; each record is
 	separated with a NUL character.
+endif::git-rev-list[]
 
 --parents::
 
 	Print the parents of the commit.
 
+ifdef::git-rev-list[]
 --timestamp::
 	Print the raw commit timestamp.
+endif::git-rev-list[]
 
 --left-right::
 
@@ -74,6 +79,16 @@ you would get an output line this:
 	-yyyyyyy... 1st on b
 	-xxxxxxx... 1st on a
 -----------------------------------------------------------------------
+
+--graph::
+
+	Draw a text-based graphical representation of the commit history
+	on the left hand side of the output.  This may cause extra lines
+	to be printed in between commits, in order for the graph history
+	to be drawn properly.
++
+This implies the '--topo-order' option by default, but the
+'--date-order' option may also be specified.
 
 Diff Formatting
 ~~~~~~~~~~~~~~~
@@ -195,6 +210,7 @@ endif::git-rev-list[]
 	Pretend as if all the refs in `$GIT_DIR/refs/` are listed on the
 	command line as '<commit>'.
 
+ifdef::git-rev-list[]
 --stdin::
 
 	In addition to the '<commit>' listed on the command
@@ -207,6 +223,7 @@ endif::git-rev-list[]
 	test the exit status to see if a range of objects is fully
 	connected (or not).  It is faster than redirecting stdout
 	to /dev/null as the output does not have to be formatted.
+endif::git-rev-list[]
 
 --cherry-pick::
 
