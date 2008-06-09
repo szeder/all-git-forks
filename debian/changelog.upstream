@@ -1,3 +1,54 @@
+Version v1.5.6-rc2; changes since v1.5.6-rc1:
+---------------------------------------------
+
+Adam Simpkins (2):
+      graph API: fix "git log --graph --first-parent"
+      git log --graph: print '*' for all commits, including merges
+
+Alex Riesen (1):
+      Fix t5516 on cygwin: it does not like double slashes at the beginning of a path
+
+Björn Steinbrink (1):
+      name-rev: Fix segmentation fault when using --all
+
+Christian Couder (2):
+      documentation: convert "diffcore" and "repository-layout" to man pages
+      documentation: move git(7) to git(1)
+
+Daniel Barkalow (1):
+      Use nonrelative paths instead of absolute paths for cloned repositories
+
+Dirk Suesserott (1):
+      Documentation/git-mailsplit: Enhanced description of -o option
+
+Jakub Narebski (1):
+      gitweb: Add charset info to "raw" output of 'text/plain' blobs
+
+Jeff King (1):
+      Fix "git clone http://$URL" to check out the worktree when asked
+
+Junio C Hamano (6):
+      t7502: do not globally unset GIT_COMMITTER_* environment variables
+      t7502: tighten loosely written test sequence
+      Documentation: git-log cannot use rev-list specific options
+      t7502: honor SHELL_PATH
+      GIT 1.5.5.4
+      GIT 1.5.6-rc2
+
+Lea Wiemann (2):
+      cat-file --batch: flush stdout also when objects are missing
+      git-for-each-ref.txt: minor improvements
+
+Michael Dressel (1):
+      describe: match pattern for lightweight tags too
+
+Miklos Vajna (1):
+      Strbuf documentation: document most functions
+
+Teemu Likonen (1):
+      Print info about "git help COMMAND" on git's main usage pages
+
+
 Version v1.5.6-rc1; changes since v1.5.6-rc0:
 ---------------------------------------------
 
@@ -129,7 +180,7 @@ Twiinz (1):
       git-gui: Vertically align textboxes with labels
 
 
-Version v1.5.6-rc0; changes since v1.5.5.3:
+Version v1.5.6-rc0; changes since v1.5.5.4:
 -------------------------------------------
 
 Adam Roben (11):
@@ -579,6 +630,22 @@ Thomas Arcila (1):
 
 Trent Piepho (1):
       cvsexportcommit: Create config option for CVS dir
+
+
+Version v1.5.5.4; changes since v1.5.5.3:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      name-rev: Fix segmentation fault when using --all
+
+Junio C Hamano (1):
+      GIT 1.5.5.4
+
+Lea Wiemann (1):
+      git-for-each-ref.txt: minor improvements
+
+Michael Dressel (1):
+      describe: match pattern for lightweight tags too
 
 
 Version v1.5.5.3; changes since v1.5.5.2:
