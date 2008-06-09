@@ -1,4 +1,4 @@
-From a021fa6462070192a2dd8f2133dc58744bef1d60 Mon Sep 17 00:00:00 2001
+From ea8e2c4e1c84b3e59f41cb8297dec82a6b515ba1 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
 Subject: [PATCH] bug#438793: git-sh-setup.sh, builtin-tag.c: fallback to 'editor' not 'vi'
@@ -95,5 +95,5 @@ index 2d919d6..ccb1361 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.5.5.2
+1.5.5.3
 

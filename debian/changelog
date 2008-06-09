@@ -1,3 +1,9 @@
+git-core (1:1.5.5.4-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 09 Jun 2008 11:48:01 +0000
+
 git-core (1:1.5.5.3-1) unstable; urgency=low
 
   * new upstream point release.

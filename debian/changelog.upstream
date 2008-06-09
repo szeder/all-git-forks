@@ -1,3 +1,19 @@
+Version v1.5.5.4; changes since v1.5.5.3:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      name-rev: Fix segmentation fault when using --all
+
+Junio C Hamano (1):
+      GIT 1.5.5.4
+
+Lea Wiemann (1):
+      git-for-each-ref.txt: minor improvements
+
+Michael Dressel (1):
+      describe: match pattern for lightweight tags too
+
+
 Version v1.5.5.3; changes since v1.5.5.2:
 -----------------------------------------
 
