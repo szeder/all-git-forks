@@ -1,3 +1,13 @@
+git-core (1:1.5.5.4-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/rules: enable DOCBOOK_XSL_172 build variable, fixing man page
+    breakage (thx Jonathan Nieder, closes: #476634).
+  * debian/control: Build-Depends: docbook-xsl (>> 1.72) (thx Jonathan
+    Nieder).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 09 Jun 2008 11:51:19 +0000
+
 git-core (1:1.5.6~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.
