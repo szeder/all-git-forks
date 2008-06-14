@@ -1251,6 +1251,7 @@ GIT-CFLAGS: .FORCE-GIT-CFLAGS
 
 GIT-BUILD-OPTIONS: .FORCE-GIT-BUILD-OPTIONS
 	@echo SHELL_PATH=\''$(SHELL_PATH_SQ)'\' >$@
+	@echo PERL_PATH=\''$(PERL_PATH_SQ)'\' >>$@
 
 ### Detect Tck/Tk interpreter path changes
 ifndef NO_TCLTK
