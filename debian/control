@@ -8,8 +8,8 @@ Vcs-Git: http://smarden.org/git/git.git/
 
 Package: git-core
 Architecture: any
-Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl, cpio
-Recommends: patch, less, rsync, curl, ssh-client
+Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl
+Recommends: patch, less, rsync, ssh-client
 Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
 Replaces: cogito (<< 0.16rc2-0), git-completion
 Conflicts: git (<< 4.3.20-11), qgit (<< 1.5.5), git-completion

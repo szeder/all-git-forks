@@ -2,8 +2,10 @@ git-core (1:1.5.6~rc3-1) experimental; urgency=low
 
   * debian/git-daemon-run.postrm: remove log files on purge.
   * new upstream release candidate.
+  * debian/control: package git-core: no longer Depends: cpio, no
+    longer Recommends: curl.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 15 Jun 2008 10:43:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 15 Jun 2008 11:14:49 +0000
 
 git-core (1:1.5.6~rc2-1) experimental; urgency=low
 
