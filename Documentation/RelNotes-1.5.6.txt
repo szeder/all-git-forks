@@ -70,7 +70,7 @@ Updates since v1.5.5
 
 * "git init --bare" is a synonym for "git --bare init" now.
 
-* "git gc --auto" honors a new pre-aut-gc hook to temporarily disable it.
+* "git gc --auto" honors a new pre-auto-gc hook to temporarily disable it.
 
 * "git log --pretty=tformat:<custom format>" gives a LF after each entry,
   instead of giving a LF between each pair of entries which is how
@@ -111,6 +111,6 @@ this release, unless otherwise noted.
 
 --
 exec >/var/tmp/1
-O=v1.5.6-rc1
+O=v1.5.6-rc3
 echo O=`git describe refs/heads/master`
 git shortlog --no-merges $O..refs/heads/master ^refs/heads/maint
