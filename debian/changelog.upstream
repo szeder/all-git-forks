@@ -1,3 +1,50 @@
+Version v1.5.6; changes since v1.5.6-rc3:
+-----------------------------------------
+
+Alejandro Mery (1):
+      git-am: head -1 is obsolete and doesn't work on some new systems
+
+Christian Couder (1):
+      Documentation: RelNotes-1.5.6: talk about renamed HTML files
+
+Jeff King (1):
+      clean up error conventions of remote.c:match_explicit
+
+Johan Herland (3):
+      cpio is no longer used by git-clone
+      Consistency: Use "libcurl" instead of "cURL library" and "curl"
+      The "curl" executable is no longer required
+
+Junio C Hamano (7):
+      Makefile: update check-docs target
+      Update RPM spec to drop curl executable requirement
+      diff.c: fix emit_line() again not to add extra line
+      create_tempfile: make sure that leading directories can be accessible by peers
+      sha1_file.c: simplify parse_pack_index()
+      builtin-rerere: fix a small leak
+      GIT 1.5.6
+
+Lea Wiemann (2):
+      gitweb: quote commands properly when calling the shell
+      gitweb: remove unused parse_ref method
+
+Linus Torvalds (1):
+      write_loose_object: don't bother trying to read an old object
+
+Miklos Vajna (2):
+      run-command documentation: fix "memset()" parameter
+      path-list documentation: document all functions and data structures
+
+Olivier Marin (1):
+      Fix approxidate("never") to always return 0
+
+Pierre Habouzit (1):
+      Make git reflog expire honour core.sharedRepository.
+
+SZEDER Gábor (1):
+      diff: reset color before printing newline
+
+
 Version v1.5.6-rc3; changes since v1.5.6-rc2:
 ---------------------------------------------
 
