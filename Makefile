@@ -13,7 +13,7 @@ all::
 # Define NO_OPENSSL environment variable if you do not have OpenSSL.
 # This also implies MOZILLA_SHA1.
 #
-# Define NO_CURL if you do not have curl installed.  git-http-pull and
+# Define NO_CURL if you do not have libcurl installed.  git-http-pull and
 # git-http-push are not built, and you cannot use http:// and https://
 # transports.
 #
@@ -1412,6 +1412,14 @@ check-docs::
 		documented,gitmodules | \
 		documented,gitcli | \
 		documented,git-tools | \
+		documented,gitcore-tutorial | \
+		documented,gitcvs-migration | \
+		documented,gitdiffcore | \
+		documented,gitglossary | \
+		documented,githooks | \
+		documented,gitrepository-layout | \
+		documented,gittutorial | \
+		documented,gittutorial-2 | \
 		sentinel,not,matching,is,ok ) continue ;; \
 		esac; \
 		case " $(ALL_PROGRAMS) $(BUILT_INS) git gitk " in \

@@ -18,11 +18,15 @@ Updates since v1.5.5
 * "git init" now autodetects the case sensitivity of the filesystem and
   sets core.ignorecase accordingly.
 
+* cpio is no longer used; neither "curl" binary (libcurl is still used).
+
 (documentation)
 
 * Many freestanding documentation pages have been converted and made
-  available to "git help" (aka "man git-<command>") as section 7 of the
-  manual pages.
+  available to "git help" (aka "man git<something>") as section 7 of
+  the manual pages. This means bookmarks to some HTML documentation
+  files may need to be updated (eg "tutorial.html" became
+  "gittutorial.html").
 
 (performance)
 
@@ -108,9 +112,4 @@ Fixes since v1.5.5
 All of the fixes in v1.5.5 maintenance series are included in
 this release, unless otherwise noted.
 
-
---
-exec >/var/tmp/1
-O=v1.5.6-rc3
-echo O=`git describe refs/heads/master`
-git shortlog --no-merges $O..refs/heads/master ^refs/heads/maint
+And there are too numerous small fixes to otherwise note here ;-)
