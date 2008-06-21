@@ -1099,25 +1099,28 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): perl/perl.mak
 perl/perl.mak: GIT-CFLAGS perl/Makefile perl/Makefile.PL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' $(@F)
 
+PERL_USE_LIB_REWRITE = \
+	-e '1{' \
+	-e '	s|\#!.*perl|\#!$(PERL_PATH_SQ)|' \
+	-e '	h' \
+	-e '	s=.*=use lib (split(/:/, \$$ENV{GITPERLLIB} || \"@@INSTLIBDIR@@\"));=' \
+	-e '	H' \
+	-e '	x' \
+	-e '}' \
+	-e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR"'|g' \
+	-e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g'
+
 $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
-	sed -e '1{' \
-	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
-	    -e '	h' \
-	    -e '	s=.*=use lib (split(/:/, $$ENV{GITPERLLIB} || "@@INSTLIBDIR@@"));=' \
-	    -e '	H' \
-	    -e '	x' \
-	    -e '}' \
-	    -e 's|@@INSTLIBDIR@@|'"$$INSTLIBDIR"'|g' \
-	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
-	    $@.perl >$@+ && \
+	sed $(PERL_USE_LIB_REWRITE) $@.perl >$@+ && \
 	chmod +x $@+ && \
 	mv $@+ $@
 
 gitweb/gitweb.cgi: gitweb/gitweb.perl
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	sed -e '1s|#!.*perl|#!$(PERL_PATH_SQ)|' \
+	INSTLIBDIR=`MAKEFLAGS= $(MAKE) -C perl -s --no-print-directory instlibdir` && \
+	sed $(PERL_USE_LIB_REWRITE) \
 	    -e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
 	    -e 's|++GIT_BINDIR++|$(bindir)|g' \
 	    -e 's|++GITWEB_CONFIG++|$(GITWEB_CONFIG)|g' \
