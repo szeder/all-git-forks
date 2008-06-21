@@ -54,7 +54,7 @@ gitweb_run () {
 	# written to web server logs, so we are not interested in that:
 	# we are interested only in properly formatted errors/warnings
 	rm -f gitweb.log &&
-	perl -- "$(pwd)/../../gitweb/gitweb.perl" \
+	"$PERL_PATH" -- "$(pwd)/../../gitweb/gitweb.cgi" \
 		>/dev/null 2>gitweb.log &&
 	if grep -q -s "^[[]" gitweb.log >/dev/null; then false; else true; fi
 
@@ -71,7 +71,7 @@ safe_chmod () {
 
 . ./test-lib.sh
 
-perl -MEncode -e 'decode_utf8("", Encode::FB_CROAK)' >/dev/null 2>&1 || {
+"$PERL_PATH" -MEncode -e 'decode_utf8("", Encode::FB_CROAK)' >/dev/null 2>&1 || {
     test_expect_success 'skipping gitweb tests, perl version is too old' :
     test_done
     exit

@@ -12,10 +12,14 @@ use warnings;
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser);
+use Data::Dumper; # for debugging
 use Encode;
 use Fcntl ':mode';
 use File::Find qw();
 use File::Basename qw(basename);
+
+use Git::RepoRoot;
+
 binmode STDOUT, ':utf8';
 
 BEGIN {
@@ -376,6 +380,8 @@ if (-e $GITWEB_CONFIG) {
 	do $GITWEB_CONFIG_SYSTEM if -e $GITWEB_CONFIG_SYSTEM;
 }
 
+our $repo_root = Git::RepoRoot->new(directory => $projectroot, git_binary => $GIT);
+
 # version of the core git binary
 our $git_version = qx("$GIT" --version) =~ m/git version (.*)$/ ? $1 : "unknown";
 
@@ -536,6 +542,8 @@ evaluate_path_info();
 # path to the current git repository
 our $git_dir;
 $git_dir = "$projectroot/$project" if $project;
+our $repo;
+$repo = $repo_root->repo(directory => $project) if $project;
 
 # dispatch
 my %actions = (
@@ -1509,33 +1517,51 @@ sub quote_command {
 		    map( { my $a = $_; $a =~ s/(['!])/'\\$1'/g; "'$a'" } @_ ));
 }
 
-# get HEAD ref of given project as hash
-sub git_get_head_hash {
-	my $project = shift;
-	my $o_git_dir = $git_dir;
-	my $retval = undef;
-	$git_dir = "$projectroot/$project";
-	if (open my $fd, "-|", git_cmd(), "rev-parse", "--verify", "HEAD") {
-		my $head = <$fd>;
-		close $fd;
-		if (defined $head && $head =~ /^([0-9a-fA-F]{40})$/) {
-			$retval = $1;
+# git_get_hash_or_die ( EXTENDED_OBJECT_IDENTIFER [, TYPE] )
+#
+# Look up the object referred to by C<EXTENDED_OBJECT_IDENTIFER> and
+# return its SHA1 hash in scalar context or its ($hash, $type, $size)
+# in list context.  Die if the object couldn't be found.
+#
+# If C<TYPE> is given, resolve tag and commit objects if necessary and
+# die unless the object found has the right type.  The $type return
+# value is guaranteed to equal C<TYPE>.
+
+sub git_get_hash_or_die {
+	my ($object_id, $want_type) = @_;
+	my ($hash, $type, $size) = $repo->get_sha1($object_id);
+	die_error(404, "object not found: $object_id") unless $hash;
+	if ($want_type && $want_type ne $type) {
+		if ($type eq 'tag') {
+			return git_get_hash_or_die(
+				$repo->get_tag($hash)->object, $want_type);
+		} elsif ($type eq 'commit' && $want_type eq 'tree') {
+			return git_get_hash_or_die(
+				$repo->get_commit($hash)->tree, $want_type);
+		} else {
+			# This error message can be off due to recursion,
+			# but fixing it complicates the code too much.
+			die_error(400, "expected a $want_type object, but " .
+				  "$object_id is a $type object");
 		}
 	}
-	if (defined $o_git_dir) {
-		$git_dir = $o_git_dir;
-	}
-	return $retval;
+	return wantarray ? ($hash, $type, $size) : $hash;
+}
+
+# get HEAD ref hash of given project or die if no HEAD ref was found
+sub git_get_head_hash {
+	my $project = shift;
+	# Legacy side effect on $git_dir.  This will eventually go
+	# away as the global $git_dir is eliminated.
+	$git_dir = "$projectroot/$project" unless defined $git_dir;
+	my $hash = $repo_root->repo(directory => $project)->get_sha1("HEAD");
+	    #or die_error(500, "HEAD ref not found for project '$project'");
+	return $hash;
 }
 
 # get type of given object
 sub git_get_type {
-	my $hash = shift;
-
-	open my $fd, "-|", git_cmd(), "cat-file", '-t', $hash or return;
-	my $type = <$fd>;
-	close $fd or return;
-	chomp $type;
+	my($sha1, $type, $size) = $repo->get_sha1(shift);
 	return $type;
 }
 
@@ -1659,32 +1685,17 @@ sub git_get_project_config {
 # get hash of given path at given ref
 sub git_get_hash_by_path {
 	my $base = shift;
-	my $path = shift || return undef;
+	my $path = shift || die;
 	my $type = shift;
 
 	$path =~ s,/+$,,;
 
-	open my $fd, "-|", git_cmd(), "ls-tree", $base, "--", $path
-		or die_error(500, "Open git-ls-tree failed");
-	my $line = <$fd>;
-	close $fd or return undef;
-
-	if (!defined $line) {
-		# there is no tree or hash given by $path at $base
-		return undef;
-	}
-
-	#'100644 blob 0fa3f3a66fb6a137f6ec2c19351ed4d807070ffa	panic.c'
-	$line =~ m/^([0-9]+) (.+) ([0-9a-fA-F]{40})\t/;
-	if (defined $type && $type ne $2) {
-		# type doesn't match
-		return undef;
-	}
-	return $3;
+	return $repo->get_sha1("$base:$path", $type);
 }
 
 # get path of entry with given hash at given tree-ish (ref)
 # used to get 'from' filename for combined diff (merge commit) for renames
+# TODO: Move this to Git::Repo?
 sub git_get_path_by_hash {
 	my $base = shift || return;
 	my $hash = shift || return;
@@ -1907,27 +1918,27 @@ sub git_get_last_activity {
 	return (undef, undef);
 }
 
+# Return a reference to a hash from SHA1s to references to arrays of
+# ref names.  Example:
+# { '7e51...' => ['tags/tag-object'], # tag SHA1
+#   '51ba...' => ['tags/tag-object'], # referenced commit SHA1
+#   '3c4a...' => ['heads/master', 'tags/another-tag'] }
 sub git_get_references {
-	my $type = shift || "";
-	my %refs;
-	# 5dc01c595e6c6ec9ccda4f6f69c131c0dd945f8c refs/tags/v2.6.11
-	# c39ae07f393806ccf406ef966e9a15afc43cc36a refs/tags/v2.6.11^{}
-	open my $fd, "-|", git_cmd(), "show-ref", "--dereference",
-		($type ? ("--", "refs/$type") : ()) # use -- <pattern> if $type
-		or return;
-
-	while (my $line = <$fd>) {
-		chomp $line;
-		if ($line =~ m!^([0-9a-fA-F]{40})\srefs/($type/?[^^]+)!) {
-			if (defined $refs{$1}) {
-				push @{$refs{$1}}, $2;
-			} else {
-				$refs{$1} = [ $2 ];
-			}
-		}
+	my %ref_hash;
+	my @refs = @{$repo->get_refs};
+	for my $triplet (@refs) {
+		# push ref name onto ref_hash{SHA1}.
+		$triplet->[2] =~ s!^refs/!!;
+		push @{$ref_hash{$triplet->[0]}}, $triplet->[2];
 	}
-	close $fd or return;
-	return \%refs;
+	# Also resolve tags.
+	my $sha1s = $repo->get_sha1s( [ map { $_->[2] . '^{}' } @refs ] );
+	while (my ($object_id, $triplet) = each %$sha1s) {
+		$object_id =~ s!^refs/!!;
+		$object_id =~ s/\^\{\}$//;
+		push @{$ref_hash{$triplet->[0]}}, $object_id if @{$triplet};
+	}
+	return \%ref_hash;
 }
 
 sub git_get_rev_name_tags {
@@ -5081,7 +5092,6 @@ sub git_commitdiff {
 		}
 
 	} elsif ($format eq 'plain') {
-		my $refs = git_get_references("tags");
 		my $tagname = git_get_rev_name_tags($hash);
 		my $filename = basename($project) . "-$hash.patch";
 
