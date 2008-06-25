@@ -116,6 +116,15 @@ int safe_create_leading_directories(char *path)
 	return 0;
 }
 
+int safe_create_leading_directories_const(const char *path)
+{
+	/* path points to cache entries, so xstrdup before messing with it */
+	char *buf = xstrdup(path);
+	int result = safe_create_leading_directories(buf);
+	free(buf);
+	return result;
+}
+
 char *sha1_to_hex(const unsigned char *sha1)
 {
 	static int bufno;
@@ -792,18 +801,28 @@ unsigned char* use_pack(struct packed_git *p,
 	return win->base + offset;
 }
 
+static struct packed_git *alloc_packed_git(int extra)
+{
+	struct packed_git *p = xmalloc(sizeof(*p) + extra);
+	memset(p, 0, sizeof(*p));
+	p->pack_fd = -1;
+	return p;
+}
+
 struct packed_git *add_packed_git(const char *path, int path_len, int local)
 {
 	struct stat st;
-	struct packed_git *p = xmalloc(sizeof(*p) + path_len + 2);
+	struct packed_git *p = alloc_packed_git(path_len + 2);
 
 	/*
 	 * Make sure a corresponding .pack file exists and that
 	 * the index looks sane.
 	 */
 	path_len -= strlen(".idx");
-	if (path_len < 1)
+	if (path_len < 1) {
+		free(p);
 		return NULL;
+	}
 	memcpy(p->pack_name, path, path_len);
 	strcpy(p->pack_name + path_len, ".pack");
 	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
@@ -814,16 +833,7 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	/* ok, it looks sane as far as we can check without
 	 * actually mapping the pack file.
 	 */
-	p->index_version = 0;
-	p->index_data = NULL;
-	p->index_size = 0;
-	p->num_objects = 0;
-	p->num_bad_objects = 0;
-	p->bad_object_sha1 = NULL;
 	p->pack_size = st.st_size;
-	p->next = NULL;
-	p->windows = NULL;
-	p->pack_fd = -1;
 	p->pack_local = local;
 	p->mtime = st.st_mtime;
 	if (path_len < 40 || get_sha1_hex(path + path_len - 40, p->sha1))
@@ -835,19 +845,15 @@ struct packed_git *parse_pack_index(unsigned char *sha1)
 {
 	const char *idx_path = sha1_pack_index_name(sha1);
 	const char *path = sha1_pack_name(sha1);
-	struct packed_git *p = xmalloc(sizeof(*p) + strlen(path) + 2);
+	struct packed_git *p = alloc_packed_git(strlen(path) + 1);
 
+	strcpy(p->pack_name, path);
+	hashcpy(p->sha1, sha1);
 	if (check_packed_git_idx(idx_path, p)) {
 		free(p);
 		return NULL;
 	}
 
-	strcpy(p->pack_name, path);
-	p->pack_size = 0;
-	p->next = NULL;
-	p->windows = NULL;
-	p->pack_fd = -1;
-	hashcpy(p->sha1, sha1);
 	return p;
 }
 
@@ -1708,7 +1714,7 @@ const unsigned char *nth_packed_object_sha1(struct packed_git *p,
 	}
 }
 
-static off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
+off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
 {
 	const unsigned char *index = p->index_data;
 	index += 4 * 256;
