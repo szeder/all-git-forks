@@ -354,6 +354,7 @@ LIB_H += log-tree.h
 LIB_H += mailmap.h
 LIB_H += object.h
 LIB_H += pack.h
+LIB_H += pack-refs.h
 LIB_H += pack-revindex.h
 LIB_H += parse-options.h
 LIB_H += patch-ids.h
@@ -429,6 +430,7 @@ LIB_OBJS += merge-file.o
 LIB_OBJS += name-hash.o
 LIB_OBJS += object.o
 LIB_OBJS += pack-check.o
+LIB_OBJS += pack-refs.o
 LIB_OBJS += pack-revindex.o
 LIB_OBJS += pack-write.o
 LIB_OBJS += pager.o
@@ -467,6 +469,7 @@ LIB_OBJS += unpack-trees.o
 LIB_OBJS += usage.o
 LIB_OBJS += utf8.o
 LIB_OBJS += walker.o
+LIB_OBJS += wrapper.o
 LIB_OBJS += write_or_die.o
 LIB_OBJS += ws.o
 LIB_OBJS += wt-status.o
@@ -1289,6 +1292,9 @@ endif
 
 install-doc:
 	$(MAKE) -C Documentation install
+
+install-html:
+	$(MAKE) -C Documentation install-html
 
 install-info:
 	$(MAKE) -C Documentation install-info
