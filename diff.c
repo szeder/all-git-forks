@@ -830,12 +830,12 @@ static void show_stats(struct diffstat_t* data, struct diff_options *options)
 	/* Sanity: give at least 5 columns to the graph,
 	 * but leave at least 10 columns for the name.
 	 */
-	if (width < name_width + 15) {
-		if (name_width <= 25)
-			width = name_width + 15;
-		else
-			name_width = width - 15;
-	}
+	if (width < 25)
+		width = 25;
+	if (name_width < 10)
+		name_width = 10;
+	else if (width < name_width + 15)
+		name_width = width - 15;
 
 	/* Find the longest filename and max number of changes */
 	reset = diff_get_color_opt(options, DIFF_RESET);
@@ -1151,12 +1151,14 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 	char *err;
 
 	if (line[0] == '+') {
+		unsigned bad;
 		data->lineno++;
-		data->status = check_and_emit_line(line + 1, len - 1,
+		bad = check_and_emit_line(line + 1, len - 1,
 		    data->ws_rule, NULL, NULL, NULL, NULL);
-		if (!data->status)
+		if (!bad)
 			return;
-		err = whitespace_error_string(data->status);
+		data->status |= bad;
+		err = whitespace_error_string(bad);
 		fprintf(data->file, "%s:%d: %s.\n", data->filename, data->lineno, err);
 		free(err);
 		emit_line(data->file, set, reset, line, 1);
