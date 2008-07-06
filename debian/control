@@ -48,7 +48,7 @@ Description: fast, scalable, distributed revision control system (documentation)
 Package: git-arch
 Architecture: all
 Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tla
-Suggests: git-doc, bazaar
+Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (arch interoperability)
  Git is popular version control system designed to handle very large
