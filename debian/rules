@@ -191,11 +191,11 @@ install-indep: build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'web
 	install -d -m0755 '$(GIT)'web/usr/lib/cgi-bin
 	install -m0755 gitweb/gitweb.cgi '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
-	install -d -m0755 '$(GIT)'web/var/www
-	install -m0644 gitweb/gitweb.css '$(GIT)'web/var/www/gitweb.css
+	install -d -m0755 '$(GIT)'web/usr/share/gitweb
+	install -m0644 gitweb/gitweb.css '$(GIT)'web/usr/share/gitweb/gitweb.css
 	install -m0644 gitweb/git-favicon.png \
-	  '$(GIT)'web/var/www/git-favicon.png
-	install -m0644 gitweb/git-logo.png '$(GIT)'web/var/www/git-logo.png
+	  '$(GIT)'web/usr/share/gitweb/git-favicon.png
+	install -m0644 gitweb/git-logo.png '$(GIT)'web/usr/share/gitweb/git-logo.png
 	install -d -m0755 '$(GIT)'web/etc
 	install -m0644 debian/gitweb.conf '$(GIT)'web/etc/gitweb.conf
 	install -d -m0755 '$(GIT)'web/var/cache/git/
