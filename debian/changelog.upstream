@@ -1,3 +1,89 @@
+Version v1.5.6.2; changes since v1.5.6.1:
+-----------------------------------------
+
+Avery Pennarun (1):
+      git-svn: avoid filling up the disk with temp files.
+
+Björn Steinbrink (1):
+      git cat-file: Fix memory leak in batch mode
+
+Eric Wong (1):
+      git-svn: don't sanitize remote names in config
+
+Jeff King (3):
+      fetch: report local storage errors in status table
+      doc/rev-parse: clarify reflog vs --until for specifying revisions
+      fetch: give a hint to the user when local refs fail to update
+
+Jochen Voss (1):
+      avoid off-by-one error in run_upload_archive
+
+Joey Hess (1):
+      fix git config example syntax
+
+Johannes Schindelin (2):
+      clone: respect url.insteadOf setting in global configs
+      clone: respect the settings in $HOME/.gitconfig and /etc/gitconfig
+
+Junio C Hamano (9):
+      Allow "git-reset path" when unambiguous
+      diff --check: do not discard error status upon seeing a good line
+      git-shell: accept "git foo" form
+      GIT 1.5.4.6
+      GIT 1.5.5.5
+      Start draft release notes for 1.5.6.2
+      Work around gcc warnings from curl headers
+      Fix executable bits in t/ scripts
+      GIT 1.5.6.2
+
+Shawn O. Pearce (1):
+      Fix describe --tags --long so it does not segfault
+
+Thomas Rast (1):
+      Fix 'git show' on signed tag of signed tag of commit
+
+
+Version v1.5.6.1; changes since v1.5.6:
+---------------------------------------
+
+Brandon Casey (2):
+      git-merge.sh: fix typo in usage message: sucesses --> succeeds
+      t7502-commit.sh: test_must_fail doesn't work with inline environment variables
+
+Dan McGee (1):
+      completion: add --graph to log command completion
+
+Dmitry Potapov (1):
+      fix update-hook-example to work with packed tag references
+
+Jan Krüger (2):
+      Documentation: fix formatting in git-svn
+      git-svn: make rebuild respect rewriteRoot option
+
+Jeff King (2):
+      for-each-ref: implement missing tag values
+      clone: create intermediate directories of destination repo
+
+Junio C Hamano (2):
+      diff -c/--cc: do not include uninteresting deletion before leading context
+      GIT 1.5.6.1
+
+Linus Torvalds (1):
+      Make git_dir a path relative to work_tree in setup_work_tree()
+
+Michele Ballabio (1):
+      parse-options.c: fix documentation syntax of optional arguments
+
+Patrick Higgins (1):
+      Workaround for AIX mkstemp()
+
+Stephan Beyer (4):
+      git-rebase.sh: Add check if rebase is in progress
+      api-builtin.txt: update and fix typo
+      api-parse-options.txt: Introduce documentation for parse options API
+      Extend parse-options test suite
+
+
 Version v1.5.6; changes since v1.5.6-rc3:
 -----------------------------------------
 
