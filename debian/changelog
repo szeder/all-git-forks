@@ -9,8 +9,11 @@ git-core (1:1.5.6.2-1) unstable; urgency=low
     #479479).
   * debian/control: package git-arch: no longer Suggests: bazaar
     (closes: #486726).
+  * debian/diff/0005-git-svn.perl-workaround-assertions-in-svn...diff:
+    new; git-svn.perl: workaround assertions in svn library 1.5.0
+    (closes: #489108).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 06 Jul 2008 15:52:56 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 06 Jul 2008 18:35:27 +0000
 
 git-core (1:1.5.6-1) unstable; urgency=low
 

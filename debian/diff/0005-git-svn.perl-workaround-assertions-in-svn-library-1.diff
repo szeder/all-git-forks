@@ -1,0 +1,44 @@
+From b86c1e2c2a2545849159e0471edbe279bcdf8535 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Sun, 6 Jul 2008 18:12:36 +0000
+Subject: [PATCH] git-svn.perl: workaround assertions in svn library 1.5.0
+
+With subversion 1.5.0 (C and perl libraries) the git-svn selftest
+t9101-git-svn-props.sh fails at test 25 and 26.  The following commands
+cause assertions in the svn library
+
+ $ cd deeply
+ $ git-svn propget svn:ignore .
+ perl: /build/buildd/subversion-1.5.0dfsg1/subversion/libsvn_ra/ra_loader.c:674: svn_ra_get_dir: Assertion `*path != '/'' failed.
+ Aborted
+
+ $ git-svn propget svn:ignore ..
+ perl: /build/buildd/subversion-1.5.0dfsg1/subversion/libsvn_subr/path.c:120: svn_path_join: Assertion `is_canonical(component, clen)' failed.
+
+With this commit, git-svn makes sure the path doesn't start with a
+slash, and is not a dot, working around these assertions.
+
+The breakage was reported by Lucas Nussbaum through
+ http://bugs.debian.org/489108
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+---
+ git-svn.perl |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/git-svn.perl b/git-svn.perl
+index f8c7ece..e839dad 100755
+--- a/git-svn.perl
++++ b/git-svn.perl
+@@ -643,6 +643,8 @@ sub canonicalize_path {
+ 	$path =~ s#/[^/]+/\.\.##g;
+ 	$path =~ s#/$##g;
+ 	$path =~ s#^\./## if $dot_slash_added;
++	$path =~ s#^/##;
++	$path =~ s#^\.$##;
+ 	return $path;
+ }
+ 
+-- 
+1.5.6
+
