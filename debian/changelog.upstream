@@ -1,3 +1,67 @@
+Version v1.5.6.3; changes since v1.5.6.2:
+-----------------------------------------
+
+Alex Riesen (1):
+      git-clone: remove leftover debugging fprintf().
+
+Brian Hetro (5):
+      builtin-log.c: Use 'git_config_string' to get 'format.subjectprefix' and 'format.suffix'
+      convert.c: Use 'git_config_string' to get 'smudge' and 'clean'
+      diff.c: Use 'git_config_string' to get 'diff.external'
+      http.c: Use 'git_config_string' to clean up SSL config.
+      builtin-commit.c: Use 'git_config_string' to get 'commit.template'
+
+Christian Couder (1):
+      Fix "config_error_nonbool" used with value instead of key
+
+Gerrit Pape (1):
+      git-svn.perl: workaround assertions in svn library 1.5.0
+
+Jeff King (1):
+      make deleting a missing ref more quiet
+
+Johannes Schindelin (1):
+      run_command(): respect GIT_TRACE
+
+Junio C Hamano (6):
+      attribute documentation: keep EXAMPLE at end
+      clone -q: honor "quiet" option over native transports.
+      mailinfo: feed the correct line length to decode_transfer_encoding()
+      Start preparing release notes for 1.5.6.3
+      t0004: fix timing bug
+      GIT 1.5.6.3
+
+Linus Torvalds (1):
+      racy-git: an empty blob has a fixed object name
+
+Lukas Sandström (1):
+      git-mailinfo: document the -n option
+
+Mark Levedahl (1):
+      git-submodule - Fix bugs in adding an existing repo as a module
+
+Matthew Ogilvie (1):
+      Documentation cvs: Clarify when a bare repository is needed
+
+Mikael Magnusson (1):
+      Fix grammar in git-rev-parse(1).
+
+Nikolaus Schulz (1):
+      Documentation: be precise about which date --pretty uses
+
+Petr Baudis (1):
+      Fix backwards-incompatible handling of core.sharedRepository
+
+SZEDER Gábor (1):
+      bash: offer only paths after '--'
+
+Shawn O. Pearce (1):
+      Remove unnecessary pack-*.keep file after successful git-clone
+
+Stephan Beyer (1):
+      git-am: Do not exit silently if committer is unset
+
+
 Version v1.5.6.2; changes since v1.5.6.1:
 -----------------------------------------
 
