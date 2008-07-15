@@ -6,16 +6,9 @@
 test_description='perl interface (Git.pm)'
 . ./test-lib.sh
 
-perl -MTest::More -e '' >/dev/null 2>&1 || {
-	test_expect_success 'skipping Git.pm tests, Test::More module not found' :
+perl -MTest::More -e 0 2>/dev/null || {
+	say_color skip "Perl Test::More unavailable, skipping test"
 	test_done
-	exit
-}
-
-perl -e 'use 5.006002;' >/dev/null 2>&1 || {
-	test_expect_success 'skipping Git.pm tests, Perl version too old' :
-	test_done
-	exit
 }
 
 # set up test repository

@@ -83,13 +83,17 @@ int get_sha1_hex(const char *hex, unsigned char *sha1)
 	return 0;
 }
 
+static inline int offset_1st_component(const char *path)
+{
+	if (has_dos_drive_prefix(path))
+		return 2 + (path[2] == '/');
+	return *path == '/';
+}
+
 int safe_create_leading_directories(char *path)
 {
-	char *pos = path;
+	char *pos = path + offset_1st_component(path);
 	struct stat st;
-
-	if (is_absolute_path(path))
-		pos++;
 
 	while (pos) {
 		pos = strchr(pos, '/');
@@ -401,7 +405,7 @@ void prepare_alt_odb(void)
 	if (!alt) alt = "";
 
 	alt_odb_tail = &alt_odb_list;
-	link_alt_odb_entries(alt, alt + strlen(alt), ':', NULL, 0);
+	link_alt_odb_entries(alt, alt + strlen(alt), PATH_SEP, NULL, 0);
 
 	read_info_alternates(get_object_directory(), 0);
 }
@@ -480,7 +484,7 @@ static int check_packed_git_idx(const char *path,  struct packed_git *p)
 		version = ntohl(hdr->idx_version);
 		if (version < 2 || version > 2) {
 			munmap(idx_map, idx_size);
-			return error("index file %s is version %d"
+			return error("index file %s is version %"PRIu32
 				     " and is not supported by this binary"
 				     " (try upgrading GIT to a newer version)",
 				     path, version);
@@ -691,14 +695,14 @@ static int open_packed_git_1(struct packed_git *p)
 	if (hdr.hdr_signature != htonl(PACK_SIGNATURE))
 		return error("file %s is not a GIT packfile", p->pack_name);
 	if (!pack_version_ok(hdr.hdr_version))
-		return error("packfile %s is version %u and not supported"
-			" (try upgrading GIT to a newer version)",
+		return error("packfile %s is version %"PRIu32" and not"
+			" supported (try upgrading GIT to a newer version)",
 			p->pack_name, ntohl(hdr.hdr_version));
 
 	/* Verify the pack matches its index. */
 	if (p->num_objects != ntohl(hdr.hdr_entries))
-		return error("packfile %s claims to have %u objects"
-			     " while index indicates %u objects",
+		return error("packfile %s claims to have %"PRIu32" objects"
+			     " while index indicates %"PRIu32" objects",
 			     p->pack_name, ntohl(hdr.hdr_entries),
 			     p->num_objects);
 	if (lseek(p->pack_fd, p->pack_size - sizeof(sha1), SEEK_SET) == -1)
@@ -1626,6 +1630,7 @@ static void *unpack_delta_entry(struct packed_git *p,
 		      (uintmax_t)curpos, p->pack_name);
 		return NULL;
 	}
+	unuse_pack(w_curs);
 	base = cache_or_unpack_entry(p, base_offset, &base_size, type, 0);
 	if (!base) {
 		/*
@@ -1765,7 +1770,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 	}
 
 	if (debug_lookup)
-		printf("%02x%02x%02x... lo %u hi %u nr %u\n",
+		printf("%02x%02x%02x... lo %u hi %u nr %"PRIu32"\n",
 		       sha1[0], sha1[1], sha1[2], lo, hi, p->num_objects);
 
 	if (use_lookup < 0)

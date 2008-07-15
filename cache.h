@@ -298,8 +298,8 @@ static inline enum object_type object_type(unsigned int mode)
 #define GRAFT_ENVIRONMENT "GIT_GRAFT_FILE"
 #define TEMPLATE_DIR_ENVIRONMENT "GIT_TEMPLATE_DIR"
 #define CONFIG_ENVIRONMENT "GIT_CONFIG"
-#define CONFIG_LOCAL_ENVIRONMENT "GIT_CONFIG_LOCAL"
 #define EXEC_PATH_ENVIRONMENT "GIT_EXEC_PATH"
+#define CEILING_DIRECTORIES_ENVIRONMENT "GIT_CEILING_DIRECTORIES"
 #define GITATTRIBUTES_FILE ".gitattributes"
 #define INFOATTRIBUTES_FILE "info/attributes"
 #define ATTRIBUTE_MACRO_PREFIX "[attr]"
@@ -522,11 +522,13 @@ int safe_create_leading_directories_const(const char *path);
 char *enter_repo(char *path, int strict);
 static inline int is_absolute_path(const char *path)
 {
-	return path[0] == '/';
+	return path[0] == '/' || has_dos_drive_prefix(path);
 }
 const char *make_absolute_path(const char *path);
 const char *make_nonrelative_path(const char *path);
 const char *make_relative_path(const char *abs, const char *base);
+int normalize_absolute_path(char *buf, const char *path);
+int longest_ancestor_length(const char *path, const char *prefix_list);
 
 /* Read and unpack a sha1 file into memory, write memory to a sha1 file */
 extern int sha1_object_info(const unsigned char *, unsigned long *);
@@ -743,6 +745,7 @@ extern int check_repository_format_version(const char *var, const char *value, v
 extern int git_config_system(void);
 extern int git_config_global(void);
 extern int config_error_nonbool(const char *);
+extern const char *config_exclusive_filename;
 
 #define MAX_GITNAME (1000)
 extern char git_default_email[MAX_GITNAME];
@@ -819,11 +822,11 @@ void shift_tree(const unsigned char *, const unsigned char *, unsigned char *, i
 extern unsigned whitespace_rule_cfg;
 extern unsigned whitespace_rule(const char *);
 extern unsigned parse_whitespace_rule(const char *);
-extern unsigned check_and_emit_line(const char *line, int len, unsigned ws_rule,
-    FILE *stream, const char *set,
-    const char *reset, const char *ws);
+extern unsigned ws_check(const char *line, int len, unsigned ws_rule);
+extern void ws_check_emit(const char *line, int len, unsigned ws_rule, FILE *stream, const char *set, const char *reset, const char *ws);
 extern char *whitespace_error_string(unsigned ws);
 extern int ws_fix_copy(char *, const char *, int, unsigned, int *);
+extern int ws_blank_line(const char *line, int len, unsigned ws_rule);
 
 /* ls-files */
 int pathspec_match(const char **spec, char *matched, const char *filename, int skiplen);
