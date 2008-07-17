@@ -41,6 +41,42 @@ static void add_path(struct strbuf *out, const char *path)
 	}
 }
 
+static const char *git_repo_exec_path(void)
+{
+	static char path_buffer[PATH_MAX + 1];
+	static char *path = NULL;
+	
+	int non_git;
+	char *git_dir;
+	char cwd[PATH_MAX + 1];
+	
+	if (!path) {
+		
+		path = path_buffer;
+		path[0] = '\0';
+		
+		if (!getcwd(cwd, PATH_MAX))
+			die("git_repo_exec_path: can not getcwd");
+		
+		setup_git_directory_gently(&non_git);
+		
+		if (!non_git) {
+			
+			git_dir = get_git_dir();
+			strncat(path, git_dir, PATH_MAX);
+			strncat(path, "/", PATH_MAX);
+			strncat(path, "bin", PATH_MAX);
+			
+			strncpy(path, make_absolute_path(path), PATH_MAX);
+			
+			if (chdir(cwd))
+				die("git_repo_exec_path: can not chdir to '%s'", cwd);
+		}
+	}
+	
+	return path;
+}
+
 void setup_path(const char *cmd_path)
 {
 	const char *old_path = getenv("PATH");
@@ -48,6 +84,7 @@ void setup_path(const char *cmd_path)
 
 	strbuf_init(&new_path, 0);
 
+	add_path(&new_path, git_repo_exec_path());
 	add_path(&new_path, argv_exec_path);
 	add_path(&new_path, getenv(EXEC_PATH_ENVIRONMENT));
 	add_path(&new_path, builtin_exec_path);
