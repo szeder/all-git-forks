@@ -1,3 +1,17 @@
+git-core (1:1.6.0-0) experimental; urgency=low
+
+  * new upstream release.
+    * svnimport: newer libsvn wants us to ask for the root with "",
+      not "/" (closes: #492522, #490400).
+    * Keep some git-* programs in $(bindir); Move all dashed-form
+      commands to libexecdir (closes: #461212).
+    * bash: Add more option completions for 'git log' (closes:
+      #490220).
+    * Fix buffer overflow in prepare_attr_stack; Fix buffer overflow
+      in git diff; Fix buffer overflow in git-grep (closes: #494097).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 17 Aug 2008 19:22:39 +0000
+
 git-core (1:1.5.6.3-1) unstable; urgency=low
 
   * new upstream point release.
