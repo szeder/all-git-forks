@@ -17,7 +17,7 @@
 #define COUNTED		(1u<<16)
 
 static const char rev_list_usage[] =
-"git-rev-list [OPTION] <commit-id>... [ -- paths... ]\n"
+"git rev-list [OPTION] <commit-id>... [ -- paths... ]\n"
 "  limiting output:\n"
 "    --max-count=nr\n"
 "    --max-age=epoch\n"
@@ -37,6 +37,7 @@ static const char rev_list_usage[] =
 "    --reverse\n"
 "  formatting output:\n"
 "    --parents\n"
+"    --children\n"
 "    --objects | --objects-edge\n"
 "    --unpacked\n"
 "    --header | --pretty\n"
@@ -88,6 +89,15 @@ static void show_commit(struct commit *commit)
 		while (parents) {
 			printf(" %s", sha1_to_hex(parents->item->object.sha1));
 			parents = parents->next;
+		}
+	}
+	if (revs.children.name) {
+		struct commit_list *children;
+
+		children = lookup_decoration(&revs.children, &commit->object);
+		while (children) {
+			printf(" %s", sha1_to_hex(children->item->object.sha1));
+			children = children->next;
 		}
 	}
 	show_decorations(commit);
@@ -565,23 +575,6 @@ static struct commit_list *find_bisection(struct commit_list *list,
 	return best;
 }
 
-static void read_revisions_from_stdin(struct rev_info *revs)
-{
-	char line[1000];
-
-	while (fgets(line, sizeof(line), stdin) != NULL) {
-		int len = strlen(line);
-		if (len && line[len - 1] == '\n')
-			line[--len] = 0;
-		if (!len)
-			break;
-		if (line[0] == '-')
-			die("options not supported in --stdin mode");
-		if (handle_revision_arg(line, revs, 0, 1))
-			die("bad revision '%s'", line);
-	}
-}
-
 int cmd_rev_list(int argc, const char **argv, const char *prefix)
 {
 	struct commit_list *list;
@@ -597,6 +590,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	revs.commit_format = CMIT_FMT_UNSPECIFIED;
 	argc = setup_revisions(argc, argv, &revs, NULL);
 
+	quiet = DIFF_OPT_TST(&revs.diffopt, QUIET);
 	for (i = 1 ; i < argc; i++) {
 		const char *arg = argv[i];
 
@@ -626,10 +620,6 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			if (read_from_stdin++)
 				die("--stdin given twice?");
 			read_revisions_from_stdin(&revs);
-			continue;
-		}
-		if (!strcmp(arg, "--quiet")) {
-			quiet = 1;
 			continue;
 		}
 		usage(rev_list_usage);

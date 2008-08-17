@@ -83,13 +83,17 @@ int get_sha1_hex(const char *hex, unsigned char *sha1)
 	return 0;
 }
 
+static inline int offset_1st_component(const char *path)
+{
+	if (has_dos_drive_prefix(path))
+		return 2 + (path[2] == '/');
+	return *path == '/';
+}
+
 int safe_create_leading_directories(char *path)
 {
-	char *pos = path;
+	char *pos = path + offset_1st_component(path);
 	struct stat st;
-
-	if (is_absolute_path(path))
-		pos++;
 
 	while (pos) {
 		pos = strchr(pos, '/');
@@ -401,7 +405,7 @@ void prepare_alt_odb(void)
 	if (!alt) alt = "";
 
 	alt_odb_tail = &alt_odb_list;
-	link_alt_odb_entries(alt, alt + strlen(alt), ':', NULL, 0);
+	link_alt_odb_entries(alt, alt + strlen(alt), PATH_SEP, NULL, 0);
 
 	read_info_alternates(get_object_directory(), 0);
 }
@@ -480,7 +484,7 @@ static int check_packed_git_idx(const char *path,  struct packed_git *p)
 		version = ntohl(hdr->idx_version);
 		if (version < 2 || version > 2) {
 			munmap(idx_map, idx_size);
-			return error("index file %s is version %d"
+			return error("index file %s is version %"PRIu32
 				     " and is not supported by this binary"
 				     " (try upgrading GIT to a newer version)",
 				     path, version);
@@ -691,14 +695,14 @@ static int open_packed_git_1(struct packed_git *p)
 	if (hdr.hdr_signature != htonl(PACK_SIGNATURE))
 		return error("file %s is not a GIT packfile", p->pack_name);
 	if (!pack_version_ok(hdr.hdr_version))
-		return error("packfile %s is version %u and not supported"
-			" (try upgrading GIT to a newer version)",
+		return error("packfile %s is version %"PRIu32" and not"
+			" supported (try upgrading GIT to a newer version)",
 			p->pack_name, ntohl(hdr.hdr_version));
 
 	/* Verify the pack matches its index. */
 	if (p->num_objects != ntohl(hdr.hdr_entries))
-		return error("packfile %s claims to have %u objects"
-			     " while index indicates %u objects",
+		return error("packfile %s claims to have %"PRIu32" objects"
+			     " while index indicates %"PRIu32" objects",
 			     p->pack_name, ntohl(hdr.hdr_entries),
 			     p->num_objects);
 	if (lseek(p->pack_fd, p->pack_size - sizeof(sha1), SEEK_SET) == -1)
@@ -801,18 +805,28 @@ unsigned char* use_pack(struct packed_git *p,
 	return win->base + offset;
 }
 
+static struct packed_git *alloc_packed_git(int extra)
+{
+	struct packed_git *p = xmalloc(sizeof(*p) + extra);
+	memset(p, 0, sizeof(*p));
+	p->pack_fd = -1;
+	return p;
+}
+
 struct packed_git *add_packed_git(const char *path, int path_len, int local)
 {
 	struct stat st;
-	struct packed_git *p = xmalloc(sizeof(*p) + path_len + 2);
+	struct packed_git *p = alloc_packed_git(path_len + 2);
 
 	/*
 	 * Make sure a corresponding .pack file exists and that
 	 * the index looks sane.
 	 */
 	path_len -= strlen(".idx");
-	if (path_len < 1)
+	if (path_len < 1) {
+		free(p);
 		return NULL;
+	}
 	memcpy(p->pack_name, path, path_len);
 	strcpy(p->pack_name + path_len, ".pack");
 	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
@@ -823,14 +837,7 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	/* ok, it looks sane as far as we can check without
 	 * actually mapping the pack file.
 	 */
-	p->index_version = 0;
-	p->index_data = NULL;
-	p->index_size = 0;
-	p->num_objects = 0;
 	p->pack_size = st.st_size;
-	p->next = NULL;
-	p->windows = NULL;
-	p->pack_fd = -1;
 	p->pack_local = local;
 	p->mtime = st.st_mtime;
 	if (path_len < 40 || get_sha1_hex(path + path_len - 40, p->sha1))
@@ -842,19 +849,15 @@ struct packed_git *parse_pack_index(unsigned char *sha1)
 {
 	const char *idx_path = sha1_pack_index_name(sha1);
 	const char *path = sha1_pack_name(sha1);
-	struct packed_git *p = xmalloc(sizeof(*p) + strlen(path) + 2);
+	struct packed_git *p = alloc_packed_git(strlen(path) + 1);
 
+	strcpy(p->pack_name, path);
+	hashcpy(p->sha1, sha1);
 	if (check_packed_git_idx(idx_path, p)) {
 		free(p);
 		return NULL;
 	}
 
-	strcpy(p->pack_name, path);
-	p->pack_size = 0;
-	p->next = NULL;
-	p->windows = NULL;
-	p->pack_fd = -1;
-	hashcpy(p->sha1, sha1);
 	return p;
 }
 
@@ -989,6 +992,30 @@ void reprepare_packed_git(void)
 {
 	prepare_packed_git_run_once = 0;
 	prepare_packed_git();
+}
+
+static void mark_bad_packed_object(struct packed_git *p,
+				   const unsigned char *sha1)
+{
+	unsigned i;
+	for (i = 0; i < p->num_bad_objects; i++)
+		if (!hashcmp(sha1, p->bad_object_sha1 + 20 * i))
+			return;
+	p->bad_object_sha1 = xrealloc(p->bad_object_sha1, 20 * (p->num_bad_objects + 1));
+	hashcpy(p->bad_object_sha1 + 20 * p->num_bad_objects, sha1);
+	p->num_bad_objects++;
+}
+
+static int has_packed_and_bad(const unsigned char *sha1)
+{
+	struct packed_git *p;
+	unsigned i;
+
+	for (p = packed_git; p; p = p->next)
+		for (i = 0; i < p->num_bad_objects; i++)
+			if (!hashcmp(sha1, p->bad_object_sha1 + 20 * i))
+				return 1;
+	return 0;
 }
 
 int check_sha1_signature(const unsigned char *sha1, void *map, unsigned long size, const char *type)
@@ -1309,20 +1336,17 @@ static off_t get_delta_base(struct packed_git *p,
 		while (c & 128) {
 			base_offset += 1;
 			if (!base_offset || MSB(base_offset, 7))
-				die("offset value overflow for delta base object");
+				return 0;  /* overflow */
 			c = base_info[used++];
 			base_offset = (base_offset << 7) + (c & 127);
 		}
 		base_offset = delta_obj_offset - base_offset;
 		if (base_offset >= delta_obj_offset)
-			die("delta base offset out of bound");
+			return 0;  /* out of bound */
 		*curpos += used;
 	} else if (type == OBJ_REF_DELTA) {
 		/* The base entry _must_ be in the same pack */
 		base_offset = find_pack_entry_one(base_info, p);
-		if (!base_offset)
-			die("failed to find delta-pack base object %s",
-				sha1_to_hex(base_info));
 		*curpos += 20;
 	} else
 		die("I am totally screwed");
@@ -1415,6 +1439,9 @@ const char *packed_object_info_detail(struct packed_git *p,
 			return typename(type);
 		case OBJ_OFS_DELTA:
 			obj_offset = get_delta_base(p, &w_curs, &curpos, type, obj_offset);
+			if (!obj_offset)
+				die("pack %s contains bad delta base reference of type %s",
+				    p->pack_name, typename(type));
 			if (*delta_chain_length == 0) {
 				revidx = find_pack_revindex(p, obj_offset);
 				hashcpy(base_sha1, nth_packed_object_sha1(p, revidx->nr));
@@ -1609,17 +1636,42 @@ static void *unpack_delta_entry(struct packed_git *p,
 	off_t base_offset;
 
 	base_offset = get_delta_base(p, w_curs, &curpos, *type, obj_offset);
+	if (!base_offset) {
+		error("failed to validate delta base reference "
+		      "at offset %"PRIuMAX" from %s",
+		      (uintmax_t)curpos, p->pack_name);
+		return NULL;
+	}
+	unuse_pack(w_curs);
 	base = cache_or_unpack_entry(p, base_offset, &base_size, type, 0);
-	if (!base)
-		die("failed to read delta base object"
-		    " at %"PRIuMAX" from %s",
-		    (uintmax_t)base_offset, p->pack_name);
+	if (!base) {
+		/*
+		 * We're probably in deep shit, but let's try to fetch
+		 * the required base anyway from another pack or loose.
+		 * This is costly but should happen only in the presence
+		 * of a corrupted pack, and is better than failing outright.
+		 */
+		struct revindex_entry *revidx = find_pack_revindex(p, base_offset);
+		const unsigned char *base_sha1 =
+					nth_packed_object_sha1(p, revidx->nr);
+		error("failed to read delta base object %s"
+		      " at offset %"PRIuMAX" from %s",
+		      sha1_to_hex(base_sha1), (uintmax_t)base_offset,
+		      p->pack_name);
+		mark_bad_packed_object(p, base_sha1);
+		base = read_object(base_sha1, type, &base_size);
+		if (!base)
+			return NULL;
+	}
 
 	delta_data = unpack_compressed_entry(p, w_curs, curpos, delta_size);
-	if (!delta_data)
-		die("failed to unpack compressed delta"
-		    " at %"PRIuMAX" from %s",
-		    (uintmax_t)curpos, p->pack_name);
+	if (!delta_data) {
+		error("failed to unpack compressed delta "
+		      "at offset %"PRIuMAX" from %s",
+		      (uintmax_t)curpos, p->pack_name);
+		free(base);
+		return NULL;
+	}
 	result = patch_delta(base, base_size,
 			     delta_data, delta_size,
 			     sizep);
@@ -1651,7 +1703,9 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		data = unpack_compressed_entry(p, &w_curs, curpos, *sizep);
 		break;
 	default:
-		die("unknown object type %i in %s", *type, p->pack_name);
+		data = NULL;
+		error("unknown object type %i at offset %"PRIuMAX" in %s",
+		      *type, (uintmax_t)obj_offset, p->pack_name);
 	}
 	unuse_pack(&w_curs);
 	return data;
@@ -1677,7 +1731,7 @@ const unsigned char *nth_packed_object_sha1(struct packed_git *p,
 	}
 }
 
-static off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
+off_t nth_packed_object_offset(const struct packed_git *p, uint32_t n)
 {
 	const unsigned char *index = p->index_data;
 	index += 4 * 256;
@@ -1728,7 +1782,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 	}
 
 	if (debug_lookup)
-		printf("%02x%02x%02x... lo %u hi %u nr %u\n",
+		printf("%02x%02x%02x... lo %u hi %u nr %"PRIu32"\n",
 		       sha1[0], sha1[1], sha1[2], lo, hi, p->num_objects);
 
 	if (use_lookup < 0)
@@ -1795,6 +1849,13 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e, cons
 					break;
 			if (*ig)
 				goto next;
+		}
+
+		if (p->num_bad_objects) {
+			unsigned i;
+			for (i = 0; i < p->num_bad_objects; i++)
+				if (!hashcmp(sha1, p->bad_object_sha1 + 20 * i))
+					goto next;
 		}
 
 		offset = find_pack_entry_one(sha1, p);
@@ -1868,11 +1929,18 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 {
 	struct pack_entry e;
+	int status;
 
 	if (!find_pack_entry(sha1, &e, NULL)) {
+		/* Most likely it's a loose object. */
+		status = sha1_loose_object_info(sha1, sizep);
+		if (status >= 0)
+			return status;
+
+		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
 		if (!find_pack_entry(sha1, &e, NULL))
-			return sha1_loose_object_info(sha1, sizep);
+			return status;
 	}
 	return packed_object_info(e.p, e.offset, sizep);
 }
@@ -1881,11 +1949,24 @@ static void *read_packed_sha1(const unsigned char *sha1,
 			      enum object_type *type, unsigned long *size)
 {
 	struct pack_entry e;
+	void *data;
 
 	if (!find_pack_entry(sha1, &e, NULL))
 		return NULL;
-	else
-		return cache_or_unpack_entry(e.p, e.offset, size, type, 1);
+	data = cache_or_unpack_entry(e.p, e.offset, size, type, 1);
+	if (!data) {
+		/*
+		 * We're probably in deep shit, but let's try to fetch
+		 * the required object anyway from another pack or loose.
+		 * This should happen only in the presence of a corrupted
+		 * pack, and is better than failing outright.
+		 */
+		error("failed to read object %s at offset %"PRIuMAX" from %s",
+		      sha1_to_hex(sha1), (uintmax_t)e.offset, e.p->pack_name);
+		mark_bad_packed_object(e.p, sha1);
+		data = read_object(sha1, type, size);
+	}
+	return data;
 }
 
 /*
@@ -1948,8 +2029,8 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	return 0;
 }
 
-void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
-		     unsigned long *size)
+void *read_object(const unsigned char *sha1, enum object_type *type,
+		  unsigned long *size)
 {
 	unsigned long mapsize;
 	void *map, *buf;
@@ -1973,6 +2054,16 @@ void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
 	}
 	reprepare_packed_git();
 	return read_packed_sha1(sha1, type, size);
+}
+
+void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
+		     unsigned long *size)
+{
+	void *data = read_object(sha1, type, size);
+	/* legacy behavior is to die on corrupted objects */
+	if (!data && (has_loose_object(sha1) || has_packed_and_bad(sha1)))
+		die("object %s is corrupted", sha1_to_hex(sha1));
+	return data;
 }
 
 void *read_object_with_reference(const unsigned char *sha1,
@@ -2092,7 +2183,8 @@ int hash_sha1_file(const void *buf, unsigned long len, const char *type,
 /* Finalize a file on disk, and close it. */
 static void close_sha1_file(int fd)
 {
-	/* For safe-mode, we could fsync_or_die(fd, "sha1 file") here */
+	if (fsync_object_files)
+		fsync_or_die(fd, "sha1 file");
 	fchmod(fd, 0444);
 	if (close(fd) != 0)
 		die("unable to write sha1 file");

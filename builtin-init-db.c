@@ -115,18 +115,10 @@ static void copy_templates(const char *template_dir)
 
 	if (!template_dir)
 		template_dir = getenv(TEMPLATE_DIR_ENVIRONMENT);
-	if (!template_dir) {
-		/*
-		 * if the hard-coded template is relative, it is
-		 * interpreted relative to the exec_dir
-		 */
-		template_dir = DEFAULT_GIT_TEMPLATE_DIR;
-		if (!is_absolute_path(template_dir)) {
-			struct strbuf d = STRBUF_INIT;
-			strbuf_addf(&d, "%s/%s", git_exec_path(), template_dir);
-			template_dir = strbuf_detach(&d, NULL);
-		}
-	}
+	if (!template_dir)
+		template_dir = system_path(DEFAULT_GIT_TEMPLATE_DIR);
+	if (!template_dir[0])
+		return;
 	strcpy(template_path, template_dir);
 	template_len = strlen(template_path);
 	if (template_path[template_len-1] != '/') {
@@ -364,7 +356,7 @@ static int guess_repository_type(const char *git_dir)
 }
 
 static const char init_db_usage[] =
-"git-init [-q | --quiet] [--bare] [--template=<template-directory>] [--shared[=<permissions>]]";
+"git init [-q | --quiet] [--bare] [--template=<template-directory>] [--shared[=<permissions>]]";
 
 /*
  * If you want to, you can share the DB area with any number of branches.

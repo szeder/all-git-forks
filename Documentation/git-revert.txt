@@ -7,7 +7,7 @@ git-revert - Revert an existing commit
 
 SYNOPSIS
 --------
-'git-revert' [--edit | --no-edit] [-n] [-m parent-number] [-s] <commit>
+'git revert' [--edit | --no-edit] [-n] [-m parent-number] [-s] <commit>
 
 DESCRIPTION
 -----------
@@ -24,7 +24,7 @@ OPTIONS
 
 -e::
 --edit::
-	With this option, `git-revert` will let you edit the commit
+	With this option, 'git-revert' will let you edit the commit
 	message prior to committing the revert. This is the default if
 	you run the command from a terminal.
 
@@ -37,22 +37,22 @@ OPTIONS
 	relative to the specified parent.
 
 --no-edit::
-	With this option, `git-revert` will not start the commit
+	With this option, 'git-revert' will not start the commit
 	message editor.
 
 -n::
 --no-commit::
 	Usually the command automatically creates a commit with
-	a commit log message stating which commit was reverted.
-	This flag applies the change necessary to revert the
-	named commit to your working tree, but does not make the
-	commit.  In addition, when this option is used, your
-	working tree does not have to match the HEAD commit.
-	The revert is done against the beginning state of your
-	working tree.
+	a commit log message stating which commit was
+	reverted.  This flag applies the change necessary
+	to revert the named commit to your working tree
+	and the index, but does not make the commit.  In addition,
+	when this option is used, your index does not have to match
+	the HEAD commit.  The revert is done against the
+	beginning state of your index.
 +
 This is useful when reverting more than one commits'
-effect to your working tree in a row.
+effect to your index in a row.
 
 -s::
 --signoff::
@@ -61,7 +61,7 @@ effect to your working tree in a row.
 
 Author
 ------
-Written by Junio C Hamano <junkio@cox.net>
+Written by Junio C Hamano <gitster@pobox.com>
 
 Documentation
 --------------

@@ -18,7 +18,7 @@ static struct fetch_pack_args args = {
 };
 
 static const char fetch_pack_usage[] =
-"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
+"git fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
 
 #define COMPLETE	(1U << 0)
 #define COMMON		(1U << 1)
@@ -309,7 +309,8 @@ done:
 		}
 		flushes--;
 	}
-	return retval;
+	/* it is no error to fetch into a completely empty repo */
+	return count ? retval : 0;
 }
 
 static struct commit_list *complete;
@@ -519,7 +520,8 @@ static int get_pack(int xd[2], char **pack_lockfile)
 
 		if (read_pack_header(demux.out, &header))
 			die("protocol error: bad pack header");
-		snprintf(hdr_arg, sizeof(hdr_arg), "--pack_header=%u,%u",
+		snprintf(hdr_arg, sizeof(hdr_arg),
+			 "--pack_header=%"PRIu32",%"PRIu32,
 			 ntohl(header.hdr_version), ntohl(header.hdr_entries));
 		if (ntohl(header.hdr_entries) < unpack_limit)
 			do_keep = 0;
@@ -820,5 +822,6 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 		}
 	}
 
+	reprepare_packed_git();
 	return ref_cpy;
 }

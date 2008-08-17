@@ -37,7 +37,7 @@ OPTIONS
 --soft::
 	Does not touch the index file nor the working tree at all, but
 	requires them to be in a good order. This leaves all your changed
-	files "Changes to be committed", as linkgit:git-status[1] would
+	files "Changes to be committed", as 'git-status' would
 	put it.
 
 --hard::
@@ -195,7 +195,7 @@ $ git add frotz.c                           <3>
 
 Author
 ------
-Written by Junio C Hamano <junkio@cox.net> and Linus Torvalds <torvalds@osdl.org>
+Written by Junio C Hamano <gitster@pobox.com> and Linus Torvalds <torvalds@osdl.org>
 
 Documentation
 --------------

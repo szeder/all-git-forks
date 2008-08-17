@@ -385,6 +385,8 @@ static void fsck_dir(int i, char *path)
 			add_sha1_list(sha1, DIRENT_SORT_HINT(de));
 			continue;
 		}
+		if (!prefixcmp(de->d_name, "tmp_obj_"))
+			continue;
 		fprintf(stderr, "bad sha1 file: %s/%s\n", path, de->d_name);
 	}
 	closedir(dir);
@@ -539,7 +541,7 @@ static int fsck_cache_tree(struct cache_tree *it)
 }
 
 static char const * const fsck_usage[] = {
-	"git-fsck [options] [<object>...]",
+	"git fsck [options] [<object>...]",
 	NULL
 };
 
@@ -585,7 +587,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		prepare_packed_git();
 		for (p = packed_git; p; p = p->next)
 			/* verify gives error messages itself */
-			verify_pack(p, 0);
+			verify_pack(p);
 
 		for (p = packed_git; p; p = p->next) {
 			uint32_t j, num;

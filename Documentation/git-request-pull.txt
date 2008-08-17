@@ -7,7 +7,7 @@ git-request-pull - Generates a summary of pending changes
 
 SYNOPSIS
 --------
-'git-request-pull' <start> <url> [<end>]
+'git request-pull' <start> <url> [<end>]
 
 DESCRIPTION
 -----------
@@ -28,7 +28,7 @@ OPTIONS
 
 Author
 ------
-Written by Ryan Anderson <ryan@michonline.com> and Junio C Hamano <junkio@cox.net>
+Written by Ryan Anderson <ryan@michonline.com> and Junio C Hamano <gitster@pobox.com>
 
 Documentation
 --------------

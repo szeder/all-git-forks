@@ -11,7 +11,7 @@
 #include "parse-options.h"
 
 static const char * const builtin_rm_usage[] = {
-	"git-rm [options] [--] <file>...",
+	"git rm [options] [--] <file>...",
 	NULL
 };
 
@@ -131,7 +131,7 @@ static struct option builtin_rm_options[] = {
 	OPT__DRY_RUN(&show_only),
 	OPT__QUIET(&quiet),
 	OPT_BOOLEAN( 0 , "cached",         &index_only, "only remove from the index"),
-	OPT_BOOLEAN('f', NULL,             &force,      "override the up-to-date check"),
+	OPT_BOOLEAN('f', "force",          &force,      "override the up-to-date check"),
 	OPT_BOOLEAN('r', NULL,             &recursive,  "allow recursive removal"),
 	OPT_BOOLEAN( 0 , "ignore-unmatch", &ignore_unmatch,
 				"exit with a zero status even if nothing matched"),
@@ -146,17 +146,17 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 
 	git_config(git_default_config, NULL);
 
-	newfd = hold_locked_index(&lock_file, 1);
-
-	if (read_cache() < 0)
-		die("index file corrupt");
-
 	argc = parse_options(argc, argv, builtin_rm_options, builtin_rm_usage, 0);
 	if (!argc)
 		usage_with_options(builtin_rm_usage, builtin_rm_options);
 
 	if (!index_only)
 		setup_work_tree();
+
+	newfd = hold_locked_index(&lock_file, 1);
+
+	if (read_cache() < 0)
+		die("index file corrupt");
 
 	pathspec = get_pathspec(prefix, argv);
 	seen = NULL;

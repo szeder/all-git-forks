@@ -16,9 +16,10 @@
 static int log_syslog;
 static int verbose;
 static int reuseaddr;
+static int child_handler_pipe[2];
 
 static const char daemon_usage[] =
-"git-daemon [--verbose] [--syslog] [--export-all]\n"
+"git daemon [--verbose] [--syslog] [--export-all]\n"
 "           [--timeout=n] [--init-timeout=n] [--strict-paths]\n"
 "           [--base-path=path] [--base-path-relaxed]\n"
 "           [--user-path | --user-path=path]\n"
@@ -694,22 +695,46 @@ static void kill_some_children(int signo, unsigned start, unsigned stop)
 	}
 }
 
+static void check_dead_children(void)
+{
+	unsigned spawned, reaped, deleted;
+
+	spawned = children_spawned;
+	reaped = children_reaped;
+	deleted = children_deleted;
+
+	while (deleted < reaped) {
+		pid_t pid = dead_child[deleted % MAX_CHILDREN];
+		const char *dead = pid < 0 ? " (with error)" : "";
+
+		if (pid < 0)
+			pid = -pid;
+
+		/* XXX: Custom logging, since we don't wanna getpid() */
+		if (verbose) {
+			if (log_syslog)
+				syslog(LOG_INFO, "[%d] Disconnected%s",
+						pid, dead);
+			else
+				fprintf(stderr, "[%d] Disconnected%s\n",
+						pid, dead);
+		}
+		remove_child(pid, deleted, spawned);
+		deleted++;
+	}
+	children_deleted = deleted;
+}
+
 static void check_max_connections(void)
 {
 	for (;;) {
 		int active;
-		unsigned spawned, reaped, deleted;
+		unsigned spawned, deleted;
+
+		check_dead_children();
 
 		spawned = children_spawned;
-		reaped = children_reaped;
 		deleted = children_deleted;
-
-		while (deleted < reaped) {
-			pid_t pid = dead_child[deleted % MAX_CHILDREN];
-			remove_child(pid, deleted, spawned);
-			deleted++;
-		}
-		children_deleted = deleted;
 
 		active = spawned - deleted;
 		if (active <= max_connections)
@@ -760,22 +785,16 @@ static void child_handler(int signo)
 
 		if (pid > 0) {
 			unsigned reaped = children_reaped;
+			if (!WIFEXITED(status) || WEXITSTATUS(status) > 0)
+				pid = -pid;
 			dead_child[reaped % MAX_CHILDREN] = pid;
 			children_reaped = reaped + 1;
-			/* XXX: Custom logging, since we don't wanna getpid() */
-			if (verbose) {
-				const char *dead = "";
-				if (!WIFEXITED(status) || WEXITSTATUS(status) > 0)
-					dead = " (with error)";
-				if (log_syslog)
-					syslog(LOG_INFO, "[%d] Disconnected%s", pid, dead);
-				else
-					fprintf(stderr, "[%d] Disconnected%s\n", pid, dead);
-			}
+			write(child_handler_pipe[1], &status, 1);
 			continue;
 		}
 		break;
 	}
+	signal(SIGCHLD, child_handler);
 }
 
 static int set_reuse_addr(int sockfd)
@@ -917,25 +936,34 @@ static int service_loop(int socknum, int *socklist)
 	struct pollfd *pfd;
 	int i;
 
-	pfd = xcalloc(socknum, sizeof(struct pollfd));
+	if (pipe(child_handler_pipe) < 0)
+		die ("Could not set up pipe for child handler");
+
+	pfd = xcalloc(socknum + 1, sizeof(struct pollfd));
 
 	for (i = 0; i < socknum; i++) {
 		pfd[i].fd = socklist[i];
 		pfd[i].events = POLLIN;
 	}
+	pfd[socknum].fd = child_handler_pipe[0];
+	pfd[socknum].events = POLLIN;
 
 	signal(SIGCHLD, child_handler);
 
 	for (;;) {
 		int i;
 
-		if (poll(pfd, socknum, -1) < 0) {
+		if (poll(pfd, socknum + 1, -1) < 0) {
 			if (errno != EINTR) {
 				error("poll failed, resuming: %s",
 				      strerror(errno));
 				sleep(1);
 			}
 			continue;
+		}
+		if (pfd[socknum].revents & POLLIN) {
+			read(child_handler_pipe[0], &i, 1);
+			check_dead_children();
 		}
 
 		for (i = 0; i < socknum; i++) {

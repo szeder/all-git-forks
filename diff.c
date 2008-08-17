@@ -131,10 +131,6 @@ static int parse_funcname_pattern(const char *var, const char *ep, const char *v
  */
 int git_diff_ui_config(const char *var, const char *value, void *cb)
 {
-	if (!strcmp(var, "diff.renamelimit")) {
-		diff_rename_limit_default = git_config_int(var, value);
-		return 0;
-	}
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
 		diff_use_color_default = git_config_colorbool(var, value, -1);
 		return 0;
@@ -167,6 +163,11 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 
 int git_diff_basic_config(const char *var, const char *value, void *cb)
 {
+	if (!strcmp(var, "diff.renamelimit")) {
+		diff_rename_limit_default = git_config_int(var, value);
+		return 0;
+	}
+
 	if (!prefixcmp(var, "diff.color.") || !prefixcmp(var, "color.diff.")) {
 		int slot = parse_diff_color_slot(var, 11);
 		if (!value)
@@ -531,9 +532,9 @@ static void emit_add_line(const char *reset, struct emit_callback *ecbdata, cons
 	else {
 		/* Emit just the prefix, then the rest. */
 		emit_line(ecbdata->file, set, reset, line, ecbdata->nparents);
-		(void)check_and_emit_line(line + ecbdata->nparents,
-		    len - ecbdata->nparents, ecbdata->ws_rule,
-		    ecbdata->file, set, reset, ws);
+		ws_check_emit(line + ecbdata->nparents,
+			      len - ecbdata->nparents, ecbdata->ws_rule,
+			      ecbdata->file, set, reset, ws);
 	}
 }
 
@@ -826,12 +827,12 @@ static void show_stats(struct diffstat_t* data, struct diff_options *options)
 	/* Sanity: give at least 5 columns to the graph,
 	 * but leave at least 10 columns for the name.
 	 */
-	if (width < name_width + 15) {
-		if (name_width <= 25)
-			width = name_width + 15;
-		else
-			name_width = width - 15;
-	}
+	if (width < 25)
+		width = 25;
+	if (name_width < 10)
+		name_width = 10;
+	else if (width < name_width + 15)
+		name_width = width - 15;
 
 	/* Find the longest filename and max number of changes */
 	reset = diff_get_color_opt(options, DIFF_RESET);
@@ -924,7 +925,8 @@ static void show_stats(struct diffstat_t* data, struct diff_options *options)
 			total = add + del;
 		}
 		show_name(options->file, prefix, name, len, reset, set);
-		fprintf(options->file, "%5d ", added + deleted);
+		fprintf(options->file, "%5d%s", added + deleted,
+				added + deleted ? " " : "");
 		show_graph(options->file, '+', add, add_c, reset);
 		show_graph(options->file, '-', del, del_c, reset);
 		fprintf(options->file, "\n");
@@ -1131,42 +1133,85 @@ static void free_diffstat_info(struct diffstat_t *diffstat)
 struct checkdiff_t {
 	struct xdiff_emit_state xm;
 	const char *filename;
-	int lineno, color_diff;
+	int lineno;
+	struct diff_options *o;
 	unsigned ws_rule;
 	unsigned status;
-	FILE *file;
+	int trailing_blanks_start;
 };
+
+static int is_conflict_marker(const char *line, unsigned long len)
+{
+	char firstchar;
+	int cnt;
+
+	if (len < 8)
+		return 0;
+	firstchar = line[0];
+	switch (firstchar) {
+	case '=': case '>': case '<':
+		break;
+	default:
+		return 0;
+	}
+	for (cnt = 1; cnt < 7; cnt++)
+		if (line[cnt] != firstchar)
+			return 0;
+	/* line[0] thru line[6] are same as firstchar */
+	if (firstchar == '=') {
+		/* divider between ours and theirs? */
+		if (len != 8 || line[7] != '\n')
+			return 0;
+	} else if (len < 8 || !isspace(line[7])) {
+		/* not divider before ours nor after theirs */
+		return 0;
+	}
+	return 1;
+}
 
 static void checkdiff_consume(void *priv, char *line, unsigned long len)
 {
 	struct checkdiff_t *data = priv;
-	const char *ws = diff_get_color(data->color_diff, DIFF_WHITESPACE);
-	const char *reset = diff_get_color(data->color_diff, DIFF_RESET);
-	const char *set = diff_get_color(data->color_diff, DIFF_FILE_NEW);
+	int color_diff = DIFF_OPT_TST(data->o, COLOR_DIFF);
+	const char *ws = diff_get_color(color_diff, DIFF_WHITESPACE);
+	const char *reset = diff_get_color(color_diff, DIFF_RESET);
+	const char *set = diff_get_color(color_diff, DIFF_FILE_NEW);
 	char *err;
 
 	if (line[0] == '+') {
 		unsigned bad;
 		data->lineno++;
-		bad = check_and_emit_line(line + 1, len - 1,
-		    data->ws_rule, NULL, NULL, NULL, NULL);
+		if (!ws_blank_line(line + 1, len - 1, data->ws_rule))
+			data->trailing_blanks_start = 0;
+		else if (!data->trailing_blanks_start)
+			data->trailing_blanks_start = data->lineno;
+		if (is_conflict_marker(line + 1, len - 1)) {
+			data->status |= 1;
+			fprintf(data->o->file,
+				"%s:%d: leftover conflict marker\n",
+				data->filename, data->lineno);
+		}
+		bad = ws_check(line + 1, len - 1, data->ws_rule);
 		if (!bad)
 			return;
 		data->status |= bad;
 		err = whitespace_error_string(bad);
-		fprintf(data->file, "%s:%d: %s.\n", data->filename, data->lineno, err);
+		fprintf(data->o->file, "%s:%d: %s.\n",
+			data->filename, data->lineno, err);
 		free(err);
-		emit_line(data->file, set, reset, line, 1);
-		(void)check_and_emit_line(line + 1, len - 1, data->ws_rule,
-		    data->file, set, reset, ws);
-	} else if (line[0] == ' ')
+		emit_line(data->o->file, set, reset, line, 1);
+		ws_check_emit(line + 1, len - 1, data->ws_rule,
+			      data->o->file, set, reset, ws);
+	} else if (line[0] == ' ') {
 		data->lineno++;
-	else if (line[0] == '@') {
+		data->trailing_blanks_start = 0;
+	} else if (line[0] == '@') {
 		char *plus = strchr(line, '+');
 		if (plus)
 			data->lineno = strtol(plus, NULL, 10) - 1;
 		else
 			die("invalid diff");
+		data->trailing_blanks_start = 0;
 	}
 }
 
@@ -1336,7 +1381,15 @@ static struct builtin_funcname_pattern {
 			"^[ 	]*\\(\\([ 	]*"
 			"[A-Za-z_][A-Za-z_0-9]*\\)\\{2,\\}"
 			"[ 	]*([^;]*\\)$" },
-	{ "tex", "^\\(\\\\\\(sub\\)*section{.*\\)$" },
+	{ "pascal", "^\\(\\(procedure\\|function\\|constructor\\|"
+			"destructor\\|interface\\|implementation\\|"
+			"initialization\\|finalization\\)[ \t]*.*\\)$"
+			"\\|"
+			"^\\(.*=[ \t]*\\(class\\|record\\).*\\)$"
+			},
+	{ "bibtex", "\\(@[a-zA-Z]\\{1,\\}[ \t]*{\\{0,1\\}[ \t]*[^ \t\"@',\\#}{~%]*\\).*$" },
+	{ "tex", "^\\(\\\\\\(\\(sub\\)*section\\|chapter\\|part\\)\\*\\{0,1\\}{.*\\)$" },
+	{ "ruby", "^\\s*\\(\\(class\\|module\\|def\\)\\s.*\\)$" },
 };
 
 static const char *diff_funcname_pattern(struct diff_filespec *one)
@@ -1539,8 +1592,9 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 
 static void builtin_checkdiff(const char *name_a, const char *name_b,
 			      const char *attr_path,
-			     struct diff_filespec *one,
-			     struct diff_filespec *two, struct diff_options *o)
+			      struct diff_filespec *one,
+			      struct diff_filespec *two,
+			      struct diff_options *o)
 {
 	mmfile_t mf1, mf2;
 	struct checkdiff_t data;
@@ -1552,13 +1606,18 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 	data.xm.consume = checkdiff_consume;
 	data.filename = name_b ? name_b : name_a;
 	data.lineno = 0;
-	data.color_diff = DIFF_OPT_TST(o, COLOR_DIFF);
+	data.o = o;
 	data.ws_rule = whitespace_rule(attr_path);
-	data.file = o->file;
 
 	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
 		die("unable to read files to diff");
 
+	/*
+	 * All the other codepaths check both sides, but not checking
+	 * the "old" side here is deliberate.  We are checking the newly
+	 * introduced changes, and as long as the "new" side is text, we
+	 * can and should check what it introduces.
+	 */
 	if (diff_filespec_is_binary(two))
 		goto free_and_return;
 	else {
@@ -1572,6 +1631,13 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 		ecb.outf = xdiff_outf;
 		ecb.priv = &data;
 		xdi_diff(&mf1, &mf2, &xpp, &xecfg, &ecb);
+
+		if ((data.ws_rule & WS_TRAILING_SPACE) &&
+		    data.trailing_blanks_start) {
+			fprintf(o->file, "%s:%d: ends with blank lines.\n",
+				data.filename, data.trailing_blanks_start);
+			data.status = 1; /* report errors */
+		}
 	}
  free_and_return:
 	diff_free_filespec_data(one);
@@ -3167,11 +3233,10 @@ void diff_flush(struct diff_options *options)
 
 	if (output_format & DIFF_FORMAT_PATCH) {
 		if (separator) {
+			putc(options->line_termination, options->file);
 			if (options->stat_sep) {
 				/* attach patch instead of inline */
 				fputs(options->stat_sep, options->file);
-			} else {
-				putc(options->line_termination, options->file);
 			}
 		}
 
@@ -3356,9 +3421,8 @@ int diff_result_code(struct diff_options *opt, int status)
 void diff_addremove(struct diff_options *options,
 		    int addremove, unsigned mode,
 		    const unsigned char *sha1,
-		    const char *base, const char *path)
+		    const char *concatpath)
 {
-	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;
 
 	if (DIFF_OPT_TST(options, IGNORE_SUBMODULES) && S_ISGITLINK(mode))
@@ -3380,9 +3444,6 @@ void diff_addremove(struct diff_options *options,
 		addremove = (addremove == '+' ? '-' :
 			     addremove == '-' ? '+' : addremove);
 
-	if (!path) path = "";
-	sprintf(concatpath, "%s%s", base, path);
-
 	if (options->prefix &&
 	    strncmp(concatpath, options->prefix, options->prefix_length))
 		return;
@@ -3403,9 +3464,8 @@ void diff_change(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
-		 const char *base, const char *path)
+		 const char *concatpath)
 {
-	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;
 
 	if (DIFF_OPT_TST(options, IGNORE_SUBMODULES) && S_ISGITLINK(old_mode)
@@ -3418,8 +3478,6 @@ void diff_change(struct diff_options *options,
 		tmp = old_mode; old_mode = new_mode; new_mode = tmp;
 		tmp_c = old_sha1; old_sha1 = new_sha1; new_sha1 = tmp_c;
 	}
-	if (!path) path = "";
-	sprintf(concatpath, "%s%s", base, path);
 
 	if (options->prefix &&
 	    strncmp(concatpath, options->prefix, options->prefix_length))

@@ -301,7 +301,7 @@ If it does not apply correctly, there can be various reasons.
   patch appropriately.
 
 * Your MUA corrupted your patch; "am" would complain that
-  the patch does not apply.  Look at .dotest/ subdirectory and
+  the patch does not apply.  Look at .git/rebase-apply/ subdirectory and
   see what 'patch' file contains and check for the common
   corruption patterns mentioned above.
 
@@ -419,6 +419,11 @@ settings but I haven't tried, yet.
 	mail.identity.default.compose_html	=> false
 	mail.identity.id?.compose_html		=> false
 
+(Lukas Sandström)
+
+There is a script in contrib/thunderbird-patch-inline which can help
+you include patches with Thunderbird in an easy way. To use it, do the
+steps above and then use the script as the external editor.
 
 Gnus
 ----

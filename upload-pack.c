@@ -135,6 +135,8 @@ static int do_rev_list(int fd, void *create_full_pack)
 		die("revision walk setup failed");
 	mark_edges_uninteresting(revs.commits, &revs, show_edge);
 	traverse_commit_list(&revs, show_commit, show_object);
+	fflush(pack_pipe);
+	fclose(pack_pipe);
 	return 0;
 }
 
@@ -636,7 +638,7 @@ int main(int argc, char **argv)
 	if (i != argc-1)
 		usage(upload_pack_usage);
 
-	setup_path(NULL);
+	setup_path();
 
 	dir = argv[i];
 

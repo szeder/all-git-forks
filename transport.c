@@ -463,17 +463,14 @@ static struct ref *get_refs_via_curl(struct transport *transport)
 		run_active_slot(slot);
 		if (results.curl_result != CURLE_OK) {
 			strbuf_release(&buffer);
-			if (missing_target(&results)) {
-				return NULL;
-			} else {
-				error("%s", curl_errorstr);
-				return NULL;
-			}
+			if (missing_target(&results))
+				die("%s not found: did you run git update-server-info on the server?", refs_url);
+			else
+				die("%s download error - %s", refs_url, curl_errorstr);
 		}
 	} else {
 		strbuf_release(&buffer);
-		error("Unable to start request");
-		return NULL;
+		die("Unable to start HTTP request");
 	}
 
 	data = buffer.buf;
@@ -711,7 +708,8 @@ static int is_local(const char *url)
 {
 	const char *colon = strchr(url, ':');
 	const char *slash = strchr(url, '/');
-	return !colon || (slash && slash < colon);
+	return !colon || (slash && slash < colon) ||
+		has_dos_drive_prefix(url);
 }
 
 static int is_file(const char *url)

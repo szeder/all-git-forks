@@ -5,7 +5,7 @@
 
 OPTIONS_KEEPDASHDASH=
 OPTIONS_SPEC="\
-git-repack [options]
+git repack [options]
 --
 a               pack everything in a single pack
 A               same as -a, and turn unreachable objects loose
@@ -44,11 +44,7 @@ do
 	shift
 done
 
-# Later we will default repack.UseDeltaBaseOffset to true
-default_dbo=false
-
-case "`git config --bool repack.usedeltabaseoffset ||
-       echo $default_dbo`" in
+case "`git config --bool repack.usedeltabaseoffset || echo true`" in
 true)
 	extra="$extra --delta-base-offset" ;;
 esac
