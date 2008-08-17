@@ -6,8 +6,9 @@ CC =gcc
 CFLAGS =-g -Wall
 STRIP =strip
 TEST =test
-OPTS =NO_OPENSSL=1 prefix=/usr mandir=/usr/share/man INSTALLDIRS=vendor \
-  WITH_P4IMPORT=1 PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish8.5 \
+OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
+  mandir=/usr/share/man INSTALLDIRS=vendor WITH_P4IMPORT=1 \
+  PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish8.5 \
   THREADED_DELTA_SEARCH=1
 
 ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
@@ -81,14 +82,14 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'-core/var/cache/git
 	rm -f '$(GIT)'-core/usr/share/perl5/Error.pm
 	rm -f '$(GIT)'-core/usr/share/man/man3/private-Error.3pm
-	rm -rf '$(GIT)'-core/usr/lib
 	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
 	# don't include arch, cvs, svn, email, gui tools, and gitk program
-	for i in git-archimport git-cvs git-svn git-send-email gitk \
+	for i in git-archimport git-cvs git-svn git-send-email \
 	 git-gui git-citool; do \
-	  rm -f '$(GIT)'-core/usr/bin/$$i*; \
+	  rm -f '$(GIT)'-core/usr/lib/git-core/$$i*; \
 	done
-	for i in '$(GIT)'-core/usr/bin/*; do \
+	rm -f '$(GIT)'-core/usr/bin/gitk
+	for i in '$(GIT)'-core/usr/bin/* '$(GIT)'-core/usr/lib/git-core/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
 	# don't include git-gui's lib
@@ -132,8 +133,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-cvs, git-svn
 	for i in cvs svn; do \
 	  rm -rf '$(GIT)'-$$i && \
-	  install -d -m0755 '$(GIT)'-$$i/usr/bin && \
-	  install -m0755 '$(TMP)'/usr/bin/git-$$i* '$(GIT)'-$$i/usr/bin/ && \
+	  install -d -m0755 '$(GIT)'-$$i/usr/lib/git-core && \
+	  install -m0755 '$(TMP)'/usr/lib/git-core/git-$$i* \
+	    '$(GIT)'-$$i/usr/lib/git-core/ && \
 	  install -d -m0755 '$(GIT)'-$$i/usr/share/man/man1 && \
 	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
 	    '$(GIT)'-$$i/usr/share/man/man1/ && \
@@ -141,16 +143,18 @@ install-indep: build-arch-stamp build-indep-stamp
 	done
 	# git-arch
 	rm -rf '$(GIT)'-arch
-	install -d -m0755 '$(GIT)'-arch/usr/bin
-	install -m0755 '$(TMP)'/usr/bin/git-archimport '$(GIT)'-arch/usr/bin/
+	install -d -m0755 '$(GIT)'-arch/usr/lib/git-core
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-archimport \
+	  '$(GIT)'-arch/usr/lib/git-core/
 	install -d -m0755 '$(GIT)'-arch/usr/share/man/man1
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-archimport.1 \
 	  '$(GIT)'-arch/usr/share/man/man1/
 	gzip -9 '$(GIT)'-arch/usr/share/man/man1/*.1
 	# git-email
 	rm -rf '$(GIT)'-email
-	install -d -m0755 '$(GIT)'-email/usr/bin
-	install -m0755 '$(TMP)'/usr/bin/git-send-email '$(GIT)'-email/usr/bin/
+	install -d -m0755 '$(GIT)'-email/usr/lib/git-core
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-send-email \
+	  '$(GIT)'-email/usr/lib/git-core/
 	install -d -m0755 '$(GIT)'-email/usr/share/man/man1
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-send-email.1 \
 	  '$(GIT)'-email/usr/share/man/man1/
@@ -166,9 +170,11 @@ install-indep: build-arch-stamp build-indep-stamp
 	ln -s /usr/bin/sv '$(GIT)'-daemon-run/etc/init.d/git-daemon
 	# git-gui
 	rm -rf '$(GIT)'-gui
-	install -d -m0755 '$(GIT)'-gui/usr/bin
-	install -m0755 '$(TMP)'/usr/bin/git-gui '$(GIT)'-gui/usr/bin/
-	install -m0755 '$(TMP)'/usr/bin/git-citool '$(GIT)'-gui/usr/bin/
+	install -d -m0755 '$(GIT)'-gui/usr/lib/git-core
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-gui \
+	  '$(GIT)'-gui/usr/lib/git-core/
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-citool \
+	  '$(GIT)'-gui/usr/lib/git-core/
 	install -d -m0755 '$(GIT)'-gui/usr/share/man/man1
 	for i in gui citool; do \
 	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
@@ -180,7 +186,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	# gitk
 	rm -rf '$(GIT)'k
 	install -d -m0755 '$(GIT)'k/usr/bin
-	install -m0755 '$(TMP)'/usr/bin/gitk '$(GIT)'k/usr/bin/gitk
+	install -m0755 '$(TMP)'/usr/bin/gitk \
+	  '$(GIT)'k/usr/bin/gitk
 	install -d -m0755 '$(GIT)'k/usr/share/man/man1
 	install -m0644 '$(TMP)'/usr/share/man/man1/gitk.1 \
 	  '$(GIT)'k/usr/share/man/man1/
@@ -205,7 +212,7 @@ install-indep: build-arch-stamp build-indep-stamp
 binary: binary-arch binary-indep
 binary-arch: install-arch git-core.deb
 	rm -f debian/substvars
-	dpkg-shlibdeps '$(GIT)'-core/usr/bin/*
+	dpkg-shlibdeps '$(GIT)'-core/usr/bin/* '$(GIT)'-core/usr/lib/git-core/*
 	dpkg-gencontrol -isp -pgit-core -P'$(GIT)'-core
 	dpkg -b '$(GIT)'-core ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
