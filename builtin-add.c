@@ -118,6 +118,16 @@ static const char **validate_pathspec(int argc, const char **argv, const char *p
 {
 	const char **pathspec = get_pathspec(prefix, argv);
 
+	if (pathspec) {
+		const char **p;
+		for (p = pathspec; *p; p++) {
+			if (has_symlink_leading_path(strlen(*p), *p)) {
+				int len = prefix ? strlen(prefix) : 0;
+				die("'%s' is beyond a symbolic link", *p + len);
+			}
+		}
+	}
+
 	return pathspec;
 }
 
@@ -245,7 +255,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		fprintf(stderr, "Maybe you wanted to say 'git add .'?\n");
 		return 0;
 	}
-	pathspec = get_pathspec(prefix, argv);
+	pathspec = validate_pathspec(argc, argv, prefix);
 
 	if (read_cache() < 0)
 		die("index file corrupt");
