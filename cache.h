@@ -223,7 +223,8 @@ struct index_state {
 	struct cache_tree *cache_tree;
 	time_t timestamp;
 	void *alloc;
-	unsigned name_hash_initialized : 1;
+	unsigned name_hash_initialized : 1,
+		 initialized : 1;
 	struct hash_table name_hash;
 };
 
@@ -452,6 +453,7 @@ enum safe_crlf {
 extern enum safe_crlf safe_crlf;
 
 enum branch_track {
+	BRANCH_TRACK_UNSPECIFIED = -1,
 	BRANCH_TRACK_NEVER = 0,
 	BRANCH_TRACK_REMOTE,
 	BRANCH_TRACK_ALWAYS,
