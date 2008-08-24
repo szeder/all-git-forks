@@ -1,0 +1,8 @@
+git-core (1:1.5.6.2-1) unstable; urgency=low
+
+  The gitweb auxiliary files gitweb.css, git-favicon.png, git-logo.png
+  are moved from /var/www/ to /usr/share/gitweb/ to comply with the
+  current draft Debian webapps policy.  You need to either adapt the
+  web server configuration, or copy/symlink them back to /var/www/.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 06 Jul 2008 18:35:27 +0000

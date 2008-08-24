@@ -1,4 +1,4 @@
-git-core (1:1.6.0-0) experimental; urgency=low
+git-core (1:1.6.0-1) experimental; urgency=low
 
   * new upstream release.
     * svnimport: newer libsvn wants us to ask for the root with "",
@@ -14,8 +14,10 @@ git-core (1:1.6.0-0) experimental; urgency=low
     Jonathan Nieder for the patch, closes: #494505).
   * debian/rules: add gitexecdir=/usr/lib/git-core to OPTS; adapt
     several paths (thx Jonathan Nieder for a patch, closes: #480396).
+  * debian/gitweb.NEWS.Debian: new; talk about files moved from
+    /var/www/ to /usr/share/gitweb/ (see #479479; closes: #494467).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 17 Aug 2008 22:50:36 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 24 Aug 2008 21:25:08 +0000
 
 git-core (1:1.5.6.3-1) unstable; urgency=low
 
