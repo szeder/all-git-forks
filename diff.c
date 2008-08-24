@@ -131,10 +131,6 @@ static int parse_funcname_pattern(const char *var, const char *ep, const char *v
  */
 int git_diff_ui_config(const char *var, const char *value, void *cb)
 {
-	if (!strcmp(var, "diff.renamelimit")) {
-		diff_rename_limit_default = git_config_int(var, value);
-		return 0;
-	}
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
 		diff_use_color_default = git_config_colorbool(var, value, -1);
 		return 0;
@@ -167,6 +163,11 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 
 int git_diff_basic_config(const char *var, const char *value, void *cb)
 {
+	if (!strcmp(var, "diff.renamelimit")) {
+		diff_rename_limit_default = git_config_int(var, value);
+		return 0;
+	}
+
 	if (!prefixcmp(var, "diff.color.") || !prefixcmp(var, "color.diff.")) {
 		int slot = parse_diff_color_slot(var, 11);
 		if (!value)
@@ -3356,9 +3357,8 @@ int diff_result_code(struct diff_options *opt, int status)
 void diff_addremove(struct diff_options *options,
 		    int addremove, unsigned mode,
 		    const unsigned char *sha1,
-		    const char *base, const char *path)
+		    const char *concatpath)
 {
-	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;
 
 	if (DIFF_OPT_TST(options, IGNORE_SUBMODULES) && S_ISGITLINK(mode))
@@ -3380,9 +3380,6 @@ void diff_addremove(struct diff_options *options,
 		addremove = (addremove == '+' ? '-' :
 			     addremove == '-' ? '+' : addremove);
 
-	if (!path) path = "";
-	sprintf(concatpath, "%s%s", base, path);
-
 	if (options->prefix &&
 	    strncmp(concatpath, options->prefix, options->prefix_length))
 		return;
@@ -3403,9 +3400,8 @@ void diff_change(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
-		 const char *base, const char *path)
+		 const char *concatpath)
 {
-	char concatpath[PATH_MAX];
 	struct diff_filespec *one, *two;
 
 	if (DIFF_OPT_TST(options, IGNORE_SUBMODULES) && S_ISGITLINK(old_mode)
@@ -3418,8 +3414,6 @@ void diff_change(struct diff_options *options,
 		tmp = old_mode; old_mode = new_mode; new_mode = tmp;
 		tmp_c = old_sha1; old_sha1 = new_sha1; new_sha1 = tmp_c;
 	}
-	if (!path) path = "";
-	sprintf(concatpath, "%s%s", base, path);
 
 	if (options->prefix &&
 	    strncmp(concatpath, options->prefix, options->prefix_length))
