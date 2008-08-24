@@ -1,3 +1,13 @@
+git-core (1:1.5.6.3-1.1) unstable; urgency=high
+
+  * Non-maintainer upload by the Security Team.
+  * Fix various stack-based buffer overflows when processing overly long
+    repository pathnames which can be exploited to execute arbitrary code if
+    a victim is tricked into using git-grep or git-diff on a crafted
+    repository (CVE-2008-3546; Closes: #494097).
+
+ -- Nico Golde <nion@debian.org>  Sat, 09 Aug 2008 13:53:13 +0200
+
 git-core (1:1.5.6.3-1) unstable; urgency=low
 
   * new upstream point release.
