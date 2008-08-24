@@ -1,4 +1,4 @@
 #!/bin/sh
 exec 2>&1
-echo 'git-daemon starting.'
-exec git-daemon --verbose --base-path=/var/cache /var/cache/git
+echo 'git daemon starting.'
+exec git daemon --verbose --base-path=/var/cache /var/cache/git
