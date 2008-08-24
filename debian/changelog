@@ -1,3 +1,13 @@
+git-core (1:1.5.6.5-1) unstable; urgency=high
+
+  * new upstream point release.
+    * Fix buffer overflow in prepare_attr_stack; Fix buffer overflow
+      in git diff; Fix buffer overflow in git-grep (CVE-2008-3546;
+      closes: #494097).
+  * debian/diff/0005-bug-494097-CVE-2008-3546.diff: remove; obsolete.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 24 Aug 2008 19:22:02 +0000
+
 git-core (1:1.5.6.3-1.1) unstable; urgency=high
 
   * Non-maintainer upload by the Security Team.

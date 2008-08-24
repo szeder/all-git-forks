@@ -1,3 +1,121 @@
+Version v1.5.6.5; changes since v1.5.6.4:
+-----------------------------------------
+
+Anders Melchiorsen (1):
+      Documentation: fix diff.external example
+
+Björn Steinbrink (1):
+      index-pack.c: correctly initialize appended objects
+
+Brandon Casey (1):
+      t/t4202-log.sh: add newline at end of file
+
+Ciaran McCreesh (1):
+      Make git-add -i accept ranges like 7-
+
+Jeff King (1):
+      init: handle empty "template" parameter
+
+Jim Meyering (1):
+      git-cvsimport.perl: Print "UNKNOWN LINE..." on stderr, not stdout.
+
+Johannes Schindelin (1):
+      sort_in_topological_order(): avoid setting a commit flag
+
+Jonathan Nieder (2):
+      fix usage string for git grep
+      git-diff(1): "--c" -> "--cc" typo fix
+
+Junio C Hamano (12):
+      refresh-index: fix bitmask assignment
+      tests: propagate $(TAR) down from the toplevel Makefile
+      Makefile: fix shell quoting
+      make sure parsed wildcard refspec ends with slash
+      Documentation: clarify diff --cc
+      Update my e-mail address
+      Start 1.5.6.5 RelNotes to describe accumulated fixes
+      builtin-name-rev.c: split deeply nested part from the main function
+      RelNotes 1.5.6.5 updates
+      fix diff-tree --stdin documentation
+      Files given on the command line are relative to $cwd
+      GIT 1.5.6.5
+
+Linus Torvalds (1):
+      diff.renamelimit is a basic diff configuration
+
+Mike Ralphson (1):
+      Documentation: typos / spelling fixes in older RelNotes
+
+Peter Valdemar Mørch (1):
+      send-email: find body-encoding correctly
+
+Pierre Habouzit (2):
+      git-checkout: fix command line parsing.
+      git-submodule: move ill placed shift.
+
+Pieter de Bie (1):
+      git-name-rev: allow --name-only in combination with --stdin
+
+René Scharfe (1):
+      git-name-rev: don't use printf without format
+
+Stephan Beyer (1):
+      builtin-revert.c: typofix
+
+Steve Haslam (1):
+      Propagate -u/--upload-pack option of "git clone" to transport.
+
+
+Version v1.5.6.4; changes since v1.5.6.3:
+-----------------------------------------
+
+Dmitry Potapov (3):
+      Fix buffer overflow in git-grep
+      Fix buffer overflow in git diff
+      Fix buffer overflow in prepare_attr_stack
+
+Johannes Schindelin (3):
+      git daemon: avoid calling syslog() from a signal handler
+      Add pretty format %aN which gives the author name, respecting .mailmap
+      git fetch-pack: do not complain about "no common commits" in an empty repo
+
+Johannes Sixt (1):
+      t7600-merge: Use test_expect_failure to test option parsing
+
+Junio C Hamano (4):
+      Start preparing 1.5.6.4 release notes
+      rev-list: honor --quiet option
+      http-fetch: do not SEGV after fetching a bad pack idx file
+      GIT 1.5.6.4
+
+Lars Noschinski (1):
+      git-cvsserver: fix call to nonexistant cleanupWorkDir()
+
+Lukas Sandström (1):
+      git-mailinfo: Fix getting the subject from the in-body [PATCH] line
+
+Olivier Marin (1):
+      builtin-rm: fix index lock file path
+
+Petr Baudis (1):
+      Documentation/git-cherry-pick.txt et al.: Fix misleading -n description
+
+Shawn O. Pearce (9):
+      Correct pack memory leak causing git gc to try to exceed ulimit
+      bash completion: Improve responsiveness of git-log completion
+      bash completion: Don't offer "a.." as a completion for "a."
+      bash completion: Append space after file names have been completed
+      bash completion: Resolve git show ref:path<tab> losing ref: portion
+      index-pack: Refactor base arguments of resolve_delta into a struct
+      index-pack: Chain the struct base_data on the stack for traversal
+      index-pack: Track the object_entry that creates each base_data
+      index-pack: Honor core.deltaBaseCacheLimit when resolving deltas
+
+Stephan Beyer (2):
+      rebase-i: keep old parents when preserving merges
+      api-run-command.txt: typofix
+
+
 Version v1.5.6.3; changes since v1.5.6.2:
 -----------------------------------------
 
