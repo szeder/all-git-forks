@@ -1,3 +1,66 @@
+Version v1.6.0.1; changes since v1.6.0:
+---------------------------------------
+
+Alexander Gavrilov (1):
+      Respect core.autocrlf in combined diff
+
+Brandon Casey (3):
+      t1002-read-tree-m-u-2way.sh: use 'git diff -U0' rather than 'diff -U0'
+      revision.h: make show_early_output an extern which is defined in revision.c
+      compat/snprintf.c: handle snprintf's that always return the # chars transmitted
+
+Don Zickus (1):
+      mailinfo: re-fix MIME multipart boundary parsing
+
+Eric Raible (1):
+      Completion: add missing '=' for 'diff --diff-filter'
+
+Eric Wong (1):
+      git-svn: fix dcommit to urls with embedded usernames
+
+Jeff King (2):
+      mailinfo: avoid violating strbuf assertion
+      decorate: allow const objects to be decorated
+
+Jim Meyering (2):
+      git format-patch: avoid underrun when format.headers is empty or all NLs
+      remote.c: remove useless if-before-free test
+
+Johannes Sixt (1):
+      Install templates with the user and group of the installing personality
+
+Jonathan Nieder (2):
+      Documentation: clarify pager.<cmd> configuration
+      Documentation: clarify pager configuration
+
+Junio C Hamano (9):
+      Start 1.6.0.X maintenance series
+      diff --check: do not get confused by new blank lines in the middle
+      for-each-ref: cope with tags with incomplete lines
+      completion: find out supported merge strategies correctly
+      "git-merge": allow fast-forwarding in a stat-dirty tree
+      Update draft release notes for 1.6.0.1
+      unpack_trees(): protect the handcrafted in-core index from read_cache()
+      merge: fix numerus bugs around "trivial merge" area
+      GIT 1.6.0.1
+
+Miklos Vajna (2):
+      Fix 'git help help'
+      Makefile: enable SNPRINTF_RETURNS_BOGUS for HP-UX
+
+Robert Schiele (1):
+      adapt git-cvsserver manpage to dash-free syntax
+
+Simon Hausmann (1):
+      Clean up the git-p4 documentation
+
+Tarmigan Casebolt (1):
+      Add hints to revert documentation about other ways to undo changes
+
+Tor Arvid Lund (1):
+      git-p4: Fix one-liner in p4_write_pipe function.
+
+
 Version v1.6.0; changes since v1.6.0-rc3:
 -----------------------------------------
 

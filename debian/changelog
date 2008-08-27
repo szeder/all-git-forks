@@ -1,3 +1,10 @@
+git-core (1:1.6.0.1-1) experimental; urgency=low
+
+  * new upstream point release (closes: #496155).
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 27 Aug 2008 07:53:36 +0000
+
 git-core (1:1.6.0-1) experimental; urgency=low
 
   * new upstream release.
