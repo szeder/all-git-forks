@@ -551,7 +551,6 @@ BUILTIN_OBJS += builtin-rev-parse.o
 BUILTIN_OBJS += builtin-revert.o
 BUILTIN_OBJS += builtin-rm.o
 BUILTIN_OBJS += builtin-send-pack.o
-BUILTIN_OBJS += builtin-shell.o
 BUILTIN_OBJS += builtin-shortlog.o
 BUILTIN_OBJS += builtin-show-branch.o
 BUILTIN_OBJS += builtin-show-ref.o
@@ -737,6 +736,7 @@ ifeq ($(uname_S),HP-UX)
 	NO_UNSETENV = YesPlease
 	NO_HSTRERROR = YesPlease
 	NO_SYS_SELECT_H = YesPlease
+	SNPRINTF_RETURNS_BOGUS = YesPlease
 endif
 ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_MMAP = YesPlease
@@ -833,6 +833,7 @@ EXTLIBS += -lz
 ifndef NO_POSIX_ONLY_PROGRAMS
 	PROGRAMS += git-daemon$X
 	PROGRAMS += git-imap-send$X
+	PROGRAMS += git-shell$X
 endif
 ifndef NO_OPENSSL
 	OPENSSL_LIBSSL = -lssl
@@ -1111,7 +1112,10 @@ builtin-help.o: builtin-help.c common-cmds.h GIT-CFLAGS
 		'-DGIT_INFO_PATH="$(infodir_SQ)"' $<
 
 $(BUILT_INS): git$X
-	$(QUIET_BUILT_IN)$(RM) $@ && ln git$X $@
+	$(QUIET_BUILT_IN)$(RM) $@ && \
+	ln git$X $@ 2>/dev/null || \
+	ln -s git$X $@ 2>/dev/null || \
+	cp git$X $@
 
 common-cmds.h: ./generate-cmdlist.sh command-list.txt
 
@@ -1360,7 +1364,7 @@ install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(bindir_SQ)'
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 	$(INSTALL) $(ALL_PROGRAMS) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
-	$(INSTALL) git$X git-upload-pack$X git-receive-pack$X git-upload-archive$X '$(DESTDIR_SQ)$(bindir_SQ)'
+	$(INSTALL) git$X git-upload-pack$X git-receive-pack$X git-upload-archive$X git-shell$X '$(DESTDIR_SQ)$(bindir_SQ)'
 	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
 ifndef NO_TCLTK
@@ -1372,16 +1376,13 @@ ifneq (,$X)
 endif
 	bindir=$$(cd '$(DESTDIR_SQ)$(bindir_SQ)' && pwd) && \
 	execdir=$$(cd '$(DESTDIR_SQ)$(gitexec_instdir_SQ)' && pwd) && \
-	if test "z$$bindir" != "z$$execdir"; \
-	then \
-		ln -f "$$bindir/git$X" "$$execdir/git$X" || \
-		cp "$$bindir/git$X" "$$execdir/git$X"; \
-	fi && \
-	{ $(foreach p,$(BUILT_INS), $(RM) "$$execdir/$p" && ln "$$execdir/git$X" "$$execdir/$p" ;) } && \
-	if test "z$$bindir" != "z$$execdir"; \
-	then \
-		$(RM) "$$execdir/git$X"; \
-	fi && \
+	{ $(RM) "$$execdir/git-add$X" && \
+		ln git-add$X "$$execdir/git-add$X" 2>/dev/null || \
+		cp git-add$X "$$execdir/git-add$X"; } && \
+	{ $(foreach p,$(filter-out git-add,$(BUILT_INS)), $(RM) "$$execdir/$p" && \
+		ln "$$execdir/git-add$X" "$$execdir/$p" 2>/dev/null || \
+		ln -s "git-add$X" "$$execdir/$p" 2>/dev/null || \
+		cp "$$execdir/git-add$X" "$$execdir/$p" || exit;) } && \
 	./check_bindir "z$$bindir" "z$$execdir" "$$bindir/git-add$X"
 
 install-doc:
