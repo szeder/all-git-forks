@@ -273,7 +273,7 @@ static int git_help_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
-struct cmdnames main_cmds, other_cmds;
+static struct cmdnames main_cmds, other_cmds;
 
 void list_common_cmds_help(void)
 {
@@ -418,7 +418,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 {
 	int nongit;
 	const char *alias;
-	unsigned int longest = load_command_list("git-", &main_cmds, &other_cmds);
+	load_command_list("git-", &main_cmds, &other_cmds);
 
 	setup_git_directory_gently(&nongit);
 	git_config(git_help_config, NULL);
@@ -428,7 +428,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 
 	if (show_all) {
 		printf("usage: %s\n\n", git_usage_string);
-		list_commands("git commands", longest, &main_cmds, &other_cmds);
+		list_commands("git commands", &main_cmds, &other_cmds);
 		printf("%s\n", git_more_info_string);
 		return 0;
 	}
