@@ -3,7 +3,7 @@
 # Copyright (c) 2008 Jan Krüger
 #
 
-test_description='git-svn respects rewriteRoot during rebuild'
+test_description='git svn respects rewriteRoot during rebuild'
 
 . ./lib-git-svn.sh
 
@@ -17,7 +17,7 @@ rm -rf import
 test_expect_success 'init, fetch and checkout repository' '
 	git svn init --rewrite-root=http://invalid.invalid/ "$svnrepo" &&
 	git svn fetch
-	git checkout -b mybranch remotes/git-svn
+	git checkout -b mybranch ${remotes_git_svn}
 	'
 
 test_expect_success 'remove rev_map' '

@@ -3,7 +3,7 @@
 # Copyright (c) 2006 Eric Wong
 #
 
-test_description='git-svn property tests'
+test_description='git svn property tests'
 . ./lib-git-svn.sh
 
 mkdir import
@@ -66,16 +66,16 @@ test_expect_success 'setup some commits to svn' \
 		svn commit -m "Propset Id" &&
 	cd ..'
 
-test_expect_success 'initialize git-svn' 'git-svn init "$svnrepo"'
-test_expect_success 'fetch revisions from svn' 'git-svn fetch'
+test_expect_success 'initialize git-svn' 'git svn init "$svnrepo"'
+test_expect_success 'fetch revisions from svn' 'git svn fetch'
 
 name='test svn:keywords ignoring'
 test_expect_success "$name" \
-	'git checkout -b mybranch remotes/git-svn &&
+	'git checkout -b mybranch ${remotes_git_svn} &&
 	echo Hi again >> kw.c &&
 	git commit -a -m "test keywords ignoring" &&
-	git-svn set-tree remotes/git-svn..mybranch &&
-	git pull . remotes/git-svn'
+	git svn set-tree ${remotes_git_svn}..mybranch &&
+	git pull . ${remotes_git_svn}'
 
 expect='/* $Id$ */'
 got="`sed -ne 2p kw.c`"
@@ -90,8 +90,8 @@ test_expect_success "propset CR on crlf files" \
 	 cd ..'
 
 test_expect_success 'fetch and pull latest from svn and checkout a new wc' \
-	'git-svn fetch &&
-	 git pull . remotes/git-svn &&
+	'git svn fetch &&
+	 git pull . ${remotes_git_svn} &&
 	 svn co "$svnrepo" new_wc'
 
 for i in crlf ne_crlf lf ne_lf cr ne_cr empty_cr empty_lf empty empty_crlf
@@ -113,7 +113,7 @@ cd test_wc
 	 svn commit -m "propset CRLF on cr files"'
 cd ..
 test_expect_success 'fetch and pull latest from svn' \
-	'git-svn fetch && git pull . remotes/git-svn'
+	'git svn fetch && git pull . ${remotes_git_svn}'
 
 b_cr="`git-hash-object cr`"
 b_ne_cr="`git-hash-object ne_cr`"
@@ -145,7 +145,7 @@ test_expect_success 'test show-ignore' "
 	svn propset -R svn:ignore 'no-such-file*' .
 	svn commit -m 'propset svn:ignore'
 	cd .. &&
-	git-svn show-ignore > show-ignore.got &&
+	git svn show-ignore > show-ignore.got &&
 	cmp show-ignore.expect show-ignore.got
 	"
 
@@ -161,8 +161,8 @@ cat >create-ignore-index.expect <<\EOF
 EOF
 
 test_expect_success 'test create-ignore' "
-	git-svn fetch && git pull . remotes/git-svn &&
-	git-svn create-ignore &&
+	git svn fetch && git pull . ${remotes_git_svn} &&
+	git svn create-ignore &&
 	cmp ./.gitignore create-ignore.expect &&
 	cmp ./deeply/.gitignore create-ignore.expect &&
 	cmp ./deeply/nested/.gitignore create-ignore.expect &&
@@ -182,15 +182,15 @@ EOF
 # pattern, it can pass even though the propget did not execute on the
 # right directory.
 test_expect_success 'test propget' "
-	git-svn propget svn:ignore . | cmp - prop.expect &&
+	git svn propget svn:ignore . | cmp - prop.expect &&
 	cd deeply &&
-	git-svn propget svn:ignore . | cmp - ../prop.expect &&
-	git-svn propget svn:entry:committed-rev nested/directory/.keep \
+	git svn propget svn:ignore . | cmp - ../prop.expect &&
+	git svn propget svn:entry:committed-rev nested/directory/.keep \
 	  | cmp - ../prop2.expect &&
-	git-svn propget svn:ignore .. | cmp - ../prop.expect &&
-	git-svn propget svn:ignore nested/ | cmp - ../prop.expect &&
-	git-svn propget svn:ignore ./nested | cmp - ../prop.expect &&
-	git-svn propget svn:ignore .././deeply/nested | cmp - ../prop.expect
+	git svn propget svn:ignore .. | cmp - ../prop.expect &&
+	git svn propget svn:ignore nested/ | cmp - ../prop.expect &&
+	git svn propget svn:ignore ./nested | cmp - ../prop.expect &&
+	git svn propget svn:ignore .././deeply/nested | cmp - ../prop.expect
 	"
 
 cat >prop.expect <<\EOF
@@ -210,8 +210,8 @@ Properties on 'nested/directory/.keep':
 EOF
 
 test_expect_success 'test proplist' "
-	git-svn proplist . | cmp - prop.expect &&
-	git-svn proplist nested/directory/.keep | cmp - prop2.expect
+	git svn proplist . | cmp - prop.expect &&
+	git svn proplist nested/directory/.keep | cmp - prop2.expect
 	"
 
 test_done
