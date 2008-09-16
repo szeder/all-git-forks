@@ -45,7 +45,7 @@ static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *ext
 	po.out = fd;
 	po.git_cmd = 1;
 	if (start_command(&po))
-		die("git-pack-objects failed (%s)", strerror(errno));
+		die("git pack-objects failed (%s)", strerror(errno));
 
 	/*
 	 * We feed the pack-objects we just spawned with revision
