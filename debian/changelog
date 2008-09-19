@@ -1,8 +1,11 @@
 git-core (1:1.6.0.2-1) experimental; urgency=low
 
   * new upstream point release.
+  * debian/git-core.NEWS.Debian: new; mention that most of the programs
+    now are installed outside the default $PATH; the "git-xyzzy" form
+    in scripts and on the command line is no longer supported in 1.6.0.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 19 Sep 2008 13:18:14 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 19 Sep 2008 13:19:51 +0000
 
 git-core (1:1.6.0.1-1) experimental; urgency=low
 

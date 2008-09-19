@@ -1,0 +1,14 @@
+git-core (1:1.6.0-1) experimental; urgency=low
+
+  Most of the programs are now installed outside the default $PATH,
+  except for "git", "gitk" and some server side programs that need
+  to be accessible for technical reasons.  Invoking a git subcommand
+  as "git-xyzzy" from the command line has been deprecated since
+  early 2006 (and officially announced in the 1.5.4 release notes);
+  using the "git-xyzzy" form in scripts after adding the output from
+  "git --exec-path" to the $PATH is still supported in this release,
+  but users are again strongly encouraged to adjust their scripts to
+  use the "git xyzzy" form, as this support might be dropped in later
+  releases.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 24 Aug 2008 22:31:44 +0000
