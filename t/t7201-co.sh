@@ -510,4 +510,14 @@ test_expect_success 'checkout --conflict=diff3' '
 	test_cmp merged file
 '
 
+test_expect_success 'failing checkout -b should not break working tree' '
+	git reset --hard master &&
+	git symbolic-ref HEAD refs/heads/master &&
+	test_must_fail git checkout -b renamer side^ &&
+	test $(git symbolic-ref HEAD) = refs/heads/master &&
+	git diff --exit-code &&
+	git diff --cached --exit-code
+
+'
+
 test_done
