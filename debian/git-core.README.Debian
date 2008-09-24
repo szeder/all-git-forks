@@ -35,7 +35,7 @@ like this:
 
 Now git-clone rsync://git.example.org/git/repo will work.
 
-3. Configure a web server for git.  This allows people to use a git:// URL
+3. Configure a web server for git.  This allows people to use a http:// URL
 to access your repositories.
 
 Here's an example for an apache virtual server.  Add a stanza to your apache

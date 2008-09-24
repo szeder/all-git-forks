@@ -6,8 +6,10 @@ git-core (1:1.6.0.2-1) experimental; urgency=low
     in scripts and on the command line is no longer supported in 1.6.0.
   * debian/git-core.README.Debian: fix paths in config example (thx
     Michael Biebl for the patch, closes: #498741).
+  * debian/git-core.README.Debian: typo (thx Vincent Bernat for the
+    patch, closes: #496834).
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 24 Sep 2008 20:46:05 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 24 Sep 2008 20:55:26 +0000
 
 git-core (1:1.6.0.1-1) experimental; urgency=low
 
