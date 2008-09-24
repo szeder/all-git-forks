@@ -4,8 +4,10 @@ git-core (1:1.6.0.2-1) experimental; urgency=low
   * debian/git-core.NEWS.Debian: new; mention that most of the programs
     now are installed outside the default $PATH; the "git-xyzzy" form
     in scripts and on the command line is no longer supported in 1.6.0.
+  * debian/git-core.README.Debian: fix paths in config example (thx
+    Michael Biebl for the patch, closes: #498741).
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 19 Sep 2008 13:19:51 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 24 Sep 2008 20:46:05 +0000
 
 git-core (1:1.6.0.1-1) experimental; urgency=low
 
