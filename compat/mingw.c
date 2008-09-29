@@ -31,7 +31,6 @@ static inline time_t filetime_to_time_t(const FILETIME *ft)
 	return (time_t)winTime;
 }
 
-extern int _getdrive( void );
 /* We keep the do_lstat code in a separate function to avoid recursion.
  * When a path ends with a slash, the stat will fail with ENOENT. In
  * this case, we strip the trailing slashes and stat again.
@@ -55,7 +54,7 @@ static int do_lstat(const char *file_name, struct stat *buf)
 		buf->st_nlink = 1;
 		buf->st_mode = fMode;
 		buf->st_size = fdata.nFileSizeLow; /* Can't use nFileSizeHigh, since it's not a stat64 */
-		buf->st_dev = buf->st_rdev = (_getdrive() - 1);
+		buf->st_dev = buf->st_rdev = 0; /* not used by Git */
 		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
@@ -145,7 +144,7 @@ int mingw_fstat(int fd, struct stat *buf)
 		buf->st_nlink = 1;
 		buf->st_mode = fMode;
 		buf->st_size = fdata.nFileSizeLow; /* Can't use nFileSizeHigh, since it's not a stat64 */
-		buf->st_dev = buf->st_rdev = (_getdrive() - 1);
+		buf->st_dev = buf->st_rdev = 0; /* not used by Git */
 		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
@@ -263,8 +262,13 @@ int poll(struct pollfd *ufds, unsigned int nfds, int timeout)
 {
 	int i, pending;
 
-	if (timeout != -1)
+	if (timeout >= 0) {
+		if (nfds == 0) {
+			Sleep(timeout);
+			return 0;
+		}
 		return errno = EINVAL, error("poll timeout not supported");
+	}
 
 	/* When there is only one fd to wait for, then we pretend that
 	 * input is available and let the actual wait happen when the
