@@ -995,6 +995,7 @@ citool {
 ##
 ## repository setup
 
+set picked 0
 if {[catch {
 		set _gitdir $env(GIT_DIR)
 		set _prefix {}
@@ -1006,6 +1007,7 @@ if {[catch {
 	load_config 1
 	apply_config
 	choose_repository::pick
+	set picked 1
 }
 if {![file isdirectory $_gitdir] && [is_Cygwin]} {
 	catch {set _gitdir [exec cygpath --windows $_gitdir]}
@@ -1869,6 +1871,19 @@ proc do_gitk {revs} {
 	}
 }
 
+proc do_explore {} {
+	set explorer {}
+	if {[is_Cygwin] || [is_Windows]} {
+		set explorer "explorer.exe"
+	} elseif {[is_MacOSX]} {
+		set explorer "open"
+	} else {
+		# freedesktop.org-conforming system is our best shot
+		set explorer "xdg-open"
+	}
+	eval exec $explorer [file dirname [gitdir]] &
+}
+
 set is_quitting 0
 set ret_code    1
 
@@ -2090,7 +2105,9 @@ proc toggle_or_diff {w x y} {
 	if {$col == 0 && $y > 1} {
 		# Conflicts need special handling
 		if {[string first {U} $state] >= 0} {
-			merge_stage_workdir $path $w $lno
+			# $w must always be $ui_workdir, but...
+			if {$w ne $ui_workdir} { set lno {} }
+			merge_stage_workdir $path $lno
 			return
 		}
 
@@ -2217,6 +2234,11 @@ if {[is_enabled transport]} {
 # -- Repository Menu
 #
 menu .mbar.repository
+
+.mbar.repository add command \
+	-label [mc "Explore Working Copy"] \
+	-command {do_explore}
+.mbar.repository add separator
 
 .mbar.repository add command \
 	-label [mc "Browse Current Branch's Files"] \
@@ -2413,7 +2435,7 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 
 	.mbar.commit add separator
 
-	if {![is_enabled nocommit]} {
+	if {![is_enabled nocommitmsg]} {
 		.mbar.commit add command -label [mc "Sign Off"] \
 			-command do_signoff \
 			-accelerator $M1T-S
@@ -2447,11 +2469,15 @@ if {[is_enabled transport]} {
 	menu .mbar.remote
 
 	.mbar.remote add command \
+		-label [mc "Add..."] \
+		-command remote_add::dialog \
+		-accelerator $M1T-A
+	.mbar.remote add command \
 		-label [mc "Push..."] \
 		-command do_push_anywhere \
 		-accelerator $M1T-P
 	.mbar.remote add command \
-		-label [mc "Delete..."] \
+		-label [mc "Delete Branch..."] \
 		-command remote_branch_delete::dialog
 }
 
@@ -2487,30 +2513,12 @@ if {![is_MacOSX]} {
 		-command do_about
 }
 
-set browser {}
-catch {set browser $repo_config(instaweb.browser)}
+
 set doc_path [file dirname [gitexec]]
 set doc_path [file join $doc_path Documentation index.html]
 
 if {[is_Cygwin]} {
 	set doc_path [exec cygpath --mixed $doc_path]
-}
-
-if {$browser eq {}} {
-	if {[is_MacOSX]} {
-		set browser open
-	} elseif {[is_Cygwin]} {
-		set program_files [file dirname [exec cygpath --windir]]
-		set program_files [file join $program_files {Program Files}]
-		set firefox [file join $program_files {Mozilla Firefox} firefox.exe]
-		set ie [file join $program_files {Internet Explorer} IEXPLORE.EXE]
-		if {[file exists $firefox]} {
-			set browser $firefox
-		} elseif {[file exists $ie]} {
-			set browser $ie
-		}
-		unset program_files firefox ie
-	}
 }
 
 if {[file isfile $doc_path]} {
@@ -2519,11 +2527,13 @@ if {[file isfile $doc_path]} {
 	set doc_url {http://www.kernel.org/pub/software/scm/git/docs/}
 }
 
-if {$browser ne {}} {
-	.mbar.help add command -label [mc "Online Documentation"] \
-		-command [list exec $browser $doc_url &]
+proc start_browser {url} {
+	git "web--browse" $url
 }
-unset browser doc_path doc_url
+
+.mbar.help add command -label [mc "Online Documentation"] \
+	-command [list start_browser $doc_url]
+unset doc_path doc_url
 
 # -- Standard bindings
 #
@@ -2743,7 +2753,7 @@ pack .vpane.lower.commarea.buttons.incall -side top -fill x
 lappend disable_on_lock \
 	{.vpane.lower.commarea.buttons.incall conf -state}
 
-if {![is_enabled nocommit]} {
+if {![is_enabled nocommitmsg]} {
 	button .vpane.lower.commarea.buttons.signoff -text [mc "Sign Off"] \
 		-command do_signoff
 	pack .vpane.lower.commarea.buttons.signoff -side top -fill x
@@ -3261,8 +3271,7 @@ if {[is_enabled transport]} {
 	load_all_remotes
 
 	set n [.mbar.remote index end]
-	populate_push_menu
-	populate_fetch_menu
+	populate_remotes_menu
 	set n [expr {[.mbar.remote index end] - $n}]
 	if {$n > 0} {
 		if {[.mbar.remote type 0] eq "tearoff"} { incr n }
@@ -3368,4 +3377,7 @@ if {[is_enabled multicommit]} {
 }
 if {[is_enabled retcode]} {
 	bind . <Destroy> {+terminate_me %W}
+}
+if {$picked && [is_config_true gui.autoexplore]} {
+	do_explore
 }
