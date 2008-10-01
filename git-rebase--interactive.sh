@@ -37,6 +37,7 @@ DONE="$DOTEST"/done
 MSG="$DOTEST"/message
 SQUASH_MSG="$DOTEST"/message-squash
 REWRITTEN="$DOTEST"/rewritten
+DROPPED="$DOTEST"/dropped
 PRESERVE_MERGES=
 STRATEGY=
 ONTO=
@@ -146,15 +147,7 @@ pick_one () {
 
 pick_one_preserving_merges () {
 	fast_forward=t
-	case "$1" in
-	-n)
-		fast_forward=f
-		sha1=$2
-		;;
-	*)
-		sha1=$1
-		;;
-	esac
+	case "$1" in -n) fast_forward=f sha1=$2 ;; *) sha1=$1 ;; esac
 	sha1=$(git rev-parse $sha1)
 
 	if test -f "$DOTEST"/current-commit
@@ -183,7 +176,28 @@ pick_one_preserving_merges () {
 				;;
 			esac
 		else
-			new_parents="$new_parents $p"
+			if test -f "$DROPPED"/$p
+			then
+				fast_forward=f
+				cat "$DROPPED"/$p | while read grandparent
+				do
+					if test -f "$REWRITTEN"/$grandparent
+					then
+						new_p=$(cat "$REWRITTEN"/$grandparent)
+					else
+						new_p=$grandparent
+					fi
+					case "$new_parents" in
+					*$new_p*)
+						;; # do nothing; that parent is already there
+					*)
+						new_parents="$new_parents $new_p"
+						;;
+					esac
+				done
+			else
+				new_parents="$new_parents $p"
+			fi
 		fi
 	done
 	case $fast_forward in
@@ -581,6 +595,24 @@ first and then run 'git rebase --continue' again."
 # However, if you remove everything, the rebase will be aborted.
 #
 EOF
+
+		# Watch for commits that been dropped by --cherry-pick
+		if test t = "$PRESERVE_MERGES"
+		then
+			mkdir "$DROPPED"
+			# drop the --cherry-pick parameter this time
+			git rev-list $MERGES_OPTION --abbrev-commit \
+				--abbrev=7 $UPSTREAM...$HEAD --left-right | \
+				sed -n "s/^>//p" | while read rev
+			do
+				grep --quiet "$rev" "$TODO"
+				if [ $? -ne 0 ]
+				then
+					full=$(git rev-parse $rev)
+					git rev-list --parents -1 $rev | cut -d' ' -f2- | sed 's/ /\n/g' > "$DROPPED"/$full
+				fi
+			done
+		fi
 
 		has_action "$TODO" ||
 			die_abort "Nothing to do"
