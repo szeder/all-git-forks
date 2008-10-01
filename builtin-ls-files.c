@@ -20,6 +20,9 @@ static int show_unmerged;
 static int show_modified;
 static int show_killed;
 static int show_valid_bit;
+static int show_orphaned;
+static int show_no_checkout;
+static int sparse_checkout;
 static int line_terminator = '\n';
 
 static int prefix_len;
@@ -35,6 +38,8 @@ static const char *tag_removed = "";
 static const char *tag_other = "";
 static const char *tag_killed = "";
 static const char *tag_modified = "";
+static const char *tag_orphaned = "";
+static const char *tag_no_checkout = "";
 
 
 /*
@@ -235,7 +240,7 @@ static void show_files(struct dir_struct *dir, const char *prefix)
 		if (show_killed)
 			show_killed_files(dir);
 	}
-	if (show_cached | show_stage) {
+	if (show_cached | show_stage | show_orphaned | show_no_checkout) {
 		for (i = 0; i < active_nr; i++) {
 			struct cache_entry *ce = active_cache[i];
 			int dtype = ce_to_dtype(ce);
@@ -244,6 +249,16 @@ static void show_files(struct dir_struct *dir, const char *prefix)
 			if (show_unmerged && !ce_stage(ce))
 				continue;
 			if (ce->ce_flags & CE_UPDATE)
+				continue;
+			if (sparse_checkout && ce_no_checkout(ce)) {
+				struct stat st;
+				if (show_no_checkout)
+					show_ce_entry(tag_no_checkout, ce);
+				if (show_orphaned && !lstat(ce->name, &st))
+					show_ce_entry(tag_orphaned, ce);
+				continue;
+			}
+			if (!(show_cached | show_stage))
 				continue;
 			show_ce_entry(ce_stage(ce) ? tag_unmerged : tag_cached, ce);
 		}
@@ -257,7 +272,7 @@ static void show_files(struct dir_struct *dir, const char *prefix)
 			if (excluded(dir, ce->name, &dtype) != dir->show_ignored)
 				continue;
 			err = lstat(ce->name, &st);
-			if (show_deleted && err)
+			if (show_deleted && err && ce_checkout(ce))
 				show_ce_entry(tag_removed, ce);
 			if (show_modified && ce_modified(ce, &st, 0))
 				show_ce_entry(tag_modified, ce);
@@ -423,7 +438,8 @@ int report_path_error(const char *ps_matched, const char **pathspec, int prefix_
 }
 
 static const char ls_files_usage[] =
-	"git ls-files [-z] [-t] [-v] (--[cached|deleted|others|stage|unmerged|killed|modified])* "
+	"git ls-files [-z] [-t] [-v] (--[cached|deleted|others|stage|unmerged|killed|modified|orphaned|no-checkout])* "
+	"[ --sparse ] "
 	"[ --ignored ] [--exclude=<pattern>] [--exclude-from=<file>] "
 	"[ --exclude-per-directory=<filename> ] [--exclude-standard] "
 	"[--full-name] [--abbrev] [--] [<file>]*";
@@ -457,12 +473,29 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 			tag_modified = "C ";
 			tag_other = "? ";
 			tag_killed = "K ";
+			tag_orphaned = "O ";
+			tag_no_checkout = "- ";
 			if (arg[1] == 'v')
 				show_valid_bit = 1;
 			continue;
 		}
 		if (!strcmp(arg, "-c") || !strcmp(arg, "--cached")) {
 			show_cached = 1;
+			continue;
+		}
+		if (!strcmp(arg, "--sparse")) {
+			sparse_checkout = 1;
+			continue;
+		}
+		if (!strcmp(arg, "--orphaned")) {
+			show_orphaned = 1;
+			sparse_checkout = 1;
+			require_work_tree = 1;
+			continue;
+		}
+		if (!strcmp(arg, "--no-checkout")) {
+			show_no_checkout = 1;
+			sparse_checkout = 1;
 			continue;
 		}
 		if (!strcmp(arg, "-d") || !strcmp(arg, "--deleted")) {
@@ -593,7 +626,7 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 
 	/* With no flags, we default to showing the cached files */
 	if (!(show_stage | show_deleted | show_others | show_unmerged |
-	      show_killed | show_modified))
+	      show_killed | show_modified | show_orphaned | show_no_checkout))
 		show_cached = 1;
 
 	read_cache();
