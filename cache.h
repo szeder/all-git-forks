@@ -176,10 +176,11 @@ struct cache_entry {
 /*
  * Extended on-disk flags
  */
+#define CE_NO_CHECKOUT 0x40000000
 /* CE_EXTENDED2 is for future extension */
 #define CE_EXTENDED2 0x80000000
 
-#define CE_EXTENDED_FLAGS (0)
+#define CE_EXTENDED_FLAGS (CE_NO_CHECKOUT)
 
 /*
  * Safeguard to avoid saving wrong flags:
@@ -190,6 +191,9 @@ struct cache_entry {
 #if CE_EXTENDED_FLAGS & 0x803FFFFF
 #error "CE_EXTENDED_FLAGS out of range"
 #endif
+
+/* "Assume unchanged" mask */
+#define CE_VALID_MASK (CE_VALID | CE_NO_CHECKOUT)
 
 /*
  * Copy the sha1 and stat state of a cache entry from one to
@@ -228,6 +232,10 @@ static inline size_t ce_namelen(const struct cache_entry *ce)
 			    ondisk_cache_entry_size(ce_namelen(ce)))
 #define ce_stage(ce) ((CE_STAGEMASK & (ce)->ce_flags) >> CE_STAGESHIFT)
 #define ce_uptodate(ce) ((ce)->ce_flags & CE_UPTODATE)
+#define ce_no_checkout(ce) ((ce)->ce_flags & CE_NO_CHECKOUT)
+#define ce_checkout(ce) (!ce_no_checkout(ce))
+#define ce_mark_no_checkout(ce) ((ce)->ce_flags |= CE_NO_CHECKOUT)
+#define ce_mark_checkout(ce) ((ce)->ce_flags &= ~CE_NO_CHECKOUT)
 #define ce_mark_uptodate(ce) ((ce)->ce_flags |= CE_UPTODATE)
 
 #define ce_permissions(mode) (((mode) & 0100) ? 0755 : 0644)

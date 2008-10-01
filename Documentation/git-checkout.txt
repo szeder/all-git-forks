@@ -171,6 +171,39 @@ the reflog for HEAD where you were, e.g.
 $ git log -g -2 HEAD
 ------------
 
+Sparse checkout
+---------------
+
+Normally when you checkout a branch, your working directory
+will be fully populated. In some situations, you just need to
+work on certain files, no full checkout is needed. Sparse
+checkout is a mode that limits the checkout area according to your
+needs. With sparse checkout, you can work on a single file, a
+collection of files, a subdirectory or a collection of separated
+subdirectories.
+
+Because sparse checkout uses a new index format, it will be
+incompatible with git prior to 1.6.0 regarding worktree operations.
+Operations that only need access to the repository itself, such as
+clone, push, or pull/fetch from another (normal) repository... should
+not be affected by sparse checkout.
+
+In sparse checkout mode, checkout status of every files in your
+working directory will be recorded in index. If a file is marked
+"no-checkout", it means that file is not needed to be present in
+working directory by user or any git command. When a new file is added
+to index, it will be marked "checkout" unless sparse patterns are
+applied.  Unmerged files are always "checkout". When you checkout new
+files using "git checkout <file>" they will be automatically marked
+"checkout". Other commands such as "git apply" can also checkout new
+files if they are needed.
+
+"No-checkout" status is very similar to "assume-unchanged bit"
+(see linkgit:git-update-index[1]). The main difference between them
+is "assume unchanged" bit just ignores corresponding files in working
+directory while sparse checkout goes a bit farther, remove those files
+when it is safe to do so.
+
 
 EXAMPLES
 --------
