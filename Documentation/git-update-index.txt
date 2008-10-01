@@ -15,6 +15,7 @@ SYNOPSIS
 	     [--cacheinfo <mode> <object> <file>]\*
 	     [--chmod=(+|-)x]
 	     [--assume-unchanged | --no-assume-unchanged]
+	     [--checkout | --no-checkout]
 	     [--ignore-submodules]
 	     [--really-refresh] [--unresolve] [--again | -g]
 	     [--info-only] [--index-info]
@@ -98,6 +99,18 @@ Git will fail (gracefully) in case it needs to modify this file
 in the index e.g. when merging in a commit;
 thus, in case the assumed-untracked file is changed upstream,
 you will need to handle the situation manually.
+
+--checkout::
+--no-checkout::
+	When one of these flags is specified, the object name recorded
+	for the paths are not updated. Instead, these options
+	set and unset the "no-checkout" bit for the paths. This
+	bit is used for marking files for sparse checkout. If
+	a path is marked "no-checkout", then it should not be
+	checked out unless requested by user or needed for a git
+	command to function.
+	See linkgit:git-checkout[1] for more information about
+	sparse checkout.
 
 -g::
 --again::
