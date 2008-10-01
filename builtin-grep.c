@@ -346,6 +346,8 @@ static int external_grep(struct grep_opt *opt, const char **paths, int cached)
 			continue;
 		if (!pathspec_matches(paths, ce->name))
 			continue;
+		if (ce_no_checkout(ce))
+			continue;
 		name = ce->name;
 		if (name[0] == '-') {
 			int len = ce_namelen(ce);
@@ -407,8 +409,11 @@ static int grep_cache(struct grep_opt *opt, const char **paths, int cached)
 				continue;
 			hit |= grep_sha1(opt, ce->sha1, ce->name, 0);
 		}
-		else
+		else {
+			if (ce_no_checkout(ce))
+				continue;
 			hit |= grep_file(opt, ce->name);
+		}
 		if (ce_stage(ce)) {
 			do {
 				nr++;
