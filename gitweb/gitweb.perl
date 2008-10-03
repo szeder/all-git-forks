@@ -27,6 +27,13 @@ our $version = "++GIT_VERSION++";
 our $my_url = $cgi->url();
 our $my_uri = $cgi->url(-absolute => 1);
 
+# if we're called with PATH_INFO, we have to strip that
+# from the URL to find our real URL
+if (my $path_info = $ENV{"PATH_INFO"}) {
+	$my_url =~ s,\Q$path_info\E$,,;
+	$my_uri =~ s,\Q$path_info\E$,,;
+}
+
 # core git executable to use
 # this can just be "git" if your webserver has a sensible PATH
 our $GIT = "++GIT_BINDIR++/git";
@@ -775,7 +782,7 @@ sub quot_cec {
 	);
 	my $chr = ( (exists $es{$cntrl})
 		    ? $es{$cntrl}
-		    : sprintf('\%03o', ord($cntrl)) );
+		    : sprintf('\%2x', ord($cntrl)) );
 	if ($opts{-nohtml}) {
 		return $chr;
 	} else {
@@ -4065,10 +4072,10 @@ sub git_summary {
 
 	print "<div class=\"title\">&nbsp;</div>\n";
 	print "<table class=\"projects_list\">\n" .
-	      "<tr><td>description</td><td>" . esc_html($descr) . "</td></tr>\n" .
-	      "<tr><td>owner</td><td>" . esc_html($owner) . "</td></tr>\n";
+	      "<tr id=\"metadata_desc\"><td>description</td><td>" . esc_html($descr) . "</td></tr>\n" .
+	      "<tr id=\"metadata_owner\"><td>owner</td><td>" . esc_html($owner) . "</td></tr>\n";
 	if (defined $cd{'rfc2822'}) {
-		print "<tr><td>last change</td><td>$cd{'rfc2822'}</td></tr>\n";
+		print "<tr id=\"metadata_lchange\"><td>last change</td><td>$cd{'rfc2822'}</td></tr>\n";
 	}
 
 	# use per project git URL list in $projectroot/$project/cloneurl
@@ -4078,7 +4085,7 @@ sub git_summary {
 	@url_list = map { "$_/$project" } @git_base_url_list unless @url_list;
 	foreach my $git_url (@url_list) {
 		next unless $git_url;
-		print "<tr><td>$url_tag</td><td>$git_url</td></tr>\n";
+		print "<tr class=\"metadata_url\"><td>$url_tag</td><td>$git_url</td></tr>\n";
 		$url_tag = "";
 	}
 	print "</table>\n";
@@ -4440,6 +4447,7 @@ sub git_tree {
 			$hash = $hash_base;
 		}
 	}
+	die_error(404, "No such tree") unless defined($hash);
 	$/ = "\0";
 	open my $fd, "-|", git_cmd(), "ls-tree", '-z', $hash
 		or die_error(500, "Open git-ls-tree failed");
@@ -4480,8 +4488,8 @@ sub git_tree {
 		if ($basedir ne '' && substr($basedir, -1) ne '/') {
 			$basedir .= '/';
 		}
+		git_print_page_path($file_name, 'tree', $hash_base);
 	}
-	git_print_page_path($file_name, 'tree', $hash_base);
 	print "<div class=\"page_body\">\n";
 	print "<table class=\"tree\">\n";
 	my $alternate = 1;
