@@ -302,6 +302,24 @@ our %feature = (
 	'actions' => {
 		'override' => 0,
 		'default' => []},
+
+	# Allow gitweb scan project content tags described in ctags/
+	# of project repository, and display the popular Web 2.0-ish
+	# "tag cloud" near the project list. Note that this is something
+	# COMPLETELY different from the normal Git tags.
+
+	# gitweb by itself can show existing tags, but it does not handle
+	# tagging itself; you need an external application for that.
+	# For an example script, check Girocco's cgi/tagproj.cgi.
+	# You may want to install the HTML::TagCloud Perl module to get
+	# a pretty tag cloud instead of just a list of tags.
+
+	# To enable system wide have in $GITWEB_CONFIG
+	# $feature{'ctags'}{'default'} = ['path_to_tag_script'];
+	# Project specific override is not supported.
+	'ctags' => {
+		'override' => 0,
+		'default' => [0]},
 );
 
 sub gitweb_check_feature {
@@ -1782,6 +1800,67 @@ sub git_get_project_description {
 	return $descr;
 }
 
+sub git_get_project_ctags {
+	my $path = shift;
+	my $ctags = {};
+
+	$git_dir = "$projectroot/$path";
+	foreach (<$git_dir/ctags/*>) {
+		open CT, $_ or next;
+		my $val = <CT>;
+		chomp $val;
+		close CT;
+		my $ctag = $_; $ctag =~ s#.*/##;
+		$ctags->{$ctag} = $val;
+	}
+	$ctags;
+}
+
+sub git_populate_project_tagcloud {
+	my $ctags = shift;
+
+	# First, merge different-cased tags; tags vote on casing
+	my %ctags_lc;
+	foreach (keys %$ctags) {
+		$ctags_lc{lc $_}->{count} += $ctags->{$_};
+		if (not $ctags_lc{lc $_}->{topcount}
+		    or $ctags_lc{lc $_}->{topcount} < $ctags->{$_}) {
+			$ctags_lc{lc $_}->{topcount} = $ctags->{$_};
+			$ctags_lc{lc $_}->{topname} = $_;
+		}
+	}
+
+	my $cloud;
+	if (eval { require HTML::TagCloud; 1; }) {
+		$cloud = HTML::TagCloud->new;
+		foreach (sort keys %ctags_lc) {
+			# Pad the title with spaces so that the cloud looks
+			# less crammed.
+			my $title = $ctags_lc{$_}->{topname};
+			$title =~ s/ /&nbsp;/g;
+			$title =~ s/^/&nbsp;/g;
+			$title =~ s/$/&nbsp;/g;
+			$cloud->add($title, $home_link."?by_tag=".$_, $ctags_lc{$_}->{count});
+		}
+	} else {
+		$cloud = \%ctags_lc;
+	}
+	$cloud;
+}
+
+sub git_show_project_tagcloud {
+	my ($cloud, $count) = @_;
+	print STDERR ref($cloud)."..\n";
+	if (ref $cloud eq 'HTML::TagCloud') {
+		return $cloud->html_and_css($count);
+	} else {
+		my @tags = sort { $cloud->{$a}->{count} <=> $cloud->{$b}->{count} } keys %$cloud;
+		return '<p align="center">' . join (', ', map {
+			"<a href=\"$home_link?by_tag=$_\">$cloud->{$_}->{topname}</a>"
+		} splice(@tags, 0, $count)) . '</p>';
+	}
+}
+
 sub git_get_project_url_list {
 	my $path = shift;
 
@@ -1830,9 +1909,7 @@ sub git_get_projects_list {
 
 				my $subdir = substr($File::Find::name, $pfxlen + 1);
 				# we check related file in $projectroot
-				if ($check_forks and $subdir =~ m#/.#) {
-					$File::Find::prune = 1;
-				} elsif (check_export_ok("$projectroot/$filter/$subdir")) {
+				if (check_export_ok("$projectroot/$filter/$subdir")) {
 					push @list, { path => ($filter ? "$filter/" : '') . $subdir };
 					$File::Find::prune = 1;
 				}
@@ -3613,6 +3690,7 @@ sub fill_project_list_info {
 	my ($projlist, $check_forks) = @_;
 	my @projects;
 
+	my $show_ctags = gitweb_check_feature('ctags');
  PROJECT:
 	foreach my $pr (@$projlist) {
 		my (@activity) = git_get_last_activity($pr->{'path'});
@@ -3639,6 +3717,7 @@ sub fill_project_list_info {
 				$pr->{'forks'} = 0;
 			}
 		}
+		$show_ctags and $pr->{'ctags'} = git_get_project_ctags($pr->{'path'});
 		push @projects, $pr;
 	}
 
@@ -3662,6 +3741,7 @@ sub print_sort_th {
 }
 
 sub git_project_list_body {
+	# actually uses global variable $project
 	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
 
 	my ($check_forks) = gitweb_check_feature('forks');
@@ -3684,6 +3764,18 @@ sub git_project_list_body {
 		@projects = sort {$a->{$oi->{'key'}} <=> $b->{$oi->{'key'}}} @projects;
 	}
 
+	my $show_ctags = gitweb_check_feature('ctags');
+	if ($show_ctags) {
+		my %ctags;
+		foreach my $p (@projects) {
+			foreach my $ct (keys %{$p->{'ctags'}}) {
+				$ctags{$ct} += $p->{'ctags'}->{$ct};
+			}
+		}
+		my $cloud = git_populate_project_tagcloud(\%ctags);
+		print git_show_project_tagcloud($cloud, 64);
+	}
+
 	print "<table class=\"project_list\">\n";
 	unless ($no_header) {
 		print "<tr>\n";
@@ -3698,8 +3790,21 @@ sub git_project_list_body {
 		      "</tr>\n";
 	}
 	my $alternate = 1;
+	my $tagfilter = $cgi->param('by_tag');
 	for (my $i = $from; $i <= $to; $i++) {
 		my $pr = $projects[$i];
+
+		next if $tagfilter and $show_ctags and not grep { lc $_ eq lc $tagfilter } keys %{$pr->{'ctags'}};
+		next if $searchtext and not $pr->{'path'} =~ /$searchtext/
+			and not $pr->{'descr_long'} =~ /$searchtext/;
+		# Weed out forks or non-matching entries of search
+		if ($check_forks) {
+			my $forkbase = $project; $forkbase ||= ''; $forkbase =~ s#\.git$#/#;
+			$forkbase="^$forkbase" if $forkbase;
+			next if not $searchtext and not $tagfilter and $show_ctags
+				and $pr->{'path'} =~ m#$forkbase.*/.*#; # regexp-safe
+		}
+
 		if ($alternate) {
 			print "<tr class=\"dark\">\n";
 		} else {
@@ -4034,6 +4139,11 @@ sub git_project_list {
 		close $fd;
 		print "</div>\n";
 	}
+	print $cgi->startform(-method => "get") .
+	      "<p class=\"projsearch\">Search:\n" .
+	      $cgi->textfield(-name => "s", -value => $searchtext) . "\n" .
+	      "</p>" .
+	      $cgi->end_form() . "\n";
 	git_project_list_body(\@list, $order);
 	git_footer_html();
 }
@@ -4121,6 +4231,20 @@ sub git_summary {
 		print "<tr class=\"metadata_url\"><td>$url_tag</td><td>$git_url</td></tr>\n";
 		$url_tag = "";
 	}
+
+	# Tag cloud
+	my $show_ctags = (gitweb_check_feature('ctags'))[0];
+	if ($show_ctags) {
+		my $ctags = git_get_project_ctags($project);
+		my $cloud = git_populate_project_tagcloud($ctags);
+		print "<tr id=\"metadata_ctags\"><td>Content tags:<br />";
+		print "</td>\n<td>" unless %$ctags;
+		print "<form action=\"$show_ctags\" method=\"post\"><input type=\"hidden\" name=\"p\" value=\"$project\" />Add: <input type=\"text\" name=\"t\" size=\"8\" /></form>";
+		print "</td>\n<td>" if %$ctags;
+		print git_show_project_tagcloud($cloud, 48);
+		print "</td></tr>";
+	}
+
 	print "</table>\n";
 
 	if (-s "$projectroot/$project/README.html") {
