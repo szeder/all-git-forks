@@ -91,7 +91,7 @@ proc do_fsck_objects {} {
 proc hint_gc {} {
 	set object_limit 8
 	if {[is_Windows]} {
-		set object_limit 1
+		set object_limit 4
 	}
 
 	set objects_current [llength [glob \
