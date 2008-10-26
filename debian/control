@@ -16,8 +16,8 @@ Conflicts: git (<< 4.3.20-11), qgit (<< 1.5.5), git-completion
 Provides: git-completion
 Description: fast, scalable, distributed revision control system
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -35,8 +35,8 @@ Architecture: all
 Suggests: git-core, git-arch, git-cvs, git-svn, git-email, gitk, gitweb
 Description: fast, scalable, distributed revision control system (documentation)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -52,8 +52,8 @@ Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (arch interoperability)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -70,8 +70,8 @@ Suggests: git-doc, cvs
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (cvs interoperability)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -89,8 +89,8 @@ Suggests: git-doc, subversion
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (svn interoperability)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -108,8 +108,8 @@ Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (email add-on)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -123,8 +123,8 @@ Architecture: all
 Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), runit (>= 1.8.0-2), adduser
 Description: fast, scalable, distributed revision control system (git-daemon service)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -143,8 +143,8 @@ Recommends: gitk
 Suggests: git-doc
 Description: fast, scalable, distributed revision control system (GUI)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -160,8 +160,8 @@ Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full
@@ -176,8 +176,8 @@ Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstrea
 Suggests: git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
- projects with speed and efficiency; it is used mainly for various open
- source projects, most notably the Linux kernel.
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
  .
  Git falls in the category of distributed source code management tools.
  Every Git working directory is a full-fledged repository with full

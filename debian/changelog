@@ -1,3 +1,10 @@
+git-core (1:1.6.0.2-1.1) experimental; urgency=low
+
+  * debian/control: minor update to long descriptions (thx Reuben
+    Thomas, closes: #499065).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Oct 2008 21:40:49 +0000
+
 git-core (1:1.6.0.2-1) experimental; urgency=low
 
   * new upstream point release.
