@@ -2,8 +2,12 @@ git-core (1:1.6.0.2-1.1) experimental; urgency=low
 
   * debian/control: minor update to long descriptions (thx Reuben
     Thomas, closes: #499065).
+  * debian/git-core.emacsen-startup: new; emacsen-startup configuration
+    file (thx Jari Aaltoi, closes: #472197).
+  * debian/rules: install emacsen-startup configuration file into the
+    git-core package (thx Eddy Mulyono, closes: #446027).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 26 Oct 2008 21:40:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 26 Oct 2008 21:51:49 +0000
 
 git-core (1:1.6.0.2-1) experimental; urgency=low
 

@@ -103,6 +103,9 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	done
 	chmod 0644 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
 	gzip -9 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
+	# emacs
+	install -m0644 -D debian/git-core.emacsen-startup \
+	  '$(GIT)'-core/etc/emacs/site-start.d/50git-core.el
 	# bash completion
 	install -d -m0755 '$(GIT)'-core/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
