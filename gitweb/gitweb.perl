@@ -217,13 +217,6 @@ our %feature = (
 		'override' => 0,
 		'default' => ['tgz']},
 
-	# Enable text search, which will list the commits which match author,
-	# committer or commit text to a given string.  Enabled by default.
-	# Project specific override is not supported.
-	'search' => {
-		'override' => 0,
-		'default' => [1]},
-
 	# Enable grep search, which will list the files in currently selected
 	# tree containing the given string. Enabled by default. This can be
 	# potentially CPU-intensive, of course.
@@ -250,6 +243,20 @@ our %feature = (
 		'sub' => \&feature_pickaxe,
 		'override' => 0,
 		'default' => [1]},
+);
+
+our %global_feature = (
+	# feature => [ default options...] (array reference)
+	#
+	# For those features project specific override is not supported.
+	# Note that for backwards compatibility of existing gitweb
+	# configurations $feature{<feature>}{'default'} has preference.
+
+	# use gitweb_check_feature(<feature>) to check if <feature> is enabled
+
+	# Enable text search, which will list the commits which match author,
+	# committer or commit text to a given string.  Enabled by default.
+	'search' => [1],
 
 	# Make gitweb use an alternative format of the URLs which can be
 	# more readable and natural-looking: project name is embedded
@@ -259,16 +266,8 @@ our %feature = (
 	# generates links.
 
 	# To enable system wide have in $GITWEB_CONFIG
-	# $feature{'pathinfo'}{'default'} = [1];
-	# Project specific override is not supported.
-
-	# Note that you will need to change the default location of CSS,
-	# favicon, logo and possibly other files to an absolute URL. Also,
-	# if gitweb.cgi serves as your indexfile, you will need to force
-	# $my_uri to contain the script name in your $GITWEB_CONFIG.
-	'pathinfo' => {
-		'override' => 0,
-		'default' => [0]},
+	# $global_feature{'pathinfo'} = [1];
+	'pathinfo' => [0],
 
 	# Make gitweb consider projects in project root subdirectories
 	# to be forks of existing projects. Given project $projname.git,
@@ -279,11 +278,8 @@ our %feature = (
 	# to be listed after the main project.
 
 	# To enable system wide have in $GITWEB_CONFIG
-	# $feature{'forks'}{'default'} = [1];
-	# Project specific override is not supported.
-	'forks' => {
-		'override' => 0,
-		'default' => [0]},
+	# $global_feature{'forks'} = [1];
+	'forks' => [0],
 
 	# Insert custom links to the action bar of all project pages.
 	# This enables you mainly to link to third-party scripts integrating
@@ -298,12 +294,9 @@ our %feature = (
 	# hash base (hb gitweb parameter); %% expands to %.
 
 	# To enable system wide have in $GITWEB_CONFIG e.g.
-	# $feature{'actions'}{'default'} = [('graphiclog',
+	# $global_feature{'actions'} = [('graphiclog',
 	# 	'/git-browser/by-commit.html?r=%n', 'summary')];
-	# Project specific override is not supported.
-	'actions' => {
-		'override' => 0,
-		'default' => []},
+	'actions' => [],
 
 	# Allow gitweb scan project content tags described in ctags/
 	# of project repository, and display the popular Web 2.0-ish
@@ -317,16 +310,23 @@ our %feature = (
 	# a pretty tag cloud instead of just a list of tags.
 
 	# To enable system wide have in $GITWEB_CONFIG
-	# $feature{'ctags'}{'default'} = ['path_to_tag_script'];
+	# $global_feature{'ctags'} = ['path_to_tag_script'];
 	# Project specific override is not supported.
-	'ctags' => {
-		'override' => 0,
-		'default' => [0]},
+	'ctags' => [0],
 );
 
 sub gitweb_check_feature {
-	my ($name) = @_;
-	return unless exists $feature{$name};
+	my $name = shift;
+
+	# %feature has precedence over %global_feature for backward
+	# compatibility with pre-existing gitweb configuration setups
+	unless (exists $feature{$name}) {
+		if (exists $global_feature{$name}) {
+			return @{$global_feature{$name}};
+		}
+		return;
+	}
+
 	my ($sub, $override, @defaults) = (
 		$feature{$name}{'sub'},
 		$feature{$name}{'override'},
