@@ -54,7 +54,7 @@ sub colored {
 my $patch_mode;
 
 sub run_cmd_pipe {
-	if ($^O eq 'MSWin32') {
+	if ($^O eq 'MSWin32' || $^O eq 'msys') {
 		my @invalid = grep {m/[":*]/} @_;
 		die "$^O does not support: @invalid\n" if @invalid;
 		my @args = map { m/ /o ? "\"$_\"": $_ } @_;
@@ -406,9 +406,9 @@ sub list_and_choose {
 			if ($choice =~ s/^-//) {
 				$choose = 0;
 			}
-			# A range can be specified like 5-7
-			if ($choice =~ /^(\d+)-(\d+)$/) {
-				($bottom, $top) = ($1, $2);
+			# A range can be specified like 5-7 or 5-.
+			if ($choice =~ /^(\d+)-(\d*)$/) {
+				($bottom, $top) = ($1, length($2) ? $2 : 1 + @stuff);
 			}
 			elsif ($choice =~ /^\d+$/) {
 				$bottom = $top = $choice;
@@ -811,11 +811,16 @@ EOF
 }
 
 sub patch_update_cmd {
-	my @mods = grep { !($_->{BINARY}) } list_modified('file-only');
+	my @all_mods = list_modified('file-only');
+	my @mods = grep { !($_->{BINARY}) } @all_mods;
 	my @them;
 
 	if (!@mods) {
-		print STDERR "No changes.\n";
+		if (@all_mods) {
+			print STDERR "Only binary files changed.\n";
+		} else {
+			print STDERR "No changes.\n";
+		}
 		return 0;
 	}
 	if ($patch_mode) {

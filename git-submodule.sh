@@ -5,10 +5,11 @@
 # Copyright (c) 2007 Lars Hjemli
 
 USAGE="[--quiet] [--cached] \
-[add <repo> [-b branch]|status|init|update [-i|--init]|summary [-n|--summary-limit <n>] [<commit>]] \
-[--] [<path>...]"
+[add <repo> [-b branch] <path>]|[status|init|update [-i|--init]|summary [-n|--summary-limit <n>] [<commit>]] \
+[--] [<path>...]|[foreach <command>]|[sync [--] [<path>...]]"
 OPTIONS_SPEC=
 . git-sh-setup
+. git-parse-remote
 require_work_tree
 
 command=
@@ -27,27 +28,14 @@ say()
 	fi
 }
 
-# NEEDSWORK: identical function exists in get_repo_base in clone.sh
-get_repo_base() {
-	(
-		cd "`/bin/pwd`" &&
-		cd "$1" || cd "$1.git" &&
-		{
-			cd .git
-			pwd
-		}
-	) 2>/dev/null
-}
-
 # Resolve relative url by appending to parent's url
 resolve_relative_url ()
 {
-	branch="$(git symbolic-ref HEAD 2>/dev/null)"
-	remote="$(git config branch.${branch#refs/heads/}.remote)"
-	remote="${remote:-origin}"
+	remote=$(get_default_remote)
 	remoteurl=$(git config "remote.$remote.url") ||
 		die "remote ($remote) does not have a url defined in .git/config"
 	url="$1"
+	remoteurl=${remoteurl%/}
 	while test -n "$url"
 	do
 		case "$url" in
@@ -62,7 +50,16 @@ resolve_relative_url ()
 			break;;
 		esac
 	done
-	echo "$remoteurl/$url"
+	echo "$remoteurl/${url%/}"
+}
+
+#
+# Get submodule info for registered submodules
+# $@ = path to limit submodule list
+#
+module_list()
+{
+	git ls-files --stage -- "$@" | grep '^160000 '
 }
 
 #
@@ -115,7 +112,7 @@ module_clone()
 #
 # Add a new submodule to the working tree, .gitmodules and the index
 #
-# $@ = repo [path]
+# $@ = repo path
 #
 # optional branch is stored in global branch variable
 #
@@ -150,16 +147,27 @@ cmd_add()
 	repo=$1
 	path=$2
 
-	if test -z "$repo"; then
+	if test -z "$repo" -o -z "$path"; then
 		usage
 	fi
 
-	# Guess path from repo if not specified or strip trailing slashes
-	if test -z "$path"; then
-		path=$(echo "$repo" | sed -e 's|/*$||' -e 's|:*/*\.git$||' -e 's|.*[/:]||g')
-	else
-		path=$(echo "$path" | sed -e 's|/*$||')
-	fi
+	# assure repo is absolute or relative to parent
+	case "$repo" in
+	./*|../*)
+		# dereference source url relative to parent's url
+		realrepo=$(resolve_relative_url "$repo") || exit
+		;;
+	*:*|/*)
+		# absolute url
+		realrepo=$repo
+		;;
+	*)
+		die "repo URL: '$repo' must be absolute or begin with ./|../"
+	;;
+	esac
+
+	# strip trailing slashes from path
+	path=$(echo "$path" | sed -e 's|/*$||')
 
 	git ls-files --error-unmatch "$path" > /dev/null 2>&1 &&
 	die "'$path' already exists in the index"
@@ -173,24 +181,20 @@ cmd_add()
 		else
 			die "'$path' already exists and is not a valid git repo"
 		fi
-	else
+
 		case "$repo" in
 		./*|../*)
-			# dereference source url relative to parent's url
-			realrepo=$(resolve_relative_url "$repo") || exit
-			;;
+			url=$(resolve_relative_url "$repo") || exit
+		    ;;
 		*)
-			# Turn the source into an absolute path if
-			# it is local
-			if base=$(get_repo_base "$repo"); then
-				repo="$base"
-			fi
-			realrepo=$repo
+			url="$repo"
 			;;
 		esac
+		git config submodule."$path".url "$url"
+	else
 
 		module_clone "$path" "$realrepo" || exit
-		(unset GIT_DIR; cd "$path" && git checkout -q ${branch:+-b "$branch" "origin/$branch"}) ||
+		(unset GIT_DIR; cd "$path" && git checkout -f -q ${branch:+-b "$branch" "origin/$branch"}) ||
 		die "Unable to checkout submodule '$path'"
 	fi
 
@@ -201,6 +205,26 @@ cmd_add()
 	git config -f .gitmodules submodule."$path".url "$repo" &&
 	git add .gitmodules ||
 	die "Failed to register submodule '$path'"
+}
+
+#
+# Execute an arbitrary command sequence in each checked out
+# submodule
+#
+# $@ = command to execute
+#
+cmd_foreach()
+{
+	module_list |
+	while read mode sha1 stage path
+	do
+		if test -e "$path"/.git
+		then
+			say "Entering '$path'"
+			(cd "$path" && eval "$@") ||
+			die "Stopping at '$path'; script returned non-zero status."
+		fi
+	done
 }
 
 #
@@ -231,7 +255,7 @@ cmd_init()
 		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
+	module_list "$@" |
 	while read mode sha1 stage path
 	do
 		# Skip already registered paths
@@ -269,6 +293,7 @@ cmd_update()
 	do
 		case "$1" in
 		-q|--quiet)
+			shift
 			quiet=1
 			;;
 		-i|--init)
@@ -286,10 +311,9 @@ cmd_update()
 			break
 			;;
 		esac
-		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
+	module_list "$@" |
 	while read mode sha1 stage path
 	do
 		name=$(module_name "$path") || exit
@@ -316,8 +340,13 @@ cmd_update()
 
 		if test "$subsha1" != "$sha1"
 		then
+			force=
+			if test -z "$subsha1"
+			then
+				force="-f"
+			fi
 			(unset GIT_DIR; cd "$path" && git-fetch &&
-				git-checkout -q "$sha1") ||
+				git-checkout $force -q "$sha1") ||
 			die "Unable to checkout '$sha1' in submodule path '$path'"
 
 			say "Submodule path '$path': checked out '$sha1'"
@@ -395,7 +424,7 @@ cmd_summary() {
 	cd_to_toplevel
 	# Get modified modules cared by user
 	modules=$(git diff-index $cached --raw $head -- "$@" |
-		grep -e '^:160000' -e '^:[0-7]* 160000' |
+		egrep '^:([0-7]* )?160000' |
 		while read mod_src mod_dst sha1_src sha1_dst status name
 		do
 			# Always show modules deleted or type-changed (blob<->module)
@@ -409,7 +438,7 @@ cmd_summary() {
 	test -z "$modules" && return
 
 	git diff-index $cached --raw $head -- $modules |
-	grep -e '^:160000' -e '^:[0-7]* 160000' |
+	egrep '^:([0-7]* )?160000' |
 	cut -c2- |
 	while read mod_src mod_dst sha1_src sha1_dst status name
 	do
@@ -554,7 +583,7 @@ cmd_status()
 		shift
 	done
 
-	git ls-files --stage -- "$@" | grep '^160000 ' |
+	module_list "$@" |
 	while read mode sha1 stage path
 	do
 		name=$(module_name "$path") || exit
@@ -578,6 +607,58 @@ cmd_status()
 		fi
 	done
 }
+#
+# Sync remote urls for submodules
+# This makes the value for remote.$remote.url match the value
+# specified in .gitmodules.
+#
+cmd_sync()
+{
+	while test $# -ne 0
+	do
+		case "$1" in
+		-q|--quiet)
+			quiet=1
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		-*)
+			usage
+			;;
+		*)
+			break
+			;;
+		esac
+	done
+	cd_to_toplevel
+	module_list "$@" |
+	while read mode sha1 stage path
+	do
+		name=$(module_name "$path")
+		url=$(git config -f .gitmodules --get submodule."$name".url)
+
+		# Possibly a url relative to parent
+		case "$url" in
+		./*|../*)
+			url=$(resolve_relative_url "$url") || exit
+			;;
+		esac
+
+		if test -e "$path"/.git
+		then
+		(
+			unset GIT_DIR
+			cd "$path"
+			remote=$(get_default_remote)
+			say "Synchronizing submodule url for '$name'"
+			git config remote."$remote".url "$url"
+		)
+		fi
+	done
+}
 
 # This loop parses the command line arguments to find the
 # subcommand name to dispatch.  Parsing of the subcommand specific
@@ -588,7 +669,7 @@ cmd_status()
 while test $# != 0 && test -z "$command"
 do
 	case "$1" in
-	add | init | update | status | summary)
+	add | foreach | init | update | status | summary | sync)
 		command=$1
 		;;
 	-q|--quiet)

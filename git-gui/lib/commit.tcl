@@ -149,7 +149,9 @@ The rescan will be automatically started now.
 		_? {continue}
 		A? -
 		D? -
+		T_ -
 		M? {set files_ready 1}
+		_U -
 		U? {
 			error_popup [mc "Unmerged files cannot be committed.
 
@@ -166,7 +168,7 @@ File %s cannot be committed by this program.
 		}
 		}
 	}
-	if {!$files_ready && ![string match *merge $curType]} {
+	if {!$files_ready && ![string match *merge $curType] && ![is_enabled nocommit]} {
 		info_popup [mc "No changes to commit.
 
 You must stage at least 1 file before you can commit.
@@ -174,6 +176,8 @@ You must stage at least 1 file before you can commit.
 		unlock_index
 		return
 	}
+
+	if {[is_enabled nocommitmsg]} { do_quit 0 }
 
 	# -- A message is required.
 	#
@@ -209,6 +213,8 @@ A good commit message has the following format:
 	}
 	puts $msg_wt $msg
 	close $msg_wt
+
+	if {[is_enabled nocommit]} { do_quit 0 }
 
 	# -- Run the pre-commit hook.
 	#
@@ -408,7 +414,7 @@ A rescan will be automatically started now.
 		set ::GITGUI_BCK_exists 0
 	}
 
-	if {[is_enabled singlecommit]} do_quit
+	if {[is_enabled singlecommit]} { do_quit 0 }
 
 	# -- Update in memory status
 	#
@@ -428,6 +434,7 @@ A rescan will be automatically started now.
 		__ -
 		A_ -
 		M_ -
+		T_ -
 		D_ {
 			unset file_states($path)
 			catch {unset selected_paths($path)}

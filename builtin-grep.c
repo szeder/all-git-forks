@@ -295,6 +295,9 @@ static int external_grep(struct grep_opt *opt, const char **paths, int cached)
 		push_arg("-l");
 	if (opt->unmatch_name_only)
 		push_arg("-L");
+	if (opt->null_following_name)
+		/* in GNU grep git's "-z" translates to "-Z" */
+		push_arg("-Z");
 	if (opt->count)
 		push_arg("-c");
 	if (opt->post_context || opt->pre_context) {
@@ -427,33 +430,35 @@ static int grep_tree(struct grep_opt *opt, const char **paths,
 	struct name_entry entry;
 	char *down;
 	int tn_len = strlen(tree_name);
-	char *path_buf = xmalloc(PATH_MAX + tn_len + 100);
+	struct strbuf pathbuf;
+
+	strbuf_init(&pathbuf, PATH_MAX + tn_len);
 
 	if (tn_len) {
-		tn_len = sprintf(path_buf, "%s:", tree_name);
-		down = path_buf + tn_len;
-		strcat(down, base);
+		strbuf_add(&pathbuf, tree_name, tn_len);
+		strbuf_addch(&pathbuf, ':');
+		tn_len = pathbuf.len;
 	}
-	else {
-		down = path_buf;
-		strcpy(down, base);
-	}
-	len = strlen(path_buf);
+	strbuf_addstr(&pathbuf, base);
+	len = pathbuf.len;
 
 	while (tree_entry(tree, &entry)) {
-		strcpy(path_buf + len, entry.path);
+		int te_len = tree_entry_len(entry.path, entry.sha1);
+		pathbuf.len = len;
+		strbuf_add(&pathbuf, entry.path, te_len);
 
 		if (S_ISDIR(entry.mode))
 			/* Match "abc/" against pathspec to
 			 * decide if we want to descend into "abc"
 			 * directory.
 			 */
-			strcpy(path_buf + len + tree_entry_len(entry.path, entry.sha1), "/");
+			strbuf_addch(&pathbuf, '/');
 
+		down = pathbuf.buf + tn_len;
 		if (!pathspec_matches(paths, down))
 			;
 		else if (S_ISREG(entry.mode))
-			hit |= grep_sha1(opt, entry.sha1, path_buf, tn_len);
+			hit |= grep_sha1(opt, entry.sha1, pathbuf.buf, tn_len);
 		else if (S_ISDIR(entry.mode)) {
 			enum object_type type;
 			struct tree_desc sub;
@@ -469,6 +474,7 @@ static int grep_tree(struct grep_opt *opt, const char **paths,
 			free(data);
 		}
 	}
+	strbuf_release(&pathbuf);
 	return hit;
 }
 
@@ -495,7 +501,7 @@ static int grep_object(struct grep_opt *opt, const char **paths,
 }
 
 static const char builtin_grep_usage[] =
-"git-grep <option>* <rev>* [-e] <pattern> [<path>...]";
+"git grep <option>* [-e] <pattern> <rev>* [[--] <path>...]";
 
 static const char emsg_invalid_context_len[] =
 "%s: invalid context length argument";
@@ -594,6 +600,11 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		if (!strcmp("-L", arg) ||
 		    !strcmp("--files-without-match", arg)) {
 			opt.unmatch_name_only = 1;
+			continue;
+		}
+		if (!strcmp("-z", arg) ||
+		    !strcmp("--null", arg)) {
+			opt.null_following_name = 1;
 			continue;
 		}
 		if (!strcmp("-c", arg) ||
@@ -771,7 +782,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 			/* Make sure we do not get outside of paths */
 			for (i = 0; paths[i]; i++)
 				if (strncmp(prefix, paths[i], opt.prefix_length))
-					die("git-grep: cannot generate relative filenames containing '..'");
+					die("git grep: cannot generate relative filenames containing '..'");
 		}
 	}
 	else if (prefix) {
@@ -780,8 +791,11 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		paths[1] = NULL;
 	}
 
-	if (!list.nr)
+	if (!list.nr) {
+		if (!cached)
+			setup_work_tree();
 		return !grep_cache(&opt, paths, cached);
+	}
 
 	if (cached)
 		die("both --cached and trees are given.");

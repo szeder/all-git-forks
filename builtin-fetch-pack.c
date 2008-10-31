@@ -18,7 +18,7 @@ static struct fetch_pack_args args = {
 };
 
 static const char fetch_pack_usage[] =
-"git-fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
+"git fetch-pack [--all] [--quiet|-q] [--keep|-k] [--thin] [--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] [--no-progress] [-v] [<host>:]<directory> [<refs>...]";
 
 #define COMPLETE	(1U << 0)
 #define COMMON		(1U << 1)
@@ -540,7 +540,7 @@ static int get_pack(int xd[2], char **pack_lockfile)
 			*av++ = "--fix-thin";
 		if (args.lock_pack || unpack_limit) {
 			int s = sprintf(keep_arg,
-					"--keep=fetch-pack %d on ", getpid());
+					"--keep=fetch-pack %"PRIuMAX " on ", (uintmax_t) getpid());
 			if (gethostname(keep_arg + s, sizeof(keep_arg) - s))
 				strcpy(keep_arg + s, "localhost");
 			*av++ = keep_arg;
@@ -609,7 +609,7 @@ static struct ref *do_fetch_pack(int fd[2],
 			fprintf(stderr, "warning: no common commits\n");
 
 	if (get_pack(fd, pack_lockfile))
-		die("git-fetch-pack: fetch failed.");
+		die("git fetch-pack: fetch failed.");
 
  all_done:
 	return ref;
@@ -735,7 +735,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	conn = git_connect(fd, (char *)dest, args.uploadpack,
 			   args.verbose ? CONNECT_VERBOSE : 0);
 	if (conn) {
-		get_remote_heads(fd[0], &ref, 0, NULL, 0);
+		get_remote_heads(fd[0], &ref, 0, NULL, 0, NULL);
 
 		ref = fetch_pack(&args, fd, conn, ref, dest, nr_heads, heads, NULL);
 		close(fd[0]);
@@ -750,7 +750,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	if (!ret && nr_heads) {
 		/* If the heads to pull were given, we should have
 		 * consumed all of them by matching the remote.
-		 * Otherwise, 'git-fetch remote no-such-ref' would
+		 * Otherwise, 'git fetch remote no-such-ref' would
 		 * silently succeed without issuing an error.
 		 */
 		for (i = 0; i < nr_heads; i++)
@@ -813,7 +813,8 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 			  )
 			die("shallow file was changed during fetch");
 
-		fd = hold_lock_file_for_update(&lock, shallow, 1);
+		fd = hold_lock_file_for_update(&lock, shallow,
+					       LOCK_DIE_ON_ERROR);
 		if (!write_shallow_commits(fd, 0)) {
 			unlink(shallow);
 			rollback_lock_file(&lock);

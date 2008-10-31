@@ -1,7 +1,13 @@
 #!/bin/sh
 # Copyright (c) 2007, Nanako Shiraishi
 
-USAGE='[  | save | list | show | apply | clear | drop | pop | create ]'
+dashless=$(basename "$0" | sed -e 's/-/ /')
+USAGE="list [<options>]
+   or: $dashless (show | drop | pop ) [<stash>]
+   or: $dashless apply [--index] [<stash>]
+   or: $dashless branch <branchname> [<stash>]
+   or: $dashless [save [--keep-index] [<message>]]
+   or: $dashless clear"
 
 SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC=
@@ -33,6 +39,7 @@ clear_stash () {
 create_stash () {
 	stash_msg="$1"
 
+	git update-index -q --refresh
 	if no_changes
 	then
 		exit 0
@@ -93,8 +100,9 @@ save_stash () {
 		shift
 	esac
 
-	stash_msg="$1"
+	stash_msg="$*"
 
+	git update-index -q --refresh
 	if no_changes
 	then
 		echo 'No local changes to save'
@@ -136,16 +144,16 @@ show_stash () {
 	then
 		flags=--stat
 	fi
-	s=$(git rev-parse --revs-only --no-flags --default $ref_stash "$@")
 
-	w_commit=$(git rev-parse --verify "$s") &&
-	b_commit=$(git rev-parse --verify "$s^") &&
+	w_commit=$(git rev-parse --verify --default $ref_stash "$@") &&
+	b_commit=$(git rev-parse --verify "$w_commit^") &&
 	git diff $flags $b_commit $w_commit
 }
 
 apply_stash () {
+	git update-index -q --refresh &&
 	git diff-files --quiet --ignore-submodules ||
-		die 'Cannot restore on top of a dirty state'
+		die 'Cannot apply to a dirty working tree, please stage your changes'
 
 	unstash_index=
 	case "$1" in
@@ -160,7 +168,7 @@ apply_stash () {
 
 	# stash records the work tree, and is a merge between the
 	# base commit (first parent) and the index tree (second parent).
-	s=$(git rev-parse --revs-only --no-flags --default $ref_stash "$@") &&
+	s=$(git rev-parse --verify --default $ref_stash "$@") &&
 	w_tree=$(git rev-parse --verify "$s:") &&
 	b_tree=$(git rev-parse --verify "$s^1:") &&
 	i_tree=$(git rev-parse --verify "$s^2:") ||
@@ -220,7 +228,7 @@ drop_stash () {
 		shift
 	fi
 	# Verify supplied argument looks like a stash entry
-	s=$(git rev-parse --revs-only --no-flags "$@") &&
+	s=$(git rev-parse --verify "$@") &&
 	git rev-parse --verify "$s:"   > /dev/null 2>&1 &&
 	git rev-parse --verify "$s^1:" > /dev/null 2>&1 &&
 	git rev-parse --verify "$s^2:" > /dev/null 2>&1 ||
@@ -267,7 +275,7 @@ show)
 	;;
 save)
 	shift
-	save_stash "$*"
+	save_stash "$@"
 	;;
 apply)
 	shift

@@ -1,4 +1,5 @@
 #include "../git-compat-util.h"
+#include "win32.h"
 #include "../strbuf.h"
 
 unsigned int _CRT_fmode = _O_BINARY;
@@ -31,12 +32,6 @@ static inline time_t filetime_to_time_t(const FILETIME *ft)
 	return (time_t)winTime;
 }
 
-static inline size_t size_to_blocks(size_t s)
-{
-	return (s+511)/512;
-}
-
-extern int _getdrive( void );
 /* We keep the do_lstat code in a separate function to avoid recursion.
  * When a path ends with a slash, the stat will fail with ENOENT. In
  * this case, we strip the trailing slashes and stat again.
@@ -45,45 +40,18 @@ static int do_lstat(const char *file_name, struct stat *buf)
 {
 	WIN32_FILE_ATTRIBUTE_DATA fdata;
 
-	if (GetFileAttributesExA(file_name, GetFileExInfoStandard, &fdata)) {
-		int fMode = S_IREAD;
-		if (fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			fMode |= S_IFDIR;
-		else
-			fMode |= S_IFREG;
-		if (!(fdata.dwFileAttributes & FILE_ATTRIBUTE_READONLY))
-			fMode |= S_IWRITE;
-
+	if (!(errno = get_file_attr(file_name, &fdata))) {
 		buf->st_ino = 0;
 		buf->st_gid = 0;
 		buf->st_uid = 0;
-		buf->st_mode = fMode;
+		buf->st_nlink = 1;
+		buf->st_mode = file_attr_to_st_mode(fdata.dwFileAttributes);
 		buf->st_size = fdata.nFileSizeLow; /* Can't use nFileSizeHigh, since it's not a stat64 */
-		buf->st_blocks = size_to_blocks(buf->st_size);
-		buf->st_dev = _getdrive() - 1;
+		buf->st_dev = buf->st_rdev = 0; /* not used by Git */
 		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
-		errno = 0;
 		return 0;
-	}
-
-	switch (GetLastError()) {
-	case ERROR_ACCESS_DENIED:
-	case ERROR_SHARING_VIOLATION:
-	case ERROR_LOCK_VIOLATION:
-	case ERROR_SHARING_BUFFER_EXCEEDED:
-		errno = EACCES;
-		break;
-	case ERROR_BUFFER_OVERFLOW:
-		errno = ENAMETOOLONG;
-		break;
-	case ERROR_NOT_ENOUGH_MEMORY:
-		errno = ENOMEM;
-		break;
-	default:
-		errno = ENOENT;
-		break;
 	}
 	return -1;
 }
@@ -94,7 +62,7 @@ static int do_lstat(const char *file_name, struct stat *buf)
  * complete. Note that Git stat()s are redirected to mingw_lstat()
  * too, since Windows doesn't really handle symlinks that well.
  */
-int mingw_lstat(const char *file_name, struct mingw_stat *buf)
+int mingw_lstat(const char *file_name, struct stat *buf)
 {
 	int namelen;
 	static char alt_name[PATH_MAX];
@@ -122,8 +90,7 @@ int mingw_lstat(const char *file_name, struct mingw_stat *buf)
 }
 
 #undef fstat
-#undef stat
-int mingw_fstat(int fd, struct mingw_stat *buf)
+int mingw_fstat(int fd, struct stat *buf)
 {
 	HANDLE fh = (HANDLE)_get_osfhandle(fd);
 	BY_HANDLE_FILE_INFORMATION fdata;
@@ -133,39 +100,17 @@ int mingw_fstat(int fd, struct mingw_stat *buf)
 		return -1;
 	}
 	/* direct non-file handles to MS's fstat() */
-	if (GetFileType(fh) != FILE_TYPE_DISK) {
-		struct stat st;
-		if (fstat(fd, &st))
-			return -1;
-		buf->st_ino = st.st_ino;
-		buf->st_gid = st.st_gid;
-		buf->st_uid = st.st_uid;
-		buf->st_mode = st.st_mode;
-		buf->st_size = st.st_size;
-		buf->st_blocks = size_to_blocks(buf->st_size);
-		buf->st_dev = st.st_dev;
-		buf->st_atime = st.st_atime;
-		buf->st_mtime = st.st_mtime;
-		buf->st_ctime = st.st_ctime;
-		return 0;
-	}
+	if (GetFileType(fh) != FILE_TYPE_DISK)
+		return fstat(fd, buf);
 
 	if (GetFileInformationByHandle(fh, &fdata)) {
-		int fMode = S_IREAD;
-		if (fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-			fMode |= S_IFDIR;
-		else
-			fMode |= S_IFREG;
-		if (!(fdata.dwFileAttributes & FILE_ATTRIBUTE_READONLY))
-			fMode |= S_IWRITE;
-
 		buf->st_ino = 0;
 		buf->st_gid = 0;
 		buf->st_uid = 0;
-		buf->st_mode = fMode;
+		buf->st_nlink = 1;
+		buf->st_mode = file_attr_to_st_mode(fdata.dwFileAttributes);
 		buf->st_size = fdata.nFileSizeLow; /* Can't use nFileSizeHigh, since it's not a stat64 */
-		buf->st_blocks = size_to_blocks(buf->st_size);
-		buf->st_dev = _getdrive() - 1;
+		buf->st_dev = buf->st_rdev = 0; /* not used by Git */
 		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
@@ -283,8 +228,13 @@ int poll(struct pollfd *ufds, unsigned int nfds, int timeout)
 {
 	int i, pending;
 
-	if (timeout != -1)
+	if (timeout >= 0) {
+		if (nfds == 0) {
+			Sleep(timeout);
+			return 0;
+		}
 		return errno = EINVAL, error("poll timeout not supported");
+	}
 
 	/* When there is only one fd to wait for, then we pretend that
 	 * input is available and let the actual wait happen when the
@@ -536,7 +486,8 @@ static char *lookup_prog(const char *dir, const char *cmd, int isexe, int exe_on
 		return xstrdup(path);
 	path[strlen(path)-4] = '\0';
 	if ((!exe_only || isexe) && access(path, F_OK) == 0)
-		return xstrdup(path);
+		if (!(GetFileAttributes(path) & FILE_ATTRIBUTE_DIRECTORY))
+			return xstrdup(path);
 	return NULL;
 }
 
@@ -1016,4 +967,26 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 	sig_handler_t old = timer_fn;
 	timer_fn = handler;
 	return old;
+}
+
+static const char *make_backslash_path(const char *path)
+{
+	static char buf[PATH_MAX + 1];
+	char *c;
+
+	if (strlcpy(buf, path, PATH_MAX) >= PATH_MAX)
+		die("Too long path: %.*s", 60, path);
+
+	for (c = buf; *c; c++) {
+		if (*c == '/')
+			*c = '\\';
+	}
+	return buf;
+}
+
+void mingw_open_html(const char *unixpath)
+{
+	const char *htmlpath = make_backslash_path(unixpath);
+	printf("Launching default browser to display HTML ...\n");
+	ShellExecute(NULL, "open", htmlpath, NULL, "\\", 0);
 }

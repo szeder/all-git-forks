@@ -17,7 +17,7 @@
 #define COUNTED		(1u<<16)
 
 static const char rev_list_usage[] =
-"git-rev-list [OPTION] <commit-id>... [ -- paths... ]\n"
+"git rev-list [OPTION] <commit-id>... [ -- paths... ]\n"
 "  limiting output:\n"
 "    --max-count=nr\n"
 "    --max-age=epoch\n"
@@ -107,8 +107,7 @@ static void show_commit(struct commit *commit)
 		putchar('\n');
 
 	if (revs.verbose_header && commit->buffer) {
-		struct strbuf buf;
-		strbuf_init(&buf, 0);
+		struct strbuf buf = STRBUF_INIT;
 		pretty_print_commit(revs.commit_format, commit,
 				    &buf, revs.abbrev, NULL, NULL,
 				    revs.date_mode, 0);
@@ -178,7 +177,7 @@ static void finish_object(struct object_array_entry *p)
 static void show_object(struct object_array_entry *p)
 {
 	/* An object with name "foo\n0000000..." can be used to
-	 * confuse downstream git-pack-objects very badly.
+	 * confuse downstream "git pack-objects" very badly.
 	 */
 	const char *ep = strchr(p->name, '\n');
 
@@ -590,6 +589,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	revs.commit_format = CMIT_FMT_UNSPECIFIED;
 	argc = setup_revisions(argc, argv, &revs, NULL);
 
+	quiet = DIFF_OPT_TST(&revs.diffopt, QUIET);
 	for (i = 1 ; i < argc; i++) {
 		const char *arg = argv[i];
 
@@ -621,10 +621,6 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			read_revisions_from_stdin(&revs);
 			continue;
 		}
-		if (!strcmp(arg, "--quiet")) {
-			quiet = 1;
-			continue;
-		}
 		usage(rev_list_usage);
 
 	}
@@ -648,7 +644,8 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	    revs.diff)
 		usage(rev_list_usage);
 
-	save_commit_buffer = revs.verbose_header || revs.grep_filter;
+	save_commit_buffer = revs.verbose_header ||
+		revs.grep_filter.pattern_list;
 	if (bisect_list)
 		revs.limited = 1;
 

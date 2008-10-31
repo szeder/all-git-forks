@@ -14,7 +14,7 @@
 #include <expat.h>
 
 static const char http_push_usage[] =
-"git-http-push [--all] [--dry-run] [--force] [--verbose] <remote> [<head>...]\n";
+"git http-push [--all] [--dry-run] [--force] [--verbose] <remote> [<head>...]\n";
 
 #ifndef XML_STATUS_OK
 enum XML_Status {
@@ -126,7 +126,7 @@ struct transfer_request
 	char errorstr[CURL_ERROR_SIZE];
 	long http_code;
 	unsigned char real_sha1[20];
-	SHA_CTX c;
+	git_SHA_CTX c;
 	z_stream stream;
 	int zret;
 	int rename;
@@ -209,7 +209,7 @@ static size_t fwrite_sha1_file(void *ptr, size_t eltsize, size_t nmemb,
 		request->stream.next_out = expn;
 		request->stream.avail_out = sizeof(expn);
 		request->zret = inflate(&request->stream, Z_SYNC_FLUSH);
-		SHA1_Update(&request->c, expn,
+		git_SHA1_Update(&request->c, expn,
 			    sizeof(expn) - request->stream.avail_out);
 	} while (request->stream.avail_in && request->zret == Z_OK);
 	data_received++;
@@ -270,7 +270,7 @@ static void start_fetch_loose(struct transfer_request *request)
 
 	inflateInit(&request->stream);
 
-	SHA1_Init(&request->c);
+	git_SHA1_Init(&request->c);
 
 	url = xmalloc(strlen(remote->url) + 50);
 	request->url = xmalloc(strlen(remote->url) + 50);
@@ -310,7 +310,7 @@ static void start_fetch_loose(struct transfer_request *request)
 	if (prev_read == -1) {
 		memset(&request->stream, 0, sizeof(request->stream));
 		inflateInit(&request->stream);
-		SHA1_Init(&request->c);
+		git_SHA1_Init(&request->c);
 		if (prev_posn>0) {
 			prev_posn = 0;
 			lseek(request->local_fileno, 0, SEEK_SET);
@@ -742,7 +742,7 @@ static void finish_request(struct transfer_request *request)
 				fprintf(stderr, "Warning: requested range invalid; we may already have all the data.\n");
 
 			inflateEnd(&request->stream);
-			SHA1_Final(request->real_sha1, &request->c);
+			git_SHA1_Final(request->real_sha1, &request->c);
 			if (request->zret != Z_STREAM_END) {
 				unlink(request->tmpfile);
 			} else if (hashcmp(request->obj->sha1, request->real_sha1)) {
@@ -1780,7 +1780,7 @@ static void one_remote_ref(char *refname)
 	struct ref *ref;
 	struct object *obj;
 
-	ref = alloc_ref_from_str(refname);
+	ref = alloc_ref(refname);
 
 	if (http_fetch_ref(remote->url, ref) != 0) {
 		fprintf(stderr,
@@ -1887,7 +1887,7 @@ static void add_remote_info_ref(struct remote_ls_ctx *ls)
 	char *ref_info;
 	struct ref *ref;
 
-	ref = alloc_ref_from_str(ls->dentry_name);
+	ref = alloc_ref(ls->dentry_name);
 
 	if (http_fetch_ref(remote->url, ref) != 0) {
 		fprintf(stderr,
@@ -2237,7 +2237,7 @@ int main(int argc, char **argv)
 	no_pragma_header = curl_slist_append(no_pragma_header, "Pragma:");
 
 	if (remote->url && remote->url[strlen(remote->url)-1] != '/') {
-		rewritten_url = malloc(strlen(remote->url)+2);
+		rewritten_url = xmalloc(strlen(remote->url)+2);
 		strcpy(rewritten_url, remote->url);
 		strcat(rewritten_url, "/");
 		remote->url = rewritten_url;

@@ -13,9 +13,9 @@
  */
 
 static const char reflog_expire_usage[] =
-"git-reflog (show|expire) [--verbose] [--dry-run] [--stale-fix] [--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...";
+"git reflog (show|expire) [--verbose] [--dry-run] [--stale-fix] [--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...";
 static const char reflog_delete_usage[] =
-"git-reflog delete [--verbose] [--dry-run] [--rewrite] [--updateref] <refs>...";
+"git reflog delete [--verbose] [--dry-run] [--rewrite] [--updateref] <refs>...";
 
 static unsigned long default_reflog_expire;
 static unsigned long default_reflog_expire_unreachable;
@@ -540,11 +540,11 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 		free(collected.e);
 	}
 
-	while (i < argc) {
-		const char *ref = argv[i++];
+	for (; i < argc; i++) {
+		char *ref;
 		unsigned char sha1[20];
-		if (!resolve_ref(ref, sha1, 1, NULL)) {
-			status |= error("%s points nowhere!", ref);
+		if (!dwim_log(argv[i], strlen(argv[i]), sha1, &ref)) {
+			status |= error("%s points nowhere!", argv[i]);
 			continue;
 		}
 		set_reflog_expiry_param(&cb, explicit_expiry, ref);
@@ -604,8 +604,8 @@ static int cmd_reflog_delete(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 
-		if (!dwim_ref(argv[i], spec - argv[i], sha1, &ref)) {
-			status |= error("%s points nowhere!", argv[i]);
+		if (!dwim_log(argv[i], spec - argv[i], sha1, &ref)) {
+			status |= error("no reflog for '%s'", argv[i]);
 			continue;
 		}
 
@@ -630,7 +630,7 @@ static int cmd_reflog_delete(int argc, const char **argv, const char *prefix)
  */
 
 static const char reflog_usage[] =
-"git-reflog (expire | ...)";
+"git reflog (expire | ...)";
 
 int cmd_reflog(int argc, const char **argv, const char *prefix)
 {

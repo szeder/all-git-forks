@@ -110,9 +110,7 @@ const char *prefix_path(const char *prefix, int len, const char *path)
 		if (strncmp(sanitized, work_tree, len) ||
 		    (sanitized[len] != '\0' && sanitized[len] != '/')) {
 		error_out:
-			error("'%s' is outside repository", orig);
-			free(sanitized);
-			return NULL;
+			die("'%s' is outside repository", orig);
 		}
 		if (sanitized[len] == '/')
 			len++;
@@ -216,10 +214,7 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	prefixlen = prefix ? strlen(prefix) : 0;
 	while (*src) {
 		const char *p = prefix_path(prefix, prefixlen, *src);
-		if (p)
-			*(dst++) = p;
-		else
-			exit(128); /* error message already given */
+		*(dst++) = p;
 		src++;
 	}
 	*dst = NULL;
@@ -581,6 +576,8 @@ const char *setup_git_directory(void)
 		if (retval && chdir(retval))
 			die ("Could not jump back into original cwd");
 		rel = get_relative_cwd(buffer, PATH_MAX, get_git_work_tree());
+		if (rel && *rel && chdir(get_git_work_tree()))
+			die ("Could not jump to working directory");
 		return rel && *rel ? strcat(rel, "/") : NULL;
 	}
 

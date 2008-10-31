@@ -13,7 +13,7 @@ SYNOPSIS
 	[--msg-filter <command>] [--commit-filter <command>]
 	[--tag-name-filter <command>] [--subdirectory-filter <directory>]
 	[--original <namespace>] [-d <directory>] [-f | --force]
-	[<rev-list options>...]
+	[--] [<rev-list options>...]
 
 DESCRIPTION
 -----------
@@ -36,7 +36,9 @@ the objects and will not converge with the original branch.  You will not
 be able to easily push and distribute the rewritten branch on top of the
 original branch.  Please do not use this command if you do not know the
 full implications, and avoid using it anyway, if a simple single commit
-would suffice to fix your problem.
+would suffice to fix your problem.  (See the "RECOVERING FROM UPSTREAM
+REBASE" section in linkgit:git-rebase[1] for further information about
+rewriting published history.)
 
 Always verify that the rewritten version is correct: The original refs,
 if different from the rewritten ones, will be stored in the namespace
@@ -167,11 +169,11 @@ to other tags will be rewritten to point to the underlying commit.
 	directory or when there are already refs starting with
 	'refs/original/', unless forced.
 
-<rev-list-options>::
-	When options are given after the new branch name, they will
-	be passed to 'git-rev-list'.  Only commits in the resulting
-	output will be filtered, although the filtered commits can still
-	reference parents which are outside of that set.
+<rev-list options>...::
+	Arguments for 'git-rev-list'.  All positive refs included by
+	these options are rewritten.  You may also specify options
+	such as '--all', but you must use '--' to separate them from
+	the 'git-filter-branch' options.
 
 
 Examples
@@ -191,10 +193,21 @@ Thus you may instead want to use `rm -f filename` as the script.
 A significantly faster version:
 
 --------------------------------------------------------------------------
-git filter-branch --index-filter 'git update-index --remove filename' HEAD
+git filter-branch --index-filter 'git rm --cached filename' HEAD
 --------------------------------------------------------------------------
 
 Now, you will get the rewritten history saved in HEAD.
+
+To rewrite the repository to look as if `foodir/` had been its project
+root, and discard all other history:
+
+-------------------------------------------------------
+git filter-branch --subdirectory-filter foodir -- --all
+-------------------------------------------------------
+
+Thus you can, e.g., turn a library subdirectory into a repository of
+its own.  Note the `\--` that separates 'filter-branch' options from
+revision options, and the `\--all` to rewrite all branches and tags.
 
 To set a commit (which typically is at the tip of another
 history) to be the parent of the current initial commit, in

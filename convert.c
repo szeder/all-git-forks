@@ -61,6 +61,10 @@ static void gather_stats(const char *buf, unsigned long size, struct text_stat *
 		else
 			stats->printable++;
 	}
+
+	/* If file ends with EOF then don't count this EOF as non-printable. */
+	if (size >= 1 && buf[size-1] == '\032')
+		stats->nonprintable--;
 }
 
 /*
@@ -277,7 +281,7 @@ static int apply_filter(const char *path, const char *src, size_t len,
 	 * (child --> cmd) --> us
 	 */
 	int ret = 1;
-	struct strbuf nbuf;
+	struct strbuf nbuf = STRBUF_INIT;
 	struct async async;
 	struct filter_params params;
 
@@ -295,7 +299,6 @@ static int apply_filter(const char *path, const char *src, size_t len,
 	if (start_async(&async))
 		return 0;	/* error was already reported */
 
-	strbuf_init(&nbuf, 0);
 	if (strbuf_read(&nbuf, async.out, len) < 0) {
 		error("read from external filter %s failed", cmd);
 		ret = 0;

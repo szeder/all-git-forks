@@ -159,19 +159,19 @@ test_expect_success 'stop on conflicting pick' '
 	git tag new-branch1 &&
 	test_must_fail git rebase -i master &&
 	test "$(git rev-parse HEAD~3)" = "$(git rev-parse master)" &&
-	test_cmp expect .git/.dotest-merge/patch &&
+	test_cmp expect .git/rebase-merge/patch &&
 	test_cmp expect2 file1 &&
-	test "$(git-diff --name-status |
+	test "$(git diff --name-status |
 		sed -n -e "/^U/s/^U[^a-z]*//p")" = file1 &&
-	test 4 = $(grep -v "^#" < .git/.dotest-merge/done | wc -l) &&
-	test 0 = $(grep -c "^[^#]" < .git/.dotest-merge/git-rebase-todo)
+	test 4 = $(grep -v "^#" < .git/rebase-merge/done | wc -l) &&
+	test 0 = $(grep -c "^[^#]" < .git/rebase-merge/git-rebase-todo)
 '
 
 test_expect_success 'abort' '
 	git rebase --abort &&
 	test $(git rev-parse new-branch1) = $(git rev-parse HEAD) &&
 	test "$(git symbolic-ref -q HEAD)" = "refs/heads/branch1" &&
-	! test -d .git/.dotest-merge
+	! test -d .git/rebase-merge
 '
 
 test_expect_success 'retain authorship' '
@@ -202,6 +202,9 @@ test_expect_success 'retain authorship when squashing' '
 test_expect_success '-p handles "no changes" gracefully' '
 	HEAD=$(git rev-parse HEAD) &&
 	git rebase -i -p HEAD^ &&
+	git update-index --refresh &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD -- &&
 	test $HEAD = $(git rev-parse HEAD)
 '
 
@@ -235,6 +238,9 @@ test_expect_success 'preserve merges with -p' '
 	git checkout -b to-be-rebased &&
 	test_tick &&
 	git rebase -i -p --onto branch1 master &&
+	git update-index --refresh &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD -- &&
 	test $(git rev-parse HEAD~6) = $(git rev-parse branch1) &&
 	test $(git rev-parse HEAD~4^2) = $(git rev-parse to-be-preserved) &&
 	test $(git rev-parse HEAD^^2^) = $(git rev-parse HEAD^^^) &&
@@ -242,6 +248,18 @@ test_expect_success 'preserve merges with -p' '
 	test $(git show HEAD~3:file1) = C &&
 	test $(git show HEAD:file1) = E &&
 	test $(git show HEAD:unrelated-file) = 1
+'
+
+test_expect_success 'edit ancestor with -p' '
+	FAKE_LINES="1 edit 2 3 4" git rebase -i -p HEAD~3 &&
+	echo 2 > unrelated-file &&
+	test_tick &&
+	git commit -m L2-modified --amend unrelated-file &&
+	git rebase --continue &&
+	git update-index --refresh &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD -- &&
+	test $(git show HEAD:unrelated-file) = 2
 '
 
 test_expect_success '--continue tries to commit' '
@@ -398,6 +416,17 @@ test_expect_success 'rebase with a file named HEAD in worktree' '
 
 	FAKE_LINES="1 squash 2" git rebase -i to-be-rebased &&
 	test "$(git show -s --pretty=format:%an)" = "Squashed Away"
+
+'
+
+test_expect_success 'do "noop" when there is nothing to cherry-pick' '
+
+	git checkout -b branch4 HEAD &&
+	GIT_EDITOR=: git commit --amend \
+		--author="Somebody else <somebody@else.com>" 
+	test $(git rev-parse branch3) != $(git rev-parse branch4) &&
+	git rebase -i branch3 &&
+	test $(git rev-parse branch3) = $(git rev-parse branch4)
 
 '
 

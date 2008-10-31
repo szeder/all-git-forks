@@ -97,27 +97,27 @@ test_atom tag contents 'Tagging at 1151939927
 '
 
 test_expect_success 'Check invalid atoms names are errors' '
-	test_must_fail git-for-each-ref --format="%(INVALID)" refs/heads
+	test_must_fail git for-each-ref --format="%(INVALID)" refs/heads
 '
 
 test_expect_success 'Check format specifiers are ignored in naming date atoms' '
-	git-for-each-ref --format="%(authordate)" refs/heads &&
-	git-for-each-ref --format="%(authordate:default) %(authordate)" refs/heads &&
-	git-for-each-ref --format="%(authordate) %(authordate:default)" refs/heads &&
-	git-for-each-ref --format="%(authordate:default) %(authordate:default)" refs/heads
+	git for-each-ref --format="%(authordate)" refs/heads &&
+	git for-each-ref --format="%(authordate:default) %(authordate)" refs/heads &&
+	git for-each-ref --format="%(authordate) %(authordate:default)" refs/heads &&
+	git for-each-ref --format="%(authordate:default) %(authordate:default)" refs/heads
 '
 
 test_expect_success 'Check valid format specifiers for date fields' '
-	git-for-each-ref --format="%(authordate:default)" refs/heads &&
-	git-for-each-ref --format="%(authordate:relative)" refs/heads &&
-	git-for-each-ref --format="%(authordate:short)" refs/heads &&
-	git-for-each-ref --format="%(authordate:local)" refs/heads &&
-	git-for-each-ref --format="%(authordate:iso8601)" refs/heads &&
-	git-for-each-ref --format="%(authordate:rfc2822)" refs/heads
+	git for-each-ref --format="%(authordate:default)" refs/heads &&
+	git for-each-ref --format="%(authordate:relative)" refs/heads &&
+	git for-each-ref --format="%(authordate:short)" refs/heads &&
+	git for-each-ref --format="%(authordate:local)" refs/heads &&
+	git for-each-ref --format="%(authordate:iso8601)" refs/heads &&
+	git for-each-ref --format="%(authordate:rfc2822)" refs/heads
 '
 
 test_expect_success 'Check invalid format specifiers are errors' '
-	test_must_fail git-for-each-ref --format="%(authordate:INVALID)" refs/heads
+	test_must_fail git for-each-ref --format="%(authordate:INVALID)" refs/heads
 '
 
 cat >expected <<\EOF
@@ -207,7 +207,7 @@ refs/tags/testtag
 EOF
 
 test_expect_success 'Verify ascending sort' '
-	git-for-each-ref --format="%(refname)" --sort=refname >actual &&
+	git for-each-ref --format="%(refname)" --sort=refname >actual &&
 	test_cmp expected actual
 '
 
@@ -218,7 +218,7 @@ refs/heads/master
 EOF
 
 test_expect_success 'Verify descending sort' '
-	git-for-each-ref --format="%(refname)" --sort=-refname >actual &&
+	git for-each-ref --format="%(refname)" --sort=-refname >actual &&
 	test_cmp expected actual
 '
 
@@ -261,5 +261,59 @@ for i in "--perl --shell" "-s --python" "--python --tcl" "--tcl --perl"; do
 		esac)
 	"
 done
+
+cat >expected <<\EOF
+master
+testtag
+EOF
+
+test_expect_success 'Check short refname format' '
+	(git for-each-ref --format="%(refname:short)" refs/heads &&
+	git for-each-ref --format="%(refname:short)" refs/tags) >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'Check for invalid refname format' '
+	test_must_fail git for-each-ref --format="%(refname:INVALID)"
+'
+
+cat >expected <<\EOF
+heads/master
+master
+EOF
+
+test_expect_success 'Check ambiguous head and tag refs' '
+	git checkout -b newtag &&
+	echo "Using $datestamp" > one &&
+	git add one &&
+	git commit -m "Branch" &&
+	setdate_and_increment &&
+	git tag -m "Tagging at $datestamp" master &&
+	git for-each-ref --format "%(refname:short)" refs/heads/master refs/tags/master >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<\EOF
+heads/ambiguous
+ambiguous
+EOF
+
+test_expect_success 'Check ambiguous head and tag refs II' '
+	git checkout master &&
+	git tag ambiguous testtag^0 &&
+	git branch ambiguous testtag^0 &&
+	git for-each-ref --format "%(refname:short)" refs/heads/ambiguous refs/tags/ambiguous >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'an unusual tag with an incomplete line' '
+
+	git tag -m "bogo" bogo &&
+	bogo=$(git cat-file tag bogo) &&
+	bogo=$(printf "%s" "$bogo" | git mktag) &&
+	git tag -f bogo "$bogo" &&
+	git for-each-ref --format "%(body)" refs/tags/bogo
+
+'
 
 test_done

@@ -2,6 +2,19 @@
 #include "grep.h"
 #include "xdiff-interface.h"
 
+void append_header_grep_pattern(struct grep_opt *opt, enum grep_header_field field, const char *pat)
+{
+	struct grep_pat *p = xcalloc(1, sizeof(*p));
+	p->pattern = pat;
+	p->origin = "header";
+	p->no = 0;
+	p->token = GREP_PATTERN_HEAD;
+	p->field = field;
+	*opt->pattern_tail = p;
+	opt->pattern_tail = &p->next;
+	p->next = NULL;
+}
+
 void append_grep_pattern(struct grep_opt *opt, const char *pat,
 			 const char *origin, int no, enum grep_pat_token t)
 {
@@ -226,11 +239,18 @@ static int word_char(char ch)
 static void show_line(struct grep_opt *opt, const char *bol, const char *eol,
 		      const char *name, unsigned lno, char sign)
 {
+	if (opt->null_following_name)
+		sign = '\0';
 	if (opt->pathname)
 		printf("%s%c", name, sign);
 	if (opt->linenum)
 		printf("%d%c", lno, sign);
 	printf("%.*s\n", (int)(eol-bol), bol);
+}
+
+static void show_name(struct grep_opt *opt, const char *name)
+{
+	printf("%s%c", name, opt->null_following_name ? '\0' : '\n');
 }
 
 static int fixmatch(const char *pattern, char *line, regmatch_t *match)
@@ -247,15 +267,52 @@ static int fixmatch(const char *pattern, char *line, regmatch_t *match)
 	}
 }
 
+static int strip_timestamp(char *bol, char **eol_p)
+{
+	char *eol = *eol_p;
+	int ch;
+
+	while (bol < --eol) {
+		if (*eol != '>')
+			continue;
+		*eol_p = ++eol;
+		ch = *eol;
+		*eol = '\0';
+		return ch;
+	}
+	return 0;
+}
+
+static struct {
+	const char *field;
+	size_t len;
+} header_field[] = {
+	{ "author ", 7 },
+	{ "committer ", 10 },
+};
+
 static int match_one_pattern(struct grep_opt *opt, struct grep_pat *p, char *bol, char *eol, enum grep_context ctx)
 {
 	int hit = 0;
 	int at_true_bol = 1;
+	int saved_ch = 0;
 	regmatch_t pmatch[10];
 
 	if ((p->token != GREP_PATTERN) &&
 	    ((p->token == GREP_PATTERN_HEAD) != (ctx == GREP_CONTEXT_HEAD)))
 		return 0;
+
+	if (p->token == GREP_PATTERN_HEAD) {
+		const char *field;
+		size_t len;
+		assert(p->field < ARRAY_SIZE(header_field));
+		field = header_field[p->field].field;
+		len = header_field[p->field].len;
+		if (strncmp(bol, field, len))
+			return 0;
+		bol += len;
+		saved_ch = strip_timestamp(bol, &eol);
+	}
 
  again:
 	if (!opt->fixed) {
@@ -298,6 +355,8 @@ static int match_one_pattern(struct grep_opt *opt, struct grep_pat *p, char *bol
 			goto again;
 		}
 	}
+	if (p->token == GREP_PATTERN_HEAD && saved_ch)
+		*eol = saved_ch;
 	return hit;
 }
 
@@ -437,7 +496,7 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 				return 1;
 			}
 			if (opt->name_only) {
-				printf("%s\n", name);
+				show_name(opt, name);
 				return 1;
 			}
 			/* Hit at this line.  If we haven't shown the
@@ -503,7 +562,7 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 		return 0;
 	if (opt->unmatch_name_only) {
 		/* We did not see any hit, so we want to show this */
-		printf("%s\n", name);
+		show_name(opt, name);
 		return 1;
 	}
 
@@ -513,7 +572,8 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 	 * make it another option?  For now suppress them.
 	 */
 	if (opt->count && count)
-		printf("%s:%u\n", name, count);
+		printf("%s%c%u\n", name,
+		       opt->null_following_name ? '\0' : ':', count);
 	return !!last_hit;
 }
 

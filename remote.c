@@ -69,7 +69,7 @@ static const char *alias_url(const char *url)
 	if (!longest)
 		return url;
 
-	ret = malloc(rewrite[longest_i]->baselen +
+	ret = xmalloc(rewrite[longest_i]->baselen +
 		     (strlen(url) - longest->len) + 1);
 	strcpy(ret, rewrite[longest_i]->base);
 	strcpy(ret + rewrite[longest_i]->baselen, url + longest->len);
@@ -152,7 +152,7 @@ static struct branch *make_branch(const char *name, int len)
 		ret->name = xstrndup(name, len);
 	else
 		ret->name = xstrdup(name);
-	refname = malloc(strlen(name) + strlen("refs/heads/") + 1);
+	refname = xmalloc(strlen(name) + strlen("refs/heads/") + 1);
 	strcpy(refname, "refs/heads/");
 	strcpy(refname + strlen("refs/heads/"), ret->name);
 	ret->refname = refname;
@@ -245,7 +245,7 @@ static void read_branches_file(struct remote *remote)
 {
 	const char *slash = strchr(remote->name, '/');
 	char *frag;
-	struct strbuf branch;
+	struct strbuf branch = STRBUF_INIT;
 	int n = slash ? slash - remote->name : 1000;
 	FILE *f = fopen(git_path("branches/%.*s", n, remote->name), "r");
 	char *s, *p;
@@ -283,7 +283,6 @@ static void read_branches_file(struct remote *remote)
 	 * #branch specified.  The "master" (or specified) branch is
 	 * fetched and stored in the local branch of the same name.
 	 */
-	strbuf_init(&branch, 0);
 	frag = strchr(p, '#');
 	if (frag) {
 		*(frag++) = '\0';
@@ -342,13 +341,14 @@ static int handle_config(const char *key, const char *value, void *cb)
 	if (prefixcmp(key,  "remote."))
 		return 0;
 	name = key + 7;
+	if (*name == '/') {
+		warning("Config remote shorthand cannot begin with '/': %s",
+			name);
+		return 0;
+	}
 	subkey = strrchr(name, '.');
 	if (!subkey)
 		return error("Config with no key for remote %s", name);
-	if (*subkey == '/') {
-		warning("Config remote shorthand cannot begin with '/': %s", name);
-		return 0;
-	}
 	remote = make_remote(name, subkey - name);
 	if (!strcmp(subkey, ".mirror"))
 		remote->mirror = git_config_bool(key, value);
@@ -427,6 +427,48 @@ static void read_config(void)
 	alias_all_urls();
 }
 
+/*
+ * We need to make sure the tracking branches are well formed, but a
+ * wildcard refspec in "struct refspec" must have a trailing slash. We
+ * temporarily drop the trailing '/' while calling check_ref_format(),
+ * and put it back.  The caller knows that a CHECK_REF_FORMAT_ONELEVEL
+ * error return is Ok for a wildcard refspec.
+ */
+static int verify_refname(char *name, int is_glob)
+{
+	int result, len = -1;
+
+	if (is_glob) {
+		len = strlen(name);
+		assert(name[len - 1] == '/');
+		name[len - 1] = '\0';
+	}
+	result = check_ref_format(name);
+	if (is_glob)
+		name[len - 1] = '/';
+	return result;
+}
+
+/*
+ * This function frees a refspec array.
+ * Warning: code paths should be checked to ensure that the src
+ *          and dst pointers are always freeable pointers as well
+ *          as the refspec pointer itself.
+ */
+static void free_refspecs(struct refspec *refspec, int nr_refspec)
+{
+	int i;
+
+	if (!refspec)
+		return;
+
+	for (i = 0; i < nr_refspec; i++) {
+		free(refspec[i].src);
+		free(refspec[i].dst);
+	}
+	free(refspec);
+}
+
 static struct refspec *parse_refspec_internal(int nr_refspec, const char **refspec, int fetch, int verify)
 {
 	int i;
@@ -434,11 +476,11 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 	struct refspec *rs = xcalloc(sizeof(*rs), nr_refspec);
 
 	for (i = 0; i < nr_refspec; i++) {
-		size_t llen, rlen;
+		size_t llen;
 		int is_glob;
 		const char *lhs, *rhs;
 
-		llen = rlen = is_glob = 0;
+		llen = is_glob = 0;
 
 		lhs = refspec[i];
 		if (*lhs == '+') {
@@ -458,12 +500,9 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 		}
 
 		if (rhs) {
-			rhs++;
-			rlen = strlen(rhs);
+			size_t rlen = strlen(++rhs);
 			is_glob = (2 <= rlen && !strcmp(rhs + rlen - 2, "/*"));
-			if (is_glob)
-				rlen -= 2;
-			rs[i].dst = xstrndup(rhs, rlen);
+			rs[i].dst = xstrndup(rhs, rlen - is_glob);
 		}
 
 		llen = (rhs ? (rhs - lhs - 1) : strlen(lhs));
@@ -471,7 +510,7 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			if ((rhs && !is_glob) || (!rhs && fetch))
 				goto invalid;
 			is_glob = 1;
-			llen -= 2;
+			llen--;
 		} else if (rhs && is_glob) {
 			goto invalid;
 		}
@@ -488,7 +527,7 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			if (!*rs[i].src)
 				; /* empty is ok */
 			else {
-				st = check_ref_format(rs[i].src);
+				st = verify_refname(rs[i].src, is_glob);
 				if (st && st != CHECK_REF_FORMAT_ONELEVEL)
 					goto invalid;
 			}
@@ -503,7 +542,7 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			} else if (!*rs[i].dst) {
 				; /* ok */
 			} else {
-				st = check_ref_format(rs[i].dst);
+				st = verify_refname(rs[i].dst, is_glob);
 				if (st && st != CHECK_REF_FORMAT_ONELEVEL)
 					goto invalid;
 			}
@@ -518,7 +557,7 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			if (!*rs[i].src)
 				; /* empty is ok */
 			else if (is_glob) {
-				st = check_ref_format(rs[i].src);
+				st = verify_refname(rs[i].src, is_glob);
 				if (st && st != CHECK_REF_FORMAT_ONELEVEL)
 					goto invalid;
 			}
@@ -532,13 +571,13 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 			 * - otherwise it must be a valid looking ref.
 			 */
 			if (!rs[i].dst) {
-				st = check_ref_format(rs[i].src);
+				st = verify_refname(rs[i].src, is_glob);
 				if (st && st != CHECK_REF_FORMAT_ONELEVEL)
 					goto invalid;
 			} else if (!*rs[i].dst) {
 				goto invalid;
 			} else {
-				st = check_ref_format(rs[i].dst);
+				st = verify_refname(rs[i].dst, is_glob);
 				if (st && st != CHECK_REF_FORMAT_ONELEVEL)
 					goto invalid;
 			}
@@ -548,7 +587,12 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 
  invalid:
 	if (verify) {
-		free(rs);
+		/*
+		 * nr_refspec must be greater than zero and i must be valid
+		 * since it is only possible to reach this point from within
+		 * the for loop above.
+		 */
+		free_refspecs(rs, i+1);
 		return NULL;
 	}
 	die("Invalid refspec '%s'", refspec[i]);
@@ -560,8 +604,7 @@ int valid_fetch_refspec(const char *fetch_refspec_str)
 	struct refspec *refspec;
 
 	refspec = parse_refspec_internal(1, fetch_refspec, 1, 1);
-	if (refspec)
-		free(refspec);
+	free_refspecs(refspec, 1);
 	return !!refspec;
 }
 
@@ -570,7 +613,7 @@ struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec)
 	return parse_refspec_internal(nr_refspec, refspec, 1, 0);
 }
 
-struct refspec *parse_push_refspec(int nr_refspec, const char **refspec)
+static struct refspec *parse_push_refspec(int nr_refspec, const char **refspec)
 {
 	return parse_refspec_internal(nr_refspec, refspec, 0, 0);
 }
@@ -687,8 +730,7 @@ int remote_find_tracking(struct remote *remote, struct refspec *refspec)
 		if (!fetch->dst)
 			continue;
 		if (fetch->pattern) {
-			if (!prefixcmp(needle, key) &&
-			    needle[strlen(key)] == '/') {
+			if (!prefixcmp(needle, key)) {
 				*result = xmalloc(strlen(value) +
 						  strlen(needle) -
 						  strlen(key) + 1);
@@ -707,18 +749,19 @@ int remote_find_tracking(struct remote *remote, struct refspec *refspec)
 	return -1;
 }
 
-struct ref *alloc_ref(unsigned namelen)
+static struct ref *alloc_ref_with_prefix(const char *prefix, size_t prefixlen,
+		const char *name)
 {
-	struct ref *ret = xmalloc(sizeof(struct ref) + namelen);
-	memset(ret, 0, sizeof(struct ref) + namelen);
-	return ret;
+	size_t len = strlen(name);
+	struct ref *ref = xcalloc(1, sizeof(struct ref) + prefixlen + len + 1);
+	memcpy(ref->name, prefix, prefixlen);
+	memcpy(ref->name + prefixlen, name, len);
+	return ref;
 }
 
-struct ref *alloc_ref_from_str(const char* str)
+struct ref *alloc_ref(const char *name)
 {
-	struct ref *ret = alloc_ref(strlen(str) + 1);
-	strcpy(ret->name, str);
-	return ret;
+	return alloc_ref_with_prefix("", 0, name);
 }
 
 static struct ref *copy_ref(const struct ref *ref)
@@ -741,7 +784,7 @@ struct ref *copy_ref_list(const struct ref *ref)
 	return ret;
 }
 
-void free_ref(struct ref *ref)
+static void free_ref(struct ref *ref)
 {
 	if (!ref)
 		return;
@@ -829,21 +872,20 @@ static struct ref *try_explicit_object_name(const char *name)
 	struct ref *ref;
 
 	if (!*name) {
-		ref = alloc_ref(20);
-		strcpy(ref->name, "(delete)");
+		ref = alloc_ref("(delete)");
 		hashclr(ref->new_sha1);
 		return ref;
 	}
 	if (get_sha1(name, sha1))
 		return NULL;
-	ref = alloc_ref_from_str(name);
+	ref = alloc_ref(name);
 	hashcpy(ref->new_sha1, sha1);
 	return ref;
 }
 
 static struct ref *make_linked_ref(const char *name, struct ref ***tail)
 {
-	struct ref *ret = alloc_ref_from_str(name);
+	struct ref *ret = alloc_ref(name);
 	tail_link_ref(ret, tail);
 	return ret;
 }
@@ -966,9 +1008,7 @@ static const struct refspec *check_pattern_match(const struct refspec *rs,
 			continue;
 		}
 
-		if (rs[i].pattern &&
-		    !prefixcmp(src->name, rs[i].src) &&
-		    src->name[strlen(rs[i].src)] == '/')
+		if (rs[i].pattern && !prefixcmp(src->name, rs[i].src))
 			return rs + i;
 	}
 	if (matching_refs != -1)
@@ -1113,10 +1153,8 @@ static struct ref *get_expanded_map(const struct ref *remote_refs,
 			struct ref *cpy = copy_ref(ref);
 			match = ref->name + remote_prefix_len;
 
-			cpy->peer_ref = alloc_ref(local_prefix_len +
-						  strlen(match) + 1);
-			sprintf(cpy->peer_ref->name, "%s%s",
-				refspec->dst, match);
+			cpy->peer_ref = alloc_ref_with_prefix(refspec->dst,
+					local_prefix_len, match);
 			if (refspec->force)
 				cpy->peer_ref->force = 1;
 			*tail = cpy;
@@ -1149,25 +1187,18 @@ struct ref *get_remote_ref(const struct ref *remote_refs, const char *name)
 
 static struct ref *get_local_ref(const char *name)
 {
-	struct ref *ret;
 	if (!name)
 		return NULL;
 
-	if (!prefixcmp(name, "refs/")) {
-		return alloc_ref_from_str(name);
-	}
+	if (!prefixcmp(name, "refs/"))
+		return alloc_ref(name);
 
 	if (!prefixcmp(name, "heads/") ||
 	    !prefixcmp(name, "tags/") ||
-	    !prefixcmp(name, "remotes/")) {
-		ret = alloc_ref(strlen(name) + 6);
-		sprintf(ret->name, "refs/%s", name);
-		return ret;
-	}
+	    !prefixcmp(name, "remotes/"))
+		return alloc_ref_with_prefix("refs/", 5, name);
 
-	ret = alloc_ref(strlen(name) + 12);
-	sprintf(ret->name, "refs/heads/%s", name);
-	return ret;
+	return alloc_ref_with_prefix("refs/heads/", 11, name);
 }
 
 int get_fetch_map(const struct ref *remote_refs,
@@ -1308,34 +1339,28 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 int format_tracking_info(struct branch *branch, struct strbuf *sb)
 {
 	int num_ours, num_theirs;
-	const char *base, *remote_msg;
+	const char *base;
 
 	if (!stat_tracking_info(branch, &num_ours, &num_theirs))
 		return 0;
 
 	base = branch->merge[0]->dst;
 	if (!prefixcmp(base, "refs/remotes/")) {
-		remote_msg = " remote";
 		base += strlen("refs/remotes/");
-	} else {
-		remote_msg = "";
 	}
 	if (!num_theirs)
-		strbuf_addf(sb, "Your branch is ahead of the tracked%s branch '%s' "
+		strbuf_addf(sb, "Your branch is ahead of '%s' "
 			    "by %d commit%s.\n",
-			    remote_msg, base,
-			    num_ours, (num_ours == 1) ? "" : "s");
+			    base, num_ours, (num_ours == 1) ? "" : "s");
 	else if (!num_ours)
-		strbuf_addf(sb, "Your branch is behind the tracked%s branch '%s' "
-			    "by %d commit%s,\n"
+		strbuf_addf(sb, "Your branch is behind '%s' "
+			    "by %d commit%s, "
 			    "and can be fast-forwarded.\n",
-			    remote_msg, base,
-			    num_theirs, (num_theirs == 1) ? "" : "s");
+			    base, num_theirs, (num_theirs == 1) ? "" : "s");
 	else
-		strbuf_addf(sb, "Your branch and the tracked%s branch '%s' "
-			    "have diverged,\nand respectively "
-			    "have %d and %d different commit(s) each.\n",
-			    remote_msg, base,
-			    num_ours, num_theirs);
+		strbuf_addf(sb, "Your branch and '%s' have diverged,\n"
+			    "and have %d and %d different commit(s) each, "
+			    "respectively.\n",
+			    base, num_ours, num_theirs);
 	return 1;
 }

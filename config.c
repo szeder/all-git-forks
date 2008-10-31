@@ -205,8 +205,27 @@ static int git_parse_file(config_fn_t fn, void *data)
 	int baselen = 0;
 	static char var[MAXNAME];
 
+	/* U+FEFF Byte Order Mark in UTF8 */
+	static const unsigned char *utf8_bom = (unsigned char *) "\xef\xbb\xbf";
+	const unsigned char *bomptr = utf8_bom;
+
 	for (;;) {
 		int c = get_next_char();
+		if (bomptr && *bomptr) {
+			/* We are at the file beginning; skip UTF8-encoded BOM
+			 * if present. Sane editors won't put this in on their
+			 * own, but e.g. Windows Notepad will do it happily. */
+			if ((unsigned char) c == *bomptr) {
+				bomptr++;
+				continue;
+			} else {
+				/* Do not tolerate partial BOM. */
+				if (bomptr != utf8_bom)
+					break;
+				/* No BOM at file beginning. Cool. */
+				bomptr = NULL;
+			}
+		}
 		if (c == '\n') {
 			if (config_file_eof)
 				return 0;
@@ -255,7 +274,7 @@ static int parse_unit_factor(const char *end, unsigned long *val)
 	return 0;
 }
 
-int git_parse_long(const char *value, long *ret)
+static int git_parse_long(const char *value, long *ret)
 {
 	if (value && *value) {
 		char *end;
@@ -291,7 +310,7 @@ static void die_bad_config(const char *name)
 
 int git_config_int(const char *name, const char *value)
 {
-	long ret;
+	long ret = 0;
 	if (!git_parse_long(value, &ret))
 		die_bad_config(name);
 	return ret;
@@ -339,6 +358,10 @@ static int git_default_core_config(const char *var, const char *value)
 	/* This needs a better name */
 	if (!strcmp(var, "core.filemode")) {
 		trust_executable_bit = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "core.trustctime")) {
+		trust_ctime = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -581,15 +604,8 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 const char *git_etc_gitconfig(void)
 {
 	static const char *system_wide;
-	if (!system_wide) {
-		system_wide = ETC_GITCONFIG;
-		if (!is_absolute_path(system_wide)) {
-			/* interpret path relative to exec-dir */
-			struct strbuf d = STRBUF_INIT;
-			strbuf_addf(&d, "%s/%s", git_exec_path(), system_wide);
-			system_wide = strbuf_detach(&d, NULL);
-		}
-	}
+	if (!system_wide)
+		system_wide = system_path(ETC_GITCONFIG);
 	return system_wide;
 }
 
@@ -737,9 +753,8 @@ static int store_write_section(int fd, const char* key)
 {
 	const char *dot;
 	int i, success;
-	struct strbuf sb;
+	struct strbuf sb = STRBUF_INIT;
 
-	strbuf_init(&sb, 0);
 	dot = memchr(key, '.', store.baselen);
 	if (dot) {
 		strbuf_addf(&sb, "[%.*s \"", (int)(dot - key), key);
@@ -764,7 +779,7 @@ static int store_write_pair(int fd, const char* key, const char* value)
 	int i, success;
 	int length = strlen(key + store.baselen + 1);
 	const char *quote = "";
-	struct strbuf sb;
+	struct strbuf sb = STRBUF_INIT;
 
 	/*
 	 * Check to see if the value needs to be surrounded with a dq pair.
@@ -781,7 +796,6 @@ static int store_write_pair(int fd, const char* key, const char* value)
 	if (i && value[i - 1] == ' ')
 		quote = "\"";
 
-	strbuf_init(&sb, 0);
 	strbuf_addf(&sb, "\t%.*s = %s",
 		    length, key + store.baselen + 1, quote);
 

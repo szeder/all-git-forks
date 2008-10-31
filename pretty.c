@@ -3,6 +3,9 @@
 #include "utf8.h"
 #include "diff.h"
 #include "revision.h"
+#include "string-list.h"
+#include "mailmap.h"
+#include "log-tree.h"
 
 static char *user_format;
 
@@ -231,7 +234,7 @@ static char *get_header(const struct commit *commit, const char *key)
 
 static char *replace_encoding_header(char *buf, const char *encoding)
 {
-	struct strbuf tmp;
+	struct strbuf tmp = STRBUF_INIT;
 	size_t start, len;
 	char *cp = buf;
 
@@ -247,7 +250,6 @@ static char *replace_encoding_header(char *buf, const char *encoding)
 		return buf; /* should not happen but be defensive */
 	len = cp + 1 - (buf + start);
 
-	strbuf_init(&tmp, 0);
 	strbuf_attach(&tmp, buf, strlen(buf), strlen(buf) + 1);
 	if (is_encoding_utf8(encoding)) {
 		/* we have re-coded to UTF-8; drop the header */
@@ -288,8 +290,27 @@ static char *logmsg_reencode(const struct commit *commit,
 	return out;
 }
 
+static int mailmap_name(struct strbuf *sb, const char *email)
+{
+	static struct string_list *mail_map;
+	char buffer[1024];
+
+	if (!mail_map) {
+		mail_map = xcalloc(1, sizeof(*mail_map));
+		read_mailmap(mail_map, ".mailmap", NULL);
+	}
+
+	if (!mail_map->nr)
+		return -1;
+
+	if (!map_email(mail_map, email, buffer, sizeof(buffer)))
+		return -1;
+	strbuf_addstr(sb, buffer);
+	return 0;
+}
+
 static size_t format_person_part(struct strbuf *sb, char part,
-                               const char *msg, int len)
+				 const char *msg, int len, enum date_mode dmode)
 {
 	/* currently all placeholders have same length */
 	const int placeholder_len = 2;
@@ -309,10 +330,12 @@ static size_t format_person_part(struct strbuf *sb, char part,
 	if (end >= len - 2)
 		goto skip;
 
-	if (part == 'n') {	/* name */
+	if (part == 'n' || part == 'N') {	/* name */
 		while (end > 0 && isspace(msg[end - 1]))
 			end--;
-		strbuf_add(sb, msg, end);
+		if (part != 'N' || !msg[end] || !msg[end + 1] ||
+		    mailmap_name(sb, msg + end + 2) < 0)
+			strbuf_add(sb, msg, end);
 		return placeholder_len;
 	}
 	start = ++end; /* save email start position */
@@ -354,7 +377,7 @@ static size_t format_person_part(struct strbuf *sb, char part,
 
 	switch (part) {
 	case 'd':	/* date */
-		strbuf_addstr(sb, show_date(date, tz, DATE_NORMAL));
+		strbuf_addstr(sb, show_date(date, tz, dmode));
 		return placeholder_len;
 	case 'D':	/* date, RFC2822 style */
 		strbuf_addstr(sb, show_date(date, tz, DATE_RFC2822));
@@ -386,6 +409,7 @@ struct chunk {
 
 struct format_commit_context {
 	const struct commit *commit;
+	enum date_mode dmode;
 
 	/* These offsets are relative to the start of the commit message. */
 	int commit_header_parsed;
@@ -455,6 +479,23 @@ static void parse_commit_header(struct format_commit_context *context)
 	}
 	context->body_off = i;
 	context->commit_header_parsed = 1;
+}
+
+static void format_decoration(struct strbuf *sb, const struct commit *commit)
+{
+	struct name_decoration *d;
+	const char *prefix = " (";
+
+	load_ref_decorations();
+	d = lookup_decoration(&name_decoration, &commit->object);
+	while (d) {
+		strbuf_addstr(sb, prefix);
+		prefix = ", ";
+		strbuf_addstr(sb, d->name);
+		d = d->next;
+	}
+	if (prefix[0] == ',')
+		strbuf_addch(sb, ')');
 }
 
 static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
@@ -549,6 +590,9 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 		                 ? '<'
 		                 : '>');
 		return 1;
+	case 'd':
+		format_decoration(sb, commit);
+		return 1;
 	}
 
 	/* For the rest we have to parse the commit header. */
@@ -561,10 +605,12 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 		return 1;
 	case 'a':	/* author ... */
 		return format_person_part(sb, placeholder[1],
-		                   msg + c->author.off, c->author.len);
+				   msg + c->author.off, c->author.len,
+				   c->dmode);
 	case 'c':	/* committer ... */
 		return format_person_part(sb, placeholder[1],
-		                   msg + c->committer.off, c->committer.len);
+				   msg + c->committer.off, c->committer.len,
+				   c->dmode);
 	case 'e':	/* encoding */
 		strbuf_add(sb, msg + c->encoding.off, c->encoding.len);
 		return 1;
@@ -576,12 +622,14 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 }
 
 void format_commit_message(const struct commit *commit,
-                           const void *format, struct strbuf *sb)
+			   const void *format, struct strbuf *sb,
+			   enum date_mode dmode)
 {
 	struct format_commit_context context;
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
+	context.dmode = dmode;
 	strbuf_expand(sb, format, format_commit_item, &context);
 }
 
@@ -747,7 +795,7 @@ void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 	const char *encoding;
 
 	if (fmt == CMIT_FMT_USERFORMAT) {
-		format_commit_message(commit, user_format, sb);
+		format_commit_message(commit, user_format, sb, dmode);
 		return;
 	}
 

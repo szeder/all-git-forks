@@ -137,11 +137,11 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 		break;
 
 	default:
-		die("git-cat-file: unknown option: %s\n", exp_type);
+		die("git cat-file: unknown option: %s\n", exp_type);
 	}
 
 	if (!buf)
-		die("git-cat-file %s: bad file", obj_name);
+		die("git cat-file %s: bad file", obj_name);
 
 	write_or_die(1, buf, size);
 	return 0;
@@ -189,9 +189,8 @@ static int batch_one_object(const char *obj_name, int print_contents)
 
 static int batch_objects(int print_contents)
 {
-	struct strbuf buf;
+	struct strbuf buf = STRBUF_INIT;
 
-	strbuf_init(&buf, 0);
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
 		int error = batch_one_object(buf.buf, print_contents);
 		if (error)
@@ -202,8 +201,8 @@ static int batch_objects(int print_contents)
 }
 
 static const char * const cat_file_usage[] = {
-	"git-cat-file [-t|-s|-e|-p|<type>] <sha1>",
-	"git-cat-file [--batch|--batch-check] < <list_of_sha1s>",
+	"git cat-file [-t|-s|-e|-p|<type>] <sha1>",
+	"git cat-file [--batch|--batch-check] < <list_of_sha1s>",
 	NULL
 };
 

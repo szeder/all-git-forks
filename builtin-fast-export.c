@@ -13,12 +13,12 @@
 #include "log-tree.h"
 #include "revision.h"
 #include "decorate.h"
-#include "path-list.h"
+#include "string-list.h"
 #include "utf8.h"
 #include "parse-options.h"
 
 static const char *fast_export_usage[] = {
-	"git-fast-export [rev-list-opts]",
+	"git fast-export [rev-list-opts]",
 	NULL
 };
 
@@ -132,13 +132,46 @@ static void show_filemodify(struct diff_queue_struct *q,
 {
 	int i;
 	for (i = 0; i < q->nr; i++) {
+		struct diff_filespec *ospec = q->queue[i]->one;
 		struct diff_filespec *spec = q->queue[i]->two;
-		if (is_null_sha1(spec->sha1))
+
+		switch (q->queue[i]->status) {
+		case DIFF_STATUS_DELETED:
 			printf("D %s\n", spec->path);
-		else {
-			struct object *object = lookup_object(spec->sha1);
-			printf("M %06o :%d %s\n", spec->mode,
-			       get_object_mark(object), spec->path);
+			break;
+
+		case DIFF_STATUS_COPIED:
+		case DIFF_STATUS_RENAMED:
+			printf("%c \"%s\" \"%s\"\n", q->queue[i]->status,
+			       ospec->path, spec->path);
+
+			if (!hashcmp(ospec->sha1, spec->sha1) &&
+			    ospec->mode == spec->mode)
+				break;
+			/* fallthrough */
+
+		case DIFF_STATUS_TYPE_CHANGED:
+		case DIFF_STATUS_MODIFIED:
+		case DIFF_STATUS_ADDED:
+			/*
+			 * Links refer to objects in another repositories;
+			 * output the SHA-1 verbatim.
+			 */
+			if (S_ISGITLINK(spec->mode))
+				printf("M %06o %s %s\n", spec->mode,
+				       sha1_to_hex(spec->sha1), spec->path);
+			else {
+				struct object *object = lookup_object(spec->sha1);
+				printf("M %06o :%d %s\n", spec->mode,
+				       get_object_mark(object), spec->path);
+			}
+			break;
+
+		default:
+			die("Unexpected comparison status '%c' for %s, %s",
+				q->queue[i]->status,
+				ospec->path ? ospec->path : "none",
+				spec->path ? spec->path : "none");
 		}
 	}
 }
@@ -196,8 +229,10 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 		diff_root_tree_sha1(commit->tree->object.sha1,
 				    "", &rev->diffopt);
 
+	/* Export the referenced blobs, and remember the marks. */
 	for (i = 0; i < diff_queued_diff.nr; i++)
-		handle_object(diff_queued_diff.queue[i]->two->sha1);
+		if (!S_ISGITLINK(diff_queued_diff.queue[i]->two->mode))
+			handle_object(diff_queued_diff.queue[i]->two->sha1);
 
 	mark_next_object(&commit->object);
 	if (!is_encoding_utf8(encoding))
@@ -298,7 +333,7 @@ static void handle_tag(const char *name, struct tag *tag)
 }
 
 static void get_tags_and_duplicates(struct object_array *pending,
-				    struct path_list *extra_refs)
+				    struct string_list *extra_refs)
 {
 	struct tag *tag;
 	int i;
@@ -319,7 +354,7 @@ static void get_tags_and_duplicates(struct object_array *pending,
 		case OBJ_TAG:
 			tag = (struct tag *)e->item;
 			while (tag && tag->object.type == OBJ_TAG) {
-				path_list_insert(full_name, extra_refs)->util = tag;
+				string_list_insert(full_name, extra_refs)->util = tag;
 				tag = (struct tag *)tag->tagged;
 			}
 			if (!tag)
@@ -339,19 +374,19 @@ static void get_tags_and_duplicates(struct object_array *pending,
 		}
 		if (commit->util)
 			/* more than one name for the same object */
-			path_list_insert(full_name, extra_refs)->util = commit;
+			string_list_insert(full_name, extra_refs)->util = commit;
 		else
 			commit->util = full_name;
 	}
 }
 
-static void handle_tags_and_duplicates(struct path_list *extra_refs)
+static void handle_tags_and_duplicates(struct string_list *extra_refs)
 {
 	struct commit *commit;
 	int i;
 
 	for (i = extra_refs->nr - 1; i >= 0; i--) {
-		const char *name = extra_refs->items[i].path;
+		const char *name = extra_refs->items[i].string;
 		struct object *object = extra_refs->items[i].util;
 		switch (object->type) {
 		case OBJ_TAG:
@@ -382,7 +417,8 @@ static void export_marks(char *file)
 	for (i = 0; i < idnums.size; i++) {
 		if (deco->base && deco->base->type == 1) {
 			mark = ptr_to_mark(deco->decoration);
-			fprintf(f, ":%u %s\n", mark, sha1_to_hex(deco->base->sha1));
+			fprintf(f, ":%"PRIu32" %s\n", mark,
+				sha1_to_hex(deco->base->sha1));
 		}
 		deco++;
 	}
@@ -434,7 +470,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
 	struct object_array commits = { 0, 0, NULL };
-	struct path_list extra_refs = { NULL, 0, 0, 0 };
+	struct string_list extra_refs = { NULL, 0, 0, 0 };
 	struct commit *commit;
 	char *export_filename = NULL, *import_filename = NULL;
 	struct option options[] = {

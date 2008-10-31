@@ -92,7 +92,7 @@ Example
 
 	# Our diff algorithm
 	[diff]
-		external = "/usr/local/bin/gnu-diff -u"
+		external = /usr/local/bin/diff-wrapper
 		renames = true
 
 	[branch "devel"]
@@ -115,6 +115,24 @@ porcelain configuration variables in the respective porcelain documentation.
 core.fileMode::
 	If false, the executable bit differences between the index and
 	the working copy are ignored; useful on broken filesystems like FAT.
+	See linkgit:git-update-index[1]. True by default.
+
+core.ignoreCygwinFSTricks::
+	This option is only used by Cygwin implementation of Git. If false,
+	the Cygwin stat() and lstat() functions are used. This may be useful
+	if your repository consists of a few separate directories joined in
+	one hierarchy using Cygwin mount. If true, Git uses native Win32 API
+	whenever it is possible and falls back to Cygwin functions only to
+	handle symbol links. The native mode is more than twice faster than
+	normal Cygwin l/stat() functions. True by default, unless core.filemode
+	is true, in which case ignoreCygwinFSTricks is ignored as Cygwin's
+	POSIX emulation is required to support core.filemode.
+
+core.trustctime::
+	If false, the ctime differences between the index and the
+	working copy are ignored; useful when the inode change time
+	is regularly modified by something outside Git (file system
+	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
 
 core.quotepath::
@@ -351,14 +369,29 @@ core.editor::
 	`EDITOR` environment variables and then finally `vi`.
 
 core.pager::
-	The command that git will use to paginate output.  Can be overridden
-	with the `GIT_PAGER` environment variable.
+	The command that git will use to paginate output.  Can
+	be overridden with the `GIT_PAGER` environment
+	variable.  Note that git sets the `LESS` environment
+	variable to `FRSX` if it is unset when it runs the
+	pager.  One can change these settings by setting the
+	`LESS` variable to some other value.  Alternately,
+	these settings can be overridden on a project or
+	global basis by setting the `core.pager` option.
+	Setting `core.pager` has no affect on the `LESS`
+	environment variable behaviour above, so if you want
+	to override git's default settings this way, you need
+	to be explicit.  For example, to disable the S option
+	in a backward compatible manner, set `core.pager`
+	to "`less -+$LESS -FRX`".  This will be passed to the
+	shell by git, which will translate the final command to
+	"`LESS=FRSX less -+FRSX -FRX`".
 
 core.whitespace::
 	A comma separated list of common whitespace problems to
 	notice.  'git-diff' will use `color.diff.whitespace` to
 	highlight them, and 'git-apply --whitespace=error' will
-	consider them as errors:
+	consider them as errors.  You can prefix `-` to disable
+	any of them (e.g. `-trailing-space`):
 +
 * `trailing-space` treats trailing whitespaces at the end of the line
   as an error (enabled by default).
@@ -559,12 +592,34 @@ diff.autorefreshindex::
 	affects only 'git-diff' Porcelain, and not lower level
 	'diff' commands, such as 'git-diff-files'.
 
+diff.suppress-blank-empty::
+	A boolean to inhibit the standard behavior of printing a space
+	before each empty output line. Defaults to false.
+
 diff.external::
 	If this config variable is set, diff generation is not
 	performed using the internal diff machinery, but using the
-	given command.  Note: if you want to use an external diff
-	program only on a subset of your files, you might want to
-	use linkgit:gitattributes[5] instead.
+	given command.  Can be overridden with the `GIT_EXTERNAL_DIFF'
+	environment variable.  The command is called with parameters
+	as described under "git Diffs" in linkgit:git[1].  Note: if
+	you want to use an external diff program only on a subset of
+	your files, you	might want to use linkgit:gitattributes[5] instead.
+
+diff.mnemonicprefix::
+	If set, 'git-diff' uses a prefix pair that is different from the
+	standard "a/" and "b/" depending on what is being compared.  When
+	this configuration is in effect, reverse diff output also swaps
+	the order of the prefixes:
+'git-diff';;
+	compares the (i)ndex and the (w)ork tree;
+'git-diff HEAD';;
+	 compares a (c)ommit and the (w)ork tree;
+'git diff --cached';;
+	compares a (c)ommit and the (i)ndex;
+'git-diff HEAD:file1 file2';;
+	compares an (o)bject and a (w)ork tree entity;
+'git diff --no-index a b';;
+	compares two non-git things (1) and (2).
 
 diff.renameLimit::
 	The number of files to consider when performing the copy/rename
@@ -587,10 +642,11 @@ fetch.unpackLimit::
 	`transfer.unpackLimit` is used instead.
 
 format.numbered::
-	A boolean which can enable sequence numbers in patch subjects.
-	Setting this option to "auto" will enable it only if there is
-	more than one patch.  See --numbered option in
-	linkgit:git-format-patch[1].
+	A boolean which can enable or disable sequence numbers in patch
+	subjects.  It defaults to "auto" which enables it only if there
+	is more than one patch.  It can be enabled or disabled for all
+	messages by setting it to "true" or "false".  See --numbered
+	option in linkgit:git-format-patch[1].
 
 format.headers::
 	Additional email headers to include in a patch to be submitted
@@ -678,12 +734,12 @@ gitcvs.logfile::
 	Path to a log file where the CVS server interface well... logs
 	various stuff. See linkgit:git-cvsserver[1].
 
-gitcvs.usecrlfattr
+gitcvs.usecrlfattr::
 	If true, the server will look up the `crlf` attribute for
 	files to determine the '-k' modes to use. If `crlf` is set,
 	the '-k' mode will be left blank, so cvs clients will
 	treat it as text. If `crlf` is explicitly unset, the file
-	will be set with '-kb' mode, which supresses any newline munging
+	will be set with '-kb' mode, which suppresses any newline munging
 	the client might otherwise do. If `crlf` is not specified,
 	then 'gitcvs.allbinary' is used. See linkgit:gitattributes[5].
 
@@ -770,6 +826,15 @@ help.format::
 	Override the default help format used by linkgit:git-help[1].
 	Values 'man', 'info', 'web' and 'html' are supported. 'man' is
 	the default. 'web' and 'html' are the same.
+
+help.autocorrect::
+	Automatically correct and execute mistyped commands after
+	waiting for the given number of deciseconds (0.1 sec). If more
+	than one command can be deduced from the entered text, nothing
+	will be executed.  If the value of this option is negative,
+	the corrected command will be executed immediately. If the
+	value is 0 - the command will be just shown but not executed.
+	This is the default.
 
 http.proxy::
 	Override the HTTP proxy, normally configured using the 'http_proxy'
@@ -874,6 +939,14 @@ man.<tool>.path::
 	Override the path for the given tool that may be used to
 	display help in the 'man' format. See linkgit:git-help[1].
 
+merge.conflictstyle::
+	Specify the style in which conflicted hunks are written out to
+	working tree files upon merge.  The default is "merge", which
+	shows `<<<<<<<` conflict marker, change made by one side,
+	`=======` marker, change made by the other side, and then
+	`>>>>>>>` marker.  An alternate style, "diff3", adds `|||||||`
+	marker and the original text before `=======` marker.
+
 mergetool.<tool>.path::
 	Override the path for the given tool.  This is useful in case
 	your tool is not in the PATH.
@@ -967,6 +1040,13 @@ pack.packSizeLimit::
 	packing to a file, i.e. the git:// protocol is unaffected.  It
 	can be overridden by the `\--max-pack-size` option of
 	linkgit:git-repack[1].
+
+pager.<cmd>::
+	Allows turning on or off pagination of the output of a
+	particular git subcommand when writing to a tty.  If
+	`\--paginate` or `\--no-pager` is specified on the command line,
+	it takes precedence over this option.  To disable pagination for
+	all commands, set `core.pager` or 'GIT_PAGER' to "`cat`".
 
 pull.octopus::
 	The default merge strategy to use when pulling multiple branches

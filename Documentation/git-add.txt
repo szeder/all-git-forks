@@ -9,8 +9,8 @@ SYNOPSIS
 --------
 [verse]
 'git add' [-n] [-v] [--force | -f] [--interactive | -i] [--patch | -p]
-	  [--update | -u] [--refresh] [--ignore-errors] [--]
-	  <filepattern>...
+	  [--all | [--update | -u]] [--intent-to-add | -N]
+	  [--refresh] [--ignore-errors] [--] <filepattern>...
 
 DESCRIPTION
 -----------
@@ -85,6 +85,21 @@ OPTIONS
 	except that the update is limited to paths specified on the
 	command line. If no paths are specified, all tracked files in the
 	current directory and its subdirectories are updated.
+
+-A::
+--all::
+	Update files that git already knows about (same as '\--update')
+	and add all untracked files that are not ignored by '.gitignore'
+	mechanism.
+
+
+-N::
+--intent-to-add::
+	Record only the fact that the path will be added later. An entry
+	for the path is placed in the index with no content. This is
+	useful for, among other things, showing the unstaged content of
+	such files with 'git diff' and commiting them with 'git commit
+	-a'.
 
 --refresh::
 	Don't add the file(s), but only refresh their stat()
@@ -187,8 +202,9 @@ update::
    "Update>>".  When the prompt ends with double '>>', you can
    make more than one selection, concatenated with whitespace or
    comma.  Also you can say ranges.  E.g. "2-5 7,9" to choose
-   2,3,4,5,7,9 from the list.  You can say '*' to choose
-   everything.
+   2,3,4,5,7,9 from the list.  If the second number in a range is
+   omitted, all remaining patches are taken.  E.g. "7-" to choose
+   7,8,9 from the list.  You can say '*' to choose everything.
 +
 What you chose are then highlighted with '*',
 like this:

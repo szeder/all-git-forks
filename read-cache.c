@@ -8,6 +8,12 @@
 #include "cache-tree.h"
 #include "refs.h"
 #include "dir.h"
+#include "tree.h"
+#include "commit.h"
+#include "diff.h"
+#include "diffcore.h"
+#include "revision.h"
+#include "blob.h"
 
 /* Index extensions.
  *
@@ -36,6 +42,22 @@ static void replace_index_entry(struct index_state *istate, int nr, struct cache
 	remove_name_hash(old);
 	set_index_entry(istate, nr, ce);
 	istate->cache_changed = 1;
+}
+
+void rename_index_entry_at(struct index_state *istate, int nr, const char *new_name)
+{
+	struct cache_entry *old = istate->cache[nr], *new;
+	int namelen = strlen(new_name);
+
+	new = xmalloc(cache_entry_size(namelen));
+	copy_cache_entry(new, old);
+	new->ce_flags &= ~(CE_STATE_MASK | CE_NAMEMASK);
+	new->ce_flags |= (namelen >= CE_NAMEMASK ? CE_NAMEMASK : namelen);
+	memcpy(new->name, new_name, namelen + 1);
+
+	cache_tree_invalidate_path(istate->cache_tree, old->name);
+	remove_index_entry_at(istate, nr);
+	add_index_entry(istate, new, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 }
 
 /*
@@ -131,14 +153,14 @@ static int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
 		break;
 	case S_IFDIR:
 		if (S_ISGITLINK(ce->ce_mode))
-			return 0;
+			return ce_compare_gitlink(ce) ? DATA_CHANGED : 0;
 	default:
 		return TYPE_CHANGED;
 	}
 	return 0;
 }
 
-static int is_empty_blob_sha1(const unsigned char *sha1)
+int is_empty_blob_sha1(const unsigned char *sha1)
 {
 	static const unsigned char empty_blob_sha1[20] = {
 		0xe6,0x9d,0xe2,0x9b,0xb2,0xd1,0xd6,0x43,0x4b,0x8b,
@@ -171,6 +193,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 			changed |= TYPE_CHANGED;
 		break;
 	case S_IFGITLINK:
+		/* We ignore most of the st_xxx fields for gitlinks */
 		if (!S_ISDIR(st->st_mode))
 			changed |= TYPE_CHANGED;
 		else if (ce_compare_gitlink(ce))
@@ -181,7 +204,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 	}
 	if (ce->ce_mtime != (unsigned int) st->st_mtime)
 		changed |= MTIME_CHANGED;
-	if (ce->ce_ctime != (unsigned int) st->st_ctime)
+	if (trust_ctime && ce->ce_ctime != (unsigned int) st->st_ctime)
 		changed |= CTIME_CHANGED;
 
 	if (ce->ce_uid != (unsigned int) st->st_uid ||
@@ -277,11 +300,22 @@ int ie_modified(const struct index_state *istate,
 	if (changed & (MODE_CHANGED | TYPE_CHANGED))
 		return changed;
 
-	/* Immediately after read-tree or update-index --cacheinfo,
-	 * the length field is zero.  For other cases the ce_size
-	 * should match the SHA1 recorded in the index entry.
+	/*
+	 * Immediately after read-tree or update-index --cacheinfo,
+	 * the length field is zero, as we have never even read the
+	 * lstat(2) information once, and we cannot trust DATA_CHANGED
+	 * returned by ie_match_stat() which in turn was returned by
+	 * ce_match_stat_basic() to signal that the filesize of the
+	 * blob changed.  We have to actually go to the filesystem to
+	 * see if the contents match, and if so, should answer "unchanged".
+	 *
+	 * The logic does not apply to gitlinks, as ce_match_stat_basic()
+	 * already has checked the actual HEAD from the filesystem in the
+	 * subproject.  If ie_match_stat() already said it is different,
+	 * then we know it is.
 	 */
-	if ((changed & DATA_CHANGED) && ce->ce_size != 0)
+	if ((changed & DATA_CHANGED) &&
+	    (S_ISGITLINK(ce->ce_mode) || ce->ce_size != 0))
 		return changed;
 
 	changed_fs = ce_modified_check_fs(ce, st);
@@ -478,6 +512,14 @@ static struct cache_entry *create_alias_ce(struct cache_entry *ce, struct cache_
 	return new;
 }
 
+static void record_intent_to_add(struct cache_entry *ce)
+{
+	unsigned char sha1[20];
+	if (write_sha1_file("", 0, blob_type, sha1))
+		die("cannot create an empty blob in the object database");
+	hashcpy(ce->sha1, sha1);
+}
+
 int add_to_index(struct index_state *istate, const char *path, struct stat *st, int flags)
 {
 	int size, namelen, was_same;
@@ -486,6 +528,9 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	unsigned ce_option = CE_MATCH_IGNORE_VALID|CE_MATCH_RACY_IS_DIRTY;
 	int verbose = flags & (ADD_CACHE_VERBOSE | ADD_CACHE_PRETEND);
 	int pretend = flags & ADD_CACHE_PRETEND;
+	int intent_only = flags & ADD_CACHE_INTENT;
+	int add_option = (ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE|
+			  (intent_only ? ADD_CACHE_NEW_ONLY : 0));
 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
 		return error("%s: can only add regular files, symbolic links or git-directories", path);
@@ -499,7 +544,8 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	ce = xcalloc(1, size);
 	memcpy(ce->name, path, namelen);
 	ce->ce_flags = namelen;
-	fill_stat_cache_info(ce, st);
+	if (!intent_only)
+		fill_stat_cache_info(ce, st);
 
 	if (trust_executable_bit && has_symlinks)
 		ce->ce_mode = create_ce_mode(st_mode);
@@ -522,13 +568,17 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		alias->ce_flags |= CE_ADDED;
 		return 0;
 	}
-	if (index_path(ce->sha1, path, st, 1))
-		return error("unable to index file %s", path);
+	if (!intent_only) {
+		if (index_path(ce->sha1, path, st, 1))
+			return error("unable to index file %s", path);
+	} else
+		record_intent_to_add(ce);
+
 	if (ignore_case && alias && different_name(ce, alias))
 		ce = create_alias_ce(ce, alias);
 	ce->ce_flags |= CE_ADDED;
 
-	/* It was suspected to be recily clean, but it turns out to be Ok */
+	/* It was suspected to be racily clean, but it turns out to be Ok */
 	was_same = (alias &&
 		    !ce_stage(alias) &&
 		    !hashcmp(alias->sha1, ce->sha1) &&
@@ -536,7 +586,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 
 	if (pretend)
 		;
-	else if (add_index_entry(istate, ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE))
+	else if (add_index_entry(istate, ce, add_option))
 		return error("unable to add %s to index",path);
 	if (verbose && !was_same)
 		printf("add '%s'\n", path);
@@ -558,8 +608,10 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	int size, len;
 	struct cache_entry *ce;
 
-	if (!verify_path(path))
+	if (!verify_path(path)) {
+		error("Invalid path '%s'", path);
 		return NULL;
+	}
 
 	len = strlen(path);
 	size = cache_entry_size(len);
@@ -815,13 +867,15 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 	int ok_to_add = option & ADD_CACHE_OK_TO_ADD;
 	int ok_to_replace = option & ADD_CACHE_OK_TO_REPLACE;
 	int skip_df_check = option & ADD_CACHE_SKIP_DFCHECK;
+	int new_only = option & ADD_CACHE_NEW_ONLY;
 
 	cache_tree_invalidate_path(istate->cache_tree, ce->name);
 	pos = index_name_pos(istate, ce->name, ce->ce_flags);
 
 	/* existing match? Just replace it. */
 	if (pos >= 0) {
-		replace_index_entry(istate, pos, ce);
+		if (!new_only)
+			replace_index_entry(istate, pos, ce);
 		return 0;
 	}
 	pos = -pos-1;
@@ -841,7 +895,7 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 	if (!ok_to_add)
 		return -1;
 	if (!verify_path(ce->name))
-		return -1;
+		return error("Invalid path '%s'", ce->name);
 
 	if (!skip_df_check &&
 	    check_file_directory_conflict(istate, ce, pos, ok_to_replace)) {
@@ -980,7 +1034,10 @@ int refresh_index(struct index_state *istate, unsigned int flags, const char **p
 	int not_new = (flags & REFRESH_IGNORE_MISSING) != 0;
 	int ignore_submodules = (flags & REFRESH_IGNORE_SUBMODULES) != 0;
 	unsigned int options = really ? CE_MATCH_IGNORE_VALID : 0;
+	const char *needs_update_message;
 
+	needs_update_message = ((flags & REFRESH_SAY_CHANGED)
+				? "locally modified" : "needs update");
 	for (i = 0; i < istate->cache_nr; i++) {
 		struct cache_entry *ce, *new;
 		int cache_errno = 0;
@@ -1019,7 +1076,7 @@ int refresh_index(struct index_state *istate, unsigned int flags, const char **p
 			}
 			if (quiet)
 				continue;
-			printf("%s: needs update\n", ce->name);
+			printf("%s: %s\n", ce->name, needs_update_message);
 			has_errors = 1;
 			continue;
 		}
@@ -1036,16 +1093,16 @@ struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int really)
 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
 {
-	SHA_CTX c;
+	git_SHA_CTX c;
 	unsigned char sha1[20];
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
 		return error("bad signature");
 	if (hdr->hdr_version != htonl(2))
 		return error("bad index version");
-	SHA1_Init(&c);
-	SHA1_Update(&c, hdr, size - 20);
-	SHA1_Final(sha1, &c);
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, hdr, size - 20);
+	git_SHA1_Final(sha1, &c);
 	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
 		return error("bad index file sha1 signature");
 	return 0;
@@ -1087,6 +1144,10 @@ static void convert_from_disk(struct ondisk_cache_entry *ondisk, struct cache_en
 	ce->ce_size  = ntohl(ondisk->size);
 	/* On-disk flags are just 16 bits */
 	ce->ce_flags = ntohs(ondisk->flags);
+
+	/* For future extension: we do not understand this entry yet */
+	if (ce->ce_flags & CE_EXTENDED)
+		die("Unknown index entry format");
 	hashcpy(ce->sha1, ondisk->sha1);
 
 	len = ce->ce_flags & CE_NAMEMASK;
@@ -1124,7 +1185,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	size_t mmap_size;
 
 	errno = EBUSY;
-	if (istate->alloc)
+	if (istate->initialized)
 		return istate->cache_nr;
 
 	errno = ENOENT;
@@ -1164,6 +1225,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	 * index size
 	 */
 	istate->alloc = xmalloc(estimate_cache_size(mmap_size, istate->cache_nr));
+	istate->initialized = 1;
 
 	src_offset = sizeof(*hdr);
 	dst_offset = 0;
@@ -1212,10 +1274,12 @@ int discard_index(struct index_state *istate)
 	istate->cache_nr = 0;
 	istate->cache_changed = 0;
 	istate->timestamp = 0;
+	istate->name_hash_initialized = 0;
 	free_hash(&istate->name_hash);
 	cache_tree_free(&(istate->cache_tree));
 	free(istate->alloc);
 	istate->alloc = NULL;
+	istate->initialized = 0;
 
 	/* no need to throw away allocated active_cache */
 	return 0;
@@ -1235,11 +1299,11 @@ int unmerged_index(const struct index_state *istate)
 static unsigned char write_buffer[WRITE_BUFFER_SIZE];
 static unsigned long write_buffer_len;
 
-static int ce_write_flush(SHA_CTX *context, int fd)
+static int ce_write_flush(git_SHA_CTX *context, int fd)
 {
 	unsigned int buffered = write_buffer_len;
 	if (buffered) {
-		SHA1_Update(context, write_buffer, buffered);
+		git_SHA1_Update(context, write_buffer, buffered);
 		if (write_in_full(fd, write_buffer, buffered) != buffered)
 			return -1;
 		write_buffer_len = 0;
@@ -1247,7 +1311,7 @@ static int ce_write_flush(SHA_CTX *context, int fd)
 	return 0;
 }
 
-static int ce_write(SHA_CTX *context, int fd, void *data, unsigned int len)
+static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
 {
 	while (len) {
 		unsigned int buffered = write_buffer_len;
@@ -1269,7 +1333,7 @@ static int ce_write(SHA_CTX *context, int fd, void *data, unsigned int len)
 	return 0;
 }
 
-static int write_index_ext_header(SHA_CTX *context, int fd,
+static int write_index_ext_header(git_SHA_CTX *context, int fd,
 				  unsigned int ext, unsigned int sz)
 {
 	ext = htonl(ext);
@@ -1278,13 +1342,13 @@ static int write_index_ext_header(SHA_CTX *context, int fd,
 		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
-static int ce_flush(SHA_CTX *context, int fd)
+static int ce_flush(git_SHA_CTX *context, int fd)
 {
 	unsigned int left = write_buffer_len;
 
 	if (left) {
 		write_buffer_len = 0;
-		SHA1_Update(context, write_buffer, left);
+		git_SHA1_Update(context, write_buffer, left);
 	}
 
 	/* Flush first if not enough space for SHA1 signature */
@@ -1295,7 +1359,7 @@ static int ce_flush(SHA_CTX *context, int fd)
 	}
 
 	/* Append the SHA1 signature at the end */
-	SHA1_Final(write_buffer + left, context);
+	git_SHA1_Final(write_buffer + left, context);
 	left += 20;
 	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
 }
@@ -1307,6 +1371,11 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 	 * falsely clean entry due to touch-update-touch race, so we leave
 	 * everything else as they are.  We are called for entries whose
 	 * ce_mtime match the index file mtime.
+	 *
+	 * Note that this actually does not do much for gitlinks, for
+	 * which ce_match_stat_basic() always goes to the actual
+	 * contents.  The caller checks with is_racy_timestamp() which
+	 * always says "no" for gitlinks, so we are not called for them ;-)
 	 */
 	struct stat st;
 
@@ -1344,7 +1413,7 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 	}
 }
 
-static int ce_write_entry(SHA_CTX *c, int fd, struct cache_entry *ce)
+static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce)
 {
 	int size = ondisk_ce_size(ce);
 	struct ondisk_cache_entry *ondisk = xcalloc(1, size);
@@ -1368,7 +1437,7 @@ static int ce_write_entry(SHA_CTX *c, int fd, struct cache_entry *ce)
 
 int write_index(const struct index_state *istate, int newfd)
 {
-	SHA_CTX c;
+	git_SHA_CTX c;
 	struct cache_header hdr;
 	int i, err, removed;
 	struct cache_entry **cache = istate->cache;
@@ -1382,7 +1451,7 @@ int write_index(const struct index_state *istate, int newfd)
 	hdr.hdr_version = htonl(2);
 	hdr.hdr_entries = htonl(entries - removed);
 
-	SHA1_Init(&c);
+	git_SHA1_Init(&c);
 	if (ce_write(&c, newfd, &hdr, sizeof(hdr)) < 0)
 		return -1;
 
@@ -1398,9 +1467,8 @@ int write_index(const struct index_state *istate, int newfd)
 
 	/* Write extension data here */
 	if (istate->cache_tree) {
-		struct strbuf sb;
+		struct strbuf sb = STRBUF_INIT;
 
-		strbuf_init(&sb, 0);
 		cache_tree_write(&sb, istate->cache_tree);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_TREE, sb.len) < 0
 			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
@@ -1409,4 +1477,123 @@ int write_index(const struct index_state *istate, int newfd)
 			return -1;
 	}
 	return ce_flush(&c, newfd);
+}
+
+/*
+ * Read the index file that is potentially unmerged into given
+ * index_state, dropping any unmerged entries.  Returns true is
+ * the index is unmerged.  Callers who want to refuse to work
+ * from an unmerged state can call this and check its return value,
+ * instead of calling read_cache().
+ */
+int read_index_unmerged(struct index_state *istate)
+{
+	int i;
+	int unmerged = 0;
+
+	read_index(istate);
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		struct cache_entry *new_ce;
+		int size, len;
+
+		if (!ce_stage(ce))
+			continue;
+		unmerged = 1;
+		len = strlen(ce->name);
+		size = cache_entry_size(len);
+		new_ce = xcalloc(1, size);
+		hashcpy(new_ce->sha1, ce->sha1);
+		memcpy(new_ce->name, ce->name, len);
+		new_ce->ce_flags = create_ce_flags(len, 0);
+		new_ce->ce_mode = ce->ce_mode;
+		if (add_index_entry(istate, new_ce, 0))
+			return error("%s: cannot drop to stage #0",
+				     ce->name);
+		i = index_name_pos(istate, new_ce->name, len);
+	}
+	return unmerged;
+}
+
+struct update_callback_data
+{
+	int flags;
+	int add_errors;
+};
+
+static void update_callback(struct diff_queue_struct *q,
+			    struct diff_options *opt, void *cbdata)
+{
+	int i;
+	struct update_callback_data *data = cbdata;
+
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+		const char *path = p->one->path;
+		switch (p->status) {
+		default:
+			die("unexpected diff status %c", p->status);
+		case DIFF_STATUS_UNMERGED:
+		case DIFF_STATUS_MODIFIED:
+		case DIFF_STATUS_TYPE_CHANGED:
+			if (add_file_to_index(&the_index, path, data->flags)) {
+				if (!(data->flags & ADD_CACHE_IGNORE_ERRORS))
+					die("updating files failed");
+				data->add_errors++;
+			}
+			break;
+		case DIFF_STATUS_DELETED:
+			if (data->flags & ADD_CACHE_IGNORE_REMOVAL)
+				break;
+			if (!(data->flags & ADD_CACHE_PRETEND))
+				remove_file_from_index(&the_index, path);
+			if (data->flags & (ADD_CACHE_PRETEND|ADD_CACHE_VERBOSE))
+				printf("remove '%s'\n", path);
+			break;
+		}
+	}
+}
+
+int add_files_to_cache(const char *prefix, const char **pathspec, int flags)
+{
+	struct update_callback_data data;
+	struct rev_info rev;
+	init_revisions(&rev, prefix);
+	setup_revisions(0, NULL, &rev, NULL);
+	rev.prune_data = pathspec;
+	rev.diffopt.output_format = DIFF_FORMAT_CALLBACK;
+	rev.diffopt.format_callback = update_callback;
+	data.flags = flags;
+	data.add_errors = 0;
+	rev.diffopt.format_callback_data = &data;
+	run_diff_files(&rev, DIFF_RACY_IS_MODIFIED);
+	return !!data.add_errors;
+}
+
+/*
+ * Returns 1 if the path is an "other" path with respect to
+ * the index; that is, the path is not mentioned in the index at all,
+ * either as a file, a directory with some files in the index,
+ * or as an unmerged entry.
+ *
+ * We helpfully remove a trailing "/" from directories so that
+ * the output of read_directory can be used as-is.
+ */
+int index_name_is_other(const struct index_state *istate, const char *name,
+		int namelen)
+{
+	int pos;
+	if (namelen && name[namelen - 1] == '/')
+		namelen--;
+	pos = index_name_pos(istate, name, namelen);
+	if (0 <= pos)
+		return 0;	/* exact match */
+	pos = -pos - 1;
+	if (pos < istate->cache_nr) {
+		struct cache_entry *ce = istate->cache[pos];
+		if (ce_namelen(ce) == namelen &&
+		    !memcmp(ce->name, name, namelen))
+			return 0; /* Yup, this one exists unmerged */
+	}
+	return 1;
 }

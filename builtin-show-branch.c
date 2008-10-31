@@ -4,7 +4,7 @@
 #include "builtin.h"
 
 static const char show_branch_usage[] =
-"git-show-branch [--sparse] [--current] [--all] [--remotes] [--topo-order] [--more=count | --list | --independent | --merge-base ] [--topics] [<refs>...] | --reflog[=n[,b]] <branch>";
+"git show-branch [--sparse] [--current] [--all] [--remotes] [--topo-order] [--more=count | --list | --independent | --merge-base ] [--topics] [<refs>...] | --reflog[=n[,b]] <branch>";
 static const char show_branch_usage_reflog[] =
 "--reflog is incompatible with --all, --remotes, --independent or --merge-base";
 
@@ -259,11 +259,10 @@ static void join_revs(struct commit_list **list_p,
 
 static void show_one_commit(struct commit *commit, int no_name)
 {
-	struct strbuf pretty;
+	struct strbuf pretty = STRBUF_INIT;
 	const char *pretty_str = "(unavailable)";
 	struct commit_name *name = commit->util;
 
-	strbuf_init(&pretty, 0);
 	if (commit->object.parsed) {
 		pretty_print_commit(CMIT_FMT_ONELINE, commit,
 				    &pretty, 0, NULL, NULL, 0, 0);

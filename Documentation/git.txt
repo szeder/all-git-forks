@@ -43,12 +43,21 @@ unreleased) version of git, that is available from 'master'
 branch of the `git.git` repository.
 Documentation for older releases are available here:
 
-* link:v1.5.6.3/git.html[documentation for release 1.5.6.3]
+* link:v1.6.0.2/git.html[documentation for release 1.6.0.2]
 
 * release notes for
-  link:RelNotes-1.5.6.3.txt[1.5.6.3].
-  link:RelNotes-1.5.6.2.txt[1.5.6.2].
-  link:RelNotes-1.5.6.1.txt[1.5.6.1].
+  link:RelNotes-1.6.0.2.txt[1.6.0.2],
+  link:RelNotes-1.6.0.1.txt[1.6.0.1],
+  link:RelNotes-1.6.0.txt[1.6.0].
+
+* link:v1.5.6.5/git.html[documentation for release 1.5.6.5]
+
+* release notes for
+  link:RelNotes-1.5.6.5.txt[1.5.6.5],
+  link:RelNotes-1.5.6.4.txt[1.5.6.4],
+  link:RelNotes-1.5.6.3.txt[1.5.6.3],
+  link:RelNotes-1.5.6.2.txt[1.5.6.2],
+  link:RelNotes-1.5.6.1.txt[1.5.6.1],
   link:RelNotes-1.5.6.txt[1.5.6].
 
 * link:v1.5.5.4/git.html[documentation for release 1.5.5.4]
@@ -490,7 +499,8 @@ other
 'GIT_PAGER'::
 	This environment variable overrides `$PAGER`. If it is set
 	to an empty string or to the value "cat", git will not launch
-	a pager.
+	a pager.  See also the `core.pager` option in
+	linkgit:git-config[1].
 
 'GIT_SSH'::
 	If this environment variable is set then 'git-fetch'
@@ -601,7 +611,7 @@ contributors on the git-list <git@vger.kernel.org>.
 SEE ALSO
 --------
 linkgit:gittutorial[7], linkgit:gittutorial-2[7],
-linkgit:everyday[7], linkgit:gitcvs-migration[7],
+link:everyday.html[Everyday Git], linkgit:gitcvs-migration[7],
 linkgit:gitglossary[7], linkgit:gitcore-tutorial[7],
 linkgit:gitcli[7], link:user-manual.html[The Git User's Manual]
 

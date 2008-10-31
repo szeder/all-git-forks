@@ -3,7 +3,7 @@
 # Copyright (c) 2007 Johannes E. Schindelin
 #
 
-test_description='git-fast-export'
+test_description='git fast-export'
 . ./test-lib.sh
 
 test_expect_success 'setup' '
@@ -59,7 +59,7 @@ test_expect_success 'fast-export master~2..master' '
 		 test $MASTER != $(git rev-parse --verify refs/heads/partial) &&
 		 git diff master..partial &&
 		 git diff master^..partial^ &&
-		 ! git rev-parse partial~2)
+		 test_must_fail git rev-parse partial~2)
 
 '
 
@@ -67,7 +67,7 @@ test_expect_success 'iso-8859-1' '
 
 	git config i18n.commitencoding ISO-8859-1 &&
 	# use author and committer name in ISO-8859-1 to match it.
-	. ../t3901-8859-1.txt &&
+	. "$TEST_DIRECTORY"/t3901-8859-1.txt &&
 	test_tick &&
 	echo rosten >file &&
 	git commit -s -m den file &&
@@ -125,7 +125,7 @@ test_expect_success 'set up faked signed tag' '
 
 test_expect_success 'signed-tags=abort' '
 
-	! git fast-export --signed-tags=abort sign-your-name
+	test_must_fail git fast-export --signed-tags=abort sign-your-name
 
 '
 
@@ -140,6 +140,94 @@ test_expect_success 'signed-tags=strip' '
 
 	git fast-export --signed-tags=strip sign-your-name > output &&
 	! grep PGP output
+
+'
+
+test_expect_success 'setup submodule' '
+
+	git checkout -f master &&
+	mkdir sub &&
+	cd sub &&
+	git init  &&
+	echo test file > file &&
+	git add file &&
+	git commit -m sub_initial &&
+	cd .. &&
+	git submodule add "`pwd`/sub" sub &&
+	git commit -m initial &&
+	test_tick &&
+	cd sub &&
+	echo more data >> file &&
+	git add file &&
+	git commit -m sub_second &&
+	cd .. &&
+	git add sub &&
+	git commit -m second
+
+'
+
+test_expect_success 'submodule fast-export | fast-import' '
+
+	SUBENT1=$(git ls-tree master^ sub) &&
+	SUBENT2=$(git ls-tree master sub) &&
+	rm -rf new &&
+	mkdir new &&
+	git --git-dir=new/.git init &&
+	git fast-export --signed-tags=strip --all |
+	(cd new &&
+	 git fast-import &&
+	 test "$SUBENT1" = "$(git ls-tree refs/heads/master^ sub)" &&
+	 test "$SUBENT2" = "$(git ls-tree refs/heads/master sub)" &&
+	 git checkout master &&
+	 git submodule init &&
+	 git submodule update &&
+	 cmp sub/file ../sub/file)
+
+'
+
+export GIT_AUTHOR_NAME='A U Thor'
+export GIT_COMMITTER_NAME='C O Mitter'
+
+test_expect_success 'setup copies' '
+
+	git config --unset i18n.commitencoding &&
+	git checkout -b copy rein &&
+	git mv file file3 &&
+	git commit -m move1 &&
+	test_tick &&
+	cp file2 file4 &&
+	git add file4 &&
+	git mv file2 file5 &&
+	git commit -m copy1 &&
+	test_tick &&
+	cp file3 file6 &&
+	git add file6 &&
+	git commit -m copy2 &&
+	test_tick &&
+	echo more text >> file6 &&
+	echo even more text >> file6 &&
+	git add file6 &&
+	git commit -m modify &&
+	test_tick &&
+	cp file6 file7 &&
+	echo test >> file7 &&
+	git add file7 &&
+	git commit -m copy_modify
+
+'
+
+test_expect_success 'fast-export -C -C | fast-import' '
+
+	ENTRY=$(git rev-parse --verify copy) &&
+	rm -rf new &&
+	mkdir new &&
+	git --git-dir=new/.git init &&
+	git fast-export -C -C --signed-tags=strip --all > output &&
+	grep "^C \"file6\" \"file7\"\$" output &&
+	cat output |
+	(cd new &&
+	 git fast-import &&
+	 test $ENTRY = $(git rev-parse --verify refs/heads/copy))
 
 '
 

@@ -320,9 +320,7 @@ static const char *find_wholine(const char *who, int wholen, const char *buf, un
 
 static const char *copy_line(const char *buf)
 {
-	const char *eol = strchr(buf, '\n');
-	if (!eol)
-		return "";
+	const char *eol = strchrnul(buf, '\n');
 	return xmemdupz(buf, eol - buf);
 }
 
@@ -459,8 +457,10 @@ static void find_subpos(const char *buf, unsigned long sz, const char **sub, con
 		return;
 	*sub = buf; /* first non-empty line */
 	buf = strchr(buf, '\n');
-	if (!buf)
+	if (!buf) {
+		*body = "";
 		return; /* no body */
+	}
 	while (*buf == '\n')
 		buf++; /* skip blank between subject and body */
 	*body = buf;
@@ -544,6 +544,107 @@ static void grab_values(struct atom_value *val, int deref, struct object *obj, v
 }
 
 /*
+ * generate a format suitable for scanf from a ref_rev_parse_rules
+ * rule, that is replace the "%.*s" spec with a "%s" spec
+ */
+static void gen_scanf_fmt(char *scanf_fmt, const char *rule)
+{
+	char *spec;
+
+	spec = strstr(rule, "%.*s");
+	if (!spec || strstr(spec + 4, "%.*s"))
+		die("invalid rule in ref_rev_parse_rules: %s", rule);
+
+	/* copy all until spec */
+	strncpy(scanf_fmt, rule, spec - rule);
+	scanf_fmt[spec - rule] = '\0';
+	/* copy new spec */
+	strcat(scanf_fmt, "%s");
+	/* copy remaining rule */
+	strcat(scanf_fmt, spec + 4);
+
+	return;
+}
+
+/*
+ * Shorten the refname to an non-ambiguous form
+ */
+static char *get_short_ref(struct refinfo *ref)
+{
+	int i;
+	static char **scanf_fmts;
+	static int nr_rules;
+	char *short_name;
+
+	/* pre generate scanf formats from ref_rev_parse_rules[] */
+	if (!nr_rules) {
+		size_t total_len = 0;
+
+		/* the rule list is NULL terminated, count them first */
+		for (; ref_rev_parse_rules[nr_rules]; nr_rules++)
+			/* no +1 because strlen("%s") < strlen("%.*s") */
+			total_len += strlen(ref_rev_parse_rules[nr_rules]);
+
+		scanf_fmts = xmalloc(nr_rules * sizeof(char *) + total_len);
+
+		total_len = 0;
+		for (i = 0; i < nr_rules; i++) {
+			scanf_fmts[i] = (char *)&scanf_fmts[nr_rules]
+					+ total_len;
+			gen_scanf_fmt(scanf_fmts[i], ref_rev_parse_rules[i]);
+			total_len += strlen(ref_rev_parse_rules[i]);
+		}
+	}
+
+	/* bail out if there are no rules */
+	if (!nr_rules)
+		return ref->refname;
+
+	/* buffer for scanf result, at most ref->refname must fit */
+	short_name = xstrdup(ref->refname);
+
+	/* skip first rule, it will always match */
+	for (i = nr_rules - 1; i > 0 ; --i) {
+		int j;
+		int short_name_len;
+
+		if (1 != sscanf(ref->refname, scanf_fmts[i], short_name))
+			continue;
+
+		short_name_len = strlen(short_name);
+
+		/*
+		 * check if the short name resolves to a valid ref,
+		 * but use only rules prior to the matched one
+		 */
+		for (j = 0; j < i; j++) {
+			const char *rule = ref_rev_parse_rules[j];
+			unsigned char short_objectname[20];
+
+			/*
+			 * the short name is ambiguous, if it resolves
+			 * (with this previous rule) to a valid ref
+			 * read_ref() returns 0 on success
+			 */
+			if (!read_ref(mkpath(rule, short_name_len, short_name),
+				      short_objectname))
+				break;
+		}
+
+		/*
+		 * short name is non-ambiguous if all previous rules
+		 * haven't resolved to a valid ref
+		 */
+		if (j == i)
+			return short_name;
+	}
+
+	free(short_name);
+	return ref->refname;
+}
+
+
+/*
  * Parse the object referred by ref, and grab needed value.
  */
 static void populate_value(struct refinfo *ref)
@@ -568,13 +669,33 @@ static void populate_value(struct refinfo *ref)
 	for (i = 0; i < used_atom_cnt; i++) {
 		const char *name = used_atom[i];
 		struct atom_value *v = &ref->value[i];
-		if (!strcmp(name, "refname"))
-			v->s = ref->refname;
-		else if (!strcmp(name, "*refname")) {
-			int len = strlen(ref->refname);
-			char *s = xmalloc(len + 4);
-			sprintf(s, "%s^{}", ref->refname);
-			v->s = s;
+		int deref = 0;
+		if (*name == '*') {
+			deref = 1;
+			name++;
+		}
+		if (!prefixcmp(name, "refname")) {
+			const char *formatp = strchr(name, ':');
+			const char *refname = ref->refname;
+
+			/* look for "short" refname format */
+			if (formatp) {
+				formatp++;
+				if (!strcmp(formatp, "short"))
+					refname = get_short_ref(ref);
+				else
+					die("unknown refname format %s",
+					    formatp);
+			}
+
+			if (!deref)
+				v->s = refname;
+			else {
+				int len = strlen(refname);
+				char *s = xmalloc(len + 4);
+				sprintf(s, "%s^{}", refname);
+				v->s = s;
+			}
 		}
 	}
 
@@ -650,7 +771,8 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 			if ((plen <= namelen) &&
 			    !strncmp(refname, p, plen) &&
 			    (refname[plen] == '\0' ||
-			     refname[plen] == '/'))
+			     refname[plen] == '/' ||
+			     p[plen-1] == '/'))
 				break;
 			if (!fnmatch(p, refname, FNM_PATHNAME))
 				break;
@@ -809,7 +931,7 @@ static struct ref_sort *default_sort(void)
 	return sort;
 }
 
-int opt_parse_sort(const struct option *opt, const char *arg, int unset)
+static int opt_parse_sort(const struct option *opt, const char *arg, int unset)
 {
 	struct ref_sort **sort_tail = opt->value;
 	struct ref_sort *s;
@@ -831,7 +953,7 @@ int opt_parse_sort(const struct option *opt, const char *arg, int unset)
 }
 
 static char const * const for_each_ref_usage[] = {
-	"git-for-each-ref [options] [<pattern>]",
+	"git for-each-ref [options] [<pattern>]",
 	NULL
 };
 

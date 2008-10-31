@@ -7,7 +7,7 @@ gitattributes - defining attributes per path
 
 SYNOPSIS
 --------
-$GIT_DIR/info/attributes, gitattributes
+$GIT_DIR/info/attributes, .gitattributes
 
 
 DESCRIPTION
@@ -105,9 +105,8 @@ Set::
 
 Unset::
 
-	Unsetting the `crlf` attribute on a path is meant to
-	mark the path as a "binary" file.  The path never goes
-	through line endings conversion upon checkin/checkout.
+	Unsetting the `crlf` attribute on a path tells git not to
+	attempt any end-of-line conversion upon checkin or checkout.
 
 Unspecified::
 
@@ -164,8 +163,8 @@ few exceptions.  Even though...
 `ident`
 ^^^^^^^
 
-When the attribute `ident` is set to a path, git replaces
-`$Id$` in the blob object with `$Id:`, followed by
+When the attribute `ident` is set for a path, git replaces
+`$Id$` in the blob object with `$Id:`, followed by the
 40-character hexadecimal blob object name, followed by a dollar
 sign `$` upon checkout.  Any byte sequence that begins with
 `$Id:` and ends with `$` in the worktree file is replaced
@@ -271,31 +270,31 @@ See linkgit:git[1] for details.
 Defining a custom hunk-header
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Each group of changes (called "hunk") in the textual diff output
+Each group of changes (called a "hunk") in the textual diff output
 is prefixed with a line of the form:
 
 	@@ -k,l +n,m @@ TEXT
 
-The text is called 'hunk header', and by default a line that
-begins with an alphabet, an underscore or a dollar sign is used,
-which matches what GNU 'diff -p' output uses.  This default
-selection however is not suited for some contents, and you can
-use customized pattern to make a selection.
+This is called a 'hunk header'.  The "TEXT" portion is by default a line
+that begins with an alphabet, an underscore or a dollar sign; this
+matches what GNU 'diff -p' output uses.  This default selection however
+is not suited for some contents, and you can use a customized pattern
+to make a selection.
 
-First in .gitattributes, you would assign the `diff` attribute
+First, in .gitattributes, you would assign the `diff` attribute
 for paths.
 
 ------------------------
 *.tex	diff=tex
 ------------------------
 
-Then, you would define "diff.tex.funcname" configuration to
+Then, you would define a "diff.tex.xfuncname" configuration to
 specify a regular expression that matches a line that you would
-want to appear as the hunk header, like this:
+want to appear as the hunk header "TEXT", like this:
 
 ------------------------
 [diff "tex"]
-	funcname = "^\\(\\\\\\(sub\\)*section{.*\\)$"
+	xfuncname = "^(\\\\(sub)*section\\{.*)$"
 ------------------------
 
 Note.  A single level of backslashes are eaten by the
@@ -307,9 +306,26 @@ backslash, and zero or more occurrences of `sub` followed by
 There are a few built-in patterns to make this easier, and `tex`
 is one of them, so you do not have to write the above in your
 configuration file (you still need to enable this with the
-attribute mechanism, via `.gitattributes`).  Another built-in
-pattern is defined for `java` that defines a pattern suitable
-for program text in Java language.
+attribute mechanism, via `.gitattributes`).  The following built in
+patterns are available:
+
+- `bibtex` suitable for files with BibTeX coded references.
+
+- `html` suitable for HTML/XHTML documents.
+
+- `java` suitable for source code in the Java language.
+
+- `objc` suitable for source code in the Objective-C language.
+
+- `pascal` suitable for source code in the Pascal/Delphi language.
+
+- `php` suitable for source code in the PHP language.
+
+- `python` suitable for source code in the Python language.
+
+- `ruby` suitable for source code in the Ruby language.
+
+- `tex` suitable for source code for LaTeX documents.
 
 
 Performing a three-way merge
@@ -471,6 +487,41 @@ as those for the option `--pretty=format:` of linkgit:git-log[1],
 except that they need to be wrapped like this: `$Format:PLACEHOLDERS$`
 in the file.  E.g. the string `$Format:%H$` will be replaced by the
 commit hash.
+
+
+USING ATTRIBUTE MACROS
+----------------------
+
+You do not want any end-of-line conversions applied to, nor textual diffs
+produced for, any binary file you track.  You would need to specify e.g.
+
+------------
+*.jpg -crlf -diff
+------------
+
+but that may become cumbersome, when you have many attributes.  Using
+attribute macros, you can specify groups of attributes set or unset at
+the same time.  The system knows a built-in attribute macro, `binary`:
+
+------------
+*.jpg binary
+------------
+
+which is equivalent to the above.  Note that the attribute macros can only
+be "Set" (see the above example that sets "binary" macro as if it were an
+ordinary attribute --- setting it in turn unsets "crlf" and "diff").
+
+
+DEFINING ATTRIBUTE MACROS
+-------------------------
+
+Custom attribute macros can be defined only in the `.gitattributes` file
+at the toplevel (i.e. not in any subdirectory).  The built-in attribute
+macro "binary" is equivalent to:
+
+------------
+[attr]binary -diff -crlf
+------------
 
 
 EXAMPLE

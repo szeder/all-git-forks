@@ -28,7 +28,7 @@ tokens_match () {
 }
 
 check_remote_track () {
-	actual=$(git remote show "$1" | sed -n -e '$p') &&
+	actual=$(git remote show "$1" | sed -e '1,/Tracked/d') &&
 	shift &&
 	tokens_match "$*" "$actual"
 }
@@ -109,15 +109,17 @@ test_expect_success 'remove remote' '
 
 cat > test/expect << EOF
 * remote origin
-  URL: $(pwd)/one/.git
+  URL: $(pwd)/one
   Remote branch merged with 'git pull' while on branch master
     master
   New remote branch (next fetch will store in remotes/origin)
     master
   Tracked remote branches
-    side master
+    side
+    master
   Local branches pushed with 'git push'
-    master:upstream +refs/tags/lastbackup
+    master:upstream
+    +refs/tags/lastbackup
 EOF
 
 test_expect_success 'show' '
@@ -140,13 +142,15 @@ test_expect_success 'show' '
 
 cat > test/expect << EOF
 * remote origin
-  URL: $(pwd)/one/.git
+  URL: $(pwd)/one
   Remote branch merged with 'git pull' while on branch master
     master
   Tracked remote branches
-    master side
+    master
+    side
   Local branches pushed with 'git push'
-    master:upstream +refs/tags/lastbackup
+    master:upstream
+    +refs/tags/lastbackup
 EOF
 
 test_expect_success 'show -n' '
@@ -164,12 +168,12 @@ test_expect_success 'prune' '
 	 git fetch origin &&
 	 git remote prune origin &&
 	 git rev-parse refs/remotes/origin/side2 &&
-	 ! git rev-parse refs/remotes/origin/side)
+	 test_must_fail git rev-parse refs/remotes/origin/side)
 '
 
 cat > test/expect << EOF
 Pruning origin
-URL: $(pwd)/one/.git
+URL: $(pwd)/one
  * [would prune] origin/side2
 EOF
 
@@ -179,7 +183,7 @@ test_expect_success 'prune --dry-run' '
 	(cd test &&
 	 git remote prune --dry-run origin > output &&
 	 git rev-parse refs/remotes/origin/side2 &&
-	 ! git rev-parse refs/remotes/origin/side &&
+	 test_must_fail git rev-parse refs/remotes/origin/side &&
 	(cd ../one &&
 	 git branch -m side side2) &&
 	 test_cmp expect output)
@@ -188,16 +192,16 @@ test_expect_success 'prune --dry-run' '
 test_expect_success 'add --mirror && prune' '
 	(mkdir mirror &&
 	 cd mirror &&
-	 git init &&
+	 git init --bare &&
 	 git remote add --mirror -f origin ../one) &&
 	(cd one &&
 	 git branch -m side2 side) &&
 	(cd mirror &&
 	 git rev-parse --verify refs/heads/side2 &&
-	 ! git rev-parse --verify refs/heads/side &&
+	 test_must_fail git rev-parse --verify refs/heads/side &&
 	 git fetch origin &&
 	 git remote prune origin &&
-	 ! git rev-parse --verify refs/heads/side2 &&
+	 test_must_fail git rev-parse --verify refs/heads/side2 &&
 	 git rev-parse --verify refs/heads/side)
 '
 
@@ -212,10 +216,10 @@ test_expect_success 'add alt && prune' '
 	 git branch -m side side2) &&
 	(cd alttst &&
 	 git rev-parse --verify refs/remotes/origin/side &&
-	 ! git rev-parse --verify refs/remotes/origin/side2 &&
+	 test_must_fail git rev-parse --verify refs/remotes/origin/side2 &&
 	 git fetch alt &&
 	 git remote prune alt &&
-	 ! git rev-parse --verify refs/remotes/origin/side &&
+	 test_must_fail git rev-parse --verify refs/remotes/origin/side &&
 	 git rev-parse --verify refs/remotes/origin/side2)
 '
 
@@ -320,7 +324,7 @@ test_expect_success '"remote show" does not show symbolic refs' '
 
 test_expect_success 'reject adding remote with an invalid name' '
 
-	! git remote add some:url desired-name
+	test_must_fail git remote add some:url desired-name
 
 '
 

@@ -58,8 +58,10 @@ output, unless the --stdout option is specified.
 If -o is specified, output files are created in <dir>.  Otherwise
 they are created in the current working directory.
 
-If -n is specified, instead of "[PATCH] Subject", the first line
-is formatted as "[PATCH n/m] Subject".
+By default, the subject of a single patch is "[PATCH] First Line" and
+the subject when multiple patches are output is "[PATCH n/m] First
+Line". To force 1/1 to be added for a single patch, use -n.  To omit
+patch numbers from the subject, use -N
 
 If given --thread, 'git-format-patch' will generate In-Reply-To and
 References headers to make the second and subsequent patch mails appear
@@ -81,7 +83,7 @@ include::diff-options.txt[]
 
 -n::
 --numbered::
-	Name output in '[PATCH n/m]' format.
+	Name output in '[PATCH n/m]' format, even with a single patch.
 
 -N::
 --no-numbered::
@@ -147,9 +149,9 @@ include::diff-options.txt[]
 	to any configured headers, and may be used multiple times.
 
 --cover-letter::
-	Generate a cover letter template.  You still have to fill in
-	a description, but the shortlog and the diffstat will be
-	generated for you.
+	In addition to the patches, generate a cover letter file
+	containing the shortlog and the overall diffstat.  You can
+	fill in a description in the file before sending it out.
 
 --suffix=.<sfx>::
 	Instead of using `.patch` as the suffix for generated
@@ -235,7 +237,7 @@ linkgit:git-am[1], linkgit:git-send-email[1]
 
 Author
 ------
-Written by Junio C Hamano <junkio@cox.net>
+Written by Junio C Hamano <gitster@pobox.com>
 
 Documentation
 --------------

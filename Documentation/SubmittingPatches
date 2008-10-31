@@ -71,7 +71,7 @@ run git diff --check on your changes before you commit.
 
 (1a) Try to be nice to older C compilers
 
-We try to support wide range of C compilers to compile
+We try to support a wide range of C compilers to compile
 git with. That means that you should not use C99 initializers, even
 if a lot of compilers grok it.
 
@@ -301,7 +301,7 @@ If it does not apply correctly, there can be various reasons.
   patch appropriately.
 
 * Your MUA corrupted your patch; "am" would complain that
-  the patch does not apply.  Look at .dotest/ subdirectory and
+  the patch does not apply.  Look at .git/rebase-apply/ subdirectory and
   see what 'patch' file contains and check for the common
   corruption patterns mentioned above.
 

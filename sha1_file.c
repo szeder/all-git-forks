@@ -99,7 +99,11 @@ int safe_create_leading_directories(char *path)
 		pos = strchr(pos, '/');
 		if (!pos)
 			break;
-		*pos = 0;
+		while (*++pos == '/')
+			;
+		if (!*pos)
+			break;
+		*--pos = '\0';
 		if (!stat(path, &st)) {
 			/* path exists */
 			if (!S_ISDIR(st.st_mode)) {
@@ -250,7 +254,6 @@ static void read_info_alternates(const char * alternates, int depth);
  */
 static int link_alt_odb_entry(const char * entry, int len, const char * relative_base, int depth)
 {
-	struct stat st;
 	const char *objdir = get_object_directory();
 	struct alternate_object_database *ent;
 	struct alternate_object_database *alt;
@@ -281,7 +284,7 @@ static int link_alt_odb_entry(const char * entry, int len, const char * relative
 	ent->base[pfxlen] = ent->base[entlen-1] = 0;
 
 	/* Detect cases where alternate disappeared */
-	if (stat(ent->base, &st) || !S_ISDIR(st.st_mode)) {
+	if (!is_directory(ent->base)) {
 		error("object directory %s does not exist; "
 		      "check .git/objects/info/alternates.",
 		      ent->base);
@@ -385,13 +388,23 @@ static void read_info_alternates(const char * relative_base, int depth)
 void add_to_alternates_file(const char *reference)
 {
 	struct lock_file *lock = xcalloc(1, sizeof(struct lock_file));
-	int fd = hold_lock_file_for_append(lock, git_path("objects/info/alternates"), 1);
+	int fd = hold_lock_file_for_append(lock, git_path("objects/info/alternates"), LOCK_DIE_ON_ERROR);
 	char *alt = mkpath("%s/objects\n", reference);
 	write_or_die(fd, alt, strlen(alt));
 	if (commit_lock_file(lock))
 		die("could not close alternates file");
 	if (alt_odb_tail)
 		link_alt_odb_entries(alt, alt + strlen(alt), '\n', NULL, 0);
+}
+
+void foreach_alt_odb(alt_odb_fn fn, void *cb)
+{
+	struct alternate_object_database *ent;
+
+	prepare_alt_odb();
+	for (ent = alt_odb_list; ent; ent = ent->next)
+		if (fn(ent, cb))
+			return;
 }
 
 void prepare_alt_odb(void)
@@ -990,6 +1003,7 @@ void prepare_packed_git(void)
 
 void reprepare_packed_git(void)
 {
+	discard_revindex();
 	prepare_packed_git_run_once = 0;
 	prepare_packed_git();
 }
@@ -1004,6 +1018,18 @@ static void mark_bad_packed_object(struct packed_git *p,
 	p->bad_object_sha1 = xrealloc(p->bad_object_sha1, 20 * (p->num_bad_objects + 1));
 	hashcpy(p->bad_object_sha1 + 20 * p->num_bad_objects, sha1);
 	p->num_bad_objects++;
+}
+
+static int has_packed_and_bad(const unsigned char *sha1)
+{
+	struct packed_git *p;
+	unsigned i;
+
+	for (p = packed_git; p; p = p->next)
+		for (i = 0; i < p->num_bad_objects; i++)
+			if (!hashcmp(sha1, p->bad_object_sha1 + 20 * i))
+				return 1;
+	return 0;
 }
 
 int check_sha1_signature(const unsigned char *sha1, void *map, unsigned long size, const char *type)
@@ -1545,11 +1571,9 @@ static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
 	struct delta_base_cache_entry *ent = delta_base_cache + hash;
 
 	ret = ent->data;
-	if (ret && ent->p == p && ent->base_offset == base_offset)
-		goto found_cache_entry;
-	return unpack_entry(p, base_offset, type, base_size);
+	if (!ret || ent->p != p || ent->base_offset != base_offset)
+		return unpack_entry(p, base_offset, type, base_size);
 
-found_cache_entry:
 	if (!keep_cache) {
 		ent->data = NULL;
 		ent->lru.next->prev = ent->lru.prev;
@@ -1647,7 +1671,7 @@ static void *unpack_delta_entry(struct packed_git *p,
 		      sha1_to_hex(base_sha1), (uintmax_t)base_offset,
 		      p->pack_name);
 		mark_bad_packed_object(p, base_sha1);
-		base = read_sha1_file(base_sha1, type, &base_size);
+		base = read_object(base_sha1, type, &base_size);
 		if (!base)
 			return NULL;
 	}
@@ -1917,11 +1941,18 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 {
 	struct pack_entry e;
+	int status;
 
 	if (!find_pack_entry(sha1, &e, NULL)) {
+		/* Most likely it's a loose object. */
+		status = sha1_loose_object_info(sha1, sizep);
+		if (status >= 0)
+			return status;
+
+		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
 		if (!find_pack_entry(sha1, &e, NULL))
-			return sha1_loose_object_info(sha1, sizep);
+			return status;
 	}
 	return packed_object_info(e.p, e.offset, sizep);
 }
@@ -1945,7 +1976,7 @@ static void *read_packed_sha1(const unsigned char *sha1,
 		error("failed to read object %s at offset %"PRIuMAX" from %s",
 		      sha1_to_hex(sha1), (uintmax_t)e.offset, e.p->pack_name);
 		mark_bad_packed_object(e.p, sha1);
-		data = read_sha1_file(sha1, type, size);
+		data = read_object(sha1, type, size);
 	}
 	return data;
 }
@@ -2010,8 +2041,8 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	return 0;
 }
 
-void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
-		     unsigned long *size)
+void *read_object(const unsigned char *sha1, enum object_type *type,
+		  unsigned long *size)
 {
 	unsigned long mapsize;
 	void *map, *buf;
@@ -2035,6 +2066,16 @@ void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
 	}
 	reprepare_packed_git();
 	return read_packed_sha1(sha1, type, size);
+}
+
+void *read_sha1_file(const unsigned char *sha1, enum object_type *type,
+		     unsigned long *size)
+{
+	void *data = read_object(sha1, type, size);
+	/* legacy behavior is to die on corrupted objects */
+	if (!data && (has_loose_object(sha1) || has_packed_and_bad(sha1)))
+		die("object %s is corrupted", sha1_to_hex(sha1));
+	return data;
 }
 
 void *read_object_with_reference(const unsigned char *sha1,
@@ -2089,16 +2130,16 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
                                     const char *type, unsigned char *sha1,
                                     char *hdr, int *hdrlen)
 {
-	SHA_CTX c;
+	git_SHA_CTX c;
 
 	/* Generate the header */
 	*hdrlen = sprintf(hdr, "%s %lu", type, len)+1;
 
 	/* Sha1.. */
-	SHA1_Init(&c);
-	SHA1_Update(&c, hdr, *hdrlen);
-	SHA1_Update(&c, buf, len);
-	SHA1_Final(sha1, &c);
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, hdr, *hdrlen);
+	git_SHA1_Update(&c, buf, len);
+	git_SHA1_Final(sha1, &c);
 }
 
 /*
@@ -2106,7 +2147,9 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
  */
 int move_temp_to_file(const char *tmpfile, const char *filename)
 {
-	int ret = link(tmpfile, filename);
+	int ret = 0;
+	if (link(tmpfile, filename))
+		ret = errno;
 
 	/*
 	 * Coda hack - coda doesn't like cross-directory links,
@@ -2290,6 +2333,7 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	enum object_type type;
 	char hdr[32];
 	int hdrlen;
+	int ret;
 
 	if (has_loose_object(sha1))
 		return 0;
@@ -2297,7 +2341,10 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
 	hdrlen = sprintf(hdr, "%s %lu", typename(type), len) + 1;
-	return write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
+	ret = write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
+	free(buf);
+
+	return ret;
 }
 
 int has_pack_index(const unsigned char *sha1)
@@ -2331,38 +2378,10 @@ int has_sha1_file(const unsigned char *sha1)
 	return has_loose_object(sha1);
 }
 
-int index_pipe(unsigned char *sha1, int fd, const char *type, int write_object)
+static int index_mem(unsigned char *sha1, void *buf, size_t size,
+		     int write_object, enum object_type type, const char *path)
 {
-	struct strbuf buf;
-	int ret;
-
-	strbuf_init(&buf, 0);
-	if (strbuf_read(&buf, fd, 4096) < 0) {
-		strbuf_release(&buf);
-		return -1;
-	}
-
-	if (!type)
-		type = blob_type;
-	if (write_object)
-		ret = write_sha1_file(buf.buf, buf.len, type, sha1);
-	else
-		ret = hash_sha1_file(buf.buf, buf.len, type, sha1);
-	strbuf_release(&buf);
-
-	return ret;
-}
-
-int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
-	     enum object_type type, const char *path)
-{
-	size_t size = xsize_t(st->st_size);
-	void *buf = NULL;
 	int ret, re_allocated = 0;
-
-	if (size)
-		buf = xmmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-	close(fd);
 
 	if (!type)
 		type = OBJ_BLOB;
@@ -2370,12 +2389,10 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
 	/*
 	 * Convert blobs to git internal format
 	 */
-	if ((type == OBJ_BLOB) && S_ISREG(st->st_mode)) {
-		struct strbuf nbuf;
-		strbuf_init(&nbuf, 0);
+	if ((type == OBJ_BLOB) && path) {
+		struct strbuf nbuf = STRBUF_INIT;
 		if (convert_to_git(path, buf, size, &nbuf,
 		                   write_object ? safe_crlf : 0)) {
-			munmap(buf, size);
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;
 		}
@@ -2385,12 +2402,32 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
 		ret = write_sha1_file(buf, size, typename(type), sha1);
 	else
 		ret = hash_sha1_file(buf, size, typename(type), sha1);
-	if (re_allocated) {
+	if (re_allocated)
 		free(buf);
-		return ret;
-	}
-	if (size)
+	return ret;
+}
+
+int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
+	     enum object_type type, const char *path)
+{
+	int ret;
+	size_t size = xsize_t(st->st_size);
+
+	if (!S_ISREG(st->st_mode)) {
+		struct strbuf sbuf = STRBUF_INIT;
+		if (strbuf_read(&sbuf, fd, 4096) >= 0)
+			ret = index_mem(sha1, sbuf.buf, sbuf.len, write_object,
+					type, path);
+		else
+			ret = -1;
+		strbuf_release(&sbuf);
+	} else if (size) {
+		void *buf = xmmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+		ret = index_mem(sha1, buf, size, write_object, type, path);
 		munmap(buf, size);
+	} else
+		ret = index_mem(sha1, NULL, size, write_object, type, path);
+	close(fd);
 	return ret;
 }
 

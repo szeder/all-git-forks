@@ -2,6 +2,7 @@
 #define REVISION_H
 
 #include "parse-options.h"
+#include "grep.h"
 
 #define SEEN		(1u<<0)
 #define UNINTERESTING   (1u<<1)
@@ -12,8 +13,7 @@
 #define CHILD_SHOWN	(1u<<6)
 #define ADDED		(1u<<7)	/* Parents already parsed and added? */
 #define SYMMETRIC_LEFT	(1u<<8)
-#define TOPOSORT	(1u<<9)	/* In the active toposort list.. */
-#define ALL_REV_FLAGS	((1u<<10)-1)
+#define ALL_REV_FLAGS	((1u<<9)-1)
 
 struct rev_info;
 struct log_info;
@@ -42,6 +42,7 @@ struct rev_info {
 			simplify_history:1,
 			lifo:1,
 			topo_order:1,
+			simplify_merges:1,
 			tag_objects:1,
 			tree_objects:1,
 			blob_objects:1,
@@ -53,6 +54,7 @@ struct rev_info {
 			rewrite_parents:1,
 			print_parents:1,
 			reverse:1,
+			reverse_output_stage:1,
 			cherry_pick:1,
 			first_parent_only:1;
 
@@ -93,7 +95,7 @@ struct rev_info {
 	int		show_log_size;
 
 	/* Filter by commit log message */
-	struct grep_opt	*grep_filter;
+	struct grep_opt	grep_filter;
 
 	/* Display history graph */
 	struct git_graph *graph;
@@ -110,6 +112,7 @@ struct rev_info {
 
 	struct reflog_walk_info *reflog_info;
 	struct decoration children;
+	struct decoration merge_simplification;
 };
 
 #define REV_TREE_SAME		0
@@ -120,7 +123,7 @@ struct rev_info {
 void read_revisions_from_stdin(struct rev_info *revs);
 
 typedef void (*show_early_output_fn_t)(struct rev_info *, struct commit_list *);
-volatile show_early_output_fn_t show_early_output;
+extern volatile show_early_output_fn_t show_early_output;
 
 extern void init_revisions(struct rev_info *revs, const char *prefix);
 extern int setup_revisions(int argc, const char **argv, struct rev_info *revs, const char *def);

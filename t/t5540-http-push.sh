@@ -19,7 +19,7 @@ then
 	exit
 fi
 
-. ../lib-httpd.sh
+. "$TEST_DIRECTORY"/lib-httpd.sh
 
 if ! start_httpd >&3 2>&4
 then
@@ -41,7 +41,7 @@ test_expect_success 'setup remote repository' '
 	git clone --bare test_repo test_repo.git &&
 	cd test_repo.git &&
 	git --bare update-server-info &&
-	chmod +x hooks/post-update &&
+	mv hooks/post-update.sample hooks/post-update &&
 	cd - &&
 	mv test_repo.git "$HTTPD_DOCUMENT_ROOT_PATH"
 '
@@ -73,7 +73,7 @@ test_expect_failure 'create and delete remote branch' '
 	git push origin :dev &&
 	git branch -d -r origin/dev &&
 	git fetch &&
-	! git show-ref --verify refs/remotes/origin/dev
+	test_must_fail git show-ref --verify refs/remotes/origin/dev
 '
 
 stop_httpd

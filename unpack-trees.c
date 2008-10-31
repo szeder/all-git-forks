@@ -376,6 +376,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	state.refresh_cache = 1;
 
 	memset(&o->result, 0, sizeof(o->result));
+	o->result.initialized = 1;
 	if (o->src_index)
 		o->result.timestamp = o->src_index->timestamp;
 	o->merge_size = len;
@@ -940,8 +941,17 @@ int twoway_merge(struct cache_entry **src, struct unpack_trees_options *o)
 			return -1;
 		}
 	}
-	else if (newtree)
+	else if (newtree) {
+		if (oldtree && !o->initial_checkout) {
+			/*
+			 * deletion of the path was staged;
+			 */
+			if (same(oldtree, newtree))
+				return 1;
+			return reject_merge(oldtree, o);
+		}
 		return merged_entry(newtree, current, o);
+	}
 	return deleted_entry(oldtree, current, o);
 }
 

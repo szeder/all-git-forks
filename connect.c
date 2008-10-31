@@ -41,12 +41,20 @@ int check_ref_type(const struct ref *ref, int flags)
 	return check_ref(ref->name, strlen(ref->name), flags);
 }
 
+static void add_extra_have(struct extra_have_objects *extra, unsigned char *sha1)
+{
+	ALLOC_GROW(extra->array, extra->nr + 1, extra->alloc);
+	hashcpy(&(extra->array[extra->nr][0]), sha1);
+	extra->nr++;
+}
+
 /*
  * Read all the refs from the other end
  */
 struct ref **get_remote_heads(int in, struct ref **list,
 			      int nr_match, char **match,
-			      unsigned int flags)
+			      unsigned int flags,
+			      struct extra_have_objects *extra_have)
 {
 	*list = NULL;
 	for (;;) {
@@ -72,13 +80,18 @@ struct ref **get_remote_heads(int in, struct ref **list,
 			server_capabilities = xstrdup(name + name_len + 1);
 		}
 
+		if (extra_have &&
+		    name_len == 5 && !memcmp(".have", name, 5)) {
+			add_extra_have(extra_have, old_sha1);
+			continue;
+		}
+
 		if (!check_ref(name, name_len, flags))
 			continue;
 		if (nr_match && !path_match(name, nr_match, match))
 			continue;
-		ref = alloc_ref(name_len + 1);
+		ref = alloc_ref(buffer + 41);
 		hashcpy(ref->old_sha1, old_sha1);
-		memcpy(ref->name, buffer + 41, name_len + 1);
 		*list = ref;
 		list = &ref->next;
 	}
@@ -97,7 +110,7 @@ int get_ack(int fd, unsigned char *result_sha1)
 	int len = packet_read_line(fd, line, sizeof(line));
 
 	if (!len)
-		die("git-fetch-pack: expected ACK/NAK, got EOF");
+		die("git fetch-pack: expected ACK/NAK, got EOF");
 	if (line[len-1] == '\n')
 		line[--len] = 0;
 	if (!strcmp(line, "NAK"))
@@ -109,7 +122,7 @@ int get_ack(int fd, unsigned char *result_sha1)
 			return 1;
 		}
 	}
-	die("git-fetch_pack: expected ACK/NAK, got '%s'", line);
+	die("git fetch_pack: expected ACK/NAK, got '%s'", line);
 }
 
 int path_match(const char *path, int nr, char **match)

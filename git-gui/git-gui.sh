@@ -52,7 +52,11 @@ catch {rename send {}} ; # What an evil concept...
 set oguilib {@@GITGUI_LIBDIR@@}
 set oguirel {@@GITGUI_RELATIVE@@}
 if {$oguirel eq {1}} {
-	set oguilib [file dirname [file dirname [file normalize $argv0]]]
+	set oguilib [file dirname [file normalize $argv0]]
+	if {[file tail $oguilib] eq {git-core}} {
+		set oguilib [file dirname $oguilib]
+	}
+	set oguilib [file dirname $oguilib]
 	set oguilib [file join $oguilib share git-gui lib]
 	set oguimsg [file join $oguilib msgs]
 } elseif {[string match @@* $oguirel]} {
@@ -317,7 +321,7 @@ proc _git_cmd {name} {
 	return $v
 }
 
-proc _which {what} {
+proc _which {what args} {
 	global env _search_exe _search_path
 
 	if {$_search_path eq {}} {
@@ -340,8 +344,14 @@ proc _which {what} {
 		}
 	}
 
+	if {[is_Windows] && [lsearch -exact $args -script] >= 0} {
+		set suffix {}
+	} else {
+		set suffix $_search_exe
+	}
+
 	foreach p $_search_path {
-		set p [file join $p $what$_search_exe]
+		set p [file join $p $what$suffix]
 		if {[file exists $p]} {
 			return [file normalize $p]
 		}
@@ -473,10 +483,10 @@ proc githook_read {hook_name args} {
 	set pchook [gitdir hooks $hook_name]
 	lappend args 2>@1
 
-	# On Cygwin [file executable] might lie so we need to ask
+	# On Windows [file executable] might lie so we need to ask
 	# the shell if the hook is executable.  Yes that's annoying.
 	#
-	if {[is_Cygwin]} {
+	if {[is_Windows]} {
 		upvar #0 _sh interp
 		if {![info exists interp]} {
 			set interp [_which sh]
@@ -495,6 +505,33 @@ proc githook_read {hook_name args} {
 	}
 
 	return {}
+}
+
+proc kill_file_process {fd} {
+	set process [pid $fd]
+
+	catch {
+		if {[is_Windows]} {
+			# Use a Cygwin-specific flag to allow killing
+			# native Windows processes
+			exec kill -f $process
+		} else {
+			exec kill $process
+		}
+	}
+}
+
+proc gitattr {path attr default} {
+	if {[catch {set r [git check-attr $attr -- $path]}]} {
+		set r unspecified
+	} else {
+		set r [join [lrange [split $r :] 2 end] :]
+		regsub {^ } $r {} r
+	}
+	if {$r eq {unspecified}} {
+		return $default
+	}
+	return $r
 }
 
 proc sq {value} {
@@ -633,15 +670,21 @@ proc apply_config {} {
 }
 
 set default_config(branch.autosetupmerge) true
+set default_config(merge.tool) {}
+set default_config(merge.keepbackup) true
 set default_config(merge.diffstat) true
 set default_config(merge.summary) false
 set default_config(merge.verbosity) 2
 set default_config(user.name) {}
 set default_config(user.email) {}
 
+set default_config(gui.encoding) [encoding system]
 set default_config(gui.matchtrackingbranch) false
 set default_config(gui.pruneduringfetch) false
 set default_config(gui.trustmtime) false
+set default_config(gui.fastcopyblame) false
+set default_config(gui.copyblamethreshold) 40
+set default_config(gui.blamehistoryctx) 7
 set default_config(gui.diffcontext) 5
 set default_config(gui.commitmsgwidth) 75
 set default_config(gui.newbranchtemplate) {}
@@ -919,10 +962,32 @@ blame {
 }
 citool {
 	enable_option singlecommit
+	enable_option retcode
 
 	disable_option multicommit
 	disable_option branch
 	disable_option transport
+
+	while {[llength $argv] > 0} {
+		set a [lindex $argv 0]
+		switch -- $a {
+		--amend {
+			enable_option initialamend
+		}
+		--nocommit {
+			enable_option nocommit
+			enable_option nocommitmsg
+		}
+		--commitmsg {
+			disable_option nocommitmsg
+		}
+		default {
+			break
+		}
+		}
+
+		set argv [lrange $argv 1 end]
+	}
 }
 }
 
@@ -994,7 +1059,11 @@ set current_branch {}
 set is_detached 0
 set current_diff_path {}
 set is_3way_diff 0
+set is_conflict_diff 0
 set selected_commit_type new
+
+set nullid "0000000000000000000000000000000000000000"
+set nullid2 "0000000000000000000000000000000000000001"
 
 ######################################################################
 ##
@@ -1076,6 +1145,20 @@ proc PARENT {} {
 	return $empty_tree
 }
 
+proc force_amend {} {
+	global selected_commit_type
+	global HEAD PARENT MERGE_HEAD commit_type
+
+	repository_state newType newHEAD newMERGE_HEAD
+	set HEAD $newHEAD
+	set PARENT $newHEAD
+	set MERGE_HEAD $newMERGE_HEAD
+	set commit_type $newType
+
+	set selected_commit_type amend
+	do_select_commit_type
+}
+
 proc rescan {after {honor_trustmtime 1}} {
 	global HEAD PARENT MERGE_HEAD commit_type
 	global ui_index ui_workdir ui_comm
@@ -1102,6 +1185,7 @@ proc rescan {after {honor_trustmtime 1}} {
 		|| [string trim [$ui_comm get 0.0 end]] eq {})} {
 		if {[string match amend* $commit_type]} {
 		} elseif {[load_message GITGUI_MSG]} {
+		} elseif {[run_prepare_commit_msg_hook]} {
 		} elseif {[load_message MERGE_MSG]} {
 		} elseif {[load_message SQUASH_MSG]} {
 		}
@@ -1201,6 +1285,70 @@ proc load_message {file} {
 	return 0
 }
 
+proc run_prepare_commit_msg_hook {} {
+	global pch_error
+
+	# prepare-commit-msg requires PREPARE_COMMIT_MSG exist.  From git-gui
+	# it will be .git/MERGE_MSG (merge), .git/SQUASH_MSG (squash), or an
+	# empty file but existant file.
+
+	set fd_pcm [open [gitdir PREPARE_COMMIT_MSG] a]
+
+	if {[file isfile [gitdir MERGE_MSG]]} {
+		set pcm_source "merge"
+		set fd_mm [open [gitdir MERGE_MSG] r]
+		puts -nonewline $fd_pcm [read $fd_mm]
+		close $fd_mm
+	} elseif {[file isfile [gitdir SQUASH_MSG]]} {
+		set pcm_source "squash"
+		set fd_sm [open [gitdir SQUASH_MSG] r]
+		puts -nonewline $fd_pcm [read $fd_sm]
+		close $fd_sm
+	} else {
+		set pcm_source ""
+	}
+
+	close $fd_pcm
+
+	set fd_ph [githook_read prepare-commit-msg \
+			[gitdir PREPARE_COMMIT_MSG] $pcm_source]
+	if {$fd_ph eq {}} {
+		catch {file delete [gitdir PREPARE_COMMIT_MSG]}
+		return 0;
+	}
+
+	ui_status [mc "Calling prepare-commit-msg hook..."]
+	set pch_error {}
+
+	fconfigure $fd_ph -blocking 0 -translation binary -eofchar {}
+	fileevent $fd_ph readable \
+		[list prepare_commit_msg_hook_wait $fd_ph]
+
+	return 1;
+}
+
+proc prepare_commit_msg_hook_wait {fd_ph} {
+	global pch_error
+
+	append pch_error [read $fd_ph]
+	fconfigure $fd_ph -blocking 1
+	if {[eof $fd_ph]} {
+		if {[catch {close $fd_ph}]} {
+			ui_status [mc "Commit declined by prepare-commit-msg hook."]
+			hook_failed_popup prepare-commit-msg $pch_error
+			catch {file delete [gitdir PREPARE_COMMIT_MSG]}
+			exit 1
+		} else {
+			load_message PREPARE_COMMIT_MSG
+		}
+		set pch_error {}
+		catch {file delete [gitdir PREPARE_COMMIT_MSG]}
+		return
+        }
+	fconfigure $fd_ph -blocking 0
+	catch {file delete [gitdir PREPARE_COMMIT_MSG]}
+}
+
 proc read_diff_index {fd after} {
 	global buf_rdi
 
@@ -1297,6 +1445,8 @@ proc rescan_done {fd buf after} {
 	unlock_index
 	display_all_files
 	if {$current_diff_path ne {}} reshow_diff
+	if {$current_diff_path eq {}} select_first_diff
+
 	uplevel #0 $after
 }
 
@@ -1593,6 +1743,15 @@ static unsigned char file_merge_bits[] = {
    0xfa, 0x17, 0x02, 0x10, 0xfe, 0x1f};
 } -maskdata $filemask
 
+image create bitmap file_statechange -background white -foreground green -data {
+#define file_merge_width 14
+#define file_merge_height 15
+static unsigned char file_statechange_bits[] = {
+   0xfe, 0x01, 0x02, 0x03, 0x02, 0x05, 0x02, 0x09, 0x02, 0x1f, 0x62, 0x10,
+   0x62, 0x10, 0xba, 0x11, 0xba, 0x11, 0x62, 0x10, 0x62, 0x10, 0x02, 0x10,
+   0x02, 0x10, 0x02, 0x10, 0xfe, 0x1f};
+} -maskdata $filemask
+
 set ui_index .vpane.files.index.list
 set ui_workdir .vpane.files.workdir.list
 
@@ -1601,12 +1760,14 @@ set all_icons(A$ui_index)   file_fulltick
 set all_icons(M$ui_index)   file_fulltick
 set all_icons(D$ui_index)   file_removed
 set all_icons(U$ui_index)   file_merge
+set all_icons(T$ui_index)   file_statechange
 
 set all_icons(_$ui_workdir) file_plain
 set all_icons(M$ui_workdir) file_mod
 set all_icons(D$ui_workdir) file_question
 set all_icons(U$ui_workdir) file_merge
 set all_icons(O$ui_workdir) file_plain
+set all_icons(T$ui_workdir) file_statechange
 
 set max_status_desc 0
 foreach i {
@@ -1617,6 +1778,9 @@ foreach i {
 		{MM {mc "Portions staged for commit"}}
 		{MD {mc "Staged for commit, missing"}}
 
+		{_T {mc "File type changed, not staged"}}
+		{T_ {mc "File type changed, staged"}}
+
 		{_O {mc "Untracked, not staged"}}
 		{A_ {mc "Staged for commit"}}
 		{AM {mc "Portions staged for commit"}}
@@ -1626,10 +1790,12 @@ foreach i {
 		{D_ {mc "Staged for removal"}}
 		{DO {mc "Staged for removal, still present"}}
 
+		{_U {mc "Requires merge resolution"}}
 		{U_ {mc "Requires merge resolution"}}
 		{UU {mc "Requires merge resolution"}}
 		{UM {mc "Requires merge resolution"}}
 		{UD {mc "Requires merge resolution"}}
+		{UT {mc "Requires merge resolution"}}
 	} {
 	set text [eval [lindex $i 1]]
 	if {$max_status_desc < [string length $text]} {
@@ -1670,10 +1836,10 @@ proc do_gitk {revs} {
 	# -- Always start gitk through whatever we were loaded with.  This
 	#    lets us bypass using shell process on Windows systems.
 	#
-	set exe [file join [file dirname $::_git] gitk]
+	set exe [_which gitk -script]
 	set cmd [list [info nameofexecutable] $exe]
-	if {! [file exists $exe]} {
-		error_popup [mc "Unable to start gitk:\n\n%s does not exist" $exe]
+	if {$exe eq {}} {
+		error_popup [mc "Couldn't find gitk in PATH"]
 	} else {
 		global env
 
@@ -1704,11 +1870,19 @@ proc do_gitk {revs} {
 }
 
 set is_quitting 0
+set ret_code    1
 
-proc do_quit {} {
+proc terminate_me {win} {
+	global ret_code
+	if {$win ne {.}} return
+	exit $ret_code
+}
+
+proc do_quit {{rc {1}}} {
 	global ui_comm is_quitting repo_config commit_type
 	global GITGUI_BCK_exists GITGUI_BCK_i
 	global ui_comm_spell
+	global ret_code
 
 	if {$is_quitting} return
 	set is_quitting 1
@@ -1763,11 +1937,16 @@ proc do_quit {} {
 		}
 	}
 
+	set ret_code $rc
 	destroy .
 }
 
 proc do_rescan {} {
 	rescan ui_ready
+}
+
+proc ui_do_rescan {} {
+	rescan {force_first_diff; ui_ready}
 }
 
 proc do_commit {} {
@@ -1776,7 +1955,110 @@ proc do_commit {} {
 
 proc next_diff {} {
 	global next_diff_p next_diff_w next_diff_i
-	show_diff $next_diff_p $next_diff_w $next_diff_i
+	show_diff $next_diff_p $next_diff_w {}
+}
+
+proc find_anchor_pos {lst name} {
+	set lid [lsearch -sorted -exact $lst $name]
+
+	if {$lid == -1} {
+		set lid 0
+		foreach lname $lst {
+			if {$lname >= $name} break
+			incr lid
+		}
+	}
+
+	return $lid
+}
+
+proc find_file_from {flist idx delta path mmask} {
+	global file_states
+
+	set len [llength $flist]
+	while {$idx >= 0 && $idx < $len} {
+		set name [lindex $flist $idx]
+
+		if {$name ne $path && [info exists file_states($name)]} {
+			set state [lindex $file_states($name) 0]
+
+			if {$mmask eq {} || [regexp $mmask $state]} {
+				return $idx
+			}
+		}
+
+		incr idx $delta
+	}
+
+	return {}
+}
+
+proc find_next_diff {w path {lno {}} {mmask {}}} {
+	global next_diff_p next_diff_w next_diff_i
+	global file_lists ui_index ui_workdir
+
+	set flist $file_lists($w)
+	if {$lno eq {}} {
+		set lno [find_anchor_pos $flist $path]
+	} else {
+		incr lno -1
+	}
+
+	if {$mmask ne {} && ![regexp {(^\^)|(\$$)} $mmask]} {
+		if {$w eq $ui_index} {
+			set mmask "^$mmask"
+		} else {
+			set mmask "$mmask\$"
+		}
+	}
+
+	set idx [find_file_from $flist $lno 1 $path $mmask]
+	if {$idx eq {}} {
+		incr lno -1
+		set idx [find_file_from $flist $lno -1 $path $mmask]
+	}
+
+	if {$idx ne {}} {
+		set next_diff_w $w
+		set next_diff_p [lindex $flist $idx]
+		set next_diff_i [expr {$idx+1}]
+		return 1
+	} else {
+		return 0
+	}
+}
+
+proc next_diff_after_action {w path {lno {}} {mmask {}}} {
+	global current_diff_path
+
+	if {$path ne $current_diff_path} {
+		return {}
+	} elseif {[find_next_diff $w $path $lno $mmask]} {
+		return {next_diff;}
+	} else {
+		return {reshow_diff;}
+	}
+}
+
+proc select_first_diff {} {
+	global ui_workdir
+
+	if {[find_next_diff $ui_workdir {} 1 {^_?U}] ||
+	    [find_next_diff $ui_workdir {} 1 {[^O]$}]} {
+		next_diff
+	}
+}
+
+proc force_first_diff {} {
+	global current_diff_path
+
+	if {[info exists file_states($current_diff_path)]} {
+		set state [lindex $file_states($current_diff_path) 0]
+
+		if {[string index $state 1] ne {O}} return
+	}
+
+	select_first_diff
 }
 
 proc toggle_or_diff {w x y} {
@@ -1797,33 +2079,28 @@ proc toggle_or_diff {w x y} {
 	$ui_index tag remove in_sel 0.0 end
 	$ui_workdir tag remove in_sel 0.0 end
 
+	# Determine the state of the file
+	if {[info exists file_states($path)]} {
+		set state [lindex $file_states($path) 0]
+	} else {
+		set state {__}
+	}
+
+	# Restage the file, or simply show the diff
 	if {$col == 0 && $y > 1} {
-		set i [expr {$lno-1}]
-		set ll [expr {[llength $file_lists($w)]-1}]
-
-		if {$i == $ll && $i == 0} {
-			set after {reshow_diff;}
-		} else {
-			global next_diff_p next_diff_w next_diff_i
-
-			set next_diff_w $w
-
-			if {$i < $ll} {
-				set i [expr {$i + 1}]
-				set next_diff_i $i
-			} else {
-				set next_diff_i $i
-				set i [expr {$i - 1}]
-			}
-
-			set next_diff_p [lindex $file_lists($w) $i]
-
-			if {$next_diff_p ne {} && $current_diff_path ne {}} {
-				set after {next_diff;}
-			} else {
-				set after {}
-			}
+		# Conflicts need special handling
+		if {[string first {U} $state] >= 0} {
+			merge_stage_workdir $path $w $lno
+			return
 		}
+
+		if {[string index $state 1] eq {O}} {
+			set mmask {}
+		} else {
+			set mmask {[^O]}
+		}
+
+		set after [next_diff_after_action $w $path $lno $mmask]
 
 		if {$w eq $ui_index} {
 			update_indexinfo \
@@ -1906,7 +2183,7 @@ proc show_more_context {} {
 
 proc show_less_context {} {
 	global repo_config
-	if {$repo_config(gui.diffcontext) >= 1} {
+	if {$repo_config(gui.diffcontext) > 1} {
 		incr repo_config(gui.diffcontext) -1
 		reshow_diff
 	}
@@ -1995,9 +2272,13 @@ if {[is_enabled multicommit]} {
 	}
 }
 
-.mbar.repository add command -label [mc Quit] \
-	-command do_quit \
-	-accelerator $M1T-Q
+if {[is_MacOSX]} {
+	proc ::tk::mac::Quit {args} { do_quit }
+} else {
+	.mbar.repository add command -label [mc Quit] \
+		-command do_quit \
+		-accelerator $M1T-Q
+}
 
 # -- Edit Menu
 #
@@ -2061,29 +2342,39 @@ if {[is_enabled branch]} {
 
 # -- Commit Menu
 #
+proc commit_btn_caption {} {
+	if {[is_enabled nocommit]} {
+		return [mc "Done"]
+	} else {
+		return [mc Commit@@verb]
+	}
+}
+
 if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 	menu .mbar.commit
 
-	.mbar.commit add radiobutton \
-		-label [mc "New Commit"] \
-		-command do_select_commit_type \
-		-variable selected_commit_type \
-		-value new
-	lappend disable_on_lock \
-		[list .mbar.commit entryconf [.mbar.commit index last] -state]
+	if {![is_enabled nocommit]} {
+		.mbar.commit add radiobutton \
+			-label [mc "New Commit"] \
+			-command do_select_commit_type \
+			-variable selected_commit_type \
+			-value new
+		lappend disable_on_lock \
+			[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
-	.mbar.commit add radiobutton \
-		-label [mc "Amend Last Commit"] \
-		-command do_select_commit_type \
-		-variable selected_commit_type \
-		-value amend
-	lappend disable_on_lock \
-		[list .mbar.commit entryconf [.mbar.commit index last] -state]
+		.mbar.commit add radiobutton \
+			-label [mc "Amend Last Commit"] \
+			-command do_select_commit_type \
+			-variable selected_commit_type \
+			-value amend
+		lappend disable_on_lock \
+			[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
-	.mbar.commit add separator
+		.mbar.commit add separator
+	}
 
 	.mbar.commit add command -label [mc Rescan] \
-		-command do_rescan \
+		-command ui_do_rescan \
 		-accelerator F5
 	lappend disable_on_lock \
 		[list .mbar.commit entryconf [.mbar.commit index last] -state]
@@ -2122,11 +2413,13 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 
 	.mbar.commit add separator
 
-	.mbar.commit add command -label [mc "Sign Off"] \
-		-command do_signoff \
-		-accelerator $M1T-S
+	if {![is_enabled nocommit]} {
+		.mbar.commit add command -label [mc "Sign Off"] \
+			-command do_signoff \
+			-accelerator $M1T-S
+	}
 
-	.mbar.commit add command -label [mc Commit@@verb] \
+	.mbar.commit add command -label [commit_btn_caption] \
 		-command do_commit \
 		-accelerator $M1T-Return
 	lappend disable_on_lock \
@@ -2251,10 +2544,15 @@ proc usage {} {
 switch -- $subcommand {
 browser -
 blame {
-	set subcommand_args {rev? path}
+	if {$subcommand eq "blame"} {
+		set subcommand_args {[--line=<num>] rev? path}
+	} else {
+		set subcommand_args {rev? path}
+	}
 	if {$argv eq {}} usage
 	set head {}
 	set path {}
+	set jump_spec {}
 	set is_path 0
 	foreach a $argv {
 		if {$is_path || [file exists $_prefix$a]} {
@@ -2268,6 +2566,9 @@ blame {
 				set path {}
 			}
 			set is_path 1
+		} elseif {[regexp {^--line=(\d+)$} $a a lnum]} {
+			if {$jump_spec ne {} || $head ne {}} usage
+			set jump_spec [list $lnum]
 		} elseif {$head eq {}} {
 			if {$head ne {}} usage
 			set head $a
@@ -2299,6 +2600,7 @@ blame {
 
 	switch -- $subcommand {
 	browser {
+		if {$jump_spec ne {}} usage
 		if {$head eq {}} {
 			if {$path ne {} && [file isdirectory $path]} {
 				set head $current_branch
@@ -2314,7 +2616,7 @@ blame {
 			puts stderr [mc "fatal: cannot stat path %s: No such file or directory" $path]
 			exit 1
 		}
-		blame::new $head $path
+		blame::new $head $path $jump_spec
 	}
 	}
 	return
@@ -2430,7 +2732,7 @@ pack .vpane.lower.commarea.buttons.l -side top -fill x
 pack .vpane.lower.commarea.buttons -side left -fill y
 
 button .vpane.lower.commarea.buttons.rescan -text [mc Rescan] \
-	-command do_rescan
+	-command ui_do_rescan
 pack .vpane.lower.commarea.buttons.rescan -side top -fill x
 lappend disable_on_lock \
 	{.vpane.lower.commarea.buttons.rescan conf -state}
@@ -2441,19 +2743,23 @@ pack .vpane.lower.commarea.buttons.incall -side top -fill x
 lappend disable_on_lock \
 	{.vpane.lower.commarea.buttons.incall conf -state}
 
-button .vpane.lower.commarea.buttons.signoff -text [mc "Sign Off"] \
-	-command do_signoff
-pack .vpane.lower.commarea.buttons.signoff -side top -fill x
+if {![is_enabled nocommit]} {
+	button .vpane.lower.commarea.buttons.signoff -text [mc "Sign Off"] \
+		-command do_signoff
+	pack .vpane.lower.commarea.buttons.signoff -side top -fill x
+}
 
-button .vpane.lower.commarea.buttons.commit -text [mc Commit@@verb] \
+button .vpane.lower.commarea.buttons.commit -text [commit_btn_caption] \
 	-command do_commit
 pack .vpane.lower.commarea.buttons.commit -side top -fill x
 lappend disable_on_lock \
 	{.vpane.lower.commarea.buttons.commit conf -state}
 
-button .vpane.lower.commarea.buttons.push -text [mc Push] \
-	-command do_push_anywhere
-pack .vpane.lower.commarea.buttons.push -side top -fill x
+if {![is_enabled nocommit]} {
+	button .vpane.lower.commarea.buttons.push -text [mc Push] \
+		-command do_push_anywhere
+	pack .vpane.lower.commarea.buttons.push -side top -fill x
+}
 
 # -- Commit Message Buffer
 #
@@ -2461,20 +2767,24 @@ frame .vpane.lower.commarea.buffer
 frame .vpane.lower.commarea.buffer.header
 set ui_comm .vpane.lower.commarea.buffer.t
 set ui_coml .vpane.lower.commarea.buffer.header.l
-radiobutton .vpane.lower.commarea.buffer.header.new \
-	-text [mc "New Commit"] \
-	-command do_select_commit_type \
-	-variable selected_commit_type \
-	-value new
-lappend disable_on_lock \
-	[list .vpane.lower.commarea.buffer.header.new conf -state]
-radiobutton .vpane.lower.commarea.buffer.header.amend \
-	-text [mc "Amend Last Commit"] \
-	-command do_select_commit_type \
-	-variable selected_commit_type \
-	-value amend
-lappend disable_on_lock \
-	[list .vpane.lower.commarea.buffer.header.amend conf -state]
+
+if {![is_enabled nocommit]} {
+	radiobutton .vpane.lower.commarea.buffer.header.new \
+		-text [mc "New Commit"] \
+		-command do_select_commit_type \
+		-variable selected_commit_type \
+		-value new
+	lappend disable_on_lock \
+		[list .vpane.lower.commarea.buffer.header.new conf -state]
+	radiobutton .vpane.lower.commarea.buffer.header.amend \
+		-text [mc "Amend Last Commit"] \
+		-command do_select_commit_type \
+		-variable selected_commit_type \
+		-value amend
+	lappend disable_on_lock \
+		[list .vpane.lower.commarea.buffer.header.amend conf -state]
+}
+
 label $ui_coml \
 	-anchor w \
 	-justify left
@@ -2492,8 +2802,11 @@ proc trace_commit_type {varname args} {
 }
 trace add variable commit_type write trace_commit_type
 pack $ui_coml -side left -fill x
-pack .vpane.lower.commarea.buffer.header.amend -side right
-pack .vpane.lower.commarea.buffer.header.new -side right
+
+if {![is_enabled nocommit]} {
+	pack .vpane.lower.commarea.buffer.header.amend -side right
+	pack .vpane.lower.commarea.buffer.header.new -side right
+}
 
 text $ui_comm -background white -foreground black \
 	-borderwidth 1 \
@@ -2659,6 +2972,59 @@ $ui_diff tag raise sel
 
 # -- Diff Body Context Menu
 #
+
+proc create_common_diff_popup {ctxm} {
+	$ctxm add command \
+		-label [mc "Show Less Context"] \
+		-command show_less_context
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add command \
+		-label [mc "Show More Context"] \
+		-command show_more_context
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add separator
+	$ctxm add command \
+		-label [mc Refresh] \
+		-command reshow_diff
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add command \
+		-label [mc Copy] \
+		-command {tk_textCopy $ui_diff}
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add command \
+		-label [mc "Select All"] \
+		-command {focus $ui_diff;$ui_diff tag add sel 0.0 end}
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add command \
+		-label [mc "Copy All"] \
+		-command {
+			$ui_diff tag add sel 0.0 end
+			tk_textCopy $ui_diff
+			$ui_diff tag remove sel 0.0 end
+		}
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add separator
+	$ctxm add command \
+		-label [mc "Decrease Font Size"] \
+		-command {incr_font_size font_diff -1}
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add command \
+		-label [mc "Increase Font Size"] \
+		-command {incr_font_size font_diff 1}
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add separator
+	set emenu $ctxm.enc
+	menu $emenu
+	build_encoding_menu $emenu [list force_diff_encoding]
+	$ctxm add cascade \
+		-label [mc "Encoding"] \
+		-menu $emenu
+	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+	$ctxm add separator
+	$ctxm add command -label [mc "Options..."] \
+		-command do_options
+}
+
 set ctxm .vpane.lower.diff.body.ctxm
 menu $ctxm -tearoff 0
 $ctxm add command \
@@ -2672,71 +3038,65 @@ $ctxm add command \
 set ui_diff_applyline [$ctxm index last]
 lappend diff_actions [list $ctxm entryconf $ui_diff_applyline -state]
 $ctxm add separator
-$ctxm add command \
-	-label [mc "Show Less Context"] \
-	-command show_less_context
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add command \
-	-label [mc "Show More Context"] \
-	-command show_more_context
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add separator
-$ctxm add command \
-	-label [mc Refresh] \
-	-command reshow_diff
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add command \
-	-label [mc Copy] \
-	-command {tk_textCopy $ui_diff}
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add command \
-	-label [mc "Select All"] \
-	-command {focus $ui_diff;$ui_diff tag add sel 0.0 end}
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add command \
-	-label [mc "Copy All"] \
-	-command {
-		$ui_diff tag add sel 0.0 end
-		tk_textCopy $ui_diff
-		$ui_diff tag remove sel 0.0 end
-	}
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add separator
-$ctxm add command \
-	-label [mc "Decrease Font Size"] \
-	-command {incr_font_size font_diff -1}
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add command \
-	-label [mc "Increase Font Size"] \
-	-command {incr_font_size font_diff 1}
-lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-$ctxm add separator
-$ctxm add command -label [mc "Options..."] \
-	-command do_options
-proc popup_diff_menu {ctxm x y X Y} {
+create_common_diff_popup $ctxm
+
+set ctxmmg .vpane.lower.diff.body.ctxmmg
+menu $ctxmmg -tearoff 0
+$ctxmmg add command \
+	-label [mc "Run Merge Tool"] \
+	-command {merge_resolve_tool}
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add separator
+$ctxmmg add command \
+	-label [mc "Use Remote Version"] \
+	-command {merge_resolve_one 3}
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add command \
+	-label [mc "Use Local Version"] \
+	-command {merge_resolve_one 2}
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add command \
+	-label [mc "Revert To Base"] \
+	-command {merge_resolve_one 1}
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add separator
+create_common_diff_popup $ctxmmg
+
+proc popup_diff_menu {ctxm ctxmmg x y X Y} {
 	global current_diff_path file_states
 	set ::cursorX $x
 	set ::cursorY $y
-	if {$::ui_index eq $::current_diff_side} {
-		set l [mc "Unstage Hunk From Commit"]
-		set t [mc "Unstage Line From Commit"]
+	if {[info exists file_states($current_diff_path)]} {
+		set state [lindex $file_states($current_diff_path) 0]
 	} else {
-		set l [mc "Stage Hunk For Commit"]
-		set t [mc "Stage Line For Commit"]
+		set state {__}
 	}
-	if {$::is_3way_diff
-		|| $current_diff_path eq {}
-		|| ![info exists file_states($current_diff_path)]
-		|| {_O} eq [lindex $file_states($current_diff_path) 0]} {
-		set s disabled
+	if {[string first {U} $state] >= 0} {
+		tk_popup $ctxmmg $X $Y
 	} else {
-		set s normal
+		if {$::ui_index eq $::current_diff_side} {
+			set l [mc "Unstage Hunk From Commit"]
+			set t [mc "Unstage Line From Commit"]
+		} else {
+			set l [mc "Stage Hunk For Commit"]
+			set t [mc "Stage Line For Commit"]
+		}
+		if {$::is_3way_diff
+			|| $current_diff_path eq {}
+			|| {__} eq $state
+			|| {_O} eq $state
+			|| {_T} eq $state
+			|| {T_} eq $state} {
+			set s disabled
+		} else {
+			set s normal
+		}
+		$ctxm entryconf $::ui_diff_applyhunk -state $s -label $l
+		$ctxm entryconf $::ui_diff_applyline -state $s -label $t
+		tk_popup $ctxm $X $Y
 	}
-	$ctxm entryconf $::ui_diff_applyhunk -state $s -label $l
-	$ctxm entryconf $::ui_diff_applyline -state $s -label $t
-	tk_popup $ctxm $X $Y
 }
-bind_button3 $ui_diff [list popup_diff_menu $ctxm %x %y %X %Y]
+bind_button3 $ui_diff [list popup_diff_menu $ctxm $ctxmmg %x %y %X %Y]
 
 # -- Status Bar
 #
@@ -2812,9 +3172,9 @@ if {[is_enabled transport]} {
 	bind . <$M1B-Key-P> do_push_anywhere
 }
 
-bind .   <Key-F5>     do_rescan
-bind .   <$M1B-Key-r> do_rescan
-bind .   <$M1B-Key-R> do_rescan
+bind .   <Key-F5>     ui_do_rescan
+bind .   <$M1B-Key-r> ui_do_rescan
+bind .   <$M1B-Key-R> ui_do_rescan
 bind .   <$M1B-Key-s> do_signoff
 bind .   <$M1B-Key-S> do_signoff
 bind .   <$M1B-Key-t> do_add_selection
@@ -2905,6 +3265,7 @@ if {[is_enabled transport]} {
 	populate_fetch_menu
 	set n [expr {[.mbar.remote index end] - $n}]
 	if {$n > 0} {
+		if {[.mbar.remote type 0] eq "tearoff"} { incr n }
 		.mbar.remote insert $n separator
 	}
 	unset n
@@ -2991,7 +3352,20 @@ lock_index begin-read
 if {![winfo ismapped .]} {
 	wm deiconify .
 }
-after 1 do_rescan
+after 1 {
+	if {[is_enabled initialamend]} {
+		force_amend
+	} else {
+		do_rescan
+	}
+
+	if {[is_enabled nocommitmsg]} {
+		$ui_comm configure -state disabled -background gray
+	}
+}
 if {[is_enabled multicommit]} {
 	after 1000 hint_gc
+}
+if {[is_enabled retcode]} {
+	bind . <Destroy> {+terminate_me %W}
 }

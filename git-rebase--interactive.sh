@@ -26,21 +26,24 @@ i,interactive      always used (no-op)
 continue           continue rebasing process
 abort              abort rebasing process and restore original branch
 skip               skip current patch and continue rebasing process
+no-verify          override pre-rebase hook from stopping the operation
 "
 
 . git-sh-setup
 require_work_tree
 
-DOTEST="$GIT_DIR/.dotest-merge"
+DOTEST="$GIT_DIR/rebase-merge"
 TODO="$DOTEST"/git-rebase-todo
 DONE="$DOTEST"/done
 MSG="$DOTEST"/message
 SQUASH_MSG="$DOTEST"/message-squash
 REWRITTEN="$DOTEST"/rewritten
+DROPPED="$DOTEST"/dropped
 PRESERVE_MERGES=
 STRATEGY=
 ONTO=
 VERBOSE=
+OK_TO_SKIP_PRE_REBASE=
 
 GIT_CHERRY_PICK_HELP="  After resolving the conflicts,
 mark the corrected paths with 'git add <paths>', and
@@ -63,6 +66,17 @@ output () {
 		"$@"
 		;;
 	esac
+}
+
+run_pre_rebase_hook () {
+	if test -z "$OK_TO_SKIP_PRE_REBASE" &&
+	   test -x "$GIT_DIR/hooks/pre-rebase"
+	then
+		"$GIT_DIR/hooks/pre-rebase" ${1+"$@"} || {
+			echo >&2 "The pre-rebase hook refused to rebase."
+			exit 1
+		}
+	fi
 }
 
 require_clean_work_tree () {
@@ -145,7 +159,16 @@ pick_one () {
 }
 
 pick_one_preserving_merges () {
-	case "$1" in -n) sha1=$2 ;; *) sha1=$1 ;; esac
+	fast_forward=t
+	case "$1" in
+	-n)
+		fast_forward=f
+		sha1=$2
+		;;
+	*)
+		sha1=$1
+		;;
+	esac
 	sha1=$(git rev-parse $sha1)
 
 	if test -f "$DOTEST"/current-commit
@@ -156,15 +179,18 @@ pick_one_preserving_merges () {
 		die "Cannot write current commit's replacement sha1"
 	fi
 
+	echo $sha1 > "$DOTEST"/current-commit
+
 	# rewrite parents; if none were rewritten, we can fast-forward.
-	fast_forward=t
-	preserve=t
 	new_parents=
-	for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -f2-)
+	pend=" $(git rev-list --parents -1 $sha1 | cut -d' ' -f2-)"
+	while [ "$pend" != "" ]
 	do
+		p=$(expr "$pend" : ' \([^ ]*\)')
+		pend="${pend# $p}"
+
 		if test -f "$REWRITTEN"/$p
 		then
-			preserve=f
 			new_p=$(cat "$REWRITTEN"/$p)
 			test $p != $new_p && fast_forward=f
 			case "$new_parents" in
@@ -174,12 +200,21 @@ pick_one_preserving_merges () {
 				new_parents="$new_parents $new_p"
 				;;
 			esac
+		else
+			if test -f "$DROPPED"/$p
+			then
+				fast_forward=f
+				pend=" $(cat "$DROPPED"/$p)$pend"
+			else
+				new_parents="$new_parents $p"
+			fi
 		fi
 	done
 	case $fast_forward in
 	t)
 		output warn "Fast forward to $sha1"
-		test $preserve = f || echo $sha1 > "$REWRITTEN"/$sha1
+		output git reset --hard $sha1 ||
+			die "Cannot fast forward to $sha1"
 		;;
 	f)
 		test "a$1" = a-n && die "Refusing to squash a merge: $sha1"
@@ -189,7 +224,6 @@ pick_one_preserving_merges () {
 		output git checkout $first_parent 2> /dev/null ||
 			die "Cannot move HEAD to $first_parent"
 
-		echo $sha1 > "$DOTEST"/current-commit
 		case "$new_parents" in
 		' '*' '*)
 			# redo merge
@@ -257,7 +291,7 @@ do_next () {
 		"$DOTEST"/amend || exit
 	read command sha1 rest < "$TODO"
 	case "$command" in
-	'#'*|'')
+	'#'*|''|noop)
 		mark_action_done
 		;;
 	pick|p)
@@ -274,8 +308,8 @@ do_next () {
 		pick_one $sha1 ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
 		make_patch $sha1
-		: > "$DOTEST"/amend
-		warn
+		git rev-parse --verify HEAD > "$DOTEST"/amend
+		warn "Stopped at $sha1... $rest"
 		warn "You can amend the commit now, with"
 		warn
 		warn "	git commit --amend"
@@ -294,23 +328,28 @@ do_next () {
 
 		mark_action_done
 		make_squash_message $sha1 > "$MSG"
+		failed=f
+		author_script=$(get_author_ident_from_commit HEAD)
+		output git reset --soft HEAD^
+		pick_one -n $sha1 || failed=t
 		case "$(peek_next_command)" in
 		squash|s)
 			EDIT_COMMIT=
 			USE_OUTPUT=output
+			MSG_OPT=-F
+			MSG_FILE="$MSG"
 			cp "$MSG" "$SQUASH_MSG"
 			;;
 		*)
 			EDIT_COMMIT=-e
 			USE_OUTPUT=
+			MSG_OPT=
+			MSG_FILE=
 			rm -f "$SQUASH_MSG" || exit
+			cp "$MSG" "$GIT_DIR"/SQUASH_MSG
+			rm -f "$GIT_DIR"/MERGE_MSG || exit
 			;;
 		esac
-
-		failed=f
-		author_script=$(get_author_ident_from_commit HEAD)
-		output git reset --soft HEAD^
-		pick_one -n $sha1 || failed=t
 		echo "$author_script" > "$DOTEST"/author-script
 		if test $failed = f
 		then
@@ -319,7 +358,7 @@ do_next () {
 			GIT_AUTHOR_NAME="$GIT_AUTHOR_NAME" \
 			GIT_AUTHOR_EMAIL="$GIT_AUTHOR_EMAIL" \
 			GIT_AUTHOR_DATE="$GIT_AUTHOR_DATE" \
-			$USE_OUTPUT git commit --no-verify -F "$MSG" $EDIT_COMMIT || failed=t
+			$USE_OUTPUT git commit --no-verify $MSG_OPT "$MSG_FILE" $EDIT_COMMIT || failed=t
 		fi
 		if test $failed = t
 		then
@@ -396,6 +435,11 @@ get_saved_options () {
 while test $# != 0
 do
 	case "$1" in
+	--no-verify)
+		OK_TO_SKIP_PRE_REBASE=yes
+		;;
+	--verify)
+		;;
 	--continue)
 		is_standalone "$@" || usage
 		get_saved_options
@@ -417,14 +461,22 @@ do
 		else
 			. "$DOTEST"/author-script ||
 				die "Cannot find the author identity"
+			amend=
 			if test -f "$DOTEST"/amend
 			then
+				amend=$(git rev-parse --verify HEAD)
+				test "$amend" = $(cat "$DOTEST"/amend) ||
+				die "\
+You have uncommitted changes in your working tree. Please, commit them
+first and then run 'git rebase --continue' again."
 				git reset --soft HEAD^ ||
 				die "Cannot rewind the HEAD"
 			fi
 			export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE &&
-			git commit --no-verify -F "$DOTEST"/message -e ||
-			die "Could not commit staged changes."
+			git commit --no-verify -F "$DOTEST"/message -e || {
+				test -n "$amend" && git reset --soft $amend
+				die "Could not commit staged changes."
+			}
 		fi
 
 		require_clean_work_tree
@@ -489,6 +541,7 @@ do
 		;;
 	--)
 		shift
+		run_pre_rebase_hook ${1+"$@"}
 		test $# -eq 1 -o $# -eq 2 || usage
 		test -d "$DOTEST" &&
 			die "Interactive rebase already started"
@@ -550,6 +603,7 @@ do
 			--abbrev=7 --reverse --left-right --cherry-pick \
 			$UPSTREAM...$HEAD | \
 			sed -n "s/^>/pick /p" > "$TODO"
+		test -s "$TODO" || echo noop >> "$TODO"
 		cat >> "$TODO" << EOF
 
 # Rebase $SHORTUPSTREAM..$SHORTHEAD onto $SHORTONTO
@@ -564,6 +618,28 @@ do
 #
 EOF
 
+		# Watch for commits that been dropped by --cherry-pick
+		if test t = "$PRESERVE_MERGES"
+		then
+			mkdir "$DROPPED"
+			# drop the --cherry-pick parameter this time
+			git rev-list $MERGES_OPTION --abbrev-commit \
+				--abbrev=7 $UPSTREAM...$HEAD --left-right | \
+				sed -n "s/^>//p" | while read rev
+			do
+				grep --quiet "$rev" "$TODO"
+				if [ $? -ne 0 ]
+				then
+					# Use -f2 because if rev-list is telling this commit is not
+					# worthwhile, we don't want to track its multiple heads,
+					# just the history of its first-parent for others that will
+					# be rebasing on top of us
+					full=$(git rev-parse $rev)
+					git rev-list --parents -1 $rev | cut -d' ' -f2 > "$DROPPED"/$full
+				fi
+			done
+		fi
+
 		has_action "$TODO" ||
 			die_abort "Nothing to do"
 
@@ -574,6 +650,7 @@ EOF
 		has_action "$TODO" ||
 			die_abort "Nothing to do"
 
+		git update-ref ORIG_HEAD $HEAD
 		output git checkout $ONTO && do_rest
 		;;
 	esac

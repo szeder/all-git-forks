@@ -6,6 +6,8 @@
 #include "exec_cmd.h"
 #include "commit.h"
 #include "object.h"
+#include "remote.h"
+#include "transport.h"
 
 static const char receive_pack_usage[] = "git-receive-pack <git-dir>";
 
@@ -407,7 +409,7 @@ static const char *unpack(void)
 		char keep_arg[256];
 		struct child_process ip;
 
-		s = sprintf(keep_arg, "--keep=receive-pack %i on ", getpid());
+		s = sprintf(keep_arg, "--keep=receive-pack %"PRIuMAX" on ", (uintmax_t) getpid());
 		if (gethostname(keep_arg + s, sizeof(keep_arg) - s))
 			strcpy(keep_arg + s, "localhost");
 
@@ -462,14 +464,53 @@ static int delete_only(struct command *cmd)
 	return 1;
 }
 
-int main(int argc, char **argv)
+static int add_refs_from_alternate(struct alternate_object_database *e, void *unused)
+{
+	char *other;
+	size_t len;
+	struct remote *remote;
+	struct transport *transport;
+	const struct ref *extra;
+
+	e->name[-1] = '\0';
+	other = xstrdup(make_absolute_path(e->base));
+	e->name[-1] = '/';
+	len = strlen(other);
+
+	while (other[len-1] == '/')
+		other[--len] = '\0';
+	if (len < 8 || memcmp(other + len - 8, "/objects", 8))
+		return 0;
+	/* Is this a git repository with refs? */
+	memcpy(other + len - 8, "/refs", 6);
+	if (!is_directory(other))
+		return 0;
+	other[len - 8] = '\0';
+	remote = remote_get(other);
+	transport = transport_get(remote, other);
+	for (extra = transport_get_remote_refs(transport);
+	     extra;
+	     extra = extra->next) {
+		add_extra_ref(".have", extra->old_sha1, 0);
+	}
+	transport_disconnect(transport);
+	free(other);
+	return 0;
+}
+
+static void add_alternate_refs(void)
+{
+	foreach_alt_odb(add_refs_from_alternate, NULL);
+}
+
+int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 {
 	int i;
 	char *dir = NULL;
 
 	argv++;
 	for (i = 1; i < argc; i++) {
-		char *arg = *argv++;
+		const char *arg = *argv++;
 
 		if (*arg == '-') {
 			/* Do flag handling here */
@@ -477,12 +518,12 @@ int main(int argc, char **argv)
 		}
 		if (dir)
 			usage(receive_pack_usage);
-		dir = arg;
+		dir = xstrdup(arg);
 	}
 	if (!dir)
 		usage(receive_pack_usage);
 
-	setup_path(NULL);
+	setup_path();
 
 	if (!enter_repo(dir, 0))
 		die("'%s': unable to chdir or not a git archive", dir);
@@ -497,7 +538,9 @@ int main(int argc, char **argv)
 	else if (0 <= receive_unpack_limit)
 		unpack_limit = receive_unpack_limit;
 
+	add_alternate_refs();
 	write_head_info();
+	clear_extra_refs();
 
 	/* EOF */
 	packet_flush(1);

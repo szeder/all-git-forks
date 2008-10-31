@@ -14,7 +14,8 @@ SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 T = $(wildcard t[0-9][0-9][0-9][0-9]-*.sh)
 TSVN = $(wildcard t91[0-9][0-9]-*.sh)
 
-all: pre-clean $(T) aggregate-results clean
+all: pre-clean
+	$(MAKE) aggregate-results-and-cleanup
 
 $(T):
 	@echo "*** $@ ***"; GIT_CONFIG=.git/config '$(SHELL_PATH_SQ)' $@ $(GIT_TEST_OPTS)
@@ -25,8 +26,12 @@ pre-clean:
 clean:
 	$(RM) -r 'trash directory' test-results
 
+aggregate-results-and-cleanup: $(T)
+	$(MAKE) aggregate-results
+	$(MAKE) clean
+
 aggregate-results:
-	./aggregate-results.sh test-results/t*-*
+	'$(SHELL_PATH_SQ)' ./aggregate-results.sh test-results/t*-*
 
 # we can test NO_OPTIMIZE_COMMITS independently of LC_ALL
 full-svn-test:
@@ -34,4 +39,3 @@ full-svn-test:
 	$(MAKE) $(TSVN) GIT_SVN_NO_OPTIMIZE_COMMITS=0 LC_ALL=en_US.UTF-8
 
 .PHONY: pre-clean $(T) aggregate-results clean
-.NOTPARALLEL:

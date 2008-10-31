@@ -5,8 +5,10 @@
 #include "revision.h"
 #include "tag.h"
 
-static const char *fmt_merge_msg_usage =
-	"git-fmt-merge-msg [--log] [--no-log] [--file <file>]";
+static const char * const fmt_merge_msg_usage[] = {
+	"git fmt-merge-msg [--log|--no-log] [--file <file>]",
+	NULL
+};
 
 static int merge_summary;
 
@@ -159,23 +161,24 @@ static int handle_line(char *line)
 }
 
 static void print_joined(const char *singular, const char *plural,
-		struct list *list)
+		struct list *list, struct strbuf *out)
 {
 	if (list->nr == 0)
 		return;
 	if (list->nr == 1) {
-		printf("%s%s", singular, list->list[0]);
+		strbuf_addf(out, "%s%s", singular, list->list[0]);
 	} else {
 		int i;
-		printf("%s", plural);
+		strbuf_addstr(out, plural);
 		for (i = 0; i < list->nr - 1; i++)
-			printf("%s%s", i > 0 ? ", " : "", list->list[i]);
-		printf(" and %s", list->list[list->nr - 1]);
+			strbuf_addf(out, "%s%s", i > 0 ? ", " : "", list->list[i]);
+		strbuf_addf(out, " and %s", list->list[list->nr - 1]);
 	}
 }
 
 static void shortlog(const char *name, unsigned char *sha1,
-		struct commit *head, struct rev_info *rev, int limit)
+		struct commit *head, struct rev_info *rev, int limit,
+		struct strbuf *out)
 {
 	int i, count = 0;
 	struct commit *commit;
@@ -232,15 +235,15 @@ static void shortlog(const char *name, unsigned char *sha1,
 	}
 
 	if (count > limit)
-		printf("\n* %s: (%d commits)\n", name, count);
+		strbuf_addf(out, "\n* %s: (%d commits)\n", name, count);
 	else
-		printf("\n* %s:\n", name);
+		strbuf_addf(out, "\n* %s:\n", name);
 
 	for (i = 0; i < subjects.nr; i++)
 		if (i >= limit)
-			printf("  ...\n");
+			strbuf_addf(out, "  ...\n");
 		else
-			printf("  %s\n", subjects.list[i]);
+			strbuf_addf(out, "  %s\n", subjects.list[i]);
 
 	clear_commit_marks((struct commit *)branch, flags);
 	clear_commit_marks(head, flags);
@@ -251,42 +254,12 @@ static void shortlog(const char *name, unsigned char *sha1,
 	free_list(&subjects);
 }
 
-int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
-{
-	int limit = 20, i = 0;
+int fmt_merge_msg(int merge_summary, struct strbuf *in, struct strbuf *out) {
+	int limit = 20, i = 0, pos = 0;
 	char line[1024];
-	FILE *in = stdin;
-	const char *sep = "";
+	char *p = line, *sep = "";
 	unsigned char head_sha1[20];
 	const char *current_branch;
-
-	git_config(fmt_merge_msg_config, NULL);
-
-	while (argc > 1) {
-		if (!strcmp(argv[1], "--log") || !strcmp(argv[1], "--summary"))
-			merge_summary = 1;
-		else if (!strcmp(argv[1], "--no-log")
-				|| !strcmp(argv[1], "--no-summary"))
-			merge_summary = 0;
-		else if (!strcmp(argv[1], "-F") || !strcmp(argv[1], "--file")) {
-			if (argc < 3)
-				die ("Which file?");
-			if (!strcmp(argv[2], "-"))
-				in = stdin;
-			else {
-				fclose(in);
-				in = fopen(argv[2], "r");
-				if (!in)
-					die("cannot open %s", argv[2]);
-			}
-			argc--; argv++;
-		} else
-			break;
-		argc--; argv++;
-	}
-
-	if (argc > 1)
-		usage(fmt_merge_msg_usage);
 
 	/* get current branch */
 	current_branch = resolve_ref("HEAD", head_sha1, 1, NULL);
@@ -295,75 +268,116 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 	if (!prefixcmp(current_branch, "refs/heads/"))
 		current_branch += 11;
 
-	while (fgets(line, sizeof(line), in)) {
+	/* get a line */
+	while (pos < in->len) {
+		int len;
+		char *newline;
+
+		p = in->buf + pos;
+		newline = strchr(p, '\n');
+		len = newline ? newline - p : strlen(p);
+		pos += len + !!newline;
 		i++;
-		if (line[0] == 0)
-			continue;
-		if (handle_line(line))
-			die ("Error in line %d: %s", i, line);
+		p[len] = 0;
+		if (handle_line(p))
+			die ("Error in line %d: %.*s", i, len, p);
 	}
 
-	printf("Merge ");
+	strbuf_addstr(out, "Merge ");
 	for (i = 0; i < srcs.nr; i++) {
 		struct src_data *src_data = srcs.payload[i];
 		const char *subsep = "";
 
-		printf(sep);
+		strbuf_addstr(out, sep);
 		sep = "; ";
 
 		if (src_data->head_status == 1) {
-			printf(srcs.list[i]);
+			strbuf_addstr(out, srcs.list[i]);
 			continue;
 		}
 		if (src_data->head_status == 3) {
 			subsep = ", ";
-			printf("HEAD");
+			strbuf_addstr(out, "HEAD");
 		}
 		if (src_data->branch.nr) {
-			printf(subsep);
+			strbuf_addstr(out, subsep);
 			subsep = ", ";
-			print_joined("branch ", "branches ", &src_data->branch);
+			print_joined("branch ", "branches ", &src_data->branch,
+					out);
 		}
 		if (src_data->r_branch.nr) {
-			printf(subsep);
+			strbuf_addstr(out, subsep);
 			subsep = ", ";
 			print_joined("remote branch ", "remote branches ",
-					&src_data->r_branch);
+					&src_data->r_branch, out);
 		}
 		if (src_data->tag.nr) {
-			printf(subsep);
+			strbuf_addstr(out, subsep);
 			subsep = ", ";
-			print_joined("tag ", "tags ", &src_data->tag);
+			print_joined("tag ", "tags ", &src_data->tag, out);
 		}
 		if (src_data->generic.nr) {
-			printf(subsep);
-			print_joined("commit ", "commits ", &src_data->generic);
+			strbuf_addstr(out, subsep);
+			print_joined("commit ", "commits ", &src_data->generic,
+					out);
 		}
 		if (strcmp(".", srcs.list[i]))
-			printf(" of %s", srcs.list[i]);
+			strbuf_addf(out, " of %s", srcs.list[i]);
 	}
 
 	if (!strcmp("master", current_branch))
-		putchar('\n');
+		strbuf_addch(out, '\n');
 	else
-		printf(" into %s\n", current_branch);
+		strbuf_addf(out, " into %s\n", current_branch);
 
 	if (merge_summary) {
 		struct commit *head;
 		struct rev_info rev;
 
 		head = lookup_commit(head_sha1);
-		init_revisions(&rev, prefix);
+		init_revisions(&rev, NULL);
 		rev.commit_format = CMIT_FMT_ONELINE;
 		rev.ignore_merges = 1;
 		rev.limited = 1;
 
 		for (i = 0; i < origins.nr; i++)
 			shortlog(origins.list[i], origins.payload[i],
-					head, &rev, limit);
+					head, &rev, limit, out);
+	}
+	return 0;
+}
+
+int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
+{
+	const char *inpath = NULL;
+	struct option options[] = {
+		OPT_BOOLEAN(0, "log",     &merge_summary, "populate log with the shortlog"),
+		OPT_BOOLEAN(0, "summary", &merge_summary, "alias for --log"),
+		OPT_STRING('F', "file",   &inpath, "file", "file to read from"),
+		OPT_END()
+	};
+
+	FILE *in = stdin;
+	struct strbuf input = STRBUF_INIT, output = STRBUF_INIT;
+	int ret;
+
+	git_config(fmt_merge_msg_config, NULL);
+	argc = parse_options(argc, argv, options, fmt_merge_msg_usage, 0);
+	if (argc > 0)
+		usage_with_options(fmt_merge_msg_usage, options);
+
+	if (inpath && strcmp(inpath, "-")) {
+		in = fopen(inpath, "r");
+		if (!in)
+			die("cannot open %s", inpath);
 	}
 
-	/* No cleanup yet; is standalone anyway */
+	if (strbuf_read(&input, fileno(in), 0) < 0)
+		die("could not read input file %s", strerror(errno));
 
+	ret = fmt_merge_msg(merge_summary, &input, &output);
+	if (ret)
+		return ret;
+	write_in_full(STDOUT_FILENO, output.buf, output.len);
 	return 0;
 }

@@ -10,17 +10,17 @@
 #define MAX_TAGS	(FLAG_BITS - 1)
 
 static const char * const describe_usage[] = {
-	"git-describe [options] <committish>*",
+	"git describe [options] <committish>*",
 	NULL
 };
 
 static int debug;	/* Display lots of verbose info */
-static int all;	/* Default to annotated tags only */
-static int tags;	/* But allow any tags if --tags is specified */
+static int all;	/* Any valid ref can be used */
+static int tags;	/* Allow lightweight tags */
 static int longformat;
 static int abbrev = DEFAULT_ABBREV;
 static int max_candidates = 10;
-const char *pattern = NULL;
+static const char *pattern;
 static int always;
 
 struct commit_name {
@@ -112,8 +112,6 @@ static int compare_pt(const void *a_, const void *b_)
 {
 	struct possible_tag *a = (struct possible_tag *)a_;
 	struct possible_tag *b = (struct possible_tag *)b_;
-	if (a->name->prio != b->name->prio)
-		return b->name->prio - a->name->prio;
 	if (a->depth != b->depth)
 		return a->depth - b->depth;
 	if (a->found_order != b->found_order)

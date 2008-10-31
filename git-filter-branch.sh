@@ -97,9 +97,11 @@ USAGE="[--env-filter <command>] [--tree-filter <command>] \
 OPTIONS_SPEC=
 . git-sh-setup
 
-git diff-files --quiet &&
+if [ "$(is_bare_repository)" = false ]; then
+	git diff-files --quiet &&
 	git diff-index --cached --quiet HEAD -- ||
 	die "Cannot rewrite branch(es) with a dirty working directory."
+fi
 
 tempdir=.git-rewrite
 filter_env=
@@ -230,11 +232,11 @@ mkdir ../map || die "Could not create map/ directory"
 case "$filter_subdir" in
 "")
 	git rev-list --reverse --topo-order --default HEAD \
-		--parents "$@"
+		--parents --simplify-merges "$@"
 	;;
 *)
 	git rev-list --reverse --topo-order --default HEAD \
-		--parents "$@" -- "$filter_subdir"
+		--parents --simplify-merges "$@" -- "$filter_subdir"
 esac > ../revs || die "Could not get the commits"
 commits=$(wc -l <../revs | tr -d " ")
 
@@ -315,24 +317,20 @@ done <../revs
 
 # In case of a subdirectory filter, it is possible that a specified head
 # is not in the set of rewritten commits, because it was pruned by the
-# revision walker.  Fix it by mapping these heads to the next rewritten
-# ancestor(s), i.e. the boundaries in the set of rewritten commits.
+# revision walker.  Fix it by mapping these heads to the unique nearest
+# ancestor that survived the pruning.
 
-# NEEDSWORK: we should sort the unmapped refs topologically first
-while read ref
-do
-	sha1=$(git rev-parse "$ref"^0)
-	test -f "$workdir"/../map/$sha1 && continue
-	# Assign the boundarie(s) in the set of rewritten commits
-	# as the replacement commit(s).
-	# (This would look a bit nicer if --not --stdin worked.)
-	for p in $( (cd "$workdir"/../map; ls | sed "s/^/^/") |
-		git rev-list $ref --boundary --stdin |
-		sed -n "s/^-//p")
+if test "$filter_subdir"
+then
+	while read ref
 	do
-		map $p >> "$workdir"/../map/$sha1
-	done
-done < "$tempdir"/heads
+		sha1=$(git rev-parse "$ref"^0)
+		test -f "$workdir"/../map/$sha1 && continue
+		ancestor=$(git rev-list --simplify-merges -1 \
+				$ref -- "$filter_subdir")
+		test "$ancestor" && echo $(map $ancestor) >> "$workdir"/../map/$sha1
+	done < "$tempdir"/heads
+fi
 
 # Finally update the refs
 
@@ -359,9 +357,17 @@ do
 	;;
 	$_x40)
 		echo "Ref '$ref' was rewritten"
-		git update-ref -m "filter-branch: rewrite" \
-				"$ref" $rewritten $sha1 ||
-			die "Could not rewrite $ref"
+		if ! git update-ref -m "filter-branch: rewrite" \
+					"$ref" $rewritten $sha1 2>/dev/null; then
+			if test $(git cat-file -t "$ref") = tag; then
+				if test -z "$filter_tag_name"; then
+					warn "WARNING: You said to rewrite tagged commits, but not the corresponding tag."
+					warn "WARNING: Perhaps use '--tag-name-filter cat' to rewrite the tag."
+				fi
+			else
+				die "Could not rewrite $ref"
+			fi
+		fi
 	;;
 	*)
 		# NEEDSWORK: possibly add -Werror, making this an error
@@ -406,15 +412,17 @@ if [ "$filter_tag_name" ]; then
 		echo "$ref -> $new_ref ($sha1 -> $new_sha1)"
 
 		if [ "$type" = "tag" ]; then
-			new_sha1=$(git cat-file tag "$ref" |
+			new_sha1=$( ( printf 'object %s\ntype commit\ntag %s\n' \
+						"$new_sha1" "$new_ref"
+				git cat-file tag "$ref" |
 				sed -n \
 				    -e "1,/^$/{
-					  s/^object .*/object $new_sha1/
-					  s/^type .*/type commit/
-					  s/^tag .*/tag $new_ref/
+					  /^object /d
+					  /^type /d
+					  /^tag /d
 					}" \
 				    -e '/^-----BEGIN PGP SIGNATURE-----/q' \
-				    -e 'p' |
+				    -e 'p' ) |
 				git mktag) ||
 				die "Could not create new tag object for $ref"
 			if git cat-file tag "$ref" | \
@@ -434,18 +442,20 @@ rm -rf "$tempdir"
 
 trap - 0
 
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
-test -z "$ORIG_GIT_DIR" || {
-	GIT_DIR="$ORIG_GIT_DIR" && export GIT_DIR
-}
-test -z "$ORIG_GIT_WORK_TREE" || {
-	GIT_WORK_TREE="$ORIG_GIT_WORK_TREE" &&
-	export GIT_WORK_TREE
-}
-test -z "$ORIG_GIT_INDEX_FILE" || {
-	GIT_INDEX_FILE="$ORIG_GIT_INDEX_FILE" &&
-	export GIT_INDEX_FILE
-}
-git read-tree -u -m HEAD
+if [ "$(is_bare_repository)" = false ]; then
+	unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+	test -z "$ORIG_GIT_DIR" || {
+		GIT_DIR="$ORIG_GIT_DIR" && export GIT_DIR
+	}
+	test -z "$ORIG_GIT_WORK_TREE" || {
+		GIT_WORK_TREE="$ORIG_GIT_WORK_TREE" &&
+		export GIT_WORK_TREE
+	}
+	test -z "$ORIG_GIT_INDEX_FILE" || {
+		GIT_INDEX_FILE="$ORIG_GIT_INDEX_FILE" &&
+		export GIT_INDEX_FILE
+	}
+	git read-tree -u -m HEAD
+fi
 
 exit $ret

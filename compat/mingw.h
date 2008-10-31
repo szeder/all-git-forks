@@ -162,22 +162,12 @@ int mingw_rename(const char*, const char*);
 
 /* Use mingw_lstat() instead of lstat()/stat() and
  * mingw_fstat() instead of fstat() on Windows.
- * struct stat is redefined because it lacks the st_blocks member.
  */
-struct mingw_stat {
-	unsigned st_mode;
-	time_t st_mtime, st_atime, st_ctime;
-	unsigned st_dev, st_ino, st_uid, st_gid;
-	size_t st_size;
-	size_t st_blocks;
-};
-int mingw_lstat(const char *file_name, struct mingw_stat *buf);
-int mingw_fstat(int fd, struct mingw_stat *buf);
+int mingw_lstat(const char *file_name, struct stat *buf);
+int mingw_fstat(int fd, struct stat *buf);
 #define fstat mingw_fstat
 #define lstat mingw_lstat
-#define stat mingw_stat
-static inline int mingw_stat(const char *file_name, struct mingw_stat *buf)
-{ return mingw_lstat(file_name, buf); }
+#define stat(x,y) mingw_lstat(x,y)
 
 int mingw_utime(const char *file_name, const struct utimbuf *times);
 #define utime mingw_utime
@@ -194,6 +184,17 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler);
 #define signal mingw_signal
 
 /*
+ * ANSI emulation wrappers
+ */
+
+int winansi_fputs(const char *str, FILE *stream);
+int winansi_printf(const char *format, ...) __attribute__((format (printf, 1, 2)));
+int winansi_fprintf(FILE *stream, const char *format, ...) __attribute__((format (printf, 2, 3)));
+#define fputs winansi_fputs
+#define printf(...) winansi_printf(__VA_ARGS__)
+#define fprintf(...) winansi_fprintf(__VA_ARGS__)
+
+/*
  * git specific compatibility
  */
 
@@ -202,6 +203,9 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler);
 #define PATH_SEP ';'
 #define PRIuMAX "I64u"
 
+void mingw_open_html(const char *path);
+#define open_html mingw_open_html
+
 /*
  * helpers
  */
@@ -209,3 +213,16 @@ sig_handler_t mingw_signal(int sig, sig_handler_t handler);
 char **copy_environ(void);
 void free_environ(char **env);
 char **env_setenv(char **env, const char *name);
+
+/*
+ * A replacement of main() that ensures that argv[0] has a path
+ */
+
+#define main(c,v) dummy_decl_mingw_main(); \
+static int mingw_main(); \
+int main(int argc, const char **argv) \
+{ \
+	argv[0] = xstrdup(_pgmptr); \
+	return mingw_main(argc, argv); \
+} \
+static int mingw_main(c,v)

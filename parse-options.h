@@ -28,6 +28,7 @@ enum parse_opt_option_flags {
 	PARSE_OPT_NOARG   = 2,
 	PARSE_OPT_NONEG   = 4,
 	PARSE_OPT_HIDDEN  = 8,
+	PARSE_OPT_LASTARG_DEFAULT = 16,
 };
 
 struct option;
@@ -157,5 +158,7 @@ extern int parse_opt_approxidate_cb(const struct option *, const char *, int);
 	{ OPTION_CALLBACK, 0, "abbrev", (var), "n", \
 	  "use <n> digits to display SHA-1s", \
 	  PARSE_OPT_OPTARG, &parse_opt_abbrev_cb, 0 }
+
+extern const char *parse_options_fix_filename(const char *prefix, const char *file);
 
 #endif

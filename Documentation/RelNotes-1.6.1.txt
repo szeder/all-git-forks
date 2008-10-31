@@ -1,0 +1,184 @@
+GIT v1.6.1 Release Notes
+========================
+
+Updates since v1.6.0
+--------------------
+
+When some commands (e.g. "git log", "git diff") spawn pager internally, we
+used to make the pager the parent process of the git command that produces
+output.  This meant that the exit status of the whole thing comes from the
+pager, not the underlying git command.  We swapped the order of the
+processes around and you will see the exit code from the command from now
+on.
+
+(subsystems)
+
+* gitk can call out to git-gui to view "git blame" output; git-gui in turn
+  can run gitk from its blame view.
+
+* Various git-gui updates including updated translations.
+
+* Various gitweb updates from repo.or.cz installation.
+
+(portability)
+
+* A few test scripts used nonportable "grep" that did not work well on
+  some platforms, e.g. Solaris.
+
+* Sample pre-auto-gc script has OS X support.
+
+(performance)
+
+* The underlying diff machinery to produce textual output has been
+  optimized, which would result in faster "git blame" processing.
+
+* Most of the test scripts (but not the ones that try to run servers)
+  can be run in parallel.
+
+* Bash completion of refnames in a repository with massive number of
+  refs has been optimized.
+
+* Cygwin port uses native stat/lstat implementations when applicable,
+  which leads to improved performance.
+
+* "git push" pays attention to alternate repositories to avoid sending
+  unnecessary objects.
+
+* "git svn" can rebuild an out-of-date rev_map file.
+
+(usability, bells and whistles)
+
+* When you mistype a command name, git helpfully suggests what it guesses
+  you might have meant to say.  help.autocorrect configuration can be set
+  to a non-zero value to accept the suggestion when git can uniquely
+  guess.
+
+* "git add -N path..." adds the named paths as an empty blob, so that
+  subsequent "git diff" will show a diff as if they are creation events.
+
+* "git apply" learned --include=paths option, similar to the existing
+  --exclude=paths option.
+
+* "git bisect" is careful about a user mistake and suggests testing of
+  merge base first when good is not a strict ancestor of bad.
+
+* "git checkout --track origin/hack" used to be a syntax error.  It now
+  DWIMs to create a corresponding local branch "hack", i.e. acts as if you
+  said "git checkout --track -b hack origin/hack".
+
+* "git checkout --ours/--theirs" can be used to check out one side of a
+  conflicting merge during conflict resolution.
+
+* "git checkout -m" can be used to recreate the initial conflicted state
+  during conflict resolution.
+
+* "git cherry-pick" can also utilize rerere for conflict resolution.
+
+* "git commit --author=$name" can look up author name from existing
+  commits.
+
+* output from "git commit" has been reworded in a more concise and yet
+  more informative way.
+
+* "git count-objects" reports the on-disk footprint for packfiles and
+  their corresponding idx files.
+
+* "git daemon" learned --max-connections=<count> option.
+
+* "git diff" learned to mimic --suppress-blank-empty from GNU diff via a
+  configuration option.
+
+* "git diff" learned to put more sensible hunk headers for Python,
+  HTML and ObjC contents.
+
+* "git diff" learned to vary the a/ vs b/ prefix depending on what are
+  being compared, controlled by diff.mnemonicprefix configuration.
+
+* "git diff" learned --dirstat-by-file to count changed files, not number
+  of lines, when summarizing the global picture.
+
+* "git diff" hunk header pattern for ObjC has been added.
+
+* "git for-each-ref" learned "refname:short" token that gives an
+  unambiguously abbreviated refname.
+
+* "git grep" learned to accept -z similar to GNU grep.
+
+* "git help" learned to use GIT_MAN_VIEWER environment variable before
+  using "man" program.
+
+* "git imap-send" can optionally talk SSL.
+
+* "git index-pack" is more careful against disk corruption while
+  completing a thin pack.
+
+* "git log --check" and "git log --exit-code" passes their underlying diff
+  status with their exit status code.
+
+* "git log" learned --simplify-merges, a milder variant of --full-history;
+  "gitk --simplify-merges" is easier to view than with --full-history.
+
+* "git log --pretty=format:" learned "%d" format element that inserts
+  names of tags that point at the commit.
+
+* "git merge --squash" and "git merge --no-ff" into an unborn branch are
+  noticed as user errors.
+
+* "git merge -s $strategy" can use a custom built strategy if you have a
+  command "git-merge-$strategy" on your $PATH.
+
+* "git reflog expire branch" can be used in place of "git reflog expire
+  refs/heads/branch".
+
+* "git submodule foreach" subcommand allows you to iterate over checked
+  out submodules.
+
+* "git submodule sync" subcommands allows you to update the origin URL
+  recorded in submodule directories from the toplevel .gitmodules file.
+
+* "git svn branch" can create new branches on the other end.
+
+(internal)
+
+* "git hash-object" learned to lie about the path being hashed, so that
+  correct gitattributes processing can be done while hashing contents
+  stored in a temporary file.
+
+* various callers of git-merge-recursive avoid forking it as an external
+  process.
+
+
+Fixes since v1.6.0
+------------------
+
+All of the fixes in v1.6.0.X maintenance series are included in this
+release, unless otherwise noted.
+
+* "git add" and "git update-index" incorrectly allowed adding S/F when S
+  is a tracked symlink that points at a directory D that has a path F in
+  it (we still need to fix a similar nonsense when S is a submodule and F
+  is a path in it).
+
+* "git diff --stdin" used to take two trees on a line and compared them,
+  but we dropped support for such a use case long time ago.  This has
+  been resurrected.
+
+* Giving 3 or more tree-ish to "git diff" is supposed to show the combined
+  diff from second and subsequent trees to the first one.  b75271d ("git
+  diff <tree>{3,}": do not reverse order of arguments, 2008-10-10) needs
+  to be cherry-picked to 'maint'.
+
+* "git filter-branch" failed to rewrite a tag name with slashes in it.
+
+* "git push --tags --all $there" failed with generic usage message without
+  telling saying these two options are incompatible.
+
+* "git log --author/--committer" match used to potentially match the
+  timestamp part, exposing internal implementation detail.  Also these did
+  not work with --fixed-strings match at all.
+
+--
+exec >/var/tmp/1
+O=v1.6.0.2-553-g58e0fa5
+echo O=$(git describe master)
+git shortlog --no-merges $O..master ^maint

@@ -33,13 +33,6 @@ variable group_colors {
 	#ececec
 }
 
-# Switches for original location detection
-#
-variable original_options [list -C -C]
-if {[git-version >= 1.5.3]} {
-	lappend original_options -w ; # ignore indentation changes
-}
-
 # Current blame data; cleared/reset on each load
 #
 field commit               ; # input commit to blame
@@ -65,7 +58,7 @@ field tooltip_t         {} ; # Text widget in $tooltip_wm
 field tooltip_timer     {} ; # Current timer event for our tooltip
 field tooltip_commit    {} ; # Commit(s) in tooltip
 
-constructor new {i_commit i_path} {
+constructor new {i_commit i_path i_jump} {
 	global cursor_ptr
 	variable active_color
 	variable group_colors
@@ -263,6 +256,22 @@ constructor new {i_commit i_path} {
 	$w.ctxm add command \
 		-label [mc "Copy Commit"] \
 		-command [cb _copycommit]
+	$w.ctxm add separator
+	menu $w.ctxm.enc
+	build_encoding_menu $w.ctxm.enc [cb _setencoding]
+	$w.ctxm add cascade \
+		-label [mc "Encoding"] \
+		-menu $w.ctxm.enc
+	$w.ctxm add command \
+		-label [mc "Do Full Copy Detection"] \
+		-command [cb _fullcopyblame]
+	$w.ctxm add separator
+	$w.ctxm add command \
+		-label [mc "Show History Context"] \
+		-command [cb _gitkcommit]
+	$w.ctxm add command \
+		-label [mc "Blame Parent Commit"] \
+		-command [cb _blameparent]
 
 	foreach i $w_columns {
 		for {set g 0} {$g < [llength $group_colors]} {incr g} {
@@ -333,7 +342,18 @@ constructor new {i_commit i_path} {
 	bind $w.file_pane <Configure> \
 	"if {{$w.file_pane} eq {%W}} {[cb _resize %h]}"
 
-	_load $this {}
+	wm protocol $top WM_DELETE_WINDOW "destroy $top"
+	bind $top <Destroy> [cb _kill]
+
+	_load $this $i_jump
+}
+
+method _kill {} {
+	if {$current_fd ne {}} {
+		kill_file_process $current_fd
+		catch {close $current_fd}
+		set current_fd {}
+	}
 }
 
 method _load {jump} {
@@ -342,10 +362,7 @@ method _load {jump} {
 	_hide_tooltip $this
 
 	if {$total_lines != 0 || $current_fd ne {}} {
-		if {$current_fd ne {}} {
-			catch {close $current_fd}
-			set current_fd {}
-		}
+		_kill $this
 
 		foreach i $w_columns {
 			$i conf -state normal
@@ -389,7 +406,10 @@ method _load {jump} {
 	} else {
 		set fd [git_read cat-file blob "$commit:$path"]
 	}
-	fconfigure $fd -blocking 0 -translation lf -encoding binary
+	fconfigure $fd \
+		-blocking 0 \
+		-translation lf \
+		-encoding [get_path_encoding $path]
 	fileevent $fd readable [cb _read_file $fd $jump]
 	set current_fd $fd
 }
@@ -498,7 +518,7 @@ method _exec_blame {cur_w cur_d options cur_s} {
 	}
 	lappend options -- $path
 	set fd [eval git_read --nice blame $options]
-	fconfigure $fd -blocking 0 -translation lf -encoding binary
+	fconfigure $fd -blocking 0 -translation lf -encoding utf-8
 	fileevent $fd readable [cb _read_blame $fd $cur_w $cur_d]
 	set current_fd $fd
 	set blame_lines 0
@@ -511,7 +531,6 @@ method _exec_blame {cur_w cur_d options cur_s} {
 method _read_blame {fd cur_w cur_d} {
 	upvar #0 $cur_d line_data
 	variable group_colors
-	variable original_options
 
 	if {$fd ne $current_fd} {
 		catch {close $fd}
@@ -684,6 +703,18 @@ method _read_blame {fd cur_w cur_d} {
 	if {[eof $fd]} {
 		close $fd
 		if {$cur_w eq $w_asim} {
+			# Switches for original location detection
+			set threshold [get_config gui.copyblamethreshold]
+			set original_options [list "-C$threshold"]
+
+			if {![is_config_true gui.fastcopyblame]} {
+				# thorough copy search; insert before the threshold
+				set original_options [linsert $original_options 0 -C]
+			}
+			if {[git-version >= 1.5.3]} {
+				lappend original_options -w ; # ignore indentation changes
+			}
+
 			_exec_blame $this $w_amov @amov_data \
 				$original_options \
 				[mc "Loading original location annotations..."]
@@ -696,9 +727,85 @@ method _read_blame {fd cur_w cur_d} {
 	}
 } ifdeleted { catch {close $fd} }
 
+method _find_commit_bound {data_list start_idx delta} {
+	upvar #0 $data_list line_data
+	set pos $start_idx
+	set limit       [expr {[llength $line_data] - 1}]
+	set base_commit [lindex $line_data $pos 0]
+
+	while {$pos > 0 && $pos < $limit} {
+		set new_pos [expr {$pos + $delta}]
+		if {[lindex $line_data $new_pos 0] ne $base_commit} {
+			return $pos
+		}
+
+		set pos $new_pos
+	}
+
+	return $pos
+}
+
+method _fullcopyblame {} {
+	if {$current_fd ne {}} {
+		tk_messageBox \
+			-icon error \
+			-type ok \
+			-title [mc "Busy"] \
+			-message [mc "Annotation process is already running."]
+
+		return
+	}
+
+	# Switches for original location detection
+	set threshold [get_config gui.copyblamethreshold]
+	set original_options [list -C -C "-C$threshold"]
+
+	if {[git-version >= 1.5.3]} {
+		lappend original_options -w ; # ignore indentation changes
+	}
+
+	# Find the line range
+	set pos @$::cursorX,$::cursorY
+	set lno [lindex [split [$::cursorW index $pos] .] 0]
+	set min_amov_lno [_find_commit_bound $this @amov_data $lno -1]
+	set max_amov_lno [_find_commit_bound $this @amov_data $lno 1]
+	set min_asim_lno [_find_commit_bound $this @asim_data $lno -1]
+	set max_asim_lno [_find_commit_bound $this @asim_data $lno 1]
+
+	if {$min_asim_lno < $min_amov_lno} {
+		set min_amov_lno $min_asim_lno
+	}
+
+	if {$max_asim_lno > $max_amov_lno} {
+		set max_amov_lno $max_asim_lno
+	}
+
+	lappend original_options -L "$min_amov_lno,$max_amov_lno"
+
+	# Clear lines
+	for {set i $min_amov_lno} {$i <= $max_amov_lno} {incr i} {
+		lset amov_data $i [list ]
+	}
+
+	# Start the back-end process
+	_exec_blame $this $w_amov @amov_data \
+		$original_options \
+		[mc "Running thorough copy detection..."]
+}
+
 method _click {cur_w pos} {
 	set lno [lindex [split [$cur_w index $pos] .] 0]
 	_showcommit $this $cur_w $lno
+}
+
+method _setencoding {enc} {
+	force_path_encoding $path $enc
+	_load $this [list \
+		$highlight_column \
+		$highlight_line \
+		[lindex [$w_file xview] 0] \
+		[lindex [$w_file yview] 0] \
+		]
 }
 
 method _load_commit {cur_w cur_d pos} {
@@ -706,17 +813,25 @@ method _load_commit {cur_w cur_d pos} {
 	set lno [lindex [split [$cur_w index $pos] .] 0]
 	set dat [lindex $line_data $lno]
 	if {$dat ne {}} {
-		lappend history [list \
-			$commit $path \
-			$highlight_column \
-			$highlight_line \
-			[lindex [$w_file xview] 0] \
-			[lindex [$w_file yview] 0] \
-			]
-		set commit [lindex $dat 0]
-		set path   [lindex $dat 1]
-		_load $this [list [lindex $dat 2]]
+		_load_new_commit $this  \
+			[lindex $dat 0] \
+			[lindex $dat 1] \
+			[list [lindex $dat 2]]
 	}
+}
+
+method _load_new_commit {new_commit new_path jump} {
+	lappend history [list \
+		$commit $path \
+		$highlight_column \
+		$highlight_line \
+		[lindex [$w_file xview] 0] \
+		[lindex [$w_file yview] 0] \
+		]
+
+	set commit $new_commit
+	set path   $new_path
+	_load $this $jump
 }
 
 method _showcommit {cur_w lno} {
@@ -786,12 +901,6 @@ method _showcommit {cur_w lno} {
 				set enc [tcl_encoding $enc]
 				if {$enc ne {}} {
 					set msg [encoding convertfrom $enc $msg]
-					set author_name [encoding convertfrom $enc $author_name]
-					set committer_name [encoding convertfrom $enc $committer_name]
-					set header($cmit,author) $author_name
-					set header($cmit,committer) $committer_name
-					set header($cmit,summary) \
-					[encoding convertfrom $enc $header($cmit,summary)]
 				}
 				set msg [string trim $msg]
 			}
@@ -824,10 +933,14 @@ method _showcommit {cur_w lno} {
 	}
 }
 
-method _copycommit {} {
+method _get_click_amov_info {} {
 	set pos @$::cursorX,$::cursorY
 	set lno [lindex [split [$::cursorW index $pos] .] 0]
-	set dat [lindex $amov_data $lno]
+	return [lindex $amov_data $lno]
+}
+
+method _copycommit {} {
+	set dat [_get_click_amov_info $this]
 	if {$dat ne {}} {
 		clipboard clear
 		clipboard append \
@@ -836,6 +949,147 @@ method _copycommit {} {
 			-- [lindex $dat 0]
 	}
 }
+
+method _format_offset_date {base offset} {
+	set exval [expr {$base + $offset*24*60*60}]
+	return [clock format $exval -format {%Y-%m-%d}]
+}
+
+method _gitkcommit {} {
+	global nullid
+
+	set dat [_get_click_amov_info $this]
+	if {$dat ne {}} {
+		set cmit [lindex $dat 0]
+
+		# If the line belongs to the working copy, use HEAD instead
+		if {$cmit eq $nullid} {
+			if {[catch {set cmit [git rev-parse --verify HEAD]} err]} {
+				error_popup [strcat [mc "Cannot find HEAD commit:"] "\n\n$err"]
+				return;
+			}
+		}
+
+		set radius [get_config gui.blamehistoryctx]
+		set cmdline [list --select-commit=$cmit]
+
+                if {$radius > 0} {
+			set author_time {}
+			set committer_time {}
+
+			catch {set author_time $header($cmit,author-time)}
+			catch {set committer_time $header($cmit,committer-time)}
+
+			if {$committer_time eq {}} {
+				set committer_time $author_time
+			}
+
+			set after_time [_format_offset_date $this $committer_time [expr {-$radius}]]
+			set before_time [_format_offset_date $this $committer_time $radius]
+
+			lappend cmdline --after=$after_time --before=$before_time
+		}
+
+		lappend cmdline $cmit
+
+		set base_rev "HEAD"
+		if {$commit ne {}} {
+			set base_rev $commit
+		}
+
+		if {$base_rev ne $cmit} {
+			lappend cmdline $base_rev
+		}
+
+		do_gitk $cmdline
+	}
+}
+
+method _blameparent {} {
+	global nullid
+
+	set dat [_get_click_amov_info $this]
+	if {$dat ne {}} {
+		set cmit [lindex $dat 0]
+		set new_path [lindex $dat 1]
+
+		# Allow using Blame Parent on lines modified in the working copy
+		if {$cmit eq $nullid} {
+			set parent_ref "HEAD"
+		} else {
+			set parent_ref "$cmit^"
+		}
+		if {[catch {set cparent [git rev-parse --verify $parent_ref]} err]} {
+			error_popup [strcat [mc "Cannot find parent commit:"] "\n\n$err"]
+			return;
+		}
+
+		_kill $this
+
+		# Generate a diff between the commit and its parent,
+		# and use the hunks to update the line number.
+		# Request zero context to simplify calculations.
+		if {$cmit eq $nullid} {
+			set diffcmd [list diff-index --unified=0 $cparent -- $new_path]
+		} else {
+			set diffcmd [list diff-tree --unified=0 $cparent $cmit -- $new_path]
+		}
+		if {[catch {set fd [eval git_read $diffcmd]} err]} {
+			$status stop [mc "Unable to display parent"]
+			error_popup [strcat [mc "Error loading diff:"] "\n\n$err"]
+			return
+		}
+
+		set r_orig_line [lindex $dat 2]
+
+		fconfigure $fd \
+			-blocking 0 \
+			-encoding binary \
+			-translation binary
+		fileevent $fd readable [cb _read_diff_load_commit \
+			$fd $cparent $new_path $r_orig_line]
+		set current_fd $fd
+	}
+}
+
+method _read_diff_load_commit {fd cparent new_path tline} {
+	if {$fd ne $current_fd} {
+		catch {close $fd}
+		return
+	}
+
+	while {[gets $fd line] >= 0} {
+		if {[regexp {^@@ -(\d+)(,(\d+))? \+(\d+)(,(\d+))? @@} $line line \
+			old_line osz old_size new_line nsz new_size]} {
+
+			if {$osz eq {}} { set old_size 1 }
+			if {$nsz eq {}} { set new_size 1 }
+
+			if {$new_line <= $tline} {
+				if {[expr {$new_line + $new_size}] > $tline} {
+					# Target line within the hunk
+					set line_shift [expr {
+						($new_size-$old_size)*($tline-$new_line)/$new_size
+						}]
+				} else {
+					set line_shift [expr {$new_size-$old_size}]
+				}
+
+				set r_orig_line [expr {$r_orig_line - $line_shift}]
+			}
+		}
+	}
+
+	if {[eof $fd]} {
+		close $fd;
+		set current_fd {}
+
+		_load_new_commit $this  \
+			$cparent        \
+			$new_path       \
+			[list $r_orig_line]
+	}
+} ifdeleted { catch {close $fd} }
 
 method _show_tooltip {cur_w pos} {
 	if {$tooltip_wm ne {}} {

@@ -273,7 +273,7 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 		const char *ref, *it;
 
 		strcpy(path, mkpath(*p, len, str));
-		ref = resolve_ref(path, hash, 0, NULL);
+		ref = resolve_ref(path, hash, 1, NULL);
 		if (!ref)
 			continue;
 		if (!stat(git_path("logs/%s", path), &st) &&
@@ -349,7 +349,10 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 			else
 				nth = -1;
 		}
-		if (0 <= nth)
+		if (100000000 <= nth) {
+			at_time = nth;
+			nth = -1;
+		} else if (0 <= nth)
 			at_time = 0;
 		else {
 			char *tmp = xstrndup(str + at + 2, reflog_len);

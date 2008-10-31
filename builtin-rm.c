@@ -11,7 +11,7 @@
 #include "parse-options.h"
 
 static const char * const builtin_rm_usage[] = {
-	"git-rm [options] [--] <file>...",
+	"git rm [options] [--] <file>...",
 	NULL
 };
 
@@ -27,26 +27,6 @@ static void add_list(const char *name)
 		list.name = xrealloc(list.name, list.alloc * sizeof(const char *));
 	}
 	list.name[list.nr++] = name;
-}
-
-static int remove_file(const char *name)
-{
-	int ret;
-	char *slash;
-
-	ret = unlink(name);
-	if (ret && errno == ENOENT)
-		/* The user has removed it from the filesystem by hand */
-		ret = errno = 0;
-
-	if (!ret && (slash = strrchr(name, '/'))) {
-		char *n = xstrdup(name);
-		do {
-			n[slash - name] = 0;
-			name = n;
-		} while (!rmdir(name) && (slash = strrchr(name, '/')));
-	}
-	return ret;
 }
 
 static int check_local_mod(unsigned char *head, int index_only)
@@ -99,12 +79,13 @@ static int check_local_mod(unsigned char *head, int index_only)
 		     || hashcmp(ce->sha1, sha1))
 			staged_changes = 1;
 
-		if (local_changes && staged_changes)
+		if (local_changes && staged_changes &&
+		    !(index_only && is_empty_blob_sha1(ce->sha1)))
 			errs = error("'%s' has staged content different "
 				     "from both the file and the HEAD\n"
 				     "(use -f to force removal)", name);
 		else if (!index_only) {
-			/* It's not dangerous to git-rm --cached a
+			/* It's not dangerous to "git rm --cached" a
 			 * file if the index matches the file or the
 			 * HEAD, since it means the deleted content is
 			 * still available somewhere.
@@ -131,7 +112,7 @@ static struct option builtin_rm_options[] = {
 	OPT__DRY_RUN(&show_only),
 	OPT__QUIET(&quiet),
 	OPT_BOOLEAN( 0 , "cached",         &index_only, "only remove from the index"),
-	OPT_BOOLEAN('f', NULL,             &force,      "override the up-to-date check"),
+	OPT_BOOLEAN('f', "force",          &force,      "override the up-to-date check"),
 	OPT_BOOLEAN('r', NULL,             &recursive,  "allow recursive removal"),
 	OPT_BOOLEAN( 0 , "ignore-unmatch", &ignore_unmatch,
 				"exit with a zero status even if nothing matched"),
@@ -146,17 +127,18 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 
 	git_config(git_default_config, NULL);
 
-	newfd = hold_locked_index(&lock_file, 1);
-
-	if (read_cache() < 0)
-		die("index file corrupt");
-
 	argc = parse_options(argc, argv, builtin_rm_options, builtin_rm_usage, 0);
 	if (!argc)
 		usage_with_options(builtin_rm_usage, builtin_rm_options);
 
 	if (!index_only)
 		setup_work_tree();
+
+	newfd = hold_locked_index(&lock_file, 1);
+
+	if (read_cache() < 0)
+		die("index file corrupt");
+	refresh_cache(REFRESH_QUIET);
 
 	pathspec = get_pathspec(prefix, argv);
 	seen = NULL;
@@ -221,7 +203,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 			printf("rm '%s'\n", path);
 
 		if (remove_file_from_cache(path))
-			die("git-rm: unable to remove %s", path);
+			die("git rm: unable to remove %s", path);
 	}
 
 	if (show_only)
@@ -239,12 +221,12 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		int removed = 0;
 		for (i = 0; i < list.nr; i++) {
 			const char *path = list.name[i];
-			if (!remove_file(path)) {
+			if (!remove_path(path)) {
 				removed = 1;
 				continue;
 			}
 			if (!removed)
-				die("git-rm: %s: %s", path, strerror(errno));
+				die("git rm: %s: %s", path, strerror(errno));
 		}
 	}
 

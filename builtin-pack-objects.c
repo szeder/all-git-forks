@@ -23,7 +23,7 @@
 #endif
 
 static const char pack_usage[] = "\
-git-pack-objects [{ -q | --progress | --all-progress }] \n\
+git pack-objects [{ -q | --progress | --all-progress }] \n\
 	[--max-pack-size=N] [--local] [--incremental] \n\
 	[--window=N] [--window-memory=N] [--depth=N] \n\
 	[--no-reuse-delta] [--no-reuse-object] [--delta-base-offset] \n\
@@ -410,25 +410,22 @@ static unsigned long write_object(struct sha1file *f,
 	return hdrlen + datalen;
 }
 
-static off_t write_one(struct sha1file *f,
+static int write_one(struct sha1file *f,
 			       struct object_entry *e,
-			       off_t offset)
+			       off_t *offset)
 {
 	unsigned long size;
 
 	/* offset is non zero if object is written already. */
 	if (e->idx.offset || e->preferred_base)
-		return offset;
+		return 1;
 
 	/* if we are deltified, write out base object first. */
-	if (e->delta) {
-		offset = write_one(f, e->delta, offset);
-		if (!offset)
-			return 0;
-	}
+	if (e->delta && !write_one(f, e->delta, offset))
+		return 0;
 
-	e->idx.offset = offset;
-	size = write_object(f, e, offset);
+	e->idx.offset = *offset;
+	size = write_object(f, e, *offset);
 	if (!size) {
 		e->idx.offset = 0;
 		return 0;
@@ -436,9 +433,10 @@ static off_t write_one(struct sha1file *f,
 	written_list[nr_written++] = &e->idx;
 
 	/* make sure off_t is sufficiently large not to wrap */
-	if (offset > offset + size)
+	if (*offset > *offset + size)
 		die("pack too large for current definition of off_t");
-	return offset + size;
+	*offset += size;
+	return 1;
 }
 
 /* forward declaration for write_pack_file */
@@ -448,7 +446,7 @@ static void write_pack_file(void)
 {
 	uint32_t i = 0, j;
 	struct sha1file *f;
-	off_t offset, offset_one, last_obj_offset = 0;
+	off_t offset;
 	struct pack_header hdr;
 	uint32_t nr_remaining = nr_result;
 	time_t last_mtime = 0;
@@ -467,7 +465,7 @@ static void write_pack_file(void)
 			char tmpname[PATH_MAX];
 			int fd;
 			snprintf(tmpname, sizeof(tmpname),
-				 "%s/tmp_pack_XXXXXX", get_object_directory());
+				 "%s/pack/tmp_pack_XXXXXX", get_object_directory());
 			fd = xmkstemp(tmpname);
 			pack_tmp_name = xstrdup(tmpname);
 			f = sha1fd(fd, pack_tmp_name);
@@ -480,11 +478,8 @@ static void write_pack_file(void)
 		offset = sizeof(hdr);
 		nr_written = 0;
 		for (; i < nr_objects; i++) {
-			last_obj_offset = offset;
-			offset_one = write_one(f, objects + i, offset);
-			if (!offset_one)
+			if (!write_one(f, objects + i, &offset))
 				break;
-			offset = offset_one;
 			display_progress(progress_state, written);
 		}
 
@@ -497,9 +492,9 @@ static void write_pack_file(void)
 		} else if (nr_written == nr_remaining) {
 			sha1close(f, sha1, CSUM_FSYNC);
 		} else {
-			int fd = sha1close(f, NULL, 0);
-			fixup_pack_header_footer(fd, sha1, pack_tmp_name, nr_written);
-			fsync_or_die(fd, pack_tmp_name);
+			int fd = sha1close(f, sha1, 0);
+			fixup_pack_header_footer(fd, sha1, pack_tmp_name,
+						 nr_written, sha1, offset);
 			close(fd);
 		}
 
@@ -1096,9 +1091,12 @@ static void check_object(struct object_entry *entry)
 	}
 
 	entry->type = sha1_object_info(entry->idx.sha1, &entry->size);
-	if (entry->type < 0)
-		die("unable to get type of object %s",
-		    sha1_to_hex(entry->idx.sha1));
+	/*
+	 * The error condition is checked in prepare_pack().  This is
+	 * to permit a missing preferred base object to be ignored
+	 * as a preferred base.  Doing so can result in a larger
+	 * pack file, but the transfer will still take place.
+	 */
 }
 
 static int pack_offset_sort(const void *_a, const void *_b)
@@ -1371,12 +1369,10 @@ static void find_deltas(struct object_entry **list, unsigned *list_size,
 			int window, int depth, unsigned *processed)
 {
 	uint32_t i, idx = 0, count = 0;
-	unsigned int array_size = window * sizeof(struct unpacked);
 	struct unpacked *array;
 	unsigned long mem_usage = 0;
 
-	array = xmalloc(array_size);
-	memset(array, 0, array_size);
+	array = xcalloc(window, sizeof(struct unpacked));
 
 	for (;;) {
 		struct object_entry *entry = *list++;
@@ -1722,8 +1718,20 @@ static void prepare_pack(int window, int depth)
 		if (entry->no_try_delta)
 			continue;
 
-		if (!entry->preferred_base)
+		if (!entry->preferred_base) {
 			nr_deltas++;
+			if (entry->type < 0)
+				die("unable to get type of object %s",
+				    sha1_to_hex(entry->idx.sha1));
+		} else {
+			if (entry->type < 0) {
+				/*
+				 * This object is not found, but we
+				 * don't have to include it anyway.
+				 */
+				continue;
+			}
+		}
 
 		delta_list[n++] = entry;
 	}
@@ -1870,7 +1878,7 @@ static void mark_in_pack_object(struct object *object, struct packed_git *p, str
 
 /*
  * Compare the objects in the offset order, in order to emulate the
- * "git-rev-list --objects" output that produced the pack originally.
+ * "git rev-list --objects" output that produced the pack originally.
  */
 static int ofscmp(const void *a_, const void *b_)
 {

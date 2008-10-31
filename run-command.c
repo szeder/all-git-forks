@@ -68,6 +68,7 @@ int start_command(struct child_process *cmd)
 	trace_argv_printf(cmd->argv, "trace: run_command:");
 
 #ifndef __MINGW32__
+	fflush(NULL);
 	cmd->pid = fork();
 	if (!cmd->pid) {
 		if (cmd->no_stdin)
@@ -110,6 +111,8 @@ int start_command(struct child_process *cmd)
 					unsetenv(*cmd->env);
 			}
 		}
+		if (cmd->preexec_cb)
+			cmd->preexec_cb();
 		if (cmd->git_cmd) {
 			execv_git_cmd(cmd->argv);
 		} else {
@@ -119,9 +122,8 @@ int start_command(struct child_process *cmd)
 	}
 #else
 	int s0 = -1, s1 = -1, s2 = -1;	/* backups of stdin, stdout, stderr */
-	const char *sargv0 = cmd->argv[0];
+	const char **sargv = cmd->argv;
 	char **env = environ;
-	struct strbuf git_cmd;
 
 	if (cmd->no_stdin) {
 		s0 = dup(0);
@@ -165,9 +167,7 @@ int start_command(struct child_process *cmd)
 	}
 
 	if (cmd->git_cmd) {
-		strbuf_init(&git_cmd, 0);
-		strbuf_addf(&git_cmd, "git-%s", cmd->argv[0]);
-		cmd->argv[0] = git_cmd.buf;
+		cmd->argv = prepare_git_cmd(cmd->argv);
 	}
 
 	cmd->pid = mingw_spawnvpe(cmd->argv[0], cmd->argv, env);
@@ -175,9 +175,9 @@ int start_command(struct child_process *cmd)
 	if (cmd->env)
 		free_environ(env);
 	if (cmd->git_cmd)
-		strbuf_release(&git_cmd);
+		free(cmd->argv);
 
-	cmd->argv[0] = sargv0;
+	cmd->argv = sargv;
 	if (s0 >= 0)
 		dup2(s0, 0), close(s0);
 	if (s1 >= 0)
@@ -273,14 +273,6 @@ int run_command_v_opt(const char **argv, int opt)
 	return run_command(&cmd);
 }
 
-int run_command_v_opt_cd(const char **argv, int opt, const char *dir)
-{
-	struct child_process cmd;
-	prepare_run_command_v_opt(&cmd, argv, opt);
-	cmd.dir = dir;
-	return run_command(&cmd);
-}
-
 int run_command_v_opt_cd_env(const char **argv, int opt, const char *dir, const char *const *env)
 {
 	struct child_process cmd;
@@ -307,6 +299,9 @@ int start_async(struct async *async)
 	async->out = pipe_out[0];
 
 #ifndef __MINGW32__
+	/* Flush stdio before fork() to avoid cloning buffers */
+	fflush(NULL);
+
 	async->pid = fork();
 	if (async->pid < 0) {
 		error("fork (async) failed: %s", strerror(errno));

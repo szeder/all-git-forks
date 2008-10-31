@@ -16,11 +16,11 @@
 #include "quote.h"
 #include "xdiff-interface.h"
 #include "cache-tree.h"
-#include "path-list.h"
+#include "string-list.h"
 #include "mailmap.h"
 #include "parse-options.h"
 
-static char blame_usage[] = "git-blame [options] [rev-opts] [rev] [--] file";
+static char blame_usage[] = "git blame [options] [rev-opts] [rev] [--] file";
 
 static const char *blame_opt_usage[] = {
 	blame_usage,
@@ -38,9 +38,8 @@ static int show_root;
 static int reverse;
 static int blank_boundary;
 static int incremental;
-static int cmd_is_annotate;
 static int xdl_opts = XDF_NEED_MINIMAL;
-static struct path_list mailmap;
+static struct string_list mailmap;
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -152,6 +151,10 @@ struct blame_entry {
 	 * checked if the group came from one of its parents.
 	 */
 	char guilty;
+
+	/* true if the entry has been scanned for copies in the current parent
+	 */
+	char scanned;
 
 	/* the line number of the first line of this group in the
 	 * suspect's file; internally all line numbers are 0 based.
@@ -461,7 +464,6 @@ struct patch {
 };
 
 struct blame_diff_state {
-	struct xdiff_emit_state xm;
 	struct patch *ret;
 	unsigned hunk_post_context;
 	unsigned hunk_in_pre_context : 1;
@@ -524,15 +526,12 @@ static struct patch *compare_buffer(mmfile_t *file_p, mmfile_t *file_o,
 	xpp.flags = xdl_opts;
 	memset(&xecfg, 0, sizeof(xecfg));
 	xecfg.ctxlen = context;
-	ecb.outf = xdiff_outf;
-	ecb.priv = &state;
 	memset(&state, 0, sizeof(state));
-	state.xm.consume = process_u_diff;
 	state.ret = xmalloc(sizeof(struct patch));
 	state.ret->chunks = NULL;
 	state.ret->num = 0;
 
-	xdi_diff(file_p, file_o, &xpp, &xecfg, &ecb);
+	xdi_diff_outf(file_p, file_o, process_u_diff, &state, &xpp, &xecfg, &ecb);
 
 	if (state.ret->num) {
 		struct chunk *chunk;
@@ -1008,7 +1007,8 @@ static int find_move_in_parent(struct scoreboard *sb,
 	while (made_progress) {
 		made_progress = 0;
 		for (e = sb->ent; e; e = e->next) {
-			if (e->guilty || !same_suspect(e->suspect, target))
+			if (e->guilty || !same_suspect(e->suspect, target) ||
+			    ent_score(sb, e) < blame_move_score)
 				continue;
 			find_copy_in_blob(sb, e, parent, split, &file_p);
 			if (split[1].suspect &&
@@ -1033,6 +1033,7 @@ struct blame_list {
  */
 static struct blame_list *setup_blame_list(struct scoreboard *sb,
 					   struct origin *target,
+					   int min_score,
 					   int *num_ents_p)
 {
 	struct blame_entry *e;
@@ -1040,16 +1041,30 @@ static struct blame_list *setup_blame_list(struct scoreboard *sb,
 	struct blame_list *blame_list = NULL;
 
 	for (e = sb->ent, num_ents = 0; e; e = e->next)
-		if (!e->guilty && same_suspect(e->suspect, target))
+		if (!e->scanned && !e->guilty &&
+		    same_suspect(e->suspect, target) &&
+		    min_score < ent_score(sb, e))
 			num_ents++;
 	if (num_ents) {
 		blame_list = xcalloc(num_ents, sizeof(struct blame_list));
 		for (e = sb->ent, i = 0; e; e = e->next)
-			if (!e->guilty && same_suspect(e->suspect, target))
+			if (!e->scanned && !e->guilty &&
+			    same_suspect(e->suspect, target) &&
+			    min_score < ent_score(sb, e))
 				blame_list[i++].ent = e;
 	}
 	*num_ents_p = num_ents;
 	return blame_list;
+}
+
+/*
+ * Reset the scanned status on all entries.
+ */
+static void reset_scanned_flag(struct scoreboard *sb)
+{
+	struct blame_entry *e;
+	for (e = sb->ent; e; e = e->next)
+		e->scanned = 0;
 }
 
 /*
@@ -1070,7 +1085,7 @@ static int find_copy_in_parent(struct scoreboard *sb,
 	struct blame_list *blame_list;
 	int num_ents;
 
-	blame_list = setup_blame_list(sb, target, &num_ents);
+	blame_list = setup_blame_list(sb, target, blame_copy_score, &num_ents);
 	if (!blame_list)
 		return 1; /* nothing remains for this target */
 
@@ -1117,6 +1132,8 @@ static int find_copy_in_parent(struct scoreboard *sb,
 
 			if (!DIFF_FILE_VALID(p->one))
 				continue; /* does not exist in parent */
+			if (S_ISGITLINK(p->one->mode))
+				continue; /* ignore git links */
 			if (porigin && !strcmp(p->one->path, porigin->path))
 				/* find_move already dealt with this path */
 				continue;
@@ -1144,18 +1161,21 @@ static int find_copy_in_parent(struct scoreboard *sb,
 				split_blame(sb, split, blame_list[j].ent);
 				made_progress = 1;
 			}
+			else
+				blame_list[j].ent->scanned = 1;
 			decref_split(split);
 		}
 		free(blame_list);
 
 		if (!made_progress)
 			break;
-		blame_list = setup_blame_list(sb, target, &num_ents);
+		blame_list = setup_blame_list(sb, target, blame_copy_score, &num_ents);
 		if (!blame_list) {
 			retval = 1;
 			break;
 		}
 	}
+	reset_scanned_flag(sb);
 	diff_flush(&diff_opts);
 	diff_tree_release_paths(&diff_opts);
 	return retval;
@@ -1663,7 +1683,7 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 		if (suspect->commit->object.flags & UNINTERESTING) {
 			if (blank_boundary)
 				memset(hex, ' ', length);
-			else if (!cmd_is_annotate) {
+			else if (!(opt & OUTPUT_ANNOTATE_COMPAT)) {
 				length--;
 				putchar('^');
 			}
@@ -1768,7 +1788,7 @@ static int prepare_lines(struct scoreboard *sb)
 
 /*
  * Add phony grafts for use with -S; this is primarily to
- * support git-cvsserver that wants to give a linear history
+ * support git's cvsserver that wants to give a linear history
  * to its clients.
  */
 static int read_ancestry(const char *graft_file)
@@ -1903,7 +1923,7 @@ static void sanity_check_refcnt(struct scoreboard *sb)
  * Used for the command line parsing; check if the path exists
  * in the working tree.
  */
-static int has_path_in_work_tree(const char *path)
+static int has_string_in_work_tree(const char *path)
 {
 	struct stat st;
 	return !lstat(path, &st);
@@ -2042,7 +2062,7 @@ static struct commit *fake_working_tree_commit(const char *path, const char *con
 	struct commit *commit;
 	struct origin *origin;
 	unsigned char head_sha1[20];
-	struct strbuf buf;
+	struct strbuf buf = STRBUF_INIT;
 	const char *ident;
 	time_t now;
 	int size, len;
@@ -2062,7 +2082,6 @@ static struct commit *fake_working_tree_commit(const char *path, const char *con
 
 	origin = make_origin(commit, path);
 
-	strbuf_init(&buf, 0);
 	if (!contents_from || strcmp("-", contents_from)) {
 		struct stat st;
 		const char *read_from;
@@ -2294,8 +2313,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	};
 
 	struct parse_opt_ctx_t ctx;
-
-	cmd_is_annotate = !strcmp(argv[0], "annotate");
+	int cmd_is_annotate = !strcmp(argv[0], "annotate");
 
 	git_config(git_blame_config, NULL);
 	init_revisions(&revs, NULL);
@@ -2322,6 +2340,13 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	}
 parse_done:
 	argc = parse_options_end(&ctx);
+
+	if (cmd_is_annotate)
+		output_option |= OUTPUT_ANNOTATE_COMPAT;
+
+	if (DIFF_OPT_TST(&revs.diffopt, FIND_COPIES_HARDER))
+		opt |= (PICKAXE_BLAME_COPY | PICKAXE_BLAME_MOVE |
+			PICKAXE_BLAME_COPY_HARDER);
 
 	if (!blame_move_score)
 		blame_move_score = BLAME_DEFAULT_MOVE_SCORE;
@@ -2367,14 +2392,14 @@ parse_done:
 		if (argc < 2)
 			usage_with_options(blame_opt_usage, options);
 		path = add_prefix(prefix, argv[argc - 1]);
-		if (argc == 3 && !has_path_in_work_tree(path)) { /* (2b) */
+		if (argc == 3 && !has_string_in_work_tree(path)) { /* (2b) */
 			path = add_prefix(prefix, argv[1]);
 			argv[1] = argv[2];
 		}
 		argv[argc - 1] = "--";
 
 		setup_work_tree();
-		if (!has_path_in_work_tree(path))
+		if (!has_string_in_work_tree(path))
 			die("cannot stat path %s: %s", path, strerror(errno));
 	}
 

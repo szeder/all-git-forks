@@ -127,59 +127,6 @@ static int handle_options(const char*** argv, int* argc, int* envchanged)
 	return handled;
 }
 
-static int split_cmdline(char *cmdline, const char ***argv)
-{
-	int src, dst, count = 0, size = 16;
-	char quoted = 0;
-
-	*argv = xmalloc(sizeof(char*) * size);
-
-	/* split alias_string */
-	(*argv)[count++] = cmdline;
-	for (src = dst = 0; cmdline[src];) {
-		char c = cmdline[src];
-		if (!quoted && isspace(c)) {
-			cmdline[dst++] = 0;
-			while (cmdline[++src]
-					&& isspace(cmdline[src]))
-				; /* skip */
-			if (count >= size) {
-				size += 16;
-				*argv = xrealloc(*argv, sizeof(char*) * size);
-			}
-			(*argv)[count++] = cmdline + dst;
-		} else if(!quoted && (c == '\'' || c == '"')) {
-			quoted = c;
-			src++;
-		} else if (c == quoted) {
-			quoted = 0;
-			src++;
-		} else {
-			if (c == '\\' && quoted != '\'') {
-				src++;
-				c = cmdline[src];
-				if (!c) {
-					free(*argv);
-					*argv = NULL;
-					return error("cmdline ends with \\");
-				}
-			}
-			cmdline[dst++] = c;
-			src++;
-		}
-	}
-
-	cmdline[dst] = 0;
-
-	if (quoted) {
-		free(*argv);
-		*argv = NULL;
-		return error("unclosed quote");
-	}
-
-	return count;
-}
-
 static int handle_alias(int *argcp, const char ***argv)
 {
 	int envchanged = 0, ret = 0, saved_errno = errno;
@@ -215,6 +162,8 @@ static int handle_alias(int *argcp, const char ***argv)
 			    alias_string + 1, alias_command);
 		}
 		count = split_cmdline(alias_string, &new_argv);
+		if (count < 0)
+			die("Bad alias.%s string", alias_command);
 		option_count = handle_options(&new_argv, &count, &envchanged);
 		if (envchanged)
 			die("alias '%s' changes environment variables\n"
@@ -339,7 +288,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "count-objects", cmd_count_objects, RUN_SETUP },
 		{ "describe", cmd_describe, RUN_SETUP },
 		{ "diff", cmd_diff },
-		{ "diff-files", cmd_diff_files, RUN_SETUP },
+		{ "diff-files", cmd_diff_files, RUN_SETUP | NEED_WORK_TREE },
 		{ "diff-index", cmd_diff_index, RUN_SETUP },
 		{ "diff-tree", cmd_diff_tree, RUN_SETUP },
 		{ "fast-export", cmd_fast_export, RUN_SETUP },
@@ -366,6 +315,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "ls-remote", cmd_ls_remote },
 		{ "mailinfo", cmd_mailinfo },
 		{ "mailsplit", cmd_mailsplit },
+		{ "merge", cmd_merge, RUN_SETUP | NEED_WORK_TREE },
 		{ "merge-base", cmd_merge_base, RUN_SETUP },
 		{ "merge-file", cmd_merge_file },
 		{ "merge-ours", cmd_merge_ours, RUN_SETUP },
@@ -380,6 +330,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "prune-packed", cmd_prune_packed, RUN_SETUP },
 		{ "push", cmd_push, RUN_SETUP },
 		{ "read-tree", cmd_read_tree, RUN_SETUP },
+		{ "receive-pack", cmd_receive_pack },
 		{ "reflog", cmd_reflog, RUN_SETUP },
 		{ "remote", cmd_remote, RUN_SETUP },
 		{ "repo-config", cmd_config },
@@ -393,7 +344,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "shortlog", cmd_shortlog, USE_PAGER },
 		{ "show-branch", cmd_show_branch, RUN_SETUP },
 		{ "show", cmd_show, RUN_SETUP | USE_PAGER },
-		{ "status", cmd_status, RUN_SETUP | NEED_WORK_TREE | USE_PAGER },
+		{ "status", cmd_status, RUN_SETUP | NEED_WORK_TREE },
 		{ "stripspace", cmd_stripspace },
 		{ "symbolic-ref", cmd_symbolic_ref, RUN_SETUP },
 		{ "tag", cmd_tag, RUN_SETUP },
@@ -416,7 +367,7 @@ static void handle_internal_command(int argc, const char **argv)
 	if (sizeof(ext) > 1) {
 		i = strlen(argv[0]) - strlen(ext);
 		if (i > 0 && !strcmp(argv[0] + i, ext)) {
-			char *argv0 = strdup(argv[0]);
+			char *argv0 = xstrdup(argv[0]);
 			argv[0] = cmd = argv0;
 			argv0[i] = '\0';
 		}
@@ -438,10 +389,9 @@ static void handle_internal_command(int argc, const char **argv)
 
 static void execv_dashed_external(const char **argv)
 {
-	struct strbuf cmd;
+	struct strbuf cmd = STRBUF_INIT;
 	const char *tmp;
 
-	strbuf_init(&cmd, 0);
 	strbuf_addf(&cmd, "git-%s", argv[0]);
 
 	/*
@@ -470,7 +420,6 @@ int main(int argc, const char **argv)
 {
 	const char *cmd = argv[0] && *argv[0] ? argv[0] : "git-help";
 	char *slash = (char *)cmd + strlen(cmd);
-	const char *cmd_path = NULL;
 	int done_alias = 0;
 
 	/*
@@ -483,7 +432,7 @@ int main(int argc, const char **argv)
 	while (cmd <= slash && !is_dir_sep(*slash));
 	if (cmd <= slash) {
 		*slash++ = 0;
-		cmd_path = cmd;
+		git_set_argv0_path(cmd);
 		cmd = slash;
 	}
 
@@ -527,7 +476,7 @@ int main(int argc, const char **argv)
 	 * environment, and the $(gitexecdir) from the Makefile at build
 	 * time.
 	 */
-	setup_path(cmd_path);
+	setup_path();
 
 	while (1) {
 		/* See if it's an internal command */
@@ -552,7 +501,9 @@ int main(int argc, const char **argv)
 				cmd, argv[0]);
 			exit(1);
 		}
-		help_unknown_cmd(cmd);
+		argv[0] = help_unknown_cmd(cmd);
+		handle_internal_command(argc, argv);
+		execv_dashed_external(argv);
 	}
 
 	fprintf(stderr, "Failed to run command '%s': %s\n",

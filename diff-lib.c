@@ -63,6 +63,8 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 			      ? CE_MATCH_RACY_IS_DIRTY : 0);
 	char symcache[PATH_MAX];
 
+	diff_set_mnemonic_prefix(&revs->diffopt, "i/", "w/");
+
 	if (diff_unmerged_stage < 0)
 		diff_unmerged_stage = 2;
 	entries = active_nr;
@@ -171,7 +173,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 			if (silent_on_removed)
 				continue;
 			diff_addremove(&revs->diffopt, '-', ce->ce_mode,
-				       ce->sha1, ce->name, NULL);
+				       ce->sha1, ce->name);
 			continue;
 		}
 		changed = ce_match_stat(ce, &st, ce_option);
@@ -184,7 +186,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 		newmode = ce_mode_from_stat(ce, st.st_mode);
 		diff_change(&revs->diffopt, oldmode, newmode,
 			    ce->sha1, (changed ? null_sha1 : ce->sha1),
-			    ce->name, NULL);
+			    ce->name);
 
 	}
 	diffcore_std(&revs->diffopt);
@@ -208,7 +210,7 @@ static void diff_index_show_file(struct rev_info *revs,
 				 const unsigned char *sha1, unsigned int mode)
 {
 	diff_addremove(&revs->diffopt, prefix[0], mode,
-		       sha1, ce->name, NULL);
+		       sha1, ce->name);
 }
 
 static int get_stat_data(struct cache_entry *ce,
@@ -312,7 +314,7 @@ static int show_modified(struct oneway_unpack_data *cbdata,
 		return 0;
 
 	diff_change(&revs->diffopt, oldmode, mode,
-		    old->sha1, sha1, old->name, NULL);
+		    old->sha1, sha1, old->name);
 	return 0;
 }
 
@@ -469,6 +471,7 @@ int run_diff_index(struct rev_info *revs, int cached)
 	if (unpack_trees(1, &t, &opts))
 		exit(128);
 
+	diff_set_mnemonic_prefix(&revs->diffopt, "c/", cached ? "i/" : "w/");
 	diffcore_std(&revs->diffopt);
 	diff_flush(&revs->diffopt);
 	return 0;

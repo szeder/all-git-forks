@@ -14,12 +14,12 @@ typedef void (*change_fn_t)(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
 		 const unsigned char *old_sha1,
 		 const unsigned char *new_sha1,
-		 const char *base, const char *path);
+		 const char *fullpath);
 
 typedef void (*add_remove_fn_t)(struct diff_options *options,
 		    int addremove, unsigned mode,
 		    const unsigned char *sha1,
-		    const char *base, const char *path);
+		    const char *fullpath);
 
 typedef void (*diff_format_fn_t)(struct diff_queue_struct *q,
 		struct diff_options *options, void *data);
@@ -31,7 +31,6 @@ typedef void (*diff_format_fn_t)(struct diff_queue_struct *q,
 #define DIFF_FORMAT_PATCH	0x0010
 #define DIFF_FORMAT_SHORTSTAT	0x0020
 #define DIFF_FORMAT_DIRSTAT	0x0040
-#define DIFF_FORMAT_CUMULATIVE	0x0080
 
 /* These override all above */
 #define DIFF_FORMAT_NAME	0x0100
@@ -64,6 +63,8 @@ typedef void (*diff_format_fn_t)(struct diff_queue_struct *q,
 #define DIFF_OPT_CHECK_FAILED        (1 << 16)
 #define DIFF_OPT_RELATIVE_NAME       (1 << 17)
 #define DIFF_OPT_IGNORE_SUBMODULES   (1 << 18)
+#define DIFF_OPT_DIRSTAT_CUMULATIVE  (1 << 19)
+#define DIFF_OPT_DIRSTAT_BY_FILE     (1 << 20)
 #define DIFF_OPT_TST(opts, flag)    ((opts)->flags & DIFF_OPT_##flag)
 #define DIFF_OPT_SET(opts, flag)    ((opts)->flags |= DIFF_OPT_##flag)
 #define DIFF_OPT_CLR(opts, flag)    ((opts)->flags &= ~DIFF_OPT_##flag)
@@ -160,18 +161,19 @@ extern void diff_tree_combined(const unsigned char *sha1, const unsigned char pa
 
 extern void diff_tree_combined_merge(const unsigned char *sha1, int, struct rev_info *);
 
+void diff_set_mnemonic_prefix(struct diff_options *options, const char *a, const char *b);
+
 extern void diff_addremove(struct diff_options *,
 			   int addremove,
 			   unsigned mode,
 			   const unsigned char *sha1,
-			   const char *base,
-			   const char *path);
+			   const char *fullpath);
 
 extern void diff_change(struct diff_options *,
 			unsigned mode1, unsigned mode2,
 			const unsigned char *sha1,
 			const unsigned char *sha2,
-			const char *base, const char *path);
+			const char *fullpath);
 
 extern void diff_unmerge(struct diff_options *,
 			 const char *path,

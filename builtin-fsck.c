@@ -385,6 +385,8 @@ static void fsck_dir(int i, char *path)
 			add_sha1_list(sha1, DIRENT_SORT_HINT(de));
 			continue;
 		}
+		if (!prefixcmp(de->d_name, "tmp_obj_"))
+			continue;
 		fprintf(stderr, "bad sha1 file: %s/%s\n", path, de->d_name);
 	}
 	closedir(dir);
@@ -539,7 +541,7 @@ static int fsck_cache_tree(struct cache_tree *it)
 }
 
 static char const * const fsck_usage[] = {
-	"git-fsck [options] [<object>...]",
+	"git fsck [options] [<object>...]",
 	NULL
 };
 
