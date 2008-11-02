@@ -2136,7 +2136,9 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
  */
 int move_temp_to_file(const char *tmpfile, const char *filename)
 {
-	int ret = link(tmpfile, filename);
+	int ret = 0;
+	if (link(tmpfile, filename))
+		ret = errno;
 
 	/*
 	 * Coda hack - coda doesn't like cross-directory links,
@@ -2320,6 +2322,7 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	enum object_type type;
 	char hdr[32];
 	int hdrlen;
+	int ret;
 
 	if (has_loose_object(sha1))
 		return 0;
@@ -2327,7 +2330,10 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
 	hdrlen = sprintf(hdr, "%s %lu", typename(type), len) + 1;
-	return write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
+	ret = write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
+	free(buf);
+
+	return ret;
 }
 
 int has_pack_index(const unsigned char *sha1)

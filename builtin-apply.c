@@ -13,6 +13,7 @@
 #include "delta.h"
 #include "builtin.h"
 #include "string-list.h"
+#include "dir.h"
 
 /*
  *  --check turns on checking that the working tree matches the
@@ -809,6 +810,13 @@ static int parse_git_header(char *line, int len, unsigned int size, struct patch
 	 * the default name from the header.
 	 */
 	patch->def_name = git_header_name(line, len);
+	if (patch->def_name && root) {
+		char *s = xmalloc(root_len + strlen(patch->def_name) + 1);
+		strcpy(s, root);
+		strcpy(s + root_len, patch->def_name);
+		free(patch->def_name);
+		patch->def_name = s;
+	}
 
 	line += len;
 	size -= len;
@@ -1696,7 +1704,7 @@ static int match_fragment(struct image *img,
 		fixlen = ws_fix_copy(buf, orig, oldlen, ws_rule, NULL);
 
 		/* Try fixing the line in the target */
-		if (sizeof(tgtfixbuf) < tgtlen)
+		if (sizeof(tgtfixbuf) > tgtlen)
 			tgtfix = tgtfixbuf;
 		else
 			tgtfix = xmalloc(tgtlen);
@@ -2585,6 +2593,8 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			sha1_ptr = sha1;
 
 		ce = make_cache_entry(patch->old_mode, sha1_ptr, name, 0, 0);
+		if (!ce)
+			die("make_cache_entry failed for path '%s'", name);
 		if (add_index_entry(&result, ce, ADD_CACHE_OK_TO_ADD))
 			die ("Could not add %s to temporary index", name);
 	}
@@ -2735,15 +2745,7 @@ static void remove_file(struct patch *patch, int rmdir_empty)
 				warning("unable to remove submodule %s",
 					patch->old_name);
 		} else if (!unlink(patch->old_name) && rmdir_empty) {
-			char *name = xstrdup(patch->old_name);
-			char *end = strrchr(name, '/');
-			while (end) {
-				*end = 0;
-				if (rmdir(name))
-					break;
-				end = strrchr(name, '/');
-			}
-			free(name);
+			remove_path(patch->old_name);
 		}
 	}
 }

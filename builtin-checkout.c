@@ -269,6 +269,8 @@ static int merge_working_tree(struct checkout_opts *opts,
 		}
 
 		/* 2-way merge to the new branch */
+		topts.initial_checkout = (!active_nr &&
+					  (old->commit == new->commit));
 		topts.update = 1;
 		topts.merge = 1;
 		topts.gently = opts->merge;
@@ -326,7 +328,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 	    commit_locked_index(lock_file))
 		die("unable to write new index file");
 
-	if (!opts->force)
+	if (!opts->force && !opts->quiet)
 		show_local_changes(&new->commit->object);
 
 	return 0;
@@ -561,6 +563,18 @@ no_reference:
 		}
 
 		return checkout_paths(source_tree, pathspec);
+	}
+
+	if (opts.new_branch) {
+		struct strbuf buf;
+		strbuf_init(&buf, 0);
+		strbuf_addstr(&buf, "refs/heads/");
+		strbuf_addstr(&buf, opts.new_branch);
+		if (!get_sha1(buf.buf, rev))
+			die("git checkout: branch %s already exists", opts.new_branch);
+		if (check_ref_format(buf.buf))
+			die("git checkout: we do not like '%s' as a branch name.", opts.new_branch);
+		strbuf_release(&buf);
 	}
 
 	if (new.name && !new.commit) {

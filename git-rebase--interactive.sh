@@ -65,6 +65,16 @@ output () {
 	esac
 }
 
+run_pre_rebase_hook () {
+	if test -x "$GIT_DIR/hooks/pre-rebase"
+	then
+		"$GIT_DIR/hooks/pre-rebase" ${1+"$@"} || {
+			echo >&2 "The pre-rebase hook refused to rebase."
+			exit 1
+		}
+	fi
+}
+
 require_clean_work_tree () {
 	# test if working tree is dirty
 	git rev-parse --verify HEAD > /dev/null &&
@@ -267,7 +277,7 @@ do_next () {
 		"$DOTEST"/amend || exit
 	read command sha1 rest < "$TODO"
 	case "$command" in
-	'#'*|'')
+	'#'*|''|noop)
 		mark_action_done
 		;;
 	pick|p)
@@ -284,7 +294,7 @@ do_next () {
 		pick_one $sha1 ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
 		make_patch $sha1
-		: > "$DOTEST"/amend
+		git rev-parse --verify HEAD > "$DOTEST"/amend
 		warn "Stopped at $sha1... $rest"
 		warn "You can amend the commit now, with"
 		warn
@@ -304,23 +314,28 @@ do_next () {
 
 		mark_action_done
 		make_squash_message $sha1 > "$MSG"
+		failed=f
+		author_script=$(get_author_ident_from_commit HEAD)
+		output git reset --soft HEAD^
+		pick_one -n $sha1 || failed=t
 		case "$(peek_next_command)" in
 		squash|s)
 			EDIT_COMMIT=
 			USE_OUTPUT=output
+			MSG_OPT=-F
+			MSG_FILE="$MSG"
 			cp "$MSG" "$SQUASH_MSG"
 			;;
 		*)
 			EDIT_COMMIT=-e
 			USE_OUTPUT=
+			MSG_OPT=
+			MSG_FILE=
 			rm -f "$SQUASH_MSG" || exit
+			cp "$MSG" "$GIT_DIR"/SQUASH_MSG
+			rm -f "$GIT_DIR"/MERGE_MSG || exit
 			;;
 		esac
-
-		failed=f
-		author_script=$(get_author_ident_from_commit HEAD)
-		output git reset --soft HEAD^
-		pick_one -n $sha1 || failed=t
 		echo "$author_script" > "$DOTEST"/author-script
 		if test $failed = f
 		then
@@ -329,7 +344,7 @@ do_next () {
 			GIT_AUTHOR_NAME="$GIT_AUTHOR_NAME" \
 			GIT_AUTHOR_EMAIL="$GIT_AUTHOR_EMAIL" \
 			GIT_AUTHOR_DATE="$GIT_AUTHOR_DATE" \
-			$USE_OUTPUT git commit --no-verify -F "$MSG" $EDIT_COMMIT || failed=t
+			$USE_OUTPUT git commit --no-verify $MSG_OPT "$MSG_FILE" $EDIT_COMMIT || failed=t
 		fi
 		if test $failed = t
 		then
@@ -427,14 +442,22 @@ do
 		else
 			. "$DOTEST"/author-script ||
 				die "Cannot find the author identity"
+			amend=
 			if test -f "$DOTEST"/amend
 			then
+				amend=$(git rev-parse --verify HEAD)
+				test "$amend" = $(cat "$DOTEST"/amend) ||
+				die "\
+You have uncommitted changes in your working tree. Please, commit them
+first and then run 'git rebase --continue' again."
 				git reset --soft HEAD^ ||
 				die "Cannot rewind the HEAD"
 			fi
 			export GIT_AUTHOR_NAME GIT_AUTHOR_EMAIL GIT_AUTHOR_DATE &&
-			git commit --no-verify -F "$DOTEST"/message -e ||
-			die "Could not commit staged changes."
+			git commit --no-verify -F "$DOTEST"/message -e || {
+				test -n "$amend" && git reset --soft $amend
+				die "Could not commit staged changes."
+			}
 		fi
 
 		require_clean_work_tree
@@ -499,6 +522,7 @@ do
 		;;
 	--)
 		shift
+		run_pre_rebase_hook ${1+"$@"}
 		test $# -eq 1 -o $# -eq 2 || usage
 		test -d "$DOTEST" &&
 			die "Interactive rebase already started"
@@ -560,6 +584,7 @@ do
 			--abbrev=7 --reverse --left-right --cherry-pick \
 			$UPSTREAM...$HEAD | \
 			sed -n "s/^>/pick /p" > "$TODO"
+		test -s "$TODO" || echo noop >> "$TODO"
 		cat >> "$TODO" << EOF
 
 # Rebase $SHORTUPSTREAM..$SHORTHEAD onto $SHORTONTO

@@ -23,7 +23,7 @@
 #endif
 
 static const char pack_usage[] = "\
-git-pack-objects [{ -q | --progress | --all-progress }] \n\
+git pack-objects [{ -q | --progress | --all-progress }] \n\
 	[--max-pack-size=N] [--local] [--incremental] \n\
 	[--window=N] [--window-memory=N] [--depth=N] \n\
 	[--no-reuse-delta] [--no-reuse-object] [--delta-base-offset] \n\
@@ -465,7 +465,7 @@ static void write_pack_file(void)
 			char tmpname[PATH_MAX];
 			int fd;
 			snprintf(tmpname, sizeof(tmpname),
-				 "%s/tmp_pack_XXXXXX", get_object_directory());
+				 "%s/pack/tmp_pack_XXXXXX", get_object_directory());
 			fd = xmkstemp(tmpname);
 			pack_tmp_name = xstrdup(tmpname);
 			f = sha1fd(fd, pack_tmp_name);
@@ -1872,7 +1872,7 @@ static void mark_in_pack_object(struct object *object, struct packed_git *p, str
 
 /*
  * Compare the objects in the offset order, in order to emulate the
- * "git-rev-list --objects" output that produced the pack originally.
+ * "git rev-list --objects" output that produced the pack originally.
  */
 static int ofscmp(const void *a_, const void *b_)
 {

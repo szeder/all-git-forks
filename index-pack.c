@@ -172,7 +172,7 @@ static char *open_pack_file(char *pack_name)
 		if (!pack_name) {
 			static char tmpfile[PATH_MAX];
 			snprintf(tmpfile, sizeof(tmpfile),
-				 "%s/tmp_pack_XXXXXX", get_object_directory());
+				 "%s/pack/tmp_pack_XXXXXX", get_object_directory());
 			output_fd = xmkstemp(tmpfile);
 			pack_name = xstrdup(tmpfile);
 		} else
@@ -365,8 +365,11 @@ static void *get_data_from_pack(struct object_entry *obj)
 	data = src;
 	do {
 		ssize_t n = pread(pack_fd, data + rdy, len - rdy, from + rdy);
-		if (n <= 0)
+		if (n < 0)
 			die("cannot pread pack file: %s", strerror(errno));
+		if (!n)
+			die("premature end of pack file, %lu bytes missing",
+			    len - rdy);
 		rdy += n;
 	} while (rdy < len);
 	data = xmalloc(obj->size);
@@ -704,6 +707,7 @@ static struct object_entry *append_obj_to_pack(struct sha1file *f,
 	obj[1].idx.offset = obj[0].idx.offset + n;
 	obj[1].idx.offset += write_compressed(f, buf, size);
 	obj[0].idx.crc32 = crc32_end(f);
+	sha1flush(f);
 	hashcpy(obj->idx.sha1, sha1);
 	return obj;
 }
@@ -875,10 +879,26 @@ int main(int argc, char **argv)
 	char *index_name_buf = NULL, *keep_name_buf = NULL;
 	struct pack_idx_entry **idx_objects;
 	unsigned char pack_sha1[20];
-	int nongit = 0;
 
-	setup_git_directory_gently(&nongit);
-	git_config(git_index_pack_config, NULL);
+	/*
+	 * We wish to read the repository's config file if any, and
+	 * for that it is necessary to call setup_git_directory_gently().
+	 * However if the cwd was inside .git/objects/pack/ then we need
+	 * to go back there or all the pack name arguments will be wrong.
+	 * And in that case we cannot rely on any prefix returned by
+	 * setup_git_directory_gently() either.
+	 */
+	{
+		char cwd[PATH_MAX+1];
+		int nongit;
+
+		if (!getcwd(cwd, sizeof(cwd)-1))
+			die("Unable to get current working directory");
+		setup_git_directory_gently(&nongit);
+		git_config(git_index_pack_config, NULL);
+		if (chdir(cwd))
+			die("Cannot come back to cwd");
+	}
 
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];
