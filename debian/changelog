@@ -1,4 +1,4 @@
-git-core (1:1.6.0.2-1.1) experimental; urgency=low
+git-core (1:1.6.0.3-1) experimental; urgency=low
 
   * debian/control: minor update to long descriptions (thx Reuben
     Thomas, closes: #499065).
@@ -6,8 +6,9 @@ git-core (1:1.6.0.2-1.1) experimental; urgency=low
     file (thx Jari Aaltoi, closes: #472197).
   * debian/rules: install emacsen-startup configuration file into the
     git-core package (thx Eddy Mulyono, closes: #446027).
+  * new upstream point release.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 26 Oct 2008 21:51:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 02 Nov 2008 20:42:44 +0000
 
 git-core (1:1.6.0.2-1) experimental; urgency=low
 

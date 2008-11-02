@@ -1,3 +1,209 @@
+Version v1.6.0.3; changes since v1.6.0.2:
+-----------------------------------------
+
+Abhijit Bhopatkar (1):
+      Documentation: Clarify '--signoff' for git-commit
+
+Alec Berryman (2):
+      git-svn: factor out svnserve test code for later use
+      git-svn: Always create a new RA when calling do_switch for svn://
+
+Alex Riesen (3):
+      Remove empty directories in recursive merge
+      Add remove_path: a function to remove as much as possible of a path
+      Use remove_path from dir.c instead of own implementation
+
+Alexander Gavrilov (1):
+      builtin-blame: Fix blame -C -C with submodules.
+
+Björn Steinbrink (1):
+      force_object_loose: Fix memory leak
+
+Brandon Casey (14):
+      t9700/test.pl: avoid bareword 'STDERR' in 3-argument open()
+      t9700/test.pl: remove File::Temp requirement
+      diff.c: return pattern entry pointer rather than just the hunk header pattern
+      diff.c: associate a flag with each pattern and use it for compiling regex
+      diff.*.xfuncname which uses "extended" regex's for hunk header selection
+      t4018-diff-funcname: test syntax of builtin xfuncname patterns
+      builtin-prune.c: prune temporary packs in <object_dir>/pack directory
+      git-stash.sh: don't default to refs/stash if invalid ref supplied
+      builtin-merge.c: allocate correct amount of memory
+      git-stash.sh: fix flawed fix of invalid ref handling (commit da65e7c1)
+      remote.c: correct the check for a leading '/' in a remote name
+      t4018-diff-funcname: rework negated last expression test
+      t4018-diff-funcname: demonstrate end of line funcname matching flaw
+      xdiff-interface.c: strip newline (and cr) from line before pattern matching
+
+Charles Bailey (2):
+      Add new test to demonstrate git archive core.autocrlf inconsistency
+      Make git archive respect core.autocrlf when creating zip format archives
+
+Chris Frey (1):
+      Documentation: clarify the details of overriding LESS via core.pager
+
+Dan McGee (1):
+      contrib: update packinfo.pl to not use dashed commands
+
+Daniel Barkalow (1):
+      Check early that a new branch is new and valid
+
+David Soria Parra (1):
+      Solaris: Use OLD_ICONV to avoid compile warnings
+
+Deskin Miller (2):
+      maint: check return of split_cmdline to avoid bad config strings
+      git init: --bare/--shared overrides system/global config
+
+Dmitry Potapov (4):
+      git-rebase-interactive: do not squash commits on abort
+      git-rebase--interactive: auto amend only edited commit
+      make prefix_path() never return NULL
+      do not segfault if make_cache_entry failed
+
+Eric Raible (1):
+      completion: git commit should list --interactive
+
+Eric Wong (1):
+      git-svn: fix handling of even funkier branch names
+
+Fabrizio Chiarello (1):
+      builtin-clone: fix typo
+
+Garry Dolley (1):
+      Clarified gitattributes documentation regarding custom hunk header.
+
+Giuseppe Bilotta (1):
+      gitweb: remove PATH_INFO from $my_url and $my_uri
+
+Heikki Orsila (2):
+      Start conforming code to "git subcmd" style part 3
+      Cosmetical command name fix
+
+Imre Deak (1):
+      builtin-apply: fix typo leading to stack corruption
+
+Jakub Narebski (2):
+      gitweb: Fix two 'uninitialized value' warnings in git_tree()
+      gitweb: Add path_info tests to t/t9500-gitweb-standalone-no-errors.sh
+
+Jeff King (3):
+      Makefile: do not set NEEDS_LIBICONV for Solaris 8
+      git apply --directory broken for new files
+      tests: shell negation portability fix
+
+Joey Hess (1):
+      gitweb: avoid warnings for commits without body
+
+Johan Herland (2):
+      for-each-ref: Fix --format=%(subject) for log message without newlines
+      Use strchrnul() instead of strchr() plus manual workaround
+
+Johannes Schindelin (2):
+      git rm: refresh index before up-to-date check
+      rebase -i: do not fail when there is no commit to cherry-pick
+
+Johannes Sixt (2):
+      git-remote: do not use user input in a printf format string
+      git-push.txt: Describe --repo option in more detail
+
+Jonas Fonseca (2):
+      checkout: Do not show local changes when in quiet mode
+      git-check-attr(1): add output and example sections
+
+Junio C Hamano (15):
+      discard_cache: reset lazy name_hash bit
+      diff Porcelain: do not disable auto index refreshing on -C -C
+      diff --quiet: make it synonym to --exit-code >/dev/null
+      Don't verify host name in SSL certs when GIT_SSL_NO_VERIFY is set
+      Fix permission bits on sources checked out with an overtight umask
+      checkout: do not lose staged removal
+      diff/diff-files: do not use --cc too aggressively
+      Start draft release notes for 1.6.0.3
+      diff: use extended regexp to find hunk headers
+      diff hunk pattern: fix misconverted "\{" tex macro introducers
+      Update draft release notes to 1.6.0.3
+      diff(1): clarify what "T"ypechange status means
+      Hopefully the final draft release notes update before 1.6.0.3
+      Fix testcase failure when extended attributes are in use
+      GIT 1.6.0.3
+
+Linus Torvalds (1):
+      fix bogus "diff --git" header from "diff --no-index"
+
+Luc Heinrich (1):
+      git-svn: call 'fatal' correctly in set-tree
+
+Matt McCutchen (1):
+      t1301-shared-repo.sh: don't let a default ACL interfere with the test
+
+Michael J Gruber (1):
+      make "git remote" report multiple URLs
+
+Michael Prokop (1):
+      Replace svn.foo.org with svn.example.com in git-svn docs (RFC 2606)
+
+Mikael Magnusson (4):
+      Typo "bogos" in format-patch error message.
+      git-repack uses --no-repack-object, not --no-repack-delta.
+      Fix a few typos in relnotes
+      Typo "does not exists" when git remote update remote.
+
+Miklos Vajna (2):
+      test-lib: fix color reset in say_color()
+      Add testcase to ensure merging an early part of a branch is done properly
+
+Nanako Shiraishi (2):
+      docs: describe pre-rebase hook
+      Teach rebase -i to honor pre-rebase hook
+
+Nicolas Pitre (2):
+      fix pread()'s short read in index-pack
+      rehabilitate 'git index-pack' inside the object store
+
+Petr Baudis (1):
+      Do not perform cross-directory renames when creating packs
+
+Ping Yin (1):
+      git-submodule: Fix "Unable to checkout" for the initial 'update'
+
+Rafael Garcia-Suarez (1):
+      Clarify commit error message for unmerged files
+
+SZEDER Gábor (5):
+      t0024: add executable permission
+      Documentation: remove '\' in front of short options
+      rebase -i: proper prepare-commit-msg hook argument when squashing
+      rebase -i: remove leftover debugging
+      bash: remove fetch, push, pull dashed form leftovers
+
+Samuel Tardieu (1):
+      Do not use errno when pread() returns 0
+
+Shawn O. Pearce (3):
+      Update release notes for 1.6.0.3
+      Update release notes for 1.6.0.3
+      test-lib: fix broken printf
+
+Stephen Haberman (1):
+      Clarify how the user can satisfy stash's 'dirty state' check.
+
+Thomas Rast (1):
+      sha1_file: link() returns -1 on failure, not errno
+
+Todd Zullinger (1):
+      Use dashless git commands in setgitperms.perl
+
+Tuncer Ayaz (1):
+      Fix fetch/clone --quiet when stdout is connected
+
+Yann Dirson (1):
+      Bust the ghost of long-defunct diffcore-pathspec.
+
+martin f. krafft (1):
+      Improve git-log documentation wrt file filters
+
+
 Version v1.6.0.2; changes since v1.6.0.1:
 -----------------------------------------
 
