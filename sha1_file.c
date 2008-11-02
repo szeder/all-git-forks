@@ -838,7 +838,8 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	 * actually mapping the pack file.
 	 */
 	p->pack_size = st.st_size;
-	p->pack_local = local;
+	if (local)
+		p->flags |= PACK_LOCAL;
 	p->mtime = st.st_mtime;
 	if (path_len < 40 || get_sha1_hex(path + path_len - 40, p->sha1))
 		hashclr(p->sha1);
@@ -928,7 +929,7 @@ static int sort_pack(const void *a_, const void *b_)
 	 * remote ones could be on a network mounted filesystem.
 	 * Favor local ones for these reasons.
 	 */
-	st = a->pack_local - b->pack_local;
+	st = ispacklocal(a) - ispacklocal(b);
 	if (st)
 		return -st;
 

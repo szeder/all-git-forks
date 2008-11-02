@@ -701,7 +701,7 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 				break;
 			if (incremental)
 				return 0;
-			if (local && !p->pack_local)
+			if (local && !ispacklocal(p))
 				return 0;
 		}
 	}

@@ -138,7 +138,7 @@ static int too_many_packs(void)
 		size_t len;
 		int keep;
 
-		if (!p->pack_local)
+		if (!ispacklocal(p))
 			continue;
 		len = strlen(p->pack_name);
 		if (PATH_MAX <= len + 1)

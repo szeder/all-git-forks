@@ -660,11 +660,14 @@ extern struct packed_git {
 	int index_version;
 	time_t mtime;
 	int pack_fd;
-	int pack_local;
+	unsigned int flags;
 	unsigned char sha1[20];
 	/* something like ".git/objects/pack/xxxxx.pack" */
 	char pack_name[FLEX_ARRAY]; /* more */
 } *packed_git;
+
+#define PACK_LOCAL	1
+#define ispacklocal(p) ((p)->flags & PACK_LOCAL)
 
 struct pack_entry {
 	off_t offset;

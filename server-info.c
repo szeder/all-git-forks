@@ -168,14 +168,14 @@ static void init_pack_info(const char *infofile, int force)
 		/* we ignore things on alternate path since they are
 		 * not available to the pullers in general.
 		 */
-		if (!p->pack_local)
+		if (!ispacklocal(p))
 			continue;
 		i++;
 	}
 	num_pack = i;
 	info = xcalloc(num_pack, sizeof(struct pack_info *));
 	for (i = 0, p = packed_git; p; p = p->next) {
-		if (!p->pack_local)
+		if (!ispacklocal(p))
 			continue;
 		info[i] = xcalloc(1, sizeof(struct pack_info));
 		info[i]->p = p;
