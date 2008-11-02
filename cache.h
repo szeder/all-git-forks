@@ -667,7 +667,9 @@ extern struct packed_git {
 } *packed_git;
 
 #define PACK_LOCAL	1
+#define PACK_KEEP	2
 #define ispacklocal(p) ((p)->flags & PACK_LOCAL)
+#define haspackkeep(p) ((p)->flags & PACK_KEEP)
 
 struct pack_entry {
 	off_t offset;
