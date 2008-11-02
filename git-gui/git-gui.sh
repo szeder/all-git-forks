@@ -591,6 +591,12 @@ bind . <Visibility> {
 
 if {[is_Windows]} {
 	wm iconbitmap . -default $oguilib/git-gui.ico
+	set ::tk::AlwaysShowSelection 1
+
+	# Spoof an X11 display for SSH
+	if {![info exists env(DISPLAY)]} {
+		set env(DISPLAY) :9999
+	}
 }
 
 ######################################################################
@@ -1066,6 +1072,15 @@ set selected_commit_type new
 
 set nullid "0000000000000000000000000000000000000000"
 set nullid2 "0000000000000000000000000000000000000001"
+
+set have_tk85 [expr {[package vcompare $tk_version "8.5"] >= 0}]
+
+######################################################################
+
+# Suggest our implementation of askpass, if none is set
+if {![info exists env(SSH_ASKPASS)]} {
+	set env(SSH_ASKPASS) [gitexec git-gui--askpass]
+}
 
 ######################################################################
 ##
@@ -2533,6 +2548,10 @@ proc start_browser {url} {
 
 .mbar.help add command -label [mc "Online Documentation"] \
 	-command [list start_browser $doc_url]
+
+.mbar.help add command -label [mc "Show SSH Key"] \
+	-command do_ssh_key
+
 unset doc_path doc_url
 
 # -- Standard bindings
