@@ -1414,6 +1414,9 @@ endif
 install-doc:
 	$(MAKE) -C Documentation install
 
+install-man:
+	$(MAKE) -C Documentation install-man
+
 install-html:
 	$(MAKE) -C Documentation install-html
 
@@ -1422,6 +1425,9 @@ install-info:
 
 quick-install-doc:
 	$(MAKE) -C Documentation quick-install
+
+quick-install-man:
+	$(MAKE) -C Documentation quick-install-man
 
 quick-install-html:
 	$(MAKE) -C Documentation quick-install-html
