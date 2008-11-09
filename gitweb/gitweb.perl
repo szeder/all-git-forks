@@ -30,7 +30,7 @@ our $my_uri = $cgi->url(-absolute => 1);
 # if we're called with PATH_INFO, we have to strip that
 # from the URL to find our real URL
 # we make $path_info global because it's also used later on
-my $path_info = $ENV{"PATH_INFO"};
+our $path_info = $ENV{"PATH_INFO"};
 if ($path_info) {
 	$my_url =~ s,\Q$path_info\E$,,;
 	$my_uri =~ s,\Q$path_info\E$,,;
@@ -94,6 +94,11 @@ our $default_projects_order = "project";
 # show repository only if this file exists
 # (only effective if this variable evaluates to true)
 our $export_ok = "++GITWEB_EXPORT_OK++";
+
+# show repository only if this subroutine returns true
+# when given the path to the project, for example:
+#    sub { return -e "$_[0]/git-daemon-export-ok"; }
+our $export_auth_hook = undef;
 
 # only allow viewing of repositories also shown on the overview page
 our $strict_export = "++GITWEB_STRICT_EXPORT++";
@@ -400,7 +405,8 @@ sub check_head_link {
 sub check_export_ok {
 	my ($dir) = @_;
 	return (check_head_link($dir) &&
-		(!$export_ok || -e "$dir/$export_ok"));
+		(!$export_ok || -e "$dir/$export_ok") &&
+		(!$export_auth_hook || $export_auth_hook->($dir)));
 }
 
 # process alternate names for backward compatibility
@@ -436,7 +442,7 @@ $projects_list ||= $projectroot;
 # together during validation: this allows subsequent uses (e.g. href()) to be
 # agnostic of the parameter origin
 
-my %input_params = ();
+our %input_params = ();
 
 # input parameters are stored with the long parameter name as key. This will
 # also be used in the href subroutine to convert parameters to their CGI
@@ -446,7 +452,7 @@ my %input_params = ();
 # XXX: Warning: If you touch this, check the search form for updating,
 # too.
 
-my @cgi_param_mapping = (
+our @cgi_param_mapping = (
 	project => "p",
 	action => "a",
 	file_name => "f",
@@ -463,10 +469,10 @@ my @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 );
-my %cgi_param_mapping = @cgi_param_mapping;
+our %cgi_param_mapping = @cgi_param_mapping;
 
 # we will also need to know the possible actions, for validation
-my %actions = (
+our %actions = (
 	"blame" => \&git_blame,
 	"blobdiff" => \&git_blobdiff,
 	"blobdiff_plain" => \&git_blobdiff_plain,
@@ -498,7 +504,7 @@ my %actions = (
 
 # finally, we have the hash of allowed extra_options for the commands that
 # allow them
-my %allowed_options = (
+our %allowed_options = (
 	"--no-merges" => [ qw(rss atom log shortlog history) ],
 );
 
@@ -913,8 +919,7 @@ sub validate_project {
 	my $input = shift || return undef;
 	if (!validate_pathname($input) ||
 		!(-d "$projectroot/$input") ||
-		!check_head_link("$projectroot/$input") ||
-		($export_ok && !(-e "$projectroot/$input/$export_ok")) ||
+		!check_export_ok("$projectroot/$input") ||
 		($strict_export && !project_in_list($input))) {
 		return undef;
 	} else {
