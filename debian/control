@@ -138,7 +138,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
 
 Package: git-gui
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.5
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk (>= 8.4)
 Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
 Suggests: git-doc
@@ -156,7 +156,7 @@ Description: fast, scalable, distributed revision control system (GUI)
 
 Package: gitk
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk8.5
+Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk (>= 8.4)
 Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)

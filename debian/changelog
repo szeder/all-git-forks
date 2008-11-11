@@ -4,8 +4,10 @@ git-core (1:1.6.0.4-1) experimental; urgency=low
   * debian/control: git-email: minor update to the long description
     (thx Gerfried Fuchs, closes: #501559).
   * debian/rules: TCLTK_PATH=/usr/bin/wish instead of wish8.5 in OPTS.
+  * debian/control: git-gui, gitk: Depends: tk (>= 8.4) instead of
+    tk8.5 (thx Adeodato Simó, closes: #503113).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 11 Nov 2008 20:52:29 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 11 Nov 2008 20:54:02 +0000
 
 git-core (1:1.6.0.3-1) experimental; urgency=low
 
