@@ -116,7 +116,8 @@ Description: fast, scalable, distributed revision control system (email add-on)
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides tools for sending series of patch emails.
+ This package provides the git-send-email program for sending series of
+ patch emails.
 
 Package: git-daemon-run
 Architecture: all
