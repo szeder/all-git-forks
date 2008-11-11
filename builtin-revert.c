@@ -269,7 +269,7 @@ static int revert_or_cherry_pick(int argc, const char **argv)
 	int i;
 	char *oneline, *reencoded_message = NULL;
 	const char *message, *encoding;
-	const char *defmsg = xstrdup(git_path("MERGE_MSG"));
+	char *defmsg = git_pathdup("MERGE_MSG");
 
 	git_config(git_default_config, NULL);
 	me = action == REVERT ? "revert" : "cherry-pick";
@@ -338,7 +338,8 @@ static int revert_or_cherry_pick(int argc, const char **argv)
 	 * reverse of it if we are revert.
 	 */
 
-	msg_fd = hold_lock_file_for_update(&msg_file, defmsg, 1);
+	msg_fd = hold_lock_file_for_update(&msg_file, defmsg,
+					   LOCK_DIE_ON_ERROR);
 
 	encoding = get_encoding(message);
 	if (!encoding)
@@ -426,6 +427,7 @@ static int revert_or_cherry_pick(int argc, const char **argv)
 		return execv_git_cmd(args);
 	}
 	free(reencoded_message);
+	free(defmsg);
 
 	return 0;
 }
