@@ -88,6 +88,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	 git-gui git-citool; do \
 	  rm -f '$(GIT)'-core/usr/lib/git-core/$$i*; \
 	done
+	rm -f '$(GIT)'-core/usr/bin/git-cvsserver
 	rm -f '$(GIT)'-core/usr/bin/gitk
 	for i in '$(GIT)'-core/usr/bin/* '$(GIT)'-core/usr/lib/git-core/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
@@ -144,6 +145,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	    '$(GIT)'-$$i/usr/share/man/man1/ && \
 	  gzip -9 '$(GIT)'-$$i/usr/share/man/man1/*.1 || exit 1; \
 	done
+	# git-cvs
+	install -d -m0755 '$(GIT)'-cvs/usr/bin
+	install -m0755 '$(TMP)'/usr/bin/git-cvsserver '$(GIT)'-cvs/usr/bin/
 	# git-arch
 	rm -rf '$(GIT)'-arch
 	install -d -m0755 '$(GIT)'-arch/usr/lib/git-core
