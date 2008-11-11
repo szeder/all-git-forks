@@ -3,8 +3,9 @@ git-core (1:1.6.0.4-1) experimental; urgency=low
   * new upstream point release.
   * debian/control: git-email: minor update to the long description
     (thx Gerfried Fuchs, closes: #501559).
+  * debian/rules: TCLTK_PATH=/usr/bin/wish instead of wish8.5 in OPTS.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 11 Nov 2008 20:46:46 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 11 Nov 2008 20:52:29 +0000
 
 git-core (1:1.6.0.3-1) experimental; urgency=low
 
