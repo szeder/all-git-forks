@@ -107,7 +107,7 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 		if (!packed_git)
 			prepare_packed_git();
 		for (p = packed_git; p; p = p->next) {
-			if (!ispacklocal(p))
+			if (!p->pack_local)
 				continue;
 			if (open_pack_index(p))
 				continue;

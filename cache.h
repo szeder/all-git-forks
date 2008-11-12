@@ -554,7 +554,6 @@ extern int move_temp_to_file(const char *tmpfile, const char *filename);
 
 extern int has_sha1_pack(const unsigned char *sha1, const char **ignore);
 extern int has_sha1_file(const unsigned char *sha1);
-extern int has_loose_object_nonlocal(const unsigned char *sha1);
 
 extern int has_pack_file(const unsigned char *sha1);
 extern int has_pack_index(const unsigned char *sha1);
@@ -661,16 +660,11 @@ extern struct packed_git {
 	int index_version;
 	time_t mtime;
 	int pack_fd;
-	unsigned int flags;
+	int pack_local;
 	unsigned char sha1[20];
 	/* something like ".git/objects/pack/xxxxx.pack" */
 	char pack_name[FLEX_ARRAY]; /* more */
 } *packed_git;
-
-#define PACK_LOCAL	1
-#define PACK_KEEP	2
-#define ispacklocal(p) ((p)->flags & PACK_LOCAL)
-#define haspackkeep(p) ((p)->flags & PACK_KEEP)
 
 struct pack_entry {
 	off_t offset;
