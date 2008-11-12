@@ -705,6 +705,9 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 		return 0;
 	}
 
+	if (!exclude && local && has_loose_object_nonlocal(sha1))
+		return 0;
+
 	for (p = packed_git; p; p = p->next) {
 		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
@@ -716,7 +719,7 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 				break;
 			if (incremental)
 				return 0;
-			if (local && !p->pack_local)
+			if (local && (!ispacklocal(p) || haspackkeep(p)))
 				return 0;
 		}
 	}
