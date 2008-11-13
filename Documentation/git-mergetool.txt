@@ -7,7 +7,8 @@ git-mergetool - Run merge conflict resolution tools to resolve merge conflicts
 
 SYNOPSIS
 --------
-'git mergetool' [--tool=<tool>] [-y|--no-prompt|--prompt] [<file>]...
+'git mergetool' [--tool=<tool>] [-y|--no-prompt|--prompt]
+	[-k|--keep-going|--no-keep-going] [<file>]...
 
 DESCRIPTION
 -----------
@@ -68,6 +69,15 @@ success of the resolution after the custom tool has exited.
 	Prompt before each invocation of the merge resolution program.
 	This is the default behaviour; the option is provided to
 	override any configuration settings.
+
+-k or --keep-going::
+	Continue to attempt resolution of remaining conflicted files
+	even after a merge has failed or been aborted.
+
+--no-keep-going::
+	Abort the conflict resolution attempt if any single conflict
+	resolution fails or is aborted. This is the default behaviour;
+	the option is provided to override any configuration settings.
 
 Author
 ------

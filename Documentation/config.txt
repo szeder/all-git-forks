@@ -976,6 +976,10 @@ mergetool.keepBackup::
 	is set to `false` then this file is not preserved.  Defaults to
 	`true` (i.e. keep the backup files).
 
+mergetool.keepGoing::
+	Continue to attempt resolution of remaining conflicted files even
+	after a merge has failed or been aborted.
+
 mergetool.prompt::
 	Prompt before each invocation of the merge resolution program.
 
