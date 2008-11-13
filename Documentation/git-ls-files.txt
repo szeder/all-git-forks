@@ -10,8 +10,9 @@ SYNOPSIS
 --------
 [verse]
 'git ls-files' [-z] [-t] [-v]
-		(--[cached|deleted|others|ignored|stage|unmerged|killed|modified])\*
+		(--[cached|deleted|others|ignored|stage|unmerged|killed|modified|orphaned|no-checkout])\*
 		(-[c|d|o|i|s|u|k|m])\*
+		[--sparse]
 		[-x <pattern>|--exclude=<pattern>]
 		[-X <file>|--exclude-from=<file>]
 		[--exclude-per-directory=<file>]
@@ -32,7 +33,9 @@ OPTIONS
 -------
 -c::
 --cached::
-	Show cached files in the output (default)
+	Show cached files in the output (default). When used with --sparse,
+	show only cached files that are marked "checkout", no-checkout
+	entries will be excluded.
 
 -d::
 --deleted::
@@ -72,6 +75,21 @@ OPTIONS
 	to file/directory conflicts for checkout-index to
 	succeed.
 
+--no-checkout::
+	Show no-checkout entries. This option implies --sparse.
+
+--orphaned::
+	Show orphaned entries. Orphaned entries are no-checkout
+	entries that are present in working directory. This option
+	implies --sparse.
+
+--sparse::
+	When --sparse is passed, cached files will be divided into two
+	parts: checkout entries and no-checkout entries.
+	--cached will only show checkout entries.
+	No-checkout entries can be shown using --orphaned or
+	--no-checkout (or both).
+
 -z::
 	\0 line termination on output.
 
@@ -107,6 +125,8 @@ OPTIONS
 	Identify the file status with the following tags (followed by
 	a space) at the start of each line:
 	H::	cached
+	-::	no-checkout entries
+	O::	orphaned entries
 	M::	unmerged
 	R::	removed/deleted
 	C::	modified/changed

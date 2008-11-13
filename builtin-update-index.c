@@ -24,8 +24,9 @@ static int info_only;
 static int force_remove;
 static int verbose;
 static int mark_valid_only;
-#define MARK_VALID 1
-#define UNMARK_VALID 2
+static int mark_no_checkout_only;
+#define MARK_FLAG 1
+#define UNMARK_FLAG 2
 
 static void report(const char *fmt, ...)
 {
@@ -40,19 +41,15 @@ static void report(const char *fmt, ...)
 	va_end(vp);
 }
 
-static int mark_valid(const char *path)
+static int mark_ce_flags(const char *path, int flag, int mark)
 {
 	int namelen = strlen(path);
 	int pos = cache_name_pos(path, namelen);
 	if (0 <= pos) {
-		switch (mark_valid_only) {
-		case MARK_VALID:
-			active_cache[pos]->ce_flags |= CE_VALID;
-			break;
-		case UNMARK_VALID:
-			active_cache[pos]->ce_flags &= ~CE_VALID;
-			break;
-		}
+		if (mark)
+			active_cache[pos]->ce_flags |= flag;
+		else
+			active_cache[pos]->ce_flags &= ~flag;
 		cache_tree_invalidate_path(active_cache_tree, path);
 		active_cache_changed = 1;
 		return 0;
@@ -276,7 +273,12 @@ static void update_one(const char *path, const char *prefix, int prefix_length)
 		goto free_return;
 	}
 	if (mark_valid_only) {
-		if (mark_valid(p))
+		if (mark_ce_flags(p, CE_VALID, mark_valid_only == MARK_FLAG))
+			die("Unable to mark file %s", path);
+		goto free_return;
+	}
+	if (mark_no_checkout_only) {
+		if (mark_ce_flags(p, CE_NO_CHECKOUT, mark_no_checkout_only == MARK_FLAG))
 			die("Unable to mark file %s", path);
 		goto free_return;
 	}
@@ -388,7 +390,7 @@ static void read_index_info(int line_termination)
 }
 
 static const char update_index_usage[] =
-"git update-index [-q] [--add] [--replace] [--remove] [--unmerged] [--refresh] [--really-refresh] [--cacheinfo] [--chmod=(+|-)x] [--assume-unchanged] [--info-only] [--force-remove] [--stdin] [--index-info] [--unresolve] [--again | -g] [--ignore-missing] [-z] [--verbose] [--] <file>...";
+"git update-index [-q] [--add] [--replace] [--remove] [--unmerged] [--refresh] [--really-refresh] [--cacheinfo] [--chmod=(+|-)x] [--assume-unchanged] [--checkout|--no-checkout] [--info-only] [--force-remove] [--stdin] [--index-info] [--unresolve] [--again | -g] [--ignore-missing] [-z] [--verbose] [--] <file>...";
 
 static unsigned char head_sha1[20];
 static unsigned char merge_head_sha1[20];
@@ -647,11 +649,19 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(path, "--assume-unchanged")) {
-				mark_valid_only = MARK_VALID;
+				mark_valid_only = MARK_FLAG;
 				continue;
 			}
 			if (!strcmp(path, "--no-assume-unchanged")) {
-				mark_valid_only = UNMARK_VALID;
+				mark_valid_only = UNMARK_FLAG;
+				continue;
+			}
+			if (!strcmp(path, "--checkout")) {
+				mark_no_checkout_only = UNMARK_FLAG;
+				continue;
+			}
+			if (!strcmp(path, "--no-checkout")) {
+				mark_no_checkout_only = MARK_FLAG;
 				continue;
 			}
 			if (!strcmp(path, "--info-only")) {

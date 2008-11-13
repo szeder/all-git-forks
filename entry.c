@@ -230,5 +230,6 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 	} else if (state->not_new)
 		return 0;
 	create_directories(path, state);
+	ce_mark_checkout(ce);
 	return write_entry(ce, path, state, 0);
 }
