@@ -144,4 +144,6 @@ static inline int single_parent(struct commit *commit)
 
 struct commit_list *reduce_heads(struct commit_list *heads);
 
+void bisect_replace_all(void);
+
 #endif /* COMMIT_H */

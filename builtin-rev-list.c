@@ -637,7 +637,7 @@ static int bisect_replace(const char *refname, const unsigned char *sha1,
 	return 0;
 }
 
-static void bisect_replace_all(void)
+void bisect_replace_all(void)
 {
 	for_each_replace_ref(bisect_replace, NULL);
 }
