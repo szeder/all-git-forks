@@ -137,6 +137,13 @@ test_expect_success '"git rev-list --bisect-replace" works' '
      test_cmp rev_list.expect rev_list.output
 '
 
+test_expect_success '"git merge-base --bisect-replace" works' '
+     hash=$(git merge-base --all --bisect-replace $HASH7 $HASHFIX3) &&
+     test "$hash" = "$HASHFIX3" &&
+     hash=$(git merge-base --all --bisect-replace $HASH7 $HASH3) &&
+     test "$hash" = "$HASH1"
+'
+
 #
 #
 test_done

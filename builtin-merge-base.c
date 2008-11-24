@@ -46,9 +46,13 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 	struct commit **rev;
 	int rev_nr = 0;
 	int show_all = 0;
+	int bisect_replace = 0;
 
 	struct option options[] = {
-		OPT_BOOLEAN('a', "all", &show_all, "outputs all common ancestors"),
+		OPT_BOOLEAN('a', "all", &show_all,
+			    "outputs all common ancestors"),
+		OPT_BOOLEAN(0, "bisect-replace", &bisect_replace,
+			    "use revs from 'refs/replace/bisect/*' refs"),
 		OPT_END()
 	};
 
@@ -56,6 +60,8 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, options, merge_base_usage, 0);
 	if (argc < 2)
 		usage_with_options(merge_base_usage, options);
+	if (bisect_replace)
+		bisect_replace_all();
 	rev = xmalloc(argc * sizeof(*rev));
 	while (argc-- > 0)
 		rev[rev_nr++] = get_commit_reference(*argv++);
