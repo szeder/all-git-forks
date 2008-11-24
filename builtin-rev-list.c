@@ -47,12 +47,14 @@ static const char rev_list_usage[] =
 "  special purpose:\n"
 "    --bisect\n"
 "    --bisect-vars\n"
-"    --bisect-all"
+"    --bisect-all\n"
+"    --bisect-replace"
 ;
 
 static struct rev_info revs;
 
 static int bisect_list;
+static int bisect_replace_only;
 static int show_timestamp;
 static int hdr_termination;
 static const char *header_prefix;
@@ -681,6 +683,10 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			bisect_show_vars = 1;
 			continue;
 		}
+		if (!strcmp(arg, "--bisect-replace")) {
+			bisect_replace_only = 1;
+			continue;
+		}
 		if (!strcmp(arg, "--stdin")) {
 			if (read_from_stdin++)
 				die("--stdin given twice?");
@@ -713,10 +719,10 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	save_commit_buffer = revs.verbose_header ||
 		revs.grep_filter.pattern_list;
 
-	if (bisect_list) {
+	if (bisect_list || bisect_replace_only)
 		bisect_replace_all();
+	if (bisect_list)
 		revs.limited = 1;
-	}
 
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");

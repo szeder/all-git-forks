@@ -574,6 +574,21 @@ may not compile for example).
 This option can be used along with `--bisect-vars`, in this case,
 after all the sorted commit objects, there will be the same text as if
 `--bisect-vars` had been used alone.
+
+--bisect-replace::
+
+This option will make use of the "refs/replace/bisect/*" refs if any,
+but will not perform other bisection calculation.
+
+The purpose of the "refs/replace/bisect/*" refs is to be grafted into
+other branches when bisecting, so that bisection can be performed on a
+fixed up history.
+
+The other `--bisect*` options use the "refs/replace/bisect/*" refs by
+default when they perform their bisection calculations. With the
+"--bisect-replace" option, you can see what is the result of using the
+"refs/replace/bisect/*" refs without the effects of other bisection
+calculations.
 endif::git-rev-list[]
 
 

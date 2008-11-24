@@ -125,6 +125,18 @@ test_expect_success 'standard bisect works' '
      git bisect reset
 '
 
+test_expect_success '"git rev-list --bisect-replace" works' '
+     echo "$HASH7" >> rev_list.expect &&
+     echo "$HASH6" >> rev_list.expect &&
+     echo "$HASH5" >> rev_list.expect &&
+     echo "$HASHFIX4" >> rev_list.expect &&
+     echo "$HASHFIX3" >> rev_list.expect &&
+     echo "$HASHFIX2" >> rev_list.expect &&
+     echo "$HASH1" >> rev_list.expect &&
+     git rev-list --bisect-replace $HASH7 > rev_list.output &&
+     test_cmp rev_list.expect rev_list.output
+'
+
 #
 #
 test_done
