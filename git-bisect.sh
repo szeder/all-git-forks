@@ -3,7 +3,7 @@
 USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|replace|run]'
 LONG_USAGE='git bisect help
         print this long help message.
-git bisect start [<bad> [<good>...]] [--] [<pathspec>...]
+git bisect start [--no-replace] [<bad> [<good>...]] [--] [<pathspec>...]
         reset bisect state and start bisection.
 git bisect bad [<rev>]
         mark <rev> a known-bad revision.
@@ -118,6 +118,10 @@ bisect_start() {
 	    --)
 		shift
 		break
+		;;
+	    --no-replace)
+		shift
+		touch "$GIT_DIR/BISECT_NO_REPLACE"
 		;;
 	    *)
 		rev=$(git rev-parse -q --verify "$arg^{commit}") || {
@@ -386,6 +390,16 @@ We continue anyway.
 EOF
 }
 
+replace_option() {
+	test -f "$GIT_DIR/BISECT_NO_REPLACE" ||
+		echo "--bisect-replace"
+}
+
+no_replace_option() {
+	test ! -f "$GIT_DIR/BISECT_NO_REPLACE" ||
+		echo "--no-bisect-replace"
+}
+
 #
 # "check_merge_bases" checks that merge bases are not "bad".
 #
@@ -401,7 +415,7 @@ check_merge_bases() {
 	_bad="$1"
 	_good="$2"
 	_skip="$3"
-	for _mb in $(git merge-base --all --bisect-replace $_bad $_good)
+	for _mb in $(git merge-base --all $(replace_option) $_bad $_good)
 	do
 		if is_among "$_mb" "$_good"; then
 			continue
@@ -436,7 +450,7 @@ check_good_are_ancestors_of_bad() {
 	# Bisecting with no good rev is ok
 	test -z "$_good" && return
 
-	_side=$(git rev-list --bisect-replace $_good ^$_bad)
+	_side=$(git rev-list $(replace_option) $_good ^$_bad)
 	if test -n "$_side"; then
 		# Return if a checkout was done
 		check_merge_bases "$_bad" "$_good" "$_skip" || return
@@ -465,9 +479,8 @@ bisect_next() {
 	test "$?" -eq "1" && return
 
 	# Get bisection information
-	BISECT_OPT=''
-	test -n "$skip" && BISECT_OPT='--bisect-all'
-	eval="git rev-list --bisect-vars $BISECT_OPT $good $bad --" &&
+	BISECT_OPTS="$(no_replace_option) --bisect-vars ${skip:+--bisect-all}"
+	eval="git rev-list $BISECT_OPTS $good $bad --" &&
 	eval="$eval $(cat "$GIT_DIR/BISECT_NAMES")" &&
 	eval=$(filter_skipped "$eval" "$skip") &&
 	eval "$eval" || exit
@@ -534,6 +547,7 @@ bisect_clean_state() {
 	do
 		git update-ref -d $ref $hash || exit
 	done
+	rm -f "$GIT_DIR/BISECT_NO_REPLACE" &&
 	rm -f "$GIT_DIR/BISECT_EXPECTED_REV" &&
 	rm -f "$GIT_DIR/BISECT_ANCESTORS_OK" &&
 	rm -f "$GIT_DIR/BISECT_LOG" &&

@@ -164,6 +164,16 @@ test_expect_success '"git rev-list --no-bisect-replace" works' '
      grep $HASH4 rev_list.txt
 '
 
+test_expect_success 'git bisect works with --no-replace' '
+     git bisect start --no-replace $HASH5 $HASH1 &&
+     test "$(git rev-parse --verify HEAD)" = "$HASH3" &&
+     git bisect good &&
+     test "$(git rev-parse --verify HEAD)" = "$HASH4" &&
+     git bisect bad > my_bisect_log.txt &&
+     grep "$HASH4 is first bad commit" my_bisect_log.txt &&
+     git bisect reset
+'
+
 #
 #
 test_done

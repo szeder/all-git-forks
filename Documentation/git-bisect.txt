@@ -16,7 +16,7 @@ The command takes various subcommands, and different options depending
 on the subcommand:
 
  git bisect help
- git bisect start [<bad> [<good>...]] [--] [<paths>...]
+ git bisect start [--no-replace] [<bad> [<good>...]] [--] [<paths>...]
  git bisect bad [<rev>]
  git bisect good [<rev>...]
  git bisect skip [<rev>...]
@@ -246,6 +246,10 @@ annoy you anymore.
 As the refs created by "git bisect replace" can be shared between
 developers, this feature might be especially useful on big projects
 where many people often bisect the same code base.
+
+If you give the `--no-replace` to "git bisect start", then the
+"refs/replace/bisect/*" refs will not be used for the bisection you
+start.
 
 Bisect run
 ~~~~~~~~~~
