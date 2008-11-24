@@ -1,6 +1,6 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|replace|run]'
 LONG_USAGE='git bisect help
         print this long help message.
 git bisect start [<bad> [<good>...]] [--] [<pathspec>...]
@@ -21,6 +21,8 @@ git bisect replay <logfile>
         replay bisection log.
 git bisect log
         show bisect log.
+git bisect replace <rev> [<rev>]
+        use another branch for bisection.
 git bisect run <cmd>...
         use <cmd>... to automatically bisect.
 
@@ -566,6 +568,35 @@ bisect_replay () {
 	bisect_auto_next
 }
 
+bisect_replace() {
+    test "$#" -ge 1 -a "$#" -le 2 ||
+        die "'git bisect replace' accept one or two arguments"
+
+    source="$1"
+    target="${2:-HEAD}"
+
+    # Check arguments
+    src_commit=$(git rev-parse --verify "$source^{commit}") ||
+        die "Bad rev input: $source"
+    tgt_commit=$(git rev-parse --verify "$target^{commit}") ||
+        die "Bad rev input: $target"
+
+    test "$src_commit" != "tgt_commit" ||
+        die "source and target should be different commits"
+
+    # Check that trees from source and target are identical
+    src_tree=$(git rev-parse --verify "$src_commit^{tree}") ||
+        die "Could not get tree for source: $source"
+    tgt_tree=$(git rev-parse --verify "$tgt_commit^{tree}") ||
+        die "Could not get tree for target: $target"
+
+    test "$src_tree" = "$tgt_tree" ||
+        die "source and target should point to the same tree"
+
+    # Create a ref in "refs/replace/bisect/" for the target commit
+    git update-ref -m bisect "refs/replace/bisect/$src_commit" "$tgt_commit"
+}
+
 bisect_run () {
     bisect_next_check fail
 
@@ -618,7 +649,6 @@ bisect_run () {
     done
 }
 
-
 case "$#" in
 0)
     usage ;;
@@ -643,6 +673,8 @@ case "$#" in
 	bisect_replay "$@" ;;
     log)
 	cat "$GIT_DIR/BISECT_LOG" ;;
+    replace)
+        bisect_replace "$@" ;;
     run)
         bisect_run "$@" ;;
     *)
