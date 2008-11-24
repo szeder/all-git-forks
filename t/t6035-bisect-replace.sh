@@ -144,6 +144,16 @@ test_expect_success '"git merge-base --bisect-replace" works' '
      test "$hash" = "$HASH1"
 '
 
+test_expect_success 'git bisect works when starting on the replace branch' '
+     git bisect start $HASH7 $HASHFIX3 &&
+     test "$(git rev-parse --verify HEAD)" = "$HASH5" &&
+     git bisect bad &&
+     test "$(git rev-parse --verify HEAD)" = "$HASHFIX4" &&
+     git bisect good > my_bisect_log.txt &&
+     grep "$HASH5 is first bad commit" my_bisect_log.txt &&
+     git bisect reset
+'
+
 #
 #
 test_done
