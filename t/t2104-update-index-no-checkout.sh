@@ -9,7 +9,7 @@ test_description='git update-index no-checkout bits (a.k.a sparse checkout)'
 
 test_expect_success 'setup' '
 	mkdir sub &&
-	touch 1 2 sub/1 sub/2 &&
+	touch ./1 ./2 sub/1 sub/2 &&
 	git add 1 2 sub/1 sub/2
 '
 
