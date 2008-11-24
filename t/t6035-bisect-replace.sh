@@ -154,6 +154,16 @@ test_expect_success 'git bisect works when starting on the replace branch' '
      git bisect reset
 '
 
+test_expect_success '"git rev-list --no-bisect-replace" works' '
+     git rev-list --bisect-all --no-bisect-replace $HASH6 > rev_list.txt &&
+     test_must_fail grep $HASHFIX2 rev_list.txt &&
+     test_must_fail grep $HASHFIX3 rev_list.txt &&
+     test_must_fail grep $HASHFIX4 rev_list.txt &&
+     grep $HASH2 rev_list.txt &&
+     grep $HASH3 rev_list.txt &&
+     grep $HASH4 rev_list.txt
+'
+
 #
 #
 test_done

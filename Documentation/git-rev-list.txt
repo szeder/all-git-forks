@@ -42,6 +42,7 @@ SYNOPSIS
 	     [ \--bisect-vars ]
 	     [ \--bisect-all ]
 	     [ \--bisect-replace ]
+	     [ \--no-bisect-replace ]
 	     [ \--merge ]
 	     [ \--reverse ]
 	     [ \--walk-reflogs ]

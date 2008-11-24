@@ -589,6 +589,16 @@ default when they perform their bisection calculations. With the
 "--bisect-replace" option, you can see what is the result of using the
 "refs/replace/bisect/*" refs without the effects of other bisection
 calculations.
+
+--no-bisect-replace::
+
+With this option, 'rev-list' will not make use of the
+"refs/replace/bisect/*" refs, even if another `--bisect*` option is
+used.
+
+By default, if any `--bisect*` option is used, 'rev-list' will graft
+commits given by "refs/replace/bisect/*" refs into other branches when
+bisecting, so that bisection can be performed on a fixed up history.
 endif::git-rev-list[]
 
 

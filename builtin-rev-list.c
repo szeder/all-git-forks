@@ -48,13 +48,20 @@ static const char rev_list_usage[] =
 "    --bisect\n"
 "    --bisect-vars\n"
 "    --bisect-all\n"
-"    --bisect-replace"
+"    --bisect-replace\n"
+"    --no-bisect-replace"
 ;
 
 static struct rev_info revs;
 
+enum {
+	REPLACE_UNSET,
+	REPLACE_DEFAULT,
+	REPLACE_SET
+};
+
 static int bisect_list;
-static int bisect_replace_only;
+static int bisect_force_replace = REPLACE_DEFAULT;
 static int show_timestamp;
 static int hdr_termination;
 static const char *header_prefix;
@@ -684,7 +691,11 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 		if (!strcmp(arg, "--bisect-replace")) {
-			bisect_replace_only = 1;
+			bisect_force_replace = REPLACE_SET;
+			continue;
+		}
+		if (!strcmp(arg, "--no-bisect-replace")) {
+			bisect_force_replace = REPLACE_UNSET;
 			continue;
 		}
 		if (!strcmp(arg, "--stdin")) {
@@ -719,7 +730,8 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	save_commit_buffer = revs.verbose_header ||
 		revs.grep_filter.pattern_list;
 
-	if (bisect_list || bisect_replace_only)
+	if (bisect_force_replace != REPLACE_UNSET &&
+	    (bisect_list || bisect_force_replace == REPLACE_SET))
 		bisect_replace_all();
 	if (bisect_list)
 		revs.limited = 1;
