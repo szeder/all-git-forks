@@ -2425,6 +2425,7 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
 			return -1;
 		options->detect_rename = DIFF_DETECT_RENAME;
+		options->warn_on_too_large_rename = 1;
 	}
 	else if (!prefixcmp(arg, "-C")) {
 		if (options->detect_rename == DIFF_DETECT_COPY)
@@ -2432,6 +2433,7 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
 			return -1;
 		options->detect_rename = DIFF_DETECT_COPY;
+		options->warn_on_too_large_rename = 1;
 	}
 	else if (!strcmp(arg, "--no-renames"))
 		options->detect_rename = 0;
