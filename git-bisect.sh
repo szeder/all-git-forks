@@ -1,9 +1,9 @@
 #!/bin/sh
 
-USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run]'
+USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|replace|run]'
 LONG_USAGE='git bisect help
         print this long help message.
-git bisect start [<bad> [<good>...]] [--] [<pathspec>...]
+git bisect start [--no-replace] [<bad> [<good>...]] [--] [<pathspec>...]
         reset bisect state and start bisection.
 git bisect bad [<rev>]
         mark <rev> a known-bad revision.
@@ -21,6 +21,8 @@ git bisect replay <logfile>
         replay bisection log.
 git bisect log
         show bisect log.
+git bisect replace <rev> [<rev>]
+        use another branch for bisection.
 git bisect run <cmd>...
         use <cmd>... to automatically bisect.
 
@@ -116,6 +118,10 @@ bisect_start() {
 	    --)
 		shift
 		break
+		;;
+	    --no-replace)
+		shift
+		touch "$GIT_DIR/BISECT_NO_REPLACE"
 		;;
 	    *)
 		rev=$(git rev-parse -q --verify "$arg^{commit}") || {
@@ -399,6 +405,16 @@ We continue anyway.
 EOF
 }
 
+replace_option() {
+	test -f "$GIT_DIR/BISECT_NO_REPLACE" ||
+		echo "--bisect-replace"
+}
+
+no_replace_option() {
+	test ! -f "$GIT_DIR/BISECT_NO_REPLACE" ||
+		echo "--no-bisect-replace"
+}
+
 #
 # "check_merge_bases" checks that merge bases are not "bad".
 #
@@ -414,7 +430,7 @@ check_merge_bases() {
 	_bad="$1"
 	_good="$2"
 	_skip="$3"
-	for _mb in $(git merge-base --all $_bad $_good)
+	for _mb in $(git merge-base --all $(replace_option) $_bad $_good)
 	do
 		if is_among "$_mb" "$_good"; then
 			continue
@@ -449,7 +465,7 @@ check_good_are_ancestors_of_bad() {
 	# Bisecting with no good rev is ok
 	test -z "$_good" && return
 
-	_side=$(git rev-list $_good ^$_bad)
+	_side=$(git rev-list $(replace_option) $_good ^$_bad)
 	if test -n "$_side"; then
 		# Return if a checkout was done
 		check_merge_bases "$_bad" "$_good" "$_skip" || return
@@ -478,9 +494,8 @@ bisect_next() {
 	test "$?" -eq "1" && return
 
 	# Get bisection information
-	BISECT_OPT=''
-	test -n "$skip" && BISECT_OPT='--bisect-all'
-	eval="git rev-list --bisect-vars $BISECT_OPT $good $bad --" &&
+	BISECT_OPTS="$(no_replace_option) --bisect-vars ${skip:+--bisect-all}"
+	eval="git rev-list $BISECT_OPTS $good $bad --" &&
 	eval="$eval $(cat "$GIT_DIR/BISECT_NAMES")" &&
 	eval=$(filter_skipped "$eval" "$skip") &&
 	eval "$eval" || exit
@@ -547,6 +562,7 @@ bisect_clean_state() {
 	do
 		git update-ref -d $ref $hash || exit
 	done
+	rm -f "$GIT_DIR/BISECT_NO_REPLACE" &&
 	rm -f "$GIT_DIR/BISECT_EXPECTED_REV" &&
 	rm -f "$GIT_DIR/BISECT_ANCESTORS_OK" &&
 	rm -f "$GIT_DIR/BISECT_LOG" &&
@@ -579,6 +595,35 @@ bisect_replay () {
 		esac
 	done <"$1"
 	bisect_auto_next
+}
+
+bisect_replace() {
+    test "$#" -ge 1 -a "$#" -le 2 ||
+        die "'git bisect replace' accept one or two arguments"
+
+    source="$1"
+    target="${2:-HEAD}"
+
+    # Check arguments
+    src_commit=$(git rev-parse --verify "$source^{commit}") ||
+        die "Bad rev input: $source"
+    tgt_commit=$(git rev-parse --verify "$target^{commit}") ||
+        die "Bad rev input: $target"
+
+    test "$src_commit" != "tgt_commit" ||
+        die "source and target should be different commits"
+
+    # Check that trees from source and target are identical
+    src_tree=$(git rev-parse --verify "$src_commit^{tree}") ||
+        die "Could not get tree for source: $source"
+    tgt_tree=$(git rev-parse --verify "$tgt_commit^{tree}") ||
+        die "Could not get tree for target: $target"
+
+    test "$src_tree" = "$tgt_tree" ||
+        die "source and target should point to the same tree"
+
+    # Create a ref in "refs/replace/bisect/" for the target commit
+    git update-ref -m bisect "refs/replace/bisect/$src_commit" "$tgt_commit"
 }
 
 bisect_run () {
@@ -633,7 +678,6 @@ bisect_run () {
     done
 }
 
-
 case "$#" in
 0)
     usage ;;
@@ -660,6 +704,8 @@ case "$#" in
 	bisect_replay "$@" ;;
     log)
 	cat "$GIT_DIR/BISECT_LOG" ;;
+    replace)
+        bisect_replace "$@" ;;
     run)
         bisect_run "$@" ;;
     *)

@@ -8,7 +8,7 @@ git-merge-base - Find as good common ancestors as possible for a merge
 
 SYNOPSIS
 --------
-'git merge-base' [--all] <commit> <commit>...
+'git merge-base' [--all] [--bisect-replace] <commit> <commit>...
 
 DESCRIPTION
 -----------
@@ -31,6 +31,10 @@ OPTIONS
 -------
 --all::
 	Output all merge bases for the commits, instead of just one.
+
+--bisect-replace::
+	Use fixed up history from "refs/replace/bisect/*" refs when
+	computing merge bases.
 
 DISCUSSION
 ----------

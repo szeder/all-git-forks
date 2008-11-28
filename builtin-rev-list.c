@@ -47,12 +47,21 @@ static const char rev_list_usage[] =
 "  special purpose:\n"
 "    --bisect\n"
 "    --bisect-vars\n"
-"    --bisect-all"
+"    --bisect-all\n"
+"    --bisect-replace\n"
+"    --no-bisect-replace"
 ;
 
 static struct rev_info revs;
 
+enum {
+	REPLACE_UNSET,
+	REPLACE_DEFAULT,
+	REPLACE_SET
+};
+
 static int bisect_list;
+static int bisect_force_replace = REPLACE_DEFAULT;
 static int show_timestamp;
 static int hdr_termination;
 static const char *header_prefix;
@@ -574,6 +583,72 @@ static struct commit_list *find_bisection(struct commit_list *list,
 	return best;
 }
 
+static void replace_parents(struct commit *commit,
+			    const char *refname,
+			    const unsigned char *sha1)
+{
+	struct commit *new_parent = lookup_commit(sha1);
+	if (!new_parent) {
+		warning("replace ref '%s' points to unknown commit '%s'",
+			refname, sha1_to_hex(sha1));
+		return;
+	}
+
+	free_commit_list(commit->parents);
+	commit->parents = NULL;
+	commit_list_insert(new_parent, &commit->parents);
+}
+
+static int bisect_replace(const char *refname, const unsigned char *sha1,
+			  int flag, void *cb_data)
+{
+	unsigned char child[20];
+	struct object *obj;
+	struct commit_graft *graft;
+
+	if (prefixcmp(refname, "bisect/"))
+		return 0;
+
+	if (get_sha1_hex(refname + 7, child)) {
+		warning("bad sha1 in replace ref named '%s'", refname);
+		return 0;
+	}
+
+	/* Check if child commit exist and is already parsed */
+
+	obj = lookup_object(child);
+	if (obj) {
+		struct commit *commit;
+		if (obj->type != OBJ_COMMIT) {
+			warning("replace ref name '%s' refers to non commit '%s'",
+				refname, refname + 7);
+			return 0;
+		}
+		commit = (struct commit *) obj;
+		if (commit->object.parsed) {
+			replace_parents(commit, refname, sha1);
+			return 0;
+		}
+	}
+
+	/* Create a graft to replace child commit parents */
+
+	graft = xmalloc(sizeof(*graft) + 20);
+
+	hashcpy(graft->sha1, child);
+	graft->nr_parent = 1;
+	hashcpy(graft->parent[0], sha1);
+
+	register_commit_graft(graft, 1);
+
+	return 0;
+}
+
+void bisect_replace_all(void)
+{
+	for_each_replace_ref(bisect_replace, NULL);
+}
+
 int cmd_rev_list(int argc, const char **argv, const char *prefix)
 {
 	struct commit_list *list;
@@ -615,6 +690,14 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			bisect_show_vars = 1;
 			continue;
 		}
+		if (!strcmp(arg, "--bisect-replace")) {
+			bisect_force_replace = REPLACE_SET;
+			continue;
+		}
+		if (!strcmp(arg, "--no-bisect-replace")) {
+			bisect_force_replace = REPLACE_UNSET;
+			continue;
+		}
 		if (!strcmp(arg, "--stdin")) {
 			if (read_from_stdin++)
 				die("--stdin given twice?");
@@ -646,6 +729,10 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 
 	save_commit_buffer = revs.verbose_header ||
 		revs.grep_filter.pattern_list;
+
+	if (bisect_force_replace != REPLACE_UNSET &&
+	    (bisect_list || bisect_force_replace == REPLACE_SET))
+		bisect_replace_all();
 	if (bisect_list)
 		revs.limited = 1;
 
