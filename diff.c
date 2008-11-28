@@ -1663,8 +1663,10 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 
 	/*
 	 * If ce matches the file in the work tree, we can reuse it.
+	 * For sparse checkout case, ce_uptodate() may be true although
+	 * the file may or may not exist in the work tree.
 	 */
-	if (ce_uptodate(ce) ||
+	if ((ce_uptodate(ce) && ce_checkout(ce)) ||
 	    (!lstat(name, &st) && !ce_match_stat(ce, &st, 0)))
 		return 1;
 

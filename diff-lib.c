@@ -161,7 +161,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 				continue;
 		}
 
-		if (ce_uptodate(ce))
+		if (ce_uptodate(ce) || ce_no_checkout(ce))
 			continue;
 
 		changed = check_removed(ce, &st);
@@ -348,6 +348,8 @@ static void do_oneway_diff(struct unpack_trees_options *o,
 	struct rev_info *revs = cbdata->revs;
 	int match_missing, cached;
 
+	/* if the entry is not checked out, don't examine work tree */
+	cached = o->index_only || (idx && ce_no_checkout(idx));
 	/*
 	 * Backward compatibility wart - "diff-index -m" does
 	 * not mean "do not ignore merges", but "match_missing".
@@ -355,7 +357,6 @@ static void do_oneway_diff(struct unpack_trees_options *o,
 	 * But with the revision flag parsing, that's found in
 	 * "!revs->ignore_merges".
 	 */
-	cached = o->index_only;
 	match_missing = !revs->ignore_merges;
 
 	if (cached && idx && ce_stage(idx)) {
