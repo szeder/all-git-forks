@@ -8,7 +8,8 @@
 # at the discretion of Junio C Hamano.
 #
 
-USAGE='[--tool=tool] [file to merge] ...'
+USAGE='[--tool=tool] [-y|--no-prompt|--prompt]
+[-k|--keep-going|--no-keep-going] [file to merge] ...'
 SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC=
 . git-sh-setup
@@ -70,16 +71,16 @@ resolve_symlink_merge () {
 		git checkout-index -f --stage=2 -- "$MERGED"
 		git add -- "$MERGED"
 		cleanup_temp_files --save-backup
-		return
+		return 0
 		;;
 	    [rR]*)
 		git checkout-index -f --stage=3 -- "$MERGED"
 		git add -- "$MERGED"
 		cleanup_temp_files --save-backup
-		return
+		return 0
 		;;
 	    [aA]*)
-		exit 1
+		return 1
 		;;
 	    esac
 	done
@@ -97,15 +98,15 @@ resolve_deleted_merge () {
 	    [mMcC]*)
 		git add -- "$MERGED"
 		cleanup_temp_files --save-backup
-		return
+		return 0
 		;;
 	    [dD]*)
 		git rm -- "$MERGED" > /dev/null
 		cleanup_temp_files
-		return
+		return 0
 		;;
 	    [aA]*)
-		exit 1
+		return 1
 		;;
 	    esac
 	done
@@ -137,7 +138,7 @@ merge_file () {
 	else
 	    echo "$MERGED: file does not need merging"
 	fi
-	exit 1
+	return 1
     fi
 
     ext="$$$(expr "$MERGED" : '.*\(\.[^/]*\)$')"
@@ -176,8 +177,10 @@ merge_file () {
     echo "Normal merge conflict for '$MERGED':"
     describe_file "$local_mode" "local" "$LOCAL"
     describe_file "$remote_mode" "remote" "$REMOTE"
-    printf "Hit return to start merge resolution tool (%s): " "$merge_tool"
-    read ans
+    if "$prompt" = true; then
+	printf "Hit return to start merge resolution tool (%s): " "$merge_tool"
+	read ans
+    fi
 
     case "$merge_tool" in
 	kdiff3)
@@ -267,7 +270,8 @@ merge_file () {
     if test "$status" -ne 0; then
 	echo "merge of $MERGED failed" 1>&2
 	mv -- "$BACKUP" "$MERGED"
-	exit 1
+	cleanup_temp_files
+	return 1
     fi
 
     if test "$merge_keep_backup" = "true"; then
@@ -278,7 +282,11 @@ merge_file () {
 
     git add -- "$MERGED"
     cleanup_temp_files
+    return 0
 }
+
+prompt=$(git config --bool mergetool.prompt || echo true)
+keep_going=$(git config --bool mergetool.keepGoing || echo false)
 
 while test $# != 0
 do
@@ -294,6 +302,18 @@ do
 		    merge_tool="$2"
 		    shift ;;
 	    esac
+	    ;;
+	-y|--no-prompt)
+	    prompt=false
+	    ;;
+	--prompt)
+	    prompt=true
+	    ;;
+	-k|--keep-going)
+	    keep_going=true
+	    ;;
+	--no-keep-going)
+	    keep_going=false
 	    ;;
 	--)
 	    break
@@ -399,27 +419,43 @@ else
     fi
 fi
 
+rollup_status=0
 
 if test $# -eq 0 ; then
-	files=`git ls-files -u | sed -e 's/^[^	]*	//' | sort -u`
-	if test -z "$files" ; then
-		echo "No files need merging"
-		exit 0
+    files=`git ls-files -u | sed -e 's/^[^	]*	//' | sort -u`
+    if test -z "$files" ; then
+	echo "No files need merging"
+	exit 0
+    fi
+    echo Merging the files: "$files"
+    git ls-files -u |
+    sed -e 's/^[^	]*	//' |
+    sort -u |
+    while IFS= read i
+    do
+	printf "\n"
+	merge_file "$i" < /dev/tty > /dev/tty
+	if test $? -ne 0; then
+	    if test "$keep_going" = true; then
+		rollup_status=1
+	    else
+		exit 1
+	    fi
 	fi
-	echo Merging the files: "$files"
-	git ls-files -u |
-	sed -e 's/^[^	]*	//' |
-	sort -u |
-	while IFS= read i
-	do
-		printf "\n"
-		merge_file "$i" < /dev/tty > /dev/tty
-	done
+    done
 else
-	while test $# -gt 0; do
-		printf "\n"
-		merge_file "$1"
-		shift
-	done
+    while test $# -gt 0; do
+	printf "\n"
+	merge_file "$1"
+	if test $? -ne 0; then
+	    if test "$keep_going" = true; then
+		rollup_status=1
+	    else
+		exit 1
+	    fi
+	fi
+	shift
+    done
 fi
-exit 0
+
+exit $rollup_status
