@@ -133,6 +133,31 @@ test_expect_success 'real edit works' '
 	test_cmp expected output
 '
 
+test_expect_success 'cannot commit with i-t-a entry' '
+	git reset --hard &&
+	echo xyzzy >rezrov &&
+	echo frotz >nitfol &&
+	git add rezrov &&
+	git add -N nitfol &&
+	test_must_fail git commit
+'
+
+test_expect_success 'can commit with an unrelated i-t-a entry in index' '
+	git reset --hard &&
+	echo xyzzy >rezrov &&
+	echo frotz >nitfol &&
+	git add rezrov &&
+	git add -N nitfol &&
+	git commit -m partial rezrov
+'
+
+test_expect_success 'can "commit -a" with an i-t-a entry' '
+	git reset --hard &&
+	: >nitfol &&
+	git add -N nitfol &&
+	git commit -a -m all
+'
+
 if test "$(git config --bool core.filemode)" = false
 then
     say 'skipping filemode tests (filesystem does not properly support modes)'

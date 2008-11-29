@@ -176,11 +176,12 @@ struct cache_entry {
 /*
  * Extended on-disk flags
  */
+#define CE_INTENT_TO_ADD 0x20000000
 #define CE_NO_CHECKOUT 0x40000000
 /* CE_EXTENDED2 is for future extension */
 #define CE_EXTENDED2 0x80000000
 
-#define CE_EXTENDED_FLAGS (CE_NO_CHECKOUT)
+#define CE_EXTENDED_FLAGS (CE_INTENT_TO_ADD|CE_NO_CHECKOUT)
 
 /*
  * Safeguard to avoid saving wrong flags:

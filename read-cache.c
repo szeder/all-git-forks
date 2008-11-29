@@ -257,6 +257,14 @@ int ie_match_stat(const struct index_state *istate,
 	if (!ignore_valid && (ce->ce_flags & CE_VALID_MASK))
 		return 0;
 
+	/*
+	 * Intent-to-add entries have not been added, so the index entry
+	 * by definition never matches what is in the work tree until it
+	 * actually gets added.
+	 */
+	if (ce->ce_flags & CE_INTENT_TO_ADD)
+		return DATA_CHANGED | TYPE_CHANGED | MODE_CHANGED;
+
 	changed = ce_match_stat_basic(ce, st);
 
 	/*
@@ -546,6 +554,8 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	ce->ce_flags = namelen;
 	if (!intent_only)
 		fill_stat_cache_info(ce, st);
+	else
+		ce->ce_flags |= CE_INTENT_TO_ADD;
 
 	if (trust_executable_bit && has_symlinks)
 		ce->ce_mode = create_ce_mode(st_mode);
