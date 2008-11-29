@@ -5382,7 +5382,9 @@ sub git_commitdiff {
 	if ($format eq 'html') {
 		$formats_nav =
 			$cgi->a({-href => href(action=>"commitdiff_plain", -replay=>1)},
-			        "raw");
+			        "raw") . " | " .
+			$cgi->a({-href => href(action=>"patch", -replay=>1)},
+			        "patch");
 
 		if (defined $hash_parent &&
 		    $hash_parent ne '-c' && $hash_parent ne '--cc') {
@@ -5914,6 +5916,12 @@ sub git_shortlog {
 		$next_link =
 			$cgi->a({-href => href(-replay=>1, page=>$page+1),
 			         -accesskey => "n", -title => "Alt-n"}, "next");
+	}
+	# TODO this should be configurable
+	if ($#commitlist <= 15) {
+		$paging_nav .= " &sdot; " .
+			$cgi->a({-href => href(action=>"patch", -replay=>1)},
+			        $#commitlist > 1 ? "patchset" : "patch");
 	}
 
 	git_header_html();
