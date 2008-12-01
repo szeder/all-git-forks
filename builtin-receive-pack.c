@@ -11,7 +11,15 @@
 
 static const char receive_pack_usage[] = "git-receive-pack <git-dir>";
 
+enum deny_action {
+	DENY_IGNORE,
+	DENY_WARN,
+	DENY_REFUSE,
+};
+
+static int deny_deletes = 0;
 static int deny_non_fast_forwards = 0;
+static enum deny_action deny_current_branch = DENY_WARN;
 static int receive_fsck_objects;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
@@ -21,8 +29,28 @@ static int report_status;
 static char capabilities[] = " report-status delete-refs ";
 static int capabilities_sent;
 
+static enum deny_action parse_deny_action(const char *var, const char *value)
+{
+	if (value) {
+		if (!strcasecmp(value, "ignore"))
+			return DENY_IGNORE;
+		if (!strcasecmp(value, "warn"))
+			return DENY_WARN;
+		if (!strcasecmp(value, "refuse"))
+			return DENY_REFUSE;
+	}
+	if (git_config_bool(var, value))
+		return DENY_REFUSE;
+	return DENY_IGNORE;
+}
+
 static int receive_pack_config(const char *var, const char *value, void *cb)
 {
+	if (strcmp(var, "receive.denydeletes") == 0) {
+		deny_deletes = git_config_bool(var, value);
+		return 0;
+	}
+
 	if (strcmp(var, "receive.denynonfastforwards") == 0) {
 		deny_non_fast_forwards = git_config_bool(var, value);
 		return 0;
@@ -40,6 +68,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "receive.fsckobjects") == 0) {
 		receive_fsck_objects = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "receive.denycurrentbranch")) {
+		deny_current_branch = parse_deny_action(var, value);
 		return 0;
 	}
 
@@ -167,6 +200,20 @@ static int run_update_hook(struct command *cmd)
 	return hook_status(run_command(&proc), update_hook);
 }
 
+static int is_ref_checked_out(const char *ref)
+{
+	unsigned char sha1[20];
+	const char *head;
+
+	if (is_bare_repository())
+		return 0;
+
+	head = resolve_ref("HEAD", sha1, 0, NULL);
+	if (!head)
+		return 0;
+	return !strcmp(head, ref);
+}
+
 static const char *update(struct command *cmd)
 {
 	const char *name = cmd->ref_name;
@@ -180,10 +227,34 @@ static const char *update(struct command *cmd)
 		return "funny refname";
 	}
 
+	switch (deny_current_branch) {
+	case DENY_IGNORE:
+		break;
+	case DENY_WARN:
+		if (!is_ref_checked_out(name))
+			break;
+		warning("updating the currently checked out branch; this may"
+			" cause confusion,\n"
+			"as the index and working tree do not reflect changes"
+			" that are now in HEAD.");
+		break;
+	case DENY_REFUSE:
+		if (!is_ref_checked_out(name))
+			break;
+		error("refusing to update checked out branch: %s", name);
+		return "branch is currently checked out";
+	}
+
 	if (!is_null_sha1(new_sha1) && !has_sha1_file(new_sha1)) {
 		error("unpack should have generated %s, "
 		      "but I can't find it!", sha1_to_hex(new_sha1));
 		return "bad pack";
+	}
+	if (deny_deletes && is_null_sha1(new_sha1) &&
+	    !is_null_sha1(old_sha1) &&
+	    !prefixcmp(name, "refs/heads/")) {
+		error("denying ref deletion for %s", name);
+		return "deletion prohibited";
 	}
 	if (deny_non_fast_forwards && !is_null_sha1(new_sha1) &&
 	    !is_null_sha1(old_sha1) &&
@@ -224,7 +295,7 @@ static const char *update(struct command *cmd)
 			warning ("Allowing deletion of corrupt ref.");
 			old_sha1 = NULL;
 		}
-		if (delete_ref(name, old_sha1)) {
+		if (delete_ref(name, old_sha1, 0)) {
 			error("failed to delete %s", name);
 			return "failed to delete";
 		}

@@ -20,6 +20,8 @@ on.
 
 * Various gitweb updates from repo.or.cz installation.
 
+* Updates to emacs bindings.
+
 (portability)
 
 * A few test scripts used nonportable "grep" that did not work well on
@@ -27,7 +29,14 @@ on.
 
 * Sample pre-auto-gc script has OS X support.
 
+* Makefile has support for (ancient) FreeBSD 4.9.
+
 (performance)
+
+* Many operations that are lstat(3) heavy can be told to pre-execute
+  necessary lstat(3) in parallel before their main operations, which
+  potentially gives much improved performance for cold-cache cases or in
+  environments with weak metadata caching (e.g. NFS).
 
 * The underlying diff machinery to produce textual output has been
   optimized, which would result in faster "git blame" processing.
@@ -53,6 +62,10 @@ on.
   to a non-zero value to accept the suggestion when git can uniquely
   guess.
 
+* The packfile machinery hopefully is more robust when dealing with
+  corrupt packs if redundant objects involved in the corruption are
+  available elsewhere.
+
 * "git add -N path..." adds the named paths as an empty blob, so that
   subsequent "git diff" will show a diff as if they are creation events.
 
@@ -61,6 +74,11 @@ on.
 
 * "git bisect" is careful about a user mistake and suggests testing of
   merge base first when good is not a strict ancestor of bad.
+
+* "git blame" re-encodes the commit metainfo to UTF-8 from i18n.commitEncoding
+  by default.
+
+* "git check-attr --stdin" can check attributes for multiple paths.
 
 * "git checkout --track origin/hack" used to be a syntax error.  It now
   DWIMs to create a corresponding local branch "hack", i.e. acts as if you
@@ -74,6 +92,8 @@ on.
 
 * "git cherry-pick" can also utilize rerere for conflict resolution.
 
+* "git clone" learned to be verbose with -v
+
 * "git commit --author=$name" can look up author name from existing
   commits.
 
@@ -84,6 +104,12 @@ on.
   their corresponding idx files.
 
 * "git daemon" learned --max-connections=<count> option.
+
+* "git daemon" exports REMOTE_ADDR to record client address, so that
+  spawned programs can act differently on it.
+
+* "git describe --tags" favours closer lightweight tags than farther
+  annotated tags now.
 
 * "git diff" learned to mimic --suppress-blank-empty from GNU diff via a
   configuration option.
@@ -97,10 +123,27 @@ on.
 * "git diff" learned --dirstat-by-file to count changed files, not number
   of lines, when summarizing the global picture.
 
+* "git diff" learned "textconv" filters --- a binary or hard-to-read
+  contents can be munged into human readable form and the difference
+  between the results of the conversion can be viewed (obviously this
+  cannot produce a patch that can be applied, so this is disabled in
+  format-patch among other things).
+
 * "git diff" hunk header pattern for ObjC has been added.
+
+* "--cached" option to "git diff has an easier to remember synonym "--staged",
+  to ask "what is the difference between the given commit and the
+  contents staged in the index?"
+
+* a "textconv" filter that makes binary files textual form for human
+   consumption can be specified as an attribute for paths; "git diff"
+   learnt to make use of it.
 
 * "git for-each-ref" learned "refname:short" token that gives an
   unambiguously abbreviated refname.
+
+* Auto-numbering of the subject lines is the default for "git
+  format-patch" now.
 
 * "git grep" learned to accept -z similar to GNU grep.
 
@@ -118,6 +161,12 @@ on.
 * "git log" learned --simplify-merges, a milder variant of --full-history;
   "gitk --simplify-merges" is easier to view than with --full-history.
 
+* "git log" learned "--source" to show what ref each commit was reached
+  from.
+
+* "git log" also learned "--simplify-by-decoration" to show the
+  birds-eye-view of the topology of the history.
+
 * "git log --pretty=format:" learned "%d" format element that inserts
   names of tags that point at the commit.
 
@@ -127,8 +176,27 @@ on.
 * "git merge -s $strategy" can use a custom built strategy if you have a
   command "git-merge-$strategy" on your $PATH.
 
+* "git pull" (and "git fetch") can be told to operate "-v"erbosely or
+  "-q"uietly.
+
+* "git push" can be told to reject deletion of refs with receive.denyDeletes
+  configuration.
+
+* "git rebase" honours pre-rebase hook; use --no-verify to bypass it.
+
+* "git rebase -p" uses interactive rebase machinery now to preserve the merges.
+
 * "git reflog expire branch" can be used in place of "git reflog expire
   refs/heads/branch".
+
+* "git remote show $remote" lists remote branches one-per-line now.
+
+* when giving up resolving a conflicted merge, "git reset --hard" failed
+  to remove new paths from the working tree. [cherry-pick to 'maint'?]
+
+* "git send-email" can be given revision range instead of files and
+  maildirs on the command line, and automatically runs format-patch to
+  generate patches for the given revision range.
 
 * "git submodule foreach" subcommand allows you to iterate over checked
   out submodules.
@@ -138,6 +206,8 @@ on.
 
 * "git svn branch" can create new branches on the other end.
 
+* "gitweb" can use more saner PATH_INFO based URL.
+
 (internal)
 
 * "git hash-object" learned to lie about the path being hashed, so that
@@ -146,6 +216,15 @@ on.
 
 * various callers of git-merge-recursive avoid forking it as an external
   process.
+
+* Git class defined in "Git.pm" can be subclasses a bit more easily.
+
+* We used to link GNU regex library as a compatibility layer for some
+  platforms, but it turns out it is not necessary on most of them.
+
+* Some path handling routines used fixed number of buffers used alternately
+  but depending on the call depth, this arrangement led to hard to track
+  bugs.  This issue is being addressed.
 
 
 Fixes since v1.6.0
@@ -170,6 +249,9 @@ release, unless otherwise noted.
 
 * "git filter-branch" failed to rewrite a tag name with slashes in it.
 
+* "git repack" used to grab objects out of packs marked with .keep
+  into a new pack (fix scheduled to be further downmerged to maint).
+
 * "git push --tags --all $there" failed with generic usage message without
   telling saying these two options are incompatible.
 
@@ -177,8 +259,12 @@ release, unless otherwise noted.
   timestamp part, exposing internal implementation detail.  Also these did
   not work with --fixed-strings match at all.
 
+* Internal diff machinery had a corner case performance bug that choked on a
+  large file with many repeated contents (fix scheduled to be further cherry-
+  picked to maint).
+
 --
 exec >/var/tmp/1
-O=v1.6.0.2-553-g58e0fa5
+O=v1.6.0.4-854-gaaab7ea
 echo O=$(git describe master)
 git shortlog --no-merges $O..master ^maint

@@ -591,6 +591,34 @@ bind . <Visibility> {
 
 if {[is_Windows]} {
 	wm iconbitmap . -default $oguilib/git-gui.ico
+	set ::tk::AlwaysShowSelection 1
+
+	# Spoof an X11 display for SSH
+	if {![info exists env(DISPLAY)]} {
+		set env(DISPLAY) :9999
+	}
+} else {
+	catch {
+		image create photo gitlogo -width 16 -height 16
+
+		gitlogo put #33CC33 -to  7  0  9  2
+		gitlogo put #33CC33 -to  4  2 12  4
+		gitlogo put #33CC33 -to  7  4  9  6
+		gitlogo put #CC3333 -to  4  6 12  8
+		gitlogo put gray26  -to  4  9  6 10
+		gitlogo put gray26  -to  3 10  6 12
+		gitlogo put gray26  -to  8  9 13 11
+		gitlogo put gray26  -to  8 11 10 12
+		gitlogo put gray26  -to 11 11 13 14
+		gitlogo put gray26  -to  3 12  5 14
+		gitlogo put gray26  -to  5 13
+		gitlogo put gray26  -to 10 13
+		gitlogo put gray26  -to  4 14 12 15
+		gitlogo put gray26  -to  5 15 11 16
+		gitlogo redither
+
+		wm iconphoto . -default gitlogo
+	}
 }
 
 ######################################################################
@@ -912,19 +940,25 @@ git-version proc _parse_config {arr_name args} {
 }
 
 proc load_config {include_global} {
-	global repo_config global_config default_config
+	global repo_config global_config system_config default_config
 
 	if {$include_global} {
+		_parse_config system_config --system
 		_parse_config global_config --global
 	}
 	_parse_config repo_config
 
 	foreach name [array names default_config] {
+		if {[catch {set v $system_config($name)}]} {
+			set system_config($name) $default_config($name)
+		}
+	}
+	foreach name [array names system_config] {
 		if {[catch {set v $global_config($name)}]} {
-			set global_config($name) $default_config($name)
+			set global_config($name) $system_config($name)
 		}
 		if {[catch {set v $repo_config($name)}]} {
-			set repo_config($name) $default_config($name)
+			set repo_config($name) $system_config($name)
 		}
 	}
 }
@@ -993,8 +1027,20 @@ citool {
 
 ######################################################################
 ##
+## execution environment
+
+set have_tk85 [expr {[package vcompare $tk_version "8.5"] >= 0}]
+
+# Suggest our implementation of askpass, if none is set
+if {![info exists env(SSH_ASKPASS)]} {
+	set env(SSH_ASKPASS) [gitexec git-gui--askpass]
+}
+
+######################################################################
+##
 ## repository setup
 
+set picked 0
 if {[catch {
 		set _gitdir $env(GIT_DIR)
 		set _prefix {}
@@ -1006,6 +1052,7 @@ if {[catch {
 	load_config 1
 	apply_config
 	choose_repository::pick
+	set picked 1
 }
 if {![file isdirectory $_gitdir] && [is_Cygwin]} {
 	catch {set _gitdir [exec cygpath --windows $_gitdir]}
@@ -1444,10 +1491,8 @@ proc rescan_done {fd buf after} {
 	prune_selection
 	unlock_index
 	display_all_files
-	if {$current_diff_path ne {}} reshow_diff
-	if {$current_diff_path eq {}} select_first_diff
-
-	uplevel #0 $after
+	if {$current_diff_path ne {}} { reshow_diff $after }
+	if {$current_diff_path eq {}} { select_first_diff $after }
 }
 
 proc prune_selection {} {
@@ -1869,6 +1914,19 @@ proc do_gitk {revs} {
 	}
 }
 
+proc do_explore {} {
+	set explorer {}
+	if {[is_Cygwin] || [is_Windows]} {
+		set explorer "explorer.exe"
+	} elseif {[is_MacOSX]} {
+		set explorer "open"
+	} else {
+		# freedesktop.org-conforming system is our best shot
+		set explorer "xdg-open"
+	}
+	eval exec $explorer [file dirname [gitdir]] &
+}
+
 set is_quitting 0
 set ret_code    1
 
@@ -1946,16 +2004,16 @@ proc do_rescan {} {
 }
 
 proc ui_do_rescan {} {
-	rescan {force_first_diff; ui_ready}
+	rescan {force_first_diff ui_ready}
 }
 
 proc do_commit {} {
 	commit_tree
 }
 
-proc next_diff {} {
+proc next_diff {{after {}}} {
 	global next_diff_p next_diff_w next_diff_i
-	show_diff $next_diff_p $next_diff_w {}
+	show_diff $next_diff_p $next_diff_w {} {} $after
 }
 
 proc find_anchor_pos {lst name} {
@@ -2040,25 +2098,42 @@ proc next_diff_after_action {w path {lno {}} {mmask {}}} {
 	}
 }
 
-proc select_first_diff {} {
+proc select_first_diff {after} {
 	global ui_workdir
 
 	if {[find_next_diff $ui_workdir {} 1 {^_?U}] ||
 	    [find_next_diff $ui_workdir {} 1 {[^O]$}]} {
-		next_diff
+		next_diff $after
+	} else {
+		uplevel #0 $after
 	}
 }
 
-proc force_first_diff {} {
-	global current_diff_path
+proc force_first_diff {after} {
+	global ui_workdir current_diff_path file_states
 
 	if {[info exists file_states($current_diff_path)]} {
 		set state [lindex $file_states($current_diff_path) 0]
-
-		if {[string index $state 1] ne {O}} return
+	} else {
+		set state {OO}
 	}
 
-	select_first_diff
+	set reselect 0
+	if {[string first {U} $state] >= 0} {
+		# Already a conflict, do nothing
+	} elseif {[find_next_diff $ui_workdir $current_diff_path {} {^_?U}]} {
+		set reselect 1
+	} elseif {[string index $state 1] ne {O}} {
+		# Already a diff & no conflicts, do nothing
+	} elseif {[find_next_diff $ui_workdir $current_diff_path {} {[^O]$}]} {
+		set reselect 1
+	}
+
+	if {$reselect} {
+		next_diff $after
+	} else {
+		uplevel #0 $after
+	}
 }
 
 proc toggle_or_diff {w x y} {
@@ -2090,7 +2165,9 @@ proc toggle_or_diff {w x y} {
 	if {$col == 0 && $y > 1} {
 		# Conflicts need special handling
 		if {[string first {U} $state] >= 0} {
-			merge_stage_workdir $path $w $lno
+			# $w must always be $ui_workdir, but...
+			if {$w ne $ui_workdir} { set lno {} }
+			merge_stage_workdir $path $lno
 			return
 		}
 
@@ -2212,11 +2289,19 @@ if {[is_enabled transport]} {
 	.mbar add cascade -label [mc Merge] -menu .mbar.merge
 	.mbar add cascade -label [mc Remote] -menu .mbar.remote
 }
+if {[is_enabled multicommit] || [is_enabled singlecommit]} {
+	.mbar add cascade -label [mc Tools] -menu .mbar.tools
+}
 . configure -menu .mbar
 
 # -- Repository Menu
 #
 menu .mbar.repository
+
+.mbar.repository add command \
+	-label [mc "Explore Working Copy"] \
+	-command {do_explore}
+.mbar.repository add separator
 
 .mbar.repository add command \
 	-label [mc "Browse Current Branch's Files"] \
@@ -2413,7 +2498,7 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 
 	.mbar.commit add separator
 
-	if {![is_enabled nocommit]} {
+	if {![is_enabled nocommitmsg]} {
 		.mbar.commit add command -label [mc "Sign Off"] \
 			-command do_signoff \
 			-accelerator $M1T-S
@@ -2447,11 +2532,15 @@ if {[is_enabled transport]} {
 	menu .mbar.remote
 
 	.mbar.remote add command \
+		-label [mc "Add..."] \
+		-command remote_add::dialog \
+		-accelerator $M1T-A
+	.mbar.remote add command \
 		-label [mc "Push..."] \
 		-command do_push_anywhere \
 		-accelerator $M1T-P
 	.mbar.remote add command \
-		-label [mc "Delete..."] \
+		-label [mc "Delete Branch..."] \
 		-command remote_branch_delete::dialog
 }
 
@@ -2477,6 +2566,20 @@ if {[is_MacOSX]} {
 		-command do_options
 }
 
+# -- Tools Menu
+#
+if {[is_enabled multicommit] || [is_enabled singlecommit]} {
+	set tools_menubar .mbar.tools
+	menu $tools_menubar
+	$tools_menubar add separator
+	$tools_menubar add command -label [mc "Add..."] -command tools_add::dialog
+	$tools_menubar add command -label [mc "Remove..."] -command tools_remove::dialog
+	set tools_tailcnt 3
+	if {[array names repo_config guitool.*.cmd] ne {}} {
+		tools_populate_all
+	}
+}
+
 # -- Help Menu
 #
 .mbar add cascade -label [mc Help] -menu .mbar.help
@@ -2487,30 +2590,12 @@ if {![is_MacOSX]} {
 		-command do_about
 }
 
-set browser {}
-catch {set browser $repo_config(instaweb.browser)}
+
 set doc_path [file dirname [gitexec]]
 set doc_path [file join $doc_path Documentation index.html]
 
 if {[is_Cygwin]} {
 	set doc_path [exec cygpath --mixed $doc_path]
-}
-
-if {$browser eq {}} {
-	if {[is_MacOSX]} {
-		set browser open
-	} elseif {[is_Cygwin]} {
-		set program_files [file dirname [exec cygpath --windir]]
-		set program_files [file join $program_files {Program Files}]
-		set firefox [file join $program_files {Mozilla Firefox} firefox.exe]
-		set ie [file join $program_files {Internet Explorer} IEXPLORE.EXE]
-		if {[file exists $firefox]} {
-			set browser $firefox
-		} elseif {[file exists $ie]} {
-			set browser $ie
-		}
-		unset program_files firefox ie
-	}
 }
 
 if {[file isfile $doc_path]} {
@@ -2519,11 +2604,17 @@ if {[file isfile $doc_path]} {
 	set doc_url {http://www.kernel.org/pub/software/scm/git/docs/}
 }
 
-if {$browser ne {}} {
-	.mbar.help add command -label [mc "Online Documentation"] \
-		-command [list exec $browser $doc_url &]
+proc start_browser {url} {
+	git "web--browse" $url
 }
-unset browser doc_path doc_url
+
+.mbar.help add command -label [mc "Online Documentation"] \
+	-command [list start_browser $doc_url]
+
+.mbar.help add command -label [mc "Show SSH Key"] \
+	-command do_ssh_key
+
+unset doc_path doc_url
 
 # -- Standard bindings
 #
@@ -2743,7 +2834,7 @@ pack .vpane.lower.commarea.buttons.incall -side top -fill x
 lappend disable_on_lock \
 	{.vpane.lower.commarea.buttons.incall conf -state}
 
-if {![is_enabled nocommit]} {
+if {![is_enabled nocommitmsg]} {
 	button .vpane.lower.commarea.buttons.signoff -text [mc "Sign Off"] \
 		-command do_signoff
 	pack .vpane.lower.commarea.buttons.signoff -side top -fill x
@@ -3261,8 +3352,7 @@ if {[is_enabled transport]} {
 	load_all_remotes
 
 	set n [.mbar.remote index end]
-	populate_push_menu
-	populate_fetch_menu
+	populate_remotes_menu
 	set n [expr {[.mbar.remote index end] - $n}]
 	if {$n > 0} {
 		if {[.mbar.remote type 0] eq "tearoff"} { incr n }
@@ -3368,4 +3458,7 @@ if {[is_enabled multicommit]} {
 }
 if {[is_enabled retcode]} {
 	bind . <Destroy> {+terminate_me %W}
+}
+if {$picked && [is_config_true gui.autoexplore]} {
+	do_explore
 }

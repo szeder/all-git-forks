@@ -229,6 +229,7 @@ INSTALL = install
 RPMBUILD = rpmbuild
 TCL_PATH = tclsh
 TCLTK_PATH = wish
+PTHREAD_LIBS = -lpthread
 
 export TCL_PATH TCLTK_PATH
 
@@ -436,7 +437,6 @@ LIB_OBJS += grep.o
 LIB_OBJS += hash.o
 LIB_OBJS += help.o
 LIB_OBJS += ident.o
-LIB_OBJS += interpolate.o
 LIB_OBJS += levenshtein.o
 LIB_OBJS += list-objects.o
 LIB_OBJS += ll-merge.o
@@ -495,6 +495,7 @@ LIB_OBJS += write_or_die.o
 LIB_OBJS += ws.o
 LIB_OBJS += wt-status.o
 LIB_OBJS += xdiff-interface.o
+LIB_OBJS += preload-index.o
 
 BUILTIN_OBJS += builtin-add.o
 BUILTIN_OBJS += builtin-annotate.o
@@ -640,8 +641,6 @@ ifeq ($(uname_S),Darwin)
 	endif
 	NO_STRLCPY = YesPlease
 	NO_MEMMEM = YesPlease
-	COMPAT_CFLAGS += -Icompat/regex
-	COMPAT_OBJS += compat/regex/regex.o
 endif
 ifeq ($(uname_S),SunOS)
 	NEEDS_SOCKET = YesPlease
@@ -692,8 +691,11 @@ ifeq ($(uname_S),FreeBSD)
 	BASIC_LDFLAGS += -L/usr/local/lib
 	DIR_HAS_BSD_GROUP_SEMANTICS = YesPlease
 	THREADED_DELTA_SEARCH = YesPlease
-	COMPAT_CFLAGS += -Icompat/regex
-	COMPAT_OBJS += compat/regex/regex.o
+	ifeq ($(shell expr "$(uname_R)" : '4\.'),2)
+		PTHREAD_LIBS = -pthread
+		NO_UINTMAX_T = YesPlease
+		NO_STRTOUMAX = YesPlease
+	endif
 endif
 ifeq ($(uname_S),OpenBSD)
 	NO_STRCASESTR = YesPlease
@@ -720,8 +722,6 @@ ifeq ($(uname_S),AIX)
 	INTERNAL_QSORT = UnfortunatelyYes
 	NEEDS_LIBICONV=YesPlease
 	BASIC_CFLAGS += -D_LARGE_FILES
-	COMPAT_CFLAGS += -Icompat/regex
-	COMPAT_OBJS += compat/regex/regex.o
 endif
 ifeq ($(uname_S),GNU)
 	# GNU/Hurd
@@ -955,6 +955,9 @@ endif
 ifdef NO_IPV6
 	BASIC_CFLAGS += -DNO_IPV6
 endif
+ifdef NO_UINTMAX_T
+	BASIC_CFLAGS += -Duintmax_t=uint32_t
+endif
 ifdef NO_SOCKADDR_STORAGE
 ifdef NO_IPV6
 	BASIC_CFLAGS += -Dsockaddr_storage=sockaddr_in
@@ -1016,7 +1019,7 @@ endif
 
 ifdef THREADED_DELTA_SEARCH
 	BASIC_CFLAGS += -DTHREADED_DELTA_SEARCH
-	EXTLIBS += -lpthread
+	EXTLIBS += $(PTHREAD_LIBS)
 	LIB_OBJS += thread-utils.o
 endif
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
@@ -1361,7 +1364,16 @@ check-sha1:: test-sha1$X
 	./test-sha1.sh
 
 check: common-cmds.h
-	for i in *.c; do sparse $(ALL_CFLAGS) $(SPARSE_FLAGS) $$i || exit; done
+	if sparse; \
+	then \
+		for i in *.c; \
+		do \
+			sparse $(ALL_CFLAGS) $(SPARSE_FLAGS) $$i || exit; \
+		done; \
+	else \
+		echo 2>&1 "Did you mean 'make test'?"; \
+		exit 1; \
+	fi
 
 remove-dashes:
 	./fixup-builtins $(BUILT_INS) $(PROGRAMS) $(SCRIPTS)
@@ -1411,6 +1423,9 @@ endif
 install-doc:
 	$(MAKE) -C Documentation install
 
+install-man:
+	$(MAKE) -C Documentation install-man
+
 install-html:
 	$(MAKE) -C Documentation install-html
 
@@ -1419,6 +1434,9 @@ install-info:
 
 quick-install-doc:
 	$(MAKE) -C Documentation quick-install
+
+quick-install-man:
+	$(MAKE) -C Documentation quick-install-man
 
 quick-install-html:
 	$(MAKE) -C Documentation quick-install-html

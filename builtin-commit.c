@@ -225,17 +225,17 @@ static char *prepare_index(int argc, const char **argv, const char *prefix)
 
 	if (interactive) {
 		interactive_add(argc, argv, prefix);
-		if (read_cache() < 0)
+		if (read_cache_preload(NULL) < 0)
 			die("index file corrupt");
 		commit_style = COMMIT_AS_IS;
 		return get_index_file();
 	}
 
-	if (read_cache() < 0)
-		die("index file corrupt");
-
 	if (*argv)
 		pathspec = get_pathspec(prefix, argv);
+
+	if (read_cache_preload(pathspec) < 0)
+		die("index file corrupt");
 
 	/*
 	 * Non partial, non as-is commit.
@@ -1015,9 +1015,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	}
 
 	/* Truncate the message just before the diff, if any. */
-	p = strstr(sb.buf, "\ndiff --git a/");
-	if (p != NULL)
-		strbuf_setlen(&sb, p - sb.buf + 1);
+	if (verbose) {
+		p = strstr(sb.buf, "\ndiff --git ");
+		if (p != NULL)
+			strbuf_setlen(&sb, p - sb.buf + 1);
+	}
 
 	if (cleanup_mode != CLEANUP_NONE)
 		stripspace(&sb, cleanup_mode == CLEANUP_ALL);

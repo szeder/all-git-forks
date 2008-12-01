@@ -191,6 +191,21 @@ check_expected_revs() {
 	done
 }
 
+bisect_skip() {
+        all=''
+	for arg in "$@"
+	do
+	    case "$arg" in
+            *..*)
+                revs=$(git rev-list "$arg") || die "Bad rev input: $arg" ;;
+            *)
+                revs="'$arg'" ;;
+	    esac
+            all="$all $revs"
+        done
+        bisect_state 'skip' $all
+}
+
 bisect_state() {
 	bisect_autostart
 	state=$1
@@ -455,7 +470,7 @@ bisect_next() {
 	good=$(git for-each-ref --format='^%(objectname)' \
 		"refs/bisect/good-*" | tr '\012' ' ') &&
 	skip=$(git for-each-ref --format='%(objectname)' \
-		"refs/bisect/skip-*" | tr '\012' ' ') &&
+		"refs/bisect/skip-*" | tr '\012' ' ') || exit
 
 	# Maybe some merge bases must be tested first
 	check_good_are_ancestors_of_bad "$bad" "$good" "$skip"
@@ -630,8 +645,10 @@ case "$#" in
         git bisect -h ;;
     start)
         bisect_start "$@" ;;
-    bad|good|skip)
+    bad|good)
         bisect_state "$cmd" "$@" ;;
+    skip)
+        bisect_skip "$@" ;;
     next)
         # Not sure we want "next" at the UI level anymore.
         bisect_next "$@" ;;

@@ -140,7 +140,13 @@ static struct ref *remote_refs, **remote_tail;
 static int one_local_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
 	struct ref *ref;
-	int len = strlen(refname) + 1;
+	int len;
+
+	/* we already know it starts with refs/ to get here */
+	if (check_ref_format(refname + 5))
+		return 0;
+
+	len = strlen(refname) + 1;
 	ref = xcalloc(1, sizeof(*ref) + len);
 	hashcpy(ref->new_sha1, sha1);
 	memcpy(ref->name, refname, len);
@@ -224,7 +230,7 @@ static void update_tracking_ref(struct remote *remote, struct ref *ref)
 {
 	struct refspec rs;
 
-	if (ref->status != REF_STATUS_OK)
+	if (ref->status != REF_STATUS_OK && ref->status != REF_STATUS_UPTODATE)
 		return;
 
 	rs.src = ref->name;
@@ -234,7 +240,7 @@ static void update_tracking_ref(struct remote *remote, struct ref *ref)
 		if (args.verbose)
 			fprintf(stderr, "updating local tracking ref '%s'\n", rs.dst);
 		if (ref->deletion) {
-			delete_ref(rs.dst, NULL);
+			delete_ref(rs.dst, NULL, 0);
 		} else
 			update_ref("update by push", rs.dst,
 					ref->new_sha1, NULL, 0, 0);
@@ -429,24 +435,19 @@ static int do_send_pack(int in, int out, struct remote *remote, const char *dest
 	 */
 	new_refs = 0;
 	for (ref = remote_refs; ref; ref = ref->next) {
-		const unsigned char *new_sha1;
 
-		if (!ref->peer_ref) {
-			if (!args.send_mirror)
-				continue;
-			new_sha1 = null_sha1;
-		}
-		else
-			new_sha1 = ref->peer_ref->new_sha1;
+		if (ref->peer_ref)
+			hashcpy(ref->new_sha1, ref->peer_ref->new_sha1);
+		else if (!args.send_mirror)
+			continue;
 
-
-		ref->deletion = is_null_sha1(new_sha1);
+		ref->deletion = is_null_sha1(ref->new_sha1);
 		if (ref->deletion && !allow_deleting_refs) {
 			ref->status = REF_STATUS_REJECT_NODELETE;
 			continue;
 		}
 		if (!ref->deletion &&
-		    !hashcmp(ref->old_sha1, new_sha1)) {
+		    !hashcmp(ref->old_sha1, ref->new_sha1)) {
 			ref->status = REF_STATUS_UPTODATE;
 			continue;
 		}
@@ -474,14 +475,13 @@ static int do_send_pack(int in, int out, struct remote *remote, const char *dest
 		    !ref->deletion &&
 		    !is_null_sha1(ref->old_sha1) &&
 		    (!has_sha1_file(ref->old_sha1)
-		      || !ref_newer(new_sha1, ref->old_sha1));
+		      || !ref_newer(ref->new_sha1, ref->old_sha1));
 
 		if (ref->nonfastforward && !ref->force && !args.force_update) {
 			ref->status = REF_STATUS_REJECT_NONFASTFORWARD;
 			continue;
 		}
 
-		hashcpy(ref->new_sha1, new_sha1);
 		if (!ref->deletion)
 			new_refs++;
 

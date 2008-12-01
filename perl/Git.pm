@@ -961,9 +961,7 @@ issue.
 =cut
 
 sub temp_acquire {
-	my ($self, $name) = _maybe_self(@_);
-
-	my $temp_fd = _temp_cache($name);
+	my $temp_fd = _temp_cache(@_);
 
 	$TEMP_FILES{$temp_fd}{locked} = 1;
 	$temp_fd;
@@ -1005,7 +1003,7 @@ sub temp_release {
 }
 
 sub _temp_cache {
-	my ($name) = @_;
+	my ($self, $name) = _maybe_self(@_);
 
 	_verify_require();
 
@@ -1022,9 +1020,16 @@ sub _temp_cache {
 				"' was closed. Opening replacement.";
 		}
 		my $fname;
+
+		my $tmpdir;
+		if (defined $self) {
+			$tmpdir = $self->repo_path();
+		}
+
 		($$temp_fd, $fname) = File::Temp->tempfile(
-			'Git_XXXXXX', UNLINK => 1
+			'Git_XXXXXX', UNLINK => 1, DIR => $tmpdir,
 			) or throw Error::Simple("couldn't open new temp file");
+
 		$$temp_fd->autoflush;
 		binmode $$temp_fd;
 		$TEMP_FILES{$$temp_fd}{fname} = $fname;
@@ -1203,8 +1208,7 @@ either version 2, or (at your option) any later version.
 # the method was called upon an instance and (undef, @args) if
 # it was called directly.
 sub _maybe_self {
-	# This breaks inheritance. Oh well.
-	ref $_[0] eq 'Git' ? @_ : (undef, @_);
+	UNIVERSAL::isa($_[0], 'Git') ? @_ : (undef, @_);
 }
 
 # Check if the command id is something reasonable.
