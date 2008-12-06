@@ -135,8 +135,6 @@ on.
   cannot produce a patch that can be applied, so this is disabled in
   format-patch among other things).
 
-* "git diff" hunk header pattern for ObjC has been added.
-
 * "--cached" option to "git diff has an easier to remember synonym "--staged",
   to ask "what is the difference between the given commit and the
   contents staged in the index?"
