@@ -1,4 +1,4 @@
-From fdf31c74934b3b7f623dc44cec32bd01d0fba94d Mon Sep 17 00:00:00 2001
+From b7dec0e0f65b7c85c40d4072be59523d0ff41b34 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
 Subject: [PATCH] bug#438793, #494505: fallback to 'editor' not 'vi'
@@ -16,7 +16,7 @@ t/t7005-editor.sh, contrib/fast-import/git-p4 fallback to 'editor', not
  6 files changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/contrib/fast-import/git-p4 b/contrib/fast-import/git-p4
-index 46136d4..159ca5f 100755
+index 2b122d3..5f933e1 100755
 --- a/contrib/fast-import/git-p4
 +++ b/contrib/fast-import/git-p4
 @@ -708,7 +708,7 @@ class P4Submit(Command):
