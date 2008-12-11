@@ -2020,18 +2020,26 @@ sub git_get_path_by_hash {
 ## ......................................................................
 ## git utility functions, directly accessing git repository
 
-sub git_get_project_description {
-	my $path = shift;
+# get the value of a config variable either from a file with the same
+# name in the repository, or the gitweb.$name value in the repository
+# config file.
+sub git_get_file_or_project_config {
+	my ($name, $path) = @_;
 
 	$git_dir = "$projectroot/$path";
-	open my $fd, "$git_dir/description"
-		or return git_get_project_config('description');
-	my $descr = <$fd>;
+	open my $fd, "$git_dir/$name"
+		or return git_get_project_config($name);
+	my $conf = <$fd>;
 	close $fd;
-	if (defined $descr) {
-		chomp $descr;
+	if (defined $conf) {
+		chomp $conf;
 	}
-	return $descr;
+	return $conf;
+}
+
+sub git_get_project_description {
+	my $path = shift;
+	return git_get_file_or_project_config('description', $path);
 }
 
 sub git_get_project_ctags {
