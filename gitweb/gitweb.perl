@@ -3996,59 +3996,19 @@ sub print_sort_th {
 	}
 }
 
-sub git_project_list_body {
+# print a row for each project in the given list, using the given
+# range and extra display options
+sub print_project_rows {
 	# actually uses global variable $project
-	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+	my ($projects, $from, $to, $check_forks, $show_ctags) = @_;
 
-	my $check_forks = gitweb_check_feature('forks');
-	my @projects = fill_project_list_info($projlist, $check_forks);
-
-	$order ||= $default_projects_order;
 	$from = 0 unless defined $from;
-	$to = $#projects if (!defined $to || $#projects < $to);
+	$to = $#$projects if (!defined $to || $#$projects < $to);
 
-	my %order_info = (
-		project => { key => 'path', type => 'str' },
-		descr => { key => 'descr_long', type => 'str' },
-		owner => { key => 'owner', type => 'str' },
-		age => { key => 'age', type => 'num' }
-	);
-	my $oi = $order_info{$order};
-	if ($oi->{'type'} eq 'str') {
-		@projects = sort {$a->{$oi->{'key'}} cmp $b->{$oi->{'key'}}} @projects;
-	} else {
-		@projects = sort {$a->{$oi->{'key'}} <=> $b->{$oi->{'key'}}} @projects;
-	}
-
-	my $show_ctags = gitweb_check_feature('ctags');
-	if ($show_ctags) {
-		my %ctags;
-		foreach my $p (@projects) {
-			foreach my $ct (keys %{$p->{'ctags'}}) {
-				$ctags{$ct} += $p->{'ctags'}->{$ct};
-			}
-		}
-		my $cloud = git_populate_project_tagcloud(\%ctags);
-		print git_show_project_tagcloud($cloud, 64);
-	}
-
-	print "<table class=\"project_list\">\n";
-	unless ($no_header) {
-		print "<tr>\n";
-		if ($check_forks) {
-			print "<th></th>\n";
-		}
-		print_sort_th('project', $order, 'Project');
-		print_sort_th('descr', $order, 'Description');
-		print_sort_th('owner', $order, 'Owner');
-		print_sort_th('age', $order, 'Last Change');
-		print "<th></th>\n" . # for links
-		      "</tr>\n";
-	}
 	my $alternate = 1;
 	my $tagfilter = $cgi->param('by_tag');
 	for (my $i = $from; $i <= $to; $i++) {
-		my $pr = $projects[$i];
+		my $pr = $projects->[$i];
 
 		next if $tagfilter and $show_ctags and not grep { lc $_ eq lc $tagfilter } keys %{$pr->{'ctags'}};
 		next if $searchtext and not $pr->{'path'} =~ /$searchtext/
@@ -4092,6 +4052,57 @@ sub git_project_list_body {
 		      "</td>\n" .
 		      "</tr>\n";
 	}
+}
+
+sub git_project_list_body {
+	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+
+	my ($check_forks) = gitweb_check_feature('forks');
+	my @projects = fill_project_list_info($projlist, $check_forks);
+
+	$order ||= $default_projects_order;
+
+	my %order_info = (
+		project => { key => 'path', type => 'str' },
+		descr => { key => 'descr_long', type => 'str' },
+		owner => { key => 'owner', type => 'str' },
+		age => { key => 'age', type => 'num' }
+	);
+	my $oi = $order_info{$order};
+	if ($oi->{'type'} eq 'str') {
+		@projects = sort {$a->{$oi->{'key'}} cmp $b->{$oi->{'key'}}} @projects;
+	} else {
+		@projects = sort {$a->{$oi->{'key'}} <=> $b->{$oi->{'key'}}} @projects;
+	}
+
+	my $show_ctags = gitweb_check_feature('ctags');
+	if ($show_ctags) {
+		my %ctags;
+		foreach my $p (@projects) {
+			foreach my $ct (keys %{$p->{'ctags'}}) {
+				$ctags{$ct} += $p->{'ctags'}->{$ct};
+			}
+		}
+		my $cloud = git_populate_project_tagcloud(\%ctags);
+		print git_show_project_tagcloud($cloud, 64);
+	}
+
+	print "<table class=\"project_list\">\n";
+	unless ($no_header) {
+		print "<tr>\n";
+		if ($check_forks) {
+			print "<th></th>\n";
+		}
+		print_sort_th('project', $order, 'Project');
+		print_sort_th('descr', $order, 'Description');
+		print_sort_th('owner', $order, 'Owner');
+		print_sort_th('age', $order, 'Last Change');
+		print "<th></th>\n" . # for links
+		      "</tr>\n";
+	}
+
+	print_project_rows(\@projects, $from, $to, $check_forks, $show_ctags);
+
 	if (defined $extra) {
 		print "<tr>\n";
 		if ($check_forks) {
