@@ -1,6 +1,5 @@
-git-core (1:1.6.0.6-1) unstable; urgency=low
+git-core (1:1.6.0.6-1) experimental; urgency=low
 
-  * merge branch debian-experimental.
   * debian/control: git-email: Recommends: libnet-smtp-ssl-perl,
     libauthen-sasl-perl (thx Kees Cook, closes: #505636).
   * debian/diff/0005-bug-506445-hooks-post-receive-email-set-...diff:
