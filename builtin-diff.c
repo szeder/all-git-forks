@@ -175,10 +175,8 @@ static int builtin_diff_combined(struct rev_info *revs,
 	if (!revs->dense_combined_merges && !revs->combine_merges)
 		revs->dense_combined_merges = revs->combine_merges = 1;
 	parent = xmalloc(ents * sizeof(*parent));
-	/* Again, the revs are all reverse */
 	for (i = 0; i < ents; i++)
-		hashcpy((unsigned char *)(parent + i),
-			ent[ents - 1 - i].item->sha1);
+		hashcpy((unsigned char *)(parent + i), ent[i].item->sha1);
 	diff_tree_combined(parent[0], parent + 1, ents - 1,
 			   revs->dense_combined_merges, revs);
 	return 0;
@@ -290,6 +288,9 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	/* Otherwise, we are doing the usual "git" diff */
 	rev.diffopt.skip_stat_unmatch = !!diff_auto_refresh_index;
 
+	/* Default to let external be used */
+	DIFF_OPT_SET(&rev.diffopt, ALLOW_EXTERNAL);
+
 	if (nongit)
 		die("Not a git repository");
 	argc = setup_revisions(argc, argv, &rev, NULL);
@@ -298,7 +299,7 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		if (diff_setup_done(&rev.diffopt) < 0)
 			die("diff_setup_done failed");
 	}
-	DIFF_OPT_SET(&rev.diffopt, ALLOW_EXTERNAL);
+
 	DIFF_OPT_SET(&rev.diffopt, RECURSIVE);
 
 	/*

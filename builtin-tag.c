@@ -253,6 +253,15 @@ static void write_tag_body(int fd, const unsigned char *sha1)
 	free(buf);
 }
 
+static int build_tag_object(struct strbuf *buf, int sign, unsigned char *result)
+{
+	if (sign && do_sign(buf) < 0)
+		return error("unable to sign the tag");
+	if (write_sha1_file(buf->buf, buf->len, tag_type, result) < 0)
+		return error("unable to write tag file");
+	return 0;
+}
+
 static void create_tag(const unsigned char *object, const char *tag,
 		       struct strbuf *buf, int message, int sign,
 		       unsigned char *prev, unsigned char *result)
@@ -260,6 +269,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 	enum object_type type;
 	char header_buf[1024];
 	int header_len;
+	char *path = NULL;
 
 	type = sha1_object_info(object, NULL);
 	if (type <= OBJ_NONE)
@@ -279,7 +289,6 @@ static void create_tag(const unsigned char *object, const char *tag,
 		die("tag header too big.");
 
 	if (!message) {
-		char *path;
 		int fd;
 
 		/* write the template message before editing: */
@@ -300,9 +309,6 @@ static void create_tag(const unsigned char *object, const char *tag,
 			"Please supply the message using either -m or -F option.\n");
 			exit(1);
 		}
-
-		unlink(path);
-		free(path);
 	}
 
 	stripspace(buf, 1);
@@ -312,10 +318,16 @@ static void create_tag(const unsigned char *object, const char *tag,
 
 	strbuf_insert(buf, 0, header_buf, header_len);
 
-	if (sign && do_sign(buf) < 0)
-		die("unable to sign the tag");
-	if (write_sha1_file(buf->buf, buf->len, tag_type, result) < 0)
-		die("unable to write tag file");
+	if (build_tag_object(buf, sign, result) < 0) {
+		if (path)
+			fprintf(stderr, "The tag message has been left in %s\n",
+				path);
+		exit(128);
+	}
+	if (path) {
+		unlink(path);
+		free(path);
+	}
 }
 
 struct msg_arg {
@@ -344,7 +356,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	const char *object_ref, *tag;
 	struct ref_lock *lock;
 
-	int annotate = 0, sign = 0, force = 0, lines = 0,
+	int annotate = 0, sign = 0, force = 0, lines = -1,
 		list = 0, delete = 0, verify = 0;
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
@@ -380,9 +392,19 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	}
 	if (sign)
 		annotate = 1;
+	if (argc == 0 && !(delete || verify))
+		list = 1;
 
+	if ((annotate || msg.given || msgfile || force) &&
+	    (list || delete || verify))
+		usage_with_options(git_tag_usage, options);
+
+	if (list + delete + verify > 1)
+		usage_with_options(git_tag_usage, options);
 	if (list)
-		return list_tags(argv[0], lines);
+		return list_tags(argv[0], lines == -1 ? 0 : lines);
+	if (lines != -1)
+		die("-n option is only allowed with -l.");
 	if (delete)
 		return for_each_tag_name(argv, delete_tag);
 	if (verify)
@@ -407,11 +429,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (argc == 0) {
-		if (annotate)
-			usage_with_options(git_tag_usage, options);
-		return list_tags(NULL, lines);
-	}
 	tag = argv[0];
 
 	object_ref = argc == 2 ? argv[1] : "HEAD";

@@ -410,21 +410,28 @@ void prepare_alt_odb(void)
 	read_info_alternates(get_object_directory(), 0);
 }
 
-static int has_loose_object(const unsigned char *sha1)
+static int has_loose_object_local(const unsigned char *sha1)
 {
 	char *name = sha1_file_name(sha1);
-	struct alternate_object_database *alt;
+	return !access(name, F_OK);
+}
 
-	if (!access(name, F_OK))
-		return 1;
+int has_loose_object_nonlocal(const unsigned char *sha1)
+{
+	struct alternate_object_database *alt;
 	prepare_alt_odb();
 	for (alt = alt_odb_list; alt; alt = alt->next) {
-		name = alt->name;
-		fill_sha1_path(name, sha1);
+		fill_sha1_path(alt->name, sha1);
 		if (!access(alt->base, F_OK))
 			return 1;
 	}
 	return 0;
+}
+
+static int has_loose_object(const unsigned char *sha1)
+{
+	return has_loose_object_local(sha1) ||
+	       has_loose_object_nonlocal(sha1);
 }
 
 static unsigned int pack_used_ctr;
@@ -653,6 +660,37 @@ void unuse_pack(struct pack_window **w_cursor)
 }
 
 /*
+ * This is used by git-repack in case a newly created pack happens to
+ * contain the same set of objects as an existing one.  In that case
+ * the resulting file might be different even if its name would be the
+ * same.  It is best to close any reference to the old pack before it is
+ * replaced on disk.  Of course no index pointers nor windows for given pack
+ * must subsist at this point.  If ever objects from this pack are requested
+ * again, the new version of the pack will be reinitialized through
+ * reprepare_packed_git().
+ */
+void free_pack_by_name(const char *pack_name)
+{
+	struct packed_git *p, **pp = &packed_git;
+
+	while (*pp) {
+		p = *pp;
+		if (strcmp(pack_name, p->pack_name) == 0) {
+			close_pack_windows(p);
+			if (p->pack_fd != -1)
+				close(p->pack_fd);
+			if (p->index_data)
+				munmap((void *)p->index_data, p->index_size);
+			free(p->bad_object_sha1);
+			*pp = p->next;
+			free(p);
+			return;
+		}
+		pp = &p->next;
+	}
+}
+
+/*
  * Do not call this directly as this leaks p->pack_fd on error return;
  * call open_packed_git() instead.
  */
@@ -828,6 +866,11 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 		return NULL;
 	}
 	memcpy(p->pack_name, path, path_len);
+
+	strcpy(p->pack_name + path_len, ".keep");
+	if (!access(p->pack_name, F_OK))
+		p->pack_keep = 1;
+
 	strcpy(p->pack_name + path_len, ".pack");
 	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
 		free(p);
@@ -2220,7 +2263,7 @@ static int create_tmpfile(char *buffer, size_t bufsiz, const char *filename)
 	memcpy(buffer, filename, dirlen);
 	strcpy(buffer + dirlen, "tmp_obj_XXXXXX");
 	fd = mkstemp(buffer);
-	if (fd < 0 && dirlen) {
+	if (fd < 0 && dirlen && errno == ENOENT) {
 		/* Make sure the directory exists */
 		memcpy(buffer, filename, dirlen);
 		buffer[dirlen-1] = 0;
@@ -2246,7 +2289,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	filename = sha1_file_name(sha1);
 	fd = create_tmpfile(tmpfile, sizeof(tmpfile), filename);
 	if (fd < 0) {
-		if (errno == EPERM)
+		if (errno == EACCES)
 			return error("insufficient permission for adding an object to repository database %s\n", get_object_directory());
 		else
 			return error("unable to create temporary sha1 filename %s: %s\n", tmpfile, strerror(errno));

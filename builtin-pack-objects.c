@@ -71,6 +71,7 @@ static int reuse_delta = 1, reuse_object = 1;
 static int keep_unreachable, unpack_unreachable, include_tag;
 static int local;
 static int incremental;
+static int ignore_packed_keep;
 static int allow_ofs_delta;
 static const char *base_name;
 static int progress = 1;
@@ -245,8 +246,16 @@ static unsigned long write_object(struct sha1file *f,
 	type = entry->type;
 
 	/* write limit if limited packsize and not first object */
-	limit = pack_size_limit && nr_written ?
-			pack_size_limit - write_offset : 0;
+	if (!pack_size_limit || !nr_written)
+		limit = 0;
+	else if (pack_size_limit <= write_offset)
+		/*
+		 * the earlier object did not fit the limit; avoid
+		 * mistaking this with unlimited (i.e. limit = 0).
+		 */
+		limit = 1;
+	else
+		limit = pack_size_limit - write_offset;
 
 	if (!entry->delta)
 		usable_delta = 0;	/* no delta */
@@ -511,6 +520,7 @@ static void write_pack_file(void)
 
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.pack",
 				 base_name, sha1_to_hex(sha1));
+			free_pack_by_name(tmpname);
 			if (adjust_perm(pack_tmp_name, mode))
 				die("unable to make temporary pack file readable: %s",
 				    strerror(errno));
@@ -690,6 +700,9 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 		return 0;
 	}
 
+	if (!exclude && local && has_loose_object_nonlocal(sha1))
+		return 0;
+
 	for (p = packed_git; p; p = p->next) {
 		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
@@ -702,6 +715,8 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 			if (incremental)
 				return 0;
 			if (local && !p->pack_local)
+				return 0;
+			if (ignore_packed_keep && p->pack_local && p->pack_keep)
 				return 0;
 		}
 	}
@@ -2040,6 +2055,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		}
 		if (!strcmp("--incremental", arg)) {
 			incremental = 1;
+			continue;
+		}
+		if (!strcmp("--honor-pack-keep", arg)) {
+			ignore_packed_keep = 1;
 			continue;
 		}
 		if (!prefixcmp(arg, "--compression=")) {

@@ -32,7 +32,7 @@ static int post_checkout_hook(struct commit *old, struct commit *new,
 
 	memset(&proc, 0, sizeof(proc));
 	argv[0] = name;
-	argv[1] = xstrdup(sha1_to_hex(old->object.sha1));
+	argv[1] = xstrdup(sha1_to_hex(old ? old->object.sha1 : null_sha1));
 	argv[2] = xstrdup(sha1_to_hex(new->object.sha1));
 	argv[3] = changed ? "1" : "0";
 	argv[4] = NULL;
@@ -269,8 +269,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 		}
 
 		/* 2-way merge to the new branch */
-		topts.initial_checkout = (!active_nr &&
-					  (old->commit == new->commit));
+		topts.initial_checkout = is_cache_unborn();
 		topts.update = 1;
 		topts.merge = 1;
 		topts.gently = opts->merge;
@@ -360,10 +359,10 @@ static void update_refs_for_switch(struct checkout_opts *opts,
 
 	strbuf_init(&msg, 0);
 	old_desc = old->name;
-	if (!old_desc)
+	if (!old_desc && old->commit)
 		old_desc = sha1_to_hex(old->commit->object.sha1);
 	strbuf_addf(&msg, "checkout: moving from %s to %s",
-		    old_desc, new->name);
+		    old_desc ? old_desc : "(invalid)", new->name);
 
 	if (new->path) {
 		create_symref("HEAD", new->path, msg.buf);
@@ -419,10 +418,10 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	 * a new commit, we want to mention the old commit once more
 	 * to remind the user that it might be lost.
 	 */
-	if (!opts->quiet && !old.path && new->commit != old.commit)
+	if (!opts->quiet && !old.path && old.commit && new->commit != old.commit)
 		describe_detached_head("Previous HEAD position was", old.commit);
 
-	if (!old.commit) {
+	if (!old.commit && !opts->force) {
 		if (!opts->quiet) {
 			fprintf(stderr, "warning: You appear to be on a branch yet to be born.\n");
 			fprintf(stderr, "warning: Forcing checkout of %s.\n", new->name);
