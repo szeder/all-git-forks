@@ -1,3 +1,43 @@
+Version v1.6.0.6; changes since v1.6.0.5:
+-----------------------------------------
+
+David Aguilar (1):
+      git-mergetool: properly handle "git mergetool -- filename"
+
+Deskin Miller (1):
+      git-svn: Make following parents atomic
+
+Jim Meyering (1):
+      git-config.txt: fix a typo
+
+Johannes Schindelin (2):
+      fast-import: close pack before unlinking it
+      fast-export: deal with tag objects that do not have a tagger
+
+Junio C Hamano (6):
+      work around Python warnings from AsciiDoc
+      git-show: do not segfault when showing a bad tag
+      pager: do not dup2 stderr if it is already redirected
+      gitweb: do not run "git diff" that is Porcelain
+      GIT 1.5.4.7
+      fast-import: make tagger information optional
+
+Linus Torvalds (1):
+      fsck: reduce stack footprint
+
+Markus Heidelberg (1):
+      Documentation: fix typos, grammar, asciidoc syntax
+
+Miklos Vajna (1):
+      SubmittingPatches: mention the usage of real name in Signed-off-by: lines
+
+Nicolas Pitre (1):
+      make sure packs to be replaced are closed beforehand
+
+Wu Fengguang (1):
+      git-send-email: handle email address with quoted comma
+
+
 Version v1.6.0.5; changes since v1.6.0.4:
 -----------------------------------------
 
