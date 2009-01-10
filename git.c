@@ -158,7 +158,7 @@ static int handle_alias(int *argcp, const char ***argv)
 			if (ret >= 0 && WIFEXITED(ret) &&
 			    WEXITSTATUS(ret) != 127)
 				exit(WEXITSTATUS(ret));
-			die("Failed to run '%s' when expanding alias '%s'\n",
+			die("Failed to run '%s' when expanding alias '%s'",
 			    alias_string + 1, alias_command);
 		}
 		count = split_cmdline(alias_string, &new_argv);
@@ -428,9 +428,8 @@ int main(int argc, const char **argv)
 	 * name, and the dirname as the default exec_path
 	 * if we don't have anything better.
 	 */
-	do
-		--slash;
-	while (cmd <= slash && !is_dir_sep(*slash));
+	while (cmd <= slash && !is_dir_sep(*slash))
+		slash--;
 	if (cmd <= slash) {
 		*slash++ = 0;
 		git_set_argv0_path(cmd);

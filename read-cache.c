@@ -99,27 +99,21 @@ static int ce_compare_data(struct cache_entry *ce, struct stat *st)
 static int ce_compare_link(struct cache_entry *ce, size_t expected_size)
 {
 	int match = -1;
-	char *target;
 	void *buffer;
 	unsigned long size;
 	enum object_type type;
-	int len;
+	struct strbuf sb = STRBUF_INIT;
 
-	target = xmalloc(expected_size);
-	len = readlink(ce->name, target, expected_size);
-	if (len != expected_size) {
-		free(target);
+	if (strbuf_readlink(&sb, ce->name, expected_size))
 		return -1;
-	}
+
 	buffer = read_sha1_file(ce->sha1, &type, &size);
-	if (!buffer) {
-		free(target);
-		return -1;
+	if (buffer) {
+		if (size == sb.len)
+			match = memcmp(buffer, sb.buf, size);
+		free(buffer);
 	}
-	if (size == expected_size)
-		match = memcmp(buffer, target, size);
-	free(buffer);
-	free(target);
+	strbuf_release(&sb);
 	return match;
 }
 
@@ -1527,7 +1521,7 @@ int write_index(const struct index_state *istate, int newfd)
 
 /*
  * Read the index file that is potentially unmerged into given
- * index_state, dropping any unmerged entries.  Returns true is
+ * index_state, dropping any unmerged entries.  Returns true if
  * the index is unmerged.  Callers who want to refuse to work
  * from an unmerged state can call this and check its return value,
  * instead of calling read_cache().

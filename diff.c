@@ -229,6 +229,8 @@ static void emit_rewrite_diff(const char *name_a,
 			      const char *name_b,
 			      struct diff_filespec *one,
 			      struct diff_filespec *two,
+			      const char *textconv_one,
+			      const char *textconv_two,
 			      struct diff_options *o)
 {
 	int lc_a, lc_b;
@@ -241,6 +243,8 @@ static void emit_rewrite_diff(const char *name_a,
 	const char *reset = diff_get_color(color_diff, DIFF_RESET);
 	static struct strbuf a_name = STRBUF_INIT, b_name = STRBUF_INIT;
 	const char *a_prefix, *b_prefix;
+	const char *data_one, *data_two;
+	size_t size_one, size_two;
 
 	if (diff_mnemonic_prefix && DIFF_OPT_TST(o, REVERSE_DIFF)) {
 		a_prefix = o->b_prefix;
@@ -262,8 +266,27 @@ static void emit_rewrite_diff(const char *name_a,
 
 	diff_populate_filespec(one, 0);
 	diff_populate_filespec(two, 0);
-	lc_a = count_lines(one->data, one->size);
-	lc_b = count_lines(two->data, two->size);
+	if (textconv_one) {
+		data_one = run_textconv(textconv_one, one, &size_one);
+		if (!data_one)
+			die("unable to read files to diff");
+	}
+	else {
+		data_one = one->data;
+		size_one = one->size;
+	}
+	if (textconv_two) {
+		data_two = run_textconv(textconv_two, two, &size_two);
+		if (!data_two)
+			die("unable to read files to diff");
+	}
+	else {
+		data_two = two->data;
+		size_two = two->size;
+	}
+
+	lc_a = count_lines(data_one, size_one);
+	lc_b = count_lines(data_two, size_two);
 	fprintf(o->file,
 		"%s--- %s%s%s\n%s+++ %s%s%s\n%s@@ -",
 		metainfo, a_name.buf, name_a_tab, reset,
@@ -273,9 +296,9 @@ static void emit_rewrite_diff(const char *name_a,
 	print_line_count(o->file, lc_b);
 	fprintf(o->file, " @@%s\n", reset);
 	if (lc_a)
-		copy_file_with_prefix(o->file, '-', one->data, one->size, old, reset);
+		copy_file_with_prefix(o->file, '-', data_one, size_one, old, reset);
 	if (lc_b)
-		copy_file_with_prefix(o->file, '+', two->data, two->size, new, reset);
+		copy_file_with_prefix(o->file, '+', data_two, size_two, new, reset);
 }
 
 static int fill_mmfile(mmfile_t *mf, struct diff_filespec *one)
@@ -1334,6 +1357,11 @@ static void builtin_diff(const char *name_a,
 	const char *a_prefix, *b_prefix;
 	const char *textconv_one = NULL, *textconv_two = NULL;
 
+	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
+		textconv_one = get_textconv(one);
+		textconv_two = get_textconv(two);
+	}
+
 	diff_set_mnemonic_prefix(o, "a/", "b/");
 	if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
 		a_prefix = o->b_prefix;
@@ -1376,8 +1404,11 @@ static void builtin_diff(const char *name_a,
 		 */
 		if ((one->mode ^ two->mode) & S_IFMT)
 			goto free_ab_and_return;
-		if (complete_rewrite) {
-			emit_rewrite_diff(name_a, name_b, one, two, o);
+		if (complete_rewrite &&
+		    (textconv_one || !diff_filespec_is_binary(one)) &&
+		    (textconv_two || !diff_filespec_is_binary(two))) {
+			emit_rewrite_diff(name_a, name_b, one, two,
+						textconv_one, textconv_two, o);
 			o->found_changes = 1;
 			goto free_ab_and_return;
 		}
@@ -1385,11 +1416,6 @@ static void builtin_diff(const char *name_a,
 
 	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
 		die("unable to read files to diff");
-
-	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
-		textconv_one = get_textconv(one);
-		textconv_two = get_textconv(two);
-	}
 
 	if (!DIFF_OPT_TST(o, TEXT) &&
 	    ( (diff_filespec_is_binary(one) && !textconv_one) ||
@@ -1443,6 +1469,7 @@ static void builtin_diff(const char *name_a,
 		ecbdata.file = o->file;
 		xpp.flags = XDF_NEED_MINIMAL | o->xdl_opts;
 		xecfg.ctxlen = o->context;
+		xecfg.interhunkctxlen = o->interhunkcontext;
 		xecfg.flags = XDL_EMIT_FUNCNAMES;
 		if (pe)
 			xdiff_set_find_func(&xecfg, pe->pattern, pe->cflags);
@@ -1747,19 +1774,18 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		s->size = xsize_t(st.st_size);
 		if (!s->size)
 			goto empty;
-		if (size_only)
-			return 0;
 		if (S_ISLNK(st.st_mode)) {
-			int ret;
-			s->data = xmalloc(s->size);
-			s->should_free = 1;
-			ret = readlink(s->path, s->data, s->size);
-			if (ret < 0) {
-				free(s->data);
+			struct strbuf sb = STRBUF_INIT;
+
+			if (strbuf_readlink(&sb, s->path, s->size))
 				goto err_empty;
-			}
+			s->size = sb.len;
+			s->data = strbuf_detach(&sb, NULL);
+			s->should_free = 1;
 			return 0;
 		}
+		if (size_only)
+			return 0;
 		fd = open(s->path, O_RDONLY);
 		if (fd < 0)
 			goto err_empty;
@@ -1857,13 +1883,12 @@ static void prepare_temp_file(const char *name,
 		if (S_ISLNK(st.st_mode)) {
 			int ret;
 			char buf[PATH_MAX + 1]; /* ought to be SYMLINK_MAX */
-			size_t sz = xsize_t(st.st_size);
-			if (sizeof(buf) <= st.st_size)
-				die("symlink too long: %s", name);
-			ret = readlink(name, buf, sz);
+			ret = readlink(name, buf, sizeof(buf));
 			if (ret < 0)
 				die("readlink(%s)", name);
-			prep_temp_blob(temp, buf, sz,
+			if (ret == sizeof(buf))
+				die("symlink too long: %s", name);
+			prep_temp_blob(temp, buf, ret,
 				       (one->sha1_valid ?
 					one->sha1 : null_sha1),
 				       (one->sha1_valid ?
@@ -2015,7 +2040,7 @@ static void diff_fill_sha1_info(struct diff_filespec *one)
 			if (lstat(one->path, &st) < 0)
 				die("stat %s", one->path);
 			if (index_path(one->sha1, one->path, &st, 0))
-				die("cannot hash %s\n", one->path);
+				die("cannot hash %s", one->path);
 		}
 	}
 	else
@@ -2477,6 +2502,10 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		DIFF_OPT_SET(options, ALLOW_EXTERNAL);
 	else if (!strcmp(arg, "--no-ext-diff"))
 		DIFF_OPT_CLR(options, ALLOW_EXTERNAL);
+	else if (!strcmp(arg, "--textconv"))
+		DIFF_OPT_SET(options, ALLOW_TEXTCONV);
+	else if (!strcmp(arg, "--no-textconv"))
+		DIFF_OPT_CLR(options, ALLOW_TEXTCONV);
 	else if (!strcmp(arg, "--ignore-submodules"))
 		DIFF_OPT_SET(options, IGNORE_SUBMODULES);
 
@@ -2510,6 +2539,9 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->b_prefix = arg + 13;
 	else if (!strcmp(arg, "--no-prefix"))
 		options->a_prefix = options->b_prefix = "";
+	else if (opt_arg(arg, '\0', "inter-hunk-context",
+			 &options->interhunkcontext))
+		;
 	else if (!prefixcmp(arg, "--output=")) {
 		options->file = fopen(arg + strlen("--output="), "w");
 		options->close_file = 1;

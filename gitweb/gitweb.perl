@@ -203,7 +203,7 @@ our %feature = (
 	# $feature{'blame'}{'override'} = 1;
 	# and in project config gitweb.blame = 0|1;
 	'blame' => {
-		'sub' => \&feature_blame,
+		'sub' => sub { feature_bool('blame', @_) },
 		'override' => 0,
 		'default' => [0]},
 
@@ -241,6 +241,7 @@ our %feature = (
 	# $feature{'grep'}{'override'} = 1;
 	# and in project config gitweb.grep = 0|1;
 	'grep' => {
+		'sub' => sub { feature_bool('grep', @_) },
 		'override' => 0,
 		'default' => [1]},
 
@@ -254,7 +255,7 @@ our %feature = (
 	# $feature{'pickaxe'}{'override'} = 1;
 	# and in project config gitweb.pickaxe = 0|1;
 	'pickaxe' => {
-		'sub' => \&feature_pickaxe,
+		'sub' => sub { feature_bool('pickaxe', @_) },
 		'override' => 0,
 		'default' => [1]},
 
@@ -362,16 +363,17 @@ sub gitweb_check_feature {
 }
 
 
-sub feature_blame {
-	my ($val) = git_get_project_config('blame', '--bool');
+sub feature_bool {
+	my $key = shift;
+	my ($val) = git_get_project_config($key, '--bool');
 
 	if ($val eq 'true') {
-		return 1;
+		return (1);
 	} elsif ($val eq 'false') {
-		return 0;
+		return (0);
 	}
 
-	return $_[0];
+	return ($_[0]);
 }
 
 sub feature_snapshot {
@@ -384,30 +386,6 @@ sub feature_snapshot {
 	}
 
 	return @fmts;
-}
-
-sub feature_grep {
-	my ($val) = git_get_project_config('grep', '--bool');
-
-	if ($val eq 'true') {
-		return (1);
-	} elsif ($val eq 'false') {
-		return (0);
-	}
-
-	return ($_[0]);
-}
-
-sub feature_pickaxe {
-	my ($val) = git_get_project_config('pickaxe', '--bool');
-
-	if ($val eq 'true') {
-		return (1);
-	} elsif ($val eq 'false') {
-		return (0);
-	}
-
-	return ($_[0]);
 }
 
 # checking HEAD file with -e is fragile if the repository was
@@ -2146,8 +2124,9 @@ sub git_get_projects_list {
 
 				my $subdir = substr($File::Find::name, $pfxlen + 1);
 				# we check related file in $projectroot
-				if (check_export_ok("$projectroot/$filter/$subdir")) {
-					push @list, { path => ($filter ? "$filter/" : '') . $subdir };
+				my $path = ($filter ? "$filter/" : '') . $subdir;
+				if (check_export_ok("$projectroot/$path")) {
+					push @list, { path => $path };
 					$File::Find::prune = 1;
 				}
 			},
@@ -2763,7 +2742,7 @@ sub insert_file {
 	my $filename = shift;
 
 	open my $fd, '<', $filename;
-	print map(to_utf8, <$fd>);
+	print map { to_utf8($_) } <$fd>;
 	close $fd;
 }
 
@@ -4574,28 +4553,33 @@ sub git_tag {
 }
 
 sub git_blame {
-	my $fd;
-	my $ftype;
-
+	# permissions
 	gitweb_check_feature('blame')
-	    or die_error(403, "Blame view not allowed");
+		or die_error(403, "Blame view not allowed");
 
+	# error checking
 	die_error(400, "No file name given") unless $file_name;
 	$hash_base ||= git_get_head_hash($project);
-	die_error(404, "Couldn't find base commit") unless ($hash_base);
+	die_error(404, "Couldn't find base commit") unless $hash_base;
 	my %co = parse_commit($hash_base)
 		or die_error(404, "Commit not found");
+	my $ftype = "blob";
 	if (!defined $hash) {
 		$hash = git_get_hash_by_path($hash_base, $file_name, "blob")
 			or die_error(404, "Error looking up file");
+	} else {
+		$ftype = git_get_type($hash);
+		if ($ftype !~ "blob") {
+			die_error(400, "Object is not a blob");
+		}
 	}
-	$ftype = git_get_type($hash);
-	if ($ftype !~ "blob") {
-		die_error(400, "Object is not a blob");
-	}
-	open ($fd, "-|", git_cmd(), "blame", '-p', '--',
-	      $file_name, $hash_base)
+
+	# run git-blame --porcelain
+	open my $fd, "-|", git_cmd(), "blame", '-p',
+		$hash_base, '--', $file_name
 		or die_error(500, "Open git-blame failed");
+
+	# page header
 	git_header_html();
 	my $formats_nav =
 		$cgi->a({-href => href(action=>"blob", -replay=>1)},
@@ -4609,42 +4593,46 @@ sub git_blame {
 	git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
 	git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 	git_print_page_path($file_name, $ftype, $hash_base);
-	my @rev_color = (qw(light2 dark2));
+
+	# page body
+	my @rev_color = qw(light2 dark2);
 	my $num_colors = scalar(@rev_color);
 	my $current_color = 0;
-	my $last_rev;
+	my %metainfo = ();
+
 	print <<HTML;
 <div class="page_body">
 <table class="blame">
 <tr><th>Commit</th><th>Line</th><th>Data</th></tr>
 HTML
-	my %metainfo = ();
-	while (1) {
-		$_ = <$fd>;
-		last unless defined $_;
+ LINE:
+	while (my $line = <$fd>) {
+		chomp $line;
+		# the header: <SHA-1> <src lineno> <dst lineno> [<lines in group>]
+		# no <lines in group> for subsequent lines in group of lines
 		my ($full_rev, $orig_lineno, $lineno, $group_size) =
-		    /^([0-9a-f]{40}) (\d+) (\d+)(?: (\d+))?$/;
+		   ($line =~ /^([0-9a-f]{40}) (\d+) (\d+)(?: (\d+))?$/);
 		if (!exists $metainfo{$full_rev}) {
 			$metainfo{$full_rev} = {};
 		}
 		my $meta = $metainfo{$full_rev};
-		while (<$fd>) {
-			last if (s/^\t//);
-			if (/^(\S+) (.*)$/) {
+		my $data;
+		while ($data = <$fd>) {
+			chomp $data;
+			last if ($data =~ s/^\t//); # contents of line
+			if ($data =~ /^(\S+) (.*)$/) {
 				$meta->{$1} = $2;
 			}
 		}
-		my $data = $_;
-		chomp $data;
-		my $rev = substr($full_rev, 0, 8);
+		my $short_rev = substr($full_rev, 0, 8);
 		my $author = $meta->{'author'};
-		my %date = parse_date($meta->{'author-time'},
-		                      $meta->{'author-tz'});
+		my %date =
+			parse_date($meta->{'author-time'}, $meta->{'author-tz'});
 		my $date = $date{'iso-tz'};
 		if ($group_size) {
-			$current_color = ++$current_color % $num_colors;
+			$current_color = ($current_color + 1) % $num_colors;
 		}
-		print "<tr class=\"$rev_color[$current_color]\">\n";
+		print "<tr id=\"l$lineno\" class=\"$rev_color[$current_color]\">\n";
 		if ($group_size) {
 			print "<td class=\"sha1\"";
 			print " title=\"". esc_html($author) . ", $date\"";
@@ -4653,20 +4641,25 @@ HTML
 			print $cgi->a({-href => href(action=>"commit",
 			                             hash=>$full_rev,
 			                             file_name=>$file_name)},
-			              esc_html($rev));
+			              esc_html($short_rev));
 			print "</td>\n";
 		}
-		open (my $dd, "-|", git_cmd(), "rev-parse", "$full_rev^")
-			or die_error(500, "Open git-rev-parse failed");
-		my $parent_commit = <$dd>;
-		close $dd;
-		chomp($parent_commit);
+		my $parent_commit;
+		if (!exists $meta->{'parent'}) {
+			open (my $dd, "-|", git_cmd(), "rev-parse", "$full_rev^")
+				or die_error(500, "Open git-rev-parse failed");
+			$parent_commit = <$dd>;
+			close $dd;
+			chomp($parent_commit);
+			$meta->{'parent'} = $parent_commit;
+		} else {
+			$parent_commit = $meta->{'parent'};
+		}
 		my $blamed = href(action => 'blame',
 		                  file_name => $meta->{'filename'},
 		                  hash_base => $parent_commit);
 		print "<td class=\"linenr\">";
 		print $cgi->a({ -href => "$blamed#l$orig_lineno",
-		                -id => "l$lineno",
 		                -class => "linenr" },
 		              esc_html($lineno));
 		print "</td>";
@@ -4677,6 +4670,8 @@ HTML
 	print "</div>";
 	close $fd
 		or print "Reading blob failed\n";
+
+	# page footer
 	git_footer_html();
 }
 
@@ -5284,43 +5279,9 @@ sub git_blobdiff {
 			or die_error(500, "Open git-diff-tree failed");
 	}
 
-	# old/legacy style URI
-	if (!%diffinfo && # if new style URI failed
-	    defined $hash && defined $hash_parent) {
-		# fake git-diff-tree raw output
-		$diffinfo{'from_mode'} = $diffinfo{'to_mode'} = "blob";
-		$diffinfo{'from_id'} = $hash_parent;
-		$diffinfo{'to_id'}   = $hash;
-		if (defined $file_name) {
-			if (defined $file_parent) {
-				$diffinfo{'status'} = '2';
-				$diffinfo{'from_file'} = $file_parent;
-				$diffinfo{'to_file'}   = $file_name;
-			} else { # assume not renamed
-				$diffinfo{'status'} = '1';
-				$diffinfo{'from_file'} = $file_name;
-				$diffinfo{'to_file'}   = $file_name;
-			}
-		} else { # no filename given
-			$diffinfo{'status'} = '2';
-			$diffinfo{'from_file'} = $hash_parent;
-			$diffinfo{'to_file'}   = $hash;
-		}
-
-		# non-textual hash id's can be cached
-		if ($hash =~ m/^[0-9a-fA-F]{40}$/ &&
-		    $hash_parent =~ m/^[0-9a-fA-F]{40}$/) {
-			$expires = '+1d';
-		}
-
-		# open patch output
-		open $fd, "-|", git_cmd(), "diff", @diff_opts,
-			'-p', ($format eq 'html' ? "--full-index" : ()),
-			$hash_parent, $hash, "--"
-			or die_error(500, "Open git-diff failed");
-	} else  {
-		die_error(400, "Missing one of the blob diff parameters")
-			unless %diffinfo;
+	# old/legacy style URI -- not generated anymore since 1.4.3.
+	if (!%diffinfo) {
+		die_error('404 Not Found', "Missing one of the blob diff parameters")
 	}
 
 	# header
@@ -6178,8 +6139,8 @@ XML
 		}
 
 		my $path = esc_html(chop_str($proj{'path'}, 25, 5));
-		my $rss  = "$my_url?p=$proj{'path'};a=rss";
-		my $html = "$my_url?p=$proj{'path'};a=summary";
+		my $rss  = href('project' => $proj{'path'}, 'action' => 'rss', -full => 1);
+		my $html = href('project' => $proj{'path'}, 'action' => 'summary', -full => 1);
 		print "<outline type=\"rss\" text=\"$path\" title=\"$path\" xmlUrl=\"$rss\" htmlUrl=\"$html\"/>\n";
 	}
 	print <<XML;

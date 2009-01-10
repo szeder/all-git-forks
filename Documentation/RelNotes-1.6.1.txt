@@ -70,7 +70,7 @@ on.
   subsequent "git diff" will show a diff as if they are creation events.
 
 * "git add" gained a built-in synonym for people who want to say "stage
-  changes" instead of "add contents the the staging area" which amounts
+  changes" instead of "add contents to the staging area" which amounts
   to the same thing.
 
 * "git apply" learned --include=paths option, similar to the existing
@@ -139,10 +139,6 @@ on.
   to ask "what is the difference between the given commit and the
   contents staged in the index?"
 
-* a "textconv" filter that makes binary files textual form for human
-   consumption can be specified as an attribute for paths; "git diff"
-   learnt to make use of it.
-
 * "git for-each-ref" learned "refname:short" token that gives an
   unambiguously abbreviated refname.
 
@@ -195,9 +191,6 @@ on.
 
 * "git remote show $remote" lists remote branches one-per-line now.
 
-* when giving up resolving a conflicted merge, "git reset --hard" failed
-  to remove new paths from the working tree. [cherry-pick to 'maint'?]
-
 * "git send-email" can be given revision range instead of files and
   maildirs on the command line, and automatically runs format-patch to
   generate patches for the given revision range.
@@ -237,6 +230,13 @@ Fixes since v1.6.0
 All of the fixes in v1.6.0.X maintenance series are included in this
 release, unless otherwise noted.
 
+* Porcelains implemented as shell scripts were utterly confused when you
+  entered to a subdirectory of a work tree from sideways, following a
+  symbolic link (this may need to be backported to older releases later).
+
+* Tracking symbolic links would work better on filesystems whose lstat()
+  returns incorrect st_size value for them.
+
 * "git add" and "git update-index" incorrectly allowed adding S/F when S
   is a tracked symlink that points at a directory D that has a path F in
   it (we still need to fix a similar nonsense when S is a submodule and F
@@ -249,15 +249,21 @@ release, unless otherwise noted.
   but we dropped support for such a use case long time ago.  This has
   been resurrected.
 
-* Giving 3 or more tree-ish to "git diff" is supposed to show the combined
-  diff from second and subsequent trees to the first one.  b75271d ("git
-  diff <tree>{3,}": do not reverse order of arguments, 2008-10-10) needs
-  to be cherry-picked to 'maint'.
-
 * "git filter-branch" failed to rewrite a tag name with slashes in it.
 
-* "git repack" used to grab objects out of packs marked with .keep
-  into a new pack (fix scheduled to be further downmerged to maint).
+* "git http-push" did not understand URI scheme other than opaquelocktoken
+  when acquiring a lock from the server (this may need to be backported to
+  older releases later).
+
+* After "git rebase -p" stopped with conflicts while replaying a merge,
+ "git rebase --continue" did not work (may need to be backported to older
+  releases).
+
+* "git revert" records relative to which parent a revert was made when
+  reverting a merge.  Together with new documentation that explains issues
+  around reverting a merge and merging from the updated branch later, this
+  hopefully will reduce user confusion (this may need to be backported to
+  older releases later).
 
 * "git rm --cached" used to allow an empty blob that was added earlier to
   be removed without --force, even when the file in the work tree has
@@ -270,15 +276,11 @@ release, unless otherwise noted.
   timestamp part, exposing internal implementation detail.  Also these did
   not work with --fixed-strings match at all.
 
-* Internal diff machinery had a corner case performance bug that choked on a
-  large file with many repeated contents (fix scheduled to be further cherry-
-  picked to maint).
-
 * "gitweb" did not mark non-ASCII characters imported from external HTML fragments
   correctly.
 
 --
 exec >/var/tmp/1
-O=v1.6.1-rc1-55-gd8af75d
+O=v1.6.1-rc3-74-gf66bc5f
 echo O=$(git describe master)
 git shortlog --no-merges $O..master ^maint

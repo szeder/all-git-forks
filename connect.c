@@ -315,7 +315,7 @@ static int git_tcp_connect_sock(char *host, int flags)
 		/* Not numeric */
 		struct servent *se = getservbyname(port,"tcp");
 		if ( !se )
-			die("Unknown port %s\n", port);
+			die("Unknown port %s", port);
 		nport = se->s_port;
 	}
 
@@ -480,8 +480,8 @@ char *get_port(char *host)
 	char *p = strchr(host, ':');
 
 	if (p) {
-		strtol(p+1, &end, 10);
-		if (*end == '\0') {
+		long port = strtol(p + 1, &end, 10);
+		if (end != p + 1 && *end == '\0' && 0 <= port && port < 65536) {
 			*p = '\0';
 			return p+1;
 		}

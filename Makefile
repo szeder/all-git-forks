@@ -645,6 +645,7 @@ ifeq ($(uname_S),Darwin)
 	endif
 	NO_STRLCPY = YesPlease
 	NO_MEMMEM = YesPlease
+	THREADED_DELTA_SEARCH = YesPlease
 endif
 ifeq ($(uname_S),SunOS)
 	NEEDS_SOCKET = YesPlease
@@ -1306,6 +1307,9 @@ html:
 info:
 	$(MAKE) -C Documentation info
 
+pdf:
+	$(MAKE) -C Documentation pdf
+
 TAGS:
 	$(RM) TAGS
 	$(FIND) . -name '*.[hcS]' -print | xargs etags -a
@@ -1447,6 +1451,9 @@ install-html:
 
 install-info:
 	$(MAKE) -C Documentation install-info
+
+install-pdf:
+	$(MAKE) -C Documentation install-pdf
 
 quick-install-doc:
 	$(MAKE) -C Documentation quick-install
