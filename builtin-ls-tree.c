@@ -23,7 +23,7 @@ static int chomp_prefix;
 static const char *ls_tree_prefix;
 
 static const char ls_tree_usage[] =
-	"git ls-tree [-d] [-r] [-t] [-l] [-z] [--name-only] [--name-status] [--full-name] [--abbrev[=<n>]] <tree-ish> [path...]";
+	"git ls-tree [-d] [-r] [-t] [-l] [-z] [--name-only] [--name-status] [--full-name] [--abbrev[=<n>]] [--submodules] <tree-ish> [path...]";
 
 static int show_recursive(const char *base, int baselen, const char *pathname)
 {
@@ -63,20 +63,8 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 	unsigned long size;
 
 	if (S_ISGITLINK(mode)) {
-		/*
-		 * Maybe we want to have some recursive version here?
-		 *
-		 * Something similar to this incomplete example:
-		 *
-		if (show_subprojects(base, baselen, pathname)) {
-			struct child_process ls_tree;
-
-			ls_tree.dir = base;
-			ls_tree.argv = ls-tree;
-			start_command(&ls_tree);
-		}
-		 *
-		 */
+		if (show_recursive(base, baselen, pathname))
+			retval = READ_TREE_RECURSIVE;
 		type = commit_type;
 	} else if (S_ISDIR(mode)) {
 		if (show_recursive(base, baselen, pathname)) {
@@ -166,6 +154,11 @@ int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(argv[1]+2, "abbrev")) {
 				abbrev = DEFAULT_ABBREV;
+				break;
+			}
+			if (!strcmp(argv[1]+2, "submodules")) {
+				ls_options |= LS_RECURSIVE;
+				traverse_gitlinks = 1;
 				break;
 			}
 			/* otherwise fallthru */
