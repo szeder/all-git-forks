@@ -635,6 +635,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	else
 		remote = remote_get(argv[0]);
 
+	if (remote->foreign_vcs) {
+		die("Using foreign VCSes for fetch is not yet supported.");
+	}
+
 	transport = transport_get(remote, remote->url[0]);
 	if (verbosity >= 2)
 		transport->verbose = 1;
