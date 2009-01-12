@@ -777,6 +777,7 @@ _git_diff ()
 			--no-prefix --src-prefix= --dst-prefix=
 			--base --ours --theirs
 			--inter-hunk-context=
+			--patience
 			"
 		return
 		;;
@@ -969,6 +970,7 @@ _git_log ()
 			--parents --children --full-history
 			--merge
 			--inter-hunk-context=
+			--patience
 			"
 		return
 		;;
