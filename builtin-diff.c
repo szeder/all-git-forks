@@ -279,9 +279,6 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	prefix = setup_git_directory_gently(&nongit);
 	git_config(git_diff_ui_config, NULL);
 
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
-
 	init_revisions(&rev, prefix);
 
 	/* If this is a no-index diff, just run it and exit there. */
