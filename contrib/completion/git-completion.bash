@@ -643,7 +643,6 @@ _git_branch ()
 	done
 
 	case "${COMP_WORDS[COMP_CWORD]}" in
-	--*=*)	COMPREPLY=() ;;
 	--*)
 		__gitcomp "
 			--color --no-color --verbose --abbrev= --no-abbrev
@@ -840,6 +839,8 @@ _git_format_patch ()
 			--not --all
 			--cover-letter
 			--no-prefix --src-prefix= --dst-prefix=
+			--inline --suffix= --ignore-if-in-upstream
+			--subject-prefix=
 			"
 		return
 		;;
@@ -947,6 +948,8 @@ _git_ls_tree ()
 	__git_complete_file
 }
 
+__git_log_pretty_formats="oneline short medium full fuller email raw format:"
+
 _git_log ()
 {
 	__git_has_doubledash && return
@@ -954,8 +957,7 @@ _git_log ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	case "$cur" in
 	--pretty=*)
-		__gitcomp "
-			oneline short medium full fuller email raw
+		__gitcomp "$__git_log_pretty_formats
 			" "" "${cur##--pretty=}"
 		return
 		;;
@@ -1484,8 +1486,7 @@ _git_show ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	case "$cur" in
 	--pretty=*)
-		__gitcomp "
-			oneline short medium full fuller email raw
+		__gitcomp "$__git_log_pretty_formats
 			" "" "${cur##--pretty=}"
 		return
 		;;
@@ -1691,7 +1692,6 @@ _git ()
 
 	if [ -z "$command" ]; then
 		case "${COMP_WORDS[COMP_CWORD]}" in
-		--*=*) COMPREPLY=() ;;
 		--*)   __gitcomp "
 			--paginate
 			--no-pager
