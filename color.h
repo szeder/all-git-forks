@@ -10,6 +10,8 @@
 extern int git_use_color_default;
 
 extern int branch_use_color;
+extern int diff_use_color_default;
+extern int wt_status_use_color;
 
 /*
  * Use this instead of git_default_config if you need the value of color.ui.

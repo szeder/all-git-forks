@@ -1,12 +1,12 @@
 #include "cache.h"
 #include "color.h"
-#include "diff.h"
-#include "wt-status.h"
 
 #define COLOR_RESET "\033[m"
 
 int git_use_color_default = 0;
 int branch_use_color = -1;
+int diff_use_color_default = -1;
+int wt_status_use_color = -1;
 
 static int parse_color(const char *name, int len)
 {

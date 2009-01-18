@@ -36,7 +36,6 @@ struct wt_status {
 };
 
 int git_status_config(const char *var, const char *value, void *cb);
-extern int wt_status_use_color;
 extern int wt_status_relative_paths;
 void wt_status_prepare(struct wt_status *s);
 void wt_status_print(struct wt_status *s);

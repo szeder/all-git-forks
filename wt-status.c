@@ -12,7 +12,6 @@
 #include "remote.h"
 
 int wt_status_relative_paths = 1;
-int wt_status_use_color = -1;
 int wt_status_submodule_summary;
 static char wt_status_colors[][COLOR_MAXLEN] = {
 	"",         /* WT_STATUS_HEADER: normal */
