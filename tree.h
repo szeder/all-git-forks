@@ -4,6 +4,7 @@
 #include "object.h"
 
 extern const char *tree_type;
+extern int traverse_gitlinks;
 
 struct tree {
 	struct object object;

@@ -7,6 +7,7 @@
 #include "tree-walk.h"
 
 const char *tree_type = "tree";
+int traverse_gitlinks;
 
 static int read_one_entry_opt(const unsigned char *sha1, const char *base, int baselen, const char *pathname, unsigned mode, int stage, int opt)
 {
@@ -114,16 +115,29 @@ int read_tree_recursive(struct tree *tree,
 		default:
 			return -1;
 		}
-		if (S_ISDIR(entry.mode)) {
+		if (S_ISDIR(entry.mode) || (traverse_gitlinks && S_ISGITLINK(entry.mode))) {
 			int retval;
 			char *newbase;
 			unsigned int pathlen = tree_entry_len(entry.path, entry.sha1);
+			struct commit *commit;
+			struct tree *node;
 
+			if (S_ISDIR(entry.mode)) {
+				node = lookup_tree(entry.sha1);
+			} else {
+				commit = lookup_commit_reference_gently(entry.sha1, 1);
+				if (!commit)
+					continue;
+				if (parse_commit(commit))
+					die("parse_commit(%s) failed",
+					    sha1_to_hex(entry.sha1));
+				node = commit->tree;
+			}
 			newbase = xmalloc(baselen + 1 + pathlen);
 			memcpy(newbase, base, baselen);
 			memcpy(newbase + baselen, entry.path, pathlen);
 			newbase[baselen + pathlen] = '/';
-			retval = read_tree_recursive(lookup_tree(entry.sha1),
+			retval = read_tree_recursive(node,
 						     newbase,
 						     baselen + pathlen + 1,
 						     stage, match, fn, context);
