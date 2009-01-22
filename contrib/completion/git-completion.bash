@@ -1392,7 +1392,7 @@ _git_config ()
 
 _git_remote ()
 {
-	local subcommands="add rm show prune update"
+	local subcommands="add rename rm show prune update"
 	local subcommand="$(__git_find_subcommand "$subcommands")"
 	if [ -z "$subcommand" ]; then
 		__gitcomp "$subcommands"
@@ -1400,7 +1400,7 @@ _git_remote ()
 	fi
 
 	case "$subcommand" in
-	rm|show|prune)
+	rename|rm|show|prune)
 		__gitcomp "$(__git_remotes)"
 		;;
 	update)
