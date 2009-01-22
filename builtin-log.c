@@ -236,9 +236,6 @@ int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 
 	git_config(git_log_config, NULL);
 
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
-
 	init_revisions(&rev, prefix);
 	rev.diff = 1;
 	rev.simplify_history = 0;
@@ -302,9 +299,6 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 	int i, count, ret = 0;
 
 	git_config(git_log_config, NULL);
-
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
 
 	init_revisions(&rev, prefix);
 	rev.diff = 1;
@@ -373,9 +367,6 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 
 	git_config(git_log_config, NULL);
 
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
-
 	init_revisions(&rev, prefix);
 	init_reflog_walk(&rev.reflog_info);
 	rev.abbrev_commit = 1;
@@ -405,9 +396,6 @@ int cmd_log(int argc, const char **argv, const char *prefix)
 	struct rev_info rev;
 
 	git_config(git_log_config, NULL);
-
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
 
 	init_revisions(&rev, prefix);
 	rev.always_show_header = 1;
