@@ -7,7 +7,6 @@
  */
 #include "cache.h"
 #include "exec_cmd.h"
-#include "color.h"
 
 #define MAXNAME (256)
 
@@ -638,10 +637,8 @@ int git_config(config_fn_t fn, void *data)
 	const char *home = NULL;
 
 	/* Setting $GIT_CONFIG makes git read _only_ the given config file. */
-	if (config_exclusive_filename) {
-		ret += git_config_from_file(fn, config_exclusive_filename, data);
-		goto finish;
-	}
+	if (config_exclusive_filename)
+		return git_config_from_file(fn, config_exclusive_filename, data);
 	if (git_config_system() && !access(git_etc_gitconfig(), R_OK))
 		ret += git_config_from_file(fn, git_etc_gitconfig(),
 					    data);
@@ -657,8 +654,6 @@ int git_config(config_fn_t fn, void *data)
 	repo_config = git_pathdup("config");
 	ret += git_config_from_file(fn, repo_config, data);
 	free(repo_config);
- finish:
-	git_finish_color_config();
 	return ret;
 }
 
