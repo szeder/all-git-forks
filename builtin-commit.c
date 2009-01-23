@@ -71,6 +71,29 @@ static int use_editor = 1, initial_commit, in_merge;
 static const char *only_include_assumed;
 static struct strbuf message;
 
+enum {
+	MSG_AMEND_CLEVER,
+	MSG_ASSUME_PARTIAL,
+};
+
+static void set_partial_commit_message(int msgnum)
+{
+	const char *msg;
+
+	switch (msgnum) {
+	case MSG_AMEND_CLEVER:
+		msg = "Clever... amending the last one with dirty index.";
+		break;
+	case MSG_ASSUME_PARTIAL:
+		msg = "Explicit paths specified without -i nor -o; assuming --only paths...";
+		break;
+	default:
+		die("Oops (%d) is not a valid message number", msgnum);
+		break;
+	}
+	only_include_assumed = msg;
+}
+
 static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 {
 	struct strbuf *buf = opt->value;
@@ -788,9 +811,9 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (argc == 0 && (also || (only && !amend)))
 		die("No paths with --include/--only does not make sense.");
 	if (argc == 0 && only && amend)
-		only_include_assumed = "Clever... amending the last one with dirty index.";
+		set_partial_commit_message(MSG_AMEND_CLEVER);
 	if (argc > 0 && !also && !only)
-		only_include_assumed = "Explicit paths specified without -i nor -o; assuming --only paths...";
+		set_partial_commit_message(MSG_ASSUME_PARTIAL);
 	if (!cleanup_arg || !strcmp(cleanup_arg, "default"))
 		cleanup_mode = use_editor ? CLEANUP_ALL : CLEANUP_SPACE;
 	else if (!strcmp(cleanup_arg, "verbatim"))
