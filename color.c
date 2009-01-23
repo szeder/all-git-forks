@@ -4,9 +4,6 @@
 #define COLOR_RESET "\033[m"
 
 int git_use_color_default = 0;
-int branch_use_color = -1;
-int diff_use_color_default = -1;
-int wt_status_use_color = -1;
 
 static int parse_color(const char *name, int len)
 {
@@ -167,19 +164,6 @@ int git_color_default_config(const char *var, const char *value, void *cb)
 	}
 
 	return git_default_config(var, value, cb);
-}
-
-void git_finish_color_config(void)
-{
-	if (git_use_color_default) {
-		/* Enable colors, if undefined in the config files */
-		if (branch_use_color == -1)
-			branch_use_color = git_use_color_default;
-		if (diff_use_color_default == -1)
-			diff_use_color_default = git_use_color_default;
-		if (wt_status_use_color == -1)
-			wt_status_use_color = git_use_color_default;
-	}
 }
 
 static int color_vfprintf(FILE *fp, const char *color, const char *fmt,

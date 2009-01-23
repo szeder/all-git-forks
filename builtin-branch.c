@@ -30,6 +30,7 @@ static const char * const builtin_branch_usage[] = {
 static const char *head;
 static unsigned char head_sha1[20];
 
+static int branch_use_color = -1;
 static char branch_colors[][COLOR_MAXLEN] = {
 	"\033[m",	/* reset */
 	"",		/* PLAIN (normal) */
@@ -551,6 +552,9 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	};
 
 	git_config(git_branch_config, NULL);
+
+	if (branch_use_color == -1)
+		branch_use_color = git_use_color_default;
 
 	track = git_branch_track;
 
