@@ -399,7 +399,7 @@ test_expect_success 'allow --include during a merge' '
 	git reset --hard
 '
 
-test_expect_failure 'assume --include during a merge' '
+test_expect_success 'assume --include during a merge' '
 	git checkout HEAD^0 &&
 	git reset --hard the-other-side-says-nitfol &&
 	test_must_fail git merge one-side-says-frotz &&

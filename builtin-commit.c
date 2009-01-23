@@ -74,6 +74,7 @@ static struct strbuf message;
 enum {
 	MSG_AMEND_CLEVER,
 	MSG_ASSUME_PARTIAL,
+	MSG_ASSUME_ALSO_DURING_MERGE
 };
 
 static void set_partial_commit_message(int msgnum)
@@ -86,6 +87,9 @@ static void set_partial_commit_message(int msgnum)
 		break;
 	case MSG_ASSUME_PARTIAL:
 		msg = "Explicit paths specified without -i nor -o; assuming --only paths...";
+		break;
+	case MSG_ASSUME_ALSO_DURING_MERGE:
+		msg = "Paths specified without -i nor -o during a merge; assuming -i";
 		break;
 	default:
 		die("Oops (%d) is not a valid message number", msgnum);
@@ -812,8 +816,14 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		die("No paths with --include/--only does not make sense.");
 	if (argc == 0 && only && amend)
 		set_partial_commit_message(MSG_AMEND_CLEVER);
-	if (argc > 0 && !also && !only)
-		set_partial_commit_message(MSG_ASSUME_PARTIAL);
+	if (argc > 0 && !also && !only) {
+		if (!in_merge)
+			set_partial_commit_message(MSG_ASSUME_PARTIAL);
+		else {
+			set_partial_commit_message(MSG_ASSUME_ALSO_DURING_MERGE);
+			also = 1;
+		}
+	}
 	if (!cleanup_arg || !strcmp(cleanup_arg, "default"))
 		cleanup_mode = use_editor ? CLEANUP_ALL : CLEANUP_SPACE;
 	else if (!strcmp(cleanup_arg, "verbatim"))
