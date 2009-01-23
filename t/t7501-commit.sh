@@ -365,4 +365,48 @@ test_expect_success 'amend using the message from a commit named with tag' '
 
 '
 
+test_expect_success 'setup merge commit with paths test' '
+	git reset --hard &&
+	git checkout HEAD^0 &&
+	echo frotz >file &&
+	test_tick &&
+	git add file &&
+	git commit -a -m "one side says frotz" &&
+	git tag one-side-says-frotz &&
+	git reset --hard HEAD^ &&
+	echo nitfol >file &&
+	test_tick &&
+	git add file &&
+	git commit -a -m "the other side says nitfol" &&
+	git tag the-other-side-says-nitfol
+'
+
+test_expect_success 'reject --only during a merge' '
+	git checkout HEAD^0 &&
+	git reset --hard the-other-side-says-nitfol &&
+	test_must_fail git merge one-side-says-frotz &&
+	echo yomin-only >file &&
+	test_must_fail git commit -m merge --only file &&
+	git reset --hard
+'
+
+test_expect_success 'allow --include during a merge' '
+	git checkout HEAD^0 &&
+	git reset --hard the-other-side-says-nitfol &&
+	test_must_fail git merge one-side-says-frotz &&
+	echo yomin-include >file &&
+	git commit -m merge --include file &&
+	git reset --hard
+'
+
+test_expect_failure 'assume --include during a merge' '
+	git checkout HEAD^0 &&
+	git reset --hard the-other-side-says-nitfol &&
+	test_must_fail git merge one-side-says-frotz &&
+	echo yomin-assumed >file &&
+	git add file &&
+	git commit -m merge file &&
+	git reset --hard
+'
+
 test_done
