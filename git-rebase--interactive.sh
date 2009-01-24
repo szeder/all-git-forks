@@ -877,7 +877,8 @@ first and then run 'git rebase --continue' again."
 		if test -z "$REBASE_ROOT"
 		then
 			UPSTREAM_ARG="$1"
-			UPSTREAM=$(git rev-parse --verify "$1") || die "Invalid base"
+			UPSTREAM=$(git rev-parse --verify "$1") ||
+				die "Invalid base"
 			test -z "$ONTO" && ONTO=$UPSTREAM
 			shift
 		else
@@ -885,6 +886,7 @@ first and then run 'git rebase --continue' again."
 			UPSTREAM_ARG=--root
 			test -z "$ONTO" &&
 				die "You must specify --onto when using --root"
+			UPSTREAM=$ONTO
 		fi
 		run_pre_rebase_hook "$UPSTREAM_ARG" "$@"
 
@@ -941,16 +943,9 @@ first and then run 'git rebase --continue' again."
 
 		SHORTHEAD=$(git rev-parse --short $HEAD)
 		SHORTONTO=$(git rev-parse --short $ONTO)
-		if test -z "$REBASE_ROOT"
-			# this is now equivalent to ! -z "$UPSTREAM"
-		then
-			SHORTUPSTREAM=$(git rev-parse --short $UPSTREAM)
-			REVISIONS=$UPSTREAM...$HEAD
-			SHORTREVISIONS=$SHORTUPSTREAM..$SHORTHEAD
-		else
-			REVISIONS=$ONTO...$HEAD
-			SHORTREVISIONS=$SHORTHEAD
-		fi
+		SHORTUPSTREAM=$(git rev-parse --short $UPSTREAM)
+		REVISIONS=$UPSTREAM...$HEAD
+		SHORTREVISIONS=$SHORTUPSTREAM..$SHORTHEAD
 		git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
 			--abbrev=7 --reverse --left-right --topo-order \
 			$REVISIONS | \
