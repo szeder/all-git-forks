@@ -83,8 +83,6 @@ FIXUP_MSG="$DOTEST"/message-fixup
 # example.)
 REWRITTEN="$DOTEST"/rewritten
 
-DROPPED="$DOTEST"/dropped
-
 # $MARK is a directory which contains a file named after each mark set
 # by the 'mark' rebase command, containing the sha1 of the marked commit.
 MARK="$DOTEST"/mark
@@ -842,26 +840,35 @@ prepare_preserve_merges () {
 	first_after_upstream="$(git rev-list --reverse --first-parent $UPSTREAM..$HEAD | head -n 1)"
 
 	# Watch for commits that been dropped by --cherry-pick
-	mkdir "$DROPPED"
-	# Save all non-cherry-picked changes
-	git rev-list $REVISIONS --left-right --cherry-pick | \
-		sed -n "s/^>//p" > "$DOTEST"/not-cherry-picks
-	# Now all commits and note which ones are missing in
-	# not-cherry-picks and hence being dropped
-	git rev-list $REVISIONS |
-	while read rev
+	# The idea is that all commits that are already in upstream
+	# have a mapping $(cat "$REWRITTEN"/<my-sha1>) = <upstream-sha1>
+	# as if they were rewritten.
+
+	# Get all patch ids
+	# --cherry-pick only analyzes first parent, -m analyzes _all_ parents!
+	# So take only the first patch-id for each commit id (uniq -f1).
+	git log -m -p $UPSTREAM..$HEAD | git patch-id |
+		uniq -s 41 > "$REWRITTEN"/ours
+	git log -m -p $HEAD..$UPSTREAM | git patch-id |
+		uniq -s 41 > "$REWRITTEN"/upstream
+
+	# Now get the correspondences
+	cat "$REWRITTEN"/ours | while read patch_id commit
 	do
-		if test -f "$REWRITTEN"/$rev -a "$(sane_grep "$rev" "$DOTEST"/not-cherry-picks)" = ""
-		then
-			# Use -f2 because if rev-list is telling us this commit is
-			# not worthwhile, we don't want to track its multiple heads,
-			# just the history of its first-parent for others that will
-			# be rebasing on top of it
-			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$DROPPED"/$rev
-			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
-			sane_grep -v "^[a-z][a-z]* $short" <"$TODO" > "${TODO}2" ; mv "${TODO}2" "$TODO"
-			rm "$REWRITTEN"/$rev
-		fi
+		# Is the same patch id in the upstream?
+		sane_grep "^$patch_id " < "$REWRITTEN"/upstream 2> /dev/null ||
+		continue
+
+		# Record the parent as "rewritten" commit.  As we will resolve
+		# rewritten commits recursively, this will work even if the
+		# parent was rewritten, too.
+		#
+		# If there is no parent, then we have a root commit that
+		# was cherry-picked into upstream; let's use $ONTO as
+		# fake parent of that root commit.
+		upstream=$(git rev-parse --verify "$commit^" 2> /dev/null)
+		test ! -z "$upstream" || upstream=$ONTO
+		echo "$upstream" > "$REWRITTEN"/$commit
 	done
 }
 
