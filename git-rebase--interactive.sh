@@ -821,6 +821,62 @@ parse_onto () {
 	git rev-parse --verify "$1^0"
 }
 
+generate_script () {
+	git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
+		--abbrev=7 --reverse --left-right --topo-order \
+		$REVISIONS | \
+		sed -n "s/^>//p" |
+	while read shortsha1 rest
+	do
+		if test t != "$PRESERVE_MERGES"
+		then
+			echo "pick $shortsha1 $rest" >> "$TODO"
+		else
+			sha1=$(git rev-parse $shortsha1)
+			if test -z "$REBASE_ROOT"
+			then
+				preserve=t
+				for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
+				do
+					if test -f "$REWRITTEN"/$p -a \( $p != $ONTO -o $sha1 = $first_after_upstream \)
+					then
+						preserve=f
+					fi
+				done
+			else
+				preserve=f
+			fi
+			if test f = "$preserve"
+			then
+				touch "$REWRITTEN"/$sha1
+				echo "pick $shortsha1 $rest" >> "$TODO"
+			fi
+		fi
+	done
+
+	test -s "$TODO" || echo noop >> "$TODO"
+	test -n "$AUTOSQUASH" && rearrange_squash "$TODO"
+	cat >> "$TODO" << EOF
+
+# Rebase $SHORTREVISIONS onto $SHORTONTO
+#
+# Commands:
+#  p, pick = use commit
+#  r, reword = use commit, but edit the commit message
+#  e, edit = use commit, but stop for amending
+#  s, squash = use commit, but meld into previous commit
+#  f, fixup = like "squash", but discard this commit's log message
+#  g, goto = reset the current state to the given commit
+#  x, exec = run command (the rest of the line) using shell
+#  m, merge parents <parents> original <original merge commit>
+#          = redo the given merge commit
+#
+# If you remove a line here THAT COMMIT WILL BE LOST.
+# However, if you remove everything, the rebase will be aborted.
+#
+EOF
+}
+
 while test $# != 0
 do
 	case "$1" in
@@ -1034,37 +1090,6 @@ first and then run 'git rebase --continue' again."
 		SHORTUPSTREAM=$(git rev-parse --short $UPSTREAM)
 		REVISIONS=$UPSTREAM...$HEAD
 		SHORTREVISIONS=$SHORTUPSTREAM..$SHORTHEAD
-		git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
-			--abbrev=7 --reverse --left-right --topo-order \
-			$REVISIONS | \
-			sed -n "s/^>//p" |
-		while read -r shortsha1 rest
-		do
-			if test t != "$PRESERVE_MERGES"
-			then
-				printf '%s\n' "pick $shortsha1 $rest" >> "$TODO"
-			else
-				sha1=$(git rev-parse $shortsha1)
-				if test -z "$REBASE_ROOT"
-				then
-					preserve=t
-					for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
-					do
-						if test -f "$REWRITTEN"/$p -a \( $p != $ONTO -o $sha1 = $first_after_upstream \)
-						then
-							preserve=f
-						fi
-					done
-				else
-					preserve=f
-				fi
-				if test f = "$preserve"
-				then
-					touch "$REWRITTEN"/$sha1
-					printf '%s\n' "pick $shortsha1 $rest" >> "$TODO"
-				fi
-			fi
-		done
 
 		# Watch for commits that been dropped by --cherry-pick
 		if test t = "$PRESERVE_MERGES"
@@ -1092,26 +1117,7 @@ first and then run 'git rebase --continue' again."
 			done
 		fi
 
-		test -s "$TODO" || echo noop >> "$TODO"
-		test -n "$AUTOSQUASH" && rearrange_squash "$TODO"
-		cat >> "$TODO" << EOF
-
-# Rebase $SHORTREVISIONS onto $SHORTONTO
-#
-# Commands:
-#  p, pick = use commit
-#  r, reword = use commit, but edit the commit message
-#  e, edit = use commit, but stop for amending
-#  s, squash = use commit, but meld into previous commit
-#  f, fixup = like "squash", but discard this commit's log message
-#  x, exec = run command (the rest of the line) using shell
-#  m, merge parents <parents> original <original merge commit>
-#          = redo the given merge commit
-#
-# If you remove a line here THAT COMMIT WILL BE LOST.
-# However, if you remove everything, the rebase will be aborted.
-#
-EOF
+		generate_script
 
 		has_action "$TODO" ||
 			die_abort "Nothing to do"
