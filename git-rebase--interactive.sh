@@ -170,6 +170,27 @@ comment_for_reflog () {
 	esac
 }
 
+peek_next_command () {
+	sed -n -e "/^#/d" -e '/^$/d' -e "s/ .*//p" -e "q" < "$TODO"
+}
+
+# expects the original commit name(s) in "$REWRITTEN"/original
+# records the current HEAD as the rewritten commit
+add_rewritten () {
+	test ! -d "$REWRITTEN" && return
+	for original in $(cat "$REWRITTEN"/original)
+	do
+		original=$(git rev-parse --verify "$original") &&
+		rewritten=$(git rev-parse --verify HEAD) &&
+		echo $rewritten > "$REWRITTEN"/$original || break
+	done &&
+	case "$(peek_next_command)" in
+	squash|s) ;; # do nothing
+	*) rm "$REWRITTEN"/original;;
+	esac ||
+	die "Could not store information about rewritten commit"
+}
+
 last_count=
 mark_action_done () {
 	sed -e 1q < "$TODO" >> "$DONE"
@@ -405,10 +426,6 @@ update_squash_messages () {
 		commit_message $2 | sed -e 's/^/#	/'
 		;;
 	esac >>"$SQUASH_MSG"
-}
-
-peek_next_command () {
-	sed -n -e "/^#/d" -e '/^$/d' -e "s/ .*//p" -e "q" < "$TODO"
 }
 
 # A squash/fixup has failed.  Prepare the long version of the squash
