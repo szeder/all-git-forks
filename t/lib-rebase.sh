@@ -50,7 +50,7 @@ grep -v '^#' < "$1" > "$1".tmp
 rm -f "$1"
 echo 'rebase -i script before editing:'
 cat "$1".tmp
-action=pick
+action=\&
 for line in $FAKE_LINES; do
 	case $line in
 	squash|fixup|edit|reword)
@@ -62,8 +62,8 @@ for line in $FAKE_LINES; do
 	">")
 		echo >> "$1";;
 	*)
-		sed -n "${line}s/^pick/$action/p" < "$1".tmp >> "$1"
-		action=pick;;
+		sed -n "${line}s/^[^ ]*/$action/p" < "$1".tmp >> "$1"
+		action=\&;;
 	esac
 done
 test -z "$DEBUG_EDIT" || cp "$1" edit.$n.edited
