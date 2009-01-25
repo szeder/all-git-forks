@@ -265,6 +265,29 @@ pick_one () {
 	output git cherry-pick $ff "$@"
 }
 
+merge_one () {
+	cmd="merge $*"
+	test "$1" = parents && shift
+	parents=
+	while test "original" != "$1"
+	do
+		parents="$parents $(parse_commit $1)"
+		shift
+	done
+
+	test "original" != "$1" &&
+		die "Could not determine original merge commit from $cmd"
+
+	sha1=$2; shift; shift
+
+	# the command was "merge parents ...", so "parents" was recorded
+	echo "$sha1" > "$REWRITTEN"/original &&
+	git merge -m "$*" $parents &&
+	add_rewritten ||
+	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
+	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
+}
+
 pick_one_preserving_merges () {
 	fast_forward=t
 	case "$1" in
@@ -604,6 +627,12 @@ do_next () {
 		mark_action_done
 		git reset --hard "$(parse_commit $sha1)" || \
 			die "Failed to reset: $sha1"
+		;;
+	merge|m)
+		comment_for_reflog merge
+		mark_action_done
+		# this already dies with patch on error
+		merge_one $sha1 $rest # $sha1 is not really the sha1...
 		;;
 	*)
 		warn "Unknown command: $command $sha1 $rest"
@@ -1063,6 +1092,8 @@ first and then run 'git rebase --continue' again."
 #  s, squash = use commit, but meld into previous commit
 #  f, fixup = like "squash", but discard this commit's log message
 #  x, exec = run command (the rest of the line) using shell
+#  m, merge parents <parents> original <original merge commit>
+#          = redo the given merge commit
 #
 # If you remove a line here THAT COMMIT WILL BE LOST.
 # However, if you remove everything, the rebase will be aborted.
