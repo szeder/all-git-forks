@@ -24,6 +24,14 @@
 set_fake_editor () {
 	echo "#!$SHELL_PATH" >fake-editor.sh
 	cat >> fake-editor.sh <<\EOF
+test -z "$DEBUG_EDIT" || {
+	n=1
+	while test -f edit.$n
+	do
+		n=$(($n+1))
+	done
+	cp "$1" edit.$n
+}
 case "$1" in
 */COMMIT_EDITMSG)
 	test -z "$EXPECT_HEADER_COUNT" ||
@@ -31,12 +39,12 @@ case "$1" in
 		exit
 	test -z "$FAKE_COMMIT_MESSAGE" || echo "$FAKE_COMMIT_MESSAGE" > "$1"
 	test -z "$FAKE_COMMIT_AMEND" || echo "$FAKE_COMMIT_AMEND" >> "$1"
+	test -z "$DEBUG_EDIT" || cp "$1" edit.$n.edited
 	exit
 	;;
 esac
 test -z "$EXPECT_COUNT" ||
-	test "$EXPECT_COUNT" = $(sed -e '/^#/d' -e '/^$/d' < "$1" | wc -l) ||
-	exit
+test "$EXPECT_COUNT" = $(sed -e '/^#/d' -e '/^$/d' < "$1" | wc -l) || exit
 test -z "$FAKE_LINES" && exit
 grep -v '^#' < "$1" > "$1".tmp
 rm -f "$1"
@@ -58,6 +66,7 @@ for line in $FAKE_LINES; do
 		action=pick;;
 	esac
 done
+test -z "$DEBUG_EDIT" || cp "$1" edit.$n.edited
 echo 'rebase -i script after editing:'
 cat "$1"
 EOF
