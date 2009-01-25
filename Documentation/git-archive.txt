@@ -58,6 +58,11 @@ OPTIONS
 --worktree-attributes::
 	Look for attributes in .gitattributes in working directory too.
 
+--submodules[=<spec>]::
+	Include the content of submodules in the archive. The specification
+	of which submodules to include can be either 'checkedout' (default)
+	or 'all'.
+
 <extra>::
 	This can be any options that the archiver backend understands.
 	See next section.

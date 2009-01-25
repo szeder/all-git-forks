@@ -276,8 +276,7 @@ static int link_alt_odb_entry(const char * entry, int len, const char * relative
 
 	/* Detect cases where alternate disappeared */
 	if (!is_directory(ent->base)) {
-		error("object directory %s does not exist; "
-		      "check .git/objects/info/alternates.",
+		error("Alternate object directory %s does not exist",
 		      ent->base);
 		free(ent);
 		return -1;
@@ -2714,4 +2713,12 @@ void assert_sha1_type(const unsigned char *sha1, enum object_type expect)
 	if (type != expect)
 		die("%s is not a valid '%s' object", sha1_to_hex(sha1),
 		    typename(expect));
+}
+
+int add_alt_odb(const char *path)
+{
+	int err = link_alt_odb_entry(path, strlen(path), NULL, 0);
+	if (!err)
+		prepare_packed_git_one((char *)path, 0);
+	return err;
 }
