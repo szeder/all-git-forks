@@ -821,42 +821,8 @@ parse_onto () {
 	git rev-parse --verify "$1^0"
 }
 
-generate_script () {
-	git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
-		--abbrev=7 --reverse --left-right --topo-order \
-		$REVISIONS | \
-		sed -n "s/^>//p" |
-	while read shortsha1 rest
-	do
-		if test t != "$PRESERVE_MERGES"
-		then
-			echo "pick $shortsha1 $rest" >> "$TODO"
-		else
-			sha1=$(git rev-parse $shortsha1)
-			if test -z "$REBASE_ROOT"
-			then
-				preserve=t
-				for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
-				do
-					if test -f "$REWRITTEN"/$p -a \( $p != $ONTO -o $sha1 = $first_after_upstream \)
-					then
-						preserve=f
-					fi
-				done
-			else
-				preserve=f
-			fi
-			if test f = "$preserve"
-			then
-				touch "$REWRITTEN"/$sha1
-				echo "pick $shortsha1 $rest" >> "$TODO"
-			fi
-		fi
-	done
-
-	test -s "$TODO" || echo noop >> "$TODO"
-	test -n "$AUTOSQUASH" && rearrange_squash "$TODO"
-	cat >> "$TODO" << EOF
+generate_script_help () {
+	cat << EOF
 
 # Rebase $SHORTREVISIONS onto $SHORTONTO
 #
@@ -875,6 +841,45 @@ generate_script () {
 # However, if you remove everything, the rebase will be aborted.
 #
 EOF
+}
+
+generate_script () {
+	test -z "$(git rev-list $MERGES_OPTION --cherry-pick $REVISIONS)" && {
+		echo noop
+		return
+	}
+
+	git rev-list $MERGES_OPTION --pretty=oneline --abbrev-commit \
+		--abbrev=7 --reverse --left-right --topo-order \
+		$REVISIONS | \
+		sed -n "s/^>//p" |
+	while read shortsha1 rest
+	do
+		if test t != "$PRESERVE_MERGES"
+		then
+			echo "pick $shortsha1 $rest"
+		else
+			sha1=$(git rev-parse $shortsha1)
+			if test -z "$REBASE_ROOT"
+			then
+				preserve=t
+				for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
+				do
+					if test -f "$REWRITTEN"/$p -a \( $p != $ONTO -o $sha1 = $first_after_upstream \)
+					then
+						preserve=f
+					fi
+				done
+			else
+				preserve=f
+			fi
+			if test f = "$preserve"
+			then
+				touch "$REWRITTEN"/$sha1
+				echo "pick $shortsha1 $rest"
+			fi
+		fi
+	done
 }
 
 while test $# != 0
@@ -1117,7 +1122,9 @@ first and then run 'git rebase --continue' again."
 			done
 		fi
 
-		generate_script
+		generate_script > "$TODO"
+		test -n "$AUTOSQUASH" && rearrange_squash "$TODO"
+		generate_script_help >> "$TODO"
 
 		has_action "$TODO" ||
 			die_abort "Nothing to do"
