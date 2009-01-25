@@ -821,6 +821,50 @@ parse_onto () {
 	git rev-parse --verify "$1^0"
 }
 
+prepare_preserve_merges () {
+	if test -z "$REBASE_ROOT"
+	then
+		mkdir "$REWRITTEN" &&
+		for c in $(git merge-base --all $HEAD $UPSTREAM)
+		do
+			echo $ONTO > "$REWRITTEN"/$c ||
+				die "Could not init rewritten commits"
+		done
+	else
+		mkdir "$REWRITTEN" &&
+		echo $ONTO > "$REWRITTEN"/root ||
+			die "Could not init rewritten commits"
+	fi
+	# No cherry-pick because our first pass is to determine
+	# parents to rewrite and skipping dropped commits would
+	# prematurely end our probe
+	MERGES_OPTION=
+	first_after_upstream="$(git rev-list --reverse --first-parent $UPSTREAM..$HEAD | head -n 1)"
+
+	# Watch for commits that been dropped by --cherry-pick
+	mkdir "$DROPPED"
+	# Save all non-cherry-picked changes
+	git rev-list $REVISIONS --left-right --cherry-pick | \
+		sed -n "s/^>//p" > "$DOTEST"/not-cherry-picks
+	# Now all commits and note which ones are missing in
+	# not-cherry-picks and hence being dropped
+	git rev-list $REVISIONS |
+	while read rev
+	do
+		if test -f "$REWRITTEN"/$rev -a "$(sane_grep "$rev" "$DOTEST"/not-cherry-picks)" = ""
+		then
+			# Use -f2 because if rev-list is telling us this commit is
+			# not worthwhile, we don't want to track its multiple heads,
+			# just the history of its first-parent for others that will
+			# be rebasing on top of it
+			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$DROPPED"/$rev
+			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
+			sane_grep -v "^[a-z][a-z]* $short" <"$TODO" > "${TODO}2" ; mv "${TODO}2" "$TODO"
+			rm "$REWRITTEN"/$rev
+		fi
+	done
+}
+
 generate_script_help () {
 	cat << EOF
 
@@ -1066,29 +1110,6 @@ first and then run 'git rebase --continue' again."
 		echo $ONTO > "$DOTEST"/onto
 		test -z "$STRATEGY" || echo "$STRATEGY" > "$DOTEST"/strategy
 		test t = "$VERBOSE" && : > "$DOTEST"/verbose
-		if test t = "$PRESERVE_MERGES"
-		then
-			if test -z "$REBASE_ROOT"
-			then
-				mkdir "$REWRITTEN" &&
-				for c in $(git merge-base --all $HEAD $UPSTREAM)
-				do
-					echo $ONTO > "$REWRITTEN"/$c ||
-						die "Could not init rewritten commits"
-				done
-			else
-				mkdir "$REWRITTEN" &&
-				echo $ONTO > "$REWRITTEN"/root ||
-					die "Could not init rewritten commits"
-			fi
-			# No cherry-pick because our first pass is to determine
-			# parents to rewrite and skipping dropped commits would
-			# prematurely end our probe
-			MERGES_OPTION=
-			first_after_upstream="$(git rev-list --reverse --first-parent $UPSTREAM..$HEAD | head -n 1)"
-		else
-			MERGES_OPTION="--no-merges --cherry-pick"
-		fi
 
 		SHORTHEAD=$(git rev-parse --short $HEAD)
 		SHORTONTO=$(git rev-parse --short $ONTO)
@@ -1096,31 +1117,8 @@ first and then run 'git rebase --continue' again."
 		REVISIONS=$UPSTREAM...$HEAD
 		SHORTREVISIONS=$SHORTUPSTREAM..$SHORTHEAD
 
-		# Watch for commits that been dropped by --cherry-pick
-		if test t = "$PRESERVE_MERGES"
-		then
-			mkdir "$DROPPED"
-			# Save all non-cherry-picked changes
-			git rev-list $REVISIONS --left-right --cherry-pick | \
-				sed -n "s/^>//p" > "$DOTEST"/not-cherry-picks
-			# Now all commits and note which ones are missing in
-			# not-cherry-picks and hence being dropped
-			git rev-list $REVISIONS |
-			while read rev
-			do
-				if test -f "$REWRITTEN"/$rev -a "$(sane_grep "$rev" "$DOTEST"/not-cherry-picks)" = ""
-				then
-					# Use -f2 because if rev-list is telling us this commit is
-					# not worthwhile, we don't want to track its multiple heads,
-					# just the history of its first-parent for others that will
-					# be rebasing on top of it
-					git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$DROPPED"/$rev
-					short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
-					sane_grep -v "^[a-z][a-z]* $short" <"$TODO" > "${TODO}2" ; mv "${TODO}2" "$TODO"
-					rm "$REWRITTEN"/$rev
-				fi
-			done
-		fi
+		MERGES_OPTION="--no-merges --cherry-pick"
+		test t = "$PRESERVE_MERGES" && prepare_preserve_merges
 
 		generate_script > "$TODO"
 		test -n "$AUTOSQUASH" && rearrange_squash "$TODO"
