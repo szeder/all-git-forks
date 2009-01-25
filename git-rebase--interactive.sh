@@ -254,6 +254,7 @@ pick_one () {
 	ff=--ff
 	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
 	case "$NEVER_FF" in '') ;; ?*) ff= ;; esac
+	test -d "$REWRITTEN" && echo "$sha1" >> "$REWRITTEN"/original
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
 	test -d "$REWRITTEN" &&
 		pick_one_preserving_merges "$@" && return
@@ -300,6 +301,7 @@ pick_one_preserving_merges () {
 		;;
 	esac
 	sha1=$(git rev-parse $sha1)
+	echo $sha1 > "$REWRITTEN"/original
 
 	if test -f "$DOTEST"/current-commit
 	then
@@ -509,7 +511,7 @@ do_next () {
 		comment_for_reflog pick
 
 		mark_action_done
-		pick_one $sha1 ||
+		pick_one $sha1 && add_rewritten ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -585,6 +587,7 @@ do_next () {
 			rm -f "$SQUASH_MSG" "$FIXUP_MSG"
 			;;
 		esac
+		add_rewritten
 		record_in_rewritten $sha1
 		;;
 	x|"exec")
@@ -844,7 +847,8 @@ do
 		# do we have anything to commit?
 		if git diff-index --cached --quiet --ignore-submodules HEAD --
 		then
-			: Nothing to commit -- skip this
+			: Nothing to commit
+			add_rewritten
 		else
 			. "$AUTHOR_SCRIPT" ||
 				die "Cannot find the author identity"
@@ -859,7 +863,8 @@ first and then run 'git rebase --continue' again."
 				git reset --soft HEAD^ ||
 				die "Cannot rewind the HEAD"
 			fi
-			do_with_author git commit --no-verify -F "$MSG" -e || {
+			do_with_author git commit --no-verify -F "$MSG" -e &&
+			add_rewritten || {
 				test -n "$amend" && git reset --soft $amend
 				die "Could not commit staged changes."
 			}
@@ -897,6 +902,14 @@ first and then run 'git rebase --continue' again."
 		git rerere clear
 		test -d "$DOTEST" || die "No interactive rebase running"
 
+		test -d "$REWRITTEN" && {
+			# skip last to-be-rewritten commit
+			original_count=$(wc -l < "$REWRITTEN"/original)
+			test $original_count -gt 0 &&
+			head -n $(($original_count-1)) < "$REWRITTEN"/original \
+				> "$REWRITTEN"/original.new &&
+			mv "$REWRITTEN"/original.new "$REWRITTEN"/original
+		}
 		output git reset --hard && do_rest
 		;;
 	-s)
