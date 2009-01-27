@@ -855,6 +855,7 @@ generate_script () {
 			echo "merge parents $parents original $(get_oneline $shortsha1)"
 			for parent in $rest
 			do
+# TODO: add information about "dropped" commits, just because we can
 				echo "#    parent $(get_oneline $parent)"
 			done
 		fi
