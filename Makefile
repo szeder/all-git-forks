@@ -822,6 +822,7 @@ ifeq ($(uname_S),Darwin)
 			BASIC_LDFLAGS += -L/opt/local/lib
 		endif
 	endif
+	PTHREAD_LIBS =
 endif
 
 ifndef CC_LD_DYNPATH
