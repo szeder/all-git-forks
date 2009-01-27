@@ -23,7 +23,8 @@ test_expect_success 'prepare repository' '
 '
 
 test_expect_success 'rebase --root expects --onto' '
-	test_must_fail git rebase --root
+	test_must_fail git rebase --root 2> output2 &&
+	grep -e --onto output2
 '
 
 test_expect_success 'setup pre-rebase hook' '
@@ -53,6 +54,7 @@ test_expect_success 'pre-rebase got correct input (1)' '
 '
 
 test_expect_success 'rebase --root --onto <newbase> <branch>' '
+	git reset --hard HEAD^ &&
 	git branch work2 other &&
 	git rebase --root --onto master work2 &&
 	git log --pretty=tformat:"%s" > rebased2 &&
