@@ -506,7 +506,7 @@ sub evaluate_path_info {
 	}
 	# do not change any parameters if an action is given using the query string
 	return if $action;
-	$path_info =~ s,^$project/*,,;
+	$path_info =~ s,^\Q$project\E/*,,;
 	my ($refname, $pathname) = split(/:/, $path_info, 2);
 	if (defined $pathname) {
 		# we got "project.git/branch:filename" or "project.git/branch:dir/"
@@ -628,7 +628,7 @@ sub href(%) {
 	my ($use_pathinfo) = gitweb_check_feature('pathinfo');
 	if ($use_pathinfo) {
 		# use PATH_INFO for project name
-		$href .= "/$params{'project'}" if defined $params{'project'};
+		$href .= "/".esc_url($params{'project'}) if defined $params{'project'};
 		delete $params{'project'};
 
 		# Summary just uses the project path URL
@@ -2570,7 +2570,7 @@ EOF
 		my $action = $my_uri;
 		my ($use_pathinfo) = gitweb_check_feature('pathinfo');
 		if ($use_pathinfo) {
-			$action .= "/$project";
+			$action .= "/".esc_url($project);
 		} else {
 			$cgi->param("p", $project);
 		}
@@ -2676,7 +2676,7 @@ sub git_print_page_nav {
 }
 
 sub format_paging_nav {
-	my ($action, $hash, $head, $page, $nrevs) = @_;
+	my ($action, $hash, $head, $page, $has_next_link) = @_;
 	my $paging_nav;
 
 
@@ -2694,7 +2694,7 @@ sub format_paging_nav {
 		$paging_nav .= " &sdot; prev";
 	}
 
-	if ($nrevs >= (100 * ($page+1)-1)) {
+	if ($has_next_link) {
 		$paging_nav .= " &sdot; " .
 			$cgi->a({-href => href(-replay=>1, page=>$page+1),
 			         -accesskey => "n", -title => "Alt-n"}, "next");
@@ -4585,7 +4585,7 @@ sub git_log {
 
 	my @commitlist = parse_commits($hash, 101, (100 * $page));
 
-	my $paging_nav = format_paging_nav('log', $hash, $head, $page, (100 * ($page+1)));
+	my $paging_nav = format_paging_nav('log', $hash, $head, $page, $#commitlist >= 100);
 
 	git_header_html();
 	git_print_page_nav('log','', $hash,undef,undef, $paging_nav);
@@ -4877,43 +4877,9 @@ sub git_blobdiff {
 			or die_error(undef, "Open git-diff-tree failed");
 	}
 
-	# old/legacy style URI
-	if (!%diffinfo && # if new style URI failed
-	    defined $hash && defined $hash_parent) {
-		# fake git-diff-tree raw output
-		$diffinfo{'from_mode'} = $diffinfo{'to_mode'} = "blob";
-		$diffinfo{'from_id'} = $hash_parent;
-		$diffinfo{'to_id'}   = $hash;
-		if (defined $file_name) {
-			if (defined $file_parent) {
-				$diffinfo{'status'} = '2';
-				$diffinfo{'from_file'} = $file_parent;
-				$diffinfo{'to_file'}   = $file_name;
-			} else { # assume not renamed
-				$diffinfo{'status'} = '1';
-				$diffinfo{'from_file'} = $file_name;
-				$diffinfo{'to_file'}   = $file_name;
-			}
-		} else { # no filename given
-			$diffinfo{'status'} = '2';
-			$diffinfo{'from_file'} = $hash_parent;
-			$diffinfo{'to_file'}   = $hash;
-		}
-
-		# non-textual hash id's can be cached
-		if ($hash =~ m/^[0-9a-fA-F]{40}$/ &&
-		    $hash_parent =~ m/^[0-9a-fA-F]{40}$/) {
-			$expires = '+1d';
-		}
-
-		# open patch output
-		open $fd, "-|", git_cmd(), "diff", @diff_opts,
-			'-p', ($format eq 'html' ? "--full-index" : ()),
-			$hash_parent, $hash, "--"
-			or die_error(undef, "Open git-diff failed");
-	} else  {
+	# old/legacy style URI -- not generated anymore since 1.4.3.
+	if (!%diffinfo) {
 		die_error('404 Not Found', "Missing one of the blob diff parameters")
-			unless %diffinfo;
 	}
 
 	# header
@@ -5505,7 +5471,7 @@ sub git_shortlog {
 
 	my @commitlist = parse_commits($hash, 101, (100 * $page));
 
-	my $paging_nav = format_paging_nav('shortlog', $hash, $head, $page, (100 * ($page+1)));
+	my $paging_nav = format_paging_nav('shortlog', $hash, $head, $page, $#commitlist >= 100);
 	my $next_link = '';
 	if ($#commitlist >= 100) {
 		$next_link =
