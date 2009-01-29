@@ -1609,6 +1609,7 @@ static void *unpack_delta_entry(struct packed_git *p,
 	off_t base_offset;
 
 	base_offset = get_delta_base(p, w_curs, &curpos, *type, obj_offset);
+	unuse_pack(w_curs);
 	base = cache_or_unpack_entry(p, base_offset, &base_size, type, 0);
 	if (!base)
 		die("failed to read delta base object"
@@ -2092,7 +2093,8 @@ int hash_sha1_file(const void *buf, unsigned long len, const char *type,
 /* Finalize a file on disk, and close it. */
 static void close_sha1_file(int fd)
 {
-	/* For safe-mode, we could fsync_or_die(fd, "sha1 file") here */
+	if (fsync_object_files)
+		fsync_or_die(fd, "sha1 file");
 	fchmod(fd, 0444);
 	if (close(fd) != 0)
 		die("unable to write sha1 file");
