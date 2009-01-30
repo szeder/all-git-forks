@@ -59,6 +59,10 @@
 	a fast-forward, only update the branch pointer. This is
 	the default behavior of git-merge.
 
+--ff-only::
+	Refuse to merge unless the merge is resolved as a
+	fast-forward.
+
 -s <strategy>::
 --strategy=<strategy>::
 	Use the given merge strategy; can be supplied more than

@@ -44,6 +44,7 @@ static const char * const builtin_merge_usage[] = {
 static int show_diffstat = 1, option_log, squash;
 static int option_commit = 1, allow_fast_forward = 1;
 static int allow_trivial = 1, have_message;
+static int only_fast_forward;
 static struct strbuf merge_msg;
 static struct commit_list *remoteheads;
 static unsigned char head[20], stash[20];
@@ -167,6 +168,8 @@ static struct option builtin_merge_options[] = {
 		"perform a commit if the merge succeeds (default)"),
 	OPT_BOOLEAN(0, "ff", &allow_fast_forward,
 		"allow fast forward (default)"),
+	OPT_BOOLEAN(0, "ff-only", &only_fast_forward,
+		"allow only fast forward"),
 	OPT_CALLBACK('s', "strategy", &use_strategies, "strategy",
 		"merge strategy to use", option_parse_strategy),
 	OPT_CALLBACK('m', "message", &merge_msg, "message",
@@ -858,6 +861,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		option_commit = 0;
 	}
 
+	if (only_fast_forward && !allow_fast_forward)
+		die("You cannot combine --ff-only with --no-ff.");
+
 	if (!argc)
 		usage_with_options(builtin_merge_usage,
 			builtin_merge_options);
@@ -959,6 +965,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			allow_trivial = 0;
 	}
 
+	if (only_fast_forward && !allow_fast_forward)
+		die("You cannot combine --ff-only with the selected"
+		    " merge strategies.");
+
+
 	if (!remoteheads->next)
 		common = get_merge_bases(lookup_commit(head),
 				remoteheads->item, 1);
@@ -1023,6 +1034,10 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 * We are not doing octopus, not fast forward, and have
 		 * only one common.
 		 */
+
+		if (only_fast_forward)
+			die("Merge is non fast forward, aborting.");
+
 		refresh_cache(REFRESH_QUIET);
 		if (allow_trivial) {
 			/* See if it is really trivial. */
@@ -1062,6 +1077,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			return 0;
 		}
 	}
+
+	if (only_fast_forward)
+		die("Merge is non fast forward, aborting.");
 
 	/* We are going to make a new commit. */
 	git_committer_info(IDENT_ERROR_ON_NO_NAME);

@@ -234,9 +234,20 @@ test_expect_success 'reject non-strategy with a git-merge-foo name' '
 	test_must_fail git merge -s index c1
 '
 
+test_debug 'gitk --all'
+
 test_expect_success 'merge c0 with c1' '
 	git reset --hard c0 &&
 	git merge c1 &&
+	verify_merge file result.1 &&
+	verify_head "$c1"
+'
+
+test_debug 'gitk --all'
+
+test_expect_success 'merge c0 with c1 (fast forward only)' '
+	git reset --hard c0 &&
+	git merge --ff-only c1 &&
 	verify_merge file result.1 &&
 	verify_head "$c1"
 '
@@ -253,12 +264,28 @@ test_expect_success 'merge c1 with c2' '
 
 test_debug 'gitk --all'
 
+test_expect_success 'merge c1 with c2' '
+	git reset --hard c1 &&
+	test_tick &&
+	test_must_fail git merge --ff-only c2
+'
+
+test_debug 'gitk --all'
+
 test_expect_success 'merge c1 with c2 and c3' '
 	git reset --hard c1 &&
 	test_tick &&
 	git merge c2 c3 &&
 	verify_merge file result.1-5-9 msg.1-5-9 &&
 	verify_parents $c1 $c2 $c3
+'
+
+test_debug 'gitk --all'
+
+test_expect_success 'merge c1 with c2 and c3 (fast forward only' '
+	git reset --hard c1 &&
+	test_tick &&
+	test_must_fail git merge --ff-only c2 c3
 '
 
 test_debug 'gitk --all'
@@ -470,6 +497,15 @@ test_expect_success 'merge c1 with c0, c2, c0, and c1' '
 
 test_debug 'gitk --all'
 
+test_expect_success 'merge fast forward only' '
+       git reset --hard c1 &&
+       git config branch.master.mergeoptions "" &&
+       test_tick &&
+       test_must_fail git merge --ff-only c0 c2 c0 c1
+'
+
+test_debug 'gitk --all'
+
 test_expect_success 'merge c1 with c0, c2, c0, and c1' '
        git reset --hard c1 &&
        git config branch.master.mergeoptions "" &&
@@ -477,6 +513,15 @@ test_expect_success 'merge c1 with c0, c2, c0, and c1' '
        git merge c0 c2 c0 c1 &&
        verify_merge file result.1-5 &&
        verify_parents $c1 $c2
+'
+
+test_debug 'gitk --all'
+
+test_expect_success 'merge fast forward only' '
+       git reset --hard c1 &&
+       git config branch.master.mergeoptions "" &&
+       test_tick &&
+       test_must_fail git merge --ff-only c1 c2
 '
 
 test_debug 'gitk --all'
