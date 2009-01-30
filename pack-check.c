@@ -4,7 +4,7 @@
 
 struct idx_entry
 {
-	off_t                offset;
+	off_t offset;
 	const unsigned char *sha1;
 	unsigned int nr;
 };
@@ -43,7 +43,7 @@ int check_pack_crc(struct packed_git *p, struct pack_window **w_curs,
 }
 
 static int verify_packfile(struct packed_git *p,
-		struct pack_window **w_curs)
+			   struct pack_window **w_curs)
 {
 	off_t index_size = p->index_size;
 	const unsigned char *index_base = p->index_data;
@@ -54,7 +54,8 @@ static int verify_packfile(struct packed_git *p,
 	int err = 0;
 	struct idx_entry *entries;
 
-	/* Note that the pack header checks are actually performed by
+	/*
+	 * Note that the pack header checks are actually performed by
 	 * use_pack when it first opens the pack file.  If anything
 	 * goes wrong during those checks then the call will die out
 	 * immediately.
@@ -72,21 +73,23 @@ static int verify_packfile(struct packed_git *p,
 	git_SHA1_Final(sha1, &ctx);
 	pack_sig = use_pack(p, w_curs, pack_sig_ofs, NULL);
 	if (hashcmp(sha1, pack_sig))
-		err = error("%s SHA1 checksum mismatch",
-			    p->pack_name);
+		err = error("%s SHA1 checksum mismatch", p->pack_name);
 	if (hashcmp(index_base + index_size - 40, pack_sig))
-		err = error("%s SHA1 does not match its inddex",
-			    p->pack_name);
+		err = error("%s SHA1 does not match its index", p->pack_name);
 	unuse_pack(w_curs);
 
-	/* Make sure everything reachable from idx is valid.  Since we
+	/*
+	 * Make sure everything reachable from idx is valid.  Since we
 	 * have verified that nr_objects matches between idx and pack,
 	 * we do not do scan-streaming check on the pack file.
 	 */
 	nr_objects = p->num_objects;
 	entries = xmalloc((nr_objects + 1) * sizeof(*entries));
 	entries[nr_objects].offset = pack_sig_ofs;
-	/* first sort entries by pack offset, since unpacking them is more efficient that way */
+	/*
+	 * First sort entries by pack offset, since unpacking them is more
+	 * efficient that way.
+	 */
 	for (i = 0; i < nr_objects; i++) {
 		entries[i].sha1 = nth_packed_object_sha1(p, i);
 		if (!entries[i].sha1)
