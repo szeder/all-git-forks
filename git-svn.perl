@@ -2615,6 +2615,7 @@ sub find_extra_svk_parents {
 			my $repos_root = $url;
 			my $branch_from = $path;
 			$branch_from =~ s{^/}{};
+			no warnings 'once';
 			$DB::single = 1;
 			my $gs = $self->other_gs( $url, $self->ra->{url},
 				$repos_root, $branch_from, $self->{ref_id} );
@@ -2645,12 +2646,14 @@ sub make_log_entry {
 	my $untracked = $self->get_untracked($ed);
 
 	my @parents = @$parents;
-	my $ps = $ed->{path_strip};
-	for my $path ( grep { m/$ps/ } %{$ed->{dir_prop}} ) {
-		my $props = $ed->{dir_prop}{$path};
-		if ( $props->{"svk:merge"} ) {
-			$self->find_extra_svk_parents
-				($ed, $props->{"svk:merge"}, \@parents);
+	if (my $ps = $ed->{path_strip}) {
+		for my $path ( grep { m/$ps/ } keys %{$ed->{dir_prop}} ) {
+			my $props = $ed->{dir_prop}{$path};
+			if ( $props->{"svk:merge"} ) {
+				warn "finding extra parents";
+				$self->find_extra_svk_parents
+					($ed, $props->{"svk:merge"}, \@parents);
+			}
 		}
 	}
 
