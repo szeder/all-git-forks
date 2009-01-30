@@ -422,6 +422,7 @@ sub command_close_bidi_pipe {
 	local $?;
 	my ($pid, $in, $out, $ctx) = @_;
 	foreach my $fh ($in, $out) {
+		next unless defined(fileno($fh));
 		unless (close $fh) {
 			if ($!) {
 				carp "error closing pipe: $!";
