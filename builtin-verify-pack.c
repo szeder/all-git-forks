@@ -93,7 +93,7 @@ static int verify_one_pack(const char *path, int verbose)
 		return error("packfile %s not found.", arg);
 
 	install_packed_git(pack);
-	err = verify_pack(pack);
+	err = verify_pack(pack, 0);
 
 	if (verbose) {
 		if (err)

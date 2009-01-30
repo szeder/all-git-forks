@@ -614,7 +614,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		prepare_packed_git();
 		for (p = packed_git; p; p = p->next)
 			/* verify gives error messages itself */
-			verify_pack(p);
+			verify_pack(p, 0);
 
 		for (p = packed_git; p; p = p->next) {
 			uint32_t j, num;

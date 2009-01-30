@@ -809,7 +809,7 @@ static void finish_request(struct transfer_request *request)
 					lst = &((*lst)->next);
 				*lst = (*lst)->next;
 
-				if (!verify_pack(target))
+				if (!verify_pack(target, 0))
 					install_packed_git(target);
 				else
 					remote->can_update_info_refs = 0;
