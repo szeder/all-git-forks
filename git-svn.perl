@@ -2389,22 +2389,8 @@ sub find_parent_branch {
 	print STDERR  "Found possible branch point: ",
 	              "$new_url => ", $self->full_url, ", $r\n";
 	$branch_from =~ s#^/##;
-	my $gs = Git::SVN->find_by_url($new_url, $repos_root, $branch_from);
-	unless ($gs) {
-		my $ref_id = $self->{ref_id};
-		$ref_id =~ s/\@\d+$//;
-		$ref_id .= "\@$r";
-		# just grow a tail if we're not unique enough :x
-		$ref_id .= '-' while find_ref($ref_id);
-		print STDERR "Initializing parent: $ref_id\n";
-		my ($u, $p, $repo_id) = ($new_url, '', $ref_id);
-		if ($u =~ s#^\Q$url\E(/|$)##) {
-			$p = $u;
-			$u = $url;
-			$repo_id = $self->{repo_id};
-		}
-		$gs = Git::SVN->init($u, $p, $repo_id, $ref_id, 1);
-	}
+	my $gs = $self->other_gs($new_url, $url, $repos_root,
+		$branch_from, $r, $self->{ref_id});
 	my ($r0, $parent) = $gs->find_rev_before($r, 1);
 	{
 		my ($base, $head);
@@ -2586,6 +2572,27 @@ sub parse_svn_date {
 	return $parsed_date;
 }
 
+sub other_gs {
+	my ($self, $new_url, $url, $repos_root, $branch_from, $r, $old_ref_id) = @_;
+	if (my $gs = Git::SVN->find_by_url($new_url, $repos_root, $branch_from)) {
+		return $gs;
+	} else {
+		my $ref_id = $self->{ref_id};
+		$ref_id =~ s/\@\d+$//;
+		$ref_id .= "\@$r";
+		# just grow a tail if we're not unique enough :x
+		$ref_id .= '-' while find_ref($ref_id);
+		print STDERR "Initializing parent: $ref_id\n";
+		my ($u, $p, $repo_id) = ($new_url, '', $ref_id);
+		if ($u =~ s#^\Q$url\E(/|$)##) {
+			$p = $u;
+			$u = $url;
+			$repo_id = $self->{repo_id};
+		}
+		return Git::SVN->init($u, $p, $repo_id, $ref_id, 1);
+	}
+}
+
 sub check_author {
 	my ($author) = @_;
 	if (!defined $author || length $author == 0) {
@@ -2596,14 +2603,61 @@ sub check_author {
 	$author;
 }
 
+sub find_extra_svk_parents {
+	my ($self, $ed, $tickets, $parents) = @_;
+	# aha!  svk:merge property changed...
+	my @tickets = split "\n", $tickets;
+	my @known_parents;
+	for my $ticket ( @tickets ) {
+		my ($uuid, $path, $rev) = split /:/, $ticket;
+		if ( $uuid eq $self->ra_uuid ) {
+			my $url = $self->rewrite_root || $self->{url};
+			my $repos_root = $url;
+			my $branch_from = $path;
+			$branch_from =~ s{^/}{};
+			$DB::single = 1;
+			my $gs = $self->other_gs( $url, $self->ra->{url},
+				$repos_root, $branch_from, $self->{ref_id} );
+			if ( my $commit = $gs->rev_map_get($rev, $uuid) ) {
+				# wahey!  we found it, but it might be
+				# an old one (!)
+				push @known_parents, $commit;
+			}
+		}
+	}
+	for my $parent ( @known_parents ) {
+		my @cmd = ('rev-list', $parent, map { "^$_" } @$parents );
+		my ($msg_fh, $ctx) = command_output_pipe(@cmd);
+		my $new;
+		while ( <$msg_fh> ) {
+			$new=1;last;
+		}
+		command_close_pipe($msg_fh, $ctx);
+		if ( $new ) {
+			print STDERR "Found a new parents: $parent\n";
+			push @$parents, $parent;
+		}
+	}
+}
+
 sub make_log_entry {
 	my ($self, $rev, $parents, $ed) = @_;
 	my $untracked = $self->get_untracked($ed);
 
+	my @parents = @$parents;
+	my $ps = $ed->{path_strip};
+	for my $path ( grep { m/$ps/ } %{$ed->{dir_prop}} ) {
+		my $props = $ed->{dir_prop}{$path};
+		if ( $props->{"svk:merge"} ) {
+			$self->find_extra_svk_parents
+				($ed, $props->{"svk:merge"}, \@parents);
+		}
+	}
+
 	open my $un, '>>', "$self->{dir}/unhandled.log" or croak $!;
 	print $un "r$rev\n" or croak $!;
 	print $un $_, "\n" foreach @$untracked;
-	my %log_entry = ( parents => $parents || [], revision => $rev,
+	my %log_entry = ( parents => \@parents, revision => $rev,
 	                  log => '');
 
 	my $headrev;
