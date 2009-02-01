@@ -70,26 +70,51 @@ static void add_entry(const unsigned char *commit_sha1,
 	hashcpy(hash_map.entries[index].notes_sha1, notes_sha1);
 }
 
-static void initialize_hash_map(const char *notes_ref_name)
+static void initialize_hash_map_recursive(const char *tree_sha1, const char *path)
 {
 	unsigned char sha1[20], commit_sha1[20];
+	unsigned char path_combined[40];
 	unsigned mode;
 	struct tree_desc desc;
 	struct name_entry entry;
+	int length = strlen(path);
+	int length_combined;
 	void *buf;
 
-	if (!notes_ref_name || read_ref(notes_ref_name, commit_sha1) ||
-	    get_tree_entry(commit_sha1, "", sha1, &mode))
+	strcpy(path_combined, path);
+
+	if (get_tree_entry(tree_sha1, "", sha1, &mode))
 		return;
 
 	buf = fill_tree_descriptor(&desc, sha1);
 	if (!buf)
-		die("Could not read %s for notes-index", sha1_to_hex(sha1));
+		die("Could not read %s for notes-index", sha1_to_hex(tree_sha1));
 
-	while (tree_entry(&desc, &entry))
-		if (!get_sha1(entry.path, commit_sha1))
-			add_entry(commit_sha1, entry.sha1);
+	while (tree_entry(&desc, &entry)) {
+		length_combined = length + strlen(entry.path);
+		if (length_combined >= 40) {
+			strncpy(path_combined + length, entry.path,
+				41 - length);
+			if (!get_sha1(path_combined, commit_sha1))
+				add_entry(commit_sha1, entry.sha1);
+		}
+		else {
+			strcpy(path_combined + length, entry.path);
+			initialize_hash_map_recursive(entry.sha1, path_combined);
+		}
+	}
+
 	free(buf);
+}
+
+static void initialize_hash_map(const char *notes_ref_name)
+{
+	unsigned char commit_sha1[20];
+
+	if (!notes_ref_name || read_ref(notes_ref_name, commit_sha1))
+		return;
+
+	initialize_hash_map_recursive( commit_sha1, "" );
 }
 
 static unsigned char *lookup_notes(const unsigned char *commit_sha1)

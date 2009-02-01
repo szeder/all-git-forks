@@ -92,4 +92,15 @@ test_expect_success 'show multi-line notes' '
 	test_cmp expect-multiline output
 '
 
+test_expect_success 'create split notes tree' '
+	: > a4 &&
+	git add a4 &&
+	test_tick &&
+	git commit -m 4th &&
+	MSG="b4" GIT_NOTES_SPLIT=2 git notes edit &&
+	[ "$(git notes show)" = "b4" ] &&
+	[ -n "$(git ls-tree --name-only -r refs/notes/commits | grep /)" ] &&
+	[ -n "$(git log -1 | grep Notes:)" ]
+'
+
 test_done

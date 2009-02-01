@@ -10,14 +10,34 @@ ACTION="$1"; shift
 
 test -z "$GIT_NOTES_REF" && GIT_NOTES_REF="$(git config core.notesref)"
 test -z "$GIT_NOTES_REF" && GIT_NOTES_REF="refs/notes/commits"
+export GIT_NOTES_REF
 
 COMMIT=$(git rev-parse --verify --default HEAD "$@") ||
 die "Invalid commit: $@"
+NOTES_PATH=$COMMIT
+case "$GIT_NOTES_SPLIT" in
+	[1-9]|[1-4][0-9])
+		NOTES_PATH=$( echo $COMMIT | perl -pe 's{^(.{'$GIT_NOTES_SPLIT'})}{$1/}' )
+		;;
+esac
 
 MESSAGE="$GIT_DIR"/new-notes-$COMMIT
 trap '
 	test -f "$MESSAGE" && rm "$MESSAGE"
 ' 0
+
+show_note() {
+	COMMIT=$1
+	NOTE_PATH=$( git ls-tree --name-only -r $GIT_NOTES_REF | perl -nle '
+		$x = $_; s{/}{}g;
+		if (m{'$COMMIT'}) {
+			print $x;
+			exit;
+		}
+	' )
+	[ -n "$NOTE_PATH" ] &&
+		git cat-file blob $GIT_NOTES_REF:$NOTE_PATH
+}
 
 case "$ACTION" in
 edit)
@@ -32,7 +52,7 @@ edit)
 	else
 		PARENT="-p $CURRENT_HEAD"
 		git read-tree "$GIT_NOTES_REF" || die "Could not read index"
-		git cat-file blob :$COMMIT >> "$MESSAGE" 2> /dev/null
+		show_note $COMMIT >> "$MESSAGE"
 	fi
 
 	${VISUAL:-${EDITOR:-vi}} "$MESSAGE"
@@ -42,14 +62,25 @@ edit)
 	if [ -s "$MESSAGE" ]; then
 		BLOB=$(git hash-object -w "$MESSAGE") ||
 			die "Could not write into object database"
-		git update-index --add --cacheinfo 0644 $BLOB $COMMIT ||
+		git update-index --add --cacheinfo 0644 $BLOB $NOTES_PATH ||
 			die "Could not write index"
 	else
-		test -z "$CURRENT_HEAD" &&
-			die "Will not initialise with empty tree"
-		git update-index --force-remove $COMMIT ||
-			die "Could not update index"
+		NOTES_PATH=dummy
 	fi
+
+	git ls-files | perl -nle '
+		$x = $_; s{/}{}g;
+		if (m{'$COMMIT'} and $x ne q{'$NOTES_PATH'}) {
+			print $x;
+		}' |
+		while read path
+			do
+				git update-index --force-remove $path ||
+			    		die "Could not update index"
+			done
+	
+	[ -z "$(git ls-files)" -a -z "$CURRENT_HEAD" ] &&
+		die "Will not initialise with empty tree"
 
 	TREE=$(git write-tree) || die "Could not write tree"
 	NEW_HEAD=$(echo Annotate $COMMIT | git commit-tree $TREE $PARENT) ||
@@ -58,7 +89,7 @@ edit)
 		"$GIT_NOTES_REF" $NEW_HEAD $CURRENT_HEAD
 ;;
 show)
-	git show "$GIT_NOTES_REF":$COMMIT
+	show_note $COMMIT
 ;;
 *)
 	usage
