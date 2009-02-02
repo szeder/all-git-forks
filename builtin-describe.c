@@ -15,8 +15,8 @@ static const char * const describe_usage[] = {
 };
 
 static int debug;	/* Display lots of verbose info */
-static int all;	/* Default to annotated tags only */
-static int tags;	/* But allow any tags if --tags is specified */
+static int all;	/* Any valid ref can be used */
+static int tags;	/* Allow lightweight tags */
 static int longformat;
 static int abbrev = DEFAULT_ABBREV;
 static int max_candidates = 10;
@@ -112,8 +112,6 @@ static int compare_pt(const void *a_, const void *b_)
 {
 	struct possible_tag *a = (struct possible_tag *)a_;
 	struct possible_tag *b = (struct possible_tag *)b_;
-	if (a->name->prio != b->name->prio)
-		return b->name->prio - a->name->prio;
 	if (a->depth != b->depth)
 		return a->depth - b->depth;
 	if (a->found_order != b->found_order)
@@ -160,7 +158,7 @@ static void display_name(struct commit_name *n)
 		n->tag = lookup_tag(n->sha1);
 		if (!n->tag || parse_tag(n->tag) || !n->tag->tag)
 			die("annotated tag %s not available", n->path);
-		if (strcmp(n->tag->tag, n->path))
+		if (strcmp(n->tag->tag, all ? n->path + 5 : n->path))
 			warning("tag '%s' is really '%s' here", n->tag->tag, n->path);
 	}
 

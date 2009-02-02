@@ -6,7 +6,7 @@ test_description='git mv in subdirs'
 test_expect_success \
     'prepare reference tree' \
     'mkdir path0 path1 &&
-     cp ../../COPYING path0/COPYING &&
+     cp "$TEST_DIRECTORY"/../COPYING path0/COPYING &&
      git add path0/COPYING &&
      git commit -m add -a'
 
@@ -39,8 +39,33 @@ test_expect_success \
     grep "^R100..*path1/COPYING..*path0/COPYING"'
 
 test_expect_success \
+    'checking -k on non-existing file' \
+    'git mv -k idontexist path0'
+
+test_expect_success \
+    'checking -k on untracked file' \
+    'touch untracked1 &&
+     git mv -k untracked1 path0 &&
+     test -f untracked1 &&
+     test ! -f path0/untracked1'
+
+test_expect_success \
+    'checking -k on multiple untracked files' \
+    'touch untracked2 &&
+     git mv -k untracked1 untracked2 path0 &&
+     test -f untracked1 &&
+     test -f untracked2 &&
+     test ! -f path0/untracked1
+     test ! -f path0/untracked2'
+
+# clean up the mess in case bad things happen
+rm -f idontexist untracked1 untracked2 \
+     path0/idontexist path0/untracked1 path0/untracked2 \
+     .git/index.lock
+
+test_expect_success \
     'adding another file' \
-    'cp ../../README path0/README &&
+    'cp "$TEST_DIRECTORY"/../README path0/README &&
      git add path0/README &&
      git commit -m add2 -a'
 

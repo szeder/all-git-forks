@@ -14,7 +14,6 @@
 #include "tag.h"
 #include "reflog-walk.h"
 #include "patch-ids.h"
-#include "refs.h"
 #include "run-command.h"
 #include "shortlog.h"
 
@@ -25,36 +24,10 @@ static int default_show_root = 1;
 static const char *fmt_patch_subject_prefix = "PATCH";
 static const char *fmt_pretty;
 
-static void add_name_decoration(const char *prefix, const char *name, struct object *obj)
-{
-	int plen = strlen(prefix);
-	int nlen = strlen(name);
-	struct name_decoration *res = xmalloc(sizeof(struct name_decoration) + plen + nlen);
-	memcpy(res->name, prefix, plen);
-	memcpy(res->name + plen, name, nlen + 1);
-	res->next = add_decoration(&name_decoration, obj, res);
-}
-
-static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
-{
-	struct object *obj = parse_object(sha1);
-	if (!obj)
-		return 0;
-	add_name_decoration("", refname, obj);
-	while (obj->type == OBJ_TAG) {
-		obj = ((struct tag *)obj)->tagged;
-		if (!obj)
-			break;
-		add_name_decoration("tag: ", refname, obj);
-	}
-	return 0;
-}
-
 static void cmd_log_init(int argc, const char **argv, const char *prefix,
 		      struct rev_info *rev)
 {
 	int i;
-	int decorate = 0;
 
 	rev->abbrev = DEFAULT_ABBREV;
 	rev->commit_format = CMIT_FMT_DEFAULT;
@@ -64,6 +37,7 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 	DIFF_OPT_SET(&rev->diffopt, RECURSIVE);
 	rev->show_root_diff = default_show_root;
 	rev->subject_prefix = fmt_patch_subject_prefix;
+	DIFF_OPT_SET(&rev->diffopt, ALLOW_TEXTCONV);
 
 	if (default_date_mode)
 		rev->date_mode = parse_date_format(default_date_mode);
@@ -80,9 +54,10 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		if (!strcmp(arg, "--decorate")) {
-			if (!decorate)
-				for_each_ref(add_ref_decoration, NULL);
-			decorate = 1;
+			load_ref_decorations();
+			rev->show_decorations = 1;
+		} else if (!strcmp(arg, "--source")) {
+			rev->show_source = 1;
 		} else
 			die("unrecognized argument: %s", arg);
 	}
@@ -217,6 +192,11 @@ static int cmd_log_walk(struct rev_info *rev)
 	if (rev->early_output)
 		finish_early_output(rev);
 
+	/*
+	 * For --check and --exit-code, the exit code is based on CHECK_FAILED
+	 * and HAS_CHANGES being accumulated in rev->diffopt, so be careful to
+	 * retain that state information if replacing rev->diffopt in this loop
+	 */
 	while ((commit = get_revision(rev)) != NULL) {
 		log_tree_commit(rev, commit);
 		if (!rev->reflog_info) {
@@ -227,7 +207,11 @@ static int cmd_log_walk(struct rev_info *rev)
 		free_commit_list(commit->parents);
 		commit->parents = NULL;
 	}
-	return 0;
+	if (rev->diffopt.output_format & DIFF_FORMAT_CHECKDIFF &&
+	    DIFF_OPT_TST(&rev->diffopt, CHECK_FAILED)) {
+		return 02;
+	}
+	return diff_result_code(&rev->diffopt, 0);
 }
 
 static int git_log_config(const char *var, const char *value, void *cb)
@@ -450,7 +434,7 @@ static int istitlechar(char c)
 
 static const char *fmt_patch_suffix = ".patch";
 static int numbered = 0;
-static int auto_number = 0;
+static int auto_number = 1;
 
 static char **extra_hdr;
 static int extra_hdr_nr;
@@ -509,6 +493,7 @@ static int git_format_config(const char *var, const char *value, void *cb)
 			return 0;
 		}
 		numbered = git_config_bool(var, value);
+		auto_number = auto_number && numbered;
 		return 0;
 	}
 
@@ -568,6 +553,7 @@ static const char *get_oneline_for_filename(struct commit *commit,
 
 static FILE *realstdout = NULL;
 static const char *output_directory = NULL;
+static int outdir_offset;
 
 static int reopen_stdout(const char *oneline, int nr, int total)
 {
@@ -594,7 +580,7 @@ static int reopen_stdout(const char *oneline, int nr, int total)
 		strcpy(filename + len, fmt_patch_suffix);
 	}
 
-	fprintf(realstdout, "%s\n", filename);
+	fprintf(realstdout, "%s\n", filename + outdir_offset);
 	if (freopen(filename, "w", stdout) == NULL)
 		return error("Cannot open patch file %s",filename);
 
@@ -652,10 +638,9 @@ static void gen_message_id(struct rev_info *info, char *base)
 	const char *committer = git_committer_info(IDENT_WARN_ON_NO_NAME);
 	const char *email_start = strrchr(committer, '<');
 	const char *email_end = strrchr(committer, '>');
-	struct strbuf buf;
+	struct strbuf buf = STRBUF_INIT;
 	if (!email_start || !email_end || email_start > email_end - 1)
 		die("Could not extract email from committer identity.");
-	strbuf_init(&buf, 0);
 	strbuf_addf(&buf, "%s.%lu.git.%.*s", base,
 		    (unsigned long) time(NULL),
 		    (int)(email_end - email_start - 1), email_start + 1);
@@ -674,7 +659,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	const char *msg;
 	const char *extra_headers = rev->extra_headers;
 	struct shortlog log;
-	struct strbuf sb;
+	struct strbuf sb = STRBUF_INIT;
 	int i;
 	const char *encoding = "utf-8";
 	struct diff_options opts;
@@ -695,7 +680,6 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	committer = git_committer_info(0);
 
 	msg = body;
-	strbuf_init(&sb, 0);
 	pp_user_info(NULL, CMIT_FMT_EMAIL, &sb, committer, DATE_RFC2822,
 		     encoding);
 	pp_title_line(CMIT_FMT_EMAIL, &msg, &sb, subject_start, extra_headers,
@@ -757,6 +741,27 @@ static const char *clean_message_id(const char *msg_id)
 	return xmemdupz(a, z - a);
 }
 
+static const char *set_outdir(const char *prefix, const char *output_directory)
+{
+	if (output_directory && is_absolute_path(output_directory))
+		return output_directory;
+
+	if (!prefix || !*prefix) {
+		if (output_directory)
+			return output_directory;
+		/* The user did not explicitly ask for "./" */
+		outdir_offset = 2;
+		return "./";
+	}
+
+	outdir_offset = strlen(prefix);
+	if (!output_directory)
+		return prefix;
+
+	return xstrdup(prefix_filename(prefix, outdir_offset,
+				       output_directory));
+}
+
 int cmd_format_patch(int argc, const char **argv, const char *prefix)
 {
 	struct commit *commit;
@@ -777,7 +782,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	const char *in_reply_to = NULL;
 	struct patch_ids ids;
 	char *add_signoff = NULL;
-	struct strbuf buf;
+	struct strbuf buf = STRBUF_INIT;
 
 	git_config(git_format_config, NULL);
 	init_revisions(&rev, prefix);
@@ -885,8 +890,6 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	}
 	argc = j;
 
-	strbuf_init(&buf, 0);
-
 	for (i = 0; i < extra_hdr_nr; i++) {
 		strbuf_addstr(&buf, extra_hdr[i]);
 		strbuf_addch(&buf, '\n');
@@ -929,14 +932,15 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (argc > 1)
 		die ("unrecognized argument: %s", argv[1]);
 
-	if (!rev.diffopt.output_format)
+	if (!rev.diffopt.output_format
+		|| rev.diffopt.output_format == DIFF_FORMAT_PATCH)
 		rev.diffopt.output_format = DIFF_FORMAT_DIFFSTAT | DIFF_FORMAT_SUMMARY | DIFF_FORMAT_PATCH;
 
 	if (!DIFF_OPT_TST(&rev.diffopt, TEXT) && !no_binary_diff)
 		DIFF_OPT_SET(&rev.diffopt, BINARY);
 
-	if (!output_directory && !use_stdout)
-		output_directory = prefix;
+	if (!use_stdout)
+		output_directory = set_outdir(prefix, output_directory);
 
 	if (output_directory) {
 		if (use_stdout)
@@ -962,6 +966,13 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		 * get_revision() to do the usual traversal.
 		 */
 	}
+
+	/*
+	 * We cannot move this anywhere earlier because we do want to
+	 * know if --root was given explicitly from the comand line.
+	 */
+	rev.show_root_diff = 1;
+
 	if (cover_letter) {
 		/* remember the range */
 		int i;
@@ -1162,8 +1173,7 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 			sign = '-';
 
 		if (verbose) {
-			struct strbuf buf;
-			strbuf_init(&buf, 0);
+			struct strbuf buf = STRBUF_INIT;
 			pretty_print_commit(CMIT_FMT_ONELINE, commit,
 			                    &buf, 0, NULL, NULL, 0, 0);
 			printf("%c %s %s\n", sign,

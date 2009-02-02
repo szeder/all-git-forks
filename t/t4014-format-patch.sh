@@ -3,7 +3,7 @@
 # Copyright (c) 2006 Junio C Hamano
 #
 
-test_description='Format-patch skipping already incorporated patches'
+test_description='various format-patch tests'
 
 . ./test-lib.sh
 
@@ -228,6 +228,81 @@ test_expect_success 'shortlog of cover-letter wraps overly-long onelines' '
 	sed -e "1,/A U Thor/d" -e "/^$/q" < 0000-cover-letter.patch > output &&
 	test_cmp expect output
 
+'
+
+cat > expect << EOF
+---
+ file |   16 ++++++++++++++++
+ 1 files changed, 16 insertions(+), 0 deletions(-)
+
+diff --git a/file b/file
+index 40f36c6..2dc5c23 100644
+--- a/file
++++ b/file
+@@ -13,4 +13,20 @@ C
+ 10
+ D
+ E
+ F
++5
+EOF
+
+test_expect_success 'format-patch respects -U' '
+
+	git format-patch -U4 -2 &&
+	sed -e "1,/^$/d" -e "/^+5/q" < 0001-This-is-an-excessively-long-subject-line-for-a-messa.patch > output &&
+	test_cmp expect output
+
+'
+
+test_expect_success 'format-patch from a subdirectory (1)' '
+	filename=$(
+		rm -rf sub &&
+		mkdir -p sub/dir &&
+		cd sub/dir &&
+		git format-patch -1
+	) &&
+	case "$filename" in
+	0*)
+		;; # ok
+	*)
+		echo "Oops? $filename"
+		false
+		;;
+	esac &&
+	test -f "$filename"
+'
+
+test_expect_success 'format-patch from a subdirectory (2)' '
+	filename=$(
+		rm -rf sub &&
+		mkdir -p sub/dir &&
+		cd sub/dir &&
+		git format-patch -1 -o ..
+	) &&
+	case "$filename" in
+	../0*)
+		;; # ok
+	*)
+		echo "Oops? $filename"
+		false
+		;;
+	esac &&
+	basename=$(expr "$filename" : ".*/\(.*\)") &&
+	test -f "sub/$basename"
+'
+
+test_expect_success 'format-patch from a subdirectory (3)' '
+	here="$TEST_DIRECTORY/$test" &&
+	rm -f 0* &&
+	filename=$(
+		rm -rf sub &&
+		mkdir -p sub/dir &&
+		cd sub/dir &&
+		git format-patch -1 -o "$here"
+	) &&
+	basename=$(expr "$filename" : ".*/\(.*\)") &&
+	test -f "$basename"
 '
 
 test_done

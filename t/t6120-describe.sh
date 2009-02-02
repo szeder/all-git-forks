@@ -91,14 +91,20 @@ check_describe D-* HEAD^^
 check_describe A-* HEAD^^2
 check_describe B HEAD^^2^
 
-check_describe A-* --tags HEAD
-check_describe A-* --tags HEAD^
-check_describe D-* --tags HEAD^^
-check_describe A-* --tags HEAD^^2
+check_describe c-* --tags HEAD
+check_describe c-* --tags HEAD^
+check_describe e-* --tags HEAD^^
+check_describe c-* --tags HEAD^^2
 check_describe B --tags HEAD^^2^
 
 check_describe B-0-* --long HEAD^^2^
 check_describe A-3-* --long HEAD^^2
+
+: >err.expect
+check_describe A --all A^0
+test_expect_success 'no warning was displayed for A' '
+	test_cmp err.expect err.actual
+'
 
 test_expect_success 'rename tag A to Q locally' '
 	mv .git/refs/tags/A .git/refs/tags/Q

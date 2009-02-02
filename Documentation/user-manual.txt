@@ -18,11 +18,21 @@ People needing to do actual development will also want to read
 Further chapters cover more specialized topics.
 
 Comprehensive reference documentation is available through the man
-pages.  For a command such as "git clone <repo>", just use
+pages, or linkgit:git-help[1] command.  For example, for the command
+"git clone <repo>", you can either use:
 
 ------------------------------------------------
 $ man git-clone
 ------------------------------------------------
+
+or:
+
+------------------------------------------------
+$ git help clone
+------------------------------------------------
+
+With the latter, you can use the manual viewer of your choice; see
+linkgit:git-help[1] for more information.
 
 See also <<git-quick-start>> for a brief overview of git commands,
 without any explanation.
@@ -49,7 +59,7 @@ project in mind, here are some interesting examples:
 ------------------------------------------------
 	# git itself (approx. 10MB download):
 $ git clone git://git.kernel.org/pub/scm/git/git.git
-	# the linux kernel (approx. 150MB download):
+	# the Linux kernel (approx. 150MB download):
 $ git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
 ------------------------------------------------
 
@@ -999,7 +1009,7 @@ $ git init
 If you have some initial content (say, a tarball):
 
 -------------------------------------------------
-$ tar -xzvf project.tar.gz
+$ tar xzvf project.tar.gz
 $ cd project
 $ git init
 $ git add . # include everything below ./ in the first commit:
@@ -1330,7 +1340,7 @@ These will display all commits which exist only on HEAD or on
 MERGE_HEAD, and which touch an unmerged file.
 
 You may also use linkgit:git-mergetool[1], which lets you merge the
-unmerged files using external tools such as emacs or kdiff3.
+unmerged files using external tools such as Emacs or kdiff3.
 
 Each time you resolve the conflicts in a file and update the index:
 
@@ -4356,7 +4366,9 @@ $ git remote show example	# get details
 * remote example
   URL: git://example.com/project.git
   Tracked remote branches
-    master next ...
+    master
+    next
+    ...
 $ git fetch example		# update branches from example
 $ git branch -r			# list all remote branches
 -----------------------------------------------

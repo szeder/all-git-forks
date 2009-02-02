@@ -166,11 +166,12 @@ sub repository {
 		}
 	}
 
-	if (not defined $opts{Repository} and not defined $opts{WorkingCopy}) {
-		$opts{Directory} ||= '.';
+	if (not defined $opts{Repository} and not defined $opts{WorkingCopy}
+		and not defined $opts{Directory}) {
+		$opts{Directory} = '.';
 	}
 
-	if ($opts{Directory}) {
+	if (defined $opts{Directory}) {
 		-d $opts{Directory} or throw Error::Simple("Directory not found: $!");
 
 		my $search = Git->repository(WorkingCopy => $opts{Directory});
@@ -204,14 +205,14 @@ sub repository {
 
 			unless (-d "$dir/refs" and -d "$dir/objects" and -e "$dir/HEAD") {
 				# Mimick git-rev-parse --git-dir error message:
-				throw Error::Simple('fatal: Not a git repository');
+				throw Error::Simple("fatal: Not a git repository: $dir");
 			}
 			my $search = Git->repository(Repository => $dir);
 			try {
 				$search->command('symbolic-ref', 'HEAD');
 			} catch Git::Error::Command with {
 				# Mimick git-rev-parse --git-dir error message:
-				throw Error::Simple('fatal: Not a git repository');
+				throw Error::Simple("fatal: Not a git repository: $dir");
 			}
 
 			$opts{Repository} = abs_path($dir);
@@ -961,9 +962,7 @@ issue.
 =cut
 
 sub temp_acquire {
-	my ($self, $name) = _maybe_self(@_);
-
-	my $temp_fd = _temp_cache($name);
+	my $temp_fd = _temp_cache(@_);
 
 	$TEMP_FILES{$temp_fd}{locked} = 1;
 	$temp_fd;
@@ -1005,15 +1004,15 @@ sub temp_release {
 }
 
 sub _temp_cache {
-	my ($name) = @_;
+	my ($self, $name) = _maybe_self(@_);
 
 	_verify_require();
 
 	my $temp_fd = \$TEMP_FILEMAP{$name};
 	if (defined $$temp_fd and $$temp_fd->opened) {
 		if ($TEMP_FILES{$$temp_fd}{locked}) {
-			throw Error::Simple("Temp file with moniker '",
-				$name, "' already in use");
+			throw Error::Simple("Temp file with moniker '" .
+				$name . "' already in use");
 		}
 	} else {
 		if (defined $$temp_fd) {
@@ -1022,9 +1021,16 @@ sub _temp_cache {
 				"' was closed. Opening replacement.";
 		}
 		my $fname;
+
+		my $tmpdir;
+		if (defined $self) {
+			$tmpdir = $self->repo_path();
+		}
+
 		($$temp_fd, $fname) = File::Temp->tempfile(
-			'Git_XXXXXX', UNLINK => 1
+			'Git_XXXXXX', UNLINK => 1, DIR => $tmpdir,
 			) or throw Error::Simple("couldn't open new temp file");
+
 		$$temp_fd->autoflush;
 		binmode $$temp_fd;
 		$TEMP_FILES{$$temp_fd}{fname} = $fname;

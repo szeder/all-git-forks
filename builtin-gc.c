@@ -26,7 +26,7 @@ static int pack_refs = 1;
 static int aggressive_window = -1;
 static int gc_auto_threshold = 6700;
 static int gc_auto_pack_limit = 50;
-static char *prune_expire = "2.weeks.ago";
+static const char *prune_expire = "2.weeks.ago";
 
 #define MAX_ADD 10
 static const char *argv_pack_refs[] = {"pack-refs", "--all", "--prune", NULL};
@@ -57,15 +57,12 @@ static int gc_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 	if (!strcmp(var, "gc.pruneexpire")) {
-		if (!value)
-			return config_error_nonbool(var);
-		if (strcmp(value, "now")) {
+		if (value && strcmp(value, "now")) {
 			unsigned long now = approxidate("now");
 			if (approxidate(value) >= now)
 				return error("Invalid %s: '%s'", var, value);
 		}
-		prune_expire = xstrdup(value);
-		return 0;
+		return git_config_string(&prune_expire, var, value);
 	}
 	return git_default_config(var, value, cb);
 }
@@ -191,7 +188,9 @@ static int need_to_gc(void)
 	 * there is no need.
 	 */
 	if (too_many_packs())
-		append_option(argv_repack, "-A", MAX_ADD);
+		append_option(argv_repack,
+			      !strcmp(prune_expire, "now") ? "-a" : "-A",
+			      MAX_ADD);
 	else if (!too_many_loose_objects())
 		return 0;
 
@@ -246,7 +245,9 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 			"run \"git gc\" manually. See "
 			"\"git help gc\" for more information.\n");
 	} else
-		append_option(argv_repack, "-A", MAX_ADD);
+		append_option(argv_repack,
+			      !strcmp(prune_expire, "now") ? "-a" : "-A",
+			      MAX_ADD);
 
 	if (pack_refs && run_command_v_opt(argv_pack_refs, RUN_GIT_CMD))
 		return error(FAILED_RUN, argv_pack_refs[0]);

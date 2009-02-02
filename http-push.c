@@ -87,6 +87,7 @@ static struct object_list *objects;
 struct repo
 {
 	char *url;
+	char *path;
 	int path_len;
 	int has_info_refs;
 	int can_update_info_refs;
@@ -126,7 +127,7 @@ struct transfer_request
 	char errorstr[CURL_ERROR_SIZE];
 	long http_code;
 	unsigned char real_sha1[20];
-	SHA_CTX c;
+	git_SHA_CTX c;
 	z_stream stream;
 	int zret;
 	int rename;
@@ -209,7 +210,7 @@ static size_t fwrite_sha1_file(void *ptr, size_t eltsize, size_t nmemb,
 		request->stream.next_out = expn;
 		request->stream.avail_out = sizeof(expn);
 		request->zret = inflate(&request->stream, Z_SYNC_FLUSH);
-		SHA1_Update(&request->c, expn,
+		git_SHA1_Update(&request->c, expn,
 			    sizeof(expn) - request->stream.avail_out);
 	} while (request->stream.avail_in && request->zret == Z_OK);
 	data_received++;
@@ -270,7 +271,7 @@ static void start_fetch_loose(struct transfer_request *request)
 
 	inflateInit(&request->stream);
 
-	SHA1_Init(&request->c);
+	git_SHA1_Init(&request->c);
 
 	url = xmalloc(strlen(remote->url) + 50);
 	request->url = xmalloc(strlen(remote->url) + 50);
@@ -310,7 +311,7 @@ static void start_fetch_loose(struct transfer_request *request)
 	if (prev_read == -1) {
 		memset(&request->stream, 0, sizeof(request->stream));
 		inflateInit(&request->stream);
-		SHA1_Init(&request->c);
+		git_SHA1_Init(&request->c);
 		if (prev_posn>0) {
 			prev_posn = 0;
 			lseek(request->local_fileno, 0, SEEK_SET);
@@ -595,7 +596,7 @@ static int refresh_lock(struct remote_lock *lock)
 	lock->refreshing = 1;
 
 	if_header = xmalloc(strlen(lock->token) + 25);
-	sprintf(if_header, "If: (<opaquelocktoken:%s>)", lock->token);
+	sprintf(if_header, "If: (<%s>)", lock->token);
 	sprintf(timeout_header, "Timeout: Second-%ld", lock->timeout);
 	dav_headers = curl_slist_append(dav_headers, if_header);
 	dav_headers = curl_slist_append(dav_headers, timeout_header);
@@ -742,7 +743,7 @@ static void finish_request(struct transfer_request *request)
 				fprintf(stderr, "Warning: requested range invalid; we may already have all the data.\n");
 
 			inflateEnd(&request->stream);
-			SHA1_Final(request->real_sha1, &request->c);
+			git_SHA1_Final(request->real_sha1, &request->c);
 			if (request->zret != Z_STREAM_END) {
 				unlink(request->tmpfile);
 			} else if (hashcmp(request->obj->sha1, request->real_sha1)) {
@@ -1120,10 +1121,8 @@ static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 				lock->timeout =
 					strtol(ctx->cdata + 7, NULL, 10);
 		} else if (!strcmp(ctx->name, DAV_ACTIVELOCK_TOKEN)) {
-			if (!prefixcmp(ctx->cdata, "opaquelocktoken:")) {
-				lock->token = xmalloc(strlen(ctx->cdata) - 15);
-				strcpy(lock->token, ctx->cdata + 16);
-			}
+			lock->token = xmalloc(strlen(ctx->cdata) + 1);
+			strcpy(lock->token, ctx->cdata);
 		}
 	}
 }
@@ -1202,7 +1201,8 @@ static struct remote_lock *lock_remote(const char *path, long timeout)
 	/* Make sure leading directories exist for the remote ref */
 	ep = strchr(url + strlen(remote->url) + 1, '/');
 	while (ep) {
-		*ep = 0;
+		char saved_character = ep[1];
+		ep[1] = '\0';
 		slot = get_active_slot();
 		slot->results = &results;
 		curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
@@ -1224,7 +1224,7 @@ static struct remote_lock *lock_remote(const char *path, long timeout)
 			free(url);
 			return NULL;
 		}
-		*ep = '/';
+		ep[1] = saved_character;
 		ep = strchr(ep + 1, '/');
 	}
 
@@ -1308,7 +1308,7 @@ static int unlock_remote(struct remote_lock *lock)
 	int rc = 0;
 
 	lock_token_header = xmalloc(strlen(lock->token) + 31);
-	sprintf(lock_token_header, "Lock-Token: <opaquelocktoken:%s>",
+	sprintf(lock_token_header, "Lock-Token: <%s>",
 		lock->token);
 	dav_headers = curl_slist_append(dav_headers, lock_token_header);
 
@@ -1426,9 +1426,17 @@ static void handle_remote_ls_ctx(struct xml_ctx *ctx, int tag_closed)
 				ls->userFunc(ls);
 			}
 		} else if (!strcmp(ctx->name, DAV_PROPFIND_NAME) && ctx->cdata) {
-			ls->dentry_name = xmalloc(strlen(ctx->cdata) -
-						  remote->path_len + 1);
-			strcpy(ls->dentry_name, ctx->cdata + remote->path_len);
+			char *path = ctx->cdata;
+			if (*ctx->cdata == 'h') {
+				path = strstr(path, "//");
+				if (path) {
+					path = strchr(path+2, '/');
+				}
+			}
+			if (path) {
+				path += remote->path_len;
+				ls->dentry_name = xstrdup(path);
+			}
 		} else if (!strcmp(ctx->name, DAV_PROPFIND_COLLECTION)) {
 			ls->dentry_flags |= IS_DIR;
 		}
@@ -1439,6 +1447,12 @@ static void handle_remote_ls_ctx(struct xml_ctx *ctx, int tag_closed)
 	}
 }
 
+/*
+ * NEEDSWORK: remote_ls() ignores info/refs on the remote side.  But it
+ * should _only_ heed the information from that file, instead of trying to
+ * determine the refs from the remote file system (badly: it does not even
+ * know about packed-refs).
+ */
 static void remote_ls(const char *path, int flags,
 		      void (*userFunc)(struct remote_ls_ctx *ls),
 		      void *userData)
@@ -1722,7 +1736,7 @@ static int update_remote(unsigned char *sha1, struct remote_lock *lock)
 	struct curl_slist *dav_headers = NULL;
 
 	if_header = xmalloc(strlen(lock->token) + 25);
-	sprintf(if_header, "If: (<opaquelocktoken:%s>)", lock->token);
+	sprintf(if_header, "If: (<%s>)", lock->token);
 	dav_headers = curl_slist_append(dav_headers, if_header);
 
 	strbuf_addf(&out_buffer.buf, "%s\n", sha1_to_hex(sha1));
@@ -1780,7 +1794,7 @@ static void one_remote_ref(char *refname)
 	struct ref *ref;
 	struct object *obj;
 
-	ref = alloc_ref_from_str(refname);
+	ref = alloc_ref(refname);
 
 	if (http_fetch_ref(remote->url, ref) != 0) {
 		fprintf(stderr,
@@ -1887,7 +1901,7 @@ static void add_remote_info_ref(struct remote_ls_ctx *ls)
 	char *ref_info;
 	struct ref *ref;
 
-	ref = alloc_ref_from_str(ls->dentry_name);
+	ref = alloc_ref(ls->dentry_name);
 
 	if (http_fetch_ref(remote->url, ref) != 0) {
 		fprintf(stderr,
@@ -1941,7 +1955,7 @@ static void update_remote_info_refs(struct remote_lock *lock)
 		  add_remote_info_ref, &buffer.buf);
 	if (!aborted) {
 		if_header = xmalloc(strlen(lock->token) + 25);
-		sprintf(if_header, "If: (<opaquelocktoken:%s>)", lock->token);
+		sprintf(if_header, "If: (<%s>)", lock->token);
 		dav_headers = curl_slist_append(dav_headers, if_header);
 
 		slot = get_active_slot();
@@ -2208,10 +2222,11 @@ int main(int argc, char **argv)
 		if (!remote->url) {
 			char *path = strstr(arg, "//");
 			remote->url = arg;
+			remote->path_len = strlen(arg);
 			if (path) {
-				path = strchr(path+2, '/');
-				if (path)
-					remote->path_len = strlen(path);
+				remote->path = strchr(path+2, '/');
+				if (remote->path)
+					remote->path_len = strlen(remote->path);
 			}
 			continue;
 		}
@@ -2237,11 +2252,12 @@ int main(int argc, char **argv)
 	no_pragma_header = curl_slist_append(no_pragma_header, "Pragma:");
 
 	if (remote->url && remote->url[strlen(remote->url)-1] != '/') {
-		rewritten_url = malloc(strlen(remote->url)+2);
+		rewritten_url = xmalloc(strlen(remote->url)+2);
 		strcpy(rewritten_url, remote->url);
 		strcat(rewritten_url, "/");
+		remote->path = rewritten_url + (remote->path - remote->url);
+		remote->path_len++;
 		remote->url = rewritten_url;
-		++remote->path_len;
 	}
 
 	/* Verify DAV compliance/lock support */

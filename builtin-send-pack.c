@@ -15,10 +15,24 @@ static struct send_pack_args args = {
 	/* .receivepack = */ "git-receive-pack",
 };
 
+static int feed_object(const unsigned char *sha1, int fd, int negative)
+{
+	char buf[42];
+
+	if (negative && !has_sha1_file(sha1))
+		return 1;
+
+	memcpy(buf + negative, sha1_to_hex(sha1), 40);
+	if (negative)
+		buf[0] = '^';
+	buf[40 + negative] = '\n';
+	return write_or_whine(fd, buf, 41 + negative, "send-pack: send refs");
+}
+
 /*
  * Make a pack stream and spit it out into file descriptor fd
  */
-static int pack_objects(int fd, struct ref *refs)
+static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *extra)
 {
 	/*
 	 * The child becomes pack-objects --revs; we feed
@@ -34,6 +48,7 @@ static int pack_objects(int fd, struct ref *refs)
 		NULL,
 	};
 	struct child_process po;
+	int i;
 
 	if (args.use_thin_pack)
 		argv[4] = "--thin";
@@ -49,25 +64,17 @@ static int pack_objects(int fd, struct ref *refs)
 	 * We feed the pack-objects we just spawned with revision
 	 * parameters by writing to the pipe.
 	 */
-	while (refs) {
-		char buf[42];
+	for (i = 0; i < extra->nr; i++)
+		if (!feed_object(extra->array[i], po.in, 1))
+			break;
 
+	while (refs) {
 		if (!is_null_sha1(refs->old_sha1) &&
-		    has_sha1_file(refs->old_sha1)) {
-			memcpy(buf + 1, sha1_to_hex(refs->old_sha1), 40);
-			buf[0] = '^';
-			buf[41] = '\n';
-			if (!write_or_whine(po.in, buf, 42,
-						"send-pack: send refs"))
-				break;
-		}
-		if (!is_null_sha1(refs->new_sha1)) {
-			memcpy(buf, sha1_to_hex(refs->new_sha1), 40);
-			buf[40] = '\n';
-			if (!write_or_whine(po.in, buf, 41,
-						"send-pack: send refs"))
-				break;
-		}
+		    !feed_object(refs->old_sha1, po.in, 1))
+			break;
+		if (!is_null_sha1(refs->new_sha1) &&
+		    !feed_object(refs->new_sha1, po.in, 0))
+			break;
 		refs = refs->next;
 	}
 
@@ -387,14 +394,17 @@ static int do_send_pack(int in, int out, struct remote *remote, const char *dest
 	int expect_status_report = 0;
 	int flags = MATCH_REFS_NONE;
 	int ret;
+	struct extra_have_objects extra_have;
 
+	memset(&extra_have, 0, sizeof(extra_have));
 	if (args.send_all)
 		flags |= MATCH_REFS_ALL;
 	if (args.send_mirror)
 		flags |= MATCH_REFS_MIRROR;
 
 	/* No funny business with the matcher */
-	remote_tail = get_remote_heads(in, &remote_refs, 0, NULL, REF_NORMAL);
+	remote_tail = get_remote_heads(in, &remote_refs, 0, NULL, REF_NORMAL,
+				       &extra_have);
 	get_local_heads();
 
 	/* Does the other end support the reporting? */
@@ -496,7 +506,7 @@ static int do_send_pack(int in, int out, struct remote *remote, const char *dest
 
 	packet_flush(out);
 	if (new_refs && !args.dry_run) {
-		if (pack_objects(out, remote_refs) < 0)
+		if (pack_objects(out, remote_refs, &extra_have) < 0)
 			return -1;
 	}
 	else

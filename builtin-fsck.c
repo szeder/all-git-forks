@@ -222,12 +222,16 @@ static void check_unreachable_object(struct object *obj)
 				char *buf = read_sha1_file(obj->sha1,
 						&type, &size);
 				if (buf) {
-					fwrite(buf, size, 1, f);
+					if (fwrite(buf, size, 1, f) != 1)
+						die("Could not write %s: %s",
+						    filename, strerror(errno));
 					free(buf);
 				}
 			} else
 				fprintf(f, "%s\n", sha1_to_hex(obj->sha1));
-			fclose(f);
+			if (fclose(f))
+				die("Could not finish %s: %s",
+				    filename, strerror(errno));
 		}
 		return;
 	}
@@ -624,7 +628,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 	}
 
 	heads = 0;
-	for (i = 1; i < argc; i++) {
+	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
 		if (!get_sha1(arg, head_sha1)) {
 			struct object *obj = lookup_object(head_sha1);
