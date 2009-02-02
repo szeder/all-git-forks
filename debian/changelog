@@ -1,3 +1,12 @@
+git-core (1:1.6.1.2-1) experimental; urgency=low
+
+  * new upstream release.
+    * don't fail to clone over http if connection is rate limited
+      (closes: #512795).
+    * git svn info no longer fails (closes: #499243).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 22:02:15 +0000
+
 git-core (1:1.6.0.6-1) experimental; urgency=low
 
   * debian/control: git-email: Recommends: libnet-smtp-ssl-perl,

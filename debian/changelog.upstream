@@ -1,3 +1,1091 @@
+Version v1.6.1.2; changes since v1.6.1.1:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      Rename detection: Avoid repeated filespec population
+
+Jeff King (1):
+      avoid 31-bit truncation in write_loose_object
+
+Johannes Schindelin (2):
+      get_sha1_basic(): fix invalid memory access, found by valgrind
+      test-path-utils: Fix off by one, found by valgrind
+
+Junio C Hamano (4):
+      ls-tree: add --full-tree option
+      Teach format-patch to handle output directory relative to cwd
+      send-pack: do not send unknown object name from ".have" to pack-objects
+      GIT 1.6.1.2
+
+Marcel M. Cary (1):
+      git-sh-setup: Fix scripts whose PWD is a symlink to a work-dir on OS X
+
+Markus Heidelberg (2):
+      git-commit: color status output when color.ui is set
+      git-status -v: color diff output when color.ui is set
+
+Nanako Shiraishi (1):
+      Document git-ls-tree --full-tree
+
+Nguyễn Thái Ngọc Duy (2):
+      grep: support --no-ext-grep to test builtin grep
+      grep: grep cache entries if they are "assume unchanged"
+
+Nicolas Pitre (1):
+      objects to be pruned immediately don't have to be loosened
+
+
+Version v1.6.1.1; changes since v1.6.1:
+---------------------------------------
+
+Adeodato Simó (2):
+      git-shortlog.txt: improve documentation about .mailmap files
+      git-send-email.txt: move --format-patch paragraph to a proper location
+
+Anders Melchiorsen (4):
+      Documentation: git push repository can also be a remote
+      Documentation: remove a redundant elaboration
+      Documentation: mention branches rather than heads
+      Documentation: avoid using undefined parameters
+
+Boyd Stephen Smith Jr (1):
+      Fix Documentation for git-describe
+
+Christian Couder (1):
+      builtin-fsck: fix off by one head count
+
+Clemens Buchacher (4):
+      modify/delete conflict resolution overwrites untracked file
+      unpack-trees: handle failure in verify_absent
+      unpack-trees: fix path search bug in verify_absent
+      unpack-trees: remove redundant path search in verify_absent
+
+Devin Doucette (1):
+      gitweb: Fix export check in git_get_projects_list
+
+Felipe Contreras (1):
+      fast-import: Cleanup mode setting.
+
+Henrik Austad (2):
+      Use capitalized names where appropriate
+      Be consistent in switch usage for tar
+
+Jay Soffian (1):
+      Git.pm: call Error::Simple() properly
+
+Joey Hess (1):
+      README: tutorial.txt is now called gittutorial.txt
+
+Johannes Schindelin (7):
+      merge-recursive: mark rename/delete conflict as unmerged
+      bisect view: call gitk if Cygwin's SESSIONNAME variable is set
+      git add: do not add files from a submodule
+      http-push: fix off-by-path_len
+      http-push: when making directories, have a trailing slash in the path name
+      t5540: clarify that http-push does not handle packed-refs on the remote
+      Rename diff.suppress-blank-empty to diff.suppressBlankEmpty
+
+Junio C Hamano (8):
+      merge-recursive: do not clobber untracked working tree garbage
+      Prepare for v1.6.1.1 maintenance release
+      builtin-apply: prevent non-explicit permission changes
+      git checkout: do not allow switching to a tree-ish that is not a commit
+      format-patch: show patch text for the root commit
+      Update draft release notes to 1.6.1.1
+      Update draft release notes for 1.6.1.1
+      GIT 1.6.1.1
+
+Kirill A. Korinskiy (1):
+      http-push: support full URI in handle_remote_ls_ctx()
+
+Lars Noschinski (1):
+      shell: Document that 'cvs server' is a valid command
+
+Markus Heidelberg (2):
+      doc/git-send-email: mention sendemail.cc config variable
+      Documentation: let asciidoc align related options
+
+Michael J Gruber (2):
+      add test cases for "git mv -k"
+      fix handling of multiple untracked files for git mv -k
+
+Miklos Vajna (2):
+      fast-export: print usage when no options specified
+      Make t3411 executable
+
+Paul Jarc (1):
+      configure clobbers LDFLAGS
+
+Philippe Bruhat (1):
+      Git.pm: correctly handle directory name that evaluates to "false"
+
+Pierre Habouzit (1):
+      Avoid spurious error messages on error mistakes.
+
+René Scharfe (8):
+      daemon: handle freopen() failure
+      daemon: cleanup: replace loop with if
+      daemon: cleanup: factor out xstrdup_tolower()
+      merge-file: handle freopen() failure
+      pretty: factor out skip_empty_lines()
+      pretty: factor out format_subject()
+      pretty: support multiline subjects with format:
+      shortlog: handle multi-line subjects like log --pretty=oneline et. al. do
+
+Shawn O. Pearce (1):
+      describe: Avoid unnecessary warning when using --all
+
+Stephan Beyer (5):
+      t3501: check that commits are actually done
+      t3404: Add test case for aborted --continue after "edit"
+      t3404: Add test case for auto-amending only edited commits after "edit"
+      builtin-commit.c: do not remove COMMIT_EDITMSG
+      githooks.txt: add missing word
+
+Thomas Rast (3):
+      diff: accept -- when using --no-index
+      diff --no-index: test for pager after option parsing
+      diff --no-index -q: fix endless loop
+
+jidanni@jidanni.org (4):
+      Documentation/diff-options.txt: unify options
+      Documentation/git-tag.txt: minor typo and grammar fix
+      Documentation/git-push.txt: minor: compress one option
+      contrib/examples/README: give an explanation of the status of these files
+
+
+Version v1.6.1; changes since v1.6.0.6:
+---------------------------------------
+
+Abhijit Menon-Sen (1):
+      Make cherry-pick use rerere for conflict resolution.
+
+Alex Riesen (14):
+      Extend "checkout --track" DWIM to support more cases
+      Remove calculation of the longest command name from where it is not used
+      Remove useless memset of static command name lists in builtin-merge.c
+      Make main_cmds and other_cmds local to builtin-help.c
+      Allow git help work without PATH set
+      list_commands: only call git_exec_path if it is needed
+      Add help.autocorrect to enable/disable autocorrecting
+      Cleanup remove_path
+      Fix potentially dangerous uses of mkpath and git_path
+      Fix handle leak in sha1_file/unpack_objects if there were damaged object data
+      Fix t4030-diff-textconv.sh
+      Make some of fwrite/fclose/write/close failures visible
+      Make chdir failures visible
+      Report symlink failures in merge-recursive
+
+Alexander Gavrilov (63):
+      git-gui: Support starting gitk from Gui Blame
+      git-gui: Support passing blame to a parent commit.
+      git-gui: Better positioning in Blame Parent Commit
+      git-gui: Allow specifying an initial line for git gui blame.
+      gitk: Add option to specify the default commit on command line
+      gitk: Add menu item for calling git gui blame
+      git-gui: Support resolving conflicts via the diff context menu.
+      git-gui: Support calling merge tools.
+      git-gui: Don't allow staging files with conflicts.
+      git-gui: Support more merge tools.
+      git-gui: Support conflict states _U & UT.
+      git-gui: Reimplement and enhance auto-selection of diffs.
+      git-gui: Make F5 reselect a diff, if an untracked file is selected.
+      git-gui: Show special diffs for complex conflict cases.
+      git-gui: Fix Blame Parent & Context for working copy lines.
+      git-gui: Restore ability to Stage Working Copy for conflicts.
+      gitk: Fix a bug in collapsing deeply nested trees
+      git-gui: Add more integration options to citool.
+      git-gui: Cleanup handling of the default encoding.
+      git-gui: Add a menu of available encodings.
+      git-gui: Allow forcing display encoding for diffs using a submenu.
+      git-gui: Optimize encoding name resolution using a lookup table.
+      git-gui: Support the encoding menu in gui blame.
+      git-gui: Reenable staging unmerged files by clicking the icon.
+      git-gui: Make Ctrl-T safe to use for conflicting files.
+      git-gui: Fix the blame window shape.
+      git-gui: Add a search command to the blame viewer.
+      git-gui: Fix the blame viewer destroy handler.
+      gitk: Enhance file encoding support
+      gitk: Implement batch lookup and caching of encoding attrs
+      gitk: Allow forcing branch creation if it already exists
+      gitk: Fix file list context menu for merge commits
+      builtin-blame: Reencode commit messages according to git-log rules.
+      gitk: Allow starting gui blame for a specific line
+      git-gui: Add a dialog that shows the OpenSSH public key.
+      git-gui: Add a simple implementation of SSH_ASKPASS.
+      Windows: Make OpenSSH properly detect tty detachment.
+      gitweb: Use single implementation of export_ok check.
+      gitweb: Add a per-repository authorization hook.
+      gitweb: Fix mod_perl support.
+      gitk: Add Return and Escape bindings to dialogs
+      gitk: Make gitk dialog windows transient
+      gitk: Make cherry-pick call git-citool on conflicts
+      gitk: Implement a user-friendly Edit View dialog
+      git-gui: Fix focus transition in the blame viewer.
+      git-gui: Add the Show SSH Key item to the clone dialog.
+      git-gui: Request blame metadata in utf-8.
+      gitk: Add accelerators to frequently used menu commands
+      gitk: Fix transient windows on Win32 and MacOS
+      gitk: Fix commit encoding support
+      Documentation: New GUI configuration and command-line options.
+      git-gui: Implement system-wide configuration handling.
+      git-gui: Fix the after callback execution in rescan.
+      git-gui: Add a Tools menu for arbitrary commands.
+      git-gui: Allow Tools request arguments from the user.
+      git-gui: Implement automatic rescan after Tool execution.
+      git-gui: Fix the search bar destruction handler.
+      gitk: Avoid handling the Return key twice in Add Branch
+      gitk: Make line origin search update the busy status
+      gitk: Add a menu option to start git gui
+      git-gui: Fix handling of relative paths in blame.
+      git-gui: Fix commit encoding handling.
+      Documentation: Describe git-gui Tools menu configuration options.
+
+Alexander Potashev (2):
+      Fix typos in documentation
+      Fix typo in comment in builtin-add.c
+
+Alexandre Julliard (9):
+      git.el: Improve error handling for commits.
+      git.el: Remove the env parameter in git-call-process and git-call-process-string.
+      git.el: Simplify handling of merge heads in the commit log-edit buffer.
+      git.el: Properly handle merge commits in git-amend-commit.
+      git.el: Fix git-amend-commit to support amending an initial commit.
+      git.el: Never clear the status buffer, only update the files.
+      git.el: Add an insert file command.
+      git.el: Add possibility to mark files directly in git-update-status-files.
+      git.el: Allow to commit even if there are no marked files.
+
+Alexey Borzenkov (1):
+      Define linkgit macro in [macros] section
+
+Anders Melchiorsen (2):
+      wt-status: Split header generation into three functions
+      wt-status: Teach how to discard changes in the working directory
+
+Andreas Ericsson (3):
+      Teach "git diff -p" to locate PHP class methods
+      git commit: Reformat output somewhat
+      rebase: Support preserving merges in non-interactive mode
+
+Arjen Laarhoven (2):
+      t6023-merge-file: Work around non-portable sed usage
+      Enable threaded delta search on Mac OS X/Darwin
+
+Bert Wesarg (1):
+      for-each-ref: `:short` format for `refname`
+
+Boyd Stephen Smith Jr (1):
+      git-revert documentation: refer to new HOWTO on reverting faulty merges
+
+Brandon Casey (10):
+      remote.c: add a function for deleting a refspec array and use it (twice)
+      dir.c: Avoid c99 array initialization
+      t4018-diff-funcname: test syntax of builtin xfuncname patterns
+      diff.c: remove duplicate bibtex pattern introduced by merge 92bb9785
+      xdiff-interface.c: strip newline (and cr) from line before pattern matching
+      Replace xmalloc/memset(0) pairs with xcalloc
+      t9001: use older Getopt::Long boolean prefix '--no' rather than '--no-'
+      Replace calls to strbuf_init(&foo, 0) with STRBUF_INIT initializer
+      t4018-diff-funcname: add objective-c xfuncname pattern to syntax test
+      git-branch: display sha1 on branch deletion
+
+Brian Downing (4):
+      Make xdi_diff_outf interface for running xdiff_outf diffs
+      Use strbuf for struct xdiff_emit_state's remainder
+      Always initialize xpparam_t to 0
+      Allow alternate "low-level" emit function from xdl_diff
+
+Brian Gernhardt (2):
+      format-patch: autonumber by default
+      Avoid using non-portable `echo -n` in tests.
+
+Cheng Renquan (2):
+      git-remote: match usage string with the manual pages
+      git-remote: add verbose mode to git remote update
+
+Christian Couder (12):
+      merge-base: teach "git merge-base" to drive underlying merge_bases_many()
+      bisect: test merge base if good rev is not an ancestor of bad rev
+      bisect: only check merge bases when needed
+      bisect: remove "checkout_done" variable used when checking merge bases
+      refs: improve comments about "reading" argument of "resolve_ref"
+      bisect: fix missing "exit"
+      Documentation: user-manual: add information about "git help" at the beginning
+      Documentation: tutorial: add information about "git help" at the beginning
+      git-gui: french translation update
+      bisect: teach "skip" to accept special arguments like "A..B"
+      bisect: fix "git bisect skip <commit>" and add tests cases
+      Documentation: describe how to "bisect skip" a range of commits
+
+Christian Stimming (9):
+      git-gui: Mark forgotten strings for translation.
+      git-gui: I18n fix sentence parts into full sentences for translation again.
+      git-gui: Updated German translation.
+      gitk: Add untranslated error messages to translation
+      git-gui: Update German translation.
+      gitk: Update German translation
+      git-gui: Update German (completed) translation.
+      gitk: Mark forgotten strings (header sentence parts in color chooser) for translation
+      gitk: Update German translation
+
+Dan Hensgen (1):
+      git-merge documentation: more details about resolving conflicts
+
+Daniel Lowe (1):
+      Fix non-literal format in printf-style calls
+
+David Aguilar (3):
+      git-submodule: replace duplicated code with a module_list function
+      git-submodule: add "sync" command
+      tests: add a testcase for "git submodule sync"
+
+David Bryson (1):
+      Use "git_config_string" to simplify "builtin-gc.c" code where "prune_expire" is set
+
+David M. Syzdek (5):
+      Build: add NO_UINTMAX_T to support ancient systems
+      Add Makefile check for FreeBSD 4.9-SECURITY
+      autoconf: Add link tests to each AC_CHECK_FUNC() test
+      Make Pthread link flags configurable
+      Add autoconf tests for pthreads
+
+David Soria Parra (1):
+      cast pid_t's to uintmax_t to improve portability
+
+David Symonds (1):
+      git-diff: Add --staged as a synonym for --cached.
+
+Davide Libenzi (1):
+      xdiff: give up scanning similar lines early
+
+Deskin Miler (1):
+      git-svn: testcase for partial rebuild
+
+Deskin Miller (4):
+      git-svn: do a partial rebuild if rev_map is out-of-date
+      git-svn: proper detection of bare repositories
+      git-svn: proper detection of bare repositories
+      git-svn: Make branch use correct svn-remote
+
+Dmitry Potapov (14):
+      teach index_fd to work with pipes
+      correct argument checking test for git hash-object
+      correct usage help string for git-hash-object
+      use parse_options() in git hash-object
+      add --path option to git hash-object
+      add --no-filters option to git hash-object
+      mingw: remove use of _getdrive() from lstat/fstat
+      add have_git_dir() function
+      mingw: move common functionality to win32.h
+      cygwin: Use native Win32 API for stat
+      do not segfault if make_cache_entry failed
+      print an error message for invalid path
+      check-attr: add an internal check_attr() function
+      check-attr: Add --stdin option
+
+Dotan Barak (1):
+      Use xmalloc() and friends to catch allocation failures
+
+Eric Wong (7):
+      git-svn: check error code of send_txstream
+      t9124: clean up chdir usage
+      git-svn: fix handling of even funkier branch names
+      git-svn: don't escape tilde ('~') for http(s) URLs
+      git-svn: respect i18n.commitencoding config
+      git-svn: don't escape tilde ('~') for http(s) URLs
+      git-svn: respect i18n.commitencoding config
+
+Florian Ragwitz (1):
+      Add git-svn branch to allow branch creation in SVN repositories
+
+Florian Weimer (3):
+      git-svn: extract base blob in generate_diff
+      git-svn: Introduce SVN::Git::Editor::_chg_file_get_blob
+      git-svn: Send deltas during commits
+
+Fredrik Skolmli (2):
+      Documentation: Spelling fix
+      git-gui: Starting translation for Norwegian
+
+Garry Dolley (1):
+      Fixed some grammatical errors in git-rebase.txt documentation.
+
+Giovanni Funchal (1):
+      configure: auto detect dynamic library path switches
+
+Giuseppe Bilotta (15):
+      gitweb: ref markers link to named shortlogs
+      gitweb: shortlog now also obeys $hash_parent
+      gitweb: refactor input parameters parse/validation
+      gitweb: parse project/action/hash_base:filename PATH_INFO
+      gitweb: generate project/action/hash URLs
+      gitweb: use_pathinfo filenames start with /
+      gitweb: parse parent..current syntax from PATH_INFO
+      gitweb: generate parent..current URLs
+      gitweb: make the supported snapshot formats array global
+      gitweb: retrieve snapshot format from PATH_INFO
+      gitweb: embed snapshot format parameter in PATH_INFO
+      git-gui: try to provide a window icon under X
+      gitweb: make gitweb_check_feature a boolean wrapper
+      Update comment on gitweb_check/get_feature
+      gitk: Map / to focus the search box
+
+Gustaf Hendeby (2):
+      Update .gitignore to ignore git-help
+      git-gui: Teach git gui about file type changes
+
+Heikki Orsila (1):
+      diff --dirstat-by-file: count changed files, not lines
+
+Jakub Narebski (3):
+      gitweb: Better processing format string in custom links in navbar
+      gitweb: Fix handling of non-ASCII characters in inserted HTML files
+      gitweb: Fix bug in insert_file() subroutine
+
+Jan Krüger (1):
+      Introduce receive.denyDeletes
+
+Jeff King (34):
+      run-command: add pre-exec callback
+      spawn pager via run_command interface
+      format-patch: use default diff format even with patch options
+      tests: grep portability fixes
+      reformat informational commit message
+      tutorial: update output of git commit
+      tests: shell negation portability fix
+      t4012: use test_cmp instead of cmp
+      diff: unify external diff and funcname parsing code
+      diff: introduce diff.<driver>.binary
+      diff: add filter for converting binary to text
+      document "intent to add" option to git-add
+      rm: loosen safety valve for empty files
+      submodule: fix some non-portable grep invocations
+      diff: add missing static declaration
+      document the diff driver textconv feature
+      refactor userdiff textconv code
+      userdiff: require explicitly allowing textconv
+      only textconv regular files
+      wt-status: load diff ui config
+      add userdiff textconv tests
+      enable textconv for diff in verbose status/commit
+      t5400: expect success for denying deletion
+      t5516: refactor oddball tests
+      receive-pack: detect push to current branch of non-bare repo
+      define empty tree sha1 as a macro
+      wt-status: refactor initial commit printing
+      status: show "-v" diff even for initial commit
+      add stage to gitignore
+      reorder ALLOW_TEXTCONV option setting
+      diff: allow turning on textconv explicitly for plumbing
+      diff: fix handling of binary rewrite diffs
+      diff: respect textconv in rewrite diffs
+      rebase: improve error messages about dirty state
+
+Jim Meyering (4):
+      add boolean diff.suppress-blank-empty config option
+      SubmittingPatches: fix a typo
+      reword --full-index description
+      xdiff-interface.c: remove 10 duplicated lines
+
+Joey Hess (2):
+      git-daemon: set REMOTE_ADDR to client address
+      sha1_file: avoid bogus "file exists" error message
+
+Johan Herland (3):
+      Teach "git diff -p" HTML funcname patterns
+      Fix AsciiDoc errors in merge documentation
+      Fix submodule sync with relative submodule URLs
+
+Johannes Schindelin (10):
+      t9700: remove useless check
+      tests: Clarify dependencies between tests, 'aggregate-results' and 'clean'
+      Enable parallel tests
+      checkout --track: make up a sensible branch name if '-b' was omitted
+      test-lib: do not remove trash_directory if called with --debug
+      git wrapper: DWIM mistyped commands
+      Document levenshtein.c
+      Get rid of the last remnants of GIT_CONFIG_LOCAL
+      git-gui: Get rid of the last remnants of GIT_CONFIG_LOCAL
+      rebase -i -p: leave a --cc patch when a merge could not be redone
+
+Johannes Sixt (17):
+      Revert "Windows: Use a customized struct stat that also has the st_blocks member."
+      filter-branch: Grok special characters in tag names
+      Windows: git-shell can be compiled again
+      compat/mingw: Support a timeout in the poll emulation if no fds are given
+      git-gui: Do not automatically stage file after merge tool finishes
+      git-gui: Remove space from the end of aspell's reply before processing
+      git-gui: Fix switch statement in lib/merge.tcl
+      git-gui: Show a round number of bytes of large untracked text files
+      git-gui: Mark-up strings in show_{other,unmerged}_diff() for localization
+      git-remote: list branches in vertical lists
+      git-gui: Do not munge conflict marker lines in a normal diff
+      t4030-diff-textconv: Make octal escape sequence more portable
+      Show a failure of rebase -p if the merge had a conflict
+      rebase -i -p: Fix --continue after a merge could not be redone
+      gitk: Use check-buttons' -text property instead of separate labels
+      gitk: Ensure that "Reset branch" menu entry is enabled
+      gitk: Force the focus to the main window on Windows
+
+John Chapman (2):
+      git-p4: Support purged files and optimize memory usage
+      git-p4: Cache git config for performance
+
+Jonas Fonseca (1):
+      git-check-attr(1): use 'verse' for multi-line synopsis sections
+
+Jonathan del Strother (3):
+      Revert "Convert output messages in merge-recursive to past tense."
+      Add OS X support to the pre-auto-gc example hook
+      Teach git diff about Objective-C syntax
+
+Joshua Williams (1):
+      git-gui: Add support for calling out to the prepare-commit-msg hook
+
+Junio C Hamano (105):
+      builtin-add.c: restructure the code for maintainability
+      builtin-add.c: optimize -A option and "git add ."
+      imap-send.c: more style fixes
+      documentation: merge-base: explain "git merge-base" with more than 2 args
+      merge-base-many: add trivial tests based on the documentation
+      git-merge-octopus: use (merge-base A (merge B C D E...)) for stepwise merge
+      revision.c: whitespace fix
+      revision traversal: show full history with merge simplification
+      Topo-sort before --simplify-merges
+      update-index: refuse to add working tree items beyond symlinks
+      add: refuse to add working tree items beyond symlinks
+      xdiff-interface: hide the whole "xdiff_emit_state" business from the caller
+      revision --simplify-merges: use decoration instead of commit->util field
+      index: future proof for "extended" index entries
+      tests: use $TEST_DIRECTORY to refer to the t/ directory
+      Start 1.6.1 cycle
+      Makefile: Allow CC_LD_DYNPATH to be overriden
+      revision --simplify-merges: do not leave commits unprocessed
+      revision --simplify-merges: make it a no-op without pathspec
+      compat: introduce on_disk_bytes()
+      shell: do not play duplicated definition games to shrink the executable
+      Build-in "git-shell"
+      Update draft release notes for 1.6.1
+      Fix "git-merge -s bogo" help text
+      templates/Makefile: install is unnecessary, just use mkdir -p
+      t7606: fix custom merge test
+      Revert "Build-in "git-shell""
+      daemon.c: minor style fixup
+      checkout -f: allow ignoring unmerged paths when checking out of the index
+      checkout --ours/--theirs: allow checking out one side of a conflicting merge
+      xdl_fill_merge_buffer(): separate out a too deeply nested function
+      xdiff-merge: optionally show conflicts in "diff3 -m" style
+      xmerge.c: minimum readability fixups
+      xmerge.c: "diff3 -m" style clips merge reduction level to EAGER or less
+      rerere.c: use symbolic constants to keep track of parsing states
+      rerere: understand "diff3 -m" style conflicts with the original
+      merge.conflictstyle: choose between "merge" and "diff3 -m" styles
+      git-merge-recursive: learn to honor merge.conflictstyle
+      checkout -m: recreate merge when checking out of unmerged index
+      diff: vary default prefix depending on what are compared
+      git commit --author=$name: look $name up in existing commits
+      git-add --intent-to-add (-N)
+      checkout --conflict=<style>: recreate merge in a non-default style
+      git-merge documentation: describe how conflict is presented
+      Update draft release notes for 1.6.1
+      safe_create_leading_directories(): make it about "leading" directories
+      git-apply:--include=pathspec
+      Update draft release notes for 1.6.1
+      daemon.c: avoid setlinebuf()
+      is_directory(): a generic helper function
+      receive-pack: make it a builtin
+      push: prepare sender to receive extended ref information from the receiver
+      push: receiver end advertises refs from alternate repositories
+      Fix git-diff-tree --stdin
+      diff: use extended regexp to find hunk headers
+      diff: fix "multiple regexp" semantics to find hunk header comment
+      Update draft release notes to 1.6.1
+      t5510: test "git fetch" following tags minimally
+      Update draft release notes to 1.6.1
+      Fix reading of cloud tags
+      Update draft release notes for 1.6.1
+      Fix mismerge at cdb22c4 in builtin-checkout.c
+      rebase-i-p: minimum fix to obvious issues
+      git-rebase--interactive.sh: comparision with == is bashism
+      receive-pack: fix "borrowing from alternate object store" implementation
+      compat/cygwin.c: make runtime detection of lstat/stat lessor impact
+      Stop using compat/regex.c on platforms with working regexp library
+      Update draft release notes to 1.6.1
+      Update draft release notes to 1.6.1
+      Update draft release notes to 1.6.1
+      t5303: work around printf breakage in dash
+      t5303: fix printf format string for portability
+      git.html: Update the links to stale versions
+      Update draft release notes to 1.6.1
+      builtin-remote.c: plug a small memory leak in get_one_remote_for_updates()
+      builtin-rm.c: explain and clarify the "local change" logic
+      git add --intent-to-add: fix removal of cached emptiness
+      git add --intent-to-add: do not let an empty blob be committed by accident
+      gitweb: fix 'ctags' feature check and others
+      gitweb: rename gitweb_check_feature to gitweb_get_feature
+      send-email: do not reverse the command line arguments
+      Include git-gui--askpass in git-gui RPM package
+      GIT 1.6.1-rc1
+      Makefile: introduce NO_PTHREADS
+      Install git-stage in exec-path
+      git-am --whitespace: do not lose the command line option
+      git-am: propagate -C<n>, -p<n> options as well
+      git-am: propagate --3way options as well
+      Test that git-am does not lose -C/-p/--whitespace options
+      git-am: rename apply_opt_extra file to apply-opt
+      Update draft release notes to 1.6.1
+      Update draft release notes for 1.6.1
+      Revert "git-stash: use git rev-parse -q"
+      Point "stale" 1.6.0.5 documentation from the main git documentation page
+      builtin-checkout.c: check error return from read_cache()
+      read-cache.c: typofix in comment
+      Fix t4031
+      gitweb: do not run "git diff" that is Porcelain
+      make_absolute_path(): check bounds when seeing an overlong symlink
+      builtin-blame.c: use strbuf_readlink()
+      combine-diff.c: use strbuf_readlink()
+      Make sure lockfiles are unlocked when dying on SIGPIPE
+      send-email: futureproof split_addrs() sub
+      GIT 1.6.1-rc4
+      GIT 1.6.1
+
+Karl Hasselström (4):
+      Refactoring: Split up diff_tree_stdin
+      diff-tree: Note that the commit ID is printed with --stdin
+      Teach git diff-tree --stdin to diff trees
+      Add test for diff-tree --stdin with two trees
+
+Kevin Ballard (1):
+      gitk: Allow unbalanced quotes/braces in commit headers
+
+Kirill A. Korinskiy (1):
+      Remove the requirement opaquelocktoken uri scheme
+
+Kirill Smelkov (1):
+      Teach "git diff -p" Python funcname patterns
+
+Lee Marlow (4):
+      bash completion: Add 'workflows' to 'git help'
+      workflows documentation: fix link to git-request-pull[1]
+      bash completion: Sort config completion variables
+      bash completion: Sync config variables with their man pages
+
+Linus Torvalds (14):
+      date/time: do not get confused by fractional seconds
+      Add a 'source' decorator for commits
+      revision: make tree comparison functions take commits rather than trees
+      Make '--decorate' set an explicit 'show_decorations' flag
+      revision traversal: '--simplify-by-decoration'
+      Add cache preload facility
+      Fix machine-parseability of 'git log --source'
+      Fix index preloading for racy dirty case
+      Add backslash to list of 'crud' characters in real name
+      Add generic 'strbuf_readlink()' helper function
+      Make 'ce_compare_link()' use the new 'strbuf_readlink()'
+      Make 'index_path()' use 'strbuf_readlink()'
+      Make 'diff_populate_filespec()' use the new 'strbuf_readlink()'
+      Make 'prepare_temp_file()' ignore st_size for symlinks
+
+Marcel Koeppen (1):
+      t9129-git-svn-i18n-commitencoding: Make compare_svn_head_with() compatible with OSX sed
+
+Marcel M. Cary (1):
+      git-sh-setup: Fix scripts whose PWD is a symlink into a git work-dir
+
+Marcus Griep (2):
+      count-objects: Add total pack size to verbose output
+      Update t/.gitignore to ignore all trash directories
+
+Marek Zawirski (1):
+      Make push more verbose about illegal combination of options
+
+Mark Burton (3):
+      Documentation: rev-list-options.txt: added --branches, --tags & --remotes.
+      git-commit.txt - mention that files listed on the command line must be known to git.
+      git-gui: Teach start_push_anywhere_action{} to notice when remote is a mirror.
+
+Mark Levedahl (5):
+      git-submodule - Add 'foreach' subcommand
+      git-submodule.sh - Remove trailing / from URL if found
+      git-submodule.sh - Remove trailing / from URL if found
+      git-submodule - Use "get_default_remote" from git-parse-remote
+      compat/cygwin.c - Use cygwin's stat if core.filemode == true
+
+Markus Heidelberg (8):
+      Makefile: add install-man rules (quick and normal)
+      builtin-commit: remove unused message variable
+      Documentation: fix description for enabling hooks
+      doc/git-reset: add reference to git-stash
+      Documentation: sync example output with git output
+      Documentation: fix typos, grammar, asciidoc syntax
+      Documentation/git-show-branch: work around "single quote" typesetting glitch
+      doc/git-fsck: change the way for getting heads' SHA1s
+
+Marten Svanfeldt (dev) (2):
+      Git.pm: Make _temp_cache use the repository directory
+      git-svn: Update git-svn to use the ability to place temporary files within repository directory
+
+Matt McCutchen (2):
+      "git diff <tree>{3,}": do not reverse order of arguments
+      git-merge-recursive: honor merge.conflictstyle once again
+
+Matthias Kestenholz (1):
+      bash-completion: Add all submodule subcommands to the completion list
+
+Michael J Gruber (4):
+      allow installation of man and html doc from the man and html branches
+      separate build targets for man and html documentation
+      make prune report removed objects on -v
+      test overlapping ignore patterns
+
+Michael Witten (9):
+      Docs: send-email's usage text and man page mention same options
+      Docs: send-email usage text much sexier
+      Docs: send-email: Man page option ordering
+      send-email: change --no-validate to boolean --[no-]validate
+      Docs: send-email: --chain_reply_to -> --[no-]chain-reply-to
+      Docs: send-email: Remove unnecessary config variable description
+      Docs: send-email: Create logical groupings for --help text
+      Docs: send-email: Create logical groupings for man text
+      send-email: signedoffcc -> signedoffbycc, but handle both
+
+Michele Ballabio (2):
+      git gui: update Italian translation
+      git gui: update Italian translation
+
+Mikael Magnusson (1):
+      Correct output of git-count-objects.
+
+Mike Ralphson (1):
+      gitweb: Sort the list of forks on the summary page by age
+
+Miklos Vajna (46):
+      builtin-help: make some internal functions available to other builtins
+      builtin-merge: allow using a custom strategy
+      Add a new test for using a custom merge strategy
+      Add a second testcase for handling invalid strategies in git-merge
+      builtin-help: always load_command_list() in cmd_help()
+      Builtin git-help.
+      Split out merge_recursive() to merge-recursive.c
+      merge-recursive: introduce merge_options
+      builtin-merge: avoid run_command_v_opt() for recursive and subtree
+      cherry-pick/revert: make direct internal call to merge_tree()
+      merge-recursive: move call_depth to struct merge_options
+      merge-recursive: get rid of the index_only global variable
+      merge-recursive: move the global obuf to struct merge_options
+      merge-recursive: move current_{file,directory}_set to struct merge_options
+      merge-recursive: get rid of virtual_id
+      builtin-merge: release the lockfile in try_merge_strategy()
+      commit_tree(): add a new author parameter
+      builtin-commit: use commit_tree()
+      t7603: add new testcases to ensure builtin-commit uses reduce_heads()
+      builtin-merge: refresh the index before calling a strategy
+      builtin-commit: use reduce_heads() only when appropriate
+      Cleanup in sha1_file.c::cache_or_unpack_entry()
+      Implement git clone -v
+      Add Linux PPC support to the pre-auto-gc example hook
+      parse-opt: migrate builtin-checkout-index.
+      Implement git remote rename
+      remote: add a new 'origin' variable to the struct
+      git-remote rename: migrate from remotes/ and branches/
+      git-remote: document the migration feature of the rename subcommand
+      Update Hungarian translation. 100% completed.
+      builtin-branch: use strbuf in delete_branches()
+      builtin-branch: use strbuf in fill_tracking_info()
+      builtin-branch: use strbuf in rename_branch()
+      builtin-clone: use strbuf in guess_dir_name()
+      builtin-clone: use strbuf in clone_local() and copy_or_link_directory()
+      builtin_clone: use strbuf in cmd_clone()
+      git-stash: use git rev-parse -q
+      filter-branch: use git rev-parse -q
+      lost-found: use git rev-parse -q
+      pull: use git rev-parse -q
+      rebase: use git rev-parse -q
+      submodule: use git rev-parse -q
+      git-gui: Update Hungarian translation for 0.12
+      git-daemon documentation: use {tilde}
+      githooks documentation: add a note about the +x mode
+      t9129: skip the last three tests if UTF-8 locale is not available
+
+Nanako Shiraishi (25):
+      t/t91XX-svn: start removing use of "git-" from these tests
+      t/t91XX git-svn tests: run "git svn" not "git-svn"
+      t9200: use "git cvsexportcommit" without dash
+      t9300, t9301: use "git fast-import/fast-export" without dash
+      t9700: use "git config" without dash
+      tests: use "git foo" without dash in strings
+      t9101: use "git hash-object" without dash
+      Install git-cvsserver in $(bindir)
+      remote.c: make free_ref(), parse_push_refspec() and free_refspecs() static.
+      graph.c: make many functions static
+      usage.c: remove unused functions
+      Add contrib/rerere-train script
+      dir.c: make dir_add_name() and dir_add_ignored() static
+      run-command.c: remove run_command_v_opt_cd()
+      config.c: make git_parse_long() static
+      commit.c: make read_graft_file() static
+      archive.c: make archiver static
+      rebase --no-verify
+      rebase: Document --no-verify option to bypass pre-rebase hook
+      Document "git log --source"
+      Document "git log --simplify-by-decoration"
+      git-gui: update Japanese translation
+      git-gui: Update Japanese translation for 0.12
+      Clarify documentation of "git checkout <tree-ish> paths" syntax
+      Add a documentat on how to revert a faulty merge
+
+Neil Roberts (1):
+      config.mak.in: Pass on LDFLAGS from configure
+
+Nguyễn Thái Ngọc Duy (1):
+      Extend index to save more flags
+
+Nicolas Pitre (18):
+      sha1write: don't copy full sized buffers
+      pack-objects: don't include missing preferred base objects
+      t5300: improve SHA1 collision test
+      fix openssl headers conflicting with custom SHA1 implementations
+      index-pack: rationalize delta resolution code
+      index-pack: smarter memory usage during delta resolution
+      fix multiple issues in index-pack
+      improve index-pack tests
+      index-pack: don't leak leaf delta result
+      close another possibility for propagating pack corruption
+      better validation on delta base object offsets
+      make unpack_object_header() non fatal
+      make packed_object_info() resilient to pack corruptions
+      make check_object() resilient to pack corruptions
+      make find_pack_revindex() aware of the nasty world
+      pack-objects: allow "fixing" a corrupted pack without a full repack
+      extend test coverage for latest pack corruption resilience improvements
+      pack-objects: don't leak pack window reference when splitting packs
+
+Paolo Bonzini (1):
+      provide more errors for the "merge into empty head" case
+
+Paul Mackerras (21):
+      gitk: Use <Button-2> for context menus on OSX
+      gitk: Clean up file encoding code and add enable/disable option
+      gitk: Fix binding for <Return> in sha1 entry field
+      gitk: New way of constructing menus that allows for Alt+letter accelerators
+      gitk: Regenerate .po files
+      gitk: Turn short SHA1 names into links too
+      gitk: Fix some off-by-one errors in computing which line to blame
+      gitk: Add a menu item to show where a given line comes from
+      gitk: Make the background color of marked lines configurable
+      gitk: Unify handling of merge diffs with normal 2-way diffs
+      gitk: Make "show origin of this line" work on fake commits
+      gitk: Cope with unmerged files in local changes
+      gitk: Improve cherry-pick error handling
+      gitk: Fix linehtag undefined error with file highlighting
+      gitk: Index line[hnd]tag arrays by id rather than row number
+      gitk: Fix switch statement in parseviewargs
+      gitk: Show local changes properly when we have a path limit
+      gitk: Fix context menu items for generating diffs when in tree mode
+      gitk: Highlight only when search type is "containing:".
+      gitk: Fix bug in accessing undefined "notflag" variable
+      gitk: Fix bugs in blaming code
+
+Paul Talacko (1):
+      git-svn: set auto_props when renaming files
+
+Pete Harlan (2):
+      contrib/hooks/post-receive-email: Put rev display in separate function
+      contrib/hooks/post-receive-email: Make revision display configurable
+
+Peter Krefting (3):
+      Updated Swedish translation (514t0f0u).
+      git-gui: Updated Swedish translation (515t0f0u).
+      git-gui: Fixed typos in Swedish translation.
+
+Peter Valdemar Mørch (2):
+      Teach git log --check to return an appropriate exit code
+      Teach git log --exit-code to return an appropriate exit code
+
+Petr Baudis (22):
+      git-web--browse: Support for using /bin/start on MinGW
+      git-gui: Clarify the Remote -> Delete... action
+      git-gui: Squash populate_{push,fetch}_menu to populate_remotes_menu
+      git-gui: Add support for adding remotes
+      git-gui: Add support for removing remotes
+      git-gui: mkdir -p when initializing new remote repository
+      git-gui: Use git web--browser for web browsing
+      git-gui: Add Explore Working Copy to the Repository menu
+      git-gui: gui.autoexplore makes explorer to pop up automatically after picking
+      git-gui: Avoid using the term URL when specifying repositories
+      git-gui: Make input boxes in init/clone/open dialogs consistent
+      git-gui: Fix removing non-pushable remotes
+      git-gui: Fix fetching from remotes when adding them
+      gitweb: Clean-up sorting of project list
+      gitweb: Quote non-displayable characters in hex, not octal
+      config.c: Tolerate UTF8 BOM at the beginning of config file
+      gitweb: Identify all summary metadata table rows
+      gitweb: Add support for extending the action bar with custom links
+      gitweb: Support for tag clouds
+      gitweb: Make the by_tag filter delve in forks as well
+      gitweb: Support for simple project search form
+      Do not rename read-only files during a push
+
+Pierre Habouzit (8):
+      Enable threaded delta search on *BSD and Linux.
+      parse-opt: migrate fmt-merge-msg.
+      parse-opt: migrate git-merge-base.
+      parse-opt: migrate builtin-merge-file.
+      git send-email: make the message file name more specific.
+      git send-email: interpret unknown files as revision lists
+      git send-email: add --annotate option
+      git send-email: ask less questions when --compose is used.
+
+Pieter de Bie (3):
+      builtin-reflog: Allow reflog expire to name partial ref
+      builtin-commit.c: show on which branch a commit was added
+      git wrapper: also use aliases to correct mistyped commands
+
+Quy Tonthat (1):
+      Update RPM spec for the new location of git-cvsserver.
+
+Ralf Wildenhues (3):
+      Correct typos in RelNotes-1.6.1
+      Fix typos in the documentation.
+      Improve language in git-merge.txt and related docs
+
+Raphael Zimmerer (1):
+      git grep: Add "-z/--null" option as in GNU's grep.
+
+René Scharfe (18):
+      log: add load_ref_decorations()
+      move load_ref_decorations() to log-tree.c and export it
+      add '%d' pretty format specifier to show decoration
+      add alloc_ref_with_prefix()
+      use alloc_ref_from_str() everywhere
+      make alloc_ref_from_str() the new alloc_ref()
+      blame: inline get_patch()
+      add xdi_diff_hunks() for callers that only need hunk lengths
+      blame: use xdi_diff_hunks(), get rid of struct patch
+      add strbuf_expand_dict_cb(), a helper for simple cases
+      merge-recursive: use strbuf_expand() instead of interpolate()
+      daemon: use strbuf_expand() instead of interpolate()
+      daemon: inline fill_in_extra_table_entries()
+      daemon: deglobalize variable 'directory'
+      remove the unused files interpolate.c and interpolate.h
+      Fix type-mismatch compiler warning from diff_populate_filespec()
+      connect.c: stricter port validation, silence compiler warning
+      fast-import.c: stricter strtoul check, silence compiler warning
+
+Richard Hartmann (2):
+      Make help entries alphabetical
+      Always show which directory is not a git repository
+
+Richard Quirk (1):
+      gitk: Bind Key-Return to create on new branch dialog
+
+Robert Shearman (4):
+      git-imap-send: Allow the program to be run from subdirectories of a git tree
+      git-imap-send: Support SSL
+      imap-send.c: style fixes
+      Documentation: Improve documentation for git-imap-send(1)
+
+Robin Rosenberg (1):
+      git-revert: record the parent against which a revert was made
+
+Romain Francoise (1):
+      builtin-help: fallback to GIT_MAN_VIEWER before man
+
+SZEDER Gábor (3):
+      bash: use for-each-ref format 'refname:short'
+      remove vim syntax highlighting in favor of upstream
+      bash: complete full refs
+
+Samuel Tardieu (1):
+      Fix deletion of last character in levenshtein distance
+
+Santi Béjar (1):
+      rev-list documentation: clarify the two parts of history simplification
+
+Scott Chacon (1):
+      Add a built-in alias for 'stage' to the 'add' command
+
+Shawn O. Pearce (9):
+      Make reflog query '@{1219188291}' act as '@{2008.8.19.16:24:51.-0700}'
+      git-gui: Hide commit related UI during citool --nocommit
+      git-gui: Use gitattribute "encoding" for file content display
+      git-gui: Assume `blame --incremental` output is in UTF-8
+      git-gui: Show/hide "Sign Off" based on nocommitmsg option
+      describe: Make --tags and --all match lightweight tags more often
+      Update the po template
+      git-gui: Update po template to include 'Mirroring %s' message
+      git-gui 0.12
+
+Simon Hausmann (1):
+      Make it possible to abort the submission of a change to Perforce
+
+Stephan Beyer (2):
+      Fix commit_tree() buffer leak
+      merge-recursive.c: Add more generic merge_recursive_generic()
+
+Stephen Haberman (8):
+      rebase--interactive: fix parent rewriting for dropped commits
+      rebase-i-p: test to exclude commits from todo based on its parents
+      rebase-i-p: use HEAD for updating the ref instead of mapping OLDHEAD
+      rebase-i-p: delay saving current-commit to REWRITTEN if squashing
+      rebase-i-p: fix 'no squashing merges' tripping up non-merges
+      rebase-i-p: only list commits that require rewriting in todo
+      rebase-i-p: do not include non-first-parent commits touching UPSTREAM
+      rebase-i-p: if todo was reordered use HEAD as the rewritten parent
+
+Stephen R. van den Berg (4):
+      git-daemon: call logerror() instead of error()
+      git-daemon: use LOG_PID, simplify logging code
+      git-daemon: Simplify dead-children reaping logic
+      git-daemon: rewrite kindergarden, new option --max-connections
+
+Teemu Likonen (1):
+      bash completion: Add --[no-]validate to "git send-email"
+
+Thomas Rast (19):
+      filter-branch: Extend test to show rewriting bug
+      filter-branch: fix ref rewriting with --subdirectory-filter
+      filter-branch: use --simplify-merges
+      Documentation: rev-list-options: move --simplify-merges documentation
+      rev-list: fix --reverse interaction with --parents
+      t6013: replace use of 'tac' with equivalent Perl
+      git svn: catch lack of upstream info for dcommit earlier
+      git svn info: tests: let 'init' test run with SVN 1.5
+      git svn info: tests: do not use set -e
+      git svn info: tests: use test_cmp instead of git-diff
+      git svn info: tests: fix ptouch argument order in setup
+      git svn info: make info relative to the current directory
+      git svn info: always quote URLs in 'info' output
+      git-svn: match SVN 1.5 behaviour of info' on unknown item
+      git-svn: fix 'info' tests for unknown items
+      Documentation: new upstream rebase recovery section in git-rebase
+      Documentation: Refer to git-rebase(1) to warn against rewriting
+      Documentation: remove stale howto/rebase-and-edit.txt
+      Documentation: add manpage about workflows
+
+Tom Preston-Werner (1):
+      connect.c: add a way for git-daemon to pass an error back to client
+
+Tommi Virtanen (1):
+      Install git-shell in bindir, too
+
+Tor Arvid Lund (3):
+      git-p4: Fix checkout bug when using --import-local.
+      git-p4: Fix bug in p4Where method.
+      git-p4: Fix regression in p4Where method.
+
+Trent Piepho (1):
+      send-email: Fix Pine address book parsing
+
+Tuncer Ayaz (2):
+      Teach/Fix pull/fetch -q/-v options
+      Retain multiple -q/-v occurrences in git pull
+
+YONETANI Tomokazu (1):
+      git-fast-import possible memory corruption problem
+
+
 Version v1.6.0.6; changes since v1.6.0.5:
 -----------------------------------------
 
