@@ -8,8 +8,10 @@ git-core (1:1.6.1.2-1) experimental; urgency=low
     and DOCBOOK_XSL_173=Yes when building documentation (thx Niko Tyni
     for the patch, closes: #497883).
   * merge branch debian-lenny.
+  * debian/diff/0005-gitweb-do-not-run-git-diff-that-is-Porcelain.diff:
+    remove; fixed upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 22:54:58 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 23:26:45 +0000
 
 git-core (1:1.5.6.5-3) unstable; urgency=high
 
