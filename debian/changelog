@@ -7,8 +7,19 @@ git-core (1:1.6.1.2-1) experimental; urgency=low
   * debian/rules: ASCIIDOC_EXTRA='-a asciidoc7compatible -a docbook-xsl-172'
     and DOCBOOK_XSL_173=Yes when building documentation (thx Niko Tyni
     for the patch, closes: #497883).
+  * merge branch debian-lenny.
 
  -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 22:54:58 +0000
+
+git-core (1:1.5.6.5-3) unstable; urgency=high
+
+  * debian/rules: no longer install symlink /etc/init.d/git-daemon ->
+    /usr/bin/sv (closes: #511687).
+  * debian/git-daemon-run.README.Debian: document how to create the
+    symlink manually to have an LSB compatible /etc/init.d/git-daemon
+    interface to control the service.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 20:56:15 +0000
 
 git-core (1:1.6.0.6-1) experimental; urgency=low
 
@@ -21,6 +32,18 @@ git-core (1:1.6.0.6-1) experimental; urgency=low
     * gitweb: do not run "git diff" that is Porcelain.
 
  -- Gerrit Pape <pape@smarden.org>  Sat, 20 Dec 2008 11:03:49 +0000
+
+git-core (1:1.5.6.5-2) unstable; urgency=high
+
+  * debian/diff/0005-gitweb-do-not-run-git-diff-that-is-Porcelain.diff:
+    new; fix possible gitweb vulnerability: calling "git diff": Jakub
+    says that legacy-style URI to view two blob differences are never
+    generated since 1.4.3.  This codepath runs "git diff" Porcelain from
+    the gitweb, which is a no-no.  It can trigger diff.external command
+    that is specified in the configuration file of the repository being
+    viewed.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 17 Dec 2008 09:27:01 +0000
 
 git-core (1:1.6.0.4-1) experimental; urgency=low
 
