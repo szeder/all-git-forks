@@ -1,3 +1,13 @@
+git-core (1:1.5.6.5-3) unstable; urgency=high
+
+  * debian/rules: no longer install symlink /etc/init.d/git-daemon ->
+    /usr/bin/sv (closes: #511687).
+  * debian/git-daemon-run.README.Debian: document how to create the
+    symlink manually to have an LSB compatible /etc/init.d/git-daemon
+    interface to control the service.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 20:56:15 +0000
+
 git-core (1:1.5.6.5-2) unstable; urgency=high
 
   * debian/diff/0005-gitweb-do-not-run-git-diff-that-is-Porcelain.diff:
