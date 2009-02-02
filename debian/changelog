@@ -4,8 +4,11 @@ git-core (1:1.6.1.2-1) experimental; urgency=low
     * don't fail to clone over http if connection is rate limited
       (closes: #512795).
     * git svn info no longer fails (closes: #499243).
+  * debian/rules: ASCIIDOC_EXTRA='-a asciidoc7compatible -a docbook-xsl-172'
+    and DOCBOOK_XSL_173=Yes when building documentation (thx Niko Tyni
+    for the patch, closes: #497883).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 22:02:15 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 02 Feb 2009 22:54:58 +0000
 
 git-core (1:1.6.0.6-1) experimental; urgency=low
 

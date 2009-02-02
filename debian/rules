@@ -58,7 +58,8 @@ build-arch-stamp: patch-stamp build-indep-stamp
 	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
 build-indep-stamp:
-	$(MAKE) -CDocumentation man html ASCIIDOC8=YesPlease DOCBOOK_XSL_172=Yes
+	$(MAKE) -CDocumentation man html ASCIIDOC8=YesPlease DOCBOOK_XSL_173=Yes \
+	  ASCIIDOC_EXTRA='-a asciidoc7compatible -a docbook-xsl-172'
 	touch build-indep-stamp
 
 clean: deb-checkdir deb-checkuid
