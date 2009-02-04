@@ -948,7 +948,7 @@ sub patch_update_file {
 			$other .= ',J';
 		}
 		if ($num > 1) {
-			$other .= '/g';
+			$other .= ',g';
 		}
 		for ($i = 0; $i < $num; $i++) {
 			if (!defined $hunk[$i]{USE}) {
@@ -994,6 +994,9 @@ sub patch_update_file {
 					}
 					print "go to which hunk$extra? ";
 					$response = <STDIN>;
+					if (!defined $response) {
+						$response = '';
+					}
 					chomp $response;
 				}
 				if ($response !~ /^\s*\d+\s*$/) {
