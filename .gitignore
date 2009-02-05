@@ -176,6 +176,7 @@
 /test-sigchain
 /test-string-pool
 /test-svn-fe
+/test-tr
 /test-treap
 /common-cmds.h
 *.tar.gz
