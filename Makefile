@@ -652,10 +652,12 @@ endif
 ifeq ($(uname_S),Darwin)
 	NEEDS_SSL_WITH_CRYPTO = YesPlease
 	NEEDS_LIBICONV = YesPlease
-	ifneq ($(shell expr "$(uname_R)" : '9\.'),2)
+	ifeq ($(shell expr "$(uname_R)" : '[15678]\.'),2)
 		OLD_ICONV = UnfortunatelyYes
 	endif
-	NO_STRLCPY = YesPlease
+	ifeq ($(shell expr "$(uname_R)" : '[15]\.'),2)
+		NO_STRLCPY = YesPlease
+	endif
 	NO_MEMMEM = YesPlease
 	THREADED_DELTA_SEARCH = YesPlease
 endif
@@ -1437,14 +1439,14 @@ remove-dashes:
 
 ### Installation rules
 
-ifeq ($(abspath $(template_dir)),$(template_dir))
+ifneq ($(filter /%,$(firstword $(template_dir))),)
 template_instdir = $(template_dir)
 else
 template_instdir = $(prefix)/$(template_dir)
 endif
 export template_instdir
 
-ifeq ($(abspath $(gitexecdir)),$(gitexecdir))
+ifneq ($(filter /%,$(firstword $(gitexecdir))),)
 gitexec_instdir = $(gitexecdir)
 else
 gitexec_instdir = $(prefix)/$(gitexecdir)
