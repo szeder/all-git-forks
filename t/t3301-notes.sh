@@ -36,7 +36,7 @@ test_expect_success 'need valid notes ref' '
 '
 
 # 1 indicates caught gracefully by die, 128 means git-show barked
-test_expect_failure 'handle empty notes gracefully' '
+test_expect_success 'handle empty notes gracefully' '
 	git notes show ; test 1 = $?
 '
 
