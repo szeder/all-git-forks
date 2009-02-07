@@ -4,7 +4,7 @@
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
 
-int sanitary_path_copy(char *dst, const char *src)
+static int sanitary_path_copy(char *dst, const char *src)
 {
 	char *dst0;
 
