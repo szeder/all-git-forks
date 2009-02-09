@@ -14,8 +14,7 @@ export GIT_AUTHOR_EMAIL
 
 test_expect_success \
     'prepare repository with topic branches' \
-    'git config core.logAllRefUpdates true &&
-     echo First > A &&
+    'echo First > A &&
      git update-index --add A &&
      git commit -m "Add A." &&
      git checkout -b my-topic-branch &&
@@ -83,16 +82,6 @@ test_expect_success 'rebase a single mode change' '
      test_tick &&
      git commit -m modechange A X &&
      GIT_TRACE=1 git rebase master
-'
-
-test_expect_success 'HEAD was detached during rebase' '
-     test $(git rev-parse HEAD@{1}) != $(git rev-parse modechange@{1})
-'
-
-test_expect_success 'Show verbose error when HEAD could not be detached' '
-     : > B &&
-     test_must_fail git rebase topic 2> output.err > output.out &&
-     grep "Untracked working tree file .B. would be overwritten" output.err
 '
 
 test_done
