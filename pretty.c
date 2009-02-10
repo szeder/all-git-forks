@@ -6,6 +6,8 @@
 #include "string-list.h"
 #include "mailmap.h"
 #include "log-tree.h"
+#include "notes.h"
+#include "color.h"
 
 static char *user_format;
 
@@ -554,6 +556,17 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
 	case 'C':
+		if (placeholder[1] == '(') {
+			const char *end = strchr(placeholder + 2, ')');
+			char color[COLOR_MAXLEN];
+			if (!end)
+				return 0;
+			color_parse_mem(placeholder + 2,
+					end - (placeholder + 2),
+					"--pretty format", color);
+			strbuf_addstr(sb, color);
+			return end - placeholder + 1;
+		}
 		if (!prefixcmp(placeholder + 1, "red")) {
 			strbuf_addstr(sb, "\033[31m");
 			return 4;
@@ -908,5 +921,9 @@ void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 	 */
 	if (fmt == CMIT_FMT_EMAIL && sb->len <= beginning_of_body)
 		strbuf_addch(sb, '\n');
+
+	if (fmt != CMIT_FMT_ONELINE)
+		get_commit_notes(commit, sb, encoding);
+
 	free(reencoded);
 }

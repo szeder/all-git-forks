@@ -19,6 +19,7 @@
 #include "strbuf.h"
 #include "dir.h"
 #include "pack-refs.h"
+#include "sigchain.h"
 
 /*
  * Overall FIXMEs:
@@ -192,15 +193,15 @@ static void copy_or_link_directory(struct strbuf *src, struct strbuf *dest)
 
 	dir = opendir(src->buf);
 	if (!dir)
-		die("failed to open %s\n", src->buf);
+		die("failed to open %s", src->buf);
 
 	if (mkdir(dest->buf, 0777)) {
 		if (errno != EEXIST)
-			die("failed to create directory %s\n", dest->buf);
+			die("failed to create directory %s", dest->buf);
 		else if (stat(dest->buf, &buf))
-			die("failed to stat %s\n", dest->buf);
+			die("failed to stat %s", dest->buf);
 		else if (!S_ISDIR(buf.st_mode))
-			die("%s exists and is not a directory\n", dest->buf);
+			die("%s exists and is not a directory", dest->buf);
 	}
 
 	strbuf_addch(src, '/');
@@ -224,16 +225,16 @@ static void copy_or_link_directory(struct strbuf *src, struct strbuf *dest)
 		}
 
 		if (unlink(dest->buf) && errno != ENOENT)
-			die("failed to unlink %s\n", dest->buf);
+			die("failed to unlink %s", dest->buf);
 		if (!option_no_hardlinks) {
 			if (!link(src->buf, dest->buf))
 				continue;
 			if (option_local)
-				die("failed to create link %s\n", dest->buf);
+				die("failed to create link %s", dest->buf);
 			option_no_hardlinks = 1;
 		}
 		if (copy_file(dest->buf, src->buf, 0666))
-			die("failed to copy file to %s\n", dest->buf);
+			die("failed to copy file to %s", dest->buf);
 	}
 	closedir(dir);
 }
@@ -288,7 +289,7 @@ static void remove_junk(void)
 static void remove_junk_on_signal(int signo)
 {
 	remove_junk();
-	signal(SIGINT, SIG_DFL);
+	sigchain_pop(signo);
 	raise(signo);
 }
 
@@ -357,6 +358,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	struct stat buf;
 	const char *repo_name, *repo, *work_tree, *git_dir;
 	char *path, *dir;
+	int dest_exists;
 	const struct ref *refs, *head_points_at, *remote_head, *mapped_refs;
 	struct strbuf key = STRBUF_INIT, value = STRBUF_INIT;
 	struct strbuf branch_top = STRBUF_INIT, reflog_msg = STRBUF_INIT;
@@ -406,8 +408,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		dir = guess_dir_name(repo_name, is_bundle, option_bare);
 	strip_trailing_slashes(dir);
 
-	if (!stat(dir, &buf))
-		die("destination directory '%s' already exists.", dir);
+	dest_exists = !stat(dir, &buf);
+	if (dest_exists && !is_empty_dir(dir))
+		die("destination path '%s' already exists and is not "
+			"an empty directory.", dir);
 
 	strbuf_addf(&reflog_msg, "clone: from %s", repo);
 
@@ -431,14 +435,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die("could not create leading directories of '%s': %s",
 					work_tree, strerror(errno));
-		if (mkdir(work_tree, 0755))
+		if (!dest_exists && mkdir(work_tree, 0755))
 			die("could not create work tree dir '%s': %s.",
 					work_tree, strerror(errno));
 		set_git_work_tree(work_tree);
 	}
 	junk_git_dir = git_dir;
 	atexit(remove_junk);
-	signal(SIGINT, remove_junk_on_signal);
+	sigchain_push_common(remove_junk_on_signal);
 
 	setenv(CONFIG_ENVIRONMENT, xstrdup(mkpath("%s/config", git_dir)), 1);
 
@@ -519,14 +523,23 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 					     option_upload_pack);
 
 		refs = transport_get_remote_refs(transport);
-		transport_fetch_refs(transport, refs);
+		if(refs)
+			transport_fetch_refs(transport, refs);
 	}
 
-	clear_extra_refs();
+	if (refs) {
+		clear_extra_refs();
 
-	mapped_refs = write_remote_refs(refs, &refspec, reflog_msg.buf);
+		mapped_refs = write_remote_refs(refs, &refspec, reflog_msg.buf);
 
-	head_points_at = locate_head(refs, mapped_refs, &remote_head);
+		head_points_at = locate_head(refs, mapped_refs, &remote_head);
+	}
+	else {
+		warning("You appear to have cloned an empty repository.");
+		head_points_at = NULL;
+		remote_head = NULL;
+		option_no_checkout = 1;
+	}
 
 	if (head_points_at) {
 		/* Local default branch link */

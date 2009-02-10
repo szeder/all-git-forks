@@ -11,7 +11,7 @@
 #include "list-objects.h"
 #include "run-command.h"
 
-static const char upload_pack_usage[] = "git-upload-pack [--strict] [--timeout=nn] <dir>";
+static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=nn] <dir>";
 
 /* bits #0..7 in revision.h, #8..10 in commit.c */
 #define THEY_HAVE	(1u << 11)
@@ -615,6 +615,8 @@ int main(int argc, char **argv)
 	char *dir;
 	int i;
 	int strict = 0;
+
+	git_extract_argv0_path(argv[0]);
 
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];

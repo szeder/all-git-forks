@@ -39,7 +39,9 @@ test_expect_success 'result is really identical' '
 '
 
 test_expect_success 'rewrite bare repository identically' '
-	(git config core.bare true && cd .git && git filter-branch branch)
+	(git config core.bare true && cd .git &&
+	 git filter-branch branch > filter-output 2>&1 &&
+	! fgrep fatal filter-output)
 '
 git config core.bare false
 test_expect_success 'result is really identical' '
@@ -259,6 +261,14 @@ test_expect_success 'Tag name filtering allows slashes in tag names' '
 	git cat-file tag X/1 | sed -e s,X/1,X/2, > expect &&
 	git filter-branch -f --tag-name-filter "echo X/2" &&
 	git cat-file tag X/2 > actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'Prune empty commits' '
+	git rev-list HEAD > expect &&
+	make_commit to_remove &&
+	git filter-branch -f --index-filter "git update-index --remove to_remove" --prune-empty HEAD &&
+	git rev-list HEAD > actual &&
 	test_cmp expect actual
 '
 
