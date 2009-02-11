@@ -371,8 +371,6 @@ static inline enum object_type object_type(unsigned int mode)
 #define GITATTRIBUTES_FILE ".gitattributes"
 #define INFOATTRIBUTES_FILE "info/attributes"
 #define ATTRIBUTE_MACRO_PREFIX "[attr]"
-#define GIT_NOTES_REF_ENVIRONMENT "GIT_NOTES_REF"
-#define GIT_NOTES_DEFAULT_REF "refs/notes/commits"
 
 extern int is_bare_repository_cfg;
 extern int is_bare_repository(void);
@@ -544,7 +542,6 @@ enum rebase_setup_type {
 
 extern enum branch_track git_branch_track;
 extern enum rebase_setup_type autorebase;
-extern char *notes_ref_name;
 
 #define GIT_REPO_VERSION 0
 extern int repository_format_version;
@@ -830,6 +827,7 @@ extern unsigned char* use_pack(struct packed_git *, struct pack_window **, off_t
 extern void close_pack_windows(struct packed_git *);
 extern void unuse_pack(struct pack_window **);
 extern void free_pack_by_name(const char *);
+extern void clear_delta_base_cache(void);
 extern struct packed_git *add_packed_git(const char *, int, int);
 extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t);
 extern off_t nth_packed_object_offset(const struct packed_git *, uint32_t);
