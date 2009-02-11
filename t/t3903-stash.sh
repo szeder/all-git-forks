@@ -177,4 +177,26 @@ test_expect_success 'stash branch' '
 	test 0 = $(git stash list | wc -l)
 '
 
+test_expect_success 'stash --keep-index' '
+	git stash clear &&
+	echo modified > file &&
+	git add file &&
+	echo changed > file &&
+	git stash save --keep-index test &&
+	git diff --exit-code &&
+	test modified = "$(cat file)" &&
+	git diff stash^ stash | grep "^+changed"
+'
+
+test_expect_success 'stash --keep' '
+	git stash clear &&
+	echo modified > file &&
+	git add file &&
+	echo changed > file &&
+	git stash save --keep test &&
+	test changed = "$(cat file)" &&
+	git diff --exit-code stash &&
+	test modified = "$(git show :file)"
+'
+
 test_done
