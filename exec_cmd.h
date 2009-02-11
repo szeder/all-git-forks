@@ -10,4 +10,6 @@ extern int execv_git_cmd(const char **argv); /* NULL terminated */
 extern int execl_git_cmd(const char *cmd, ...);
 extern const char *system_path(const char *path);
 
+extern int enable_git_repo_exec_path;
+
 #endif /* GIT_EXEC_CMD_H */
