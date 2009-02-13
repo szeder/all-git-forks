@@ -136,6 +136,7 @@ EOF
 cat > test/expect << EOF
 * remote origin
   URL: $(pwd)/one
+  HEAD: master
   Remote branch merged with 'git pull' while on branch master
     master
   New remote branch (next fetch will store in remotes/origin)
@@ -335,16 +336,6 @@ test_expect_success 'update default (overridden, with funny whitespace)' '
 	 git remote update default &&
 	 git branch -r > output &&
 	 test_cmp expect output)
-
-'
-
-test_expect_success '"remote show" does not show symbolic refs' '
-
-	git clone one three &&
-	(cd three &&
-	 git remote show origin > output &&
-	 ! grep HEAD < output &&
-	 ! grep -i stale < output)
 
 '
 
