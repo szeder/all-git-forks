@@ -46,6 +46,8 @@ Updates since v1.6.1
 
 * automatic typo correction works on aliases as well
 
+* Initial support for "git notes" implemented.
+
 * @{-1} is a way to refer to the last branch you were on.  This is
   accepted not only where an object name is expected, but anywhere
   a branch name is expected and acts as if you typed the branch name.
