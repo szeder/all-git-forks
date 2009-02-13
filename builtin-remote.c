@@ -212,6 +212,7 @@ static void read_branches(void)
 struct ref_states {
 	struct remote *remote;
 	struct string_list new, stale, tracked;
+	char *head_name;
 };
 
 static int handle_one_branch(const char *refname,
@@ -269,6 +270,26 @@ static int get_ref_states(const struct ref *ref, struct ref_states *states)
 	sort_string_list(&states->stale);
 
 	return 0;
+}
+
+static char *get_head_name(const struct ref *refs)
+{
+	const struct ref *head_points_at;
+	struct ref *mapped_refs = NULL;
+	struct ref **tail = &mapped_refs;
+	struct refspec refspec;
+
+	refspec.force = 0;
+	refspec.pattern = 1;
+	refspec.src = refspec.dst = "refs/heads/";
+
+	get_fetch_map(refs, &refspec, &tail, 0);
+
+	head_points_at = guess_remote_head(refs, mapped_refs, NULL);
+	if (head_points_at)
+		return xstrdup(abbrev_branch(head_points_at->name));
+
+	return NULL;
 }
 
 struct known_remote {
@@ -637,6 +658,7 @@ static void free_remote_ref_states(struct ref_states *states)
 	string_list_clear(&states->new, 0);
 	string_list_clear(&states->stale, 0);
 	string_list_clear(&states->tracked, 0);
+	free(states->head_name);
 }
 
 static int get_remote_ref_states(const char *name,
@@ -658,6 +680,7 @@ static int get_remote_ref_states(const char *name,
 		ref = transport_get_remote_refs(transport);
 		transport_disconnect(transport);
 
+		states->head_name = get_head_name(ref);
 		get_ref_states(ref, states);
 	}
 
@@ -702,6 +725,9 @@ static int show(int argc, const char **argv)
 		printf("* remote %s\n  URL: %s\n", *argv,
 			states.remote->url_nr > 0 ?
 				states.remote->url[0] : "(no URL)");
+		if (!no_query)
+			printf("  HEAD: %s\n", states.head_name ?
+				states.head_name : "(unknown)");
 
 		for (i = 0; i < branch_list.nr; i++) {
 			struct string_list_item *branch = branch_list.items + i;
