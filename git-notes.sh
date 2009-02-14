@@ -16,6 +16,10 @@ die "Invalid commit: $@"
 
 case "$ACTION" in
 edit)
+	if [ "${GIT_NOTES_REF#refs/notes/}" = "$GIT_NOTES_REF" ]; then
+		die "Refusing to edit notes in $GIT_NOTES_REF (outside of refs/notes/)"
+	fi
+
 	MESSAGE="$GIT_DIR"/new-notes-$COMMIT
 	trap '
 		test -f "$MESSAGE" && rm "$MESSAGE"

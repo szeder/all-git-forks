@@ -37,6 +37,18 @@ test_expect_success 'need valid notes ref' '
 	 test_must_fail git notes show)
 '
 
+test_expect_success 'refusing to edit in refs/heads/' '
+	(MSG=1 GIT_NOTES_REF=refs/heads/bogus &&
+	 export MSG= GIT_NOTES_REF=refs/heads/bogus &&
+	 test_must_fail git notes edit)
+'
+
+test_expect_success 'refusing to edit in refs/remotes/' '
+	(MSG=1 GIT_NOTES_REF=refs/remotes/bogus &&
+	 export MSG= GIT_NOTES_REF=refs/heads/bogus &&
+	 test_must_fail git notes edit)
+'
+
 # 1 indicates caught gracefully by die, 128 means git-show barked
 test_expect_success 'handle empty notes gracefully' '
 	git notes show ; test 1 = $?
