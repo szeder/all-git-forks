@@ -35,7 +35,8 @@ edit)
 		git cat-file blob :$COMMIT >> "$MESSAGE" 2> /dev/null
 	fi
 
-	${VISUAL:-${EDITOR:-vi}} "$MESSAGE"
+	core_editor="$(git config core.editor)"
+	${GIT_EDITOR:-${core_editor:-${VISUAL:-${EDITOR:-vi}}}} "$MESSAGE"
 
 	grep -v ^# < "$MESSAGE" | git stripspace > "$MESSAGE".processed
 	mv "$MESSAGE".processed "$MESSAGE"
