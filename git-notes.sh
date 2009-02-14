@@ -14,13 +14,13 @@ test -z "$GIT_NOTES_REF" && GIT_NOTES_REF="refs/notes/commits"
 COMMIT=$(git rev-parse --verify --default HEAD "$@") ||
 die "Invalid commit: $@"
 
-MESSAGE="$GIT_DIR"/new-notes-$COMMIT
-trap '
-	test -f "$MESSAGE" && rm "$MESSAGE"
-' 0
-
 case "$ACTION" in
 edit)
+	MESSAGE="$GIT_DIR"/new-notes-$COMMIT
+	trap '
+		test -f "$MESSAGE" && rm "$MESSAGE"
+	' 0
+
 	GIT_NOTES_REF= git log -1 $COMMIT | sed "s/^/#/" > "$MESSAGE"
 
 	GIT_INDEX_FILE="$MESSAGE".idx
