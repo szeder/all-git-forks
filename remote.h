@@ -141,9 +141,13 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb);
  * Look in refs for HEAD. Then look for a matching SHA1 in mapped_refs,
  * first checking if refs/heads/master matches. Return NULL if nothing matches
  * or if there is no HEAD in refs. remote_head_p is assigned HEAD if not NULL.
+ * If all_matches_p is NULL, return after the first possible match. Otherwise
+ * all_matches_p is set to a ref list of each branch head with the same SHA1 as
+ * HEAD.
  */
 const struct ref *guess_remote_head(const struct ref *refs,
 				    const struct ref *mapped_refs,
-				    const struct ref **remote_head_p);
+				    const struct ref **remote_head_p,
+				    struct ref **all_matches_p);
 
 #endif

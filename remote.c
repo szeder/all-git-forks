@@ -1379,18 +1379,23 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 
 const struct ref *guess_remote_head(const struct ref *refs,
 				    const struct ref *mapped_refs,
-				    const struct ref **remote_head_p)
+				    const struct ref **remote_head_p,
+				    struct ref **all_matches_p)
 {
 	const struct ref *remote_head = NULL;
 	const struct ref *remote_master = NULL;
+	const struct ref *ret = NULL;
 	const struct ref *r;
+	struct ref **tail = all_matches_p;
+
 	for (r = refs; r; r = r->next)
 		if (!strcmp(r->name, "HEAD"))
 			remote_head = r;
 
-	for (r = mapped_refs; r; r = r->next)
-		if (!strcmp(r->name, "refs/heads/master"))
-			remote_master = r;
+	if (!all_matches_p)
+		for (r = mapped_refs; r; r = r->next)
+			if (!strcmp(r->name, "refs/heads/master"))
+				remote_master = r;
 
 	if (remote_head_p)
 		*remote_head_p = remote_head;
@@ -1407,9 +1412,16 @@ const struct ref *guess_remote_head(const struct ref *refs,
 	/* Look for another ref that points there */
 	for (r = mapped_refs; r; r = r->next)
 		if (r != remote_head &&
-		    !hashcmp(r->old_sha1, remote_head->old_sha1))
-			return r;
+		    !hashcmp(r->old_sha1, remote_head->old_sha1)) {
+			struct ref *cpy;
+			if (!ret)
+				ret = r;
+			if (!all_matches_p)
+				break;
+			*tail = cpy = copy_ref(r);
+			cpy->peer_ref = NULL;
+			tail = &cpy->next;
+		}
 
-	/* Nothing is the same */
-	return NULL;
+	return ret;
 }

@@ -212,8 +212,7 @@ static void read_branches(void)
 
 struct ref_states {
 	struct remote *remote;
-	struct string_list new, stale, tracked;
-	char *head_name;
+	struct string_list new, stale, tracked, heads;
 };
 
 static int handle_one_branch(const char *refname,
@@ -273,24 +272,26 @@ static int get_ref_states(const struct ref *ref, struct ref_states *states)
 	return 0;
 }
 
-static char *get_head_name(const struct ref *refs)
+static int get_head_names(const struct ref *refs,
+	const char *remote_name, struct ref_states *states)
 {
-	const struct ref *head_points_at;
-	struct ref *mapped_refs = NULL;
-	struct ref **tail = &mapped_refs;
+	struct ref *ref, *matches = NULL;
+	struct ref *fetch_map = NULL, **fetch_map_tail = &fetch_map;
 	struct refspec refspec;
 
 	refspec.force = 0;
 	refspec.pattern = 1;
 	refspec.src = refspec.dst = "refs/heads/";
+	states->heads.strdup_strings = 1;
+	get_fetch_map(refs, &refspec, &fetch_map_tail, 0);
+	guess_remote_head(refs, fetch_map, NULL, &matches);
+	for(ref = matches; ref; ref = ref->next)
+		string_list_append(abbrev_branch(ref->name), &states->heads);
 
-	get_fetch_map(refs, &refspec, &tail, 0);
+	free_refs(fetch_map);
+	free_refs(matches);
 
-	head_points_at = guess_remote_head(refs, mapped_refs, NULL);
-	if (head_points_at)
-		return xstrdup(abbrev_branch(head_points_at->name));
-
-	return NULL;
+	return 0;
 }
 
 struct known_remote {
@@ -659,7 +660,7 @@ static void free_remote_ref_states(struct ref_states *states)
 	string_list_clear(&states->new, 0);
 	string_list_clear(&states->stale, 0);
 	string_list_clear(&states->tracked, 0);
-	free(states->head_name);
+	string_list_clear(&states->heads, 0);
 }
 
 static int get_remote_ref_states(const char *name,
@@ -681,7 +682,7 @@ static int get_remote_ref_states(const char *name,
 		ref = transport_get_remote_refs(transport);
 		transport_disconnect(transport);
 
-		states->head_name = get_head_name(ref);
+		get_head_names(ref, name, states);
 		get_ref_states(ref, states);
 	}
 
@@ -726,9 +727,15 @@ static int show(int argc, const char **argv)
 		printf("* remote %s\n  URL: %s\n", *argv,
 			states.remote->url_nr > 0 ?
 				states.remote->url[0] : "(no URL)");
-		if (!no_query)
-			printf("  HEAD: %s\n", states.head_name ?
-				states.head_name : "(unknown)");
+		if (no_query)
+			printf("  HEAD branch: (not queried)\n");
+		else if (!states.heads.nr)
+			printf("  HEAD branch: (unknown)\n");
+		else if (states.heads.nr == 1)
+			printf("  HEAD branch: %s\n",
+				states.heads.items[0].string);
+		else
+			show_list("  HEAD branch%s:", &states.heads, "");
 
 		for (i = 0; i < branch_list.nr; i++) {
 			struct string_list_item *branch = branch_list.items + i;
@@ -780,7 +787,7 @@ static int show(int argc, const char **argv)
 
 static int set_head(int argc, const char **argv)
 {
-	int opt_a = 0, opt_d = 0, result = 0;
+	int i, opt_a = 0, opt_d = 0, result = 0;
 	struct strbuf buf = STRBUF_INIT, buf2 = STRBUF_INIT;
 	char *head_name = NULL;
 
@@ -802,7 +809,16 @@ static int set_head(int argc, const char **argv)
 		struct ref_states states;
 		memset(&states, 0, sizeof(states));
 		get_remote_ref_states(argv[0], &states, 1);
-		head_name = xstrdup(states.head_name);
+		if (!states.heads.nr)
+			result |= error("Cannot determine remote HEAD");
+		else if (states.heads.nr > 1) {
+			result |= error("Multiple remote HEAD branches. "
+					"Please choose one explicitly with:");
+			for (i = 0; i < states.heads.nr; i++)
+				fprintf(stderr, "  git remote set-head %s %s\n",
+					argv[0], states.heads.items[i].string);
+		} else
+			head_name = xstrdup(states.heads.items[0].string);
 		free_remote_ref_states(&states);
 	} else if (opt_d && !opt_a && argc == 1) {
 		if (delete_ref(buf.buf, NULL, REF_NODEREF))
@@ -818,6 +834,8 @@ static int set_head(int argc, const char **argv)
 			result |= error("Not a valid ref: %s", buf2.buf);
 		else if (create_symref(buf.buf, buf2.buf, "remote set-head"))
 			result |= error("Could not setup %s", buf.buf);
+		if (opt_a)
+			printf("%s/HEAD set to %s\n", argv[0], head_name);
 		free(head_name);
 	}
 
