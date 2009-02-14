@@ -16,7 +16,7 @@ VISUAL=./fake_editor.sh
 export VISUAL
 
 test_expect_success 'cannot annotate non-existing HEAD' '
-	! MSG=3 git notes edit
+	(MSG=3 && export MSG && test_must_fail git notes edit)
 '
 
 test_expect_success setup '
@@ -31,8 +31,10 @@ test_expect_success setup '
 '
 
 test_expect_success 'need valid notes ref' '
-	! MSG=1 GIT_NOTES_REF=/ git notes edit &&
-	! MSG=2 GIT_NOTES_REF=/ git notes show
+	(MSG=1 GIT_NOTES_REF=/ && export MSG GIT_NOTES_REF &&
+	 test_must_fail git notes edit) &&
+	(MSG=2 GIT_NOTES_REF=/ && export MSG GIT_NOTES_REF &&
+	 test_must_fail git notes show)
 '
 
 # 1 indicates caught gracefully by die, 128 means git-show barked
@@ -47,7 +49,7 @@ test_expect_success 'create notes' '
 	test 1 = $(git ls-tree refs/notes/commits | wc -l) &&
 	test b1 = $(git notes show) &&
 	git show HEAD^ &&
-	! git notes show HEAD^
+	test_must_fail git notes show HEAD^
 '
 
 cat > expect << EOF
