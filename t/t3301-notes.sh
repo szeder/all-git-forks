@@ -31,8 +31,8 @@ test_expect_success setup '
 '
 
 test_expect_success 'need valid notes ref' '
-	! MSG=1 GIT_NOTES_REF='/' git notes edit &&
-	! MSG=2 GIT_NOTES_REF='/' git notes show
+	! MSG=1 GIT_NOTES_REF=/ git notes edit &&
+	! MSG=2 GIT_NOTES_REF=/ git notes show
 '
 
 # 1 indicates caught gracefully by die, 128 means git-show barked
