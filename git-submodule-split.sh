@@ -36,7 +36,7 @@ while test $# -ne 0; do
 		sub_url="$1"
 		shift
 		;;
-        -*)
+	-*)
 		die "Unknown option: $1"
 		;;
 	*)
