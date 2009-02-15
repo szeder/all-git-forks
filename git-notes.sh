@@ -58,6 +58,8 @@ edit)
 		"$GIT_NOTES_REF" $NEW_HEAD $CURRENT_HEAD
 ;;
 show)
+	git rev-parse -q --verify "$GIT_NOTES_REF":$COMMIT > /dev/null ||
+		die "No note for commit $COMMIT."
 	git show "$GIT_NOTES_REF":$COMMIT
 ;;
 *)
