@@ -1379,51 +1379,51 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	return 1;
 }
 
-const struct ref *guess_remote_head(const struct ref *refs,
-				    const struct ref *mapped_refs,
-				    const struct ref **remote_head_p,
-				    struct ref **all_matches_p)
+struct ref *copy_ref_with_peer(const struct ref *src)
 {
-	const struct ref *remote_head = NULL;
-	const struct ref *remote_master = NULL;
-	const struct ref *ret = NULL;
+	struct ref *dst = copy_ref(src);
+	dst->peer_ref = copy_ref(src->peer_ref);
+	return dst;
+}
+
+struct ref *guess_remote_head(const struct ref *head,
+			      const struct ref *refs,
+			      int all)
+{
 	const struct ref *r;
-	struct ref **tail = all_matches_p;
+	struct ref *list = NULL;
+	struct ref **tail = &list;
 
-	for (r = refs; r; r = r->next)
-		if (!strcmp(r->name, "HEAD"))
-			remote_head = r;
-
-	if (!all_matches_p)
-		for (r = mapped_refs; r; r = r->next)
-			if (!strcmp(r->name, "refs/heads/master"))
-				remote_master = r;
-
-	if (remote_head_p)
-		*remote_head_p = remote_head;
-
-	/* If there's no HEAD value at all, never mind. */
-	if (!remote_head)
+	if (!head)
 		return NULL;
 
+	/*
+	 * Some transports support directly peeking at
+	 * where HEAD points; if that is the case, then
+	 * we don't have to guess.
+	 */
+	if (head->symref) {
+		r = find_ref_by_name(refs, head->symref);
+		return r ? copy_ref_with_peer(r) : NULL;
+	}
+
 	/* If refs/heads/master could be right, it is. */
-	if (remote_master && !hashcmp(remote_master->old_sha1,
-				      remote_head->old_sha1))
-		return remote_master;
+	if (!all) {
+		const struct ref *m;
+		m = find_ref_by_name(refs, "refs/heads/master");
+		if (m && !hashcmp(m->old_sha1, head->old_sha1))
+			return copy_ref_with_peer(m);
+	}
 
 	/* Look for another ref that points there */
-	for (r = mapped_refs; r; r = r->next)
-		if (r != remote_head &&
-		    !hashcmp(r->old_sha1, remote_head->old_sha1)) {
-			struct ref *cpy;
-			if (!ret)
-				ret = r;
-			if (!all_matches_p)
+	for (r = refs; r; r = r->next) {
+		if (r != head && !hashcmp(r->old_sha1, head->old_sha1)) {
+			*tail = copy_ref_with_peer(r);
+			tail = &((*tail)->next);
+			if (!all)
 				break;
-			*tail = cpy = copy_ref(r);
-			cpy->peer_ref = NULL;
-			tail = &cpy->next;
 		}
+	}
 
-	return ret;
+	return list;
 }
