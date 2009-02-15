@@ -87,6 +87,14 @@ our $projects_list = "++GITWEB_LIST++";
 # the width (in characters) of the projects list "Description" column
 our $projects_list_description_width = 25;
 
+# group projects by category on the projects list
+# (enabled if this variable evaluates to true)
+our $projects_list_group_categories = 0;
+
+# default category if none specified
+# (leave the empty string for no category)
+our $project_list_default_category = "";
+
 # default order of projects list
 # valid values are none, project, descr, owner, and age
 our $default_projects_order = "project";
@@ -2028,18 +2036,31 @@ sub git_get_path_by_hash {
 ## ......................................................................
 ## git utility functions, directly accessing git repository
 
-sub git_get_project_description {
-	my $path = shift;
+# get the value of a config variable either from a file with the same
+# name in the repository, or the gitweb.$name value in the repository
+# config file.
+sub git_get_file_or_project_config {
+	my ($name, $path) = @_;
 
 	$git_dir = "$projectroot/$path";
-	open my $fd, "$git_dir/description"
-		or return git_get_project_config('description');
-	my $descr = <$fd>;
+	open my $fd, "$git_dir/$name"
+		or return git_get_project_config($name);
+	my $conf = <$fd>;
 	close $fd;
-	if (defined $descr) {
-		chomp $descr;
+	if (defined $conf) {
+		chomp $conf;
 	}
-	return $descr;
+	return $conf;
+}
+
+sub git_get_project_description {
+	my $path = shift;
+	return git_get_file_or_project_config('description', $path);
+}
+
+sub git_get_project_category {
+	my $path = shift;
+	return git_get_file_or_project_config('category', $path);
 }
 
 sub git_get_project_ctags {
@@ -3945,8 +3966,9 @@ sub git_patchset_body {
 
 # . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-# fills project list info (age, description, owner, forks) for each
-# project in the list, removing invalid projects from returned list
+# fills project list info (age, description, owner, category, forks)
+# for each project in the list, removing invalid projects from
+# returned list
 # NOTE: modifies $projlist, but does not remove entries from it
 sub fill_project_list_info {
 	my ($projlist, $check_forks) = @_;
@@ -3969,6 +3991,11 @@ sub fill_project_list_info {
 		if (!defined $pr->{'owner'}) {
 			$pr->{'owner'} = git_get_project_owner("$pr->{'path'}") || "";
 		}
+		if ($projects_list_group_categories && !defined $pr->{'category'}) {
+			my $cat = git_get_project_category($pr->{'path'}) ||
+			                                   $project_list_default_category;
+			$pr->{'category'} = to_utf8($cat);
+		}
 		if ($check_forks) {
 			my $pname = $pr->{'path'};
 			if (($pname =~ s/\.git$//) &&
@@ -3984,6 +4011,23 @@ sub fill_project_list_info {
 	}
 
 	return @projects;
+}
+
+# returns a hash of categories, containing the list of project
+# belonging to each category
+sub build_projlist_by_category {
+	my ($projlist, $from, $to) = @_;
+	my %categories;
+
+	$from = 0 unless defined $from;
+	$to = $#$projlist if (!defined $to || $#$projlist < $to);
+
+	for my $i ($from .. $to) {
+		my $pr = $projlist->[$i];
+		push @{$categories{ $pr->{'category'} }}, $pr;
+	}
+
+	return %categories;
 }
 
 # print 'sort by' <th> element, generating 'sort by $name' replay link
@@ -4002,59 +4046,19 @@ sub print_sort_th {
 	}
 }
 
-sub git_project_list_body {
+# print a row for each project in the given list, using the given
+# range and extra display options
+sub print_project_rows {
 	# actually uses global variable $project
-	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+	my ($projects, $from, $to, $check_forks, $show_ctags) = @_;
 
-	my $check_forks = gitweb_check_feature('forks');
-	my @projects = fill_project_list_info($projlist, $check_forks);
-
-	$order ||= $default_projects_order;
 	$from = 0 unless defined $from;
-	$to = $#projects if (!defined $to || $#projects < $to);
+	$to = $#$projects if (!defined $to || $#$projects < $to);
 
-	my %order_info = (
-		project => { key => 'path', type => 'str' },
-		descr => { key => 'descr_long', type => 'str' },
-		owner => { key => 'owner', type => 'str' },
-		age => { key => 'age', type => 'num' }
-	);
-	my $oi = $order_info{$order};
-	if ($oi->{'type'} eq 'str') {
-		@projects = sort {$a->{$oi->{'key'}} cmp $b->{$oi->{'key'}}} @projects;
-	} else {
-		@projects = sort {$a->{$oi->{'key'}} <=> $b->{$oi->{'key'}}} @projects;
-	}
-
-	my $show_ctags = gitweb_check_feature('ctags');
-	if ($show_ctags) {
-		my %ctags;
-		foreach my $p (@projects) {
-			foreach my $ct (keys %{$p->{'ctags'}}) {
-				$ctags{$ct} += $p->{'ctags'}->{$ct};
-			}
-		}
-		my $cloud = git_populate_project_tagcloud(\%ctags);
-		print git_show_project_tagcloud($cloud, 64);
-	}
-
-	print "<table class=\"project_list\">\n";
-	unless ($no_header) {
-		print "<tr>\n";
-		if ($check_forks) {
-			print "<th></th>\n";
-		}
-		print_sort_th('project', $order, 'Project');
-		print_sort_th('descr', $order, 'Description');
-		print_sort_th('owner', $order, 'Owner');
-		print_sort_th('age', $order, 'Last Change');
-		print "<th></th>\n" . # for links
-		      "</tr>\n";
-	}
 	my $alternate = 1;
 	my $tagfilter = $cgi->param('by_tag');
 	for (my $i = $from; $i <= $to; $i++) {
-		my $pr = $projects[$i];
+		my $pr = $projects->[$i];
 
 		next if $tagfilter and $show_ctags and not grep { lc $_ eq lc $tagfilter } keys %{$pr->{'ctags'}};
 		next if $searchtext and not $pr->{'path'} =~ /$searchtext/
@@ -4098,6 +4102,75 @@ sub git_project_list_body {
 		      "</td>\n" .
 		      "</tr>\n";
 	}
+}
+
+sub git_project_list_body {
+	my ($projlist, $order, $from, $to, $extra, $no_header) = @_;
+
+	my ($check_forks) = gitweb_check_feature('forks');
+	my @projects = fill_project_list_info($projlist, $check_forks);
+
+	$order ||= $default_projects_order;
+
+	my %order_info = (
+		project => { key => 'path', type => 'str' },
+		descr => { key => 'descr_long', type => 'str' },
+		owner => { key => 'owner', type => 'str' },
+		age => { key => 'age', type => 'num' }
+	);
+	my $oi = $order_info{$order};
+	if ($oi->{'type'} eq 'str') {
+		@projects = sort {$a->{$oi->{'key'}} cmp $b->{$oi->{'key'}}} @projects;
+	} else {
+		@projects = sort {$a->{$oi->{'key'}} <=> $b->{$oi->{'key'}}} @projects;
+	}
+
+	my $show_ctags = gitweb_check_feature('ctags');
+	if ($show_ctags) {
+		my %ctags;
+		foreach my $p (@projects) {
+			foreach my $ct (keys %{$p->{'ctags'}}) {
+				$ctags{$ct} += $p->{'ctags'}->{$ct};
+			}
+		}
+		my $cloud = git_populate_project_tagcloud(\%ctags);
+		print git_show_project_tagcloud($cloud, 64);
+	}
+
+	print "<table class=\"project_list\">\n";
+	unless ($no_header) {
+		print "<tr>\n";
+		if ($check_forks) {
+			print "<th></th>\n";
+		}
+		print_sort_th('project', $order, 'Project');
+		print_sort_th('descr', $order, 'Description');
+		print_sort_th('owner', $order, 'Owner');
+		print_sort_th('age', $order, 'Last Change');
+		print "<th></th>\n" . # for links
+		      "</tr>\n";
+	}
+
+	if ($projects_list_group_categories) {
+		# only display categories with projects in the $from-$to window
+		@projects = sort {$a->{'category'} cmp $b->{'category'}} @projects;
+		my %categories = build_projlist_by_category(\@projects, $from, $to);
+		foreach my $cat (sort keys %categories) {
+			unless ($cat eq "") {
+				print "<tr>\n";
+				if ($check_forks) {
+					print "<td></td>\n";
+				}
+				print "<td class=\"category\" colspan=\"5\">$cat</td>\n";
+				print "</tr>\n";
+			}
+
+			print_project_rows($categories{$cat}, undef, undef, $check_forks, $show_ctags);
+		}
+	} else {
+		print_project_rows(\@projects, $from, $to, $check_forks, $show_ctags);
+	}
+
 	if (defined $extra) {
 		print "<tr>\n";
 		if ($check_forks) {
