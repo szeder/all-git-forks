@@ -275,7 +275,7 @@ static int get_ref_states(const struct ref *ref, struct ref_states *states)
 static int get_head_names(const struct ref *refs,
 	const char *remote_name, struct ref_states *states)
 {
-	struct ref *ref, *matches = NULL;
+	struct ref *ref, *matches;
 	struct ref *fetch_map = NULL, **fetch_map_tail = &fetch_map;
 	struct refspec refspec;
 
@@ -284,7 +284,8 @@ static int get_head_names(const struct ref *refs,
 	refspec.src = refspec.dst = "refs/heads/";
 	states->heads.strdup_strings = 1;
 	get_fetch_map(refs, &refspec, &fetch_map_tail, 0);
-	guess_remote_head(refs, fetch_map, NULL, &matches);
+	matches = guess_remote_head(find_ref_by_name(refs, "HEAD"),
+					fetch_map, 1);
 	for(ref = matches; ref; ref = ref->next)
 		string_list_append(abbrev_branch(ref->name), &states->heads);
 
