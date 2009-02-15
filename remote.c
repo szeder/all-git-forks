@@ -1395,6 +1395,16 @@ struct ref *guess_remote_head(const struct ref *head,
 	if (!head)
 		return NULL;
 
+	/*
+	 * Some transports support directly peeking at
+	 * where HEAD points; if that is the case, then
+	 * we don't have to guess.
+	 */
+	if (head->symref) {
+		r = find_ref_by_name(refs, head->symref);
+		return r ? copy_ref_with_peer(r) : NULL;
+	}
+
 	/* If refs/heads/master could be right, it is. */
 	if (!all) {
 		const struct ref *m;
