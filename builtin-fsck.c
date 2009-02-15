@@ -20,6 +20,7 @@ static int show_tags;
 static int show_unreachable;
 static int include_reflogs = 1;
 static int check_full;
+static int check_quick;
 static int check_strict;
 static int keep_cache_objects;
 static unsigned char head_sha1[20];
@@ -576,7 +577,8 @@ static struct option fsck_opts[] = {
 	OPT_BOOLEAN(0, "root", &show_root, "report root nodes"),
 	OPT_BOOLEAN(0, "cache", &keep_cache_objects, "make index objects head nodes"),
 	OPT_BOOLEAN(0, "reflogs", &include_reflogs, "make reflogs head nodes (default)"),
-	OPT_BOOLEAN(0, "full", &check_full, "also consider alternate objects"),
+	OPT_BOOLEAN(0, "full", &check_full, "fully check packs"),
+	OPT_BOOLEAN(0, "quick", &check_quick, "only check loose objects"),
 	OPT_BOOLEAN(0, "strict", &check_strict, "enable more strict checking"),
 	OPT_BOOLEAN(0, "lost-found", &write_lost_and_found,
 				"write dangling objects in .git/lost-found"),
@@ -587,11 +589,15 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 {
 	int i, heads;
 	struct alternate_object_database *alt;
+	unsigned verify_pack_flag;
 
 	errors_found = 0;
 	read_replace_refs = 0;
 
 	argc = parse_options(argc, argv, fsck_opts, fsck_usage, 0);
+	if (check_full && check_quick)
+		die("--full and --quick?  which one do you want?");
+
 	if (write_lost_and_found) {
 		check_full = 1;
 		include_reflogs = 0;
@@ -609,13 +615,14 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		fsck_object_dir(namebuf);
 	}
 
-	if (check_full) {
+	if (!check_quick) {
 		struct packed_git *p;
 
+		verify_pack_flag = check_full ? 0 : VERIFY_PACK_QUICK;
 		prepare_packed_git();
 		for (p = packed_git; p; p = p->next)
 			/* verify gives error messages itself */
-			verify_pack(p);
+			verify_pack(p, verify_pack_flag);
 
 		for (p = packed_git; p; p = p->next) {
 			uint32_t j, num;
