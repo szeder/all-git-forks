@@ -6,7 +6,7 @@ USAGE="list [<options>]
    or: $dashless (show | drop | pop ) [<stash>]
    or: $dashless apply [--index] [<stash>]
    or: $dashless branch <branchname> [<stash>]
-   or: $dashless [save [--keep-index] [<message>]]
+   or: $dashless [save [--keep | --keep-index] [<message>]]
    or: $dashless clear"
 
 SUBDIRECTORY_OK=Yes
@@ -93,12 +93,31 @@ create_stash () {
 }
 
 save_stash () {
+	keep=
 	keep_index=
-	case "$1" in
-	--keep-index)
-		keep_index=t
+	while test $# != 0
+	do
+		case "$1" in
+		--keep-index)
+			keep_index=t
+			;;
+		--keep)
+			keep=t
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			break
+			;;
+		esac
 		shift
-	esac
+	done
+	if test "$keep$keep_index" = tt
+	then
+		die "Cannot use --keep and --keep-index at the same time"
+	fi
 
 	stash_msg="$*"
 
@@ -120,8 +139,12 @@ save_stash () {
 		die "Cannot save the current status"
 	printf 'Saved working directory and index state "%s"\n' "$stash_msg"
 
-	git reset --hard
+	if test -n "$keep"
+	then
+		return
+	fi
 
+	git reset --hard
 	if test -n "$keep_index" && test -n $i_tree
 	then
 		git read-tree --reset -u $i_tree

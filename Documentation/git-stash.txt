@@ -12,7 +12,7 @@ SYNOPSIS
 'git stash' (show | drop | pop ) [<stash>]
 'git stash' apply [--index] [<stash>]
 'git stash' branch <branchname> [<stash>]
-'git stash' [save [--keep-index] [<message>]]
+'git stash' [save [--keep | --keep-index] [<message>]]
 'git stash' clear
 'git stash' create
 
@@ -41,12 +41,15 @@ is also possible).
 OPTIONS
 -------
 
-save [--keep-index] [<message>]::
+save [--keep | --keep-index] [<message>]::
 
 	Save your local modifications to a new 'stash', and run `git reset
 	--hard` to revert them.  This is the default action when no
 	subcommand is given. The <message> part is optional and gives
 	the description along with the stashed state.
++
+If the `--keep` option is used, `git reset --hard` is omitted and your
+changes to the index and the work tree will be kept.
 +
 If the `--keep-index` option is used, all changes already added to the
 index are left intact.
