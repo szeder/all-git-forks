@@ -1,3 +1,152 @@
+Version v1.6.2-rc1; changes since v1.6.2-rc0:
+---------------------------------------------
+
+Alexandre Julliard (1):
+      Describe notable git.el changes in the release notes
+
+Anton Gyllenberg (1):
+      test case for regression caused by git-svn empty symlink fix
+
+Christian Couder (1):
+      rev-list: fix showing distance when using --bisect-all
+
+Deskin Miller (1):
+      git-svn: Print revision while searching for earliest use of path
+
+Dévai Tamás (1):
+      git-svn: Fix for rewriteRoot URL containing username.
+
+Elijah Newren (1):
+      fast-export: ensure we traverse commits in topological order
+
+Eric Kidd (1):
+      filter-branch: Add more error-handling
+
+Eric Wong (2):
+      git-svn: allow disabling expensive broken symlink checks
+      git-svn: fix broken symlink workaround when switching branches
+
+Fabian Franz (1):
+      submodule: add --no-fetch parameter to update command
+
+Jacob Helwig (1):
+      Add 'rm -f' equivalent to 'git rm' example of filter-branch --index-filter
+
+Jakub Narebski (1):
+      gitweb: Better regexp for SHA-1 committag match
+
+Jeff King (1):
+      symbolic-ref: allow refs/<whatever> in HEAD
+
+Jeremy White (1):
+      Update documentation to add further information about using Thunderbird with git-imap-send.
+
+Johannes Schindelin (4):
+      Let ls-files strip trailing slashes in submodules' paths
+      submodule: warn about non-submodules
+      Add two extra tests for git rebase
+      gc: make --prune useful again by accepting an optional parameter
+
+Johannes Sixt (4):
+      Make test-path-utils more robust against incorrect use
+      Move sanitary_path_copy() to path.c and rename it to normalize_path_copy()
+      Test and fix normalize_path_copy()
+      Remove unused normalize_absolute_path()
+
+Junio C Hamano (16):
+      Revert "Merge branch 'js/notes'"
+      Modernize t5400 test script
+      remote prune: warn dangling symrefs
+      Warn use of "origin" when remotes/origin/HEAD is dangling
+      Drop double-semicolon in C
+      receive-pack: receive.denyDeleteCurrent
+      builtin-receive-pack.c: do not initialize statics to 0
+      revision traversal and pack: notice and die on missing commit
+      Squelch overzealous "ignoring dangling symref" in an empty repository
+      Make repack less likely to corrupt repository
+      Prepare for 1.6.1.4.
+      Revert "validate_headref: tighten ref-matching to just branches"
+      Install the default "master" branch configuration after cloning a void
+      Teach the "@{-1} syntax to "git branch"
+      Teach @{-1} to git merge
+      RelNotes Update
+
+Keith Cascio (1):
+      Remove redundant bit clears from diff_setup()
+
+Lars Hjemli (1):
+      tree.c: allow read_tree_recursive() to traverse gitlink entries
+
+Marcel M. Cary (1):
+      git-sh-setup: Use "cd" option, not /bin/pwd, for symlinked work tree
+
+Marius Storm-Olsen (5):
+      Add mailmap.file as configurational option for mailmap location
+      Add find_insert_index, insert_at_index and clear_func functions to string_list
+      Add map_user() and clear_mailmap() to mailmap
+      Change current mailmap usage to do matching on both name and email of author/committer.
+      Move mailmap documentation into separate file
+
+Mark Burton (1):
+      git-rebase.txt: --interactive does not work with --whitespace
+
+Matt Kraai (1):
+      bash-completion: Complete the values of color.interactive, color.ui, color.pager
+
+Matt McCutchen (1):
+      gitweb: add $prevent_xss option to prevent XSS by repository content
+
+Michael J Gruber (1):
+      Fix the installation path for html documentation
+
+Nazri Ramliy (1):
+      Bugfix: GIT_EXTERNAL_DIFF with more than one changed files
+
+Pat Notz (1):
+      Fix contrib/hooks/post-receive-email for new duplicate branch
+
+René Scharfe (2):
+      Fix GIT_CEILING_DIRECTORIES on Windows
+      builtin-receive-pack.c: fix compiler warnings about format string
+
+SZEDER Gábor (3):
+      Move 'rev-parse --git-dir' test to t1500
+      t1500: more 'git rev-parse --git-dir' tests
+      bash: fix misspelled 'git svn' option
+
+Sam Vilain (1):
+      git-svn: abstract out a block into new method other_gs()
+
+Santi Béjar (1):
+      doc/bundle: Use the more conventional suffix '.bundle'
+
+Shawn O. Pearce (2):
+      Clear the delta base cache during fast-import checkpoint
+      Clear the delta base cache if a pack is rebuilt
+
+Sitaram Chamarty (1):
+      Documentation: clarify commits affected by gitk --merge
+
+Stephan Beyer (3):
+      add -p: get rid of Git.pm warnings about unitialized values
+      Makefile: resort filenames alphabetically
+      Generalize and libify index_is_dirty() to index_differs_from(...)
+
+Tay Ray Chuan (1):
+      use a hash of the lock token as the suffix for PUT/MOVE
+
+Ted Pavlic (2):
+      completion: Fix GIT_PS1_SHOWDIRTYSTATE to prevent unbound variable errors.
+      completion: Get rid of tabbed indentation in comments. Replace with spaces.
+
+Thomas Rast (2):
+      log: do not print ellipses with --abbrev-commit
+      Documentation: pruning recipe for destructive filter-branch
+
+Todd Zullinger (1):
+      git-web--browse: Fix check for /bin/start
+
+
 Version v1.6.2-rc0; changes since v1.6.1.3:
 -------------------------------------------
 
