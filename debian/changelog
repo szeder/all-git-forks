@@ -1,8 +1,11 @@
 git-core (1:1.6.2~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.
+  * debian/git-core.docs, debian/git-doc.docs, debian/rules: move
+    Documentation/RelNotes* from git-doc to the git-core package
+    (closes: #514866).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 17 Feb 2009 09:45:00 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 17 Feb 2009 20:20:03 +0000
 
 git-core (1:1.6.2~rc0-1) experimental; urgency=low
 
