@@ -29,7 +29,7 @@ create_repo () {
 	done &&
 	git update-ref refs/heads/master $commit &&
 	{
-		export GIT_INDEX_FILE=.git/temp;
+		GIT_INDEX_FILE=.git/temp; export GIT_INDEX_FILE;
 		git rev-list HEAD | cat -n | sed "s/^[ 	][ 	]*/ /g" |
 		while read nr sha1; do
 			blob=$(echo note $nr | git hash-object -w --stdin) &&
@@ -63,7 +63,7 @@ cat > time_notes << \EOF
 	while [ $i -lt $2 ]; do
 		case $1 in
 		no-notes)
-			export GIT_NOTES_REF=non-existing
+			GIT_NOTES_REF=non-existing; export GIT_NOTES_REF
 		;;
 		notes)
 			unset GIT_NOTES_REF
