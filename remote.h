@@ -44,6 +44,8 @@ struct remote {
 	char *http_proxy;
 };
 
+const char *default_remote_name;
+
 struct remote *remote_get(const char *name);
 
 typedef int each_remote_fn(struct remote *remote, void *priv);

@@ -116,7 +116,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	struct option options[] = {
 		OPT_BIT('v', "verbose", &flags, "be verbose", TRANSPORT_PUSH_VERBOSE),
-		OPT_STRING( 0 , "repo", &repo, "repository", "repository"),
+		OPT_STRING( 0 , "repo", &default_remote_name, "repository", "repository"),
 		OPT_BIT( 0 , "all", &flags, "push all refs", TRANSPORT_PUSH_ALL),
 		OPT_BIT( 0 , "mirror", &flags, "mirror all refs",
 			    (TRANSPORT_PUSH_MIRROR|TRANSPORT_PUSH_FORCE)),

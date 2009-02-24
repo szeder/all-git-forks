@@ -436,14 +436,14 @@ test_expect_success 'push with --repo=remoterepo from non-tracking branch' '
 '
 
 # set up fake tracking info; testrepo exists, origin does not.
-test_expect_failure 'push with --repo=repo from tracking branch with bad config' '
+test_expect_success 'push with --repo=repo from tracking branch with bad config' '
 
 	mk_test heads/master &&
 	git config branch.master.remote origin &&
 	test_must_fail git push --repo=testrepo
 '
 
-test_expect_failure 'push with --repo=repo from tracking branch with good config' '
+test_expect_success 'push with --repo=repo from tracking branch with good config' '
 
 	mk_test heads/master &&
 	git config branch.master.remote testrepo &&

@@ -37,7 +37,7 @@ static int branches_alloc;
 static int branches_nr;
 
 static struct branch *current_branch;
-static const char *default_remote_name;
+const char *default_remote_name = NULL;
 
 static struct rewrite **rewrite;
 static int rewrite_alloc;
@@ -423,14 +423,18 @@ static void alias_all_urls(void)
 	}
 }
 
+static int config_read = 0;
+
 static void read_config(void)
 {
 	unsigned char sha1[20];
 	const char *head_ref;
 	int flag;
-	if (default_remote_name) // did this already
+	if (config_read) // did this already
 		return;
-	default_remote_name = xstrdup("origin");
+	config_read = 1;
+	if (!default_remote_name)
+		default_remote_name = xstrdup("origin");
 	current_branch = NULL;
 	head_ref = resolve_ref("HEAD", sha1, 0, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
