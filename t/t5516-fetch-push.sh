@@ -419,6 +419,42 @@ test_expect_success 'push with config remote.*.push = HEAD' '
 git config --remove-section remote.there
 git config --remove-section branch.master
 
+test_expect_success 'push with --repo=repourl from non-tracking branch' '
+
+	mk_test heads/master &&
+	git push --repo=testrepo &&
+	check_push_result $the_commit heads/master
+'
+
+# set up fake remote config
+test_expect_success 'push with --repo=remoterepo from non-tracking branch' '
+
+	mk_test heads/master &&
+	git config remote.testremote.url testrepo &&
+	git push --repo=testremote &&
+	check_push_result $the_commit heads/master
+'
+
+# set up fake tracking info; testrepo exists, origin does not.
+test_expect_failure 'push with --repo=repo from tracking branch with bad config' '
+
+	mk_test heads/master &&
+	git config branch.master.remote origin &&
+	test_must_fail git push --repo=testrepo
+'
+
+test_expect_failure 'push with --repo=repo from tracking branch with good config' '
+
+	mk_test heads/master &&
+	git config branch.master.remote testrepo &&
+	git push --repo=origin &&
+	check_push_result $the_commit heads/master
+'
+
+# clean up fake remote and tracking info
+git config --unset-all branch.master.remote
+git config --unset-all remote.testremote.url
+
 test_expect_success 'push with dry-run' '
 
 	mk_test heads/master &&
