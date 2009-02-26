@@ -1,0 +1,40 @@
+From 5b40e8f70e7057d355a4516d8cd92af56ef5f679 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Thu, 26 Feb 2009 21:58:35 +0000
+Subject: [PATCH 6/7] Install builtins with the user and group of the installing personality
+
+If 'make install' was run with sufficient privileges, then the installed
+builtins in gitexecdir, which are either hardlinked, symlinked, or copied,
+would receive the user and group of whoever built git.  With this commit
+the initial hardlink or copy is done from the installation tree and not
+the build tree to fix this.
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 6a0861a8a3295395238c8126c6e74c66b715c595)
+
+Conflicts:
+
+	Makefile
+---
+ Makefile |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 0124288..91d6dc1 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1429,8 +1429,8 @@ endif
+ 	bindir=$$(cd '$(DESTDIR_SQ)$(bindir_SQ)' && pwd) && \
+ 	execdir=$$(cd '$(DESTDIR_SQ)$(gitexec_instdir_SQ)' && pwd) && \
+ 	{ $(RM) "$$execdir/git-add$X" && \
+-		ln git-add$X "$$execdir/git-add$X" 2>/dev/null || \
+-		cp git-add$X "$$execdir/git-add$X"; } && \
++		ln "$$bindir/git$X" "$$execdir/git-add$X" 2>/dev/null || \
++		cp "$$bindir/git$X" "$$execdir/git-add$X"; } && \
+ 	{ $(foreach p,$(filter-out git-add$X,$(BUILT_INS)), $(RM) "$$execdir/$p" && \
+ 		ln "$$execdir/git-add$X" "$$execdir/$p" 2>/dev/null || \
+ 		ln -s "git-add$X" "$$execdir/$p" 2>/dev/null || \
+-- 
+1.6.1.3
+
