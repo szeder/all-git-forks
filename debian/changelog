@@ -3,8 +3,11 @@ git-core (1:1.6.1.3-2) unstable; urgency=high
   * debian/diff/0006-Install-builtins-with-the-user-and-group-of...diff:
     new from upstream git: Install builtins with the user and group of
     the installing personality.
+  * debian/diff/0007-git-quiltimport-preserve-standard-input-to...diff:
+    new from upstream git: git-quiltimport: preserve standard input to
+    be able to read user input (closes: #515910).
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 26 Feb 2009 21:59:56 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 26 Feb 2009 22:01:37 +0000
 
 git-core (1:1.6.1.3-1) unstable; urgency=low
 

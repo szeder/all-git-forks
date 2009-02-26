@@ -1,0 +1,46 @@
+From ef29e42044844c13c183c0cbdc6c6f799c368c0d Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Tue, 24 Feb 2009 09:00:06 +0000
+Subject: [PATCH 7/7] git-quiltimport: preserve standard input to be able to read user input
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+When run without --author and it fails to determine an author, git
+quiltimport tries `read patch_author` to get user input, but standard
+input has been redirected to the patch series file.  This commit lets
+quiltimport read the series file through file descriptor 3 so that the
+standard input is preserved.
+
+Reported by Uwe Kleine-König through http://bugs.debian.org/515910
+
+Signed-off-by: Gerrit Pape <pape@smarden.org>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 6ab149ea89fe5790630c5750af0e3245a7a5e06e)
+---
+ git-quiltimport.sh |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/git-quiltimport.sh b/git-quiltimport.sh
+index cebaee1..9a6ba2b 100755
+--- a/git-quiltimport.sh
++++ b/git-quiltimport.sh
+@@ -63,7 +63,7 @@ tmp_info="$tmp_dir/info"
+ commit=$(git rev-parse HEAD)
+ 
+ mkdir $tmp_dir || exit 2
+-while read patch_name level garbage
++while read patch_name level garbage <&3
+ do
+ 	case "$patch_name" in ''|'#'*) continue;; esac
+ 	case "$level" in
+@@ -134,5 +134,5 @@ do
+ 		commit=$( (echo "$SUBJECT"; echo; cat "$tmp_msg") | git commit-tree $tree -p $commit) &&
+ 		git update-ref -m "quiltimport: $patch_name" HEAD $commit || exit 4
+ 	fi
+-done <"$QUILT_PATCHES/series"
++done 3<"$QUILT_PATCHES/series"
+ rm -rf $tmp_dir || exit 5
+-- 
+1.6.1.3
+
