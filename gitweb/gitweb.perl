@@ -27,13 +27,29 @@ our $version = "++GIT_VERSION++";
 our $my_url = $cgi->url();
 our $my_uri = $cgi->url(-absolute => 1);
 
-# if we're called with PATH_INFO, we have to strip that
-# from the URL to find our real URL
-# we make $path_info global because it's also used later on
+# Base URL for relative URLs in gitweb ($logo, $favicon, ...),
+# needed and used only for URLs with nonempty PATH_INFO
+our $base_url = $my_url;
+
+# When the script is used as DirectoryIndex, the URL does not contain the name
+# of the script file itself, and $cgi->url() fails to strip PATH_INFO, so we
+# have to do it ourselves. We make $path_info global because it's also used
+# later on.
+#
+# Another issue with the script being the DirectoryIndex is that the resulting
+# $my_url data is not the full script URL: this is good, because we want
+# generated links to keep implying the script name if it wasn't explicitly
+# indicated in the URL we're handling, but it means that $my_url cannot be used
+# as base URL.
+# Therefore, if we needed to strip PATH_INFO, then we know that we have
+# to build the base URL ourselves:
 our $path_info = $ENV{"PATH_INFO"};
 if ($path_info) {
-	$my_url =~ s,\Q$path_info\E$,,;
-	$my_uri =~ s,\Q$path_info\E$,,;
+	if ($my_url =~ s,\Q$path_info\E$,, &&
+	    $my_uri =~ s,\Q$path_info\E$,, &&
+	    defined $ENV{'SCRIPT_NAME'}) {
+		$base_url = $cgi->url(-base => 1) . $ENV{'SCRIPT_NAME'};
+	}
 }
 
 # core git executable to use
@@ -386,13 +402,13 @@ sub feature_bool {
 	my $key = shift;
 	my ($val) = git_get_project_config($key, '--bool');
 
-	if ($val eq 'true') {
+	if (!defined $val) {
+		return ($_[0]);
+	} elsif ($val eq 'true') {
 		return (1);
 	} elsif ($val eq 'false') {
 		return (0);
 	}
-
-	return ($_[0]);
 }
 
 sub feature_snapshot {
@@ -1368,13 +1384,11 @@ sub format_log_line_html {
 	my $line = shift;
 
 	$line = esc_html($line, -nbsp=>1);
-	if ($line =~ m/\b([0-9a-fA-F]{8,40})\b/) {
-		my $hash_text = $1;
-		my $link =
-			$cgi->a({-href => href(action=>"object", hash=>$hash_text),
-			        -class => "text"}, $hash_text);
-		$line =~ s/$hash_text/$link/;
-	}
+	$line =~ s{\b([0-9a-fA-F]{8,40})\b}{
+		$cgi->a({-href => href(action=>"object", hash=>$1),
+					-class => "text"}, $1);
+	}eg;
+
 	return $line;
 }
 
@@ -1898,18 +1912,19 @@ sub git_parse_project_config {
 	return %config;
 }
 
-# convert config value to boolean, 'true' or 'false'
+# convert config value to boolean: 'true' or 'false'
 # no value, number > 0, 'true' and 'yes' values are true
 # rest of values are treated as false (never as error)
 sub config_to_bool {
 	my $val = shift;
 
+	return 1 if !defined $val;             # section.key
+
 	# strip leading and trailing whitespace
 	$val =~ s/^\s+//;
 	$val =~ s/\s+$//;
 
-	return (!defined $val ||               # section.key
-	        ($val =~ /^\d+$/ && $val) ||   # section.key = 1
+	return (($val =~ /^\d+$/ && $val) ||   # section.key = 1
 	        ($val =~ /^(?:true|yes)$/i));  # section.key = true
 }
 
@@ -1961,6 +1976,9 @@ sub git_get_project_config {
 		%config = git_parse_project_config('gitweb');
 		$config_file = "$git_dir/config";
 	}
+
+	# check if config variable (key) exists
+	return unless exists $config{"gitweb.$key"};
 
 	# ensure given type
 	if (!defined $type) {
@@ -2908,7 +2926,7 @@ EOF
 	# the stylesheet, favicon etc urls won't work correctly with path_info
 	# unless we set the appropriate base URL
 	if ($ENV{'PATH_INFO'}) {
-		print '<base href="'.esc_url($my_url).'" />\n';
+		print "<base href=\"".esc_url($base_url)."\" />\n";
 	}
 	# print out each stylesheet that exist, providing backwards capability
 	# for those people who defined $stylesheet in a config file
