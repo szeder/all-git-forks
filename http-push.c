@@ -231,8 +231,6 @@ static void process_response(void *callback_data)
 	finish_request(request);
 }
 
-#ifdef USE_CURL_MULTI
-
 static char *get_remote_object_url(const char *url, const char *hex,
 				   int only_two_digit_prefix)
 {
@@ -435,7 +433,6 @@ static void start_mkcol(struct transfer_request *request)
 		request->url = NULL;
 	}
 }
-#endif
 
 static void start_fetch_packed(struct transfer_request *request)
 {
@@ -877,6 +874,27 @@ static int fill_active_slot(void *unused)
 	return 0;
 }
 #endif
+
+void process_request_queue(void)
+{
+	struct transfer_request *request = request_queue_head;
+
+	if (aborted)
+		return;
+
+	for (request = request_queue_head; request; request = request->next) {
+		if (request->state == NEED_FETCH) {
+			start_fetch_loose(request);
+		} else if (pushing && request->state == NEED_PUSH) {
+			if (remote_dir_exists[request->obj->sha1[0]] == 1) {
+				start_put(request);
+			} else {
+				start_mkcol(request);
+			}
+		}
+		finish_all_active_slots();
+	}
+}
 
 static void get_remote_object_list(unsigned char parent);
 
@@ -2291,10 +2309,6 @@ int main(int argc, char **argv)
 		break;
 	}
 
-#ifndef USE_CURL_MULTI
-	die("git-push is not available for http/https repository when not compiled with USE_CURL_MULTI");
-#endif
-
 	if (!remote->url)
 		usage(http_push_usage);
 
@@ -2478,18 +2492,18 @@ int main(int argc, char **argv)
 		if (objects_to_send)
 			fprintf(stderr, "    sending %d objects\n",
 				objects_to_send);
+
 #ifdef USE_CURL_MULTI
 		fill_active_slots();
 		add_fill_function(NULL, fill_active_slot);
-#endif
+
 		do {
-#ifdef USE_CURL_MULTI
 			finish_all_active_multi_slots();
 			fill_active_slots();
-#else
-			finish_all_active_slots();
-#endif
 		} while (request_queue_head && !aborted);
+#else
+		process_request_queue();
+#endif
 
 		/* Update the remote branch if all went well */
 		if (aborted || !update_remote(ref->new_sha1, ref_lock))
