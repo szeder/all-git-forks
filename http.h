@@ -75,7 +75,14 @@ extern void run_active_slot(struct active_request_slot *slot);
 extern void finish_all_active_slots(void);
 extern void release_active_slot(struct active_request_slot *slot);
 
-#ifdef USE_CURL_MULTI
+ #ifdef USE_CURL_MULTI
+/* Slot lifecycle functions, USE_CURL_MULTI version */
+extern struct active_request_slot *get_active_multi_slot(void);
+extern int start_active_multi_slot(struct active_request_slot *slot);
+extern void run_active_multi_slot(struct active_request_slot *slot);
+extern void finish_all_active_multi_slots(void);
+extern void release_active_multi_slot(struct active_request_slot *slot);
+
 extern void fill_active_slots(void);
 extern void add_fill_function(void *data, int (*fill)(void *));
 extern void step_active_slots(void);

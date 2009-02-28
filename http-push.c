@@ -361,7 +361,11 @@ static void start_fetch_loose(struct transfer_request *request)
 		}
 	}
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	request->slot = slot;
@@ -387,7 +391,11 @@ static void start_fetch_loose(struct transfer_request *request)
 
 	/* Try to get the request started, abort the request on error */
 	request->state = RUN_FETCH_LOOSE;
+#ifdef USE_CURL_MULTI
+	if (!start_active_multi_slot(slot)) {
+#else
 	if (!start_active_slot(slot)) {
+#endif
 		fprintf(stderr, "Unable to start GET request\n");
 		remote->can_update_info_refs = 0;
 		release_request(request);
@@ -401,7 +409,11 @@ static void start_mkcol(struct transfer_request *request)
 
 	request->url = get_remote_object_url(remote->url, hex, 1);
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1); /* undo PUT setup */
@@ -410,7 +422,11 @@ static void start_mkcol(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_CUSTOMREQUEST, DAV_MKCOL);
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_null);
 
+#ifdef USE_CURL_MULTI
+	if (start_active_multi_slot(slot)) {
+#else
 	if (start_active_slot(slot)) {
+#endif
 		request->slot = slot;
 		request->state = RUN_MKCOL;
 	} else {
@@ -474,7 +490,11 @@ static void start_fetch_packed(struct transfer_request *request)
 		return;
 	}
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	request->slot = slot;
@@ -503,7 +523,11 @@ static void start_fetch_packed(struct transfer_request *request)
 
 	/* Try to get the request started, abort the request on error */
 	request->state = RUN_FETCH_PACKED;
+#ifdef USE_CURL_MULTI
+	if (!start_active_multi_slot(slot)) {
+#else
 	if (!start_active_slot(slot)) {
+#endif
 		fprintf(stderr, "Unable to start GET request\n");
 		remote->can_update_info_refs = 0;
 		release_request(request);
@@ -561,7 +585,11 @@ static void start_put(struct transfer_request *request)
 	strbuf_add(&buf, request->lock->tmpfile_suffix, 41);
 	request->url = strbuf_detach(&buf, NULL);
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_INFILE, &request->buffer);
@@ -574,7 +602,11 @@ static void start_put(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, request->url);
 
+#ifdef USE_CURL_MULTI
+	if (start_active_multi_slot(slot)) {
+#else
 	if (start_active_slot(slot)) {
+#endif
 		request->slot = slot;
 		request->state = RUN_PUT;
 	} else {
@@ -589,7 +621,11 @@ static void start_move(struct transfer_request *request)
 	struct active_request_slot *slot;
 	struct curl_slist *dav_headers = NULL;
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1); /* undo PUT setup */
@@ -600,7 +636,11 @@ static void start_move(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_null);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, request->url);
 
+#ifdef USE_CURL_MULTI
+	if (start_active_multi_slot(slot)) {
+#else
 	if (start_active_slot(slot)) {
+#endif
 		request->slot = slot;
 		request->state = RUN_MOVE;
 	} else {
@@ -2426,7 +2466,11 @@ int main(int argc, char **argv)
 			die("revision walk setup failed");
 		mark_edges_uninteresting(revs.commits, &revs, NULL);
 		objects_to_send = get_delta(&revs, ref_lock);
+#ifdef USE_CURL_MULTI
+		finish_all_active_multi_slots();
+#else
 		finish_all_active_slots();
+#endif
 
 		/* Push missing objects to remote, this would be a
 		   convenient time to pack them first if appropriate. */
@@ -2439,9 +2483,11 @@ int main(int argc, char **argv)
 		add_fill_function(NULL, fill_active_slot);
 #endif
 		do {
-			finish_all_active_slots();
 #ifdef USE_CURL_MULTI
+			finish_all_active_multi_slots();
 			fill_active_slots();
+#else
+			finish_all_active_slots();
 #endif
 		} while (request_queue_head && !aborted);
 

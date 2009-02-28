@@ -311,12 +311,10 @@ void http_cleanup(void)
 	}
 }
 
-struct active_request_slot *get_active_slot(void)
-{
-	struct active_request_slot *slot = active_queue_head;
-	struct active_request_slot *newslot;
-
 #ifdef USE_CURL_MULTI
+struct active_request_slot *get_active_multi_slot(void)
+{
+	struct active_request_slot *slot;
 	int num_transfers;
 
 	/* Wait for a slot to open up if the queue is full */
@@ -326,7 +324,17 @@ struct active_request_slot *get_active_slot(void)
 			process_curl_messages();
 		}
 	}
+
+	slot = get_active_slot();
+
+	return slot;
+}
 #endif
+
+struct active_request_slot *get_active_slot(void)
+{
+	struct active_request_slot *slot = active_queue_head;
+	struct active_request_slot *newslot;
 
 	while (slot != NULL && slot->in_use) {
 		slot = slot->next;
@@ -375,9 +383,9 @@ struct active_request_slot *get_active_slot(void)
 	return slot;
 }
 
-int start_active_slot(struct active_request_slot *slot)
-{
 #ifdef USE_CURL_MULTI
+int start_active_multi_slot(struct active_request_slot *slot)
+{
 	CURLMcode curlm_result = curl_multi_add_handle(curlm, slot->curl);
 	int num_transfers;
 
@@ -393,7 +401,13 @@ int start_active_slot(struct active_request_slot *slot)
 	 * something.
 	 */
 	curl_multi_perform(curlm, &num_transfers);
+
+	return 1;
+}
 #endif
+
+int start_active_slot(struct active_request_slot *slot)
+{
 	return 1;
 }
 
@@ -456,9 +470,9 @@ void step_active_slots(void)
 }
 #endif
 
-void run_active_slot(struct active_request_slot *slot)
-{
 #ifdef USE_CURL_MULTI
+void run_active_multi_slot(struct active_request_slot *slot)
+{
 	long last_pos = 0;
 	long current_pos;
 	fd_set readfds;
@@ -491,12 +505,15 @@ void run_active_slot(struct active_request_slot *slot)
 			       &excfds, &select_timeout);
 		}
 	}
-#else
+}
+#endif
+
+void run_active_slot(struct active_request_slot *slot)
+{
 	while (slot->in_use) {
 		slot->curl_result = curl_easy_perform(slot->curl);
 		finish_active_slot(slot);
 	}
-#endif
 }
 
 static void closedown_active_slot(struct active_request_slot *slot)
@@ -505,19 +522,26 @@ static void closedown_active_slot(struct active_request_slot *slot)
 	slot->in_use = 0;
 }
 
+#ifdef USE_CURL_MULTI
+void release_active_multi_slot(struct active_request_slot *slot)
+{
+	closedown_active_slot(slot);
+	if (slot->curl) {
+		curl_multi_remove_handle(curlm, slot->curl);
+		curl_easy_cleanup(slot->curl);
+		slot->curl = NULL;
+	}
+	fill_active_slots();
+}
+#endif
+
 void release_active_slot(struct active_request_slot *slot)
 {
 	closedown_active_slot(slot);
 	if (slot->curl) {
-#ifdef USE_CURL_MULTI
-		curl_multi_remove_handle(curlm, slot->curl);
-#endif
 		curl_easy_cleanup(slot->curl);
 		slot->curl = NULL;
 	}
-#ifdef USE_CURL_MULTI
-	fill_active_slots();
-#endif
 }
 
 static void finish_active_slot(struct active_request_slot *slot)
@@ -539,6 +563,21 @@ static void finish_active_slot(struct active_request_slot *slot)
 		slot->callback_func(slot->callback_data);
 	}
 }
+
+#ifdef USE_CURL_MULTI
+void finish_all_active_multi_slots(void)
+{
+	struct active_request_slot *slot = active_queue_head;
+
+	while (slot != NULL)
+		if (slot->in_use) {
+			run_active_multi_slot(slot);
+			slot = active_queue_head;
+		} else {
+			slot = slot->next;
+		}
+}
+#endif
 
 void finish_all_active_slots(void)
 {

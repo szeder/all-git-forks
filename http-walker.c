@@ -192,7 +192,11 @@ static void start_object_request(struct walker *walker,
 		}
 	}
 
+#ifdef USE_CURL_MULTI
+	slot = get_active_multi_slot();
+#else
 	slot = get_active_slot();
+#endif
 	slot->callback_func = process_object_response;
 	slot->callback_data = obj_req;
 	obj_req->slot = slot;
@@ -218,7 +222,11 @@ static void start_object_request(struct walker *walker,
 
 	/* Try to get the request started, abort the request on error */
 	obj_req->state = ACTIVE;
+#ifdef USE_CURL_MULTI
+	if (!start_active_multi_slot(slot)) {
+#else
 	if (!start_active_slot(slot)) {
+#endif
 		obj_req->state = ABORTED;
 		obj_req->slot = NULL;
 		close(obj_req->local); obj_req->local = -1;
@@ -476,7 +484,11 @@ static void process_alternates_response(void *callback_data)
 			slot->in_use = 1;
 			if (slot->finished != NULL)
 				(*slot->finished) = 0;
+#ifdef USE_CURL_MULTI
+			if (!start_active_multi_slot(slot)) {
+#else
 			if (!start_active_slot(slot)) {
+#endif
 				cdata->got_alternates = -1;
 				slot->in_use = 0;
 				if (slot->finished != NULL)
@@ -812,7 +824,11 @@ static void abort_object_request(struct object_request *obj_req)
 	}
 	unlink(obj_req->tmpfile);
 	if (obj_req->slot) {
+#ifdef USE_CURL_MULTI
+		release_active_multi_slot(obj_req->slot);
+#else
 		release_active_slot(obj_req->slot);
+#endif
 		obj_req->slot = NULL;
 	}
 	release_object_request(obj_req);
@@ -843,7 +859,11 @@ static int fetch_object(struct walker *walker, struct alt_base *repo, unsigned c
 #endif
 
 	while (obj_req->state == ACTIVE) {
+#ifdef USE_CURL_MULTI
+		run_active_multi_slot(obj_req->slot);
+#else
 		run_active_slot(obj_req->slot);
+#endif
 	}
 	if (obj_req->local != -1) {
 		close(obj_req->local); obj_req->local = -1;
