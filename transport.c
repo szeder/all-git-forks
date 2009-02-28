@@ -400,6 +400,8 @@ static int curl_transport_push(struct transport *transport, int refspec_nr, cons
 		argv[argc++] = "--force";
 	if (flags & TRANSPORT_PUSH_DRY_RUN)
 		argv[argc++] = "--dry-run";
+	if (flags & TRANSPORT_PUSH_PERSISTENT)
+		argv[argc++] = "--persistent";
 	if (flags & TRANSPORT_PUSH_VERBOSE)
 		argv[argc++] = "--verbose";
 	argv[argc++] = transport->url;

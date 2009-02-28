@@ -15,7 +15,7 @@
 #include <expat.h>
 
 static const char http_push_usage[] =
-"git http-push [--all] [--dry-run] [--force] [--verbose] <remote> [<head>...]\n";
+"git http-push [--all] [--dry-run] [--force] [--persistent] [--verbose] <remote> [<head>...]\n";
 
 #ifndef XML_STATUS_OK
 enum XML_Status {
@@ -82,6 +82,7 @@ static int push_verbosely;
 static int push_all = MATCH_REFS_NONE;
 static int force_all;
 static int dry_run;
+static int persistent_connection;
 
 static struct object_list *objects;
 
@@ -2277,6 +2278,10 @@ int main(int argc, char **argv)
 			}
 			if (!strcmp(arg, "--dry-run")) {
 				dry_run = 1;
+				continue;
+			}
+			if (!strcmp(arg, "--persistent")) {
+				persistent_connection = 1;
 				continue;
 			}
 			if (!strcmp(arg, "--verbose")) {
