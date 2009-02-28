@@ -27,13 +27,29 @@ our $version = "++GIT_VERSION++";
 our $my_url = $cgi->url();
 our $my_uri = $cgi->url(-absolute => 1);
 
-# if we're called with PATH_INFO, we have to strip that
-# from the URL to find our real URL
-# we make $path_info global because it's also used later on
+# Base URL for relative URLs in gitweb ($logo, $favicon, ...),
+# needed and used only for URLs with nonempty PATH_INFO
+our $base_url = $my_url;
+
+# When the script is used as DirectoryIndex, the URL does not contain the name
+# of the script file itself, and $cgi->url() fails to strip PATH_INFO, so we
+# have to do it ourselves. We make $path_info global because it's also used
+# later on.
+#
+# Another issue with the script being the DirectoryIndex is that the resulting
+# $my_url data is not the full script URL: this is good, because we want
+# generated links to keep implying the script name if it wasn't explicitly
+# indicated in the URL we're handling, but it means that $my_url cannot be used
+# as base URL.
+# Therefore, if we needed to strip PATH_INFO, then we know that we have
+# to build the base URL ourselves:
 our $path_info = $ENV{"PATH_INFO"};
 if ($path_info) {
-	$my_url =~ s,\Q$path_info\E$,,;
-	$my_uri =~ s,\Q$path_info\E$,,;
+	if ($my_url =~ s,\Q$path_info\E$,, &&
+	    $my_uri =~ s,\Q$path_info\E$,, &&
+	    defined $ENV{'SCRIPT_NAME'}) {
+		$base_url = $cgi->url(-base => 1) . $ENV{'SCRIPT_NAME'};
+	}
 }
 
 # core git executable to use
@@ -131,6 +147,10 @@ our $fallback_encoding = 'latin1';
 #   (number of files in the original tree) * (number of new files)
 # - one might want to include '-B' option, e.g. '-B', '-M'
 our @diff_opts = ('-M'); # taken from git_commit
+
+# Disables features that would allow repository owners to inject script into
+# the gitweb domain.
+our $prevent_xss = 0;
 
 # information about snapshot formats that gitweb is capable of serving
 our %known_snapshot_formats = (
@@ -330,6 +350,21 @@ our %feature = (
 	'ctags' => {
 		'override' => 0,
 		'default' => [0]},
+
+	# The maximum number of patches in a patchset generated in patch
+	# view. Set this to 0 or undef to disable patch view, or to a
+	# negative number to remove any limit.
+
+	# To disable system wide have in $GITWEB_CONFIG
+	# $feature{'patches'}{'default'} = [0];
+	# To have project specific config enable override in $GITWEB_CONFIG
+	# $feature{'patches'}{'override'} = 1;
+	# and in project config gitweb.patches = 0|n;
+	# where n is the maximum number of patches allowed in a patchset.
+	'patches' => {
+		'sub' => \&feature_patches,
+		'override' => 0,
+		'default' => [16]},
 );
 
 sub gitweb_get_feature {
@@ -367,13 +402,13 @@ sub feature_bool {
 	my $key = shift;
 	my ($val) = git_get_project_config($key, '--bool');
 
-	if ($val eq 'true') {
+	if (!defined $val) {
+		return ($_[0]);
+	} elsif ($val eq 'true') {
 		return (1);
 	} elsif ($val eq 'false') {
 		return (0);
 	}
-
-	return ($_[0]);
 }
 
 sub feature_snapshot {
@@ -386,6 +421,16 @@ sub feature_snapshot {
 	}
 
 	return @fmts;
+}
+
+sub feature_patches {
+	my @val = (git_get_project_config('patches', '--int'));
+
+	if (@val) {
+		return @val;
+	}
+
+	return ($_[0]);
 }
 
 # checking HEAD file with -e is fragile if the repository was
@@ -481,6 +526,8 @@ our %actions = (
 	"heads" => \&git_heads,
 	"history" => \&git_history,
 	"log" => \&git_log,
+	"patch" => \&git_patch,
+	"patches" => \&git_patches,
 	"rss" => \&git_rss,
 	"atom" => \&git_atom,
 	"search" => \&git_search,
@@ -807,7 +854,7 @@ sub href (%) {
 	}
 
 	my $use_pathinfo = gitweb_check_feature('pathinfo');
-	if ($use_pathinfo) {
+	if ($use_pathinfo and defined $params{'project'}) {
 		# try to put as many parameters as possible in PATH_INFO:
 		#   - project name
 		#   - action
@@ -822,7 +869,7 @@ sub href (%) {
 		$href =~ s,/$,,;
 
 		# Then add the project name, if present
-		$href .= "/".esc_url($params{'project'}) if defined $params{'project'};
+		$href .= "/".esc_url($params{'project'});
 		delete $params{'project'};
 
 		# since we destructively absorb parameters, we keep this
@@ -1337,13 +1384,11 @@ sub format_log_line_html {
 	my $line = shift;
 
 	$line = esc_html($line, -nbsp=>1);
-	if ($line =~ m/([0-9a-fA-F]{8,40})/) {
-		my $hash_text = $1;
-		my $link =
-			$cgi->a({-href => href(action=>"object", hash=>$hash_text),
-			        -class => "text"}, $hash_text);
-		$line =~ s/$hash_text/$link/;
-	}
+	$line =~ s{\b([0-9a-fA-F]{8,40})\b}{
+		$cgi->a({-href => href(action=>"object", hash=>$1),
+					-class => "text"}, $1);
+	}eg;
+
 	return $line;
 }
 
@@ -1867,18 +1912,19 @@ sub git_parse_project_config {
 	return %config;
 }
 
-# convert config value to boolean, 'true' or 'false'
+# convert config value to boolean: 'true' or 'false'
 # no value, number > 0, 'true' and 'yes' values are true
 # rest of values are treated as false (never as error)
 sub config_to_bool {
 	my $val = shift;
 
+	return 1 if !defined $val;             # section.key
+
 	# strip leading and trailing whitespace
 	$val =~ s/^\s+//;
 	$val =~ s/\s+$//;
 
-	return (!defined $val ||               # section.key
-	        ($val =~ /^\d+$/ && $val) ||   # section.key = 1
+	return (($val =~ /^\d+$/ && $val) ||   # section.key = 1
 	        ($val =~ /^(?:true|yes)$/i));  # section.key = true
 }
 
@@ -1930,6 +1976,9 @@ sub git_get_project_config {
 		%config = git_parse_project_config('gitweb');
 		$config_file = "$git_dir/config";
 	}
+
+	# check if config variable (key) exists
+	return unless exists $config{"gitweb.$key"};
 
 	# ensure given type
 	if (!defined $type) {
@@ -2874,9 +2923,14 @@ sub git_header_html {
 <meta name="robots" content="index, nofollow"/>
 <title>$title</title>
 EOF
-# print out each stylesheet that exist
+	# the stylesheet, favicon etc urls won't work correctly with path_info
+	# unless we set the appropriate base URL
+	if ($ENV{'PATH_INFO'}) {
+		print "<base href=\"".esc_url($base_url)."\" />\n";
+	}
+	# print out each stylesheet that exist, providing backwards capability
+	# for those people who defined $stylesheet in a config file
 	if (defined $stylesheet) {
-#provides backwards capability for those people who define style sheet in a config file
 		print '<link rel="stylesheet" type="text/css" href="'.$stylesheet.'"/>'."\n";
 	} else {
 		foreach my $stylesheet (@stylesheets) {
@@ -4471,7 +4525,9 @@ sub git_summary {
 
 	print "</table>\n";
 
-	if (-s "$projectroot/$project/README.html") {
+	# If XSS prevention is on, we don't include README.html.
+	# TODO: Allow a readme in some safe format.
+	if (!$prevent_xss && -s "$projectroot/$project/README.html") {
 		print "<div class=\"title\">readme</div>\n" .
 		      "<div class=\"readme\">\n";
 		insert_file("$projectroot/$project/README.html");
@@ -4732,10 +4788,21 @@ sub git_blob_plain {
 		$save_as .= '.txt';
 	}
 
+	# With XSS prevention on, blobs of all types except a few known safe
+	# ones are served with "Content-Disposition: attachment" to make sure
+	# they don't run in our security domain.  For certain image types,
+	# blob view writes an <img> tag referring to blob_plain view, and we
+	# want to be sure not to break that by serving the image as an
+	# attachment (though Firefox 3 doesn't seem to care).
+	my $sandbox = $prevent_xss &&
+		$type !~ m!^(?:text/plain|image/(?:gif|png|jpeg))$!;
+
 	print $cgi->header(
 		-type => $type,
 		-expires => $expires,
-		-content_disposition => 'inline; filename="' . $save_as . '"');
+		-content_disposition =>
+			($sandbox ? 'attachment' : 'inline')
+			. '; filename="' . $save_as . '"');
 	undef $/;
 	binmode STDOUT, ':raw';
 	print <$fd>;
@@ -4991,6 +5058,15 @@ sub git_log {
 
 	my $paging_nav = format_paging_nav('log', $hash, $head, $page, $#commitlist >= 100);
 
+	my ($patch_max) = gitweb_get_feature('patches');
+	if ($patch_max) {
+		if ($patch_max < 0 || @commitlist <= $patch_max) {
+			$paging_nav .= " &sdot; " .
+				$cgi->a({-href => href(action=>"patches", -replay=>1)},
+					"patches");
+		}
+	}
+
 	git_header_html();
 	git_print_page_nav('log','', $hash,undef,undef, $paging_nav);
 
@@ -5069,6 +5145,11 @@ sub git_commit {
 				        esc_html(substr($_, 0, 7)));
 			} @$parents ) .
 			')';
+	}
+	if (gitweb_check_feature('patches')) {
+		$formats_nav .= " | " .
+			$cgi->a({-href => href(action=>"patch", -replay=>1)},
+				"patch");
 	}
 
 	if (!defined $parent) {
@@ -5346,7 +5427,14 @@ sub git_blobdiff_plain {
 }
 
 sub git_commitdiff {
-	my $format = shift || 'html';
+	my %params = @_;
+	my $format = $params{-format} || 'html';
+
+	my ($patch_max) = gitweb_get_feature('patches');
+	if ($format eq 'patch') {
+		die_error(403, "Patch view not allowed") unless $patch_max;
+	}
+
 	$hash ||= $hash_base || "HEAD";
 	my %co = parse_commit($hash)
 	    or die_error(404, "Unknown commit object");
@@ -5361,6 +5449,11 @@ sub git_commitdiff {
 		$formats_nav =
 			$cgi->a({-href => href(action=>"commitdiff_plain", -replay=>1)},
 			        "raw");
+		if ($patch_max) {
+			$formats_nav .= " | " .
+				$cgi->a({-href => href(action=>"patch", -replay=>1)},
+					"patch");
+		}
 
 		if (defined $hash_parent &&
 		    $hash_parent ne '-c' && $hash_parent ne '--cc') {
@@ -5444,7 +5537,31 @@ sub git_commitdiff {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			'-p', $hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
-
+	} elsif ($format eq 'patch') {
+		# For commit ranges, we limit the output to the number of
+		# patches specified in the 'patches' feature.
+		# For single commits, we limit the output to a single patch,
+		# diverging from the git-format-patch default.
+		my @commit_spec = ();
+		if ($hash_parent) {
+			if ($patch_max > 0) {
+				push @commit_spec, "-$patch_max";
+			}
+			push @commit_spec, '-n', "$hash_parent..$hash";
+		} else {
+			if ($params{-single}) {
+				push @commit_spec, '-1';
+			} else {
+				if ($patch_max > 0) {
+					push @commit_spec, "-$patch_max";
+				}
+				push @commit_spec, "-n";
+			}
+			push @commit_spec, '--root', $hash;
+		}
+		open $fd, "-|", git_cmd(), "format-patch", '--encoding=utf8',
+			'--stdout', @commit_spec
+			or die_error(500, "Open git-format-patch failed");
 	} else {
 		die_error(400, "Unknown commitdiff format");
 	}
@@ -5493,6 +5610,14 @@ sub git_commitdiff {
 			print to_utf8($line) . "\n";
 		}
 		print "---\n\n";
+	} elsif ($format eq 'patch') {
+		my $filename = basename($project) . "-$hash.patch";
+
+		print $cgi->header(
+			-type => 'text/plain',
+			-charset => 'utf-8',
+			-expires => $expires,
+			-content_disposition => 'inline; filename="' . "$filename" . '"');
 	}
 
 	# write patch
@@ -5514,11 +5639,25 @@ sub git_commitdiff {
 		print <$fd>;
 		close $fd
 			or print "Reading git-diff-tree failed\n";
+	} elsif ($format eq 'patch') {
+		local $/ = undef;
+		print <$fd>;
+		close $fd
+			or print "Reading git-format-patch failed\n";
 	}
 }
 
 sub git_commitdiff_plain {
-	git_commitdiff('plain');
+	git_commitdiff(-format => 'plain');
+}
+
+# format-patch-style patches
+sub git_patch {
+	git_commitdiff(-format => 'patch', -single=> 1);
+}
+
+sub git_patches {
+	git_commitdiff(-format => 'patch');
 }
 
 sub git_history {
@@ -5871,6 +6010,14 @@ sub git_shortlog {
 			$cgi->a({-href => href(-replay=>1, page=>$page+1),
 			         -accesskey => "n", -title => "Alt-n"}, "next");
 	}
+	my $patch_max = gitweb_check_feature('patches');
+	if ($patch_max) {
+		if ($patch_max < 0 || @commitlist <= $patch_max) {
+			$paging_nav .= " &sdot; " .
+				$cgi->a({-href => href(action=>"patches", -replay=>1)},
+					"patches");
+		}
+	}
 
 	git_header_html();
 	git_print_page_nav('shortlog','', $hash,$hash,$hash, $paging_nav);
@@ -5908,7 +6055,25 @@ sub git_feed {
 	}
 	if (defined($commitlist[0])) {
 		%latest_commit = %{$commitlist[0]};
-		%latest_date   = parse_date($latest_commit{'author_epoch'});
+		my $latest_epoch = $latest_commit{'committer_epoch'};
+		%latest_date   = parse_date($latest_epoch);
+		my $if_modified = $cgi->http('IF_MODIFIED_SINCE');
+		if (defined $if_modified) {
+			my $since;
+			if (eval { require HTTP::Date; 1; }) {
+				$since = HTTP::Date::str2time($if_modified);
+			} elsif (eval { require Time::ParseDate; 1; }) {
+				$since = Time::ParseDate::parsedate($if_modified, GMT => 1);
+			}
+			if (defined $since && $latest_epoch <= $since) {
+				print $cgi->header(
+					-type => $content_type,
+					-charset => 'utf-8',
+					-last_modified => $latest_date{'rfc2822'},
+					-status => '304 Not Modified');
+				return;
+			}
+		}
 		print $cgi->header(
 			-type => $content_type,
 			-charset => 'utf-8',
@@ -5967,7 +6132,24 @@ XML
 		print "<title>$title</title>\n" .
 		      "<link>$alt_url</link>\n" .
 		      "<description>$descr</description>\n" .
-		      "<language>en</language>\n";
+		      "<language>en</language>\n" .
+		      # project owner is responsible for 'editorial' content
+		      "<managingEditor>$owner</managingEditor>\n";
+		if (defined $logo || defined $favicon) {
+			# prefer the logo to the favicon, since RSS
+			# doesn't allow both
+			my $img = esc_url($logo || $favicon);
+			print "<image>\n" .
+			      "<url>$img</url>\n" .
+			      "<title>$title</title>\n" .
+			      "<link>$alt_url</link>\n" .
+			      "</image>\n";
+		}
+		if (%latest_date) {
+			print "<pubDate>$latest_date{'rfc2822'}</pubDate>\n";
+			print "<lastBuildDate>$latest_date{'rfc2822'}</lastBuildDate>\n";
+		}
+		print "<generator>gitweb v.$version/$git_version</generator>\n";
 	} elsif ($format eq 'atom') {
 		print <<XML;
 <feed xmlns="http://www.w3.org/2005/Atom">
@@ -5994,6 +6176,7 @@ XML
 		} else {
 			print "<updated>$latest_date{'iso-8601'}</updated>\n";
 		}
+		print "<generator version='$version/$git_version'>gitweb</generator>\n";
 	}
 
 	# contents
@@ -6115,7 +6298,11 @@ sub git_atom {
 sub git_opml {
 	my @list = git_get_projects_list();
 
-	print $cgi->header(-type => 'text/xml', -charset => 'utf-8');
+	print $cgi->header(
+		-type => 'text/xml',
+		-charset => 'utf-8',
+		-content_disposition => 'inline; filename="opml.xml"');
+
 	print <<XML;
 <?xml version="1.0" encoding="utf-8"?>
 <opml version="1.0">

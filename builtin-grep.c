@@ -20,6 +20,8 @@
 #endif
 #endif
 
+static int builtin_grep;
+
 /*
  * git grep pathspecs are somewhat different from diff-tree pathspecs;
  * pathname wildcards are allowed.
@@ -289,6 +291,8 @@ static int external_grep(struct grep_opt *opt, const char **paths, int cached)
 		push_arg("-E");
 	if (opt->regflags & REG_ICASE)
 		push_arg("-i");
+	if (opt->binary == GREP_BINARY_NOMATCH)
+		push_arg("-I");
 	if (opt->word_regexp)
 		push_arg("-w");
 	if (opt->name_only)
@@ -389,7 +393,7 @@ static int grep_cache(struct grep_opt *opt, const char **paths, int cached)
 	 * we grep through the checked-out files. It tends to
 	 * be a lot more optimized
 	 */
-	if (!cached) {
+	if (!cached && !builtin_grep) {
 		hit = external_grep(opt, paths, cached);
 		if (hit >= 0)
 			return hit;
@@ -402,7 +406,12 @@ static int grep_cache(struct grep_opt *opt, const char **paths, int cached)
 			continue;
 		if (!pathspec_matches(paths, ce->name))
 			continue;
-		if (cached) {
+		/*
+		 * If CE_VALID is on, we assume worktree file and its cache entry
+		 * are identical, even if worktree file has been modified, so use
+		 * cache version instead
+		 */
+		if (cached || (ce->ce_flags & CE_VALID)) {
 			if (ce_stage(ce))
 				continue;
 			hit |= grep_sha1(opt, ce->sha1, ce->name, 0);
@@ -543,6 +552,10 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		argc--; argv++;
 		if (!strcmp("--cached", arg)) {
 			cached = 1;
+			continue;
+		}
+		if (!strcmp("--no-ext-grep", arg)) {
+			builtin_grep = 1;
 			continue;
 		}
 		if (!strcmp("-a", arg) ||

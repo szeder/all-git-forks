@@ -2,6 +2,7 @@
 #include "exec_cmd.h"
 #include "cache.h"
 #include "quote.h"
+#include "run-command.h"
 
 const char git_usage_string[] =
 	"git [--version] [--exec-path[=GIT_EXEC_PATH]] [-p|--paginate|--no-pager] [--bare] [--git-dir=GIT_DIR] [--work-tree=GIT_WORK_TREE] [--help] COMMAND [ARGS]";
@@ -219,7 +220,7 @@ struct cmd_struct {
 	int option;
 };
 
-static int run_command(struct cmd_struct *p, int argc, const char **argv)
+static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 {
 	int status;
 	struct stat st;
@@ -384,7 +385,7 @@ static void handle_internal_command(int argc, const char **argv)
 		struct cmd_struct *p = commands+i;
 		if (strcmp(p->cmd, cmd))
 			continue;
-		exit(run_command(p, argc, argv));
+		exit(run_builtin(p, argc, argv));
 	}
 }
 
@@ -392,6 +393,7 @@ static void execv_dashed_external(const char **argv)
 {
 	struct strbuf cmd = STRBUF_INIT;
 	const char *tmp;
+	int status;
 
 	strbuf_addf(&cmd, "git-%s", argv[0]);
 
@@ -406,35 +408,54 @@ static void execv_dashed_external(const char **argv)
 
 	trace_argv_printf(argv, "trace: exec:");
 
-	/* execvp() can only ever return if it fails */
-	execvp(cmd.buf, (char **)argv);
-
-	trace_printf("trace: exec failed: %s\n", strerror(errno));
+	/*
+	 * if we fail because the command is not found, it is
+	 * OK to return. Otherwise, we just pass along the status code.
+	 */
+	status = run_command_v_opt(argv, 0);
+	if (status != -ERR_RUN_COMMAND_EXEC) {
+		if (IS_RUN_COMMAND_ERR(status))
+			die("unable to run '%s'", argv[0]);
+		exit(-status);
+	}
+	errno = ENOENT; /* as if we called execvp */
 
 	argv[0] = tmp;
 
 	strbuf_release(&cmd);
 }
 
+static int run_argv(int *argcp, const char ***argv)
+{
+	int done_alias = 0;
+
+	while (1) {
+		/* See if it's an internal command */
+		handle_internal_command(*argcp, *argv);
+
+		/* .. then try the external ones */
+		execv_dashed_external(*argv);
+
+		/* It could be an alias -- this works around the insanity
+		 * of overriding "git log" with "git show" by having
+		 * alias.log = show
+		 */
+		if (done_alias || !handle_alias(argcp, argv))
+			break;
+		done_alias = 1;
+	}
+
+	return done_alias;
+}
+
 
 int main(int argc, const char **argv)
 {
-	const char *cmd = argv[0] && *argv[0] ? argv[0] : "git-help";
-	char *slash = (char *)cmd + strlen(cmd);
-	int done_alias = 0;
+	const char *cmd;
 
-	/*
-	 * Take the basename of argv[0] as the command
-	 * name, and the dirname as the default exec_path
-	 * if we don't have anything better.
-	 */
-	while (cmd <= slash && !is_dir_sep(*slash))
-		slash--;
-	if (cmd <= slash) {
-		*slash++ = 0;
-		git_set_argv0_path(cmd);
-		cmd = slash;
-	}
+	cmd = git_extract_argv0_path(argv[0]);
+	if (!cmd)
+		cmd = "git-help";
 
 	/*
 	 * "git-xxxx" is the same as "git xxxx", but we obviously:
@@ -479,31 +500,22 @@ int main(int argc, const char **argv)
 	setup_path();
 
 	while (1) {
-		/* See if it's an internal command */
-		handle_internal_command(argc, argv);
-
-		/* .. then try the external ones */
-		execv_dashed_external(argv);
-
-		/* It could be an alias -- this works around the insanity
-		 * of overriding "git log" with "git show" by having
-		 * alias.log = show
-		 */
-		if (done_alias || !handle_alias(&argc, &argv))
+		static int done_help = 0;
+		static int was_alias = 0;
+		was_alias = run_argv(&argc, &argv);
+		if (errno != ENOENT)
 			break;
-		done_alias = 1;
-	}
-
-	if (errno == ENOENT) {
-		if (done_alias) {
+		if (was_alias) {
 			fprintf(stderr, "Expansion of alias '%s' failed; "
 				"'%s' is not a git-command\n",
 				cmd, argv[0]);
 			exit(1);
 		}
-		argv[0] = help_unknown_cmd(cmd);
-		handle_internal_command(argc, argv);
-		execv_dashed_external(argv);
+		if (!done_help) {
+			cmd = argv[0] = help_unknown_cmd(cmd);
+			done_help = 1;
+		} else
+			break;
 	}
 
 	fprintf(stderr, "Failed to run command '%s': %s\n",

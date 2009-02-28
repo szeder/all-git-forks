@@ -23,7 +23,7 @@ static int chomp_prefix;
 static const char *ls_tree_prefix;
 
 static const char ls_tree_usage[] =
-	"git ls-tree [-d] [-r] [-t] [-l] [-z] [--name-only] [--name-status] [--full-name] [--abbrev[=<n>]] <tree-ish> [path...]";
+	"git ls-tree [-d] [-r] [-t] [-l] [-z] [--name-only] [--name-status] [--full-name] [--full-tree] [--abbrev[=<n>]] <tree-ish> [path...]";
 
 static int show_recursive(const char *base, int baselen, const char *pathname)
 {
@@ -68,13 +68,8 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 		 *
 		 * Something similar to this incomplete example:
 		 *
-		if (show_subprojects(base, baselen, pathname)) {
-			struct child_process ls_tree;
-
-			ls_tree.dir = base;
-			ls_tree.argv = ls-tree;
-			start_command(&ls_tree);
-		}
+		if (show_subprojects(base, baselen, pathname))
+			retval = READ_TREE_RECURSIVE;
 		 *
 		 */
 		type = commit_type;
@@ -153,6 +148,11 @@ int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 				break;
 			}
 			if (!strcmp(argv[1]+2, "full-name")) {
+				chomp_prefix = 0;
+				break;
+			}
+			if (!strcmp(argv[1]+2, "full-tree")) {
+				ls_tree_prefix = prefix = NULL;
 				chomp_prefix = 0;
 				break;
 			}

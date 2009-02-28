@@ -209,4 +209,42 @@ test_expect_success 'update --init' '
 
 '
 
+test_expect_success 'do not add files from a submodule' '
+
+	git reset --hard &&
+	test_must_fail git add init/a
+
+'
+
+test_expect_success 'gracefully add submodule with a trailing slash' '
+
+	git reset --hard &&
+	git commit -m "commit subproject" init &&
+	(cd init &&
+	 echo b > a) &&
+	git add init/ &&
+	git diff --exit-code --cached init &&
+	commit=$(cd init &&
+	 git commit -m update a >/dev/null &&
+	 git rev-parse HEAD) &&
+	git add init/ &&
+	test_must_fail git diff --exit-code --cached init &&
+	test $commit = $(git ls-files --stage |
+		sed -n "s/^160000 \([^ ]*\).*/\1/p")
+
+'
+
+test_expect_success 'ls-files gracefully handles trailing slash' '
+
+	test "init" = "$(git ls-files init/)"
+
+'
+
+test_expect_success 'submodule <invalid-path> warns' '
+
+	git submodule no-such-submodule 2> output.err &&
+	grep "^error: .*no-such-submodule" output.err
+
+'
+
 test_done

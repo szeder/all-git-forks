@@ -183,8 +183,11 @@ static struct commit *handle_commit(struct rev_info *revs, struct object *object
 		if (!tag->tagged)
 			die("bad tag");
 		object = parse_object(tag->tagged->sha1);
-		if (!object)
+		if (!object) {
+			if (flags & UNINTERESTING)
+				return NULL;
 			die("bad object %s", sha1_to_hex(tag->tagged->sha1));
+		}
 	}
 
 	/*
@@ -479,9 +482,10 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 		while (parent) {
 			struct commit *p = parent->item;
 			parent = parent->next;
+			if (p)
+				p->object.flags |= UNINTERESTING;
 			if (parse_commit(p) < 0)
-				return -1;
-			p->object.flags |= UNINTERESTING;
+				continue;
 			if (p->parents)
 				mark_parents_uninteresting(p);
 			if (p->object.flags & SEEN)
@@ -1263,6 +1267,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 
 			if (!strcmp(arg, "--all")) {
 				handle_refs(revs, flags, for_each_ref);
+				handle_refs(revs, flags, head_ref);
 				continue;
 			}
 			if (!strcmp(arg, "--branches")) {
@@ -1733,14 +1738,16 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			    (commit->date < revs->max_age))
 				continue;
 			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
-				return NULL;
+				die("Failed to traverse parents of commit %s",
+				    sha1_to_hex(commit->object.sha1));
 		}
 
 		switch (simplify_commit(revs, commit)) {
 		case commit_ignore:
 			continue;
 		case commit_error:
-			return NULL;
+			die("Failed to simplify parents of commit %s",
+			    sha1_to_hex(commit->object.sha1));
 		default:
 			return commit;
 		}

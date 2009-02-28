@@ -107,6 +107,32 @@ test_expect_success 'remove remote' '
 )
 '
 
+test_expect_success 'remove remote protects non-remote branches' '
+(
+	cd test &&
+	(cat >expect1 <<EOF
+Note: A non-remote branch was not removed; to delete it, use:
+  git branch -d master
+EOF
+    cat >expect2 <<EOF
+Note: Non-remote branches were not removed; to delete them, use:
+  git branch -d foobranch
+  git branch -d master
+EOF
+) &&
+	git tag footag
+	git config --add remote.oops.fetch "+refs/*:refs/*" &&
+	git remote rm oops 2>actual1 &&
+	git branch foobranch &&
+	git config --add remote.oops.fetch "+refs/*:refs/*" &&
+	git remote rm oops 2>actual2 &&
+	git branch -d foobranch &&
+	git tag -d footag &&
+	test_cmp expect1 actual1 &&
+	test_cmp expect2 actual2
+)
+'
+
 cat > test/expect << EOF
 * remote origin
   URL: $(pwd)/one
@@ -376,4 +402,31 @@ test_expect_success 'migrate a remote from named file in $GIT_DIR/branches' '
 	 test "$(git config remote.origin.fetch)" = "refs/heads/master:refs/heads/origin")
 '
 
+test_expect_success 'remote prune to cause a dangling symref' '
+	git clone one seven &&
+	(
+		cd one &&
+		git checkout side2 &&
+		git branch -D master
+	) &&
+	(
+		cd seven &&
+		git remote prune origin
+	) 2>err &&
+	grep "has become dangling" err &&
+
+	: And the dangling symref will not cause other annoying errors
+	(
+		cd seven &&
+		git branch -a
+	) 2>err &&
+	! grep "points nowhere" err
+	(
+		cd seven &&
+		test_must_fail git branch nomore origin
+	) 2>err &&
+	grep "dangling symref" err
+'
+
 test_done
+

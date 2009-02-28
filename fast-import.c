@@ -150,6 +150,7 @@ Format of STDIN stream:
 #include "refs.h"
 #include "csum-file.h"
 #include "quote.h"
+#include "exec_cmd.h"
 
 #define PACK_ID_BITS 16
 #define MAX_PACK_ID ((1<<PACK_ID_BITS)-1)
@@ -816,9 +817,8 @@ static void start_packfile(void)
 	struct pack_header hdr;
 	int pack_fd;
 
-	snprintf(tmpfile, sizeof(tmpfile),
-		"%s/pack/tmp_pack_XXXXXX", get_object_directory());
-	pack_fd = xmkstemp(tmpfile);
+	pack_fd = odb_mkstemp(tmpfile, sizeof(tmpfile),
+			      "pack/tmp_pack_XXXXXX");
 	p = xcalloc(1, sizeof(*p) + strlen(tmpfile) + 2);
 	strcpy(p->pack_name, tmpfile);
 	p->pack_fd = pack_fd;
@@ -868,7 +868,7 @@ static char *create_index(void)
 	/* Generate the fan-out array. */
 	c = idx;
 	for (i = 0; i < 256; i++) {
-		struct object_entry **next = c;;
+		struct object_entry **next = c;
 		while (next < last) {
 			if ((*next)->sha1[0] != i)
 				break;
@@ -878,9 +878,8 @@ static char *create_index(void)
 		c = next;
 	}
 
-	snprintf(tmpfile, sizeof(tmpfile),
-		"%s/pack/tmp_idx_XXXXXX", get_object_directory());
-	idx_fd = xmkstemp(tmpfile);
+	idx_fd = odb_mkstemp(tmpfile, sizeof(tmpfile),
+			     "pack/tmp_idx_XXXXXX");
 	f = sha1fd(idx_fd, tmpfile);
 	sha1write(f, array, 256 * sizeof(int));
 	git_SHA1_Init(&ctx);
@@ -906,9 +905,7 @@ static char *keep_pack(char *curr_index_name)
 	chmod(pack_data->pack_name, 0444);
 	chmod(curr_index_name, 0444);
 
-	snprintf(name, sizeof(name), "%s/pack/pack-%s.keep",
-		 get_object_directory(), sha1_to_hex(pack_data->sha1));
-	keep_fd = open(name, O_RDWR|O_CREAT|O_EXCL, 0600);
+	keep_fd = odb_pack_keep(name, sizeof(name), pack_data->sha1);
 	if (keep_fd < 0)
 		die("cannot create keep file");
 	write_or_die(keep_fd, keep_msg, strlen(keep_msg));
@@ -944,6 +941,7 @@ static void end_packfile(void)
 {
 	struct packed_git *old_p = pack_data, *new_p;
 
+	clear_delta_base_cache();
 	if (object_count) {
 		char *idx_name;
 		int i;
@@ -1872,12 +1870,13 @@ static void file_change_m(struct branch *b)
 	if (!p)
 		die("Corrupt mode: %s", command_buf.buf);
 	switch (mode) {
+	case 0644:
+	case 0755:
+		mode |= S_IFREG;
 	case S_IFREG | 0644:
 	case S_IFREG | 0755:
 	case S_IFLNK:
 	case S_IFGITLINK:
-	case 0644:
-	case 0755:
 		/* ok */
 		break;
 	default:
@@ -1944,7 +1943,7 @@ static void file_change_m(struct branch *b)
 			    typename(type), command_buf.buf);
 	}
 
-	tree_content_set(&b->branch_tree, p, sha1, S_IFREG | mode, NULL);
+	tree_content_set(&b->branch_tree, p, sha1, mode, NULL);
 }
 
 static void file_change_d(struct branch *b)
@@ -2404,6 +2403,8 @@ static const char fast_import_usage[] =
 int main(int argc, const char **argv)
 {
 	unsigned int i, show_stats = 1;
+
+	git_extract_argv0_path(argv[0]);
 
 	setup_git_directory();
 	git_config(git_pack_config, NULL);

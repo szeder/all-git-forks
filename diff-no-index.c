@@ -40,7 +40,7 @@ static int get_mode(const char *path, int *mode)
 		*mode = 0;
 	else if (!strcmp(path, "-"))
 		*mode = create_ce_mode(0666);
-	else if (stat(path, &st))
+	else if (lstat(path, &st))
 		return error("Could not access '%s'", path);
 	else
 		*mode = st.st_mode;
@@ -173,8 +173,10 @@ void diff_no_index(struct rev_info *revs,
 
 	/* Were we asked to do --no-index explicitly? */
 	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--"))
-			return;
+		if (!strcmp(argv[i], "--")) {
+			i++;
+			break;
+		}
 		if (!strcmp(argv[i], "--no-index"))
 			no_index = 1;
 		if (argv[i][0] != '-')
@@ -198,13 +200,6 @@ void diff_no_index(struct rev_info *revs,
 		die("git diff %s takes two paths",
 		    no_index ? "--no-index" : "[--no-index]");
 
-	/*
-	 * If the user asked for our exit code then don't start a
-	 * pager or we would end up reporting its exit code instead.
-	 */
-	if (!DIFF_OPT_TST(&revs->diffopt, EXIT_WITH_STATUS))
-		setup_pager();
-
 	diff_setup(&revs->diffopt);
 	if (!revs->diffopt.output_format)
 		revs->diffopt.output_format = DIFF_FORMAT_PATCH;
@@ -212,8 +207,12 @@ void diff_no_index(struct rev_info *revs,
 		int j;
 		if (!strcmp(argv[i], "--no-index"))
 			i++;
-		else if (!strcmp(argv[1], "-q"))
+		else if (!strcmp(argv[i], "-q")) {
 			options |= DIFF_SILENT_ON_REMOVED;
+			i++;
+		}
+		else if (!strcmp(argv[i], "--"))
+			i++;
 		else {
 			j = diff_opt_parse(&revs->diffopt, argv + i, argc - i);
 			if (!j)
@@ -221,6 +220,13 @@ void diff_no_index(struct rev_info *revs,
 			i += j;
 		}
 	}
+
+	/*
+	 * If the user asked for our exit code then don't start a
+	 * pager or we would end up reporting its exit code instead.
+	 */
+	if (!DIFF_OPT_TST(&revs->diffopt, EXIT_WITH_STATUS))
+		setup_pager();
 
 	if (prefix) {
 		int len = strlen(prefix);
@@ -241,6 +247,7 @@ void diff_no_index(struct rev_info *revs,
 	else
 		revs->diffopt.paths = argv + argc - 2;
 	revs->diffopt.nr_paths = 2;
+	revs->diffopt.skip_stat_unmatch = 1;
 
 	DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);
 	DIFF_OPT_SET(&revs->diffopt, NO_INDEX);

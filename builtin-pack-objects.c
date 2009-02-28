@@ -195,16 +195,16 @@ static int check_pack_inflate(struct packed_git *p,
 	int st;
 
 	memset(&stream, 0, sizeof(stream));
-	inflateInit(&stream);
+	git_inflate_init(&stream);
 	do {
 		in = use_pack(p, w_curs, offset, &stream.avail_in);
 		stream.next_in = in;
 		stream.next_out = fakebuf;
 		stream.avail_out = sizeof(fakebuf);
-		st = inflate(&stream, Z_FINISH);
+		st = git_inflate(&stream, Z_FINISH);
 		offset += stream.next_in - in;
 	} while (st == Z_OK || st == Z_BUF_ERROR);
-	inflateEnd(&stream);
+	git_inflate_end(&stream);
 	return (st == Z_STREAM_END &&
 		stream.total_out == expect &&
 		stream.total_in == len) ? 0 : -1;
@@ -488,9 +488,8 @@ static void write_pack_file(void)
 		} else {
 			char tmpname[PATH_MAX];
 			int fd;
-			snprintf(tmpname, sizeof(tmpname),
-				 "%s/pack/tmp_pack_XXXXXX", get_object_directory());
-			fd = xmkstemp(tmpname);
+			fd = odb_mkstemp(tmpname, sizeof(tmpname),
+					 "pack/tmp_pack_XXXXXX");
 			pack_tmp_name = xstrdup(tmpname);
 			f = sha1fd(fd, pack_tmp_name);
 		}

@@ -9,7 +9,7 @@ git-push - Update remote refs along with associated objects
 SYNOPSIS
 --------
 [verse]
-'git push' [--all | --mirror] [--dry-run] [--tags] [--receive-pack=<git-receive-pack>]
+'git push' [--all | --mirror | --tags] [--dry-run] [--receive-pack=<git-receive-pack>]
 	   [--repo=<repository>] [-f | --force] [-v | --verbose]
 	   [<repository> <refspec>...]
 
@@ -28,36 +28,41 @@ OPTIONS
 -------
 <repository>::
 	The "remote" repository that is destination of a push
-	operation.  See the section <<URLS,GIT URLS>> below.
+	operation.  This parameter can be either a URL
+	(see the section <<URLS,GIT URLS>> below) or the name
+	of a remote (see the section <<REMOTES,REMOTES>> below).
 
 <refspec>...::
-	The canonical format of a <refspec> parameter is
-	`+?<src>:<dst>`; that is, an optional plus `{plus}`, followed
-	by the source ref, followed by a colon `:`, followed by
-	the destination ref.
+	The format of a <refspec> parameter is an optional plus
+	`{plus}`, followed by the source ref <src>, followed
+	by a colon `:`, followed by the destination ref <dst>.
+	It is used to specify with what <src> object the <dst> ref
+	in the remote repository is to be updated.
 +
-The <src> side represents the source branch (or arbitrary
-"SHA1 expression", such as `master~4` (four parents before the
-tip of `master` branch); see linkgit:git-rev-parse[1]) that you
-want to push.  The <dst> side represents the destination location.
+The <src> is often the name of the branch you would want to push, but
+it can be any arbitrary "SHA-1 expression", such as `master~4` or
+`HEAD` (see linkgit:git-rev-parse[1]).
 +
-The local ref that matches <src> is used
-to fast forward the remote ref that matches <dst> (or, if no <dst> was
-specified, the same ref that <src> referred to locally).  If
-the optional leading plus `+` is used, the remote ref is updated
-even if it does not result in a fast forward update.
+The <dst> tells which ref on the remote side is updated with this
+push. Arbitrary expressions cannot be used here, an actual ref must
+be named. If `:`<dst> is omitted, the same ref as <src> will be
+updated.
++
+The object referenced by <src> is used to update the <dst> reference
+on the remote side, but by default this is only allowed if the
+update can fast forward <dst>.  By having the optional leading `{plus}`,
+you can tell git to update the <dst> ref even when the update is not a
+fast forward.  This does *not* attempt to merge <src> into <dst>.  See
+EXAMPLES below for details.
 +
 `tag <tag>` means the same as `refs/tags/<tag>:refs/tags/<tag>`.
-+
-A parameter <ref> without a colon pushes the <ref> from the source
-repository to the destination repository under the same name.
 +
 Pushing an empty <src> allows you to delete the <dst> ref from
 the remote repository.
 +
-The special refspec `:` (or `+:` to allow non-fast forward updates)
-directs git to push "matching" heads: for every head that exists on
-the local side, the remote side is updated if a head of the same name
+The special refspec `:` (or `{plus}:` to allow non-fast forward updates)
+directs git to push "matching" branches: for every branch that exists on
+the local side, the remote side is updated if a branch of the same name
 already exists on the remote side.  This is the default operation mode
 if no explicit refspec is found (that is neither on the command line
 nor in any Push line of the corresponding remotes file---see below).
@@ -86,13 +91,11 @@ nor in any Push line of the corresponding remotes file---see below).
 	line.
 
 --receive-pack=<git-receive-pack>::
+--exec=<git-receive-pack>::
 	Path to the 'git-receive-pack' program on the remote
 	end.  Sometimes useful when pushing to a remote
 	repository over ssh, and you do not have the program in
 	a directory on the default $PATH.
-
---exec=<git-receive-pack>::
-	Same as \--receive-pack=<git-receive-pack>.
 
 -f::
 --force::
@@ -191,9 +194,9 @@ git push origin master::
 	with it.  If `master` did not exist remotely, it would be
 	created.
 
-git push origin :experimental::
-	Find a ref that matches `experimental` in the `origin` repository
-	(e.g. `refs/heads/experimental`), and delete it.
+git push origin HEAD::
+	A handy way to push the current branch to the same name on the
+	remote.
 
 git push origin master:satellite/master dev:satellite/dev::
 	Use the source ref that matches `master` (e.g. `refs/heads/master`)
@@ -201,12 +204,46 @@ git push origin master:satellite/master dev:satellite/dev::
 	`refs/remotes/satellite/master`) in the `origin` repository, then
 	do the same for `dev` and `satellite/dev`.
 
+git push origin HEAD:master::
+	Push the current branch to the remote ref matching `master` in the
+	`origin` repository. This form is convenient to push the current
+	branch without thinking about its local name.
+
 git push origin master:refs/heads/experimental::
 	Create the branch `experimental` in the `origin` repository
 	by copying the current `master` branch.  This form is only
 	needed to create a new branch or tag in the remote repository when
 	the local name and the remote name are different; otherwise,
 	the ref name on its own will work.
+
+git push origin :experimental::
+	Find a ref that matches `experimental` in the `origin` repository
+	(e.g. `refs/heads/experimental`), and delete it.
+
+git push origin {plus}dev:master::
+	Update the origin repository's master branch with the dev branch,
+	allowing non-fast forward updates.  *This can leave unreferenced
+	commits dangling in the origin repository.*  Consider the
+	following situation, where a fast forward is not possible:
++
+----
+	    o---o---o---A---B  origin/master
+		     \
+		      X---Y---Z  dev
+----
++
+The above command would change the origin repository to
++
+----
+		      A---B  (unnamed branch)
+		     /
+	    o---o---o---X---Y---Z  master
+----
++
+Commits A and B would no longer belong to a branch with a symbolic name,
+and so would be unreachable.  As such, these commits would be removed by
+a `git gc` command on the origin repository.
+
 
 Author
 ------

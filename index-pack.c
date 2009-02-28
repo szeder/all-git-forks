@@ -8,6 +8,7 @@
 #include "tree.h"
 #include "progress.h"
 #include "fsck.h"
+#include "exec_cmd.h"
 
 static const char index_pack_usage[] =
 "git index-pack [-v] [-o <index-file>] [{ ---keep | --keep=<msg> }] [--strict] { <pack-file> | --stdin [--fix-thin] [<pack-file>] }";
@@ -171,9 +172,8 @@ static char *open_pack_file(char *pack_name)
 		input_fd = 0;
 		if (!pack_name) {
 			static char tmpfile[PATH_MAX];
-			snprintf(tmpfile, sizeof(tmpfile),
-				 "%s/pack/tmp_pack_XXXXXX", get_object_directory());
-			output_fd = xmkstemp(tmpfile);
+			output_fd = odb_mkstemp(tmpfile, sizeof(tmpfile),
+						"pack/tmp_pack_XXXXXX");
 			pack_name = xstrdup(tmpfile);
 		} else
 			output_fd = open(pack_name, O_CREAT|O_EXCL|O_RDWR, 0600);
@@ -275,10 +275,10 @@ static void *unpack_entry_data(unsigned long offset, unsigned long size)
 	stream.avail_out = size;
 	stream.next_in = fill(1);
 	stream.avail_in = input_len;
-	inflateInit(&stream);
+	git_inflate_init(&stream);
 
 	for (;;) {
-		int ret = inflate(&stream, 0);
+		int ret = git_inflate(&stream, 0);
 		use(input_len - stream.avail_in);
 		if (stream.total_out == size && ret == Z_STREAM_END)
 			break;
@@ -287,7 +287,7 @@ static void *unpack_entry_data(unsigned long offset, unsigned long size)
 		stream.next_in = fill(1);
 		stream.avail_in = input_len;
 	}
-	inflateEnd(&stream);
+	git_inflate_end(&stream);
 	return buf;
 }
 
@@ -382,9 +382,9 @@ static void *get_data_from_pack(struct object_entry *obj)
 	stream.avail_out = obj->size;
 	stream.next_in = src;
 	stream.avail_in = len;
-	inflateInit(&stream);
-	while ((st = inflate(&stream, Z_FINISH)) == Z_OK);
-	inflateEnd(&stream);
+	git_inflate_init(&stream);
+	while ((st = git_inflate(&stream, Z_FINISH)) == Z_OK);
+	git_inflate_end(&stream);
 	if (st != Z_STREAM_END || stream.total_out != obj->size)
 		die("serious inflate inconsistency");
 	free(src);
@@ -793,22 +793,24 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 
 	if (keep_msg) {
 		int keep_fd, keep_msg_len = strlen(keep_msg);
-		if (!keep_name) {
-			snprintf(name, sizeof(name), "%s/pack/pack-%s.keep",
-				 get_object_directory(), sha1_to_hex(sha1));
-			keep_name = name;
-		}
-		keep_fd = open(keep_name, O_RDWR|O_CREAT|O_EXCL, 0600);
+
+		if (!keep_name)
+			keep_fd = odb_pack_keep(name, sizeof(name), sha1);
+		else
+			keep_fd = open(keep_name, O_RDWR|O_CREAT|O_EXCL, 0600);
+
 		if (keep_fd < 0) {
 			if (errno != EEXIST)
-				die("cannot write keep file");
+				die("cannot write keep file '%s' (%s)",
+				    keep_name, strerror(errno));
 		} else {
 			if (keep_msg_len > 0) {
 				write_or_die(keep_fd, keep_msg, keep_msg_len);
 				write_or_die(keep_fd, "\n", 1);
 			}
 			if (close(keep_fd) != 0)
-				die("cannot write keep file");
+				die("cannot close written keep file '%s' (%s)",
+				    keep_name, strerror(errno));
 			report = "keep";
 		}
 	}
@@ -879,6 +881,8 @@ int main(int argc, char **argv)
 	char *index_name_buf = NULL, *keep_name_buf = NULL;
 	struct pack_idx_entry **idx_objects;
 	unsigned char pack_sha1[20];
+
+	git_extract_argv0_path(argv[0]);
 
 	/*
 	 * We wish to read the repository's config file if any, and
