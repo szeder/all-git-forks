@@ -339,6 +339,8 @@ struct active_request_slot *get_active_slot(void)
 	while (slot != NULL && slot->in_use) {
 		slot = slot->next;
 	}
+	if(slot==NULL || slot->curl == NULL)
+		fprintf(stdout, "creating new slot\n");
 	if (slot == NULL) {
 		newslot = xmalloc(sizeof(*newslot));
 		newslot->curl = NULL;
@@ -448,6 +450,7 @@ void fill_active_slots(void)
 
 	while (slot != NULL) {
 		if (!slot->in_use && slot->curl != NULL) {
+			fprintf(stdout, "cleaning up 1\n");
 			curl_easy_cleanup(slot->curl);
 			slot->curl = NULL;
 		}
@@ -528,6 +531,7 @@ void release_active_multi_slot(struct active_request_slot *slot)
 	closedown_active_slot(slot);
 	if (slot->curl) {
 		curl_multi_remove_handle(curlm, slot->curl);
+		fprintf(stdout, "cleaning up 2\n");
 		curl_easy_cleanup(slot->curl);
 		slot->curl = NULL;
 	}
@@ -539,6 +543,7 @@ void release_active_slot(struct active_request_slot *slot)
 {
 	closedown_active_slot(slot);
 	if (slot->curl) {
+		fprintf(stdout, "cleaning up 3\n");
 		curl_easy_cleanup(slot->curl);
 		slot->curl = NULL;
 	}
