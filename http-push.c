@@ -187,6 +187,34 @@ enum dav_header_flag {
 	DAV_HEADER_TIMEOUT = (1u << 2)
 };
 
+/* Decorated http slot functions, to support the --persistent option */
+struct active_request_slot *persistent_get_active_slot()
+{
+#ifdef USE_CURL_MULTI
+	return persistent_connection ? get_active_slot() : get_active_multi_slot();
+#else
+	return get_active_slot();
+#endif
+}
+
+int persistent_start_active_slot(struct active_request_slot *slot)
+{
+#ifdef USE_CURL_MULTI
+	return persistent_connection ? start_active_slot(slot) : start_active_multi_slot(slot);
+#else
+	return start_active_slot(slot);
+#endif
+}
+
+void persistent_finish_all_active_slots(void)
+{
+#ifdef USE_CURL_MULTI
+	return persistent_connection ? finish_all_active_slots() : finish_all_active_multi_slots();
+#else
+	return finish_all_active_slots();
+#endif
+}
+
 static struct curl_slist *get_dav_token_headers(struct remote_lock *lock, enum dav_header_flag options)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -360,11 +388,7 @@ static void start_fetch_loose(struct transfer_request *request)
 		}
 	}
 
-#ifdef USE_CURL_MULTI
-	slot = get_active_multi_slot();
-#else
-	slot = get_active_slot();
-#endif
+	slot = persistent_get_active_slot();
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	request->slot = slot;
@@ -390,11 +414,8 @@ static void start_fetch_loose(struct transfer_request *request)
 
 	/* Try to get the request started, abort the request on error */
 	request->state = RUN_FETCH_LOOSE;
-#ifdef USE_CURL_MULTI
-	if (!start_active_multi_slot(slot)) {
-#else
-	if (!start_active_slot(slot)) {
-#endif
+
+	if (!persistent_start_active_slot(slot)) {
 		fprintf(stderr, "Unable to start GET request\n");
 		remote->can_update_info_refs = 0;
 		release_request(request);
@@ -408,11 +429,7 @@ static void start_mkcol(struct transfer_request *request)
 
 	request->url = get_remote_object_url(remote->url, hex, 1);
 
-#ifdef USE_CURL_MULTI
-	slot = get_active_multi_slot();
-#else
-	slot = get_active_slot();
-#endif
+	slot = persistent_get_active_slot();
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1); /* undo PUT setup */
@@ -421,11 +438,7 @@ static void start_mkcol(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_CUSTOMREQUEST, DAV_MKCOL);
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_null);
 
-#ifdef USE_CURL_MULTI
-	if (start_active_multi_slot(slot)) {
-#else
-	if (start_active_slot(slot)) {
-#endif
+	if (persistent_start_active_slot(slot)) {
 		request->slot = slot;
 		request->state = RUN_MKCOL;
 	} else {
@@ -488,11 +501,7 @@ static void start_fetch_packed(struct transfer_request *request)
 		return;
 	}
 
-#ifdef USE_CURL_MULTI
-	slot = get_active_multi_slot();
-#else
-	slot = get_active_slot();
-#endif
+	slot = persistent_get_active_slot();
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	request->slot = slot;
@@ -521,11 +530,8 @@ static void start_fetch_packed(struct transfer_request *request)
 
 	/* Try to get the request started, abort the request on error */
 	request->state = RUN_FETCH_PACKED;
-#ifdef USE_CURL_MULTI
-	if (!start_active_multi_slot(slot)) {
-#else
-	if (!start_active_slot(slot)) {
-#endif
+
+	if (persistent_start_active_slot(slot)) {
 		fprintf(stderr, "Unable to start GET request\n");
 		remote->can_update_info_refs = 0;
 		release_request(request);
@@ -583,11 +589,7 @@ static void start_put(struct transfer_request *request)
 	strbuf_add(&buf, request->lock->tmpfile_suffix, 41);
 	request->url = strbuf_detach(&buf, NULL);
 
-#ifdef USE_CURL_MULTI
-	slot = get_active_multi_slot();
-#else
-	slot = get_active_slot();
-#endif
+	slot = persistent_get_active_slot();
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_INFILE, &request->buffer);
@@ -600,11 +602,7 @@ static void start_put(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, request->url);
 
-#ifdef USE_CURL_MULTI
-	if (start_active_multi_slot(slot)) {
-#else
-	if (start_active_slot(slot)) {
-#endif
+	if (persistent_start_active_slot(slot)) {
 		request->slot = slot;
 		request->state = RUN_PUT;
 	} else {
@@ -619,11 +617,7 @@ static void start_move(struct transfer_request *request)
 	struct active_request_slot *slot;
 	struct curl_slist *dav_headers = NULL;
 
-#ifdef USE_CURL_MULTI
-	slot = get_active_multi_slot();
-#else
-	slot = get_active_slot();
-#endif
+	slot = persistent_get_active_slot();
 	slot->callback_func = process_response;
 	slot->callback_data = request;
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1); /* undo PUT setup */
@@ -634,11 +628,7 @@ static void start_move(struct transfer_request *request)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite_null);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, request->url);
 
-#ifdef USE_CURL_MULTI
-	if (start_active_multi_slot(slot)) {
-#else
-	if (start_active_slot(slot)) {
-#endif
+	if (persistent_start_active_slot(slot)) {
 		request->slot = slot;
 		request->state = RUN_MOVE;
 	} else {
@@ -927,8 +917,10 @@ static void add_fetch_request(struct object *obj)
 	request_queue_head = request;
 
 #ifdef USE_CURL_MULTI
-	fill_active_slots();
-	step_active_slots();
+	if(!persistent_connection) {
+		fill_active_slots();
+		step_active_slots();
+	}
 #endif
 }
 
@@ -967,8 +959,10 @@ static int add_send_request(struct object *obj, struct remote_lock *lock)
 	request_queue_head = request;
 
 #ifdef USE_CURL_MULTI
-	fill_active_slots();
-	step_active_slots();
+	if(!persistent_connection) {
+		fill_active_slots();
+		step_active_slots();
+	}
 #endif
 
 	return 1;
@@ -2485,11 +2479,7 @@ int main(int argc, char **argv)
 			die("revision walk setup failed");
 		mark_edges_uninteresting(revs.commits, &revs, NULL);
 		objects_to_send = get_delta(&revs, ref_lock);
-#ifdef USE_CURL_MULTI
-		finish_all_active_multi_slots();
-#else
-		finish_all_active_slots();
-#endif
+		persistent_finish_all_active_slots();
 
 		/* Push missing objects to remote, this would be a
 		   convenient time to pack them first if appropriate. */
@@ -2499,13 +2489,17 @@ int main(int argc, char **argv)
 				objects_to_send);
 
 #ifdef USE_CURL_MULTI
-		fill_active_slots();
-		add_fill_function(NULL, fill_active_slot);
-
-		do {
-			finish_all_active_multi_slots();
+		if(!persistent_connection) {
 			fill_active_slots();
-		} while (request_queue_head && !aborted);
+			add_fill_function(NULL, fill_active_slot);
+
+			do {
+				finish_all_active_multi_slots();
+				fill_active_slots();
+			} while (request_queue_head && !aborted);
+		} else {
+			process_request_queue();
+		}
 #else
 		process_request_queue();
 #endif
