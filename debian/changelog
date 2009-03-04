@@ -1,3 +1,13 @@
+git-core (1:1.6.2-1) unstable; urgency=medium
+
+  * new upstream release.
+  * merge branch debian-experimental.
+  * debian/diff/0006-Install-builtins-with-the-user-and-group-of...diff,
+    debian/diff/0007-git-quiltimport-preserve-standard-input-to...diff:
+    remove; applied upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 04 Mar 2009 22:44:43 +0000
+
 git-core (1:1.6.2~rc2-1) experimental; urgency=low
 
   * merge branch debian-sid.

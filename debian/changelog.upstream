@@ -1,3 +1,54 @@
+Version v1.6.2; changes since v1.6.2-rc2:
+-----------------------------------------
+
+Ben Walton (1):
+      git-svn - return original format_svn_date semantics
+
+Christian Couder (2):
+      bisect: fix quoting TRIED revs when "bad" commit is also "skip"ped
+      bisect: fix another instance of eval'ed string
+
+Danijel Tasov (1):
+      added missing backtick in git-apply.txt
+
+David J. Mellor (4):
+      Documentation: minor grammatical fixes.
+      Documentation: minor grammatical fixes.
+      Documentation: minor grammatical fixes.
+      Documentation: minor grammatical fixes.
+
+Eric Wong (1):
+      git-svn: disable broken symlink workaround by default
+
+Jay Soffian (1):
+      t5540-http-push.sh: avoid non-portable grep -P
+
+Johannes Sixt (1):
+      t3400-rebase: Move detached HEAD check earlier
+
+Junio C Hamano (2):
+      git-am: make --abort less dangerous
+      GIT 1.6.2
+
+Michael J Gruber (1):
+      git-am: Keep index in case of abort with dirty index
+
+Mike Ralphson (4):
+      Fix odb_mkstemp() on AIX
+      Documentation: Typos / spelling fixes in RelNotes
+      Documentation: Expand a couple of abbreviations
+      Documentation: Typo / spelling / formatting fixes
+
+Paul Mackerras (1):
+      gitk: Fix possible infinite loop and display corruption
+
+Roy Lee (1):
+      Documentation/git-archive.txt: Note attributes
+
+Todd Zullinger (1):
+      git-rebase: Update --whitespace documentation
+
+
 Version v1.6.2-rc2; changes since v1.6.2-rc1:
 ---------------------------------------------
 
