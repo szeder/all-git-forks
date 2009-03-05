@@ -284,7 +284,13 @@ filter_skipped() {
 	_skip="$2"
 
 	if [ -z "$_skip" ]; then
-		eval "$_eval"
+		eval "$_eval" | {
+			while read line
+			do
+				echo "$line &&"
+			done
+			echo ':'
+		}
 		return
 	fi
 
@@ -506,7 +512,7 @@ bisect_next() {
 	# commit is also a "skip" commit (see above).
 	exit_if_skipped_commits "$bisect_rev"
 
-	bisect_checkout "$bisect_rev" "$bisect_nr revisions left to test after this"
+	bisect_checkout "$bisect_rev" "$bisect_nr revisions left to test after this (roughly $bisect_steps steps)"
 }
 
 bisect_visualize() {
