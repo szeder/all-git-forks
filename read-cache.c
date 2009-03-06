@@ -69,8 +69,8 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 {
 	ce->ce_ctime.sec = (unsigned int)st->st_ctime;
 	ce->ce_mtime.sec = (unsigned int)st->st_mtime;
-	ce->ce_ctime.nsec = (unsigned int)st->st_ctim.tv_nsec;
-	ce->ce_mtime.nsec = (unsigned int)st->st_mtim.tv_nsec;
+	ce->ce_ctime.nsec = ST_CTIME_NSEC(*st);
+	ce->ce_mtime.nsec = ST_MTIME_NSEC(*st);
 	ce->ce_dev = st->st_dev;
 	ce->ce_ino = st->st_ino;
 	ce->ce_uid = st->st_uid;
@@ -1298,8 +1298,8 @@ int read_index_from(struct index_state *istate, const char *path)
 		src_offset += ondisk_ce_size(ce);
 		dst_offset += ce_size(ce);
 	}
-	istate->timestamp.sec = (unsigned int)st.st_mtime;
-	istate->timestamp.nsec = (unsigned int)st.st_mtim.tv_nsec;
+	istate->timestamp.sec = st.st_mtime;
+	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 
 	while (src_offset <= mmap_size - 20 - 8) {
 		/* After an array of active_nr index entries,
@@ -1564,7 +1564,7 @@ int write_index(struct index_state *istate, int newfd)
 	if (ce_flush(&c, newfd) || fstat(newfd, &st))
 		return -1;
 	istate->timestamp.sec = (unsigned int)st.st_ctime;
-	istate->timestamp.nsec = (unsigned int)st.st_ctim.tv_nsec;
+	istate->timestamp.nsec = ST_CTIME_NSEC(st);
 	return 0;
 }
 
