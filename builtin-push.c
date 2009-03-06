@@ -53,6 +53,9 @@ static int do_push(const char *repo, int flags)
 	int i, errs;
 	struct remote *remote = remote_get(repo);
 
+	if (remote->foreign_vcs)
+		die("Pushing with foreign VCSes not supported.");
+
 	if (!remote)
 		die("bad repository '%s'", repo);
 
