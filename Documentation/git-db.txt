@@ -33,11 +33,12 @@ The following are the design goals:
 * ACID semantics and concurrency at "Serializable" level, if not
   better (ie full predicate)
 * constraints, such as data types, value constraints and foreign keys
-* Indexes (either part of the official schema and in-tree, like
-  Oracle's "Materialized View", or out-of-tree like a regular index)
+* Views and Indexes (either part of the official schema and in-tree,
+  like Oracle's "Materialized View", or out-of-tree like a regular
+  index)
 * schema transactions
-* support for heirarchical data management, as the purely relational
-  focus has led to people reinventing this, poorly.
+* support for heirarchical data management (ie, free-form,
+  pointer-filled databases so beloved by modern OO programmers)
 
 The design put forward in this document draws a lot of design
 inspiration and some detail from Postgres and MVCC, and the row format
@@ -77,11 +78,14 @@ data store.
 'git db schema' <filename>
 
 The `filename` here is a dump of the schema-related tables from an
-existing database.  For applications wishing to connect to a store
-which may require upgrading, this method of setup is preferred.
-Running this command may result in the schema tables being altered.
+existing database.  The dump is a data dump of the 'meta' schema (see
+later), in any of the allowable forms (eg, CSV, JSON/YAML, or the
+binary format).  For applications wishing to connect to a store which
+may require upgrading, this method of setup is preferred.  Running
+this command may result in the schema tables being altered.
 
-For building the schema, a traditional DDL-like interface is used:
+For building the schema without directly editing the schema data
+structures, a traditional DDL-like interface is used:
 
 [verse]
 'git db create' <table> [<column> <type>...]
@@ -93,16 +97,17 @@ For building the schema, a traditional DDL-like interface is used:
      [--drop <column>]
      [--add <column> <type>]
      [--rename <column> <newname>]
-+
+
+These commands return a basic interface to create and drop tables, and
+columns.  They edit the 'meta' schema and 
+
 'git db describe' <table> ... > defines.txt
 +
 'git db define' defines.txt
 
-These commands should a basic interface to create and drop tables, and
-columns, as well as return their definition simply.
-
-The `define` command reverses `describe`, taking a column definition
-as from `defines.txt`, as if it had been loaded via `git db schema`.
+This is a way to get the information about the current structure of a
+table.  The definition can be saved and re-loaded using the 'define'
+command.
 
 
 CRUD Interface
@@ -126,7 +131,7 @@ CRUD Interface
 
 Note with all of these commands it is assumed that only selection by
 primary key is required.  The primary keys are piped to standard input
-with --stdin.  Two forms of output shown; CSV and JSON.
+with --stdin.  Two forms of output are suggested; CSV and JSON.
 
 
 Transaction Interface
@@ -351,11 +356,17 @@ relative numbers like this should increase compressibility of the
 data.  Rows can still be horizontally combined simply due to a special
 psuedo-type that resets the expected column back to 1.
 
+This means that no matter how many columns there are, only long (>3)
+sequences of NULL columns involve multi-byte headers, instead of
+columns after the 16th as with ProtocolBuffer.  Also, groups of
+boolean columns will be efficiently stored with one byte each, and
+generally in a form that will huffman code well.
+
 
 Column types
 ^^^^^^^^^^^^
 The meaning of the 4-bit type field is given below.  Some of these
-come from from ProtocolBuffer.
+come from ProtocolBuffer.
 
 ------------
  Type   Meaning     Used For
@@ -370,7 +381,7 @@ come from from ProtocolBuffer.
                      rational number
    5     NULL        Explicit NULL
    6      -          reserved
-   7     object      null-terminated path to a "blob" follows
+   7     object      null-terminated path to value follows
    8     false       Boolean; False; no data follows
    9     true        Boolean; True; no data follows
    a     EOR         End of row
@@ -389,6 +400,8 @@ Normally it is not necessary to encode NULL column values; leaving
 them out is equivalent, but in the context of combining rows this may
 be useful.  Explicit NULL values should never appear on disk; it is
 reserved for stream use in situations where it is required.
+Similarly, the on disk representation would not normally have columns
+listed out of order.
 
 The 'offset' type allows for scanning by primary key to not require
 decoding of the entirety of the rows that precede it; just the primary
@@ -453,7 +466,8 @@ The format of these is rows as for the regular data.
 This design of this part is quite important to get right; design will
 be lifted as far as possible from Postgres as its information schema
 is quite feature-rich and certainly more suitable than the
-information_schema defined in the various SQL standards.
+information_schema defined in the various SQL standards.  Postgres
+column names are re-used to keep this emphasis.
 
 
 Schema table - relation
@@ -461,10 +475,75 @@ Schema table - relation
 The 'relation' table contains information about relations (tables,
 indexes, views and 'toast' tables)
 
+------
+  Column     Definition   Meaning
+  relname    string       name of the relation
+  relnum     integer      unique number of relation
+  relkind    char         r=relation, i=index, v=view, t=toast
+------
+
+`relname` is the primary key of this table.  Currently the only useful
+value for `relkind` is `r`.
+
+`relnum` is also unique.  It is used to identify tables when they are
+renamed.  If a table is renamed its `relname` will change (and the
+tree will, too, as the `relname` forms the path), but the `relnum`
+will not.
+
+
 Schema table - attribute
 ^^^^^^^^^^^^^^^^^^^^^^^^
 This table stores information on columns which exist in relations and
 indexes.
+
+------
+  Column     Definition   Meaning
+  relname    string       name of the relation
+  attname    string       name of the column
+  attnum     integer      position of the column
+  atttype    string       refers to an entry in the types schema table
+  attnotnull boolean      true if the column must be set
+------
+
+`relname` and `attname` are the primary key of this table, but there
+is also a unique constraint over `relname` and `attnum`, used to
+implement column renumbering, as above.
+
+
+Schema table - type
+^^^^^^^^^^^^^^^^^^^
+This table stores type information.  It allows extensibility of the
+database format by allowing for custom types to be listed.
+
+------
+  Column     Definition   Meaning
+  typname    string       name of the relation
+  typtype    char         type of type - 'b'asic or 'c'ompound
+  typisval   boolean      is a value type
+  typinput   string       function name for conversion to value
+  typoutput  string       function name for conversion from value
+  typrecv    string       function name for conversion from row format
+  typsend    string       function name for conversion to row format
+------
+
+The important parts of this are the function names; if the functions
+in this column are not known then tables which use them will be
+restricted, probably read-only.
+
+
+Schema table - index
+^^^^^^^^^^^^^^^^^^^^
+This table lists the columns which are indexed for each table, along
+with the general type of index (eg, B-Tree, hash, bitmap, etc).
+
+
+Schema table - constraint
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This table contains information about constraints.  These might be
+CHECK constraints, or they might be the constraints which tie in with
+an index to enforce a unique or foreign key constraint.
+
 
 Schema table - inherits
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -473,9 +552,10 @@ of the properties of the parent, and selects of tuples of the type of
 the parent also return rows of the child.
 
 ------
-  Column  Definition  Meaning
-  table
-  parent 
+  Column         Definition  Meaning
+  inh_child      string      name of child table
+  inh_parent     string      name of inherited table
+  inh_parent_ord int         for determining order of inherited tables
 ------
 
 
