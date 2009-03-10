@@ -1,0 +1,295 @@
+Git Automatic Mirroring
+=======================
+
+Introduction
+------------
+
+This protocol was designed to be a complete re-think of the GitTorrent
+protocol, instead of basing its core design on the binary BitTorrent
+protocol it is designed to be as simple as possible, and to fit
+cleanly into git.
+
+Concepts
+--------
+
+This protocol tries to introduce as few new concepts as possible.
+However one or two are required.
+
+* *push objects* a push object is a tag object which contains in the
+  comment field valid contents of (included parts of) a 'packed-refs'
+  file.  It 'may' also contain a signature, as git tag objects may.
+  The tagged object 'should' be the tag object corresponding to the
+  contents of the 'packed-refs' file before this push.  Push objects
+  are required in order to refer to the entire repository state with a
+  single SHA1, and to allow such state to be cryptographically
+  verified.
+* *bundle fragments* there is a defined way to carve up the objects
+  which form a bundle which is reproducable accurately, given the
+  'start' and 'end' push object (and being able to walk all of the
+  objects).  This consists of a defined sort order for the object
+  graph, and an algorithm for deciding where boundaries lie for a
+  given fragment size.  This is only required for 'download
+  spreading', the principle benefit of BitTorrent.
+
+Key Protocol Messages
+---------------------
+
+The entire Torrent process was broken down into these three parts.  In
+git development fashion each of which are to be evaluated and
+implemented independently and each one incrementally adds benefits.
+
+* Mirror List - "get me a list of current mirrors, and tell me the
+  latest 'push', and any keys which can sign 'push' records"
+* Mirror Notify - "FYI, I'm mirroring repository X at location Y.
+  HAND!"
+* Mirror Sync - "Oh hai, can you hand me a slice of git pack?  And
+  want any of mine?"
+
+Mirror List
+~~~~~~~~~~~
+
+This request serves a similar function to the 'Tracker' protocol in
+BitTorrent.  In BitTorrent, this is a form "post" request and the
+response is a complicated mess of binary coded hashes.
+
+However the important information to convey is simply which URLs may
+be used to contact known mirrors of the resource in question.
+
+Example request (for brevity, the vhost part of the request has not
+been included)
+
+----
+ mirror-list /pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+----
+
+The response to this might be;
+
+----
+  latest f1d2d2f924e986ac86fdf7b36c94bcdf32beec15
+  auth refs/* 82312e41472b5f8d86e36e30fc06408866b25843
+  try git://repo.or.cz/linux-2.6 86400 current
+  try http://git.utsl.gen.nz/mirror/repo.or.cz/linux-2.6 86400 current
+  try git://214.23.35.210/ 1204 partial
+----
+
+To disect and explain that;
+
+* The `latest` part is the object ID of the current 'push object'
+  which represents the contents of the `packed-refs` file.  To be
+  useful, we also need to be able to retrieve the 'push object' in
+  question.  The namespace `refs/pushes/*` is reserved for references
+  to these `tag` objects; the client identifies them by SHA1.
+  `refs/pushes/` refs will necessarily not be included in the contents
+  of 'push objects'.
+
+* The `auth refs/* 823..66b25843` part is saying that "if you see a
+  packed-refs/tag object signed by key ID 66b25843, and it changes
+  references matching refs/, it's valid."
++
+This allows peers to be able to recognise authentic 'push objects'
+without contacting the main repository.
++
+Changes to the keys allowed to authorize 'push objects' will initially
+be confirmed by the user, as SSH 'known hosts' currently works.  A
+later version of the protocol may allow authority changes to be signed
+by the old key, to allow for key changes and to mark responsible
+parties for `refs/` spaces.
++
+The request itself should be able to include an `auth` line, to say
+that the client is interested in 'push objects' signed by the listed
+key IDs only.
+
+* All of the `try` lines are mirrors; the master server may or may not
+  have already confirmed that they work.  The times after the URL
+  represent the TTL of this mirror line, and the final word represents
+  whether or not when it was last checked that this mirror was up to
+  date or not.  That last one, for instance, is more BitTorrent-style;
+  it's a peer which has only partially downloaded the repository and
+  didn't even supply a DNS name for itself.
+
+Design benefits
+^^^^^^^^^^^^^^^
+
+* With this single message, it is already possible to build into `git
+  fetch` the ability to select a local mirror, connect to it, and
+  fetch refs to the state on the mirrored repository via the regular
+  git:// protocol.
+
+* Supports traditional established mirror pattern
+
+* Mirrors do not necessarily need to just contain an exact replica of
+  the upstream repository contents; they can contain their own forks,
+  too.
+
+Design weaknesses
+^^^^^^^^^^^^^^^^^
+
+* While a client can establish that a push is valid, it cannot
+  determine that it is 'fresh'.
+
+Mirror Notify
+~~~~~~~~~~~~~
+
+Unlike BitTorrent, advertising a node is a separate message.  This is
+so that the existing git facility to enable and disable `git-daemon`
+commands can be used without specific configuration; some projects may
+simply have no need for user-contributed mirrors.
+
+----
+  mirror-notify /pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+  at git://214.23.35.210/linux-2.6.git
+  latest f1d2d2f924e986ac86fdf7b36c94bcdf32beec15
+  ttl 3600
+----
+
+Response:
+
+----
+  ok
+----
+
+or perhaps:
+
+----
+  ignored
+----
+
+This request is notifying the server that you're helping distribute
+the repository that you have connected to.
+
+* The `at` line specifies the URL to advertise to new clients
+
+* The `latest` line specifies which 'push object' is regarded by the
+  advertising node as most current.
+
+* The `ttl` line specifies how long this advertisement should be
+  considered active for.  Short TTL values would be used for swarms
+  which use 'download spreading', where a peer might only be allowing
+  incoming connections for the amount of time that they are
+  downloading.  Long TTL values are for permanent mirrors.
+
+The default implementation of `mirror-notify` would normally at least
+try to call back the URL passed, to see if there is indeed a
+repository sitting there, and perhaps check it to see whether it's
+current or not.
+
+
+Mirror Sync
+~~~~~~~~~~~
+
+This command is all about making the job of pushing and pulling
+asymmetric, as well as much more efficient; git is already very
+efficient, but there should be no need to create new packs for every
+connection - at least, not in the context of mirroring-style
+propagation where nodes generally aim to fetch 'all' data.  The
+regular git `upload-pack` protocol is more efficient when a single,
+tailor-made set of objects is required.
+
+It adds two principle benefits:
+
+. nodes can 'push' changes to other nodes, rather than just pull.
+  Thus, new information can rapidly propagate around an entire swarm
+  without waiting for 'cron(8)'
+
+. downloads can start more quickly and be spread out.  The design is
+  engineered to work well with delta compression.  ie, it shouldn't
+  matter how many fragments you download, the total download size
+  should be about the same in any case.
+ 
+As this is a protocol with a send and receive message exchange, I've
+just marked the lines received from the end making the call with `<=`
+and those sent with `=>`
+
+----
+  mirror-sync /pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+  <= mirror-sync ready
+  <= have push f1d2d2f9 auth 66b25843
+  => fetch push f1d2d2f9
+  <= receive push f1d2d2f9 size 1234
+  ...1234 bytes...
+  => want bundle :f1d2d2f9
+  <= have bundle :ba023123 20MB 1
+  <= have bundle ba023123:f1d2d2f9 2MB 0101
+  => fetch bundle :ba023123 part 17/32
+  <= receive bundle :ba023123 part 17/32 size 732412
+----
+
+To read this - and remember it is really only a sketch - first there
+is an exchange of "push" messages; these are the tags containing
+packed-refs files, which the GTP protocol describes as a "References"
+file.  The peers first exchange these objects and decide which ones
+are the most current.
+
+They'll then exchange information about what bundles they have
+available - a bundle being a pack containing all of the new objects
+between two sets of pushes.  These are actually already defined git
+concepts.  There is information about how big the bundle is in total,
+and the peer supplies their bitmap of which slices of the bundle they
+have.  The slicing algorithm is defined in the GTP protocol.
+
+Once the ends have decided what they want out of this connection,
+they'll start swapping bundle fragments, and after a fragment is
+swapped they might also notify the peer of any new push objects they
+have, or update the other end with any changed bitmaps of bundle
+fragments.
+
+
+Forgone Accepted Quandaries
+---------------------------
+
+In order to capture the most potential of this protocol, notes are
+made here about how the protocol handles some of the most commonly
+requested features, extensions and "what about..." questions.
+
+
+Forks
+~~~~~
+
+In the above design, a 'fork' can be achieved in two ways;
+
+. (co-operative) the upstream permits your key to push to a branch
+  namespace
++
+Thus a given PGP key is permitted to 'make changes' to refs that match
+some particular glob pattern.  What that means is that if nodes see a
+push, they need to compare it to the last push (hence, the tagged
+object being the previous push) and then check to see which refs have
+changed.  The new push is only valid - that is, endorsed by the
+authorizing key - if it only changes those refs.
+
+. (semi-co-operative) your mirror contains extra branches
++
+When you connect to the branch, when you ask for a `mirror-list`,
+you're now asking about the repository mirror.  This might be
+different.  There might be more branches present, and a new
+authorization key for the list of branches which are on this mirror.
++
+Of course this makes it hard to find the list of forks; you have to
+traverse the entire cloud, asking each node if they have forks.
+Someone suggested that the cloud co-operates to maintain a DHT of
+available forks to resolve this issue, which might work.  In practice
+though, there may be "super mirror" nodes which mirror everything
+signed by a PGP key in the web of trust, and these "super mirrors"
+will be the port of call to look for relatively complete lists of
+mirrors.
+
+
+Scaling (to huge projects)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Huge projects, or projects with a large amount of data between 'push
+objects', in practice would probably want the 'Mirror Sync' message.
+This aspect of scaling was the focus of GTP/0.1.
+
+
+Scaling (to huge numbers of projects)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One example "swarm" would be, say, the Debian source archive.  It has
+many thousand repositories.  Ideally a single participant mirror in
+this swarm should be able to 
+
+
+Scaling (to huge numbers of nodes)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
