@@ -1,0 +1,50 @@
+git automatic mirroring implementation plan
+===========================================
+
+git mirror-list implementation steps
+------------------------------------
+
+* mechanism for making 'push objects'
++
+- `git tag --all [ --refs=... ] refs/pushes/local`
+
+* `mirror-list` client
++
+- design for storing `auth' information and keys, prompting for
+  confirmation of updates
+- fetching keys from keyservers
+
+* extensions to `git fetch`
++
+- invokes `mirror-list` client
+- `fetch` has implicit `refs/pushes/local:refs/pushes/origin` if
+   `mirror-list` succeeded
+- signature verification, push object ordering on `refs/pushes/origin`
+   updating
+
+* git-daemon message
++
+- daemon.c changes
+
+* `git mirror-list` server
++
+- design for mirror list storage
+- design for auth configuration
+- automatic signing configuration
+
+* 'git fetch' from mirror
++
+- fetch all unknown 'push objects'
+- find latest one with correct signature
+- initiate fetch of _real_ wanted objects
+- `git mirror-check` based on this, updates mirror list
+
+* `git mirror-add` convenience script
++
+- uses `git mirror-check`
+
+git mirror-notify implementation steps
+--------------------------------------
+
+* calls `git mirror-add`
+
