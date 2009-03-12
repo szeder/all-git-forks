@@ -266,10 +266,11 @@ authorization key for the list of branches which are on this mirror.
 +
 Of course this makes it hard to find the list of forks; you have to
 traverse the entire cloud, asking each node if they have forks.
-Someone suggested that the cloud co-operates to maintain a DHT of
++
+It has been suggested that the cloud co-operates to maintain a DHT of
 available forks to resolve this issue, which might work.  In practice
 though, there may be "super mirror" nodes which mirror everything
-signed by a PGP key in the web of trust, and these "super mirrors"
+signed by any PGP key in the web of trust, and these "super mirrors"
 will be the port of call to look for relatively complete lists of
 mirrors.
 
@@ -278,8 +279,13 @@ Scaling (to huge projects)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Huge projects, or projects with a large amount of data between 'push
-objects', in practice would probably want the 'Mirror Sync' message.
-This aspect of scaling was the focus of GTP/0.1.
+objects', in practice would probably want the 'Mirror Sync' protocol
+for exchanging content.  This aspect of scaling was the focus of
+GTP/0.1.
+
+Currently the design scales well to a large number of commits in a
+single project, but a single large commit would still have to come
+from a single node.
 
 
 Scaling (to huge numbers of projects)
@@ -287,9 +293,74 @@ Scaling (to huge numbers of projects)
 
 One example "swarm" would be, say, the Debian source archive.  It has
 many thousand repositories.  Ideally a single participant mirror in
-this swarm should be able to 
+this swarm should be able to keep up to date with the master without
+having to poll every single project.
+
+The current 'solution' for this would be to allow the TTLs for mirrors
+to be very large - for instance, a week or a month.  Then, assuming
+that nodes will try to push updates out to their "peers", updates
+should propagate naturally without a requirement for polling more
+frequently than the TTL.
+
+A more sophisticated solution would be able to poll projects more
+efficiently - for instance, a GOSSIP type exchange or even an RSS
+feed.  This could be implemented later with a separate protocol.
 
 
 Scaling (to huge numbers of nodes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+In traditional mirror networks, by necessity the connections between
+nodes are planned and taken from a "nearby" mirror, or if network is
+fast enough and the upstream not already over-taxed, the master source
+itself.  Clients are then automatically directed to, or select a
+suitable mirror.  Total traffic sent over transit links is low.
+
+One of the problems with BitTorrent is that it makes no effort to deal
+sensibly with very large networks.  It's a common sight to see network
+operators pulling their hair out because bittorrent users are
+saturating their networks.  These users are often disconnected for
+abuse of their connection.  This is in no small part caused by
+over-reliance on the back-bone; the assumption that talking to one
+node is just as good as talking to any other.  This will always be a
+bad assumption, and this is not just a notion from "the bad old days"
+before the internet "got fast".  The internet will have an "edge" for
+the forseeable future.
+
+There is the contrary goal of making sure that the graph of
+connections has a reasonable level of redundancy, and that there are
+no portions of the network which are "dark".
+
+Fortunately solutions in this problem space exist.  NTP has a concept
+of "stratum", which is used in NTP to ease load on the central time
+source servers.
+
+This could be applied to this protocol, making stratum a
+per-repository, per-authid value.  That is, for each repository there
+will be a URL which is normally where pushes are published for a
+particular PGP key.  This is stratum 0.  Nodes that first server
+notifies are stratum 1.  Nodes that connect to them are stratum 2.  In
+the event that a push is found in a lower stratum server, it first
+propagates up the stratum level to the stratum 1 servers and then back
+down again.  As that happens more and more the server receiving the
+pushes may get "promoted" to a different stratum level.
+
+Database such as GeoIP could help feed decisions about which nodes to
+establish firm contact with, as well.  Heuristics should try to ensure
+that the spread of low-stratum servers is as wide as possible, to
+nodes as well connected as possible.  This combined approach should
+allow the network to be able to automatically form into an efficient
+arrangement with minimal operator intervention.
+
+
+Usenet mode (information services)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+While the protocol in its current form is not yet suitable for this,
+some have expressed interest in a mode of operation suitable for
+broadcasting or sharing, such as over Usenet or even global shortwave.
+
+Another example of a situation where a lot of data is transmitted, but
+there is no scope for two-way communications is `sneakernet'.
+
+This section is a placeholder for interesting ideas on this topic.
