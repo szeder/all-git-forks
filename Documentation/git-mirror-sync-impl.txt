@@ -43,8 +43,35 @@ git mirror-list implementation steps
 +
 - uses `git mirror-check`
 
+
 git mirror-notify implementation steps
 --------------------------------------
 
 * calls `git mirror-add`
+
+
+git mirror-sync implementation steps
+------------------------------------
+
+* pre-requisites
++
+- check `mirror-list` state contains enough to know what a peer needs
+  to do
+- functions for sorting 'push objects' may need revising
+
+* `git mirror-sync` event-driven program
++
+- design local-repository-mediated `IPC' layout for state of mirror-sync operation
+
+* download spreading stuff
++
+- functions for generating bundle manifests from 'push objects' (the
+  'CommitReel object list' from GTP)
+- storing bundle manifest indexes (the 'CommitReel index' from GTP)
+- functions for generating fragment boundaries from 'push objects' and
+  block size
+- add fragments messages to `git mirror-sync` event driven program
+
+* hook into `git fetch`
+- glue option: `git fetch --g2g`
 
