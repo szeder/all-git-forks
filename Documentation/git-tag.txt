@@ -14,13 +14,15 @@ SYNOPSIS
 'git tag' -d <name>...
 'git tag' [-n[<num>]] -l [--contains <commit>] [<pattern>]
 'git tag' -v <name>...
+'git tag' --push [ -p object ] <remote> [ --refs <refspec> | <object> ] 
 
 DESCRIPTION
 -----------
-Adds a 'tag' reference in `.git/refs/tags/`
+Adds a 'tag' reference in `.git/refs/tags/`, or a 'push object' in
+`.git/refs/pushes/`.
 
 Unless `-f` is given, the tag must not yet exist in
-`.git/refs/tags/` directory.
+the `refs/tags/` or `refs/pushes/` directories.
 
 If one of `-a`, `-s`, or `-u <key-id>` is passed, the command
 creates a 'tag' object, and requires the tag message.  Unless
@@ -38,13 +40,33 @@ A GnuPG signed tag object will be created when `-s` or `-u
 committer identity for the current user is used to find the
 GnuPG key for signing.
 
+With `--push`, a 'push object' is created.  This is a flavour of tag
+object containing a set of published refs at the end of the tag
+message, possibly relative to a previous 'push object'.
++
+The command will create a 'packed-refs' representation of the
+specified refs of the repository.  It is created under the
+`refs/pushes/` directory.
++
+If no references are specified using '--refs', but a parent 'push
+object' is specified, only the specified reference(s) are updated from
+the state in the parent 'push object'.  'Push objects' can be signed
+using `-s`.
++
+This form of `git tag` is normally automatically invoked by `git push`
+when pushing via git://
++
+'Push Objects' might also be called 'Push Tags'.  When the signer of
+the child tag is different to that of the parent, it could be called a
+'Pull Request Tag'.
+
 OPTIONS
 -------
 -a::
 	Make an unsigned, annotated tag object
 
 -s::
-	Make a GPG-signed tag, using the default e-mail address's key
+	Make a GPG-signed tag, using the default e-mail address' key
 
 -u <key-id>::
 	Make a GPG-signed tag, using the given key
@@ -57,6 +79,27 @@ OPTIONS
 
 -v::
 	Verify the gpg signature of the given tag names.
+
+--push::
+	Create a 'push object'.  
+	Specify either changed branches and tags with '-p parent', or
+	use with '--refs' to specify the complete list of references
+	to publish.
+
+-p <remote>::
+	Specify the parent `refs/pushes/*` to push refs relative to.
+
+--refs <refspec>::
+	Specify the complete list of references to publish as a
+	<refspec> as passed to linkgit:git-push(1).
+	Normally specified multiple times.
++
+If not passed, it defaults to the list of refs in the parent 'push
+object', if specified, or `HEAD`, `refs/pushes/*`, `refs/heads/*` and
+`refs/tags/*` if the parent 'push object' is not specified.
++
+Specifying both `-p <remote>` and `--refs=` is a potentially
+anti-social thing to do when sharing 'push objects'.
 
 -n<num>::
 	<num> specifies how many lines from the annotation, if any,

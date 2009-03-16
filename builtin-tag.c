@@ -18,6 +18,7 @@ static const char * const git_tag_usage[] = {
 	"git tag -d <tagname>...",
 	"git tag -l [-n[<num>]] [<pattern>]",
 	"git tag -v <tagname>...",
+	"git tag --push [-p prior] [--refs=<refspec>] <pushname>...",
 	NULL
 };
 
@@ -361,6 +362,25 @@ static int parse_msg_arg(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
+struct refspec_arg {
+	char **refspec;
+	int refspec_nr;
+}
+
+static int parse_refs_arg(const struct option *opt, const char *arg, int unset)
+{
+	struct refspec_arg *rs = opt->value;
+	int nr = rs->refspec_nr + 1;
+
+	if (!arg)
+		return -1;
+
+	rs->refspec = xrealloc(rs->refspec, nr * sizeof(char *));
+	rs->refspec[nr-1] = arg;
+	rs->refspec_nr = nr;
+	return 0;
+}
+
 int cmd_tag(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -370,8 +390,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct ref_lock *lock;
 
 	int annotate = 0, sign = 0, force = 0, lines = -1,
-		list = 0, delete = 0, verify = 0;
-	const char *msgfile = NULL, *keyid = NULL;
+		list = 0, delete = 0, verify = 0, push = 0;
+	const char *msgfile = NULL, *keyid = NULL, *parent_push = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
 	struct commit_list *with_commit = NULL;
 	struct option options[] = {
@@ -392,6 +412,13 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		OPT_STRING('u', NULL, &keyid, "key-id",
 					"use another key to sign the tag"),
 		OPT_BOOLEAN('f', NULL, &force, "replace the tag if exists"),
+
+		OPT_GROUP("Push object options"),
+		OPT_BOOLEAN('P', NULL, &verify, "make push object"),
+		OPT_CALLBACK('refs', NULL, &refs,
+			     "references to include in push", parse_refs_arg),
+		OPT_STRING('p', NULL, &parent_push, "parent",
+			   "push relative to parent push object"),
 
 		OPT_GROUP("Tag listing options"),
 		{

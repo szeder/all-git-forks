@@ -5,8 +5,8 @@ git mirror-list implementation steps
 ------------------------------------
 
 * mechanism for making 'push objects'
-+
-- `git tag --all [ --refs=... ] refs/pushes/local`
+
+- `git tag --push [ -p prior_tag ] [ --refs=... ]`
 
 * `mirror-list` client
 +
