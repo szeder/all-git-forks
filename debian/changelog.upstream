@@ -1,3 +1,42 @@
+Version v1.6.2.1; changes since v1.6.2:
+---------------------------------------
+
+Chris Johnsen (1):
+      builtin-revert.c: release index lock when cherry-picking an empty commit
+
+Christian Couder (1):
+      Documentation: fix badly indented paragraphs in "--bisect-all" description
+
+Elijah Newren (1):
+      Ensure proper setup of git_dir for git-hash-object
+
+Finn Arne Gangstad (1):
+      Support "\" in non-wildcard exclusion entries
+
+Jay Soffian (4):
+      send-email: allow send-email to run outside a repo
+      send-email: handle multiple Cc addresses when reading mbox message
+      send-email: --suppress-cc improvements
+      send-email: don't create temporary compose file until it is needed
+
+Jeff King (3):
+      never fallback relative times to absolute
+      t1300: use test_must_fail as appropriate
+      document config --bool-or-int
+
+John Tapsell (1):
+      Make the 'lock file' exists error more informative
+
+Junio C Hamano (4):
+      git-add -i/-p: learn to unwrap C-quoted paths
+      Beginning of 1.6.2 maintenance track
+      Update draft release notes for 1.6.2.1
+      GIT 1.6.2.1
+
+René Scharfe (1):
+      cleanup: add isascii()
+
+
 Version v1.6.2; changes since v1.6.2-rc2:
 -----------------------------------------
 
@@ -5947,7 +5986,7 @@ Shawn O. Pearce (1):
 Stelian Pop (1):
       hg-to-git: fix parent analysis
 
-Uwe Kleine-König (1):
+Uwe Kleine-K,Av(Bnig (1):
       rebase -i: accept -m as advertised in the man page
 
 
@@ -15850,7 +15889,7 @@ Ryan Anderson (2):
       log-tree: show_log() should respect the setting of diffopt->line_termination
       annotate: Fix bug when parsing merges with differing real and logical parents.
 
-Uwe Kleine-König (1):
+Uwe Zeisberger (1):
       Document rev-list's option --merge
 
 
@@ -18599,10 +18638,12 @@ Tom Prince (1):
 Tony Luck (1):
       update using-topic-branches
 
-Uwe Kleine-König (4):
+Uwe Kleine-König (3):
       Fix generation of "humanish" part of source repo
       Remove unneeded header
       Use symbolic name SHORT_NAME_AMBIGUOUS as error return value
+
+Uwe Zeisberger (1):
       Make GIT-VERSION-GEN tolerate missing git describe command again
 
 
