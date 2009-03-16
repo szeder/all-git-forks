@@ -8,7 +8,17 @@ git mirror-list implementation steps
 
 - `git tag --push [ -p prior_tag ] [ --refs=... ]`
 
-* `mirror-list` client
+* `git mirror server list`
++
+- design for mirror list storage
+- design for auth configuration
+- automatic signing configuration
+
+* git-daemon support
++
+- daemon.c changes - add entry for mirror-list
+
+* `git mirror list` (client)
 +
 - design for storing `auth' information and keys, prompting for
   confirmation of updates
@@ -16,38 +26,33 @@ git mirror-list implementation steps
 
 * extensions to `git fetch`
 +
-- invokes `mirror-list` client
+- invokes `git mirror list`
 - `fetch` has implicit `refs/pushes/local:refs/pushes/origin` if
    `mirror-list` succeeded
 - signature verification, push object ordering on `refs/pushes/origin`
    updating
 
-* git-daemon message
-+
-- daemon.c changes
-
-* `git mirror-list` server
-+
-- design for mirror list storage
-- design for auth configuration
-- automatic signing configuration
-
-* 'git fetch' from mirror
+* `git fetch --use-mirror`
 +
 - fetch all unknown 'push objects'
 - find latest one with correct signature
 - initiate fetch of _real_ wanted objects
-- `git mirror-check` based on this, updates mirror list
-
-* `git mirror-add` convenience script
-+
-- uses `git mirror-check`
 
 
-git mirror-notify implementation steps
+git mirror notify implementation steps
 --------------------------------------
 
-* calls `git mirror-add`
+* `git mirror server notify` handler
++
+- uses `git fetch --use-mirror` in a dry-run mode to check the mirror
+
+* git-daemon support
++
+- daemon.c changes - add entry for mirror-notify
+
+* `git mirror notify` (client)
++
+- uses above
 
 
 git mirror-sync implementation steps
@@ -59,9 +64,10 @@ git mirror-sync implementation steps
   to do
 - functions for sorting 'push objects' may need revising
 
-* `git mirror-sync` event-driven program
+* `git mirror sync` event-driven program
 +
-- design local-repository-mediated `IPC' layout for state of mirror-sync operation
+- design local-repository-mediated `IPC' layout for state of
+  `git mirror sync` operation
 
 * download spreading stuff
 +
@@ -70,8 +76,8 @@ git mirror-sync implementation steps
 - storing bundle manifest indexes (the 'CommitReel index' from GTP)
 - functions for generating fragment boundaries from 'push objects' and
   block size
-- add fragments messages to `git mirror-sync` event driven program
+- add fragments messages to `git mirror sync` event driven program
 
 * hook into `git fetch`
-- glue option: `git fetch --g2g`
+- glue option: `git fetch --mirror`
 
