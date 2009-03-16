@@ -14,25 +14,6 @@
        "/usr/share/doc/git-core/contrib/emacs"
        'append)
 
-      (autoload 'vc-git--run-command-string           "vc-git" "" nil)
-      (autoload 'vc-git--run-command                  "vc-git" "" nil)
-      (autoload 'vc-git-registered                    "vc-git" "" nil)
-      (autoload 'vc-git-state                         "vc-git" "" nil)
-      (autoload 'vc-git-workfile-version              "vc-git" "" nil)
-      (autoload 'vc-git-symbolic-commit               "vc-git" "" nil)
-      (autoload 'vc-git-previous-version              "vc-git" "" nil)
-      (autoload 'vc-git-next-version                  "vc-git" "" nil)
-      (autoload 'vc-git-revert                        "vc-git" "" nil)
-      (autoload 'vc-git-checkout-model                "vc-git" "" nil)
-      (autoload 'vc-git-workfile-unchanged-p          "vc-git" "" nil)
-      (autoload 'vc-git-register                      "vc-git" "" nil)
-      (autoload 'vc-git-print-log                     "vc-git" "" nil)
-      (autoload 'vc-git-diff                          "vc-git" "" nil)
-      (autoload 'vc-git-checkin                       "vc-git" "" nil)
-      (autoload 'vc-git-checkout                      "vc-git" "" nil)
-      (autoload 'vc-git-annotate-command              "vc-git" "" nil)
-      (autoload 'vc-git-annotate-time                 "vc-git" "" nil)
-
       (add-to-list 'vc-handled-backends 'git)
 
       (autoload 'git-get-env-strings                  "git" "" nil)

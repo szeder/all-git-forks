@@ -1,8 +1,10 @@
 git-core (1:1.6.2.1-1) unstable; urgency=low
 
   * new upstream point release.
+  * debian/git-core.emacsen-startup: no longer refer to vc-git.el
+    (closes: #519728).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 16 Mar 2009 22:11:28 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 16 Mar 2009 22:18:05 +0000
 
 git-core (1:1.6.2-1) unstable; urgency=medium
 
