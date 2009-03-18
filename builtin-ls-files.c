@@ -496,7 +496,7 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 		tag_other = "? ";
 		tag_killed = "K ";
 	}
-	if (show_modified || show_others || (dir.flags & DIR_SHOW_IGNORED) || show_killed)
+	if (show_modified || show_others || show_deleted || (dir.flags & DIR_SHOW_IGNORED) || show_killed)
 		require_work_tree = 1;
 	if (show_unmerged)
 		/*
