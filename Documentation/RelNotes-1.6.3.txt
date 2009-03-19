@@ -30,7 +30,17 @@ Updates since v1.6.2
 
 (performance)
 
+* many uses of lstat(2) in the codepath for "git checkout" have been
+  optimized out.
+
 (usability, bells and whistles)
+
+* rsync:/path/to/repo can be used to run git over rsync for local
+  repositories.  It may not be useful in practice; meant primarily for
+  testing.
+
+* (msysgit) progress output that is sent over the sideband protocol can
+  be handled appropriately in Windows console.
 
 * "--pretty=<style>" option to the log family of commands can now be
   spelled as "--format=<style>".  In addition, --format=%formatstring
@@ -47,14 +57,22 @@ Updates since v1.6.2
 * git-bisect shows not just the number of remaining commits whose goodness
   is unknown, but also shows the estimated number of remaining rounds.
 
+* You can give --date=<format> option to git-blame.
+
 * git-branch -r shows HEAD symref that points at a remote branch in
   interest of each tracked remote repository.
 
 * git-config learned -e option to open an editor to edit the config file
   directly.
 
+* git-clone runs post-checkout hook when run without --no-checkout.
+
 * git-format-patch can be told to use attachment with a new configuration,
   format.attach.
+
+* git-format-patch can be told to produce deep or shallow message threads.
+
+* git-grep learned to highlight the found substrings in color.
 
 * git-imap-send learned to work around Thunderbird's inability to easily
   disable format=flowed with a new configuration, imap.preformattedHTML.
@@ -63,6 +81,10 @@ Updates since v1.6.2
   descendant of the commit you are rebasing onto with --force-rebase
   option.
 
+* git-rebase can be told to report diffstat with the --stat option.
+
+* Output from git-remote command has been vastly improved.
+
 * git-send-email learned --confirm option to review the Cc: list before
   sending the messages out.
 
@@ -70,6 +92,8 @@ Updates since v1.6.2
 
 * Test scripts can be run under valgrind.
 
+* Makefile learned 'coverage' option to run the test suites with
+  coverage tracking enabled.
 
 Fixes since v1.6.2
 ------------------
@@ -80,25 +104,30 @@ release, unless otherwise noted.
 Here are fixes that this release has, but have not been backported to
 v1.6.2.X series.
 
-* .gitignore learned to handle backslash as a quoting mechanism for
-  comment introduction character "#" (backport by merging dd482ee if
-  needed).
+* "git diff --pickaxe-regexp" did not count overlapping matches
+  correctly (backport by cherry-picking 50fd699).
 
-* timestamp output in --date=relative mode used to display timestamps that
-  are long time ago in the default mode; it now uses "N years M months
-  ago", and "N years ago" (backport by picking 10edf37 if needed).
+* "git-fetch" in a repository that was not cloned from anywhere said
+  it cannot find 'origin', which was hard to understand for new people.
 
-* git-add -i/-p now works with non-ASCII pathnames (backport by picking
-  8851f48 if needed).
+* git-gc spent excessive amount of time to decide if an object appears
+  in a locally existing pack (if needed, backport by merging 69e020a).
 
-* "git hash-object -w" did not read from the configuration file from the
-  correct .git directory (backport by merging 272459a if needed).
+* "git-ls-files --deleted" did not work well with GIT_DIR&GIT_WORK_TREE
+  (backport by cherry-picking 8ad3dae).
 
-* git-send-email learned to correctly handle multiple Cc: addresses
-  (backport by merging afe756c if needed).
+* "git-read-tree A B C..." without -m option has been broken for a long time
+  (backport by merging jc/maint-1.6.0-read-tree-overlay)
+
+* 'git-submodule add' did not tolerate extra slashes and ./ in the
+  path it accepted from the command line; it now is more lenient
+ (if needed, backport by merging db75ada).
+
+* git-send-email ignored --in-reply-to when --no-thread was given
+  (backport by merging tr/maint-1.6.0-send-email-irt)
 
 ---
 exec >/var/tmp/1
-O=v1.6.2-77-g8cc3fe4
+O=v1.6.2.1-213-g7d4e3a7
 echo O=$(git describe master)
 git shortlog --no-merges $O..master ^maint
