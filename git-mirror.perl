@@ -97,7 +97,7 @@ the advertised URL is callable, decides on a TTL and records the notice.
 
 B<git mirror sync> is a "peer to peer" protocol, so the "server"
 keyword is redundant.  In this mode, the two nodes exchange
-information about which 'push objects' are most current for the set of
+information about which 'push tags' are most current for the set of
 PGP key IDs they are interested in - based on their configuration, and
 then proceed to swap bundles which correspond to these objects.
 

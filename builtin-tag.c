@@ -18,7 +18,7 @@ static const char * const git_tag_usage[] = {
 	"git tag -d <tagname>...",
 	"git tag -l [-n[<num>]] [<pattern>]",
 	"git tag -v <tagname>...",
-	"git tag --push [-p prior] [--refs=<refspec>] <pushname>...",
+	"git tag --push [-p prior] [--refs=<refspec>] <pushtagname>...",
 	NULL
 };
 
@@ -414,11 +414,11 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN('f', NULL, &force, "replace the tag if exists"),
 
 		OPT_GROUP("Push object options"),
-		OPT_BOOLEAN('P', NULL, &verify, "make push object"),
+		OPT_BOOLEAN('P', NULL, &verify, "make push tag"),
 		OPT_CALLBACK('refs', NULL, &refs,
-			     "references to include in push", parse_refs_arg),
+			     "references to include in push tag", parse_refs_arg),
 		OPT_STRING('p', NULL, &parent_push, "parent",
-			   "push relative to parent push object"),
+			   "make push tag relative to a previous push tag"),
 
 		OPT_GROUP("Tag listing options"),
 		{

@@ -15,17 +15,17 @@ Concepts
 This protocol tries to introduce as few new concepts as possible.
 However one or two are required.
 
-* *push objects* a push object is a tag object which contains in the
+* *push tags* a push tag is a tag object which contains in the
   comment field valid contents of (included parts of) a 'packed-refs'
   file.  It 'may' also contain a signature, as git tag objects may.
-  The tagged object 'should' be the tag object corresponding to the
-  contents of the 'packed-refs' file before this push.  Push objects
+  The tagged object 'should' be the push tag objectid corresponding to the
+  contents of the 'packed-refs' file before this push.  Push tags
   are required in order to refer to the entire repository state with a
   single SHA1, and to allow such state to be cryptographically
   verified.
 * *bundle fragments* there is a defined way to carve up the objects
   which form a bundle which is reproducable accurately, given the
-  'start' and 'end' push object (and being able to walk all of the
+  'start' and 'end' push tag (and being able to walk all of the
   objects).  This consists of a defined sort order for the object
   graph, and an algorithm for deciding where boundaries lie for a
   given fragment size.  This is only required for 'download
@@ -39,7 +39,7 @@ git development fashion each of which are to be evaluated and
 implemented independently and each one incrementally adds benefits.
 
 * Mirror List - "get me a list of current mirrors, and tell me the
-  latest 'push', and any keys which can sign 'push' records"
+  latest 'push tag', and any keys which can sign 'push tags'"
 * Mirror Notify - "FYI, I'm mirroring repository X at location Y.
   HAND!"
 * Mirror Sync - "Oh hai, can you hand me a slice of git pack?  And
@@ -50,7 +50,7 @@ Mirror List
 
 This request serves a similar function to the 'Tracker' protocol in
 BitTorrent.  In BitTorrent, this is a form "post" request and the
-response is a complicated mess of binary coded hashes.
+response is a binary coded hash structure.
 
 However the important information to convey is simply which URLs may
 be used to contact known mirrors of the resource in question.
