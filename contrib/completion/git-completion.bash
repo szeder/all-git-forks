@@ -930,15 +930,21 @@ _git_format_patch ()
 {
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	case "$cur" in
+	--thread=*)
+		__gitcomp "
+			deep shallow
+			" "" "${cur##--thread=}"
+		return
+		;;
 	--*)
 		__gitcomp "
-			--stdout --attach --thread
+			--stdout --attach --no-attach --thread --thread=
 			--output-directory
 			--numbered --start-number
 			--numbered-files
 			--keep-subject
 			--signoff
-			--in-reply-to=
+			--in-reply-to= --cc=
 			--full-index --binary
 			--not --all
 			--cover-letter
@@ -1264,8 +1270,8 @@ _git_send_email ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	case "$cur" in
 	--*)
-		__gitcomp "--bcc --cc --cc-cmd --chain-reply-to --compose
-			--dry-run --envelope-sender --from --identity
+		__gitcomp "--annotate --bcc --cc --cc-cmd --chain-reply-to
+			--compose --dry-run --envelope-sender --from --identity
 			--in-reply-to --no-chain-reply-to --no-signed-off-by-cc
 			--no-suppress-from --no-thread --quiet
 			--signed-off-by-cc --smtp-pass --smtp-server
