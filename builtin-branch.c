@@ -121,11 +121,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds)
 			die("Couldn't look up commit object for HEAD");
 	}
 	for (i = 0; i < argc; i++, strbuf_release(&bname)) {
-		int len = strlen(argv[i]);
-
-		if (interpret_nth_last_branch(argv[i], &bname) != len)
-			strbuf_add(&bname, argv[i], len);
-
+		strbuf_branchname(&bname, argv[i]);
 		if (kinds == REF_LOCAL_BRANCH && !strcmp(head, bname.buf)) {
 			error("Cannot delete the branch '%s' "
 			      "which you are currently on.", bname.buf);
@@ -472,18 +468,14 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	if (!oldname)
 		die("cannot rename the current branch while not on any.");
 
-	strbuf_addf(&oldref, "refs/heads/%s", oldname);
+	if (strbuf_check_branch_ref(&oldref, oldname))
+		die("Invalid branch name: '%s'", oldname);
 
-	if (check_ref_format(oldref.buf))
-		die("Invalid branch name: %s", oldref.buf);
-
-	strbuf_addf(&newref, "refs/heads/%s", newname);
-
-	if (check_ref_format(newref.buf))
-		die("Invalid branch name: %s", newref.buf);
+	if (strbuf_check_branch_ref(&newref, newname))
+		die("Invalid branch name: '%s'", newname);
 
 	if (resolve_ref(newref.buf, sha1, 1, NULL) && !force)
-		die("A branch named '%s' already exists.", newname);
+		die("A branch named '%s' already exists.", newref.buf + 11);
 
 	strbuf_addf(&logmsg, "Branch: renamed %s to %s",
 		 oldref.buf, newref.buf);
