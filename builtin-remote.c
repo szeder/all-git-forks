@@ -358,14 +358,9 @@ static int get_push_ref_states_noquery(struct ref_states *states)
 	}
 	for (i = 0; i < remote->push_refspec_nr; i++) {
 		struct refspec *spec = remote->push + i;
-		char buf[PATH_MAX];
 		if (spec->matching)
 			item = string_list_append("(matching)", &states->push);
-		else if (spec->pattern) {
-			snprintf(buf, (sizeof(buf)), "%s*", spec->src);
-			item = string_list_append(buf, &states->push);
-			snprintf(buf, (sizeof(buf)), "%s*", spec->dst);
-		} else if (strlen(spec->src))
+		else if (strlen(spec->src))
 			item = string_list_append(spec->src, &states->push);
 		else
 			item = string_list_append("(delete)", &states->push);
@@ -373,10 +368,7 @@ static int get_push_ref_states_noquery(struct ref_states *states)
 		info = item->util = xcalloc(sizeof(struct push_info), 1);
 		info->forced = spec->force;
 		info->status = PUSH_STATUS_NOTQUERIED;
-		if (spec->pattern)
-			info->dest = xstrdup(buf);
-		else
-			info->dest = xstrdup(spec->dst ? spec->dst : item->string);
+		info->dest = xstrdup(spec->dst ? spec->dst : item->string);
 	}
 	return 0;
 }
@@ -389,7 +381,7 @@ static int get_head_names(const struct ref *remote_refs, struct ref_states *stat
 
 	refspec.force = 0;
 	refspec.pattern = 1;
-	refspec.src = refspec.dst = "refs/heads/";
+	refspec.src = refspec.dst = "refs/heads/*";
 	states->heads.strdup_strings = 1;
 	get_fetch_map(remote_refs, &refspec, &fetch_map_tail, 0);
 	matches = guess_remote_head(find_ref_by_name(remote_refs, "HEAD"),
@@ -930,6 +922,20 @@ int add_push_to_show_info(struct string_list_item *push_item, void *cb_data)
 	return 0;
 }
 
+/*
+ * Sorting comparison for a string list that has push_info
+ * structs in its util field
+ */
+static int cmp_string_with_push(const void *va, const void *vb)
+{
+	const struct string_list_item *a = va;
+	const struct string_list_item *b = vb;
+	const struct push_info *a_push = a->util;
+	const struct push_info *b_push = b->util;
+	int cmp = strcmp(a->string, b->string);
+	return cmp ? cmp : strcmp(a_push->dest, b_push->dest);
+}
+
 int show_push_info_item(struct string_list_item *item, void *cb_data)
 {
 	struct show_info *show_info = cb_data;
@@ -1040,7 +1046,8 @@ static int show(int argc, const char **argv)
 
 		info.width = info.width2 = 0;
 		for_each_string_list(add_push_to_show_info, &states.push, &info);
-		sort_string_list(info.list);
+		qsort(info.list->items, info.list->nr,
+			sizeof(*info.list->items), cmp_string_with_push);
 		if (info.list->nr)
 			printf("  Local ref%s configured for 'git push'%s:\n",
 				info.list->nr > 1 ? "s" : "",

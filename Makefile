@@ -263,6 +263,18 @@ SPARSE_FLAGS = -D__BIG_ENDIAN__ -D__powerpc__
 BASIC_CFLAGS =
 BASIC_LDFLAGS =
 
+# Guard against environment variables
+BUILTIN_OBJS =
+BUILT_INS =
+COMPAT_CFLAGS =
+COMPAT_OBJS =
+LIB_H =
+LIB_OBJS =
+PROGRAMS =
+SCRIPT_PERL =
+SCRIPT_SH =
+TEST_PROGRAMS =
+
 SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-filter-branch.sh
@@ -713,6 +725,7 @@ ifeq ($(uname_S),FreeBSD)
 	BASIC_CFLAGS += -I/usr/local/include
 	BASIC_LDFLAGS += -L/usr/local/lib
 	DIR_HAS_BSD_GROUP_SEMANTICS = YesPlease
+	USE_ST_TIMESPEC = YesPlease
 	THREADED_DELTA_SEARCH = YesPlease
 	ifeq ($(shell expr "$(uname_R)" : '4\.'),2)
 		PTHREAD_LIBS = -pthread
@@ -784,7 +797,6 @@ ifneq (,$(findstring CYGWIN,$(uname_S)))
 	COMPAT_OBJS += compat/cygwin.o
 endif
 ifneq (,$(findstring MINGW,$(uname_S)))
-	NO_MMAP = YesPlease
 	NO_PREAD = YesPlease
 	NO_OPENSSL = YesPlease
 	NO_CURL = YesPlease
@@ -808,6 +820,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_POSIX_ONLY_PROGRAMS = YesPlease
 	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	NO_NSEC = YesPlease
+	USE_WIN32_MMAP = YesPlease
 	COMPAT_CFLAGS += -D__USE_MINGW_ACCESS -DNOGDI -Icompat -Icompat/regex -Icompat/fnmatch
 	COMPAT_CFLAGS += -DSNPRINTF_SIZE_CORR=1
 	COMPAT_CFLAGS += -DSTRIP_EXTENSION=\".exe\"
@@ -985,6 +998,11 @@ endif
 ifdef NO_MMAP
 	COMPAT_CFLAGS += -DNO_MMAP
 	COMPAT_OBJS += compat/mmap.o
+else
+	ifdef USE_WIN32_MMAP
+		COMPAT_CFLAGS += -DUSE_WIN32_MMAP
+		COMPAT_OBJS += compat/win32mmap.o
+	endif
 endif
 ifdef NO_PREAD
 	COMPAT_CFLAGS += -DNO_PREAD
