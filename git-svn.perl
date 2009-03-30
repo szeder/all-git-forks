@@ -2331,13 +2331,13 @@ sub do_git_commit {
 
 	$self->{last_rev} = $log_entry->{revision};
 	$self->{last_commit} = $commit;
-	print "r$log_entry->{revision}";
+	print "r$log_entry->{revision}" unless $::_q;
 	if (defined $log_entry->{svm_revision}) {
-		 print " (\@$log_entry->{svm_revision})";
+		 print " (\@$log_entry->{svm_revision})" unless $::_q;
 		 $self->rev_map_set($log_entry->{svm_revision}, $commit,
 		                   0, $self->svm_uuid);
 	}
-	print " = $commit ($self->{ref_id})\n";
+	print " = $commit ($self->{ref_id})\n" unless $::_q;
 	if (--$_gc_nr == 0) {
 		$_gc_nr = $_gc_period;
 		gc();
@@ -3387,15 +3387,18 @@ sub delete_entry {
 	return undef if ($gpath eq '');
 
 	# remove entire directories.
-	if (command('ls-tree', $self->{c}, '--', $gpath) =~ /^040000 tree/) {
+	my ($tree) = (command('ls-tree', '-z', $self->{c}, "./$gpath")
+	                 =~ /\A040000 tree ([a-f\d]{40})\t\Q$gpath\E\0/);
+	if ($tree) {
 		my ($ls, $ctx) = command_output_pipe(qw/ls-tree
 		                                     -r --name-only -z/,
-				                     $self->{c}, '--', $gpath);
+				                     $tree);
 		local $/ = "\0";
 		while (<$ls>) {
 			chomp;
-			$self->{gii}->remove($_);
-			print "\tD\t$_\n" unless $::_q;
+			my $rmpath = "$gpath/$_";
+			$self->{gii}->remove($rmpath);
+			print "\tD\t$rmpath\n" unless $::_q;
 		}
 		print "\tD\t$gpath/\n" unless $::_q;
 		command_close_pipe($ls, $ctx);
@@ -3414,8 +3417,8 @@ sub open_file {
 	goto out if is_path_ignored($path);
 
 	my $gpath = $self->git_path($path);
-	($mode, $blob) = (command('ls-tree', $self->{c}, '--', $gpath)
-	                     =~ /^(\d{6}) blob ([a-f\d]{40})\t/);
+	($mode, $blob) = (command('ls-tree', '-z', $self->{c}, "./$gpath")
+	                     =~ /\A(\d{6}) blob ([a-f\d]{40})\t\Q$gpath\E\0/);
 	unless (defined $mode && defined $blob) {
 		die "$path was not found in commit $self->{c} (r$rev)\n";
 	}
