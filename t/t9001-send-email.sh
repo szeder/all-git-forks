@@ -478,7 +478,8 @@ test_expect_success 'confirm detects EOF (inform assumes y)' '
 test_expect_success 'confirm detects EOF (auto causes failure)' '
 	CONFIRM=$(git config --get sendemail.confirm) &&
 	git config sendemail.confirm auto &&
-	GIT_SEND_EMAIL_NOTTY=1 \
+	GIT_SEND_EMAIL_NOTTY=1 &&
+	export GIT_SEND_EMAIL_NOTTY &&
 		test_must_fail git send-email \
 			--from="Example <nobody@example.com>" \
 			--to=nobody@example.com \
@@ -492,8 +493,9 @@ test_expect_success 'confirm detects EOF (auto causes failure)' '
 test_expect_success 'confirm doesnt loop forever' '
 	CONFIRM=$(git config --get sendemail.confirm) &&
 	git config sendemail.confirm auto &&
-	yes "bogus" | GIT_SEND_EMAIL_NOTTY=1 \
-		test_must_fail git send-email \
+	GIT_SEND_EMAIL_NOTTY=1 &&
+	export GIT_SEND_EMAIL_NOTTY &&
+		yes "bogus" | test_must_fail git send-email \
 			--from="Example <nobody@example.com>" \
 			--to=nobody@example.com \
 			--smtp-server="$(pwd)/fake.sendmail" \
@@ -501,6 +503,19 @@ test_expect_success 'confirm doesnt loop forever' '
 	ret="$?"
 	git config sendemail.confirm ${CONFIRM:-never}
 	test $ret = "0"
+'
+
+test_expect_success 'utf8 Cc is rfc2047 encoded' '
+	clean_fake_sendmail &&
+	rm -fr outdir &&
+	git format-patch -1 -o outdir --cc="àéìöú <utf8@example.com>" &&
+	git send-email \
+	--from="Example <nobody@example.com>" \
+	--to=nobody@example.com \
+	--smtp-server="$(pwd)/fake.sendmail" \
+	outdir/*.patch &&
+	grep "^Cc:" msgtxt1 |
+	grep "=?utf-8?q?=C3=A0=C3=A9=C3=AC=C3=B6=C3=BA?= <utf8@example.com>"
 '
 
 test_expect_success '--compose adds MIME for utf8 body' '
