@@ -1,7 +1,7 @@
 From 89075c6fb96404cb6ea20711885ad292b45f617e Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
-Subject: [PATCH 2/5] bug#438793, #494505: fallback to 'editor' not 'vi'
+Subject: [PATCH 2/6] bug#438793, #494505: fallback to 'editor' not 'vi'
 
 In editor.c, git-add--interactive.perl, git-sh-setup.sh, git-svn.perl,
 t/t7005-editor.sh, contrib/fast-import/git-p4 fallback to 'editor', not
