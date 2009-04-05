@@ -4,8 +4,10 @@ git-core (1:1.6.2.2-1) unstable; urgency=low
   * debian/diff/0006-bug-520116-Makefile-do-not-install-cross...diff:
     new; Makefile: do not install cross-directory hardlink (thx Jonathan
     Nieder, closes: #520116).
+  * debian/git-daemon/run: run /usr/lib/git-core/git-daemon instead of
+    'git daemon' (closes: #522348).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:07:24 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:20:20 +0000
 
 git-core (1:1.6.2.1-1) unstable; urgency=low
 
