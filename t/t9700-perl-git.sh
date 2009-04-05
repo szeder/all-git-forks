@@ -37,8 +37,16 @@ test_expect_success \
      git config --add test.int 2k
      '
 
+export PERL5LIB="$TEST_DIRECTORY/t9700:$GITPERLLIB:$PERL5LIB"
+
 test_external_without_stderr \
     'Perl API' \
     perl "$TEST_DIRECTORY"/t9700/test.pl
+
+rm -rf .git
+
+test_external_without_stderr \
+    'config API' \
+    perl "$TEST_DIRECTORY"/t9700/config.t
 
 test_done
