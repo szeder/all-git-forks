@@ -6,8 +6,10 @@ git-core (1:1.6.2.2-1) unstable; urgency=low
     Nieder, closes: #520116).
   * debian/git-daemon/run: run /usr/lib/git-core/git-daemon instead of
     'git daemon' (closes: #522348).
+  * debian/git-daemon-run.postinst: on upgrade from >> 1:1.6.0, fixup
+    #522348.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:20:20 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:28:31 +0000
 
 git-core (1:1.6.2.1-1) unstable; urgency=low
 
