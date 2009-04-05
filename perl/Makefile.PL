@@ -8,7 +8,10 @@ instlibdir:
 MAKE_FRAG
 }
 
-my %pm = ('Git.pm' => '$(INST_LIBDIR)/Git.pm');
+my %pm = (map {( "$_.pm" => "\$(INST_LIBDIR)/$_.pm" )}
+	'Git',
+	'Git/Config',
+	);
 
 # We come with our own bundled Error.pm. It's not in the set of default
 # Perl modules so install it if it's not available on the system yet.
