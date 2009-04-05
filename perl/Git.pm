@@ -550,32 +550,38 @@ does. In scalar context requires the variable to be set only one time
 (exception is thrown otherwise), in array context returns allows the
 variable to be set multiple times and returns all the values.
 
-This currently wraps command('config') so it is not so fast.
+This delegates via L<Git::Config> for cached config file access.  To
+force a re-read of the configuration, call C<$git-E<gt>config->read>
+
+=item config
+
+With no arguments, the C<config> method returns a L<Git::Config>
+object.  See L<Git::Config> for the API information.
+
+=item config ( VARIABLE => value )
+
+With two arguments, the configuration is updated with the passed
+value.
 
 =cut
 
-sub config {
-	my ($self, $var) = _maybe_self(@_);
-
-	try {
-		my @cmd = ('config');
-		unshift @cmd, $self if $self;
-		if (wantarray) {
-			return command(@cmd, '--get-all', $var);
-		} else {
-			return command_oneline(@cmd, '--get', $var);
-		}
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return;
-		} else {
-			throw $E;
-		}
+sub _config {
+	my ($self) = _maybe_self_new(@_);
+	$self->{config} ||= do {
+		require Git::Config;
+		Git::Config->new($self);
 	};
 }
 
+sub config {
+	(my $self, @_) = _maybe_self_new(@_);
+	if (@_) {
+		return $self->_config->config(@_);
+	}
+	else {
+		return $self->_config;
+	}
+}
 
 =item config_bool ( VARIABLE )
 
@@ -583,28 +589,21 @@ Retrieve the bool configuration C<VARIABLE>. The return value
 is usable as a boolean in perl (and C<undef> if it's not defined,
 of course).
 
-This currently wraps command('config') so it is not so fast.
+This delegates via L<Git::Config> for cached config file access.
+
+=item config_bool ( VARIABLE => value )
+
+Sets a boolean slot to the given value.  This always writes 'true' or
+'false' to the configuration file, regardless of the value passed.
 
 =cut
 
 sub config_bool {
-	my ($self, $var) = _maybe_self(@_);
+	(my ($self, $var), @_) = _maybe_self_new(@_);
 
-	try {
-		my @cmd = ('config', '--bool', '--get', $var);
-		unshift @cmd, $self if $self;
-		my $val = command_oneline(@cmd);
-		return undef unless defined $val;
-		return $val eq 'true';
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return undef;
-		} else {
-			throw $E;
-		}
-	};
+	my $conf = $self->_config;
+	$conf->type($var => "boolean");
+	$conf->config($var, @_);
 }
 
 =item config_int ( VARIABLE )
@@ -615,26 +614,22 @@ or 'g' in the config file will cause the value to be multiplied
 by 1024, 1048576 (1024^2), or 1073741824 (1024^3) prior to output.
 It would return C<undef> if configuration variable is not defined,
 
-This currently wraps command('config') so it is not so fast.
+This delegates via L<Git::Config> for cached config file access.
+
+=item config_int ( VARIABLE => value )
+
+Sets a integer slot to the given value.  This method will reduce the
+written value to the shortest way to express the given number; eg
+1024 is written as C<1k> and 16777216 will be written as C<16M>.
 
 =cut
 
 sub config_int {
-	my ($self, $var) = _maybe_self(@_);
+	(my ($self, $var), @_) = _maybe_self_new(@_);
 
-	try {
-		my @cmd = ('config', '--int', '--get', $var);
-		unshift @cmd, $self if $self;
-		return command_oneline(@cmd);
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return undef;
-		} else {
-			throw $E;
-		}
-	};
+	my $conf = $self->_config;
+	$conf->type($var => "integer");
+	$conf->config($var, @_);
 }
 
 =item get_colorbool ( NAME )
@@ -1204,12 +1199,16 @@ either version 2, or (at your option) any later version.
 
 =cut
 
+our $_self;
 
 # Take raw method argument list and return ($obj, @args) in case
 # the method was called upon an instance and (undef, @args) if
 # it was called directly.
 sub _maybe_self {
 	UNIVERSAL::isa($_[0], 'Git') ? @_ : (undef, @_);
+}
+sub _maybe_self_new {
+	UNIVERSAL::isa($_[0], 'Git') ? @_ : ($_self||=Git->repository, @_);
 }
 
 # Check if the command id is something reasonable.
