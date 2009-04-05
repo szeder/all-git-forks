@@ -8,8 +8,10 @@ git-core (1:1.6.2.2-1) unstable; urgency=low
     'git daemon' (closes: #522348).
   * debian/git-daemon-run.postinst: on upgrade from >> 1:1.6.0, fixup
     #522348.
+  * debian/git-core.emacsen-startup: remove the line
+    '(add-to-list 'vc-handled-backends 'git)' (closes: #519728).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:28:31 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 05 Apr 2009 20:49:25 +0000
 
 git-core (1:1.6.2.1-1) unstable; urgency=low
 

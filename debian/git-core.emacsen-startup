@@ -14,8 +14,6 @@
        "/usr/share/doc/git-core/contrib/emacs"
        'append)
 
-      (add-to-list 'vc-handled-backends 'git)
-
       (autoload 'git-get-env-strings                  "git" "" nil)
       (autoload 'git-call-process-env                 "git" "" nil)
       (autoload 'git-call-process-display-error       "git" "" nil)
