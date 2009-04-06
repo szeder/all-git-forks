@@ -16,6 +16,7 @@ in_empty_repo sub {
 	$git->command_oneline("config", "foo.intval", "12g");
 	$git->command_oneline("config", "foo.false.val", "false");
 	$git->command_oneline("config", "foo.true.val", "yes");
+	$git->command_oneline("config", "multiline.val", "hello\nmultiline.val=world");
 
 	my $conf = Git::Config->new();
 	ok($conf, "constructed a new Git::Config");
@@ -91,6 +92,9 @@ in_empty_repo sub {
 	my $unset = $conf->config("foo.bar.val");
 	is($unset, undef,
 	   "boolean thaw - not present");
+
+	like($conf->config("multiline.val"), qr{\n},
+	     "parsing multi-line values");
 
 	$git->command_oneline("config", "foo.intval", "12g");
 	$git->command_oneline("config", "foo.falseval", "false");

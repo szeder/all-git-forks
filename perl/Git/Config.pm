@@ -181,12 +181,14 @@ sub read {
 
 	my ($fh, $c) = $git->command_output_pipe(
 		'config', ( $which ? ("--$which") : () ),
-		'--list',
+		'--null', '--list',
 		);
 	my $read_state = {};
 
+	local($/)="\0";
 	while (<$fh>) {
-		my ($item, $value) = m{(.*?)=(.*)};
+		my ($item, $value) = m{(.*?)\n((?s:.*))\0}
+			or die "failed to parse it; \$_='$_'";
 		my $sl = \( $read_state->{$item} );
 		if (!defined $$sl) {
 			$$sl = $value;
