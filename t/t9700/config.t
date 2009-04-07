@@ -17,6 +17,14 @@ in_empty_repo sub {
 	$git->command_oneline("config", "foo.false.val", "false");
 	$git->command_oneline("config", "foo.true.val", "yes");
 	$git->command_oneline("config", "multiline.val", "hello\nmultiline.val=world");
+	open(CONFIG, ">>.git/config") or die $!;
+	print CONFIG <<CONF;
+[boolean]
+   noval
+   empty1 =
+   empty2 = ""
+CONF
+	close CONFIG;
 
 	my $conf = Git::Config->new();
 	ok($conf, "constructed a new Git::Config");
@@ -99,6 +107,18 @@ in_empty_repo sub {
 	$git->command_oneline("config", "foo.intval", "12g");
 	$git->command_oneline("config", "foo.falseval", "false");
 	$git->command_oneline("config", "foo.trueval", "on");
+
+	is($conf->config("boolean.noval"), "", "noval: string");
+	is($conf->config("boolean.empty1"), "", "empty1: string");
+	is($conf->config("boolean.empty2"), "", "empty2: string");
+
+	$conf->type("boolean.*" => "boolean");
+
+	ok($conf->config("boolean.noval"), "noval: boolean");
+	eval{my $x = $conf->config("boolean.empty1")};
+	ok($@, "empty1: boolean");
+	eval{my $x = $conf->config("boolean.empty2")};
+	ok($@, "empty2: boolean");
 
 	SKIP:{
 		if (eval {

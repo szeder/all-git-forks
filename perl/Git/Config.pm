@@ -146,7 +146,7 @@ sub _config {
 	}
 
 	if (defined wantarray) {
-		my @values = ref $state ? @$state :
+		my @values = ref($state) eq "ARRAY" ? @$state :
 			defined $state ? ($state) : ();
 
 		if ( my $type = $self->type( $item ) ) {
@@ -173,6 +173,8 @@ Reads the current state of the configuration file.
 
 =cut
 
+our $NOVALUE = bless [__PACKAGE__."/NOVALUE"], "Git::Config::novalue";
+
 sub read {
 	my $self = shift;
 	my $which = shift;
@@ -187,13 +189,19 @@ sub read {
 
 	local($/)="\0";
 	while (<$fh>) {
-		my ($item, $value) = m{(.*?)\n((?s:.*))\0}
-			or die "failed to parse it; \$_='$_'";
+		my ($item, $value) = split "\n", $_, 2;
+		if (defined $value) {
+			chop($value);
+		} else {
+			chop($item);
+			$value = $NOVALUE;
+		}
+		my $exists = exists $read_state->{$item};
 		my $sl = \( $read_state->{$item} );
-		if (!defined $$sl) {
+		if (!$exists) {
 			$$sl = $value;
 		}
-		elsif (!ref $$sl) {
+		elsif (!ref $$sl or ref $$sl ne "ARRAY") {
 			$$sl = [ $$sl, $value ];
 		}
 		else {
@@ -327,7 +335,7 @@ sub _write {
 		if ($type ne "string") {
 			push @cmd, "--$type";
 		}
-		if (ref $value) {
+		if (ref $value eq "ARRAY") {
 			$git->command_oneline (
 				"config", @cmd, "--replace-all",
 				$item, $value->[0],
@@ -380,7 +388,7 @@ sub thaw {
 {
 	package Git::Config::string;
 	sub freeze { shift }
-	sub thaw   { shift }
+	sub thaw   { (shift)."" }
 }
 {
 	package Git::Config::integer;
@@ -410,6 +418,15 @@ sub thaw {
 	}
 }
 {
+	package Git::Config::novalue;
+	sub as_string { "" }
+	sub as_num    {  0 }
+	use overload
+		'""' => \&as_string,
+		'0+' => \&as_num,
+		fallback => 1;
+}
+{
 	package Git::Config::boolean;
 	our @true = qw(true yes 1);
 	our @false = qw(false no 0);
@@ -426,7 +443,8 @@ sub thaw {
 	}
 	sub thaw {
 		my $val = shift;
-		if ($val =~ m{$true_re}) {
+		if (eval{$val->isa("Git::Config::novalue")}
+			    or $val =~ m{$true_re}) {
 			1;
 		}
 		elsif ($val =~ m{$false_re}) {
