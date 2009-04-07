@@ -184,9 +184,10 @@ sub read {
 	my $read_state = {};
 
 	while (<$fh>) {
-		my ($item, $value) = m{(.*?)=(.*)};
+		my ($item, $value) = split $_, "=", 2;
+		my $exists = exists $read_state->{$item};
 		my $sl = \( $read_state->{$item} );
-		if (!defined $$sl) {
+		if (!$exists) {
 			$$sl = $value;
 		}
 		elsif (!ref $$sl) {
