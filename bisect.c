@@ -2,7 +2,19 @@
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
+#include "refs.h"
+#include "list-objects.h"
+#include "quote.h"
+#include "sha1-lookup.h"
 #include "bisect.h"
+
+static unsigned char (*skipped_sha1)[20];
+static int skipped_sha1_nr;
+static int skipped_sha1_alloc;
+
+static const char **rev_argv;
+static int rev_argv_nr;
+static int rev_argv_alloc;
 
 /* bits #0-15 in revision.h */
 
@@ -386,3 +398,159 @@ struct commit_list *find_bisection(struct commit_list *list,
 	return best;
 }
 
+static int register_ref(const char *refname, const unsigned char *sha1,
+			int flags, void *cb_data)
+{
+	if (!strcmp(refname, "bad")) {
+		ALLOC_GROW(rev_argv, rev_argv_nr + 1, rev_argv_alloc);
+		rev_argv[rev_argv_nr++] = xstrdup(sha1_to_hex(sha1));
+	} else if (!prefixcmp(refname, "good-")) {
+		const char *hex = sha1_to_hex(sha1);
+		char *good = xmalloc(strlen(hex) + 2);
+		*good = '^';
+		memcpy(good + 1, hex, strlen(hex) + 1);
+		ALLOC_GROW(rev_argv, rev_argv_nr + 1, rev_argv_alloc);
+		rev_argv[rev_argv_nr++] = good;
+	} else if (!prefixcmp(refname, "skip-")) {
+		ALLOC_GROW(skipped_sha1, skipped_sha1_nr + 1,
+			   skipped_sha1_alloc);
+		hashcpy(skipped_sha1[skipped_sha1_nr++], sha1);
+	}
+
+	return 0;
+}
+
+static int read_bisect_refs(void)
+{
+	return for_each_ref_in("refs/bisect/", register_ref, NULL);
+}
+
+void read_bisect_paths(void)
+{
+	struct strbuf str = STRBUF_INIT;
+	const char *filename = git_path("BISECT_NAMES");
+	FILE *fp = fopen(filename, "r");
+
+	if (!fp)
+		die("Could not open file '%s': %s", filename, strerror(errno));
+
+	while (strbuf_getline(&str, fp, '\n') != EOF) {
+		char *quoted;
+		int res;
+
+		strbuf_trim(&str);
+		quoted = strbuf_detach(&str, NULL);
+		res = sq_dequote_to_argv(quoted, &rev_argv,
+					 &rev_argv_nr, &rev_argv_alloc);
+		if (res)
+			die("Badly quoted content in file '%s': %s",
+			    filename, quoted);
+	}
+
+	strbuf_release(&str);
+	fclose(fp);
+}
+
+static int skipcmp(const void *a, const void *b)
+{
+	return hashcmp(a, b);
+}
+
+static void prepare_skipped(void)
+{
+	qsort(skipped_sha1, skipped_sha1_nr, sizeof(*skipped_sha1), skipcmp);
+}
+
+static const unsigned char *skipped_sha1_access(size_t index, void *table)
+{
+	unsigned char (*skipped)[20] = table;
+	return skipped[index];
+}
+
+static int lookup_skipped(unsigned char *sha1)
+{
+	return sha1_pos(sha1, skipped_sha1, skipped_sha1_nr,
+			skipped_sha1_access);
+}
+
+struct commit_list *filter_skipped(struct commit_list *list,
+				   struct commit_list **tried,
+				   int show_all)
+{
+	struct commit_list *filtered = NULL, **f = &filtered;
+
+	*tried = NULL;
+
+	if (!skipped_sha1_nr)
+		return list;
+
+	prepare_skipped();
+
+	while (list) {
+		struct commit_list *next = list->next;
+		list->next = NULL;
+		if (0 <= lookup_skipped(list->item->object.sha1)) {
+			/* Move current to tried list */
+			*tried = list;
+			tried = &list->next;
+		} else {
+			if (!show_all)
+				return list;
+			/* Move current to filtered list */
+			*f = list;
+			f = &list->next;
+		}
+		list = next;
+	}
+
+	return filtered;
+}
+
+static void bisect_rev_setup(struct rev_info *revs, const char *prefix)
+{
+	init_revisions(revs, prefix);
+	revs->abbrev = 0;
+	revs->commit_format = CMIT_FMT_UNSPECIFIED;
+
+	/* argv[0] will be ignored by setup_revisions */
+	ALLOC_GROW(rev_argv, rev_argv_nr + 1, rev_argv_alloc);
+	rev_argv[rev_argv_nr++] = xstrdup("bisect_rev_setup");
+
+	if (read_bisect_refs())
+		die("reading bisect refs failed");
+
+	ALLOC_GROW(rev_argv, rev_argv_nr + 1, rev_argv_alloc);
+	rev_argv[rev_argv_nr++] = xstrdup("--");
+
+	read_bisect_paths();
+
+	ALLOC_GROW(rev_argv, rev_argv_nr + 1, rev_argv_alloc);
+	rev_argv[rev_argv_nr++] = NULL;
+
+	setup_revisions(rev_argv_nr, rev_argv, revs, NULL);
+
+	revs->limited = 1;
+}
+
+int bisect_next_vars(const char *prefix)
+{
+	struct rev_info revs;
+	struct rev_list_info info;
+	int reaches = 0, all = 0;
+
+	memset(&info, 0, sizeof(info));
+	info.revs = &revs;
+	info.bisect_show_flags = BISECT_SHOW_TRIED | BISECT_SHOW_STRINGED;
+
+	bisect_rev_setup(&revs, prefix);
+
+	if (prepare_revision_walk(&revs))
+		die("revision walk setup failed");
+	if (revs.tree_objects)
+		mark_edges_uninteresting(revs.commits, &revs, NULL);
+
+	revs.commits = find_bisection(revs.commits, &reaches, &all,
+				      !!skipped_sha1_nr);
+
+	return show_bisect_vars(&info, reaches, all);
+}
