@@ -6,8 +6,13 @@
 #include "tag.h"
 #include "blob.h"
 #include "refs.h"
+#include "progress.h"
 
 static unsigned char current_commit_sha1[20];
+
+static struct progress *process_queue_progress;
+static int process_queue_len;
+static int process_queue_done;
 
 void walker_say(struct walker *walker, const char *fmt, const char *hex)
 {
@@ -83,8 +88,6 @@ static int process_commit(struct walker *walker, struct commit *commit)
 
 	hashcpy(current_commit_sha1, commit->object.sha1);
 
-	walker_say(walker, "walk %s\n", sha1_to_hex(commit->object.sha1));
-
 	if (walker->get_tree) {
 		if (process(walker, &commit->tree->object))
 			return -1;
@@ -152,6 +155,7 @@ static int process(struct walker *walker, struct object *obj)
 		walker->prefetch(walker, obj->sha1);
 	}
 
+	update_progress_total(process_queue_progress, ++process_queue_len);
 	object_list_insert(obj, process_queue_end);
 	process_queue_end = &(*process_queue_end)->next;
 	return 0;
@@ -168,6 +172,7 @@ static int loop(struct walker *walker)
 		free(elem);
 		if (!process_queue)
 			process_queue_end = &process_queue;
+		display_progress(process_queue_progress, ++process_queue_done);
 
 		/* If we are not scanning this object, we placed it in
 		 * the queue because we needed to fetch it first.
@@ -180,8 +185,10 @@ static int loop(struct walker *walker)
 		}
 		if (!obj->type)
 			parse_object(obj->sha1);
+
 		if (process_object(walker, obj))
 			return -1;
+
 	}
 	return 0;
 }
@@ -254,6 +261,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		 const char **write_ref, const char *write_ref_log_details)
 {
 	struct ref_lock **lock = xcalloc(targets, sizeof(struct ref_lock *));
+	struct progress *target_progress = NULL;
 	unsigned char *sha1 = xmalloc(targets * 20);
 	char *msg;
 	int ret;
@@ -275,6 +283,17 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 	if (!walker->get_recover)
 		for_each_ref(mark_complete, NULL);
 
+	/*
+	 * Initialized here, because process() in the for loop updates
+	 * process_queue_len.
+	 * */
+	process_queue_len = 0;
+	process_queue_done = 0;
+	process_queue_progress = NULL;
+
+	if (walker->get_verbosely)
+		target_progress = start_progress("Processing targets",
+						 targets-1);
 	for (i = 0; i < targets; i++) {
 		if (interpret_target(walker, target[i], &sha1[20 * i])) {
 			error("Could not interpret response from server '%s' as something to pull", target[i]);
@@ -282,10 +301,16 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		}
 		if (process(walker, lookup_unknown_object(&sha1[20 * i])))
 			goto unlock_and_fail;
+		display_progress(target_progress, i);
 	}
+	stop_progress(&target_progress);
 
+	if (walker->get_verbosely)
+		process_queue_progress = start_progress("Processing objects",
+							process_queue_len);
 	if (loop(walker))
 		goto unlock_and_fail;
+	stop_progress(&process_queue_progress);
 
 	if (write_ref_log_details) {
 		msg = xmalloc(strlen(write_ref_log_details) + 12);
@@ -310,6 +335,8 @@ unlock_and_fail:
 		if (lock[i])
 			unlock_ref(lock[i]);
 
+	stop_progress_msg(&target_progress, "failed");
+	stop_progress_msg(&process_queue_progress, "failed");
 	return -1;
 }
 
