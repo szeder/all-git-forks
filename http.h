@@ -133,6 +133,9 @@ struct http_pack_request
 	char tmpfile[PATH_MAX];
 	struct curl_slist *range_header;
 	struct active_request_slot *slot;
+
+	size_t written;
+	struct progress *progress;
 };
 
 extern struct http_pack_request *new_http_pack_request(

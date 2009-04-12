@@ -1,5 +1,6 @@
 #include "http.h"
 #include "pack.h"
+#include "progress.h"
 
 int data_received;
 int active_requests;
@@ -84,6 +85,20 @@ size_t fwrite_null(const void *ptr, size_t eltsize, size_t nmemb, void *strbuf)
 {
 	data_received++;
 	return eltsize * nmemb;
+}
+
+static size_t fwrite_progress(const void *ptr, size_t eltsize, size_t nmemb,
+	FILE *file, struct progress *progress_state, unsigned *written)
+{
+	size_t ret;
+
+	ret = fwrite(ptr, eltsize, nmemb, file);
+	data_received++;
+
+	*written = *written + ret;
+	display_progress(progress_state, *written);
+
+	return ret;
 }
 
 static void finish_active_slot(struct active_request_slot *slot);
@@ -686,6 +701,31 @@ char *get_remote_object_url(const char *url, const char *hex,
 	return strbuf_detach(&buf, NULL);
 }
 
+double get_http_file_size(const char *url)
+{
+	double size;
+	CURL *session;
+	CURLcode result;
+
+	session = get_curl_handle();
+	curl_easy_setopt(session, CURLOPT_NOBODY, 1);
+	curl_easy_setopt(session, CURLOPT_URL, url);
+
+	result = curl_easy_perform(session);
+	curl_easy_getinfo(session, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &size);
+	if (result != CURLE_OK) {
+		error("Unable to get size of %s\n", url);
+		goto abort;
+	}
+	curl_easy_cleanup(session);
+
+	return size;
+
+abort:
+	curl_easy_cleanup(session);
+	return -1;
+}
+
 int http_fetch_ref(const char *base, struct ref *ref)
 {
 	char *url;
@@ -847,6 +887,16 @@ int fetch_http_pack_index(struct packed_git **packs_head, unsigned char *sha1,
 	return 0;
 }
 
+static size_t fwrite_pack(const void *ptr, size_t eltsize, size_t nmemb,
+	void *data)
+{
+	struct http_pack_request *preq =
+		(struct http_pack_request *)data;
+
+	return fwrite_progress(ptr, eltsize, nmemb,
+		preq->packfile, preq->progress, &preq->written);
+}
+
 void release_http_pack_request(struct http_pack_request *preq)
 {
 	if (preq->packfile != NULL) {
@@ -856,6 +906,9 @@ void release_http_pack_request(struct http_pack_request *preq)
 	if (preq->range_header != NULL) {
 		curl_slist_free_all(preq->range_header);
 		preq->range_header = NULL;
+	}
+	if (preq->progress != NULL) {
+		stop_progress_msg(&preq->progress, "aborted");
 	}
 	preq->slot = NULL;
 	free(preq->url);
@@ -872,6 +925,9 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		fclose(preq->packfile);
 		preq->packfile = NULL;
 	}
+	if (preq->progress != NULL) {
+		stop_progress(&preq->progress);
+	}
 
 	ret = move_temp_to_file(preq->tmpfile, preq->filename);
 	if (ret)
@@ -882,7 +938,7 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		lst = &((*lst)->next);
 	*lst = (*lst)->next;
 
-	if (verify_pack(preq->target))
+	if (verify_pack_progress(preq->target, http_is_verbose))
 		return -1;
 	install_packed_git(preq->target);
 
@@ -895,6 +951,7 @@ struct http_pack_request *new_http_pack_request(
 	char *url;
 	char *filename;
 	long prev_posn = 0;
+	double size;
 	char range[RANGE_HEADER_SIZE];
 	struct strbuf buf = STRBUF_INIT;
 	struct http_pack_request *preq;
@@ -902,6 +959,8 @@ struct http_pack_request *new_http_pack_request(
 	preq = xmalloc(sizeof(*preq));
 	preq->target = target;
 	preq->range_header = NULL;
+	preq->progress = NULL;
+	preq->written = 0;
 
 	end_url_with_slash(&buf, base_url);
 	strbuf_addf(&buf, "objects/pack/pack-%s.pack",
@@ -919,10 +978,23 @@ struct http_pack_request *new_http_pack_request(
 		goto abort;
 	}
 
+	if (http_is_verbose)
+		if (0 < (size = get_http_file_size(url)))
+			preq->progress = start_progress("Fetching pack", size);
+
 	preq->slot = get_active_slot();
 	preq->slot->local = preq->packfile;
-	curl_easy_setopt(preq->slot->curl, CURLOPT_FILE, preq->packfile);
-	curl_easy_setopt(preq->slot->curl, CURLOPT_WRITEFUNCTION, fwrite);
+	if (preq->progress != NULL) {
+		curl_easy_setopt(preq->slot->curl, CURLOPT_FILE, preq);
+		curl_easy_setopt(preq->slot->curl, CURLOPT_WRITEFUNCTION,
+			fwrite_pack);
+	} else {
+		curl_easy_setopt(preq->slot->curl, CURLOPT_FILE,
+			preq->packfile);
+		curl_easy_setopt(preq->slot->curl, CURLOPT_WRITEFUNCTION,
+			fwrite);
+	}
+
 	curl_easy_setopt(preq->slot->curl, CURLOPT_URL, url);
 	curl_easy_setopt(preq->slot->curl, CURLOPT_HTTPHEADER,
 		no_pragma_header);
