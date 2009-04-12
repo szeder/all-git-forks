@@ -202,6 +202,13 @@ int display_progress(struct progress *progress, unsigned n)
 	return progress ? display(progress, n, NULL) : 0;
 }
 
+void update_progress_total(struct progress *progress, unsigned total)
+{
+	if (!progress)
+		return;
+	progress->total = total;
+}
+
 struct progress *start_progress_delay(const char *title, unsigned total,
 				       unsigned percent_treshold, unsigned delay)
 {
