@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "pack.h"
 #include "pack-revindex.h"
+#include "progress.h"
 
 struct idx_entry
 {
@@ -43,7 +44,7 @@ int check_pack_crc(struct packed_git *p, struct pack_window **w_curs,
 }
 
 static int verify_packfile(struct packed_git *p,
-		struct pack_window **w_curs)
+		struct pack_window **w_curs, int progress)
 {
 	off_t index_size = p->index_size;
 	const unsigned char *index_base = p->index_data;
@@ -53,6 +54,7 @@ static int verify_packfile(struct packed_git *p,
 	uint32_t nr_objects, i;
 	int err = 0;
 	struct idx_entry *entries;
+	struct progress *progress_state = NULL;
 
 	/* Note that the pack header checks are actually performed by
 	 * use_pack when it first opens the pack file.  If anything
@@ -98,6 +100,9 @@ static int verify_packfile(struct packed_git *p,
 	}
 	qsort(entries, nr_objects, sizeof(*entries), compare_entries);
 
+	if (progress)
+		progress_state = start_progress_delay("Verifying pack file",
+			nr_objects-1, 50, 100);
 	for (i = 0; i < nr_objects; i++) {
 		void *data;
 		enum object_type type;
@@ -126,14 +131,17 @@ static int verify_packfile(struct packed_git *p,
 			free(data);
 			break;
 		}
+		display_progress(progress_state, i);
 		free(data);
 	}
+	err ? stop_progress_msg(&progress_state, "failed") :
+	      stop_progress(&progress_state);
 	free(entries);
 
 	return err;
 }
 
-int verify_pack(struct packed_git *p)
+int verify_pack_progress(struct packed_git *p, int progress)
 {
 	off_t index_size;
 	const unsigned char *index_base;
@@ -156,8 +164,13 @@ int verify_pack(struct packed_git *p)
 			    p->pack_name);
 
 	/* Verify pack file */
-	err |= verify_packfile(p, &w_curs);
+	err |= verify_packfile(p, &w_curs, progress);
 	unuse_pack(&w_curs);
 
 	return err;
+}
+
+int verify_pack(struct packed_git *p)
+{
+	verify_pack_progress(p, 0);
 }
