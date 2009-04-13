@@ -481,6 +481,24 @@ void add_fill_function(void *data, int (*fill)(void *))
 	*linkp = new;
 }
 
+int remove_fill_function(void *data, int (*fill)(void *))
+{
+	struct fill_chain *currp, *prevp = NULL;
+
+	for (currp = fill_cfg; currp != NULL; prevp = currp, currp = currp->next) {
+		if (currp->data == data && currp->fill == fill) {
+			if (prevp == NULL)
+				fill_cfg = fill_cfg->next;
+			else
+				prevp->next = currp->next;
+
+			free(currp);
+			return 0;
+		}
+	}
+	return -1;
+}
+
 void fill_active_slots(void)
 {
 	struct active_request_slot *slot = active_queue_head;
