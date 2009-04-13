@@ -766,6 +766,23 @@ int http_fetch_ref(const char *base, struct ref *ref)
 }
 
 /* Helpers for fetching packs */
+struct http_pack_index_request
+{
+	FILE *indexfile;
+	unsigned written;
+	struct progress *progress;
+};
+
+static size_t fwrite_pack_index(const void *ptr, size_t eltsize, size_t nmemb,
+	void *data)
+{
+	struct http_pack_index_request *preq =
+		(struct http_pack_index_request *)data;
+
+	return fwrite_progress(ptr, eltsize, nmemb,
+		preq->indexfile, preq->progress, &preq->written);
+}
+
 static int fetch_index(unsigned char *sha1, const char *base_url)
 {
 	int ret = 0;
@@ -774,6 +791,7 @@ static int fetch_index(unsigned char *sha1, const char *base_url)
 	char *url;
 	char tmpfile[PATH_MAX];
 	long prev_posn = 0;
+	double size;
 	char range[RANGE_HEADER_SIZE];
 	struct strbuf buf = STRBUF_INIT;
 	struct curl_slist *range_header = NULL;
@@ -824,12 +842,28 @@ static int fetch_index(unsigned char *sha1, const char *base_url)
 		goto cleanup_pack;
 	}
 
+	struct http_pack_index_request *preq;
+	preq = xmalloc(sizeof(*preq));
+	preq->written = 0;
+	preq->progress = NULL;
+	preq->indexfile = indexfile;
+
+	if (http_is_verbose)
+		if ((size = get_http_file_size(url)) > 0)
+			preq->progress = start_progress("Fetching pack index", size);
+
 	slot = get_active_slot();
 	slot->results = &results;
+	if (http_is_verbose) {
+		curl_easy_setopt(slot->curl, CURLOPT_FILE, preq);
+		curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
+			fwrite_pack_index);
+	} else {
+		curl_easy_setopt(slot->curl, CURLOPT_FILE, indexfile);
+		curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite);
+	}
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
-	curl_easy_setopt(slot->curl, CURLOPT_FILE, indexfile);
-	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, fwrite);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, url);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, no_pragma_header);
 	slot->local = indexfile;
@@ -865,6 +899,8 @@ static int fetch_index(unsigned char *sha1, const char *base_url)
 
 cleanup_index:
 	fclose(indexfile);
+	stop_progress(&preq->progress);
+	free(preq);
 cleanup_pack:
 	free(hex);
 	free(url);
