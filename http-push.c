@@ -2317,6 +2317,7 @@ int main(int argc, char **argv)
 	local_refs = get_local_heads();
 	fprintf(stderr, "Fetching remote heads...\n");
 	get_dav_remote_heads();
+	run_request_queue();
 
 	/* Remove a remote branch if -d or -D was specified */
 	if (delete_branch) {
