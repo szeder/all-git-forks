@@ -6,12 +6,16 @@ test_description='Test export of commits to CVS'
 
 . ./test-lib.sh
 
+if ! test_have_prereq PERL; then
+	say 'skipping git cvsexportcommit tests, perl not available'
+	test_done
+fi
+
 cvs >/dev/null 2>&1
 if test $? -ne 1
 then
     say 'skipping git cvsexportcommit tests, cvs not found'
     test_done
-    exit
 fi
 
 CVSROOT=$(pwd)/cvsroot

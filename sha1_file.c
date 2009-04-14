@@ -1919,8 +1919,7 @@ off_t find_pack_entry_one(const unsigned char *sha1,
 	return 0;
 }
 
-static int find_pack_ent(const unsigned char *sha1, struct pack_entry *e,
-			 int kept_pack_only)
+static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 {
 	static struct packed_git *last_found = (void *)1;
 	struct packed_git *p;
@@ -1932,8 +1931,6 @@ static int find_pack_ent(const unsigned char *sha1, struct pack_entry *e,
 	p = (last_found == (void *)1) ? packed_git : last_found;
 
 	do {
-		if (kept_pack_only && !p->pack_keep)
-			goto next;
 		if (p->num_bad_objects) {
 			unsigned i;
 			for (i = 0; i < p->num_bad_objects; i++)
@@ -1971,16 +1968,6 @@ static int find_pack_ent(const unsigned char *sha1, struct pack_entry *e,
 			p = p->next;
 	} while (p);
 	return 0;
-}
-
-static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
-{
-	return find_pack_ent(sha1, e, 0);
-}
-
-static int find_kept_pack_entry(const unsigned char *sha1, struct pack_entry *e)
-{
-	return find_pack_ent(sha1, e, 1);
 }
 
 struct packed_git *find_sha1_pack(const unsigned char *sha1,
@@ -2229,11 +2216,15 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
 }
 
 /*
- * Move the just written object into its final resting place
+ * Move the just written object into its final resting place.
+ * NEEDSWORK: this should be renamed to finalize_temp_file() as
+ * "moving" is only a part of what it does, when no patch between
+ * master to pu changes the call sites of this function.
  */
 int move_temp_to_file(const char *tmpfile, const char *filename)
 {
 	int ret = 0;
+
 	if (link(tmpfile, filename))
 		ret = errno;
 
@@ -2245,12 +2236,12 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 	 *
 	 * The same holds for FAT formatted media.
 	 *
-	 * When this succeeds, we just return 0. We have nothing
+	 * When this succeeds, we just return.  We have nothing
 	 * left to unlink.
 	 */
 	if (ret && ret != EEXIST) {
 		if (!rename(tmpfile, filename))
-			return 0;
+			goto out;
 		ret = errno;
 	}
 	unlink(tmpfile);
@@ -2261,6 +2252,9 @@ int move_temp_to_file(const char *tmpfile, const char *filename)
 		/* FIXME!!! Collision check here ? */
 	}
 
+out:
+	if (set_shared_perm(filename, (S_IFREG|0444)))
+		return error("unable to set permission to '%s'", filename);
 	return 0;
 }
 
@@ -2285,7 +2279,6 @@ static void close_sha1_file(int fd)
 {
 	if (fsync_object_files)
 		fsync_or_die(fd, "sha1 file");
-	fchmod(fd, 0444);
 	if (close(fd) != 0)
 		die("error when closing sha1 file (%s)", strerror(errno));
 }
@@ -2454,12 +2447,6 @@ int has_sha1_pack(const unsigned char *sha1)
 {
 	struct pack_entry e;
 	return find_pack_entry(sha1, &e);
-}
-
-int has_sha1_kept_pack(const unsigned char *sha1)
-{
-	struct pack_entry e;
-	return find_kept_pack_entry(sha1, &e);
 }
 
 int has_sha1_file(const unsigned char *sha1)

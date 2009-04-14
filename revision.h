@@ -50,7 +50,6 @@ struct rev_info {
 			edge_hint:1,
 			limited:1,
 			unpacked:1,
-			kept_pack_only:1,
 			boundary:2,
 			left_right:1,
 			rewrite_parents:1,
@@ -86,6 +85,8 @@ struct rev_info {
 	struct log_info *loginfo;
 	int		nr, total;
 	const char	*mime_boundary;
+	const char	*patch_suffix;
+	int		numbered_files;
 	char		*message_id;
 	struct string_list *ref_message_ids;
 	const char	*add_signoff;

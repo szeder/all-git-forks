@@ -646,7 +646,8 @@ _git_am ()
 		;;
 	--*)
 		__gitcomp "
-			--signoff --utf8 --binary --3way --interactive
+			--3way --committer-date-is-author-date --ignore-date
+			--interactive --keep --no-utf8 --signoff --utf8
 			--whitespace=
 			"
 		return
@@ -1103,7 +1104,7 @@ _git_log ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	local g="$(git rev-parse --git-dir 2>/dev/null)"
 	local merge=""
-	if [ -f $g/MERGE_HEAD ]; then
+	if [ -f "$g/MERGE_HEAD" ]; then
 		merge="--merge"
 	fi
 	case "$cur" in
@@ -1870,6 +1871,7 @@ _git ()
 			--bare
 			--version
 			--exec-path
+			--html-path
 			--work-tree=
 			--help
 			"
@@ -1943,7 +1945,7 @@ _gitk ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	local g="$(__gitdir)"
 	local merge=""
-	if [ -f $g/MERGE_HEAD ]; then
+	if [ -f "$g/MERGE_HEAD" ]; then
 		merge="--merge"
 	fi
 	case "$cur" in
