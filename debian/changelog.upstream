@@ -1,3 +1,65 @@
+Version v1.6.2.3; changes since v1.6.2.2:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      process_{tree,blob}: Remove useless xstrdup calls
+
+Brandon Casey (6):
+      t7700-repack: add two new tests demonstrating repacking flaws
+      git-repack.sh: don't use --kept-pack-only option to pack-objects
+      pack-objects: only repack or loosen objects residing in "local" packs
+      Remove --kept-pack-only option and associated infrastructure
+      t7700: demonstrate repack flaw which may loosen objects unnecessarily
+      pack-objects: don't loosen objects available in alternate or kept packs
+
+Dan McGee (1):
+      git-repack: use non-dashed update-server-info
+
+Daniel Cheng (aka SDiZ) (1):
+      State the effect of filter-branch on graft explicitly
+
+Jari Aalto (1):
+      Change double quotes to single quotes in message
+
+Jason Merrill (1):
+      Documentation: clarify .gitattributes search
+
+Jeff King (2):
+      t1301: loosen test for forced modes
+      commit: abort commit if interactive add failed
+
+Johan Herland (1):
+      Move chmod(foo, 0444) into move_temp_to_file()
+
+Julien Danjou (1):
+      git submodule: fix usage line
+
+Junio C Hamano (12):
+      git-repack: resist stray environment variable
+      has_sha1_pack(): refactor "pretend these packs do not exist" interface
+      has_sha1_kept_pack(): take "struct rev_info"
+      Consolidate ignore_packed logic more
+      Simplify is_kept_pack()
+      is_kept_pack(): final clean-up
+      diff --cached: do not borrow from a work tree when a path is marked as assume-unchanged
+      "core.sharedrepository = 0mode" should set, not loosen
+      move_temp_to_file(): do not forget to chmod() in "Coda hack" codepath
+      set_shared_perm(): sometimes we know what the final mode bits should look like
+      Start 1.6.2.3 preparation
+      GIT 1.6.2.3
+
+Linus Torvalds (1):
+      process_{tree,blob}: Remove useless xstrdup calls
+
+Markus Heidelberg (1):
+      doc/git-pack-refs: fix two grammar issues
+
+Matthieu Moy (3):
+      git-checkout.txt: fix incorrect statement about HEAD and index
+      git-checkout.txt: clarify that <branch> applies when no path is given.
+      git-pull.sh: better warning message for "git pull" on detached head.
+
+
 Version v1.6.2.2; changes since v1.6.2.1:
 -----------------------------------------
 
@@ -6084,7 +6146,7 @@ Shawn O. Pearce (1):
 Stelian Pop (1):
       hg-to-git: fix parent analysis
 
-Uwe Kleine-K,Av(Bnig (1):
+Uwe Kleine-König (1):
       rebase -i: accept -m as advertised in the man page
 
 
@@ -15987,7 +16049,7 @@ Ryan Anderson (2):
       log-tree: show_log() should respect the setting of diffopt->line_termination
       annotate: Fix bug when parsing merges with differing real and logical parents.
 
-Uwe Zeisberger (1):
+Uwe Kleine-König (1):
       Document rev-list's option --merge
 
 
@@ -18736,12 +18798,10 @@ Tom Prince (1):
 Tony Luck (1):
       update using-topic-branches
 
-Uwe Kleine-König (3):
+Uwe Kleine-König (4):
       Fix generation of "humanish" part of source repo
       Remove unneeded header
       Use symbolic name SHORT_NAME_AMBIGUOUS as error return value
-
-Uwe Zeisberger (1):
       Make GIT-VERSION-GEN tolerate missing git describe command again
 
 
