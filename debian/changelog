@@ -1,8 +1,9 @@
 git-core (1:1.6.2.3-1) unstable; urgency=low
 
   * new upstream point release.
+  * debian/control: Standards-Version: 3.8.1.0.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 14 Apr 2009 21:36:02 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 14 Apr 2009 22:44:19 +0000
 
 git-core (1:1.6.2.2-1) unstable; urgency=low
 
