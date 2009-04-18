@@ -50,7 +50,7 @@ test_expect_success \
 test_expect_success \
     'add ignored file' \
     'echo ignore me >a/ignored &&
-     echo ignored export-ignore >.git/info/attributes'
+     echo ignored export-ignore >.gitattributes'
 
 test_expect_success \
     'add files to repository' \
@@ -64,7 +64,7 @@ test_expect_success \
 test_expect_success \
     'create bare clone' \
     'git clone --bare . bare.git &&
-     cp .git/info/attributes bare.git/info/attributes'
+     cp .gitattributes bare.git/info/attributes'
 
 test_expect_success \
     'remove ignored file' \
@@ -139,11 +139,10 @@ test_expect_success \
 
 test_expect_success \
     'create archives with substfiles' \
-    'cp .git/info/attributes .git/info/attributes.before &&
-     echo "substfile?" export-subst >>.git/info/attributes &&
+    'echo "substfile?" export-subst >a/.gitattributes &&
      git archive HEAD >f.tar &&
      git archive --prefix=prefix/ HEAD >g.tar &&
-     mv .git/info/attributes.before .git/info/attributes'
+     rm a/.gitattributes'
 
 test_expect_success \
     'extract substfiles' \

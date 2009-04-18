@@ -87,8 +87,7 @@ static int check_updates(struct unpack_trees_options *o)
 		cnt = 0;
 	}
 
-	if (o->update)
-		git_attr_set_direction(GIT_ATTR_CHECKOUT, &o->result);
+	git_attr_set_direction(GIT_ATTR_CHECKOUT, &o->result);
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
 
@@ -113,8 +112,7 @@ static int check_updates(struct unpack_trees_options *o)
 		}
 	}
 	stop_progress(&progress);
-	if (o->update)
-		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
+	git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
 	return errs != 0;
 }
 
