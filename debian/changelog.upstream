@@ -1,4 +1,4 @@
-Version v1.6.3-rc0; changes since v1.6.2.3:
+Version v1.6.3-rc0; changes since v1.6.2.4:
 -------------------------------------------
 
 Alex Riesen (4):
@@ -42,9 +42,8 @@ Benjamin Kramer (4):
       Remove unused assignments
       Fix various dead stores found by the clang static analyzer
 
-Björn Steinbrink (2):
+Björn Steinbrink (1):
       Mailmap: Allow empty email addresses to be mapped
-      tree_entry_interesting: a pathspec only matches at directory boundary
 
 Boris Byk (1):
       git-svn: speed up blame command
@@ -102,11 +101,6 @@ Christian Couder (24):
       list-objects: add "void *data" parameter to show functions
       rev-list: remove last static vars used in "show_commit"
       rev-list: add "int bisect_show_flags" in "struct rev_list_info"
-
-Clemens Buchacher (3):
-      add tests for merging with submodules
-      update cache for conflicting submodule entries
-      simplify output of conflicting merge
 
 Dan McGee (1):
       Update delta compression message to be less misleading
@@ -254,7 +248,7 @@ Jeremy White (2):
       Enable setting attach as the default in .gitconfig for git-format-patch.
       imap.preformattedHTML to tell Thunderbird to send non-flowed text
 
-Johannes Schindelin (24):
+Johannes Schindelin (23):
       Add valgrind support in test scripts
       Valgrind support: check for more than just programming errors
       test-lib.sh: optionally output to test-results/$TEST.out, too
@@ -277,7 +271,6 @@ Johannes Schindelin (24):
       gc --aggressive: make it really aggressive
       t7300: fix clean up on Windows
       Guard a few Makefile variables against user environments
-      Fix 'git checkout <submodule>' to update the index
       git-svn: always initialize with core.autocrlf=false
 
 Johannes Sixt (30):
@@ -318,7 +311,7 @@ John Tapsell (4):
       Improve error message for git-filter-branch
       Documentation - More examples for git bisect
 
-Junio C Hamano (29):
+Junio C Hamano (28):
       git-blame: refactor code to emit "porcelain format" output
       blame: show "previous" information in --porcelain/--incremental format
       Make git-clone respect branch.autosetuprebase
@@ -343,7 +336,6 @@ Junio C Hamano (29):
       strbuf_check_branch_ref(): a helper to check a refname for a branch
       check_ref_format(): tighten refname rules
       Update draft release notes to 1.6.3
-      match_tree_entry(): a pathspec only matches at directory boundaries
       Update draft release notes to 1.6.3
       sha1-lookup: fix up the assertion message
       Update draft release notes to 1.6.3
@@ -549,6 +541,71 @@ Wesley J. Landaker (1):
 Wincent Colaiuta (2):
       Grammar fixes to "merge" and "patch-id" docs
       Grammar fix for "git merge" man page
+
+
+Version v1.6.2.4; changes since v1.6.2.3:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      tree_entry_interesting: a pathspec only matches at directory boundary
+
+Clemens Buchacher (3):
+      add tests for merging with submodules
+      update cache for conflicting submodule entries
+      simplify output of conflicting merge
+
+Erik Faye-Lund (4):
+      test-suite: adding a test for fast-export with tag variants
+      builtin-fast-export.c: turn error into warning
+      builtin-fast-export.c: fix crash on tagged trees
+      builtin-fast-export.c: handle nested tags
+
+Frank Lichtenheld (1):
+      init: Do not segfault on big GIT_TEMPLATE_DIR environment variable
+
+Jeff King (2):
+      doc/gitattributes: clarify location of config text
+      add-interactive: refactor mode hunk handling
+
+Johan Herland (1):
+      Update docs on behaviour of 'core.sharedRepository' and 'git init --shared'
+
+Johannes Schindelin (1):
+      Fix 'git checkout <submodule>' to update the index
+
+Johannes Sixt (1):
+      t1301-shared-repo: fix forced modes test
+
+Junio C Hamano (3):
+      match_tree_entry(): a pathspec only matches at directory boundaries
+      Describe fixes since 1.6.2.3
+      GIT 1.6.2.4
+
+Junio Hamano (1):
+      Speed up reflog pruning of unreachable commits
+
+Linus Torvalds (1):
+      Clean up reflog unreachability pruning decision
+
+Markus Heidelberg (2):
+      doc/git-daemon: add missing arguments to options
+      doc/git-daemon: add missing arguments to max-connections option
+
+Matthieu Moy (2):
+      git add -p: new "quit" command at the prompt.
+      Update git-add.txt according to the new possibilities of 'git add -p'.
+
+Nguyễn Thái Ngọc Duy (1):
+      Makefile: remove {fetch,send}-pack from PROGRAMS as they are builtins
+
+Paul Bolle (1):
+      imap-send: use correct configuration variable in documentation
+
+Thomas Jarosch (1):
+      Fix buffer overflow in config parser
+
+Ulrich Windl (1):
+      git-apply: fix option description
 
 
 Version v1.6.2.3; changes since v1.6.2.2:
