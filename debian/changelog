@@ -1,3 +1,10 @@
+git-core (1:1.6.3~rc1-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 20 Apr 2009 21:44:09 +0000
+
 git-core (1:1.6.2.4-1) unstable; urgency=low
 
   * new upstream point release.
