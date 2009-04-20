@@ -1,4 +1,4 @@
-From d5ee8e181dc06d2345a08508f0235918839fb778 Mon Sep 17 00:00:00 2001
+From 2c9a16bd7e8c4294a0b7844ac9720e6a1c2ac6c2 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sun, 5 Apr 2009 20:05:50 +0000
 Subject: [PATCH 6/6] bug#520116: Makefile: do not install cross-directory hardlink
@@ -8,10 +8,10 @@ Subject: [PATCH 6/6] bug#520116: Makefile: do not install cross-directory hardli
  1 files changed, 0 insertions(+), 1 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 0675c43..d0d8a21 100644
+index a23e270..920620d 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1468,7 +1468,6 @@ endif
+@@ -1466,7 +1466,6 @@ endif
  	bindir=$$(cd '$(DESTDIR_SQ)$(bindir_SQ)' && pwd) && \
  	execdir=$$(cd '$(DESTDIR_SQ)$(gitexec_instdir_SQ)' && pwd) && \
  	{ $(RM) "$$execdir/git-add$X" && \

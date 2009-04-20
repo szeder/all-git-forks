@@ -1,3 +1,68 @@
+Version v1.6.2.4; changes since v1.6.2.3:
+-----------------------------------------
+
+Björn Steinbrink (1):
+      tree_entry_interesting: a pathspec only matches at directory boundary
+
+Clemens Buchacher (3):
+      add tests for merging with submodules
+      update cache for conflicting submodule entries
+      simplify output of conflicting merge
+
+Erik Faye-Lund (4):
+      test-suite: adding a test for fast-export with tag variants
+      builtin-fast-export.c: turn error into warning
+      builtin-fast-export.c: fix crash on tagged trees
+      builtin-fast-export.c: handle nested tags
+
+Frank Lichtenheld (1):
+      init: Do not segfault on big GIT_TEMPLATE_DIR environment variable
+
+Jeff King (2):
+      doc/gitattributes: clarify location of config text
+      add-interactive: refactor mode hunk handling
+
+Johan Herland (1):
+      Update docs on behaviour of 'core.sharedRepository' and 'git init --shared'
+
+Johannes Schindelin (1):
+      Fix 'git checkout <submodule>' to update the index
+
+Johannes Sixt (1):
+      t1301-shared-repo: fix forced modes test
+
+Junio C Hamano (3):
+      match_tree_entry(): a pathspec only matches at directory boundaries
+      Describe fixes since 1.6.2.3
+      GIT 1.6.2.4
+
+Junio Hamano (1):
+      Speed up reflog pruning of unreachable commits
+
+Linus Torvalds (1):
+      Clean up reflog unreachability pruning decision
+
+Markus Heidelberg (2):
+      doc/git-daemon: add missing arguments to options
+      doc/git-daemon: add missing arguments to max-connections option
+
+Matthieu Moy (2):
+      git add -p: new "quit" command at the prompt.
+      Update git-add.txt according to the new possibilities of 'git add -p'.
+
+Nguyễn Thái Ngọc Duy (1):
+      Makefile: remove {fetch,send}-pack from PROGRAMS as they are builtins
+
+Paul Bolle (1):
+      imap-send: use correct configuration variable in documentation
+
+Thomas Jarosch (1):
+      Fix buffer overflow in config parser
+
+Ulrich Windl (1):
+      git-apply: fix option description
+
+
 Version v1.6.2.3; changes since v1.6.2.2:
 -----------------------------------------
 
