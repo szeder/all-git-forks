@@ -529,7 +529,7 @@ if ($compose) {
 
 	print C <<EOT;
 From $tpl_sender # This line is ignored.
-GIT: Lines beginning in "GIT: " will be removed.
+GIT: Lines beginning in "GIT:" will be removed.
 GIT: Consider including an overall diffstat or table of contents
 GIT: for the patch you are writing.
 GIT:
@@ -543,8 +543,6 @@ EOT
 		print C get_patch_subject($f);
 	}
 	close(C);
-
-	my $editor = $ENV{GIT_EDITOR} || Git::config(@repo, "core.editor") || $ENV{VISUAL} || $ENV{EDITOR} || "vi";
 
 	if ($annotate) {
 		do_edit($compose_filename, @files);
@@ -562,7 +560,7 @@ EOT
 	my $in_body = 0;
 	my $summary_empty = 1;
 	while(<C>) {
-		next if m/^GIT: /;
+		next if m/^GIT:/;
 		if ($in_body) {
 			$summary_empty = 0 unless (/^\n$/);
 		} elsif (/^\n$/) {
@@ -796,6 +794,10 @@ sub sanitize_address
 
 }
 
+# Returns 1 if the message was sent, and 0 otherwise.
+# In actuality, the whole program dies when a there
+# is an error sending a message.
+
 sub send_message
 {
 	my @recipients = unique_email_list(@to);
@@ -864,7 +866,7 @@ X-Mailer: git-send-email $gitversion
 		         default => $ask_default);
 		die "Send this email reply required" unless defined $_;
 		if (/^n/i) {
-			return;
+			return 0;
 		} elsif (/^q/i) {
 			cleanup_compose_files();
 			exit(0);
@@ -945,7 +947,7 @@ X-Mailer: git-send-email $gitversion
 		$smtp->data or die $smtp->message;
 		$smtp->datasend("$header\n$message") or die $smtp->message;
 		$smtp->dataend() or die $smtp->message;
-		$smtp->ok or die "Failed to send $subject\n".$smtp->message;
+		$smtp->code =~ /250|200/ or die "Failed to send $subject\n".$smtp->message;
 	}
 	if ($quiet) {
 		printf (($dry_run ? "Dry-" : "")."Sent %s\n", $subject);
@@ -966,6 +968,8 @@ X-Mailer: git-send-email $gitversion
 			print "Result: OK\n";
 		}
 	}
+
+	return 1;
 }
 
 $reply_to = $initial_reply_to;
@@ -1126,10 +1130,10 @@ foreach my $t (@files) {
 
 	@cc = (@initial_cc, @cc);
 
-	send_message();
+	my $message_was_sent = send_message();
 
 	# set up for the next message
-	if ($chain_reply_to || !defined $reply_to || length($reply_to) == 0) {
+	if ($message_was_sent and $chain_reply_to || not defined $reply_to || length($reply_to) == 0) {
 		$reply_to = $message_id;
 		if (length $references > 0) {
 			$references .= "\n $message_id";
