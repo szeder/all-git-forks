@@ -4943,10 +4943,9 @@ sub git_blob {
 	}
 	git_print_page_path($file_name, "blob", $hash_base);
 	my $extension = $file_name;
-	$extension =~ m/\...$/g;
+	$extension =~ m/\.[^.]+$/;
 	if (defined $syntaxhighlighter_path) {
 		$syntaxhighlighter_brush = $syntaxhighlighter_file_extensions{$&};
-		printf $syntaxhighlighter_brush;
 	}
 	print "<div class=\"page_body\">\n";
 	if ($mimetype =~ m!^image/!) {
