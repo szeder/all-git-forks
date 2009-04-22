@@ -1,0 +1,268 @@
+Revision Cache Format
+=====================
+
+The revision cache is an on-disk format which allows for certain graph
+reachability operations to be answered quickly.
+
+A revision cache contains;
+
+  - A list of 'start' and 'end' objects (ie, 'uninteresting' and
+    'interesting' object IDs)
+
+  - A list of objects which are referred to by the 'end' objects,
+    without crossing 'start' objects, including:
+
+    * position when sorted in --topo-order
+
+    * object type
+
+    * uncompressed size
+
+    * object ID
+
+    * an indication of whether it is reachable from any of the
+      'start' objects (ie, if we already have 'start' refs, whether
+      we need this object or not)
+
+  - A hash from an (abbreviated) object ID to a position into the
+    above list
+
+  - A hash of objects which are referred to by the 'start' objects,
+    but which are no longer reachable (these will exist if the 'start'
+    objects are not reachable from the 'end' objects)
+
+  - A series of RLE-compressed reachability bitmaps, with each bit
+    corresponding to an object in the topo order for this index.
+    There is at least one of these for each of the 'end' objects, and
+    any number of additional bitmaps for other objects may exist.
+
+  - If any 'start' objects are listed, a list of other revision caches
+    which include reachability bitmaps for the 'start' objects,
+    referred to as 'parent' revision caches.  Without parent revision
+    caches, it is not possible to calculate the list of no longer
+    reachable objects, nor the indications of whether objects are
+    reachable from any of the 'start' refs, resulting in a downgraded
+    revision cache.
+
+
+Start and End Object lists
+--------------------------
+
+The 'start' and 'end' object lists are minimised, such that;
+
+  - any 'end' object which is reachable from any other 'end' object is
+    removed from the list
+
+  - any 'start' object which is reachable from any other 'start'
+    object is removed from the list
+
+'start' and 'end' objects may be any object type, but will generally
+be commit or tag objects.
+
+
+Topological contents list
+-------------------------
+
+This list has fixed-length records, so the topological position into
+the list does not need to be stored in each record as it is implicit
+from the offset.
+
+The 'type' and 'size' fields are required for canonical division of
+the list into "bundle slices", required for mirror-sync's download
+spreading feature.  As the compressed and/or deltified length of the
+object may change between nodes that might compute such information,
+uncompressed lengths must be used.
+
+Objects are also included if they are reachable from the 'start'
+objects, but only if they were reachable without crossing the objects
+themselves.  Objects that fall into this category will be listed once,
+blobs before the first tree they are mentioned in, trees before the
+first tree or commit they are linked to, and so on.
+
+
+Included object hash
+--------------------
+
+This index is used to quickly determine if an object exists in the
+index without scanning the entire topological list.
+
+Entries in the object hash table can be shortened, eg to 3 or 4 bytes;
+basically they just need to be long enough to avoid collisions within
+the objects which exist in the list.  Any match must be confirmed by
+checking the full SHA1 in the topological list.
+
+
+Excluded object hash
+--------------------
+
+As the included object hash, except entries must include the full
+SHA1, and mini reachability bitmaps for the 'start' object list.
+
+This list may seem spurious so deserves further explanation.
+
+In principle this list is not necessary, and instead the 'start'
+objects can be reduced to the intersecting points with the 'end'
+objects (like git merge-base --all).  The same information can then be
+represented by a second revision cache, and both indexes can then use
+this intersecting set as its 'start' objects.
+
+It will complicate the suitability() function; instead of looking for
+a single index it will have to also consider combinations of indexes
+which may or may not combine sensibly.
+
+We'll run with this for now and see where we get to.
+
+
+Reachability bitmaps
+--------------------
+
+These bitmaps are the secret sauce of this index.  Any N of these
+bitmaps from a single revision cache can be intersected or combined
+using simple bitmap operations on the uncompressed bitstream.  This
+concept of a bitmap index is a successful concept used by RDBMSes for
+low cardinality data in (mostly commercial) OLAP databases where the
+data set does not change much.
+
+The nice thing about bitmap indexes is that they compress well via
+simple Run-Length Encoding (RLE); it's quite possible with the
+preconditions laid out so far that a bitmap will consist of all 1's
+(reachable) up to a certain point, then all 0's.  In this instance,
+storing a reachability bitmap is virtually cost-free.  With minor
+modifications the index can be practically useful for random access
+as well.
+
+Any time a compatible bitmap calculation is performed on a real object
+tree, the results can potentially be written to the corresponding
+revision cache.  However, as explored in the following section, it is
+very important that the 'end' refs all have reachability bitmaps
+calculated for them, so these are included as a minimum.
+
+
+Efficiency of Operations
+------------------------
+In this section, the key functions that this index is designed to
+answer are explored.  For each, their efficiency is considered in
+terms of what operations must be carried out to calculate the answer.
+
+Determining Cache Suitability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A given revision cache may service slightly 'incompatible' requests.
+
+As an example of this, fetching one or two refs from a cache that
+contains other (uninteresting) 'end' objects is still efficient; the
+reachability bitmaps for the desired refs are OR'd together and the
+resultant bitmap used to quickly enumerate the returned object list.
+
+The function is:
+
+  rev_cache.suitable? ( interesting[], uninteresting[], need_topo? )
+
+ie, the question is "can this revision list operation be satisfied by
+this revision cache without additional graph walking?"  And maybe
+"btw, I'll need the list returned in correct topological order".
+
+The answer will be false when;
+
+  - some 'interesting' objects are not in this revision cache
+
+  - correct topological order is being requested, information from
+    multiple parent revision caches are required, but they do not
+    connect through a single object.  (ie, the list of objects is
+    available, but requires walking to break the ties that combining
+    the list of objects will cause)
+
+  - some 'interesting' objects exist in this revision cache, but have
+    no reachability bitmap calculated.
+
+  - some 'uninteresting' objects are not known
+
+  - some 'uninteresting' objects appear in the the known set without a
+    reachability bitmap.
+
+The worst case cost of this method is one hash lookup per
+'interesting' and 'uninteresting' object passed in, multiplied by the
+total number of 'parent' caches.
+
+
+Determining Object Reachability
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is a specific use case of the cache where a particular
+reachability question is being asked.
+
+The relevant functions are:
+
+  reachable?( from, item )
+  rev_cache.reachable?( from, item )
+
+Meaning "is <item> reachable from <from>?", possibly within the
+context of a particular revision cache.
+
+The first, complete random access case is relatively expensive; first,
+all of the revision caches must be consulted to determine if they are
+suitable, using rev_cache.suitable?([from], []); However in many use
+cases this will already be known and the second form can be used.
+
+First, the 'from' object must already have a reachability bitmap for
+it computed.  If 'item' exists in this revision cache, then its index
+is looked up and the bitmap consulted for whether there is a 1 or a 0
+at the given offset.  If it does not exist, then the start refs
+identified in the bitmap to be reachable from the end point are
+recursed into with parent_rev_cache.reachable?( start, item )
+
+
+Returning Object Lists
+~~~~~~~~~~~~~~~~~~~~~~
+
+The functions for this are (expressed in a form intended to resemble
+the current revision walker API):
+
+  rev_cache_init()
+  rev_cache_add( interesting?, oid )
+
+Then, to create an index on disk:
+
+  rev_cache_create( )
+
+To lookup and iterate over:
+
+  rev_cache_enumerate( new?, type?[], ordered? )
+  rev_cache_fetch() : (oid, length, type, new)
+
+This operation is identical in initial cost to the suitable? method
+described above, except that the discovered bitmaps are all mashed
+together as appopriate and can then be iterated over.
+
+The 'rev_cache_enumerate()' allows a couple of flags to be set that
+will affect whether or not it works without a new cache being built.
+First, if the 'new' flag is set, then the function will not succeed if
+the revision cache is degraded.  The type?[] bit array allows objects
+of particular types to be excluded, such as to return only commit
+objects.  Finally, the ordered? flag means that the correct
+topological order must be honoured, which places extra requirements on
+the use of combining information from multiple revision caches.
+
+The 'rev_cache_fetch()' iterator returns entries from the topological
+list.
+
+
+Resolving deltas
+~~~~~~~~~~~~~~~~
+
+The above sections describe how object lists are cached.  This is
+currently the most expensive part of upload-pack.
+
+However, as well as returning the list of objects for a given fetch,
+we need to know whether the delta bases in the pack files we retrieve
+the objects from are reachable.  This adds potentially many more
+reachability operations to perform.  pack-objects can potentially use
+the reachability information in the revision cache to resolve deltas
+on the fly; re-using them or resolving them to complete objects as
+required, without an extra repack phase.
+
+Another approach is that pack objects are created with deltas arranged
+such that they always point in the "same direction" relative to their
+topological appearance in a corresponding revision cache.  This will
+allow direct copying of compressed revisions from the packfile to the
+wire with no intermediate pack generation phase.
