@@ -3047,10 +3047,13 @@ if (defined $syntaxhighlighter_path) {
 		is_mouse_down = false;
 	}
 
-	window.onmousemove = function(el) 
+	window.onmousemove = function(e) 
 	{
 		if (is_mouse_down)
 		{
+			var el = find_line(e);
+			if (el != null)
+				toggle_line(el);
 			//alert('hello mousey');
 		}
 	}
