@@ -97,21 +97,12 @@ Excluded object hash
 --------------------
 
 As the included object hash, except entries must include the full
-SHA1, and mini reachability bitmaps for the 'start' object list.
+SHA1, and there is no ordering.  This represents all objects which are
+reachable from the 'start' refs, but not reachable from the 'end'
+refs.  It will be required when branches are rebased.
 
-This list may seem spurious so deserves further explanation.
-
-In principle this list is not necessary, and instead the 'start'
-objects can be reduced to the intersecting points with the 'end'
-objects (like git merge-base --all).  The same information can then be
-represented by a second revision cache, and both indexes can then use
-this intersecting set as its 'start' objects.
-
-It will complicate the suitability() function; instead of looking for
-a single index it will have to also consider combinations of indexes
-which may or may not combine sensibly.
-
-We'll run with this for now and see where we get to.
+This is needed to calculate the 'is new' property in the topological
+contents list correctly.
 
 
 Reachability bitmaps
