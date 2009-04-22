@@ -207,8 +207,9 @@ our %syntaxhighlighter_file_extensions = (
 	'.pas' => 'pas',
 	'.groovy' => 'groovy',
 	'.js' => 'js',
-	'.pl' => 'pl',
-	'.perl' => 'perl',
+# Perl seems to be broken currently.
+#	'.pl' => 'pl',
+#	'.perl' => 'perl',
 	'.php' => 'php',
 	'.txt' => 'text',
 	'.py' => 'py',
@@ -2972,6 +2973,7 @@ if (defined $syntaxhighlighter_path) {
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushGroovy.js"></script>
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJava.js"></script>
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJScript.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPerl.js"></script>
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPhp.js"></script>
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPlain.js"></script>
 <script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPython.js"></script>
