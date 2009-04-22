@@ -195,6 +195,34 @@ our %known_snapshot_format_aliases = (
 	'x-zip' => undef, '' => undef,
 );
 
+# Path to the SyntaxHighlighter scripts and css files.
+our $syntaxhighlighter_path;
+our $syntaxhighlighter_brush;
+our %syntaxhighlighter_file_extensions = (
+	'.cs' => 'c-sharp',
+	'.java' => 'java',
+	'.sh' => 'bash',
+	'.cpp' => 'cpp',
+	'.c' => 'c',
+	'.pas' => 'pas',
+	'.groovy' => 'groovy',
+	'.js' => 'js',
+	'.pl' => 'pl',
+	'.perl' => 'perl',
+	'.php' => 'php',
+	'.txt' => 'text',
+	'.py' => 'py',
+	'.rb' => 'ruby',
+	'.scala' => 'scala',
+	'.sql' => 'sql',
+	'.vb' => 'vb',
+	'.xml' => 'xml',
+	'.html' => 'html',
+	'.xslt' => 'xslt',
+	'.xhtml' => 'xhtml',
+	'.xsd' => 'xml',
+);
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -1060,6 +1088,7 @@ sub esc_path {
 		$str =~ s/ /&nbsp;/g;
 	}
 	$str =~ s|([[:cntrl:]])|quot_cec($1)|eg;
+
 	return $str;
 }
 
@@ -1069,8 +1098,8 @@ sub quot_cec {
 	my %opts = @_;
 	my %es = ( # character escape codes, aka escape sequences
 		"\t" => '\t',   # tab            (HT)
-		"\n" => '\n',   # line feed      (LF)
-		"\r" => '\r',   # carrige return (CR)
+		"\n" => '',   # line feed      (LF)
+		"\r" => '',   # carrige return (CR)
 		"\f" => '\f',   # form feed      (FF)
 		"\b" => '\b',   # backspace      (BS)
 		"\a" => '\a',   # alarm (bell)   (BEL)
@@ -1084,7 +1113,11 @@ sub quot_cec {
 	if ($opts{-nohtml}) {
 		return $chr;
 	} else {
-		return "<span class=\"cntrl\">$chr</span>";
+		if (defined $syntaxhighlighter_brush) {
+			return $chr;
+		} else {
+			return "<span class=\"cntrl\">$chr</span>";
+		}
 	}
 }
 
@@ -2908,6 +2941,12 @@ sub git_header_html {
 	} else {
 		$content_type = 'text/html';
 	}
+	
+	# SyntaxHighlighter requires text/html to work properly
+	if (defined $syntaxhighlighter_path) {
+		$content_type = 'text/html';
+	}
+	
 	print $cgi->header(-type=>$content_type, -charset => 'utf-8',
 	                   -status=> $status, -expires => $expires);
 	my $mod_perl_version = $ENV{'MOD_PERL'} ? " $ENV{'MOD_PERL'}" : '';
@@ -2919,6 +2958,38 @@ sub git_header_html {
 <!-- git core binaries version $git_version -->
 <head>
 <meta http-equiv="content-type" content="$content_type; charset=utf-8"/>
+EOF
+
+if (defined $syntaxhighlighter_path) {
+	print <<EOF;
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shCore.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushBash.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCpp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCSharp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCss.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushDelphi.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushDiff.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushGroovy.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJava.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJScript.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPhp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPlain.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPython.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushRuby.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushScala.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushSql.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushVb.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushXml.js"></script>
+<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/styles/shCore.css"/>
+<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/styles/shThemeDefault.css"/>
+<script type="text/javascript">
+	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/scripts/clipboard.swf';
+	SyntaxHighlighter.all();
+</script>
+EOF
+}
+
+print <<EOF;
 <meta name="generator" content="gitweb/$version git/$git_version$mod_perl_version"/>
 <meta name="robots" content="index, nofollow"/>
 <title>$title</title>
@@ -4871,6 +4942,12 @@ sub git_blob {
 		      "<div class=\"title\">$hash</div>\n";
 	}
 	git_print_page_path($file_name, "blob", $hash_base);
+	my $extension = $file_name;
+	$extension =~ m/\...$/g;
+	if (defined $syntaxhighlighter_path) {
+		$syntaxhighlighter_brush = $syntaxhighlighter_file_extensions{$&};
+		printf $syntaxhighlighter_brush;
+	}
 	print "<div class=\"page_body\">\n";
 	if ($mimetype =~ m!^image/!) {
 		print qq!<img type="$mimetype"!;
@@ -4882,13 +4959,31 @@ sub git_blob {
 		           hash_base=>$hash_base, file_name=>$file_name) .
 		      qq!" />\n!;
 	} else {
-		my $nr;
-		while (my $line = <$fd>) {
-			chomp $line;
-			$nr++;
-			$line = untabify($line);
-			printf "<div class=\"pre\"><a id=\"l%i\" href=\"#l%i\" class=\"linenr\">%4i</a> %s</div>\n",
-			       $nr, $nr, $nr, esc_html($line, -nbsp=>1);
+		if ($syntaxhighlighter_brush) {
+			# Some editors, such as Visual Studio, prefix the file with the encoding
+			# format of the text (such as UTF8). Remove that encoding so SyntaxHighlighter
+			# can work properly.
+			printf "<pre class=\"brush: %s;\">\n", $syntaxhighlighter_brush;
+			my $line = <$fd>;
+			if ($line) {
+				$line = esc_html($line);
+				$line =~ s/^\\feff//g;
+				printf "%s\n", $line;
+			}
+			while ($line = <$fd>) {
+				printf "%s\n", esc_html($line);
+			}
+			printf "</pre>\n";
+		} else {
+			my $nr;
+			while (my $line = <$fd>) {
+				chomp $line;
+				$nr++;
+				$line = untabify($line);
+				printf "<div class=\"pre\"><a id=\"l%i\" href=\"#l%i\" \
+				class=\"linenr\">%4i</a> %s</div>\n",
+					$nr, $nr, $nr, esc_html($line, -nbsp=>1);
+			}
 		}
 	}
 	close $fd
