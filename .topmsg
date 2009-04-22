@@ -1,8 +1,6 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] Documentation: add a description of the revision cache
+Subject: [PATCH] t/revcache/spec-bitmap
 
-Add a technical description of the revision cache; what information it
-contains, what questions it is designed to answer, and how quickly it
-can answer them.
+<patch description>
 
-Signed-off-by: Sam Vilain <sam@vilain.net> (GPLv2+)
+Signed-off-by: Sam Vilain <sam@vilain.net>
