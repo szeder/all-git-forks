@@ -10,7 +10,7 @@ A revision cache contains;
     'interesting' object IDs)
 
   - A list of objects which are referred to by the 'end' objects,
-    without crossing 'start' objects, including:
+    without crossing 'start' objects, indicating:
 
     * position when sorted in --topo-order
 
@@ -24,17 +24,18 @@ A revision cache contains;
       'start' objects (ie, if we already have 'start' refs, whether
       we need this object or not)
 
-  - A hash from an (abbreviated) object ID to a position into the
-    above list
+  - A hash table from an (abbreviated) object ID to a position into
+    the above list
 
-  - A hash of objects which are referred to by the 'start' objects,
-    but which are no longer reachable (these will exist if the 'start'
-    objects are not reachable from the 'end' objects)
+  - A hash table of objects which are referred to by the 'start'
+    objects, but which are no longer reachable (these will exist if
+    the 'start' objects are not reachable from the 'end' objects)
 
   - A series of RLE-compressed reachability bitmaps, with each bit
     corresponding to an object in the topo order for this index.
-    There is at least one of these for each of the 'end' objects, and
-    any number of additional bitmaps for other objects may exist.
+    There is at least one of these for each of the 'end' objects and
+    all unreachable 'start' objects, and any number of additional
+    bitmaps for other objects may exist.
 
   - If any 'start' objects are listed, a list of other revision caches
     which include reachability bitmaps for the 'start' objects,
