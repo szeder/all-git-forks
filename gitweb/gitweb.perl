@@ -2986,7 +2986,93 @@ if (defined $syntaxhighlighter_path) {
 <link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/styles/shThemeDefault.css"/>
 <script type="text/javascript">
 	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/scripts/clipboard.swf';
+
+	function toggle_line(el)
+	{
+		var codeElements = el.getElementsByTagName("code");
+                for (i = 0; i < codeElements.length; i++)
+		{
+			if (codeElements[i].className == "number")
+			{
+				codeElement = codeElements[i];
+				break;
+			}
+		}
+		if (codeElement == null)
+			return;
+		var lineNumber = parseInt(codeElement.innerText);
+		var fragment = window.location.hash == "" ? "#" : window.location.hash;
+		if (el.className.indexOf(" highlighted") != -1)
+		{
+			el.setAttribute("class", el.className.replace(" highlighted", ""));
+			window.location.hash = fragment.replace(lineNumber + ",", "");
+		}
+		else
+		{
+			el.setAttribute("class", el.className + " highlighted");
+			window.location.hash = fragment + lineNumber + ",";
+		}
+	}
+
+	function find_line(e)
+	{
+		var el = e.target;
+		while (el != null)
+		{
+			if (el.className.indexOf('line alt') != -1)
+			{
+				return el;
+			}
+		}
+		return null;
+	}
+
+	window.onclick = function(e) 
+	{
+		var el = find_line(e);
+		if (el != null)
+		{	
+			toggle_line(el);
+		}
+	}
+
+	var is_mouse_down = false;
+
+	window.onmousedown = function()
+	{
+		is_mouse_down = true;
+	}
+	window.onmouseup = function()
+	{
+		is_mouse_down = false;
+	}
+
+	window.onmousemove = function(el) 
+	{
+		if (is_mouse_down)
+		{
+			//alert('hello mousey');
+		}
+	}
+
 	SyntaxHighlighter.all();
+
+	window.onload = function()
+	{		
+		var lines = document.getElementsByClassName('line');
+		var highlights = window.location.hash.substring(1).split(',');		
+		try
+		{
+			for (i = 0; i < highlights.length; i++)
+			{
+				var lineNumber = parseInt(highlights[i]) - 1;
+				lines[lineNumber].setAttribute('class', lines[lineNumber].className + " highlighted");
+			}
+		}
+		catch (nex)
+		{	
+		}
+	}
 </script>
 EOF
 }
