@@ -1,3 +1,62 @@
+GIT web SyntaxHighlighter Installation
+======================================
+
+First follow the instructions below to do a normal installation
+of gitweb. Then, download SyntaxHighlighter from 
+http://alexgorbatchev.com/wiki/SyntaxHighlighter and place it in any directory 
+of your web server. For example:
+
+  /opt/local/apache2/htdocs/syntaxhighlighter
+
+which may map be
+
+  http://example.com/syntaxhighlighter 
+
+on your web server.
+
+Edit your gitweb.conf file (usually found in /etc/gitweb.conf) and set the path
+on your server that gitweb can find SyntaxHighlighter. In the previous example,
+this would be:
+
+  $syntaxhighlighter_path = "/syntaxhighlighter"
+
+or alternatively, the more verbose:
+
+  $syntaxhighlighter_path = "http://example.com/syntaxhighlighter"
+
+By default, the mappings of file extensions to SyntaxHighlighter brushes are as
+follows:
+
+%syntaxhighlighter_file_extensions = (
+	'.cs' => 'c-sharp',
+	'.java' => 'java',
+	'.sh' => 'bash',
+	'.cpp' => 'cpp',
+	'.c' => 'c',
+	'.pas' => 'pas',
+	'.groovy' => 'groovy',
+	'.js' => 'js',
+	'.pl' => 'pl',
+	'.perl' => 'perl',
+	'.php' => 'php',
+	'.txt' => 'text',
+	'.py' => 'py',
+	'.rb' => 'ruby',
+	'.scala' => 'scala',
+	'.sql' => 'sql',
+	'.vb' => 'vb',
+	'.xml' => 'xml',
+	'.html' => 'html',
+	'.xslt' => 'xslt',
+	'.xhtml' => 'xhtml',
+	'.xsd' => 'xml',
+);
+
+By adding that into gitweb.conf, you can modify/add a brushes for any 
+file extension.
+
+
+
 GIT web Interface (gitweb) Installation
 =======================================
 
