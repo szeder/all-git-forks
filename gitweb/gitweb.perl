@@ -2963,166 +2963,30 @@ EOF
 
 if (defined $syntaxhighlighter_path) {
 	print <<EOF;
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shCore.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushBash.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCpp.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCSharp.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushCss.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushDelphi.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushDiff.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushGroovy.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJava.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushJScript.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPerl.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPhp.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPlain.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushPython.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushRuby.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushScala.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushSql.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushVb.js"></script>
-<script type="text/javascript" src="$syntaxhighlighter_path/scripts/shBrushXml.js"></script>
-<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/styles/shCore.css"/>
-<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/styles/shThemeDefault.css"/>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shCore.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushBash.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushCpp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushCSharp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushCss.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushDelphi.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushDiff.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushGroovy.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushJava.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushJScript.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushPerl.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushPhp.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushPlain.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushPython.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushRuby.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushScala.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushSql.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushVb.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushXml.js"></script>
+<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/Styles/shCore.css"/>
+<link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/Styles/shThemeDefault.css"/>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/gitweb.js"></script>
 <script type="text/javascript">
-	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/scripts/clipboard.swf';
-
-	function get_line_number(el)
-	{
-		var codeElements = el.getElementsByTagName("code");
-                for (i = 0; i < codeElements.length; i++)
-		{
-			if (codeElements[i].className == "number")
-			{
-				codeElement = codeElements[i];
-				break;
-			}
-		}
-		if (codeElement == null)
-			return;
-		return parseInt(codeElement.innerText.replace(".", "").replace(new RegExp("^0+", "g"), "")) - 1;
-	}
-
-	function toggle_line(el)
-	{
-		var lineNumber = get_line_number(el);
-		if (highlightStates[lineNumber] == true)
-		{
-			unhighlight_line(el);
-			return false;
-		}
-		else
-		{
-			highlight_line(el);	
-			return true;
-		}
-	}
-
-	var cached_fragment = window.location.hash == "" ? "#" : window.location.hash;
-	function unhighlight_line(el)
-	{
-		var lineNumber = get_line_number(el);
-		if (highlightStates[lineNumber] == true) 
-		{
-			highlightStates[lineNumber] = false;
-			el.setAttribute("class", el.className.replace(/ highlighted/g, ""));
-			window.location.hash = cached_fragment = cached_fragment.replace(new RegExp("[#,]" + lineNumber + ",", "g"), ",").replace(/^,/g, "#");
-		}
-	}
-
-	function highlight_line(el)
-	{
-		var lineNumber = get_line_number(el);
-		if (highlightStates[lineNumber] == null || highlightStates[lineNumber] == false) 
-		{
-			highlightStates[lineNumber] = true;
-			el.setAttribute("class", el.className + " highlighted");
-			window.location.hash = cached_fragment = cached_fragment + lineNumber + ",";
-		}
-	}
-
-	function find_line(e)
-	{
-		var el = e.target;
-		while (el != null)
-		{
-			if (el.className.indexOf('line alt') != -1)
-			{
-				return el;
-			}
-			el = el.parentNode;
-		}
-		return null;
-	}
-
-	/*
-	window.onclick = function(e) 
-	{
-		alert('barf');
-		var el = find_line(e);
-		if (el != null)
-		{	
-			toggle_line(el);
-		}
-	}
-	*/
-
-	var is_mouse_down = false;
-	var should_highlight = true;
-
-	window.onmousedown = function(e)
-	{
-		is_mouse_down = true;
-		var el = find_line(e);
-		if (el != null)
-		{
-			should_highlight = toggle_line(el);
-		}
-	}
-	window.onmouseup = function()
-	{
-		is_mouse_down = false;
-	}
-
-	window.onmousemove = function(e) 
-	{
-		if (is_mouse_down)
-		{
-			var el = find_line(e);
-			if (el != null)
-			{
-				if (should_highlight)
-					highlight_line(el);
-				else
-					unhighlight_line(el);
-			}
-			//toggle_line(el);
-			//alert('hello mousey');
-		}
-	}
-
-	var highlightStates;
-	SyntaxHighlighter.all();
-
-	window.onload = function()
-	{		
-		var lines = document.getElementsByClassName('line');
-		highlightStates = new Array(lines.length);
-		var highlights = cached_fragment.replace('#', '').split(',');		
-		//alert(highlights.length);
-		try
-		{
-			for (i = 0; i < highlights.length; i++)
-			{
-				var lineNumber = parseInt(highlights[i]);
-				highlightStates[lineNumber] = true;
-				lines[lineNumber].setAttribute('class', lines[lineNumber].className + " highlighted");
-			}
-		}
-		catch (nex)
-		{	
-		}
-	}
+	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/Flash/clipboard.swf';
 </script>
 EOF
 }
