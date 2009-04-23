@@ -2987,7 +2987,7 @@ if (defined $syntaxhighlighter_path) {
 <script type="text/javascript">
 	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/scripts/clipboard.swf';
 
-	function toggle_line(el)
+	function get_line_number(el)
 	{
 		var codeElements = el.getElementsByTagName("code");
                 for (i = 0; i < codeElements.length; i++)
@@ -3000,17 +3000,44 @@ if (defined $syntaxhighlighter_path) {
 		}
 		if (codeElement == null)
 			return;
-		var lineNumber = parseInt(codeElement.innerText);
-		var fragment = window.location.hash == "" ? "#" : window.location.hash;
-		if (el.className.indexOf(" highlighted") != -1)
+		return parseInt(codeElement.innerText.replace(".", "").replace(new RegExp("^0+", "g"), "")) - 1;
+	}
+
+	function toggle_line(el)
+	{
+		var lineNumber = get_line_number(el);
+		if (highlightStates[lineNumber] == true)
 		{
-			el.setAttribute("class", el.className.replace(" highlighted", ""));
-			window.location.hash = fragment.replace(lineNumber + ",", "");
+			unhighlight_line(el);
+			return false;
 		}
 		else
 		{
+			highlight_line(el);	
+			return true;
+		}
+	}
+
+	var cached_fragment = window.location.hash == "" ? "#" : window.location.hash;
+	function unhighlight_line(el)
+	{
+		var lineNumber = get_line_number(el);
+		if (highlightStates[lineNumber] == true) 
+		{
+			highlightStates[lineNumber] = false;
+			el.setAttribute("class", el.className.replace(/ highlighted/g, ""));
+			window.location.hash = cached_fragment = cached_fragment.replace(new RegExp("[#,]" + lineNumber + ",", "g"), ",").replace(/^,/g, "#");
+		}
+	}
+
+	function highlight_line(el)
+	{
+		var lineNumber = get_line_number(el);
+		if (highlightStates[lineNumber] == null || highlightStates[lineNumber] == false) 
+		{
+			highlightStates[lineNumber] = true;
 			el.setAttribute("class", el.className + " highlighted");
-			window.location.hash = fragment + lineNumber + ",";
+			window.location.hash = cached_fragment = cached_fragment + lineNumber + ",";
 		}
 	}
 
@@ -3023,24 +3050,34 @@ if (defined $syntaxhighlighter_path) {
 			{
 				return el;
 			}
+			el = el.parentNode;
 		}
 		return null;
 	}
 
+	/*
 	window.onclick = function(e) 
 	{
+		alert('barf');
 		var el = find_line(e);
 		if (el != null)
 		{	
 			toggle_line(el);
 		}
 	}
+	*/
 
 	var is_mouse_down = false;
+	var should_highlight = true;
 
-	window.onmousedown = function()
+	window.onmousedown = function(e)
 	{
 		is_mouse_down = true;
+		var el = find_line(e);
+		if (el != null)
+		{
+			should_highlight = toggle_line(el);
+		}
 	}
 	window.onmouseup = function()
 	{
@@ -3053,22 +3090,32 @@ if (defined $syntaxhighlighter_path) {
 		{
 			var el = find_line(e);
 			if (el != null)
-				toggle_line(el);
+			{
+				if (should_highlight)
+					highlight_line(el);
+				else
+					unhighlight_line(el);
+			}
+			//toggle_line(el);
 			//alert('hello mousey');
 		}
 	}
 
+	var highlightStates;
 	SyntaxHighlighter.all();
 
 	window.onload = function()
 	{		
 		var lines = document.getElementsByClassName('line');
-		var highlights = window.location.hash.substring(1).split(',');		
+		highlightStates = new Array(lines.length);
+		var highlights = cached_fragment.replace('#', '').split(',');		
+		//alert(highlights.length);
 		try
 		{
 			for (i = 0; i < highlights.length; i++)
 			{
-				var lineNumber = parseInt(highlights[i]) - 1;
+				var lineNumber = parseInt(highlights[i]);
+				highlightStates[lineNumber] = true;
 				lines[lineNumber].setAttribute('class', lines[lineNumber].className + " highlighted");
 			}
 		}
