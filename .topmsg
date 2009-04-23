@@ -1,7 +1,8 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] rev-cache: add on-disk format for fast reachability lookup
+Subject: [PATCH] rev-cache: add 'start' object for caching 'uninteresting' lookups
 
-As well as storing the sorted list of objects, store a hash table for
-O(1) lookup.
+If we want to be able to accelerate lookups which contain
+'uninteresting' revisions, we must be able to specify what those
+revisions are.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>

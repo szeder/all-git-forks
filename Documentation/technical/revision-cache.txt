@@ -8,7 +8,11 @@ A revision cache contains;
 
   - An 'end' object (ie, 'interesting' object ID)
 
-  - A list of objects which are referred to by the 'end' object
+  - A list of 'start' objects, which may be empty (ie, 'uninteresting'
+    object IDs)
+
+  - A list of objects which are referred to by the 'end' object, but
+    not by crossing 'start' objects, including:
 
     * position when sorted in --topo-order
 
@@ -22,10 +26,14 @@ A revision cache contains;
     the above list
 
 
-End Object
-----------
+Start Objects and End Object
+----------------------------
 
-The 'end' object is the identifying key of the revision cache.
+The 'end' object, and 'start' objects are the identifying key of the
+revision cache.
+
+The 'start' objects must be reachable from the 'end' objects, and none
+of the 'start' objects may be reachable from other 'start' objects.
 
 
 Topological contents list
@@ -62,14 +70,19 @@ Determining Cache Suitability
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A revision cache is suitable whenever the walker encounters the single
-object which is the 'end' object of the revision cache.
+object which is the 'end' object of the revision cache, and none of
+the 'uninteresting' revisions to the walker are in the revision cache.
 
 The function is:
 
-  rev_cache.suitable( object )
+  rev_cache.suitable( object, uninteresting[] )
 
 In practice, this is likely to be implemented by making in-core cache
-entries for objects with revision caches prior to walking.
+entries for objects with revision caches prior to walking.  It then
+checks for all revision caches with that 'end' object, and uses the
+largest one which is suitable, creating in-core cache stub entries and
+marking all those objects as 'seen' and pushing the 'start' objects of
+the revision cache used onto the stack of nodes yet to walk.
 
 
 Determining Object Reachability
@@ -90,6 +103,10 @@ This question is an implicit part of the act of walking the object
 graph.  When the walker encounters an in-core cache entry which is
 marked as having a revision cache, it can answer the question by
 looking up the entry in the hash table.
+
+If there are 'start' objects in the revision cache used, the function
+must recurse, potentially checking all the different caches that
+exist.
 
 
 Returning Object Lists
@@ -122,6 +139,9 @@ honoured.
 If multiple revisions are passed to rev_cache_add(), then the
 operation may become relatively expensive, depending upon the number
 of refs and how many objects are in each object list.
+
+If revisions are passed which are marked as not interesting, then the
+revision caches employed must not contain those objects.
 
 The 'rev_cache_fetch()' iterator returns entries from the topological
 list.
