@@ -2984,7 +2984,7 @@ if (defined $syntaxhighlighter_path) {
 <script type="text/javascript" src="$syntaxhighlighter_path/Scripts/shBrushXml.js"></script>
 <link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/Styles/shCore.css"/>
 <link type="text/css" rel="stylesheet" href="$syntaxhighlighter_path/Styles/shThemeDefault.css"/>
-<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/gitweb.js"></script>
+<script type="text/javascript" src="$syntaxhighlighter_path/Scripts/lineHighlighter.js"></script>
 <script type="text/javascript">
 	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/Flash/clipboard.swf';
 </script>
