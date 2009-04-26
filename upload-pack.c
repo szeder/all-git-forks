@@ -65,86 +65,8 @@ static ssize_t send_client_data(int fd, const char *data, ssize_t sz)
 	return safe_write(fd, data, sz);
 }
 
-static FILE *pack_pipe = NULL;
-static void show_commit(struct commit *commit, void *data)
-{
-	if (commit->object.flags & BOUNDARY)
-		fputc('-', pack_pipe);
-	if (fputs(sha1_to_hex(commit->object.sha1), pack_pipe) < 0)
-		die("broken output pipe");
-	fputc('\n', pack_pipe);
-	fflush(pack_pipe);
-	free(commit->buffer);
-	commit->buffer = NULL;
-}
-
-static void show_object(struct object *obj, const struct name_path *path, const char *component)
-{
-	/* An object with name "foo\n0000000..." can be used to
-	 * confuse downstream git-pack-objects very badly.
-	 */
-	const char *name = path_name(path, component);
-	const char *ep = strchr(name, '\n');
-	if (ep) {
-		fprintf(pack_pipe, "%s %.*s\n", sha1_to_hex(obj->sha1),
-		       (int) (ep - name),
-		       name);
-	}
-	else
-		fprintf(pack_pipe, "%s %s\n",
-				sha1_to_hex(obj->sha1), name);
-	free((char *)name);
-}
-
-static void show_edge(struct commit *commit)
-{
-	fprintf(pack_pipe, "-%s\n", sha1_to_hex(commit->object.sha1));
-}
-
-static int do_rev_list(int fd, void *create_full_pack)
-{
-	int i;
-	struct rev_info revs;
-
-	pack_pipe = fdopen(fd, "w");
-	if (create_full_pack)
-		use_thin_pack = 0; /* no point doing it */
-	init_revisions(&revs, NULL);
-	revs.tag_objects = 1;
-	revs.tree_objects = 1;
-	revs.blob_objects = 1;
-	if (use_thin_pack)
-		revs.edge_hint = 1;
-
-	if (create_full_pack) {
-		const char *args[] = {"rev-list", "--all", NULL};
-		setup_revisions(2, args, &revs, NULL);
-	} else {
-		for (i = 0; i < want_obj.nr; i++) {
-			struct object *o = want_obj.objects[i].item;
-			/* why??? */
-			o->flags &= ~UNINTERESTING;
-			add_pending_object(&revs, o, NULL);
-		}
-		for (i = 0; i < have_obj.nr; i++) {
-			struct object *o = have_obj.objects[i].item;
-			o->flags |= UNINTERESTING;
-			add_pending_object(&revs, o, NULL);
-		}
-		setup_revisions(0, NULL, &revs, NULL);
-	}
-	if (prepare_revision_walk(&revs))
-		die("revision walk setup failed");
-	mark_edges_uninteresting(revs.commits, &revs, show_edge);
-	traverse_commit_list(&revs, show_commit, show_object, NULL);
-	fflush(pack_pipe);
-	fclose(pack_pipe);
-	return 0;
-}
-
 static void create_pack_file(void)
 {
-	struct async rev_list;
 	struct child_process pack_objects;
 	int create_full_pack = (nr_our_refs == want_obj.nr && !have_obj.nr);
 	char data[8193], progress[128];
@@ -155,24 +77,22 @@ static void create_pack_file(void)
 	const char *argv[10];
 	int arg = 0;
 
-	rev_list.proc = do_rev_list;
-	/* .data is just a boolean: any non-NULL value will do */
-	rev_list.data = create_full_pack ? &rev_list : NULL;
-	if (start_async(&rev_list))
-		die("git upload-pack: unable to fork git-rev-list");
-
 	argv[arg++] = "pack-objects";
 	argv[arg++] = "--stdout";
+	argv[arg++] = "--revs";
+	argv[arg++] = "--include-tag";
 	if (!no_progress)
 		argv[arg++] = "--progress";
 	if (use_ofs_delta)
 		argv[arg++] = "--delta-base-offset";
 	if (use_include_tag)
 		argv[arg++] = "--include-tag";
+	if (create_full_pack)
+		argv[arg++] = "--all";
 	argv[arg++] = NULL;
 
 	memset(&pack_objects, 0, sizeof(pack_objects));
-	pack_objects.in = rev_list.out;	/* start_command closes it */
+	pack_objects.in = -1;
 	pack_objects.out = -1;
 	pack_objects.err = -1;
 	pack_objects.git_cmd = 1;
@@ -180,6 +100,29 @@ static void create_pack_file(void)
 
 	if (start_command(&pack_objects))
 		die("git upload-pack: unable to fork git-pack-objects");
+
+	/* pass on revisions we (don't) want 
+	 * (do we need to check the validity of pack_objects.in?)
+	 */
+	FILE *pipe_fd = fdopen(pack_objects.in, "w");
+	
+	if (!create_full_pack) {
+		int i;
+		
+		for (i = 0; i < want_obj.nr; i++) {
+			fprintf(pipe_fd, "%s\n", sha1_to_hex(want_obj.objects[i].item->sha1));
+		}
+		
+		fprintf(pipe_fd, "--not\n");
+		for (i = 0; i < have_obj.nr; i++) {
+			fprintf(pipe_fd, "%s\n", sha1_to_hex(have_obj.objects[i].item->sha1));
+		}
+	}
+	
+	fprintf(pipe_fd, "\n");
+	fflush(pipe_fd);
+	fclose(pipe_fd);
+
 
 	/* We read from pack_objects.err to capture stderr output for
 	 * progress bar, and pack_objects.out to capture the pack data.
@@ -276,8 +219,6 @@ static void create_pack_file(void)
 		error("git upload-pack: git-pack-objects died with error.");
 		goto fail;
 	}
-	if (finish_async(&rev_list))
-		goto fail;	/* error was already reported */
 
 	/* flush the data */
 	if (0 <= buffered) {
