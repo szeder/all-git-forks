@@ -2987,6 +2987,11 @@ if (defined $syntaxhighlighter_path) {
 <script type="text/javascript" src="$syntaxhighlighter_path/Scripts/lineHighlighter.js"></script>
 <script type="text/javascript">
 	SyntaxHighlighter.config.clipboardSwf = '$syntaxhighlighter_path/Flash/clipboard.swf';
+	SyntaxHighlighter.all();
+	window.onload = function()
+	{
+		highlightLines();
+	}
 </script>
 EOF
 }
