@@ -322,6 +322,7 @@ EXTRA_PROGRAMS =
 
 # ... and all the rest that could be moved out of bindir to gitexecdir
 PROGRAMS += $(EXTRA_PROGRAMS)
+PROGRAMS += git-daemon-cache$X
 PROGRAMS += git-fast-import$X
 PROGRAMS += git-hash-object$X
 PROGRAMS += git-index-pack$X
