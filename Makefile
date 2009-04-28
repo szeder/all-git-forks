@@ -365,9 +365,6 @@ ALL_PROGRAMS = $(PROGRAMS) $(SCRIPTS)
 
 # what 'all' will build but not install in gitexecdir
 OTHER_PROGRAMS = git$X
-ifndef NO_PERL
-OTHER_PROGRAMS += gitweb/gitweb.cgi
-endif
 
 # Set paths to tools early so that they can be used for version tests.
 ifndef SHELL_PATH
@@ -764,6 +761,7 @@ ifeq ($(uname_S),NetBSD)
 	BASIC_CFLAGS += -I/usr/pkg/include
 	BASIC_LDFLAGS += -L/usr/pkg/lib $(CC_LD_DYNPATH)/usr/pkg/lib
 	THREADED_DELTA_SEARCH = YesPlease
+	USE_ST_TIMESPEC = YesPlease
 endif
 ifeq ($(uname_S),AIX)
 	NO_STRCASESTR=YesPlease
@@ -1279,6 +1277,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	chmod +x $@+ && \
 	mv $@+ $@
 
+OTHER_PROGRAMS += gitweb/gitweb.cgi
 gitweb/gitweb.cgi: gitweb/gitweb.perl
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*perl|#!$(PERL_PATH_SQ)|' \
@@ -1557,7 +1556,7 @@ endif
 		ln "$$execdir/git-add$X" "$$execdir/$$p" 2>/dev/null || \
 		ln -s "git-add$X" "$$execdir/$$p" 2>/dev/null || \
 		cp "$$execdir/git-add$X" "$$execdir/$$p" || exit; \
-	  done } && \
+	  done; } && \
 	./check_bindir "z$$bindir" "z$$execdir" "$$bindir/git-add$X"
 
 install-doc:
