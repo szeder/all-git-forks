@@ -363,8 +363,10 @@ static void fill_lists(void)
 	while (fgets(line, sizeof(line), stdin)) {
 		if (*line == '\n')
 			break;
-		if (*line == '-' && !strcmp(line, "--not"))
+		if (*line == '-' && !strcmp(line, "--not")) {
 			curlist = &have_list;
+			continue;
+		}
 		
 		strbuf_add(curlist, line, strlen(line));
 	}
