@@ -15,9 +15,9 @@
 
 volatile show_early_output_fn_t show_early_output;
 
-static char *path_name(struct name_path *path, const char *name)
+char *path_name(const struct name_path *path, const char *name)
 {
-	struct name_path *p;
+	const struct name_path *p;
 	char *n, *m;
 	int nlen = strlen(name);
 	int len = nlen + 1;
@@ -209,7 +209,7 @@ static struct commit *handle_commit(struct rev_info *revs, struct object *object
 	}
 
 	/*
-	 * Tree object? Either mark it uniniteresting, or add it
+	 * Tree object? Either mark it uninteresting, or add it
 	 * to the list of objects to look at later..
 	 */
 	if (object->type == OBJ_TREE) {

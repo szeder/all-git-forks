@@ -42,10 +42,9 @@ Updates since v1.6.2
 * many uses of lstat(2) in the codepath for "git checkout" have been
   optimized out.
 
-* pruning reflog entries that are unreachable from the tip of the ref
-  during "git reflog prune" (hence "git gc") was very inefficient.
-
 (usability, bells and whistles)
+
+* Boolean configuration variable yes/no can be written as on/off.
 
 * rsync:/path/to/repo can be used to run git over rsync for local
   repositories.  It may not be useful in practice; meant primarily for
@@ -63,19 +62,24 @@ Updates since v1.6.2
 
 * "--oneline" is a synonym for "--pretty=oneline --abbrev-commit".
 
+* "--graph" to the "git log" family can draw the commit ancestry graph
+  in colors.
+
 * If you realize that you botched the patch when you are editing hunks
   with the 'edit' action in git-add -i/-p, you can abort the editor to
   tell git not to apply it.
-
-* The number of commits shown in "you are ahead/behind your upstream"
-  messages given by "git checkout" and "git status" used to count merge
-  commits; now it doesn't.
 
 * @{-1} is a new way to refer to the last branch you were on introduced in
   1.6.2, but the initial implementation did not teach this to a few
   commands.  Now the syntax works with "branch -m @{-1} newname".
 
 * git-archive learned --output=<file> option.
+
+* git-archive takes attributes from the tree being archived; strictly
+  speaking, this is an incompatible behaviour change, but is a good one.
+  Use --worktree-attributes option to allow it to read attributes from
+  the work tree as before (deprecated git-tar tree command always reads
+  attributes from the work tree).
 
 * git-bisect shows not just the number of remaining commits whose goodness
   is unknown, but also shows the estimated number of remaining rounds.
@@ -93,7 +97,8 @@ Updates since v1.6.2
 
 * git-clone runs post-checkout hook when run without --no-checkout.
 
-* git-fast-export choked when seeing a tag that does not point at commit.
+* git-difftool is now part of the officially supported command, primarily
+  maintained by David Aguilar.
 
 * git-for-each-ref learned a new "upstream" token.
 
@@ -147,6 +152,10 @@ Updates since v1.6.2
   knobs you can tweak to work around issues with various versions of the
   docbook-xsl package.  See comments in Documentation/Makefile for details.
 
+* Support for building and testing a subset of git on a system without a
+  working perl has been improved.
+
+
 Fixes since v1.6.2
 ------------------
 
@@ -156,26 +165,18 @@ release, unless otherwise noted.
 Here are fixes that this release has, but have not been backported to
 v1.6.2.X series.
 
+* "git-apply" rejected a patch that swaps two files (i.e. renames A to B
+  and B to A at the same time).  May need to be backported by cherry
+  picking d8c81df and then 7fac0ee).
+
 * The initial checkout did not read the attributes from the .gitattribute
   file that is being checked out.
-
-* "git-checkout <tree-ish> <submodule>" did not update the index entry at
-  the named path; it now does.
 
 * git-gc spent excessive amount of time to decide if an object appears
   in a locally existing pack (if needed, backport by merging 69e020a).
 
-* "git-ls-tree" and "git-diff-tree" used a pathspec correctly when
-  deciding to descend into a subdirectory but they did not match the
-  individual paths correctly.  This caused pathspecs "abc/d ab" to match
-  "abc/0" ("abc/d" made them decide to descend into the directory "abc/",
-  and then "ab" incorrectly matched "abc/0" when it shouldn't).
-
-* "git-merge-recursive" was broken when a submodule entry was involved in
-  a criss-cross merge situation.
-
 ---
 exec >/var/tmp/1
-O=v1.6.2.3-497-g54a4749
+O=v1.6.3-rc2
 echo O=$(git describe master)
 git shortlog --no-merges $O..master ^maint

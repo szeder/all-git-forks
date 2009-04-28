@@ -331,9 +331,9 @@ int git_config_bool_or_int(const char *name, const char *value, int *is_bool)
 		return 1;
 	if (!*value)
 		return 0;
-	if (!strcasecmp(value, "true") || !strcasecmp(value, "yes"))
+	if (!strcasecmp(value, "true") || !strcasecmp(value, "yes") || !strcasecmp(value, "on"))
 		return 1;
-	if (!strcasecmp(value, "false") || !strcasecmp(value, "no"))
+	if (!strcasecmp(value, "false") || !strcasecmp(value, "no") || !strcasecmp(value, "off"))
 		return 0;
 	*is_bool = 0;
 	return git_config_int(name, value);
@@ -492,6 +492,11 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.preloadindex")) {
 		core_preload_index = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.unreliablehardlinks")) {
+		unreliable_hardlinks = git_config_bool(var, value);
 		return 0;
 	}
 

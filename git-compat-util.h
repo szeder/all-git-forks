@@ -46,6 +46,7 @@
 #define _ALL_SOURCE 1
 #define _GNU_SOURCE 1
 #define _BSD_SOURCE 1
+#define _NETBSD_SOURCE 1
 
 #include <unistd.h>
 #include <stdio.h>
@@ -406,6 +407,12 @@ void git_qsort(void *base, size_t nmemb, size_t size,
 #define ST_CTIME_NSEC(st) ((unsigned int)((st).st_ctim.tv_nsec))
 #define ST_MTIME_NSEC(st) ((unsigned int)((st).st_mtim.tv_nsec))
 #endif
+#endif
+
+#ifdef UNRELIABLE_FSTAT
+#define fstat_is_reliable() 0
+#else
+#define fstat_is_reliable() 1
 #endif
 
 #endif
