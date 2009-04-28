@@ -77,7 +77,7 @@ static void create_pack_file(void)
 	const char *argv[10];
 	int arg = 0;
 
-	argv[arg++] = "pack-objects";
+	argv[arg++] = "daemon-cache";
 	argv[arg++] = "--stdout";
 	argv[arg++] = "--revs";
 	argv[arg++] = "--include-tag";
