@@ -25,7 +25,7 @@ BEGIN {
 our $cgi = new CGI;
 our $version = "++GIT_VERSION++";
 our $my_url = $cgi->url();
-our $my_uri = $cgi->url(-absolute => 1);
+our $my_uri = $cgi->url(-relative => 1);
 
 # Base URL for relative URLs in gitweb ($logo, $favicon, ...),
 # needed and used only for URLs with nonempty PATH_INFO
