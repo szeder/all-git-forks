@@ -167,6 +167,14 @@ all::
 # Define NO_EXTERNAL_GREP if you don't want "git grep" to ever call
 # your external grep (e.g., if your system lacks grep, if its grep is
 # broken, or spawning external process is slower than built-in grep git has).
+#
+# Define UNRELIABLE_FSTAT if your system's fstat does not return the same
+# information on a not yet closed file that lstat would return for the same
+# file after it was closed.
+#
+# Define UNRELIABLE_HARDLINKS if your operating systems has problems when
+# hardlinking a file to another name and unlinking the original file right
+# away (some NTFS drivers seem to zero the contents in that scenario).
 
 GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -805,6 +813,7 @@ ifeq ($(uname_S),HP-UX)
 endif
 ifneq (,$(findstring CYGWIN,$(uname_S)))
 	COMPAT_OBJS += compat/cygwin.o
+	UNRELIABLE_FSTAT = UnfortunatelyYes
 endif
 ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_PREAD = YesPlease
@@ -831,6 +840,8 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	NO_NSEC = YesPlease
 	USE_WIN32_MMAP = YesPlease
+	UNRELIABLE_FSTAT = UnfortunatelyYes
+	UNRELIABLE_HARDLINKS = UnfortunatelySometimes
 	COMPAT_CFLAGS += -D__USE_MINGW_ACCESS -DNOGDI -Icompat -Icompat/regex -Icompat/fnmatch
 	COMPAT_CFLAGS += -DSNPRINTF_SIZE_CORR=1
 	COMPAT_CFLAGS += -DSTRIP_EXTENSION=\".exe\"
@@ -1014,6 +1025,9 @@ else
 		COMPAT_OBJS += compat/win32mmap.o
 	endif
 endif
+ifdef UNRELIABLE_HARDLINKS
+	COMPAT_CFLAGS += -DUNRELIABLE_HARDLINKS=1
+endif
 ifdef NO_PREAD
 	COMPAT_CFLAGS += -DNO_PREAD
 	COMPAT_OBJS += compat/pread.o
@@ -1108,6 +1122,9 @@ ifdef DIR_HAS_BSD_GROUP_SEMANTICS
 endif
 ifdef NO_EXTERNAL_GREP
 	BASIC_CFLAGS += -DNO_EXTERNAL_GREP
+endif
+ifdef UNRELIABLE_FSTAT
+	BASIC_CFLAGS += -DUNRELIABLE_FSTAT
 endif
 
 ifeq ($(TCLTK_PATH),)
@@ -1522,7 +1539,9 @@ install: all
 	$(INSTALL) $(ALL_PROGRAMS) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 	$(INSTALL) git$X git-upload-pack$X git-receive-pack$X git-upload-archive$X git-shell$X git-cvsserver '$(DESTDIR_SQ)$(bindir_SQ)'
 	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
+ifndef NO_PERL
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
+endif
 ifndef NO_TCLTK
 	$(MAKE) -C gitk-git install
 	$(MAKE) -C git-gui gitexecdir='$(gitexec_instdir_SQ)' install
