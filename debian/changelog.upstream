@@ -1,3 +1,138 @@
+Version v1.6.3-rc3; changes since v1.6.3-rc2:
+---------------------------------------------
+
+Benjamin Kramer (1):
+      connect: replace inet_ntop with getnameinfo
+
+Brandon Casey (2):
+      t9001: use older Getopt::Long boolean prefix '--no' rather than '--no-'
+      t7700-repack: repack -a now works properly, expect success from test
+
+Johannes Schindelin (1):
+      Add an option not to use link(src, dest) && unlink(src) when that is unreliable
+
+Linus Torvalds (1):
+      t4202: fix typo
+
+Nicolas Pitre (1):
+      progress bar: round to the nearest instead of truncating down
+
+Sitaram Chamarty (1):
+      Remove obsolete bug warning in man git-update-server-info
+
+Wesley J. Landaker (2):
+      Documentation: git-clean: fix minor grammatical errors
+      Documentation: git-clean: make description more readable
+
+
+Version v1.6.3-rc2; changes since v1.6.3-rc1:
+---------------------------------------------
+
+Alex Riesen (2):
+      Wait for git diff to finish in git difftool
+      Explain seemingly pointless use of system in difftool
+
+Allan Caffee (3):
+      t4202-log: extend test coverage of graphing
+      graph API: fix extra space during pre_commit_line state
+      graph API: fix a bug in the rendering of octopus merges
+
+Ben Jackson (1):
+      Work around ash "alternate value" expansion bug
+
+Bill Pemberton (1):
+      Add parsing of elm aliases to git-send-email
+
+Dan Loewenherz (1):
+      Convert to use quiet option when available
+
+Erik Faye-Lund (4):
+      test-suite: adding a test for fast-export with tag variants
+      builtin-fast-export.c: turn error into warning
+      builtin-fast-export.c: fix crash on tagged trees
+      builtin-fast-export.c: handle nested tags
+
+Frank Lichtenheld (1):
+      gitcvs-migration: Link to git-cvsimport documentation
+
+Holger Weiß (1):
+      gitweb: Fix snapshots requested via PATH_INFO
+
+Jeff King (2):
+      add-interactive: refactor mode hunk handling
+      t7800: respect NO_PERL
+
+Johan Herland (1):
+      Update docs on behaviour of 'core.sharedRepository' and 'git init --shared'
+
+Johannes Schindelin (1):
+      Fix off-by-one in read_tree_recursive
+
+Johannes Sixt (4):
+      Windows: Work around intermittent failures in mingw_rename
+      Windows: Skip fstat/lstat optimization in write_entry()
+      builtin-help: silently tolerate unknown keys
+      remote.c: do not trigger remote.<name>.<var> codepath for two-level names
+
+Junio C Hamano (8):
+      GIT 1.6.2.4
+      read-tree A B: do not corrupt cache-tree
+      Move prime_cache_tree() to cache-tree.c
+      read-tree -m A B: prime cache-tree from the switched-to tree
+      checkout branch: prime cache-tree fully
+      Revert "stat_tracking_info(): only count real commits"
+      Makefile: ignore perl/ subdirectory under NO_PERL
+      GIT 1.6.3-rc2
+
+Junio Hamano (1):
+      Speed up reflog pruning of unreachable commits
+
+Linus Torvalds (1):
+      Clean up reflog unreachability pruning decision
+
+Markus Heidelberg (1):
+      grep: don't support "grep.color"-like config options
+
+Matthieu Moy (3):
+      git add -p: new "quit" command at the prompt.
+      Update git-add.txt according to the new possibilities of 'git add -p'.
+      clone: add test for push on an empty clone.
+
+Michael J Gruber (2):
+      test-lib.sh: Help test_create_repo() find the templates dir
+      Fix more typos/spelling in comments
+
+Michał Kiedrowicz (3):
+      tests: test applying criss-cross rename patch
+      builtin-apply: keep information about files to be deleted
+      tests: make test-apply-criss-cross-rename more robust
+
+Mike Ralphson (3):
+      builtin-remote: fix typo in option description
+      Documentation: fix typos / spelling mistakes
+      Fix typos / spelling in comments
+
+Nguyễn Thái Ngọc Duy (1):
+      Makefile: remove {fetch,send}-pack from PROGRAMS as they are builtins
+
+Stephen Boyd (8):
+      test-genrandom: Add newline to usage string
+      config.txt: add missing format.{subjectprefix,cc,attach} variables
+      Documentation: use lowercase for shallow and deep threading
+      git-show-branch.txt: cleanup example description
+      git-format-patch.txt: general rewordings and cleanups
+      config.txt: add missing 'the's and make words plural
+      config.txt: clarify sentences in the configuration and syntax sections
+      config.txt: Make configuration paragraph more consistent
+
+Wesley J. Landaker (2):
+      Documentation: git-svn: fix spurious bolding that mangles the output
+      Documentation: git-svn: fix a grammatical error without awkwardness
+
+Wincent Colaiuta (1):
+      git add -p: add missing "q" to patch prompt
+
+
 Version v1.6.3-rc1; changes since v1.6.3-rc0:
 ---------------------------------------------
 
