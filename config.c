@@ -495,8 +495,13 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "core.unreliablehardlinks")) {
-		unreliable_hardlinks = git_config_bool(var, value);
+	if (!strcmp(var, "core.createobject")) {
+		if (!strcmp(value, "rename"))
+			object_creation_mode = OBJECT_CREATION_USES_RENAMES;
+		else if (!strcmp(value, "link"))
+			object_creation_mode = OBJECT_CREATION_USES_HARDLINKS;
+		else
+			die("Invalid mode for object creation: %s", value);
 		return 0;
 	}
 
@@ -996,7 +1001,7 @@ int git_config_set_multivar(const char* key, const char* value,
 	lock = xcalloc(sizeof(struct lock_file), 1);
 	fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (fd < 0) {
-		error("could not lock config file %s", config_filename);
+		error("could not lock config file %s: %s", config_filename, strerror(errno));
 		free(store.key);
 		ret = -1;
 		goto out_free;
