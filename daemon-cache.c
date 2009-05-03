@@ -330,8 +330,6 @@ static int daemon_cache(void)
 		case DAEMON_CACHE_ROTTEN : 
 			fprintf(stderr, "repacking\n");
 			fd = open(git_path("daemon-cache/%s", name), O_CREAT | O_WRONLY | O_TRUNC, 0666);
-			/* strcpy(tmpfile, git_path("daemon-cache/%s_XXXXXX", name));
-			fd = xmkstemp(tmpfile); */
 			
 			retval = middle_man_stream(fd);
 			if (fd >= 0) {
