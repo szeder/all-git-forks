@@ -32,7 +32,6 @@ enum cache_status {
 	DAEMON_CACHE_ROTTEN /* rewrite the whole thing */
 };
 
-char create_full_pack = 0;
 struct daemon_cache *metadata = 0;
 struct strbuf want_list = { 0 }, have_list = { 0 };
 const char *g_argv[20];
@@ -63,7 +62,7 @@ static char *get_head_sha1(void)
 	return sha1;
 }
 
-static char *get_cache_name(void)
+static char *get_cache_name(char create_full_pack, struct strbuf *_want_list, struct strbuf *_have_list)
 {
 	/* analyze on the basis wants/haves?
 	 * eg. cache for commits between tags? (between releases)
@@ -299,13 +298,13 @@ static enum cache_status get_cache_status(char *name, int *fd)
 	return retval;
 }
 
-static int daemon_cache(void)
+static int daemon_cache(char create_full_pack, struct strbuf *_want_list, struct strbuf *_have_list)
 {
 	int retval, fd;
 	char tmpfile[PATH_MAX];
 	char *name;
 	
-	name = get_cache_name();
+	name = get_cache_name(create_full_pack, _want_list, _have_list);
 	
 	if (!name)
 		return middle_man_stream(-1);
@@ -371,6 +370,7 @@ static void fill_lists_from_stdin(struct strbuf *_want_list, struct strbuf *_hav
 int main(int argc, char *argv[])
 {
 	int i;
+	char create_full_pack = 0;
 	
 	g_argv[0] = "pack-objects";
 	for (i = 1; i < argc; i++) {
@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
 	g_argv[i] = 0;
 	
 	fill_lists_from_stdin(&want_list, &have_list);
-	daemon_cache();
+	daemon_cache(create_full_pack, &want_list, &have_list);
 	
 	strbuf_release(&want_list);
 	strbuf_release(&have_list);
