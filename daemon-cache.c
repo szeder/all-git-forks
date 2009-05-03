@@ -27,9 +27,8 @@ struct daemon_cache {
 };
 
 enum cache_status {
-	DAEMON_CACHE_FRESH, /* direct stream */
-	DAEMON_CACHE_STALE, /* make up for difference but don't actually update */
-	DAEMON_CACHE_SMELLY, /* update also */
+	DAEMON_CACHE_FRESH, /* directly stream */
+	DAEMON_CACHE_STALE, /* pack differences */
 	DAEMON_CACHE_ROTTEN /* rewrite the whole thing */
 };
 
@@ -288,7 +287,6 @@ static enum cache_status get_cache_status(char *name, int *fd)
 	if (!(extra & 0x02) || extra & 0x01)
 		retval = DAEMON_CACHE_ROTTEN;
 	
-	/* todo: figure out when we should update (ie. DAEMON_CACHE_SMELLY) */
 	if (!retval) 
 		retval = DAEMON_CACHE_STALE;
 	else if (retval == DAEMON_CACHE_ROTTEN) {
@@ -320,7 +318,6 @@ static int daemon_cache(void)
 			break;
 			
 		case DAEMON_CACHE_STALE : 
-		case DAEMON_CACHE_SMELLY : /* todo: implement */
 			fprintf(stderr, "supplimenting cache\n");
 			retval = file_stream(fd);
 			close(fd);
