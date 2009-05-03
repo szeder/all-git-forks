@@ -204,7 +204,7 @@ static int read_cache_metadata(char *name, struct daemon_cache **dcp)
 	*dcp = dc = xcalloc(sizeof(struct daemon_cache), 1);
 	fd = fopen(git_path("daemon-cache/%s-meta", name), "r");
 	if (!fd)
-		goto bad;
+		goto verybad;
 	
 	/* general data */
 	if (!fgets(line, sizeof(line), fd))
@@ -231,6 +231,7 @@ static int read_cache_metadata(char *name, struct daemon_cache **dcp)
 	
 bad:
 	fclose(fd);
+ verybad:
 	
 	return -1;
 }
