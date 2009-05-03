@@ -1,0 +1,12 @@
+From: Nick Edelen <sirnot@gmail.com>
+Subject: daemon-cache: caching layer between upload-pack and pack-objects
+
+The concept is that certain fetches will be really common
+(obvious: clone, but also between major releases, eg.), something we
+could exploit by caching packfiles of those requests and serving them
+directly from disk.
+
+git's structure makes this very easy as we can just route pipes
+between upload-pack and pack-objects through daemon-cache.
+interestingly, in it's currently implementation it would make full
+clone restarts a very real possibility, even after commits.
