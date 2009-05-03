@@ -166,7 +166,7 @@ static void create_pack_file(void)
 			die("git upload-pack: unable to fork git-rev-list");
 		argv[arg++] = "pack-objects";
 	} else {
-		argv[arg++] = "pack-objects";
+		argv[arg++] = "daemon-cache";
 		argv[arg++] = "--revs";
 		argv[arg++] = "--include-tag";
 		if (create_full_pack)
