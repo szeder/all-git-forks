@@ -351,22 +351,21 @@ static int daemon_cache(void)
 	return retval;
 }
 
-static void fill_lists(void)
+static void fill_lists_from_stdin(struct strbuf *_want_list, struct strbuf *_have_list)
 {
-	struct strbuf *curlist = &want_list;
+	struct strbuf *curlist = _want_list;
 	char line[1024];
 	
 	while (fgets(line, sizeof(line), stdin)) {
 		if (*line == '\n')
 			break;
 		if (*line == '-' && !strcmp(line, "--not")) {
-			curlist = &have_list;
+			curlist = _have_list;
 			continue;
 		}
 		
 		strbuf_add(curlist, line, strlen(line));
 	}
-	
 }
 
 int main(int argc, char *argv[])
@@ -381,7 +380,7 @@ int main(int argc, char *argv[])
 	}
 	g_argv[i] = 0;
 	
-	fill_lists();
+	fill_lists_from_stdin(&want_list, &have_list);
 	daemon_cache();
 	
 	strbuf_release(&want_list);
