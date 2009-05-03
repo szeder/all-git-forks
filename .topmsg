@@ -1,0 +1,6 @@
+From: Nick Edelen <sirnot@gmail.com>
+Subject: primitive patch to upload-pack shifting ref enumeration to pack-objects
+    
+instead of using the internal revision walker and piping object refs to pack-objects this patch passes only the revs to pack-objects, which in turn handles both enumeration and packing.  does not handle shallow objects, and frankly I'm not uber confident about it anyway.  works though.
+
+Signed-off-by: Sam Vilain <sam@vilain.net>
