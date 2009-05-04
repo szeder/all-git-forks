@@ -406,7 +406,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 				pp = &parent->next;
 				continue;
 			}
-			parent->next = NULL;
+			parent->next = NULL; /* ME: isn't this leaking memory? */
 			commit->parents = parent;
 			commit->object.flags |= TREESAME;
 			return;
@@ -662,7 +662,7 @@ static int limit_list(struct rev_info *revs)
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
 			return -1;
 		if (obj->flags & UNINTERESTING) {
-			mark_parents_uninteresting(commit);
+			mark_parents_uninteresting(commit); /* ME: why? */
 			if (revs->show_all)
 				p = &commit_list_insert(commit, p)->next;
 			slop = still_interesting(list, date, slop);
