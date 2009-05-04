@@ -219,6 +219,9 @@ static struct cache_entry *create_ce_entry(const struct traverse_info *info, con
 
 	ce->ce_mode = create_ce_mode(n->mode);
 	ce->ce_flags = create_ce_flags(len, stage);
+	if (is_fantom(n->sha1))
+		ce->ce_flags |= CE_FANTOM | CE_EXTENDED;
+	
 	hashcpy(ce->sha1, n->sha1);
 	make_traverse_path(ce->name, info, n);
 

@@ -181,10 +181,11 @@ struct cache_entry {
  * Extended on-disk flags
  */
 #define CE_INTENT_TO_ADD 0x20000000
+#define CE_FANTOM        0x40000000
 /* CE_EXTENDED2 is for future extension */
 #define CE_EXTENDED2 0x80000000
 
-#define CE_EXTENDED_FLAGS (CE_INTENT_TO_ADD)
+#define CE_EXTENDED_FLAGS (CE_INTENT_TO_ADD | CE_FANTOM)
 
 /*
  * Safeguard to avoid saving wrong flags:
@@ -234,6 +235,7 @@ static inline size_t ce_namelen(const struct cache_entry *ce)
 #define ce_stage(ce) ((CE_STAGEMASK & (ce)->ce_flags) >> CE_STAGESHIFT)
 #define ce_uptodate(ce) ((ce)->ce_flags & CE_UPTODATE)
 #define ce_mark_uptodate(ce) ((ce)->ce_flags |= CE_UPTODATE)
+#define ce_fantom(ce) ((ce)->ce_flags & CE_FANTOM)
 
 #define ce_permissions(mode) (((mode) & 0100) ? 0755 : 0644)
 static inline unsigned int create_ce_mode(unsigned int mode)
