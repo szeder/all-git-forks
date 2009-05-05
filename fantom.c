@@ -57,3 +57,14 @@ int is_fantom(const unsigned char *sha1)
 	fclose(fd);
 	return 0;
 }
+
+char *strip_fantom_suffix(char *path)
+{
+	int len = strlen(path);
+	
+	if (len > 7 && !strncmp(path + len - 7, ".FANTOM", 7)) {
+		path[len - 7] = 0;
+	}
+	
+	return path;
+}

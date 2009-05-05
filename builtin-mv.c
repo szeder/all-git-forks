@@ -53,7 +53,7 @@ static struct lock_file lock_file;
 
 int cmd_mv(int argc, const char **argv, const char *prefix)
 {
-	int i, newfd;
+	int i, newfd, pos;
 	int verbose = 0, show_only = 0, force = 0, ignore_errors = 0;
 	struct option builtin_mv_options[] = {
 		OPT__DRY_RUN(&show_only),
@@ -162,8 +162,10 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 				}
 				argc += last - first;
 			}
-		} else if (cache_name_pos(src, length) < 0)
+		} else if ((pos = cache_name_pos(strip_fantom_suffix(src), length)) < 0)
 			bad = "not under version control";
+		else if (ce_fantom(active_cache[pos]))
+			bad = "fantom objects can't be moved";
 		else if (lstat(dst, &st) == 0) {
 			bad = "destination exists";
 			if (force) {
@@ -203,7 +205,6 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < argc; i++) {
 		const char *src = source[i], *dst = destination[i];
 		enum update_mode mode = modes[i];
-		int pos;
 		if (show_only || verbose)
 			printf("Renaming %s to %s\n", src, dst);
 		if (!show_only && mode != INDEX &&

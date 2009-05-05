@@ -261,6 +261,10 @@ int ie_match_stat(const struct index_state *istate,
 	int ignore_valid = options & CE_MATCH_IGNORE_VALID;
 	int assume_racy_is_modified = options & CE_MATCH_RACY_IS_DIRTY;
 
+	/* fantom objects are beyond the realms of mere humans */
+	if (ce_fantom(ce))
+		return 0;
+
 	/*
 	 * If it's marked as always valid in the index, it's
 	 * valid whatever the checked-out copy says.
@@ -574,11 +578,28 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
 		return error("%s: can only add regular files, symbolic links or git-directories", path);
 
-	namelen = strlen(path);
 	if (S_ISDIR(st_mode)) {
+		namelen = strlen(path);
 		while (namelen && path[namelen-1] == '/')
 			namelen--;
 	}
+	else {
+		strip_fantom_suffix(path);
+		namelen = strlen(path);
+	}
+	
+	alias = index_name_exists(istate, path, namelen, ignore_case);
+	if (alias) {
+		if (ce_fantom(alias))
+			return 0;
+		if (!ce_stage(alias) && !ie_match_stat(istate, alias, st, ce_option)) {
+			/* Nothing changed, really */
+			ce_mark_uptodate(alias);
+			alias->ce_flags |= CE_ADDED;
+			return 0;
+		}
+	}
+	
 	size = cache_entry_size(namelen);
 	ce = xcalloc(1, size);
 	memcpy(ce->name, path, namelen);
@@ -600,15 +621,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		ent = (0 <= pos) ? istate->cache[pos] : NULL;
 		ce->ce_mode = ce_mode_from_stat(ent, st_mode);
 	}
-
-	alias = index_name_exists(istate, ce->name, ce_namelen(ce), ignore_case);
-	if (alias && !ce_stage(alias) && !ie_match_stat(istate, alias, st, ce_option)) {
-		/* Nothing changed, really */
-		free(ce);
-		ce_mark_uptodate(alias);
-		alias->ce_flags |= CE_ADDED;
-		return 0;
-	}
+	
 	if (!intent_only) {
 		if (index_path(ce->sha1, path, st, 1))
 			return error("unable to index file %s", path);
@@ -685,7 +698,7 @@ int ce_path_match(const struct cache_entry *ce, const char **pathspec)
 
 	len = ce_namelen(ce);
 	name = ce->name;
-	while ((match = *pathspec++) != NULL) {
+	while ((match = strip_fantom_suffix(*pathspec++)) != NULL) {
 		int matchlen = strlen(match);
 		if (matchlen > len)
 			continue;

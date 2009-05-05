@@ -100,10 +100,16 @@ static int same_name(const struct cache_entry *ce, const char *name, int namelen
 	return icase && slow_same_name(name, namelen, ce->name, len);
 }
 
-struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int icase)
+struct cache_entry *index_name_exists(struct index_state *istate, const char *rawname, int namelen, int icase)
 {
-	unsigned int hash = hash_name(name, namelen);
+	unsigned int hash;
+	char name[PATH_MAX];
 	struct cache_entry *ce;
+
+	memcpy(name, rawname, namelen);
+	strip_fantom_suffix(name);
+	namelen = strlen(name);
+	hash = hash_name(name, namelen);
 
 	lazy_init_name_hash(istate);
 	ce = lookup_hash(hash, &istate->name_hash);
