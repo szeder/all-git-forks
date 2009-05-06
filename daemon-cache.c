@@ -31,7 +31,8 @@ enum cache_status {
 	DAEMON_CACHE_FRESH, /* direct stream */
 	DAEMON_CACHE_STALE, /* make up for difference but don't actually update */
 	DAEMON_CACHE_SMELLY, /* update also */
-	DAEMON_CACHE_ROTTEN /* rewrite the whole thing */
+	DAEMON_CACHE_ROTTEN, /* rewrite the whole thing */
+	DAEMON_CACHE_TOXIC /* it's being written by something else, don't touch at all */
 };
 
 char create_full_pack = 0;
@@ -225,16 +226,21 @@ static int add_ref_to_metadata(const char *ref, const unsigned char *sha1, int f
 }
 
 /* todo: use temp file? */
-static int write_cache_metadata(char *name, struct daemon_cache *dc)
+static int write_cache_metadata(char *name, struct daemon_cache *dc, char *loudmouth)
 {
 	FILE *fd;
 	
-	fd = fopen(git_path("daemon-cache/%s-meta", name), "w");
+	fd = fopen(git_path("daemon-cache/%s-meta", name), "a");
 	if (!fd)
 		goto bad;
 	
-	fprintf(fd, "%lu %lu %d\n%s\n", dc->timestamp, dc->filesize, dc->nheads, sha1_to_hex(dc->head_sha1));
-	fprintf(fd, "%s", dc->heads.buf);
+	fseek(fd, 0, SEEK_SET);
+	if (loudmouth)
+		fprintf(fd, "%s", loudmouth);
+	else {
+		fprintf(fd, "%lu %lu %d\n%s\n", dc->timestamp, dc->filesize, dc->nheads, sha1_to_hex(dc->head_sha1));
+		fprintf(fd, "%s", dc->heads.buf);
+	}
 	
 	fclose(fd);
 	return 0;
@@ -258,6 +264,10 @@ static int read_cache_metadata(char *name, struct daemon_cache **dcp)
 	/* general data */
 	if (!fgets(line, sizeof(line), fd))
 		goto bad;
+	if (!strncmp(line, "DONTTOUCHME", 11)) {
+		fclose(fd);
+		return 1;
+	}
 	sscanf(line, "%lu %lu %d", &dc->timestamp, &dc->filesize, &dc->nheads);
 	if (!dc->nheads || !dc->filesize)
 		goto bad;
@@ -286,7 +296,8 @@ bad:
 }
 
 /* this whole reflog deal is pretty kludgey to be honest.  
- * just feels... unprofessional */
+ * just feels... unprofessional
+ */
 static int check_reflog(unsigned char *osha1, unsigned char *nsha1, 
 	const char *email, unsigned long timestamp, 
 	int tz, const char *message, void *extra)
@@ -316,10 +327,14 @@ static enum cache_status get_cache_status(char *name, int *fd)
 {
 	struct stat fi;
 	enum cache_status retval = 0;
+	int r;
 	
 	/* rudimentary checks */
 	*fd = -1;
-	if (read_cache_metadata(name, &metadata)
+	r = read_cache_metadata(name, &metadata);
+	if (r == 1)
+		return DAEMON_CACHE_TOXIC;
+	else if (r < 0
 		|| (*fd = open(git_path("daemon-cache/%s", name), O_RDONLY)) < 0
 		|| fstat(*fd, &fi) 
 		|| fi.st_size != metadata->filesize
@@ -379,6 +394,7 @@ static int daemon_cache(void)
 			
 		case DAEMON_CACHE_ROTTEN : 
 			fprintf(stderr, "repacking\n");
+			write_cache_metadata(name, 0, "DONTTOUCHME");
 			fd = open(git_path("daemon-cache/%s", name), O_CREAT | O_WRONLY | O_TRUNC, 0666);
 			
 			/* I was under the impression that rename(2) allows for atomic file updates
@@ -397,8 +413,12 @@ static int daemon_cache(void)
 			for_each_branch_ref(add_ref_to_metadata, (void *)metadata);
 			memcpy(metadata->head_sha1, get_head_sha1(), 20);
 			metadata->filesize = retval;
-			write_cache_metadata(name, metadata);
+			write_cache_metadata(name, metadata, 0);
 			break;
+			
+		case DAEMON_CACHE_TOXIC : 
+			fprintf(stderr, "unable to use cache\n");
+			retval = middle_man_stream(-1, 0);
 	}
 	
 	strbuf_release(&metadata->heads);
