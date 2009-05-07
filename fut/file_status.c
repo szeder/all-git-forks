@@ -92,6 +92,7 @@ get_staged_files(file_status_t** files, int* count)
 	return diff_result_code(&rev.diffopt, result);
 }
 
+/*
 int
 get_untracked_files(file_status_t** files, int* count)
 {
@@ -124,5 +125,5 @@ get_untracked_files(file_status_t** files, int* count)
 	}
 	strbuf_release(&buf);
 }
-
+*/
 
