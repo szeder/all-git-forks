@@ -8,6 +8,7 @@ SRCS := \
     cmd_help.c \
     cmd_stage.c \
     cmd_unstage.c \
+    cmd_version.c \
     file_status.c \
     run_git.c \
     fut.c
