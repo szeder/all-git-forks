@@ -20,6 +20,7 @@ stage_interactive(void)
 
     err = get_working_directory_changed_files(&files, &count);
     err = get_staged_files(&files, &count);
+    err = get_untracked_files(&files, &count);
 
     return 0;
 }
