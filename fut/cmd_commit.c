@@ -61,6 +61,15 @@ command_t cmd_commit = {
     .name = "commit",
     .func = run_commit,
     .short_help = "commits the current stage to the repository",
-    .long_help = "long help: commit\n"
+    .long_help = "usage: fut commit\n"
+                 "  Commits the files in the working directory.  Once\n"
+                 "  a file has been added to the stage, committing\n"
+                 "  with this version of commit will pull any additional\n"
+                 "  changes made in that file in the working directory\n"
+                 "  into the commit.\n"
+                 "\n"
+                 "usage: fut commit --stage\n"
+                 "  Commits the files as they exist on the stage\n"
+                 "  does not look at the working directory.\n"
 };
 

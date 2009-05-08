@@ -12,15 +12,22 @@ static int option_force = 0;
 static int
 stage_interactive(void)
 {
+    int i;
     int err;
-    file_status_t* files;
-    int count;
+    file_status_vector_t files;
+
+    init_file_status_vector(&files);
 
     printf("stage_interactive option_force=%d\n", option_force);
 
-    err = get_working_directory_changed_files(&files, &count);
-    err = get_staged_files(&files, &count);
-    err = get_untracked_files(&files, &count);
+    err = get_working_directory_changed_files(&files);
+    err = get_staged_files(&files);
+    err = get_untracked_files(&files);
+
+    for (i=0; i<files.count; i++) {
+        printf("  %s (%s)\n", files.files[i].filename.buf,
+                status_to_status_label(files.files[i].status));
+    }
 
     return 0;
 }
