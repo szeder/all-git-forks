@@ -21,7 +21,8 @@ command_t cmd_unstage = {
     .long_help = "usage: fut unstage FILES...\n"
                  "\n"
                  "Removes FILES from the stage.  After running this command, FILES\n"
-                 "will not be committed if fut commit is run.\n"
+                 "will not be committed if fut commit is run.  This command does not\n"
+                 "touch the files in the working directory in any way.\n"
 };
 
 
