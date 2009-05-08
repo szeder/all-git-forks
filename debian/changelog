@@ -1,3 +1,10 @@
+git-core (1:1.6.3-1) unstable; urgency=low
+
+  * new upstream release.
+  * merge branch debian-experimental.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 08 May 2009 07:57:39 +0000
+
 git-core (1:1.6.3~rc3-1) experimental; urgency=low
 
   * new upstream release candidate.
