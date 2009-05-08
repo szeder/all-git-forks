@@ -659,6 +659,7 @@ static int limit_list(struct rev_info *revs)
 
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
+		/* ME: here too */
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
 			return -1;
 		if (obj->flags & UNINTERESTING) {
@@ -1724,10 +1725,17 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		 * that we'd otherwise have done in limit_list().
 		 */
 		if (!revs->limited) {
+			int used_cache;
 			if (revs->max_age != -1 &&
 			    (commit->date < revs->max_age))
 				continue;
-			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
+			
+			if (revs.lite && which_cache = in_revcache(commit->object.sha1))
+				used_cache = !traverse_revcache(revs, which_cache, commit->object.sha1, &revs->queue, &revs->commits, &revs->pending);
+			else 
+				used_cache = 0;
+			
+			if (!used_cache && add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
 				die("Failed to traverse parents of commit %s",
 				    sha1_to_hex(commit->object.sha1));
 		}
