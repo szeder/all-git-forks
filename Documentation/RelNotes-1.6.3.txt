@@ -37,6 +37,12 @@ Updates since v1.6.2
 
 * various git-svn updates.
 
+* git-gui updates, including an update to Russian translation, and a
+  fix to an infinite loop when showing an empty diff.
+
+* gitk updates, including an update to Russian translation and improved Windows
+  support.
+
 (performance)
 
 * many uses of lstat(2) in the codepath for "git checkout" have been
@@ -174,9 +180,3 @@ v1.6.2.X series.
 
 * git-gc spent excessive amount of time to decide if an object appears
   in a locally existing pack (if needed, backport by merging 69e020a).
-
----
-exec >/var/tmp/1
-O=v1.6.3-rc2
-echo O=$(git describe master)
-git shortlog --no-merges $O..master ^maint
