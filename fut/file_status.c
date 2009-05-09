@@ -18,14 +18,22 @@ char const* DIFF_WORKING_DIR_ARGS[] = {
 void
 init_file_status_vector(file_status_vector_t* v)
 {
+    int bufsize;
     v->count = 0;
     v->alloc = 20;
-    v->files = malloc(sizeof(file_status_t)*v->alloc);
+    bufsize = sizeof(file_status_t)*v->alloc;
+    v->files = malloc(bufsize);
+    memset(v->files, 0xab, bufsize);
 }
 
 void
 destroy_file_status_vector(file_status_vector_t* v)
 {
+    int i;
+    const int N = v->count;
+    for (i=0; i<N; i++) {
+        strbuf_release(&(v->files[i].filename));
+    }
     free(v->files);
     v->files = NULL;
     v->count = 0xdeadbeef;
@@ -40,6 +48,7 @@ insert_file_status(file_status_vector_t* v, char status, const char* path)
     int cmp;
     int N = v->count;
     int len = strlen(path);
+    int bufsize;
     for (i=0; i<v->count; i++) {
         cmp = strcmp(path, v->files[i].filename.buf);
         if (cmp < 0) {
@@ -48,7 +57,9 @@ insert_file_status(file_status_vector_t* v, char status, const char* path)
     }
     if ((N+1) < v->alloc) {
         v->alloc *= 2;
-        file_status_t* tmp = malloc(sizeof(file_status_t)*v->alloc);
+        bufsize = sizeof(file_status_t)*v->alloc;
+        file_status_t* tmp = malloc(bufsize);
+        memset(tmp, 0xab, bufsize);
         if (i != 0) {
             memcpy(tmp, v->files, sizeof(file_status_t)*i);
         }
@@ -66,6 +77,17 @@ insert_file_status(file_status_vector_t* v, char status, const char* path)
     strbuf_add(&v->files[i].filename, path, len);
     v->files[i].status = status;
     v->count++;
+}
+
+void
+delete_file_status(file_status_vector_t* v, int index)
+{
+    strbuf_release(&v->files[index].filename);
+    if (index != v->count-1) {
+        memmove(v->files+index, v->files+index+1, sizeof(file_status_t)*(v->count-index));
+    }
+    v->count--;
+    memset(v->files+v->count, 0xbc, sizeof(file_status_t));
 }
 
 void
@@ -166,25 +188,41 @@ status_to_status_label(char status)
 {
     switch (status) {
         case 'A':
-            return "added";
-        case 'C':
-            return "copied";
-        case 'D':
-            return "deleted";
-        case 'M':
-            return "modified";
-        case 'R':
-            return "renamed";
-        case 'T':
-            return "modechanged";
-        case 'U':
-            return "unmerged";
         case 'K':
-            return "untracked";
+            return "added:      ";
+        case 'C':
+            return "copied:     ";
+        case 'D':
+            return "deleted:    ";
+        case 'M':
+            return "modified:   ";
+        case 'R':
+            return "renamed:    ";
+        case 'T':
+            return "modechanged:";
+        case 'U':
+            return "unmerged:   ";
         case 'X':
         default:
-            return "unknown";
-
+            return "unknown:    ";
     }
+}
+
+char
+combine_statuses(char staged, char working)
+{
+    if (working == 'D') {
+        // If it's deleted in the the working dir, who cares what's in the stage,
+        // unless it was added, in which case, we just won't even show it.
+        if (staged == 'A') {
+            return ' ';
+        } else {
+            return 'D';
+        }
+    }
+    if (staged == 'A') {
+        return 'A';
+    }
+    return working;
 }
 

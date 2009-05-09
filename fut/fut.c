@@ -13,9 +13,9 @@ extern command_t cmd_version;
 command_t const* COMMANDS[] = {
     &cmd_commit,
     &cmd_help,
-    &cmd_stage,
+//    &cmd_stage,
     &cmd_status,
-    &cmd_unstage,
+//    &cmd_unstage,
     &cmd_version,
     NULL
 };

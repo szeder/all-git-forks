@@ -33,6 +33,9 @@ int get_untracked_files(file_status_vector_t* v);
 // Returns a human-readable status string for one of the status code chars.
 const char* status_to_status_label(char status);
 
+// Combines the the status in the working directory and stage
+char combine_statuses(char staged, char working);
+
 
 #endif FILE_STATUS_H
 
