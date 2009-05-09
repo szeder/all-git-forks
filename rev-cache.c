@@ -1,3 +1,5 @@
+#include "cache.h"
+#include "commit.h"
 
 /*
 
@@ -199,14 +201,14 @@ static int get_bitmap(struct cache_header *head, unsigned char *map, struct comm
 		if (!memcmp(be->sha1, end->sha1, 20))
 			break;
 		
-		index += sizeof(struct bitmap_entry) + ntohl(be->z_size);
+		index += sizeof(struct bitmap_entry) + be->z_size;
 	}
 	
 	if (index >= head->size - sizeof(struct bitmap_entry))
 		return 1;
 	
 	memcpy(bitmap->sha1, be->sha1, 20);
-	bitmap->z_size = ntohl(be->z_size);
+	bitmap->z_size = be->z_size;
 	
 	bitmap->bitmap = xcalloc(head->objects / 8 + 1, 1);
 	memcpy(bitmap->bitmap, be + sizeof(struct bitmap_entry), bitmap->z_size);
@@ -225,16 +227,6 @@ static int get_cache_header(unsigned char *map, int len, struct cache_header *he
 		return -1
 	if (head->version > SUPPORTED_REVCACHE_VERSION)
 		return -2;
-	
-	/* I'm not strictly sure if this is a necessary step, as I doubt 
-	 * these caches would change machine, but it's probably better to be 
-	 * safe than sorry
-	 */
-	head->ofs_objects = ntohl(head->ofs_objects);
-	head->ofs_bitmaps = ntohl(head->ofs_bitmaps);
-	head->objects = ntohl(head->objects);
-	head->starts = ntohs(head->starts);
-	head->ends = ntohs(head->ends);
 	
 	t = sizeof(struct cache_header) + (head->starts + head->ends) * 20;
 	if (t != head->ofs_objects || t >= len)
@@ -352,14 +344,12 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	else if (made > 0) {
 		make_bitmap(&head, map, commit, &bitmap);
 		bitmap.z_size = compress_bitmap(bitmap.bitmap, head.objects / 8 + 1);
-		bitmap.z_size = htonl(bitmap.z_size);
 		
 		/* yes we really are writing the useless pointer address too */
 		lseek(fd, fi.st_size, SEEK_SET);
 		write(fd, &bitmap, sizeof(struct bitmap_entry));
 		write(fd, bitmap->bitmap, bitmap->z_size);
 		
-		bitmap.z_size = ntohl(bitmap.z_size);
 		deflate_bitmap(bitmap.bitmap, bitmap.z_size);
 	}
 	
@@ -429,3 +419,113 @@ static int traverse_cache_slice_2(...)
 	}
 	
 }
+
+
+
+int make_cache_slice(struct commit_list **ends, struct commit_list **starts)
+{
+	
+}
+
+static int get_index_head(unsigned char *map, int len, struct index_header *head, unsigned int *fanout)
+{
+	int index = sizeof(struct index_header);
+	
+	memcpy(head, map, sizeof(struct index_header));
+	if (len < index + head->caches_buffer * 20 + (0x100) * sizeof(unsigned int))
+		return -1;
+	
+	head->cache_sha1s = xmalloc(head->caches * 20);
+	memcpy(head->cache_sha1s, map + index, head->caches * 20);
+	index += head->caches_buffer * 20;
+	
+	memcpy(fanout, map + index, (0x100) * sizeof(unsigned int));
+	fanout[0x100] = len;
+	
+	return 0;
+}
+
+static int init_index(void)
+{
+	int fd;
+	unsigned char *map;
+	struct index_header *head;
+	
+	/* todo: store mapping/fanout for re-use */
+	fd = open(git_path("rev-cache/index"), O_RDONLY);
+	if (fd == -1 || lstat(fd, &fi))
+		goto end;
+	if (fi.st_size < sizeof(head))
+		goto end;
+	
+	map = mmap(fd, fi.st_size, PROT_READ, MAP_PRIVATE, 0);
+	if (map == MAP_FAILED)
+		goto end;
+	if (get_index_head(map, fi.st_size, &head, &fanout))
+		goto end;
+	
+	atexit(...);
+	
+end:
+	
+	
+}
+
+const char *in_cache_slice(struct commit *commit)
+{
+	int start, end, len, i;
+	struct index_entry *ie;
+	
+	/* binary search */
+	start = fanout[commit->sha1[0]];
+	end = fanout[commit->sha1[0] + 1];
+	len = (end - start) / sizeof(struct index_entry);
+	if (!len || len * sizeof(struct index_entry) != end - start)
+		return 0;
+	
+	i = len / 2;
+	do {
+		ie = (struct index_entry *)(map + start + i * sizeof(struct index_entry));
+		retval = memcmp(ie->sha1, commit->sha1, 20);
+		
+		if (r > 0) {
+			len /= 2;
+			i += len;
+		} else if (r < 0) { 
+			len /= 2;
+			i -= len;
+		} else {
+			if (ie->cache_index < head->caches)
+				return head->cache_sha1s[ie->cache_index];
+			else
+				return 0;
+		}
+	} while(len > 1);
+	
+	return 0;
+}
+
+
+/* single index maps objects to cache files */
+static struct index_header {
+	char signature[8]; /* REVINDEX */
+	unsigned char version;
+	unsigned int ofs_objects;
+	
+	unsigned int objects;
+	unsigned char caches;
+	
+	/* allocated space may be bigger than necessary for potential of 
+	easy updating (if, eg., list is simply loaded into a hashmap) */
+	unsigned char caches_buffer;
+	unsigned char *cache_sha1s;
+};
+
+/* list resembles pack index format */
+unsigned int fanout[0xff + 2];
+
+static struct index_entry {
+	unsigned char sha1[20];
+	unsigned has_bitmap : 1;
+	unsigned cache_index : 7;
+};
