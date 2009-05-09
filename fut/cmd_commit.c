@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include "strbuf.h"
+#include "file_status.h"
 
 int
 run_commit(int argc, char const* const* argv)
@@ -31,7 +32,11 @@ run_commit(int argc, char const* const* argv)
 
     tmp_file = fdopen(fd, "w");
 
+    fprintf(tmp_file, "# Remove any files you don't want to commit, and enter a\n"
+            "# commit message.  To cancel, leave an empty commit message.\n"
+            "\n");
     fprintf(tmp_file, "Files:\n");
+    write_file_status(tmp_file);
     fprintf(tmp_file, "\n");
     fprintf(tmp_file, "Commit Message:\n");
     fclose(tmp_file);

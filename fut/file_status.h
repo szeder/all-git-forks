@@ -36,6 +36,8 @@ const char* status_to_status_label(char status);
 // Combines the the status in the working directory and stage
 char combine_statuses(char staged, char working);
 
+int write_file_status(FILE* out);
+
 
 #endif FILE_STATUS_H
 
