@@ -7,6 +7,7 @@
  */
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
+#include "fantom.h"
 
 /*
  * This removes bit 5 if bit 6 is set.
@@ -103,11 +104,10 @@ static int same_name(const struct cache_entry *ce, const char *name, int namelen
 struct cache_entry *index_name_exists(struct index_state *istate, const char *rawname, int namelen, int icase)
 {
 	unsigned int hash;
-	char name[PATH_MAX];
+	char *name;
 	struct cache_entry *ce;
 
-	memcpy(name, rawname, namelen);
-	strip_fantom_suffix(name);
+	name = strip_fantom_suffix(rawname);
 	namelen = strlen(name);
 	hash = hash_name(name, namelen);
 

@@ -14,6 +14,7 @@
 #include "diffcore.h"
 #include "revision.h"
 #include "blob.h"
+#include "fantom.h"
 
 /* Index extensions.
  *
@@ -48,6 +49,9 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 {
 	struct cache_entry *old = istate->cache[nr], *new;
 	int namelen = strlen(new_name);
+
+	if (ce_fantom(old))
+		return;
 
 	new = xmalloc(cache_entry_size(namelen));
 	copy_cache_entry(new, old);
@@ -427,9 +431,10 @@ int cache_name_compare(const char *name1, int flags1, const char *name2, int fla
 	return 0;
 }
 
-int index_name_pos(const struct index_state *istate, const char *name, int namelen)
+int index_name_pos(const struct index_state *istate, const char *rawname, int namelen)
 {
 	int first, last;
+	char *name = strip_fantom_suffix(rawname);
 
 	first = 0;
 	last = istate->cache_nr;
@@ -453,6 +458,9 @@ int remove_index_entry_at(struct index_state *istate, int pos)
 {
 	struct cache_entry *ce = istate->cache[pos];
 
+	if (ce_fantom(ce))
+		return 1;
+	
 	remove_name_hash(ce);
 	istate->cache_changed = 1;
 	istate->cache_nr--;
@@ -578,14 +586,10 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
 		return error("%s: can only add regular files, symbolic links or git-directories", path);
 
+	namelen = strlen(path);
 	if (S_ISDIR(st_mode)) {
-		namelen = strlen(path);
 		while (namelen && path[namelen-1] == '/')
 			namelen--;
-	}
-	else {
-		strip_fantom_suffix(path);
-		namelen = strlen(path);
 	}
 	
 	alias = index_name_exists(istate, path, namelen, ignore_case);

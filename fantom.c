@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "fantom.h"
 
 /* +2 b/c we need to know both start and end of section for binary search */
 static int fanout[0xff + 2];
@@ -58,13 +59,15 @@ int is_fantom(const unsigned char *sha1)
 	return 0;
 }
 
-char *strip_fantom_suffix(char *path)
+char *strip_fantom_suffix(const char *path)
 {
+	static char newpath[PATH_MAX];
 	int len = strlen(path);
 	
 	if (len > 7 && !strncmp(path + len - 7, ".FANTOM", 7)) {
-		path[len - 7] = 0;
-	}
-	
-	return path;
+		strncpy(newpath, path, len - 7);
+		return newpath;
+		/* path[len - 7] = 0; */
+	} else
+		return path;
 }

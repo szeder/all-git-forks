@@ -77,6 +77,9 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 			DIFF_OPT_TST(&revs->diffopt, HAS_CHANGES))
 			break;
 
+		if (ce_fantom(ce))
+			continue;
+
 		if (!ce_path_match(ce, revs->prune_data))
 			continue;
 

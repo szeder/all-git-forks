@@ -535,7 +535,7 @@ static int do_reupdate(int ac, const char **av,
 		struct cache_entry *old = NULL;
 		int save_nr;
 
-		if (ce_stage(ce) || !ce_path_match(ce, pathspec))
+		if (ce_stage(ce) || ce_fantom(ce) || !ce_path_match(ce, pathspec))
 			continue;
 		if (has_head)
 			old = read_one_ent(NULL, head_sha1,

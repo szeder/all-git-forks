@@ -180,6 +180,8 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		struct cache_entry *ce = active_cache[i];
 		if (!match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, seen))
 			continue;
+		if (ce_fantom(ce))
+			continue;
 		add_list(ce->name);
 	}
 

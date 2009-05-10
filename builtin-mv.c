@@ -162,7 +162,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 				}
 				argc += last - first;
 			}
-		} else if ((pos = cache_name_pos(strip_fantom_suffix(src), length)) < 0)
+		} else if ((pos = cache_name_pos(src, length)) < 0)
 			bad = "not under version control";
 		else if (ce_fantom(active_cache[pos]))
 			bad = "fantom objects can't be moved";
