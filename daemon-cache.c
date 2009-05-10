@@ -35,11 +35,11 @@ enum cache_status {
 	DAEMON_CACHE_TOXIC /* it's being written by something else, don't touch at all */
 };
 
-char create_full_pack = 0;
-struct daemon_cache *metadata = 0;
-struct strbuf want_list = { 0 }, have_list = { 0 };
-const char *g_argv[20];
-unsigned long g_lasttimestamp;
+static char create_full_pack = 0;
+static struct daemon_cache *metadata = 0;
+static struct strbuf want_list, have_list;
+static const char *g_argv[20];
+static unsigned long g_lasttimestamp;
 
 static int add_ref_to_hash(const char *ref, const unsigned char *sha1, int flags, void *extra)
 {
@@ -296,8 +296,7 @@ bad:
 }
 
 /* this whole reflog deal is pretty kludgey to be honest.  
- * just feels... unprofessional
- */
+   just feels... unprofessional */
 static int check_reflog(unsigned char *osha1, unsigned char *nsha1, 
 	const char *email, unsigned long timestamp, 
 	int tz, const char *message, void *extra)
@@ -398,8 +397,7 @@ static int daemon_cache(void)
 			fd = open(git_path("daemon-cache/%s", name), O_CREAT | O_WRONLY | O_TRUNC, 0666);
 			
 			/* I was under the impression that rename(2) allows for atomic file updates
-			 * but evidently in windows that's not the case.  damn...
-			 */
+			   but evidently in windows that's not the case.  damn... */
 			/* strcpy(tmpfile, git_path("daemon-cache/%s_XXXXXX", name));
 			fd = xmkstemp(tmpfile); */
 			
@@ -463,6 +461,8 @@ int main(int argc, char *argv[])
 	if (!ok)
 		die("daemon-cache only works with revs");
 	
+	strbuf_init(&want_list);
+	strbuf_init(&have_list);
 	fill_lists();
 	if (daemon_cache() < 0)
 		die("ETWAS IST DAS UPGESCREWED!");
