@@ -679,6 +679,9 @@ cmd_sync()
 		if test -e "$path"/.git
 		then
 		(
+			cd_to_toplevel
+			git config submodule."$path".url "$url"
+
 			unset GIT_DIR
 			cd "$path"
 			remote=$(get_default_remote)
