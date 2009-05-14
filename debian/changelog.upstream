@@ -1,3 +1,22 @@
+Version v1.6.3.1; changes since v1.6.3:
+---------------------------------------
+
+Alex Riesen (1):
+      Clarify kind of conflict in merge-one-file helper
+
+Alexander Potashev (1):
+      Documentation: cloning to empty directory is allowed
+
+Felipe Contreras (1):
+      git config: clarify --add and --get-color
+
+Junio C Hamano (4):
+      Start 1.6.3.1 maintenance series.
+      archive-tar.c: squelch a type mismatch warning
+      Revert "checkout branch: prime cache-tree fully"
+      GIT 1.6.3.1
+
+
 Version v1.6.3; changes since v1.6.3-rc4:
 -----------------------------------------
 

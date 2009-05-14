@@ -1,4 +1,4 @@
-From ab4634749f919b7cbc3e3e97cce719f8602306b9 Mon Sep 17 00:00:00 2001
+From 0a2247ecc3eab95752d99355fb4e0f01ffbb3730 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
 Subject: [PATCH 2/6] bug#438793, #494505: fallback to 'editor' not 'vi'
@@ -148,5 +148,5 @@ index b647957..97382ec 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.6.2.4
+1.6.3
 
