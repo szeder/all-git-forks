@@ -812,6 +812,39 @@ int http_fetch_ref(const char *base, struct ref *ref)
 	return ret;
 }
 
+int http_path_exists(const char *base_url, const char *path)
+{
+	char *url;
+	struct strbuf buf = STRBUF_INIT;
+	struct active_request_slot *slot;
+	struct slot_results results;
+	int ret = -1;
+
+	end_url_with_slash(&buf, base_url);
+	strbuf_addstr(&buf, path);
+	url = strbuf_detach(&buf, NULL);
+
+	slot = get_active_slot();
+	slot->results = &results;
+	curl_easy_setopt(slot->curl, CURLOPT_URL, url);
+	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 1);
+
+	if (start_active_slot(slot)) {
+		run_active_slot(slot);
+		if (missing_target(&results))
+			ret = error("%s not found", url);
+		else if (results.curl_result == CURLE_OK)
+			ret = 0;
+		else
+			ret = error("HEAD HTTP error %ld", results.http_code);
+	} else {
+		ret = error("Unable to start HEAD request");
+	}
+
+	free(url);
+	return ret;
+}
+
 /* Helpers for fetching packs */
 static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 {

@@ -148,6 +148,7 @@ int http_get_file(const char *url, const char *filename, int options);
 int http_error(const char *url, int ret);
 
 extern int http_fetch_ref(const char *base, struct ref *ref);
+extern int http_path_exists(const char *base_url, const char *path);
 
 /* Helpers for fetching packs */
 extern int http_get_info_packs(const char *base_url,

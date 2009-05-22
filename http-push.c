@@ -1600,29 +1600,6 @@ static void update_remote_info_refs(struct remote_lock *lock)
 	strbuf_release(&buffer.buf);
 }
 
-static int remote_exists(const char *path)
-{
-	char *url = xmalloc(strlen(repo->url) + strlen(path) + 1);
-	int ret;
-
-	sprintf(url, "%s%s", repo->url, path);
-
-	switch (http_get_strbuf(url, NULL, 0)) {
-	case HTTP_OK:
-		ret = 1;
-		break;
-	case HTTP_MISSING_TARGET:
-		ret = 0;
-		break;
-	case HTTP_ERROR:
-		http_error(url, HTTP_ERROR);
-	default:
-		ret = -1;
-	}
-	free(url);
-	return ret;
-}
-
 static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 {
 	char *url;
@@ -1898,8 +1875,8 @@ int main(int argc, char **argv)
 
 	/* Check whether the remote has server info files */
 	repo->can_update_info_refs = 0;
-	repo->has_info_refs = remote_exists("info/refs");
-	repo->has_info_packs = remote_exists("objects/info/packs");
+	repo->has_info_refs = !http_path_exists(repo->url, "info/refs");
+	repo->has_info_packs = !http_path_exists(repo->url, "objects/info/packs");
 	if (repo->has_info_refs) {
 		info_ref_lock = lock_remote("info/refs", LOCK_TIME);
 		if (info_ref_lock)
