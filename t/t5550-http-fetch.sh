@@ -18,7 +18,7 @@ test_expect_success 'setup repository' '
 	git commit -m one
 '
 
-test_expect_failure 'try alternative URLs like local does' '
+test_expect_success 'try alternative URLs like local does' '
 	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	 git --bare init &&

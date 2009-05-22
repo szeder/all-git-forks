@@ -790,6 +790,29 @@ int http_error(const char *url, int ret)
 	return ret;
 }
 
+char *http_guess_repo_url(const char *base_url, const char *path)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	end_url_with_slash(&buf, base_url);
+
+	if (http_path_exists(buf.buf, path) == 0)
+		return strbuf_detach(&buf, NULL);
+
+	/* Do this for /foo/ and skip /foo.git/ and /foo/.git/ */
+	if (strcmp(buf.buf + buf.len - 5, ".git/") != 0) {
+		strbuf_addstr(&buf, ".git/");
+		if (http_path_exists(buf.buf, path) == 0)
+			return strbuf_detach(&buf, NULL);
+
+		strbuf_remove(&buf, buf.len - 6, 1);
+		if (http_path_exists(buf.buf, path) == 0)
+			return strbuf_detach(&buf, NULL);
+	}
+
+	return NULL;
+}
+
 int http_fetch_ref(const char *base, struct ref *ref)
 {
 	char *url;

@@ -460,10 +460,7 @@ static struct ref *get_refs_via_curl(struct transport *transport, int for_push)
 	sprintf(refs_url, "%s/info/refs", transport->url);
 
 	http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
-	if (http_ret == HTTP_MISSING_TARGET)
-		die("%s not found: did you run git update-server-info on the"
-		    " server?", refs_url);
-	else if (http_ret != HTTP_OK) {
+	if (http_ret != HTTP_OK) {
 		http_error(refs_url, http_ret);
 		goto cleanup;
 	}
@@ -939,6 +936,12 @@ struct transport *transport_get(struct remote *remote, const char *url)
 #ifdef NO_CURL
 		error("git was compiled without libcurl support.");
 #else
+		http_init(remote);
+		ret->url = http_guess_repo_url(url, "info/refs");
+		if (ret->url == NULL)
+			die("info/refs not found in %s: did you run "
+			    "git update-server-info on the server?", url);
+
 		ret->get_refs_list = get_refs_via_curl;
 		ret->fetch = fetch_objs_via_curl;
 		ret->push = curl_transport_push;
