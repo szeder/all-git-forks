@@ -18,7 +18,46 @@ test_expect_success 'setup repository' '
 	git commit -m one
 '
 
+test_expect_failure 'try alternative URLs like local does' '
+	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
+	(cd "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
+	 git --bare init &&
+	 git --bare update-server-info
+	) &&
+
+	#for http://foo/, try http://foo.git/
+	git clone $HTTPD_URL/repo clone &&
+	rm -rf clone &&
+
+	#and http://foo/.git/
+	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo" &&
+	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo/.git" &&
+	mv "$HTTPD_DOCUMENT_ROOT_PATH"/repo.git/* \
+	 "$HTTPD_DOCUMENT_ROOT_PATH/repo/.git/" &&
+	rm -rf "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
+	git clone $HTTPD_URL/repo clone &&
+	rm -rf clone &&
+
+	#for http://foo.git/, try neither http://foo.git/.git/
+	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
+	mv "$HTTPD_DOCUMENT_ROOT_PATH"/repo/.git \
+	 "$HTTPD_DOCUMENT_ROOT_PATH/repo.git/" &&
+	rm -rf "$HTTPD_DOCUMENT_ROOT_PATH/repo" &&
+	! git clone $HTTPD_URL/repo.git clone &&
+
+	#nor http://foo.git.git/
+	mv "$HTTPD_DOCUMENT_ROOT_PATH"/repo.git/.git \
+	 "$HTTPD_DOCUMENT_ROOT_PATH/repo.git.git/" &&
+	rm -rf "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
+	! git clone $HTTPD_URL/repo.git clone &&
+
+	rm -rf "$HTTPD_DOCUMENT_ROOT_PATH/repo.git.git"
+'
+
 test_expect_success 'create http-accessible bare repository' '
+	if [ -d "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" ]; then
+	 rm -rf "$HTTPD_DOCUMENT_ROOT_PATH/repo.git"
+	fi
 	mkdir "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH/repo.git" &&
 	 git --bare init &&
