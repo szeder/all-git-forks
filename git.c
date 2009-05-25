@@ -506,6 +506,7 @@ int main(int argc, const char **argv)
 	 * environment, and the $(gitexecdir) from the Makefile at build
 	 * time.
 	 */
+	enable_git_repo_exec_path = 1;
 	setup_path();
 
 	while (1) {
