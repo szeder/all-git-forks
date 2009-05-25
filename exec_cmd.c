@@ -84,6 +84,45 @@ const char *git_exec_path(void)
 	return system_path(GIT_EXEC_PATH);
 }
 
+/* Returns the path of the bin folder inside the .git folder. */
+/* (This could be used to store repository specific git programs.) */
+
+int enable_git_repo_exec_path = 0;
+
+const char *git_repo_exec_path(void)
+{
+	static char path_buffer[PATH_MAX + 1];
+	static char *path = NULL;
+	
+	int non_git;
+	const char *git_dir;
+	
+	if (!path && enable_git_repo_exec_path) {
+		
+		path = path_buffer;
+		path[0] = '\0';
+		
+		setup_git_directory_gently(&non_git);
+		
+		if (!non_git) {
+			
+			git_dir = get_git_dir();
+			
+			strncat(path, git_dir, PATH_MAX);
+			strncat(path, "/", PATH_MAX);
+			strncat(path, "bin", PATH_MAX);
+			strncpy(path, make_absolute_path(path), PATH_MAX);
+			if (access(path, F_OK) != 0)
+				path[0] = '\0';
+		}
+	}
+	
+	if (!path || (path[0] == '\0'))
+		return NULL;
+	
+	return path;
+}
+
 static void add_path(struct strbuf *out, const char *path)
 {
 	if (path && *path) {
@@ -101,6 +140,8 @@ void setup_path(void)
 	const char *old_path = getenv("PATH");
 	struct strbuf new_path = STRBUF_INIT;
 
+	if (git_repo_exec_path() != NULL)
+		add_path(&new_path, git_repo_exec_path());
 	add_path(&new_path, git_exec_path());
 	add_path(&new_path, argv0_path);
 
