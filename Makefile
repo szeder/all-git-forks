@@ -175,6 +175,9 @@ all::
 # Define OBJECT_CREATION_USES_RENAMES if your operating systems has problems
 # when hardlinking a file to another name and unlinking the original file right
 # away (some NTFS drivers seem to zero the contents in that scenario).
+#
+# Define NO_CROSS_DIRECTORY_HARDLINKS if you plan to distribute the installed
+# programs as a tar, where bin/ and libexec/ might be on different file systems.
 
 GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -225,6 +228,7 @@ ETC_GITCONFIG = etc/gitconfig
 endif
 lib = lib
 # DESTDIR=
+pathsep = :
 
 # default configuration for gitweb
 GITWEB_CONFIG = gitweb_config.perl
@@ -749,6 +753,7 @@ endif
 ifeq ($(uname_S),OpenBSD)
 	NO_STRCASESTR = YesPlease
 	NO_MEMMEM = YesPlease
+	USE_ST_TIMESPEC = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	BASIC_CFLAGS += -I/usr/local/include
 	BASIC_LDFLAGS += -L/usr/local/lib
@@ -812,6 +817,7 @@ ifneq (,$(findstring CYGWIN,$(uname_S)))
 	UNRELIABLE_FSTAT = UnfortunatelyYes
 endif
 ifneq (,$(findstring MINGW,$(uname_S)))
+	pathsep = ;
 	NO_PREAD = YesPlease
 	NO_OPENSSL = YesPlease
 	NO_CURL = YesPlease
@@ -1248,7 +1254,6 @@ $(patsubst %.sh,%,$(SCRIPT_SH)) : % : %.sh
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's|@SHELL_PATH@|$(SHELL_PATH_SQ)|' \
-	    -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
 	    -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
 	    $@.sh >$@+ && \
@@ -1267,7 +1272,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	sed -e '1{' \
 	    -e '	s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e '	h' \
-	    -e '	s=.*=use lib (split(/:/, $$ENV{GITPERLLIB} || "@@INSTLIBDIR@@"));=' \
+	    -e '	s=.*=use lib (split(/$(pathsep)/, $$ENV{GITPERLLIB} || "@@INSTLIBDIR@@"));=' \
 	    -e '	H' \
 	    -e '	x' \
 	    -e '}' \
@@ -1549,6 +1554,7 @@ endif
 	bindir=$$(cd '$(DESTDIR_SQ)$(bindir_SQ)' && pwd) && \
 	execdir=$$(cd '$(DESTDIR_SQ)$(gitexec_instdir_SQ)' && pwd) && \
 	{ $(RM) "$$execdir/git-add$X" && \
+		test -z "$(NO_CROSS_DIRECTORY_HARDLINKS)" && \
 		ln "$$bindir/git$X" "$$execdir/git-add$X" 2>/dev/null || \
 		cp "$$bindir/git$X" "$$execdir/git-add$X"; } && \
 	{ for p in $(filter-out git-add$X,$(BUILT_INS)); do \
