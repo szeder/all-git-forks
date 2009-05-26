@@ -148,7 +148,8 @@ void traverse_commit_list(struct rev_info *revs,
 	struct commit *commit;
 
 	while ((commit = get_revision(revs)) != NULL) {
-		add_pending_tree(revs, commit->tree);
+		if (!(commit->tree->object->flags & FACEVALUE))
+			add_pending_tree(revs, commit->tree);
 		show_commit(commit, data);
 	}
 	for (i = 0; i < revs->pending.nr; i++) {

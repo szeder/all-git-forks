@@ -262,16 +262,30 @@ start_loop:
 		entry = (struct object_entry *)(map + index);
 		if (consuming_children) {
 			/* children are straddled between adjacent commits */
-			if (entry->type == OBJ_COMMIT) {
+			switch (entry->type) {
+			case OBJ_COMMIT : 
 				consuming_children = 0;
 				goto start_loop;
+			case OBJ_TAG : 
+				if (!revs->tag_objects)
+					goto skip_object;
+				break;
+			case OBJ_TREE : 
+				if (!revs->tree_objects)
+					goto skip_object;
+				break;
+			case OBJ_BLOB : 
+				if (!revs->blob_objects)
+					goto skip_object;
+				break;
 			}
 			
 			object = lookup_unknown_object(entry->sha1);
 			object->type = entry->type;
-			object->flags = FACE_VALUE;
+			object->flags = FACEVALUE;
 			
 			add_pending_object(revs, object, "");
+skip_object:
 			continue;
 		}
 		
@@ -280,15 +294,23 @@ start_loop:
 			object->flags |= UNINTERESTING;
 		else if (object->flags & UNINTERESTING) {
 			/* without knowing anything more about the topology, we're just gonna have to 
-			 * ditch the commit stuff.  we can, however, keep all our non-commits
-			 */
+			 * ditch the commit stuff.  we can, however, keep all our non-commits */
 			goto end;
 		}
 		
-		if (entry->is_start)
-			wp = &commit_list_insert(object, wp)->next;
-		else if (!(object->flags & UNINTERESTING) || revs->show_all)
-			qp = &commit_list_insert(object, qp)->next;
+		if (entry->is_start) {
+			parse_commit(object);
+			if (!(object->flags & SEEN) || object->flags & UNINTERESTING)
+				wp = &commit_list_insert(object, wp)->next; /* or mark_parents_uninteresting for other case? */
+		} else if (!(object->flags & UNINTERESTING) || revs->show_all) {
+			if (!(object->flags & SEEN)) {
+				object->flags |= SEEN;
+				qp = &commit_list_insert(object, qp)->next;
+			}
+			
+			if (!(object->flags & UNINTERESTING)) 
+				consuming_children = 1;
+		}
 	}
 	
 	/* this if shouldn't actually eval as true, b/c we're expecting queue to be generated as LIFO */
@@ -424,6 +446,12 @@ static int traverse_cache_slice_2(...)
 
 int make_cache_slice(struct commit_list **ends, struct commit_list **starts)
 {
+	commit_list *list;
+	
+	/* we're gonna assume no one else has already traverse this... */
+	for (list = *starts; list; list = list->next)
+		list->object->flags |= UNINTERESTING;
+	
 	
 }
 
@@ -464,11 +492,12 @@ static int init_index(void)
 	if (get_index_head(map, fi.st_size, &head, &fanout))
 		goto end;
 	
-	atexit(...);
+	/* atexit(...); */
+	
+	return 0;
 	
 end:
-	
-	
+	return -1;
 }
 
 const char *in_cache_slice(struct commit *commit)
