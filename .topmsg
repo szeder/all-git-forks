@@ -1,6 +1,8 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] t/revcache/spec-bitmap
+Subject: [PATCH] revision-cache: define revision cache as simple list of revisions
 
-<patch description>
+The very first thing that we want out of the revision cache is to be
+able to go from a commit to all of its referred objects.  Define a
+revision cache that includes just that.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>
