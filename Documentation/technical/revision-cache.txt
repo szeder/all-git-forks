@@ -30,6 +30,11 @@ A revision cache contains;
     These bitmaps are RLE-compressed, so don't take much on-disk
     space.
 
+  - Optionally, for any 'end' object, a bitmap indicating which of the
+    objects in the object list are reachable from that 'end' object,
+    but not reachable from the 'start' objects reachable from that
+    'end' object.
+
 
 Start Objects and End Objects
 -----------------------------

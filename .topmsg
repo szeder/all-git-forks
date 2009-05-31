@@ -1,7 +1,10 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] rev-cache: allow multiple 'end' objects per index
+Subject: [PATCH] revision cache: maps of 'new' objects
 
-We can re-use the index for multiple 'end' objects sharing the same
-'start' objects, using one list and a bitmap for each 'end'.
+When making a pack, it is useful to know if an object is already
+reachable from any of the objects that the receiving party is known to
+have; it allows the object to be excluded from the pack.  Allow
+optional bitmaps for 'end' objects which permit storage of this
+information, for possible optimisation later.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>
