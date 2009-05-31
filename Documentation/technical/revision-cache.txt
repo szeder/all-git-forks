@@ -35,6 +35,10 @@ A revision cache contains;
     but not reachable from the 'start' objects reachable from that
     'end' object.
 
+  - a list of 'foreign end' objects, for which not all reachable
+    objects are in the object list, but can have reachability or a
+    'newness' bitmap.
+
 
 Start Objects and End Objects
 -----------------------------
