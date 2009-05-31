@@ -1,8 +1,7 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] rev-cache: add 'start' object for caching 'uninteresting' lookups
+Subject: [PATCH] rev-cache: allow multiple 'end' objects per index
 
-If we want to be able to accelerate lookups which contain
-'uninteresting' revisions, we must be able to specify what those
-revisions are.
+We can re-use the index for multiple 'end' objects sharing the same
+'start' objects, using one list and a bitmap for each 'end'.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>

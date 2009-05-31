@@ -6,12 +6,12 @@ reachability operations to be answered quickly.
 
 A revision cache contains;
 
-  - An 'end' object (ie, 'interesting' object ID)
+  - A list of 'end' objects (ie, 'interesting' object ID)
 
   - A list of 'start' objects, which may be empty (ie, 'uninteresting'
     object IDs)
 
-  - A list of objects which are referred to by the 'end' object, but
+  - A list of objects which are referred to by any 'end' object, but
     not by crossing 'start' objects, including:
 
     * position when sorted in --topo-order
@@ -25,12 +25,19 @@ A revision cache contains;
   - A hash table from an (abbreviated) object ID to a position into
     the above list
 
+  - For each 'end' object, a bit sequence indicating which of the
+    objects in the object list are reachable from that 'end' object.
+    These bitmaps are RLE-compressed, so don't take much on-disk
+    space.
 
-Start Objects and End Object
-----------------------------
+
+Start Objects and End Objects
+-----------------------------
 
 The 'end' object, and 'start' objects are the identifying key of the
-revision cache.
+revision cache.  Revision caches for multiple 'end' objects can re-use
+the same object list, conserving space and adding flexibility to the
+index.
 
 The 'start' objects must be reachable from the 'end' objects, and none
 of the 'start' objects may be reachable from other 'start' objects.
@@ -70,8 +77,9 @@ Determining Cache Suitability
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A revision cache is suitable whenever the walker encounters the single
-object which is the 'end' object of the revision cache, and none of
-the 'uninteresting' revisions to the walker are in the revision cache.
+object which is any of the 'end' objects of the revision cache, and
+none of the 'uninteresting' revisions to the walker are in the
+revision cache.
 
 The function is:
 
@@ -79,10 +87,11 @@ The function is:
 
 In practice, this is likely to be implemented by making in-core cache
 entries for objects with revision caches prior to walking.  It then
-checks for all revision caches with that 'end' object, and uses the
-largest one which is suitable, creating in-core cache stub entries and
-marking all those objects as 'seen' and pushing the 'start' objects of
-the revision cache used onto the stack of nodes yet to walk.
+checks for all revision caches that have that 'end' object, and uses
+the largest one which is suitable, creating in-core cache stub entries
+and marking all those objects as 'seen' and pushing the 'start'
+objects of the revision cache used onto the stack of nodes yet to
+walk.
 
 
 Determining Object Reachability
@@ -138,7 +147,9 @@ honoured.
 
 If multiple revisions are passed to rev_cache_add(), then the
 operation may become relatively expensive, depending upon the number
-of refs and how many objects are in each object list.
+of refs and how many objects are in each object list.  However, in the
+case that all of the objects passed can be found as 'end' refs in the
+same revision cache, the operation will still be very efficient.
 
 If revisions are passed which are marked as not interesting, then the
 revision caches employed must not contain those objects.
