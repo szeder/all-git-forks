@@ -1,5 +1,5 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] revision cache: allow alien 'end' commits
+Subject: [PATCH] revision cache: allow foreign 'end' commits
 
 Usually the 'end' commits are always 'interesting' commits in a
 revision query, however with the 'newness' bitmaps we can also use
