@@ -169,7 +169,7 @@ static void create_pack_file(void)
 		
 		argv[arg++] = "pack-objects";
 	} else {
-		argv[arg++] = "daemon-cache";
+		argv[arg++] = "pack-objects";
 		argv[arg++] = "--revs";
 		argv[arg++] = "--include-tag";
 		if (create_full_pack)
