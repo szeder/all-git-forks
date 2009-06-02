@@ -1730,9 +1730,9 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			    (commit->date < revs->max_age))
 				continue;
 			
-			if (revs.lite && which_cache = in_revcache(commit->object.sha1))
+			/* if (revs.lite && which_cache = in_revcache(commit->object.sha1))
 				used_cache = !traverse_revcache(revs, which_cache, commit->object.sha1, &revs->queue, &revs->commits, &revs->pending);
-			else 
+			else */
 				used_cache = 0;
 			
 			if (!used_cache && add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)

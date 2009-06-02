@@ -335,6 +335,7 @@ PROGRAMS += git-mktag$X
 PROGRAMS += git-mktree$X
 PROGRAMS += git-pack-redundant$X
 PROGRAMS += git-patch-id$X
+PROGRAMS += git-rev-cache$X
 PROGRAMS += git-shell$X
 PROGRAMS += git-show-index$X
 PROGRAMS += git-unpack-file$X
