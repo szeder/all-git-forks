@@ -2,6 +2,8 @@
 #include "cache.h"
 #include "object.h"
 #include "commit.h"
+#include "tree.h"
+#include "tree-walk.h"
 #include "diff.h"
 #include "revision.h"
 
@@ -36,7 +38,7 @@ NOTE: end/start are chronological references, not toplogical
 
 */
 
-#define FACE_VALUE 		0x100 /* some value... */
+#define FACE_VALUE 		0x100 /* some value... (to be determined during integration) */
 
 /* single index maps objects to cache files */
 struct index_header {
@@ -113,6 +115,9 @@ static struct strbuf *g_buffer;
 #define SET_BIT(b, i)	((b)[(i) >> 3] |= 1 << ((i) & 0x7))
 #define GET_BIT(b, i)	!!((b)[(i) >> 3] &  1 << ((i) & 0x7))
 #define BITMAP_SIZE(os)	((os) / 8 + 1)
+
+#define OE_SIZE	sizeof(struct object_entry)
+#define IE_SIZE	sizeof(struct index_entry)
 
 int make_cache_index(const char *, struct strbuf *);
 static int init_index(void);
@@ -198,7 +203,7 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 	bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
 	for (i = 0, index = head->ofs_objects; 
 		i < head->objects && cur_commit; 
-		i++, index += sizeof(struct object_entry)
+		i++, index += OE_SIZE
 	) {
 		object = (struct object_entry *)(map + index);
 		
@@ -278,23 +283,28 @@ static int get_cache_slice_header(unsigned char *map, int len, struct cache_slic
 }
 
 static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, 
-	unsigned char *map, unsigned char *bitmap, unsigned char *used_bitmap, struct commit *commit, 
+	unsigned char *map, unsigned char *bitmap, struct commit *commit, 
 	struct commit_list ***queue, struct commit_list **work)
 {
 	struct commit_list *q = 0, *w = 0;
 	struct commit_list **qp = &q, **wp = &w;
 	int i, index, retval = -2;
-	char consuming_children = 0; /* that's right, this function is the evil twin */
+	char use_objects = 1, consuming_children = 0; /* that's right, this function is the evil twin */
+	unsigned char *anti_bitmap = 0;
+	struct bitmap_entry be;
 	
-	for (i = 0, index = head->ofs_objects; i < head->objects; i++, index += sizeof(struct object_entry)) {
+	for (i = 0, index = head->ofs_objects; i < head->objects; i++, index += OE_SIZE) {
 		struct object_entry *entry;
 		struct object *object;
 		struct commit *co;
 		
 start_loop:
-		/* if (!consuming_children && (!GET_BIT(bitmap, i) || GET_BIT(used_bitmap, i))) */
-		if (!consuming_children && !GET_BIT(bitmap, i))
-			continue;
+		if (!consuming_children) {
+			if (anti_bitmap && GET_BIT(anti_bitmap, i))
+				continue;
+			else if (!GET_BIT(bitmap, i))
+				continue;
+		}
 		
 		entry = (struct object_entry *)(map + index);
 		if (consuming_children) {
@@ -319,7 +329,11 @@ start_loop:
 			
 			object = lookup_unknown_object(entry->sha1);
 			object->type = entry->type;
-			object->flags = FACE_VALUE;
+			
+			/* in the special case where we can handle a mid-slice uninteresting commit 
+			 * we won't be able to rely the preceeding's cached sub-commit objects */
+			if (use_objects)
+				object->flags = FACE_VALUE;
 			
 			add_pending_object(revs, object, "");
 skip_object:
@@ -334,22 +348,43 @@ skip_object:
 		else if (object->flags & UNINTERESTING) {
 			/* without knowing anything more about the topology, we're just gonna have to 
 			 * ditch the commit stuff.  we can, however, keep all our non-commits */
-			/* todo: see if bitmap is available for this commit */
-			retval = -1;
-			goto end;
+			/* should we perhaps make the bitmap if we can't find it? */
+			if (get_bitmap(head, map, co, &be)) {
+				retval = -1;
+				goto end;
+			}
+			
+			/* then again, if we *do* know something more, we can use it! */
+			if (anti_bitmap) {
+				int j;
+				
+				/* wow! this is unusual. merge with what we've got */
+				for(j = 0; j < BITMAP_SIZE(head->objects); j++)
+					if (be.bitmap[j])
+						anti_bitmap[j] |= be.bitmap[j];
+				
+				free(be.bitmap);
+			} else
+				anti_bitmap = be.bitmap;
+			
+			consuming_children = 1;
+			use_objects = 0; /* important! */
 		}
 		
 		if (entry->is_start) {
 			parse_commit(co);
-			if (!(object->flags & SEEN) || object->flags & UNINTERESTING)
+			if (!(object->flags & SEEN) || object->flags & UNINTERESTING) {
 				wp = &commit_list_insert(co, wp)->next; /* or mark_parents_uninteresting for other case? */
+				if (!(object->flags & UNINTERESTING))
+					consuming_children = use_objects = 1;
+			}
 		} else if (!(object->flags & UNINTERESTING) || revs->show_all) {
 			if (!(object->flags & SEEN)) {
 				object->flags |= SEEN;
 				qp = &commit_list_insert(co, qp)->next;
 				
 				if (!(object->flags & UNINTERESTING))
-					consuming_children = 1;
+					consuming_children = use_objects = 1;
 			}
 		}
 	}
@@ -423,7 +458,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		deflate_bitmap(bitmap.bitmap, bitmap.z_size);
 	}
 	
-	retval = traverse_cache_slice_1(revs, &head, map, bitmap.bitmap, 0, commit, queue, work);
+	retval = traverse_cache_slice_1(revs, &head, map, bitmap.bitmap, commit, queue, work);
 	
 end:
 	if (head.start_sha1s)
@@ -537,6 +572,134 @@ static int write_cache_slice(char *name, struct cache_slice_header *head, struct
 	return 0;
 }
 
+
+/* returns non-zero to continue parsing, 0 to skip */
+typedef int (*dump_tree_fn)(const unsigned char *, const char *, unsigned int); /* sha1, path, mode */
+
+/* we need to walk the trees by hash, so unfortunately we can't use traverse_trees in tree-walk.c */
+static int dump_tree(struct tree *tree, dump_tree_fn fn)
+{
+	struct tree_desc desc;
+	struct name_entry entry;
+	struct tree *subtree;
+	int r;
+	
+	if (parse_tree(tree))
+		return -1;
+	
+	init_tree_desc(&desc, tree->buffer, tree->size);
+	while (tree_entry(&desc, &entry)) {
+		switch (fn(entry.sha1, entry.path, entry.mode)) {
+		case 0 :
+			goto continue_loop;
+		default : 
+			break;
+		}
+		
+		if (S_ISDIR(entry.mode)) {
+			subtree = lookup_tree(entry.sha1);
+			if (!subtree)
+				return -2;
+			
+			if ((r = dump_tree(subtree, fn)) < 0)
+				return r;
+		}
+		
+continue_loop:
+		continue;
+	}
+	
+	return 0;
+}
+
+static int dump_tree_callback(const unsigned char *sha1, const char *path, unsigned int mode)
+{
+	add_object_entry(sha1, S_ISDIR(mode) ? OBJ_TREE : OBJ_BLOB, 0);
+	
+	return 1;
+}
+
+/* assumes buffers are sorted */
+static void object_set_difference(struct strbuf *set, struct strbuf *not)
+{
+	int i, j;
+	
+	for (i = j = 0; i < set->len; i += OE_SIZE) {
+		while (j < not->len && cache_sort_hash(not->buf + j, set->buf + i) < 0) 
+			j += OE_SIZE;
+		
+		if (j < not->len && !cache_sort_hash(not->buf + j, set->buf + i))
+			continue;
+		
+		add_object_entry(0, 0, (struct object_entry *)(set->buf + i));
+	}
+	
+}
+
+/* {commit objects} \ {parent objects also in slice (ie. 'interesting')} */
+static int add_unique_objects(struct commit *commit, struct strbuf *out)
+{
+	struct commit_list *list;
+	struct tree *first;
+	struct strbuf os, us, *orig_buf;
+	struct diff_options opts;
+	int orig_len;
+	
+	strbuf_init(&os, 0);
+	strbuf_init(&us, 0);
+	orig_len = out->len;
+	orig_buf = g_buffer;
+	
+	diff_setup(&opts);
+	DIFF_OPT_SET(&opts, RECURSIVE);
+	DIFF_OPT_SET(&opts, TREE_IN_RECURSIVE);
+	opts.change = tree_change;
+	opts.add_remove = tree_addremove;
+	
+	/* generate interesting parent list */
+	first = 0;
+	g_buffer = &os;
+	for (list = commit->parents; list; list = list->next) {
+		struct commit *parent = list->item;
+		
+		if (parent->object.flags & UNINTERESTING)
+			continue;
+		
+		if (!first) {
+			first = parent->tree;
+			dump_tree(first, dump_tree_callback);
+		}
+		
+		diff_tree_sha1(first->object.sha1, parent->tree->object.sha1, "", &opts);
+	}
+	
+	/* set difference */
+	if (os.len) {
+		qsort(os.buf, os.len / OE_SIZE, OE_SIZE, cache_sort_hash);
+		
+		g_buffer = &us;
+		dump_tree(commit->tree, dump_tree_callback);
+		qsort(us.buf, us.len / OE_SIZE, OE_SIZE, cache_sort_hash);
+		
+		g_buffer = out;
+		object_set_difference(&us, &os);
+	} else {
+		g_buffer = out;
+		dump_tree(commit->tree, dump_tree_callback);
+	}
+	
+	/* 'topo' sort of sub-commit objects */
+	if (out->len - orig_len)
+		qsort(out->buf + orig_len, (out->len - orig_len) / OE_SIZE, OE_SIZE, cache_sort_type);
+	
+	/* ... */
+	strbuf_release(&us);
+	strbuf_release(&os);
+	g_buffer = orig_buf;
+	
+	return 0;
+}
+
 #define NOT_END			TMP_MARK
 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts)
@@ -544,25 +707,15 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	struct commit_list *list;
 	struct rev_info therevs;
 	struct strbuf buffer, endlist, startlist;
-	struct diff_options opts;
-	struct strbuf old_diff, new_diff, *cur_diff;
 	struct cache_slice_header head;
 	struct commit *commit;
 	unsigned char sha1[20];
 	git_SHA_CTX ctx;
 	
 	strbuf_init(&buffer, 0);
-	strbuf_init(&old_diff, 0);
-	strbuf_init(&new_diff, 0);
 	strbuf_init(&endlist, 0);
 	strbuf_init(&startlist, 0);
 	g_buffer = &buffer;
-	
-	diff_setup(&opts);
-	DIFF_OPT_SET(&opts, RECURSIVE);
-	DIFF_OPT_SET(&opts, TREE_IN_RECURSIVE);
-	opts.change = tree_change;
-	opts.add_remove = tree_addremove;
 	
 	if (!revs) {
 		revs = &therevs;
@@ -623,53 +776,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 			continue;
 		
 		add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0);
-		
-		/* add all blobs/subtrees new to this commit 
-		 * we compare against each parent and take the intersection of the differences */
-		cur_diff = &old_diff;
-		strbuf_setlen(&old_diff, 0);
-		strbuf_setlen(&new_diff, 0);
-		for (list = commit->parents; list; list = list->next) {
-			struct commit *parent = list->item;
-			
-			/* we can only make assumptions about things in this cache... */
-			if (parent->object.flags & UNINTERESTING)
-				continue;
-			
-			/* diff against parent */
-			g_buffer = cur_diff;
-			diff_tree_sha1(parent->tree->object.sha1, commit->tree->object.sha1, "", &opts);
-			
-			qsort(cur_diff->buf, cur_diff->len / sizeof(struct object_entry), sizeof(struct object_entry), cache_sort_hash);
-			if (cur_diff == &new_diff) {
-				int i, j, k;
-				
-				/* remove entries that aren't in the new diff list */
-				for (i = j = k = 0; j < old_diff.len && k < new_diff.len; j += sizeof(struct object_entry)) {
-					while (k < new_diff.len && cache_sort_hash(new_diff.buf + k, old_diff.buf + j) < 0) 
-						k += sizeof(struct object_entry);
-					
-					if (k < new_diff.len && !cache_sort_hash(new_diff.buf + k, old_diff.buf + j)) {
-						if (i != j)
-							memcpy(old_diff.buf + i, old_diff.buf + j, sizeof(struct object_entry));
-						i += sizeof(struct object_entry);
-					}
-				}
-				
-				strbuf_setlen(&old_diff, i);
-				strbuf_setlen(&new_diff, 0);
-			} else
-				cur_diff = &new_diff;
-		}
-		
-		if (old_diff.len) {
-			/* not really necessary, but we might as well topo-order sub-commit objects too */
-			qsort(&old_diff, old_diff.len / sizeof(struct object_entry), sizeof(struct object_entry), cache_sort_type);
-			
-			/* append it all */
-			strbuf_add(&buffer, old_diff.buf, old_diff.len);
-		}
-		g_buffer = &buffer;
+		add_unique_objects(commit, &buffer);
 	}
 	
 	/* initialize header */
@@ -684,7 +791,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	
 	head.ofs_objects = sizeof(head) + startlist.len + endlist.len;
 	head.ofs_bitmaps = head.ofs_objects + buffer.len;
-	head.objects = buffer.len / sizeof(struct object_entry);
+	head.objects = buffer.len / OE_SIZE;
 	head.size = head.ofs_bitmaps;
 	
 	/* the meaning of the hash name is more or less irrelevant, it's the uniqueness that matters */
@@ -702,8 +809,6 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	strbuf_release(&buffer);
 	strbuf_release(&startlist);
 	strbuf_release(&endlist);
-	strbuf_release(&old_diff);
-	strbuf_release(&new_diff);
 	
 	return 0;
 }
@@ -715,6 +820,7 @@ static int index_sort_hash(const void *a, const void *b)
 	return hashcmp(((struct index_entry *)a)->sha1, ((struct index_entry *)b)->sha1);
 }
 
+/* todo: handle concurrency issues */
 static int write_cache_index(struct strbuf *body)
 {
 	int fd;
@@ -754,7 +860,7 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(unsigned int);
 	}
 	
-	idx_head.objects += objects->len / sizeof(struct object_entry);
+	idx_head.objects += objects->len / OE_SIZE;
 	cache_index = idx_head.caches++;
 	if (idx_head.caches >= idx_head.caches_buffer) {
 		/* this whole dance is a bit useless currently, because we re-write everything regardless, 
@@ -767,7 +873,7 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 	}
 	
 	memcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1, 20);
-	for (i = 0; i < objects->len; i += sizeof(struct index_entry)) {
+	for (i = 0; i < objects->len; i += IE_SIZE) {
 		struct index_entry index_entry, *entry;
 		struct object_entry *object_entry = (struct object_entry *)(objects->buf + i);
 		
@@ -795,11 +901,11 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 			strbuf_add(&buffer, entry, sizeof(index_entry));
 	}
 	
-	qsort(buffer.buf, buffer.len / sizeof(struct index_entry), sizeof(struct index_entry), index_sort_hash);
+	qsort(buffer.buf, buffer.len / IE_SIZE, IE_SIZE, index_sort_hash);
 	
 	/* generate fanout */
 	cur = 0x00;
-	for (i = 0; i < buffer.len; i += sizeof(struct index_entry)) {
+	for (i = 0; i < buffer.len; i += IE_SIZE) {
 		struct index_entry *entry = (struct index_entry *)(buffer.buf + i);
 		
 		while (cur <= entry->sha1[0])
@@ -885,15 +991,15 @@ static struct index_entry *search_index(unsigned char *sha1)
 	/* binary search */
 	start = fanout[(int)sha1[0]];
 	end = fanout[(int)sha1[0] + 1];
-	len = (end - start) / sizeof(struct index_entry);
-	if (!len || len * sizeof(struct index_entry) != end - start)
+	len = (end - start) / IE_SIZE;
+	if (!len || len * IE_SIZE != end - start)
 		return 0;
 	
 	starti = 0;
 	endi = len - 1;
 	for (;;) {
 		i = (endi + starti + 1) / 2;
-		ie = (struct index_entry *)(idx_map + start + i * sizeof(struct index_entry));
+		ie = (struct index_entry *)(idx_map + start + i * IE_SIZE);
 		r = hashcmp(sha1, ie->sha1);
 		
 		if (r) {
@@ -941,7 +1047,7 @@ static void uninteresting_from_slices(struct rev_info *revs, unsigned char *whic
 		return;
 	
 	/* haven't implemented which yet; no need really... */
-	for (i = 0, index = idx_head.ofs_objects; i < idx_head.objects; i++, index += sizeof(struct index_entry)) {
+	for (i = 0, index = idx_head.ofs_objects; i < idx_head.objects; i++, index += IE_SIZE) {
 		struct index_entry *entry = (struct index_entry *)(idx_map + index);
 		
 		if (!entry->is_end)
@@ -985,11 +1091,11 @@ static int handle_add(int argc, char *argv[]) /* args beyond this command */
 		flags = 0;
 		while (fgets(line, sizeof(line), stdin)) {
 			int len = strlen(line);
-			if (!len)
-				continue;
-			
-			while (line[len - 1] == '\n' || line[len - 1] == '\r')
+			while (len && (line[len - 1] == '\n' || line[len - 1] == '\r'))
 				line[--len] = 0;
+			
+			if (!len)
+				break;
 			
 			if (!strcmp(line, "--not"))
 				flags ^= UNINTERESTING;
