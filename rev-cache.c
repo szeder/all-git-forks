@@ -240,14 +240,14 @@ static int get_bitmap(struct cache_slice_header *head, unsigned char *map, struc
 		if (!memcmp(be->sha1, end->object.sha1, 20))
 			break;
 		
-		index += sizeof(struct bitmap_entry) + be->z_size;
+		index += sizeof(struct bitmap_entry) + ntohl(be->z_size);
 	}
 	
 	if (index >= head->size - sizeof(struct bitmap_entry))
 		return 1;
 	
 	memcpy(bitmap->sha1, be->sha1, 20);
-	bitmap->z_size = be->z_size;
+	bitmap->z_size = ntohl(be->z_size);
 	
 	bitmap->bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
 	memcpy(bitmap->bitmap, map + index + sizeof(struct bitmap_entry), bitmap->z_size);
@@ -262,7 +262,13 @@ static int get_cache_slice_header(unsigned char *map, int len, struct cache_slic
 	int t;
 	
 	memcpy(head, map, sizeof(struct cache_slice_header));
-	head->start_sha1s = 0;
+	head->ofs_objects = ntohl(head->ofs_objects);
+	head->ofs_bitmaps = ntohl(head->ofs_bitmaps);
+	head->objects = ntohl(head->objects);
+	head->starts = ntohs(head->starts);
+	head->ends = ntohs(head->ends);
+	head->size = ntohl(head->size);
+	head->start_sha1s = head->end_sha1s = 0;
 	if (memcmp(head->signature, "REVCACHE", 8))
 		return -1;
 	if (head->version > SUPPORTED_REVCACHE_VERSION)
@@ -451,11 +457,13 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		goto end;
 	else if (made > 0) {
 		make_bitmap(&head, map, commit, &bitmap);
-		bitmap.z_size = compress_bitmap(bitmap.bitmap, BITMAP_SIZE(head.objects));
+		bitmap.z_size = htonl(compress_bitmap(bitmap.bitmap, BITMAP_SIZE(head.objects)));
 		
 		/* yes we really are writing the useless pointer address too */
 		lseek(fd, fi.st_size, SEEK_SET);
 		write(fd, &bitmap, sizeof(struct bitmap_entry));
+		
+		bitmap.z_size = ntohl(bitmap.z_size);
 		write(fd, bitmap.bitmap, bitmap.z_size);
 		
 		deflate_bitmap(bitmap.bitmap, bitmap.z_size);
@@ -559,15 +567,25 @@ static int cache_sort_type(const void *a, const void *b)
 
 static int write_cache_slice(char *name, struct cache_slice_header *head, struct strbuf *body)
 {
+	struct cache_slice_header whead;
 	int fd;
 	
 	fd = open(git_path("rev-cache/%s", name), O_CREAT | O_WRONLY, 0666);
 	if (fd < 0)
 		return -1;
 	
-	write(fd, head, sizeof(struct cache_slice_header));
+	memcpy(&whead, head, sizeof(whead));
+	whead.ofs_objects = htonl(whead.ofs_objects);
+	whead.ofs_bitmaps = htonl(whead.ofs_bitmaps);
+	whead.objects = htonl(whead.objects);
+	whead.starts = htons(whead.starts);
+	whead.ends = htons(whead.ends);
+	whead.size = htonl(whead.size);
+	write(fd, &whead, sizeof(whead));
 	write(fd, head->start_sha1s, head->starts * 20);
 	write(fd, head->end_sha1s, head->ends * 20);
+	
+	/* thankfully, also no endianness troubles per object */
 	write_in_full(fd, body->buf, body->len);
 	
 	close(fd);
@@ -826,7 +844,8 @@ static int index_sort_hash(const void *a, const void *b)
 /* todo: handle concurrency issues */
 static int write_cache_index(struct strbuf *body)
 {
-	int fd;
+	struct index_header whead;
+	int fd, i;
 	
 	cleanup_cache_slices();
 	
@@ -834,9 +853,18 @@ static int write_cache_index(struct strbuf *body)
 	if (fd < 0)
 		return -1;
 	
-	write(fd, &idx_head, sizeof(struct index_header));
+	/* endianness yay! */
+	memcpy(&whead, &idx_head, sizeof(whead));
+	whead.ofs_objects = htonl(whead.ofs_objects);
+	whead.objects = htonl(whead.objects);
+	write(fd, &whead, sizeof(struct index_header));
 	write(fd, idx_head.cache_sha1s, idx_head.caches_buffer * 20);
+	
+	for (i = 0; i <= 0xff; i++)
+		fanout[i] = htonl(fanout[i]);
 	write(fd, fanout, 0x100 * sizeof(unsigned int));
+	
+	/* hehehe, no crappy conversion for us HERE! */
 	write_in_full(fd, body->buf, body->len);
 	
 	close(fd);
@@ -929,9 +957,11 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 
 static int get_index_head(unsigned char *map, int len, struct index_header *head, unsigned int *fanout)
 {
-	int index = sizeof(struct index_header);
+	int i, index = sizeof(struct index_header);
 	
 	memcpy(head, map, sizeof(struct index_header));
+	head->ofs_objects = ntohl(head->ofs_objects);
+	head->objects = ntohl(head->objects);
 	if (len < index + head->caches_buffer * 20 + (0x100) * sizeof(unsigned int))
 		return -1;
 	
@@ -940,6 +970,8 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 	index += head->caches_buffer * 20;
 	
 	memcpy(fanout, map + index, 0x100 * sizeof(unsigned int));
+	for (i = 0; i <= 0xff; i++)
+		fanout[i] = ntohl(fanout[i]);
 	fanout[0x100] = len;
 	
 	return 0;
@@ -959,7 +991,6 @@ static int init_index(void)
 	int fd;
 	struct stat fi;
 	
-	/* todo: store mapping/fanout for re-use */
 	fd = open(git_path("rev-cache/index"), O_RDONLY);
 	if (fd == -1 || fstat(fd, &fi))
 		goto end;
