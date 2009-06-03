@@ -495,13 +495,9 @@ static int is_start(struct commit *commit)
 	if (commit->object.flags & UNINTERESTING) 
 		return 0;
 	
-	list = commit->parents;
-	while (list) {
-		struct object *p = &list->item->object;
-		
-		if (!(p->flags & UNINTERESTING))
+	for (list = commit->parents; list; list = list->next)
+		if (!(list->item->object.flags & UNINTERESTING))
 			return 0;
-	}
 	
 	return 1;
 }
