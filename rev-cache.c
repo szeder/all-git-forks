@@ -390,7 +390,8 @@ skip_object:
 	}
 	
 	/* queue is LIFO */
-	**queue = q;
+	if (!**queue)
+		**queue = q;
 	*queue = qp;
 	
 	while (w)
