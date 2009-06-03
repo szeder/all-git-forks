@@ -403,6 +403,8 @@ end:
 		free_commit_list(q);
 		free_commit_list(w);
 	}
+	if (anti_bitmap)
+		free(anti_bitmap);
 	
 	return retval;
 }
