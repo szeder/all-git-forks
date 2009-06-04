@@ -176,9 +176,10 @@ If 'uninteresting' objects were passed, no cache can be suitable.
 Re-using deltas
 ^^^^^^^^^^^^^^^
 
-As well as returning the list of objects for a given fetch, we need to
-know whether the delta bases in the pack files we retrieve the objects
-from are in the returned set of objects.
+This applies to the 'Compressing Objects' phase, previously known as
+the 'Deltafying Objects' phase.  Instead of searching for deltas, if
+we can be sure that the existing delta can be resolved on the remote,
+then we can re-use it.
 
 For the initial clone, this operation is simple - as objects are
 emitted, the delta from the packfile is re-used.  If a loop is
@@ -251,8 +252,9 @@ objects which start within a given range are the ones in the slice.
 For re-using deltas in sliced bundles, the delta base is looked up in
 the deterministic list.  If it has an earlier sequence, then the delta
 can be safely re-used.  If it has a later sequence, then the delta
-must be recomputed, using only objects with an earlier sequence (or in
-the returned pack) as a base.
+must be resolved and then the object re-deltified/compressed, using
+only objects with an earlier sequence (or in the returned pack) as a
+base.
 
 This requirement is so that a collection of 'sliced' bundles can
 successfully re-assemble, while still allowing them to be 'thin'.
