@@ -2,6 +2,6 @@ From: Sam Vilain <sam@vilain.net>
 Subject: [PATCH] rev-cache: add on-disk format for fast reachability lookup
 
 As well as storing the sorted list of objects, store a hash table for
-O(1) lookup.
+faster lookup.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>
