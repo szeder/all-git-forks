@@ -1,5 +1,5 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] rev-cache: add 'start' object for caching 'uninteresting' lookups
+Subject: [PATCH] rev-cache: add 'end' objects for caching 'uninteresting' lookups
 
 If we want to be able to accelerate lookups which contain
 'uninteresting' revisions, we must be able to specify what those
