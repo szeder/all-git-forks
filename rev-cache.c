@@ -219,7 +219,11 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 	}
 	
 	/* this should never happen! */
-	assert(!cur_commit);
+	/* assert(!cur_commit); */
+	if (cur_commit) {
+		free(bitmap);
+		return -1;
+	}
 	
 	memcpy(bitmap_entry->sha1, end->object.sha1, 20);
 	bitmap_entry->bitmap = bitmap;
@@ -366,8 +370,7 @@ skip_object:
 				
 				/* wow! this is unusual. merge with what we've got */
 				for(j = 0; j < BITMAP_SIZE(head->objects); j++)
-					if (be.bitmap[j])
-						anti_bitmap[j] |= be.bitmap[j];
+					anti_bitmap[j] |= be.bitmap[j];
 				
 				free(be.bitmap);
 			} else
