@@ -1,18 +1,8 @@
 From: Sam Vilain <sam@vilain.net>
-Subject: [PATCH] [WIP] revision cache: allow foreign 'start' commits
+Subject: [PATCH] revision cache: be even stricter with sort order
 
-Usually the 'start' commits are always 'interesting' commits in a
-revision query, however with the 'newness' bitmaps we can also use
-them to mask out objects, ie 'uninteresting' commits.  An index which
-was useless, due to an unknown object existing in the 'uninteresting'
-commit list can be converted to a useful one by building the bitmap of
-'reachable' and 'new' objects for that commit - without having to
-insert new objects in the middle of the list, which would require
-rebuilding the entire index.  So, there is a use case for storing
-information on 'start' objects which aren't actually in the object
-list.  Permit this case.
-
-This is currently a work in progress; extension to how this affects
-the use cases is not there yet.
+For sliced bundles, there must be absolutely no ambiguity at all about
+the sort order.  Define how to break ties, and describe why this
+affects mirror-sync.
 
 Signed-off-by: Sam Vilain <sam@vilain.net>
