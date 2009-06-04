@@ -143,8 +143,8 @@ revision cache; it has the extra requirements of wanting to know;
 * how many objects are between 'interesting' and 'uninteresting'
   objects, at the beginning of the run, to emit the pack header
 
-* for resolving deltas, whether the delta base object is in the
-  received set of objects.
+* for checking re-usability of deltas, whether the delta base object
+  in the pack is in the received set of objects.
 
 * for 'thin' pack generation, whether the delta base object is in the
   received set of objects, -or- reachable from any 'uninteresting'
@@ -173,8 +173,8 @@ number of hash table entries.
 If 'uninteresting' objects were passed, no cache can be suitable.
 
 
-Resolving deltas
-^^^^^^^^^^^^^^^^
+Re-using deltas
+^^^^^^^^^^^^^^^
 
 As well as returning the list of objects for a given fetch, we need to
 know whether the delta bases in the pack files we retrieve the objects
@@ -193,11 +193,12 @@ For later fetches, the revision cache is not appropriate as they will
 have 'uninteresting' objects set.
 
 
-Resolving deltas - 'thin' pack
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Re-using deltas - 'thin' pack
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This case is much like resolving deltas, except there is the complete
-set of objects that the remote has claimed to have to consider.
+This case is much like the normal re-using deltas case, except there
+is the complete set of objects that the remote has claimed to have to
+consider.
 
 The cache is not yet sophisticated enough to assist with this use
 case.
@@ -211,7 +212,7 @@ For enumerating objects, the list of objects between the
 and then subtracted from the objects between the 'interesting' and the
 'uninteresting' list.
 
-For resolving deltas for 'thin' packs, the list of objects between
+For re-using deltas for 'thin' packs, the list of objects between
 'uninteresting' and 'shallow' commits are enumerated and marked as
 valid for delta bases.
 
@@ -247,11 +248,11 @@ are also sorted.  Once this deterministic list has been built, then
 all of the objects must be accessed to determine their length.  The
 objects which start within a given range are the ones in the slice.
 
-For resolving deltas in sliced bundles, the delta base is looked up in
+For re-using deltas in sliced bundles, the delta base is looked up in
 the deterministic list.  If it has an earlier sequence, then the delta
 can be safely re-used.  If it has a later sequence, then the delta
-must be resolved using only objects with an earlier sequence as a base.
+must be recomputed, using only objects with an earlier sequence (or in
+the returned pack) as a base.
 
 This requirement is so that a collection of 'sliced' bundles can
 successfully re-assemble, while still allowing them to be 'thin'.
-
