@@ -28,8 +28,9 @@ This list has fixed-length records, so the topological position into
 the list does not need to be stored in each record - it is implicit
 from the offset.
 
---date-order only specifies an ordering for commit objects.  Other
-objects appear after the object which first refers to them.  Tag
+--date-order is used as it is the strictest sort order available, but
+this still only specifies an ordering for commit objects.  Other
+objects will appear after the object which first refers to them.  Tag
 objects are sorted as if they were commit objects with a single
 parent, the object they tag.
 
