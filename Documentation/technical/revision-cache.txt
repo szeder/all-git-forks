@@ -28,10 +28,10 @@ A revision cache contains;
     space.  A count of how many bits are '1' is included.  A separate
     bitmap is included for the 'start' objects.
 
-  - Optionally, for any 'end' object, a bitmap indicating which of the
-    objects in the object list are reachable from that 'end' object,
-    but not reachable from the 'start' objects reachable from that
-    'end' object.
+  - Optionally, for any 'end' object, a 'newness' bitmap indicating
+    which of the objects in the object list are reachable from that
+    'end' object, but not reachable from the 'start' objects reachable
+    from that 'end' object.
 
 
 Start Objects and End Objects
@@ -125,6 +125,9 @@ generating a newer one which covers objects created after it.  This
 approach will be able to answer many questions, but not topological
 ordering between objects which appeared in different caches.
 
+Stacking revision caches is essential for being able to generate the
+'newness' bitmaps efficiently.
+
 
 Revision Walker
 ~~~~~~~~~~~~~~~
@@ -149,7 +152,7 @@ required.  Some API exists to do this, and the return value from
 'rev_cache_ok' is true if suitable caches were found for the
 information required, and false if it would require a graph traversal:
 
-  rev_cache_options( ordered? )
+  rev_cache_options( ordered?, new? )
   rev_cache_ok( ) : Bool
 
 The rev_cache_ok() function must open all available revision caches,
@@ -167,6 +170,11 @@ relaxed.  Objects may be found in separate revision caches.
 If any 'uninteresting' objects were passed, then the return value is
 true if the suitability function passes for all of the revision caches
 which are used.
+
+If the 'new' flag is set to true, then the return value is only true
+if the 'uninteresting' objects also have suitable revision caches
+leading back to the start of history (or last 'shallow' point), or the
+'newness' bitmaps are present for all of the 'start' references used.
 
 
 Returning objects
@@ -213,6 +221,10 @@ Then, it must repeat the topological walk for each of the 'start'
 objects, looking up each object in the contents hash for a sequence
 number, set a bit in the bitmap for that 'start' object, and finally
 RLE compress it.
+If there are suitable other revision caches available, then the
+'newness' bitmaps are built by checking with the stacked revision
+caches whether the object exists and is reachable from the 'start'
+objects which connect to those stacked caches.
 
 
 receive-pack/pack-objects
@@ -254,6 +266,11 @@ bitmap can be used.
 If multiple 'start' objects were used, then the count can be returned
 by decompressing and OR'ing the bitmaps together, counting the total
 number of '1's in the bitmap.
+
+If the 'newness' bitmaps are available, then these can be used to
+avoid sending objects which the other end will already have.
+When applicable the 'newness' bitmaps will be masked against the
+combined reachability bitmaps to derive a shorter list of objects.
 
 If multiple revision caches were used, but not in single file, then
 the number of objects can be obtained by building a hash table of all
