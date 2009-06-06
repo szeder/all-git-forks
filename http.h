@@ -117,6 +117,23 @@ extern void append_remote_object_url(struct strbuf *buf, const char *url,
 extern char *get_remote_object_url(const char *url, const char *hex,
 				   int only_two_digit_prefix);
 
+/* Progress diplay for HTTP activity */
+enum http_action
+{
+	HTTP_FETCHING_NOTHING = 0,
+	HTTP_FETCHING_GENERIC = 1,
+	HTTP_FETCHING_OBJECT = 2,
+	HTTP_FETCHING_PACK = 3,
+	HTTP_FETCHING_PACK_INDEX = 4,
+	HTTP_FETCHING_INFO_REFS = 5,
+	HTTP_FETCHING_INFO_PACKS = 6
+};
+
+extern void http_display_update_action(enum http_action action);
+extern void http_display_increment_fetching_object_count(void);
+extern void http_display_decrement_fetching_object_count(void);
+extern void http_display_increment_alternate_object_count(void);
+
 /* Options for http_request_*() */
 #define HTTP_NO_CACHE		1
 

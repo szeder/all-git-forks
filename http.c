@@ -1,5 +1,6 @@
 #include "http.h"
 #include "pack.h"
+#include "progress.h"
 
 int data_received;
 int active_requests;
@@ -50,6 +51,26 @@ static struct curl_slist *pragma_header;
 static struct curl_slist *no_pragma_header;
 
 static struct active_request_slot *active_queue_head;
+
+struct status_data
+{
+	struct progress *p;
+	unsigned transfer_curr;
+	unsigned transfer_total;
+	unsigned object_curr;
+	unsigned object_total;
+	unsigned object_fetching_count;
+	unsigned alternate_object_count;
+	unsigned pack_index_count;
+	unsigned pack_count;
+	unsigned pack_total;
+	char *title;
+	enum http_action type;
+	char *type_str;
+};
+
+static struct status_data *status_data;
+static struct status_data *status_data_prev;
 
 size_t fread_buffer(void *ptr, size_t eltsize, size_t nmemb, void *buffer_)
 {
@@ -314,6 +335,8 @@ static void set_from_env(const char **var, const char *envname)
 		*var = val;
 }
 
+static void http_display_start(void);
+
 void http_init(struct remote *remote, signed verbosity,
 	unsigned force_progress)
 {
@@ -388,6 +411,23 @@ void http_init(struct remote *remote, signed verbosity,
 #ifndef NO_CURL_EASY_DUPHANDLE
 	curl_default = get_curl_handle();
 #endif
+
+	status_data = xmalloc(sizeof(*status_data));
+	status_data_prev = xmalloc(sizeof(*status_data_prev));
+	status_data->p = NULL;
+	status_data->transfer_curr = 0;
+	status_data->transfer_total = 0;
+	status_data->object_curr = 0;
+	status_data->object_total = 0;
+	status_data->object_fetching_count = 0;
+	status_data->alternate_object_count = 0;
+	status_data->pack_index_count = 0;
+	status_data->pack_count = 0;
+	status_data->title = NULL;
+	status_data->type = HTTP_FETCHING_NOTHING;
+	status_data->type_str = NULL;
+
+	http_display_start();
 }
 
 void http_cleanup(void)
@@ -433,6 +473,10 @@ void http_cleanup(void)
 		ssl_cert_password = NULL;
 	}
 	ssl_cert_password_required = 0;
+
+	stop_progress(&status_data->p);
+	free(status_data);
+	free(status_data_prev);
 }
 
 struct active_request_slot *get_active_slot(void)
@@ -736,6 +780,173 @@ char *get_remote_object_url(const char *url, const char *hex,
 	return strbuf_detach(&buf, NULL);
 }
 
+/* Progress diplay for HTTP activity */
+static void http_display_start(void)
+{
+	if (progress) {
+		status_data->p = start_progress("", 0);
+		show_progress_count(status_data->p, 0);
+	}
+}
+static void http_display_update(void)
+{
+	display_progress(status_data->p, status_data->transfer_curr);
+	display_throughput(status_data->p, status_data->transfer_curr);
+}
+
+static void http_display_update_title(void)
+{
+	int flag1 = (status_data->type_str != NULL && strcmp(status_data->type_str, "") != 0) ?
+		1 : 0;
+	struct strbuf buf = STRBUF_INIT;
+
+	strbuf_addstr(&buf, "Fetching");
+
+	if (status_data->type_str != NULL && strcmp(status_data->type_str, "") != 0) {
+		strbuf_addf(&buf, " %s", status_data->type_str);
+
+		switch (status_data->type) {
+		case HTTP_FETCHING_PACK_INDEX:
+			strbuf_addf(&buf, " (%u)",
+				status_data->pack_index_count+1);
+			break;
+		case HTTP_FETCHING_PACK:
+			strbuf_addf(&buf, " (%u of %u)",
+				status_data->pack_count+1,
+				status_data->pack_total);
+		default:
+			break;
+		}
+	} else if (status_data->object_fetching_count) {
+		strbuf_addf(&buf, " %u objects",
+			status_data->object_fetching_count);
+	}
+
+	if (status_data->title != NULL)
+		free(status_data->title);
+	status_data->title = strbuf_detach(&buf, NULL);
+
+	update_progress_title(status_data->p, status_data->title);
+	http_display_update();
+}
+
+void http_display_update_action(enum http_action action)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	if (status_data_prev->type != action) {
+		status_data->type = action;
+		status_data_prev->type = action;
+
+		switch(action) {
+		case HTTP_FETCHING_GENERIC:
+			strbuf_addstr(&buf, "something");
+			break;
+		case HTTP_FETCHING_OBJECT:
+			strbuf_addstr(&buf, "object");
+			break;
+		case HTTP_FETCHING_PACK:
+			strbuf_addstr(&buf, "pack");
+			break;
+		case HTTP_FETCHING_PACK_INDEX:
+			strbuf_addstr(&buf, "pack index");
+			break;
+		case HTTP_FETCHING_INFO_REFS:
+			strbuf_addstr(&buf, "info/refs");
+			break;
+		case HTTP_FETCHING_INFO_PACKS:
+			strbuf_addstr(&buf, "objects/info/packs");
+			break;
+		case HTTP_FETCHING_NOTHING:
+		default:
+			strbuf_addstr(&buf, "");
+			break;
+		}
+
+		if (status_data->type_str != NULL)
+			free(status_data->type_str);
+		status_data->type_str = xstrdup(buf.buf);
+
+		http_display_update_title();
+	}
+
+	strbuf_release(&buf);
+}
+
+void http_display_increment_fetching_object_count(void)
+{
+	status_data->object_fetching_count++;
+
+	http_display_update_title();
+}
+
+void http_display_decrement_fetching_object_count(void)
+{
+	status_data->object_fetching_count--;
+
+	http_display_update_title();
+}
+
+void http_display_increment_alternate_object_count(void)
+{
+	status_data->alternate_object_count++;
+
+	http_display_update_title();
+}
+
+static void http_display_update_transfer_count(unsigned n)
+{
+	status_data->transfer_curr = n;
+
+	http_display_update();
+}
+
+static void http_display_update_transfer_total(unsigned n)
+{
+	status_data->transfer_total = n;
+
+	update_progress_total(status_data->p, n);
+	http_display_update();
+}
+
+static void http_display_got_pack_index(void)
+{
+	status_data->pack_index_count++;
+}
+
+static void http_display_got_pack(void)
+{
+	stop_progress(&status_data->p);
+
+	status_data->pack_count++;
+}
+
+static void http_display_verified_pack(void)
+{
+	if (status_data->pack_count >= status_data->pack_total)
+		return;
+
+	http_display_start();
+
+	update_progress_total(status_data->p, status_data->transfer_total);
+	http_display_update_action(HTTP_FETCHING_NOTHING);
+}
+
+static void http_display_update_pack_total(unsigned n)
+{
+	status_data->pack_count = 0;
+	status_data->pack_total = n;
+}
+
+static int http_curl_progress_callback(void *clientp, double dltotal, double dlnow,
+				       double ultotal, double ulnow)
+{
+	http_display_update_transfer_count(dlnow);
+	http_display_update_transfer_total(dltotal);
+
+	return 0;
+}
+
 /* http_request() targets */
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
@@ -771,6 +982,10 @@ static int http_request(const char *url, void *result, int target, int options)
 		} else
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite_buffer);
+
+		curl_easy_setopt(slot->curl, CURLOPT_NOPROGRESS, 0);
+		curl_easy_setopt(slot->curl, CURLOPT_PROGRESSFUNCTION,
+			http_curl_progress_callback);
 	}
 
 	strbuf_addstr(&buf, "Pragma:");
@@ -798,6 +1013,11 @@ static int http_request(const char *url, void *result, int target, int options)
 	slot->local = NULL;
 	curl_slist_free_all(headers);
 	strbuf_release(&buf);
+
+	if (result != NULL) {
+		curl_easy_setopt(slot->curl, CURLOPT_NOPROGRESS, 1);
+		http_display_update_action(HTTP_FETCHING_NOTHING);
+	}
 
 	return ret;
 }
@@ -847,6 +1067,7 @@ int http_fetch_ref(const char *base, struct ref *ref)
 	int ret = -1;
 
 	url = quote_ref_url(base, ref->name);
+	http_display_update_action(HTTP_FETCHING_OBJECT);
 	if (http_get_strbuf(url, &buffer, HTTP_NO_CACHE) == HTTP_OK) {
 		strbuf_rtrim(&buffer);
 		if (buffer.len == 40)
@@ -895,8 +1116,11 @@ static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 	url = strbuf_detach(&buf, NULL);
 
 	filename = sha1_pack_index_name(sha1);
+	http_display_update_action(HTTP_FETCHING_PACK_INDEX);
 	if (http_get_file(url, filename, 0) != HTTP_OK)
 		ret = error("Unable to get pack index %s\n", url);
+
+	http_display_got_pack_index();
 
 cleanup:
 	free(hex);
@@ -922,7 +1146,7 @@ static int fetch_and_setup_pack_index(struct packed_git **packs_head,
 
 int http_get_info_packs(const char *base_url, struct packed_git **packs_head)
 {
-	int ret = 0, i = 0;
+	int ret = 0, i = 0, num_packs = 0;
 	char *url, *data;
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char sha1[20];
@@ -931,6 +1155,7 @@ int http_get_info_packs(const char *base_url, struct packed_git **packs_head)
 	strbuf_addstr(&buf, "objects/info/packs");
 	url = strbuf_detach(&buf, NULL);
 
+	http_display_update_action(HTTP_FETCHING_INFO_PACKS);
 	ret = http_get_strbuf(url, &buf, HTTP_NO_CACHE);
 	if (ret != HTTP_OK)
 		goto cleanup;
@@ -947,6 +1172,7 @@ int http_get_info_packs(const char *base_url, struct packed_git **packs_head)
 				fetch_and_setup_pack_index(packs_head, sha1,
 						      base_url);
 				i += 51;
+				num_packs++;
 				break;
 			}
 		default:
@@ -955,6 +1181,8 @@ int http_get_info_packs(const char *base_url, struct packed_git **packs_head)
 		}
 		i++;
 	}
+
+	http_display_update_pack_total(num_packs);
 
 cleanup:
 	free(url);
@@ -981,6 +1209,8 @@ int finish_http_pack_request(struct http_pack_request *preq)
 	int ret;
 	struct packed_git **lst;
 
+	curl_easy_setopt(preq->slot->curl, CURLOPT_NOPROGRESS, 1);
+
 	preq->target->pack_size = ftell(preq->packfile);
 
 	if (preq->packfile != NULL) {
@@ -988,6 +1218,8 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		preq->packfile = NULL;
 		preq->slot->local = NULL;
 	}
+
+	http_display_got_pack();
 
 	ret = move_temp_to_file(preq->tmpfile, preq->filename);
 	if (ret)
@@ -998,8 +1230,11 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		lst = &((*lst)->next);
 	*lst = (*lst)->next;
 
-	if (verify_pack(preq->target))
+	if (verify_pack_progress(preq->target, progress))
 		return -1;
+
+	http_display_verified_pack();
+
 	install_packed_git(preq->target);
 
 	return 0;
@@ -1058,6 +1293,11 @@ struct http_pack_request *new_http_pack_request(
 		curl_easy_setopt(preq->slot->curl, CURLOPT_HTTPHEADER,
 			preq->range_header);
 	}
+
+	http_display_update_action(HTTP_FETCHING_PACK);
+	curl_easy_setopt(preq->slot->curl, CURLOPT_NOPROGRESS, 0);
+	curl_easy_setopt(preq->slot->curl, CURLOPT_PROGRESSFUNCTION,
+		http_curl_progress_callback);
 
 	return preq;
 

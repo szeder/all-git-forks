@@ -447,6 +447,7 @@ static struct ref *get_refs_via_curl(struct transport *transport, int for_push)
 	refs_url = xmalloc(strlen(transport->url) + 11);
 	sprintf(refs_url, "%s/info/refs", transport->url);
 
+	http_display_update_action(HTTP_FETCHING_INFO_REFS);
 	http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
 	switch (http_ret) {
 	case HTTP_OK:
