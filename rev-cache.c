@@ -136,22 +136,7 @@ static int init_index(void);
 static void cleanup_cache_slices(void);
 static struct index_entry *search_index(unsigned char *);
 
-/* this will happen so rarely with so few that it really dosn't matter how we do it */
-static int in_sha1_list(const unsigned char *list, int n, const unsigned char *sha1)
-{
-	int i;
-	
-	for (i = 0; i < n; i++) {
-		if (list[i * 20] != sha1[0] || hashcmp(&list[i * 20], sha1))
-			continue;
-		
-		return 1;
-	}
-	
-	return 0;
-}
-
-#define MOVE_SLICE_HASH(h)			((h) + 1) * ((h) + 1) % pack_slice_sz
+#define MOVE_SLICE_HASH(h)			(((h) + 1) * ((h) + 1) % pack_slice_sz)
 
 static unsigned int pack_slice_hash(unsigned char *sha1)
 {
@@ -255,6 +240,21 @@ static int add_pack_slice_entry(unsigned char *sha1, off_t offset, struct packed
 	return 0;
 }
 
+/* this will happen so rarely with so few that it really dosn't matter how we do it */
+static int in_sha1_list(const unsigned char *list, int n, const unsigned char *sha1)
+{
+	int i;
+	
+	for (i = 0; i < n; i++) {
+		if (list[i * 20] != sha1[0] || hashcmp(&list[i * 20], sha1))
+			continue;
+		
+		return 1;
+	}
+	
+	return 0;
+}
+
 static int compress_bitmap(unsigned char *bitmap, int size)
 {
 	/* todo */
@@ -274,7 +274,7 @@ static int deflate_bitmap(unsigned char *bitmap, int z_size)
 static int make_bitmap(struct cache_slice_header *head, unsigned char *map, struct commit *end, struct bitmap_entry *bitmap_entry)
 {
 	unsigned char *bitmap;
-	struct commit_list *list, *queue, *t;
+	struct commit_list *list, *queue;
 	struct commit_list **listp, **queuep;
 	struct commit *cur_commit;
 	struct object_entry *object;
@@ -314,8 +314,6 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 	
 	/* with ordering the same, we need only step through cached list */
 	sort_in_topological_order(&list, 1);
-	for (t = list; t; t = t->next)
-		printf("%s\n", sha1_to_hex(t->item->object.sha1));
 	
 	cur_commit = pop_commit(&list);
 	bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
@@ -868,6 +866,58 @@ static int add_unique_objects(struct commit *commit, struct strbuf *out)
 	return 0;
 }
 
+/* 
+ * because this is a self-contained branch slice, each commit must be either:
+ * - contained entirely within slice (all parents interesting)
+ * - a start commit (all parents uninteresting)
+ * if this is not the case we gotta 'traverse half-contained' entries until it is
+ */
+static void make_legs(struct rev_info *revs)
+{
+	struct commit_list *list, **plist;
+	int total = 0;
+	
+	/* attach plist to end of commits list */
+	list = revs->commits;
+	while (list && list->next)
+		list = list->next;
+	
+	if (list)
+		plist = &list->next;
+	else
+		return;
+	
+	/* duplicates don't matter, as get_revision() ignores them */
+	for (list = revs->commits; list; list = list->next) {
+		struct commit *item = list->item;
+		struct commit_list *parents = item->parents;
+		
+		if (item->object.flags & UNINTERESTING)
+			continue;
+		if (is_start(item))
+			continue;
+		
+		while (parents) {
+			struct commit *p = parents->item;
+			parents = parents->next;
+			
+			if (!(p->object.flags & UNINTERESTING))
+				continue;
+			
+			p->object.flags &= ~UNINTERESTING;
+			parse_commit(p);
+			plist = &commit_list_insert(p, plist)->next;
+			
+			if (!(p->object.flags & SEEN))
+				total++;
+		}
+	}
+	
+	if (total)
+		sort_in_topological_order(&revs->commits, 1);
+	
+}
+
 #define NOT_END			TMP_MARK
 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts)
@@ -908,6 +958,8 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	if (prepare_revision_walk(revs))
 		die("died preparing revision walk");
 	
+	make_legs(revs);
+	
 	/* using the very system we're optimizing may seem a bit weird, but as we 
 	 * shouldn't ever be making cache slices _within_ a traversal we should be ok */
 	while ((commit = get_revision(revs)) != 0) {
@@ -920,23 +972,22 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		/* determine if this is an endpoint: 
 		 * if all parents are uninteresting -> start
 		 * if this isn't a parent of a SEEN -> end */
-		if (is_start(commit)) {
-			object.is_start = 1;
-			strbuf_add(&startlist, commit->object.sha1, 20);
-		}
-		
 		if (!(commit->object.flags & NOT_END)) {
 			object.is_end = 1;
 			strbuf_add(&endlist, commit->object.sha1, 20);
 		} else
 			commit->object.flags &= ~NOT_END;
 		
-		for (list = commit->parents; list; list = list->next) {
-			if (list->item->object.flags & UNINTERESTING)
-				continue;
-			list->item->object.flags |= NOT_END;
+		if (is_start(commit)) {
+			object.is_start = 1;
+			strbuf_add(&startlist, commit->object.sha1, 20);
+		} else {
+			/* parents are either all interesting or all uninteresting... */
+			for (list = commit->parents; list; list = list->next)
+				list->item->object.flags |= NOT_END;
 		}
 		
+		printf("%s [%d]\n", sha1_to_hex(object.sha1), object.is_start);
 		add_object_entry(0, 0, &object);
 		
 		/* add all unique children for this commit */
@@ -953,9 +1004,9 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	head.version = SUPPORTED_REVCACHE_VERSION;
 	
 	head.starts = startlist.len / 20;
-	head.start_sha1s = startlist.buf;
+	head.start_sha1s = xmemdupz(startlist.buf, startlist.len);
 	head.ends = endlist.len / 20;
-	head.end_sha1s = endlist.buf;
+	head.end_sha1s = xmemdupz(endlist.buf, endlist.len);
 	
 	head.ofs_objects = sizeof(head) + startlist.len + endlist.len;
 	head.ofs_bitmaps = head.ofs_objects + buffer.len;
@@ -979,6 +1030,8 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	if (make_cache_index(sha1, &buffer) < 0)
 		die("can't update index");
 	
+	free(head.start_sha1s);
+	free(head.end_sha1s);
 	strbuf_release(&buffer);
 	strbuf_release(&startlist);
 	strbuf_release(&endlist);
