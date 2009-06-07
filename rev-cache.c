@@ -1015,7 +1015,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	head.size = head.ofs_bitmaps;
 	
 	/* the meaning of the hash name is more or less irrelevant, it's the uniqueness that matters */
-	strbuf_add(&startlist, strbuf_detach(&endlist, 0), head.ends * 20);
+	strbuf_add(&startlist, endlist.buf, endlist.len);
 	git_SHA1_Init(&ctx);
 	git_SHA1_Update(&ctx, startlist.buf, startlist.len);
 	git_SHA1_Final(sha1, &ctx);
