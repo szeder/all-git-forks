@@ -6,6 +6,7 @@
 #include "tree-walk.h"
 #include "diff.h"
 #include "revision.h"
+#include "run-command.h"
 
 /*
 
@@ -82,6 +83,7 @@ struct cache_slice_header {
 	unsigned char *end_sha1s;
 	
 	unsigned int size;
+	unsigned char pack_sha1[20];
 };
 
 /* the size field might be screwy, but we need entries to have 
@@ -92,6 +94,7 @@ struct object_entry {
 	unsigned is_end : 1;
 	unsigned flags : 3; /* for later */
 	unsigned char sha1[20];
+	unsigned int ofs_pack;
 	/* unsigned int size; */
 };
 
@@ -108,6 +111,11 @@ static struct index_header idx_head;
 
 static struct strbuf *g_buffer;
 
+static char dont_pack_it = 0;
+
+struct pack_entry **pack_slice = 0;
+static int pack_slice_nr = 0, pack_slice_sz = 0;
+
 #define SUPPORTED_REVCACHE_VERSION 		1
 #define SUPPORTED_REVINDEX_VERSION		1
 
@@ -119,7 +127,11 @@ static struct strbuf *g_buffer;
 #define OE_SIZE	sizeof(struct object_entry)
 #define IE_SIZE	sizeof(struct index_entry)
 
-int make_cache_index(const char *, struct strbuf *);
+#define OE_CAST(p)	((struct object_entry *)(p))
+#define IE_CAST(p)	((struct index_entry *)(p))
+
+static int make_cache_index(const char *, struct strbuf *);
+static unsigned char *make_cache_pack(char *, struct strbuf *);
 static int init_index(void);
 static void cleanup_cache_slices(void);
 static struct index_entry *search_index(unsigned char *);
@@ -130,12 +142,116 @@ static int in_sha1_list(const unsigned char *list, int n, const unsigned char *s
 	int i;
 	
 	for (i = 0; i < n; i++) {
-		if (list[i * 20] != sha1[0] || memcmp(&list[i * 20], sha1, 20))
+		if (list[i * 20] != sha1[0] || hashcmp(&list[i * 20], sha1))
 			continue;
 		
 		return 1;
 	}
 	
+	return 0;
+}
+
+#define MOVE_SLICE_HASH(h)			((h) + 1) * ((h) + 1) % pack_slice_sz
+
+static unsigned int pack_slice_hash(unsigned char *sha1)
+{
+	unsigned int h = 0;
+	
+	h |= (unsigned int)sha1[0] << 24;
+	h |= (unsigned int)sha1[1] << 16;
+	h |= (unsigned int)sha1[2] << 8;
+	h |= (unsigned int)sha1[3];
+	
+	return h % pack_slice_sz;
+}
+
+struct pack_entry *get_pack_slice_entry(unsigned char *sha1)
+{
+	unsigned int h = pack_slice_hash(sha1);
+	
+	if (!pack_slice)
+		return 0;
+	
+	while (pack_slice[h]) {
+		struct pack_entry *pe = pack_slice[h];
+		
+		if (!hashcmp(pe->sha1, sha1))
+			return pe;
+		
+		h = MOVE_SLICE_HASH(h);
+	}
+	
+	return 0;
+}
+
+#ifndef max
+#	define max(a, b)		((a) > (b) ? (a) : (b))
+#endif
+
+static void expand_pack_slice(void)
+{
+	struct pack_entry **new_slice;
+	int old_size;
+	
+	if (pack_slice_nr * 4 < pack_slice_sz * 3)
+		return;
+	
+	old_size = pack_slice_sz;
+	pack_slice_sz += max(0xffff + 1, pack_slice_nr);
+	new_slice = xcalloc(pack_slice_sz, sizeof(struct packed_entry *));
+	
+	if (pack_slice) {
+		int i;
+		
+		/* re-locate hashes */
+		for (i = 0; i < old_size; i++) {
+			struct pack_entry *pe;
+			unsigned int h;
+			
+			if (!pack_slice[i])
+				continue;
+			
+			pe = pack_slice[i];
+			h = pack_slice_hash(pe->sha1);
+			while (new_slice[h])
+				h = MOVE_SLICE_HASH(h);
+			
+			new_slice[h] = pe;
+		}
+		
+		free(pack_slice);
+	}
+	
+	pack_slice = new_slice;
+	
+}
+
+static int add_pack_slice_entry(unsigned char *sha1, off_t offset, struct packed_git *pack)
+{
+	struct pack_entry *entry;
+	unsigned int h = pack_slice_hash(sha1);
+	
+	expand_pack_slice();
+	
+	while (pack_slice[h]) {
+		struct pack_entry *pe = pack_slice[h];
+		
+		if (!hashcmp(pe->sha1, sha1))
+			break;
+		
+		h = MOVE_SLICE_HASH(h);
+	}
+	
+	if (pack_slice[h]) 
+		return 1;
+	
+	entry = xcalloc(1, sizeof(struct pack_entry));
+	
+	hashcpy(entry->sha1, sha1);
+	entry->offset = offset;
+	entry->p = pack;
+	pack_slice[h] = entry;
+		
 	return 0;
 }
 
@@ -158,7 +274,7 @@ static int deflate_bitmap(unsigned char *bitmap, int z_size)
 static int make_bitmap(struct cache_slice_header *head, unsigned char *map, struct commit *end, struct bitmap_entry *bitmap_entry)
 {
 	unsigned char *bitmap;
-	struct commit_list *list, *queue;
+	struct commit_list *list, *queue, *t;
 	struct commit_list **listp, **queuep;
 	struct commit *cur_commit;
 	struct object_entry *object;
@@ -198,6 +314,8 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 	
 	/* with ordering the same, we need only step through cached list */
 	sort_in_topological_order(&list, 1);
+	for (t = list; t; t = t->next)
+		printf("%s\n", sha1_to_hex(t->item->object.sha1));
 	
 	cur_commit = pop_commit(&list);
 	bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
@@ -205,14 +323,13 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 		i < head->objects && cur_commit; 
 		i++, index += OE_SIZE
 	) {
-		object = (struct object_entry *)(map + index);
+		object = OE_CAST(map + index);
 		
 		if (object->type != OBJ_COMMIT)
 			continue;
-		if (memcmp(object->sha1, cur_commit->object.sha1, 20)) 
+		if (hashcmp(object->sha1, cur_commit->object.sha1)) 
 			continue;
 		
-		/* printf("%d setting %s\n", i >> 3, sha1_to_hex(object->sha1)); */
 		SET_BIT(bitmap, i);
 		cur_commit->object.flags &= ~HEARD; /* we're very tidy! */
 		cur_commit = pop_commit(&list);
@@ -225,7 +342,7 @@ static int make_bitmap(struct cache_slice_header *head, unsigned char *map, stru
 		return -1;
 	}
 	
-	memcpy(bitmap_entry->sha1, end->object.sha1, 20);
+	hashcpy(bitmap_entry->sha1, end->object.sha1);
 	bitmap_entry->bitmap = bitmap;
 	bitmap_entry->z_size = 0; /* set in caller */
 	
@@ -241,7 +358,7 @@ static int get_bitmap(struct cache_slice_header *head, unsigned char *map, struc
 	while (index < head->size - sizeof(struct bitmap_entry)) {
 		be = (struct bitmap_entry *)(map + index);
 		
-		if (!memcmp(be->sha1, end->object.sha1, 20))
+		if (!hashcmp(be->sha1, end->object.sha1))
 			break;
 		
 		index += sizeof(struct bitmap_entry) + ntohl(be->z_size);
@@ -250,7 +367,7 @@ static int get_bitmap(struct cache_slice_header *head, unsigned char *map, struc
 	if (index >= head->size - sizeof(struct bitmap_entry))
 		return 1;
 	
-	memcpy(bitmap->sha1, be->sha1, 20);
+	hashcpy(bitmap->sha1, be->sha1);
 	bitmap->z_size = ntohl(be->z_size);
 	
 	bitmap->bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
@@ -294,7 +411,7 @@ static int get_cache_slice_header(unsigned char *map, int len, struct cache_slic
 
 static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, 
 	unsigned char *map, unsigned char *bitmap, struct commit *commit, 
-	struct commit_list ***queue, struct commit_list **work)
+	struct commit_list ***queue, struct commit_list **work, struct packed_git *pack)
 {
 	struct commit_list *q = 0, *w = 0;
 	struct commit_list **qp = &q, **wp = &w;
@@ -316,7 +433,7 @@ start_loop:
 				continue;
 		}
 		
-		entry = (struct object_entry *)(map + index);
+		entry = OE_CAST(map + index);
 		if (consuming_children) {
 			/* children are straddled between adjacent commits */
 			switch (entry->type) {
@@ -344,6 +461,9 @@ start_loop:
 			 * we won't be able to rely the preceeding's cached sub-commit objects */
 			if (use_objects)
 				object->flags = FACE_VALUE;
+			
+			if (revs->for_pack && pack)
+				add_pack_slice_entry(entry->sha1, ntohl(entry->ofs_pack), pack);
 			
 			add_pending_object(revs, object, "");
 skip_object:
@@ -384,16 +504,22 @@ skip_object:
 			parse_commit(co);
 			if (!(object->flags & SEEN) || object->flags & UNINTERESTING) {
 				wp = &commit_list_insert(co, wp)->next; /* or mark_parents_uninteresting for other case? */
-				if (!(object->flags & UNINTERESTING))
+				if (!(object->flags & UNINTERESTING)) {
 					consuming_children = use_objects = 1;
+					if (revs->for_pack && pack)
+						add_pack_slice_entry(entry->sha1, ntohl(entry->ofs_pack), pack);
+				}
 			}
 		} else if (!(object->flags & UNINTERESTING) || revs->show_all) {
 			if (!(object->flags & SEEN)) {
 				object->flags |= SEEN;
 				qp = &commit_list_insert(co, qp)->next;
 				
-				if (!(object->flags & UNINTERESTING))
+				if (!(object->flags & UNINTERESTING)) {
 					consuming_children = use_objects = 1;
+					if (revs->for_pack && pack)
+						add_pack_slice_entry(entry->sha1, ntohl(entry->ofs_pack), pack);
+				}
 			}
 		}
 	}
@@ -429,6 +555,8 @@ struct rev_cache {
 	struct rev_cache *next;
 };
 
+extern struct packed_git *packed_git;
+
 /* revs, which cache, object sha1, queue list, work list */
 int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
 	struct commit *commit, struct commit_list ***queue, struct commit_list **work)
@@ -438,6 +566,8 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	struct bitmap_entry bitmap;
 	struct cache_slice_header head;
 	unsigned char *map = MAP_FAILED;
+	char *path, *path2;
+	struct packed_git *pack = 0;
 	
 	/* todo: save map/head info and reload off that */
 	memset(&bitmap, 0, sizeof(struct bitmap_entry));
@@ -454,6 +584,24 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		goto end;
 	if (get_cache_slice_header(map, fi.st_size, &head))
 		goto end;
+	
+	if (!is_null_sha1(head.pack_sha1)) {
+		/* for some reason the packed_git struct stores the .pack name, but you gotta initialize it 
+		 * with the .idx name... */
+		path = git_path("rev-cache/%s-%s.idx", sha1_to_hex(cache_sha1), sha1_to_hex(head.pack_sha1));
+		path2 = git_path("rev-cache/%s-%s.pack", sha1_to_hex(cache_sha1), sha1_to_hex(head.pack_sha1));
+		
+		for (pack = packed_git; pack; pack = pack->next) {
+			if (!strcmp(pack->pack_name, path2))
+				break;
+		}
+		
+		if (!pack) {
+			pack = add_packed_git(path, strlen(path), 1);
+			if (pack)
+				install_packed_git(pack);
+		}
+	}
 	
 	made = get_bitmap(&head, map, commit, &bitmap);
 	if (made < 0)
@@ -472,7 +620,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		deflate_bitmap(bitmap.bitmap, bitmap.z_size);
 	}
 	
-	retval = traverse_cache_slice_1(revs, &head, map, bitmap.bitmap, commit, queue, work);
+	retval = traverse_cache_slice_1(revs, &head, map, bitmap.bitmap, commit, queue, work, pack);
 	
 end:
 	if (head.start_sha1s)
@@ -512,7 +660,7 @@ static void add_object_entry(const char *sha1, int type, struct object_entry *no
 	if (!nothisone) {
 		memset(&object, 0, sizeof(object));
 		object.type = type;
-		memcpy(object.sha1, sha1, 20);
+		hashcpy(object.sha1, sha1);
 		
 		nothisone = &object;
 	}
@@ -548,15 +696,15 @@ static void tree_change(struct diff_options *options,
 
 static int cache_sort_hash(const void *a, const void *b)
 {
-	return hashcmp(((struct object_entry *)a)->sha1, ((struct object_entry *)b)->sha1);
+	return hashcmp(OE_CAST(a)->sha1, OE_CAST(b)->sha1);
 }
 
 static int cache_sort_type(const void *a, const void *b)
 {
 	struct object_entry *entry1, *entry2;
 	
-	entry1 = (struct object_entry *)a;
-	entry2 = (struct object_entry *)b;
+	entry1 = OE_CAST(a);
+	entry2 = OE_CAST(b);
 	
 	if (entry1->type == entry2->type) 
 		return 0;
@@ -581,8 +729,8 @@ static int write_cache_slice(char *name, struct cache_slice_header *head, struct
 	whead.ends = htons(whead.ends);
 	whead.size = htonl(whead.size);
 	write(fd, &whead, sizeof(whead));
-	write(fd, head->start_sha1s, head->starts * 20);
-	write(fd, head->end_sha1s, head->ends * 20);
+	write_in_full(fd, head->start_sha1s, head->starts * 20);
+	write_in_full(fd, head->end_sha1s, head->ends * 20);
 	
 	/* thankfully, also no endianness troubles per object */
 	write_in_full(fd, body->buf, body->len);
@@ -651,7 +799,7 @@ static void object_set_difference(struct strbuf *set, struct strbuf *not)
 		if (j < not->len && !cache_sort_hash(not->buf + j, set->buf + i))
 			continue;
 		
-		add_object_entry(0, 0, (struct object_entry *)(set->buf + i));
+		add_object_entry(0, 0, OE_CAST(set->buf + i));
 	}
 	
 }
@@ -729,7 +877,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	struct strbuf buffer, endlist, startlist;
 	struct cache_slice_header head;
 	struct commit *commit;
-	unsigned char sha1[20];
+	unsigned char sha1[20], *sha1p;
 	git_SHA_CTX ctx;
 	
 	strbuf_init(&buffer, 0);
@@ -767,11 +915,11 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		
 		memset(&object, 0, sizeof(object));
 		object.type = OBJ_COMMIT;
-		memcpy(object.sha1, commit->object.sha1, 20);
+		hashcpy(object.sha1, commit->object.sha1);
 		
 		/* determine if this is an endpoint: 
 		 * if all parents are uninteresting -> start
-		 * if this isn't a parent from a SEEN -> end */
+		 * if this isn't a parent of a SEEN -> end */
 		if (is_start(commit)) {
 			object.is_start = 1;
 			strbuf_add(&startlist, commit->object.sha1, 20);
@@ -820,6 +968,11 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	git_SHA1_Update(&ctx, startlist.buf, startlist.len);
 	git_SHA1_Final(sha1, &ctx);
 	
+	if (!dont_pack_it) {
+		sha1p = make_cache_pack(sha1_to_hex(sha1), &buffer);
+		hashcpy(head.pack_sha1, sha1p);
+	}
+	
 	if (write_cache_slice(sha1_to_hex(sha1), &head, &buffer) < 0)
 		die("write failed");
 	
@@ -837,7 +990,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 
 static int index_sort_hash(const void *a, const void *b)
 {
-	return hashcmp(((struct index_entry *)a)->sha1, ((struct index_entry *)b)->sha1);
+	return hashcmp(IE_CAST(a)->sha1, IE_CAST(b)->sha1);
 }
 
 /* todo: handle concurrency issues */
@@ -857,11 +1010,11 @@ static int write_cache_index(struct strbuf *body)
 	whead.ofs_objects = htonl(whead.ofs_objects);
 	whead.objects = htonl(whead.objects);
 	write(fd, &whead, sizeof(struct index_header));
-	write(fd, idx_head.cache_sha1s, idx_head.caches_buffer * 20);
+	write_in_full(fd, idx_head.cache_sha1s, idx_head.caches_buffer * 20);
 	
 	for (i = 0; i <= 0xff; i++)
 		fanout[i] = htonl(fanout[i]);
-	write(fd, fanout, 0x100 * sizeof(unsigned int));
+	write_in_full(fd, fanout, 0x100 * sizeof(unsigned int));
 	
 	/* hehehe, no crappy conversion for us HERE! */
 	write_in_full(fd, body->buf, body->len);
@@ -871,7 +1024,7 @@ static int write_cache_index(struct strbuf *body)
 	return 0;
 }
 
-int make_cache_index(const char *cache_sha1, struct strbuf *objects)
+static int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 {
 	struct strbuf buffer;
 	int i, cache_index, cur;
@@ -890,7 +1043,6 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(unsigned int);
 	}
 	
-	idx_head.objects += objects->len / OE_SIZE;
 	cache_index = idx_head.caches++;
 	if (idx_head.caches >= idx_head.caches_buffer) {
 		/* this whole dance is a bit useless currently, because we re-write everything regardless, 
@@ -902,10 +1054,10 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 		idx_head.ofs_objects += 20 * 20;
 	}
 	
-	memcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1, 20);
-	for (i = 0; i < objects->len; i += IE_SIZE) {
+	hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+	for (i = 0; i < objects->len; i += OE_SIZE) {
 		struct index_entry index_entry, *entry;
-		struct object_entry *object_entry = (struct object_entry *)(objects->buf + i);
+		struct object_entry *object_entry = OE_CAST(objects->buf + i);
 		
 		if (object_entry->type != OBJ_COMMIT)
 			continue;
@@ -918,17 +1070,19 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 		if (entry && !object_entry->is_end)
 			continue;
 		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-index_map = offset, so cast is valid) */
-			entry = (struct index_entry *)(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
+			entry = IE_CAST(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
 		else
 			entry = &index_entry;
 		
 		memset(entry, 0, sizeof(index_entry));
-		memcpy(entry->sha1, object_entry->sha1, 20);
+		hashcpy(entry->sha1, object_entry->sha1);
 		entry->is_end = object_entry->is_end;
 		entry->cache_index = cache_index;
 		
-		if (entry == &index_entry)
+		if (entry == &index_entry) {
 			strbuf_add(&buffer, entry, sizeof(index_entry));
+			idx_head.objects++;
+		}
 	}
 	
 	qsort(buffer.buf, buffer.len / IE_SIZE, IE_SIZE, index_sort_hash);
@@ -936,7 +1090,7 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 	/* generate fanout */
 	cur = 0x00;
 	for (i = 0; i < buffer.len; i += IE_SIZE) {
-		struct index_entry *entry = (struct index_entry *)(buffer.buf + i);
+		struct index_entry *entry = IE_CAST(buffer.buf + i);
 		
 		while (cur <= entry->sha1[0])
 			fanout[cur++] = i + idx_head.ofs_objects;
@@ -952,6 +1106,78 @@ int make_cache_index(const char *cache_sha1, struct strbuf *objects)
 	strbuf_release(&buffer);
 	
 	return 0;
+}
+
+static unsigned char *make_cache_pack(char *name, struct strbuf *objects)
+{
+	static unsigned char sha1[20];
+	struct child_process pack_objects;
+	const char *arg[5];
+	char *path;
+	struct packed_git *pack;
+	int len, i, retval = -1;
+	
+	path = xstrdup(git_path("rev-cache/%s-0000000000000000000000000000000000000000.idx", name));
+	len = strlen(path);
+	path[len - 4 - 40 - 1] = 0;
+	
+	arg[0] = "pack-objects";
+	arg[1] = path;
+	arg[2] = 0;
+	
+	memset(&pack_objects, 0, sizeof(pack_objects));
+	pack_objects.argv = arg;
+	pack_objects.in = -1;
+	pack_objects.out = -1;
+	pack_objects.err = 0;
+	pack_objects.git_cmd = 1;
+	
+	/* pack everything up! */
+	if (start_command(&pack_objects) < 0)
+		die("unable to start pack-objects");
+	
+	for (i = 0; i < objects->len; i += OE_SIZE) {
+		struct object_entry *entry = OE_CAST(objects->buf + i);
+		
+		xwrite(pack_objects.in, sha1_to_hex(entry->sha1), 40);
+		xwrite(pack_objects.in, "\n", 1);
+	}
+	
+	close(pack_objects.in);
+	xread(pack_objects.out, path + (len - 4 - 40), 40);
+	if (get_sha1_hex(path + (len - 4 - 40), sha1))
+		die("pack objects gave me a shitty sha1");
+	
+	if (finish_command(&pack_objects) < 0)
+		die("pack objects didn't die of natural causes");
+	
+	/* now locate it */
+	path[len - 4 - 40 - 1] = '-';
+	pack = add_packed_git(path, len, 1);
+	
+	if (!pack)
+		goto end;
+	
+	for (i = 0; i < objects->len; i += OE_SIZE) {
+		struct object_entry *entry = OE_CAST(objects->buf + i);
+		int off = find_pack_entry_one(entry->sha1, pack);
+		
+		if (!off)
+			goto end;
+		
+		/* keep buffer write-ready */
+		entry->ofs_pack = htonl(off);
+	}
+	
+	retval = 0;
+	
+end:
+	if (!retval)
+		die("I can't traverse the pack index");
+	
+	free(path);
+	
+	return sha1;
 }
 
 static int get_index_head(unsigned char *map, int len, struct index_header *head, unsigned int *fanout)
@@ -1031,17 +1257,16 @@ static struct index_entry *search_index(unsigned char *sha1)
 	starti = 0;
 	endi = len - 1;
 	for (;;) {
-		i = (endi + starti + 1) / 2;
-		ie = (struct index_entry *)(idx_map + start + i * IE_SIZE);
+		i = (endi + starti) / 2;
+		ie = IE_CAST(idx_map + start + i * IE_SIZE);
 		r = hashcmp(sha1, ie->sha1);
 		
 		if (r) {
-	 		if (starti == endi)
-				break;
-			/* if (i == starti) {
+			if (starti + 1 == endi) {
 				starti++;
 				continue;
-			} */
+			} else if (starti == endi)
+				break;
 			
 			if (r > 0)
 				starti = i;
@@ -1064,7 +1289,7 @@ char *get_cache_slice(struct commit *commit)
 	ie = search_index(commit->object.sha1);
 	
 	if (ie && ie->cache_index < idx_head.caches)
-		return &idx_head.cache_sha1s[ie->cache_index];
+		return &idx_head.cache_sha1s[ie->cache_index * 20];
 	return 0;
 }
 
@@ -1081,7 +1306,7 @@ static void uninteresting_from_slices(struct rev_info *revs, unsigned char *whic
 	
 	/* haven't implemented which yet; no need really... */
 	for (i = 0, index = idx_head.ofs_objects; i < idx_head.objects; i++, index += IE_SIZE) {
-		struct index_entry *entry = (struct index_entry *)(idx_map + index);
+		struct index_entry *entry = IE_CAST(idx_map + index);
 		
 		if (!entry->is_end)
 			continue;
@@ -1114,6 +1339,8 @@ static int handle_add(int argc, char *argv[]) /* args beyond this command */
 			uninteresting_from_slices(&revs, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
+		else if (!strcmp(argv[i], "--nopack"))
+			dont_pack_it = 1;
 		else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
@@ -1282,7 +1509,7 @@ static int traverse_cache_slice_2(...)
 			continue;
 		if (object->sha1[0] != end->sha1[0])
 			continue;
-		if (memcmp(object->sha1, end->sha1, 20))
+		if (hashcmp(object->sha1, end->sha1))
 			continue;
 		
 		break;

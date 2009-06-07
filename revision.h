@@ -72,6 +72,10 @@ struct rev_info {
 			dense_combined_merges:1,
 			always_show_header:1;
 
+	/* rev-cache flags */
+	unsigned int for_pack:1, 
+		beyond_hash:1;
+
 	/* Format info */
 	unsigned int	shown_one:1,
 			show_merge:1,
