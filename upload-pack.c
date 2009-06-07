@@ -29,6 +29,7 @@ static unsigned long oldest_have;
 static int multi_ack, nr_our_refs;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
 static int no_progress;
+static int shallow_nr;
 static struct object_array have_obj;
 static struct object_array want_obj;
 static unsigned int timeout;
@@ -153,15 +154,9 @@ static void create_pack_file(void)
 	const char *argv[10];
 	int arg = 0;
 
-	/* sending rev params to pack-objects directly is great, but unfortunately pack-objects
-	 * has no way of turning off thin pack generation.  this would be a relatively simple
-	 * addition, but as we also have to deal with shallow grafts and all it's simplest to
-	 * just resort to piping object refs.
-	 */
-	if (!use_thin_pack) {
+	if (shallow_nr) {
 		rev_list.proc = do_rev_list;
-		/* .data is just a boolean: any non-NULL value will do */
-		rev_list.data = create_full_pack ? &rev_list : NULL;
+		rev_list.data = 0;
 		if (start_async(&rev_list))
 			die("git upload-pack: unable to fork git-rev-list");
 		argv[arg++] = "pack-objects";
@@ -171,6 +166,8 @@ static void create_pack_file(void)
 		argv[arg++] = "--include-tag";
 		if (create_full_pack)
 			argv[arg++] = "--all";
+		if (use_thin_pack)
+			argv[arg++] = "--thin";
 	}
 
 	argv[arg++] = "--stdout";
@@ -183,7 +180,7 @@ static void create_pack_file(void)
 	argv[arg++] = NULL;
 
 	memset(&pack_objects, 0, sizeof(pack_objects));
-	pack_objects.in = !use_thin_pack ? rev_list.out : -1;
+	pack_objects.in = shallow_nr ? rev_list.out : -1;
 	pack_objects.out = -1;
 	pack_objects.err = -1;
 	pack_objects.git_cmd = 1;
@@ -192,20 +189,16 @@ static void create_pack_file(void)
 	if (start_command(&pack_objects))
 		die("git upload-pack: unable to fork git-pack-objects");
 
-	/* pass on revisions we (don't) want
-	 * (do we need to check the validity of pack_objects.in?)
-	 */
-	if (use_thin_pack) {
+	/* pass on revisions we (don't) want */
+	if (!shallow_nr) {
 		FILE *pipe_fd = fdopen(pack_objects.in, "w");
 		if (!create_full_pack) {
 			int i;
-			for (i = 0; i < want_obj.nr; i++) {
+			for (i = 0; i < want_obj.nr; i++)
 				fprintf(pipe_fd, "%s\n", sha1_to_hex(want_obj.objects[i].item->sha1));
-			}
 			fprintf(pipe_fd, "--not\n");
-			for (i = 0; i < have_obj.nr; i++) {
+			for (i = 0; i < have_obj.nr; i++)
 				fprintf(pipe_fd, "%s\n", sha1_to_hex(have_obj.objects[i].item->sha1));
-			}
 		}
 
 		fprintf(pipe_fd, "\n");
@@ -309,7 +302,7 @@ static void create_pack_file(void)
 		error("git upload-pack: git-pack-objects died with error.");
 		goto fail;
 	}
-	if (!use_thin_pack && finish_async(&rev_list))
+	if (shallow_nr && finish_async(&rev_list))
 		goto fail;	/* error was already reported */
 
 	/* flush the data */
@@ -484,6 +477,7 @@ static void receive_needs(void)
 	static char line[1000];
 	int len, depth = 0;
 
+	shallow_nr = 0;
 	if (debug_fd)
 		write_in_full(debug_fd, "#S\n", 3);
 	for (;;) {
@@ -567,6 +561,7 @@ static void receive_needs(void)
 				packet_write(1, "shallow %s",
 						sha1_to_hex(object->sha1));
 				register_shallow(object->sha1);
+				shallow_nr++;
 			}
 			result = result->next;
 		}
@@ -600,6 +595,8 @@ static void receive_needs(void)
 			for (i = 0; i < shallows.nr; i++)
 				register_shallow(shallows.objects[i].item->sha1);
 		}
+
+	shallow_nr += shallows.nr;
 	free(shallows.objects);
 }
 
