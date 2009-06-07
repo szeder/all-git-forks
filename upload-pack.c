@@ -163,10 +163,9 @@ static void create_pack_file(void)
 	} else {
 		argv[arg++] = "pack-objects";
 		argv[arg++] = "--revs";
-		argv[arg++] = "--include-tag";
 		if (create_full_pack)
 			argv[arg++] = "--all";
-		if (use_thin_pack)
+		else if (use_thin_pack)
 			argv[arg++] = "--thin";
 	}
 
