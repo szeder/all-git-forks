@@ -834,6 +834,7 @@ static int add_unique_objects(struct commit *commit, struct strbuf *out)
 		if (!first) {
 			first = parent->tree;
 			dump_tree(first, dump_tree_callback);
+			continue;
 		}
 		
 		diff_tree_sha1(first->object.sha1, parent->tree->object.sha1, "", &opts);
