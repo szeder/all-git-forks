@@ -1423,7 +1423,7 @@ static int handle_add(int argc, char *argv[]) /* args beyond this command */
 
 static int handle_show(int argc, char *argv[])
 {
-	die("haven't implemented cache enumeration yet");
+	die("haven't implemented cache enumeration yet (try 'git-rev-cache help' to show usage)");
 }
 
 static int handle_rm(int argc, char *argv[])
