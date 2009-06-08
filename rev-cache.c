@@ -28,7 +28,7 @@ U           | U             | continue
 * valid b/c of topo-ordering
 
 
-each commit proceeds objects introduced as of that commit
+each commit preceeds objects introduced as of that commit
 such objects have a FACE_VALUE flag -> no tree walking
 
 if per-slice bundles used -> let pack-files know where 
@@ -255,18 +255,182 @@ static int in_sha1_list(const unsigned char *list, int n, const unsigned char *s
 	return 0;
 }
 
-static int compress_bitmap(unsigned char *bitmap, int size)
+/*
+
+x00NNNNN - as is
+x01NNNNN - not yet assigned
+x10NNNNN - 0s
+x11NNNNN - 1s
+
+*/
+
+static int encode_size(unsigned int size, unsigned char *out)
 {
-	/* todo */
+	int i;
 	
-	return size;
+	for (i = 0; size; i++) {
+		if (!i) {
+			*out = (unsigned char)(size & 0x1f);
+			size >>= 5;
+		} else {
+			*out = (unsigned char)(size & 0x7f);
+			size >>= 7;
+		}
+		
+		if (size)
+			*out++ |= 0x80;
+		else
+			*out++;
+	}
+	
+	return i;
 }
 
-static int deflate_bitmap(unsigned char *bitmap, int z_size)
+static int decode_size(unsigned char *s, int len, unsigned char **p)
 {
-	/* todo */
+	unsigned int size;
+	int i, shift;
 	
-	return z_size;
+	size = 0;
+	shift = 0;
+	for (i = 0; i < len; i++) {
+		if (!i) {
+			size = (unsigned int)(*s & 0x1f);
+			shift = 5;
+		} else {
+			size |= (unsigned int)(*s & 0x7f) << shift;
+			shift += 7;
+		}
+		
+		if (!(*s & 0x80)) {
+			if (p)
+				*p = s + 1;
+			return size;
+		} else
+			s++;
+	}
+	
+	return 0;
+}
+
+/* uses a very simple rle format */
+static int compress_bitmap(unsigned char **pbitmap, int size)
+{
+	int i, j, k;
+	struct strbuf out;
+	unsigned char what[5];
+	unsigned char compress, *bitmap;
+	int byte_size; /* hehe */
+	
+	bitmap = *pbitmap;
+	strbuf_init(&out, 0);
+	
+	i = j = k = 0;
+	compress = 0;
+	while (i < size) {
+		/* random stuff */
+		while (j < size && bitmap[j] != 0x00 && bitmap[j] != 0xff)
+			j++;
+		
+		if (j == size)
+			goto skip_compress;
+		
+		/* try 1s */
+		compress = 0;
+		for (k = j; k < size && bitmap[k] == 0xff; k++) ;
+		
+		if (k - j > 2) {
+			compress = 0x11;
+			goto skip_compress;
+		}
+		
+		/* try 0s */
+		for (k = j; k < size && bitmap[j] == 0x00; k++) ;
+		
+		if (k - j > 2) {
+			compress = 0x10;
+			goto skip_compress;
+		}
+		
+skip_compress:
+		if (j - i) {
+			byte_size = encode_size(j - i, what);
+			strbuf_add(&out, what, byte_size);
+			strbuf_add(&out, bitmap + i, j - i);
+			
+			i = j;
+		}
+		
+		if (compress) {
+			byte_size = encode_size(k - j, what);
+			what[0] |= compress << 6;
+			strbuf_add(&out, what, byte_size);
+			
+			i = k;
+		}
+	}
+	
+	free(bitmap);
+	*pbitmap = strbuf_detach(&out, &byte_size);
+	
+	return byte_size;
+}
+
+#ifndef min
+#	define min(a, b)		((a) < (b) ? (a) : (b))
+#endif
+
+static int deflate_bitmap(unsigned char **pbitmap, int z_size)
+{
+	unsigned char what, *bitmap, *p;
+	struct strbuf out;
+	int i, size;
+	unsigned char buffer[100];
+	
+	bitmap = *pbitmap;
+	strbuf_init(&out, 0);
+	
+	i = 0;
+	while (i < z_size) {
+		what = bitmap[i] >> 6 & 0x02;
+		
+		size = decode_size(bitmap + i, z_size - i, &p);
+		if (!size)
+			goto fail;
+		i = p - bitmap;
+		
+		switch (what) {
+		case 0x00 : 
+			if (i + size > z_size)
+				goto fail;
+			
+			strbuf_add(&out, bitmap + i, size);
+			i += size;
+			break;
+		case 0x01 : 
+			goto fail;
+		case 0x10 : 
+			memset(buffer, 0x00, sizeof(buffer));
+			goto write_block;
+		case 0x11 : 
+			memset(buffer, 0xff, sizeof(buffer));
+write_block:
+			while (size > 0) {
+				strbuf_add(&out, buffer, min(size, sizeof(buffer)));
+				size -= sizeof(buffer);
+			}
+		}
+	}
+	
+	free(bitmap);
+	*pbitmap = strbuf_detach(&out, &size);
+	
+	return size;
+	
+fail:
+	strbuf_release(&out);
+	
+	return 0;
 }
 
 #define HEARD		TMP_MARK
@@ -370,7 +534,7 @@ static int get_bitmap(struct cache_slice_header *head, unsigned char *map, struc
 	
 	bitmap->bitmap = xcalloc(BITMAP_SIZE(head->objects), 1);
 	memcpy(bitmap->bitmap, map + index + sizeof(struct bitmap_entry), bitmap->z_size);
-	if (deflate_bitmap(bitmap->bitmap, bitmap->z_size) != BITMAP_SIZE(head->objects))
+	if (deflate_bitmap(&bitmap->bitmap, bitmap->z_size) != BITMAP_SIZE(head->objects))
 		return -1;
 	
 	return 0;
@@ -418,7 +582,9 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 	unsigned char *anti_bitmap = 0;
 	struct bitmap_entry be;
 	
-	for (i = 0, index = head->ofs_objects; i < head->objects; i++, index += OE_SIZE) {
+	for (i = 0; !bitmap[i]; i++) ;
+	
+	for (index = head->ofs_objects + i * OE_SIZE; i < head->objects; i++, index += OE_SIZE) {
 		struct object_entry *entry;
 		struct object *object;
 		struct commit *co;
@@ -545,7 +711,6 @@ end:
 
 struct rev_cache {
 	unsigned char sha1[20];
-	unsigned char *bitmaps; /* what we've done */
 	unsigned char *map;
 	int size;
 	
@@ -606,7 +771,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		goto end;
 	else if (made > 0) {
 		make_bitmap(&head, map, commit, &bitmap);
-		bitmap.z_size = htonl(compress_bitmap(bitmap.bitmap, BITMAP_SIZE(head.objects)));
+		bitmap.z_size = htonl(compress_bitmap(&bitmap.bitmap, BITMAP_SIZE(head.objects)));
 		
 		/* yes we really are writing the useless pointer address too */
 		lseek(fd, fi.st_size, SEEK_SET);
@@ -615,7 +780,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		bitmap.z_size = ntohl(bitmap.z_size);
 		write(fd, bitmap.bitmap, bitmap.z_size);
 		
-		deflate_bitmap(bitmap.bitmap, bitmap.z_size);
+		deflate_bitmap(&bitmap.bitmap, bitmap.z_size);
 	}
 	
 	retval = traverse_cache_slice_1(revs, &head, map, bitmap.bitmap, commit, queue, work, pack);
@@ -988,7 +1153,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 				list->item->object.flags |= NOT_END;
 		}
 		
-		printf("%s [%d]\n", sha1_to_hex(object.sha1), object.is_start);
+		/* printf("%s [%d]\n", sha1_to_hex(object.sha1), object.is_start); */
 		add_object_entry(0, 0, &object);
 		
 		/* add all unique children for this commit */
