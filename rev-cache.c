@@ -908,39 +908,6 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 		strbuf_add(g_buffer, size_str->buf, size_str->len);
 }
 
-static void tree_addremove(struct diff_options *options,
-	int whatnow, unsigned mode,
-	const unsigned char *sha1,
-	const char *concatpath)
-{
-	unsigned char data[21];
-	
-	if (whatnow != '+')
-		return;
-	
-	hashcpy(data, sha1);
-	data[20] = !!S_ISDIR(mode);
-	
-	strbuf_add(g_buffer, data, 21);
-}
-
-static void tree_change(struct diff_options *options,
-	unsigned old_mode, unsigned new_mode,
-	const unsigned char *old_sha1,
-	const unsigned char *new_sha1,
-	const char *concatpath)
-{
-	unsigned char data[21];
-	
-	if (!hashcmp(old_sha1, new_sha1))
-		return;
-	
-	hashcpy(data, new_sha1);
-	data[20] = !!S_ISDIR(new_mode);
-	
-	strbuf_add(g_buffer, data, 21);
-}
-
 /* returns non-zero to continue parsing, 0 to skip */
 typedef int (*dump_tree_fn)(const unsigned char *, const char *, unsigned int); /* sha1, path, mode */
 
@@ -992,6 +959,39 @@ static int dump_tree_callback(const unsigned char *sha1, const char *path, unsig
 	return 1;
 }
 
+static void tree_addremove(struct diff_options *options,
+	int whatnow, unsigned mode,
+	const unsigned char *sha1,
+	const char *concatpath)
+{
+	unsigned char data[21];
+	
+	if (whatnow != '+')
+		return;
+	
+	hashcpy(data, sha1);
+	data[20] = !!S_ISDIR(mode);
+	
+	strbuf_add(g_buffer, data, 21);
+}
+
+static void tree_change(struct diff_options *options,
+	unsigned old_mode, unsigned new_mode,
+	const unsigned char *old_sha1,
+	const unsigned char *new_sha1,
+	const char *concatpath)
+{
+	unsigned char data[21];
+	
+	if (!hashcmp(old_sha1, new_sha1))
+		return;
+	
+	hashcpy(data, new_sha1);
+	data[20] = !!S_ISDIR(new_mode);
+	
+	strbuf_add(g_buffer, data, 21);
+}
+
 static int sort_type_hash(const void *a, const void *b)
 {
 	const unsigned char *sa = (const unsigned char *)a, 
@@ -1003,14 +1003,13 @@ static int sort_type_hash(const void *a, const void *b)
 	return sa[20] > sb[20] ? -1 : 1;
 }
 
-/* {commit objects} \ {parent objects also in slice (ie. 'interesting')} */
 static int add_unique_objects(struct commit *commit)
 {
 	struct commit_list *list;
 	struct strbuf os, ost, *orig_buf;
 	struct diff_options opts;
 	int i, j, next;
-	char first = 1;
+	char is_first = 1;
 	
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
@@ -1024,7 +1023,7 @@ static int add_unique_objects(struct commit *commit)
 	
 	/* this is only called for non-starts (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
-		if (first)
+		if (is_first)
 			g_buffer = &os;
 		else 
 			g_buffer = &ost;
@@ -1034,7 +1033,7 @@ static int add_unique_objects(struct commit *commit)
 		qsort(g_buffer->buf, g_buffer->len / 21, 21, (int (*)(const void *, const void *))hashcmp);
 		
 		/* take intersection */
-		if (!first) {
+		if (!is_first) {
 			for (next = i = j = 0; i < os.len; i += 21) {
 				while (j < ost.len && hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)) < 0)
 					j += 21;
@@ -1050,14 +1049,15 @@ static int add_unique_objects(struct commit *commit)
 			if (next != i)
 				strbuf_setlen(&os, next);
 		} else
-			first = 0;
+			is_first = 0;
 	}
 	
-	if (!commit->parents) {
+	if (is_first) {
 		g_buffer = &os;
 		dump_tree(commit->tree, dump_tree_callback);
-		qsort(os.buf, os.len / 21, 21, sort_type_hash);
-	} else
+	}
+	
+	if (os.len)
 		qsort(os.buf, os.len / 21, 21, sort_type_hash);
 	
 	g_buffer = orig_buf;
