@@ -1007,11 +1007,13 @@ static int sort_type_hash(const void *a, const void *b)
 static int add_unique_objects(struct commit *commit)
 {
 	struct commit_list *list;
-	struct strbuf os, *orig_buf;
+	struct strbuf os, ost, *orig_buf;
 	struct diff_options opts;
-	int i, prev;
+	int i, j, next;
+	char first = 1;
 	
 	strbuf_init(&os, 0);
+	strbuf_init(&ost, 0);
 	orig_buf = g_buffer;
 	
 	diff_setup(&opts);
@@ -1021,29 +1023,48 @@ static int add_unique_objects(struct commit *commit)
 	opts.add_remove = tree_addremove;
 	
 	/* this is only called for non-starts (ie. all parents interesting) */
-	g_buffer = &os;
 	for (list = commit->parents; list; list = list->next) {
-		diff_tree_sha1(list->item->tree->object.sha1, commit->object.sha1, "", &opts);
+		if (first)
+			g_buffer = &os;
+		else 
+			g_buffer = &ost;
+		
+		strbuf_setlen(g_buffer, 0);
+		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
+		qsort(g_buffer->buf, g_buffer->len / 21, 21, (int (*)(const void *, const void *))hashcmp);
+		
+		/* take intersection */
+		if (!first) {
+			for (next = i = j = 0; i < os.len; i += 21) {
+				while (j < ost.len && hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)) < 0)
+					j += 21;
+				
+				if (j >= ost.len || hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)))
+					continue;
+				
+				if (next != i)
+					memcpy(os.buf + next, os.buf + i, 21);
+				next += 21;
+			}
+			
+			if (next != i)
+				strbuf_setlen(&os, next);
+		} else
+			first = 0;
 	}
 	
-	if (!commit->parents)
+	if (!commit->parents) {
+		g_buffer = &os;
 		dump_tree(commit->tree, dump_tree_callback);
+		qsort(os.buf, os.len / 21, 21, sort_type_hash);
+	} else
+		qsort(os.buf, os.len / 21, 21, sort_type_hash);
 	
 	g_buffer = orig_buf;
-	if (os.len) {
-		qsort(os.buf, os.len / 21, 21, sort_type_hash);
-		
-		prev = -1;
-		for (i = 0; i < os.len; i += 21) {
-			if (prev != -1 && os.buf[prev + 20] == os.buf[i + 20] && 
-				!hashcmp((unsigned char *)(os.buf + prev), (unsigned char *)(os.buf + i)))
-				continue;
-			
-			prev = i;
-			add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
-		}
-	}
+	for (i = 0; i < os.len; i += 21)
+		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
 	
+	strbuf_release(&ost);
 	strbuf_release(&os);
 	
 	return 0;
