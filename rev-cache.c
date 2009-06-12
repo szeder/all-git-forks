@@ -992,17 +992,26 @@ static int dump_tree_callback(const unsigned char *sha1, const char *path, unsig
 	return 1;
 }
 
+static int sort_type_hash(const void *a, const void *b)
+{
+	const unsigned char *sa = (const unsigned char *)a, 
+		*sb = (const unsigned char *)b;
+	
+	if (sa[20] == sb[20])
+		return hashcmp(sa, sb);
+	
+	return sa[20] > sb[20] ? -1 : 1;
+}
+
 /* {commit objects} \ {parent objects also in slice (ie. 'interesting')} */
 static int add_unique_objects(struct commit *commit)
 {
 	struct commit_list *list;
-	struct tree *first;
-	struct strbuf os, us, *orig_buf;
+	struct strbuf os, *orig_buf;
 	struct diff_options opts;
-	int i, j;
+	int i, prev;
 	
 	strbuf_init(&os, 0);
-	strbuf_init(&us, 0);
 	orig_buf = g_buffer;
 	
 	diff_setup(&opts);
@@ -1011,45 +1020,30 @@ static int add_unique_objects(struct commit *commit)
 	opts.change = tree_change;
 	opts.add_remove = tree_addremove;
 	
-	/* generate interesting parent list */
-	first = 0;
+	/* this is only called for non-starts (ie. all parents interesting) */
 	g_buffer = &os;
 	for (list = commit->parents; list; list = list->next) {
-		struct commit *parent = list->item;
-		
-		if (parent->object.flags & UNINTERESTING)
-			continue;
-		
-		if (!first) {
-			first = parent->tree;
-			dump_tree(first, dump_tree_callback);
-			continue;
-		}
-		
-		diff_tree_sha1(first->object.sha1, parent->tree->object.sha1, "", &opts);
+		diff_tree_sha1(list->item->tree->object.sha1, commit->object.sha1, "", &opts);
 	}
 	
-	/* set difference */
-	if (os.len)
-		qsort(os.buf, os.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
-	
-	g_buffer = &us;
-	dump_tree(commit->tree, dump_tree_callback);
-	qsort(us.buf, us.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
+	if (!commit->parents)
+		dump_tree(commit->tree, dump_tree_callback);
 	
 	g_buffer = orig_buf;
-	for (i = j = 0; i < us.len; i += 21) {
-		while (j < os.len && hashcmp((const unsigned char *)(os.buf + j), (const unsigned char *)(us.buf + i)) < 0)
-			j += 21;
+	if (os.len) {
+		qsort(os.buf, os.len / 21, 21, sort_type_hash);
 		
-		if (j < os.len && !hashcmp((const unsigned char *)(os.buf + j), (const unsigned char *)(us.buf + i)))
-			continue;
-		
-		/* todo: get size */
-		add_object_entry((const unsigned char *)(us.buf + i), us.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		prev = -1;
+		for (i = 0; i < os.len; i += 21) {
+			if (prev != -1 && os.buf[prev + 20] == os.buf[i + 20] && 
+				!hashcmp((unsigned char *)(os.buf + prev), (unsigned char *)(os.buf + i)))
+				continue;
+			
+			prev = i;
+			add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		}
 	}
 	
-	strbuf_release(&us);
 	strbuf_release(&os);
 	
 	return 0;
