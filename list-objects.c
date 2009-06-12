@@ -78,6 +78,10 @@ static void process_tree(struct rev_info *revs,
 		die("bad tree object %s", sha1_to_hex(obj->sha1));
 	obj->flags |= SEEN;
 	show(obj, path, name);
+
+	if (obj->flags & FACE_VALUE)
+		return;
+
 	me.up = path;
 	me.elem = name;
 	me.elem_len = strlen(name);
@@ -136,6 +140,7 @@ void mark_edges_uninteresting(struct commit_list *list,
 
 static void add_pending_tree(struct rev_info *revs, struct tree *tree)
 {
+	tree->object.flags &= ~FACE_VALUE;
 	add_pending_object(revs, &tree->object, "");
 }
 
@@ -148,7 +153,7 @@ void traverse_commit_list(struct rev_info *revs,
 	struct commit *commit;
 
 	while ((commit = get_revision(revs)) != NULL) {
-		/* if (!(commit->tree->object->flags & FACE_VALUE)) */
+		if (!(commit->object.flags & FACE_VALUE))
 			add_pending_tree(revs, commit->tree);
 		show_commit(commit, data);
 	}

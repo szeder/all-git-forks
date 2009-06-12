@@ -441,7 +441,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 	commit->object.flags |= TREESAME;
 }
 
-static void insert_by_date_cached(struct commit *p, struct commit_list **head,
+void insert_by_date_cached(struct commit *p, struct commit_list **head,
 		    struct commit_list *cached_base, struct commit_list **cache)
 {
 	struct commit_list *new_entry;
@@ -647,6 +647,8 @@ static int limit_list(struct rev_info *revs)
 	struct commit_list *list = revs->commits;
 	struct commit_list *newlist = NULL;
 	struct commit_list **p = &newlist;
+	unsigned char *cache_sha1;
+	char used_cache;
 
 	while (list) {
 		struct commit_list *entry = list;
@@ -659,25 +661,39 @@ static int limit_list(struct rev_info *revs)
 
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
-		/* ME: here too */
-		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
-			return -1;
-		if (obj->flags & UNINTERESTING) {
-			mark_parents_uninteresting(commit); /* ME: why? */
-			if (revs->show_all)
-				p = &commit_list_insert(commit, p)->next;
-			slop = still_interesting(list, date, slop);
-			if (slop)
-				continue;
-			/* If showing all, add the whole pending list to the end */
-			if (revs->show_all)
-				*p = list;
-			break;
+		
+		/* rev-cache to the rescue!!! */
+		used_cache = 0;
+		if (!revs->beyond_hash) {
+			cache_sha1 = get_cache_slice(commit->object.sha1);
+			if (cache_sha1) {
+				/* todo: handle errors more gently (cache integrity is non-essential) */
+				if (traverse_cache_slice(revs, cache_sha1, commit, &date, &slop, &p, &list) < 0)
+					return -1;
+				used_cache = 1;
+			}
 		}
-		if (revs->min_age != -1 && (commit->date > revs->min_age))
-			continue;
-		date = commit->date;
-		p = &commit_list_insert(commit, p)->next;
+		
+		if (!used_cache) {
+			if (add_parents_to_list(revs, commit, &list, NULL) < 0)
+				return -1;
+			if (obj->flags & UNINTERESTING) {
+				mark_parents_uninteresting(commit); /* ME: why? */
+				if (revs->show_all)
+					p = &commit_list_insert(commit, p)->next;
+				slop = still_interesting(list, date, slop);
+				if (slop)
+					continue;
+				/* If showing all, add the whole pending list to the end */
+				if (revs->show_all)
+					*p = list;
+				break;
+			}
+			if (revs->min_age != -1 && (commit->date > revs->min_age))
+				continue;
+			date = commit->date;
+			p = &commit_list_insert(commit, p)->next;
+		}
 
 		show = show_early_output;
 		if (!show)
