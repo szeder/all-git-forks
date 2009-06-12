@@ -908,116 +908,149 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 		strbuf_add(g_buffer, size_str->buf, size_str->len);
 }
 
-#define TREE_HIJACKED		FACE_VALUE
+static void tree_addremove(struct diff_options *options,
+	int whatnow, unsigned mode,
+	const unsigned char *sha1,
+	const char *concatpath)
+{
+	unsigned char data[21];
+	
+	if (whatnow != '+')
+		return;
+	
+	hashcpy(data, sha1);
+	data[20] = !!S_ISDIR(mode);
+	
+	strbuf_add(g_buffer, data, 21);
+}
 
-static int dump_tree(struct tree *tree, struct strbuf *out)
+static void tree_change(struct diff_options *options,
+	unsigned old_mode, unsigned new_mode,
+	const unsigned char *old_sha1,
+	const unsigned char *new_sha1,
+	const char *concatpath)
+{
+	unsigned char data[21];
+	
+	if (!hashcmp(old_sha1, new_sha1))
+		return;
+	
+	hashcpy(data, new_sha1);
+	data[20] = !!S_ISDIR(new_mode);
+	
+	strbuf_add(g_buffer, data, 21);
+}
+
+/* returns non-zero to continue parsing, 0 to skip */
+typedef int (*dump_tree_fn)(const unsigned char *, const char *, unsigned int); /* sha1, path, mode */
+
+/* we need to walk the trees by hash, so unfortunately we can't use traverse_trees in tree-walk.c */
+static int dump_tree(struct tree *tree, dump_tree_fn fn)
 {
 	struct tree_desc desc;
 	struct name_entry entry;
-	
-	if (tree->object.flags & TREE_HIJACKED) {
-		strbuf_add(out, tree->buffer, tree->size);
-		return 0;
-	}
+	struct tree *subtree;
+	int r;
 	
 	if (parse_tree(tree))
 		return -1;
 	
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
-		unsigned char data[21];
-		struct tree *subtree;
-		int r;
-		
-		hashcpy(data, entry.sha1);
-		data[20] = !!S_ISDIR(entry.mode);
-		strbuf_add(out, data, sizeof(data));
+		switch (fn(entry.sha1, entry.path, entry.mode)) {
+		case 0 :
+			goto continue_loop;
+		default : 
+			break;
+		}
 		
 		if (S_ISDIR(entry.mode)) {
 			subtree = lookup_tree(entry.sha1);
-			
 			if (!subtree)
 				return -2;
 			
-			if ((r = dump_tree(subtree, out)) < 0)
+			if ((r = dump_tree(subtree, fn)) < 0)
 				return r;
 		}
+		
+continue_loop:
+		continue;
 	}
 	
 	return 0;
 }
 
-#define MAX_PARENT_NR		64
+static int dump_tree_callback(const unsigned char *sha1, const char *path, unsigned int mode)
+{
+	unsigned char data[21];
+	
+	hashcpy(data, sha1);
+	data[20] = !!S_ISDIR(mode);
+	
+	strbuf_add(g_buffer, data, 21);
+	
+	return 1;
+}
 
+/* {commit objects} \ {parent objects also in slice (ie. 'interesting')} */
 static int add_unique_objects(struct commit *commit)
 {
 	struct commit_list *list;
-	struct tree *ptree[MAX_PARENT_NR], *tree = commit->tree;
-	struct strbuf mine;
-	int parent_nr = 0, len, i, j, pi[MAX_PARENT_NR] = { 0 };
-	char ignore, *buf;
-	size_t size;
+	struct tree *first;
+	struct strbuf os, us, *orig_buf;
+	struct diff_options opts;
+	int i, j;
 	
-	strbuf_init(&mine, 0);
+	strbuf_init(&os, 0);
+	strbuf_init(&us, 0);
+	orig_buf = g_buffer;
 	
-	if (!(tree->object.flags & TREE_HIJACKED)) {
-		if (dump_tree(tree, &mine) < 0)
-			die("dump_tree failed\n");
-		
-		qsort(mine.buf, mine.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
-		
-		free(tree->buffer);
-		tree->buffer = strbuf_detach(&mine, &size);
-		tree->size = size; /* juuuuust in case, on some machine, the sizes are different */
-		tree->object.flags |= TREE_HIJACKED;
-		tree->object.parsed = 0;
-	}
+	diff_setup(&opts);
+	DIFF_OPT_SET(&opts, RECURSIVE);
+	DIFF_OPT_SET(&opts, TREE_IN_RECURSIVE);
+	opts.change = tree_change;
+	opts.add_remove = tree_addremove;
 	
+	/* generate interesting parent list */
+	first = 0;
+	g_buffer = &os;
 	for (list = commit->parents; list; list = list->next) {
-		tree = list->item->tree;
-		ptree[parent_nr++] = tree;
+		struct commit *parent = list->item;
 		
-		if (tree->object.flags & TREE_HIJACKED)
+		if (parent->object.flags & UNINTERESTING)
 			continue;
 		
-		if (dump_tree(list->item->tree, &mine) < 0)
-			die("dump_tree failed\n");
-		
-		qsort(mine.buf, mine.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
-		
-		free(tree->buffer);
-		tree->buffer = strbuf_detach(&mine, &size);
-		tree->size = size;
-		tree->object.flags |= TREE_HIJACKED;
-		tree->object.parsed = 0;
-	}
-	
-	buf = commit->tree->buffer;
-	len = commit->tree->size;
-	for (i = 0; i < len; i += 21) {
-		ignore = 0;
-		for (j = 0; j < parent_nr; j++) {
-			tree = ptree[j];
-			
-			while (pi[j] < tree->size && hashcmp((const unsigned char *)tree->buffer + pi[j], (const unsigned char*)buf + i) < 0)
-				pi[j] += 21;
-			
-			if (pi[j] < tree->size && !hashcmp((const unsigned char *)tree->buffer + pi[j], (const unsigned char *)buf + i)) {
-				ignore = 1;
-				break;
-			}
+		if (!first) {
+			first = parent->tree;
+			dump_tree(first, dump_tree_callback);
+			continue;
 		}
 		
-		if (ignore)
-			continue;
-		
-		add_object_entry((const unsigned char *)(buf + i), buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		diff_tree_sha1(first->object.sha1, parent->tree->object.sha1, "", &opts);
 	}
 	
-	strbuf_release(&mine);
+	/* set difference */
+	if (os.len)
+		qsort(os.buf, os.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
 	
-	free(tree->buffer);
-	tree->object.flags &= ~TREE_HIJACKED;
+	g_buffer = &us;
+	dump_tree(commit->tree, dump_tree_callback);
+	qsort(us.buf, us.len / 21, 21, (int (*)(const void *, const void *))hashcmp);
+	
+	g_buffer = orig_buf;
+	for (i = j = 0; i < us.len; i += 21) {
+		while (j < os.len && hashcmp((const unsigned char *)(os.buf + j), (const unsigned char *)(us.buf + i)) < 0)
+			j += 21;
+		
+		if (j < os.len && !hashcmp((const unsigned char *)(os.buf + j), (const unsigned char *)(us.buf + i)))
+			continue;
+		
+		/* todo: get size */
+		add_object_entry((const unsigned char *)(us.buf + i), us.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+	}
+	
+	strbuf_release(&us);
+	strbuf_release(&os);
 	
 	return 0;
 }

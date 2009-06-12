@@ -76,6 +76,8 @@ static int handle_walk(int argc, const char *argv[])
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
+		else if (!strcmp(argv[i], "--objects"))
+			revs.tree_objects = revs.blob_objects = revs.tag_objects = 1;
 		else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
@@ -113,6 +115,11 @@ static int handle_walk(int argc, const char *argv[])
 	printf("work:\n");
 	while ((commit = pop_commit(&work)) != 0) {
 		printf("%s\n", sha1_to_hex(commit->object.sha1));
+	}
+	
+	printf("pending:\n");
+	for (i = 0; i < revs.pending.nr; i++) {
+		printf("%s\n", sha1_to_hex(revs.pending.objects[i].item->sha1));
 	}
 	
 	return 0;
