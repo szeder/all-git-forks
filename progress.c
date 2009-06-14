@@ -92,7 +92,7 @@ static int display(struct progress *progress, unsigned n, const char *done)
 	tp = (progress->throughput) ? progress->throughput->display : "";
 	eol = done ? done : "   \r";
 	if (progress->total) {
-		unsigned percent = n * 100 / progress->total;
+		unsigned percent = (float) n * 100 / progress->total;
 		if (percent != progress->last_percent || progress_update) {
 			progress->last_percent = percent;
 			fprintf(stderr, "%s: %3u%% (%u/%u)%s%s",
