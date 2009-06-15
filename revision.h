@@ -192,7 +192,8 @@ extern int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
-extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, char do_legs);
+extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	unsigned char *cache_sha1, char do_legs);
 extern void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int n);
 
 #endif

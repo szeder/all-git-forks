@@ -48,7 +48,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	return make_cache_slice(&revs, 0, 0, do_legs);
+	return make_cache_slice(&revs, 0, 0, 0, do_legs);
 }
 
 static int handle_show(int argc, const char *argv[])

@@ -306,8 +306,8 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 {
 	struct commit_list *insert_cache = 0;
 	struct commit **last_objects;
-	unsigned long date = *date_so_far;
-	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, slop = *slop_so_far, retval = -1;
+	unsigned long date = date_so_far ? *date_so_far : ~0ul;
+	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
 	char consume_children = 0;
 	unsigned char *paths;
 	
@@ -354,6 +354,13 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		if (revs->max_age != -1 && ntohl(entry->date) < revs->max_age)
 			paths[path] |= UPATH;
 		
+		/* lookup object */
+		co = lookup_commit(entry->sha1);
+		obj = &co->object;
+		
+		if (obj->flags & UNINTERESTING)
+			paths[path] |= UPATH;
+		
 		/* printf("%s:paths[%d]: %2x\n", sha1_to_hex(entry->sha1), path, paths[path]); */
 		if ((paths[path] & IPATH) && (paths[path] & UPATH)) {
 			paths[path] = UPATH;
@@ -372,11 +379,8 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			}
 		}
 		
-		/* lookup object */
+		/* now we gotta re-assess the whole interesting thing... */
 		entry->uninteresting = !!(paths[path] & UPATH);
-		
-		co = lookup_commit(entry->sha1);
-		obj = &co->object;
 		
 		/* make topo relations */
 		if (last_objects[path] && !last_objects[path]->object.parsed)
@@ -433,10 +437,11 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
 				obj->flags |= UNINTERESTING;
 				mark_parents_uninteresting(co);
-			}
+				upath_nr--;
+			} else if (!entry->uninteresting)
+				ipath_nr--;
 			
 			paths[path] = 0;
-			/* we can ignore path_nrs -- if we've already been here then date is definitely < co->date */
 			continue;
 		}
 		
@@ -515,8 +520,10 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 	}
 	
-	*date_so_far = date;
-	*slop_so_far = slop;
+	if (date_so_far)
+		*date_so_far = date;
+	if (slop_so_far)
+		*slop_so_far = slop;
 	retval = 0;
 	
 end:
@@ -1072,7 +1079,7 @@ static int add_unique_objects(struct commit *commit)
 
 static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_objects, unsigned int size, unsigned long max_date);
 
-int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, char do_legs)
+int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, unsigned char *cache_sha1, char do_legs)
 {
 	struct commit_list *list;
 	struct rev_info therevs;
@@ -1216,6 +1223,10 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	newfile = git_path("rev-cache/%s", sha1_to_hex(sha1));
 	/* unlink/link stuff? */
 	rename(file, newfile);
+	
+	/* let our caller know what we've just made */
+	if (cache_sha1)
+		hashcpy(cache_sha1, sha1);
 	
 	strbuf_release(&startlist);
 	strbuf_release(&endlist);
