@@ -429,6 +429,15 @@ relatively high IO latencies.  With this set to 'true', git will do the
 index comparison to the filesystem data in parallel, allowing
 overlapping IO's.
 
+core.createObject::
+	You can set this to 'link', in which case a hardlink followed by
+	a delete of the source are used to make sure that object creation
+	will not overwrite existing objects.
++
+On some file system/operating system combinations, this is unreliable.
+Set this config setting to 'rename' there; However, This will remove the
+check that makes sure that existing object files will not get overwritten.
+
 alias.*::
 	Command aliases for the linkgit:git[1] command wrapper - e.g.
 	after defining "alias.last = cat-file commit HEAD", the invocation
