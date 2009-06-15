@@ -14,6 +14,9 @@ A revision cache contains;
 
     * object ID
 
+  - A hash table from an (abbreviated) object ID to a position into
+    the above list
+
 
 Start Object
 ------------
@@ -33,6 +36,18 @@ this still only specifies an ordering for commit objects.  Other
 objects will appear after the object which first refers to them.  Tag
 objects are sorted as if they were commit objects with a single
 parent, the object they tag.
+
+
+Included object hash table
+--------------------------
+
+This index is used to quickly determine if an object exists in the
+index without scanning the entire topological list.
+
+Entries in the object hash table can be shortened, eg to 3 or 4 bytes;
+basically they just need to be long enough to avoid collisions within
+the objects which exist in the list.  Any match must be confirmed by
+checking the full SHA1 in the topological list.
 
 
 Use Cases
@@ -131,7 +146,8 @@ passed, or any 'uninteresting' objects were passed.
 
 This function must revision walk the commit graph, sorting in
 --date-order along the way, and may emit revisions as they are
-discovered to the topological object list.
+discovered to the topological object list.  It must also build a hash
+table of object IDs and emit it at the end.
 
 
 receive-pack/pack-objects
@@ -186,9 +202,9 @@ emitted, the delta from the packfile is re-used.  If a loop is
 detected or the delta base is not in the returned set of objects, then
 the delta is first resolved.
 
-This implies that the list of objects is first loaded into a hash
-table prior to returning any objects; however this is probably
-acceptable as the entire list is in one stream and will load quickly.
+This implies that each delta base must be looked up in the on-disk
+hash table as they are written, which is both low impact and memory
+efficient.
 
 For later fetches, the revision cache is not appropriate as they will
 have 'uninteresting' objects set.
