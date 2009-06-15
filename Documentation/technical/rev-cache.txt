@@ -1,19 +1,27 @@
 rev-cache
 =========
 
-The revision cache API ('rev-cache') provides a method for efficiently storing and accessing commit branch sections.  Such branch slices are defined by a series of end (interesting) and start (uninteresting) commits.  Each slice contains, per commit:
+The revision cache API ('rev-cache') provides a method for efficiently storing 
+and accessing commit branch sections.  Such branch slices are defined by a 
+series of end (interesting) and start (uninteresting) commits.  Each slice 
+contains, per commit:
 
 * All intra-slice topological relations, encoded into path "channels".
 * Commit meta-data: type, SHA-1, date.
 * Objects introduced in that commit, relative to slice (ie. only for non-start 
   commits).
 
-Data structures are not exported, in part to keep git's global scope clean, but largely because they're pretty much useless outside rev-cache.
+Data structures are not exported, in part to keep git's global scope clean, but 
+largely because they're pretty much useless outside rev-cache.
 
 
 The Porcelain
 -------------
-For easy access to 'rev-cache' from scripts and other goodies there's a front-end called (surprise!) `rev-cache`.  Currently it's pretty shit, I'm not gonna lie to you, but for in-slice traversals it's feck-loads faster than `rev-list`.  With more output modes and stuff it could potentially be used by any (external) app in need of quick data.
+For easy access to 'rev-cache' from scripts and other goodies there's a 
+front-end called (surprise!) `rev-cache`.  Currently it's pretty shit, I'm not 
+gonna lie to you, but for in-slice traversals it's feck-loads faster than 
+`rev-list`.  With more output modes and stuff it could potentially be used by 
+any (external) app in need of quick data.
 
 At the moment it looks like this:
 
@@ -32,7 +40,8 @@ With the commands:
 Options:
 
 `\--fresh`:: Exclude everything already in a cache slice.
-`\--stdin`:: Also read commit ids from stdin (seperated by newline, `\--not` also valid).
+`\--stdin`:: Also read commit ids from stdin (seperated by newline, `\--not` 
+also valid).
 `\--legs`:: Ensure branch has no "dangling" starts (ie. is self-contained).
 
 `rm`::
@@ -49,7 +58,8 @@ Options:
 The API
 -------
 
-The API for 'rev-cache' is very simple.  You can find the function prototypes in `revision.h`.
+The API for 'rev-cache' is very simple.  You can find the function prototypes 
+in `revision.h`.
 
 `make_cache_slice`::
 
@@ -88,7 +98,9 @@ boundaries are passed back into the work list.
 Example Usage
 -------------
 
-Everything is pretty self-explanatory except for perhaps `traverse_cache_slice`.  Here are a few examples to demonstrate usage (note that I have know idea if these work or even compile, they're just outlines):
+Everything is pretty self-explanatory except for perhaps 
+`traverse_cache_slice`.  Here are a few examples to demonstrate usage (note 
+that I have know idea if these work or even compile, they're just outlines):
 
 .Creating a slice
 ----
@@ -181,7 +193,9 @@ traverse_cache_slice(&revs,
 Some Internals
 --------------
 
-Although you really don't need to know anything about how rev-cache actually does its magic shizz, a bit of background may go a long way if you're wading through the source.
+Although you really don't need to know anything about how rev-cache actually 
+does its magic shizz, a bit of background may go a long way if you're wading 
+through the source.
 
 A lot can be summarized in the `object_entry` struct:
 
@@ -208,19 +222,46 @@ struct object_entry {
 };
 ----
 
-With the exception of the `uninteresting` and `include` flags (which are runtime flags), it's pretty much a verbatim description of the object storage.  Object entries, on disk and in memory, are *not* fixed sizes, as they require extra space to encode topo and size data.
+With the exception of the `uninteresting` and `include` flags (which are 
+runtime flags), it's pretty much a verbatim description of the object storage.  
+Object entries, on disk and in memory, are *not* fixed sizes, as they require 
+extra space to encode topo and size data.
 
-`type`, `sha1` and `date` are self-explanatory.  `is_start` means that not all its parents are contained in the slice, and `is_end` notes that it is not the parent of anything in the slice.  `size_size` tells us how many bytes the size takes up -- note that it dosn't need any special encoding.
+`type`, `sha1` and `date` are self-explanatory.  `is_start` means that not all 
+its parents are contained in the slice, and `is_end` notes that it is not the 
+parent of anything in the slice.  `size_size` tells us how many bytes the size 
+takes up -- note that it dosn't need any special encoding.
 
-Now comes the interesting bit.  Topological relations are encoded via a path/channel system, where every branch is assigned an identifier, unique during its life-time (and a bit longer).  During traversal these are indices in a `path` array, retaining the status of each path.  Interesting paths have `IPATH`, uninterestings ones `UPATH` (which trumps `IPATH`) and inactive ones `0`.
+Now comes the interesting bit.  Topological relations are encoded via a 
+path/channel system, where every branch is assigned an identifier, unique 
+during its life-time (and a bit longer).  During traversal these are indices in 
+a `path` array, retaining the status of each path.  Interesting paths have 
+`IPATH`, uninterestings ones `UPATH` (which trumps `IPATH`) and inactive ones 
+`0`.
 
-Obivously, the `path` field delimits the current path id.  Any merge commit needs to open new paths, and does this via the `merge paths` section of its entry.  Likewise branching commits have to close paths, although this is a slight bit more complicated:
+Obivously, the `path` field delimits the current path id.  Any merge commit 
+needs to open new paths, and does this via the `merge paths` section of its 
+entry.  Likewise branching commits have to close paths, although this is a 
+slight bit more complicated:
 
-Because we a) need to restore topo-relations and b) need to keep track of boundary commits, a `last_objects` list keeps track of the last commit encountered per path.  This needs to be alive until *all* its parents have been seen, so path ids are actually unique up through a branch's last parent.  Such uniqueness is achieved by "stopping" paths at a merge, and a counter system to document how many parents have yet to be seen.  `stop_me` is for paths that must stop but are not merges (eg. branches).
+Because we a) need to restore topo-relations and b) need to keep track of 
+boundary commits, a `last_objects` list keeps track of the last commit 
+encountered per path.  This needs to be alive until *all* its parents have been 
+seen, so path ids are actually unique up through a branch's last parent.  Such 
+uniqueness is achieved by "stopping" paths at a merge, and a counter system to 
+document how many parents have yet to be seen.  `stop_me` is for paths that 
+must stop but are not merges (eg. branches).
 
-If we do encounter a boundary commit (which includes, but is not limited to, start commits), we have to ensure that *all* its associated objects are parsed.  Normally we use a `FACE_VALUE` flag to prevent `list-objects` from parsing trees and whatnot -- so we can directly use our own object list -- but in this case we have to remove it and any half-finished topo-data we accumulated for it.
+If we do encounter a boundary commit (which includes, but is not limited to, 
+start commits), we have to ensure that *all* its associated objects are 
+parsed.  Normally we use a `FACE_VALUE` flag to prevent `list-objects` from 
+parsing trees and whatnot -- so we can directly use our own object list -- but 
+in this case we have to remove it and any half-finished topo-data we 
+accumulated for it.
 
-The rest should pretty much fall into place.  The index is just like a pack index, with it's own fanout array and all.  It's not a very complex bit of source by any means...
+The rest should pretty much fall into place.  The index is just like a pack 
+index, with it's own fanout array and all.  It's not a very complex bit of 
+source by any means...
 
 
 Author
