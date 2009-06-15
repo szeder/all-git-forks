@@ -1,0 +1,8 @@
+From: Nick Edelen <sirnot@gmail.com>
+Subject: [WIP] Shift rev-list enumeration from upload-pack to pack-objects
+    
+instead of using the internal revision walker and piping object refs
+to pack-objects this patch passes only the revs to pack-objects, which
+in turn handles both enumeration and packing.
+
+Signed-off-by: Sam Vilain <sam@vilain.net>
