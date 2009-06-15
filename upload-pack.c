@@ -155,13 +155,27 @@ static void create_pack_file(void)
 	const char *argv[10];
 	int arg = 0;
 
-	rev_list.proc = do_rev_list;
-	/* .data is just a boolean: any non-NULL value will do */
-	rev_list.data = create_full_pack ? &rev_list : NULL;
-	if (start_async(&rev_list))
-		die("git upload-pack: unable to fork git-rev-list");
-
-	argv[arg++] = "pack-objects";
+	/* sending rev params to pack-objects directly is great, but unfortunately pack-objects 
+	 * has no way of turning off thin pack generation.  this would be a relatively simple 
+	 * addition, but as we also have to deal with shallow grafts and all it's simplest to 
+	 * just resort to piping object refs.
+	 */
+	if (!use_thin_pack) {
+		rev_list.proc = do_rev_list;
+		/* .data is just a boolean: any non-NULL value will do */
+		rev_list.data = create_full_pack ? &rev_list : NULL;
+		if (start_async(&rev_list))
+			die("git upload-pack: unable to fork git-rev-list");
+		
+		argv[arg++] = "pack-objects";
+	} else {
+		argv[arg++] = "pack-objects";
+		argv[arg++] = "--revs";
+		argv[arg++] = "--include-tag";
+		if (create_full_pack)
+			argv[arg++] = "--all";
+	}
+	
 	argv[arg++] = "--stdout";
 	if (!no_progress)
 		argv[arg++] = "--progress";
@@ -172,7 +186,7 @@ static void create_pack_file(void)
 	argv[arg++] = NULL;
 
 	memset(&pack_objects, 0, sizeof(pack_objects));
-	pack_objects.in = rev_list.out;	/* start_command closes it */
+	pack_objects.in = !use_thin_pack ? rev_list.out : -1;
 	pack_objects.out = -1;
 	pack_objects.err = -1;
 	pack_objects.git_cmd = 1;
@@ -180,6 +194,28 @@ static void create_pack_file(void)
 
 	if (start_command(&pack_objects))
 		die("git upload-pack: unable to fork git-pack-objects");
+
+	/* pass on revisions we (don't) want 
+	 * (do we need to check the validity of pack_objects.in?)
+	 */
+	if (use_thin_pack) {
+		FILE *pipe_fd = fdopen(pack_objects.in, "w");
+		if (!create_full_pack) {
+			int i;
+			for (i = 0; i < want_obj.nr; i++) {
+				fprintf(pipe_fd, "%s\n", sha1_to_hex(want_obj.objects[i].item->sha1));
+			}
+			fprintf(pipe_fd, "--not\n");
+			for (i = 0; i < have_obj.nr; i++) {
+				fprintf(pipe_fd, "%s\n", sha1_to_hex(have_obj.objects[i].item->sha1));
+			}
+		}
+		
+		fprintf(pipe_fd, "\n");
+		fflush(pipe_fd);
+		fclose(pipe_fd);
+	}
+
 
 	/* We read from pack_objects.err to capture stderr output for
 	 * progress bar, and pack_objects.out to capture the pack data.
@@ -276,7 +312,7 @@ static void create_pack_file(void)
 		error("git upload-pack: git-pack-objects died with error.");
 		goto fail;
 	}
-	if (finish_async(&rev_list))
+	if (!use_thin_pack && finish_async(&rev_list))
 		goto fail;	/* error was already reported */
 
 	/* flush the data */
