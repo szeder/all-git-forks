@@ -69,10 +69,6 @@ Updates since v1.6.2
   with the 'edit' action in git-add -i/-p, you can abort the editor to
   tell git not to apply it.
 
-* The number of commits shown in "you are ahead/behind your upstream"
-  messages given by "git checkout" and "git status" used to count merge
-  commits; now it doesn't.
-
 * @{-1} is a new way to refer to the last branch you were on introduced in
   1.6.2, but the initial implementation did not teach this to a few
   commands.  Now the syntax works with "branch -m @{-1} newname".
@@ -156,6 +152,10 @@ Updates since v1.6.2
   knobs you can tweak to work around issues with various versions of the
   docbook-xsl package.  See comments in Documentation/Makefile for details.
 
+* Support for building and testing a subset of git on a system without a
+  working perl has been improved.
+
+
 Fixes since v1.6.2
 ------------------
 
@@ -177,6 +177,6 @@ v1.6.2.X series.
 
 ---
 exec >/var/tmp/1
-O=v1.6.3-rc1-1-gea10b60
+O=v1.6.3-rc2
 echo O=$(git describe master)
 git shortlog --no-merges $O..master ^maint
