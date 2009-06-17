@@ -641,6 +641,9 @@ color.ui::
 commit.template::
 	Specify a file to use as the template for new commit messages.
 
+commit.signoff::
+	A boolean to enable the `-s/--signoff` option of commit by default.
+
 diff.autorefreshindex::
 	When using 'git-diff' to compare with work tree
 	files, do not consider stat-only change as changed.

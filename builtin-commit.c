@@ -888,6 +888,11 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 	if (!strcmp(k, "commit.template"))
 		return git_config_string(&template_file, k, v);
 
+	if (!strcmp(k, "commit.signoff")) {
+		signoff = git_config_bool(k, v);
+		return 0;
+	}
+
 	return git_status_config(k, v, cb);
 }
 
