@@ -615,6 +615,68 @@ end:
 
 /* generation */
 
+static int is_start_endpoint(struct commit *commit)
+{
+	struct commit_list *list = commit->parents;
+	
+	while (list) {
+		if (!(list->item->object.flags & UNINTERESTING))
+			return 0;
+		
+		list = list->next;
+	}
+	
+	return 1;
+}
+
+/* ensures branch is self-contained: parents are either all interesting or all uninteresting */
+static void make_legs(struct rev_info *revs)
+{
+	struct commit_list *list, **plist;
+	int total = 0;
+	
+	/* attach plist to end of commits list */
+	list = revs->commits;
+	while (list && list->next)
+		list = list->next;
+	
+	if (list)
+		plist = &list->next;
+	else
+		return;
+	
+	/* duplicates don't matter, as get_revision() ignores them */
+	for (list = revs->commits; list; list = list->next) {
+		struct commit *item = list->item;
+		struct commit_list *parents = item->parents;
+		
+		if (item->object.flags & UNINTERESTING)
+			continue;
+		if (is_start_endpoint(item))
+			continue;
+		
+		while (parents) {
+			struct commit *p = parents->item;
+			parents = parents->next;
+			
+			if (!(p->object.flags & UNINTERESTING))
+				continue;
+			
+			p->object.flags &= ~UNINTERESTING;
+			parse_commit(p);
+			plist = &commit_list_insert(p, plist)->next;
+			
+			if (!(p->object.flags & SEEN))
+				total++;
+		}
+	}
+	
+	if (total)
+		sort_in_topological_order(&revs->commits, 1);
+	
+}
+
+
 struct path_track {
 	struct commit *commit;
 	int path; /* for decrementing paths */
@@ -1076,6 +1138,9 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
 		die("died preparing revision walk");
+	
+	if (do_legs)
+		make_legs(revs);
 	
 	object_nr = total_sz = 0;
 	max_date = 0;
