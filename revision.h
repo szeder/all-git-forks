@@ -13,7 +13,8 @@
 #define CHILD_SHOWN	(1u<<6)
 #define ADDED		(1u<<7)	/* Parents already parsed and added? */
 #define SYMMETRIC_LEFT	(1u<<8)
-#define ALL_REV_FLAGS	((1u<<9)-1)
+#define FACE_VALUE	(1u<<9)
+#define ALL_REV_FLAGS	((1u<<10)-1)
 
 struct rev_info;
 struct log_info;
@@ -71,6 +72,10 @@ struct rev_info {
 			combine_merges:1,
 			dense_combined_merges:1,
 			always_show_header:1;
+
+	/* rev-cache flags */
+	unsigned int for_pack:1, 
+		beyond_hash:1;
 
 	/* Format info */
 	unsigned int	shown_one:1,
@@ -165,5 +170,19 @@ enum commit_action {
 };
 
 extern enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit);
+
+extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
+		    struct commit_list *cached_base, struct commit_list **cache);
+
+/* rev-cache.c */
+
+extern unsigned char *get_cache_slice(unsigned char *sha1);
+extern int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
+	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
+	struct commit_list ***queue, struct commit_list **work);
+
+extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	unsigned char *cache_sha1, char do_legs);
+extern void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int n);
 
 #endif
