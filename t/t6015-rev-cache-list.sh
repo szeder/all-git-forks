@@ -3,7 +3,7 @@
 test_description='git rev-cache tests'
 . ./test-lib.sh
 
-sha1diff="python \"$TEST_DIRECTORY/t6015-sha1-dump-diff.py\""
+sha1diff="python $TEST_DIRECTORY/t6015-sha1-dump-diff.py"
 
 # we want a totally wacked out branch structure...
 test_expect_success 'init repo' '
