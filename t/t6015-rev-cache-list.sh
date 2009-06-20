@@ -101,4 +101,20 @@ test_expect_success 'test rev-list traversal (unlimited)' '
 	test -z `$sha1diff list proper_commit_list`
 '
 
+#do the same for objects
+test_expect_success 'test rev-caches walker with objects' '
+	git-rev-cache walk --objects HEAD >list && 
+	test -z `$sha1diff list proper_object_list`
+'
+
+test_expect_success 'test rev-list with objects (limited)' '
+	git-rev-list --topo-order --objects HEAD >list && 
+	test -z `$sha1diff list proper_object_list`
+'
+
+test_expect_success 'test rev-list with objects (unlimited)' '
+	git-rev-list --objects HEAD >list && 
+	test -z `$sha1diff list proper_object_list`
+'
+
 test_done
