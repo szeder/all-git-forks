@@ -6,6 +6,9 @@ test_description='git rev-cache tests'
 sha1diff="python $TEST_DIRECTORY/t6015-sha1-dump-diff.py"
 
 # we want a totally wacked out branch structure...
+# we need branching and merging of sizes up through 3, tree 
+# addition/deletion, and enough branching to exercise path 
+# reuse
 test_expect_success 'init repo' '
 	echo bla >file && 
 	git add . && 
