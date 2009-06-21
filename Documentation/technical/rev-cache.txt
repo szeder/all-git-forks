@@ -68,10 +68,10 @@ in `revision.h`.
 	Create a cache based on an a `rev_info` instance or `commit_list` s of 
 	"ends" and "starts" (defaults to latter if `rev_info` pointer is NULL), 
 	copying the cache SHA-1 into a passed pointer if non-zero.  A 
-	`rev_cache_info` struct pointer can be passed to set options (currently: 
-	include objects, sizes; make legs), while passing NULL will set default 
-	options (objects, sizes, no legs).  A last parameter can optionally recieve 
-	the final cache hash.
+	`rev_cache_info` struct pointer can be passed to set options 
+	(currently: include objects, sizes; make legs), while passing NULL will 
+	set default options (objects, sizes, no legs).  A last parameter can 
+	optionally recieve the final cache hash.
 
 `get_cache_slice`::
 
