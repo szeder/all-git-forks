@@ -8,11 +8,16 @@
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
 {
 	struct rev_info revs;
-	char dostdin = 0, dont_pack_it = 0, do_legs = 0;
+	struct rev_cache_info rci;
+	char dostdin = 0;
 	unsigned int flags = 0;
 	int i;
 	
 	init_revisions(&revs, 0);
+	
+	rci.legs = 0;
+	rci.sizes = 1;
+	rci.objects = 1;
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
@@ -21,10 +26,12 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			uninteresting_from_slices(&revs, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
-		else if (!strcmp(argv[i], "--nopack"))
-			dont_pack_it = 1;
+		else if (!strcmp(argv[i], "--nosize"))
+			rci.sizes = 0;
 		else if (!strcmp(argv[i], "--legs"))
-			do_legs = 1;
+			rci.legs = 1;
+		else if (!strcmp(argv[i], "--noobjects"))
+			rci.objects = 0;
 		else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
@@ -48,7 +55,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	return make_cache_slice(&revs, 0, 0, 0, do_legs);
+	return make_cache_slice(&revs, 0, 0, &rci, 0);
 }
 
 static int handle_show(int argc, const char *argv[])
