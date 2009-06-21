@@ -16,7 +16,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	init_revisions(&revs, 0);
 	
 	rci.legs = 0;
-	rci.sizes = 1;
+	rci.sizes = 0;
 	rci.objects = 1;
 	
 	for (i = 0; i < argc; i++) {
@@ -26,8 +26,8 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			uninteresting_from_slices(&revs, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
-		else if (!strcmp(argv[i], "--nosize"))
-			rci.sizes = 0;
+		else if (!strcmp(argv[i], "--sizes"))
+			rci.sizes = 1;
 		else if (!strcmp(argv[i], "--legs"))
 			rci.legs = 1;
 		else if (!strcmp(argv[i], "--noobjects"))
@@ -155,7 +155,7 @@ commands:\n\
            --stdin     also read commit ids from stdin (same form as cmd)\n\
            --legs      ensure branch is entirely self-contained\n\
            --noobjects don't add non-commit objects to slice\n\
-           --nosizes   don't store object sizes\n\
+           --sizes     store object sizes\n\
  rm     - delete a cache slice\n\
  walk   - walk a cache slice based on set of commits; formatted as add\n\
           options:\n\

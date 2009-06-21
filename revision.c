@@ -655,7 +655,7 @@ static int limit_list(struct rev_info *revs)
 		
 		/* rev-cache to the rescue!!! */
 		used_cache = 0;
-		if (!(obj->flags & SEEN) && !revs->beyond_hash) {
+		if (!revs->beyond_hash) {
 			cache_sha1 = get_cache_slice(commit->object.sha1);
 			if (cache_sha1) {
 				if (traverse_cache_slice(revs, cache_sha1, commit, &date, &slop, &p, &list) < 0)
@@ -1719,6 +1719,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 	do {
 		struct commit_list *entry = revs->commits;
 		struct commit *commit = entry->item;
+		struct object *obj = &commit->object;
 
 		revs->commits = entry->next;
 		free(entry);
@@ -1731,7 +1732,31 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		 * the parents here. We also need to do the date-based limiting
 		 * that we'd otherwise have done in limit_list().
 		 */
-		if (!revs->limited) { /* todo: add it here as well */
+		if (!revs->limited) {
+			if (!revs->beyond_hash) {
+				struct commit_list *work, **workp;
+				unsigned char *cache_sha1;
+				
+				if (obj->flags & ADDED)
+					goto skip_parenting;
+				
+				cache_sha1 = get_cache_slice(obj->sha1);
+				if (cache_sha1) {
+					/* we want to attach queue to the end of revs->commits */
+					work = revs->commits;
+					while (work && work->next)
+						work = work->next;
+					
+					if (work)
+						workp = &work->next;
+					else
+						workp = &revs->commits;
+					
+					if (!traverse_cache_slice(revs, cache_sha1, commit, 0, 0, &workp, &work))
+						goto skip_parenting;
+				}
+			}
+			
 			if (revs->max_age != -1 &&
 			    (commit->date < revs->max_age))
 				continue;
@@ -1740,6 +1765,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				    sha1_to_hex(commit->object.sha1));
 		}
 
+skip_parenting:
 		switch (simplify_commit(revs, commit)) {
 		case commit_ignore:
 			continue;
