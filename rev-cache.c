@@ -448,7 +448,9 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		}
 		
 		co->date = ntohl(entry->date);
-		obj->flags |= SEEN | FACE_VALUE;
+		obj->flags |= SEEN;
+		if (!entry->is_start)
+			obj->flags |= ADDED | FACE_VALUE;
 		
 		if (entry->uninteresting)
 			obj->flags |= UNINTERESTING;
@@ -540,6 +542,12 @@ end:
 	if (retval) {
 		while ((co = pop_commit(&unwork)) != 0)
 			insert_by_date(co, work);
+		
+		/* and free lists */
+		while (pop_commit(&myq))
+			;
+		while (pop_commit(&mywork))
+			;
 	}
 	
 	return retval;
@@ -1037,7 +1045,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	
 	if (!rci) {
 		def_rci.legs = 0;
-		def_rci.objects = 1;
+		def_rci.objects = 0;
 		def_rci.sizes = 1;
 		rci = &def_rci;
 	}
@@ -1235,7 +1243,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		init_index();
 	
 	lseek(fd, 0, SEEK_SET);
-	map = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
+	map = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		return -1;
 	
@@ -1273,6 +1281,10 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		if (object_entry->type != OBJ_COMMIT)
 			continue;
 		
+		/* don't include starts; otherwise we'll find ourselves in loops */
+		if (object_entry->is_start)
+			continue;
+		
 		/* handle index duplication
 		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
@@ -1284,7 +1296,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		
 		if (entry && !object_entry->is_end)
 			continue;
-		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-index_map = offset, so cast is valid) */
+		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-idx_map = offset, so cast is valid) */
 			entry = IE_CAST(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
 		else
 			entry = &index_entry;
