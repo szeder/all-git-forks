@@ -143,7 +143,7 @@ static int handle_walk(int argc, const char *argv[])
 static int handle_help(void)
 {
 	char *usage = "\
-half-assed usage guide:\n\
+usage:\n\
 git-rev-cache COMMAND [options] [<commit-id>...]\n\
 commands:\n\
  (none) - display caches.  passing a slice hash will display detailed\n\
@@ -151,12 +151,15 @@ commands:\n\
  add    - add revisions to the cache.  reads commit ids from stdin, \n\
           formatted as: END END ... --not START START ...\n\
           options:\n\
-           --fresh    exclude everything already in a cache slice\n\
-           --nopack   don't generate a cache slice pack\n\
-           --stdin    also read commit ids from stdin (same form as cmd)\n\
-           --legs     ensure branch is entirely self-contained\n\
+           --fresh     exclude everything already in a cache slice\n\
+           --stdin     also read commit ids from stdin (same form as cmd)\n\
+           --legs      ensure branch is entirely self-contained\n\
+           --noobjects don't add non-commit objects to slice\n\
+           --nosizes   don't store object sizes\n\
  rm     - delete a cache slice\n\
- walk   - walk a cache slice based on set of commits; formatted as add";
+ walk   - walk a cache slice based on set of commits; formatted as add\n\
+          options:\n\
+           --objects   include non-commit objects in traversals";
 	
 	puts(usage);
 	
