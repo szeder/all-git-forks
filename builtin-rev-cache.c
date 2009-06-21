@@ -155,7 +155,7 @@ commands:\n\
            --stdin     also read commit ids from stdin (same form as cmd)\n\
            --legs      ensure branch is entirely self-contained\n\
            --noobjects don't add non-commit objects to slice\n\
-           --nizes     store object sizes\n\
+           --sizes     store object sizes\n\
  rm     - delete a cache slice\n\
  walk   - walk a cache slice based on set of commits; formatted as add\n\
           options:\n\
