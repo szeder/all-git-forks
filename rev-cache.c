@@ -74,7 +74,7 @@ static unsigned int fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx = 0;
+static char no_idx = 0, include_sizes;
 
 static struct strbuf *g_buffer;
 
@@ -308,13 +308,14 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 	return retval;
 }
 
+static unsigned long decode_size(unsigned char *str, int len);
+
 #define IPATH				0x40
 #define UPATH				0x80
 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
-/* todo: use temp vars to allow regress on failure */
 static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, unsigned char *map, 
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, struct commit_list ***queue, struct commit_list **work)
 {
@@ -891,10 +892,41 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 }
 
 
+static int encode_size(unsigned long size, unsigned char *out)
+{
+	int len = 0;
+	
+	while (size) {
+		*out++ = size & 0xff;
+		size >>= 8;
+		len++;
+	}
+	
+	return len;
+}
+
+static unsigned long decode_size(unsigned char *str, int len)
+{
+	unsigned long size = 0;
+	int shift = 0;
+	
+	while (len--) {
+		size |= (unsigned long)*str << shift;
+		shift += 8;
+		str++;
+	}
+	
+	return size;
+}
+
 static void add_object_entry(const unsigned char *sha1, int type, struct object_entry *nothisone, 
-	struct strbuf *merge_str, struct strbuf *split_str, struct strbuf *size_str)
+	struct strbuf *merge_str, struct strbuf *split_str)
 {
 	struct object_entry object;
+	unsigned char size_str[7];
+	unsigned long size;
+	enum object_type ttype;
+	void *tdata;
 	
 	if (!nothisone) {
 		memset(&object, 0, sizeof(object));
@@ -905,10 +937,18 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 			object.merge_nr = merge_str->len / sizeof(unsigned short);
 		if (split_str)
 			object.split_nr = split_str->len / sizeof(unsigned short);
-		if (size_str)
-			object.size_size = size_str->len;
 		
 		nothisone = &object;
+	}
+	
+	if (include_sizes) {
+		/* this seems terribly inefficient, but duplicating all the logic behind 
+		 * read_sha1_file just to prevent data unpacking is a bit excessive */
+		tdata = read_sha1_file(nothisone->sha1, &ttype, &size);
+		if (tdata)
+			free(tdata);
+		
+		nothisone->size_size = encode_size(size, size_str);
 	}
 	
 	strbuf_add(g_buffer, nothisone, sizeof(object));
@@ -917,8 +957,8 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 		strbuf_add(g_buffer, merge_str->buf, merge_str->len);
 	if (split_str && split_str->len)
 		strbuf_add(g_buffer, split_str->buf, split_str->len);
-	if (size_str && size_str->len)
-		strbuf_add(g_buffer, size_str->buf, size_str->len);
+	if (include_sizes)
+		strbuf_add(g_buffer, size_str, nothisone->size_size);
 }
 
 /* returns non-zero to continue parsing, 0 to skip */
@@ -1075,7 +1115,7 @@ static int add_unique_objects(struct commit *commit)
 	
 	g_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 21)
-		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
 	
 	strbuf_release(&ost);
 	strbuf_release(&os);
@@ -1085,7 +1125,8 @@ static int add_unique_objects(struct commit *commit)
 
 static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_objects, unsigned int size, unsigned long max_date);
 
-int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, unsigned char *cache_sha1, char do_legs)
+int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	struct rev_cache_info *rci, unsigned char *cache_sha1)
 {
 	struct commit_list *list;
 	struct rev_info therevs;
@@ -1097,7 +1138,17 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	int object_nr, total_sz, fd;
 	unsigned long max_date;
 	char file[PATH_MAX], *newfile;
+	struct rev_cache_info def_rci;
 	git_SHA_CTX ctx;
+	
+	if (!rci) {
+		def_rci.legs = 0;
+		def_rci.objects = 1;
+		def_rci.sizes = 1;
+		rci = &def_rci;
+	}
+	
+	include_sizes = rci->sizes;
 	
 	strcpy(file, git_path("rev-cache/XXXXXX"));
 	fd = xmkstemp(file);
@@ -1139,7 +1190,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	if (prepare_revision_walk(revs))
 		die("died preparing revision walk");
 	
-	if (do_legs)
+	if (rci->legs)
 		make_legs(revs);
 	
 	object_nr = total_sz = 0;
@@ -1166,13 +1217,12 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		if (commit->date > max_date)
 			max_date = commit->date;
 		
-		/* todo: get size */
-		add_object_entry(0, 0, &object, &merge_paths, &split_paths, 0);
+		add_object_entry(0, 0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (!(commit->object.flags & TREESAME)) {
+		if (rci->objects && !(commit->object.flags & TREESAME)) {
 			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0, 0);
+			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
 			object_nr++;
 			
 			if (!object.is_start)
@@ -1229,7 +1279,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	close(fd);
 	
 	newfile = git_path("rev-cache/%s", sha1_to_hex(sha1));
-	if (move_temp_to_file(file, newfile))
+	if (rename(file, newfile))
 		die("can't move temp file");
 	
 	/* let our caller know what we've just made */
@@ -1248,17 +1298,21 @@ static int index_sort_hash(const void *a, const void *b)
 	return hashcmp(IE_CAST(a)->sha1, IE_CAST(b)->sha1);
 }
 
-/* todo: handle concurrency issues */
 static int write_cache_index(struct strbuf *body)
 {
 	struct index_header whead;
+	struct lock_file *lk;
 	int fd, i;
 	
+	/* clear index map if loaded */
 	cleanup_cache_slices();
 	
-	fd = open(git_path("rev-cache/index"), O_CREAT | O_WRONLY, 0666);
-	if (fd < 0)
+	lk = xcalloc(sizeof(struct lock_file), 1);
+	fd = hold_lock_file_for_update(lk, git_path("rev-cache/index"), 0);
+	if (fd < 0) {
+		free(lk);
 		return -1;
+	}
 	
 	/* endianness yay! */
 	memcpy(&whead, &idx_head, sizeof(whead));
@@ -1274,7 +1328,10 @@ static int write_cache_index(struct strbuf *body)
 	
 	write_in_full(fd, body->buf, body->len);
 	
-	close(fd);
+	if (commit_lock_file(lk) < 0)
+		return -2;
+	
+	/* lk freed by lockfile.c */
 	
 	return 0;
 }
@@ -1330,7 +1387,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		/* handle index duplication
 		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
-		 * todo: allow more intelligent overriding */
+		 * should we allow more intelligent overriding? */
 		if (ntohl(object_entry->date) > idx_head.max_date)
 			entry = 0;
 		else

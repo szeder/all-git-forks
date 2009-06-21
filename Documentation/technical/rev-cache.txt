@@ -30,7 +30,7 @@ At the moment it looks like this:
 With the commands:
 
 `(none)`::
-	Display caches.  Passing a slice hash will display detailed	information 
+	Display caches.  Passing a slice hash will display detailed information 
 	about that cache slice.  (not yet implemented)
 
 `add`::
@@ -43,6 +43,8 @@ Options:
 `\--stdin`:: Also read commit ids from stdin (seperated by newline, `\--not` 
 also valid).
 `\--legs`:: Ensure branch has no "dangling" starts (ie. is self-contained).
+`\--nosizes`:: Don't include sizes with objects.
+`\--noobjects`:: Don't include non-commit objects.
 
 `rm`::
 	Delete a cache slice.  (not yet implemented)
@@ -65,9 +67,11 @@ in `revision.h`.
 
 	Create a cache based on an a `rev_info` instance or `commit_list` s of 
 	"ends" and "starts" (defaults to latter if `rev_info` pointer is NULL), 
-	copying the cache SHA-1 into a passed pointer if non-zero.  Will optionally 
-	generate "legs" to ensure branch is entirely self-contained -- that is, a 
-	commit's parents are either all in or all out of the slice.
+	copying the cache SHA-1 into a passed pointer if non-zero.  A 
+	`rev_cache_info` struct pointer can be passed to set options 
+	(currently: include objects, sizes; make legs), while passing NULL will 
+	set default options (objects, sizes, no legs).  A last parameter can 
+	optionally recieve the final cache hash.
 
 `get_cache_slice`::
 
@@ -105,6 +109,9 @@ that I have know idea if these work or even compile, they're just outlines):
 .Creating a slice
 ----
 /* pretend you're a porcelain for rev-cache reading from the command line */
+struct rev_info revs;
+struct rev_cache_info rci;
+
 init_revisions(&revs, 0);
 
 flags = 0;
@@ -117,7 +124,12 @@ for (i = 1; i < argc; i++) {
 		handle_revision_arg(argv[i], &revs, flags, 1);
 }
 
-if (!make_cache_slice(&revs, 0, 0, cache_sha1, 0))
+/* we want to explicitly set certain options */
+rci.legs = 0;
+rci.objects = 0;
+rci.sizes = 1;
+
+if (!make_cache_slice(&revs, 0, 0, &rci, cache_sha1))
 	printf("made slice!  it's called %s\n", sha1_to_hex(cache_sha1));
 ----
 
