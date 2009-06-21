@@ -897,7 +897,7 @@ static int encode_size(unsigned long size, unsigned char *out)
 	int len = 0;
 	
 	while (size) {
-		*out++ = size & 0xff;
+		*out++ = (unsigned char)(size & 0xff);
 		size >>= 8;
 		len++;
 	}
