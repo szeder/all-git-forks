@@ -74,7 +74,7 @@ static unsigned int fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx = 0;
+static char no_idx = 0, include_sizes;
 
 static struct strbuf *g_buffer;
 
@@ -307,6 +307,8 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 	
 	return retval;
 }
+
+static unsigned long decode_size(unsigned char *str, int len);
 
 #define IPATH				0x40
 #define UPATH				0x80
@@ -891,10 +893,41 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 }
 
 
+static int encode_size(unsigned long size, unsigned char *out)
+{
+	int len = 0;
+	
+	while (size) {
+		*out++ = size & 0xff;
+		size >>= 8;
+		len++;
+	}
+	
+	return len;
+}
+
+static unsigned long decode_size(unsigned char *str, int len)
+{
+	unsigned long size = 0;
+	int shift = 0;
+	
+	while (len--) {
+		size |= (unsigned long)*str << shift;
+		shift += 8;
+		str++;
+	}
+	
+	return size;
+}
+
 static void add_object_entry(const unsigned char *sha1, int type, struct object_entry *nothisone, 
 	struct strbuf *merge_str, struct strbuf *split_str)
 {
 	struct object_entry object;
+	unsigned char size_str[7];
+	unsigned long size;
+	enum object_type ttype;
+	void *tdata;
 	
 	if (!nothisone) {
 		memset(&object, 0, sizeof(object));
@@ -909,13 +942,24 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 		nothisone = &object;
 	}
 	
+	if (include_sizes) {
+		/* this seems terribly inefficient, but duplicating all the logic behind 
+		 * read_sha1_file just to prevent data unpacking is a bit excessive */
+		tdata = read_sha1_file(nothisone->sha1, &ttype, &size);
+		if (tdata)
+			free(tdata);
+		
+		nothisone->size_size = encode_size(size, size_str);
+	}
+	
 	strbuf_add(g_buffer, nothisone, sizeof(object));
 	
 	if (merge_str && merge_str->len)
 		strbuf_add(g_buffer, merge_str->buf, merge_str->len);
 	if (split_str && split_str->len)
 		strbuf_add(g_buffer, split_str->buf, split_str->len);
-	
+	if (include_sizes)
+		strbuf_add(g_buffer, size_str, nothisone->size_size);
 }
 
 /* returns non-zero to continue parsing, 0 to skip */
@@ -1072,7 +1116,7 @@ static int add_unique_objects(struct commit *commit)
 	
 	g_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 21)
-		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
 	
 	strbuf_release(&ost);
 	strbuf_release(&os);
@@ -1104,6 +1148,8 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		def_rci.sizes = 1;
 		rci = &def_rci;
 	}
+	
+	include_sizes = rci->sizes;
 	
 	strcpy(file, git_path("rev-cache/XXXXXX"));
 	fd = xmkstemp(file);
@@ -1145,7 +1191,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	if (prepare_revision_walk(revs))
 		die("died preparing revision walk");
 	
-	if (do_legs)
+	if (rci->legs)
 		make_legs(revs);
 	
 	object_nr = total_sz = 0;
@@ -1175,9 +1221,9 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		add_object_entry(0, 0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (!(commit->object.flags & TREESAME)) {
+		if (rci->objects && !(commit->object.flags & TREESAME)) {
 			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0, 0);
+			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
 			object_nr++;
 			
 			if (!object.is_start)
