@@ -121,3 +121,4 @@ test_expect_success 'test rev-list with objects (unlimited)' '
 '
 
 test_done
+
