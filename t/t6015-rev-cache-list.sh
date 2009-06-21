@@ -89,8 +89,6 @@ test_expect_success 'test rev-caches walker directly (limited)' '
 	test -z `$sha1diff list proper_commit_list_limited`
 '
 
-$sha1diff list proper_commit_list_limited
-
 test_expect_success 'test rev-caches walker directly (unlimited)' '
 	git-rev-cache walk HEAD >list && 
 	test -z `$sha1diff list proper_commit_list`
