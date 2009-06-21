@@ -176,13 +176,19 @@ extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
 
 /* rev-cache.c */
 
+struct rev_cache_info {
+	unsigned objects : 1, 
+		sizes : 1, 
+		legs : 1;
+};
+
 extern unsigned char *get_cache_slice(unsigned char *sha1);
 extern int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
 extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
-	unsigned char *cache_sha1, char do_legs);
+	struct rev_cache_info *rci, unsigned char *cache_sha1);
 extern void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int n);
 
 #endif
