@@ -288,7 +288,6 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
-/* todo: use temp vars to allow regress on failure */
 static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, unsigned char *map, 
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, struct commit_list ***queue, struct commit_list **work)
 {
@@ -988,7 +987,6 @@ static int index_sort_hash(const void *a, const void *b)
 	return hashcmp(IE_CAST(a)->sha1, IE_CAST(b)->sha1);
 }
 
-/* todo: handle concurrency issues */
 static int write_cache_index(struct strbuf *body)
 {
 	struct index_header whead;
@@ -1078,7 +1076,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		/* handle index duplication
 		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
-		 * todo: allow more intelligent overriding */
+		 * should we allow more intelligent overriding? */
 		if (ntohl(object_entry->date) > idx_head.max_date)
 			entry = 0;
 		else
