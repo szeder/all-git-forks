@@ -306,6 +306,28 @@ static void check_typos(const char *arg, const struct option *options)
 	}
 }
 
+static void parse_options_check(const struct option *opts)
+{
+	int err = 0;
+
+	for (; opts->type != OPTION_END; opts++) {
+		if ((opts->flags & PARSE_OPT_LASTARG_DEFAULT) &&
+		    (opts->flags & PARSE_OPT_OPTARG)) {
+			if (opts->long_name) {
+				error("`--%s` uses incompatible flags "
+				      "LASTARG_DEFAULT and OPTARG", opts->long_name);
+			} else {
+				error("`-%c` uses incompatible flags "
+				      "LASTARG_DEFAULT and OPTARG", opts->short_name);
+			}
+			err |= 1;
+		}
+	}
+
+	if (err)
+		exit(129);
+}
+
 void parse_options_start(struct parse_opt_ctx_t *ctx,
 			 int argc, const char **argv, const char *prefix,
 			 int flags)
@@ -330,6 +352,8 @@ int parse_options_step(struct parse_opt_ctx_t *ctx,
 		       const char * const usagestr[])
 {
 	int internal_help = !(ctx->flags & PARSE_OPT_NO_INTERNAL_HELP);
+
+	parse_options_check(options);
 
 	/* we must reset ->opt, unknown short option leave it dangling */
 	ctx->opt = NULL;
@@ -440,7 +464,7 @@ int parse_options(int argc, const char **argv, const char *prefix,
 static int usage_argh(const struct option *opts)
 {
 	const char *s;
-	int literal = opts->flags & PARSE_OPT_LITERAL_ARGHELP;
+	int literal = (opts->flags & PARSE_OPT_LITERAL_ARGHELP) || !opts->argh;
 	if (opts->flags & PARSE_OPT_OPTARG)
 		if (opts->long_name)
 			s = literal ? "[=%s]" : "[=<%s>]";
@@ -448,13 +472,13 @@ static int usage_argh(const struct option *opts)
 			s = literal ? "[%s]" : "[<%s>]";
 	else
 		s = literal ? " %s" : " <%s>";
-	return fprintf(stderr, s, opts->argh);
+	return fprintf(stderr, s, opts->argh ? opts->argh : "...");
 }
 
 #define USAGE_OPTS_WIDTH 24
 #define USAGE_GAP         2
 
-int usage_with_options_internal(const char * const *usagestr,
+static int usage_with_options_internal(const char * const *usagestr,
 				const struct option *opts, int full)
 {
 	if (!usagestr)
@@ -500,40 +524,8 @@ int usage_with_options_internal(const char * const *usagestr,
 		if (opts->type == OPTION_NUMBER)
 			pos += fprintf(stderr, "-NUM");
 
-		switch (opts->type) {
-		case OPTION_ARGUMENT:
-			break;
-		case OPTION_INTEGER:
-			if (opts->flags & PARSE_OPT_OPTARG)
-				if (opts->long_name)
-					pos += fprintf(stderr, "[=<n>]");
-				else
-					pos += fprintf(stderr, "[<n>]");
-			else
-				pos += fprintf(stderr, " <n>");
-			break;
-		case OPTION_CALLBACK:
-			if (opts->flags & PARSE_OPT_NOARG)
-				break;
-			/* FALLTHROUGH */
-		case OPTION_FILENAME:
-			/* FALLTHROUGH */
-		case OPTION_STRING:
-			if (opts->argh)
-				pos += usage_argh(opts);
-			else {
-				if (opts->flags & PARSE_OPT_OPTARG)
-					if (opts->long_name)
-						pos += fprintf(stderr, "[=...]");
-					else
-						pos += fprintf(stderr, "[...]");
-				else
-					pos += fprintf(stderr, " ...");
-			}
-			break;
-		default: /* OPTION_{BIT,BOOLEAN,NUMBER,SET_INT,SET_PTR} */
-			break;
-		}
+		if (!(opts->flags & PARSE_OPT_NOARG))
+			pos += usage_argh(opts);
 
 		if (pos <= USAGE_OPTS_WIDTH)
 			pad = USAGE_OPTS_WIDTH - pos;

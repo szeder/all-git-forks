@@ -334,7 +334,7 @@ if (@suppress_cc) {
 }
 
 if ($suppress_cc{'all'}) {
-	foreach my $entry (qw (ccmd cc author self sob body bodycc)) {
+	foreach my $entry (qw (cccmd cc author self sob body bodycc)) {
 		$suppress_cc{$entry} = 1;
 	}
 	delete $suppress_cc{'all'};
@@ -812,7 +812,7 @@ sub sanitize_address
 }
 
 # Returns 1 if the message was sent, and 0 otherwise.
-# In actuality, the whole program dies when a there
+# In actuality, the whole program dies when there
 # is an error sending a message.
 
 sub send_message
@@ -1104,7 +1104,7 @@ foreach my $t (@files) {
 	close F;
 
 	if (defined $cc_cmd && !$suppress_cc{'cccmd'}) {
-		open(F, "$cc_cmd $t |")
+		open(F, "$cc_cmd \Q$t\E |")
 			or die "(cc-cmd) Could not execute '$cc_cmd'";
 		while(<F>) {
 			my $c = $_;
@@ -1150,7 +1150,8 @@ foreach my $t (@files) {
 	my $message_was_sent = send_message();
 
 	# set up for the next message
-	if ($message_was_sent and $chain_reply_to || not defined $reply_to || length($reply_to) == 0) {
+	if ($thread && $message_was_sent &&
+		($chain_reply_to || !defined $reply_to || length($reply_to) == 0)) {
 		$reply_to = $message_id;
 		if (length $references > 0) {
 			$references .= "\n $message_id";

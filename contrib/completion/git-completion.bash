@@ -927,7 +927,7 @@ _git_diff ()
 }
 
 __git_mergetools_common="diffuse ecmerge emerge kdiff3 meld opendiff
-			tkdiff vimdiff gvimdiff xxdiff
+			tkdiff vimdiff gvimdiff xxdiff araxis
 "
 
 _git_difftool ()
@@ -1299,7 +1299,7 @@ _git_rebase ()
 }
 
 __git_send_email_confirm_options="always never auto cc compose"
-__git_send_email_suppresscc_options="author self cc ccbody sob cccmd body all"
+__git_send_email_suppresscc_options="author self cc bodycc sob cccmd body all"
 
 _git_send_email ()
 {

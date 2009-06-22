@@ -370,7 +370,7 @@ static void merge_name(const char *remote, struct strbuf *msg)
 
 	strbuf_addstr(&buf, "refs/heads/");
 	strbuf_addstr(&buf, remote);
-	resolve_ref(buf.buf, branch_head, 0, 0);
+	resolve_ref(buf.buf, branch_head, 0, NULL);
 
 	if (!hashcmp(remote_head->sha1, branch_head)) {
 		strbuf_addf(msg, "%s\t\tbranch '%s' of .\n",
@@ -409,7 +409,7 @@ static void merge_name(const char *remote, struct strbuf *msg)
 		strbuf_addstr(&truname, "refs/heads/");
 		strbuf_addstr(&truname, remote);
 		strbuf_setlen(&truname, truname.len - len);
-		if (resolve_ref(truname.buf, buf_sha, 0, 0)) {
+		if (resolve_ref(truname.buf, buf_sha, 0, NULL)) {
 			strbuf_addf(msg,
 				    "%s\t\tbranch '%s'%s of .\n",
 				    sha1_to_hex(remote_head->sha1),
@@ -836,8 +836,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	struct commit_list **remotes = &remoteheads;
 
 	setup_work_tree();
+	if (file_exists(git_path("MERGE_HEAD")))
+		die("You have not concluded your merge. (MERGE_HEAD exists)");
 	if (read_cache_unmerged())
-		die("You are in the middle of a conflicted merge.");
+		die("You are in the middle of a conflicted merge."
+				" (index unmerged)");
 
 	/*
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a
