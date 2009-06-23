@@ -43,7 +43,7 @@ Options:
 `\--stdin`:: Also read commit ids from stdin (seperated by newline, `\--not` 
 also valid).
 `\--legs`:: Ensure branch has no "dangling" starts (ie. is self-contained).
-`\--nosizes`:: Don't include sizes with objects.
+`\--sizes`:: Include sizes with objects.
 `\--noobjects`:: Don't include non-commit objects.
 
 `rm`::
