@@ -122,6 +122,7 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 static void cleanup_cache_slices(void)
 {
 	if (idx_map) {
+		free(idx_head.cache_sha1s);
 		munmap(idx_map, idx_size);
 		idx_map = 0;
 	}
@@ -198,7 +199,7 @@ static struct index_entry *search_index(unsigned char *sha1)
 	return 0;
 }
 
-unsigned char *get_cache_slice(unsigned char *sha1)
+unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct index_entry *ie;
 	
@@ -208,7 +209,10 @@ unsigned char *get_cache_slice(unsigned char *sha1)
 		init_index();
 	}
 	
-	ie = search_index(sha1);
+	if (commit->date > idx_head.max_date)
+		return 0;
+	
+	ie = search_index(commit->object.sha1);
 	
 	if (ie && ie->cache_index < idx_head.caches)
 		return idx_head.cache_sha1s + ie->cache_index * 20;
@@ -1192,7 +1196,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	revs->blob_objects = 1;
 	revs->topo_order = 1;
 	revs->lifo = 1;
-	revs->beyond_hash = 1; /* do _not_ want ourselves caching */
+	revs->dont_cache_me = 1; /* do _not_ want ourselves caching */
 	
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
@@ -1313,7 +1317,10 @@ static int write_cache_index(struct strbuf *body)
 	int fd, i;
 	
 	/* clear index map if loaded */
-	cleanup_cache_slices();
+	if (idx_map) {
+		munmap(idx_map, idx_size);
+		idx_map = 0;
+	}
 	
 	lk = xcalloc(sizeof(struct lock_file), 1);
 	fd = hold_lock_file_for_update(lk, git_path("rev-cache/index"), 0);
@@ -1446,6 +1453,10 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 	
 	munmap(map, size);
 	strbuf_release(&buffer);
+	
+	/* idx_map is unloaded without cleanup_cache_slices(), so regardless of previous index existence 
+	 * we can still free this up */
+	free(idx_head.cache_sha1s);
 	
 	return 0;
 }

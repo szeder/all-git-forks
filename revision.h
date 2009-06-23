@@ -75,7 +75,7 @@ struct rev_info {
 
 	/* rev-cache flags */
 	unsigned int for_pack:1, 
-		beyond_hash:1;
+		dont_cache_me:1;
 
 	/* Format info */
 	unsigned int	shown_one:1,
@@ -182,7 +182,7 @@ struct rev_cache_info {
 		legs : 1;
 };
 
-extern unsigned char *get_cache_slice(unsigned char *sha1);
+extern unsigned char *get_cache_slice(struct commit *commit);
 extern int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
