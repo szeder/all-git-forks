@@ -3,8 +3,11 @@ git-core (1:1.6.3.3-1) unstable; urgency=high
   * new upstream point release.
     * daemon: Strictly parse the "extra arg" part of the command
       (closes: #532935; CVE-2009-2108).
+  * debian/rules: add NO_CROSS_DIRECTORY_HARDLINKS=1 to OPTS.
+  * debian/diff/0006-bug-520116-Makefile-do-not-install-cross...diff:
+    remove; obsolete.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 23 Jun 2009 08:24:00 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 23 Jun 2009 08:49:17 +0000
 
 git-core (1:1.6.3.1-1) unstable; urgency=low
 
