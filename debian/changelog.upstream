@@ -1,3 +1,169 @@
+Version v1.6.3.3; changes since v1.6.3.2:
+-----------------------------------------
+
+Anders Kaseorg (1):
+      for-each-ref: Do not lookup objects when they will not be used
+
+Clemens Buchacher (1):
+      refuse to merge during a merge
+
+Jim Meyering (1):
+      use xstrdup, not strdup in ll-merge.c
+
+Johannes Schindelin (1):
+      import-tars: support symlinks
+
+Johannes Sixt (2):
+      fetch-pack: close output channel after sideband demultiplexer terminates
+      diff.c: plug a memory leak in an error path
+
+Junio C Hamano (3):
+      t3505: fix abuse of test_expect_code
+      attribute: whitespace set to true detects all errors known to git
+      GIT 1.6.3.3
+
+Linus Torvalds (1):
+      Fix big left-shifts of unsigned char
+
+Marco Nelissen (1):
+      fix handling of iconv configuration options
+
+Mark Lodato (1):
+      http.c: fix compiling with libcurl 7.9.2
+
+Michael J Gruber (1):
+      builtin-remote: Make "remote show" display all urls
+
+Miklos Vajna (1):
+      git-svn documentation: fix typo in 'rebase vs. pull/merge' section
+
+Nanako Shiraishi (1):
+      .gitattributes: CR at the end of the line is an error
+
+Paolo Bonzini (2):
+      Documentation: git-send-mail can take rev-list arg to drive format-patch
+      avoid exponential regex match for java and objc function names
+
+René Scharfe (1):
+      upload-archive: fix infinite loop on Cygwin
+
+Shawn O. Pearce (1):
+      daemon: Strictly parse the "extra arg" part of the command
+
+Stephen Boyd (3):
+      git-rerere.txt: grammatical fixups and cleanups
+      pull, rebase: simplify to use die()
+      git-show-ref.txt: remove word and make consistent
+
+Tay Ray Chuan (1):
+      http*: cleanup slot->local after fclose
+
+Thomas Rast (1):
+      Documentation: refer to gitworkflows(7) from tutorial and git(1)
+
+Uwe Kleine-König (1):
+      rebase--interactive: remote stray closing parenthesis
+
+
+Version v1.6.3.2; changes since v1.6.3.1:
+-----------------------------------------
+
+Alex Riesen (7):
+      Introduce an unlink(2) wrapper which gives warning if unlink failed
+      replace direct calls to unlink(2) with unlink_or_warn
+      print unlink(2) errno in copy_or_link_directory
+      Clarify kind of conflict in merge-one-file helper
+      ls-tree manpage: use "unless" instead of "when ... is not"
+      ls-tree manpage: output of ls-tree is compatible with update-index
+      http-push.c::remove_locks(): fix use after free
+
+Charles Bailey (2):
+      t6023: merge-file fails to output anything for a degenerate merge
+      Change xdl_merge to generate output even for null merges
+
+Clemens Buchacher (1):
+      fix segfault showing an empty remote
+
+Dan McGee (1):
+      Fix type-punning issues
+
+Daniel Cordero (1):
+      builtin-checkout: Don't tell user that HEAD has moved before it has
+
+Dave Olszewski (1):
+      merge-recursive: never leave index unmerged while recursing
+
+Giuseppe Bilotta (1):
+      completion: use git rev-parse to detect bare repos
+
+Jeff King (6):
+      fix GIT_TRACE segfault with shell-quoted aliases
+      add: don't complain when adding empty project root
+      for-each-ref: fix segfault in copy_email
+      lock_ref: inform callers of unavailable ref
+      fetch: report ref storage DF errors more accurately
+      fix cat-file usage message and documentation
+
+Jim Meyering (2):
+      format-patch let -k override a config-specified format.numbered
+      pre-commit.sample: don't print incidental SHA1
+
+Johannes Schindelin (2):
+      Add NO_CROSS_DIRECTORY_HARDLINKS support to the Makefile
+      Cope better with a _lot_ of packs
+
+Johannes Sixt (1):
+      t3701: ensure correctly set up repository after skipped tests
+
+Junio C Hamano (8):
+      Revert "git-add--interactive: remove hunk coalescing"
+      completion: fix PS1 display during a merge on detached HEAD
+      completion: simplify "current branch" in __git_ps1()
+      completion: enhance "current branch" display
+      Prepare for 1.6.3.2
+      Update draft release notes for 1.6.3.2
+      blame: correctly handle a path that used to be a directory
+      GIT 1.6.3.2
+
+Linus Torvalds (3):
+      Avoid unnecessary 'lstat()' calls in 'get_stat_data()'
+      Teach 'git checkout' to preload the index contents
+      dir.c: clean up handling of 'path' parameter in read_directory_recursive()
+
+Matt Graham (1):
+      Splitting a hunk that adds a line at the top fails in "add -p"
+
+Michael J Gruber (1):
+      merge-options.txt: Clarify merge --squash
+
+Nanako Shiraishi (1):
+      test: checkout shouldn't say that HEAD has moved if it didn't
+
+Nicolas Pitre (1):
+      allow OFS_DELTA objects during a push
+
+René Scharfe (4):
+      grep: fix word-regexp colouring
+      grep: fix word-regexp at the beginning of lines
+      grep: fix colouring of matches with zero length
+      grep: fix empty word-regexp matches
+
+Stephen Boyd (6):
+      api-parse-options.txt: use 'func' instead of 'funct'
+      tests: Add tests for missing format-patch long options
+      completion: add missing options to show-branch and show
+      show-branch: Fix die message in parse_reflog_param()
+      commit: -F overrides -t
+      apply, fmt-merge-msg: use relative filenames
+
+Thomas Rast (2):
+      Documentation: teach stash/pop workflow instead of stash/apply
+      add -i: do not dump patch during application
+
+Tony Kemp (1):
+      Turn on USE_ST_TIMESPEC for OpenBSD
+
+
 Version v1.6.3.1; changes since v1.6.3:
 ---------------------------------------
 
