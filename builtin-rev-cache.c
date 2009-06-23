@@ -94,7 +94,7 @@ static int handle_walk(int argc, const char *argv[])
 	for (i = 0; i < revs.pending.nr; i++) {
 		commit = lookup_commit(revs.pending.objects[i].item->sha1);
 		
-		sha1pt = get_cache_slice(commit->object.sha1);
+		sha1pt = get_cache_slice(commit);
 		if (!sha1pt)
 			die("%s: not in a cache slice", sha1_to_hex(commit->object.sha1));
 		
