@@ -106,7 +106,7 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 	if (len < index + head->caches_buffer * 20 + (0x100) * sizeof(unsigned int))
 		return -1;
 	
-	head->cache_sha1s = xmalloc(head->caches * 20);
+	head->cache_sha1s = xmalloc(head->caches_buffer * 20);
 	memcpy(head->cache_sha1s, map + index, head->caches * 20);
 	index += head->caches_buffer * 20;
 	
