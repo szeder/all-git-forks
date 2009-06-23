@@ -1376,18 +1376,27 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(unsigned int);
 	}
 	
-	cache_index = idx_head.caches++;
-	if (idx_head.caches >= idx_head.caches_buffer) {
-		/* this whole dance is a bit useless currently, because we re-write everything regardless, 
-		 * but later on we might decide to use a hashmap or something else which does not require 
-		 * any particular on-disk format.  that would free us up to simply append new objects and 
-		 * tweak the header accordingly */
-		idx_head.caches_buffer += 20;
-		idx_head.cache_sha1s = xrealloc(idx_head.cache_sha1s, idx_head.caches_buffer * 20);
-		idx_head.ofs_objects += 20 * 20;
-	}
+	/* are we remaking a slice? */
+	for (i = 0; i < idx_head.caches; i++)
+		if (!hashcmp(idx_head.cache_sha1s + i * 20, cache_sha1))
+			break;
 	
-	hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+	if (i == idx_head.caches) {
+		cache_index = idx_head.caches++;
+		if (idx_head.caches >= idx_head.caches_buffer) {
+			/* this whole dance is a bit useless currently, because we re-write everything regardless, 
+			 * but later on we might decide to use a hashmap or something else which does not require 
+			 * any particular on-disk format.  that would free us up to simply append new objects and 
+			 * tweak the header accordingly */
+			idx_head.caches_buffer += 20;
+			idx_head.cache_sha1s = xrealloc(idx_head.cache_sha1s, idx_head.caches_buffer * 20);
+			idx_head.ofs_objects += 20 * 20;
+		}
+		
+		hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+	} else
+		cache_index = i;
+	
 	i = ofs_objects;
 	while (i < size) {
 		struct index_entry index_entry, *entry;
