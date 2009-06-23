@@ -83,6 +83,11 @@ test_expect_success 'make cache slice' '
 	grep "final return value: 0" output.err
 '
 
+test_expect_success 'remake cache slice' '
+	git-rev-cache add --sizes HEAD 2>output.err && 
+	grep "final return value: 0" output.err
+'
+
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
