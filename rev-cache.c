@@ -140,7 +140,7 @@ static int init_index(void)
 		goto end;
 	
 	idx_size = fi.st_size;
-	idx_map = mmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	idx_map = xmmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	close(fd);
 	if (idx_map == MAP_FAILED)
 		goto end;
@@ -1354,7 +1354,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		init_index();
 	
 	lseek(fd, 0, SEEK_SET);
-	map = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		return -1;
 	
