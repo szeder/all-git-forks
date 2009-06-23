@@ -655,8 +655,8 @@ static int limit_list(struct rev_info *revs)
 		
 		/* rev-cache to the rescue!!! */
 		used_cache = 0;
-		if (!revs->beyond_hash) {
-			cache_sha1 = get_cache_slice(commit->object.sha1);
+		if (!revs->dont_cache_me) {
+			cache_sha1 = get_cache_slice(commit);
 			if (cache_sha1) {
 				if (traverse_cache_slice(revs, cache_sha1, commit, &date, &slop, &p, &list) < 0)
 					used_cache = 0;
@@ -1733,14 +1733,18 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		 * that we'd otherwise have done in limit_list().
 		 */
 		if (!revs->limited) {
-			if (!revs->beyond_hash) {
+			if (revs->max_age != -1 &&
+			    (commit->date < revs->max_age))
+				continue;
+			
+			if (!revs->dont_cache_me) {
 				struct commit_list *work, **workp;
 				unsigned char *cache_sha1;
 				
 				if (obj->flags & ADDED)
 					goto skip_parenting;
 				
-				cache_sha1 = get_cache_slice(obj->sha1);
+				cache_sha1 = get_cache_slice(commit);
 				if (cache_sha1) {
 					/* we want to attach queue to the end of revs->commits */
 					work = revs->commits;
@@ -1757,9 +1761,6 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				}
 			}
 			
-			if (revs->max_age != -1 &&
-			    (commit->date < revs->max_age))
-				continue;
 			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
 				die("Failed to traverse parents of commit %s",
 				    sha1_to_hex(commit->object.sha1));

@@ -106,7 +106,7 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 	if (len < index + head->caches_buffer * 20 + (0x100) * sizeof(unsigned int))
 		return -1;
 	
-	head->cache_sha1s = xmalloc(head->caches * 20);
+	head->cache_sha1s = xmalloc(head->caches_buffer * 20);
 	memcpy(head->cache_sha1s, map + index, head->caches * 20);
 	index += head->caches_buffer * 20;
 	
@@ -122,6 +122,7 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 static void cleanup_cache_slices(void)
 {
 	if (idx_map) {
+		free(idx_head.cache_sha1s);
 		munmap(idx_map, idx_size);
 		idx_map = 0;
 	}
@@ -140,7 +141,7 @@ static int init_index(void)
 		goto end;
 	
 	idx_size = fi.st_size;
-	idx_map = mmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	idx_map = xmmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	close(fd);
 	if (idx_map == MAP_FAILED)
 		goto end;
@@ -198,7 +199,7 @@ static struct index_entry *search_index(unsigned char *sha1)
 	return 0;
 }
 
-unsigned char *get_cache_slice(unsigned char *sha1)
+unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct index_entry *ie;
 	
@@ -208,7 +209,10 @@ unsigned char *get_cache_slice(unsigned char *sha1)
 		init_index();
 	}
 	
-	ie = search_index(sha1);
+	if (commit->date > idx_head.max_date)
+		return 0;
+	
+	ie = search_index(commit->object.sha1);
 	
 	if (ie && ie->cache_index < idx_head.caches)
 		return idx_head.cache_sha1s + ie->cache_index * 20;
@@ -1192,7 +1196,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	revs->blob_objects = 1;
 	revs->topo_order = 1;
 	revs->lifo = 1;
-	revs->beyond_hash = 1; /* do _not_ want ourselves caching */
+	revs->dont_cache_me = 1; /* do _not_ want ourselves caching */
 	
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
@@ -1313,7 +1317,10 @@ static int write_cache_index(struct strbuf *body)
 	int fd, i;
 	
 	/* clear index map if loaded */
-	cleanup_cache_slices();
+	if (idx_map) {
+		munmap(idx_map, idx_size);
+		idx_map = 0;
+	}
 	
 	lk = xcalloc(sizeof(struct lock_file), 1);
 	fd = hold_lock_file_for_update(lk, git_path("rev-cache/index"), 0);
@@ -1354,7 +1361,7 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		init_index();
 	
 	lseek(fd, 0, SEEK_SET);
-	map = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		return -1;
 	
@@ -1369,18 +1376,27 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(unsigned int);
 	}
 	
-	cache_index = idx_head.caches++;
-	if (idx_head.caches >= idx_head.caches_buffer) {
-		/* this whole dance is a bit useless currently, because we re-write everything regardless, 
-		 * but later on we might decide to use a hashmap or something else which does not require 
-		 * any particular on-disk format.  that would free us up to simply append new objects and 
-		 * tweak the header accordingly */
-		idx_head.caches_buffer += 20;
-		idx_head.cache_sha1s = xrealloc(idx_head.cache_sha1s, idx_head.caches_buffer * 20);
-		idx_head.ofs_objects += 20 * 20;
-	}
+	/* are we remaking a slice? */
+	for (i = 0; i < idx_head.caches; i++)
+		if (!hashcmp(idx_head.cache_sha1s + i * 20, cache_sha1))
+			break;
 	
-	hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+	if (i == idx_head.caches) {
+		cache_index = idx_head.caches++;
+		if (idx_head.caches >= idx_head.caches_buffer) {
+			/* this whole dance is a bit useless currently, because we re-write everything regardless, 
+			 * but later on we might decide to use a hashmap or something else which does not require 
+			 * any particular on-disk format.  that would free us up to simply append new objects and 
+			 * tweak the header accordingly */
+			idx_head.caches_buffer += 20;
+			idx_head.cache_sha1s = xrealloc(idx_head.cache_sha1s, idx_head.caches_buffer * 20);
+			idx_head.ofs_objects += 20 * 20;
+		}
+		
+		hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+	} else
+		cache_index = i;
+	
 	i = ofs_objects;
 	while (i < size) {
 		struct index_entry index_entry, *entry;
@@ -1446,6 +1462,10 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 	
 	munmap(map, size);
 	strbuf_release(&buffer);
+	
+	/* idx_map is unloaded without cleanup_cache_slices(), so regardless of previous index existence 
+	 * we can still free this up */
+	free(idx_head.cache_sha1s);
 	
 	return 0;
 }
