@@ -339,8 +339,11 @@ static const char *copy_name(const char *buf)
 static const char *copy_email(const char *buf)
 {
 	const char *email = strchr(buf, '<');
-	const char *eoemail = strchr(email, '>');
-	if (!email || !eoemail)
+	const char *eoemail;
+	if (!email)
+		return "";
+	eoemail = strchr(email, '>');
+	if (!eoemail)
 		return "";
 	return xmemdupz(email, eoemail + 1 - email);
 }
@@ -558,14 +561,6 @@ static void populate_value(struct refinfo *ref)
 
 	ref->value = xcalloc(sizeof(struct atom_value), used_atom_cnt);
 
-	buf = get_obj(ref->objectname, &obj, &size, &eaten);
-	if (!buf)
-		die("missing object %s for %s",
-		    sha1_to_hex(ref->objectname), ref->refname);
-	if (!obj)
-		die("parse_object_buffer failed on %s for %s",
-		    sha1_to_hex(ref->objectname), ref->refname);
-
 	/* Fill in specials first */
 	for (i = 0; i < used_atom_cnt; i++) {
 		const char *name = used_atom[i];
@@ -617,6 +612,22 @@ static void populate_value(struct refinfo *ref)
 			v->s = s;
 		}
 	}
+
+	for (i = 0; i < used_atom_cnt; i++) {
+		struct atom_value *v = &ref->value[i];
+		if (v->s == NULL)
+			goto need_obj;
+	}
+	return;
+
+ need_obj:
+	buf = get_obj(ref->objectname, &obj, &size, &eaten);
+	if (!buf)
+		die("missing object %s for %s",
+		    sha1_to_hex(ref->objectname), ref->refname);
+	if (!obj)
+		die("parse_object_buffer failed on %s for %s",
+		    sha1_to_hex(ref->objectname), ref->refname);
 
 	grab_values(ref->value, 0, obj, buf, size);
 	if (!eaten)
@@ -923,7 +934,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 
 	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.grab_pattern = argv;
-	for_each_ref(grab_single_ref, &cbdata);
+	for_each_rawref(grab_single_ref, &cbdata);
 	refs = cbdata.grab_array;
 	num_refs = cbdata.grab_cnt;
 

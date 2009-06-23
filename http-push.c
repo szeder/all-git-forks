@@ -315,9 +315,9 @@ static void start_fetch_loose(struct transfer_request *request)
 		 "%s.temp", filename);
 
 	snprintf(prevfile, sizeof(prevfile), "%s.prev", request->filename);
-	unlink(prevfile);
+	unlink_or_warn(prevfile);
 	rename(request->tmpfile, prevfile);
-	unlink(request->tmpfile);
+	unlink_or_warn(request->tmpfile);
 
 	if (request->local_fileno != -1)
 		error("fd leakage in start: %d", request->local_fileno);
@@ -372,7 +372,7 @@ static void start_fetch_loose(struct transfer_request *request)
 		} while (prev_read > 0);
 		close(prevlocal);
 	}
-	unlink(prevfile);
+	unlink_or_warn(prevfile);
 
 	/* Reset inflate/SHA1 if there was an error reading the previous temp
 	   file; also rewind to the beginning of the local file. */
@@ -724,9 +724,11 @@ static void finish_request(struct transfer_request *request)
 	struct stat st;
 	struct packed_git *target;
 	struct packed_git **lst;
+	struct active_request_slot *slot;
 
 	request->curl_result = request->slot->curl_result;
 	request->http_code = request->slot->http_code;
+	slot = request->slot;
 	request->slot = NULL;
 
 	/* Keep locks active */
@@ -784,7 +786,7 @@ static void finish_request(struct transfer_request *request)
 		    request->http_code != 416) {
 			if (stat(request->tmpfile, &st) == 0) {
 				if (st.st_size == 0)
-					unlink(request->tmpfile);
+					unlink_or_warn(request->tmpfile);
 			}
 		} else {
 			if (request->http_code == 416)
@@ -793,9 +795,9 @@ static void finish_request(struct transfer_request *request)
 			git_inflate_end(&request->stream);
 			git_SHA1_Final(request->real_sha1, &request->c);
 			if (request->zret != Z_STREAM_END) {
-				unlink(request->tmpfile);
+				unlink_or_warn(request->tmpfile);
 			} else if (hashcmp(request->obj->sha1, request->real_sha1)) {
-				unlink(request->tmpfile);
+				unlink_or_warn(request->tmpfile);
 			} else {
 				request->rename =
 					move_temp_to_file(
@@ -823,6 +825,7 @@ static void finish_request(struct transfer_request *request)
 
 			fclose(request->local_stream);
 			request->local_stream = NULL;
+			slot->local = NULL;
 			if (!move_temp_to_file(request->tmpfile,
 					       request->filename)) {
 				target = (struct packed_git *)request->userData;
@@ -1024,17 +1027,20 @@ static int fetch_index(unsigned char *sha1)
 		if (results.curl_result != CURLE_OK) {
 			free(url);
 			fclose(indexfile);
+			slot->local = NULL;
 			return error("Unable to get pack index %s\n%s", url,
 				     curl_errorstr);
 		}
 	} else {
 		free(url);
 		fclose(indexfile);
+		slot->local = NULL;
 		return error("Unable to start request");
 	}
 
 	free(url);
 	fclose(indexfile);
+	slot->local = NULL;
 
 	return move_temp_to_file(tmpfile, filename);
 }
@@ -1415,8 +1421,9 @@ static void remove_locks(void)
 
 	fprintf(stderr, "Removing remote locks...\n");
 	while (lock) {
+		struct remote_lock *next = lock->next;
 		unlock_remote(lock);
-		lock = lock->next;
+		lock = next;
 	}
 }
 

@@ -189,7 +189,7 @@ static void remove_tempfile(void)
 	int i;
 	for (i = 0; i < ARRAY_SIZE(diff_temp); i++) {
 		if (diff_temp[i].name == diff_temp[i].tmp_path)
-			unlink(diff_temp[i].name);
+			unlink_or_warn(diff_temp[i].name);
 		diff_temp[i].name = NULL;
 	}
 }
@@ -3590,6 +3590,7 @@ static char *run_textconv(const char *pgm, struct diff_filespec *spec,
 	if (start_command(&child) != 0 ||
 	    strbuf_read(&buf, child.out, 0) < 0 ||
 	    finish_command(&child) != 0) {
+		strbuf_release(&buf);
 		remove_tempfile();
 		error("error running textconv command '%s'", pgm);
 		return NULL;

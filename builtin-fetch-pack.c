@@ -483,7 +483,9 @@ static int sideband_demux(int fd, void *data)
 {
 	int *xd = data;
 
-	return recv_sideband("fetch-pack", xd[0], fd);
+	int ret = recv_sideband("fetch-pack", xd[0], fd);
+	close(fd);
+	return ret;
 }
 
 static int get_pack(int xd[2], char **pack_lockfile)
@@ -825,7 +827,7 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 		fd = hold_lock_file_for_update(&lock, shallow,
 					       LOCK_DIE_ON_ERROR);
 		if (!write_shallow_commits(fd, 0)) {
-			unlink(shallow);
+			unlink_or_warn(shallow);
 			rollback_lock_file(&lock);
 		} else {
 			commit_lock_file(&lock);
