@@ -199,6 +199,7 @@ static struct index_entry *search_index(unsigned char *sha1)
 	return 0;
 }
 
+/* todo: remember bad slices */
 unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct index_entry *ie;
