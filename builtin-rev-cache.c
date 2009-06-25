@@ -9,10 +9,9 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 {
 	struct rev_info revs;
 	struct rev_cache_info rci;
-	const char *args[5];
-	char dostdin = 0, add_all = 0;
+	char dostdin = 0;
 	unsigned int flags = 0;
-	int i, argn = 0;
+	int i;
 	
 	init_revisions(&revs, 0);
 	init_rci(&rci);
@@ -41,7 +40,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	
-	if (dostdin && !add_all) {
+	if (dostdin) {
 		char line[1000];
 		
 		flags = 0;
