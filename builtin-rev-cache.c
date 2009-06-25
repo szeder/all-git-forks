@@ -183,11 +183,11 @@ commands:\n\
  walk   - walk a cache slice based on set of commits; formatted as add\n\
           options:\n\
            --objects   include non-commit objects in traversals\n\
- fuse   - coagulate cache slices into a single cache.\n\
-          options:\n\
-           --all       include all objects in repository\n\
-           --noobjects don't add non-commit objects to slice\n\
- index  - regnerate the cache index.";
+  fuse   - coagulate cache slices into a single cache.\n\
+           options:\n\
+            --all       include all objects in repository\n\
+            --noobjects don't add non-commit objects to slice\n\
+  index  - regnerate the cache index.";
 	
 	puts(usage);
 	
@@ -210,7 +210,6 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 	argv += 2;
 	if (!strcmp(arg, "add"))
 		r = handle_add(argc, argv);
-<<<<<<< HEAD:builtin-rev-cache.c
 	else if (!strcmp(arg, "fuse"))
 		r = handle_fuse(argc, argv);
 	else if (!strcmp(arg, "walk"))
@@ -219,12 +218,6 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_index(argc, argv);
 	else
 		return handle_help();
-=======
-	else if (!strcmp(arg, "walk"))
-		r = handle_walk(argc, argv);
-	else
-		handle_help();
->>>>>>> refs/top-bases/t/revcache/misc:builtin-rev-cache.c
 	
 	fprintf(stderr, "final return value: %d\n", r);
 	
