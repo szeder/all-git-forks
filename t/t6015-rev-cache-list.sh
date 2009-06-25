@@ -98,6 +98,7 @@ test_expect_success 'remake cache slice' '
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
+	cp list /cygdrive/c/list && 
 	test -z `$sha1diff list proper_commit_list_limited`
 '
 
@@ -106,8 +107,9 @@ test_expect_success 'test rev-caches walker directly (unlimited)' '
 	test -z `$sha1diff list proper_commit_list`
 '
 
-test_expect_success 'test rev-list rev-list traversal (limited)' '
+test_expect_success 'test rev-list traversal (limited)' '
 	git-rev-list HEAD --not HEAD~3 >list && 
+	cp list /cygdrive/c/list2 && 
 	test -z `$sha1diff list proper_commit_list_limited`
 '
 

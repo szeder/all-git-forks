@@ -263,6 +263,18 @@ unsigned char *get_cache_slice(struct commit *commit)
 
 static unsigned long decode_size(unsigned char *str, int len);
 
+/* on failure */
+static void restore_commit(struct commit *commit)
+{
+	if (commit->unique) {
+		free(commit->unique);
+		commit->unique = 0;
+	}
+	
+	commit->object.flags &= ~(ADDED | SEEN | FACE_VALUE);
+	parse_commit(commit);
+}
+
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
 {
 	struct blob *blob;
@@ -388,9 +400,13 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 	struct commit_list *insert_cache = 0, *myq = 0, **myqp = &myq, *mywork = 0, **myworkp = &mywork, *unwork = 0;
 	struct commit **last_objects, *co;
 	unsigned long date = date_so_far ? *date_so_far : ~0ul;
-	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
+	int i, ipath_nr = 0, upath_nr = 0, orig_obj_nr = 0, 
+		total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
 	char consume_children = 0, ioutside = 0;
 	unsigned char *paths;
+	
+	/* take note in case we need to regress */
+	orig_obj_nr = revs->pending.nr;
 	
 	paths = xcalloc(total_path_nr, sizeof(unsigned short));
 	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
@@ -621,14 +637,26 @@ end:
 	/* failure: restore work to previous condition
 	 * (cache corruption should *not* be fatal) */
 	if (retval) {
-		while ((co = pop_commit(&unwork)) != 0)
+		while ((co = pop_commit(&unwork)) != 0) {
+			restore_commit(co);
+			co->object.flags |= SEEN;
 			insert_by_date(co, work);
+		}
 		
-		/* and free lists */
-		while (pop_commit(&myq))
-			;
-		while (pop_commit(&mywork))
-			;
+		/* free lists */
+		while ((co = pop_commit(&myq)) != 0)
+			restore_commit(co);
+		
+		while ((co = pop_commit(&mywork)) != 0)
+			restore_commit(co);
+		
+		/* truncate object array */
+		for (i = orig_obj_nr; i < revs->pending.nr; i++) {
+			struct object *obj = revs->pending.objects[i].item;
+			
+			obj->flags &= ~FACE_VALUE;
+		}
+		revs->pending.nr = orig_obj_nr;
 	}
 	
 	return retval;
@@ -1021,7 +1049,7 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		sha1 = entryp->sha1;
 	
 	obj = lookup_object(sha1);
-	if (obj) {
+	if (obj && obj->parsed) {
 		/* it'd be smoother to have the size in the object... */
 		switch (obj->type) {
 		case OBJ_COMMIT : 
@@ -1150,16 +1178,18 @@ static int add_unique_objects(struct commit *commit)
 	char is_first = 1;
 	
 	/* but wait!  is this itself from a slice? */
-	if (commit->unique) {
+	if (commit->object.flags & HAS_UNIQUES) {
 		struct object_list *olist;
 		
 		olist = commit->unique;
+		i = 0;
 		while (olist) {
 			add_object_entry(olist->item->sha1, 0, 0, 0);
+			i++;
 			olist = olist->next;
 		}
 		
-		return 0;
+		return i;
 	}
 	
 	/* ...no, calculate unique objects */
@@ -1215,10 +1245,13 @@ static int add_unique_objects(struct commit *commit)
 	for (i = 0; i < os.len; i += 20)
 		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0);
 	
+	/* last but not least, the main tree */
+	add_object_entry(commit->tree->object.sha1, 0, 0, 0);
+	
 	strbuf_release(&ost);
 	strbuf_release(&os);
 	
-	return i / 20;
+	return i / 20 + 1;
 }
 
 void init_rci(struct rev_cache_info *rci)
@@ -1228,13 +1261,6 @@ void init_rci(struct rev_cache_info *rci)
 	rci->make_index = 1;
 	
 	rci->save_unique = 0;
-}
-
-void init_rci(struct rev_cache_info *rci)
-{
-	rci->objects = 1;
-	rci->legs = 0;
-	rci->make_index = 1;
 }
 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
@@ -1324,14 +1350,8 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		add_object_entry(0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (rci->objects && !(commit->object.flags & TREESAME)) {
-			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-			object_nr++;
-			
-			if (!object.is_start)
-				object_nr += add_unique_objects(commit);
-		}
+		if (rci->objects && !(commit->object.flags & TREESAME) && !object.is_start)
+			object_nr += add_unique_objects(commit);
 		
 		/* print every ~1MB or so */
 		if (buffer.len > 1000000) {
