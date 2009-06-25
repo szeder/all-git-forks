@@ -1047,7 +1047,7 @@ static int add_unique_objects(struct commit *commit)
 	
 	g_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 21)
-		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0, 0);
+		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
 	
 	strbuf_release(&ost);
 	strbuf_release(&os);
@@ -1147,7 +1147,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		
 		if (!(commit->object.flags & TREESAME)) {
 			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0, 0);
+			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
 			object_nr++;
 			
 			if (!object.is_start)
