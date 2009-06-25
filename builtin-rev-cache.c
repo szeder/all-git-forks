@@ -9,7 +9,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 {
 	struct rev_info revs;
 	struct rev_cache_info rci;
-	char dostdin = 0, do_all = 0;
+	char dostdin = 0;
 	unsigned int flags = 0;
 	int i;
 	
