@@ -119,7 +119,6 @@ static struct strbuf *g_buffer;
 
 /* initialization */
 
-<<<<<<< HEAD:rev-cache.c
 static void mark_bad_slice(unsigned char *sha1)
 {
 	struct bad_slice *bad;
