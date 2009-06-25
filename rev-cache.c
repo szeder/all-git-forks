@@ -1055,8 +1055,6 @@ static int add_unique_objects(struct commit *commit)
 	return 0;
 }
 
-static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_objects, unsigned int size, unsigned long max_date);
-
 void init_rci(struct rev_cache_info *rci)
 {
 	rci->objects = 1;

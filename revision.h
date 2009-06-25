@@ -194,5 +194,4 @@ extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, st
 extern int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size);
 extern void ends_from_slices(struct rev_info *revs, unsigned int flags);
 
-
 #endif
