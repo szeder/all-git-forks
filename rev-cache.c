@@ -82,11 +82,6 @@ struct object_entry {
 	/* size */
 };
 
-struct bad_slice {
-	unsigned char sha1[20];
-	struct bad_slice *next;
-};
-
 /* list resembles pack index format */
 static uint32_t fanout[0xff + 2];
 
@@ -94,7 +89,6 @@ static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
 static char no_idx = 0, save_unique = 0;
-static struct bad_slice *bad_slices;
 
 static struct strbuf *g_buffer;
 
@@ -118,30 +112,6 @@ static struct strbuf *g_buffer;
 #define HAS_UNIQUES		FACE_VALUE
 
 /* initialization */
-
-static void mark_bad_slice(unsigned char *sha1)
-{
-	struct bad_slice *bad;
-	
-	bad = xcalloc(sizeof(struct bad_slice), 1);
-	hashcpy(bad->sha1, sha1);
-	
-	bad->next = bad_slices;
-	bad_slices = bad;
-}
-
-static int is_bad_slice(unsigned char *sha1)
-{
-	struct bad_slice *bad = bad_slices;
-	
-	while (bad) {
-		if (!hashcmp(bad->sha1, sha1))
-			return 1;
-		bad = bad->next;
-	}
-	
-	return 0;
-}
 
 static int get_index_head(unsigned char *map, int len, struct index_header *head, uint32_t *fanout)
 {
@@ -259,7 +229,6 @@ static struct index_entry *search_index(unsigned char *sha1)
 unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct index_entry *ie;
-	unsigned char *sha1;
 	
 	if (!idx_map) {
 		if (no_idx)
@@ -271,13 +240,8 @@ unsigned char *get_cache_slice(struct commit *commit)
 		return 0;
 	
 	ie = search_index(commit->object.sha1);
-	if (ie && ie->cache_index < idx_head.caches) {
-		sha1 = idx_head.cache_sha1s + ie->cache_index * 20;
-		
-		if (is_bad_slice(sha1))
-			return 0;
-		return sha1;
-	}
+	if (ie && ie->cache_index < idx_head.caches)
+		return idx_head.cache_sha1s + ie->cache_index * 20;
 	
 	return 0;
 }
@@ -334,8 +298,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	add_pending_object(revs, obj, "");
 }
 
-static int setup_traversal(unsigned char *map, struct commit *commit, struct commit_list **work, 
-	struct commit_list **unwork, int *ipath_nr, int *upath_nr)
+static int setup_traversal(unsigned char *map, struct commit *commit, struct commit_list **work, int *ipath_nr, int *upath_nr)
 {
 	struct index_entry *iep;
 	struct object_entry *oep;
@@ -358,38 +321,36 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 	wp = *work;
 	while (wp) {
 		struct object *obj = &wp->item->object;
+		struct commit *co;
+		int t;
+ 		
+ 		iep = search_index(obj->sha1);
+		if (!iep) {
+ 			prev = wp;
+ 			wp = wp->next;
+ 			wpp = &wp;
+			continue;
+ 		}
+ 		
+		t = ntohl(iep->pos);
+		oep = OE_CAST(map + t);
 		
-		iep = search_index(obj->sha1);
-		if (iep) {
-			struct commit *co;
-			int t = ntohl(iep->pos);
-			
-			oep = OE_CAST(map + t);
-			
-			oep->include = 1;
-			oep->uninteresting = !!(obj->flags & UNINTERESTING);
-			if (t < retval)
-				retval = t;
-			
-			/* remove from work list */
-			co = pop_commit(wpp);
-			wp = *wpp;
-			if (prev)
-				prev->next = wp;
-			
-			/* ...and store in temp list so we can restore work on failure */
-			commit_list_insert(co, unwork);
-		} else {
-			prev = wp;
-			wp = wp->next;
-			wpp = &wp;
-		}
+		oep->include = 1;
+		oep->uninteresting = !!(obj->flags & UNINTERESTING);
+		if (t < retval)
+			retval = t;
 		
-		/* count even if not in slice so we can stop enumerating if possible */
-		if (obj->flags & UNINTERESTING)
-			++*upath_nr;
-		else
-			++*ipath_nr;
+ 		/* count even if not in slice so we can stop enumerating if possible */
+ 		if (obj->flags & UNINTERESTING)
+ 			++*upath_nr;
+ 		else
+ 			++*ipath_nr;
+		
+		/* remove from work list */
+		co = pop_commit(wpp);
+		wp = *wpp;
+		if (prev)
+			prev->next = wp;
 	}
 	
 	return retval;
@@ -404,17 +365,16 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, unsigned char *map, 
 	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, struct commit_list ***queue, struct commit_list **work)
 {
-	struct commit_list *insert_cache = 0, *myq = 0, **myqp = &myq, *mywork = 0, **myworkp = &mywork, *unwork = 0;
+	struct commit_list *insert_cache = 0;
 	struct commit **last_objects, *co;
-	unsigned long date = date_so_far ? *date_so_far : ~0ul;
-	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
+	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, retval = -1;
 	char consume_children = 0;
 	unsigned char *paths;
 	
 	paths = xcalloc(total_path_nr, PATH_WIDTH);
 	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
 	
-	i = setup_traversal(map, commit, work, &unwork, &ipath_nr, &upath_nr);
+	i = setup_traversal(map, commit, work, &ipath_nr, &upath_nr);
 	
 	/* i already set */
 	while (i < head->size) {
@@ -524,19 +484,7 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			}
 		}
 		
-		/* we've been here already */
-		if (obj->flags & SEEN && !entry->include) {
-			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
-				obj->flags |= UNINTERESTING;
-				mark_parents_uninteresting(co);
-				upath_nr--;
-			} else if (!entry->uninteresting)
-				ipath_nr--;
-			
-			paths[path] = 0;
-			continue;
-		}
-		
+		/* initialize commit */
 		co->date = ntohl(entry->date);
 		obj->flags |= SEEN;
 		if (!entry->is_start)
@@ -544,44 +492,23 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 		if (entry->uninteresting)
 			obj->flags |= UNINTERESTING;
-		else
-			date = co->date;
 		
 		/* we need to know what the edges are */
 		last_objects[path] = co;
 		
 		/* add to list */
-		if (!(revs->min_age != -1 && co->date > revs->min_age)) {
+		if (!(obj->flags & UNINTERESTING) || revs->show_all) {
+			if (entry->is_start)
+				insert_by_date_cached(co, work, insert_cache, &insert_cache);
+			else
+				*queue = &commit_list_insert(co, *queue)->next;
 			
-			if (!(obj->flags & UNINTERESTING) || revs->show_all) {
-				if (entry->is_start)
-					myworkp = &commit_list_insert(co, myworkp)->next;
-				else
-					myqp = &commit_list_insert(co, myqp)->next;
-				
-				/* add children to list as well */
-				if (obj->flags & UNINTERESTING)
-					consume_children = 0;
-				else
-					consume_children = 1;
-			}
-			
+			/* add children to list as well */
+			if (obj->flags & UNINTERESTING)
+				consume_children = 0;
+			else 
+				consume_children = 1;
 		}
-		
-		/* should we continue? */
-		if (!slop) {
-			if (!upath_nr)
-				break;
-			else {
-				paths[path] = 0;
-				upath_nr--;
-			}
-		} else if (!ipath_nr && co->date < date) {
-			slop--;
-			if (!slop && !revs->show_all)
-				break;
-		} else
-			slop = SLOP;
 		
 		/* open parents */
 		if (entry->merge_nr) {
@@ -611,37 +538,11 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 	}
 	
-	if (date_so_far)
-		*date_so_far = date;
-	if (slop_so_far)
-		*slop_so_far = slop;
 	retval = 0;
-	
-	/* success: attach to given lists */
-	if (myqp != &myq) {
-		**queue = myq;
-		*queue = myqp;
-	}
-	
-	while ((co = pop_commit(&mywork)) != 0)
-		insert_by_date_cached(co, work, insert_cache, &insert_cache);
 	
 end:
 	free(paths);
 	free(last_objects);
-	
-	/* failure: restore work to previous condition
-	 * (cache corruption should *not* be fatal) */
-	if (retval) {
-		while ((co = pop_commit(&unwork)) != 0)
-			insert_by_date(co, work);
-		
-		/* and free lists */
-		while (pop_commit(&myq))
-			;
-		while (pop_commit(&mywork))
-			;
-	}
 	
 	return retval;
 }
@@ -701,9 +602,6 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 		goto end;
 	
 	retval = traverse_cache_slice_1(revs, &head, map, commit, date_so_far, slop_so_far, queue, work);
-	if (retval)
-		mark_bad_slice(cache_sha1);
-	printf("traversed slice: %d\n", retval);
 	
 end:
 	if (map != MAP_FAILED)
