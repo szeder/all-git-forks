@@ -10,7 +10,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	struct rev_info revs;
 	struct rev_cache_info rci;
 	const char *args[5];
-	char dostdin = 0, add_all = 0;
+	char dostdin = 0, do_all = 0;
 	unsigned int flags = 0;
 	int i, argn = 0;
 	
@@ -30,15 +30,13 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			rci.legs = 1;
 		else if (!strcmp(argv[i], "--noobjects"))
 			rci.objects = 0;
-		else if (!strcmp(argv[i], "--all")) {
-			args[argn++] = "--all";
-			setup_revisions(argn, args, &revs, 0);
-			add_all = 1;
-		} else if (!add_all)
+		else if (!strcmp(argv[i], "--all"))
+			do_all = 1;
+		else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	
-	if (dostdin && !add_all) {
+	if (dostdin) {
 		char line[1000];
 		
 		flags = 0;
@@ -55,6 +53,11 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			else
 				handle_revision_arg(line, &revs, flags, 1);
 		}
+	}
+	
+	if (do_all) {
+		args[argn++] = "--all";
+		setup_revisions(argn, args, &revs, 0);
 	}
 	
 	return make_cache_slice(&revs, 0, 0, &rci, 0);

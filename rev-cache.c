@@ -677,7 +677,6 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	retval = traverse_cache_slice_1(revs, &head, map, commit, date_so_far, slop_so_far, queue, work);
 	if (retval)
 		mark_bad_slice(cache_sha1);
-	printf("traversed slice: %d\n", retval);
 	
 end:
 	if (map != MAP_FAILED)
@@ -1137,10 +1136,9 @@ static int add_unique_objects(struct commit *commit)
 	char is_first = 1;
 	
 	/* but wait!  is this itself from a slice? */
-	if (commit->object.flags & HAS_UNIQUES) {
+	if (commit->unique) {
 		struct object_list *olist;
 		
-		printf("using unique list\n");
 		olist = commit->unique;
 		while (olist) {
 			add_object_entry(olist->item->sha1, 0, 0, 0);
@@ -1555,7 +1553,7 @@ int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
 /* add end-commits from each cache slice (uninterestingness will be propogated) */
 void ends_from_slices(struct rev_info *revs, unsigned int flag)
 {
-	int i, index;
+	int index;
 	struct commit *commit;
 	
 	if (!idx_map)
@@ -1564,7 +1562,7 @@ void ends_from_slices(struct rev_info *revs, unsigned int flag)
 		return;
 	
 	/* haven't implemented which yet; no need really... */
-	for (i = 0, index = idx_head.ofs_objects; i < idx_head.objects; i++, index += IE_SIZE) {
+	for (index = idx_head.ofs_objects; index < idx_size; index += IE_SIZE) {
 		struct index_entry *entry = IE_CAST(idx_map + index);
 		
 		if (!entry->is_end)
