@@ -655,7 +655,7 @@ static int limit_list(struct rev_info *revs)
 		
 		/* rev-cache to the rescue!!! */
 		used_cache = 0;
-		if (!revs->dont_cache_me) {
+		if (!revs->dont_cache_me && !(obj->flags & ADDED)) {
 			cache_sha1 = get_cache_slice(commit);
 			if (cache_sha1) {
 				if (traverse_cache_slice(revs, cache_sha1, commit, &date, &slop, &p, &list) < 0)
