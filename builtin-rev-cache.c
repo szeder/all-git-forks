@@ -14,10 +14,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	int i;
 	
 	init_revisions(&revs, 0);
-	
-	rci.legs = 0;
-	rci.sizes = 0;
-	rci.objects = 1;
+	init_rci(&rci);
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
@@ -26,8 +23,6 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			ends_from_slices(&revs, UNINTERESTING);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
-		else if (!strcmp(argv[i], "--sizes"))
-			rci.sizes = 1;
 		else if (!strcmp(argv[i], "--legs"))
 			rci.legs = 1;
 		else if (!strcmp(argv[i], "--noobjects"))
@@ -65,16 +60,6 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	return make_cache_slice(&revs, 0, 0, &rci, 0);
 }
 
-static int handle_show(int argc, const char *argv[])
-{
-	die("haven't implemented cache enumeration yet (try 'git-rev-cache help' to show usage)");
-}
-
-static int handle_rm(int argc, const char *argv[])
-{
-	die("haven't implemented rm thingy yet");
-}
-
 static int handle_walk(int argc, const char *argv[])
 {
 	struct commit *commit;
@@ -91,7 +76,7 @@ static int handle_walk(int argc, const char *argv[])
 		if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--objects"))
-			revs.tree_objects = revs.blob_objects = revs.tag_objects = 1;
+			revs.tree_objects = revs.blob_objects = 1;
 		else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
@@ -153,20 +138,22 @@ static int handle_help(void)
 usage:\n\
 git-rev-cache COMMAND [options] [<commit-id>...]\n\
 commands:\n\
- (none) - display caches.  passing a slice hash will display detailed\n\
-          information about that cache slice\n\
- add    - add revisions to the cache.  reads commit ids from stdin, \n\
-          formatted as: END END ... --not START START ...\n\
+  add    - add revisions to the cache.  reads commit ids from stdin, \n\
+           formatted as: END END ... --not START START ...\n\
+           options:\n\
+           --all       use all branch heads as ends\n\
+            --fresh     exclude everything already in a cache slice\n\
+            --stdin     also read commit ids from stdin (same form as cmd)\n\
+            --legs      ensure branch is entirely self-contained\n\
+            --noobjects don't add non-commit objects to slice\n\
+  walk   - walk a cache slice based on set of commits; formatted as add\n\
+           options:\n\
+           --objects   include non-commit objects in traversals\n\
+ fuse   - coagulate cache slices into a single cache.\n\
           options:\n\
-           --fresh     exclude everything already in a cache slice\n\
-           --stdin     also read commit ids from stdin (same form as cmd)\n\
-           --legs      ensure branch is entirely self-contained\n\
+           --all       include all objects in repository\n\
            --noobjects don't add non-commit objects to slice\n\
-           --sizes     store object sizes\n\
- rm     - delete a cache slice\n\
- walk   - walk a cache slice based on set of commits; formatted as add\n\
-          options:\n\
-           --objects   include non-commit objects in traversals";
+ index  - regnerate the cache index.";
 	
 	puts(usage);
 	
@@ -189,14 +176,10 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 	argv += 2;
 	if (!strcmp(arg, "add"))
 		r = handle_add(argc, argv);
-	else if (!strcmp(arg, "rm"))
-		r = handle_rm(argc, argv);
 	else if (!strcmp(arg, "walk"))
 		r = handle_walk(argc, argv);
-	else if (!strcmp(arg, "help"))
-		return handle_help();
 	else
-		r = handle_show(argc, argv);
+		handle_help();
 	
 	fprintf(stderr, "final return value: %d\n", r);
 	

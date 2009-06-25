@@ -141,7 +141,7 @@ static int init_index(void)
 		goto end;
 	
 	idx_size = fi.st_size;
-	idx_map = mmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	idx_map = xmmap(0, idx_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	close(fd);
 	if (idx_map == MAP_FAILED)
 		goto end;
@@ -840,8 +840,13 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 	
 }
 
-static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_objects, unsigned int size, unsigned long max_date);
-
+void init_rci(struct rev_cache_info *rci)
+{
+	rci->objects = 1;
+	rci->legs = 0;
+	rci->make_index = 1;
+}
+ 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
 	struct rev_cache_info *rci, unsigned char *cache_sha1)
 {
@@ -853,16 +858,13 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	unsigned char sha1[20];
 	struct strbuf merge_paths, split_paths;
 	int object_nr, total_sz, fd;
-	unsigned long max_date;
 	char file[PATH_MAX], *newfile;
 	struct rev_cache_info def_rci;
 	git_SHA_CTX ctx;
 	
 	if (!rci) {
-		def_rci.legs = 0;
-		def_rci.objects = 0;
-		def_rci.sizes = 1;
 		rci = &def_rci;
+		init_rci(rci);
 	}
 	
 	strcpy(file, git_path("rev-cache/XXXXXX"));
@@ -899,14 +901,12 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	revs->blob_objects = 1;
 	revs->topo_order = 1;
 	revs->lifo = 1;
-	revs->dont_cache_me = 1; /* do _not_ want ourselves caching */
 	
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
 		die("died preparing revision walk");
 	
 	object_nr = total_sz = 0;
-	max_date = 0;
 	while ((commit = get_revision(revs)) != 0) {
 		struct object_entry object;
 		
@@ -926,8 +926,6 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 			strbuf_add(&endlist, object.sha1, 20);
 		
 		commit->indegree = 0;
-		if (commit->date > max_date)
-			max_date = commit->date;
 		
 		add_object_entry(0, 0, &object, &merge_paths, &split_paths);
 		object_nr++;
@@ -976,7 +974,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	git_SHA1_Update(&ctx, startlist.buf, startlist.len);
 	git_SHA1_Final(sha1, &ctx);
 	
-	if (make_cache_index(fd, sha1, ntohl(head.ofs_objects), ntohl(head.size), max_date) < 0)
+	if (rci->make_index && make_cache_index(fd, sha1, ntohl(head.size)) < 0)
 		die("can't update index");
 	
 	close(fd);
@@ -1042,17 +1040,18 @@ static int write_cache_index(struct strbuf *body)
 	return 0;
 }
 
-static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_objects, unsigned int size, unsigned long max_date)
+int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
 {
 	struct strbuf buffer;
 	int i, cache_index, cur;
 	unsigned char *map;
+	unsigned long max_date;
 	
 	if (!idx_map)
 		init_index();
 	
 	lseek(fd, 0, SEEK_SET);
-	map = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		return -1;
 	
@@ -1089,10 +1088,13 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		cache_index = i;
 	
 	hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
-	i = ofs_objects;
+	
+	i = sizeof(struct cache_slice_header); /* offset */
+	max_date = idx_head.max_date;
 	while (i < size) {
 		struct index_entry index_entry, *entry;
 		struct object_entry *object_entry = OE_CAST(map + i);
+		unsigned long date;
 		int pos = i;
 		
 		i += ACTUAL_OBJECT_ENTRY_SIZE(object_entry);
@@ -1108,9 +1110,12 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
 		 * should we allow more intelligent overriding? */
-		if (ntohl(object_entry->date) > idx_head.max_date)
-			entry = 0;
-		else
+		date = ntohl(object_entry->date);
+		if (date > idx_head.max_date) {
+ 			entry = 0;
+			if (date > max_date)
+				max_date = date;
+		} else
 			entry = search_index(object_entry->sha1);
 		
 		if (entry && !object_entry->is_end)
