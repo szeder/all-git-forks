@@ -23,7 +23,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
 		else if (!strcmp(argv[i], "--fresh"))
-			uninteresting_from_slices(&revs, 0, 0);
+			ends_from_slices(&revs, UNINTERESTING);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--sizes"))
@@ -32,7 +32,14 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			rci.legs = 1;
 		else if (!strcmp(argv[i], "--noobjects"))
 			rci.objects = 0;
-		else
+		else if (!strcmp(argv[i], "--all")) {
+			const char *args[2];
+			int argn = 0;
+			
+			args[argn++] = "rev-list";
+			args[argn++] = "--all";
+			setup_revisions(argn, args, &revs, 0);
+		} else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	

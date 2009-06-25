@@ -1164,10 +1164,10 @@ static int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int ofs_
 
 
 /* add end-commits from each cache slice (uninterestingness will be propogated) */
-void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int n)
+void ends_from_slices(struct rev_info *revs, unsigned int flags)
 {
-	int i, index;
 	struct commit *commit;
+	int i;
 	
 	if (!idx_map)
 		init_index();
@@ -1175,8 +1175,8 @@ void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int 
 		return;
 	
 	/* haven't implemented which yet; no need really... */
-	for (i = 0, index = idx_head.ofs_objects; i < idx_head.objects; i++, index += IE_SIZE) {
-		struct index_entry *entry = IE_CAST(idx_map + index);
+	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
+		struct index_entry *entry = IE_CAST(idx_map + i);
 		
 		if (!entry->is_end)
 			continue;
@@ -1185,7 +1185,7 @@ void uninteresting_from_slices(struct rev_info *revs, unsigned char *which, int 
 		if (!commit)
 			continue;
 		
-		commit->object.flags |= UNINTERESTING;
+		commit->object.flags |= flags;
 		add_pending_object(revs, &commit->object, 0);
 	}
 	
