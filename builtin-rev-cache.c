@@ -31,10 +31,13 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		else if (!strcmp(argv[i], "--noobjects"))
 			rci.objects = 0;
 		else if (!strcmp(argv[i], "--all")) {
+			const char *args[2];
+			int argn = 0;
+			
+			args[argn++] = "rev-list";
 			args[argn++] = "--all";
 			setup_revisions(argn, args, &revs, 0);
-			add_all = 1;
-		} else if (!add_all)
+		} else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	
