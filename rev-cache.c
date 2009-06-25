@@ -588,11 +588,6 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 					consume_children = 1;
 			}
 			
-			/* add children to list as well */
-			if (obj->flags & UNINTERESTING)
-				consume_children = 0;
-			else 
-				consume_children = 1;
 		}
 		
 		/* should we continue? */
@@ -644,7 +639,20 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 	}
 	
+	if (date_so_far)
+		*date_so_far = date;
+	if (slop_so_far)
+		*slop_so_far = slop;
 	retval = 0;
+	
+	/* success: attach to given lists */
+	if (myqp != &myq) {
+		**queue = myq;
+		*queue = myqp;
+	}
+	
+	while ((co = pop_commit(&mywork)) != 0)
+		insert_by_date_cached(co, work, insert_cache, &insert_cache);
 	
 end:
 	free(paths);
