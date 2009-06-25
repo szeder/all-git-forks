@@ -98,7 +98,7 @@ static struct strbuf *g_buffer;
 #define ACTUAL_OBJECT_ENTRY_SIZE(e)		(OE_SIZE + PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
 #define ENTRY_SIZE_OFFSET(e)			(ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
 
-#define SLOP		5
+#define SLOP			5
 
 #define HAS_UNIQUES		FACE_VALUE
 
@@ -311,7 +311,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 }
 
 static int setup_traversal(unsigned char *map, struct commit *commit, struct commit_list **work, 
-	struct commit_list **unwork, int *ipath_nr, int *upath_nr)
+	struct commit_list **unwork, int *ipath_nr, int *upath_nr, char *ioutside)
 {
 	struct index_entry *iep;
 	struct object_entry *oep;
@@ -334,38 +334,43 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 	wp = *work;
 	while (wp) {
 		struct object *obj = &wp->item->object;
+		struct commit *co;
+		int t;
 		
 		iep = search_index(obj->sha1);
-		if (iep) {
-			struct commit *co;
-			int t = ntohl(iep->pos);
+		if (!iep) {
+			/* there are interesing objects outside the slice */
+			if (!(obj->flags & UNINTERESTING))
+				*ioutside = 1;
 			
-			oep = OE_CAST(map + t);
-			
-			oep->include = 1;
-			oep->uninteresting = !!(obj->flags & UNINTERESTING);
-			if (t < retval)
-				retval = t;
-			
-			/* remove from work list */
-			co = pop_commit(wpp);
-			wp = *wpp;
-			if (prev)
-				prev->next = wp;
-			
-			/* ...and store in temp list so we can restore work on failure */
-			commit_list_insert(co, unwork);
-		} else {
 			prev = wp;
 			wp = wp->next;
 			wpp = &wp;
+			continue;
 		}
+		
+		t = ntohl(iep->pos);
+		oep = OE_CAST(map + t);
+		
+		oep->include = 1;
+		oep->uninteresting = !!(obj->flags & UNINTERESTING);
+		if (t < retval)
+			retval = t;
 		
 		/* count even if not in slice so we can stop enumerating if possible */
 		if (obj->flags & UNINTERESTING)
 			++*upath_nr;
 		else
 			++*ipath_nr;
+		
+		/* remove from work list */
+		co = pop_commit(wpp);
+		wp = *wpp;
+		if (prev)
+			prev->next = wp;
+		
+		/* ...and store in temp list so we can restore work on failure */
+		commit_list_insert(co, unwork);
 	}
 	
 	return retval;
@@ -384,13 +389,13 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 	struct commit **last_objects, *co;
 	unsigned long date = date_so_far ? *date_so_far : ~0ul;
 	int i, ipath_nr = 0, upath_nr = 0, total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
-	char consume_children = 0;
+	char consume_children = 0, ioutside = 0;
 	unsigned char *paths;
 	
 	paths = xcalloc(total_path_nr, sizeof(unsigned short));
 	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
 	
-	i = setup_traversal(map, commit, work, &unwork, &ipath_nr, &upath_nr);
+	i = setup_traversal(map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
 	
 	/* i already set */
 	while (i < head->size) {
@@ -513,6 +518,7 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			continue;
 		}
 		
+		/* initialize object */
 		co->date = ntohl(entry->date);
 		obj->flags |= SEEN;
 		if (!entry->is_start)
@@ -520,14 +526,14 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 		if (entry->uninteresting)
 			obj->flags |= UNINTERESTING;
-		else
+		else if (co->date < date)
 			date = co->date;
 		
 		/* we need to know what the edges are */
 		last_objects[path] = co;
 		
 		/* add to list */
-		if (!(revs->min_age != -1 && co->date > revs->min_age)) {
+		if (slop && !(revs->min_age != -1 && co->date > revs->min_age)) {
 			
 			if (!(obj->flags & UNINTERESTING) || revs->show_all) {
 				if (entry->is_start)
@@ -546,17 +552,23 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 		/* should we continue? */
 		if (!slop) {
-			if (!upath_nr)
+			if (!upath_nr) {
 				break;
-			else {
+			} else if (ioutside || revs->show_all) {
+				/* pass it back to rev-list
+				 * we purposely ignore everything outside this cache, so we don't needlessly traverse the whole 
+				 * thing on uninteresting, but that does mean that we may need to bounce back 
+				 * and forth a few times with rev-list */
+				myworkp = &commit_list_insert(co, myworkp)->next;
+				
 				paths[path] = 0;
 				upath_nr--;
-			}
-		} else if (!ipath_nr && co->date < date) {
-			slop--;
-			if (!slop && !revs->show_all)
+			} else {
 				break;
-		} else
+			}
+		} else if (!ipath_nr && co->date <= date)
+			slop--;
+		else
 			slop = SLOP;
 		
 		/* open parents */

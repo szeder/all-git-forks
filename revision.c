@@ -673,7 +673,7 @@ static int limit_list(struct rev_info *revs)
 				if (revs->show_all)
 					p = &commit_list_insert(commit, p)->next;
 				slop = still_interesting(list, date, slop);
-				if (slop)
+				if (slop > 0)
 					continue;
 				/* If showing all, add the whole pending list to the end */
 				if (revs->show_all)
