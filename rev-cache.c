@@ -1065,9 +1065,9 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		entry.type = type;
 		
 		if (merge_str)
-			object.merge_nr = merge_str->len / PATH_WIDTH;
+			entry.merge_nr = merge_str->len / PATH_WIDTH;
 		if (split_str)
-			object.split_nr = split_str->len / PATH_WIDTH;
+			entry.split_nr = split_str->len / PATH_WIDTH;
 		
 		entryp = &entry;
 	}
