@@ -1230,6 +1230,13 @@ void init_rci(struct rev_cache_info *rci)
 	rci->save_unique = 0;
 }
 
+void init_rci(struct rev_cache_info *rci)
+{
+	rci->objects = 1;
+	rci->legs = 0;
+	rci->make_index = 1;
+}
+
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
 	struct rev_cache_info *rci, unsigned char *cache_sha1)
 {

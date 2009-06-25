@@ -210,6 +210,7 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 	argv += 2;
 	if (!strcmp(arg, "add"))
 		r = handle_add(argc, argv);
+<<<<<<< HEAD:builtin-rev-cache.c
 	else if (!strcmp(arg, "fuse"))
 		r = handle_fuse(argc, argv);
 	else if (!strcmp(arg, "walk"))
@@ -218,6 +219,12 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_index(argc, argv);
 	else
 		return handle_help();
+=======
+	else if (!strcmp(arg, "walk"))
+		r = handle_walk(argc, argv);
+	else
+		handle_help();
+>>>>>>> refs/top-bases/t/revcache/misc:builtin-rev-cache.c
 	
 	fprintf(stderr, "final return value: %d\n", r);
 	
