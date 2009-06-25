@@ -75,7 +75,6 @@ test_expect_success 'init repo' '
 
 git-rev-list HEAD --not HEAD~3 >proper_commit_list_limited
 git-rev-list HEAD >proper_commit_list
-git-rev-list --objects HEAD >proper_object_list
 
 test_expect_success 'make cache slice' '
 	mkdir .git/rev-cache && 
@@ -96,16 +95,6 @@ test_expect_success 'test rev-caches walker directly (limited)' '
 
 test_expect_success 'test rev-caches walker directly (unlimited)' '
 	git-rev-cache walk HEAD >list && 
-	test -z `$sha1diff list proper_commit_list`
-'
-
-test_expect_success 'test rev-list rev-list traversal (limited)' '
-	git-rev-list HEAD --not HEAD~3 >list && 
-	test -z `$sha1diff list proper_commit_list_limited`
-'
-
-test_expect_success 'test rev-list traversal (unlimited)' '
-	git-rev-list HEAD >list && 
 	test -z `$sha1diff list proper_commit_list`
 '
 
