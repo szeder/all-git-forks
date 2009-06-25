@@ -11,7 +11,8 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	struct rev_cache_info rci;
 	char dostdin = 0;
 	unsigned int flags = 0;
-	int i;
+	int i, retval;
+	unsigned char cache_sha1[20];
 	
 	init_revisions(&revs, 0);
 	init_rci(&rci);
@@ -57,7 +58,13 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	return make_cache_slice(&revs, 0, 0, &rci, 0);
+	retval = make_cache_slice(&revs, 0, 0, &rci, cache_sha1);
+	if (retval < 0)
+		return retval;
+	
+	printf("%s\n", sha1_to_hex(cache_sha1));
+	
+	return 0;
 }
 
 static int handle_walk(int argc, const char *argv[])
@@ -68,7 +75,7 @@ static int handle_walk(int argc, const char *argv[])
 	unsigned char *sha1p, *sha1pt;
 	unsigned long date = 0;
 	unsigned int flags = 0;
-	int slop = 5, i;
+	int retval, slop = 5, i;
 	
 	init_revisions(&revs, 0);
 	
@@ -104,7 +111,9 @@ static int handle_walk(int argc, const char *argv[])
 	queue = 0;
 	qp = &queue;
 	commit = pop_commit(&work);
-	printf("return value: %d\n", traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work));
+	retval = traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work);
+	if (retval < 0)
+		return retval;
 	
 	printf("queue:\n");
 	while ((commit = pop_commit(&queue)) != 0) {
