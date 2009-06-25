@@ -179,7 +179,7 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 	else if (!strcmp(arg, "walk"))
 		r = handle_walk(argc, argv);
 	else
-		handle_help();
+		return handle_help();
 	
 	fprintf(stderr, "final return value: %d\n", r);
 	
