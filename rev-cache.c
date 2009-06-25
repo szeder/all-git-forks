@@ -1553,7 +1553,7 @@ int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
 
 
 /* add end-commits from each cache slice (uninterestingness will be propogated) */
-void ends_from_slices(struct rev_info *revs, unsigned int flag)
+void ends_from_slices(struct rev_info *revs, unsigned int flags)
 {
 	struct commit *commit;
 	int i;
@@ -1574,7 +1574,7 @@ void ends_from_slices(struct rev_info *revs, unsigned int flag)
 		if (!commit)
 			continue;
 		
-		commit->object.flags |= flag;
+		commit->object.flags |= flags;
 		add_pending_object(revs, &commit->object, 0);
 	}
 	
