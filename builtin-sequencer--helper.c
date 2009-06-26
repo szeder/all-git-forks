@@ -18,6 +18,7 @@ static void make_patch(struct commit *commit)
 	struct commit_list *parents = commit->parents;
 	const char **args;
 	struct child_process chld;
+	int i;
 	int fd = open(PATCH_FILE, O_WRONLY | O_CREAT, 0666);
 	if (fd < 0)
 		return;
@@ -34,20 +35,22 @@ static void make_patch(struct commit *commit)
 		args[2] = xstrdup(sha1_to_hex(parents->item->object.sha1));
 		args[3] = xstrdup(sha1_to_hex(((struct object *)commit)->sha1));
 	} else {
-		int i = 0;
 		int count = 1;
 
 		for (; parents; parents = parents->next)
 			++count;
+
+		i = 0;
 		args = xcalloc(count + 3, sizeof(char *));
 		args[i++] = "diff";
 		args[i++] = "--cc";
 		args[i++] = xstrdup(sha1_to_hex(commit->object.sha1));
 
 		for (parents = commit->parents; parents;
-		     parents = parents->next)
-			args[i++] = xstrdup(sha1_to_hex(
-					    parents->item->object.sha1));
+		     parents = parents->next) {
+			char *hex = sha1_to_hex(parents->item->object.sha1);
+			args[i++] = xstrdup(hex);
+		}
 	}
 
 	chld.argv = args;
@@ -55,11 +58,12 @@ static void make_patch(struct commit *commit)
 	chld.out = fd;
 
 	/* Run, ignore errors. */
-	if (start_command(&chld))
-		return;
-	finish_command(&chld);
+	if (!start_command(&chld))
+		finish_command(&chld);
 
-	/* TODO: free dup'ed SHAs in argument list */
+	for (i = 2; args[i]; i++)
+		free((char *)args[i]);
+	free(args);
 }
 
 /* Return a commit object of "arg" */
