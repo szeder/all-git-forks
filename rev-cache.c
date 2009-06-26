@@ -8,6 +8,7 @@
 #include "diff.h"
 #include "revision.h"
 #include "run-command.h"
+#include "string-list.h"
 
 
 /* single index maps objects to cache files */
@@ -308,6 +309,8 @@ static void restore_commit(struct commit *commit)
 
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
 {
+	static struct commit *last_commit = 0;
+	static struct object_list **last_unique = 0;
 	struct blob *blob;
 	struct tree *tree;
 	struct object *obj;
@@ -346,9 +349,19 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	}
 	
 	/* add to unique list if we're not a start */
-	/* todo: cache me */
-	if (save_unique && (commit->object.flags & FACE_VALUE))
-		object_list_append(obj, &commit->unique);
+	/* todo: test me */
+	if (save_unique && (commit->object.flags & FACE_VALUE)) {
+		if (last_commit != commit) {
+			last_commit = commit;
+			last_unique = 0;
+		}
+		
+		if (!last_unique)
+			last_unique = &commit->unique;
+		
+		object_list_append(obj, last_unique);
+		last_unique = &(*last_unique)->next;
+	}
 	
 	obj->flags |= FACE_VALUE;
 	add_pending_object(revs, obj, "");
@@ -497,6 +510,7 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 				last_objects[path]->object.flags &= ~FACE_VALUE;
 				last_objects[path] = 0;
 			}
+			obj->flags |= BOUNDARY;
 		}
 		
 		/* now we gotta re-assess the whole interesting thing... */
@@ -1088,7 +1102,7 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		sha1 = entryp->sha1;
 	
 	obj = lookup_object(sha1);
-	if (obj && obj->parsed) {
+	if (obj) {
 		/* it'd be smoother to have the size in the object... */
 		switch (obj->type) {
 		case OBJ_COMMIT : 
@@ -1106,7 +1120,9 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		}
 		
 		type = obj->type;
-	} else {
+	}
+	
+	if (!obj || !size) {
 		void *data = read_sha1_file(sha1, &type, &size);
 		
 		if (data)
@@ -1300,6 +1316,8 @@ void init_rci(struct rev_cache_info *rci)
 	rci->make_index = 1;
 	
 	rci->save_unique = 0;
+	
+	rci->ignore_size = 0;
 }
 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
@@ -1637,7 +1655,7 @@ int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
 
 
 /* add end-commits from each cache slice (uninterestingness will be propogated) */
-void ends_from_slices(struct rev_info *revs, unsigned int flags)
+void ends_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n)
 {
 	struct commit *commit;
 	int i;
@@ -1654,6 +1672,18 @@ void ends_from_slices(struct rev_info *revs, unsigned int flags)
 		if (!entry->is_end)
 			continue;
 		
+		/* only include entries in 'which' slices */
+		if (n) {
+			int j;
+			
+			for (j = 0; j < n; j++)
+				if (!hashcmp(idx_head.cache_sha1s + entry->cache_index * 20, which + j * 20))
+					break;
+			
+			if (j == n)
+				continue;
+		}
+		
 		commit = lookup_commit(entry->sha1);
 		if (!commit)
 			continue;
@@ -1664,7 +1694,6 @@ void ends_from_slices(struct rev_info *revs, unsigned int flags)
 	
 }
 
-
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
  * of which can be re-used.  although path structures will be isomorphic, path generation is 
  * not particularly expensive, and at any rate we need to re-sort the commits */
@@ -1672,21 +1701,17 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 {
 	unsigned char cache_sha1[20];
 	char base[PATH_MAX];
-	int fd, baselen;
+	int fd, baselen, i;
 	struct stat fi;
+	struct string_list files = {0, 0, 0, 1}; /* dup */
+	struct strbuf ignore;
 	DIR *dirh;
 	
-	rci->make_index = 0;
-	
-	if (make_cache_slice(revs, 0, 0, rci, cache_sha1) < 0)
-		die("can't make cache slice");
-	
-	/* remove everything except our newly-generated cache */
-	cleanup_cache_slices();
-	
+	strbuf_init(&ignore, 0);
 	strncpy(base, git_path("rev-cache"), sizeof(base));
 	baselen = strlen(base);
 	
+	/* enumerate files */
 	dirh = opendir(base);
 	if (dirh) {
 		struct dirent *de;
@@ -1695,18 +1720,51 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 			if (de->d_name[0] == '.')
 				continue;
 			
-			if (!strcmp(de->d_name, sha1_to_hex(cache_sha1)))
-				continue;
-			
 			base[baselen] = '/';
 			strncpy(base + baselen + 1, de->d_name, sizeof(base) - baselen - 1);
 			
-			fprintf(stderr, "removing %s\n", base);
-			unlink_or_warn(base);
+			/* _theoretically_ it is possible a slice < ignore_size to map objects not covered by, yet reachable from, 
+			 * a slice >= ignore_size, meaning that we could potentially delete an 'unfused' slice; but if that 
+			 * ever *did* happen their cache structure'd be so fucked up they might as well refuse the entire thing.
+			 * and at any rate the worst it'd do is make rev-list revert to standard walking in that (small) bit.
+			 */
+			if (rci->ignore_size) {
+				unsigned char sha1[20];
+				
+				if (stat(base, &fi))
+					warning("can't query file %s\n", base);
+				else if (fi.st_size >= rci->ignore_size && !get_sha1_hex(de->d_name, sha1)) {
+					strbuf_add(&ignore, sha1, 20);
+					continue;
+				}
+			}
+			
+			string_list_insert(base, &files);
 		}
 		
 		closedir(dirh);
 	}
+	
+	if (ignore.len) {
+		ends_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
+		strbuf_release(&ignore);
+	}
+	
+	rci->make_index = 0;
+	if (make_cache_slice(revs, 0, 0, rci, cache_sha1) < 0)
+		die("can't make cache slice");
+	
+	/* clean up time! */
+	cleanup_cache_slices();
+	
+	for (i = 0; i < files.nr; i++) {
+		char *name = files.items[i].string;
+		
+		fprintf(stderr, "removing %s\n", name);
+		unlink_or_warn(name);
+	}
+	
+	string_list_clear(&files, 0);
 	
 	fd = open(git_path("rev-cache/%s", sha1_to_hex(cache_sha1)), O_RDWR);
 	if (fd < 0 || fstat(fd, &fi))

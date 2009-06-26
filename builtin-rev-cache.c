@@ -4,6 +4,8 @@
 #include "diff.h"
 #include "revision.h"
 
+#define DEFAULT_IGNORE_SLICE_SIZE		4000000 /* in bytes */
+
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
 {
@@ -21,7 +23,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
 		else if (!strcmp(argv[i], "--fresh"))
-			ends_from_slices(&revs, UNINTERESTING);
+			ends_from_slices(&revs, UNINTERESTING, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--legs"))
@@ -160,12 +162,19 @@ static int handle_fuse(int argc, const char *argv[])
 			add_all = 1;
 		} else if (!strcmp(argv[i], "--noobjects")) 
 			rci.objects = 0;
-		else 
+		else if (!strncmp(argv[i], "--ignore-size", 13)) {
+			int sz = DEFAULT_IGNORE_SLICE_SIZE;
+			
+			if (argv[i][13] == '=')
+				sz = atoi(argv[i] + 14);
+			
+			rci.ignore_size = sz;
+		} else 
 			continue;
 	}
 	
 	if (!add_all)
-		ends_from_slices(&revs, 0);
+		ends_from_slices(&revs, 0, 0, 0);
 	
 	return coagulate_cache_slices(&revs, &rci);
 }

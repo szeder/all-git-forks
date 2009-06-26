@@ -184,6 +184,9 @@ struct rev_cache_info {
 	
 	/* traversal flags */
 	unsigned save_unique : 1;
+	
+	/* fuse options */
+	unsigned int ignore_size;
 };
 
 extern unsigned char *get_cache_slice(struct commit *commit);
@@ -195,7 +198,7 @@ extern void init_rci(struct rev_cache_info *rci);
 extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
 	struct rev_cache_info *rci, unsigned char *cache_sha1);
 extern int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size);
-extern void ends_from_slices(struct rev_info *revs, unsigned int flags);
+extern void ends_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
 
 extern int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci);
 extern int regenerate_index(void);
