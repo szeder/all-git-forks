@@ -58,7 +58,7 @@ struct cache_slice_header {
 	uint16_t path_nr;
 	uint32_t size;
 	
-	unsigned char pack_sha1[20];
+	unsigned char sha1[20];
 };
 
 struct object_entry {
@@ -296,7 +296,14 @@ static void restore_commit(struct commit *commit)
 	}
 	
 	commit->object.flags &= ~(ADDED | SEEN | FACE_VALUE);
-	parse_commit(commit);
+	
+	if (!commit->object.parsed) {
+		while (pop_commit(&commit->parents)) 
+			;
+		
+		parse_commit(commit);
+	}
+	
 }
 
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
@@ -339,14 +346,15 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	}
 	
 	/* add to unique list if we're not a start */
+	/* todo: cache me */
 	if (save_unique && (commit->object.flags & FACE_VALUE))
-		object_list_insert(obj, &commit->unique);
+		object_list_append(obj, &commit->unique);
 	
 	obj->flags |= FACE_VALUE;
 	add_pending_object(revs, obj, "");
 }
 
-static int setup_traversal(unsigned char *map, struct commit *commit, struct commit_list **work, 
+static int setup_traversal(struct cache_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work, 
 	struct commit_list **unwork, int *ipath_nr, int *upath_nr, char *ioutside)
 {
 	struct index_entry *iep;
@@ -374,7 +382,7 @@ static int setup_traversal(unsigned char *map, struct commit *commit, struct com
 		int t;
 		
 		iep = search_index(obj->sha1);
-		if (!iep) {
+		if (!iep || hashcmp(idx_head.cache_sha1s + iep->cache_index * 20, head->sha1)) {
 			/* there are interesing objects outside the slice */
 			if (!(obj->flags & UNINTERESTING))
 				*ioutside = 1;
@@ -435,7 +443,7 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 	paths = xcalloc(total_path_nr, PATH_WIDTH);
 	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
 	
-	i = setup_traversal(map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
+	i = setup_traversal(head, map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
 	
 	/* i already set */
 	while (i < head->size) {
@@ -482,11 +490,7 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			
 			/* mark edge */
 			if (last_objects[path]) {
-				if (!last_objects[path]->object.parsed) {
-					/* don't want duplicates from our own topo relations */
-					while (pop_commit(&last_objects[path]->parents)) ;
-					parse_commit(last_objects[path]);
-				}
+				parse_commit(last_objects[path]);
 				
 				/* we needn't worry about the unique field; that will be valid as 
 				 * long as we're not a start entry */
@@ -497,10 +501,6 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		
 		/* now we gotta re-assess the whole interesting thing... */
 		entry->uninteresting = !!(paths[path] & UPATH);
-		
-		/* make topo relations */
-		if (last_objects[path] && !last_objects[path]->object.parsed)
-			commit_list_insert(co, &last_objects[path]->parents);
 		
 		/* first close paths */
 		if (entry->split_nr) {
@@ -515,17 +515,15 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 				/* boundary commit? */
 				if ((paths[p] & IPATH) && entry->uninteresting) {
 					if (last_objects[p]) {
-						if (!last_objects[p]->object.parsed) {
-							while (pop_commit(&last_objects[p]->parents)) ;
-							parse_commit(last_objects[p]);
-						}
+						parse_commit(last_objects[p]);
 						
 						last_objects[p]->object.flags &= ~FACE_VALUE;
 						last_objects[p] = 0;
 					}
 					obj->flags |= BOUNDARY;
-				} else if (last_objects[p] && !last_objects[p]->object.parsed)
+				} else if (last_objects[p] && !last_objects[p]->object.parsed) {
 					commit_list_insert(co, &last_objects[p]->parents);
+				}
 				
 				/* can't close a merge path until all are parents have been encountered */
 				if (GET_COUNT(paths[p])) {
@@ -545,6 +543,11 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 			}
 		}
 		
+		/* make topo relations */
+		if (last_objects[path] && !last_objects[path]->object.parsed) {
+			commit_list_insert(co, &last_objects[path]->parents);
+		}
+		
 		/* we've been here already */
 		if (obj->flags & SEEN && !entry->include) {
 			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
@@ -559,10 +562,13 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		}
 		
 		/* initialize commit */
-		co->date = ntohl(entry->date);
-		obj->flags |= SEEN;
-		if (!entry->is_start)
+		if (!entry->is_start) {
+			co->date = ntohl(entry->date);
 			obj->flags |= ADDED | FACE_VALUE;
+		} else
+			parse_commit(co);
+		
+		obj->flags |= SEEN;
 		
 		if (entry->uninteresting)
 			obj->flags |= UNINTERESTING;
@@ -651,8 +657,13 @@ static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_head
 		*queue = myqp;
 	}
 	
-	while ((co = pop_commit(&mywork)) != 0)
+	while ((co = pop_commit(&mywork)) != 0) {
 		insert_by_date_cached(co, work, insert_cache, &insert_cache);
+	}
+	
+	/* free backup */
+	while (pop_commit(&unwork)) 
+		;
 	
 end:
 	free(paths);
@@ -686,7 +697,7 @@ end:
 	return retval;
 }
 
-static int get_cache_slice_header(unsigned char *map, int len, struct cache_slice_header *head)
+static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map, int len, struct cache_slice_header *head)
 {
 	int t;
 	
@@ -700,10 +711,11 @@ static int get_cache_slice_header(unsigned char *map, int len, struct cache_slic
 		return -1;
 	if (head->version > SUPPORTED_REVCACHE_VERSION)
 		return -2;
-	
+	if (hashcmp(head->sha1, cache_sha1))
+		return -3;
 	t = sizeof(struct cache_slice_header);
 	if (t != head->ofs_objects || t >= len)
-		return -3;
+		return -4;
 	
 	head->size = len;
 	
@@ -737,18 +749,20 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	map = xmmap(0, fi.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		goto end;
-	if (get_cache_slice_header(map, fi.st_size, &head))
+	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
 		goto end;
 	
 	retval = traverse_cache_slice_1(revs, &head, map, commit, date_so_far, slop_so_far, queue, work);
-	if (retval)
-		mark_bad_slice(cache_sha1);
 	
 end:
 	if (map != MAP_FAILED)
 		munmap(map, fi.st_size);
 	if (fd != -1)
 		close(fd);
+	
+	/* remember this! */
+	if (retval)
+		mark_bad_slice(cache_sha1);
 	
 	return retval;
 }
@@ -944,6 +958,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 		if (pt->commit == commit) {
 			if (paths[pt->path] != PATH_IN_USE)
 				paths[pt->path]--;
+			
 			remove_path_track(ppt, 0);
 			pt = *ppt;
 		} else {
@@ -1202,7 +1217,7 @@ static int add_unique_objects(struct commit *commit)
 	char is_first = 1;
 	
 	/* but wait!  is this itself from a slice? */
-	if (commit->object.flags & HAS_UNIQUES) {
+	if (commit->unique) {
 		struct object_list *olist;
 		
 		olist = commit->unique;
@@ -1391,21 +1406,6 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 		total_sz += buffer.len;
 	}
 	
-	/* now actually initialize header */
-	strcpy(head.signature, "REVCACHE");
-	head.version = SUPPORTED_REVCACHE_VERSION;
-	
-	head.objects = htonl(object_nr);
-	head.size = htonl(ntohl(head.ofs_objects) + total_sz);
-	head.path_nr = htons(path_nr);
-	
-	/* some info! */
-	fprintf(stderr, "objects: %d\n", object_nr);
-	fprintf(stderr, "paths: %d\n", path_nr);
-	
-	lseek(fd, 0, SEEK_SET);
-	xwrite(fd, &head, sizeof(head));
-	
 	/* go ahead a free some stuff... */
 	strbuf_release(&buffer);
 	strbuf_release(&merge_paths);
@@ -1420,6 +1420,22 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	git_SHA1_Init(&ctx);
 	git_SHA1_Update(&ctx, startlist.buf, startlist.len);
 	git_SHA1_Final(sha1, &ctx);
+	
+	/* now actually initialize header */
+	strcpy(head.signature, "REVCACHE");
+	head.version = SUPPORTED_REVCACHE_VERSION;
+	
+	head.objects = htonl(object_nr);
+	head.size = htonl(ntohl(head.ofs_objects) + total_sz);
+	head.path_nr = htons(path_nr);
+	hashcpy(head.sha1, sha1);
+	
+	/* some info! */
+	fprintf(stderr, "objects: %d\n", object_nr);
+	fprintf(stderr, "paths: %d\n", path_nr);
+	
+	lseek(fd, 0, SEEK_SET);
+	xwrite(fd, &head, sizeof(head));
 	
 	if (rci->make_index && make_cache_index(fd, sha1, ntohl(head.size)) < 0)
 		die("can't update index");

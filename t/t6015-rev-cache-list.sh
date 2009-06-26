@@ -79,14 +79,16 @@ test_expect_success 'init repo' '
 max_date=`git-rev-list --timestamp HEAD~1 --max-count=1 | grep -e "^[0-9]*" -o`
 min_date=`git-rev-list --timestamp b4 --max-count=1 | grep -e "^[0-9]*" -o`
 
-git-rev-list HEAD --not HEAD~3 >proper_commit_list_limited
-git-rev-list HEAD >proper_commit_list
+git-rev-list --topo-order HEAD --not HEAD~3 >proper_commit_list_limited
+git-rev-list --topo-order HEAD --not HEAD~2 >proper_commit_list_limited2
+git-rev-list --topo-order HEAD >proper_commit_list
 git-rev-list --objects HEAD >proper_object_list
 git-rev-list HEAD --max-age=$min_date --min-age=$max_date >proper_list_date_limited
 
+mkdir .git/rev-cache
+cache_sha1=`git-rev-cache add HEAD 2>output.err`
+
 test_expect_success 'make cache slice' '
-	mkdir .git/rev-cache && 
-	git-rev-cache add HEAD 2>output.err && 
 	grep "final return value: 0" output.err
 '
 
@@ -98,7 +100,6 @@ test_expect_success 'remake cache slice' '
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
-	cp list /cygdrive/c/list && 
 	test -z `$sha1diff list proper_commit_list_limited`
 '
 
@@ -109,7 +110,6 @@ test_expect_success 'test rev-caches walker directly (unlimited)' '
 
 test_expect_success 'test rev-list traversal (limited)' '
 	git-rev-list HEAD --not HEAD~3 >list && 
-	cp list /cygdrive/c/list2 && 
 	test -z `$sha1diff list proper_commit_list_limited`
 '
 
@@ -143,6 +143,84 @@ test_expect_success 'test rev-list date limiting (topo order)' '
 test_expect_success 'test rev-list date limiting (no order)' '
 	git-rev-list --max-age=$min_date --min-age=$max_date HEAD >list && 
 	test -z `sha1diff list proper_list_date_limited`
+'
+
+#check partial cache slice
+test_expect_success 'saving old cache and generating partial slice' '
+	cp ".git/rev-cache/$cache_sha1" .git/rev-cache/.old && 
+	rm ".git/rev-cache/$cache_sha1" .git/rev-cache/index && 
+
+	git-rev-cache add HEAD~2 2>output.err && 
+	grep "final return value: 0" output.err
+'
+
+test_expect_success 'rev-list with wholly interesting partial slice' '
+	git-rev-list --topo-order HEAD >list &&
+	test_cmp list proper_commit_list
+'
+
+test_expect_success 'rev-list with partly uninteresting partial slice' '
+	git-rev-list --topo-order HEAD --not HEAD~3 >list && 
+	test_cmp list proper_commit_list_limited
+'
+
+test_expect_success 'rev-list with wholly uninteresting partial slice' '
+	git-rev-list --topo-order HEAD --not HEAD~2 >list && 
+	test_cmp list proper_commit_list_limited2
+'
+
+#try out index generation and fuse (note that --all == HEAD in this case)
+#probably should make a test for that too...
+test_expect_success 'make fresh slice' '
+	git-rev-cache add --all --fresh 2>output.err && 
+	grep "final return value: 0" output.err
+'
+
+test_expect_success 'check dual slices' '
+	git-rev-list --topo-order HEAD~2 HEAD >list && 
+	test_cmp list proper_commit_list
+'
+
+test_expect_success 'regenerate index' '
+	rm .git/rev-cache/index && 
+	git-rev-cache index 2>output.err && 
+	grep "final return value: 0" output.err
+'
+
+test_expect_success 'fuse slices' '
+	test -e .git/rev-cache/.old && 
+	git-rev-cache fuse 2>output.err && 
+	grep "final return value: 0" output.err && 
+	test_cmp .git/rev-cache/$cache_sha1 .git/rev-cache/.old
+'
+
+#make sure we can smoothly handle corrupted caches
+test_expect_success 'corrupt slice' '
+	echo bla >.git/rev-cache/$cache_sha1
+'
+
+test_expect_success 'test rev-list traversal (limited) (corrupt slice)' '
+	git-rev-list HEAD --not HEAD~3 >list && 
+	test -z `$sha1diff list proper_commit_list_limited`
+'
+
+test_expect_success 'test rev-list traversal (unlimited) (corrupt slice)' '
+	git-rev-list HEAD >list && 
+	test -z `$sha1diff list proper_commit_list`
+'
+
+test_expect_success 'corrupt index' '
+	echo blu >.git/rev-cache/index
+'
+
+test_expect_success 'test rev-list traversal (limited) (corrupt index)' '
+	git-rev-list HEAD --not HEAD~3 >list && 
+	test -z `$sha1diff list proper_commit_list_limited`
+'
+
+test_expect_success 'test rev-list traversal (unlimited) (corrupt index)' '
+	git-rev-list HEAD >list && 
+	test -z `$sha1diff list proper_commit_list`
 '
 
 test_done
