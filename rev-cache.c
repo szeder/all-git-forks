@@ -745,6 +745,7 @@ int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	int fd = -1, retval = -3;
 	struct stat fi;
 	struct cache_slice_header head;
+	struct rev_cache_info def_rci;
 	unsigned char *map = MAP_FAILED;
 	
 	/* the index should've been loaded already to find cache_sha1, but it's good 
@@ -753,6 +754,14 @@ int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		init_index();
 	if (!idx_map)
 		return -1;
+	
+	/* load options */
+	if (!rci) {
+		rci = &def_rci;
+		init_rci(rci);
+	}
+	
+	save_unique = rci->save_unique;
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
 	

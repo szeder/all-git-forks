@@ -639,8 +639,10 @@ static int limit_list(struct rev_info *revs)
 	struct commit_list *newlist = NULL;
 	struct commit_list **p = &newlist;
 	unsigned char *cache_sha1;
+	struct rev_cache_info rci;
 	char used_cache;
 
+	init_rci(&rci);
 	while (list) {
 		struct commit_list *entry = list;
 		struct commit *commit = list->item;
@@ -658,7 +660,7 @@ static int limit_list(struct rev_info *revs)
 		if (!revs->dont_cache_me && !(obj->flags & ADDED)) {
 			cache_sha1 = get_cache_slice(commit);
 			if (cache_sha1) {
-				if (traverse_cache_slice(revs, cache_sha1, commit, &date, &slop, &p, &list) < 0)
+				if (traverse_cache_slice(&rci, cache_sha1, revs, commit, &date, &slop, &p, &list) < 0)
 					used_cache = 0;
 				else
 					used_cache = 1;
@@ -1763,7 +1765,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 					else
 						workp = &revs->commits;
 					
-					if (!traverse_cache_slice(revs, cache_sha1, commit, 0, 0, &workp, &work))
+					if (!traverse_cache_slice(0, cache_sha1, revs, commit, 0, 0, &workp, &work))
 						goto skip_parenting;
 				}
 			}
