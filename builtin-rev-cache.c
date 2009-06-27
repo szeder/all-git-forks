@@ -190,17 +190,17 @@ static int handle_help(void)
 usage:\n\
 git-rev-cache COMMAND [options] [<commit-id>...]\n\
 commands:\n\
- add    - add revisions to the cache.  reads commit ids from stdin, \n\
-          formatted as: END END ... --not START START ...\n\
-          options:\n\
-           --all       use all branch heads as ends\n\
-           --fresh     exclude everything already in a cache slice\n\
-           --stdin     also read commit ids from stdin (same form as cmd)\n\
-           --legs      ensure branch is entirely self-contained\n\
-           --noobjects don't add non-commit objects to slice\n\
- walk   - walk a cache slice based on set of commits; formatted as add\n\
-          options:\n\
-           --objects   include non-commit objects in traversals\n\
+  add    - add revisions to the cache.  reads commit ids from stdin, \n\
+           formatted as: END END ... --not START START ...\n\
+           options:\n\
+            --all       use all branch heads as ends\n\
+            --fresh     exclude everything already in a cache slice\n\
+            --stdin     also read commit ids from stdin (same form as cmd)\n\
+            --legs      ensure branch is entirely self-contained\n\
+            --noobjects don't add non-commit objects to slice\n\
+  walk   - walk a cache slice based on set of commits; formatted as add\n\
+           options:\n\
+            --objects   include non-commit objects in traversals\n\
   fuse   - coagulate cache slices into a single cache.\n\
            options:\n\
             --all       include all objects in repository\n\
