@@ -349,7 +349,6 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	}
 	
 	/* add to unique list if we're not a start */
-	/* todo: test me */
 	if (save_unique && (commit->object.flags & FACE_VALUE)) {
 		if (last_commit != commit) {
 			last_commit = commit;
