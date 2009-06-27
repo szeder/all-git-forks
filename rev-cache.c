@@ -438,8 +438,10 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
-static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, unsigned char *map, 
-	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, struct commit_list ***queue, struct commit_list **work)
+static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
+	struct rev_info *revs, struct commit *commit, 
+	unsigned long *date_so_far, int *slop_so_far, 
+	struct commit_list ***queue, struct commit_list **work)
 {
 	struct commit_list *insert_cache = 0, *myq = 0, **myqp = &myq, *mywork = 0, **myworkp = &mywork, *unwork = 0;
 	struct commit **last_objects, *co;
@@ -735,8 +737,9 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	return 0;
 }
 
-int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
-	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
+int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	struct rev_info *revs, struct commit *commit, 
+	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work)
 {
 	int fd = -1, retval = -3;
@@ -765,7 +768,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
 		goto end;
 	
-	retval = traverse_cache_slice_1(revs, &head, map, commit, date_so_far, slop_so_far, queue, work);
+	retval = traverse_cache_slice_1(&head, map, revs, commit, date_so_far, slop_so_far, queue, work);
 	
 end:
 	if (map != MAP_FAILED)
@@ -1319,8 +1322,9 @@ void init_rci(struct rev_cache_info *rci)
 	rci->ignore_size = 0;
 }
 
-int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
-	struct rev_cache_info *rci, unsigned char *cache_sha1)
+int make_cache_slice(struct rev_cache_info *rci, 
+	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	unsigned char *cache_sha1)
 {
 	struct commit_list *list;
 	struct rev_info therevs;
@@ -1454,7 +1458,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	lseek(fd, 0, SEEK_SET);
 	xwrite(fd, &head, sizeof(head));
 	
-	if (rci->make_index && make_cache_index(fd, sha1, ntohl(head.size)) < 0)
+	if (rci->make_index && make_cache_index(rci, sha1, fd, ntohl(head.size)) < 0)
 		die("can't update index");
 	
 	close(fd);
@@ -1525,7 +1529,8 @@ static int write_cache_index(struct strbuf *body)
 	return 0;
 }
 
-int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
+int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	int fd, unsigned int size)
 {
 	struct strbuf buffer;
 	int i, cache_index, cur;
@@ -1696,7 +1701,7 @@ void ends_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
  * of which can be re-used.  although path structures will be isomorphic, path generation is 
  * not particularly expensive, and at any rate we need to re-sort the commits */
-int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
+int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 {
 	unsigned char cache_sha1[20];
 	char base[PATH_MAX];
@@ -1750,7 +1755,7 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 	}
 	
 	rci->make_index = 0;
-	if (make_cache_slice(revs, 0, 0, rci, cache_sha1) < 0)
+	if (make_cache_slice(rci, revs, 0, 0, cache_sha1) < 0)
 		die("can't make cache slice");
 	
 	/* clean up time! */
@@ -1769,7 +1774,7 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 	if (fd < 0 || fstat(fd, &fi))
 		die("what?  I can't open/query the cache I just generated");
 	
-	if (make_cache_index(fd, cache_sha1, fi.st_size) < 0)
+	if (make_cache_index(rci, cache_sha1, fd, fi.st_size) < 0)
 		die("can't make new index");
 	
 	close(fd);
@@ -1777,7 +1782,7 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 	return 0;
 }
 
-int regenerate_cache_index(void)
+int regenerate_cache_index(struct rev_cache_info *rci)
 {
 	DIR *dirh;
 	char base[PATH_MAX];
@@ -1811,7 +1816,7 @@ int regenerate_cache_index(void)
 			if (fd < 0 || fstat(fd, &fi))
 				warning("bad cache found [%s]; fuse recommended", de->d_name);
 			
-			if (make_cache_index(fd, sha1, fi.st_size) < 0)
+			if (make_cache_index(rci, sha1, fd, fi.st_size) < 0)
 				die("error writing cache");
 			
 			close(fd);
