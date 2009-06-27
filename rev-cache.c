@@ -247,7 +247,6 @@ unsigned char *get_cache_slice(struct commit *commit)
 
 /* traversal */
 
-<<<<<<< HEAD:rev-cache.c
 static void handle_noncommit(struct rev_info *revs, struct object_entry *entry)
 {
 	struct object *obj = 0;
