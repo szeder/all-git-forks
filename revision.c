@@ -1387,6 +1387,11 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 	if (revs->reflog_info && revs->graph)
 		die("cannot combine --walk-reflogs with --graph");
 
+	/* limits on caching
+	 * todo: implement this functionality */
+	if (revs->prune || revs->diff)
+		revs->dont_cache_me = 0;
+
 	return left;
 }
 
@@ -1669,6 +1674,8 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 {
 	if (!opt->grep_filter.pattern_list)
 		return 1;
+	if (!commit->object.parsed)
+		parse_commit(commit);
 	return grep_buffer(&opt->grep_filter,
 			   NULL, /* we say nothing, not even filename */
 			   commit->buffer, strlen(commit->buffer));
