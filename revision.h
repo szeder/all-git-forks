@@ -178,9 +178,15 @@ extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
 
 struct rev_cache_info {
 	/* generation flags */
- 	unsigned objects : 1, 
+	unsigned objects : 1, 
 		legs : 1, 
 		make_index : 1;
+	
+	/* traversal flags */
+	unsigned save_unique : 1;
+	
+	/* fuse options */
+	unsigned int ignore_size;
 };
 
 extern unsigned char *get_cache_slice(struct commit *commit);
