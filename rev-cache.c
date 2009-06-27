@@ -1095,6 +1095,10 @@ void init_rci(struct rev_cache_info *rci)
 	rci->objects = 1;
 	rci->legs = 0;
 	rci->make_index = 1;
+	
+	rci->save_unique = 0;
+	
+	rci->ignore_size = 0;
 }
 
 int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
