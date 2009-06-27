@@ -20,7 +20,6 @@ struct commit {
 	struct tree *tree;
 	char *buffer;
 	unsigned long size;
-	struct object_list *unique;
 };
 
 extern int save_commit_buffer;
