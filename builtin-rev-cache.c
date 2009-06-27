@@ -181,7 +181,7 @@ static int handle_fuse(int argc, const char *argv[])
 
 static int handle_index(int argc, const char *argv[])
 {
-	return regenerate_index();
+	return regenerate_cache_index();
 }
 
 static int handle_help(void)
@@ -201,11 +201,11 @@ commands:\n\
  walk   - walk a cache slice based on set of commits; formatted as add\n\
           options:\n\
            --objects   include non-commit objects in traversals\n\
-  fuse   - coagulate cache slices into a single cache.\n\
-           options:\n\
-            --all       include all objects in repository\n\
-            --noobjects don't add non-commit objects to slice\n\
-  index  - regnerate the cache index.";
+ fuse   - coagulate cache slices into a single cache.\n\
+          options:\n\
+           --all       include all objects in repository\n\
+           --noobjects don't add non-commit objects to slice\n\
+ index  - regnerate the cache index.";
 	
 	puts(usage);
 	
