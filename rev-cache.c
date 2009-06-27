@@ -1565,7 +1565,7 @@ int coagulate_cache_slices(struct rev_info *revs, struct rev_cache_info *rci)
 	return 0;
 }
 
-int regenerate_index(void)
+int regenerate_cache_index(void)
 {
 	DIR *dirh;
 	char base[PATH_MAX];
