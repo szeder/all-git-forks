@@ -327,8 +327,10 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
-static int traverse_cache_slice_1(struct rev_info *revs, struct cache_slice_header *head, unsigned char *map, 
-	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, struct commit_list ***queue, struct commit_list **work)
+static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
+	struct rev_info *revs, struct commit *commit, 
+	unsigned long *date_so_far, int *slop_so_far, 
+	struct commit_list ***queue, struct commit_list **work)
 {
 	struct commit_list *insert_cache = 0;
 	struct commit **last_objects, *co;
@@ -519,8 +521,9 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	return 0;
 }
 
-int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
-	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
+int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	struct rev_info *revs, struct commit *commit, 
+	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work)
 {
 	int fd = -1, retval = -3;
@@ -549,7 +552,7 @@ int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1,
 	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
 		goto end;
 	
-	retval = traverse_cache_slice_1(revs, &head, map, commit, date_so_far, slop_so_far, queue, work);
+	retval = traverse_cache_slice_1(&head, map, revs, commit, date_so_far, slop_so_far, queue, work);
 	
 end:
 	if (map != MAP_FAILED)
@@ -978,8 +981,9 @@ void init_rci(struct rev_cache_info *rci)
 	rci->ignore_size = 0;
 }
 
-int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
-	struct rev_cache_info *rci, unsigned char *cache_sha1)
+int make_cache_slice(struct rev_cache_info *rci, 
+	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	unsigned char *cache_sha1)
 {
 	struct commit_list *list;
 	struct rev_info therevs;
@@ -1115,7 +1119,7 @@ int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct co
 	lseek(fd, 0, SEEK_SET);
 	xwrite(fd, &head, sizeof(head));
 	
-	if (rci->make_index && make_cache_index(fd, sha1, ntohl(head.size)) < 0)
+	if (rci->make_index && make_cache_index(rci, sha1, fd, ntohl(head.size)) < 0)
 		die("can't update index");
 	
 	close(fd);
@@ -1186,7 +1190,8 @@ static int write_cache_index(struct strbuf *body)
 	return 0;
 }
 
-int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size)
+int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	int fd, unsigned int size)
 {
 	struct strbuf buffer;
 	int i, cache_index, cur;
