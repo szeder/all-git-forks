@@ -58,7 +58,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	retval = make_cache_slice(&revs, 0, 0, &rci, cache_sha1);
+	retval = make_cache_slice(&rci, &revs, 0, 0, cache_sha1);
 	if (retval < 0)
 		return retval;
 	
@@ -111,7 +111,7 @@ static int handle_walk(int argc, const char *argv[])
 	queue = 0;
 	qp = &queue;
 	commit = pop_commit(&work);
-	retval = traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work);
+	retval = traverse_cache_slice(0, sha1p, &revs, commit, &date, &slop, &qp, &work);
 	if (retval < 0)
 		return retval;
 	

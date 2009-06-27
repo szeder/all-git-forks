@@ -190,15 +190,18 @@ struct rev_cache_info {
 };
 
 extern unsigned char *get_cache_slice(struct commit *commit);
-extern int traverse_cache_slice(struct rev_info *revs, unsigned char *cache_sha1, 
-	struct commit *commit, unsigned long *date_so_far, int *slop_so_far, 
+extern int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	struct rev_info *revs, struct commit *commit, 
+	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
 extern void init_rci(struct rev_cache_info *rci);
-extern int make_cache_slice(struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
-	struct rev_cache_info *rci, unsigned char *cache_sha1);
-extern int make_cache_index(int fd, unsigned char *cache_sha1, unsigned int size);
-extern void ends_from_slices(struct rev_info *revs, unsigned int flags);
+extern int make_cache_slice(struct rev_cache_info *rci, 
+	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	unsigned char *cache_sha1);
+extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
+	int fd, unsigned int size);
 
+extern void ends_from_slices(struct rev_info *revs, unsigned int flags);
 
 #endif
