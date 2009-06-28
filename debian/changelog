@@ -1,3 +1,12 @@
+git-core (1:1.6.3.3-2) UNRELEASED; urgency=low
+
+  * Fix manpage formatting: set ASCIIDOC_NO_ROFF instead of
+    DOCBOOK_XSL_173 (based on the instructions in Documentation/Makefile)
+    and don’t override the internal Makefile variable ASCIIDOC_EXTRA
+    (closes: #530693, #521954, #533320).
+
+ -- Anders Kaseorg <andersk@mit.edu>  Tue, 26 May 2009 22:15:02 -0400
+
 git-core (1:1.6.3.3-1) unstable; urgency=high
 
   * new upstream point release.
