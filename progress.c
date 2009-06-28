@@ -32,6 +32,7 @@ struct progress {
 	unsigned last_percent;
 	unsigned delay;
 	unsigned delayed_percent_treshold;
+	int should_show_count;
 	struct throughput *throughput;
 };
 
@@ -95,9 +96,12 @@ static int display(struct progress *progress, unsigned n, const char *done)
 		unsigned percent = (float) n * 100 / progress->total;
 		if (percent != progress->last_percent || progress_update) {
 			progress->last_percent = percent;
-			fprintf(stderr, "%s: %3u%% (%u/%u)%s%s",
-				progress->title, percent, n,
-				progress->total, tp, eol);
+			fprintf(stderr, "%s: %3u%%",
+				progress->title, percent);
+			if (progress->should_show_count)
+				fprintf(stderr, " (%u/%u)",
+					n, progress->total);
+			fprintf(stderr, "%s%s", tp, eol);
 			fflush(stderr);
 			progress_update = 0;
 			return 1;
@@ -223,6 +227,13 @@ void update_progress_title(struct progress *progress, const char *title)
 		progress->title = xstrdup(title);
 }
 
+void show_progress_count(struct progress *progress, int flag)
+{
+	if (!progress)
+		return;
+	progress->should_show_count = flag;
+}
+
 struct progress *start_progress_delay(const char *title, unsigned total,
 				       unsigned percent_treshold, unsigned delay)
 {
@@ -242,6 +253,7 @@ struct progress *start_progress_delay(const char *title, unsigned total,
 	progress->last_percent = -1;
 	progress->delayed_percent_treshold = percent_treshold;
 	progress->delay = delay;
+	progress->should_show_count = 1;
 	progress->throughput = NULL;
 	set_progress_signal();
 	return progress;

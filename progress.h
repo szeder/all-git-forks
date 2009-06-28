@@ -6,6 +6,8 @@ struct progress;
 void update_progress_total(struct progress *progress, unsigned total);
 void update_progress_title(struct progress *progress, const char *title);
 
+void show_progress_count(struct progress *progress, int flag);
+
 void display_throughput(struct progress *progress, off_t total);
 int display_progress(struct progress *progress, unsigned n);
 struct progress *start_progress(const char *title, unsigned total);
