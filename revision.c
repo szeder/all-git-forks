@@ -1392,7 +1392,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 	/* limits on caching
 	 * todo: implement this functionality */
 	if (revs->prune || revs->diff)
-		revs->dont_cache_me = 0;
+		revs->dont_cache_me = 1;
 
 	return left;
 }
