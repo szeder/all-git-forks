@@ -779,6 +779,16 @@ static void add_object_entry(const unsigned char *sha1, int type, struct object_
 	
 }
 
+static void init_revcache_directory(void)
+{
+	struct stat fi;
+	
+	if (stat(git_path("rev-cache"), &fi) || !S_ISDIR(fi.st_mode))
+		if (mkdir(git_path("rev-cache"))
+			die("can't make rev-cache directory");
+	
+}
+
 void init_rci(struct rev_cache_info *rci)
 {
 	rci->objects = 1;
@@ -789,7 +799,7 @@ void init_rci(struct rev_cache_info *rci)
 	
 	rci->ignore_size = 0;
 }
- 
+
 int make_cache_slice(struct rev_cache_info *rci, 
 	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
 	unsigned char *cache_sha1)
@@ -811,6 +821,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 		init_rci(rci);
 	}
 	
+	init_revcache_directory();
 	strcpy(file, git_path("rev-cache/XXXXXX"));
 	fd = xmkstemp(file);
 	
