@@ -94,7 +94,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx = 0, save_unique = 0;
+static char no_idx = 0, save_unique = 0, add_to_pending = 0;
 static struct bad_slice *bad_slices;
 
 static struct strbuf *g_buffer;
@@ -363,7 +363,8 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	}
 	
 	obj->flags |= FACE_VALUE;
-	add_pending_object(revs, obj, "");
+	if (add_to_pending)
+		add_pending_object(revs, obj, "");
 }
 
 static int setup_traversal(struct cache_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work, 
@@ -564,7 +565,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 		}
 		
 		/* we've been here already */
-		if (obj->flags & SEEN && !entry->include) {
+		if (obj->flags & ADDED) {
 			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
 				obj->flags |= UNINTERESTING;
 				mark_parents_uninteresting(co);
@@ -762,6 +763,7 @@ int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	}
 	
 	save_unique = rci->save_unique;
+	add_to_pending = rci->add_to_pending;
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
 	
@@ -1327,6 +1329,7 @@ void init_rci(struct rev_cache_info *rci)
 	rci->make_index = 1;
 	
 	rci->save_unique = 0;
+	rci->add_to_pending = 1;
 	
 	rci->ignore_size = 0;
 }

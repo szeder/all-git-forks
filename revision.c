@@ -1747,7 +1747,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				continue;
 			
 			if (!revs->dont_cache_me) {
-				struct commit_list *work, **workp;
+				struct commit_list *queue = 0, **queuep = &queue;;
 				unsigned char *cache_sha1;
 				
 				if (obj->flags & ADDED)
@@ -1755,18 +1755,24 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				
 				cache_sha1 = get_cache_slice(commit);
 				if (cache_sha1) {
-					/* we want to attach queue to the end of revs->commits */
-					work = revs->commits;
-					while (work && work->next)
-						work = work->next;
+					struct rev_cache_info rci;
 					
-					if (work)
-						workp = &work->next;
-					else
-						workp = &revs->commits;
+					init_rci(&rci);
 					
-					if (!traverse_cache_slice(0, cache_sha1, revs, commit, 0, 0, &workp, &work))
+					if (!traverse_cache_slice(&rci, cache_sha1, revs, commit, 0, 0, &queuep, &revs->commits)) {
+						struct commit_list *work = revs->commits;
+						
+						/* attach queue to end of ->commits */
+						while (work && work->next)
+							work = work->next;
+						
+						if (work)
+							work->next = queue;
+						else
+							revs->commits = queue;
+						
 						goto skip_parenting;
+					}
 				}
 			}
 			

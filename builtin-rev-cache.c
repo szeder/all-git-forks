@@ -3,8 +3,9 @@
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
+#include "list-objects.h"
 
-#define DEFAULT_IGNORE_SLICE_SIZE		4000000 /* in bytes */
+#define DEFAULT_IGNORE_SLICE_SIZE		5000000 /* in bytes */
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
@@ -69,10 +70,46 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	return 0;
 }
 
+static void show_commit(struct commit *commit, void *data)
+{
+	printf("%s\n", sha1_to_hex(commit->object.sha1));
+}
+
+static void show_object(struct object *obj, const struct name_path *path, const char *last)
+{
+	printf("%s\n", sha1_to_hex(obj->sha1));
+}
+
+static int test_rev_list(int argc, const char *argv[])
+{
+	struct rev_info revs;
+	unsigned int flags = 0;
+	int i;
+	
+	init_revisions(&revs, 0);
+	
+	for (i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "--not"))
+			flags ^= UNINTERESTING;
+		else if (!strcmp(argv[i], "--objects"))
+			revs.tree_objects = revs.blob_objects = 1;
+		else
+			handle_revision_arg(argv[i], &revs, flags, 1);
+	}
+	
+	setup_revisions(0, 0, &revs, 0);
+	prepare_revision_walk(&revs);
+	
+	traverse_commit_list(&revs, show_commit, show_object, 0);
+	
+	return 0;
+}
+
 static int handle_walk(int argc, const char *argv[])
 {
 	struct commit *commit;
 	struct rev_info revs;
+	struct rev_cache_info rci;
 	struct commit_list *queue, *work, **qp;
 	unsigned char *sha1p, *sha1pt;
 	unsigned long date = 0;
@@ -80,6 +117,7 @@ static int handle_walk(int argc, const char *argv[])
 	int retval, slop = 5, i;
 	
 	init_revisions(&revs, 0);
+	init_rci(&rci);
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--not"))
@@ -113,7 +151,7 @@ static int handle_walk(int argc, const char *argv[])
 	queue = 0;
 	qp = &queue;
 	commit = pop_commit(&work);
-	retval = traverse_cache_slice(0, sha1p, &revs, commit, &date, &slop, &qp, &work);
+	retval = traverse_cache_slice(&rci, sha1p, &revs, commit, &date, &slop, &qp, &work);
 	if (retval < 0)
 		return retval;
 	
@@ -235,6 +273,8 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_walk(argc, argv);
 	else if (!strcmp(arg, "index"))
 		r = handle_index(argc, argv);
+	else if (!strcmp(arg, "test"))
+		r = test_rev_list(argc, argv);
 	else
 		return handle_help();
 	

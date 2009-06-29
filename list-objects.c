@@ -89,11 +89,16 @@ static void process_tree(struct rev_info *revs,
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
 	while (tree_entry(&desc, &entry)) {
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry.mode)) {
+			struct tree *subtree = lookup_tree(entry.sha1);
+			if (!subtree)
+				continue;
+			
+			subtree->object.flags &= ~FACE_VALUE;
 			process_tree(revs,
-				     lookup_tree(entry.sha1),
+				     subtree,
 				     show, &me, entry.path);
-		else if (S_ISGITLINK(entry.mode))
+		} else if (S_ISGITLINK(entry.mode))
 			process_gitlink(revs, entry.sha1,
 					show, &me, entry.path);
 		else
