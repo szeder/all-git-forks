@@ -796,6 +796,7 @@ void init_rci(struct rev_cache_info *rci)
 	rci->make_index = 1;
 	
 	rci->save_unique = 0;
+	rci->add_to_pending = 1;
 	
 	rci->ignore_size = 0;
 }
