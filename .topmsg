@@ -1,6 +1,6 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/integration
 
-<patch description>
+This patch introduces a tentative step towards integrating rev-cache into the internal revision walker.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>

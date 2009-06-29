@@ -1327,7 +1327,7 @@ static void init_revcache_directory(void)
 	struct stat fi;
 	
 	if (stat(git_path("rev-cache"), &fi) || !S_ISDIR(fi.st_mode))
-		if (mkdir(git_path("rev-cache"))
+		if (mkdir(git_path("rev-cache"), 0666))
 			die("can't make rev-cache directory");
 	
 }
