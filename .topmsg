@@ -1,6 +1,8 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/misc
 
-<patch description>
+Several miscellaneous features of rev-cache are introduced, and the non-commit object generation is refactored.  Cache coagulation and index regeneration are added, allowing for cache slice maintance and garbage collection.  Commit and blob objects are modified to store object size, as the tree object does, and this parameter is enstated upon parsing.  Object enumeration makes use of this addition and more fluidly generates its list.
+
+Tests for coagulation and index generation are added in the integration patch, as the former in its proper incarnation makes use of rev-cache's influence on the revision walker.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
