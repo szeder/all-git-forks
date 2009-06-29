@@ -243,7 +243,7 @@ commands:\n\
            options:\n\
             --all             include all objects in repository\n\
             --noobjects       don't add non-commit objects to slice\n\
-            --ignore-size[=N] ignore slices of size >= N; defaults to ~4MB\n\
+            --ignore-size[=N] ignore slices of size >= N; defaults to ~5MB\n\
   index  - regnerate the cache index.";
 	
 	puts(usage);
