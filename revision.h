@@ -183,7 +183,8 @@ struct rev_cache_info {
 		make_index : 1;
 	
 	/* traversal flags */
-	unsigned save_unique : 1;
+	unsigned save_unique : 1, 
+		add_to_pending : 1;
 	
 	/* fuse options */
 	unsigned int ignore_size;

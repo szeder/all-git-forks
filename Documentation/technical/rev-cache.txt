@@ -58,7 +58,7 @@ Options:
 ends if this is not specified.
 `\--noobjects`:: Don't include non-commit objects.
 `\--ignore-size[=N]`:: Do not fuse slices of file size >= `N`.  If `N` is not 
-given the cutoff size defaults to ~4MB.
+given the cutoff size defaults to ~5MB.
 
 `index`::
 	Regenerate the cache index.
@@ -82,7 +82,8 @@ struct rev_cache_info {
 		make_index : 1;
 	
 	/* traversal flags */
-	unsigned save_unique : 1;
+	unsigned save_unique : 1, 
+		add_to_pending : 1;
 	
 	/* fuse options */
 	unsigned int ignore_size;
@@ -96,6 +97,8 @@ The fields should be self-explanatory, but just to be explicit:
 `make_index`:: Integrate newly-made slice into index.
 `save_unique`:: Load unique non-commit objects into `unique` field of each 
 `commit` object.
+`add_to_pending`:: Append unique non-commit objects to the `pending` object 
+list in the passed `rev_info` instance.
 `ignore_size`:: If non-zero, ignore slices with size greater or equal to this.
 
 Functions
