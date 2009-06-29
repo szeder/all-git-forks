@@ -78,7 +78,6 @@ git-rev-list HEAD >proper_commit_list
 git-rev-list HEAD --objects >proper_object_list
 
 test_expect_success 'make cache slice' '
-	mkdir .git/rev-cache && 
 	git-rev-cache add HEAD 2>output.err && 
 	grep "final return value: 0" output.err
 '
