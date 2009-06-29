@@ -1,19 +1,8 @@
 From: Nick Edelen <sirnot@gmail.com>
-Subject: [PATCH] t/revcache/basic
+Subject: [PATCH] t/revcache/objects
 
-Traversing objects is currently very costly, as every commit and tree must be loaded and parsed.  Much time and energy could be saved by caching metadata and topological info in an efficient, easily accessible manner.  Furthermore, this could improve git's interfacing potential, by providing a condensed summary of a repository's commit tree.
+Part of the revision-cache patch series, this patch adds preliminary non-commit object support.  Non-start commits are diff'ed against parents to produce a list of objects 'unique' to that commit, which are then added to the pending objects list in traversal.
 
-This is the first of a series to implement such a revision caching mechanism, aptly named rev-cache.  The series will provide:
- - a core API to manipulate and traverse caches
- - an integration into the internal revision walker
- - a porcelain front-end providing access to users and (shell) applications
- - a series of tests to verify/demonstrate correctness
- - documentation of the API, porcelain and core concepts
-
-In this particular patch provides:
- - minimal API: caching only commit topo data
- - minimal porcelain: add and walk cache slices
- - appropriate tests
- - full documentation
+Note that this requires tree-diff to interpret TREE_IN_RECURSIVE correctly upon addition and removal.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
