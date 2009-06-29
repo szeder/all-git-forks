@@ -4,7 +4,7 @@
 #include "diff.h"
 #include "revision.h"
 
-#define DEFAULT_IGNORE_SLICE_SIZE		4000000 /* in bytes */
+#define DEFAULT_IGNORE_SLICE_SIZE		5000000 /* in bytes */
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
