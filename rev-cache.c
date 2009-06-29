@@ -1093,6 +1093,16 @@ static int add_unique_objects(struct commit *commit)
 	return i / 20;
 }
 
+static void init_revcache_directory(void)
+{
+	struct stat fi;
+	
+	if (stat(git_path("rev-cache"), &fi) || !S_ISDIR(fi.st_mode))
+		if (mkdir(git_path("rev-cache"))
+			die("can't make rev-cache directory");
+	
+}
+
 void init_rci(struct rev_cache_info *rci)
 {
 	rci->objects = 1;
@@ -1125,6 +1135,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 		init_rci(rci);
 	}
 	
+	init_revcache_directory();
 	strcpy(file, git_path("rev-cache/XXXXXX"));
 	fd = xmkstemp(file);
 	
