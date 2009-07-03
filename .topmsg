@@ -3,6 +3,4 @@ Subject: [PATCH] t/revcache/objects
 
 Part of the revision-cache patch series, this patch adds preliminary non-commit object support.  Non-start commits are diff'ed against parents to produce a list of objects 'unique' to that commit, which are then added to the pending objects list in traversal.
 
-Note that this requires tree-diff to interpret TREE_IN_RECURSIVE correctly upon addition and removal.
-
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
