@@ -241,7 +241,7 @@ static void show_entry(struct diff_options *opt, const char *prefix, struct tree
 
 		if (DIFF_OPT_TST(opt, TREE_IN_RECURSIVE)) {
 			newbase[baselen + pathlen] = 0;
-			opt->add_remove(opt, prefix[0], mode, sha1, newbase);
+			opt->add_remove(opt, *prefix, mode, sha1, newbase);
 			newbase[baselen + pathlen] = '/';
 		}
 
