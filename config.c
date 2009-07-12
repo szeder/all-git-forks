@@ -557,17 +557,17 @@ static int git_default_branch_config(const char *var, const char *value)
 	}
 	if (!strcmp(var, "branch.autosetuprebase")) {
 		if (!value)
-			return config_error_nonbool(var);
-		else if (!strcmp(value, "never"))
-			autorebase = AUTOREBASE_NEVER;
+			value = "always";
+		autorebase = AUTOREBASE_NEVER;
+		if (!strcmp(value, "never"))
+			;
 		else if (!strcmp(value, "local"))
 			autorebase = AUTOREBASE_LOCAL;
 		else if (!strcmp(value, "remote"))
 			autorebase = AUTOREBASE_REMOTE;
-		else if (!strcmp(value, "always"))
+		else if (!strcmp(value, "always") ||
+			 git_config_bool (var, value))
 			autorebase = AUTOREBASE_ALWAYS;
-		else
-			return error("Malformed value for %s", var);
 		return 0;
 	}
 

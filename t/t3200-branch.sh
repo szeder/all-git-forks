@@ -461,11 +461,20 @@ test_expect_success 'detect misconfigured autosetuprebase (bad value)' '
 	test_must_fail git branch
 '
 
-test_expect_success 'detect misconfigured autosetuprebase (no value)' '
+test_expect_success 'boolean value (no value) for autosetuprebase' '
 	git config --unset branch.autosetuprebase &&
 	echo "[branch] autosetuprebase" >> .git/config &&
-	test_must_fail git branch &&
-	git config --unset branch.autosetuprebase
+	git config remote.local.url . &&
+	git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
+	(git show-ref -q refs/remotes/local/master || git fetch local) &&
+	git branch --track myr21 local/master &&
+	git branch --track myr22 myr21 &&
+	test "$(git config branch.myr21.remote)" = local &&
+	test "$(git config branch.myr21.merge)" = refs/heads/master &&
+	test "z$(git config branch.myr21.rebase)" = ztrue &&
+	test "$(git config branch.myr22.remote)" = . &&
+	test "$(git config branch.myr22.merge)" = refs/heads/myr21 &&
+	test "z$(git config branch.myr22.rebase)" = ztrue
 '
 
 test_done
