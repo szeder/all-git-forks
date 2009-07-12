@@ -26,6 +26,7 @@ void remove_branch_state(void);
  * taken from origin "origin".
  */
 #define BRANCH_CONFIG_VERBOSE 01
-extern void install_branch_config(int flag, const char *local, const char *origin, const char *remote);
+struct remote;
+extern void install_branch_config(int flag, const char *local, struct remote *remote, const char *merge);
 
 #endif

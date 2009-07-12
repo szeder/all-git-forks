@@ -7,7 +7,7 @@
 struct tracking {
 	struct refspec spec;
 	char *src;
-	const char *remote;
+	struct remote *remote;
 	int matches;
 };
 
@@ -18,7 +18,7 @@ static int find_tracked_branch(struct remote *remote, void *priv)
 	if (!remote_find_tracking(remote, &tracking->spec)) {
 		if (++tracking->matches == 1) {
 			tracking->src = tracking->spec.src;
-			tracking->remote = remote->name;
+			tracking->remote = remote;
 		} else {
 			free(tracking->spec.src);
 			if (tracking->src) {
@@ -32,7 +32,7 @@ static int find_tracked_branch(struct remote *remote, void *priv)
 	return 0;
 }
 
-static int should_setup_rebase(const char *origin)
+static int should_setup_rebase(struct remote *origin)
 {
 	switch (autorebase) {
 	case AUTOREBASE_NEVER:
@@ -47,17 +47,18 @@ static int should_setup_rebase(const char *origin)
 	return 0;
 }
 
-void install_branch_config(int flag, const char *local, const char *origin, const char *remote)
+void install_branch_config(int flag, const char *local, struct remote *remote,
+			   const char *merge)
 {
 	struct strbuf key = STRBUF_INIT;
-	int rebasing = should_setup_rebase(origin);
+	int rebasing = should_setup_rebase(remote);
 
 	strbuf_addf(&key, "branch.%s.remote", local);
-	git_config_set(key.buf, origin ? origin : ".");
+	git_config_set(key.buf, remote ? remote->name : ".");
 
 	strbuf_reset(&key);
 	strbuf_addf(&key, "branch.%s.merge", local);
-	git_config_set(key.buf, remote);
+	git_config_set(key.buf, merge);
 
 	if (rebasing) {
 		strbuf_reset(&key);
@@ -68,16 +69,15 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 	if (flag & BRANCH_CONFIG_VERBOSE) {
 		strbuf_reset(&key);
 
-		strbuf_addstr(&key, origin ? "remote" : "local");
+		strbuf_addstr(&key, remote ? "remote" : "local");
 
 		/* Are we tracking a proper "branch"? */
-		if (!prefixcmp(remote, "refs/heads/")) {
-			strbuf_addf(&key, " branch %s", remote + 11);
-			if (origin)
-				strbuf_addf(&key, " from %s", origin);
-		}
+		if (!prefixcmp(merge, "refs/heads/"))
+			strbuf_addf(&key, " branch %s", merge + 11);
 		else
-			strbuf_addf(&key, " ref %s", remote);
+			strbuf_addf(&key, " ref %s", merge);
+		if (remote)
+			strbuf_addf(&key, " from %s", remote->name);
 		printf("Branch %s set up to track %s%s.\n",
 		       local, key.buf,
 		       rebasing ? " by rebasing" : "");
@@ -117,9 +117,11 @@ static int setup_tracking(const char *new_ref, const char *orig_ref,
 		return error("Not tracking: ambiguous information for ref %s",
 				orig_ref);
 
-	install_branch_config(BRANCH_CONFIG_VERBOSE, new_ref, tracking.remote,
-			      tracking.src ? tracking.src : orig_ref);
+	if (!tracking.src)
+		tracking.src = xstrdup (orig_ref);
 
+	install_branch_config(BRANCH_CONFIG_VERBOSE, new_ref, tracking.remote,
+			      tracking.src);
 	free(tracking.src);
 	return 0;
 }
