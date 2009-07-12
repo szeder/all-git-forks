@@ -233,11 +233,47 @@ test_expect_success 'avoid ambiguous track' '
 	git branch all1 master &&
 	test -z "$(git config branch.all1.merge)"
 '
+test_expect_success 'test push setup' \
+    'git config branch.autosetupmerge true &&
+     git config branch.autosetuppush true &&
+     git config remote.local.url . &&
+     git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
+     (git show-ref -q refs/remotes/local/master || git fetch local) &&
+     git branch my11 local/master &&
+     test $(git config branch.my11.remote) = local &&
+     test $(git config branch.my11.merge) = refs/heads/master
+     test $(git config remote.local.push) = refs/heads/my11:refs/heads/master
+'
+
+test_expect_success 'test multiple push setups' \
+    'git config remote.local.url . &&
+     git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
+     (git show-ref -q refs/remotes/local/master || git fetch local) &&
+     git branch my12 local/master &&
+     test $(git config branch.my12.remote) = local &&
+     test $(git config branch.my12.merge) = refs/heads/master &&
+     (if git config remote.local.push; then exit 1; else test $? = 2; fi)
+'
+
+test_expect_success 'test push setup cleanup' \
+    'git config branch.autosetupmerge true &&
+     git config branch.autosetuppush true &&
+     git config remote.local.url . &&
+     git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
+     (git show-ref -q refs/remotes/local/master || git fetch local) &&
+     (git branch my11 local/master || :) &&
+     (git branch my12 local/master || :) &&
+     git branch -d my11 &&
+     test $(git config remote.local.push) = refs/heads/my12:refs/heads/master &&
+     git branch -d my12 &&
+     test z$(git config remote.local.push) = z
+'
 
 test_expect_success 'autosetuprebase local on a tracked local branch' '
 	git config remote.local.url . &&
 	git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
 	git config branch.autosetuprebase local &&
+	git config branch.autosetuppush false &&
 	(git show-ref -q refs/remotes/local/o || git fetch local) &&
 	git branch mybase &&
 	git branch --track myr1 mybase &&

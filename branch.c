@@ -51,6 +51,7 @@ void install_branch_config(int flag, const char *local, struct remote *remote,
 			   const char *merge)
 {
 	struct strbuf key = STRBUF_INIT;
+	struct strbuf value = STRBUF_INIT;
 	int rebasing = should_setup_rebase(remote);
 
 	strbuf_addf(&key, "branch.%s.remote", local);
@@ -59,6 +60,13 @@ void install_branch_config(int flag, const char *local, struct remote *remote,
 	strbuf_reset(&key);
 	strbuf_addf(&key, "branch.%s.merge", local);
 	git_config_set(key.buf, merge);
+
+	if (remote && remote->track.push) {
+		strbuf_reset(&key);
+		strbuf_addf(&key, "remote.%s.push", remote->name);
+		strbuf_addf(&value, "refs/heads/%s:%s", local, merge);
+		git_config_set_multivar(key.buf, value.buf, "^$", 0);
+	}
 
 	if (rebasing) {
 		strbuf_reset(&key);
@@ -83,16 +91,46 @@ void install_branch_config(int flag, const char *local, struct remote *remote,
 		       rebasing ? " by rebasing" : "");
 	}
 	strbuf_release(&key);
+	strbuf_release(&value);
+}
+
+static void strbuf_addstr_escape_re (struct strbuf *buf, const char *add)
+{
+	const char *p = add;
+	while ((add = strpbrk(add, ".*?+^$(){}[]")) != NULL) {
+		strbuf_add(buf, p, add - p);
+		strbuf_addf(buf, "\\%c", *add++);
+		p = add;
+	}
+	strbuf_addstr(buf, p);
 }
 
 void delete_branch_config (const char *name)
 {
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf push_re = STRBUF_INIT;
+	struct branch *branch;
+
 	if (prefixcmp(name, "refs/heads/"))
 		return;
+
+	/* git config --unset-all remote.foo.push ^\+?refs/heads/bar:  */
+	branch = branch_get(name + 11);
+	strbuf_addf(&buf, "remote.%s.push", branch->remote_name);
+	strbuf_addstr(&push_re, "^\\+?");
+	strbuf_addstr_escape_re(&push_re, name);
+	strbuf_addch(&push_re, ':');
+	if (git_config_set_multivar(buf.buf, NULL, push_re.buf, 1) < 0) {
+		warning("Update of config-file failed");
+		goto fail;
+	}
+	strbuf_reset(&buf);
 	strbuf_addf(&buf, "branch.%s", name + 11);
 	if (git_config_rename_section(buf.buf, NULL) < 0)
 		warning("Update of config-file failed");
+
+fail:
+	strbuf_release(&push_re);
 	strbuf_release(&buf);
 }
 

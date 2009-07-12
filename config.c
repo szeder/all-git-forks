@@ -556,6 +556,10 @@ int git_tracking_config(const char *var, const char *value, struct tracking_conf
 		cfg->merge = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, ".autosetuppush")) {
+		cfg->push = git_config_bool(var, value);
+		return 0;
+	}
 	if (!strcmp(var, ".autosetuprebase")) {
 		if (!value)
 			value = "always";

@@ -42,7 +42,8 @@ enum safe_crlf safe_crlf = SAFE_CRLF_WARN;
 unsigned whitespace_rule_cfg = WS_DEFAULT_RULE;
 struct tracking_config git_branch_track = {
 	BRANCH_TRACK_REMOTE,
-	AUTOREBASE_NEVER
+	AUTOREBASE_NEVER,
+	0
 };
 enum push_default_type push_default = PUSH_DEFAULT_UNSPECIFIED;
 #ifndef OBJECT_CREATION_MODE

@@ -553,6 +553,7 @@ enum push_default_type {
 struct tracking_config {
 	enum branch_track merge;
 	enum rebase_setup_type rebase;
+	int push;
 };
 
 extern struct tracking_config git_branch_track;
