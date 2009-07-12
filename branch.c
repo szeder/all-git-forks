@@ -34,7 +34,7 @@ static int find_tracked_branch(struct remote *remote, void *priv)
 
 static int should_setup_rebase(struct remote *origin)
 {
-	switch (git_branch_track.rebase) {
+	switch (origin ? origin->track.rebase : git_branch_track.rebase) {
 	case AUTOREBASE_NEVER:
 		return 0;
 	case AUTOREBASE_LOCAL:
@@ -103,6 +103,13 @@ static int setup_tracking(const char *new_ref, const char *orig_ref,
 	tracking.spec.dst = (char *)orig_ref;
 	if (for_each_remote(find_tracked_branch, &tracking))
 		return 1;
+
+	if (track == BRANCH_TRACK_UNSPECIFIED) {
+		track = (tracking.remote
+			 ? tracking.remote->track.merge : git_branch_track.merge);
+		if (!track)
+			return 0;
+	}
 
 	if (!tracking.matches)
 		switch (track) {

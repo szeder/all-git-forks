@@ -1363,6 +1363,19 @@ remote.<name>.tagopt::
 	Setting this value to \--no-tags disables automatic tag following when
 	fetching from remote <name>
 
+remote.<name>.autosetupmerge::
+	Tells 'git-branch' and 'git-checkout' to setup new branches
+	so that linkgit:git-pull[1] will appropriately merge from the
+	starting point branch.  If present, this overrides the global
+	option branch.autosetupmerge, and can have the same settings.
+
+remote.<name>.autosetuprebase::
+	When a new branch is created with 'git-branch' or 'git-checkout'
+	that tracks another branch, this variable tells git to set
+	up pull to rebase instead of merge (see "branch.<name>.rebase").
+	If present, this overrides the global option
+	branch.autosetuprebase, and can have the same settings.
+
 remotes.<group>::
 	The list of remotes which are fetched by "git remote update
 	<group>".  See linkgit:git-remote[1].

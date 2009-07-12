@@ -881,6 +881,7 @@ extern const char *packed_object_info_detail(struct packed_git *, off_t, unsigne
 extern int update_server_info(int);
 
 typedef int (*config_fn_t)(const char *, const char *, void *);
+extern int git_tracking_config(const char *, const char *, struct tracking_config *);
 extern int git_default_config(const char *, const char *, void *);
 extern int git_config_from_file(config_fn_t fn, const char *, void *);
 extern int git_config(config_fn_t fn, void *);

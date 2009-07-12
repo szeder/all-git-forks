@@ -476,5 +476,46 @@ test_expect_success 'boolean value (no value) for autosetuprebase' '
 	test "$(git config branch.myr22.merge)" = refs/heads/myr21 &&
 	test "z$(git config branch.myr22.rebase)" = ztrue
 '
+test_expect_success 'tracking remote with branch.autosetupmerge = false' '
+	git config remote.local.autosetupmerge true &&
+	git config branch.autosetupmerge false &&
+	git config remote.local.url . &&
+	git config remote.local.fetch refs/heads/*:refs/remotes/local/* &&
+	(git show-ref -q refs/remotes/local/master || git fetch local) &&
+	git branch myr23 local/master &&
+	test "$(git config branch.myr23.remote)" = local &&
+	test "$(git config branch.myr23.merge)" = refs/heads/master
+'
 
+test_expect_success 'non-tracking remote with branch.autosetupmerge = always' '
+	git config remote.local.autosetupmerge false &&
+	git config branch.autosetupmerge always &&
+	git branch myr24 local/master &&
+	test z"$(git config branch.myr24.remote)" = z &&
+	test z"$(git config branch.myr24.merge)" = z
+'
+
+test_expect_success 'tracking branch overriding remote configuration' '
+	git config remote.local.autosetupmerge false &&
+	git branch --track myr25 local/master &&
+	test "$(git config branch.myr25.remote)" = local &&
+	test "$(git config branch.myr25.merge)" = refs/heads/master
+'
+
+test_expect_success 'non-tracking branch overriding remote configuration' '
+	git config remote.local.autosetupmerge true &&
+	git branch --no-track myr26 local/master &&
+	test z"$(git config branch.myr26.remote)" = z &&
+	test z"$(git config branch.myr26.merge)" = z
+'
+
+test_expect_success '--no-track and multiple matches ' '
+	git config branch.autosetupmerge true &&
+	git config remote.local2.url . &&
+	git config remote.local2.fetch refs/heads/*:refs/remotes/local/* &&
+	git fetch local2 &&
+	git branch --no-track myr96 local/master
+	test z"$(git config branch.myr96.remote)" = z &&
+	test z"$(git config branch.myr96.merge)" = z
+'
 test_done

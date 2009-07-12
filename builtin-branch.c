@@ -540,7 +540,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	int delete = 0, rename = 0, force_create = 0;
 	int verbose = 0, abbrev = DEFAULT_ABBREV, detached = 0;
 	int reflog = 0;
-	enum branch_track track;
+	enum branch_track track = BRANCH_TRACK_UNSPECIFIED;
 	int kinds = REF_LOCAL_BRANCH;
 	struct commit_list *with_commit = NULL;
 
@@ -594,8 +594,6 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 	if (branch_use_color == -1)
 		branch_use_color = git_use_color_default;
-
-	track = git_branch_track.merge;
 
 	head = resolve_ref("HEAD", head_sha1, 0, NULL);
 	if (!head)
