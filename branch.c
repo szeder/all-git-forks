@@ -85,6 +85,17 @@ void install_branch_config(int flag, const char *local, struct remote *remote,
 	strbuf_release(&key);
 }
 
+void delete_branch_config (const char *name)
+{
+	struct strbuf buf = STRBUF_INIT;
+	if (prefixcmp(name, "refs/heads/"))
+		return;
+	strbuf_addf(&buf, "branch.%s", name + 11);
+	if (git_config_rename_section(buf.buf, NULL) < 0)
+		warning("Update of config-file failed");
+	strbuf_release(&buf);
+}
+
 /*
  * This is called when new_ref is branched off of orig_ref, and tries
  * to infer the settings for branch.<new_ref>.{remote,merge} from the
