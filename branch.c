@@ -34,7 +34,7 @@ static int find_tracked_branch(struct remote *remote, void *priv)
 
 static int should_setup_rebase(struct remote *origin)
 {
-	switch (autorebase) {
+	switch (git_branch_track.rebase) {
 	case AUTOREBASE_NEVER:
 		return 0;
 	case AUTOREBASE_LOCAL:

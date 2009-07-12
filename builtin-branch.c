@@ -595,7 +595,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	if (branch_use_color == -1)
 		branch_use_color = git_use_color_default;
 
-	track = git_branch_track;
+	track = git_branch_track.merge;
 
 	head = resolve_ref("HEAD", head_sha1, 0, NULL);
 	if (!head)

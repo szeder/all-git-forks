@@ -545,30 +545,46 @@ static int git_default_i18n_config(const char *var, const char *value)
 	return 0;
 }
 
-static int git_default_branch_config(const char *var, const char *value)
+int git_tracking_config(const char *var, const char *value, struct tracking_config *cfg)
 {
-	if (!strcmp(var, "branch.autosetupmerge")) {
+	var = strrchr (var, '.');
+	if (!strcmp(var, ".autosetupmerge")) {
 		if (value && !strcasecmp(value, "always")) {
-			git_branch_track = BRANCH_TRACK_ALWAYS;
+			cfg->merge = BRANCH_TRACK_ALWAYS;
 			return 0;
 		}
-		git_branch_track = git_config_bool(var, value);
+		cfg->merge = git_config_bool(var, value);
 		return 0;
 	}
-	if (!strcmp(var, "branch.autosetuprebase")) {
+	if (!strcmp(var, ".autosetuprebase")) {
 		if (!value)
 			value = "always";
-		autorebase = AUTOREBASE_NEVER;
+		cfg->rebase = AUTOREBASE_NEVER;
 		if (!strcmp(value, "never"))
 			;
 		else if (!strcmp(value, "local"))
-			autorebase = AUTOREBASE_LOCAL;
+			cfg->rebase = AUTOREBASE_LOCAL;
 		else if (!strcmp(value, "remote"))
-			autorebase = AUTOREBASE_REMOTE;
+			cfg->rebase = AUTOREBASE_REMOTE;
 		else if (!strcmp(value, "always") ||
 			 git_config_bool (var, value))
-			autorebase = AUTOREBASE_ALWAYS;
+			cfg->rebase = AUTOREBASE_ALWAYS;
 		return 0;
+	}
+
+	/* Add other config variables here and to Documentation/config.txt. */
+	return 0;
+}
+
+static int git_default_branch_config(const char *var, const char *value)
+{
+	int result;
+
+	if (!prefixcmp(var, "branch.")
+	    && !strchr (var + 7, '.')) {
+		result = git_tracking_config (var, value, &git_branch_track);
+		if (result)
+			return result;
 	}
 
 	/* Add other config variables here and to Documentation/config.txt. */

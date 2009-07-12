@@ -550,8 +550,12 @@ enum push_default_type {
 	PUSH_DEFAULT_CURRENT,
 };
 
-extern enum branch_track git_branch_track;
-extern enum rebase_setup_type autorebase;
+struct tracking_config {
+	enum branch_track merge;
+	enum rebase_setup_type rebase;
+};
+
+extern struct tracking_config git_branch_track;
 extern enum push_default_type push_default;
 
 enum object_creation_mode {
@@ -632,6 +636,7 @@ enum sharedrepo {
 	PERM_EVERYBODY      = 0664,
 };
 int git_config_perm(const char *var, const char *value);
+int git_config_tracking(const char *var, const char *value, struct tracking_config *cfg);
 int set_shared_perm(const char *path, int mode);
 #define adjust_shared_perm(path) set_shared_perm((path), 0)
 int safe_create_leading_directories(char *path);
