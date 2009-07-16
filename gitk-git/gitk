@@ -2579,17 +2579,18 @@ proc savestuff {w} {
 }
 
 proc resizeclistpanes {win w} {
-    global oldwidth
+    global oldwidth charspc
     if {[info exists oldwidth($win)]} {
 	set s0 [$win sash coord 0]
 	set s1 [$win sash coord 1]
+	set w [expr {1.0 * $w / $charspc}]
 	if {$w < 60} {
-	    set sash0 [expr {int($w/2 - 2)}]
-	    set sash1 [expr {int($w*5/6 - 2)}]
+	    set sash0 [expr {$w/2 - 2}]
+	    set sash1 [expr {$w*5/6 - 2}]
 	} else {
-	    set factor [expr {1.0 * $w / $oldwidth($win)}]
-	    set sash0 [expr {int($factor * [lindex $s0 0])}]
-	    set sash1 [expr {int($factor * [lindex $s1 0])}]
+	    set factor [expr {$w / $oldwidth($win)}]
+	    set sash0 [expr {$factor * [lindex $s0 0] / $charspc}]
+	    set sash1 [expr {$factor * [lindex $s1 0] / $charspc}]
 	    if {$sash0 < 30} {
 		set sash0 30
 	    }
@@ -2603,21 +2604,22 @@ proc resizeclistpanes {win w} {
 		}
 	    }
 	}
-	$win sash place 0 $sash0 [lindex $s0 1]
-	$win sash place 1 $sash1 [lindex $s1 1]
+	$win sash place 0 [expr {int($charspc * $sash0)}] [lindex $s0 1]
+	$win sash place 1 [expr {int($charspc * $sash1)}] [lindex $s1 1]
     }
     set oldwidth($win) $w
 }
 
 proc resizecdetpanes {win w} {
-    global oldwidth
+    global oldwidth charspc
     if {[info exists oldwidth($win)]} {
 	set s0 [$win sash coord 0]
+	set w [expr {1.0 * $w / $charspc}]
 	if {$w < 60} {
-	    set sash0 [expr {int($w*3/4 - 2)}]
+	    set sash0 [expr {$w*3/4 - 2}]
 	} else {
-	    set factor [expr {1.0 * $w / $oldwidth($win)}]
-	    set sash0 [expr {int($factor * [lindex $s0 0])}]
+	    set factor [expr {$w / $oldwidth($win)}]
+	    set sash0 [expr {$factor * [lindex $s0 0] / $charspc}]
 	    if {$sash0 < 45} {
 		set sash0 45
 	    }
@@ -2625,7 +2627,7 @@ proc resizecdetpanes {win w} {
 		set sash0 [expr {$w - 15}]
 	    }
 	}
-	$win sash place 0 $sash0 [lindex $s0 1]
+	$win sash place 0 [expr {int($charspc * $sash0)}] [lindex $s0 1]
     }
     set oldwidth($win) $w
 }
