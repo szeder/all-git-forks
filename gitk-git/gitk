@@ -2588,9 +2588,13 @@ proc resizeclistpanes {win w} {
 	    set sash0 [expr {$w/2 - 2}]
 	    set sash1 [expr {$w*5/6 - 2}]
 	} else {
-	    set factor [expr {$w / $oldwidth($win)}]
-	    set sash0 [expr {$factor * [lindex $s0 0] / $charspc}]
-	    set sash1 [expr {$factor * [lindex $s1 0] / $charspc}]
+	    set sash0 [expr {1.0 * [lindex $s0 0] / $charspc}]
+	    set sash1 [expr {1.0 * [lindex $s1 0] / $charspc}]
+	    set factor [expr {1.0 * $sash0 / $sash1}]
+
+	    set sash1 [expr {$sash1 + ($w - $oldwidth($win))}]
+	    set sash0 [expr {$factor * $sash1}]
+
 	    if {$sash0 < 30} {
 		set sash0 30
 	    }
@@ -2618,8 +2622,8 @@ proc resizecdetpanes {win w} {
 	if {$w < 60} {
 	    set sash0 [expr {$w*3/4 - 2}]
 	} else {
-	    set factor [expr {$w / $oldwidth($win)}]
-	    set sash0 [expr {$factor * [lindex $s0 0] / $charspc}]
+	    set sash0 [expr {1.0 * [lindex $s0 0] / $charspc + ($w - $oldwidth($win))}]
+
 	    if {$sash0 < 45} {
 		set sash0 45
 	    }
