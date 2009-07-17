@@ -74,18 +74,20 @@ static void process_tree(struct rev_info *revs,
 		die("bad tree object");
 	if (obj->flags & (UNINTERESTING | SEEN))
 		return;
-	if (parse_tree(tree) < 0)
-		die("bad tree object %s", sha1_to_hex(obj->sha1));
+	
 	obj->flags |= SEEN;
 	show(obj, path, name);
-
 	if (obj->flags & FACE_VALUE)
 		return;
+	
+	/* traverse_commit_list is only used for enumeration purposes, 
+	 * ie. nothing relies on trees being parsed in this routine */
+	if (parse_tree(tree) < 0)
+		die("bad tree object %s", sha1_to_hex(obj->sha1));
 
 	me.up = path;
 	me.elem = name;
 	me.elem_len = strlen(name);
-
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
 	while (tree_entry(&desc, &entry)) {

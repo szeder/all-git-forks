@@ -94,7 +94,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx = 0, save_unique = 0, add_to_pending = 0;
+static char no_idx = 0, save_unique = 0, add_to_pending = 0, making_cache_slice = 0;
 static struct bad_slice *bad_slices;
 
 static struct strbuf *g_buffer;
@@ -762,8 +762,13 @@ int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		init_rci(rci);
 	}
 	
-	save_unique = rci->save_unique;
-	add_to_pending = rci->add_to_pending;
+	if (making_cache_slice) {
+		save_unique = 1;
+		add_to_pending = 0;
+	} else {
+		save_unique = rci->save_unique;
+		add_to_pending = rci->add_to_pending;
+	}
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
 	
@@ -1400,7 +1405,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	revs->blob_objects = 1;
 	revs->topo_order = 1;
 	revs->lifo = 1;
-	save_unique = 1; /* re-use info from other caches if possible */
+	making_cache_slice = 1; /* re-use info from other caches if possible */
 	
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))

@@ -98,6 +98,8 @@ static int test_rev_list(int argc, const char *argv[])
 	}
 	
 	setup_revisions(0, 0, &revs, 0);
+	revs.topo_order = 1;
+	revs.lifo = 1;
 	prepare_revision_walk(&revs);
 	
 	traverse_commit_list(&revs, show_commit, show_object, 0);
@@ -155,17 +157,17 @@ static int handle_walk(int argc, const char *argv[])
 	if (retval < 0)
 		return retval;
 	
-	printf("queue:\n");
+	fprintf(stderr, "queue:\n");
 	while ((commit = pop_commit(&queue)) != 0) {
 		printf("%s\n", sha1_to_hex(commit->object.sha1));
 	}
 	
-	printf("work:\n");
+	fprintf(stderr, "work:\n");
 	while ((commit = pop_commit(&work)) != 0) {
 		printf("%s\n", sha1_to_hex(commit->object.sha1));
 	}
 	
-	printf("pending:\n");
+	fprintf(stderr, "pending:\n");
 	for (i = 0; i < revs.pending.nr; i++) {
 		struct object *obj = revs.pending.objects[i].item;
 		
