@@ -111,7 +111,6 @@ static int handle_walk(int argc, const char *argv[])
 {
 	struct commit *commit;
 	struct rev_info revs;
-	struct rev_cache_info rci;
 	struct commit_list *queue, *work, **qp;
 	unsigned char *sha1p, *sha1pt;
 	unsigned long date = 0;
@@ -119,7 +118,6 @@ static int handle_walk(int argc, const char *argv[])
 	int retval, slop = 5, i;
 	
 	init_revisions(&revs, 0);
-	init_rci(&rci);
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--not"))
@@ -153,7 +151,7 @@ static int handle_walk(int argc, const char *argv[])
 	queue = 0;
 	qp = &queue;
 	commit = pop_commit(&work);
-	retval = traverse_cache_slice(&rci, sha1p, &revs, commit, &date, &slop, &qp, &work);
+	retval = traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work);
 	if (retval < 0)
 		return retval;
 	

@@ -94,7 +94,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx = 0, save_unique = 0, add_to_pending = 0, making_cache_slice = 0;
+static char no_idx = 0, save_unique = 0, add_to_pending = 0;
 static struct bad_slice *bad_slices;
 
 static struct strbuf *g_buffer;
@@ -738,15 +738,15 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	return 0;
 }
 
-int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1, 
-	struct rev_info *revs, struct commit *commit, 
+int traverse_cache_slice(struct rev_info *revs, 
+	unsigned char *cache_sha1, struct commit *commit, 
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work)
 {
 	int fd = -1, retval = -3;
 	struct stat fi;
 	struct cache_slice_header head;
-	struct rev_cache_info def_rci;
+	struct rev_cache_info *rci;
 	unsigned char *map = MAP_FAILED;
 	
 	/* the index should've been loaded already to find cache_sha1, but it's good 
@@ -757,18 +757,9 @@ int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		return -1;
 	
 	/* load options */
-	if (!rci) {
-		rci = &def_rci;
-		init_rci(rci);
-	}
-	
-	if (making_cache_slice) {
-		save_unique = 1;
-		add_to_pending = 0;
-	} else {
-		save_unique = rci->save_unique;
-		add_to_pending = rci->add_to_pending;
-	}
+	rci = &revs->rev_cache_info;
+	save_unique = rci->save_unique;
+	add_to_pending = rci->add_to_pending;
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
 	
@@ -1362,7 +1353,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	struct strbuf merge_paths, split_paths;
 	int object_nr, total_sz, fd;
 	char file[PATH_MAX], *newfile;
-	struct rev_cache_info def_rci;
+	struct rev_cache_info *trci, def_rci;
 	git_SHA_CTX ctx;
 	
 	if (!rci) {
@@ -1405,7 +1396,12 @@ int make_cache_slice(struct rev_cache_info *rci,
 	revs->blob_objects = 1;
 	revs->topo_order = 1;
 	revs->lifo = 1;
-	making_cache_slice = 1; /* re-use info from other caches if possible */
+	
+	/* re-use info from other caches if possible */
+	trci = &revs->rev_cache_info;
+	init_rci(trci);
+	trci->save_unique = 1;
+	trci->add_to_pending = 0;
 	
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
@@ -1771,7 +1767,7 @@ int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 				}
 			}
 			
-			string_list_insert(base, &files);
+			string_list_insert(de->d_name, &files);
 		}
 		
 		closedir(dirh);
@@ -1792,15 +1788,20 @@ int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = 0; i < files.nr; i++) {
 		char *name = files.items[i].string;
 		
-		fprintf(stderr, "removing %s\n", name);
-		unlink_or_warn(name);
+		/* in the odd case of only having one cache slice we effectively just remaking the index... */
+		if (strlen(name) >= 40 && !strncmp(name, sha1_to_hex(cache_sha1), 40))
+			continue;
+		
+		strncpy(base + baselen + 1, name, sizeof(base) - baselen - 1);
+		fprintf(stderr, "removing %s\n", base);
+		unlink_or_warn(base);
 	}
 	
 	string_list_clear(&files, 0);
 	
 	fd = open(git_path("rev-cache/%s", sha1_to_hex(cache_sha1)), O_RDWR);
 	if (fd < 0 || fstat(fd, &fi))
-		die("what?  I can't open/query the cache I just generated");
+		die("what?  I can't open/query the cache I just generated\n (sha1: %s)", sha1_to_hex(cache_sha1));
 	
 	if (make_cache_index(rci, cache_sha1, fd, fi.st_size) < 0)
 		die("can't make new index");
