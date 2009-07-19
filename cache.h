@@ -544,7 +544,6 @@ enum rebase_setup_type {
 };
 
 enum push_default_type {
-	PUSH_DEFAULT_UNSPECIFIED = -1,
 	PUSH_DEFAULT_NOTHING = 0,
 	PUSH_DEFAULT_MATCHING,
 	PUSH_DEFAULT_TRACKING,

@@ -46,7 +46,7 @@ struct tracking_config git_branch_track = {
 	AUTOREBASE_NEVER,
 	0
 };
-enum push_default_type push_default = PUSH_DEFAULT_UNSPECIFIED;
+enum push_default_type push_default = PUSH_DEFAULT_MATCHING;
 #ifndef OBJECT_CREATION_MODE
 #define OBJECT_CREATION_MODE OBJECT_CREATION_USES_HARDLINKS
 #endif
