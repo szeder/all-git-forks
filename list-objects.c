@@ -158,18 +158,27 @@ void traverse_commit_list(struct rev_info *revs,
 {
 	int i;
 	struct commit *commit;
+	enum object_type what = OBJ_TAG;
+	char face_value = 0;
 
 	while ((commit = get_revision(revs)) != NULL) {
 		if (!(commit->object.flags & FACE_VALUE))
 			add_pending_tree(revs, commit->tree);
+		else 
+			face_value = 1;
 		show_commit(commit, data);
 	}
+	
+loop_objects:
 	for (i = 0; i < revs->pending.nr; i++) {
 		struct object_array_entry *pending = revs->pending.objects + i;
 		struct object *obj = pending->item;
 		const char *name = pending->name;
 		if (obj->flags & (UNINTERESTING | SEEN))
 			continue;
+		if (obj->type != what && face_value)
+			continue;
+		
 		if (obj->type == OBJ_TAG) {
 			obj->flags |= SEEN;
 			show_object(obj, NULL, name);
@@ -188,6 +197,19 @@ void traverse_commit_list(struct rev_info *revs,
 		die("unknown pending object %s (%s)",
 		    sha1_to_hex(obj->sha1), name);
 	}
+	if (face_value) {
+		switch (what) {
+		case OBJ_TAG : 
+			what = OBJ_TREE;
+			goto loop_objects;
+		case OBJ_TREE : 
+			what = OBJ_BLOB;
+			goto loop_objects;
+		default : 
+			break;
+		}
+	}
+	
 	if (revs->pending.nr) {
 		free(revs->pending.objects);
 		revs->pending.nr = 0;
