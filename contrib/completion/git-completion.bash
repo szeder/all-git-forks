@@ -1114,7 +1114,7 @@ _git_ls_tree ()
 __git_log_common_options="
 	--not --all
 	--branches --tags --remotes
-	--first-parent --no-merges
+	--first-parent --merges --no-merges
 	--max-count=
 	--max-age= --since= --after=
 	--min-age= --until= --before=
@@ -1165,7 +1165,7 @@ _git_log ()
 			$__git_log_shortlog_options
 			$__git_log_gitk_options
 			--root --topo-order --date-order --reverse
-			--follow
+			--follow --full-diff
 			--abbrev-commit --abbrev=
 			--relative-date --date=
 			--pretty= --format= --oneline
@@ -1357,11 +1357,12 @@ __git_config_get_set_variables ()
 		c=$((--c))
 	done
 
-	for i in $(git --git-dir="$(__gitdir)" config $config_file --list \
-			2>/dev/null); do
-		case "$i" in
-		*.*)
-			echo "${i/=*/}"
+	git --git-dir="$(__gitdir)" config $config_file --list 2>/dev/null |
+	while read line
+	do
+		case "$line" in
+		*.*=*)
+			echo "${line/=*/}"
 			;;
 		esac
 	done
