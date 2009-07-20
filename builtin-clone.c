@@ -39,6 +39,7 @@ static const char * const builtin_clone_usage[] = {
 
 static int option_quiet, option_no_checkout, option_bare, option_mirror;
 static int option_local, option_no_hardlinks, option_shared;
+static int option_progress;
 static char *option_template, *option_reference, *option_depth;
 static char *option_origin = NULL;
 static char *option_upload_pack = "git-upload-pack";
@@ -57,6 +58,8 @@ static struct option builtin_clone_options[] = {
 		    "to clone from a local repository"),
 	OPT_BOOLEAN(0, "no-hardlinks", &option_no_hardlinks,
 		    "don't use local hardlinks, always copy"),
+	OPT_BOOLEAN(0, "progress", &option_progress,
+		    "force progress status output"),
 	OPT_BOOLEAN('s', "shared", &option_shared,
 		    "setup as shared repository"),
 	OPT_STRING(0, "template", &option_template, "path",
@@ -378,6 +381,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (!option_origin)
 		option_origin = "origin";
 
+	if (option_quiet && option_progress)
+		option_progress = 0;
+
 	repo_name = argv[0];
 
 	path = get_repo_path(repo_name, &is_bundle);
@@ -499,10 +505,15 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			transport_set_option(transport, TRANS_OPT_DEPTH,
 					     option_depth);
 
+		if (option_progress)
+			transport->progress = 1;
+
 		if (option_quiet)
 			transport->verbose = -1;
-		else if (option_verbose)
-			transport->progress = 1;
+		else {
+			if (option_verbose)
+				transport->verbose = 1;
+		}
 
 		if (option_upload_pack)
 			transport_set_option(transport, TRANS_OPT_UPLOADPACK,

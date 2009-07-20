@@ -87,13 +87,12 @@ then the cloned repository will become corrupt.
 
 --quiet::
 -q::
-	Operate quietly.  This flag is also passed to the `rsync'
-	command when given.
+	Operate quietly. Suppress progress output. This flag is also
+	passed to the `rsync' command when given.
 
 --verbose::
 -v::
-	Display the progressbar, even in case the standard output is not
-	a terminal.
+	Be verbose.
 
 --no-checkout::
 -n::
@@ -118,6 +117,10 @@ then the cloned repository will become corrupt.
 -o <name>::
 	Instead of using the remote name 'origin' to keep track
 	of the upstream repository, use <name>.
+
+--progress::
+	Display the progressbar, even in case the standard output is not
+	a terminal.
 
 --upload-pack <upload-pack>::
 -u <upload-pack>::
