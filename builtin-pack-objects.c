@@ -227,7 +227,6 @@ static void make_large_pack_map(struct packed_git *p, off_t ofs, struct pack_win
 
 		use_pack(p, &w, ofs, 0);
 		packed_git_window_size = temp_window_size;
-		fprintf(stderr, "made new\n");
 	}
 	
 	*w_curs = w;
