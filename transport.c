@@ -439,7 +439,8 @@ static struct ref *get_refs_via_curl(struct transport *transport, int for_push)
 	if (!transport->data)
 		transport->data = get_http_walker(transport->url,
 						  transport->remote,
-						  transport->verbose);
+						  transport->verbose,
+						  transport->progress);
 
 	walker = transport->data;
 
@@ -506,7 +507,8 @@ static int fetch_objs_via_curl(struct transport *transport,
 	if (!transport->data)
 		transport->data = get_http_walker(transport->url,
 						  transport->remote,
-						  transport->verbose);
+						  transport->verbose,
+						  transport->progress);
 	return fetch_objs_via_walker(transport, nr_objs, to_fetch);
 }
 

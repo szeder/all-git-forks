@@ -545,13 +545,13 @@ static void cleanup(struct walker *walker)
 }
 
 struct walker *get_http_walker(const char *url, struct remote *remote,
-	signed verbose)
+	signed verbose, unsigned force_progress)
 {
 	char *s;
 	struct walker_data *data = xmalloc(sizeof(struct walker_data));
 	struct walker *walker = xmalloc(sizeof(struct walker));
 
-	http_init(remote, verbose);
+	http_init(remote, verbose, force_progress);
 
 	data->alt = xmalloc(sizeof(*data->alt));
 	data->alt->base = xmalloc(strlen(url) + 1);

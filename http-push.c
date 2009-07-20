@@ -1862,7 +1862,7 @@ int main(int argc, char **argv)
 	remote = xcalloc(sizeof(*remote), 1);
 	ALLOC_GROW(remote->url, remote->url_nr + 1, remote->url_alloc);
 	remote->url[remote->url_nr++] = repo->url;
-	http_init(remote, push_verbosely);
+	http_init(remote, push_verbosely, 0);
 
 	if (repo->url && repo->url[strlen(repo->url)-1] != '/') {
 		rewritten_url = xmalloc(strlen(repo->url)+2);

@@ -88,7 +88,8 @@ extern void add_fill_function(void *data, int (*fill)(void *));
 extern void step_active_slots(void);
 #endif
 
-extern void http_init(struct remote *remote, signed verbosity);
+extern void http_init(struct remote *remote, signed verbosity,
+	unsigned force_progress);
 extern void http_cleanup(void);
 
 extern int data_received;

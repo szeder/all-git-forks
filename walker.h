@@ -35,6 +35,6 @@ int walker_fetch(struct walker *impl, int targets, char **target,
 void walker_free(struct walker *walker);
 
 struct walker *get_http_walker(const char *url, struct remote *remote,
-	signed verbose);
+	signed verbose, unsigned force_progress);
 
 #endif /* WALKER_H */

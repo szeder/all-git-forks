@@ -5,6 +5,7 @@ int data_received;
 int active_requests;
 
 static signed verbose;
+static unsigned progress;
 
 #ifdef USE_CURL_MULTI
 static int max_requests = -1;
@@ -313,12 +314,14 @@ static void set_from_env(const char **var, const char *envname)
 		*var = val;
 }
 
-void http_init(struct remote *remote, signed verbosity)
+void http_init(struct remote *remote, signed verbosity,
+	unsigned force_progress)
 {
 	char *low_speed_limit;
 	char *low_speed_time;
 
 	verbose = verbosity;
+	progress = force_progress || (verbosity > -1 && isatty(1));
 
 	git_config(http_options, NULL);
 
