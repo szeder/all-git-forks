@@ -366,7 +366,7 @@ static int fetch_objs_via_walker(struct transport *transport,
 	walker->get_all = 1;
 	walker->get_tree = 1;
 	walker->get_history = 1;
-	walker->get_verbosely = transport->verbose >= 0;
+	walker->get_verbosely = transport->verbose > 0;
 	walker->get_recover = 0;
 
 	for (i = 0; i < nr_objs; i++)
