@@ -3,7 +3,8 @@
 
 int data_received;
 int active_requests;
-int http_is_verbose;
+
+static signed verbose;
 
 #ifdef USE_CURL_MULTI
 static int max_requests = -1;
@@ -312,12 +313,12 @@ static void set_from_env(const char **var, const char *envname)
 		*var = val;
 }
 
-void http_init(struct remote *remote)
+void http_init(struct remote *remote, signed verbosity)
 {
 	char *low_speed_limit;
 	char *low_speed_time;
 
-	http_is_verbose = 0;
+	verbose = verbosity;
 
 	git_config(http_options, NULL);
 
@@ -883,7 +884,7 @@ static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 		goto cleanup;
 	}
 
-	if (http_is_verbose)
+	if (verbose > 0)
 		fprintf(stderr, "Getting index for pack %s\n", hex);
 
 	end_url_with_slash(&buf, base_url);
@@ -1045,7 +1046,7 @@ struct http_pack_request *new_http_pack_request(
 	 */
 	prev_posn = ftell(preq->packfile);
 	if (prev_posn>0) {
-		if (http_is_verbose)
+		if (verbose > 0)
 			fprintf(stderr,
 				"Resuming fetch of pack %s at byte %ld\n",
 				sha1_to_hex(target->sha1), prev_posn);
@@ -1206,7 +1207,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	 * attempt, only fetch the data we don't already have.
 	 */
 	if (prev_posn>0) {
-		if (http_is_verbose)
+		if (verbose > 0)
 			fprintf(stderr,
 				"Resuming fetch of object %s at byte %ld\n",
 				hex, prev_posn);

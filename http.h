@@ -88,12 +88,11 @@ extern void add_fill_function(void *data, int (*fill)(void *));
 extern void step_active_slots(void);
 #endif
 
-extern void http_init(struct remote *remote);
+extern void http_init(struct remote *remote, signed verbosity);
 extern void http_cleanup(void);
 
 extern int data_received;
 extern int active_requests;
-extern int http_is_verbose;
 
 extern char curl_errorstr[CURL_ERROR_SIZE];
 
