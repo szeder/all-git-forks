@@ -1,8 +1,6 @@
 From: Nick Edelen <sirnot@gmail.com>
-Subject: [PATCH] t/revcache/integration
+Subject: [PATCH] t/pack/check
 
-This patch introduces a tentative step towards integrating rev-cache into the internal revision walker.  Cache traversal is added to both limited and unlimited revision walks, and FACE_VALUEd objects are handled in list-objects.  Furthermore the unique object_list field is added to commit objects, to allow runtime association with a commit's cached 'unique' object list.
-
-The traversal mechanism in rev-cache is updated to reflect the limiting methods used in rev-list.  Tests for coagulation and index generation are included, in addition to several verifying the correctness of integration.
+<patch description>
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>

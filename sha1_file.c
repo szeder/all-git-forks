@@ -780,7 +780,7 @@ static int open_packed_git(struct packed_git *p)
 	return -1;
 }
 
-static int in_window(struct pack_window *win, off_t offset)
+int in_window(struct pack_window *win, off_t offset)
 {
 	/* We must promise at least 20 bytes (one hash) after the
 	 * offset is available from this window, otherwise the offset

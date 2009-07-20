@@ -210,6 +210,29 @@ static int check_pack_inflate(struct packed_git *p,
 		stream.total_in == len) ? 0 : -1;
 }
 
+static void make_large_pack_map(struct packed_git *p, off_t ofs, struct pack_window **w_curs)
+{
+	struct pack_window *w;
+	
+	for (w = p->windows; w; w = w->next) {
+		if (in_window(w, ofs))
+			break;
+	}
+
+	/* admittedly this is a bit of a hack,  but we need to be able
+	 * to reuse the mapping per packfile */
+	if (!w) {
+		size_t temp_window_size = packed_git_window_size;
+		packed_git_window_size = 60000000;
+
+		use_pack(p, &w, ofs, 0);
+		packed_git_window_size = temp_window_size;
+		fprintf(stderr, "made new\n");
+	}
+	
+	*w_curs = w;
+}
+
 static void copy_pack_data(struct sha1file *f,
 		struct packed_git *p,
 		struct pack_window **w_curs,
@@ -422,6 +445,8 @@ static unsigned long write_object(struct sha1file *f,
 			}
 			sha1write(f, header, hdrlen);
 		}
+
+		make_large_pack_map(p, offset, &w_curs);
 		copy_pack_data(f, p, &w_curs, offset, datalen);
 		unuse_pack(&w_curs);
 		reused++;
@@ -1016,7 +1041,7 @@ static void check_object(struct object_entry *entry)
 {
 	if (entry->in_pack) {
 		struct packed_git *p = entry->in_pack;
-		struct pack_window *w_curs = NULL;
+		struct pack_window *w_curs;
 		const unsigned char *base_ref = NULL;
 		struct object_entry *base_entry;
 		unsigned long used, used_0;
@@ -1024,6 +1049,7 @@ static void check_object(struct object_entry *entry)
 		off_t ofs;
 		unsigned char *buf, c;
 
+		make_large_pack_map(p, entry->in_pack_offset, &w_curs);
 		buf = use_pack(p, &w_curs, entry->in_pack_offset, &avail);
 
 		/*
