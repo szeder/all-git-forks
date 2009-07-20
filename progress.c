@@ -26,7 +26,7 @@ struct throughput {
 };
 
 struct progress {
-	const char *title;
+	char *title;
 	int last_value;
 	unsigned total;
 	unsigned last_percent;
@@ -209,6 +209,20 @@ void update_progress_total(struct progress *progress, unsigned total)
 	progress->total = total;
 }
 
+void update_progress_title(struct progress *progress, const char *title)
+{
+	if (!progress)
+		return;
+
+	if (progress->title != NULL) {
+		free(progress->title);
+		progress->title = NULL;
+	}
+
+	if (title != NULL)
+		progress->title = xstrdup(title);
+}
+
 struct progress *start_progress_delay(const char *title, unsigned total,
 				       unsigned percent_treshold, unsigned delay)
 {
@@ -219,7 +233,10 @@ struct progress *start_progress_delay(const char *title, unsigned total,
 		fflush(stderr);
 		return NULL;
 	}
-	progress->title = title;
+
+	if (title != NULL)
+		progress->title = xstrdup(title);
+
 	progress->total = total;
 	progress->last_value = -1;
 	progress->last_percent = -1;
