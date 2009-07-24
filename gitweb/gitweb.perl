@@ -992,7 +992,8 @@ sub href {
 			}
 		}
 	}
-	$href .= "?" . join(';', @result) if scalar @result;
+	$href .= "?" . join(';', @result)
+		if ($params{-partial_query} or scalar @result);
 
 	return $href;
 }
