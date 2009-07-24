@@ -3243,6 +3243,23 @@ sub git_footer_html {
 		insert_file($site_footer);
 	}
 
+	if ($action ne 'blame_incremental') {
+		print <<'HTML';
+<script type="text/javascript">/* <![CDATA[ */
+function fixLinks() {
+	//var allLinks = document.getElementsByTagName("a");
+	var allLinks = document.links;
+	for (var i = 0; i < allLinks.length; i++) {
+		var link = allLinks[i];
+		link.href +=
+			(link.href.indexOf('?') === -1 ? '?' : ';') + 'js=1';
+	}
+}
+window.onload = fixLinks;
+/* ]]> */</script>
+HTML
+	}
+
 	print "</body>\n" .
 	      "</html>";
 }
@@ -4794,6 +4811,10 @@ sub git_tag {
 
 sub git_blame_common {
 	my $format = shift || 'porcelain';
+	if ($format eq 'porcelain' && $cgi->param('js')) {
+		$format = 'incremental';
+		$action = 'blame_incremental'; # for page title etc
+	}
 
 	# permissions
 	gitweb_check_feature('blame')

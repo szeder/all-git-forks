@@ -1,4 +1,6 @@
 // Copyright (C) 2007, Fredrik Kuivinen <frekui@gmail.com>
+//               2007, Petr Baudis <pasky@suse.cz>
+//          2008-2009, Jakub Narebski <jnareb@gmail.com>
 
 /* ============================================================ */
 /* generic utility functions */
@@ -36,7 +38,7 @@ function spacePad(n, width) {
 /**
  * @param {string} input: input value converted to string.
  * @param {number} size: desired length of output.
- * @param {string} ch: single character to prefix to s.
+ * @param {string} ch: single character to prefix to string.
  */
 function padLeft(input, size, ch) {
 	var s = input + "";
@@ -611,14 +613,14 @@ function startBlame(blamedataUrl, bUrl) {
 	projectUrl = bUrl;
 	if ((div_progress_bar = document.getElementById('progress_bar'))) {
 		div_progress_bar.setAttribute('style', 'width: 100%;');
-		//div_progress_bar.style.value = 'width: 100%;';
+		//div_progress_bar.style.value = 'width: 100%;'; // doesn't work
 	}
 	totalLines = countLines();
 	updateProgressInfo();
 
 	http.open('get', blamedataUrl);
 	http.setRequestHeader('Accept', 'text/plain'); // in case of future changes
-	// perhaps also 'multipart/x-mixed-replace'
+	// perhaps also, in the future, 'multipart/x-mixed-replace' (not standard)
 	http.onreadystatechange = handleResponse;
 	//http.onreadystatechange = function () { handleResponse(http); };
 	http.send(null);
