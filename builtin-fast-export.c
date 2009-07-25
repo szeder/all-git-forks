@@ -25,6 +25,7 @@ static const char *fast_export_usage[] = {
 static int progress;
 static enum { VERBATIM, WARN, STRIP, ABORT } signed_tag_mode = ABORT;
 static int fake_missing_tagger;
+static int no_data;
 
 static int parse_opt_signed_tag_mode(const struct option *opt,
 				     const char *arg, int unset)
@@ -101,6 +102,9 @@ static void handle_object(const unsigned char *sha1)
 	char *buf;
 	struct object *object;
 
+	if (no_data)
+		return;
+
 	if (is_null_sha1(sha1))
 		return;
 
@@ -158,7 +162,7 @@ static void show_filemodify(struct diff_queue_struct *q,
 			 * Links refer to objects in another repositories;
 			 * output the SHA-1 verbatim.
 			 */
-			if (S_ISGITLINK(spec->mode))
+			if (no_data || S_ISGITLINK(spec->mode))
 				printf("M %06o %s %s\n", spec->mode,
 				       sha1_to_hex(spec->sha1), spec->path);
 			else {
@@ -504,6 +508,9 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 			     "Import marks from this file"),
 		OPT_BOOLEAN(0, "fake-missing-tagger", &fake_missing_tagger,
 			     "Fake a tagger when tags lack one"),
+		{ OPTION_NEGBIT, 0, "data", &no_data, NULL,
+			"Skip output of blob data",
+			PARSE_OPT_NOARG | PARSE_OPT_NEGHELP, NULL, 1 },
 		OPT_END()
 	};
 
