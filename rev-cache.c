@@ -925,7 +925,7 @@ static int add_unique_objects(struct commit *commit)
 	opts.change = tree_change;
 	opts.add_remove = tree_addremove;
 	
-	/* this is only called for non-starts (ie. all parents interesting) */
+	/* this is only called for non-bottoms (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
 		if (is_first)
 			g_buffer = &os;
@@ -1092,7 +1092,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
 			object_nr++;
 			
-			if (!object.is_start)
+			if (!object.is_bottom)
 				object_nr += add_unique_objects(commit);
 		}
 		
@@ -1280,7 +1280,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			continue;
 		
 		/* handle index duplication
-		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
+		 * -> keep old copy unless new one is an top -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
 		 * should we allow more intelligent overriding? */
 		date = ntohl(object_entry->date);
