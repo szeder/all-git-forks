@@ -3,108 +3,118 @@ rev-cache
 
 The revision cache API ('rev-cache') provides a method for efficiently storing 
 and accessing commit branch sections.  Such branch slices are defined by a 
-series of end (interesting) and start (uninteresting) commits.  Each slice 
+series of top (interesting) and bottom (uninteresting) commits.  Each slice 
 contains, per commit:
 
-* All intra-slice topological relations, encoded into path "channels".
-* Commit meta-data: type, SHA-1, date.
+* All intra-slice topological relations, encoded into path "channels" (see 'Mechanics' for full explanation).
+* Object meta-data: type, SHA-1, size, date (for commits).
 * Objects introduced in that commit, relative to slice (ie. only for non-start 
   commits).
 
-Data structures are not exported, in part to keep git's global scope clean, but 
-largely because they're pretty much useless outside rev-cache.
-
-
-The Porcelain
--------------
-For easy access to 'rev-cache' from scripts and other goodies there's a 
-front-end called (surprise!) `rev-cache`.  Currently it's pretty shit, I'm not 
-gonna lie to you, but for in-slice traversals it's feck-loads faster than 
-`rev-list`.  With more output modes and stuff it could potentially be used by 
-any (external) app in need of quick data.
-
-At the moment it looks like this:
-
-`git-rev-cache COMMAND [options] [<commit-id>...]`
-
-With the commands:
-
-`(none)`::
-	Display caches.  Passing a slice hash will display detailed information 
-	about that cache slice.  (not yet implemented)
-
-`add`::
-	Add revisions to the cache.  Reads commit ids from stdin, formatted as:
-	`END END ... \--not START START ...`
-+
-Options:
-
-`\--fresh`:: Exclude everything already in a cache slice.
-`\--stdin`:: Also read commit ids from stdin (seperated by newline, `\--not` 
-also valid).
-`\--legs`:: Ensure branch has no "dangling" starts (ie. is self-contained).
-`\--sizes`:: Include sizes with objects.
-`\--noobjects`:: Don't include non-commit objects.
-
-`rm`::
-	Delete a cache slice.  (not yet implemented)
-
-`walk`::
-	Walk a cache slice based on set of commits; formatted as add.
-+
-Options:
-
-`\--objects`:: Include non-commit objects in traversal.
-
+Storage data structures are not exported, in part to keep git's global scope 
+clean, but largely because they're pretty much useless outside of rev-cache.
 
 The API
 -------
 
-The API for 'rev-cache' is very simple.  You can find the function prototypes 
+The API for 'rev-cache' is quite simple.  You can find the function prototypes 
 in `revision.h`.
+
+Data Structures
+~~~~~~~~~~~~~~~
+
+The `rev_cache_info` struct holds all the options and flags for the API.
+
+----
+struct rev_cache_info {
+        /* generation flags */
+        unsigned objects : 1, 
+                legs : 1, 
+                make_index : 1;
+        
+        /* traversal flags */
+        unsigned save_unique : 1, 
+                add_to_pending : 1;
+        
+        /* fuse options */
+        unsigned int ignore_size;
+};
+----
+
+The fields:
+
+`objects`:: Add non-commit objects to slice.
+`legs`:: Ensure bottoms have no childrens.
+`make_index`:: Integrate newly-made slice into index.
+`save_unique`:: Load unique non-commit objects into `unique` field of each 
+`commit` object.
+`add_to_pending`:: Append unique non-commit objects to the `pending` object 
+list in the passed `rev_info` instance.
+`ignore_size`:: If non-zero, ignore slices with size greater or equal to this.
+
+Functions
+~~~~~~~~~
+
+`init_rci`::
+
+        Initiate a `rev_cache_info` struct to default options.  
 
 `make_cache_slice`::
 
-	Create a cache based on an a `rev_info` instance or `commit_list` s of 
-	"ends" and "starts" (defaults to latter if `rev_info` pointer is NULL), 
-	copying the cache SHA-1 into a passed pointer if non-zero.  A 
-	`rev_cache_info` struct pointer can be passed to set options 
-	(currently: include objects, sizes; make legs), while passing NULL will 
-	set default options (objects, sizes, no legs).  A last parameter can 
-	optionally recieve the final cache hash.
+        Create a cache based on an a `rev_info` instance or `commit_list` s of 
+        "tops" and "bottoms" (defaults to latter if `rev_info` pointer is NULL), 
+        copying the cache SHA-1 into a passed pointer if non-zero.  A 
+        `rev_cache_info` struct pointer can be passed to set options, while 
+        passing NULL will set default options.  A last parameter can 
+        optionally recieve the final cache hash.
+
+`make_cache_index`::
+
+        Add a slice to the cache index.  Requires a file descriptor, the cache 
+        hash and the file size.  Note that this is normally called by 
+        `make_cache_slice` under the `make_index` option.
 
 `get_cache_slice`::
 
-	Given a commit SHA-1 `get_cache_slice` will search the slice index and 
-	return, if found, the cache-identifying SHA-1.
+        Given a commit SHA-1 `get_cache_slice` will search the slice index and 
+        return, if found, the cache-identifying SHA-1.
 
 `traverse_cache_slice`::
 
-	Traverse a specified cache slice based on:
+        Traverse a specified cache slice based on:
 
-	* `rev_info` instance
-	* Cache SHA-1 identifier
-	* A starting commit and commit work list
-	* Date of most oldest encountered interesting commit
-	* Current `slop` (this and above mainly used in integration with revision 
-	  walker)
-	
+        * `rev_cache_info` instance (optional)
+        * cache SHA-1 identifier
+        * `rev_info` instance
+        * a starting commit and commit work list
+        * date of oldest encountered interesting commit
+        * current `slop` (this and above mainly used in integration with revision 
+          walker)
+        
 +
-The output is sent to a FILO `commit_list` "queue", and any commit 
-boundaries are passed back into the work list.
+The output is sent to a FILO `commit_list` "queue", while any bottom commits are passed back into the work list.  If the walk is not contained within the slice, commit boundaries are also inserted into "work".
 
-`uninteresting_from_slices`::
+`tops_from_slices`::
 
-	Will mark all end-commits in all cache slices as `UNINTERESTING` in the 
-	passed `rev_info` instance.
+        Will mark all top-commits in the specified cache slices with a given flag, 
+        and add them to the rev pending list.  Will include all if no slices are 
+        specified.
 
+`coagulate_cache_slices`::
+
+        Generate a slice based on the passed `rev_info` instance, replacing all 
+        encountered slices with one (larger) slice.  The `ignore_size` field in 
+        `rci`, if non-zero, will dictate which cache slice sizes to ignore in both 
+        traversal and replacement.
+
+`regenerate_index`::
+
+        Remake cache index.
 
 Example Usage
 -------------
 
-Everything is pretty self-explanatory except for perhaps 
-`traverse_cache_slice`.  Here are a few examples to demonstrate usage (note 
-that I have know idea if these work or even compile, they're just outlines):
+A few examples to demonstrate usage:
 
 .Creating a slice
 ----
@@ -113,24 +123,23 @@ struct rev_info revs;
 struct rev_cache_info rci;
 
 init_revisions(&revs, 0);
+init_rci(&rci);
 
 flags = 0;
 for (i = 1; i < argc; i++) {
-	if (!strcmp(argv[i], "--not"))
-		flags ^= UNINTERESTING;
-	else if(!strcmp(argv[i], "--fresh"))
-		uninteresting_from_slices(&revs, 0, 0 /* reserved: always 0 for now */);
-	else
-		handle_revision_arg(argv[i], &revs, flags, 1);
+        if (!strcmp(argv[i], "--not"))
+                flags ^= UNINTERESTING;
+        else if(!strcmp(argv[i], "--fresh"))
+                ends_from_slices(&revs, UNINTERESTING, 0, 0);
+        else
+                handle_revision_arg(argv[i], &revs, flags, 1);
 }
 
 /* we want to explicitly set certain options */
-rci.legs = 0;
 rci.objects = 0;
-rci.sizes = 1;
 
-if (!make_cache_slice(&revs, 0, 0, &rci, cache_sha1))
-	printf("made slice!  it's called %s\n", sha1_to_hex(cache_sha1));
+if (!make_cache_slice(&rci, &revs, 0, 0, cache_sha1))
+        printf("made slice!  it's called %s\n", sha1_to_hex(cache_sha1));
 ----
 
 .Traversing a slice
@@ -141,66 +150,44 @@ out = 0;
 outp = &out;
 
 while (work) {
-	struct commit *commit = pop_commit(&work);
-	struct object *object = &commit->object;
-	unsigned char *cache_sha1;
-	
-	if (cache_sha1 = get_cache_slice(object->sha1)) {
-		/* note that this will instatiate any topo-relations 
-		 * as it goes */
-		if (traverse_cache_slice(&revs, cache_sha1, 
-			commit, 0, 0, /* use defaults */
-			&outp, &work) < 0)
-			die("I'm overreacting to a non-fatal cache error");
-	} else {
-		struct commit_list *parents = commit->parents;
-		
-		while (parents) {
-			struct commit *p = parents->item;
-			struct object *po = &p->object;
-			
-			parents = parents->next;
-			if (po->flags & UNINTERESTING)
-				continue;
-			
-			if (object->flags & UNINTERESTING)
-				po->flags |= UNINTERESTING;
-			else if (po->flags & SEEN)
-				continue;
-			
-			if (!po->parsed)
-				parse_commit(p);
-			insert_by_date(p, &work);
-		}
-		
-		if (object->flags & (SEEN | UNINTERESTING) == 0)
-			outp = &commit_list_insert(commit, outp);
-		object->flags |= SEEN;
-	}
+        struct commit *commit = pop_commit(&work);
+        struct object *object = &commit->object;
+        unsigned char *cache_sha1;
+        
+        if (cache_sha1 = get_cache_slice(object->sha1)) {
+                /* note that this will instatiate any topo-relations 
+                 * as it goes */
+                if (traverse_cache_slice(0, cache_sha1, &revs, 
+                        commit, 0, 0, /* use defaults */
+                        &outp, &work) < 0)
+                        die("I'm overreacting to a non-fatal cache error");
+        } else {
+                struct commit_list *parents = commit->parents;
+                
+                while (parents) {
+                        struct commit *p = parents->item;
+                        struct object *po = &p->object;
+                        
+                        parents = parents->next;
+                        if (po->flags & UNINTERESTING)
+                                continue;
+                        
+                        if (object->flags & UNINTERESTING)
+                                po->flags |= UNINTERESTING;
+                        else if (po->flags & SEEN)
+                                continue;
+                        
+                        if (!po->parsed)
+                                parse_commit(p);
+                        insert_by_date(p, &work);
+                }
+                
+                if (object->flags & (SEEN | UNINTERESTING) == 0)
+                        outp = &commit_list_insert(commit, outp);
+                object->flags |= SEEN;
+        }
 }
 ----
-
-Of course some more contrived examples might be more helpful...
-
-----
-struct commit_list *ends, *starts;
-
-commit_list_insert(head_commit, &ends);
-make_cache_slice(0, ends, starts, 0, 0);
-----
-
-----
-struct commit_list *work, *out, **outp = &out;
-struct rev_info revs;
-
-init_revisions(&revs, 0);
-traverse_cache_slice(&revs, 
-	get_cache_slice(head_commit->object.sha1), 
-	head_commit, 
-	0, 0, 
-	&work, &outp);
-----
-
 
 Some Internals
 --------------
@@ -209,73 +196,114 @@ Although you really don't need to know anything about how rev-cache actually
 does its magic shizz, a bit of background may go a long way if you're wading 
 through the source.
 
-A lot can be summarized in the `object_entry` struct:
+File Formats
+~~~~~~~~~~~~
+
+A slice has a basic fixed-size header, followed by a certain number of object 
+entries.  Commits are sorted in topo-order, and each commit entry is followed by the objects added in that commit.
+
+----
+         -- +--------------------------------+
+header      | object number, etc...          |
+         -- +--------------------------------+
+commit      | commit info                    |
+entry       | path data                      |
+            +--------------------------------+
+            | tree/blob info                 |
+            +--------------------------------+
+            | tree/blob info                 |
+            +--------------------------------+
+            | ...                            |
+         -- +--------------------------------+
+commit      | commit info                    |
+entry       | path data                      |
+            +--------------------------------+
+            | tree/blob info                 |
+            +--------------------------------+
+            | ...                            |
+         -- +--------------------------------+
+...         ...                               
+            +--------------------------------+
+----
+
+The index is somewhat similar to pack-file indexes, containing a fanout table 
+and a list of index entries sorted by hash.
+
+----
+         -- +--------------------------------+
+header      | object #, cache #, etc.        |
+         -- +--------------------------------+
+cache       | SHA-1                          |
+sha1s       | ...                            |
+         -- +--------------------------------+
+fanout      | fanout[0x00]                   |
+table       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            | fanout[0xff]                   |
+         -- +--------------------------------+
+index       | entry SHA-1                    |
+entries     | cache sha1 index               |
+            +--------------------------------+
+            |                                |
+            ...                               
+            +--------------------------------+
+----
+
+All the relavant structures are readily accessible in `rev-cache.c`
+
+Mechanics
+~~~~~~~~~
+
+The most important part of rev-cache is its method of encoding topological relations.  To ensure fluid traversal and reconstruction, commits are related through high-level "streams"/"channels" rather than individual interconnections.  Intuitively, rev-cache stores history the way gitk shows it: commits strung up on lines, which interconnect at merges and branches.
+
+Each commit is associated to a given channel/path via a 'path id', and variable-length fields govern which paths (if any) are closed or opened at that object.  This means that topo-data can be preserved in only a few bytes extra per object entry.  Other information stored per entry is the sha-1 hash, type, date, size, and status in cache slice.  Here is format of an object entry, both on-disk and in-memory:
 
 ----
 struct object_entry {
-	unsigned type : 3;
-	unsigned is_start : 1;
-	unsigned is_end : 1;
-	unsigned uninteresting : 1;
-	unsigned include : 1;
-	unsigned flags : 1;
-	unsigned char sha1[20];
-	
-	unsigned merge_nr : 6;
-	unsigned split_nr : 7;
-	unsigned size_size : 3;
-	
-	unsigned long date;
-	unsigned short path;
-	
-	/* merge paths */
-	/* split paths */
-	/* size */
+        unsigned type : 3;
+        unsigned is_bottom : 1;
+        unsigned is_top : 1;
+        unsigned uninteresting : 1;
+        unsigned include : 1;
+        unsigned flags : 1;
+        unsigned char sha1[20];
+        
+        unsigned merge_nr : 6;
+        unsigned split_nr : 7;
+        unsigned size_size : 3;
+        
+	uint32_t date;
+	uint16_t path;
+        
+        /* merge paths */
+        /* split paths */
+        /* size */
 };
 ----
 
-With the exception of the `uninteresting` and `include` flags (which are 
-runtime flags), it's pretty much a verbatim description of the object storage.  
-Object entries, on disk and in memory, are *not* fixed sizes, as they require 
-extra space to encode topo and size data.
+An explanation of each field:
 
-`type`, `sha1` and `date` are self-explanatory.  `is_start` means that not all 
-its parents are contained in the slice, and `is_end` notes that it is not the 
-parent of anything in the slice.  `size_size` tells us how many bytes the size 
-takes up -- note that it dosn't need any special encoding.
+`type`:: Object type
+`is_bottom`:: The commit has some parents outside the cache slice (all if slice has legs)
+`is_top`:: The commit has no children in cache slice
+`uninteresting`:: Run-time flag, used in traversal
+`include`:: Run-time flag, used in traversal (initialization)
+`flags`:: Currently unused, extra bit
+`sha`:: Object SHA-1 hash
 
-Now comes the interesting bit.  Topological relations are encoded via a 
-path/channel system, where every branch is assigned an identifier, unique 
-during its life-time (and a bit longer).  During traversal these are indices in 
-a `path` array, retaining the status of each path.  Interesting paths have 
-`IPATH`, uninterestings ones `UPATH` (which trumps `IPATH`) and inactive ones 
-`0`.
+`merge_nr`:: The number of paths the current channel diverges into; the current path ends upon any merge.
+`split_nr`:: The number of paths this commit ends; used on both merging and branching.
+`size_size`:: Number of bytes the object size takes up.
 
-Obivously, the `path` field delimits the current path id.  Any merge commit 
-needs to open new paths, and does this via the `merge paths` section of its 
-entry.  Likewise branching commits have to close paths, although this is a 
-slight bit more complicated:
+merge paths:: The path IDs (16-bit) that are to be created.
+split paths:: The path IDs (16-bit) that are to be ended.
+size:: The size split into the minimum number of bytes.
 
-Because we a) need to restore topo-relations and b) need to keep track of 
-boundary commits, a `last_objects` list keeps track of the last commit 
-encountered per path.  This needs to be alive until *all* its parents have been 
-seen, so path ids are actually unique up through a branch's last parent.  Such 
-uniqueness is achieved by "stopping" paths at a merge, and a counter system to 
-document how many parents have yet to be seen.
+Each path ID refers to an index in a 'path array', which stores the current status (eg. active, interestingness) of each channel.
 
-If we do encounter a boundary commit (which includes, but is not limited to, 
-start commits), we have to ensure that *all* its associated objects are 
-parsed.  Normally we use a `FACE_VALUE` flag to prevent `list-objects` from 
-parsing trees and whatnot -- so we can directly use our own object list -- but 
-in this case we have to remove it and any half-finished topo-data we 
-accumulated for it.
+Due to topo-relations and boundary tracking, all of a commit's parents must be encountered before the path is reallocated.  This is achieved by using a counter system per merge: starting at the parent number, the counter is decremented as each parent is encountered (dictated by 'split paths'); at 0 the path is cleared.
 
-The rest should pretty much fall into place.  The index is just like a pack 
-index, with it's own fanout array and all.  It's not a very complex bit of 
-source by any means...
+Boundary tracking is necessary because non-commits are stored relative to the commit in which they were introduced.  If a series of commits is not included in the output, the last interesting commit must be parsed manually to ensure all objects are accounted for.
 
+To prevent list-objects from recursing into trees that we've already taken care of, the flag `FACE_VALUE` is introduced.  An object with this flag is not explored (= "taken at face value"), significantly reducing I/O and processing time.
 
-Author
-------
-
-Nick Edelen (sirnot@gmail.com)
+(NSE)
