@@ -1,6 +1,11 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/objects
 
-Part of the revision-cache patch series, this patch adds preliminary non-commit object support.  Non-start commits are diff'ed against parents to produce a list of objects 'unique' to that commit, which are then added to the pending objects list in traversal.
+Summarized, this third patch contains:
+ - support for non-commit object caching
+ - expansion of porcelain to accomodate non-commit objects
+ - appropriate tests
+
+Objects are stored relative to the commit in which they were introduced -- commits are 'diffed' against their parents.  This will eliminate the need for tree recursion in cached commits (significantly reducing I/O), and potentially be useful to external applications.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
