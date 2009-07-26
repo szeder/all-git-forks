@@ -409,7 +409,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 				parse_commit(last_objects[path]);
 				
 				/* we needn't worry about the unique field; that will be valid as 
-				 * long as we're not a start entry */
+				 * long as we're not a bottom entry */
 				last_objects[path]->object.flags &= ~FACE_VALUE;
 				last_objects[path] = 0;
 			}
@@ -592,7 +592,7 @@ end:
 
 /* generation */
 
-static int is_start_endpoint(struct commit *commit)
+static int is_bottom_endpoint(struct commit *commit)
 {
 	struct commit_list *list = commit->parents;
 	
@@ -629,7 +629,7 @@ static void make_legs(struct rev_info *revs)
 		
 		if (item->object.flags & UNINTERESTING)
 			continue;
-		if (is_start_endpoint(item))
+		if (is_bottom_endpoint(item))
 			continue;
 		
 		while (parents) {
@@ -1049,7 +1049,7 @@ static int add_unique_objects(struct commit *commit)
 	opts.change = tree_change;
 	opts.add_remove = tree_addremove;
 	
-	/* this is only called for non-starts (ie. all parents interesting) */
+	/* this is only called for non-bottoms (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
 		if (is_first)
 			g_buffer = &os;
@@ -1218,7 +1218,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 			add_object_entry(commit->tree->object.sha1, 0, 0, 0);
 			object_nr++;
 			
-			if (!object.is_start)
+			if (!object.is_bottom)
 				object_nr += add_unique_objects(commit);
 		}
 		
@@ -1406,7 +1406,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			continue;
 		
 		/* handle index duplication
-		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
+		 * -> keep old copy unless new one is a top -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
 		 * should we allow more intelligent overriding? */
 		date = ntohl(object_entry->date);
@@ -1467,7 +1467,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 }
 
 
-/* add end-commits from each cache slice (uninterestingness will be propogated) */
+/* add top-commits from each cache slice (uninterestingness will be propogated) */
 void tops_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n)
 {
 	struct commit *commit;
@@ -1560,7 +1560,7 @@ int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	}
 	
 	if (ignore.len) {
-		ends_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
+		tops_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
 		strbuf_release(&ignore);
 	}
 	

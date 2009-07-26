@@ -174,7 +174,7 @@ static int handle_fuse(int argc, const char *argv[])
 	}
 	
 	if (!add_all)
-		ends_from_slices(&revs, 0, 0, 0);
+		tops_from_slices(&revs, 0, 0, 0);
 	
 	return coagulate_cache_slices(&rci, &revs);
 }
