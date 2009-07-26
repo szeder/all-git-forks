@@ -1,8 +1,14 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/misc
 
-Several miscellaneous features of rev-cache are introduced, and the non-commit object generation is refactored.  Cache coagulation and index regeneration are added, allowing for cache slice maintenance and garbage collection.  Commit and blob objects are modified to store object size, as the tree object does, and this parameter is instated upon parsing.  Object enumeration makes use of this addition and more fluidly generates its list.
+This patch, fourth, contains miscellaneous (maintenance) features:
+ - support for cache slice fusion, index regeneration and object size caching
+ - extra 'size' field added to commit, tag and blob objects, initialized in parse_* functions and cache traversal
+ - non-commit object generation refactored to take advantage of 'size' field
+ - porcelain updated to support feature additions
 
-Tests for coagulation and index generation are added in the integration patch, as the former in its proper incarnation makes use of rev-cache's influence on the revision walker.
+The beginnings of integration into git are present in this patch, mainly centered on caching object size; the object generation is refactored to more elegantly exploit this.  Fusion allows smaller (incremental) slices to be coagulated into a larger slice, reducing overhead, while index regeneration enables repair or cleaning of the cache index.
+
+Note that tests for these features are included in the following patch, as they take advantage of the rev-cache's integration into the revision walker.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
