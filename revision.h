@@ -19,6 +19,20 @@
 struct rev_info;
 struct log_info;
 
+struct rev_cache_info {
+	/* generation flags */
+	unsigned objects : 1, 
+		legs : 1, 
+		make_index : 1;
+	
+	/* traversal flags */
+	unsigned save_unique : 1, 
+		add_to_pending : 1;
+	
+	/* fuse options */
+	unsigned int ignore_size;
+};
+
 struct rev_info {
 	/* Starting list */
 	struct commit_list *commits;
@@ -121,6 +135,9 @@ struct rev_info {
 	struct reflog_walk_info *reflog_info;
 	struct decoration children;
 	struct decoration merge_simplification;
+	
+	/* caching info, used ONLY by traverse_cache_slice */
+	struct rev_cache_info rev_cache_info;
 };
 
 #define REV_TREE_SAME		0
@@ -177,33 +194,19 @@ extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
 
 /* rev-cache.c */
 
-struct rev_cache_info {
-	/* generation flags */
-	unsigned objects : 1, 
-		legs : 1, 
-		make_index : 1;
-	
-	/* traversal flags */
-	unsigned save_unique : 1, 
-		add_to_pending : 1;
-	
-	/* fuse options */
-	unsigned int ignore_size;
-};
-
 extern unsigned char *get_cache_slice(struct commit *commit);
-extern int traverse_cache_slice(struct rev_cache_info *rci, unsigned char *cache_sha1, 
-	struct rev_info *revs, struct commit *commit, 
+extern int traverse_cache_slice(struct rev_info *revs, 
+	unsigned char *cache_sha1, struct commit *commit, 
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
 extern void init_rci(struct rev_cache_info *rci);
 extern int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	struct rev_info *revs, struct commit_list **tops, struct commit_list **bottoms, 
 	unsigned char *cache_sha1);
 extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
 	int fd, unsigned int size);
 
-extern void ends_from_slices(struct rev_info *revs, unsigned int flags);
+extern void tops_from_slices(struct rev_info *revs, unsigned int flags);
 
 #endif
