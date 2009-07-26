@@ -130,7 +130,7 @@ for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--not"))
                 flags ^= UNINTERESTING;
         else if(!strcmp(argv[i], "--fresh"))
-                ends_from_slices(&revs, UNINTERESTING, 0, 0);
+                starts_from_slices(&revs, UNINTERESTING, 0, 0);
         else
                 handle_revision_arg(argv[i], &revs, flags, 1);
 }
@@ -157,7 +157,7 @@ while (work) {
         if (cache_sha1 = get_cache_slice(object->sha1)) {
                 /* note that this will instatiate any topo-relations 
                  * as it goes */
-                if (traverse_cache_slice(0, cache_sha1, &revs, 
+                if (traverse_cache_slice(&revs, cache_sha1, 
                         commit, 0, 0, /* use defaults */
                         &outp, &work) < 0)
                         die("I'm overreacting to a non-fatal cache error");
@@ -260,8 +260,8 @@ Each commit is associated to a given channel/path via a 'path id', and variable-
 ----
 struct object_entry {
         unsigned type : 3;
-        unsigned is_bottom : 1;
-        unsigned is_top : 1;
+        unsigned is_end : 1;
+        unsigned is_start : 1;
         unsigned uninteresting : 1;
         unsigned include : 1;
         unsigned flags : 1;
@@ -283,8 +283,8 @@ struct object_entry {
 An explanation of each field:
 
 `type`:: Object type
-`is_bottom`:: The commit has some parents outside the cache slice (all if slice has legs)
-`is_top`:: The commit has no children in cache slice
+`is_end`:: The commit has some parents outside the cache slice (all if slice has legs)
+`is_start`:: The commit has no children in cache slice
 `uninteresting`:: Run-time flag, used in traversal
 `include`:: Run-time flag, used in traversal (initialization)
 `flags`:: Currently unused, extra bit
