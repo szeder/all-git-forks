@@ -348,7 +348,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		return;
 	}
 	
-	/* add to unique list if we're not a bottom */
+	/* add to unique list if we're not an end */
 	if (save_unique && (commit->object.flags & FACE_VALUE)) {
 		if (last_commit != commit) {
 			last_commit = commit;
@@ -598,7 +598,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 		if (slop && !(revs->min_age != -1 && co->date > revs->min_age)) {
 			
 			if (!(obj->flags & UNINTERESTING) || revs->show_all) {
-				if (entry->is_bottom)
+				if (entry->is_end)
 					myworkp = &commit_list_insert(co, myworkp)->next;
 				else
 					myqp = &commit_list_insert(co, myqp)->next;
@@ -1434,7 +1434,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 		add_object_entry(0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (rci->objects && !(commit->object.flags & TREESAME) && !object.is_bottom)
+		if (rci->objects && !(commit->object.flags & TREESAME) && !object.is_end)
 			object_nr += add_unique_objects(commit);
 		
 		/* print every ~1MB or so */
