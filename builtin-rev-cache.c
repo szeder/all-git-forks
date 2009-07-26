@@ -24,7 +24,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
 		else if (!strcmp(argv[i], "--fresh"))
-			ends_from_slices(&revs, UNINTERESTING, 0, 0);
+			tops_from_slices(&revs, UNINTERESTING, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--legs"))
@@ -229,9 +229,9 @@ usage:\n\
 git-rev-cache COMMAND [options] [<commit-id>...]\n\
 commands:\n\
   add    - add revisions to the cache.  reads commit ids from stdin, \n\
-           formatted as: END END ... --not START START ...\n\
+           formatted as: TOP TOP ... --not BOTTOM BOTTOM ...\n\
            options:\n\
-            --all             use all branch heads as ends\n\
+            --all             use all branch heads as tops\n\
             --fresh           exclude everything already in a cache slice\n\
             --stdin           also read commit ids from stdin (same form as cmd)\n\
             --legs            ensure branch is entirely self-contained\n\

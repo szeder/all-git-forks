@@ -202,12 +202,12 @@ extern int traverse_cache_slice(struct rev_info *revs,
 
 extern void init_rci(struct rev_cache_info *rci);
 extern int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **ends, struct commit_list **starts, 
+	struct rev_info *revs, struct commit_list **tops, struct commit_list **bottoms, 
 	unsigned char *cache_sha1);
 extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
 	int fd, unsigned int size);
 
-extern void ends_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
+extern void tops_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
 extern int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
 extern int regenerate_cache_index(struct rev_cache_info *rci);
 
