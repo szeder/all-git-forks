@@ -1,8 +1,29 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/integration
 
-This patch introduces a tentative step towards integrating rev-cache into the internal revision walker.  Cache traversal is added to both limited and unlimited revision walks, and FACE_VALUEd objects are handled in list-objects.  Furthermore the unique object_list field is added to commit objects, to allow runtime association with a commit's cached 'unique' object list.
+This last patch provides a working integration of rev-cache into the revision 
+walker, along with some touch-ups:
+ - integration into revision walker and list-objects
+ - addition of 'unique' field to commit objects, optionally initialized in 
+   rev-cache with the objects introduced in that commit
+ - tweak of object generation to take advantage of the 'unique' field
+ - more fluid handling of damaged cache slices
+ - numerous tests for both features from the previous patch, and the 
+integration's integrity
 
-The traversal mechanism in rev-cache is updated to reflect the limiting methods used in rev-list.  Tests for coagulation and index generation are included, in addition to several verifying the correctness of integration.
+'Integration' is rather broad -- a more detailed description follows for each 
+aspect:
+ - rev-cache
+the traversal mechanism is updated to handle many of the non-prune options 
+rev-list does (date limiting, slop-handling, etc.), and is adjusted to allow 
+for non-fatal cache-traversal failures.
+
+ - revision walker
+both limited and unlimited traversal attempt to use the cache when possible, 
+smoothly falling back if it's not.
+
+ - list-objects
+object listing does not recurse into cached trees, and has been adjusted to 
+guarantee commit-tag-tree-blob ordering.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
