@@ -42,7 +42,7 @@ struct index_header_ondisk {
 
 struct index_entry {
 	unsigned char sha1[20];
-	unsigned is_top : 1;
+	unsigned is_start : 1;
 	unsigned cache_index : 7;
 	uint32_t pos;
 };
@@ -63,8 +63,8 @@ struct cache_slice_header {
 
 struct object_entry {
 	unsigned type : 3;
-	unsigned is_bottom : 1;
-	unsigned is_top : 1;
+	unsigned is_end : 1;
+	unsigned is_start : 1;
 	unsigned uninteresting : 1;
 	unsigned include : 1;
 	unsigned flags : 1; /* unused */
@@ -436,7 +436,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 			commit_list_insert(co, &last_objects[path]->parents);
 		
 		/* initialize commit */
-		if (!entry->is_bottom) {
+		if (!entry->is_end) {
 			co->date = ntohl(entry->date);
  			obj->flags |= ADDED | FACE_VALUE;
 		} else
@@ -452,7 +452,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 		
 		/* add to list */
 		if (!(obj->flags & UNINTERESTING) || revs->show_all) {
-			if (entry->is_bottom)
+			if (entry->is_end)
 				insert_by_date_cached(co, work, insert_cache, &insert_cache);
 			else
 				*queue = &commit_list_insert(co, *queue)->next;
@@ -726,7 +726,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 	/* initialize our self! */
 	if (!commit->indegree) {
 		commit->indegree = get_new_path();
-		object->is_top = 1;
+		object->is_start = 1;
 	}
 	
 	this_path = commit->indegree;
@@ -738,7 +738,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 	first_parent = 0;
 	for (list = commit->parents; list; list = list->next) {
 		if (list->item->object.flags & UNINTERESTING) {
-			object->is_bottom = 1;
+			object->is_end = 1;
 			continue;
 		}
 		
@@ -997,12 +997,12 @@ void init_rci(struct rev_cache_info *rci)
 }
 
 int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **tops, struct commit_list **bottoms, 
+	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
 	unsigned char *cache_sha1)
 {
 	struct commit_list *list;
 	struct rev_info therevs;
-	struct strbuf buffer, toplist, bottomlist;
+	struct strbuf buffer, startlist, endlist;
 	struct cache_slice_header head;
 	struct commit *commit;
 	unsigned char sha1[20];
@@ -1022,8 +1022,8 @@ int make_cache_slice(struct rev_cache_info *rci,
 	fd = xmkstemp(file);
 	
 	strbuf_init(&buffer, 0);
-	strbuf_init(&toplist, 0);
-	strbuf_init(&bottomlist, 0);
+	strbuf_init(&startlist, 0);
+	strbuf_init(&endlist, 0);
 	strbuf_init(&merge_paths, 0);
 	strbuf_init(&split_paths, 0);
 	g_buffer = &buffer;
@@ -1033,10 +1033,10 @@ int make_cache_slice(struct rev_cache_info *rci,
 		init_revisions(revs, 0);
 		
 		/* we're gonna assume no one else has already traversed this... */
-		for (list = *tops; list; list = list->next)
+		for (list = *starts; list; list = list->next)
 			add_pending_object(revs, &list->item->object, 0);
 		
-		for (list = *bottoms; list; list = list->next) {
+		for (list = *ends; list; list = list->next) {
 			list->item->object.flags |= UNINTERESTING;
 			add_pending_object(revs, &list->item->object, 0);
 		}
@@ -1077,10 +1077,10 @@ int make_cache_slice(struct rev_cache_info *rci,
 		
 		handle_paths(commit, &object, &merge_paths, &split_paths);
 		
-		if (object.is_bottom)
-			strbuf_add(&bottomlist, object.sha1, 20);
-		if (object.is_top)
-			strbuf_add(&toplist, object.sha1, 20);
+		if (object.is_end)
+			strbuf_add(&endlist, object.sha1, 20);
+		if (object.is_start)
+			strbuf_add(&startlist, object.sha1, 20);
 		
 		commit->indegree = 0;
 		
@@ -1120,9 +1120,9 @@ int make_cache_slice(struct rev_cache_info *rci,
 		remove_path_track(&path_track_alloc, 1);
 	
 	/* the meaning of the hash name is more or less irrelevant, it's the uniqueness that matters */
-	strbuf_add(&bottomlist, toplist.buf, toplist.len);
+	strbuf_add(&endlist, startlist.buf, startlist.len);
 	git_SHA1_Init(&ctx);
-	git_SHA1_Update(&ctx, bottomlist.buf, bottomlist.len);
+	git_SHA1_Update(&ctx, endlist.buf, endlist.len);
 	git_SHA1_Final(sha1, &ctx);
 	
 	/* now actually initialize header */
@@ -1154,8 +1154,8 @@ int make_cache_slice(struct rev_cache_info *rci,
 	if (cache_sha1)
 		hashcpy(cache_sha1, sha1);
 	
-	strbuf_release(&bottomlist);
-	strbuf_release(&toplist);
+	strbuf_release(&endlist);
+	strbuf_release(&startlist);
 	
 	return 0;
 }
@@ -1275,8 +1275,8 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		if (object_entry->type != OBJ_COMMIT)
 			continue;
 		
-		/* don't include bottoms; otherwise we'll find ourselves in loops */
-		if (object_entry->is_bottom)
+		/* don't include ends; otherwise we'll find ourselves in loops */
+		if (object_entry->is_end)
 			continue;
 		
 		/* handle index duplication
@@ -1291,7 +1291,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		} else
 			entry = search_index(object_entry->sha1);
 		
-		if (entry && !object_entry->is_top)
+		if (entry && !object_entry->is_start)
 			continue;
 		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-idx_map = offset, so cast is valid) */
 			entry = IE_CAST(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
@@ -1300,7 +1300,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		
 		memset(entry, 0, sizeof(index_entry));
 		hashcpy(entry->sha1, object_entry->sha1);
-		entry->is_top = object_entry->is_top;
+		entry->is_start = object_entry->is_start;
 		entry->cache_index = cache_index;
 		entry->pos = htonl(pos);
 		
@@ -1341,8 +1341,8 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 }
 
 
-/* add top-commits from each cache slice (uninterestingness will be propogated) */
-void tops_from_slices(struct rev_info *revs, unsigned int flags)
+/* add start-commits from each cache slice (uninterestingness will be propogated) */
+void starts_from_slices(struct rev_info *revs, unsigned int flags)
 {
 	struct commit *commit;
 	int i;
@@ -1356,7 +1356,7 @@ void tops_from_slices(struct rev_info *revs, unsigned int flags)
 	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
 		struct index_entry *entry = IE_CAST(idx_map + i);
 		
-		if (!entry->is_top)
+		if (!entry->is_start)
 			continue;
 		
 		commit = lookup_commit(entry->sha1);
