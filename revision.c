@@ -133,7 +133,7 @@ void mark_parents_uninteresting(struct commit *commit)
 static void add_pending_object_with_mode(struct rev_info *revs, struct object *obj, const char *name, unsigned mode)
 {
 	if (revs->no_walk && (obj->flags & UNINTERESTING))
-		die("object ranges do not make sense when not walking revisions");
+		revs->no_walk = 0;
 	if (revs->reflog_info && obj->type == OBJ_COMMIT &&
 			add_reflog_for_walk(revs->reflog_info,
 				(struct commit *)obj, name))
@@ -673,7 +673,7 @@ static int limit_list(struct rev_info *revs)
 				if (revs->show_all)
 					p = &commit_list_insert(commit, p)->next;
 				slop = still_interesting(list, date, slop);
-				if (slop)
+				if (slop > 0)
 					continue;
 				/* If showing all, add the whole pending list to the end */
 				if (revs->show_all)
@@ -830,6 +830,8 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 		revs->diffopt.prefix = prefix;
 		revs->diffopt.prefix_length = strlen(prefix);
 	}
+	
+	init_rci(&revs->rev_cache_info);
 }
 
 static void add_pending_commit_list(struct rev_info *revs,
@@ -1094,6 +1096,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->show_all = 1;
 	} else if (!strcmp(arg, "--remove-empty")) {
 		revs->remove_empty_trees = 1;
+	} else if (!strcmp(arg, "--merges")) {
+		revs->merges_only = 1;
 	} else if (!strcmp(arg, "--no-merges")) {
 		revs->no_merges = 1;
 	} else if (!strcmp(arg, "--boundary")) {
@@ -1387,6 +1391,11 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, const ch
 	if (revs->reflog_info && revs->graph)
 		die("cannot combine --walk-reflogs with --graph");
 
+	/* limits on caching
+	 * todo: implement this functionality */
+	if (revs->prune || revs->diff)
+		revs->dont_cache_me = 1;
+
 	return left;
 }
 
@@ -1669,6 +1678,8 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 {
 	if (!opt->grep_filter.pattern_list)
 		return 1;
+	if (!commit->object.parsed)
+		parse_commit(commit);
 	return grep_buffer(&opt->grep_filter,
 			   NULL, /* we say nothing, not even filename */
 			   commit->buffer, strlen(commit->buffer));
@@ -1692,6 +1703,8 @@ enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit)
 	if (revs->min_age != -1 && (commit->date > revs->min_age))
 		return commit_ignore;
 	if (revs->no_merges && commit->parents && commit->parents->next)
+		return commit_ignore;
+	if (revs->merges_only && !(commit->parents && commit->parents->next))
 		return commit_ignore;
 	if (!commit_match(commit, revs))
 		return commit_ignore;
@@ -1738,7 +1751,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				continue;
 			
 			if (!revs->dont_cache_me) {
-				struct commit_list *work, **workp;
+				struct commit_list *queue = 0, **queuep = &queue;;
 				unsigned char *cache_sha1;
 				
 				if (obj->flags & ADDED)
@@ -1746,18 +1759,20 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				
 				cache_sha1 = get_cache_slice(commit);
 				if (cache_sha1) {
-					/* we want to attach queue to the end of revs->commits */
-					work = revs->commits;
-					while (work && work->next)
-						work = work->next;
-					
-					if (work)
-						workp = &work->next;
-					else
-						workp = &revs->commits;
-					
-					if (!traverse_cache_slice(revs, cache_sha1, commit, 0, 0, &workp, &work))
+					if (!traverse_cache_slice(revs, cache_sha1, commit, 0, 0, &queuep, &revs->commits)) {
+						struct commit_list *work = revs->commits;
+						
+						/* attach queue to end of ->commits */
+						while (work && work->next)
+							work = work->next;
+						
+						if (work)
+							work->next = queue;
+						else
+							revs->commits = queue;
+						
 						goto skip_parenting;
+					}
 				}
 			}
 			

@@ -385,6 +385,8 @@ AC_SUBST(NO_EXPAT)
 # some Solaris installations).
 # Define NO_ICONV if neither libc nor libiconv support iconv.
 
+if test -z "$NO_ICONV"; then
+
 GIT_STASH_FLAGS($ICONVDIR)
 
 AC_DEFUN([ICONVTEST_SRC], [
@@ -431,6 +433,12 @@ GIT_UNSTASH_FLAGS($ICONVDIR)
 AC_SUBST(NEEDS_LIBICONV)
 AC_SUBST(NO_ICONV)
 
+if test -n "$NO_ICONV"; then
+    NEEDS_LIBICONV=
+fi
+
+fi
+
 #
 # Define NO_DEFLATE_BOUND if deflateBound is missing from zlib.
 
@@ -476,6 +484,12 @@ AC_CHECK_LIB([resolv], [hstrerror],
 [NEEDS_RESOLV=YesPlease])
 AC_SUBST(NEEDS_RESOLV)
 test -n "$NEEDS_RESOLV" && LIBS="$LIBS -lresolv"
+
+AC_CHECK_LIB([gen], [basename],
+[NEEDS_LIBGEN=],
+[NEEDS_LIBGEN=YesPlease])
+AC_SUBST(NEEDS_LIBGEN)
+test -n "$NEEDS_LIBGEN" && LIBS="$LIBS -lgen"
 
 ## Checks for header files.
 AC_MSG_NOTICE([CHECKS for header files])

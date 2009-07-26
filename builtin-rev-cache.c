@@ -3,36 +3,42 @@
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
+#include "list-objects.h"
+
+#define DEFAULT_IGNORE_SLICE_SIZE		5000000 /* in bytes */
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
 {
 	struct rev_info revs;
 	struct rev_cache_info rci;
-	const char *args[5];
-	char dostdin = 0, do_all = 0;
+	char dostdin = 0;
 	unsigned int flags = 0;
-	int i, argn = 0;
+	int i, retval;
+	unsigned char cache_sha1[20];
 	
 	init_revisions(&revs, 0);
 	init_rci(&rci);
-	
-	args[argn++] = "rev-list";
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
 		else if (!strcmp(argv[i], "--fresh"))
-			ends_from_slices(&revs, UNINTERESTING);
+			tops_from_slices(&revs, UNINTERESTING, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--legs"))
 			rci.legs = 1;
 		else if (!strcmp(argv[i], "--noobjects"))
 			rci.objects = 0;
-		else if (!strcmp(argv[i], "--all"))
-			do_all = 1;
-		else
+		else if (!strcmp(argv[i], "--all")) {
+			const char *args[2];
+			int argn = 0;
+			
+			args[argn++] = "rev-list";
+			args[argn++] = "--all";
+			setup_revisions(argn, args, &revs, 0);
+		} else
 			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	
@@ -55,12 +61,50 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	if (do_all) {
-		args[argn++] = "--all";
-		setup_revisions(argn, args, &revs, 0);
+	retval = make_cache_slice(&rci, &revs, 0, 0, cache_sha1);
+	if (retval < 0)
+		return retval;
+	
+	printf("%s\n", sha1_to_hex(cache_sha1));
+	
+	return 0;
+}
+
+static void show_commit(struct commit *commit, void *data)
+{
+	printf("%s\n", sha1_to_hex(commit->object.sha1));
+}
+
+static void show_object(struct object *obj, const struct name_path *path, const char *last)
+{
+	printf("%s\n", sha1_to_hex(obj->sha1));
+}
+
+static int test_rev_list(int argc, const char *argv[])
+{
+	struct rev_info revs;
+	unsigned int flags = 0;
+	int i;
+	
+	init_revisions(&revs, 0);
+	
+	for (i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "--not"))
+			flags ^= UNINTERESTING;
+		else if (!strcmp(argv[i], "--objects"))
+			revs.tree_objects = revs.blob_objects = 1;
+		else
+			handle_revision_arg(argv[i], &revs, flags, 1);
 	}
 	
-	return make_cache_slice(&revs, 0, 0, &rci, 0);
+	setup_revisions(0, 0, &revs, 0);
+	revs.topo_order = 1;
+	revs.lifo = 1;
+	prepare_revision_walk(&revs);
+	
+	traverse_commit_list(&revs, show_commit, show_object, 0);
+	
+	return 0;
 }
 
 static int handle_walk(int argc, const char *argv[])
@@ -71,7 +115,7 @@ static int handle_walk(int argc, const char *argv[])
 	unsigned char *sha1p, *sha1pt;
 	unsigned long date = 0;
 	unsigned int flags = 0;
-	int slop = 5, i;
+	int retval, slop = 5, i;
 	
 	init_revisions(&revs, 0);
 	
@@ -107,19 +151,21 @@ static int handle_walk(int argc, const char *argv[])
 	queue = 0;
 	qp = &queue;
 	commit = pop_commit(&work);
-	printf("return value: %d\n", traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work));
+	retval = traverse_cache_slice(&revs, sha1p, commit, &date, &slop, &qp, &work);
+	if (retval < 0)
+		return retval;
 	
-	printf("queue:\n");
+	fprintf(stderr, "queue:\n");
 	while ((commit = pop_commit(&queue)) != 0) {
 		printf("%s\n", sha1_to_hex(commit->object.sha1));
 	}
 	
-	printf("work:\n");
+	fprintf(stderr, "work:\n");
 	while ((commit = pop_commit(&work)) != 0) {
 		printf("%s\n", sha1_to_hex(commit->object.sha1));
 	}
 	
-	printf("pending:\n");
+	fprintf(stderr, "pending:\n");
 	for (i = 0; i < revs.pending.nr; i++) {
 		struct object *obj = revs.pending.objects[i].item;
 		
@@ -154,19 +200,26 @@ static int handle_fuse(int argc, const char *argv[])
 			add_all = 1;
 		} else if (!strcmp(argv[i], "--noobjects")) 
 			rci.objects = 0;
-		else 
+		else if (!strncmp(argv[i], "--ignore-size", 13)) {
+			int sz = DEFAULT_IGNORE_SLICE_SIZE;
+			
+			if (argv[i][13] == '=')
+				sz = atoi(argv[i] + 14);
+			
+			rci.ignore_size = sz;
+		} else 
 			continue;
 	}
 	
 	if (!add_all)
-		ends_from_slices(&revs, 0);
+		tops_from_slices(&revs, 0, 0, 0);
 	
-	return coagulate_cache_slices(&revs, &rci);
+	return coagulate_cache_slices(&rci, &revs);
 }
 
 static int handle_index(int argc, const char *argv[])
 {
-	return regenerate_index();
+	return regenerate_cache_index(0);
 }
 
 static int handle_help(void)
@@ -175,22 +228,23 @@ static int handle_help(void)
 usage:\n\
 git-rev-cache COMMAND [options] [<commit-id>...]\n\
 commands:\n\
- add    - add revisions to the cache.  reads commit ids from stdin, \n\
-          formatted as: END END ... --not START START ...\n\
-          options:\n\
-           --all       use all branch heads as ends\n\
-           --fresh     exclude everything already in a cache slice\n\
-           --stdin     also read commit ids from stdin (same form as cmd)\n\
-           --legs      ensure branch is entirely self-contained\n\
-           --noobjects don't add non-commit objects to slice\n\
- walk   - walk a cache slice based on set of commits; formatted as add\n\
-          options:\n\
-           --objects   include non-commit objects in traversals\n\
- fuse   - coagulate cache slices into a single cache.\n\
-          options:\n\
-           --all       include all objects in repository\n\
-           --noobjects don't add non-commit objects to slice\n\
- index  - regnerate the cache index.";
+  add    - add revisions to the cache.  reads commit ids from stdin, \n\
+           formatted as: TOP TOP ... --not BOTTOM BOTTOM ...\n\
+           options:\n\
+            --all             use all branch heads as tops\n\
+            --fresh           exclude everything already in a cache slice\n\
+            --stdin           also read commit ids from stdin (same form as cmd)\n\
+            --legs            ensure branch is entirely self-contained\n\
+            --noobjects       don't add non-commit objects to slice\n\
+  walk   - walk a cache slice based on set of commits; formatted as add\n\
+           options:\n\
+           --objects          include non-commit objects in traversals\n\
+  fuse   - coagulate cache slices into a single cache.\n\
+           options:\n\
+            --all             include all objects in repository\n\
+            --noobjects       don't add non-commit objects to slice\n\
+            --ignore-size[=N] ignore slices of size >= N; defaults to ~5MB\n\
+  index  - regnerate the cache index.";
 	
 	puts(usage);
 	
@@ -219,6 +273,8 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_walk(argc, argv);
 	else if (!strcmp(arg, "index"))
 		r = handle_index(argc, argv);
+	else if (!strcmp(arg, "test"))
+		r = test_rev_list(argc, argv);
 	else
 		return handle_help();
 	
