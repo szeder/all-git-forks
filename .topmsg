@@ -6,6 +6,9 @@ Summarized, this third patch contains:
  - expansion of porcelain to accomodate non-commit objects
  - appropriate tests
 
-Objects are stored relative to the commit in which they were introduced -- commits are 'diffed' against their parents.  This will eliminate the need for tree recursion in cached commits (significantly reducing I/O), and potentially be useful to external applications.
+Objects are stored relative to the commit in which they were introduced -- 
+commits are 'diffed' against their parents.  This will eliminate the need for 
+tree recursion in cached commits (significantly reducing I/O), and potentially 
+be useful to external applications.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
