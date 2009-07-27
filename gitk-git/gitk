@@ -1911,6 +1911,7 @@ proc makewindow {} {
     global fprogitem fprogcoord lastprogupdate progupdatepending
     global rprogitem rprogcoord rownumsel numcommits
     global have_tk85
+    global oldwidth
 
     # The "mc" arguments here are purely so that xgettext
     # sees the following string as needing to be translated
@@ -2115,6 +2116,7 @@ proc makewindow {} {
     .ctop add .tf
     .ctop paneconfigure .tf -height $geometry(topheight)
     .ctop paneconfigure .tf -width $geometry(topwidth)
+    set oldwidth(.tf.histframe.pwclist) $geometry(topwidth)
 
     # now build up the bottom
     panedwindow .pwbottom -orient horizontal
@@ -2266,6 +2268,8 @@ proc makewindow {} {
     }
 
     bind .pwbottom <Configure> {resizecdetpanes %W %w}
+    set oldwidth(.pwbottom) $geometry(botwidth)
+
     pack .ctop -fill both -expand 1
     bindall <1> {selcanvline %W %x %y}
     #bindall <B1-Motion> {selcanvline %W %x %y}
@@ -2578,60 +2582,56 @@ proc savestuff {w} {
     set stuffsaved 1
 }
 
+proc charwidth {chars} {
+    global charspc
+    expr $chars * $charspc
+}
+
 proc resizeclistpanes {win w} {
+    after 5 _resizeclistpanes $win $w
+}
+
+proc _resizeclistpanes {win w} {
     global oldwidth charspc
     if {[info exists oldwidth($win)]} {
 	set s0 [$win sash coord 0]
 	set s1 [$win sash coord 1]
-	set w [expr {1.0 * $w / $charspc}]
-	if {$w < 60} {
-	    set sash0 [expr {$w/2 - 2}]
-	    set sash1 [expr {$w*5/6 - 2}]
-	} else {
-	    set sash0 [expr {1.0 * [lindex $s0 0] / $charspc}]
-	    set sash1 [expr {1.0 * [lindex $s1 0] / $charspc}]
-	    set factor [expr {1.0 * $sash0 / $sash1}]
 
-	    set sash1 [expr {$sash1 + ($w - $oldwidth($win))}]
-	    set sash0 [expr {$factor * $sash1}]
+	set sash0 [lindex $s0 0]
+	set sash1 [lindex $s1 0]
+	set factor [expr {1.0 * $sash0 / $sash1}]
 
-	    if {$sash0 < 30} {
-		set sash0 30
-	    }
-	    if {$sash1 < $sash0 + 20} {
-		set sash1 [expr {$sash0 + 20}]
-	    }
-	    if {$sash1 > $w - 10} {
-		set sash1 [expr {$w - 10}]
-		if {$sash0 > $sash1 - 20} {
-		    set sash0 [expr {$sash1 - 20}]
-		}
+	set sash1 [expr {$sash1 + ($w - $oldwidth($win))}]
+	set sash0 [expr {$factor * $sash1}]
+
+	if {$sash0 < [charwidth 30]} {
+	    set sash0 [charwidth 30]
+	}
+	if {$sash1 < $sash0 + [charwidth 20]} {
+	    set sash1 [expr {$sash0 + [charwidth 20]}]
+	}
+	if {$sash1 > $w - [charwidth 10]} {
+	    set sash1 [expr {$w - [charwidth 10]}]
+	    if {$sash0 > $sash1 - [charwidth 20]} {
+		set sash0 [expr {$sash1 - [charwidth 20]}]
 	    }
 	}
-	$win sash place 0 [expr {int($charspc * $sash0)}] [lindex $s0 1]
-	$win sash place 1 [expr {int($charspc * $sash1)}] [lindex $s1 1]
+	$win sash place 0 [expr {int($sash0)}] [lindex $s0 1]
+	$win sash place 1 [expr {int($sash1)}] [lindex $s1 1]
     }
     set oldwidth($win) $w
 }
 
 proc resizecdetpanes {win w} {
-    global oldwidth charspc
+    after 5 _resizecdetpanes $win $w
+}
+
+proc _resizecdetpanes {win w} {
+    global oldwidth
     if {[info exists oldwidth($win)]} {
 	set s0 [$win sash coord 0]
-	set w [expr {1.0 * $w / $charspc}]
-	if {$w < 60} {
-	    set sash0 [expr {$w*3/4 - 2}]
-	} else {
-	    set sash0 [expr {1.0 * [lindex $s0 0] / $charspc + ($w - $oldwidth($win))}]
-
-	    if {$sash0 < 45} {
-		set sash0 45
-	    }
-	    if {$sash0 > $w - 15} {
-		set sash0 [expr {$w - 15}]
-	    }
-	}
-	$win sash place 0 [expr {int($charspc * $sash0)}] [lindex $s0 1]
+	set sash0 [expr {[lindex $s0 0] + ($w - $oldwidth($win))}]
+	$win sash place 0 $sash0 [lindex $s0 1]
     }
     set oldwidth($win) $w
 }
