@@ -1113,6 +1113,18 @@ sub ssl_verify_params {
 	}
 }
 
+sub file_name_is_absolute {
+	my ($path) = @_;
+
+	# msys does not grok DOS drive-prefixes
+	if ($^O eq 'msys') {
+		return ($path =~ m#^/# || $path =~ m#[a-zA-Z]\:#)
+	}
+
+	require File::Spec::Functions;
+	return File::Spec::Functions::file_name_is_absolute($path);
+}
+
 # Returns 1 if the message was sent, and 0 otherwise.
 # In actuality, the whole program dies when there
 # is an error sending a message.
@@ -1197,7 +1209,7 @@ X-Mailer: git-send-email $gitversion
 
 	if ($dry_run) {
 		# We don't want to send the email.
-	} elsif ($smtp_server =~ m#^/#) {
+	} elsif (file_name_is_absolute($smtp_server)) {
 		my $pid = open my $sm, '|-';
 		defined $pid or die $!;
 		if (!$pid) {
