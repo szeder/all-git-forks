@@ -51,7 +51,7 @@ test_expect_success "Ray's example with -w" 'test_cmp expect out'
 git diff -b > out
 test_expect_success "Ray's example with -b" 'test_cmp expect out'
 
-tr 'Q' '\015' << EOF > x
+test-tr 'Q' '\015' << EOF > x
 whitespace at beginning
 whitespace change
 whitespace in the middle
@@ -62,7 +62,7 @@ EOF
 
 git update-index x
 
-tr '_' ' ' << EOF > x
+test-tr '_' ' ' << EOF > x
 	whitespace at beginning
 whitespace 	 change
 white space in the middle
@@ -71,7 +71,7 @@ unchanged line
 CR at end
 EOF
 
-tr 'Q_' '\015 ' << EOF > expect
+test-tr 'Q_' '\015 ' << EOF > expect
 diff --git a/x b/x
 index d99af23..8b32fb5 100644
 --- a/x
@@ -103,7 +103,7 @@ test_expect_success 'another test, with -w --ignore-space-at-eol' 'test_cmp expe
 git diff -w -b --ignore-space-at-eol > out
 test_expect_success 'another test, with -w -b --ignore-space-at-eol' 'test_cmp expect out'
 
-tr 'Q' '\015' << EOF > expect
+test-tr 'Q' '\015' << EOF > expect
 diff --git a/x b/x
 index d99af23..8b32fb5 100644
 --- a/x

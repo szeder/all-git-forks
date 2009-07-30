@@ -65,7 +65,7 @@ tabs	,\" (dq) and spaces' >expected
 "
 
 test_expect_success TABS_IN_FILENAMES 'git ls-files -z with-funny' \
-	'git ls-files -z | perl -pe y/\\000/\\012/ >current &&
+	'git ls-files -z | test-tr "\\000" "\\012" >current &&
 	test_cmp expected current'
 
 test_expect_success TABS_IN_FILENAMES 'setup expect' '
@@ -103,11 +103,11 @@ tabs	,\" (dq) and spaces' >expected
 "
 
 test_expect_success TABS_IN_FILENAMES 'git diff-index -z with-funny' \
-	'git diff-index -z --name-status $t0 | perl -pe y/\\000/\\012/ >current &&
+	'git diff-index -z --name-status $t0 | test-tr "\\000" "\\012" >current &&
 	test_cmp expected current'
 
 test_expect_success TABS_IN_FILENAMES 'git diff-tree -z with-funny' \
-	'git diff-tree -z --name-status $t0 $t1 | perl -pe y/\\000/\\012/ >current &&
+	'git diff-tree -z --name-status $t0 $t1 | test-tr "\\000" "\\012" >current &&
 	test_cmp expected current'
 
 test_expect_success TABS_IN_FILENAMES 'setup expect' '

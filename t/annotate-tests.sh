@@ -104,7 +104,7 @@ test_expect_success \
 
 test_expect_success \
     'an incomplete line added' \
-    'echo "incomplete" | tr -d "\\012" >>file &&
+    'echo "incomplete" | test-tr -d "\\012" >>file &&
     GIT_AUTHOR_NAME="C" git commit -a -m "Incomplete"'
 
 test_expect_success \
@@ -118,7 +118,7 @@ test_expect_success \
 	cat file.orig &&
 	echo
     } | sed -e "s/^3A/99/" -e "/^1A/d" -e "/^incomplete/d" > file &&
-    echo "incomplete" | tr -d "\\012" >>file &&
+    echo "incomplete" | test-tr -d "\\012" >>file &&
     GIT_AUTHOR_NAME="D" git commit -a -m "edit"'
 
 test_expect_success \

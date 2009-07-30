@@ -40,7 +40,7 @@ check_entries () {
 	then
 		>expected
 	else
-		printf '%s\n' "$2" | tr '|' '\012' >expected
+		printf '%s\n' "$2" | test-tr '|' '\012' >expected
 	fi
 	test_cmp expected actual
 }

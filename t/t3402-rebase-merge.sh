@@ -30,11 +30,11 @@ test_expect_success setup '
 	git update-index --force-remove original &&
 	git commit -a -m"side renames and edits." &&
 
-	tr "[a-z]" "[A-Z]" <original >newfile &&
+	test-tr a-z A-Z <original >newfile &&
 	git add newfile &&
 	git commit -a -m"side edits further." &&
 
-	tr "[a-m]" "[A-M]" <original >newfile &&
+	test-tr a-m A-M <original >newfile &&
 	rm -f original &&
 	git commit -a -m"side edits once again." &&
 

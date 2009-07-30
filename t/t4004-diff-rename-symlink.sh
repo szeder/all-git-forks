@@ -14,7 +14,7 @@ by an edit for them.
 
 test_expect_success SYMLINKS \
     'prepare reference tree' \
-    'echo xyzzy | tr -d '\\\\'012 >yomin &&
+    'echo xyzzy | test-tr -d "\012" >yomin &&
      ln -s xyzzy frotz &&
     git update-index --add frotz yomin &&
     tree=$(git write-tree) &&

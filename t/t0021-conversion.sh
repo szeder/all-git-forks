@@ -6,7 +6,7 @@ test_description='blob conversion via gitattributes'
 
 cat <<EOF >rot13.sh
 #!$SHELL_PATH
-tr \
+test-tr \
   'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' \
   'nopqrstuvwxyzabcdefghijklmNOPQRSTUVWXYZABCDEFGHIJKLM'
 EOF

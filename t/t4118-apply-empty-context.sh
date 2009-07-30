@@ -18,13 +18,13 @@ test_expect_success setup '
 	cat file1 >file1.orig &&
 	{
 		cat file1 &&
-		echo Q | tr -d "\\012"
+		echo Q | test-tr -d "\012"
 	} >file2 &&
 	cat file2 >file2.orig &&
 	git add file1 file2 &&
 	sed -e "/^B/d" <file1.orig >file1 &&
 	cat file1 > file2 &&
-	echo Q | tr -d "\\012" >>file2 &&
+	echo Q | test-tr -d "\\012" >>file2 &&
 	cat file1 >file1.mods &&
 	cat file2 >file2.mods &&
 	git diff |

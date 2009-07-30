@@ -160,8 +160,8 @@ test_expect_success 'MERGE_ZEALOUS simplifies non-conflicts' '
 
 '
 
-sed -e 's/deerit./&%%%%/' -e "s/locavit,/locavit;/"< new6.txt | tr '%' '\012' > new8.txt
-sed -e 's/deerit./&%%%%/' -e "s/locavit,/locavit --/" < new7.txt | tr '%' '\012' > new9.txt
+sed -e 's/deerit./&%%%%/' -e "s/locavit,/locavit;/"< new6.txt | test-tr '%' '\012' > new8.txt
+sed -e 's/deerit./&%%%%/' -e "s/locavit,/locavit --/" < new7.txt | test-tr '%' '\012' > new9.txt
 
 test_expect_success 'ZEALOUS_ALNUM' '
 

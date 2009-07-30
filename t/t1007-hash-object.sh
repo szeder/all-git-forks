@@ -102,7 +102,7 @@ test_expect_success 'git hash-object --stdin file1 <file0 first operates on file
 '
 
 test_expect_success 'check that appropriate filter is invoke when --path is used' '
-	echo fooQ | tr Q "\\015" >file0 &&
+	echo fooQ | test-tr Q "\\015" >file0 &&
 	cp file0 file1 &&
 	echo "file0 -crlf" >.gitattributes &&
 	echo "file1 crlf" >>.gitattributes &&
@@ -122,7 +122,7 @@ test_expect_success 'check that appropriate filter is invoke when --path is used
 '
 
 test_expect_success 'check that --no-filters option works' '
-	echo fooQ | tr Q "\\015" >file0 &&
+	echo fooQ | test-tr Q "\\015" >file0 &&
 	cp file0 file1 &&
 	echo "file0 -crlf" >.gitattributes &&
 	echo "file1 crlf" >>.gitattributes &&

@@ -243,7 +243,7 @@ check_verify_failure 'disallow spaces in tag email' \
 ############################################################
 # 17. disallow missing tag timestamp
 
-tr '_' ' ' >tag.sig <<EOF
+test-tr '_' ' ' >tag.sig <<EOF
 object $head
 type commit
 tag mytag
