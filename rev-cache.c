@@ -1060,8 +1060,6 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	} else
 		cache_index = i;
 	
-	hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
-	
 	i = sizeof(struct cache_slice_header); /* offset */
 	max_date = idx_head.max_date;
 	while (i < size) {
