@@ -222,7 +222,7 @@ test_expect_success 'test rev-list traversal (unlimited) (corrupt index)' '
 	test -z `$sha1diff list proper_commit_list`
 '
 
-#todo: test --ignore-size in fuse
+#test --ignore-size in fuse?
 
 test_done
 
