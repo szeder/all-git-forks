@@ -1,21 +1,9 @@
 From: Nick Edelen <sirnot@gmail.com>
 Subject: [PATCH] t/revcache/docs
 
-Traversing objects is currently very costly, as every commit and tree must be 
-loaded and parsed.  Much time and energy could be saved by caching metadata and 
-topological info in an efficient, easily accessible manner.  Furthermore, this 
-could improve git's interfacing potential, by providing a condensed summary of 
-a repository's commit tree.
-
-This is the first of a series to implement such a revision caching mechanism, 
-aptly named rev-cache.  The series will provide:
- - a core API to manipulate and traverse caches
- - an integration into the internal revision walker
- - a porcelain front-end providing access to users and (shell) applications
- - a series of tests to verify/demonstrate correctness
- - documentation of the API, porcelain and core concepts
-
-In this particular patch provides only the documentation: a man page on the 
-porcelain, and a discussion on the API and mechanics in technical/
+Before any code is introduced the full documentation is put forth.  This 
+provides a man page for the porcelain, and a technical doc in technical/.  The 
+latter describes the API, and discusses rev-cache's design, file format and 
+mechanics.
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
