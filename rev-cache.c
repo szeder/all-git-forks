@@ -1016,6 +1016,8 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	} else {
 		/* not an update */
 		memset(&idx_head, 0, sizeof(struct index_header));
+		idx_caches = 0;
+		
 		strcpy(idx_head.signature, "REVINDEX");
 		idx_head.version = SUPPORTED_REVINDEX_VERSION;
 		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(uint32_t);
