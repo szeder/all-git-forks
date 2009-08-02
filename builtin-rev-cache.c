@@ -181,7 +181,7 @@ static int handle_fuse(int argc, const char *argv[])
 
 static int handle_index(int argc, const char *argv[])
 {
-	return regenerate_cache_index();
+	return regenerate_cache_index(0);
 }
 
 static int handle_help(void)

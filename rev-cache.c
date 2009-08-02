@@ -1462,7 +1462,7 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 			int j;
 			
 			for (j = 0; j < n; j++)
-				if (!hashcmp(idx_head.cache_sha1s + entry->cache_index * 20, which + j * 20))
+				if (!hashcmp(idx_caches + entry->cache_index * 20, which + j * 20))
 					break;
 			
 			if (j == n)
