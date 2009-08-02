@@ -16,28 +16,10 @@ struct index_header {
 	unsigned char version;
 	uint32_t ofs_objects;
 	
-	uint32_t objects;
-	unsigned char caches;
+	uint32_t object_nr;
+	unsigned char cache_nr;
+	
 	uint32_t max_date;
-	
-	/* allocated space may be bigger than necessary for potential of 
-	easy updating (if, eg., list is simply loaded into a hashmap) */
-	unsigned char caches_buffer;
-	unsigned char *cache_sha1s;
-};
-
-struct index_header_ondisk {
-	char signature[8]; /* REVINDEX */
-	unsigned char version;
-	uint32_t ofs_objects;
-	
-	uint32_t objects;
-	unsigned char caches;
-	uint32_t max_date;
-	
-	/* allocated space may be bigger than necessary for potential of 
-	easy updating (if, eg., list is simply loaded into a hashmap) */
-	unsigned char caches_buffer;
 };
 
 struct index_entry {
@@ -54,7 +36,7 @@ struct cache_slice_header {
 	unsigned char version;
 	uint32_t ofs_objects;
 	
-	uint32_t objects;
+	uint32_t object_nr;
 	uint16_t path_nr;
 	uint32_t size;
 	
@@ -88,6 +70,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map = 0;
 static int idx_size;
 static struct index_header idx_head;
+static unsigned char *idx_caches = 0;
 static char no_idx = 0;
 
 static struct strbuf *g_buffer;
@@ -110,29 +93,28 @@ static struct strbuf *g_buffer;
 
 /* initialization */
 
-static int get_index_head(unsigned char *map, int len, struct index_header *head, uint32_t *fanout)
+static int get_index_head(unsigned char *map, int len, struct index_header *head, uint32_t *fanout, unsigned char **caches)
 {
-	struct index_header_ondisk whead;
-	int i, index = sizeof(struct index_header_ondisk);
+	struct index_header whead;
+	int i, index = sizeof(struct index_header);
 	
-	memcpy(&whead, map, sizeof(struct index_header_ondisk));
+	memcpy(&whead, map, sizeof(struct index_header));
 	if (memcmp(whead.signature, "REVINDEX", 8) || whead.version > SUPPORTED_REVINDEX_VERSION)
 		return -1;
 	
 	memcpy(head->signature, "REVINDEX", 8);
 	head->version = whead.version;
 	head->ofs_objects = ntohl(whead.ofs_objects);
-	head->objects = ntohl(whead.objects);
-	head->caches = whead.caches;
+	head->object_nr = ntohl(whead.object_nr);
+	head->cache_nr = whead.cache_nr;
 	head->max_date = ntohl(whead.max_date);
-	head->caches_buffer = whead.caches_buffer;
 	
-	if (len < index + head->caches_buffer * 20 + (0x100) * sizeof(uint32_t))
+	if (len < index + head->cache_nr * 20 + 0x100 * sizeof(uint32_t))
 		return -2;
 	
-	head->cache_sha1s = xmalloc(head->caches_buffer * 20);
-	memcpy(head->cache_sha1s, map + index, head->caches * 20);
-	index += head->caches_buffer * 20;
+	*caches = xmalloc(head->cache_nr * 20);
+	memcpy(*caches, map + index, head->cache_nr * 20);
+	index += head->cache_nr * 20;
 	
 	memcpy(fanout, map + index, 0x100 * sizeof(uint32_t));
 	for (i = 0; i <= 0xff; i++)
@@ -146,7 +128,7 @@ static int get_index_head(unsigned char *map, int len, struct index_header *head
 static void cleanup_cache_slices(void)
 {
 	if (idx_map) {
-		free(idx_head.cache_sha1s);
+		free(idx_caches);
 		munmap(idx_map, idx_size);
 		idx_map = 0;
 	}
@@ -161,7 +143,7 @@ static int init_index(void)
 	fd = open(git_path("rev-cache/index"), O_RDONLY);
 	if (fd == -1 || fstat(fd, &fi))
 		goto end;
-	if (fi.st_size < sizeof(struct index_header_ondisk))
+	if (fi.st_size < sizeof(struct index_header))
 		goto end;
 	
 	idx_size = fi.st_size;
@@ -169,7 +151,7 @@ static int init_index(void)
 	close(fd);
 	if (idx_map == MAP_FAILED)
 		goto end;
-	if (get_index_head(idx_map, fi.st_size, &idx_head, fanout))
+	if (get_index_head(idx_map, fi.st_size, &idx_head, fanout, &idx_caches))
 		goto end;
 	
 	atexit(cleanup_cache_slices);
@@ -238,8 +220,8 @@ unsigned char *get_cache_slice(struct commit *commit)
 	
 	ie = search_index(commit->object.sha1);
 	
-	if (ie && ie->cache_index < idx_head.caches)
-		return idx_head.cache_sha1s + ie->cache_index * 20;
+	if (ie && ie->cache_index < idx_head.cache_nr)
+		return idx_caches + ie->cache_index * 20;
 	
 	return 0;
 }
@@ -269,8 +251,9 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 		struct commit *co;
 		int t;
 		
+		/* is this in our cache slice? */
 		iep = search_index(obj->sha1);
-		if (!iep || hashcmp(idx_head.cache_sha1s + iep->cache_index * 20, head->sha1)) {
+		if (!iep || hashcmp(idx_caches + iep->cache_index * 20, head->sha1)) {
 			prev = wp;
 			wp = wp->next;
 			wpp = &wp;
@@ -473,7 +456,7 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	
 	memcpy(head, map, sizeof(struct cache_slice_header));
 	head->ofs_objects = ntohl(head->ofs_objects);
-	head->objects = ntohl(head->objects);
+	head->object_nr = ntohl(head->object_nr);
 	head->size = ntohl(head->size);
 	head->path_nr = ntohs(head->path_nr);
 	
@@ -929,7 +912,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	strcpy(head.signature, "REVCACHE");
 	head.version = SUPPORTED_REVCACHE_VERSION;
 	
-	head.objects = htonl(object_nr);
+	head.object_nr = htonl(object_nr);
 	head.size = htonl(ntohl(head.ofs_objects) + total_sz);
 	head.path_nr = htons(path_nr);
 	hashcpy(head.sha1, sha1);
@@ -968,7 +951,7 @@ static int index_sort_hash(const void *a, const void *b)
 
 static int write_cache_index(struct strbuf *body)
 {
-	struct index_header_ondisk whead;
+	struct index_header whead;
 	struct lock_file *lk;
 	int fd, i;
 	
@@ -990,13 +973,12 @@ static int write_cache_index(struct strbuf *body)
 	memcpy(whead.signature, "REVINDEX", 8);
 	whead.version = idx_head.version;
 	whead.ofs_objects = htonl(idx_head.ofs_objects);
-	whead.objects = htonl(idx_head.objects);
-	whead.caches = idx_head.caches;
+	whead.object_nr = htonl(idx_head.object_nr);
+	whead.cache_nr = idx_head.cache_nr;
 	whead.max_date = htonl(idx_head.max_date);
-	whead.caches_buffer = idx_head.caches_buffer;
 	
-	write(fd, &whead, sizeof(struct index_header_ondisk));
-	write_in_full(fd, idx_head.cache_sha1s, idx_head.caches_buffer * 20);
+	write(fd, &whead, sizeof(struct index_header));
+	write_in_full(fd, idx_caches, idx_head.cache_nr * 20);
 	
 	for (i = 0; i <= 0xff; i++)
 		fanout[i] = htonl(fanout[i]);
@@ -1036,27 +1018,20 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		memset(&idx_head, 0, sizeof(struct index_header));
 		strcpy(idx_head.signature, "REVINDEX");
 		idx_head.version = SUPPORTED_REVINDEX_VERSION;
-		idx_head.ofs_objects = sizeof(struct index_header_ondisk) + 0x100 * sizeof(uint32_t);
+		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(uint32_t);
 	}
 	
 	/* are we remaking a slice? */
-	for (i = 0; i < idx_head.caches; i++)
-		if (!hashcmp(idx_head.cache_sha1s + i * 20, cache_sha1))
+	for (i = 0; i < idx_head.cache_nr; i++)
+		if (!hashcmp(idx_caches + i * 20, cache_sha1))
 			break;
 	
-	if (i == idx_head.caches) {
-		cache_index = idx_head.caches++;
-		if (idx_head.caches >= idx_head.caches_buffer) {
-			/* this whole dance is a bit useless currently, because we re-write everything regardless, 
-			 * but later on we might decide to use a hashmap or something else which does not require 
-			 * any particular on-disk format.  that would free us up to simply append new objects and 
-			 * tweak the header accordingly */
-			idx_head.caches_buffer += 20;
-			idx_head.cache_sha1s = xrealloc(idx_head.cache_sha1s, idx_head.caches_buffer * 20);
-			idx_head.ofs_objects += 20 * 20;
-		}
+	if (i == idx_head.cache_nr) {
+		cache_index = idx_head.cache_nr++;
+		idx_head.ofs_objects += 20;
 		
-		hashcpy(idx_head.cache_sha1s + cache_index * 20, cache_sha1);
+		idx_caches = xrealloc(idx_caches, idx_head.cache_nr * 20);
+		hashcpy(idx_caches + cache_index * 20, cache_sha1);
 	} else
 		cache_index = i;
 	
@@ -1104,7 +1079,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		
 		if (entry == &index_entry) {
 			strbuf_add(&buffer, entry, sizeof(index_entry));
-			idx_head.objects++;
+			idx_head.object_nr++;
 		}
 		
 	}
@@ -1133,7 +1108,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	
 	/* idx_map is unloaded without cleanup_cache_slices(), so regardless of previous index existence 
 	 * we can still free this up */
-	free(idx_head.cache_sha1s);
+	free(idx_caches);
 	
 	return 0;
 }
