@@ -543,7 +543,6 @@ enum rebase_setup_type {
 };
 
 enum push_default_type {
-	PUSH_DEFAULT_UNSPECIFIED = -1,
 	PUSH_DEFAULT_NOTHING = 0,
 	PUSH_DEFAULT_MATCHING,
 	PUSH_DEFAULT_TRACKING,
@@ -560,6 +559,8 @@ enum object_creation_mode {
 };
 
 extern enum object_creation_mode object_creation_mode;
+
+extern int grafts_replace_parents;
 
 #define GIT_REPO_VERSION 0
 extern int repository_format_version;

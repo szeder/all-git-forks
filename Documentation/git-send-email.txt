@@ -142,8 +142,9 @@ user is prompted for a password while the input is masked for privacy.
 
 --smtp-server-port=<port>::
 	Specifies a port different from the default port (SMTP
-	servers typically listen to smtp port 25 and ssmtp port
-	465); symbolic port names (e.g. "submission" instead of 465)
+	servers typically listen to smtp port 25, but may also listen to
+	submission port 587, or the common SSL smtp port 465);
+	symbolic port names (e.g. "submission" instead of 587)
 	are also accepted. The port can also be set with the
 	'sendemail.smtpserverport' configuration variable.
 
@@ -212,11 +213,22 @@ specified, as well as 'body' if --no-signed-off-cc is specified.
 	value; if that is unspecified, default to --no-suppress-from.
 
 --[no-]thread::
-	If this is set, the In-Reply-To header will be set on each email sent.
-	If disabled with "--no-thread", no emails will have the In-Reply-To
-	header set, unless specified with --in-reply-to.
-	Default is the value of the 'sendemail.thread' configuration
-	value; if that is unspecified, default to --thread.
+	If this is set, the In-Reply-To and References headers will be
+	added to each email sent.  Whether each mail refers to the
+	previous email (`deep` threading per 'git format-patch'
+	wording) or to the first email (`shallow` threading) is
+	governed by "--[no-]chain-reply-to".
++
+If disabled with "--no-thread", those headers will not be added
+(unless specified with --in-reply-to).  Default is the value of the
+'sendemail.thread' configuration value; if that is unspecified,
+default to --thread.
++
+It is up to the user to ensure that no In-Reply-To header already
+exists when 'git send-email' is asked to add it (especially note that
+'git format-patch' can be configured to do the threading itself).
+Failure to do so may not produce the expected result in the
+recipient's MUA.
 
 
 Administering
