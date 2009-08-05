@@ -67,11 +67,11 @@ struct object_entry {
 /* list resembles pack index format */
 static uint32_t fanout[0xff + 2];
 
-static unsigned char *idx_map = 0;
+static unsigned char *idx_map;
 static int idx_size;
 static struct index_header idx_head;
-static unsigned char *idx_caches = 0;
-static char no_idx = 0;
+static unsigned char *idx_caches;
+static char no_idx;
 
 static struct strbuf *g_buffer;
 
@@ -562,11 +562,11 @@ struct path_track {
 	struct path_track *next, *prev;
 };
 
-static unsigned char *paths = 0;
-static int path_nr = 1, path_sz = 0;
+static unsigned char *paths;
+static int path_nr = 1, path_sz;
 
-static struct path_track *children_to_close = 0, *paths_to_dec = 0;
-static struct path_track *path_track_alloc = 0;
+static struct path_track *children_to_close, *paths_to_dec;
+static struct path_track *path_track_alloc;
 
 #define PATH_IN_USE			0x80 /* biggest bit we can get as a char */
 
