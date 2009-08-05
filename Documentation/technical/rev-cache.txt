@@ -6,7 +6,8 @@ and accessing commit branch sections.  Such branch slices are defined by a
 series of top (interesting) and bottom (uninteresting) commits.  Each slice 
 contains, per commit:
 
-* All intra-slice topological relations, encoded into path "channels" (see 'Mechanics' for full explanation).
+* All intra-slice topological relations, encoded into path "channels" (see 
+  'Mechanics' for full explanation).
 * Object meta-data: type, SHA-1, size, date (for commits).
 * Objects introduced in that commit, relative to slice (ie. only for non-start 
   commits).
@@ -62,8 +63,8 @@ Functions
 `make_cache_slice`::
 
         Create a cache based on an a `rev_info` instance or `commit_list` s of 
-        "tops" and "bottoms" (defaults to latter if `rev_info` pointer is NULL), 
-        copying the cache SHA-1 into a passed pointer if non-zero.  A 
+        "tops" and "bottoms" (defaulting to latter if `rev_info` pointer is 
+        NULL), copying the cache SHA-1 into a passed pointer if non-zero.  A 
         `rev_cache_info` struct pointer can be passed to set options, while 
         passing NULL will set default options.  A last parameter can 
         optionally recieve the final cache hash.
@@ -88,24 +89,26 @@ Functions
         * `rev_info` instance
         * a starting commit and commit work list
         * date of oldest encountered interesting commit
-        * current `slop` (this and above mainly used in integration with revision 
-          walker)
+        * current `slop` (this and above mainly used in integration with 
+          revision walker)
         
 +
-The output is sent to a FILO `commit_list` "queue", while any bottom commits are passed back into the work list.  If the walk is not contained within the slice, commit boundaries are also inserted into "work".
+The output is sent to a FILO `commit_list` "queue", while any bottom commits 
+are passed back into the work list.  If the walk is not contained within the 
+slice, commit boundaries are also inserted into "work".
 
 `tops_from_slices`::
 
-        Will mark all top-commits in the specified cache slices with a given flag, 
-        and add them to the rev pending list.  Will include all if no slices are 
-        specified.
+        Will mark all top-commits in the specified cache slices with a given 
+        flag, and add them to the rev pending list.  Will include all if no 
+        slices are specified.
 
 `coagulate_cache_slices`::
 
         Generate a slice based on the passed `rev_info` instance, replacing all 
         encountered slices with one (larger) slice.  The `ignore_size` field in 
-        `rci`, if non-zero, will dictate which cache slice sizes to ignore in both 
-        traversal and replacement.
+        `rci`, if non-zero, will dictate which cache slice sizes to ignore in 
+        both traversal and replacement.
 
 `regenerate_index`::
 
@@ -200,7 +203,8 @@ File Formats
 ~~~~~~~~~~~~
 
 A slice has a basic fixed-size header, followed by a certain number of object 
-entries.  Commits are sorted in topo-order, and each commit entry is followed by the objects added in that commit.
+entries.  Commits are sorted in topo-order, and each commit entry is followed 
+by the objects added in that commit.
 
 ----
          -- +--------------------------------+
@@ -253,9 +257,18 @@ All the relavant structures are readily accessible in `rev-cache.c`
 Mechanics
 ~~~~~~~~~
 
-The most important part of rev-cache is its method of encoding topological relations.  To ensure fluid traversal and reconstruction, commits are related through high-level "streams"/"channels" rather than individual interconnections.  Intuitively, rev-cache stores history the way gitk shows it: commits strung up on lines, which interconnect at merges and branches.
+The most important part of rev-cache is its method of encoding topological 
+relations.  To ensure fluid traversal and reconstruction, commits are related 
+through high-level "streams"/"channels" rather than individual 
+interconnections.  Intuitively, rev-cache stores history the way gitk shows it: 
+commits strung up on lines, which interconnect at merges and branches.
 
-Each commit is associated to a given channel/path via a 'path id', and variable-length fields govern which paths (if any) are closed or opened at that object.  This means that topo-data can be preserved in only a few bytes extra per object entry.  Other information stored per entry is the sha-1 hash, type, date, size, and status in cache slice.  Here is format of an object entry, both on-disk and in-memory:
+Each commit is associated to a given channel/path via a 'path id', and 
+variable-length fields govern which paths (if any) are closed or opened at that 
+object.  This means that topo-data can be preserved in only a few bytes extra 
+per object entry.  Other information stored per entry is the sha-1 hash, type, 
+date, size, and status in cache slice.  Here is format of an object entry, both 
+on-disk and in-memory:
 
 ----
 struct object_entry {
@@ -283,27 +296,41 @@ struct object_entry {
 An explanation of each field:
 
 `type`:: Object type
-`is_end`:: The commit has some parents outside the cache slice (all if slice has legs)
+`is_end`:: The commit has some parents outside the cache slice (all if slice 
+has legs)
 `is_start`:: The commit has no children in cache slice
 `uninteresting`:: Run-time flag, used in traversal
 `include`:: Run-time flag, used in traversal (initialization)
 `flags`:: Currently unused, extra bit
 `sha`:: Object SHA-1 hash
 
-`merge_nr`:: The number of paths the current channel diverges into; the current path ends upon any merge.
-`split_nr`:: The number of paths this commit ends; used on both merging and branching.
+`merge_nr`:: The number of paths the current channel diverges into; the current 
+path ends upon any merge.
+`split_nr`:: The number of paths this commit ends; used on both merging and 
+branching.
 `size_size`:: Number of bytes the object size takes up.
 
 merge paths:: The path IDs (16-bit) that are to be created.
 split paths:: The path IDs (16-bit) that are to be ended.
 size:: The size split into the minimum number of bytes.
 
-Each path ID refers to an index in a 'path array', which stores the current status (eg. active, interestingness) of each channel.
+Each path ID refers to an index in a 'path array', which stores the current 
+status (eg. active, interestingness) of each channel.
 
-Due to topo-relations and boundary tracking, all of a commit's parents must be encountered before the path is reallocated.  This is achieved by using a counter system per merge: starting at the parent number, the counter is decremented as each parent is encountered (dictated by 'split paths'); at 0 the path is cleared.
+Due to topo-relations and boundary tracking, all of a commit's parents must be 
+encountered before the path is reallocated.  This is achieved by using a 
+counter system per merge: starting at the parent number, the counter is 
+decremented as each parent is encountered (dictated by 'split paths'); at 0 the 
+path is cleared.
 
-Boundary tracking is necessary because non-commits are stored relative to the commit in which they were introduced.  If a series of commits is not included in the output, the last interesting commit must be parsed manually to ensure all objects are accounted for.
+Boundary tracking is necessary because non-commits are stored relative to the 
+commit in which they were introduced.  If a series of commits is not included 
+in the output, the last interesting commit must be parsed manually to ensure 
+all objects are accounted for.
 
-To prevent list-objects from recursing into trees that we've already taken care of, the flag `FACE_VALUE` is introduced.  An object with this flag is not explored (= "taken at face value"), significantly reducing I/O and processing time.
+To prevent list-objects from recursing into trees that we've already taken care 
+of, the flag `FACE_VALUE` is introduced.  An object with this flag is not 
+explored (= "taken at face value"), significantly reducing I/O and processing 
+time.
 
 (NSE)

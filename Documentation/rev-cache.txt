@@ -1,7 +1,10 @@
 rev-cache porcelain
 ===================
 
-A front end for the rev-cache API is provided with the builtin utility `rev-cache`.  It is mainly intended for cache slice generation and maintenance, but can also walk commits within a slice.  At the moment it is not particularly advanced, but is sufficient for repository administration.
+A front end for the rev-cache API is provided with the builtin utility 
+`rev-cache`.  It is mainly intended for cache slice generation and maintenance, 
+but can also walk commits within a slice.  At the moment it is not particularly 
+advanced, but is sufficient for repository administration.
 
 It's general syntax is:
 
@@ -44,4 +47,5 @@ given the cutoff size defaults to ~5MB.
 	Regenerate the cache index.
 
 
-For an explanation of the API and its inner workings, see link:technical/rev-cache.txt[technical info on rev-cache]
+For an explanation of the API and its inner workings, see 
+link:technical/rev-cache.txt[technical info on rev-cache]
