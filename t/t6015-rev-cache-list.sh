@@ -3,7 +3,10 @@
 test_description='git rev-cache tests'
 . ./test-lib.sh
 
-sha1diff="python $TEST_DIRECTORY/t6015-sha1-dump-diff.py"
+grepsort() {
+	grep -io "[a-f0-9]*" $1 | sort >.tmpfile
+	cp .tmpfile $1
+}
 
 # we want a totally wacked out branch structure...
 # we need branching and merging of sizes up through 3, tree 
@@ -74,8 +77,11 @@ test_expect_success 'init repo' '
 '
 
 git-rev-list HEAD --not HEAD~3 >proper_commit_list_limited
+grepsort proper_commit_list_limited
 git-rev-list HEAD >proper_commit_list
+grepsort proper_commit_list
 git-rev-list HEAD --objects >proper_object_list
+grepsort proper_object_list
 
 test_expect_success 'make cache slice' '
 	git-rev-cache add HEAD 2>output.err && 
@@ -90,38 +96,45 @@ test_expect_success 'remake cache slice' '
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
-	test -z `$sha1diff list proper_commit_list_limited`
+	grepsort list && 
+	test_cmp list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-caches walker directly (unlimited)' '
 	git-rev-cache walk HEAD >list && 
-	test -z `$sha1diff list proper_commit_list`
+	grepsort list && 
+	test_cmp list proper_commit_list
 '
 
 test_expect_success 'test rev-list rev-list traversal (limited)' '
 	git-rev-list HEAD --not HEAD~3 >list && 
-	test -z `$sha1diff list proper_commit_list_limited`
+	grepsort list && 
+	test_cmp list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-list traversal (unlimited)' '
 	git-rev-list HEAD >list && 
-	test -z `$sha1diff list proper_commit_list`
+	grepsort list && 
+	test_cmp list proper_commit_list
 '
 
 #do the same for objects
 test_expect_success 'test rev-caches walker with objects' '
 	git-rev-cache walk --objects HEAD >list && 
-	test -z `$sha1diff list proper_object_list`
+	grepsort list && 
+	test_cmp list proper_object_list
 '
 
 test_expect_success 'test rev-list with objects (limited)' '
 	git-rev-list --topo-order --objects HEAD >list && 
-	test -z `$sha1diff list proper_object_list`
+	grepsort list && 
+	test_cmp list proper_object_list
 '
 
 test_expect_success 'test rev-list with objects (unlimited)' '
 	git-rev-list --objects HEAD >list && 
-	test -z `$sha1diff list proper_object_list`
+	grepsort list && 
+	test_cmp list proper_object_list
 '
 
 test_done
