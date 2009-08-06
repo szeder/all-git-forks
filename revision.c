@@ -396,7 +396,7 @@ static void try_to_simplify_commit(struct rev_info *revs, struct commit *commit)
 				pp = &parent->next;
 				continue;
 			}
-			parent->next = NULL; /* is this leaking memory? */
+			parent->next = NULL;
 			commit->parents = parent;
 			commit->object.flags |= TREESAME;
 			return;
