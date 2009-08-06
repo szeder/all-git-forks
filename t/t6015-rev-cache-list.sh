@@ -3,9 +3,10 @@
 test_description='git rev-cache tests'
 . ./test-lib.sh
 
-grepsort() {
-	grep -io "[a-f0-9]*" $1 | sort >.tmpfile
-	cp .tmpfile $1
+test_cmp_sorted() {
+	grep -io "[a-f0-9]*" $1 | sort >.tmpfile1 && 
+	grep -io "[a-f0-9]*" $2 | sort >.tmpfile2 && 
+	test_cmp .tmpfile1 .tmpfile2
 }
 
 # we want a totally wacked out branch structure...
@@ -79,7 +80,6 @@ test_expect_success 'init repo' '
 	git commit -a -m "oh noes"
 '
 
-<<<<<<< HEAD:t/t6015-rev-cache-list.sh
 max_date=`git-rev-list --timestamp HEAD~1 --max-count=1 | grep -e "^[0-9]*" -o`
 min_date=`git-rev-list --timestamp b4 --max-count=1 | grep -e "^[0-9]*" -o`
 
@@ -88,12 +88,6 @@ git-rev-list --topo-order HEAD --not HEAD~2 >proper_commit_list_limited2
 git-rev-list --topo-order HEAD >proper_commit_list
 git-rev-list --objects HEAD >proper_object_list
 git-rev-list HEAD --max-age=$min_date --min-age=$max_date >proper_list_date_limited
-
-grepsort proper_commit_list_limited
-grepsort proper_commit_list_limited2
-grepsort proper_commit_list
-grepsort proper_object_list
-grepsort proper_list_date_limited
 
 cache_sha1=`git-rev-cache add HEAD 2>output.err`
 
@@ -109,14 +103,12 @@ test_expect_success 'remake cache slice' '
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
-	grepsort list && 
-	test_cmp list proper_commit_list_limited
+	test_cmp_sorted list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-caches walker directly (unlimited)' '
 	git-rev-cache walk HEAD >list && 
-	grepsort list && 
-	test_cmp list proper_commit_list
+	test_cmp_sorted list proper_commit_list
 '
 
 test_expect_success 'test rev-list traversal (limited)' '
@@ -132,29 +124,28 @@ test_expect_success 'test rev-list traversal (unlimited)' '
 #do the same for objects
 test_expect_success 'test rev-caches walker with objects' '
 	git-rev-cache walk --objects HEAD >list && 
-	grepsort list && 
-	test_cmp list proper_object_list
+	test_cmp_sorted list proper_object_list
 '
 
 test_expect_success 'test rev-list with objects (topo order)' '
 	git-rev-list --topo-order --objects HEAD >list && 
-	test_cmp list proper_object_list
+	test_cmp_sorted list proper_object_list
 '
 
 test_expect_success 'test rev-list with objects (no order)' '
 	git-rev-list --objects HEAD >list && 
-	test_cmp list proper_object_list
+	test_cmp_sorted list proper_object_list
 '
 
 #verify age limiting
 test_expect_success 'test rev-list date limiting (topo order)' '
 	git-rev-list --topo-order --max-age=$min_date --min-age=$max_date HEAD >list && 
-	test_cmp list proper_list_date_limited
+	test_cmp_sorted list proper_list_date_limited
 '
 
 test_expect_success 'test rev-list date limiting (no order)' '
 	git-rev-list --max-age=$min_date --min-age=$max_date HEAD >list && 
-	test_cmp list proper_list_date_limited
+	test_cmp_sorted list proper_list_date_limited
 '
 
 #check partial cache slice
@@ -212,13 +203,13 @@ test_expect_success 'corrupt slice' '
 '
 
 test_expect_success 'test rev-list traversal (limited) (corrupt slice)' '
-	git-rev-list HEAD --not HEAD~3 >list && 
+	git-rev-list --topo-order HEAD --not HEAD~3 >list && 
 	test_cmp list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-list traversal (unlimited) (corrupt slice)' '
 	git-rev-list HEAD >list && 
-	test_cmp list proper_commit_list
+	test_cmp_sorted list proper_commit_list
 '
 
 test_expect_success 'corrupt index' '
@@ -226,17 +217,15 @@ test_expect_success 'corrupt index' '
 '
 
 test_expect_success 'test rev-list traversal (limited) (corrupt index)' '
-	git-rev-list HEAD --not HEAD~3 >list && 
-	grep list && 
+	git-rev-list --topo-order HEAD --not HEAD~3 >list && 
 	test_cmp list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-list traversal (unlimited) (corrupt index)' '
 	git-rev-list HEAD >list && 
-	test_cmp list proper_commit_list
+	test_cmp_sorted list proper_commit_list
 '
 
 #test --ignore-size in fuse?
 
 test_done
-
