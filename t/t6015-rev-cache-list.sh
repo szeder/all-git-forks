@@ -3,9 +3,10 @@
 test_description='git rev-cache tests'
 . ./test-lib.sh
 
-grepsort() {
-	grep -io "[a-f0-9]*" $1 | sort >.tmpfile
-	cp .tmpfile $1
+test_cmp_sorted() {
+	grep -io "[a-f0-9]*" $1 | sort >.tmpfile1 && 
+	grep -io "[a-f0-9]*" $2 | sort >.tmpfile2 && 
+	test_cmp .tmpfile1 .tmpfile2
 }
 
 # we want a totally wacked out branch structure...
@@ -77,9 +78,7 @@ test_expect_success 'init repo' '
 '
 
 git-rev-list HEAD --not HEAD~3 >proper_commit_list_limited
-grepsort proper_commit_list_limited
 git-rev-list HEAD >proper_commit_list
-grepsort proper_commit_list
 
 test_expect_success 'make cache slice' '
 	git-rev-cache add HEAD 2>output.err && 
@@ -94,14 +93,12 @@ test_expect_success 'remake cache slice' '
 #check core mechanics and rev-list hook for commits
 test_expect_success 'test rev-caches walker directly (limited)' '
 	git-rev-cache walk HEAD --not HEAD~3 >list && 
-	grepsort list && 
-	test_cmp list proper_commit_list_limited
+	test_cmp_sorted list proper_commit_list_limited
 '
 
 test_expect_success 'test rev-caches walker directly (unlimited)' '
-	git-rev-cache walk HEAD >list && 
-	grepsort list && 
-	test_cmp list proper_commit_list
+	git-rev-cache walk HEAD >list &&  
+	test_cmp_sorted list proper_commit_list
 '
 
 test_done
