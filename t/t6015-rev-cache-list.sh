@@ -4,7 +4,8 @@ test_description='git rev-cache tests'
 . ./test-lib.sh
 
 grepsort() {
-	grep -io "[a-f0-9]*" $1 | sort >$1
+	grep -io "[a-f0-9]*" $1 | sort >.tmpfile
+	cp .tmpfile $1
 }
 
 # we want a totally wacked out branch structure...
