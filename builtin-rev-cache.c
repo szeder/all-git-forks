@@ -5,7 +5,7 @@
 #include "revision.h"
 #include "list-objects.h"
 
-#define DEFAULT_IGNORE_SLICE_SIZE		5000000 /* in bytes */
+#define DEFAULT_IGNORE_SLICE_SIZE		"30mb"
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
@@ -181,6 +181,28 @@ static int handle_walk(int argc, const char *argv[])
 	return 0;
 }
 
+static unsigned int parse_size(const char *name)
+{
+	unsigned int size;
+	char *p;
+	
+	size = strtol(name, &p, 10);
+	switch (*p) {
+	case 'k' : 
+	case 'K' : 
+		size *= 0x400;
+		break;
+	case 'm' : 
+	case 'M' : 
+		size *= 0x100000;
+		break;
+	default : 
+		break;
+	}
+	
+	return size;
+}
+
 static int handle_fuse(int argc, const char *argv[])
 {
 	struct rev_info revs;
@@ -201,10 +223,12 @@ static int handle_fuse(int argc, const char *argv[])
 		} else if (!strcmp(argv[i], "--noobjects")) 
 			rci.objects = 0;
 		else if (!strncmp(argv[i], "--ignore-size", 13)) {
-			int sz = DEFAULT_IGNORE_SLICE_SIZE;
+			unsigned int sz;
 			
 			if (argv[i][13] == '=')
-				sz = atoi(argv[i] + 14);
+				sz = parse_size(argv[i] + 14);
+			else
+				sz = parse_size(DEFAULT_IGNORE_SLICE_SIZE);
 			
 			rci.ignore_size = sz;
 		} else 
