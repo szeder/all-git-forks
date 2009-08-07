@@ -1,0 +1,96 @@
+git-rev-cache(1)
+================
+
+NAME
+----
+git-rev-cache - Add, walk and maintain revision cache slices.
+
+SYNOPSIS
+--------
+'git-rev-cache' COMMAND [options] [<commit>...]
+
+DESCRIPTION
+-----------
+A front end for the rev-cache API.  It is mainly intended for cache slice
+generation and maintenance, but can also walk commits within a slice.  It
+currently provides basic administrative functionality.
+
+COMMANDS
+--------
+
+add
+~~~
+Add revisions to the cache by creating a new cache slice.  Reads a revision
+list from the command line, formatted as: `START START ... \--not END END ...`
+
+Options:
+
+\--all::
+	Include all branch heads in the new cache slice.
+
+\--fresh::
+	Exclude everything already in the revision cache.  
+
+\--stdin::
+	Read newline-seperated revisions from the standard input.  Use \--not
+	to exclude commits, as on the command line.
+
+\--legs::
+	Ensure newly-generated cache slice is self-contained.  This means that
+	no commit has partially cached parents, in that all its parents are
+	cached or none of them are.
+
+\--noobjects::
+	Non-commit objects are normally included along with the commit with
+	which they were introduced.  This is obviously very benificial, but can
+	take longer in cache slice generation.  Use this option to disable
+	non-commit object caching.
+
+walk
+~~~~
+Walk a cache slice based on revision list, formatted like 'add'.
+
+Options:
+
+\--objects::
+	Like 'git-rev-list', 'walk' will normally only list commits.  Use this
+	option to list non-commit objects as well.
+
+fuse
+~~~~
+Merge several cache slices into a single large slice.  On each invocation of
+'add' a new file ("slice") is added to the revision cache directory, and after
+several additions the directory may become populated with many, relatively
+small slices.  Numerous smaller slices will yield poorer performance than a one
+or two large ones, because of the overhead of loading new slices into memory.
+
+Running 'fuse' every once in a while will solve this problem by coalescing all
+the cache slices into one larger slice.  For very large projects, using
+\--ignore-size is advisable to prevent overly large cache slices.
+
+Options:
+
+\--all::
+	Normally fuse will only include everything that's already in the
+	revision cache.  \--add tells it to start walking from the branch
+	heads, effectively an `add --all --fresh; fuse` (pseudo-command).
+
+\--noobjects::
+	As in 'add', this option disables inclusion of non-commit objects.  If
+	some cache slices do contain such objects, the information will be lost.
+
+\--ignore-size[=N]::
+	Do not merge cache slices of size >=N.  If N is not provided 'fuse'
+	will default to a size of ~25MB (be aware that slices must be mapped to
+	memory).
+
+index
+~~~~~
+Regenerate the cache index.  If the index file associating objects with cache
+slices gets corrupted, lost, or otherwise becomes unusable, 'index' will
+quickly regenerate the file.  'fuse' will also regenerate the index.
+
+DISCUSSION
+----------
+For an explanation of the API and its inner workings, see
+link:technical/rev-cache.txt[technical info on rev-cache].
