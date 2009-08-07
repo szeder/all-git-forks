@@ -226,6 +226,21 @@ test_expect_success 'test rev-list traversal (unlimited) (corrupt index)' '
 	test_cmp_sorted list proper_commit_list
 '
 
-#test --ignore-size in fuse?
+#test --ignore-size in fuse
+rm .git/rev-cache/*
+cache_sha1=`git-rev-cache add HEAD --not HEAD~3 2>output.err`
+
+test_expect_success 'make fragmented slices' '
+	git-rev-cache add HEAD~2 --not HEAD~3 2>>output.err && 
+	git-rev-cache add HEAD --fresh 2>>output.err && 
+	test `grep "final return value: 0" output.err | wc -l` -eq 3
+'
+
+cache_size=`wc -c .git/rev-cache/$cache_sha1 | grep -o "[0-9]*"`
+test_expect_success 'test --ignore-size function in fuse' '
+	git-rev-cache fuse --ignore-size=$cache_size 2>output.err && 
+	grep "final return value: 0" output.err && 
+	test -e .git/rev-cache/$cache_sha1
+'
 
 test_done
