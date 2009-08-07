@@ -42,6 +42,8 @@ struct cache_slice_header {
 	uint32_t size;
 	
 	unsigned char sha1[20];
+	
+	uint32_t name_size;
 };
 
 struct object_entry {
@@ -56,6 +58,8 @@ struct object_entry {
 	unsigned merge_nr : 6;
 	unsigned split_nr : 7;
 	unsigned size_size : 3;
+	unsigned name_size : 3;
+	unsigned what_to_do : 5; /* unused */
 	
 	uint32_t date;
 	uint16_t path;
@@ -63,11 +67,20 @@ struct object_entry {
 	/* merge paths */
 	/* split paths */
 	/* size */
+	/* name id */
 };
 
 struct bad_slice {
 	unsigned char sha1[20];
 	struct bad_slice *next;
+};
+
+struct name_list {
+	unsigned char sha1[20];
+	unsigned int len;
+	struct name_list *next;
+	
+	char buf[FLEX_ARRAY];
 };
 
 /* list resembles pack index format */
@@ -76,10 +89,13 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx, save_unique, add_to_pending;
-static struct bad_slice *bad_slices;
+static char no_idx, save_unique, add_to_pending, add_names;
 static unsigned char *idx_caches;
 
+static struct bad_slice *bad_slices;
+static struct name_list *name_lists, *cur_name_list;
+
+static struct strbuf *g_name_buffer;
 static struct strbuf *g_buffer;
 
 #define SUPPORTED_REVCACHE_VERSION 		1
@@ -94,8 +110,9 @@ static struct strbuf *g_buffer;
 #define OE_CAST(p)	((struct object_entry *)(p))
 #define IE_CAST(p)	((struct index_entry *)(p))
 
-#define ACTUAL_OBJECT_ENTRY_SIZE(e)		(OE_SIZE + PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
-#define ENTRY_SIZE_OFFSET(e)			(ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
+#define ACTUAL_OBJECT_ENTRY_SIZE(e)		(OE_SIZE + PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size + (e)->name_size)
+#define ENTRY_NAME_OFFSET(e)			(ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->name_size)
+#define ENTRY_SIZE_OFFSET(e)			(ENTRY_NAME_OFFSET(e) - (e)->size_size)
 
 #define SLOP			5
 
@@ -165,6 +182,12 @@ static void cleanup_cache_slices(void)
 		free(idx_caches);
 		munmap(idx_map, idx_size);
 		idx_map = 0;
+	}
+	
+	while (name_lists) {
+		struct name_list *nl = name_lists->next;
+		free(name_lists);
+		name_lists = nl;
 	}
 	
 }
@@ -296,7 +319,8 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	struct blob *blob;
 	struct tree *tree;
 	struct object *obj;
-	unsigned long size;
+	unsigned long size, name_index;
+	char **namep = 0;
 	
 	size = decode_size((unsigned char *)entry + ENTRY_SIZE_OFFSET(entry), entry->size_size);
 	switch (entry->type) {
@@ -309,6 +333,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 			return;
 		
 		tree->size = size;
+		namep = &tree->name;
 		commit->tree = tree;
 		obj = (struct object *)tree;
 		break;
@@ -322,6 +347,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 			return;
 		
 		blob->size = size;
+		namep = &blob->name;
 		obj = (struct object *)blob;
 		break;
 		
@@ -329,6 +355,13 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		/* tag objects aren't really supposed to be here */
 		return;
 	}
+	
+	if (add_names && cur_name_list) {
+		name_index = decode_size((unsigned char *)entry + ENTRY_NAME_OFFSET(entry), entry->name_size);
+		
+		if (!name_index || name_index >= cur_name_list->len)
+			name_index = 0;
+	} else name_index = 0;
 	
 	/* add to unique list if we're not an end */
 	if (save_unique && (commit->object.flags & FACE_VALUE)) {
@@ -344,9 +377,20 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		last_unique = &(*last_unique)->next;
 	}
 	
+	/* add cached name */
+	if (name_index && namep) {
+		*namep = cur_name_list->buf + name_index;
+	}
+	
 	obj->flags |= FACE_VALUE;
-	if (add_to_pending)
-		add_pending_object(revs, obj, "");
+	if (add_to_pending) {
+		char *name = "";
+		
+		if (name_index)
+			name = cur_name_list->buf + name_index;
+		
+		add_pending_object(revs, obj, name);
+	}
 }
 
 static int setup_traversal(struct cache_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work, 
@@ -696,15 +740,44 @@ end:
 	return retval;
 }
 
-static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map, int len, struct cache_slice_header *head)
+static struct name_list *get_cache_slice_name_list(struct cache_slice_header *head, int fd)
+{
+	struct name_list *nl = name_lists;
+	
+	while (nl) {
+		if (!hashcmp(nl->sha1, head->sha1))
+			break;
+		nl = nl->next;
+	}
+	
+	if (nl)
+		return nl;
+	
+	nl = xcalloc(1, sizeof(struct name_list) + head->name_size);
+	nl->len = head->name_size;
+	hashcpy(nl->sha1, head->sha1);
+	
+	lseek(fd, head->size, SEEK_SET);
+	read_in_full(fd, nl->buf, head->name_size);
+	
+	nl->next = name_lists;
+	name_lists = nl;
+	
+	return nl;
+}
+
+static int get_cache_slice_header(int fd, unsigned char *cache_sha1, int len, struct cache_slice_header *head)
 {
 	int t;
 	
-	memcpy(head, map, sizeof(struct cache_slice_header));
+	if (xread(fd, head, sizeof(struct cache_slice_header)) != sizeof(struct cache_slice_header))
+		return -1;
+	
 	head->ofs_objects = ntohl(head->ofs_objects);
 	head->object_nr = ntohl(head->object_nr);
 	head->size = ntohl(head->size);
 	head->path_nr = ntohs(head->path_nr);
+	head->name_size = ntohl(head->name_size);
 	
 	if (memcmp(head->signature, "REVCACHE", 8))
 		return -1;
@@ -713,10 +786,10 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	if (hashcmp(head->sha1, cache_sha1))
 		return -3;
 	t = sizeof(struct cache_slice_header);
-	if (t != head->ofs_objects || t >= len)
+	if (t != head->ofs_objects)
 		return -4;
-	
-	head->size = len;
+	if (head->size + head->name_size != len)
+		return -5;
 	
 	return 0;
 }
@@ -726,7 +799,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work)
 {
-	int fd = -1, retval = -3;
+	int fd = -1, t, retval;
 	struct stat fi;
 	struct cache_slice_header head;
 	struct rev_cache_info *rci;
@@ -743,26 +816,31 @@ int traverse_cache_slice(struct rev_info *revs,
 	rci = &revs->rev_cache_info;
 	save_unique = rci->save_unique;
 	add_to_pending = rci->add_to_pending;
+	add_names = rci->add_names;
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
+#	define ERROR(x)		do { retval = (x); goto end; } while (0);
 	
 	fd = open(git_path("rev-cache/%s", sha1_to_hex(cache_sha1)), O_RDONLY);
 	if (fd == -1)
-		goto end;
+		ERROR(-1);
 	if (fstat(fd, &fi) || fi.st_size < sizeof(struct cache_slice_header))
-		goto end;
+		ERROR(-2);
 	
-	map = xmmap(0, fi.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	if ((t = get_cache_slice_header(fd, cache_sha1, fi.st_size, &head)) < 0)
+		ERROR(-t);
+	if (add_names)
+		cur_name_list = get_cache_slice_name_list(&head, fd);
+	
+	map = xmmap(0, head.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
-		goto end;
-	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
-		goto end;
+		ERROR(-3);
 	
 	retval = traverse_cache_slice_1(&head, map, revs, commit, date_so_far, slop_so_far, queue, work);
 	
 end:
 	if (map != MAP_FAILED)
-		munmap(map, fi.st_size);
+		munmap(map, head.size);
 	if (fd != -1)
 		close(fd);
 	
@@ -770,6 +848,7 @@ end:
 	if (retval)
 		mark_bad_slice(cache_sha1);
 	
+#	undef ERROR
 	return retval;
 }
 
@@ -1081,12 +1160,100 @@ static unsigned long decode_size(unsigned char *str, int len)
 	return size;
 }
 
+#define NL_HASH_TABLE_SIZE		(0xffff + 1)
+#define NL_HASH_NUMBER			(NL_HASH_TABLE_SIZE >> 3)
+
+struct name_list_hash {
+	char *ptr;
+	int ind;
+	struct name_list_hash *next;
+};
+
+static struct name_list_hash **nl_hash_table;
+static unsigned char *nl_hashes;
+
+/* FNV-1a hash */
+static unsigned int hash_name(char *name)
+{
+	unsigned int hash = 2166136261ul;
+	char *p = name;
+	
+	while (*p) {
+		hash ^= *p++;
+		hash *= 16777619ul;
+	}
+	
+	return hash & 0xffff;
+}
+
+static int name_in_list(char *name)
+{
+	unsigned int h = hash_name(name);
+	struct name_list_hash *entry = nl_hash_table[h];
+	
+	while (entry && strcmp(entry->ptr, name))
+		entry = entry->next;
+	
+	if (entry)
+		return entry->ind;
+	
+	/* add name to buffer and create hash reference */
+	entry = xcalloc(1, sizeof(struct name_list_hash));
+	entry->ind = g_name_buffer->len;
+	
+	strbuf_add(g_name_buffer, name, strlen(name) + 1);
+	entry->ptr = g_name_buffer->buf + entry->ind;
+	
+	entry->next = nl_hash_table[h];
+	nl_hash_table[h] = entry;
+	
+	nl_hashes[h / 8] |= h % 8;
+	
+	return entry->ind;
+}
+
+static void init_name_list_hash(void)
+{
+	nl_hash_table = xcalloc(NL_HASH_TABLE_SIZE, sizeof(struct name_list_hash));
+	nl_hashes = xcalloc(NL_HASH_NUMBER, 1);
+}
+
+static void cleanup_name_list_hash(void)
+{
+	int i;
+	
+	for (i = 0; i < NL_HASH_NUMBER; i++) {
+		int j, ind = nl_hashes[i];
+		
+		if (!ind)
+			continue;
+		
+		for (j = 0; j < 8; j++) {
+			struct name_list_hash **entryp;
+			
+			if (!(ind & 1 << j))
+				continue;
+			
+			entryp = &nl_hash_table[i * 8 + j];
+			while (*entryp) {
+				struct name_list_hash *t = (*entryp)->next;
+				
+				free(*entryp);
+				*entryp = t;
+			}
+		}
+	} /* code overhang! */
+	
+	free(nl_hashes);
+	free(nl_hash_table);
+}
+
 static void add_object_entry(const unsigned char *sha1, struct object_entry *entryp, 
-	struct strbuf *merge_str, struct strbuf *split_str)
+	struct strbuf *merge_str, struct strbuf *split_str, char *name)
 {
 	struct object_entry entry;
 	struct object *obj;
-	unsigned char size_str[7];
+	unsigned char size_str[7], name_str[7];
 	unsigned long size;
 	enum object_type type;
 	
@@ -1100,12 +1267,16 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		case OBJ_COMMIT : 
 			size = ((struct commit *)obj)->size;
 			break;
-		case OBJ_TREE : 
-			size = ((struct tree *)obj)->size;
-			break;
-		case OBJ_BLOB : 
-			size = ((struct blob *)obj)->size;
-			break;
+		case OBJ_TREE : {
+			struct tree *tree = (struct tree *)obj;
+			size = tree->size;
+			name = tree->name;
+		} break;
+		case OBJ_BLOB : {
+			struct blob *blob = (struct blob *)obj;
+			size = blob->size;
+			name = blob->name;
+		} break;
 		default : 
 			/* tags are potentially dynamic metadata; they don't really belong here */
 			return;
@@ -1136,6 +1307,9 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 	
 	entryp->size_size = encode_size(size, size_str);
 	
+	if (name)
+		entryp->name_size = encode_size(name_in_list(name), name_str);
+	
 	/* write the muvabitch */
 	strbuf_add(g_buffer, entryp, sizeof(entry));
 	
@@ -1145,6 +1319,9 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		strbuf_add(g_buffer, split_str->buf, split_str->len);
 	
 	strbuf_add(g_buffer, size_str, entryp->size_size);
+	
+	if (name)
+		strbuf_add(g_buffer, name_str, entryp->name_size);
 }
 
 /* returns non-zero to continue parsing, 0 to skip */
@@ -1189,6 +1366,10 @@ continue_loop:
 static int dump_tree_callback(const unsigned char *sha1, const char *path, unsigned int mode)
 {
 	strbuf_add(g_buffer, sha1, 20);
+	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));
+	
+	printf("%s\n", path);
+	strbuf_add(g_name_buffer, path, strlen(path) + 1);
 	
 	return 1;
 }
@@ -1201,7 +1382,11 @@ static void tree_addremove(struct diff_options *options,
 	if (whatnow != '+')
 		return;
 	
-	strbuf_add(g_buffer, sha1, 20);
+	strbuf_add(g_buffer, sha1, 20);printf("W %d %d\n", g_name_buffer->len, sizeof(size_t *));
+	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));printf("E\n");
+	
+	printf("%s [+]\n", concatpath);
+	strbuf_add(g_name_buffer, concatpath, strlen(concatpath) + 1);
 }
 
 static void tree_change(struct diff_options *options,
@@ -1213,13 +1398,17 @@ static void tree_change(struct diff_options *options,
 	if (!hashcmp(old_sha1, new_sha1))
 		return;
 	
-	strbuf_add(g_buffer, new_sha1, 20);
+	strbuf_add(g_buffer, new_sha1, 20);printf("S %d\n", g_name_buffer->len);
+	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));printf("E\n");
+	
+	printf("%s [ ]\n", concatpath);
+	strbuf_add(g_name_buffer, concatpath, strlen(concatpath) + 1);
 }
 
 static int add_unique_objects(struct commit *commit)
 {
 	struct commit_list *list;
-	struct strbuf os, ost, *orig_buf;
+	struct strbuf os, ost, names, *orig_name_buf, *orig_buf;
 	struct diff_options opts;
 	int i, j, next;
 	char is_first = 1;
@@ -1231,7 +1420,7 @@ static int add_unique_objects(struct commit *commit)
 		olist = commit->unique;
 		i = 0;
 		while (olist) {
-			add_object_entry(olist->item->sha1, 0, 0, 0);
+			add_object_entry(olist->item->sha1, 0, 0, 0, 0 /* retrieved with size in function */);
 			i++;
 			olist = olist->next;
 		}
@@ -1242,13 +1431,17 @@ static int add_unique_objects(struct commit *commit)
 	/* ...no, calculate unique objects */
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
+	strbuf_init(&names, 0);
 	orig_buf = g_buffer;
+	orig_name_buf = g_name_buffer;
+	g_name_buffer = &names;
 	
 	diff_setup(&opts);
 	DIFF_OPT_SET(&opts, RECURSIVE);
 	DIFF_OPT_SET(&opts, TREE_IN_RECURSIVE);
 	opts.change = tree_change;
 	opts.add_remove = tree_addremove;
+#	define ENTRY_SIZE (20 + sizeof(size_t))
 	
 	/* this is only called for non-ends (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
@@ -1257,28 +1450,31 @@ static int add_unique_objects(struct commit *commit)
 		else 
 			g_buffer = &ost;
 		
+		printf("a\n");
 		strbuf_setlen(g_buffer, 0);
-		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
-		qsort(g_buffer->buf, g_buffer->len / 20, 20, (int (*)(const void *, const void *))hashcmp);
+		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);printf("--1\n");
+		qsort(g_buffer->buf, g_buffer->len / ENTRY_SIZE, ENTRY_SIZE, (int (*)(const void *, const void *))hashcmp);
 		
+		printf("-1\n");
 		/* take intersection */
 		if (!is_first) {
-			for (next = i = j = 0; i < os.len; i += 20) {
+			for (next = i = j = 0; i < os.len; i += ENTRY_SIZE) {
 				while (j < ost.len && hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)) < 0)
-					j += 20;
+					j += ENTRY_SIZE;
 				
 				if (j >= ost.len || hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)))
 					continue;
 				
 				if (next != i)
-					memcpy(os.buf + next, os.buf + i, 20);
-				next += 20;
+					memcpy(os.buf + next, os.buf + i, ENTRY_SIZE);
+				next += ENTRY_SIZE;
 			}
 			
 			if (next != i)
 				strbuf_setlen(&os, next);
 		} else
 			is_first = 0;
+		printf("b\n");
 	}
 	
 	/* no parents (!) */
@@ -1287,18 +1483,23 @@ static int add_unique_objects(struct commit *commit)
 		dump_tree(commit->tree, dump_tree_callback);
 	}
 	
+	printf("c\n");
 	/* the ordering of non-commit objects dosn't really matter, so we're not gonna bother */
 	g_buffer = orig_buf;
-	for (i = 0; i < os.len; i += 20)
-		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0);
+	g_name_buffer = orig_name_buf;
+	for (i = 0; i < os.len; i += ENTRY_SIZE)
+		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0, names.buf + *(size_t *)(os.buf + i + 20));
 	
+	printf("d\n");
 	/* last but not least, the main tree */
-	add_object_entry(commit->tree->object.sha1, 0, 0, 0);
+	add_object_entry(commit->tree->object.sha1, 0, 0, 0, 0);
 	
 	strbuf_release(&ost);
 	strbuf_release(&os);
+	strbuf_release(&names);
 	
-	return i / 20 + 1;
+	return i / ENTRY_SIZE + 1;
+#	undef ENTRY_SIZE
 }
 
 static void init_revcache_directory(void)
@@ -1319,6 +1520,7 @@ void init_rci(struct rev_cache_info *rci)
 	
 	rci->save_unique = 0;
 	rci->add_to_pending = 1;
+	rci->add_names = 1;
 	
 	rci->ignore_size = 0;
 }
@@ -1333,9 +1535,9 @@ int make_cache_slice(struct rev_cache_info *rci,
 	struct cache_slice_header head;
 	struct commit *commit;
 	unsigned char sha1[20];
-	struct strbuf merge_paths, split_paths;
+	struct strbuf merge_paths, split_paths, namelist;
 	int object_nr, total_sz, fd;
-	char file[PATH_MAX], *newfile;
+	char file[PATH_MAX], *newfile, null;
 	struct rev_cache_info *trci, def_rci;
 	git_SHA_CTX ctx;
 	
@@ -1353,7 +1555,13 @@ int make_cache_slice(struct rev_cache_info *rci,
 	strbuf_init(&endlist, 0);
 	strbuf_init(&merge_paths, 0);
 	strbuf_init(&split_paths, 0);
+	strbuf_init(&namelist, 0);
 	g_buffer = &buffer;
+	g_name_buffer = &namelist;
+	
+	null = 0;
+	strbuf_add(&namelist, &null, 1);
+	init_name_list_hash();
 	
 	if (!revs) {
 		revs = &therevs;
@@ -1384,6 +1592,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	trci = &revs->rev_cache_info;
 	init_rci(trci);
 	trci->save_unique = 1;
+	trci->add_names = 1;
 	trci->add_to_pending = 0;
 	
 	setup_revisions(0, 0, revs, 0);
@@ -1414,12 +1623,15 @@ int make_cache_slice(struct rev_cache_info *rci,
 		
 		commit->indegree = 0;
 		
-		add_object_entry(0, &object, &merge_paths, &split_paths);
+		printf("A\n");
+		add_object_entry(0, &object, &merge_paths, &split_paths, 0);
 		object_nr++;
 		
+		printf("B\n");
 		if (rci->objects && !(commit->object.flags & TREESAME) && !object.is_end)
 			object_nr += add_unique_objects(commit);
 		
+		printf("C\n");
 		/* print every ~1MB or so */
 		if (buffer.len > 1000000) {
 			write_in_full(fd, buffer.buf, buffer.len);
@@ -1429,15 +1641,22 @@ int make_cache_slice(struct rev_cache_info *rci,
 		}
 	}
 	
+	printf("D\n");
 	if (buffer.len) {
 		write_in_full(fd, buffer.buf, buffer.len);
 		total_sz += buffer.len;
 	}
 	
+	/* write path name lookup list */
+	head.name_size = htonl(namelist.len);
+	write_in_full(fd, namelist.buf, namelist.len);
+	
 	/* go ahead a free some stuff... */
 	strbuf_release(&buffer);
 	strbuf_release(&merge_paths);
 	strbuf_release(&split_paths);
+	strbuf_release(&namelist);
+	cleanup_name_list_hash();
 	if (path_sz)
 		free(paths);
 	while (path_track_alloc)

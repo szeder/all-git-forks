@@ -1,9 +1,6 @@
 From: Nick Edelen <sirnot@gmail.com>
-Subject: [PATCH] t/revcache/docs
+Subject: [PATCH] t/revcache/names
 
-Before any code is introduced the full documentation is put forth.  This 
-provides a man page for the porcelain, and a technical doc in technical/.  The 
-latter describes the API, and discusses rev-cache's design, file format and 
-mechanics.
+<patch description>
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>

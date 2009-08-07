@@ -27,7 +27,8 @@ struct rev_cache_info {
 	
 	/* traversal flags */
 	unsigned save_unique : 1, 
-		add_to_pending : 1;
+		add_to_pending : 1, 
+		add_names : 1;
 	
 	/* fuse options */
 	unsigned int ignore_size;
