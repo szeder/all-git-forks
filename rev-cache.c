@@ -359,7 +359,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	if (add_names && cur_name_list) {
 		name_index = decode_size((unsigned char *)entry + ENTRY_NAME_OFFSET(entry), entry->name_size);
 		
-		if (!name_index || name_index >= cur_name_list->len)
+		if (name_index >= cur_name_list->len)
 			name_index = 0;
 	} else name_index = 0;
 	
@@ -1270,12 +1270,14 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 		case OBJ_TREE : {
 			struct tree *tree = (struct tree *)obj;
 			size = tree->size;
-			name = tree->name;
+			if (!name)
+				name = tree->name;
 		} break;
 		case OBJ_BLOB : {
 			struct blob *blob = (struct blob *)obj;
 			size = blob->size;
-			name = blob->name;
+			if (!name)
+				name = blob->name;
 		} break;
 		default : 
 			/* tags are potentially dynamic metadata; they don't really belong here */
@@ -1368,7 +1370,6 @@ static int dump_tree_callback(const unsigned char *sha1, const char *path, unsig
 	strbuf_add(g_buffer, sha1, 20);
 	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));
 	
-	printf("%s\n", path);
 	strbuf_add(g_name_buffer, path, strlen(path) + 1);
 	
 	return 1;
@@ -1382,10 +1383,9 @@ static void tree_addremove(struct diff_options *options,
 	if (whatnow != '+')
 		return;
 	
-	strbuf_add(g_buffer, sha1, 20);printf("W %d %d\n", g_name_buffer->len, sizeof(size_t *));
-	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));printf("E\n");
+	strbuf_add(g_buffer, sha1, 20);
+	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));
 	
-	printf("%s [+]\n", concatpath);
 	strbuf_add(g_name_buffer, concatpath, strlen(concatpath) + 1);
 }
 
@@ -1398,10 +1398,9 @@ static void tree_change(struct diff_options *options,
 	if (!hashcmp(old_sha1, new_sha1))
 		return;
 	
-	strbuf_add(g_buffer, new_sha1, 20);printf("S %d\n", g_name_buffer->len);
-	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));printf("E\n");
+	strbuf_add(g_buffer, new_sha1, 20);
+	strbuf_add(g_buffer, (char *)&g_name_buffer->len, sizeof(size_t));
 	
-	printf("%s [ ]\n", concatpath);
 	strbuf_add(g_name_buffer, concatpath, strlen(concatpath) + 1);
 }
 
@@ -1450,12 +1449,10 @@ static int add_unique_objects(struct commit *commit)
 		else 
 			g_buffer = &ost;
 		
-		printf("a\n");
 		strbuf_setlen(g_buffer, 0);
-		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);printf("--1\n");
+		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
 		qsort(g_buffer->buf, g_buffer->len / ENTRY_SIZE, ENTRY_SIZE, (int (*)(const void *, const void *))hashcmp);
 		
-		printf("-1\n");
 		/* take intersection */
 		if (!is_first) {
 			for (next = i = j = 0; i < os.len; i += ENTRY_SIZE) {
@@ -1474,7 +1471,6 @@ static int add_unique_objects(struct commit *commit)
 				strbuf_setlen(&os, next);
 		} else
 			is_first = 0;
-		printf("b\n");
 	}
 	
 	/* no parents (!) */
@@ -1483,14 +1479,12 @@ static int add_unique_objects(struct commit *commit)
 		dump_tree(commit->tree, dump_tree_callback);
 	}
 	
-	printf("c\n");
 	/* the ordering of non-commit objects dosn't really matter, so we're not gonna bother */
 	g_buffer = orig_buf;
 	g_name_buffer = orig_name_buf;
 	for (i = 0; i < os.len; i += ENTRY_SIZE)
 		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0, names.buf + *(size_t *)(os.buf + i + 20));
 	
-	printf("d\n");
 	/* last but not least, the main tree */
 	add_object_entry(commit->tree->object.sha1, 0, 0, 0, 0);
 	
@@ -1623,15 +1617,12 @@ int make_cache_slice(struct rev_cache_info *rci,
 		
 		commit->indegree = 0;
 		
-		printf("A\n");
 		add_object_entry(0, &object, &merge_paths, &split_paths, 0);
 		object_nr++;
 		
-		printf("B\n");
 		if (rci->objects && !(commit->object.flags & TREESAME) && !object.is_end)
 			object_nr += add_unique_objects(commit);
 		
-		printf("C\n");
 		/* print every ~1MB or so */
 		if (buffer.len > 1000000) {
 			write_in_full(fd, buffer.buf, buffer.len);
@@ -1641,7 +1632,6 @@ int make_cache_slice(struct rev_cache_info *rci,
 		}
 	}
 	
-	printf("D\n");
 	if (buffer.len) {
 		write_in_full(fd, buffer.buf, buffer.len);
 		total_sz += buffer.len;

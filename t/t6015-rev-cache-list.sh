@@ -4,8 +4,8 @@ test_description='git rev-cache tests'
 . ./test-lib.sh
 
 test_cmp_sorted() {
-	grep -io "[a-f0-9]*" $1 | sort >.tmpfile1 && 
-	grep -io "[a-f0-9]*" $2 | sort >.tmpfile2 && 
+	sort $1 >.tmpfile1 && 
+	sort $2 >.tmpfile2 && 
 	test_cmp .tmpfile1 .tmpfile2
 }
 
