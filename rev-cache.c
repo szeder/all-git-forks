@@ -1667,7 +1667,6 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 	if (!idx_map)
 		return;
 	
-	/* haven't implemented which yet; no need really... */
 	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
 		struct index_entry *entry = IE_CAST(idx_map + i);
 		
