@@ -67,6 +67,14 @@ CAPABILITIES
 'import'::
 	This helper supports the 'import' command.
 
+'marks' filename::
+	Helper requires the marks from a git-fast-import run to be
+	loaded from, and saved to, the given filename. When this
+	"feature" is advertised, each git-fast-import run must load
+	and save the internal marks database (see the --import-marks
+	and --export-marks option to git-fast-import for more details)
+	located at the given filename.
+
 REF LIST ATTRIBUTES
 -------------------
 
