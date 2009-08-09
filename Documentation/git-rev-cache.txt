@@ -3,7 +3,7 @@ git-rev-cache(1)
 
 NAME
 ----
-git-rev-cache - Add, walk and maintain revision cache slices.
+git-rev-cache - Add, walk and maintain revision cache slices
 
 SYNOPSIS
 --------
@@ -11,9 +11,9 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-A front end for the rev-cache API.  It is mainly intended for cache slice
-generation and maintenance, but can also walk commits within a slice.  It
-currently provides basic administrative functionality.
+The revision cache ('rev-cache') provides a mechanism for significantly speeding up revision traversals.  It does this by creating an efficient database (cache) of commits, their related objects and topological relations.  Independant of packs and the object store, this database is composed of rev-cache "slices" -- each a different file storing a given segment of commit history.  To map commits to their respective slices, a single index file is kept for the rev-cache.
+
+'git-rev-cache' provides a front-end for the rev-cache mechanism, intended for updating and maintaining rev-cache slices in the current repository.  New cache slice files can be 'add'ed, to keep the cache up-to-date; individual slices can be traversed; smaller slices can be 'fuse'd into a larger slice; and the rev-cache index can be regenerated.
 
 COMMANDS
 --------
@@ -26,39 +26,43 @@ list from the command line, formatted as: `START START ... \--not END END ...`
 Options:
 
 \--all::
-	Include all branch heads in the new cache slice.
+	Include all refs in the new cache slice, like the \--all option in 'rev-list'.
 
 \--fresh::
-	Exclude everything already in the revision cache.  
+	Exclude everything already in the revision cache, analogous to \--incremental in 'pack-objects'.
 
 \--stdin::
 	Read newline-seperated revisions from the standard input.  Use \--not
 	to exclude commits, as on the command line.
 
 \--legs::
-	Ensure newly-generated cache slice is self-contained.  This means that
+	Ensure newly-generated cache slice has no partial ends.  This means that
 	no commit has partially cached parents, in that all its parents are
 	cached or none of them are.
++
+\--legs will cause 'rev-cache' to expand potential slice end-points (creating "legs") until this condition is met, simplifying the cache slice structure.  'rev-cache' itself does not care if a slice has legs or not, but the condition may reduce the required complexity of other applications that might use the revision cache.
 
-\--noobjects::
+\--no-objects::
 	Non-commit objects are normally included along with the commit with
 	which they were introduced.  This is obviously very benificial, but can
-	take longer in cache slice generation.  Use this option to disable
+	take longer in cache slice generation.  Using this option will disable
 	non-commit object caching.
++
+\--no-objects is mainly intended for debugging or development purposes, but may find use in special situations (e.g. common traversal of only commits).
 
 walk
 ~~~~
-Walk a cache slice based on revision list, formatted like 'add'.
+Analogous to a slice-oriented 'rev-list', 'walk' will traverse a region in a particular cache slice.  Interesting and uninteresting (delimited, as with 'rev-list', with \--not) are specified on the command line, and output is the same as vanilla 'rev-list'.
 
 Options:
 
 \--objects::
-	Like 'git-rev-list', 'walk' will normally only list commits.  Use this
-	option to list non-commit objects as well.
+	Like 'rev-list', 'walk' will normally only list commits.  Use this
+	option to list non-commit objects as well, if they are present in the cache slice.
 
 fuse
 ~~~~
-Merge several cache slices into a single large slice.  On each invocation of
+Merge several cache slices into a single large slice, like 'repack' for 'rev-cache'.  On each invocation of
 'add' a new file ("slice") is added to the revision cache directory, and after
 several additions the directory may become populated with many, relatively
 small slices.  Numerous smaller slices will yield poorer performance than a one
@@ -68,6 +72,8 @@ Running 'fuse' every once in a while will solve this problem by coalescing all
 the cache slices into one larger slice.  For very large projects, using
 \--ignore-size is advisable to prevent overly large cache slices.
 
+Note that 'fuse' uses the internal revision walker, so the options used in fusion are completely independant of those of the cache slices upon which it operates.  For example, if some slices were generated with \--no-objects, yet 'fuse' was performed with non-commit objects, the resulting slice would still contain objects but would take longer to generate.
+
 Options:
 
 \--all::
@@ -75,20 +81,18 @@ Options:
 	revision cache.  \--add tells it to start walking from the branch
 	heads, effectively an `add --all --fresh; fuse` (pseudo-command).
 
-\--noobjects::
+\--no-objects::
 	As in 'add', this option disables inclusion of non-commit objects.  If
 	some cache slices do contain such objects, the information will be lost.
 
 \--ignore-size[=N]::
-	Do not merge cache slices of size >=N.  If N is not provided 'fuse'
-	will default to a size of ~25MB (be aware that slices must be mapped to
-	memory).
+	Do not merge cache slices of size >=N (be aware that slices must be mapped to memory).  N can have a suffix of "k" or "m", denoting N as kilobytes and megabytes, respectively.  If N is not provided 'fuse' will default to a size of ~25MB.
 
 index
 ~~~~~
-Regenerate the cache index.  If the index file associating objects with cache
+Regenerate the revision cache index.  If the rev-cache index file associating objects with cache
 slices gets corrupted, lost, or otherwise becomes unusable, 'index' will
-quickly regenerate the file.  'fuse' will also regenerate the index.
+quickly regenerate the file.  It's most likely that this won't be needed in every day use, as it is targeted towards debugging and development.
 
 DISCUSSION
 ----------
