@@ -10,6 +10,7 @@ struct helper_data
 {
 	const char *name;
 	struct child_process *helper;
+	char *marks_filename;
 	unsigned fetch : 1;
 	unsigned import : 1;
 };
@@ -53,6 +54,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->fetch = 1;
 		if (!strcmp(buf.buf, "import"))
 			data->import = 1;
+		if (!prefixcmp(buf.buf, "marks "))
+			data->marks_filename = xstrdup(buf.buf + 6);
 	}
 	return data->helper;
 }
@@ -99,11 +102,21 @@ static int fetch_with_fetch(struct transport *transport,
 static int get_importer(struct transport *transport, struct child_process *fastimport)
 {
 	struct child_process *helper = get_helper(transport);
+	struct helper_data *data = transport->data;
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
 	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
 	fastimport->argv[0] = "fast-import";
 	fastimport->argv[1] = "--quiet";
+	if (data->marks_filename) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addf(&buf, "--export-marks=%s", data->marks_filename);
+		fastimport->argv[2] = strbuf_detach(&buf, 0);
+		if (!access(data->marks_filename, R_OK)) {
+			strbuf_addf(&buf, "--import-marks=%s", data->marks_filename);
+			fastimport->argv[3] = strbuf_detach(&buf, 0);
+		}
+	}
 
 	fastimport->git_cmd = 1;
 	return start_command(fastimport);
@@ -132,6 +145,8 @@ static int fetch_with_import(struct transport *transport,
 	}
 	disconnect_helper(transport);
 	finish_command(&fastimport);
+	free((char *) fastimport.argv[2]);
+	free((char *) fastimport.argv[3]);
 
 	for (i = 0; i < nr_heads; i++) {
 		posn = to_fetch[i];
