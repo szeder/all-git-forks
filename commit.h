@@ -19,7 +19,6 @@ struct commit {
 	struct commit_list *parents;
 	struct tree *tree;
 	char *buffer;
-	unsigned long size;
 };
 
 extern int save_commit_buffer;

@@ -7,7 +7,6 @@ extern const char *blob_type;
 
 struct blob {
 	struct object object;
-	unsigned long size;
 };
 
 struct blob *lookup_blob(const unsigned char *sha1);

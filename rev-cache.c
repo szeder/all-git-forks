@@ -289,7 +289,6 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		if (!blob)
 			return;
 		
-		blob->size = size;
 		obj = (struct object *)blob;
 		break;
 		
@@ -936,42 +935,21 @@ static void add_object_entry(const unsigned char *sha1, struct object_entry *ent
 	struct strbuf *merge_str, struct strbuf *split_str)
 {
 	struct object_entry entry;
-	struct object *obj;
 	unsigned char size_str[7];
 	unsigned long size;
 	enum object_type type;
+	void *data;
 	
 	if (entryp)
 		sha1 = entryp->sha1;
 	
-	obj = lookup_object(sha1);
-	if (obj) {
-		/* it'd be smoother to have the size in the object... */
-		switch (obj->type) {
-		case OBJ_COMMIT : 
-			size = ((struct commit *)obj)->size;
-			break;
-		case OBJ_TREE : 
-			size = ((struct tree *)obj)->size;
-			break;
-		case OBJ_BLOB : 
-			size = ((struct blob *)obj)->size;
-			break;
-		default : 
-			/* tags are potentially dynamic metadata; they don't really belong here */
-			return;
-		}
-		
-		type = obj->type;
-	}
+	/* retrieve size data */
+	data = read_sha1_file(sha1, &type, &size);
 	
-	if (!obj || !size) {
-		void *data = read_sha1_file(sha1, &type, &size);
-		
-		if (data)
-			free(data);
-	}
+	if (data)
+		free(data);
 	
+	/* initialize! */
 	if (!entryp) {
 		memset(&entry, 0, sizeof(entry));
 		hashcpy(entry.sha1, sha1);
@@ -1134,6 +1112,82 @@ static int add_unique_objects(struct commit *commit)
 	return i / 20;
 }
 
+static int add_objects_verbatim_1(unsigned char *map, int *index)
+{
+	struct object_entry *entry = OE_CAST(map + *index);
+	int i = *index, object_nr = 0;
+	
+	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+	for (;;) {
+		int pos = i;
+		
+		entry = OE_CAST(map + i);
+		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+		
+		if (entry->type == OBJ_COMMIT) {
+			*index = pos;
+			return object_nr;
+		}
+		
+		strbuf_add(g_buffer, map + pos, i - pos);
+		object_nr++;
+	}
+	
+	return 0;
+}
+
+static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commit)
+{
+	struct rev_cache_slice_map *map;
+	char found = 0;
+	struct index_entry *ie;
+	struct object_entry *entry;
+	int object_nr, i;
+	
+	if (!rci->maps)
+		return -1;
+	
+	/* check if we can continue where we left off */
+	map = rci->last_map;
+	if (!map)
+		goto search_me;
+	
+	i = map->last_index;
+	entry = OE_CAST(map->map + i);
+	if (hashcmp(entry->sha1, commit->object.sha1))
+		goto search_me;
+	
+	found = 1;
+	
+search_me:
+	if (!found) {
+		ie = search_index(commit->object.sha1);
+		if (!ie)
+			return -2;
+		
+		map = rci->maps + ie->cache_index;
+		if (!map->size)
+			return -3;
+		
+		i = ntohl(ie->pos);
+		entry = OE_CAST(map->map + i);
+		if (entry->type != OBJ_COMMIT || hashcmp(entry->sha1, commit->object.sha1))
+			return -4;
+	}
+	
+	/* can't handle end commits */
+	if (entry->is_end)
+		return -5;
+	
+	object_nr = add_objects_verbatim_1(map->map, &i);
+	
+	/* remember this */
+	rci->last_map = map;
+	map->last_index = i;
+	
+	return object_nr;
+}
+
 static void init_revcache_directory(void)
 {
 	struct stat fi;
@@ -1146,9 +1200,12 @@ static void init_revcache_directory(void)
 
 void init_rev_cache_info(struct rev_cache_info *rci)
 {
+	memset(rci, 0, sizeof(struct rev_cache_info));
+	
 	rci->objects = 1;
 	rci->legs = 0;
 	rci->make_index = 1;
+	rci->fuse_me = 0;
 	
 	rci->overwrite_all = 0;
 	
@@ -1238,6 +1295,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	object_nr = total_sz = 0;
 	while ((commit = get_revision(revs)) != 0) {
 		struct object_entry object;
+		int t;
 		
 		strbuf_setlen(&merge_paths, 0);
 		strbuf_setlen(&split_paths, 0);
@@ -1266,13 +1324,18 @@ int make_cache_slice(struct rev_cache_info *rci,
 		add_object_entry(0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (rci->objects && !(commit->object.flags & TREESAME)) {
-			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-			object_nr++;
-			
-			if (!object.is_end)
-				object_nr += add_unique_objects(commit);
+		if (rci->objects) {
+			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0) {
+				/* yay!  we did it! */
+				object_nr += t;
+			} else {
+				/* add all unique children for this commit */
+				add_object_entry(commit->tree->object.sha1, 0, 0, 0);
+				object_nr++;
+				
+				if (!object.is_end)
+					object_nr += add_unique_objects(commit);
+			}
 		}
 		
 		/* print every ~1MB or so */
@@ -1637,84 +1700,151 @@ int regenerate_cache_index(struct rev_cache_info *rci)
 	return 0;
 }
 
+static int add_slices_for_fuse(struct rev_cache_info *rci, struct string_list *files, struct strbuf *ignore)
+{
+	unsigned char sha1[20];
+	char base[PATH_MAX];
+	int baselen, i;
+	struct stat fi;
+	DIR *dirh;
+	struct dirent *de;
+	
+	strncpy(base, git_path("rev-cache"), sizeof(base));
+	baselen = strlen(base);
+	
+	dirh = opendir(base);
+	if (!dirh)
+		return 1;
+	
+	while ((de = readdir(dirh))) {
+		if (de->d_name[0] == '.')
+			continue;
+		
+		base[baselen] = '/';
+		strncpy(base + baselen + 1, de->d_name, sizeof(base) - baselen - 1);
+		
+		if (get_sha1_hex(de->d_name, sha1)) {
+			/* whatever it is, we don't need it... */
+			string_list_insert(base, files);
+			continue;
+		}
+		
+		/* _theoretically_ it is possible a slice < ignore_size to map objects not covered by, yet reachable from, 
+		 * a slice >= ignore_size, meaning that we could potentially delete an 'unfused' slice; but if that 
+		 * ever *did* happen their cache structure'd be so fucked up they might as well refuse the entire thing.
+		 * and at any rate the worst it'd do is make rev-list revert to standard walking in that (small) bit.
+		 */
+		if (rci->ignore_size) {
+			if (stat(base, &fi))
+				warning("can't query file %s\n", base);
+			else if (fi.st_size >= rci->ignore_size) {
+				strbuf_add(ignore, sha1, 20);
+				continue;
+			}
+		} else {
+			/* check if a pointer */
+			struct cache_slice_pointer ptr;
+			int fd = open(base, O_RDONLY);
+			
+			if (fd < 0)
+				goto dont_save;
+			if (sizeof(ptr) != read_in_full(fd, &ptr, sizeof(ptr)))
+				goto dont_save;
+			
+			close(fd);
+			if (!strcmp(ptr.signature, "REVCOPTR")) {
+				strbuf_add(ignore, sha1, 20);
+				continue;
+			}
+		}
+		
+dont_save:
+		for (i = idx_head.cache_nr - 1; i >= 0; i--) {
+			if (!hashcmp(idx_caches + i * 20, sha1))
+				break;
+		}
+		
+		if (i >= 0)
+			rci->maps[i].size = 1;
+		
+		string_list_insert(base, files);
+	}
+	
+	closedir(dirh);
+	
+	return 0;
+}
+
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
  * of which can be re-used.  although path structures will be isomorphic, path generation is 
  * not particularly expensive, and at any rate we need to re-sort the commits */
 int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 {
 	unsigned char cache_sha1[20];
-	char base[PATH_MAX];
-	int baselen, i;
-	struct stat fi;
 	struct string_list files = {0, 0, 0, 1}; /* dup */
 	struct strbuf ignore;
-	DIR *dirh;
+	int i;
+	
+	maybe_fill_with_defaults(rci);
+	
+	if (!idx_map)
+		init_index();
+	if (!idx_map)
+		return -1;
 	
 	strbuf_init(&ignore, 0);
-	strncpy(base, git_path("rev-cache"), sizeof(base));
-	baselen = strlen(base);
+	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
+	if (add_slices_for_fuse(rci, &files, &ignore))
+		return 1;
 	
-	/* enumerate files */
-	dirh = opendir(base);
-	if (dirh) {
-		struct dirent *de;
-		unsigned char sha1[20];
-		
-		while ((de = readdir(dirh))) {
-			if (de->d_name[0] == '.')
-				continue;
-			
-			base[baselen] = '/';
-			strncpy(base + baselen + 1, de->d_name, sizeof(base) - baselen - 1);
-			
-			/* _theoretically_ it is possible a slice < ignore_size to map objects not covered by, yet reachable from, 
-			 * a slice >= ignore_size, meaning that we could potentially delete an 'unfused' slice; but if that 
-			 * ever *did* happen their cache structure'd be so fucked up they might as well refuse the entire thing.
-			 * and at any rate the worst it'd do is make rev-list revert to standard walking in that (small) bit.
-			 */
-			if (!get_sha1_hex(de->d_name, sha1)) {
-				if (rci->ignore_size) {
-					if (stat(base, &fi))
-						warning("can't query file %s\n", base);
-					else if (fi.st_size >= rci->ignore_size) {
-						strbuf_add(&ignore, sha1, 20);
-						continue;
-					}
-				} else {
-					/* check if a pointer */
-					struct cache_slice_pointer ptr;
-					int fd = open(base, O_RDONLY);
-					
-					if (fd < 0)
-						goto dont_save;
-					if (sizeof(ptr) != read_in_full(fd, &ptr, sizeof(ptr)))
-						goto dont_save;
-					
-					close(fd);
-					if (!strcmp(ptr.signature, "REVCOPTR")) {
-						strbuf_add(&ignore, sha1, 20);
-						continue;
-					}
-				}
-			}
-dont_save:
-			
-			string_list_insert(base, &files);
-		}
-		
-		closedir(dirh);
-	}
-	
+	printf("added slices\n");
 	if (ignore.len) {
 		starts_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
 		strbuf_release(&ignore);
 	}
 	
+	/* initialize mappings */
+	for (i = idx_head.cache_nr - 1; i >= 0; i--) {
+		struct rev_cache_slice_map *map = rci->maps + i;
+		struct stat fi;
+		int fd;
+		
+		if (!map->size)
+			continue;
+		map->size = 0;
+		
+		/* pointers are never fused, so we can use open directly */
+		fd = open(git_path("rev-cache/%s", sha1_to_hex(idx_caches + i * 20)), O_RDONLY);
+		if (fd <= 0 || fstat(fd, &fi))
+			continue;
+		if (fi.st_size < sizeof(struct cache_slice_header))
+			continue;
+		
+		map->map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+		if (map->map == MAP_FAILED)
+			continue;
+		
+		close(fd);
+		map->size = fi.st_size;
+	}printf("initialized mappings\n");
+	
 	rci->make_index = 0;
+	rci->fuse_me = 1;
 	if (make_cache_slice(rci, revs, 0, 0, cache_sha1) < 0)
 		die("can't make cache slice");
 	
+	printf("%s\n", sha1_to_hex(cache_sha1));
+	
 	/* clean up time! */
+	for (i = idx_head.cache_nr - 1; i >= 0; i--) {
+		struct rev_cache_slice_map *map = rci->maps + i;
+		
+		if (!map->size)
+			continue;
+		
+		munmap(map->map, map->size);
+	}
+	free(rci->maps);
 	cleanup_cache_slices();
 	
 	for (i = 0; i < files.nr; i++) {
@@ -1771,7 +1901,7 @@ int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path)
 	int fd;
 	unsigned char sha1[20];
 	
-	maybe_fill_with_defualts(rci);
+	maybe_fill_with_defaults(rci);
 	rci->overwrite_all = 1;
 	
 	if (verify_cache_slice(slice_path, sha1) < 0)
