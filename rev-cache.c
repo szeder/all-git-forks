@@ -22,6 +22,12 @@ struct index_header {
 	uint32_t max_date;
 };
 
+struct index_entry_ondisk {
+	unsigned char sha1[20];
+	unsigned char flags;
+	uint32_t pos;
+};
+
 struct index_entry {
 	unsigned char sha1[20];
 	unsigned is_start : 1;
@@ -43,13 +49,27 @@ struct cache_slice_header {
 	unsigned char sha1[20];
 };
 
+struct object_entry_ondisk {
+	unsigned char flags;
+	unsigned char sha1[20];
+	
+	unsigned char merge_nr;
+	unsigned char split_nr;
+	unsigned char sizes;
+	
+	uint32_t date;
+	uint16_t path;
+	
+	/* same as regular */
+};
+
 struct object_entry {
 	unsigned type : 3;
 	unsigned is_end : 1;
 	unsigned is_start : 1;
 	unsigned uninteresting : 1;
 	unsigned include : 1;
-	unsigned flags : 1; /* unused */
+	unsigned flag : 1; /* unused */
 	unsigned char sha1[20];
 	
 	unsigned merge_nr : 7;
@@ -310,6 +330,15 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
+/* is this necessary? */
+static struct object_entry *convert_object_entry_ondisk(struct object_entry_ondisk *disk_entry)
+{
+	static struct object_entry entry;
+	
+	hashcpy(entry.sha1, disk_entry->sha1);
+	/* ... */
+}
+
 static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
 	struct rev_info *revs, struct commit *commit, 
 	unsigned long *date_so_far, int *slop_so_far, 
@@ -556,8 +585,7 @@ end:
 
 struct path_track {
 	struct commit *commit;
-	int path; /* for decrementing paths */
-	struct strbuf path_str; /* for closing children */
+	int path; /* for keeping track of children */
 	
 	struct path_track *next, *prev;
 };
@@ -565,7 +593,7 @@ struct path_track {
 static unsigned char *paths;
 static int path_nr = 1, path_sz;
 
-static struct path_track *children_to_close, *paths_to_dec;
+static struct path_track *path_track;
 static struct path_track *path_track_alloc;
 
 #define PATH_IN_USE			0x80 /* biggest bit we can get as a char */
@@ -612,17 +640,6 @@ static void remove_path_track(struct path_track **ppt, char total_free)
 	*ppt = t;
 }
 
-static struct path_track *find_path_track(struct path_track *head, struct commit *commit)
-{
-	while (head) {
-		if (head->commit == commit)
-			return head;
-		head = head->next;
-	}
-	
-	return 0;
-}
-
 static struct path_track *make_path_track(struct path_track **head, struct commit *commit)
 {
 	struct path_track *pt;
@@ -644,79 +661,48 @@ static struct path_track *make_path_track(struct path_track **head, struct commi
 	return pt;
 }
 
-static void add_child_to_close(struct commit *commit, int path)
+static void add_path_to_track(struct commit *commit, int path)
 {
-	struct path_track *pt = find_path_track(children_to_close, commit);
-	unsigned short write_path;
-	
-	if (!pt) {
-		pt = make_path_track(&children_to_close, commit);
-		strbuf_init(&pt->path_str, 0);
-	}
-	
-	write_path = htons((unsigned short)path);
-	strbuf_add(&pt->path_str, &write_path, PATH_WIDTH);
-}
-
-static void add_path_to_dec(struct commit *commit, int path)
-{
-	make_path_track(&paths_to_dec, commit);
-	paths_to_dec->path = path;
+	make_path_track(&path_track, commit);
+	path_track->path = path;
 }
 
 static void handle_paths(struct commit *commit, struct object_entry *object, struct strbuf *merge_str, struct strbuf *split_str)
 {
-	int parent_nr, open_parent_nr, this_path;
+	int child_nr, parent_nr, open_parent_nr, this_path;
 	struct commit_list *list;
 	struct commit *first_parent;
 	struct path_track **ppt, *pt;
 	
-#if 0
 	/* we can only re-use a closed path once all it's children have been encountered, 
 	 * as we need to keep track of commit boundaries */
-	ppt = &paths_to_dec;
+	ppt = &path_track;
 	pt = *ppt;
+	child_nr = 0;
 	while (pt) {
 		if (pt->commit == commit) {
+			uint16_t write_path;
+			
 			if (paths[pt->path] != PATH_IN_USE)
 				paths[pt->path]--;
+			
+			/* make sure we can handle this */
+			child_nr++;
+			if (child_nr > 0x7f)
+				die("%s: too many branches!  rev-cache can only handle %d parents/children per commit", 
+					sha1_to_hex(object->sha1), 0x7f);
+			
+			/* add to split list */
+			object->split_nr++;
+			write_path = htons((unsigned short)pt->path);;
+			strbuf_add(split_str, &write_path, PATH_WIDTH);
+			
 			remove_path_track(ppt, 0);
 			pt = *ppt;
 		} else {
 			pt = pt->next;
 			ppt = &pt;
 		}
-	}
-#endif
-	
-	/* the commit struct has no way of keeping track of children -- necessary for closing 
-	 * unused paths and tracking path boundaries -- so we have to do it here */
-	ppt = &children_to_close;
-	pt = *ppt;
-	while (pt) {
-		int i;
-		
-		if (pt->commit != commit) {
-			pt = pt->next;
-			ppt = &pt;
-			continue;
-		}
-		
-		/* decrement the paths */
-		for (i = 0; i < pt->path_str.len; i += PATH_WIDTH) {
-			unsigned short path_id = ntohs(*(unsigned short *)(pt->path_str.buf + i));
-			
-			if (paths[path_id] != PATH_IN_USE)
-				paths[path_id]--;
-		}
-		
-		/* add path list to object entry */
-		object->split_nr = pt->path_str.len / PATH_WIDTH;
-		strbuf_add(split_str, pt->path_str.buf, pt->path_str.len);
-		
-		strbuf_release(&pt->path_str);
-		remove_path_track(ppt, 0);
-		break;
 	}
 	
 	/* initialize our self! */
@@ -753,13 +739,18 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 		return;
 	}
 	
+	/* bail out on obscene parent/child #s */
+	if (parent_nr > 0x7f)
+		die("%s: too many parents in merge!  rev-cache can only handle %d parents/children per commit", 
+			sha1_to_hex(object->sha1), 0x7f);
+	
 	/* make merge list */
 	object->merge_nr = parent_nr;
 	paths[this_path] = parent_nr;
 	
 	for (list = commit->parents; list; list = list->next) {
 		struct commit *p = list->item;
-		unsigned short write_path;
+		uint16_t write_path;
 		
 		if (p->object.flags & UNINTERESTING)
 			continue;
@@ -774,8 +765,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 		strbuf_add(merge_str, &write_path, PATH_WIDTH);
 		
 		/* make sure path is properly ended */
-		add_child_to_close(p, this_path);
-		/* add_path_to_dec(p, this_path); */
+		add_path_to_track(p, this_path);
 	}
 	
 }
