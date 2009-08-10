@@ -116,7 +116,7 @@ Functions
 		SHA-1 identifying the cache slice to use.  This can be taken directly from `get_cache_slice`.
 
 	`commit`::
-		[...]
+		The current commit object in the revision walk, i.e. the commit which inspired this slice traversal.  Although theoretically redundant in view of the `work` list, this simplifies interaction with normal revision walks, which pop commits from `work` before analyzing them.
 
 	`date_so_far`::
 		The date of the oldest encountered interesting commit.  Passing NULL will let `traverse_cache_slice` use defaults.
