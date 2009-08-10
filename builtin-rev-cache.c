@@ -13,9 +13,11 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	unsigned int flags = 0;
 	int i, retval;
 	unsigned char cache_sha1[20];
+	struct commit_list *starts = 0, *ends = 0;
+	struct commit *commit;
 	
 	init_revisions(&revs, 0);
-	init_rci(&rci);
+	init_rev_cache_info(&rci);
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
@@ -26,7 +28,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--legs"))
 			rci.legs = 1;
-		else if (!strcmp(argv[i], "--noobjects"))
+		else if (!strcmp(argv[i], "--no-objects"))
 			rci.objects = 0;
 		else if (!strcmp(argv[i], "--all")) {
 			const char *args[2];
@@ -58,11 +60,17 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	retval = make_cache_slice(&rci, &revs, 0, 0, cache_sha1);
+	retval = make_cache_slice(&rci, &revs, &starts, &ends, cache_sha1);
 	if (retval < 0)
 		return retval;
 	
 	printf("%s\n", sha1_to_hex(cache_sha1));
+	
+	fprintf(stderr, "endpoints:\n");
+	while ((commit = pop_commit(&starts)))
+		fprintf(stderr, "S %s\n", sha1_to_hex(commit->object.sha1));
+	while ((commit = pop_commit(&ends)))
+		fprintf(stderr, "E %s\n", sha1_to_hex(commit->object.sha1));
 	
 	return 0;
 }
@@ -154,14 +162,14 @@ commands:\n\
             --fresh           exclude everything already in a cache slice\n\
             --stdin           also read commit ids from stdin (same form as cmd)\n\
             --legs            ensure branch is entirely self-contained\n\
-            --noobjects       don't add non-commit objects to slice\n\
+            --no-objects      don't add non-commit objects to slice\n\
   walk   - walk a cache slice based on set of commits; formatted as add\n\
            options:\n\
            --objects          include non-commit objects in traversals\n\
-  fuse   - coagulate cache slices into a single cache.\n\
+  fuse   - coalesce cache slices into a single cache.\n\
            options:\n\
             --all             include all objects in repository\n\
-            --noobjects       don't add non-commit objects to slice\n\
+            --no-objects      don't add non-commit objects to slice\n\
             --ignore-size[=N] ignore slices of size >= N; defaults to ~5MB\n\
   index  - regnerate the cache index.";
 	

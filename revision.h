@@ -200,9 +200,9 @@ extern int traverse_cache_slice(struct rev_info *revs,
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
-extern void init_rci(struct rev_cache_info *rci);
+extern void init_rev_cache_info(struct rev_cache_info *rci);
 extern int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **tops, struct commit_list **bottoms, 
+	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
 	unsigned char *cache_sha1);
 extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
 	int fd, unsigned int size);
