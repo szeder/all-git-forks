@@ -182,7 +182,7 @@ static int handle_fuse(int argc, const char *argv[])
 	char add_all = 0;
 	
 	init_revisions(&revs, 0);
-	init_rci(&rci);
+	init_rev_cache_info(&rci);
 	args[argn++] = "rev-list";
 	
 	for (i = 0; i < argc; i++) {
@@ -190,7 +190,7 @@ static int handle_fuse(int argc, const char *argv[])
 			args[argn++] = "--all";
 			setup_revisions(argn, args, &revs, 0);
 			add_all = 1;
-		} else if (!strcmp(argv[i], "--noobjects")) 
+		} else if (!strcmp(argv[i], "--no-objects")) 
 			rci.objects = 0;
 		else if (!strncmp(argv[i], "--ignore-size", 13)) {
 			unsigned int sz;
@@ -208,7 +208,7 @@ static int handle_fuse(int argc, const char *argv[])
 	if (!add_all)
 		starts_from_slices(&revs, 0, 0, 0);
 	
-	return coagulate_cache_slices(&rci, &revs);
+	return fuse_cache_slices(&rci, &revs);
 }
 
 static int handle_index(int argc, const char *argv[])

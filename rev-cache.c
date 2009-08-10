@@ -1503,7 +1503,7 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
  * of which can be re-used.  although path structures will be isomorphic, path generation is 
  * not particularly expensive, and at any rate we need to re-sort the commits */
-int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
+int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 {
 	unsigned char cache_sha1[20];
 	char base[PATH_MAX];

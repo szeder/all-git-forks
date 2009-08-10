@@ -208,7 +208,7 @@ extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha
 	int fd, unsigned int size);
 
 extern void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
-extern int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
+extern int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
 extern int regenerate_cache_index(struct rev_cache_info *rci);
 
 #endif
