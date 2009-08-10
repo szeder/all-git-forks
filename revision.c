@@ -831,7 +831,7 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 		revs->diffopt.prefix_length = strlen(prefix);
 	}
 	
-	init_rci(&revs->rev_cache_info);
+	init_rev_cache_info(&revs->rev_cache_info);
 }
 
 static void add_pending_commit_list(struct rev_info *revs,
