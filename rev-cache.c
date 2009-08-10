@@ -52,7 +52,7 @@ struct object_entry {
 	unsigned flags : 1; /* unused */
 	unsigned char sha1[20];
 	
-	unsigned merge_nr : 6;
+	unsigned merge_nr : 7;
 	unsigned split_nr : 7;
 	unsigned size_size : 3;
 	
@@ -642,6 +642,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 	struct commit *first_parent;
 	struct path_track **ppt, *pt;
 	
+#if 0
 	/* we can only re-use a closed path once all it's children have been encountered, 
 	 * as we need to keep track of commit boundaries */
 	ppt = &paths_to_dec;
@@ -657,18 +658,30 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 			ppt = &pt;
 		}
 	}
+#endif
 	
 	/* the commit struct has no way of keeping track of children -- necessary for closing 
 	 * unused paths and tracking path boundaries -- so we have to do it here */
 	ppt = &children_to_close;
 	pt = *ppt;
 	while (pt) {
+		int i;
+		
 		if (pt->commit != commit) {
 			pt = pt->next;
 			ppt = &pt;
 			continue;
 		}
 		
+		/* decrement the paths */
+		for (i = 0; i < pt->path_str.len; i += PATH_WIDTH) {
+			unsigned short path_id = ntohs(*(unsigned short *)(pt->path_str.buf + i));
+			
+			if (paths[path_id] != PATH_IN_USE)
+				paths[path_id]--;
+		}
+		
+		/* add path list to object entry */
 		object->split_nr = pt->path_str.len / PATH_WIDTH;
 		strbuf_add(split_str, pt->path_str.buf, pt->path_str.len);
 		
@@ -733,7 +746,7 @@ static void handle_paths(struct commit *commit, struct object_entry *object, str
 		
 		/* make sure path is properly ended */
 		add_child_to_close(p, this_path);
-		add_path_to_dec(p, this_path);
+		/* add_path_to_dec(p, this_path); */
 	}
 	
 }
@@ -776,7 +789,7 @@ static void init_revcache_directory(void)
 	
 }
 
-void init_rci(struct rev_cache_info *rci)
+void init_rev_cache_info(struct rev_cache_info *rci)
 {
 	rci->objects = 1;
 	rci->legs = 0;
@@ -792,7 +805,6 @@ int make_cache_slice(struct rev_cache_info *rci,
 	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
 	unsigned char *cache_sha1)
 {
-	struct commit_list *list;
 	struct rev_info therevs;
 	struct strbuf buffer, startlist, endlist;
 	struct cache_slice_header head;
@@ -806,7 +818,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	
 	if (!rci) {
 		rci = &def_rci;
-		init_rci(rci);
+		init_rev_cache_info(rci);
 	}
 	
 	init_revcache_directory();
@@ -825,12 +837,12 @@ int make_cache_slice(struct rev_cache_info *rci,
 		init_revisions(revs, 0);
 		
 		/* we're gonna assume no one else has already traversed this... */
-		for (list = *starts; list; list = list->next)
-			add_pending_object(revs, &list->item->object, 0);
+		while ((commit = pop_commit(starts)))
+			add_pending_object(revs, &commit->object, 0);
 		
-		for (list = *ends; list; list = list->next) {
-			list->item->object.flags |= UNINTERESTING;
-			add_pending_object(revs, &list->item->object, 0);
+		while ((commit = pop_commit(ends))) {
+			commit->object.flags |= UNINTERESTING;
+			add_pending_object(revs, &commit->object, 0);
 		}
 	}
 	
@@ -847,7 +859,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	
 	/* re-use info from other caches if possible */
 	trci = &revs->rev_cache_info;
-	init_rci(trci);
+	init_rev_cache_info(trci);
 	trci->save_unique = 1;
 	trci->add_to_pending = 0;
 	
@@ -869,10 +881,17 @@ int make_cache_slice(struct rev_cache_info *rci,
 		
 		handle_paths(commit, &object, &merge_paths, &split_paths);
 		
-		if (object.is_end)
+		if (object.is_end) {
 			strbuf_add(&endlist, object.sha1, 20);
-		if (object.is_start)
+			if (ends)
+				commit_list_insert(commit, ends);
+		}
+		/* the two *aren't* mutually exclusive */
+		if (object.is_start) {
 			strbuf_add(&startlist, object.sha1, 20);
+			if (starts)
+				commit_list_insert(commit, starts);
+		}
 		
 		commit->indegree = 0;
 		
