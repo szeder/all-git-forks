@@ -85,6 +85,12 @@ struct object_entry {
 	/* size */
 };
 
+struct cache_slice_pointer {
+	char signature[8]; /* REVCOPTR */
+	char version;
+	char path[PATH_MAX + 1];
+};
+
 /* list resembles pack index format */
 static uint32_t fanout[0xff + 2];
 
@@ -96,6 +102,7 @@ static char no_idx;
 
 static struct strbuf *g_buffer;
 
+#define SUPPORTED_REVCOPTR_VERSION		1
 #define SUPPORTED_REVCACHE_VERSION 		1
 #define SUPPORTED_REVINDEX_VERSION		1
 
@@ -350,6 +357,7 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
 /* is this necessary? */
+#if 0
 static struct object_entry *convert_object_entry_ondisk(struct object_entry_ondisk *disk_entry)
 {
 	static struct object_entry entry;
@@ -357,6 +365,7 @@ static struct object_entry *convert_object_entry_ondisk(struct object_entry_ondi
 	hashcpy(entry.sha1, disk_entry->sha1);
 	/* ... */
 }
+#endif
 
 static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
 	struct rev_info *revs, struct commit *commit, 
@@ -554,6 +563,48 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 	return 0;
 }
 
+static int open_cache_slice(unsigned char *sha1, int flags)
+{
+	int fd;
+	char signature[8];
+	
+	fd = open(git_path("rev-cache/%s", sha1_to_hex(sha1)), flags);
+	if (fd <= 0)
+		goto end;
+	
+	if (read(fd, signature, 8) != 8)
+		goto end;
+	
+	/* a normal revision slice */
+	if (!memcmp(signature, "REVCACHE", 8)) {
+		lseek(fd, 0, SEEK_SET);
+		return fd;
+	}
+	
+	/* slice pointer */
+	if (!memcmp(signature, "REVCOPTR", 8)) {
+		struct cache_slice_pointer ptr;
+		
+		lseek(fd, 0, SEEK_SET);
+		if (read_in_full(fd, &ptr, sizeof(ptr)) != sizeof(ptr))
+			goto end;
+		
+		if (ptr.version > SUPPORTED_REVCOPTR_VERSION)
+			goto end;
+		
+		close(fd);
+		fd = open(ptr.path, flags);
+		
+		return fd;
+	}
+	
+end:
+	if (fd > 0)
+		close(fd);
+	
+	return -1;
+}
+
 int traverse_cache_slice(struct rev_info *revs, 
 	unsigned char *cache_sha1, struct commit *commit, 
 	unsigned long *date_so_far, int *slop_so_far, 
@@ -577,13 +628,13 @@ int traverse_cache_slice(struct rev_info *revs,
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
 	
-	fd = open(git_path("rev-cache/%s", sha1_to_hex(cache_sha1)), O_RDONLY);
+	fd = open_cache_slice(cache_sha1, O_RDONLY);
 	if (fd == -1)
 		goto end;
 	if (fstat(fd, &fi) || fi.st_size < sizeof(struct cache_slice_header))
 		goto end;
 	
-	map = xmmap(0, fi.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		goto end;
 	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
@@ -1099,10 +1150,23 @@ void init_rev_cache_info(struct rev_cache_info *rci)
 	rci->legs = 0;
 	rci->make_index = 1;
 	
+	rci->overwrite_all = 0;
+	
 	rci->save_unique = 0;
 	rci->add_to_pending = 1;
 	
 	rci->ignore_size = 0;
+}
+
+void maybe_fill_with_defaults(struct rev_cache_info *rci)
+{
+	static struct rev_cache_info def_rci;
+	
+	if (rci)
+		return;
+	
+	init_rev_cache_info(&def_rci);
+	rci = &def_rci;
 }
 
 int make_cache_slice(struct rev_cache_info *rci, 
@@ -1117,13 +1181,10 @@ int make_cache_slice(struct rev_cache_info *rci,
 	struct strbuf merge_paths, split_paths;
 	int object_nr, total_sz, fd;
 	char file[PATH_MAX], *newfile;
-	struct rev_cache_info *trci, def_rci;
+	struct rev_cache_info *trci;
 	git_SHA_CTX ctx;
 	
-	if (!rci) {
-		rci = &def_rci;
-		init_rev_cache_info(rci);
-	}
+	maybe_fill_with_defaults(rci);
 	
 	init_revcache_directory();
 	strcpy(file, git_path("rev-cache/XXXXXX"));
@@ -1337,6 +1398,8 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	unsigned char *map;
 	unsigned long max_date;
 	
+	maybe_fill_with_defaults(rci);
+	
 	if (!idx_map)
 		init_index();
 	
@@ -1401,7 +1464,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		} else
 			entry = search_index(object_entry->sha1);
 		
-		if (entry && !object_entry->is_start)
+		if (entry && !object_entry->is_start && !rci->overwrite_all)
 			continue;
 		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-idx_map = offset, so cast is valid) */
 			entry = IE_CAST(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
@@ -1490,6 +1553,90 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 }
 
 
+struct slice_fd_time {
+	unsigned char sha1[20];
+	int fd;
+	struct stat fi;
+};
+
+int slice_time_sort(const void *a, const void *b)
+{
+	unsigned long at, bt;
+	
+	at = ((struct slice_fd_time *)a)->fi.st_ctime;
+	bt = ((struct slice_fd_time *)b)->fi.st_ctime;
+	
+	if (at == bt)
+		return 0;
+	
+	return at > bt ? 1 : -1;
+}
+
+int regenerate_cache_index(struct rev_cache_info *rci)
+{
+	DIR *dirh;
+	int i;
+	struct slice_fd_time info;
+	struct strbuf slices;
+	
+	/* first remove old index if it exists */
+	unlink_or_warn(git_path("rev-cache/index"));
+	
+	strbuf_init(&slices, 0);
+	
+	dirh = opendir(git_path("rev-cache"));
+	if (dirh) {
+		struct dirent *de;
+		struct stat fi;
+		int fd;
+		unsigned char sha1[20];
+		
+		while ((de = readdir(dirh))) {
+			if (de->d_name[0] == '.')
+				continue;
+			
+			if (get_sha1_hex(de->d_name, sha1))
+				continue;
+			
+			/* open with RDWR because of mmap call in make_cache_index() */
+			fd = open_cache_slice(sha1, O_RDONLY);
+			if (fd < 0 || fstat(fd, &fi)) {
+				warning("bad cache found [%s]; fuse recommended", de->d_name);
+				if (fd > 0)
+					close(fd);
+				continue;
+			}
+			
+			hashcpy(info.sha1, sha1);
+			info.fd = fd;
+			memcpy(&info.fi, &fi, sizeof(struct stat));
+			
+			strbuf_add(&slices, &info, sizeof(info));
+		}
+		
+		closedir(dirh);
+	}
+	
+	/* we want oldest first -> upon overlap, older slices are more likely to have a larger section, 
+	 * as of the overlapped commit */
+	qsort(slices.buf, slices.len / sizeof(info), sizeof(info), slice_time_sort);
+	
+	for (i = 0; i < slices.len; i += sizeof(info)) {
+		struct slice_fd_time *infop = (struct slice_fd_time *)(slices.buf + i);
+		struct stat *fip = &infop->fi;
+		int fd = infop->fd;
+		
+		if (make_cache_index(rci, infop->sha1, fd, fip->st_size) < 0)
+			die("error writing cache");
+		
+		close(fd);
+	}
+	
+	strbuf_release(&slices);
+	
+	return 0;
+}
+
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
  * of which can be re-used.  although path structures will be isomorphic, path generation is 
  * not particularly expensive, and at any rate we need to re-sort the commits */
@@ -1497,7 +1644,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 {
 	unsigned char cache_sha1[20];
 	char base[PATH_MAX];
-	int fd, baselen, i;
+	int baselen, i;
 	struct stat fi;
 	struct string_list files = {0, 0, 0, 1}; /* dup */
 	struct strbuf ignore;
@@ -1511,6 +1658,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	dirh = opendir(base);
 	if (dirh) {
 		struct dirent *de;
+		unsigned char sha1[20];
 		
 		while ((de = readdir(dirh))) {
 			if (de->d_name[0] == '.')
@@ -1524,16 +1672,32 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 			 * ever *did* happen their cache structure'd be so fucked up they might as well refuse the entire thing.
 			 * and at any rate the worst it'd do is make rev-list revert to standard walking in that (small) bit.
 			 */
-			if (rci->ignore_size) {
-				unsigned char sha1[20];
-				
-				if (stat(base, &fi))
-					warning("can't query file %s\n", base);
-				else if (fi.st_size >= rci->ignore_size && !get_sha1_hex(de->d_name, sha1)) {
-					strbuf_add(&ignore, sha1, 20);
-					continue;
+			if (!get_sha1_hex(de->d_name, sha1)) {
+				if (rci->ignore_size) {
+					if (stat(base, &fi))
+						warning("can't query file %s\n", base);
+					else if (fi.st_size >= rci->ignore_size) {
+						strbuf_add(&ignore, sha1, 20);
+						continue;
+					}
+				} else {
+					/* check if a pointer */
+					struct cache_slice_pointer ptr;
+					int fd = open(base, O_RDONLY);
+					
+					if (fd < 0)
+						goto dont_save;
+					if (sizeof(ptr) != read_in_full(fd, &ptr, sizeof(ptr)))
+						goto dont_save;
+					
+					close(fd);
+					if (!strcmp(ptr.signature, "REVCOPTR")) {
+						strbuf_add(&ignore, sha1, 20);
+						continue;
+					}
 				}
 			}
+dont_save:
 			
 			string_list_insert(base, &files);
 		}
@@ -1562,60 +1726,69 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	string_list_clear(&files, 0);
 	
-	fd = open(git_path("rev-cache/%s", sha1_to_hex(cache_sha1)), O_RDWR);
-	if (fd < 0 || fstat(fd, &fi))
-		die("what?  I can't open/query the cache I just generated");
-	
-	if (make_cache_index(rci, cache_sha1, fd, fi.st_size) < 0)
-		die("can't make new index");
-	
-	close(fd);
-	
-	return 0;
+	return regenerate_cache_index(rci);
 }
 
-int regenerate_cache_index(struct rev_cache_info *rci)
+static int verify_cache_slice(const char *slice_path, unsigned char *sha1)
 {
-	DIR *dirh;
-	char base[PATH_MAX];
-	int baselen;
+	struct cache_slice_header head;
+	int fd, len, retval = -1;
+	unsigned char *map = MAP_FAILED;
+	struct stat fi;
 	
-	/* first remove old index if it exists */
-	unlink_or_warn(git_path("rev-cache/index"));
+	len = strlen(slice_path);
+	if (len < 40)
+		return -2;
+	if (get_sha1_hex(slice_path + len - 40, sha1))
+		return -3;
 	
-	strncpy(base, git_path("rev-cache"), sizeof(base));
-	baselen = strlen(base);
+	fd = open(slice_path, O_RDONLY);
+	if (fd == -1)
+		goto end;
+	if (fstat(fd, &fi) || fi.st_size < sizeof(head))
+		goto end;
 	
-	dirh = opendir(base);
-	if (dirh) {
-		struct dirent *de;
-		struct stat fi;
-		int fd;
-		unsigned char sha1[20];
-		
-		while ((de = readdir(dirh))) {
-			if (de->d_name[0] == '.')
-				continue;
-			
-			if (get_sha1_hex(de->d_name, sha1))
-				continue;
-			
-			base[baselen] = '/';
-			strncpy(base + baselen + 1, de->d_name, sizeof(base) - baselen - 1);
-			
-			/* open with RDWR because of mmap call in make_cache_index() */
-			fd = open(base, O_RDWR);
-			if (fd < 0 || fstat(fd, &fi))
-				warning("bad cache found [%s]; fuse recommended", de->d_name);
-			
-			if (make_cache_index(rci, sha1, fd, fi.st_size) < 0)
-				die("error writing cache");
-			
-			close(fd);
-		}
-		
-		closedir(dirh);
-	}
+	map = xmmap(0, sizeof(head), PROT_READ, MAP_PRIVATE, fd, 0);
+	if (map == MAP_FAILED)
+		goto end;
+	if (get_cache_slice_header(sha1, map, fi.st_size, &head))
+		goto end;
+	
+	retval = 0;
+	
+end:
+	if (map != MAP_FAILED)
+		munmap(map, sizeof(head));
+	if (fd > 0)
+		close(fd);
+	
+	return retval;
+}
+
+int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path)
+{
+	struct cache_slice_pointer ptr;
+	int fd;
+	unsigned char sha1[20];
+	
+	maybe_fill_with_defualts(rci);
+	rci->overwrite_all = 1;
+	
+	if (verify_cache_slice(slice_path, sha1) < 0)
+		return -1;
+	
+	strcpy(ptr.signature, "REVCOPTR");
+	ptr.version = SUPPORTED_REVCOPTR_VERSION;
+	strcpy(ptr.path, make_nonrelative_path(slice_path));
+	
+	fd = open(git_path("rev-cache/%s", sha1_to_hex(sha1)), O_RDWR | O_CREAT | O_TRUNC, 0666);
+	if (fd < 0)
+		return -2;
+	
+	write_in_full(fd, &ptr, sizeof(ptr));
+	make_cache_index(rci, sha1, fd, sizeof(ptr));
+	
+	close(fd);
 	
 	return 0;
 }

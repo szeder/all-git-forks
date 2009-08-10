@@ -25,6 +25,9 @@ struct rev_cache_info {
 		legs : 1, 
 		make_index : 1;
 	
+	/* index inclusion */
+	unsigned overwrite_all : 1;
+	
 	/* traversal flags */
 	unsigned save_unique : 1, 
 		add_to_pending : 1;
@@ -210,5 +213,6 @@ extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha
 extern void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
 extern int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
 extern int regenerate_cache_index(struct rev_cache_info *rci);
+extern int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path);
 
 #endif

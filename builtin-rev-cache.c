@@ -151,28 +151,6 @@ static int handle_walk(int argc, const char *argv[])
 	return 0;
 }
 
-static unsigned int parse_size(const char *name)
-{
-	unsigned int size;
-	char *p;
-	
-	size = strtol(name, &p, 10);
-	switch (*p) {
-	case 'k' : 
-	case 'K' : 
-		size *= 0x400;
-		break;
-	case 'm' : 
-	case 'M' : 
-		size *= 0x100000;
-		break;
-	default : 
-		break;
-	}
-	
-	return size;
-}
-
 static int handle_fuse(int argc, const char *argv[])
 {
 	struct rev_info revs;
@@ -193,12 +171,12 @@ static int handle_fuse(int argc, const char *argv[])
 		} else if (!strcmp(argv[i], "--no-objects")) 
 			rci.objects = 0;
 		else if (!strncmp(argv[i], "--ignore-size", 13)) {
-			unsigned int sz;
+			unsigned long sz;
 			
 			if (argv[i][13] == '=')
-				sz = parse_size(argv[i] + 14);
+				git_parse_ulong(argv[i] + 14, &sz);
 			else
-				sz = parse_size(DEFAULT_IGNORE_SLICE_SIZE);
+				git_parse_ulong(DEFAULT_IGNORE_SLICE_SIZE, &sz);
 			
 			rci.ignore_size = sz;
 		} else 
@@ -214,6 +192,14 @@ static int handle_fuse(int argc, const char *argv[])
 static int handle_index(int argc, const char *argv[])
 {
 	return regenerate_cache_index(0);
+}
+
+static int handle_alt(int argc, const char *argv[])
+{
+	if (argc < 1)
+		return -1;
+	
+	return make_cache_slice_pointer(0, argv[0]);
 }
 
 static int handle_help(void)
@@ -267,6 +253,8 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_walk(argc, argv);
 	else if (!strcmp(arg, "index"))
 		r = handle_index(argc, argv);
+	else if (!strcmp(arg, "alt"))
+		r = handle_alt(argc, argv);
 	else
 		return handle_help();
 	
