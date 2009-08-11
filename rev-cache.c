@@ -1064,7 +1064,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			continue;
 		
 		/* handle index duplication
-		 * -> keep old copy unless new one is an end -- based on expected usage, older ones will be more 
+		 * -> keep old copy unless new one is a start -- based on expected usage, older ones will be more 
 		 * likely to lead to greater slice traversals than new ones
 		 * should we allow more intelligent overriding? */
 		date = ntohl(object_entry->date);
