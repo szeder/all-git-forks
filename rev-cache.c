@@ -2030,11 +2030,6 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = 0; i < files.nr; i++) {
 		char *name = files.items[i].string;
 		
-		/* in the odd case of only having one cache slice we effectively just remaking the index... */
-		if (strlen(name) >= 40 && !strncmp(name, sha1_to_hex(cache_sha1), 40))
-			continue;
-		
-		strncpy(base + baselen + 1, name, sizeof(base) - baselen - 1);
 		fprintf(stderr, "removing %s\n", base);
 		unlink_or_warn(base);
 	}
