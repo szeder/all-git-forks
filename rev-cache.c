@@ -102,7 +102,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx, save_unique, add_to_pending;
+static char no_idx, add_to_pending;
 static struct bad_slice *bad_slices;
 static unsigned char *idx_caches;
 
@@ -125,8 +125,6 @@ static struct strbuf *g_buffer;
 #define ENTRY_SIZE_OFFSET(e)			(ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
 
 #define SLOP			5
-
-#define HAS_UNIQUES		FACE_VALUE
 
 /* initialization */
 
@@ -300,11 +298,6 @@ static unsigned long decode_size(unsigned char *str, int len);
 /* on failure */
 static void restore_commit(struct commit *commit)
 {
-	if (commit->unique) {
-		free(commit->unique);
-		commit->unique = 0;
-	}
-	
 	commit->object.flags &= ~(ADDED | SEEN | FACE_VALUE);
 	
 	if (!commit->object.parsed) {
@@ -318,8 +311,6 @@ static void restore_commit(struct commit *commit)
 
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
 {
-	static struct commit *last_commit = 0;
-	static struct object_list **last_unique = 0;
 	struct blob *blob;
 	struct tree *tree;
 	struct object *obj;
@@ -354,20 +345,6 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	default : 
 		/* tag objects aren't really supposed to be here */
 		return;
-	}
-	
-	/* add to unique list if we're not an end */
-	if (save_unique && (commit->object.flags & FACE_VALUE)) {
-		if (last_commit != commit) {
-			last_commit = commit;
-			last_unique = 0;
-		}
-		
-		if (!last_unique)
-			last_unique = &commit->unique;
-		
-		object_list_append(obj, last_unique);
-		last_unique = &(*last_unique)->next;
 	}
 	
 	obj->flags |= FACE_VALUE;
@@ -820,7 +797,6 @@ int traverse_cache_slice(struct rev_info *revs,
 	
 	/* load options */
 	rci = &revs->rev_cache_info;
-	save_unique = rci->save_unique;
 	add_to_pending = rci->add_to_pending;
 	
 	memset(&head, 0, sizeof(struct cache_slice_header));
@@ -1255,21 +1231,6 @@ static int add_unique_objects(struct commit *commit)
 	int i, j, next;
 	char is_first = 1;
 	
-	/* but wait!  is this itself from a slice? */
-	if (commit->unique) {
-		struct object_list *olist;
-		
-		olist = commit->unique;
-		i = 0;
-		while (olist) {
-			add_object_entry(olist->item->sha1, 0, 0, 0);
-			i++;
-			olist = olist->next;
-		}
-		
-		return i;
-	}
-	
 	/* ...no, calculate unique objects */
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
@@ -1429,7 +1390,6 @@ void init_rev_cache_info(struct rev_cache_info *rci)
 	
 	rci->overwrite_all = 0;
 	
-	rci->save_unique = 0;
 	rci->add_to_pending = 1;
 	
 	rci->ignore_size = 0;
@@ -1502,7 +1462,6 @@ int make_cache_slice(struct rev_cache_info *rci,
 	/* re-use info from other caches if possible */
 	trci = &revs->rev_cache_info;
 	init_rev_cache_info(trci);
-	trci->save_unique = 1;
 	trci->add_to_pending = 0;
 	
 	setup_revisions(0, 0, revs, 0);
