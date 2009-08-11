@@ -1704,7 +1704,7 @@ static int add_slices_for_fuse(struct rev_cache_info *rci, struct string_list *f
 {
 	unsigned char sha1[20];
 	char base[PATH_MAX];
-	int baselen, i;
+	int baselen, i, slice_nr = 0;
 	struct stat fi;
 	DIR *dirh;
 	struct dirent *de;
@@ -1714,7 +1714,7 @@ static int add_slices_for_fuse(struct rev_cache_info *rci, struct string_list *f
 	
 	dirh = opendir(base);
 	if (!dirh)
-		return 1;
+		return 0;
 	
 	while ((de = readdir(dirh))) {
 		if (de->d_name[0] == '.')
@@ -1768,11 +1768,12 @@ dont_save:
 			rci->maps[i].size = 1;
 		
 		string_list_insert(base, files);
+		slice_nr++;
 	}
 	
 	closedir(dirh);
 	
-	return 0;
+	return slice_nr;
 }
 
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
@@ -1794,7 +1795,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	strbuf_init(&ignore, 0);
 	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
-	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1) {
+	if (add_slices_for_fuse(rci, &files, &ignore) <= 1) {
 		printf("nothing to fuse\n");
 		return 1;
 	}
