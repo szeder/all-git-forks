@@ -115,7 +115,7 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map;
 static int idx_size;
 static struct index_header idx_head;
-static char no_idx, save_unique, add_to_pending, add_names;
+static char no_idx, add_to_pending, add_names;
 static unsigned char *idx_caches;
 
 static struct bad_slice *bad_slices;
@@ -142,8 +142,6 @@ static struct strbuf *g_buffer;
 #define ENTRY_SIZE_OFFSET(e)			(ENTRY_NAME_OFFSET(e) - (e)->size_size)
 
 #define SLOP			5
-
-#define HAS_UNIQUES		FACE_VALUE
 
 /* initialization */
 
@@ -323,11 +321,6 @@ static unsigned long decode_size(unsigned char *str, int len);
 /* on failure */
 static void restore_commit(struct commit *commit)
 {
-	if (commit->unique) {
-		free(commit->unique);
-		commit->unique = 0;
-	}
-	
 	commit->object.flags &= ~(ADDED | SEEN | FACE_VALUE);
 	
 	if (!commit->object.parsed) {
@@ -341,13 +334,10 @@ static void restore_commit(struct commit *commit)
 
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
 {
-	static struct commit *last_commit = 0;
-	static struct object_list **last_unique = 0;
 	struct blob *blob;
 	struct tree *tree;
 	struct object *obj;
 	unsigned long size, name_index;
-	char **namep = 0;
 	
 	size = decode_size((unsigned char *)entry + ENTRY_SIZE_OFFSET(entry), entry->size_size);
 	switch (entry->type) {
@@ -360,7 +350,6 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 			return;
 		
 		tree->size = size;
-		namep = &tree->name;
 		commit->tree = tree;
 		obj = (struct object *)tree;
 		break;
@@ -387,25 +376,6 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		if (name_index >= cur_name_list->len)
 			name_index = 0;
 	} else name_index = 0;
-	
-	/* add to unique list if we're not an end */
-	if (save_unique && (commit->object.flags & FACE_VALUE)) {
-		if (last_commit != commit) {
-			last_commit = commit;
-			last_unique = 0;
-		}
-		
-		if (!last_unique)
-			last_unique = &commit->unique;
-		
-		object_list_append(obj, last_unique);
-		last_unique = &(*last_unique)->next;
-	}
-	
-	/* add cached name */
-	if (name_index && namep) {
-		*namep = cur_name_list->buf + name_index;
-	}
 	
 	obj->flags |= FACE_VALUE;
 	if (add_to_pending) {
@@ -892,7 +862,6 @@ int traverse_cache_slice(struct rev_info *revs,
 	
 	/* load options */
 	rci = &revs->rev_cache_info;
-	save_unique = rci->save_unique;
 	add_to_pending = rci->add_to_pending;
 	add_names = rci->add_names;
 	
@@ -1436,21 +1405,6 @@ static int add_unique_objects(struct commit *commit)
 	int i, j, next;
 	char is_first = 1;
 	
-	/* but wait!  is this itself from a slice? */
-	if (commit->unique) {
-		struct object_list *olist;
-		
-		olist = commit->unique;
-		i = 0;
-		while (olist) {
-			add_object_entry(olist->item->sha1, 0, 0, 0, 0 /* retrieved with size in function */);
-			i++;
-			olist = olist->next;
-		}
-		
-		return i;
-	}
-	
 	/* ...no, calculate unique objects */
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
@@ -1617,7 +1571,6 @@ void init_rev_cache_info(struct rev_cache_info *rci)
 	
 	rci->overwrite_all = 0;
 	
-	rci->save_unique = 0;
 	rci->add_to_pending = 1;
 	rci->add_names = 1;
 	
@@ -1697,8 +1650,6 @@ int make_cache_slice(struct rev_cache_info *rci,
 	/* re-use info from other caches if possible */
 	trci = &revs->rev_cache_info;
 	init_rev_cache_info(trci);
-	trci->save_unique = 1;
-	trci->add_names = 1;
 	trci->add_to_pending = 0;
 	
 	setup_revisions(0, 0, revs, 0);
@@ -2216,10 +2167,11 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	strbuf_init(&ignore, 0);
 	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
-	if (add_slices_for_fuse(rci, &files, &ignore))
+	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1)
+		printf("nothing to fuse\n");
 		return 1;
+	}
 	
-	printf("added slices\n");
 	if (ignore.len) {
 		starts_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
 		strbuf_release(&ignore);
@@ -2248,7 +2200,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 		
 		close(fd);
 		map->size = fi.st_size;
-	}printf("initialized mappings\n");
+	}
 	
 	rci->make_index = 0;
 	rci->fuse_me = 1;
