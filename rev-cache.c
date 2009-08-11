@@ -791,6 +791,17 @@ void init_rev_cache_info(struct rev_cache_info *rci)
 	rci->ignore_size = 0;
 }
 
+void maybe_fill_with_defaults(struct rev_cache_info *rci)
+{
+	static struct rev_cache_info def_rci;
+	
+	if (rci)
+		return;
+	
+	init_rev_cache_info(&def_rci);
+	rci = &def_rci;
+}
+
 int make_cache_slice(struct rev_cache_info *rci, 
 	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
 	unsigned char *cache_sha1)
@@ -803,13 +814,10 @@ int make_cache_slice(struct rev_cache_info *rci,
 	struct strbuf merge_paths, split_paths;
 	int object_nr, total_sz, fd;
 	char file[PATH_MAX], *newfile;
-	struct rev_cache_info *trci, def_rci;
+	struct rev_cache_info *trci;
 	git_SHA_CTX ctx;
 	
-	if (!rci) {
-		rci = &def_rci;
-		init_rev_cache_info(rci);
-	}
+	maybe_fill_with_defaults(rci);
 	
 	init_revcache_directory();
 	strcpy(file, git_path("rev-cache/XXXXXX"));
