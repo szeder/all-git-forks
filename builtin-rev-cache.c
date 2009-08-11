@@ -5,7 +5,7 @@
 #include "revision.h"
 #include "list-objects.h"
 
-#define DEFAULT_IGNORE_SLICE_SIZE		"30mb"
+unsigned long default_ignore_size = 50 * 1024 * 1024; /* 50mb */
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
@@ -269,12 +269,26 @@ commands:\n\
 	return 0;
 }
 
+static int rev_cache_config(const char *k, const char *v, void *cb)
+{
+	/* this could potentially be related to pack.windowmemory, but we want a max around 50mb, 
+	 * and .windowmemory is often >700mb, with *large* variations */
+	if (!strcmp(k, "revcache.ignoresize")) {
+		int t;
+		
+		t = git_config_ulong(k, v);
+		if (t)
+			default_ignore_size = t;
+	}
+}
+
 int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 {
 	const char *arg;
 	int r;
 	
 	git_config(git_default_config, NULL);
+	git_config(rev_cache_config, NULL);
 	
 	if (argc > 1)
 		arg = argv[1];
