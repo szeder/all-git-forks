@@ -108,5 +108,11 @@ test_expect_success 'test rev-caches walker with objects' '
 	test_cmp_sorted list proper_object_list
 '
 
+#test fuse and index regeneration
+test_expect_success 'test (non-)fusion of one slice' '
+	git-rev-cache fuse >output.err && 
+	grep "nothing to fuse" output.err
+'
+
 test_done
 
