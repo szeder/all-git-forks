@@ -1184,7 +1184,6 @@ static unsigned long decode_size(unsigned char *str, int len)
 #define NL_HASH_NUMBER			(NL_HASH_TABLE_SIZE >> 3)
 
 struct name_list_hash {
-	char *ptr;
 	int ind;
 	struct name_list_hash *next;
 };
@@ -1193,7 +1192,7 @@ static struct name_list_hash **nl_hash_table;
 static unsigned char *nl_hashes;
 
 /* FNV-1a hash */
-static unsigned int hash_name(char *name)
+static unsigned int hash_name(const char *name)
 {
 	unsigned int hash = 2166136261ul;
 	char *p = name;
@@ -1206,12 +1205,12 @@ static unsigned int hash_name(char *name)
 	return hash & 0xffff;
 }
 
-static int name_in_list(char *name)
+static int name_in_list(const char *name)
 {
 	unsigned int h = hash_name(name);
 	struct name_list_hash *entry = nl_hash_table[h];
 	
-	while (entry && strcmp(entry->ptr, name))
+	while (entry && strcmp(g_name_buffer->buf + entry->ind, name))
 		entry = entry->next;
 	
 	if (entry)
@@ -1220,9 +1219,7 @@ static int name_in_list(char *name)
 	/* add name to buffer and create hash reference */
 	entry = xcalloc(1, sizeof(struct name_list_hash));
 	entry->ind = g_name_buffer->len;
-	
 	strbuf_add(g_name_buffer, name, strlen(name) + 1);
-	entry->ptr = g_name_buffer->buf + entry->ind;
 	
 	entry->next = nl_hash_table[h];
 	nl_hash_table[h] = entry;
@@ -1269,22 +1266,23 @@ static void cleanup_name_list_hash(void)
 }
 
 static void add_object_entry(const unsigned char *sha1, struct object_entry *entryp, 
-	struct strbuf *merge_str, struct strbuf *split_str, char *name)
+	struct strbuf *merge_str, struct strbuf *split_str, char *name, unsigned long size)
 {
 	struct object_entry entry;
 	unsigned char size_str[7], name_str[7];
-	unsigned long size;
 	enum object_type type;
 	void *data;
 	
 	if (entryp)
 		sha1 = entryp->sha1;
 	
-	/* retrieve size data */
-	data = read_sha1_file(sha1, &type, &size);
-	
-	if (data)
-		free(data);
+	if (!size) {
+		/* retrieve size data */
+		data = read_sha1_file(sha1, &type, &size);
+		
+		if (data)
+			free(data);
+	}
 	
 	/* initialize! */
 	if (!entryp) {
@@ -1461,10 +1459,10 @@ static int add_unique_objects(struct commit *commit)
 	g_buffer = orig_buf;
 	g_name_buffer = orig_name_buf;
 	for (i = 0; i < os.len; i += ENTRY_SIZE)
-		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0, names.buf + *(size_t *)(os.buf + i + 20));
+		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0, names.buf + *(size_t *)(os.buf + i + 20), 0);
 	
 	/* last but not least, the main tree */
-	add_object_entry(commit->tree->object.sha1, 0, 0, 0, 0);
+	add_object_entry(commit->tree->object.sha1, 0, 0, 0, 0, 0);
 	
 	strbuf_release(&ost);
 	strbuf_release(&os);
@@ -1474,14 +1472,17 @@ static int add_unique_objects(struct commit *commit)
 #	undef ENTRY_SIZE
 }
 
-static int add_objects_verbatim_1(unsigned char *map, int *index)
+static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *index)
 {
-	struct object_entry *entry = OE_CAST(map + *index);
 	int i = *index, object_nr = 0;
+	unsigned char *map = mapping->map;
+	struct object_entry *entry = OE_CAST(map + *index);
+	unsigned long size;
 	
 	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
-	for (;;) {
-		int pos = i;
+	while (i < mapping->size) {
+		char *name;
+		int name_index, pos = i;
 		
 		entry = OE_CAST(map + i);
 		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
@@ -1491,11 +1492,20 @@ static int add_objects_verbatim_1(unsigned char *map, int *index)
 			return object_nr;
 		}
 		
-		strbuf_add(g_buffer, map + pos, i - pos);
+		name_index = decode_size((unsigned char *)entry + ENTRY_NAME_OFFSET(entry), entry->name_size);
+		if (name_index && name_index < mapping->name_size)
+			name = mapping->names + name_index;
+		else
+			name = 0;
+		
+		size = decode_size((unsigned char *)entry + ENTRY_SIZE_OFFSET(entry), entry->size_size);
+		
+		add_object_entry(0, entry, 0, 0, name, size);
 		object_nr++;
 	}
 	
-	return 0;
+	*index = 0;
+	return object_nr;
 }
 
 static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commit)
@@ -1541,11 +1551,14 @@ search_me:
 	if (entry->is_end)
 		return -5;
 	
-	object_nr = add_objects_verbatim_1(map->map, &i);
+	object_nr = add_objects_verbatim_1(map, &i);
 	
 	/* remember this */
-	rci->last_map = map;
-	map->last_index = i;
+	if (i) {
+		rci->last_map = map;
+		map->last_index = i;
+	} else 
+		rci->last_map = 0;
 	
 	return object_nr;
 }
@@ -1599,7 +1612,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	unsigned char sha1[20];
 	struct strbuf merge_paths, split_paths, namelist;
 	int object_nr, total_sz, fd;
-	char file[PATH_MAX], *newfile;
+	char file[PATH_MAX], null, *newfile;
 	struct rev_cache_info *trci;
 	git_SHA_CTX ctx;
 	
@@ -1688,21 +1701,15 @@ int make_cache_slice(struct rev_cache_info *rci,
 		
 		commit->indegree = 0;
 		
-		add_object_entry(0, &object, &merge_paths, &split_paths, 0);
+		add_object_entry(0, &object, &merge_paths, &split_paths, 0, 0);
 		object_nr++;
 		
-		if (rci->objects) {
-			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0) {
+		if (rci->objects && !object.is_end) {
+			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0)
 				/* yay!  we did it! */
 				object_nr += t;
-			} else {
-				/* add all unique children for this commit */
-				add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-				object_nr++;
-				
-				if (!object.is_end)
-					object_nr += add_unique_objects(commit);
-			}
+			else 
+				object_nr += add_unique_objects(commit);
 		}
 		
 		/* print every ~1MB or so */
@@ -2077,7 +2084,7 @@ static int add_slices_for_fuse(struct rev_cache_info *rci, struct string_list *f
 {
 	unsigned char sha1[20];
 	char base[PATH_MAX];
-	int baselen, i;
+	int baselen, i, slice_nr = 0;
 	struct stat fi;
 	DIR *dirh;
 	struct dirent *de;
@@ -2087,7 +2094,7 @@ static int add_slices_for_fuse(struct rev_cache_info *rci, struct string_list *f
 	
 	dirh = opendir(base);
 	if (!dirh)
-		return 1;
+		return 0;
 	
 	while ((de = readdir(dirh))) {
 		if (de->d_name[0] == '.')
@@ -2141,11 +2148,12 @@ dont_save:
 			rci->maps[i].size = 1;
 		
 		string_list_insert(base, files);
+		slice_nr++;
 	}
 	
 	closedir(dirh);
 	
-	return 0;
+	return slice_nr;
 }
 
 /* the most work-intensive attributes in the cache are the unique objects and size, both 
@@ -2167,7 +2175,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	strbuf_init(&ignore, 0);
 	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
-	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1)
+	if (add_slices_for_fuse(rci, &files, &ignore) <= 1) {
 		printf("nothing to fuse\n");
 		return 1;
 	}
@@ -2181,6 +2189,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = idx_head.cache_nr - 1; i >= 0; i--) {
 		struct rev_cache_slice_map *map = rci->maps + i;
 		struct stat fi;
+		struct cache_slice_header head;
 		int fd;
 		
 		if (!map->size)
@@ -2193,13 +2202,20 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 			continue;
 		if (fi.st_size < sizeof(struct cache_slice_header))
 			continue;
+		if (get_cache_slice_header(fd, idx_caches + i * 20, fi.st_size, &head))
+			continue;
 		
-		map->map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+		map->map = xmmap(0, head.size, PROT_READ, MAP_PRIVATE, fd, 0);
 		if (map->map == MAP_FAILED)
 			continue;
 		
+		lseek(fd, head.size, SEEK_SET);
+		map->names = xcalloc(head.name_size, 1);
+		read_in_full(fd, map->names, head.name_size);
+		
 		close(fd);
-		map->size = fi.st_size;
+		map->size = head.size;
+		map->name_size = head.name_size;
 	}
 	
 	rci->make_index = 0;
@@ -2216,6 +2232,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 		if (!map->size)
 			continue;
 		
+		free(map->names);
 		munmap(map->map, map->size);
 	}
 	free(rci->maps);
@@ -2224,13 +2241,8 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = 0; i < files.nr; i++) {
 		char *name = files.items[i].string;
 		
-		/* in the odd case of only having one cache slice we effectively just remaking the index... */
-		if (strlen(name) >= 40 && !strncmp(name, sha1_to_hex(cache_sha1), 40))
-			continue;
-		
-		strncpy(base + baselen + 1, name, sizeof(base) - baselen - 1);
-		fprintf(stderr, "removing %s\n", base);
-		unlink_or_warn(base);
+		fprintf(stderr, "removing %s\n", name);
+		unlink_or_warn(name);
 	}
 	
 	string_list_clear(&files, 0);
@@ -2242,7 +2254,6 @@ static int verify_cache_slice(const char *slice_path, unsigned char *sha1)
 {
 	struct cache_slice_header head;
 	int fd, len, retval = -1;
-	unsigned char *map = MAP_FAILED;
 	struct stat fi;
 	
 	len = strlen(slice_path);
@@ -2257,17 +2268,12 @@ static int verify_cache_slice(const char *slice_path, unsigned char *sha1)
 	if (fstat(fd, &fi) || fi.st_size < sizeof(head))
 		goto end;
 	
-	map = xmmap(0, sizeof(head), PROT_READ, MAP_PRIVATE, fd, 0);
-	if (map == MAP_FAILED)
-		goto end;
-	if (get_cache_slice_header(sha1, map, fi.st_size, &head))
+	if (get_cache_slice_header(fd, sha1, fi.st_size, &head))
 		goto end;
 	
 	retval = 0;
 	
 end:
-	if (map != MAP_FAILED)
-		munmap(map, sizeof(head));
 	if (fd > 0)
 		close(fd);
 	

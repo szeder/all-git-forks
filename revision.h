@@ -23,6 +23,9 @@ struct rev_cache_slice_map {
 	unsigned char *map;
 	int size;
 	int last_index;
+	
+	char *names;
+	int name_size;
 };
 
 struct rev_cache_info {
