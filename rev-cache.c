@@ -1973,10 +1973,11 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	strbuf_init(&ignore, 0);
 	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
-	if (add_slices_for_fuse(rci, &files, &ignore))
+	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1)
+		printf("nothing to fuse\n");
 		return 1;
+	}
 	
-	printf("added slices\n");
 	if (ignore.len) {
 		starts_from_slices(revs, UNINTERESTING, (unsigned char *)ignore.buf, ignore.len / 20);
 		strbuf_release(&ignore);
@@ -2005,7 +2006,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 		
 		close(fd);
 		map->size = fi.st_size;
-	}printf("initialized mappings\n");
+	}
 	
 	rci->make_index = 0;
 	rci->fuse_me = 1;
