@@ -174,6 +174,11 @@ test_expect_success 'rev-list with wholly uninteresting partial slice' '
 
 #try out index generation and fuse (note that --all == HEAD in this case)
 #probably should make a test for that too...
+test_expect_success 'test (non-)fusion of one slice' '
+	git-rev-cache fuse >output.err && 
+	grep "nothing to fuse" output.err
+'
+
 test_expect_success 'make fresh slice' '
 	git-rev-cache add --all --fresh 2>output.err && 
 	grep "final return value: 0" output.err
