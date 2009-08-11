@@ -1794,7 +1794,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	
 	strbuf_init(&ignore, 0);
 	rci->maps = xcalloc(idx_head.cache_nr, sizeof(struct rev_cache_slice_map));
-	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1)
+	if (add_slices_for_fuse(rci, &files, &ignore) || files.nr <= 1) {
 		printf("nothing to fuse\n");
 		return 1;
 	}
