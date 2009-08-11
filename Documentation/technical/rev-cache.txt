@@ -3,27 +3,23 @@ rev-cache
 
 The revision cache API ('rev-cache') provides a method for efficiently storing
 and accessing commit branch sections.  Such branch slices are defined by a
-series of top (interesting) and bottom (uninteresting) commits.  Each slice
-contains, per commit:
+series of start/top (interesting) and end/bottom (uninteresting) commits.  Each slice
+contains information on commits in topological order.  Recorded with each commit is:
 
 * All intra-slice topological relations, encoded into path "channels" (see
   'Mechanics' for full explanation).
 * Object meta-data: type, SHA-1, size, date (for commits).
-* Objects introduced in that commit, relative to slice (ie. only for non-start
-  commits).
+* Objects introduced by that commit, not present in the its cached parents.
 
 Storage data structures are not exported, in part to keep git's global scope
 clean, but largely because they're pretty much useless outside of rev-cache.
 
 The API
 -------
-
-The API for 'rev-cache' is quite simple.  You can find the function prototypes
-in `revision.h`.
+You can find the function prototypes in `revision.h`.
 
 Data Structures
 ~~~~~~~~~~~~~~~
-
 The `rev_cache_info` struct holds all the options and flags for the API.
 
 ----
@@ -49,14 +45,13 @@ The fields:
 	Add non-commit objects to slice.
 
 `legs`::
-	Ensure end commits have no children.
+	Ensure end/bottom commits have no children.
 
 `make_index`::
 	Integrate newly-made slice into index.
 
 `save_unique`::
-	Load non-commit objects into `unique` field of their associated
-	`commit` object.
+	For each non-end commit that has cached objects in any slice, load the commit's associated objects into the `unique` object list field of the `commit` struct (as in, objects supposedly "unique" to that commit).  This is mainly intended for fast regeneration/fusion of cache slices, but could potentially be used by anything requiring such an object list.
 
 `add_to_pending`::
 	Append unique non-commit objects to the `pending` object list in the
@@ -74,56 +69,85 @@ fusion.
 Functions
 ~~~~~~~~~
 
-`init_rci`::
-        Initiate a `rev_cache_info` struct to default options.
+`void init_rev_cache_info(
+	struct rev_cache_info *rci OUT
+)`::
+        Initialize `rci` to default options.
 
-`make_cache_slice`::
-        Create a cache based on an a `rev_info` instance or `commit_list` s of
-        "starts" and "ends" (defaulting to latter if `rev_info` pointer is
-        NULL), copying the cache SHA-1 into a passed pointer if non-zero.  A
-        `rev_cache_info` struct pointer can be passed to set options, while
-        passing NULL will set default options.  A last parameter can
-        optionally recieve the final cache hash.
-
-`make_cache_index`::
-        Add a slice to the cache index.  Requires a file descriptor, the cache
-        hash and the file size.  Note that this is normally called by
-        `make_cache_slice` under the `make_index` option.
-
-`get_cache_slice`::
-        Given a commit SHA-1 `get_cache_slice` will search the slice index and
-        return, if found, the cache-identifying SHA-1.
-
-`traverse_cache_slice`::
-        Traverse a specified cache slice based on:
-
-        * `rev_info` instance; options set in the `rev_cache_info` field.
-        * cache SHA-1 identifier
-        * a starting commit and commit work list
-        * date of oldest encountered interesting commit (passing 0 will tell
-          rev-cache to use defaults)
-        * current `slop` (this is a counter, a la `revision.c`, to determine
-          when to stop traversing; typically you can just pass 0 and rev-cache
-          will use default settings)
-        
+`int make_cache_slice(
+	struct rev_cache_info *rci IN,
+	struct rev_info *revs IN,
+	struct commit_list **starts IN/OUT,
+	struct commit_list **ends IN/OUT,
+	unsigned char *cache_sha1 OUT
+)`::
+	Create a cache slice based on either `revs` (if non-NULL) *or* the `starts` and `ends` lists.  The actual list of start and end commits of the slice may be different from the parameters, based on what defines the branch segment, and this actual list is passed back through `starts` and `ends`.
 +
-The output is sent to a FILO `commit_list` "queue", while any end commits 
-are passed back into the work list.  If the walk is not contained within the 
-slice, commit boundaries are also inserted into "work".
+	The cache slice is identified via a SHA-1 generated from the actual start/end commit lists.  `cache_sha1`, if non-NULL, can recieve the cache slice name.  `rci` is used to specify generation options, but can be NULL if you want `make_cache_slice` to fall back on defaults.  Returns 0 on success, non-zero on failure.
 
-`start_from_slices`::
-        Will mark all start-commits in the specified cache slices with a given
-        flag, and add them to the rev pending list.  Will include all if no
-        slices are specified.
+`int make_cache_index(
+	struct rev_cache_info *rci IN, 
+	unsigned char *cache_sha1 IN, 
+	int fd IN, 
+	unsigned int size IN
+)`::
+        Add a slice to the rev-cache index.  `cache_sha1` is the identity hash of the cache slice; `fd` is a file descriptor of the cache slice opened with read/write privileges (the slice is not actually modified); `size` is the size of the cache slice.  Although there are currently no options for index updating, `rci` is a placeholder in case of future options.  Note that this function is normally called by `make_cache_slice`.  Returns 0 on success, non-zero on failure.
 
-`coagulate_cache_slices`::
-        Generate a slice based on the passed `rev_info` instance, replacing all
-        encountered slices with one (larger) slice.  The `ignore_size` field in
-        `rci`, if non-zero, will dictate which cache slice sizes to ignore in
-        both traversal and replacement.
+`unsigned char *get_cache_slice(
+	struct commit *commit IN
+)`::
+	Given a commit object `get_cache_slice` will search the revision cache index and return, if found, the cache slice SHA-1.
 
-`regenerate_index`::
-        Remake cache index.
+`int traverse_cache_slice(
+	struct rev_info *revs IN/OUT, 
+	unsigned char *cache_sha1 IN, 
+	struct commit *commit IN, 
+	unsigned long *date_so_far IN/OUT, 
+	int *slop_so_far IN/OUT, 
+	struct commit_list ***queue OUT, 
+	struct commit_list **work IN/OUT
+)`::
+        Traverse a specified cache slice.  An explanation of the each field:
+
+	`revs`::
+		The revision walk instance.  `traverse_cache_slice` uses this for general options (e.g. which objects are included) and slice traversal options (in the `rev_cache_info` field).  If the `add_to_pending` option is specified, non-commit objects are appended to the `pending` object list field.
+
+	`cache_sha1`::
+		SHA-1 identifying the cache slice to use.  This can be taken directly from `get_cache_slice`.
+
+	`commit`::
+		The current commit object in the revision walk, i.e. the commit which inspired this slice traversal.  Although theoretically redundant in view of the `work` list, this simplifies interaction with normal revision walks, which pop commits from `work` before analyzing them.
+
+	`date_so_far`::
+		The date of the oldest encountered interesting commit.  Passing NULL will let `traverse_cache_slice` use defaults.
+
+	`slop_so_far`::
+		The `slop` value, a la revision.c.  This is a counter used to determine when to stop traversing, based on how many extra uninteresting commits should be encountered.  NULL will enable defaults, as above.
+
+	`queue`::
+		Refers to a pointer to the head of a FIFO commit list, recieving the commits we've seen and added.
+
+	`work`::
+		A date-ordered list of commits that have yet to be processed (i.e. seen but not added).  Commits from here present in the slice are removed (and, obviously, used as starting places for traversal), and any end commits encountered are inserted.
+
+`void starts_from_slices(
+	struct rev_info *revs OUT, 
+	unsigned int flags IN, 
+	unsigned char *which IN, 
+	int n IN
+)`::
+	Will mark start-commits in certain rev-cache slices with `flag`, and added them to the pending list of `revs`.  If `n` is zero, `starts_from_slices` will use all slices.  Otherwise `which` will specify an *unseperated* list of cache SHA-1s to use (20 bytes each), and `n` will contain the number of slices (i.e. 20 * `n` = size of `which`).
+
+`int fuse_cache_slices(
+	struct rev_cache_info *rci IN, 
+	struct rev_info *revs IN
+)`::
+        Generate a slice based on `revs`, replacing all encountered slices with one (larger) slice.  The `ignore_size` field in `rci`, if non-zero, will dictate which cache slice sizes to ignore in both traversal and replacement.
+
+`int regenerate_cache_index(
+	struct rev_cache_info *rci IN
+)`::
+        Remake the revision cache index, including all the slices.  Currently no options in `rci` exist for index (re)generation, but some may develop in the future.
 
 Example Usage
 -------------
@@ -197,7 +221,7 @@ while (work) {
                 }
                 
                 if (object->flags & (SEEN | UNINTERESTING) == 0)
-                        outp = &commit_list_insert(commit, outp);
+                        outp = &commit_list_insert(commit, outp)->next;
                 object->flags |= SEEN;
         }
 }
@@ -206,13 +230,12 @@ while (work) {
 Some Internals
 --------------
 
-Although you really don't need to know anything about how rev-cache actually
-does its magic shizz, a bit of background may go a long way if you're wading
-through the source.
-
 File Formats
 ~~~~~~~~~~~~
+All the relavant structures are readily accessible in `rev-cache.c`
 
+Cache Slices
+^^^^^^^^^^^^
 A slice has a basic fixed-size header, followed by a certain number of object
 entries, then a NULL-seperated list of object names.  Commits are sorted in
 topo-order, and each commit entry is followed by the objects added in that
@@ -247,6 +270,45 @@ null)       ...                              |
             +--------------------------------+
 ----
 
+Here is the header:
+
+----
+struct cache_slice_header {
+	char signature[8]; /* REVCACHE */
+	unsigned char version;
+	uint32_t ofs_objects;
+	
+	uint32_t object_nr;
+	uint16_t path_nr;
+	uint32_t size;
+	
+	unsigned char sha1[20];
+	
+	uint32_t names_size;
+};
+----
+
+Explanations:
+
+`signature`::
+	The identifying signature of cache slice file.  Always "REVCACHE".
+`version`::
+	The version number, currently 3.
+`ofs_objects`::
+	The byte offset at which the commit/object listing starts.  Always present at the 10th byte, regardless of file version.
+`object_nr`::
+	The total number of objects (commit + non-commit objects) present in the slice.
+`path_nr`::
+	The total number of paths/channels used in encoding the topological data.  Note that paths are reused (see 'Mechanics'), so there will never be more than a few hundred paths (if that) used.
+`size`::
+	The size of the slice *excluding* the name list.  In other words, the size of the portion mapped to memory.
+`sha1`::
+	The cache slice SHA-1.
+`names_size`::
+	The size of the name list.  `size` + `names_size` = size of slice
+
+Revision Cache Index
+^^^^^^^^^^^^^^^^^^^^
 The index is a single file that associates SHA-1s with cache slices and file
 positions.  It is somewhat similar to pack-file indexes, containing a fanout
 table and a list of index entries sorted by hash.
@@ -271,7 +333,35 @@ entries     | index of cache slice SHA-1     |
             +--------------------------------+
 ----
 
-All the relavant structures are readily accessible in `rev-cache.c`
+The header:
+
+----
+struct index_header {
+	char signature[8]; /* REVINDEX */
+	unsigned char version;
+	uint32_t ofs_objects;
+	
+	uint32_t object_nr;
+	unsigned char cache_nr;
+	
+	uint32_t max_date;
+};
+----
+
+Explanations:
+
+`signature`::
+	Always "REVINDEX".
+`version`::
+	Version number, currently 2.
+`ofs_objects`::
+	Offset at which the entry objects begin.  This is more obviously useful in the index because the list of slice SHA-1s is variably-sized.
+`object_nr`::
+	Number of index entry objects present.
+`cache_nr`::
+	Number of cache slices to which the index maps, and hence the number of slice SHA-1s listed.
+`max_date`::
+	The oldest commit represented in the index.  This is used to help speed up lookup times by knowing what range of commits we definitely don't have cached.  Normal usage of 'rev-cache' would leave no "holes" in its coverage of commit history -- once a commit is cached, everything reachable from it should be cached as well.  Most of the time refs are added to rev-cache simultaneous as well.  This means that in most situations almost everything <= `max_date` will be cached.
 
 Mechanics
 ~~~~~~~~~
@@ -299,11 +389,10 @@ struct object_entry {
         unsigned flags : 1;
         unsigned char sha1[20];
         
-        unsigned merge_nr : 6;
-        unsigned split_nr : 7;
+        unsigned char merge_nr;
+        unsigned char split_nr;
         unsigned size_size : 3;
         unsigned name_size : 3;
-        unsigned what_to_do : 5;
         
         uint32_t date;
         uint16_t path;
@@ -330,7 +419,7 @@ An explanation of each field:
 	Run-time flag, used in traversal (initialization)
 `flags`::
 	Currently unused, extra bit
-`sha`::
+`sha1`::
 	Object SHA-1 hash
 
 `merge_nr`::
@@ -343,16 +432,18 @@ An explanation of each field:
 	Number of bytes the object size takes up.
 `name_size`::
 	Number of bytes the name index takes up.
-`what_to_do`::
-	Currently space-filler, to properly align the struct fields.  Can
-	potentially be used for anything.
+
+`date`::
+	The date of the commit.
+`path`::
+	The path ID of the channel with which this commit is associated.
 
 merge paths::
-	The path IDs (16-bit) that are to be created.
+	The path IDs (16-bit) that are to be created.  Overflow is not a problem as path IDs are reused, leaving even complicated projects to consume no more than a few hundred IDs.
 split paths::
 	The path IDs (16-bit) that are to be ended.
 size::
-	The size split into the minimum number of bytes.
+	The size split into the minimum number of bytes.  That is, 1-8 bytes representing the size, least-significant byte first.
 name index::
 	An offset for the null-seperated, object name list at the end of the
 	cache slice.  Also split into the minimum number of bytes.
@@ -375,5 +466,3 @@ To prevent list-objects from recursing into trees that we've already taken care
 of, the flag `FACE_VALUE` is introduced.  An object with this flag is not
 explored (= "taken at face value"), significantly reducing I/O and processing
 time.
-
-(NSE)

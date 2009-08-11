@@ -96,7 +96,7 @@ test_expect_success 'make cache slice' '
 '
 
 test_expect_success 'remake cache slice' '
-	git-rev-cache add --sizes HEAD 2>output.err && 
+	git-rev-cache add HEAD 2>output.err && 
 	grep "final return value: 0" output.err
 '
 

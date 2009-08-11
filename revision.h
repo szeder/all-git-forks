@@ -19,11 +19,21 @@
 struct rev_info;
 struct log_info;
 
+struct rev_cache_slice_map {
+	unsigned char *map;
+	int size;
+	int last_index;
+};
+
 struct rev_cache_info {
 	/* generation flags */
 	unsigned objects : 1, 
 		legs : 1, 
-		make_index : 1;
+		make_index : 1, 
+		fuse_me : 1;
+	
+	/* index inclusion */
+	unsigned overwrite_all : 1;
 	
 	/* traversal flags */
 	unsigned save_unique : 1, 
@@ -32,6 +42,9 @@ struct rev_cache_info {
 	
 	/* fuse options */
 	unsigned int ignore_size;
+	
+	/* reserved */
+	struct rev_cache_slice_map *maps, *last_map;
 };
 
 struct rev_info {
@@ -201,15 +214,16 @@ extern int traverse_cache_slice(struct rev_info *revs,
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work);
 
-extern void init_rci(struct rev_cache_info *rci);
+extern void init_rev_cache_info(struct rev_cache_info *rci);
 extern int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **tops, struct commit_list **bottoms, 
+	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
 	unsigned char *cache_sha1);
 extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
 	int fd, unsigned int size);
 
 extern void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
-extern int coagulate_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
+extern int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
 extern int regenerate_cache_index(struct rev_cache_info *rci);
+extern int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path);
 
 #endif

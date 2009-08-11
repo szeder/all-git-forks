@@ -16,9 +16,11 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	unsigned int flags = 0;
 	int i, retval;
 	unsigned char cache_sha1[20];
+	struct commit_list *starts = 0, *ends = 0;
+	struct commit *commit;
 	
 	init_revisions(&revs, 0);
-	init_rci(&rci);
+	init_rev_cache_info(&rci);
 	
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
@@ -29,7 +31,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 			flags ^= UNINTERESTING;
 		else if (!strcmp(argv[i], "--legs"))
 			rci.legs = 1;
-		else if (!strcmp(argv[i], "--noobjects"))
+		else if (!strcmp(argv[i], "--no-objects"))
 			rci.objects = 0;
 		else if (!strcmp(argv[i], "--all")) {
 			const char *args[2];
@@ -61,11 +63,17 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 		}
 	}
 	
-	retval = make_cache_slice(&rci, &revs, 0, 0, cache_sha1);
+	retval = make_cache_slice(&rci, &revs, &starts, &ends, cache_sha1);
 	if (retval < 0)
 		return retval;
 	
 	printf("%s\n", sha1_to_hex(cache_sha1));
+	
+	fprintf(stderr, "endpoints:\n");
+	while ((commit = pop_commit(&starts)))
+		fprintf(stderr, "S %s\n", sha1_to_hex(commit->object.sha1));
+	while ((commit = pop_commit(&ends)))
+		fprintf(stderr, "E %s\n", sha1_to_hex(commit->object.sha1));
 	
 	return 0;
 }
@@ -182,28 +190,6 @@ static int handle_walk(int argc, const char *argv[])
 	return 0;
 }
 
-static unsigned int parse_size(const char *name)
-{
-	unsigned int size;
-	char *p;
-	
-	size = strtol(name, &p, 10);
-	switch (*p) {
-	case 'k' : 
-	case 'K' : 
-		size *= 0x400;
-		break;
-	case 'm' : 
-	case 'M' : 
-		size *= 0x100000;
-		break;
-	default : 
-		break;
-	}
-	
-	return size;
-}
-
 static int handle_fuse(int argc, const char *argv[])
 {
 	struct rev_info revs;
@@ -213,7 +199,7 @@ static int handle_fuse(int argc, const char *argv[])
 	char add_all = 0;
 	
 	init_revisions(&revs, 0);
-	init_rci(&rci);
+	init_rev_cache_info(&rci);
 	args[argn++] = "rev-list";
 	
 	for (i = 0; i < argc; i++) {
@@ -221,15 +207,15 @@ static int handle_fuse(int argc, const char *argv[])
 			args[argn++] = "--all";
 			setup_revisions(argn, args, &revs, 0);
 			add_all = 1;
-		} else if (!strcmp(argv[i], "--noobjects")) 
+		} else if (!strcmp(argv[i], "--no-objects")) 
 			rci.objects = 0;
 		else if (!strncmp(argv[i], "--ignore-size", 13)) {
-			unsigned int sz;
+			unsigned long sz;
 			
 			if (argv[i][13] == '=')
-				sz = parse_size(argv[i] + 14);
+				git_parse_ulong(argv[i] + 14, &sz);
 			else
-				sz = parse_size(DEFAULT_IGNORE_SLICE_SIZE);
+				git_parse_ulong(DEFAULT_IGNORE_SLICE_SIZE, &sz);
 			
 			rci.ignore_size = sz;
 		} else 
@@ -239,12 +225,20 @@ static int handle_fuse(int argc, const char *argv[])
 	if (!add_all)
 		starts_from_slices(&revs, 0, 0, 0);
 	
-	return coagulate_cache_slices(&rci, &revs);
+	return fuse_cache_slices(&rci, &revs);
 }
 
 static int handle_index(int argc, const char *argv[])
 {
 	return regenerate_cache_index(0);
+}
+
+static int handle_alt(int argc, const char *argv[])
+{
+	if (argc < 1)
+		return -1;
+	
+	return make_cache_slice_pointer(0, argv[0]);
 }
 
 static int handle_help(void)
@@ -260,14 +254,14 @@ commands:\n\
             --fresh           exclude everything already in a cache slice\n\
             --stdin           also read commit ids from stdin (same form as cmd)\n\
             --legs            ensure branch is entirely self-contained\n\
-            --noobjects       don't add non-commit objects to slice\n\
+            --no-objects      don't add non-commit objects to slice\n\
   walk   - walk a cache slice based on set of commits; formatted as add\n\
            options:\n\
            --objects          include non-commit objects in traversals\n\
-  fuse   - coagulate cache slices into a single cache.\n\
+  fuse   - coalesce cache slices into a single cache.\n\
            options:\n\
             --all             include all objects in repository\n\
-            --noobjects       don't add non-commit objects to slice\n\
+            --no-objects      don't add non-commit objects to slice\n\
             --ignore-size[=N] ignore slices of size >= N; defaults to ~5MB\n\
   index  - regnerate the cache index.";
 	
@@ -300,6 +294,8 @@ int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
 		r = handle_index(argc, argv);
 	else if (!strcmp(arg, "test"))
 		r = test_rev_list(argc, argv);
+	else if (!strcmp(arg, "alt"))
+		r = handle_alt(argc, argv);
 	else
 		return handle_help();
 	
