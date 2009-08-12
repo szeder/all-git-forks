@@ -3,16 +3,17 @@ rev-cache
 
 The revision cache API ('rev-cache') provides a method for efficiently storing
 and accessing commit branch sections.  Such branch slices are defined by a
-series of start/top (interesting) and end/bottom (uninteresting) commits.  Each slice
-contains information on commits in topological order.  Recorded with each commit is:
+series of start/top (interesting) and end/bottom (uninteresting) commits.  Each
+slice contains information on commits in topological order.  Recorded with each
+commit is:
 
 * All intra-slice topological relations, encoded into path "channels" (see
   'Mechanics' for full explanation).
 * Object meta-data: type, SHA-1, size, date (for commits).
 * Objects introduced by that commit, not present in the its cached parents.
 
-Storage data structures are not exported, in part to keep git's global scope
-clean, but largely because they're pretty much useless outside of rev-cache.
+In addition to the API, basic structures are exported for the possibility of
+direct access.
 
 The API
 -------
@@ -57,10 +58,15 @@ The fields:
 	Integrate newly-made slice into index.
 
 `fuse_me`::
-	This is specified if a fuse is occuring, and slices are to be reused.  This option requires `maps` and `last_maps` to be initialized.
+	This is specified if a fuse is occuring, and slices are to be reused.
+	This option requires `maps` and `last_maps` to be initialized.
 
 `overwrite_all`::
-	When a cache slice is added to the index, sometimes overlap occures between it and other slices.  Normally, original index entries are kept unless the new entry represents a start commit (older entries are more likely to lead to greater in-slice traversals).  This options overrides that, and updates all entries of the new slice.
+	When a cache slice is added to the index, sometimes overlap occures
+	between it and other slices.  Normally, original index entries are kept
+	unless the new entry represents a start commit (older entries are more
+	likely to lead to greater in-slice traversals).  This options overrides
+	that, and updates all entries of the new slice.
 
 `add_to_pending`::
 	Append unique non-commit objects to the `pending` object list in the
@@ -75,47 +81,93 @@ The fields:
 fusion.
 
 `maps`/`last_map`::
-	An array of slice mappings, indexed by their id in the slice index header, to be re-used with `fuse_me`.  `last_map` points to the last mapping used, and should be initialized to 0.
+	An array of slice mappings, indexed by their id in the slice index
+	header, to be re-used with `fuse_me`.  `last_map` points to the last
+	mapping used, and should be initialized to 0.
 
 Functions
 ~~~~~~~~~
 
-`void init_rev_cache_info(
+init_rev_cache
+^^^^^^^^^^^^^^
+----
+void init_rev_cache_info(
 	struct rev_cache_info *rci OUT
-)`::
-        Initialize `rci` to default options.
+)
+----
 
-`int make_cache_slice(
+Initialize `rci` to default options.
+
+make_cache_slice
+^^^^^^^^^^^^^^^^
+----
+int make_cache_slice(
 	struct rev_cache_info *rci IN,
 	struct rev_info *revs IN,
 	struct commit_list **starts IN/OUT,
 	struct commit_list **ends IN/OUT,
 	unsigned char *cache_sha1 OUT
-)`::
-	Create a cache slice based on either `revs` (if non-NULL) *or* the `starts` and `ends` lists.  The actual list of start and end commits of the slice may be different from the parameters, based on what defines the branch segment, and this actual list is passed back through `starts` and `ends`.
-+
-	The cache slice is identified via a SHA-1 generated from the actual start/end commit lists.  `cache_sha1`, if non-NULL, can recieve the cache slice name.  `rci` is used to specify generation options, but can be NULL if you want `make_cache_slice` to fall back on defaults.  Returns 0 on success, non-zero on failure.
+)
+----
 
-`int make_cache_index(
+Create a cache slice based on either `revs` (if non-NULL) *or* the `starts` and
+`ends` lists.  The actual list of start and end commits of the slice may be
+different from the parameters, based on what defines the branch segment, and
+this actual list is passed back through `starts` and `ends`.
+
+The cache slice is identified via a SHA-1 generated from the actual start/end
+commit lists.  `cache_sha1`, if non-NULL, can recieve the cache slice name.
+`rci` is used to specify generation options, but can be NULL if you want
+`make_cache_slice` to fall back on defaults.  Returns 0 on success, non-zero on
+failure.
+
+make_cache_index
+^^^^^^^^^^^^^^^^
+----
+int make_cache_index(
 	struct rev_cache_info *rci IN, 
 	unsigned char *cache_sha1 IN, 
 	int fd IN, 
 	unsigned int size IN
-)`::
-        Add a slice to the rev-cache index.  `cache_sha1` is the identity hash of the cache slice; `fd` is a file descriptor of the cache slice opened with read/write privileges (the slice is not actually modified); `size` is the size of the cache slice.  Although there are currently no options for index updating, `rci` is a placeholder in case of future options.  Note that this function is normally called by `make_cache_slice`.  Returns 0 on success, non-zero on failure.
+)
+----
 
-`int open_cache_slice(
+Add a slice to the rev-cache index.  `cache_sha1` is the identity hash of the
+cache slice; `fd` is a file descriptor of the cache slice opened with
+read/write privileges (the slice is not actually modified); `size` is the size
+of the cache slice.  Although there are currently no options for index
+updating, `rci` is a placeholder in case of future options.  Note that this
+function is normally called by `make_cache_slice`.  Returns 0 on success,
+non-zero on failure.
+
+open_cache_slice
+^^^^^^^^^^^^^^^^
+----
+int open_cache_slice(
 	unsigned char *sha1 IN, 
 	int flags IN
-)`::
-	Returns a file descriptor to a cache slice described by `sha1` hash, using `flags` as the access mode.  This will follow cache slice pointers to one level of indirection.
+)
+----
 
-`unsigned char *get_cache_slice(
+Returns a file descriptor to a cache slice described by `sha1` hash, using
+`flags` as the access mode.  This will follow cache slice pointers to one level
+of indirection.
+
+get_cache_slice
+^^^^^^^^^^^^^^^
+----
+unsigned char *get_cache_slice(
 	struct commit *commit IN
-)`::
-	Given a commit object `get_cache_slice` will search the revision cache index and return, if found, the cache slice SHA-1.
+)
+----
 
-`int traverse_cache_slice(
+Given a commit object `get_cache_slice` will search the revision cache index
+and return, if found, the cache slice SHA-1.
+
+traverse_cache_slice
+^^^^^^^^^^^^^^^^^^^^
+----
+int traverse_cache_slice(
 	struct rev_info *revs IN/OUT, 
 	unsigned char *cache_sha1 IN, 
 	struct commit *commit IN, 
@@ -123,48 +175,88 @@ Functions
 	int *slop_so_far IN/OUT, 
 	struct commit_list ***queue OUT, 
 	struct commit_list **work IN/OUT
-)`::
-        Traverse a specified cache slice.  An explanation of the each field:
+)
+----
 
-	`revs`::
-		The revision walk instance.  `traverse_cache_slice` uses this for general options (e.g. which objects are included) and slice traversal options (in the `rev_cache_info` field).  If the `add_to_pending` option is specified, non-commit objects are appended to the `pending` object list field.
+Traverse a specified cache slice.  An explanation of the each field:
 
-	`cache_sha1`::
-		SHA-1 identifying the cache slice to use.  This can be taken directly from `get_cache_slice`.
+`revs`::
+	The revision walk instance.  `traverse_cache_slice` uses this for
+	general options (e.g. which objects are included) and slice traversal
+	options (in the `rev_cache_info` field).  If the `add_to_pending`
+	option is specified, non-commit objects are appended to the `pending`
+	object list field.
 
-	`commit`::
-		The current commit object in the revision walk, i.e. the commit which inspired this slice traversal.  Although theoretically redundant in view of the `work` list, this simplifies interaction with normal revision walks, which pop commits from `work` before analyzing them.
+`cache_sha1`::
+	SHA-1 identifying the cache slice to use.  This can be taken directly
+	from `get_cache_slice`.
 
-	`date_so_far`::
-		The date of the oldest encountered interesting commit.  Passing NULL will let `traverse_cache_slice` use defaults.
+`commit`::
+	The current commit object in the revision walk, i.e. the commit which
+	inspired this slice traversal.  Although theoretically redundant in
+	view of the `work` list, this simplifies interaction with normal
+	revision walks, which pop commits from `work` before analyzing them.
 
-	`slop_so_far`::
-		The `slop` value, a la revision.c.  This is a counter used to determine when to stop traversing, based on how many extra uninteresting commits should be encountered.  NULL will enable defaults, as above.
+`date_so_far`::
+	The date of the oldest encountered interesting commit.  Passing NULL
+	will let `traverse_cache_slice` use defaults.
 
-	`queue`::
-		Refers to a pointer to the head of a FIFO commit list, recieving the commits we've seen and added.
+`slop_so_far`::
+	The `slop` value, a la revision.c.  This is a counter used to determine
+	when to stop traversing, based on how many extra uninteresting commits
+	should be encountered.  NULL will enable defaults, as above.
 
-	`work`::
-		A date-ordered list of commits that have yet to be processed (i.e. seen but not added).  Commits from here present in the slice are removed (and, obviously, used as starting places for traversal), and any end commits encountered are inserted.
+`queue`::
+	Refers to a pointer to the head of a FIFO commit list, recieving the
+	commits we've seen and added.
 
-`void starts_from_slices(
+`work`::
+	A date-ordered list of commits that have yet to be processed (i.e. seen
+	but not added).  Commits from here present in the slice are removed
+	(and, obviously, used as starting places for traversal), and any end
+	commits encountered are inserted.
+
+starts_from_slices
+^^^^^^^^^^^^^^^^^^
+----
+void starts_from_slices(
 	struct rev_info *revs OUT, 
 	unsigned int flags IN, 
 	unsigned char *which IN, 
 	int n IN
-)`::
-	Will mark start-commits in certain rev-cache slices with `flag`, and added them to the pending list of `revs`.  If `n` is zero, `starts_from_slices` will use all slices.  Otherwise `which` will specify an *unseperated* list of cache SHA-1s to use (20 bytes each), and `n` will contain the number of slices (i.e. 20 * `n` = size of `which`).
+)
+----
 
-`int fuse_cache_slices(
+Will mark start-commits in certain rev-cache slices with `flag`, and added them
+to the pending list of `revs`.  If `n` is zero, `starts_from_slices` will use
+all slices.  Otherwise `which` will specify an *unseperated* list of cache
+SHA-1s to use (20 bytes each), and `n` will contain the number of slices (i.e.
+20 * `n` = size of `which`).
+
+fuse_cache_slices
+^^^^^^^^^^^^^^^^^
+----
+int fuse_cache_slices(
 	struct rev_cache_info *rci IN, 
 	struct rev_info *revs IN
-)`::
-        Generate a slice based on `revs`, replacing all encountered slices with one (larger) slice.  The `ignore_size` field in `rci`, if non-zero, will dictate which cache slice sizes to ignore in both traversal and replacement.
+)
+----
 
-`int regenerate_cache_index(
+Generate a slice based on `revs`, replacing all encountered slices with one
+(larger) slice.  The `ignore_size` field in `rci`, if non-zero, will dictate
+which cache slice sizes to ignore in both traversal and replacement.
+
+regenerate_cache_index
+^^^^^^^^^^^^^^^^^^^^^^
+----
+int regenerate_cache_index(
 	struct rev_cache_info *rci IN
-)`::
-        Remake the revision cache index, including all the slices.  Currently no options in `rci` exist for index (re)generation, but some may develop in the future.
+)
+----
+
+Remake the revision cache index, including all the slices.  Currently no
+options in `rci` exist for index (re)generation, but some may develop in the
+future.
 
 Example Usage
 -------------
@@ -199,7 +291,7 @@ if (!make_cache_slice(&rci, &revs, 0, 0, cache_sha1))
 
 .Traversing a slice
 ----
-/* let's say you're walking the tree with a 'work' list of current heads and a 
+/* let's say you're walking the tree with a 'work' list of current heads and a
  * FILO output list 'out' */
 out = 0;
 outp = &out;
@@ -246,10 +338,11 @@ while (work) {
 
 Some Internals
 --------------
+For more advanced usage, the slice and index file(s) may be accessed directly.
+Relavant structures are availabe in `rev-cache.h`.
 
 File Formats
 ~~~~~~~~~~~~
-All the relavant structures are readily accessible in `rev-cache.c`
 
 Cache Slices
 ^^^^^^^^^^^^
@@ -312,13 +405,18 @@ Explanations:
 `version`::
 	The version number, currently 3.
 `ofs_objects`::
-	The byte offset at which the commit/object listing starts.  Always present at the 10th byte, regardless of file version.
+	The byte offset at which the commit/object listing starts.  Always
+	present at the 10th byte, regardless of file version.
 `object_nr`::
-	The total number of objects (commit + non-commit objects) present in the slice.
+	The total number of objects (commit + non-commit objects) present in
+	the slice.
 `path_nr`::
-	The total number of paths/channels used in encoding the topological data.  Note that paths are reused (see 'Mechanics'), so there will never be more than a few hundred paths (if that) used.
+	The total number of paths/channels used in encoding the topological
+	data.  Note that paths are reused (see 'Mechanics'), so there will
+	never be more than a few hundred paths (if that) used.
 `size`::
-	The size of the slice *excluding* the name list.  In other words, the size of the portion mapped to memory.
+	The size of the slice *excluding* the name list.  In other words, the
+	size of the portion mapped to memory.
 `sha1`::
 	The cache slice SHA-1.
 `names_size`::
@@ -372,13 +470,21 @@ Explanations:
 `version`::
 	Version number, currently 2.
 `ofs_objects`::
-	Offset at which the entry objects begin.  This is more obviously useful in the index because the list of slice SHA-1s is variably-sized.
+	Offset at which the entry objects begin.  This is more obviously useful
+	in the index because the list of slice SHA-1s is variably-sized.
 `object_nr`::
 	Number of index entry objects present.
 `cache_nr`::
-	Number of cache slices to which the index maps, and hence the number of slice SHA-1s listed.
+	Number of cache slices to which the index maps, and hence the number of
+slice SHA-1s listed.
 `max_date`::
-	The oldest commit represented in the index.  This is used to help speed up lookup times by knowing what range of commits we definitely don't have cached.  Normal usage of 'rev-cache' would leave no "holes" in its coverage of commit history -- once a commit is cached, everything reachable from it should be cached as well.  Most of the time refs are added to rev-cache simultaneous as well.  This means that in most situations almost everything <= `max_date` will be cached.
+	The oldest commit represented in the index.  This is used to help speed
+up lookup times by knowing what range of commits we definitely don't have
+cached.  Normal usage of 'rev-cache' would leave no "holes" in its coverage of
+commit history -- once a commit is cached, everything reachable from it should
+be cached as well.  Most of the time refs are added to rev-cache simultaneous
+as well.  This means that in most situations almost everything <= `max_date`
+will be cached.
 
 Mechanics
 ~~~~~~~~~
@@ -456,11 +562,14 @@ An explanation of each field:
 	The path ID of the channel with which this commit is associated.
 
 merge paths::
-	The path IDs (16-bit) that are to be created.  Overflow is not a problem as path IDs are reused, leaving even complicated projects to consume no more than a few hundred IDs.
+	The path IDs (16-bit) that are to be created.  Overflow is not a
+	problem as path IDs are reused, leaving even complicated projects to
+	consume no more than a few hundred IDs.
 split paths::
 	The path IDs (16-bit) that are to be ended.
 size::
-	The size split into the minimum number of bytes.  That is, 1-8 bytes representing the size, least-significant byte first.
+	The size split into the minimum number of bytes.  That is, 1-8 bytes
+	representing the size, least-significant byte first.
 name index::
 	An offset for the null-seperated, object name list at the end of the
 	cache slice.  Also split into the minimum number of bytes.

@@ -11,9 +11,19 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-The revision cache ('rev-cache') provides a mechanism for significantly speeding up revision traversals.  It does this by creating an efficient database (cache) of commits, their related objects and topological relations.  Independant of packs and the object store, this database is composed of rev-cache "slices" -- each a different file storing a given segment of commit history.  To map commits to their respective slices, a single index file is kept for the rev-cache.
+The revision cache ('rev-cache') provides a mechanism for significantly
+speeding up revision traversals.  It does this by creating an efficient
+database (cache) of commits, their related objects and topological relations.
+Independant of packs and the object store, this database is composed of
+rev-cache "slices" -- each a different file storing a given segment of commit
+history.  To map commits to their respective slices, a single index file is
+kept for the rev-cache.
 
-'git-rev-cache' provides a front-end for the rev-cache mechanism, intended for updating and maintaining rev-cache slices in the current repository.  New cache slice files can be 'add'ed, to keep the cache up-to-date; individual slices can be traversed; smaller slices can be 'fuse'd into a larger slice; and the rev-cache index can be regenerated.
+'git-rev-cache' provides a front-end for the rev-cache mechanism, intended for
+updating and maintaining rev-cache slices in the current repository.  New cache
+slice files can be 'add'ed, to keep the cache up-to-date; individual slices can
+be traversed; smaller slices can be 'fuse'd into a larger slice; and the
+rev-cache index can be regenerated.
 
 COMMANDS
 --------
@@ -26,10 +36,12 @@ list from the command line, formatted as: `START START ... \--not END END ...`
 Options:
 
 \--all::
-	Include all refs in the new cache slice, like the \--all option in 'rev-list'.
+	Include all refs in the new cache slice, like the \--all option in
+	'rev-list'.
 
 \--fresh::
-	Exclude everything already in the revision cache, analogous to \--incremental in 'pack-objects'.
+	Exclude everything already in the revision cache, analogous to
+	\--incremental in 'pack-objects'.
 
 \--stdin::
 	Read newline-seperated revisions from the standard input.  Use \--not
@@ -52,27 +64,38 @@ Options:
 
 walk
 ~~~~
-Analogous to a slice-oriented 'rev-list', 'walk' will traverse a region in a particular cache slice.  Interesting and uninteresting (delimited, as with 'rev-list', with \--not) are specified on the command line, and output is the same as vanilla 'rev-list'.
+Analogous to a slice-oriented 'rev-list', 'walk' will traverse a region in a
+particular cache slice.  Interesting and uninteresting (delimited, as with
+'rev-list', with \--not) are specified on the command line, and output is the
+same as vanilla 'rev-list'.
 
 Options:
 
 \--objects::
 	Like 'rev-list', 'walk' will normally only list commits.  Use this
-	option to list non-commit objects as well, if they are present in the cache slice.
+	option to list non-commit objects as well, if they are present in the
+	cache slice.
 
 fuse
 ~~~~
-Merge several cache slices into a single large slice, like 'repack' for 'rev-cache'.  On each invocation of
-'add' a new file ("slice") is added to the revision cache directory, and after
-several additions the directory may become populated with many, relatively
-small slices.  Numerous smaller slices will yield poorer performance than a one
-or two large ones, because of the overhead of loading new slices into memory.
+Merge several cache slices into a single large slice, like 'repack' for
+'rev-cache'.  On each invocation of 'add' a new file ("slice") is added to the
+revision cache directory, and after several additions the directory may become
+populated with many, relatively small slices.  Numerous smaller slices will
+yield poorer performance than a one or two large ones, because of the overhead
+of loading new slices into memory.
 
 Running 'fuse' every once in a while will solve this problem by coalescing all
 the cache slices into one larger slice.  For very large projects, using
-\--ignore-size is advisable to prevent overly large cache slices.
+\--ignore-size is advisable to prevent overly large cache slices.  Setting git
+'config' option 'gc.revcache' to 1 will enable cache slice fusion upon garbage
+collection.
 
-Note that 'fuse' uses the internal revision walker, so the options used in fusion are completely independant of those of the cache slices upon which it operates.  For example, if some slices were generated with \--no-objects, yet 'fuse' was performed with non-commit objects, the resulting slice would still contain objects but would take longer to generate.
+Note that 'fuse' uses the internal revision walker, so the options used in
+fusion override those of the cache slices upon which it operates.  For example,
+if some slices were generated with \--no-objects, yet 'fuse' was performed with
+non-commit objects, the resulting slice would still contain objects but would
+take longer to generate.
 
 Options:
 
@@ -86,19 +109,29 @@ Options:
 	some cache slices do contain such objects, the information will be lost.
 
 \--ignore-size[=N]::
-	Do not merge cache slices of size >=N (be aware that slices must be mapped to memory).  N can have a suffix of "k" or "m", denoting N as kilobytes and megabytes, respectively.  If N is not provided 'fuse' will default to a size of ~25MB.
+	Do not merge cache slices of size >=N (be aware that slices must be
+	mapped to memory).  N can have a suffix of "k" or "m", denoting N as
+	kilobytes and megabytes, respectively.  If N is not provided 'fuse'
+	will default to a size of ~25MB.
 
 index
 ~~~~~
-Regenerate the revision cache index.  If the rev-cache index file associating objects with cache
-slices gets corrupted, lost, or otherwise becomes unusable, 'index' will
-quickly regenerate the file.  It's most likely that this won't be needed in every day use, as it is targeted towards debugging and development.
+Regenerate the revision cache index.  If the rev-cache index file associating
+objects with cache slices gets corrupted, lost, or otherwise becomes unusable,
+'index' will quickly regenerate the file.  It's most likely that this won't be
+needed in every day use, as it is targeted towards debugging and development.
 
 alt
 ~~~
-Create a cache slice pointer to another slice, identified by its full path: `fuse path/to/other/slice`
+Create a cache slice pointer to another slice, identified by its full path:
+`fuse path/to/other/slice`
 
-This command is useful if you have several repositories sharing a common history.  Although space requirements for rev-cache are slim anyway, you can in this situation reduce it further by using slice pointers, pointing to relavant slices in other repositories.  Note that only one level of redirection is allowed, and the slice pointer will break if the original slice is removed.  'fuse' will not touch slice pointers.
+This command is useful if you have several repositories sharing a common
+history.  Although space requirements for rev-cache are slim anyway, you can in
+this situation reduce it further by using slice pointers, pointing to relavant
+slices in other repositories.  Note that only one level of redirection is
+allowed, and the slice pointer will break if the original slice is removed.
+'fuse' will not touch slice pointers.
 
 DISCUSSION
 ----------
