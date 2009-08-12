@@ -179,7 +179,6 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 	struct commit_list *prev, *wp, **wpp;
 	int retval;
 	
-	/* printf("adding %s\n", sha1_to_hex(commit->object.sha1)); */
 	iep = search_index(commit->object.sha1);
 	oep = OE_CAST(map + ntohl(iep->pos));
 	oep->include = 1;
