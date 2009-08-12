@@ -3,6 +3,7 @@
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
+#include "rev-cache.h"
 
 /* porcelain for rev-cache.c */
 static int handle_add(int argc, const char *argv[]) /* args beyond this command */
