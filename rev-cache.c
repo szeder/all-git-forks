@@ -7,70 +7,10 @@
 #include "tag.h"
 #include "diff.h"
 #include "revision.h"
+#include "rev-cache.h"
 #include "run-command.h"
 #include "string-list.h"
 
-
-/* single index maps objects to cache files */
-struct index_header {
-	char signature[8]; /* REVINDEX */
-	unsigned char version;
-	uint32_t ofs_objects;
-	
-	uint32_t object_nr;
-	unsigned char cache_nr;
-	
-	uint32_t max_date;
-};
-
-struct index_entry_ondisk {
-	unsigned char sha1[20];
-	unsigned char flags;
-	uint32_t pos;
-};
-
-struct index_entry {
-	unsigned char sha1[20];
-	unsigned is_start : 1;
-	unsigned cache_index : 7;
-	uint32_t pos;
-};
-
-
-/* structure for actual cache file */
-struct cache_slice_header {
-	char signature[8]; /* REVCACHE */
-	unsigned char version;
-	uint32_t ofs_objects;
-	
-	uint32_t object_nr;
-	uint16_t path_nr;
-	uint32_t size;
-	
-	unsigned char sha1[20];
-};
-
-struct object_entry {
-	unsigned type : 3;
-	unsigned is_end : 1;
-	unsigned is_start : 1;
-	unsigned uninteresting : 1;
-	unsigned include : 1;
-	unsigned flag : 1; /* unused */
-	unsigned char sha1[20];
-	
-	unsigned char merge_nr; /* : 7 */
-	unsigned char split_nr; /* : 7 */
-	unsigned size_size : 3;
-	unsigned padding : 5;
-	
-	uint32_t date;
-	uint16_t path;
-	
-	/* merge paths */
-	/* split paths */
-	/* size */
-};
 
 struct bad_slice {
 	unsigned char sha1[20];
@@ -88,28 +28,24 @@ static uint32_t fanout[0xff + 2];
 
 static unsigned char *idx_map;
 static int idx_size;
-static struct index_header idx_head;
+static struct rc_index_header idx_head;
 static char no_idx, add_to_pending;
 static struct bad_slice *bad_slices;
 static unsigned char *idx_caches;
 
 static struct strbuf *g_buffer;
 
-#define SUPPORTED_REVCOPTR_VERSION		1
-#define SUPPORTED_REVCACHE_VERSION 		1
-#define SUPPORTED_REVINDEX_VERSION		1
+#define PATH_WIDTH	RC_PATH_WIDTH
+#define PATH_SIZE(x)	RC_PATH_SIZE(x)
 
-#define PATH_WIDTH		sizeof(uint16_t)
-#define PATH_SIZE(x)	(PATH_WIDTH * (x))
+#define OE_SIZE		RC_OE_SIZE
+#define IE_SIZE		RC_IE_SIZE
 
-#define OE_SIZE		sizeof(struct object_entry)
-#define IE_SIZE		sizeof(struct index_entry)
+#define OE_CAST(p)	RC_OE_CAST(p)
+#define IE_CAST(p)	RC_IE_CAST(p)
 
-#define OE_CAST(p)	((struct object_entry *)(p))
-#define IE_CAST(p)	((struct index_entry *)(p))
-
-#define ACTUAL_OBJECT_ENTRY_SIZE(e)		(OE_SIZE + PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
-#define ENTRY_SIZE_OFFSET(e)			(ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
+#define ACTUAL_OBJECT_ENTRY_SIZE(e)		RC_ACTUAL_OBJECT_ENTRY_SIZE(e)
+#define ENTRY_SIZE_OFFSET(e)			RC_ENTRY_SIZE_OFFSET(e)
 
 #define SLOP			5
 
@@ -139,12 +75,12 @@ static int is_bad_slice(unsigned char *sha1)
 	return 0;
 }
 
-static int get_index_head(unsigned char *map, int len, struct index_header *head, uint32_t *fanout, unsigned char **caches)
+static int get_index_head(unsigned char *map, int len, struct rc_index_header *head, uint32_t *fanout, unsigned char **caches)
 {
-	struct index_header whead;
-	int i, index = sizeof(struct index_header);
+	struct rc_index_header whead;
+	int i, index = sizeof(struct rc_index_header);
 	
-	memcpy(&whead, map, sizeof(struct index_header));
+	memcpy(&whead, map, sizeof(struct rc_index_header));
 	if (memcmp(whead.signature, "REVINDEX", 8) || whead.version > SUPPORTED_REVINDEX_VERSION)
 		return -1;
 	
@@ -189,7 +125,7 @@ static int init_index(void)
 	fd = open(git_path("rev-cache/index"), O_RDONLY);
 	if (fd == -1 || fstat(fd, &fi))
 		goto end;
-	if (fi.st_size < sizeof(struct index_header))
+	if (fi.st_size < sizeof(struct rc_index_header))
 		goto end;
 	
 	idx_size = fi.st_size;
@@ -211,10 +147,10 @@ end:
 }
 
 /* this assumes index is already loaded */
-static struct index_entry *search_index(unsigned char *sha1)
+static struct rc_index_entry *search_index(unsigned char *sha1)
 {
 	int start, end, starti, endi, i, len, r;
-	struct index_entry *ie;
+	struct rc_index_entry *ie;
 	
 	if (!idx_map)
 		return 0;
@@ -253,7 +189,7 @@ static struct index_entry *search_index(unsigned char *sha1)
 
 unsigned char *get_cache_slice(struct commit *commit)
 {
-	struct index_entry *ie;
+	struct rc_index_entry *ie;
 	unsigned char *sha1;
 	
 	if (!idx_map) {
@@ -296,7 +232,7 @@ static void restore_commit(struct commit *commit)
 	
 }
 
-static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct object_entry *entry)
+static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct rc_object_entry *entry)
 {
 	struct blob *blob;
 	struct tree *tree;
@@ -339,11 +275,11 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 		add_pending_object(revs, obj, "");
 }
 
-static int setup_traversal(struct cache_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work, 
+static int setup_traversal(struct rc_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work, 
 	struct commit_list **unwork, int *ipath_nr, int *upath_nr, char *ioutside)
 {
-	struct index_entry *iep;
-	struct object_entry *oep;
+	struct rc_index_entry *iep;
+	struct rc_object_entry *oep;
 	struct commit_list *prev, *wp, **wpp;
 	int retval;
 	
@@ -412,7 +348,7 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
 
-static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
+static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *map, 
 	struct rev_info *revs, struct commit *commit, 
 	unsigned long *date_so_far, int *slop_so_far, 
 	struct commit_list ***queue, struct commit_list **work)
@@ -435,7 +371,7 @@ static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char
 	
 	/* i already set */
 	while (i < head->size) {
-		struct object_entry *entry = OE_CAST(map + i);
+		struct rc_object_entry *entry = OE_CAST(map + i);
 		int path = ntohs(entry->path);
 		struct object *obj;
 		int index = i;
@@ -686,11 +622,11 @@ end:
 	return retval;
 }
 
-static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map, int len, struct cache_slice_header *head)
+static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map, int len, struct rc_slice_header *head)
 {
 	int t;
 	
-	memcpy(head, map, sizeof(struct cache_slice_header));
+	memcpy(head, map, sizeof(struct rc_slice_header));
 	head->ofs_objects = ntohl(head->ofs_objects);
 	head->object_nr = ntohl(head->object_nr);
 	head->size = ntohl(head->size);
@@ -702,7 +638,7 @@ static int get_cache_slice_header(unsigned char *cache_sha1, unsigned char *map,
 		return -2;
 	if (hashcmp(head->sha1, cache_sha1))
 		return -3;
-	t = sizeof(struct cache_slice_header);
+	t = sizeof(struct rc_slice_header);
 	if (t != head->ofs_objects || t >= len)
 		return -4;
 	
@@ -760,7 +696,7 @@ int traverse_cache_slice(struct rev_info *revs,
 {
 	int fd = -1, retval = -3;
 	struct stat fi;
-	struct cache_slice_header head;
+	struct rc_slice_header head;
 	struct rev_cache_info *rci;
 	unsigned char *map = MAP_FAILED;
 	
@@ -775,12 +711,12 @@ int traverse_cache_slice(struct rev_info *revs,
 	rci = &revs->rev_cache_info;
 	add_to_pending = rci->add_to_pending;
 	
-	memset(&head, 0, sizeof(struct cache_slice_header));
+	memset(&head, 0, sizeof(struct rc_slice_header));
 	
 	fd = open_cache_slice(cache_sha1, O_RDONLY);
 	if (fd == -1)
 		goto end;
-	if (fstat(fd, &fi) || fi.st_size < sizeof(struct cache_slice_header))
+	if (fstat(fd, &fi) || fi.st_size < sizeof(struct rc_slice_header))
 		goto end;
 	
 	map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -954,7 +890,7 @@ static void add_path_to_track(struct commit *commit, int path)
 	path_track->path = path;
 }
 
-static void handle_paths(struct commit *commit, struct object_entry *object, struct strbuf *merge_str, struct strbuf *split_str)
+static void handle_paths(struct commit *commit, struct rc_object_entry *object, struct strbuf *merge_str, struct strbuf *split_str)
 {
 	int child_nr, parent_nr, open_parent_nr, this_path;
 	struct commit_list *list;
@@ -1085,10 +1021,10 @@ static unsigned long decode_size(unsigned char *str, int len)
 	return size;
 }
 
-static void add_object_entry(const unsigned char *sha1, struct object_entry *entryp, 
+static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *entryp, 
 	struct strbuf *merge_str, struct strbuf *split_str)
 {
-	struct object_entry entry;
+	struct rc_object_entry entry;
 	unsigned char size_str[7];
 	unsigned long size;
 	enum object_type type;
@@ -1269,13 +1205,14 @@ static int add_unique_objects(struct commit *commit)
 	return i / 20 + 1;
 }
 
-static int add_objects_verbatim_1(unsigned char *map, int *index)
+static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *index)
 {
-	struct object_entry *entry = OE_CAST(map + *index);
+	unsigned char *map = mapping->map;
 	int i = *index, object_nr = 0;
+	struct rc_object_entry *entry = OE_CAST(map + *index);
 	
 	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
-	for (;;) {
+	while (i < mapping->size) {
 		int pos = i;
 		
 		entry = OE_CAST(map + i);
@@ -1290,15 +1227,16 @@ static int add_objects_verbatim_1(unsigned char *map, int *index)
 		object_nr++;
 	}
 	
-	return 0;
+	*index = 0;
+	return object_nr;
 }
 
 static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commit)
 {
 	struct rev_cache_slice_map *map;
 	char found = 0;
-	struct index_entry *ie;
-	struct object_entry *entry;
+	struct rc_index_entry *ie;
+	struct rc_object_entry *entry;
 	int object_nr, i;
 	
 	if (!rci->maps)
@@ -1336,11 +1274,14 @@ search_me:
 	if (entry->is_end)
 		return -5;
 	
-	object_nr = add_objects_verbatim_1(map->map, &i);
+	object_nr = add_objects_verbatim_1(map, &i);
 	
 	/* remember this */
-	rci->last_map = map;
-	map->last_index = i;
+	if (i) {
+		rci->last_map = map;
+		map->last_index = i;
+	} else 
+		rci->last_map = 0;
 	
 	return object_nr;
 }
@@ -1388,7 +1329,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 {
 	struct rev_info therevs;
 	struct strbuf buffer, startlist, endlist;
-	struct cache_slice_header head;
+	struct rc_slice_header head;
 	struct commit *commit;
 	unsigned char sha1[20];
 	struct strbuf merge_paths, split_paths;
@@ -1449,7 +1390,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	
 	object_nr = total_sz = 0;
 	while ((commit = get_revision(revs)) != 0) {
-		struct object_entry object;
+		struct rc_object_entry object;
 		int t;
 		
 		strbuf_setlen(&merge_paths, 0);
@@ -1479,18 +1420,12 @@ int make_cache_slice(struct rev_cache_info *rci,
 		add_object_entry(0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (rci->objects) {
-			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0) {
+		if (rci->objects && !object.is_end) {
+			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0)
 				/* yay!  we did it! */
 				object_nr += t;
-			} else {
-				/* add all unique children for this commit */
-				add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-				object_nr++;
-				
-				if (!object.is_end)
-					object_nr += add_unique_objects(commit);
-			}
+			else
+				object_nr += add_unique_objects(commit);
 		}
 		
 		/* print every ~1MB or so */
@@ -1565,7 +1500,7 @@ static int index_sort_hash(const void *a, const void *b)
 
 static int write_cache_index(struct strbuf *body)
 {
-	struct index_header whead;
+	struct rc_index_header whead;
 	struct lock_file *lk;
 	int fd, i;
 	
@@ -1591,7 +1526,7 @@ static int write_cache_index(struct strbuf *body)
 	whead.cache_nr = idx_head.cache_nr;
 	whead.max_date = htonl(idx_head.max_date);
 	
-	write(fd, &whead, sizeof(struct index_header));
+	write(fd, &whead, sizeof(struct rc_index_header));
 	write_in_full(fd, idx_caches, idx_head.cache_nr * 20);
 	
 	for (i = 0; i <= 0xff; i++)
@@ -1631,12 +1566,12 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		strbuf_add(&buffer, idx_map + fanout[0], fanout[0x100] - fanout[0]);
 	} else {
 		/* not an update */
-		memset(&idx_head, 0, sizeof(struct index_header));
+		memset(&idx_head, 0, sizeof(struct rc_index_header));
 		idx_caches = 0;
 		
 		strcpy(idx_head.signature, "REVINDEX");
 		idx_head.version = SUPPORTED_REVINDEX_VERSION;
-		idx_head.ofs_objects = sizeof(struct index_header) + 0x100 * sizeof(uint32_t);
+		idx_head.ofs_objects = sizeof(struct rc_index_header) + 0x100 * sizeof(uint32_t);
 	}
 	
 	/* are we remaking a slice? */
@@ -1653,11 +1588,11 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	} else
 		cache_index = i;
 	
-	i = sizeof(struct cache_slice_header); /* offset */
+	i = sizeof(struct rc_slice_header); /* offset */
 	max_date = idx_head.max_date;
 	while (i < size) {
-		struct index_entry index_entry, *entry;
-		struct object_entry *object_entry = OE_CAST(map + i);
+		struct rc_index_entry index_entry, *entry;
+		struct rc_object_entry *object_entry = OE_CAST(map + i);
 		unsigned long date;
 		int pos = i;
 		
@@ -1708,7 +1643,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	/* generate fanout */
 	cur = 0x00;
 	for (i = 0; i < buffer.len; i += IE_SIZE) {
-		struct index_entry *entry = IE_CAST(buffer.buf + i);
+		struct rc_index_entry *entry = IE_CAST(buffer.buf + i);
 		
 		while (cur <= entry->sha1[0])
 			fanout[cur++] = i + idx_head.ofs_objects;
@@ -1743,7 +1678,7 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 		return;
 	
 	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
-		struct index_entry *entry = IE_CAST(idx_map + i);
+		struct rc_index_entry *entry = IE_CAST(idx_map + i);
 		
 		if (!entry->is_start)
 			continue;
@@ -1974,7 +1909,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 		fd = open(git_path("rev-cache/%s", sha1_to_hex(idx_caches + i * 20)), O_RDONLY);
 		if (fd <= 0 || fstat(fd, &fi))
 			continue;
-		if (fi.st_size < sizeof(struct cache_slice_header))
+		if (fi.st_size < sizeof(struct rc_slice_header))
 			continue;
 		
 		map->map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -2007,8 +1942,8 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = 0; i < files.nr; i++) {
 		char *name = files.items[i].string;
 		
-		fprintf(stderr, "removing %s\n", base);
-		unlink_or_warn(base);
+		fprintf(stderr, "removing %s\n", name);
+		unlink_or_warn(name);
 	}
 	
 	string_list_clear(&files, 0);
@@ -2018,7 +1953,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 
 static int verify_cache_slice(const char *slice_path, unsigned char *sha1)
 {
-	struct cache_slice_header head;
+	struct rc_slice_header head;
 	int fd, len, retval = -1;
 	unsigned char *map = MAP_FAILED;
 	struct stat fi;
