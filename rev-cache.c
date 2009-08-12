@@ -32,7 +32,7 @@ static struct strbuf *g_buffer;
 
 #define ACTUAL_OBJECT_ENTRY_SIZE(e)		RC_ACTUAL_OBJECT_ENTRY_SIZE(e)
 
-#define SLOP		5
+#define SLOP			5
 
 /* initialization */
 
@@ -225,7 +225,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 			prev = wp;
 			wp = wp->next;
 			wpp = &wp;
- 			continue;
+			continue;
 		}
 		
 		t = ntohl(iep->pos);
@@ -363,14 +363,14 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* initialize commit */
 		if (!entry->is_end) {
 			co->date = ntohl(entry->date);
- 			obj->flags |= ADDED | FACE_VALUE;
+			obj->flags |= ADDED | FACE_VALUE;
 		} else
 			parse_commit(co);
 		
 		obj->flags |= SEEN;
  		
- 		if (entry->uninteresting)
- 			obj->flags |= UNINTERESTING;
+		if (entry->uninteresting)
+			obj->flags |= UNINTERESTING;
 		
 		/* we need to know what the edges are */
 		last_objects[path] = co;
@@ -475,7 +475,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	if (fstat(fd, &fi) || fi.st_size < sizeof(struct rc_slice_header))
 		goto end;
 	
-	map = xmmap(0, fi.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		goto end;
 	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))

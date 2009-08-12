@@ -16,6 +16,7 @@
 #define FACE_VALUE	(1u<<9)
 #define ALL_REV_FLAGS	((1u<<10)-1)
 
+struct rev_info;
 struct log_info;
 
 struct rev_cache_info {
@@ -25,8 +26,7 @@ struct rev_cache_info {
 		make_index : 1;
 	
 	/* traversal flags */
-	unsigned save_unique : 1, 
-		add_to_pending : 1;
+	unsigned add_to_pending : 1;
 	
 	/* fuse options */
 	unsigned int ignore_size;
