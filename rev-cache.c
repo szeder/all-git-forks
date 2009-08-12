@@ -40,7 +40,7 @@ static struct strbuf *g_buffer;
 #define ACTUAL_OBJECT_ENTRY_SIZE(e)		RC_ACTUAL_OBJECT_ENTRY_SIZE(e)
 #define ENTRY_SIZE_OFFSET(e)			RC_ENTRY_SIZE_OFFSET(e)
 
-#define SLOP		5
+#define SLOP			5
 
 /* initialization */
 
@@ -250,7 +250,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 			prev = wp;
 			wp = wp->next;
 			wpp = &wp;
- 			continue;
+			continue;
 		}
 		
 		t = ntohl(iep->pos);
@@ -390,14 +390,14 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* initialize commit */
 		if (!entry->is_end) {
 			co->date = ntohl(entry->date);
- 			obj->flags |= ADDED | FACE_VALUE;
+			obj->flags |= ADDED | FACE_VALUE;
 		} else
 			parse_commit(co);
 		
 		obj->flags |= SEEN;
  		
- 		if (entry->uninteresting)
- 			obj->flags |= UNINTERESTING;
+		if (entry->uninteresting)
+			obj->flags |= UNINTERESTING;
 		
 		/* we need to know what the edges are */
 		last_objects[path] = co;
