@@ -16,7 +16,6 @@
 #define FACE_VALUE	(1u<<9)
 #define ALL_REV_FLAGS	((1u<<10)-1)
 
-struct rev_info;
 struct log_info;
 
 struct rev_cache_slice_map {
@@ -46,7 +45,8 @@ struct rev_cache_info {
 	unsigned int ignore_size;
 	
 	/* reserved */
-	struct rev_cache_slice_map *maps, *last_map;
+	struct rev_cache_slice_map *maps, 
+		*last_map;
 };
 
 struct rev_info {
@@ -207,25 +207,5 @@ extern enum commit_action simplify_commit(struct rev_info *revs, struct commit *
 
 extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
 		    struct commit_list *cached_base, struct commit_list **cache);
-
-/* rev-cache.c */
-
-extern unsigned char *get_cache_slice(struct commit *commit);
-extern int traverse_cache_slice(struct rev_info *revs, 
-	unsigned char *cache_sha1, struct commit *commit, 
-	unsigned long *date_so_far, int *slop_so_far, 
-	struct commit_list ***queue, struct commit_list **work);
-
-extern void init_rev_cache_info(struct rev_cache_info *rci);
-extern int make_cache_slice(struct rev_cache_info *rci, 
-	struct rev_info *revs, struct commit_list **starts, struct commit_list **ends, 
-	unsigned char *cache_sha1);
-extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1, 
-	int fd, unsigned int size);
-
-extern void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
-extern int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
-extern int regenerate_cache_index(struct rev_cache_info *rci);
-extern int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path);
 
 #endif
