@@ -93,7 +93,7 @@ static int get_index_head(unsigned char *map, int len, struct rc_index_header *h
 	int i, index = sizeof(struct rc_index_header);
 	
 	memcpy(&whead, map, sizeof(struct rc_index_header));
-	if (memcmp(whead.signature, "REVINDEX", 8) || whead.version > SUPPORTED_REVINDEX_VERSION)
+	if (memcmp(whead.signature, "REVINDEX", 8) || whead.version != SUPPORTED_REVINDEX_VERSION)
 		return -1;
 	
 	memcpy(head->signature, "REVINDEX", 8);
@@ -694,7 +694,7 @@ static int get_cache_slice_header(int fd, unsigned char *cache_sha1, int len, st
 	
 	if (memcmp(head->signature, "REVCACHE", 8))
 		return -1;
-	if (head->version > SUPPORTED_REVCACHE_VERSION)
+	if (head->version != SUPPORTED_REVCACHE_VERSION)
 		return -2;
 	if (hashcmp(head->sha1, cache_sha1))
 		return -3;
@@ -733,7 +733,7 @@ int open_cache_slice(unsigned char *sha1, int flags)
 		if (read_in_full(fd, &ptr, sizeof(ptr)) != sizeof(ptr))
 			goto end;
 		
-		if (ptr.version > SUPPORTED_REVCOPTR_VERSION)
+		if (ptr.version != SUPPORTED_REVCOPTR_VERSION)
 			goto end;
 		
 		close(fd);
