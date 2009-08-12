@@ -1235,7 +1235,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 		add_object_entry(0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (rci->objects) {
+		if (rci->objects && !object.is_end) {
 			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0) {
 				/* yay!  we did it! */
 				object_nr += t;
@@ -1244,8 +1244,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 				add_object_entry(commit->tree->object.sha1, 0, 0, 0);
 				object_nr++;
 				
-				if (!object.is_end)
-					object_nr += add_unique_objects(commit);
+				object_nr += add_unique_objects(commit);
 			}
 		}
 		
