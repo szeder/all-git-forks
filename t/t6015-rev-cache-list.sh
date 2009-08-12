@@ -233,10 +233,10 @@ test_expect_success 'test rev-list traversal (unlimited) (corrupt index)' '
 
 #test --ignore-size in fuse
 rm .git/rev-cache/*
-cache_sha1=`git-rev-cache add HEAD --not HEAD~3 2>output.err`
+cache_sha1=`git-rev-cache add HEAD~2 2>output.err`
 
 test_expect_success 'make fragmented slices' '
-	git-rev-cache add HEAD~2 --not HEAD~3 2>>output.err && 
+	git-rev-cache add HEAD~1 --not HEAD~2 2>>output.err && 
 	git-rev-cache add HEAD --fresh 2>>output.err && 
 	test `grep "final return value: 0" output.err | wc -l` -eq 3
 '
