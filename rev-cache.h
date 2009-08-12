@@ -15,7 +15,7 @@
 #define RC_IE_CAST(p)	((struct rc_index_entry *)(p))
 
 #define RC_ACTUAL_OBJECT_ENTRY_SIZE(e)		(RC_OE_SIZE + RC_PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
-#define RC_ENTRY_SIZE_OFFSET(e)			(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->name_size)
+#define RC_ENTRY_SIZE_OFFSET(e)			(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
 
 /* single index maps objects to cache files */
 struct rc_index_header {

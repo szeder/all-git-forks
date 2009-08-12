@@ -1196,11 +1196,11 @@ static int add_unique_objects(struct commit *commit)
 	for (i = 0; i < os.len; i += 20)
 		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0);
 	
-	/* last but not least, the main tree */
-	add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-	
 	strbuf_release(&ost);
 	strbuf_release(&os);
+	
+	/* last but not least, the main tree */
+	add_object_entry(commit->tree->object.sha1, 0, 0, 0);
 	
 	return i / 20 + 1;
 }
@@ -1280,7 +1280,7 @@ search_me:
 	if (i) {
 		rci->last_map = map;
 		map->last_index = i;
-	} else 
+	} else
 		rci->last_map = 0;
 	
 	return object_nr;
@@ -1425,6 +1425,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 				/* yay!  we did it! */
 				object_nr += t;
 			else
+				/* add all unique children for this commit */
 				object_nr += add_unique_objects(commit);
 		}
 		
