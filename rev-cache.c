@@ -870,7 +870,7 @@ static int add_unique_objects(struct commit *commit)
 	strbuf_release(&ost);
 	strbuf_release(&os);
 	
-	/* last but not least, the root tree */
+	/* last but not least, the main tree */
 	add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
 	
 	return i / 21 + 1;
