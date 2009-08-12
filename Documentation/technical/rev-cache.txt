@@ -403,7 +403,7 @@ Explanations:
 `signature`::
 	The identifying signature of cache slice file.  Always "REVCACHE".
 `version`::
-	The version number, currently 3.
+	The version number, currently 1.
 `ofs_objects`::
 	The byte offset at which the commit/object listing starts.  Always
 	present at the 10th byte, regardless of file version.
@@ -468,7 +468,7 @@ Explanations:
 `signature`::
 	Always "REVINDEX".
 `version`::
-	Version number, currently 2.
+	Version number, currently 1.
 `ofs_objects`::
 	Offset at which the entry objects begin.  This is more obviously useful
 	in the index because the list of slice SHA-1s is variably-sized.
