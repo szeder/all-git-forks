@@ -653,7 +653,7 @@ end:
 	return retval;
 }
 
-static struct name_list *get_cache_slice_name_list(struct cache_slice_header *head, int fd)
+static struct name_list *get_cache_slice_name_list(struct rc_slice_header *head, int fd)
 {
 	struct name_list *nl = name_lists;
 	
@@ -772,7 +772,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	add_to_pending = rci->add_to_pending;
 	add_names = rci->add_names;
 	
-	memset(&head, 0, sizeof(struct cache_slice_header));
+	memset(&head, 0, sizeof(struct rc_slice_header));
 #	define ERROR(x)		do { retval = (x); goto end; } while (0);
 	
 	fd = open_cache_slice(cache_sha1, O_RDONLY);
@@ -1103,7 +1103,7 @@ static unsigned char *nl_hashes;
 static unsigned int hash_name(const char *name)
 {
 	unsigned int hash = 2166136261ul;
-	char *p = name;
+	const char *p = name;
 	
 	while (*p) {
 		hash ^= *p++;
@@ -1176,7 +1176,7 @@ static void cleanup_name_list_hash(void)
 static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *entryp, 
 	struct strbuf *merge_str, struct strbuf *split_str, char *name, unsigned long size)
 {
-	struct object_entry entry;
+	struct rc_object_entry entry;
 	unsigned char size_str[7], name_str[7];
 	enum object_type type;
 	void *data;
@@ -2096,7 +2096,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = idx_head.cache_nr - 1; i >= 0; i--) {
 		struct rev_cache_slice_map *map = rci->maps + i;
 		struct stat fi;
-		struct cache_slice_header head;
+		struct rc_slice_header head;
 		int fd;
 		
 		if (!map->size)
