@@ -499,7 +499,7 @@ int open_cache_slice(unsigned char *sha1, int flags)
 		if (read_in_full(fd, &ptr, sizeof(ptr)) != sizeof(ptr))
 			goto end;
 		
-		if (ptr.version > SUPPORTED_REVCOPTR_VERSION)
+		if (ptr.version != SUPPORTED_REVCOPTR_VERSION)
 			goto end;
 		
 		close(fd);
