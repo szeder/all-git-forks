@@ -9,80 +9,18 @@
 
 #include "sha1.h"
 
-/* Hash one 64-byte block of data */
-static void blk_SHA1Block(blk_SHA_CTX *ctx, const unsigned int *data);
-
-void blk_SHA1_Init(blk_SHA_CTX *ctx)
-{
-	ctx->size = 0;
-
-	/* Initialize H with the magic constants (see FIPS180 for constants)
-	 */
-	ctx->H[0] = 0x67452301;
-	ctx->H[1] = 0xefcdab89;
-	ctx->H[2] = 0x98badcfe;
-	ctx->H[3] = 0x10325476;
-	ctx->H[4] = 0xc3d2e1f0;
-}
-
-
-void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *data, unsigned long len)
-{
-	int lenW = ctx->size & 63;
-
-	ctx->size += len;
-
-	/* Read the data into W and process blocks as they get full
-	 */
-	if (lenW) {
-		int left = 64 - lenW;
-		if (len < left)
-			left = len;
-		memcpy(lenW + (char *)ctx->W, data, left);
-		lenW = (lenW + left) & 63;
-		len -= left;
-		data += left;
-		if (lenW)
-			return;
-		blk_SHA1Block(ctx, ctx->W);
-	}
-	while (len >= 64) {
-		blk_SHA1Block(ctx, data);
-		data += 64;
-		len -= 64;
-	}
-	if (len)
-		memcpy(ctx->W, data, len);
-}
-
-
-void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
-{
-	static const unsigned char pad[64] = { 0x80 };
-	unsigned int padlen[2];
-	int i;
-
-	/* Pad with a binary 1 (ie 0x80), then zeroes, then length
-	 */
-	padlen[0] = htonl(ctx->size >> 29);
-	padlen[1] = htonl(ctx->size << 3);
-
-	i = ctx->size & 63;
-	blk_SHA1_Update(ctx, pad, 1+ (63 & (55 - i)));
-	blk_SHA1_Update(ctx, padlen, 8);
-
-	/* Output hash
-	 */
-	for (i = 0; i < 5; i++)
-		((unsigned int *)hashout)[i] = htonl(ctx->H[i]);
-}
-
 #if defined(__i386__) || defined(__x86_64__)
+
+/*
+ * Force usage of rol or ror by selecting the one with the smaller constant.
+ * It _can_ generate slightly smaller code (a constant of 1 is special), but
+ * perhaps more importantly it's possibly faster on any uarch that does a
+ * rotate with a loop.
+ */
 
 #define SHA_ASM(op, x, n) ({ unsigned int __res; __asm__(op " %1,%0":"=r" (__res):"i" (n), "0" (x)); __res; })
 #define SHA_ROL(x,n)	SHA_ASM("rol", x, n)
 #define SHA_ROR(x,n)	SHA_ASM("ror", x, n)
-#define SMALL_REGISTER_SET
 
 #else
 
@@ -91,9 +29,6 @@ void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
 #define SHA_ROR(X,n)	SHA_ROT(X,32-(n),n)
 
 #endif
-
-/* This "rolls" over the 512-bit array */
-#define W(x) (array[(x)&15])
 
 /*
  * If you have 32 registers or more, the compiler can (and should)
@@ -111,18 +46,56 @@ void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
  * Ben Herrenschmidt reports that on PPC, the C version comes close
  * to the optimized asm with this (ie on PPC you don't want that
  * 'volatile', since there are lots of registers).
+ *
+ * On ARM we get the best code generation by forcing a full memory barrier
+ * between each SHA_ROUND, otherwise gcc happily get wild with spilling and
+ * the stack frame size simply explode and performance goes down the drain.
  */
-#ifdef SMALL_REGISTER_SET
+
+#if defined(__i386__) || defined(__x86_64__)
   #define setW(x, val) (*(volatile unsigned int *)&W(x) = (val))
+#elif defined(__arm__)
+  #define setW(x, val) do { W(x) = (val); __asm__("":::"memory"); } while (0)
 #else
   #define setW(x, val) (W(x) = (val))
 #endif
 
 /*
+ * Performance might be improved if the CPU architecture is OK with
+ * unaligned 32-bit loads and a fast ntohl() is available.
+ * Otherwise fall back to byte loads and shifts which is portable,
+ * and is faster on architectures with memory alignment issues.
+ */
+
+#if defined(__i386__) || defined(__x86_64__)
+
+#define get_be32(p)	ntohl(*(unsigned int *)(p))
+#define put_be32(p, v)	do { *(unsigned int *)(p) = htonl(v); } while (0)
+
+#else
+
+#define get_be32(p)	( \
+	(*((unsigned char *)(p) + 0) << 24) | \
+	(*((unsigned char *)(p) + 1) << 16) | \
+	(*((unsigned char *)(p) + 2) <<  8) | \
+	(*((unsigned char *)(p) + 3) <<  0) )
+#define put_be32(p, v)	do { \
+	unsigned int __v = (v); \
+	*((unsigned char *)(p) + 0) = __v >> 24; \
+	*((unsigned char *)(p) + 1) = __v >> 16; \
+	*((unsigned char *)(p) + 2) = __v >>  8; \
+	*((unsigned char *)(p) + 3) = __v >>  0; } while (0)
+
+#endif
+
+/* This "rolls" over the 512-bit array */
+#define W(x) (array[(x)&15])
+
+/*
  * Where do we get the source from? The first 16 iterations get it from
  * the input data, the next mix it from the 512-bit array.
  */
-#define SHA_SRC(t) htonl(data[t])
+#define SHA_SRC(t) get_be32(data + t)
 #define SHA_MIX(t) SHA_ROL(W(t+13) ^ W(t+8) ^ W(t+2) ^ W(t), 1)
 
 #define SHA_ROUND(t, input, fn, constant, A, B, C, D, E) do { \
@@ -136,7 +109,7 @@ void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
 #define T_40_59(t, A, B, C, D, E) SHA_ROUND(t, SHA_MIX, ((B&C)+(D&(B^C))) , 0x8f1bbcdc, A, B, C, D, E )
 #define T_60_79(t, A, B, C, D, E) SHA_ROUND(t, SHA_MIX, (B^C^D) ,  0xca62c1d6, A, B, C, D, E )
 
-static void blk_SHA1Block(blk_SHA_CTX *ctx, const unsigned int *data)
+static void blk_SHA1_Block(blk_SHA_CTX *ctx, const unsigned int *data)
 {
 	unsigned int A,B,C,D,E;
 	unsigned int array[16];
@@ -242,4 +215,63 @@ static void blk_SHA1Block(blk_SHA_CTX *ctx, const unsigned int *data)
 	ctx->H[2] += C;
 	ctx->H[3] += D;
 	ctx->H[4] += E;
+}
+
+void blk_SHA1_Init(blk_SHA_CTX *ctx)
+{
+	ctx->size = 0;
+
+	/* Initialize H with the magic constants (see FIPS180 for constants) */
+	ctx->H[0] = 0x67452301;
+	ctx->H[1] = 0xefcdab89;
+	ctx->H[2] = 0x98badcfe;
+	ctx->H[3] = 0x10325476;
+	ctx->H[4] = 0xc3d2e1f0;
+}
+
+void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *data, unsigned long len)
+{
+	int lenW = ctx->size & 63;
+
+	ctx->size += len;
+
+	/* Read the data into W and process blocks as they get full */
+	if (lenW) {
+		int left = 64 - lenW;
+		if (len < left)
+			left = len;
+		memcpy(lenW + (char *)ctx->W, data, left);
+		lenW = (lenW + left) & 63;
+		len -= left;
+		data += left;
+		if (lenW)
+			return;
+		blk_SHA1_Block(ctx, ctx->W);
+	}
+	while (len >= 64) {
+		blk_SHA1_Block(ctx, data);
+		data += 64;
+		len -= 64;
+	}
+	if (len)
+		memcpy(ctx->W, data, len);
+}
+
+void blk_SHA1_Final(unsigned char hashout[20], blk_SHA_CTX *ctx)
+{
+	static const unsigned char pad[64] = { 0x80 };
+	unsigned int padlen[2];
+	int i;
+
+	/* Pad with a binary 1 (ie 0x80), then zeroes, then length */
+	padlen[0] = htonl(ctx->size >> 29);
+	padlen[1] = htonl(ctx->size << 3);
+
+	i = ctx->size & 63;
+	blk_SHA1_Update(ctx, pad, 1+ (63 & (55 - i)));
+	blk_SHA1_Update(ctx, padlen, 8);
+
+	/* Output hash */
+	for (i = 0; i < 5; i++)
+		put_be32(hashout + i*4, ctx->H[i]);
 }
