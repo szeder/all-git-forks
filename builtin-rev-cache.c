@@ -3,6 +3,7 @@
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
+#include "rev-cache.h"
 
 unsigned long default_ignore_size = 50 * 1024 * 1024; /* 50mb */
 
