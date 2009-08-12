@@ -52,7 +52,11 @@ Options:
 	no commit has partially cached parents, in that all its parents are
 	cached or none of them are.
 +
-\--legs will cause 'rev-cache' to expand potential slice end-points (creating "legs") until this condition is met, simplifying the cache slice structure.  'rev-cache' itself does not care if a slice has legs or not, but the condition may reduce the required complexity of other applications that might use the revision cache.
+\--legs will cause 'rev-cache' to expand potential slice end-points (creating
+"legs") until this condition is met, simplifying the cache slice structure.
+'rev-cache' itself does not care if a slice has legs or not, but the condition
+may reduce the required complexity of other applications that might use the
+revision cache.
 
 \--no-objects::
 	Non-commit objects are normally included along with the commit with
@@ -60,7 +64,8 @@ Options:
 	take longer in cache slice generation.  Using this option will disable
 	non-commit object caching.
 +
-\--no-objects is mainly intended for debugging or development purposes, but may find use in special situations (e.g. common traversal of only commits).
+\--no-objects is mainly intended for debugging or development purposes, but may
+find use in special situations (e.g. common traversal of only commits).
 
 walk
 ~~~~
