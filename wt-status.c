@@ -1,6 +1,5 @@
 #include "cache.h"
 #include "wt-status.h"
-#include "color.h"
 #include "object.h"
 #include "dir.h"
 #include "commit.h"
@@ -11,10 +10,7 @@
 #include "run-command.h"
 #include "remote.h"
 
-int wt_status_relative_paths = 1;
-int wt_status_use_color = -1;
-static int wt_status_submodule_summary;
-static char wt_status_colors[][COLOR_MAXLEN] = {
+static char default_wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_NORMAL, /* WT_STATUS_HEADER */
 	GIT_COLOR_GREEN,  /* WT_STATUS_UPDATED */
 	GIT_COLOR_RED,    /* WT_STATUS_CHANGED */
@@ -23,29 +19,9 @@ static char wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_RED,    /* WT_STATUS_UNMERGED */
 };
 
-enum untracked_status_type show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
-
-static int parse_status_slot(const char *var, int offset)
+static const char *color(int slot, struct wt_status *s)
 {
-	if (!strcasecmp(var+offset, "header"))
-		return WT_STATUS_HEADER;
-	if (!strcasecmp(var+offset, "updated")
-		|| !strcasecmp(var+offset, "added"))
-		return WT_STATUS_UPDATED;
-	if (!strcasecmp(var+offset, "changed"))
-		return WT_STATUS_CHANGED;
-	if (!strcasecmp(var+offset, "untracked"))
-		return WT_STATUS_UNTRACKED;
-	if (!strcasecmp(var+offset, "nobranch"))
-		return WT_STATUS_NOBRANCH;
-	if (!strcasecmp(var+offset, "unmerged"))
-		return WT_STATUS_UNMERGED;
-	die("bad config variable '%s'", var);
-}
-
-static const char *color(int slot)
-{
-	return wt_status_use_color > 0 ? wt_status_colors[slot] : "";
+	return s->use_color > 0 ? s->color_palette[slot] : "";
 }
 
 void wt_status_prepare(struct wt_status *s)
@@ -54,17 +30,23 @@ void wt_status_prepare(struct wt_status *s)
 	const char *head;
 
 	memset(s, 0, sizeof(*s));
+	memcpy(s->color_palette, default_wt_status_colors,
+	       sizeof(default_wt_status_colors));
+	s->show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
+	s->use_color = -1;
+	s->relative_paths = 1;
 	head = resolve_ref("HEAD", sha1, 0, NULL);
 	s->branch = head ? xstrdup(head) : NULL;
 	s->reference = "HEAD";
 	s->fp = stdout;
 	s->index_file = get_index_file();
 	s->change.strdup_strings = 1;
+	s->untracked.strdup_strings = 1;
 }
 
 static void wt_status_print_unmerged_header(struct wt_status *s)
 {
-	const char *c = color(WT_STATUS_HEADER);
+	const char *c = color(WT_STATUS_HEADER, s);
 	color_fprintf_ln(s->fp, c, "# Unmerged paths:");
 	if (!s->is_initial)
 		color_fprintf_ln(s->fp, c, "#   (use \"git reset %s <file>...\" to unstage)", s->reference);
@@ -76,7 +58,7 @@ static void wt_status_print_unmerged_header(struct wt_status *s)
 
 static void wt_status_print_cached_header(struct wt_status *s)
 {
-	const char *c = color(WT_STATUS_HEADER);
+	const char *c = color(WT_STATUS_HEADER, s);
 	color_fprintf_ln(s->fp, c, "# Changes to be committed:");
 	if (!s->is_initial) {
 		color_fprintf_ln(s->fp, c, "#   (use \"git reset %s <file>...\" to unstage)", s->reference);
@@ -89,7 +71,7 @@ static void wt_status_print_cached_header(struct wt_status *s)
 static void wt_status_print_dirty_header(struct wt_status *s,
 					 int has_deleted)
 {
-	const char *c = color(WT_STATUS_HEADER);
+	const char *c = color(WT_STATUS_HEADER, s);
 	color_fprintf_ln(s->fp, c, "# Changed but not updated:");
 	if (!has_deleted)
 		color_fprintf_ln(s->fp, c, "#   (use \"git add <file>...\" to update what will be committed)");
@@ -101,7 +83,7 @@ static void wt_status_print_dirty_header(struct wt_status *s,
 
 static void wt_status_print_untracked_header(struct wt_status *s)
 {
-	const char *c = color(WT_STATUS_HEADER);
+	const char *c = color(WT_STATUS_HEADER, s);
 	color_fprintf_ln(s->fp, c, "# Untracked files:");
 	color_fprintf_ln(s->fp, c, "#   (use \"git add <file>...\" to include in what will be committed)");
 	color_fprintf_ln(s->fp, c, "#");
@@ -109,7 +91,7 @@ static void wt_status_print_untracked_header(struct wt_status *s)
 
 static void wt_status_print_trailer(struct wt_status *s)
 {
-	color_fprintf_ln(s->fp, color(WT_STATUS_HEADER), "#");
+	color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s), "#");
 }
 
 #define quote_path quote_path_relative
@@ -117,13 +99,13 @@ static void wt_status_print_trailer(struct wt_status *s)
 static void wt_status_print_unmerged_data(struct wt_status *s,
 					  struct string_list_item *it)
 {
-	const char *c = color(WT_STATUS_UNMERGED);
+	const char *c = color(WT_STATUS_UNMERGED, s);
 	struct wt_status_change_data *d = it->util;
 	struct strbuf onebuf = STRBUF_INIT;
 	const char *one, *how = "bug";
 
 	one = quote_path(it->string, -1, &onebuf, s->prefix);
-	color_fprintf(s->fp, color(WT_STATUS_HEADER), "#\t");
+	color_fprintf(s->fp, color(WT_STATUS_HEADER, s), "#\t");
 	switch (d->stagemask) {
 	case 1: how = "both deleted:"; break;
 	case 2: how = "added by us:"; break;
@@ -142,7 +124,7 @@ static void wt_status_print_change_data(struct wt_status *s,
 					struct string_list_item *it)
 {
 	struct wt_status_change_data *d = it->util;
-	const char *c = color(change_type);
+	const char *c = color(change_type, s);
 	int status = status;
 	char *one_name;
 	char *two_name;
@@ -164,7 +146,7 @@ static void wt_status_print_change_data(struct wt_status *s,
 	one = quote_path(one_name, -1, &onebuf, s->prefix);
 	two = quote_path(two_name, -1, &twobuf, s->prefix);
 
-	color_fprintf(s->fp, color(WT_STATUS_HEADER), "#\t");
+	color_fprintf(s->fp, color(WT_STATUS_HEADER, s), "#\t");
 	switch (status) {
 	case DIFF_STATUS_ADDED:
 		color_fprintf(s->fp, c, "new file:   %s", one);
@@ -330,7 +312,30 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 	}
 }
 
-void wt_status_collect_changes(struct wt_status *s)
+static void wt_status_collect_untracked(struct wt_status *s)
+{
+	int i;
+	struct dir_struct dir;
+
+	if (!s->show_untracked_files)
+		return;
+	memset(&dir, 0, sizeof(dir));
+	if (s->show_untracked_files != SHOW_ALL_UNTRACKED_FILES)
+		dir.flags |=
+			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
+	setup_standard_excludes(&dir);
+
+	fill_directory(&dir, NULL);
+	for(i = 0; i < dir.nr; i++) {
+		struct dir_entry *ent = dir.entries[i];
+		if (!cache_name_is_other(ent->name, ent->len))
+			continue;
+		s->workdir_untracked = 1;
+		string_list_insert(ent->name, &s->untracked);
+	}
+}
+
+void wt_status_collect(struct wt_status *s)
 {
 	wt_status_collect_changes_worktree(s);
 
@@ -338,6 +343,7 @@ void wt_status_collect_changes(struct wt_status *s)
 		wt_status_collect_changes_initial(s);
 	else
 		wt_status_collect_changes_index(s);
+	wt_status_collect_untracked(s);
 }
 
 static void wt_status_print_unmerged(struct wt_status *s)
@@ -450,7 +456,7 @@ static void wt_status_print_submodule_summary(struct wt_status *s)
 		NULL
 	};
 
-	sprintf(summary_limit, "%d", wt_status_submodule_summary);
+	sprintf(summary_limit, "%d", s->submodule_summary);
 	snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", s->index_file);
 
 	memset(&sm_summary, 0, sizeof(sm_summary));
@@ -465,32 +471,20 @@ static void wt_status_print_submodule_summary(struct wt_status *s)
 
 static void wt_status_print_untracked(struct wt_status *s)
 {
-	struct dir_struct dir;
 	int i;
-	int shown_header = 0;
 	struct strbuf buf = STRBUF_INIT;
 
-	memset(&dir, 0, sizeof(dir));
+	if (!s->untracked.nr)
+		return;
 
-	if (!s->untracked)
-		dir.flags |=
-			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
-	setup_standard_excludes(&dir);
-
-	fill_directory(&dir, NULL);
-	for(i = 0; i < dir.nr; i++) {
-		struct dir_entry *ent = dir.entries[i];
-		if (!cache_name_is_other(ent->name, ent->len))
-			continue;
-		if (!shown_header) {
-			s->workdir_untracked = 1;
-			wt_status_print_untracked_header(s);
-			shown_header = 1;
-		}
-		color_fprintf(s->fp, color(WT_STATUS_HEADER), "#\t");
-		color_fprintf_ln(s->fp, color(WT_STATUS_UNTRACKED), "%s",
-				quote_path(ent->name, ent->len,
-					&buf, s->prefix));
+	wt_status_print_untracked_header(s);
+	for (i = 0; i < s->untracked.nr; i++) {
+		struct string_list_item *it;
+		it = &(s->untracked.items[i]);
+		color_fprintf(s->fp, color(WT_STATUS_HEADER, s), "#\t");
+		color_fprintf_ln(s->fp, color(WT_STATUS_UNTRACKED, s), "%s",
+				 quote_path(it->string, strlen(it->string),
+					    &buf, s->prefix));
 	}
 	strbuf_release(&buf);
 }
@@ -532,15 +526,15 @@ static void wt_status_print_tracking(struct wt_status *s)
 		return;
 
 	for (cp = sb.buf; (ep = strchr(cp, '\n')) != NULL; cp = ep + 1)
-		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER),
+		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s),
 				 "# %.*s", (int)(ep - cp), cp);
-	color_fprintf_ln(s->fp, color(WT_STATUS_HEADER), "#");
+	color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s), "#");
 }
 
 void wt_status_print(struct wt_status *s)
 {
 	unsigned char sha1[20];
-	const char *branch_color = color(WT_STATUS_HEADER);
+	const char *branch_color = color(WT_STATUS_HEADER, s);
 
 	s->is_initial = get_sha1(s->reference, sha1) ? 1 : 0;
 	if (s->branch) {
@@ -550,29 +544,29 @@ void wt_status_print(struct wt_status *s)
 			branch_name += 11;
 		else if (!strcmp(branch_name, "HEAD")) {
 			branch_name = "";
-			branch_color = color(WT_STATUS_NOBRANCH);
+			branch_color = color(WT_STATUS_NOBRANCH, s);
 			on_what = "Not currently on any branch.";
 		}
-		color_fprintf(s->fp, color(WT_STATUS_HEADER), "# ");
+		color_fprintf(s->fp, color(WT_STATUS_HEADER, s), "# ");
 		color_fprintf_ln(s->fp, branch_color, "%s%s", on_what, branch_name);
 		if (!s->is_initial)
 			wt_status_print_tracking(s);
 	}
 
-	wt_status_collect_changes(s);
+	wt_status_collect(s);
 
 	if (s->is_initial) {
-		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER), "#");
-		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER), "# Initial commit");
-		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER), "#");
+		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s), "#");
+		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s), "# Initial commit");
+		color_fprintf_ln(s->fp, color(WT_STATUS_HEADER, s), "#");
 	}
 
 	wt_status_print_unmerged(s);
 	wt_status_print_updated(s);
 	wt_status_print_changed(s);
-	if (wt_status_submodule_summary)
+	if (s->submodule_summary)
 		wt_status_print_submodule_summary(s);
-	if (show_untracked_files)
+	if (s->show_untracked_files)
 		wt_status_print_untracked(s);
 	else if (s->commitable)
 		 fprintf(s->fp, "# Untracked files not listed (use -u option to show untracked files)\n");
@@ -586,53 +580,13 @@ void wt_status_print(struct wt_status *s)
 			; /* nothing */
 		else if (s->workdir_dirty)
 			printf("no changes added to commit (use \"git add\" and/or \"git commit -a\")\n");
-		else if (s->workdir_untracked)
+		else if (s->untracked.nr)
 			printf("nothing added to commit but untracked files present (use \"git add\" to track)\n");
 		else if (s->is_initial)
 			printf("nothing to commit (create/copy files and use \"git add\" to track)\n");
-		else if (!show_untracked_files)
+		else if (!s->show_untracked_files)
 			printf("nothing to commit (use -u to show untracked files)\n");
 		else
 			printf("nothing to commit (working directory clean)\n");
 	}
-}
-
-int git_status_config(const char *k, const char *v, void *cb)
-{
-	if (!strcmp(k, "status.submodulesummary")) {
-		int is_bool;
-		wt_status_submodule_summary = git_config_bool_or_int(k, v, &is_bool);
-		if (is_bool && wt_status_submodule_summary)
-			wt_status_submodule_summary = -1;
-		return 0;
-	}
-	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
-		wt_status_use_color = git_config_colorbool(k, v, -1);
-		return 0;
-	}
-	if (!prefixcmp(k, "status.color.") || !prefixcmp(k, "color.status.")) {
-		int slot = parse_status_slot(k, 13);
-		if (!v)
-			return config_error_nonbool(k);
-		color_parse(v, k, wt_status_colors[slot]);
-		return 0;
-	}
-	if (!strcmp(k, "status.relativepaths")) {
-		wt_status_relative_paths = git_config_bool(k, v);
-		return 0;
-	}
-	if (!strcmp(k, "status.showuntrackedfiles")) {
-		if (!v)
-			return config_error_nonbool(k);
-		else if (!strcmp(v, "no"))
-			show_untracked_files = SHOW_NO_UNTRACKED_FILES;
-		else if (!strcmp(v, "normal"))
-			show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
-		else if (!strcmp(v, "all"))
-			show_untracked_files = SHOW_ALL_UNTRACKED_FILES;
-		else
-			return error("Invalid untracked files mode '%s'", v);
-		return 0;
-	}
-	return git_diff_ui_config(k, v, cb);
 }
