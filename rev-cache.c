@@ -446,7 +446,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	if (fstat(fd, &fi) || fi.st_size < sizeof(struct rc_slice_header))
 		goto end;
 	
-	map = xmmap(0, fi.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		goto end;
 	if (get_cache_slice_header(cache_sha1, map, fi.st_size, &head))
