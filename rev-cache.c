@@ -867,11 +867,11 @@ static int add_unique_objects(struct commit *commit)
 	for (i = 0; i < os.len; i += 21)
 		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
 	
-	strbuf_release(&ost);
-	strbuf_release(&os);
-	
 	/* last but not least, the main tree */
 	add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
+	
+	strbuf_release(&ost);
+	strbuf_release(&os);
 	
 	return i / 21 + 1;
 }
