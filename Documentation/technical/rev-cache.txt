@@ -24,18 +24,24 @@ The `rev_cache_info` struct holds all the options and flags for the API.
 
 ----
 struct rev_cache_info {
-        /* generation flags */
-        unsigned objects : 1,
-                legs : 1,
-                make_index : 1;
-        
-        /* traversal flags */
-        unsigned save_unique : 1,
-                add_to_pending : 1,
-                add_names : 1;
-        
-        /* fuse options */
-        unsigned int ignore_size;
+	/* generation flags */
+	unsigned objects : 1, 
+		legs : 1, 
+		make_index : 1, 
+		fuse_me : 1;
+	
+	/* index inclusion */
+	unsigned overwrite_all : 1;
+	
+	/* traversal flags */
+	unsigned add_to_pending : 1;
+	
+	/* fuse options */
+	unsigned int ignore_size;
+	
+	/* reserved */
+	struct rev_cache_slice_map *maps, 
+		*last_map;
 };
 ----
 
@@ -50,21 +56,26 @@ The fields:
 `make_index`::
 	Integrate newly-made slice into index.
 
-`save_unique`::
-	For each non-end commit that has cached objects in any slice, load the commit's associated objects into the `unique` object list field of the `commit` struct (as in, objects supposedly "unique" to that commit).  This is mainly intended for fast regeneration/fusion of cache slices, but could potentially be used by anything requiring such an object list.
+`fuse_me`::
+	This is specified if a fuse is occuring, and slices are to be reused.  This option requires `maps` and `last_maps` to be initialized.
+
+`overwrite_all`::
+	When a cache slice is added to the index, sometimes overlap occures between it and other slices.  Normally, original index entries are kept unless the new entry represents a start commit (older entries are more likely to lead to greater in-slice traversals).  This options overrides that, and updates all entries of the new slice.
 
 `add_to_pending`::
 	Append unique non-commit objects to the `pending` object list in the
 	passed `rev_info` instance.
 
 `add_names`::
-	Include non-commit object names in the pending object entries (if
-	`add_to_pending` is set), and set the `name` field of `blob` and `tree`
-	objects (if `save_unique`).
+	Include non-commit object names in the pending object entries if
+	`add_to_pending` is set.
 
 `ignore_size`::
 	If non-zero, ignore slices with size greater or equal to this during
 fusion.
+
+`maps`/`last_map`::
+	An array of slice mappings, indexed by their id in the slice index header, to be re-used with `fuse_me`.  `last_map` points to the last mapping used, and should be initialized to 0.
 
 Functions
 ~~~~~~~~~
@@ -92,6 +103,12 @@ Functions
 	unsigned int size IN
 )`::
         Add a slice to the rev-cache index.  `cache_sha1` is the identity hash of the cache slice; `fd` is a file descriptor of the cache slice opened with read/write privileges (the slice is not actually modified); `size` is the size of the cache slice.  Although there are currently no options for index updating, `rci` is a placeholder in case of future options.  Note that this function is normally called by `make_cache_slice`.  Returns 0 on success, non-zero on failure.
+
+`int open_cache_slice(
+	unsigned char *sha1 IN, 
+	int flags IN
+)`::
+	Returns a file descriptor to a cache slice described by `sha1` hash, using `flags` as the access mode.  This will follow cache slice pointers to one level of indirection.
 
 `unsigned char *get_cache_slice(
 	struct commit *commit IN
@@ -273,7 +290,7 @@ null)       ...                              |
 Here is the header:
 
 ----
-struct cache_slice_header {
+struct rc_cache_slice_header {
 	char signature[8]; /* REVCACHE */
 	unsigned char version;
 	uint32_t ofs_objects;
@@ -336,7 +353,7 @@ entries     | index of cache slice SHA-1     |
 The header:
 
 ----
-struct index_header {
+struct rc_index_header {
 	char signature[8]; /* REVINDEX */
 	unsigned char version;
 	uint32_t ofs_objects;

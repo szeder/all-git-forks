@@ -94,6 +94,12 @@ Regenerate the revision cache index.  If the rev-cache index file associating ob
 slices gets corrupted, lost, or otherwise becomes unusable, 'index' will
 quickly regenerate the file.  It's most likely that this won't be needed in every day use, as it is targeted towards debugging and development.
 
+alt
+~~~
+Create a cache slice pointer to another slice, identified by its full path: `fuse path/to/other/slice`
+
+This command is useful if you have several repositories sharing a common history.  Although space requirements for rev-cache are slim anyway, you can in this situation reduce it further by using slice pointers, pointing to relavant slices in other repositories.  Note that only one level of redirection is allowed, and the slice pointer will break if the original slice is removed.  'fuse' will not touch slice pointers.
+
 DISCUSSION
 ----------
 For an explanation of the API and its inner workings, see
