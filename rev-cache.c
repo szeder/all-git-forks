@@ -707,7 +707,7 @@ static int get_cache_slice_header(int fd, unsigned char *cache_sha1, int len, st
 	return 0;
 }
 
-static int open_cache_slice(unsigned char *sha1, int flags)
+int open_cache_slice(unsigned char *sha1, int flags)
 {
 	int fd;
 	char signature[8];
