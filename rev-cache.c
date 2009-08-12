@@ -1188,7 +1188,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		 * should we allow more intelligent overriding? */
 		date = ntohl(object_entry->date);
 		if (date > idx_head.max_date) {
- 			entry = 0;
+			entry = 0;
 			if (date > max_date)
 				max_date = date;
 		} else
@@ -1255,7 +1255,6 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags)
 	if (!idx_map)
 		return;
 	
-	/* haven't implemented which yet; no need really... */
 	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
 		struct rc_index_entry *entry = IE_CAST(idx_map + i);
 		
