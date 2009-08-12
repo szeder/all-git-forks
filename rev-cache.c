@@ -1004,7 +1004,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 		object_nr++;
 		
 		/* add all unique children for this commit */
-		if (!object.is_end)
+		if (rci->objects && !object.is_end)
 			object_nr += add_unique_objects(commit);
 		
 		/* print every ~1MB or so */
