@@ -172,7 +172,7 @@ unsigned char *get_cache_slice(struct commit *commit)
 
 /* traversal */
 
-static void handle_noncommit(struct rev_info *revs, struct object_entry *entry)
+static void handle_noncommit(struct rev_info *revs, struct rc_object_entry *entry)
 {
 	struct object *obj = 0;
 	
