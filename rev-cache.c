@@ -49,20 +49,6 @@ struct cache_slice_header {
 	unsigned char sha1[20];
 };
 
-struct object_entry_ondisk {
-	unsigned char flags;
-	unsigned char sha1[20];
-	
-	unsigned char merge_nr;
-	unsigned char split_nr;
-	unsigned char sizes;
-	
-	uint32_t date;
-	uint16_t path;
-	
-	/* same as regular */
-};
-
 struct object_entry {
 	unsigned type : 3;
 	unsigned is_end : 1;
@@ -72,9 +58,10 @@ struct object_entry {
 	unsigned flag : 1; /* unused */
 	unsigned char sha1[20];
 	
-	unsigned merge_nr : 7;
-	unsigned split_nr : 7;
+	unsigned char merge_nr; /* : 7 */
+	unsigned char split_nr; /* : 7 */
 	unsigned size_size : 3;
+	unsigned padding : 5;
 	
 	uint32_t date;
 	uint16_t path;
@@ -303,15 +290,6 @@ static int setup_traversal(struct cache_slice_header *head, unsigned char *map, 
 
 #define GET_COUNT(x)		((x) & 0x3f)
 #define SET_COUNT(x, s)		((x) = ((x) & ~0x3f) | ((s) & 0x3f))
-
-/* is this necessary? */
-static struct object_entry *convert_object_entry_ondisk(struct object_entry_ondisk *disk_entry)
-{
-	static struct object_entry entry;
-	
-	hashcpy(entry.sha1, disk_entry->sha1);
-	/* ... */
-}
 
 static int traverse_cache_slice_1(struct cache_slice_header *head, unsigned char *map, 
 	struct rev_info *revs, struct commit *commit, 
