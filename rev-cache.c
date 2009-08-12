@@ -1464,7 +1464,7 @@ search_me:
 	if (i) {
 		rci->last_map = map;
 		map->last_index = i;
-	} else 
+	} else
 		rci->last_map = 0;
 	
 	return object_nr;
@@ -1616,6 +1616,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 				/* yay!  we did it! */
 				object_nr += t;
 			else
+				/* add all unique children for this commit */
 				object_nr += add_unique_objects(commit);
 		}
 		
