@@ -16,6 +16,7 @@
 #define FACE_VALUE	(1u<<9)
 #define ALL_REV_FLAGS	((1u<<10)-1)
 
+struct rev_info;
 struct log_info;
 
 struct rev_cache_slice_map {
