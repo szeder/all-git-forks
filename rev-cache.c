@@ -1020,16 +1020,20 @@ static int add_unique_objects(struct commit *commit)
 	strbuf_release(&ost);
 	strbuf_release(&os);
 	
-	return i / 20;
+	/* last but not least, the root tree */
+	add_object_entry(commit->tree->object.sha1, 0, 0, 0);
+	
+	return i / 20 + 1;
 }
 
-static int add_objects_verbatim_1(unsigned char *map, int *index)
+static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *index)
 {
-	struct rc_object_entry *entry = OE_CAST(map + *index);
+	unsigned char *map = mapping->map;
 	int i = *index, object_nr = 0;
+	struct rc_object_entry *entry = OE_CAST(map + *index);
 	
 	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
-	for (;;) {
+	while (i < mapping->size) {
 		int pos = i;
 		
 		entry = OE_CAST(map + i);
@@ -1044,7 +1048,8 @@ static int add_objects_verbatim_1(unsigned char *map, int *index)
 		object_nr++;
 	}
 	
-	return 0;
+	*index = 0;
+	return object_nr;
 }
 
 static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commit)
@@ -1090,11 +1095,14 @@ search_me:
 	if (entry->is_end)
 		return -5;
 	
-	object_nr = add_objects_verbatim_1(map->map, &i);
+	object_nr = add_objects_verbatim_1(map, &i);
 	
 	/* remember this */
-	rci->last_map = map;
-	map->last_index = i;
+	if (i) {
+		rci->last_map = map;
+		map->last_index = i;
+	} else
+		rci->last_map = 0;
 	
 	return object_nr;
 }
@@ -1120,7 +1128,6 @@ void init_rev_cache_info(struct rev_cache_info *rci)
 	
 	rci->overwrite_all = 0;
 	
-	rci->save_unique = 0;
 	rci->add_to_pending = 1;
 	
 	rci->ignore_size = 0;
@@ -1193,7 +1200,6 @@ int make_cache_slice(struct rev_cache_info *rci,
 	/* re-use info from other caches if possible */
 	trci = &revs->rev_cache_info;
 	init_rev_cache_info(trci);
-	trci->save_unique = 1;
 	trci->add_to_pending = 0;
 	
 	setup_revisions(0, 0, revs, 0);
@@ -1236,16 +1242,12 @@ int make_cache_slice(struct rev_cache_info *rci,
 		object_nr++;
 		
 		if (rci->objects && !object.is_end) {
-			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0) {
+			if (rci->fuse_me && (t = add_objects_verbatim(rci, commit)) >= 0)
 				/* yay!  we did it! */
 				object_nr += t;
-			} else {
+			else
 				/* add all unique children for this commit */
-				add_object_entry(commit->tree->object.sha1, 0, 0, 0);
-				object_nr++;
-				
 				object_nr += add_unique_objects(commit);
-			}
 		}
 		
 		/* print every ~1MB or so */
