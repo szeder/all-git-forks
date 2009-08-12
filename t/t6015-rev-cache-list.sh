@@ -25,13 +25,13 @@ test_expect_success 'init repo' '
 	echo bang >d1/filed1 && 
 	git add . && 
 	git commit -m "blu" && 
-	
+
 	git checkout master && 
 	git branch b2 && 
 	git checkout b2 && 
 	echo kaplaa >>file && 
 	git commit -a -m "kaplaa" && 
-	
+
 	git checkout master && 
 	mkdir smoke && 
 	echo omg >smoke/bong && 
@@ -45,7 +45,7 @@ test_expect_success 'init repo' '
 	git add . && 
 	git commit -m "shazam" && 
 	git merge -m "merge b2" b2 && 
-	
+
 	echo bam >smoke/pipe && 
 	git add . && 
 	git commit -m "bam" && 
