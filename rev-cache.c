@@ -1025,7 +1025,7 @@ static int add_unique_objects(struct commit *commit)
 
 static int add_objects_verbatim_1(unsigned char *map, int *index)
 {
-	struct object_entry *entry = OE_CAST(map + *index);
+	struct rc_object_entry *entry = OE_CAST(map + *index);
 	int i = *index, object_nr = 0;
 	
 	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
@@ -1051,8 +1051,8 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 {
 	struct rev_cache_slice_map *map;
 	char found = 0;
-	struct index_entry *ie;
-	struct object_entry *entry;
+	struct rc_index_entry *ie;
+	struct rc_object_entry *entry;
 	int object_nr, i;
 	
 	if (!rci->maps)
@@ -1730,7 +1730,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 		fd = open(git_path("rev-cache/%s", sha1_to_hex(idx_caches + i * 20)), O_RDONLY);
 		if (fd <= 0 || fstat(fd, &fi))
 			continue;
-		if (fi.st_size < sizeof(struct cache_slice_header))
+		if (fi.st_size < sizeof(struct rc_slice_header))
 			continue;
 		
 		map->map = xmmap(0, fi.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -1774,7 +1774,7 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 
 static int verify_cache_slice(const char *slice_path, unsigned char *sha1)
 {
-	struct cache_slice_header head;
+	struct rc_slice_header head;
 	int fd, len, retval = -1;
 	unsigned char *map = MAP_FAILED;
 	struct stat fi;

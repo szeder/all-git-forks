@@ -177,7 +177,7 @@ static int handle_fuse(int argc, const char *argv[])
 			if (argv[i][13] == '=')
 				git_parse_ulong(argv[i] + 14, &sz);
 			else
-				git_parse_ulong(DEFAULT_IGNORE_SLICE_SIZE, &sz);
+				sz = default_ignore_size;
 			
 			rci.ignore_size = sz;
 		} else 
@@ -243,6 +243,8 @@ static int rev_cache_config(const char *k, const char *v, void *cb)
 		if (t)
 			default_ignore_size = t;
 	}
+	
+	return 0;
 }
 
 int cmd_rev_cache(int argc, const char *argv[], const char *prefix)
