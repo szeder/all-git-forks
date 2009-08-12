@@ -1943,8 +1943,8 @@ int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs)
 	for (i = 0; i < files.nr; i++) {
 		char *name = files.items[i].string;
 		
-		fprintf(stderr, "removing %s\n", base);
-		unlink_or_warn(base);
+		fprintf(stderr, "removing %s\n", name);
+		unlink_or_warn(name);
 	}
 	
 	string_list_clear(&files, 0);
