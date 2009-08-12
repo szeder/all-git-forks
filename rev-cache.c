@@ -870,7 +870,10 @@ static int add_unique_objects(struct commit *commit)
 	strbuf_release(&ost);
 	strbuf_release(&os);
 	
-	return 0;
+	/* last but not least, the root tree */
+	add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
+	
+	return i / 21 + 1;
 }
 
 static void init_revcache_directory(void)
@@ -1000,14 +1003,9 @@ int make_cache_slice(struct rev_cache_info *rci,
 		add_object_entry(0, 0, &object, &merge_paths, &split_paths);
 		object_nr++;
 		
-		if (!(commit->object.flags & TREESAME)) {
-			/* add all unique children for this commit */
-			add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
-			object_nr++;
-			
-			if (!object.is_end)
-				object_nr += add_unique_objects(commit);
-		}
+		/* add all unique children for this commit */
+		if (!object.is_end)
+			object_nr += add_unique_objects(commit);
 		
 		/* print every ~1MB or so */
 		if (buffer.len > 1000000) {
