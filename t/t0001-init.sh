@@ -244,6 +244,12 @@ test_expect_success 'init recreates a new bare directory' '
 
 test_expect_success 'init creates a new deep directory' '
 	rm -fr newdir &&
+	git init newdir/a/b/c &&
+	test -d newdir/a/b/c/.git/refs
+'
+
+test_expect_success POSIXPERM 'init creates a new deep directory (umask vs. shared)' '
+	rm -fr newdir &&
 	(
 		# Leading directories should honor umask while
 		# the repository itself should follow "shared"
@@ -251,7 +257,7 @@ test_expect_success 'init creates a new deep directory' '
 		git init --bare --shared=0660 newdir/a/b/c &&
 		test -d newdir/a/b/c/refs &&
 		ls -ld newdir/a newdir/a/b > lsab.out &&
-		! grep -v "^drwxrw[sx]r-x" ls.out &&
+		! grep -v "^drwxrw[sx]r-x" lsab.out &&
 		ls -ld newdir/a/b/c > lsc.out &&
 		! grep -v "^drwxrw[sx]---" lsc.out
 	)
