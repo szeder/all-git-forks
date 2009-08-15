@@ -21,13 +21,13 @@ struct log_info;
 
 struct rev_cache_info {
 	/* generation flags */
-	unsigned objects : 1, 
-		legs : 1, 
+	unsigned objects : 1,
+		legs : 1,
 		make_index : 1;
-	
+
 	/* traversal flags */
 	unsigned add_to_pending : 1;
-	
+
 	/* fuse options */
 	unsigned int ignore_size;
 };
@@ -88,7 +88,7 @@ struct rev_info {
 			always_show_header:1;
 
 	/* rev-cache flags */
-	unsigned int for_pack:1, 
+	unsigned int for_pack:1,
 		dont_cache_me:1;
 
 	/* Format info */
@@ -134,7 +134,7 @@ struct rev_info {
 	struct reflog_walk_info *reflog_info;
 	struct decoration children;
 	struct decoration merge_simplification;
-	
+
 	/* caching info, used ONLY by traverse_cache_slice */
 	struct rev_cache_info rev_cache_info;
 };
