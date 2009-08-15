@@ -12,6 +12,7 @@
 #include "patch-ids.h"
 #include "decorate.h"
 #include "log-tree.h"
+#include "rev-cache.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -1751,7 +1752,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 				continue;
 			
 			if (!revs->dont_cache_me) {
-				struct commit_list *queue = 0, **queuep = &queue;;
+				struct commit_list *queue = 0, **queuep = &queue;
 				unsigned char *cache_sha1;
 				
 				if (obj->flags & ADDED)
