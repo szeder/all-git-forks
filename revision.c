@@ -653,7 +653,7 @@ static int limit_list(struct rev_info *revs)
 
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
-		
+
 		/* rev-cache to the rescue!!! */
 		used_cache = 0;
 		if (!revs->dont_cache_me && !(obj->flags & ADDED)) {
@@ -665,7 +665,7 @@ static int limit_list(struct rev_info *revs)
 					used_cache = 1;
 			}
 		}
-		
+
 		if (!used_cache) {
 			if (add_parents_to_list(revs, commit, &list, NULL) < 0)
 				return -1;
@@ -831,7 +831,7 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 		revs->diffopt.prefix = prefix;
 		revs->diffopt.prefix_length = strlen(prefix);
 	}
-	
+
 	init_rev_cache_info(&revs->rev_cache_info);
 }
 
@@ -1750,33 +1750,33 @@ static struct commit *get_revision_1(struct rev_info *revs)
 			if (revs->max_age != -1 &&
 			    (commit->date < revs->max_age))
 				continue;
-			
+
 			if (!revs->dont_cache_me) {
 				struct commit_list *queue = 0, **queuep = &queue;
 				unsigned char *cache_sha1;
-				
+
 				if (obj->flags & ADDED)
 					goto skip_parenting;
-				
+
 				cache_sha1 = get_cache_slice(commit);
 				if (cache_sha1) {
 					if (!traverse_cache_slice(revs, cache_sha1, commit, 0, 0, &queuep, &revs->commits)) {
 						struct commit_list *work = revs->commits;
-						
+
 						/* attach queue to end of ->commits */
 						while (work && work->next)
 							work = work->next;
-						
+
 						if (work)
 							work->next = queue;
 						else
 							revs->commits = queue;
-						
+
 						goto skip_parenting;
 					}
 				}
 			}
-			
+
 			if (add_parents_to_list(revs, commit, &revs->commits, NULL) < 0)
 				die("Failed to traverse parents of commit %s",
 				    sha1_to_hex(commit->object.sha1));
