@@ -175,25 +175,25 @@ unsigned char *get_cache_slice(struct commit *commit)
 static void handle_noncommit(struct rev_info *revs, struct rc_object_entry *entry)
 {
 	struct object *obj = 0;
-	
+
 	switch (entry->type) {
-	case OBJ_TREE : 
+	case OBJ_TREE :
 		if (revs->tree_objects)
 			obj = (struct object *)lookup_tree(entry->sha1);
 		break;
-	case OBJ_BLOB : 
+	case OBJ_BLOB :
 		if (revs->blob_objects)
 			obj = (struct object *)lookup_blob(entry->sha1);
 		break;
-	case OBJ_TAG : 
+	case OBJ_TAG :
 		if (revs->tag_objects)
 			obj = (struct object *)lookup_tag(entry->sha1);
 		break;
 	}
-	
+
 	if (!obj)
 		return;
-	
+
 	obj->flags |= FACE_VALUE;
 	add_pending_object(revs, obj, "");
 }
@@ -281,7 +281,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		if (entry->type != OBJ_COMMIT) {
 			if (consume_children)
 				handle_noncommit(revs, entry);
-			
+
 			continue;
 		} else
 			consume_children = 0;
@@ -721,44 +721,44 @@ static int dump_tree(struct tree *tree, dump_tree_fn fn)
 	struct name_entry entry;
 	struct tree *subtree;
 	int r;
-	
+
 	if (parse_tree(tree))
 		return -1;
-	
+
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
 		switch (fn(entry.sha1, entry.path, entry.mode)) {
 		case 0 :
 			goto continue_loop;
-		default : 
+		default :
 			break;
 		}
-		
+
 		if (S_ISDIR(entry.mode)) {
 			subtree = lookup_tree(entry.sha1);
 			if (!subtree)
 				return -2;
-			
+
 			if ((r = dump_tree(subtree, fn)) < 0)
 				return r;
 		}
-		
+
 continue_loop:
 		continue;
 	}
-	
+
 	return 0;
 }
 
 static int dump_tree_callback(const unsigned char *sha1, const char *path, unsigned int mode)
 {
 	unsigned char data[21];
-	
+
 	hashcpy(data, sha1);
 	data[20] = !!S_ISDIR(mode);
-	
+
 	strbuf_add(g_buffer, data, 21);
-	
+
 	return 1;
 }
 
@@ -768,13 +768,13 @@ static void tree_addremove(struct diff_options *options,
 	const char *concatpath)
 {
 	unsigned char data[21];
-	
+
 	if (whatnow != '+')
 		return;
-	
+
 	hashcpy(data, sha1);
 	data[20] = !!S_ISDIR(mode);
-	
+
 	strbuf_add(g_buffer, data, 21);
 }
 
@@ -785,24 +785,24 @@ static void tree_change(struct diff_options *options,
 	const char *concatpath)
 {
 	unsigned char data[21];
-	
+
 	if (!hashcmp(old_sha1, new_sha1))
 		return;
-	
+
 	hashcpy(data, new_sha1);
 	data[20] = !!S_ISDIR(new_mode);
-	
+
 	strbuf_add(g_buffer, data, 21);
 }
 
 static int sort_type_hash(const void *a, const void *b)
 {
-	const unsigned char *sa = (const unsigned char *)a, 
+	const unsigned char *sa = (const unsigned char *)a,
 		*sb = (const unsigned char *)b;
-	
+
 	if (sa[20] == sb[20])
 		return hashcmp(sa, sb);
-	
+
 	return sa[20] > sb[20] ? -1 : 1;
 }
 
@@ -813,66 +813,66 @@ static int add_unique_objects(struct commit *commit)
 	struct diff_options opts;
 	int i, j, next;
 	char is_first = 1;
-	
+
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
 	orig_buf = g_buffer;
-	
+
 	diff_setup(&opts);
 	DIFF_OPT_SET(&opts, RECURSIVE);
 	DIFF_OPT_SET(&opts, TREE_IN_RECURSIVE);
 	opts.change = tree_change;
 	opts.add_remove = tree_addremove;
-	
+
 	/* this is only called for non-ends (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
 		if (is_first)
 			g_buffer = &os;
-		else 
+		else
 			g_buffer = &ost;
-		
+
 		strbuf_setlen(g_buffer, 0);
 		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
 		qsort(g_buffer->buf, g_buffer->len / 21, 21, (int (*)(const void *, const void *))hashcmp);
-		
+
 		/* take intersection */
 		if (!is_first) {
 			for (next = i = j = 0; i < os.len; i += 21) {
 				while (j < ost.len && hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)) < 0)
 					j += 21;
-				
+
 				if (j >= ost.len || hashcmp((unsigned char *)(ost.buf + j), (unsigned char *)(os.buf + i)))
 					continue;
-				
+
 				if (next != i)
 					memcpy(os.buf + next, os.buf + i, 21);
 				next += 21;
 			}
-			
+
 			if (next != i)
 				strbuf_setlen(&os, next);
 		} else
 			is_first = 0;
 	}
-	
+
 	if (is_first) {
 		g_buffer = &os;
 		dump_tree(commit->tree, dump_tree_callback);
 	}
-	
+
 	if (os.len)
 		qsort(os.buf, os.len / 21, 21, sort_type_hash);
-	
+
 	g_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 21)
 		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
-	
+
 	/* last but not least, the main tree */
 	add_object_entry(commit->tree->object.sha1, OBJ_TREE, 0, 0, 0);
-	
+
 	strbuf_release(&ost);
 	strbuf_release(&os);
-	
+
 	return i / 21 + 1;
 }
 
@@ -1002,15 +1002,11 @@ int make_cache_slice(struct rev_cache_info *rci,
 
 		add_object_entry(0, 0, &object, &merge_paths, &split_paths);
 		object_nr++;
-<<<<<<< HEAD:rev-cache.c
-		
+
 		/* add all unique children for this commit */
 		if (rci->objects && !object.is_end)
 			object_nr += add_unique_objects(commit);
-		
-=======
 
->>>>>>> refs/top-bases/t/revcache/objects:rev-cache.c
 		/* print every ~1MB or so */
 		if (buffer.len > 1000000) {
 			write_in_full(fd, buffer.buf, buffer.len);
