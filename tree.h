@@ -9,7 +9,6 @@ struct tree {
 	struct object object;
 	void *buffer;
 	unsigned long size;
-	char *name;
 };
 
 struct tree *lookup_tree(const unsigned char *sha1);
