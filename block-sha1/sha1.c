@@ -67,7 +67,10 @@
  * and is faster on architectures with memory alignment issues.
  */
 
-#if defined(__i386__) || defined(__x86_64__)
+#if defined(__i386__) || defined(__x86_64__) || \
+    defined(__ppc__) || defined(__ppc64__) || \
+    defined(__powerpc__) || defined(__powerpc64__) || \
+    defined(__s390__) || defined(__s390x__)
 
 #define get_be32(p)	ntohl(*(unsigned int *)(p))
 #define put_be32(p, v)	do { *(unsigned int *)(p) = htonl(v); } while (0)
@@ -243,14 +246,14 @@ void blk_SHA1_Update(blk_SHA_CTX *ctx, const void *data, unsigned long len)
 		memcpy(lenW + (char *)ctx->W, data, left);
 		lenW = (lenW + left) & 63;
 		len -= left;
-		data += left;
+		data = ((const char *)data + left);
 		if (lenW)
 			return;
 		blk_SHA1_Block(ctx, ctx->W);
 	}
 	while (len >= 64) {
 		blk_SHA1_Block(ctx, data);
-		data += 64;
+		data = ((const char *)data + 64);
 		len -= 64;
 	}
 	if (len)
