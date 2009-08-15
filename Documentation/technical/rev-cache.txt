@@ -26,22 +26,22 @@ The `rev_cache_info` struct holds all the options and flags for the API.
 ----
 struct rev_cache_info {
 	/* generation flags */
-	unsigned objects : 1, 
-		legs : 1, 
-		make_index : 1, 
+	unsigned objects : 1,
+		legs : 1,
+		make_index : 1,
 		fuse_me : 1;
-	
+
 	/* index inclusion */
 	unsigned overwrite_all : 1;
-	
+
 	/* traversal flags */
 	unsigned add_to_pending : 1;
-	
+
 	/* fuse options */
 	unsigned int ignore_size;
-	
+
 	/* reserved */
-	struct rev_cache_slice_map *maps, 
+	struct rev_cache_slice_map *maps,
 		*last_map;
 };
 ----
@@ -125,9 +125,9 @@ make_cache_index
 ^^^^^^^^^^^^^^^^
 ----
 int make_cache_index(
-	struct rev_cache_info *rci IN, 
-	unsigned char *cache_sha1 IN, 
-	int fd IN, 
+	struct rev_cache_info *rci IN,
+	unsigned char *cache_sha1 IN,
+	int fd IN,
 	unsigned int size IN
 )
 ----
@@ -144,7 +144,7 @@ open_cache_slice
 ^^^^^^^^^^^^^^^^
 ----
 int open_cache_slice(
-	unsigned char *sha1 IN, 
+	unsigned char *sha1 IN,
 	int flags IN
 )
 ----
@@ -168,12 +168,12 @@ traverse_cache_slice
 ^^^^^^^^^^^^^^^^^^^^
 ----
 int traverse_cache_slice(
-	struct rev_info *revs IN/OUT, 
-	unsigned char *cache_sha1 IN, 
-	struct commit *commit IN, 
-	unsigned long *date_so_far IN/OUT, 
-	int *slop_so_far IN/OUT, 
-	struct commit_list ***queue OUT, 
+	struct rev_info *revs IN/OUT,
+	unsigned char *cache_sha1 IN,
+	struct commit *commit IN,
+	unsigned long *date_so_far IN/OUT,
+	int *slop_so_far IN/OUT,
+	struct commit_list ***queue OUT,
 	struct commit_list **work IN/OUT
 )
 ----
@@ -220,9 +220,9 @@ starts_from_slices
 ^^^^^^^^^^^^^^^^^^
 ----
 void starts_from_slices(
-	struct rev_info *revs OUT, 
-	unsigned int flags IN, 
-	unsigned char *which IN, 
+	struct rev_info *revs OUT,
+	unsigned int flags IN,
+	unsigned char *which IN,
 	int n IN
 )
 ----
@@ -237,7 +237,7 @@ fuse_cache_slices
 ^^^^^^^^^^^^^^^^^
 ----
 int fuse_cache_slices(
-	struct rev_cache_info *rci IN, 
+	struct rev_cache_info *rci IN,
 	struct rev_info *revs IN
 )
 ----
@@ -300,9 +300,9 @@ while (work) {
         struct commit *commit = pop_commit(&work);
         struct object *object = &commit->object;
         unsigned char *cache_sha1;
-        
+
         if (cache_sha1 = get_cache_slice(object->sha1)) {
-                /* note that this will instatiate any topo-relations 
+                /* note that this will instatiate any topo-relations
                  * as it goes */
                 if (traverse_cache_slice(&revs, cache_sha1,
                         commit, 0, 0, /* use defaults */
@@ -310,25 +310,25 @@ while (work) {
                         die("I'm overreacting to a non-fatal cache error");
         } else {
                 struct commit_list *parents = commit->parents;
-                
+
                 while (parents) {
                         struct commit *p = parents->item;
                         struct object *po = &p->object;
-                        
+
                         parents = parents->next;
                         if (po->flags & UNINTERESTING)
                                 continue;
-                        
+
                         if (object->flags & UNINTERESTING)
                                 po->flags |= UNINTERESTING;
                         else if (po->flags & SEEN)
                                 continue;
-                        
+
                         if (!po->parsed)
                                 parse_commit(p);
                         insert_by_date(p, &work);
                 }
-                
+
                 if (object->flags & (SEEN | UNINTERESTING) == 0)
                         outp = &commit_list_insert(commit, outp)->next;
                 object->flags |= SEEN;
@@ -371,7 +371,7 @@ entry       | path data                      |
             +--------------------------------+
             | ...                            |
          -- +--------------------------------+
-...         ...                               
+...         ...
          -- +--------------------------------+
 name list   | \0some_file_name\0             |
 (note       +--------------------------------+
@@ -387,13 +387,13 @@ struct rc_cache_slice_header {
 	char signature[8]; /* REVCACHE */
 	unsigned char version;
 	uint32_t ofs_objects;
-	
+
 	uint32_t object_nr;
 	uint16_t path_nr;
 	uint32_t size;
-	
+
 	unsigned char sha1[20];
-	
+
 	uint32_t names_size;
 };
 ----
@@ -444,7 +444,7 @@ entries     | index of cache slice SHA-1     |
             | position in cache slice        |
             +--------------------------------+
             |                                |
-            ...                               
+            ...
             +--------------------------------+
 ----
 
@@ -455,10 +455,10 @@ struct rc_index_header {
 	char signature[8]; /* REVINDEX */
 	unsigned char version;
 	uint32_t ofs_objects;
-	
+
 	uint32_t object_nr;
 	unsigned char cache_nr;
-	
+
 	uint32_t max_date;
 };
 ----
@@ -511,15 +511,15 @@ struct object_entry {
         unsigned include : 1;
         unsigned flags : 1;
         unsigned char sha1[20];
-        
+
         unsigned char merge_nr;
         unsigned char split_nr;
         unsigned size_size : 3;
         unsigned name_size : 3;
-        
+
         uint32_t date;
         uint16_t path;
-        
+
         /* merge paths */
         /* split paths */
         /* size */
