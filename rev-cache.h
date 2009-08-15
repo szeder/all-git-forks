@@ -93,3 +93,4 @@ extern int regenerate_cache_index(struct rev_cache_info *rci);
 extern int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path);
 
 #endif
+
