@@ -5,16 +5,14 @@
 #define SUPPORTED_REVINDEX_VERSION		1
 #define SUPPORTED_REVCOPTR_VERSION		1
 
-#define RC_PATH_WIDTH	sizeof(uint16_t)
-#define RC_PATH_SIZE(x)	(RC_PATH_WIDTH * (x))
+#define RC_PATH_SIZE(x)	(sizeof(uint16_t) * (x))
 
-#define RC_OE_SIZE		sizeof(struct rc_object_entry)
-#define RC_IE_SIZE		sizeof(struct rc_index_entry)
-
-#define RC_OE_CAST(p)	((struct rc_object_entry *)(p))
-#define RC_IE_CAST(p)	((struct rc_index_entry *)(p))
-
-#define RC_ACTUAL_OBJECT_ENTRY_SIZE(e)		(RC_OE_SIZE + RC_PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size + (e)->name_size)
+#define RC_ACTUAL_OBJECT_ENTRY_SIZE(e)	(\
+	sizeof(struct rc_object_entry_ondisk) + \
+	RC_PATH_SIZE((e)->merge_nr + (e)->split_nr) + \
+	(e)->size_size + \
+	(e)->name_size\
+)
 #define RC_ENTRY_SIZE_OFFSET(e)			(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->name_size - (e)->size_size)
 #define RC_ENTRY_NAME_OFFSET(e)			(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->name_size)
 
@@ -30,8 +28,14 @@ struct rc_index_header {
 	uint32_t max_date;
 };
 
-struct rc_index_entry {
+struct rc_index_entry_ondisk {
 	unsigned char sha1[20];
+	unsigned char flags;
+	uint32_t pos;
+};
+
+struct rc_index_entry {
+	unsigned char *sha1;
 	unsigned is_start : 1;
 	unsigned cache_index : 7;
 	uint32_t pos;
@@ -53,6 +57,18 @@ struct rc_slice_header {
 	uint32_t name_size;
 };
 
+struct rc_object_entry_ondisk {
+	unsigned char flags;
+	unsigned char sha1[20];
+	
+	unsigned char merge_nr;
+	unsigned char split_nr;
+	unsigned char sizes;
+	
+	uint32_t date;
+	uint16_t path;
+};
+
 struct rc_object_entry {
 	unsigned type : 3;
 	unsigned is_end : 1;
@@ -60,7 +76,7 @@ struct rc_object_entry {
 	unsigned uninteresting : 1;
 	unsigned include : 1;
 	unsigned flag : 1; /* unused */
-	unsigned char sha1[20];
+	unsigned char *sha1; /* 20 byte */
 
 	unsigned char merge_nr; /* : 7 */
 	unsigned char split_nr; /* : 7 */
