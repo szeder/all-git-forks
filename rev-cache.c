@@ -50,7 +50,7 @@ static struct strbuf *acc_buffer;
 
 /* initialization */
 
-static struct rc_index_entry *from_disked_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst)
+struct rc_index_entry *from_disked_rc_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst)
 {
 	static struct rc_index_entry entry[4];
 	static int cur;
@@ -66,7 +66,7 @@ static struct rc_index_entry *from_disked_index_entry(struct rc_index_entry_ondi
 	return dst;
 }
 
-static struct rc_index_entry_ondisk *to_disked_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst)
+struct rc_index_entry_ondisk *to_disked_rc_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst)
 {
 	static struct rc_index_entry_ondisk entry[4];
 	static int cur;
@@ -81,7 +81,7 @@ static struct rc_index_entry_ondisk *to_disked_index_entry(struct rc_index_entry
 	return dst;
 }
 
-static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst)
+struct rc_object_entry *from_disked_rc_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst)
 {
 	static struct rc_object_entry entry[4];
 	static int cur;
@@ -110,7 +110,7 @@ static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_o
 	return dst;
 }
 
-static struct rc_object_entry_ondisk *to_disked_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst)
+struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst)
 {
 	static struct rc_object_entry_ondisk entry[4];
 	static int cur;
@@ -284,10 +284,10 @@ static struct rc_index_entry_ondisk *search_index_1(unsigned char *sha1)
 static struct rc_index_entry *search_index(unsigned char *sha1)
 {
 	struct rc_index_entry_ondisk *ied = search_index_1(sha1);
-	
+
 	if (ied)
-		return from_disked_index_entry(ied, 0);
-	
+		return from_disked_rc_index_entry(ied, 0);
+
 	return 0;
 }
 
@@ -401,7 +401,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 	int retval;
 
 	iep = search_index(commit->object.sha1);
-	oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
+	oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
 	if (commit->object.flags & UNINTERESTING) {
 		++*upath_nr;
 		oep->uninteresting = 1;
@@ -435,13 +435,13 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 
 		if (iep->pos < retval)
 			retval = iep->pos;
-		
-		oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
+
+		oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
 
 		/* mark this for later */
 		oep->include = 1;
 		oep->uninteresting = !!(obj->flags & UNINTERESTING);
-		to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+		to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 
 		/* count even if not in slice so we can stop enumerating if possible */
 		if (obj->flags & UNINTERESTING)
@@ -493,7 +493,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 	/* i already set */
 	while (i < head->size) {
-		struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		struct rc_object_entry *entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		int path = entry->path;
 		struct object *obj;
 		int index = i;
@@ -1475,7 +1475,7 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 {
 	int i = *index, object_nr = 0;
 	unsigned char *map = mapping->map;
-	struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+	struct rc_object_entry *entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 	unsigned long size;
 
 	i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
@@ -1483,7 +1483,7 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 		char *name;
 		int name_index, pos = i;
 
-		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		entry = RC_OBTAIN_OBJECT_ENTRY(map + i;
 		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
@@ -1524,7 +1524,7 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 		goto search_me;
 
 	i = map->last_index;
-	entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
+	entry = RC_OBTAIN_OBJECT_ENTRY(map->map + i);
 	if (hashcmp(entry->sha1, commit->object.sha1))
 		goto search_me;
 
@@ -1541,7 +1541,7 @@ search_me:
 			return -3;
 
 		i = ie->pos;
-		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
+		entry = RC_OBTAIN_OBJECT_ENTRY(map->map + i);
 		if (entry->type != OBJ_COMMIT || hashcmp(entry->sha1, commit->object.sha1))
 			return -4;
 	}
@@ -1884,7 +1884,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	while (i < size) {
 		struct rc_index_entry index_entry, *entry;
 		struct rc_index_entry_ondisk *disked_entry;
-		struct rc_object_entry *object_entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		struct rc_object_entry *object_entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		unsigned long date;
 		int off, pos = i;
 
@@ -1914,7 +1914,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			/* mmm, pointer arithmetic... tasty */  /* (entry - idx_map = offset, so cast is valid) */
 			off = (unsigned int)((unsigned char *)disked_entry - idx_map) - fanout[0];
 			disked_entry = (struct rc_index_entry_ondisk *)(buffer.buf + off);
-			entry = from_disked_index_entry(disked_entry, 0);
+			entry = from_disked_rc_index_entry(disked_entry, 0);
 		} else
 			entry = &index_entry;
 
@@ -1925,10 +1925,10 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		entry->pos = pos;
 
 		if (entry == &index_entry) {
-			strbuf_add(&buffer, to_disked_index_entry(entry, 0), sizeof(struct rc_index_entry_ondisk));
+			strbuf_add(&buffer, to_disked_rc_index_entry(entry, 0), sizeof(struct rc_index_entry_ondisk));
 			idx_head.object_nr++;
 		} else
-			to_disked_index_entry(entry, disked_entry);
+			to_disked_rc_index_entry(entry, disked_entry);
 
 	}
 
@@ -1973,7 +1973,7 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 		return;
 
 	for (i = idx_head.ofs_objects; i < idx_size; i += sizeof(struct rc_index_entry_ondisk)) {
-		struct rc_index_entry *entry = from_disked_index_entry((struct rc_index_entry_ondisk *)(idx_map + i), 0);
+		struct rc_index_entry *entry = RC_OBTAIN_INDEX_ENTRY(idx_map + i);
 
 		if (!entry->is_start)
 			continue;
