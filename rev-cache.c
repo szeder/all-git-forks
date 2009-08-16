@@ -377,7 +377,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		++*ipath_nr;
 
 	oep->include = 1;
-	to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 	retval = iep->pos;
 
 	/* include any others in the work array */
@@ -1146,7 +1146,7 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 	entryp->size_size = encode_size(size, size_str);
 
 	/* write the muvabitch */
-	strbuf_add(acc_buffer, to_disked_object_entry(entryp, 0), sizeof(struct rc_object_entry_ondisk));
+	strbuf_add(acc_buffer, to_disked_rc_object_entry(entryp, 0), sizeof(struct rc_object_entry_ondisk));
 
 	if (merge_str)
 		strbuf_add(acc_buffer, merge_str->buf, merge_str->len);
