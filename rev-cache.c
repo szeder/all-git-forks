@@ -25,7 +25,7 @@ static struct strbuf *acc_buffer;
 
 /* initialization */
 
-static struct rc_index_entry *from_disked_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst)
+struct rc_index_entry *from_disked_rc_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst)
 {
 	static struct rc_index_entry entry[4];
 	static int cur;
@@ -41,7 +41,7 @@ static struct rc_index_entry *from_disked_index_entry(struct rc_index_entry_ondi
 	return dst;
 }
 
-static struct rc_index_entry_ondisk *to_disked_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst)
+struct rc_index_entry_ondisk *to_disked_rc_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst)
 {
 	static struct rc_index_entry_ondisk entry[4];
 	static int cur;
@@ -56,7 +56,7 @@ static struct rc_index_entry_ondisk *to_disked_index_entry(struct rc_index_entry
 	return dst;
 }
 
-static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst)
+struct rc_object_entry *from_disked_rc_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst)
 {
 	static struct rc_object_entry entry[4];
 	static int cur;
@@ -84,7 +84,7 @@ static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_o
 	return dst;
 }
 
-static struct rc_object_entry_ondisk *to_disked_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst)
+struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst)
 {
 	static struct rc_object_entry_ondisk entry[4];
 	static int cur;
@@ -227,10 +227,10 @@ static struct rc_index_entry_ondisk *search_index_1(unsigned char *sha1)
 static struct rc_index_entry *search_index(unsigned char *sha1)
 {
 	struct rc_index_entry_ondisk *ied = search_index_1(sha1);
-	
+
 	if (ied)
-		return from_disked_index_entry(ied, 0);
-	
+		return from_disked_rc_index_entry(ied, 0);
+
 	return 0;
 }
 
@@ -265,13 +265,13 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 	int retval;
 
 	iep = search_index(commit->object.sha1), 0;
-	oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
-	
-	/* the .uniniteresting bit isn't strictly necessary, as we check the object during traversal as well, 
+	oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
+
+	/* the .uniniteresting bit isn't strictly necessary, as we check the object during traversal as well,
 	 * but we might as well initialize it while we're at it */
 	oep->include = 1;
 	oep->uninteresting = !!(commit->object.flags & UNINTERESTING);
-	to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 	retval = iep->pos;
 
 	/* include any others in the work array */
@@ -293,13 +293,13 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 
 		if (iep->pos < retval)
 			retval = iep->pos;
-		
-		oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
+	
+		oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
 
 		/* mark this for later */
 		oep->include = 1;
 		oep->uninteresting = !!(obj->flags & UNINTERESTING);
-		to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+		to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 
 		/* remove from work list */
 		co = pop_commit(wpp);
@@ -337,7 +337,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 	/* i already set */
 	while (i < head->size) {
-		struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		struct rc_object_entry *entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		int path = entry->path;
 		struct object *obj;
 		int index = i;
@@ -766,7 +766,7 @@ static void add_object_entry(const unsigned char *sha1, int type, struct rc_obje
 		nothisone = &object;
 	}
 
-	strbuf_add(acc_buffer, to_disked_object_entry(nothisone, 0), sizeof(struct rc_object_entry_ondisk));
+	strbuf_add(acc_buffer, to_disked_rc_object_entry(nothisone, 0), sizeof(struct rc_object_entry_ondisk));
 
 	if (merge_str && merge_str->len)
 		strbuf_add(acc_buffer, merge_str->buf, merge_str->len);
@@ -1063,7 +1063,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	while (i < size) {
 		struct rc_index_entry index_entry, *entry;
 		struct rc_index_entry_ondisk *disked_entry;
-		struct rc_object_entry *object_entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		struct rc_object_entry *object_entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		unsigned long date;
 		int off, pos = i;
 
@@ -1093,7 +1093,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			/* mmm, pointer arithmetic... tasty */  /* (entry - idx_map = offset, so cast is valid) */
 			off = (unsigned int)((unsigned char *)disked_entry - idx_map) - fanout[0];
 			disked_entry = (struct rc_index_entry_ondisk *)(buffer.buf + off);
-			entry = from_disked_index_entry(disked_entry, 0);
+			entry = from_disked_rc_index_entry(disked_entry, 0);
 		} else
 			entry = &index_entry;
 
@@ -1104,10 +1104,10 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		entry->pos = pos;
 
 		if (entry == &index_entry) {
-			strbuf_add(&buffer, to_disked_index_entry(entry, 0), sizeof(struct rc_index_entry_ondisk));
+			strbuf_add(&buffer, to_disked_rc_index_entry(entry, 0), sizeof(struct rc_index_entry_ondisk));
 			idx_head.object_nr++;
 		} else
-			to_disked_index_entry(entry, disked_entry);
+			to_disked_rc_index_entry(entry, disked_entry);
 
 	}
 
@@ -1153,7 +1153,7 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags)
 		return;
 
 	for (i = idx_head.ofs_objects; i < idx_size; i += sizeof(struct rc_index_entry_ondisk)) {
-		struct rc_index_entry *entry = from_disked_index_entry((struct rc_index_entry_ondisk *)(idx_map + i), 0);
+		struct rc_index_entry *entry = RC_OBTAIN_INDEX_ENTRY(idx_map + i);
 
 		if (!entry->is_start)
 			continue;
