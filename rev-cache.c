@@ -33,23 +33,98 @@ static char no_idx, add_to_pending;
 static struct bad_slice *bad_slices;
 static unsigned char *idx_caches;
 
-static struct strbuf *g_buffer;
-
-#define PATH_WIDTH	RC_PATH_WIDTH
-#define PATH_SIZE(x)	RC_PATH_SIZE(x)
-
-#define OE_SIZE		RC_OE_SIZE
-#define IE_SIZE		RC_IE_SIZE
-
-#define OE_CAST(p)	RC_OE_CAST(p)
-#define IE_CAST(p)	RC_IE_CAST(p)
-
-#define ACTUAL_OBJECT_ENTRY_SIZE(e)		RC_ACTUAL_OBJECT_ENTRY_SIZE(e)
-#define ENTRY_SIZE_OFFSET(e)			RC_ENTRY_SIZE_OFFSET(e)
+static struct strbuf *acc_buffer;
 
 #define SLOP			5
 
 /* initialization */
+
+static struct rc_index_entry *from_disked_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst)
+{
+	static struct rc_index_entry entry[4];
+	static int cur;
+
+	if (!dst)
+		dst = &entry[cur++ & 0x3];
+
+	dst->sha1 = src->sha1;
+	dst->is_start = !!(src->flags & 0x80);
+	dst->cache_index = src->flags & 0x7f;
+	dst->pos = ntohl(src->pos);
+
+	return dst;
+}
+
+static struct rc_index_entry_ondisk *to_disked_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst)
+{
+	static struct rc_index_entry_ondisk entry[4];
+	static int cur;
+
+	if (!dst)
+		dst = &entry[cur++ & 0x3];
+
+	hashcpy(dst->sha1, src->sha1);
+	dst->flags = (unsigned char)src->is_start << 7 | (unsigned char)src->cache_index;
+	dst->pos = htonl(src->pos);
+
+	return dst;
+}
+
+static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst)
+{
+	static struct rc_object_entry entry[4];
+	static int cur;
+
+	if (!dst)
+		dst = &entry[cur++ & 0x3];
+
+	dst->type = src->flags >> 5;
+	dst->is_end = !!(src->flags & 0x10);
+	dst->is_start = !!(src->flags & 0x08);
+	dst->uninteresting = !!(src->flags & 0x04);
+	dst->include = !!(src->flags & 0x02);
+	dst->flag = !!(src->flags & 0x01);
+
+	dst->sha1 = src->sha1;
+	dst->merge_nr = src->merge_nr;
+	dst->split_nr = src->split_nr;
+
+	dst->size_size = src->sizes >> 5;
+	dst->padding = src->sizes & 0x1f;
+
+	dst->date = ntohl(src->date);
+	dst->path = ntohs(src->path);
+
+	return dst;
+}
+
+static struct rc_object_entry_ondisk *to_disked_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst)
+{
+	static struct rc_object_entry_ondisk entry[4];
+	static int cur;
+
+	if (!dst)
+		dst = &entry[cur++ & 0x3];
+
+	dst->flags  = (unsigned char)src->type << 5;
+	dst->flags |= (unsigned char)src->is_end << 4;
+	dst->flags |= (unsigned char)src->is_start << 3;
+	dst->flags |= (unsigned char)src->uninteresting << 2;
+	dst->flags |= (unsigned char)src->include << 1;
+	dst->flags |= (unsigned char)src->flag;
+
+	hashcpy(dst->sha1, src->sha1);
+	dst->merge_nr = src->merge_nr;
+	dst->split_nr = src->split_nr;
+
+	dst->sizes  = (unsigned char)src->size_size << 5;
+	dst->sizes |= (unsigned char)src->padding;
+
+	dst->date = htonl(src->date);
+	dst->path = htons(src->path);
+
+	return dst;
+}
 
 static void mark_bad_slice(unsigned char *sha1)
 {
@@ -147,10 +222,10 @@ end:
 }
 
 /* this assumes index is already loaded */
-static struct rc_index_entry *search_index(unsigned char *sha1)
+static struct rc_index_entry_ondisk *search_index_1(unsigned char *sha1)
 {
 	int start, end, starti, endi, i, len, r;
-	struct rc_index_entry *ie;
+	struct rc_index_entry_ondisk *ie;
 
 	if (!idx_map)
 		return 0;
@@ -158,15 +233,15 @@ static struct rc_index_entry *search_index(unsigned char *sha1)
 	/* binary search */
 	start = fanout[(int)sha1[0]];
 	end = fanout[(int)sha1[0] + 1];
-	len = (end - start) / IE_SIZE;
-	if (!len || len * IE_SIZE != end - start)
+	len = (end - start) / sizeof(struct rc_index_entry_ondisk);
+	if (!len || len * sizeof(struct rc_index_entry_ondisk) != end - start)
 		return 0;
 
 	starti = 0;
 	endi = len - 1;
 	for (;;) {
 		i = (endi + starti) / 2;
-		ie = IE_CAST(idx_map + start + i * IE_SIZE);
+		ie = (struct rc_index_entry_ondisk *)(idx_map + start + i * sizeof(struct rc_index_entry_ondisk));
 		r = hashcmp(sha1, ie->sha1);
 
 		if (r) {
@@ -184,6 +259,16 @@ static struct rc_index_entry *search_index(unsigned char *sha1)
 			return ie;
 	}
 
+	return 0;
+}
+
+static struct rc_index_entry *search_index(unsigned char *sha1)
+{
+	struct rc_index_entry_ondisk *ied = search_index_1(sha1);
+	
+	if (ied)
+		return from_disked_index_entry(ied, 0);
+	
 	return 0;
 }
 
@@ -239,7 +324,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, struc
 	struct object *obj;
 	unsigned long size;
 
-	size = decode_size((unsigned char *)entry + ENTRY_SIZE_OFFSET(entry), entry->size_size);
+	size = decode_size((unsigned char *)entry + RC_ENTRY_SIZE_OFFSET(entry), entry->size_size);
 	switch (entry->type) {
 	case OBJ_TREE :
 		if (!revs->tree_objects)
@@ -284,14 +369,16 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 	int retval;
 
 	iep = search_index(commit->object.sha1);
-	oep = OE_CAST(map + ntohl(iep->pos));
+	oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
 	if (commit->object.flags & UNINTERESTING) {
 		++*upath_nr;
 		oep->uninteresting = 1;
 	} else
 		++*ipath_nr;
+
 	oep->include = 1;
-	retval = ntohl(iep->pos);
+	to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	retval = iep->pos;
 
 	/* include any others in the work array */
 	prev = 0;
@@ -300,7 +387,6 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 	while (wp) {
 		struct object *obj = &wp->item->object;
 		struct commit *co;
-		int t;
 
 		/* is this in our cache slice? */
 		iep = search_index(obj->sha1);
@@ -315,13 +401,15 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 			continue;
 		}
 
-		t = ntohl(iep->pos);
-		oep = OE_CAST(map + t);
+		if (iep->pos < retval)
+			retval = iep->pos;
+		
+		oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
 
+		/* mark this for later */
 		oep->include = 1;
 		oep->uninteresting = !!(obj->flags & UNINTERESTING);
-		if (t < retval)
-			retval = t;
+		to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 
 		/* count even if not in slice so we can stop enumerating if possible */
 		if (obj->flags & UNINTERESTING)
@@ -364,19 +452,21 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 	/* take note in case we need to regress */
 	orig_obj_nr = revs->pending.nr;
 
-	paths = xcalloc(total_path_nr, PATH_WIDTH);
-	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
-
 	i = setup_traversal(head, map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
+	if (i < 0)
+		return -1;
+
+	paths = xcalloc(total_path_nr, sizeof(uint16_t));
+	last_objects = xcalloc(total_path_nr, sizeof(struct commit *));
 
 	/* i already set */
 	while (i < head->size) {
-		struct rc_object_entry *entry = OE_CAST(map + i);
-		int path = ntohs(entry->path);
+		struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		int path = entry->path;
 		struct object *obj;
 		int index = i;
 
-		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		/* add extra objects if necessary */
 		if (entry->type != OBJ_COMMIT) {
@@ -398,7 +488,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 			continue;
 
 		/* date stuff */
-		if (revs->max_age != -1 && ntohl(entry->date) < revs->max_age)
+		if (revs->max_age != -1 && entry->date < revs->max_age)
 			paths[path] |= UPATH;
 
 		/* lookup object */
@@ -429,10 +519,10 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		/* first close paths */
 		if (entry->split_nr) {
-			int j, off = index + OE_SIZE + PATH_SIZE(entry->merge_nr);
+			int j, off = index + sizeof(struct rc_object_entry_ondisk) + RC_PATH_SIZE(entry->merge_nr);
 
 			for (j = 0; j < entry->split_nr; j++) {
-				unsigned short p = ntohs(*(unsigned short *)(map + off + PATH_SIZE(j)));
+				unsigned short p = ntohs(*(uint16_t *)(map + off + RC_PATH_SIZE(j)));
 
 				if (p >= total_path_nr)
 					goto end;
@@ -488,7 +578,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		/* initialize commit */
 		if (!entry->is_end) {
-			co->date = ntohl(entry->date);
+			co->date = entry->date;
 			obj->flags |= ADDED | FACE_VALUE;
 		} else
 			parse_commit(co);
@@ -544,11 +634,11 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		/* open parents */
 		if (entry->merge_nr) {
-			int j, off = index + OE_SIZE;
+			int j, off = index + sizeof(struct rc_object_entry_ondisk);
 			char flag = entry->uninteresting ? UPATH : IPATH;
 
 			for (j = 0; j < entry->merge_nr; j++) {
-				unsigned short p = ntohs(*(unsigned short *)(map + off + PATH_SIZE(j)));
+				unsigned short p = ntohs(*(uint16_t *)(map + off + RC_PATH_SIZE(j)));
 
 				if (p >= total_path_nr)
 					goto end;
@@ -917,8 +1007,8 @@ static void handle_paths(struct commit *commit, struct rc_object_entry *object, 
 
 			/* add to split list */
 			object->split_nr++;
-			write_path = htons((unsigned short)pt->path);;
-			strbuf_add(split_str, &write_path, PATH_WIDTH);
+			write_path = htons((uint16_t)pt->path);
+			strbuf_add(split_str, &write_path, sizeof(uint16_t));
 
 			remove_path_track(ppt, 0);
 			pt = *ppt;
@@ -936,7 +1026,7 @@ static void handle_paths(struct commit *commit, struct rc_object_entry *object, 
 
 	this_path = commit->indegree;
 	paths[this_path] = PATH_IN_USE;
-	object->path = htons(this_path);
+	object->path = this_path;
 
 	/* count interesting parents */
 	parent_nr = open_parent_nr = 0;
@@ -984,8 +1074,8 @@ static void handle_paths(struct commit *commit, struct rc_object_entry *object, 
 		if (!p->indegree)
 			p->indegree = get_new_path();
 
-		write_path = htons((unsigned short)p->indegree);
-		strbuf_add(merge_str, &write_path, PATH_WIDTH);
+		write_path = htons((uint16_t)p->indegree);
+		strbuf_add(merge_str, &write_path, sizeof(uint16_t));
 
 		/* make sure path is properly ended */
 		add_path_to_track(p, this_path);
@@ -1042,13 +1132,13 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 	/* initialize! */
 	if (!entryp) {
 		memset(&entry, 0, sizeof(entry));
-		hashcpy(entry.sha1, sha1);
+		entry.sha1 = (unsigned char *)sha1;
 		entry.type = type;
 
 		if (merge_str)
-			entry.merge_nr = merge_str->len / PATH_WIDTH;
+			entry.merge_nr = merge_str->len / sizeof(uint16_t);
 		if (split_str)
-			entry.split_nr = split_str->len / PATH_WIDTH;
+			entry.split_nr = split_str->len / sizeof(uint16_t);
 
 		entryp = &entry;
 	}
@@ -1056,14 +1146,14 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 	entryp->size_size = encode_size(size, size_str);
 
 	/* write the muvabitch */
-	strbuf_add(g_buffer, entryp, sizeof(entry));
+	strbuf_add(acc_buffer, to_disked_object_entry(entryp, 0), sizeof(struct rc_object_entry_ondisk));
 
 	if (merge_str)
-		strbuf_add(g_buffer, merge_str->buf, merge_str->len);
+		strbuf_add(acc_buffer, merge_str->buf, merge_str->len);
 	if (split_str)
-		strbuf_add(g_buffer, split_str->buf, split_str->len);
+		strbuf_add(acc_buffer, split_str->buf, split_str->len);
 
-	strbuf_add(g_buffer, size_str, entryp->size_size);
+	strbuf_add(acc_buffer, size_str, entryp->size_size);
 }
 
 /* returns non-zero to continue parsing, 0 to skip */
@@ -1107,7 +1197,7 @@ continue_loop:
 
 static int dump_tree_callback(const unsigned char *sha1, const char *path, unsigned int mode)
 {
-	strbuf_add(g_buffer, sha1, 20);
+	strbuf_add(acc_buffer, sha1, 20);
 
 	return 1;
 }
@@ -1120,7 +1210,7 @@ static void tree_addremove(struct diff_options *options,
 	if (whatnow != '+')
 		return;
 
-	strbuf_add(g_buffer, sha1, 20);
+	strbuf_add(acc_buffer, sha1, 20);
 }
 
 static void tree_change(struct diff_options *options,
@@ -1132,7 +1222,7 @@ static void tree_change(struct diff_options *options,
 	if (!hashcmp(old_sha1, new_sha1))
 		return;
 
-	strbuf_add(g_buffer, new_sha1, 20);
+	strbuf_add(acc_buffer, new_sha1, 20);
 }
 
 static int add_unique_objects(struct commit *commit)
@@ -1146,7 +1236,7 @@ static int add_unique_objects(struct commit *commit)
 	/* ...no, calculate unique objects */
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
-	orig_buf = g_buffer;
+	orig_buf = acc_buffer;
 
 	diff_setup(&opts);
 	DIFF_OPT_SET(&opts, RECURSIVE);
@@ -1157,13 +1247,13 @@ static int add_unique_objects(struct commit *commit)
 	/* this is only called for non-ends (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
 		if (is_first)
-			g_buffer = &os;
+			acc_buffer = &os;
 		else
-			g_buffer = &ost;
+			acc_buffer = &ost;
 
-		strbuf_setlen(g_buffer, 0);
+		strbuf_setlen(acc_buffer, 0);
 		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
-		qsort(g_buffer->buf, g_buffer->len / 20, 20, (int (*)(const void *, const void *))hashcmp);
+		qsort(acc_buffer->buf, acc_buffer->len / 20, 20, (int (*)(const void *, const void *))hashcmp);
 
 		/* take intersection */
 		if (!is_first) {
@@ -1187,12 +1277,12 @@ static int add_unique_objects(struct commit *commit)
 
 	/* no parents (!) */
 	if (is_first) {
-		g_buffer = &os;
+		acc_buffer = &os;
 		dump_tree(commit->tree, dump_tree_callback);
 	}
 
 	/* the ordering of non-commit objects dosn't really matter, so we're not gonna bother */
-	g_buffer = orig_buf;
+	acc_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 20)
 		add_object_entry((unsigned char *)(os.buf + i), 0, 0, 0);
 
@@ -1206,21 +1296,21 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 {
 	unsigned char *map = mapping->map;
 	int i = *index, object_nr = 0;
-	struct rc_object_entry *entry = OE_CAST(map + *index);
+	struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
 
-	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+	i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 	while (i < mapping->size) {
 		int pos = i;
 
-		entry = OE_CAST(map + i);
-		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
 			*index = pos;
 			return object_nr;
 		}
 
-		strbuf_add(g_buffer, map + pos, i - pos);
+		strbuf_add(acc_buffer, map + pos, i - pos);
 		object_nr++;
 	}
 
@@ -1245,7 +1335,7 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 		goto search_me;
 
 	i = map->last_index;
-	entry = OE_CAST(map->map + i);
+	entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
 	if (hashcmp(entry->sha1, commit->object.sha1))
 		goto search_me;
 
@@ -1254,15 +1344,15 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 search_me:
 	if (!found) {
 		ie = search_index(commit->object.sha1);
-		if (!ie)
+		if (!ie || ie->cache_index >= idx_head.cache_nr)
 			return -2;
 
 		map = rci->maps + ie->cache_index;
 		if (!map->size)
 			return -3;
 
-		i = ntohl(ie->pos);
-		entry = OE_CAST(map->map + i);
+		i = ie->pos;
+		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
 		if (entry->type != OBJ_COMMIT || hashcmp(entry->sha1, commit->object.sha1))
 			return -4;
 	}
@@ -1346,7 +1436,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	strbuf_init(&endlist, 0);
 	strbuf_init(&merge_paths, 0);
 	strbuf_init(&split_paths, 0);
-	g_buffer = &buffer;
+	acc_buffer = &buffer;
 
 	if (!revs) {
 		revs = &therevs;
@@ -1395,8 +1485,8 @@ int make_cache_slice(struct rev_cache_info *rci,
 
 		memset(&object, 0, sizeof(object));
 		object.type = OBJ_COMMIT;
-		object.date = htonl(commit->date);
-		hashcpy(object.sha1, commit->object.sha1);
+		object.date = commit->date;
+		object.sha1 = commit->object.sha1;
 
 		handle_paths(commit, &object, &merge_paths, &split_paths);
 
@@ -1493,7 +1583,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 
 static int index_sort_hash(const void *a, const void *b)
 {
-	return hashcmp(IE_CAST(a)->sha1, IE_CAST(b)->sha1);
+	return hashcmp(((struct rc_index_entry_ondisk *)a)->sha1, ((struct rc_index_entry_ondisk *)b)->sha1);
 }
 
 static int write_cache_index(struct strbuf *body)
@@ -1590,11 +1680,12 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	max_date = idx_head.max_date;
 	while (i < size) {
 		struct rc_index_entry index_entry, *entry;
-		struct rc_object_entry *object_entry = OE_CAST(map + i);
+		struct rc_index_entry_ondisk *disked_entry;
+		struct rc_object_entry *object_entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
 		unsigned long date;
-		int pos = i;
+		int off, pos = i;
 
-		i += ACTUAL_OBJECT_ENTRY_SIZE(object_entry);
+		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(object_entry);
 
 		if (object_entry->type != OBJ_COMMIT)
 			continue;
@@ -1605,43 +1696,46 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 
 		/* handle index duplication
 		 * -> keep old copy unless new one is a start -- based on expected usage, older ones will be more
-		 * likely to lead to greater slice traversals than new ones
-		 * should we allow more intelligent overriding? */
-		date = ntohl(object_entry->date);
+		 * likely to lead to greater slice traversals than new ones */
+		date = object_entry->date;
 		if (date > idx_head.max_date) {
-			entry = 0;
+			disked_entry = 0;
 			if (date > max_date)
 				max_date = date;
 		} else
-			entry = search_index(object_entry->sha1);
+			disked_entry = search_index_1(object_entry->sha1);
 
-		if (entry && !object_entry->is_start && !rci->overwrite_all)
+		if (disked_entry && !object_entry->is_start && !rci->overwrite_all)
 			continue;
-		else if (entry) /* mmm, pointer arithmetic... tasty */  /* (entry-idx_map = offset, so cast is valid) */
-			entry = IE_CAST(buffer.buf + (unsigned int)((unsigned char *)entry - idx_map) - fanout[0]);
-		else
+		else if (disked_entry) {
+			/* mmm, pointer arithmetic... tasty */  /* (entry - idx_map = offset, so cast is valid) */
+			off = (unsigned int)((unsigned char *)disked_entry - idx_map) - fanout[0];
+			disked_entry = (struct rc_index_entry_ondisk *)(buffer.buf + off);
+			entry = from_disked_index_entry(disked_entry, 0);
+		} else
 			entry = &index_entry;
 
 		memset(entry, 0, sizeof(index_entry));
-		hashcpy(entry->sha1, object_entry->sha1);
+		entry->sha1 = object_entry->sha1;
 		entry->is_start = object_entry->is_start;
 		entry->cache_index = cache_index;
-		entry->pos = htonl(pos);
+		entry->pos = pos;
 
 		if (entry == &index_entry) {
-			strbuf_add(&buffer, entry, sizeof(index_entry));
+			strbuf_add(&buffer, to_disked_index_entry(entry, 0), sizeof(struct rc_index_entry_ondisk));
 			idx_head.object_nr++;
-		}
+		} else
+			to_disked_index_entry(entry, disked_entry);
 
 	}
 
 	idx_head.max_date = max_date;
-	qsort(buffer.buf, buffer.len / IE_SIZE, IE_SIZE, index_sort_hash);
+	qsort(buffer.buf, buffer.len / sizeof(struct rc_index_entry_ondisk), sizeof(struct rc_index_entry_ondisk), index_sort_hash);
 
 	/* generate fanout */
 	cur = 0x00;
-	for (i = 0; i < buffer.len; i += IE_SIZE) {
-		struct rc_index_entry *entry = IE_CAST(buffer.buf + i);
+	for (i = 0; i < buffer.len; i += sizeof(struct rc_index_entry_ondisk)) {
+		struct rc_index_entry_ondisk *entry = (struct rc_index_entry_ondisk *)(buffer.buf + i);
 
 		while (cur <= entry->sha1[0])
 			fanout[cur++] = i + idx_head.ofs_objects;
@@ -1675,8 +1769,8 @@ void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char
 	if (!idx_map)
 		return;
 
-	for (i = idx_head.ofs_objects; i < idx_size; i += IE_SIZE) {
-		struct rc_index_entry *entry = IE_CAST(idx_map + i);
+	for (i = idx_head.ofs_objects; i < idx_size; i += sizeof(struct rc_index_entry_ondisk)) {
+		struct rc_index_entry *entry = from_disked_index_entry((struct rc_index_entry_ondisk *)(idx_map + i), 0);
 
 		if (!entry->is_start)
 			continue;
