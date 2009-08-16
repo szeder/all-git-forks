@@ -266,14 +266,14 @@ unsigned char *get_cache_slice(struct commit *commit)
 
 static unsigned long decode_size(unsigned char *str, int len);
 
-static void handle_noncommit(struct rev_info *revs, struct commit *commit, struct rc_object_entry *entry)
+static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsigned char *ptr, struct rc_object_entry *entry)
 {
 	struct blob *blob;
 	struct tree *tree;
 	struct object *obj;
 	unsigned long size;
 
-	size = decode_size((unsigned char *)entry + RC_ENTRY_SIZE_OFFSET(entry), entry->size_size);
+	size = decode_size(ptr + RC_ENTRY_SIZE_OFFSET(entry), entry->size_size);
 	switch (entry->type) {
 	case OBJ_TREE :
 		if (!revs->tree_objects)
@@ -398,7 +398,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* add extra objects if necessary */
 		if (entry->type != OBJ_COMMIT) {
 			if (consume_children)
-				handle_noncommit(revs, co, entry);
+				handle_noncommit(revs, co, map + i, entry);
 
 			continue;
 		} else
