@@ -377,7 +377,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		++*ipath_nr;
 
 	oep->include = 1;
-	to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 	retval = iep->pos;
 
 	/* include any others in the work array */
