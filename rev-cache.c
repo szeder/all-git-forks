@@ -89,7 +89,7 @@ static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_o
 	if (!dst)
 		dst = &entry[cur++ & 0x3];
 
-	dst->type = src->flags >> 5;
+	dst->type = src->flags >> 5 & 0x03;
 	dst->is_end = !!(src->flags & 0x10);
 	dst->is_start = !!(src->flags & 0x08);
 	dst->uninteresting = !!(src->flags & 0x04);
@@ -100,8 +100,9 @@ static struct rc_object_entry *from_disked_object_entry(struct rc_object_entry_o
 	dst->merge_nr = src->merge_nr;
 	dst->split_nr = src->split_nr;
 
-	dst->size_size = src->sizes >> 5;
-	dst->padding = src->sizes & 0x1f;
+	dst->size_size = src->sizes >> 5 & 0x03;
+	dst->name_size = src->sizes >> 2 & 0x03;
+	dst->padding = src->sizes & 0x02;
 
 	dst->date = ntohl(src->date);
 	dst->path = ntohs(src->path);
@@ -129,6 +130,7 @@ static struct rc_object_entry_ondisk *to_disked_object_entry(struct rc_object_en
 	dst->split_nr = src->split_nr;
 
 	dst->sizes  = (unsigned char)src->size_size << 5;
+	dst->sizes |= (unsigned char)src->name_size << 2;
 	dst->sizes |= (unsigned char)src->padding;
 
 	dst->date = htonl(src->date);
