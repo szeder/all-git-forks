@@ -7,6 +7,9 @@
 
 #define RC_PATH_SIZE(x)	(sizeof(uint16_t) * (x))
 
+#define RC_OBTAIN_OBJECT_ENTRY(p)			from_disked_rc_object_entry((struct rc_object_entry_ondisk *)(p), 0)
+#define RC_OBTAIN_INDEX_ENTRY(p)			from_disked_rc_index_entry((struct rc_index_entry_ondisk *)(p), 0)
+
 #define RC_ACTUAL_OBJECT_ENTRY_SIZE(e)		(sizeof(struct rc_object_entry_ondisk) + RC_PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
 #define RC_ENTRY_SIZE_OFFSET(e)				(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
 
@@ -52,11 +55,11 @@ struct rc_slice_header {
 struct rc_object_entry_ondisk {
 	unsigned char flags;
 	unsigned char sha1[20];
-	
+
 	unsigned char merge_nr;
 	unsigned char split_nr;
 	unsigned char sizes;
-	
+
 	uint32_t date;
 	uint16_t path;
 };
@@ -83,6 +86,10 @@ struct rc_object_entry {
 	/* size */
 };
 
+struct rc_index_entry *from_disked_rc_index_entry(struct rc_index_entry_ondisk *src, struct rc_index_entry *dst);
+struct rc_index_entry_ondisk *to_disked_rc_index_entry(struct rc_index_entry *src, struct rc_index_entry_ondisk *dst);
+struct rc_object_entry *from_disked_rc_object_entry(struct rc_object_entry_ondisk *src, struct rc_object_entry *dst);
+struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst);
 
 extern unsigned char *get_cache_slice(struct commit *commit);
 extern int open_cache_slice(unsigned char *sha1, int flags);
