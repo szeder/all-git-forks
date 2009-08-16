@@ -373,7 +373,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 	}
 
 	if (add_names && cur_name_list) {
-		name_index = decode_size((unsigned char *)entry + ENTRY_NAME_OFFSET(entry), entry->name_size);
+		name_index = decode_size(ptr + RC_ENTRY_NAME_OFFSET(entry), entry->name_size);
 
 		if (name_index >= cur_name_list->len)
 			name_index = 0;
@@ -1482,20 +1482,20 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 		int name_index, pos = i;
 
 		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
-		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
 			*index = pos;
 			return object_nr;
 		}
 
-		name_index = decode_size(map + pos + ENTRY_NAME_OFFSET(entry), entry->name_size);
+		name_index = decode_size(map + pos + RC_ENTRY_NAME_OFFSET(entry), entry->name_size);
 		if (name_index && name_index < mapping->name_size)
 			name = mapping->names + name_index;
 		else
 			name = 0;
 
-		size = decode_size(map + pos + ENTRY_SIZE_OFFSET(entry), entry->size_size);
+		size = decode_size(map + pos + RC_ENTRY_SIZE_OFFSET(entry), entry->size_size);
 
 		add_object_entry(0, entry, 0, 0, name, size);
 		object_nr++;
@@ -1661,6 +1661,7 @@ int make_cache_slice(struct rev_cache_info *rci,
 	trci = &revs->rev_cache_info;
 	init_rev_cache_info(trci);
 	trci->add_to_pending = 0;
+	trci->add_names = 0;
 
 	setup_revisions(0, 0, revs, 0);
 	if (prepare_revision_walk(revs))
