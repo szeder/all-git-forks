@@ -257,7 +257,7 @@ unsigned char *get_cache_slice(struct commit *commit)
 
 /* traversal */
 
-static void handle_noncommit(struct rev_info *revs, struct rc_object_entry *entry)
+static void handle_noncommit(struct rev_info *revs, unsigned char *ptr, struct rc_object_entry *entry)
 {
 	struct object *obj = 0;
 
@@ -373,7 +373,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* add extra objects if necessary */
 		if (entry->type != OBJ_COMMIT) {
 			if (consume_children)
-				handle_noncommit(revs, entry);
+				handle_noncommit(revs, map + i, entry);
 
 			continue;
 		} else
