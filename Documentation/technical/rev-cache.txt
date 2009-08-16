@@ -258,6 +258,26 @@ Remake the revision cache index, including all the slices.  Currently no
 options in `rci` exist for index (re)generation, but some may develop in the
 future.
 
+to/from_disked_rc_object/index_entry
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----
+struct rc_object/index_entry *from_disked_rc_object/index_entry(
+	struct rc_object/index_entry_ondisk *src IN,
+	struct rc_object/index_entry *dst OUT
+)
+
+struct rc_object/index_entry_ondisk *to_disked_rc_object/index_entry(
+	struct rc_object/index_entry *src IN,
+	struct rc_object/index_entry_ondisk *dst OUT
+)
+----
+
+Functions to convert between the internal and storage (`_ondisk`) versions of
+object and index entry structures.  These are necessary for direct access to
+the cache slices.  If NULL is provided for `dst` a statically allocated
+structure is used, and a pointer to the struct is returned.  Otherwise the
+functions return `dst`.
+
 Example Usage
 -------------
 
