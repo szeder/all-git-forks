@@ -319,7 +319,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 
 		if (iep->pos < retval)
 			retval = iep->pos;
-	
+
 		oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
 
 		/* mark this for later */
