@@ -409,7 +409,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		++*ipath_nr;
 
 	oep->include = 1;
-	to_disked_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 	retval = iep->pos;
 
 	/* include any others in the work array */
@@ -1303,7 +1303,7 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 		entryp->name_size = encode_size(name_in_list(name), name_str);
 
 	/* write the muvabitch */
-	strbuf_add(acc_buffer, to_disked_object_entry(entryp, 0), sizeof(struct rc_object_entry_ondisk));
+	strbuf_add(acc_buffer, to_disked_rc_object_entry(entryp, 0), sizeof(struct rc_object_entry_ondisk));
 
 	if (merge_str)
 		strbuf_add(acc_buffer, merge_str->buf, merge_str->len);
@@ -1483,7 +1483,7 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 		char *name;
 		int name_index, pos = i;
 
-		entry = RC_OBTAIN_OBJECT_ENTRY(map + i;
+		entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
