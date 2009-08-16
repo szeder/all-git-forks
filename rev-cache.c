@@ -851,7 +851,7 @@ static int dump_tree_callback(const unsigned char *sha1, const char *path, unsig
 	hashcpy(data, sha1);
 	data[20] = !!S_ISDIR(mode);
 
-	strbuf_add(g_buffer, data, 21);
+	strbuf_add(acc_buffer, data, 21);
 
 	return 1;
 }
@@ -869,7 +869,7 @@ static void tree_addremove(struct diff_options *options,
 	hashcpy(data, sha1);
 	data[20] = !!S_ISDIR(mode);
 
-	strbuf_add(g_buffer, data, 21);
+	strbuf_add(acc_buffer, data, 21);
 }
 
 static void tree_change(struct diff_options *options,
@@ -886,7 +886,7 @@ static void tree_change(struct diff_options *options,
 	hashcpy(data, new_sha1);
 	data[20] = !!S_ISDIR(new_mode);
 
-	strbuf_add(g_buffer, data, 21);
+	strbuf_add(acc_buffer, data, 21);
 }
 
 static int sort_type_hash(const void *a, const void *b)
@@ -910,7 +910,7 @@ static int add_unique_objects(struct commit *commit)
 
 	strbuf_init(&os, 0);
 	strbuf_init(&ost, 0);
-	orig_buf = g_buffer;
+	orig_buf = acc_buffer;
 
 	diff_setup(&opts);
 	DIFF_OPT_SET(&opts, RECURSIVE);
@@ -921,13 +921,13 @@ static int add_unique_objects(struct commit *commit)
 	/* this is only called for non-ends (ie. all parents interesting) */
 	for (list = commit->parents; list; list = list->next) {
 		if (is_first)
-			g_buffer = &os;
+			acc_buffer = &os;
 		else
-			g_buffer = &ost;
+			acc_buffer = &ost;
 
-		strbuf_setlen(g_buffer, 0);
+		strbuf_setlen(acc_buffer, 0);
 		diff_tree_sha1(list->item->tree->object.sha1, commit->tree->object.sha1, "", &opts);
-		qsort(g_buffer->buf, g_buffer->len / 21, 21, (int (*)(const void *, const void *))hashcmp);
+		qsort(acc_buffer->buf, acc_buffer->len / 21, 21, (int (*)(const void *, const void *))hashcmp);
 
 		/* take intersection */
 		if (!is_first) {
@@ -950,14 +950,14 @@ static int add_unique_objects(struct commit *commit)
 	}
 
 	if (is_first) {
-		g_buffer = &os;
+		acc_buffer = &os;
 		dump_tree(commit->tree, dump_tree_callback);
 	}
 
 	if (os.len)
 		qsort(os.buf, os.len / 21, 21, sort_type_hash);
 
-	g_buffer = orig_buf;
+	acc_buffer = orig_buf;
 	for (i = 0; i < os.len; i += 21)
 		add_object_entry((unsigned char *)(os.buf + i), os.buf[i + 20] ? OBJ_TREE : OBJ_BLOB, 0, 0, 0);
 
