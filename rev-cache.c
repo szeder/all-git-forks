@@ -501,7 +501,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* add extra objects if necessary */
 		if (entry->type != OBJ_COMMIT) {
 			if (consume_children)
-				handle_noncommit(revs, co, map + i, entry);
+				handle_noncommit(revs, co, map + index, entry);
 
 			continue;
 		} else
