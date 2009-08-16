@@ -184,7 +184,7 @@ end:
 }
 
 /* this assumes index is already loaded */
-static struct rc_index_entry_ondisk *search_index(unsigned char *sha1)
+static struct rc_index_entry_ondisk *search_index_1(unsigned char *sha1)
 {
 	int start, end, starti, endi, i, len, r;
 	struct rc_index_entry_ondisk *ie;
@@ -224,10 +224,19 @@ static struct rc_index_entry_ondisk *search_index(unsigned char *sha1)
 	return 0;
 }
 
+static struct rc_index_entry *search_index(unsigned char *sha1)
+{
+	struct rc_index_entry_ondisk *ied = search_index_1(sha1);
+	
+	if (ied)
+		return from_disked_index_entry(ied, 0);
+	
+	return 0;
+}
+
 unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct rc_index_entry *ie;
-	struct rc_index_entry_ondisk *ied;
 
 	if (!idx_map) {
 		if (no_idx)
@@ -238,12 +247,8 @@ unsigned char *get_cache_slice(struct commit *commit)
 	if (commit->date > idx_head.max_date)
 		return 0;
 
-	ied = search_index(commit->object.sha1);
-	if (!ied)
-		return 0;
-
-	ie = from_disked_index_entry(ied, 0);
-	if (ie->cache_index < idx_head.cache_nr)
+	ie = search_index(commit->object.sha1);
+	if (ie && ie->cache_index < idx_head.cache_nr)
 		return idx_caches + ie->cache_index * 20;
 
 	return 0;
@@ -280,13 +285,12 @@ static void handle_noncommit(struct rev_info *revs, struct rc_object_entry *entr
 
 static int setup_traversal(struct rc_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work)
 {
-	struct rc_index_entry_ondisk *iepd;
 	struct rc_index_entry *iep;
 	struct rc_object_entry *oep;
 	struct commit_list *prev, *wp, **wpp;
 	int retval;
 
-	iep = from_disked_index_entry(search_index(commit->object.sha1), 0);
+	iep = search_index(commit->object.sha1), 0;
 	oep = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + iep->pos), 0);
 	
 	/* the .uniniteresting bit isn't strictly necessary, as we check the object during traversal as well, 
@@ -305,12 +309,7 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		struct commit *co;
 
 		/* is this in our cache slice? */
-		iepd = search_index(obj->sha1);
-		if (iepd)
-			iep = from_disked_index_entry(iepd, 0);
-		else
-			iep = 0;
-
+		iep = search_index(obj->sha1);
 		if (!iep || hashcmp(idx_caches + iep->cache_index * 20, head->sha1)) {
 			prev = wp;
 			wp = wp->next;
@@ -1284,7 +1283,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 			if (date > max_date)
 				max_date = date;
 		} else
-			disked_entry = search_index(object_entry->sha1);
+			disked_entry = search_index_1(object_entry->sha1);
 
 		if (disked_entry && !object_entry->is_start)
 			continue;
