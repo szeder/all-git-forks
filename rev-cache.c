@@ -956,7 +956,7 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 	/* initialize! */
 	if (!entryp) {
 		memset(&entry, 0, sizeof(entry));
-		entry.sha1 = sha1;
+		entry.sha1 = (unsigned char *)sha1;
 		entry.type = type;
 
 		if (merge_str)
@@ -1120,14 +1120,14 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 {
 	unsigned char *map = mapping->map;
 	int i = *index, object_nr = 0;
-	struct rc_object_entry *entry = OE_CAST(map + *index);
+	struct rc_object_entry *entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
 
-	i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+	i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 	while (i < mapping->size) {
 		int pos = i;
 
-		entry = OE_CAST(map + i);
-		i += ACTUAL_OBJECT_ENTRY_SIZE(entry);
+		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map + i), 0);
+		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
 			*index = pos;
@@ -1147,8 +1147,7 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 	struct rev_cache_slice_map *map;
 	char found = 0;
 	struct rc_index_entry *ie;
-	struct rc_index_entry_ondisk *ied;
-	struct rc_object_entry_ondisk *entry;
+	struct rc_object_entry *entry;
 	int object_nr, i;
 
 	if (!rci->maps)
@@ -1160,7 +1159,7 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 		goto search_me;
 
 	i = map->last_index;
-	entry = (struct rc_object_entry_ondisk *)(map->map + i);
+	entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
 	if (hashcmp(entry->sha1, commit->object.sha1))
 		goto search_me;
 
@@ -1169,15 +1168,15 @@ static int add_objects_verbatim(struct rev_cache_info *rci, struct commit *commi
 search_me:
 	if (!found) {
 		ie = search_index(commit->object.sha1);
-		if (!ie)
+		if (!ie || ie->cache_index >= idx_head.cache_nr)
 			return -2;
 
 		map = rci->maps + ie->cache_index;
 		if (!map->size)
 			return -3;
 
-		i = ntohl(ie->pos);
-		entry = (struct rc_object_entry_ondisk *)(map->map + i);
+		i = ie->pos;
+		entry = from_disked_object_entry((struct rc_object_entry_ondisk *)(map->map + i), 0);
 		if (entry->type != OBJ_COMMIT || hashcmp(entry->sha1, commit->object.sha1))
 			return -4;
 	}
