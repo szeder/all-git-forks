@@ -1332,6 +1332,9 @@ endif
 ifndef NO_PERL
 	$(QUIET_SUBDIR0)perl $(QUIET_SUBDIR1) PERL_PATH='$(PERL_PATH_SQ)' prefix='$(prefix_SQ)' all
 endif
+ifndef NO_PYTHON
+	$(QUIET_SUBDIR0)git_remote_cvs $(QUIET_SUBDIR1) PYTHON_PATH='$(PYTHON_PATH_SQ)' prefix='$(prefix_SQ)' all
+endif
 	$(QUIET_SUBDIR0)templates $(QUIET_SUBDIR1)
 
 please_set_SHELL_PATH_to_a_more_modern_shell:
@@ -1674,6 +1677,9 @@ install: all
 ifndef NO_PERL
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
 endif
+ifndef NO_PYTHON
+	$(MAKE) -C git_remote_cvs prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
+endif
 ifndef NO_TCLTK
 	$(MAKE) -C gitk-git install
 	$(MAKE) -C git-gui gitexecdir='$(gitexec_instdir_SQ)' install
@@ -1787,6 +1793,9 @@ clean:
 ifndef NO_PERL
 	$(RM) gitweb/gitweb.cgi
 	$(MAKE) -C perl clean
+endif
+ifndef NO_PYTHON
+	$(MAKE) -C git_remote_cvs clean
 endif
 	$(MAKE) -C templates/ clean
 	$(MAKE) -C t/ clean
