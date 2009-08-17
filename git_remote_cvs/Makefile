@@ -28,7 +28,7 @@ install: $(pysetupfile)
 	$(PYTHON_PATH) $(pysetupfile) install --prefix $(DESTDIR_SQ)$(prefix)
 
 instlibdir: $(pysetupfile)
-	@echo "$(prefix)/$(PYLIBDIR)"
+	@echo "$(DESTDIR_SQ)$(prefix)/$(PYLIBDIR)"
 
 clean:
 	$(QUIET)$(PYTHON_PATH) $(pysetupfile) $(QUIETSETUP) clean -a
