@@ -49,6 +49,15 @@ do
 	shift
 done
 
+if test -z "$local" && test -s "$GIT_DIR/objects/info/alternates"; then
+cat >&2 <<'EOF'
+warning: this repository uses objects from other repositories via the
+warning: "alternates" mechanism; repacking without "-l" will cause objects
+warning: to be copied into this repository, wasting disk space.
+
+EOF
+fi
+
 case "$(git config --bool repack.usedeltabaseoffset || echo true)" in
 true)
 	extra="$extra --delta-base-offset" ;;
