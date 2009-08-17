@@ -1,0 +1,85 @@
+git-remote-cvs(1)
+=================
+
+NAME
+----
+git-remote-cvs - Helper program for interoperation with CVS repositories
+
+SYNOPSIS
+--------
+'git remote-cvs' <remote>
+
+DESCRIPTION
+-----------
+
+Please see the linkgit:git-remote-helpers[1] documentation for general
+information about remote helper programs.
+
+CONFIGURATION
+-------------
+
+remote.*.cvsRoot::
+	The URL of the CVS repository (as found in a `CVSROOT` variable, or
+	in a `CVS/Root` file).
+	Example: "`:pserver:user@server/var/cvs/cvsroot`".
+
+remote.*.cvsModule::
+	The path of the CVS module (as found in a `CVS/Repository` file)
+	within the CVS repository specified in `remote.*.cvsRoot`.
+	Example: "`foo/bar`"
+
+remote.*.cachedSymbolsOnly::
+	When 'true', a cache of CVS symbols is used instead of querying the
+	CVS server for all existing symbols (potentially expensive). In this
+	mode, git-remote-cvs will not discover new CVS symbols unless you add
+	them explicitly with the "`addsymbol <symbol>`" command (on
+	git-remote-cvs's stdin), or request an explicit symbol cache update
+	from the CVS server with the "`syncsymbols`" command (on
+	git-remote-cvs's stdin). When 'false' (the default), the CVS server
+	will be queried whenever a list of CVS symbols is required.
+
+remote.*.usernameMap::
+	The path (absolute, or relative to the repository (NOT the worktree))
+	to the file that contains the mapping from CVS usernames to the
+	corresponding full names and email addresses, as used by Git in the
+	Author and Committer fields of commit objects. When this config
+	variable is set, CVS usernames will be resolved against this file.
+	If no match is found in the file, or if this config variable is unset,
+	or if the variable points to a non-existing file, the original CVS
+	username will be used as the Author/Committer name, and the
+	corresponding email address will be set to "`<username>@example.com`".
++
+The format of the usernameMap file is one entry per line, where each line is
+of the form "`username: Full Name <email@address>`".
+Example: `johndoe: John Doe <johndoe@example.com>`
+Blank lines and lines starting with '#' are ignored.
+
+COMMANDS
+--------
+
+In addition to the commands that constitute the git-remote-helpers API, the
+following extra commands are supported for managing the local symbol cache when
+the `remote.*.cachedSymbolsOnly` config variable is true. The following
+commands can be given on the standard input of git-remote-cvs:
+
+'addsymbol'::
+	Takes one CVS symbol name as argument. The given CVS symbol is
+	fetched from the CVS server and stored into the local CVS symbol
+	cache. If `remote.*.cachedSymbolsOnly` is enabled, this can be used
+	to introduce a new CVS symbol to the CVS helper application.
+
+'syncsymbols'::
+	All CVS symbols that are available from the given remote are
+	fetched from the CVS server and stored into the local CVS symbol
+	cache. This is equivalent to disabling `remote.{asterisk}.cachedSymbolsOnly`,
+	running the "list" command, and then finally re-enabling the
+	`remote.*.cachedSymbolsOnly` config variable. I.e. this command can
+	be used to manually synchronize the CVS symbols available to the
+	CVS helper application.
+
+'verify'::
+	Takes one CVS symbol name as argument. Verifies that the CVS symbol
+	has been successfully imported be checking out the CVS symbol from
+	the CVS server, and comparing the CVS working tree against the Git
+	tree object identified by `refs/cvs/<remote>/<symbol>`. This can be
+	used to verify the correctness of a preceding 'import' command.
