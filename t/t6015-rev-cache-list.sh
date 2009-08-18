@@ -73,7 +73,7 @@ test_expect_success 'init repo' '
 
 	git checkout master &&
 	git merge -m "triple merge" b1 b11 &&
-	git rm -r d1 && 
+	git rm -r d1 &&
 	git commit -a -m "oh noes"
 '
 
@@ -104,7 +104,7 @@ test_expect_success 'test rev-caches walker directly (unlimited)' '
 
 #do the same for objects
 test_expect_success 'test rev-caches walker with objects' '
-	git-rev-cache walk --objects HEAD >list && 
+	git-rev-cache walk --objects HEAD >list &&
 	test_cmp_sorted list proper_object_list
 '
 
