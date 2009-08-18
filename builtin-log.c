@@ -27,6 +27,10 @@ static int default_show_root = 1;
 static const char *fmt_patch_subject_prefix = "PATCH";
 static const char *fmt_pretty;
 
+static const char * const builtin_log_usage =
+	"git log [<options>] [<since>..<until>] [[--] <path>...]\n"
+	"   or: git show [options] <object>...";
+
 static void cmd_log_init(int argc, const char **argv, const char *prefix,
 		      struct rev_info *rev)
 {
@@ -61,6 +65,8 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 			rev->show_decorations = 1;
 		} else if (!strcmp(arg, "--source")) {
 			rev->show_source = 1;
+		} else if (!strcmp(arg, "-h")) {
+			usage(builtin_log_usage);
 		} else
 			die("unrecognized argument: %s", arg);
 	}
@@ -663,6 +669,10 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 
 	log_write_email_headers(rev, head, &subject_start, &extra_headers,
 				&need_8bit_cte);
+
+	for (i = 0; !need_8bit_cte && i < nr; i++)
+		if (has_non_ascii(list[i]->buffer))
+			need_8bit_cte = 1;
 
 	msg = body;
 	pp_user_info(NULL, CMIT_FMT_EMAIL, &sb, committer, DATE_RFC2822,
