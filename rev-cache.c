@@ -74,7 +74,8 @@ struct rc_index_entry_ondisk *to_disked_rc_index_entry(struct rc_index_entry *sr
 	if (!dst)
 		dst = &entry[cur++ & 0x3];
 
-	hashcpy(dst->sha1, src->sha1);
+	if (dst->sha1 != src->sha1)
+		hashcpy(dst->sha1, src->sha1);
 	dst->flags = (unsigned char)src->is_start << 7 | (unsigned char)src->cache_index;
 	dst->pos = htonl(src->pos);
 
@@ -125,7 +126,8 @@ struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry 
 	dst->flags |= (unsigned char)src->include << 1;
 	dst->flags |= (unsigned char)src->flag;
 
-	hashcpy(dst->sha1, src->sha1);
+	if (dst->sha1 != src->sha1)
+		hashcpy(dst->sha1, src->sha1);
 	dst->merge_nr = src->merge_nr;
 	dst->split_nr = src->split_nr;
 
@@ -877,7 +879,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	if (add_names)
 		cur_name_list = get_cache_slice_name_list(&head, fd);
 
-	map = xmmap(0, head.size, PROT_READ, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, head.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		ERROR(-3);
 
@@ -1567,7 +1569,7 @@ static void init_revcache_directory(void)
 	struct stat fi;
 
 	if (stat(git_path("rev-cache"), &fi) || !S_ISDIR(fi.st_mode))
-		if (mkdir(git_path("rev-cache"), 0666))
+		if (mkdir(git_path("rev-cache"), 0777))
 			die("can't make rev-cache directory");
 
 }
