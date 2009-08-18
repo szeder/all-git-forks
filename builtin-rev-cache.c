@@ -26,7 +26,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
-		else if (!strcmp(argv[i], "--fresh") || !strcmp(argv[i]. "--incremental"))
+		else if (!strcmp(argv[i], "--fresh") || !strcmp(argv[i], "--incremental"))
 			starts_from_slices(&revs, UNINTERESTING, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
