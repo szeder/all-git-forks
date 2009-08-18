@@ -144,6 +144,13 @@ static int do_rev_list(int in, int out, void *user_data)
 	return 0;
 }
 
+static void run_post_upload_pack_hook(int create_full_pack)
+{
+	const char *fetch_type;
+	fetch_type = (create_full_pack) ? "clone" : "fetch";
+	run_hook(NULL, "post-upload-pack", fetch_type, NULL);
+}
+
 static void create_pack_file(void)
 {
 	struct async rev_list;
@@ -319,6 +326,8 @@ static void create_pack_file(void)
 	}
 	if (use_sideband)
 		packet_flush(1);
+
+	run_post_upload_pack_hook(create_full_pack);
 	return;
 
  fail:
