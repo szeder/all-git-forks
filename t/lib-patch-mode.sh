@@ -20,8 +20,11 @@ set_and_save_state () {
 }
 
 verify_state () {
-	test "$(cat "$1")" = "$2" &&
-	test "$(git show :"$1")" = "$3"
+	echo $2 >expect &&
+	test_cmp expect "$1" &&
+	echo "$3" >expect.index &&
+	git show :"$1" >"$1".index &&
+	test_cmp expect.index "$1".index
 }
 
 verify_saved_state () {
