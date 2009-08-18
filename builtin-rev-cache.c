@@ -26,7 +26,7 @@ static int handle_add(int argc, const char *argv[]) /* args beyond this command 
 	for (i = 0; i < argc; i++) {
 		if (!strcmp(argv[i], "--stdin"))
 			dostdin = 1;
-		else if (!strcmp(argv[i], "--fresh"))
+		else if (!strcmp(argv[i], "--fresh") || !strcmp(argv[i]. "--incremental"))
 			starts_from_slices(&revs, UNINTERESTING, 0, 0);
 		else if (!strcmp(argv[i], "--not"))
 			flags ^= UNINTERESTING;
@@ -250,19 +250,20 @@ commands:\n\
   add    - add revisions to the cache.  reads commit ids from stdin, \n\
            formatted as: START START ... --not END END ...\n\
            options:\n\
-            --all             use all branch heads as starts\n\
-            --fresh           exclude everything already in a cache slice\n\
-            --stdin           also read commit ids from stdin (same form as cmd)\n\
-            --legs            ensure branch is entirely self-contained\n\
-            --no-objects      don't add non-commit objects to slice\n\
+            --all                  use all branch heads as starts\n\
+            --fresh/--incremental  exclude everything already in a cache slice\n\
+            --stdin                also read commit ids from stdin (same form\n\
+                                   as cmd)\n\
+            --legs                 ensure branch is entirely self-contained\n\
+            --no-objects           don't add non-commit objects to slice\n\
   walk   - walk a cache slice based on set of commits; formatted as add\n\
            options:\n\
-           --objects          include non-commit objects in traversals\n\
+           --objects               include non-commit objects in traversals\n\
   fuse   - coalesce cache slices into a single cache.\n\
            options:\n\
-            --all             include all objects in repository\n\
-            --no-objects      don't add non-commit objects to slice\n\
-            --ignore-size[=N] ignore slices of size >= N; defaults to ~5MB\n\
+            --all                  include all objects in repository\n\
+            --no-objects           don't add non-commit objects to slice\n\
+            --ignore-size[=N]      ignore slices of size >= N; defaults to ~5MB\n\
   index  - regnerate the cache index.";
 
 	puts(usage);
