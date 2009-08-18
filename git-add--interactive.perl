@@ -115,6 +115,28 @@ my %patch_modes = (
 		FILTER => undef,
 		IS_REVERSE => 0,
 	},
+	'stash-apply-tree' => {
+		DIFF => 'diff-index -R -p --cached',
+		APPLY => sub {
+			apply_patch 'apply --cached', $patch_mode_revision, @_;
+		},
+		APPLY_CHECK => 'apply --cached',
+		VERB => 'Apply',
+		TARGET => ' to working tree',
+		PARTICIPLE => 'applying',
+		FILTER => undef,
+	},
+	'stash-apply-index' => {
+		DIFF => 'diff-index -R -p --cached',
+		APPLY => sub {
+			apply_patch 'apply --cached', $patch_mode_revision, @_;
+		},
+		APPLY_CHECK => 'apply --cached',
+		VERB => 'Apply',
+		TARGET => ' to index',
+		PARTICIPLE => 'applying',
+		FILTER => undef,
+	},
 	'reset_head' => {
 		DIFF => 'diff-index -p --cached',
 		APPLY => sub { apply_patch 'apply -R --cached', @_; },
@@ -1708,6 +1730,12 @@ sub process_args {
 						       'checkout_head' : 'checkout_nothead');
 					$arg = shift @ARGV or die __("missing --");
 				}
+			} elsif ($1 eq 'stash-apply-tree'
+					|| $1 eq 'stash-apply-index') {
+				$patch_mode = $1;
+				$arg = shift @ARGV or die "missing --";
+				$patch_mode_revision = $arg;
+				$arg = shift @ARGV or die "missing --";
 			} elsif ($1 eq 'stage' or $1 eq 'stash') {
 				$patch_mode = $1;
 				$arg = shift @ARGV or die __("missing --");

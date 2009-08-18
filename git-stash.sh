@@ -322,7 +322,7 @@ show_stash () {
 		fi
 	fi
 
-	git diff ${FLAGS} $b_commit $w_commit
+	git diff ${FLAGS} ${patch_mode:+-p} $b_commit $w_commit
 }
 
 show_help () {
@@ -374,6 +374,7 @@ parse_flags_and_rev()
 	IS_STASH_LIKE=
 	IS_STASH_REF=
 	INDEX_OPTION=
+	patch_mode=
 	s=
 	w_commit=
 	b_commit=
@@ -397,6 +398,13 @@ parse_flags_and_rev()
 			;;
 			--help)
 				show_help
+			;;
+			-p|--patch)
+				if test "$allow_patch_mode" = t; then
+					patch_mode=t
+				else
+					FLAGS="${FLAGS}${FLAGS:+ }$opt"
+				fi
 			;;
 			-*)
 				test "$ALLOW_UNKNOWN_FLAGS" = t ||
@@ -478,8 +486,19 @@ assert_stash_ref() {
 	}
 }
 
+munge_tree_interactive () {
+	(
+	GIT_INDEX_FILE="$TMP-index"
+	export GIT_INDEX_FILE
+	git read-tree --reset "$2" &&
+	git add--interactive --patch=stash-apply-$1 "$3" -- >&3 &&
+	git write-tree
+	)
+}
+
 apply_stash () {
 
+	allow_patch_mode=t
 	assert_stash_like "$@"
 
 	git update-index -q --refresh || die "$(gettext "unable to refresh index")"
@@ -492,12 +511,21 @@ apply_stash () {
 	if test -n "$INDEX_OPTION" && test "$b_tree" != "$i_tree" &&
 			test "$c_tree" != "$i_tree"
 	then
-		git diff-tree --binary $s^2^..$s^2 | git apply --cached
-		test $? -ne 0 &&
-			die "$(gettext "Conflicts in index. Try without --index.")"
-		unstashed_index_tree=$(git write-tree) ||
-			die "$(gettext "Could not save index tree")"
-		git reset
+		if test -n "$patch_mode"; then
+			i_tree=`munge_tree_interactive index $b_tree $i_tree` 3>&1
+		fi
+		if test "$b_tree" != "$i_tree"; then
+			git diff-tree --binary $b_tree $i_tree | git apply --cached
+			test $? -ne 0 &&
+				die "$(gettext "Conflicts in index. Try without --index.")"
+			unstashed_index_tree=$(git write-tree) ||
+				die "$(gettext "Could not save index tree")"
+			git reset
+		fi
+	fi
+
+	if test -n "$patch_mode"; then
+		w_tree=`munge_tree_interactive tree $b_tree $w_tree` 3>&1
 	fi
 
 	if test -n "$u_tree"
