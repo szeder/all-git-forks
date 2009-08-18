@@ -39,7 +39,7 @@ Options:
 	Include all refs in the new cache slice, like the \--all option in
 	'rev-list'.
 
-\--fresh::
+\--fresh/\--incremental::
 	Exclude everything already in the revision cache, analogous to
 	\--incremental in 'pack-objects'.
 
@@ -50,7 +50,7 @@ Options:
 \--legs::
 	Ensure newly-generated cache slice has no partial ends.  This means that
 	no commit has partially cached parents, in that all its parents are
-	cached or none of them are.
+	cached or none of them are.  99.9% of users can ignore this command.
 +
 \--legs will cause 'rev-cache' to expand potential slice end-points (creating
 "legs") until this condition is met, simplifying the cache slice structure.
@@ -67,6 +67,13 @@ revision cache.
 \--no-objects is mainly intended for debugging or development purposes, but may
 find use in special situations (e.g. common traversal of only commits).
 
+Output:
+
+On `stderr` 'add' outputs general information about the generated slice,
+including the number of objects and paths, and the start/end commits (prefix S
+indicates start, E an end).  Through `stdout` it emits only the SHA-1 of the
+slice.
+
 walk
 ~~~~
 Analogous to a slice-oriented 'rev-list', 'walk' will traverse a region in a
@@ -80,6 +87,12 @@ Options:
 	Like 'rev-list', 'walk' will normally only list commits.  Use this
 	option to list non-commit objects as well, if they are present in the
 	cache slice.
+
+Output:
+
+'walk' will simply dump the contents of the output commit list, work list, and
+pending object array.  The headers are outputed on `stderr`, the object hashes
+and names on `stdout`.
 
 fuse
 ~~~~
@@ -118,6 +131,11 @@ Options:
 	mapped to memory).  N can have a suffix of "k" or "m", denoting N as
 	kilobytes and megabytes, respectively.  If N is not provided 'fuse'
 	will default to a size of ~25MB.
+
+Output:
+
+This command prints the SHA-1 of the new slice on `stdout`, and information
+about its work on `stderr` -- specifically which files it's removing.
 
 index
 ~~~~~
