@@ -1,6 +1,7 @@
 # vim: syntax=make
 # CFLAGS =
 prefix = /usr/local
+CFLAGS = -O2 -Wall -Wdeclaration-after-statement -g
 THREADED_DELTA_SEARCH = Yes
 BLK_SHA1 = Yes
 ifeq ($(uname_O),Cygwin)
