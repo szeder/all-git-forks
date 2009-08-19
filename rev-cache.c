@@ -1322,19 +1322,27 @@ static void add_object_entry(const unsigned char *sha1, struct rc_object_entry *
 typedef int (*dump_tree_fn)(const unsigned char *, const char *, unsigned int); /* sha1, path, mode */
 
 /* we need to walk the trees by hash, so unfortunately we can't use traverse_trees in tree-walk.c */
-static int dump_tree(struct tree *tree, dump_tree_fn fn)
+static int dump_tree(struct tree *tree, dump_tree_fn fn, char *base)
 {
 	struct tree_desc desc;
 	struct name_entry entry;
 	struct tree *subtree;
-	int r;
+	char concatpath[PATH_MAX];
+	int r, baselen;
 
 	if (parse_tree(tree))
 		return -1;
 
+	baselen = strlen(base);
+	strcpy(concatpath, base);
+
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
-		switch (fn(entry.sha1, entry.path, entry.mode)) {
+		if (baselen + strlen(entry.path) + 1 >= PATH_MAX)
+			die("we have a problem: %s%s is too big for me to handle", base, entry.path);
+		strcat(concatpath + baselen, entry.path);
+
+		switch (fn(entry.sha1, concatpath, entry.mode)) {
 		case 0 :
 			goto continue_loop;
 		default :
@@ -1346,7 +1354,8 @@ static int dump_tree(struct tree *tree, dump_tree_fn fn)
 			if (!subtree)
 				return -2;
 
-			if ((r = dump_tree(subtree, fn)) < 0)
+			strcat(concatpath, "/");
+			if ((r = dump_tree(subtree, fn, concatpath)) < 0)
 				return r;
 		}
 
@@ -1453,7 +1462,7 @@ static int add_unique_objects(struct commit *commit)
 	/* no parents (!) */
 	if (is_first) {
 		acc_buffer = &os;
-		dump_tree(commit->tree, dump_tree_callback);
+		dump_tree(commit->tree, dump_tree_callback, "");
 	}
 
 	/* the ordering of non-commit objects dosn't really matter, so we're not gonna bother */
