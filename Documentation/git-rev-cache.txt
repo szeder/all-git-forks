@@ -156,6 +156,20 @@ slices in other repositories.  Note that only one level of redirection is
 allowed, and the slice pointer will break if the original slice is removed.
 'fuse' will not touch slice pointers.
 
+NOTES
+-----
+In certain circumstances there may be some inconsistencies with object names
+between cached and non-cached walks.  Specifically, if two objects in commit
+tree have the same content (= same SHA-1); or if objects of the same SHA-1 are
+introduced independantly in parallel branches.
+
+In the first case rev-cache will use the name of the youngest file, while
+vanilla rev-list will return the name of the entry first encountered in walking
+the tree.  The latter case is a result of rev-cache's internal topological
+ordering: the difference is the same between sorted and unsorted revision walks.
+
+See 'Discussion' for the underlying reasons for the descrepencies.
+
 DISCUSSION
 ----------
 For an explanation of the API and its inner workings, see
