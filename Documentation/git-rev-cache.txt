@@ -168,7 +168,7 @@ vanilla rev-list will return the name of the entry first encountered in walking
 the tree.  The latter case is a result of rev-cache's internal topological
 ordering: the difference is the same between sorted and unsorted revision walks.
 
-See 'Discussion' for the underlying reasons for the descrepencies.
+See 'Discussion' for the underlying reasons for the discrepencies.
 
 DISCUSSION
 ----------
