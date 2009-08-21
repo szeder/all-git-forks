@@ -73,7 +73,7 @@ test_expect_success 'init repo' '
 
 	git checkout master &&
 	git merge -m "triple merge" b1 b11 &&
-	git rm -r d1 && 
+	git rm -r d1 &&
 	git commit -a -m "oh noes"
 '
 
