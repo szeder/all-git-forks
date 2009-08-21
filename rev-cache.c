@@ -1340,7 +1340,7 @@ static int dump_tree(struct tree *tree, dump_tree_fn fn, char *base)
 	while (tree_entry(&desc, &entry)) {
 		if (baselen + strlen(entry.path) + 1 >= PATH_MAX)
 			die("we have a problem: %s%s is too big for me to handle", base, entry.path);
-		strcat(concatpath + baselen, entry.path);
+		strcpy(concatpath + baselen, entry.path);
 
 		switch (fn(entry.sha1, concatpath, entry.mode)) {
 		case 0 :

@@ -4,6 +4,8 @@ test_description='git rev-cache tests'
 . ./test-lib.sh
 
 test_cmp_sorted() {
+# note that we're tip-toeing around the corner case of two objects/names
+# for the same SHA-1 => descrepencies between cached and non-cached walks
 	sort $1 >.tmpfile1 &&
 	sort $2 >.tmpfile2 &&
 	test_cmp .tmpfile1 .tmpfile2
@@ -15,6 +17,8 @@ test_cmp_sorted() {
 # reuse
 test_expect_success 'init repo' '
 	echo bla >file &&
+	mkdir amaindir &&
+	echo watskeburt >amaindir/file &&
 	git add . &&
 	git commit -m "bla" &&
 

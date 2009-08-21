@@ -612,3 +612,12 @@ To prevent list-objects from recursing into trees that we've already taken care
 of, the flag `FACE_VALUE` is introduced.  An object with this flag is not
 explored (= "taken at face value"), significantly reducing I/O and processing
 time.
+
+Notes
+~~~~~
+
+Due to rev-cache's internal storage format, walking may lead to some discrepencies between cached and uncached repositories.  Although noticeable to users directly calling rev-list, these are unused or corner cases and internally a non-issue.
+
+First note that rev-cache records commits in topological order.  Large portions of commit history will already be sorted topologically in the revision walk, yielding a different output for unsorted calls to rev-list.  A more obscure consquence occurs when two objects of the same SHA-1, but different name, are introduced seperately in parallel branches: different names might be shown for that object depending on which object entry was encountered first.
+
+A similar disparity arises when two objects of same SHA-1/different name are present in the same tree structure.  rev-cache, walking objects as they were introduced, lists the youngest file's name; rev-list, walking the full trees each commit, shows the first file encountered.
