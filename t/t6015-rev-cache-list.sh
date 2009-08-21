@@ -5,7 +5,7 @@ test_description='git rev-cache tests'
 
 test_cmp_sorted() {
 # note that we're tip-toeing around the corner case of two objects/names
-# for the same SHA-1 => descrepencies between cached and non-cached walks
+# for the same SHA-1 => discrepencies between cached and non-cached walks
 	sort $1 >.tmpfile1 &&
 	sort $2 >.tmpfile2 &&
 	test_cmp .tmpfile1 .tmpfile2
