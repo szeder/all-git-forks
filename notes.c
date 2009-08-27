@@ -55,6 +55,23 @@ static int initialized;
 
 static struct int_node root_node;
 
+/* leaf nodes are allocated in simple memory pools */
+#define LEAF_NODE_POOL_SIZE 100
+static struct leaf_node *leaf_node_pool;
+static unsigned int leaf_node_pool_used;
+
+
+static struct leaf_node *new_leaf_node(void)
+{
+	if (!leaf_node_pool || leaf_node_pool_used >= LEAF_NODE_POOL_SIZE) {
+		/* MEMORY LEAK: */
+		leaf_node_pool = (struct leaf_node *)
+			xcalloc(sizeof(struct leaf_node), LEAF_NODE_POOL_SIZE);
+		leaf_node_pool_used = 0;
+	}
+	return leaf_node_pool + leaf_node_pool_used++;
+}
+
 static void load_subtree(struct leaf_node *subtree, struct int_node *node,
 		unsigned int n);
 
@@ -95,7 +112,6 @@ static struct leaf_node *note_tree_find(struct int_node *tree, unsigned char n,
 			/* unpack tree and resume search */
 			tree->a[i] = NULL;
 			load_subtree(l, tree, n);
-			free(l);
 			return note_tree_find(tree, n, key_sha1);
 		}
 		break;
@@ -118,7 +134,6 @@ static struct leaf_node *note_tree_find(struct int_node *tree, unsigned char n,
 		/* unpack tree and resume search */
 		tree->a[0] = NULL;
 		load_subtree(l, tree, n);
-		free(l);
 		return note_tree_find(tree, n, key_sha1);
 	}
 	return NULL;
@@ -229,8 +244,7 @@ static void load_subtree(struct leaf_node *subtree, struct int_node *node,
 		 */
 		if (len <= 20) {
 			unsigned char type = PTR_TYPE_NOTE;
-			struct leaf_node *l = (struct leaf_node *)
-				xcalloc(sizeof(struct leaf_node), 1);
+			struct leaf_node *l = new_leaf_node();
 			hashcpy(l->key_sha1, commit_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
 			if (len < 20) {
