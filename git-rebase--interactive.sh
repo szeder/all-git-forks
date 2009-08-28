@@ -147,7 +147,8 @@ pick_one () {
 		pick_one_preserving_merges "$@" && return
 	if test ! -z "$REBASE_ROOT"
 	then
-		output git cherry-pick "$@"
+		git sequencer--helper --cherry-pick $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" $no_ff
 		return
 	fi
 	parent_sha1=$(git rev-parse --verify $sha1^) ||
@@ -157,7 +158,8 @@ pick_one () {
 		git sequencer--helper --fast-forward $sha1 \
 			"$GIT_REFLOG_ACTION" "$VERBOSE"
 	else
-		output git cherry-pick "$@"
+		git sequencer--helper --cherry-pick $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" $no_ff
 	fi
 }
 
@@ -269,7 +271,10 @@ pick_one_preserving_merges () {
 			fi
 			;;
 		*)
-			output git cherry-pick "$@" ||
+			no_commit=
+			test "a$1" = "a-n" && no_commit=t
+			git sequencer--helper --cherry-pick $sha1 \
+				"$GIT_REFLOG_ACTION" "$VERBOSE" $no_commit ||
 				die_with_patch $sha1 "Could not pick $sha1"
 			;;
 		esac
