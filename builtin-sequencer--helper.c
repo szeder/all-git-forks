@@ -60,6 +60,8 @@ static const char * const git_sequencer_helper_usage[] = {
 		"<verbosity> [<allow-dirty>]",
 	"git sequencer--helper --fast-forward <commit> <reflog-msg> "
 		"<verbosity> [<allow-dirty>]",
+	"git sequencer--helper --cherry-pick <commit> <reflog-msg> "
+		"<verbosity> [<do-not-commit>]",
 	NULL
 };
 
@@ -287,7 +289,7 @@ static int do_commit(unsigned char *parent_sha1)
 
 	if (update_ref(reflog, "HEAD", commit_sha1, NULL, 0, 0))
 		return error("Could not update HEAD to %s.",
-						sha1_to_hex(commit_sha1));
+			     sha1_to_hex(commit_sha1));
 
 	return 0;
 }
@@ -407,6 +409,46 @@ static int write_commit_summary_into(const char *filename)
 	return 0;
 }
 
+static int do_cherry_pick(char *cp_commit, int no_commit)
+{
+	struct commit *commit;
+	int failed;
+	const char *author;
+
+	if (get_sha1("HEAD", head_sha1))
+		return error("You do not have a valid HEAD.");
+
+	commit = get_commit(cp_commit);
+	if (!commit)
+		return 1;
+
+	set_pick_subject(cp_commit, commit);
+
+	failed = pick_commit(commit, 0, 0, &next_commit.summary);
+
+	set_message_source(sha1_to_hex(commit->object.sha1));
+	author = strstr(commit->buffer, "\nauthor ");
+	if (author)
+		set_author_info(author + 8);
+
+	/* We do not want extra Conflicts: lines on cherry-pick,
+	   so just take the old commit message. */
+	if (failed) {
+		strbuf_setlen(&next_commit.summary, 0);
+		strbuf_addstr(&next_commit.summary,
+			      strstr(commit->buffer, "\n\n") + 2);
+		rerere();
+		make_patch(commit);
+		write_commit_summary_into(MERGE_MSG);
+		return error(pick_help_msg(commit->object.sha1, 0));
+	}
+
+	if (!no_commit && do_commit(head_sha1))
+		return error("Could not commit.");
+
+	return 0;
+}
+
 /**********************************************************************
  * Builtin sequencer helper functions
  */
@@ -435,6 +477,7 @@ int cmd_sequencer__helper(int argc, const char **argv, const char *prefix)
 	char *patch_commit = NULL;
 	char *reset_commit = NULL;
 	char *ff_commit = NULL;
+	char *cp_commit = NULL;
 	struct option options[] = {
 		OPT_STRING(0, "make-patch", &patch_commit, "commit",
 			   "create a patch from commit"),
@@ -442,6 +485,8 @@ int cmd_sequencer__helper(int argc, const char **argv, const char *prefix)
 			   "reset to commit"),
 		OPT_STRING(0, "fast-forward", &ff_commit, "commit",
 			   "fast forward to commit"),
+		OPT_STRING(0, "cherry-pick", &cp_commit, "commit",
+			   "cherry pick commit"),
 		OPT_END()
 	};
 
@@ -458,18 +503,14 @@ int cmd_sequencer__helper(int argc, const char **argv, const char *prefix)
 		return 0;
 	}
 
-	if (ff_commit || reset_commit) {
+	if (cp_commit || ff_commit || reset_commit) {
 		unsigned char sha1[20];
-		char *commit = ff_commit ? ff_commit : reset_commit;
+		char *commit;
+		int opt_arg = 0;
 
 		if (argc != 2 && argc != 3)
 			usage_with_options(git_sequencer_helper_usage,
 					   options);
-
-		if (get_sha1(commit, sha1)) {
-			error("Could not find '%s'", commit);
-			return 1;
-		}
 
 		reflog = (char *)argv[0];
 
@@ -479,7 +520,18 @@ int cmd_sequencer__helper(int argc, const char **argv, const char *prefix)
 		}
 
 		if (argc == 3 && *argv[2] && strcmp(argv[2], "0"))
-			allow_dirty = 1;
+			opt_arg = 1;
+
+		if (cp_commit)
+			return do_cherry_pick(cp_commit, opt_arg);
+
+		allow_dirty = opt_arg;
+
+		commit = ff_commit ? ff_commit : reset_commit;
+		if (get_sha1(commit, sha1)) {
+			error("Could not find '%s'", commit);
+			return 1;
+		}
 
 		if (ff_commit)
 			return do_fast_forward(sha1);
