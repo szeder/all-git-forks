@@ -171,6 +171,15 @@ static struct commit *get_commit(const char *arg)
 	return lookup_commit_reference(sha1);
 }
 
+static int do_fast_forward(const unsigned char *sha)
+{
+	if (reset_almost_hard(sha))
+		return error("Cannot fast forward to %s", sha1_to_hex(sha));
+	if (verbosity > 1)
+		printf("Fast forward to %s\n", sha1_to_hex(sha));
+	return 0;
+}
+
 static int set_verbosity(int verbose)
 {
 	char tmp[] = "0";
