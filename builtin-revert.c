@@ -142,27 +142,6 @@ static void set_author_ident_env(const char *message)
 			sha1_to_hex(commit->object.sha1));
 }
 
-static char *help_msg(const unsigned char *sha1)
-{
-	static char helpbuf[1024];
-	char *msg = getenv("GIT_CHERRY_PICK_HELP");
-
-	if (msg)
-		return msg;
-
-	strcpy(helpbuf, "  After resolving the conflicts,\n"
-	       "mark the corrected paths with 'git add <paths>' "
-	       "or 'git rm <paths>' and commit the result.");
-
-	if (!(flags & PICK_REVERSE)) {
-		sprintf(helpbuf + strlen(helpbuf),
-			"\nWhen commiting, use the option "
-			"'-c %s' to retain authorship and message.",
-			find_unique_abbrev(sha1, DEFAULT_ABBREV));
-	}
-	return helpbuf;
-}
-
 static void write_message(struct strbuf *msgbuf, const char *filename)
 {
 	struct lock_file msg_file;
@@ -211,7 +190,7 @@ static int revert_or_cherry_pick(int argc, const char **argv)
 		exit(1);
 	} else if (failed > 0) {
 		fprintf(stderr, "Automatic %s failed.%s\n",
-			me, help_msg(commit->object.sha1));
+			me, pick_help_msg(commit->object.sha1, flags));
 		write_message(&msgbuf, git_path("MERGE_MSG"));
 		rerere();
 		exit(1);
