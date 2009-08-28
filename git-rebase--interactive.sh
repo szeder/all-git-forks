@@ -154,7 +154,8 @@ pick_one () {
 		die "Could not get the parent of $sha1"
 	current_sha1=$(git rev-parse --verify HEAD)
 	if test "$no_ff$current_sha1" = "$parent_sha1"; then
-		output git reset --hard $sha1
+		git sequencer--helper --reset-hard $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE"
 		test "a$1" = a-n && output git reset --soft $current_sha1
 		sha1=$(git rev-parse --short $sha1)
 		output warn Fast forward to $sha1
@@ -238,7 +239,8 @@ pick_one_preserving_merges () {
 	case $fast_forward in
 	t)
 		output warn "Fast forward to $sha1"
-		output git reset --hard $sha1 ||
+		git sequencer--helper --reset-hard $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" ||
 			die "Cannot fast forward to $sha1"
 		;;
 	f)
@@ -536,7 +538,8 @@ first and then run 'git rebase --continue' again."
 			git symbolic-ref HEAD $HEADNAME
 			;;
 		esac &&
-		output git reset --hard $HEAD &&
+		git sequencer--helper --reset-hard $HEAD \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" &&
 		rm -rf "$DOTEST"
 		exit
 		;;
@@ -548,7 +551,9 @@ first and then run 'git rebase --continue' again."
 		git rerere clear
 		test -d "$DOTEST" || die "No interactive rebase running"
 
-		output git reset --hard && do_rest
+		git sequencer--helper --reset-hard HEAD \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" &&
+		do_rest
 		;;
 	-s)
 		case "$#,$1" in
