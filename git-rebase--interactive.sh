@@ -154,11 +154,8 @@ pick_one () {
 		die "Could not get the parent of $sha1"
 	current_sha1=$(git rev-parse --verify HEAD)
 	if test "$no_ff$current_sha1" = "$parent_sha1"; then
-		git sequencer--helper --reset-hard $sha1 \
+		git sequencer--helper --fast-forward $sha1 \
 			"$GIT_REFLOG_ACTION" "$VERBOSE"
-		test "a$1" = a-n && output git reset --soft $current_sha1
-		sha1=$(git rev-parse --short $sha1)
-		output warn Fast forward to $sha1
 	else
 		output git cherry-pick "$@"
 	fi
@@ -238,10 +235,8 @@ pick_one_preserving_merges () {
 	done
 	case $fast_forward in
 	t)
-		output warn "Fast forward to $sha1"
-		git sequencer--helper --reset-hard $sha1 \
-			"$GIT_REFLOG_ACTION" "$VERBOSE" ||
-			die "Cannot fast forward to $sha1"
+		git sequencer--helper --fast-forward $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" || exit
 		;;
 	f)
 		first_parent=$(expr "$new_parents" : ' \([^ ]*\)')
