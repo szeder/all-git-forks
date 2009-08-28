@@ -18,6 +18,7 @@ static unsigned char head_sha1[20];
 
 static const char * const git_sequencer_helper_usage[] = {
 	"git sequencer--helper --make-patch <commit>",
+	"git sequencer--helper --reset-hard <commit> <reflog-msg> <verbosity>",
 	NULL
 };
 
@@ -185,27 +186,71 @@ static int set_verbosity(int verbose)
 	return 0;
 }
 
+/* v should be "" or "t" or "\d" */
+static int parse_verbosity(const char *v)
+{
+	/* "" means verbosity = 1 */
+	if (!v[0])
+		return set_verbosity(1);
+
+	if (v[1])
+		return 1;
+
+	if (v[0] == 't')
+		return set_verbosity(2);
+
+	if (!isdigit(v[0]))
+		return 1;
+
+	return set_verbosity(v[0] - '0');
+}
+
 int cmd_sequencer__helper(int argc, const char **argv, const char *prefix)
 {
-	char *commit = NULL;
-	struct commit *c;
+	char *patch_commit = NULL;
+	char *reset_commit = NULL;
 	struct option options[] = {
-		OPT_STRING(0, "make-patch", &commit, "commit",
+		OPT_STRING(0, "make-patch", &patch_commit, "commit",
 			   "create a patch from commit"),
+		OPT_STRING(0, "reset-hard", &reset_commit, "commit",
+			   "reset to commit"),
 		OPT_END()
 	};
 
 	argc = parse_options(argc, argv, prefix, options,
 			     git_sequencer_helper_usage, 0);
 
-	if (!commit)
-		usage_with_options(git_sequencer_helper_usage, options);
+	if (patch_commit) {
+		struct commit *c = get_commit(patch_commit);
+		if (!c)
+			return 1;
 
-	c = get_commit(commit);
-	if (!c)
-		return 1;
+		make_patch(c);
 
-	make_patch(c);
+		return 0;
+	}
 
-	return 0;
+	if (reset_commit) {
+		unsigned char sha1[20];
+
+		if (argc != 2)
+			usage_with_options(git_sequencer_helper_usage,
+					   options);
+
+		if (get_sha1(reset_commit, sha1)) {
+			error("Could not find '%s'", reset_commit);
+			return 1;
+		}
+
+		reflog = (char *)argv[0];
+
+		if (parse_verbosity(argv[1])) {
+			error("bad verbosity '%s'", argv[1]);
+			return 1;
+		}
+
+		return reset_almost_hard(sha1);
+	}
+
+	usage_with_options(git_sequencer_helper_usage, options);
 }
