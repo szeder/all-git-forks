@@ -2450,6 +2450,17 @@ static void parse_one_option(const char *option)
 	}
 }
 
+static void parse_feature(void)
+{
+	char *feature = command_buf.buf + 8;
+
+	if (!prefixcmp(feature, "date-format=")) {
+		option_date_format(feature + 12);
+	} else {
+		die("This version of fast-import does not support feature %s.", feature);
+	}
+}
+
 static int git_pack_config(const char *k, const char *v, void *cb)
 {
 	if (!strcmp(k, "pack.depth")) {
@@ -2526,6 +2537,8 @@ int main(int argc, const char **argv)
 			parse_checkpoint();
 		else if (!prefixcmp(command_buf.buf, "progress "))
 			parse_progress();
+		else if (!prefixcmp(command_buf.buf, "feature "))
+			parse_feature();
 		else
 			die("Unsupported command: %s", command_buf.buf);
 	}
