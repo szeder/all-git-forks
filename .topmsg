@@ -1,14 +1,6 @@
 From: Nick Edelen <sirnot@gmail.com>
-Subject: [PATCH] t/revcache/names
+Subject: [PATCH] t/revcache/graft
 
-An update to caching mechanism, allowing path names to be cached for blob and 
-tree objects.  A list of names appearing in each cache slice is appended to the 
-end of the slice, which is referenced by variable-sized indexes per entry.  
-This allows pack-objects to more intelligently schedule unpacked/poorly packed 
-object, and enables proper duplication of rev-list's behaivor.
-
-The mechanism for this involves adding a 'name' field to blob and tree objects, 
-mainly to facilitate reuse of caches during maintenence (like the 'unique' 
-field).
+<patch description>
 
 Signed-off-by: Nick Edelen <sirnot@gmail.com>
