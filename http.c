@@ -864,6 +864,7 @@ int http_fetch_ref(const char *base, struct ref *ref)
 static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 {
 	int ret = 0;
+	int result;
 	char *hex = xstrdup(sha1_to_hex(sha1));
 	char *filename;
 	char *url;
@@ -874,11 +875,14 @@ static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 	strbuf_addf(&buf, "objects/pack/pack-%s.pack", hex);
 	url = strbuf_detach(&buf, 0);
 
-	if (http_get_strbuf(url, NULL, 0)) {
-		ret = error("Unable to verify pack %s is available",
+	result = http_get_strbuf(url, NULL, 0);
+	if (result == HTTP_MISSING_TARGET) {
+		ret = error("Unable to find pack %s",
 			    hex);
 		goto cleanup;
-	}
+	} else if (result && http_is_verbose)
+		fprintf(stderr, "Unable to verify pack %s is available\n",
+			hex);
 
 	if (has_pack_index(sha1)) {
 		ret = 0;
