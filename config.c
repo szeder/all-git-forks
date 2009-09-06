@@ -627,6 +627,9 @@ int git_default_config(const char *var, const char *value, void *dummy)
 	if (!prefixcmp(var, "mailmap."))
 		return git_default_mailmap_config(var, value);
 
+	if (!prefixcmp(var, "message."))
+		return git_default_message_config(var, value);
+
 	if (!strcmp(var, "pager.color") || !strcmp(var, "color.pager")) {
 		pager_use_color = git_config_bool(var,value);
 		return 0;
