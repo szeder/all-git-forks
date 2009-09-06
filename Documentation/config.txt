@@ -1215,6 +1215,10 @@ message.*::
 	pushNonFastForward::
 		Help message shown when linkgit:git-push[1] refuses
 		non-fast-forward refs. Default: true.
+	statusAdvice::
+		Directions on how to stage/unstage/add shown in the
+		output of linkgit:git-status[1] and the template shown
+		when writing commit messages. Default: true.
 --
 
 pack.window::

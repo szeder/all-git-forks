@@ -3,6 +3,7 @@
 
 struct message_preference messages[] = {
 	{ "pushnonfastforward", 1 },
+	{ "statusadvice", 1 },
 };
 
 int git_default_message_config(const char *var, const char *value)

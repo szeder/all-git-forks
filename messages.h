@@ -2,6 +2,7 @@
 #define MESSAGE_H
 
 #define MESSAGE_PUSH_NONFASTFORWARD 0
+#define MESSAGE_STATUS_ADVICE 1
 
 struct message_preference {
 	const char *name;
