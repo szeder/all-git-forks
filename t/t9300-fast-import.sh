@@ -1089,7 +1089,7 @@ test_expect_success 'P: fail on blob mark in gitlink' '
     test_must_fail git fast-import <input'
 
 ###
-### series R (feature)
+### series R (feature and option)
 ###
 
 cat >input <<EOF
@@ -1106,6 +1106,93 @@ EOF
 
 test_expect_success 'R: supported feature is accepted' '
 	git fast-import <input
+'
+
+cat >input << EOF
+feature git-options
+option git quiet
+blob
+data 3
+hi
+
+EOF
+
+touch empty
+
+test_expect_success 'R: quiet option results in no stats being output' '
+    cat input | git fast-import 2> output &&
+    test_cmp empty output
+'
+
+cat >input << EOF
+feature git-options
+option git export-marks=git.marks
+blob
+mark :1
+data 3
+hi
+
+EOF
+
+test_expect_success \
+    'R: export-marks option results in a marks file being created' \
+    'cat input | git fast-import &&
+    grep :1 git.marks'
+
+test_expect_success \
+    'R: export-marks options can be overriden by commandline options' \
+    'cat input | git fast-import --export-marks=other.marks &&
+    grep :1 other.marks'
+
+cat >input << EOF
+feature git-options
+option git import-marks=marks.out
+option git export-marks=marks.new
+EOF
+
+test_expect_success \
+    'R: import to output marks works without any content' \
+    'cat input | git fast-import &&
+    test_cmp marks.out marks.new'
+
+cat >input <<EOF
+feature git-options
+option git import-marks=nonexistant.marks
+option git export-marks=marks.new
+EOF
+
+test_expect_success \
+    'R: import marks prefers commandline marks file over the stream' \
+    'cat input | git fast-import --import-marks=marks.out &&
+    test_cmp marks.out marks.new'
+
+cat >input <<EOF
+feature git-options
+option git non-existing-option
+EOF
+
+test_expect_success \
+    'R: feature option is accepted and ignores unknown options' \
+    'git fast-import <input'
+
+cat >input <<EOF
+option git quiet
+EOF
+
+test_expect_success 'R: unknown commandline options are rejected' '\
+    test_must_fail git fast-import --non-existing-option < /dev/null
+'
+
+test_expect_success \
+    'R: option without preceeding feature command is rejected' \
+    'test_must_fail git fast-import <input'
+
+cat >input <<EOF
+option non-existing-vcs non-existing-option
+EOF
+
+test_expect_success 'R: ignore non-git options' '
+    git fast-import <input
 '
 
 test_done
