@@ -33,7 +33,8 @@ add
 Add revisions to the cache by creating a new cache slice.  Reads a revision
 list from the command line, formatted as: `START START ... \--not END END ...`
 
-Options:
+Options
+^^^^^^^
 
 \--all::
 	Include all refs in the new cache slice, like the \--all option in
@@ -67,7 +68,8 @@ revision cache.
 \--no-objects is mainly intended for debugging or development purposes, but may
 find use in special situations (e.g. common traversal of only commits).
 
-Output:
+Output
+^^^^^^
 
 On `stderr` 'add' outputs general information about the generated slice,
 including the number of objects and paths, and the start/end commits (prefix S
@@ -81,14 +83,16 @@ particular cache slice.  Interesting and uninteresting (delimited, as with
 'rev-list', with \--not) are specified on the command line, and output is the
 same as vanilla 'rev-list'.
 
-Options:
+Options
+^^^^^^^
 
 \--objects::
 	Like 'rev-list', 'walk' will normally only list commits.  Use this
 	option to list non-commit objects as well, if they are present in the
 	cache slice.
 
-Output:
+Output
+^^^^^^
 
 'walk' will simply dump the contents of the output commit list, work list, and
 pending object array.  The headers are outputed on `stderr`, the object hashes
@@ -105,9 +109,8 @@ of loading new slices into memory.
 
 Running 'fuse' every once in a while will solve this problem by coalescing all
 the cache slices into one larger slice.  For very large projects, using
-\--ignore-size is advisable to prevent overly large cache slices.  Setting git
-'config' option 'gc.revcache' to 1 will enable cache slice fusion upon garbage
-collection.
+\--ignore-size is advisable to prevent overly large cache slices.  This can be
+set to run on garbage collection; see 'Automation' for more info.
 
 Note that 'fuse' uses the internal revision walker, so the options used in
 fusion override those of the cache slices upon which it operates.  For example,
@@ -115,12 +118,14 @@ if some slices were generated with \--no-objects, yet 'fuse' was performed with
 non-commit objects, the resulting slice would still contain objects but would
 take longer to generate.
 
-Options:
+Options
+^^^^^^^
 
 \--all::
 	Normally fuse will only include everything that's already in the
-	revision cache.  \--add tells it to start walking from the branch
-	heads, effectively an `add --all --fresh; fuse` (pseudo-command).
+	revision cache.  \--all tells it to start walking from the branch
+	heads, effectively a `add --all --fresh; fuse`
+	(pseudo-revcache-command).
 
 \--no-objects::
 	As in 'add', this option disables inclusion of non-commit objects.  If
@@ -130,12 +135,21 @@ Options:
 	Do not merge cache slices of size >=N (be aware that slices must be
 	mapped to memory).  N can have a suffix of "k" or "m", denoting N as
 	kilobytes and megabytes, respectively.  If N is not provided 'fuse'
-	will default to a size of ~25MB.
+	will default to a size specified in `revcache.ignoresize`, or ~25MB if
+	the config var is not set.
 
-Output:
+Output
+^^^^^^
 
 This command prints the SHA-1 of the new slice on `stdout`, and information
 about its work on `stderr` -- specifically which files it's removing.
+
+Automation
+^^^^^^^^^^
+
+Set the git configuration variable `gc.revcache` to run 'fuse' on garbage
+collection.  The arguments passed are `fuse \--all \--ignore-size`; i.e. 'gc'
+will keep everything cached into size-regulated slices.
 
 index
 ~~~~~
@@ -159,7 +173,7 @@ allowed, and the slice pointer will break if the original slice is removed.
 NOTES
 -----
 In certain circumstances there may be some inconsistencies with object names
-between cached and non-cached walks.  Specifically, if two objects in commit
+between cached and non-cached walks.  Specifically, if two objects in a commit
 tree have the same content (= same SHA-1); or if objects of the same SHA-1 are
 introduced independantly in parallel branches.
 
