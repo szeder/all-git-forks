@@ -402,7 +402,9 @@ static int merge_working_tree(struct checkout_opts *opts,
 		topts.dir = xcalloc(1, sizeof(*topts.dir));
 		topts.dir->flags |= DIR_SHOW_IGNORED;
 		topts.dir->exclude_per_dir = ".gitignore";
-		tree = parse_tree_indirect(old->commit->object.sha1);
+		tree = parse_tree_indirect(old->commit ?
+					   old->commit->object.sha1 :
+					   (unsigned char *)EMPTY_TREE_SHA1_BIN);
 		init_tree_desc(&trees[0], tree->buffer, tree->size);
 		tree = parse_tree_indirect(new->commit->object.sha1);
 		init_tree_desc(&trees[1], tree->buffer, tree->size);
@@ -541,14 +543,6 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 		parse_commit(new->commit);
 	}
 
-	if (!old.commit && !opts->force) {
-		if (!opts->quiet) {
-			warning("You appear to be on a branch yet to be born.");
-			warning("Forcing checkout of %s.", new->name);
-		}
-		opts->force = 1;
-	}
-
 	ret = merge_working_tree(opts, &old, new);
 	if (ret)
 		return ret;
@@ -590,7 +584,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			    2),
 		OPT_SET_INT('3', "theirs", &opts.writeout_stage, "stage",
 			    3),
-		OPT_BOOLEAN('f', NULL, &opts.force, "force"),
+		OPT_BOOLEAN('f', "force", &opts.force, "force"),
 		OPT_BOOLEAN('m', "merge", &opts.merge, "merge"),
 		OPT_STRING(0, "conflict", &conflict_style, "style",
 			   "conflict style (merge or diff3)"),
