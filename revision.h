@@ -16,6 +16,9 @@
 #define FACE_VALUE	(1u<<9)
 #define ALL_REV_FLAGS	((1u<<10)-1)
 
+#define DECORATE_SHORT_REFS	1
+#define DECORATE_FULL_REFS	2
+
 struct rev_info;
 struct log_info;
 
@@ -186,6 +189,7 @@ enum commit_action {
 	commit_error
 };
 
+extern enum commit_action get_commit_action(struct rev_info *revs, struct commit *commit);
 extern enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit);
 
 extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
