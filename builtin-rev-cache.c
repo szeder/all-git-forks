@@ -107,7 +107,7 @@ static int test_rev_list(int argc, const char *argv[])
 
 			if (argv[i][0] == ':') {
 				handle_revision_arg(argv[i] + 1, &revs, flags, 1);
-				
+
 				hashcpy(graft.sha1, revs.pending.objects[revs.pending.nr - 1].item->sha1);
 				graft.nr_parent = -1;
 				register_commit_graft(&graft, 0);

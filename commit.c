@@ -124,10 +124,12 @@ int register_commit_graft(struct commit_graft *graft, int ignore_dups)
 			(commit_graft_nr - pos - 1) *
 			sizeof(*commit_graft));
 	commit_graft[pos] = graft;
-	
+
 	commit = lookup_commit(graft->sha1);
 	commit->object.graft = 1;
-	
+	commit->object.parsed = 0;
+	parse_commit(commit); /* in case commit was already parsed */
+
 	return 0;
 }
 
@@ -238,7 +240,8 @@ int unregister_shallow(const unsigned char *sha1)
 
 	commit = lookup_commit(sha1);
 	commit->object.graft = 0;
-	commit->object.parsed = 0; /* just to be sure */
+	commit->object.parsed = 0;
+	parse_commit(commit);
 
 	return 0;
 }

@@ -663,6 +663,8 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 			}
 		} else if (!ipath_nr && co->date <= date)
 			slop--;
+		else if (!ipath_nr && !upath_nr)
+			break;
 		else
 			slop = SLOP;
 
@@ -688,6 +690,10 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 			/* an abrupt end */
 			myworkp = &commit_list_insert(co, myworkp)->next;
+			if (entry->uninteresting)
+				upath_nr--;
+			else
+				ipath_nr--;
 			paths[path] = 0;
 			continue;
 		}
