@@ -1304,7 +1304,7 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 	while (i < mapping->size) {
 		int pos = i;
 
-		entry = RC_OBTAIN_OBJECT_ENTRY(map + i;
+		entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
