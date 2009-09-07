@@ -277,7 +277,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 
 	size = decode_size(ptr + RC_ENTRY_SIZE_OFFSET(entry), entry->size_size);
 	switch (entry->type) {
-	case OBJ_TREE :
+	case OBJ_TREE:
 		if (!revs->tree_objects)
 			return;
 
@@ -290,7 +290,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 		obj = (struct object *)tree;
 		break;
 
-	case OBJ_BLOB :
+	case OBJ_BLOB:
 		if (!revs->blob_objects)
 			return;
 
@@ -301,7 +301,7 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 		obj = (struct object *)blob;
 		break;
 
-	default :
+	default:
 		/* tag objects aren't really supposed to be here */
 		return;
 	}
@@ -811,7 +811,7 @@ static void handle_paths(struct commit *commit, struct rc_object_entry *object, 
 	int child_nr, parent_nr, open_parent_nr, this_path;
 	struct commit_list *list;
 	struct commit *first_parent;
-	struct path_track **ppt, *pt;
+	struct pa\th_track **ppt, *pt;
 
 	/* we can only re-use a closed path once all it's children have been encountered,
 	 * as we need to keep track of commit boundaries */
@@ -999,9 +999,9 @@ static int dump_tree(struct tree *tree, dump_tree_fn fn)
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
 		switch (fn(entry.sha1, entry.path, entry.mode)) {
-		case 0 :
+		case 0:
 			goto continue_loop;
-		default :
+		default:
 			break;
 		}
 
