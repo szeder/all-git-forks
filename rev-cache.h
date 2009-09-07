@@ -3,6 +3,7 @@
 
 #define SUPPORTED_REVCACHE_VERSION 		1
 #define SUPPORTED_REVINDEX_VERSION		1
+#define SUPPORTED_REVCOPTR_VERSION		1
 
 #define RC_PATH_SIZE(x)	(sizeof(uint16_t) * (x))
 
@@ -10,6 +11,7 @@
 #define RC_OBTAIN_INDEX_ENTRY(p)			from_disked_rc_index_entry((struct rc_index_entry_ondisk *)(p), 0)
 
 #define RC_ACTUAL_OBJECT_ENTRY_SIZE(e)		(sizeof(struct rc_object_entry_ondisk) + RC_PATH_SIZE((e)->merge_nr + (e)->split_nr) + (e)->size_size)
+#define RC_ENTRY_SIZE_OFFSET(e)				(RC_ACTUAL_OBJECT_ENTRY_SIZE(e) - (e)->size_size)
 
 /* single index maps objects to cache files */
 struct rc_index_header {
@@ -90,6 +92,7 @@ struct rc_object_entry *from_disked_rc_object_entry(struct rc_object_entry_ondis
 struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry *src, struct rc_object_entry_ondisk *dst);
 
 extern unsigned char *get_cache_slice(struct commit *commit);
+extern int open_cache_slice(unsigned char *sha1, int flags);
 extern int traverse_cache_slice(struct rev_info *revs,
 	unsigned char *cache_sha1, struct commit *commit,
 	unsigned long *date_so_far, int *slop_so_far,
@@ -102,6 +105,10 @@ extern int make_cache_slice(struct rev_cache_info *rci,
 extern int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 	int fd, unsigned int size);
 
-extern void starts_from_slices(struct rev_info *revs, unsigned int flags);
+extern void starts_from_slices(struct rev_info *revs, unsigned int flags, unsigned char *which, int n);
+extern int fuse_cache_slices(struct rev_cache_info *rci, struct rev_info *revs);
+extern int regenerate_cache_index(struct rev_cache_info *rci);
+extern int make_cache_slice_pointer(struct rev_cache_info *rci, const char *slice_path);
 
 #endif
+
