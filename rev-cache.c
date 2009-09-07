@@ -11,6 +11,12 @@
 #include "run-command.h"
 #include "string-list.h"
 
+
+struct bad_slice {
+	unsigned char sha1[20];
+	struct bad_slice *next;
+};
+
 struct cache_slice_pointer {
 	char signature[8]; /* REVCOPTR */
 	char version;
@@ -23,8 +29,9 @@ static uint32_t fanout[0xff + 2];
 static unsigned char *idx_map;
 static int idx_size;
 static struct rc_index_header idx_head;
+static char no_idx, add_to_pending;
+static struct bad_slice *bad_slices;
 static unsigned char *idx_caches;
-static char no_idx;
 
 static struct strbuf *acc_buffer;
 
@@ -119,6 +126,30 @@ struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry 
 	dst->path = htons(src->path);
 
 	return dst;
+}
+
+static void mark_bad_slice(unsigned char *sha1)
+{
+	struct bad_slice *bad;
+
+	bad = xcalloc(sizeof(struct bad_slice), 1);
+	hashcpy(bad->sha1, sha1);
+
+	bad->next = bad_slices;
+	bad_slices = bad;
+}
+
+static int is_bad_slice(unsigned char *sha1)
+{
+	struct bad_slice *bad = bad_slices;
+
+	while (bad) {
+		if (!hashcmp(bad->sha1, sha1))
+			return 1;
+		bad = bad->next;
+	}
+
+	return 0;
 }
 
 static int get_index_head(unsigned char *map, int len, struct rc_index_header *head, uint32_t *fanout, unsigned char **caches)
@@ -246,6 +277,7 @@ static struct rc_index_entry *search_index(unsigned char *sha1)
 unsigned char *get_cache_slice(struct commit *commit)
 {
 	struct rc_index_entry *ie;
+	unsigned char *sha1;
 
 	if (!idx_map) {
 		if (no_idx)
@@ -257,8 +289,13 @@ unsigned char *get_cache_slice(struct commit *commit)
 		return 0;
 
 	ie = search_index(commit->object.sha1);
-	if (ie && ie->cache_index < idx_head.cache_nr)
-		return idx_caches + ie->cache_index * 20;
+	if (ie && ie->cache_index < idx_head.cache_nr) {
+		sha1 = idx_caches + ie->cache_index * 20;
+
+		if (is_bad_slice(sha1))
+			return 0;
+		return sha1;
+	}
 
 	return 0;
 }
@@ -267,6 +304,20 @@ unsigned char *get_cache_slice(struct commit *commit)
 /* traversal */
 
 static unsigned long decode_size(unsigned char *str, int len);
+
+/* on failure */
+static void restore_commit(struct commit *commit)
+{
+	commit->object.flags &= ~(ADDED | SEEN | FACE_VALUE);
+
+	if (!commit->object.parsed) {
+		while (pop_commit(&commit->parents))
+			;
+
+		parse_commit(commit);
+	}
+
+}
 
 static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsigned char *ptr, struct rc_object_entry *entry)
 {
@@ -307,23 +358,27 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 	}
 
 	obj->flags |= FACE_VALUE;
-	add_pending_object(revs, obj, "");
+	if (add_to_pending)
+		add_pending_object(revs, obj, "");
 }
 
-static int setup_traversal(struct rc_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work)
+static int setup_traversal(struct rc_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work,
+	struct commit_list **unwork, int *ipath_nr, int *upath_nr, char *ioutside)
 {
 	struct rc_index_entry *iep;
 	struct rc_object_entry *oep;
 	struct commit_list *prev, *wp, **wpp;
 	int retval;
 
-	iep = search_index(commit->object.sha1), 0;
+	iep = search_index(commit->object.sha1);
 	oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
+	if (commit->object.flags & UNINTERESTING) {
+		++*upath_nr;
+		oep->uninteresting = 1;
+	} else
+		++*ipath_nr;
 
-	/* the .uniniteresting bit isn't strictly necessary, as we check the object during traversal as well,
-	 * but we might as well initialize it while we're at it */
 	oep->include = 1;
-	oep->uninteresting = !!(commit->object.flags & UNINTERESTING);
 	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 	retval = iep->pos;
 
@@ -338,6 +393,10 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		/* is this in our cache slice? */
 		iep = search_index(obj->sha1);
 		if (!iep || hashcmp(idx_caches + iep->cache_index * 20, head->sha1)) {
+			/* there are interesing objects outside the slice */
+			if (!(obj->flags & UNINTERESTING))
+				*ioutside = 1;
+
 			prev = wp;
 			wp = wp->next;
 			wpp = &wp;
@@ -354,11 +413,20 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		oep->uninteresting = !!(obj->flags & UNINTERESTING);
 		to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
 
+		/* count even if not in slice so we can stop enumerating if possible */
+		if (obj->flags & UNINTERESTING)
+			++*upath_nr;
+		else
+			++*ipath_nr;
+
 		/* remove from work list */
 		co = pop_commit(wpp);
 		wp = *wpp;
 		if (prev)
 			prev->next = wp;
+
+		/* ...and store in temp list so we can restore work on failure */
+		commit_list_insert(co, unwork);
 	}
 
 	return retval;
@@ -375,13 +443,18 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 	unsigned long *date_so_far, int *slop_so_far,
 	struct commit_list ***queue, struct commit_list **work)
 {
-	struct commit_list *insert_cache = 0;
+	struct commit_list *insert_cache = 0, *myq = 0, **myqp = &myq, *mywork = 0, **myworkp = &mywork, *unwork = 0;
 	struct commit **last_objects, *co;
-	int i, total_path_nr = head->path_nr, retval = -1;
-	char consume_children = 0;
+	unsigned long date = date_so_far ? *date_so_far : ~0ul;
+	int i, ipath_nr = 0, upath_nr = 0, orig_obj_nr = 0,
+		total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
+	char consume_children = 0, ioutside = 0;
 	unsigned char *paths;
 
-	i = setup_traversal(head, map, commit, work);
+	/* take note in case we need to regress */
+	orig_obj_nr = revs->pending.nr;
+
+	i = setup_traversal(head, map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
 	if (i < 0)
 		return -1;
 
@@ -429,6 +502,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		if ((paths[path] & IPATH) && (paths[path] & UPATH)) {
 			paths[path] = UPATH;
+			ipath_nr--;
 
 			/* mark edge */
 			if (last_objects[path]) {
@@ -439,6 +513,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 				last_objects[path]->object.flags &= ~FACE_VALUE;
 				last_objects[path] = 0;
 			}
+			obj->flags |= BOUNDARY;
 		}
 
 		/* now we gotta re-assess the whole interesting thing... */
@@ -462,8 +537,10 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 						last_objects[p]->object.flags &= ~FACE_VALUE;
 						last_objects[p] = 0;
 					}
-				} else if (last_objects[p] && !last_objects[p]->object.parsed)
+					obj->flags |= BOUNDARY;
+				} else if (last_objects[p] && !last_objects[p]->object.parsed) {
 					commit_list_insert(co, &last_objects[p]->parents);
+				}
 
 				/* can't close a merge path until all are parents have been encountered */
 				if (GET_COUNT(paths[p])) {
@@ -473,14 +550,33 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 						continue;
 				}
 
+				if (paths[p] & IPATH)
+					ipath_nr--;
+				else
+					upath_nr--;
+
 				paths[p] = 0;
 				last_objects[p] = 0;
 			}
 		}
 
 		/* make topo relations */
-		if (last_objects[path] && !last_objects[path]->object.parsed)
+		if (last_objects[path] && !last_objects[path]->object.parsed) {
 			commit_list_insert(co, &last_objects[path]->parents);
+		}
+
+		/* we've been here already */
+		if (obj->flags & ADDED) {
+			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
+				obj->flags |= UNINTERESTING;
+				mark_parents_uninteresting(co);
+				upath_nr--;
+			} else if (!entry->uninteresting)
+				ipath_nr--;
+
+			paths[path] = 0;
+			continue;
+		}
 
 		/* initialize commit */
 		if (!entry->is_end) {
@@ -493,23 +589,50 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		if (entry->uninteresting)
 			obj->flags |= UNINTERESTING;
+		else if (co->date < date)
+			date = co->date;
 
 		/* we need to know what the edges are */
 		last_objects[path] = co;
 
 		/* add to list */
-		if (!(obj->flags & UNINTERESTING) || revs->show_all) {
-			if (entry->is_end)
-				insert_by_date_cached(co, work, insert_cache, &insert_cache);
-			else
-				*queue = &commit_list_insert(co, *queue)->next;
+		if (slop && !(revs->min_age != -1 && co->date > revs->min_age)) {
 
-			/* add children to list as well */
-			if (obj->flags & UNINTERESTING)
-				consume_children = 0;
-			else
-				consume_children = 1;
+			if (!(obj->flags & UNINTERESTING) || revs->show_all) {
+				if (entry->is_end)
+					myworkp = &commit_list_insert(co, myworkp)->next;
+				else
+					myqp = &commit_list_insert(co, myqp)->next;
+
+				/* add children to list as well */
+				if (obj->flags & UNINTERESTING)
+					consume_children = 0;
+				else
+					consume_children = 1;
+			}
+
 		}
+
+		/* should we continue? */
+		if (!slop) {
+			if (!upath_nr) {
+				break;
+			} else if (ioutside || revs->show_all) {
+				/* pass it back to rev-list
+				 * we purposely ignore everything outside this cache, so we don't needlessly traverse the whole
+				 * thing on uninteresting, but that does mean that we may need to bounce back
+				 * and forth a few times with rev-list */
+				myworkp = &commit_list_insert(co, myworkp)->next;
+
+				paths[path] = 0;
+				upath_nr--;
+			} else {
+				break;
+			}
+		} else if (!ipath_nr && co->date <= date)
+			slop--;
+		else
+			slop = SLOP;
 
 		/* open parents */
 		if (entry->merge_nr) {
@@ -525,6 +648,11 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 				if (paths[p] & flag)
 					continue;
 
+				if (flag == IPATH)
+					ipath_nr++;
+				else
+					upath_nr++;
+
 				paths[p] |= flag;
 			}
 
@@ -534,11 +662,54 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 	}
 
+	if (date_so_far)
+		*date_so_far = date;
+	if (slop_so_far)
+		*slop_so_far = slop;
 	retval = 0;
+
+	/* success: attach to given lists */
+	if (myqp != &myq) {
+		**queue = myq;
+		*queue = myqp;
+	}
+
+	while ((co = pop_commit(&mywork)) != 0) {
+		insert_by_date_cached(co, work, insert_cache, &insert_cache);
+	}
+
+	/* free backup */
+	while (pop_commit(&unwork))
+		;
 
 end:
 	free(paths);
 	free(last_objects);
+
+	/* failure: restore work to previous condition
+	 * (cache corruption should *not* be fatal) */
+	if (retval) {
+		while ((co = pop_commit(&unwork)) != 0) {
+			restore_commit(co);
+			co->object.flags |= SEEN;
+			insert_by_date(co, work);
+		}
+
+		/* free lists */
+		while ((co = pop_commit(&myq)) != 0)
+			restore_commit(co);
+
+		while ((co = pop_commit(&mywork)) != 0)
+			restore_commit(co);
+
+		/* truncate object array */
+		for (i = orig_obj_nr; i < revs->pending.nr; i++) {
+			struct object *obj = revs->pending.objects[i].item;
+
+			obj->flags &= ~FACE_VALUE;
+		}
+		revs->pending.nr = orig_obj_nr;
+	}
 
 	return retval;
 }
@@ -630,6 +801,7 @@ int traverse_cache_slice(struct rev_info *revs,
 
 	/* load options */
 	rci = &revs->rev_cache_info;
+	add_to_pending = rci->add_to_pending;
 
 	memset(&head, 0, sizeof(struct rc_slice_header));
 
@@ -652,6 +824,10 @@ end:
 		munmap(map, fi.st_size);
 	if (fd != -1)
 		close(fd);
+
+	/* remember this! */
+	if (retval)
+		mark_bad_slice(cache_sha1);
 
 	return retval;
 }
@@ -1128,7 +1304,7 @@ static int add_objects_verbatim_1(struct rev_cache_slice_map *mapping, int *inde
 	while (i < mapping->size) {
 		int pos = i;
 
-		entry = RC_OBTAIN_OBJECT_ENTRY(map + i;
+		entry = RC_OBTAIN_OBJECT_ENTRY(map + i);
 		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
 		if (entry->type == OBJ_COMMIT) {
