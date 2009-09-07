@@ -38,7 +38,7 @@ static const char * const builtin_clone_usage[] = {
 };
 
 static int option_quiet, option_no_checkout, option_bare, option_mirror;
-static int option_local, option_no_hardlinks, option_shared;
+static int option_local, option_no_hardlinks, option_shared, option_recursive;
 static char *option_template, *option_reference, *option_depth;
 static char *option_origin = NULL;
 static char *option_upload_pack = "git-upload-pack";
@@ -59,6 +59,8 @@ static struct option builtin_clone_options[] = {
 		    "don't use local hardlinks, always copy"),
 	OPT_BOOLEAN('s', "shared", &option_shared,
 		    "setup as shared repository"),
+	OPT_BOOLEAN(0, "recursive", &option_recursive,
+		    "setup as shared repository"),
 	OPT_STRING(0, "template", &option_template, "path",
 		   "path the template repository"),
 	OPT_STRING(0, "reference", &option_reference, "repo",
@@ -71,6 +73,10 @@ static struct option builtin_clone_options[] = {
 		    "create a shallow clone of that depth"),
 
 	OPT_END()
+};
+
+static const char *argv_submodule[] = {
+	"submodule", "update", "--init", "--recursive", NULL
 };
 
 static char *get_repo_path(const char *repo, int *is_bundle)
@@ -509,7 +515,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 					     option_upload_pack);
 
 		refs = transport_get_remote_refs(transport);
-		if(refs)
+		if (refs)
 			transport_fetch_refs(transport, refs);
 	}
 
@@ -574,8 +580,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		option_no_checkout = 1;
 	}
 
-	if (transport)
+	if (transport) {
 		transport_unlock_pack(transport);
+		transport_disconnect(transport);
+	}
 
 	if (!option_no_checkout) {
 		struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
@@ -608,6 +616,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		err |= run_hook(NULL, "post-checkout", sha1_to_hex(null_sha1),
 				sha1_to_hex(remote_head->old_sha1), "1", NULL);
+
+		if (!err && option_recursive)
+			err = run_command_v_opt(argv_submodule, RUN_GIT_CMD);
 	}
 
 	strbuf_release(&reflog_msg);
