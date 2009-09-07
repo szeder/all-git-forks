@@ -33,8 +33,8 @@ struct rc_index_entry_ondisk {
 
 struct rc_index_entry {
 	unsigned char *sha1;
-	unsigned is_start : 1;
-	unsigned cache_index : 7;
+	unsigned is_start:1;
+	unsigned cache_index:7;
 	uint32_t pos;
 };
 
@@ -65,18 +65,18 @@ struct rc_object_entry_ondisk {
 };
 
 struct rc_object_entry {
-	unsigned type : 3;
-	unsigned is_end : 1;
-	unsigned is_start : 1;
-	unsigned uninteresting : 1;
-	unsigned include : 1;
-	unsigned flag : 1; /* unused */
+	unsigned type:3;
+	unsigned is_end:1;
+	unsigned is_start:1;
+	unsigned uninteresting:1;
+	unsigned include:1;
+	unsigned flag:1; /* unused */
 	unsigned char *sha1; /* 20 byte */
 
 	unsigned char merge_nr; /* : 7 */
 	unsigned char split_nr; /* : 7 */
-	unsigned size_size : 3;
-	unsigned padding : 5;
+	unsigned size_size:3;
+	unsigned padding:5;
 
 	uint32_t date;
 	uint16_t path;
