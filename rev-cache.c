@@ -264,15 +264,15 @@ static void handle_noncommit(struct rev_info *revs, unsigned char *ptr, struct r
 	struct object *obj = 0;
 
 	switch (entry->type) {
-	case OBJ_TREE :
+	case OBJ_TREE:
 		if (revs->tree_objects)
 			obj = (struct object *)lookup_tree(entry->sha1);
 		break;
-	case OBJ_BLOB :
+	case OBJ_BLOB:
 		if (revs->blob_objects)
 			obj = (struct object *)lookup_blob(entry->sha1);
 		break;
-	case OBJ_TAG :
+	case OBJ_TAG:
 		if (revs->tag_objects)
 			obj = (struct object *)lookup_tag(entry->sha1);
 		break;
@@ -823,9 +823,9 @@ static int dump_tree(struct tree *tree, dump_tree_fn fn)
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	while (tree_entry(&desc, &entry)) {
 		switch (fn(entry.sha1, entry.path, entry.mode)) {
-		case 0 :
+		case 0:
 			goto continue_loop;
-		default :
+		default:
 			break;
 		}
 
