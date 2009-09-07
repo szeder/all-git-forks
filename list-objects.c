@@ -200,13 +200,13 @@ loop_objects:
 	}
 	if (face_value) {
 		switch (what) {
-		case OBJ_TAG :
+		case OBJ_TAG:
 			what = OBJ_TREE;
 			goto loop_objects;
-		case OBJ_TREE :
+		case OBJ_TREE:
 			what = OBJ_BLOB;
 			goto loop_objects;
-		default :
+		default:
 			break;
 		}
 	}
