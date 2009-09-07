@@ -674,9 +674,8 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		*queue = myqp;
 	}
 
-	while ((co = pop_commit(&mywork)) != 0) {
+	while ((co = pop_commit(&mywork)) != 0)
 		insert_by_date_cached(co, work, insert_cache, &insert_cache);
-	}
 
 	/* free backup */
 	while (pop_commit(&unwork))
