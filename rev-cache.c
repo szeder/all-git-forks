@@ -986,7 +986,7 @@ static void handle_paths(struct commit *commit, struct rc_object_entry *object, 
 	int child_nr, parent_nr, open_parent_nr, this_path;
 	struct commit_list *list;
 	struct commit *first_parent;
-	struct pa\th_track **ppt, *pt;
+	struct path_track **ppt, *pt;
 
 	/* we can only re-use a closed path once all it's children have been encountered,
 	 * as we need to keep track of commit boundaries */
