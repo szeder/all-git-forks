@@ -123,6 +123,23 @@ test_expect_success 'fetch with insteadOf' '
 	)
 '
 
+test_expect_success 'fetch with pushInsteadOf (should not rewrite)' '
+	mk_empty &&
+	(
+		TRASH=$(pwd)/ &&
+		cd testrepo &&
+		git config "url.trash/.pushInsteadOf" "$TRASH" &&
+		git config remote.up.url "$TRASH." &&
+		git config remote.up.fetch "refs/heads/*:refs/remotes/origin/*" &&
+		git fetch up &&
+
+		r=$(git show-ref -s --verify refs/remotes/origin/master) &&
+		test "z$r" = "z$the_commit" &&
+
+		test 1 = $(git for-each-ref refs/remotes/origin | wc -l)
+	)
+'
+
 test_expect_success 'push without wildcard' '
 	mk_empty &&
 
@@ -153,6 +170,20 @@ test_expect_success 'push with insteadOf' '
 	mk_empty &&
 	TRASH="$(pwd)/" &&
 	git config "url.$TRASH.insteadOf" trash/ &&
+	git push trash/testrepo refs/heads/master:refs/remotes/origin/master &&
+	(
+		cd testrepo &&
+		r=$(git show-ref -s --verify refs/remotes/origin/master) &&
+		test "z$r" = "z$the_commit" &&
+
+		test 1 = $(git for-each-ref refs/remotes/origin | wc -l)
+	)
+'
+
+test_expect_success 'push with pushInsteadOf' '
+	mk_empty &&
+	TRASH="$(pwd)/" &&
+	git config "url.$TRASH.pushInsteadOf" trash/ &&
 	git push trash/testrepo refs/heads/master:refs/remotes/origin/master &&
 	(
 		cd testrepo &&
