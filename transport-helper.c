@@ -11,6 +11,7 @@ struct helper_data
 	const char *name;
 	struct child_process *helper;
 	unsigned fetch : 1;
+	unsigned import : 1;
 };
 
 static struct child_process *get_helper(struct transport *transport)
@@ -37,7 +38,10 @@ static struct child_process *get_helper(struct transport *transport)
 		die("Unable to run helper: git %s", helper->argv[0]);
 	data->helper = helper;
 
-	write_in_full(data->helper->in, "capabilities\n", 13);
+	strbuf_addstr(&buf, "capabilities\n");
+	write_in_full(helper->in, buf.buf, buf.len);
+	strbuf_reset(&buf);
+
 	file = fdopen(helper->out, "r");
 	while (1) {
 		if (strbuf_getline(&buf, file, '\n') == EOF)
@@ -47,6 +51,8 @@ static struct child_process *get_helper(struct transport *transport)
 			break;
 		if (!strcmp(buf.buf, "fetch"))
 			data->fetch = 1;
+		if (!strcmp(buf.buf, "import"))
+			data->import = 1;
 	}
 	return data->helper;
 }
@@ -67,7 +73,7 @@ static int disconnect_helper(struct transport *transport)
 }
 
 static int fetch_with_fetch(struct transport *transport,
-			    int nr_heads, const struct ref **to_fetch)
+			    int nr_heads, struct ref **to_fetch)
 {
 	struct child_process *helper = get_helper(transport);
 	FILE *file = fdopen(helper->out, "r");
@@ -78,19 +84,66 @@ static int fetch_with_fetch(struct transport *transport,
 		const struct ref *posn = to_fetch[i];
 		if (posn->status & REF_STATUS_UPTODATE)
 			continue;
-		write_in_full(helper->in, "fetch ", 6);
-		write_in_full(helper->in, sha1_to_hex(posn->old_sha1), 40);
-		write_in_full(helper->in, " ", 1);
-		write_in_full(helper->in, posn->name, strlen(posn->name));
-		write_in_full(helper->in, "\n", 1);
+
+		strbuf_addf(&buf, "fetch %s %s\n",
+			    sha1_to_hex(posn->old_sha1), posn->name);
+		write_in_full(helper->in, buf.buf, buf.len);
+		strbuf_reset(&buf);
+
 		if (strbuf_getline(&buf, file, '\n') == EOF)
 			exit(128); /* child died, message supplied already */
 	}
 	return 0;
 }
 
+static int get_importer(struct transport *transport, struct child_process *fastimport)
+{
+	struct child_process *helper = get_helper(transport);
+	memset(fastimport, 0, sizeof(*fastimport));
+	fastimport->in = helper->out;
+	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
+	fastimport->argv[0] = "fast-import";
+	fastimport->argv[1] = "--quiet";
+
+	fastimport->git_cmd = 1;
+	return start_command(fastimport);
+}
+
+static int fetch_with_import(struct transport *transport,
+			     int nr_heads, struct ref **to_fetch)
+{
+	struct child_process fastimport;
+	struct child_process *helper = get_helper(transport);
+	int i;
+	struct ref *posn;
+	struct strbuf buf = STRBUF_INIT;
+
+	if (get_importer(transport, &fastimport))
+		die("Couldn't run fast-import");
+
+	for (i = 0; i < nr_heads; i++) {
+		posn = to_fetch[i];
+		if (posn->status & REF_STATUS_UPTODATE)
+			continue;
+
+		strbuf_addf(&buf, "import %s\n", posn->name);
+		write_in_full(helper->in, buf.buf, buf.len);
+		strbuf_reset(&buf);
+	}
+	disconnect_helper(transport);
+	finish_command(&fastimport);
+
+	for (i = 0; i < nr_heads; i++) {
+		posn = to_fetch[i];
+		if (posn->status & REF_STATUS_UPTODATE)
+			continue;
+		read_ref(posn->name, posn->old_sha1);
+	}
+	return 0;
+}
+
 static int fetch(struct transport *transport,
-		 int nr_heads, const struct ref **to_fetch)
+		 int nr_heads, struct ref **to_fetch)
 {
 	struct helper_data *data = transport->data;
 	int i, count;
@@ -106,7 +159,26 @@ static int fetch(struct transport *transport,
 	if (data->fetch)
 		return fetch_with_fetch(transport, nr_heads, to_fetch);
 
+	if (data->import)
+		return fetch_with_import(transport, nr_heads, to_fetch);
+
 	return -1;
+}
+
+static int has_attribute(const char *attrs, const char *attr) {
+	int len;
+	if (!attrs)
+		return 0;
+
+	len = strlen(attr);
+	for (;;) {
+		const char *space = strchrnul(attrs, ' ');
+		if (len == space - attrs && !strncmp(attrs, attr, len))
+			return 1;
+		if (!*space)
+			return 0;
+		attrs = space + 1;
+	}
 }
 
 static struct ref *get_refs_list(struct transport *transport, int for_push)
@@ -119,7 +191,10 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	FILE *file;
 
 	helper = get_helper(transport);
-	write_in_full(helper->in, "list\n", 5);
+
+	strbuf_addstr(&buf, "list\n");
+	write_in_full(helper->in, buf.buf, buf.len);
+	strbuf_reset(&buf);
 
 	file = fdopen(helper->out, "r");
 	while (1) {
@@ -142,6 +217,12 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 			(*tail)->symref = xstrdup(buf.buf + 1);
 		else if (buf.buf[0] != '?')
 			get_sha1_hex(buf.buf, (*tail)->old_sha1);
+		if (eon) {
+			if (has_attribute(eon + 1, "unchanged")) {
+				(*tail)->status |= REF_STATUS_UPTODATE;
+				read_ref((*tail)->name, (*tail)->old_sha1);
+			}
+		}
 		tail = &((*tail)->next);
 	}
 	strbuf_release(&buf);
@@ -152,13 +233,10 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	return ret;
 }
 
-int transport_helper_init(struct transport *transport)
+int transport_helper_init(struct transport *transport, const char *name)
 {
 	struct helper_data *data = xcalloc(sizeof(*data), 1);
-	char *eom = strchr(transport->url, ':');
-	if (!eom)
-		return -1;
-	data->name = xstrndup(transport->url, eom - transport->url);
+	data->name = name;
 
 	transport->data = data;
 	transport->get_refs_list = get_refs_list;
