@@ -72,6 +72,15 @@ static int use_editor = 1, initial_commit, in_merge;
 static const char *only_include_assumed;
 static struct strbuf message;
 
+static int null_termination;
+static enum {
+	STATUS_FORMAT_LONG,
+	STATUS_FORMAT_SHORT,
+	STATUS_FORMAT_PORCELAIN,
+} status_format = STATUS_FORMAT_LONG;
+
+static void short_print(struct wt_status *s, int null_termination);
+
 static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 {
 	struct strbuf *buf = opt->value;
@@ -105,6 +114,12 @@ static struct option builtin_commit_options[] = {
 	OPT_BOOLEAN('o', "only", &only, "commit only specified files"),
 	OPT_BOOLEAN('n', "no-verify", &no_verify, "bypass pre-commit hook"),
 	OPT_BOOLEAN(0, "dry-run", &dry_run, "show what would be committed"),
+	OPT_SET_INT(0, "short", &status_format, "show status concisely",
+		    STATUS_FORMAT_SHORT),
+	OPT_SET_INT(0, "porcelain", &status_format,
+		    "show porcelain output format", STATUS_FORMAT_PORCELAIN),
+	OPT_BOOLEAN('z', "null", &null_termination,
+		    "terminate entries with NUL"),
 	OPT_BOOLEAN(0, "amend", &amend, "amend previous commit"),
 	{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, "mode", "show untracked files, optional modes: all, normal, no. (Default: all)", PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 	OPT_BOOLEAN(0, "allow-empty", &allow_empty, "ok to record an empty change"),
@@ -363,7 +378,18 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	s->is_initial = get_sha1(s->reference, sha1) ? 1 : 0;
 
 	wt_status_collect(s);
-	wt_status_print(s);
+
+	switch (status_format) {
+	case STATUS_FORMAT_SHORT:
+		short_print(s, null_termination);
+		break;
+	case STATUS_FORMAT_PORCELAIN:
+		short_print(s, null_termination);
+		break;
+	case STATUS_FORMAT_LONG:
+		wt_status_print(s);
+		break;
+	}
 
 	return s->commitable;
 }
@@ -821,6 +847,11 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	else if (interactive && argc > 0)
 		die("Paths with --interactive does not make sense.");
 
+	if (null_termination && status_format == STATUS_FORMAT_LONG)
+		status_format = STATUS_FORMAT_PORCELAIN;
+	if (status_format != STATUS_FORMAT_LONG)
+		dry_run = 1;
+
 	return argc;
 }
 
@@ -966,16 +997,39 @@ static void short_untracked(int null_termination, struct string_list_item *it,
 	}
 }
 
+static void short_print(struct wt_status *s, int null_termination)
+{
+	int i;
+	for (i = 0; i < s->change.nr; i++) {
+		struct wt_status_change_data *d;
+		struct string_list_item *it;
+
+		it = &(s->change.items[i]);
+		d = it->util;
+		if (d->stagemask)
+			short_unmerged(null_termination, it, s);
+		else
+			short_status(null_termination, it, s);
+	}
+	for (i = 0; i < s->untracked.nr; i++) {
+		struct string_list_item *it;
+
+		it = &(s->untracked.items[i]);
+		short_untracked(null_termination, it, s);
+	}
+}
+
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
 	struct wt_status s;
-	static int null_termination, shortstatus;
-	int i;
 	unsigned char sha1[20];
 	static struct option builtin_status_options[] = {
 		OPT__VERBOSE(&verbose),
-		OPT_BOOLEAN('s', "short", &shortstatus,
-			    "show status concisely"),
+		OPT_SET_INT('s', "short", &status_format,
+			    "show status concisely", STATUS_FORMAT_SHORT),
+		OPT_SET_INT(0, "porcelain", &status_format,
+			    "show porcelain output format",
+			    STATUS_FORMAT_PORCELAIN),
 		OPT_BOOLEAN('z', "null", &null_termination,
 			    "terminate entries with NUL"),
 		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg,
@@ -985,8 +1039,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		OPT_END(),
 	};
 
-	if (null_termination)
-		shortstatus = 1;
+	if (null_termination && status_format == STATUS_FORMAT_LONG)
+		status_format = STATUS_FORMAT_PORCELAIN;
 
 	wt_status_prepare(&s);
 	git_config(git_status_config, &s);
@@ -1003,25 +1057,14 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	wt_status_collect(&s);
 
-	if (shortstatus) {
-		for (i = 0; i < s.change.nr; i++) {
-			struct wt_status_change_data *d;
-			struct string_list_item *it;
-
-			it = &(s.change.items[i]);
-			d = it->util;
-			if (d->stagemask)
-				short_unmerged(null_termination, it, &s);
-			else
-				short_status(null_termination, it, &s);
-		}
-		for (i = 0; i < s.untracked.nr; i++) {
-			struct string_list_item *it;
-
-			it = &(s.untracked.items[i]);
-			short_untracked(null_termination, it, &s);
-		}
-	} else {
+	switch (status_format) {
+	case STATUS_FORMAT_SHORT:
+		short_print(&s, null_termination);
+		break;
+	case STATUS_FORMAT_PORCELAIN:
+		short_print(&s, null_termination);
+		break;
+	case STATUS_FORMAT_LONG:
 		s.verbose = verbose;
 		if (s.relative_paths)
 			s.prefix = prefix;
@@ -1030,6 +1073,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		if (diff_use_color_default == -1)
 			diff_use_color_default = git_use_color_default;
 		wt_status_print(&s);
+		break;
 	}
 	return 0;
 }
