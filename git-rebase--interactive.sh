@@ -117,18 +117,7 @@ mark_action_done () {
 }
 
 make_patch () {
-	sha1_and_parents="$(git rev-list --parents -1 "$1")"
-	case "$sha1_and_parents" in
-	?*' '?*' '?*)
-		git diff --cc $sha1_and_parents
-		;;
-	?*' '?*)
-		git diff-tree -p "$1^!"
-		;;
-	*)
-		echo "Root commit"
-		;;
-	esac > "$DOTEST"/patch
+	git sequencer--helper --make-patch "$1"
 	test -f "$DOTEST"/message ||
 		git cat-file commit "$1" | sed "1,/^$/d" > "$DOTEST"/message
 	test -f "$DOTEST"/author-script ||
@@ -158,19 +147,19 @@ pick_one () {
 		pick_one_preserving_merges "$@" && return
 	if test ! -z "$REBASE_ROOT"
 	then
-		output git cherry-pick "$@"
+		git sequencer--helper --cherry-pick $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" $no_ff
 		return
 	fi
 	parent_sha1=$(git rev-parse --verify $sha1^) ||
 		die "Could not get the parent of $sha1"
 	current_sha1=$(git rev-parse --verify HEAD)
 	if test "$no_ff$current_sha1" = "$parent_sha1"; then
-		output git reset --hard $sha1
-		test "a$1" = a-n && output git reset --soft $current_sha1
-		sha1=$(git rev-parse --short $sha1)
-		output warn Fast forward to $sha1
+		git sequencer--helper --fast-forward $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE"
 	else
-		output git cherry-pick "$@"
+		git sequencer--helper --cherry-pick $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" $no_ff
 	fi
 }
 
@@ -248,9 +237,8 @@ pick_one_preserving_merges () {
 	done
 	case $fast_forward in
 	t)
-		output warn "Fast forward to $sha1"
-		output git reset --hard $sha1 ||
-			die "Cannot fast forward to $sha1"
+		git sequencer--helper --fast-forward $sha1 \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" || exit
 		;;
 	f)
 		first_parent=$(expr "$new_parents" : ' \([^ ]*\)')
@@ -283,7 +271,10 @@ pick_one_preserving_merges () {
 			fi
 			;;
 		*)
-			output git cherry-pick "$@" ||
+			no_commit=
+			test "a$1" = "a-n" && no_commit=t
+			git sequencer--helper --cherry-pick $sha1 \
+				"$GIT_REFLOG_ACTION" "$VERBOSE" $no_commit ||
 				die_with_patch $sha1 "Could not pick $sha1"
 			;;
 		esac
@@ -547,7 +538,8 @@ first and then run 'git rebase --continue' again."
 			git symbolic-ref HEAD $HEADNAME
 			;;
 		esac &&
-		output git reset --hard $HEAD &&
+		git sequencer--helper --reset-hard $HEAD \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" &&
 		rm -rf "$DOTEST"
 		exit
 		;;
@@ -559,7 +551,9 @@ first and then run 'git rebase --continue' again."
 		git rerere clear
 		test -d "$DOTEST" || die "No interactive rebase running"
 
-		output git reset --hard && do_rest
+		git sequencer--helper --reset-hard HEAD \
+			"$GIT_REFLOG_ACTION" "$VERBOSE" &&
+		do_rest
 		;;
 	-s)
 		case "$#,$1" in
