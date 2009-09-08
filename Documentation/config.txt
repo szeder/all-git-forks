@@ -1222,6 +1222,26 @@ mergetool.keepTemporaries::
 mergetool.prompt::
 	Prompt before each invocation of the merge resolution program.
 
+message.all::
+	When set to 'true', display all optional help messages. When set
+	to 'false', do not display any. Defaults vary with individual
+	messages (see message.* below).
+
+message.*::
+	When set to 'true', display the given optional help message.
+	When set to 'false', do not display. The configuration variables
+	are:
++
+--
+	pushNonFastForward::
+		Help message shown when linkgit:git-push[1] refuses
+		non-fast-forward refs. Default: true.
+	statusAdvice::
+		Directions on how to stage/unstage/add shown in the
+		output of linkgit:git-status[1] and the template shown
+		when writing commit messages. Default: true.
+--
+
 pack.window::
 	The size of the window used by linkgit:git-pack-objects[1] when no
 	window size is given on the command line. Defaults to 10.

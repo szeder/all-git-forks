@@ -107,7 +107,8 @@ static int push_with_options(struct transport *transport, int flags)
 	if (!err)
 		return 0;
 
-	if (nonfastforward) {
+	if (nonfastforward &&
+	    messages[MESSAGE_PUSH_NONFASTFORWARD].preference) {
 		printf("To prevent you from losing history, non-fast-forward updates were rejected\n"
 		       "Merge the remote changes before pushing again.  See the 'non-fast forward'\n"
 		       "section of 'git push --help' for details.\n");
