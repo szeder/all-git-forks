@@ -161,7 +161,7 @@ void get_commit_notes(const struct commit *commit, struct strbuf *sb,
 	free(msg);
 }
 
-void free_commit_notes()
+void free_commit_notes(void)
 {
 	free(hash_map.entries);
 	memset(&hash_map, 0, sizeof(struct hash_map));
