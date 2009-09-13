@@ -37,11 +37,9 @@ static struct child_process *get_helper(struct transport *transport)
 		die("Unable to run helper: git %s", helper->argv[0]);
 	data->helper = helper;
 
-	strbuf_addstr(&buf, "capabilities\n");
-	write_in_full(helper->in, buf.buf, buf.len);
-	strbuf_reset(&buf);
+	write_str_in_full(helper->in, "capabilities\n");
 
-	file = fdopen(helper->out, "r");
+	file = xfdopen(helper->out, "r");
 	while (1) {
 		if (strbuf_getline(&buf, file, '\n') == EOF)
 			exit(128); /* child died, message supplied already */
@@ -58,7 +56,7 @@ static int disconnect_helper(struct transport *transport)
 {
 	struct helper_data *data = transport->data;
 	if (data->helper) {
-		write_in_full(data->helper->in, "\n", 1);
+		write_str_in_full(data->helper->in, "\n");
 		close(data->helper->in);
 		finish_command(data->helper);
 		free((char *)data->helper->argv[0]);
@@ -73,7 +71,7 @@ static int fetch_with_fetch(struct transport *transport,
 			    int nr_heads, const struct ref **to_fetch)
 {
 	struct child_process *helper = get_helper(transport);
-	FILE *file = fdopen(helper->out, "r");
+	FILE *file = xfdopen(helper->out, "r");
 	int i;
 	struct strbuf buf = STRBUF_INIT;
 
@@ -124,11 +122,9 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 
 	helper = get_helper(transport);
 
-	strbuf_addstr(&buf, "list\n");
-	write_in_full(helper->in, buf.buf, buf.len);
-	strbuf_reset(&buf);
+	write_str_in_full(helper->in, "list\n");
 
-	file = fdopen(helper->out, "r");
+	file = xfdopen(helper->out, "r");
 	while (1) {
 		char *eov, *eon;
 		if (strbuf_getline(&buf, file, '\n') == EOF)
