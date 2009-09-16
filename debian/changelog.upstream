@@ -1,3 +1,785 @@
+Version v1.6.4.3; changes since v1.6.4.2:
+-----------------------------------------
+
+Bert Wesarg (1):
+      githooks.txt: put hooks into subsections
+
+Clemens Buchacher (2):
+      grep: fix exit status if external_grep() punts
+      grep: accept relative paths outside current working directory
+
+Emmanuel Trillaud (1):
+      git-pull: do not mention --quiet and --verbose twice
+
+Gerrit Pape (1):
+      git-cvsserver: no longer use deprecated 'git-subcommand' commands
+
+Jeff King (3):
+      clone: disconnect transport after fetching
+      push: fix english in non-fast-forward message
+      push: re-flow non-fast-forward message
+
+Junio C Hamano (1):
+      GIT 1.6.4.3
+
+Mark Lodato (1):
+      svn: properly escape arguments for authors-prog
+
+Miklos Vajna (1):
+      git-clone: add missing comma in --reference documentation
+
+Tay Ray Chuan (1):
+      http.c: remove verification of remote packs
+
+
+Version v1.6.4.2; changes since v1.6.4.1:
+-----------------------------------------
+
+David Kågedal (1):
+      Minor improvement to the write-tree documentation
+
+David Reiss (1):
+      Round-down years in "years+months" relative date view
+
+Jeff King (3):
+      add tests for merge message headings
+      merge: fix incorrect merge message for ambiguous tag/branch
+      merge: indicate remote tracking branches in merge message
+
+Johannes Schindelin (2):
+      Expose the has_non_ascii() function
+      Correctly mark cover letters' encodings if they are not pure ASCII
+
+Johannes Sixt (1):
+      t6035-merge-dir-to-symlink depends on SYMLINKS prerequisite
+
+Junio C Hamano (3):
+      apply: notice creation/removal patches produced by GNU diff
+      clean: require double -f options to nuke nested git repository and work tree
+      GIT 1.6.4.2
+
+Kirill Smelkov (1):
+      git add -p: demonstrate failure when staging both mode and hunk
+
+Kjetil Barvik (1):
+      lstat_cache: guard against full match of length of 'name' parameter
+
+Lars Hjemli (1):
+      git-log: allow --decorate[=short|full]
+
+Linus Torvalds (1):
+      git-checkout: be careful about untracked symlinks
+
+Nanako Shiraishi (3):
+      git-bisect: call the found commit "*the* first bad commit"
+      Fix overridable written with an extra 'e'
+      Remove unused t/t8005/iso8859-5.txt
+
+Pickens, James E (1):
+      Demonstrate bugs when a directory is replaced with a symlink
+
+Tay Ray Chuan (2):
+      http.c: don't assume that urls don't end with slash
+      http.c: set slot callback members to NULL when releasing object
+
+Thomas Rast (1):
+      add -p: do not attempt to coalesce mode changes
+
+Wesley J. Landaker (1):
+      Documentation: git-archive: mark --format as optional in summary
+
+
+Version v1.6.4.1; changes since v1.6.4:
+---------------------------------------
+
+Björn Steinbrink (1):
+      config: Keep inner whitespace verbatim
+
+Erik Faye-Lund (1):
+      send-email: remove debug trace
+
+Jakub Narebski (1):
+      gitweb/README: Document $base_url
+
+Jeff King (3):
+      show: suppress extra newline when showing annotated tag
+      show: add space between multiple items
+      docs: describe impact of repack on "clone -s"
+
+Jens Lehmann (1):
+      Documentation: git submodule: add missing options to synopsis
+
+Johan Herland (1):
+      help.c: give correct structure's size to memset()
+
+Johannes Schindelin (1):
+      filter-branch: add an example how to add ACKs to a range of commits
+
+Junio C Hamano (5):
+      merge-recursive: don't segfault while handling rename clashes
+      t5510: harden the way verify-pack is used
+      verify-pack -v: do not report "chain length 0"
+      am: allow individual e-mail files as input
+      GIT 1.6.4.1
+
+Mark A Rada (1):
+      git-instaweb: fix mod_perl detection for apache2
+
+Matthieu Moy (3):
+      Better usage string for reflog.
+      push: point to 'git pull' and 'git push --force' in case of non-fast forward
+      filter-branch: make the usage string fit on 80 chars terminals.
+
+Miklos Vajna (1):
+      hg-to-git: don't import the unused popen2 module
+
+Nicolas Pitre (1):
+      don't let the delta cache grow unbounded in 'git repack'
+
+Nicolas Sebrecht (1):
+      git-am: print fair error message when format detection fails
+
+Ori Avtalion (1):
+      Change mentions of "git programs" to "git commands"
+
+Paul Bolle (2):
+      Documentation: merge: one <remote> is required
+      Documentation: add: <filepattern>... is optional
+
+Santi Béjar (2):
+      t5520-pull: Test for rebased upstream + fetch + pull --rebase
+      pull: support rebased upstream + fetch + pull --rebase
+
+Zoltán Füzesi (1):
+      gitweb: parse_commit_text encoding fix
+
+Štěpán Němec (1):
+      Fix typos in git-remote.txt and git-symbolic-ref.txt
+
+
+Version v1.6.4; changes since v1.6.3.4:
+---------------------------------------
+
+Alex Bennée (1):
+      Add -k option to cvsexportcommit to revert expanded CVS keywords in CVS working tree before applying commit patch
+
+Alex Riesen (3):
+      Quote LF in urls git fetch saves in FETCH_HEAD
+      Use UTF-8 instead of utf8 for backward compatibility
+      Improve the naming of guessed target repository for git clone
+
+Alex Vandiver (5):
+      git-svn: Fix for svn paths removed > log-window-size revisions ago
+      git-svn: Correctly report max revision when following deleted paths
+      git-svn: Set svn.authorsfile if it is passed to git svn clone
+      Make section_name_match start on '[', and return the length on success
+      After renaming a section, print any trailing variable definitions
+
+Allan Caffee (1):
+      graph API: Use horizontal lines for more compact graphs
+
+Andreas Ericsson (2):
+      fetch: Strip usernames from url's before storing them
+      mailinfo: Remove only one set of square brackets
+
+Ben Jackson (3):
+      Add 'git svn help [cmd]' which works outside a repo.
+      git-svn: speed up find_rev_before
+      Add 'git svn reset' to unwind 'git svn fetch'
+
+Benjamin Kramer (1):
+      imap-send: add support for IPv6
+
+Bert Wesarg (1):
+      builtin-remote: (get_one_entry): use strbuf
+
+Björn Steinbrink (2):
+      git-apply(1): Clarify that one can select where to apply the patch
+      Add a test showing that 'git repack' throws away grafted-away parents
+
+Brandon Casey (30):
+      t3900: use ancient iconv names for backward compatibility
+      Use 'UTF-8' rather than 'utf-8' everywhere for backward compatibility
+      builtin-mailinfo.c: compare character encodings case insensitively
+      builtin-mailinfo.c: use "ISO8859-1" instead of "latin1" as fallback encoding
+      t3901: avoid negation on right hand side of '|'
+      t3901: Use ISO8859-1 instead of ISO-8859-1 for backward compatibility
+      t9301: use ISO8859-1 rather than ISO-8859-1
+      t5100: use ancient encoding syntax for backwards compatibility
+      t8005: use more portable character encoding names
+      t8005: convert CP1251 character set to ISO8859-5
+      t8005: fix typo, it's ISO-8859-5, not KOI8-R
+      Makefile: use /usr/ucb/install on SunOS platforms rather than ginstall
+      Makefile: add NEEDS_RESOLV to optionally add -lresolv to compile arguments
+      On Solaris choose the OLD_ICONV iconv() declaration based on the UNIX spec
+      git-compat-util.h: tweak the way _XOPEN_SOURCE is set on Solaris
+      Makefile: define __sun__ on SunOS
+      Makefile: add section for SunOS 5.7
+      git-compat-util.h: avoid using c99 flex array feature with Sun compiler 5.8
+      git-send-email.perl: improve detection of MIME encoded-words
+      send-email: use UTF-8 rather than utf-8 for consistency
+      Makefile: Solaris needs HAVE_ALLOCA_H for alloca()
+      t/t9001-send-email.sh: ensure generated script is executed with $SHELL_PATH
+      git.c: avoid allocating one-too-many elements for new argv array
+      unpack-trees.c: work around run-time array initialization flaw on IRIX 6.5
+      git-compat-util.h: adjust for SGI IRIX 6.5
+      Makefile: add NEEDS_LIBGEN to optionally add -lgen to compile arguments
+      Makefile: add section for SGI IRIX 6.5
+      Makefile: update IRIX64 section
+      configure.ac: rework/fix the NEEDS_RESOLV and NEEDS_LIBGEN tests
+      configure.ac: properly unset NEEDS_SSL_WITH_CRYPTO when sha1 func is missing
+
+Christian Couder (30):
+      rev-list: make "estimate_bisect_steps" non static
+      rev-list: refactor printing bisect vars
+      bisect: move common bisect functionality to "bisect_common"
+      bisect--helper: add "--next-exit" to output bisect results
+      bisect: use "git bisect--helper --next-exit" in "git-bisect.sh"
+      bisect--helper: remove "--next-vars" option as it is now useless
+      rev-list: remove stringed output flag from "show_bisect_vars"
+      rev-parse: add --sq-quote to shell quote arguments
+      bisect: use "git rev-parse --sq-quote" instead of a custom "sq" function
+      am: simplify "sq" function by using "git rev-parse --sq-quote"
+      bisect: use "sha1_array" to store skipped revisions
+      bisect: implement "rev_argv_push" to fill an argv with revs
+      bisect: store good revisions in a "sha1_array"
+      bisect: use new "struct argv_array" to prepare argv for "setup_revisions"
+      bisect: remove too much function nesting
+      bisect: make skipped array functions more generic
+      bisect: automatically sort sha1_array if needed when looking it up
+      bisect: implement the "check_merge_bases" function
+      bisect: add "check_good_are_ancestors_of_bad" function
+      bisect: make "git bisect" use new "--next-all" bisect-helper function
+      bisect: rework some rev related functions to make them more reusable
+      commit: add function to unparse a commit and its parents
+      bisect: check ancestors without forking a "git rev-list" process
+      bisect: drop unparse_commit() and use clear_commit_marks()
+      bisect: display first bad commit without forking a new process
+      bisect: add parameters to "filter_skipped"
+      bisect: when skipping, choose a commit away from a skipped commit
+      t6030: test skipping away from an already skipped commit
+      bisect: use a PRNG with a bias when skipping away from untestable commits
+      Documentation: remove warning saying that "git bisect skip" may slow bisection
+
+Christian Stimming (1):
+      gitk: Update German translation.
+
+Clemens Buchacher (5):
+      http-push: reuse existing is_null_ref
+      match_refs: search ref list tail internally
+      test-lib: fail if invalid options are passed
+      test-lib: allow exit trap to be used for cleanup by tests
+      test-lib: fix http exit codes
+
+Dan McGee (1):
+      Unify signedness in hashing calls
+
+Daniel Trstenjak (2):
+      Show presence of stashed changes in bash prompt.
+      Show the presence of untracked files in the bash prompt.
+
+David Aguilar (5):
+      mergetool--lib: specialize diff options for emerge and ecmerge
+      mergetool--lib: add support for araxis merge
+      compat: add a mkstemps() compatibility function
+      compat: add a basename() compatibility function
+      diff: generate pretty filenames in prep_temp_blob()
+
+David Kågedal (1):
+      Update the documentation of the raw diff output format
+
+Dirk Süsserott (1):
+      gitk: Add option 'Simple history' to the options menu
+
+Edward Z. Yang (1):
+      connect.c: Support PuTTY plink and TortoisePlink as SSH on Windows
+
+Elijah Newren (8):
+      gitk: Make more options easily accessible from Edit View dialog
+      fast-export: Set revs.topo_order before calling setup_revisions
+      fast-export: Omit tags that tag trees
+      fast-export: Make sure we show actual ref names instead of "(null)"
+      fast-export: Do parent rewriting to avoid dropping relevant commits
+      fast-export: Add a --tag-of-filtered-object option for newly dangling tags
+      Add new fast-export testcases
+      fast-export: Document the fact that git-rev-list arguments are accepted
+
+Eric W. Biederman (1):
+      git-send-email: Handle quotes when parsing .mailrc files
+
+Eric Wong (14):
+      git-svn: refuse to dcommit non-UTF-8 messages
+      git-svn: convert globs to regexps for branch destinations
+      t9138: remove stray dot in test which broke bash
+      Allow the Unix epoch to be a valid commit date
+      git svn: allow uppercase UUIDs from SVN
+      git svn: rename tests that had conflicting numbers
+      git svn: fix reparenting when ugly http(s) URLs are used
+      git svn: fix shallow clone when upstream revision is too new
+      git svn: revert default behavior for --minimize-url
+      git svn: the branch command no longer needs the full path
+      t9142: stop httpd after the test
+      git svn: avoid escaping '/' when renaming/copying files
+      git svn: make minimize URL more reliable over http(s)
+      t9143: do not fail if Compress::Zlib is missing
+
+Eygene Ryabinkin (1):
+      git-svn testsuite: use standard configuration for Subversion tools
+
+Felipe Contreras (2):
+      Change prettify_ref to prettify_refname
+      Prettify log decorations even more
+
+Frank Lichtenheld (2):
+      Git.pm: Set GIT_WORK_TREE if we set GIT_DIR
+      Git.pm: Always set Repository to absolute path if autodetecting
+
+Giuseppe Bilotta (11):
+      git-am foreign patch support: introduce patch_format
+      git-am foreign patch support: autodetect some patch formats
+      git-am foreign patch support: StGIT support
+      git-am: refactor 'cleaning up and aborting'
+      gitweb: refactor author name insertion
+      gitweb: uniform author info for commit and commitdiff
+      gitweb: use git_print_authorship_rows in 'tag' view too
+      gitweb: (gr)avatar support
+      gitweb: gravatar url cache
+      gitweb: picon avatar provider
+      gitweb: add empty alt text to avatar img
+
+Greg Price (1):
+      Fix rebase -p --onto
+
+Heiko Voigt (2):
+      Extend sample update hook, disable modifying of existing tags
+      Extend sample pre-commit hook to check for non ascii filenames
+
+Hunter, D. Seth (1):
+      http-push: fix xml_entities() string parsing overrun
+
+Jakub Narebski (10):
+      gitweb: Remove function prototypes (cleanup)
+      gitweb: Do not use bareword filehandles
+      gitweb: Always use three argument form of open
+      gitweb: Always use three argument form of open
+      gitweb: Use block form of map/grep in a few cases more
+      gitweb: Replace wrongly added tabs with spaces
+      gitweb: Use capturing parentheses only when you intend to capture
+      gitweb: Simplify snapshot format detection logic in evaluate_path_info
+      gitweb: Remove unused $hash_base parameter from normalize_link_target
+      gitweb: Sanitize title attribute in format_subject_html
+
+Jeff King (8):
+      parseopt: add OPT_NEGBIT
+      convert bare readlink to strbuf_readlink
+      git-add: no need for -f when resolving a conflict in already tracked path
+      Makefile: refactor regex compat support
+      Makefile: use compat regex on Solaris
+      log-tree: fix confusing comment
+      Makefile: install 'git' in execdir
+      send-email: detect cycles in alias expansion
+
+Jim Meyering (2):
+      post-receive-email: hooks.showrev: show how to include both web link and patch
+      avoid NULL dereference on failed malloc
+
+Johan Herland (3):
+      Rename submodule.<name>.rebase to submodule.<name>.update
+      git-submodule: add support for --merge.
+      quickfetch(): Prevent overflow of the rev-list command line
+
+Johannes Schindelin (13):
+      git-add: introduce --edit (to edit the diff vs. the index)
+      t3702: fix reliance on SHELL_PATH being '/bin/sh'
+      MinGW: the path separator to split GITPERLLIB is ';' on Win32
+      MinGW: use POSIX signature of waitpid()
+      MinGW: Add a simple getpass()
+      MinGW: Fix compiler warning in merge-recursive
+      MinGW: GCC >= 4 does not need SNPRINTF_SIZE_CORR anymore
+      Quiet make: do not leave Windows behind
+      Work around a regression in Windows 7, causing erase_in_line() to crash sometimes
+      test-chmtime: work around Windows limitation
+      MinGW: fix warning about implicit declaration of _getch()
+      Fix warnings in nedmalloc when compiling with GCC 4.4.0
+      git repack: keep commits hidden by a graft
+
+Johannes Sixt (10):
+      gitk: Use --textconv to generate diff text
+      Simplify some instances of run_command() by using run_command_v_opt().
+      Simplify some 'fprintf(stderr); return -1;' by using 'return error()'
+      Fix typo in nedmalloc warning fix
+      compat/ has subdirectories: do not omit them in 'make clean'
+      daemon: send stderr of service programs to the syslog
+      upload-pack: squelch progress indicator if client cannot see it
+      receive-pack: do not send error details to the client
+      git-mv: fix directory separator treatment on Windows
+      MinGW: truncate exit()'s argument to lowest 8 bits
+
+Josh Micich (3):
+      mktree --missing: updated usage message and man page
+      mktree --batch: build more than one tree object
+      mktree: validate entry type in input
+
+Junio C Hamano (29):
+      Start 1.6.4 development
+      build-in git-mktree
+      mktree: use parse-options
+      builtin-mktree.c: use a helper function to handle one line of input
+      mktree: do not barf on a submodule commit
+      t1010: add mktree test
+      mktree --missing: allow missing objects
+      t3900: ISO-2022-JP has more than one popular variants
+      write-tree --ignore-cache-tree
+      Teach Solaris that _XOPEN_SOURCE=600 really menas XPG6
+      OpenSolaris 200811 (SunOS 5.11) does not want OLD_ICONV
+      cache-tree.c::cache_tree_find(): simplify internal API
+      t4007: modernize the style
+      Optimize "diff-index --cached" using cache-tree
+      Avoid "diff-index --cached" optimization under --find-copies-harder
+      Update draft release notes to 1.6.4
+      completion: fix PS1 display during an AM on detached HEAD
+      Documentation/git.txt: update links to release notes
+      Makefile: introduce SANE_TOOL_PATH for prepending required elements to PATH
+      Makefile: test-parse-options depends on parse-options.h
+      Makefile: insert SANE_TOOL_PATH to PATH before /bin or /usr/bin
+      die_errno(): double % in strerror() output just in case
+      Makefile: keep "git" when bindir is execdir
+      Revert "mailinfo: Remove only one set of square brackets"
+      push: do not give big warning when no preference is configured
+      Updates to draft release notes to 1.6.4
+      Update release notes for 1.6.4
+      GIT 1.6.4-rc3
+      GIT 1.6.4
+
+Kjetil Barvik (1):
+      symlinks.c: small style cleanup
+
+Larry D'Anna (1):
+      add --porcelain option to git-push
+
+Linus Torvalds (13):
+      Clean up and simplify rev_compare_tree()
+      Fix various sparse warnings in the git source code
+      git log: add '--merges' flag to match '--no-merges'
+      Add 'fill_directory()' helper function for directory traversal
+      Simplify read_directory[_recursive]() arguments
+      Avoid doing extra 'lstat()'s for d_type if we have an up-to-date cache entry
+      Avoid using 'lstat()' to figure out directories
+      Prepare symlink caching for thread-safety
+      Export thread-safe version of 'has_symlink_leading_path()'
+      Make index preloading check the whole path to the file
+      Make 'git show' more useful
+      Improve on the 'invalid object' error message at commit time
+      Fix extraneous lstat's in 'git checkout -f'
+
+Marc Branchaud (3):
+      git svn: Support multiple branch and tag paths in the svn repository.
+      git svn: cleanup t9138-multiple-branches
+      git svn: Doc update for multiple branch and tag paths
+
+Marius Storm-Olsen (2):
+      MinGW readdir reimplementation to support d_type
+      Add custom memory allocator to MinGW and MacOS builds
+
+Mark Lodato (3):
+      git-svn: add --authors-prog option
+      http.c: prompt for SSL client certificate password
+      http.c: add http.sslCertPasswordProtected option
+
+Markus Heidelberg (10):
+      show-branch: color the commit status signs
+      bash completion: show-branch color support
+      diff: do not color --stat output like patch context
+      gitk: Allow diff view without context lines
+      add a test for git-send-email for non-threaded mails
+      send-email: fix non-threaded mails
+      doc/send-email: clarify the behavior of --in-reply-to with --no-thread
+      add a test for git-send-email for threaded mails without chain-reply-to
+      send-email: fix threaded mails without chain-reply-to
+      send-email: fix a typo in a comment
+
+Martin Koegler (1):
+      git stash: modernize use of "dashed" git-XXX calls
+
+Martin Renold (1):
+      Remove filename from conflict markers
+
+Mattias Nissler (2):
+      git-svn: Always duplicate paths returned from get_log
+      git-svn: Fix branch detection when repository root is inaccessible
+
+Michael J Gruber (11):
+      Documentation: clarify / requirement in 'git check-ref-format'
+      Test tracking of non-commit upstreams
+      Fix behavior with non-commit upstream references
+      Allow push and fetch urls to be different
+      t5516: Check pushurl config setting
+      technical/api-remote: Describe new struct remote member pushurl
+      git-repack.txt: Clarify implications of -a for dumb protocols
+      builtin-remote: Show push urls as well
+      builtin-remote: Make "remote -v" display push urls
+      t4202-log.sh: Test git log --no-walk sort order
+      git-rerere.txt: Clarify ambiguity of the config variable
+
+Michael S. Tsirkin (1):
+      Add --reference option to git submodule.
+
+Michael Witten (6):
+      Docs: send-email: Put options back into alphabetical order
+      Docs: send-email: Refer to CONFIGURATION section for sendemail.multiedit
+      Docs: send-email: --smtp-server-port can take symbolic ports
+      send-email: Handle "GIT:" rather than "GIT: " during --compose
+      send-email: 'References:' should only reference what is sent
+      send-email: Remove superfluous `my $editor = ...'
+
+Michal Marek (1):
+      apply: handle filenames with double slashes better
+
+Michele Ballabio (1):
+      gitk: Add another string to translation
+
+Mike Hommey (7):
+      Don't expect verify_pack() callers to set pack_size
+      transport.c::get_refs_via_curl(): do not leak refs_url
+      http.c: new functions for the http API
+      transport.c::get_refs_via_curl(): use the new http API
+      http.c::http_fetch_ref(): use the new http API
+      http-push.c::remote_exists(): use the new http API
+      http-push.c::fetch_symref(): use the new http API
+
+Mike Ralphson (1):
+      cvsexportcommit: reorder tests to quiet intermittent failure
+
+Nanako Shiraishi (1):
+      Documentation/config.txt: a variable can be defined on the section header line
+
+Nguyễn Thái Ngọc Duy (3):
+      doc/git-rebase.txt: remove mention of multiple strategies
+      Terminate argv with NULL before calling setup_revisions()
+      t/t3400-rebase.sh: add more tests to help migrating git-rebase.sh to C
+
+Nick Edelen (1):
+      diff-tree -r -t: include added/removed directories in the output
+
+Nick Woolley (3):
+      git-cvsexportcommit can't commit files which have been removed from CVS
+      Remove archaic use of regex capture \1 in favour of $1
+      Avoid generating a warning if $fullname{$file} is undefined
+
+Paolo Bonzini (1):
+      Test cccmd in t9001-send-email.sh and fix some bugs
+
+Pat Thoyts (2):
+      gitk: Handle msysGit version during version comparisons
+      git: browsing paths with spaces when using the start command
+
+Paul Mackerras (1):
+      gitk: Check git version before using --textconv flag
+
+Peter Harris (1):
+      MinGW: Scan for \r in addition to \n when reading shbang lines
+
+Peter Hutterer (1):
+      git-submodule: add support for --rebase.
+
+Pierre Habouzit (5):
+      parse-options: add parse_options_check to validate option specs.
+      janitor: use NULL and not 0 for pointers.
+      refactor: use bitsizeof() instead of 8 * sizeof()
+      janitor: add DIV_ROUND_UP and use it.
+      janitor: useless checks before free
+
+Ralf Wildenhues (1):
+      configure: test whether -lresolv is needed
+
+René Scharfe (13):
+      parseopt: add OPT_NEGBIT
+      parseopt: add OPT_NUMBER_CALLBACK
+      parseopt: add PARSE_OPT_NODASH
+      grep: remove global variable builtin_grep
+      grep: use parseopt
+      grep: make callback functions static
+      userdiff: add xdiff_clear_find_func()
+      grep: move context hunk mark handling into show_line()
+      grep: print context hunk marks between files
+      grep: handle pre context lines on demand
+      grep: add option -p/--show-function
+      grep -p: support user defined regular expressions
+      grep: simplify -p output
+
+Robert Allan Zeh (1):
+      git svn: add gc command
+
+Robin Rosenberg (1):
+      Disallow '\' in ref names
+
+SZEDER Gábor (5):
+      bash: remove always true if statement from __git_ps1()
+      Documentation: mention 'git stash pop --index' option explicitly
+      bash: add support for 'git stash pop --index' option
+      Document 'git (rev-list|log) --merges'
+      bash: add '--merges' to common 'git log' options
+
+Santi Béjar (3):
+      parse-remote: function to get the tracking branch to be merge
+      parse-remote: support default reflist in get_remote_merge_branch
+      parse-remote: remove unused functions
+
+Sean Estabrooks (1):
+      Trivial path quoting fixes in git-instaweb
+
+Sitaram Chamarty (1):
+      allow -t abbreviation for --track in git branch
+
+Steffen Prohaska (1):
+      MinGW: Teach Makefile to detect msysgit and apply specific settings
+
+Stephen Boyd (22):
+      bash completion: complete variable names for "git config" with options
+      format-patch: migrate to parse-options API
+      parse-options: add PARSE_OPT_LITERAL_ARGHELP for complicated argh's
+      show-branch: migrate to parse-options API
+      parse-opts: prepare for OPT_FILENAME
+      parse-opts: add OPT_FILENAME and transition builtins
+      t5500: Modernize test style
+      t9120: don't expect failure with SVN_HTTPD_PORT unset
+      config.txt: document add.ignore-errors
+      git-show-branch.txt: document --date-order option
+      parse-options: make OPT_INTEGER's argh explicit
+      parse-options: simplify usage argh handling
+      show-branch: don't use LASTARG_DEFAULT with OPTARG
+      t4150: test applying with a newline in subject
+      am: suppress apply errors when using 3-way
+      git-sh-setup: introduce say() for quiet options
+      submodule, repack: migrate to git-sh-setup's say()
+      am, rebase: teach quiet option
+      stash: teach quiet option
+      show-ref: migrate to parse-options
+      completion: add missing config variables
+      completion: __git_config_get_set_variables() handle values with spaces
+
+Tay Ray Chuan (15):
+      t5540-http-push: test fetching of loose objects
+      t5540-http-push: test fetching of packed objects
+      http-push: send out fetch requests on queue
+      http-push: fix missing "#ifdef USE_CURL_MULTI" around "is_running_queue"
+      t5550-http-fetch: test fetching of packed objects
+      http-push, http-walker: style fixes
+      http-walker: verify remote packs
+      http*: copy string returned by sha1_to_hex
+      http-push: do not SEGV after fetching a bad pack idx file
+      http*: move common variables and macros to http.[ch]
+      http: create function end_url_with_slash
+      http*: add http_get_info_packs
+      http: use new http API in fetch_index()
+      http*: add helper methods for fetching packs
+      http*: add helper methods for fetching objects (loose)
+
+Thomas Rast (6):
+      Documentation: teach stash/pop workflow instead of stash/apply
+      git-svn: let 'dcommit $rev' work on $rev instead of HEAD
+      Introduce die_errno() that appends strerror(errno) to die()
+      Convert existing die(..., strerror(errno)) to die_errno()
+      Use die_errno() instead of die() when checking syscalls
+      Disable asciidoc 8.4.1+ semantics for `{plus}` and friends
+
+Todd Zullinger (1):
+      completion: Add --full-diff to log options
+
+Trent Piepho (1):
+      send-email: Add config option for sender address
+
+Ulrich Dangel (1):
+      git-svn: Canonicalize svn urls to prevent libsvn assertion
+
+Uwe Kleine-König (2):
+      more tests for git rev-parse --parse-opt
+      parse-opt: make PARSE_OPT_STOP_AT_NON_OPTION available to git rev-parse
+
+Wincent Colaiuta (1):
+      gitweb: update Git homepage URL
+
+Yann Dirson (6):
+      git-svn.txt: stop using dash-form of commands.
+      git-svn.txt: make formatting more consistent.
+      git-svn.txt: fix fetch flags incorrectly documented as init flags.
+      git-svn.txt: fix description of fetch flags accepted by clone.
+      List send-email config options in config.txt.
+      Improve doc for format-patch threading options.
+
+
+Version v1.6.3.4; changes since v1.6.3.3:
+-----------------------------------------
+
+Brandon Casey (2):
+      refs.c: release file descriptor on error return
+      sha1_name.c: avoid unnecessary strbuf_release
+
+Chris Frey (1):
+      git-remote: fix missing .uploadpack usage for show command
+
+Clemens Buchacher (1):
+      fetch: do not create ref from empty name
+
+Giuseppe Bilotta (1):
+      gitweb/README: fix AliasMatch in example
+
+Johannes Sixt (2):
+      t3700-add: add a POSIXPERM prerequisite to a new test
+      Makefile: git.o depends on library headers
+
+Junio C Hamano (9):
+      request-pull: really disable pager
+      checkout -f: deal with a D/F conflict entry correctly
+      combine-diff.c: fix performance problem when folding common deleted lines
+      diff --cc: a lost line at the beginning of the file is shown incorrectly
+      do_one_ref(): null_sha1 check is not about broken ref
+      SunOS grep does not understand -C<n> nor -e
+      Fix severe breakage in "git-apply --whitespace=fix"
+      t8005: Nobody writes Russian in shift_jis
+      GIT 1.6.3.4
+
+Linus Torvalds (3):
+      git branch: fix performance problem
+      git branch: avoid unnecessary object lookups
+      git branch: clean up detached branch handling
+
+Matthias Andree (1):
+      Fix export_marks() error handling.
+
+Michal Marek (1):
+      request-pull: really really disable pager
+
+Miklos Vajna (1):
+      git-submodule documentation: fix foreach example
+
+René Scharfe (1):
+      attr: plug minor memory leak
+
+Roel Kluin (1):
+      fread does not return negative on error
+
+SZEDER Gábor (1):
+      Trailing whitespace and no newline fix
+
+Sitaram Chamarty (1):
+      Documentation: update description of shell aliases
+
+Stephen Boyd (2):
+      add: allow configurations to be overriden by command line
+      config.txt: document add.ignore-errors
+
+Thadeu Lima de Souza Cascardo (1):
+      Makes some cleanup/review in gittutorial
+
+Thomas Rast (2):
+      Test git archive --remote
+      Test grep --and/--or/--not
+
+Tom Grennan (1):
+      request-pull: allow ls-remote to notice remote.$nickname.uploadpack
+
+
 Version v1.6.3.3; changes since v1.6.3.2:
 -----------------------------------------
 

@@ -1,4 +1,4 @@
-From 12d3d38a24a38032e3a6aa05759e164e9320fd5c Mon Sep 17 00:00:00 2001
+From e49faa998580ba2967dbe4aa460e9f137968f345 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
 Subject: [PATCH 3/5] bug#448655: check /etc/mailname if author email is unknown
@@ -51,5 +51,5 @@ index 99f1c85..300525a 100644
  		struct hostent *he = gethostbyname(git_default_email + len);
  		char *domainname;
 -- 
-1.6.3.1
+debian.1.6.3.3.1
 

@@ -1,3 +1,11 @@
+git-core (1:1.6.4.3-1) unstable; urgency=low
+
+  * new upstream release (closes: #546709).
+    * git-cvsserver: no longer use deprecated 'git-subcommand' commands
+      (closes: #536067).
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 16 Sep 2009 09:16:07 +0000
+
 git-core (1:1.6.3.3-1) unstable; urgency=high
 
   * new upstream point release.

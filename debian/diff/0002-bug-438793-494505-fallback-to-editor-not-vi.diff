@@ -1,4 +1,4 @@
-From 83ad5eb412168cdc79cf53fa5a265613181798b1 Mon Sep 17 00:00:00 2001
+From 2ee8d6ebee6ed7a66e65e897659d6456dc51a303 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
 Subject: [PATCH 2/5] bug#438793, #494505: fallback to 'editor' not 'vi'
@@ -42,10 +42,10 @@ index 4d469d0..4823e74 100644
  	if (strcmp(editor, ":")) {
  		size_t len = strlen(editor);
 diff --git a/git-add--interactive.perl b/git-add--interactive.perl
-index df9f231..cbc750c 100755
+index 06f7060..979db49 100755
 --- a/git-add--interactive.perl
 +++ b/git-add--interactive.perl
-@@ -891,7 +891,7 @@ EOF
+@@ -895,7 +895,7 @@ EOF
  	close $fh;
  
  	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor")
@@ -55,10 +55,10 @@ index df9f231..cbc750c 100755
  
  	if ($? != 0) {
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 8382339..a69ab19 100755
+index c41c2f7..860b164 100755
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
-@@ -67,14 +67,14 @@ git_editor() {
+@@ -104,14 +104,14 @@ git_editor() {
  	case "$GIT_EDITOR,$TERM" in
  	,dumb)
  		echo >&2 "No editor specified in GIT_EDITOR, core.editor, VISUAL,"
@@ -76,10 +76,10 @@ index 8382339..a69ab19 100755
  
  is_bare_repository () {
 diff --git a/git-svn.perl b/git-svn.perl
-index ef1d30d..1add6f0 100755
+index 24bdbf5..ba77558 100755
 --- a/git-svn.perl
 +++ b/git-svn.perl
-@@ -1166,7 +1166,7 @@ sub get_commit_entry {
+@@ -1291,7 +1291,7 @@ sub get_commit_entry {
  	close $log_fh or croak $!;
  
  	if ($_edit || ($type eq 'tree')) {
@@ -148,5 +148,5 @@ index b647957..97382ec 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.6.3.1
+debian.1.6.3.3.1
 
