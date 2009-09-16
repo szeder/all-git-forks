@@ -37,7 +37,7 @@ static void create_directories(const char *path, int path_len,
 			if (errno == EEXIST && state->force &&
 			    !unlink_or_warn(buf) && !mkdir(buf, 0777))
 				continue;
-			die("cannot create directory at %s", buf);
+			die_errno("cannot create directory at '%s'", buf);
 		}
 	}
 	free(buf);
@@ -51,7 +51,7 @@ static void remove_subtree(const char *path)
 	char *name;
 
 	if (!dir)
-		die("cannot opendir %s (%s)", path, strerror(errno));
+		die_errno("cannot opendir '%s'", path);
 	strcpy(pathbuf, path);
 	name = pathbuf + strlen(path);
 	*name++ = '/';
@@ -61,15 +61,15 @@ static void remove_subtree(const char *path)
 			continue;
 		strcpy(name, de->d_name);
 		if (lstat(pathbuf, &st))
-			die("cannot lstat %s (%s)", pathbuf, strerror(errno));
+			die_errno("cannot lstat '%s'", pathbuf);
 		if (S_ISDIR(st.st_mode))
 			remove_subtree(pathbuf);
 		else if (unlink(pathbuf))
-			die("cannot unlink %s (%s)", pathbuf, strerror(errno));
+			die_errno("cannot unlink '%s'", pathbuf);
 	}
 	closedir(dir);
 	if (rmdir(path))
-		die("cannot rmdir %s (%s)", path, strerror(errno));
+		die_errno("cannot rmdir '%s'", path);
 }
 
 static int create_file(const char *path, unsigned int mode)
@@ -175,6 +175,19 @@ static int write_entry(struct cache_entry *ce, char *path, const struct checkout
 	return 0;
 }
 
+/*
+ * This is like 'lstat()', except it refuses to follow symlinks
+ * in the path.
+ */
+int check_path(const char *path, int len, struct stat *st)
+{
+	if (has_symlink_leading_path(path, len)) {
+		errno = ENOENT;
+		return -1;
+	}
+	return lstat(path, st);
+}
+
 int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *topath)
 {
 	static char path[PATH_MAX + 1];
@@ -188,7 +201,7 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 	strcpy(path + len, ce->name);
 	len += ce_namelen(ce);
 
-	if (!lstat(path, &st)) {
+	if (!check_path(path, len, &st)) {
 		unsigned changed = ce_match_stat(ce, &st, CE_MATCH_IGNORE_VALID);
 		if (!changed)
 			return 0;
