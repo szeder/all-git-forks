@@ -866,7 +866,7 @@ static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 	int ret = 0;
 	char *hex = xstrdup(sha1_to_hex(sha1));
 	char *filename;
-	char *url = NULL;
+	char *url;
 	struct strbuf buf = STRBUF_INIT;
 
 	if (has_pack_index(sha1)) {
@@ -885,9 +885,9 @@ static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 	if (http_get_file(url, filename, 0) != HTTP_OK)
 		ret = error("Unable to get pack index %s\n", url);
 
+	free(url);
 cleanup:
 	free(hex);
-	free(url);
 	return ret;
 }
 
