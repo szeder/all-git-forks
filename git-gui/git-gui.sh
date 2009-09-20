@@ -2868,6 +2868,10 @@ if {[is_enabled branch]} {
 		-accelerator $M1T-M
 	lappend disable_on_lock \
 		[list .mbar.merge entryconf [.mbar.merge index last] -state]
+	.mbar.merge add command -label [mc "Review Topic..."] \
+		-command {merge::dialog review}
+	lappend disable_on_lock \
+		[list .mbar.merge entryconf [.mbar.merge index last] -state]
 	.mbar.merge add command -label [mc "Abort Merge..."] \
 		-command merge::reset_hard
 	lappend disable_on_lock \

@@ -81,12 +81,68 @@ method _visualize {} {
 	}
 }
 
+method _update_upstream {} {
+	global repo_config index_lock_type
+
+	set upstream_branch $repo_config(gui.upstreambranch)
+	set remote $repo_config(gui.defaultremote)
+
+	if {$upstream_branch eq {} || $remote eq {}} {
+		info_popup [mc "You need to set the configuration \
+			variables gui.upstreambranch and gui.defaultremote so \
+			review topic can work"]
+		return 0
+	}
+
+	#TODO: find out why this does not return on failure
+	if {![fetch_from $remote {close_on_success}]} {
+		return 0
+	}
+
+	set co [::checkout_op::new \
+		$remote/$upstream_branch \
+		{} \
+		refs/heads/$upstream_branch]
+
+	#TODO:
+	#$co parent $w
+	$co enable_create   1
+	$co enable_merge    ff
+	$co enable_checkout 1
+
+	set spec [list refs/remotes/$remote/$upstream_branch \
+	                       $remote \
+			       refs/heads/$upstream_branch]
+
+	$co enable_fetch $spec
+	$co remote_source $spec
+
+	if {[$co run]} {
+		while {$index_lock_type ne {none}} {
+			vwait index_lock_type
+		}
+		return 1
+	} else {
+		while {$index_lock_type ne {none}} {
+			vwait index_lock_type
+		}
+		return 0
+	}
+}
+
 method _start {} {
-	global HEAD current_branch remote_url
+	global HEAD current_branch remote_url merge_type
 	global _last_merged_branch
 
 	set name [_rev $this]
 	if {$name eq {}} {
+		return
+	}
+
+	if {$merge_type eq "review"} {
+		_visualize $this
+		$w.buttons.merge configure -text [mc Merge]
+		set merge_type normal
 		return
 	}
 
@@ -139,17 +195,34 @@ method _finish {cons ok} {
 	delete_this
 }
 
-constructor dialog {} {
+constructor dialog {{dialog_type normal}} {
 	global current_branch
 	global M1B use_ttk NS
+	global merge_type
+
+	set merge_type $dialog_type
+	set start_button [mc Merge]
+	set action_name "Merge Into"
+	set dialog_title [mc "Merge"]
+
+	if { $merge_type eq "review" } {
+		if {![_update_upstream $this]} {
+			delete_this
+			return
+		}
+		set start_button [mc Review]
+		set action_name [mc "Review for Merge Into"]
+		set dialog_title [mc Review]
+	}
 
 	if {![_can_merge $this]} {
+		info_popup failed_can_merge
 		delete_this
 		return
 	}
 
 	make_dialog top w
-	wm title $top [append "[appname] ([reponame]): " [mc "Merge"]]
+	wm title $top [append "[appname] ([reponame]): " $dialog_title]
 	if {$top ne {.}} {
 		wm geometry $top "+[winfo rootx .]+[winfo rooty .]"
 	}
@@ -157,7 +230,7 @@ constructor dialog {} {
 	set _start [cb _start]
 
 	${NS}::label $w.header \
-		-text [mc "Merge Into %s" $current_branch] \
+		-text [mc "$action_name %s" $current_branch] \
 		-font font_uibold
 	pack $w.header -side top -fill x
 
@@ -167,7 +240,7 @@ constructor dialog {} {
 		-command [cb _visualize]
 	pack $w.buttons.visualize -side left
 	${NS}::button $w.buttons.merge \
-		-text [mc Merge] \
+		-text $start_button \
 		-command $_start
 	pack $w.buttons.merge -side right
 	${NS}::button $w.buttons.cancel \
