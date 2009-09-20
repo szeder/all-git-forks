@@ -1,7 +1,7 @@
 # git-gui transport (fetch/push) support
 # Copyright (C) 2006, 2007 Shawn Pearce
 
-proc fetch_from {remote} {
+proc fetch_from {remote {close_after {}}} {
 	set w [console::new \
 		[mc "fetch %s" $remote] \
 		[mc "Fetching new changes from %s" $remote]]
@@ -10,7 +10,15 @@ proc fetch_from {remote} {
 	if {[is_config_true gui.pruneduringfetch]} {
 		lappend cmds [list exec git remote prune $remote]
 	}
-	console::chain $w $cmds
+	set ok [console::chain $w $cmds]
+
+	if {$ok} {
+		if {$close_after ne {}} {
+			console::close_window $w
+		}
+		return 1
+	}
+	return 0
 }
 
 proc prune_from {remote} {

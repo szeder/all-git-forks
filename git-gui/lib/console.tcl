@@ -168,6 +168,7 @@ method chain {cmdlist {ok 1}} {
 	} else {
 		done $this $ok
 	}
+	return $ok
 }
 
 method insert {txt} {
@@ -176,6 +177,11 @@ method insert {txt} {
 	$w_t insert end "$txt\n"
 	set console_cr [$w_t index {end -1c}]
 	$w_t conf -state disabled
+}
+
+method close_window {} {
+	wm protocol $w WM_DELETE_WINDOW {}
+	destroy $w
 }
 
 method done {ok} {
