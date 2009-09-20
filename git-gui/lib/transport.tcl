@@ -59,10 +59,63 @@ proc push_to {remote} {
 	console::exec $w $cmd
 }
 
+proc compose_email {to subject} {
+	set mail_link mailto:
+	append mail_link $to "?subject=" $subject
+	start_browser $mail_link
+}
+
+proc after_push_anywhere_action {cons ok} {
+	global push_email r_url branches
+
+	console::done $cons $ok
+
+	if {$ok} {
+		if {$push_email} {
+			set rconfig_var "remote.$r_url.url"
+			set remote_url [exec git config $rconfig_var]
+			set remote_short_name [lindex [split $remote_url / ] end ]
+			set remote_short_name [lindex [split $remote_short_name . ] 0 ]
+			# TODO: create a configuration variable for the
+			# subject
+			set email_subject "Review%20request:%20$remote_short_name:$branches"
+			compose_email {} $email_subject
+		}
+	}
+}
+
+proc do_push_on_change_branch {w} {
+	global upstream_branch
+
+	$w.options.email select
+
+	set cnt 0
+	set b {}
+	foreach i [$w.source.l curselection] {
+		set b [$w.source.l get $i]
+		incr cnt
+	}
+
+	if {$cnt != 1} {
+		$w.options.email deselect
+		$w.options.email configure -state disabled
+		return
+	}
+
+	$w.options.email configure -state normal
+
+	if { $b eq $upstream_branch } {
+		if {[is_config_true gui.emailafterpush]} {
+			$w.options.email deselect
+		}
+	}
+}
+
 proc start_push_anywhere_action {w} {
 	global push_urltype push_remote push_url push_thin push_tags
 	global push_force
 	global repo_config
+	global r_url branches
 
 	set is_mirror 0
 	set r_url {}
@@ -93,9 +146,11 @@ proc start_push_anywhere_action {w} {
 			[mc "Mirroring to %s" $r_url]]
 	} else {
 		set cnt 0
+		set branches {}
 		foreach i [$w.source.l curselection] {
 			set b [$w.source.l get $i]
 			lappend cmd "refs/heads/$b:refs/heads/$b"
+			lappend branches $b
 			incr cnt
 		}
 		if {$cnt == 0} {
@@ -110,7 +165,7 @@ proc start_push_anywhere_action {w} {
 			[mc "push %s" $r_url] \
 			[mc "Pushing %s %s to %s" $cnt $unit $r_url]]
 	}
-	console::exec $cons $cmd
+	console::exec $cons $cmd "after_push_anywhere_action $cons"
 	destroy $w
 }
 
@@ -120,7 +175,8 @@ trace add variable push_remote write \
 proc do_push_anywhere {} {
 	global all_remotes current_branch
 	global push_urltype push_remote push_url push_thin push_tags
-	global push_force use_ttk NS
+	global push_force use_ttk NS push_email upstream_branch
+	global repo_config
 
 	set w .push_setup
 	toplevel $w
@@ -149,6 +205,9 @@ proc do_push_anywhere {} {
 		-height 10 \
 		-width 70 \
 		-selectmode extended
+	if {[is_config_true gui.emailafterpush]} {
+		bind $w.source.l <ButtonRelease-1> [list do_push_on_change_branch $w]
+	}
 	foreach h [load_all_heads] {
 		$w.source.l insert end $h
 		if {$h eq $current_branch} {
@@ -215,6 +274,11 @@ proc do_push_anywhere {} {
 		-text [mc "Include tags"] \
 		-variable push_tags
 	grid $w.options.tags -columnspan 2 -sticky w
+	checkbutton $w.options.email \
+		-text [mc "Compose email with review request"] \
+		-variable push_email
+	grid $w.options.email -columnspan 2 -sticky w
+	$w.options.email deselect
 	grid columnconfigure $w.options 1 -weight 1
 	pack $w.options -anchor nw -fill x -pady 5 -padx 5
 
@@ -222,6 +286,13 @@ proc do_push_anywhere {} {
 	set push_force 0
 	set push_thin 0
 	set push_tags 0
+	set push_email 0
+
+	set upstream_branch $repo_config(gui.upstreambranch)
+
+	if {[is_config_true gui.emailafterpush]} {
+		do_push_on_change_branch $w
+	}
 
 	bind $w <Visibility> "grab $w; focus $w.buttons.create"
 	bind $w <Key-Escape> "destroy $w"
