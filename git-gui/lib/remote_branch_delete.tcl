@@ -22,7 +22,7 @@ field head_cache
 field full_cache
 field cached
 
-constructor dialog {} {
+constructor dialog {{initial_remote origin}} {
 	global all_remotes M1B use_ttk NS
 
 	make_dialog top w
@@ -58,8 +58,8 @@ constructor dialog {} {
 			eval tk_optionMenu $w.dest.remote_m @remote $all_remotes
 		}
 		grid $w.dest.remote_r $w.dest.remote_m -sticky w
-		if {[lsearch -sorted -exact $all_remotes origin] != -1} {
-			set remote origin
+		if {[lsearch -sorted -exact $all_remotes $initial_remote] != -1} {
+			set remote $initial_remote
 		} else {
 			set remote [lindex $all_remotes 0]
 		}
