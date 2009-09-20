@@ -2339,8 +2339,22 @@ proc do_quit {{rc {1}}} {
 	destroy .
 }
 
+proc ui_finalize_startup {} {
+	global repo_config
+
+	set defaultremote $repo_config(gui.defaultremote)
+	if {[is_config_true gui.fetchonstartup] && $defaultremote ne {}} {
+		fetch_from $defaultremote {close_on_success}
+	}
+
+	if {[is_enabled multicommit] && ![is_config_false gui.gcwarning]} {
+		hint_gc
+	}
+	ui_ready
+}
+
 proc do_rescan {} {
-	rescan ui_ready
+	rescan ui_finalize_startup
 }
 
 proc ui_do_rescan {} {
@@ -3948,14 +3962,6 @@ after 1 {
 	}
 }
 
-set defaultremote $repo_config(gui.defaultremote)
-if {[is_config_true gui.fetchonstartup] && $defaultremote ne {}} {
-	after 500 {fetch_from $defaultremote {close_on_success}}
-}
-
-if {[is_enabled multicommit] && ![is_config_false gui.gcwarning]} {
-	after 1000 hint_gc
-}
 if {[is_enabled retcode]} {
 	bind . <Destroy> {+terminate_me %W}
 }
