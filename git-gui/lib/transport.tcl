@@ -66,7 +66,7 @@ proc compose_email {to subject} {
 }
 
 proc after_push_anywhere_action {cons ok} {
-	global push_email r_url branches
+	global push_email delete_after_push r_url branches
 
 	console::done $cons $ok
 
@@ -81,13 +81,21 @@ proc after_push_anywhere_action {cons ok} {
 			set email_subject "Review%20request:%20$remote_short_name:$branches"
 			compose_email {} $email_subject
 		}
+		if {$delete_after_push} {
+			remote_branch_delete::dialog $r_url
+		}
 	}
 }
 
 proc do_push_on_change_branch {w} {
 	global upstream_branch
 
-	$w.options.email select
+	if {[is_config_true gui.emailafterpush]} {
+		$w.options.email select
+	}
+	if {[is_config_true gui.deleteafterpush]} {
+		$w.options.delete_after_push deselect
+	}
 
 	set cnt 0
 	set b {}
@@ -99,6 +107,7 @@ proc do_push_on_change_branch {w} {
 	if {$cnt != 1} {
 		$w.options.email deselect
 		$w.options.email configure -state disabled
+		$w.options.delete_after_push deselect
 		return
 	}
 
@@ -107,6 +116,9 @@ proc do_push_on_change_branch {w} {
 	if { $b eq $upstream_branch } {
 		if {[is_config_true gui.emailafterpush]} {
 			$w.options.email deselect
+		}
+		if {[is_config_true gui.deleteafterpush]} {
+			$w.options.delete_after_push select
 		}
 	}
 }
@@ -205,7 +217,8 @@ proc do_push_anywhere {} {
 		-height 10 \
 		-width 70 \
 		-selectmode extended
-	if {[is_config_true gui.emailafterpush]} {
+	if {[is_config_true gui.emailafterpush] \
+	    || [is_config_true gui.deleteafterpush]} {
 		bind $w.source.l <ButtonRelease-1> [list do_push_on_change_branch $w]
 	}
 	foreach h [load_all_heads] {
@@ -279,6 +292,11 @@ proc do_push_anywhere {} {
 		-variable push_email
 	grid $w.options.email -columnspan 2 -sticky w
 	$w.options.email deselect
+	checkbutton $w.options.delete_after_push \
+		-text [mc "Launch delete dialog after push"] \
+		-variable delete_after_push
+	grid $w.options.delete_after_push -columnspan 2 -sticky w
+	$w.options.delete_after_push deselect
 	grid columnconfigure $w.options 1 -weight 1
 	pack $w.options -anchor nw -fill x -pady 5 -padx 5
 
@@ -287,10 +305,12 @@ proc do_push_anywhere {} {
 	set push_thin 0
 	set push_tags 0
 	set push_email 0
+	set delete_after_push 0
 
 	set upstream_branch $repo_config(gui.upstreambranch)
 
-	if {[is_config_true gui.emailafterpush]} {
+	if {[is_config_true gui.emailafterpush] \
+	    || [is_config_true gui.deleteafterpush]} {
 		do_push_on_change_branch $w
 	}
 

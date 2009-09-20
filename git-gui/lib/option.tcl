@@ -151,6 +151,7 @@ proc do_options {} {
 		{b gui.textconv {mc "Use Textconv For Diffs and Blames"}}
 		{b gui.fastcopyblame {mc "Blame Copy Only On Changed Files"}}
 		{b gui.emailafterpush {mc "Open Email Composer after Push of Feature Branch"}}
+		{b gui.deleteafterpush {mc "Open Remote Delete Dialog On Push of Upstream Branch"}}
 		{t gui.upstreambranch {mc "Upstream branch"}}
 		{i-20..200 gui.copyblamethreshold {mc "Minimum Letters To Blame Copy On"}}
 		{i-0..300 gui.blamehistoryctx {mc "Blame History Context Radius (days)"}}
