@@ -882,6 +882,8 @@ set default_config(gui.fastcopyblame) false
 set default_config(gui.emailafterpush) false
 set default_config(gui.deleteafterpush) false
 set default_config(gui.upstreambranch) {master}
+set default_config(gui.defaultremote) {origin}
+set default_config(gui.fetchonstartup) false
 set default_config(gui.copyblamethreshold) 40
 set default_config(gui.blamehistoryctx) 7
 set default_config(gui.diffcontext) 5
@@ -3941,6 +3943,12 @@ after 1 {
 		$ui_comm configure -state disabled -background gray
 	}
 }
+
+set defaultremote $repo_config(gui.defaultremote)
+if {[is_config_true gui.fetchonstartup] && $defaultremote ne {}} {
+	after 500 {fetch_from $defaultremote {close_on_success}}
+}
+
 if {[is_enabled multicommit] && ![is_config_false gui.gcwarning]} {
 	after 1000 hint_gc
 }

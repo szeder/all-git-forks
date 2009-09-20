@@ -152,7 +152,9 @@ proc do_options {} {
 		{b gui.fastcopyblame {mc "Blame Copy Only On Changed Files"}}
 		{b gui.emailafterpush {mc "Open Email Composer after Push of Feature Branch"}}
 		{b gui.deleteafterpush {mc "Open Remote Delete Dialog On Push of Upstream Branch"}}
+		{b gui.fetchonstartup {mc "Fetch default remote on startup"}}
 		{t gui.upstreambranch {mc "Upstream branch"}}
+		{t gui.defaultremote {mc "Default remote repository"}}
 		{i-20..200 gui.copyblamethreshold {mc "Minimum Letters To Blame Copy On"}}
 		{i-0..300 gui.blamehistoryctx {mc "Blame History Context Radius (days)"}}
 		{i-1..99 gui.diffcontext {mc "Number of Diff Context Lines"}}
