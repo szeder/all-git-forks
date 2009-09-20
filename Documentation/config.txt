@@ -1188,6 +1188,36 @@ gui.blamehistoryctx::
 	Context` menu item is invoked from 'git gui blame'. If this
 	variable is set to zero, the whole history is shown.
 
+gui.emailafterpush::
+	The push dialog can compose a review email if you push a feature
+	branch. If this option is set to true the checkbox will be
+	automatically enabled when you select a feature branch. The
+	upstream (main) branch is determined from the
+	`gui.upstreambranch` option.
+
+gui.deleteafterpush::
+	If you push a branch in git gui you can enable a checkbox which
+	will open the remote delete branch dialog after a push. Setting
+	this variable to true will automatically check that checkbox
+	when you select to push the upstream (main) branch. The upstream
+	branch can be configured using the `gui.upstreambranch` configuration
+	variable.
+
+gui.upstreambranch::
+	This configures which branchname will be referred to as the
+	upstream (main) branch on remote repositories. Currently this
+	option is used in combination with the options
+	`gui.emailafterpush` and `gui.deleteafterpush`.
+
+gui.fetchonstartup::
+	Boolean, if set all branches from remote determined by
+	`gui.defaulremote` will be fetched on startup of git gui.
+
+gui.defaultremote::
+	String variable which determines from which remote git gui will
+	automatically start a fetch on startup. If this variable is not
+	set the automatic fetch is disabled.
+
 guitool.<name>.cmd::
 	Specifies the shell command line to execute when the corresponding item
 	of the linkgit:git-gui[1] `Tools` menu is invoked. This option is
