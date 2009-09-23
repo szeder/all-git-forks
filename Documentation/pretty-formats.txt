@@ -123,7 +123,8 @@ The placeholders are:
 - '%s': subject
 - '%f': sanitized subject line, suitable for a filename
 - '%b': body
-- '%N': commit notes
+- '%B': body without trailing newline
+- '%B(n)': body indented by n spaces
 - '%Cred': switch color to red
 - '%Cgreen': switch color to green
 - '%Cblue': switch color to blue
@@ -131,6 +132,7 @@ The placeholders are:
 - '%C(...)': color specification, as described in color.branch.* config option
 - '%m': left, right or boundary mark
 - '%n': newline
+- '%N': commit notes
 - '%x00': print a byte from a hex code
 
 * 'tformat:'

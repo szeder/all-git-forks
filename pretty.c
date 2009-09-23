@@ -604,15 +604,18 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 	const char *msg = commit->buffer;
 	struct commit_list *p;
 	int h1, h2;
+	const char *body = msg + c->body_off;
+	const char *end = NULL;
+
+	/* check if we have arguments to the placeholder */
+	if (placeholder[1] == '(')
+		end = strchr(placeholder + 2, ')');
 
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
 	case 'C':
-		if (placeholder[1] == '(') {
-			const char *end = strchr(placeholder + 2, ')');
+		if (end) {
 			char color[COLOR_MAXLEN];
-			if (!end)
-				return 0;
 			color_parse_mem(placeholder + 2,
 					end - (placeholder + 2),
 					"--pretty format", color);
@@ -738,7 +741,20 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 		format_sanitized_subject(sb, msg + c->subject_off);
 		return 1;
 	case 'b':	/* body */
-		strbuf_addstr(sb, msg + c->body_off);
+		strbuf_addstr(sb, body);
+		return 1;
+	case 'B':	/* body without trailing newline */
+		if (end) {
+			char *endp = NULL;
+			int indent = strtol(placeholder + 2, &endp, 10);
+			if (placeholder + 2 == endp || *endp != ')' || indent < 0)
+				return 0;
+			pp_remainder(CMIT_FMT_MEDIUM, &body, sb, indent);
+			strbuf_rtrim(sb);
+			return end - placeholder + 1;
+		}
+		strbuf_addstr(sb, body);
+		strbuf_rtrim(sb);
 		return 1;
 	}
 	return 0;	/* unknown placeholder */
