@@ -13,13 +13,45 @@
 #define CHILD_SHOWN	(1u<<6)
 #define ADDED		(1u<<7)	/* Parents already parsed and added? */
 #define SYMMETRIC_LEFT	(1u<<8)
-#define ALL_REV_FLAGS	((1u<<9)-1)
+#define FACE_VALUE	(1u<<9)
+#define ALL_REV_FLAGS	((1u<<10)-1)
 
 #define DECORATE_SHORT_REFS	1
 #define DECORATE_FULL_REFS	2
 
 struct rev_info;
 struct log_info;
+
+struct rev_cache_slice_map {
+	unsigned char *map;
+	int size;
+	int last_index;
+
+	char *names;
+	int name_size;
+};
+
+struct rev_cache_info {
+	/* generation flags */
+	unsigned objects : 1,
+		legs : 1,
+		make_index : 1,
+		fuse_me : 1;
+
+	/* index inclusion */
+	unsigned overwrite_all : 1;
+
+	/* traversal flags */
+	unsigned add_to_pending : 1,
+		add_names : 1;
+
+	/* fuse options */
+	unsigned int ignore_size;
+
+	/* reserved */
+	struct rev_cache_slice_map *maps,
+		*last_map;
+};
 
 struct rev_info {
 	/* Starting list */
@@ -76,6 +108,10 @@ struct rev_info {
 			dense_combined_merges:1,
 			always_show_header:1;
 
+	/* rev-cache flags */
+	unsigned int for_pack:1,
+		dont_cache_me:1;
+
 	/* Format info */
 	unsigned int	shown_one:1,
 			show_merge:1,
@@ -119,6 +155,9 @@ struct rev_info {
 	struct reflog_walk_info *reflog_info;
 	struct decoration children;
 	struct decoration merge_simplification;
+
+	/* caching info, used ONLY by traverse_cache_slice */
+	struct rev_cache_info rev_cache_info;
 };
 
 #define REV_TREE_SAME		0
@@ -170,5 +209,8 @@ enum commit_action {
 
 extern enum commit_action get_commit_action(struct rev_info *revs, struct commit *commit);
 extern enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit);
+
+extern void insert_by_date_cached(struct commit *p, struct commit_list **head,
+		    struct commit_list *cached_base, struct commit_list **cache);
 
 #endif
