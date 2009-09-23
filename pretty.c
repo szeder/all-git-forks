@@ -6,6 +6,7 @@
 #include "string-list.h"
 #include "mailmap.h"
 #include "log-tree.h"
+#include "notes.h"
 #include "color.h"
 
 static char *user_format;
@@ -701,6 +702,10 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 	case 'd':
 		format_decoration(sb, commit);
 		return 1;
+	case 'N':
+		get_commit_notes(commit, sb, git_log_output_encoding ?
+			     git_log_output_encoding : git_commit_encoding, 0);
+		return 1;
 	}
 
 	/* For the rest we have to parse the commit header. */
@@ -975,5 +980,10 @@ void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 	 */
 	if (fmt == CMIT_FMT_EMAIL && sb->len <= beginning_of_body)
 		strbuf_addch(sb, '\n');
+
+	if (fmt != CMIT_FMT_ONELINE)
+		get_commit_notes(commit, sb, encoding,
+				 NOTES_SHOW_HEADER | NOTES_INDENT);
+
 	free(reencoded);
 }
