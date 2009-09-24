@@ -84,7 +84,7 @@ its source repository, you can simply run `git repack -a` to copy all
 objects from the source repository into a pack in the cloned repository.
 
 --reference <repository>::
-	If the reference repository is on the local machine
+	If the reference repository is on the local machine,
 	automatically setup .git/objects/info/alternates to
 	obtain objects from the reference repository.  Using
 	an already existing repository as an alternate will
@@ -126,6 +126,13 @@ objects from the source repository into a pack in the cloned repository.
 -o <name>::
 	Instead of using the remote name 'origin' to keep track
 	of the upstream repository, use <name>.
+
+--branch <name>::
+-b <name>::
+	Instead of pointing the newly created HEAD to the branch pointed
+	to by the cloned repository's HEAD, point to <name> branch
+	instead. In a non-bare repository, this is the branch that will
+	be checked out.
 
 --upload-pack <upload-pack>::
 -u <upload-pack>::

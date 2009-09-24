@@ -238,7 +238,9 @@ sub conn {
 		}
 		my $rr = ":pserver:$user\@$serv:$port$repo";
 
-		unless ($pass) {
+		if ($pass) {
+			$pass = $self->_scramble($pass);
+		} else {
 			open(H,$ENV{'HOME'}."/.cvspass") and do {
 				# :pserver:cvs@mea.tmt.tele.fi:/cvsroot/zmailer Ah<Z
 				while (<H>) {
@@ -251,9 +253,8 @@ sub conn {
 					}
 				}
 			};
+			$pass = "A" unless $pass;
 		}
-
-		$pass = $self->_scramble($pass);
 
 		my ($s, $rep);
 		if ($proxyhost) {
