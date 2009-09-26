@@ -1,10 +1,10 @@
-MAN1_TXT= \
+MAN1_TXT?= \
 	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
 		$(wildcard git-*.txt)) \
 	gitk.txt git.txt
-MAN5_TXT=gitattributes.txt gitignore.txt gitmodules.txt githooks.txt \
+MAN5_TXT?=gitattributes.txt gitignore.txt gitmodules.txt githooks.txt \
 	gitrepository-layout.txt
-MAN7_TXT=gitcli.txt gittutorial.txt gittutorial-2.txt \
+MAN7_TXT?=gitcli.txt gittutorial.txt gittutorial-2.txt \
 	gitcvs-migration.txt gitcore-tutorial.txt gitglossary.txt \
 	gitdiffcore.txt gitworkflows.txt
 
@@ -14,14 +14,18 @@ MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
 
 DOC_HTML=$(MAN_HTML)
 
+ifeq ($(origin ARTICLES), undefined)
 ARTICLES = howto-index
 ARTICLES += everyday
 ARTICLES += git-tools
+endif
 # with their own formatting rules.
+ifeq ($(origin SP_ARTICLES), undefined)
 SP_ARTICLES = howto/revert-branch-rebase howto/using-merge-subtree user-manual
 API_DOCS = $(patsubst %.txt,%,$(filter-out technical/api-index-skel.txt technical/api-index.txt, $(wildcard technical/api-*.txt)))
 SP_ARTICLES += $(API_DOCS)
 SP_ARTICLES += technical/api-index
+endif
 
 DOC_HTML += $(patsubst %,%.html,$(ARTICLES) $(SP_ARTICLES))
 
@@ -38,6 +42,8 @@ man1dir=$(mandir)/man1
 man5dir=$(mandir)/man5
 man7dir=$(mandir)/man7
 # DESTDIR=
+
+DOC_MASTERDIR?=.
 
 ASCIIDOC=asciidoc
 ASCIIDOC_EXTRA =
@@ -57,8 +63,8 @@ ifndef PERL_PATH
 	PERL_PATH = /usr/bin/perl
 endif
 
--include ../config.mak.autogen
--include ../config.mak
+-include $(DOC_MASTERDIR)/../config.mak.autogen
+-include $(DOC_MASTERDIR)/../config.mak
 
 #
 # For asciidoc ...
@@ -134,6 +140,10 @@ ifndef V
 	QUIET_DBLATEX	= @echo '   ' DBLATEX $@;
 	QUIET_XSLTPROC	= @echo '   ' XSLTPROC $@;
 	QUIET_GEN	= @echo '   ' GEN $@;
+	QUIET_LNCP	= @echo '   ' LN/CP $@;
+	QUIET_PO4A_GETTEXTIZE	= @echo '   ' PO4A_GETTEXTIZE $@;
+	QUIET_PO4A_UPDATEPO	= @echo '   ' PO4A_UPDATEPO $@;
+	QUIET_PO4A_TRANSLATE	= @echo '   ' PO4A_TRANSLATE $@;
 	QUIET_STDERR	= 2> /dev/null
 	QUIET_SUBDIR0	= +@subdir=
 	QUIET_SUBDIR1	= ;$(NO_SUBDIR) echo '   ' SUBDIR $$subdir; \
@@ -146,7 +156,7 @@ all: html man
 
 html: $(DOC_HTML)
 
-$(DOC_HTML) $(DOC_MAN1) $(DOC_MAN5) $(DOC_MAN7): asciidoc.conf
+$(DOC_HTML) $(DOC_MAN1) $(DOC_MAN5) $(DOC_MAN7): asciidoc.conf manpage-normal.xsl manpage-base.xsl
 
 man: man1 man5 man7
 man1: $(DOC_MAN1)
@@ -184,17 +194,17 @@ install-pdf: pdf
 install-html: html
 	'$(SHELL_PATH_SQ)' ./install-webdoc.sh $(DESTDIR)$(htmldir)
 
-../GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
-	$(QUIET_SUBDIR0)../ $(QUIET_SUBDIR1) GIT-VERSION-FILE
+$(DOC_MASTERDIR)/../GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
+	$(QUIET_SUBDIR0)../ $(QUIET_SUBDIR1) $(DOC_MASTERDIR)/GIT-VERSION-FILE
 
--include ../GIT-VERSION-FILE
+-include $(DOC_MASTERDIR)/../GIT-VERSION-FILE
 
 #
 # Determine "include::" file references in asciidoc files.
 #
-doc.dep : $(wildcard *.txt) build-docdep.perl
+doc.dep : $(wildcard *.txt) $(DOC_MASTERDIR)/build-docdep.perl
 	$(QUIET_GEN)$(RM) $@+ $@ && \
-	$(PERL_PATH) ./build-docdep.perl >$@+ $(QUIET_STDERR) && \
+	$(PERL_PATH) $(DOC_MASTERDIR)/build-docdep.perl >$@+ $(QUIET_STDERR) && \
 	mv $@+ $@
 
 -include doc.dep
@@ -211,12 +221,12 @@ cmds_txt = cmds-ancillaryinterrogators.txt \
 
 $(cmds_txt): cmd-list.made
 
-cmd-list.made: cmd-list.perl ../command-list.txt $(MAN1_TXT)
+cmd-list.made: $(DOC_MASTERDIR)/cmd-list.perl $(DOC_MASTERDIR)/../command-list.txt $(MAN1_TXT)
 	$(QUIET_GEN)$(RM) $@ && \
-	$(PERL_PATH) ./cmd-list.perl ../command-list.txt $(QUIET_STDERR) && \
+	$(PERL_PATH) $(DOC_MASTERDIR)/cmd-list.perl $(DOC_MASTERDIR)/../command-list.txt $(QUIET_STDERR) && \
 	date >$@
 
-clean:
+clean::
 	$(RM) *.xml *.xml+ *.html *.html+ *.1 *.5 *.7
 	$(RM) *.texi *.texi+ *.texi++ git.info gitman.info
 	$(RM) howto-index.txt howto/*.html doc.dep
@@ -262,7 +272,7 @@ git.info: user-manual.texi
 user-manual.texi: user-manual.xml
 	$(QUIET_DB2TEXI)$(RM) $@+ $@ && \
 	$(DOCBOOK2X_TEXI) user-manual.xml --encoding=UTF-8 --to-stdout >$@++ && \
-	$(PERL_PATH) fix-texi.perl <$@++ >$@+ && \
+	$(PERL_PATH) $(DOC_MASTERDIR)/fix-texi.perl <$@++ >$@+ && \
 	rm $@++ && \
 	mv $@+ $@
 
@@ -271,11 +281,11 @@ user-manual.pdf: user-manual.xml
 	$(DBLATEX) -o $@+ -p /etc/asciidoc/dblatex/asciidoc-dblatex.xsl -s /etc/asciidoc/dblatex/asciidoc-dblatex.sty $< && \
 	mv $@+ $@
 
-gitman.texi: $(MAN_XML) cat-texi.perl
+gitman.texi: $(MAN_XML) $(DOC_MASTERDIR)/cat-texi.perl
 	$(QUIET_DB2TEXI)$(RM) $@+ $@ && \
 	($(foreach xml,$(MAN_XML),$(DOCBOOK2X_TEXI) --encoding=UTF-8 \
 		--to-stdout $(xml) &&) true) > $@++ && \
-	$(PERL_PATH) cat-texi.perl $@ <$@++ >$@+ && \
+	$(PERL_PATH) $(DOC_MASTERDIR)/cat-texi.perl $@ <$@++ >$@+ && \
 	rm $@++ && \
 	mv $@+ $@
 
@@ -287,9 +297,9 @@ $(patsubst %.txt,%.texi,$(MAN_TXT)): %.texi : %.xml
 	$(DOCBOOK2X_TEXI) --to-stdout $*.xml >$@+ && \
 	mv $@+ $@
 
-howto-index.txt: howto-index.sh $(wildcard howto/*.txt)
+howto-index.txt: $(DOC_MASTERDIR)/howto-index.sh $(wildcard howto/*.txt)
 	$(QUIET_GEN)$(RM) $@+ $@ && \
-	'$(SHELL_PATH_SQ)' ./howto-index.sh $(wildcard howto/*.txt) >$@+ && \
+	'$(SHELL_PATH_SQ)' $(DOC_MASTERDIR)/howto-index.sh $(wildcard howto/*.txt) >$@+ && \
 	mv $@+ $@
 
 $(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt

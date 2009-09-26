@@ -7,7 +7,8 @@ sub format_one {
 	my ($name, $attr) = @$nameattr;
 	my ($state, $description);
 	$state = 0;
-	open I, '<', "$name.txt" or die "No such file $name.txt";
+	open I, '<', "$name.txt"
+	  or open I, '<', "../$name.txt" or die "No such file $name.txt";
 	while (<I>) {
 		if (/^NAME$/) {
 			$state = 1;
