@@ -1,0 +1,71 @@
+# Translation of GIT Documentation to Japanese.
+# Copyright (C) 2008 Christian Couder and the git-list <git@vger.kernel.org>.
+# This file is distributed under the same license as the git package.
+# Yasuaki Narita <yasuaki_n@mti.biglobe.ne.jp>, 2009.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: git\n"
+"POT-Creation-Date: 2009-09-27 03:39+0900\n"
+"PO-Revision-Date: 2009-09-27 03:39+0900\n"
+"Last-Translator: TATEISHI Katsuyuki <kt@wheel.jp>\n"
+"Language-Team: Japanese\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Title =
+#, no-wrap
+msgid "gitglossary(7)\n"
+msgstr ""
+
+#. type: Title -
+#, no-wrap
+msgid "NAME\n"
+msgstr ""
+
+#. type: Plain text
+msgid "gitglossary - A GIT Glossary"
+msgstr "gitglossary - GIT 用語集"
+
+#. type: Title -
+#, no-wrap
+msgid "SYNOPSIS\n"
+msgstr ""
+
+#. type: Plain text
+#, no-wrap
+msgid "*\n"
+msgstr ""
+
+#. type: Title -
+#, no-wrap
+msgid "DESCRIPTION\n"
+msgstr "解説\n"
+
+#. type: Plain text
+msgid "include::glossary-content.txt[]"
+msgstr ""
+
+#. type: Title -
+#, no-wrap
+msgid "SEE ALSO\n"
+msgstr "参照\n"
+
+#. type: Plain text
+msgid ""
+"linkgit:gittutorial[7], linkgit:gittutorial-2[7], linkgit:gitcvs-migration"
+"[7], link:everyday.html[Everyday git], link:user-manual.html[The Git User's "
+"Manual]"
+msgstr ""
+
+#. type: Plain text
+#, no-wrap
+msgid ""
+"GIT\n"
+"---\n"
+msgstr ""
+
+#. type: Plain text
+msgid "Part of the linkgit:git[1] suite."
+msgstr "linkgit:git[1] スイートの一部"

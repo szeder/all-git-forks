@@ -2,7 +2,7 @@ DOC_MASTERDIR=..
 
 MAN1_PO = $(wildcard git-*.po)
 MAN5_PO =
-MAN7_PO =
+MAN7_PO = gittutorial.txt gittutorial-2.txt gitglossary.txt
 ARTICLES_PO =
 SP_ARTICLES_PO =
 
