@@ -269,6 +269,8 @@ int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size)
 	while (pop_commit(pptr))
 		; /* clear anything from cache */
 
+	/* make sure .graft flag is initialized */
+	prepare_commit_graft();
 	if (item->object.graft)
 		graft = lookup_commit_graft(item->object.sha1);
 	else
