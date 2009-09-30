@@ -246,7 +246,7 @@ test_expect_success 'make fragmented slices' '
 	test `grep "final return value: 0" output.err | wc -l` -eq 3
 '
 
-cache_size=`wc -c .git/rev-cache/$cache_sha1 | grep -o "[0-9]*"`
+cache_size=$(wc -c < .git/rev-cache/$cache_sha1)
 test_expect_success 'test --ignore-size function in fuse' '
 	git-rev-cache fuse --ignore-size=$cache_size 2>output.err &&
 	grep "final return value: 0" output.err &&
