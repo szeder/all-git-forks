@@ -92,7 +92,7 @@ git-rev-list --topo-order HEAD --not HEAD~2 >proper_commit_list_limited2
 git-rev-list --topo-order HEAD >proper_commit_list
 git-rev-list --objects HEAD >proper_object_list
 git-rev-list HEAD --max-age=$min_date --min-age=$max_date >proper_list_date_limited
-git-rev-cache test HEAD :HEAD~2 >proper_shallow_list
+git-rev-cache test HEAD :HEAD~2 >proper_shallow_list 2>/dev/null
 
 cache_sha1=`git-rev-cache add HEAD 2>output.err`
 
