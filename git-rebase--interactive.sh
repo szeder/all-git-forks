@@ -286,7 +286,7 @@ merge_one () {
 
 	# the command was "merge parents ...", so "parents" was recorded
 	echo "$sha1" > "$REWRITTEN"/original &&
-	git merge -m "$*" $parents &&
+	git merge $STRATEGY -m "$*" $parents &&
 	add_rewritten ||
 	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
 	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
