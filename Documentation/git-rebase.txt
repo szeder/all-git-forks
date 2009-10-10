@@ -516,6 +516,10 @@ message for the folded commit is the concatenation of the commit
 messages of the first commit and of those with the "squash" command,
 but omits the commit messages of commits with the "fixup" command.
 
+If you want to update a ref to point to a rewritten commit, add a
+command "ref <refname>" after the "pick", "edit", or other command
+that produces the commit.
+
 'git rebase' will stop when "pick" has been replaced with "edit" or
 when a command fails due to merge errors. When you are done editing
 and/or resolving conflicts you can continue with `git rebase --continue`.
