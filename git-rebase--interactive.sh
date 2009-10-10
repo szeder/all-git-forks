@@ -441,6 +441,17 @@ do_next () {
 		warn "Stopped at $sha1... $rest"
 		exit_with_patch $sha1 0
 		;;
+	ref)
+		mark_action_done
+		refname=$sha1
+		sha1=$(git rev-parse --quiet --verify "$refname" \
+			|| echo "(null)")
+		if ! grep -Fq " $refname" "$state_dir"/oldrefs 2>/dev/null
+		then
+			echo "$sha1 $refname" >> "$state_dir"/oldrefs
+		fi
+		git update-ref $refname HEAD
+		;;
 	squash|s|fixup|f)
 		case "$command" in
 		squash|s)
@@ -845,6 +856,7 @@ cat >> "$todo" << EOF
 #  s, squash = use commit, but meld into previous commit
 #  f, fixup = like "squash", but discard this commit's log message
 #  x, exec = run command (the rest of the line) using shell
+#  ref <refname> = update ref
 #
 # If you remove a line here THAT COMMIT WILL BE LOST.
 # However, if you remove everything, the rebase will be aborted.

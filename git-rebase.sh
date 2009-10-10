@@ -118,6 +118,8 @@ read_basic_state () {
 		strategy_opts="$(cat "$state_dir"/strategy_opts)"
 	test -f "$state_dir"/allow_rerere_autoupdate &&
 		allow_rerere_autoupdate="$(cat "$state_dir"/allow_rerere_autoupdate)"
+	test -f "$state_dir"/oldrefs &&
+		oldrefs="$(cat "$state_dir"/oldrefs)"
 }
 
 write_basic_state () {
@@ -332,6 +334,17 @@ skip)
 abort)
 	git rerere clear
 	read_basic_state
+	test -n "$oldrefs" &&
+	echo "$oldrefs" |
+	while read sha1 ref
+	do
+		if test "(null)" = $sha1
+		then
+			git update-ref -d "$ref"
+		else
+			git update-ref "$ref" $sha1
+		fi
+	done
 	case "$head_name" in
 	refs/*)
 		git symbolic-ref -m "rebase: aborting" HEAD $head_name ||
