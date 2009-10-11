@@ -496,7 +496,7 @@ __git_all_commands ()
 		return
 	fi
 	local i IFS=" "$'\n'
-	for i in $(git help -a|egrep '^ ')
+	for i in $(git help -a|egrep '^  [a-zA-Z0-9]')
 	do
 		case $i in
 		*--*)             : helper pattern;;
@@ -602,8 +602,12 @@ __git_aliases ()
 {
 	local i IFS=$'\n'
 	for i in $(git --git-dir="$(__gitdir)" config --get-regexp "alias\..*" 2>/dev/null); do
-		i="${i#alias.}"
-		echo "${i/ */}"
+		case "$i" in
+		alias.*)
+			i="${i#alias.}"
+			echo "${i/ */}"
+			;;
+		esac
 	done
 }
 
@@ -668,7 +672,7 @@ _git_am ()
 			--3way --committer-date-is-author-date --ignore-date
 			--ignore-whitespace --ignore-space-change
 			--interactive --keep --no-utf8 --signoff --utf8
-			--whitespace=
+			--whitespace= --scissors
 			"
 		return
 	esac
@@ -810,7 +814,21 @@ _git_checkout ()
 {
 	__git_has_doubledash && return
 
-	__gitcomp "$(__git_refs)"
+	local cur="${COMP_WORDS[COMP_CWORD]}"
+	case "$cur" in
+	--conflict=*)
+		__gitcomp "diff3 merge" "" "${cur##--conflict=}"
+		;;
+	--*)
+		__gitcomp "
+			--quiet --ours --theirs --track --no-track --merge
+			--conflict= --patch
+			"
+		;;
+	*)
+		__gitcomp "$(__git_refs)"
+		;;
+	esac
 }
 
 _git_cherry ()
@@ -880,6 +898,7 @@ _git_commit ()
 		__gitcomp "
 			--all --author= --signoff --verify --no-verify
 			--edit --amend --include --only --interactive
+			--dry-run
 			"
 		return
 	esac
@@ -912,6 +931,8 @@ __git_diff_common_options="--stat --numstat --shortstat --summary
 			--inter-hunk-context=
 			--patience
 			--raw
+			--dirstat --dirstat= --dirstat-by-file
+			--dirstat-by-file= --cumulative
 "
 
 _git_diff ()
@@ -1165,6 +1186,10 @@ _git_log ()
 		__gitcomp "$__git_log_date_formats" "" "${cur##--date=}"
 		return
 		;;
+	--decorate=*)
+		__gitcomp "long short" "" "${cur##--decorate=}"
+		return
+		;;
 	--*)
 		__gitcomp "
 			$__git_log_common_options
@@ -1177,7 +1202,7 @@ _git_log ()
 			--pretty= --format= --oneline
 			--cherry-pick
 			--graph
-			--decorate
+			--decorate --decorate=
 			--walk-reflogs
 			--parents --children
 			$merge
@@ -1773,6 +1798,11 @@ _git_remote ()
 	esac
 }
 
+_git_replace ()
+{
+	__gitcomp "$(__git_refs)"
+}
+
 _git_reset ()
 {
 	__git_has_doubledash && return
@@ -2141,6 +2171,7 @@ _git ()
 	push)        _git_push ;;
 	rebase)      _git_rebase ;;
 	remote)      _git_remote ;;
+	replace)     _git_replace ;;
 	reset)       _git_reset ;;
 	revert)      _git_revert ;;
 	rm)          _git_rm ;;
