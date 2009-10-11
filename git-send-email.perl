@@ -552,11 +552,26 @@ EOT
 	}
 	close(C);
 
-	if ($annotate) {
-		do_edit($compose_filename, @files);
-	} else {
-		do_edit($compose_filename);
-	}
+	my $re_edit = 0;
+	do {
+		if ($annotate) {
+			do_edit($compose_filename, @files);
+		} else {
+			do_edit($compose_filename);
+		}
+
+		open(C, "<", $compose_filename) ||
+			die "Failed to open $compose_filename: $!";
+		if (grep(/^Subject:\s*$/i, <C>)) {
+			my $r = ask("No Subject, send anyway? ".
+			            "([y]es|[n]o|[e]dit again): ",
+			            valid_re => qr/^[yne]/i,
+			            default => "n");
+			$re_edit = lc(substr($r, 0, 1)) eq "e";
+			exit(0) if lc(substr($r, 0, 1)) eq "n";
+		}
+		close C;
+	} while ($re_edit);
 
 	open(C2,">",$compose_filename . ".final")
 		or die "Failed to open $compose_filename.final : " . $!;
