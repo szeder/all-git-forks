@@ -1,3 +1,542 @@
+Version v1.6.5; changes since v1.6.4.4:
+---------------------------------------
+
+Adam Brewster (4):
+      svn: Add && to t9107-git-svn-migrate.sh
+      svn: Honor --prefix option in init without --stdlayout
+      svn: allow branches outside of refs/remotes
+      filter-branch: add --prune-empty to option summary
+
+Adam Simpkins (3):
+      graph API: use a new color when starting a brand new column
+      graph API: fix bug in graph_is_interesting()
+      Add tests for rev-list --graph with options that simplify history
+
+Alex Riesen (2):
+      Add a reminder test case for a merge with F/D transition
+      Add date formatting and parsing functions relative to a given time
+
+Alexander Gavrilov (1):
+      git-svn: Avoid spurious errors when rewriteRoot is used.
+
+Alexandre Julliard (1):
+      read-tree: Fix regression with creation of a new index file.
+
+Andreas Schwab (1):
+      parse-opt: ignore negation of OPT_NONEG for ambiguity checks
+
+André Goddard Rosa (1):
+      Fix typos on pt_BR/gittutorial.txt translation
+
+Ben Walton (1):
+      ls-files: die instead of fprintf/exit in -i error
+
+Benjamin Kramer (1):
+      gitweb: Optimize git-favicon.png
+
+Björn Gustavsson (1):
+      bash: add support for 'git replace'
+
+Björn Steinbrink (1):
+      git-describe: Die early if there are no possible descriptions
+
+Brandon Casey (14):
+      strbuf: add new function strbuf_getwholeline()
+      builtin-mailinfo,builtin-mailsplit: use strbufs
+      builtin-mailsplit.c: remove read_line_with_nul() since it is no longer used
+      block-sha1/sha1.c: silence compiler complaints by casting void * to char *
+      git-compat-util.h: remove superfluous test for __sun__
+      Makefile: remove pointless conditional assignment in SunOS section
+      abspath.c: move declaration of 'len' into inner block and use appropriate type
+      commit.c: rename variable named 'n' which masks previous declaration
+      t/test-lib.sh: provide a shell implementation of the 'yes' utility
+      perl/Makefile.PL: detect MakeMaker versions incompatible with DESTDIR
+      Documentation/git-gc.txt: default --aggressive window is 250, not 10
+      Makefile: enable THREADED_DELTA_SEARCH on SunOS
+      Makefile: enable THREADED_DELTA_SEARCH on IRIX and IRIX64
+      Makefile: add a note about the NO_MMAP setting on IRIX and IRIX64
+
+Brian Gernhardt (4):
+      INSTALL: Update description of our SHA-1 code
+      Makefile: Add NEEDS_CRYPTO_WITH_SSL
+      INSTALL: Reorder dependencies, split shell and Perl
+      INSTALL: Describe dependency knobs from Makefile
+
+Brian Gianforcaro (1):
+      Style fixes, add a space after if/for/while.
+
+Christian Couder (13):
+      refs: add a "for_each_replace_ref" function
+      replace_object: add mechanism to replace objects found in "refs/replace/"
+      sha1_file: add a "read_sha1_file_repl" function
+      object: call "check_sha1_signature" with the replacement sha1
+      replace_object: add a test case
+      mktag: call "check_sha1_signature" with the replacement sha1
+      environment: add global variable to disable replacement
+      Add new "git replace" command
+      builtin-replace: teach "git replace" to actually replace
+      parse-options: add new function "usage_msg_opt"
+      builtin-replace: use "usage_msg_opt" to give better error messages
+      Documentation: add documentation for "git replace"
+      t6050: check pushing something based on a replaced commit
+
+Christian Himpel (2):
+      git-am: fixed patch_format detection according to RFC2822
+      git-am: force egrep to use correct characters set
+
+Clemens Buchacher (3):
+      preserve mtime of local clone
+      test local clone by copying
+      cvs: initialize empty password
+
+Daniel Barkalow (4):
+      Add support for external programs for handling native fetches
+      Use an external program to implement fetching with curl
+      Make the "traditionally-supported" URLs a special case
+      Use a clearer style to issue commands to remote helpers
+
+David Aguilar (1):
+      Add git-replace to .gitignore
+
+David Kågedal (1):
+      git.el: Clarify documentation of git-commit-tree
+
+David Soria Parra (1):
+      run-command.c: squelch a "use before assignment" warning
+
+Dirk Hoerner (1):
+      git-cvsimport: add support for cvs pserver password scrambling.
+
+Dmitry Potapov (2):
+      git-archive: add '-o' as a alias for '--output'
+      git-archive: infer output format from filename when unspecified
+
+Eric Wong (3):
+      svn: initial "master" points to trunk if possible
+      svn: (cleanup) use predefined constant for rev_map_fmt
+      svn: assume URLs from the command-line are URI-encoded
+
+Erik Faye-Lund (2):
+      increase portability of NORETURN declarations
+      add NORETURN_PTR for function pointers
+
+Felipe Contreras (1):
+      send-email: fix mutt regex for grouped aliases
+
+Frank Li (6):
+      Avoid declaration after statement
+      Change regerror() declaration from K&R style to ANSI C (C89)
+      Fix __stdcall placement and function prototype
+      Test for WIN32 instead of __MINGW32_
+      Add MinGW header files to build git with MSVC
+      Add platform files for porting to MSVC
+
+Frederik Schwarzer (1):
+      Correct minor typo in post-receive hook template
+
+Geoffrey Irving (1):
+      git fast-export: add --no-data option
+
+Giuseppe Bilotta (3):
+      gitweb: fix 'Use of uninitialized value' error in href()
+      git apply: option to ignore whitespace differences
+      gitweb: pull ref markes pull out of subject <a> element
+
+Heiko Voigt (4):
+      cvsimport: add test illustrating a bug in cvsps
+      cvsimport: extend testcase about patchset order to contain branches
+      remove logical typo in documentation of sample update hook
+      web--browse: fix Mac OS X GUI detection for 10.6
+
+Ingmar Vanhassel (1):
+      import-tars: Add missing closing bracket
+
+Jakub Narebski (6):
+      gitweb: Make .error style generic
+      gitweb: Mark boundary commits in 'blame' view
+      gitweb: Use "previous" header of git-blame -p in 'blame' view
+      gitweb: Mark commits with no "previous" in 'blame' view
+      gitweb: Add author initials in 'blame' view, a la "git gui blame"
+      gitweb: Use light/dark for class names also in 'blame' view
+
+Jari Aalto (2):
+      git-tag(1): Refer to git-check-ref-format(1) for <name>
+      Improve --patch option documentation in git-add
+
+Jeff King (20):
+      push: add --quiet flag
+      transport: pass "quiet" flag to pack-objects
+      transport: don't show push status if --quiet is given
+      Makefile: git-http-fetch does not need expat
+      tests: use "$TEST_DIRECTORY" instead of ".."
+      tests: provide $TRASH_DIRECTORY variable
+      tests: allow user to specify trash directory location
+      t/Makefile: include config.mak
+      allow pull --rebase on branch yet to be born
+      tests: disable interactive hunk selection tests if perl is not available
+      clone: add --branch option to select a different HEAD
+      refactor test-date interface
+      tests: add date printing and parsing tests
+      fix approxidate parsing of relative months and years
+      push: teach --quiet to suppress "Everything up-to-date"
+      push: make non-fast-forward help message configurable
+      status: make "how to stage" messages optional
+      rebase: use plumbing to show dirty state
+      improve reflog date/number heuristic
+      pull: improve advice for unconfigured error case
+
+Jeff Lasslett (1):
+      Check return value of ftruncate call in http.c
+
+Jens Lehmann (1):
+      git submodule summary: add --files option
+
+Jim Meyering (5):
+      use write_str_in_full helper to avoid literal string lengths
+      use write_str_in_full helper to avoid literal string lengths
+      don't dereference NULL upon fdopen failure
+      pre-commit.sample: add comment re tr portability; fix grammar
+      typo fix: Directory `...' exist, ...: s/exist/exists/
+
+Johan Herland (9):
+      git submodule foreach: Provide access to submodule name, as '$name'
+      git submodule: Cleanup usage string and add option parsing to cmd_foreach()
+      Add selftest for 'git submodule foreach'
+      git submodule foreach: test access to submodule name as '$name'
+      git submodule foreach: Add --recursive to recurse into nested submodules
+      git submodule update: Introduce --recursive to update nested submodules
+      git submodule status: Add --recursive to recurse into nested submodules
+      t7407: Use 'rev-parse --short' rather than bash's substring expansion notation
+      git clone: Add --recursive to automatically checkout (nested) submodules
+
+Johan Sageryd (1):
+      Fix '--relative-date'
+
+Johannes Gilger (1):
+      git-clone doc: typofix
+
+Johannes Schindelin (2):
+      Make 'git stash -k' a short form for 'git stash save --keep-index'
+      parse-opt: optionally show "--no-" option string
+
+Johannes Sixt (16):
+      MinGW: simplify waitpid() emulation macros
+      run_command: return exit code as positive value
+      run_command: report system call errors instead of returning error codes
+      run_command: encode deadly signal number in the return value
+      run_command: report failure to execute the program, but optionally don't
+      receive-pack: remove unnecessary run_status report
+      api-run-command.txt: describe error behavior of run_command functions
+      t0001-init: fix a file name
+      t0001-init: split the existence test from the permission test
+      gitk: Do not hard-code "encoding" in attribute lookup functions
+      Make test number t7406- unique
+      Make test case number unique
+      status: list unmerged files much later
+      start_command: do not clobber cmd->env on Windows code path
+      pager: set LESS=FRSX also on Windows
+      test-genrandom: ensure stdout is set to _O_BINARY on Windows
+
+Jonathan Nieder (8):
+      Describe DOCBOOK_XSL_172, ASCIIDOC_NO_ROFF options in Makefile
+      Documentation: git fmt-merge-msg does not have to be a script
+      Documentation: clarify mergeoptions description
+      Documentation: branch: update --merged description
+      Documentation: clarify branch creation
+      Documentation: clarify "working tree" definition
+      racy-git.txt: explain nsec problem in more detail
+      Documentation: clone: clarify discussion of initial branch
+
+Josh Triplett (2):
+      Wrap rewrite globals in a struct in preparation for adding another set
+      Add url.<base>.pushInsteadOf: URL rewriting for push only
+
+Junio C Hamano (47):
+      t/t9600: remove exit after test_done
+      Start 1.6.5 cycle
+      request-pull: optionally show a patch as well
+      diff-index: report unmerged new entries
+      diff-index: keep the original index intact
+      Allow mailsplit (and hence git-am) to handle mails with CRLF line-endings
+      wt-status.c: rework the way changes to the index and work tree are summarized
+      git-rev-list.txt: Clarify the use of multiple revision arguments
+      block-sha1: undo ctx->size change
+      block-sha1: minor fixups
+      am: allow individual e-mail files as input
+      status: show worktree status of conflicted paths separately
+      Makefile: do not link three copies of git-remote-* programs
+      Makefile: install hardlinks for git-remote-<scheme> supported by libcurl if possible
+      verify-pack --stat-only: show histogram without verifying
+      commit: --dry-run
+      wt-status: move many global settings to wt_status structure
+      wt-status: move wt_status_colors[] into wt_status structure
+      Make git_status_config() file scope static to builtin-commit.c
+      wt-status: collect untracked files in a separate "collect" phase
+      Documentation/git-commit.txt: describe --dry-run
+      git commit --dry-run -v: show diff in color when asked
+      compat/snprintf.c: clarify SNPRINTF_SIZE_CORR
+      builtin-mailinfo.c: fix confusing internal API to mailinfo()
+      Teach mailinfo to ignore everything before -- >8 -- mark
+      am/mailinfo: Disable scissors processing by default
+      mailinfo.scissors: new configuration
+      Draft release notes to 1.6.5 before -rc0
+      upload-pack: add a trigger for post-upload-pack hook
+      upload-pack: feed "kind [clone|fetch]" to post-upload-pack hook
+      builtin-pack-objects.c: avoid vla
+      builtin-apply.c: get rid of an unnecessary use of temporary array
+      GIT 1.6.5-rc0
+      merge-recursive: give less scary messages when merge did not start
+      Makefile: remove remnant of separate http/https/ftp helpers
+      quiltimport documentation: --dry-run and -n are synonyms
+      GIT 1.6.5-rc1
+      git-commit doc: remove duplicated --dry-run description
+      Update Release Notes to 1.6.5
+      pay attention to DESTDIR when building with NO_PERL_MAKEMAKER
+      pull: Clarify "helpful" message for another corner case
+      builtin-mailinfo.c: check error status from rewind and ftruncate
+      show-branch: fix segfault when showbranch.default exists
+      git-pull: dead code removal
+      fast-import.c::validate_raw_date(): really validate the value
+      Update draft release notes to 1.6.5
+      GIT 1.6.5
+
+Karthik R (1):
+      git-svn: Use GIT_SSH setting if SVN_SSH is not set
+
+Lars Hjemli (2):
+      Documentaqtion/git-submodule.txt: Typofix
+      git-log: allow --decorate[=short|full]
+
+Linus Torvalds (13):
+      git-http-fetch: not a builtin
+      Add new optimized C 'block-sha1' routines
+      block-sha1: try to use rol/ror appropriately
+      block-sha1: make the 'ntohl()' part of the first SHA1 loop
+      block-sha1: re-use the temporary array as we calculate the SHA1
+      block-sha1: macroize the rounds a bit further
+      block-sha1: Use '(B&C)+(D&(B^C))' instead of '(B&C)|(D&(B|C))' in round 3
+      block-sha1: get rid of redundant 'lenW' context
+      block-sha1: perform register rotation using cpp
+      block-sha1: improved SHA1 hashing
+      block-sha1: improve code on large-register-set machines
+      Improve on 'approxidate'
+      Further 'approxidate' improvements
+
+Luke Diamand (1):
+      git-p4: stream from perforce to speed up clones
+
+Marius Storm-Olsen (9):
+      Add include guards to compat/win32.h
+      Set _O_BINARY as default fmode for both MinGW and MSVC
+      Add empty header files for MSVC port
+      Make usage of windows.h lean and mean
+      Define strncasecmp and ftruncate for MSVC
+      Add MSVC to Makefile
+      Add README for MSVC build
+      Add scripts to generate projects for other buildsystems (MSVC vcproj, QMake)
+      Tag GIT_VERSION when Git is built with MSVC
+
+Mark A Rada (3):
+      gitweb: support to globally disable a snapshot format
+      gitweb: update INSTALL regarding specific snapshot settings
+      gitweb: add support for XZ compressed snapshots
+
+Mark Rada (4):
+      gitweb: improve snapshot error handling
+      gitweb: split test suite into library and tests
+      gitweb: add t9501 tests for checking HTTP status codes
+      tests: make all test files executable
+
+Martin Nordholts (1):
+      git.el: Use git-add-file for unmerged files, remove git-resolve-file
+
+Matthieu Moy (8):
+      rebase: consistent error messages for staged and unstaged changes.
+      git-ls-files.txt: clarify what "other files" mean for --other
+      Show usage string for 'git log -h', 'git show -h' and 'git diff -h'
+      Rename REFRESH_SAY_CHANGED to REFRESH_IN_PORCELAIN.
+      reset: make the reminder output consistent with "checkout"
+      stash: simplify defaulting to "save" and reject unknown options
+      wrap git's main usage string.
+      push: Correctly initialize nonfastforward in transport_push.
+
+Michael Haggerty (6):
+      Start a library for cvsimport-related tests
+      Use CVS's -f option if available (ignore user's ~/.cvsrc file)
+      Test contents of entire cvsimported "master" tree contents
+      Add some tests of git-cvsimport's handling of vendor branches
+      Add a test of "git cvsimport"'s handling of tags and branches
+      git-svn: ignore leading blank lines in svn:ignore
+
+Michael J Gruber (3):
+      t6010-merge-base.sh: Depict the octopus test graph
+      git-merge-base/git-show-branch: Cleanup documentation and usage
+      git-merge-base/git-show-branch --merge-base: Documentation and test
+
+Michael Wookey (1):
+      generators/vcproj.pm: remove UNICODE from build
+
+Michał Kiedrowicz (2):
+      init-db: migrate to parse-options
+      grep: Add --max-depth option.
+
+Mike Ralphson (2):
+      Add transport native helper executables to .gitignore
+      http-fetch: Fix Makefile dependancies
+
+Miklos Vajna (1):
+      git branch -D: give a better error message when lockfile creation fails
+
+Nanako Shiraishi (3):
+      git init: optionally allow a directory argument
+      Documentation: consistently refer to check-ref-format
+      Documentation: describe the scissors mark support of "git am"
+
+Nelson Elhage (1):
+      git-push: Accept -n as a synonym for --dry-run.
+
+Nguyễn Thái Ngọc Duy (1):
+      Prevent diff machinery from examining assume-unchanged entries on worktree
+
+Nick Edelen (1):
+      Shift object enumeration out of upload-pack
+
+Nicolas Pitre (13):
+      block-sha1: move code around
+      block-sha1: split the different "hacks" to be individually selected
+      block-sha1: support for architectures with memory alignment restrictions
+      block-sha1: more good unaligned memory access candidates
+      block-sha1: make the size member first in the context struct
+      make sure byte swapping is optimal for git
+      block-sha1: guard gcc extensions with __GNUC__
+      remove ARM and Mozilla SHA1 implementations
+      fix simple deepening of a repo
+      make shallow repository deepening more network efficient
+      pack-objects: free preferred base memory after usage
+      Nicolas Pitre has a new email address
+      make 'git clone' ask the remote only for objects it cares about
+
+Nicolas Sebrecht (3):
+      git-am: print fair error message when format detection fails
+      mailinfo: add '--scissors' to usage message
+      add documentation for mailinfo.scissors and '--no-scissors'
+
+Ori Avtalion (1):
+      git stash: Give friendlier errors when there is nothing to apply
+
+Pascal Obry (1):
+      Do not scramble password read from .cvspass
+
+Pat Thoyts (1):
+      gitk: Work around leftover temporary save file
+
+Paul Mackerras (1):
+      gitk: Show diff of commits at end of compare-commits output
+
+Peter Krefting (3):
+      gitk: Update Swedish translation (280t0f0u)
+      import-tars: Allow per-tar author and commit message.
+      Add script for importing bits-and-pieces to Git.
+
+Ramsay Allan Jones (3):
+      Fix some printf format warnings
+      Fix MSVC build on cygwin
+      Fix the exit code of MSVC build scripts on cygwin
+
+Reilly Grant (1):
+      git-p4: Avoid modules deprecated in Python 2.6.
+
+René Scharfe (3):
+      update-server-info: make builtin, use parseopt
+      UI consistency: allow --force for where -f means force
+      Git archive and trailing "/" in prefix
+
+SZEDER Gábor (4):
+      bash: rename __git_find_subcommand() to __git_find_on_cmdline()
+      bash: update 'git stash' completion
+      bash: teach 'git reset --patch'
+      bash: teach 'git checkout' options
+
+Sebastian Schuberth (2):
+      Make generated MSVC solution file open from Windows Explorer
+      Make just opening the generated MSVC solution file not modify it
+
+Simon Arlott (1):
+      git-svn: hide find_parent_branch output in double quiet mode
+
+Stefan Naewe (1):
+      README: git lives at http://git-scm.com these days
+
+Stephen Boyd (11):
+      read-tree: convert unhelpful usage()'s to helpful die()'s
+      read-tree: migrate to parse-options
+      write-tree: migrate to parse-options
+      verify-tag: migrate to parse-options
+      verify-pack: migrate to parse-options
+      prune-packed: migrate to parse-options
+      technical-docs: document tree-walking API
+      completion: update am, commit, and log
+      completion: add dirstat and friends to diff options
+      completion: fix completion of git <TAB><TAB>
+      completion: fix alias listings with newlines
+
+Tay Ray Chuan (2):
+      http.c: free preq when aborting
+      http.c: replace usage of temporary variable for urls
+
+Thadeu Lima de Souza Cascardo (1):
+      Translate the tutorial to Brazillian Portuguese
+
+Thiago Farina (3):
+      Update the usage bundle string.
+      pack-objects: remove SP at the end of usage string
+      Update "describe" documentation to match reality
+
+Thomas Rast (11):
+      Document 'stash clear' recovery via unreachable commits
+      gitk: New option to hide remote refs
+      gitk: Fix direction of symmetric difference in optimized mode
+      gitk: Parse arbitrary commit-ish in SHA1 field
+      git-apply--interactive: Refactor patch mode code
+      Add a small patch-mode testing library
+      builtin-add: refactor the meat of interactive_add()
+      Implement 'git reset --patch'
+      Implement 'git checkout --patch'
+      Implement 'git stash save --patch'
+      DWIM 'git stash save -p' for 'git stash -p'
+
+Todd Zullinger (1):
+      completion: Replace config --list with --get-regexp
+
+Tuomas Suutari (1):
+      git-svn.txt: Fix location of parent argument
+
+Wesley J. Landaker (2):
+      Documentation: git-send-email: fix submission port number
+      Documentation: git-send-email: correct statement about standard ports
+
+Wilhansen Li (1):
+      Add support for the Mongoose web server.
+
+Yakov Lerner (1):
+      send-email: fix obscure error when encryption=tls and smtp cannot connect
+
+
+Version v1.6.4.4; changes since v1.6.4.3:
+-----------------------------------------
+
+Jeff King (1):
+      checkout: do not imply "-f" on unborn branches
+
+Junio C Hamano (6):
+      Fix "unpack-objects --strict"
+      check_path(): allow symlinked directories to checkout-index --prefix
+      xutils: Fix hashing an incomplete line with whitespaces at the end
+      xutils: Fix xdl_recmatch() on incomplete lines
+      http.c: avoid freeing an uninitialized pointer
+      GIT 1.6.4.4
+
+
 Version v1.6.4.3; changes since v1.6.4.2:
 -----------------------------------------
 
@@ -10695,7 +11234,7 @@ J. Bruce Fields (5):
       user-manual: fix incorrect header level
 
 Jakub Narebski (1):
-      gitweb: Fix escaping HTML of project owner in 'projects_list' and 'summary' views
+      gitweb: Fix escaping HTML of project owner in 'projects_list' and
 
 Jari Aalto (1):
       git-tag(1): Remove duplicate text
@@ -12179,7 +12718,7 @@ Simon Hausmann (223):
       git-p4 debug doesn't need a git repository
       Added support for mapping p4 labels to git tags
       Fix variable usage in tag import
-      Fix the docs for git-p4 submit and turn git-p4 submit --master=foo into simply git-p4 submit mytopicbranch.
+      Fix the docs for git-p4 submit and turn git-p4 submit --master=foo into
       Fix "compilation" :)
       Clean up python class names.
       Added git-p4 rebase convenience
@@ -12195,7 +12734,7 @@ Simon Hausmann (223):
       Fix the timezone formatting. Now qgit also displays (parses) it correctly.
       Removed the old patch apply code from git-p4 submit.
       Slightly improved formatting of the raw_input questions.
-      A new attempt at fixing the child-fast-import-process-not-finished race condition in the clone command
+      A new attempt at fixing the child-fast-import-process-not-finished race condition
       Handle patch errors in git-p4 submit better.
       Doc cleanups.
       Micro cleanup
@@ -12214,29 +12753,29 @@ Simon Hausmann (223):
       Fix calling git-p4 rebase from within a subdirectory (git rebase wants to be in toplevel)
       A little todo note before I forget it :), based on a suggestion from Lars.
       Fixing syncing (gitdir discovery / cd) for bare repositories
-      Always pass a sha1 for the initial parent so that git-fast-import doesn't think it's creating a new branch from itself. It's a sensible error in general but in the case of incremental imports we have to apply force :)
-      Clean up code duplication for revision parsing and fix previous commit to not import into remotes/p4 (yet!).
+      Always pass a sha1 for the initial parent so that git-fast-import doesn't think
+      Clean up code duplication for revision parsing and fix previous commit to not
       Removed cleantags command. It doesn't have any meaning anymore.
-      Removed ancient and unused code to find the last imported revision from previous imports to use for the current import by looking at the p4 tags. The current approach of using the log message works better.
-      Create the origin based import branch using git update-ref instead of git branch so that it's possible to have the import branch in refs/remotes.
-      Changed the default p4 import branch to be refs/remotes/p4/{HEAD,master} instead of refs/heads/p4.
-      Bite the bullet and automatically convert old style refs/heads/p4 repositories to the new style refs/remotes/p4 branching.
+      Removed ancient and unused code to find the last imported revision from previous imports
+      Create the origin based import branch using git update-ref instead of git branch
+      Changed the default p4 import branch to be refs/remotes/p4/{HEAD,master}
+      Bite the bullet and automatically convert old style refs/heads/p4 repositories
       Added support for git-p4 sync/rebase --with-origin. See git-p4.txt for details :)
       Removed todo item that is implemented :)
       Fix branch setup after initial clone.
       Removed unused cache variables.
       Started rewriting the branch detection, based on "p4 branches" and "p4 branch -o foo".
-      Give branches a nice project prefix and don't bail out on clone if we failed to detect the master branch.
-      More work on the incremental importing of multiple branches. Improved error detection by checking the exit code of git-fast-import.
-      Cleanup/speed up the branch<> file split and removed change range limitation that I added for debugging (oops).
+      Give branches a nice project prefix and don't bail out on clone if we failed
+      More work on the incremental importing of multiple branches.
+      Cleanup/speed up the branch<> file split and removed change range limitation that I added
       More cleanups and speedups for labels and branches
       Removed unused variable, more cleanups
       Cache the output of "p4 users" for faster syncs on high latency links.
       Fix gitdir not being set when cloning. Needed for writing the p4 users cache.
       Oops, not only /set/ gitdir on clone, also set it /correctly/ :)
-      Use git format-patch and git apply --apply when extracting patches from git and applying them to a Perforce checkout. This should make it possible to apply git commits with binary files that cannot be handled by path.
+      Use git format-patch and git apply --apply when extracting patches from git and
       Added support for git-p4 submit --direct (experimental)
-      Specifying --detect-branches is now only needed for the initial clone/sync. Afterwards it's turned on implicitly if more p4 branches than remotes/p4/master are found.
+      Specifying --detect-branches is now only needed for the initial clone/sync.
       Had an idea for debugging, record it :)
       Another (potentially life-saving) idea for submit --direct
       Improved output for multi branch imports and noted another little todo item
@@ -12248,7 +12787,7 @@ Simon Hausmann (223):
       Added a rollback command for debugging. It sets back the heads of the p4 branches to the specified p4 change number or earlier.
       Fix branch detection in multi-branch imports
       Fixes for rollback, delete branches that did not exist at the specified p4 change
-      Added support for importing multiple branches into refs/heads instead of just refs/remotes using --import-local. Needs some further microfix but seems to work otherwise.
+      Added support for importing multiple branches into refs/heads instead of just refs/remotes
       Added support for --max-changes=<count> to ease import debugging
       Use refs/heads/* instead of refs/heads/p4/* for local imports
       Doc updates
@@ -12265,7 +12804,7 @@ Simon Hausmann (223):
       Added support for --with-origin with multi-branch imports
       Oops, fix --with-origin to /really/ also call git fetch :)
       Avoid creating non-p4 branches in remotes/p4 off of remotes/origin
-      Make git-p4 work with packed refs (don't use os.path.exists to check for the existance of a ref)
+      Make git-p4 work with packed refs (don't use os.path.exists to check for the
       Make --with-origin also work without origin :)
       Make --with-origin the default for syncing.
       Shortcut the case where we have no origin branch
@@ -12273,29 +12812,29 @@ Simon Hausmann (223):
       Added git-p4 submit --trust-me-like-a-fool for the adventurous users :)
       Fix creation of refs/remotes/p4/HEAD symbolic ref
       Fix my email address, this isn't really KDE related :)
-      In *_pipe print the command that failed if it fails. Fixed old calls to mypopen.
+      In *_pipe print the command that failed if it fails.
       Fix typo in listExistingP4Branches that broke sync.
       Fix support for "depot-path" in older git-p4 imports
-      Fix common path "calculation" from logs of multiple branches. Need to use min instead of max for prev/cur to avoid out-of-bounds string access. Also treat "i" as index of the last match instead of a length because in case of a complete match of the two strings i was off by one.
-      Don't attempt to set the initialParent on multi-branch imports (useless). At some point the code paths should be unified, but for now I need a working git-p4 :)
-      Hack to make the multi-branch import work again with self.depotPaths now that self.depotPath is gone
+      Fix common path "calculation" from logs of multiple branches.
+      Don't attempt to set the initialParent on multi-branch imports (useless).
+      Hack to make the multi-branch import work again with self.depotPaths now that
       Fix git-p4 rebase
       Fix git-p4 submit
       Fix depot-path determination for git-p4 submit
       Make clone behave like git clone by default again.
-      Make git-p4 submit detect the correct reference (origin) branch when working with multi-branch imports.
-      Only get the expensive branch mapping from the p4 server when not syncing with the help of an origin remote (which we instead then use to get new branches from).
-      Fixed the check to make sure to exclude the HEAD symbolic refs when updating the remotes/p4 branches from origin.
+      Make git-p4 submit detect the correct reference (origin) branch when
+      Only get the expensive branch mapping from the p4 server when not
+      Fixed the check to make sure to exclude the HEAD symbolic refs when updating
       Fix updating/creating remotes/p4/* heads from origin/p4/*
       Fix project name guessing
       Fix depot-paths encoding for multi-path imports (don't split up //depot/path/foo)
       Fix support for explicit disabling of syncing with the origin
-      Write out the options tag in the log message of imports only if we actually have options
+      Write out the options tag in the log message of imports only if we actually have
       Provide some information for single branch imports where the commits go
       Mention remotes/p4/master also in the documentation.
       git-p4 submit: Fix missing quotes around p4 commands to make them work with spaces in filenames
-      Moved the code from git-p4 submit to figure out the upstream branch point into a separate helper method.
-      Fix git-p4 rebase to detect the correct upstream branch instead of unconditionally always rebasing on top of remotes/p4/master
+      Moved the code from git-p4 submit to figure out the upstream branch point
+      Fix git-p4 rebase to detect the correct upstream branch instead of unconditionally
       Fix initial multi-branch import.
       Fix the branch mapping detection to be independent from the order of the "p4 branches" output.
       Warn about conflicting p4 branch mappings and use the first one found.
@@ -13025,7 +13564,7 @@ Junio C Hamano (25):
       t6030: grab commit object name as we go
       Build RPM with ETC_GITCONFIG=/etc/gitconfig
       Diff between two blobs should take mode changes into account now.
-      t/test-lib.sh: Protect ourselves from common misconfiguration that exports CDPATH to the environment
+      t/test-lib.sh: Protect ourselves from common misconfiguration
       gitattributes documentation: clarify overriding
       applymbox & quiltimport: typofix.
       Add 'ident' conversion.
@@ -14196,7 +14735,7 @@ Jeff King (1):
       New fast-import test case for valid tree sorting
 
 Jim Meyering (2):
-      I like the idea of the new ':/<oneline prefix>' notation, and gave it a try, but all I could get was a segfault.  It was dereferencing a NULL commit list.  Fix below.  With it, this example now works:
+      I like the idea of the new ':/<oneline prefix>' notation, and gave it
       git-grep: don't use sscanf
 
 Johannes Schindelin (42):
@@ -14570,8 +15109,8 @@ Shawn O. Pearce (13):
       git-gui: Make 'make' quieter by default
       Catch write_ref_sha1 failure in receive-pack
       git-gui: Allow committing empty merges
-      git-gui: Revert "Don't modify CREDITS-FILE if it hasn't changed." This reverts commit 92446aba47b0e0db28f7b858ea387efcca30ab44.
-      git-gui: Revert "git-gui: Display all authors of git-gui." This reverts commit 871f4c97ad7e021d1a0a98c80c5da77fcf70e4af.
+      git-gui: Revert "Don't modify CREDITS-FILE if it hasn't changed."
+      git-gui: Revert "git-gui: Display all authors of git-gui."
       git-gui: Allow 'git gui version' outside of a repository
       Don't package the git-gui credits file anymore
 

@@ -1,7 +1,7 @@
-From 6c27e4ba28380448e1fc86c0731e46cea575334d Mon Sep 17 00:00:00 2001
+From 17e8daeee8974a43aef3f6b152c804e483416e60 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Wed, 28 May 2008 19:32:21 +0000
-Subject: [PATCH 4/5] bug#477337: git-svn.perl: fallback to 'pager' not 'less' if PAGER is unset
+Subject: [PATCH] bug#477337: git-svn.perl: fallback to 'pager' not 'less' if PAGER is unset
 
 http://bugs.debian.org/477337
 ---
@@ -9,10 +9,10 @@ http://bugs.debian.org/477337
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/git-svn.perl b/git-svn.perl
-index ba77558..a1a05d8 100755
+index bd7ec25..b22f6f5 100755
 --- a/git-svn.perl
 +++ b/git-svn.perl
-@@ -4981,7 +4981,7 @@ sub git_svn_log_cmd {
+@@ -5031,7 +5031,7 @@ sub git_svn_log_cmd {
  sub config_pager {
  	$pager ||= $ENV{GIT_PAGER} || $ENV{PAGER};
  	if (!defined $pager) {
@@ -22,5 +22,5 @@ index ba77558..a1a05d8 100755
  		$pager = undef;
  	}
 -- 
-debian.1.6.3.3.1
+1.6.0.3
 
