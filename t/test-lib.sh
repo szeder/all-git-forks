@@ -74,6 +74,12 @@ case $(echo $GIT_TRACE |tr "[A-Z]" "[a-z]") in
 		;;
 esac
 
+# Convenience
+#
+# A regexp to match 40 hexdigits
+_x40='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+_x40="$_x40$_x40$_x40$_x40$_x40$_x40$_x40$_x40"
+
 # Each test should start with something like this, after copyright notices:
 #
 # test_description='Description of this test...
