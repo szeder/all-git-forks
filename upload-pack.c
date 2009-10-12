@@ -29,8 +29,10 @@ static unsigned long oldest_have;
 static int multi_ack, nr_our_refs;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
 static int no_progress, daemon_mode;
+static int shallow_nr;
 static struct object_array have_obj;
 static struct object_array want_obj;
+static struct object_array extra_edge_obj;
 static unsigned int timeout;
 /* 0 for no sideband,
  * otherwise maximum packet size (up to 65520 bytes).
@@ -106,9 +108,7 @@ static int do_rev_list(int fd, void *create_full_pack)
 	int i;
 	struct rev_info revs;
 
-	pack_pipe = fdopen(fd, "w");
-	if (create_full_pack)
-		use_thin_pack = 0; /* no point doing it */
+	pack_pipe = xfdopen(fd, "w");
 	init_revisions(&revs, NULL);
 	revs.tag_objects = 1;
 	revs.tree_objects = 1;
@@ -136,14 +136,76 @@ static int do_rev_list(int fd, void *create_full_pack)
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
 	mark_edges_uninteresting(revs.commits, &revs, show_edge);
+	if (use_thin_pack)
+		for (i = 0; i < extra_edge_obj.nr; i++)
+			fprintf(pack_pipe, "-%s\n", sha1_to_hex(
+					extra_edge_obj.objects[i].item->sha1));
 	traverse_commit_list(&revs, show_commit, show_object, NULL);
 	fflush(pack_pipe);
 	fclose(pack_pipe);
 	return 0;
 }
 
+static int feed_msg_to_hook(int fd, const char *fmt, ...)
+{
+	int cnt;
+	char buf[1024];
+	va_list params;
+
+	va_start(params, fmt);
+	cnt = vsprintf(buf, fmt, params);
+	va_end(params);
+	return write_in_full(fd, buf, cnt) != cnt;
+}
+
+static int feed_obj_to_hook(const char *label, struct object_array *oa, int i, int fd)
+{
+	return feed_msg_to_hook(fd, "%s %s\n", label,
+				sha1_to_hex(oa->objects[i].item->sha1));
+}
+
+static int run_post_upload_pack_hook(size_t total, struct timeval *tv)
+{
+	const char *argv[2];
+	struct child_process proc;
+	int err, i;
+
+	argv[0] = "hooks/post-upload-pack";
+	argv[1] = NULL;
+
+	if (access(argv[0], X_OK) < 0)
+		return 0;
+
+	memset(&proc, 0, sizeof(proc));
+	proc.argv = argv;
+	proc.in = -1;
+	proc.stdout_to_stderr = 1;
+	err = start_command(&proc);
+	if (err)
+		return err;
+	for (i = 0; !err && i < want_obj.nr; i++)
+		err |= feed_obj_to_hook("want", &want_obj, i, proc.in);
+	for (i = 0; !err && i < have_obj.nr; i++)
+		err |= feed_obj_to_hook("have", &have_obj, i, proc.in);
+	if (!err)
+		err |= feed_msg_to_hook(proc.in, "time %ld.%06ld\n",
+					(long)tv->tv_sec, (long)tv->tv_usec);
+	if (!err)
+		err |= feed_msg_to_hook(proc.in, "size %ld\n", (long)total);
+	if (!err)
+		err |= feed_msg_to_hook(proc.in, "kind %s\n",
+					(nr_our_refs == want_obj.nr && !have_obj.nr)
+					? "clone" : "fetch");
+	if (close(proc.in))
+		err = 1;
+	if (finish_command(&proc))
+		err = 1;
+	return err;
+}
+
 static void create_pack_file(void)
 {
+	struct timeval start_tv, tv;
 	struct async rev_list;
 	struct child_process pack_objects;
 	int create_full_pack = (nr_our_refs == want_obj.nr && !have_obj.nr);
@@ -151,17 +213,27 @@ static void create_pack_file(void)
 	char abort_msg[] = "aborting due to possible repository "
 		"corruption on the remote side.";
 	int buffered = -1;
-	ssize_t sz;
+	ssize_t sz, total_sz;
 	const char *argv[10];
 	int arg = 0;
 
-	rev_list.proc = do_rev_list;
-	/* .data is just a boolean: any non-NULL value will do */
-	rev_list.data = create_full_pack ? &rev_list : NULL;
-	if (start_async(&rev_list))
-		die("git upload-pack: unable to fork git-rev-list");
+	gettimeofday(&start_tv, NULL);
+	total_sz = 0;
+	if (shallow_nr) {
+		rev_list.proc = do_rev_list;
+		rev_list.data = 0;
+		if (start_async(&rev_list))
+			die("git upload-pack: unable to fork git-rev-list");
+		argv[arg++] = "pack-objects";
+	} else {
+		argv[arg++] = "pack-objects";
+		argv[arg++] = "--revs";
+		if (create_full_pack)
+			argv[arg++] = "--all";
+		else if (use_thin_pack)
+			argv[arg++] = "--thin";
+	}
 
-	argv[arg++] = "pack-objects";
 	argv[arg++] = "--stdout";
 	if (!no_progress)
 		argv[arg++] = "--progress";
@@ -172,7 +244,7 @@ static void create_pack_file(void)
 	argv[arg++] = NULL;
 
 	memset(&pack_objects, 0, sizeof(pack_objects));
-	pack_objects.in = rev_list.out;	/* start_command closes it */
+	pack_objects.in = shallow_nr ? rev_list.out : -1;
 	pack_objects.out = -1;
 	pack_objects.err = -1;
 	pack_objects.git_cmd = 1;
@@ -180,6 +252,24 @@ static void create_pack_file(void)
 
 	if (start_command(&pack_objects))
 		die("git upload-pack: unable to fork git-pack-objects");
+
+	/* pass on revisions we (don't) want */
+	if (!shallow_nr) {
+		FILE *pipe_fd = xfdopen(pack_objects.in, "w");
+		if (!create_full_pack) {
+			int i;
+			for (i = 0; i < want_obj.nr; i++)
+				fprintf(pipe_fd, "%s\n", sha1_to_hex(want_obj.objects[i].item->sha1));
+			fprintf(pipe_fd, "--not\n");
+			for (i = 0; i < have_obj.nr; i++)
+				fprintf(pipe_fd, "%s\n", sha1_to_hex(have_obj.objects[i].item->sha1));
+		}
+
+		fprintf(pipe_fd, "\n");
+		fflush(pipe_fd);
+		fclose(pipe_fd);
+	}
+
 
 	/* We read from pack_objects.err to capture stderr output for
 	 * progress bar, and pack_objects.out to capture the pack data.
@@ -237,7 +327,7 @@ static void create_pack_file(void)
 			sz = xread(pack_objects.out, cp,
 				  sizeof(data) - outsz);
 			if (0 < sz)
-					;
+				total_sz += sz;
 			else if (sz == 0) {
 				close(pack_objects.out);
 				pack_objects.out = -1;
@@ -276,7 +366,7 @@ static void create_pack_file(void)
 		error("git upload-pack: git-pack-objects died with error.");
 		goto fail;
 	}
-	if (finish_async(&rev_list))
+	if (shallow_nr && finish_async(&rev_list))
 		goto fail;	/* error was already reported */
 
 	/* flush the data */
@@ -289,6 +379,16 @@ static void create_pack_file(void)
 	}
 	if (use_sideband)
 		packet_flush(1);
+
+	gettimeofday(&tv, NULL);
+	tv.tv_sec -= start_tv.tv_sec;
+	if (tv.tv_usec < start_tv.tv_usec) {
+		tv.tv_sec--;
+		tv.tv_usec += 1000000;
+	}
+	tv.tv_usec -= start_tv.tv_usec;
+	if (run_post_upload_pack_hook(total_sz, &tv))
+		warning("post-upload-hook failed");
 	return;
 
  fail:
@@ -402,7 +502,7 @@ static int get_common_commits(void)
 
 	save_commit_buffer = 0;
 
-	for(;;) {
+	for (;;) {
 		int len = packet_read_line(0, line, sizeof(line));
 		reset_timeout();
 
@@ -451,8 +551,9 @@ static void receive_needs(void)
 	static char line[1000];
 	int len, depth = 0;
 
+	shallow_nr = 0;
 	if (debug_fd)
-		write_in_full(debug_fd, "#S\n", 3);
+		write_str_in_full(debug_fd, "#S\n");
 	for (;;) {
 		struct object *o;
 		unsigned char sha1_buf[20];
@@ -466,7 +567,6 @@ static void receive_needs(void)
 		if (!prefixcmp(line, "shallow ")) {
 			unsigned char sha1[20];
 			struct object *object;
-			use_thin_pack = 0;
 			if (get_sha1(line + 8, sha1))
 				die("invalid shallow line: %s", line);
 			object = parse_object(sha1);
@@ -478,7 +578,6 @@ static void receive_needs(void)
 		}
 		if (!prefixcmp(line, "deepen ")) {
 			char *end;
-			use_thin_pack = 0;
 			depth = strtol(line + 7, &end, 0);
 			if (end == line + 7 || depth <= 0)
 				die("Invalid deepen: %s", line);
@@ -520,7 +619,7 @@ static void receive_needs(void)
 		}
 	}
 	if (debug_fd)
-		write_in_full(debug_fd, "#E\n", 3);
+		write_str_in_full(debug_fd, "#E\n");
 
 	if (!use_sideband && daemon_mode)
 		no_progress = 1;
@@ -538,6 +637,7 @@ static void receive_needs(void)
 				packet_write(1, "shallow %s",
 						sha1_to_hex(object->sha1));
 				register_shallow(object->sha1);
+				shallow_nr++;
 			}
 			result = result->next;
 		}
@@ -560,6 +660,7 @@ static void receive_needs(void)
 							NULL, &want_obj);
 					parents = parents->next;
 				}
+				add_object_array(object, NULL, &extra_edge_obj);
 			}
 			/* make sure commit traversal conforms to client */
 			register_shallow(object->sha1);
@@ -571,6 +672,8 @@ static void receive_needs(void)
 			for (i = 0; i < shallows.nr; i++)
 				register_shallow(shallows.objects[i].item->sha1);
 		}
+
+	shallow_nr += shallows.nr;
 	free(shallows.objects);
 }
 
@@ -622,6 +725,7 @@ int main(int argc, char **argv)
 	int strict = 0;
 
 	git_extract_argv0_path(argv[0]);
+	read_replace_refs = 0;
 
 	for (i = 1; i < argc; i++) {
 		char *arg = argv[i];

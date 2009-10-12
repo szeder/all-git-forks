@@ -15,7 +15,10 @@ q,quiet         be quiet
 s,signoff       add a Signed-off-by line to the commit message
 u,utf8          recode into utf8 (default)
 k,keep          pass -k flag to git-mailinfo
+c,scissors      strip everything before a scissors line
 whitespace=     pass it through git-apply
+ignore-space-change pass it through git-apply
+ignore-whitespace pass it through git-apply
 directory=      pass it through git-apply
 C=              pass it through git-apply
 p=              pass it through git-apply
@@ -202,7 +205,7 @@ check_patch_format () {
 			# and see if it looks like that they all begin with the
 			# header field names...
 			sed -n -e '/^$/q' -e '/^[ 	]/d' -e p "$1" |
-			egrep -v '^[A-Za-z]+(-[A-Za-z]+)*:' >/dev/null ||
+			LC_ALL=C egrep -v '^[!-9;-~]+:' >/dev/null ||
 			patch_format=mbox
 		fi
 	} < "$1" || clean_abort
@@ -211,7 +214,13 @@ check_patch_format () {
 split_patches () {
 	case "$patch_format" in
 	mbox)
-		git mailsplit -d"$prec" -o"$dotest" -b -- "$@" > "$dotest/last" ||
+		case "$rebasing" in
+		'')
+			keep_cr= ;;
+		?*)
+			keep_cr=--keep-cr ;;
+		esac
+		git mailsplit -d"$prec" -o"$dotest" -b $keep_cr -- "$@" > "$dotest/last" ||
 		clean_abort
 		;;
 	stgit-series)
@@ -280,7 +289,7 @@ split_patches () {
 prec=4
 dotest="$GIT_DIR/rebase-apply"
 sign= utf8=t keep= skip= interactive= resolved= rebasing= abort=
-resolvemsg= resume=
+resolvemsg= resume= scissors=
 git_apply_opt=
 committer_date_is_author_date=
 ignore_date=
@@ -302,6 +311,10 @@ do
 		utf8= ;;
 	-k|--keep)
 		keep=t ;;
+	-c|--scissors)
+		scissors=t ;;
+	--no-scissors)
+		scissors=f ;;
 	-r|--resolved)
 		resolved=t ;;
 	--skip)
@@ -309,7 +322,7 @@ do
 	--abort)
 		abort=t ;;
 	--rebasing)
-		rebasing=t threeway=t keep=t ;;
+		rebasing=t threeway=t keep=t scissors=f ;;
 	-d|--dotest)
 		die "-d option is no longer supported.  Do not use."
 		;;
@@ -321,7 +334,7 @@ do
 		git_apply_opt="$git_apply_opt $(sq "$1$2")"; shift ;;
 	--patch-format)
 		shift ; patch_format="$1" ;;
-	--reject)
+	--reject|--ignore-whitespace|--ignore-space-change)
 		git_apply_opt="$git_apply_opt $1" ;;
 	--committer-date-is-author-date)
 		committer_date_is_author_date=t ;;
@@ -427,14 +440,14 @@ else
 
 	split_patches "$@"
 
-	# -s, -u, -k, --whitespace, -3, -C, -q and -p flags are kept
-	# for the resuming session after a patch failure.
-	# -i can and must be given when resuming.
+	# -i can and must be given when resuming; everything
+	# else is kept
 	echo " $git_apply_opt" >"$dotest/apply-opt"
 	echo "$threeway" >"$dotest/threeway"
 	echo "$sign" >"$dotest/sign"
 	echo "$utf8" >"$dotest/utf8"
 	echo "$keep" >"$dotest/keep"
+	echo "$scissors" >"$dotest/scissors"
 	echo "$GIT_QUIET" >"$dotest/quiet"
 	echo 1 >"$dotest/next"
 	if test -n "$rebasing"
@@ -476,6 +489,12 @@ if test "$(cat "$dotest/keep")" = t
 then
 	keep=-k
 fi
+case "$(cat "$dotest/scissors")" in
+t)
+	scissors=--scissors ;;
+f)
+	scissors=--no-scissors ;;
+esac
 if test "$(cat "$dotest/quiet")" = t
 then
 	GIT_QUIET=t
@@ -530,7 +549,7 @@ do
 	# by the user, or the user can tell us to do so by --resolved flag.
 	case "$resume" in
 	'')
-		git mailinfo $keep $utf8 "$dotest/msg" "$dotest/patch" \
+		git mailinfo $keep $scissors $utf8 "$dotest/msg" "$dotest/patch" \
 			<"$dotest/$msgnum" >"$dotest/info" ||
 			stop_here $this
 
