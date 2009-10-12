@@ -1518,7 +1518,10 @@ sub format_log_line_html {
 		$cgi->a({-href => href(action=>"object", hash=>$1),
 					-class => "text"}, $1);
 	}eg;
-
+	$line =~ s{^\[(\d+)\]}{
+		$cgi->a({-href => "https://mantis.intranet.astaro.de/view.php?id=$1",
+					-class => "text"}, "[$1]");
+	}e;
 	return $line;
 }
 
