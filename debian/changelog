@@ -3,8 +3,10 @@ git-core (1:1.6.5-0) unstable; urgency=low
   * new upstream release.
     * git-doc: html no longer uses "{plus}" where it should be "+"
       (closes: #529255).
+  * debian/git-core.README.source: new; document how to use the
+    Debian package source.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 12 Oct 2009 20:04:46 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 13 Oct 2009 00:08:25 +0000
 
 git-core (1:1.6.4.3-1) unstable; urgency=low
 
