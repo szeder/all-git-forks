@@ -489,6 +489,7 @@ struct lock_file {
 };
 #define LOCK_DIE_ON_ERROR 1
 #define LOCK_NODEREF 2
+extern int unable_to_lock_error(const char *path, int err);
 extern NORETURN void unable_to_lock_index_die(const char *path, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
@@ -985,10 +986,12 @@ void shift_tree(const unsigned char *, const unsigned char *, unsigned char *, i
  * whitespace rules.
  * used by both diff and apply
  */
-#define WS_TRAILING_SPACE	01
+#define WS_BLANK_AT_EOL         01
 #define WS_SPACE_BEFORE_TAB	02
 #define WS_INDENT_WITH_NON_TAB	04
 #define WS_CR_AT_EOL           010
+#define WS_BLANK_AT_EOF        020
+#define WS_TRAILING_SPACE      (WS_BLANK_AT_EOL|WS_BLANK_AT_EOF)
 #define WS_DEFAULT_RULE (WS_TRAILING_SPACE|WS_SPACE_BEFORE_TAB)
 extern unsigned whitespace_rule_cfg;
 extern unsigned whitespace_rule(const char *);
