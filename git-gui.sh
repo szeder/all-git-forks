@@ -122,6 +122,7 @@ unset oguimsg
 set _appname {Git Gui}
 set _gitdir {}
 set _gitexec {}
+set _githtmldir {}
 set _reponame {}
 set _iscygwin {}
 set _search_path {}
@@ -166,6 +167,28 @@ proc gitexec {args} {
 		return $_gitexec
 	}
 	return [eval [list file join $_gitexec] $args]
+}
+
+proc githtmldir {args} {
+	global _githtmldir
+	if {$_githtmldir eq {}} {
+		if {[catch {set _githtmldir [git --html-path]}]} {
+			# Git not installed or option not yet supported
+			return {}
+		}
+		if {[is_Cygwin]} {
+			set _githtmldir [exec cygpath \
+				--windows \
+				--absolute \
+				$_githtmldir]
+		} else {
+			set _githtmldir [file normalize $_githtmldir]
+		}
+	}
+	if {$args eq {}} {
+		return $_githtmldir
+	}
+	return [eval [list file join $_githtmldir] $args]
 }
 
 proc reponame {} {
@@ -640,9 +663,12 @@ font create font_diffbold
 font create font_diffitalic
 
 foreach class {Button Checkbutton Entry Label
-		Labelframe Listbox Menu Message
+		Labelframe Listbox Message
 		Radiobutton Spinbox Text} {
 	option add *$class.font font_ui
+}
+if {![is_MacOSX]} {
+	option add *Menu.font font_ui
 }
 unset class
 
@@ -699,7 +725,7 @@ proc apply_config {} {
 
 set default_config(branch.autosetupmerge) true
 set default_config(merge.tool) {}
-set default_config(merge.keepbackup) true
+set default_config(mergetool.keepbackup) true
 set default_config(merge.diffstat) true
 set default_config(merge.summary) false
 set default_config(merge.verbosity) 2
@@ -719,6 +745,8 @@ set default_config(gui.newbranchtemplate) {}
 set default_config(gui.spellingdictionary) {}
 set default_config(gui.fontui) [font configure font_ui]
 set default_config(gui.fontdiff) [font configure font_diff]
+# TODO: this option should be added to the git-config documentation
+set default_config(gui.maxfilesdisplayed) 5000
 set font_descs {
 	{fontui   font_ui   {mc "Main Font"}}
 	{fontdiff font_diff {mc "Diff/Console Font"}}
@@ -1106,8 +1134,10 @@ set current_branch {}
 set is_detached 0
 set current_diff_path {}
 set is_3way_diff 0
+set is_submodule_diff 0
 set is_conflict_diff 0
 set selected_commit_type new
+set diff_empty_count 0
 
 set nullid "0000000000000000000000000000000000000000"
 set nullid2 "0000000000000000000000000000000000000001"
@@ -1671,10 +1701,12 @@ proc display_all_files_helper {w path icon_name m} {
 	$w insert end "[escape_path $path]\n"
 }
 
+set files_warning 0
 proc display_all_files {} {
 	global ui_index ui_workdir
 	global file_states file_lists
 	global last_clicked
+	global files_warning
 
 	$ui_index conf -state normal
 	$ui_workdir conf -state normal
@@ -1686,7 +1718,18 @@ proc display_all_files {} {
 	set file_lists($ui_index) [list]
 	set file_lists($ui_workdir) [list]
 
-	foreach path [lsort [array names file_states]] {
+	set to_display [lsort [array names file_states]]
+	set display_limit [get_config gui.maxfilesdisplayed]
+	if {[llength $to_display] > $display_limit} {
+		if {!$files_warning} {
+			# do not repeatedly warn:
+			set files_warning 1
+			info_popup [mc "Displaying only %s of %s files." \
+				$display_limit [llength $to_display]]
+		}
+		set to_display [lrange $to_display 0 [expr {$display_limit-1}]]
+	}
+	foreach path $to_display {
 		set s $file_states($path)
 		set m [lindex $s 0]
 		set icon_name [lindex $s 1]
@@ -1924,7 +1967,7 @@ proc do_explore {} {
 		# freedesktop.org-conforming system is our best shot
 		set explorer "xdg-open"
 	}
-	eval exec $explorer [file dirname [gitdir]] &
+	eval exec $explorer [list [file nativename [file dirname [gitdir]]]] &
 }
 
 set is_quitting 0
@@ -1983,6 +2026,19 @@ proc do_quit {{rc {1}}} {
 
 		# -- Stash our current window geometry into this repository.
 		#
+		set cfg_wmstate [wm state .]
+		if {[catch {set rc_wmstate $repo_config(gui.wmstate)}]} {
+			set rc_wmstate {}
+		}
+		if {$cfg_wmstate ne $rc_wmstate} {
+			catch {git config gui.wmstate $cfg_wmstate}
+		}
+		if {$cfg_wmstate eq {zoomed}} {
+			# on Windows wm geometry will lie about window
+			# position (but not size) when window is zoomed
+			# restore the window before querying wm geometry
+			wm state . normal
+		}
 		set cfg_geometry [list]
 		lappend cfg_geometry [wm geometry .]
 		lappend cfg_geometry [lindex [.vpane sash coord 0] 0]
@@ -2277,6 +2333,12 @@ set ui_comm {}
 # -- Menu Bar
 #
 menu .mbar -tearoff 0
+if {[is_MacOSX]} {
+	# -- Apple Menu (Mac OS X only)
+	#
+	.mbar add cascade -label Apple -menu .mbar.apple
+	menu .mbar.apple
+}
 .mbar add cascade -label [mc Repository] -menu .mbar.repository
 .mbar add cascade -label [mc Edit] -menu .mbar.edit
 if {[is_enabled branch]} {
@@ -2292,7 +2354,6 @@ if {[is_enabled transport]} {
 if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 	.mbar add cascade -label [mc Tools] -menu .mbar.tools
 }
-. configure -menu .mbar
 
 # -- Repository Menu
 #
@@ -2545,19 +2606,7 @@ if {[is_enabled transport]} {
 }
 
 if {[is_MacOSX]} {
-	# -- Apple Menu (Mac OS X only)
-	#
-	.mbar add cascade -label Apple -menu .mbar.apple
-	menu .mbar.apple
-
-	.mbar.apple add command -label [mc "About %s" [appname]] \
-		-command do_about
-	.mbar.apple add separator
-	.mbar.apple add command \
-		-label [mc "Preferences..."] \
-		-command do_options \
-		-accelerator $M1T-,
-	bind . <$M1B-,> do_options
+	proc ::tk::mac::ShowPreferences {} {do_options}
 } else {
 	# -- Edit Menu
 	#
@@ -2585,17 +2634,23 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 .mbar add cascade -label [mc Help] -menu .mbar.help
 menu .mbar.help
 
-if {![is_MacOSX]} {
+if {[is_MacOSX]} {
+	.mbar.apple add command -label [mc "About %s" [appname]] \
+		-command do_about
+	.mbar.apple add separator
+} else {
 	.mbar.help add command -label [mc "About %s" [appname]] \
 		-command do_about
 }
+. configure -menu .mbar
 
+set doc_path [githtmldir]
+if {$doc_path ne {}} {
+	set doc_path [file join $doc_path index.html]
 
-set doc_path [file dirname [gitexec]]
-set doc_path [file join $doc_path Documentation index.html]
-
-if {[is_Cygwin]} {
-	set doc_path [exec cygpath --mixed $doc_path]
+	if {[is_Cygwin]} {
+		set doc_path [exec cygpath --mixed $doc_path]
+	}
 }
 
 if {[file isfile $doc_path]} {
@@ -2944,7 +2999,7 @@ $ctxm add command \
 	-command {tk_textPaste $ui_comm}
 $ctxm add command \
 	-label [mc Delete] \
-	-command {$ui_comm delete sel.first sel.last}
+	-command {catch {$ui_comm delete sel.first sel.last}}
 $ctxm add separator
 $ctxm add command \
 	-label [mc "Select All"] \
@@ -3186,7 +3241,7 @@ proc popup_diff_menu {ctxm ctxmmg x y X Y} {
 			set l [mc "Stage Hunk For Commit"]
 			set t [mc "Stage Line For Commit"]
 		}
-		if {$::is_3way_diff
+		if {$::is_3way_diff || $::is_submodule_diff
 			|| $current_diff_path eq {}
 			|| {__} eq $state
 			|| {_O} eq $state
@@ -3221,6 +3276,14 @@ wm geometry . [lindex $gm 0]
 	[lindex [.vpane.files sash coord 0] 0] \
 	[lindex $gm 2]
 unset gm
+}
+
+# -- Load window state
+#
+catch {
+set gws $repo_config(gui.wmstate)
+wm state . $gws
+unset gws
 }
 
 # -- Key Bindings

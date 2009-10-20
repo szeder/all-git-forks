@@ -90,6 +90,11 @@ msgstr ""
 msgid "Ready."
 msgstr ""
 
+#: git-gui.sh:1726
+#, tcl-format
+msgid "Displaying only %s of %s files."
+msgstr ""
+
 #: git-gui.sh:1819
 msgid "Unmodified"
 msgstr ""
@@ -751,13 +756,6 @@ msgstr ""
 #: lib/branch_delete.tcl:103
 #, tcl-format
 msgid "The following branches are not completely merged into %s:"
-msgstr ""
-
-#: lib/branch_delete.tcl:115
-msgid ""
-"Recovering deleted branches is difficult. \n"
-"\n"
-" Delete the selected branches?"
 msgstr ""
 
 #: lib/branch_delete.tcl:141
@@ -2220,7 +2218,7 @@ msgstr ""
 
 #: lib/tools.tcl:149
 #, tcl-format
-msgid "Tool completed succesfully: %s"
+msgid "Tool completed successfully: %s"
 msgstr ""
 
 #: lib/tools.tcl:151
