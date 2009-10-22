@@ -24,6 +24,7 @@ __git_all_commands ()
 	do
 		case $i in
 		*--*)             : helper pattern;;
+		*.sh|*.perl)      : build scripts;;
 		*) echo $i;;
 		esac
 	done
