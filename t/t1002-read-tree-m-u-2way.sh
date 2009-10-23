@@ -10,6 +10,8 @@ This is identical to t1001, but uses -u to update the work tree as well.
 '
 . ./test-lib.sh
 
+_x40='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+_x40="$_x40$_x40$_x40$_x40$_x40$_x40$_x40$_x40"
 compare_change () {
 	sed >current \
 	    -e '1{/^diff --git /d;}' \
