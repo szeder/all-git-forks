@@ -127,8 +127,13 @@ int register_commit_graft(struct commit_graft *graft, int ignore_dups)
 
 	commit = lookup_commit(graft->sha1);
 	commit->object.graft = 1;
-	commit->object.parsed = 0;
-	parse_commit(commit); /* in case commit was already parsed */
+	if (commit->object.parsed) {
+		/* we don't want to call this from a parse_commit(), but 
+		 * we should ensure commit's parents are "correct"
+		 */
+		commit->object.parsed = 0;
+		parse_commit(commit);
+	}
 
 	return 0;
 }
@@ -256,7 +261,6 @@ int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size)
 
 	if (item->object.parsed)
 		return 0;
-	item->object.parsed = 1;
 	tail += size;
 	if (tail <= bufptr + 46 || memcmp(bufptr, "tree ", 5) || bufptr[45] != '\n')
 		return error("bogus commit object %s", sha1_to_hex(item->object.sha1));
@@ -308,6 +312,7 @@ int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size)
 		item->object.graft = 0;
 
 	item->date = parse_commit_date(bufptr, tail);
+	item->object.parsed = 1;
 
 	return 0;
 }
