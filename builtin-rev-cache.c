@@ -207,10 +207,10 @@ static int handle_help(void)
 {
 	char *usage = "\
 usage:\n\
-git-rev-cache COMMAND [options] [<commit-id>...]\n\
+git-rev-cache COMMAND [options] [<commit>...]\n\
 commands:\n\
   add    - add revisions to the cache.  reads commit ids from stdin, \n\
-           formatted as: START START ... --not END END ...\n\
+           START = 'interesting', END = boundary of 'uninterestingness'\n\
            options:\n\
             --all                  use all branch heads as starts\n\
             --fresh/--incremental  exclude everything already in a cache slice\n\
