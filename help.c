@@ -100,7 +100,7 @@ static void pretty_print_string_list(struct cmdnames *cmds, int longest)
 
 	if (space < max_cols)
 		cols = max_cols / space;
-	rows = (cmds->cnt + cols - 1) / cols;
+	rows = DIV_ROUND_UP(cmds->cnt, cols);
 
 	for (i = 0; i < rows; i++) {
 		printf("  ");
@@ -126,8 +126,8 @@ static int is_executable(const char *name)
 	    !S_ISREG(st.st_mode))
 		return 0;
 
-#ifdef __MINGW32__
-	/* cannot trust the executable bit, peek into the file instead */
+#ifdef WIN32
+{	/* cannot trust the executable bit, peek into the file instead */
 	char buf[3] = { 0 };
 	int n;
 	int fd = open(name, O_RDONLY);
@@ -140,6 +140,7 @@ static int is_executable(const char *name)
 				st.st_mode |= S_IXUSR;
 		close(fd);
 	}
+}
 #endif
 	return st.st_mode & S_IXUSR;
 }
@@ -302,7 +303,7 @@ const char *help_unknown_cmd(const char *cmd)
 	struct cmdnames main_cmds, other_cmds;
 
 	memset(&main_cmds, 0, sizeof(main_cmds));
-	memset(&other_cmds, 0, sizeof(main_cmds));
+	memset(&other_cmds, 0, sizeof(other_cmds));
 	memset(&aliases, 0, sizeof(aliases));
 
 	git_config(git_unknown_cmd_config, NULL);
@@ -334,7 +335,7 @@ const char *help_unknown_cmd(const char *cmd)
 		const char *assumed = main_cmds.names[0]->name;
 		main_cmds.names[0] = NULL;
 		clean_cmdnames(&main_cmds);
-		fprintf(stderr, "WARNING: You called a Git program named '%s', "
+		fprintf(stderr, "WARNING: You called a Git command named '%s', "
 			"which does not exist.\n"
 			"Continuing under the assumption that you meant '%s'\n",
 			cmd, assumed);

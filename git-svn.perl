@@ -5,7 +5,7 @@ use warnings;
 use strict;
 use vars qw/	$AUTHOR $VERSION
 		$sha1 $sha1_short $_revision $_repository
-		$_q $_authors %users/;
+		$_q $_authors $_authors_prog %users/;
 $AUTHOR = 'Eric Wong <normalperson@yhbt.net>';
 $VERSION = '@@GIT_VERSION@@';
 
@@ -19,6 +19,16 @@ $ENV{GIT_DIR} ||= '.git';
 $Git::SVN::default_repo_id = 'svn';
 $Git::SVN::default_ref_id = $ENV{GIT_SVN_ID} || 'git-svn';
 $Git::SVN::Ra::_log_window_size = 100;
+$Git::SVN::_minimize_url = 'unset';
+
+if (! exists $ENV{SVN_SSH}) {
+	if (exists $ENV{GIT_SSH}) {
+		$ENV{SVN_SSH} = $ENV{GIT_SSH};
+		if ($^O eq 'msys') {
+			$ENV{SVN_SSH} =~ s/\\/\\\\/g;
+		}
+	}
+}
 
 $Git::SVN::Log::TZ = $ENV{TZ};
 $ENV{TZ} = 'UTC';
@@ -31,6 +41,7 @@ require SVN::Delta;
 if ($SVN::Core::VERSION lt '1.1.0') {
 	fatal "Need SVN::Core 1.1.0 or better (got $SVN::Core::VERSION)";
 }
+my $can_compress = eval { require Compress::Zlib; 1};
 push @Git::SVN::Ra::ISA, 'SVN::Ra';
 push @SVN::Git::Editor::ISA, 'SVN::Delta::Editor';
 push @SVN::Git::Fetcher::ISA, 'SVN::Delta::Editor';
@@ -39,6 +50,8 @@ use Digest::MD5;
 use IO::File qw//;
 use File::Basename qw/dirname basename/;
 use File::Path qw/mkpath/;
+use File::Spec;
+use File::Find;
 use Getopt::Long qw/:config gnu_getopt no_ignore_case auto_abbrev/;
 use IPC::Open3;
 use Git;
@@ -62,7 +75,7 @@ my ($SVN);
 $sha1 = qr/[a-f\d]{40}/;
 $sha1_short = qr/[a-f\d]{4,40}/;
 my ($_stdin, $_help, $_edit,
-	$_message, $_file,
+	$_message, $_file, $_branch_dest,
 	$_template, $_shared,
 	$_version, $_fetch_all, $_no_rebase, $_fetch_parent,
 	$_merge, $_strategy, $_dry_run, $_local,
@@ -76,6 +89,7 @@ my %remote_opts = ( 'username=s' => \$Git::SVN::Prompt::_username,
                     'ignore-paths=s' => \$SVN::Git::Fetcher::_ignore_regex );
 my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'authors-file|A=s' => \$_authors,
+		'authors-prog=s' => \$_authors_prog,
 		'repack:i' => \$Git::SVN::_repack,
 		'noMetadata' => \$Git::SVN::_no_metadata,
 		'useSvmProps' => \$Git::SVN::_use_svm_props,
@@ -90,13 +104,13 @@ my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'localtime' => \$Git::SVN::_localtime,
 		%remote_opts );
 
-my ($_trunk, $_tags, $_branches, $_stdlayout);
+my ($_trunk, @_tags, @_branches, $_stdlayout);
 my %icv;
 my %init_opts = ( 'template=s' => \$_template, 'shared:s' => \$_shared,
-                  'trunk|T=s' => \$_trunk, 'tags|t=s' => \$_tags,
-                  'branches|b=s' => \$_branches, 'prefix=s' => \$_prefix,
+                  'trunk|T=s' => \$_trunk, 'tags|t=s@' => \@_tags,
+                  'branches|b=s@' => \@_branches, 'prefix=s' => \$_prefix,
                   'stdlayout|s' => \$_stdlayout,
-                  'minimize-url|m' => \$Git::SVN::_minimize_url,
+                  'minimize-url|m!' => \$Git::SVN::_minimize_url,
 		  'no-metadata' => sub { $icv{noMetadata} = 1 },
 		  'use-svm-props' => sub { $icv{useSvmProps} = 1 },
 		  'use-svnsync-props' => sub { $icv{useSvnsyncProps} = 1 },
@@ -139,11 +153,13 @@ my %cmd = (
 	branch => [ \&cmd_branch,
 	            'Create a branch in the SVN repository',
 	            { 'message|m=s' => \$_message,
+	              'destination|d=s' => \$_branch_dest,
 	              'dry-run|n' => \$_dry_run,
 		      'tag|t' => \$_tag } ],
 	tag => [ sub { $_tag = 1; cmd_branch(@_) },
 	         'Create a tag in the SVN repository',
 	         { 'message|m=s' => \$_message,
+	           'destination|d=s' => \$_branch_dest,
 	           'dry-run|n' => \$_dry_run } ],
 	'set-tree' => [ \&cmd_set_tree,
 	                "Set an SVN repository to a git tree-ish",
@@ -209,6 +225,14 @@ my %cmd = (
 	'blame' => [ \&Git::SVN::Log::cmd_blame,
 	            "Show what revision and author last modified each line of a file",
 		    { 'git-format' => \$_git_format } ],
+	'reset' => [ \&cmd_reset,
+		     "Undo fetches back to the specified SVN revision",
+		     { 'revision|r=s' => \$_revision,
+		       'parent|p' => \$_fetch_parent } ],
+	'gc' => [ \&cmd_gc,
+		  "Compress unhandled.log files in .git/svn and remove " .
+		  "index files in .git/svn",
+		{} ],
 );
 
 my $cmd;
@@ -217,6 +241,9 @@ for (my $i = 0; $i < @ARGV; $i++) {
 		$cmd = $ARGV[$i];
 		splice @ARGV, $i, 1;
 		last;
+	} elsif ($ARGV[$i] eq 'help') {
+		$cmd = $ARGV[$i+1];
+		usage(0);
 	}
 };
 
@@ -263,6 +290,9 @@ usage(0) if $_help;
 version() if $_version;
 usage(1) unless defined $cmd;
 load_authors() if $_authors;
+if (defined $_authors_prog) {
+	$_authors_prog = "'" . File::Spec->rel2abs($_authors_prog) . "'";
+}
 
 unless ($cmd =~ /^(?:clone|init|multi-init|commit-diff)$/) {
 	Git::SVN::Migration::migration_check();
@@ -353,7 +383,7 @@ sub init_subdir {
 sub cmd_clone {
 	my ($url, $path) = @_;
 	if (!defined $path &&
-	    (defined $_trunk || defined $_branches || defined $_tags ||
+	    (defined $_trunk || @_branches || @_tags ||
 	     defined $_stdlayout) &&
 	    $url !~ m#^[a-z\+]+://#) {
 		$path = $url;
@@ -361,21 +391,27 @@ sub cmd_clone {
 	$path = basename($url) if !defined $path || !length $path;
 	cmd_init($url, $path);
 	Git::SVN::fetch_all($Git::SVN::default_repo_id);
+	command_oneline('config', 'svn.authorsfile', $_authors) if $_authors;
 }
 
 sub cmd_init {
 	if (defined $_stdlayout) {
 		$_trunk = 'trunk' if (!defined $_trunk);
-		$_tags = 'tags' if (!defined $_tags);
-		$_branches = 'branches' if (!defined $_branches);
+		@_tags = 'tags' if (! @_tags);
+		@_branches = 'branches' if (! @_branches);
 	}
-	if (defined $_trunk || defined $_branches || defined $_tags) {
+	if (defined $_trunk || @_branches || @_tags) {
 		return cmd_multi_init(@_);
 	}
 	my $url = shift or die "SVN repository location required ",
 	                       "as a command-line argument\n";
+	$url = canonicalize_url($url);
 	init_subdir(@_);
 	do_git_init_db();
+
+	if ($Git::SVN::_minimize_url eq 'unset') {
+		$Git::SVN::_minimize_url = 0;
+	}
 
 	Git::SVN->init($url);
 }
@@ -448,8 +484,22 @@ sub cmd_dcommit {
 		'Cannot dcommit with a dirty index.  Commit your changes first, '
 		. "or stash them with `git stash'.\n";
 	$head ||= 'HEAD';
+
+	my $old_head;
+	if ($head ne 'HEAD') {
+		$old_head = eval {
+			command_oneline([qw/symbolic-ref -q HEAD/])
+		};
+		if ($old_head) {
+			$old_head =~ s{^refs/heads/}{};
+		} else {
+			$old_head = eval { command_oneline(qw/rev-parse HEAD/) };
+		}
+		command(['checkout', $head], STDERR => 0);
+	}
+
 	my @refs;
-	my ($url, $rev, $uuid, $gs) = working_head_info($head, \@refs);
+	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD', \@refs);
 	unless ($gs) {
 		die "Unable to determine upstream SVN information from ",
 		    "$head history.\nPerhaps the repository is empty.";
@@ -535,7 +585,7 @@ sub cmd_dcommit {
 			if (@diff) {
 				@refs = ();
 				my ($url_, $rev_, $uuid_, $gs_) =
-				              working_head_info($head, \@refs);
+				              working_head_info('HEAD', \@refs);
 				my ($linear_refs_, $parents_) =
 				              linearize_history($gs_, \@refs);
 				if (scalar(@$linear_refs) !=
@@ -553,8 +603,15 @@ sub cmd_dcommit {
 					  "\nBefore dcommitting";
 				}
 				if ($url_ ne $expect_url) {
-					fatal "URL mismatch after rebase: ",
-					      "$url_ != $expect_url";
+					if ($url_ eq $gs->metadata_url) {
+						print
+						  "Accepting rewritten URL:",
+						  " $url_\n";
+					} else {
+						fatal
+						  "URL mismatch after rebase:",
+						  " $url_ != $expect_url";
+					}
 				}
 				if ($uuid_ ne $uuid) {
 					fatal "uuid mismatch after rebase: ",
@@ -573,6 +630,22 @@ sub cmd_dcommit {
 			}
 		}
 	}
+
+	if ($old_head) {
+		my $new_head = command_oneline(qw/rev-parse HEAD/);
+		my $new_is_symbolic = eval {
+			command_oneline(qw/symbolic-ref -q HEAD/);
+		};
+		if ($new_is_symbolic) {
+			print "dcommitted the branch ", $head, "\n";
+		} else {
+			print "dcommitted on a detached HEAD because you gave ",
+			      "a revision argument.\n",
+			      "The rewritten commit is: ", $new_head, "\n";
+		}
+		command(['checkout', $old_head], STDERR => 0);
+	}
+
 	unlink $gs->{index};
 }
 
@@ -587,7 +660,46 @@ sub cmd_branch {
 	my ($src, $rev, undef, $gs) = working_head_info($head);
 
 	my $remote = Git::SVN::read_all_remotes()->{$gs->{repo_id}};
-	my $glob = $remote->{ $_tag ? 'tags' : 'branches' };
+	my $allglobs = $remote->{ $_tag ? 'tags' : 'branches' };
+	my $glob;
+	if ($#{$allglobs} == 0) {
+		$glob = $allglobs->[0];
+	} else {
+		unless(defined $_branch_dest) {
+			die "Multiple ",
+			    $_tag ? "tag" : "branch",
+			    " paths defined for Subversion repository.\n",
+		            "You must specify where you want to create the ",
+		            $_tag ? "tag" : "branch",
+		            " with the --destination argument.\n";
+		}
+		foreach my $g (@{$allglobs}) {
+			# SVN::Git::Editor could probably be moved to Git.pm..
+			my $re = SVN::Git::Editor::glob2pat($g->{path}->{left});
+			if ($_branch_dest =~ /$re/) {
+				$glob = $g;
+				last;
+			}
+		}
+		unless (defined $glob) {
+			my $dest_re = qr/\b\Q$_branch_dest\E\b/;
+			foreach my $g (@{$allglobs}) {
+				$g->{path}->{left} =~ /$dest_re/ or next;
+				if (defined $glob) {
+					die "Ambiguous destination: ",
+					    $_branch_dest, "\nmatches both '",
+					    $glob->{path}->{left}, "' and '",
+					    $g->{path}->{left}, "'\n";
+				}
+				$glob = $g;
+			}
+			unless (defined $glob) {
+				die "Unknown ",
+				    $_tag ? "tag" : "branch",
+				    " destination $_branch_dest\n";
+			}
+		}
+	}
 	my ($lft, $rgt) = @{ $glob->{path} }{qw/left right/};
 	my $dst = join '/', $remote->{url}, $lft, $branch_name, ($rgt || ());
 
@@ -668,6 +780,7 @@ sub cmd_show_ignore {
 		print STDOUT "\n# $path\n";
 		my $s = $props->{'svn:ignore'} or return;
 		$s =~ s/[\r\n]+/\n/g;
+		$s =~ s/^\n+//;
 		chomp $s;
 		$s =~ s#^#$path#gm;
 		print STDOUT "$s\n";
@@ -705,6 +818,7 @@ sub cmd_create_ignore {
 		open(GITIGNORE, '>', $ignore)
 		  or fatal("Failed to open `$ignore' for writing: $!");
 		$s =~ s/[\r\n]+/\n/g;
+		$s =~ s/^\n+//;
 		chomp $s;
 		# Prefix all patterns so that the ignore doesn't apply
 		# to sub-directories.
@@ -733,6 +847,12 @@ sub canonicalize_path {
 	$path =~ s#^/##;
 	$path =~ s#^\.$##;
 	return $path;
+}
+
+sub canonicalize_url {
+	my ($url) = @_;
+	$url =~ s#^([^:]+://[^/]*/)(.*)$#$1 . canonicalize_path($2)#e;
+	return $url;
 }
 
 # get_svnprops(PATH)
@@ -794,22 +914,18 @@ sub cmd_proplist {
 
 sub cmd_multi_init {
 	my $url = shift;
-	unless (defined $_trunk || defined $_branches || defined $_tags) {
+	unless (defined $_trunk || @_branches || @_tags) {
 		usage(1);
 	}
 
-	# there are currently some bugs that prevent multi-init/multi-fetch
-	# setups from working well without this.
-	$Git::SVN::_minimize_url = 1;
-
 	$_prefix = '' unless defined $_prefix;
 	if (defined $url) {
-		$url =~ s#/+$##;
+		$url = canonicalize_url($url);
 		init_subdir(@_);
 	}
 	do_git_init_db();
 	if (defined $_trunk) {
-		my $trunk_ref = $_prefix . 'trunk';
+		my $trunk_ref = 'refs/remotes/' . $_prefix . 'trunk';
 		# try both old-style and new-style lookups:
 		my $gs_trunk = eval { Git::SVN->new($trunk_ref) };
 		unless ($gs_trunk) {
@@ -819,10 +935,14 @@ sub cmd_multi_init {
 						   undef, $trunk_ref);
 		}
 	}
-	return unless defined $_branches || defined $_tags;
+	return unless @_branches || @_tags;
 	my $ra = $url ? Git::SVN::Ra->new($url) : undef;
-	complete_url_ls_init($ra, $_branches, '--branches/-b', $_prefix);
-	complete_url_ls_init($ra, $_tags, '--tags/-t', $_prefix . 'tags/');
+	foreach my $path (@_branches) {
+		complete_url_ls_init($ra, $path, '--branches/-b', $_prefix);
+	}
+	foreach my $path (@_tags) {
+		complete_url_ls_init($ra, $path, '--tags/-t', $_prefix.'tags/');
+	}
 }
 
 sub cmd_multi_fetch {
@@ -1015,6 +1135,28 @@ sub cmd_info {
 	print $result, "\n";
 }
 
+sub cmd_reset {
+	my $target = shift || $_revision or die "SVN revision required\n";
+	$target = $1 if $target =~ /^r(\d+)$/;
+	$target =~ /^\d+$/ or die "Numeric SVN revision expected\n";
+	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD');
+	unless ($gs) {
+		die "Unable to determine upstream SVN information from ".
+		    "history\n";
+	}
+	my ($r, $c) = $gs->find_rev_before($target, not $_fetch_parent);
+	$gs->rev_map_set($r, $c, 'reset', $uuid);
+	print "r$r = $c ($gs->{ref_id})\n";
+}
+
+sub cmd_gc {
+	if (!$can_compress) {
+		warn "Compress::Zlib could not be found; unhandled.log " .
+		     "files will not be compressed.\n";
+	}
+	find({ wanted => \&gc_directory, no_chdir => 1}, "$ENV{GIT_DIR}/svn");
+}
+
 ########################### utility functions #########################
 
 sub rebase_cmd {
@@ -1029,6 +1171,17 @@ sub post_fetch_checkout {
 	return if $_no_checkout;
 	my $gs = $Git::SVN::_head or return;
 	return if verify_ref('refs/heads/master^0');
+
+	# look for "trunk" ref if it exists
+	my $remote = Git::SVN::read_all_remotes()->{$gs->{repo_id}};
+	my $fetch = $remote->{fetch};
+	if ($fetch) {
+		foreach my $p (keys %$fetch) {
+			basename($fetch->{$p}) eq 'trunk' or next;
+			$gs = Git::SVN->new($fetch->{$p}, $gs->{repo_id}, $p);
+			last;
+		}
+	}
 
 	my $valid_head = verify_ref('HEAD^0');
 	command_noisy(qw(update-ref refs/heads/master), $gs->refname);
@@ -1084,7 +1237,8 @@ sub complete_url_ls_init {
 		    "wanted to set to: $gs->{url}\n";
 	}
 	command_oneline('config', $k, $gs->{url}) unless $orig_url;
-	my $remote_path = "$ra->{svn_path}/$repo_path";
+	my $remote_path = "$gs->{path}/$repo_path";
+	$remote_path =~ s{%([0-9A-F]{2})}{chr hex($1)}ieg;
 	$remote_path =~ s#/+#/#g;
 	$remote_path =~ s#^/##g;
 	$remote_path .= "/*" if $remote_path !~ /\*/;
@@ -1093,6 +1247,7 @@ sub complete_url_ls_init {
 		die "--prefix='$pfx' must have a trailing slash '/'\n";
 	}
 	command_noisy('config',
+		      '--add',
 	              "svn-remote.$gs->{repo_id}.$n",
 	              "$remote_path:refs/remotes/$pfx*" .
 	                ('/*' x (($remote_path =~ tr/*/*/) - 1)) );
@@ -1172,16 +1327,27 @@ sub get_commit_entry {
 	}
 	rename $commit_editmsg, $commit_msg or croak $!;
 	{
+		require Encode;
 		# SVN requires messages to be UTF-8 when entering the repo
 		local $/;
 		open $log_fh, '<', $commit_msg or croak $!;
 		binmode $log_fh;
 		chomp($log_entry{log} = <$log_fh>);
 
-		if (my $enc = Git::config('i18n.commitencoding')) {
-			require Encode;
-			Encode::from_to($log_entry{log}, $enc, 'UTF-8');
+		my $enc = Git::config('i18n.commitencoding') || 'UTF-8';
+		my $msg = $log_entry{log};
+
+		eval { $msg = Encode::decode($enc, $msg, 1) };
+		if ($@) {
+			die "Could not decode as $enc:\n", $msg,
+			    "\nPerhaps you need to set i18n.commitencoding\n";
 		}
+
+		eval { $msg = Encode::encode('UTF-8', $msg, 1) };
+		die "Could not encode as UTF-8:\n$msg\n" if $@;
+
+		$log_entry{log} = $msg;
+
 		close $log_fh or croak $!;
 	}
 	unlink $commit_msg;
@@ -1255,11 +1421,11 @@ sub read_repo_config {
 sub extract_metadata {
 	my $id = shift or return (undef, undef, undef);
 	my ($url, $rev, $uuid) = ($id =~ /^\s*git-svn-id:\s+(.*)\@(\d+)
-							\s([a-f\d\-]+)$/x);
+							\s([a-f\d\-]+)$/ix);
 	if (!defined $rev || !$uuid || !$url) {
 		# some of the original repositories I made had
 		# identifiers like this:
-		($rev, $uuid) = ($id =~/^\s*git-svn-id:\s(\d+)\@([a-f\d\-]+)/);
+		($rev, $uuid) = ($id =~/^\s*git-svn-id:\s(\d+)\@([a-f\d\-]+)/i);
 	}
 	return ($url, $rev, $uuid);
 }
@@ -1423,6 +1589,25 @@ sub md5sum {
 	return $md5->hexdigest();
 }
 
+sub gc_directory {
+	if ($can_compress && -f $_ && basename($_) eq "unhandled.log") {
+		my $out_filename = $_ . ".gz";
+		open my $in_fh, "<", $_ or die "Unable to open $_: $!\n";
+		binmode $in_fh;
+		my $gz = Compress::Zlib::gzopen($out_filename, "ab") or
+				die "Unable to open $out_filename: $!\n";
+
+		my $res;
+		while ($res = sysread($in_fh, my $str, 1024)) {
+			$gz->gzwrite($str) or
+				die "Unable to write: ".$gz->gzerror()."!\n";
+		}
+		unlink $_ or die "unlink $File::Find::name: $!\n";
+	} elsif (-f $_ && basename($_) eq "index") {
+		unlink $_ or die "unlink $_: $!\n";
+	}
+}
+
 package Git::SVN;
 use strict;
 use warnings;
@@ -1486,23 +1671,23 @@ sub resolve_local_globs {
 	return unless defined $glob_spec;
 	my $ref = $glob_spec->{ref};
 	my $path = $glob_spec->{path};
-	foreach (command(qw#for-each-ref --format=%(refname) refs/remotes#)) {
-		next unless m#^refs/remotes/$ref->{regex}$#;
+	foreach (command(qw#for-each-ref --format=%(refname) refs/#)) {
+		next unless m#^$ref->{regex}$#;
 		my $p = $1;
 		my $pathname = desanitize_refname($path->full_path($p));
 		my $refname = desanitize_refname($ref->full_path($p));
 		if (my $existing = $fetch->{$pathname}) {
 			if ($existing ne $refname) {
 				die "Refspec conflict:\n",
-				    "existing: refs/remotes/$existing\n",
-				    " globbed: refs/remotes/$refname\n";
+				    "existing: $existing\n",
+				    " globbed: $refname\n";
 			}
-			my $u = (::cmt_metadata("refs/remotes/$refname"))[0];
+			my $u = (::cmt_metadata("$refname"))[0];
 			$u =~ s!^\Q$url\E(/|$)!! or die
-			  "refs/remotes/$refname: '$url' not found in '$u'\n";
+			  "$refname: '$url' not found in '$u'\n";
 			if ($pathname ne $u) {
 				warn "W: Refspec glob conflict ",
-				     "(ref: refs/remotes/$refname):\n",
+				     "(ref: $refname):\n",
 				     "expected path: $pathname\n",
 				     "    real path: $u\n",
 				     "Continuing ahead with $u\n";
@@ -1543,12 +1728,14 @@ sub fetch_all {
 	my $ra = Git::SVN::Ra->new($url);
 	my $uuid = $ra->get_uuid;
 	my $head = $ra->get_latest_revnum;
+	$ra->get_log("", $head, 0, 1, 0, 1, sub { $head = $_[1] });
 	my $base = defined $fetch ? $head : 0;
 
 	# read the max revs for wildcard expansion (branches/*, tags/*)
 	foreach my $t (qw/branches tags/) {
 		defined $remote->{$t} or next;
-		push @globs, $remote->{$t};
+		push @globs, @{$remote->{$t}};
+
 		my $max_rev = eval { tmp_config(qw/--int --get/,
 		                         "svn-remote.$repo_id.${t}-maxRev") };
 		if (defined $max_rev && ($max_rev < $base)) {
@@ -1578,32 +1765,35 @@ sub read_all_remotes {
 	my $use_svm_props = eval { command_oneline(qw/config --bool
 	    svn.useSvmProps/) };
 	$use_svm_props = $use_svm_props eq 'true' if $use_svm_props;
+	my $svn_refspec = qr{\s*/?(.*?)\s*:\s*(.+?)\s*};
 	foreach (grep { s/^svn-remote\.// } command(qw/config -l/)) {
-		if (m!^(.+)\.fetch=\s*(.*)\s*:\s*(.+)\s*$!) {
-			my ($remote, $local_ref, $_remote_ref) = ($1, $2, $3);
-			die("svn-remote.$remote: remote ref '$_remote_ref' "
-			    . "must start with 'refs/remotes/'\n")
-				unless $_remote_ref =~ m{^refs/remotes/(.+)};
-			my $remote_ref = $1;
-			$local_ref =~ s{^/}{};
+		if (m!^(.+)\.fetch=$svn_refspec$!) {
+			my ($remote, $local_ref, $remote_ref) = ($1, $2, $3);
+			die("svn-remote.$remote: remote ref '$remote_ref' "
+			    . "must start with 'refs/'\n")
+				unless $remote_ref =~ m{^refs/};
 			$r->{$remote}->{fetch}->{$local_ref} = $remote_ref;
 			$r->{$remote}->{svm} = {} if $use_svm_props;
 		} elsif (m!^(.+)\.usesvmprops=\s*(.*)\s*$!) {
 			$r->{$1}->{svm} = {};
 		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
 			$r->{$1}->{url} = $2;
-		} elsif (m!^(.+)\.(branches|tags)=
-		           (.*):refs/remotes/(.+)\s*$/!x) {
-			my ($p, $g) = ($3, $4);
-			my $rs = $r->{$1}->{$2} = {
-			                  t => $2,
-					  remote => $1,
-			                  path => Git::SVN::GlobSpec->new($p),
-			                  ref => Git::SVN::GlobSpec->new($g) };
+		} elsif (m!^(.+)\.(branches|tags)=$svn_refspec$!) {
+			my ($remote, $t, $local_ref, $remote_ref) =
+			                                     ($1, $2, $3, $4);
+			die("svn-remote.$remote: remote ref '$remote_ref' ($t) "
+			    . "must start with 'refs/'\n")
+				unless $remote_ref =~ m{^refs/};
+			my $rs = {
+			    t => $t,
+			    remote => $remote,
+			    path => Git::SVN::GlobSpec->new($local_ref),
+			    ref => Git::SVN::GlobSpec->new($remote_ref) };
 			if (length($rs->{ref}->{right}) != 0) {
 				die "The '*' glob character must be the last ",
-				    "character of '$g'\n";
+				    "character of '$remote_ref'\n";
 			}
+			push @{ $r->{$remote}->{$t} }, $rs;
 		}
 	}
 
@@ -1711,14 +1901,15 @@ sub init_remote_config {
 		}
 	}
 	my ($xrepo_id, $xpath) = find_ref($self->refname);
-	if (defined $xpath) {
+	if (!$no_write && defined $xpath) {
 		die "svn-remote.$xrepo_id.fetch already set to track ",
-		    "$xpath:refs/remotes/", $self->refname, "\n";
+		    "$xpath:", $self->refname, "\n";
 	}
 	unless ($no_write) {
 		command_noisy('config',
 			      "svn-remote.$self->{repo_id}.url", $url);
 		$self->{path} =~ s{^/}{};
+		$self->{path} =~ s{%([0-9A-F]{2})}{chr hex($1)}ieg;
 		command_noisy('config', '--add',
 			      "svn-remote.$self->{repo_id}.fetch",
 			      "$self->{path}:".$self->refname);
@@ -1743,9 +1934,10 @@ sub find_by_url { # repos_root and, path are optional
 		next if defined $repos_root && $repos_root ne $u;
 
 		my $fetch = $remotes->{$repo_id}->{fetch} || {};
-		foreach (qw/branches tags/) {
-			resolve_local_globs($u, $fetch,
-			                    $remotes->{$repo_id}->{$_});
+		foreach my $t (qw/branches tags/) {
+			foreach my $globspec (@{$remotes->{$repo_id}->{$t}}) {
+				resolve_local_globs($u, $fetch, $globspec);
+			}
 		}
 		my $p = $path;
 		my $rwr = rewrite_root({repo_id => $repo_id});
@@ -1787,7 +1979,7 @@ sub find_ref {
 	my ($ref_id) = @_;
 	foreach (command(qw/config -l/)) {
 		next unless m!^svn-remote\.(.+)\.fetch=
-		              \s*(.*)\s*:\s*refs/remotes/(.+)\s*$!x;
+		              \s*/?(.*?)\s*:\s*(.+?)\s*$!x;
 		my ($repo_id, $path, $ref) = ($1, $2, $3);
 		if ($ref eq $ref_id) {
 			$path = '' if ($path =~ m#^\./?#);
@@ -1804,16 +1996,16 @@ sub new {
 		if (!defined $repo_id) {
 			die "Could not find a \"svn-remote.*.fetch\" key ",
 			    "in the repository configuration matching: ",
-			    "refs/remotes/$ref_id\n";
+			    "$ref_id\n";
 		}
 	}
 	my $self = _new($class, $repo_id, $ref_id, $path);
 	if (!defined $self->{path} || !length $self->{path}) {
 		my $fetch = command_oneline('config', '--get',
 		                            "svn-remote.$repo_id.fetch",
-		                            ":refs/remotes/$ref_id\$") or
+		                            ":$ref_id\$") or
 		     die "Failed to read \"svn-remote.$repo_id.fetch\" ",
-		         "\":refs/remotes/$ref_id\$\" in config\n";
+		         "\":$ref_id\$\" in config\n";
 		($self->{path}, undef) = split(/\s*:\s*/, $fetch);
 	}
 	$self->{url} = command_oneline('config', '--get',
@@ -1824,7 +2016,7 @@ sub new {
 }
 
 sub refname {
-	my ($refname) = "refs/remotes/$_[0]->{ref_id}" ;
+	my ($refname) = $_[0]->{ref_id} ;
 
 	# It cannot end with a slash /, we'll throw up on this because
 	# SVN can't have directories with a slash in their name, either:
@@ -1903,7 +2095,7 @@ sub _set_svm_vars {
 
 		chomp($src, $uuid);
 
-		$uuid =~ m{^[0-9a-f\-]{30,}$}
+		$uuid =~ m{^[0-9a-f\-]{30,}$}i
 		    or die "doesn't look right - svm:uuid is '$uuid'\n";
 
 		# the '!' is used to mark the repos_root!/relative/path
@@ -1989,7 +2181,7 @@ sub svnsync {
 		   die "doesn't look right - svn:sync-from-url is '$url'\n";
 
 		my $uuid = tmp_config('--get', "$section.svnsync-uuid");
-		($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}) or
+		($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}i) or
 		   die "doesn't look right - svn:sync-from-uuid is '$uuid'\n";
 
 		$svnsync = { url => $url, uuid => $uuid }
@@ -2007,7 +2199,7 @@ sub svnsync {
 	           die "doesn't look right - svn:sync-from-url is '$url'\n";
 
 	my $uuid = $rp->{'svn:sync-from-uuid'} or die $err . "uuid\n";
-	($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}) or
+	($uuid) = ($uuid =~ m{^([0-9a-f\-]{30,})$}i) or
 	           die "doesn't look right - svn:sync-from-uuid is '$uuid'\n";
 
 	my $section = "svn-remote.$self->{repo_id}";
@@ -2023,7 +2215,7 @@ sub ra_uuid {
 	unless ($self->{ra_uuid}) {
 		my $key = "svn-remote.$self->{repo_id}.uuid";
 		my $uuid = eval { tmp_config('--get', $key) };
-		if (!$@ && $uuid && $uuid =~ /^([a-f\d\-]{30,})$/) {
+		if (!$@ && $uuid && $uuid =~ /^([a-f\d\-]{30,})$/i) {
 			$self->{ra_uuid} = $uuid;
 		} else {
 			die "ra_uuid called without URL\n" unless $self->{url};
@@ -2064,16 +2256,6 @@ sub ra {
 		$self->{-want_revprops} = 1;
 	}
 	$ra;
-}
-
-sub rel_path {
-	my ($self) = @_;
-	my $repos_root = $self->ra->{repos_root};
-	return $self->{path} if ($self->{url} eq $repos_root);
-	my $url = $self->{url} .
-	          (length $self->{path} ? "/$self->{path}" : $self->{path});
-	$url =~ s!^\Q$repos_root\E(?:/+|$)!!g;
-	$url;
 }
 
 # prop_walk(PATH, REV, SUB)
@@ -2401,10 +2583,7 @@ sub match_paths {
 	if (my $path = $paths->{"/$self->{path}"}) {
 		return ($path->{action} eq 'D') ? 0 : 1;
 	}
-	my $repos_root = $self->ra->{repos_root};
-	my $extended_path = $self->{url} . '/' . $self->{path};
-	$extended_path =~ s#^\Q$repos_root\E(/|$)##;
-	$self->{path_regex} ||= qr/^\/\Q$extended_path\E\//;
+	$self->{path_regex} ||= qr/^\/\Q$self->{path}\E\//;
 	if (grep /$self->{path_regex}/, keys %$paths) {
 		return 1;
 	}
@@ -2427,15 +2606,14 @@ sub find_parent_branch {
 	unless (defined $paths) {
 		my $err_handler = $SVN::Error::handler;
 		$SVN::Error::handler = \&Git::SVN::Ra::skip_unknown_revs;
-		$self->ra->get_log([$self->{path}], $rev, $rev, 0, 1, 1, sub {
-		                   $paths =
-				      Git::SVN::Ra::dup_changed_paths($_[0]) });
+		$self->ra->get_log([$self->{path}], $rev, $rev, 0, 1, 1,
+				   sub { $paths = $_[0] });
 		$SVN::Error::handler = $err_handler;
 	}
 	return undef unless defined $paths;
 
 	# look for a parent from another branch:
-	my @b_path_components = split m#/#, $self->rel_path;
+	my @b_path_components = split m#/#, $self->{path};
 	my @a_path_components;
 	my $i;
 	while (@b_path_components) {
@@ -2453,11 +2631,12 @@ sub find_parent_branch {
 	my $r = $i->{copyfrom_rev};
 	my $repos_root = $self->ra->{repos_root};
 	my $url = $self->ra->{url};
-	my $new_url = $repos_root . $branch_from;
+	my $new_url = $url . $branch_from;
 	print STDERR  "Found possible branch point: ",
-	              "$new_url => ", $self->full_url, ", $r\n";
+	              "$new_url => ", $self->full_url, ", $r\n"
+	              unless $::_q > 1;
 	$branch_from =~ s#^/##;
-	my $gs = $self->other_gs($new_url, $url, $repos_root,
+	my $gs = $self->other_gs($new_url, $url,
 		                 $branch_from, $r, $self->{ref_id});
 	my ($r0, $parent) = $gs->find_rev_before($r, 1);
 	{
@@ -2476,11 +2655,13 @@ sub find_parent_branch {
 		($r0, $parent) = $gs->find_rev_before($r, 1);
 	}
 	if (defined $r0 && defined $parent) {
-		print STDERR "Found branch parent: ($self->{ref_id}) $parent\n";
+		print STDERR "Found branch parent: ($self->{ref_id}) $parent\n"
+		             unless $::_q > 1;
 		my $ed;
 		if ($self->ra->can_do_switch) {
 			$self->assert_index_clean($parent);
-			print STDERR "Following parent with do_switch\n";
+			print STDERR "Following parent with do_switch\n"
+			             unless $::_q > 1;
 			# do_switch works with svn/trunk >= r22312, but that
 			# is not included with SVN 1.4.3 (the latest version
 			# at the moment), so we can't rely on it
@@ -2495,18 +2676,20 @@ sub find_parent_branch {
 			print STDERR "Trees match:\n",
 			             "  $new_url\@$r0\n",
 			             "  ${\$self->full_url}\@$rev\n",
-				     "Following parent with no changes\n";
+			             "Following parent with no changes\n"
+			             unless $::_q > 1;
 			$self->tmp_index_do(sub {
 			    command_noisy('read-tree', $parent);
 			});
 			$self->{last_commit} = $parent;
 		} else {
-			print STDERR "Following parent with do_update\n";
+			print STDERR "Following parent with do_update\n"
+			             unless $::_q > 1;
 			$ed = SVN::Git::Fetcher->new($self);
 			$self->ra->gs_do_update($rev, $rev, $self, $ed)
 			  or die "SVN connection failed somewhere...\n";
 		}
-		print STDERR "Successfully followed parent\n";
+		print STDERR "Successfully followed parent\n" unless $::_q > 1;
 		return $self->make_log_entry($rev, [$parent], $ed);
 	}
 	return undef;
@@ -2642,16 +2825,16 @@ sub parse_svn_date {
 }
 
 sub other_gs {
-	my ($self, $new_url, $url, $repos_root,
+	my ($self, $new_url, $url,
 	    $branch_from, $r, $old_ref_id) = @_;
-	my $gs = Git::SVN->find_by_url($new_url, $repos_root, $branch_from);
+	my $gs = Git::SVN->find_by_url($new_url, $url, $branch_from);
 	unless ($gs) {
 		my $ref_id = $old_ref_id;
 		$ref_id =~ s/\@\d+$//;
 		$ref_id .= "\@$r";
 		# just grow a tail if we're not unique enough :x
 		$ref_id .= '-' while find_ref($ref_id);
-		print STDERR "Initializing parent: $ref_id\n";
+		print STDERR "Initializing parent: $ref_id\n" unless $::_q > 1;
 		my ($u, $p, $repo_id) = ($new_url, '', $ref_id);
 		if ($u =~ s#^\Q$url\E(/|$)##) {
 			$p = $u;
@@ -2663,12 +2846,34 @@ sub other_gs {
 	$gs
 }
 
+sub call_authors_prog {
+	my ($orig_author) = @_;
+	$orig_author = command_oneline('rev-parse', '--sq-quote', $orig_author);
+	my $author = `$::_authors_prog $orig_author`;
+	if ($? != 0) {
+		die "$::_authors_prog failed with exit code $?\n"
+	}
+	if ($author =~ /^\s*(.+?)\s*<(.*)>\s*$/) {
+		my ($name, $email) = ($1, $2);
+		$email = undef if length $2 == 0;
+		return [$name, $email];
+	} else {
+		die "Author: $orig_author: $::_authors_prog returned "
+			. "invalid author format: $author\n";
+	}
+}
+
 sub check_author {
 	my ($author) = @_;
 	if (!defined $author || length $author == 0) {
 		$author = '(no author)';
-	} elsif (defined $::_authors && ! defined $::users{$author}) {
-		die "Author: $author not defined in $::_authors file\n";
+	}
+	if (!defined $::users{$author}) {
+		if (defined $::_authors_prog) {
+			$::users{$author} = call_authors_prog($author);
+		} elsif (defined $::_authors) {
+			die "Author: $author not defined in $::_authors file\n";
+		}
 	}
 	$author;
 }
@@ -2734,7 +2939,7 @@ sub make_log_entry {
 			die "Can't have both 'useSvmProps' and 'rewriteRoot' ",
 			    "options set!\n";
 		}
-		my ($uuid, $r) = $headrev =~ m{^([a-f\d\-]{30,}):(\d+)$};
+		my ($uuid, $r) = $headrev =~ m{^([a-f\d\-]{30,}):(\d+)$}i;
 		# we don't want "SVM: initializing mirror for junk" ...
 		return undef if $r == 0;
 		my $svm = $self->svm;
@@ -2952,6 +3157,14 @@ sub _rev_map_set {
 	  croak "write: $!";
 }
 
+sub _rev_map_reset {
+	my ($fh, $rev, $commit) = @_;
+	my $c = _rev_map_get($fh, $rev);
+	$c eq $commit or die "_rev_map_reset(@_) commit $c does not match!\n";
+	my $offset = sysseek($fh, 0, SEEK_CUR) or croak "seek: $!";
+	truncate $fh, $offset or croak "truncate: $!";
+}
+
 sub mkfile {
 	my ($path) = @_;
 	unless (-e $path) {
@@ -2968,6 +3181,7 @@ sub rev_map_set {
 	my $db = $self->map_path($uuid);
 	my $db_lock = "$db.lock";
 	my $sig;
+	$update_ref ||= 0;
 	if ($update_ref) {
 		$SIG{INT} = $SIG{HUP} = $SIG{TERM} = $SIG{ALRM} = $SIG{PIPE} =
 		            $SIG{USR1} = $SIG{USR2} = sub { $sig = $_[0] };
@@ -2991,7 +3205,8 @@ sub rev_map_set {
 
 	sysopen(my $fh, $db_lock, O_RDWR | O_CREAT)
 	     or croak "Couldn't open $db_lock: $!\n";
-	_rev_map_set($fh, $rev, $commit);
+	$update_ref eq 'reset' ? _rev_map_reset($fh, $rev, $commit) :
+				 _rev_map_set($fh, $rev, $commit);
 	if ($sync) {
 		$fh->flush or die "Couldn't flush $db_lock: $!\n";
 		$fh->sync or die "Couldn't sync $db_lock: $!\n";
@@ -2999,7 +3214,9 @@ sub rev_map_set {
 	close $fh or croak $!;
 	if ($update_ref) {
 		$_head = $self;
-		command_noisy('update-ref', '-m', "r$rev",
+		my $note = "";
+		$note = " ($update_ref)" if ($update_ref !~ /^\d*$/);
+		command_noisy('update-ref', '-m', "r$rev$note",
 		              $self->refname, $commit);
 	}
 	rename $db_lock, $db or die "rev_map_set(@_): ", "Failed to rename: ",
@@ -3061,12 +3278,19 @@ sub rev_map_get {
 	return undef unless -e $map_path;
 
 	sysopen(my $fh, $map_path, O_RDONLY) or croak "open: $!";
+	my $c = _rev_map_get($fh, $rev);
+	close($fh) or croak "close: $!";
+	$c
+}
+
+sub _rev_map_get {
+	my ($fh, $rev) = @_;
+
 	binmode $fh or croak "binmode: $!";
 	my $size = (stat($fh))[7];
 	($size % 24) == 0 or croak "inconsistent size: $size";
 
 	if ($size == 0) {
-		close $fh or croak "close: $fh";
 		return undef;
 	}
 
@@ -3077,18 +3301,16 @@ sub rev_map_get {
 		my $i = int(($l/24 + $u/24) / 2) * 24;
 		sysseek($fh, $i, SEEK_SET) or croak "seek: $!";
 		sysread($fh, my $buf, 24) == 24 or croak "read: $!";
-		my ($r, $c) = unpack('NH40', $buf);
+		my ($r, $c) = unpack(rev_map_fmt, $buf);
 
 		if ($r < $rev) {
 			$l = $i + 24;
 		} elsif ($r > $rev) {
 			$u = $i - 24;
 		} else { # $r == $rev
-			close($fh) or croak "close: $!";
 			return $c eq ('0' x 40) ? undef : $c;
 		}
 	}
-	close($fh) or croak "close: $!";
 	undef;
 }
 
@@ -3100,6 +3322,8 @@ sub find_rev_before {
 	my ($self, $rev, $eq_ok, $min_rev) = @_;
 	--$rev unless $eq_ok;
 	$min_rev ||= 1;
+	my $max_rev = $self->rev_map_max;
+	$rev = $max_rev if ($rev > $max_rev);
 	while ($rev >= $min_rev) {
 		if (my $c = $self->rev_map_get($rev)) {
 			return ($rev, $c);
@@ -3132,12 +3356,24 @@ sub _new {
 		$repo_id = $Git::SVN::default_repo_id;
 	}
 	unless (defined $ref_id && length $ref_id) {
-		$_[2] = $ref_id = $Git::SVN::default_ref_id;
+		$_prefix = '' unless defined($_prefix);
+		$_[2] = $ref_id =
+		             "refs/remotes/$_prefix$Git::SVN::default_ref_id";
 	}
 	$_[1] = $repo_id;
 	my $dir = "$ENV{GIT_DIR}/svn/$ref_id";
+
+	# Older repos imported by us used $GIT_DIR/svn/foo instead of
+	# $GIT_DIR/svn/refs/remotes/foo when tracking refs/remotes/foo
+	if ($ref_id =~ m{^refs/remotes/(.*)}) {
+		my $old_dir = "$ENV{GIT_DIR}/svn/$1";
+		if (-d $old_dir && ! -d $dir) {
+			$dir = $old_dir;
+		}
+	}
+
 	$_[3] = $path = '' unless (defined $path);
-	mkpath(["$ENV{GIT_DIR}/svn"]);
+	mkpath([$dir]);
 	bless {
 		ref_id => $ref_id, dir => $dir, index => "$dir/index",
 	        path => $path, config => "$ENV{GIT_DIR}/svn/config",
@@ -3820,7 +4056,7 @@ sub repo_path {
 sub url_path {
 	my ($self, $path) = @_;
 	if ($self->{url} =~ m#^https?://#) {
-		$path =~ s/([^~a-zA-Z0-9_.-])/uc sprintf("%%%02x",ord($1))/eg;
+		$path =~ s!([^~a-zA-Z0-9_./-])!uc sprintf("%%%02x",ord($1))!eg;
 	}
 	$self->{url} . '/' . $self->repo_path($path);
 }
@@ -4280,6 +4516,34 @@ sub get_log {
 	my ($self, @args) = @_;
 	my $pool = SVN::Pool->new;
 
+	# svn_log_changed_path_t objects passed to get_log are likely to be
+	# overwritten even if only the refs are copied to an external variable,
+	# so we should dup the structures in their entirety.  Using an
+	# externally passed pool (instead of our temporary and quickly cleared
+	# pool in Git::SVN::Ra) does not help matters at all...
+	my $receiver = pop @args;
+	my $prefix = "/".$self->{svn_path};
+	$prefix =~ s#/+($)##;
+	my $prefix_regex = qr#^\Q$prefix\E#;
+	push(@args, sub {
+		my ($paths) = $_[0];
+		return &$receiver(@_) unless $paths;
+		$_[0] = ();
+		foreach my $p (keys %$paths) {
+			my $i = $paths->{$p};
+			# Make path relative to our url, not repos_root
+			$p =~ s/$prefix_regex//;
+			my %s = map { $_ => $i->$_; }
+				qw/copyfrom_path copyfrom_rev action/;
+			if ($s{'copyfrom_path'}) {
+				$s{'copyfrom_path'} =~ s/$prefix_regex//;
+			}
+			$_[0]{$p} = \%s;
+		}
+		&$receiver(@_);
+	});
+
+
 	# the limit parameter was not supported in SVN 1.1.x, so we
 	# drop it.  Therefore, the receiver callback passed to it
 	# is made aware of this limitation by being wrapped if
@@ -4364,10 +4628,12 @@ sub gs_do_switch {
 
 	my $full_url = $self->{url};
 	my $old_url = $full_url;
-	$full_url .= '/' . escape_uri_only($path) if length $path;
+	$full_url .= '/' . $path if length $path;
 	my ($ra, $reparented);
 
-	if ($old_url =~ m#^svn(\+ssh)?://#) {
+	if ($old_url =~ m#^svn(\+ssh)?://# ||
+	    ($full_url =~ m#^https?://# &&
+	     escape_url($full_url) ne $full_url)) {
 		$_[0] = undef;
 		$self = undef;
 		$RA = undef;
@@ -4438,6 +4704,7 @@ sub gs_fetch_loop_common {
 	my ($min, $max) = ($base, $head < $base + $inc ? $head : $base + $inc);
 	my $longest_path = longest_common_path($gsv, $globs);
 	my $ra_url = $self->{url};
+	my $find_trailing_edge;
 	while (1) {
 		my %revs;
 		my $err;
@@ -4448,15 +4715,17 @@ sub gs_fetch_loop_common {
 		};
 		sub _cb {
 			my ($paths, $r, $author, $date, $log) = @_;
-			[ dup_changed_paths($paths),
+			[ $paths,
 			  { author => $author, date => $date, log => $log } ];
 		}
 		$self->get_log([$longest_path], $min, $max, 0, 1, 1,
 		               sub { $revs{$_[1]} = _cb(@_) });
 		if ($err) {
 			print "Checked through r$max\r";
+		} else {
+			$find_trailing_edge = 1;
 		}
-		if ($err && $max >= $head) {
+		if ($err and $find_trailing_edge) {
 			print STDERR "Path '$longest_path' ",
 				     "was probably deleted:\n",
 				     $err->expanded_message,
@@ -4468,13 +4737,14 @@ sub gs_fetch_loop_common {
 				my $ok;
 				$self->get_log([$longest_path], $min, $hi,
 				               0, 1, 1, sub {
-				               $ok ||= $_[1];
+				               $ok = $_[1];
 				               $revs{$_[1]} = _cb(@_) });
 				if ($ok) {
 					print STDERR "r$min .. r$ok OK\n";
 					last;
 				}
 			}
+			$find_trailing_edge = 0;
 		}
 		$SVN::Error::handler = $err_handler;
 
@@ -4612,7 +4882,11 @@ sub minimize_url {
 	my $c = '';
 	do {
 		$url .= "/$c" if length $c;
-		eval { (ref $self)->new($url)->get_latest_revnum };
+		eval {
+			my $ra = (ref $self)->new($url);
+			my $latest = $ra->get_latest_revnum;
+			$ra->get_log("", $latest, 0, 1, 0, 1, sub {});
+		};
 	} while ($@ && ($c = shift @components));
 	$url;
 }
@@ -4666,24 +4940,6 @@ sub skip_unknown_revs {
 		return;
 	}
 	die "Error from SVN, ($errno): ", $err->expanded_message,"\n";
-}
-
-# svn_log_changed_path_t objects passed to get_log are likely to be
-# overwritten even if only the refs are copied to an external variable,
-# so we should dup the structures in their entirety.  Using an externally
-# passed pool (instead of our temporary and quickly cleared pool in
-# Git::SVN::Ra) does not help matters at all...
-sub dup_changed_paths {
-	my ($paths) = @_;
-	return undef unless $paths;
-	my %ret;
-	foreach my $p (keys %$paths) {
-		my $i = $paths->{$p};
-		my %s = map { $_ => $i->$_ }
-		              qw/copyfrom_path copyfrom_rev action/;
-		$ret{$p} = \%s;
-	}
-	\%ret;
 }
 
 package Git::SVN::Log;
@@ -5290,7 +5546,7 @@ sub minimize_connections {
 			my $pfx = "svn-remote.$x->{old_repo_id}";
 
 			my $old_fetch = quotemeta("$x->{old_path}:".
-			                          "refs/remotes/$x->{ref_id}");
+			                          "$x->{ref_id}");
 			command_noisy(qw/config --unset/,
 			              "$pfx.fetch", '^'. $old_fetch . '$');
 			delete $r->{$x->{old_repo_id}}->
@@ -5359,7 +5615,7 @@ sub new {
 	my ($class, $glob) = @_;
 	my $re = $glob;
 	$re =~ s!/+$!!g; # no need for trailing slashes
-	$re =~ m!^([^*]*)(\*(?:/\*)*)([^*]*)$!;
+	$re =~ m!^([^*]*)(\*(?:/\*)*)(.*)$!;
 	my $temp = $re;
 	my ($left, $right) = ($1, $3);
 	$re = $2;

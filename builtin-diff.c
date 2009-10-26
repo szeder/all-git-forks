@@ -70,7 +70,7 @@ static int builtin_diff_b_f(struct rev_info *revs,
 		usage(builtin_diff_usage);
 
 	if (lstat(path, &st))
-		die("'%s': %s", path, strerror(errno));
+		die_errno("failed to stat '%s'", path);
 	if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)))
 		die("'%s': not a regular file or symlink", path);
 
@@ -218,6 +218,8 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 			revs->max_count = 3;
 		else if (!strcmp(argv[1], "-q"))
 			options |= DIFF_SILENT_ON_REMOVED;
+		else if (!strcmp(argv[1], "-h"))
+			usage(builtin_diff_usage);
 		else
 			return error("invalid option: %s", argv[1]);
 		argv++; argc--;

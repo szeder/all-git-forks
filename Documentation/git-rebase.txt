@@ -231,11 +231,14 @@ OPTIONS
 
 -s <strategy>::
 --strategy=<strategy>::
-	Use the given merge strategy; can be supplied more than
-	once to specify them in the order they should be tried.
+	Use the given merge strategy.
 	If there is no `-s` option, a built-in list of strategies
 	is used instead ('git-merge-recursive' when merging a single
 	head, 'git-merge-octopus' otherwise).  This implies --merge.
+
+-q::
+--quiet::
+	Be quiet. Implies --no-stat.
 
 -v::
 --verbose::
@@ -265,8 +268,9 @@ OPTIONS
 	exit with the message "Current branch is up to date" in such a
 	situation.
 
+--ignore-whitespace::
 --whitespace=<option>::
-	This flag is passed to the 'git-apply' program
+	These flag are passed to the 'git-apply' program
 	(see linkgit:git-apply[1]) that applies the patch.
 	Incompatible with the --interactive option.
 

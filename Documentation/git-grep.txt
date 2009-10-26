@@ -17,6 +17,7 @@ SYNOPSIS
 	   [-l | --files-with-matches] [-L | --files-without-match]
 	   [-z | --null]
 	   [-c | --count] [--all-match]
+	   [--max-depth <depth>]
 	   [--color | --no-color]
 	   [-A <post-context>] [-B <pre-context>] [-C <context>]
 	   [-f <file>] [-e] <pattern>
@@ -46,6 +47,10 @@ OPTIONS
 
 -I::
 	Don't match the pattern in binary files.
+
+--max-depth <depth>::
+	For each pathspec given on command line, descend at most <depth>
+	levels of directories. A negative value means no limit.
 
 -w::
 --word-regexp::
@@ -121,6 +126,14 @@ OPTIONS
 
 -<num>::
 	A shortcut for specifying -C<num>.
+
+-p::
+--show-function::
+	Show the preceding line that contains the function name of
+	the match, unless the matching line is a function name itself.
+	The name is determined in the same way as 'git diff' works out
+	patch hunk headers (see 'Defining a custom hunk-header' in
+	linkgit:gitattributes[5]).
 
 -f <file>::
 	Read patterns from <file>, one per line.

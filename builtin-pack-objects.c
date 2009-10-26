@@ -22,15 +22,15 @@
 #include <pthread.h>
 #endif
 
-static const char pack_usage[] = "\
-git pack-objects [{ -q | --progress | --all-progress }] \n\
-	[--max-pack-size=N] [--local] [--incremental] \n\
-	[--window=N] [--window-memory=N] [--depth=N] \n\
-	[--no-reuse-delta] [--no-reuse-object] [--delta-base-offset] \n\
-	[--threads=N] [--non-empty] [--revs [--unpacked | --all]*] [--reflog] \n\
-	[--stdout | base-name] [--include-tag] \n\
-	[--keep-unreachable | --unpack-unreachable] \n\
-	[<ref-list | <object-list]";
+static const char pack_usage[] =
+  "git pack-objects [{ -q | --progress | --all-progress }]\n"
+  "        [--max-pack-size=N] [--local] [--incremental]\n"
+  "        [--window=N] [--window-memory=N] [--depth=N]\n"
+  "        [--no-reuse-delta] [--no-reuse-object] [--delta-base-offset]\n"
+  "        [--threads=N] [--non-empty] [--revs [--unpacked | --all]*]\n"
+  "        [--reflog] [--stdout | base-name] [--include-tag]\n"
+  "        [--keep-unreachable | --unpack-unreachable \n"
+  "        [<ref-list | <object-list]";
 
 struct object_entry {
 	struct pack_idx_entry idx;
@@ -86,7 +86,7 @@ static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
 
 static unsigned long delta_cache_size = 0;
-static unsigned long max_delta_cache_size = 0;
+static unsigned long max_delta_cache_size = 256 * 1024 * 1024;
 static unsigned long cache_max_small_delta_size = 1000;
 
 static unsigned long window_memory_limit = 0;
@@ -536,11 +536,9 @@ static void write_pack_file(void)
 				 base_name, sha1_to_hex(sha1));
 			free_pack_by_name(tmpname);
 			if (adjust_perm(pack_tmp_name, mode))
-				die("unable to make temporary pack file readable: %s",
-				    strerror(errno));
+				die_errno("unable to make temporary pack file readable");
 			if (rename(pack_tmp_name, tmpname))
-				die("unable to rename temporary pack file: %s",
-				    strerror(errno));
+				die_errno("unable to rename temporary pack file");
 
 			/*
 			 * Packs are runtime accessed in their mtime
@@ -566,11 +564,9 @@ static void write_pack_file(void)
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.idx",
 				 base_name, sha1_to_hex(sha1));
 			if (adjust_perm(idx_tmp_name, mode))
-				die("unable to make temporary index file readable: %s",
-				    strerror(errno));
+				die_errno("unable to make temporary index file readable");
 			if (rename(idx_tmp_name, tmpname))
-				die("unable to rename temporary index file: %s",
-				    strerror(errno));
+				die_errno("unable to rename temporary index file");
 
 			free(idx_tmp_name);
 			free(pack_tmp_name);
@@ -1010,6 +1006,33 @@ static void add_preferred_base(unsigned char *sha1)
 	hashcpy(it->pcache.sha1, tree_sha1);
 	it->pcache.tree_data = data;
 	it->pcache.tree_size = size;
+}
+
+static void cleanup_preferred_base(void)
+{
+	struct pbase_tree *it;
+	unsigned i;
+
+	it = pbase_tree;
+	pbase_tree = NULL;
+	while (it) {
+		struct pbase_tree *this = it;
+		it = this->next;
+		free(this->pcache.tree_data);
+		free(this);
+	}
+
+	for (i = 0; i < ARRAY_SIZE(pbase_tree_cache); i++) {
+		if (!pbase_tree_cache[i])
+			continue;
+		free(pbase_tree_cache[i]->tree_data);
+		free(pbase_tree_cache[i]);
+		pbase_tree_cache[i] = NULL;
+	}
+
+	free(done_pbase_paths);
+	done_pbase_paths = NULL;
+	done_pbase_paths_num = done_pbase_paths_alloc = 0;
 }
 
 static void check_object(struct object_entry *entry)
@@ -1603,7 +1626,7 @@ static void *threaded_find_deltas(void *arg)
 static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 			   int window, int depth, unsigned *processed)
 {
-	struct thread_params p[delta_search_threads];
+	struct thread_params *p;
 	int i, ret, active_threads = 0;
 
 	if (delta_search_threads <= 1) {
@@ -1613,6 +1636,7 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 	if (progress > pack_to_stdout)
 		fprintf(stderr, "Delta compression using up to %d threads.\n",
 				delta_search_threads);
+	p = xcalloc(delta_search_threads, sizeof(*p));
 
 	/* Partition the work amongst work threads. */
 	for (i = 0; i < delta_search_threads; i++) {
@@ -1721,6 +1745,7 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 			active_threads--;
 		}
 	}
+	free(p);
 }
 
 #else
@@ -1812,7 +1837,7 @@ static void prepare_pack(int window, int depth)
 
 static int git_pack_config(const char *k, const char *v, void *cb)
 {
-	if(!strcmp(k, "pack.window")) {
+	if (!strcmp(k, "pack.window")) {
 		window = git_config_int(k, v);
 		return 0;
 	}
@@ -1879,7 +1904,7 @@ static void read_object_list_from_stdin(void)
 			if (!ferror(stdin))
 				die("fgets returned NULL, not EOF, not error!");
 			if (errno != EINTR)
-				die("fgets: %s", strerror(errno));
+				die_errno("fgets");
 			clearerr(stdin);
 			continue;
 		}
@@ -2102,6 +2127,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	int rp_ac_alloc = 64;
 	int rp_ac;
 
+	read_replace_refs = 0;
+
 	rp_av = xcalloc(rp_ac_alloc, sizeof(*rp_av));
 
 	rp_av[0] = "pack-objects";
@@ -2259,6 +2286,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 				die("bad %s", arg);
 			continue;
 		}
+		if (!strcmp(arg, "--keep-true-parents")) {
+			grafts_replace_parents = 0;
+			continue;
+		}
 		usage(pack_usage);
 	}
 
@@ -2308,6 +2339,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		rp_av[rp_ac] = NULL;
 		get_object_list(rp_ac, rp_av);
 	}
+	cleanup_preferred_base();
 	if (include_tag && nr_result)
 		for_each_ref(add_ref_tag, NULL);
 	stop_progress(&progress_state);

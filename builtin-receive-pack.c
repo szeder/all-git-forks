@@ -123,31 +123,6 @@ static struct command *commands;
 static const char pre_receive_hook[] = "hooks/pre-receive";
 static const char post_receive_hook[] = "hooks/post-receive";
 
-static int hook_status(int code, const char *hook_name)
-{
-	switch (code) {
-	case 0:
-		return 0;
-	case -ERR_RUN_COMMAND_FORK:
-		return error("hook fork failed");
-	case -ERR_RUN_COMMAND_EXEC:
-		return error("hook execute failed");
-	case -ERR_RUN_COMMAND_PIPE:
-		return error("hook pipe failed");
-	case -ERR_RUN_COMMAND_WAITPID:
-		return error("waitpid failed");
-	case -ERR_RUN_COMMAND_WAITPID_WRONG_PID:
-		return error("waitpid is confused");
-	case -ERR_RUN_COMMAND_WAITPID_SIGNAL:
-		return error("%s died of signal", hook_name);
-	case -ERR_RUN_COMMAND_WAITPID_NOEXIT:
-		return error("%s died strangely", hook_name);
-	default:
-		error("%s exited with error code %d", hook_name, -code);
-		return -code;
-	}
-}
-
 static int run_receive_hook(const char *hook_name)
 {
 	static char buf[sizeof(commands->old_sha1) * 2 + PATH_MAX + 4];
@@ -174,7 +149,7 @@ static int run_receive_hook(const char *hook_name)
 
 	code = start_command(&proc);
 	if (code)
-		return hook_status(code, hook_name);
+		return code;
 	for (cmd = commands; cmd; cmd = cmd->next) {
 		if (!cmd->error_string) {
 			size_t n = snprintf(buf, sizeof(buf), "%s %s %s\n",
@@ -186,13 +161,12 @@ static int run_receive_hook(const char *hook_name)
 		}
 	}
 	close(proc.in);
-	return hook_status(finish_command(&proc), hook_name);
+	return finish_command(&proc);
 }
 
 static int run_update_hook(struct command *cmd)
 {
 	static const char update_hook[] = "hooks/update";
-	struct child_process proc;
 	const char *argv[5];
 
 	if (access(update_hook, X_OK) < 0)
@@ -204,12 +178,8 @@ static int run_update_hook(struct command *cmd)
 	argv[3] = sha1_to_hex(cmd->new_sha1);
 	argv[4] = NULL;
 
-	memset(&proc, 0, sizeof(proc));
-	proc.argv = argv;
-	proc.no_stdin = 1;
-	proc.stdout_to_stderr = 1;
-
-	return hook_status(run_command(&proc), update_hook);
+	return run_command_v_opt(argv, RUN_COMMAND_NO_STDIN |
+					RUN_COMMAND_STDOUT_TO_STDERR);
 }
 
 static int is_ref_checked_out(const char *ref)
@@ -398,7 +368,7 @@ static char update_post_hook[] = "hooks/post-update";
 static void run_update_post_hook(struct command *cmd)
 {
 	struct command *cmd_p;
-	int argc;
+	int argc, status;
 	const char **argv;
 
 	for (argc = 0, cmd_p = cmd; cmd_p; cmd_p = cmd_p->next) {
@@ -421,8 +391,8 @@ static void run_update_post_hook(struct command *cmd)
 		argc++;
 	}
 	argv[argc] = NULL;
-	run_command_v_opt(argv, RUN_COMMAND_NO_STDIN
-		| RUN_COMMAND_STDOUT_TO_STDERR);
+	status = run_command_v_opt(argv, RUN_COMMAND_NO_STDIN
+			| RUN_COMMAND_STDOUT_TO_STDERR);
 }
 
 static void execute_commands(const char *unpacker_error)
@@ -538,24 +508,9 @@ static const char *unpack(void)
 		unpacker[i++] = hdr_arg;
 		unpacker[i++] = NULL;
 		code = run_command_v_opt(unpacker, RUN_GIT_CMD);
-		switch (code) {
-		case 0:
+		if (!code)
 			return NULL;
-		case -ERR_RUN_COMMAND_FORK:
-			return "unpack fork failed";
-		case -ERR_RUN_COMMAND_EXEC:
-			return "unpack execute failed";
-		case -ERR_RUN_COMMAND_WAITPID:
-			return "waitpid failed";
-		case -ERR_RUN_COMMAND_WAITPID_WRONG_PID:
-			return "waitpid is confused";
-		case -ERR_RUN_COMMAND_WAITPID_SIGNAL:
-			return "unpacker died of signal";
-		case -ERR_RUN_COMMAND_WAITPID_NOEXIT:
-			return "unpacker died strangely";
-		default:
-			return "unpacker exited with error code";
-		}
+		return "unpack-objects abnormal exit";
 	} else {
 		const char *keeper[7];
 		int s, status, i = 0;
@@ -578,8 +533,10 @@ static const char *unpack(void)
 		ip.argv = keeper;
 		ip.out = -1;
 		ip.git_cmd = 1;
-		if (start_command(&ip))
+		status = start_command(&ip);
+		if (status) {
 			return "index-pack fork failed";
+		}
 		pack_lockfile = index_pack_lockfile(ip.out);
 		close(ip.out);
 		status = finish_command(&ip);

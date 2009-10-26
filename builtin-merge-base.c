@@ -23,7 +23,7 @@ static int show_merge_base(struct commit **rev, int rev_nr, int show_all)
 }
 
 static const char * const merge_base_usage[] = {
-	"git merge-base [--all] <commit-id> <commit-id>...",
+	"git merge-base [-a|--all] <commit> <commit>...",
 	NULL
 };
 
@@ -53,7 +53,7 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 	};
 
 	git_config(git_default_config, NULL);
-	argc = parse_options(argc, argv, options, merge_base_usage, 0);
+	argc = parse_options(argc, argv, prefix, options, merge_base_usage, 0);
 	if (argc < 2)
 		usage_with_options(merge_base_usage, options);
 	rev = xmalloc(argc * sizeof(*rev));

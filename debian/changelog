@@ -1,3 +1,31 @@
+git-core (1:1.6.5-2) unstable; urgency=low
+
+  * restore temporary lost changes from version 1:1.6.3.3-2 (closes:
+    #530693).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 26 Oct 2009 12:02:10 +0000
+
+git-core (1:1.6.5-1) unstable; urgency=low
+
+  * new upstream release.
+    * git-doc: html no longer uses "{plus}" where it should be "+"
+      (closes: #529255).
+  * debian/git-core.README.source: new; document how to use the
+    Debian package source.
+  * debian/implicit: update to revision 60d9070.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 13 Oct 2009 00:23:00 +0000
+
+git-core (1:1.6.4.3-1) unstable; urgency=low
+
+  * new upstream release (closes: #546709).
+    * git-cvsserver: no longer use deprecated 'git-subcommand' commands
+      (closes: #536067).
+  * branch debian-sid: git cherry-pick 098082f, 318b847, 1f9b620 (thx
+    Anders Kaseorg; closes: #546499).
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 16 Sep 2009 11:03:45 +0000
+
 git-core (1:1.6.3.3-2) unstable; urgency=low
 
   [ Anders Kaseorg ]

@@ -94,6 +94,10 @@ test_expect_success 'git archive with --output' \
     'git archive --output=b4.tar HEAD &&
     test_cmp b.tar b4.tar'
 
+test_expect_success 'git archive --remote' \
+    'git archive --remote=. HEAD >b5.tar &&
+    test_cmp b.tar b5.tar'
+
 test_expect_success \
     'validate file modification time' \
     'mkdir extract &&
@@ -225,5 +229,17 @@ test_expect_success UNZIP \
 test_expect_success \
     'git archive --list outside of a git repo' \
     'GIT_DIR=some/non-existing/directory git archive --list'
+
+test_expect_success 'git-archive --prefix=olde-' '
+	git archive --prefix=olde- >h.tar HEAD &&
+	(
+		mkdir h &&
+		cd h &&
+		"$TAR" xf - <../h.tar
+	) &&
+	test -d h/olde-a &&
+	test -d h/olde-a/bin &&
+	test -f h/olde-a/bin/sh
+'
 
 test_done

@@ -51,7 +51,7 @@ static const char *template_file;
 static char *edit_message, *use_message;
 static char *author_name, *author_email, *author_date;
 static int all, edit_flag, also, interactive, only, amend, signoff;
-static int quiet, verbose, no_verify, allow_empty;
+static int quiet, verbose, no_verify, allow_empty, dry_run;
 static char *untracked_files_arg;
 /*
  * The default commit message cleanup mode will remove the lines
@@ -88,13 +88,13 @@ static struct option builtin_commit_options[] = {
 	OPT__VERBOSE(&verbose),
 	OPT_GROUP("Commit message options"),
 
-	OPT_STRING('F', "file", &logfile, "FILE", "read log from file"),
+	OPT_FILENAME('F', "file", &logfile, "read log from file"),
 	OPT_STRING(0, "author", &force_author, "AUTHOR", "override author for commit"),
 	OPT_CALLBACK('m', "message", &message, "MESSAGE", "specify commit message", opt_parse_m),
 	OPT_STRING('c', "reedit-message", &edit_message, "COMMIT", "reuse and edit message from specified commit "),
 	OPT_STRING('C', "reuse-message", &use_message, "COMMIT", "reuse message from specified commit"),
 	OPT_BOOLEAN('s', "signoff", &signoff, "add Signed-off-by:"),
-	OPT_STRING('t', "template", &template_file, "FILE", "use specified template file"),
+	OPT_FILENAME('t', "template", &template_file, "use specified template file"),
 	OPT_BOOLEAN('e', "edit", &edit_flag, "force edit of commit"),
 
 	OPT_GROUP("Commit contents options"),
@@ -103,6 +103,7 @@ static struct option builtin_commit_options[] = {
 	OPT_BOOLEAN(0, "interactive", &interactive, "interactively add files"),
 	OPT_BOOLEAN('o', "only", &only, "commit only specified files"),
 	OPT_BOOLEAN('n', "no-verify", &no_verify, "bypass pre-commit hook"),
+	OPT_BOOLEAN(0, "dry-run", &dry_run, "show what would be committed"),
 	OPT_BOOLEAN(0, "amend", &amend, "amend previous commit"),
 	{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, "mode", "show untracked files, optional modes: all, normal, no. (Default: all)", PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 	OPT_BOOLEAN(0, "allow-empty", &allow_empty, "ok to record an empty change"),
@@ -217,12 +218,15 @@ static void create_base_index(void)
 		exit(128); /* We've already reported the error, finish dying */
 }
 
-static char *prepare_index(int argc, const char **argv, const char *prefix)
+static char *prepare_index(int argc, const char **argv, const char *prefix, int is_status)
 {
 	int fd;
 	struct string_list partial;
 	const char **pathspec = NULL;
+	int refresh_flags = REFRESH_QUIET;
 
+	if (is_status)
+		refresh_flags |= REFRESH_UNMERGED;
 	if (interactive) {
 		if (interactive_add(argc, argv, prefix) != 0)
 			die("interactive add failed");
@@ -253,7 +257,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix)
 	if (all || (also && pathspec && *pathspec)) {
 		int fd = hold_locked_index(&index_lock, 1);
 		add_files_to_cache(also ? prefix : NULL, pathspec, 0);
-		refresh_cache(REFRESH_QUIET);
+		refresh_cache(refresh_flags);
 		if (write_cache(fd, active_cache, active_nr) ||
 		    close_lock_file(&index_lock))
 			die("unable to write new_index file");
@@ -272,7 +276,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix)
 	 */
 	if (!pathspec || !*pathspec) {
 		fd = hold_locked_index(&index_lock, 1);
-		refresh_cache(REFRESH_QUIET);
+		refresh_cache(refresh_flags);
 		if (write_cache(fd, active_cache, active_nr) ||
 		    commit_locked_index(&index_lock))
 			die("unable to write new_index file");
@@ -339,27 +343,24 @@ static char *prepare_index(int argc, const char **argv, const char *prefix)
 	return false_lock.filename;
 }
 
-static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn)
+static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn,
+		      struct wt_status *s)
 {
-	struct wt_status s;
-
-	wt_status_prepare(&s);
-	if (wt_status_relative_paths)
-		s.prefix = prefix;
+	if (s->relative_paths)
+		s->prefix = prefix;
 
 	if (amend) {
-		s.amend = 1;
-		s.reference = "HEAD^1";
+		s->amend = 1;
+		s->reference = "HEAD^1";
 	}
-	s.verbose = verbose;
-	s.untracked = (show_untracked_files == SHOW_ALL_UNTRACKED_FILES);
-	s.index_file = index_file;
-	s.fp = fp;
-	s.nowarn = nowarn;
+	s->verbose = verbose;
+	s->index_file = index_file;
+	s->fp = fp;
+	s->nowarn = nowarn;
 
-	wt_status_print(&s);
+	wt_status_print(s);
 
-	return s.commitable;
+	return s->commitable;
 }
 
 static int is_a_merge(const unsigned char *sha1)
@@ -413,7 +414,8 @@ static void determine_author_info(void)
 	author_date = date;
 }
 
-static int prepare_to_commit(const char *index_file, const char *prefix)
+static int prepare_to_commit(const char *index_file, const char *prefix,
+			     struct wt_status *s)
 {
 	struct stat statbuf;
 	int commitable, saved_color_setting;
@@ -434,12 +436,12 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 		if (isatty(0))
 			fprintf(stderr, "(reading log message from standard input)\n");
 		if (strbuf_read(&sb, 0, 0) < 0)
-			die("could not read log from standard input");
+			die_errno("could not read log from standard input");
 		hook_arg1 = "message";
 	} else if (logfile) {
 		if (strbuf_read_file(&sb, logfile, 0) < 0)
-			die("could not read log file '%s': %s",
-			    logfile, strerror(errno));
+			die_errno("could not read log file '%s'",
+				  logfile);
 		hook_arg1 = "message";
 	} else if (use_message) {
 		buffer = strstr(use_message_buffer, "\n\n");
@@ -450,16 +452,15 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 		hook_arg2 = use_message;
 	} else if (!stat(git_path("MERGE_MSG"), &statbuf)) {
 		if (strbuf_read_file(&sb, git_path("MERGE_MSG"), 0) < 0)
-			die("could not read MERGE_MSG: %s", strerror(errno));
+			die_errno("could not read MERGE_MSG");
 		hook_arg1 = "merge";
 	} else if (!stat(git_path("SQUASH_MSG"), &statbuf)) {
 		if (strbuf_read_file(&sb, git_path("SQUASH_MSG"), 0) < 0)
-			die("could not read SQUASH_MSG: %s", strerror(errno));
+			die_errno("could not read SQUASH_MSG");
 		hook_arg1 = "squash";
 	} else if (template_file && !stat(template_file, &statbuf)) {
 		if (strbuf_read_file(&sb, template_file, 0) < 0)
-			die("could not read %s: %s",
-			    template_file, strerror(errno));
+			die_errno("could not read '%s'", template_file);
 		hook_arg1 = "template";
 	}
 
@@ -472,8 +473,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 
 	fp = fopen(git_path(commit_editmsg), "w");
 	if (fp == NULL)
-		die("could not open %s: %s",
-		    git_path(commit_editmsg), strerror(errno));
+		die_errno("could not open '%s'", git_path(commit_editmsg));
 
 	if (cleanup_mode != CLEANUP_NONE)
 		stripspace(&sb, 0);
@@ -497,7 +497,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 	}
 
 	if (fwrite(sb.buf, 1, sb.len, fp) < sb.len)
-		die("could not write commit template: %s", strerror(errno));
+		die_errno("could not write commit template");
 
 	strbuf_release(&sb);
 
@@ -557,10 +557,10 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 		if (ident_shown)
 			fprintf(fp, "#\n");
 
-		saved_color_setting = wt_status_use_color;
-		wt_status_use_color = 0;
-		commitable = run_status(fp, index_file, prefix, 1);
-		wt_status_use_color = saved_color_setting;
+		saved_color_setting = s->use_color;
+		s->use_color = 0;
+		commitable = run_status(fp, index_file, prefix, 1, s);
+		s->use_color = saved_color_setting;
 	} else {
 		unsigned char sha1[20];
 		const char *parent = "HEAD";
@@ -581,7 +581,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix)
 
 	if (!commitable && !in_merge && !allow_empty &&
 	    !(amend && is_a_merge(head_sha1))) {
-		run_status(stdout, index_file, prefix, 0);
+		run_status(stdout, index_file, prefix, 0, s);
 		return 0;
 	}
 
@@ -693,17 +693,13 @@ static const char *find_author_by_nickname(const char *name)
 
 static int parse_and_validate_options(int argc, const char *argv[],
 				      const char * const usage[],
-				      const char *prefix)
+				      const char *prefix,
+				      struct wt_status *s)
 {
 	int f = 0;
 
-	argc = parse_options(argc, argv, builtin_commit_options, usage, 0);
-	logfile = parse_options_fix_filename(prefix, logfile);
-	if (logfile)
-		logfile = xstrdup(logfile);
-	template_file = parse_options_fix_filename(prefix, template_file);
-	if (template_file)
-		template_file = xstrdup(template_file);
+	argc = parse_options(argc, argv, prefix, builtin_commit_options, usage,
+			     0);
 
 	if (force_author && !strchr(force_author, '>'))
 		force_author = find_author_by_nickname(force_author);
@@ -801,11 +797,11 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (!untracked_files_arg)
 		; /* default already initialized */
 	else if (!strcmp(untracked_files_arg, "no"))
-		show_untracked_files = SHOW_NO_UNTRACKED_FILES;
+		s->show_untracked_files = SHOW_NO_UNTRACKED_FILES;
 	else if (!strcmp(untracked_files_arg, "normal"))
-		show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
+		s->show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
 	else if (!strcmp(untracked_files_arg, "all"))
-		show_untracked_files = SHOW_ALL_UNTRACKED_FILES;
+		s->show_untracked_files = SHOW_ALL_UNTRACKED_FILES;
 	else
 		die("Invalid untracked files mode '%s'", untracked_files_arg);
 
@@ -817,28 +813,93 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	return argc;
 }
 
-int cmd_status(int argc, const char **argv, const char *prefix)
+static int dry_run_commit(int argc, const char **argv, const char *prefix,
+			  struct wt_status *s)
 {
-	const char *index_file;
 	int commitable;
+	const char *index_file;
 
-	git_config(git_status_config, NULL);
-
-	if (wt_status_use_color == -1)
-		wt_status_use_color = git_use_color_default;
-
-	if (diff_use_color_default == -1)
-		diff_use_color_default = git_use_color_default;
-
-	argc = parse_and_validate_options(argc, argv, builtin_status_usage, prefix);
-
-	index_file = prepare_index(argc, argv, prefix);
-
-	commitable = run_status(stdout, index_file, prefix, 0);
-
+	index_file = prepare_index(argc, argv, prefix, 1);
+	commitable = run_status(stdout, index_file, prefix, 0, s);
 	rollback_index_files();
 
 	return commitable ? 0 : 1;
+}
+
+static int parse_status_slot(const char *var, int offset)
+{
+	if (!strcasecmp(var+offset, "header"))
+		return WT_STATUS_HEADER;
+	if (!strcasecmp(var+offset, "updated")
+		|| !strcasecmp(var+offset, "added"))
+		return WT_STATUS_UPDATED;
+	if (!strcasecmp(var+offset, "changed"))
+		return WT_STATUS_CHANGED;
+	if (!strcasecmp(var+offset, "untracked"))
+		return WT_STATUS_UNTRACKED;
+	if (!strcasecmp(var+offset, "nobranch"))
+		return WT_STATUS_NOBRANCH;
+	if (!strcasecmp(var+offset, "unmerged"))
+		return WT_STATUS_UNMERGED;
+	die("bad config variable '%s'", var);
+}
+
+static int git_status_config(const char *k, const char *v, void *cb)
+{
+	struct wt_status *s = cb;
+
+	if (!strcmp(k, "status.submodulesummary")) {
+		int is_bool;
+		s->submodule_summary = git_config_bool_or_int(k, v, &is_bool);
+		if (is_bool && s->submodule_summary)
+			s->submodule_summary = -1;
+		return 0;
+	}
+	if (!strcmp(k, "status.color") || !strcmp(k, "color.status")) {
+		s->use_color = git_config_colorbool(k, v, -1);
+		return 0;
+	}
+	if (!prefixcmp(k, "status.color.") || !prefixcmp(k, "color.status.")) {
+		int slot = parse_status_slot(k, 13);
+		if (!v)
+			return config_error_nonbool(k);
+		color_parse(v, k, s->color_palette[slot]);
+		return 0;
+	}
+	if (!strcmp(k, "status.relativepaths")) {
+		s->relative_paths = git_config_bool(k, v);
+		return 0;
+	}
+	if (!strcmp(k, "status.showuntrackedfiles")) {
+		if (!v)
+			return config_error_nonbool(k);
+		else if (!strcmp(v, "no"))
+			s->show_untracked_files = SHOW_NO_UNTRACKED_FILES;
+		else if (!strcmp(v, "normal"))
+			s->show_untracked_files = SHOW_NORMAL_UNTRACKED_FILES;
+		else if (!strcmp(v, "all"))
+			s->show_untracked_files = SHOW_ALL_UNTRACKED_FILES;
+		else
+			return error("Invalid untracked files mode '%s'", v);
+		return 0;
+	}
+	return git_diff_ui_config(k, v, NULL);
+}
+
+int cmd_status(int argc, const char **argv, const char *prefix)
+{
+	struct wt_status s;
+
+	wt_status_prepare(&s);
+	git_config(git_status_config, &s);
+	if (s.use_color == -1)
+		s.use_color = git_use_color_default;
+	if (diff_use_color_default == -1)
+		diff_use_color_default = git_use_color_default;
+
+	argc = parse_and_validate_options(argc, argv, builtin_status_usage,
+					  prefix, &s);
+	return dry_run_commit(argc, argv, prefix, &s);
 }
 
 static void print_summary(const char *prefix, const unsigned char *sha1)
@@ -890,10 +951,12 @@ static void print_summary(const char *prefix, const unsigned char *sha1)
 
 static int git_commit_config(const char *k, const char *v, void *cb)
 {
+	struct wt_status *s = cb;
+
 	if (!strcmp(k, "commit.template"))
 		return git_config_string(&template_file, k, v);
 
-	return git_status_config(k, v, cb);
+	return git_status_config(k, v, s);
 }
 
 int cmd_commit(int argc, const char **argv, const char *prefix)
@@ -906,19 +969,26 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	int allow_fast_forward = 1;
+	struct wt_status s;
 
-	git_config(git_commit_config, NULL);
+	wt_status_prepare(&s);
+	git_config(git_commit_config, &s);
 
-	if (wt_status_use_color == -1)
-		wt_status_use_color = git_use_color_default;
+	if (s.use_color == -1)
+		s.use_color = git_use_color_default;
 
-	argc = parse_and_validate_options(argc, argv, builtin_commit_usage, prefix);
-
-	index_file = prepare_index(argc, argv, prefix);
+	argc = parse_and_validate_options(argc, argv, builtin_commit_usage,
+					  prefix, &s);
+	if (dry_run) {
+		if (diff_use_color_default == -1)
+			diff_use_color_default = git_use_color_default;
+		return dry_run_commit(argc, argv, prefix, &s);
+	}
+	index_file = prepare_index(argc, argv, prefix, 0);
 
 	/* Set up everything for writing the commit object.  This includes
 	   running hooks, writing the trees, and interacting with the user.  */
-	if (!prepare_to_commit(index_file, prefix)) {
+	if (!prepare_to_commit(index_file, prefix, &s)) {
 		rollback_index_files();
 		return 1;
 	}
@@ -945,8 +1015,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		pptr = &commit_list_insert(lookup_commit(head_sha1), pptr)->next;
 		fp = fopen(git_path("MERGE_HEAD"), "r");
 		if (fp == NULL)
-			die("could not open %s for reading: %s",
-			    git_path("MERGE_HEAD"), strerror(errno));
+			die_errno("could not open '%s' for reading",
+				  git_path("MERGE_HEAD"));
 		while (strbuf_getline(&m, fp, '\n') != EOF) {
 			unsigned char sha1[20];
 			if (get_sha1_hex(m.buf, sha1) < 0)
@@ -957,8 +1027,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		strbuf_release(&m);
 		if (!stat(git_path("MERGE_MODE"), &statbuf)) {
 			if (strbuf_read_file(&sb, git_path("MERGE_MODE"), 0) < 0)
-				die("could not read MERGE_MODE: %s",
-						strerror(errno));
+				die_errno("could not read MERGE_MODE");
 			if (!strcmp(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
 		}
@@ -972,8 +1041,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	/* Finally, get the commit message */
 	strbuf_reset(&sb);
 	if (strbuf_read_file(&sb, git_path(commit_editmsg), 0) < 0) {
+		int saved_errno = errno;
 		rollback_index_files();
-		die("could not read commit message");
+		die("could not read commit message: %s", strerror(saved_errno));
 	}
 
 	/* Truncate the message just before the diff, if any. */

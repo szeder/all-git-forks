@@ -50,7 +50,6 @@ struct commit *lookup_commit(const unsigned char *sha1)
 
 static unsigned long parse_commit_date(const char *buf, const char *tail)
 {
-	unsigned long date;
 	const char *dateptr;
 
 	if (buf + 6 >= tail)
@@ -73,10 +72,7 @@ static unsigned long parse_commit_date(const char *buf, const char *tail)
 	if (buf >= tail)
 		return 0;
 	/* dateptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
-	date = strtoul(dateptr, NULL, 10);
-	if (date == ULONG_MAX)
-		date = 0;
-	return date;
+	return strtoul(dateptr, NULL, 10);
 }
 
 static struct commit_graft **commit_graft;
@@ -216,7 +212,7 @@ int write_shallow_commits(int fd, int use_pack_protocol)
 			else {
 				if (write_in_full(fd, hex,  40) != 40)
 					break;
-				if (write_in_full(fd, "\n", 1) != 1)
+				if (write_str_in_full(fd, "\n") != 1)
 					break;
 			}
 		}
@@ -266,7 +262,11 @@ int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size)
 		    bufptr[47] != '\n')
 			return error("bad parents in commit %s", sha1_to_hex(item->object.sha1));
 		bufptr += 48;
-		if (graft)
+		/*
+		 * The clone is shallow if nr_parent < 0, and we must
+		 * not traverse its real parents even when we unhide them.
+		 */
+		if (graft && (graft->nr_parent < 0 || grafts_replace_parents))
 			continue;
 		new_parent = lookup_commit(parent);
 		if (new_parent)
@@ -564,13 +564,13 @@ static struct commit_list *merge_bases_many(struct commit *one, int n, struct co
 	while (interesting(list)) {
 		struct commit *commit;
 		struct commit_list *parents;
-		struct commit_list *n;
+		struct commit_list *next;
 		int flags;
 
 		commit = list->item;
-		n = list->next;
+		next = list->next;
 		free(list);
-		list = n;
+		list = next;
 
 		flags = commit->object.flags & (PARENT1 | PARENT2 | STALE);
 		if (flags == (PARENT1 | PARENT2)) {
@@ -598,11 +598,11 @@ static struct commit_list *merge_bases_many(struct commit *one, int n, struct co
 	free_commit_list(list);
 	list = result; result = NULL;
 	while (list) {
-		struct commit_list *n = list->next;
+		struct commit_list *next = list->next;
 		if (!(list->item->object.flags & STALE))
 			insert_by_date(list->item, &result);
 		free(list);
-		list = n;
+		list = next;
 	}
 	return result;
 }

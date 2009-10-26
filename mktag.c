@@ -19,16 +19,17 @@
 /*
  * We refuse to tag something we can't verify. Just because.
  */
-static int verify_object(unsigned char *sha1, const char *expected_type)
+static int verify_object(const unsigned char *sha1, const char *expected_type)
 {
 	int ret = -1;
 	enum object_type type;
 	unsigned long size;
-	void *buffer = read_sha1_file(sha1, &type, &size);
+	const unsigned char *repl;
+	void *buffer = read_sha1_file_repl(sha1, &type, &size, &repl);
 
 	if (buffer) {
 		if (type == type_from_string(expected_type))
-			ret = check_sha1_signature(sha1, buffer, size, expected_type);
+			ret = check_sha1_signature(repl, buffer, size, expected_type);
 		free(buffer);
 	}
 	return ret;
@@ -165,7 +166,7 @@ int main(int argc, char **argv)
 	setup_git_directory();
 
 	if (strbuf_read(&buf, 0, 4096) < 0) {
-		die("could not read from stdin");
+		die_errno("could not read from stdin");
 	}
 
 	/* Verify it for some basic sanity: it needs to start with

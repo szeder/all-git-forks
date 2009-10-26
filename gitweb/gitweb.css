@@ -28,6 +28,10 @@ img.logo {
 	border-width: 0px;
 }
 
+img.avatar {
+	vertical-align: middle;
+}
+
 div.page_header {
 	height: 25px;
 	padding: 8px;
@@ -132,11 +136,14 @@ div.list_head {
 	font-style: italic;
 }
 
+.author_date, .author {
+	font-style: italic;
+}
+
 div.author_date {
 	padding: 8px;
 	border: solid #d9d8d1;
 	border-width: 0px 0px 1px 0px;
-	font-style: italic;
 }
 
 a.list {
@@ -219,20 +226,28 @@ th {
 	text-align: left;
 }
 
-tr.light:hover {
-	background-color: #edece6;
+/* do not change row style on hover for 'blame' view */
+tr.light,
+table.blame .light:hover {
+	background-color: #ffffff;
 }
 
-tr.dark {
+tr.dark,
+table.blame .dark:hover {
 	background-color: #f6f6f0;
 }
 
-tr.dark2 {
-	background-color: #f6f6f0;
-}
-
+/* currently both use the same, but it can change */
+tr.light:hover,
 tr.dark:hover {
 	background-color: #edece6;
+}
+
+/* boundary commits in 'blame' view */
+/* and commits without "previous" */
+tr.boundary td.sha1,
+tr.no-previous td.linenr {
+	font-weight: bold;
 }
 
 td {
@@ -255,7 +270,7 @@ td.sha1 {
 	font-family: monospace;
 }
 
-td.error {
+.error {
 	color: red;
 	background-color: yellow;
 }

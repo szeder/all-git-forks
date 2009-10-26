@@ -64,6 +64,7 @@ enum cmit_fmt {
 };
 
 extern int non_ascii(int);
+extern int has_non_ascii(const char *text);
 struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
 extern char *reencode_commit_message(const struct commit *commit,
 				     const char **encoding_p);
@@ -122,6 +123,8 @@ struct commit_graft *read_graft_line(char *buf, int len);
 int register_commit_graft(struct commit_graft *, int);
 struct commit_graft *lookup_commit_graft(const unsigned char *sha1);
 
+const unsigned char *lookup_replace_object(const unsigned char *sha1);
+
 extern struct commit_list *get_merge_bases(struct commit *rev1, struct commit *rev2, int cleanup);
 extern struct commit_list *get_merge_bases_many(struct commit *one, int n, struct commit **twos, int cleanup);
 extern struct commit_list *get_octopus_merge_bases(struct commit_list *in);
@@ -137,6 +140,8 @@ int is_descendant_of(struct commit *, struct commit_list *);
 int in_merge_bases(struct commit *, struct commit **, int);
 
 extern int interactive_add(int argc, const char **argv, const char *prefix);
+extern int run_add_interactive(const char *revision, const char *patch_mode,
+			       const char **pathspec);
 
 static inline int single_parent(struct commit *commit)
 {

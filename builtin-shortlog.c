@@ -56,7 +56,7 @@ static void insert_one_record(struct shortlog *log,
 	/* copy author name to namebuf, to support matching on both name and email */
 	memcpy(namebuf, author, boemail - author);
 	len = boemail - author;
-	while(len > 0 && isspace(namebuf[len-1]))
+	while (len > 0 && isspace(namebuf[len-1]))
 		len--;
 	namebuf[len] = 0;
 
@@ -263,7 +263,7 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	shortlog_init(&log);
 	init_revisions(&rev, prefix);
-	parse_options_start(&ctx, argc, argv, PARSE_OPT_KEEP_DASHDASH |
+	parse_options_start(&ctx, argc, argv, prefix, PARSE_OPT_KEEP_DASHDASH |
 			    PARSE_OPT_KEEP_ARGV0);
 
 	for (;;) {

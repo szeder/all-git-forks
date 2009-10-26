@@ -13,10 +13,10 @@ static void create_output_file(const char *output_file)
 {
 	int output_fd = open(output_file, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 	if (output_fd < 0)
-		die("could not create archive file: %s ", output_file);
+		die_errno("could not create archive file '%s'", output_file);
 	if (output_fd != 1) {
 		if (dup2(output_fd, 1) < 0)
-			die("could not redirect output");
+			die_errno("could not redirect output");
 		else
 			close(output_fd);
 	}
@@ -60,6 +60,17 @@ static int run_remote_archiver(int argc, const char **argv,
 	return !!rv;
 }
 
+static const char *format_from_name(const char *filename)
+{
+	const char *ext = strrchr(filename, '.');
+	if (!ext)
+		return NULL;
+	ext++;
+	if (!strcasecmp(ext, "zip"))
+		return "zip";
+	return NULL;
+}
+
 #define PARSE_OPT_KEEP_ALL ( PARSE_OPT_KEEP_DASHDASH | 	\
 			     PARSE_OPT_KEEP_ARGV0 | 	\
 			     PARSE_OPT_KEEP_UNKNOWN |	\
@@ -70,20 +81,39 @@ int cmd_archive(int argc, const char **argv, const char *prefix)
 	const char *exec = "git-upload-archive";
 	const char *output = NULL;
 	const char *remote = NULL;
+	const char *format = NULL;
 	struct option local_opts[] = {
-		OPT_STRING(0, "output", &output, "file",
+		OPT_STRING('o', "output", &output, "file",
 			"write the archive to this file"),
 		OPT_STRING(0, "remote", &remote, "repo",
 			"retrieve the archive from remote repository <repo>"),
 		OPT_STRING(0, "exec", &exec, "cmd",
 			"path to the remote git-upload-archive command"),
+		OPT_STRING(0, "format", &format, "fmt", "archive format"),
 		OPT_END()
 	};
+	char fmt_opt[32];
 
-	argc = parse_options(argc, argv, local_opts, NULL, PARSE_OPT_KEEP_ALL);
+	argc = parse_options(argc, argv, prefix, local_opts, NULL,
+			     PARSE_OPT_KEEP_ALL);
 
-	if (output)
+	if (output) {
 		create_output_file(output);
+		if (!format)
+			format = format_from_name(output);
+	}
+
+	if (format) {
+		sprintf(fmt_opt, "--format=%s", format);
+		/*
+		 * This is safe because either --format and/or --output must
+		 * have been given on the original command line if we get to
+		 * this point, and parse_options() must have eaten at least
+		 * one argument, i.e. we have enough room to append to argv[].
+		 */
+		argv[argc++] = fmt_opt;
+		argv[argc] = NULL;
+	}
 
 	if (remote)
 		return run_remote_archiver(argc, argv, remote, exec);

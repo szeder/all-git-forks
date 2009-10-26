@@ -1,8 +1,9 @@
 #include "../git-compat-util.h"
 #include "win32.h"
+#include <conio.h>
 #include "../strbuf.h"
 
-unsigned int _CRT_fmode = _O_BINARY;
+#include <shellapi.h>
 
 static int err_win_to_posix(DWORD winerr)
 {
@@ -122,13 +123,17 @@ int mingw_open (const char *filename, int oflags, ...)
 {
 	va_list args;
 	unsigned mode;
+	int fd;
+
 	va_start(args, oflags);
 	mode = va_arg(args, int);
 	va_end(args);
 
 	if (!strcmp(filename, "/dev/null"))
 		filename = "nul";
-	int fd = open(filename, oflags, mode);
+
+	fd = open(filename, oflags, mode);
+
 	if (fd < 0 && (oflags & O_CREAT) && errno == EACCES) {
 		DWORD attrs = GetFileAttributes(filename);
 		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
@@ -525,8 +530,8 @@ static const char *parse_interpreter(const char *cmd)
 	if (buf[0] != '#' || buf[1] != '!')
 		return NULL;
 	buf[n] = '\0';
-	p = strchr(buf, '\n');
-	if (!p)
+	p = buf + strcspn(buf, "\r\n");
+	if (!*p)
 		return NULL;
 
 	*p = '\0';
@@ -579,10 +584,11 @@ static char **get_path_split(void)
 
 static void free_path_split(char **path)
 {
+	char **p = path;
+
 	if (!path)
 		return;
 
-	char **p = path;
 	while (*p)
 		free(*p++);
 	free(path);
@@ -823,7 +829,7 @@ void mingw_execvp(const char *cmd, char *const *argv)
 	free_path_split(path);
 }
 
-char **copy_environ()
+static char **copy_environ(void)
 {
 	char **env;
 	int i = 0;
@@ -860,7 +866,7 @@ static int lookup_env(char **env, const char *name, size_t nmln)
 /*
  * If name contains '=', then sets the variable, otherwise it unsets it
  */
-char **env_setenv(char **env, const char *name)
+static char **env_setenv(char **env, const char *name)
 {
 	char *eq = strchrnul(name, '=');
 	int i = lookup_env(env, name, eq-name);
@@ -882,6 +888,18 @@ char **env_setenv(char **env, const char *name)
 			for (; env[i]; i++)
 				env[i] = env[i+1];
 	}
+	return env;
+}
+
+/*
+ * Copies global environ and adjusts variables as specified by vars.
+ */
+char **make_augmented_environ(const char *const *vars)
+{
+	char **env = copy_environ();
+
+	while (*vars)
+		env = env_setenv(env, *vars++);
 	return env;
 }
 
@@ -1011,7 +1029,7 @@ static sig_handler_t timer_fn = SIG_DFL;
  * length to call the signal handler.
  */
 
-static __stdcall unsigned ticktack(void *dummy)
+static unsigned __stdcall ticktack(void *dummy)
 {
 	while (WaitForSingleObject(timer_event, timer_interval) == WAIT_TIMEOUT) {
 		if (timer_fn == SIG_DFL)
@@ -1107,9 +1125,9 @@ int sigaction(int sig, struct sigaction *in, struct sigaction *out)
 #undef signal
 sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 {
+	sig_handler_t old = timer_fn;
 	if (sig != SIGALRM)
 		return signal(sig, handler);
-	sig_handler_t old = timer_fn;
 	timer_fn = handler;
 	return old;
 }
@@ -1138,7 +1156,7 @@ void mingw_open_html(const char *unixpath)
 
 int link(const char *oldpath, const char *newpath)
 {
-	typedef BOOL WINAPI (*T)(const char*, const char*, LPSECURITY_ATTRIBUTES);
+	typedef BOOL (WINAPI *T)(const char*, const char*, LPSECURITY_ATTRIBUTES);
 	static T create_hard_link = NULL;
 	if (!create_hard_link) {
 		create_hard_link = (T) GetProcAddress(
@@ -1156,3 +1174,78 @@ int link(const char *oldpath, const char *newpath)
 	}
 	return 0;
 }
+
+char *getpass(const char *prompt)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	fputs(prompt, stderr);
+	for (;;) {
+		char c = _getch();
+		if (c == '\r' || c == '\n')
+			break;
+		strbuf_addch(&buf, c);
+	}
+	fputs("\n", stderr);
+	return strbuf_detach(&buf, NULL);
+}
+
+#ifndef NO_MINGW_REPLACE_READDIR
+/* MinGW readdir implementation to avoid extra lstats for Git */
+struct mingw_DIR
+{
+	struct _finddata_t	dd_dta;		/* disk transfer area for this dir */
+	struct mingw_dirent	dd_dir;		/* Our own implementation, including d_type */
+	long			dd_handle;	/* _findnext handle */
+	int			dd_stat; 	/* 0 = next entry to read is first entry, -1 = off the end, positive = 0 based index of next entry */
+	char			dd_name[1]; 	/* given path for dir with search pattern (struct is extended) */
+};
+
+struct dirent *mingw_readdir(DIR *dir)
+{
+	WIN32_FIND_DATAA buf;
+	HANDLE handle;
+	struct mingw_DIR *mdir = (struct mingw_DIR*)dir;
+
+	if (!dir->dd_handle) {
+		errno = EBADF; /* No set_errno for mingw */
+		return NULL;
+	}
+
+	if (dir->dd_handle == (long)INVALID_HANDLE_VALUE && dir->dd_stat == 0)
+	{
+		DWORD lasterr;
+		handle = FindFirstFileA(dir->dd_name, &buf);
+		lasterr = GetLastError();
+		dir->dd_handle = (long)handle;
+		if (handle == INVALID_HANDLE_VALUE && (lasterr != ERROR_NO_MORE_FILES)) {
+			errno = err_win_to_posix(lasterr);
+			return NULL;
+		}
+	} else if (dir->dd_handle == (long)INVALID_HANDLE_VALUE) {
+		return NULL;
+	} else if (!FindNextFileA((HANDLE)dir->dd_handle, &buf)) {
+		DWORD lasterr = GetLastError();
+		FindClose((HANDLE)dir->dd_handle);
+		dir->dd_handle = (long)INVALID_HANDLE_VALUE;
+		/* POSIX says you shouldn't set errno when readdir can't
+		   find any more files; so, if another error we leave it set. */
+		if (lasterr != ERROR_NO_MORE_FILES)
+			errno = err_win_to_posix(lasterr);
+		return NULL;
+	}
+
+	/* We get here if `buf' contains valid data.  */
+	strcpy(dir->dd_dir.d_name, buf.cFileName);
+	++dir->dd_stat;
+
+	/* Set file type, based on WIN32_FIND_DATA */
+	mdir->dd_dir.d_type = 0;
+	if (buf.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+		mdir->dd_dir.d_type |= DT_DIR;
+	else
+		mdir->dd_dir.d_type |= DT_REG;
+
+	return (struct dirent*)&dir->dd_dir;
+}
+#endif // !NO_MINGW_REPLACE_READDIR

@@ -17,9 +17,10 @@ typedef int pid_t;
 #define S_IROTH 0
 #define S_IXOTH 0
 
-#define WIFEXITED(x) ((unsigned)(x) < 259)	/* STILL_ACTIVE */
+#define WIFEXITED(x) 1
+#define WIFSIGNALED(x) 0
 #define WEXITSTATUS(x) ((x) & 0xff)
-#define WIFSIGNALED(x) ((unsigned)(x) > 259)
+#define WTERMSIG(x) SIGTERM
 
 #define SIGHUP 1
 #define SIGQUIT 3
@@ -38,6 +39,9 @@ struct passwd {
 	char *pw_dir;
 };
 
+extern char *getpass(const char *prompt);
+
+#ifndef POLLIN
 struct pollfd {
 	int fd;           /* file descriptor */
 	short events;     /* requested events */
@@ -45,6 +49,7 @@ struct pollfd {
 };
 #define POLLIN 1
 #define POLLHUP 2
+#endif
 
 typedef void (__cdecl *sig_handler_t)(int);
 struct sigaction {
@@ -90,6 +95,8 @@ static inline int fcntl(int fd, int cmd, long arg)
 	errno = EINVAL;
 	return -1;
 }
+/* bash cannot reliably detect negative return codes as failure */
+#define exit(code) exit((code) & 0xff)
 
 /*
  * simple adaptors
@@ -109,7 +116,7 @@ static inline int mingw_unlink(const char *pathname)
 }
 #define unlink mingw_unlink
 
-static inline int waitpid(pid_t pid, unsigned *status, unsigned options)
+static inline int waitpid(pid_t pid, int *status, unsigned options)
 {
 	if (options == 0)
 		return _cwait(status, pid, 0);
@@ -217,19 +224,52 @@ void mingw_open_html(const char *path);
  * helpers
  */
 
-char **copy_environ(void);
+char **make_augmented_environ(const char *const *vars);
 void free_environ(char **env);
-char **env_setenv(char **env, const char *name);
 
 /*
  * A replacement of main() that ensures that argv[0] has a path
+ * and that default fmode and std(in|out|err) are in binary mode
  */
 
 #define main(c,v) dummy_decl_mingw_main(); \
 static int mingw_main(); \
 int main(int argc, const char **argv) \
 { \
+	_fmode = _O_BINARY; \
+	_setmode(_fileno(stdin), _O_BINARY); \
+	_setmode(_fileno(stdout), _O_BINARY); \
+	_setmode(_fileno(stderr), _O_BINARY); \
 	argv[0] = xstrdup(_pgmptr); \
 	return mingw_main(argc, argv); \
 } \
 static int mingw_main(c,v)
+
+#ifndef NO_MINGW_REPLACE_READDIR
+/*
+ * A replacement of readdir, to ensure that it reads the file type at
+ * the same time. This avoid extra unneeded lstats in git on MinGW
+ */
+#undef DT_UNKNOWN
+#undef DT_DIR
+#undef DT_REG
+#undef DT_LNK
+#define DT_UNKNOWN	0
+#define DT_DIR		1
+#define DT_REG		2
+#define DT_LNK		3
+
+struct mingw_dirent
+{
+	long		d_ino;			/* Always zero. */
+	union {
+		unsigned short	d_reclen;	/* Always zero. */
+		unsigned char   d_type;		/* Reimplementation adds this */
+	};
+	unsigned short	d_namlen;		/* Length of name in d_name. */
+	char		d_name[FILENAME_MAX];	/* File name. */
+};
+#define dirent mingw_dirent
+#define readdir(x) mingw_readdir(x)
+struct dirent *mingw_readdir(DIR *dir);
+#endif // !NO_MINGW_REPLACE_READDIR

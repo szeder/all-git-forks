@@ -1,7 +1,7 @@
-From 83ad5eb412168cdc79cf53fa5a265613181798b1 Mon Sep 17 00:00:00 2001
+From 8ab478d35c27a84180eb5e2b8c7614cf7fc61574 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Mon, 21 Jan 2008 14:41:12 +0000
-Subject: [PATCH 2/5] bug#438793, #494505: fallback to 'editor' not 'vi'
+Subject: [PATCH] bug#438793, #494505: fallback to 'editor' not 'vi'
 
 In editor.c, git-add--interactive.perl, git-sh-setup.sh, git-svn.perl,
 t/t7005-editor.sh, contrib/fast-import/git-p4 fallback to 'editor', not
@@ -16,10 +16,10 @@ t/t7005-editor.sh, contrib/fast-import/git-p4 fallback to 'editor', not
  6 files changed, 13 insertions(+), 13 deletions(-)
 
 diff --git a/contrib/fast-import/git-p4 b/contrib/fast-import/git-p4
-index 342529d..aea725c 100755
+index e710219..8a17ef5 100755
 --- a/contrib/fast-import/git-p4
 +++ b/contrib/fast-import/git-p4
-@@ -728,7 +728,7 @@ class P4Submit(Command):
+@@ -729,7 +729,7 @@ class P4Submit(Command):
              tmpFile.write(submitTemplate + separatorLine + diff + newdiff)
              tmpFile.close()
              mtime = os.stat(fileName).st_mtime
@@ -42,10 +42,10 @@ index 4d469d0..4823e74 100644
  	if (strcmp(editor, ":")) {
  		size_t len = strlen(editor);
 diff --git a/git-add--interactive.perl b/git-add--interactive.perl
-index df9f231..cbc750c 100755
+index 392efb9..c744177 100755
 --- a/git-add--interactive.perl
 +++ b/git-add--interactive.perl
-@@ -891,7 +891,7 @@ EOF
+@@ -988,7 +988,7 @@ EOF
  	close $fh;
  
  	my $editor = $ENV{GIT_EDITOR} || $repo->config("core.editor")
@@ -55,10 +55,10 @@ index df9f231..cbc750c 100755
  
  	if ($? != 0) {
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 8382339..a69ab19 100755
+index c41c2f7..860b164 100755
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
-@@ -67,14 +67,14 @@ git_editor() {
+@@ -104,14 +104,14 @@ git_editor() {
  	case "$GIT_EDITOR,$TERM" in
  	,dumb)
  		echo >&2 "No editor specified in GIT_EDITOR, core.editor, VISUAL,"
@@ -76,10 +76,10 @@ index 8382339..a69ab19 100755
  
  is_bare_repository () {
 diff --git a/git-svn.perl b/git-svn.perl
-index ef1d30d..1add6f0 100755
+index eb4b75a..bd7ec25 100755
 --- a/git-svn.perl
 +++ b/git-svn.perl
-@@ -1166,7 +1166,7 @@ sub get_commit_entry {
+@@ -1321,7 +1321,7 @@ sub get_commit_entry {
  	close $log_fh or croak $!;
  
  	if ($_edit || ($type eq 'tree')) {
@@ -148,5 +148,5 @@ index b647957..97382ec 100755
  	echo "Edited by $i" >expect
  	case "$i" in
 -- 
-1.6.3.1
+1.6.0.3
 

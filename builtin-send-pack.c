@@ -44,6 +44,7 @@ static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *ext
 		NULL,
 		NULL,
 		NULL,
+		NULL,
 	};
 	struct child_process po;
 	int i;
@@ -53,13 +54,15 @@ static int pack_objects(int fd, struct ref *refs, struct extra_have_objects *ext
 		argv[i++] = "--thin";
 	if (args->use_ofs_delta)
 		argv[i++] = "--delta-base-offset";
+	if (args->quiet)
+		argv[i++] = "-q";
 	memset(&po, 0, sizeof(po));
 	po.argv = argv;
 	po.in = -1;
 	po.out = fd;
 	po.git_cmd = 1;
 	if (start_command(&po))
-		die("git pack-objects failed (%s)", strerror(errno));
+		die_errno("git pack-objects failed");
 
 	/*
 	 * We feed the pack-objects we just spawned with revision
@@ -178,9 +181,9 @@ static void print_ref_status(char flag, const char *summary, struct ref *to, str
 {
 	fprintf(stderr, " %c %-*s ", flag, SUMMARY_WIDTH, summary);
 	if (from)
-		fprintf(stderr, "%s -> %s", prettify_ref(from), prettify_ref(to));
+		fprintf(stderr, "%s -> %s", prettify_refname(from->name), prettify_refname(to->name));
 	else
-		fputs(prettify_ref(to), stderr);
+		fputs(prettify_refname(to->name), stderr);
 	if (msg) {
 		fputs(" (", stderr);
 		fputs(msg, stderr);
@@ -473,7 +476,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	int fd[2];
 	struct child_process *conn;
 	struct extra_have_objects extra_have;
-	struct ref *remote_refs, **remote_tail, *local_refs;
+	struct ref *remote_refs, *local_refs;
 	int ret;
 	int send_all = 0;
 	const char *receivepack = "git-receive-pack";
@@ -567,13 +570,8 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 		flags |= MATCH_REFS_MIRROR;
 
 	/* match them up */
-	remote_tail = &remote_refs;
-	while (*remote_tail)
-		remote_tail = &((*remote_tail)->next);
-	if (match_refs(local_refs, remote_refs, &remote_tail,
-		       nr_refspecs, refspecs, flags)) {
+	if (match_refs(local_refs, &remote_refs, nr_refspecs, refspecs, flags))
 		return -1;
-	}
 
 	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
 

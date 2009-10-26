@@ -98,7 +98,7 @@ int verify_bundle(struct bundle_header *header, int verbose)
 	 */
 	struct ref_list *p = &header->prerequisites;
 	struct rev_info revs;
-	const char *argv[] = {NULL, "--all"};
+	const char *argv[] = {NULL, "--all", NULL};
 	struct object_array refs;
 	struct commit *commit;
 	int i, ret = 0, req_nr;
@@ -234,7 +234,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 	rls.git_cmd = 1;
 	if (start_command(&rls))
 		return -1;
-	rls_fout = fdopen(rls.out, "r");
+	rls_fout = xfdopen(rls.out, "r");
 	while (fgets(buffer, sizeof(buffer), rls_fout)) {
 		unsigned char sha1[20];
 		if (buffer[0] == '-') {
