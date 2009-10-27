@@ -93,9 +93,7 @@ struct rc_object_entry *from_disked_rc_object_entry(struct rc_object_entry_ondis
 	dst->type = src->flags >> 5 & 0x03;
 	dst->is_end = !!(src->flags & 0x10);
 	dst->is_start = !!(src->flags & 0x08);
-	dst->uninteresting = !!(src->flags & 0x04);
-	dst->include = !!(src->flags & 0x02);
-	dst->flag = !!(src->flags & 0x01);
+	dst->flag = src->flags & 0x07;
 
 	dst->sha1 = src->sha1;
 	dst->merge_nr = src->merge_nr;
@@ -122,8 +120,6 @@ struct rc_object_entry_ondisk *to_disked_rc_object_entry(struct rc_object_entry 
 	dst->flags  = (unsigned char)src->type << 5;
 	dst->flags |= (unsigned char)src->is_end << 4;
 	dst->flags |= (unsigned char)src->is_start << 3;
-	dst->flags |= (unsigned char)src->uninteresting << 2;
-	dst->flags |= (unsigned char)src->include << 1;
 	dst->flags |= (unsigned char)src->flag;
 
 	if (dst->sha1 != src->sha1)
@@ -395,24 +391,42 @@ static void handle_noncommit(struct rev_info *revs, struct commit *commit, unsig
 	}
 }
 
-static int setup_traversal(struct rc_slice_header *head, unsigned char *map, struct commit *commit, struct commit_list **work,
+struct entrance_point {
+	int pos;
+	char uninteresting;
+};
+
+static int eps_sort_callback(const void *a, const void *b)
+{
+	struct entrance_point *aep, *bep;
+	
+	aep = (struct entrance_point *)a;
+	bep = (struct entrance_point *)b;
+	
+	if (aep->pos == bep->pos)
+		return 0;
+	
+	return aep->pos > bep->pos ? 1 : -1;
+}
+
+static int setup_traversal(struct rc_slice_header *head, struct entrance_point **peps, int *peplen,
+	struct commit *commit, struct commit_list **work,
 	struct commit_list **unwork, int *ipath_nr, int *upath_nr, char *ioutside)
 {
 	struct rc_index_entry *iep;
-	struct rc_object_entry *oep;
 	struct commit_list *prev, *wp, **wpp;
-	int retval;
+	struct entrance_point *eps;
+	int retval, curep = 1, eplen = 10;
 
+	eps = xcalloc(1, eplen * sizeof(struct entrance_point));
 	iep = search_index(commit->object.sha1);
-	oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
 	if (commit->object.flags & UNINTERESTING) {
 		++*upath_nr;
-		oep->uninteresting = 1;
+		eps[0].uninteresting = 1;
 	} else
 		++*ipath_nr;
 
-	oep->include = 1;
-	to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+	eps[0].pos = iep->pos;
 	retval = iep->pos;
 
 	/* include any others in the work array */
@@ -439,12 +453,15 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		if (iep->pos < retval)
 			retval = iep->pos;
 
-		oep = RC_OBTAIN_OBJECT_ENTRY(map + iep->pos);
-
 		/* mark this for later */
-		oep->include = 1;
-		oep->uninteresting = !!(obj->flags & UNINTERESTING);
-		to_disked_rc_object_entry(oep, (struct rc_object_entry_ondisk *)(map + iep->pos));
+		if (curep == eplen) {
+			eplen += 10;
+			eps = xrealloc(eps, eplen * sizeof(struct entrance_point));
+		}
+		
+		eps[curep].pos = iep->pos;
+		eps[curep].uninteresting = !!(obj->flags & UNINTERESTING);
+		curep++;
 
 		/* count even if not in slice so we can stop enumerating if possible */
 		if (obj->flags & UNINTERESTING)
@@ -462,6 +479,9 @@ static int setup_traversal(struct rc_slice_header *head, unsigned char *map, str
 		commit_list_insert(co, unwork);
 	}
 
+	qsort(eps, curep, sizeof(struct entrance_point), eps_sort_callback);
+	*peps = eps;
+	*peplen = curep;
 	return retval;
 }
 
@@ -483,11 +503,13 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		total_path_nr = head->path_nr, retval = -1, slop = slop_so_far ? *slop_so_far : SLOP;
 	char consume_children = 0, ioutside = 0;
 	unsigned char *paths;
+	struct entrance_point *eps;
+	int eplen, curep = 0;
 
 	/* take note in case we need to regress */
 	orig_obj_nr = revs->pending.nr;
 
-	i = setup_traversal(head, map, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
+	i = setup_traversal(head, &eps, &eplen, commit, work, &unwork, &ipath_nr, &upath_nr, &ioutside);
 	if (i < 0)
 		return -1;
 
@@ -500,6 +522,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		int path = entry->path;
 		struct object *obj;
 		int index = i;
+		char uninteresting;
 
 		i += RC_ACTUAL_OBJECT_ENTRY_SIZE(entry);
 
@@ -517,8 +540,8 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		/* in one of our branches?
 		 * uninteresting trumps interesting */
-		if (entry->include)
-			paths[path] |= entry->uninteresting ? UPATH : IPATH;
+		if (curep < eplen && index == eps[curep].pos)
+			paths[path] |= eps[curep++].uninteresting ? UPATH : IPATH;
 		else if (!paths[path])
 			continue;
 
@@ -550,7 +573,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		}
 
 		/* now we gotta re-assess the whole interesting thing... */
-		entry->uninteresting = !!(paths[path] & UPATH);
+		uninteresting = !!(paths[path] & UPATH);
 
 		/* first close paths */
 		if (entry->split_nr) {
@@ -563,7 +586,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 					goto end;
 
 				/* boundary commit? */
-				if ((paths[p] & IPATH) && entry->uninteresting) {
+				if ((paths[p] & IPATH) && uninteresting) {
 					if (last_objects[p]) {
 						parse_commit(last_objects[p]);
 
@@ -600,11 +623,11 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		/* we've been here already */
 		if (obj->flags & ADDED) {
-			if (entry->uninteresting && !(obj->flags & UNINTERESTING)) {
+			if (uninteresting && !(obj->flags & UNINTERESTING)) {
 				obj->flags |= UNINTERESTING;
 				mark_parents_uninteresting(co);
 				upath_nr--;
-			} else if (!entry->uninteresting)
+			} else if (!uninteresting)
 				ipath_nr--;
 
 			paths[path] = 0;
@@ -620,7 +643,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 		obj->flags |= SEEN;
 
-		if (entry->uninteresting)
+		if (uninteresting)
 			obj->flags |= UNINTERESTING;
 		else if (co->date < date)
 			date = co->date;
@@ -691,7 +714,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 
 			/* an abrupt end */
 			myworkp = &commit_list_insert(co, myworkp)->next;
-			if (entry->uninteresting)
+			if (uninteresting)
 				upath_nr--;
 			else
 				ipath_nr--;
@@ -702,7 +725,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 		/* open parents */
 		if (entry->merge_nr) {
 			int j, off = index + sizeof(struct rc_object_entry_ondisk);
-			char flag = entry->uninteresting ? UPATH : IPATH;
+			char flag = uninteresting ? UPATH : IPATH;
 
 			for (j = 0; j < entry->merge_nr; j++) {
 				unsigned short p = ntohs(*(uint16_t *)(map + off + RC_PATH_SIZE(j)));
@@ -749,6 +772,7 @@ static int traverse_cache_slice_1(struct rc_slice_header *head, unsigned char *m
 end:
 	free(paths);
 	free(last_objects);
+	free(eps);
 
 	/* failure: restore work to previous condition
 	 * (cache corruption should *not* be fatal) */
@@ -911,7 +935,7 @@ int traverse_cache_slice(struct rev_info *revs,
 	if (add_names)
 		cur_name_list = get_cache_slice_name_list(&head, fd);
 
-	map = xmmap(0, head.size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, head.size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		ERROR(-3);
 
@@ -1891,7 +1915,7 @@ int make_cache_index(struct rev_cache_info *rci, unsigned char *cache_sha1,
 		init_index();
 
 	lseek(fd, 0, SEEK_SET);
-	map = xmmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	map = xmmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (map == MAP_FAILED)
 		return -1;
 

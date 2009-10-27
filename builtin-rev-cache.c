@@ -275,7 +275,8 @@ commands:\n\
             --all                  include all objects in repository\n\
             --no-objects           don't add non-commit objects to slice\n\
             --ignore-size[=N]      ignore slices of size >= N; defaults to ~5MB\n\
-  index  - regnerate the cache index.";
+  index  - regnerate the cache index.\n\
+  alt    - create a slice pointer to slice identified by a passed path";
 
 	puts(usage);
 

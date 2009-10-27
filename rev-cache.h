@@ -76,9 +76,7 @@ struct rc_object_entry {
 	unsigned type:3;
 	unsigned is_end:1;
 	unsigned is_start:1;
-	unsigned uninteresting:1;
-	unsigned include:1;
-	unsigned flag:1; /* unused */
+	unsigned flag:3; /* unused */
 	unsigned char *sha1; /* 20 byte */
 
 	unsigned char merge_nr; /* : 7 */
