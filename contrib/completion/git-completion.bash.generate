@@ -9,6 +9,7 @@ __git_merge_strategies ()
 {
 	git merge -s help 2>&1 |
 	sed -n -e '/[Aa]vailable strategies are: /,/^$/{
+		/^[Aa]vailable custom strategies are: / d
 		s/\.$//
 		s/.*://
 		s/^[ 	]*//
