@@ -1375,6 +1375,19 @@ remote.<name>.url::
 remote.<name>.pushurl::
 	The push URL of a remote repository.  See linkgit:git-push[1].
 
+remote.<name>.mirror-url::
+	An alternate URL which should have many similar refs to the
+	real remote at least most of the time.  This option can be
+	specified multiple times.  See linkgit:git-fetch[1].
+
+remote.<name>.use-mirror::
+	Prefer to contact mirrors first (boolean).  See
+	linkgit:git-fetch[1].
+
+remote.<name>.preferred-mirror::
+	Specify which mirror to try first (full URL).  May be updated
+	by user interaction during 'fetch'.  See linkgit:git-fetch[1].
+
 remote.<name>.proxy::
 	For remotes that require curl (http, https and ftp), the URL to
 	the proxy to use for that remote.  Set to the empty string to

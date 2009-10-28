@@ -19,6 +19,12 @@ struct remote {
 	int pushurl_nr;
 	int pushurl_alloc;
 
+	const char **mirror_url;
+	int mirror_url_nr;
+	int mirror_url_alloc;
+	int use_mirror;
+	const char *preferred_mirror;
+
 	const char **push_refspec;
 	struct refspec *push;
 	int push_refspec_nr;

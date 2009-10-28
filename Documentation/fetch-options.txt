@@ -62,6 +62,30 @@ ifndef::git-pull[]
 	Pass --quiet to git-fetch-pack and silence any other internally
 	used git commands.
 
+-M::
+--use-mirror::
+	Try to use a configured mirror for the bulk of the transfer
+	rather than the main upstream.  See gitlink:git-config[1] for
+	the appropriate options to set.
++
+The preferred mirror (or the first if no preferred URL is defined) is
+first contacted and fetched from, and any refs it presents which match
+the source <refspec> (including the rules for fetching tags) are saved
+under `refs/mirrors/`<remote>`/hostname`.  If there is a network
+timeout, or the user interrupts the fetch process, the next mirror
+will be tried.
++
+Once the fetch from the mirror is complete, the central host is
+contacted and fetched from.  If the mirror was correct and up to date,
+then no more data will be required from the central host.  At this
+point, all of the refs under `refs/mirrors/`<remote> which are
+reachable from the real `refs/remotes/`<remote> tracking branches will
+be removed.  Extra refs which were not present on the real source will
+be left behind so they are not fetched again the next time around.
++
+This can be made the default for a remote using the
+`remote.`<remote>.`use-mirror` configuration option.
+
 -v::
 --verbose::
 	Be verbose.
