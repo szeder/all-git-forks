@@ -269,6 +269,14 @@ pick_one () {
 	output git cherry-pick $ff "$@"
 }
 
+with_author_ident () {
+	sha1=$1
+	shift
+	author_script=$(get_author_ident_from_commit "$sha1")
+	eval "$author_script"
+	do_with_author "$@"
+}
+
 merge_one () {
 	cmd="merge $*"
 	test "$1" = parents && shift
@@ -287,7 +295,7 @@ merge_one () {
 	# the command was "merge parents ...", so "parents" was recorded
 	echo "$sha1" > "$REWRITTEN"/original
 	msg="$(commit_message $sha1)"
-	git merge $STRATEGY --no-ff -m "$msg" $parents &&
+	with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents &&
 	add_rewritten ||
 	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
 	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
