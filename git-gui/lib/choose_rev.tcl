@@ -210,9 +210,7 @@ constructor _new {path unmerged_only title} {
 	set spec_tag [list]
 	foreach name [load_all_tags] {
 		set refn refs/tags/$name
-		if {[info exists inc($refn)]} {
-			lappend spec_tag [list $name $refn]
-		}
+        lappend spec_tag [list $name $refn]
 	}
 
 		  if {$is_detached}             { set revtype HEAD
