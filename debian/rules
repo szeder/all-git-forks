@@ -40,7 +40,7 @@ patch-stamp:
 
 build: deb-checkdir build-arch-stamp build-indep-stamp
 build-arch-stamp: patch-stamp build-indep-stamp
-	-gcc -v
+	-$(CC) -v
 	DESTDIR='$(GIT)'-core $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	test -z '$(TEST)' || \
