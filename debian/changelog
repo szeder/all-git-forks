@@ -12,8 +12,9 @@ git-core (1:1.6.5.2-2) unstable; urgency=low
   * debian/rules: allow clean as non-root (closes: #555041).
   * debian/rules: drop obsolete WITH_P4IMPORT setting (closes:
     #555051).
+  * debian/rules: TCLTK_PATH=wish (closes: #555027).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 09 Nov 2009 21:21:22 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 09 Nov 2009 21:30:28 +0000
 
 git-core (1:1.6.5.2-1) unstable; urgency=low
 
