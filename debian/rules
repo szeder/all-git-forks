@@ -28,14 +28,6 @@ ifneq (,$(findstring nocheck,$(DEB_BUILD_OPTIONS)))
   TEST =
 endif
 
-ifeq (powerpc,$(ARCH))
-  OPTS +=PPC_SHA1=1
-else
-ifeq (arm,$(ARCH))
-  OPTS +=ARM_SHA1=1
-endif
-endif
-
 TMP =$(shell pwd)/tmp
 GIT =$(shell pwd)/debian/git
 
