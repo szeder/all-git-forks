@@ -7,7 +7,7 @@ CFLAGS =-g -Wall
 STRIP =strip
 TEST =test
 OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
-  mandir=/usr/share/man INSTALLDIRS=vendor WITH_P4IMPORT=1 \
+  mandir=/usr/share/man INSTALLDIRS=vendor \
   PYTHON_PATH=/usr/bin/python TCLTK_PATH=/usr/bin/wish \
   THREADED_DELTA_SEARCH=1 NO_CROSS_DIRECTORY_HARDLINKS=1
 
