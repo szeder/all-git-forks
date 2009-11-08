@@ -53,7 +53,7 @@ build-indep-stamp:
 	$(MAKE) -CDocumentation man html ASCIIDOC8=YesPlease ASCIIDOC_NO_ROFF=Yes
 	touch build-indep-stamp
 
-clean: deb-checkdir deb-checkuid
+clean: deb-checkdir
 	$(MAKE) clean $(OPTS)
 	! test -e patch-stamp || \
 	  for i in `ls -1r debian/diff/*.diff || :`; do patch -p1 -R <$$i; done

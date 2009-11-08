@@ -9,8 +9,9 @@ git-core (1:1.6.5.2-2) unstable; urgency=low
   * debian/rules: drop misleading PPC_SHA1, ARM_SHA1 settings (closes:
     #555039).
   * debian/rules: log $(CC) version, not gcc (closes: #555040).
+  * debian/rules: allow clean as non-root (closes: #555041).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 09 Nov 2009 21:17:34 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 09 Nov 2009 21:19:40 +0000
 
 git-core (1:1.6.5.2-1) unstable; urgency=low
 
