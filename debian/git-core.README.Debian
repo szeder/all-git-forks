@@ -6,8 +6,14 @@ configure to make everything work nicely together.  All this is optional.
 
 1. Run a git-daemon.  This allows people to use a git:// URL to access your
 repositories.  This package provides the git-daemon program, to enable a
-git-daemon service, additionally install the git-daemon-run package:
+git-daemon service, configure inetd(8) to launch it on demand, or install the
+git-daemon-run package to run it permanently:
+ cat >> /etc/inetd.conf <<EOF
+git stream tcp4 nowait nobody /usr/bin/git git daemon --inetd --base-path=/srv/git
+git stream tcp6 nowait nobody /usr/bin/git git daemon --inetd --base-path=/srv/git
+EOF
 
+Or:
  apt-get install git-daemon-run
 
 Wait five seconds for the service to be picked up, and check its status and
