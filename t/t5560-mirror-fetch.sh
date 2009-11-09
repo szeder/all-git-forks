@@ -11,11 +11,13 @@ test_expect_success setup '
 	echo >file master initial &&
 	git add file &&
 	git commit -a -m "Master initial" &&
+	git tag -m "SEEN" initial &&
 	git clone . master &&
 	git clone master mirror &&
 	cd master &&
 	echo >file master update &&
 	git commit -a -m "Master update" &&
+	git tag -m "SEEN" update &&
 	cd .. &&
 	mkdir clone &&
 	cd clone &&
@@ -35,12 +37,20 @@ test_expect_success 'fetch using mirror - explicit' '
 
 test_expect_success 'fetch using mirror - default' '
 	cd .. &&
+	cd mirror &&
+	git tag -m "badtag" badtag &&
+	cd .. &&
 	mkdir clone2 &&
 	cd clone2 &&
 	git init &&
 	git remote add origin ../master &&
 	git config remote.origin.mirror-url ../mirror
 	git fetch --use-mirror &&
-	git rev-parse refs/mirrors/origin/localhost/heads/master
+	git rev-parse refs/mirrors/origin/localhost/heads/master &&
+	git rev-parse refs/mirrors/origin/localhost/tags/initial &&
+	! git rev-parse refs/tags/badtag &&
+	git rev-parse refs/tags/initial &&
+	git rev-parse refs/tags/update
 '
+
 test_done

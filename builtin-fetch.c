@@ -269,6 +269,7 @@ static struct ref *get_ref_map(struct transport *transport,
 		find_non_local_tags(transport, &ref_map, &tail);
 	ref_remove_duplicates(ref_map);
 	if (strcmp(transport->url, transport->remote->url[0]) != 0) {
+		*autotags = 0;
 		return mirror_refmap(transport, ref_map);
 	}
 
