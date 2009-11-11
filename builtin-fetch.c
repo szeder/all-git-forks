@@ -211,6 +211,57 @@ struct ref *mirror_refmap(struct transport* transport,
 	return rv;
 }
 
+int clean_up_mirror_ref(const char *refname,
+			const unsigned char *sha1,
+			int flags,
+			void *leading)
+{
+	char *orig_refname;
+	char *target_refname;
+	char *x;
+	unsigned char found_sha1[20];
+
+	orig_refname = xmalloc(strlen(refname)+strlen(leading)+1);
+	x = strchr(refname, '/');
+	if (!x)
+		return 0;
+	target_refname = xmalloc(strlen(x)+strlen("refs/remotes/")+1); 
+
+	strcpy(orig_refname, leading);
+	x = orig_refname + strlen(leading);
+	strcpy(x, refname);
+
+	warning("cleaning up mirror ref: %s (%s)",
+		orig_refname, sha1_to_hex(sha1));
+
+	strcpy(target_refname, "refs/remotes/");
+	strcpy(target_refname+5, strchr(refname, '/')+1);
+
+	warning("target ref is %s", target_refname);
+
+	if (resolve_ref(target_refname, found_sha1, 1, NULL)) {
+		if (!hashcmp(found_sha1, sha1)) {
+			warning("deleting ref %s", orig_refname);
+			delete_ref(orig_refname, sha1, REF_NODEREF);
+		}
+	}
+}
+
+void clean_up_mirror_refs(struct remote* remote)
+{
+	int rem_l = strlen(remote->name);
+	char *dst_name = xmalloc(rem_l+14);
+	char *x;
+	strcpy(dst_name, "refs/mirrors/");
+	x = dst_name + 13;
+	strcpy(x, remote->name);
+	x += rem_l;
+	*x++ = '/';
+
+	warning("cleaning up mirror refs for remote %s", remote->name);
+	for_each_ref_in(dst_name, clean_up_mirror_ref,
+			(void *)dst_name);
+}
 
 static struct ref *get_ref_map(struct transport *transport,
 			       struct refspec *refs, int ref_count, int tags,
@@ -884,9 +935,14 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 		transport = NULL;
 		urls_remaining--;
 		if (use_mirror) {
-			if (!exit_code && urls_remaining >= 1) {
-				warning("successful fetch from mirror");
-				urls_remaining = 1;
+			if (!exit_code) {
+				if (urls_remaining >= 1) {
+					warning("successful fetch from mirror");
+					urls_remaining = 1;
+				}
+				else {
+					clean_up_mirror_refs(remote);
+				}
 			}
 			if (urls_remaining == 1) {
 				transport = real_transport;
