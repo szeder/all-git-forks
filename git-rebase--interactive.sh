@@ -907,7 +907,8 @@ do
 			: Nothing to commit
 			add_rewritten
 		else
-			. "$AUTHOR_SCRIPT" ||
+			test -f "$AUTHOR_SCRIPT" &&
+				. "$AUTHOR_SCRIPT" ||
 				die "Cannot find the author identity"
 			amend=
 			if test -f "$AMEND"
