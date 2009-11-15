@@ -571,6 +571,7 @@ first and then run 'git rebase --continue' again."
 			STRATEGY="-s $2"
 			shift ;;
 		esac
+		git_check_merge_strategy_used_in_rebase "${STRATEGY#-s }"
 		;;
 	-m)
 		# we use merge anyway
