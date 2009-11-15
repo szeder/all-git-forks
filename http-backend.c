@@ -134,7 +134,7 @@ static void hdr_str(const char *name, const char *value)
 	format_write(1, "%s: %s\r\n", name, value);
 }
 
-static void hdr_int(const char *name, size_t value)
+static void hdr_int(const char *name, uintmax_t value)
 {
 	format_write(1, "%s: %" PRIuMAX "\r\n", name, value);
 }
@@ -209,14 +209,13 @@ static void send_strbuf(const char *type, struct strbuf *buf)
 	safe_write(1, buf->buf, buf->len);
 }
 
-static void send_file(const char *the_type, const char *name)
+static void send_local_file(const char *the_type, const char *name)
 {
 	const char *p = git_path("%s", name);
 	size_t buf_alloc = 8192;
 	char *buf = xmalloc(buf_alloc);
 	int fd;
 	struct stat sb;
-	size_t size;
 
 	fd = open(p, O_RDONLY);
 	if (fd < 0)
@@ -224,14 +223,12 @@ static void send_file(const char *the_type, const char *name)
 	if (fstat(fd, &sb) < 0)
 		die_errno("Cannot stat '%s'", p);
 
-	size = xsize_t(sb.st_size);
-
-	hdr_int(content_length, size);
+	hdr_int(content_length, sb.st_size);
 	hdr_str(content_type, the_type);
 	hdr_date(last_modified, sb.st_mtime);
 	end_headers();
 
-	while (size) {
+	for (;;) {
 		ssize_t n = xread(fd, buf, buf_alloc);
 		if (n < 0)
 			die_errno("Cannot read '%s'", p);
@@ -247,28 +244,28 @@ static void get_text_file(char *name)
 {
 	select_getanyfile();
 	hdr_nocache();
-	send_file("text/plain", name);
+	send_local_file("text/plain", name);
 }
 
 static void get_loose_object(char *name)
 {
 	select_getanyfile();
 	hdr_cache_forever();
-	send_file("application/x-git-loose-object", name);
+	send_local_file("application/x-git-loose-object", name);
 }
 
 static void get_pack_file(char *name)
 {
 	select_getanyfile();
 	hdr_cache_forever();
-	send_file("application/x-git-packed-objects", name);
+	send_local_file("application/x-git-packed-objects", name);
 }
 
 static void get_idx_file(char *name)
 {
 	select_getanyfile();
 	hdr_cache_forever();
-	send_file("application/x-git-packed-objects-toc", name);
+	send_local_file("application/x-git-packed-objects-toc", name);
 }
 
 static int http_config(const char *var, const char *value, void *cb)
@@ -559,7 +556,13 @@ static char* getdir(void)
 	if (root && *root) {
 		if (!pathinfo || !*pathinfo)
 			die("GIT_PROJECT_ROOT is set but PATH_INFO is not");
+		if (daemon_avoid_alias(pathinfo))
+			die("'%s': aliased", pathinfo);
 		strbuf_addstr(&buf, root);
+		if (buf.buf[buf.len - 1] != '/')
+			strbuf_addch(&buf, '/');
+		if (pathinfo[0] == '/')
+			pathinfo++;
 		strbuf_addstr(&buf, pathinfo);
 		return strbuf_detach(&buf, NULL);
 	} else if (path && *path) {
