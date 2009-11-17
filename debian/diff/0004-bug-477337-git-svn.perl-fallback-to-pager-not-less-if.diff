@@ -1,4 +1,4 @@
-From 21400634cf59bdda3d41ce9e822102ab3c8341d9 Mon Sep 17 00:00:00 2001
+From 52e9bae88bcb4f681e424097445bd6e0623623e3 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Wed, 28 May 2008 19:32:21 +0000
 Subject: [PATCH 4/5] bug#477337: git-svn.perl: fallback to 'pager' not 'less' if PAGER is unset
@@ -22,5 +22,5 @@ index bd7ec25..b22f6f5 100755
  		$pager = undef;
  	}
 -- 
-1.6.5
+1.6.5.2
 

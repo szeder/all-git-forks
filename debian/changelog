@@ -1,4 +1,4 @@
-git-core (1:1.6.5.2-2) unstable; urgency=low
+git-core (1:1.6.5.3-1) unstable; urgency=low
 
   [ Tanguy Ortolo ]
   * debian/git-core.README.Debian, debian/control: git-daemon-run:
@@ -14,7 +14,16 @@ git-core (1:1.6.5.2-2) unstable; urgency=low
     #555051).
   * debian/rules: TCLTK_PATH=wish (closes: #555027).
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 09 Nov 2009 21:30:28 +0000
+  [ Gerrit Pape ]
+  * new upstream point release.
+    * ls-files: unbreak "ls-files -i" (closes: #553296).
+    * Require a struct remote in transport_get(); Allow curl helper to
+      work without a local repository (closes: #553507).
+    * help -a: do not unnecessarily look for a repository (closes:
+      #539273).
+    * thx Jonathan Nieder.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 17 Nov 2009 21:01:46 +0000
 
 git-core (1:1.6.5.2-1) unstable; urgency=low
 
