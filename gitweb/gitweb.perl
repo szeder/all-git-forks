@@ -221,6 +221,97 @@ our %avatar_size = (
 	'double'  => 32
 );
 
+# In general, the site admin can enable/disable per-project
+# configuration of each committag.  Only the 'options' part of the
+# committag is configurable per-project.
+#
+# The site admin can of course add new tags to this hash or override
+# the 'sub' key if necessary.  But such changes may be fragile; this
+# is not designed as a full-blown plugin architecture.  The 'sub' must
+# return a list of strings or string refs.  The strings must contain
+# plain text and the string refs must contain HTML.  The string refs
+# will not be processed further.
+#
+# For any committag, set the 'override' key to 1 to allow individual
+# projects to override entries in the 'options' hash for that tag.
+# For example, to match only commit hashes given in lowercase in one
+# project, add this to the $GITWEB_CONFIG:
+#
+#     $committags{'sha1'}{'override'} = 1;
+#
+# And in the project's config:
+#
+#     gitweb.committags.sha1.pattern = \\b([0-9a-f]{8,40})\\b
+#
+# Some committags have additional options whose interpretation depends
+# on the implementation of the 'sub' key.  The hyperlink_committag
+# value appends the first captured group to the 'url' option.
+our %committags = (
+	# Link Git-style hashes to this gitweb
+	'sha1' => {
+		'options' => {
+			'pattern' => qr/\b([0-9a-fA-F]{8,40})\b/,
+		},
+		'override' => 0,
+		'sub' => sub {
+			my ($opts, @match) = @_;
+			return \$cgi->a({-href => href(action=>"object", hash=>$match[1]),
+			                 -class => "text"},
+			                esc_html($match[0], -nbsp=>1));
+		},
+	},
+	# Link bug/features to Mantis bug tracker using Mantis-style
+	# contextual cues
+	'mantis' => {
+		'options' => {
+			'pattern' => qr/(?:BUG|FEATURE)\((\d+)\)/,
+			'url' => 'http://www.example.com/mantisbt/view.php?id=',
+		},
+		'override' => 0,
+		'sub' => \&hyperlink_committag,
+	},
+	# Link mentions of bug IDs to bugzilla
+	'bugzilla' => {
+		'options' => {
+			'pattern' => qr/bug\s+(\d+)/,
+			'url' => 'http://bugzilla.example.com/show_bug.cgi?id=',
+		},
+		'override' => 0,
+		'sub' => \&hyperlink_committag,
+	},
+	# Link URLs
+	'url' => {
+		'options' => {
+			# Avoid matching punctuation that might immediately follow
+			# a url, is not part of the url, and is allowed in urls,
+			# like a full-stop ('.').
+			'pattern' => qr!(https?|ftps?|git|ssh|ssh+git|sftp|smb|webdavs?|
+			                 nfs|irc|nntp|rsync)
+			                ://[-_a-zA-Z0-9\@/&=+~#<>;%:.?]+
+			                   [-_a-zA-Z0-9\@/&=+~#<>]!x,
+		},
+		'override' => 0,
+		'sub' => sub {
+			my ($opts, @match) = @_;
+			return \$cgi->a({-href => $match[0],
+			                 -class => "text"},
+			                esc_html($match[0], -nbsp=>1));
+		},
+	},
+	# Link Message-Id to mailing list archive
+	'messageid' => {
+		'options' => {
+			'pattern' => qr!(?:message|msg)-?id:?\s+(<[^>]+>)!i,
+			'url' => 'http://mid.gmane.org/',
+		},
+		'override' => 0,
+		# Includes the "msg-id" text in the link text.
+		# Since we don't support linking multiple msg-ids in one match, we
+		# can include the "msg-id" in the link text for better context.
+		'sub' => \&hyperlink_committag,
+	},
+);
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -266,7 +357,7 @@ our %feature = (
 	# and in project config, a comma-separated list of formats or "none"
 	# to disable.  Example: gitweb.snapshot = tbz2,zip;
 	'snapshot' => {
-		'sub' => \&feature_snapshot,
+		'sub' => sub { feature_list('snapshot', @_) },
 		'override' => 0,
 		'default' => ['tgz']},
 
@@ -439,6 +530,21 @@ our %feature = (
 	'javascript-actions' => {
 		'override' => 0,
 		'default' => [0]},
+
+	# The selection and ordering of committags that are enabled.
+	# Committag transformations will be applied to commit log messages
+	# in the order listed here if listed here.
+
+	# To disable system wide have in $GITWEB_CONFIG
+	# $feature{'committags'}{'default'} = [];
+	# To have project specific config enable override in $GITWEB_CONFIG
+	# $feature{'committags'}{'override'} = 1;
+	# and in project config gitweb.committags = sha1, url, bugzilla
+	# to enable those three committags for that project
+	'committags' => {
+		'sub' => sub { feature_list('committags', @_) },
+		'override' => 0,
+		'default' => ['sha1']},
 );
 
 sub gitweb_get_feature {
@@ -485,16 +591,16 @@ sub feature_bool {
 	}
 }
 
-sub feature_snapshot {
-	my (@fmts) = @_;
+sub feature_list {
+	my ($key, @defaults) = @_;
 
-	my ($val) = git_get_project_config('snapshot');
+	my ($cfg) = git_get_project_config($key);
 
-	if ($val) {
-		@fmts = ($val eq 'none' ? () : split /\s*[,\s]\s*/, $val);
+	if ($cfg) {
+		return ($cfg eq 'none' ? () : split(/\s*[,\s]\s*/, $cfg));
 	}
 
-	return @fmts;
+	return @defaults;
 }
 
 sub feature_patches {
@@ -911,6 +1017,35 @@ if ($git_avatar eq 'gravatar') {
 	# no dependencies
 } else {
 	$git_avatar = '';
+}
+
+# ordering of committags
+our @committags = gitweb_get_feature('committags');
+
+# whether we've loaded committags for the project yet
+our $loaded_project_committags = 0;
+
+# Load committag configs from the repository config file and and
+# incorporate them into the gitweb defaults where permitted by the
+# site administrator.
+sub gitweb_load_project_committags {
+	return if (!$git_dir || $loaded_project_committags);
+	my %project_config = ();
+	my %raw_config = git_parse_project_config('gitweb\.committag');
+	foreach my $key (keys(%raw_config)) {
+		next if ($key !~ /gitweb\.committag\.[^.]+\.[^.]/);
+		my ($gitweb_prefix, $committag_prefix, $ctname, $option) =
+			split(/\./, $key, 4);
+		$project_config{$ctname}{$option} = $raw_config{$key};
+	}
+	foreach my $ctname (keys(%committags)) {
+		next if (!$committags{$ctname}{'override'});
+		foreach my $optname (keys %{$project_config{$ctname}}) {
+			$committags{$ctname}{'options'}{$optname} =
+				$project_config{$ctname}{$optname};
+		}
+	}
+	$loaded_project_committags = 1;
 }
 
 # dispatch
@@ -1485,13 +1620,99 @@ sub file_type_long {
 sub format_log_line_html {
 	my $line = shift;
 
-	$line = esc_html($line, -nbsp=>1);
-	$line =~ s{\b([0-9a-fA-F]{8,40})\b}{
-		$cgi->a({-href => href(action=>"object", hash=>$1),
-					-class => "text"}, $1);
-	}eg;
+	# Merge project configs with site default committag definitions if
+	# it hasn't been done yet
+	gitweb_load_project_committags();
 
-	return $line;
+	# In this list of log message fragments, a string ref indicates
+	# HTML, and a string indicates plain text.  The string refs are
+	# also currently not processed by subsequent committags.
+	my @message_fragments = ( $line );
+
+COMMITTAG:
+	foreach my $ctname (@committags) {
+		next COMMITTAG unless exists $committags{$ctname};
+		my $committag = $committags{$ctname};
+
+		next COMMITTAG unless exists $committag->{'sub'};
+		my $sub = $committag->{'sub'};
+
+		next COMMITTAG unless exists $committag->{'options'};
+		my $opts = $committag->{'options'};
+
+		next COMMITTAG unless exists $opts->{'pattern'};
+		my $pattern = $opts->{'pattern'};
+
+		my @new_message_fragments = ();
+
+	PART:
+		foreach my $fragment (@message_fragments) {
+			next PART if $fragment eq "";
+			if (ref($fragment)) {
+				push @new_message_fragments, $fragment;
+				next PART;
+			}
+
+			my $oldpos = 0;
+
+		MATCH:
+			while ($fragment =~ m/$pattern/gc) {
+				my ($prepos, $postpos) = ($-[0], $+[0]);
+				my $repl = $sub->($opts, $&, $1);
+				$repl = "" if (!defined $repl);
+
+				my $pre = substr($fragment, $oldpos, $prepos - $oldpos);
+				push_or_append(\@new_message_fragments, $pre);
+				push_or_append(\@new_message_fragments, $repl);
+
+				$oldpos = $postpos;
+			} # end while [regexp matches]
+
+			my $rest = substr($fragment, $oldpos);
+			push_or_append(\@new_message_fragments, $rest);
+
+		} # end foreach (@message_fragments)
+
+		@message_fragments = @new_message_fragments;
+	} # end foreach (@committags)
+
+	# Escape any remaining plain text and concatenate
+	my $html = '';
+	for my $fragment (@message_fragments) {
+		if (ref($fragment)) {
+			$html .= $$fragment;
+		} else {
+			$html .= esc_html($fragment, -nbsp=>1);
+		}
+	}
+
+	return $html;
+}
+
+# Returns a ref to an HTML snippet that links the whole match to a URL
+# formed from the 'url' option and the first captured subgroup.  This
+# is a helper function used in %committags.
+sub hyperlink_committag {
+	my ($opts, @match) = @_;
+	return \$cgi->a({-href => $opts->{'url'} . $cgi->escape($match[1]),
+	                 -class => "text"},
+	                esc_html($match[0], -nbsp=>1));
+}
+
+
+sub push_or_append (\@@) {
+	my $fragments = shift;
+
+	if (ref $_[0] || ! @$fragments || ref $fragments->[-1]) {
+		push @$fragments, @_;
+	} else {
+		my $a = pop @$fragments;
+		my $b = shift @_;
+
+		push @$fragments, $a . $b, @_;
+	}
+	# imitate push
+	return scalar @$fragments;
 }
 
 # format marker of refs pointing to given object

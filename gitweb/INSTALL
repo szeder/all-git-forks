@@ -132,6 +132,11 @@ adding the following lines to your $GITWEB_CONFIG:
 	$known_snapshot_formats{'zip'}{'disabled'} = 1;
 	$known_snapshot_formats{'tgz'}{'compressor'} = ['gzip','-6'];
 
+To add a committag to the default list of commit tags, for example to
+enable hyperlinking of bug numbers to a bug tracker for all projects:
+
+	push @{$feature{'committags'}{'default'}}, 'bugzilla';
+
 
 Gitweb repositories
 -------------------
