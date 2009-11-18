@@ -143,6 +143,11 @@ And then let each project configure its bug tracker URL:
 
 	git config gitweb.committag.bugzilla.url 'http://bts.example.com?bug='
 
+In a project config, the build-time list of committags can be accessed
+with the special _defaults_ entry.
+
+	git config gitweb.committags '_defaults_, bugzilla'
+
 
 Gitweb repositories
 -------------------

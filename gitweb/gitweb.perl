@@ -342,6 +342,13 @@ our %committags = (
 	},
 );
 
+sub make_list_feature {
+	my ($name, $hash) = @_;
+	$hash->{'build_default'} = [@{$hash->{'default'}}];
+	$hash->{'sub'} = sub { feature_list($name, @_) };
+	return @_;
+}
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -386,8 +393,7 @@ our %feature = (
 	# $feature{'snapshot'}{'override'} = 1;
 	# and in project config, a comma-separated list of formats or "none"
 	# to disable.  Example: gitweb.snapshot = tbz2,zip;
-	'snapshot' => {
-		'sub' => sub { feature_list('snapshot', @_) },
+	make_list_feature 'snapshot' => {
 		'override' => 0,
 		'default' => ['tgz']},
 
@@ -571,8 +577,7 @@ our %feature = (
 	# $feature{'committags'}{'override'} = 1;
 	# and in project config gitweb.committags = sha1, url, bugzilla
 	# to enable those three committags for that project
-	'committags' => {
-		'sub' => sub { feature_list('committags', @_) },
+	make_list_feature 'committags' => {
 		'override' => 0,
 		'default' => ['signoff', 'sha1']},
 
@@ -643,7 +648,10 @@ sub feature_list {
 	my ($cfg) = git_get_project_config($key);
 
 	if ($cfg) {
-		return ($cfg eq 'none' ? () : split(/\s*[,\s]\s*/, $cfg));
+		return () if $cfg eq 'none';
+		return map {
+				$_ eq '_defaults_' ? @{$feature{$key}{'build_default'}} : $_
+			} split(/\s*[,\s]\s*/, $cfg);
 	}
 
 	return @defaults;

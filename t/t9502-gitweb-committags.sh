@@ -276,5 +276,34 @@ test_expect_success 'custom committags: ignored when disabled' '
 test_debug 'cat gitweb.log'
 test_debug 'grep -F "foo" gitweb.output'
 
+# ----------------------------------------------------------------------
+# default keyword
+#
+echo default_test > file.txt
+git add file.txt
+git commit -q -F - file.txt <<END
+Lets see what's enabled...
+
+Bug 1234
+567890ab
+See msg-id <x@y.z>
+
+Signed-off-by: A U Thor <at@example.com>
+END
+echo '
+$feature{"committags"}{"default"} = ["sha1", "messageid"];
+$feature{"committags"}{"override"} = 1;
+' >> gitweb_config.perl
+git config gitweb.committags '_defaults_, bugzilla'
+# All these committags should be in effect except messageid
+test_expect_success '_defaults_ keyword: restores build-time default' '
+	gitweb_run "p=.git;a=commit;h=HEAD" &&
+	grep -q "Bug&nbsp;<a[^>]*>1234</a>" gitweb.output &&
+	grep -q "<a[^>]*>567890ab</a>" gitweb.output &&
+	grep -q "See&nbsp;msg-id&nbsp;&lt;x@y.z&gt;" gitweb.output &&
+	grep -q "<span[^>]*>Signed-off-by:" gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'for i in Bug 5678 msg-id Signed-off; do grep $i gitweb.output; done'
 
 test_done
