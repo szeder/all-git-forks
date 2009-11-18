@@ -222,8 +222,7 @@ our %avatar_size = (
 );
 
 # In general, the site admin can enable/disable per-project
-# configuration of each committag.  Only the 'options' part of the
-# committag is configurable per-project.
+# configuration of each committag.
 #
 # The site admin can of course add new tags to this hash or override
 # the 'sub' key if necessary.  But such changes may be fragile; this
@@ -249,12 +248,18 @@ our %avatar_size = (
 # on the implementation of the 'sub' key.  The hyperlink_committag
 # value appends the first captured group to the 'url' option, for example.
 #
+# The project configuration can define new committags.  Although the
+# project configuration cannot supply code defining a new 'sub' key,
+# the project configuration can choose from a list of pre-approved
+# subroutines named in the 'allowed_committag_subs' feature.  Both a
+# 'sub' key and 'pattern' key must be defined for the committag to be
+# used.  If the 'allowed_committag_subs' feature is empty, no new
+# committags can be defined in the project config.
+#
 our %committags = (
 	# Link Git-style hashes to this gitweb
 	'sha1' => {
-		'options' => {
-			'pattern' => qr/\b([0-9a-fA-F]{8,40})\b/,
-		},
+		'pattern' => qr/\b([0-9a-fA-F]{8,40})\b/,
 		'override' => 0,
 		'sub' => sub {
 			my ($opts, @match) = @_;
@@ -266,10 +271,8 @@ our %committags = (
 	# Facilitate styling of common header/footer lines, suppressing
 	# any trailing newlines
 	'signoff' => {
-		'options' => {
-			'pattern' =>
-				qr/^( *(?:signed[ \-]off[ \-]by|acked[ \-]by|cc)[ :].*)\n*$/mi,
-		},
+		'pattern' =>
+			qr/^( *(?:signed[ \-]off[ \-]by|acked[ \-]by|cc)[ :].*)\n*$/mi,
 		'override' => 0,
 		'sub' => sub {
 			my ($opts, @match) = @_;
@@ -281,23 +284,19 @@ our %committags = (
 	# Link bug/features to Mantis bug tracker using Mantis-style
 	# contextual cues
 	'mantis' => {
-		'options' => {
-			'pattern' => qr/(?:BUG|FEATURE)\((\d+)\)/,
-			'url' => 'http://www.example.com/mantisbt/view.php?id=',
-		},
+		'pattern' => qr/(?:BUG|FEATURE)\((\d+)\)/,
+		'url' => 'http://www.example.com/mantisbt/view.php?id=',
 		'override' => 0,
 		'sub' => \&hyperlink_committag,
 	},
 	# Link mentions of bugs to bugzilla, allowing for separate outer
 	# and inner regexes (see unit test for example)
 	'bugzilla' => {
-		'options' => {
-			'pattern' => qr/(?i:bugs?):?\s+
-			                [#]?\d+(?:(?:,\s*|,?\sand\s|,?\sn?or\s|\s+)
-			                          [#]?\d+\b)*/x,
-			'innerpattern' => qr/#?(\d+)/,
-			'url' => 'http://bugzilla.example.com/show_bug.cgi?id=',
-		},
+		'pattern' => qr/(?i:bugs?):?\s+
+		                [#]?\d+(?:(?:,\s*|,?\sand\s|,?\sn?or\s|\s+)
+		                          [#]?\d+\b)*/x,
+		'innerpattern' => qr/#?(\d+)/,
+		'url' => 'http://bugzilla.example.com/show_bug.cgi?id=',
 		'override' => 0,
 		'sub' => sub {
 			my ($opts, @match) = @_;
@@ -316,15 +315,13 @@ our %committags = (
 	},
 	# Link URLs
 	'url' => {
-		'options' => {
-			# Avoid matching punctuation that might immediately follow
-			# a url, is not part of the url, and is allowed in urls,
-			# like a full-stop ('.').
-			'pattern' => qr!(https?|ftps?|git|ssh|ssh+git|sftp|smb|webdavs?|
-			                 nfs|irc|nntp|rsync)
-			                ://[-_a-zA-Z0-9\@/&=+~#<>;%:.?]+
-			                   [-_a-zA-Z0-9\@/&=+~#<>]!x,
-		},
+		# Avoid matching punctuation that might immediately follow
+		# a url, is not part of the url, and is allowed in urls,
+		# like a full-stop ('.').
+		'pattern' => qr!(https?|ftps?|git|ssh|ssh+git|sftp|smb|webdavs?|
+		                 nfs|irc|nntp|rsync)
+		                ://[-_a-zA-Z0-9\@/&=+~#<>;%:.?]+
+		                   [-_a-zA-Z0-9\@/&=+~#<>]!x,
 		'override' => 0,
 		'sub' => sub {
 			my ($opts, @match) = @_;
@@ -335,10 +332,8 @@ our %committags = (
 	},
 	# Link Message-Id to mailing list archive
 	'messageid' => {
-		'options' => {
-			'pattern' => qr!(?:message|msg)-?id:?\s+(<[^>]+>)!i,
-			'url' => 'http://mid.gmane.org/',
-		},
+		'pattern' => qr!(?:message|msg)-?id:?\s+(<[^>]+>)!i,
+		'url' => 'http://mid.gmane.org/',
 		'override' => 0,
 		# Includes the "msg-id" text in the link text.
 		# Since we don't support linking multiple msg-ids in one match, we
@@ -580,6 +575,22 @@ our %feature = (
 		'sub' => sub { feature_list('committags', @_) },
 		'override' => 0,
 		'default' => ['signoff', 'sha1']},
+
+	# The list of committag callbacks that are permitted to be used
+	# from within a repository configuration.  These are interpretted
+	# as perl subrouting names.  If none are listed, no new committags
+	# can be defined in the project config, which is the default.
+
+	# To enable system wide have in $GITWEB_CONFIG
+	# $feature{'allowed_committag_subs'}{'default'} = [
+	#		'hyperlink_committag',
+	#		'markup_committag',
+	#		'transform_committag',
+	#		];
+	# It would not make sense to allow per-project overrides of this.
+	'allowed_committag_subs' => {
+		'override' => 0,
+		'default' => []},
 );
 
 sub gitweb_get_feature {
@@ -1057,6 +1068,9 @@ if ($git_avatar eq 'gravatar') {
 # ordering of committags
 our @committags = gitweb_get_feature('committags');
 
+# ordering of committags
+our @allowed_committag_subs = gitweb_get_feature('allowed_committag_subs');
+
 # whether we've loaded committags for the project yet
 our $loaded_project_committags = 0;
 
@@ -1073,9 +1087,18 @@ sub gitweb_load_project_committags {
 			split(/\./, $key, 4);
 		$project_config{$ctname}{$option} = $raw_config{$key};
 	}
-	foreach my $ctname (keys(%committags)) {
-		my $override = $committags{$ctname}{'override'};
+
+	my %allowed_subs = ();
+	foreach my $sub (@allowed_committag_subs) {
+		$allowed_subs{$sub} = 1;
+	}
+
+	foreach my $ctname (keys(%project_config)) {
+		my $override = $committags{$ctname}
+			? $committags{$ctname}{'override'}
+			: 1;
 		next if (!$override);
+
 		my $override_keys = undef;
 		if (ref($override) eq "ARRAY") {
 			$override_keys = {};
@@ -1083,12 +1106,19 @@ sub gitweb_load_project_committags {
 				$override_keys->{$optname} = 1;
 			}
 		}
+
 		foreach my $optname (keys %{$project_config{$ctname}}) {
 			next if ($override_keys && !$override_keys->{$optname});
-			$committags{$ctname}{'options'}{$optname} =
-				$project_config{$ctname}{$optname};
+			my $value = $project_config{$ctname}{$optname};
+			if ($optname eq 'sub') {
+				if (!$allowed_subs{$value}) {
+					next;
+				}
+			}
+			$committags{$ctname}{$optname} = $value;
 		}
 	}
+
 	$loaded_project_committags = 1;
 }
 
@@ -1681,11 +1711,8 @@ COMMITTAG:
 		next COMMITTAG unless exists $committag->{'sub'};
 		my $sub = $committag->{'sub'};
 
-		next COMMITTAG unless exists $committag->{'options'};
-		my $opts = $committag->{'options'};
-
-		next COMMITTAG unless exists $opts->{'pattern'};
-		my $pattern = $opts->{'pattern'};
+		next COMMITTAG unless exists $committag->{'pattern'};
+		my $pattern = $committag->{'pattern'};
 
 		my @new_message_fragments = ();
 
@@ -1699,7 +1726,8 @@ COMMITTAG:
 
 			push_or_append_replacements(\@new_message_fragments,
 			                            $pattern, $fragment, sub {
-					$sub->($opts, @_);
+					no strict "refs"; # for custome committags
+					$sub->($committag, @_);
 				});
 
 		} # end foreach (@message_fragments)
@@ -1732,6 +1760,25 @@ sub hyperlink_committag {
 	                esc_html($match[0], -nbsp=>1));
 }
 
+# Returns a ref to an HTML snippet formed from the 'replacement'
+# option and match data.  The match data is HTML-escaped, and the
+# 'replacement' option is used as a sprintf format.  This is a helper
+# function used in %committags.
+sub markup_committag {
+	my ($opts, @match) = @_;
+	return \sprintf($opts->{'replacement'},
+	                map { esc_html($_, -nbsp=>1) if defined } @match);
+}
+
+# Returns a text snippet formed from the 'replacement' option and
+# match data.  The 'replacement' option is used as a sprintf format.
+# Because the result is text, it can be re-processed by subsequent
+# committags.  This is a helper function used in %committags.
+sub transform_committag {
+	my ($opts, @match) = @_;
+	return sprintf($opts->{'replacement'}, @match);
+}
+
 # Find $pattern in string $fragment, and push_or_append the parts
 # between matches and the result of calling $sub with matched text to
 # $new_fragments.
@@ -1744,7 +1791,7 @@ MATCH:
 	while ($fragment =~ m/$pattern/gc) {
 		my ($prepos, $postpos) = ($-[0], $+[0]);
 
-		my @repl = $sub->($&, $1);
+		my @repl = $sub->($&, $1, $2);
 
 		my $pre = substr($fragment, $oldpos, $prepos - $oldpos);
 		push_or_append($new_fragments, $pre);

@@ -226,5 +226,55 @@ test_expect_success 'msgid link: linked when enabled' '
 test_debug 'cat gitweb.log'
 test_debug 'grep -F "y.z" gitweb.output'
 
+# ----------------------------------------------------------------------
+# custom committags
+#
+echo custom_test > file.txt
+git add file.txt
+git commit -q -F - file.txt <<END
+Something for <foo&bar@bar.com>
+END
+echo '$feature{"allowed_committag_subs"}{"default"} = [
+	"hyperlink_committag",
+	"markup_committag",
+	"transform_committag",
+	];' >> gitweb_config.perl
+git config gitweb.committags 'sha1, obfuscate'
+git config gitweb.committag.obfuscate.pattern '([a-z&]+@)[a-z]+(.com)'
+git config gitweb.committag.obfuscate.sub 'transform_committag'
+git config gitweb.committag.obfuscate.replacement '%2$sXXX%3$s'
+test_expect_success 'custom committags: transform_committag' '
+	gitweb_run "p=.git;a=commit;h=HEAD" &&
+	grep -q -F \
+		"foo&amp;bar@XXX.com" \
+		gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep -F "foo" gitweb.output'
+
+git config gitweb.committags 'sha1, linkemail'
+git config gitweb.committag.linkemail.pattern '<([a-z&]+@[a-z]+.com)>'
+git config gitweb.committag.linkemail.sub 'markup_committag'
+git config gitweb.committag.linkemail.replacement '<a href="mailto:%2$s">%1$s</a>'
+test_expect_success 'custom committags: markup_committag' '
+	gitweb_run "p=.git;a=commit;h=HEAD" &&
+	grep -q -F \
+		"<a href=\"mailto:foo&amp;bar@bar.com\">&lt;foo&amp;bar@bar.com&gt;</a>" \
+		gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep -F "foo" gitweb.output'
+
+echo '$feature{"allowed_committag_subs"}{"default"} = [
+	];' >> gitweb_config.perl
+test_expect_success 'custom committags: ignored when disabled' '
+	gitweb_run "p=.git;a=commit;h=HEAD" &&
+	grep -q -F \
+		"Something&nbsp;for&nbsp;&lt;foo&amp;bar@bar.com&gt;" \
+		gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep -F "foo" gitweb.output'
+
 
 test_done
