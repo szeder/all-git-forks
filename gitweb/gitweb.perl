@@ -270,14 +270,31 @@ our %committags = (
 		'override' => 0,
 		'sub' => \&hyperlink_committag,
 	},
-	# Link mentions of bug IDs to bugzilla
+	# Link mentions of bugs to bugzilla, allowing for separate outer
+	# and inner regexes (see unit test for example)
 	'bugzilla' => {
 		'options' => {
-			'pattern' => qr/bug\s+(\d+)/,
+			'pattern' => qr/(?i:bugs?):?\s+
+			                [#]?\d+(?:(?:,\s*|,?\sand\s|,?\sn?or\s|\s+)
+			                          [#]?\d+\b)*/x,
+			'innerpattern' => qr/#?(\d+)/,
 			'url' => 'http://bugzilla.example.com/show_bug.cgi?id=',
 		},
 		'override' => 0,
-		'sub' => \&hyperlink_committag,
+		'sub' => sub {
+			my ($opts, @match) = @_;
+			if ($opts->{'innerpattern'}) {
+				my @message_fragments = ();
+				push_or_append_replacements(\@message_fragments,
+				                            $opts->{'innerpattern'},
+				                            $match[0], sub {
+						return hyperlink_committag($opts, @_);
+					});
+				return @message_fragments;
+			} else {
+				return hyperlink_committag(@_);
+			}
+		},
 	},
 	# Link URLs
 	'url' => {
@@ -1653,23 +1670,10 @@ COMMITTAG:
 				next PART;
 			}
 
-			my $oldpos = 0;
-
-		MATCH:
-			while ($fragment =~ m/$pattern/gc) {
-				my ($prepos, $postpos) = ($-[0], $+[0]);
-				my $repl = $sub->($opts, $&, $1);
-				$repl = "" if (!defined $repl);
-
-				my $pre = substr($fragment, $oldpos, $prepos - $oldpos);
-				push_or_append(\@new_message_fragments, $pre);
-				push_or_append(\@new_message_fragments, $repl);
-
-				$oldpos = $postpos;
-			} # end while [regexp matches]
-
-			my $rest = substr($fragment, $oldpos);
-			push_or_append(\@new_message_fragments, $rest);
+			push_or_append_replacements(\@new_message_fragments,
+			                            $pattern, $fragment, sub {
+					$sub->($opts, @_);
+				});
 
 		} # end foreach (@message_fragments)
 
@@ -1699,6 +1703,30 @@ sub hyperlink_committag {
 	                esc_html($match[0], -nbsp=>1));
 }
 
+# Find $pattern in string $fragment, and push_or_append the parts
+# between matches and the result of calling $sub with matched text to
+# $new_fragments.
+sub push_or_append_replacements {
+	my ($new_fragments, $pattern, $fragment, $sub) = @_;
+
+	my $oldpos = 0;
+
+MATCH:
+	while ($fragment =~ m/$pattern/gc) {
+		my ($prepos, $postpos) = ($-[0], $+[0]);
+
+		my @repl = $sub->($&, $1);
+
+		my $pre = substr($fragment, $oldpos, $prepos - $oldpos);
+		push_or_append($new_fragments, $pre);
+		push_or_append($new_fragments, @repl);
+
+		$oldpos = $postpos;
+	} # end while [regexp matches]
+
+	my $rest = substr($fragment, $oldpos);
+	push_or_append($new_fragments, $rest);
+}
 
 sub push_or_append (\@@) {
 	my $fragments = shift;

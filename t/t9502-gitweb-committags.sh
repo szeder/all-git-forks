@@ -52,7 +52,7 @@ echo '$feature{"committags"}{"override"} = 1;' >> gitweb_config.perl
 test_expect_success 'bugzilla: enabled' '
 	gitweb_run "p=.git;a=commit;h=HEAD" &&
 	grep -F -q \
-		"Fixes&nbsp;<a class=\"text\" href=\"http://bugzilla.example.com/show_bug.cgi?id=1234\">bug&nbsp;1234</a>&nbsp;involving" \
+		"Fixes&nbsp;bug&nbsp;<a class=\"text\" href=\"http://bugzilla.example.com/show_bug.cgi?id=1234\">1234</a>&nbsp;involving" \
 		gitweb.output
 '
 test_debug 'cat gitweb.log'
@@ -62,7 +62,7 @@ git config gitweb.committag.bugzilla.url 'http://bts.example.com?bug='
 test_expect_success 'bugzilla: url overridden but not permitted' '
 	gitweb_run "p=.git;a=commit;h=HEAD" &&
 	grep -F -q \
-		"Fixes&nbsp;<a class=\"text\" href=\"http://bugzilla.example.com/show_bug.cgi?id=1234\">bug&nbsp;1234</a>&nbsp;involving" \
+		"Fixes&nbsp;bug&nbsp;<a class=\"text\" href=\"http://bugzilla.example.com/show_bug.cgi?id=1234\">1234</a>&nbsp;involving" \
 		gitweb.output
 '
 test_debug 'cat gitweb.log'
@@ -72,12 +72,13 @@ echo '$committags{"bugzilla"}{"override"} = 1;' >> gitweb_config.perl
 test_expect_success 'bugzilla: url overridden' '
 	gitweb_run "p=.git;a=commit;h=HEAD" &&
 	grep -F -q \
-		"Fixes&nbsp;<a class=\"text\" href=\"http://bts.example.com?bug=1234\">bug&nbsp;1234</a>&nbsp;involving" \
+		"Fixes&nbsp;bug&nbsp;<a class=\"text\" href=\"http://bts.example.com?bug=1234\">1234</a>&nbsp;involving" \
 		gitweb.output
 '
 test_debug 'cat gitweb.log'
 test_debug 'grep 1234 gitweb.output'
 
+git config gitweb.committag.bugzilla.innerpattern ''
 git config gitweb.committag.bugzilla.pattern 'Fixes bug (\d+)'
 test_expect_success 'bugzilla: pattern overridden' '
 	gitweb_run "p=.git;a=commit;h=HEAD" &&
@@ -87,16 +88,74 @@ test_expect_success 'bugzilla: pattern overridden' '
 '
 test_debug 'cat gitweb.log'
 test_debug 'grep 1234 gitweb.output'
-git config --unset gitweb.committag.bugzilla.pattern
 
+git config --unset gitweb.committag.bugzilla.innerpattern
+git config --unset gitweb.committag.bugzilla.pattern
 test_expect_success 'bugzilla: affects log view too' '
 	gitweb_run "p=.git;a=log" &&
 	grep -F -q \
-		"<a class=\"text\" href=\"http://bts.example.com?bug=1234\">bug&nbsp;1234</a>" \
+		"<a class=\"text\" href=\"http://bts.example.com?bug=1234\">1234</a>" \
 		gitweb.output
 '
 test_debug 'cat gitweb.log'
 test_debug 'grep 1234 gitweb.output'
+
+echo more_bugzilla > file.txt
+git add file.txt
+git commit -q -F - file.txt <<END
+[#123,#45] This commit fixes two bugs involving bar and baz.
+END
+git config gitweb.committag.bugzilla.pattern       '^\[#\d+(, ?#\d+)\]'
+git config gitweb.committag.bugzilla.innerpattern  '#(\d+)'
+git config gitweb.committag.bugzilla.url           'http://bugs/'
+test_expect_success 'bugzilla: override everything, use fancier url format' '
+       gitweb_run "p=.git;a=commit;h=HEAD" &&
+       grep -F -q \
+               "[<a class=\"text\" href=\"http://bugs/123\">#123</a>,<a class=\"text\" href=\"http://bugs/45\">#45</a>]" \
+               gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep 123 gitweb.output'
+
+echo even_more_bugzilla > file.txt
+git add file.txt
+git commit -q -F - file.txt <<END
+Fix memory leak in confabulator from bug 123.
+
+Based on history from bugs 223, 224, and 225,
+fix bug 323 or 324.
+
+Bug: 423,424,425,426,427,428,429,430,431,432,435
+Resolves-bugs: #523 #524
+END
+git config --unset gitweb.committag.bugzilla.pattern
+git config --unset gitweb.committag.bugzilla.innerpattern
+git config --unset gitweb.committag.bugzilla.url
+gitweb_run "p=.git;a=commit;h=HEAD"
+test_expect_success 'bugzilla: fancy defaults: match one bug' '
+	grep -q "from&nbsp;bug&nbsp;<a[^>]*>123</a>." gitweb.output
+'
+test_expect_success 'bugzilla: fancy defaults: comma-separated list' '
+	grep -q \
+		"bugs&nbsp;<a[^>]*>223</a>,&nbsp;<a[^>]*>224</a>,&nbsp;and&nbsp;<a[^>]*>225</a>," \
+		gitweb.output
+'
+test_expect_success 'bugzilla: fancy defaults: or-pair' '
+	grep -q "bug&nbsp;<a[^>]*>323</a>&nbsp;or&nbsp;<a[^>]*>324</a>." \
+		gitweb.output
+'
+test_expect_success 'bugzilla: fancy defaults: comma-separated, caps, >10' '
+	grep -q \
+		"Bug:&nbsp;<a[^>]*>423</a>,<a[^>]*>424</a>,.*,<a[^>]*>435</a>" \
+		gitweb.output
+'
+test_expect_success 'bugzilla: fancy defaults: space-separated with hash' '
+	grep -q -e \
+		"-bugs:&nbsp;<a[^>]*>#523</a>&nbsp;<a[^>]*>#524</a>" \
+		gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep 23 gitweb.output'
 
 # ----------------------------------------------------------------------
 # url linking
