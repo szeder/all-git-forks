@@ -138,6 +138,10 @@ Fix memory leak in confabulator from bug 123.
 Based on history from bugs 223, 224, and 225,
 fix bug 323 or 324.
 
+Bugs:
+1234,
+1235
+
 Bug: 423,424,425,426,427,428,429,430,431,432,435
 Resolves-bugs: #523 #524
 END
@@ -166,6 +170,10 @@ test_expect_success 'bugzilla: fancy defaults: space-separated with hash' '
 	grep -q -e \
 		"-bugs:&nbsp;<a[^>]*>#523</a>&nbsp;<a[^>]*>#524</a>" \
 		gitweb.output
+'
+test_expect_success 'bugzilla: fancy defaults: spanning newlines' '
+	grep -q -e "<a[^>]*>1234</a>,<br" gitweb.output &&
+	grep -q -e "<a[^>]*>1235</a><br" gitweb.output
 '
 test_debug 'cat gitweb.log'
 test_debug 'grep 23 gitweb.output'

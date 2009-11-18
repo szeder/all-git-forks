@@ -263,6 +263,21 @@ our %committags = (
 			                esc_html($match[0], -nbsp=>1));
 		},
 	},
+	# Facilitate styling of common header/footer lines, suppressing
+	# any trailing newlines
+	'signoff' => {
+		'options' => {
+			'pattern' =>
+				qr/^( *(?:signed[ \-]off[ \-]by|acked[ \-]by|cc)[ :].*)\n*$/mi,
+		},
+		'override' => 0,
+		'sub' => sub {
+			my ($opts, @match) = @_;
+			return (\$cgi->span({'class' => 'signoff'},
+			                    esc_html($match[1], -nbsp=>1)),
+			        "\n");
+		},
+	},
 	# Link bug/features to Mantis bug tracker using Mantis-style
 	# contextual cues
 	'mantis' => {
@@ -564,7 +579,7 @@ our %feature = (
 	'committags' => {
 		'sub' => sub { feature_list('committags', @_) },
 		'override' => 0,
-		'default' => ['sha1']},
+		'default' => ['signoff', 'sha1']},
 );
 
 sub gitweb_get_feature {
@@ -1646,8 +1661,8 @@ sub file_type_long {
 ## which don't belong to other sections
 
 # format line of commit message.
-sub format_log_line_html {
-	my $line = shift;
+sub format_log_html {
+	my $text = shift;
 
 	# Merge project configs with site default committag definitions if
 	# it hasn't been done yet
@@ -1656,7 +1671,7 @@ sub format_log_line_html {
 	# In this list of log message fragments, a string ref indicates
 	# HTML, and a string indicates plain text.  The string refs are
 	# also currently not processed by subsequent committags.
-	my @message_fragments = ( $line );
+	my @message_fragments = ( $text );
 
 COMMITTAG:
 	foreach my $ctname (@committags) {
@@ -1698,7 +1713,9 @@ COMMITTAG:
 		if (ref($fragment)) {
 			$html .= $$fragment;
 		} else {
-			$html .= esc_html($fragment, -nbsp=>1);
+			# Don't let esc_html turn "\n" into "\\n"
+			$html .= join("<br/>\n", map { esc_html($_, -nbsp=>1) }
+			                             split("\n", $fragment, -1));
 		}
 	}
 
@@ -3837,40 +3854,16 @@ sub git_print_log {
 		shift @$log;
 	}
 
-	# print log
-	my $signoff = 0;
-	my $empty = 0;
-	foreach my $line (@$log) {
-		if ($line =~ m/^ *(signed[ \-]off[ \-]by[ :]|acked[ \-]by[ :]|cc[ :])/i) {
-			$signoff = 1;
-			$empty = 0;
-			if (! $opts{'-remove_signoff'}) {
-				print "<span class=\"signoff\">" . esc_html($line) . "</span><br/>\n";
-				next;
-			} else {
-				# remove signoff lines
-				next;
-			}
-		} else {
-			$signoff = 0;
-		}
-
-		# print only one empty line
-		# do not print empty line after signoff
-		if ($line eq "") {
-			next if ($empty || $signoff);
-			$empty = 1;
-		} else {
-			$empty = 0;
-		}
-
-		print format_log_line_html($line) . "<br/>\n";
-	}
-
 	if ($opts{'-final_empty_line'}) {
-		# end with single empty line
-		print "<br/>\n" unless $empty;
+		# If we already have a trailing newline, this will be
+		# coalesced with it later.
+		push @$log, "";
 	}
+
+	# print log
+	my $text = join("\n", @$log) . "\n";
+	$text =~ s{\n\n+}{\n\n}g;
+	print format_log_html($text);
 }
 
 # return link target (what link points to)
