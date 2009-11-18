@@ -958,11 +958,11 @@ else
 	merges_option="--no-merges"
 fi
 
-if test t = "$preserve_merges"
+if test t = "$preserve_merges" -o -n "$rewrite_refs"
 then
-	# No cherry-pick because our first pass is to determine
-	# parents to rewrite and skipping dropped commits would
-	# prematurely end our probe
+	# With preserve_merges, our first pass is to determine parents to
+	# rewrite and skipping dropped commits would prematurely end our probe.
+	# With rewrite_refs, we want to catch refs pointing to dropped commits.
 	late_cherry_pick=t
 	cherry_pick_option=
 else
@@ -982,7 +982,13 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option $cherry_pick_option --pretty=oneline \
+if test -z "$rewrite_refs"
+then
+	pretty=oneline
+else
+	pretty=format:"%m%h %s%n%m%D"
+fi
+git rev-list $merges_option $cherry_pick_option --pretty="$pretty" \
 	--abbrev-commit --abbrev=7 --reverse --left-right --topo-order \
 	$revisions | \
 	sed -n "s/^>//p" |
@@ -994,6 +1000,11 @@ do
 		comment_out="$comment_char "
 	else
 		comment_out=
+    fi
+
+	if test -n "$rewrite_refs"
+	then
+		read refs
 	fi
 
 	if test t != "$preserve_merges"
@@ -1019,6 +1030,18 @@ do
 			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		fi
+	fi
+
+	if test -n "$rewrite_refs"
+	then
+		for ref in $refs; do echo "$ref"; done | \
+		git for-each-ref --stdin $rewrite_refs \
+			--format '%(refname)' | \
+		while read ref
+		do
+			test "$ref" != "$head_name" &&
+			echo "ref $ref" >> "$todo"
+		done
 	fi
 done
 

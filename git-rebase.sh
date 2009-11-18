@@ -17,6 +17,9 @@ q,quiet!           be quiet. implies --no-stat
 autostash!         automatically stash/stash pop before and after
 fork-point         use 'merge-base --fork-point' to refine upstream
 onto=!             rebase onto given branch instead of upstream
+rewrite-heads!     rewrite intermediate heads on branch
+rewrite-tags!      rewrite intermediate tags on branch
+rewrite-refs=!     rewrite intermediate refs matching pattern
 p,preserve-merges! try to recreate merges instead of ignoring them
 s,strategy=!       use the given merge strategy
 no-ff!             cherry-pick all commits, even if unchanged
@@ -83,6 +86,7 @@ state_dir=
 # One of {'', continue, skip, abort}, as parsed from command line
 action=
 preserve_merges=
+rewrite_refs=
 autosquash=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
@@ -274,6 +278,19 @@ do
 	--strategy=*)
 		strategy="${1#--strategy=}"
 		do_merge=t
+		;;
+	--rewrite-refs)
+		shift
+		rewrite_refs="$rewrite_refs $1"
+		test -z "$interactive_rebase" && interactive_rebase=implied
+		;;
+	--rewrite-heads)
+		rewrite_refs="$rewrite_refs refs/heads"
+		test -z "$interactive_rebase" && interactive_rebase=implied
+		;;
+	--rewrite-tags)
+		rewrite_refs="$rewrite_refs refs/tags"
+		test -z "$interactive_rebase" && interactive_rebase=implied
 		;;
 	--no-stat)
 		diffstat=

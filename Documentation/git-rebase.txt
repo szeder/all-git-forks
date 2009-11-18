@@ -396,6 +396,15 @@ squash/fixup series.
 	'all' root commits will be rewritten to have <newbase> as parent
 	instead.
 
+--rewrite-refs=<pattern>::
+--rewrite-heads::
+--rewrite-tags::
+	Rewrite refs matching <pattern> which point to the rebased
+	commits.  The options --rewrite-heads and --rewrite-tags are
+	shortcuts for --rewrite-refs=refs/heads and
+	--rewrite-refs=refs/tags respectively.  Ref patterns are
+	interpreted as in linkgit:git-for-each-ref[1].
+
 --autosquash::
 --no-autosquash::
 	When the commit log message begins with "squash! ..." (or
@@ -518,7 +527,9 @@ but omits the commit messages of commits with the "fixup" command.
 
 If you want to update a ref to point to a rewritten commit, add a
 command "ref <refname>" after the "pick", "edit", or other command
-that produces the commit.
+that produces the commit.  You can use the --rewrite-refs option to
+have the file start out with these commands for refs inside the branch
+you are rebasing.
 
 'git rebase' will stop when "pick" has been replaced with "edit" or
 when a command fails due to merge errors. When you are done editing
