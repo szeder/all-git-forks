@@ -68,6 +68,19 @@ test_expect_success 'bugzilla: url overridden but not permitted' '
 test_debug 'cat gitweb.log'
 test_debug 'grep 1234 gitweb.output'
 
+echo '$committags{"bugzilla"}{"override"} = ["url"];' >> gitweb_config.perl
+git config gitweb.committag.bugzilla.url 'http://bts.example.com?bug='
+git config gitweb.committag.bugzilla.pattern 'slow DoS regex'
+test_expect_success 'bugzilla: url overridden but regex not permitted' '
+	gitweb_run "p=.git;a=commit;h=HEAD" &&
+	grep -F -q \
+		"Fixes&nbsp;bug&nbsp;<a class=\"text\" href=\"http://bts.example.com?bug=1234\">1234</a>&nbsp;involving" \
+		gitweb.output
+'
+test_debug 'cat gitweb.log'
+test_debug 'grep 1234 gitweb.output'
+git config --unset gitweb.committag.bugzilla.pattern
+
 echo '$committags{"bugzilla"}{"override"} = 1;' >> gitweb_config.perl
 test_expect_success 'bugzilla: url overridden' '
 	gitweb_run "p=.git;a=commit;h=HEAD" &&

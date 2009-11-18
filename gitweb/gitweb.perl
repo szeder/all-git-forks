@@ -233,11 +233,13 @@ our %avatar_size = (
 # will not be processed further.
 #
 # For any committag, set the 'override' key to 1 to allow individual
-# projects to override entries in the 'options' hash for that tag.
-# For example, to match only commit hashes given in lowercase in one
-# project, add this to the $GITWEB_CONFIG:
+# projects to override any entry in the 'options' hash for that tag.
+# Leave 'override' as 0 to disallow all overriding of all entries.
+# Set 'override' to an array of 'option' key names to allow overriding
+# specific keys.  For example, to match only commit hashes given in
+# lowercase in one project, add this to the $GITWEB_CONFIG:
 #
-#     $committags{'sha1'}{'override'} = 1;
+#     $committags{'sha1'}{'override'} = 1;   # or ["pattern"]
 #
 # And in the project's config:
 #
@@ -245,7 +247,8 @@ our %avatar_size = (
 #
 # Some committags have additional options whose interpretation depends
 # on the implementation of the 'sub' key.  The hyperlink_committag
-# value appends the first captured group to the 'url' option.
+# value appends the first captured group to the 'url' option, for example.
+#
 our %committags = (
 	# Link Git-style hashes to this gitweb
 	'sha1' => {
@@ -1056,8 +1059,17 @@ sub gitweb_load_project_committags {
 		$project_config{$ctname}{$option} = $raw_config{$key};
 	}
 	foreach my $ctname (keys(%committags)) {
-		next if (!$committags{$ctname}{'override'});
+		my $override = $committags{$ctname}{'override'};
+		next if (!$override);
+		my $override_keys = undef;
+		if (ref($override) eq "ARRAY") {
+			$override_keys = {};
+			foreach my $optname (@$override) {
+				$override_keys->{$optname} = 1;
+			}
+		}
 		foreach my $optname (keys %{$project_config{$ctname}}) {
+			next if ($override_keys && !$override_keys->{$optname});
 			$committags{$ctname}{'options'}{$optname} =
 				$project_config{$ctname}{$optname};
 		}

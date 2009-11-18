@@ -133,9 +133,15 @@ adding the following lines to your $GITWEB_CONFIG:
 	$known_snapshot_formats{'tgz'}{'compressor'} = ['gzip','-6'];
 
 To add a committag to the default list of commit tags, for example to
-enable hyperlinking of bug numbers to a bug tracker for all projects:
+enable hyperlinking of bug numbers to a bug tracker for all projects, while
+allowing each project to choose only the base URL for its bug tracker:
 
 	push @{$feature{'committags'}{'default'}}, 'bugzilla';
+	$committags{"bugzilla"}{"override"} = ["url"];
+
+And then let each project configure its bug tracker URL:
+
+	git config gitweb.committag.bugzilla.url 'http://bts.example.com?bug='
 
 
 Gitweb repositories
