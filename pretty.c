@@ -783,21 +783,35 @@ static void parse_commit_message(struct format_commit_context *c)
 	c->commit_message_parsed = 1;
 }
 
-static void format_decoration(struct strbuf *sb, const struct commit *commit)
+
+static void format_decoration(struct strbuf *sb, const struct commit *commit,
+			      int decoration_style, const char *affixes[3])
 {
 	struct name_decoration *d;
-	const char *prefix = " (";
+	const char *affix = affixes[0];
 
-	load_ref_decorations(DECORATE_SHORT_REFS);
+	load_ref_decorations(decoration_style);
 	d = lookup_decoration(&name_decoration, &commit->object);
 	while (d) {
-		strbuf_addstr(sb, prefix);
-		prefix = ", ";
+		strbuf_addstr(sb, affix);
+		affix = affixes[1];
 		strbuf_addstr(sb, d->name);
 		d = d->next;
 	}
-	if (prefix[0] == ',')
-		strbuf_addch(sb, ')');
+	if (affix == affixes[1])
+		strbuf_addstr(sb, affixes[2]);
+}
+
+static void format_decoration_short(struct strbuf *sb, const struct commit *commit)
+{
+	const char *affixes[3] = {" (", ", ", ")"};
+	format_decoration(sb, commit, DECORATE_SHORT_REFS, affixes);
+}
+
+static void format_decoration_full(struct strbuf *sb, const struct commit *commit)
+{
+	const char *affixes[3] = {"", " ", ""};
+	format_decoration(sb, commit, DECORATE_FULL_REFS, affixes);
 }
 
 static void strbuf_wrap(struct strbuf *sb, size_t pos,
@@ -1024,7 +1038,10 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 		strbuf_addstr(sb, get_revision_mark(NULL, commit));
 		return 1;
 	case 'd':
-		format_decoration(sb, commit);
+		format_decoration_short(sb, commit);
+		return 1;
+	case 'D':
+		format_decoration_full(sb, commit);
 		return 1;
 	case 'g':		/* reflog info */
 		switch(placeholder[1]) {

@@ -124,6 +124,7 @@ The placeholders are:
 - '%ct': committer date, UNIX timestamp
 - '%ci': committer date, ISO 8601 format
 - '%d': ref names, like the --decorate option of linkgit:git-log[1]
+- '%D': full ref names, like the --decorate=full option of linkgit:git-log[1]
 - '%e': encoding
 - '%s': subject
 - '%f': sanitized subject line, suitable for a filename
