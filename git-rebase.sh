@@ -306,6 +306,7 @@ do
 			strategy="$2"
 			shift ;;
 		esac
+		git_check_merge_strategy_used_in_rebase "$strategy"
 		do_merge=t
 		;;
 	-n|--no-stat)

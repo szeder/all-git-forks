@@ -192,3 +192,10 @@ case $(uname -s) in
 	}
 	;;
 esac
+
+git_check_merge_strategy_used_in_rebase () {
+	case "$1" in
+	ours)
+		die "Refusing to rebase with '$1' strategy; see git help rebase."
+	esac
+}
