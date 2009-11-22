@@ -654,6 +654,8 @@ static void parse_fetch(struct strbuf *buf)
 
 static int push_dav(int nr_spec, char **specs)
 {
+	fprintf(stderr, "pushing over davz\n");
+
 	const char **argv = xmalloc((10 + nr_spec) * sizeof(char*));
 	int argc = 0, i;
 
@@ -704,6 +706,8 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 		safe_write(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
 	free(argv);
+	fprintf(stderr, "pushed babeh! push_git\n");
+	fprintf(stdout, "push_git\n");
 	return err;
 }
 
@@ -714,9 +718,13 @@ static int push(int nr_spec, char **specs)
 
 	if (heads->proto_git)
 		ret = push_git(heads, nr_spec, specs);
-	else
+	else {
+		fprintf(stderr, "pushing over dav\n");
 		ret = push_dav(nr_spec, specs);
+	}
 	free_discovery(heads);
+	fprintf(stderr, "pushed babeh! push\n");
+	fprintf(stdout, "push\n");
 	return ret;
 }
 
@@ -777,6 +785,7 @@ int main(int argc, const char **argv)
 	do {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF)
 			break;
+		fprintf(stderr, "got:\n\t%s\n", buf.buf);
 		if (!prefixcmp(buf.buf, "fetch ")) {
 			if (nongit)
 				die("Fetch attempted without a local repo");

@@ -289,6 +289,8 @@ static int push_refs(struct transport *transport,
 		if (!buf.len)
 			break;
 
+		fprintf(stderr, "helper said '%s'\n", buf.buf);
+
 		if (!prefixcmp(buf.buf, "ok ")) {
 			status = REF_STATUS_OK;
 			refname = buf.buf + 3;
