@@ -297,21 +297,36 @@ static size_t rpc_out(void *ptr, size_t eltsize,
 {
 	size_t max = eltsize * nmemb;
 	struct rpc_state *rpc = buffer_;
-	size_t avail = rpc->len - rpc->pos;
+	size_t alloc = (size_t) 0;
 
-	if (!avail) {
-		avail = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
-		if (!avail)
+	fprintf(stderr, "rpc_out\n");
+
+	if (max > rpc->alloc)
+		max = rpc->alloc;
+
+	if (rpc->pos == rpc->len) {
+		/* Finished sending data in rpc->buf; allocate some for
+		 * sending.
+		 */
+		int n = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
+		if (!n)
 			return 0;
 		rpc->pos = 0;
-		rpc->len = avail;
+		rpc->len = (size_t) n;
+		alloc = rpc->len;
+	} else if (rpc->pos > rpc->len) {
+		fprintf(stderr, "bad condition!\n");
+		return 0;
+	} else {
+		alloc = rpc->len - rpc->pos;
 	}
 
-	if (max < avail);
-		avail = max;
-	memcpy(ptr, rpc->buf + rpc->pos, avail);
-	rpc->pos += avail;
-	return avail;
+	if (alloc > max)
+		alloc = max;
+
+	memcpy(ptr, rpc->buf + rpc->pos, alloc);
+	rpc->pos += alloc;
+	return alloc;
 }
 
 static size_t rpc_in(const void *ptr, size_t eltsize,
@@ -319,6 +334,9 @@ static size_t rpc_in(const void *ptr, size_t eltsize,
 {
 	size_t size = eltsize * nmemb;
 	struct rpc_state *rpc = buffer_;
+
+	fprintf(stderr, "rpc_in called\n");
+
 	write_or_die(rpc->in, ptr, size);
 	return size;
 }
@@ -336,28 +354,47 @@ static int post_rpc(struct rpc_state *rpc)
 	 * allocated buffer space we can use HTTP/1.0 and avoid the
 	 * chunked encoding mess.
 	 */
-	while (1) {
-		size_t left = rpc->alloc - rpc->len;
-		char *buf = rpc->buf + rpc->len;
-		int n;
 
-		if (left < LARGE_PACKET_MAX) {
+	int n;
+
+	rpc->pos = 0;
+	rpc->len = 0;
+
+	fprintf(stderr, "hello!\n");
+
+	while (1) {
+		if (rpc->len == rpc->alloc) {
+			fprintf(stderr, "post_rpc: hit the roof!\n");
+		} else if (rpc->len > rpc->alloc) {
+			fprintf(stderr, "post_rpc: maxing out!\n");
+		}
+
+		if (rpc->len <= rpc->alloc) {
+			fprintf(stderr, "post_rpc: read '%d', '%d' to go\n", rpc->len, rpc->alloc - rpc->len);
+			fflush(stderr);
+			n = packet_read_line(rpc->out, rpc->buf + rpc->len,
+								 rpc->alloc - rpc->len);
+			if (!n)
+				break;
+			rpc->len += n;
+			fprintf(stderr, "post_rpc: read len='%d'\n", rpc->len);
+			fflush(stderr);
+		} else {
+			fprintf(stderr, "post_rpc: pos=%d, len=%d\n", rpc->pos, rpc->len);
 			large_request = 1;
 			use_gzip = 0;
 			break;
 		}
-
-		n = packet_read_line(rpc->out, buf, left);
-		if (!n)
-			break;
-		rpc->len += n;
 	}
+
+	if (rpc->len <= 0)
+		fprintf(stderr, "post_rpc: no length!\n");
 
 	slot = get_active_slot();
 	slot->results = &results;
 
-	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
+	curl_easy_setopt(slot->curl, CURLOPT_POST, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_URL, rpc->service_url);
 	curl_easy_setopt(slot->curl, CURLOPT_ENCODING, "");
 
@@ -376,6 +413,7 @@ static int post_rpc(struct rpc_state *rpc)
 			fprintf(stderr, "POST %s (chunked)\n", rpc->service_name);
 			fflush(stderr);
 		}
+		fprintf(stderr, "using chunked\n");
 
 	} else if (use_gzip && 1024 < rpc->len) {
 		/* The client backend isn't giving us compressed data so
@@ -437,8 +475,22 @@ static int post_rpc(struct rpc_state *rpc)
 	curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION, rpc_in);
 	curl_easy_setopt(slot->curl, CURLOPT_FILE, rpc);
 
+// 	fprintf(stderr, "starting request...\n");
+// 	if (start_active_slot(slot)) {
+// 		fprintf(stderr, "started slot...\n");
+// 		while (slot->in_use) {
+// 			fprintf(stderr, "performing...\n");
+// 			slot->curl_result = curl_easy_perform(slot->curl);
+// 			fprintf(stderr, "performed...\n");
+// 			finish_active_slot(slot);
+// 			fprintf(stderr, "end of loop...\n");
+// 		}
+// 	} else
+// 		error("Unable to start RPC for %s", rpc->service_url);
+
 	slot->curl_result = curl_easy_perform(slot->curl);
 	finish_active_slot(slot);
+	fprintf(stderr, "rpc posted\n");
 
 	if (results.curl_result != CURLE_OK) {
 		err |= error("RPC failed; result=%d, HTTP code = %ld",
@@ -468,7 +520,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	if (heads)
 		write_or_die(client.in, heads->buf, heads->len);
 
-	rpc->alloc = http_post_buffer;
+	rpc->alloc = LARGE_PACKET_MAX;
 	rpc->buf = xmalloc(rpc->alloc);
 	rpc->in = client.in;
 	rpc->out = client.out;
@@ -483,14 +535,8 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	strbuf_addf(&buf, "Accept: application/x-%s-response", svc);
 	rpc->hdr_accept = strbuf_detach(&buf, NULL);
 
-	while (!err) {
-		int n = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
-		if (!n)
-			break;
-		rpc->pos = 0;
-		rpc->len = n;
-		err |= post_rpc(rpc);
-	}
+	fprintf(stderr, "posting rpc\n");
+	post_rpc(rpc);
 	strbuf_read(&rpc->result, client.out, 0);
 
 	close(client.in);
