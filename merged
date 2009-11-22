@@ -1,0 +1,20 @@
+#!/bin/sh
+
+show() {
+	printf '%25s: %s\n' "$1" "$2"
+}
+
+check_merge() {
+	if test -z "`git cherry $2 $1 | grep -v ^-`"; then
+		show $1 "merged to $2"
+		return 0
+	fi
+	return 1
+}
+
+for i in `Meta/topics --all`; do
+	check_merge $i origin/master ||
+	check_merge $i origin/next ||
+	show $i 'not merged'
+done
+exit 0
