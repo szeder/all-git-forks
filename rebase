@@ -1,0 +1,12 @@
+#!/bin/sh
+
+base=origin
+
+for i in `Meta/topics --all`; do
+	if test -n "`git rev-list -1 $base ^$i`"; then
+		echo "===> Rebasing $i"
+		git rebase origin $i || exit 1
+	else
+		echo "===> Skipping $i"
+	fi
+done
