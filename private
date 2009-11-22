@@ -1,0 +1,35 @@
+#!/bin/sh
+
+branches() {
+	sed -n <Meta/branches \
+	    -e '/^[^ \t-]/p'
+}
+
+case "$1" in
+--continue)
+	shift
+	;;
+*)
+	test "$1" != "-f" &&
+	test -n "`git rev-list -1 --no-merges --first-parent \
+		 origin/next..private`" &&
+	  {
+		  git log --no-merges --first-parent origin/next..private
+		  exit 1
+	  }
+	git checkout private &&
+	git reset --hard origin/next || exit
+esac
+
+for i in `branches`; do
+	echo >&2 Merging $i...
+	if ! git merge $i; then
+		if test -z "`git ls-files -u`"; then
+			GIT_EDITOR=true git commit || exit 1
+		else
+			exit 1
+		fi
+	fi
+done
+echo All branches merged successfully.
+exit 0
