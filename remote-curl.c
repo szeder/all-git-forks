@@ -295,23 +295,36 @@ struct rpc_state {
 static size_t rpc_out(void *ptr, size_t eltsize,
 		size_t nmemb, void *buffer_)
 {
-	size_t max = eltsize * nmemb;
-	struct rpc_state *rpc = buffer_;
-	size_t avail = rpc->len - rpc->pos;
+   size_t max = eltsize * nmemb;
+   struct rpc_state *rpc = buffer_;
+   size_t alloc = (size_t) 0;
 
-	if (!avail) {
-		avail = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
-		if (!avail)
-			return 0;
-		rpc->pos = 0;
-		rpc->len = avail;
-	}
+   if (max > rpc->alloc)
+           max = rpc->alloc;
 
-	if (max < avail);
-		avail = max;
-	memcpy(ptr, rpc->buf + rpc->pos, avail);
-	rpc->pos += avail;
-	return avail;
+   if (rpc->pos == rpc->len) {
+           /* Finished sending data in rpc->buf; allocate some for
+            * sending.
+            */
+           int n = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
+           if (!n)
+                   return 0;
+           rpc->pos = 0;
+           rpc->len = (size_t) n;
+           alloc = rpc->len;
+   } else if (rpc->pos > rpc->len) {
+           error("bad condition!\n");
+           return 0;
+   } else {
+           alloc = rpc->len - rpc->pos;
+   }
+
+   if (alloc > max)
+           alloc = max;
+
+   memcpy(ptr, rpc->buf + rpc->pos, alloc);
+   rpc->pos += alloc;
+   return alloc;
 }
 
 static size_t rpc_in(const void *ptr, size_t eltsize,
