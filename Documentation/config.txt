@@ -1169,6 +1169,18 @@ interactive.singlekey::
 	linkgit:git-add[1].  Note that this setting is silently
 	ignored if portable keystroke input is not available.
 
+interactive.reset.direction::
+interactive.checkout.direction::
+	Direction of diffs used in `git reset -p` and `git checkout
+	-p`.  Must be one of 'forward', 'mixed' (default), or
+	'reverse'.
++
+With 'forward', diffs are taken forward and applied in reverse, i.e.,
+if you added a block of code you see an addition patch and are asked
+if you want to remove it.  'reverse' instead shows a removal patch
+and asks if you to apply it.  'mixed' is the same as 'forward' when
+comparing to HEAD or the index, and 'reverse' otherwise.
+
 log.date::
 	Set default date-time mode for the log command. Setting log.date
 	value is similar to using 'git-log'\'s --date option. The value is one of the

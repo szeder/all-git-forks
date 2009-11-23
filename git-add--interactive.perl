@@ -74,6 +74,25 @@ sub colored {
 my $patch_mode;
 my $patch_mode_revision;
 
+sub get_patch_direction_config {
+	my ($key, $default, $forward, $reverse) = @_;
+	my $value = $repo->config($key, $default) || $default;
+	if ($value =~ /^forward$/i) {
+		return (0, 0);
+	} elsif ($value =~ /^mixed$/i) {
+		return (0, 1);
+	} elsif ($value =~ /^reverse?/i) {
+		return (1, 1);
+	} else {
+		die "$key must be one of 'forward', 'mixed' or 'reverse'";
+	}
+}
+
+my ($reset_reverse_head, $reset_reverse_nothead)
+	= get_patch_direction_config("interactive.reset.direction", "mixed");
+my ($checkout_reverse_head, $checkout_reverse_nothead)
+	= get_patch_direction_config("interactive.checkout.direction", "mixed");
+
 sub apply_patch;
 sub apply_patch_for_checkout_commit;
 sub apply_patch_for_stash;
@@ -98,48 +117,69 @@ my %patch_modes = (
 		FILTER => undef,
 	},
 	'reset_head' => {
-		DIFF => 'diff-index -p --cached',
-		APPLY => sub { apply_patch 'apply -R --cached', @_; },
-		APPLY_CHECK => 'apply -R --cached',
-		VERB => 'Unstage',
-		TARGET => '',
-		PARTICIPLE => 'unstaging',
+		DIFF => 'diff-index -p --cached '
+			. ($reset_reverse_head ? '-R' : ''),
+		APPLY => sub {
+			apply_patch 'apply --cached '
+				. ($reset_reverse_head ? '' : '-R'), @_;
+		},
+		APPLY_CHECK => 'apply --cached '
+			. ($reset_reverse_head ? '' : '-R'),
+		VERB => $reset_reverse_head ? 'Apply' : 'Unstage',
+		TARGET => $reset_reverse_head ? ' to index' : '',
+		PARTICIPLE => $reset_reverse_head ? 'applying' : 'unstaging',
 		FILTER => 'index-only',
 	},
 	'reset_nothead' => {
-		DIFF => 'diff-index -R -p --cached',
-		APPLY => sub { apply_patch 'apply --cached', @_; },
-		APPLY_CHECK => 'apply --cached',
-		VERB => 'Apply',
-		TARGET => ' to index',
-		PARTICIPLE => 'applying',
+		DIFF => 'diff-index -p --cached '
+			. ($reset_reverse_nothead ? '-R' : ''),
+		APPLY => sub {
+			apply_patch 'apply --cached '
+				. ($reset_reverse_nothead ? '' : '-R'), @_;
+		},
+		APPLY_CHECK => 'apply --cached '
+			. ($reset_reverse_nothead ? '' : '-R'),
+		VERB => $reset_reverse_nothead ? 'Apply' : 'Unstage',
+		TARGET => $reset_reverse_nothead ? ' to index' : '',
+		PARTICIPLE => $reset_reverse_nothead ? 'applying' : 'unstaging',
 		FILTER => 'index-only',
 	},
 	'checkout_index' => {
-		DIFF => 'diff-files -p',
-		APPLY => sub { apply_patch 'apply -R', @_; },
-		APPLY_CHECK => 'apply -R',
-		VERB => 'Discard',
-		TARGET => ' from worktree',
-		PARTICIPLE => 'discarding',
+		DIFF => 'diff-files -p ' . ($checkout_reverse_head ? '-R' : ''),
+		APPLY => sub {
+			apply_patch 'apply '
+				. ($checkout_reverse_head ? '' : '-R'), @_;
+		},
+		APPLY_CHECK => 'apply ' . ($checkout_reverse_head ? '' : '-R'),
+		VERB => $checkout_reverse_head ? 'Apply' : 'Discard',
+		TARGET => $checkout_reverse_head ? ' to worktree' : ' from worktree',
+		PARTICIPLE => $checkout_reverse_head ? 'applying' : 'discarding',
 		FILTER => 'file-only',
 	},
 	'checkout_head' => {
-		DIFF => 'diff-index -p',
-		APPLY => sub { apply_patch_for_checkout_commit '-R', @_ },
-		APPLY_CHECK => 'apply -R',
-		VERB => 'Discard',
-		TARGET => ' from index and worktree',
-		PARTICIPLE => 'discarding',
+		DIFF => 'diff-index -p ' . ($checkout_reverse_head ? '-R' : ''),
+		APPLY => sub {
+			apply_patch_for_checkout_commit
+				$checkout_reverse_head ? '' : '-R', @_;
+		},
+		APPLY_CHECK => 'apply ' . ($checkout_reverse_head ? '' : '-R'),
+		VERB => $checkout_reverse_head ? 'Apply' : 'Discard',
+		TARGET => ($checkout_reverse_head ? ' to index and worktree'
+			   : ' from index and worktree'),
+		PARTICIPLE => $checkout_reverse_head ? 'applying' : 'discarding',
 		FILTER => undef,
 	},
 	'checkout_nothead' => {
-		DIFF => 'diff-index -R -p',
-		APPLY => sub { apply_patch_for_checkout_commit '', @_ },
-		APPLY_CHECK => 'apply',
-		VERB => 'Apply',
-		TARGET => ' to index and worktree',
-		PARTICIPLE => 'applying',
+		DIFF => 'diff-index -p ' . ($checkout_reverse_nothead ? '-R' : ''),
+		APPLY => sub {
+			apply_patch_for_checkout_commit
+				$checkout_reverse_nothead ? '' : '-R', @_;
+		},
+		APPLY_CHECK => 'apply ' . ($checkout_reverse_nothead ? '' : '-R'),
+		VERB => $checkout_reverse_nothead ? 'Apply' : 'Discard',
+		TARGET => ($checkout_reverse_nothead ? ' to index and worktree'
+			   : ' from index and worktree'),
+		PARTICIPLE => $checkout_reverse_nothead ? 'applying' : 'discarding',
 		FILTER => undef,
 	},
 );
