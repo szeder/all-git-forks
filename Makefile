@@ -148,6 +148,9 @@ all::
 # Define USE_STDEV below if you want git to care about the underlying device
 # change being considered an inode change from the update-index perspective.
 #
+# Define ST_BLOCKS_COUNTS_IN_ST_BLKSIZE if your platform has st_blocks
+# field that counts the on-disk footprint in st_blksize-byte blocks.
+#
 # Define NO_ST_BLOCKS_IN_STRUCT_STAT if your platform does not have st_blocks
 # field that counts the on-disk footprint in 512-byte blocks.
 #
@@ -806,6 +809,7 @@ ifeq ($(uname_O),Cygwin)
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
 	NO_TRUSTABLE_FILEMODE = UnfortunatelyYes
 	OLD_ICONV = UnfortunatelyYes
+	ST_BLOCKS_COUNTS_IN_ST_BLKSIZE = YesPlease
 	# There are conflicting reports about this.
 	# On some boxes NO_MMAP is needed, and not so elsewhere.
 	# Try commenting this out if you suspect MMAP is more efficient
@@ -1152,6 +1156,9 @@ ifdef NO_D_TYPE_IN_DIRENT
 endif
 ifdef NO_D_INO_IN_DIRENT
 	BASIC_CFLAGS += -DNO_D_INO_IN_DIRENT
+endif
+ifdef ST_BLOCKS_COUNTS_IN_ST_BLKSIZE
+	BASIC_CFLAGS += -DST_BLOCKS_COUNTS_IN_ST_BLKSIZE
 endif
 ifdef NO_ST_BLOCKS_IN_STRUCT_STAT
 	BASIC_CFLAGS += -DNO_ST_BLOCKS_IN_STRUCT_STAT
