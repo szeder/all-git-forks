@@ -241,9 +241,7 @@ extern int git_munmap(void *start, size_t length);
 
 #endif /* NO_MMAP */
 
-#ifdef ST_BLOCKS_COUNTS_IN_ST_BLKSIZE
-#define on_disk_bytes(st) ((st).st_blocks * (st).st_blksize)
-#elif defined(NO_ST_BLOCKS_IN_STRUCT_STAT) && NO_ST_BLOCKS_IN_STRUCT_STAT
+#ifdef NO_ST_BLOCKS_IN_STRUCT_STAT
 #define on_disk_bytes(st) ((st).st_size)
 #else
 #define on_disk_bytes(st) ((st).st_blocks * 512)
