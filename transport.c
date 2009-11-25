@@ -859,6 +859,47 @@ struct transport *transport_get(struct remote *remote, const char *url)
 	return ret;
 }
 
+struct transport *transport_next_mirror(struct transport *transport,
+					const char *last_mirror)
+{
+	struct transport *ret;
+	struct remote* remote = transport->remote;
+	int mirror_idx = -1;
+	const char* url;
+
+	if (!last_mirror) {
+		if (remote->preferred_mirror) {
+			mirror_idx = remote_mirror_idx(
+				remote,
+				remote->preferred_mirror
+				);
+			if (mirror_idx == -1) {
+				warning("preferred mirror '%s' not listed "
+					"in remote.%s.mirror-url",
+					remote->preferred_mirror,
+					remote->name);
+			}
+		}
+		else {
+			mirror_idx = 0;
+		}
+	}
+	else {
+		mirror_idx = remote_mirror_idx(remote, last_mirror) + 1;
+		// caller must check that we are not looping indefinitely
+		mirror_idx %= remote->mirror_url_nr;
+	}
+
+	url = remote->mirror_url[mirror_idx];
+	ret = transport_get(remote, url);
+
+	// copy settings - caller must re-set options
+	ret->verbose = transport->verbose;
+	ret->progress = transport->progress;
+
+	return ret;
+}
+
 int transport_set_option(struct transport *transport,
 			 const char *name, const char *value)
 {

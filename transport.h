@@ -41,6 +41,9 @@ struct transport {
 /* Returns a transport suitable for the url */
 struct transport *transport_get(struct remote *, const char *);
 
+/* Returns a transport for a mirror */
+struct transport *transport_next_mirror(struct transport *transport, const char *last_mirror);
+
 /* Transport options which apply to git:// and scp-style URLs */
 
 /* The program to use on the remote side to send a pack */
@@ -78,6 +81,8 @@ int transport_fetch_refs(struct transport *transport, const struct ref *refs);
 void transport_unlock_pack(struct transport *transport);
 int transport_disconnect(struct transport *transport);
 char *transport_anonymize_url(const char *url);
+struct refspec *mirror_refspec(struct transport* transport,
+			       struct refspec *refspec, int refspec_nr);
 
 /* Transport methods defined outside transport.c */
 int transport_helper_init(struct transport *transport, const char *name);

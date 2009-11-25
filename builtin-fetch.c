@@ -45,8 +45,8 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOLEAN('k', "keep", &keep, "keep downloaded pack"),
 	OPT_BOOLEAN('u', "update-head-ok", &update_head_ok,
 		    "allow updating of HEAD ref"),
-	OPT_BOOLEAN('M', "mirror", &use_mirror,
-		    "use mirror if available"),
+	OPT_SET_INT('M', "use-mirror", &use_mirror,
+		    "use mirror if available", 1),
 	OPT_STRING(0, "depth", &depth, "DEPTH",
 		   "deepen history of shallow clone"),
 	OPT_END()
@@ -109,6 +109,109 @@ static void find_non_local_tags(struct transport *transport,
 			struct ref **head,
 			struct ref ***tail);
 
+char* get_url_hostname(const char *url)
+{
+	char *scratch = xstrdup(url);
+	char *host = strstr(url, "://");
+	char c;
+	char *end, *rh;
+	if (host) {
+		host += 3;
+		c = '/';
+	}
+	else {
+		host = scratch;
+		c = ':';
+	}
+
+	if (host[0] == '[') {
+		end = strchr(host + 1, ']');
+		if (end) {
+			*end = 0;
+			host++;
+		}
+	}
+	else {
+		end = strchr(host, c);
+		if (end && !has_dos_drive_prefix(url) ) {
+			*end = 0;
+		}
+		else {
+			host = "localhost";
+		}
+	}
+	rh = xstrdup(host);
+	free(scratch);
+	return rh;
+}
+
+const char *mirror_ref(const char* remote_name, const char* mirror_hostname,
+		       const char* refname)
+{
+	int has_refs, new_sz;
+	char *rv, *dst;
+
+	// *rs[i] = *refspec[i];  ?
+	has_refs = ( strstr(refname, "refs/") == refname );
+	/* "refs/"(0 or 5) "mirrors/"(8) remote "/"(1) hostname "/"(1) */
+	new_sz = (has_refs ? 0 : 5) + 8
+		+ strlen(remote_name) + 1
+		+ strlen(mirror_hostname) + 1
+		+ strlen(refname) + 1;
+	rv = xmalloc( new_sz );
+	strcpy(rv, "refs/mirrors/");
+	dst = rv + 13;
+	strcpy(dst, remote_name);
+	dst += strlen(remote_name);
+	*dst++ = '/';
+	strcpy(dst, mirror_hostname);
+	dst += strlen(mirror_hostname);
+	*dst++ = '/';
+	strcpy(dst, refname+(has_refs?5:0));
+	return rv;
+}
+
+struct ref *mirror_refmap(struct transport* transport,
+			  struct ref* ref_map)
+{
+	struct ref *rm, *mirror_refmap, *last, *rv, *peer_ref;
+
+	const char* remote_name = transport->remote->name;
+	const char* mirror_hostname = get_url_hostname(transport->url);
+	int c = 0;
+
+	last = NULL;
+	rv = NULL;
+	for (rm = ref_map; rm; rm = rm->next) {
+		const char *new_dst;
+
+		// skip refs we already have locally, to avoid ref churn
+		if (has_sha1_file(rm->old_sha1))
+			continue;
+
+		mirror_refmap = alloc_ref(rm->name);
+		mirror_refmap->remote_status = rm->remote_status;
+		hashcpy(mirror_refmap->old_sha1, rm->old_sha1);
+		hashcpy(mirror_refmap->new_sha1, rm->new_sha1);
+
+		if (last)
+			last->next = mirror_refmap;
+		else
+			rv = mirror_refmap;
+		c++;
+
+		new_dst = mirror_ref(remote_name, mirror_hostname, rm->name);
+
+		peer_ref = alloc_ref(new_dst);
+		mirror_refmap->peer_ref = peer_ref;
+		peer_ref->force = 1;
+		last = mirror_refmap;
+	}
+
+	return rv;
+}
+
+
 static struct ref *get_ref_map(struct transport *transport,
 			       struct refspec *refs, int ref_count, int tags,
 			       int *autotags)
@@ -165,9 +268,13 @@ static struct ref *get_ref_map(struct transport *transport,
 	if (tags == TAGS_DEFAULT && *autotags)
 		find_non_local_tags(transport, &ref_map, &tail);
 	ref_remove_duplicates(ref_map);
+	if (strcmp(transport->url, transport->remote->url[0]) != 0) {
+		return mirror_refmap(transport, ref_map);
+	}
 
 	return ref_map;
 }
+
 
 #define STORE_REF_ERROR_OTHER 1
 #define STORE_REF_ERROR_DF_CONFLICT 2
@@ -638,6 +745,7 @@ static int do_fetch(struct transport *transport,
 	}
 
 	ref_map = get_ref_map(transport, refs, ref_count, tags, &autotags);
+
 	if (!update_head_ok)
 		check_not_current_branch(ref_map);
 
@@ -688,13 +796,18 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	int i;
 	static const char **refs = NULL;
 	int ref_nr = 0;
-	int exit_code;
+	int exit_code = 0;
+	int urls_remaining = 1;
+	struct transport *real_transport = NULL;
+	const char *mirror = NULL;
+	struct refspec *refspec;
 
 	/* Record the command line for the reflog */
 	strbuf_addstr(&default_rla, "fetch");
 	for (i = 1; i < argc; i++)
 		strbuf_addf(&default_rla, " %s", argv[i]);
 
+	use_mirror = -1;
 	argc = parse_options(argc, argv, prefix,
 			     builtin_fetch_options, builtin_fetch_usage, 0);
 
@@ -705,6 +818,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	if (!remote)
 		die("Where do you want to fetch from today?");
+
+	if (use_mirror == -1) {
+		use_mirror = remote->use_mirror ? 1 : 0;
+	}
 
 	transport = transport_get(remote, remote->url[0]);
 	if (verbosity >= 2)
@@ -742,9 +859,39 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	sigchain_push_common(unlock_pack_on_signal);
 	atexit(unlock_pack);
-	exit_code = do_fetch(transport,
-			parse_fetch_refspec(ref_nr, refs), ref_nr);
-	transport_disconnect(transport);
-	transport = NULL;
+	refspec = parse_fetch_refspec(ref_nr, refs);
+	if (use_mirror) {
+		real_transport = transport;
+		urls_remaining = remote->mirror_url_nr + 1;
+	}
+	while (urls_remaining) {
+		if (use_mirror && (urls_remaining > 1) ) {
+			transport = transport_next_mirror(real_transport, mirror);
+			mirror = transport->url;
+			warning("trying mirror: %s", mirror);
+			// real_transport may not have these options - re-set them.
+			if (upload_pack)
+				set_option(TRANS_OPT_UPLOADPACK, upload_pack);
+			if (keep)
+				set_option(TRANS_OPT_KEEP, "yes");
+			if (depth)
+				set_option(TRANS_OPT_DEPTH, depth);
+
+		}
+		exit_code = do_fetch(transport, refspec, ref_nr);
+		transport_disconnect(transport);
+		transport = NULL;
+		urls_remaining--;
+		if (use_mirror) {
+			if (!exit_code && urls_remaining >= 1) {
+				warning("successful fetch from mirror");
+				urls_remaining = 1;
+			}
+			if (urls_remaining == 1) {
+				transport = real_transport;
+				warning("trying master: %s", transport->url);
+			}
+		}
+	}
 	return exit_code;
 }

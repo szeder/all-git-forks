@@ -139,8 +139,9 @@ static struct remote *make_remote(const char *name, int len)
 	for (i = 0; i < remotes_nr; i++) {
 		if (len ? (!strncmp(name, remotes[i]->name, len) &&
 			   !remotes[i]->name[len]) :
-		    !strcmp(name, remotes[i]->name))
+		    !strcmp(name, remotes[i]->name)) {
 			return remotes[i];
+		}
 	}
 
 	ret = xcalloc(1, sizeof(struct remote));
@@ -683,6 +684,7 @@ static struct refspec *parse_push_refspec(int nr_refspec, const char **refspec)
 	return parse_refspec_internal(nr_refspec, refspec, 0, 0);
 }
 
+
 static int valid_remote_nick(const char *name)
 {
 	if (!name[0] || is_dot_or_dotdot(name))
@@ -784,6 +786,16 @@ int remote_has_url(struct remote *remote, const char *url)
 			return 1;
 	}
 	return 0;
+}
+
+int remote_mirror_idx(struct remote *remote, const char *mirror_url)
+{
+	int i;
+	for (i = 0; i < remote->mirror_url_nr; i++) {
+		if (!strcmp(remote->mirror_url[i], mirror_url))
+			return i;
+	}
+	return -1;
 }
 
 static int match_name_with_pattern(const char *key, const char *name,
