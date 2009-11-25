@@ -204,6 +204,18 @@ all::
 # memory allocators with the nedmalloc allocator written by Niall Douglas.
 #
 # Define NO_REGEX if you have no or inferior regex support in your C library.
+#
+# Define DEFAULT_PAGER to a sensible pager command (defaults to "less") if
+# you want to use something different.  The value will be interpreted by the
+# shell at runtime when it is used.
+#
+# Define DEFAULT_EDITOR to a sensible editor command (defaults to "vi") if you
+# want to use something different.  The value will be interpreted by the shell
+# if necessary when it is used.  Examples:
+#
+#   DEFAULT_EDITOR='~/bin/vi',
+#   DEFAULT_EDITOR='$GIT_FALLBACK_EDITOR',
+#   DEFAULT_EDITOR='"C:\Program Files\Vim\gvim.exe" --nofork'
 
 GIT-VERSION-FILE: .FORCE-GIT-VERSION-FILE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -215,6 +227,12 @@ uname_O := $(shell sh -c 'uname -o 2>/dev/null || echo not')
 uname_R := $(shell sh -c 'uname -r 2>/dev/null || echo not')
 uname_P := $(shell sh -c 'uname -p 2>/dev/null || echo not')
 uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
+
+ifdef MSVC
+	# avoid the MingW and Cygwin configuration sections
+	uname_S := Windows
+	uname_O := Windows
+endif
 
 # CFLAGS and LDFLAGS are for the users to override from the command line.
 
@@ -325,6 +343,7 @@ SCRIPT_SH += git-merge-one-file.sh
 SCRIPT_SH += git-merge-resolve.sh
 SCRIPT_SH += git-mergetool.sh
 SCRIPT_SH += git-mergetool--lib.sh
+SCRIPT_SH += git-notes.sh
 SCRIPT_SH += git-parse-remote.sh
 SCRIPT_SH += git-pull.sh
 SCRIPT_SH += git-quiltimport.sh
@@ -358,6 +377,7 @@ EXTRA_PROGRAMS =
 PROGRAMS += $(EXTRA_PROGRAMS)
 PROGRAMS += git-fast-import$X
 PROGRAMS += git-hash-object$X
+PROGRAMS += git-imap-send$X
 PROGRAMS += git-index-pack$X
 PROGRAMS += git-merge-index$X
 PROGRAMS += git-merge-tree$X
@@ -369,6 +389,7 @@ PROGRAMS += git-show-index$X
 PROGRAMS += git-unpack-file$X
 PROGRAMS += git-upload-pack$X
 PROGRAMS += git-var$X
+PROGRAMS += git-http-backend$X
 
 # List built-in command $C whose implementation cmd_$C() is not in
 # builtin-$C.o but is linked in as part of some other command.
@@ -437,6 +458,7 @@ LIB_H += ll-merge.h
 LIB_H += log-tree.h
 LIB_H += mailmap.h
 LIB_H += merge-recursive.h
+LIB_H += notes.h
 LIB_H += object.h
 LIB_H += pack.h
 LIB_H += pack-refs.h
@@ -522,6 +544,7 @@ LIB_OBJS += match-trees.o
 LIB_OBJS += merge-file.o
 LIB_OBJS += merge-recursive.o
 LIB_OBJS += name-hash.o
+LIB_OBJS += notes.o
 LIB_OBJS += object.o
 LIB_OBJS += pack-check.o
 LIB_OBJS += pack-refs.o
@@ -601,7 +624,6 @@ BUILTIN_OBJS += builtin-diff-index.o
 BUILTIN_OBJS += builtin-diff-tree.o
 BUILTIN_OBJS += builtin-diff.o
 BUILTIN_OBJS += builtin-fast-export.o
-BUILTIN_OBJS += builtin-fetch--tool.o
 BUILTIN_OBJS += builtin-fetch-pack.o
 BUILTIN_OBJS += builtin-fetch.o
 BUILTIN_OBJS += builtin-fmt-merge-msg.o
@@ -783,12 +805,15 @@ ifeq ($(uname_O),Cygwin)
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
 	NO_TRUSTABLE_FILEMODE = UnfortunatelyYes
 	OLD_ICONV = UnfortunatelyYes
+	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	# There are conflicting reports about this.
 	# On some boxes NO_MMAP is needed, and not so elsewhere.
 	# Try commenting this out if you suspect MMAP is more efficient
 	NO_MMAP = YesPlease
 	NO_IPV6 = YesPlease
 	X = .exe
+	COMPAT_OBJS += compat/cygwin.o
+	UNRELIABLE_FSTAT = UnfortunatelyYes
 endif
 ifeq ($(uname_S),FreeBSD)
 	NEEDS_LIBICONV = YesPlease
@@ -898,15 +923,11 @@ ifeq ($(uname_S),HP-UX)
 	NO_SYS_SELECT_H = YesPlease
 	SNPRINTF_RETURNS_BOGUS = YesPlease
 endif
-ifneq (,$(findstring CYGWIN,$(uname_S)))
-	COMPAT_OBJS += compat/cygwin.o
-	UNRELIABLE_FSTAT = UnfortunatelyYes
-endif
-ifdef MSVC
+ifeq ($(uname_S),Windows)
 	GIT_VERSION := $(GIT_VERSION).MSVC
 	pathsep = ;
 	NO_PREAD = YesPlease
-	NO_OPENSSL = YesPlease
+	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NO_IPV6 = YesPlease
@@ -936,6 +957,7 @@ ifdef MSVC
 	NO_REGEX = YesPlease
 	NO_CURL = YesPlease
 	NO_PTHREADS = YesPlease
+	BLK_SHA1 = YesPlease
 
 	CC = compat/vcbuild/scripts/clink.pl
 	AR = compat/vcbuild/scripts/lib.pl
@@ -954,14 +976,13 @@ else
 	BASIC_CFLAGS += -Zi -MTd
 endif
 	X = .exe
-else
+endif
 ifneq (,$(findstring MINGW,$(uname_S)))
 	pathsep = ;
 	NO_PREAD = YesPlease
-	NO_OPENSSL = YesPlease
+	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
-	NO_IPV6 = YesPlease
 	NO_SETENV = YesPlease
 	NO_UNSETENV = YesPlease
 	NO_STRCASESTR = YesPlease
@@ -985,6 +1006,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	UNRELIABLE_FSTAT = UnfortunatelyYes
 	OBJECT_CREATION_USES_RENAMES = UnfortunatelyNeedsTo
 	NO_REGEX = YesPlease
+	BLK_SHA1 = YesPlease
 	COMPAT_CFLAGS += -D__USE_MINGW_ACCESS -DNOGDI -Icompat -Icompat/fnmatch
 	COMPAT_CFLAGS += -DSTRIP_EXTENSION=\".exe\"
 	COMPAT_OBJS += compat/mingw.o compat/fnmatch/fnmatch.o compat/winansi.o
@@ -1001,7 +1023,6 @@ ifneq (,$(wildcard ../THIS_IS_MSYSGIT))
 else
 	NO_CURL = YesPlease
 	NO_PTHREADS = YesPlease
-endif
 endif
 endif
 
@@ -1082,7 +1103,6 @@ EXTLIBS += -lz
 
 ifndef NO_POSIX_ONLY_PROGRAMS
 	PROGRAMS += git-daemon$X
-	PROGRAMS += git-imap-send$X
 endif
 ifndef NO_OPENSSL
 	OPENSSL_LIBSSL = -lssl
@@ -1370,6 +1390,22 @@ BASIC_CFLAGS += -DSHA1_HEADER='$(SHA1_HEADER_SQ)' \
 	$(COMPAT_CFLAGS)
 LIB_OBJS += $(COMPAT_OBJS)
 
+# Quote for C
+
+ifdef DEFAULT_EDITOR
+DEFAULT_EDITOR_CQ = "$(subst ",\",$(subst \,\\,$(DEFAULT_EDITOR)))"
+DEFAULT_EDITOR_CQ_SQ = $(subst ','\'',$(DEFAULT_EDITOR_CQ))
+
+BASIC_CFLAGS += -DDEFAULT_EDITOR='$(DEFAULT_EDITOR_CQ_SQ)'
+endif
+
+ifdef DEFAULT_PAGER
+DEFAULT_PAGER_CQ = "$(subst ",\",$(subst \,\\,$(DEFAULT_PAGER)))"
+DEFAULT_PAGER_CQ_SQ = $(subst ','\'',$(DEFAULT_PAGER_CQ))
+
+BASIC_CFLAGS += -DDEFAULT_PAGER='$(DEFAULT_PAGER_CQ_SQ)'
+endif
+
 ALL_CFLAGS += $(BASIC_CFLAGS)
 ALL_LDFLAGS += $(BASIC_LDFLAGS)
 
@@ -1633,6 +1669,7 @@ GIT-CFLAGS: .FORCE-GIT-CFLAGS
 # and the first level quoting from the shell that runs "echo".
 GIT-BUILD-OPTIONS: .FORCE-GIT-BUILD-OPTIONS
 	@echo SHELL_PATH=\''$(subst ','\'',$(SHELL_PATH_SQ))'\' >$@
+	@echo PERL_PATH=\''$(subst ','\'',$(PERL_PATH_SQ))'\' >>$@
 	@echo TAR=\''$(subst ','\'',$(subst ','\'',$(TAR)))'\' >>$@
 	@echo NO_CURL=\''$(subst ','\'',$(subst ','\'',$(NO_CURL)))'\' >>$@
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@
@@ -1806,7 +1843,10 @@ dist: git.spec git-archive$(X) configure
 	gzip -f -9 $(GIT_TARNAME).tar
 
 rpm: dist
-	$(RPMBUILD) -ta $(GIT_TARNAME).tar.gz
+	$(RPMBUILD) \
+		--define "_source_filedigest_algorithm md5" \
+		--define "_binary_filedigest_algorithm md5" \
+		-ta $(GIT_TARNAME).tar.gz
 
 htmldocs = git-htmldocs-$(GIT_VERSION)
 manpages = git-manpages-$(GIT_VERSION)
