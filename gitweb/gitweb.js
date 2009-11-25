@@ -7,6 +7,39 @@
  * @license GPLv2 or later
  */
 
+/* ============================================================ */
+/* functions for generic gitweb actions and views */
+
+/**
+ * used to check if link has 'js' query parameter already (at end),
+ * and other reasons to not add 'js=1' param at the end of link
+ * @constant
+ */
+var jsExceptionsRe = /[;?]js=[01]$/;
+
+/**
+ * Add '?js=1' or ';js=1' to the end of every link in the document
+ * that doesn't have 'js' query parameter set already.
+ *
+ * Links with 'js=1' lead to JavaScript version of given action, if it
+ * exists (currently there is only 'blame_incremental' for 'blame')
+ *
+ * @globals jsExceptionsRe
+ */
+function fixLinks() {
+	var allLinks = document.getElementsByTagName("a") || document.links;
+	for (var i = 0, len = allLinks.length; i < len; i++) {
+		var link = allLinks[i];
+		if (!jsExceptionsRe.test(link)) { // =~ /[;?]js=[01]$/;
+			link.href +=
+				(link.href.indexOf('?') === -1 ? '?' : ';') + 'js=1';
+		}
+	}
+}
+
+
+/* ============================================================ */
+
 /*
  * This code uses DOM methods instead of (nonstandard) innerHTML
  * to modify page.
@@ -31,19 +64,19 @@
 
 /**
  * pad number N with nonbreakable spaces on the left, to WIDTH characters
- * example: padLeftStr(12, 3, '&nbsp;') == '&nbsp;12'
- *          ('&nbsp;' is nonbreakable space)
+ * example: padLeftStr(12, 3, '\u00A0') == '\u00A012'
+ *          ('\u00A0' is nonbreakable space)
  *
  * @param {Number|String} input: number to pad
  * @param {Number} width: visible width of output
- * @param {String} str: string to prefix to string, e.g. '&nbsp;'
+ * @param {String} str: string to prefix to string, e.g. '\u00A0'
  * @returns {String} INPUT prefixed with (WIDTH - INPUT.length) x STR
  */
 function padLeftStr(input, width, str) {
 	var prefix = '';
 
 	width -= input.toString().length;
-	while (width > 1) {
+	while (width > 0) {
 		prefix += str;
 		width--;
 	}
@@ -88,6 +121,7 @@ function createRequestObject() {
 
 	return null;
 }
+
 
 /* ============================================================ */
 /* utility/helper functions (and variables) */
@@ -158,7 +192,7 @@ function updateProgressInfo() {
 
 	if (div_progress_info) {
 		div_progress_info.firstChild.data  = blamedLines + ' / ' + totalLines +
-			' (' + padLeftStr(percentage, 3, '&nbsp;') + '%)';
+			' (' + padLeftStr(percentage, 3, '\u00A0') + '%)';
 	}
 
 	if (div_progress_bar) {
@@ -528,12 +562,20 @@ function handleLine(commit, group) {
 			td_sha1.rowSpan = group.numlines;
 
 			a_sha1.href = projectUrl + 'a=commit;h=' + commit.sha1;
-			a_sha1.firstChild.data = commit.sha1.substr(0, 8);
+			if (a_sha1.firstChild) {
+				a_sha1.firstChild.data = commit.sha1.substr(0, 8);
+			} else {
+				a_sha1.appendChild(
+					document.createTextNode(commit.sha1.substr(0, 8)));
+			}
 			if (group.numlines >= 2) {
 				var fragment = document.createDocumentFragment();
 				var br   = document.createElement("br");
-				var text = document.createTextNode(
-					commit.author.match(/\b([A-Z])\B/g).join(''));
+				var match = commit.author.match(/\b([A-Z])\B/g);
+				if (match) {
+					var text = document.createTextNode(
+							match.join(''));
+				}
 				if (br && text) {
 					var elem = fragment || td_sha1;
 					elem.appendChild(br);

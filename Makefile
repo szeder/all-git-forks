@@ -205,6 +205,9 @@ all::
 #
 # Define NO_REGEX if you have no or inferior regex support in your C library.
 #
+# Define JSMIN to point to JavaScript minifier that functions as
+# a filter to have gitweb.js minified.
+#
 # Define DEFAULT_PAGER to a sensible pager command (defaults to "less") if
 # you want to use something different.  The value will be interpreted by the
 # shell at runtime when it is used.
@@ -274,6 +277,9 @@ lib = lib
 # DESTDIR=
 pathsep = :
 
+# JavaScript minifier invocation that can function as filter
+JSMIN =
+
 # default configuration for gitweb
 GITWEB_CONFIG = gitweb_config.perl
 GITWEB_CONFIG_SYSTEM = /etc/gitweb.conf
@@ -289,7 +295,11 @@ GITWEB_HOMETEXT = indextext.html
 GITWEB_CSS = gitweb.css
 GITWEB_LOGO = git-logo.png
 GITWEB_FAVICON = git-favicon.png
+ifdef JSMIN
+GITWEB_JS = gitweb.min.js
+else
 GITWEB_JS = gitweb.js
+endif
 GITWEB_SITE_HEADER =
 GITWEB_SITE_FOOTER =
 
@@ -1499,8 +1509,13 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 	chmod +x $@+ && \
 	mv $@+ $@
 
+ifdef JSMIN
+OTHER_PROGRAMS += gitweb/gitweb.cgi   gitweb/gitweb.min.js
+gitweb/gitweb.cgi: gitweb/gitweb.perl gitweb/gitweb.min.js
+else
 OTHER_PROGRAMS += gitweb/gitweb.cgi
 gitweb/gitweb.cgi: gitweb/gitweb.perl
+endif
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*perl|#!$(PERL_PATH_SQ)|' \
 	    -e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
@@ -1550,6 +1565,11 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)) git-instaweb: % : unimplemented.sh
 	chmod +x $@+ && \
 	mv $@+ $@
 endif # NO_PERL
+
+ifdef JSMIN
+gitweb/gitweb.min.js: gitweb/gitweb.js
+	$(QUIET_GEN)$(JSMIN) <$< >$@
+endif # JSMIN
 
 configure: configure.ac
 	$(QUIET_GEN)$(RM) $@ $<+ && \
