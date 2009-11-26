@@ -5,8 +5,10 @@ git-core (1:1.6.6~rc0-1) experimental; urgency=low
     debian/diff/0002-bug-438793-494505-fallback-to-editor-...diff,
     debian/diff/0004-bug-477337-git-svn.perl-fallback-to...diff:
     remove; obsolete.
+  * debian/rules: add DEFAULT_PAGER=pager, DEFAULT_EDITOR=editor to
+    OPTS.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 26 Nov 2009 00:11:28 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 26 Nov 2009 00:17:59 +0000
 
 git-core (1:1.6.5.3-1) unstable; urgency=low
 
