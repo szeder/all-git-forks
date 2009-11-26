@@ -1,0 +1,129 @@
+Git v1.6.6 Release Notes
+========================
+
+In this release, "git fsck" defaults to "git fsck --full" and checks
+packfiles, and because of this it will take much longer to complete
+than before.  If you prefer a quicker check only on loose objects (the
+old default), you can say "git fsck --no-full".  This has been
+supported by 1.5.4 and newer versions of git, so it is safe to write
+it in your script even if you use slightly older git on some of your
+machines.
+
+In git 1.7.0, which is planned to be the release after 1.6.6, "git
+push" into a branch that is currently checked out will be refused by
+default.
+
+You can choose what should happen upon such a push by setting the
+configuration variable receive.denyCurrentBranch in the receiving
+repository.
+
+Also, "git push $there :$killed" to delete the branch $killed in a remote
+repository $there, when $killed branch is the current branch pointed at by
+its HEAD, will be refused by default.
+
+You can choose what should happen upon such a push by setting the
+configuration variable receive.denyDeleteCurrent in the receiving
+repository.
+
+To ease the transition plan, the receiving repository of such a
+push running this release will issue a big warning when the
+configuration variable is missing.  Please refer to:
+
+  http://git.or.cz/gitwiki/GitFaq#non-bare
+  http://thread.gmane.org/gmane.comp.version-control.git/107758/focus=108007
+
+for more details on the reason why this change is needed and the
+transition plan.
+
+Updates since v1.6.5
+--------------------
+
+(subsystems)
+
+ * various git-gui updates including new translations, wm states, etc.
+
+ * git-svn updates.
+
+ * "git fetch" over http learned a new mode that is different from the
+   traditional "dumb commit walker".
+
+(portability)
+
+ * imap-send can be built on mingw port.
+
+(performance)
+
+ * "git diff -B" has smaller memory footprint.
+
+(usability, bells and whistles)
+
+ * The object replace mechanism can be bypassed with --no-replace-objects
+   global option given to the "git" program.
+
+ * In configuration files, a few variables that name paths can begin with ~/
+   and ~username/ and they are expanded as expected.
+
+ * "git subcmd -h" now shows short usage help for many more subcommands.
+
+ * "git bisect reset" can reset to an arbitrary commit.
+
+ * "git checkout frotz" when there is no local branch "frotz" but there
+   is only one remote tracking branch "frotz" is taken as a request to
+   start the named branch at the corresponding remote tracking branch.
+
+ * "git describe" can be told to add "-dirty" suffix with "--dirty" option.
+
+ * "git diff" learned --submodule option to show a list of one-line logs
+   instead of differences between the commit object names.
+
+ * "git fsck" by default checks the packfiles (i.e. "--full" is the
+   default); you can turn it off with "git fsck --no-full".
+
+ * "git grep" can use -F (fixed strings) and -i (ignore case) together.
+
+ * import-tars contributed fast-import frontend learned more types of
+   compressed tarballs.
+
+ * "git instaweb" knows how to talk with mod_cgid to apache2.
+
+ * "git log --decorate" shows the location of HEAD as well.
+
+ * "--pretty=format" option to "log" family of commands learned:
+
+   . to wrap text with the "%w()" specifier.
+   . to show reflog information with "%g[sdD]" specifier.
+
+ * "git notes" command to annotate existing commits.
+
+ * "git merge" (and "git pull") learned --ff-only option to make it fail
+   if the merge does not result in a fast-forward.
+
+ * "git mergetool" learned to use p4merge.
+
+ * "git rebase -i" learned "reword" that acts like "edit" but immediately
+   starts an editor to tweak the log message without returning control to
+   the shell, which is done by "edit" to give an opportunity to tweak the
+   contents.
+
+ * In "git submodule add <repository> <path>", <path> is now optional and
+   inferred from <repository> the same way "git clone <repository>" does.
+
+ * "git svn" learned to read SVN 1.5+ and SVK merge tickets.
+
+ * Author names shown in gitweb output are links to search commits by the
+   author.
+
+
+(developers)
+
+Fixes since v1.6.5
+------------------
+
+All of the fixes in v1.6.5.X maintenance series are included in this
+release, unless otherwise noted.
+
+---
+exec >/var/tmp/1
+echo O=$(git describe master)
+O=v1.6.5.3-337-gf341feb
+git shortlog --no-merges $O..master --not maint

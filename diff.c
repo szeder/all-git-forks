@@ -13,6 +13,7 @@
 #include "utf8.h"
 #include "userdiff.h"
 #include "sigchain.h"
+#include "submodule.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -1114,7 +1115,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	       total_files, adds, dels);
 }
 
-static void show_shortstats(struct diffstat_t* data, struct diff_options *options)
+static void show_shortstats(struct diffstat_t *data, struct diff_options *options)
 {
 	int i, adds = 0, dels = 0, total_files = data->nr;
 
@@ -1560,6 +1561,17 @@ static void builtin_diff(const char *name_a,
 	const char *reset = diff_get_color_opt(o, DIFF_RESET);
 	const char *a_prefix, *b_prefix;
 	const char *textconv_one = NULL, *textconv_two = NULL;
+
+	if (DIFF_OPT_TST(o, SUBMODULE_LOG) &&
+			(!one->mode || S_ISGITLINK(one->mode)) &&
+			(!two->mode || S_ISGITLINK(two->mode))) {
+		const char *del = diff_get_color_opt(o, DIFF_FILE_OLD);
+		const char *add = diff_get_color_opt(o, DIFF_FILE_NEW);
+		show_submodule_summary(o->file, one ? one->path : two->path,
+				one->sha1, two->sha1,
+				del, add, reset);
+		return;
+	}
 
 	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
 		textconv_one = get_textconv(one);
@@ -2761,6 +2773,12 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		DIFF_OPT_CLR(options, ALLOW_TEXTCONV);
 	else if (!strcmp(arg, "--ignore-submodules"))
 		DIFF_OPT_SET(options, IGNORE_SUBMODULES);
+	else if (!strcmp(arg, "--submodule"))
+		DIFF_OPT_SET(options, SUBMODULE_LOG);
+	else if (!prefixcmp(arg, "--submodule=")) {
+		if (!strcmp(arg + 12, "log"))
+			DIFF_OPT_SET(options, SUBMODULE_LOG);
+	}
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))
