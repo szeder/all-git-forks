@@ -50,7 +50,8 @@ constructor dialog {} {
 		-width 40 \
 		-textvariable @name \
 		-validate key \
-		-validatecommand [cb _validate %d %S]
+		-validatecommand [cb _validate %d %S] \
+		-invalidcommand [cb _validation_failed %S %i $w_name]
 	grid $w.desc.name_r $w_name -sticky we -padx {0 5}
 
 	${NS}::radiobutton $w.desc.match_r \
@@ -205,6 +206,23 @@ method _validate {d S} {
 		}
 	}
 	return 1
+}
+
+method _validation_failed {text index widget} {
+	if {[string length $text] ne 1} {
+		set new_text [regsub -all {[~^:?*\[\0- ]} $text _]
+		$widget delete $index end
+		$widget insert $index $new_text
+	} else {
+		if {$index < 0} {
+			$widget delete end
+			$widget insert end _
+		} else {
+			$widget delete $index
+			$widget insert $index _ 
+		}
+	}
+	$widget configure -validate key
 }
 
 method _select {args} {

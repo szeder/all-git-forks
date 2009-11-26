@@ -51,7 +51,8 @@ constructor dialog {} {
 		-validatecommand {
 			if {%d == 1 && [regexp {[~^:?*\[\0- ]} %S]} {return 0}
 			return 1
-		}
+		} \
+        -invalidcommand [cb _validation_failed %S %i $w.rename.newname_t]
 
 	grid $w.rename.oldname_l $w.rename.oldname_m -sticky we -padx {0 5}
 	grid $w.rename.newname_l $w.rename.newname_t -sticky we -padx {0 5}
@@ -67,6 +68,23 @@ constructor dialog {} {
 	"
 	wm deiconify $w
 	tkwait window $w
+}
+
+method _validation_failed {text index widget} {
+	if {[string length $text] ne 1} {
+		set new_text [regsub -all {[~^:?*\[\0- ]} $text _]
+		$widget delete $index end
+		$widget insert $index $new_text
+	} else {
+		if {$index < 0} {
+			$widget delete end
+			$widget insert end _
+		} else {
+			$widget delete $index
+			$widget insert $index _ 
+		}
+	}
+	$widget configure -validate key
 }
 
 method _rename {} {
