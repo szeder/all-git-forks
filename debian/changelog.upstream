@@ -1,3 +1,355 @@
+Version v1.6.6-rc0; changes since v1.6.5.3:
+-------------------------------------------
+
+Alex Riesen (1):
+      git-gui: Update russian translation
+
+Alexey Borzenkov (1):
+      git-gui: store wm state and fix wm geometry
+
+Anders Kaseorg (1):
+      bisect reset: Allow resetting to any commit, not just a branch
+
+Ben Walton (2):
+      configure: add macro to set arbitrary make variables
+      configure: add settings for gitconfig, editor and pager
+
+Björn Gustavsson (10):
+      Teach 'rebase -i' the command "reword"
+      bash: complete more options for 'git rebase'
+      Teach 'git merge' and 'git pull' the option --ff-only
+      format-patch: Always generate a patch
+      format-patch documentation: Remove diff options that are not useful
+      format-patch documentation: Fix formatting
+      format-patch: Add "--no-stat" as a synonym for "-p"
+      bash: add the merge option --ff-only
+      Fix truncated usage messages
+      User Manual: Write "Git" instead of "GIT"
+
+Brian Collins (1):
+      grep: Allow case insensitive search of fixed-strings
+
+Christian Couder (1):
+      git: add --no-replace-objects option to disable replacing
+
+Clemens Buchacher (2):
+      remote-helpers: return successfully if everything up-to-date
+      set httpd port before sourcing lib-httpd
+
+Dan Zwell (1):
+      git-gui: Limit display to a maximum number of files
+
+David Aguilar (1):
+      submodule.c: Squelch a "use before assignment" warning
+
+David Brown (1):
+      commit: More generous accepting of RFC-2822 footer lines.
+
+David Kågedal (1):
+      git-blame.el: Change how blame information is shown.
+
+Eric Wong (6):
+      git svn: fix fetch where glob is on the top-level URL
+      git svn: read global+system config for clone+init
+      git svn: add authorsfile test case for ~/.gitconfig
+      git svn: attempt to create empty dirs on clone+rebase
+      git svn: always reuse existing remotes on fetch
+      git svn: strip leading path when making empty dirs
+
+Erik Faye-Lund (6):
+      imap-send: use separate read and write fds
+      imap-send: use run-command API for tunneling
+      imap-send: fix compilation-error on Windows
+      imap-send: build imap-send on Windows
+      mingw: wrap SSL_set_(w|r)fd to call _get_osfhandle
+      mingw: enable OpenSSL
+
+Felipe Contreras (2):
+      diff.c: stylefix
+      Use 'fast-forward' all over the place
+
+Greg Price (1):
+      Documentation: undocument gc'd function graph_release()
+
+Heiko Voigt (1):
+      git-gui: remove warning when deleting correctly merged remote branch
+
+Ingmar Vanhassel (1):
+      import-tars: Add support for tarballs compressed with lzma, xz
+
+Jakub Narebski (4):
+      gitweb: Add 'show-sizes' feature to show blob sizes in tree view
+      gitweb: Refactor 'log' action generation, adding git_log_body()
+      gitweb: Refactor common parts of 'log' and 'shortlog' views
+      gitweb: Make 'history' view (re)use git_log_generic()
+
+Jean Privat (1):
+      Teach "git describe" --dirty option
+
+Jeff King (5):
+      imap-send: remove useless uid code
+      gitignore: root most patterns at the top-level directory
+      t915{0,1}: use $TEST_DIRECTORY
+      diffcore-break: free filespec data as we go
+      diffcore-break: save cnt_data for other phases
+
+Jens Lehmann (5):
+      git-gui: display summary when showing diff of a submodule
+      git-gui: fix diff for partially staged submodule changes
+      git submodule add: make the <path> parameter optional
+      git-gui: fix use of uninitialized variable
+      add tests for git diff --submodule
+
+Jimmy Angelakos (1):
+      git-gui: Added Greek translation & glossary
+
+Johan Herland (9):
+      Teach "-m <msg>" and "-F <file>" to "git notes edit"
+      fast-import: Add support for importing commit notes
+      t3302-notes-index-expensive: Speed up create_repo()
+      Add flags to get_commit_notes() to control the format of the note string
+      Teach notes code to free its internal data structures on request
+      Teach the notes lookup code to parse notes trees with various fanout schemes
+      Add selftests verifying that we can parse notes trees with various fanouts
+      Refactor notes code to concatenate multiple notes annotating the same object
+      Add selftests verifying concatenation of multiple notes for the same commit
+
+Johannes Schindelin (8):
+      print_wrapped_text(): allow hard newlines
+      Add strbuf_add_wrapped_text() to utf8.[ch]
+      Introduce commit notes
+      Add a script to edit/inspect notes
+      Speed up git notes lookup
+      Add an expensive test for git-notes
+      Add '%N'-format for pretty-printing commit notes
+      Add the --submodule option to the diff option family
+
+Johannes Sixt (1):
+      Windows: use BLK_SHA1 again
+
+Jonathan Nieder (34):
+      Add tests for git check-ref-format
+      check-ref-format: simplify --print implementation
+      Handle more shell metacharacters in editor names
+      Retire fetch--tool helper to contrib/examples
+      Show usage string for 'git grep -h'
+      Show usage string for 'git cherry -h'
+      Show usage string for 'git commit-tree -h'
+      Show usage string for 'git merge-ours -h'
+      Show usage string for 'git show-ref -h'
+      http-fetch: add missing initialization of argv0_path
+      Show usage string for 'git check-ref-format -h'
+      Show usage string for 'git fast-import -h'
+      Show usage string for 'git get-tar-commit-id -h'
+      Show usage string for 'git imap-send -h'
+      Show usage string for 'git mailsplit -h'
+      Show usage string for 'git merge-one-file -h'
+      Show usage string for 'git rev-parse -h'
+      Show usage string for 'git show-index -h'
+      Show usage string for 'git unpack-file -h'
+      Show usage string for 'git stripspace -h'
+      Let 'git http-fetch -h' show usage outside any git repository
+      Show usage string for 'git http-push -h'
+      Let 'git <command> -h' show usage without a git dir
+      Introduce usagef() that takes a printf-style format
+      merge-{recursive,subtree}: use usagef() to print usage
+      diff --no-index: make the usage string less scary
+      Do not use VISUAL editor on dumb terminals
+      Suppress warnings from "git var -l"
+      Teach git var about GIT_EDITOR
+      Teach git var about GIT_PAGER
+      add -i, send-email, svn, p4, etc: use "git var GIT_EDITOR"
+      am -i, git-svn: use "git var GIT_PAGER"
+      Provide a build time default-editor setting
+      Speed up bash completion loading
+
+Julian Phillips (4):
+      fetch: Speed up fetch by rewriting find_non_local_tags
+      remote: Make ref_remove_duplicates faster for large numbers of refs
+      fetch: Speed up fetch of large numbers of refs
+      remote: fix use-after-free error detected by glibc in ref_remove_duplicates
+
+Junio C Hamano (22):
+      diff-lib.c: fix misleading comments on oneway_diff()
+      unpack-trees: typofix
+      unpack_callback(): use unpack_failed() consistently
+      git check-ref-format --print
+      Start 1.6.6 cycle
+      check_filename(): make verify_filename() callable without dying
+      DWIM "git checkout frotz" to "git checkout -b frotz origin/frotz"
+      format_commit_message(): fix function signature
+      fsck: default to "git fsck --full"
+      git checkout --no-guess
+      Teach --wrap to only indent without wrapping
+      Update draft release notes to 1.6.6
+      Revert "Don't create the $GIT_DIR/branches directory on init"
+      t1200: further modernize test script style
+      t1200: prepare for merging with Fast-forward bikeshedding
+      builtin-commit.c: fix logic to omit empty line before existing footers
+      git-describe.txt: formatting fix
+      Provide a build time default-pager setting
+      Update draft release notes to 1.6.6
+      diffcore-rename: reduce memory footprint by freeing blob data early
+      Documentation: avoid xmlto input error
+      Git v1.6.6-rc0
+
+Linus Torvalds (1):
+      Add '--bisect' revision machinery argument
+
+Lukas Sandström (1):
+      git am/mailinfo: Don't look at in-body headers when rebasing
+
+Marius Storm-Olsen (1):
+      MSVC: Enable OpenSSL, and translate -lcrypto
+
+Mark Lodato (5):
+      http-backend: add GIT_PROJECT_ROOT environment var
+      http-backend: reword some documentation
+      http-backend: use mod_alias instead of mod_rewrite
+      http-backend: add example for gitweb on same URL
+      http-backend: more explict LocationMatch
+
+Mark Rada (1):
+      instaweb: support mod_cgid for apache2
+
+Markus Heidelberg (1):
+      bash completion: difftool accepts the same options as diff
+
+Matthew Ogilvie (1):
+      core.autocrlf documentation: mention the crlf attribute
+
+Matthieu Moy (2):
+      Expand ~ and ~user in core.excludesfile, commit.template
+      expand_user_path: expand ~ to $HOME, not to the actual homedir.
+
+Michael J Gruber (1):
+      Make t9150 and t9151 test scripts executable
+
+Nicolas Pitre (2):
+      pack-objects: move thread autodetection closer to relevant code
+      give priority to progress messages
+
+Philippe Bruhat (1):
+      Make sure $PERL_PATH is defined when the test suite is run.
+
+Raman Gupta (1):
+      Add branch management for releases to gitworkflows
+
+Ramsay Allan Jones (4):
+      Makefile: merge two Cygwin configuration sections into one
+      Makefile: keep MSVC and Cygwin configuration separate
+      MSVC: Add support for building with NO_MMAP
+      t9700-perl-git.sh: Fix a test failure on Cygwin
+
+René Scharfe (6):
+      describe: load refnames before calling describe()
+      Implement wrap format %w() as if it is a mode switch
+      log --format: don't ignore %w() at the start of format string
+      grep: unset GREP_OPTIONS before spawning external grep
+      strbuf_add_wrapped_text(): factor out strbuf_add_indented_text()
+      log --format: document %w
+
+Robin Rosenberg (1):
+      Don't create the $GIT_DIR/branches directory on init
+
+SZEDER Gábor (1):
+      Documentation: add 'git replace' to main git manpage
+
+Sam Vilain (5):
+      git-svn: add test data for SVK merge, with script.
+      git-svn: allow test setup script to support PERL env. var
+      git-svn: convert SVK merge tickets to extra parents
+      git-svn: add test data for SVN 1.5+ merge, with script.
+      git-svn: convert SVN 1.5+ / svnmerge.py svn:mergeinfo props to parents
+
+Scott Chacon (2):
+      mergetool--lib: add p4merge as a pre-configured mergetool option
+      Update packfile transfer protocol documentation
+
+Sebastian Schuberth (2):
+      Use faster byte swapping when compiling with MSVC
+      Make the MSVC projects use PDB/IDB files named after the project
+
+Shawn O. Pearce (27):
+      git-gui: Ensure submodule path is quoted properly
+      pkt-line: Add strbuf based functions
+      pkt-line: Make packet_read_line easier to debug
+      fetch-pack: Use a strbuf to compose the want list
+      Move "get_ack()" back to fetch-pack
+      Add multi_ack_detailed capability to fetch-pack/upload-pack
+      remote-curl: Refactor walker initialization
+      fetch: Allow transport -v -v -v to set verbosity to 3
+      remote-helpers: Fetch more than one ref in a batch
+      remote-helpers: Support custom transport options
+      Move WebDAV HTTP push under remote-curl
+      Git-aware CGI to provide dumb HTTP transport
+      Add stateless RPC options to upload-pack, receive-pack
+      Smart fetch and push over HTTP: server side
+      Discover refs via smart HTTP server when available
+      Smart push over HTTP: client side
+      Smart fetch over HTTP: client side
+      Smart HTTP fetch: gzip requests
+      http tests: use /dumb/ URL prefix
+      test smart http fetch and push
+      http-backend: Use http.getanyfile to disable dumb HTTP serving
+      http-backend: Test configuration options
+      Git-aware CGI to provide dumb HTTP transport
+      http-backend: Protect GIT_PROJECT_ROOT from /../ requests
+      t5551-http-fetch: Work around some libcurl versions
+      t5551-http-fetch: Work around broken Accept header in libcurl
+      http-backend: Fix bad treatment of uintmax_t in Content-Length
+
+Stephen Boyd (7):
+      rebase -i: fix reword when using a terminal editor
+      gitweb: linkify author/committer names with search
+      t1402: Make test executable
+      t1200: cleanup and modernize test style
+      t1200: Make documentation and test agree
+      t3101: test more ls-tree options
+      ls-tree: migrate to parse-options
+
+Tarmigan Casebolt (3):
+      Check the format of more printf-type functions
+      http-backend: Fix access beyond end of string.
+      http-backend: Let gcc check the format of more printf-type functions.
+
+Tay Ray Chuan (2):
+      http-push: fix check condition on http.c::finish_http_pack_request()
+      t5540-http-push: remove redundant fetches
+
+Thiago Farina (1):
+      Documentation: update pt-BR
+
+Thomas Rast (14):
+      bash completion: complete refs for git-grep
+      Let --decorate show HEAD position
+      Refactor pretty_print_commit arguments into a struct
+      reflog-walk: refactor the branch@{num} formatting
+      Introduce new pretty formats %g[sdD] for reflog information
+      stash list: use new %g formats instead of sed
+      stash list: drop the default limit of 10 stashes
+      describe: when failing, tell the user about options that work
+      filter-branch: stop special-casing $filter_subdir argument
+      filter-branch: nearest-ancestor rewriting outside subdir filter
+      Documentation: clarify 'ours' merge strategy
+      rebase docs: clarify --merge and --strategy
+      Document git-svn's first-parent rule
+      describe: do not use unannotated tag even if exact match
+
+Tim Henigan (2):
+      Update 'git remote update' usage string to match man page.
+      git remote: Separate usage strings for subcommands
+
+Toby Allsopp (1):
+      git svn: handle SVN merges from revisions past the tip of the branch
+
+Vietor Liu (1):
+      git-gui: adjust the minimum height of diff pane for shorter screen height
+
+Štěpán Němec (1):
+      git-update-index.txt: Document the --really-refresh option.
+
+
 Version v1.6.5.3; changes since v1.6.5.2:
 -----------------------------------------
 
