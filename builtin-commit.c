@@ -1113,6 +1113,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 	switch (status_format) {
 	case STATUS_FORMAT_SHORT:
+		if (s.relative_paths)
+			s.prefix = prefix;
 		short_print(&s, null_termination);
 		break;
 	case STATUS_FORMAT_PORCELAIN:
