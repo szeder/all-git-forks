@@ -376,7 +376,7 @@ static void emit_hunk_header(struct emit_callback *ecbdata,
 
 	/* blank before the func header */
 	for (cp = ep; ep - line < len; ep++)
-		if (*ep != ' ' && *ep != 't')
+		if (*ep != ' ' && *ep != '\t')
 			break;
 	if (ep != cp)
 		emit_line(ecbdata->file, plain, reset, cp, ep - cp);
