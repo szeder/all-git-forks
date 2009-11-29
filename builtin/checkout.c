@@ -915,6 +915,11 @@ static int parse_branchname_arg(int argc, const char **argv,
 
 int cmd_checkout(int argc, const char **argv, const char *prefix)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#define new new_
+#endif
+
 	struct checkout_opts opts;
 	unsigned char rev[20];
 	struct branch_info new;
@@ -947,6 +952,10 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
 		OPT_END(),
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	memset(&opts, 0, sizeof(opts));
 	memset(&new, 0, sizeof(new));
