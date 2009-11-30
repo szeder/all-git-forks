@@ -3,6 +3,7 @@
  * Fredrik Kuivinen.
  * The thieves were Alex Riesen and Johannes Schindelin, in June/July 2006
  */
+#include "advice.h"
 #include "cache.h"
 #include "cache-tree.h"
 #include "commit.h"
@@ -1182,6 +1183,11 @@ struct unpack_trees_error_msgs get_porcelain_error_msgs(void)
 		/* bind_overlap -- will not happen here */
 		NULL,
 	};
+	if (advice_commit_before_merge) {
+		msgs.would_overwrite = msgs.not_uptodate_file =
+			"Your local changes to '%s' would be overwritten by merge.  Aborting.\n"
+			"Please, commit your changes or stash them before you can merge.";
+	}
 	return msgs;
 }
 
