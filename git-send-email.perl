@@ -187,9 +187,11 @@ my ($identity, $aliasfiletype, @alias_files, @smtp_host_parts);
 my ($validate, $confirm);
 my (@suppress_cc);
 
+my $not_set_by_user = "true but not set by the user";
+
 my %config_bool_settings = (
     "thread" => [\$thread, 1],
-    "chainreplyto" => [\$chain_reply_to, undef],
+    "chainreplyto" => [\$chain_reply_to, $not_set_by_user],
     "suppressfrom" => [\$suppress_from, undef],
     "signedoffbycc" => [\$signed_off_by_cc, undef],
     "signedoffcc" => [\$signed_off_by_cc, undef],      # Deprecated
@@ -213,6 +215,19 @@ my %config_settings = (
     "confirm"   => \$confirm,
     "from" => \$sender,
 );
+
+# Help users prepare for 1.7.0
+sub chain_reply_to {
+	if (defined $chain_reply_to &&
+	    $chain_reply_to eq $not_set_by_user) {
+		print STDERR
+		    "In git 1.7.0, the default has changed to --no-chain-reply-to\n" .
+		    "Set sendemail.chainreplyto configuration variable to true if\n" .
+		    "you want to keep --chain-reply-to as your default.\n";
+		$chain_reply_to = 0;
+	}
+	return $chain_reply_to;
+}
 
 # Handle Uncouth Termination
 sub signal_handler {
@@ -1174,7 +1189,7 @@ foreach my $t (@files) {
 
 	# set up for the next message
 	if ($thread && $message_was_sent &&
-		($chain_reply_to || !defined $reply_to || length($reply_to) == 0)) {
+		(chain_reply_to() || !defined $reply_to || length($reply_to) == 0)) {
 		$reply_to = $message_id;
 		if (length $references > 0) {
 			$references .= "\n $message_id";

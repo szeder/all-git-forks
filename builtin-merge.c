@@ -107,8 +107,8 @@ static struct strategy *get_strategy(const char *name)
 					found = 1;
 			if (!found)
 				add_cmdname(&not_strategies, ent->name, ent->len);
-			exclude_cmds(&main_cmds, &not_strategies);
 		}
+		exclude_cmds(&main_cmds, &not_strategies);
 	}
 	if (!is_in_cmdlist(&main_cmds, name) && !is_in_cmdlist(&other_cmds, name)) {
 		fprintf(stderr, "Could not find merge strategy '%s'.\n", name);
@@ -796,6 +796,11 @@ static int suggest_conflicts(void)
 	return 1;
 }
 
+static const char deprecation_warning[] =
+	"'git merge <msg> HEAD <commit>' is deprecated. Please update\n"
+	"your script to use 'git merge -m <msg> <commit>' instead.\n"
+	"In future versions of git, this syntax will be removed.";
+
 static struct commit *is_old_style_invocation(int argc, const char **argv)
 {
 	struct commit *second_token = NULL;
@@ -809,6 +814,7 @@ static struct commit *is_old_style_invocation(int argc, const char **argv)
 			die("'%s' is not a commit", argv[1]);
 		if (hashcmp(second_token->object.sha1, head))
 			return NULL;
+		warning(deprecation_warning);
 	}
 	return second_token;
 }
