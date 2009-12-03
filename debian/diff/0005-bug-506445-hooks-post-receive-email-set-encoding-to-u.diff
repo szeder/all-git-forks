@@ -1,4 +1,4 @@
-From 9290a2af15d65609602f31665d66372d128ef015 Mon Sep 17 00:00:00 2001
+From c0fc8148fa844fc9274b49800838713013c1ac8d Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
 Subject: [PATCH 5/5] bug#506445: hooks/post-receive-email: set encoding to utf-8
