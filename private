@@ -5,6 +5,9 @@ branches() {
 	    -e '/^[^ \t-]/p'
 }
 
+upstream=`git for-each-ref --format='%(upstream)' refs/heads/private`
+upstream=${upstream:-origin}
+
 case "$1" in
 --continue)
 	shift
@@ -12,13 +15,13 @@ case "$1" in
 *)
 	test "$1" != "-f" &&
 	test -n "`git rev-list -1 --no-merges --first-parent \
-		 origin/next..private`" &&
+		 $upstream..private`" &&
 	  {
-		  git log --no-merges --first-parent origin/next..private
+		  git log --no-merges --first-parent $upstream..private
 		  exit 1
 	  }
 	git checkout private &&
-	git reset --hard origin/next || exit
+	git reset --hard $upstream || exit
 esac
 
 for i in `branches`; do
