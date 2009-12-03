@@ -26,7 +26,7 @@ esac
 
 for i in `branches`; do
 	echo >&2 Merging $i...
-	if ! git merge $i; then
+	if ! git merge --no-ff $i; then
 		if test -z "`git ls-files -u`"; then
 			echo >&2 Auto-committing rerere merge...
 			GIT_EDITOR=true git commit || exit 1
