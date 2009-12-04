@@ -3920,7 +3920,9 @@ sub git_difftree_body {
 				# link to patch
 				$patchno++;
 				print "<td class=\"link\">" .
-				      $cgi->a({-href => "#patch$patchno"}, "patch") .
+				      $cgi->a({-href => href(action=>"commitdiff",
+							     hash=>$hash)."#patch$patchno"},
+					      "patch") .
 				      " | " .
 				      "</td>\n";
 			}
@@ -4017,7 +4019,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch");
+				print $cgi->a({-href => href(action=>"commitdiff",
+                                                             hash=>$hash)."#patch$patchno"},
+					      "patch");
 				print " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
@@ -4037,7 +4041,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch");
+				print $cgi->a({-href => href(action=>"commitdiff",
+                                                             hash=>$hash)."#patch$patchno"},
+					      "patch");
 				print " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'from_id'},
@@ -4079,7 +4085,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				print $cgi->a({-href => href(action=>"commitdiff",
+                                                             hash=>$hash)."#patch$patchno"},
+					      "patch") .
 				      " | ";
 			} elsif ($diff->{'to_id'} ne $diff->{'from_id'}) {
 				# "commit" view and modified file (not onlu mode changed)
@@ -4124,7 +4132,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				print $cgi->a({-href => href(action=>"commitdiff",
+                                                             hash=>$hash)."#patch$patchno"},
+					      "patch") .
 				      " | ";
 			} elsif ($diff->{'to_id'} ne $diff->{'from_id'}) {
 				# "commit" view and modified file (not only pure rename or copy)
