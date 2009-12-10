@@ -2052,6 +2052,11 @@ proc do_quit {{rc {1}}} {
 	}
 
 	set ret_code $rc
+
+	# Briefly enable send again, working around Tk bug
+	# http://sourceforge.net/tracker/?func=detail&atid=112997&aid=1821174&group_id=12997
+	tk appname [appname]
+
 	destroy .
 }
 
@@ -3083,7 +3088,7 @@ frame .vpane.lower.diff.body
 set ui_diff .vpane.lower.diff.body.t
 text $ui_diff -background white -foreground black \
 	-borderwidth 0 \
-	-width 80 -height 15 -wrap none \
+	-width 80 -height 5 -wrap none \
 	-font font_diff \
 	-xscrollcommand {.vpane.lower.diff.body.sbx set} \
 	-yscrollcommand {.vpane.lower.diff.body.sby set} \
