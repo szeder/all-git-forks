@@ -1058,4 +1058,8 @@ static inline int windows_native(void)
 #endif
 }
 
+#ifndef mark_as_git_dir
+#define mark_as_git_dir(x) /* noop */
+#endif
+
 #endif
