@@ -3,6 +3,7 @@
 #include <conio.h>
 #include "../strbuf.h"
 #include "../run-command.h"
+#include "../cache.h"
 
 static const int delay[] = { 0, 1, 10, 20, 40 };
 
@@ -278,6 +279,21 @@ int mingw_rmdir(const char *pathname)
 			"Should I try again?", pathname))
 	       ret = rmdir(pathname);
 	return ret;
+}
+
+static int make_hidden(const char *path)
+{
+	DWORD attribs = GetFileAttributes(path);
+	if (SetFileAttributes(path, FILE_ATTRIBUTE_HIDDEN | attribs))
+		return 0;
+	errno = err_win_to_posix(GetLastError());
+	return -1;
+}
+
+void mingw_mark_as_git_dir(const char *dir)
+{
+	if (!is_bare_repository() && make_hidden(dir))
+		warning("Failed to make '%s' hidden", dir);
 }
 
 #undef open
