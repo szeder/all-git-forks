@@ -111,10 +111,7 @@ static inline int fcntl(int fd, int cmd, ...)
  * simple adaptors
  */
 
-static inline int mingw_mkdir(const char *path, int mode)
-{
-	return mkdir(path);
-}
+int mingw_mkdir(const char *path, int mode);
 #define mkdir mingw_mkdir
 
 #define WNOHANG 1
@@ -318,6 +315,9 @@ void mingw_open_html(const char *path);
 
 void mingw_mark_as_git_dir(const char *dir);
 #define mark_as_git_dir mingw_mark_as_git_dir
+
+int mingw_core_config(const char *var, const char *value);
+#define platform_core_config mingw_core_config
 
 /*
  * helpers

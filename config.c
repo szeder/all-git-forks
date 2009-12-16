@@ -666,7 +666,8 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	/* Add other config variables here and to Documentation/config.txt. */
-	return 0;
+
+	return platform_core_config(var, value);
 }
 
 static int git_default_user_config(const char *var, const char *value)

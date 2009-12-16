@@ -579,4 +579,8 @@ int remove_or_warn(unsigned int mode, const char *path);
 #define mark_as_git_dir(x) /* noop */
 #endif
 
+#ifndef platform_core_config
+#define platform_core_config(var, value) 0
+#endif
+
 #endif
