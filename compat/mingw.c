@@ -6,6 +6,7 @@
 #include "../cache.h"
 
 static const int delay[] = { 0, 1, 10, 20, 40 };
+static int hide_dotfiles;
 
 int err_win_to_posix(DWORD winerr)
 {
@@ -296,6 +297,23 @@ void mingw_mark_as_git_dir(const char *dir)
 		warning("Failed to make '%s' hidden", dir);
 }
 
+#undef mkdir
+int mingw_mkdir(const char *path, int mode)
+{
+	int ret = mkdir(path);
+	if (!ret && hide_dotfiles) {
+		/*
+		 * In Windows a file or dir starting with a dot is not
+		 * automatically hidden. So lets mark it as hidden when
+		 * such a directory is created.
+		 */
+		const char *start = basename((char*)path);
+		if (*start == '.')
+			return make_hidden(path);
+	}
+	return ret;
+}
+
 #undef open
 int mingw_open (const char *filename, int oflags, ...)
 {
@@ -316,6 +334,16 @@ int mingw_open (const char *filename, int oflags, ...)
 		DWORD attrs = GetFileAttributes(filename);
 		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
 			errno = EISDIR;
+	}
+	if ((oflags & O_CREAT) && fd >= 0 && hide_dotfiles) {
+		/*
+		 * In Windows a file or dir starting with a dot is not
+		 * automatically hidden. So lets mark it as hidden when
+		 * such a file is created.
+		 */
+		const char *start = basename((char*)filename);
+		if (*start == '.' && make_hidden(filename))
+			warning("Could not mark '%s' as hidden.", filename);
 	}
 	return fd;
 }
@@ -365,17 +393,27 @@ int mingw_fgetc(FILE *stream)
 #undef fopen
 FILE *mingw_fopen (const char *filename, const char *otype)
 {
+	FILE *file;
 	if (filename && !strcmp(filename, "/dev/null"))
 		filename = "nul";
-	return fopen(filename, otype);
+	file = fopen(filename, otype);
+	if (file && hide_dotfiles && basename((char*)filename)[0] == '.' &&
+	    make_hidden(filename))
+		warning("Could not mark '%s' as hidden.", filename);
+	return file;
 }
 
 #undef freopen
 FILE *mingw_freopen (const char *filename, const char *otype, FILE *stream)
 {
+	FILE *file;
 	if (filename && !strcmp(filename, "/dev/null"))
 		filename = "nul";
-	return freopen(filename, otype, stream);
+	file = freopen(filename, otype, stream);
+	if (file && hide_dotfiles && basename((char*)filename)[0] == '.' &&
+	    make_hidden(filename))
+		warning("Could not mark '%s' as hidden.", filename);
+	return file;
 }
 
 #undef fflush
@@ -1848,4 +1886,13 @@ pid_t waitpid(pid_t pid, int *status, int options)
 
 	errno = EINVAL;
 	return -1;
+}
+
+int mingw_core_config(const char *var, const char *value)
+{
+	if (!strcmp(var, "core.hidedotfiles")) {
+		hide_dotfiles = git_config_bool(var, value);
+		return 0;
+	}
+	return 0;
 }
