@@ -126,6 +126,10 @@ advice.*::
 		Directions on how to stage/unstage/add shown in the
 		output of linkgit:git-status[1] and the template shown
 		when writing commit messages. Default: true.
+	commitBeforeMerge::
+		Advice shown when linkgit:git-merge[1] refuses to
+		merge to avoid overwritting local changes.
+		Default: true.
 --
 
 core.fileMode::
@@ -169,9 +173,10 @@ core.autocrlf::
 	writing to the filesystem.  The variable can be set to
 	'input', in which case the conversion happens only while
 	reading from the filesystem but files are written out with
-	`LF` at the end of lines.  Currently, which paths to consider
-	"text" (i.e. be subjected to the autocrlf mechanism) is
-	decided purely based on the contents.
+	`LF` at the end of lines.  A file is considered
+	"text" (i.e. be subjected to the autocrlf mechanism) based on
+	the file's `crlf` attribute, or if `crlf` is unspecified,
+	based on the file's contents.  See linkgit:gitattributes[5].
 
 core.safecrlf::
 	If true, makes git check if converting `CRLF` as controlled by
@@ -380,8 +385,9 @@ Common unit suffixes of 'k', 'm', or 'g' are supported.
 core.excludesfile::
 	In addition to '.gitignore' (per-directory) and
 	'.git/info/exclude', git looks into this file for patterns
-	of files which are not meant to be tracked.  See
-	linkgit:gitignore[5].
+	of files which are not meant to be tracked.  "{tilde}/" is expanded
+	to the value of `$HOME` and "{tilde}user/" to the specified user's
+	home directory.  See linkgit:gitignore[5].
 
 core.editor::
 	Commands such as `commit` and `tag` that lets you edit
@@ -670,6 +676,8 @@ color.ui::
 
 commit.template::
 	Specify a file to use as the template for new commit messages.
+	"{tilde}/" is expanded to the value of `$HOME` and "{tilde}user/" to the
+	specified user's home directory.
 
 diff.autorefreshindex::
 	When using 'git-diff' to compare with work tree

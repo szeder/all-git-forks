@@ -781,12 +781,15 @@ ifeq ($(uname_O),Cygwin)
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
 	NO_TRUSTABLE_FILEMODE = UnfortunatelyYes
 	OLD_ICONV = UnfortunatelyYes
+	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
 	# There are conflicting reports about this.
 	# On some boxes NO_MMAP is needed, and not so elsewhere.
 	# Try commenting this out if you suspect MMAP is more efficient
 	NO_MMAP = YesPlease
 	NO_IPV6 = YesPlease
 	X = .exe
+	COMPAT_OBJS += compat/cygwin.o
+	UNRELIABLE_FSTAT = UnfortunatelyYes
 endif
 ifeq ($(uname_S),FreeBSD)
 	NEEDS_LIBICONV = YesPlease
@@ -895,10 +898,6 @@ ifeq ($(uname_S),HP-UX)
 	NO_HSTRERROR = YesPlease
 	NO_SYS_SELECT_H = YesPlease
 	SNPRINTF_RETURNS_BOGUS = YesPlease
-endif
-ifneq (,$(findstring CYGWIN,$(uname_S)))
-	COMPAT_OBJS += compat/cygwin.o
-	UNRELIABLE_FSTAT = UnfortunatelyYes
 endif
 ifdef MSVC
 	GIT_VERSION := $(GIT_VERSION).MSVC
@@ -1631,6 +1630,7 @@ GIT-CFLAGS: .FORCE-GIT-CFLAGS
 # and the first level quoting from the shell that runs "echo".
 GIT-BUILD-OPTIONS: .FORCE-GIT-BUILD-OPTIONS
 	@echo SHELL_PATH=\''$(subst ','\'',$(SHELL_PATH_SQ))'\' >$@
+	@echo PERL_PATH=\''$(subst ','\'',$(PERL_PATH_SQ))'\' >>$@
 	@echo TAR=\''$(subst ','\'',$(subst ','\'',$(TAR)))'\' >>$@
 	@echo NO_CURL=\''$(subst ','\'',$(subst ','\'',$(NO_CURL)))'\' >>$@
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@

@@ -106,8 +106,8 @@ static struct strategy *get_strategy(const char *name)
 					found = 1;
 			if (!found)
 				add_cmdname(&not_strategies, ent->name, ent->len);
-			exclude_cmds(&main_cmds, &not_strategies);
 		}
+		exclude_cmds(&main_cmds, &not_strategies);
 	}
 	if (!is_in_cmdlist(&main_cmds, name) && !is_in_cmdlist(&other_cmds, name)) {
 		fprintf(stderr, "Could not find merge strategy '%s'.\n", name);
@@ -650,6 +650,7 @@ static int checkout_fast_forward(unsigned char *head, unsigned char *remote)
 	opts.verbose_update = 1;
 	opts.merge = 1;
 	opts.fn = twoway_merge;
+	opts.msgs = get_porcelain_error_msgs();
 
 	trees[nr_trees] = parse_tree_indirect(head);
 	if (!trees[nr_trees++])

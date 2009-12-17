@@ -841,7 +841,7 @@ static int parse_status_slot(const char *var, int offset)
 		return WT_STATUS_NOBRANCH;
 	if (!strcasecmp(var+offset, "unmerged"))
 		return WT_STATUS_UNMERGED;
-	die("bad config variable '%s'", var);
+	return -1;
 }
 
 static int git_status_config(const char *k, const char *v, void *cb)
@@ -861,6 +861,8 @@ static int git_status_config(const char *k, const char *v, void *cb)
 	}
 	if (!prefixcmp(k, "status.color.") || !prefixcmp(k, "color.status.")) {
 		int slot = parse_status_slot(k, 13);
+		if (slot < 0)
+			return 0;
 		if (!v)
 			return config_error_nonbool(k);
 		color_parse(v, k, s->color_palette[slot]);
@@ -954,7 +956,7 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 	struct wt_status *s = cb;
 
 	if (!strcmp(k, "commit.template"))
-		return git_config_string(&template_file, k, v);
+		return git_config_pathname(&template_file, k, v);
 
 	return git_status_config(k, v, s);
 }
