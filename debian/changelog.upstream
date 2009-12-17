@@ -1,4 +1,259 @@
-Version v1.6.6-rc0; changes since v1.6.5.4:
+Version v1.6.6-rc2; changes since v1.6.6-rc1:
+---------------------------------------------
+
+Alex Vandiver (3):
+      git-svn: sort svk merge tickets to account for minimal parents
+      git-svn: Set svn.authorsfile to an absolute path when cloning
+      git-svn: set svn.authorsfile earlier when cloning
+
+Alexander Gavrilov (1):
+      git-gui: Increase blame viewer usability on MacOS.
+
+Bernt Hansen (1):
+      gitk: Skip translation of "wrong Tcl version" message
+
+Brandon Casey (2):
+      t4201: use ISO8859-1 rather than ISO-8859-1
+      t9001: use older Getopt::Long boolean prefix '--no' rather than '--no-'
+
+Clemens Buchacher (1):
+      git-gui: search 4 directories to improve statistic of gc hint
+
+Eric Wong (1):
+      git svn: log removals of empty directories
+
+Greg Price (1):
+      git svn: Don't create empty directories whose parents were deleted
+
+Guillermo S. Romero (1):
+      gitk: Add configuration for UI colour scheme
+
+Heiko Voigt (1):
+      git gui: make current branch default in "remote delete branch" merge check
+
+Jakub Narebski (1):
+      gitweb: Describe (possible) gitweb.js minification in gitweb/README
+
+Jan Krüger (1):
+      pull: clarify advice for the unconfigured error case
+
+Jeff King (3):
+      rerere: don't segfault on failure to open rr-cache
+      reset: improve worktree safety valves
+      add-interactive: fix deletion of non-empty files
+
+Jens Lehmann (2):
+      gitk: Fix diffing committed -> staged (typo in diffcmd)
+      gitk: Use the --submodule option for displaying diffs when available
+
+Jindrich Makovicka (1):
+      git-gui: suppress RenderBadPicture X error caused by Tk bug
+
+Johan Herland (1):
+      Fix crasher on encountering SHA1-like non-note in notes tree
+
+Junio C Hamano (9):
+      Documentation/Makefile: allow man.base.url.for.relative.link to be set from Make
+      Unconditionally set man.base.url.for.relative.links
+      Git 1.6.5.4
+      Documentation: xmlto 0.0.18 does not know --stringparam
+      Prepare for 1.6.5.5
+      Git 1.6.5.5
+      Revert recent "git merge <msg> HEAD <commit>..." deprecation
+      Update draft release notes to 1.6.6 before -rc2
+      Git 1.6.6-rc2
+
+Linus Torvalds (1):
+      Fix diff -B/--dirstat miscounting of newly added contents
+
+Markus Heidelberg (1):
+      gitk: Fix "git gui blame" invocation when called from top-level directory
+
+Mizar (2):
+      gitk: Add Japanese translation
+      gitk: Update Japanese translation
+
+Pat Thoyts (4):
+      gitk: Use themed tk widgets
+      gitk: Fix errors in the theme patch
+      gitk: Default to the system colours on Windows
+      gitk: Fix selection of tags
+
+Paul Mackerras (5):
+      gitk: Restore scrolling position of diff pane on back/forward in history
+      gitk: Add a user preference to enable/disable use of themed widgets
+      gitk: Show diff of commits at end of compare-commits output
+      gitk: Don't compare fake children when comparing commits
+      gitk: Improve appearance of radiobuttons and checkbuttons
+
+René Scharfe (1):
+      archive: clarify description of path parameter
+
+SZEDER Gábor (1):
+      bash: update 'git commit' completion
+
+Sitaram Chamarty (1):
+      gitk: Disable checkout of remote branches
+
+Todd Zullinger (1):
+      Documentation: Avoid use of xmlto --stringparam
+
+
+Version v1.6.6-rc1; changes since v1.6.6-rc0:
+---------------------------------------------
+
+Avery Pennarun (1):
+      builtin-merge.c: call exclude_cmds() correctly.
+
+Benjamin Kramer (1):
+      Explicitly truncate bswap operand to uint32_t
+
+Bert Wesarg (2):
+      Give the hunk comment its own color
+      get_ref_states: strdup entries and free util in stale list
+
+Björn Gustavsson (11):
+      Teach the --all option to 'git fetch'
+      Teach the --multiple option to 'git fetch'
+      Add the configuration option skipFetchAll
+      Add missing test for 'git remote update --prune'
+      Re-implement 'git remote update' using 'git fetch'
+      Clarify and correct -z
+      apply: apply works outside a repository
+      apply: Format all options using back-quotes
+      apply: Use the term "working tree" consistently
+      Fix over-simplified documentation for 'git log -z'
+      gitworkflows: Consistently back-quote git commands
+
+Brian Gernhardt (1):
+      t/gitweb-lib: Split HTTP response with non-GNU sed
+
+Christian Couder (6):
+      Documentation: add "Fighting regressions with git bisect" article
+      replace: use a GIT_NO_REPLACE_OBJECTS env variable
+      Documentation: fix typos and spelling in replace documentation
+      Documentation: talk a little bit about GIT_NO_REPLACE_OBJECTS
+      bisect: simplify calling visualizer using '--bisect' option
+      Documentation: update descriptions of revision options related to '--bisect'
+
+David Aguilar (1):
+      help: Do not unnecessarily look for a repository
+
+David Soria Parra (1):
+      Documentation: Document --branch option in git clone synopsis
+
+Erick Mattos (1):
+      commit -c/-C/--amend: reset timestamp and authorship to committer with --reset-author
+
+Felipe Contreras (3):
+      format-patch: fix parsing of "--" on the command line
+      format-patch: add test for parsing of "--"
+      send-email: automatic envelope sender
+
+Horst H. von Brand (1):
+      git-pull.sh: Fix call to git-merge for new command format
+
+Jakub Narebski (10):
+      gitweb: Add optional "time to generate page" info in footer
+      gitweb: Incremental blame (using JavaScript)
+      gitweb: Colorize 'blame_incremental' view during processing
+      gitweb: Create links leading to 'blame_incremental' using JavaScript
+      gitweb: Minify gitweb.js if JSMIN is defined
+      t/gitweb-lib.sh: Split gitweb output into headers and body
+      gitweb: Document current snapshot rules via new tests
+      gitweb.js: Harden setting blamed commit info in incremental blame
+      gitweb: Make linking to actions requiring JavaScript a feature
+      gitweb: Add link to other blame implementation in blame views
+
+Jay Soffian (4):
+      remote: refactor some logic into get_stale_heads()
+      teach warn_dangling_symref to take a FILE argument
+      builtin-fetch: add --prune option
+      builtin-fetch: add --dry-run option
+
+Jeff King (1):
+      prune-packed: only show progress when stderr is a tty
+
+Johannes Sixt (2):
+      t4014-format-patch: do not assume 'test' is available as non-builtin
+      Add a notice that only certain functions can print color escape codes
+
+Jonathan Nieder (1):
+      Makefile: do not clean arm directory
+
+Junio C Hamano (19):
+      mailinfo: -b option keeps [bracketed] strings that is not a [PATCH] marker
+      Pretty-format: %[+-]x to tweak inter-item newlines
+      read_revision_from_stdin(): use strbuf
+      Teach --stdin option to "log" family
+      setup_revisions(): do not call get_pathspec() too early
+      Make --stdin option to "log" family read also pathspecs
+      t9001: test --envelope-sender option of send-email
+      Add trivial tests for --stdin option to log family
+      Protect scripted Porcelains from GREP_OPTIONS insanity
+      builtin-apply.c: pay attention to -p<n> when determining the name
+      Remove dead code from "git am"
+      emit_line(): don't emit an empty <SET><RESET> followed by a newline
+      Update draft release notes to 1.6.6 before merging topics for -rc1
+      git-merge: a deprecation notice of the ancient command line syntax
+      Update draft release notes to 1.6.6 before -rc1
+      Do not misidentify "git merge foo HEAD" as an old-style invocation
+      merge: do not add standard message when message is given with -m option
+      Prepare for 1.6.5.4
+      Git 1.6.6-rc1
+
+Mark Rada (2):
+      gitweb: check given hash before trying to create snapshot
+      gitweb: Smarter snapshot names
+
+Martin Storsjö (3):
+      Disable CURLOPT_NOBODY before enabling CURLOPT_PUT and CURLOPT_POST
+      Refactor winsock initialization into a separate function
+      Enable support for IPv6 on MinGW
+
+Matthew Ogilvie (5):
+      cvsserver doc: database generally can not be reproduced consistently
+      config documentation: some configs are auto-set by git-init
+      t2300: use documented technique to invoke git-sh-setup
+      t3409 t4107 t7406 t9150: use dashless commands
+      t/README: Document GIT_TEST_INSTALLED and GIT_TEST_EXEC_PATH
+
+Matthieu Moy (4):
+      merge-recursive: point the user to commit when file would be overwritten.
+      user-manual: Document that "git merge" doesn't like uncommited changes.
+      merge-recursive: make the error-message generation an extern function
+      builtin-merge: show user-friendly error messages for fast-forward too.
+
+Michael J Gruber (1):
+      Documentation: Fix a few i.e./e.g. mix-ups
+
+Nanako Shiraishi (2):
+      t1200: fix a timing dependent error
+      prepare send-email for smoother change of --chain-reply-to default
+
+Nicolas Pitre (1):
+      pack-objects: split implications of --all-progress from progress activation
+
+Ramsay Allan Jones (1):
+      git-count-objects: Fix a disk-space under-estimate on Cygwin
+
+René Scharfe (2):
+      strbuf_add_wrapped_text(): skip over colour codes
+      mergetool--lib: simplify guess_merge_tool()
+
+Stephen Boyd (3):
+      gitweb.js: fix null object exception in initials calculation
+      instaweb: restart server if already running
+      gitweb.js: fix padLeftStr() and its usage
+
+Tay Ray Chuan (1):
+      remote-curl.c: fix rpc_out()
+
+Uwe Kleine-König (1):
+      shortlog: respect commit encoding
+
+
+Version v1.6.6-rc0; changes since v1.6.5.7:
 -------------------------------------------
 
 Alex Riesen (1):
@@ -25,9 +280,6 @@ Björn Gustavsson (10):
       bash: add the merge option --ff-only
       Fix truncated usage messages
       User Manual: Write "Git" instead of "GIT"
-
-Brian Collins (1):
-      grep: Allow case insensitive search of fixed-strings
 
 Christian Couder (1):
       git: add --no-replace-objects option to disable replacing
@@ -83,12 +335,10 @@ Jakub Narebski (4):
 Jean Privat (1):
       Teach "git describe" --dirty option
 
-Jeff King (5):
+Jeff King (3):
       imap-send: remove useless uid code
       gitignore: root most patterns at the top-level directory
       t915{0,1}: use $TEST_DIRECTORY
-      diffcore-break: free filespec data as we go
-      diffcore-break: save cnt_data for other phases
 
 Jens Lehmann (5):
       git-gui: display summary when showing diff of a submodule
@@ -166,7 +416,7 @@ Julian Phillips (4):
       fetch: Speed up fetch of large numbers of refs
       remote: fix use-after-free error detected by glibc in ref_remove_duplicates
 
-Junio C Hamano (22):
+Junio C Hamano (20):
       diff-lib.c: fix misleading comments on oneway_diff()
       unpack-trees: typofix
       unpack_callback(): use unpack_failed() consistently
@@ -186,15 +436,10 @@ Junio C Hamano (22):
       git-describe.txt: formatting fix
       Provide a build time default-pager setting
       Update draft release notes to 1.6.6
-      diffcore-rename: reduce memory footprint by freeing blob data early
-      Documentation: avoid xmlto input error
       Git v1.6.6-rc0
 
 Linus Torvalds (1):
       Add '--bisect' revision machinery argument
-
-Lukas Sandström (1):
-      git am/mailinfo: Don't look at in-body headers when rebasing
 
 Marius Storm-Olsen (1):
       MSVC: Enable OpenSSL, and translate -lcrypto
@@ -212,31 +457,15 @@ Mark Rada (1):
 Markus Heidelberg (1):
       bash completion: difftool accepts the same options as diff
 
-Matthew Ogilvie (1):
-      core.autocrlf documentation: mention the crlf attribute
-
-Matthieu Moy (2):
-      Expand ~ and ~user in core.excludesfile, commit.template
-      expand_user_path: expand ~ to $HOME, not to the actual homedir.
-
 Michael J Gruber (1):
       Make t9150 and t9151 test scripts executable
 
-Nicolas Pitre (2):
+Nicolas Pitre (1):
       pack-objects: move thread autodetection closer to relevant code
-      give priority to progress messages
 
-Philippe Bruhat (1):
-      Make sure $PERL_PATH is defined when the test suite is run.
-
-Raman Gupta (1):
-      Add branch management for releases to gitworkflows
-
-Ramsay Allan Jones (4):
-      Makefile: merge two Cygwin configuration sections into one
+Ramsay Allan Jones (2):
       Makefile: keep MSVC and Cygwin configuration separate
       MSVC: Add support for building with NO_MMAP
-      t9700-perl-git.sh: Fix a test failure on Cygwin
 
 René Scharfe (6):
       describe: load refnames before calling describe()
@@ -333,10 +562,6 @@ Thomas Rast (14):
       Document git-svn's first-parent rule
       describe: do not use unannotated tag even if exact match
 
-Tim Henigan (2):
-      Update 'git remote update' usage string to match man page.
-      git remote: Separate usage strings for subcommands
-
 Toby Allsopp (1):
       git svn: handle SVN merges from revisions past the tip of the branch
 
@@ -345,6 +570,117 @@ Vietor Liu (1):
 
 Štěpán Němec (1):
       git-update-index.txt: Document the --really-refresh option.
+
+
+Version v1.6.5.7; changes since v1.6.5.6:
+-----------------------------------------
+
+Jeff King (1):
+      ignore unknown color configuration
+
+Johannes Sixt (1):
+      help.autocorrect: do not run a command if the command given is junk
+
+Junio C Hamano (2):
+      worktree: don't segfault with an absolute pathspec without a work tree
+      Git 1.6.5.7
+
+Nanako Shiraishi (1):
+      Illustrate "filter" attribute with an example
+
+
+Version v1.6.5.6; changes since v1.6.5.5:
+-----------------------------------------
+
+Jan Krüger (1):
+      pull: clarify advice for the unconfigured error case
+
+Jeff King (1):
+      add-interactive: fix deletion of non-empty files
+
+Junio C Hamano (3):
+      Remove post-upload-hook
+      Fix archive format with -- on the command line
+      Git 1.6.5.6
+
+Matthieu Moy (2):
+      merge-recursive: make the error-message generation an extern function
+      builtin-merge: show user-friendly error messages for fast-forward too.
+
+
+Version v1.6.5.5; changes since v1.6.5.4:
+-----------------------------------------
+
+Avery Pennarun (1):
+      builtin-merge.c: call exclude_cmds() correctly.
+
+Brandon Casey (1):
+      t4201: use ISO8859-1 rather than ISO-8859-1
+
+Brian Collins (1):
+      grep: Allow case insensitive search of fixed-strings
+
+Felipe Contreras (2):
+      format-patch: fix parsing of "--" on the command line
+      format-patch: add test for parsing of "--"
+
+Jeff King (4):
+      diffcore-break: free filespec data as we go
+      diffcore-break: save cnt_data for other phases
+      rerere: don't segfault on failure to open rr-cache
+      reset: improve worktree safety valves
+
+Junio C Hamano (7):
+      diffcore-rename: reduce memory footprint by freeing blob data early
+      Documentation: avoid xmlto input error
+      Protect scripted Porcelains from GREP_OPTIONS insanity
+      Remove dead code from "git am"
+      Documentation: xmlto 0.0.18 does not know --stringparam
+      Prepare for 1.6.5.5
+      Git 1.6.5.5
+
+Linus Torvalds (1):
+      Fix diff -B/--dirstat miscounting of newly added contents
+
+Lukas Sandström (1):
+      git am/mailinfo: Don't look at in-body headers when rebasing
+
+Matthew Ogilvie (1):
+      core.autocrlf documentation: mention the crlf attribute
+
+Matthieu Moy (4):
+      Expand ~ and ~user in core.excludesfile, commit.template
+      expand_user_path: expand ~ to $HOME, not to the actual homedir.
+      merge-recursive: point the user to commit when file would be overwritten.
+      user-manual: Document that "git merge" doesn't like uncommited changes.
+
+Nicolas Pitre (1):
+      give priority to progress messages
+
+Philippe Bruhat (1):
+      Make sure $PERL_PATH is defined when the test suite is run.
+
+Raman Gupta (1):
+      Add branch management for releases to gitworkflows
+
+Ramsay Allan Jones (3):
+      Makefile: merge two Cygwin configuration sections into one
+      t9700-perl-git.sh: Fix a test failure on Cygwin
+      git-count-objects: Fix a disk-space under-estimate on Cygwin
+
+René Scharfe (2):
+      mergetool--lib: simplify guess_merge_tool()
+      archive: clarify description of path parameter
+
+Tim Henigan (2):
+      Update 'git remote update' usage string to match man page.
+      git remote: Separate usage strings for subcommands
+
+Todd Zullinger (1):
+      Documentation: Avoid use of xmlto --stringparam
+
+Uwe Kleine-König (1):
+      shortlog: respect commit encoding
 
 
 Version v1.6.5.4; changes since v1.6.5.3:
