@@ -1,3 +1,114 @@
+Version v1.6.5.7; changes since v1.6.5.6:
+-----------------------------------------
+
+Jeff King (1):
+      ignore unknown color configuration
+
+Johannes Sixt (1):
+      help.autocorrect: do not run a command if the command given is junk
+
+Junio C Hamano (2):
+      worktree: don't segfault with an absolute pathspec without a work tree
+      Git 1.6.5.7
+
+Nanako Shiraishi (1):
+      Illustrate "filter" attribute with an example
+
+
+Version v1.6.5.6; changes since v1.6.5.5:
+-----------------------------------------
+
+Jan Krüger (1):
+      pull: clarify advice for the unconfigured error case
+
+Jeff King (1):
+      add-interactive: fix deletion of non-empty files
+
+Junio C Hamano (3):
+      Remove post-upload-hook
+      Fix archive format with -- on the command line
+      Git 1.6.5.6
+
+Matthieu Moy (2):
+      merge-recursive: make the error-message generation an extern function
+      builtin-merge: show user-friendly error messages for fast-forward too.
+
+
+Version v1.6.5.5; changes since v1.6.5.4:
+-----------------------------------------
+
+Avery Pennarun (1):
+      builtin-merge.c: call exclude_cmds() correctly.
+
+Brandon Casey (1):
+      t4201: use ISO8859-1 rather than ISO-8859-1
+
+Brian Collins (1):
+      grep: Allow case insensitive search of fixed-strings
+
+Felipe Contreras (2):
+      format-patch: fix parsing of "--" on the command line
+      format-patch: add test for parsing of "--"
+
+Jeff King (4):
+      diffcore-break: free filespec data as we go
+      diffcore-break: save cnt_data for other phases
+      rerere: don't segfault on failure to open rr-cache
+      reset: improve worktree safety valves
+
+Junio C Hamano (7):
+      diffcore-rename: reduce memory footprint by freeing blob data early
+      Documentation: avoid xmlto input error
+      Protect scripted Porcelains from GREP_OPTIONS insanity
+      Remove dead code from "git am"
+      Documentation: xmlto 0.0.18 does not know --stringparam
+      Prepare for 1.6.5.5
+      Git 1.6.5.5
+
+Linus Torvalds (1):
+      Fix diff -B/--dirstat miscounting of newly added contents
+
+Lukas Sandström (1):
+      git am/mailinfo: Don't look at in-body headers when rebasing
+
+Matthew Ogilvie (1):
+      core.autocrlf documentation: mention the crlf attribute
+
+Matthieu Moy (4):
+      Expand ~ and ~user in core.excludesfile, commit.template
+      expand_user_path: expand ~ to $HOME, not to the actual homedir.
+      merge-recursive: point the user to commit when file would be overwritten.
+      user-manual: Document that "git merge" doesn't like uncommited changes.
+
+Nicolas Pitre (1):
+      give priority to progress messages
+
+Philippe Bruhat (1):
+      Make sure $PERL_PATH is defined when the test suite is run.
+
+Raman Gupta (1):
+      Add branch management for releases to gitworkflows
+
+Ramsay Allan Jones (3):
+      Makefile: merge two Cygwin configuration sections into one
+      t9700-perl-git.sh: Fix a test failure on Cygwin
+      git-count-objects: Fix a disk-space under-estimate on Cygwin
+
+René Scharfe (2):
+      mergetool--lib: simplify guess_merge_tool()
+      archive: clarify description of path parameter
+
+Tim Henigan (2):
+      Update 'git remote update' usage string to match man page.
+      git remote: Separate usage strings for subcommands
+
+Todd Zullinger (1):
+      Documentation: Avoid use of xmlto --stringparam
+
+Uwe Kleine-König (1):
+      shortlog: respect commit encoding
+
+
 Version v1.6.5.4; changes since v1.6.5.3:
 -----------------------------------------
 
