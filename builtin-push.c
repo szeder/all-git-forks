@@ -16,6 +16,7 @@ static const char * const push_usage[] = {
 
 static int thin;
 static int deleterefs;
+static int progress;
 static const char *receivepack;
 
 static const char **refspec;
@@ -110,6 +111,9 @@ static int push_with_options(struct transport *transport, int flags)
 				     TRANS_OPT_RECEIVEPACK, receivepack);
 	if (thin)
 		transport_set_option(transport, TRANS_OPT_THIN, "yes");
+
+	if (progress)
+		transport->progress = 1;
 
 	if (flags & TRANSPORT_PUSH_VERBOSE)
 		fprintf(stderr, "Pushing to %s\n", transport->url);
@@ -218,6 +222,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN( 0 , "thin", &thin, "use thin pack"),
 		OPT_STRING( 0 , "receive-pack", &receivepack, "receive-pack", "receive pack program"),
 		OPT_STRING( 0 , "exec", &receivepack, "receive-pack", "receive pack program"),
+		OPT_BOOLEAN( 0 , "progress", &progress, "force progress reporting"),
 		OPT_END()
 	};
 

@@ -138,6 +138,12 @@ useful if you write an alias or script around 'git-push'.
 	transfer spends extra cycles to minimize the number of
 	objects to be sent and meant to be used on slower connection.
 
+--progress::
+	Progress status is reported on the standard error stream
+	by default when it is attached to a terminal, unless -q
+	is specified. This flag forces progress status even if the
+	standard error stream is not directed to a terminal.
+
 -v::
 --verbose::
 	Run verbosely.
@@ -145,7 +151,8 @@ useful if you write an alias or script around 'git-push'.
 -q::
 --quiet::
 	Suppress all output, including the listing of updated refs,
-	unless an error occurs.
+	unless an error occurs. Progress is not reported to the standard
+	error stream.
 
 include::urls-remotes.txt[]
 
