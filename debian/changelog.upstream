@@ -1,3 +1,75 @@
+Version v1.6.6; changes since v1.6.6-rc4:
+-----------------------------------------
+
+Andrew Myrick (1):
+      git-svn: Remove obsolete MAXPARENT check
+
+David Reiss (1):
+      Prevent git blame from segfaulting on a missing author name
+
+Eric Wong (4):
+      git svn: fix --revision when fetching deleted paths
+      update release notes for git svn in 1.6.6
+      git svn: lookup new parents correctly from svn:mergeinfo
+      git svn: branch/tag commands detect username in URLs
+
+Junio C Hamano (1):
+      Git 1.6.6
+
+Robert Zeh (1):
+      git svn: add test for a git svn gc followed by a git svn mkdirs
+
+Sam Vilain (5):
+      git-svn: expand the svn mergeinfo test suite, highlighting some failures
+      git-svn: memoize conversion of SVN merge ticket info to git commit ranges
+      git-svn: fix some mistakes with interpreting SVN mergeinfo commit ranges
+      git-svn: exclude already merged tips using one rev-list call
+      git-svn: detect cherry-picks correctly.
+
+
+Version v1.6.6-rc4; changes since v1.6.6-rc3:
+---------------------------------------------
+
+Björn Gustavsson (1):
+      rebase -i: abort cleanly if the editor fails to launch
+
+Eric Wong (2):
+      git svn: make empty directory creation gc-aware
+      t9146: use 'svn_cmd' wrapper
+
+Junio C Hamano (1):
+      Git 1.6.6-rc4
+
+Stephen Boyd (2):
+      api-strbuf.txt: fix typos and document launch_editor()
+      technical-docs: document hash API
+
+
+Version v1.6.6-rc3; changes since v1.6.6-rc2:
+---------------------------------------------
+
+Björn Gustavsson (1):
+      bash: Support new 'git fetch' options
+
+Jeff King (1):
+      ignore unknown color configuration
+
+Johannes Sixt (1):
+      help.autocorrect: do not run a command if the command given is junk
+
+Junio C Hamano (7):
+      Remove post-upload-hook
+      Fix archive format with -- on the command line
+      Git 1.6.5.6
+      Update Release Notes for 1.6.6 to remove old bugfixes
+      worktree: don't segfault with an absolute pathspec without a work tree
+      Git 1.6.5.7
+      Git 1.6.6-rc3
+
+Nanako Shiraishi (1):
+      Illustrate "filter" attribute with an example
+
+
 Version v1.6.6-rc2; changes since v1.6.6-rc1:
 ---------------------------------------------
 
@@ -12129,7 +12201,7 @@ J. Bruce Fields (5):
       user-manual: fix incorrect header level
 
 Jakub Narebski (1):
-      gitweb: Fix escaping HTML of project owner in 'projects_list' and 'summary' views
+      gitweb: Fix escaping HTML of project owner in 'projects_list' and     'summary' views
 
 Jari Aalto (1):
       git-tag(1): Remove duplicate text
@@ -13613,7 +13685,7 @@ Simon Hausmann (223):
       git-p4 debug doesn't need a git repository
       Added support for mapping p4 labels to git tags
       Fix variable usage in tag import
-      Fix the docs for git-p4 submit and turn git-p4 submit --master=foo into simply git-p4 submit mytopicbranch.
+      Fix the docs for git-p4 submit and turn git-p4 submit --master=foo into     simply git-p4 submit mytopicbranch.
       Fix "compilation" :)
       Clean up python class names.
       Added git-p4 rebase convenience
@@ -13629,7 +13701,7 @@ Simon Hausmann (223):
       Fix the timezone formatting. Now qgit also displays (parses) it correctly.
       Removed the old patch apply code from git-p4 submit.
       Slightly improved formatting of the raw_input questions.
-      A new attempt at fixing the child-fast-import-process-not-finished race condition in the clone command
+      A new attempt at fixing the child-fast-import-process-not-finished race condition     in the clone command
       Handle patch errors in git-p4 submit better.
       Doc cleanups.
       Micro cleanup
@@ -13648,29 +13720,29 @@ Simon Hausmann (223):
       Fix calling git-p4 rebase from within a subdirectory (git rebase wants to be in toplevel)
       A little todo note before I forget it :), based on a suggestion from Lars.
       Fixing syncing (gitdir discovery / cd) for bare repositories
-      Always pass a sha1 for the initial parent so that git-fast-import doesn't think it's creating a new branch from itself. It's a sensible error in general but in the case of incremental imports we have to apply force :)
-      Clean up code duplication for revision parsing and fix previous commit to not import into remotes/p4 (yet!).
+      Always pass a sha1 for the initial parent so that git-fast-import doesn't think     it's creating a new branch from itself. It's a sensible error in general but     in the case of incremental imports we have to apply force :)
+      Clean up code duplication for revision parsing and fix previous commit to not     import into remotes/p4 (yet!).
       Removed cleantags command. It doesn't have any meaning anymore.
-      Removed ancient and unused code to find the last imported revision from previous imports to use for the current import by looking at the p4 tags. The current approach of using the log message works better.
-      Create the origin based import branch using git update-ref instead of git branch so that it's possible to have the import branch in refs/remotes.
-      Changed the default p4 import branch to be refs/remotes/p4/{HEAD,master} instead of refs/heads/p4.
-      Bite the bullet and automatically convert old style refs/heads/p4 repositories to the new style refs/remotes/p4 branching.
+      Removed ancient and unused code to find the last imported revision from previous imports     to use for the current import by looking at the p4 tags. The current approach of using     the log message works better.
+      Create the origin based import branch using git update-ref instead of git branch     so that it's possible to have the import branch in refs/remotes.
+      Changed the default p4 import branch to be refs/remotes/p4/{HEAD,master}     instead of refs/heads/p4.
+      Bite the bullet and automatically convert old style refs/heads/p4 repositories     to the new style refs/remotes/p4 branching.
       Added support for git-p4 sync/rebase --with-origin. See git-p4.txt for details :)
       Removed todo item that is implemented :)
       Fix branch setup after initial clone.
       Removed unused cache variables.
       Started rewriting the branch detection, based on "p4 branches" and "p4 branch -o foo".
-      Give branches a nice project prefix and don't bail out on clone if we failed to detect the master branch.
-      More work on the incremental importing of multiple branches. Improved error detection by checking the exit code of git-fast-import.
-      Cleanup/speed up the branch<> file split and removed change range limitation that I added for debugging (oops).
+      Give branches a nice project prefix and don't bail out on clone if we failed     to detect the master branch.
+      More work on the incremental importing of multiple branches.     Improved error detection by checking the exit code of git-fast-import.
+      Cleanup/speed up the branch<> file split and removed change range limitation that I added     for debugging (oops).
       More cleanups and speedups for labels and branches
       Removed unused variable, more cleanups
       Cache the output of "p4 users" for faster syncs on high latency links.
       Fix gitdir not being set when cloning. Needed for writing the p4 users cache.
       Oops, not only /set/ gitdir on clone, also set it /correctly/ :)
-      Use git format-patch and git apply --apply when extracting patches from git and applying them to a Perforce checkout. This should make it possible to apply git commits with binary files that cannot be handled by path.
+      Use git format-patch and git apply --apply when extracting patches from git and     applying them to a Perforce checkout. This should make it possible to apply git     commits with binary files that cannot be handled by path.
       Added support for git-p4 submit --direct (experimental)
-      Specifying --detect-branches is now only needed for the initial clone/sync. Afterwards it's turned on implicitly if more p4 branches than remotes/p4/master are found.
+      Specifying --detect-branches is now only needed for the initial clone/sync.     Afterwards it's turned on implicitly if more p4 branches than remotes/p4/master     are found.
       Had an idea for debugging, record it :)
       Another (potentially life-saving) idea for submit --direct
       Improved output for multi branch imports and noted another little todo item
@@ -13682,7 +13754,7 @@ Simon Hausmann (223):
       Added a rollback command for debugging. It sets back the heads of the p4 branches to the specified p4 change number or earlier.
       Fix branch detection in multi-branch imports
       Fixes for rollback, delete branches that did not exist at the specified p4 change
-      Added support for importing multiple branches into refs/heads instead of just refs/remotes using --import-local. Needs some further microfix but seems to work otherwise.
+      Added support for importing multiple branches into refs/heads instead of just refs/remotes     using --import-local. Needs some further microfix but seems to work otherwise.
       Added support for --max-changes=<count> to ease import debugging
       Use refs/heads/* instead of refs/heads/p4/* for local imports
       Doc updates
@@ -13699,7 +13771,7 @@ Simon Hausmann (223):
       Added support for --with-origin with multi-branch imports
       Oops, fix --with-origin to /really/ also call git fetch :)
       Avoid creating non-p4 branches in remotes/p4 off of remotes/origin
-      Make git-p4 work with packed refs (don't use os.path.exists to check for the existance of a ref)
+      Make git-p4 work with packed refs (don't use os.path.exists to check for the     existance of a ref)
       Make --with-origin also work without origin :)
       Make --with-origin the default for syncing.
       Shortcut the case where we have no origin branch
@@ -13707,29 +13779,29 @@ Simon Hausmann (223):
       Added git-p4 submit --trust-me-like-a-fool for the adventurous users :)
       Fix creation of refs/remotes/p4/HEAD symbolic ref
       Fix my email address, this isn't really KDE related :)
-      In *_pipe print the command that failed if it fails. Fixed old calls to mypopen.
+      In *_pipe print the command that failed if it fails.     Fixed old calls to mypopen.
       Fix typo in listExistingP4Branches that broke sync.
       Fix support for "depot-path" in older git-p4 imports
-      Fix common path "calculation" from logs of multiple branches. Need to use min instead of max for prev/cur to avoid out-of-bounds string access. Also treat "i" as index of the last match instead of a length because in case of a complete match of the two strings i was off by one.
-      Don't attempt to set the initialParent on multi-branch imports (useless). At some point the code paths should be unified, but for now I need a working git-p4 :)
-      Hack to make the multi-branch import work again with self.depotPaths now that self.depotPath is gone
+      Fix common path "calculation" from logs of multiple branches.     Need to use min instead of max for prev/cur to avoid out-of-bounds     string access. Also treat "i" as index of the last match instead of     a length because in case of a complete match of the two strings     i was off by one.
+      Don't attempt to set the initialParent on multi-branch imports (useless).     At some point the code paths should be unified, but for now I need a working     git-p4 :)
+      Hack to make the multi-branch import work again with self.depotPaths now that     self.depotPath is gone
       Fix git-p4 rebase
       Fix git-p4 submit
       Fix depot-path determination for git-p4 submit
       Make clone behave like git clone by default again.
-      Make git-p4 submit detect the correct reference (origin) branch when working with multi-branch imports.
-      Only get the expensive branch mapping from the p4 server when not syncing with the help of an origin remote (which we instead then use to get new branches from).
-      Fixed the check to make sure to exclude the HEAD symbolic refs when updating the remotes/p4 branches from origin.
+      Make git-p4 submit detect the correct reference (origin) branch when     working with multi-branch imports.
+      Only get the expensive branch mapping from the p4 server when not     syncing with the help of an origin remote (which we instead then use     to get new branches from).
+      Fixed the check to make sure to exclude the HEAD symbolic refs when updating     the remotes/p4 branches from origin.
       Fix updating/creating remotes/p4/* heads from origin/p4/*
       Fix project name guessing
       Fix depot-paths encoding for multi-path imports (don't split up //depot/path/foo)
       Fix support for explicit disabling of syncing with the origin
-      Write out the options tag in the log message of imports only if we actually have options
+      Write out the options tag in the log message of imports only if we actually have     options
       Provide some information for single branch imports where the commits go
       Mention remotes/p4/master also in the documentation.
       git-p4 submit: Fix missing quotes around p4 commands to make them work with spaces in filenames
-      Moved the code from git-p4 submit to figure out the upstream branch point into a separate helper method.
-      Fix git-p4 rebase to detect the correct upstream branch instead of unconditionally always rebasing on top of remotes/p4/master
+      Moved the code from git-p4 submit to figure out the upstream branch point     into a separate helper method.
+      Fix git-p4 rebase to detect the correct upstream branch instead of unconditionally     always rebasing on top of remotes/p4/master
       Fix initial multi-branch import.
       Fix the branch mapping detection to be independent from the order of the "p4 branches" output.
       Warn about conflicting p4 branch mappings and use the first one found.
@@ -14459,7 +14531,7 @@ Junio C Hamano (25):
       t6030: grab commit object name as we go
       Build RPM with ETC_GITCONFIG=/etc/gitconfig
       Diff between two blobs should take mode changes into account now.
-      t/test-lib.sh: Protect ourselves from common misconfiguration that exports CDPATH to the environment
+      t/test-lib.sh: Protect ourselves from common misconfiguration     that exports CDPATH to the environment
       gitattributes documentation: clarify overriding
       applymbox & quiltimport: typofix.
       Add 'ident' conversion.
@@ -15630,7 +15702,7 @@ Jeff King (1):
       New fast-import test case for valid tree sorting
 
 Jim Meyering (2):
-      I like the idea of the new ':/<oneline prefix>' notation, and gave it a try, but all I could get was a segfault.  It was dereferencing a NULL commit list.  Fix below.  With it, this example now works:
+      I like the idea of the new ':/<oneline prefix>' notation, and gave it     a try, but all I could get was a segfault.  It was dereferencing a NULL     commit list.  Fix below.  With it, this example now works:
       git-grep: don't use sscanf
 
 Johannes Schindelin (42):
@@ -16004,8 +16076,8 @@ Shawn O. Pearce (13):
       git-gui: Make 'make' quieter by default
       Catch write_ref_sha1 failure in receive-pack
       git-gui: Allow committing empty merges
-      git-gui: Revert "Don't modify CREDITS-FILE if it hasn't changed." This reverts commit 92446aba47b0e0db28f7b858ea387efcca30ab44.
-      git-gui: Revert "git-gui: Display all authors of git-gui." This reverts commit 871f4c97ad7e021d1a0a98c80c5da77fcf70e4af.
+      git-gui: Revert "Don't modify CREDITS-FILE if it hasn't changed."     This reverts commit 92446aba47b0e0db28f7b858ea387efcca30ab44.
+      git-gui: Revert "git-gui: Display all authors of git-gui."     This reverts commit 871f4c97ad7e021d1a0a98c80c5da77fcf70e4af.
       git-gui: Allow 'git gui version' outside of a repository
       Don't package the git-gui credits file anymore
 
