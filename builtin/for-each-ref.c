@@ -819,6 +819,20 @@ static int grab_single_ref(const char *refname, const unsigned char *sha1, int f
 	return 0;
 }
 
+static void for_each_ref_stdin(each_ref_fn fn, void *cb_data)
+{
+	struct strbuf buf;
+	unsigned char sha1[20];
+
+	strbuf_init(&buf, 0);
+	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
+		if (read_ref(buf.buf, sha1))
+			continue;
+		fn(buf.buf, sha1, 0, cb_data);
+	}
+	strbuf_release(&buf);
+}
+
 static int cmp_ref_sort(struct ref_sort *s, struct refinfo *a, struct refinfo *b)
 {
 	struct atom_value *va, *vb;
@@ -983,7 +997,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	int i, num_refs;
 	const char *format = "%(objectname) %(objecttype)\t%(refname)";
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
-	int maxcount = 0, quote_style = 0;
+	int maxcount = 0, quote_style = 0, stdin_refs = 0;
 	struct refinfo **refs;
 	struct grab_ref_cbdata cbdata;
 
@@ -1002,6 +1016,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_STRING(  0 , "format", &format, "format", "format to use for the output"),
 		OPT_CALLBACK(0 , "sort", sort_tail, "key",
 		            "field name to sort on", &opt_parse_sort),
+		OPT_BOOLEAN( 0 , "stdin", &stdin_refs, "read candidate refs from stdin, rather than all refs"),
 		OPT_END(),
 	};
 
@@ -1026,7 +1041,10 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 
 	memset(&cbdata, 0, sizeof(cbdata));
 	cbdata.grab_pattern = argv;
-	for_each_rawref(grab_single_ref, &cbdata);
+	if (stdin_refs)
+		for_each_ref_stdin(grab_single_ref, &cbdata);
+	else
+		for_each_rawref(grab_single_ref, &cbdata);
 	refs = cbdata.grab_array;
 	num_refs = cbdata.grab_cnt;
 
