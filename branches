@@ -12,5 +12,3 @@ js/upstream
 
 jk/push-purge
   very WIP; see commit for details
-
-jk/exec-sh
