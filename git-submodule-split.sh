@@ -162,6 +162,7 @@ if test -f "$map_info-dir"; then
 
 	# Either update the old .gitmodules file, or make a new one.
 	gitmodules="$GIT_SPLIT_TEMP_DIR/gitmodules"
+	touch "$gitmodules"	  # Assure gitmodules exists
 	if git rev-parse -q --verify "$GIT_COMMIT:.gitmodules"; then
 		git cat-file blob "$GIT_COMMIT:.gitmodules" > "$gitmodules" ||
 			exit
