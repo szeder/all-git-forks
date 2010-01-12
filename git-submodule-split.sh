@@ -103,9 +103,9 @@ index_filter=$(cat << \EOF
 map_info="$GIT_SPLIT_MAP_DIR/$GIT_COMMIT"
 
 # Check for the submodule in all possible locations.
-i=0
-while test "$i" -lt "$GIT_SPLIT_DIR_COUNT"; do
-	candidate="$(cat "$GIT_SPLIT_TEMP_DIR/dirs/$i")" || exit
+dir_counter=0
+while test "$dir_counter" -lt "$GIT_SPLIT_DIR_COUNT"; do
+	candidate="$(cat "$GIT_SPLIT_TEMP_DIR/dirs/$dir_counter")" || exit
 	if git rev-parse -q --verify "$GIT_COMMIT:$candidate"; then
 		# Borrowed from git filter-branch.
 		err="$(git read-tree -i -m "$GIT_COMMIT:$candidate" 2>&1)" ||
@@ -113,7 +113,7 @@ while test "$i" -lt "$GIT_SPLIT_DIR_COUNT"; do
 	        printf '%s' "$candidate" > "$map_info-dir"
 		break
 	fi
-	i=$(($i + 1))
+	dir_counter=$(($dir_counter + 1))
 done
 EOF
 )
