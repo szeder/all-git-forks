@@ -139,6 +139,7 @@ EOF
 	rm -rf .git/refs/original &&
 	git reflog expire --expire="now" --all &&
 	git repack -a -d &&
+	git clean -qdf &&
 	rm .git/objects/info/alternates) || exit
 
 #--------------------------------------------------------------------------
