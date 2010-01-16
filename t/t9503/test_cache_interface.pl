@@ -16,7 +16,8 @@ unless (-f "$cache_pm") {
 # it is currently not a proper Perl module, so we use 'do FILE'
 #ok(eval { do "$cache_pm"; 1 or die $!; }, "loading gitweb/cache.pm");
 my $return = do "$cache_pm";
-ok(!$@,              "parse gitweb/cache.pm");
+ok(!$@,              "parse gitweb/cache.pm")
+	or diag("parse error:\n", $@);
 ok(defined $return,  "do    gitweb/cache.pm");
 ok($return,          "run   gitweb/cache.pm");
 # instead of: BEGIN { use_ok('GitwebCache::SimpleFileCache') }
@@ -73,5 +74,13 @@ is($cache->compute($key, \&get_value), $value, 'compute 1st time (set)');
 is($cache->compute($key, \&get_value), $value, 'compute 2nd time (get)');
 is($cache->compute($key, \&get_value), $value, 'compute 3rd time (get)');
 cmp_ok($call_count, '==', 1, 'get_value() is called once');
+
+# Test cache expiration for 'expire now'
+#
+$cache->set_expires_in(0);
+is($cache->get_expires_in(), 0,        '"expires in" is set to now (0)');
+$cache->set($key, $value);
+ok(!defined($cache->get($key)),        'cache is expired');
+
 
 done_testing();

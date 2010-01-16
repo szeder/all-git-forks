@@ -50,6 +50,10 @@ our $DEFAULT_CACHE_ROOT = "cache";
 #    The number of subdirectories deep to cache object item.  This should be
 #    large enough that no cache directory has more than a few hundred objects.
 #    Defaults to 2 unless explicitly set.
+#  * 'default_expires_in' (Cache::Cache compatibile),
+#    'expires_in' (CHI compatibile) [seconds]
+#    The expiration time for objects place in the cache.
+#    Defaults to $EXPIRES_NEVER if not explicitly set.
 sub new {
 	my ($proto, $p_options_hash_ref) = @_;
 
@@ -57,19 +61,24 @@ sub new {
 	my $self  = {};
 	$self = bless($self, $class);
 
-	my ($root, $depth, $ns);
+	my ($root, $depth, $ns, $expires_in);
 	if (defined $p_options_hash_ref) {
 		$root  = $p_options_hash_ref->{'cache_root'};
 		$depth = $p_options_hash_ref->{'cache_depth'};
 		$ns    = $p_options_hash_ref->{'namespace'};
+		$expires_in =
+			$p_options_hash_ref->{'default_expires_in'} ||
+			$p_options_hash_ref->{'expires_in'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
 	$ns    = '' unless defined($ns);
+	$expires_in = -1 unless defined($expires_in); # <0 means never
 
 	$self->set_root($root);
 	$self->set_depth($depth);
 	$self->set_namespace($ns);
+	$self->set_expires_in($expires_in);
 
 	return $self;
 }
@@ -114,6 +123,20 @@ sub set_namespace {
 
 	$self->{'_Namespace'} = $namespace;
 }
+
+sub get_expires_in {
+	my ($self) = @_;
+
+	return $self->{'_Expires_In'};
+}
+
+
+sub set_expires_in {
+	my ($self, $expires_in) = @_;
+
+	$self->{'_Expires_In'} = $expires_in;
+}
+
 
 # ----------------------------------------------------------------------
 # (private) utility functions and methods
@@ -282,6 +305,27 @@ sub remove {
 	$self->delete_key($self->get_namespace(), $p_key);
 }
 
+# exists in cache and is not expired
+sub is_valid {
+	my ($self, $p_key) = @_;
+
+	# should there be namespace variant of this function?
+	my $path = $self->_path_to_key($self->get_namespace(), $p_key);
+
+	# does file exists in cache?
+	return 0 unless -f $path;
+
+	# expire time can be set to never
+	my $expires_in = $self->get_expires_in();
+	return 1 unless (defined $expires_in && $expires_in >= 0);
+
+	# is file expired?
+	my $mtime = (stat(_))[9];
+	my $now = time();
+
+	return (($now - $mtime) < $expires_in);
+}
+
 # Getting and setting
 
 sub set {
@@ -293,6 +337,7 @@ sub set {
 sub get {
 	my ($self, $p_key) = @_;
 
+	return undef unless $self->is_valid($p_key);
 	my $data = $self->restore($self->get_namespace(), $p_key)
 		or return undef;
 
