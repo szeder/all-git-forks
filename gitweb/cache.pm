@@ -61,24 +61,36 @@ sub new {
 	my $self  = {};
 	$self = bless($self, $class);
 
-	my ($root, $depth, $ns, $expires_in);
+	my ($root, $depth, $ns);
+	my ($expires_min, $expires_max, $increase_factor, $check_load);
 	if (defined $p_options_hash_ref) {
 		$root  = $p_options_hash_ref->{'cache_root'};
 		$depth = $p_options_hash_ref->{'cache_depth'};
 		$ns    = $p_options_hash_ref->{'namespace'};
-		$expires_in =
+		$expires_min =
+			$p_options_hash_ref->{'expires_min'} ||
 			$p_options_hash_ref->{'default_expires_in'} ||
 			$p_options_hash_ref->{'expires_in'};
+		$expires_max =
+			$p_options_hash_ref->{'expires_max'};
+		$increase_factor = $p_options_hash_ref->{'expires_factor'};
+		$check_load      = $p_options_hash_ref->{'check_load'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
 	$ns    = '' unless defined($ns);
-	$expires_in = -1 unless defined($expires_in); # <0 means never
+	$expires_min =   20 unless defined($expires_min);
+	$expires_max = 1200 unless defined($expires_max);
+	$increase_factor = 60 unless defined($increase_factor);
+	$check_load = \&main::get_loadavg unless defined($check_load);
 
 	$self->set_root($root);
 	$self->set_depth($depth);
 	$self->set_namespace($ns);
-	$self->set_expires_in($expires_in);
+	$self->set_expires_min($expires_min);
+	$self->set_expires_max($expires_max);
+	$self->set_increase_factor($increase_factor);
+	$self->set_check_load($check_load);
 
 	return $self;
 }
@@ -124,19 +136,71 @@ sub set_namespace {
 	$self->{'_Namespace'} = $namespace;
 }
 
-sub get_expires_in {
+
+sub get_expires_min {
 	my ($self) = @_;
 
-	return $self->{'_Expires_In'};
+	return $self->{'_Expires_Min'};
 }
 
+sub set_expires_min {
+	my ($self, $expires_min) = @_;
 
-sub set_expires_in {
-	my ($self, $expires_in) = @_;
-
-	$self->{'_Expires_In'} = $expires_in;
+	$self->{'_Expires_Min'} = $expires_min;
 }
 
+sub get_expires_max {
+	my ($self) = @_;
+
+	return $self->{'_Expires_Max'};
+}
+
+sub set_expires_max {
+	my ($self, $expires_max) = @_;
+
+	$self->{'_Expires_Max'} = $expires_max;
+}
+
+sub get_increase_factor {
+	my ($self) = @_;
+
+	return $self->{'_Increase_Factor'};
+}
+
+sub set_increase_factor {
+	my ($self, $increase_factor) = @_;
+
+	$self->{'_Increase_Factor'} = $increase_factor;
+}
+
+sub get_check_load {
+	my ($self) = @_;
+
+	return $self->{'_Check_Load'};
+}
+
+sub set_check_load {
+	my ($self, $sub) = @_;
+
+	$self->{'_Check_Load'} = $sub;
+}
+
+# ......................................................................
+
+sub get_expires_in {
+	my ($self) = @_;
+	my $expires_in =
+		#$self->get_expires_min() +
+		$self->get_increase_factor() * $self->get_check_load()->();
+
+	if ($expires_in < $self->get_expires_min()) {
+		return $self->get_expires_min();
+	} elsif ($expires_in > $self->get_expires_max()) {
+		return $self->get_expires_max();
+	}
+
+	return $expires_in;
+}
 
 # ----------------------------------------------------------------------
 # (private) utility functions and methods

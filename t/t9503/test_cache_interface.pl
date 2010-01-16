@@ -6,6 +6,11 @@ use strict;
 
 use Test::More;
 
+# mockup
+sub get_loadavg {
+	return 0.0;
+}
+
 # test source version; there is no installation target for gitweb
 my $cache_pm = "$ENV{TEST_DIRECTORY}/../gitweb/cache.pm";
 
@@ -77,7 +82,8 @@ cmp_ok($call_count, '==', 1, 'get_value() is called once');
 
 # Test cache expiration for 'expire now'
 #
-$cache->set_expires_in(0);
+$cache->set_expires_min(0);
+$cache->set_expires_max(0);
 is($cache->get_expires_in(), 0,        '"expires in" is set to now (0)');
 $cache->set($key, $value);
 ok(!defined($cache->get($key)),        'cache is expired');
