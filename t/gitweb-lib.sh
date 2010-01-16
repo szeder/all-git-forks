@@ -27,6 +27,8 @@ our \$export_ok = '';
 our \$strict_export = '';
 our \$git_versions_must_match = 0;
 
+our \$cache_pm = '$TEST_DIRECTORY/../gitweb/cache.pm';
+
 EOF
 
 	cat >.git/description <<EOF

@@ -359,4 +359,40 @@ sub compute {
 1;
 } # end of package GitwebCache::SimpleFileCache;
 
+# human readable key identifying gitweb output
+sub gitweb_output_key {
+	return href(-replay => 1, -full => 0, -path_info => 0);
+}
+
+sub cache_fetch {
+	my ($cache, $action) = @_;
+
+	my $key = gitweb_output_key();
+	my $data = $cache->get($key);
+
+	if (defined $data) {
+		# print cached data
+		binmode STDOUT, ':raw';
+		print STDOUT $data;
+
+	} else {
+		# calculate data and regenerate data
+		open my $data_fh, '>', \$data
+			or die "Can't open memory file: $!";
+		# matches "binmode STDOUT, ':uft8'" at beginning
+		binmode $data_fh, ':utf8';
+
+		$out = $data_fh || \*STDOUT;
+		$actions{$action}->();
+
+		if (defined $data) {
+			$cache->set($key, $data);
+			binmode STDOUT, ':raw';
+			print STDOUT $data;
+		}
+
+		close $data_fh;
+	}
+}
+
 1;

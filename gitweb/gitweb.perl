@@ -234,6 +234,22 @@ our $gitlinkurl_base = ("++GITWEB_BASE_URL++" =~ m!^(git://.*)$!) ? $1 : '';
 # Leave it undefined (or set to 'undef') to turn off load checking.
 our $maxload = 300;
 
+# This enables/disables the caching layer in gitweb.  Currently supported
+# is only output (response) caching, similar to the one used on git.kernel.org.
+our $caching_enabled = 0;
+# Set to _initialized_ instance of cache interface implementing (at least)
+# get($key) and set($key, $data) methods (Cache::Cache and CHI interfaces).
+# If unset, GitwebCache::SimpleFileCache would be used, which is 'dumb'
+# (but fast) file based caching layer, currently without any support for
+# cache size limiting.  It is therefore recommended that the cache directory
+# be periodically completely deleted; this operation is safe to perform.
+# Suggested mechanism:
+# mv $cachedir $cachedir.flush && mkdir $cachedir && rm -rf $cachedir.flush
+our $cache;
+# Locations of 'cache.pm' file; if it is relative path, it is relative to
+# the directory gitweb is run from
+our $cache_pm = 'cache.pm';
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -998,7 +1014,21 @@ if ($action !~ m/^(?:opml|project_list|project_index)$/ &&
     !$project) {
 	die_error(400, "Project needed");
 }
-$actions{$action}->();
+
+if ($caching_enabled) {
+	do $cache_pm;
+	die $@ if $@;
+
+	$cache ||= GitwebCache::SimpleFileCache->new({
+		'cache_root'  => '/tmp/cache',
+		'cache_depth' => 2,
+		'expires_in'  => 20, # in seconds
+	});
+	cache_fetch($cache, $action);
+} else {
+	$actions{$action}->();
+}
+
 exit;
 
 ## ======================================================================
@@ -3207,7 +3237,9 @@ sub git_header_html {
 	# 'application/xhtml+xml', otherwise send it as plain old 'text/html'.
 	# we have to do this because MSIE sometimes globs '*/*', pretending to
 	# support xhtml+xml but choking when it gets what it asked for.
-	if (defined $cgi->http('HTTP_ACCEPT') &&
+	# Disable content-type negotiation when caching (use mimetype good for all).
+	if (!$caching_enabled &&
+	    defined $cgi->http('HTTP_ACCEPT') &&
 	    $cgi->http('HTTP_ACCEPT') =~ m/(,|;|\s|^)application\/xhtml\+xml(,|;|\s|$)/ &&
 	    $cgi->Accept('application/xhtml+xml') != 0) {
 		$content_type = 'application/xhtml+xml';
@@ -3380,7 +3412,9 @@ sub git_footer_html {
 	}
 	print {$out} "</div>\n"; # class="page_footer"
 
-	if (defined $t0 && gitweb_check_feature('timed')) {
+	# timing info doesn't make much sense with output (response) caching
+	if (!$caching_enabled &&
+	    defined $t0 && gitweb_check_feature('timed')) {
 		print {$out} "<div id=\"generating_info\">\n";
 		print {$out} 'This page took '.
 		             '<span id="generating_time" class="time_span">'.
