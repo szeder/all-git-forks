@@ -71,6 +71,7 @@ You can specify the following configuration variables when building GIT:
  * GITWEB_BASE_URL
    Git base URLs used for URL to where fetch project from, i.e. full
    URL is "$git_base_url/$project".  Shown on projects summary page.
+   If it begins with "git://" it is also used for $gitlinkurl_base, see below.
    Repository URL for project can be also configured per repository; this
    takes precedence over URLs composed from base URL and a project name.
    Note that you can setup multiple base URLs (for example one for
@@ -204,6 +205,9 @@ not include variables usually directly set during build):
    access, and one for http:// "dumb" protocol access).  Note that per
    repository configuration in 'cloneurl' file, or as values of gitweb.url
    project config.
+ * $gitlinkurl_base
+   Git base URL used (if it is defined and not empty) for "git" link in
+   projects list, for each project.  Full URL is "$gitlinkurl_base/$project".
  * $default_blob_plain_mimetype
    Default mimetype for blob_plain (raw) view, if mimetype checking
    doesn't result in some other type; by default 'text/plain'.

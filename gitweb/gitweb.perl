@@ -224,6 +224,10 @@ our %avatar_size = (
 # If it is true, exit if gitweb version and git binary version don't match
 our $git_versions_must_match = 0;
 
+# If this variable is set and not empty, add an extra link called "git"
+# for each project in project list.  Full URL is "$gitlinkurl_base/$project".
+our $gitlinkurl_base = ("++GITWEB_BASE_URL++" =~ m!^(git://.*)$!) ? $1 : '';
+
 # Used to set the maximum load that we will still respond to gitweb queries.
 # If server load exceed this value then return "503 server busy" error.
 # If gitweb cannot determined server load, it is taken to be 0.
@@ -4473,6 +4477,10 @@ sub git_project_list_body {
 		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"log")}, "log") . " | " .
 		      $cgi->a({-href => href(project=>$pr->{'path'}, action=>"tree")}, "tree") .
 		      ($pr->{'forks'} ? " | " . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"forks")}, "forks") : '') .
+		      ($gitlinkurl_base ?
+		       " | " . $cgi->a({-href=>"$gitlinkurl_base/$pr->{'path'}",
+		                        -rel=>"vcs-git"}, "git")
+		      : '') .
 		      "</td>\n" .
 		      "</tr>\n";
 	}
