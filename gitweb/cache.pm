@@ -432,6 +432,48 @@ sub cache_fetch {
 	my ($cache, $action) = @_;
 
 	my $key = gitweb_output_key();
+	if ($cache->can('compute')) {
+		cache_fetch_compute($cache, $action, $key);
+	} else {
+		cache_fetch_get_set($cache, $action, $key);
+	}
+}
+
+# calculate data to regenrate cache
+sub cache_calculate {
+	my ($action) = @_;
+
+	my $data;
+	open my $data_fh, '>', \$data
+		or die "Can't open memory file: $!";
+	# matches "binmode STDOUT, ':uft8'" at beginning
+	binmode $data_fh, ':utf8';
+
+	$out = $data_fh || \*STDOUT;
+	$actions{$action}->();
+
+	close $data_fh;
+
+	return $data;
+}
+
+# for $cache which can ->compute($key, $code)
+sub cache_fetch_compute {
+	my ($cache, $action, $key) = @_;
+
+	my $data = $cache->compute($key, sub { cache_calculate($action) });
+
+	if (defined $data) {
+		# print cached data
+		binmode STDOUT, ':raw';
+		print STDOUT $data;
+	}
+}
+
+# for $cache which can ->get($key) and ->set($key, $data)
+sub cache_fetch_get_set {
+	my ($cache, $action, $key) = @_;
+
 	my $data = $cache->get($key);
 
 	if (defined $data) {
@@ -440,22 +482,13 @@ sub cache_fetch {
 		print STDOUT $data;
 
 	} else {
-		# calculate data and regenerate data
-		open my $data_fh, '>', \$data
-			or die "Can't open memory file: $!";
-		# matches "binmode STDOUT, ':uft8'" at beginning
-		binmode $data_fh, ':utf8';
-
-		$out = $data_fh || \*STDOUT;
-		$actions{$action}->();
+		$data = cache_calculate($action);
 
 		if (defined $data) {
 			$cache->set($key, $data);
 			binmode STDOUT, ':raw';
 			print STDOUT $data;
 		}
-
-		close $data_fh;
 	}
 }
 
