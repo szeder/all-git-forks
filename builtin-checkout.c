@@ -167,7 +167,7 @@ static int checkout_merged(int pos, struct checkout *state)
 	fill_mm(active_cache[pos+2]->sha1, &theirs);
 
 	status = ll_merge(&result_buf, path, &ancestor,
-			  &ours, "ours", &theirs, "theirs", 1);
+			  &ours, "ours", &theirs, "theirs", 0);
 	free(ancestor.ptr);
 	free(ours.ptr);
 	free(theirs.ptr);
@@ -397,7 +397,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 		topts.initial_checkout = is_cache_unborn();
 		topts.update = 1;
 		topts.merge = 1;
-		topts.gently = opts->merge;
+		topts.gently = opts->merge && old->commit;
 		topts.verbose_update = !opts->quiet;
 		topts.fn = twoway_merge;
 		topts.dir = xcalloc(1, sizeof(*topts.dir));
@@ -422,7 +422,13 @@ static int merge_working_tree(struct checkout_opts *opts,
 			struct merge_options o;
 			if (!opts->merge)
 				return 1;
-			parse_commit(old->commit);
+
+			/*
+			 * Without old->commit, the below is the same as
+			 * the two-tree unpack we already tried and failed.
+			 */
+			if (!old->commit)
+				return 1;
 
 			/* Do more real merge */
 
@@ -690,7 +696,10 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	 * case 3: git checkout <something> [<paths>]
 	 *
 	 *   With no paths, if <something> is a commit, that is to
-	 *   switch to the branch or detach HEAD at it.
+	 *   switch to the branch or detach HEAD at it.  As a special case,
+	 *   if <something> is A...B (missing A or B means HEAD but you can
+	 *   omit at most one side), and if there is a unique merge base
+	 *   between A and B, A...B names that merge base.
 	 *
 	 *   With no paths, if <something> is _not_ a commit, no -t nor -b
 	 *   was given, and there is a tracking branch whose name is
@@ -716,7 +725,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		if (!strcmp(arg, "-"))
 			arg = "@{-1}";
 
-		if (get_sha1(arg, rev)) {
+		if (get_sha1_mb(arg, rev)) {
 			if (has_dash_dash)          /* case (1) */
 				die("invalid reference: %s", arg);
 			if (!patch_mode &&

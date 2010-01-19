@@ -53,7 +53,7 @@ static char *edit_message, *use_message;
 static char *author_name, *author_email, *author_date;
 static int all, edit_flag, also, interactive, only, amend, signoff;
 static int quiet, verbose, no_verify, allow_empty, dry_run, renew_authorship;
-static char *untracked_files_arg;
+static char *untracked_files_arg, *force_date;
 /*
  * The default commit message cleanup mode will remove the lines
  * beginning with # (shell comments) and leading and trailing
@@ -68,7 +68,7 @@ static enum {
 } cleanup_mode;
 static char *cleanup_arg;
 
-static int use_editor = 1, initial_commit, in_merge;
+static int use_editor = 1, initial_commit, in_merge, include_status = 1;
 static const char *only_include_assumed;
 static struct strbuf message;
 
@@ -98,6 +98,7 @@ static struct option builtin_commit_options[] = {
 	OPT_GROUP("Commit message options"),
 	OPT_FILENAME('F', "file", &logfile, "read log from file"),
 	OPT_STRING(0, "author", &force_author, "AUTHOR", "override author for commit"),
+	OPT_STRING(0, "date", &force_date, "DATE", "override date for commit"),
 	OPT_CALLBACK('m', "message", &message, "MESSAGE", "specify commit message", opt_parse_m),
 	OPT_STRING('c', "reedit-message", &edit_message, "COMMIT", "reuse and edit message from specified commit"),
 	OPT_STRING('C', "reuse-message", &use_message, "COMMIT", "reuse message from specified commit"),
@@ -106,6 +107,7 @@ static struct option builtin_commit_options[] = {
 	OPT_FILENAME('t', "template", &template_file, "use specified template file"),
 	OPT_BOOLEAN('e', "edit", &edit_flag, "force edit of commit"),
 	OPT_STRING(0, "cleanup", &cleanup_arg, "default", "how to strip spaces and #comments from message"),
+	OPT_BOOLEAN(0, "status", &include_status, "include status in commit message template"),
 	/* end commit message options */
 
 	OPT_GROUP("Commit contents options"),
@@ -182,11 +184,15 @@ static int list_paths(struct string_list *list, const char *with_tree,
 
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *ce = active_cache[i];
+		struct string_list_item *item;
+
 		if (ce->ce_flags & CE_UPDATE)
 			continue;
 		if (!match_pathspec(pattern, ce->name, ce_namelen(ce), 0, m))
 			continue;
-		string_list_insert(ce->name, list);
+		item = string_list_insert(ce->name, list);
+		if (ce_skip_worktree(ce))
+			item->util = item; /* better a valid pointer than a fake one */
 	}
 
 	return report_path_error(m, pattern, prefix ? strlen(prefix) : 0);
@@ -198,6 +204,10 @@ static void add_remove_files(struct string_list *list)
 	for (i = 0; i < list->nr; i++) {
 		struct stat st;
 		struct string_list_item *p = &(list->items[i]);
+
+		/* p->util is skip-worktree */
+		if (p->util)
+			continue;
 
 		if (!lstat(p->string, &st)) {
 			if (add_to_cache(p->string, &st, 0))
@@ -441,6 +451,9 @@ static void determine_author_info(void)
 		email = xstrndup(lb + 2, rb - (lb + 2));
 	}
 
+	if (force_date)
+		date = force_date;
+
 	author_name = name;
 	author_email = email;
 	author_date = date;
@@ -578,7 +591,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 
 	/* This checks if committer ident is explicitly given */
 	git_committer_info(0);
-	if (use_editor) {
+	if (use_editor && include_status) {
 		char *author_ident;
 		const char *committer_ident;
 
@@ -1093,6 +1106,10 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 
 	if (!strcmp(k, "commit.template"))
 		return git_config_pathname(&template_file, k, v);
+	if (!strcmp(k, "commit.status")) {
+		include_status = git_config_bool(k, v);
+		return 0;
+	}
 
 	return git_status_config(k, v, s);
 }
@@ -1238,7 +1255,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		     "new_index file. Check that disk is not full or quota is\n"
 		     "not exceeded, and then \"git reset HEAD\" to recover.");
 
-	rerere();
+	rerere(0);
 	run_hook(get_index_file(), "post-commit", NULL);
 	if (!quiet)
 		print_summary(prefix, commit_sha1);
