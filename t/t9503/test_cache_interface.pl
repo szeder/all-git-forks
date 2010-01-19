@@ -65,6 +65,8 @@ $cache->set($key, $value);
 is($cache->get($key), $value,          'get after set, returns cached value');
 $cache->remove($key);
 ok(!defined($cache->get($key)),        'get after remove, is undefined');
+eval { $cache->remove('Not-Existent Key'); };
+ok(!$@,                                'remove on non-existent key doesn\'t die');
 
 # Test the getting and setting of a cached value
 # (CHI interface)
@@ -79,6 +81,70 @@ is($cache->compute($key, \&get_value), $value, 'compute 1st time (set)');
 is($cache->compute($key, \&get_value), $value, 'compute 2nd time (get)');
 is($cache->compute($key, \&get_value), $value, 'compute 3rd time (get)');
 cmp_ok($call_count, '==', 1, 'get_value() is called once');
+
+# Test 'stampeding her' / cache miss stampede problem
+# (probably should be run only if GIT_TEST_LONG)
+sub get_value_slow {
+	$call_count++;
+	sleep 1;
+	return $value;
+}
+my ($pid, $kid_fh);
+
+$call_count = 0;
+$cache->remove($key);
+$pid = open $kid_fh, '-|';
+SKIP: {
+	skip "cannot fork: $!", 1
+		unless defined $pid;
+
+	my $data = $cache->get($key);
+	if (!defined $data) {
+		$data = get_value_slow();
+		$cache->set($key, $data);
+	}
+
+	if ($pid) {
+		my $child_count = <$kid_fh>;
+		chomp $child_count;
+
+		waitpid $pid, 0;
+		close $kid_fh;
+
+		$call_count += $child_count;
+	} else {
+		print "$call_count\n";
+		exit 0;
+	}
+
+	cmp_ok($call_count, '==', 2, 'parallel get/set: get_value_slow() called twice');
+}
+
+$call_count = 0;
+$cache->remove($key);
+$pid = open $kid_fh, '-|';
+SKIP: {
+	skip "cannot fork: $!", 1
+		unless defined $pid;
+
+	my $data = $cache->compute($key, \&get_value_slow);
+
+	if ($pid) {
+		my $child_count = <$kid_fh>;
+		chomp $child_count;
+
+		waitpid $pid, 0;
+		close $kid_fh;
+
+		$call_count += $child_count;
+	} else {
+		print "$call_count\n";
+		exit 0;
+	}
+
+	cmp_ok($call_count, '==', 1, 'parallel compute: get_value_slow() called once');
+}
+
 
 # Test cache expiration for 'expire now'
 #

@@ -24,6 +24,7 @@ use File::Path qw(make_path);  # requires version >= 2.0
 use File::Spec;
 use File::Temp;
 use Digest::MD5 qw(md5_hex);
+use Fcntl qw(:flock);
 
 # by default, the cache nests all entries on the filesystem two
 # directories deep
@@ -217,7 +218,7 @@ sub _path_to_key {
 	my ($self, $p_namespace, $p_key) = @_;
 
 	return $self->_path_to_hashed_key($p_namespace,
-	                                    _Build_Hashed_Key($p_key));
+	                                  _Build_Hashed_Key($p_key));
 }
 
 # Take hashed key, and return file path
@@ -226,6 +227,13 @@ sub _path_to_hashed_key {
 
 	return File::Spec->catfile($self->get_root(), $p_namespace,
 	                           _Split_Word($p_hashed_key, $self->get_depth()));
+}
+
+sub _lockfile_to_key {
+	my ($self, $p_namespace, $p_key) = @_;
+
+	return $self->_path_to_hashed_key($p_namespace,
+	                                  _Build_Hashed_Key($p_key)) . '.lock';
 }
 
 # Split word into N components, where each component but last is two-letter word
@@ -412,16 +420,29 @@ sub compute {
 	my ($self, $p_key, $p_coderef) = @_;
 
 	my $data = $self->get($p_key);
-	if (!defined $data) {
+	return $data if defined $data;
+
+	my $lockfile = $self->_lockfile_to_key($self->get_namespace(), $p_key);
+	_Make_Path($lockfile);
+	open my $lock_fh, '+>', $lockfile;
+	#	or die "Can't open lockfile '$lockfile': $!";
+	if (my $lock_state = flock($lock_fh, LOCK_EX | LOCK_NB)) {
+		# acquired writers lock
 		$data = $p_coderef->($self, $p_key);
 		$self->set($p_key, $data);
+	} else {
+		# get readers lock
+		flock($lock_fh, LOCK_SH);
+		$data = $self->restore($self->get_namespace(), $p_key);
 	}
-
+	close $lock_fh;
 	return $data;
 }
 
 1;
 } # end of package GitwebCache::SimpleFileCache;
+
+# ======================================================================
 
 # human readable key identifying gitweb output
 sub gitweb_output_key {
