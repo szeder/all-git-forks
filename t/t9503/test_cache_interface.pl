@@ -154,5 +154,42 @@ is($cache->get_expires_in(), 0,        '"expires in" is set to now (0)');
 $cache->set($key, $value);
 ok(!defined($cache->get($key)),        'cache is expired');
 
+# Test that cache returns stale data in existing but expired cache situation
+# (probably should be run only if GIT_TEST_LONG)
+$cache->set_expires_min(0);
+$cache->set_expires_max(0);
+my $stale_value = 'Stale Value';
+my $child_data = '';
+$cache->set($key, $stale_value);
+$call_count = 0;
+$pid = open $kid_fh, '-|';
+SKIP: {
+	skip "cannot fork: $!", 4
+		unless defined $pid;
+
+	my $data = $cache->compute($key, \&get_value_slow);
+
+	if ($pid) {
+		$child_data = <$kid_fh>;
+		chomp $child_data;
+
+		waitpid $pid, 0;
+		close $kid_fh;
+	} else {
+		print "$data\n";
+		exit 0;
+	}
+
+	is($data,       $stale_value, 'stale data in parent when expired');
+	is($child_data, $stale_value, 'stale data in child  when expired');
+
+	# never expire
+	$cache->set_expires_min(-1);
+	$cache->set_expires_max(-1);
+	is($cache->get($key), $value, 'value got set correctly');
+}
+$cache->set_expires_min(0);
+$cache->set_expires_max(0);
+
 
 done_testing();

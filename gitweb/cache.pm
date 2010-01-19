@@ -426,14 +426,36 @@ sub compute {
 	_Make_Path($lockfile);
 	open my $lock_fh, '+>', $lockfile;
 	#	or die "Can't open lockfile '$lockfile': $!";
+
+	# try to retrieve stale data
+	$data = $self->restore($self->get_namespace(), $p_key);
+
 	if (my $lock_state = flock($lock_fh, LOCK_EX | LOCK_NB)) {
 		# acquired writers lock
-		$data = $p_coderef->($self, $p_key);
-		$self->set($p_key, $data);
+		my $pid = fork() if $data;
+		if (!defined $pid || $pid) {
+			# parent, or didn't fork
+			$data = $p_coderef->($self, $p_key);
+			$self->set($p_key, $data);
+
+			if ($pid) {
+				# wait for child (which would print) and exit
+				waitpid $pid, 0;
+				exit 0;
+			} else {
+				# there is no child, or was no $data to serve in background
+				;
+			}
+		} else {
+			# child to serve $data
+			;
+		}
 	} else {
-		# get readers lock
-		flock($lock_fh, LOCK_SH);
-		$data = $self->restore($self->get_namespace(), $p_key);
+		if (!defined $data) {
+			# get readers lock if there is no stale data to serve
+			flock($lock_fh, LOCK_SH);
+			$data = $self->restore($self->get_namespace(), $p_key);
+		}
 	}
 	close $lock_fh;
 	return $data;
