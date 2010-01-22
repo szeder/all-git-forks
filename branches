@@ -6,6 +6,3 @@ jk/stash-apply-p
 
 js/unique-tests
   maybe drop?
-
-jk/push-purge
-  very WIP; see commit for details
