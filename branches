@@ -7,8 +7,5 @@ jk/stash-apply-p
 js/unique-tests
   maybe drop?
 
-js/upstream
-  needs die cleanup
-
 jk/push-purge
   very WIP; see commit for details
