@@ -63,7 +63,8 @@ sub new {
 	$self = bless($self, $class);
 
 	my ($root, $depth, $ns);
-	my ($expires_min, $expires_max, $increase_factor, $check_load);
+	my ($expires_min, $expires_max, $increase_factor,
+	    $check_load, $generating_info);
 	if (defined $p_options_hash_ref) {
 		$root  = $p_options_hash_ref->{'cache_root'};
 		$depth = $p_options_hash_ref->{'cache_depth'};
@@ -76,6 +77,7 @@ sub new {
 			$p_options_hash_ref->{'expires_max'};
 		$increase_factor = $p_options_hash_ref->{'expires_factor'};
 		$check_load      = $p_options_hash_ref->{'check_load'};
+		$generating_info = $p_options_hash_ref->{'generating_info'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
@@ -92,6 +94,7 @@ sub new {
 	$self->set_expires_max($expires_max);
 	$self->set_increase_factor($increase_factor);
 	$self->set_check_load($check_load);
+	$self->set_generating_info($generating_info);
 
 	return $self;
 }
@@ -186,6 +189,18 @@ sub set_check_load {
 	$self->{'_Check_Load'} = $sub;
 }
 
+sub get_generating_info {
+	my ($self) = @_;
+
+	return $self->{'_Generating_Info'};
+}
+
+sub set_generating_info {
+	my ($self, $sub) = @_;
+
+	$self->{'_Generating_Info'} = $sub;
+}
+
 # ......................................................................
 
 sub get_expires_in {
@@ -201,6 +216,12 @@ sub get_expires_in {
 	}
 
 	return $expires_in;
+}
+
+sub generating_info {
+	if (defined $self->get_generating_info()) {
+		$self->get_generating_info()->($self, @_);
+	}
 }
 
 # ----------------------------------------------------------------------
@@ -434,6 +455,9 @@ sub compute {
 		# acquired writers lock
 		my $pid = fork() if $data;
 		if (!defined $pid || $pid) {
+			# provide "generating page..." info if there is no stale data to serve
+			$self->generating_info($p_key, $lock_fh)
+				unless ($data);
 			# parent, or didn't fork
 			$data = $p_coderef->($self, $p_key);
 			$self->set($p_key, $data);
@@ -451,8 +475,12 @@ sub compute {
 			;
 		}
 	} else {
+		# some else process is (re)generating cache
 		if (!defined $data) {
-			# get readers lock if there is no stale data to serve
+			# there is no stale data to serve
+			# provide "generating page..." info
+			$self->generating_info($p_key, $lock_fh);
+			# get readers lock
 			flock($lock_fh, LOCK_SH);
 			$data = $self->restore($self->get_namespace(), $p_key);
 		}

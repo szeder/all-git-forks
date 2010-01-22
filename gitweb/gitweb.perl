@@ -13,7 +13,7 @@ use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser);
 use Encode;
-use Fcntl ':mode';
+use Fcntl qw(:mode :flock);
 use File::Find qw();
 use File::Basename qw(basename);
 binmode STDOUT, ':utf8';
@@ -1023,6 +1023,7 @@ if ($caching_enabled) {
 		'cache_root'  => '/tmp/cache',
 		'cache_depth' => 2,
 		'expires_in'  => 20, # in seconds
+		'generating_info' => \&git_generating_data_html,
 	});
 	cache_fetch($cache, $action);
 } else {
@@ -3214,6 +3215,78 @@ sub blob_contenttype {
 
 ## ======================================================================
 ## functions printing HTML: header, footer, error page
+
+sub git_generating_data_html {
+	my ($cache, $key, $lock_fh) = @_;
+
+	if ($action eq 'atom' || $action eq 'rss' || $action eq 'opml' || # feeds
+	    $action eq 'blob_plain' || # unknown mimetype
+	    $action eq 'commitdiff_plain' || # text/plain
+	    $action eq 'patch' || $action eq 'patches' || # text/plain
+	    $action eq 'snapshot') { # binary
+		return;
+	}
+
+	my $title = "[Generating...] $site_name";
+	if (defined $project) {
+		$title .= " - " . to_utf8($project);
+		if (defined $action) {
+			$title .= "/$action";
+			if (defined $file_name) {
+				$title .= " - " . esc_path($file_name);
+				if ($action eq "tree" && $file_name !~ m|/$|) {
+					$title .= "/";
+				}
+			}
+		}
+	}
+
+	my $mod_perl_version = $ENV{'MOD_PERL'} ? " $ENV{'MOD_PERL'}" : '';
+	print STDOUT $cgi->header(-type => 'text/html', -charset => 'utf-8',
+	                          -status=> '200 OK', -expires => 'now');
+	print STDOUT <<"EOF";
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+<!-- git web interface version $version -->
+<!-- git core binaries version $git_version -->
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta http-equiv="refresh" content="0" />
+<meta name="generator" content="gitweb/$version git/$git_version$mod_perl_version" />
+<meta name="robots" content="noindex, nofollow" />
+<title>$title</title>
+</head>
+<body>
+EOF
+	print STDOUT 'Generating..';
+
+	my $ready;
+	my ($wait, $wait_step, $wait_max); # in seconds
+	$wait = 0;
+	$wait_step = 2;
+	$wait_max = 20;
+	$| = 1; # autoflush
+	do {
+		print STDOUT '.';
+
+		sleep $wait_step if ($wait > 0);
+		$wait += $wait_step;
+
+		$ready = flock($lock_fh, LOCK_SH|LOCK_NB)
+			if $lock_fh;
+
+	} while (!$ready && ($wait < $wait_max));
+
+	print STDOUT <<"EOF";
+
+</body>
+</html>
+EOF
+	#exit 0;
+	return;
+}
 
 sub git_header_html {
 	my $status = shift || "200 OK";
