@@ -187,10 +187,6 @@ all::
 # is a simplified version of the merge sort used in glibc. This is
 # recommended if Git triggers O(n^2) behavior in your platform's qsort().
 #
-# Define NO_EXTERNAL_GREP if you don't want "git grep" to ever call
-# your external grep (e.g., if your system lacks grep, if its grep is
-# broken, or spawning external process is slower than built-in grep git has).
-#
 # Define UNRELIABLE_FSTAT if your system's fstat does not return the same
 # information on a not yet closed file that lstat would return for the same
 # file after it was closed.
@@ -391,19 +387,10 @@ EXTRA_PROGRAMS =
 # ... and all the rest that could be moved out of bindir to gitexecdir
 PROGRAMS += $(EXTRA_PROGRAMS)
 PROGRAMS += git-fast-import$X
-PROGRAMS += git-hash-object$X
 PROGRAMS += git-imap-send$X
-PROGRAMS += git-index-pack$X
-PROGRAMS += git-merge-index$X
-PROGRAMS += git-merge-tree$X
-PROGRAMS += git-mktag$X
-PROGRAMS += git-pack-redundant$X
-PROGRAMS += git-patch-id$X
 PROGRAMS += git-shell$X
 PROGRAMS += git-show-index$X
-PROGRAMS += git-unpack-file$X
 PROGRAMS += git-upload-pack$X
-PROGRAMS += git-var$X
 PROGRAMS += git-http-backend$X
 
 # List built-in command $C whose implementation cmd_$C() is not in
@@ -423,16 +410,6 @@ BUILT_INS += git-show$X
 BUILT_INS += git-stage$X
 BUILT_INS += git-status$X
 BUILT_INS += git-whatchanged$X
-
-ifdef NO_CURL
-REMOTE_CURL_PRIMARY =
-REMOTE_CURL_ALIASES =
-REMOTE_CURL_NAMES =
-else
-REMOTE_CURL_PRIMARY = git-remote-http$X
-REMOTE_CURL_ALIASES = git-remote-https$X git-remote-ftp$X git-remote-ftps$X
-REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
-endif
 
 # what 'all' will build and 'install' will install in gitexecdir,
 # excluding programs for built-in commands
@@ -511,6 +488,7 @@ LIB_H += reflog-walk.h
 LIB_H += refs.h
 LIB_H += remote.h
 LIB_H += rerere.h
+LIB_H += resolve-undo.h
 LIB_H += revision.h
 LIB_H += run-command.h
 LIB_H += sha1-lookup.h
@@ -572,6 +550,7 @@ LIB_OBJS += graph.o
 LIB_OBJS += grep.o
 LIB_OBJS += hash.o
 LIB_OBJS += help.o
+LIB_OBJS += hex.o
 LIB_OBJS += ident.o
 LIB_OBJS += levenshtein.o
 LIB_OBJS += list-objects.o
@@ -606,6 +585,7 @@ LIB_OBJS += refs.o
 LIB_OBJS += remote.o
 LIB_OBJS += replace_object.o
 LIB_OBJS += rerere.o
+LIB_OBJS += resolve-undo.o
 LIB_OBJS += revision.o
 LIB_OBJS += run-command.o
 LIB_OBJS += server-info.o
@@ -670,7 +650,9 @@ BUILTIN_OBJS += builtin-for-each-ref.o
 BUILTIN_OBJS += builtin-fsck.o
 BUILTIN_OBJS += builtin-gc.o
 BUILTIN_OBJS += builtin-grep.o
+BUILTIN_OBJS += builtin-hash-object.o
 BUILTIN_OBJS += builtin-help.o
+BUILTIN_OBJS += builtin-index-pack.o
 BUILTIN_OBJS += builtin-init-db.o
 BUILTIN_OBJS += builtin-log.o
 BUILTIN_OBJS += builtin-ls-files.o
@@ -681,13 +663,18 @@ BUILTIN_OBJS += builtin-mailsplit.o
 BUILTIN_OBJS += builtin-merge.o
 BUILTIN_OBJS += builtin-merge-base.o
 BUILTIN_OBJS += builtin-merge-file.o
+BUILTIN_OBJS += builtin-merge-index.o
 BUILTIN_OBJS += builtin-merge-ours.o
 BUILTIN_OBJS += builtin-merge-recursive.o
+BUILTIN_OBJS += builtin-merge-tree.o
+BUILTIN_OBJS += builtin-mktag.o
 BUILTIN_OBJS += builtin-mktree.o
 BUILTIN_OBJS += builtin-mv.o
 BUILTIN_OBJS += builtin-name-rev.o
 BUILTIN_OBJS += builtin-pack-objects.o
+BUILTIN_OBJS += builtin-pack-redundant.o
 BUILTIN_OBJS += builtin-pack-refs.o
+BUILTIN_OBJS += builtin-patch-id.o
 BUILTIN_OBJS += builtin-prune-packed.o
 BUILTIN_OBJS += builtin-prune.o
 BUILTIN_OBJS += builtin-push.o
@@ -710,11 +697,13 @@ BUILTIN_OBJS += builtin-stripspace.o
 BUILTIN_OBJS += builtin-symbolic-ref.o
 BUILTIN_OBJS += builtin-tag.o
 BUILTIN_OBJS += builtin-tar-tree.o
+BUILTIN_OBJS += builtin-unpack-file.o
 BUILTIN_OBJS += builtin-unpack-objects.o
 BUILTIN_OBJS += builtin-update-index.o
 BUILTIN_OBJS += builtin-update-ref.o
 BUILTIN_OBJS += builtin-update-server-info.o
 BUILTIN_OBJS += builtin-upload-archive.o
+BUILTIN_OBJS += builtin-var.o
 BUILTIN_OBJS += builtin-verify-pack.o
 BUILTIN_OBJS += builtin-verify-tag.o
 BUILTIN_OBJS += builtin-write-tree.o
@@ -805,7 +794,6 @@ ifeq ($(uname_S),SunOS)
 	NO_MKDTEMP = YesPlease
 	NO_MKSTEMPS = YesPlease
 	NO_REGEX = YesPlease
-	NO_EXTERNAL_GREP = YesPlease
 	THREADED_DELTA_SEARCH = YesPlease
 	ifeq ($(uname_R),5.7)
 		NEEDS_RESOLV = YesPlease
@@ -924,7 +912,6 @@ ifeq ($(uname_S),IRIX)
 	# NO_MMAP.  If you suspect that your compiler is not affected by this
 	# issue, comment out the NO_MMAP statement.
 	NO_MMAP = YesPlease
-	NO_EXTERNAL_GREP = UnfortunatelyYes
 	SNPRINTF_RETURNS_BOGUS = YesPlease
 	SHELL_PATH = /usr/gnu/bin/bash
 	NEEDS_LIBGEN = YesPlease
@@ -944,7 +931,6 @@ ifeq ($(uname_S),IRIX64)
 	# NO_MMAP.  If you suspect that your compiler is not affected by this
 	# issue, comment out the NO_MMAP statement.
 	NO_MMAP = YesPlease
-	NO_EXTERNAL_GREP = UnfortunatelyYes
 	SNPRINTF_RETURNS_BOGUS = YesPlease
 	SHELL_PATH=/usr/gnu/bin/bash
 	NEEDS_LIBGEN = YesPlease
@@ -1112,6 +1098,9 @@ endif
 
 ifdef NO_CURL
 	BASIC_CFLAGS += -DNO_CURL
+	REMOTE_CURL_PRIMARY =
+	REMOTE_CURL_ALIASES =
+	REMOTE_CURL_NAMES =
 else
 	ifdef CURLDIR
 		# Try "-Wl,-rpath=$(CURLDIR)/$(lib)" in such a case.
@@ -1120,6 +1109,9 @@ else
 	else
 		CURL_LIBCURL = -lcurl
 	endif
+	REMOTE_CURL_PRIMARY = git-remote-http$X
+	REMOTE_CURL_ALIASES = git-remote-https$X git-remote-ftp$X git-remote-ftps$X
+	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
 	PROGRAMS += $(REMOTE_CURL_NAMES) git-http-fetch$X
 	curl_check := $(shell (echo 070908; curl-config --vernum) | sort -r | sed -ne 2p)
 	ifeq "$(curl_check)" "070908"
@@ -1352,9 +1344,6 @@ ifdef THREADED_DELTA_SEARCH
 endif
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
 	COMPAT_CFLAGS += -DDIR_HAS_BSD_GROUP_SEMANTICS
-endif
-ifdef NO_EXTERNAL_GREP
-	BASIC_CFLAGS += -DNO_EXTERNAL_GREP
 endif
 ifdef UNRELIABLE_FSTAT
 	BASIC_CFLAGS += -DUNRELIABLE_FSTAT
@@ -1792,6 +1781,7 @@ TEST_PROGRAMS_NEED_X += test-genrandom
 TEST_PROGRAMS_NEED_X += test-match-trees
 TEST_PROGRAMS_NEED_X += test-parse-options
 TEST_PROGRAMS_NEED_X += test-path-utils
+TEST_PROGRAMS_NEED_X += test-run-command
 TEST_PROGRAMS_NEED_X += test-sha1
 TEST_PROGRAMS_NEED_X += test-sigchain
 TEST_PROGRAMS_NEED_X += test-index-version

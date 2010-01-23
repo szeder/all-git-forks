@@ -120,6 +120,11 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 	if (argc < 2)
 		return rerere(flags);
 
+	if (!strcmp(argv[1], "forget")) {
+		const char **pathspec = get_pathspec(prefix, argv + 2);
+		return rerere_forget(pathspec);
+	}
+
 	fd = setup_rerere(&merge_rr, flags);
 	if (fd < 0)
 		return 0;
