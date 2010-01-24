@@ -3219,6 +3219,9 @@ sub blob_contenttype {
 sub git_generating_data_html {
 	my ($cache, $key, $lock_fh) = @_;
 
+	if ($cgi->http('X-Ajax')) {
+		return;
+	}
 	if ($action eq 'atom' || $action eq 'rss' || $action eq 'opml' || # feeds
 	    $action eq 'blob_plain' || # unknown mimetype
 	    $action eq 'commitdiff_plain' || # text/plain
@@ -3241,6 +3244,7 @@ sub git_generating_data_html {
 		}
 	}
 
+	my $use_javascript = $cgi->param('js');
 	my $mod_perl_version = $ENV{'MOD_PERL'} ? " $ENV{'MOD_PERL'}" : '';
 	print STDOUT $cgi->header(-type => 'text/html', -charset => 'utf-8',
 	                          -status=> '200 OK', -expires => 'now');
@@ -3253,31 +3257,58 @@ sub git_generating_data_html {
 <!-- git core binaries version $git_version -->
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-<meta http-equiv="refresh" content="0" />
+EOF
+	if (!$use_javascript) {
+		print STDOUT qq!<meta http-equiv="refresh" content="0" />\n!;
+	}
+	print STDOUT <<"EOF";
 <meta name="generator" content="gitweb/$version git/$git_version$mod_perl_version" />
 <meta name="robots" content="noindex, nofollow" />
 <title>$title</title>
 </head>
 <body>
 EOF
-	print STDOUT 'Generating..';
+	if ($use_javascript) {
+		my $url_self = href(-replay=>1);
+		print STDOUT <<"EOF";
+Generating...<br />
+<script type="text/javascript" src="$javascript"></script>
+<script type="text/javascript">
+window.onload = function () {
+	xhr = createRequestObject();
+	xhr.onreadystatechange = function () {
+		if (xhr.readyState === 4 && xhr.status === 200) {
+			// intentionally overwrite document
+			document.write(xhr.responseText);
+		}
+	}
+	xhr.open('GET', $url_self);
+	// mark request to not show "Generating..." page
+	xhr.setRequestHeader('X-Ajax', 'Yes');
+	xhr.send(null);
+}
+</script>
+EOF
+	} else {
+		print STDOUT 'Generating..';
 
-	my $ready;
-	my ($wait, $wait_step, $wait_max); # in seconds
-	$wait = 0;
-	$wait_step = 2;
-	$wait_max = 20;
-	$| = 1; # autoflush
-	do {
-		print STDOUT '.';
-
-		sleep $wait_step if ($wait > 0);
-		$wait += $wait_step;
-
-		$ready = flock($lock_fh, LOCK_SH|LOCK_NB)
-			if $lock_fh;
-
-	} while (!$ready && ($wait < $wait_max));
+		my $ready;
+		my ($wait, $wait_step, $wait_max); # in seconds
+		$wait = 0;
+		$wait_step = 2;
+		$wait_max = 20;
+		$| = 1; # autoflush
+		do {
+			print STDOUT '.';
+			
+			sleep $wait_step if ($wait > 0);
+			$wait += $wait_step;
+			
+			$ready = flock($lock_fh, LOCK_SH|LOCK_NB)
+				if $lock_fh;
+			
+		} while (!$ready && ($wait < $wait_max));
+	}
 
 	print STDOUT <<"EOF";
 
