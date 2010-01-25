@@ -121,6 +121,8 @@ unset oguimsg
 
 set _appname {Git Gui}
 set _gitdir {}
+set _gitworktree {}
+set _isbare {}
 set _gitexec {}
 set _githtmldir {}
 set _reponame {}
@@ -274,6 +276,32 @@ proc get_config {name} {
 	} else {
 		return $v
 	}
+}
+
+proc is_bare {} {
+	global _isbare
+	global _gitdir
+	global _gitworktree
+
+	if {$_isbare eq {}} {
+		if {[catch {
+			set _bare [git rev-parse --is-bare-repository]
+			switch  -- $_bare {
+			true { set _isbare 1 }
+			false { set _isbare 0}
+			default { throw }
+			}
+		}]} {
+			if {[is_config_true core.bare]
+				|| ($_gitworktree eq {}
+					&& [lindex [file split $_gitdir] end] ne {.git})} {
+				set _isbare 1
+			} else {
+				set _isbare 0
+			}
+		}
+	}
+	return $_isbare
 }
 
 ######################################################################
@@ -1074,6 +1102,8 @@ if {[catch {
 		set _prefix {}
 		}]
 	&& [catch {
+		# beware that from the .git dir this sets _gitdir to .
+		# and _prefix to the empty string
 		set _gitdir [git rev-parse --git-dir]
 		set _prefix [git rev-parse --show-prefix]
 	} err]} {
@@ -1082,6 +1112,14 @@ if {[catch {
 	choose_repository::pick
 	set picked 1
 }
+
+# we expand the _gitdir when it's just a single dot (i.e. when we're being
+# run from the .git dir itself) lest the routines to find the worktree
+# get confused
+if {$_gitdir eq "."} {
+	set _gitdir [pwd]
+}
+
 if {![file isdirectory $_gitdir] && [is_Cygwin]} {
 	catch {set _gitdir [exec cygpath --windows $_gitdir]}
 }
@@ -1090,25 +1128,41 @@ if {![file isdirectory $_gitdir]} {
 	error_popup [strcat [mc "Git directory not found:"] "\n\n$_gitdir"]
 	exit 1
 }
+# _gitdir exists, so try loading the config
+load_config 0
+apply_config
+# try to set work tree from environment, falling back to core.worktree
+if {[catch { set _gitworktree $env(GIT_WORK_TREE) }]} {
+	set _gitworktree [get_config core.worktree]
+}
 if {$_prefix ne {}} {
-	regsub -all {[^/]+/} $_prefix ../ cdup
+	if {$_gitworktree eq {}} {
+		regsub -all {[^/]+/} $_prefix ../ cdup
+	} else {
+		set cdup $_gitworktree
+	}
 	if {[catch {cd $cdup} err]} {
 		catch {wm withdraw .}
 		error_popup [strcat [mc "Cannot move to top of working directory:"] "\n\n$err"]
 		exit 1
 	}
+	set _gitworktree [pwd]
 	unset cdup
 } elseif {![is_enabled bare]} {
-	if {[lindex [file split $_gitdir] end] ne {.git}} {
+	if {[is_bare]} {
 		catch {wm withdraw .}
-		error_popup [strcat [mc "Cannot use funny .git directory:"] "\n\n$_gitdir"]
+		error_popup [strcat [mc "Cannot use bare repository:"] "\n\n$_gitdir"]
 		exit 1
 	}
-	if {[catch {cd [file dirname $_gitdir]} err]} {
+	if {$_gitworktree eq {}} {
+		set _gitworktree [file dirname $_gitdir]
+	}
+	if {[catch {cd $_gitworktree} err]} {
 		catch {wm withdraw .}
-		error_popup [strcat [mc "No working directory"] " [file dirname $_gitdir]:\n\n$err"]
+		error_popup [strcat [mc "No working directory"] " $_gitworktree:\n\n$err"]
 		exit 1
 	}
+	set _gitworktree [pwd]
 }
 set _reponame [file split [file normalize $_gitdir]]
 if {[lindex $_reponame end] eq {.git}} {
@@ -1116,6 +1170,9 @@ if {[lindex $_reponame end] eq {.git}} {
 } else {
 	set _reponame [lindex $_reponame end]
 }
+
+set env(GIT_DIR) $_gitdir
+set env(GIT_WORK_TREE) $_gitworktree
 
 ######################################################################
 ##
@@ -1613,6 +1670,9 @@ proc merge_state {path new_state {head_info {}} {index_info {}}} {
 	} elseif {$s0 ne {_} && [string index $state 0] eq {_}
 		&& $head_info eq {}} {
 		set head_info $index_info
+	} elseif {$s0 eq {_} && [string index $state 0] ne {_}} {
+		set index_info $head_info
+		set head_info {}
 	}
 
 	set file_states($path) [list $s0$s1 $icon \
@@ -1920,7 +1980,10 @@ proc incr_font_size {font {amt 1}} {
 
 set starting_gitk_msg [mc "Starting gitk... please wait..."]
 
-proc do_gitk {revs} {
+proc do_gitk {revs {is_submodule false}} {
+	global current_diff_path file_states current_diff_side ui_index
+	global _gitdir _gitworktree
+
 	# -- Always start gitk through whatever we were loaded with.  This
 	#    lets us bypass using shell process on Windows systems.
 	#
@@ -1931,23 +1994,78 @@ proc do_gitk {revs} {
 	} else {
 		global env
 
-		if {[info exists env(GIT_DIR)]} {
-			set old_GIT_DIR $env(GIT_DIR)
+		set pwd [pwd]
+
+		if {!$is_submodule} {
+			if {![is_bare]} {
+				cd $_gitworktree
+			}
 		} else {
-			set old_GIT_DIR {}
+			cd $current_diff_path
+			if {$revs eq {--}} {
+				set s $file_states($current_diff_path)
+				set old_sha1 {}
+				set new_sha1 {}
+				switch -glob -- [lindex $s 0] {
+				M_ { set old_sha1 [lindex [lindex $s 2] 1] }
+				_M { set old_sha1 [lindex [lindex $s 3] 1] }
+				MM {
+					if {$current_diff_side eq $ui_index} {
+						set old_sha1 [lindex [lindex $s 2] 1]
+						set new_sha1 [lindex [lindex $s 3] 1]
+					} else {
+						set old_sha1 [lindex [lindex $s 3] 1]
+					}
+				}
+				}
+				set revs $old_sha1...$new_sha1
+			}
+			# GIT_DIR and GIT_WORK_TREE for the submodule are not the ones
+			# we've been using for the main repository, so unset them.
+			# TODO we could make life easier (start up faster?) for gitk
+			# by setting these to the appropriate values to allow gitk
+			# to skip the heuristics to find their proper value
+			unset env(GIT_DIR)
+			unset env(GIT_WORK_TREE)
 		}
+		eval exec $cmd $revs "--" "--" &
+
+		set env(GIT_DIR) $_gitdir
+		set env(GIT_WORK_TREE) $_gitworktree
+		cd $pwd
+
+		ui_status $::starting_gitk_msg
+		after 10000 {
+			ui_ready $starting_gitk_msg
+		}
+	}
+}
+
+proc do_git_gui {} {
+	global current_diff_path
+
+	# -- Always start git gui through whatever we were loaded with.  This
+	#    lets us bypass using shell process on Windows systems.
+	#
+	set exe [_which git]
+	if {$exe eq {}} {
+		error_popup [mc "Couldn't find git gui in PATH"]
+	} else {
+		global env
+		global _gitdir _gitworktree
+
+		# see note in do_gitk about unsetting these vars when
+		# running tools in a submodule
+		unset env(GIT_DIR)
+		unset env(GIT_WORK_TREE)
 
 		set pwd [pwd]
-		cd [file dirname [gitdir]]
-		set env(GIT_DIR) [file tail [gitdir]]
+		cd $current_diff_path
 
-		eval exec $cmd $revs &
+		eval exec $exe gui &
 
-		if {$old_GIT_DIR eq {}} {
-			unset env(GIT_DIR)
-		} else {
-			set env(GIT_DIR) $old_GIT_DIR
-		}
+		set env(GIT_DIR) $_gitdir
+		set env(GIT_WORK_TREE) $_gitworktree
 		cd $pwd
 
 		ui_status $::starting_gitk_msg
@@ -1958,6 +2076,7 @@ proc do_gitk {revs} {
 }
 
 proc do_explore {} {
+	global _gitworktree
 	set explorer {}
 	if {[is_Cygwin] || [is_Windows]} {
 		set explorer "explorer.exe"
@@ -1967,7 +2086,7 @@ proc do_explore {} {
 		# freedesktop.org-conforming system is our best shot
 		set explorer "xdg-open"
 	}
-	eval exec $explorer [list [file nativename [file dirname [gitdir]]]] &
+	eval exec $explorer $_gitworktree &
 }
 
 set is_quitting 0
@@ -2331,8 +2450,6 @@ proc show_less_context {} {
 ##
 ## ui construction
 
-load_config 0
-apply_config
 set ui_comm {}
 
 # -- Menu Bar
@@ -2364,10 +2481,12 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 #
 menu .mbar.repository
 
-.mbar.repository add command \
-	-label [mc "Explore Working Copy"] \
-	-command {do_explore}
-.mbar.repository add separator
+if {![is_bare]} {
+	.mbar.repository add command \
+		-label [mc "Explore Working Copy"] \
+		-command {do_explore}
+	.mbar.repository add separator
+}
 
 .mbar.repository add command \
 	-label [mc "Browse Current Branch's Files"] \
@@ -2543,12 +2662,14 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 		[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
 	.mbar.commit add command -label [mc "Unstage From Commit"] \
-		-command do_unstage_selection
+		-command do_unstage_selection \
+		-accelerator $M1T-U
 	lappend disable_on_lock \
 		[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
 	.mbar.commit add command -label [mc "Revert Changes"] \
-		-command do_revert_selection
+		-command do_revert_selection \
+		-accelerator $M1T-J
 	lappend disable_on_lock \
 		[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
@@ -3140,15 +3261,6 @@ $ui_diff tag raise sel
 
 proc create_common_diff_popup {ctxm} {
 	$ctxm add command \
-		-label [mc "Show Less Context"] \
-		-command show_less_context
-	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-	$ctxm add command \
-		-label [mc "Show More Context"] \
-		-command show_more_context
-	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
-	$ctxm add separator
-	$ctxm add command \
 		-label [mc Refresh] \
 		-command reshow_diff
 	lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
@@ -3199,9 +3311,18 @@ set ui_diff_applyhunk [$ctxm index last]
 lappend diff_actions [list $ctxm entryconf $ui_diff_applyhunk -state]
 $ctxm add command \
 	-label [mc "Apply/Reverse Line"] \
-	-command {apply_line $cursorX $cursorY; do_rescan}
+	-command {apply_range_or_line $cursorX $cursorY; do_rescan}
 set ui_diff_applyline [$ctxm index last]
 lappend diff_actions [list $ctxm entryconf $ui_diff_applyline -state]
+$ctxm add separator
+$ctxm add command \
+	-label [mc "Show Less Context"] \
+	-command show_less_context
+lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
+$ctxm add command \
+	-label [mc "Show More Context"] \
+	-command show_more_context
+lappend diff_actions [list $ctxm entryconf [$ctxm index last] -state]
 $ctxm add separator
 create_common_diff_popup $ctxm
 
@@ -3225,9 +3346,40 @@ $ctxmmg add command \
 	-command {merge_resolve_one 1}
 lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
 $ctxmmg add separator
+$ctxmmg add command \
+	-label [mc "Show Less Context"] \
+	-command show_less_context
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add command \
+	-label [mc "Show More Context"] \
+	-command show_more_context
+lappend diff_actions [list $ctxmmg entryconf [$ctxmmg index last] -state]
+$ctxmmg add separator
 create_common_diff_popup $ctxmmg
 
-proc popup_diff_menu {ctxm ctxmmg x y X Y} {
+set ctxmsm .vpane.lower.diff.body.ctxmsm
+menu $ctxmsm -tearoff 0
+$ctxmsm add command \
+	-label [mc "Visualize These Changes In The Submodule"] \
+	-command {do_gitk -- true}
+lappend diff_actions [list $ctxmsm entryconf [$ctxmsm index last] -state]
+$ctxmsm add command \
+	-label [mc "Visualize Current Branch History In The Submodule"] \
+	-command {do_gitk {} true}
+lappend diff_actions [list $ctxmsm entryconf [$ctxmsm index last] -state]
+$ctxmsm add command \
+	-label [mc "Visualize All Branch History In The Submodule"] \
+	-command {do_gitk --all true}
+lappend diff_actions [list $ctxmsm entryconf [$ctxmsm index last] -state]
+$ctxmsm add separator
+$ctxmsm add command \
+	-label [mc "Start git gui In The Submodule"] \
+	-command {do_git_gui}
+lappend diff_actions [list $ctxmsm entryconf [$ctxmsm index last] -state]
+$ctxmsm add separator
+create_common_diff_popup $ctxmsm
+
+proc popup_diff_menu {ctxm ctxmmg ctxmsm x y X Y} {
 	global current_diff_path file_states
 	set ::cursorX $x
 	set ::cursorY $y
@@ -3238,15 +3390,26 @@ proc popup_diff_menu {ctxm ctxmmg x y X Y} {
 	}
 	if {[string first {U} $state] >= 0} {
 		tk_popup $ctxmmg $X $Y
+	} elseif {$::is_submodule_diff} {
+		tk_popup $ctxmsm $X $Y
 	} else {
+		set has_range [expr {[$::ui_diff tag nextrange sel 0.0] != {}}]
 		if {$::ui_index eq $::current_diff_side} {
 			set l [mc "Unstage Hunk From Commit"]
-			set t [mc "Unstage Line From Commit"]
+			if {$has_range} {
+				set t [mc "Unstage Lines From Commit"]
+			} else {
+				set t [mc "Unstage Line From Commit"]
+			}
 		} else {
 			set l [mc "Stage Hunk For Commit"]
-			set t [mc "Stage Line For Commit"]
+			if {$has_range} {
+				set t [mc "Stage Lines For Commit"]
+			} else {
+				set t [mc "Stage Line For Commit"]
+			}
 		}
-		if {$::is_3way_diff || $::is_submodule_diff
+		if {$::is_3way_diff
 			|| $current_diff_path eq {}
 			|| {__} eq $state
 			|| {_O} eq $state
@@ -3261,7 +3424,7 @@ proc popup_diff_menu {ctxm ctxmmg x y X Y} {
 		tk_popup $ctxm $X $Y
 	}
 }
-bind_button3 $ui_diff [list popup_diff_menu $ctxm $ctxmmg %x %y %X %Y]
+bind_button3 $ui_diff [list popup_diff_menu $ctxm $ctxmmg $ctxmsm %x %y %X %Y]
 
 # -- Status Bar
 #
@@ -3296,6 +3459,10 @@ unset gws
 bind $ui_comm <$M1B-Key-Return> {do_commit;break}
 bind $ui_comm <$M1B-Key-t> {do_add_selection;break}
 bind $ui_comm <$M1B-Key-T> {do_add_selection;break}
+bind $ui_comm <$M1B-Key-u> {do_unstage_selection;break}
+bind $ui_comm <$M1B-Key-U> {do_unstage_selection;break}
+bind $ui_comm <$M1B-Key-j> {do_revert_selection;break}
+bind $ui_comm <$M1B-Key-J> {do_revert_selection;break}
 bind $ui_comm <$M1B-Key-i> {do_add_all;break}
 bind $ui_comm <$M1B-Key-I> {do_add_all;break}
 bind $ui_comm <$M1B-Key-x> {tk_textCut %W;break}
@@ -3370,7 +3537,7 @@ unset i
 set file_lists($ui_index) [list]
 set file_lists($ui_workdir) [list]
 
-wm title . "[appname] ([reponame]) [file normalize [file dirname [gitdir]]]"
+wm title . "[appname] ([reponame]) [file normalize $_gitworktree]"
 focus -force $ui_comm
 
 # -- Warn the user about environmental problems.  Cygwin's Tcl
