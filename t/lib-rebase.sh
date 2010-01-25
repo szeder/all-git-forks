@@ -55,7 +55,7 @@ set_fake_editor () {
 		">")
 			echo >> "$1";;
 		*)
-			sed -n "${line}s/^pick/$action/p" < "$1".tmp >> "$1"
+			sed -n "${line}s/^pick/$action/p; /^ref/p" < "$1".tmp >> "$1"
 			action=pick;;
 		esac
 	done
