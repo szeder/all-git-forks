@@ -7,6 +7,11 @@ git-core (1:1.6.6.1-1) unstable; urgency=low
   * debian/diff/0003-git-cvsserver-allow-regex-metacharacters...diff:
     new; git-cvsserver: allow regex metacharacters in CVSROOT (fixes
     build/selftest failure if the build directory pathname contains a +).
+  * debian/gitweb.apache2.conf, debian/gitweb.postinst: new; make gitweb
+    work out of the box with Apache (thx Charles Plessy).
+  * debian/gitweb.README.Debian, debian/gitweb.conf, debian/rules: make
+    gitweb work out of the box with Apache (thx Charles Plessy, closes:
+    #497809).
 
   [ Jonathan Nieder ]
   * debian/rules: ignore test suite failures on ia64 (workaround:
