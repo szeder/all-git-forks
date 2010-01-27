@@ -1,3 +1,89 @@
+Version v1.6.6.1; changes since v1.6.6:
+---------------------------------------
+
+Andreas Gruenbacher (3):
+      base85 debug code: Fix length byte calculation
+      base85: encode_85() does not use the decode table
+      base85: Make the code more obvious instead of explaining the non-obvious
+
+Andreas Schwab (1):
+      git count-objects: handle packs bigger than 4G
+
+Björn Gustavsson (4):
+      Documentation: 'git add -A' can remove files
+      git-add/rm doc: Consistently back-quote
+      Fix "git remote update" with remotes.defalt set
+      git-rm doc: Describe how to sync index & work tree
+
+David Ripton (1):
+      bisect: fix singular/plural grammar nit
+
+Dmitry Potapov (1):
+      fast-import: tag may point to any object type
+
+Greg Price (1):
+      commit: --cleanup is a message option
+
+Jeff King (2):
+      reset: unbreak hard resets with GIT_WORK_TREE
+      textconv: stop leaking file descriptors
+
+Jim Meyering (1):
+      grep: NUL terminate input from a file
+
+Jonathan Nieder (2):
+      Documentation: git gc packs refs by default now
+      Documentation: tiny git config manual tweaks
+
+Junio C Hamano (10):
+      t1200: work around a bug in some implementations of "find"
+      t4019 "grep" portability fix
+      Start 1.6.6.X maintenance track
+      Makefile: FreeBSD (both 7 and 8) needs OLD_ICONV
+      checkout -m: do not try to fall back to --merge from an unborn branch
+      grep: -L should show empty files
+      Update draft release notes to 1.6.6.1
+      Fix mis-backport of t7002
+      Git 1.6.5.8
+      Git 1.6.6.1
+
+Matthieu Moy (3):
+      SubmittingPatches: hints to know the status of a submitted patch.
+      branch: die explicitly why when calling "git branch [-a|-r] branchname".
+      stash: mention --patch in usage string.
+
+Michael Haggerty (1):
+      rebase--interactive: Ignore comments and blank lines in peek_next_command
+
+Nathaniel W Filardo (1):
+      read_index(): fix reading extension size on BE 64-bit archs
+
+Nguyễn Thái Ngọc Duy (2):
+      Documentation: always respect core.worktree if set
+      t7102: make the test fail if one of its check fails
+
+Ramkumar Ramachandra (1):
+      Document git-blame triple -C option
+
+Richard Weinberger (1):
+      Fix uninitialized variable in get_refs_via_rsync().
+
+Shawn O. Pearce (2):
+      fast-import: Document author/committer/tagger name is optional
+      remote-curl: Fix Accept header for smart HTTP connections
+
+Stephen Boyd (3):
+      octopus: make merge process simpler to follow
+      octopus: reenable fast-forward merges
+      octopus: remove dead code
+
+Tarmigan Casebolt (1):
+      Add git-http-backend to command-list.
+
+Thomas Rast (1):
+      bash completion: factor submodules into dirty state
+
+
 Version v1.6.6; changes since v1.6.6-rc4:
 -----------------------------------------
 
