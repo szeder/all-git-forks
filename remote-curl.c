@@ -102,7 +102,7 @@ static struct discovery* discover_refs(const char *service)
 	struct strbuf buffer = STRBUF_INIT;
 	struct discovery *last = last_discovery;
 	char *refs_url;
-	int http_ret, is_http = 0;
+	int http_ret, is_http = 0, proto_git_candidate = 1;
 
 	if (last && !strcmp(service, last->service))
 		return last;
@@ -121,6 +121,19 @@ static struct discovery* discover_refs(const char *service)
 
 	init_walker();
 	http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
+
+	/* try again with "plain" url (no ? or & appended) */
+	if (http_ret != HTTP_OK) {
+		free(refs_url);
+		strbuf_reset(&buffer);
+
+		proto_git_candidate = 0;
+		strbuf_addf(&buffer, "%s/info/refs", url);
+		refs_url = strbuf_detach(&buffer, NULL);
+
+		http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
+	}
+
 	switch (http_ret) {
 	case HTTP_OK:
 		break;
@@ -137,7 +150,8 @@ static struct discovery* discover_refs(const char *service)
 	last->buf_alloc = strbuf_detach(&buffer, &last->len);
 	last->buf = last->buf_alloc;
 
-	if (is_http && 5 <= last->len && last->buf[4] == '#') {
+	if (is_http && proto_git_candidate
+		&& 5 <= last->len && last->buf[4] == '#') {
 		/* smart HTTP response; validate that the service
 		 * pkt-line matches our request.
 		 */
@@ -290,6 +304,7 @@ struct rpc_state {
 	int out;
 	struct strbuf result;
 	unsigned gzip_request : 1;
+	unsigned initial_buffer : 1;
 };
 
 static size_t rpc_out(void *ptr, size_t eltsize,
@@ -300,6 +315,7 @@ static size_t rpc_out(void *ptr, size_t eltsize,
 	size_t avail = rpc->len - rpc->pos;
 
 	if (!avail) {
+		rpc->initial_buffer = 0;
 		avail = packet_read_line(rpc->out, rpc->buf, rpc->alloc);
 		if (!avail)
 			return 0;
@@ -313,6 +329,29 @@ static size_t rpc_out(void *ptr, size_t eltsize,
 	rpc->pos += avail;
 	return avail;
 }
+
+#ifndef NO_CURL_IOCTL
+static curlioerr rpc_ioctl(CURL *handle, int cmd, void *clientp)
+{
+	struct rpc_state *rpc = clientp;
+
+	switch (cmd) {
+	case CURLIOCMD_NOP:
+		return CURLIOE_OK;
+
+	case CURLIOCMD_RESTARTREAD:
+		if (rpc->initial_buffer) {
+			rpc->pos = 0;
+			return CURLIOE_OK;
+		}
+		fprintf(stderr, "Unable to rewind rpc post data - try increasing http.postBuffer\n");
+		return CURLIOE_FAILRESTART;
+
+	default:
+		return CURLIOE_UNKNOWNCMD;
+	}
+}
+#endif
 
 static size_t rpc_in(const void *ptr, size_t eltsize,
 		size_t nmemb, void *buffer_)
@@ -370,8 +409,13 @@ static int post_rpc(struct rpc_state *rpc)
 		 */
 		headers = curl_slist_append(headers, "Expect: 100-continue");
 		headers = curl_slist_append(headers, "Transfer-Encoding: chunked");
+		rpc->initial_buffer = 1;
 		curl_easy_setopt(slot->curl, CURLOPT_READFUNCTION, rpc_out);
 		curl_easy_setopt(slot->curl, CURLOPT_INFILE, rpc);
+#ifndef NO_CURL_IOCTL
+		curl_easy_setopt(slot->curl, CURLOPT_IOCTLFUNCTION, rpc_ioctl);
+		curl_easy_setopt(slot->curl, CURLOPT_IOCTLDATA, rpc);
+#endif
 		if (options.verbosity > 1) {
 			fprintf(stderr, "POST %s (chunked)\n", rpc->service_name);
 			fflush(stderr);
