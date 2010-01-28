@@ -1,3 +1,9 @@
+git-core (1:1.7.0~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 28 Jan 2010 10:54:27 -0600
+
 git-core (1:1.6.6.1-1) unstable; urgency=low
 
   [ Gerrit Pape ]

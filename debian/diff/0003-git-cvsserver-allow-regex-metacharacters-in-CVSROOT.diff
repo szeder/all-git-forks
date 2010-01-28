@@ -1,7 +1,7 @@
-From 5d2e7a2ea65fbfda4fe17e8a0c15f3c5f4d4a149 Mon Sep 17 00:00:00 2001
+From ec7e8233e4b2a62ccb8846da5541d79b1faa08ac Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Tue, 26 Jan 2010 12:59:54 +0000
-Subject: [PATCH 3/3] git-cvsserver: allow regex metacharacters in CVSROOT
+Subject: git-cvsserver: allow regex metacharacters in CVSROOT
 
 When run in a repository with a path name containing regex metacharacters
 (e.g. +), git-cvsserver failed to split the client request into CVSROOT
@@ -16,10 +16,10 @@ Signed-off-by: Gerrit Pape <pape@smarden.org>
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/git-cvsserver.perl b/git-cvsserver.perl
-index 6dc45f5..046f557 100755
+index 2804106..13751db 100755
 --- a/git-cvsserver.perl
 +++ b/git-cvsserver.perl
-@@ -388,7 +388,7 @@ sub req_Directory
+@@ -408,7 +408,7 @@ sub req_Directory
      $state->{localdir} = $data;
      $state->{repository} = $repository;
      $state->{path} = $repository;
@@ -29,5 +29,5 @@ index 6dc45f5..046f557 100755
      $state->{path} .= "/" if ( $state->{path} =~ /\S/ );
  
 -- 
-1.6.6
+1.6.6.1
 
