@@ -133,5 +133,32 @@ cat >>gitweb_config.perl <<\EOF
 our $maxload = undef;
 EOF
 
+# ======================================================================
+# check $git_versions_must_match feature
+# should be last section, just in case
+cp -f gitweb_config.perl gitweb_config.perl.bak
+echo 'our $git_versions_must_match = 1;' >>gitweb_config.perl
+
+cat <<\EOF >>gitweb_config.perl
+our $version = "current";
+EOF
+test_expect_success 'force version match: no match' '
+	gitweb_run "p=.git" &&
+	grep "Status: 500 Internal Server Error" gitweb.headers &&
+	grep "500 - Internal server error" gitweb.body
+'
+test_debug 'cat gitweb.headers'
+
+cat <<\EOF >>gitweb_config.perl
+# must be kept in sync with code in gitweb/gitweb.perl
+our $version = qx("$GIT" --version) =~ m/git version (.*)$/ ? $1 : "unknown";
+EOF
+test_expect_success 'force version match: match' '
+	gitweb_run "p=.git" &&
+	grep "Status: 200 OK" gitweb.headers
+'
+test_debug 'cat gitweb.headers'
+
+mv -f gitweb_config.perl.bak gitweb_config.perl
 
 test_done
