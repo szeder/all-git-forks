@@ -20,8 +20,7 @@ case "$1" in
 		  git log --no-merges --first-parent $upstream..private
 		  exit 1
 	  }
-	git checkout private &&
-	git reset --hard $upstream || exit
+	git checkout $upstream^0 || exit
 esac
 
 for i in `branches`; do
@@ -40,5 +39,8 @@ for i in `branches`; do
 		fi
 	fi
 done
+
+git branch -f private &&
+git checkout private || exit
 echo All branches merged successfully.
 exit 0
