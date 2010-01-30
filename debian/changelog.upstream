@@ -1,5 +1,8 @@
-Version v1.7.0-rc0; changes since v1.6.6.1:
+Version v1.7.0-rc1; changes since v1.6.6.1:
 -------------------------------------------
+
+Alejandro Riveira Fernández (1):
+      Add test-run-command to .gitignore
 
 Andreas Gruenbacher (2):
       builtin-apply.c: Skip filenames without enough components
@@ -26,11 +29,15 @@ Ben Walton (3):
       cvsimport: standarize open() calls to external git tools
       cvsimport: standarize system() calls to external git tools
 
+Benjamin Kramer (1):
+      grep: use REG_STARTEND (if available) to speed up regexec
+
 Brad King (2):
       Test update-index for a gitlink to a .git file
       Handle relative paths in submodule .git files
 
-Christian Couder (8):
+Christian Couder (9):
+      gitk: Add "--no-replace-objects" option
       reset: improve mixed reset error message when in a bare repo
       Documentation: reset: add some tables to describe the different options
       reset: add a few tests for "git reset --merge"
@@ -40,8 +47,14 @@ Christian Couder (8):
       t7111: fix bad HEAD in tests with unmerged entries
       Documentation: rev-list: fix synopsys for --tags and and --remotes
 
+Christian Stimming (1):
+      gitk: Update German translation
+
 Christopher Beelby (1):
       git-gui: Keep repo_config(gui.recentrepos) and .gitconfig in sync
+
+Dan McGee (1):
+      grep: Fix two memory leaks
 
 Daniel Barkalow (9):
       Fix memory leak in helper method for disconnect
@@ -53,6 +66,10 @@ Daniel Barkalow (9):
       Allow helper to map private ref names into normal names
       Allow helpers to report in "list" command that the ref is unchanged
       Replace parse_blob() with an explanatory comment
+
+Dave Dulson (2):
+      gitk: Enable gitk to create tags with messages
+      gitk: Fix display of newly-created tags
 
 David Aguilar (11):
       t7800-difftool: Set a bogus tool for use by tests
@@ -67,12 +84,21 @@ David Aguilar (11):
       difftool: Update copyright notices to list each year separately
       t7800-difftool.sh: Test mergetool.prompt fallback
 
+Emmanuel Trillaud (1):
+      gitk: Add French translation
+
 Erik Faye-Lund (2):
       daemon: consider only address in kill_some_child()
       Windows: disable Python
 
 Felipe Contreras (1):
       General --quiet improvements
+
+Fredrik Kuivinen (1):
+      Threaded grep
+
+Gerrit Pape (1):
+      git-cvsserver: allow regex metacharacters in CVSROOT
 
 Giuseppe Bilotta (1):
       git-gui: work from the .git dir
@@ -89,7 +115,7 @@ Igor Mironov (4):
       git-svn: add --username/commit-url options for branch/tag
       git-svn: document --username/commit-url for branch/tag
 
-Ilari Liusvaara (15):
+Ilari Liusvaara (22):
       Add remote helper debug mode
       Support mandatory capabilities
       Pass unknown protocols to external protocol handlers
@@ -105,6 +131,13 @@ Ilari Liusvaara (15):
       Add branch --set-upstream
       rev-parse --glob
       rev-parse --branches/--tags/--remotes=pattern
+      Support addresses with ':' in git-daemon
+      Allow use of []-wrapped addresses in git://
+      Add xmallocz()
+      Fix integer overflow in patch_delta()
+      Fix integer overflow in unpack_sha1_rest()
+      Fix integer overflow in unpack_compressed_entry()
+      Fix remote.<remote>.vcs
 
 Jakub Narebski (1):
       gitweb.js: Workaround for IE8 bug
@@ -122,7 +155,7 @@ Jay Soffian (2):
 Jeff Epler (1):
       git-gui: Fix applying a line when all following lines are deletions
 
-Jeff King (20):
+Jeff King (28):
       status: typo fix in usage
       status: refactor short-mode printing to its own function
       status: refactor format option parsing
@@ -143,27 +176,38 @@ Jeff King (20):
       strbuf: add strbuf_addbuf_percentquote
       commit: show interesting ident information in summary
       commit: allow suppression of implicit identity advice
+      t0101: use absolute date
+      rerere: fix too-short initialization
+      test combinations of @{} syntax
+      fix parsing of @{-1}@{u} combination
+      reject @{-1} not at beginning of object name
+      fix memcpy of overlapping area
+      fix off-by-one allocation error
+      add shebang line to git-mergetool--lib.sh
 
-Jens Lehmann (4):
+Jens Lehmann (6):
       Show submodules as modified when they contain a dirty work tree
       git status: Show uncommitted submodule changes too when enabled
       Performance optimization for detection of modified submodules
       git-gui: Correct file_states when unstaging partly staged entry
+      git diff: Don't test submodule dirtiness with --ignore-submodules
+      Teach diff --submodule that modified submodule directory is dirty
 
 Jim Meyering (1):
       diff.c: fix typoes in comments
 
-Johan Herland (4):
+Johan Herland (5):
       Basic build infrastructure for Python scripts
       fast-import: Proper notes tree manipulation
       Rename t9301 to t9350, to make room for more fast-import tests
       Add more testcases to test fast-import of notes
+      builtin-config: Fix crash when using "-f <relative path>" from non-root dir
 
 Johannes Schindelin (2):
       Allow specifying the remote helper in the url
       Introduce <branch>@{upstream} notation
 
-Johannes Sixt (16):
+Johannes Sixt (18):
       Make test case number unique
       filter-branch: remove an unnecessary use of 'git read-tree'
       t0021: use $SHELL_PATH for the filter script
@@ -180,6 +224,8 @@ Johannes Sixt (16):
       Make 'rerere forget' work from a subdirectory.
       merge-tree: remove unnecessary call of git_extract_argv0_path
       Make test numbers unique
+      git_connect: use use_shell instead of explicit "sh", "-c"
+      Implement pthread_cond_broadcast on Windows
 
 Jonathan Nieder (16):
       Makefile: make ppc/sha1ppc.o depend on GIT-CFLAGS
@@ -199,7 +245,7 @@ Jonathan Nieder (16):
       Documentation: simplify How Merge Works
       Documentation: merge: use MERGE_HEAD to refer to the remote branch
 
-Junio C Hamano (102):
+Junio C Hamano (115):
       Refuse updating the current branch in a non-bare repository via push
       Refuse deleting the current branch via push
       diff: change semantics of "ignore whitespace" options
@@ -301,7 +347,26 @@ Junio C Hamano (102):
       ignore duplicated slashes in make_relative_path()
       Update draft release notes to 1.7.0
       rebase -i: Export GIT_AUTHOR_* variables explicitly
+      Make ce_uptodate() trustworthy again
       pull: re-fix command line generation
+      grep: expose "status-only" feature via -q
+      Fix log -g this@{upstream}
+      approxidate_careful() reports errorneous date string
+      work around an obnoxious bash "safety feature" on OpenBSD
+      Update @{bogus.timestamp} fix not to die()
+      t0101: use a fixed timestamp when searching in the reflog
+      transport_get(): drop unnecessary check for !remote
+      tests: update tests that used to fail
+      grep --quiet: finishing touches
+      Update draft release notes to 1.7.0
+      RPM packaging: don't include foreign-scm-helper bits yet
+      is_submodule_modified(): fix breakage with external GIT_INDEX_FILE
+
+Kirill Smelkov (1):
+      gitk: Display submodule diffs with appropriate encoding
+
+Laszlo Papp (1):
+      gitk: Add Hungarian translation
 
 Linus Torvalds (11):
       Remove diff machinery dependency from read-cache
@@ -315,6 +380,10 @@ Linus Torvalds (11):
       make "git unpack-file" a built-in
       make "git pack-redundant" a built-in
       make "index-pack" a built-in
+
+Markus Heidelberg (2):
+      gitk: Adjust two equal strings which differed in whitespace
+      rebase: don't invoke the pager for each commit summary
 
 Martin Storsjö (2):
       Add an option for using any HTTP authentication scheme, not only basic
@@ -372,9 +441,13 @@ Michael J Gruber (7):
 Michael Lukashov (1):
       Windows: Remove dependency on pthreadGC2.dll
 
-Miklos Vajna (2):
+Michele Ballabio (1):
+      gitk: update Italian translation
+
+Miklos Vajna (3):
       builtin-commit: add --date option
       Document date formats accepted by parse_date()
+      gitk: Update Hungarian translation
 
 Nanako Shiraishi (3):
       rebase -i --autosquash: auto-squash commits
@@ -420,8 +493,9 @@ Pat Thoyts (1):
 Peter Collingbourne (1):
       Remove empty directories when checking out a commit with fewer submodules
 
-Peter Krefting (1):
+Peter Krefting (2):
       git-gui: Fix gitk for branch whose name matches local file
+      gitk: Update Swedish translation
 
 Phil Miller (1):
       CVS Server: Support reading base and roots from environment
@@ -442,8 +516,13 @@ René Scharfe (1):
 Robert Zeh (1):
       Add completion for git-svn mkdirs,reset,and gc
 
-Sebastian Schuberth (1):
+SZEDER Gábor (2):
+      bash: don't offer remote transport helpers as subcommands
+      bash: support 'git notes' and its subcommands
+
+Sebastian Schuberth (2):
       Make difftool.prompt fall back to mergetool.prompt
+      If deriving SVN_SSH from GIT_SSH on msys, also add quotes
 
 Sergei Organov (1):
       cvsserver: make the output of 'update' more compatible with cvs.
@@ -453,6 +532,14 @@ Shawn O. Pearce (1):
 
 Stephan Beyer (1):
       reset: use "unpack_trees()" directly instead of "git read-tree"
+
+Stephen Boyd (6):
+      rebase: replace antiquated sed invocation
+      commit-tree: remove unused #define
+      tests: consolidate CR removal/addition functions
+      t0022: replace non-portable literal CR
+      am: fix patch format detection for Thunderbird "Save As" emails
+      fix portability issues with $ in double quotes
 
 Steven Drake (2):
       Add 'git rev-parse --show-toplevel' option.
@@ -478,7 +565,7 @@ Tarmigan Casebolt (7):
       Test t5560: Fix test when run with dash
       ident.c: replace fprintf with fputs to suppress compiler warning
 
-Tay Ray Chuan (13):
+Tay Ray Chuan (14):
       http: maintain curl sessions
       builtin-push: don't access freed transport->url
       check stderr with isatty() instead of stdout when deciding to show progress
@@ -492,6 +579,7 @@ Tay Ray Chuan (13):
       transport-helper.c::push_refs(): ignore helper-reported status if ref is not to be pushed
       transport-helper.c::push_refs(): emit "no refs" error message
       retry request without query when info/refs?query fails
+      t5541-http-push: make grep expression check for one line only
 
 Thiago Farina (2):
       Use warning function instead of fprintf(stderr, "Warning: ...").
