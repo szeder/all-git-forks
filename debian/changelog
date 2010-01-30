@@ -6,10 +6,10 @@ git-core (1:1.7.0~rc1-1) experimental; urgency=low
   * debian/rules: NO_PYTHON=1.  Packaging the git_remote_helpers
     Python module will require more work.
   * update debian/copyright (closes: #557065).
-  * debian/rules: set prefix when building manpages (fixes references in
-    manpages to point to /usr/share/doc/git-doc instead of $HOME).
+  * debian/rules: set prefix=/usr when building man pages (closes:
+    #567404).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 30 Jan 2010 17:37:33 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 30 Jan 2010 17:46:04 -0600
 
 git-core (1:1.6.6.1-1) unstable; urgency=low
 
