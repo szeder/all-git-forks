@@ -36,6 +36,7 @@ static int add_submodule_odb(const char *path)
 
 void show_submodule_summary(FILE *f, const char *path,
 		unsigned char one[20], unsigned char two[20],
+		unsigned dirty_submodule,
 		const char *del, const char *add, const char *reset)
 {
 	struct rev_info rev;
@@ -85,6 +86,8 @@ void show_submodule_summary(FILE *f, const char *path,
 	if (!fast_backward && !fast_forward)
 		strbuf_addch(&sb, '.');
 	strbuf_addf(&sb, "%s", find_unique_abbrev(two, DEFAULT_ABBREV));
+	if (dirty_submodule)
+		strbuf_add(&sb, "-dirty", 6);
 	if (message)
 		strbuf_addf(&sb, " %s\n", message);
 	else
@@ -123,7 +126,7 @@ int is_submodule_modified(const char *path)
 		"--porcelain",
 		NULL,
 	};
-	char *env[3];
+	char *env[4];
 	struct strbuf buf = STRBUF_INIT;
 
 	strbuf_addf(&buf, "%s/.git/", path);
@@ -139,7 +142,9 @@ int is_submodule_modified(const char *path)
 	env[0] = strbuf_detach(&buf, NULL);
 	strbuf_addf(&buf, "GIT_DIR=%s/.git", path);
 	env[1] = strbuf_detach(&buf, NULL);
-	env[2] = NULL;
+	strbuf_addf(&buf, "GIT_INDEX_FILE");
+	env[2] = strbuf_detach(&buf, NULL);
+	env[3] = NULL;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.argv = argv;
@@ -158,6 +163,7 @@ int is_submodule_modified(const char *path)
 
 	free(env[0]);
 	free(env[1]);
+	free(env[2]);
 	strbuf_release(&buf);
 	return len != 0;
 }

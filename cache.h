@@ -182,6 +182,8 @@ struct cache_entry {
 /* Only remove in work directory, not index */
 #define CE_WT_REMOVE (0x400000)
 
+#define CE_UNPACKED  (0x1000000)
+
 /*
  * Extended on-disk flags
  */
@@ -760,7 +762,8 @@ const char *show_date_relative(unsigned long time, int tz,
 			       size_t timebuf_size);
 int parse_date(const char *date, char *buf, int bufsize);
 void datestamp(char *buf, int bufsize);
-unsigned long approxidate(const char *);
+#define approxidate(s) approxidate_careful((s), NULL)
+unsigned long approxidate_careful(const char *, int *);
 unsigned long approxidate_relative(const char *date, const struct timeval *now);
 enum date_mode parse_date_format(const char *format);
 

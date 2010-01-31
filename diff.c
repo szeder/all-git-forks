@@ -1615,7 +1615,7 @@ static void builtin_diff(const char *name_a,
 		const char *del = diff_get_color_opt(o, DIFF_FILE_OLD);
 		const char *add = diff_get_color_opt(o, DIFF_FILE_NEW);
 		show_submodule_summary(o->file, one ? one->path : two->path,
-				one->sha1, two->sha1,
+				one->sha1, two->sha1, two->dirty_submodule,
 				del, add, reset);
 		return;
 	}
@@ -3676,6 +3676,23 @@ static void diffcore_skip_stat_unmatch(struct diff_options *diffopt)
 	}
 	free(q->queue);
 	*q = outq;
+}
+
+static int diffnamecmp(const void *a_, const void *b_)
+{
+	const struct diff_filepair *a = *((const struct diff_filepair **)a_);
+	const struct diff_filepair *b = *((const struct diff_filepair **)b_);
+	const char *name_a, *name_b;
+
+	name_a = a->one ? a->one->path : a->two->path;
+	name_b = b->one ? b->one->path : b->two->path;
+	return strcmp(name_a, name_b);
+}
+
+void diffcore_fix_diff_index(struct diff_options *options)
+{
+	struct diff_queue_struct *q = &diff_queued_diff;
+	qsort(q->queue, q->nr, sizeof(q->queue[0]), diffnamecmp);
 }
 
 void diffcore_std(struct diff_options *options)

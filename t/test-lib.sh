@@ -74,6 +74,12 @@ case $(echo $GIT_TRACE |tr "[A-Z]" "[a-z]") in
 		;;
 esac
 
+# Convenience
+#
+# A regexp to match 5 and 40 hexdigits
+_x05='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
+_x40="$_x05$_x05$_x05$_x05$_x05$_x05$_x05$_x05"
+
 # Each test should start with something like this, after copyright notices:
 #
 # test_description='Description of this test...
@@ -222,6 +228,22 @@ test_decode_color () {
 		-e 's/.\[35m/<MAGENTA>/g' \
 		-e 's/.\[36m/<CYAN>/g' \
 		-e 's/.\[m/<RESET>/g'
+}
+
+q_to_nul () {
+	perl -pe 'y/Q/\000/'
+}
+
+q_to_cr () {
+	tr Q '\015'
+}
+
+append_cr () {
+	sed -e 's/$/Q/' | tr Q '\015'
+}
+
+remove_cr () {
+	tr '\015' Q | sed -e 's/Q$//'
 }
 
 test_tick () {
