@@ -15,7 +15,7 @@ branch, ready to be used by dpkg-buildpackage, e.g.
 
  $ dpkg-buildpackage -i -rfakeroot -uc -us
 
-If you want do make changes in the ./debian/ subdirectory, this is the
+If you want to make changes in the ./debian/ subdirectory, this is the
 correct branch to work on.  After making changes, document them in
 debian/changelog, and commit through 'git add' and 'git commit', or 'git
 commit -a', or similar.  If you think the changes should be incorporated
@@ -35,7 +35,7 @@ the release+patches branch
 
 The release+patches branch holds patches on top of the current release
 version that is packaged for Debian/unstable. The current release
-version is avilable in the release branch.  If you are interested, you
+version is available in the release branch.  If you are interested, you
 can checkout this branch too
 
  $ git checkout -b release origin/release

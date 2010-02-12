@@ -1,3 +1,9 @@
+git-core (1:1.6.6.2-2) unstable; urgency=low
+
+  * debian/git-core.README.source: typos.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 12 Feb 2010 16:26:04 +0000
+
 git-core (1:1.6.6.2-1) unstable; urgency=medium
 
   * new upstream point release.
