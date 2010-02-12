@@ -5,8 +5,10 @@ git-core (1:1.6.6.1-1.1) unstable; urgency=low
     #563882 has been fixed.  Build-Depends: and Depends:
     libc6.1 (>= 2.10.2-6) [ia64] for the fix (closes: #568915).
   * update debian/copyright (closes: #557065).
+  * debian/rules: set prefix=/usr when building man pages (closes:
+    #567404).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 11 Feb 2010 21:40:21 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 11 Feb 2010 21:40:59 -0600
 
 git-core (1:1.6.6.1-1) unstable; urgency=low
 
@@ -27,8 +29,10 @@ git-core (1:1.6.6.1-1) unstable; urgency=low
   [ Jonathan Nieder ]
   * debian/rules: ignore test suite failures on ia64 (workaround:
     #563882).
+  * debian/rules: set prefix when building manpages (fixes references in
+    manpages to point to /usr/share/doc/git-doc instead of $HOME).
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 27 Jan 2010 13:30:29 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 28 Jan 2010 15:12:09 -0600
 
 git-core (1:1.6.6-1) unstable; urgency=low
 

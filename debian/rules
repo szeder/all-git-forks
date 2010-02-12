@@ -11,6 +11,7 @@ OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
   PYTHON_PATH=/usr/bin/python \
   THREADED_DELTA_SEARCH=1 NO_CROSS_DIRECTORY_HARDLINKS=1 \
   DEFAULT_PAGER=pager DEFAULT_EDITOR=editor
+DOC_OPTS =prefix=/usr ASCIIDOC8=1 ASCIIDOC_NO_ROFF=1
 
 ifneq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
   STRIP =: strip
@@ -51,7 +52,7 @@ build-arch-stamp: patch-stamp build-indep-stamp
 	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
 build-indep-stamp:
-	$(MAKE) -CDocumentation man html ASCIIDOC8=YesPlease ASCIIDOC_NO_ROFF=Yes
+	$(MAKE) -CDocumentation man html $(DOC_OPTS)
 	touch build-indep-stamp
 
 clean: deb-checkdir
