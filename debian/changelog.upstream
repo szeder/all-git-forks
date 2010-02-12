@@ -1,3 +1,85 @@
+Version v1.6.6.2; changes since v1.6.6.1:
+-----------------------------------------
+
+Christopher Beelby (1):
+      git-gui: Keep repo_config(gui.recentrepos) and .gitconfig in sync
+
+Gerrit Pape (1):
+      git-cvsserver: allow regex metacharacters in CVSROOT
+
+Giuseppe Bilotta (1):
+      git-gui: work from the .git dir
+
+Ilari Liusvaara (4):
+      Add xmallocz()
+      Fix integer overflow in patch_delta()
+      Fix integer overflow in unpack_sha1_rest()
+      Fix integer overflow in unpack_compressed_entry()
+
+Jay Soffian (1):
+      blame: prevent a segv when -L given start > EOF
+
+Jeff Epler (1):
+      git-gui: Fix applying a line when all following lines are deletions
+
+Jeff King (1):
+      fix memcpy of overlapping area
+
+Jens Lehmann (1):
+      git-gui: Correct file_states when unstaging partly staged entry
+
+Johan Herland (1):
+      builtin-config: Fix crash when using "-f <relative path>" from non-root dir
+
+Jonathan Nieder (1):
+      git-gui: Makefile: consolidate .FORCE-* targets
+
+Junio C Hamano (15):
+      checkout -m path: fix recreating conflicts
+      status: don't require the repository to be writable
+      Fix "log" family not to be too agressive about showing notes
+      Fix "log --oneline" not to show notes
+      merge-recursive: do not return NULL only to cause segfault
+      ignore duplicated slashes in make_relative_path()
+      approxidate_careful() reports errorneous date string
+      Update @{bogus.timestamp} fix not to die()
+      t0101: use a fixed timestamp when searching in the reflog
+      git-add documentation: Fix shell quoting example
+      Fix parsing of imap.preformattedHTML and imap.sslverify
+      git-push: document all the status flags used in the output
+      check-ref-format documentation: fix enumeration mark-up
+      t8003: check exit code of command and error message separately
+      Git 1.6.6.2
+
+Nguyễn Thái Ngọc Duy (1):
+      Add missing #include to support TIOCGWINSZ on Solaris
+
+Pat Thoyts (1):
+      git-gui: handle really long error messages in updateindex.
+
+Peter Krefting (1):
+      git-gui: Fix gitk for branch whose name matches local file
+
+René Scharfe (2):
+      archive: complain about path specs that don't match anything
+      archive: simplify archive format guessing
+
+SZEDER Gábor (1):
+      bash: don't offer remote transport helpers as subcommands
+
+Shawn O. Pearce (1):
+      fast-import: Stream very large blobs directly to pack
+
+Tay Ray Chuan (1):
+      retry request without query when info/refs?query fails
+
+Vitaly _Vi Shukela (1):
+      git-gui: Add hotkeys for "Unstage from commit" and "Revert changes"
+
+Wesley J. Landaker (1):
+      Update git fsck --full short description to mention packs
+
+
 Version v1.6.6.1; changes since v1.6.6:
 ---------------------------------------
 
