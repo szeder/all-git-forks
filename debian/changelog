@@ -1,11 +1,8 @@
-git-core (1:1.6.6.2-0.1) unstable; urgency=low
-
-  * Non-maintainer upload.
+git-core (1:1.6.6.2-1) unstable; urgency=medium
 
   * new upstream point release.
   * debian/diff/0003-git-cvsserver-allow-regex-metacharacters...diff:
     remove; applied upstream.
-
   * debian/rules: stop ignoring test suite failures on ia64, since
     #563882 has been fixed.  Build-Depends: and Depends:
     libc6.1 (>= 2.10.2-6) [ia64] for the fix (closes: #568915).
@@ -34,10 +31,8 @@ git-core (1:1.6.6.1-1) unstable; urgency=low
   [ Jonathan Nieder ]
   * debian/rules: ignore test suite failures on ia64 (workaround:
     #563882).
-  * debian/rules: set prefix when building manpages (fixes references in
-    manpages to point to /usr/share/doc/git-doc instead of $HOME).
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 28 Jan 2010 15:12:09 -0600
+ -- Gerrit Pape <pape@smarden.org>  Wed, 27 Jan 2010 13:30:29 +0000
 
 git-core (1:1.6.6-1) unstable; urgency=low
 
