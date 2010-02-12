@@ -1,3 +1,11 @@
+git-core (1:1.6.6.1-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * debian/rules: set prefix=/usr when building man pages (closes:
+    #567404).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 11 Feb 2010 21:38:01 -0600
+
 git-core (1:1.6.6.1-1) unstable; urgency=low
 
   [ Gerrit Pape ]
@@ -17,8 +25,10 @@ git-core (1:1.6.6.1-1) unstable; urgency=low
   [ Jonathan Nieder ]
   * debian/rules: ignore test suite failures on ia64 (workaround:
     #563882).
+  * debian/rules: set prefix when building manpages (fixes references in
+    manpages to point to /usr/share/doc/git-doc instead of $HOME).
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 27 Jan 2010 13:30:29 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 28 Jan 2010 15:12:09 -0600
 
 git-core (1:1.6.6-1) unstable; urgency=low
 
