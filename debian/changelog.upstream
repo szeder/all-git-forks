@@ -1,3 +1,125 @@
+Version v1.7.0-rc2; changes since v1.7.0-rc1:
+---------------------------------------------
+
+Andrew Myrick (1):
+      git-svn: persistent memoization
+
+Ben Walton (2):
+      configure: Allow GIT_ARG_SET_PATH to handle --without-PROGRAM
+      configure: Allow --without-python
+
+Björn Gustavsson (1):
+      bash: support the --autosquash option for rebase
+
+Brian Gernhardt (2):
+      t9501: Skip testing load if we can't detect it
+      t9501: Re-fix max load test
+
+Christian Stimming (1):
+      git-gui: Update German translation (12 new or changed strings).
+
+Dan McGee (1):
+      Make NO_PTHREADS the sole thread configuration variable
+
+Emmanuel Trillaud (1):
+      git-gui: update french translation
+
+Giuseppe Bilotta (4):
+      git-gui: handle non-standard worktree locations
+      git-gui: handle bare repos correctly
+      git-gui: update shortcut tools to use _gitworktree
+      git-gui: set GIT_DIR and GIT_WORK_TREE after setup
+
+Heiko Voigt (1):
+      git-gui: fix shortcut for menu "Commit/Revert Changes"
+
+Jakub Narebski (1):
+      gitweb: Make running t9501 test with '--debug' reliable and usable
+
+Jeff Epler (1):
+      git-gui: Support applying a range of changes at once
+
+Jeff King (3):
+      mention new shell execution behavior in release notes
+      docs: fix filter-branch example for quoted paths
+      Fix invalid read in quote_c_style_counted
+
+Jens Lehmann (5):
+      git-gui: Use git diff --submodule when available
+      git-gui: Add a special diff popup menu for submodules
+      git-gui: Quote git path when starting another gui in a submodule
+      Fix memory leak in submodule.c
+      Updates for dirty submodules in release notes and user manual
+
+John 'Warthog9' Hawley (7):
+      gitweb: Load checking
+      gitweb: Makefile improvements
+      gitweb: Check that $site_header etc. are defined before using them
+      gitweb: add a "string" variant of print_local_time
+      gitweb: add a "string" variant of print_sort_th
+      gitweb: Add optional extra parameter to die_error, for extended explanation
+      gitweb: Simplify (and fix) chop_str
+
+Junio C Hamano (7):
+      RPM packaging: use %global inside %{!?...}
+      Update draft release notes to 1.7.0
+      build: make code "-Wpointer-arith" clean
+      fast-import.c: Fix big-file-threshold parsing bug
+      fast-import: count --max-pack-size in bytes
+      Revert 30816237 and 7e62265
+      Update draft release notes to 1.7.0
+
+Michael J Gruber (1):
+      git-clean: fix the description of the default behavior
+
+Michal Sojka (2):
+      filter-branch: Fix to allow replacing submodules with another content
+      filter-branch: Add tests for submodules in tree-filter
+
+Michele Ballabio (1):
+      git-gui: update Italian translation
+
+Nanako Shiraishi (1):
+      git-gui: update Japanese translation
+
+Nicolas Pitre (4):
+      fix multiple issues with t5300
+      pack-objects: fix pack generation when using pack_size_limit
+      make --max-pack-size argument to 'git pack-object' count in bytes
+      update git-repack documentation wrt repack.UseDeltaBaseOffset
+
+Pal-Kristian Engstad (1):
+      git-p4: Fix sync errors due to new server version
+
+Pat Thoyts (1):
+      git-gui: use themed tk widgets with Tk 8.5
+
+Paul Mackerras (1):
+      gitk: Fix copyright symbol in About box message
+
+Peter Krefting (1):
+      git-gui: Update Swedish translation (520t0f0u)
+
+Peter Oberndorfer (1):
+      git-gui: use different icon for new and modified files in the index
+
+Ralf Wildenhues (1):
+      Fix typos in technical documentation.
+
+René Scharfe (2):
+      grep: simplify assignment of ->fixed
+      archive: simplify archive format guessing
+
+Shawn O. Pearce (4):
+      git-gui: Remove unused icon file_parttick
+      git-gui: Update translation template
+      fast-import: Stream very large blobs directly to pack
+      Correct spelling of 'REUC' extension
+
+Wesley J. Landaker (1):
+      Update git fsck --full short description to mention packs
+
+
 Version v1.7.0-rc1; changes since v1.6.6.1:
 -------------------------------------------
 
