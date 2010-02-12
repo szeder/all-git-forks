@@ -44,11 +44,17 @@ OPTIONS
 	not contain the old commit).
 
 --max-pack-size=<n>::
-	Maximum size of each output packfile, expressed in MiB.
-	The default is 4096 (4 GiB) as that is the maximum allowed
+	Maximum size of each output packfile.
+	The default is 4 GiB as that is the maximum allowed
 	packfile size (due to file format limitations). Some
 	importers may wish to lower this, such as to ensure the
 	resulting packfiles fit on CDs.
+
+--big-file-threshold=<n>::
+	Maximum size of a blob that fast-import will attempt to
+	create a delta for, expressed in bytes.  The default is 512m
+	(512 MiB).  Some importers may wish to lower this on systems
+	with constrained memory.
 
 --depth=<n>::
 	Maximum delta depth, for blob and tree deltification.
@@ -152,7 +158,7 @@ fast-forward update, fast-import will skip updating that ref and instead
 prints a warning message.  fast-import will always attempt to update all
 branch refs, and does not stop on the first failure.
 
-Branch updates can be forced with \--force, but its recommended that
+Branch updates can be forced with \--force, but it's recommended that
 this only be used on an otherwise quiet repository.  Using \--force
 is not necessary for an initial import into an empty repository.
 
@@ -267,7 +273,7 @@ is always copied into the identity string at the time it is being
 created by fast-import.  There is no way to specify a different time or
 timezone.
 +
-This particular format is supplied as its short to implement and
+This particular format is supplied as it's short to implement and
 may be useful to a process that wants to create a new commit
 right now, without needing to use a working directory or
 'git update-index'.
@@ -420,7 +426,7 @@ quoting or escaping syntax is supported within `<committish>`.
 Here `<committish>` is any of the following:
 
 * The name of an existing branch already in fast-import's internal branch
-  table.  If fast-import doesn't know the name, its treated as a SHA-1
+  table.  If fast-import doesn't know the name, it's treated as a SHA-1
   expression.
 
 * A mark reference, `:<idnum>`, where `<idnum>` is the mark number.
@@ -759,7 +765,7 @@ assigned mark.
 
 The mark command is optional here as some frontends have chosen
 to generate the Git SHA-1 for the blob on their own, and feed that
-directly to `commit`.  This is typically more work than its worth
+directly to `commit`.  This is typically more work than it's worth
 however, as marks are inexpensive to store and easy to use.
 
 `data`
