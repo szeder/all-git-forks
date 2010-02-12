@@ -4,8 +4,9 @@ git-core (1:1.6.6.1-1.1) unstable; urgency=low
   * debian/rules: stop ignoring test suite failures on ia64, since
     #563882 has been fixed.  Build-Depends: and Depends:
     libc6.1 (>= 2.10.2-6) [ia64] for the fix (closes: #568915).
+  * update debian/copyright (closes: #557065).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 11 Feb 2010 21:39:09 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 11 Feb 2010 21:40:21 -0600
 
 git-core (1:1.6.6.1-1) unstable; urgency=low
 
