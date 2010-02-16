@@ -1854,33 +1854,81 @@ static int match_fragment(struct image *img,
 {
 	int i;
 	char *fixed_buf, *buf, *orig, *target;
+	int limit;
+	int preimage_limit;
 
-	if (preimage->nr + try_lno > img->nr)
+	if (preimage->nr + try_lno <= img->nr) {
+		/*
+		 * The hunk falls within the boundaries of img.
+		 */
+		limit = img->nr;
+		preimage_limit = preimage->nr;
+	} else if (ws_error_action == correct_ws_error &&
+		   ws_rule & WS_BLANK_AT_EOF && match_end) {
+		/*
+		 * This hunk that matches at the end, extends beyond
+		 * the end of img and we are removing blanks line at
+		 * the end of the file. Set up the limits so that
+		 * tests below will pass and the quick hash test
+		 * will only test the lines up to the last line
+		 * in img.
+		 */
+		limit = try_lno + preimage->nr;
+		preimage_limit = img->nr - try_lno;
+	} else {
+		/*
+		 * The hunk extends beyond the end of the img and
+		 * we are not removing blanks at the end, so we
+		 * should reject the hunk at this position.
+		 */
 		return 0;
+	}
 
 	if (match_beginning && try_lno)
 		return 0;
 
-	if (match_end && preimage->nr + try_lno != img->nr)
+	if (match_end && preimage->nr + try_lno != limit)
 		return 0;
 
 	/* Quick hash check */
-	for (i = 0; i < preimage->nr; i++)
+	for (i = 0; i < preimage_limit; i++)
 		if (preimage->line[i].hash != img->line[try_lno + i].hash)
 			return 0;
 
-	/*
-	 * Do we have an exact match?  If we were told to match
-	 * at the end, size must be exactly at try+fragsize,
-	 * otherwise try+fragsize must be still within the preimage,
-	 * and either case, the old piece should match the preimage
-	 * exactly.
-	 */
-	if ((match_end
-	     ? (try + preimage->len == img->len)
-	     : (try + preimage->len <= img->len)) &&
-	    !memcmp(img->buf + try, preimage->buf, preimage->len))
-		return 1;
+	if (preimage_limit == preimage->nr) {
+		/*
+		 * Do we have an exact match?  If we were told to match
+		 * at the end, size must be exactly at try+fragsize,
+		 * otherwise try+fragsize must be still within the preimage,
+		 * and either case, the old piece should match the preimage
+		 * exactly.
+		 */
+		if ((match_end
+		     ? (try + preimage->len == img->len)
+		     : (try + preimage->len <= img->len)) &&
+		    !memcmp(img->buf + try, preimage->buf, preimage->len))
+			return 1;
+	} else {
+		/*
+		 * The preimage extends beyond the end of img, so
+		 * there cannot be an exact match.
+		 *
+		 * There must be one non-blank context line that match
+		 * a line before the of img.
+		 */
+		char *buf_end;
+
+		buf = preimage->buf; 
+		buf_end = buf;
+		for (i = 0; i < preimage_limit; i++)
+			buf_end += preimage->line[i].len;
+
+		for ( ; buf < buf_end; buf++)
+			if (!isspace(*buf))
+				break;
+		if (buf == buf_end)
+			return 0;
+	}
 
 	/*
 	 * No exact match. If we are ignoring whitespace, run a line-by-line
@@ -1932,12 +1980,16 @@ static int match_fragment(struct image *img,
 	 * it might with whitespace fuzz. We haven't been asked to
 	 * ignore whitespace, we were asked to correct whitespace
 	 * errors, so let's try matching after whitespace correction.
+	 *
+	 * The preimage may extend beyond the end of the file,
+	 * but in this loop we will only handle the part of the
+	 * preimage that falls within the file.
 	 */
 	fixed_buf = xmalloc(preimage->len + 1);
 	buf = fixed_buf;
 	orig = preimage->buf;
 	target = img->buf + try;
-	for (i = 0; i < preimage->nr; i++) {
+	for (i = 0; i < preimage_limit; i++) {
 		size_t fixlen; /* length after fixing the preimage */
 		size_t oldlen = preimage->line[i].len;
 		size_t tgtlen = img->line[try_lno + i].len;
@@ -1975,6 +2027,29 @@ static int match_fragment(struct image *img,
 		orig += oldlen;
 		buf += fixlen;
 		target += tgtlen;
+	}
+
+
+	/*
+	 * Now handle the lines in the preimage that falls beyond the
+	 * end of the file (if any). They will only match if they are
+	 * empty or only contain whitespace (if WS_BLANK_AT_EOL is
+	 * false).
+	 */
+	for ( ; i < preimage->nr; i++) {
+		size_t fixlen; /* length after fixing the preimage */
+		size_t oldlen = preimage->line[i].len;
+		int j;
+
+		/* Try fixing the line in the preimage */
+		fixlen = ws_fix_copy(buf, orig, oldlen, ws_rule, NULL);
+
+		for (j = 0; j < fixlen; j++)
+			if (!isspace(buf[j]))
+				goto unmatch_exit;
+
+		orig += oldlen;
+		buf += fixlen;
 	}
 
 	/*
@@ -2092,12 +2167,26 @@ static void update_image(struct image *img,
 	int i, nr;
 	size_t remove_count, insert_count, applied_at = 0;
 	char *result;
+	int preimage_limit;
+
+	/*
+	 * If we are removing blank lines at the end of img,
+	 * the preimage may extend beyond the end.
+	 * If that is the case, we must be careful only to
+	 * remove the part of the preimage that falls within
+	 * the boundaries of img. Initialize preimage_limit
+	 * to the number of lines in the preimage that falls
+	 * within the boundaries.
+	 */
+	preimage_limit = preimage->nr;
+	if (preimage_limit > img->nr - applied_pos)
+		preimage_limit = img->nr - applied_pos;
 
 	for (i = 0; i < applied_pos; i++)
 		applied_at += img->line[i].len;
 
 	remove_count = 0;
-	for (i = 0; i < preimage->nr; i++)
+	for (i = 0; i < preimage_limit; i++)
 		remove_count += img->line[applied_pos + i].len;
 	insert_count = postimage->len;
 
@@ -2114,8 +2203,8 @@ static void update_image(struct image *img,
 	result[img->len] = '\0';
 
 	/* Adjust the line table */
-	nr = img->nr + postimage->nr - preimage->nr;
-	if (preimage->nr < postimage->nr) {
+	nr = img->nr + postimage->nr - preimage_limit;
+	if (preimage_limit < postimage->nr) {
 		/*
 		 * NOTE: this knows that we never call remove_first_line()
 		 * on anything other than pre/post image.
@@ -2123,10 +2212,10 @@ static void update_image(struct image *img,
 		img->line = xrealloc(img->line, nr * sizeof(*img->line));
 		img->line_allocated = img->line;
 	}
-	if (preimage->nr != postimage->nr)
+	if (preimage_limit != postimage->nr)
 		memmove(img->line + applied_pos + postimage->nr,
-			img->line + applied_pos + preimage->nr,
-			(img->nr - (applied_pos + preimage->nr)) *
+			img->line + applied_pos + preimage_limit,
+			(img->nr - (applied_pos + preimage_limit)) *
 			sizeof(*img->line));
 	memcpy(img->line + applied_pos,
 	       postimage->line,
@@ -2322,7 +2411,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 
 	if (applied_pos >= 0) {
 		if (new_blank_lines_at_end &&
-		    preimage.nr + applied_pos == img->nr &&
+		    preimage.nr + applied_pos >= img->nr &&
 		    (ws_rule & WS_BLANK_AT_EOF) &&
 		    ws_error_action != nowarn_ws_error) {
 			record_ws_error(WS_BLANK_AT_EOF, "+", 1, frag->linenr);
