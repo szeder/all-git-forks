@@ -1,10 +1,8 @@
 Format-Specification: http://dep.debian.net/deps/dep5/
-Name: git
-Maintainer: git@vger.kernel.org
 Source: http://www.kernel.org/pub/software/scm/git/
 
 Files: *
-Copyright: © 2005-2009, Linus Torvalds and others.
+Copyright: © 2005-2010, Linus Torvalds and others.
 License: GPL-2
  You can redistribute this software and/or modify it under the terms of
  the GNU General Public License as published by the Free Software

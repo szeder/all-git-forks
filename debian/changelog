@@ -4,6 +4,25 @@ git-core (1:1.6.6.2-2) unstable; urgency=low
 
  -- Gerrit Pape <pape@smarden.org>  Fri, 12 Feb 2010 16:26:04 +0000
 
+git-core (1:1.7.0~rc2-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 12 Feb 2010 14:30:12 +0000
+
+git-core (1:1.7.0~rc1-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * debian/diff/0003-git-cvsserver-allow-regex-metacharacters...diff:
+    remove; applied upstream.
+  * debian/rules: NO_PYTHON=1.  Packaging the git_remote_helpers
+    Python module will require more work.
+  * update debian/copyright (closes: #557065).
+  * debian/rules: set prefix=/usr when building man pages (closes:
+    #567404).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 30 Jan 2010 17:46:04 -0600
+
 git-core (1:1.6.6.2-1) unstable; urgency=medium
 
   * new upstream point release.

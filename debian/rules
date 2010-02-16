@@ -8,7 +8,7 @@ STRIP =strip
 TEST =test
 OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
   mandir=/usr/share/man INSTALLDIRS=vendor \
-  PYTHON_PATH=/usr/bin/python \
+  NO_PYTHON=1 \
   THREADED_DELTA_SEARCH=1 NO_CROSS_DIRECTORY_HARDLINKS=1 \
   DEFAULT_PAGER=pager DEFAULT_EDITOR=editor
 DOC_OPTS =prefix=/usr ASCIIDOC8=1 ASCIIDOC_NO_ROFF=1
