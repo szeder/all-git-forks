@@ -82,8 +82,8 @@ static pthread_mutex_t read_sha1_mutex;
 
 #define grep_lock() pthread_mutex_lock(&grep_mutex)
 #define grep_unlock() pthread_mutex_unlock(&grep_mutex)
-#define read_sha1_lock() pthread_mutex_lock(&read_sha1_mutex)
-#define read_sha1_unlock() pthread_mutex_unlock(&read_sha1_mutex)
+#define read_sha1_lock() do { if (use_threads) pthread_mutex_lock(&read_sha1_mutex); } while (0)
+#define read_sha1_unlock() do { if (use_threads) pthread_mutex_unlock(&read_sha1_mutex); } while (0)
 
 /* Signalled when a new work_item is added to todo. */
 static pthread_cond_t cond_add;
