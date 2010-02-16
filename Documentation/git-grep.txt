@@ -26,8 +26,8 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Look for specified patterns in the working tree files, blobs
-registered in the index file, or given tree objects.
+Look for specified patterns in the tracked files in the working tree, blobs
+registered in the index file, or blobs in given tree objects.
 
 
 OPTIONS
@@ -49,7 +49,7 @@ OPTIONS
 	Don't match the pattern in binary files.
 
 --max-depth <depth>::
-	For each pathspec given on command line, descend at most <depth>
+	For each <path> given on command line, descend at most <depth>
 	levels of directories. A negative value means no limit.
 
 -w::
@@ -165,9 +165,16 @@ OPTIONS
 	Signals the end of options; the rest of the parameters
 	are <path> limiters.
 
+<path>...::
+	If given, limit the search to paths matching at least one pattern.
+	Each pattern is the same as <filepattern> of linkgit:git-add[1].
 
 Example
 -------
+
+git grep 'time_t' -- '*.[ch]'::
+	Looks for `time_t` in all tracked .c and .h files in the working
+	directory.
 
 git grep -e \'#define\' --and \( -e MAX_PATH -e PATH_MAX \)::
 	Looks for a line that has `#define` and either `MAX_PATH` or
