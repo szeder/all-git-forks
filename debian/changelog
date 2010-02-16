@@ -1,8 +1,12 @@
-git-core (1:1.6.6.2-2) unstable; urgency=low
+git-core (1:1.7.0-1) unstable; urgency=low
 
   * debian/git-core.README.source: typos.
+  * new upstream release.
+    * Documentation: Update git core tutorial clarifying reference to
+      scripts (closes: ##560795).
+  * merge branch debian-experimental.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 12 Feb 2010 16:26:04 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 16 Feb 2010 08:51:32 +0000
 
 git-core (1:1.7.0~rc2-1) experimental; urgency=low
 
