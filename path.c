@@ -649,3 +649,13 @@ int daemon_avoid_alias(const char *p)
 		}
 	}
 }
+
+int offset_1st_component(const char *path)
+{
+	int len = 0;
+	if (has_dos_drive_prefix(path))
+		len += 2;
+	if (is_dir_sep(path[len]))
+		return len++;
+	return len;
+}
