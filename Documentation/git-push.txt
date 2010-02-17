@@ -146,14 +146,14 @@ useful if you write an alias or script around 'git push'.
 	receiver share many of the same objects in common. The default is
 	\--thin.
 
--v::
---verbose::
-	Run verbosely.
-
 -q::
 --quiet::
 	Suppress all output, including the listing of updated refs,
 	unless an error occurs.
+
+-v::
+--verbose::
+	Run verbosely.
 
 include::urls-remotes.txt[]
 
