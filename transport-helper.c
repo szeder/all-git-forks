@@ -648,6 +648,10 @@ static int push_refs(struct transport *transport,
 			 */
 			if (status == REF_STATUS_NONE)
 				continue;
+
+			if (status == REF_STATUS_REMOTE_REJECT && transport->verbose)
+				fprintf(stderr, "unexpected error when pushing %s: %s\n",
+					ref->name, msg);
 		}
 
 		ref->status = status;
