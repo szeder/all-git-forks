@@ -35,13 +35,6 @@ static size_t sz_fmt(size_t s) { return s; }
 
 const unsigned char null_sha1[20];
 
-static inline int offset_1st_component(const char *path)
-{
-	if (has_dos_drive_prefix(path))
-		return 2 + (path[2] == '/');
-	return *path == '/';
-}
-
 int safe_create_leading_directories(char *path)
 {
 	char *pos = path + offset_1st_component(path);
@@ -2438,16 +2431,22 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st, int write_object,
 	     enum object_type type, const char *path)
 {
 	int ret;
-	struct strbuf sbuf = STRBUF_INIT;
-	/* give the real size when known to avoid needless reallc */
-	size_t size_hint = S_ISREG(st->st_mode) ? xsize_t(st->st_size) : 0;
+	size_t size = xsize_t(st->st_size);
 
-	if (strbuf_read(&sbuf, fd, size_hint) >= 0)
-		ret = index_mem(sha1, sbuf.buf, sbuf.len, write_object,
-				type, path);
-	else
-		ret = -1;
-	strbuf_release(&sbuf);
+	if (!S_ISREG(st->st_mode)) {
+		struct strbuf sbuf = STRBUF_INIT;
+		if (strbuf_read(&sbuf, fd, 4096) >= 0)
+			ret = index_mem(sha1, sbuf.buf, sbuf.len, write_object,
+					type, path);
+		else
+			ret = -1;
+		strbuf_release(&sbuf);
+	} else if (size) {
+		void *buf = xmmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+		ret = index_mem(sha1, buf, size, write_object, type, path);
+		munmap(buf, size);
+	} else
+		ret = index_mem(sha1, NULL, size, write_object, type, path);
 	close(fd);
 	return ret;
 }
