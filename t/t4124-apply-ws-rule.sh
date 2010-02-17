@@ -261,4 +261,89 @@ test_expect_success 'blank but not empty at EOF' '
 	grep "new blank line at EOF" error
 '
 
+test_expect_success 'applying beyond EOF requires one non-blank context line' '
+	{ echo; echo; echo; echo; } >one &&
+	git add one &&
+	{ echo b; } >>one &&
+	git diff -- one >patch &&
+
+	git checkout one &&
+	{ echo a; echo; } >one &&
+	cp one expect &&
+	test_must_fail git apply --whitespace=fix patch &&
+	test_cmp one expect
+'
+
+test_expect_success 'tons of blanks at EOF should not apply' '
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+		echo; echo; echo; echo;
+	done >one &&
+	git add one &&
+	echo a >>one &&
+	git diff -- one >patch &&
+
+	>one &&
+	test_must_fail git apply --whitespace=fix patch
+'
+
+test_expect_success 'missing blank line at end with --whitespace=fix' '
+	echo a >one &&
+	echo >>one &&
+	git add one &&
+	echo b >>one &&
+	cp one expect &&
+	git diff -- one >patch &&
+	echo a >one &&
+	test_must_fail git apply patch &&
+	git apply --whitespace=fix patch &&
+	test_cmp one expect
+'
+
+test_expect_success 'two missing blank lines at end with --whitespace=fix' '
+	{ echo a; echo; echo b; echo c; } >one &&
+	cp one no-blank-lines &&
+	{ echo; echo; } >>one &&
+	git add one &&
+	echo d >>one &&
+	cp one expect &&
+	echo >>one &&
+	git diff -- one >patch &&
+	mv no-blank-lines one &&
+	test_must_fail git apply patch &&
+	git apply --whitespace=fix patch &&
+	test_cmp one expect
+'
+
+test_expect_success 'shrink file with tons of missing blanks at end of file' '
+	{ echo a; echo b; echo c; } >one &&
+	cp one no-blank-lines &&
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+		echo; echo; echo; echo;
+	done >>one &&
+	git add one &&
+	echo a >one &&
+	cp one expect &&
+	git diff -- one >patch &&
+	mv no-blank-lines one &&
+	test_must_fail git apply patch &&
+	git apply --whitespace=fix patch &&
+	test_cmp one expect
+'
+
+test_expect_success 'shrink file with tons of missing blanks at end of file' '
+	{ echo a; echo b; echo c; } >one &&
+	cp one no-blank-lines &&
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+		echo; echo; echo; echo;
+	done >>one &&
+	git add one &&
+	echo a >one &&
+	cp one expect &&
+	git diff -- one >patch &&
+	mv no-blank-lines one &&
+	test_must_fail git apply patch &&
+	git apply --whitespace=fix patch &&
+	test_cmp one expect
+'
+
 test_done
