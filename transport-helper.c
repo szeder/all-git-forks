@@ -621,13 +621,11 @@ static int push_refs(struct transport *transport,
 				status = REF_STATUS_NONE;
 				free(msg);
 				msg = NULL;
-			}
-			else if (!strcmp(msg, "up to date")) {
+			} else if (!strcmp(msg, "up to date")) {
 				status = REF_STATUS_UPTODATE;
 				free(msg);
 				msg = NULL;
-			}
-			else if (!strcmp(msg, "non-fast forward")) {
+			} else if (!strcmp(msg, "non-fast forward")) {
 				status = REF_STATUS_REJECT_NONFASTFORWARD;
 				free(msg);
 				msg = NULL;
