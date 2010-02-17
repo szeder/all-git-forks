@@ -3,6 +3,7 @@ git (1:1.7.1-1.0.1) experimental; urgency=low
   * debian/gitweb.README.Debian: copy-edit.
   * debian/git.README.Debian: retitle to "Git for Debian" (thx
     Christoph Anton Mitterer, closes: #590129).
+  * debian/control: Homepage: http://git-scm.com/ (closes: #553220).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:00:34 -0500
 
