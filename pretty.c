@@ -806,6 +806,9 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	case 's':	/* subject */
 		format_subject(sb, msg + c->subject_off, " ");
 		return 1;
+	case 'S': /* multiline subject*/
+		format_subject(sb, msg + c->subject_off, "\n");
+		return 1;
 	case 'f':	/* sanitized subject */
 		format_sanitized_subject(sb, msg + c->subject_off);
 		return 1;
