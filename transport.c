@@ -1053,6 +1053,7 @@ int transport_push(struct transport *transport,
 
 		ret = transport->push_refs(transport, remote_refs, flags);
 		err = push_had_errors(remote_refs);
+		fprintf(stderr, "push had errors: %d\n", err);
 
 		ret |= err;
 

@@ -629,6 +629,13 @@ static int push_refs(struct transport *transport,
 				status = REF_STATUS_REJECT_NONFASTFORWARD;
 				free(msg);
 				msg = NULL;
+			} else {
+				fprintf(stderr, "unexpected error when pushing %s: %s\n",
+					ref->name, msg);
+				/**
+				 * Unlike the previous cases, do not consume msg - this allows
+				 * later users to access the message via ref->remote_status.
+				 **/
 			}
 		}
 
