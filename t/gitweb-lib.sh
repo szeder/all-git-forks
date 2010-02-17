@@ -26,6 +26,7 @@ our \$projects_list = '';
 our \$export_ok = '';
 our \$strict_export = '';
 our \$maxload = undef;
+our \$git_versions_must_match = 0;
 
 EOF
 
