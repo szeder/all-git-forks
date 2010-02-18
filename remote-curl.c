@@ -499,7 +499,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	const char *svc = rpc->service_name;
 	struct strbuf buf = STRBUF_INIT;
 	struct child_process client;
-	int err = 0;
+	int ret = 0, cmd_ret = 0, err = 0;
 
 	init_walker();
 	memset(&client, 0, sizeof(client));
@@ -535,6 +535,11 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 		rpc->len = n;
 		err |= post_rpc(rpc);
 	}
+	/**
+	 * We got a error() due to failed RPC
+	 */
+	if (err)
+		ret = -1;
 	strbuf_read(&rpc->result, client.out, 0);
 
 	close(client.in);
@@ -542,13 +547,15 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	client.in = -1;
 	client.out = -1;
 
-	err |= finish_command(&client);
+	cmd_ret = finish_command(&client);
+	if (cmd_ret == -1)
+		ret = -1;
 	free(rpc->service_url);
 	free(rpc->hdr_content_type);
 	free(rpc->hdr_accept);
 	free(rpc->buf);
 	strbuf_release(&buf);
-	return err;
+	return ret;
 }
 
 static int fetch_dumb(int nr_heads, struct ref **to_fetch)
