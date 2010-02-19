@@ -100,6 +100,12 @@ div.title, a.title {
 	color: #000000;
 }
 
+div.stale_info {
+	display: block;
+	text-align: right;
+	font-style: italic;
+}
+
 div.readme {
 	padding: 8px;
 }

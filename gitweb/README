@@ -267,6 +267,25 @@ are visible, and together with $strict_export to limit access to
 repositories (see "Gitweb repositories" section in gitweb/INSTALL).
 
 
+Variables described below deal with caching in gitweb.
+ * $cache_dir, $projlist_cache_name
+   The cached list version (cache of Perl structure, not of final
+   output) is stored in "$cache_dir/$projlist_cache_name".  $cache_dir
+   should be writable only by processes with the same uid as gitweb
+   (usually web served uid); if $cache_dir does not exist gitweb would
+   try to create it.  Only single gitweb project root per system is
+   supported, unless gitweb instances for different projects root have
+   different configuration.
+
+   By default $cache_dir is set to "$TMPDIR/gitweb" if $TMPDIR
+   environment variable does exist, "/tmp/gitweb" otherwise.
+   Default name for $projlist_cache_name -s 'gitweb.index.cache';
+
+   NOTE: projects list cache file can be tweaked by other scripts
+   running with the same uid as gitweb; use this ONLY at secure
+   installations!!!
+
+
 Per-repository gitweb configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
