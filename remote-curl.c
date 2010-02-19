@@ -494,12 +494,13 @@ static int post_rpc(struct rpc_state *rpc)
 	return err;
 }
 
-static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
+static int rpc_service(struct rpc_state *rpc, struct discovery *heads,
+	int *is_fatal)
 {
 	const char *svc = rpc->service_name;
 	struct strbuf buf = STRBUF_INIT;
 	struct child_process client;
-	int err = 0;
+	int err = 0, cmd_ret = 0;
 
 	init_walker();
 	memset(&client, 0, sizeof(client));
@@ -535,6 +536,11 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 		rpc->len = n;
 		err |= post_rpc(rpc);
 	}
+	/**
+	 * RPC failed with error()
+	 */
+	if (err)
+		*is_fatal = 1;
 	strbuf_read(&rpc->result, client.out, 0);
 
 	close(client.in);
@@ -542,7 +548,9 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	client.in = -1;
 	client.out = -1;
 
-	err |= finish_command(&client);
+	err |= cmd_ret = finish_command(&client);
+	if (cmd_ret == -1)
+		*is_fatal = 1;
 	free(rpc->service_url);
 	free(rpc->hdr_content_type);
 	free(rpc->hdr_accept);
@@ -577,7 +585,7 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 }
 
 static int fetch_git(struct discovery *heads,
-	int nr_heads, struct ref **to_fetch)
+	int nr_heads, struct ref **to_fetch, int *is_fatal)
 {
 	struct rpc_state rpc;
 	char *depth_arg = NULL;
@@ -618,7 +626,7 @@ static int fetch_git(struct discovery *heads,
 	rpc.argv = argv;
 	rpc.gzip_request = 1;
 
-	err = rpc_service(&rpc, heads);
+	err = rpc_service(&rpc, heads, is_fatal);
 	if (rpc.result.len)
 		safe_write(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
@@ -627,11 +635,11 @@ static int fetch_git(struct discovery *heads,
 	return err;
 }
 
-static int fetch(int nr_heads, struct ref **to_fetch)
+static int fetch(int nr_heads, struct ref **to_fetch, int *is_fatal)
 {
 	struct discovery *d = discover_refs("git-upload-pack");
 	if (d->proto_git)
-		return fetch_git(d, nr_heads, to_fetch);
+		return fetch_git(d, nr_heads, to_fetch, is_fatal);
 	else
 		return fetch_dumb(nr_heads, to_fetch);
 }
@@ -642,6 +650,7 @@ static void parse_fetch(struct strbuf *buf)
 	struct ref *list_head = NULL;
 	struct ref **list = &list_head;
 	int alloc_heads = 0, nr_heads = 0;
+	int ret, is_fatal = 0;
 
 	do {
 		if (!prefixcmp(buf->buf, "fetch ")) {
@@ -678,7 +687,8 @@ static void parse_fetch(struct strbuf *buf)
 			break;
 	} while (1);
 
-	if (fetch(nr_heads, to_fetch))
+	ret = fetch(nr_heads, to_fetch, &is_fatal);
+	if (ret && is_fatal)
 		exit(128); /* error already reported */
 	free_refs(list_head);
 	free(to_fetch);
@@ -710,7 +720,8 @@ static int push_dav(int nr_spec, char **specs)
 	return 0;
 }
 
-static int push_git(struct discovery *heads, int nr_spec, char **specs)
+static int push_git(struct discovery *heads, int nr_spec, char **specs,
+	int *is_fatal)
 {
 	struct rpc_state rpc;
 	const char **argv;
@@ -735,7 +746,7 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 	rpc.service_name = "git-receive-pack",
 	rpc.argv = argv;
 
-	err = rpc_service(&rpc, heads);
+	err = rpc_service(&rpc, heads, is_fatal);
 	if (rpc.result.len)
 		safe_write(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
@@ -743,13 +754,13 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 	return err;
 }
 
-static int push(int nr_spec, char **specs)
+static int push(int nr_spec, char **specs, int *is_fatal)
 {
 	struct discovery *heads = discover_refs("git-receive-pack");
 	int ret;
 
 	if (heads->proto_git)
-		ret = push_git(heads, nr_spec, specs);
+		ret = push_git(heads, nr_spec, specs, is_fatal);
 	else
 		ret = push_dav(nr_spec, specs);
 	free_discovery(heads);
@@ -760,6 +771,7 @@ static void parse_push(struct strbuf *buf)
 {
 	char **specs = NULL;
 	int alloc_spec = 0, nr_spec = 0, i;
+	int ret, is_fatal = 0;
 
 	do {
 		if (!prefixcmp(buf->buf, "push ")) {
@@ -776,7 +788,8 @@ static void parse_push(struct strbuf *buf)
 			break;
 	} while (1);
 
-	if (push(nr_spec, specs))
+	ret = push(nr_spec, specs, &is_fatal);
+	if (ret && is_fatal)
 		exit(128); /* error already reported */
 	for (i = 0; i < nr_spec; i++)
 		free(specs[i]);
