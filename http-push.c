@@ -1467,7 +1467,6 @@ static struct ref *remote_refs;
 static void one_remote_ref(char *refname)
 {
 	struct ref *ref;
-	struct object *obj;
 
 	ref = alloc_ref(refname);
 
@@ -1480,17 +1479,11 @@ static void one_remote_ref(char *refname)
 	}
 
 	/*
-	 * Fetch a copy of the object if it doesn't exist locally - it
-	 * may be required for updating server info later.
+	 * Print error message when verbose; after all, main() prints a message
+	 * to the user.
 	 */
-	if (repo->can_update_info_refs && !has_sha1_file(ref->old_sha1)) {
-		obj = lookup_unknown_object(ref->old_sha1);
-		if (obj) {
-			fprintf(stderr,	"  fetch %s for %s\n",
-				sha1_to_hex(ref->old_sha1), refname);
-			add_fetch_request(obj);
-		}
-	}
+	if (!has_sha1_file(ref->old_sha1) && push_verbosely)
+		warning("%s does not exist locally", sha1_to_hex(ref->old_sha1));
 
 	ref->next = remote_refs;
 	remote_refs = ref;
@@ -2009,33 +2002,28 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (!force_all &&
-		    !is_null_sha1(ref->old_sha1) &&
-		    !ref->force) {
-			if (!has_sha1_file(ref->old_sha1) ||
-			    !ref_newer(ref->peer_ref->new_sha1,
-				       ref->old_sha1)) {
-				/*
-				 * We do not have the remote ref, or
-				 * we know that the remote ref is not
-				 * an ancestor of what we are trying to
-				 * push.  Either way this can be losing
-				 * commits at the remote end and likely
-				 * we were not up to date to begin with.
-				 */
-				error("remote '%s' is not an ancestor of\n"
-				      "local '%s'.\n"
-				      "Maybe you are not up-to-date and "
-				      "need to pull first?",
-				      ref->name,
-				      ref->peer_ref->name);
-				if (helper_status)
-					printf("error %s non-fast forward\n", ref->name);
-				rc = -2;
-				continue;
-			}
+		if (ref->status == REF_STATUS_REJECT_NONFASTFORWARD) {
+			error("remote '%s' is not an ancestor of local '%s'.\n"
+			      "Maybe you are not up-to-date and need to pull "
+			      "first?", ref->name, ref->peer_ref->name);
+			if (helper_status)
+				printf("error %s non-fast forward\n", ref->name);
+			rc = -2;
+			continue;
 		}
-		hashcpy(ref->new_sha1, ref->peer_ref->new_sha1);
+
+		if (!is_null_sha1(ref->old_sha1) &&
+		    (!has_sha1_file(ref->old_sha1) ||
+		     !ref_newer(ref->new_sha1, ref->old_sha1))) {
+			error("Remote ref '%s' resolves to \n%s which does not "
+			      "exist locally, perhaps you need to fetch?",
+			      ref->name, sha1_to_hex(ref->old_sha1));
+			if (helper_status)
+				printf("error %s no match\n", ref->name);
+			rc = -2;
+			continue;
+		}
+
 		new_refs++;
 		strcpy(old_hex, sha1_to_hex(ref->old_sha1));
 		new_hex = sha1_to_hex(ref->new_sha1);
