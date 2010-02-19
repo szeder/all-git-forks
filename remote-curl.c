@@ -485,8 +485,8 @@ static int post_rpc(struct rpc_state *rpc)
 	finish_active_slot(slot);
 
 	if (results.curl_result != CURLE_OK) {
-		err |= error("RPC failed; result=%d, HTTP code = %ld",
-			results.curl_result, results.http_code);
+		http_long_error(rpc->service->url, curl_errorstr, &results);
+		err |= error("RPC failed");
 	}
 
 	curl_slist_free_all(headers);

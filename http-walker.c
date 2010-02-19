@@ -427,8 +427,8 @@ static int fetch_pack(struct walker *walker, struct alt_base *repo, unsigned cha
 	if (start_active_slot(preq->slot)) {
 		run_active_slot(preq->slot);
 		if (results.curl_result != CURLE_OK) {
-			error("Unable to get pack file %s\n%s", preq->url,
-			      curl_errorstr);
+			error("Unable to get pack file %s", preq->url);
+			http_long_error(preq->url, curl_errorstr, &results);
 			goto abort;
 		}
 	} else {
@@ -499,10 +499,10 @@ static int fetch_object(struct walker *walker, struct alt_base *repo, unsigned c
 		   req->http_code != 416) {
 		if (missing_target(req))
 			ret = -1; /* Be silent, it is probably in a pack. */
-		else
-			ret = error("%s (curl_result = %d, http_code = %ld, sha1 = %s)",
-				    req->errorstr, req->curl_result,
-				    req->http_code, hex);
+		else {
+			ret = error("Unable to get object %s", hex);
+			http_long_error(req->url, req->errorstr, req->slot->results);
+		}
 	} else if (req->zret != Z_STREAM_END) {
 		walker->corrupt_object_found++;
 		ret = error("File %s (%s) corrupt", hex, req->url);

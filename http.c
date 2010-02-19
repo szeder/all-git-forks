@@ -874,6 +874,14 @@ int http_error(const char *url, int ret)
 	return ret;
 }
 
+void http_long_error(const char *url, const char *curl_errstr,
+	struct slot_results *results)
+{
+	fprint(stderr, "HTTP error while accessing url %s:\n"
+		"%s (curl_result=%d, http_code=%ld)\n",
+		url, curl_errorstr, results->curl_result, result->http_code);
+}
+
 int http_fetch_ref(const char *base, struct ref *ref)
 {
 	char *url;
