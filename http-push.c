@@ -1616,15 +1616,18 @@ static int remote_exists(const char *path)
 
 static void fetch_symref(const char *path, char **symref, unsigned char *sha1)
 {
+	int result;
 	char *url;
 	struct strbuf buffer = STRBUF_INIT;
 
 	url = xmalloc(strlen(repo->url) + strlen(path) + 1);
 	sprintf(url, "%s%s", repo->url, path);
 
-	if (http_get_strbuf(url, &buffer, 0) != HTTP_OK)
-		die("Couldn't get %s for remote symref\n%s", url,
-		    curl_errorstr);
+	result = http_get_strbuf(url, &buffer, 0);
+	if (result != HTTP_OK) {
+		http_error(url, result);
+		die("Couldn't get %s for remote symref", url);
+	}
 	free(url);
 
 	free(*symref);
