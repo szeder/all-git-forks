@@ -1849,6 +1849,18 @@ proc error_popup {msg {owner .}} {
     }
 }
 
+proc error_popup {msg {owner .}} {
+    if {[tk windowingsystem] eq "win32"} {
+        tk_messageBox -icon error -type ok -title [wm title .] \
+            -parent $owner -message $msg
+    } else {
+        set w .error
+        ttk_toplevel $w
+        make_transient $w $owner
+        show_error $w $w $msg
+    }
+}
+
 proc confirm_popup {msg {owner .}} {
     global confirm_ok NS
     set confirm_ok 0
@@ -2491,6 +2503,7 @@ proc makewindow {} {
 	{mc "Return to mark" command gotomark}
 	{mc "Find descendant of this and mark" command find_common_desc}
 	{mc "Compare with marked commit" command compare_commits}
+	{mc "Export patch series" command mkpatchseries}
     }
     $rowctxmenu configure -tearoff 0
 
@@ -8773,6 +8786,93 @@ proc mkpatchgo {} {
     }
     catch {destroy $patchtop}
     unset patchtop
+}
+
+set _iscygwin {}
+
+proc is_MacOSX {} {
+	if {[tk windowingsystem] eq {aqua}} {
+		return 1
+	}
+	return 0
+}
+
+proc is_Windows {} {
+	if {$::tcl_platform(platform) eq {windows}} {
+		return 1
+	}
+	return 0
+}
+
+proc is_Cygwin {} {
+	global _iscygwin
+	if {$_iscygwin eq {}} {
+		if {$::tcl_platform(platform) eq {windows}} {
+			if {[catch {set p [exec cygpath --windir]} err]} {
+				set _iscygwin 0
+			} else {
+				set _iscygwin 1
+			}
+		} else {
+			set _iscygwin 0
+		}
+	}
+	return $_iscygwin
+}
+
+proc do_explore {directory} {
+	set explorer {}
+	if {[is_Cygwin] || [is_Windows]} {
+		set explorer "explorer.exe"
+	} elseif {[is_MacOSX]} {
+		set explorer "open"
+	} else {
+		# freedesktop.org-conforming system is our best shot
+		set explorer "xdg-open"
+	}
+	eval exec $explorer $directory &
+}
+
+proc mkpatchseries {} {
+    global rowmenuid currentid commitinfo
+
+    if {![info exists currentid]} return
+
+    set cmd [list git merge-base $currentid $rowmenuid]
+    if {[catch {set merge_base [eval exec $cmd]} err]} {
+        error_popup "[mc "Error creating patchseries"] $err" .
+        return
+    }
+
+    if {$merge_base eq $currentid} {
+        set oldid $currentid^
+        set newid $rowmenuid
+    } else {
+        set oldid $rowmenuid^
+        set newid $currentid
+    }
+
+    set cmd [list git log --pretty=oneline --no-merges $oldid..$newid]
+    if {[catch {set log [eval exec $cmd]} err]} {
+        error_popup "[mc "Error creating patchseries"] $err" .
+        return
+    }
+    set lines [split $log "\n"]
+    set number_of_patches [llength $lines]
+
+    set popup_msg [mc "Export %i patches into directory '%s'" \
+                      $number_of_patches [pwd]]
+    if {![confirm_popup $popup_msg]} {
+        return
+    }
+
+    set cmd [list git format-patch $oldid..$newid]
+    if {[catch {eval exec $cmd} err]} {
+        error_popup "[mc "Error creating patchseries"] $err" .
+        return
+    }
+
+    do_explore [pwd]
 }
 
 proc mkpatchcan {} {
