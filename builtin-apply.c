@@ -2002,11 +2002,8 @@ static int find_pos(struct image *img,
 	unsigned long backwards, forwards, try;
 	int backwards_lno, forwards_lno, try_lno;
 
-	if (preimage->nr > img->nr)
-		return -1;
-
 	/*
-	 * If match_begining or match_end is specified, there is no
+	 * If match_beginning or match_end is specified, there is no
 	 * point starting from a wrong line that will never match and
 	 * wander around and wait for a match at the specified end.
 	 */
@@ -2015,7 +2012,11 @@ static int find_pos(struct image *img,
 	else if (match_end)
 		line = img->nr - preimage->nr;
 
-	if (line > img->nr)
+	/*
+	 * Because the comparison is unsigned, the following test
+	 * will also take care of a negative line number.
+	 */
+	if ((size_t) line > img->nr)
 		line = img->nr;
 
 	try = 0;
@@ -2287,8 +2288,17 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 
 	for (;;) {
 
-		applied_pos = find_pos(img, &preimage, &postimage, pos,
-				       ws_rule, match_beginning, match_end);
+		/*
+		 * If the hunk attempts to delete more lines than
+		 * are present in the file, we can reject it at
+		 * once instead of calling find_pos().
+		 */
+		if (preimage.nr - leading - trailing > img->nr)
+			applied_pos = -1;
+		else
+			applied_pos = find_pos(img, &preimage, &postimage,
+					       pos, ws_rule, match_beginning,
+					       match_end);
 
 		if (applied_pos >= 0)
 			break;
