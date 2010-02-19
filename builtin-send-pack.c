@@ -418,17 +418,12 @@ int send_pack(struct send_pack_args *args,
 	 */
 	new_refs = 0;
 	for (ref = remote_refs; ref; ref = ref->next) {
-		if (!ref->peer_ref && !args->send_mirror)
+		if (for_ref_set_status_for_push(ref, args->send_mirror,
+			args->force_update))
 			continue;
 
-		/* Check for statuses set by set_ref_status_for_push() */
-		switch (ref->status) {
-		case REF_STATUS_REJECT_NONFASTFORWARD:
-		case REF_STATUS_UPTODATE:
+		if (!ref->peer_ref && !args->send_mirror)
 			continue;
-		default:
-			; /* do nothing */
-		}
 
 		if (ref->deletion && !allow_deleting_refs) {
 			ref->status = REF_STATUS_REJECT_NODELETE;
@@ -676,9 +671,6 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	/* match them up */
 	if (match_refs(local_refs, &remote_refs, nr_refspecs, refspecs, flags))
 		return -1;
-
-	set_ref_status_for_push(remote_refs, args.send_mirror,
-		args.force_update);
 
 	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
 

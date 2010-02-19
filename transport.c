@@ -1048,7 +1048,7 @@ int transport_push(struct transport *transport,
 			return -1;
 		}
 
-		set_ref_status_for_push(remote_refs,
+		for_refs_set_status_for_push(remote_refs,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
 

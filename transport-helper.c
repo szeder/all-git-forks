@@ -548,7 +548,10 @@ static int push_refs(struct transport *transport,
 		if (!ref->peer_ref && !mirror)
 			continue;
 
-		/* Check for statuses set by set_ref_status_for_push() */
+		/*
+		 * Check for statuses set by for_refs_set_status_for_push(), called in
+		 * transport_push()
+		 */
 		switch (ref->status) {
 		case REF_STATUS_REJECT_NONFASTFORWARD:
 		case REF_STATUS_UPTODATE:
