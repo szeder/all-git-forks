@@ -1983,10 +1983,12 @@ int main(int argc, char **argv)
 		int commit_argc;
 		char *new_sha1_hex, *old_sha1_hex;
 
+		for_ref_set_status_for_push(ref, 0, force_all);
+
 		if (!ref->peer_ref)
 			continue;
 
-		if (is_null_sha1(ref->peer_ref->new_sha1)) {
+		if (ref->deletion) {
 			if (delete_remote_branch(ref->name, 1) == -1) {
 				error("Could not remove %s", ref->name);
 				if (helper_status)
@@ -1999,7 +2001,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (!hashcmp(ref->old_sha1, ref->peer_ref->new_sha1)) {
+		if (ref->status == REF_STATUS_UPTODATE) {
 			if (push_verbosely)
 				fprintf(stderr, "'%s': up-to-date\n", ref->name);
 			if (helper_status)
