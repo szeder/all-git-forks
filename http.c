@@ -868,7 +868,8 @@ int http_error(const char *url, int ret)
 {
 	/* http_request has already handled HTTP_START_FAILED. */
 	if (ret != HTTP_START_FAILED)
-		error("%s while accessing %s\n", curl_errorstr, url);
+		fprint(stderr, "HTTP error while accessing url %s:\n%s\n"
+			url, curl_errorstr);
 
 	return ret;
 }
