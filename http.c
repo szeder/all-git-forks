@@ -946,6 +946,31 @@ struct ref *http_parse_info_refs(const char *base_url, const char *str,
 	return refs;
 }
 
+int http_get_info_refs(const char *base_url, struct ref **refs)
+{
+	int http_ret;
+	char *url;
+	struct strbuf buf = STRBUF_INIT;
+	struct ref *new_refs;
+
+	end_url_with_slash(&buf, base_url);
+	strbuf_addstr(&buf, "info/refs");
+	url = strbuf_detach(&buf, NULL);
+
+	http_ret = http_get_strbuf(url, &buf, HTTP_NO_CACHE);
+	free(url);
+	if (http_ret != HTTP_OK)
+		return http_ret;
+
+	new_refs = http_parse_info_refs(base_url, buf.buf, buf.len);
+	if (!new_refs)
+		return -1;
+
+	*refs = new_refs;
+
+	return 0;
+}
+
 /* Helpers for fetching packs */
 static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 {
