@@ -45,14 +45,18 @@ test_expect_success 'clone remote repository' '
 	git clone $HTTPD_URL/dumb/test_repo.git test_repo_clone
 '
 
-test_expect_success 'push to remote repository with packed refs' '
+test_expect_failure 'push to remote repository with packed refs' '
 	cd "$ROOT_PATH"/test_repo_clone &&
 	: >path2 &&
 	git add path2 &&
 	test_tick &&
 	git commit -m path2 &&
 	HEAD=$(git rev-parse --verify HEAD) &&
-	git push &&
+
+	git push >output 2>&1 &&
+	grep "^ *from *$ORIG_HEAD" output &&
+	grep "^ *to *$HEAD" output &&
+
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git &&
 	 test $HEAD = $(git rev-parse --verify HEAD))
 '
@@ -66,7 +70,11 @@ test_expect_success 'push to remote repository with unpacked refs' '
 	 rm packed-refs &&
 	 git update-ref refs/heads/master $ORIG_HEAD &&
 	 git --bare update-server-info) &&
-	git push &&
+
+	git push >output 2>&1 &&
+	grep "^ *from *$ORIG_HEAD" output &&
+	grep "^ *to *$HEAD" output &&
+
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git &&
 	 test $HEAD = $(git rev-parse --verify HEAD))
 '
@@ -78,13 +86,16 @@ test_expect_success 'http-push fetches unpacked objects' '
 	git clone $HTTPD_URL/dumb/test_repo_unpacked.git \
 		"$ROOT_PATH"/fetch_unpacked &&
 
+	cd "$ROOT_PATH"/fetch_unpacked &&
+
 	# By reset, we force git to retrieve the object
-	(cd "$ROOT_PATH"/fetch_unpacked &&
-	 git reset --hard HEAD^ &&
+	(git reset --hard HEAD^ &&
 	 git remote rm origin &&
 	 git reflog expire --expire=0 --all &&
-	 git prune &&
-	 git push -f -v $HTTPD_URL/dumb/test_repo_unpacked.git master)
+	 git prune) &&
+
+	git push -f -v $HTTPD_URL/dumb/test_repo_unpacked.git master >output 2>&1 &&
+	grep "^ *fetch $HEAD for refs/heads/master" output
 '
 
 test_expect_success 'http-push fetches packed objects' '
@@ -98,13 +109,21 @@ test_expect_success 'http-push fetches packed objects' '
 	 git --bare repack &&
 	 git --bare prune-packed) &&
 
+	cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo_packed.git/objects/pack &&
+	PACK=$(ls -1 *.pack | sed -e "s/pack-\([a-f0-9]*\)\.pack/\1/") &&
+
+	cd "$ROOT_PATH"/test_repo_clone_packed &&
+
 	# By reset, we force git to retrieve the packed object
-	(cd "$ROOT_PATH"/test_repo_clone_packed &&
-	 git reset --hard HEAD^ &&
+	(git reset --hard HEAD^ &&
 	 git remote rm origin &&
 	 git reflog expire --expire=0 --all &&
-	 git prune &&
-	 git push -f -v $HTTPD_URL/dumb/test_repo_packed.git master)
+	 git prune) &&
+
+	git push -f -v $HTTPD_URL/dumb/test_repo_packed.git master >output 2>&1 &&
+	grep "^ *fetch $HEAD for refs/heads/master" output
+	grep "^Fetching pack $PACK" output
+	grep "^ which contains $HEAD" output
 '
 
 test_expect_success 'create and delete remote branch' '
