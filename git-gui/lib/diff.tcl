@@ -801,5 +801,25 @@ proc apply_range_or_line {x y} {
 		error_popup [append $failed_msg "\n\n$err"]
 	}
 
+	reshow_diff
+	if {[$ui_diff get 1.0 end] eq "\n"} {
+		set o _
+	} else {
+		set o ?
+	}
+
+	if {$current_diff_side eq $ui_index} {
+		set mi ${o}M
+	} elseif {[string index $mi 0] eq {_}} {
+		set mi M$o
+	} else {
+		set mi ?$o
+	}
 	unlock_index
+	display_file $current_diff_path $mi
+	reshow_diff
+	# This should trigger shift to the next changed file
+	if {$o eq {_}} {
+		reshow_diff
+	}
 }
