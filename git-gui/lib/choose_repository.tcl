@@ -13,16 +13,31 @@ field w_types     ; # List of type buttons in clone
 field w_recentlist ; # Listbox containing recent repositories
 field w_localpath  ; # Entry widget bound to local_path
 
+field choose_type      {} ; # How should we open the repository
+field path_seperator   {} ; # Platform's path seperator
 field done              0 ; # Finished picking the repository?
 field local_path       {} ; # Where this repository is locally
+field local_path_dir   {} ; # Directory of local path
 field origin_url       {} ; # Where we are cloning from
 field origin_name  origin ; # What we shall call 'origin'
+field origin_base      {} ; # The basename of the selected origin
 field clone_type hardlink ; # Type of clone to construct
 field readtree_err        ; # Error output from read-tree (if any)
 field sorted_recent       ; # recent repositories (sorted)
 
 constructor pick {} {
 	global M1T M1B use_ttk NS
+
+	set local_path_dir [pwd]
+	set local_path $local_path_dir
+
+	if {[is_Windows]} {
+		set path_seperator "\\"
+	} else {
+		set path_seperator "/"
+	}
+
+	trace add variable @origin_base write [cb _write_origin_base]
 
 	make_dialog top w
 	wm title $top [mc "Git Gui"]
@@ -375,6 +390,9 @@ proc _objdir {path} {
 
 method _do_new {} {
 	global use_ttk NS
+
+	set choose_type new
+
 	$w_next conf \
 		-state disabled \
 		-command [cb _do_new2] \
@@ -426,7 +444,12 @@ method _new_local_path {} {
 	if {![_new_ok $p]} {
 		return
 	}
-	set local_path $p
+	if {$choose_type eq "clone" && $origin_base ne {}} {
+		set local_path "$p$path_seperator$origin_base"
+	} else {
+		set local_path $p
+	}
+	set local_path_dir $p
 	$w_localpath icursor end
 }
 
@@ -459,6 +482,9 @@ proc _new_ok {p} {
 
 method _do_clone {} {
 	global use_ttk NS
+
+	set choose_type clone
+
 	$w_next conf \
 		-state disabled \
 		-command [cb _do_clone2] \
@@ -479,6 +505,8 @@ method _do_clone {} {
 	${NS}::entry $args.origin_t \
 		-textvariable @origin_url \
 		-width 50
+	trace add variable @origin_url write [cb _change_source]
+
 	${NS}::button $args.origin_b \
 		-text [mc "Browse"] \
 		-command [cb _open_origin]
@@ -549,6 +577,54 @@ method _open_origin {} {
 		return
 	}
 	set origin_url $p
+
+}
+
+method _change_source {args} {
+
+	if {$origin_url eq {}} {
+		set origin_base {}
+	}
+
+	set backslash_pos [string last "\\" $origin_url]
+	set slash_pos [string last "/" $origin_url]
+	if {$backslash_pos != -1 && $backslash_pos < $slash_pos} {
+		set origin_pathsep "\\"
+	} else {
+		set origin_pathsep "/"
+	}
+
+	if {$backslash_pos == -1 && $slash_pos == -1} {
+		set origin_basename $origin_url
+	} else {
+		set origin_parts [split $origin_url $origin_pathsep]
+		# if we have a backslash we need to get rid of the
+		# first element which is either a resource locator
+		# or a drive letter. If the user wants to clone a
+		# relative directory she should delete the last slash
+		set origin_parts [lrange $origin_parts 1 end]
+		set origin_basename [lindex $origin_parts end]
+	}
+
+	set len [string length .git]
+	set ext [string range $origin_basename end-[expr $len - 1] end]
+	if {$ext eq ".git"} {
+		set origin_base_new [string range $origin_basename 0 end-$len]
+	} else {
+		set origin_base_new $origin_basename
+	}
+
+	if {$origin_base_new ne $origin_base} {
+		set origin_base $origin_base_new
+	}
+}
+
+method _write_origin_base {args} {
+	if {$origin_base ne {}} {
+		set local_path "$local_path_dir$path_seperator$origin_base"
+	} else {
+		set local_path $local_path_dir
+	}
 }
 
 method _update_clone {args} {
@@ -998,6 +1074,9 @@ method _postcheckout_wait {fd_ph} {
 
 method _do_open {} {
 	global NS
+
+	set choose_type open
+
 	$w_next conf \
 		-state disabled \
 		-command [cb _do_open2] \
