@@ -2869,6 +2869,12 @@ if {[is_enabled transport]} {
 	menu .mbar.remote
 
 	.mbar.remote add command \
+		-label [mc "Import Patches from files"] \
+		-command do_import_patches
+	.mbar.remote add command \
+		-label [mc "Abort patch import"] \
+		-command do_abort_import_patches
+	.mbar.remote add command \
 		-label [mc "Add..."] \
 		-command remote_add::dialog \
 		-accelerator $M1T-A

@@ -230,3 +230,65 @@ proc do_push_anywhere {} {
 	wm deiconify $w
 	tkwait window $w
 }
+
+proc do_import_patches {} {
+	global _gitworktree
+
+	set exe [list [_which git]]
+	if {$exe eq {}} {
+		error_popup [mc "Couldn't find git gui in PATH"]
+		return
+	}
+
+	lock_index read
+
+	set types {
+		{{Patch Files}	{.patch}}
+		{{All Files}	*	}
+	}
+
+	set p [tk_getOpenFile \
+		-initialdir $_gitworktree \
+		-parent . \
+		-title [mc "Choose patches for import ..."] \
+		-multiple true \
+		-filetypes $types]
+	if {$p eq {}} {
+		unlock_index
+		return
+	}
+
+	set p [file normalize $p]
+	set p [lsort $p]
+
+	set cmd [list $exe am -3]
+	append cmd { } $p
+	if {[catch {eval exec $cmd} {err}]} {
+		if {[ask_popup [mc "Applying patch series failed: %s\n\n\
+Do you want to abort?" $err]] eq {yes}} {
+			set cmd [list $exe am --abort]
+			catch {eval exec $cmd}
+		}
+	}
+
+	unlock_index
+	ui_do_rescan
+}
+
+proc do_abort_import_patches {} {
+	set exe [list [_which git]]
+	if {$exe eq {}} {
+		error_popup [mc "Couldn't find git gui in PATH"]
+		return
+	}
+
+	lock_index read
+
+	if {[ask_popup [mc "Do you want to abort applying patches?"]] \
+		eq {yes}} {
+		set cmd [list $exe am --abort]
+		catch {eval exec $cmd}
+	}
+	unlock_index
+	ui_do_rescan
+}
