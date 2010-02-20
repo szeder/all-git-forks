@@ -25,7 +25,7 @@ static struct options options;
 static void init_walker(void)
 {
 	if (!walker)
-		walker = get_http_walker(url, remote);
+		walker = get_http_walker(url);
 }
 
 static int set_option(const char *name, const char *value)
@@ -811,6 +811,8 @@ int main(int argc, const char **argv)
 		url = remote->url[0];
 	}
 
+	http_init(remote);
+
 	do {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF)
 			break;
@@ -856,5 +858,8 @@ int main(int argc, const char **argv)
 		}
 		strbuf_reset(&buf);
 	} while (1);
+
+	http_cleanup();
+
 	return 0;
 }

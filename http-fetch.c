@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "exec_cmd.h"
+#include "http.h"
 #include "walker.h"
 
 static const char http_fetch_usage[] = "git http-fetch "
@@ -69,7 +70,8 @@ int main(int argc, const char **argv)
 		url = rewritten_url;
 	}
 
-	walker = get_http_walker(url, NULL);
+	http_init(NULL);
+	walker = get_http_walker(url);
 	walker->get_tree = get_tree;
 	walker->get_history = get_history;
 	walker->get_all = get_all;
@@ -88,6 +90,7 @@ int main(int argc, const char **argv)
 "status code.  Suggest running 'git fsck'.\n");
 	}
 
+	http_cleanup();
 	walker_free(walker);
 
 	free(rewritten_url);
