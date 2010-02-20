@@ -1496,9 +1496,44 @@ static void one_remote_ref(char *refname)
 	remote_refs = ref;
 }
 
-static void get_dav_remote_heads(void)
+static void get_loose_remote_heads(void)
 {
 	remote_ls("refs/", (PROCESS_FILES | PROCESS_DIRS | RECURSIVE), process_ls_ref, NULL);
+}
+
+static void get_all_remote_heads(void)
+{
+	int http_ret;
+	struct ref *info_refs;
+	struct ref *ref, *new_ref;
+
+	get_loose_remote_heads();
+
+	info_refs = NULL;
+	http_ret = http_get_info_refs(repo->url, &info_refs);
+	if (http_ret > 0) {
+		http_error(repo->url, http_ret);
+		warning("Unable to get info/refs");
+	}
+
+	if (remote_refs == NULL)
+		remote_refs = info_refs;
+	else {
+		for (ref = info_refs; ref; ref = ref->next) {
+			/*
+			 * Use ref from info/refs only if there isn't a loose
+			 * form of it.
+			 */
+			if (!find_ref_by_name(remote_refs, ref->name)) {
+				new_ref = alloc_ref(ref->name);
+				hashcpy(new_ref->old_sha1, ref->old_sha1);
+
+				new_ref->next = remote_refs;
+				remote_refs = new_ref;
+			}
+		}
+		free(info_refs);
+	}
 }
 
 static void add_remote_info_ref(struct remote_ls_ctx *ls)
@@ -1913,7 +1948,7 @@ int main(int argc, char **argv)
 	/* Get a list of all local and remote heads to validate refspecs */
 	local_refs = get_local_heads();
 	fprintf(stderr, "Fetching remote heads...\n");
-	get_dav_remote_heads();
+	get_all_remote_heads();
 	run_request_queue();
 
 	/* Remove a remote branch if -d or -D was specified */
