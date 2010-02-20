@@ -97,9 +97,6 @@ struct repo
 static struct repo *repo;
 
 enum transfer_state {
-	NEED_FETCH,
-	RUN_FETCH_LOOSE,
-	RUN_FETCH_PACKED,
 	NEED_PUSH,
 	RUN_MKCOL,
 	RUN_PUT,
@@ -240,33 +237,6 @@ static void process_response(void *callback_data)
 
 #ifdef USE_CURL_MULTI
 
-static void start_fetch_loose(struct transfer_request *request)
-{
-	struct active_request_slot *slot;
-	struct http_object_request *obj_req;
-
-	obj_req = new_http_object_request(repo->url, request->obj->sha1);
-	if (obj_req == NULL) {
-		request->state = ABORTED;
-		return;
-	}
-
-	slot = obj_req->slot;
-	slot->callback_func = process_response;
-	slot->callback_data = request;
-	request->slot = slot;
-	request->userData = obj_req;
-
-	/* Try to get the request started, abort the request on error */
-	request->state = RUN_FETCH_LOOSE;
-	if (!start_active_slot(slot)) {
-		fprintf(stderr, "Unable to start GET request\n");
-		repo->can_update_info_refs = 0;
-		release_http_object_request(obj_req);
-		release_request(request);
-	}
-}
-
 static void start_mkcol(struct transfer_request *request)
 {
 	char *hex = sha1_to_hex(request->obj->sha1);
@@ -293,58 +263,6 @@ static void start_mkcol(struct transfer_request *request)
 	}
 }
 #endif
-
-static void start_fetch_packed(struct transfer_request *request)
-{
-	struct packed_git *target;
-
-	struct transfer_request *check_request = request_queue_head;
-	struct http_pack_request *preq;
-
-	target = find_sha1_pack(request->obj->sha1, repo->packs);
-	if (!target) {
-		fprintf(stderr, "Unable to fetch %s, will not be able to update server info refs\n", sha1_to_hex(request->obj->sha1));
-		repo->can_update_info_refs = 0;
-		release_request(request);
-		return;
-	}
-
-	fprintf(stderr,	"Fetching pack %s\n", sha1_to_hex(target->sha1));
-	fprintf(stderr, " which contains %s\n", sha1_to_hex(request->obj->sha1));
-
-	preq = new_http_pack_request(target, repo->url);
-	if (preq == NULL) {
-		release_http_pack_request(preq);
-		repo->can_update_info_refs = 0;
-		return;
-	}
-	preq->lst = &repo->packs;
-
-	/* Make sure there isn't another open request for this pack */
-	while (check_request) {
-		if (check_request->state == RUN_FETCH_PACKED &&
-		    !strcmp(check_request->url, preq->url)) {
-			release_http_pack_request(preq);
-			release_request(request);
-			return;
-		}
-		check_request = check_request->next;
-	}
-
-	preq->slot->callback_func = process_response;
-	preq->slot->callback_data = request;
-	request->slot = preq->slot;
-	request->userData = preq;
-
-	/* Try to get the request started, abort the request on error */
-	request->state = RUN_FETCH_PACKED;
-	if (!start_active_slot(preq->slot)) {
-		fprintf(stderr, "Unable to start GET request\n");
-		release_http_pack_request(preq);
-		repo->can_update_info_refs = 0;
-		release_request(request);
-	}
-}
 
 static void start_put(struct transfer_request *request)
 {
@@ -527,9 +445,6 @@ static void release_request(struct transfer_request *request)
 
 static void finish_request(struct transfer_request *request)
 {
-	struct http_pack_request *preq;
-	struct http_object_request *obj_req;
-
 	request->curl_result = request->slot->curl_result;
 	request->http_code = request->slot->http_code;
 	request->slot = NULL;
@@ -582,37 +497,6 @@ static void finish_request(struct transfer_request *request)
 			request->state = ABORTED;
 			aborted = 1;
 		}
-	} else if (request->state == RUN_FETCH_LOOSE) {
-		obj_req = (struct http_object_request *)request->userData;
-
-		if (finish_http_object_request(obj_req) == 0)
-			if (obj_req->rename == 0)
-				request->obj->flags |= (LOCAL | REMOTE);
-
-		/* Try fetching packed if necessary */
-		if (request->obj->flags & LOCAL) {
-			release_http_object_request(obj_req);
-			release_request(request);
-		} else
-			start_fetch_packed(request);
-
-	} else if (request->state == RUN_FETCH_PACKED) {
-		int fail = 1;
-		if (request->curl_result != CURLE_OK) {
-			fprintf(stderr, "Unable to get pack file %s\n%s",
-				request->url, curl_errorstr);
-		} else {
-			preq = (struct http_pack_request *)request->userData;
-
-			if (preq) {
-				if (finish_http_pack_request(preq) == 0)
-					fail = 0;
-				release_http_pack_request(preq);
-			}
-		}
-		if (fail)
-			repo->can_update_info_refs = 0;
-		release_request(request);
 	}
 }
 
@@ -626,10 +510,7 @@ static int fill_active_slot(void *unused)
 		return 0;
 
 	for (request = request_queue_head; request; request = request->next) {
-		if (request->state == NEED_FETCH) {
-			start_fetch_loose(request);
-			return 1;
-		} else if (pushing && request->state == NEED_PUSH) {
+		if (pushing && request->state == NEED_PUSH) {
 			if (remote_dir_exists[request->obj->sha1[0]] == 1) {
 				start_put(request);
 			} else {
@@ -643,37 +524,6 @@ static int fill_active_slot(void *unused)
 #endif
 
 static void get_remote_object_list(unsigned char parent);
-
-static void add_fetch_request(struct object *obj)
-{
-	struct transfer_request *request;
-
-	check_locks();
-
-	/*
-	 * Don't fetch the object if it's known to exist locally
-	 * or is already in the request queue
-	 */
-	if (remote_dir_exists[obj->sha1[0]] == -1)
-		get_remote_object_list(obj->sha1[0]);
-	if (obj->flags & (LOCAL | FETCHING))
-		return;
-
-	obj->flags |= FETCHING;
-	request = xmalloc(sizeof(*request));
-	request->obj = obj;
-	request->url = NULL;
-	request->lock = NULL;
-	request->headers = NULL;
-	request->state = NEED_FETCH;
-	request->next = request_queue_head;
-	request_queue_head = request;
-
-#ifdef USE_CURL_MULTI
-	fill_active_slots();
-	step_active_slots();
-#endif
-}
 
 static int add_send_request(struct object *obj, struct remote_lock *lock)
 {
@@ -713,25 +563,6 @@ static int add_send_request(struct object *obj, struct remote_lock *lock)
 #endif
 
 	return 1;
-}
-
-static int fetch_indices(void)
-{
-	int ret;
-
-	if (push_verbosely)
-		fprintf(stderr, "Getting pack list\n");
-
-	switch (http_get_info_packs(repo->url, &repo->packs)) {
-	case HTTP_OK:
-	case HTTP_MISSING_TARGET:
-		ret = 0;
-		break;
-	default:
-		ret = -1;
-	}
-
-	return ret;
 }
 
 static void one_remote_object(const char *hex)
@@ -1935,8 +1766,6 @@ int main(int argc, char **argv)
 			goto cleanup;
 		}
 	}
-	if (repo->has_info_packs)
-		fetch_indices();
 
 	/* Get a list of all local and remote heads to validate refspecs */
 	local_refs = get_local_heads();

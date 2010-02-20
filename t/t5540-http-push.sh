@@ -79,7 +79,7 @@ test_expect_success 'push to remote repository with unpacked refs' '
 	 test $HEAD = $(git rev-parse --verify HEAD))
 '
 
-test_expect_success 'http-push fetches unpacked objects' '
+test_expect_success 'http-push fails on missing objects' '
 	cp -R "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git \
 		"$HTTPD_DOCUMENT_ROOT_PATH"/test_repo_unpacked.git &&
 
@@ -94,36 +94,12 @@ test_expect_success 'http-push fetches unpacked objects' '
 	 git reflog expire --expire=0 --all &&
 	 git prune) &&
 
-	git push -f -v $HTTPD_URL/dumb/test_repo_unpacked.git master >output 2>&1 &&
-	grep "^ *fetch $HEAD for refs/heads/master" output
-'
-
-test_expect_success 'http-push fetches packed objects' '
-	cp -R "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git \
-		"$HTTPD_DOCUMENT_ROOT_PATH"/test_repo_packed.git &&
-
-	git clone $HTTPD_URL/dumb/test_repo_packed.git \
-		"$ROOT_PATH"/test_repo_clone_packed &&
-
-	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo_packed.git &&
-	 git --bare repack &&
-	 git --bare prune-packed) &&
-
-	cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo_packed.git/objects/pack &&
-	PACK=$(ls -1 *.pack | sed -e "s/pack-\([a-f0-9]*\)\.pack/\1/") &&
-
-	cd "$ROOT_PATH"/test_repo_clone_packed &&
-
-	# By reset, we force git to retrieve the packed object
-	(git reset --hard HEAD^ &&
-	 git remote rm origin &&
-	 git reflog expire --expire=0 --all &&
-	 git prune) &&
-
-	git push -f -v $HTTPD_URL/dumb/test_repo_packed.git master >output 2>&1 &&
-	grep "^ *fetch $HEAD for refs/heads/master" output
-	grep "^Fetching pack $PACK" output
-	grep "^ which contains $HEAD" output
+	# We use -f so that http-push is run. Without -f, it is not run, and we
+	# just get the usual non-ff error.
+	!(git push -f $HTTPD_URL/dumb/test_repo_unpacked.git master >output 2>&1) &&
+	grep "^error: Remote ref '\'refs/heads/master\'' resolves to" output &&
+	grep "^$HEAD which does not exist locally, perhaps you need to fetch?" \
+		output
 '
 
 test_expect_success 'create and delete remote branch' '
