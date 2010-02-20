@@ -20,7 +20,7 @@ case "$1" in
 		  git log --no-merges --first-parent $upstream..private
 		  exit 1
 	  }
-	git checkout $upstream^0 || exit
+	git checkout -q $upstream^0 || exit
 esac
 
 for i in `branches`; do
