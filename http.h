@@ -142,6 +142,9 @@ int http_error(const char *url, int ret);
 
 extern int http_fetch_ref(const char *base, struct ref *ref);
 
+struct ref *http_parse_info_refs(const char *base_url, const char *data,
+	size_t len);
+
 /* Helpers for fetching packs */
 extern int http_get_info_packs(const char *base_url,
 	struct packed_git **packs_head);

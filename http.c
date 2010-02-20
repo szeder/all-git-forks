@@ -895,6 +895,57 @@ int http_fetch_ref(const char *base, struct ref *ref)
 	return ret;
 }
 
+struct ref *http_parse_info_refs(const char *base_url, const char *str,
+	size_t len)
+{
+	char *data, *start, *mid;
+	char *ref_name;
+	int i = 0;
+
+	struct ref *refs = NULL;
+	struct ref *ref = NULL;
+	struct ref *last_ref = NULL;
+
+	data = xstrdup(str);
+	start = NULL;
+	mid = data;
+	while (i < len) {
+		if (!start) {
+			start = &data[i];
+		}
+		if (data[i] == '\t')
+			mid = &data[i];
+		if (data[i] == '\n') {
+			data[i] = 0;
+			ref_name = mid + 1;
+			ref = xmalloc(sizeof(struct ref) +
+				      strlen(ref_name) + 1);
+			memset(ref, 0, sizeof(struct ref));
+			strcpy(ref->name, ref_name);
+			get_sha1_hex(start, ref->old_sha1);
+			if (!refs)
+				refs = ref;
+			if (last_ref)
+				last_ref->next = ref;
+			last_ref = ref;
+			start = NULL;
+		}
+		i++;
+	}
+
+	ref = alloc_ref("HEAD");
+	if (!http_fetch_ref(base_url, ref) &&
+	    !resolve_remote_symref(ref, refs)) {
+		ref->next = refs;
+		refs = ref;
+	} else {
+		free(ref);
+	}
+
+	free(data);
+	return refs;
+}
+
 /* Helpers for fetching packs */
 static int fetch_pack_index(unsigned char *sha1, const char *base_url)
 {
