@@ -884,6 +884,7 @@ set default_config(gui.blamehistoryctx) 7
 set default_config(gui.diffcontext) 5
 set default_config(gui.diffopts) {}
 set default_config(gui.commitmsgwidth) 75
+set default_config(gui.gitkarguments) "--since=\"3 months ago\""
 set default_config(gui.newbranchtemplate) {}
 set default_config(gui.spellingdictionary) {}
 set default_config(gui.fontui) [font configure font_ui]
@@ -2126,7 +2127,7 @@ set starting_gitk_msg [mc "Starting gitk... please wait..."]
 
 proc do_gitk {revs {is_submodule false}} {
 	global current_diff_path file_states current_diff_side ui_index
-	global _gitdir _gitworktree
+	global _gitdir _gitworktree repo_config
 
 	# -- Always start gitk through whatever we were loaded with.  This
 	#    lets us bypass using shell process on Windows systems.
@@ -2172,7 +2173,9 @@ proc do_gitk {revs {is_submodule false}} {
 			unset env(GIT_DIR)
 			unset env(GIT_WORK_TREE)
 		}
-		eval exec $cmd $revs "--" "--" &
+
+		set args [list $repo_config(gui.gitkarguments)]
+		eval exec $cmd $args $revs "--" "--" &
 
 		set env(GIT_DIR) $_gitdir
 		set env(GIT_WORK_TREE) $_gitworktree
