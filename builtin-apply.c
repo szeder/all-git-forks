@@ -2288,17 +2288,8 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 
 	for (;;) {
 
-		/*
-		 * If the hunk attempts to delete more lines than
-		 * are present in the file, we can reject it at
-		 * once instead of calling find_pos().
-		 */
-		if (preimage.nr - leading - trailing > img->nr)
-			applied_pos = -1;
-		else
-			applied_pos = find_pos(img, &preimage, &postimage,
-					       pos, ws_rule, match_beginning,
-					       match_end);
+		applied_pos = find_pos(img, &preimage, &postimage, pos,
+				       ws_rule, match_beginning, match_end);
 
 		if (applied_pos >= 0)
 			break;
