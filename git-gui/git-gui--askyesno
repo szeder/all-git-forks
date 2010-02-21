@@ -1,0 +1,49 @@
+#!/bin/sh
+# Tcl ignores the next line -*- tcl -*- \
+exec wish "$0" -- "$@"
+
+# This is an implementation of a simple yes no dialog
+# which can be used by hooks
+
+set answer {}
+set yesno  0
+set rc     255
+
+if {$argc < 1} {
+	set prompt "Please answer"
+} else {
+	set prompt [join $argv " "]
+	if {[regexp -nocase {\(yes\/no\)\?\s*$} $prompt]} {
+		set yesno 1
+	}
+}
+
+message .m -text $prompt -justify center -aspect 4000
+pack .m -side top -fill x -padx 20 -pady 20 -expand 1
+
+frame .b
+button .b.ok     -text Yes     -command yes
+button .b.cancel -text No -command no
+
+pack .b.ok -side left -expand 1
+pack .b.cancel -side right -expand 1
+pack .b -side bottom -fill x -padx 10 -pady 10
+
+#bind . <Visibility> {focus -force .e}
+bind . <Key-Return> finish
+bind . <Key-Escape> {destroy .}
+bind . <Destroy>    {exit $rc}
+
+proc no {} {
+	set ::rc 1
+	destroy .
+}
+
+proc yes {} {
+	set ::rc 0
+	destroy .
+}
+
+set ::rc 1
+wm title . "Question?"
+tk::PlaceWindow .

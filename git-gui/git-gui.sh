@@ -1225,6 +1225,9 @@ set have_tk85 [expr {[package vcompare $tk_version "8.5"] >= 0}]
 if {![info exists env(SSH_ASKPASS)]} {
 	set env(SSH_ASKPASS) [gitexec git-gui--askpass]
 }
+if {![info exists env(GIT_YES_NO_HOOK)]} {
+	set env(GIT_YES_NO_HOOK) [gitexec git-gui--askyesno]
+}
 
 ######################################################################
 ##
