@@ -128,6 +128,8 @@ objects from the source repository into a pack in the cloned repository.
 
 --mirror::
 	Set up a mirror of the remote repository.  This implies `--bare`.
+	(See the `\--mirror` option to the `add` command to
+	linkgit:git-remote[1] for more details on mirroring.)
 
 --origin <name>::
 -o <name>::

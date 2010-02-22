@@ -60,11 +60,11 @@ multiple branches without grabbing all branches.
 With `-m <master>` option, `$GIT_DIR/remotes/<name>/HEAD` is set
 up to point at remote's `<master>` branch. See also the set-head command.
 +
-In mirror mode, enabled with `\--mirror`, the refs will not be stored
-in the 'refs/remotes/' namespace, but in 'refs/heads/'.  This option
-only makes sense in bare repositories.  If a remote uses mirror
-mode, furthermore, `git push` will always behave as if `\--mirror`
-was passed.
+With `\--mirror`, the fetch refspec for this remote is setup such that
+fetched refs are not stored in the 'refs/remotes/' namespace (the default),
+but in 'refs/heads/'.  The configuration variable `remote.<name>.mirror` is
+also set to true, so that `git push` will always behave as if `\--mirror`
+was passed.  This option only makes sense in bare repositories.
 
 'rename'::
 

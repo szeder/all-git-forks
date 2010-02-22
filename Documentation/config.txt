@@ -1479,6 +1479,8 @@ remote.<name>.push::
 remote.<name>.mirror::
 	If true, pushing to this remote will automatically behave
 	as if the `\--mirror` option was given on the command line.
+	(See the `\--mirror` option to the `add` command to
+	linkgit:git-remote[1] for more details on mirroring.)
 
 remote.<name>.skipDefaultUpdate::
 	If true, this remote will be skipped by default when updating
