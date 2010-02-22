@@ -83,6 +83,7 @@ method _visualize {} {
 
 method _update_upstream {} {
 	global repo_config index_lock_type
+	global fetch_from_finished
 
 	set upstream_branch $repo_config(gui.upstreambranch)
 	set remote $repo_config(gui.defaultremote)
@@ -98,6 +99,9 @@ method _update_upstream {} {
 	if {![fetch_from $remote {close_on_success}]} {
 		return 0
 	}
+
+	#TODO: this is just a hack to wait until fetch is finished
+	vwait fetch_from_finished
 
 	set co [::checkout_op::new \
 		$remote/$upstream_branch \
@@ -216,7 +220,6 @@ constructor dialog {{dialog_type normal}} {
 	}
 
 	if {![_can_merge $this]} {
-		info_popup failed_can_merge
 		delete_this
 		return
 	}
