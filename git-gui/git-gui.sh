@@ -2342,19 +2342,28 @@ proc do_quit {{rc {1}}} {
 proc ui_finalize_startup {} {
 	global repo_config
 
+	ui_status [mc "Tasks after startup..."]
 	set defaultremote $repo_config(gui.defaultremote)
 	if {[is_config_true gui.fetchonstartup] && $defaultremote ne {}} {
-		fetch_from $defaultremote {close_on_success}
+		if {[lock_index fetchonstart]} {
+			fetch_from $defaultremote {close_on_success}
+			#TODO: this is just a hack to wait until fetch is finished
+			vwait fetch_from_finished
+			unlock_index
+		}
 	}
 
+	# The real startup begins here so lock the index for it
+	lock_index begin-read
 	if {[is_enabled multicommit] && ![is_config_false gui.gcwarning]} {
 		hint_gc
 	}
-	ui_ready
+
+	do_rescan
 }
 
 proc do_rescan {} {
-	rescan ui_finalize_startup
+	rescan ui_ready
 }
 
 proc ui_do_rescan {} {
@@ -3946,15 +3955,15 @@ if {[winfo exists $ui_comm]} {
 	unset -nocomplain spell_cmd spell_fd spell_err spell_dict
 }
 
-lock_index begin-read
 if {![winfo ismapped .]} {
 	wm deiconify .
 }
 after 1 {
 	if {[is_enabled initialamend]} {
+		lock_index begin-read
 		force_amend
 	} else {
-		do_rescan
+		ui_finalize_startup
 	}
 
 	if {[is_enabled nocommitmsg]} {

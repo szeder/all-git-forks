@@ -2,6 +2,9 @@
 # Copyright (C) 2006, 2007 Shawn Pearce
 
 proc fetch_from {remote {close_after {}}} {
+	global fetch_from_finished
+
+	set fetch_from_finished 0
 	set w [console::new \
 		[mc "fetch %s" $remote] \
 		[mc "Fetching new changes from %s" $remote]]
@@ -10,6 +13,7 @@ proc fetch_from {remote {close_after {}}} {
 	if {[is_config_true gui.pruneduringfetch]} {
 		lappend cmds [list exec git remote prune $remote]
 	}
+	lappend cmds [list set fetch_from_finished 1]
 	set ok [console::chain $w $cmds]
 
 	if {$ok} {
