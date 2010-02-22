@@ -149,6 +149,8 @@ method _read {fd after} {
 }
 
 method chain {cmdlist {ok 1}} {
+	global fetch_from_finished
+
 	if {$ok} {
 		if {[llength $cmdlist] == 0} {
 			done $this $ok
@@ -163,7 +165,14 @@ method chain {cmdlist {ok 1}} {
 				[lrange $cmd 1 end] \
 				[cb chain $cmdlist]
 		} else {
-			uplevel #0 $cmd [cb chain $cmdlist]
+			if {[lindex $cmd 0] eq {set}} {
+				eval [lrange $cmd 0 end]
+				set cmd [lindex $cmdlist 0]
+				set cmdlist [lrange $cmdlist 1 end]
+				uplevel #0 $cmd [cb chain $cmdlist]
+			} else {
+				uplevel #0 $cmd [cb chain $cmdlist]
+			}
 		}
 	} else {
 		done $this $ok
