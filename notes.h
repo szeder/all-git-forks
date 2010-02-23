@@ -198,4 +198,22 @@ void free_notes(struct notes_tree *t);
 void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 		struct strbuf *sb, const char *output_encoding, int flags);
 
+
+struct string_list;
+
+struct display_notes_opt
+{
+	int suppress_default_notes : 1;
+	struct string_list *extra_notes_refs;
+};
+
+void init_display_notes(struct display_notes_opt *opt);
+void format_display_notes(const unsigned char *object_sha1,
+			  struct strbuf *sb, const char *output_encoding, int flags);
+
+struct notes_tree **load_notes_trees(struct string_list *refs);
+void string_list_add_refs_by_glob(struct string_list *list, const char *glob);
+void string_list_add_refs_from_colon_sep(struct string_list *list,
+					 const char *globs);
+
 #endif
