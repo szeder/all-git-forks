@@ -34,6 +34,10 @@ the empty string.  Alternatively, you can set it to a different ref,
 something like "refs/notes/bugzilla".  This setting can be overridden
 by the environment variable "GIT_NOTES_REF".
 
+See the description of "notes.rewrite.<command>" in
+linkgit:git-config[1] for a way of carrying your notes across commands
+that rewrite commits.
+
 
 SUBCOMMANDS
 -----------
