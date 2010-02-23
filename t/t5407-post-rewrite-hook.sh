@@ -79,4 +79,97 @@ EOF
 	verify_hook_input
 '
 
+test_expect_success 'git rebase -m' '
+	git reset --hard D &&
+	clear_hook_input &&
+	test_must_fail git rebase -m --onto A B &&
+	echo C > foo &&
+	git add foo &&
+	git rebase --continue &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse C) $(git rev-parse HEAD^)
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
+test_expect_success 'git rebase -m --skip' '
+	git reset --hard D &&
+	clear_hook_input &&
+	test_must_fail git rebase --onto A B &&
+	test_must_fail git rebase --skip &&
+	echo D > foo &&
+	git add foo &&
+	git rebase --continue &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
+. "$TEST_DIRECTORY"/lib-rebase.sh
+
+set_fake_editor
+
+test_expect_success 'git rebase -i (unchanged)' '
+	git reset --hard D &&
+	clear_hook_input &&
+	( FAKE_LINES="1 2" && export FAKE_LINES &&
+	  test_must_fail git rebase -i --onto A B ) &&
+	echo C > foo &&
+	git add foo &&
+	git rebase --continue &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse C) $(git rev-parse HEAD^)
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
+test_expect_success 'git rebase -i (skip)' '
+	git reset --hard D &&
+	clear_hook_input &&
+	( FAKE_LINES="2" && export FAKE_LINES &&
+	  test_must_fail git rebase -i --onto A B ) &&
+	echo D > foo &&
+	git add foo &&
+	git rebase --continue &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
+test_expect_success 'git rebase -i (squash)' '
+	git reset --hard D &&
+	clear_hook_input &&
+	( FAKE_LINES="1 squash 2" && export FAKE_LINES &&
+	  test_must_fail git rebase -i --onto A B ) &&
+	echo C > foo &&
+	git add foo &&
+	git rebase --continue &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse C) $(git rev-parse HEAD)
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
+test_expect_success 'git rebase -i (fixup without conflict)' '
+	git reset --hard D &&
+	clear_hook_input &&
+	FAKE_LINES="1 fixup 2" git rebase -i B &&
+	echo rebase >expected.args &&
+	cat >expected.data <<EOF &&
+$(git rev-parse C) $(git rev-parse HEAD)
+$(git rev-parse D) $(git rev-parse HEAD)
+EOF
+	verify_hook_input
+'
+
 test_done
