@@ -71,9 +71,12 @@ proc push_to {remote} {
 	console::exec $w $cmd
 }
 
-proc compose_email {to subject} {
+proc compose_email {to subject {body {}}} {
 	set mail_link mailto:
 	append mail_link $to "?subject=" $subject
+	if {$body ne {}} {
+		append mail_link "&body=" $body
+	}
 	start_browser $mail_link
 }
 
@@ -91,7 +94,8 @@ proc after_push_anywhere_action {cons ok} {
 			# TODO: create a configuration variable for the
 			# subject
 			set email_subject "Review%20request:%20$remote_short_name:$branches"
-			compose_email {} $email_subject
+			set email_body "url:review://$branches"
+			compose_email {} $email_subject $email_body
 		}
 		if {$delete_after_push} {
 			remote_branch_delete::dialog $r_url

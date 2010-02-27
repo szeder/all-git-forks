@@ -2893,6 +2893,14 @@ if {[is_enabled branch]} {
 		[list .mbar.merge entryconf [.mbar.merge index last] -state]
 	.mbar.merge add command -label [mc "Review Topic..."] \
 		-command {merge::dialog review}
+	proc handle_connection {sock addr port} {
+		gets $sock branchname
+		focus -force .
+		merge::dialog review $branchname
+		close $sock
+	}
+	catch {socket -server handle_connection -myaddr localhost 12345}
+
 	lappend disable_on_lock \
 		[list .mbar.merge entryconf [.mbar.merge index last] -state]
 	.mbar.merge add command -label [mc "Abort Merge..."] \

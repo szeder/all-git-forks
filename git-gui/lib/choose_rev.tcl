@@ -271,6 +271,11 @@ method pick_tracking_branch {} {
 	set revtype trck
 }
 
+method set_filter_string {rev} {
+	set filter $rev
+	_rebuild $this $rev
+}
+
 method focus_filter {} {
 	if {[$w_filter cget -state] eq {normal}} {
 		focus $w_filter

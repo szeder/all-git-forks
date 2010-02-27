@@ -1,0 +1,15 @@
+#!/bin/sh
+# Tcl ignores the next line -*- tcl -*- \
+exec tclsh "$0" "$@"
+
+package require registry
+
+registry set HKEY_CLASSES_ROOT\\review {} "URL:Git Review Protocol"
+registry set HKEY_CLASSES_ROOT\\review "URL Protocol" {}
+registry set HKEY_CLASSES_ROOT\\review\\DefaultIcon {} "tclsh.exe,1"
+
+set interpreter [file nativename [info nameofexecutable]]
+set scriptbase [file nativename [file normalize [file dirname [info script]]]]
+
+registry set HKEY_CLASSES_ROOT\\review\\shell\\open\\command {} \
+	"\"$interpreter\" \"$scriptbase\\send-review.sh\" \"%1\""

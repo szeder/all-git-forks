@@ -199,7 +199,7 @@ method _finish {cons ok} {
 	delete_this
 }
 
-constructor dialog {{dialog_type normal}} {
+constructor dialog {{dialog_type normal} {default_branch {}}} {
 	global current_branch
 	global M1B use_ttk NS
 	global merge_type
@@ -254,6 +254,10 @@ constructor dialog {{dialog_type normal}} {
 
 	set w_rev [::choose_rev::new_unmerged $w.rev [mc "Revision To Merge"]]
 	pack $w.rev -anchor nw -fill both -expand 1 -pady 5 -padx 5
+	if {$default_branch ne {}} {
+		$w_rev pick_tracking_branch
+		$w_rev set_filter_string $default_branch
+	}
 
 	bind $w <$M1B-Key-Return> $_start
 	bind $w <Key-Return> $_start
