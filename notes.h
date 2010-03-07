@@ -100,6 +100,15 @@ const unsigned char *get_note(struct notes_tree *t,
 		const unsigned char *object_sha1);
 
 /*
+ * Copy a note from one object to another in the given notes_tree.
+ *
+ * Fails if the to_obj already has a note unless 'force' is true.
+ */
+int copy_note(struct notes_tree *t,
+	      const unsigned char *from_obj, const unsigned char *to_obj,
+	      int force, combine_notes_fn combine_fn);
+
+/*
  * Flags controlling behaviour of for_each_note()
  *
  * Default behaviour of for_each_note() is to traverse every single note object
@@ -197,5 +206,23 @@ void free_notes(struct notes_tree *t);
  */
 void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 		struct strbuf *sb, const char *output_encoding, int flags);
+
+
+struct string_list;
+
+struct display_notes_opt
+{
+	int suppress_default_notes : 1;
+	struct string_list *extra_notes_refs;
+};
+
+void init_display_notes(struct display_notes_opt *opt);
+void format_display_notes(const unsigned char *object_sha1,
+			  struct strbuf *sb, const char *output_encoding, int flags);
+
+struct notes_tree **load_notes_trees(struct string_list *refs);
+void string_list_add_refs_by_glob(struct string_list *list, const char *glob);
+void string_list_add_refs_from_colon_sep(struct string_list *list,
+					 const char *globs);
 
 #endif
