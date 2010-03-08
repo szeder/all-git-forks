@@ -11,6 +11,7 @@
 #include "run-command.h"
 #include "parse-options.h"
 #include "sigchain.h"
+#include "transport.h"
 
 static const char * const builtin_fetch_usage[] = {
 	"git fetch [options] [<repository> <refspec>...]",
@@ -205,7 +206,6 @@ static int s_update_ref(const char *action,
 	return 0;
 }
 
-#define SUMMARY_WIDTH (2 * DEFAULT_ABBREV + 3)
 #define REFCOL_WIDTH  10
 
 static int update_local_ref(struct ref *ref,
@@ -224,7 +224,7 @@ static int update_local_ref(struct ref *ref,
 
 	if (!hashcmp(ref->old_sha1, ref->new_sha1)) {
 		if (verbosity > 0)
-			sprintf(display, "= %-*s %-*s -> %s", SUMMARY_WIDTH,
+			sprintf(display, "= %-*s %-*s -> %s", TRANSPORT_SUMMARY_WIDTH,
 				"[up to date]", REFCOL_WIDTH, remote,
 				pretty_ref);
 		return 0;
@@ -239,7 +239,7 @@ static int update_local_ref(struct ref *ref,
 		 * the head, and the old value of the head isn't empty...
 		 */
 		sprintf(display, "! %-*s %-*s -> %s  (can't fetch in current branch)",
-			SUMMARY_WIDTH, "[rejected]", REFCOL_WIDTH, remote,
+			TRANSPORT_SUMMARY_WIDTH, "[rejected]", REFCOL_WIDTH, remote,
 			pretty_ref);
 		return 1;
 	}
@@ -249,7 +249,7 @@ static int update_local_ref(struct ref *ref,
 		int r;
 		r = s_update_ref("updating tag", ref, 0);
 		sprintf(display, "%c %-*s %-*s -> %s%s", r ? '!' : '-',
-			SUMMARY_WIDTH, "[tag update]", REFCOL_WIDTH, remote,
+			TRANSPORT_SUMMARY_WIDTH, "[tag update]", REFCOL_WIDTH, remote,
 			pretty_ref, r ? "  (unable to update local ref)" : "");
 		return r;
 	}
@@ -271,7 +271,7 @@ static int update_local_ref(struct ref *ref,
 
 		r = s_update_ref(msg, ref, 0);
 		sprintf(display, "%c %-*s %-*s -> %s%s", r ? '!' : '*',
-			SUMMARY_WIDTH, what, REFCOL_WIDTH, remote, pretty_ref,
+			TRANSPORT_SUMMARY_WIDTH, what, REFCOL_WIDTH, remote, pretty_ref,
 			r ? "  (unable to update local ref)" : "");
 		return r;
 	}
@@ -284,7 +284,7 @@ static int update_local_ref(struct ref *ref,
 		strcat(quickref, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
 		r = s_update_ref("fast-forward", ref, 1);
 		sprintf(display, "%c %-*s %-*s -> %s%s", r ? '!' : ' ',
-			SUMMARY_WIDTH, quickref, REFCOL_WIDTH, remote,
+			TRANSPORT_SUMMARY_WIDTH, quickref, REFCOL_WIDTH, remote,
 			pretty_ref, r ? "  (unable to update local ref)" : "");
 		return r;
 	} else if (force || ref->force) {
@@ -295,13 +295,13 @@ static int update_local_ref(struct ref *ref,
 		strcat(quickref, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
 		r = s_update_ref("forced-update", ref, 1);
 		sprintf(display, "%c %-*s %-*s -> %s  (%s)", r ? '!' : '+',
-			SUMMARY_WIDTH, quickref, REFCOL_WIDTH, remote,
+			TRANSPORT_SUMMARY_WIDTH, quickref, REFCOL_WIDTH, remote,
 			pretty_ref,
 			r ? "unable to update local ref" : "forced update");
 		return r;
 	} else {
 		sprintf(display, "! %-*s %-*s -> %s  (non-fast-forward)",
-			SUMMARY_WIDTH, "[rejected]", REFCOL_WIDTH, remote,
+			TRANSPORT_SUMMARY_WIDTH, "[rejected]", REFCOL_WIDTH, remote,
 			pretty_ref);
 		return 1;
 	}
@@ -393,7 +393,7 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 			rc |= update_local_ref(ref, what, note);
 		else
 			sprintf(note, "* %-*s %-*s -> FETCH_HEAD",
-				SUMMARY_WIDTH, *kind ? kind : "branch",
+				TRANSPORT_SUMMARY_WIDTH, *kind ? kind : "branch",
 				 REFCOL_WIDTH, *what ? what : "HEAD");
 		if (*note) {
 			if (verbosity >= 0 && !shown_url) {
@@ -514,7 +514,7 @@ static int prune_refs(struct transport *transport, struct ref *ref_map)
 			result |= delete_ref(ref->name, NULL, 0);
 		if (verbosity >= 0) {
 			fprintf(stderr, " x %-*s %-*s -> %s\n",
-				SUMMARY_WIDTH, "[deleted]",
+				TRANSPORT_SUMMARY_WIDTH, "[deleted]",
 				REFCOL_WIDTH, "(none)", prettify_refname(ref->name));
 			warn_dangling_symref(stderr, dangling_msg, ref->name);
 		}
@@ -651,6 +651,17 @@ static void check_not_current_branch(struct ref *ref_map)
 			    "of non-bare repository", current_branch->refname);
 }
 
+static int truncate_fetch_head(void)
+{
+	char *filename = git_path("FETCH_HEAD");
+	FILE *fp = fopen(filename, "w");
+
+	if (!fp)
+		return error("cannot open %s: %s\n", filename, strerror(errno));
+	fclose(fp);
+	return 0;
+}
+
 static int do_fetch(struct transport *transport,
 		    struct refspec *refs, int ref_count)
 {
@@ -672,11 +683,9 @@ static int do_fetch(struct transport *transport,
 
 	/* if not appending, truncate FETCH_HEAD */
 	if (!append && !dry_run) {
-		char *filename = git_path("FETCH_HEAD");
-		FILE *fp = fopen(filename, "w");
-		if (!fp)
-			return error("cannot open %s: %s\n", filename, strerror(errno));
-		fclose(fp);
+		int errcode = truncate_fetch_head();
+		if (errcode)
+			return errcode;
 	}
 
 	ref_map = get_ref_map(transport, refs, ref_count, tags, &autotags);
@@ -784,13 +793,19 @@ static int add_remote_or_group(const char *name, struct string_list *list)
 static int fetch_multiple(struct string_list *list)
 {
 	int i, result = 0;
-	const char *argv[] = { "fetch", NULL, NULL, NULL, NULL, NULL, NULL };
-	int argc = 1;
+	const char *argv[11] = { "fetch", "--append" };
+	int argc = 2;
 
 	if (dry_run)
 		argv[argc++] = "--dry-run";
 	if (prune)
 		argv[argc++] = "--prune";
+	if (update_head_ok)
+		argv[argc++] = "--update-head-ok";
+	if (force)
+		argv[argc++] = "--force";
+	if (keep)
+		argv[argc++] = "--keep";
 	if (verbosity >= 2)
 		argv[argc++] = "-v";
 	if (verbosity >= 1)
@@ -798,9 +813,16 @@ static int fetch_multiple(struct string_list *list)
 	else if (verbosity < 0)
 		argv[argc++] = "-q";
 
+	if (!append && !dry_run) {
+		int errcode = truncate_fetch_head();
+		if (errcode)
+			return errcode;
+	}
+
 	for (i = 0; i < list->nr; i++) {
 		const char *name = list->items[i].string;
 		argv[argc] = name;
+		argv[argc + 1] = NULL;
 		if (verbosity >= 0)
 			printf("Fetching %s\n", name);
 		if (run_command_v_opt(argv, RUN_GIT_CMD)) {
