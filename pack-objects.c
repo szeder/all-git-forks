@@ -155,33 +155,6 @@ static unsigned long do_compress(void **pptr, unsigned long size)
 }
 
 /*
- * The per-object header is a pretty dense thing, which is
- *  - first byte: low four bits are "size", then three bits of "type",
- *    and the high bit is "size continues".
- *  - each byte afterwards: low seven bits are size continuation,
- *    with the high bit being "size continues"
- */
-static int encode_header(enum object_type type, unsigned long size, unsigned char *hdr)
-{
-	int n = 1;
-	unsigned char c;
-
-	if (type < OBJ_COMMIT || type > OBJ_REF_DELTA)
-		die("bad type %d", type);
-
-	c = (type << 4) | (size & 15);
-	size >>= 4;
-	while (size) {
-		*hdr++ = c | 0x80;
-		c = size & 0x7f;
-		size >>= 7;
-		n++;
-	}
-	*hdr = c;
-	return n;
-}
-
-/*
  * we are going to reuse the existing object data as is.  make
  * sure it is not corrupt.
  */
@@ -321,7 +294,7 @@ static unsigned long write_object(struct sha1file *f,
 		 * The object header is a byte of 'type' followed by zero or
 		 * more bytes of length.
 		 */
-		hdrlen = encode_header(type, size, header);
+		hdrlen = encode_in_pack_object_header(type, size, header);
 
 		if (type == OBJ_OFS_DELTA) {
 			/*
@@ -372,7 +345,7 @@ static unsigned long write_object(struct sha1file *f,
 		if (entry->delta)
 			type = (allow_ofs_delta && entry->delta->idx.offset) ?
 				OBJ_OFS_DELTA : OBJ_REF_DELTA;
-		hdrlen = encode_header(type, entry->size, header);
+		hdrlen = encode_in_pack_object_header(type, entry->size, header);
 
 		offset = entry->in_pack_offset;
 		revidx = find_pack_revindex(p, offset);
@@ -464,9 +437,6 @@ static int write_one(struct sha1file *f,
 	return 1;
 }
 
-/* forward declaration for write_pack_file */
-static int adjust_perm(const char *path, mode_t mode);
-
 static void write_pack_file(void)
 {
 	uint32_t i = 0, j;
@@ -523,13 +493,9 @@ static void write_pack_file(void)
 		}
 
 		if (!pack_to_stdout) {
-			mode_t mode = umask(0);
 			struct stat st;
 			const char *idx_tmp_name;
 			char tmpname[PATH_MAX];
-
-			umask(mode);
-			mode = 0444 & ~mode;
 
 			idx_tmp_name = write_idx_file(NULL, written_list,
 						      nr_written, sha1);
@@ -537,7 +503,7 @@ static void write_pack_file(void)
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.pack",
 				 base_name, sha1_to_hex(sha1));
 			free_pack_by_name(tmpname);
-			if (adjust_perm(pack_tmp_name, mode))
+			if (adjust_shared_perm(pack_tmp_name))
 				die_errno("unable to make temporary pack file readable");
 			if (rename(pack_tmp_name, tmpname))
 				die_errno("unable to rename temporary pack file");
@@ -565,7 +531,7 @@ static void write_pack_file(void)
 
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.idx",
 				 base_name, sha1_to_hex(sha1));
-			if (adjust_perm(idx_tmp_name, mode))
+			if (adjust_shared_perm(idx_tmp_name))
 				die_errno("unable to make temporary index file readable");
 			if (rename(idx_tmp_name, tmpname))
 				die_errno("unable to rename temporary index file");
@@ -2123,13 +2089,6 @@ static void get_object_list(int ac, const char **av)
 		add_objects_in_unpacked_packs(&revs);
 	if (unpack_unreachable)
 		loosen_unused_packed_objects(&revs);
-}
-
-static int adjust_perm(const char *path, mode_t mode)
-{
-	if (chmod(path, mode))
-		return -1;
-	return adjust_shared_perm(path);
 }
 
 int cmd_pack_objects(int argc, const char **argv, const char *prefix)
