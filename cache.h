@@ -1062,4 +1062,11 @@ int split_cmdline(char *cmdline, const char ***argv);
 /* builtin/merge.c */
 int checkout_fast_forward(const unsigned char *from, const unsigned char *to);
 
+/* git.c */
+struct startup_info {
+	const char *prefix;
+	int have_repository;
+};
+extern struct startup_info *startup_info;
+
 #endif /* CACHE_H */
