@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
 Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>> 8.0.0), xmlto, docbook-xsl (>> 1.72), libexpat1-dev, subversion, libsvn-perl | libsvn-core-perl, unzip, tcl8.5, gettext, cvs, cvsps, libdbd-sqlite3-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
-Standards-Version: 3.8.2.0
+Standards-Version: 3.8.4.0
 Vcs-Git: http://smarden.org/git/git.git/
 
 Package: git-core
