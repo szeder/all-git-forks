@@ -1,3 +1,141 @@
+Version v1.7.0.2; changes since v1.7.0:
+---------------------------------------
+
+Bert Wesarg (3):
+      Documentation: mention conflict marker size argument (%L) for merge driver
+      rerere: fix memory leak if rerere images can't be read
+      unset GREP_OPTIONS in test-lib.sh
+
+Christian Couder (1):
+      bisect: error out when passing bad path parameters
+
+Dmitry Potapov (1):
+      hash-object: don't use mmap() for small files
+
+Erik Faye-Lund (1):
+      run-command: support custom fd-set in async
+
+Evan Powers (1):
+      git-p4: fix bug in symlink handling
+
+Gabriel Filion (1):
+      require_work_tree broken with NONGIT_OK
+
+Hitoshi Mitake (1):
+      git-imap-send: Convert LF to CRLF before storing patch to draft box
+
+Jacob Helwig (1):
+      Documentation: Fix indentation problem in git-commit(1)
+
+Jakub Narebski (2):
+      gitweb: Die if there are parsing errors in config file
+      gitweb: Fix project-specific feature override behavior
+
+Jeff King (9):
+      accept "git grep -- pattern"
+      cherry-pick: rewrap advice message
+      cherry-pick: refactor commit parsing code
+      cherry-pick: format help message as strbuf
+      cherry-pick: show commit name instead of sha1
+      cherry-pick: prettify the advice message
+      dwim_ref: fix dangling symref warning
+      docs: don't talk about $GIT_DIR/refs/ everywhere
+      rm: fix bug in recursive subdirectory removal
+
+Johannes Sixt (1):
+      t3301-notes: insert a shbang line in ./fake_editor.sh
+
+Jonathan Nieder (9):
+      Fix 'git var' usage synopsis
+      Make 'git var GIT_PAGER' always print the configured pager
+      git.1: Clarify the behavior of the --paginate option
+      git svn: Fix launching of pager
+      am: Fix launching of pager
+      tests: Add tests for automatic use of pager
+      t7006-pager: if stdout is not a terminal, make a new one
+      tests: Fix race condition in t7006-pager
+      am: remove rebase-apply directory before gc
+
+Junio C Hamano (12):
+      t6000lib: Fix permission
+      lib-patch-mode.sh: Fix permission
+      Typofixes outside documentation area
+      Start 1.7.0 maintenance track
+      Fix use of mutex in threaded grep
+      Prepare 1.7.0.1 release notes
+      status: preload index to optimize lstat(2) calls
+      Update 1.7.0.1 release notes
+      Git 1.7.0.1
+      Start preparing for 1.7.0.2
+      Update draft release notes to 1.7.0.2
+      Git 1.7.0.2
+
+Larry D'Anna (3):
+      diff: make sure --output=/bad/path is caught
+      git diff --quiet -w: check and report the status
+      git-diff: add a test for git diff --quiet -w
+
+Mark Lodato (2):
+      grep documentation: clarify what files match
+      Remove reference to GREP_COLORS from documentation
+
+Markus Heidelberg (1):
+      sha1_name: fix segfault caused by invalid index access
+
+Matt Kraai (1):
+      commit: quote the user name in the example
+
+Matthieu Moy (1):
+      stash: suggest the correct command line for unknown options.
+
+Michal Sojka (1):
+      Remove extra '-' from git-am(1)
+
+Nicolas Pitre (8):
+      fast-import: start using struct pack_idx_entry
+      fast-import: use sha1write() for pack data
+      fast-import: use write_idx_file() instead of custom code
+      fast-import: make default pack size unlimited
+      fast-import: honor pack.indexversion and pack.packsizelimit config vars
+      fast-import: use the diff_delta() max_delta_size argument
+      sha1_file: don't malloc the whole compressed result when writing out objects
+      sha1_file: be paranoid when creating loose objects
+
+Pete Harlan (1):
+      Remove hyphen from "git-command" in two error messages
+
+René Scharfe (5):
+      fix minor memory leak in get_tree_entry()
+      utf8.c: remove print_wrapped_text()
+      utf8.c: remove print_spaces()
+      utf8.c: remove strbuf_write()
+      utf8.c: speculatively assume utf-8 in strbuf_add_wrapped_text()
+
+Shawn O. Pearce (7):
+      run-command: Allow stderr to be a caller supplied pipe
+      send-pack: demultiplex a sideband stream with status data
+      receive-pack: Refactor how capabilities are shown to the client
+      receive-pack: Wrap status reports inside side-band-64k
+      receive-pack: Send hook output over side band #2
+      t5401: Use a bare repository for the remote peer
+      receive-pack: Send internal errors over side-band #2
+
+Stephen Boyd (2):
+      Documentation: describe --thin more accurately
+      t7406: Fix submodule init config tests
+
+Sylvain Rabot (1):
+      gitweb multiple project roots documentation
+
+Tay Ray Chuan (1):
+      transport: add got_remote_refs flag
+
+Thomas Rast (3):
+      stash pop: remove 'apply' options during 'drop' invocation
+      t1450: fix testcases that were wrongly expecting failure
+      cherry_pick_list: quit early if one side is empty
+
+
 Version v1.7.0; changes since v1.7.0-rc2:
 -----------------------------------------
 
