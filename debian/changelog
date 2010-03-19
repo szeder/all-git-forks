@@ -1,12 +1,21 @@
 git-core (1:1.7.0.2-1.1) unstable; urgency=low
 
   * debian/control: Standards-Version: 3.8.4.0.
+  * debian/changelog: note fixes from Jonathan Nieder in 1.7.0.2-1.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 18 Mar 2010 22:21:14 +0000
+ -- Gerrit Pape <pape@smarden.org>  Fri, 19 Mar 2010 00:26:02 +0000
 
 git-core (1:1.7.0.2-1) unstable; urgency=low
 
   * new upstream point release.
+
+    [ Jonathan Nieder ]
+    * am: remove rebase-apply directory before gc (thx Mark Brown,
+      closes: #570966).
+    * git-imap-send: Convert LF to CRLF before storing patch to draft box
+      (closes: #572598).
+    * sha1_file: be paranoid when creating loose objects (closes:
+      #569505).
 
  -- Gerrit Pape <pape@smarden.org>  Thu, 18 Mar 2010 20:44:12 +0000
 
