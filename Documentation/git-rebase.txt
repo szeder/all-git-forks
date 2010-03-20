@@ -321,7 +321,18 @@ which makes little sense.
 	this change originated from, similar to cherry-pick's -x option. This
 	option is not compatible with -m, -p or --interactive.
 +
-This option is only valid when '--interactive' option is used.
+This option is only valid when the '--interactive' option is used.
+
+--no-ff::
+	Cherry-pick all rebased commits instead of fast-forwarding over
+	the unchanged ones.  This ensures that the entire history of the
+	rebased branch is composed of new commits.  You may find this
+	helpful after reverting a topic branch merge, as this option
+	recreates the topic branch with fresh commits so it can be remerged
+	successfully without needing to "reverting the reversion" (as described
+	in the link:howto/revert-a-faulty-merge.txt[revert-a-faulty-merge How-To]).
++
+This option is only valid when the '--interactive' option is used.
 
 include::merge-strategies.txt[]
 
