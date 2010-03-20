@@ -315,7 +315,7 @@ const char *read_gitfile_gently(const char *path)
  * We cannot decide in this function whether we are in the work tree or
  * not, since the config can only be read _after_ this function was called.
  */
-const char *setup_git_directory_gently(int *nongit_ok)
+static const char *setup_git_directory_gently_1(int *nongit_ok)
 {
 	const char *work_tree_env = getenv(GIT_WORK_TREE_ENVIRONMENT);
 	const char *env_ceiling_dirs = getenv(CEILING_DIRECTORIES_ENVIRONMENT);
@@ -392,13 +392,16 @@ const char *setup_git_directory_gently(int *nongit_ok)
 	offset = len = strlen(cwd);
 	for (;;) {
 		gitfile_dir = read_gitfile_gently(DEFAULT_GIT_DIR_ENVIRONMENT);
-		if (gitfile_dir) {
-			if (set_git_dir(gitfile_dir))
+		if (gitfile_dir || is_git_directory(DEFAULT_GIT_DIR_ENVIRONMENT)) {
+			if (gitfile_dir && set_git_dir(gitfile_dir))
 				die("Repository setup failed");
+			inside_git_dir = 0;
+			if (!work_tree_env)
+				inside_work_tree = 1;
+			root_len = offset_1st_component(cwd);
+			git_work_tree_cfg = xstrndup(cwd, offset > root_len ? offset : root_len);
 			break;
 		}
-		if (is_git_directory(DEFAULT_GIT_DIR_ENVIRONMENT))
-			break;
 		if (is_git_directory(".")) {
 			inside_git_dir = 1;
 			if (!work_tree_env)
@@ -409,8 +412,7 @@ const char *setup_git_directory_gently(int *nongit_ok)
 				set_git_dir(cwd);
 			} else
 				set_git_dir(".");
-			check_repository_format_gently(nongit_ok);
-			return NULL;
+			break;
 		}
 		while (--offset > ceil_offset && cwd[offset] != '/');
 		if (offset <= ceil_offset) {
@@ -426,11 +428,6 @@ const char *setup_git_directory_gently(int *nongit_ok)
 			die_errno("Cannot change to '%s/..'", cwd);
 	}
 
-	inside_git_dir = 0;
-	if (!work_tree_env)
-		inside_work_tree = 1;
-	root_len = offset_1st_component(cwd);
-	git_work_tree_cfg = xstrndup(cwd, offset > root_len ? offset : root_len);
 	if (check_repository_format_gently(nongit_ok))
 		return NULL;
 	if (offset == len)
@@ -441,6 +438,18 @@ const char *setup_git_directory_gently(int *nongit_ok)
 	cwd[len++] = '/';
 	cwd[len] = 0;
 	return cwd + offset;
+}
+
+const char *setup_git_directory_gently(int *nongit_ok)
+{
+	const char *prefix;
+
+	prefix = setup_git_directory_gently_1(nongit_ok);
+	if (startup_info) {
+		startup_info->prefix = prefix;
+		startup_info->have_repository = !nongit_ok || !*nongit_ok;
+	}
+	return prefix;
 }
 
 int git_config_perm(const char *var, const char *value)
