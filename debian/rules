@@ -63,7 +63,7 @@ clean: deb-checkdir
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
 	  '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui \
-	  '$(GIT)'k '$(GIT)'web '$(GIT)'-core
+	  '$(GIT)'k '$(GIT)'web '$(GIT)'-all '$(GIT)'-core
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
@@ -208,6 +208,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'web/etc/apache2/conf.d
 	install -m0644 debian/gitweb.apache2.conf '$(GIT)'web/etc/apache2/conf.d/gitweb
 	install -d -m0755 '$(GIT)'web/var/cache/git/
+	# git-all
+	rm -rf '$(GIT)'-all
+	install -d -m0755 '$(GIT)'-all
 	# git-core
 	rm -rf '$(GIT)'-core
 	install -d -m0755 '$(GIT)'-core/usr/share/doc
@@ -223,9 +226,11 @@ binary-arch: install-arch git.deb
 	dpkg-gencontrol -isp -pgit -P'$(GIT)'
 	dpkg -b '$(GIT)' ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
-	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb
+	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb \
+	  git-all.deb
 	rm -f debian/substvars
-	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -core; do \
+	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -all \
+	 -core; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done

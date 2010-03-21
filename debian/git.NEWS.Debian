@@ -16,7 +16,7 @@ git (1:1.7.0.3-2~exp0) experimental; urgency=low
 
    # apt-get remove --purge git
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 22 Mar 2010 13:59:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 21 Mar 2010 22:12:01 +0000
 
 git-core (1:1.6.0-1) experimental; urgency=low
 
