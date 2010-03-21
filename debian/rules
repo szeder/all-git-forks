@@ -6,7 +6,7 @@ CC =gcc
 CFLAGS =-g -Wall
 STRIP =strip
 TEST =test
-OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
+OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git \
   mandir=/usr/share/man INSTALLDIRS=vendor \
   NO_PYTHON=1 \
   THREADED_DELTA_SEARCH=1 NO_CROSS_DIRECTORY_HARDLINKS=1 \
@@ -43,12 +43,12 @@ patch-stamp:
 build: deb-checkdir build-arch-stamp build-indep-stamp
 build-arch-stamp: patch-stamp build-indep-stamp
 	-$(CC) -v
-	DESTDIR='$(GIT)'-core $(MAKE) all \
+	DESTDIR='$(GIT)' $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	test -z '$(TEST)' || \
-	  DESTDIR='$(GIT)'-core $(MAKE) $(TEST) \
+	  DESTDIR='$(GIT)' $(MAKE) $(TEST) \
 	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS) || \
-	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)'-core $(MAKE) $(TEST) \
+	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' $(MAKE) $(TEST) \
 	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
 build-indep-stamp:
@@ -61,60 +61,58 @@ clean: deb-checkdir
 	  for i in `ls -1r debian/diff/*.diff || :`; do patch -p1 -R <$$i; done
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
-	rm -rf '$(GIT)'-core '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
+	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
 	  '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui \
-	  '$(GIT)'k '$(GIT)'web
+	  '$(GIT)'k '$(GIT)'web '$(GIT)'-core
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
 install-arch: deb-checkdir deb-checkuid build-arch-stamp
-	# git-core
-	rm -rf '$(GIT)-core'
-	install -d -m0755 '$(GIT)'-core/usr/bin
-	DESTDIR='$(GIT)'-core $(MAKE) install install-doc \
+	# git
+	rm -rf '$(GIT)'
+	install -d -m0755 '$(GIT)'/usr/bin
+	DESTDIR='$(GIT)' $(MAKE) install install-doc \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
-	install -d -m0755 '$(GIT)'-core/var/cache/git
-	rm -f '$(GIT)'-core/usr/share/perl5/Error.pm
-	rm -f '$(GIT)'-core/usr/share/man/man3/private-Error.3pm
-	chmod 644 '$(GIT)'-core/usr/share/perl5/Git.pm
+	install -d -m0755 '$(GIT)'/var/cache/git
+	rm -f '$(GIT)'/usr/share/perl5/Error.pm
+	rm -f '$(GIT)'/usr/share/man/man3/private-Error.3pm
+	chmod 644 '$(GIT)'/usr/share/perl5/Git.pm
 	# don't include arch, cvs, svn, email, gui tools, and gitk program
 	for i in git-archimport git-cvs git-svn git-send-email \
 	 git-gui git-citool; do \
-	  rm -f '$(GIT)'-core/usr/lib/git-core/$$i*; \
+	  rm -f '$(GIT)'/usr/lib/git/$$i*; \
 	done
-	rm -f '$(GIT)'-core/usr/bin/git-cvsserver
-	rm -f '$(GIT)'-core/usr/bin/gitk
-	for i in '$(GIT)'-core/usr/bin/* '$(GIT)'-core/usr/lib/git-core/*; do \
+	rm -f '$(GIT)'/usr/bin/git-cvsserver
+	rm -f '$(GIT)'/usr/bin/gitk
+	for i in '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git/*; do \
 	  test "`head -c2 $$i`" = '#!' || $(STRIP) -R .comment -R .note $$i; \
 	done
 	# don't include git-gui's lib
-	rm -rf '$(GIT)'-core/usr/share/git-gui/
+	rm -rf '$(GIT)'/usr/share/git-gui/
 	# don't include gitk's lib
-	rm -rf '$(GIT)'-core/usr/share/gitk/
+	rm -rf '$(GIT)'/usr/share/gitk/
 	# don't include arch, cvs, svn, email, gui, and gitk man pages
 	for i in git-archimport git-cvs git-svn git-send-email gitk \
 	 git-gui git-citool; do \
-	  rm -f '$(GIT)'-core/usr/share/man/man1/$$i*; \
+	  rm -f '$(GIT)'/usr/share/man/man1/$$i*; \
 	done
-	chmod 0644 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
-	gzip -9 '$(GIT)'-core/usr/share/man/man?/*.[0-9]*
+	chmod 0644 '$(GIT)'/usr/share/man/man?/*.[0-9]*
+	gzip -9 '$(GIT)'/usr/share/man/man?/*.[0-9]*
 	# emacs
-	install -m0644 -D debian/git-core.emacsen-startup \
-	  '$(GIT)'-core/etc/emacs/site-start.d/50git-core.el
+	install -m0644 -D debian/git.emacsen-startup \
+	  '$(GIT)'/etc/emacs/site-start.d/50git-core.el
 	# bash completion
-	install -d -m0755 '$(GIT)'-core/etc/bash_completion.d
+	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
-	  '$(GIT)'-core/etc/bash_completion.d/git
+	  '$(GIT)'/etc/bash_completion.d/git
 	# contrib
-	install -d -m0755 '$(GIT)'-core/usr/share/doc/git-core
-	cp -R contrib '$(GIT)'-core/usr/share/doc/git-core/
-	rm -rf '$(GIT)'-core/usr/share/doc/git-core/contrib/completion
-	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type f | \
-	  xargs chmod 0644
-	find '$(GIT)'-core/usr/share/doc/git-core/contrib -type d | \
-	  xargs chmod 0755
-	find '$(GIT)'-core/usr/share/doc/git-core/ -name .gitignore | \
-	  xargs rm -f
+	install -d -m0755 '$(GIT)'/usr/share/doc/git
+	cp -R contrib '$(GIT)'/usr/share/doc/git/
+	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
+	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644
+	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
+	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
+	ln -s git '$(GIT)'/usr/share/doc/git-core
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
@@ -125,7 +123,7 @@ install-indep: build-arch-stamp build-indep-stamp
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
 	  2>/dev/null
-	# RelNotes are shipped in git-core
+	# RelNotes are shipped in git
 	rm -f '$(TMP)'/html/RelNotes*
 	# git-doc
 	rm -rf '$(GIT)'-doc
@@ -133,9 +131,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-cvs, git-svn
 	for i in cvs svn; do \
 	  rm -rf '$(GIT)'-$$i && \
-	  install -d -m0755 '$(GIT)'-$$i/usr/lib/git-core && \
-	  install -m0755 '$(TMP)'/usr/lib/git-core/git-$$i* \
-	    '$(GIT)'-$$i/usr/lib/git-core/ && \
+	  install -d -m0755 '$(GIT)'-$$i/usr/lib/git && \
+	  install -m0755 '$(TMP)'/usr/lib/git/git-$$i* \
+	    '$(GIT)'-$$i/usr/lib/git/ && \
 	  install -d -m0755 '$(GIT)'-$$i/usr/share/man/man1 && \
 	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
 	    '$(GIT)'-$$i/usr/share/man/man1/ && \
@@ -146,18 +144,18 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -m0755 '$(TMP)'/usr/bin/git-cvsserver '$(GIT)'-cvs/usr/bin/
 	# git-arch
 	rm -rf '$(GIT)'-arch
-	install -d -m0755 '$(GIT)'-arch/usr/lib/git-core
-	install -m0755 '$(TMP)'/usr/lib/git-core/git-archimport \
-	  '$(GIT)'-arch/usr/lib/git-core/
+	install -d -m0755 '$(GIT)'-arch/usr/lib/git
+	install -m0755 '$(TMP)'/usr/lib/git/git-archimport \
+	  '$(GIT)'-arch/usr/lib/git/
 	install -d -m0755 '$(GIT)'-arch/usr/share/man/man1
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-archimport.1 \
 	  '$(GIT)'-arch/usr/share/man/man1/
 	gzip -9 '$(GIT)'-arch/usr/share/man/man1/*.1
 	# git-email
 	rm -rf '$(GIT)'-email
-	install -d -m0755 '$(GIT)'-email/usr/lib/git-core
-	install -m0755 '$(TMP)'/usr/lib/git-core/git-send-email \
-	  '$(GIT)'-email/usr/lib/git-core/
+	install -d -m0755 '$(GIT)'-email/usr/lib/git
+	install -m0755 '$(TMP)'/usr/lib/git/git-send-email \
+	  '$(GIT)'-email/usr/lib/git/
 	install -d -m0755 '$(GIT)'-email/usr/share/man/man1
 	install -m0644 '$(TMP)'/usr/share/man/man1/git-send-email.1 \
 	  '$(GIT)'-email/usr/share/man/man1/
@@ -171,11 +169,11 @@ install-indep: build-arch-stamp build-indep-stamp
 	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/run
 	# git-gui
 	rm -rf '$(GIT)'-gui
-	install -d -m0755 '$(GIT)'-gui/usr/lib/git-core
-	install -m0755 '$(TMP)'/usr/lib/git-core/git-gui \
-	  '$(GIT)'-gui/usr/lib/git-core/
-	install -m0755 '$(TMP)'/usr/lib/git-core/git-citool \
-	  '$(GIT)'-gui/usr/lib/git-core/
+	install -d -m0755 '$(GIT)'-gui/usr/lib/git
+	install -m0755 '$(TMP)'/usr/lib/git/git-gui \
+	  '$(GIT)'-gui/usr/lib/git/
+	install -m0755 '$(TMP)'/usr/lib/git/git-citool \
+	  '$(GIT)'-gui/usr/lib/git/
 	install -d -m0755 '$(GIT)'-gui/usr/share/man/man1
 	for i in gui citool; do \
 	  install -m0644 '$(TMP)'/usr/share/man/man1/git-$$i* \
@@ -210,19 +208,24 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'web/etc/apache2/conf.d
 	install -m0644 debian/gitweb.apache2.conf '$(GIT)'web/etc/apache2/conf.d/gitweb
 	install -d -m0755 '$(GIT)'web/var/cache/git/
+	# git-core
+	rm -rf '$(GIT)'-core
+	install -d -m0755 '$(GIT)'-core/usr/share/doc
+	ln -s git '$(GIT)'-core/usr/share/doc/git-core
+	install -d -m0755 '$(GIT)'-core/DEBIAN
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
 binary: binary-arch binary-indep
-binary-arch: install-arch git-core.deb
+binary-arch: install-arch git.deb
 	rm -f debian/substvars
-	dpkg-shlibdeps '$(GIT)'-core/usr/bin/* '$(GIT)'-core/usr/lib/git-core/*
-	dpkg-gencontrol -isp -pgit-core -P'$(GIT)'-core
-	dpkg -b '$(GIT)'-core ..
+	dpkg-shlibdeps '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git/*
+	dpkg-gencontrol -isp -pgit -P'$(GIT)'
+	dpkg -b '$(GIT)' ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
 	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb
 	rm -f debian/substvars
-	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web; do \
+	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -core; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done

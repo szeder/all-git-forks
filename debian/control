@@ -1,4 +1,4 @@
-Source: git-core
+Source: git
 Section: vcs
 Priority: optional
 Maintainer: Gerrit Pape <pape@smarden.org>
@@ -7,15 +7,15 @@ Build-Depends: libz-dev, libcurl4-gnutls-dev | libcurl3-gnutls-dev, asciidoc (>>
 Standards-Version: 3.8.4.0
 Vcs-Git: http://smarden.org/git/git.git/
 
-Package: git-core
+Package: git
 Architecture: any
 Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
 Recommends: patch, less, rsync, ssh-client
 Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
-Replaces: cogito (<< 0.16rc2-0), git-completion
-Conflicts: git (<< 4.3.20-11), qgit (<< 1.5.5), git-completion
-Provides: git-completion
+Replaces: cogito (<< 0.16rc2-0), git-completion, git-core
+Conflicts: git (<< 4.3.20-11), qgit (<< 1.5.5), git-completion, git-core (<= 1:1.7.0.3-1)
+Provides: git-completion, git-core
 Description: fast, scalable, distributed revision control system
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -31,10 +31,28 @@ Description: fast, scalable, distributed revision control system
  tree visualizer, tools for interoperating with other VCS's, or a web
  interface, is provided as separate git* packages.
 
+Package: git-core
+Architecture: all
+Depends: git (>> 1:1.7.0.2)
+Description: fast, scalable, distributed revision control system (obsolete)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package contains no files.  The 'git-core' package has been
+ renamed to 'git', which has been installed automatically.  This
+ git-core package is now obsolte, and can safely be removed from the
+ system..
+
 Package: git-doc
 Section: doc
 Architecture: all
-Suggests: git-core, git-arch, git-cvs, git-svn, git-email, gitk, gitweb
+Suggests: git, git-arch, git-cvs, git-svn, git-email, gitk, gitweb
 Description: fast, scalable, distributed revision control system (documentation)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -49,7 +67,7 @@ Description: fast, scalable, distributed revision control system (documentation)
 
 Package: git-arch
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tla
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tla
 Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (arch interoperability)
@@ -67,7 +85,7 @@ Description: fast, scalable, distributed revision control system (arch interoper
 
 Package: git-cvs
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), cvsps (>> 2.1-0), libdbd-sqlite3-perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), cvsps (>> 2.1-0), libdbd-sqlite3-perl
 Suggests: git-doc, cvs
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (cvs interoperability)
@@ -86,7 +104,7 @@ Description: fast, scalable, distributed revision control system (cvs interopera
 
 Package: git-svn
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), libsvn-perl | libsvn-core-perl, libwww-perl, libterm-readkey-perl
 Suggests: git-doc, subversion
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (svn interoperability)
@@ -104,7 +122,7 @@ Description: fast, scalable, distributed revision control system (svn interopera
 
 Package: git-email
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.)
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.)
 Recommends: libemail-valid-perl, libnet-smtp-ssl-perl, libauthen-sasl-perl
 Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
@@ -123,7 +141,7 @@ Description: fast, scalable, distributed revision control system (email add-on)
 
 Package: git-daemon-run
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), runit (>= 1.8.0-2), adduser
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), runit (>= 1.8.0-2), adduser
 Description: fast, scalable, distributed revision control system (git-daemon service)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -134,14 +152,14 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- git-daemon, as provided by the git-core package, is a simple server for git
+ git-daemon, as provided by the git package, is a simple server for git
  repositories, ideally suited for read-only updates, i.e. pulling from git
  repositories through the network.  This package provides a runit service
  for running git-daemon permanently.
 
 Package: git-gui
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk (>= 8.4)
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk (>= 8.4)
 Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
 Suggests: git-doc
@@ -159,7 +177,7 @@ Description: fast, scalable, distributed revision control system (GUI)
 
 Package: gitk
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), tk (>= 8.4)
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk (>= 8.4)
 Suggests: git-doc
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (revision tree visualizer)
@@ -176,7 +194,7 @@ Description: fast, scalable, distributed revision control system (revision tree 
 
 Package: gitweb
 Architecture: all
-Depends: git-core (>> ${source:Upstream-Version}), git-core (<< ${source:Upstream-Version}-.), perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), perl
 Suggests: git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
