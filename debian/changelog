@@ -1,3 +1,17 @@
+git (1:1.7.0.4-2~exp0) unstable; urgency=low
+
+  * debian/control, debian/rules, debian/git-core.*: change source and
+    binary package name from git-core to git; keep now obsolete empty
+    git-core package that depends on git for upgrade (see
+    http://lists.debian.org/debian-devel/2009/09/thrd2.html#00661).
+  * debian/control: package git: Replaces: git-core, Conflicts: git-core
+    (<= 1:1.7.0.3-1), Provides: git-core.
+  * debian/git.NEWS.Debian: talk about the package name change, and the
+    possible hazzle when upgrading with GNU Interactive Tools installed
+    since etch and no git-core installed.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 21 Mar 2010 21:58:21 +0000
+
 git-core (1:1.7.0.4-1) unstable; urgency=low
 
   * debian/git-daemon-run.postrm: purge: don't warn if the git-daemon

@@ -1,3 +1,23 @@
+git (1:1.7.0.3-2~exp0) experimental; urgency=low
+
+  The Debian package 'git-core' has been renamed to 'git'.  Before
+  the Debian release lenny, the 'git' package provided the GNU
+  Interactive Tools, and in the lenny release, it was renamed to
+  'gnuit', leaving the 'git' package as a transitional dummy package.
+
+  It's possible that if the GNU Interactive Tools package is installed
+  since the Debian release etch on this system, the new 'git' package
+  (a content addressable filesystem) is being installed on upgrade,
+  although git (the content addressable filesystem) has not been
+  installed before.
+
+  In this case, sorry for the hazzle.  Simply remove the new 'git'
+  package again if you're not interested in it
+
+   # apt-get remove --purge git
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 22 Mar 2010 13:59:59 +0000
+
 git-core (1:1.6.0-1) experimental; urgency=low
 
   Most of the programs are now installed outside the default $PATH,
