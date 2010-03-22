@@ -1,9 +1,10 @@
-git-core (1:1.7.0.2-1.1) unstable; urgency=low
+git-core (1:1.7.0.3-1) unstable; urgency=low
 
   * debian/control: Standards-Version: 3.8.4.0.
   * debian/changelog: note fixes from Jonathan Nieder in 1.7.0.2-1.
+  * new upstream point release.
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 19 Mar 2010 00:26:02 +0000
+ -- Gerrit Pape <pape@smarden.org>  Mon, 22 Mar 2010 09:19:06 +0000
 
 git-core (1:1.7.0.2-1) unstable; urgency=low
 

@@ -1,3 +1,96 @@
+Version v1.7.0.3; changes since v1.7.0.2:
+-----------------------------------------
+
+Adam Simpkins (2):
+      prune: honor --expire=never
+      reflog: honor gc.reflogexpire=never
+
+Andreas Gruenbacher (3):
+      fetch: Check for a "^{}" suffix with suffixcmp()
+      fetch: Future-proof initialization of a refspec on stack
+      fetch: Fix minor memory leak
+
+Dave Olszewski (1):
+      don't use default revision if a rev was specified
+
+Filippo Negroni (1):
+      Fix gitmkdtemp: correct test for mktemp() return value
+
+Giuseppe Bilotta (5):
+      Refactor list of of repo-local env vars
+      rev-parse: --local-env-vars option
+      shell setup: clear_local_git_env() function
+      submodules: ensure clean environment when operating in a submodule
+      is_submodule_modified(): clear environment properly
+
+Ian Ward Comfort (1):
+      bash: complete *_HEAD refs if present
+
+Imre Deak (1):
+      daemon: parse_host_and_port SIGSEGV if port is specified
+
+Jeff King (2):
+      add-interactive: fix bogus diff header line ordering
+      push: fix segfault for odd config
+
+Jonathan Nieder (1):
+      Makefile: Fix CDPATH problem
+
+Junio C Hamano (12):
+      "log --author=me --grep=it" should find intersection, not union
+      Reword "detached HEAD" notification
+      mailinfo: do not strip leading spaces even for a header line
+      t5521: fix and modernize
+      builtin-fetch --all/--multi: propagate options correctly
+      fetch --all/--multiple: keep all the fetched branch information
+      pack-objects documentation: reword "objects that appear in the standard input"
+      Merge accumulated fixes to prepare for 1.7.0.3
+      t9400: Use test_cmp when appropriate
+      t/Makefile: remove test artifacts upon "make clean"
+      Update draft release notes to 1.7.0.3
+      Git 1.7.0.3
+
+Mark Lodato (4):
+      grep docs: pluralize "Example" section
+      grep docs: use AsciiDoc literals consistently
+      grep docs: --cached and <tree>... are incompatible
+      grep docs: document --no-index option
+
+Matthieu Moy (6):
+      Add a testcase for ACL with restrictive umask.
+      Move gitmkstemps to path.c
+      git_mkstemp_mode, xmkstemp_mode: variants of gitmkstemps with mode argument.
+      Use git_mkstemp_mode and xmkstemp_mode in odb_mkstemp, not chmod later.
+      git_mkstemps_mode: don't set errno to EINVAL on exit.
+      Use git_mkstemp_mode instead of plain mkstemp to create object files
+
+Michael J Gruber (7):
+      Documentation/git-read-tree: fix table layout
+      Documentation/git-read-tree: clarify 2-tree merge
+      Documentation/git-reflog: Fix formatting of command lists
+      Documentation/gitdiffcore: Remove misleading date in heading
+      Documentation/urls: Remove spurious example markers
+      Documentation/git-clone: Transform description list into item list
+      .mailmap: Map the the first submissions of MJG by e-mail
+
+Michael Wookey (1):
+      run-command.c: fix build warnings on Ubuntu
+
+Nelson Elhage (2):
+      Documentation: pack-objects: Clarify --local's semantics.
+      pack-objects documentation: Fix --honor-pack-keep as well.
+
+René Scharfe (2):
+      blame: fix indent of line numbers
+      for_each_recent_reflog_ent(): use strbuf, fix offset handling
+
+Stephen Boyd (1):
+      pull: replace unnecessary sed invocation
+
+Thomas Rast (1):
+      Documentation: receive.denyCurrentBranch defaults to 'refuse'
+
+
 Version v1.7.0.2; changes since v1.7.0:
 ---------------------------------------
 
