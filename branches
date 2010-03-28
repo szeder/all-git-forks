@@ -6,3 +6,7 @@ jk/stash-apply-p
 
 js/unique-tests
   maybe drop?
+
+jk/fast-textconv
+  this works and is submitted, but maybe I should try notes-caching
+  instead?
