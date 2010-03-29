@@ -3,7 +3,7 @@ set -e
 
 test "$1" = 'purge' || exit 0
 
-sv force-stop git-daemon || :
+sv force-stop git-daemon 2>/dev/null || :
 rm -rf /etc/sv/git-daemon/supervise /etc/sv/git-daemon/log/supervise
 rm -rf /var/lib/supervise/git-daemon /var/lib/supervise/git-daemon.log
 
@@ -13,5 +13,5 @@ done
 rmdir /var/log/git-daemon || :
 
 getent passwd gitlog >/dev/null || exit 0
-! deluser --version >/dev/null 2>&1 || exec deluser gitlog
+! deluser --version >/dev/null 2>&1 || exec deluser -f gitlog
 echo 'deluser program not available, not removing system user "gitlog".' >&2
