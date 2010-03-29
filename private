@@ -8,12 +8,21 @@ branches() {
 upstream=`git for-each-ref --format='%(upstream)' refs/heads/private`
 upstream=${upstream:-origin}
 
+cont=
+force=
 case "$1" in
 --continue)
+	cont=t
 	shift
 	;;
-*)
-	test "$1" != "-f" &&
+-f)
+	force=t
+	shift
+	;;
+esac
+
+if test -z "$cont"; then
+	test -z "$force" &&
 	test -n "`git rev-list -1 --no-merges --first-parent \
 		 $upstream..private`" &&
 	  {
@@ -21,7 +30,7 @@ case "$1" in
 		  exit 1
 	  }
 	git checkout -q $upstream^0 || exit
-esac
+fi
 
 for i in `branches`; do
 	echo >&2 Merging $i...
