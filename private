@@ -29,7 +29,7 @@ if test -z "$cont"; then
 		  git log --no-merges --first-parent $upstream..private
 		  exit 1
 	  }
-	git checkout -q $upstream^0 || exit
+	git checkout -q ${force:+-f} $upstream^0 || exit
 fi
 
 for i in `branches`; do
