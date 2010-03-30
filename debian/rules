@@ -113,6 +113,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
 	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
 	ln -s git '$(GIT)'/usr/share/doc/git-core
+	ln -s git '$(GIT)'/usr/lib/git-core
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
@@ -214,7 +215,9 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-core
 	rm -rf '$(GIT)'-core
 	install -d -m0755 '$(GIT)'-core/usr/share/doc
+	install -d -m0755 '$(GIT)'-core/usr/lib
 	ln -s git '$(GIT)'-core/usr/share/doc/git-core
+	ln -s git '$(GIT)'-core/usr/lib/git-core
 	install -d -m0755 '$(GIT)'-core/DEBIAN
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
