@@ -32,7 +32,7 @@ static const char * const builtin_log_usage =
 	"   or: git show [options] <object>...";
 
 static void cmd_log_init(int argc, const char **argv, const char *prefix,
-		      struct rev_info *rev)
+			 struct rev_info *rev, struct setup_revision_opt *opt)
 {
 	int i;
 	int decoration_style = 0;
@@ -56,10 +56,12 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 	 */
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(builtin_log_usage);
-	argc = setup_revisions(argc, argv, rev, "HEAD");
+	argc = setup_revisions(argc, argv, rev, opt);
 
 	if (!rev->show_notes_given && !rev->pretty_given)
 		rev->show_notes = 1;
+	if (rev->show_notes)
+		init_display_notes(&rev->notes_opt);
 
 	if (rev->diffopt.pickaxe || rev->diffopt.filter)
 		rev->always_show_header = 0;
@@ -262,6 +264,7 @@ static int git_log_config(const char *var, const char *value, void *cb)
 int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info rev;
+	struct setup_revision_opt opt;
 
 	git_config(git_log_config, NULL);
 
@@ -271,7 +274,9 @@ int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 	init_revisions(&rev, prefix);
 	rev.diff = 1;
 	rev.simplify_history = 0;
-	cmd_log_init(argc, argv, prefix, &rev);
+	memset(&opt, 0, sizeof(opt));
+	opt.def = "HEAD";
+	cmd_log_init(argc, argv, prefix, &rev, &opt);
 	if (!rev.diffopt.output_format)
 		rev.diffopt.output_format = DIFF_FORMAT_RAW;
 	return cmd_log_walk(&rev);
@@ -324,10 +329,26 @@ static int show_tree_object(const unsigned char *sha1,
 	return 0;
 }
 
+static void show_rev_tweak_rev(struct rev_info *rev, struct setup_revision_opt *opt)
+{
+	if (rev->ignore_merges) {
+		/* There was no "-m" on the command line */
+		rev->ignore_merges = 0;
+		if (!rev->first_parent_only && !rev->combine_merges) {
+			/* No "--first-parent", "-c", nor "--cc" */
+			rev->combine_merges = 1;
+			rev->dense_combined_merges = 1;
+		}
+	}
+	if (!rev->diffopt.output_format)
+		rev->diffopt.output_format = DIFF_FORMAT_PATCH;
+}
+
 int cmd_show(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info rev;
 	struct object_array_entry *objects;
+	struct setup_revision_opt opt;
 	int i, count, ret = 0;
 
 	git_config(git_log_config, NULL);
@@ -337,12 +358,12 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&rev, prefix);
 	rev.diff = 1;
-	rev.combine_merges = 1;
-	rev.dense_combined_merges = 1;
 	rev.always_show_header = 1;
-	rev.ignore_merges = 0;
 	rev.no_walk = 1;
-	cmd_log_init(argc, argv, prefix, &rev);
+	memset(&opt, 0, sizeof(opt));
+	opt.def = "HEAD";
+	opt.tweak = show_rev_tweak_rev;
+	cmd_log_init(argc, argv, prefix, &rev, &opt);
 
 	count = rev.pending.nr;
 	objects = rev.pending.objects;
@@ -405,6 +426,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info rev;
+	struct setup_revision_opt opt;
 
 	git_config(git_log_config, NULL);
 
@@ -415,7 +437,9 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 	init_reflog_walk(&rev.reflog_info);
 	rev.abbrev_commit = 1;
 	rev.verbose_header = 1;
-	cmd_log_init(argc, argv, prefix, &rev);
+	memset(&opt, 0, sizeof(opt));
+	opt.def = "HEAD";
+	cmd_log_init(argc, argv, prefix, &rev, &opt);
 
 	/*
 	 * This means that we override whatever commit format the user gave
@@ -438,6 +462,7 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 int cmd_log(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info rev;
+	struct setup_revision_opt opt;
 
 	git_config(git_log_config, NULL);
 
@@ -446,7 +471,9 @@ int cmd_log(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&rev, prefix);
 	rev.always_show_header = 1;
-	cmd_log_init(argc, argv, prefix, &rev);
+	memset(&opt, 0, sizeof(opt));
+	opt.def = "HEAD";
+	cmd_log_init(argc, argv, prefix, &rev, &opt);
 	return cmd_log_walk(&rev);
 }
 
@@ -458,35 +485,28 @@ static int auto_number = 1;
 
 static char *default_attach = NULL;
 
-static char **extra_hdr;
-static int extra_hdr_nr;
-static int extra_hdr_alloc;
-
-static char **extra_to;
-static int extra_to_nr;
-static int extra_to_alloc;
-
-static char **extra_cc;
-static int extra_cc_nr;
-static int extra_cc_alloc;
+static struct string_list extra_hdr;
+static struct string_list extra_to;
+static struct string_list extra_cc;
 
 static void add_header(const char *value)
 {
+	struct string_list_item *item;
 	int len = strlen(value);
 	while (len && value[len - 1] == '\n')
 		len--;
+
 	if (!strncasecmp(value, "to: ", 4)) {
-		ALLOC_GROW(extra_to, extra_to_nr + 1, extra_to_alloc);
-		extra_to[extra_to_nr++] = xstrndup(value + 4, len - 4);
-		return;
+		item = string_list_append(value + 4, &extra_to);
+		len -= 4;
+	} else if (!strncasecmp(value, "cc: ", 4)) {
+		item = string_list_append(value + 4, &extra_cc);
+		len -= 4;
+	} else {
+		item = string_list_append(value, &extra_hdr);
 	}
-	if (!strncasecmp(value, "cc: ", 4)) {
-		ALLOC_GROW(extra_cc, extra_cc_nr + 1, extra_cc_alloc);
-		extra_cc[extra_cc_nr++] = xstrndup(value + 4, len - 4);
-		return;
-	}
-	ALLOC_GROW(extra_hdr, extra_hdr_nr + 1, extra_hdr_alloc);
-	extra_hdr[extra_hdr_nr++] = xstrndup(value, len);
+
+	item->string[len] = '\0';
 }
 
 #define THREAD_SHALLOW 1
@@ -504,11 +524,16 @@ static int git_format_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "format.suffix"))
 		return git_config_string(&fmt_patch_suffix, var, value);
+	if (!strcmp(var, "format.to")) {
+		if (!value)
+			return config_error_nonbool(var);
+		string_list_append(value, &extra_to);
+		return 0;
+	}
 	if (!strcmp(var, "format.cc")) {
 		if (!value)
 			return config_error_nonbool(var);
-		ALLOC_GROW(extra_cc, extra_cc_nr + 1, extra_cc_alloc);
-		extra_cc[extra_cc_nr++] = xstrdup(value);
+		string_list_append(value, &extra_cc);
 		return 0;
 	}
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
@@ -871,14 +896,31 @@ static int inline_callback(const struct option *opt, const char *arg, int unset)
 
 static int header_callback(const struct option *opt, const char *arg, int unset)
 {
-	add_header(arg);
+	if (unset) {
+		string_list_clear(&extra_hdr, 0);
+		string_list_clear(&extra_to, 0);
+		string_list_clear(&extra_cc, 0);
+	} else {
+	    add_header(arg);
+	}
+	return 0;
+}
+
+static int to_callback(const struct option *opt, const char *arg, int unset)
+{
+	if (unset)
+		string_list_clear(&extra_to, 0);
+	else
+		string_list_append(arg, &extra_to);
 	return 0;
 }
 
 static int cc_callback(const struct option *opt, const char *arg, int unset)
 {
-	ALLOC_GROW(extra_cc, extra_cc_nr + 1, extra_cc_alloc);
-	extra_cc[extra_cc_nr++] = xstrdup(arg);
+	if (unset)
+		string_list_clear(&extra_cc, 0);
+	else
+		string_list_append(arg, &extra_cc);
 	return 0;
 }
 
@@ -887,6 +929,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	struct commit *commit;
 	struct commit **list = NULL;
 	struct rev_info rev;
+	struct setup_revision_opt s_r_opt;
 	int nr = 0, total, i;
 	int use_stdout = 0;
 	int start_number = -1;
@@ -937,10 +980,11 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		  PARSE_OPT_NONEG | PARSE_OPT_NOARG },
 		OPT_GROUP("Messaging"),
 		{ OPTION_CALLBACK, 0, "add-header", NULL, "header",
-			    "add email header", PARSE_OPT_NONEG,
-			    header_callback },
+			    "add email header", 0, header_callback },
+		{ OPTION_CALLBACK, 0, "to", NULL, "email", "add To: header",
+			    0, to_callback },
 		{ OPTION_CALLBACK, 0, "cc", NULL, "email", "add Cc: header",
-			    PARSE_OPT_NONEG, cc_callback },
+			    0, cc_callback },
 		OPT_STRING(0, "in-reply-to", &in_reply_to, "message-id",
 			    "make first mail a reply to <message-id>"),
 		{ OPTION_CALLBACK, 0, "attach", &rev, "boundary",
@@ -956,6 +1000,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
+	extra_hdr.strdup_strings = 1;
+	extra_to.strdup_strings = 1;
+	extra_cc.strdup_strings = 1;
 	git_config(git_format_config, NULL);
 	init_revisions(&rev, prefix);
 	rev.commit_format = CMIT_FMT_EMAIL;
@@ -964,8 +1011,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	rev.combine_merges = 0;
 	rev.ignore_merges = 1;
 	DIFF_OPT_SET(&rev.diffopt, RECURSIVE);
-
 	rev.subject_prefix = fmt_patch_subject_prefix;
+	memset(&s_r_opt, 0, sizeof(s_r_opt));
+	s_r_opt.def = "HEAD";
 
 	if (default_attach) {
 		rev.mime_boundary = default_attach;
@@ -992,29 +1040,29 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		add_signoff = xmemdupz(committer, endpos - committer + 1);
 	}
 
-	for (i = 0; i < extra_hdr_nr; i++) {
-		strbuf_addstr(&buf, extra_hdr[i]);
+	for (i = 0; i < extra_hdr.nr; i++) {
+		strbuf_addstr(&buf, extra_hdr.items[i].string);
 		strbuf_addch(&buf, '\n');
 	}
 
-	if (extra_to_nr)
+	if (extra_to.nr)
 		strbuf_addstr(&buf, "To: ");
-	for (i = 0; i < extra_to_nr; i++) {
+	for (i = 0; i < extra_to.nr; i++) {
 		if (i)
 			strbuf_addstr(&buf, "    ");
-		strbuf_addstr(&buf, extra_to[i]);
-		if (i + 1 < extra_to_nr)
+		strbuf_addstr(&buf, extra_to.items[i].string);
+		if (i + 1 < extra_to.nr)
 			strbuf_addch(&buf, ',');
 		strbuf_addch(&buf, '\n');
 	}
 
-	if (extra_cc_nr)
+	if (extra_cc.nr)
 		strbuf_addstr(&buf, "Cc: ");
-	for (i = 0; i < extra_cc_nr; i++) {
+	for (i = 0; i < extra_cc.nr; i++) {
 		if (i)
 			strbuf_addstr(&buf, "    ");
-		strbuf_addstr(&buf, extra_cc[i]);
-		if (i + 1 < extra_cc_nr)
+		strbuf_addstr(&buf, extra_cc.items[i].string);
+		if (i + 1 < extra_cc.nr)
 			strbuf_addch(&buf, ',');
 		strbuf_addch(&buf, '\n');
 	}
@@ -1037,7 +1085,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (keep_subject && subject_prefix)
 		die ("--subject-prefix and -k are mutually exclusive.");
 
-	argc = setup_revisions(argc, argv, &rev, "HEAD");
+	argc = setup_revisions(argc, argv, &rev, &s_r_opt);
 	if (argc > 1)
 		die ("unrecognized argument: %s", argv[1]);
 
@@ -1058,6 +1106,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 
 	if (!DIFF_OPT_TST(&rev.diffopt, TEXT) && !no_binary_diff)
 		DIFF_OPT_SET(&rev.diffopt, BINARY);
+
+	if (rev.show_notes)
+		init_display_notes(&rev.notes_opt);
 
 	if (!use_stdout)
 		output_directory = set_outdir(prefix, output_directory);
@@ -1106,8 +1157,15 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			return 0;
 	}
 
-	if (ignore_if_in_upstream)
+	if (ignore_if_in_upstream) {
+		/* Don't say anything if head and upstream are the same. */
+		if (rev.pending.nr == 2) {
+			struct object_array_entry *o = rev.pending.objects;
+			if (hashcmp(o[0].item->sha1, o[1].item->sha1) == 0)
+				return 0;
+		}
 		get_patch_ids(&rev, &ids, prefix);
+	}
 
 	if (!use_stdout)
 		realstdout = xfdopen(xdup(1), "w");
@@ -1223,6 +1281,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			fclose(stdout);
 	}
 	free(list);
+	string_list_clear(&extra_to, 0);
+	string_list_clear(&extra_cc, 0);
+	string_list_clear(&extra_hdr, 0);
 	if (ignore_if_in_upstream)
 		free_patch_ids(&ids);
 	return 0;
