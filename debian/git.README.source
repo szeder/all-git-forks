@@ -1,11 +1,11 @@
-git-core source for Debian
---------------------------
+Git sources for Debian
+----------------------
 
-The git-core Debian package sources are available through git, and
-through 'apt-get source git-core'.  Getting the sources through git
+The git Debian package sources are available through git, and
+through 'apt-get source git'.  Getting the sources through git
 should be preferred:
 
- # apt-get install git-core  # if not yet done
+ # apt-get install git  # if not yet done
 
  $ git clone http://smarden.org/git/git.git/
  $ cd git
