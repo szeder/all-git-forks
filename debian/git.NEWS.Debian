@@ -1,4 +1,4 @@
-git (1:1.7.0.3-2~exp0) experimental; urgency=low
+git (1:1.7.0.4-2~exp0) experimental; urgency=low
 
   The Debian package 'git-core' has been renamed to 'git'.  Before
   Debian version 5.0 (codenamed "lenny"), the 'git' package provided
