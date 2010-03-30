@@ -17,6 +17,8 @@ git (1:1.7.0.4-2~exp0) unstable; urgency=low
   * debian/git.README.source: adjust for the package name change.
   * debian/rules: install symbolic link git -> git-core in /usr/lib
     to simplify upgrades.
+  * debian/git-daemon/run: use $(git --exec-path) instead of hard-coding
+    the path to the git-daemon binary.
 
  -- Gerrit Pape <pape@smarden.org>  Sun, 21 Mar 2010 22:12:01 +0000
 

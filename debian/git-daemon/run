@@ -2,4 +2,4 @@
 exec 2>&1
 echo 'git-daemon starting.'
 exec chpst -ugitdaemon \
-  /usr/lib/git-core/git-daemon --verbose --base-path=/var/cache /var/cache/git
+  "$(git --exec-path)"/git-daemon --verbose --base-path=/var/cache /var/cache/git
