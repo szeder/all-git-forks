@@ -1,11 +1,12 @@
-git-core (1:1.7.0.3-1.1) unstable; urgency=low
+git-core (1:1.7.0.4-1) unstable; urgency=low
 
   * debian/git-daemon-run.postrm: purge: don't warn if the git-daemon
     service is already removed; use -f option to userdel, on fast-purge
     the log service daemon might still run for a short time (closes:
     #575434).
+  * new upstream point release.
 
- -- Gerrit Pape <pape@smarden.org>  Mon, 29 Mar 2010 22:56:23 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 01 Apr 2010 20:42:19 +0000
 
 git-core (1:1.7.0.3-1) unstable; urgency=low
 

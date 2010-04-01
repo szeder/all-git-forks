@@ -1,3 +1,60 @@
+Version v1.7.0.4; changes since v1.7.0.3:
+-----------------------------------------
+
+Björn Gustavsson (5):
+      apply: Don't unnecessarily update line lengths in the preimage
+      apply: Remove the quick rejection test
+      apply: Allow blank context lines to match beyond EOF
+      t4124: Add additional tests of --whitespace=fix
+      t3417: Add test cases for "rebase --whitespace=fix"
+
+Chris Packham (1):
+      test for add with non-existent pathspec
+
+David Aguilar (1):
+      difftool: Fix '--gui' when diff.guitool is unconfigured
+
+Greg Bacon (1):
+      Documentation: Clarify support for smart HTTP backend
+
+Holger Weiß (3):
+      Don't redefine htonl and ntohl on big-endian
+      Link against libiconv on IRIX
+      Documentation: show-ref <pattern>s are optional
+
+Jakub Narebski (1):
+      gitweb: git_get_project_config requires only $git_dir, not also $project
+
+Jan Stępień (1):
+      Updated the usage string of git reset
+
+Jeff King (1):
+      dir: fix COLLECT_IGNORED on excluded prefixes
+
+Johannes Sixt (2):
+      diff: fix textconv error zombies
+      Windows: fix utime() for read-only files
+
+Junio C Hamano (8):
+      git add -u: die on unmatched pathspec
+      color: allow multiple attributes
+      t0050: mark non-working test as such
+      tests for "git add ignored-dir/file" without -f
+      refs: ref entry with NULL sha1 is can be a dangling symref
+      t9350: fix careless use of "cd"
+      Prepare for 1.7.0.4
+      Git 1.7.0.4
+
+Kevin Ballard (1):
+      format-patch: Squelch 'fatal: Not a range." error
+
+Markus Heidelberg (1):
+      Documentation: explain the meaning of "-g" in git-describe output
+
+Sverre Rabbelier (1):
+      fast-export: don't segfault when marks file cannot be opened
+
+
 Version v1.7.0.3; changes since v1.7.0.2:
 -----------------------------------------
 
