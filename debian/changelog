@@ -20,7 +20,7 @@ git (1:1.7.0.4-2~exp0) experimental; urgency=low
   * debian/git-daemon/run: use $(git --exec-path) instead of hard-coding
     the path to the git-daemon binary.
 
- -- Gerrit Pape <pape@smarden.org>  Thu, 01 Apr 2010 21:41:00 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 03 Apr 2010 15:07:19 -0500
 
 git-core (1:1.7.0.4-1) unstable; urgency=low
 
