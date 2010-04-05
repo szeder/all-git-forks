@@ -6,6 +6,3 @@ jk/stash-apply-p
 
 js/unique-tests
   maybe drop?
-
-jk/cache-textconv
-  works, submitted
