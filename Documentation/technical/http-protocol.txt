@@ -29,7 +29,7 @@ supplied $GIT_URL string.
 
 Clients MUST strip a trailing '/', if present, from the user supplied
 $GIT_URL string to prevent empty path tokens ('//') from appearing
-in any URL sent to a server.  Compatible clients must expand
+in any URL sent to a server.  Compatible clients MUST expand
 '$GIT_URL/info/refs' as 'foo/info/refs' and not 'foo//info/refs'.
 
 
@@ -66,7 +66,7 @@ Session State
 -------------
 
 The Git over HTTP protocol (much like HTTP itself) is stateless
-from the perspective of the HTTP server side.  All state must be
+from the perspective of the HTTP server side.  All state MUST be
 retained and managed by the client process.  This permits simple
 round-robin load-balancing on the server side, without needing to
 worry about state mangement.
@@ -158,7 +158,7 @@ references by making a request for the special info/refs file of
 the repository.
 
 Dumb HTTP clients MUST NOT include search/query parameters when
-fetching the info/refs file.  (That is, '?' must not appear in the
+fetching the info/refs file.  (That is, '?' MUST NOT appear in the
 requested URL.)
 
    C: GET $GIT_URL/info/refs HTTP/1.0
@@ -390,7 +390,7 @@ The computation to select the minimal pack proceeds as follows
 
  (c) Start a queue, C_PENDING, ordered by commit time (popping newest
      first).  Add all client refs.  When a commit is popped from
-     the queue its parents should be automatically inserted back.
+     the queue its parents SHOULD be automatically inserted back.
      Commits MUST only enter the queue once.
 
  one compute step:
@@ -431,7 +431,7 @@ The computation to select the minimal pack proceeds as follows
 
      If the client has sent 256 HAVE commits and has not yet
      received one of those back from S_COMMON, or the client has
-     emptied C_PENDING it should include a "done" command to let
+     emptied C_PENDING it SHOULD include a "done" command to let
      the server know it won't proceed:
 
    C: 0009done
@@ -470,7 +470,7 @@ TODO: Document the pack based response
 
      The returned stream is the side-band-64k protocol supported
      by the git-upload-pack service, and the pack is embedded into
-     stream 1.  Progress messages from the server side may appear
+     stream 1.  Progress messages from the server side MAY appear
      in stream 2.
 
      Here a "closed set of objects" is defined to have at least
