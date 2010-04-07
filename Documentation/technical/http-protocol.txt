@@ -69,7 +69,7 @@ The Git over HTTP protocol (much like HTTP itself) is stateless
 from the perspective of the HTTP server side.  All state MUST be
 retained and managed by the client process.  This permits simple
 round-robin load-balancing on the server side, without needing to
-worry about state mangement.
+worry about state management.
 
 Clients MUST NOT require state management on the server side in
 order to function correctly.
