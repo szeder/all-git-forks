@@ -204,7 +204,7 @@ Smart Clients
 
 HTTP clients that support the "smart" protocol (or both the
 "smart" and "dumb" protocols) MUST discover references by making
-a paramterized request for the info/refs file of the repository.
+a parameterized request for the info/refs file of the repository.
 
 The request MUST contain exactly one query parameter,
 'service=$servicename', where $servicename MUST be the service
