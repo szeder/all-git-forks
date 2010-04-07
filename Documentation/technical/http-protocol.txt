@@ -157,10 +157,10 @@ without any search/query parameters.  E.g.
 
    S: 200 OK
    S:
-   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint
-   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master
-   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0
-   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}
+   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint\n
+   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master\n
+   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0\n
+   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}\n
 
 The Content-Type of the returned info/refs entity SHOULD be
 "text/plain; charset=utf-8", but MAY be any content type.
@@ -208,21 +208,22 @@ $GIT_URLs, and thus may pass more than parameter to the server.
    dumb server reply:
    S: 200 OK
    S:
-   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint
-   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master
-   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0
-   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}
+   S: 95dcfa3633004da0049d3d0fa03f80589cbcaf31	refs/heads/maint\n
+   S: d049f6c27a2244e12041955e262a404c7faba355	refs/heads/master\n
+   S: 2cb58b79488a98d2721cea644875a8dd0026b115	refs/tags/v1.0\n
+   S: a3c2e2402b99163d1d59756e5f207ae21cccba4c	refs/tags/v1.0^{}\n
 
    smart server reply:
    S: 200 OK
    S: Content-Type: application/x-git-upload-pack-advertisement
    S: Cache-Control: no-cache
    S:
-   S: ....# service=git-upload-pack
-   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0 multi_ack
-   S: ....d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
-   S: ....2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
-   S: ....a3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}
+   S: 001e# service=git-upload-pack\n
+   S: 004895dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack\n
+   S: 0042d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master\n
+   S: 003c2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0\n
+   S: 003fa3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}\n
+   S: 0000
 
 Dumb Server Response
 ^^^^^^^^^^^^^^^^^^^^
@@ -286,8 +287,8 @@ Clients MUST first perform ref discovery with
    C: POST $GIT_URL/git-upload-pack HTTP/1.0
    C: Content-Type: application/x-git-upload-pack-request
    C:
-   C: ....want 0a53e9ddeaddad63ad106860237bbf53411d11a7
-   C: ....have 441b40d833fdfa93eb2908e52742248faf0ee993
+   C: 0032want 0a53e9ddeaddad63ad106860237bbf53411d11a7\n
+   C: 0032have 441b40d833fdfa93eb2908e52742248faf0ee993\n
    C: 0000
 
    S: 200 OK
@@ -383,7 +384,7 @@ The computation to select the minimal pack proceeds as follows
      emptied C_PENDING it SHOULD include a "done" command to let
      the server know it won't proceed:
 
-   C: 0009done
+   C: 0009done\n
 
   (s) Parse the git-upload-pack request:
 
@@ -447,7 +448,7 @@ Clients MUST first perform ref discovery with
    C: POST $GIT_URL/git-receive-pack HTTP/1.0
    C: Content-Type: application/x-git-receive-pack-request
    C:
-   C: ....0a53e9ddeaddad63ad106860237bbf53411d11a7 441b40d833fdfa93eb2908e52742248faf0ee993 refs/heads/maint\0 report-status
+   C: ....0a53e9ddeaddad63ad106860237bbf53411d11a7 441b40d833fdfa93eb2908e52742248faf0ee993 refs/heads/maint\0report-status
    C: 0000
    C: PACK....
 
