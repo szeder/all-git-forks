@@ -274,16 +274,19 @@ static int unreachable(struct expire_reflog_cb *cb, struct commit *commit, unsig
 			return 0;
 	}
 
-	/* Reachable from the current ref?  Don't prune. */
-	if (commit->object.flags & REACHABLE)
-		return 0;
+	while (1) {
+		/* Reachable from the current ref?  Don't prune. */
+		if (commit->object.flags & REACHABLE)
+			return 0;
 
-	if (cb->mark_list && cb->mark_limit) {
-		cb->mark_limit = 0; /* dig down to the root */
+		/* Did we mark everything?  Then we know we cannot reach it. */
+		if (!cb->mark_list || !cb->mark_limit)
+			return 1;
+
+		/* Dig down to the timestamp of this commit, or down to root. */
+		cb->mark_limit = (cb->mark_limit < commit->date) ? 0 : commit->date;
 		mark_reachable(cb);
 	}
-
-	return !(commit->object.flags & REACHABLE);
 }
 
 static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
