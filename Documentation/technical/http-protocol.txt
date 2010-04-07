@@ -226,11 +226,12 @@ description of the dumb server response.
 
 Smart Server Response
 ^^^^^^^^^^^^^^^^^^^^^
-Smart servers MUST respond with the smart server reply format.
-
 If the server does not recognize the requested service name, or the
 requested service name has been disabled by the server administrator,
 the server MUST respond with the '403 Forbidden' HTTP status code.
+
+Otherwise, smart servers MUST respond with the smart server reply
+format for the requested service name.
 
 Cache-Control headers SHOULD be used to disable caching of the
 returned entity.
