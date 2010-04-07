@@ -48,7 +48,7 @@ Clients SHOULD support Basic authentication as described by RFC 2616.
 Servers SHOULD support Basic authentication by relying upon the
 HTTP server placed in front of the Git server software.
 
-Servers MUST NOT require HTTP cookies for the purposes of
+Servers SHOULD NOT require HTTP cookies for the purposes of
 authentication or access control.
 
 Clients and servers MAY support other common forms of HTTP based
