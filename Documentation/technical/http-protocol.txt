@@ -286,7 +286,7 @@ declarations behind a NUL on the first ref.
   empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
 
   non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
-                    *ref_record
+                     *ref_record
 
   cap-list        =  capability *(SP capability)
   capability      =  1*(LC_ALPHA / DIGIT / "-" / "_")
