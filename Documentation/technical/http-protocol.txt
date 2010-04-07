@@ -222,7 +222,7 @@ The request MUST NOT contain additional query parameters.
    S: Cache-Control: no-cache
    S:
    S: ....# service=git-upload-pack
-   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0 multi_ack
+   S: ....95dcfa3633004da0049d3d0fa03f80589cbcaf31 refs/heads/maint\0multi_ack
    S: ....d049f6c27a2244e12041955e262a404c7faba355 refs/heads/master
    S: ....2cb58b79488a98d2721cea644875a8dd0026b115 refs/tags/v1.0
    S: ....a3c2e2402b99163d1d59756e5f207ae21cccba4c refs/tags/v1.0^{}
@@ -281,14 +281,16 @@ declarations behind a NUL on the first ref.
                      "0000"
   ref_list        =  empty_list / populated_list
 
-  empty_list      =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
+  empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
 
   non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
                     *ref_record
 
-  cap_list        =  *(SP capability) SP
-  ref_record      =  any_ref / peeled_ref
+  cap-list        =  capability *(SP capability)
+  capability      =  1*(LC_ALPHA / DIGIT / "-" / "_")
+  LC_ALPHA        =  %x61-7A
 
+  ref_record      =  any_ref / peeled_ref
   any_ref         =  PKT-LINE(obj-id SP name LF)
   peeled_ref      =  PKT-LINE(obj-id SP name LF)
                      PKT-LINE(obj-id SP name "^{}" LF
