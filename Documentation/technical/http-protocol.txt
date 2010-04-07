@@ -18,14 +18,30 @@ URL Format
 URLs for Git repositories accessed by HTTP use the standard HTTP
 URL syntax documented by RFC 1738, so they are of the form:
 
-  http://<host>:<port>/<path>
+  http://<host>:<port>/<path>?<searchpart>
 
 Within this documentation the placeholder $GIT_URL will stand for
 the http:// repository URL entered by the end-user.
 
-Both the "smart" and "dumb" HTTP protocols used by Git operate
+Servers SHOULD handle all requests to locations matching $GIT_URL, as
+both the "smart" and "dumb" HTTP protocols used by Git operate
 by appending additional path components onto the end of the user
 supplied $GIT_URL string.
+
+An example of a dumb client requesting for a loose object:
+
+  $GIT_URL:     http://example.com:8080/git/repo.git
+  URL request:  http://example.com:8080/git/repo.git/objects/d0/49f6c27a2244e12041955e262a404c7faba355
+
+An example of a smart request to a catch-all gateway:
+
+  $GIT_URL:     http://example.com/daemon.cgi?svc=git&q=
+  URL request:  http://example.com/daemon.cgi?svc=git&q=/info/refs&service=git-receive-pack
+
+An example of a request to a submodule:
+
+  $GIT_URL:     http://example.com/git/repo.git/path/submodule.git
+  URL request:  http://example.com/git/repo.git/path/submodule.git/info/refs
 
 Clients MUST strip a trailing '/', if present, from the user supplied
 $GIT_URL string to prevent empty path tokens ('//') from appearing
