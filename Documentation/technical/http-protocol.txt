@@ -226,12 +226,12 @@ description of the dumb server response.
 
 Smart Server Response
 ^^^^^^^^^^^^^^^^^^^^^
-If the server does not recognize the requested service name, or the
-requested service name has been disabled by the server administrator,
-the server MUST respond with the '403 Forbidden' HTTP status code.
+  If the server does not recognize the requested service name, or the
+  requested service name has been disabled by the server administrator,
+  the server MUST respond with the '403 Forbidden' HTTP status code.
 
-Otherwise, smart servers MUST respond with the smart server reply
-format for the requested service name.
+  Otherwise, smart servers MUST respond with the smart server reply
+  format for the requested service name.
 
 Cache-Control headers SHOULD be used to disable caching of the
 returned entity.
@@ -344,7 +344,7 @@ Capability include-tag
 When packing an object that an annotated tag points at, include the
 tag object too.  Clients can request this if they want to fetch
 tags, but don't know which tags they will need until after they
-receive the branch data.  By enabling include-tag an entire call
+receive the branch data.  By enabling include-tag an extra call
 to upload-pack can be avoided.
 
 Capability thin-pack
