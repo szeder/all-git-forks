@@ -1,4 +1,5 @@
 #include "cache.h"
+#include <pthread.h>
 
 #if defined(hpux) || defined(__hpux) || defined(_hpux)
 #  include <sys/pstat.h>
@@ -42,4 +43,28 @@ int online_cpus(void)
 #endif
 
 	return 1;
+}
+
+int init_recursive_mutex(pthread_mutex_t *m)
+{
+#ifdef _WIN32
+	/*
+	 * The mutexes in the WIN32 pthreads emulation layer are
+	 * recursive, so we don't have to do anything extra here.
+	 */
+	return pthread_mutex_init(m, NULL);
+#else
+	pthread_mutexattr_t a;
+	int ret;
+
+	if (pthread_mutexattr_init(&a))
+		die("pthread_mutexattr_init failed: %s", strerror(errno));
+
+	if (pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE))
+		die("pthread_mutexattr_settype failed: %s", strerror(errno));
+
+	ret = pthread_mutex_init(m, &a);
+	pthread_mutexattr_destroy(&a);
+	return ret;
+#endif
 }
