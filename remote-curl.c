@@ -9,6 +9,10 @@
 #include "sideband.h"
 
 static struct remote *remote;
+
+/*
+ * This always has a trailing slash, as we make it sure when assigning to it.
+ */
 static const char *url;
 static struct walker *walker;
 
@@ -108,7 +112,7 @@ static struct discovery* discover_refs(const char *service)
 		return last;
 	free_discovery(last);
 
-	strbuf_addf(&buffer, "%s/info/refs", url);
+	strbuf_addf(&buffer, "%sinfo/refs", url);
 	if (!prefixcmp(url, "http://") || !prefixcmp(url, "https://")) {
 		is_http = 1;
 		if (!strchr(url, '?'))
@@ -128,7 +132,7 @@ static struct discovery* discover_refs(const char *service)
 		strbuf_reset(&buffer);
 
 		proto_git_candidate = 0;
-		strbuf_addf(&buffer, "%s/info/refs", url);
+		strbuf_addf(&buffer, "%sinfo/refs", url);
 		refs_url = strbuf_detach(&buffer, NULL);
 
 		http_ret = http_get_strbuf(refs_url, &buffer, HTTP_NO_CACHE);
@@ -518,7 +522,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	rpc->out = client.out;
 	strbuf_init(&rpc->result, 0);
 
-	strbuf_addf(&buf, "%s/%s", url, svc);
+	strbuf_addf(&buf, "%s%s", url, svc);
 	rpc->service_url = strbuf_detach(&buf, NULL);
 
 	strbuf_addf(&buf, "Content-Type: application/x-%s-request", svc);
@@ -805,10 +809,12 @@ int main(int argc, const char **argv)
 	remote = remote_get(argv[1]);
 
 	if (argc > 2) {
-		url = argv[2];
+		end_url_with_slash(&buf, argv[2]);
 	} else {
-		url = remote->url[0];
+		end_url_with_slash(&buf, remote->url[0]);
 	}
+
+	url = strbuf_detach(&buf, NULL);
 
 	do {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF)
