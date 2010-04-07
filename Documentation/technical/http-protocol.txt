@@ -115,8 +115,10 @@ Except where noted, all standard HTTP behavior SHOULD be assumed
 by both client and server.  This includes (but is not necessarily
 limited to):
 
-If there is no repository at $GIT_URL, the server MUST respond with
-the '404 Not Found' HTTP status code.
+If there is no repository at $GIT_URL, the server MUST NOT respond with
+'200 OK' and a valid info/refs response.  A server SHOULD respond with
+'404 Not Found', '410 Gone', or any other suitable HTTP status code
+which does not imply the resource exists as requested.
 
 If there is a repository at $GIT_URL, but access is not currently
 permitted, the server MUST respond with the '403 Forbidden' HTTP
