@@ -190,14 +190,9 @@ the default ref named 'HEAD'.
   info_refs   =  *( ref_record )
   ref_record  =  any_ref | peeled_ref
 
-  any_ref     =  id HT name LF
-  peeled_ref  =  id HT name LF
-                 id HT name "^{}" LF
-  id          =  40*HEX
-
-  HEX         =  "0".."9" | "a".."f"
-  LF          =  <US-ASCII LF, linefeed (10)>
-  HT          =  <US-ASCII HT, horizontal-tab (9)>
+  any_ref     =  obj-id HTAB refname LF
+  peeled_ref  =  obj-id HTAB refname LF
+                 obj-id HTAB refname "^{}" LF
 
 Smart Clients
 ~~~~~~~~~~~~~
@@ -286,24 +281,17 @@ declarations behind a NUL on the first ref.
                      "0000"
    ref_list       =  empty_list | populated_list
 
-   empty_list     =  PKT-LINE(id SP "capabilities^{}" NUL cap_list LF)
+   empty_list     =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
 
-   non_empty_list =  PKT-LINE(id SP name NUL cap_list LF)
+   non_empty_list =  PKT-LINE(obj-id SP name NUL cap_list LF)
                      *ref_record
 
    cap_list       =  *(SP capability) SP
    ref_record     =  any_ref | peeled_ref
 
-   any_ref        =  PKT-LINE(id SP name LF)
-   peeled_ref     =  PKT-LINE(id SP name LF)
-                     PKT-LINE(id SP name "^{}" LF
-   id             =  40*HEX
-
-   HEX            =  "0".."9" | "a".."f"
-   NL             =  <US-ASCII NUL, null (0)>
-   LF             =  <US-ASCII LF,  linefeed (10)>
-   SP             =  <US-ASCII SP,  horizontal-tab (9)>
-
+   any_ref        =  PKT-LINE(obj-id SP name LF)
+   peeled_ref     =  PKT-LINE(obj-id SP name LF)
+                     PKT-LINE(obj-id SP name "^{}" LF
 
 Smart Service git-upload-pack
 ------------------------------
@@ -350,8 +338,8 @@ appear in the response obtained through ref discovery.
    have_list         =  *PKT-LINE("have" SP id LF)
 
    command           =  create | delete | update
-   create            =  40*"0" SP new_id SP name
-   delete            =  old_id SP 40*"0" SP name
+   create            =  zero-id SP new_id SP name
+   delete            =  old_id SP zero-id SP name
    update            =  old_id SP new_id SP name
 
 TODO: Document this further.
@@ -527,8 +515,8 @@ the id obtained through ref discovery as old_id.
   cap_list        =  *(SP capability) SP
 
   command         =  create | delete | update
-  create          =  40*"0" SP new_id SP name
-  delete          =  old_id SP 40*"0" SP name
+  create          =  zero-id SP new_id SP name
+  delete          =  old_id SP zero-id SP name
   update          =  old_id SP new_id SP name
 
 TODO: Document this further.
