@@ -253,7 +253,7 @@ declarations behind a NUL on the first ref.
   smart_reply     =  PKT-LINE("# service=$servicename" LF)
                      ref_list
                      "0000"
-  ref_list        =  empty_list / populated_list
+  ref_list        =  empty_list / non_empty_list
 
   empty_list      =  PKT-LINE(zero-id SP "capabilities^{}" NUL cap-list LF)
 
