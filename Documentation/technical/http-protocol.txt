@@ -188,7 +188,7 @@ according to the C locale ordering.  The file SHOULD NOT include
 the default ref named 'HEAD'.
 
   info_refs   =  *( ref_record )
-  ref_record  =  any_ref | peeled_ref
+  ref_record  =  any_ref / peeled_ref
 
   any_ref     =  obj-id HTAB refname LF
   peeled_ref  =  obj-id HTAB refname LF
@@ -279,7 +279,7 @@ declarations behind a NUL on the first ref.
    smart_reply    =  PKT-LINE("# service=$servicename" LF)
                      ref_list
                      "0000"
-   ref_list       =  empty_list | populated_list
+   ref_list       =  empty_list / populated_list
 
    empty_list     =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
 
@@ -287,7 +287,7 @@ declarations behind a NUL on the first ref.
                      *ref_record
 
    cap_list       =  *(SP capability) SP
-   ref_record     =  any_ref | peeled_ref
+   ref_record     =  any_ref / peeled_ref
 
    any_ref        =  PKT-LINE(obj-id SP name LF)
    peeled_ref     =  PKT-LINE(obj-id SP name LF)
@@ -327,7 +327,7 @@ appear in the response obtained through ref discovery.
    compute_request   =  want_list
                         have_list
                         request_end
-   request_end       =  "0000" | "done"
+   request_end       =  "0000" / "done"
 
    want_list         =  PKT-LINE(want NUL cap_list LF)
                         *(want_pkt)
@@ -337,7 +337,7 @@ appear in the response obtained through ref discovery.
 
    have_list         =  *PKT-LINE("have" SP id LF)
 
-   command           =  create | delete | update
+   command           =  create / delete / update
    create            =  zero-id SP new_id SP name
    delete            =  old_id SP zero-id SP name
    update            =  old_id SP new_id SP name
@@ -514,7 +514,7 @@ the id obtained through ref discovery as old_id.
   command_pkt     =  PKT-LINE(command LF)
   cap_list        =  *(SP capability) SP
 
-  command         =  create | delete | update
+  command         =  create / delete / update
   create          =  zero-id SP new_id SP name
   delete          =  old_id SP zero-id SP name
   update          =  old_id SP new_id SP name
