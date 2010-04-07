@@ -276,22 +276,22 @@ the C locale ordering.  The stream SHOULD include the default ref
 named 'HEAD' as the first ref.  The stream MUST include capability
 declarations behind a NUL on the first ref.
 
-  smart_reply    =  PKT-LINE("# service=$servicename" LF)
-                    ref_list
-                    "0000"
-  ref_list       =  empty_list / populated_list
+  smart_reply     =  PKT-LINE("# service=$servicename" LF)
+                     ref_list
+                     "0000"
+  ref_list        =  empty_list / populated_list
 
-  empty_list     =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
+  empty_list      =  PKT-LINE(obj-id SP "capabilities^{}" NUL cap_list LF)
 
-  non_empty_list =  PKT-LINE(obj-id SP name NUL cap_list LF)
+  non_empty_list  =  PKT-LINE(obj-id SP name NUL cap_list LF)
                     *ref_record
 
-  cap_list       =  *(SP capability) SP
-  ref_record     =  any_ref / peeled_ref
+  cap_list        =  *(SP capability) SP
+  ref_record      =  any_ref / peeled_ref
 
-  any_ref        =  PKT-LINE(obj-id SP name LF)
-  peeled_ref     =  PKT-LINE(obj-id SP name LF)
-                    PKT-LINE(obj-id SP name "^{}" LF
+  any_ref         =  PKT-LINE(obj-id SP name LF)
+  peeled_ref      =  PKT-LINE(obj-id SP name LF)
+                     PKT-LINE(obj-id SP name "^{}" LF
 
 Smart Service git-upload-pack
 ------------------------------
