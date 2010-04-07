@@ -147,9 +147,8 @@ HTTP clients that only support the "dumb" protocol MUST discover
 references by making a request for the special info/refs file of
 the repository.
 
-Dumb HTTP clients MUST NOT include search/query parameters when
-fetching the info/refs file.  (That is, '?' MUST NOT appear in the
-requested URL.)
+Dumb HTTP clients MUST make a GET request to $GIT_URL/info/refs,
+without any search/query parameters.
 
    C: GET $GIT_URL/info/refs HTTP/1.0
 
