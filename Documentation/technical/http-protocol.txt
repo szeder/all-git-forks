@@ -287,7 +287,7 @@ declarations behind a NUL on the first ref.
 
 Smart Service git-upload-pack
 ------------------------------
-This service reads from the remote repository.
+This service reads from the repository pointed to by $GIT_URL.
 
 Clients MUST first perform ref discovery with
 '$GIT_URL/info/refs?service=git-upload-pack'.
@@ -470,7 +470,7 @@ TODO: Document parsing response
 
 Smart Service git-receive-pack
 ------------------------------
-This service modifies the remote repository.
+This service reads from the repository pointed to by $GIT_URL.
 
 Clients MUST first perform ref discovery with
 '$GIT_URL/info/refs?service=git-receive-pack'.
