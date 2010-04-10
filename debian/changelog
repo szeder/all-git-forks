@@ -14,8 +14,10 @@ git (1:1.7.0.4-2) unstable; urgency=low
   * debian/rules: target binary-indep: add missing dependency to
     git-core.deb-DEBIAN.
   * debian/implicit: no longer create DEBIAN/md5sums.
+  * debian/rules: revert the /usr/lib/git-core -> /usr/lib/git rename
+    (keeping upstream's default).
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 10 Apr 2010 23:15:49 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 10 Apr 2010 23:16:54 +0000
 
 git (1:1.7.0.4-2~exp0) experimental; urgency=low
 
