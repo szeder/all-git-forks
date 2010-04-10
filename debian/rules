@@ -220,7 +220,6 @@ install-indep: build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)'-core
 	install -d -m0755 '$(GIT)'-core/usr/share/doc
 	ln -s git '$(GIT)'-core/usr/share/doc/git-core
-	install -d -m0755 '$(GIT)'-core/DEBIAN
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
@@ -232,7 +231,7 @@ binary-arch: install-arch git.deb
 	dpkg -b '$(GIT)' ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
 	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb \
-	  git-all.deb
+	  git-all.deb git-core.deb-DEBIAN
 	rm -f debian/substvars
 	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -all \
 	 -core; do \
