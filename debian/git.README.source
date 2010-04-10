@@ -76,4 +76,9 @@ Again, if you think the changes should be incorporated into the standard
 Debian package, create the patch[es] from the debian-sid branch through
 'git format-patch', send them to the Debian Bug Tracking System.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 13 Oct 2009 00:07:39 +0000
+There's a mailing list to coordinate work on the git-core packages, if
+you're interested in helping please subscribe to the
+<debian-package-git> mailing list by sending an email to
+<debian-package-git-subscribe@list.smarden.org>.
+
+ -- Gerrit Pape <pape@smarden.org>  Sat, 10 Apr 2010 12:28:52 +0000
