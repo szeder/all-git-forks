@@ -1,4 +1,4 @@
-git (1:1.7.0.4-2~exp1) experimental; urgency=low
+git (1:1.7.0.4-2) unstable; urgency=low
 
   * debian/rules: package git: no longer install /usr/share/doc/git-core
     -> git symlink; git-core: no longer install /usr/lib/git-core -> git
@@ -7,8 +7,10 @@ git (1:1.7.0.4-2~exp1) experimental; urgency=low
     1:1.7.0.4-1).
   * debian/rules: make /usr/share/gitweb/index.cgi ->
     ../../lib/cgi-bin/gitweb.cgi symlink relative (lintian).
+  * debian/control: package git-core: minor update to the long
+    description.
 
- -- Gerrit Pape <pape@smarden.org>  Sat, 10 Apr 2010 12:05:17 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sat, 10 Apr 2010 12:08:10 +0000
 
 git (1:1.7.0.4-2~exp0) experimental; urgency=low
 

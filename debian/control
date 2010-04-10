@@ -44,10 +44,10 @@ Description: fast, scalable, distributed revision control system (obsolete)
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package contains no files.  The 'git-core' package has been
+ This is a transitional dummy package.  The 'git-core' package has been
  renamed to 'git', which has been installed automatically.  This
  git-core package is now obsolte, and can safely be removed from the
- system..
+ system.
 
 Package: git-doc
 Section: doc
