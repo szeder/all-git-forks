@@ -46,7 +46,7 @@ Description: fast, scalable, distributed revision control system (obsolete)
  .
  This is a transitional dummy package.  The 'git-core' package has been
  renamed to 'git', which has been installed automatically.  This
- git-core package is now obsolte, and can safely be removed from the
+ git-core package is now obsolete, and can safely be removed from the
  system.
 
 Package: git-doc
