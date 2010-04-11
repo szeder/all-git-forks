@@ -1,3 +1,385 @@
+Version v1.7.1-rc1; changes since v1.7.0.4:
+-------------------------------------------
+
+Aaron Crane (1):
+      cvsimport: new -R option: generate .git/cvs-revisions mapping
+
+Anders Kaseorg (1):
+      everyday: fsck and gc are not everyday operations
+
+Ben Walton (2):
+      Make templates honour SHELL_PATH and PERL_PATH
+      Modernize git calling conventions in hook templates
+
+Benjamin C Meyer (1):
+      Fix a spelling mistake in a git-p4 console message
+
+Bert Wesarg (4):
+      make union merge an xdl merge favor
+      refactor merge flags into xmparam_t
+      merge-file: add option to specify the marker size
+      merge-file: add option to select union merge favor
+
+Brandon Casey (11):
+      t/t1304: avoid -d option to setfacl
+      t/t1304: set the Default ACL base entries
+      t/t1304: use 'test -r' to test readability rather than looking at mode bits
+      t/t1304: set the ACL effective rights mask
+      t/t1304: make a second colon optional in the mask ACL check
+      daemon.c: avoid accessing ss_family member of struct sockaddr_storage
+      notes.c: remove inappropriate call to return
+      t5505: remove unnecessary subshell invocations
+      t5505: add missing &&
+      t/t5505-remote.sh: escape * to prevent interpretation by shell as glob
+      notes.h: declare bit field as unsigned to silence compiler complaints
+
+Brian Gernhardt (1):
+      Use test_expect_success for test setups
+
+Chris Webb (1):
+      imap-send: suppress warning about cleartext password with CRAM-MD5
+
+Christian Couder (8):
+      reset: add option "--keep" to "git reset"
+      reset: add test cases for "--keep" option
+      Documentation: reset: describe new "--keep" option
+      reset: disallow "reset --keep" outside a work tree
+      reset: disallow using --keep when there are unmerged entries
+      cherry-pick: add tests for new --ff option
+      Documentation: describe new cherry-pick --ff option
+      rebase -i: use new --ff cherry-pick option
+
+Dave Olszewski (1):
+      rebase--interactive: don't require what's rebased to be a branch
+
+David Aguilar (1):
+      Makefile: Remove usage of deprecated Python "has_key" method
+
+Eric Blake (1):
+      Makefile: update defaults for modern Cygwin
+
+Eric Raymond (1):
+      Integrate version 3 ciabot scripts into contrib/.
+
+Erik Faye-Lund (6):
+      hash-object: support --stdin-paths with --no-filters
+      git-svn: support fetch with autocrlf on
+      Revert "git-svn: always initialize with core.autocrlf=false"
+      rev-list: fix --pretty=oneline with empty message
+      cherry: support --abbrev option
+      ls: remove redundant logic
+
+Frank Li (3):
+      fallback SSH_ASKPASS when GIT_ASKPASS not set
+      git-svn: Support retrieving passwords with GIT_ASKPASS
+      git-core: Support retrieving passwords with GIT_ASKPASS
+
+Gustaf Hendeby (1):
+      Improve error messages from 'git stash show'
+
+Hitoshi Mitake (1):
+      imap-send: support CRAM-MD5 authentication
+
+Ian Ward Comfort (1):
+      RPM spec: include bash completion support
+
+Ilari Liusvaara (1):
+      Allow '+', '-' and '.' in remote helper names
+
+Jakub Narebski (2):
+      gitweb: esc_html (short) error message in die_error
+      gitweb: Protect escaping functions against calling on undef
+
+Jari Aalto (3):
+      git-send-email.perl: improve error message in send_message()
+      git-send-email.perl: add option --smtp-debug
+      git-send-email.perl - try to give real name of the calling host to HELO/EHLO
+
+Jeff King (5):
+      submodule summary: do not shift a non-existent positional variable
+      fix const-correctness of write_sha1_file
+      fix textconv leak in emit_rewrite_diff
+      fix typos and grammar in 1.7.1 draft release notes
+      docs: clarify "branch -l"
+
+Jens Lehmann (8):
+      git diff --submodule: Show detailed dirty status of submodules
+      git status: Show detailed dirty status of submodules in long format
+      git submodule summary: Handle HEAD as argument when on an unborn branch
+      Refactor dirty submodule detection in diff-lib.c
+      git status: Fix false positive "new commits" output for dirty submodules
+      git status: ignoring untracked files must apply to submodules too
+      Let check_preimage() use memset() to initialize "struct checkout"
+      Teach diff --submodule and status to handle .git files in submodules
+
+Johan Herland (32):
+      Minor cosmetic fixes to notes.c
+      Notes API: get_commit_notes() -> format_note() + remove the commit restriction
+      Add tests for checking correct handling of $GIT_NOTES_REF and core.notesRef
+      Notes API: init_notes(): Initialize the notes tree from the given notes ref
+      Notes API: add_note(): Add note objects to the internal notes tree structure
+      Notes API: remove_note(): Remove note objects from the notes tree structure
+      Notes API: get_note(): Return the note annotating the given object
+      Notes API: for_each_note(): Traverse the entire notes tree with a callback
+      Notes API: write_notes_tree(): Store the notes tree in the database
+      Notes API: Allow multiple concurrent notes trees with new struct notes_tree
+      Refactor notes concatenation into a flexible interface for combining notes
+      Builtin-ify git-notes
+      t3301: Verify successful annotation of non-commits
+      t3305: Verify that adding many notes with git-notes triggers increased fanout
+      Teach notes code to properly preserve non-notes in the notes tree
+      Teach builtin-notes to remove empty notes
+      builtin-notes: Add "remove" subcommand for removing existing notes
+      t3305: Verify that removing notes triggers automatic fanout consolidation
+      Notes API: prune_notes(): Prune notes that belong to non-existing objects
+      builtin-notes: Add "prune" subcommand for removing notes for missing objects
+      Documentation: Generalize git-notes docs to 'objects' instead of 'commits'
+      builtin-notes: Add "list" subcommand for listing note objects
+      builtin-notes: Add --message/--file aliases for -m/-F options
+      builtin-notes: Add "add" subcommand for adding notes to objects
+      builtin-notes: Add "append" subcommand for appending to note objects
+      builtin-notes: Deprecate the -m/-F options for "git notes edit"
+      builtin-notes: Refactor handling of -F option to allow combining -m and -F
+      builtin-notes: Add -c/-C options for reusing notes
+      builtin-notes: Misc. refactoring of argc and exit value handling
+      builtin-notes: Add "copy" subcommand for copying notes between objects
+      submodule summary: Don't barf when invoked in an empty repo
+      builtin-notes: Minor (mostly parse_options-related) fixes
+
+Johannes Sixt (2):
+      Print RUNTIME_PREFIX warning only when GIT_TRACE is set
+      Windows: redirect f[re]open("/dev/null") to f[re]open("nul")
+
+Jonathan Nieder (34):
+      Makefile: add missing header file dependencies
+      Makefile: make sure test helpers are rebuilt when headers change
+      Makefile: remove wt-status.h from LIB_H
+      Makefile: clean up http-walker.o dependency rules
+      Makefile: drop dependency on $(wildcard */*.h)
+      Makefile: transport.o depends on branch.h now
+      Makefile: rearrange dependency rules
+      Makefile: disable default implicit rules
+      Makefile: list generated object files in OBJECTS
+      Makefile: lazily compute header dependencies
+      Makefile: list standalone program object files in PROGRAM_OBJS
+      Teach Makefile to check header dependencies
+      Do not install shell libraries executable
+      Makefile: tuck away generated makefile fragments in .depend
+      Makefile: always remove .depend directories on 'make clean'
+      Makefile: clarify definition of TEST_OBJS
+      Makefile: Fix occasional GIT-CFLAGS breakage
+      revert: fix tiny memory leak in cherry-pick --ff
+      tests: document format of conflicts from checkout -m
+      tests: document cherry-pick behavior in face of conflicts
+      xdl_merge(): add optional ancestor label to diff3-style output
+      xdl_merge(): move file1 and file2 labels to xmparam structure
+      merge-file --diff3: add a label for ancestor
+      ll_merge(): add ancestor label parameter for diff3-style output
+      checkout --conflict=diff3: add a label for ancestor
+      merge_file(): add comment explaining behavior wrt conflict style
+      merge_trees(): add ancestor label parameter for diff3-style output
+      checkout -m --conflict=diff3: add a label for ancestor
+      compat: add mempcpy()
+      revert: clarify label on conflict hunks
+      cherry-pick, revert: add a label for ancestor
+      merge-recursive: add a label for ancestor
+      Makefile: future-proof Cygwin version check
+      Teach mailinfo %< as an alternative scissors mark
+
+Junio C Hamano (28):
+      builtin-for-each-ref.c: comment fixes
+      builtin-for-each-ref.c: check if we need to peel onion while parsing the format
+      for-each-ref --format='%(symref) %(symref:short)'
+      for-each-ref --format='%(flag)'
+      Start 1.7.1 cycle
+      Resurrect "git grep --no-index"
+      Update draft release notes to 1.7.1
+      notes: fix malformed tree entry
+      wrap-for-bin: do not export an empty GIT_TEMPLATE_DIR
+      submodule summary: do not fail before the first commit
+      parse-options: add parse_options_concat() to concat options
+      builtin/merge: make checkout_fast_forward() non static
+      revert: add --ff option to allow fast forward when cherry-picking
+      Update draft release notes to 1.7.1
+      Documentation: improve description of "git reset --keep"
+      t4013: add tests for log -p -m --first-parent
+      revision: introduce setup_revision_opt
+      show -c: show patch text
+      show --first-parent/-m: do not default to --cc
+      Makefile: update check-docs target
+      t5516: Use test_cmp when appropriate
+      Update draft release notes to 1.7.1
+      diff --check: honor conflict-marker-size attribute
+      Update draft release notes to 1.7.1
+      Revert "Link against libiconv on IRIX"
+      Git 1.7.1-rc0
+      diff.c: work around pointer constness warnings
+      Git 1.7.1-rc1
+
+Larry D'Anna (4):
+      git-push: fix an advice message so it goes to stderr
+      git-push: send "To <remoteurl>" messages to the standard output in --porcelain mode
+      git-push: make git push --porcelain print "Done"
+      git-push: add tests for git push --porcelain
+
+Linus Torvalds (1):
+      Move 'builtin-*' into a 'builtin/' subdirectory
+
+Marc Branchaud (1):
+      Teach rebase the --no-ff option.
+
+Mark Lodato (4):
+      Add an optional argument for --color options
+      Add GIT_COLOR_BOLD_* and GIT_COLOR_BG_*
+      grep: Colorize filename, line number, and separator
+      grep: Colorize selected, context, and function lines
+
+Mark Rada (6):
+      Gitweb: add ignore and clean rules for minified files
+      Gitweb: add support for minifying gitweb.css
+      Gitweb: add autoconfigure support for minifiers
+      instaweb: add minification awareness
+      gitweb: add documentation to INSTALL regarding gitweb.js
+      gitweb: update INSTALL to use shorter make target
+
+Markus Heidelberg (2):
+      builtin/commit: fix duplicated sentence in a comment
+      builtin/commit: remove unnecessary variable definition
+
+Michael J Gruber (9):
+      git-svn: req_svn when needed
+      t9119-git-svn-info.sh: test with svn 1.6.* as well
+      Documentation: fix a few typos in git-notes.txt
+      git-svn: make git svn --version work again
+      .mailmap: Entries for Alex Bennée, Deskin Miller, Vitaly "_Vi" Shukela
+      rev-list: use default abbrev length when abbrev-commit is in effect
+      send-email: lazily assign editor variable
+      t3301-notes: Test the creation of reflog entries
+      refs.c: Write reflogs for notes just like for branch heads
+
+Michael Lukashov (4):
+      connect.c: move duplicated code to a new function 'get_host_and_port'
+      refactor duplicated code in builtin-send-pack.c and transport.c
+      refactor duplicated fill_mm() in checkout and merge-recursive
+      refactor duplicated encode_header in pack-objects and fast-import
+
+Michele Ballabio (1):
+      shortlog: warn the user when there is no input
+
+Miklos Vajna (1):
+      request-pull: avoid mentioning that the start point is a single commit
+
+Nguyễn Thái Ngọc Duy (5):
+      make_absolute_path(): Do not append redundant slash
+      init-db, rev-parse --git-dir: do not append redundant slash
+      Move offset_1st_component() to path.c
+      Support working directory located at root
+      Add test for using Git at root of file system
+
+Nicolas Pitre (1):
+      move encode_in_pack_object_header() to a better place
+
+Petr Baudis (1):
+      git log -p -m: document -m and honor --first-parent
+
+R. Tyler Ballance (1):
+      Correct references to /usr/bin/python which does not exist on FreeBSD
+
+Ramkumar Ramachandra (1):
+      imap-send: Remove limitation on message body
+
+René Scharfe (2):
+      setenv(GIT_DIR) clean-up
+      grep: enable threading for context line printing
+
+SZEDER Gábor (4):
+      bash: improve aliased command recognition
+      bash: support user-supplied completion scripts for user's git commands
+      bash: support user-supplied completion scripts for aliases
+      bash: completion for gitk aliases
+
+Shawn O. Pearce (1):
+      http-backend: Don't infinite loop during die()
+
+Stefan-W. Hahn (4):
+      documentation: 'git-mailsplit --keep-cr' is not hidden anymore
+      git-am: Add command line parameter `--keep-cr` passing it to git-mailsplit
+      git-am: Add am.keepcr and --no-keep-cr to override it
+      git-am: Add tests for `--keep-cr`, `--no-keep-cr` and `am.keepcr`
+
+Stephen Boyd (11):
+      format-patch: use a string_list for headers
+      format-patch: add --no-cc, --no-to, and --no-add-headers
+      send-email: add --no-cc, --no-to, and --no-bcc
+      notes: rework subcommands and parse options
+      fmt-merge-msg: be quiet if nothing to merge
+      t6200: modernize with test_tick
+      t6200: test fmt-merge-msg more
+      fmt-merge-msg: use pretty.c routines
+      string-list: add unsorted_string_list_lookup()
+      fmt-merge-msg: remove custom string_list implementation
+      fmt-merge-msg: hide summary option
+
+Steven Drake (5):
+      Add `init.templatedir` configuration variable.
+      Add a "TEMPLATE DIRECTORY" section to git-init[1].
+      init: having keywords without value is not a global error.
+      t/t0001-init.sh: add test for 'init with init.templatedir set'
+      Add 'git format-patch --to=' option and 'format.to' configuration variable.
+
+Tay Ray Chuan (21):
+      Documentation/git-clone: mention progress in -v
+      Documentation/git-pull: put verbosity options before merge/fetch ones
+      Documentation/git-push: put --quiet before --verbose
+      fetch: refactor verbosity option handling into transport.[ch]
+      push: support multiple levels of verbosity
+      clone: support multiple levels of verbosity
+      transport->progress: use flag authoritatively
+      push: learn --progress
+      fetch and pull: learn --progress
+      transport: update flags to be in running order
+      t5541-http-push: check that ref is unchanged for non-ff test
+      t554[01]-http-push: refactor, add non-ff tests
+      http-push: remove "|| 1" to enable verbose check
+      http-walker: cleanup more thoroughly
+      http: init and cleanup separately from http-walker
+      remote-curl: use http_fetch_ref() instead of walker wrapper
+      remote-curl: init walker only when needed
+      pack-protocol.txt: fix spelling
+      pack-protocol.txt: fix pkt-line lengths
+      branch: say "Reset to" in reflog entries for 'git branch -f' operations
+      fetch/push: fix usage strings
+
+Thomas Rast (14):
+      test-lib: unset GIT_NOTES_REF to stop it from influencing tests
+      Support showing notes from more than one notes tree
+      Documentation: document post-rewrite hook
+      commit --amend: invoke post-rewrite hook
+      rebase: invoke post-rewrite hook
+      rebase -i: invoke post-rewrite hook
+      notes: implement 'git notes copy --stdin'
+      notes: implement helpers needed for note copying during rewrite
+      rebase: support automatic notes copying
+      commit --amend: copy notes to the new commit
+      notes: add shorthand --ref to override GIT_NOTES_REF
+      notes: track whether notes_trees were changed at all
+      git-notes(1): add a section about the meaning of history
+      rebase -i: make post-rewrite work for 'edit'
+
+Tuomas Suutari (5):
+      t9151: Fix a few commits in the SVN dump
+      t9151: Add two new svn:mergeinfo test cases
+      git-svn: Fix discarding of extra parents from svn:mergeinfo
+      git-svn: Fix merge detecting with rewrite-root
+      t9150,t9151: Add rewrite-root option to init
+
+YONETANI Tomokazu (1):
+      Fix _XOPEN_SOURCE problem on DragonFly
+
+josh robb (1):
+      git svn: delay importing SVN::Base until it is needed
+
+
 Version v1.7.0.4; changes since v1.7.0.3:
 -----------------------------------------
 
@@ -1084,7 +1466,7 @@ Shawn O. Pearce (1):
 Tay Ray Chuan (1):
       retry request without query when info/refs?query fails
 
-Vitaly _Vi Shukela (1):
+Vitaly "_Vi" Shukela (1):
       git-gui: Add hotkeys for "Unstage from commit" and "Revert changes"
 
 Wesley J. Landaker (1):
@@ -5572,7 +5954,7 @@ Thomas Rast (23):
 Tor Arne Vestbø (1):
       git-notes: fix printing of multi-line notes
 
-Vitaly \"_Vi\" Shukela (3):
+Vitaly "_Vi" Shukela (3):
       git-svn: add --ignore-paths option for fetching
       git-svn: documented --ignore-paths
       git-svn: Add test for --ignore-paths parameter
@@ -6003,10 +6385,8 @@ David Symonds (1):
 Davide Libenzi (1):
       xdiff: give up scanning similar lines early
 
-Deskin Miler (1):
+Deskin Miller (5):
       git-svn: testcase for partial rebuild
-
-Deskin Miller (4):
       git-svn: do a partial rebuild if rev_map is out-of-date
       git-svn: proper detection of bare repositories
       git-svn: proper detection of bare repositories
@@ -12900,7 +13280,7 @@ Wincent Colaiuta (2):
 Version v1.5.3.5; changes since v1.5.3.4:
 -----------------------------------------
 
-Alex Bennee (1):
+Alex Bennée (1):
       Ensure we add directories in the correct order
 
 Alex Riesen (1):

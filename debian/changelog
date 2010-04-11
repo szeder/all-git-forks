@@ -1,3 +1,10 @@
+git (1:1.7.1~rc1-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 11 Apr 2010 15:28:28 +0000
+
 git (1:1.7.0.4-2) unstable; urgency=low
 
   * debian/rules: package git: no longer install /usr/share/doc/git-core
