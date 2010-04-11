@@ -1,8 +1,9 @@
 git (1:1.7.1~rc1-1.1) experimental; urgency=low
 
   * debian/control: typo (thx Jonathan Nieder).
+  * debian/git-daemon-run.postinst: remove fixup for #522348.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 11 Apr 2010 23:19:06 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 11 Apr 2010 23:22:46 +0000
 
 git (1:1.7.1~rc1-1) experimental; urgency=low
 
