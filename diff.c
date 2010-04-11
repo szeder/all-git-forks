@@ -14,6 +14,7 @@
 #include "userdiff.h"
 #include "sigchain.h"
 #include "submodule.h"
+#include "ll-merge.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -550,6 +551,10 @@ static void emit_rewrite_diff(const char *name_a,
 		emit_rewrite_lines(&ecbdata, '-', data_one, size_one);
 	if (lc_b)
 		emit_rewrite_lines(&ecbdata, '+', data_two, size_two);
+	if (textconv_one)
+		free((char *)data_one);
+	if (textconv_two)
+		free((char *)data_two);
 }
 
 struct diff_words_buffer {
@@ -1370,37 +1375,32 @@ static void free_diffstat_info(struct diffstat_t *diffstat)
 struct checkdiff_t {
 	const char *filename;
 	int lineno;
+	int conflict_marker_size;
 	struct diff_options *o;
 	unsigned ws_rule;
 	unsigned status;
 };
 
-static int is_conflict_marker(const char *line, unsigned long len)
+static int is_conflict_marker(const char *line, int marker_size, unsigned long len)
 {
 	char firstchar;
 	int cnt;
 
-	if (len < 8)
+	if (len < marker_size + 1)
 		return 0;
 	firstchar = line[0];
 	switch (firstchar) {
-	case '=': case '>': case '<':
+	case '=': case '>': case '<': case '|':
 		break;
 	default:
 		return 0;
 	}
-	for (cnt = 1; cnt < 7; cnt++)
+	for (cnt = 1; cnt < marker_size; cnt++)
 		if (line[cnt] != firstchar)
 			return 0;
-	/* line[0] thru line[6] are same as firstchar */
-	if (firstchar == '=') {
-		/* divider between ours and theirs? */
-		if (len != 8 || line[7] != '\n')
-			return 0;
-	} else if (len < 8 || !isspace(line[7])) {
-		/* not divider before ours nor after theirs */
+	/* line[1] thru line[marker_size-1] are same as firstchar */
+	if (len < marker_size + 1 || !isspace(line[marker_size]))
 		return 0;
-	}
 	return 1;
 }
 
@@ -1408,6 +1408,7 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 {
 	struct checkdiff_t *data = priv;
 	int color_diff = DIFF_OPT_TST(data->o, COLOR_DIFF);
+	int marker_size = data->conflict_marker_size;
 	const char *ws = diff_get_color(color_diff, DIFF_WHITESPACE);
 	const char *reset = diff_get_color(color_diff, DIFF_RESET);
 	const char *set = diff_get_color(color_diff, DIFF_FILE_NEW);
@@ -1416,7 +1417,7 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 	if (line[0] == '+') {
 		unsigned bad;
 		data->lineno++;
-		if (is_conflict_marker(line + 1, len - 1)) {
+		if (is_conflict_marker(line + 1, marker_size, len - 1)) {
 			data->status |= 1;
 			fprintf(data->o->file,
 				"%s:%d: leftover conflict marker\n",
@@ -1860,6 +1861,7 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 	data.lineno = 0;
 	data.o = o;
 	data.ws_rule = whitespace_rule(attr_path);
+	data.conflict_marker_size = ll_merge_marker_size(attr_path);
 
 	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
 		die("unable to read files to diff");
@@ -2032,7 +2034,7 @@ static int diff_populate_gitlink(struct diff_filespec *s, int size_only)
 	char *data = xmalloc(100), *dirty = "";
 
 	/* Are we looking at the work tree? */
-	if (!s->sha1_valid && s->dirty_submodule)
+	if (s->dirty_submodule)
 		dirty = "-dirty";
 
 	len = snprintf(data, 100,
@@ -2628,6 +2630,12 @@ int diff_setup_done(struct diff_options *options)
 	 */
 	if (options->pickaxe)
 		DIFF_OPT_SET(options, RECURSIVE);
+	/*
+	 * When patches are generated, submodules diffed against the work tree
+	 * must be checked for dirtiness too so it can be shown in the output
+	 */
+	if (options->output_format & DIFF_FORMAT_PATCH)
+		DIFF_OPT_SET(options, DIRTY_SUBMODULES);
 
 	if (options->detect_rename && options->rename_limit < 0)
 		options->rename_limit = diff_rename_limit_default;
@@ -2826,6 +2834,15 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		DIFF_OPT_SET(options, FOLLOW_RENAMES);
 	else if (!strcmp(arg, "--color"))
 		DIFF_OPT_SET(options, COLOR_DIFF);
+	else if (!prefixcmp(arg, "--color=")) {
+		int value = git_config_colorbool(NULL, arg+8, -1);
+		if (value == 0)
+			DIFF_OPT_CLR(options, COLOR_DIFF);
+		else if (value > 0)
+			DIFF_OPT_SET(options, COLOR_DIFF);
+		else
+			return error("option `color' expects \"always\", \"auto\", or \"never\"");
+	}
 	else if (!strcmp(arg, "--no-color"))
 		DIFF_OPT_CLR(options, COLOR_DIFF);
 	else if (!strcmp(arg, "--color-words")) {
@@ -3077,7 +3094,8 @@ int diff_unmodified_pair(struct diff_filepair *p)
 	 * dealing with a change.
 	 */
 	if (one->sha1_valid && two->sha1_valid &&
-	    !hashcmp(one->sha1, two->sha1))
+	    !hashcmp(one->sha1, two->sha1) &&
+	    !one->dirty_submodule && !two->dirty_submodule)
 		return 1; /* no change */
 	if (!one->sha1_valid && !two->sha1_valid)
 		return 1; /* both look at the same file on the filesystem. */
@@ -3212,6 +3230,8 @@ static void diff_resolve_rename_copy(void)
 		}
 		else if (hashcmp(p->one->sha1, p->two->sha1) ||
 			 p->one->mode != p->two->mode ||
+			 p->one->dirty_submodule ||
+			 p->two->dirty_submodule ||
 			 is_null_sha1(p->one->sha1))
 			p->status = DIFF_STATUS_MODIFIED;
 		else {
