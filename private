@@ -34,7 +34,7 @@ fi
 
 for i in `branches`; do
 	echo >&2 Merging $i...
-	if ! git rev-parse -q --verify "$i"; then
+	if ! git rev-parse -q --verify "$i" >/dev/null; then
 		i=`git for-each-ref --format='%(refname:short)' refs/remotes |
 		   grep -m 1 "/$i\$"`
 		echo >&2 Local branch not found, using $i...
