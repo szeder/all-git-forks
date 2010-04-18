@@ -1,3 +1,11 @@
+git (1:1.7.0.4-2.1) unstable; urgency=low
+
+  * debian/git-core.postinst: new; replace /usr/share/doc/git-core with
+    symling /usr/share/doc/git-core -> git on upgrade from <= 1.7.0.4-2
+    (closes: #578298).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 18 Apr 2010 22:44:01 +0000
+
 git (1:1.7.0.4-2) unstable; urgency=low
 
   * debian/rules: package git: no longer install /usr/share/doc/git-core
