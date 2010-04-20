@@ -1,11 +1,11 @@
 git (1:1.7.0.5-1) unstable; urgency=low
 
   * debian/git-core.postinst: new; replace /usr/share/doc/git-core with
-    symling /usr/share/doc/git-core -> git on upgrade from <= 1.7.0.4-2
+    symlink /usr/share/doc/git-core -> git on upgrade from <= 1.7.0.4-2
     (closes: #578298).
   * debian/diff/0003-t7400-submodule-basic.sh-alpha-s390-skip-...diff:
     new; t7400-submodule-basic.sh: alpha, s390: skip 'update --init'
-    test (worksaround: #569594).
+    test (workaround: #569594).
   * debian/control: no longer Replaces, Conflicts: git-completion (thx
     Jonathan Nieder, closes: #577730).
   * new upstream point release.
