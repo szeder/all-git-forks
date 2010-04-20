@@ -46,10 +46,10 @@ build-arch-stamp: patch-stamp build-indep-stamp
 	DESTDIR='$(GIT)' $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	test -z '$(TEST)' || \
-	  DESTDIR='$(GIT)' $(MAKE) $(TEST) \
+	  DESTDIR='$(GIT)' ARCH='$(ARCH)' $(MAKE) $(TEST) \
 	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS) || \
-	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' $(MAKE) $(TEST) \
-	    CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' ARCH='$(ARCH)' \
+	    $(MAKE) $(TEST) CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
 build-indep-stamp:
 	$(MAKE) -CDocumentation man html $(DOC_OPTS)

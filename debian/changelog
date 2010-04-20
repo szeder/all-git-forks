@@ -9,8 +9,9 @@ git (1:1.7.0.5-1) unstable; urgency=low
   * debian/control: no longer Replaces, Conflicts: git-completion (thx
     Jonathan Nieder, closes: #577730).
   * new upstream point release.
+  * debian/rules: set ARCH='$(ARCH)' in environment for make test.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:04:38 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:41:04 +0000
 
 git (1:1.7.0.4-2) unstable; urgency=low
 
