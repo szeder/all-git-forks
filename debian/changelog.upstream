@@ -1,3 +1,46 @@
+Version v1.7.0.5; changes since v1.7.0.4:
+-----------------------------------------
+
+Brandon Casey (1):
+      daemon.c: avoid accessing ss_family member of struct sockaddr_storage
+
+Erik Faye-Lund (1):
+      rev-list: fix --pretty=oneline with empty message
+
+Gustaf Hendeby (1):
+      Improve error messages from 'git stash show'
+
+Jeff King (1):
+      docs: clarify "branch -l"
+
+Jens Lehmann (1):
+      Let check_preimage() use memset() to initialize "struct checkout"
+
+Junio C Hamano (3):
+      diff --check: honor conflict-marker-size attribute
+      blame documentation: -M/-C notice copied lines as well as moved ones
+      Git 1.7.0.5
+
+Michael J Gruber (2):
+      .mailmap: Entries for Alex Bennée, Deskin Miller, Vitaly "_Vi" Shukela
+      send-email: lazily assign editor variable
+
+R. Tyler Ballance (1):
+      Correct references to /usr/bin/python which does not exist on FreeBSD
+
+Ramkumar Ramachandra (1):
+      imap-send: Remove limitation on message body
+
+Shawn O. Pearce (1):
+      http-backend: Don't infinite loop during die()
+
+Tay Ray Chuan (4):
+      pack-protocol.txt: fix spelling
+      pack-protocol.txt: fix pkt-line lengths
+      branch: say "Reset to" in reflog entries for 'git branch -f' operations
+      fetch/push: fix usage strings
+
+
 Version v1.7.0.4; changes since v1.7.0.3:
 -----------------------------------------
 
@@ -1084,7 +1127,7 @@ Shawn O. Pearce (1):
 Tay Ray Chuan (1):
       retry request without query when info/refs?query fails
 
-Vitaly _Vi Shukela (1):
+Vitaly "_Vi" Shukela (1):
       git-gui: Add hotkeys for "Unstage from commit" and "Revert changes"
 
 Wesley J. Landaker (1):
@@ -5572,7 +5615,7 @@ Thomas Rast (23):
 Tor Arne Vestbø (1):
       git-notes: fix printing of multi-line notes
 
-Vitaly \"_Vi\" Shukela (3):
+Vitaly "_Vi" Shukela (3):
       git-svn: add --ignore-paths option for fetching
       git-svn: documented --ignore-paths
       git-svn: Add test for --ignore-paths parameter
@@ -6003,10 +6046,8 @@ David Symonds (1):
 Davide Libenzi (1):
       xdiff: give up scanning similar lines early
 
-Deskin Miler (1):
+Deskin Miller (5):
       git-svn: testcase for partial rebuild
-
-Deskin Miller (4):
       git-svn: do a partial rebuild if rev_map is out-of-date
       git-svn: proper detection of bare repositories
       git-svn: proper detection of bare repositories
@@ -12900,7 +12941,7 @@ Wincent Colaiuta (2):
 Version v1.5.3.5; changes since v1.5.3.4:
 -----------------------------------------
 
-Alex Bennee (1):
+Alex Bennée (1):
       Ensure we add directories in the correct order
 
 Alex Riesen (1):

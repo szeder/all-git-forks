@@ -1,4 +1,4 @@
-git (1:1.7.0.4-2.1) unstable; urgency=low
+git (1:1.7.0.5-1) unstable; urgency=low
 
   * debian/git-core.postinst: new; replace /usr/share/doc/git-core with
     symling /usr/share/doc/git-core -> git on upgrade from <= 1.7.0.4-2
@@ -8,8 +8,9 @@ git (1:1.7.0.4-2.1) unstable; urgency=low
     test (worksaround: #569594).
   * debian/control: no longer Replaces, Conflicts: git-completion (thx
     Jonathan Nieder, closes: #577730).
+  * new upstream point release.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:01:39 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:04:38 +0000
 
 git (1:1.7.0.4-2) unstable; urgency=low
 

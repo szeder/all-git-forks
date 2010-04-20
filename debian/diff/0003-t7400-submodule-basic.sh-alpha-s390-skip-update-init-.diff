@@ -1,4 +1,4 @@
-From ba74bc7aa9f68b5610634a6a2d28352160bea6c2 Mon Sep 17 00:00:00 2001
+From a6a97f2b3dca11b92f37182058dfd4d561d9330f Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Tue, 20 Apr 2010 22:51:56 +0000
 Subject: [PATCH 3/3] t7400-submodule-basic.sh: alpha, s390: skip 'update --init' test
