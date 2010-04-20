@@ -6,8 +6,10 @@ git (1:1.7.0.4-2.1) unstable; urgency=low
   * debian/diff/0003-t7400-submodule-basic.sh-alpha-s390-skip-...diff:
     new; t7400-submodule-basic.sh: alpha, s390: skip 'update --init'
     test (worksaround: #569594).
+  * debian/control: no longer Replaces, Conflicts: git-completion (thx
+    Jonathan Nieder, closes: #577730).
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 22:58:10 +0000
+ -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:01:39 +0000
 
 git (1:1.7.0.4-2) unstable; urgency=low
 
