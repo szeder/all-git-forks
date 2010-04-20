@@ -1,0 +1,28 @@
+From ba74bc7aa9f68b5610634a6a2d28352160bea6c2 Mon Sep 17 00:00:00 2001
+From: Gerrit Pape <pape@smarden.org>
+Date: Tue, 20 Apr 2010 22:51:56 +0000
+Subject: [PATCH 3/3] t7400-submodule-basic.sh: alpha, s390: skip 'update --init' test
+
+This works around unreproducible build failures on Debian autobuilders
+(#569594).
+---
+ t/t7400-submodule-basic.sh |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/t/t7400-submodule-basic.sh b/t/t7400-submodule-basic.sh
+index 1a4dc5f..12fbebe 100755
+--- a/t/t7400-submodule-basic.sh
++++ b/t/t7400-submodule-basic.sh
+@@ -255,7 +255,8 @@ test_expect_success 'apply submodule diff' '
+ 	test -z "$D"
+ '
+ 
+-test_expect_success 'update --init' '
++test "$ARCH" = alpha || test "$ARCH" = s390 || test_set_prereq GOODARCH
++test_expect_success GOODARCH 'update --init' '
+ 
+ 	mv init init2 &&
+ 	git config -f .gitmodules submodule.example.url "$(pwd)/init2" &&
+-- 
+1.7.0.3
+
