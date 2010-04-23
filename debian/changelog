@@ -1,3 +1,13 @@
+git (1:1.7.0.5-2~dbg0) unstable; urgency=low
+
+  * debian/diff/0003-t7400-submodule-basic.sh-alpha-s390-skip-...diff:
+    remove; more archs are affected (additionally hppa, armel).
+  * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
+    new; t/t7400-submodule-basic.sh: debug output for t7400.24 'update
+    --init'.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 23 Apr 2010 12:15:18 +0000
+
 git (1:1.7.0.5-1) unstable; urgency=low
 
   * debian/git-core.postinst: new; replace /usr/share/doc/git-core with
