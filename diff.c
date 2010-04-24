@@ -2877,6 +2877,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		if (!strcmp(arg + 12, "log"))
 			DIFF_OPT_SET(options, SUBMODULE_LOG);
 	}
+	else if (!strcmp(arg, "--interactive"))
+		DIFF_OPT_SET(options, INTERACTIVE);
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))
@@ -3577,10 +3579,71 @@ void diff_flush(struct diff_options *options)
 			}
 		}
 
-		for (i = 0; i < q->nr; i++) {
-			struct diff_filepair *p = q->queue[i];
-			if (check_pair_status(p))
-				diff_flush_patch(p, options);
+		if (DIFF_OPT_TST(options, INTERACTIVE)) {
+#define INTERACTIVE_HELP \
+"\nYou can type\n" \
+"<number>: choose what to diff\n" \
+"quit: quit the interactive diff\n" \
+"\n"
+#define INTERACTIVE_HINT "What to diff>"
+#define INTERACTIVE_BUFSIZ 10
+
+			int do_interactive = 1;
+			while (do_interactive) {
+				putc(options->line_termination, options->file);
+				for (i = 0; i < q->nr; i++) {
+					struct diff_filepair *p = q->queue[i];
+					if (!check_pair_status(p)) continue;
+					fprintf(stderr, "%d: %s\n", i+1, p->one->path);
+				}
+				fputs(INTERACTIVE_HELP, stderr);
+				while (1) {
+					fputs(INTERACTIVE_HINT, stderr);
+					char what[INTERACTIVE_BUFSIZ];
+					if (!fgets(what, sizeof(what), stdin)) {
+						do_interactive = 0;
+						break;
+					}
+
+					// trim
+					int len = strlen(what);
+					while (len > 0 && isspace(what[--len]))
+						what[len] = 0;
+
+					char c = what[0];
+					if (!c) {
+						continue;
+					}
+					else if (isdigit(c)) {
+						i = atoi(what) - 1;
+						if (i < 0 || i >= q->nr) {
+							fprintf(stderr, "Huh (%s)?\n", what);
+							continue;
+						}
+						struct diff_filepair *p = q->queue[i];
+						diff_flush_patch(p, options);
+						fflush(options->file);
+						break;
+					}
+					else {
+						if (!prefixcmp("quit", what)) {
+							do_interactive = 0;
+							break;
+						}
+						else {
+							fprintf(stderr, "Huh (%s)?\n", what);
+							continue;
+						}
+					}
+				}
+			}
+		}
+		else {
+			for (i = 0; i < q->nr; i++) {
+				struct diff_filepair *p = q->queue[i];
+				if (check_pair_status(p))
+					diff_flush_patch(p, options);
+			}
 		}
 	}
 
