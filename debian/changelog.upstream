@@ -1,3 +1,92 @@
+Version v1.7.1; changes since v1.7.1-rc1:
+-----------------------------------------
+
+Charles Bailey (1):
+      Documentation: Describe other situations where -z affects git diff
+
+Chris Webb (1):
+      git-instaweb: pass through invoking user's path to gitweb CGI scripts
+
+Eric Raymond (1):
+      Documentation improvements for the description of short format.
+
+Jay Soffian (1):
+      Documentation/config.txt: default gc.aggressiveWindow is 250, not 10
+
+Jeff King (2):
+      diff: use large integers for diffstat calculations
+      rebase-interactive: silence warning when no commits rewritten
+
+Jens Lehmann (2):
+      gitk: Add Ctrl-W shortcut for closing the active window
+      gitk: Display dirty submodules correctly
+
+Johannes Gilger (1):
+      pretty: Initialize notes if %N is used
+
+Johannes Sixt (2):
+      Windows: start_command: Support non-NULL dir in struct child_process
+      MSVC: Fix build by adding missing termios.h dummy
+
+Jonathan Nieder (6):
+      gitk: Add comments to explain encode_view_opts and decode_view_opts
+      gitk: Don't clobber "Remember this view" setting
+      Add .depend directories to .gitignore
+      Document new "already-merged" rule for branch -d
+      tag -v: use RUN_GIT_CMD to run verify-tag
+      Documentation/Makefile: fix interrupted builds of user-manual.xml
+
+Junio C Hamano (8):
+      SubmittingPatches: update GMail section
+      blame documentation: -M/-C notice copied lines as well as moved ones
+      Git 1.7.0.5
+      gitweb: simplify gitweb.min.* generation and clean-up rules
+      t3301: add tests to use --format="%N"
+      Git 1.7.1-rc2
+      Git 1.7.0.6
+      Git 1.7.1
+
+Marc Branchaud (1):
+      Docs: Add -X option to git-merge's synopsis.
+
+Mark Hills (4):
+      gitk: Remove forced use of sans-serif font
+      gitk: Set the font for all spinbox widgets
+      gitk: Set the font for all listbox widgets
+      gitk: Use consistent font for all text input fields
+
+Matthew Ogilvie (1):
+      t6006: do not write to /tmp
+
+Michael J Gruber (2):
+      t1010-mktree: Adjust expected result to code and documentation
+      t7012: Mark missing tests as TODO
+
+Pat Thoyts (3):
+      gitk: Avoid calling tk_setPalette on Windows
+      gitk: Add emacs editor variable block
+      gitk: Fix display of copyright symbol
+
+Ramkumar Ramachandra (5):
+      Documentation/remote-helpers: Rewrite description
+      Documentation/urls: Rewrite to accomodate <transport>::<address>
+      Documentation/remote-helpers: Add invocation section
+      Fixup: Second argument may be any arbitrary string
+      Documentation/remote-helpers: Fix typos and improve language
+
+SZEDER Gábor (1):
+      reflog: remove 'show' from 'expire's usage string
+
+Stephen Boyd (1):
+      t3507: Make test executable
+
+Thomas Rast (1):
+      combined diff: correctly handle truncated file
+
+Will Palmer (1):
+      documentation: clarify direction of core.autocrlf
+
+
 Version v1.7.1-rc1; changes since v1.7.0.5:
 -------------------------------------------
 

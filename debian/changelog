@@ -1,4 +1,4 @@
-git (1:1.7.0.5-2) unstable; urgency=low
+git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
     remove; obsolete.
@@ -7,8 +7,10 @@ git (1:1.7.0.5-2) unstable; urgency=low
     #569594).
   * debian/rules: no longer set ARCH='$(ARCH)' in environment for make
     test.
+  * new upstream release.
+  * merge branch debian-experimental.
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 25 Apr 2010 23:26:55 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 25 Apr 2010 23:35:50 +0000
 
 git (1:1.7.0.5-2~dbg0) unstable; urgency=low
 

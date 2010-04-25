@@ -1,4 +1,4 @@
-From 87f639b2c35360eeb7772b9ca19eb0a2087e0e43 Mon Sep 17 00:00:00 2001
+From e354b8b7104a9001cfa26b7e417c97e221aa801f Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Sun, 25 Apr 2010 23:02:49 +0000
 Subject: [PATCH 3/3] git-submodule.sh: properly initialize shell variables
@@ -23,7 +23,7 @@ Signed-off-by: Gerrit Pape <pape@smarden.org>
  1 files changed, 2 insertions(+), 0 deletions(-)
 
 diff --git a/git-submodule.sh b/git-submodule.sh
-index e2082fd..d3c583d 100755
+index 2dd372a..3319b83 100755
 --- a/git-submodule.sh
 +++ b/git-submodule.sh
 @@ -21,6 +21,8 @@ command=
