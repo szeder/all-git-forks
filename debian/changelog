@@ -2,8 +2,11 @@ git (1:1.7.0.5-2) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
     remove; obsolete.
+  * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff:
+    new; git-submodule.sh: properly initialize shell variables (closes:
+    #569594).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 25 Apr 2010 23:22:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 25 Apr 2010 23:23:58 +0000
 
 git (1:1.7.0.5-2~dbg0) unstable; urgency=low
 
