@@ -11,6 +11,7 @@
 #include "parse-options.h"
 #include "exec_cmd.h"
 #include "string-list.h"
+#include "run-command.h"
 
 static const char *const send_email_usage[] = {
 	"git send-email [options] [--] "
@@ -732,9 +733,31 @@ int main(int argc, const char **argv)
 	}
 #endif
 
-	if (is_absolute_path(smtp_server))
-		die("sendmail not yet supported!\n");
-	else {
+	if (is_absolute_path(smtp_server)) {
+		const char *data =
+			"Subject: Test!\r\n"
+			"Content-Type: text/plain; charset=UTF-8\r\n"
+			"Content-Transfer-Encoding: quoted-printable\r\n"
+			"\r\n"
+			"Hello there! \"=C3=85\"\r\n";
+
+		const char *argv[] = { smtp_server, "-i", "kusmabite@gmail.com", NULL };
+		struct child_process cld;
+		int status;
+
+		memset(&cld, 0, sizeof(cld));
+		cld.argv = argv;
+		cld.in = -1;
+		if (start_command(&cld))
+			die("unable to fork '%s'", smtp_server);
+		write_in_full(cld.in, data, strlen(data));
+		close(cld.in);
+		status = finish_command(&cld);
+		if (status)
+			exit(status);
+
+		exit(0); /* hack */
+	} else {
 		if (NULL != port) {
 			char *ep;
 			nport = strtoul(port, &ep, 10);
