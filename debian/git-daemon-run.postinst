@@ -17,10 +17,5 @@ test -z "$2" || dpkg --compare-versions "$2" gt '1:1.5.4.2-1' || {
 # enable git-daemon service
 update-service --add /etc/sv/git-daemon
 
-# on upgrade from >> 1:1.6.0, fixup #522348
-dpkg --compare-versions "$2" le '1:1.6.0' ||
-  dpkg --compare-versions "$2" ge '1:1.6.2.2-1' ||
-    killall git-daemon 2>/dev/null || :
-
 # restart git-daemon service if it was running
 test -z "$2" || sv -v term git-daemon || :

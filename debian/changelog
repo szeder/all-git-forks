@@ -35,6 +35,20 @@ git (1:1.7.0.5-1) unstable; urgency=low
 
  -- Gerrit Pape <pape@smarden.org>  Tue, 20 Apr 2010 23:41:04 +0000
 
+git (1:1.7.1~rc1-1.1) experimental; urgency=low
+
+  * debian/control: typo (thx Jonathan Nieder).
+  * debian/git-daemon-run.postinst: remove fixup for #522348.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 11 Apr 2010 23:22:46 +0000
+
+git (1:1.7.1~rc1-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 11 Apr 2010 15:28:28 +0000
+
 git (1:1.7.0.4-2) unstable; urgency=low
 
   * debian/rules: package git: no longer install /usr/share/doc/git-core
