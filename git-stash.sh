@@ -54,8 +54,21 @@ create_stash () {
 		exit 0
 	fi
 
+  b_commit=
+  if test -n "$append"
+  then
+    b_commit=$(git rev-parse --verify refs/stash)
+    b_i_commit=$(git rev-parse --verify refs/stash^2)
+  fi
+
+  if test -z "$b_commit"
+  then
+    b_commit=$(git rev-parse --verify HEAD)
+    b_i_commit="$b_commit"
+  fi
+
 	# state of the base commit
-	if b_commit=$(git rev-parse --verify HEAD)
+	if test -n "$b_commit"
 	then
 		head=$(git log --no-color --abbrev-commit --pretty=oneline -n 1 HEAD --)
 	else
@@ -73,11 +86,18 @@ create_stash () {
 	# state of the index
 	i_tree=$(git write-tree) &&
 	i_commit=$(printf 'index on %s\n' "$msg" |
-		git commit-tree $i_tree -p $b_commit) ||
+		git commit-tree $i_tree -p $b_i_commit) ||
 		die "Cannot save the current index state"
 
 	if test -z "$patch_mode"
 	then
+
+    if test -n "$untracked"
+    then
+      add_options='-A'
+    else
+      add_options='--update'
+    fi
 
 		# state of the working tree
 		w_tree=$( (
@@ -86,7 +106,7 @@ create_stash () {
 			GIT_INDEX_FILE="$TMP-index" &&
 			export GIT_INDEX_FILE &&
 			git read-tree -m $i_tree &&
-			git add -u &&
+			git add $add_options &&
 			git write-tree &&
 			rm -f "$TMP-index"
 		) ) ||
@@ -129,6 +149,7 @@ create_stash () {
 save_stash () {
 	keep_index=
 	patch_mode=
+	keep_working_copy=
 	while test $# != 0
 	do
 		case "$1" in
@@ -142,6 +163,15 @@ save_stash () {
 			patch_mode=t
 			keep_index=t
 			;;
+		-u|--untracked)
+		  untracked=t
+		  ;;
+		--keep-working-copy)
+		  keep_working_copy=t
+		  ;;
+		-a|--append)
+		  append=t
+		  ;;
 		-q|--quiet)
 			GIT_QUIET=t
 			;;
@@ -183,15 +213,21 @@ save_stash () {
 
 	if test -z "$patch_mode"
 	then
-		git reset --hard ${GIT_QUIET:+-q}
+	  if test -z "$keep_working_copy"
+	  then
+		  git reset --hard ${GIT_QUIET:+-q}
+		fi
 
 		if test -n "$keep_index" && test -n $i_tree
 		then
 			git read-tree --reset -u $i_tree
 		fi
 	else
-		git apply -R < "$TMP-patch" ||
-		die "Cannot remove worktree changes"
+	  if test -z "$keep_working_copy"
+	  then
+		  git apply -R < "$TMP-patch" ||
+		  die "Cannot remove worktree changes"
+		fi
 
 		if test -z "$keep_index"
 		then
