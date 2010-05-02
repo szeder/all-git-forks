@@ -543,8 +543,8 @@ static void run_pager(struct grep_opt *opt, const char *prefix)
 		argv[i] = path_list->items[i].string;
 	argv[path_list->nr] = NULL;
 
-	if (prefix)
-		chdir(prefix);
+	if (prefix && chdir(prefix))
+		error("Failed to chdir: %s", prefix);
 	execvp(argv[0], argv);
 	error("Could not run pager %s: %s", argv[0], strerror(errno));
 }
