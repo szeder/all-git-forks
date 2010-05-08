@@ -90,12 +90,13 @@ static int is_binary(unsigned long size, struct text_stat *stats)
 }
 
 static void check_safe_crlf(const char *path, int action,
-                            struct text_stat *stats, enum safe_crlf checksafe)
+			    struct text_stat *stats, enum safe_crlf checksafe,
+			    int eol_conversion)
 {
 	if (!checksafe)
 		return;
 
-	if (action == CRLF_INPUT || auto_crlf <= 0) {
+	if (action == CRLF_INPUT || eol_conversion <= 0) {
 		/*
 		 * CRLFs would not be restored by checkout:
 		 * check if we'd remove CRLFs
@@ -106,7 +107,7 @@ static void check_safe_crlf(const char *path, int action,
 			else /* i.e. SAFE_CRLF_FAIL */
 				die("CRLF would be replaced by LF in %s.", path);
 		}
-	} else if (auto_crlf > 0) {
+	} else if (eol_conversion > 0) {
 		/*
 		 * CRLFs would be added by checkout:
 		 * check if we have "naked" LFs
@@ -121,12 +122,13 @@ static void check_safe_crlf(const char *path, int action,
 }
 
 static int crlf_to_git(const char *path, const char *src, size_t len,
-                       struct strbuf *buf, int action, enum safe_crlf checksafe)
+		       struct strbuf *buf, int action, enum safe_crlf checksafe,
+		       int eol_conversion)
 {
 	struct text_stat stats;
 	char *dst;
 
-	if ((action == CRLF_BINARY) || !auto_crlf || !len)
+	if ((action == CRLF_BINARY) || !eol_conversion || !len)
 		return 0;
 
 	gather_stats(src, len, &stats);
@@ -147,7 +149,7 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 			return 0;
 	}
 
-	check_safe_crlf(path, action, &stats, checksafe);
+	check_safe_crlf(path, action, &stats, checksafe, eol_conversion);
 
 	/* Optimization: No CR? Nothing to convert, regardless. */
 	if (!stats.cr)
@@ -180,13 +182,13 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 }
 
 static int crlf_to_worktree(const char *path, const char *src, size_t len,
-                            struct strbuf *buf, int action)
+			    struct strbuf *buf, int action, int eol_conversion)
 {
 	char *to_free = NULL;
 	struct text_stat stats;
 
 	if ((action == CRLF_BINARY) || (action == CRLF_INPUT) ||
-	    auto_crlf <= 0)
+	    eol_conversion <= 0)
 		return 0;
 
 	if (!len)
@@ -591,7 +593,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		src = dst->buf;
 		len = dst->len;
 	}
-	ret |= crlf_to_git(path, src, len, dst, crlf, checksafe);
+	ret |= crlf_to_git(path, src, len, dst, crlf, checksafe, auto_crlf);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;
@@ -621,7 +623,7 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
 		src = dst->buf;
 		len = dst->len;
 	}
-	ret |= crlf_to_worktree(path, src, len, dst, crlf);
+	ret |= crlf_to_worktree(path, src, len, dst, crlf, auto_crlf);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;
