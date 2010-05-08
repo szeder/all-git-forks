@@ -40,6 +40,7 @@ const char *editor_program;
 const char *excludes_file;
 int auto_crlf = 0;	/* 1: both ways, -1: only when adding git objects */
 int read_replace_refs = 1;
+enum eol_style eol_style = EOL_STYLE_NATIVE;
 enum safe_crlf safe_crlf = SAFE_CRLF_WARN;
 unsigned whitespace_rule_cfg = WS_DEFAULT_RULE;
 enum branch_track git_branch_track = BRANCH_TRACK_REMOTE;

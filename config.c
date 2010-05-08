@@ -461,7 +461,7 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.autocrlf")) {
 		if (value && !strcasecmp(value, "input")) {
-			auto_crlf = -1;
+			auto_crlf = AUTO_CRLF_INPUT;
 			return 0;
 		}
 		auto_crlf = git_config_bool(var, value);
@@ -474,6 +474,20 @@ static int git_default_core_config(const char *var, const char *value)
 			return 0;
 		}
 		safe_crlf = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.eolstyle")) {
+		if (value && !strcasecmp(value, "lf"))
+			eol_style = EOL_STYLE_LF;
+		else if (value && !strcasecmp(value, "crlf"))
+			eol_style = EOL_STYLE_CRLF;
+		else if (value && !strcasecmp(value, "native"))
+			eol_style = EOL_STYLE_NATIVE;
+		else if (! git_config_bool(var, value))
+			eol_style = EOL_STYLE_FALSE;
+		else
+			return error("Malformed value for %s", var);
 		return 0;
 	}
 
