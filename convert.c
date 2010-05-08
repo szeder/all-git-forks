@@ -15,6 +15,7 @@
 #define CRLF_BINARY	0
 #define CRLF_TEXT	1
 #define CRLF_INPUT	2
+#define CRLF_AUTO	3
 
 struct text_stat {
 	/* NUL, CR, LF and CRLF counts */
@@ -392,6 +393,17 @@ static void setup_convert_check(struct git_attr_check *check)
 	check[2].attr = attr_filter;
 }
 
+static int choose_eol_conversion(int auto_eol)
+{
+	if (auto_crlf)
+		return auto_crlf;
+
+	if (auto_eol)
+		return eol_style;
+
+	return 0;
+}
+
 static int count_ident(const char *cp, unsigned long size)
 {
 	/*
@@ -546,6 +558,8 @@ static int git_path_check_crlf(const char *path, struct git_attr_check *check)
 		;
 	else if (!strcmp(value, "input"))
 		return CRLF_INPUT;
+	else if (!strcmp(value, "auto"))
+		return CRLF_AUTO;
 	return CRLF_GUESS;
 }
 
@@ -575,7 +589,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 {
 	struct git_attr_check check[3];
 	int crlf = CRLF_GUESS;
-	int ident = 0, ret = 0;
+	int ident = 0, ret = 0, auto_eol = 0;
 	const char *filter = NULL;
 
 	setup_convert_check(check);
@@ -586,6 +600,11 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		drv = git_path_check_convert(path, check + 2);
 		if (drv && drv->clean)
 			filter = drv->clean;
+		if (crlf > 0) {
+			auto_eol = 1;
+			if (crlf == CRLF_AUTO)
+				crlf = CRLF_GUESS;
+		}
 	}
 
 	ret |= apply_filter(path, src, len, dst, filter);
@@ -593,7 +612,8 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		src = dst->buf;
 		len = dst->len;
 	}
-	ret |= crlf_to_git(path, src, len, dst, crlf, checksafe, auto_crlf);
+	ret |= crlf_to_git(path, src, len, dst, crlf, checksafe,
+		choose_eol_conversion(auto_eol));
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;
@@ -605,7 +625,7 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
 {
 	struct git_attr_check check[3];
 	int crlf = CRLF_GUESS;
-	int ident = 0, ret = 0;
+	int ident = 0, ret = 0, auto_eol = 0;
 	const char *filter = NULL;
 
 	setup_convert_check(check);
@@ -616,6 +636,11 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
 		drv = git_path_check_convert(path, check + 2);
 		if (drv && drv->smudge)
 			filter = drv->smudge;
+		if (crlf > 0) {
+			auto_eol = 1;
+			if (crlf == CRLF_AUTO)
+				crlf = CRLF_GUESS;
+		}
 	}
 
 	ret |= ident_to_worktree(path, src, len, dst, ident);
@@ -623,7 +648,8 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
 		src = dst->buf;
 		len = dst->len;
 	}
-	ret |= crlf_to_worktree(path, src, len, dst, crlf, auto_crlf);
+	ret |= crlf_to_worktree(path, src, len, dst, crlf,
+		choose_eol_conversion(auto_eol));
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;

@@ -60,7 +60,7 @@ test_expect_success 'no crlf=auto, explicit eolstyle=native causes no changes' '
 	test -z "$onediff" -a -z "$twodiff"
 '
 
-test_expect_failure 'crlf=auto, eolStyle=crlf <=> autocrlf=true' '
+test_expect_success 'crlf=auto, eolStyle=crlf <=> autocrlf=true' '
 
 	rm -f .gitattributes tmp one two &&
 	git config core.autocrlf false &&
@@ -81,7 +81,7 @@ test_expect_failure 'crlf=auto, eolStyle=crlf <=> autocrlf=true' '
 	test -z "$missing_cr"
 '
 
-test_expect_failure 'crlf=auto, eolStyle=lf <=> autocrlf=input' '
+test_expect_success 'crlf=auto, eolStyle=lf <=> autocrlf=input' '
 
 	rm -f .gitattributes tmp one two &&
 	git config core.autocrlf false &&
