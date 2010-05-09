@@ -207,9 +207,16 @@ core.autocrlf::
 	the file's `crlf` attribute, or if `crlf` is unspecified,
 	based on the file's contents.  See linkgit:gitattributes[5].
 
+core.eolStyle::
+	Sets the line ending type to use for text files in the working
+	directory when the `auto-eol` property is set.  Alternatives are
+	'lf', 'crlf', 'native' and 'false'.  'native', the default, uses
+	the platform's native line ending.  'false' disables `auto-eol`
+	line ending conversion.  See linkgit:gitattributes[5].
+
 core.safecrlf::
-	If true, makes git check if converting `CRLF` as controlled by
-	`core.autocrlf` is reversible.  Git will verify if a command
+	If true, makes git check if converting `CRLF` is reversible when
+	end-of-line conversion is active.  Git will verify if a command
 	modifies a file in the work tree either directly or indirectly.
 	For example, committing a file followed by checking out the
 	same file should yield the original file in the work tree.  If

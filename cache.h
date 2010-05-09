@@ -561,6 +561,25 @@ enum safe_crlf {
 
 extern enum safe_crlf safe_crlf;
 
+enum auto_crlf {
+	AUTO_CRLF_FALSE = 0,
+	AUTO_CRLF_TRUE = 1,
+	AUTO_CRLF_INPUT = -1,
+};
+
+enum eol_style {
+	EOL_STYLE_FALSE = AUTO_CRLF_FALSE,
+	EOL_STYLE_CRLF = AUTO_CRLF_TRUE,
+	EOL_STYLE_LF = AUTO_CRLF_INPUT,
+#ifdef NATIVE_CRLF
+	EOL_STYLE_NATIVE = EOL_STYLE_CRLF,
+#else
+	EOL_STYLE_NATIVE = EOL_STYLE_LF,
+#endif
+};
+
+extern enum eol_style eol_style;
+
 enum branch_track {
 	BRANCH_TRACK_UNSPECIFIED = -1,
 	BRANCH_TRACK_NEVER = 0,
