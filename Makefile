@@ -486,6 +486,7 @@ LIB_H += log-tree.h
 LIB_H += mailmap.h
 LIB_H += merge-recursive.h
 LIB_H += notes.h
+LIB_H += notes-cache.h
 LIB_H += object.h
 LIB_H += pack.h
 LIB_H += pack-refs.h
@@ -575,6 +576,7 @@ LIB_OBJS += merge-file.o
 LIB_OBJS += merge-recursive.o
 LIB_OBJS += name-hash.o
 LIB_OBJS += notes.o
+LIB_OBJS += notes-cache.o
 LIB_OBJS += object.o
 LIB_OBJS += pack-check.o
 LIB_OBJS += pack-refs.o
@@ -2098,7 +2100,7 @@ clean:
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
 	$(MAKE) -C Documentation/ clean
 ifndef NO_PERL
-	$(RM) gitweb/gitweb.cgi gitweb/gitweb.min.*
+	$(MAKE) -C gitweb clean
 	$(MAKE) -C perl clean
 endif
 ifndef NO_PYTHON

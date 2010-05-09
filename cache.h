@@ -718,6 +718,8 @@ extern int has_loose_object_nonlocal(const unsigned char *sha1);
 
 extern int has_pack_index(const unsigned char *sha1);
 
+extern void assert_sha1_type(const unsigned char *sha1, enum object_type expect);
+
 extern const signed char hexval_table[256];
 static inline unsigned int hexval(unsigned char c)
 {
@@ -942,6 +944,7 @@ extern int git_config_int(const char *, const char *);
 extern unsigned long git_config_ulong(const char *, const char *);
 extern int git_config_bool_or_int(const char *, const char *, int *);
 extern int git_config_bool(const char *, const char *);
+extern int git_config_maybe_bool(const char *, const char *);
 extern int git_config_string(const char **, const char *, const char *);
 extern int git_config_pathname(const char **, const char *, const char *);
 extern int git_config_set(const char *, const char *);
@@ -1040,6 +1043,7 @@ void shift_tree_by(const unsigned char *, const unsigned char *, unsigned char *
 #define WS_INDENT_WITH_NON_TAB	04
 #define WS_CR_AT_EOL           010
 #define WS_BLANK_AT_EOF        020
+#define WS_TAB_IN_INDENT       040
 #define WS_TRAILING_SPACE      (WS_BLANK_AT_EOL|WS_BLANK_AT_EOF)
 #define WS_DEFAULT_RULE (WS_TRAILING_SPACE|WS_SPACE_BEFORE_TAB)
 extern unsigned whitespace_rule_cfg;
@@ -1048,7 +1052,7 @@ extern unsigned parse_whitespace_rule(const char *);
 extern unsigned ws_check(const char *line, int len, unsigned ws_rule);
 extern void ws_check_emit(const char *line, int len, unsigned ws_rule, FILE *stream, const char *set, const char *reset, const char *ws);
 extern char *whitespace_error_string(unsigned ws);
-extern int ws_fix_copy(char *, const char *, int, unsigned, int *);
+extern void ws_fix_copy(struct strbuf *, const char *, int, unsigned, int *);
 extern int ws_blank_line(const char *line, int len, unsigned ws_rule);
 
 /* ls-files */
