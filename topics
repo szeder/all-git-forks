@@ -1,15 +1,17 @@
 #!/bin/sh
 
 format='%(refname:short)'
+sortby=refname
 while test $# -gt 0; do
 	case "$1" in
 	-v) format='%(refname:short) %(subject)' ;;
+	-t) sortby=-authordate ;;
 	 *) echo >&2 "unknown option: $1"; exit 100 ;;
 	esac
 	shift
 done
 
-git for-each-ref --format="$format" refs/heads |
+git for-each-ref --sort=$sortby --format="$format" refs/heads |
 egrep '^[a-z]{2,3}/' |
 perl -pe '
   s/(\S+) /$1 . " " x (22 - length($1))/e; # line up subjects
