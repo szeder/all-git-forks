@@ -2,7 +2,7 @@
 
 base=origin
 
-for i in `Meta/topics --all`; do
+for i in `Meta/topics`; do
 	if test -n "`git rev-list -1 $base ^$i`"; then
 		echo "===> Rebasing $i"
 		upstream=`git for-each-ref --format='%(upstream)' refs/heads/$i`

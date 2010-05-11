@@ -1,42 +1,4 @@
-#!/usr/bin/perl
+#!/bin/sh
 
-use Getopt::Long;
-my $what = \&all_topics;
-GetOptions(
-	'public' => sub { $what = \&public_topics },
-	'private' => sub { $what = \&private_topics },
-	'all' => sub { $what = \&all_topics },
-	'remote' => sub { $what = \&remote_topics }
-) or exit 100;
-
-print $_, "\n" foreach $what->();
-exit 0;
-
-sub branches {
-	my $prefix = shift;
-	return
-	  map { chomp; $_ }
-	  `git for-each-ref --format='%(refname:short)' $prefix`;
-}
-
-sub all_topics {
-	return
-	  grep { m{^[a-z]{2,3}/} }
-	  branches('refs/heads');
-}
-
-sub remote_topics {
-	return
-	  map { s{^github/}{}; $_ }
-	  branches('refs/remotes/github');
-}
-
-sub public_topics {
-	my %public = map { $_ => 1 } remote_topics();
-	return grep { $public{$_} } all_topics();
-}
-
-sub private_topics {
-	my %public = map { $_ => 1 } remote_topics();
-	return grep { !$public{$_} } all_topics();
-}
+git for-each-ref --format="%(refname:short)" refs/heads |
+egrep '^[a-z]{2,3}/'
