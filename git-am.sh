@@ -173,7 +173,21 @@ check_patch_format () {
 	# otherwise, check the first few lines of the first patch to try
 	# to detect its format
 	{
-		read l1
+		while read -r line
+		do
+			case "$line" in
+				"")
+					# Just skip whitespace
+					continue
+					;;
+				*)
+					# First non-empty line
+					l1=$line
+					break
+					;;
+			esac
+		done
+
 		read l2
 		read l3
 		case "$l1" in

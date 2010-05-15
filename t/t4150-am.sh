@@ -318,6 +318,36 @@ test_expect_success 'am without --committer-date-is-author-date' '
 	test "$at" != "$ct"
 '
 
+test_expect_success 'am applying a patch that begins with an empty line' '
+	git checkout first &&
+	test_tick &&
+	echo > patch1-white &&
+	cat patch1 >> patch1-white &&
+	git am patch1-white &&
+	git cat-file commit HEAD | sed -e "/^\$/q" >head1 &&
+	at=$(sed -ne "/^author /s/.*> //p" head1) &&
+	ct=$(sed -ne "/^committer /s/.*> //p" head1) &&
+	test "$at" != "$ct"
+'
+
+test_expect_success 'am applying a patch that begins with many empty lines' '
+	git checkout first &&
+	test_tick &&
+	echo "   " > patch1-white2 &&
+	echo "  " >> patch1-white2 &&
+	echo " " >> patch1-white2 &&
+	echo "" >> patch1-white2 &&
+	echo " " >> patch1-white2 &&
+	echo "  " >> patch1-white2 &&
+	echo "   " >> patch1-white2 &&
+	cat patch1 >> patch1-white2 &&
+	git am patch1-white2 &&
+	git cat-file commit HEAD | sed -e "/^\$/q" >head1 &&
+	at=$(sed -ne "/^author /s/.*> //p" head1) &&
+	ct=$(sed -ne "/^committer /s/.*> //p" head1) &&
+	test "$at" != "$ct"
+'
+
 # This checks for +0000 because TZ is set to UTC and that should
 # show up when the current time is used. The date in message is set
 # by test_tick that uses -0700 timezone; if this feature does not
