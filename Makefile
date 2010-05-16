@@ -1308,6 +1308,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_STRTOK_R = YesPlease
 	NO_FNMATCH = YesPlease
 	NO_MEMMEM = YesPlease
+	NO_READLINE = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	OLD_ICONV = YesPlease
 	NO_STRTOUMAX = YesPlease
@@ -1734,6 +1735,12 @@ endif
 ifdef NO_MEMMEM
 	COMPAT_CFLAGS += -DNO_MEMMEM
 	COMPAT_OBJS += compat/memmem.o
+endif
+ifdef NO_READLINE
+	COMPAT_CFLAGS += -DNO_READLINE
+	COMPAT_OBJS += compat/readline.o
+else
+	EXTLIBS += -lreadline
 endif
 ifdef INTERNAL_QSORT
 	COMPAT_CFLAGS += -DINTERNAL_QSORT

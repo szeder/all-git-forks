@@ -371,6 +371,13 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
                 const void *needle, size_t needlelen);
 #endif
 
+#ifdef NO_READLINE
+#define readline gitreadline
+char *gitreadline(const char *prompt);
+#else
+#include <readline/readline.h>
+#endif
+
 #ifdef FREAD_READS_DIRECTORIES
 #ifdef fopen
 #undef fopen
