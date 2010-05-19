@@ -207,7 +207,11 @@ attribute to "auto" for _all_ files.
 ------------------------
 
 This ensures that all files that git considers to be text will have
-normalized (LF) line endings in the repository.
+normalized (LF) line endings in the repository.  The `core.eol`
+configuration variable controls which line endings git will use for
+normalized files in your working directory; the default is to use the
+native line ending for your platform, or CRLF if `core.autocrlf` is
+set.
 
 NOTE: When `text=auto` normalization is enabled in an existing
 repository, any text files containing CRLFs should be normalized.  If
