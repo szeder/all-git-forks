@@ -1676,6 +1676,10 @@ static void builtin_diff(const char *name_a,
 						textconv_one, textconv_two, o);
 			o->found_changes = 1;
 			goto free_ab_and_return;
+		} else if (diff_filespec_is_binary(one) &&
+			   diff_filespec_is_binary(two)) {
+			fprintf(o->file, "%s", header.buf);
+			strbuf_reset(&header);
 		}
 	}
 
