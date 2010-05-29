@@ -1501,8 +1501,20 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 				handle_refs(revs, flags, for_each_tag_ref);
 				continue;
 			}
+			if (!strcmp(arg, "--locals")) {
+				handle_refs(revs, flags, for_each_branch_ref);
+				handle_refs(revs, flags, for_each_tag_ref);
+				handle_refs(revs, flags, head_ref);
+				continue;
+			}
 			if (!strcmp(arg, "--remotes")) {
 				handle_refs(revs, flags, for_each_remote_ref);
+				continue;
+			}
+			if (!strcmp(arg, "--lrbranches")) {
+				handle_refs(revs, flags, for_each_remote_ref);
+				handle_refs(revs, flags, for_each_branch_ref);
+				handle_refs(revs, flags, head_ref);
 				continue;
 			}
 			if (!prefixcmp(arg, "--glob=")) {
