@@ -3,7 +3,7 @@ git-rev-parse(1)
 
 NAME
 ----
-git-rev-parse - Pick out and massage parameters
+git-rev-parse - Parse symbolic names into object names
 
 
 SYNOPSIS
@@ -13,12 +13,18 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-Many git porcelainish commands take mixture of flags
+The primary use of 'git rev-parse' is to turn symbolic object names into
+40-letter object names ("SHA-1").
+
+Also, many git porcelainish commands take a mixture of flags
 (i.e. parameters that begin with a dash '-') and parameters
 meant for the underlying 'git rev-list' command they use internally
 and flags and parameters for the other commands they use
-downstream of 'git rev-list'.  This command is used to
-distinguish between them.
+downstream of 'git rev-list'.  This command used to be used to
+distinguish between them, but this is deprectated now, and you should
+not expect 'git rev-parse' to keep up to date with newer parameters for
+'git rev-list'. You can use linkgit:git-rev-list[1] directly or
+linkgit:git-for-each-ref[1] for scripting.
 
 
 OPTIONS
