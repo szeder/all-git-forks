@@ -26,7 +26,8 @@ static int show_killed;
 static int show_valid_bit;
 static int line_terminator = '\n';
 
-static int prefix_len;
+static const char *prefix;
+static int max_prefix_len;
 static int prefix_offset;
 static const char **pathspec;
 static int error_unmatch;
@@ -43,10 +44,19 @@ static const char *tag_modified = "";
 static const char *tag_skip_worktree = "";
 static const char *tag_resolve_undo = "";
 
+static void write_name(const char *name, size_t len)
+{
+	struct strbuf path = STRBUF_INIT;
+	if (prefix_offset > 0)
+		quote_path_relative(name, len, &path, prefix);
+	else
+		strbuf_add(&path, name, len);
+	write_name_quoted(strbuf_detach(&path, NULL), stdout, line_terminator);
+}
+
 static void show_dir_entry(const char *tag, struct dir_entry *ent)
 {
-	int len = prefix_len;
-	int offset = prefix_offset;
+	int len = max_prefix_len;
 
 	if (len >= ent->len)
 		die("git ls-files: internal error - directory entry not superset of prefix");
@@ -55,7 +65,7 @@ static void show_dir_entry(const char *tag, struct dir_entry *ent)
 		return;
 
 	fputs(tag, stdout);
-	write_name_quoted(ent->name + offset, stdout, line_terminator);
+	write_name(ent->name, ent->len);
 }
 
 static void show_other_files(struct dir_struct *dir)
@@ -121,8 +131,7 @@ static void show_killed_files(struct dir_struct *dir)
 
 static void show_ce_entry(const char *tag, struct cache_entry *ce)
 {
-	int len = prefix_len;
-	int offset = prefix_offset;
+	int len = max_prefix_len;
 
 	if (len >= ce_namelen(ce))
 		die("git ls-files: internal error - cache entry not superset of prefix");
@@ -156,20 +165,19 @@ static void show_ce_entry(const char *tag, struct cache_entry *ce)
 		       find_unique_abbrev(ce->sha1,abbrev),
 		       ce_stage(ce));
 	}
-	write_name_quoted(ce->name + offset, stdout, line_terminator);
+	write_name(ce->name, ce_namelen(ce));
 }
 
 static int show_one_ru(struct string_list_item *item, void *cbdata)
 {
-	int offset = prefix_offset;
 	const char *path = item->string;
 	struct resolve_undo_info *ui = item->util;
 	int i, len;
 
 	len = strlen(path);
-	if (len < prefix_len)
+	if (len < max_prefix_len)
 		return 0; /* outside of the prefix */
-	if (!match_pathspec(pathspec, path, len, prefix_len, ps_matched))
+	if (!match_pathspec(pathspec, path, len, max_prefix_len, ps_matched))
 		return 0; /* uninterested */
 	for (i = 0; i < 3; i++) {
 		if (!ui->mode[i])
@@ -177,19 +185,19 @@ static int show_one_ru(struct string_list_item *item, void *cbdata)
 		printf("%s%06o %s %d\t", tag_resolve_undo, ui->mode[i],
 		       find_unique_abbrev(ui->sha1[i], abbrev),
 		       i + 1);
-		write_name_quoted(path + offset, stdout, line_terminator);
+		write_name(path, len);
 	}
 	return 0;
 }
 
-static void show_ru_info(const char *prefix)
+static void show_ru_info(void)
 {
 	if (!the_index.resolve_undo)
 		return;
 	for_each_string_list(show_one_ru, the_index.resolve_undo, NULL);
 }
 
-static void show_files(struct dir_struct *dir, const char *prefix)
+static void show_files(struct dir_struct *dir)
 {
 	int i;
 
@@ -243,7 +251,7 @@ static void show_files(struct dir_struct *dir, const char *prefix)
  */
 static void prune_cache(const char *prefix)
 {
-	int pos = cache_name_pos(prefix, prefix_len);
+	int pos = cache_name_pos(prefix, max_prefix_len);
 	unsigned int first, last;
 
 	if (pos < 0)
@@ -256,7 +264,7 @@ static void prune_cache(const char *prefix)
 	while (last > first) {
 		int next = (last + first) >> 1;
 		struct cache_entry *ce = active_cache[next];
-		if (!strncmp(ce->name, prefix, prefix_len)) {
+		if (!strncmp(ce->name, prefix, max_prefix_len)) {
 			first = next+1;
 			continue;
 		}
@@ -265,10 +273,15 @@ static void prune_cache(const char *prefix)
 	active_nr = last;
 }
 
-static const char *verify_pathspec(const char *prefix)
+static const char *pathspec_prefix(const char *prefix)
 {
 	const char **p, *n, *prev;
 	unsigned long max;
+
+	if (!pathspec) {
+		max_prefix_len = prefix ? strlen(prefix) : 0;
+		return prefix;
+	}
 
 	prev = NULL;
 	max = PATH_MAX;
@@ -291,10 +304,7 @@ static const char *verify_pathspec(const char *prefix)
 		}
 	}
 
-	if (prefix_offset > max || memcmp(prev, prefix, prefix_offset))
-		die("git ls-files: cannot generate relative filenames containing '..'");
-
-	prefix_len = max;
+	max_prefix_len = max;
 	return max ? xmemdupz(prev, max) : NULL;
 }
 
@@ -456,9 +466,10 @@ static int option_parse_exclude_standard(const struct option *opt,
 	return 0;
 }
 
-int cmd_ls_files(int argc, const char **argv, const char *prefix)
+int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 {
 	int require_work_tree = 0, show_tag = 0;
+	const char *max_prefix;
 	struct dir_struct dir;
 	struct option builtin_ls_files_options[] = {
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
@@ -516,6 +527,7 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 	};
 
 	memset(&dir, 0, sizeof(dir));
+	prefix = cmd_prefix;
 	if (prefix)
 		prefix_offset = strlen(prefix);
 	git_config(git_default_config, NULL);
@@ -555,9 +567,8 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 	if (pathspec)
 		strip_trailing_slash_from_submodules();
 
-	/* Verify that the pathspec matches the prefix */
-	if (pathspec)
-		prefix = verify_pathspec(prefix);
+	/* Find common prefix for all pathspec's */
+	max_prefix = pathspec_prefix(prefix);
 
 	/* Treat unmatching pathspec elements as errors */
 	if (pathspec && error_unmatch) {
@@ -575,8 +586,8 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 	      show_killed | show_modified | show_resolve_undo))
 		show_cached = 1;
 
-	if (prefix)
-		prune_cache(prefix);
+	if (max_prefix)
+		prune_cache(max_prefix);
 	if (with_tree) {
 		/*
 		 * Basic sanity check; show-stages and show-unmerged
@@ -584,11 +595,11 @@ int cmd_ls_files(int argc, const char **argv, const char *prefix)
 		 */
 		if (show_stage || show_unmerged)
 			die("ls-files --with-tree is incompatible with -s or -u");
-		overlay_tree_on_cache(with_tree, prefix);
+		overlay_tree_on_cache(with_tree, max_prefix);
 	}
-	show_files(&dir, prefix);
+	show_files(&dir);
 	if (show_resolve_undo)
-		show_ru_info(prefix);
+		show_ru_info();
 
 	if (ps_matched) {
 		int bad;
