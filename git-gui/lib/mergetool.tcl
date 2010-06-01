@@ -271,6 +271,10 @@ proc merge_resolve_tool2 {} {
 					    --merged-file "$MERGED" "$LOCAL" "$REMOTE"]
 		}
 	}
+	tortoisemerge {
+		set cmdline [list "$merge_tool_path" -base:$BASE -mine:$LOCAL \
+			-theirs:$REMOTE -merged:$MERGED]
+	}
 	default {
 		error_popup [mc "Unsupported merge tool '%s'" $tool]
 		return
