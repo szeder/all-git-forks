@@ -946,13 +946,19 @@ gc.pruneexpire::
 	unreachable objects immediately.
 
 gc.reflogexpire::
+gc.<pattern>.reflogexpire::
 	'git reflog expire' removes reflog entries older than
-	this time; defaults to 90 days.
+	this time; defaults to 90 days.  With "<pattern>" (e.g.
+	"refs/stash") in the middle the setting applies only to
+	the refs that match the <pattern>.
 
 gc.reflogexpireunreachable::
+gc.<ref>.reflogexpireunreachable::
 	'git reflog expire' removes reflog entries older than
 	this time and are not reachable from the current tip;
-	defaults to 30 days.
+	defaults to 30 days.  With "<pattern>" (e.g. "refs/stash")
+	in the middle, the setting applies only to the refs that
+	match the <pattern>.
 
 gc.rerereresolved::
 	Records of conflicted merge you resolved earlier are
@@ -1525,7 +1531,7 @@ receive.denyDeletes::
 	the ref. Use this to prevent such a ref deletion via a push.
 
 receive.denyCurrentBranch::
-	If set to true or "refuse", receive-pack will deny a ref update
+	If set to true or "refuse", git-receive-pack will deny a ref update
 	to the currently checked out branch of a non-bare repository.
 	Such a push is potentially dangerous because it brings the HEAD
 	out of sync with the index and working tree. If set to "warn",
@@ -1587,7 +1593,9 @@ remote.<name>.uploadpack::
 
 remote.<name>.tagopt::
 	Setting this value to \--no-tags disables automatic tag following when
-	fetching from remote <name>
+	fetching from remote <name>. Setting it to \--tags will fetch every
+	tag from remote <name>, even if they are not reachable from remote
+	branch heads.
 
 remote.<name>.vcs::
 	Setting this to a value <vcs> will cause git to interact with
@@ -1690,6 +1698,13 @@ status.showUntrackedFiles::
 If this variable is not specified, it defaults to 'normal'.
 This variable can be overridden with the -u|--untracked-files option
 of linkgit:git-status[1] and linkgit:git-commit[1].
+
+status.submodulesummary::
+	Defaults to false.
+	If this is set to a non zero number or true (identical to -1 or an
+	unlimited number), the submodule summary will be enabled and a
+	summary of commits for modified submodules will be shown (see
+	--summary-limit option of linkgit:git-submodule[1]).
 
 tar.umask::
 	This variable can be used to restrict the permission bits of

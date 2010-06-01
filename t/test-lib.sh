@@ -473,6 +473,9 @@ test_external () {
 		# Announce the script to reduce confusion about the
 		# test output that follows.
 		say_color "" " run $test_count: $descr ($*)"
+		# Export TEST_DIRECTORY, TRASH_DIRECTORY and GIT_TEST_LONG
+		# to be able to use them in script
+		export TEST_DIRECTORY TRASH_DIRECTORY GIT_TEST_LONG
 		# Run command; redirect its stderr to &4 as in
 		# test_run_, but keep its stdout on our stdout even in
 		# non-verbose mode.
@@ -528,6 +531,22 @@ test_external_without_stderr () {
 test_must_fail () {
 	"$@"
 	test $? -gt 0 -a $? -le 129 -o $? -gt 192
+}
+
+# Similar to test_must_fail, but tolerates success, too.  This is
+# meant to be used in contexts like:
+#
+#	test_expect_success 'some command works without configuration' '
+#		test_might_fail git config --unset all.configuration &&
+#		do something
+#	'
+#
+# Writing "git config --unset all.configuration || :" would be wrong,
+# because we want to notice if it fails due to segv.
+
+test_might_fail () {
+	"$@"
+	test $? -ge 0 -a $? -le 129 -o $? -gt 192
 }
 
 # test_cmp is a helper function to compare actual and expected output.
