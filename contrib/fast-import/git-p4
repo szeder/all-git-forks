@@ -1228,7 +1228,7 @@ class P4Sync(Command):
         lostAndFoundBranches = set()
 
         for info in p4CmdList("branches"):
-            details = p4Cmd("branch -o %s" % info["branch"])
+            details = p4Cmd("branch -o \"%s\"" % info["branch"])
             viewIdx = 0
             while details.has_key("View%s" % viewIdx):
                 paths = details["View%s" % viewIdx].split(" ")
