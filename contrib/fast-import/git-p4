@@ -823,6 +823,9 @@ class P4Submit(Command):
             print "All changes applied!"
             chdir(self.oldWorkingDirectory)
 
+            if gitConfig("git-p4.syncAfterSubmit") != "true":
+                return True
+
             sync = P4Sync()
             sync.run([])
 
