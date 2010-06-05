@@ -97,9 +97,13 @@ test_expect_success 'git grep -O jumps to line in less' '
 	EOF
 	>empty &&
 
-	GIT_PAGER=./less git grep -O GREP_PATTERN >out &&
+	GIT_PAGER=./less git grep -O GREP_PATTERN >out1 &&
 	test_cmp expect actual &&
-	test_cmp empty out
+	test_cmp empty out1 &&
+
+	git grep -O./less GREP_PATTERN >out2 &&
+	test_cmp expect actual &&
+	test_cmp empty out2
 '
 
 test_expect_success 'modified file' '
@@ -135,8 +139,7 @@ test_expect_success 'run from subdir' '
 		export GIT_PAGER &&
 		GIT_PAGER='\''printf "%s\n" >../args'\'' &&
 		git grep -O "enum grep_pat_token" >../out &&
-		GIT_PAGER="pwd >../dir; :" &&
-		git grep -O "enum grep_pat_token" >../out2
+		git grep -O"pwd >../dir; :" "enum grep_pat_token" >../out2
 	) &&
 	case $(cat dir) in
 	*subdir)
