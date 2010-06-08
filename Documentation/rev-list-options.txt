@@ -264,6 +264,14 @@ endif::git-rev-list[]
 	is automatically prepended if missing. If pattern lacks '?', '*',
 	or '[', '/*' at the end is implied.
 
+--locals::
+	This is an abbreviation for `HEAD --branches --tags`, i.e. all
+	local refs.
+
+--lrbranches::
+
+	This is an abbreviation for `HEAD --branches --remotes`, i.e. all
+	local and remote branch heads plus HEAD.
 
 ifndef::git-rev-list[]
 --bisect::

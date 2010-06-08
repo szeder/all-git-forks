@@ -25,6 +25,8 @@ SYNOPSIS
 	     [ \--tags[=pattern] ]
 	     [ \--remotes[=pattern] ]
 	     [ \--glob=glob-pattern ]
+	     [ \--locals ]
+	     [ \--lrbranches ]
 	     [ \--stdin ]
 	     [ \--quiet ]
 	     [ \--topo-order ]

@@ -207,4 +207,20 @@ test_expect_success 'rev-list --remotes=foo' '
 
 '
 
+test_expect_success 'rev-list --no-walk --locals' '
+
+	compare "rev-list --no-walk" \
+	"master subspace-x someref other/three subspace/one subspace/two foo/bar" \
+	"--locals"
+
+'
+
+test_expect_success 'rev-list --no-walk --lrbranches' '
+
+	compare "rev-list --no-walk" \
+	"master subspace-x someref other/three subspace/one subspace/two foo/baz" \
+	"--lrbranches"
+
+'
+
 test_done
