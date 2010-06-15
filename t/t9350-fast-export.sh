@@ -400,4 +400,39 @@ test_expect_success 'directory becomes symlink'        '
 	(cd result && git show master:foo)
 '
 
+cat >> dirtosymlink/expected << EOF
+blob
+mark :5
+data 6
+hello
+
+blob
+mark :6
+data 7
+badlink
+commit refs/heads/master
+mark :7
+author A U Thor <author@example.com> 1112912713 -0700
+committer C O Mitter <committer@example.com> 1112912713 -0700
+data 6
+three
+from :4
+deleteall
+M 100644 :5 bar/world
+M 120000 :6 foo
+
+EOF
+
+test_expect_success 'full-tree'        '
+	(
+		cd dirtosymlink &&
+		git fast-export --export-marks=marks master -- foo > output1 &&
+		rm foo &&
+		ln -s badlink foo &&
+		git commit -mthree foo &&
+		git fast-export --import-marks=marks --full-tree master -- foo bar > output &&
+		test_cmp output expected
+	)
+'
+
 test_done

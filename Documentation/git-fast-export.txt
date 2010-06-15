@@ -90,6 +90,17 @@ marks the same across runs.
 	resulting stream can only be used by a repository which
 	already contains the necessary objects.
 
+--full-tree::
+	By default, for each commit that has a parent, only the files
+	that are different between the commit and its parent are
+	shown.  By using --full-tree, a "deleteall" directive will be
+	sent out with each commit followed by a listing of all files
+	contained in the commit.  This can be useful when doing
+	incremental exports/imports (making use of --export-marks and
+	--import-marks) when later runs of fast-export contain a
+	larger list of PATH limiters in [git-rev-list-args...] than
+	previous runs do.
+
 [git-rev-list-args...]::
        A list of arguments, acceptable to 'git rev-parse' and
        'git rev-list', that specifies the specific objects and references
