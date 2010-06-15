@@ -6,6 +6,7 @@
 #include "exec_cmd.h"
 #include "run-command.h"
 #include "string-list.h"
+#include "gettext.h"
 
 static const char content_type[] = "Content-Type";
 static const char content_length[] = "Content-Length";
@@ -604,6 +605,8 @@ int main(int argc, char **argv)
 	struct service_cmd *cmd = NULL;
 	char *cmd_arg = NULL;
 	int i;
+
+	git_setup_gettext();
 
 	git_extract_argv0_path(argv[0]);
 	set_die_routine(die_webcgi);
