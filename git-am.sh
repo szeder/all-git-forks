@@ -602,6 +602,9 @@ do
 			git cat-file commit "$commit" |
 			sed -e '1,/^$/d' >"$dotest/msg-clean"
 			echo "$commit" > "$dotest/original-commit"
+			GIT_AUTHOR_NAME="$(GIT_PAGER='' git log --format=%an -1 "$commit")"
+			GIT_AUTHOR_EMAIL="$(GIT_PAGER='' git log --format=%ae -1 "$commit")"
+			GIT_AUTHOR_DATE="$(GIT_PAGER='' git log --format=%aD -1 "$commit")"
 		else
 			{
 				sed -n '/^Subject/ s/Subject: //p' "$dotest/info"
@@ -609,13 +612,12 @@ do
 				cat "$dotest/msg"
 			} |
 			git stripspace > "$dotest/msg-clean"
+			GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
+			GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
+			GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
 		fi
 		;;
 	esac
-
-	GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
-	GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
-	GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
 
 	if test -z "$GIT_AUTHOR_EMAIL"
 	then
