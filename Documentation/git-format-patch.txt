@@ -12,7 +12,7 @@ SYNOPSIS
 'git format-patch' [-k] [(-o|--output-directory) <dir> | --stdout]
 		   [--no-thread | --thread[=<style>]]
 		   [(--attach|--inline)[=<boundary>] | --no-attach]
-		   [-s | --signoff]
+		   [-s | --signoff] [--signature=<signature>]
 		   [-n | --numbered | -N | --no-numbered]
 		   [--start-number <n>] [--numbered-files]
 		   [--in-reply-to=Message-Id] [--suffix=.<sfx>]
@@ -179,6 +179,12 @@ will want to ensure that threading is disabled for `git send-email`.
 	In addition to the patches, generate a cover letter file
 	containing the shortlog and the overall diffstat.  You can
 	fill in a description in the file before sending it out.
+
+--signature=<signature>::
+	Add a signature to each patch and, if --cover-letter is specified,
+	the cover letter. Per RFC 3676 the signature is separated from the
+	body by '-- '. If no signature option is given, the signature defaults
+	to the git version number.
 
 --suffix=.<sfx>::
 	Instead of using `.patch` as the suffix for generated
