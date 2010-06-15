@@ -613,9 +613,17 @@ do
 		;;
 	esac
 
-	GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
-	GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
-	GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
+	if test -f "$dotest/original-commit"
+	then
+		original_commit="$(cat "$dotest/original-commit")"
+		GIT_AUTHOR_NAME="$(GIT_PAGER='' git log --format=%an -1 "$original_commit")"
+		GIT_AUTHOR_EMAIL="$(GIT_PAGER='' git log --format=%ae -1 "$original_commit")"
+		GIT_AUTHOR_DATE="$(GIT_PAGER='' git log --format=%aD -1 "$original_commit")"
+	else
+		GIT_AUTHOR_NAME="$(sed -n '/^Author/ s/Author: //p' "$dotest/info")"
+		GIT_AUTHOR_EMAIL="$(sed -n '/^Email/ s/Email: //p' "$dotest/info")"
+		GIT_AUTHOR_DATE="$(sed -n '/^Date/ s/Date: //p' "$dotest/info")"
+	fi
 
 	if test -z "$GIT_AUTHOR_EMAIL"
 	then
