@@ -135,4 +135,32 @@ test_expect_success 'sanity: Some gettext("") data for real locale' '
     test -s real-locale
 '
 
+# Actually execute some C and Shell code that uses Gettext
+test_expect_success 'C: git-status reads our message catalog ' '
+    test_commit "some-file" &&
+    git checkout -b test/gettext &&
+    LANGUAGE=C LC_ALL=C git status | grep test/gettext > expect &&
+    echo "# On branch test/gettext" > actual &&
+    test_cmp expect actual &&
+
+    LANGUAGE=is LC_ALL=is_IS.UTF-8 git status | grep test/gettext > expect &&
+    echo "# Á greininni test/gettext" > actual &&
+    test_cmp expect actual
+'
+
+test_expect_success 'Shell: git-pull reads our message catalog' '
+    # Repository for testing
+    mkdir parent &&
+    (cd parent && git init &&
+     echo one >file && git add file &&
+     git commit -m one) &&
+
+    # Actual test
+    (cd parent &&
+    (LANGUAGE=C LC_ALL=C git pull --tags "../" >out 2>err);
+    grep "Fetching tags only" err &&
+    (LANGUAGE=is LC_ALL=is_IS.UTF-8 git pull --tags ../ >out 2>err || :) &&
+    grep "Næ aðeins í" err)
+'
+
 test_done

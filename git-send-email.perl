@@ -26,6 +26,7 @@ use Term::ANSIColor;
 use File::Temp qw/ tempdir tempfile /;
 use Error qw(:try);
 use Git;
+use Git::I18N;
 
 Getopt::Long::Configure qw/ pass_through /;
 
@@ -674,7 +675,7 @@ if (!defined $sender) {
 	$sender = $repoauthor || $repocommitter || '';
 	$sender = ask("Who should the emails appear to be from? [$sender] ",
 	              default => $sender);
-	print "Emails will be sent from: ", $sender, "\n";
+	printf __("Emails will be sent from: %s\n"), $sender;
 	$prompting++;
 }
 
