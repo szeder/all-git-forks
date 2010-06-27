@@ -88,6 +88,12 @@ REWRITTEN="$DOTEST"/rewritten
 # by the 'mark' rebase command, containing the sha1 of the marked commit.
 MARK="$DOTEST"/mark
 
+# $MARK_CONSTRUCT is used in generate_script.  It names a directory
+# which contains a file named after each commit for which a mark is to
+# be emitted.  The file contains the name of the mark, and is empty if
+# no such mark has yet been emitted.  The files are named by short sha1.
+MARK_CONSTRUCT="$DOTEST"/mark-construct
+
 # A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
 # GIT_AUTHOR_DATE that will be used for the commit that is currently
 # being rebased.
@@ -750,7 +756,7 @@ prepare_preserve_merges () {
 }
 
 get_oneline () {
-	git show -s --pretty="format:%h$2 %s" $1
+	git show -s --format="%h %s" $1
 }
 
 generate_script_help () {
@@ -791,8 +797,10 @@ generate_script () {
 	test -z "$REBASE_ROOT" || start=
 
 	# Identify commits we will need to 'mark' in order to 'goto' back to.
-	marksneeded=
+	# We create empty files in $MARK_CONSTRUCT to be filled in on
+	# the second pass.
 	test -z "$PRESERVE_MERGES" || {
+		mkdir -p "$MARK_CONSTRUCT"
 		current=$start
 		list_todo_revs --format="%m%h %p" |
 		sed -n "s/^>//p" |
@@ -802,10 +810,15 @@ generate_script () {
 			$current*|$SHORTUPSTREAM*|'')
 				;;
 			*)
-				marksneeded="$marksneeded $firstparent "
+				touch "$MARK_CONSTRUCT"/$firstparent
 				;;
 			esac
 			current=$shortsha1
+
+			for parent in $rest
+			do
+				touch "$MARK_CONSTRUCT"/$parent
+			done
 		done
 	}
 
@@ -827,7 +840,7 @@ generate_script () {
 				echo "goto $(get_oneline $SHORTONTO)"
 				;;
 			*)
-				echo "goto $(get_oneline $firstparent \')"
+				echo "goto $(cat "$MARK_CONSTRUCT"/$firstparent)"
 				;;
 			esac
 			current=$shortsha1
@@ -838,20 +851,20 @@ generate_script () {
 			echo "pick $(get_oneline $shortsha1)"
 		else
 			# handle merges
-			parents=$(echo "$rest" | sed "s/ \|$/'/g")
+			parents=$(for p in $rest; do cat "$MARK_CONSTRUCT"/$p; done)
 			echo "merge parents $parents original $(get_oneline $shortsha1)"
 			for parent in $rest
 			do
-				echo "#    parent $(get_oneline $parent \')"
+				echo "#    parent $(get_oneline $parent)"
 			done
 		fi
 
-		case "$marksneeded" in
-		"* $shortsha1 *")
+		if test -e "$MARK_CONSTRUCT"/$shortsha1
+		then
 			echo "mark :$marknum $shortsha1"
+			echo ":$marknum" >"$MARK_CONSTRUCT"/$shortsha1
 			marknum=$(expr $marknum + 1)
-			;;
-		esac
+		fi
 	done
 }
 
