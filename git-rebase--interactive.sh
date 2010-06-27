@@ -787,8 +787,30 @@ generate_script () {
 		return
 	}
 
-	current=$SHORTUPSTREAM
-	test -z "$REBASE_ROOT" || current=
+	start=$SHORTUPSTREAM
+	test -z "$REBASE_ROOT" || start=
+
+	# Identify commits we will need to 'mark' in order to 'goto' back to.
+	marksneeded=
+	test -z "$PRESERVE_MERGES" || {
+		current=$start
+		list_todo_revs --format="%m%h %p" |
+		sed -n "s/^>//p" |
+		while read shortsha1 firstparent rest
+		do
+			case "$firstparent" in
+			$current*|$SHORTUPSTREAM*|'')
+				;;
+			*)
+				marksneeded="$marksneeded $firstparent "
+				;;
+			esac
+			current=$shortsha1
+		done
+	}
+
+	current=$start
+	marknum=1
 	list_todo_revs --format="%m%h %p" |
 	sed -n "s/^>//p" |
 	while read shortsha1 firstparent rest
@@ -811,18 +833,25 @@ generate_script () {
 			current=$shortsha1
 		}
 
-		test -z "$rest" && {
+		if test -z "$rest"
+		then
 			echo "pick $(get_oneline $shortsha1)"
-			continue
-		}
+		else
+			# handle merges
+			parents=$(echo "$rest" | sed "s/ \|$/'/g")
+			echo "merge parents $parents original $(get_oneline $shortsha1)"
+			for parent in $rest
+			do
+				echo "#    parent $(get_oneline $parent \')"
+			done
+		fi
 
-		# handle merges
-		parents=$(echo "$rest" | sed "s/ \|$/'/g")
-		echo "merge parents $parents original $(get_oneline $shortsha1)"
-		for parent in $rest
-		do
-			echo "#    parent $(get_oneline $parent \')"
-		done
+		case "$marksneeded" in
+		"* $shortsha1 *")
+			echo "mark :$marknum $shortsha1"
+			marknum=$(expr $marknum + 1)
+			;;
+		esac
 	done
 }
 
