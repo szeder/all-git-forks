@@ -446,6 +446,18 @@ record_in_rewritten() {
 	esac
 }
 
+parse_commit () {
+	name="$1"
+	case "$name" in
+	:*)
+		cat "$MARK"/"$name" || die "Unknown mark: $name"
+		;;
+	*)
+		git rev-parse --verify "$name" || die "Invalid commit name: $sha1"
+		;;
+	esac
+}
+
 do_next () {
 	rm -f "$MSG" "$AUTHOR_SCRIPT" "$AMEND" || exit
 	read -r command sha1 rest < "$TODO"
