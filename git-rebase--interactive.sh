@@ -775,16 +775,21 @@ generate_script_help () {
 EOF
 }
 
+# List the revs to go in $TODO, with additional rev-list args from "$@".
+list_todo_revs () {
+	git rev-list $MERGES_OPTION --cherry-pick \
+		--topo-order --reverse $REVISIONS "$@"
+}
+
 generate_script () {
-	test -z "$(git rev-list $MERGES_OPTION --cherry-pick $REVISIONS)" && {
+	test -z "$(list_todo_revs)" && {
 		echo noop
 		return
 	}
 
 	current=$SHORTUPSTREAM
 	test -z "$REBASE_ROOT" || current=
-	git rev-list $MERGES_OPTION --cherry-pick --pretty="format:%m%h %p" \
-		--reverse --left-right --topo-order $REVISIONS |
+	list_todo_revs --format="%m%h %p" |
 	sed -n "s/^>//p" |
 	while read shortsha1 firstparent rest
 	do
