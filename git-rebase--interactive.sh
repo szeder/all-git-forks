@@ -582,6 +582,12 @@ do_next () {
 		mkdir -p "$MARK" &&
 		git rev-parse HEAD >"$MARK"/"$sha1"
 		;;
+	goto)
+		comment_for_reflog goto
+		mark_action_done
+		git reset --hard "$(parse_commit $sha1)" || \
+			die "Failed to reset: $sha1"
+		;;
 	*)
 		warn "Unknown command: $command $sha1 $rest"
 		if git rev-parse --verify -q "$sha1" >/dev/null
