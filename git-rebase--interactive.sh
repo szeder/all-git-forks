@@ -85,6 +85,10 @@ REWRITTEN="$DOTEST"/rewritten
 
 DROPPED="$DOTEST"/dropped
 
+# $MARK is a directory which contains a file named after each mark set
+# by the 'mark' rebase command, containing the sha1 of the marked commit.
+MARK="$DOTEST"/mark
+
 # A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
 # GIT_AUTHOR_DATE that will be used for the commit that is currently
 # being rebased.
@@ -558,6 +562,13 @@ do_next () {
 			warn
 			exit 1
 		fi
+		;;
+	mark)
+		mark_action_done
+		echo "$sha1" | sane_egrep -q '^:[a-zA-Z0-9]+$' || \
+			die "Invalid mark name: $sha1"
+		mkdir -p "$MARK" &&
+		git rev-parse HEAD >"$MARK"/"$sha1"
 		;;
 	*)
 		warn "Unknown command: $command $sha1 $rest"
