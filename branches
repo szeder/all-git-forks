@@ -9,3 +9,9 @@ jk/test-lint
 
 jk/follow-multiple
   very beta
+
+jk/date-overflow
+  Submitted upstream.
+
+jk/fast-contains
+  RFC'd upstream.
