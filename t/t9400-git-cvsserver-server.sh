@@ -48,7 +48,9 @@ test_expect_success 'setup' '
   git pull secondroot master &&
   git clone -q --bare "$WORKDIR/.git" "$SERVERDIR" >/dev/null 2>&1 &&
   GIT_DIR="$SERVERDIR" git config --bool gitcvs.enabled true &&
-  GIT_DIR="$SERVERDIR" git config gitcvs.logfile "$SERVERDIR/gitcvs.log"
+  GIT_DIR="$SERVERDIR" git config gitcvs.logfile "$SERVERDIR/gitcvs.log" &&
+  GIT_DIR="$SERVERDIR" git config gitcvs.authdb "$SERVERDIR/auth.db" &&
+  echo cvsuser:cvGVEarMLnhlA > "$SERVERDIR/auth.db"
 '
 
 # note that cvs doesn't accept absolute pathnames
@@ -94,6 +96,14 @@ git
 END VERIFICATION REQUEST
 EOF
 
+cat >login-git-ok <<EOF
+BEGIN VERIFICATION REQUEST
+$SERVERDIR
+cvsuser
+Ah<Z:yZZ30 e
+END VERIFICATION REQUEST
+EOF
+
 test_expect_success 'pserver authentication' \
   'cat request-anonymous | git-cvsserver pserver >log 2>&1 &&
    sed -ne \$p log | grep "^I LOVE YOU\$"'
@@ -106,6 +116,10 @@ test_expect_success 'pserver authentication failure (non-anonymous user)' \
        true
    fi &&
    sed -ne \$p log | grep "^I HATE YOU\$"'
+
+test_expect_success 'pserver authentication success (non-anonymous user with password)' \
+  'cat login-git-ok | git-cvsserver pserver >log 2>&1 &&
+   sed -ne \$p log | grep "^I LOVE YOU\$"'
 
 test_expect_success 'pserver authentication (login)' \
   'cat login-anonymous | git-cvsserver pserver >log 2>&1 &&
@@ -435,7 +449,7 @@ test_expect_success 'cvs update (-p)' '
     rm -f failures &&
     for i in merge no-lf empty really-empty; do
         GIT_CONFIG="$git_config" cvs update -p "$i" >$i.out
-        diff $i.out ../$i >>failures 2>&1
+	test_cmp $i.out ../$i >>failures 2>&1
     done &&
     test -z "$(cat failures)"
 '

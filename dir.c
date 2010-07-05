@@ -31,22 +31,22 @@ static int common_prefix(const char **pathspec)
 	if (!slash)
 		return 0;
 
+	/*
+	 * The first 'prefix' characters of 'path' are common leading
+	 * path components among the pathspecs we have seen so far,
+	 * including the trailing slash.
+	 */
 	prefix = slash - path + 1;
 	while ((next = *++pathspec) != NULL) {
-		int len = strlen(next);
-		if (len >= prefix && !memcmp(path, next, prefix))
+		int len, last_matching_slash = -1;
+		for (len = 0; len < prefix && next[len] == path[len]; len++)
+			if (next[len] == '/')
+				last_matching_slash = len;
+		if (len == prefix)
 			continue;
-		len = prefix - 1;
-		for (;;) {
-			if (!len)
-				return 0;
-			if (next[--len] != '/')
-				continue;
-			if (memcmp(path, next, len+1))
-				continue;
-			prefix = len + 1;
-			break;
-		}
+		if (last_matching_slash < 0)
+			return 0;
+		prefix = last_matching_slash + 1;
 	}
 	return prefix;
 }
@@ -465,7 +465,7 @@ static struct dir_entry *dir_add_ignored(struct dir_struct *dir, const char *pat
 enum exist_status {
 	index_nonexistent = 0,
 	index_directory,
-	index_gitdir,
+	index_gitdir
 };
 
 /*
@@ -533,7 +533,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
 enum directory_treatment {
 	show_directory,
 	ignore_directory,
-	recurse_into_directory,
+	recurse_into_directory
 };
 
 static enum directory_treatment treat_directory(struct dir_struct *dir,
@@ -684,7 +684,7 @@ static int get_dtype(struct dirent *de, const char *path, int len)
 enum path_treatment {
 	path_ignored,
 	path_handled,
-	path_recurse,
+	path_recurse
 };
 
 static enum path_treatment treat_one_path(struct dir_struct *dir,

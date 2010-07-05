@@ -3,6 +3,7 @@
 test_description='Test automatic use of a pager.'
 
 . ./test-lib.sh
+. "$TEST_DIRECTORY"/lib-pager.sh
 
 cleanup_fail() {
 	echo >&2 cleanup failed
@@ -40,7 +41,7 @@ else
 fi
 
 test_expect_success 'setup' '
-	unset GIT_PAGER GIT_PAGER_IN_USE &&
+	unset GIT_PAGER GIT_PAGER_IN_USE;
 	test_might_fail git config --unset core.pager &&
 
 	PAGER="cat >paginated.out" &&
@@ -109,7 +110,7 @@ test_expect_success TTY 'no pager with --no-pager' '
 # for the first color; the text "commit" comes later.
 colorful() {
 	read firstline <$1
-	! expr "$firstline" : "^[a-zA-Z]" >/dev/null
+	! expr "$firstline" : "[a-zA-Z]" >/dev/null
 }
 
 test_expect_success 'tests can detect color' '
@@ -158,22 +159,13 @@ test_expect_success 'color when writing to a file intended for a pager' '
 	colorful colorful.log
 '
 
-test_expect_success 'determine default pager' '
-	unset PAGER GIT_PAGER &&
-	test_might_fail git config --unset core.pager ||
-	cleanup_fail &&
-
-	less=$(git var GIT_PAGER) &&
-	test -n "$less"
-'
-
-if expr "$less" : '^[a-z][a-z]*$' >/dev/null && test_have_prereq TTY
+if test_have_prereq SIMPLEPAGER && test_have_prereq TTY
 then
-	test_set_prereq SIMPLEPAGER
+	test_set_prereq SIMPLEPAGERTTY
 fi
 
-test_expect_success SIMPLEPAGER 'default pager is used by default' '
-	unset PAGER GIT_PAGER &&
+test_expect_success SIMPLEPAGERTTY 'default pager is used by default' '
+	unset PAGER GIT_PAGER;
 	test_might_fail git config --unset core.pager &&
 	rm -f default_pager_used ||
 	cleanup_fail &&
@@ -192,7 +184,7 @@ test_expect_success SIMPLEPAGER 'default pager is used by default' '
 '
 
 test_expect_success TTY 'PAGER overrides default pager' '
-	unset GIT_PAGER &&
+	unset GIT_PAGER;
 	test_might_fail git config --unset core.pager &&
 	rm -f PAGER_used ||
 	cleanup_fail &&
@@ -204,7 +196,7 @@ test_expect_success TTY 'PAGER overrides default pager' '
 '
 
 test_expect_success TTY 'core.pager overrides PAGER' '
-	unset GIT_PAGER &&
+	unset GIT_PAGER;
 	rm -f core.pager_used ||
 	cleanup_fail &&
 

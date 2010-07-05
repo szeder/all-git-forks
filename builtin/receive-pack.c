@@ -17,7 +17,7 @@ enum deny_action {
 	DENY_UNCONFIGURED,
 	DENY_IGNORE,
 	DENY_WARN,
-	DENY_REFUSE,
+	DENY_REFUSE
 };
 
 static int deny_deletes;
@@ -501,7 +501,7 @@ static void check_aliased_update(struct command *cmd, struct string_list *list)
 	if (!(flag & REF_ISSYMREF))
 		return;
 
-	if ((item = string_list_lookup(dst_name, list)) == NULL)
+	if ((item = string_list_lookup(list, dst_name)) == NULL)
 		return;
 
 	cmd->skip_update = 1;
@@ -515,9 +515,9 @@ static void check_aliased_update(struct command *cmd, struct string_list *list)
 	dst_cmd->skip_update = 1;
 
 	strcpy(cmd_oldh, find_unique_abbrev(cmd->old_sha1, DEFAULT_ABBREV));
-	strcat(cmd_newh, find_unique_abbrev(cmd->new_sha1, DEFAULT_ABBREV));
+	strcpy(cmd_newh, find_unique_abbrev(cmd->new_sha1, DEFAULT_ABBREV));
 	strcpy(dst_oldh, find_unique_abbrev(dst_cmd->old_sha1, DEFAULT_ABBREV));
-	strcat(dst_newh, find_unique_abbrev(dst_cmd->new_sha1, DEFAULT_ABBREV));
+	strcpy(dst_newh, find_unique_abbrev(dst_cmd->new_sha1, DEFAULT_ABBREV));
 	rp_error("refusing inconsistent update between symref '%s' (%s..%s) and"
 		 " its target '%s' (%s..%s)",
 		 cmd->ref_name, cmd_oldh, cmd_newh,
@@ -534,7 +534,7 @@ static void check_aliased_updates(struct command *commands)
 
 	for (cmd = commands; cmd; cmd = cmd->next) {
 		struct string_list_item *item =
-			string_list_append(cmd->ref_name, &ref_list);
+			string_list_append(&ref_list, cmd->ref_name);
 		item->util = (void *)cmd;
 	}
 	sort_string_list(&ref_list);

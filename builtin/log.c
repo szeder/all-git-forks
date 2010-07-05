@@ -296,6 +296,9 @@ static int git_log_config(const char *var, const char *value, void *cb)
 		default_show_root = git_config_bool(var, value);
 		return 0;
 	}
+	if (!prefixcmp(var, "color.decorate."))
+		return parse_decorate_color_config(var, 15, value);
+
 	return git_diff_ui_config(var, value, cb);
 }
 
@@ -535,13 +538,13 @@ static void add_header(const char *value)
 		len--;
 
 	if (!strncasecmp(value, "to: ", 4)) {
-		item = string_list_append(value + 4, &extra_to);
+		item = string_list_append(&extra_to, value + 4);
 		len -= 4;
 	} else if (!strncasecmp(value, "cc: ", 4)) {
-		item = string_list_append(value + 4, &extra_cc);
+		item = string_list_append(&extra_cc, value + 4);
 		len -= 4;
 	} else {
-		item = string_list_append(value, &extra_hdr);
+		item = string_list_append(&extra_hdr, value);
 	}
 
 	item->string[len] = '\0';
@@ -549,8 +552,9 @@ static void add_header(const char *value)
 
 #define THREAD_SHALLOW 1
 #define THREAD_DEEP 2
-static int thread = 0;
-static int do_signoff = 0;
+static int thread;
+static int do_signoff;
+static const char *signature = git_version_string;
 
 static int git_format_config(const char *var, const char *value, void *cb)
 {
@@ -565,13 +569,13 @@ static int git_format_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, "format.to")) {
 		if (!value)
 			return config_error_nonbool(var);
-		string_list_append(value, &extra_to);
+		string_list_append(&extra_to, value);
 		return 0;
 	}
 	if (!strcmp(var, "format.cc")) {
 		if (!value)
 			return config_error_nonbool(var);
-		string_list_append(value, &extra_cc);
+		string_list_append(&extra_cc, value);
 		return 0;
 	}
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
@@ -609,6 +613,8 @@ static int git_format_config(const char *var, const char *value, void *cb)
 		do_signoff = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "format.signature"))
+		return git_config_string(&signature, var, value);
 
 	return git_log_config(var, value, cb);
 }
@@ -701,6 +707,12 @@ static void gen_message_id(struct rev_info *info, char *base)
 		    (unsigned long) time(NULL),
 		    (int)(email_end - email_start - 1), email_start + 1);
 	info->message_id = strbuf_detach(&buf, NULL);
+}
+
+static void print_signature(void)
+{
+	if (signature && *signature)
+		printf("-- \n%s\n\n", signature);
 }
 
 static void make_cover_letter(struct rev_info *rev, int use_stdout,
@@ -796,6 +808,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	diff_flush(&opts);
 
 	printf("\n");
+	print_signature();
 }
 
 static const char *clean_message_id(const char *msg_id)
@@ -949,7 +962,7 @@ static int to_callback(const struct option *opt, const char *arg, int unset)
 	if (unset)
 		string_list_clear(&extra_to, 0);
 	else
-		string_list_append(arg, &extra_to);
+		string_list_append(&extra_to, arg);
 	return 0;
 }
 
@@ -958,7 +971,7 @@ static int cc_callback(const struct option *opt, const char *arg, int unset)
 	if (unset)
 		string_list_clear(&extra_cc, 0);
 	else
-		string_list_append(arg, &extra_cc);
+		string_list_append(&extra_cc, arg);
 	return 0;
 }
 
@@ -1035,6 +1048,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, 0, "thread", &thread, "style",
 			    "enable message threading, styles: shallow, deep",
 			    PARSE_OPT_OPTARG, thread_callback },
+		OPT_STRING(0, "signature", &signature, "signature",
+			    "add a signature"),
 		OPT_END()
 	};
 
@@ -1239,7 +1254,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		rev.ref_message_ids = xcalloc(1, sizeof(struct string_list));
 	if (in_reply_to) {
 		const char *msgid = clean_message_id(in_reply_to);
-		string_list_append(msgid, rev.ref_message_ids);
+		string_list_append(rev.ref_message_ids, msgid);
 	}
 	rev.numbered_files = numbered_files;
 	rev.patch_suffix = fmt_patch_suffix;
@@ -1286,8 +1301,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 				    && (!cover_letter || rev.nr > 1))
 					free(rev.message_id);
 				else
-					string_list_append(rev.message_id,
-							   rev.ref_message_ids);
+					string_list_append(rev.ref_message_ids,
+							   rev.message_id);
 			}
 			gen_message_id(&rev, sha1_to_hex(commit->object.sha1));
 		}
@@ -1313,7 +1328,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 				       mime_boundary_leader,
 				       rev.mime_boundary);
 			else
-				printf("-- \n%s\n\n", git_version_string);
+				print_signature();
 		}
 		if (!use_stdout)
 			fclose(stdout);
