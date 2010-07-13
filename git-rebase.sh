@@ -53,6 +53,7 @@ git_am_opt=
 rebase_root=
 force_rebase=
 allow_rerere_autoupdate=
+cherry=$(git config --bool rebase.cherry)
 
 continue_merge () {
 	test -n "$prev_head" || die "prev_head must be defined"
@@ -307,6 +308,12 @@ do
 		esac
 		do_merge=t
 		;;
+	--cherry)
+		cherry=true
+		;;
+	--no-cherry)
+		cherry=false
+		;;
 	-n|--no-stat)
 		diffstat=
 		;;
@@ -540,9 +547,16 @@ else
 	revisions="$upstream..$orig_head"
 fi
 
+if test "x$cherry" = "xfalse"
+then
+	cherry_opt=""
+else
+	cherry_opt="--ignore-if-in-upstream"
+fi
+
 if test -z "$do_merge"
 then
-	git format-patch -k --stdout --full-index --ignore-if-in-upstream \
+	git format-patch -k --stdout --full-index $cherry_opt \
 		$root_flag "$revisions" |
 	git am $git_am_opt --rebasing --resolvemsg="$RESOLVEMSG" &&
 	move_to_original_branch
