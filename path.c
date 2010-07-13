@@ -824,6 +824,7 @@ int daemon_avoid_alias(const char *p)
 	}
 }
 
+#undef offset_1st_component
 int offset_1st_component(const char *path)
 {
 	if (has_dos_drive_prefix(path))
