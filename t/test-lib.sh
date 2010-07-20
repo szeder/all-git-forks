@@ -385,6 +385,7 @@ test_skip () {
 		case $this_test.$test_count in
 		$skp)
 			to_skip=t
+			break
 		esac
 	done
 	if test -z "$to_skip" && test -n "$prereq" &&
@@ -395,7 +396,7 @@ test_skip () {
 	case "$to_skip" in
 	t)
 		say_color skip >&3 "skipping test: $@"
-		say_color skip "ok $test_count: # skip $1"
+		say_color skip "ok $test_count # skip $1"
 		: true
 		;;
 	*)
@@ -635,7 +636,7 @@ test_done () {
 	GIT_EXIT_OK=t
 	test_results_dir="$TEST_DIRECTORY/test-results"
 	mkdir -p "$test_results_dir"
-	test_results_path="$test_results_dir/${0%.sh}-$$"
+	test_results_path="$test_results_dir/${0%.sh}-$$.counts"
 
 	echo "total $test_count" >> $test_results_path
 	echo "success $test_success" >> $test_results_path
@@ -829,18 +830,10 @@ this_test=${0##*/}
 this_test=${this_test%%-*}
 for skp in $GIT_SKIP_TESTS
 do
-	to_skip=
-	for skp in $GIT_SKIP_TESTS
-	do
-		case "$this_test" in
-		$skp)
-			to_skip=t
-		esac
-	done
-	case "$to_skip" in
-	t)
+	case "$this_test" in
+	$skp)
 		say_color skip >&3 "skipping test $this_test altogether"
-		say_color skip "skip all tests in $this_test"
+		skip_all="skip all tests in $this_test"
 		test_done
 	esac
 done
