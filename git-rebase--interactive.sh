@@ -699,7 +699,7 @@ prepare_preserve_merges () {
 }
 
 get_oneline () {
-	git show -s --format="%h %s" $1
+	git log -1 -s --format="%h %s" $1
 }
 
 generate_script_help () {
