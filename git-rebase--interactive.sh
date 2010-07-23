@@ -243,6 +243,12 @@ pick_one () {
 	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
 	case "$NEVER_FF" in '') ;; ?*) ff= ;; esac
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
+	if test -n "$next_pick_to_root"
+	then
+		output git reset --hard $sha1
+		next_pick_to_root=
+		return
+	fi
 	if test -n "$REBASE_ROOT"
 	then
 		output git cherry-pick "$@"
@@ -509,8 +515,13 @@ do_next () {
 	goto)
 		comment_for_reflog goto
 		mark_action_done
-		git reset --hard "$(parse_commit $sha1)" || \
-			die "Failed to reset: $sha1"
+		if test $sha1 = ":root"
+		then
+			next_pick_to_root=t
+		else
+			git reset --hard "$(parse_commit $sha1)" || \
+				die "Failed to reset: $sha1"
+		fi
 		;;
 	merge|m)
 		comment_for_reflog merge
@@ -803,8 +814,11 @@ generate_script () {
 			$current*)
 				# already there
 				;;
-			$SHORTUPSTREAM*|'')
+			$SHORTUPSTREAM*)
 				echo "goto $(get_oneline $SHORTONTO)"
+				;;
+			'')
+				echo "goto :root"
 				;;
 			*)
 				echo "goto $(get_mark -v $firstparent)"
