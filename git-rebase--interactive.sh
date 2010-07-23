@@ -274,9 +274,15 @@ merge_one () {
 
 	sha1=$2; shift; shift
 
+	head=$(git rev-parse HEAD)
+	orig_parents=$(git rev-list --no-walk --parents $sha1 | cut -d' ' -f2-)
 	# the command was "merge parents ...", so "parents" was recorded
-	msg="$(commit_message $sha1)"
-	with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents ||
+	if test "$head$parents" = "$orig_parents"; then
+		git reset --hard $sha1
+	else
+		msg="$(commit_message $sha1)"
+		with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents
+	fi ||
 	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
 	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
 }
