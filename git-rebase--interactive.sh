@@ -179,23 +179,6 @@ peek_next_command () {
 	sed -n -e "/^#/d" -e '/^$/d' -e "s/ .*//p" -e "q" < "$TODO"
 }
 
-# expects the original commit name(s) in "$REWRITTEN"/original
-# records the current HEAD as the rewritten commit
-add_rewritten () {
-	test ! -d "$REWRITTEN" && return
-	for original in $(cat "$REWRITTEN"/original)
-	do
-		original=$(git rev-parse --verify "$original") &&
-		rewritten=$(git rev-parse --verify HEAD) &&
-		echo $rewritten > "$REWRITTEN"/$original || break
-	done &&
-	case "$(peek_next_command)" in
-	squash|s) ;; # do nothing
-	*) rm "$REWRITTEN"/original;;
-	esac ||
-	die "Could not store information about rewritten commit"
-}
-
 last_count=
 mark_action_done () {
 	sed -e 1q < "$TODO" >> "$DONE"
@@ -259,7 +242,6 @@ pick_one () {
 	ff=--ff
 	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
 	case "$NEVER_FF" in '') ;; ?*) ff= ;; esac
-	test -d "$REWRITTEN" && echo "$sha1" >> "$REWRITTEN"/original
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
 	if test -n "$REBASE_ROOT"
 	then
@@ -293,10 +275,8 @@ merge_one () {
 	sha1=$2; shift; shift
 
 	# the command was "merge parents ...", so "parents" was recorded
-	echo "$sha1" > "$REWRITTEN"/original
 	msg="$(commit_message $sha1)"
-	with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents &&
-	add_rewritten ||
+	with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents ||
 	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
 	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
 }
@@ -407,7 +387,7 @@ do_next () {
 		comment_for_reflog pick
 
 		mark_action_done
-		pick_one $sha1 && add_rewritten ||
+		pick_one $sha1 ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
 		record_in_rewritten $sha1
 		;;
@@ -483,7 +463,6 @@ do_next () {
 			rm -f "$SQUASH_MSG" "$FIXUP_MSG"
 			;;
 		esac
-		add_rewritten
 		record_in_rewritten $sha1
 		;;
 	x|"exec")
@@ -714,49 +693,9 @@ parse_onto () {
 
 prepare_preserve_merges () {
 	mkdir "$REWRITTEN" || die "Could not create directory $REWRITTEN"
-	if test -z "$REBASE_ROOT"
-	then
-		for c in $(git merge-base --all $HEAD $UPSTREAM)
-		do
-			echo $ONTO > "$REWRITTEN"/$c ||
-				die "Could not init rewritten commits"
-		done
-	fi
 
 	# show merges
 	MERGES_OPTION=--parents
-
-	# Watch for commits that have been dropped by --cherry-pick
-	# The idea is that all commits that are already in upstream
-	# have a mapping $(cat "$REWRITTEN"/<my-sha1>) = <upstream-sha1>
-	# as if they were rewritten.
-
-	# Get all patch ids
-	# --cherry-pick only analyzes first parent, -m analyzes _all_ parents!
-	# So take only the first patch-id for each commit id (uniq -f1).
-	git log -m -p $UPSTREAM..$HEAD | git patch-id |
-		uniq -s 41 > "$REWRITTEN"/ours
-	git log -m -p $HEAD..$UPSTREAM | git patch-id |
-		uniq -s 41 > "$REWRITTEN"/upstream
-
-	# Now get the correspondences
-	cat "$REWRITTEN"/ours | while read patch_id commit
-	do
-		# Is the same patch id in the upstream?
-		sane_grep "^$patch_id " < "$REWRITTEN"/upstream 2> /dev/null ||
-		continue
-
-		# Record the parent as "rewritten" commit.  As we will resolve
-		# rewritten commits recursively, this will work even if the
-		# parent was rewritten, too.
-		#
-		# If there is no parent, then we have a root commit that
-		# was cherry-picked into upstream; let's use $ONTO as
-		# fake parent of that root commit.
-		upstream=$(git rev-parse --verify "$commit^" 2> /dev/null)
-		test ! -z "$upstream" || upstream=$ONTO
-		echo "$upstream" > "$REWRITTEN"/$commit
-	done
 }
 
 get_oneline () {
@@ -900,7 +839,6 @@ do
 		if git diff-index --cached --quiet --ignore-submodules HEAD --
 		then
 			: Nothing to commit
-			add_rewritten
 		else
 			test -f "$AUTHOR_SCRIPT" &&
 				. "$AUTHOR_SCRIPT" ||
@@ -916,8 +854,7 @@ first and then run 'git rebase --continue' again."
 				git reset --soft HEAD^ ||
 				die "Cannot rewind the HEAD"
 			fi
-			do_with_author git commit --no-verify -F "$MSG" -e &&
-			add_rewritten || {
+			do_with_author git commit --no-verify -F "$MSG" -e || {
 				test -n "$amend" && git reset --soft $amend
 				die "Could not commit staged changes."
 			}
@@ -955,14 +892,6 @@ first and then run 'git rebase --continue' again."
 		git rerere clear
 		test -d "$DOTEST" || die "No interactive rebase running"
 
-		test -d "$REWRITTEN" && {
-			# skip last to-be-rewritten commit
-			original_count=$(wc -l < "$REWRITTEN"/original)
-			test $original_count -gt 0 &&
-			head -n $(($original_count-1)) < "$REWRITTEN"/original \
-				> "$REWRITTEN"/original.new &&
-			mv "$REWRITTEN"/original.new "$REWRITTEN"/original
-		}
 		output git reset --hard && do_rest
 		;;
 	-s)
