@@ -708,6 +708,24 @@ get_oneline () {
 	git log -1 -s --format="%h %s" $1
 }
 
+get_mark () {
+	verbose=
+	if test "$1" = "-v"
+	then
+		verbose=t; shift
+	fi
+	if test -s "$MARK_CONSTRUCT"/$1
+	then
+		cat "$MARK_CONSTRUCT"/$1
+	else
+		if test -z "$verbose"; then
+			echo $1
+		else
+			get_oneline $1
+		fi
+	fi
+}
+
 generate_script_help () {
 	cat << EOF
 
@@ -789,7 +807,7 @@ generate_script () {
 				echo "goto $(get_oneline $SHORTONTO)"
 				;;
 			*)
-				echo "goto $(cat "$MARK_CONSTRUCT"/$firstparent)"
+				echo "goto $(get_mark -v $firstparent)"
 				;;
 			esac
 			current=$shortsha1
@@ -800,7 +818,7 @@ generate_script () {
 			echo "pick $(get_oneline $shortsha1)"
 		else
 			# handle merges
-			parents=$(for p in $rest; do cat "$MARK_CONSTRUCT"/$p; done)
+			parents=$(for p in $rest; do get_mark $p; done)
 			echo "merge parents $parents original $(get_oneline $shortsha1)"
 			for parent in $rest
 			do
