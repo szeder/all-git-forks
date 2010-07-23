@@ -771,6 +771,7 @@ generate_script () {
 		return
 	}
 
+	shortbase="$(git rev-parse --short $(git merge-base $HEAD $SHORTUPSTREAM))"
 	start=$SHORTUPSTREAM
 	test -z "$REBASE_ROOT" || start=
 
@@ -800,7 +801,7 @@ generate_script () {
 		done
 	}
 
-	current=$start
+	current=$SHORTONTO
 	marknum=1
 	list_todo_revs --format="%m%h %p" |
 	sed -n "s/^>//p" |
@@ -814,7 +815,7 @@ generate_script () {
 			$current*)
 				# already there
 				;;
-			$SHORTUPSTREAM*)
+			$shortbase*|$SHORTUPSTREAM*)
 				echo "goto $(get_oneline $SHORTONTO)"
 				;;
 			'')
