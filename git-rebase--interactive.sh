@@ -164,6 +164,16 @@ run_pre_rebase_hook () {
 }
 
 
+ff_head=HEAD
+
+actually_reset_ff_head () {
+	if test $ff_head != HEAD
+	then
+		output git reset --hard $ff_head || die "Failed to reset: $ff_head"
+	fi
+	ff_head=HEAD
+}
+
 ORIG_REFLOG_ACTION="$GIT_REFLOG_ACTION"
 
 comment_for_reflog () {
@@ -245,10 +255,20 @@ pick_one () {
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
 	if test -n "$next_pick_to_root"
 	then
-		output git reset --hard $sha1
+		ff_head="$(git rev-parse $sha1)"
 		next_pick_to_root=
 		return
 	fi
+	if test -n "$ff"
+	then
+		orig_parent=$(git rev-list --no-walk --parents $sha1 | cut -d' ' -f2-)
+		parent=$(git rev-parse $ff_head)
+		if test "$orig_parent" = $parent; then
+			ff_head="$(git rev-parse $sha1)"
+			return
+		fi
+	fi
+	actually_reset_ff_head
 	if test -n "$REBASE_ROOT"
 	then
 		output git cherry-pick "$@"
@@ -280,17 +300,18 @@ merge_one () {
 
 	sha1=$2; shift; shift
 
-	head=$(git rev-parse HEAD)
+	head=$(git rev-parse $ff_head)
 	orig_parents=$(git rev-list --no-walk --parents $sha1 | cut -d' ' -f2-)
 	# the command was "merge parents ...", so "parents" was recorded
 	if test "$head$parents" = "$orig_parents"; then
-		git reset --hard $sha1
+		ff_head="$(git rev-parse $sha1)"
 	else
+		actually_reset_ff_head
 		msg="$(commit_message $sha1)"
 		with_author_ident $sha1 git merge $STRATEGY --no-ff -m "$msg" $parents
 	fi ||
 	die_with_patch $sha1 "Could not redo merge $sha1 with parents $parents"
-	echo "$sha1 $(git rev-parse HEAD^0)" >> "$REWRITTEN_LIST"
+	echo "$sha1 $(git rev-parse $ff_head^0)" >> "$REWRITTEN_LIST"
 }
 
 nth_string () {
@@ -358,7 +379,7 @@ die_failed_squash() {
 
 flush_rewritten_pending() {
 	test -s "$REWRITTEN_PENDING" || return
-	newsha1="$(git rev-parse HEAD^0)"
+	newsha1="$(git rev-parse $ff_head^0)"
 	sed "s/$/ $newsha1/" < "$REWRITTEN_PENDING" >> "$REWRITTEN_LIST"
 	rm -f "$REWRITTEN_PENDING"
 }
@@ -409,6 +430,7 @@ do_next () {
 		mark_action_done
 		pick_one $sha1 ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
+		actually_reset_ff_head
 		git commit --amend --no-post-rewrite
 		record_in_rewritten $sha1
 		;;
@@ -419,6 +441,7 @@ do_next () {
 		pick_one $sha1 ||
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
 		echo "$sha1" > "$DOTEST"/stopped-sha
+		actually_reset_ff_head
 		make_patch $sha1
 		git rev-parse --verify HEAD > "$AMEND"
 		warn "Stopped at $sha1... $rest"
@@ -447,8 +470,9 @@ do_next () {
 			die "Cannot '$squash_style' without a previous commit"
 
 		mark_action_done
+		actually_reset_ff_head
 		update_squash_messages $squash_style $sha1
-		author_script=$(get_author_ident_from_commit HEAD)
+		author_script=$(get_author_ident_from_commit $ff_head)
 		echo "$author_script" > "$AUTHOR_SCRIPT"
 		eval "$author_script"
 		output git reset --soft HEAD^
@@ -510,7 +534,7 @@ do_next () {
 		echo "$sha1" | sane_egrep -q '^:[a-zA-Z0-9]+$' || \
 			die "Invalid mark name: $sha1"
 		mkdir -p "$MARK" &&
-		git rev-parse HEAD >"$MARK"/"$sha1"
+		git rev-parse $ff_head >"$MARK"/"$sha1"
 		;;
 	goto)
 		comment_for_reflog goto
@@ -519,8 +543,7 @@ do_next () {
 		then
 			next_pick_to_root=t
 		else
-			git reset --hard "$(parse_commit $sha1)" || \
-				die "Failed to reset: $sha1"
+			ff_head="$(parse_commit $sha1)"
 		fi
 		;;
 	merge|m)
@@ -535,6 +558,8 @@ do_next () {
 		;;
 	esac
 	test -s "$TODO" && return
+
+	actually_reset_ff_head
 
 	comment_for_reflog finish &&
 	HEADNAME=$(cat "$DOTEST"/head-name) &&
