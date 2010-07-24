@@ -37,7 +37,7 @@ test_expect_success 'setup' '
 #        -- C1 --
 #
 test_expect_success 'squash F1 into D1' '
-	FAKE_LINES="1 squash 6 2 3 4 5" git rebase -i -p B1 &&
+	FAKE_LINES="1 squash 8 2 3 4 5 6 7" git rebase -i -p B1 &&
 	test "$(git rev-parse HEAD^2)" = "$(git rev-parse C1)" &&
 	test "$(git rev-parse HEAD~2)" = "$(git rev-parse B1)" &&
 	git tag E2
