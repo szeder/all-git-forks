@@ -783,7 +783,11 @@ class P4Submit(Command):
         [upstream, settings] = findUpstreamBranchPoint()
         self.depotPath = settings['depot-paths'][0]
         if len(self.origin) == 0:
-            self.origin = upstream
+            config_origin = gitConfig("git-p4.origin")
+            if len(config_origin) > 0:
+                self.origin = config_origin
+            else:
+                self.origin = upstream
 
         if self.verbose:
             print "Origin branch is " + self.origin
