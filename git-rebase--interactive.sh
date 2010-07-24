@@ -842,7 +842,12 @@ generate_script () {
 				echo "goto $(get_oneline $SHORTONTO)"
 				;;
 			'')
-				echo "goto :root"
+				if test -z "$REBASE_ROOT"
+				then
+					echo "goto :root"
+				else
+					echo "goto $(get_oneline $SHORTONTO)"
+				fi
 				;;
 			*)
 				echo "goto $(get_mark -v $p)"
