@@ -553,6 +553,7 @@ class P4Submit(Command):
                 optparse.make_option("--verbose", dest="verbose", action="store_true"),
                 optparse.make_option("--origin", dest="origin"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
+                optparse.make_option("--slow", dest="fast", action="store_false", help="Fall back to the old, slow method of diffing in case the fast method causes problems"),
         ]
         self.description = "Submit changes from git to the perforce depot."
         self.usage += " [name of git branch to submit into perforce depot]"
@@ -560,6 +561,7 @@ class P4Submit(Command):
         self.origin = ""
         self.detectRename = False
         self.verbose = False
+        self.fast = True
         self.isWindows = (platform.system() == "Windows")
 
     def check(self):
@@ -619,6 +621,48 @@ class P4Submit(Command):
             template += line
 
         return template
+
+    def getFileListString(self, allFiles):
+        if self.fast:
+            # not sure how p4 diff deals with added/removed files, so just diff the parent directory
+            # do this for edited files too, so that we can use a set to eliminate duplicates (laziness, it should still be faster than diffing the entire repo)
+            filePaths = set()
+            for f in allFiles:
+                if f == "/":
+                    parent = f
+                elif f.endswith("/"):
+                    parent = os.path.dirname(f[:-1]) + "/..."
+                elif "/" in f:
+                    parent = os.path.dirname(f) + "/..."
+                else:
+                    parent = "..."
+                if self.verbose:
+                    print "Parent path of " + f + " is " + parent
+                filePaths.add(parent)
+            return " ".join(filePaths)
+        else:
+            return "..."
+
+    def addAllFilesForCommit(self, id, allFiles):
+        # FIXME: merge this with the similar code in applyCommit
+        diffOpts = ("", "-M")[self.detectRename]
+        diff = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (diffOpts, id, id))
+        for line in diff:
+            diff = parseDiffTreeEntry(line)
+            modifier = diff['status']
+            path = diff['src']
+            if modifier == "M":
+                allFiles.add(path)
+            elif modifier == "A":
+                allFiles.add(path)
+            elif modifier == "D":
+                allFiles.add(path)
+            elif modifier == "R":
+                src, dest = diff['src'], diff['dst']
+                allFiles.add(src)
+                allFiles.add(dest)
+            else:
+                die("unknown modifier %s for %s" % (modifier, path))
 
     def applyCommit(self, id):
         print "Applying %s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id))
@@ -715,7 +759,9 @@ class P4Submit(Command):
             submitTemplate = self.prepareLogMessage(template, logMessage)
             if os.environ.has_key("P4DIFF"):
                 del(os.environ["P4DIFF"])
-            diff = p4_read_pipe("diff -du ...")
+
+            diffString = self.getFileListString(filesToAdd.union(filesToDelete, editedFiles, filesToChangeExecBit))
+            diff = p4_read_pipe("diff -du %s" % diffString)
 
             newdiff = ""
             for newFile in filesToAdd:
@@ -817,16 +863,20 @@ class P4Submit(Command):
         print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
         self.oldWorkingDirectory = os.getcwd()
 
-        chdir(self.clientPath)
-        print "Synchronizing p4 checkout..."
-        p4_system("sync ...")
-
-        self.check()
-
         commits = []
         for line in read_pipe_lines("git rev-list --no-merges %s..%s" % (self.origin, self.master)):
             commits.append(line.strip())
         commits.reverse()
+
+        allFiles = set()
+        for commit in commits:
+            self.addAllFilesForCommit(commit, allFiles)
+
+        chdir(self.clientPath)
+        print "Syncronizing p4 checkout..."
+        p4_system("sync %s" % self.getFileListString(allFiles))
+
+        self.check()
 
         while len(commits) > 0:
             commit = commits[0]
