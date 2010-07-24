@@ -351,12 +351,12 @@ def p4BranchesInGit(branchesAreInRemotes = True):
         line = line.strip()
 
         ## only import to p4/
-        if not line.startswith('p4/') or line == "p4/HEAD":
+        if not line.count('p4/') > 0:
             continue
         branch = line
 
         # strip off p4
-        branch = re.sub ("^p4/", "", line)
+        branch = re.sub ("^.*p4/", "", line)
 
         branches[branch] = parseRevision(line)
     return branches
