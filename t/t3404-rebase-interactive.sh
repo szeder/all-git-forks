@@ -248,8 +248,8 @@ test_expect_success '-p handles "no changes" gracefully' '
 
 test_expect_failure 'exchange two commits with -p' '
 	FAKE_LINES="2 1" git rebase -i -p HEAD~2 &&
-	test H = $(git cat-file commit HEAD^ | sed -ne \$p) &&
-	test G = $(git cat-file commit HEAD | sed -ne \$p)
+	test "nitfol" = $(git cat-file commit HEAD^ | sed -ne \$p) &&
+	test E = $(git cat-file commit HEAD | sed -ne \$p)
 '
 
 test_expect_success 'preserve merges with -p' '
