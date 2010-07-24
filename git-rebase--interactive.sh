@@ -713,6 +713,22 @@ prepare_preserve_merges () {
 
 	# show merges
 	MERGES_OPTION=--parents
+
+	git rev-list $MERGES_OPTION --cherry-pick \
+		--topo-order --reverse $REVISIONS --format="%m%h %p" |
+	sed -n "s/^>//p" > "$REWRITTEN"/cherry
+
+	git rev-list $MERGES_OPTION \
+		--topo-order --reverse $REVISIONS --format="%m%h %p" |
+	sed -n "s/^>//p" |
+	while read shortsha1 firstparent rest
+	do
+		grep -q "^$shortsha1" "$REWRITTEN"/cherry || {
+			p=$firstparent
+			test -f "$REWRITTEN"/$p && p="$(cat "$REWRITTEN"/$p)"
+			echo $p > "$REWRITTEN"/$shortsha1
+		}
+	done
 }
 
 get_oneline () {
@@ -807,22 +823,25 @@ generate_script () {
 	sed -n "s/^>//p" |
 	while read shortsha1 firstparent rest
 	do
+		p=$firstparent
+		test -f "$REWRITTEN"/$p && p="$(cat "$REWRITTEN"/$p)"
 		count=$(($count+1))
 
 		# generate "goto" statements
 		test -z "$PRESERVE_MERGES" || {
-			case "$firstparent" in
+			case "$p" in
 			$current*)
 				# already there
 				;;
 			$shortbase*|$SHORTUPSTREAM*)
+				test $current = $SHORTONTO ||
 				echo "goto $(get_oneline $SHORTONTO)"
 				;;
 			'')
 				echo "goto :root"
 				;;
 			*)
-				echo "goto $(get_mark -v $firstparent)"
+				echo "goto $(get_mark -v $p)"
 				;;
 			esac
 			current=$shortsha1
