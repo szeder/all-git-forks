@@ -376,15 +376,24 @@ def findUpstreamBranchPoint(head = "HEAD"):
     settings = None
     parent = 0
     while parent < 65535:
-        commit = head + "~%s" % parent
-        log = extractLogMessageFromGitCommit(commit)
-        settings = extractSettingsGitLog(log)
-        if settings.has_key("depot-paths"):
-            paths = ",".join(settings["depot-paths"])
-            if branchByDepotPath.has_key(paths):
-                return [branchByDepotPath[paths], settings]
+        # Try only 1000 at a time
+        lines = read_pipe_lines("git log %s --oneline --max-count=%s" % (head, (parent + 1000)))
+        commitCount = parent + len(lines)
+        while parent < commitCount:
+            commit = head + "~%s" % parent
+            log = extractLogMessageFromGitCommit(commit)
+            settings = extractSettingsGitLog(log)
+            if settings.has_key("depot-paths"):
+                paths = ",".join(settings["depot-paths"])
+                if branchByDepotPath.has_key(paths):
+                    return [branchByDepotPath[paths], settings]
+            parent = parent + 1
+        if parent >= commitCount:
+            print "The branch is not related to the p4 branch(s)"
+            print "Make sure the branch is related to the one you want to push to."
+            print "Re-run this command with --verbose to see the full details."
+            die("Unable to find the upstream branch point.")
 
-        parent = parent + 1
 
     return ["", settings]
 
