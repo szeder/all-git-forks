@@ -208,3 +208,4 @@
 *.gcno
 *.gcov
 /coverage-untested-functions
+/cover_db

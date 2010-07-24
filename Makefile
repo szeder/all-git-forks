@@ -2303,3 +2303,7 @@ coverage-untested-functions: coverage-report
 	grep '^function.*called 0 ' *.c.gcov \
 		| sed -e 's/\([^:]*\)\.gcov: *function \([^ ]*\) called.*/\1: \2/' \
 		| tee coverage-untested-functions
+
+coverage-report-cover-db: coverage-report
+	gcov2perl -db cover_db *.gcov
+
