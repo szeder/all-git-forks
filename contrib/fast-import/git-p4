@@ -821,6 +821,21 @@ class P4Submit(Command):
                    + "Please review/edit and then use p4 submit -i < %s to submit directly!"
                    % (fileName, fileName))
 
+    def findCommonPath(self, settings):
+        dirs = []
+        for path in settings:
+            localDir = p4Where(path)
+            if len(localDir) > 0:
+                dirs.append(localDir)
+        localDir = dirs[0];
+        maxMatch = len(localDir) - 1
+        for dir in dirs:
+            if maxMatch > len(dir) - 1:
+                maxMatch = len(dir) - 1
+            while dir[maxMatch] != localDir[maxMatch]:
+                maxMatch = maxMatch - 1;
+        return localDir[0:maxMatch]
+
     def run(self, args):
         if len(args) == 0:
             self.master = currentGitBranch()
@@ -836,7 +851,23 @@ class P4Submit(Command):
             die("%s is not in git-p4.allowSubmit" % self.master)
 
         [upstream, settings] = findUpstreamBranchPoint()
-        self.depotPath = settings['depot-paths'][0]
+        if (len(settings['depot-paths']) > 1):
+            self.depotPath = ""
+            self.clientPath = self.findCommonPath(settings['depot-paths'])
+        else:
+            self.depotPath = settings['depot-paths'][0]
+            if len(self.depotPath) == 0:
+                print "Internal error: cannot locate perforce depot path from existing branches"
+                sys.exit(128)
+            self.clientPath = p4Where(self.depotPath)
+
+        if len(self.clientPath) == 0:
+            print "Error: Cannot locate perforce checkout of %s in client view" % self.depotPath
+            print "Update your client and try again."
+            print "The complete exact path must be in the client view:"
+            print os.system(p4_build_cmd("client -o"))
+            sys.exit(128)
+
         if len(self.origin) == 0:
             config_origin = gitConfig("git-p4.origin")
             if len(config_origin) > 0:
@@ -846,19 +877,6 @@ class P4Submit(Command):
 
         if self.verbose:
             print "Origin branch is " + self.origin
-
-        if len(self.depotPath) == 0:
-            print "Internal error: cannot locate perforce depot path from existing branches"
-            sys.exit(128)
-
-        self.clientPath = p4Where(self.depotPath)
-
-        if len(self.clientPath) == 0:
-            print "Error: Cannot locate perforce checkout of %s in client view" % self.depotPath
-            print "Update your client and try again."
-            print "The complete exact path must be in the client view:"
-            print os.system(p4_build_cmd("client -o"))
-            sys.exit(128)
 
         print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
         self.oldWorkingDirectory = os.getcwd()
