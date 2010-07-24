@@ -787,7 +787,7 @@ generate_script () {
 		return
 	}
 
-	shortbase="$(git rev-parse --short $(git merge-base $HEAD $SHORTUPSTREAM))"
+	shortbase="$(git rev-parse --short $(git merge-base $HEAD $SHORTUPSTREAM) 2>/dev/null || echo xxxxxxx)"
 	start=$SHORTUPSTREAM
 	test -z "$REBASE_ROOT" || start=
 
@@ -801,23 +801,27 @@ generate_script () {
 		sed -n "s/^>//p" |
 		while read shortsha1 firstparent rest
 		do
-			case "$firstparent" in
+			p=$firstparent
+			test -f "$REWRITTEN"/$p && p="$(cat "$REWRITTEN"/$p)"
+			case "$p" in
 			$current*|$SHORTUPSTREAM*|'')
 				;;
 			*)
-				touch "$MARK_CONSTRUCT"/$firstparent
+				touch "$MARK_CONSTRUCT"/$p
 				;;
 			esac
 			current=$shortsha1
 
 			for parent in $rest
 			do
+				test -f "$REWRITTEN"/$parent && parent="$(cat "$REWRITTEN"/$parent)"
 				touch "$MARK_CONSTRUCT"/$parent
 			done
 		done
 	}
 
 	current=$SHORTONTO
+	test -z "$REBASE_ROOT" || current=
 	marknum=1
 	list_todo_revs --format="%m%h %p" |
 	sed -n "s/^>//p" |
