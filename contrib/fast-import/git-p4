@@ -800,6 +800,9 @@ class P4Submit(Command):
 
         if len(self.clientPath) == 0:
             print "Error: Cannot locate perforce checkout of %s in client view" % self.depotPath
+            print "Update your client and try again."
+            print "The complete exact path must be in the client view:"
+            print os.system(p4_build_cmd("client -o"))
             sys.exit(128)
 
         print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
