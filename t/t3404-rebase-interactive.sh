@@ -246,7 +246,7 @@ test_expect_success '-p handles "no changes" gracefully' '
 	test $HEAD = $(git rev-parse HEAD)
 '
 
-test_expect_failure 'exchange two commits with -p' '
+test_expect_success 'exchange two commits with -p' '
 	FAKE_LINES="2 1" git rebase -i -p HEAD~2 &&
 	test "nitfol" = $(git cat-file commit HEAD^ | sed -ne \$p) &&
 	test E = $(git cat-file commit HEAD | sed -ne \$p)
@@ -295,7 +295,7 @@ test_expect_success 'preserve merges with -p' '
 '
 
 test_expect_success 'edit ancestor with -p' '
-	FAKE_LINES="edit 1 2 3 4 5 8" git rebase -i -p HEAD~3 &&
+	FAKE_LINES="edit 1 2 3 4 5 6 7 8 9" git rebase -i -p HEAD~3 &&
 	echo 2 > unrelated-file &&
 	test_tick &&
 	git commit -m L2-modified --amend unrelated-file &&
