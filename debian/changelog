@@ -1,3 +1,12 @@
+git (1:1.7.1-1.1) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * debian/diff/0004-Check-size-of-path-buffer-before-writing-...diff:
+    new, cherry-picked from 3c9d041: setup: Check size of path buffer
+    before writing into it (closes: #590026, CVE-2010-2542).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 25 Jul 2010 18:01:15 -0500
+
 git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
