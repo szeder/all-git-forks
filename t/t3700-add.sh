@@ -268,21 +268,24 @@ test_expect_success 'git add --dry-run of existing changed file' "
 
 test_expect_success 'git add --dry-run of non-existing file' "
 	echo ignored-file >>.gitignore &&
-	! (git add --dry-run track-this ignored-file >actual 2>&1) &&
+	test_must_fail git add --dry-run track-this ignored-file >actual 2>&1 &&
 	echo \"fatal: pathspec 'ignored-file' did not match any files\" | test_cmp - actual
 "
 
-cat >expect <<EOF
+cat >expect.err <<\EOF
 The following paths are ignored by one of your .gitignore files:
 ignored-file
 Use -f if you really want to add them.
 fatal: no files added
+EOF
+cat >expect.out <<\EOF
 add 'track-this'
 EOF
 
 test_expect_success 'git add --dry-run --ignore-missing of non-existing file' '
-	!(git add --dry-run --ignore-missing track-this ignored-file >actual 2>&1) &&
-	test_cmp expect actual
+	test_must_fail git add --dry-run --ignore-missing track-this ignored-file >actual.out 2>actual.err &&
+	test_cmp expect.out actual.out &&
+	test_cmp expect.err actual.err
 '
 
 test_done
