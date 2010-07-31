@@ -24,6 +24,7 @@
 #include "remote.h"
 #include "run-command.h"
 #include "connected.h"
+#include "narrow-tree.h"
 
 /*
  * Overall FIXMEs:
@@ -41,6 +42,7 @@ static const char * const builtin_clone_usage[] = {
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static char *option_template, *option_depth;
+static const char **option_narrow;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
 static const char *real_git_dir;
@@ -50,6 +52,18 @@ static int option_progress = -1;
 static struct string_list option_config;
 static struct string_list option_reference;
 static int option_dissociate;
+static int narrow_nr;
+
+static int add_narrow_prefix(const struct option *opt, const char *arg, int unset);
+
+static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
+{
+	struct string_list *option_reference = opt->value;
+	if (!arg)
+		return -1;
+	string_list_append(option_reference, arg);
+	return 0;
+}
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -92,12 +106,30 @@ static struct option builtin_clone_options[] = {
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
+	OPT_CALLBACK(0, "narrow", NULL, "prefix", "narrow clone",
+		     add_narrow_prefix),
 	OPT_END()
 };
 
 static const char *argv_submodule[] = {
 	"submodule", "update", "--init", "--recursive", NULL
 };
+
+static int add_narrow_prefix(const struct option *opt, const char *arg, int unset)
+{
+	if (unset)
+		die("--no-narrow is not supported");
+
+	narrow_nr++;
+	option_narrow = xrealloc(option_narrow, sizeof(*option_narrow)*narrow_nr);
+	option_narrow[narrow_nr-1] = arg;
+	return 0;
+}
+
+static int narrow_cmp(const void *a, const void *b)
+{
+	return strcmp(*(const char**)a, *(const char **)b);
+}
 
 static const char *get_repo_path_1(struct strbuf *path, int *is_bundle)
 {
@@ -717,6 +749,7 @@ static int checkout(void)
 	init_tree_desc(&t, tree->buffer, tree->size);
 	if (unpack_trees(1, &t, &opts) < 0)
 		die(_("unable to checkout working tree"));
+	hashcpy(the_index.narrow_base, tree->object.sha1);
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
@@ -877,6 +910,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	/* no need to be strict, transport_set_option() will validate it again */
 	if (option_depth && atoi(option_depth) < 1)
 		die(_("depth %s is not a positive number"), option_depth);
+	if (is_local && option_narrow)
+		die("--narrow is not really for local clone. Please consider --shared");
 
 	if (argc == 2)
 		dir = xstrdup(argv[1]);
@@ -904,6 +939,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	else {
 		work_tree = dir;
 		git_dir = mkpathdup("%s/.git", dir);
+	}
+
+	if (option_narrow) {
+		int i;
+		qsort(option_narrow, narrow_nr, sizeof(*option_narrow), narrow_cmp);
+		for (i = 0; i < narrow_nr; i++)
+			if (!valid_narrow_prefix(option_narrow[i], i ? option_narrow[i-1] : NULL, 0))
+				die("Invalid narrow prefix");
 	}
 
 	atexit(remove_junk);
@@ -997,6 +1040,16 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_upload_pack)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
+
+	/* Do this early in order to set get_narrow_prefix() != NULL */
+	if (option_narrow) {
+		int i;
+		FILE *fp = fopen(git_path("narrow"), "w+");
+		for (i = 0; i < narrow_nr; i++)
+			fprintf(fp, "%s\n", option_narrow[i]);
+		fclose(fp);
+		check_narrow_prefix(); /* Install the prefix */
+	}
 
 	if (transport->smart_options && !option_depth)
 		transport->smart_options->check_self_contained_and_connected = 1;

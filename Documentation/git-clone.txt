@@ -14,8 +14,8 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--dissociate] [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
-	  [--recursive | --recurse-submodules] [--] <repository>
-	  [<directory>]
+	  [--recursive | --recurse-submodules]
+	  [--narrow <path>] [--] <repository>
 
 DESCRIPTION
 -----------
@@ -203,6 +203,17 @@ objects from the source repository into a pack in the cloned repository.
 	initial cloning.  If the HEAD at the remote did not point at any
 	branch when `--single-branch` clone was made, no remote-tracking
 	branch is created.
+
+--narrow <path>::
+	Create a 'narrow' clone with all commit trees limited to
+	the given path. A narrow repository has a number of
+	limititations (you cannot clone or fech from it, nor push
+	into it), but is adequate if you are only interested in
+	certain paths of a large repository, and would want to
+	push some fixes.
++
+Multiple --narrow can be given. This option can also be used together
+with --depth to truncate both history and path.
 
 --recursive::
 --recurse-submodules::
