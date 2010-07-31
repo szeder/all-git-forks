@@ -243,6 +243,9 @@ print a message to stderr and exit with nonzero status.
 	$GIT_OBJECT_DIRECTORY is set to /foo/bar then "git rev-parse
 	--git-path objects/abc" returns /foo/bar/abc.
 
+--narrow-prefix::
+	Print narrow prefix git reads from $GIT_DIR/narrow.
+
 --show-cdup::
 	When the command is invoked from a subdirectory, show the
 	path of the top-level directory relative to the current

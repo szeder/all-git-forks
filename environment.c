@@ -11,6 +11,7 @@
 #include "refs.h"
 #include "fmt-merge-msg.h"
 #include "commit.h"
+#include "narrow-tree.h"
 
 int trust_executable_bit = 1;
 int trust_ctime = 1;
@@ -182,6 +183,7 @@ static void setup_git_env(void)
 	shallow_file = getenv(GIT_SHALLOW_FILE_ENVIRONMENT);
 	if (shallow_file)
 		set_alternate_shallow_file(shallow_file, 0);
+	check_narrow_prefix();
 }
 
 int is_bare_repository(void)

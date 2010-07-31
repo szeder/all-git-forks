@@ -276,6 +276,11 @@ worktrees/<id>/link::
 	file. It is used to detect if the linked repository is
 	manually removed.
 
+narrow::
+	This file contains narrow prefix in sorted order. It is
+	internally used and maintained by narrow clone mechanism.
+	See `--narrow-tree` option to linkgit:git-clone[1].
+
 SEE ALSO
 --------
 linkgit:git-init[1],

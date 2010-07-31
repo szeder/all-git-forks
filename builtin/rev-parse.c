@@ -12,6 +12,7 @@
 #include "diff.h"
 #include "revision.h"
 #include "split-index.h"
+#include "narrow-tree.h"
 
 #define DO_REVS		1
 #define DO_NOREV	2
@@ -814,6 +815,12 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			if (starts_with(arg, "--until=")) {
 				show_datestring("--min-age=", arg+8);
+				continue;
+			}
+			if (!strcmp(arg, "--narrow-prefix")) {
+				char *p = get_narrow_string();
+				fputs(p, stdout);
+				free(p);
 				continue;
 			}
 			if (show_flag(arg) && verify)
