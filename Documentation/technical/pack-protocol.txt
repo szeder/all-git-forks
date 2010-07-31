@@ -238,6 +238,9 @@ of (meaning that it does not have the parents of a commit) as
 'shallow' lines so that the server is aware of the limitations of
 the client's history.
 
+If client is requesting narrow clone, it must send 'narrow-tree'
+lines before 'want' lines.
+
 The client now sends the maximum commit history depth it wants for
 this transaction, which is the number of commits it wants from the
 tip of the history, if any, as a 'deepen' line.  A depth of 0 is the

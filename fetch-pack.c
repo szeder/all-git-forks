@@ -26,6 +26,7 @@ static int transfer_fsck_objects = -1;
 static int agent_supported;
 static struct lock_file shallow_lock;
 static const char *alternate_shallow_file;
+struct pathspec *narrow_pathspec;
 
 /* Remember to update object flag allocation in object.h */
 #define COMPLETE	(1U << 0)
@@ -279,6 +280,12 @@ static int find_common(struct fetch_pack_args *args,
 	for_each_alternate_ref(insert_one_alternate_ref, NULL);
 
 	fetching = 0;
+	narrow_pathspec = get_narrow_pathspec();
+	if (narrow_pathspec && narrow_pathspec->nr) {
+		const char **p = narrow_pathspec->raw;
+		while (*p)
+			packet_buf_write(&req_buf, "narrow-tree %s\n", *p++);
+	}
 	for ( ; refs ; refs = refs->next) {
 		unsigned char *remote = refs->old_oid.hash;
 		const char *remote_hex;
@@ -809,6 +816,8 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 
 	if ((args->depth > 0 || is_repository_shallow()) && !server_supports("shallow"))
 		die("Server does not support shallow clients");
+	if (narrow_pathspec && narrow_pathspec->nr && !server_supports("narrow-tree"))
+		die("Server does not support narrow-tree");
 	if (server_supports("multi_ack_detailed")) {
 		if (args->verbose)
 			fprintf(stderr, "Server supports multi_ack_detailed\n");

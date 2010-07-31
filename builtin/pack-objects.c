@@ -2503,6 +2503,11 @@ static void get_object_list(int ac, const char **av)
 	setup_revisions(ac, av, &revs, NULL);
 	revs.prune = 0;
 
+	if (narrow_prefix) {
+		init_pathspec(&revs.prune_data, narrow_prefix);
+		narrow_prefix[narrow_prefix_nr] = NULL;
+	}
+
 	/* make sure shallows are read */
 	is_repository_shallow();
 

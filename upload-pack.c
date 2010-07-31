@@ -52,6 +52,8 @@ static int keepalive = 5;
 static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
+const char **narrow_prefix;
+int narrow_prefix_nr;
 
 static void reset_timeout(void)
 {
@@ -112,6 +114,18 @@ static void create_pack_file(void)
 		argv[arg++] = "--delta-base-offset";
 	if (use_include_tag)
 		argv[arg++] = "--include-tag";
+	if (narrow_prefix) {
+		argv[arg++] = "--";
+		memcpy(argv+arg, narrow_prefix, narrow_prefix_nr*sizeof(*argv));
+		arg += narrow_prefix_nr;
+	}
+#if 0
+	if (narrow_prefix) {
+		argv[arg++] = "--";
+		memcpy(argv+arg, narrow_prefix, narrow_prefix_nr*sizeof(*argv));
+		arg += narrow_prefix_nr;
+	}
+#endif
 	argv[arg++] = NULL;
 
 	pack_objects.in = -1;
@@ -570,6 +584,22 @@ static void receive_needs(void)
 			}
 			continue;
 		}
+		if (starts_with(line, "narrow-tree ")) {
+			char *s;
+			int len;
+			len = strlen(line+12);
+			s = malloc(len+1);
+			memcpy(s, line+12, len-1);
+			s[len-1] = '\0'; /* \n */
+			if (s[len-2] == '/')
+				die("trailing slash in narrow prefix not allowed, %s", line);
+
+			narrow_prefix_nr++;
+			narrow_prefix = xrealloc(narrow_prefix,
+						 sizeof(*narrow_prefix)*(narrow_prefix_nr+1));
+			narrow_prefix[narrow_prefix_nr-1] = s;
+			continue;
+		}
 		if (starts_with(line, "deepen ")) {
 			char *end;
 			depth = strtol(line + 7, &end, 0);
@@ -627,6 +657,9 @@ static void receive_needs(void)
 
 	if (!use_sideband && daemon_mode)
 		no_progress = 1;
+
+	if (narrow_prefix)
+		use_thin_pack = 0;
 
 	if (depth == 0 && shallows.nr == 0)
 		return;
@@ -725,7 +758,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed narrow-tree";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 
@@ -871,6 +904,9 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
+
+	if (is_narrow_clone())
+		die("attempt to fetch/clone from a narrow repository");
 	upload_pack();
 	return 0;
 }

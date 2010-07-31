@@ -29,6 +29,9 @@ This command degenerates to download everything to complete the
 asked refs from the remote side when the local side does not
 have a common ancestor commit.
 
+In narrow repositories, it asks 'git-upload-pack' to send only objects
+within narrow area defined in $GIT_DIR/narrow.
+
 
 OPTIONS
 -------
