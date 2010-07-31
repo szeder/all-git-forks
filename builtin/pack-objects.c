@@ -25,8 +25,8 @@
 #include "argv-array.h"
 
 static const char *pack_usage[] = {
-	N_("git pack-objects --stdout [<options>...] [< <ref-list> | < <object-list>]"),
-	N_("git pack-objects [<options>...] <base-name> [< <ref-list> | < <object-list>]"),
+	N_("git pack-objects --stdout [<options>...] [ -- path ... ] [< <ref-list> | < <object-list>]"),
+	N_("git pack-objects [<options>...] <base-name> [ -- path ... ] [< <ref-list> | < <object-list>]"),
 	NULL
 };
 
@@ -2501,6 +2501,7 @@ static void get_object_list(int ac, const char **av)
 	init_revisions(&revs, NULL);
 	save_commit_buffer = 0;
 	setup_revisions(ac, av, &revs, NULL);
+	revs.prune = 0;
 
 	/* make sure shallows are read */
 	is_repository_shallow();
@@ -2683,6 +2684,14 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, pack_objects_options,
 			     pack_usage, 0);
 
+#if 0
+		if (!strcmp(arg, "--")) {
+			if (!pack_to_stdout)
+				die("either --stdout of pack basename must be specified");
+			break;
+		}
+#endif
+
 	if (argc) {
 		base_name = argv[0];
 		argc--;
@@ -2715,6 +2724,17 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		use_internal_rev_list = 1;
 		argv_array_push(&rp, "--unpacked");
 	}
+
+#if 0
+	if (!argv[i] || !strcmp(argv[i], "--")) {
+		if (rp_ac+(argc-i)+1 >= rp_ac_alloc) {
+			rp_ac_alloc = rp_ac + (argc-i) + 1;
+			rp_av = xrealloc(rp_av, rp_ac_alloc * sizeof(*rp_av));
+		}
+		memcpy(rp_av+rp_ac, argv+i, sizeof(*argv)*(argc-i));
+		rp_ac += argc-i;
+	}
+#endif
 
 	if (!reuse_object)
 		reuse_delta = 0;

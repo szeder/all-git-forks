@@ -31,6 +31,16 @@ test_expect_success 'rev-list --objects with pathspecs and deeper paths' '
 	! grep unwanted_file output
 '
 
+test_expect_success 'pack-objects with pathspecs' '
+	echo HEAD|git pack-objects --revs --stdout -- foo > output.pack &&
+	git index-pack --stdin -o output.idx < output.pack &&
+	git verify-pack -v output.pack >output &&
+	grep "^e69de29bb2d1d6434b8b29ae775ad8c2e48c5391 blob" output &&
+	test "$(grep blob output|wc -l)" = 1 &&
+	test "$(grep tree output|wc -l)" = 3 &&
+	test "$(grep commit output|wc -l)" = 2
+'
+
 test_expect_success 'rev-list --objects with pathspecs and copied files' '
 	git checkout --orphan junio-testcase &&
 	git rm -rf . &&
