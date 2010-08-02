@@ -1,3 +1,10 @@
+git (1:1.7.1-1.0.1) experimental; urgency=low
+
+  * debian/control: package git no longer Depends: libdigest-sha1-perl
+    (thx Ansgar Burchardt, closes: #591039).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 21:19:42 -0500
+
 git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
