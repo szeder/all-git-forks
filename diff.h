@@ -215,6 +215,13 @@ extern void diff_unmerge(struct diff_options *,
 #define DIFF_SETUP_USE_CACHE		2
 #define DIFF_SETUP_USE_SIZE_CACHE	4
 
+/*
+ * Poor man's alternative to parse-option, to allow both sticky form
+ * (--option=value) and detached form (--option value).
+ */
+extern int diff_long_opt(const char *opt, const char **argv,
+			 const char **optarg);
+
 extern int git_diff_basic_config(const char *var, const char *value, void *cb);
 extern int git_diff_ui_config(const char *var, const char *value, void *cb);
 extern int diff_use_color_default;
