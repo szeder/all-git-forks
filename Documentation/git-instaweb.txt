@@ -52,15 +52,18 @@ OPTIONS
 --reuse-config::
 	The previous gitweb_config.perl will not be overwritten.
 
+start::
 --start::
 	Start the httpd instance and exit.  This does not generate
 	any of the configuration files for spawning a new instance.
 
+stop::
 --stop::
 	Stop the httpd instance and exit.  This does not generate
 	any of the configuration files for spawning a new instance,
 	nor does it close the browser.
 
+restart::
 --restart::
 	Restart the httpd instance and exit.  This does not generate
 	any of the configuration files for spawning a new instance.
