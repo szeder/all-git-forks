@@ -110,6 +110,7 @@ extern void diffcore_break(int);
 extern void diffcore_rename(struct diff_options *);
 extern void diffcore_merge_broken(void);
 extern void diffcore_pickaxe(const char *needle, int opts);
+extern void diffcore_log_grep(const char *needle, int opts);
 extern void diffcore_order(const char *orderfile);
 
 #define DIFF_DEBUG 0

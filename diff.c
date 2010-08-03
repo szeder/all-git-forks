@@ -2904,7 +2904,7 @@ int diff_setup_done(struct diff_options *options)
 	/*
 	 * Also pickaxe would not work very well if you do not say recursive
 	 */
-	if (options->pickaxe)
+	if (options->pickaxe || options->log_grep)
 		DIFF_OPT_SET(options, RECURSIVE);
 	/*
 	 * When patches are generated, submodules diffed against the work tree
@@ -3184,6 +3184,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->rename_limit = strtoul(arg+2, NULL, 10);
 	else if (!prefixcmp(arg, "-S"))
 		options->pickaxe = arg + 2;
+	else if (!prefixcmp(arg, "-G"))
+		options->log_grep = arg + 2;
 	else if (!strcmp(arg, "--pickaxe-all"))
 		options->pickaxe_opts = DIFF_PICKAXE_ALL;
 	else if (!strcmp(arg, "--pickaxe-regex"))
@@ -4075,6 +4077,8 @@ void diffcore_std(struct diff_options *options)
 		diffcore_merge_broken();
 	if (options->pickaxe)
 		diffcore_pickaxe(options->pickaxe, options->pickaxe_opts);
+	if (options->log_grep)
+		diffcore_log_grep(options->log_grep, options->pickaxe_opts);
 	if (options->orderfile)
 		diffcore_order(options->orderfile);
 	diff_resolve_rename_copy();

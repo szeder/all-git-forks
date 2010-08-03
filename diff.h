@@ -96,6 +96,7 @@ struct diff_options {
 	const char *filter;
 	const char *orderfile;
 	const char *pickaxe;
+	const char *log_grep;
 	const char *single_follow;
 	const char *a_prefix, *b_prefix;
 	unsigned flags;
