@@ -1,0 +1,216 @@
+git-base(1)
+===========
+
+NAME
+----
+git-base - display, check, set, clear and reset the base of a working branch
+
+SYNOPSIS
+--------
+[verse]
+'git base' [-b branch] [--as-ref]|[<default-commit>]
+'git base' [-b branch] 'check' <commit>
+'git base' [-b branch] 'set' [-f] <commit>
+'git base' [-b branch] 'clear'
+'git base' [-b branch] 'init' [-d]|[<reset-cmd>]
+'git base' [-b branch] 'reset'
+
+DESCRIPTION
+-----------
+In the discussion that follows, the current branch or the branch specified by -b is referred to by the symbol `<branch>` and the commit at the base of `<branch>` is referred to by the symbol `<base>`. `<head>` is used to refer to the commit at the tip of `<branch>` as distinct from the branch reference itself.
+
+`git base` helps to track the base of a working branch. For the purposes of the exposition here, the base of the working branch is defined as the
+last commit in the history that is not part of your current work - it is the basis of your current work, but is not part of the work itself. Furthermore,
+to be classified as a base, the path from the tip of the branch to the base must not traverse a merge commit. This constraint means that the range
+`<base>..<bramch>` is always a linear series of commits that can be easily rebased and re-organized as required.
+
+COMMANDS
+--------
+Without positional arguments, this command checks whether the base reference satisfies the base invariant. If it does, prints the SHA1 hash of the base commit
+to stdout and exits with a status code of 0.
+
+Otherwise, if `<default-commit>` is specified, calls `set <default-commit>`. If this fails to establish the base invariant or if no `<default-commit>`
+is specified then calls `reset`. If the base reference now satisfies the base invariant, print its SHA1 has to stdout and
+exits with a status code of 0. Otherwise, prints a warning message to stderr and exits with a non-zero status code.
+
+If `--as-ref` is specifed, then the symbolic name of the base reference is printed instead of the SHA1 hash but `reset` is not called, even
+if the base reference does not satisfy the base invariant.
+
+If a `<default-commit>` is specified `set <default-commit>` is called
+
+`init [-d]|[<reset-cmd>]`::
+
+Initializes the command to be used when `reset` is called. It must be one of `set <commit>`, `clear` or `check`.
+`<reset-cmd>` defaults to the `set <upstream-branch>` if there is one or to `set <head>`, otherwise.
+Use a `<reset-cmd>` of `check` to prevent the default `git base` command automatically
+adjusting an inconsistent base reference. Use a `<reset-cmd>` of `clear` to automatically clear an inconsistent base reference.
+
+Use -d to delete the base reference and reset configuration associated with the branch.
+
+`clear`::
+
+Clears the base reference, if any. The status code is always set to a non-zero value and a warning message is printed to stderr. No output is
+printed to stdout.
+
+`set [-f] <commit>`::
+
+Checks that the specified base satisifies the base invariant of `<branch>`, and if so, updates the base reference with the specified commit.
+Otherwise, updates the base reference to the commit closest to both `<commit>` and `<branch>` which does satisfy the base invariant. The selected
+commit will always be reachable from `<branch>` but may not be reachable from `<commit>`. In particular, if the merge base of `<commit>` and `<branch>`
+is hidden by a merge commit, then the selected commit will be (the only) merge commit that satisfies the base invariant of `<branch>`.
++
+The status and output are set/generated as per `git base`.
++
+`-f` can be used to force the update of the base reference to the specified `<commit>` even if the `<commit>` does not satify the base
+invariant. Note: however, that unless the effective `reset` command is set to `check`, this value will not stick beyond the next
+call to `git base`.
+
+`check` [<commit>]::
+
+If `<commit>` is specified, performs the same function as `set` but does not actually update the base reference. The status code and output are set/generated as they would be if `set` had been called.
++
+If `<commit>` is not specified, sets the status code according to whether (0) or not (non-zero) the base reference is well-defined and consistent with the base invariant. The output that is generated is the same output that would be generated if `set` was called with the same arguments.
++
+`check` NEVER adjusts the base reference.
+
+`reset`::
+
+Resets the base reference by calling the git base with the configured `<reset-cmd>` or `clear` if there is no such configuration. The status
+and output are set/generated as per `git base`.
+
+OUTPUT
+------
+Unless --as-ref is used, the only output git base generates is the SHA1 hash of a commit that satisfies the base invariant.  If `git base`, `git base set` or `git check` (without arguments) generate output, then the output will be the current base reference at the time the command completes.  If `git check` is called with an
+argument, then the output is set as if `git set` had been called. If --as-ref is used, the generated output is always the symbolic name of the base reference, whether or not the base reference actually exists or satisfies the base invariant.
+
+EXIT CODE
+---------
+Except for the `init` command, `git base` exits with status code of zero if command has written the SHA1 hash of a commit that satisfies the base invariant to stdout, and exits with a non-zero status code otherwise.
+
+OPTIONS
+-------
+-b,--branch branch::
+	If this option is specified and supported, the commands apply to the specified branch. Otherwise, the commands apply to the current branch.
+-f::
+	Force the update of the base reference even if the specified value does not satisfy the base invariant.
+-q::
+	Use this option to suppress data output, information and warning messages.
+--as-ref::
+	Print the SHA1 hash of the base as a symbolic reference.
+
+CONFIGURATION
+-------------
+branch.<name>.baseresetcmd::
+	Configures the `git base` subcommand used by `git base reset`. Must be one of `set <commit>`, `check` or `clear`. Defaults to `clear`, if not specified.
+
+THE BASE INVARIANT
+------------------
+The base invariant applies to all commits that can be described as a base of a branch.
+
+The invariant is that the base commit is reachable from the head of the branch and that the path between the head of the branch and the base contains no merge commits other than, possibly, the base commit itself.
+
+The head of a branch is also a base commit for the branch. As such, each branch has at least one commit that satisfies the base invariant.
+For any given branch there is at most one merge commit that satisifies the base invariant.
+
+The base invariant is defined as it is because the history between a commit satisifying the base invariant and the head of the branch is, by definition,
+guaranteed to be linear.
+
+BASE REFERENCE
+--------------
+The base reference is semi-automatically managed by the git.
+
+It is explicitly updated by the `set` and `clear` commands and sometimes by the `reset` command, depending on how it has been configured.
+It may be implicitly updated by the default command (via a call to `reset`) but only when it is undefined or does not satisfy the base reference.
+It is never updated by the `check` or `init` commands. Other git tools such as linkgit:git-work[1] use git base to update the base reference as required.
+
+Users may use the `set` command with the -f option to modify the base reference to any value but values that fail to match the base invariant will quickly
+be reset by the automatic operation of `git base` unless the reset operation is configured to be `check`.
+
+A non-empty output from `git base`, `git base reset` or `git base set` is guaranteed to be consistent with the base invariant immediately after the command
+completes.
+
+THE STATE MACHINE VIEW
+----------------------
+A good way to think about `git base` is as the controls of a 3-state state machine: a machine that has the states: UNDEFINED, INCONSISTENT and CONSISTENT
+which correspond to an undefined base reference, a base reference that does not satisfy the base invariant and a base reference that does satisfy
+the base invariant, respectively.
+
+The state machine prefers to be in the CONSISTENT state. `git base` without arguments will leave the state of the base reference unchanged if is CONSISTENT
+or will call `git base reset` otherwise.  `git base reset` uses the `<reset-cmd>` defined with `git base init` to implement the auto-recovery policy
+of the state machine when it finds itself in the INCONSISTENT or UNDEFINED states.
+
+`git base check` tests the state of the base reference, but leaves its state unchanged.
+
+`git base clear` unconditionally clears base reference forcing the state to be UNDEFINED.
+
+`git base set` without a `-f` option is used to force the machine into a CONSISTENT state.
+
+EXAMPLES
+--------
+* Initialize the branch so that the base reference is always reset, when required, relative to upstream/master
++
+----------
+git base init set upstream/master
+----------
+* Display the current base
++
+---------
+git base
+---------
+* Display the current base reference without updating it
++
+---------
+git base check
+---------
+* Display the current base as a symbolic reference
++
+---------
+git base --as-ref
+---------
+* Set the base of the current branch to the 3rd commit from the tip
++
+---------
+git base set HEAD~3
+---------
+* Interactively rebase the current work
++
+---------
+git rebase -i $(git base) HEAD
+---------
+* Perform a rebase, but only if the base reference is currently valid
++
+---------
+git base check -q && git rebase -i $(git base) HEAD
+---------
+* Set the base relative to an upstream branch
++
+---------
+git base set origin/master
+---------
+
+
+FILES
+-----
+
+.git/refs/bases/`<branch>`::
+	Contains the last calculated value of the base for a specific branch. This value is not guaranteed to be correct except immediately after a successful execution of git base. Users that require an accurate value should use the output of git base -b `<branch>`.
+
+.git/refs/BASE::
+	If HEAD is a symbolic reference of the form `refs/heads/<branch>`, then BASE will be a symbolic reference of the form `refs/bases/<branch>`. Otherwise,
+	it contains the base commit corresponding to the detached HEAD, if one has been specified.
+
+SEE ALSO
+--------
+linkgit:git-work[1]
+
+Author
+------
+Written by Jon Seymour <jon.seymour@gmail.com>
+
+Documentation
+-------------
+Documentation by Jon Seymour
+
+GIT
+---
+Part of the linkgit:git[7] suite

@@ -636,6 +636,16 @@ branch.autosetuprebase::
 	branch to track another branch.
 	This option defaults to never.
 
+branch.<name>.baseresetoptions::
+	The options passed to 'git base set' when 'git base' detects
+	that the current base reference is either not set or no longer
+	satisfies the base invariant.
+	See the description of the `init` command in linkgit:git-base[1]
+	for details of how this value is initialized.
+	See the description of the `set` command in linkgit:git-base[1]
+	for details about this value is interpreted.
+	Defaults to --fail unless set.
+
 branch.<name>.remote::
 	When in branch <name>, it tells 'git fetch' and 'git push' which
 	remote to fetch from/push to.  It defaults to `origin` if no remote is
