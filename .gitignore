@@ -11,6 +11,8 @@
 /git-apply
 /git-archimport
 /git-archive
+/git-atomic
+/git-atomic-lib
 /git-bisect
 /git-bisect--helper
 /git-blame
