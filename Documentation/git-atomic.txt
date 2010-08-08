@@ -1,0 +1,92 @@
+git-atomic(1)
+===========
+
+NAME
+----
+git-atomic - conditionally execute a command and, if it fails, restore the working tree, index and HEAD to their original state.
+
+SYNOPSIS
+--------
+[verse]
+'git atomic' [options] [--] [cmd args...]
+. $(git --exec-path)/git-atomic-lib.sh
+
+DESCRIPTION
+-----------
+The first form conditionally executes a command depending on whether the pre-conditions are satisified. If the command exits with a non-zero exit code, restores the
+working tree, index and HEAD to their orignal state. If no command is specified, sets the exit code according to the pre-conditions.
+
+'git atomic' exits with:
+
+0::
+	if the pre-conditions are satisified and the command executes successfully
+128::
+	if the command exited with an exit code of 128, 129, 130 or 131.
+129::
+	if git atomic failed during setup or argument parsing
+130::
+	if the pre-conditions were not satisified.
+131::
+	if the command failed and the original state could not be restored.
+
+Otherwise, exits with the actual exit code of the command.
+
+The second form is used to import the definition of a shell function called atomic that can be called by shell scripts that perform git operations. This is useful when the operations to be given atomic behaviour are themselves shell functions rather than external commands.
+
+OPTIONS
+-------
+The following options specify pre-condition tests on various lists which are assumed to be empty in the clean state and non-empty in the dirty state.
+
+The default required state for each specified pre-condition option is clean. The default required state for each unspecified pre-condition option is any, which
+means no tests are applied.
+
+--unstaged [any|clean|dirty]::
+	Fail unless the list of unstaged changes is empty (clean) or non-empty (dirty).	
+--staged   [any|clean|dirty]::
+	Fail unless the list of staged changes is empty (clean) or non-empty (dirty).
+--untracked [any|clean|dirty]::
+	Fail unless the list of untracked files is empty (clean) or non-empty (dirty).
+--tracked [any|clean|dirty]::
+	Fail unless the list of staged and unstaged changes is empty (clean) or non-empty (dirty).
+--unmerged [any|clean|dirty]::
+	Fail unless the list of unmerged files is empty (clean) or non-empty (dirty).
+--rebase [any|clean|dirty]::
+	Fail unless a rebase is not (clean) or is (dirty) in progress.
+--all::
+	Fail unless the list of staged, unstaged changes and untracked files is empty (clean) or non-empty (dirty)
+
+EXAMPLES
+--------
+* Reset the tree only if there are no staged or unstaged changes and no untracked files.
++
+-----------
+git atomic --all clean git reset --hard upstream/master
+-----------
+* Conditionally perform a merge, but rollback and die if it fails.
++
+-----------
+git atomic --all clean git merge topic || die "unable to merge"
+-----------
+* Import git-atomic-lib.sh into a script and make the execution of the function foo atomic with respect to the state of the git workspace
++
+-----------
+. $(git --exec-path)/git-atomic-lib.sh
+foo()
+{
+    git merge $1
+}
+
+atomic foo $1
+-----------
+
+Author
+------
+Written by Jon Seymour <jon.seymour@gmail.com>
+
+Documentation
+-------------
+Documentation by Jon Seymour
+
+GIT
+---
+Part of the linkgit:git[7] suite

@@ -360,6 +360,7 @@ TEST_PROGRAMS_NEED_X =
 unexport CDPATH
 
 SCRIPT_SH += git-am.sh
+SCRIPT_SH += git-atomic.sh
 SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-difftool--helper.sh
 SCRIPT_SH += git-filter-branch.sh
@@ -379,6 +380,7 @@ SCRIPT_SH += git-submodule.sh
 SCRIPT_SH += git-test.sh
 SCRIPT_SH += git-web--browse.sh
 
+SCRIPT_LIB += git-atomic-lib
 SCRIPT_LIB += git-conditions-lib
 SCRIPT_LIB += git-mergetool--lib
 SCRIPT_LIB += git-parse-remote
