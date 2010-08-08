@@ -13,6 +13,7 @@
 /git-archive
 /git-atomic
 /git-atomic-lib
+/git-base
 /git-bisect
 /git-bisect--helper
 /git-blame

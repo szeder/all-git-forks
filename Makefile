@@ -360,6 +360,7 @@ unexport CDPATH
 
 SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-atomic.sh
+SCRIPT_SH += git-base.sh
 SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-difftool--helper.sh
 SCRIPT_SH += git-filter-branch.sh
