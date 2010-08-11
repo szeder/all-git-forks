@@ -2429,8 +2429,8 @@ sub git_get_projects_list {
               push @list, $pr;
             }
           }
-          use Data::Dumper;
-          warn "get_projects_list($filter)\n".Dumper(\@list);
+#          use Data::Dumper;
+#          warn "get_projects_list($filter)\n".Dumper(\@list);
 	} elsif (-d $projects_list) {
 		# search in directory
 		my $dir = $projects_list . ($filter ? "/$filter" : '');
