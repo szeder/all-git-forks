@@ -170,6 +170,8 @@ static int is_git_directory(const char *suspect)
 	char path[PATH_MAX];
 	size_t len = strlen(suspect);
 
+	if (PATH_MAX <= len + strlen("/objects"))
+		die("Too long path: %.*s", 60, suspect);
 	strcpy(path, suspect);
 	if (getenv(DB_ENVIRONMENT)) {
 		if (access(getenv(DB_ENVIRONMENT), X_OK))
@@ -519,6 +521,12 @@ int check_repository_format(void)
 	return check_repository_format_gently(NULL);
 }
 
+/*
+ * Returns the "prefix", a path to the current working directory
+ * relative to the work tree root, or NULL, if the current working
+ * directory is not a strict subdirectory of the work tree root. The
+ * prefix always ends with a '/' character.
+ */
 const char *setup_git_directory(void)
 {
 	const char *retval = setup_git_directory_gently(NULL);

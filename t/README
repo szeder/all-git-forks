@@ -84,6 +84,12 @@ appropriately before running "make".
 	implied by other options like --valgrind and
 	GIT_TEST_INSTALLED.
 
+--root=<directory>::
+	Create "trash" directories used to store all temporary data during
+	testing under <directory>, instead of the t/ directory.
+	Using this option with a RAM-based filesystem (such as tmpfs)
+	can massively speed up the test suite.
+
 You can also set the GIT_TEST_INSTALLED environment variable to
 the bindir of an existing git installation to test that installation.
 You still need to have built this git sandbox, from which various
@@ -268,6 +274,14 @@ library for your script to use.
 
    Merges the given rev using the given message.  Like test_commit,
    creates a tag and calls test_tick before committing.
+
+ - test_must_fail <git-command>
+
+   Run a git command and ensure it fails in a controlled way.  Use
+   this instead of "! <git-command>".  When git-command dies due to a
+   segfault, test_must_fail diagnoses it as an error; "! <git-command>"
+   treats it as just another expected failure, which would let such a
+   bug go unnoticed.
 
 Tips for Writing Tests
 ----------------------
