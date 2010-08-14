@@ -1,3 +1,12 @@
+gitweb (1:1.7.1-1.0.1) experimental; urgency=low
+
+  Since version 1.6.6-rc1, gitweb includes a "git blame" feature that
+  loads asynchronously using the gitweb.js script.  You may need to
+  adapt your web server configuration to include it.  See
+  /usr/share/doc/git/README.Debian for details.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:10:24 -0500
+
 git-core (1:1.5.6.2-1) unstable; urgency=low
 
   The gitweb auxiliary files gitweb.css, git-favicon.png, git-logo.png
