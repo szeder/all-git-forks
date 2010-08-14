@@ -1,7 +1,7 @@
-From 8dfcde89c61e30af42e06b6a995ca092e50ea81f Mon Sep 17 00:00:00 2001
+From 0adcff0eee46c19f13743a5b5c435729c23889c1 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
-Subject: [PATCH 2/3] bug#506445: hooks/post-receive-email: set encoding to utf-8
+Subject: bug#506445: hooks/post-receive-email: set encoding to utf-8
 
 On Fri, Nov 21, 2008 at 05:42:47PM +0300, Alexander Gerasiov wrote:
 > Hi there. git generates logs in utf-8 encofing bu default, but in
@@ -14,10 +14,10 @@ On Fri, Nov 21, 2008 at 05:42:47PM +0300, Alexander Gerasiov wrote:
  1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
-index 58a35c8..fc121e7 100755
+index 30ae63d..4f39abf 100755
 --- a/contrib/hooks/post-receive-email
 +++ b/contrib/hooks/post-receive-email
-@@ -197,6 +197,7 @@ generate_email_header()
+@@ -204,6 +204,7 @@ generate_email_header()
  	cat <<-EOF
  	To: $recipients
  	Subject: ${emailprefix}$projectdesc $refname_type, $short_refname, ${change_type}d. $describe
@@ -26,5 +26,5 @@ index 58a35c8..fc121e7 100755
  	X-Git-Reftype: $refname_type
  	X-Git-Oldrev: $oldrev
 -- 
-1.7.0.3
+1.7.2
 
