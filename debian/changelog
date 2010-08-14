@@ -1,3 +1,12 @@
+git (1:1.7.1-1.0.1) experimental; urgency=low
+
+  * debian/rules, debian/git.README.Debian, debian/gitweb.conf:
+    install gitweb.js, add an Alias for it to the VirtualHost example,
+    and configure gitweb to look for it in the right place (closes:
+    #555047).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:08:48 -0500
+
 git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
