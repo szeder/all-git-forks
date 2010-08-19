@@ -5,6 +5,8 @@ git (1:1.7.1-1.0.1) experimental; urgency=low
     and configure gitweb to look for it in the right place (closes:
     #555047).
   * debian/gitweb.NEWS.Debian: mention the new gitweb.js file.
+  * debian/control: gitweb: Depends: apache2 | httpd-cgi (closes:
+    #559890).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:08:48 -0500
 

@@ -194,7 +194,8 @@ Description: fast, scalable, distributed revision control system (revision tree 
 
 Package: gitweb
 Architecture: all
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
+ perl, apache2 | httpd-cgi
 Suggests: git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
