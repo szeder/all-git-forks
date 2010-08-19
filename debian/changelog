@@ -1,3 +1,10 @@
+git (1:1.7.1-1.0.1) experimental; urgency=low
+
+  * debian/control: package git: remove conflict with git
+    (<< 4.3.20-11).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 04:56:31 -0500
+
 git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
