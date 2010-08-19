@@ -8,6 +8,7 @@ git (1:1.7.1.2-0.1) experimental; urgency=low
     * GIT-VERSION-GEN: restrict tags used (closes: #473604).
   * debian/diff/0003-git-submodule.sh-properly-initialize-...diff:
     remove; applied upstream.
+  * update debian/copyright.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:26:55 -0500
 
