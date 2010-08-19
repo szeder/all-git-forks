@@ -2,6 +2,10 @@ git (1:1.7.1-1.0.1) experimental; urgency=low
 
   * debian/control: package git: remove conflict with git
     (<< 4.3.20-11).
+  * debian/control: package git: Breaks: packages from Debian 5.0
+    (lenny) relying on removed features such as dashed-form commands in
+    $PATH (thx Adrian Bunk, closes: #561701); no longer Conflicts: but
+    Breaks: ancient qgit for the same reason.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 04:56:31 -0500
 

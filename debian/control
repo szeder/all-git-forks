@@ -14,7 +14,10 @@ Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl,
 Recommends: patch, less, rsync, ssh-client
 Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
 Replaces: cogito (<< 0.16rc2-0), git-core (<= 1:1.7.0.4-1)
-Conflicts: qgit (<< 1.5.5), git-core (<= 1:1.7.0.4-1)
+Breaks: qgit (<< 1.5.5), git-buildpackage (<< 0.4.38), cogito (<= 0.18.2+),
+ stgit (<< 0.15), stgit-contrib (<< 0.15), gitpkg (<< 0.15),
+ guilt (<< 0.33), gitosis (<< 0.2+20090917-7)
+Conflicts: git-core (<= 1:1.7.0.4-1)
 Provides: git-completion, git-core
 Description: fast, scalable, distributed revision control system
  Git is popular version control system designed to handle very large
