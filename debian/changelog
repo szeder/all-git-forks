@@ -7,6 +7,8 @@ git (1:1.7.1-1.0.1) experimental; urgency=low
   * debian/gitweb.NEWS.Debian: mention the new gitweb.js file.
   * debian/control: gitweb: Depends: apache2 | httpd-cgi (closes:
     #559890).
+  * debian/gitweb.conf: use relative links for gitweb.css et al
+    (thx Alban Browaeys, closes: #568343).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:08:48 -0500
 
