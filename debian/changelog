@@ -6,8 +6,9 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
       (closes: #526014).
     * rebase -i -p: document shortcomings (closes: #532775).
     * GIT-VERSION-GEN: restrict tags used (closes: #473604).
-  * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff:
-    remove; applied upstream.
+  * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff,
+    debian/diff/0004-Check-size-of-path-buffer-before-...diff: remove;
+    applied upstream.
   * debian/diff/0001-Revert-gitweb-Use-diff_opts-while...diff: new;
     prevent gitweb from serving rename patches that GNU patch 2.6.1
     cannot apply.
@@ -30,6 +31,15 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
   * update debian/copyright.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
+
+git (1:1.7.1-1.1) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * debian/diff/0004-Check-size-of-path-buffer-before-writing-...diff:
+    new, cherry-picked from 3c9d041: setup: Check size of path buffer
+    before writing into it (closes: #590026, CVE-2010-2542).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 25 Jul 2010 18:01:15 -0500
 
 git (1:1.7.1-1) unstable; urgency=low
 
