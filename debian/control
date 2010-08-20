@@ -10,7 +10,7 @@ Vcs-Git: http://smarden.org/git/git.git/
 
 Package: git
 Architecture: any
-Depends: ${shlibs:Depends}, perl-modules, liberror-perl, libdigest-sha1-perl,
+Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
 Recommends: patch, less, rsync, ssh-client
 Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
