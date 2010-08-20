@@ -29,6 +29,15 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
   * debian/diff/0002-bug-506445-hooks-post-receive-...diff: rename to
     debian/diff/0009-bug-506445-hooks-post-receive-...diff; adapt.
   * update debian/copyright.
+  * debian/rules, debian/git.README.Debian, debian/gitweb.conf:
+    install gitweb.js, add an Alias for it to the VirtualHost example,
+    and configure gitweb to look for it in the right place (closes:
+    #555047).
+  * debian/gitweb.NEWS.Debian: mention the new gitweb.js file.
+  * debian/control: gitweb: Depends: apache2 | httpd-cgi (closes:
+    #559890).
+  * debian/gitweb.conf: use relative links for gitweb.css et al
+    (thx Alban Browaeys, closes: #568343).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
 

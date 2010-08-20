@@ -57,6 +57,7 @@ configuration that looks like this:
     CustomLog /var/log/apache-ssl/git.example.org-access.log combined
     Alias /robots.txt /var/www/cvs.robots.txt
     Alias /gitweb.css /usr/share/gitweb/gitweb.css
+    Alias /gitweb.js /usr/share/gitweb/gitweb.js
     Alias /git-favicon.png /usr/share/gitweb/git-favicon.png
     Alias /git-logo.png /usr/share/gitweb/git-logo.png
     Alias /git /var/cache/git

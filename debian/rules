@@ -201,6 +201,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	  '$(GIT)'web/usr/share/gitweb/index.cgi
 	install -m0644 gitweb/gitweb.css \
 	  '$(GIT)'web/usr/share/gitweb/gitweb.css
+	install -m0644 gitweb/gitweb.js \
+	  '$(GIT)'web/usr/share/gitweb/gitweb.js
 	install -m0644 gitweb/git-favicon.png \
 	  '$(GIT)'web/usr/share/gitweb/git-favicon.png
 	install -m0644 gitweb/git-logo.png \
