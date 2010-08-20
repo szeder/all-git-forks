@@ -1,6 +1,12 @@
 git (1:1.7.2.2-0.1) unstable; urgency=low
 
   * new upstream release.
+    * git svn: avoid unnecessary '/' in paths for SVN (thx Jon Dowland,
+      closes: #546733, #572847).
+    * git svn: avoid uninitialized var in 'reset' (thx Jens Seidel,
+      closes: #578908).
+    * post-receive-email: document command-line mode (closes: #428413).
+    * GIT-VERSION-GEN: restrict tags used (closes: #473604).
   * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff:
     remove; applied upstream.
   * debian/diff/0001-Revert-gitweb-Use-diff_opts-while...diff: new;
