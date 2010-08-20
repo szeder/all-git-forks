@@ -6,6 +6,10 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
       (closes: #526014).
     * rebase -i -p: document shortcomings (closes: #532775).
     * GIT-VERSION-GEN: restrict tags used (closes: #473604).
+    * git svn: avoid unnecessary '/' in paths for SVN (thx Jon Dowland,
+      closes: #546733, #572847).
+    * git svn: avoid uninitialized var in 'reset' (thx Jens Seidel,
+      closes: #578908).
   * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff,
     debian/diff/0004-Check-size-of-path-buffer-before-...diff: remove;
     applied upstream.
