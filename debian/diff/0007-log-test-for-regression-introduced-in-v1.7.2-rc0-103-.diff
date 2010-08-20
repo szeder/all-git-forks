@@ -1,0 +1,50 @@
+From 33d19459a894c3d70e3768893e18c9e4f6652b3c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?=C3=86var=20Arnfj=C3=B6r=C3=B0=20Bjarmason?= <avarab@gmail.com>
+Date: Sun, 15 Aug 2010 10:16:25 +0000
+Subject: log: test for regression introduced in v1.7.2-rc0~103^2~2
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Add a regression test for the git log -M --follow $diff_option bug
+introduced in v1.7.2-rc0~103^2~2, $diff_option being diff related
+options like -p, --stat, --name-only etc.
+
+Signed-off-by: Ævar Arnfjörð Bjarmason <avarab@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 65113121a50cd765033d51204213c817832c59cf)
+
+Patch 3/3 of the 'jc/maint-follow-rename-fix' topic from "next", which
+addresses a regression introduced with v1.7.2.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ t/t4202-log.sh |   14 +++++++++++++-
+ 1 files changed, 13 insertions(+), 1 deletions(-)
+
+diff --git a/t/t4202-log.sh b/t/t4202-log.sh
+index 2230e60..ead204e 100755
+--- a/t/t4202-log.sh
++++ b/t/t4202-log.sh
+@@ -436,5 +436,17 @@ test_expect_success 'log.decorate configuration' '
+ 
+ '
+ 
+-test_done
++test_expect_success 'show added path under "--follow -M"' '
++	# This tests for a regression introduced in v1.7.2-rc0~103^2~2
++	test_create_repo regression &&
++	(
++		cd regression &&
++		test_commit needs-another-commit &&
++		test_commit foo.bar &&
++		git log -M --follow -p foo.bar.t &&
++		git log -M --follow --stat foo.bar.t &&
++		git log -M --follow --name-only foo.bar.t
++	)
++'
+ 
++test_done
+-- 
+1.7.2.1.534.g990bd8.dirty
+

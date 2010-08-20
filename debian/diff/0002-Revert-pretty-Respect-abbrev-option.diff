@@ -1,0 +1,156 @@
+From 1c38ad91d7d66d9807567fa56510d5485dd13934 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Thu, 19 Aug 2010 02:39:40 -0500
+Subject: Revert "pretty: Respect --abbrev option"
+
+pretty_print_commit(CMIT_FMT_USERFORMAT) pays attention to
+rev_info.abbrev now, with the unfortunate side-effect that commands
+that did not set it and used %h (e.g., "git commit") stopped
+abbreviating commit IDs for a little while.  Probably all the problems
+of this kind have been tracked down, but just in case, let's go back
+to forcing %h to approx 7 characters.
+
+Once squeeze is released we should follow upstream again.  Hopefully
+the API will have been tweaked to avoid such accidents by then.
+
+This reverts commit c197702156e2164074327f5e870ab0d3021977fc.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ builtin/shortlog.c         |    3 +--
+ pretty.c                   |    7 +++----
+ shortlog.h                 |    1 -
+ t/t4201-shortlog.sh        |    2 +-
+ t/t6006-rev-list-format.sh |   31 -------------------------------
+ 5 files changed, 5 insertions(+), 39 deletions(-)
+
+diff --git a/builtin/shortlog.c b/builtin/shortlog.c
+index 0a9681b..24dc3d8 100644
+--- a/builtin/shortlog.c
++++ b/builtin/shortlog.c
+@@ -162,7 +162,7 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
+ 		    sha1_to_hex(commit->object.sha1));
+ 	if (log->user_format) {
+ 		struct pretty_print_context ctx = {0};
+-		ctx.abbrev = log->abbrev;
++		ctx.abbrev = DEFAULT_ABBREV;
+ 		ctx.subject = "";
+ 		ctx.after_subject = "";
+ 		ctx.date_mode = DATE_NORMAL;
+@@ -290,7 +290,6 @@ parse_done:
+ 	}
+ 
+ 	log.user_format = rev.commit_format == CMIT_FMT_USERFORMAT;
+-	log.abbrev = rev.abbrev;
+ 
+ 	/* assume HEAD if from a tty */
+ 	if (!nongit && !rev.pending.nr && isatty(0))
+diff --git a/pretty.c b/pretty.c
+index f85444b..40f2c25 100644
+--- a/pretty.c
++++ b/pretty.c
+@@ -824,7 +824,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
+ 		if (add_again(sb, &c->abbrev_commit_hash))
+ 			return 1;
+ 		strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
+-						     c->pretty_ctx->abbrev));
++		                                     DEFAULT_ABBREV));
+ 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
+ 		return 1;
+ 	case 'T':		/* tree hash */
+@@ -834,7 +834,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
+ 		if (add_again(sb, &c->abbrev_tree_hash))
+ 			return 1;
+ 		strbuf_addstr(sb, find_unique_abbrev(commit->tree->object.sha1,
+-						     c->pretty_ctx->abbrev));
++		                                     DEFAULT_ABBREV));
+ 		c->abbrev_tree_hash.len = sb->len - c->abbrev_tree_hash.off;
+ 		return 1;
+ 	case 'P':		/* parent hashes */
+@@ -851,8 +851,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
+ 			if (p != commit->parents)
+ 				strbuf_addch(sb, ' ');
+ 			strbuf_addstr(sb, find_unique_abbrev(
+-					p->item->object.sha1,
+-					c->pretty_ctx->abbrev));
++					p->item->object.sha1, DEFAULT_ABBREV));
+ 		}
+ 		c->abbrev_parent_hashes.len = sb->len -
+ 		                              c->abbrev_parent_hashes.off;
+diff --git a/shortlog.h b/shortlog.h
+index de4f86f..bc02cc2 100644
+--- a/shortlog.h
++++ b/shortlog.h
+@@ -12,7 +12,6 @@ struct shortlog {
+ 	int in1;
+ 	int in2;
+ 	int user_format;
+-	int abbrev;
+ 
+ 	char *common_repo_prefix;
+ 	int email;
+diff --git a/t/t4201-shortlog.sh b/t/t4201-shortlog.sh
+index cdb70b4..13fdeb2 100755
+--- a/t/t4201-shortlog.sh
++++ b/t/t4201-shortlog.sh
+@@ -79,7 +79,7 @@ test_expect_success 'pretty format' '
+ 	test_cmp expect log.predictable
+ '
+ 
+-test_expect_success '--abbrev' '
++test_expect_failure '--abbrev' '
+ 	sed s/SUBJECT/OBJID/ expect.template >expect &&
+ 	git shortlog --format="%h" --abbrev=5 HEAD >log &&
+ 	fuzz log >log.predictable &&
+diff --git a/t/t6006-rev-list-format.sh b/t/t6006-rev-list-format.sh
+index cccacd4..9e22ade 100755
+--- a/t/t6006-rev-list-format.sh
++++ b/t/t6006-rev-list-format.sh
+@@ -210,31 +210,6 @@ test_expect_success 'add SP before non-empty (2)' '
+ 	test $(wc -w <actual) = 4
+ '
+ 
+-test_expect_success '--abbrev' '
+-	echo SHORT SHORT SHORT >expect2 &&
+-	echo LONG LONG LONG >expect3 &&
+-	git log -1 --format="%h %h %h" HEAD >actual1 &&
+-	git log -1 --abbrev=5 --format="%h %h %h" HEAD >actual2 &&
+-	git log -1 --abbrev=5 --format="%H %H %H" HEAD >actual3 &&
+-	sed -e "s/$_x40/LONG/g" -e "s/$_x05/SHORT/g" <actual2 >fuzzy2 &&
+-	sed -e "s/$_x40/LONG/g" -e "s/$_x05/SHORT/g" <actual3 >fuzzy3 &&
+-	test_cmp expect2 fuzzy2 &&
+-	test_cmp expect3 fuzzy3 &&
+-	! test_cmp actual1 actual2
+-'
+-
+-test_expect_success '%H is not affected by --abbrev-commit' '
+-	git log -1 --format=%H --abbrev-commit --abbrev=20 HEAD >actual &&
+-	len=$(wc -c <actual) &&
+-	test $len = 41
+-'
+-
+-test_expect_success '%h is not affected by --abbrev-commit' '
+-	git log -1 --format=%h --abbrev-commit --abbrev=20 HEAD >actual &&
+-	len=$(wc -c <actual) &&
+-	test $len = 21
+-'
+-
+ test_expect_success '"%h %gD: %gs" is same as git-reflog' '
+ 	git reflog >expect &&
+ 	git log -g --format="%h %gD: %gs" >actual &&
+@@ -247,12 +222,6 @@ test_expect_success '"%h %gD: %gs" is same as git-reflog (with date)' '
+ 	test_cmp expect actual
+ '
+ 
+-test_expect_success '"%h %gD: %gs" is same as git-reflog (with --abbrev)' '
+-	git reflog --abbrev=13 --date=raw >expect &&
+-	git log -g --abbrev=13 --format="%h %gD: %gs" --date=raw >actual &&
+-	test_cmp expect actual
+-'
+-
+ test_expect_success '%gd shortens ref name' '
+ 	echo "master@{0}" >expect.gd-short &&
+ 	git log -g -1 --format=%gd refs/heads/master >actual.gd-short &&
+-- 
+1.7.2.1.534.g990bd8.dirty
+
