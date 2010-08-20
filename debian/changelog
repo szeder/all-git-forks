@@ -1,3 +1,9 @@
+git (1:1.7.1-1.0.1) experimental; urgency=low
+
+  * debian/gitweb.README.Debian: copy-edit.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 14 Aug 2010 03:00:34 -0500
+
 git (1:1.7.1-1) unstable; urgency=low
 
   * debian/diff/0003-t-t7400-submodule-basic.sh-debug-output-...diff:
