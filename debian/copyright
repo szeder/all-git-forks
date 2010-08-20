@@ -94,6 +94,10 @@ Copyright: © 2000-2002, Michael R. Elkins <me@mutt.org>
            © 2006, Christian Couder
 License: GPL-2+
 
+Files: t/test-lib.sh
+Copyright: © 2005, Junio C Hamano
+License: GPL-2+
+
 Files: compat/fnmatch/*
 Copyright: © 1991-1999, Free Software Foundation, Inc.
 License: LGPL-2+

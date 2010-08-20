@@ -1,6 +1,11 @@
 git (1:1.7.2.2-0.1) unstable; urgency=low
 
   * new upstream release.
+    * post-receive-email: document command-line mode (closes: #428413).
+    * add-interactive: Clarify “remaining hunks in the file”
+      (closes: #526014).
+    * rebase -i -p: document shortcomings (closes: #532775).
+    * GIT-VERSION-GEN: restrict tags used (closes: #473604).
   * debian/diff/0003-git-submodule.sh-properly-initialize-shell-...diff:
     remove; applied upstream.
   * debian/diff/0001-Revert-gitweb-Use-diff_opts-while...diff: new;
@@ -22,6 +27,7 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
     debian/diff/0008-bug-448655-check-etc-mailname-if-author...diff.
   * debian/diff/0002-bug-506445-hooks-post-receive-...diff: rename to
     debian/diff/0009-bug-506445-hooks-post-receive-...diff; adapt.
+  * update debian/copyright.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
 
