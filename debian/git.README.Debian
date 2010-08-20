@@ -1,5 +1,5 @@
-git-core for Debian
--------------------
+Git for Debian
+--------------
 
 When setting up a git.example.org server, there are several things to
 configure to make everything work nicely together.  All this is optional.
