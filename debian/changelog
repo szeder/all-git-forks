@@ -38,6 +38,12 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
     #559890).
   * debian/gitweb.conf: use relative links for gitweb.css et al
     (thx Alban Browaeys, closes: #568343).
+  * debian/control: package git: no longer Conflicts: git
+    (<< 4.3.20-11).
+  * debian/control: package git: Breaks: packages from Debian 5.0
+    (lenny) relying on removed features such as dashed-form commands in
+    $PATH (thx Adrian Bunk, closes: #561701); no longer Conflicts: but
+    Breaks: ancient qgit for the same reason.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
 
