@@ -44,6 +44,10 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
     (lenny) relying on removed features such as dashed-form commands in
     $PATH (thx Adrian Bunk, closes: #561701); no longer Conflicts: but
     Breaks: ancient qgit for the same reason.
+  * debian/gitweb.README.Debian: copy-edit.
+  * debian/git.README.Debian: retitle to "Git for Debian" (thx
+    Christoph Anton Mitterer, closes: #590129).
+  * debian/control: Homepage: http://git-scm.com/ (closes: #553220).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
 
