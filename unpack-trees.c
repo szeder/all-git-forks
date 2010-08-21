@@ -1001,7 +1001,7 @@ static void mark_new_skip_worktree(struct exclude_list *el,
 		       select_flag, skip_wt_flag, el);
 }
 
-static int unpack_traverse(unsigned len, struct tree_desc *t, struct unpack_trees_options *o)
+static int unpack_traverse_1(unsigned len, struct tree_desc *t, struct unpack_trees_options *o)
 {
 	const char *prefix = o->prefix ? o->prefix : "";
 	struct traverse_info info;
@@ -1033,6 +1033,97 @@ static int unpack_traverse(unsigned len, struct tree_desc *t, struct unpack_tree
 	}
 
 	return traverse_trees(len, t, &info) < 0;
+}
+
+static int find_tree_desc(struct tree_desc *desc, unsigned char *newsha1, const char *path)
+{
+	struct name_entry entry;
+	const char *slash;
+	int len;
+
+	slash = strchr(path, '/');
+	len = slash ? slash - path : strlen(path);
+
+	while (tree_entry(desc, &entry)) {
+		if (!S_ISDIR(entry.mode))
+			continue;
+		if (!strncmp(entry.path, path, len)) {
+			if (slash) {
+				int ret;
+				struct tree_desc new_desc;
+				void *buf = fill_tree_descriptor(&new_desc, entry.sha1);
+				ret = find_tree_desc(&new_desc, newsha1, slash+1);
+				free(buf);
+				return ret;
+			}
+			else {
+				hashcpy(newsha1, entry.sha1);
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+static int unpack_traverse_narrow(unsigned len, struct tree_desc *t,
+				  struct unpack_trees_options *o,
+				  const char *narrow_prefix)
+{
+	struct tree_desc *t2;
+	char *prefix = NULL;
+	const char *old_prefix;
+	void **buf;
+	int i, ret;
+	t2 = xmalloc(sizeof(*t2)*len);
+	buf = xmalloc(sizeof(*buf)*len);
+	for (i = 0; i < len; i++) {
+		unsigned char sha1[20];
+		unsigned long size;
+		enum object_type type;
+
+		if (!find_tree_desc(t+i, sha1, narrow_prefix))
+			return -1;
+		buf[i] = read_sha1_file(sha1, &type, &size);
+		if (type != OBJ_TREE)
+			return -1;
+		init_tree_desc(t2+i, buf[i], size);
+	}
+	old_prefix = o->prefix;
+	if (!old_prefix)
+		prefix = xstrdup(narrow_prefix);
+	else {
+		prefix = xmalloc(strlen(narrow_prefix) + strlen(o->prefix)+1);
+		strcpy(prefix, o->prefix);
+		strcat(prefix, narrow_prefix);
+	}
+	o->prefix = prefix;
+	ret = unpack_traverse_1(len, t2, o);
+	o->prefix = old_prefix;
+	for (i = 0; i < len; i++)
+		free(buf[i]);
+	free(prefix);
+	free(t2);
+	free(buf);
+	return ret;
+}
+
+static int unpack_traverse(unsigned len, struct tree_desc *t, struct unpack_trees_options *o)
+{
+	const char **p = get_narrow_pathspec()->raw;
+
+	if (!len)
+		return 0;
+
+	if (!p)
+		return unpack_traverse_1(len, t, o);
+
+	while (*p) {
+		int ret = unpack_traverse_narrow(len, t, o, *p);
+		if (ret)
+			return ret;
+		p++;
+	}
+	return 0;
 }
 
 static int verify_absent(const struct cache_entry *,
