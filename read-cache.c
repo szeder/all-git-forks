@@ -18,6 +18,7 @@
 #include "varint.h"
 #include "split-index.h"
 #include "utf8.h"
+#include "narrow-tree.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -40,11 +41,12 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 #define CACHE_EXT_LINK 0x6c696e6b	  /* "link" */
 #define CACHE_EXT_UNTRACKED 0x554E5452	  /* "UNTR" */
+#define CACHE_EXT_NARROW 0x6e617277	  /* "narw" */
 
 /* changes that can be kept in $GIT_DIR/index (basically all extensions) */
 #define EXTMASK (RESOLVE_UNDO_CHANGED | CACHE_TREE_CHANGED | \
 		 CE_ENTRY_ADDED | CE_ENTRY_REMOVED | CE_ENTRY_CHANGED | \
-		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED)
+		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED | NARROW_CHANGED)
 
 struct index_state the_index;
 static const char *alternate_index_output;
@@ -1381,6 +1383,10 @@ static int read_index_extension(struct index_state *istate,
 	case CACHE_EXT_UNTRACKED:
 		istate->untracked = read_untracked_extension(data, sz);
 		break;
+	case CACHE_EXT_NARROW:
+		hashcpy(istate->narrow_base, data);
+		istate->narrow_prefix = xstrdup(data+sizeof(istate->narrow_base));
+		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -1605,6 +1611,18 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		src_offset += extsize;
 	}
 	munmap(mmap, mmap_size);
+
+	if ((!is_repository_narrow() && !istate->narrow_prefix))
+		;		/* good */
+	else if (is_repository_narrow() && istate->narrow_prefix) {
+		char *buf = get_narrow_string();
+		if (strcmp(buf, istate->narrow_prefix))
+			die(_("invalid index, narrow prefix does not match $GIT_DIR/narrow"));
+		free(buf);
+	}
+	else
+		die(_("invalid index, not suitable for narrow repository"));
+
 	return istate->cache_nr;
 
 unmap:
@@ -1678,6 +1696,9 @@ int discard_index(struct index_state *istate)
 	discard_split_index(istate);
 	free_untracked_cache(istate->untracked);
 	istate->untracked = NULL;
+	free(istate->narrow_prefix);
+	hashclr(istate->narrow_base);
+	istate->narrow_prefix = NULL;
 	return 0;
 }
 
@@ -2071,6 +2092,20 @@ static int do_write_index(struct index_state *istate, int newfd,
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_UNTRACKED,
 					     sb.len) < 0 ||
 			ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
+
+	if (is_repository_narrow()) {
+		struct strbuf sb = STRBUF_INIT;
+		char *buf = get_narrow_string();
+		int len = 20+strlen(buf)+1;
+		strbuf_add(&sb, istate->narrow_base, 20);
+		strbuf_addstr(&sb, buf);
+		free(buf);
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_NARROW, len) < 0 ||
+			ce_write(&c, newfd, sb.buf, len) < 0;
 		strbuf_release(&sb);
 		if (err)
 			return -1;

@@ -49,4 +49,35 @@ test_expect_success 'good narrow file accepted' '
 	test_cmp .git/narrow actual
 '
 
+test_expect_success 'create narrow index' '
+	mkdir a &&
+	echo a >.git/narrow &&
+	: >a/foo &&
+	git add a/foo &&
+	test -f .git/index
+'
+
+test_expect_success '$GIT_DIR/narrow and index do not match' '
+	mkdir b &&
+	: >b/foo &&
+	echo b >.git/narrow &&
+	test_must_fail git add b/foo
+'
+
+test_expect_success 'narrow index and normal repo' '
+	rm .git/narrow &&
+	test_must_fail git add a/foo
+'
+
+test_expect_success 'turn to normal index again' '
+	rm .git/index &&
+	git add a/foo &&
+	test_path_is_file .git/index
+'
+
+test_expect_success 'normal index and narrow repo' '
+	echo a >.git/narrow &&
+	test_must_fail git add a/foo
+'
+
 test_done

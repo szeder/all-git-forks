@@ -318,6 +318,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define CACHE_TREE_CHANGED	(1 << 5)
 #define SPLIT_INDEX_ORDERED	(1 << 6)
 #define UNTRACKED_CHANGED	(1 << 7)
+#define NARROW_CHANGED		(1 << 8)
 
 struct split_index;
 struct untracked_cache;
@@ -330,6 +331,8 @@ struct index_state {
 	struct cache_tree *cache_tree;
 	struct split_index *split_index;
 	struct cache_time timestamp;
+	char *narrow_prefix;
+	unsigned char narrow_base[GIT_SHA1_RAWSZ];
 	unsigned name_hash_initialized : 1,
 		 initialized : 1;
 	struct hashmap name_hash;
