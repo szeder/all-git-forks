@@ -9,6 +9,7 @@ from git_remote_helpers.util import die, debug, warn
 from git_remote_helpers.hg import util
 from git_remote_helpers.hg.hg import GitHg
 from git_remote_helpers.hg.exporter import GitExporter
+from git_remote_helpers.hg.importer import GitImporter
 from git_remote_helpers.hg.non_local import NonLocalHg
 
 
@@ -52,6 +53,7 @@ def get_repo(alias, url):
 
     repo.git_hg = GitHg(warn)
     repo.exporter = GitExporter(repo)
+    repo.importer = GitImporter(repo)
     repo.non_local = NonLocalHg(repo)
 
     repo.is_local = not remote and repo.local()
@@ -75,6 +77,7 @@ def local_repo(repo, path):
     local.hash = repo.hash
     local.get_base_path = repo.get_base_path
     local.exporter = GitExporter(local)
+    local.importer = GitImporter(local)
     local.is_local = repo.is_local
 
     return local
@@ -85,8 +88,25 @@ def do_capabilities(repo, args):
     """
 
     print "import"
+    print "export"
     print "*gitdir"
+
+    sys.stdout.flush()
+    if not read_one_line(repo):
+        die("Expected gitdir, got empty line")
+
     print "*refspec refs/heads/*:%s*" % repo.prefix
+
+    dirname = repo.get_base_path(repo.gitdir)
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+    path = os.path.join(dirname, 'git.marks')
+
+    print "*export-marks %s" % path
+    if os.path.exists(path):
+        print "*import-marks %s" % path
 
     print # end capabilities
 
@@ -147,6 +167,23 @@ def do_import(repo, args):
     print "done"
 
 
+def do_export(repo, args):
+    """Imports a fast-import stream from git to hg.
+    """
+
+    if not repo.gitdir:
+        die("Need gitdir to export")
+
+    local_repo = update_local_repo(repo)
+    local_repo.importer.do_import(local_repo.gitdir)
+
+    if not repo.is_local:
+        repo.non_local.push(repo.gitdir)
+
+    print "ok refs/heads/default"
+    print
+
+
 def do_gitdir(repo, args):
     """Stores the location of the gitdir.
     """
@@ -161,6 +198,7 @@ COMMANDS = {
     'capabilities': do_capabilities,
     'list': do_list,
     'import': do_import,
+    'export': do_export,
     'gitdir': do_gitdir,
 }
 

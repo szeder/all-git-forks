@@ -34,3 +34,15 @@ class NonLocalHg(object):
 
         repo.ui.setconfig('ui', 'quiet', "true")
         repo.pull(self.repo, heads=self.repo.heads(), force=True)
+
+    def push(self, base):
+        path = self.repo.get_base_path(base)
+
+        if not os.path.exists(path):
+            die("could not find repo at %s", path)
+
+        repo = self.hg.repository(self.repo.ui, path)
+
+        self.repo.ui.setconfig('ui', 'quiet', "true")
+        repo.ui.setconfig('ui', 'quiet', "true")
+        repo.push(self.repo, force=False)
