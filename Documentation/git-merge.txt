@@ -297,6 +297,22 @@ You can work through the conflict with a number of tools:
    version.
 
 
+MERGE IN NARROW REPOSITORIES
+----------------------------
+
+Because narrow repositories do not have all tree objects, abitrary
+merge may not work in these repositories. A merge can only be
+performed local in such a repository if
+
+ * There are two commits given
+
+ * A single common commit is found
+
+ * The commit content outside narrow area must be the same as in the
+   other commit, or in the common commit
+
+Merges that do not meet these requirements cannot be done locally.
+
 EXAMPLES
 --------
 

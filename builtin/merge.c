@@ -30,6 +30,7 @@
 #include "fmt-merge-msg.h"
 #include "gpg-interface.h"
 #include "sequencer.h"
+#include "narrow-tree.h"
 
 #define DEFAULT_TWOHEAD (1<<0)
 #define DEFAULT_OCTOPUS (1<<1)
@@ -67,6 +68,7 @@ static int abort_current_merge;
 static int show_progress = -1;
 static int default_to_upstream = 1;
 static const char *sign_commit;
+static unsigned char narrow_base[20];
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -623,6 +625,7 @@ static int read_tree_trivial(unsigned char *common, unsigned char *head,
 	}
 	if (unpack_trees(nr_trees, t, &opts))
 		return -1;
+	hashcpy(the_index.narrow_base, narrow_base);
 	return 0;
 }
 
@@ -1384,8 +1387,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 
 	if (!remoteheads)
 		; /* already up-to-date */
-	else if (!remoteheads->next)
-		common = get_merge_bases(head_commit, remoteheads->item);
+	else if (!remoteheads->next) {
+		common = find_narrow_merge_base(narrow_base, head_commit, remoteheads);
+		if (!common) /* might have been calculated in find_narrow_base */
+			common = get_merge_bases(head_commit, remoteheads->item);
+	}
 	else {
 		struct commit_list *list = remoteheads;
 		commit_list_insert(head_commit, &list);
