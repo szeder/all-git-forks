@@ -554,6 +554,9 @@ static int fetch(struct transport *transport,
 	return -1;
 }
 
+static void push_update_refs_status(struct helper_data *data,
+				    struct ref *remote_refs);
+
 static int push_refs_with_push(struct transport *transport,
 		struct ref *remote_refs, int flags)
 {
@@ -609,8 +612,17 @@ static int push_refs_with_push(struct transport *transport,
 
 	strbuf_addch(&buf, '\n');
 	sendline(data, &buf);
+	strbuf_release(&buf);
 
-	ref = remote_refs;
+	push_update_refs_status(data, remote_refs);
+	return 0;
+}
+
+static void push_update_refs_status(struct helper_data *data,
+				    struct ref *remote_refs)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct ref *ref = remote_refs;
 	while (1) {
 		char *refname, *msg;
 		int status;
@@ -679,7 +691,7 @@ static int push_refs_with_push(struct transport *transport,
 		ref->remote_status = msg;
 	}
 	strbuf_release(&buf);
-	return 0;
+	return;
 }
 
 static int push_refs_with_export(struct transport *transport,
