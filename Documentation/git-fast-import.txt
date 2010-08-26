@@ -293,6 +293,10 @@ and control the current import process.  More detailed discussion
 	creating a new commit and updating the branch to point at
 	the newly created commit.
 
+`done`::
+	Treated as if EOF was read. This command is optional and is
+	not needed to perform an import.
+
 `tag`::
 	Creates an annotated tag object from an existing commit or
 	branch.  Lightweight tags are not supported by this command,
@@ -885,16 +889,19 @@ The <feature> part of the command may be any string matching
 ^[a-zA-Z][a-zA-Z-]*$ and should be understood by fast-import.
 
 Feature work identical as their option counterparts with the
-exception of the import-marks feature, see below.
+exception of the done and import-marks features, see below.
 
 The following features are currently supported:
 
 * date-format
+* done
 * import-marks
 * export-marks
 * relative-marks
 * no-relative-marks
 * force
+
+If the done feature is specified, the done command must be supported.
 
 The import-marks behaves differently from when it is specified as
 commandline option in that only one "feature import-marks" is allowed
@@ -927,6 +934,14 @@ not be passed as option:
 * import-marks
 * export-marks
 * force
+
+`done`
+~~~~~~
+
+Treated as if EOF was read. This can be used to stop fast-import
+from reading from the stream without closing the file handle. Such
+may be desired if the file handle is used for other purposes other
+than fast-import as well, and closing it is not desired.
 
 Crash Reports
 -------------

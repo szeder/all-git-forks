@@ -2817,6 +2817,9 @@ static void parse_feature(void)
 	if (parse_one_feature(feature, 1))
 		return;
 
+	if (!prefixcmp(feature, "done"))
+		return;
+
 	die("This version of fast-import does not support feature %s.", feature);
 }
 
@@ -2935,6 +2938,8 @@ int main(int argc, const char **argv)
 			parse_new_blob();
 		else if (!prefixcmp(command_buf.buf, "commit "))
 			parse_new_commit();
+		else if (!prefixcmp(command_buf.buf, "done"))
+			break;
 		else if (!prefixcmp(command_buf.buf, "tag "))
 			parse_new_tag();
 		else if (!prefixcmp(command_buf.buf, "reset "))
