@@ -151,6 +151,9 @@ def do_export(repo, args):
     repo.importer.do_import(repo.gitdir)
     repo.non_local.push(repo.gitdir)
 
+    print "ok refs/heads/master"
+    print
+
 
 def do_gitdir(repo, args):
     """Stores the location of the gitdir.
