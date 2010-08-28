@@ -36,5 +36,6 @@ class GitImporter(object):
             args.append("--import-marks=" + path)
 
         child = subprocess.Popen(args)
-        if child.wait() != 0:
-            raise CalledProcessError
+        ret = child.wait()
+        if ret != 0:
+            raise subprocess.CalledProcessError(ret, args)
