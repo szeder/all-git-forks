@@ -6,6 +6,7 @@
 #include "cache.h"
 #include "commit.h"
 #include "notes.h"
+#include "gettext.h"
 
 extern const char git_version_string[];
 extern const char git_usage_string[];
