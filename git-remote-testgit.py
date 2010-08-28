@@ -71,7 +71,25 @@ def do_capabilities(repo, args):
     print "import"
     print "export"
     print "gitdir"
+
+    sys.stdout.flush()
+    if not read_one_line(repo):
+        die("Expected gitdir, got empty line")
+    if not repo.gitdir:
+        die("Expected gitdir, got something else")
+
     print "refspec refs/heads/*:%s*" % repo.prefix
+
+    dirname = repo.get_base_path(repo.gitdir)
+
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+    path = os.path.join(dirname, 'testgit.marks')
+
+    print "*export-marks %s" % path
+    if os.path.exists(path):
+        print "*import-marks %s" % path
 
     print # end capabilities
 
@@ -141,19 +159,6 @@ def do_export(repo, args):
 
     if not repo.gitdir:
         die("Need gitdir to export")
-
-    dirname = repo.get_base_path(repo.gitdir)
-
-    if not os.path.exists(dirname):
-        os.makedirs(dirname)
-
-    path = os.path.join(dirname, 'testgit.marks')
-    print path
-    if os.path.exists(path):
-        print path
-    else:
-        print ""
-    sys.stdout.flush()
 
     update_local_repo(repo)
     repo.importer.do_import(repo.gitdir)
