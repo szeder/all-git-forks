@@ -115,14 +115,22 @@ def do_import(repo, args):
     """Exports a fast-import stream from testgit for git to import.
     """
 
-    if len(args) != 1:
-        die("Import needs exactly one ref")
+    if args:
+        die("Import expects its ref seperately")
 
     if not repo.gitdir:
         die("Need gitdir to import")
 
+    refs = []
+
+    while True:
+        line = sys.stdin.readline()
+        if line == '\n':
+            break
+        refs.append(line.strip())
+
     repo = update_local_repo(repo)
-    repo.exporter.export_repo(repo.gitdir, args)
+    repo.exporter.export_repo(repo.gitdir, refs)
 
     print "done"
 

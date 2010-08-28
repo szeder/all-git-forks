@@ -404,15 +404,20 @@ static int fetch_with_import(struct transport *transport,
 	if (get_importer(transport, &fastimport))
 		die("Couldn't run fast-import");
 
+	write_constant(data->helper->in, "import\n");
+
 	for (i = 0; i < nr_heads; i++) {
 		posn = to_fetch[i];
 		if (posn->status & REF_STATUS_UPTODATE)
 			continue;
 
-		strbuf_addf(&buf, "import %s\n", posn->name);
+		strbuf_addf(&buf, "%s\n", posn->name);
 		sendline(data, &buf);
 		strbuf_reset(&buf);
 	}
+
+	write_constant(data->helper->in, "\n");
+
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
 	free(fastimport.argv);

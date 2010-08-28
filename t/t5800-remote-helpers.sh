@@ -94,7 +94,7 @@ test_expect_success PYTHON_24 'fetch new branch' '
 	compare_refs public HEAD localclone FETCH_HEAD
 '
 
-test_expect_failure PYTHON_24 'fetch multiple branches' '
+test_expect_success PYTHON_24 'fetch multiple branches' '
 	(cd localclone &&
 	 git fetch
 	) &&
