@@ -10,8 +10,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: t/t0200/test.c:4
-msgid "See git help COMMAND for more information on a specific command."
-msgstr "Sjá git help SKIPUN til að sjá hjálp fyrir tiltekna skipun."
+msgid "See 'git help COMMAND' for more information on a specific command."
+msgstr "Sjá 'git help SKIPUN' til að sjá hjálp fyrir tiltekna skipun."
 
 #. TRANSLATORS: This is a test. You don't need to translate it.
 #: t/t0200/test.c:9
