@@ -74,6 +74,8 @@ CONDITIONS
 	Tests if there are (not) any merge conflicts in the index.
 '--rebasing'|'--not-rebasing'::
         Tests if a rebase is (not) in progress.
+'--detached'|'--not-detached'::
+	Tests if the head is (not) detached.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
