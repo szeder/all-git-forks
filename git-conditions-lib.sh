@@ -87,5 +87,17 @@ check_branch_exists_1()
 	fi
 }
 
+check_tag_exists_1()
+{
+	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
+ 	if test "${symbolic#refs/tags/}" != "${symbolic}"
+	then
+		echo "Tag '$1' exists."
+	else
+		echo "Tag '$1' does not exist."
+		false
+	fi
+}
+
 
 fi

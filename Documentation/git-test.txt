@@ -78,6 +78,8 @@ CONDITIONS
 	Tests if the head is (not) detached.
 '--branch-exists'|'--not-branch-exists branch'::
         Tests if the specified branch does (not) exist.				    
+'--tag-exists'|'--not-tag-exists tag'::
+        Tests if the specified tag does (not) exist.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
