@@ -1,0 +1,154 @@
+git-test(1)
+===========
+
+NAME
+----
+git-test - evaluates one or more conditions about the state of the git working tree, index or repository
+
+SYNOPSIS
+--------
+The git test API is available in the form of a command and also as a shell library. 
+
+COMMAND SYNOPSIS
+----------------
+[verse]
+'git test' [-q] [--message message] [--<condition> [ arg ... ]] ...
+
+LIBRARY SYNOPSIS
+----------------
+[verse]
+'assert' [-q] [--message message] [--<condition> [ arg ... ]] ...
+'test_condition' [--<condition> [ arg ... ]] ...
+'require_condition_libs'
+
+
+DESCRIPTION
+-----------
+`git test` provides a uniform, extensible API for evaluating various conditions that
+pertain to the state of a git working tree, index and repository.
+
+Specified conditions are evaluated from left to right. If any condition evaluates to false, 
+the command conditionally prints a diagnostic message to stderr and sets a 
+non-zero status code. Otherwise, sets a status code of zero. 
+
+The message used to report a assertion failure may be overidden by specifying the --message option.
+
+Diagnostic output resulting from an assertion failure may be suppressed with the -q option. 
+Note that the -q option does not suppress diagnostic output that results from the failure to 
+successfully parse the arguments that configure the test API.
+
+The `assert` and `test_condition` functions differ according to how they handle failing conditions. 
+
+The `assert` function behaves like the test command but assertion failures will cause 
+the current shell to exit with a non-zero status code. To prevent this occurring, invoke
+the `assert` function within a subshell or use the `test_condition` function instead.
+
+The `test_condition` function will not exit the current shell in the event that an assertion failure
+is detected nor will it generate diagnostic relating to an assertion failure to stderr. 
+
+Note, however, that `test_condition` may still exit the current shell with a non-zero status code 
+if it is unable to successfully parse the arguments presented to it. Callers who need to protect 
+against this possibility either guarantee that the required arguments are available or 
+imbed calls to `test_condition` within a subshell.
+
+The `require_condition_libs` function may be used to include any condition libs listed
+in condition.lib variables of the the git configuration.
+
+
+OPTIONS
+-------
+'--message'::
+	The message to be used to report a failure if an assertion fails.
+'-q'::	
+        Suppress assertion messages.
+
+CONDITIONS
+----------
+
+EXTENDING THE CONDITION LIBRARY
+-------------------------------
+The library of conditions that the assert API can process may be extended by 
+adding functions of the form check_\{dehyphenated_condition_name\}_N to the 
+shell environment, where \{dehyphenated_condition_name\} is the result of 
+replacing any occurrence of \'-\' in the condition name with \'_\' and 
+N is the number of arguments that need to be passed to the function.
+
+For example, suppose you are writing a script, foo.sh, that includes the git test library 
+and that you want to add a new, 1-argument, condition, foo-X to the library of 
+conditions that can be tested by the git testion framework. 
+
+---------
+#/bin/sh
+. $(git --exec-path)/git-test-lib
+
+check_foo_X_1()
+{
+    if # some test of $1
+    then
+	echo "foo-X is true"
+    else
+	echo "foo-X is false"
+	false
+    fi
+}
+
+assert --foo-X "somearg"
+--------
+If its condition holds, the condition function must set a status
+code of zero and write a non-empty message describing the condition to stdout.
+If its condition does not hold, the condition function must set a non-zero
+status code of zero and write a non-empty message describing the condition
+that does hold to stdout.
+
+It is an error, and is reported as such, if a condition function
+executes without generating any output on stdout. The resulting
+state will then be interpreted as condition evaluation failure
+rather than an assertion failure.
+
+To make such conditions available to the git test command line, put the 
+function in a file called ~/foo-lib,sh add a reference 
+to the library to the git configuration, like so:
+
+---------
+git config --add condition.lib ~/foo-lib.sh
+git test --foo-X one-arg                     # now use foo-X from the git test command line
+---------
+
+CONFIGURATION
+-------------
+condition.lib::
+	Specifies a shell library that contains definitions of one or more
+	condition check functions that can be used to extend the range
+	of conditions that can be used with the git test API.
+
+EXAMPLES
+--------
+* Reset the working tree to the specified commit, but only the current HEAD is tree-same with that commit
+! git assert -q --tree-same HEAD upstream/master || git reset --hard upstream/master
+* Reset the working tree, but only if there are no staged or unstaged changes
++
+-----------
+git test --not-staged --not-unstaged && git reset --hard another-commit
+-----------
+* Import the git-test-lib library into another script
++
+-----------
+. $(git --exec-path)/git-test-lib
+assert --not-staged   	      	                              # die if there are any staged files
+assert --message "there are staged files" --not-staged	      # die with an alternative message 
+                                                              # if there are any staged files
+test_condition --not-staged || echo "there are staged files"  # check whether there are staged files, 
+                                                              # but do not die if there are
+-----------
+
+Author
+------
+Written by Jon Seymour <jon.seymour@gmail.com>
+
+Documentation
+-------------
+Documentation by Jon Seymour
+
+GIT
+---
+Part of the linkgit:git[7] suite

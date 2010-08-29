@@ -376,11 +376,14 @@ SCRIPT_SH += git-repack.sh
 SCRIPT_SH += git-request-pull.sh
 SCRIPT_SH += git-stash.sh
 SCRIPT_SH += git-submodule.sh
+SCRIPT_SH += git-test.sh
 SCRIPT_SH += git-web--browse.sh
 
+SCRIPT_LIB += git-conditions-lib
 SCRIPT_LIB += git-mergetool--lib
 SCRIPT_LIB += git-parse-remote
 SCRIPT_LIB += git-sh-setup
+SCRIPT_LIB += git-test-lib
 
 SCRIPT_PERL += git-add--interactive.perl
 SCRIPT_PERL += git-difftool.perl
