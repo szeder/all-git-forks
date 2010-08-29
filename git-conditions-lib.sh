@@ -162,5 +162,15 @@ check_tree_same_2()
 
 }
 
+check_same_2()
+{
+	if test "$(git rev-parse "$1")" = "$(git rev-parse "$2")"
+	then
+		echo "'$1' is the same as '$2'."
+	else
+		echo "'$1' is not the same as '$2'."
+		false
+	fi
+}
 
 fi

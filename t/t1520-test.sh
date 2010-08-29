@@ -408,4 +408,12 @@ test_expect_success 'tree-same' \
 
 '
 
+test_expect_success 'same' \
+'
+   git test \
+      --same master HEAD \
+      --not-same D D1 \
+      --not-same C D 
+'
+
 test_done
