@@ -72,6 +72,8 @@ CONDITIONS
 	Tests if there are (not) any untracked files in the working tree.
 '--conflicted'|'--not-conflicted'::
 	Tests if there are (not) any merge conflicts in the index.
+'--rebasing'|'--not-rebasing'::
+        Tests if a rebase is (not) in progress.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
