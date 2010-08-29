@@ -70,6 +70,8 @@ CONDITIONS
         Tests if there are (not) any staged changes in the index.
 '--untracked'|'--not-untracked'::
 	Tests if there are (not) any untracked files in the working tree.
+'--conflicted'|'--not-conflicted'::
+	Tests if there are (not) any merge conflicts in the index.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
