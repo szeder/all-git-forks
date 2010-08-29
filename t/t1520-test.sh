@@ -216,5 +216,50 @@ test_expect_success 'git test --unstaged # when there are only staged files' \
 	git test --not-unstaged
 '
 
+test_expect_success 'git test --staged # should fail' \
 '
+	test_must_fail git test --staged
+'
+
+test_expect_success 'git test --not-staged' \
+'
+	git test --not-staged
+'
+
+test_expect_success 'git test --staged # when there are staged files' \
+'
+	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	git checkout -f M^0 &&
+	git stash apply --index STASH_STAGED &&
+	git test --staged
+'
+
+test_expect_success 'git test --not-staged # when there are staged files - should fail' \
+'
+	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	git checkout -f M^0 &&
+	git stash apply --index STASH_STAGED &&
+	test_must_fail git test --not-staged
+'
+
+test_expect_success 'git test --staged # when there are only unstaged files' \
+'
+	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	git checkout -f M^0 &&
+	git stash apply --index STASH_UNSTAGED &&
+	git test --not-staged
+'
+
+'
+    test_when_finished "git reset --hard HEAD && git checkout master" && 
+    git test --not-staged --not-unstaged && 
+    ! git test --staged && 
+    ! git test --unstaged && 
+    git checkout M^0 &&
+    git stash apply --index STASH_STAGED &&
+    git test --not-unstaged --staged &&
+    ! git test --unstaged &&
+    ! git test --not-staged 
+'
+
 test_done
