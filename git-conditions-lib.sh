@@ -99,5 +99,17 @@ check_tag_exists_1()
 	fi
 }
 
+check_ref_exists_1()
+{
+	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
+ 	if test "${symbolic#refs/}" != "${symbolic}"
+	then
+		echo "Reference '$1' exists."
+	else
+		echo "Reference '$1' does not exist."
+		false
+	fi
+}
+
 
 fi
