@@ -150,5 +150,17 @@ check_reachable_2()
 	fi     
 }
 
+check_tree_same_2()
+{
+	if git diff-tree --quiet "$1" "$2"
+	then
+		echo "'$1' has the same tree as '$2'."
+	else
+		echo "'$1' does not have the same tree as '$2'."
+		false
+	fi
+
+}
+
 
 fi
