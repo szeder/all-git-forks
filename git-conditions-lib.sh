@@ -41,5 +41,17 @@ check_untracked_0()
 	fi
 }
 
+check_conflicted_0()
+{
+	if test $(git ls-files --unmerged | wc -l) -ne 0
+	then
+		echo "There are unmerged files."
+	else
+		echo "There are no unmerged files."
+		false
+	fi
+
+}
+
 
 fi
