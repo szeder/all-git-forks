@@ -76,6 +76,8 @@ CONDITIONS
         Tests if a rebase is (not) in progress.
 '--detached'|'--not-detached'::
 	Tests if the head is (not) detached.
+'--branch-exists'|'--not-branch-exists branch'::
+        Tests if the specified branch does (not) exist.				    
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
