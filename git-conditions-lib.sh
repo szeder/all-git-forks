@@ -75,5 +75,17 @@ check_detached_0()
 	fi
 }
 
+check_branch_exists_1()
+{
+	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
+ 	if test "${symbolic#refs/heads/}" != "${symbolic}"
+	then
+		echo "Branch '$1' exists."
+	else
+		echo "Branch '$1' does not exist."
+		false
+	fi
+}
+
 
 fi
