@@ -399,4 +399,13 @@ test_expect_success 'git test --not-reachable F C' \
        git test --not-reachable F C
 '
 
+test_expect_success 'tree-same' \
+'
+   git test \
+     --tree-same master HEAD \
+     --tree-same D D1 \
+     --not-tree-same C D
+
+'
+
 test_done

@@ -88,6 +88,8 @@ CONDITIONS
         Tests if the specified branch is (not) checked out.
 '--reachable'|'--not-reachable' first second::
 	Tests if the first commit is (not) reachable from the second.
+'--tree-same'|'--not-tree-same' first second::
+        Tests if the first commit is (not) tree-same to the second commit.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
