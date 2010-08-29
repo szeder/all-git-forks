@@ -84,6 +84,8 @@ CONDITIONS
         Tests if the specified reference does (not) exist.
 '--commit-exists'|'--not-commit-exists commit'::
 	Tests if the specified commit does (not) exist.
+'--checked-out'|'--not-checked-out branch'::
+        Tests if the specified branch is (not) checked out.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
