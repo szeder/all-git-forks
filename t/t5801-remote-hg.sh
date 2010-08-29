@@ -132,4 +132,21 @@ test_expect_success 'pull in new branch to remote repository' '
 	git rev-parse --no-revs --verify refs/remotes/origin/different-branch)
 '
 
+test_expect_success 'make commit on new branch in local repository' '
+	(cd localclone &&
+	git checkout -b new-local-branch &&
+	echo local >> file &&
+	git commit -am six &&
+	git push)
+'
+
+test_expect_success 'make commit on new branch in remote repository' '
+	(cd clone &&
+	git checkout -b new-remote-branch &&
+	echo remote >> file &&
+	git commit -am seven &&
+	git push)
+'
+
+
 test_done

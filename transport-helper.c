@@ -734,8 +734,16 @@ static int push_refs_with_export(struct transport *transport,
 		char *private;
 		unsigned char sha1[20];
 
+		// TODO: this can't be right
 		if (!data->refspecs)
 			continue;
+
+		warning("adding ref %s\n", ref->name);
+
+		strbuf_addf(&buf, "%s\n", ref->name);
+		sendline(data, &buf);
+		strbuf_reset(&buf);
+
 		private = apply_refspecs(data->refspecs, data->refspec_nr, ref->name);
 		if (private && !get_sha1(private, sha1)) {
 			strbuf_addf(&buf, "^%s", private);
@@ -745,6 +753,8 @@ static int push_refs_with_export(struct transport *transport,
 		string_list_append(&revlist_args, ref->name);
 
 	}
+
+	write_constant(helper->in, "\n");
 
 	if (get_exporter(transport, &exporter, &revlist_args))
 		die("Couldn't run fast-export");
@@ -814,9 +824,9 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	}
 
 	if (data->push && for_push)
-		write_str_in_full(helper->in, "list for-push\n");
+		write_constant(helper->in, "list for-push\n");
 	else
-		write_str_in_full(helper->in, "list\n");
+		write_constant(helper->in, "list\n");
 
 	while (1) {
 		char *eov, *eon;

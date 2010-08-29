@@ -174,13 +174,23 @@ def do_export(repo, args):
     if not repo.gitdir:
         die("Need gitdir to export")
 
+    refs = []
+
+    while True:
+        line = sys.stdin.readline()
+        if line == '\n':
+            break
+        refs.append(line.strip())
+
     local_repo = update_local_repo(repo)
     local_repo.importer.do_import(local_repo.gitdir)
 
     if not repo.is_local:
         repo.non_local.push(repo.gitdir)
 
-    print "ok refs/heads/default"
+    for ref in refs:
+        print "ok %s" % ref
+
     print
 
 
