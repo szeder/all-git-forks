@@ -28,6 +28,7 @@
 /git-clone
 /git-commit
 /git-commit-tree
+/git-conditions-lib
 /git-config
 /git-count-objects
 /git-cvsexportcommit
@@ -147,6 +148,8 @@
 /git-symbolic-ref
 /git-tag
 /git-tar-tree
+/git-test
+/git-test-lib
 /git-unpack-file
 /git-unpack-objects
 /git-update-index
