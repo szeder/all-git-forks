@@ -53,5 +53,16 @@ check_conflicted_0()
 
 }
 
+check_rebasing_0()
+{
+	if test -d "$(git rev-parse --git-dir)/rebase-apply"
+	then
+		echo "A rebase is in progress."
+	else
+		echo "There is no rebase in progress."
+		false
+	fi
+}
+
 
 fi
