@@ -90,6 +90,8 @@ CONDITIONS
 	Tests if the first commit is (not) reachable from the second.
 '--tree-same'|'--not-tree-same' first second::
         Tests if the first commit is (not) tree-same to the second commit.
+'--same'|'--not-same' first second::
+	Tests if the first object has (does not have) the same SHA1 has as the second object.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
