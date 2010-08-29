@@ -64,5 +64,16 @@ check_rebasing_0()
 	fi
 }
 
+check_detached_0()
+{
+	if ! git symbolic-ref -q HEAD >/dev/null
+	then
+		echo "HEAD is detached."
+	else
+		echo "HEAD is not detached."
+		false
+	fi
+}
+
 
 fi
