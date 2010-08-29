@@ -416,4 +416,30 @@ test_expect_success 'same' \
       --not-same C D 
 '
 
+test_expect_success 'clean' \
+'
+    git test \
+       --not-staged \
+       --not-unstaged \
+       --not-detached \
+       --not-untracked \
+       --not-rebasing \
+       --not-conflicted 
+'
+
+test_expect_success 'existence' \
+'
+    git test \
+       --commit-exists M \
+       --not-commit-exists N \
+       --ref-exists refs/tags/M \
+       --not-ref-exists refs/tags/N \
+       --branch-exists master \
+       --not-branch-exists N \
+       --tag-exists D \
+       --not-tag-exists N \
+       --not-tag-exists master \
+       --not-branch-exists A 
+ '
+
 test_done
