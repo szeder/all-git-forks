@@ -19,5 +19,16 @@ check_unstaged_0()
 	fi
 }
 
+check_staged_0()
+{
+	if test $(git diff-index --cached --name-only HEAD | wc -l) -ne 0
+	then
+		echo "There are staged files."
+	else
+		echo "There are no staged files."
+		false
+	fi
+}
+
 
 fi

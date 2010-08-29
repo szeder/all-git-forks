@@ -66,6 +66,9 @@ CONDITIONS
 ----------
 '--unstaged'|'--not-unstaged'::
 	Tests if there are (not) any unstaged changes in the working tree.
+'--staged'|'--not-staged'::
+        Tests if there are (not) any staged changes in the index.
+
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
