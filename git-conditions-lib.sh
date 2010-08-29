@@ -122,5 +122,19 @@ check_commit_exists_1()
 	fi
 }
 
+check_checked_out_1()
+{
+	branch="$(git rev-parse --quiet --symbolic-full-name --verify "$1")"
+	headref="$(git symbolic-ref HEAD)"
+	if test "${headref}" = "${branch}" -a -n "${branch}"
+	then
+		echo "'$1' is checked out."
+	else
+		echo "'$1' is not checked out."
+		false
+	fi
+
+}
+
 
 fi
