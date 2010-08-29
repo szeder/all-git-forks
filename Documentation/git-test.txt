@@ -64,6 +64,8 @@ OPTIONS
 
 CONDITIONS
 ----------
+'--unstaged'|'--not-unstaged'::
+	Tests if there are (not) any unstaged changes in the working tree.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
