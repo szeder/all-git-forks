@@ -274,16 +274,28 @@ test_expect_success 'git test --not-untracked # when there are untracked files -
 	test_must_fail git test --not-untracked
 '
 
+test_expect_success 'git test --not-detached' \
 '
-    test_when_finished "git reset --hard HEAD && git checkout master" && 
-    git test --not-staged --not-unstaged && 
-    ! git test --staged && 
-    ! git test --unstaged && 
-    git checkout M^0 &&
-    git stash apply --index STASH_STAGED &&
-    git test --not-unstaged --staged &&
-    ! git test --unstaged &&
-    ! git test --not-staged 
+	git test --not-detached
+'
+
+test_expect_success 'git test --detached # should fail' \
+'
+	test_must_fail git test --detached
+'
+
+test_expect_success 'git test --not-detached # when detached, should fail' \
+'
+	test_when_finished "git checkout -f master" && 
+	git checkout HEAD^0 &&
+	test_must_fail git test --not-detached
+'
+
+test_expect_success 'git test --detached # when detached' \
+'
+	test_when_finished "git checkout -f master" && 
+	git checkout HEAD^0 &&
+	git test --detached
 '
 
 test_done
