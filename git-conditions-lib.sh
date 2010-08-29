@@ -111,5 +111,16 @@ check_ref_exists_1()
 	fi
 }
 
+check_commit_exists_1()
+{
+	if test "$(git cat-file -t "$1")" = 'commit'
+	then	
+		echo "Commit '$1' exists."
+	else
+		echo "Commit '$1' does not exist."
+		false
+	fi
+}
+
 
 fi
