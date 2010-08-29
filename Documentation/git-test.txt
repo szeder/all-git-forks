@@ -82,6 +82,8 @@ CONDITIONS
         Tests if the specified tag does (not) exist.
 '--ref-exists'|'--not-ref-exists tag'::
         Tests if the specified reference does (not) exist.
+'--commit-exists'|'--not-commit-exists commit'::
+	Tests if the specified commit does (not) exist.
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
