@@ -136,5 +136,19 @@ check_checked_out_1()
 
 }
 
+check_reachable_2()
+{
+	first=$(git rev-parse --quiet --verify "$1" 2>/dev/null) || die "'$1' is not a commit"
+	second=$(git rev-parse --quiet --verify "$2" 2>/dev/null) || die "'$2' is not a commit"
+	if test "$first" = "$second" \
+                -o -z "$(git rev-list -n1 "$first" ^"$second")" 
+	then
+		echo "'$1' is reachable from '$2'."
+	else
+		echo "'$1' is not reachable from '$2'."
+		false
+	fi     
+}
+
 
 fi

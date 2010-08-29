@@ -298,4 +298,105 @@ test_expect_success 'git test --detached # when detached' \
 	git test --detached
 '
 
+
+test_expect_success 'git test --reachable #should fail' \
+'
+	test_must_fail git test --reachable
+'
+
+test_expect_success 'git test --not-reachable #should fail' \
+'
+	test_must_fail git test --reachable
+'
+
+test_expect_success 'git test --reachable A #should fail' \
+'
+	test_must_fail git test --reachable A
+'
+
+test_expect_success 'git test --not-reachable A #should fail' \
+'
+	test_must_fail git test --not-reachable A
+'
+
+test_expect_success 'git test --reachable does-not-exist-1 does-not-exist-2 #should fail' \
+'
+	test_must_fail git test --reachable does-not-exist-1 does-not-exist-2
+'
+
+test_expect_success 'git test --not-reachable does-not-exist-1 does-not-exist-2 #should fail' \
+'
+	test_must_fail git test --not-reachable does-not-exist-1 does-not-exist-2
+'
+
+test_expect_success 'git test --reachable does-not-exist-1 A #should fail' \
+'
+	test_must_fail git test --reachable does-not-exist-1 A
+'
+
+test_expect_success 'git test --not-reachable does-not-exist-1 A #should fail' \
+'
+	test_must_fail git test --not-reachable does-not-exist-1 A
+'
+
+test_expect_success 'git test --reachable A does-not-exist-2 #should fail' \
+'
+	test_must_fail git test --reachable A does-not-exist-2
+'
+
+test_expect_success 'git test --not-reachable A does-not-exist-2 #should fail' \
+'
+	test_must_fail git test --not-reachable A does-not-exist-2
+'
+
+test_expect_success 'git test --reachable A C' \
+'
+       git test --reachable A C
+'
+
+test_expect_success 'git test --not-reachable A C # should fail' \
+'
+       test_must_fail git test --not-reachable A C
+'
+
+test_expect_success 'git test --reachable C A # should fail' \
+'
+       test_must_fail git test --reachable C A
+'
+
+test_expect_success 'git test --not-reachable C A # should fail' \
+'
+       git test --not-reachable C A
+'
+
+test_expect_success 'git test --reachable C C' \
+'
+       git test --reachable C C
+'
+
+test_expect_success 'git test --not-reachable C C' \
+'
+       test_must_fail git test --not-reachable C C
+'
+
+test_expect_success 'git test --reachable C F' \
+'
+       test_must_fail git test --reachable C F
+'
+
+test_expect_success 'git test --not-reachable C F' \
+'
+       git test --not-reachable C F
+'
+
+test_expect_success 'git test --reachable F C' \
+'
+       test_must_fail git test --reachable F C
+'
+
+test_expect_success 'git test --not-reachable F C' \
+'
+       git test --not-reachable F C
+'
+
 test_done
