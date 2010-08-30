@@ -21,72 +21,72 @@ msgstr ""
 #: builtin/init-db.c:34
 #, c-format
 msgid "Could not make %s writable by group"
-msgstr ""
+msgstr "Nie mogę dać prawa zapisu grupie w %s"
 
 #: builtin/init-db.c:61
 #, c-format
 msgid "insanely long template name %s"
-msgstr ""
+msgstr "beznadziejnie długa nazwa szablonu %s"
 
 #: builtin/init-db.c:66
 #, c-format
 msgid "cannot stat '%s'"
-msgstr ""
+msgstr "nie mogę tknąć '%s'"
 
 #: builtin/init-db.c:72
 #, c-format
 msgid "cannot stat template '%s'"
-msgstr ""
+msgstr "nie mogę tknąć szablonu '%s'"
 
 #: builtin/init-db.c:79
 #, c-format
 msgid "cannot opendir '%s'"
-msgstr ""
+msgstr "nie mogę otworzyć katalogu '%s'"
 
 #: builtin/init-db.c:96
 #, c-format
 msgid "cannot readlink '%s'"
-msgstr ""
+msgstr "readlink nie zadziałało dla '%s'"
 
 #: builtin/init-db.c:98
 #, c-format
 msgid "insanely long symlink %s"
-msgstr ""
+msgstr "beznadziejnie długi link symboliczny %s"
 
 #: builtin/init-db.c:101
 #, c-format
 msgid "cannot symlink '%s' '%s'"
-msgstr ""
+msgstr "nie mogę założyć symbolicznego link z '%s' do '%s'"
 
 #: builtin/init-db.c:105
 #, c-format
 msgid "cannot copy '%s' to '%s'"
-msgstr ""
+msgstr "nie mogę skopiować '%s' to '%s'"
 
 #: builtin/init-db.c:109
 #, c-format
 msgid "ignoring template %s"
-msgstr ""
+msgstr "pomijam szablon %s"
 
 #: builtin/init-db.c:132
 #, c-format
 msgid "insanely long template path %s"
-msgstr ""
+msgstr "beznadziejnie długa śieżka do wzorca %s"
 
 #: builtin/init-db.c:140
 #, c-format
 msgid "templates not found %s"
-msgstr ""
+msgstr "nie znaleziono szablonów %s"
 
 #: builtin/init-db.c:153
 #, c-format
 msgid "not copying templates of a wrong format version %d from '%s'"
-msgstr ""
+msgstr "nie będę kopiować szablonów oznaczonych niewłaściwym numerem wersji %d z '%s'"
 
 #: builtin/init-db.c:191
 #, c-format
 msgid "insane git directory %s"
-msgstr ""
+msgstr "beznadziejny katalog gita %s"
 
 #. TRANSLATORS: The first '%s' is either "Reinitialized
 #. * existing" or "Initialized empty", the second " shared" or
@@ -110,39 +110,41 @@ msgstr ""
 
 #: builtin/init-db.c:376
 msgid "cannot tell cwd"
-msgstr ""
+msgstr "nie wiem w którym katalogu jestem"
 
 #: builtin/init-db.c:402
 msgid ""
 "git init [-q | --quiet] [--bare] [--template=<template-directory>] [--shared"
 "[=<permissions>]] [directory]"
 msgstr ""
+"git init [-q | --quiet] [--bare] [--template=<katalog-szablonół>] [--shared"
+"[=<uprawnienia>]] [katalog]"
 
 #: builtin/init-db.c:419
 msgid "provide the directory from which templates will be used"
-msgstr ""
+msgstr "trzeba podać nazwę katalogu z którego czerpać mam szablony"
 
 #: builtin/init-db.c:421
 msgid "create a bare repository"
-msgstr ""
+msgstr "utwóz gołe repozytorium"
 
 #: builtin/init-db.c:424
 msgid "specify that the git repository is to be shared amongst several users"
-msgstr ""
+msgstr "pozwala na stworzenie repozytorium, z którego będzie korzystać kilka osób"
 
 #: builtin/init-db.c:426
 msgid "be quiet"
-msgstr ""
+msgstr "działaj po cichu"
 
 #: builtin/init-db.c:450 builtin/init-db.c:457
 #, c-format
 msgid "cannot mkdir %s"
-msgstr ""
+msgstr "nie mogę utworzyć katalogu %s"
 
 #: builtin/init-db.c:461
 #, c-format
 msgid "cannot chdir to %s"
-msgstr ""
+msgstr "nie mogę wejść do katalogu %s"
 
 #: builtin/init-db.c:483
 #, c-format
@@ -150,15 +152,17 @@ msgid ""
 "%s (or --work-tree=<directory>) not allowed without specifying %s (or --git-"
 "dir=<directory>)"
 msgstr ""
+"nie można użyć %s (or --work-tree=<katalog>) bez podania %s (or --git-"
+"dir=<katalog>)"
 
 #: builtin/init-db.c:509
 msgid "Cannot access current working directory"
-msgstr ""
+msgstr "Nie mogę dobrać się do bieżącego katalogu"
 
 #: builtin/init-db.c:512
 #, c-format
 msgid "Cannot access work tree '%s'"
-msgstr ""
+msgstr "Nie mogę dostać się do drzewa roboczego '%s'"
 
 #: t/t0200/test.c:4
 msgid "See 'git help COMMAND' for more information on a specific command."
