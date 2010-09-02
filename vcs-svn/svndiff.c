@@ -1,5 +1,19 @@
 #include <stdio.h>
 #include "svndiff.h"
+#include <stdarg.h>
+#include <stdlib.h>
+
+#define MAX_ENCODED_INT_LEN 10
+
+/* Remove when linking to gitcore */
+void die(const char *err, ...)
+{
+	va_list params;
+	va_start(params, err);
+	vfprintf(stderr, err, params);
+	va_end(params);
+	exit(128);
+}
 
 /* Decode an svndiff-encoded integer into VAL and return a pointer to
    the byte after the integer.  The bytes to be decoded live in the
@@ -83,14 +97,14 @@ const unsigned char *decode_instruction(struct svndiff_op *op,
 	return p;
 }
 
-static int *count_instructions(const unsigned char *p,
-			       const unsigned char *end,
-			       int sview_len,
-			       int tview_len,
-			       int new_len)
+int count_instructions(const unsigned char *p,
+		       const unsigned char *end,
+		       int sview_len,
+		       int tview_len,
+		       int new_len)
 {
 	int n = 0;
-	svndiff_op op;
+	struct svndiff_op *op;
 	int tpos = 0, npos = 0;
 
 	while (p < end)
@@ -99,29 +113,29 @@ static int *count_instructions(const unsigned char *p,
 
 		if (p == NULL)
 			die("Invalid diff stream: insn %d cannot be decoded", n);
-		else if (op.length == 0)
+		else if (op->length == 0)
 			die("Invalid diff stream: insn %d has length zero", n);
-		else if (op.length > tview_len - tpos)
+		else if (op->length > tview_len - tpos)
 			die("Invalid diff stream: insn %d overflows the target view", n);
 
-		switch (op.action_code)
+		switch (op->action_code)
 		{
 		case svn_txdelta_source:
-			if (op.length > sview_len - op.offset ||
-			    op.offset > sview_len)
+			if (op->length > sview_len - op->offset ||
+			    op->offset > sview_len)
 				die("Invalid diff stream: [src] insn %d overflows the source view", n);
 			break;
 		case svn_txdelta_target:
-			if (op.offset >= tpos)
+			if (op->offset >= tpos)
 				die("Invalid diff stream: [tgt] insn %d starts beyond the target view position", n);
 			break;
 		case svn_txdelta_new:
-			if (op.length > new_len - npos)
+			if (op->length > new_len - npos)
 				die("Invalid diff stream: [new] insn %d overflows the new data section", n);
-			npos += op.length;
+			npos += op->length;
 			break;
 		}
-		tpos += op.length;
+		tpos += op->length;
 		n++;
 	}
 	if (tpos != tview_len)
@@ -132,25 +146,20 @@ static int *count_instructions(const unsigned char *p,
 	return n;
 }
 
-static svn_error_t *
-decode_window(svn_txdelta_window_t *window, svn_filesize_t sview_offset,
-              int sview_len, int tview_len, int inslen,
-              int newlen, const unsigned char *data, apr_pool_t *pool)
+int decode_window(struct svndiff_window *window, int sview_offset,
+		  int sview_len, int tview_len, int inslen,
+		  int newlen, const unsigned char *data)
 {
 	const unsigned char *insend;
 	int ninst;
 	int npos;
-	svn_txdelta_op_t *ops, *op;
-	svn_string_t *new_data = apr_palloc(pool, sizeof(*new_data));
+	struct svndiff_op *ops, *op;
 
 	window->sview_offset = sview_offset;
 	window->sview_len = sview_len;
 	window->tview_len = tview_len;
 
 	insend = data + inslen;
-
-	new_data->data = (const char *) insend;
-	new_data->len = newlen;
 
 	/* Count the instructions and make sure they are all valid.  */
 	ninst = count_instructions(data, insend, sview_len, tview_len, newlen);
@@ -170,15 +179,14 @@ decode_window(svn_txdelta_window_t *window, svn_filesize_t sview_offset,
 			npos += op->length;
 		}
 	}
-	SVN_ERR_ASSERT(data == insend);
+	if (data != insend)
+		die("data != insend");
 
 	window->ops = ops;
 	window->num_ops = ninst;
-	window->new_data = new_data;
 
-	return SVN_NO_ERROR;
+	return 0;
 }
-
 
 int main()
 {

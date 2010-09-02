@@ -11,7 +11,7 @@ struct svndiff_op
   int length;
 };
 
-/** An #svn_txdelta_window_t object describes how to reconstruct a
+/* An svn_txdelta_window_t object describes how to reconstruct a
  * contiguous section of the target string (the "target view") using a
  * specified contiguous region of the source string (the "source
  * view").  It contains a series of instructions which assemble the
@@ -29,17 +29,17 @@ struct svndiff_op
  * property allows us to apply deltas to non-seekable source streams
  * without making a full copy of the source stream.
  */
-typedef struct svn_txdelta_window_t
+struct svndiff_window
 {
   /** The offset of the source view for this window.  */
-  svn_filesize_t sview_offset;
+  int sview_offset;
 
   /** The length of the source view for this window.  */
-  apr_size_t sview_len;
+  int sview_len;
 
   /** The length of the target view for this window, i.e. the number of
    * bytes which will be reconstructed by the instruction stream.  */
-  apr_size_t tview_len;
+  int tview_len;
 
   /** The number of instructions in this window.  */
   int num_ops;
@@ -51,8 +51,8 @@ typedef struct svn_txdelta_window_t
   int src_ops;
 
   /** The instructions for this window.  */
-  const svn_txdelta_op_t *ops;
+  const struct svndiff_op *ops;
 
   /** New data, for use by any `svn_txdelta_new' instructions.  */
-  const svn_string_t *new_data;
+  const char *new_data;
 };
