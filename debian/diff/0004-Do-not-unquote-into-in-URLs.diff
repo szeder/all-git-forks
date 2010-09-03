@@ -93,5 +93,5 @@ index 2306236..cd8f74f 100644
 +	return url_decode_internal(query, "&", &out, 1);
  }
 -- 
-1.7.2.1.534.g990bd8.dirty
+1.7.2.2
 

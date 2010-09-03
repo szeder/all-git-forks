@@ -32,6 +32,12 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
     debian/diff/0008-bug-448655-check-etc-mailname-if-author...diff.
   * debian/diff/0002-bug-506445-hooks-post-receive-...diff: rename to
     debian/diff/0009-bug-506445-hooks-post-receive-...diff; adapt.
+  * debian/diff/0010-instaweb-ignore-GITWEB_CONFIG_SYSTEM.diff: new;
+    instaweb: ignore /etc/gitweb.conf;
+    debian/diff/0011-gitweb-skip-logo-in-atom-feed-when...diff, ...,
+    debian/diff/0013-instaweb-disable-logo-and-favicon...diff: new;
+    instaweb: avoid 404 errors due to nonexistent image files (thx Uwe
+    Kleine-König, closes: #592733).
   * update debian/copyright.
   * debian/rules, debian/git.README.Debian, debian/gitweb.conf:
     install gitweb.js, add an Alias for it to the VirtualHost example,

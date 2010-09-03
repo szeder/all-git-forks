@@ -35,5 +35,5 @@ index 6deec87..791adad 100755
  	} else {
  		die_error(400, "Unknown commitdiff format");
 -- 
-1.7.2.1.534.g990bd8.dirty
+1.7.2.2
 

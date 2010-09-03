@@ -40,5 +40,5 @@ index 1fb3e94..5b68c08 100644
  		init_tree_desc(&t2, tree2, size2);
  		try_to_follow_renames(&t1, &t2, base, opt);
 -- 
-1.7.2.1.534.g990bd8.dirty
+1.7.2.2
 
