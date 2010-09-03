@@ -367,7 +367,7 @@ static const char *smtp_server = NULL, *port = NULL,
 static int git_send_email_config(const char *var, const char *value, void *cb)
 {
 	if (prefixcmp(var, "sendemail."))
-		return git_default_config(var, value, cb);
+		return git_color_default_config(var, value, cb);
 
 	var += 10;
 	if (!strcmp(var, "smtpserver"))
@@ -446,7 +446,16 @@ static char *ask(const char *prompt, const char *def, const char *valid_re)
 		valid_re = NULL;
 
 	while (i++ < 10) {
-		char *resp = readline(prompt);
+		char *resp;
+		if (want_color(GIT_COLOR_AUTO)) {
+			struct strbuf sb = STRBUF_INIT;
+			strbuf_addf(&sb, GIT_COLOR_CYAN "%s" GIT_COLOR_RESET,
+			    prompt);
+			resp = readline(sb.buf);
+			strbuf_release(&sb);
+		} else
+			resp = readline(prompt);
+
 		if (!resp) {
 			fputc('\n', stdout);
 			ret = def ? xstrdup(def) : NULL;
