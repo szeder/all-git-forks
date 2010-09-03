@@ -53,6 +53,8 @@ git (1:1.7.2.3-0.1) unstable; urgency=low
   * debian/control: Homepage: http://git-scm.com/ (closes: #553220).
   * debian/control: package git no longer Depends: libdigest-sha1-perl
     (thx Ansgar Burchardt, closes: #591039).
+  * debian/control: Build-Depends: libio-pty-perl for better test
+    coverage.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Aug 2010 19:08:39 -0500
 
