@@ -1,7 +1,6 @@
-#include <stdio.h>
+#include "git-compat-util.h"
+#include "line_buffer.h"
 #include "svndiff.h"
-#include <stdarg.h>
-#include <stdlib.h>
 
 #define DEBUG 1
 
@@ -86,26 +85,35 @@ size_t read_instructions(struct svndiff_window *window)
 				op->action_code, op->offset, op->length);
 
 		if (op == NULL)
-			die("Invalid diff stream: insn %d cannot be decoded", ninst);
+			die("Invalid diff stream: "
+			    "instruction %d cannot be decoded", ninst);
 		else if (op->length == 0)
-			die("Invalid diff stream: insn %d has length zero", ninst);
+			die("Invalid diff stream: "
+			    "instruction %d has length zero", ninst);
 		else if (op->length > window->tview_len - tpos)
-			die("Invalid diff stream: insn %d overflows the target view", ninst);
+			die("Invalid diff stream: "
+			    "instruction %d overflows the target view", ninst);
 
 		switch (op->action_code)
 		{
 		case svn_txdelta_source:
 			if (op->length > window->sview_len - op->offset ||
 			    op->offset > window->sview_len)
-				die("Invalid diff stream: [src] insn %d overflows the source view", ninst);
+				die("Invalid diff stream: "
+				    "[src] instruction %d overflows "
+				    " the source view", ninst);
 			break;
 		case svn_txdelta_target:
 			if (op->offset >= tpos)
-				die("Invalid diff stream: [tgt] insn %d starts beyond the target view position", ninst);
+				die("Invalid diff stream: "
+				    "[tgt] instruction %d starts "
+				    "beyond the target view position", ninst);
 			break;
 		case svn_txdelta_new:
 			if (op->length > window->newdata_len - npos)
-				die("Invalid diff stream: [new] insn %d overflows the new data section", ninst);
+				die("Invalid diff stream: "
+				    "[new] instruction %d overflows "
+				    "the new data section", ninst);
 			npos += op->length;
 			break;
 		}
@@ -165,7 +173,16 @@ void drive_window(struct svndiff_window *window)
 			fprintf(stderr, "op: %u %u %u\n", op->action_code,
 				op->offset, op->length);
 		}
-		/* TODO */
+		switch (op->action_code) {
+		case svn_txdelta_source:
+			/* TODO: Retrieve a source */
+			break;
+		case svn_txdelta_target:
+			/* TODO: How do we handle this? */
+			break;
+		case svn_txdelta_new:
+			buffer_copy_bytes(op->length);
+		}
 	}
 	exit(0);
 }
@@ -175,11 +192,10 @@ int main()
 	char buf[4];
 	int version;
 	struct svndiff_window *window;
+	buffer_init(NULL);
 
 	/* Read off the 4-byte header: "SVN\0" */
 	fread(&buf, 4, 1, stdin);
-	if (DEBUG)
-		fprintf(stderr, "Svndiff header: %s\n", buf);
 	version = atoi(buf + 3);
 	if (version != 0)
 		die("Version %d unsupported", version);
