@@ -1001,6 +1001,40 @@ static void mark_new_skip_worktree(struct exclude_list *el,
 		       select_flag, skip_wt_flag, el);
 }
 
+static int unpack_traverse(unsigned len, struct tree_desc *t, struct unpack_trees_options *o)
+{
+	const char *prefix = o->prefix ? o->prefix : "";
+	struct traverse_info info;
+
+	if (!len)
+		return 0;
+
+	setup_traverse_info(&info, prefix);
+	info.fn = unpack_callback;
+	info.data = o;
+	info.show_all_errors = o->show_all_errors;
+	info.pathspec = o->pathspec;
+
+	if (o->prefix) {
+		/*
+		 * Unpack existing index entries that sort before the
+		 * prefix the tree is spliced into.  Note that o->merge
+		 * is always true in this case.
+		 */
+		while (1) {
+			struct cache_entry *ce = next_cache_entry(o);
+			if (!ce)
+				break;
+			if (ce_in_traverse_path(ce, &info))
+				break;
+			if (unpack_index_entry(ce, o) < 0)
+				return 1;
+		}
+	}
+
+	return traverse_trees(len, t, &info) < 0;
+}
+
 static int verify_absent(const struct cache_entry *,
 			 enum unpack_trees_error_types,
 			 struct unpack_trees_options *);
@@ -1059,36 +1093,8 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 		dfc = xcalloc(1, cache_entry_size(0));
 	o->df_conflict_entry = dfc;
 
-	if (len) {
-		const char *prefix = o->prefix ? o->prefix : "";
-		struct traverse_info info;
-
-		setup_traverse_info(&info, prefix);
-		info.fn = unpack_callback;
-		info.data = o;
-		info.show_all_errors = o->show_all_errors;
-		info.pathspec = o->pathspec;
-
-		if (o->prefix) {
-			/*
-			 * Unpack existing index entries that sort before the
-			 * prefix the tree is spliced into.  Note that o->merge
-			 * is always true in this case.
-			 */
-			while (1) {
-				struct cache_entry *ce = next_cache_entry(o);
-				if (!ce)
-					break;
-				if (ce_in_traverse_path(ce, &info))
-					break;
-				if (unpack_index_entry(ce, o) < 0)
-					goto return_failed;
-			}
-		}
-
-		if (traverse_trees(len, t, &info) < 0)
-			goto return_failed;
-	}
+	if (unpack_traverse(len, t, o))
+		goto return_failed;
 
 	/* Any left-over entries in the index? */
 	if (o->merge) {
