@@ -13,6 +13,10 @@
 #include "string-list.h"
 #include "run-command.h"
 
+#ifdef HAVE_UNAME
+#include <sys/utsname.h>
+#endif
+
 static const char *const send_email_usage[] = {
 	"git send-email [options] [--] "
 	"<file | directory | rev-list options>...",
@@ -506,6 +510,51 @@ static int check_file_rev_conflict(const char *arg)
 "    * Giving --format-patch option if you mean a range.\n", arg, arg);
 	}
 	return 0;
+}
+
+int valid_fqdn(const char *domain)
+{
+#ifdef __APPLE__
+	/*
+	 * Mac OS X (Bonjour) use domain names ending with .local, which will
+	 * fail for DNS lookups. So filter out these.
+	 *
+	 */
+	size_t len = strlen(domain);
+	if (len >= 6 && strcmp(domain + len - 5, ".local"))
+		return 0;
+#endif
+	return !!strchr(domain, '.');
+}
+
+const char *maildomain()
+{
+	static char name[256];
+	struct addrinfo *ai;
+
+#ifdef HAVE_UNAME
+	struct utsname un;
+
+	if (uname(&un))
+		die_errno("uname");
+	if (valid_fqdn(un.nodename))
+		return un.nodename;
+#endif
+
+	gethostname(name, sizeof(name));
+	if (valid_fqdn(name))
+		return name;
+
+	if (!getaddrinfo(name, NULL, NULL, &ai))
+		while (ai) {
+			if (!getnameinfo(ai->ai_addr, ai->ai_addrlen,
+			    name, sizeof(name), NULL, 0, 0) &&
+			    valid_fqdn(name))
+				return name;
+			ai = ai->ai_next;
+		}
+
+	return "localhost.localdomain";
 }
 
 int main(int argc, const char **argv)
