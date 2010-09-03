@@ -43,6 +43,10 @@ all::
 # on platforms where we don't expect glibc (Linux, Hurd,
 # GNU/kFreeBSD), which includes libintl.
 #
+# Define GETTEXT_POISON to turn all strings that use gettext into
+# gibberish. This option should only be used by the Git developers to
+# check that the Git gettext implementation itself is sane.
+#
 # Define EXPATDIR=/foo/bar if your expat header and library files are in
 # /foo/bar/include and /foo/bar/lib directories.
 #
@@ -1509,6 +1513,10 @@ ifdef NEEDS_LIBINTL
 	EXTLIBS += -lintl
 endif
 
+ifdef GETTEXT_POISON
+	COMPAT_CFLAGS += -DGETTEXT_POISON
+endif
+
 ifeq ($(TCLTK_PATH),)
 NO_TCLTK=NoThanks
 endif
@@ -2072,6 +2080,7 @@ ifdef GIT_TEST_CMP_USE_COPIED_CONTEXT
 	@echo GIT_TEST_CMP_USE_COPIED_CONTEXT=YesPlease >>$@
 endif
 	@echo NO_GETTEXT=\''$(subst ','\'',$(subst ','\'',$(NO_GETTEXT)))'\' >>$@
+	@echo GETTEXT_POISON=\''$(subst ','\'',$(subst ','\'',$(GETTEXT_POISON)))'\' >>$@
 
 ### Detect Tck/Tk interpreter path changes
 ifndef NO_TCLTK
