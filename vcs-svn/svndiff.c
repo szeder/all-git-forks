@@ -8,6 +8,7 @@
 #define MAX_ENCODED_INT_LEN 10
 #define MAX_INSTRUCTION_LEN (2*MAX_ENCODED_INT_LEN+1)
 #define MAX_INSTRUCTION_SECTION_LEN (SVN_DELTA_WINDOW_SIZE*MAX_INSTRUCTION_LEN)
+static char buf[SVN_DELTA_WINDOW_SIZE];
 
 /* Remove when linking to gitcore */
 void die(const char *err, ...)
@@ -62,9 +63,9 @@ void read_one_instruction(struct svndiff_instruction *op)
 		if (c == 0)
 			die("Zero length instruction");
 	}
-	/* Offset is present if action is svn_txdelta_source or
-	   svn_txdelta_target */
-	if (action != svn_txdelta_new)
+	/* Offset is present if action is copyfrom_source or
+	   copyfrom_target */
+	if (action != copyfrom_new)
 		op->offset = read_one_size();
 
 }
@@ -96,20 +97,20 @@ size_t read_instructions(struct svndiff_window *window)
 
 		switch (op->action_code)
 		{
-		case svn_txdelta_source:
+		case copyfrom_source:
 			if (op->length > window->sview_len - op->offset ||
 			    op->offset > window->sview_len)
 				die("Invalid diff stream: "
 				    "[src] instruction %d overflows "
 				    " the source view", ninst);
 			break;
-		case svn_txdelta_target:
+		case copyfrom_target:
 			if (op->offset >= tpos)
 				die("Invalid diff stream: "
 				    "[tgt] instruction %d starts "
 				    "beyond the target view position", ninst);
 			break;
-		case svn_txdelta_new:
+		case copyfrom_new:
 			if (op->length > window->newdata_len - npos)
 				die("Invalid diff stream: "
 				    "[new] instruction %d overflows "
@@ -154,10 +155,12 @@ void read_window_header(struct svndiff_window *window)
 			window->tview_len, window->ins_len, window->newdata_len);
 }
 
-void drive_window(struct svndiff_window *window)
+void drive_window(struct svndiff_window *window, FILE *src_fd)
 {
 	struct svndiff_instruction *op;
 	size_t ninst;
+	FILE *target_fd;
+	long target_fd_end;
 
 	/* Populate the first five fields of the the window object
 	   with data from the stream */	
@@ -167,31 +170,45 @@ void drive_window(struct svndiff_window *window)
 	   performing memory allocations as necessary */
 	ninst = read_instructions(window);
 
-	/* Act upon each instruction in window->ops */
+	/* The Applier */
+	/* We're now looking at new_data; read ahead only in the
+	   copyfrom_new case */	
+	target_fd = tmpfile();
 	for (op = window->ops; ninst-- > 0; op++) {
 		if (DEBUG) {
 			fprintf(stderr, "op: %u %u %u\n", op->action_code,
 				op->offset, op->length);
 		}
 		switch (op->action_code) {
-		case svn_txdelta_source:
-			/* TODO: Retrieve a source */
+		case copyfrom_source:
+			fseek(src_fd, op->offset, SEEK_SET);
+			fread(buf, op->length, 1, src_fd);
+			fwrite(buf, op->length, 1, target_fd);
 			break;
-		case svn_txdelta_target:
-			/* TODO: How do we handle this? */
+		case copyfrom_target:
+			fseek(target_fd, op->offset, SEEK_SET);
+			fread(buf, op->length, 1, target_fd);
+			fseek(target_fd, 0, SEEK_END);
+			fwrite(buf, op->length, 1, target_fd);
 			break;
-		case svn_txdelta_new:
-			buffer_copy_bytes(op->length);
+		case copyfrom_new:
+			fseek(target_fd, 0, SEEK_END);
+			buffer_copy_bytes(op->length, target_fd);
+			break;
 		}
 	}
-	exit(0);
+	target_fd_end = ftell(target_fd);
+	fseek(target_fd, 0, SEEK_SET);
+	fread(buf, target_fd_end, 1, target_fd);
+	fwrite(buf, target_fd_end, 1, stdout);
+	fclose (target_fd);
 }
 
-int main()
+int main(int argc, char **argv)
 {
-	char buf[4];
 	int version;
 	struct svndiff_window *window;
+	FILE *src_fd;
 	buffer_init(NULL);
 
 	/* Read off the 4-byte header: "SVN\0" */
@@ -199,6 +216,9 @@ int main()
 	version = atoi(buf + 3);
 	if (version != 0)
 		die("Version %d unsupported", version);
+
+	/* Setup the source to apply windows to */
+	src_fd = fopen(argv[1], "r");
 	
 	/*  Now start processing the windows: feof(stdin) is the
 	    external context to indicate that there's no more svndiff
@@ -206,8 +226,9 @@ int main()
 	    format */
 	while (!feof(stdin)) {
 		window = malloc(sizeof(*window));
-		drive_window(window);
+		drive_window(window, src_fd);
 		free(window);
 	}
+	buffer_deinit();
 	return 0;
 }

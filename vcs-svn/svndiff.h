@@ -1,7 +1,7 @@
 enum svndiff_action {
-    svn_txdelta_source,
-    svn_txdelta_target,
-    svn_txdelta_new
+    copyfrom_source,
+    copyfrom_target,
+    copyfrom_new
 };
 
 struct svndiff_instruction
@@ -11,7 +11,7 @@ struct svndiff_instruction
   size_t length;
 };
 
-/* An svn_txdelta_window_t object describes how to reconstruct a
+/* An svndiff_window object describes how to reconstruct a
  * contiguous section of the target string (the "target view") using a
  * specified contiguous region of the source string (the "source
  * view").  It contains a series of instructions which assemble the
