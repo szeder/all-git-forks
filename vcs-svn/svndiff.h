@@ -4,11 +4,11 @@ enum svndiff_action {
     svn_txdelta_new
 };
 
-struct svndiff_op
+struct svndiff_instruction
 {
   enum svndiff_action action_code;
-  int offset;
-  int length;
+  size_t offset;
+  size_t length;
 };
 
 /* An svn_txdelta_window_t object describes how to reconstruct a
@@ -31,28 +31,11 @@ struct svndiff_op
  */
 struct svndiff_window
 {
-  /** The offset of the source view for this window.  */
-  int sview_offset;
-
-  /** The length of the source view for this window.  */
-  int sview_len;
-
-  /** The length of the target view for this window, i.e. the number of
-   * bytes which will be reconstructed by the instruction stream.  */
-  int tview_len;
-
-  /** The number of instructions in this window.  */
-  int num_ops;
-
-  /** The number of svn_txdelta_source instructions in this window. If
-   * this number is 0, we don't need to read the source in order to
-   * reconstruct the target view.
-   */
-  int src_ops;
-
-  /** The instructions for this window.  */
-  const struct svndiff_op *ops;
-
-  /** New data, for use by any `svn_txdelta_new' instructions.  */
-  const char *new_data;
+  size_t sview_offset;
+  size_t sview_len;
+  size_t tview_len;
+  size_t ins_len;
+  size_t newdata_len;
+  struct svndiff_instruction *ops;
+  char *newdata;
 };

@@ -3,7 +3,12 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
+#define DEBUG 1
+
+#define SVN_DELTA_WINDOW_SIZE 102400
 #define MAX_ENCODED_INT_LEN 10
+#define MAX_INSTRUCTION_LEN (2*MAX_ENCODED_INT_LEN+1)
+#define MAX_INSTRUCTION_SECTION_LEN (SVN_DELTA_WINDOW_SIZE*MAX_INSTRUCTION_LEN)
 
 /* Remove when linking to gitcore */
 void die(const char *err, ...)
@@ -11,193 +16,182 @@ void die(const char *err, ...)
 	va_list params;
 	va_start(params, err);
 	vfprintf(stderr, err, params);
+	printf("\n");
 	va_end(params);
 	exit(128);
 }
 
-/* Decode an svndiff-encoded integer into VAL and return a pointer to
-   the byte after the integer.  The bytes to be decoded live in the
-   range [P..END-1]. */
-
-/* This encoding uses the high bit of each byte as a continuation bit
-   and the other seven bits as data bits.  High-order data bits are
-   encoded first, followed by lower-order bits, so the value can be
-   reconstructed by concatenating the data bits from left to right and
-   interpreting the result as a binary number.  Examples (brackets
-   denote byte boundaries, spaces are for clarity only):
-
-   1 encodes as [0 0000001]
-   33 encodes as [0 0100001]
-   129 encodes as [1 0000001] [0 0000001]
-   2000 encodes as [1 0001111] [0 1010000]
-*/
-
-const unsigned char *decode_size(int *val,
-				 const unsigned char *p,
-				 const unsigned char *end)
+size_t read_one_size()
 {
-	int temp = 0;
+	unsigned char c;
+	size_t result = 0;
 
-	if (p + MAX_ENCODED_INT_LEN < end)
-		end = p + MAX_ENCODED_INT_LEN;
-
-	while (p < end)
+	while (1)
 	{
-		int c = *p++;
-
-		temp = (temp << 7) | (c & 0x7f);
-		if (c < 0x80)
-		{
-			*val = temp;
-			return p;
-		}
+		fread(&c, 1, 1, stdin);
+		result = (result << 7) | (c & 127);
+		if (!(c & 128))
+			/* No continuation bit */
+			break;
 	}
-
-	*val = temp;
-	return NULL;
+	if (DEBUG)
+		fprintf(stderr, "Reading size: %d\n", result);
+	return result;
 }
 
-/* Decode an instruction into OP, returning a pointer to the text
-   after the instruction.  Note that if the action code is
-   svn_txdelta_new, the offset field of *OP will not be set.  */
-const unsigned char *decode_instruction(struct svndiff_op *op,
-					const unsigned char *p,
-					const unsigned char *end)
+void read_one_instruction(struct svndiff_instruction *op)
 {
-	int c, action;
+	size_t c, action;
 
-	if (p == end)
-		return NULL;
+	/* Read the 1-byte instruction-selector */
+	fread(&c, 1, 1, stdin);
 
-	/* We need this more than once */
-	c = *p++;
-
-	/* Decode the instruction selector */
-	action = (c >> 6) & 0x3;
-	if (action >= 0x3)
-		return NULL;
+	/* Decode the instruction selector from the two higher order
+	   bits; the remaining 6 bits may contain the length */
+	action = (c >> 6) & 3;
+	if (action >= 3)
+		die("Invalid instruction %d", action);
 
 	op->action_code = (enum svndiff_action)(action);
 
-	/* Decode the length and offset */
-	op->length = c & 0x3f;
+	/* Attempt to extract the length length from the remaining
+	   bits */
+	op->length = c & 63;
 	if (op->length == 0)
 	{
-		p = decode_size(&op->length, p, end);
-		if (p == NULL)
-			return NULL;
+		op->length = read_one_size();
+		if (c == 0)
+			die("Zero length instruction");
 	}
+	/* Offset is present if action is svn_txdelta_source or
+	   svn_txdelta_target */
 	if (action != svn_txdelta_new)
-	{
-		p = decode_size(&op->offset, p, end);
-		if (p == NULL)
-			return NULL;
-	}
+		op->offset = read_one_size();
 
-	return p;
 }
 
-int count_instructions(const unsigned char *p,
-		       const unsigned char *end,
-		       int sview_len,
-		       int tview_len,
-		       int new_len)
+size_t read_instructions(struct svndiff_window *window)
 {
-	int n = 0;
-	struct svndiff_op *op;
-	int tpos = 0, npos = 0;
+	size_t tpos = 0, npos = 0, ninst = 0;
+	struct svndiff_instruction *op;
 
-	while (p < end)
+	while (tpos <= window->ins_len)
 	{
-		p = decode_instruction(op, p, end);
+		window->ops = realloc(window->ops, ++ninst);
+		op = window->ops + ninst - 1;
+		read_one_instruction(op);
 
-		if (p == NULL)
-			die("Invalid diff stream: insn %d cannot be decoded", n);
+		if (DEBUG)
+			fprintf(stderr, "Instruction: %d %d %d\n",
+				op->action_code, op->offset, op->length);
+
+		if (op == NULL)
+			die("Invalid diff stream: insn %d cannot be decoded", ninst);
 		else if (op->length == 0)
-			die("Invalid diff stream: insn %d has length zero", n);
-		else if (op->length > tview_len - tpos)
-			die("Invalid diff stream: insn %d overflows the target view", n);
+			die("Invalid diff stream: insn %d has length zero", ninst);
+		else if (op->length > window->tview_len - tpos)
+			die("Invalid diff stream: insn %d overflows the target view", ninst);
 
 		switch (op->action_code)
 		{
 		case svn_txdelta_source:
-			if (op->length > sview_len - op->offset ||
-			    op->offset > sview_len)
-				die("Invalid diff stream: [src] insn %d overflows the source view", n);
+			if (op->length > window->sview_len - op->offset ||
+			    op->offset > window->sview_len)
+				die("Invalid diff stream: [src] insn %d overflows the source view", ninst);
 			break;
 		case svn_txdelta_target:
 			if (op->offset >= tpos)
-				die("Invalid diff stream: [tgt] insn %d starts beyond the target view position", n);
+				die("Invalid diff stream: [tgt] insn %d starts beyond the target view position", ninst);
 			break;
 		case svn_txdelta_new:
-			if (op->length > new_len - npos)
-				die("Invalid diff stream: [new] insn %d overflows the new data section", n);
+			if (op->length > window->newdata_len - npos)
+				die("Invalid diff stream: [new] insn %d overflows the new data section", ninst);
 			npos += op->length;
 			break;
 		}
 		tpos += op->length;
-		n++;
 	}
-	if (tpos != tview_len)
-		die("Delta does not fill the target window");
-	if (npos != new_len)
-		die("Delta does not contain enough new data");
 
-	return n;
+	if (tpos != window->tview_len)
+		die("Delta does not fill the target window");
+	if (npos != window->newdata_len)
+		die("Delta does not contain enough new data");
+	return ninst;
 }
 
-int decode_window(struct svndiff_window *window, int sview_offset,
-		  int sview_len, int tview_len, int inslen,
-		  int newlen, const unsigned char *data)
+void read_window_header(struct svndiff_window *window)
 {
-	const unsigned char *insend;
-	int ninst;
-	int npos;
-	struct svndiff_op *ops, *op;
+	/* Read five sizes; various offsets and lengths */
+	window->sview_offset = read_one_size();
+	window->sview_len = read_one_size();
+	window->tview_len = read_one_size();
+	window->ins_len = read_one_size();
+	window->newdata_len = read_one_size();
 
-	window->sview_offset = sview_offset;
-	window->sview_len = sview_len;
-	window->tview_len = tview_len;
+	if (window->tview_len > SVN_DELTA_WINDOW_SIZE ||
+	    window->sview_len > SVN_DELTA_WINDOW_SIZE ||
+	    window->newdata_len > SVN_DELTA_WINDOW_SIZE + MAX_ENCODED_INT_LEN ||
+	    window->ins_len > MAX_INSTRUCTION_SECTION_LEN)
+		die("Svndiff contains a window that's too large");
 
-	insend = data + inslen;
+	/* Check for integer overflow */
+	if (window->ins_len + window->newdata_len < window->ins_len
+	    || window->sview_len + window->tview_len < window->sview_len
+	    || window->sview_offset + window->sview_len < window->sview_offset)
+		die("Svndiff contains corrupt window header");
 
-	/* Count the instructions and make sure they are all valid.  */
-	ninst = count_instructions(data, insend, sview_len, tview_len, newlen);
+	if (DEBUG)
+		fprintf(stderr, "Window header: %d %d %d %d %d\n",
+			window->sview_offset, window->sview_len,
+			window->tview_len, window->ins_len, window->newdata_len);
+}
 
-	/* Allocate a buffer for the instructions and decode them. */
-	ops = malloc(ninst * sizeof(*ops));
-	npos = 0;
-	window->src_ops = 0;
-	for (op = ops; op < ops + ninst; op++)
-	{
-		data = decode_instruction(op, data, insend);
-		if (op->action_code == svn_txdelta_source)
-			++window->src_ops;
-		else if (op->action_code == svn_txdelta_new)
-		{
-			op->offset = npos;
-			npos += op->length;
+void drive_window(struct svndiff_window *window)
+{
+	struct svndiff_instruction *op;
+	size_t ninst;
+
+	/* Populate the first five fields of the the window object
+	   with data from the stream */	
+	read_window_header(window);
+
+	/* Read instructions of length ins_len into window->ops
+	   performing memory allocations as necessary */
+	ninst = read_instructions(window);
+
+	/* Act upon each instruction in window->ops */
+	for (op = window->ops; ninst-- > 0; op++) {
+		if (DEBUG) {
+			fprintf(stderr, "op: %u %u %u\n", op->action_code,
+				op->offset, op->length);
 		}
+		/* TODO */
 	}
-	if (data != insend)
-		die("data != insend");
-
-	window->ops = ops;
-	window->num_ops = ninst;
-
-	return 0;
+	exit(0);
 }
 
 int main()
 {
-	char buf[100];
+	char buf[4];
 	int version;
+	struct svndiff_window *window;
 
-	/* Read off the 4-byte header */
-	size_t hdr_size = 4, instruction_size = 8;
-	fread(&buf, hdr_size, 1, stdin);
+	/* Read off the 4-byte header: "SVN\0" */
+	fread(&buf, 4, 1, stdin);
+	if (DEBUG)
+		fprintf(stderr, "Svndiff header: %s\n", buf);
 	version = atoi(buf + 3);
 	if (version != 0)
 		die("Version %d unsupported", version);
+	
+	/*  Now start processing the windows: feof(stdin) is the
+	    external context to indicate that there's no more svndiff
+	    data, since there's no end marker in the svndiff0
+	    format */
+	while (!feof(stdin)) {
+		window = malloc(sizeof(*window));
+		drive_window(window);
+		free(window);
+	}
 	return 0;
 }
