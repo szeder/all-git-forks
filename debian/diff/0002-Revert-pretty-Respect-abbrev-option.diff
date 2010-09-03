@@ -152,5 +152,5 @@ index cccacd4..9e22ade 100755
  	echo "master@{0}" >expect.gd-short &&
  	git log -g -1 --format=%gd refs/heads/master >actual.gd-short &&
 -- 
-1.7.2.1.534.g990bd8.dirty
+1.7.2.2
 

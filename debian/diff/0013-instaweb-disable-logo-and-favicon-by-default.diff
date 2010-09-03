@@ -1,0 +1,36 @@
+From 78b88cae71c557edb323845445dc58fe3c8c7f9e Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Thu, 2 Sep 2010 20:38:35 -0500
+Subject: instaweb: disable logo and favicon by default
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Avoid 404 errors due to the missing git logo and favicon.
+
+Reported-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+Cc: Eric Wong <normalperson@yhbt.net>
+Cc: Jakub Narebski <jnareb@gmail.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-instaweb.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/git-instaweb.sh b/git-instaweb.sh
+index 6a7f351..88d4bec 100755
+--- a/git-instaweb.sh
++++ b/git-instaweb.sh
+@@ -388,7 +388,9 @@ s#^(my|our) \$projectroot =.*#$1 \$projectroot = "'$(dirname "$fqgitdir")'";#;
+ s#(my|our) \$gitbin =.*#$1 \$gitbin = "'$GIT_EXEC_PATH'";#;
+ s#(my|our) \$projects_list =.*#$1 \$projects_list = \$projectroot;#;
+ s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;
+-s#(my|our) \$GITWEB_CONFIG_SYSTEM =.*#$1 \$GITWEB_CONFIG_SYSTEM = "";#;'
++s#(my|our) \$GITWEB_CONFIG_SYSTEM =.*#$1 \$GITWEB_CONFIG_SYSTEM = "";#;
++s#(my|our) \$favicon =.*#$1 \$favicon = undef;#;
++s#(my|our) \$logo =.*#$1 \$logo = undef;#;'
+ 
+ gitweb_cgi () {
+ 	cat > "$1.tmp" <<\EOFGITWEB
+-- 
+1.7.2.2
+

@@ -1,0 +1,32 @@
+From 422244c883a4e63816740b411e4018f11bccf4c5 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Thu, 2 Sep 2010 18:55:47 -0500
+Subject: gitweb: skip logo in atom feed when there is none
+
+With v1.5.0-rc0~169 (gitweb: Fix Atom feed <logo>: it is $logo,
+not $logo_url, 2006-12-04), the logo URI to be written to Atom
+feeds was corrected but the case of no logo forgotten.
+
+Cc: Jakub Narebski <jnareb@gmail.com>
+Cc: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ gitweb/gitweb.perl |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
+index 791adad..720a06c 100755
+--- a/gitweb/gitweb.perl
++++ b/gitweb/gitweb.perl
+@@ -6858,7 +6858,7 @@ XML
+ 		if (defined $favicon) {
+ 			print "<icon>" . esc_url($favicon) . "</icon>\n";
+ 		}
+-		if (defined $logo_url) {
++		if (defined $logo) {
+ 			# not twice as wide as tall: 72 x 27 pixels
+ 			print "<logo>" . esc_url($logo) . "</logo>\n";
+ 		}
+-- 
+1.7.2.2
+

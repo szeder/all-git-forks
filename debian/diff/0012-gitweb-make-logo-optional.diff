@@ -1,0 +1,39 @@
+From 11afb5061933d79b2e0f657730e5c5e4048b9531 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Thu, 2 Sep 2010 18:56:23 -0500
+Subject: gitweb: make logo optional
+
+Some sites may not want to have a logo at all.  In particular,
+git instaweb can benefit from this.
+
+Cc: Jakub Narebski <jnareb@gmail.com>
+Cc: Eric Wong <normalperson@yhbt.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ gitweb/gitweb.perl |   10 ++++++----
+ 1 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
+index 720a06c..8bf26d1 100755
+--- a/gitweb/gitweb.perl
++++ b/gitweb/gitweb.perl
+@@ -3489,10 +3489,12 @@ EOF
+ 		insert_file($site_header);
+ 	}
+ 
+-	print "<div class=\"page_header\">\n" .
+-	      $cgi->a({-href => esc_url($logo_url),
+-	               -title => $logo_label},
+-	              qq(<img src="$logo" width="72" height="27" alt="git" class="logo"/>));
++	print "<div class=\"page_header\">\n";
++	if (defined $logo) {
++		print $cgi->a({-href => esc_url($logo_url),
++		               -title => $logo_label},
++		              qq(<img src="$logo" width="72" height="27" alt="git" class="logo"/>));
++	}
+ 	print $cgi->a({-href => esc_url($home_link)}, $home_link_str) . " / ";
+ 	if (defined $project) {
+ 		print $cgi->a({-href => href(action=>"summary")}, esc_html($project));
+-- 
+1.7.2.2
+
