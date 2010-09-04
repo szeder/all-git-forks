@@ -1,4 +1,4 @@
-Version v1.7.2.2; changes since v1.7.1:
+Version v1.7.2.3; changes since v1.7.1:
 ---------------------------------------
 
 Alex Riesen (2):
@@ -42,7 +42,7 @@ Bo Yang (11):
 Brad King (1):
       Documentation: cite git-am from git-apply
 
-Brandon Casey (21):
+Brandon Casey (23):
       t/t5800: skip if python version is older than 2.5
       git-request-pull.sh: remove -e switch to shell interpreter which breaks ksh
       t/t5150: remove space from sed script
@@ -62,6 +62,8 @@ Brandon Casey (21):
       t/t3700: convert two uses of negation operator '!' to use test_must_fail
       t/{t5541,lib-httpd}: replace problematic '!()' notation with test_must_fail
       t/: work around one-shot variable assignment with test_must_fail
+      Makefile: link builtins residing in bin directory to main git binary too
+      Makefile: make hard/symbolic links for non-builtins too
       git-rebase--interactive.sh: use printf instead of echo to print commit message
       t/t7003: replace \t with literal tab in sed expression
 
@@ -130,11 +132,15 @@ Dan McGee (3):
       git-instaweb: Fix Apache environment variable passing
       git-instaweb: Don't assume Apache executable is named apache2
 
+Daniel Johnson (1):
+      fetch: allow command line --tags to override config
+
 Daniel Knittl-Frank (1):
       Show branch information in short output of git status
 
-David Aguilar (1):
+David Aguilar (2):
       Documentation: Explain git-mergetool's use of temporary files
+      submodule sync: Update "submodule.<name>.url"
 
 David D. Kilzer (1):
       Fix git rebase --continue to work with touched files
@@ -151,6 +157,11 @@ Eli Barzilay (2):
 
 Eli Collins (1):
       diff: add configuration option for disabling diff prefixes.
+
+Elijah Newren (3):
+      t5520-pull: Add testcases showing spurious conflicts from git pull --rebase
+      pull --rebase: Avoid spurious conflicts and reapplying unnecessary patches
+      tree-walk: Correct bitrotted comment about tree_entry()
 
 Eric Wong (1):
       git svn: avoid unnecessary '/' in paths for SVN
@@ -208,6 +219,9 @@ Greg Brockman (2):
       Check size of path buffer before writing into it
       Check size of path buffer before writing into it
 
+Greg Price (1):
+      pack-refs: remove newly empty directories
+
 Heiko Voigt (6):
       git-gui: check whether systems nice command works or disable it
       add missing && to submodule-merge testcase
@@ -253,7 +267,7 @@ Jakub Narebski (19):
 Jan Krüger (1):
       git-am: suggest what to do with superfluous patches
 
-Jay Soffian (7):
+Jay Soffian (8):
       receive-pack: switch global variable 'commands' to a parameter
       receive-pack: detect aliased updates which can occur with symrefs
       t5516-fetch-push.sh: style cleanup
@@ -261,6 +275,7 @@ Jay Soffian (7):
       am: use get_author_ident_from_commit instead of mailinfo when rebasing
       gitweb/Makefile: fix typo in gitweb.min.css rule
       MERGE_RR is in .git, not .git/rr-cache
+      for-each-ref: fix objectname:short bug
 
 Jeff King (21):
       make commit_tree a library function
@@ -285,13 +300,14 @@ Jeff King (21):
       parse_date: fix signedness in timezone calculation
       test-date: fix sscanf type conversion
 
-Jens Lehmann (6):
+Jens Lehmann (7):
       git diff: rename test that had a conflicting name
       Add optional parameters to the diff option "--ignore-submodules"
       git submodule: ignore dirty submodules for summary and status
       Add the option "--ignore-submodules" to "git status"
       git add: Add the "--ignore-missing" option for the dry run
       git submodule add: Require the new --force option to add ignored paths
+      t7403: add missing &&'s
 
 Johan Herland (5):
       diff.c: Ensure "index $from..$to" line contains unambiguous SHA1s
@@ -325,7 +341,7 @@ Johannes Sixt (14):
 Jon Seymour (1):
       INSTALL: configure /etc/xml/catalog to build docs on Cygwin
 
-Jonathan Nieder (64):
+Jonathan Nieder (76):
       t7400: split setup into multiple tests
       t7400: clarify 'submodule add' tests
       t7400: clarify submodule update tests
@@ -382,14 +398,26 @@ Jonathan Nieder (64):
       Documentation: add submodule.* to the big configuration variable list
       Add a sample user for the svndump library
       t/README: correct an exception when breaking a && chain in tests
+      t4150 (am): style fix
+      t4150 (am): futureproof against failing tests
+      t3400 (rebase): whitespace cleanup
       config --get --path: check for unset $HOME
+      archive: abbreviate substituted commit ids again
+      checkout, commit: remove confusing assignments to rev.abbrev
+      examples/commit: use --abbrev for commit summary
+      Documentation: flesh out “git pull” description
       check-ref-format: handle subcommands in separate functions
       Allow "check-ref-format --branch" from subdirectory
       Makefile: add missing dependencies on url.h
       Makefile: add missing dependency on http.h
       Documentation: add a FILES section for show-ref
       gitweb: clarify search results page when no matching commit found
+      core: Stop leaking ondisk_cache_entrys
+      read-tree: stop leaking tree objects
+      write-tree: Avoid leak when index refers to an invalid object
       Standardize do { ... } while (0) style
+      t3302 (notes): Port to Solaris
+      parse-options: clarify PARSE_OPT_NOARG description
 
 Julian Phillips (6):
       string_list: Fix argument order for print_string_list
@@ -399,7 +427,7 @@ Julian Phillips (6):
       string_list: Fix argument order for string_list_lookup
       string_list: Fix argument order for string_list_append
 
-Junio C Hamano (64):
+Junio C Hamano (70):
       git_config_maybe_bool()
       log.decorate: usability fixes
       whitespace: we cannot "catch all errors known to git" anymore
@@ -457,13 +485,19 @@ Junio C Hamano (64):
       diff A...B: do not limit the syntax too narrowly
       tests: correct "does reflog exist?" tests
       Git 1.7.2
+      Teach "apply --index-info" to handle rename patches
+      rebase: protect against diff.renames configuration
       Git 1.7.0.7
       Git 1.7.1.2
       Git 1.7.2.1
       Fix DIFF_QUEUE_CLEAR refactoring
       Documentation: reporting bugs
       sha1_name.c: fix parsing of ":/token" syntax
+      diff --follow: do not waste cycles while recursing
+      diff --follow: do call diffcore_std() as necessary
       Git 1.7.2.2
+      Prepare for 1.7.2.3
+      Git 1.7.2.3
 
 Lars R. Damerow (3):
       config.c: remove static keyword from git_env_bool()
@@ -473,11 +507,15 @@ Lars R. Damerow (3):
 Leif Arne Storset (1):
       Documentation/config.txt: GIT_NOTES_REWRITE_REF overrides notes.rewriteRef
 
-Linus Torvalds (1):
+Linus Torvalds (2):
       Make :/ accept a regex rather than a fixed pattern
+      Fix 'git log' early pager startup error case
 
 Marcus Comstedt (1):
       Add "Z" as an alias for the timezone "UTC"
+
+Mark Rada (1):
+      Tell ignore file about generate files in /gitweb/static
 
 Markus Heidelberg (5):
       t7508: add test for "git status" refreshing the index
@@ -486,13 +524,15 @@ Markus Heidelberg (5):
       Documentation: rebase -i ignores options passed to "git am"
       git-gui: fix "Explore Working Copy" for Windows again
 
-Matthieu Moy (6):
+Matthieu Moy (8):
       Clarify help message when no remote is specified in fetch/pull.
       Document ls-files -t as semi-obsolete.
       pretty-options.txt: match --format's documentation with implementation.
       Document -B<n>[/<m>], -M<n> and -C<n> variants of -B, -M and -C
       post-receive-email: remove spurious commas in email subject
       push: mention "git pull" in error message for non-fast forwards
+      xmalloc: include size in the failure message
+      t0003: add missing && at end of lines
 
 Michael J Gruber (27):
       index-pack: fix trivial typo in usage string
@@ -551,11 +591,12 @@ Nguyễn Thái Ngọc Duy (2):
       git --paginate: do not commit pager choice too early
       git-read-tree.txt: acknowledge the directory matching bug in sparse checkout
 
-Nicolas Pitre (4):
+Nicolas Pitre (5):
       Make xmalloc and xrealloc thread-safe
       index-pack: smarter memory usage when resolving deltas
       index-pack: rationalize unpack_entry_data()
       index-pack: smarter memory usage when appending objects
+      fix >4GiB source delta assertion failure
 
 Nicolas Sebrecht (2):
       checkout: accord documentation to what git does
@@ -608,6 +649,9 @@ Raja R Harinath (2):
 Ralf Thielow (1):
       update-server-info: Shorten read_pack_info_file()
 
+Ralf Wildenhues (1):
+      Typos in code comments, an error message, documentation
+
 Ramkumar Ramachandra (7):
       SubmittingPatches: Add new section about what to base work on
       git am: Set cmdline globally
@@ -638,6 +682,10 @@ René Scharfe (13):
       grep: support NUL chars in search strings for -F
       notes: allow --dry-run for -n and --verbose for -v
       prune: allow --dry-run for -n and --verbose for -v
+
+SZEDER Gábor (2):
+      mingw_utime(): handle NULL times parameter
+      rerere: fix overeager gc
 
 Sam Vilain (2):
       gitweb: Add support for FastCGI, using CGI::Fast
@@ -717,7 +765,10 @@ Tay Ray Chuan (20):
       t7502-commit: add summary output tests for empty and merge commits
       commit::print_summary(): don't use format_commit_message()
 
-Thomas Rast (18):
+Thiago Farina (1):
+      builtin/merge_recursive.c: Add an usage string and make use of it.
+
+Thomas Rast (23):
       diff: add --word-diff option that generalizes --color-words
       Complete prototype of git_config_from_parameters()
       fast-import: die_nicely() back to vsnprintf (reverts part of ebaa79f)
@@ -728,6 +779,11 @@ Thomas Rast (18):
       parseopt: wrap rev-parse --parseopt usage for eval consumption
       send-email: ask about and declare 8bit mails
       Only run aggregate-results over actual counts
+      Documentation/git-reset: reorder modes for soft-mixed-hard progression
+      Documentation/reset: separate options by mode
+      Documentation/reset: promote 'examples' one section up
+      Documentation/reset: reorder examples to match description
+      Documentation/reset: move "undo permanently" example behind "make topic"
       Cast execl*() NULL sentinels to (char *)
       Document receive.denyDeleteCurrent
       Documentation/git-push: Explain status output in more detail
@@ -749,6 +805,9 @@ Torsten Schmutzler (1):
 Uwe Kleine-König (1):
       rev-parse: fix --parse-opt --keep-dashdash --stop-at-non-option
 
+Ville Skyttä (1):
+      Documentation: spelling fixes
+
 Will Palmer (7):
       pretty: make it easier to add new formats
       pretty: add infrastructure for commit format aliases
@@ -767,7 +826,7 @@ Zhang Le (1):
 bert Dvornik (1):
       start_command: close cmd->err descriptor when fork/spawn fails
 
-Ævar Arnfjörð Bjarmason (36):
+Ævar Arnfjörð Bjarmason (37):
       Add option to git-commit to allow empty log messages
       Move t6000lib.sh to lib-*
       Turn setup code in t2007-checkout-symlink.sh into a test
@@ -804,6 +863,7 @@ bert Dvornik (1):
       test-lib: Remove 3 year old no-op --no-python option
       imap-send: Fix sprintf usage
       t/lib-git-svn.sh: use $PERL_PATH for perl, not perl from $PATH
+      log: test for regression introduced in v1.7.2-rc0~103^2~2
 
 
 Version v1.7.1; changes since v1.7.1-rc1:

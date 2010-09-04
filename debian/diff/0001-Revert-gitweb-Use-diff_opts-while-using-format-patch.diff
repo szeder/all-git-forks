@@ -1,6 +1,6 @@
-From 3fc93f0314cc0782ebb66fd2ed02385a325b0a3f Mon Sep 17 00:00:00 2001
+From a46ed044b1838b8e4eef510c25d51a9bddc23556 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
-Date: Thu, 19 Aug 2010 02:23:07 -0500
+Date: Fri, 3 Sep 2010 19:51:58 -0500
 Subject: Revert "gitweb: Use @diff_opts while using format-patch"
 
 The "commitdiff" feature in gitweb produces diffs for renames that
@@ -20,7 +20,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
-index 6deec87..791adad 100755
+index 84261bb..77a74a3 100755
 --- a/gitweb/gitweb.perl
 +++ b/gitweb/gitweb.perl
 @@ -6343,8 +6343,8 @@ sub git_commitdiff {

@@ -1,0 +1,46 @@
+From 576c20d284a50fd1a66031f40c04966ae81e89c9 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 3 Sep 2010 19:41:12 -0500
+Subject: instaweb: ignore GITWEB_CONFIG_SYSTEM
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The configuration in /etc/gitweb.conf might specify an arbitrary
+filesystem layout, but instaweb wants a specific one.  So stop reading
+/etc/gitweb.conf.  The caller can request to read settings from
+gitweb.conf if they are really wanted by running
+
+	GITWEB_CONFIG=/etc/gitweb.conf git instaweb
+
+After v1.7.2-rc0~55^2~3 (git-instaweb: Configure it to work with new
+gitweb structure, 2010-05-28), instaweb will provide its own
+gitweb_config.perl, making this patch a no-op.  gitweb does not look
+at the fallback /etc/gitweb.conf when supplied with a config file.
+
+Reported-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
+Acked-by: Eric Wong <normalperson@yhbt.net>
+Helped-by: Junio C Hamano <gitster@pobox.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-instaweb.sh |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/git-instaweb.sh b/git-instaweb.sh
+index 0c6e103..faf9868 100755
+--- a/git-instaweb.sh
++++ b/git-instaweb.sh
+@@ -387,7 +387,9 @@ script='
+ s#^(my|our) \$projectroot =.*#$1 \$projectroot = "'$(dirname "$fqgitdir")'";#;
+ s#(my|our) \$gitbin =.*#$1 \$gitbin = "'$GIT_EXEC_PATH'";#;
+ s#(my|our) \$projects_list =.*#$1 \$projects_list = \$projectroot;#;
+-s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;'
++s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;
++s#(my|our) \$GITWEB_CONFIG_SYSTEM =.*#$1 \$GITWEB_CONFIG_SYSTEM = "";#;
++'
+ 
+ gitweb_cgi () {
+ 	cat > "$1.tmp" <<\EOFGITWEB
+-- 
+1.7.2.2
+

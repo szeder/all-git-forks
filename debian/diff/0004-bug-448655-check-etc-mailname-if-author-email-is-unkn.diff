@@ -1,4 +1,4 @@
-From 916abc1bb5e40d0712a3a1af539dc27a53b8f73b Mon Sep 17 00:00:00 2001
+From 5054e66756efb96dd6efe0aa4f7f19ccc262397b Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
 Subject: bug#448655: check /etc/mailname if author email is unknown

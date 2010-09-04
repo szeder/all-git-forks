@@ -1,6 +1,6 @@
-From b183faaededd96a9e0e0668ba76ae535f211b8c5 Mon Sep 17 00:00:00 2001
+From 1bf877073ac36999c081e4b125ae0cd2a9c6580b Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
-Date: Thu, 19 Aug 2010 02:54:45 -0500
+Date: Fri, 3 Sep 2010 19:54:45 -0500
 Subject: Revert "Merge branch 'jn/gitweb-plackup'"
 
 The gitweb-plackup topic, among other changes, moves static content
@@ -13,9 +13,9 @@ changes made to bcacc0ebdb17b55040826bf82d1bde4070119250.
 
 Conflicts:
 
-	Makefile
-	git-instaweb.sh
-	gitweb/Makefile
+    Makefile
+    git-instaweb.sh
+    gitweb/Makefile
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -58,7 +58,7 @@ index 2c3c4d2..a1f17df 100644
  
  -m::
 diff --git a/Makefile b/Makefile
-index e151516..972a027 100644
+index 1f11618..16530d1 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -280,7 +280,6 @@ mandir = share/man
@@ -665,7 +665,7 @@ index 2fb7c2d..d9e3629 100644
  .PHONY: all clean install .FORCE-GIT-VERSION-FILE FORCE
  
 diff --git a/gitweb/README b/gitweb/README
-index 0e19be8..71742b3 100644
+index d481198..692b525 100644
 --- a/gitweb/README
 +++ b/gitweb/README
 @@ -80,26 +80,24 @@ You can specify the following configuration variables when building GIT:
@@ -691,7 +691,7 @@ index 0e19be8..71742b3 100644
 -   to base URI of gitweb.  [Default: static/git-favicon.png]
 +   to base URI of gitweb.  [Default: git-favicon.png]
   * GITWEB_JS
-    Points to the localtion where you put gitweb.js on your web server
+    Points to the location where you put gitweb.js on your web server
     (or to be more generic URI of JavaScript code used by gitweb).
 -   Relative to base URI of gitweb.  [Default: static/gitweb.js (or
 -   static/gitweb.min.js if JSMIN build variable is defined / JavaScript

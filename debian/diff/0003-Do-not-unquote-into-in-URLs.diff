@@ -1,6 +1,6 @@
-From 248701b3567df42851e6ea935aaa6e621ae623d8 Mon Sep 17 00:00:00 2001
-From: Thomas Rast <trast@student.ethz.ch>
-Date: Sat, 24 Jul 2010 16:49:04 +0200
+From 46d21cb7b23f1d3b84ea273f254f838abbd4971f Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 3 Sep 2010 19:56:36 -0500
 Subject: Do not unquote + into ' ' in URLs
 
 Since 9d2e942 (decode file:// and ssh:// URLs, 2010-05-23) the URL
@@ -19,7 +19,7 @@ Signed-off-by: Thomas Rast <trast@student.ethz.ch>
 Signed-off-by: Junio C Hamano <gitster@pobox.com>
 (cherry picked from commit 730220de8be669257287e9a1f5dde349ace5426a)
 
-This patch from "next" fixes a regression introduced with v1.7.2.
+This patch from "master" fixes a regression introduced with v1.7.2.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---

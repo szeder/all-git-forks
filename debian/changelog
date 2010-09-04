@@ -1,4 +1,4 @@
-git (1:1.7.2.2-0.1) unstable; urgency=low
+git (1:1.7.2.3-0.1) unstable; urgency=low
 
   * new upstream release.
     * post-receive-email: document command-line mode (closes: #428413).
@@ -16,26 +16,19 @@ git (1:1.7.2.2-0.1) unstable; urgency=low
   * debian/diff/0001-Revert-gitweb-Use-diff_opts-while...diff: new;
     prevent gitweb from serving rename patches that GNU patch 2.6.1
     cannot apply.
-  * debian/diff/0002-Revert-pretty-Respect-abbrev-option.diff: new;
-    let "git log --format=%h" use 7-digit object names where
-    unambiguous (like before), regardless of the --abbrev setting.
-  * debian/diff/0003-Revert-Merge-branch-jn-gitweb-plackup.diff: new;
+  * debian/diff/0002-Revert-Merge-branch-jn-gitweb-plackup.diff: new;
     install gitweb.css et al in /usr/share/gitweb, not a new static/
     subdirectory.
-  * debian/diff/0004-Do-not-unquote-into-in-URLs.diff: new from
+  * debian/diff/0003-Do-not-unquote-into-in-URLs.diff: new from
     upstream; do not unquote + into space character in URLs.
-  * debian/diff/0005-diff-follow-do-not-waste-cycles...diff, ...,
-    debian/diff/0007-log-test-for-regression-introduced...diff:
-    new from upstream; avoid internal error introduced in v1.7.2-rc0
-    with "git log -M --follow -p <path>".
   * debian/diff/0001-bug-448655-check-etc-mailname-...diff: rename to
-    debian/diff/0008-bug-448655-check-etc-mailname-if-author...diff.
+    debian/diff/0004-bug-448655-check-etc-mailname-if-author...diff.
   * debian/diff/0002-bug-506445-hooks-post-receive-...diff: rename to
-    debian/diff/0009-bug-506445-hooks-post-receive-...diff; adapt.
-  * debian/diff/0010-instaweb-ignore-GITWEB_CONFIG_SYSTEM.diff: new;
+    debian/diff/0005-bug-506445-hooks-post-receive-...diff; adapt.
+  * debian/diff/0006-instaweb-ignore-GITWEB_CONFIG_SYSTEM.diff: new;
     instaweb: ignore /etc/gitweb.conf;
-    debian/diff/0011-gitweb-skip-logo-in-atom-feed-when...diff, ...,
-    debian/diff/0013-instaweb-disable-logo-and-favicon...diff: new;
+    debian/diff/0007-gitweb-skip-logo-in-atom-feed-when...diff, ...,
+    debian/diff/0009-instaweb-disable-logo-and-favicon...diff: new;
     instaweb: avoid 404 errors due to nonexistent image files (thx Uwe
     Kleine-König, closes: #592733).
   * update debian/copyright.
