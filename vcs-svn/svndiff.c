@@ -1,3 +1,10 @@
+/*
+ * Parse and apply an svndiff version 0.
+ *
+ * Licensed under a two-clause BSD-style license.
+ * See LICENSE for details.
+ */
+
 #include "git-compat-util.h"
 #include "line_buffer.h"
 #include "svndiff.h"
