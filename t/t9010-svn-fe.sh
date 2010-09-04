@@ -2,7 +2,20 @@
 
 test_description='check svn dumpfile importer'
 
-. ./lib-git-svn.sh
+. ./test-lib.sh
+
+svnconf=$PWD/svnconf
+export svnconf
+
+svn_cmd () {
+	[ -d "$svnconf" ] || mkdir "$svnconf"
+	orig_svncmd="$1"; shift
+	if [ -z "$orig_svncmd" ]; then
+		svn
+		return
+	fi
+	svn "$orig_svncmd" --config-dir "$svnconf" "$@"
+}
 
 test_dump() {
 	label=$1
