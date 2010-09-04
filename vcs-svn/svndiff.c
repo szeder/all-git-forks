@@ -201,8 +201,7 @@ void drive_window(struct svndiff_window *window, FILE *src_fd)
 		switch (op->action_code) {
 		case copyfrom_source:
 			fseek(src_fd, op->offset, SEEK_SET);
-			fread(buf, op->length, 1, src_fd);
-			fwrite(buf, op->length, 1, target_fd);
+			buffer_fcat(op->length, src_fd, target_fd);
 			break;
 		case copyfrom_target:
 			fseek(target_fd, op->offset, SEEK_SET);
@@ -212,39 +211,38 @@ void drive_window(struct svndiff_window *window, FILE *src_fd)
 			break;
 		case copyfrom_new:
 			fseek(target_fd, 0, SEEK_END);
-			buffer_copy_bytes(op->length, target_fd);
+			buffer_fcat(op->length, stdin, target_fd);
 			break;
 		}
 	}
 	free(window->ops);
 	target_fd_end = ftell(target_fd);
 	fseek(target_fd, 0, SEEK_SET);
-	fread(buf, target_fd_end, 1, target_fd);
-	fwrite(buf, target_fd_end, 1, stdout);
+	buffer_fcat(target_fd_end, target_fd, stdout);
 	fclose (target_fd);
 }
 
-int main(int argc, char **argv)
+/* Read off the 4-byte header: "SVN\0" or "SVN\1" */
+size_t read_header(void)
 {
 	int version;
-	struct svndiff_window *window;
-	FILE *src_fd;
-	buffer_init(NULL);
-
-	/* Read off the 4-byte header: "SVN\0" */
 	fread(&buf, 4, 1, stdin);
 	version = atoi(buf + 3);
-	if (version != 0)
-		die("Version %d unsupported", version);
+	if (memcmp(buf, "SVN\0", 4) != 0) {
+		if (memcmp(buf, "SVN\0", 3) == 0)
+			die("Svndiff version %d unsupported", version);
+		else
+			die("Svndiff has malformed header");
+	}
+	return 4;
+}
 
-	/* Setup the source to apply windows to */
-	src_fd = fopen(argv[1], "r");
+void svndiff_init(void)
+{
+	buffer_init(NULL);
+}
 
-	/* Read and drive the first window */
-	window = malloc(sizeof(*window));
-	drive_window(window, src_fd);
-	free(window);
-
+void svndiff_deinit(void)
+{
 	buffer_deinit();
-	return 0;
 }

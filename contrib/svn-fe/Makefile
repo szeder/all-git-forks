@@ -1,4 +1,4 @@
-all:: svn-fe$X
+all:: svn-fe$X svndiff-parser$X
 
 CC = gcc
 RM = rm -f
@@ -51,6 +51,19 @@ svn-fe.1: svn-fe.txt
 		../contrib/svn-fe/$@
 	$(MV) ../../Documentation/svn-fe.1 .
 
+svndiff-parser$X: svndiff-parser.o $(VCSSVN_LIB) $(GIT_LIB)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ svndiff-parser.o \
+		$(ALL_LDFLAGS) $(LIBS)
+
+svndiff-parser.o: svndiff-parser.c ../../vcs-svn/svndump.h
+	$(QUIET_CC)$(CC) -I../../vcs-svn -o $*.o -c $(ALL_CFLAGS) $<
+
+svndiff-parser.1: svndiff-parser.txt
+	$(QUIET_SUBDIR0)../../Documentation $(QUIET_SUBDIR1) \
+		MAN_TXT=../contrib/svndiff-parser/svndiff-parser.txt \
+		../contrib/svndiff-parser/$@
+	$(MV) ../../Documentation/svndiff-parser.1 .
+
 ../../vcs-svn/lib.a: FORCE
 	$(QUIET_SUBDIR0)../.. $(QUIET_SUBDIR1) vcs-svn/lib.a
 
@@ -58,6 +71,7 @@ svn-fe.1: svn-fe.txt
 	$(QUIET_SUBDIR0)../.. $(QUIET_SUBDIR1) libgit.a
 
 clean:
-	$(RM) svn-fe$X svn-fe.o svn-fe.html svn-fe.xml svn-fe.1
+	$(RM) svn-fe$X svn-fe.o svn-fe.html svn-fe.xml svn-fe.1 \
+		svndiff-parser$X svndiff-parser.o svndiff-parser.1
 
 .PHONY: all clean FORCE

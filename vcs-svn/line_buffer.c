@@ -66,30 +66,39 @@ char *buffer_read_string(uint32_t len)
 	return ferror(infile) ? NULL : s;
 }
 
-void buffer_copy_bytes(uint32_t len, FILE *dst)
+void buffer_fskip(uint32_t len, FILE *infile)
 {
 	uint32_t in;
-	dst = dst ? dst : stdout;
 	while (len > 0 && !feof(infile) && !ferror(infile)) {
 		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		in = fread(byte_buffer, 1, in, infile);
 		len -= in;
-		fwrite(byte_buffer, 1, in, dst);
-		if (ferror(dst)) {
-			buffer_skip_bytes(len);
-			return;
-		}
 	}
 }
 
 void buffer_skip_bytes(uint32_t len)
 {
+	buffer_fskip(len, infile);
+}
+
+void buffer_fcat(uint32_t len, FILE *infile, FILE *outfile)
+{
 	uint32_t in;
 	while (len > 0 && !feof(infile) && !ferror(infile)) {
 		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		in = fread(byte_buffer, 1, in, infile);
 		len -= in;
+		fwrite(byte_buffer, 1, in, outfile);
+		if (ferror(outfile)) {
+			buffer_fskip(len, infile);
+			return;
+		}
 	}
+}
+
+void buffer_copy_bytes(uint32_t len)
+{
+	buffer_fcat(len, infile, stdout);
 }
 
 void buffer_reset(void)

@@ -1,0 +1,26 @@
+svndiff-parser(1)
+=================
+
+NAME
+----
+svn-fe - convert an SVN "dumpfile" to a fast-import stream
+
+SYNOPSIS
+--------
+svndiff-parser SOURCE <DIFF
+
+DESCRIPTION
+-----------
+Applies an svndiff version 0 to a given source file.
+
+TODO
+----
+* Strictly limit number of bytes read                                
+* Strictly limit number of bytes output                                
+* Stream the output as it is ready                                 
+* Allow the first n (typically 0 or 5) bytes of output to be skipped       
+
+
+SEE ALSO
+--------
+https://svn.apache.org/repos/asf/subversion/trunk/notes/svndiff

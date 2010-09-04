@@ -1,3 +1,7 @@
+#ifndef SVNDIFF_H_
+#define SVNDIFF_H_
+#include "../git-compat-util.h"
+
 enum svndiff_action {
     copyfrom_source,
     copyfrom_target,
@@ -17,7 +21,7 @@ struct svndiff_instruction
  * view").  It contains a series of instructions which assemble the
  * new target string text by pulling together substrings from:
  *
- *   - the source view,
+n *   - the source view,
  *
  *   - the previously constructed portion of the target view,
  *
@@ -39,3 +43,10 @@ struct svndiff_window
   struct svndiff_instruction *ops;
   char *newdata;
 };
+
+size_t read_header(void);
+void drive_window(struct svndiff_window *window, FILE *src_fd);
+void svndiff_init(void);
+void svndiff_deinit(void);
+
+#endif
