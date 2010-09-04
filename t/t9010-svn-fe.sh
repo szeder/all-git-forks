@@ -4,6 +4,7 @@ test_description='check svn dumpfile importer'
 
 . ./test-lib.sh
 
+svnfe_bin=$GIT_EXEC_PATH/contrib/svn-fe/svn-fe
 svnconf=$PWD/svnconf
 export svnconf
 
@@ -20,12 +21,12 @@ svn_cmd () {
 test_dump() {
 	label=$1
 	dump=$2
-	test_expect_success "$dump" '
+	test_expect_success SVNFE "$dump" '
 		svnadmin create "$label-svn" &&
 		svnadmin load "$label-svn" < "$TEST_DIRECTORY/$dump" &&
 		svn_cmd export "file://$PWD/$label-svn" "$label-svnco" &&
 		git init "$label-git" &&
-		test-svn-fe "$TEST_DIRECTORY/$dump" >"$label.fe" &&
+		$svnfe_bin <"$TEST_DIRECTORY/$dump" >"$label.fe" &&
 		(
 			cd "$label-git" &&
 			git fast-import < ../"$label.fe"
@@ -39,6 +40,10 @@ test_dump() {
 		)
 	'
 }
+
+if [ -x $svnfe_bin ]; then
+    test_set_prereq SVNFE
+fi
 
 test_dump simple t9135/svn.dump
 

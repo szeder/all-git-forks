@@ -420,7 +420,6 @@ TEST_PROGRAMS_NEED_X += test-run-command
 TEST_PROGRAMS_NEED_X += test-sha1
 TEST_PROGRAMS_NEED_X += test-sigchain
 TEST_PROGRAMS_NEED_X += test-string-pool
-TEST_PROGRAMS_NEED_X += test-svn-fe
 TEST_PROGRAMS_NEED_X += test-treap
 TEST_PROGRAMS_NEED_X += test-index-version
 
@@ -2042,8 +2041,6 @@ test-line-buffer$X: vcs-svn/lib.a
 test-parse-options$X: parse-options.o
 
 test-string-pool$X: vcs-svn/lib.a
-
-test-svn-fe$X: vcs-svn/lib.a
 
 .PRECIOUS: $(TEST_OBJS)
 
