@@ -45,7 +45,8 @@ size_t read_one_size(size_t *size)
 /* Return the number of bytes read */
 size_t read_one_instruction(struct svndiff_instruction *op)
 {
-	size_t c, action, bsize;
+	unsigned char c;
+	size_t action, bsize;
 	bsize = 0;
 
 	/* Read the 1-byte instruction-selector */
@@ -56,7 +57,7 @@ size_t read_one_instruction(struct svndiff_instruction *op)
 	   bits; the remaining 6 bits may contain the length */
 	action = (c >> 6) & 3;
 	if (action >= 3)
-		die("Invalid instruction %d", action);
+		die("Invalid instruction %"PRIu64, (uint64_t) action);
 
 	op->action_code = (enum svndiff_action)(action);
 
@@ -92,39 +93,44 @@ size_t read_instructions(struct svndiff_window *window, size_t *ninst)
 		bsize += read_one_instruction(op);
 
 		if (DEBUG)
-			fprintf(stderr, "Instruction: %d %d %d (%d)\n",
-				op->action_code, op->length, op->offset, bsize);
+			fprintf(stderr,
+				"Instruction: %"PRIu64" %"PRIu64" %"PRIu64" (%"PRIu64")\n",
+				(uint64_t) op->action_code,
+				(uint64_t) op->length,
+				(uint64_t) op->offset,
+				(uint64_t) bsize);
 
 		if (op == NULL)
 			die("Invalid diff stream: "
-			    "instruction %d cannot be decoded", *ninst);
+				"instruction %"PRIu64" cannot be decoded", (uint64_t) *ninst);
 		else if (op->length == 0)
 			die("Invalid diff stream: "
-			    "instruction %d has length zero", *ninst);
+				"instruction %"PRIu64" has length zero", (uint64_t) *ninst);
 		else if (op->length > window->tview_len - tpos)
 			die("Invalid diff stream: "
-			    "instruction %d overflows the target view", *ninst);
+				"instruction %"PRIu64" overflows the target view",
+			(uint64_t) *ninst);
 
 		switch (op->action_code)
 		{
 		case copyfrom_source:
 			if (op->length > window->sview_len - op->offset ||
-			    op->offset > window->sview_len)
+				op->offset > window->sview_len)
 				die("Invalid diff stream: "
-				    "[src] instruction %d overflows "
-				    " the source view", *ninst);
+					"[src] instruction %"PRIu64" overflows "
+					" the source view", (uint64_t) *ninst);
 			break;
 		case copyfrom_target:
 			if (op->offset >= tpos)
 				die("Invalid diff stream: "
-				    "[tgt] instruction %d starts "
-				    "beyond the target view position", *ninst);
+					"[tgt] instruction %"PRIu64" starts "
+					"beyond the target view position", (uint64_t) *ninst);
 			break;
 		case copyfrom_new:
 			if (op->length > window->newdata_len - npos)
 				die("Invalid diff stream: "
-				    "[new] instruction %d overflows "
-				    "the new data section", *ninst);
+					"[new] instruction %"PRIu64" overflows "
+					"the new data section", (uint64_t) *ninst);
 			npos += op->length;
 			break;
 		}
@@ -162,9 +168,13 @@ size_t read_window_header(struct svndiff_window *window)
 		die("Svndiff contains corrupt window header");
 
 	if (DEBUG)
-		fprintf(stderr, "Window header: %d %d %d %d %d\n",
-			window->sview_offset, window->sview_len,
-			window->tview_len, window->ins_len, window->newdata_len);
+		fprintf(stderr,
+			"Window header: %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64" %"PRIu64"\n",
+			(uint64_t) window->sview_offset,
+			(uint64_t) window->sview_len,
+			(uint64_t) window->tview_len,
+			(uint64_t) window->ins_len,
+			(uint64_t) window->newdata_len);
 	return bsize;
 }
 
