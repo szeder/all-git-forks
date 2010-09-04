@@ -1,0 +1,522 @@
+APACHE COMMONS PROJECT
+STATUS: -*-indented-text-*- Last modified at [$Date$]
+
+Background:
+    o IRC channel #apache-commons on irc.openprojects.net
+      traffic is logged to <URL:http://Source-Zone.Org/apache-irc/>
+      so that the content of interactive discussions is available
+      to everyone
+
+Project committers (as of 2002-10-27):
+    o commons:
+      aaron,coar,donaldp,jerenkrantz,fitz,geirm,gstein,jim,striker
+    o commons-site:
+      aaron,coar,donaldp,jerenkrantz,fitz,geirm,gstein,jim,striker,
+      sanders,nicolaken
+
+Release:
+    none yet; still defining mission :-)
+
+
+Resolved Issues:
+
+    o Commons is a parent of reusable code projects. These projects
+      may be used by other projects of the ASF, but it is not a
+      requirement.
+
+    o The Commons will be language-agnostic.
+
+    o Projects that are "in scope" are defined as:
+    
+      - Existing components that are, or would be, useful to multiple
+        projects
+
+      - If a component does not fit the (TBD) goals of Apache Commons,
+        then it is not considered "in scope" just because it has no
+        other home. In other words, the Apache Commons is not a place
+        of last refuge if the component does not match the Apache
+        Commons' goals.
+
+      - Reusable libraries
+        [ gstein: we should expand this definition for the mission
+          statement; examples provided were serf and regexp ]
+
+      - Components that do not fit cleanly into any other top-level
+        project, but they do fit the goals of Commons.
+
+    o Voting will follow the "standard Apache voting guidelines"
+
+      [ be nice to refer to an Incubator doc here ]
+
+    o All code donations [to the ASF, destined for Apache Commons]
+      arrive via the Incubator, unless the Incubator states they can
+      be placed directly into Commons.
+
+    o Existing Commons committers can start new components without a
+      detour to the Incubator. These new components must be approved
+      by the PMC and must meet the (TBD) goals of Apache Commons.
+
+
+Pending issues:
+    o Coming up with a set of bylaws for the project
+
+    o Enabling Reply-to on the @commons lists
+      (pmc@ will *not* use reply-to munging, but user lists
+      will be determined by user majority; this item applies
+      to lists for which the decision has not yet been made)
+      +1: aaron, coar, donaldp, geirm, acoliver, mas, bayard, sanders
+      -1: fitz, gstein, jerenkrantz, striker, jim
+
+    o The name 'Commons' has caused some heartburn with the
+      Jakarta community because of the Jakarta-Commons project.
+      Should we rename to avoid conflicts and keep the peace?
+      Conflicts would include Java namespace as well as
+      philosophical aspects.
+      +1: 
+      +0: coar (i'm willing)
+      -0: jerenkrantz, donaldp, striker, gstein, fitz
+      -1: sanders
+
+    o If we rename, to what?  What words/names describe our
+      purpose?
+      - toolbox
+        +0: gstein (I'd be +1 but for the confusion with the existing
+                    Apache Toolbox project, but *really* like this
+                    name)
+      - toolchest
+        +0.5: gstein
+      - tools
+        +0: gstein
+        -1: donaldp (tools are different to components)
+      - components
+        +0: gstein (a bit long)
+      - util
+      - library
+        +0: gstein (doesn't fit well with perl/python "modules")
+      - suite (sweet?)
+      - belt (as in bat-belt or tool-belt)
+      - mcgyver
+      - foundry or mill
+        +1: sanders (maybe too 'SourceForgeesque')
+        -0: donaldp (If reorg goes through we may have multiple
+                     foundaries or federations for different "concepts")
+      - federation
+      - share or shared
+      - stuff
+        +.3: fitz :)
+      - ?
+
+    o Style for the mailing lists:
+    
+      One community mailing list, with specific breakouts:
+        +1: fitz, jerenkrantz, sanders, coar,
+            donaldp (lets start here and evolve)
+      +0.5: mas
+        -0: aaron (too early)
+      
+      Topical mailing lists:
+        +1: gstein, scolebourne, acoliver, striker
+        -0: aaron (too early), jerenkrantz
+      -0.1: mas, sanders (too early for this), donaldp
+        -1: coar
+      
+      Per-language mailing lists:
+        -0: aaron (too early)
+      -0.1: mas
+        -1: gstein, sanders, fitz, jerenkrantz, striker, coar
+
+      Per-component mailing lists as a default (breakouts will create
+          these as a matter of course, this is about the default)
+      +0.7: mas
+        -0: aaron (too early)
+      -0.9: sanders
+        -1: gstein, fitz, jerenkrantz, striker
+
+    o A number of very valid issues have been brought up on the
+      list. We need to figure out how the Commons Project will
+      deal with each of these, in terms of new components and
+      how those components will contain code projects. This list
+      is only meant to keep record of all the issues:
+
+        - Releasable pieces
+        - Release rules
+        - Voting scope
+        - Directory structure and naming conventions
+        - Coding style
+        - Build system consistency (or inconsistency)
+        - Namespace issues (esp. w/ java)
+        - Language vs. Functional
+
+    o Default commit privileges
+    
+      - Commons-wide
+        +1:
+        -1: gstein, striker, donaldp
+      
+      - Per-component
+        +1: gstein, striker, donaldp, jerenkrantz
+        -1:
+      
+      - Per-component with self-chosen aggregation
+        +1: gstein, donaldp
+        -1:
+
+    o Granularity of CVS repositories for components (this excludes
+      commons-site)
+    
+      - Commons-wide
+        +1: gstein, donaldp, jerenkrantz
+        -1:
+      
+      - Per-topic
+        +1:
+        -0: gstein, donaldp, jerenkrantz
+        -1: 
+      
+      - Per-component
+        +1:
+        -1: gstein, donaldp, jerenkrantz
+
+
+Project Mission:
+
+What is the project's mission?  Our statement of goals/mission/vision
+should arise from the answers to the following and other questions:
+(jim notes that defining something after the fact seems very backwards
+ and broken; gstein notes that we're refining the board-provided
+ charter)
+
+    o Should commons have an sandbox component to ease infrastructure
+      burden on smaller code bases?
+      +1: coar, donaldp, jerenkrantz, gstein, sanders (non-binding)
+      +0: fitz
+      -0: striker
+      -1: jim (the PMC is about reusability, not sandbox),
+          aaron (what jim said; and go see incubator)
+
+    o What types of components would be appropriate for this project? 
+      ("in scope")
+
+      - Tools that help/promote reusability?
+        Hypothetical: ant, jlibtool, ASF-based autoconf
+        +1: jerenkrantz, gstein, striker, fitz, sanders (non-binding)
+        -0: donaldp (prefer a tools PMC for that)
+        -1: aaron (too broad, don't belong here)
+
+      - Development frameworks?
+        Hypothetical: avalon
+        +1: fitz
+        -0: donaldp (how do we determine this given we would prolly
+                     accept it if it was new?)
+        -1: gstein (the avalon components, but not the whole bugger),
+            striker, sanders (non-binding)
+
+     - Components that fit the (TBD) goals of Commons, have a more
+       "logical" home elsewhere in the ASF, but were rejected by that
+       home?
+        +1: gstein, donaldp
+         0: striker (on a case by case basis, taking reasons for rejection
+                     seriously into account. Abstain from vote until
+                     rephrased),
+            fitz (what striker said), aaron (what fitz said)
+        -1: jerenkrantz, sanders (non-binding)
+
+      FOLD BELOW VOTES INTO ABOVE? (i.e. eliminate the "donation" wording)
+      - Donations that could fit but have a more obvious (proper) home which
+        has already rejected it?
+        +1: coar, donaldp, gstein (note the "might fit" term)
+        -0:
+        -1: jerenkrantz, jim, aaron, striker, fitz
+
+      - Existing ASF components whose committers believe that they
+        are a better fit under commons and the commons PMC agrees?
+        (If this component were brought up as new, we would accept it.)
+        +1: coar, donaldp, jerenkrantz, striker, gstein, fitz
+        -1: jim (by this definition httpd could be in commons)
+                (gstein says: see the "if" part; we wouldn't accept httpd)
+                (jim says: until we better define what the PMC would or
+                 would not accept, then this seems too wishy-washy to me)
+             (gstein says: jim, you're blocking closure on this;
+              how would you refine the phrasing here; the intent
+              here is to accept components from the other Commons
+              projects or projects with reusable component),
+             aaron (we need to differenciate ourselves from other
+                    libraries first, namely APR)
+
+      - Packages being worked on by Apache developers, with a clear
+        affiliation, that can't or won't be bundled?  (E.g., an
+        httpd module)
+        +1: coar, donaldp
+        -1: jerenkrantz, striker, gstein, fitz, jim, aaron
+       CLOSE THIS? (as "not passed"; what is a good way to phrase this?)
+
+      - Should we have a minimum bar of entry for components?
+        +1:
+        -0: donaldp, gstein
+        -1:
+       
+      - Should we have a minimum set of requirements before components
+        are released?
+        +1: donaldp, gstein (mixed, see below), striker
+        -1: jerenkrantz (what is released?)
+
+      - If yes to above then which things should be part of minimum
+        requirements?
+
+        documentation: require basic overview and user docs
+        +1: donaldp
+        -0: gstein (recommend highly, but let the committers determine
+                    what is right for the component),
+            striker, jerenkrantz
+        -1:
+
+        uptodate website: require website be updated to latest release
+                          but may still host previous release docs.
+        +1: donaldp, gstein, striker
+        -0: jerenkrantz
+        -1:
+
+        unit tests: (okay so this will never get consensus but ...)
+        +1: donaldp
+        -1: gstein (unit tests should be recommended, but not
+                    mandated; I also find it unreasonable for initial
+                    development/pre-alpha releases, but it can make
+                    sense for "final" types of releases),
+            striker, jerenkrantz
+
+        versioning standard: derived from
+            http://apr.apache.org/versioning.html
+            http://jakarta.apache.org/commons/versioning.html
+        +1: donaldp, gstein, striker, jerenkrantz
+        -1:
+
+        release process: derived from
+          http://jakarta.apache.org/commons/releases.html
+          http://jakarta.apache.org/turbine/maven/development/release-process.html
+          http://cvs.apache.org/viewcvs.cgi/jakarta-ant/ReleaseInstructions?rev=1.9.2.1&content-type=text/vnd.viewcvs-markup
+        +1: donaldp
+        -1: gstein (we should provide "best practices" but allow each
+                    components' committers to define their rules),
+            striker, jerenkrantz
+
+        deprecation process: (java specific?)
+          http://jakarta.apache.org/turbine/maven/development/deprecation.html
+        +1: donaldp, gstein (I see this as part of the "versioning"
+                             process, and we can provide best
+                             practices here)
+        -0: jerenkrantz (kinda sorta versioning, but not quite)
+        -1:
+
+        CVS/Subversion branching:
+          http://jakarta.apache.org/turbine/maven/development/branches.html
+        +1: donaldp
+        -1: gstein (we should provide "best practices" but allow each
+                    components' committers to define their rules),
+            striker, jerenkrantz
+
+
+Candidate Projects:
+
+    o APR's serf project has voted itself to move into Commons.
+    
+      - Should the PMC accept it as fitting the Commons goal?
+        +1: gstein, fitz, jerenkrantz, striker, donaldp
+        -1: aaron (no such thing as "the Commons goal", how can it fit it?)
+
+      - When should it move?
+
+        Whenever it likes:
+          +1: gstein, sanders, jerenkrantz, striker
+          +0: donaldp (+1 if we use subversion, but if using CVS 
+              we should hold off until structure is decided upon)
+          -1: aaron (after we know why it fits)
+
+        Give us a while:
+          +1: fitz (what's the hurry?), aaron
+          -0: gstein (we're only talking about a small seed of a
+                codebase; it won't get in our way as we complete the
+                charter), striker
+
+      - Where should the CVS code be located?
+      
+        commons/serf   (each component under top-level)
+            +1: sanders (works well at jakarta-commons)
+                fitz (Please don't mix interface and implementation 
+                  of commons!), aaron
+            +0: jerenkrantz
+          -0.5: gstein
+            -1: donaldp (makes it difficult to update all related 
+                         projects with a single sweep)
+
+        commons/components/serf   (all components under this dir,
+            leaving the top open for other non-code items)
+          +0: gstein, striker, donaldp (is this just dev with a 
+                                        different name?
+                                        (gstein says "yes"))
+          -1: fitz, aaron, jerenkrantz
+        
+        commons/clients/serf   (topical-groups under top-level)
+          +1: gstein, jerenkrantz
+          -1: fitz, aaron, donaldp
+        
+        commons/dev/serf  (all components under "dev")
+          +1: gstein, donaldp (if we are having a single 
+                               monolithic repo for all commons)
+          -1: fitz, aaron, jerenkrantz
+        
+        commons/bootstrap/serf  (serf is very early stage, so maybe we
+            have a "bootstrap" area; this is different from Incubator
+            since the existing committers do not need "training")
+          +1: gstein, donaldp
+          -1: fitz, aaron, jerenkrantz
+
+        commons/???
+
+        commons/c/serf (separate out component based on language
+                        and then have a flat structure underneath)
+          +1: donaldp
+          -1: jerenkrantz
+
+      - What mailing list should it use for dev discussions?
+      
+        general@commons.apache.org:  (one group for all discussion;
+                                      dev and non-dev alike)
+          -0.5: gstein
+            -1: striker, aaron, jerenkrantz
+        
+        dev@commons.apache.org:  (one group for dev discussion;
+                                  general@ remains for non-dev)
+          +1: gstein, fitz, sanders, jerenkrantz, striker, donaldp
+          
+        clients-dev@commons.apache.org:
+           (this is really TOPICNAME-dev@ where I preselected
+            "clients" for TOPICNAME; this question is whether this
+            style would be appropriate)
+          +1: gstein, striker
+          -0: sanders, donaldp (maybe in the future but too early),
+              jerenkrantz
+          -1: aaron (what is "clients"? I'd probably be +1 if I knew
+                     what that was)
+
+      - Note: serf has no web site, so there isn't a need to figure
+        that out right now.
+
+
+Assets:
+    DNS:                commons.apache.org
+    
+    Mailing lists:      general@commons.apache.org
+                        announce@commons.apache.org
+                        pmc@commons.apache.org
+                        cvs@commons.apache.org
+                        
+                        [ core-cvs@commons.apache.org in case we
+                          create a commons-core CVS module ]
+
+    Web site:           http://commons.apache.org/
+    
+    Repositories:       commons        (code, info, etc)
+                        commons-site   (the web site)
+
+
+PMC Members:
+
+    Aaron Bannert <aaron@apache.org>
+    Ken Coar <coar@apache.org>
+    Peter Donald <peter@apache.org>
+    Justin Erenkrantz <jerenkrantz@apache.org>
+    Brian W. Fitzpatrick <fitz@apache.org>
+    Jim Jagielski <jim@apache.org>
+    Geir Magnusson Jr. <geirm@apache.org>
+    Greg Stein <gstein@lyra.org>
+    Sander Striker <striker@apache.org>
+
+    Note: Ken Coar is the Chair
+
+
+PMC Members, pending Board approval:
+
+    none yet
+
+    [ this may become obsolete; the Board is discussing a way for the
+      Chair to directly alter the PMC membership; until then, however,
+      we need PMC members ratified by the board, and this tracks them ]
+
+
+Committers:
+
+    none yet [still defining mission]
+
+
+Invited Committers:
+
+    none yet
+
+
+Current mission/charter as approved by the board:
+
+    'The Apache Commons PMC hereby is responsible for the creation
+    and maintenance of software related to reusable libraries and
+    components, based on software licensed to the Foundation.'
+
+The complete text of the resolution that was passed is:
+
+       WHEREAS, the Board of Directors deems it to be in the best
+       interests of the Foundation and consistent with the
+       Foundation's purpose to establish a Project Management
+       Committee charged with the creation and maintenance of
+       open-source software related to reusable libraries and
+       components, for distribution at no charge to the public.
+
+       NOW, THEREFORE, BE IT RESOLVED, that a Project Management
+       Committee (PMC), to be known as the "Apache Commons PMC", be
+       and hereby is established pursuant to Bylaws of the Foundation;
+       and be it further
+
+       RESOLVED, that the Apache Commons PMC be and hereby is
+       responsible for the creation and maintenance of software
+       related to reusable libraries and components, based on software
+       licensed to the Foundation; and be it further
+
+       RESOLVED, that the office of "Vice President, Apache Commons"
+       be and hereby is created, the person holding such office to
+       serve at the direction of the Board of Directors as the chair
+       of the Apache Commons PMC, and to have primary responsibility
+       for management of the projects within the scope of
+       responsibility of the Apache Commons PMC; and be it further
+
+       RESOLVED, that the persons listed immediately below be and
+       hereby are appointed to serve as the initial members of the
+       Apache Commons PMC:
+
+              Aaron Bannert
+              Ken Coar (chair)
+              Peter Donald
+              Justin Erenkrantz
+              Brian W. Fitzpatrick
+              Jim Jagielski
+              Geir Magnusson Jr.
+              Greg Stein
+              Sander Striker
+
+       NOW, THEREFORE, BE IT FURTHER RESOLVED, that Ken Coar be and
+       hereby is appointed to the office of Vice President, Apache
+       Commons, to serve in accordance with and subject to the
+       direction of the Board of Directors and the Bylaws of the
+       Foundation until death, resignation, retirement, removal or
+       disqualification, or until a successor is appointed; and be it
+       further
+
+       RESOLVED, that the initial Apache Commons PMC be and hereby is
+       tasked with the creation of a set of bylaws intended to
+       encourage open development and increased participation in the
+       Apache Commons Project.
+
+#
+# Local Variables:
+# mode: indented-text
+# tab-width: 4
+# indent-tabs-mode: nil
+# tab-stop-list: (4 6 8 12 16 20 24 28 32 36 40 44 48 52 56 60 64 68 72 76 80)
+# End:
+#
