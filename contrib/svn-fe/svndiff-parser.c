@@ -9,14 +9,20 @@
 int main(int argc, char **argv)
 {
 	struct svndiff_window *window;
-	FILE *src_fd;
-	svndiff_init();
+	FILE *source;
 
-	src_fd = fopen(argv[1], "r");
+	if (argc != 2)
+		return 1;
+	
+	svndiff_init();
+	source = fopen(argv[1], "r");
+	if (!source)
+		return 1;
+
 	read_header();
 
 	window = malloc(sizeof(*window));
-	drive_window(window, src_fd);
+	drive_window(window, source);
 	free(window);
 
 	svndiff_deinit();
