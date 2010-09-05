@@ -8,6 +8,7 @@
 #include "git-compat-util.h"
 #include "line_buffer.h"
 #include "svndiff.h"
+#include "obj_pool.h"
 
 #define DEBUG 1
 
@@ -16,6 +17,8 @@
 #define MAX_INSTRUCTION_LEN (2*MAX_ENCODED_INT_LEN+1)
 #define MAX_INSTRUCTION_SECTION_LEN (SVN_DELTA_WINDOW_SIZE*MAX_INSTRUCTION_LEN)
 static char buf[SVN_DELTA_WINDOW_SIZE];
+
+obj_pool_gen(op, struct svndiff_instruction, 1024)
 
 /* Remove when linking to gitcore */
 void die(const char *err, ...)
@@ -84,19 +87,19 @@ size_t read_one_instruction(struct svndiff_instruction *op)
 	return bsize;
 }
 
-size_t read_instructions(struct svndiff_window *window, size_t *ninst)
+size_t read_instructions(struct svndiff_window *window)
 {
 	size_t tpos = 0, npos, bsize;
+	uint32_t op_no;
 	struct svndiff_instruction *op;
 	npos = 0;
 	bsize = 0;
-	*ninst = 0;
 	
 	while (bsize < window->ins_len)
 	{
-		++(*ninst);
-		window->ops = realloc(window->ops, (*ninst) * sizeof(*op));
-		op = window->ops + (*ninst) - 1;
+		op_no = op_alloc(1);
+		op = op_pointer(op_no);
+		
 		bsize += read_one_instruction(op);
 
 		if (DEBUG)
@@ -109,14 +112,14 @@ size_t read_instructions(struct svndiff_window *window, size_t *ninst)
 
 		if (op == NULL)
 			die("Invalid diff stream: "
-				"instruction %"PRIu64" cannot be decoded", (uint64_t) *ninst);
+				"instruction %"PRIu64" cannot be decoded", op_no);
 		else if (op->length == 0)
 			die("Invalid diff stream: "
-				"instruction %"PRIu64" has length zero", (uint64_t) *ninst);
+				"instruction %"PRIu64" has length zero", op_no);
 		else if (op->length > window->tview_len - tpos)
 			die("Invalid diff stream: "
 				"instruction %"PRIu64" overflows the target view",
-			(uint64_t) *ninst);
+			op_no);
 
 		switch (op->action_code)
 		{
@@ -125,19 +128,19 @@ size_t read_instructions(struct svndiff_window *window, size_t *ninst)
 				op->offset > window->sview_len)
 				die("Invalid diff stream: "
 					"[src] instruction %"PRIu64" overflows "
-					" the source view", (uint64_t) *ninst);
+					" the source view", op_no);
 			break;
 		case copyfrom_target:
 			if (op->offset >= tpos)
 				die("Invalid diff stream: "
 					"[tgt] instruction %"PRIu64" starts "
-					"beyond the target view position", (uint64_t) *ninst);
+					"beyond the target view position", op_no);
 			break;
 		case copyfrom_new:
 			if (op->length > window->newdata_len - npos)
 				die("Invalid diff stream: "
 					"[new] instruction %"PRIu64" overflows "
-					"the new data section", (uint64_t) *ninst);
+					"the new data section", op_no);
 			npos += op->length;
 			break;
 		}
@@ -204,9 +207,9 @@ void svndiff_apply(FILE *src_fd)
 {
 	struct svndiff_instruction *op;
 	struct svndiff_window *window;
-	size_t ninst;
 	FILE *target_fd;
 	long target_fd_end;
+	uint32_t op_no;
 
 	/* Chew up the first 4 bytes */
 	read_header();
@@ -217,16 +220,17 @@ void svndiff_apply(FILE *src_fd)
 	   with data from the stream */	
 	read_window_header(window);
 
-	/* Read instructions of length ins_len into window->ops
+	/* Read instructions of length ins_len into op_pool
 	   performing memory allocations as necessary */
-	read_instructions(window, &ninst);
+	read_instructions(window);
 
 	/* The Applier */
 	/* We're now looking at new_data; read ahead only in the
 	   copyfrom_new case */	
 	target_fd = tmpfile();
 	buffer_init(NULL);
-	for (op = window->ops; ninst-- > 0; op++) {
+	for (op_no = 0; op_no < op_pool.size; op_no++) {
+		op = op_pointer(op_no);
 		switch (op->action_code) {
 		case copyfrom_source:
 			fseek(src_fd, op->offset, SEEK_SET);
@@ -251,7 +255,7 @@ void svndiff_apply(FILE *src_fd)
 	buffer_fcat(target_fd_end, target_fd, stdout);
 
 	/* Memeory cleanup */
-	free(window->ops);
+	op_free(op_pool.size);
 	free(window);
 
 	/* Cleanup files and buffers */

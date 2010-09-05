@@ -40,7 +40,6 @@ struct svndiff_window
   size_t tview_len;
   size_t ins_len;
   size_t newdata_len;
-  struct svndiff_instruction *ops;
   char *newdata;
 };
 
