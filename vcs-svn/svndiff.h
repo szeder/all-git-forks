@@ -45,8 +45,6 @@ struct svndiff_window
 };
 
 size_t read_header(void);
-void drive_window(struct svndiff_window *window, FILE *src_fd);
-void svndiff_init(void);
-void svndiff_deinit(void);
+void svndiff_apply(FILE *src_fd);
 
 #endif

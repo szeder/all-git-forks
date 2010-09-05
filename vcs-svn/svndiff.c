@@ -185,12 +185,33 @@ size_t read_window_header(struct svndiff_window *window)
 	return bsize;
 }
 
-void drive_window(struct svndiff_window *window, FILE *src_fd)
+/* Read off the 4-byte header: "SVN\0" or "SVN\1" */
+size_t read_header(void)
+{
+	int version;
+	fread(&buf, 4, 1, stdin);
+	version = atoi(buf + 3);
+	if (memcmp(buf, "SVN\0", 4) != 0) {
+		if (memcmp(buf, "SVN\0", 3) == 0)
+			die("Svndiff version %d unsupported", version);
+		else
+			die("Svndiff has malformed header");
+	}
+	return 4;
+}
+
+void svndiff_apply(FILE *src_fd)
 {
 	struct svndiff_instruction *op;
+	struct svndiff_window *window;
 	size_t ninst;
 	FILE *target_fd;
 	long target_fd_end;
+
+	/* Chew up the first 4 bytes */
+	read_header();
+
+	window = malloc(sizeof(*window));
 
 	/* Populate the first five fields of the the window object
 	   with data from the stream */	
@@ -204,6 +225,7 @@ void drive_window(struct svndiff_window *window, FILE *src_fd)
 	/* We're now looking at new_data; read ahead only in the
 	   copyfrom_new case */	
 	target_fd = tmpfile();
+	buffer_init(NULL);
 	for (op = window->ops; ninst-- > 0; op++) {
 		switch (op->action_code) {
 		case copyfrom_source:
@@ -222,34 +244,18 @@ void drive_window(struct svndiff_window *window, FILE *src_fd)
 			break;
 		}
 	}
-	free(window->ops);
+
+	/* Finally output result to stdout */
 	target_fd_end = ftell(target_fd);
 	fseek(target_fd, 0, SEEK_SET);
 	buffer_fcat(target_fd_end, target_fd, stdout);
-	fclose (target_fd);
-}
 
-/* Read off the 4-byte header: "SVN\0" or "SVN\1" */
-size_t read_header(void)
-{
-	int version;
-	fread(&buf, 4, 1, stdin);
-	version = atoi(buf + 3);
-	if (memcmp(buf, "SVN\0", 4) != 0) {
-		if (memcmp(buf, "SVN\0", 3) == 0)
-			die("Svndiff version %d unsupported", version);
-		else
-			die("Svndiff has malformed header");
-	}
-	return 4;
-}
+	/* Memeory cleanup */
+	free(window->ops);
+	free(window);
 
-void svndiff_init(void)
-{
-	buffer_init(NULL);
-}
-
-void svndiff_deinit(void)
-{
+	/* Cleanup files and buffers */
 	buffer_deinit();
+	fclose(src_fd);
+	fclose(target_fd);
 }
