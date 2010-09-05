@@ -5,7 +5,7 @@ test_description='check svn dumpfile importer'
 . ./test-lib.sh
 
 svnfe_bin=$GIT_EXEC_PATH/contrib/svn-fe/svn-fe
-parser_bin=$GIT_EXEC_PATH/contrib/svn-fe/svndiff-parser
+svnda_bin=$GIT_EXEC_PATH/contrib/svn-fe/svn-da
 svnconf=$PWD/svnconf
 export svnconf
 
@@ -23,8 +23,8 @@ test_parse() {
 	diff0=$1
 	source=$2
 	expected=$3
-	test_expect_success PARSER "$diff0" '
-		$parser_bin "$TEST_DIRECTORY/$source" <"$TEST_DIRECTORY/$diff0" >actual &&
+	test_expect_success SVNDA "$diff0" '
+		$svnda_bin "$TEST_DIRECTORY/$source" <"$TEST_DIRECTORY/$diff0" >actual &&
 		test_cmp "$TEST_DIRECTORY/$expected" actual
 	'
 }
@@ -56,8 +56,8 @@ if [ -x $svnfe_bin ]; then
     test_set_prereq SVNFE
 fi
 
-if [ -x $svndiff_parser ]; then
-    test_set_prereq PARSER
+if [ -x $svnda_bin ]; then
+    test_set_prereq SVNDA
 fi
 
 test_dump simple t9135/svn.dump

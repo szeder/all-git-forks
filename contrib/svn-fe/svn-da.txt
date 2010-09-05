@@ -1,13 +1,13 @@
-svndiff-parser(1)
-=================
+svn-da(1)
+=========
 
 NAME
 ----
-svn-fe - convert an SVN "dumpfile" to a fast-import stream
+svn-da - Apply a given diff0 to a given source and produce fulltext
 
 SYNOPSIS
 --------
-svndiff-parser SOURCE <DIFF
+svn-da SOURCE <DIFF
 
 DESCRIPTION
 -----------
