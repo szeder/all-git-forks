@@ -92,6 +92,18 @@ OPTIONS
 	--(no-)-relative-marks= with the --(import|export)-marks=
 	options.
 
+--report-fd=<fd>::
+	Print the 40-character object name for each commit to
+	the specified file descriptor before writing it to the
+	pack.  This information may be useful if the importer
+	needs to maintain a map from revisions in the source
+	repository to commit ids in the target repository
+	during the import.
++
+The described objects are not necessarily accessible
+using standard git plumbing tools until a little while
+after the next checkpoint.
+
 --export-pack-edges=<file>::
 	After creating a packfile, print a line of data to
 	<file> listing the filename of the packfile and the last
@@ -896,6 +908,7 @@ The following features are currently supported:
 * date-format
 * import-marks
 * export-marks
+* report-fd
 * relative-marks
 * no-relative-marks
 * force

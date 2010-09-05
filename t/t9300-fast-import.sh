@@ -1663,6 +1663,48 @@ test_expect_success 'R: feature no-relative-marks is honoured' '
 	test_cmp marks.out non-relative.out
 '
 
+test_expect_success 'have pipes?' '
+	test_when_finished "rm -f frob" &&
+	if mkfifo frob
+	then
+		test_set_prereq PIPE
+	fi
+'
+
+test_expect_success PIPE 'R: feature report-fd is honoured' '
+	mkfifo commits &&
+	test_when_finished "rm -f commits" &&
+	cat >frontend <<-\FRONTEND_END &&
+		#!/bin/sh
+		cat <<EOF &&
+		feature report-fd=3
+		commit refs/heads/printed
+		committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+		data <<COMMIT
+		to be printed
+		COMMIT
+
+		from refs/heads/master
+		D file3
+
+		EOF
+
+		read cid <&3 &&
+		echo "$cid" >received
+		EOF
+	FRONTEND_END
+	chmod +x frontend &&
+	(
+		{
+			sh frontend 3<commits ||
+			exit
+		} |
+		git fast-import 3>commits
+	) &&
+	git rev-parse --verify printed >real &&
+	test_cmp real received
+'
+
 test_expect_success 'R: quiet option results in no stats being output' '
 	>empty &&
 	cat >input <<-\EOF &&
