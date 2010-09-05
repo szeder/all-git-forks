@@ -1705,6 +1705,120 @@ test_expect_success PIPE 'R: feature report-fd is honoured' '
 	test_cmp real received
 '
 
+test_expect_success PIPE 'R: report-fd: can feed back printed tree' '
+	cat >frontend <<-\FRONTEND_END &&
+		#!/bin/sh
+		cat <<EOF &&
+		feature report-fd=3
+		commit refs/heads/printed
+		committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+		data <<COMMIT
+		to be printed
+		COMMIT
+
+		from refs/heads/master
+		D file3
+
+		EOF
+
+		read commit_id <&3 &&
+		echo "$commit_id" >printed &&
+		echo "$commit_id commit" >expect.response &&
+		echo "cat $commit_id" &&
+		read cid2 type size <&3 &&
+		echo "$cid2 $type" >response &&
+		dd if=/dev/stdin of=commit bs=1 count=$size <&3 &&
+		read newline <&3 &&
+		read tree tree_id <commit &&
+
+		cat <<EOF &&
+		commit refs/heads/printed
+		committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+		data <<COMMIT
+		to be printed
+		COMMIT
+
+		from refs/heads/printed^0
+		M 040000 $tree_id old
+
+		EOF
+		read cid <&3
+	FRONTEND_END
+	chmod +x frontend &&
+
+	mkfifo commits &&
+	test_when_finished "rm -f commits" &&
+	(
+		{
+			sh frontend 3<commits ||
+			exit
+		} |
+		git fast-import 3>commits
+	) &&
+	git rev-parse printed^ >expect.printed &&
+	git cat-file commit printed^ >expect.commit &&
+
+	test_cmp expect.printed printed &&
+	test_cmp expect.response response &&
+	test_cmp expect.commit commit
+'
+
+test_expect_success PIPE 'R: report-fd: can feed back printed blob' '
+	cat >expect <<-EOF &&
+	:100755 100644 $file6_id $file6_id C100	newdir/exec.sh	file6
+	EOF
+
+	cat >frontend <<-\FRONTEND_END &&
+		#!/bin/sh
+
+		branch=$(git rev-parse --verify refs/heads/branch) &&
+		cat <<EOF &&
+		feature report-fd=3
+		cat $branch
+		EOF
+
+		read commit_id type size <&3 &&
+		dd if=/dev/stdin of=commit bs=1 count=$size <&3 &&
+		read newline <&3 &&
+		read tree tree_id <commit &&
+
+		echo "cat $tree_id \"newdir/exec.sh\"" &&
+		read blob_id type size <&3 &&
+		dd if=/dev/stdin of=blob bs=1 count=$size <&3 &&
+		read newline <&3 &&
+
+		cat <<EOF &&
+		commit refs/heads/copyblob
+		committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+		data <<COMMIT
+		copy file6 to top level
+		COMMIT
+
+		from refs/heads/branch^0
+		M 644 inline "file6"
+		data $size
+		EOF
+		cat blob &&
+		echo &&
+		echo &&
+
+		read cid <&3
+	FRONTEND_END
+	chmod +x frontend &&
+
+	mkfifo commits &&
+	test_when_finished "rm -f commits" &&
+	(
+		{
+			sh frontend 3<commits ||
+			exit
+		} |
+		git fast-import 3>commits
+	) &&
+	git diff-tree -C --find-copies-harder -r copyblob^ copyblob >actual &&
+	compare_diff_raw expect actual
+'
+
 test_expect_success 'R: quiet option results in no stats being output' '
 	>empty &&
 	cat >input <<-\EOF &&

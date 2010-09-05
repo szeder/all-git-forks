@@ -102,7 +102,8 @@ OPTIONS
 +
 The described objects are not necessarily accessible
 using standard git plumbing tools until a little while
-after the next checkpoint.
+after the next checkpoint.  To request access to the
+objects before then, use `cat` lines in the command stream.
 
 --export-pack-edges=<file>::
 	After creating a packfile, print a line of data to
@@ -331,6 +332,10 @@ and control the current import process.  More detailed discussion
 	Causes fast-import to echo the entire line to its own
 	standard output.  This command is optional and is not needed
 	to perform an import.
+
+`cat`::
+	Causes fast-import to print an object in 'cat-file --batch'
+	format to the file descriptor set with "feature report-fd".
 
 `feature`::
 	Require that fast-import supports the specified feature, or
@@ -887,6 +892,33 @@ remove the leading part of the line, for example:
 Placing a `progress` command immediately after a `checkpoint` will
 inform the reader when the `checkpoint` has been completed and it
 can safely access the refs that fast-import updated.
+
+`cat`
+~~~~~
+Causes fast-import to print an object to a file descriptor
+previously arranged with the `--report-fd` option.  The command
+otherwise has no impact on the current import; its main purpose is to
+retrieve objects that may be in fast-import's memory but not
+accessible from the target repository a little quicker than by the
+method suggested by the description of the `progress` option.
+
+....
+	'cat' SP <dataref> LF
+....
+
+The `<dataref>` can be either a mark reference (`:<idnum>`)
+set previously, or a full 40-byte SHA-1 of any Git object,
+preexisting or ready to be written.
+
+If `<dataref>` refers to a tree object, it may be followed by
+a path within that tree to retrieve a subtree or blob.
+
+....
+	'cat' SP <treeref> SP <path> LF
+....
+
+A `<path>` string should be surrounded with quotation marks and
+use C-style escaping.
 
 `feature`
 ~~~~~~~~~

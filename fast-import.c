@@ -55,6 +55,9 @@ Format of STDIN stream:
     ('from' sp committish lf)?
     lf?;
 
+  cat_request ::= 'cat' sp (hexsha1 | idnum) lf
+    | 'cat' sp hexsha1 sp path_str lf;
+
   checkpoint ::= 'checkpoint' lf
     lf?;
 
@@ -2688,6 +2691,109 @@ static void parse_reset_branch(void)
 		unread_command_buf = 1;
 }
 
+static void quoted_path_sha1(unsigned char sha1[20], struct tree_entry *root,
+				const char *path, const char *line)
+{
+	struct strbuf uq = STRBUF_INIT;
+	struct tree_entry leaf = {0};
+	const char *x;
+
+	if (unquote_c_style(&uq, path, &x))
+		die("Invalid path: %s", line);
+	if (*x)
+		die("Garbage after path: %s", line);
+	tree_content_get(root, uq.buf, &leaf);
+	if (!leaf.versions[1].mode)
+		die("Path %s not in branch", uq.buf);
+	hashcpy(sha1, leaf.versions[1].sha1);
+}
+
+static void sendreport(const char *buf, unsigned long size)
+{
+	if (write_in_full(report_fd, buf, size) != size)
+		die_errno("Write to frontend failed");
+}
+
+static void cat_object(struct object_entry *oe, unsigned char sha1[20])
+{
+	struct strbuf line = STRBUF_INIT;
+	unsigned long size;
+	enum object_type type = 0;
+	char *buf;
+
+	if (report_fd < 0)
+		die("Internal error: bad report_fd %d", report_fd);
+	if (oe && oe->pack_id != MAX_PACK_ID) {
+		type = oe->type;
+		buf = gfi_unpack_entry(oe, &size);
+	} else {
+		buf = read_sha1_file(sha1, &type, &size);
+	}
+	if (!buf)
+		die("Can't read object %s", sha1_to_hex(sha1));
+
+	/*
+	 * Output based on batch_one_object() from cat-file.c.
+	 */
+	if (type <= 0) {
+		strbuf_reset(&line);
+		strbuf_addf(&line, "%s missing\n", sha1_to_hex(sha1));
+		if (write_in_full(report_fd, line.buf, line.len) != line.len)
+			die_errno("Write to frontend failed 1");
+	}
+	strbuf_reset(&line);
+	strbuf_addf(&line, "%s %s %lu\n", sha1_to_hex(sha1),
+						typename(type), size);
+	sendreport(line.buf, line.len);
+	sendreport(buf, size);
+	sendreport("\n", 1);
+	free(buf);
+}
+
+
+static void parse_cat_request(void)
+{
+	const char *p;
+	struct object_entry *oe = oe;
+	unsigned char sha1[20];
+	struct tree_entry root = {0};
+
+	/* cat SP <object> */
+	p = command_buf.buf + strlen("cat ");
+	if (report_fd < 0)
+		die("The cat command features the report-fd feature.");
+	if (*p == ':') {
+		char *x;
+		oe = find_mark(strtoumax(p + 1, &x, 10));
+		if (x == p + 1)
+			die("Invalid mark: %s", command_buf.buf);
+		if (!oe)
+			die("Unknown mark: %s", command_buf.buf);
+		p = x;
+		hashcpy(sha1, oe->idx.sha1);
+	} else {
+		if (get_sha1_hex(p, sha1))
+			die("Invalid SHA1: %s", command_buf.buf);
+		p += 40;
+		if (!*p)
+			oe = find_object(sha1);
+	}
+
+	/* [ SP "<path>" ] */
+	if (*p) {
+		if (*p++ != ' ')
+			die("Missing space after SHA1: %s", command_buf.buf);
+
+		/* cat <tree> "<path>" form. */
+		hashcpy(root.versions[1].sha1, sha1);
+		load_tree(&root);
+		quoted_path_sha1(sha1, &root, p, command_buf.buf);
+		oe = find_object(sha1);
+	}
+
+	cat_object(oe, sha1);
+}
+
 static void parse_checkpoint(void)
 {
 	if (object_count) {
@@ -2971,6 +3077,8 @@ int main(int argc, const char **argv)
 			parse_new_tag();
 		else if (!prefixcmp(command_buf.buf, "reset "))
 			parse_reset_branch();
+		else if (!prefixcmp(command_buf.buf, "cat "))
+			parse_cat_request();
 		else if (!strcmp("checkpoint", command_buf.buf))
 			parse_checkpoint();
 		else if (!prefixcmp(command_buf.buf, "progress "))
