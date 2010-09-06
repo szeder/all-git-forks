@@ -268,8 +268,12 @@ static struct cmdnames aliases;
 
 static int git_unknown_cmd_config(const char *var, const char *value, void *cb)
 {
-	if (!strcmp(var, "help.autocorrect"))
-		autocorrect = git_config_int(var,value);
+	if (!strcmp(var, "help.autocorrect")) {
+		if (!strcmp(value, "prompt"))
+			autocorrect = INT_MAX;
+		else
+			autocorrect = git_config_int(var,value);
+	}
 	/* Also use aliases for command lookup */
 	if (!prefixcmp(var, "alias."))
 		add_cmdname(&aliases, var + 6, strlen(var + 6));
@@ -373,7 +377,16 @@ const char *help_unknown_cmd(const char *cmd)
 			"which does not exist.\n"
 			"Continuing under the assumption that you meant '%s'\n",
 			cmd, assumed);
-		if (autocorrect > 0) {
+		if (autocorrect == INT_MAX) {
+			char answer[3];
+			if (!isatty(STDIN_FILENO) || !isatty(STDERR_FILENO))
+				exit(1);
+			fprintf(stderr, "Continue? (y/n) ");
+			if (!fgets(answer, sizeof(answer), stdin))
+				exit(1);
+			if (*answer != 'y' && *answer != 'Y')
+				exit(1);
+		} else if (autocorrect > 0) {
 			fprintf(stderr, "in %0.1f seconds automatically...\n",
 				(float)autocorrect/10.0);
 			poll(NULL, 0, autocorrect * 100);
