@@ -1,10 +1,12 @@
 #include "cache.h"
 #include "diff.h"
+#include "commit.h"
 #include "tree-walk.h"
 #include "narrow-tree.h"
 #include "pathspec.h"
 #include "argv-array.h"
 #include "tree-walk.h"
+#include "diff.h"
 
 static struct pathspec narrow_pathspec;
 static struct diff_options same_base_diffopts;
@@ -151,4 +153,46 @@ int same_narrow_base(const unsigned char *t1, const unsigned char *t2)
 	DIFF_OPT_CLR(&same_base_diffopts, HAS_CHANGES);
 	return diff_tree_sha1(t1, t2, "", &same_base_diffopts) == 0 &&
 		!DIFF_OPT_TST(&same_base_diffopts, HAS_CHANGES);
+}
+
+struct commit_list *find_narrow_merge_base(unsigned char *narrow_base,
+					   struct commit *head,
+					   struct commit_list *remoteheads)
+{
+	struct commit_list *remote = remoteheads;
+	const char **narrow_prefix = narrow_pathspec.raw;
+
+	if (!narrow_prefix)
+		return NULL;
+
+	parse_commit(head);
+	while (remote) {
+		parse_commit(remote->item);
+		if (!same_narrow_base(head->tree->object.sha1,
+				  remote->item->tree->object.sha1))
+			break;
+		remote = remote->next;
+	}
+
+	if (!remote) {		/* all same narrow base */
+		hashcpy(narrow_base, head->tree->object.sha1);
+		return NULL;
+	}
+
+	/*
+	 * If it's three-way merge and head has the same narrow base
+	 * as in common, then we could just use remote as the base
+	 * because we haven't changed anything outside narrow tree.
+	 */
+	if (remoteheads && !remoteheads->next) {
+		struct commit_list *common;
+		common = get_merge_bases(head, remoteheads->item, 1);
+		if (common && !common->next &&
+		    same_narrow_base(head->object.sha1,
+				  common->item->object.sha1)) {
+			hashcpy(narrow_base, remoteheads->item->tree->object.sha1);
+			return common;
+		}
+	}
+	die("Different narrow base, couldn't do merge (yet)");
 }
