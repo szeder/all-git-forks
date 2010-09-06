@@ -433,6 +433,7 @@ static int reset_tree(struct tree *tree, const struct checkout_opts *o,
 		 * them.
 		 */
 	case 0:
+		hashcpy(the_index.narrow_base, tree->object.sha1);
 		return 0;
 	default:
 		return 128;
@@ -517,7 +518,9 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		init_tree_desc(&trees[1], tree->buffer, tree->size);
 
 		ret = unpack_trees(2, trees, &topts);
-		if (ret == -1) {
+		if (ret != -1)
+			hashcpy(the_index.narrow_base, tree->object.sha1);
+		else {
 			/*
 			 * Unpack couldn't do a trivial merge; either
 			 * give up or do a real merge, depending on
