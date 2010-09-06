@@ -12,6 +12,8 @@ void fsck_set_msg_type(struct fsck_options *options,
 void fsck_set_msg_types(struct fsck_options *options, const char *values);
 int is_valid_msg_type(const char *msg_id, const char *msg_type);
 
+#define NARROW_TREE 0x0001
+
 /*
  * callback function for fsck_walk
  * type is the expected type of the object or OBJ_ANY

@@ -17,6 +17,7 @@
 #define REACHABLE 0x0001
 #define SEEN      0x0002
 #define HAS_OBJ   0x0004
+/* NARROW_TREE    0x0008 */
 
 static int show_root;
 static int show_tags;
@@ -108,6 +109,8 @@ static int mark_object(struct object *obj, int type, void *data, struct fsck_opt
 		/* ... and the reference to parent is safe here */
 		objerror(parent, "wrong object type in link");
 
+	if (obj->flags & NARROW_TREE)
+		return 0;
 	if (obj->flags & REACHABLE)
 		return 0;
 	obj->flags |= REACHABLE;

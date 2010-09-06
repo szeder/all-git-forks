@@ -9,6 +9,7 @@
 #include "refs.h"
 #include "utf8.h"
 #include "sha1-array.h"
+#include "narrow-tree.h"
 
 #define FSCK_FATAL -1
 #define FSCK_INFO -2
@@ -326,6 +327,45 @@ static int fsck_walk_tree(struct tree *tree, void *data, struct fsck_options *op
 	return res;
 }
 
+static int fsck_walk_narrow_tree(struct tree *tree, fsck_walk_func walk, void *data,
+				 struct strbuf *base, int baselen)
+{
+	struct name_entry entry;
+	struct tree_desc desc;
+	void *buffer;
+	int result, walked = 0;
+
+	buffer = fill_tree_descriptor(&desc, tree->object.sha1);
+	if (baselen) {
+		strbuf_grow(base, 1);
+		base->buf[baselen++] = '/';
+	}
+
+	while (tree_entry(&desc, &entry)) {
+		int interesting = tree_entry_interesting(&entry, base, baselen, get_narrow_pathspec());
+		if (interesting < 0)
+			break;
+		if (interesting == 2) {
+			 free(buffer);
+			 return walk((struct object *)tree, OBJ_TREE, data);
+		}
+		if (!interesting)
+			continue;
+
+		memcpy(base+baselen, entry.path, tree_entry_len(&entry));
+		result = fsck_walk_narrow_tree(lookup_tree(entry.sha1), walk, data,
+					       base, baselen + tree_entry_len(&entry));
+		if (result < 0)
+			break;
+	}
+	free(buffer);
+	if (!walked) {
+		tree->object.flags |= NARROW_TREE;
+		return walk((struct object *)tree, OBJ_TREE, data);
+	}
+	return result;
+}
+
 static int fsck_walk_commit(struct commit *commit, void *data, struct fsck_options *options)
 {
 	struct commit_list *parents;
@@ -335,7 +375,12 @@ static int fsck_walk_commit(struct commit *commit, void *data, struct fsck_optio
 	if (parse_commit(commit))
 		return -1;
 
-	result = options->walk((struct object *)commit->tree, OBJ_TREE, data, options);
+	if (is_narrow_clone()) {
+		struct strbuf sb = STRBUF_INIT;
+		result = fsck_walk_narrow_tree(commit->tree, walk, data, &sb, 0);
+	}
+	else
+		result = options->walk((struct object *)commit->tree, OBJ_TREE, data, options);
 	if (result < 0)
 		return result;
 	res = result;
