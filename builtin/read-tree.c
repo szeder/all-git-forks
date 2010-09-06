@@ -15,6 +15,7 @@
 #include "builtin.h"
 #include "parse-options.h"
 #include "resolve-undo.h"
+#include "narrow-tree.h"
 
 static int nr_trees;
 static int read_empty;
@@ -105,6 +106,7 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	struct tree_desc t[MAX_UNPACK_TREES];
 	struct unpack_trees_options opts;
 	int prefix_set = 0;
+	int base_index = 0;
 	const struct option read_tree_options[] = {
 		{ OPTION_CALLBACK, 0, "index-output", NULL, N_("file"),
 		  N_("write resulting index to <file>"),
@@ -196,9 +198,34 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	if (opts.merge && !opts.index_only)
 		setup_work_tree();
 
+	/*
+	 * Try to find if all trees have the same base. Every case may
+	 * change the base or reject it later on.
+	 */
+	if (is_narrow_clone()) {
+		for (i = 1; i < nr_trees; i++)
+			if (!same_narrow_base(trees[0]->object.sha1,
+					      trees[i]->object.sha1)) {
+				base_index = -1;
+				break;
+			}
+	}
+
+	/*
+	 * In narrow repo, "the rest of the trees" is represented by
+	 * index_state.narrow_base, unpack_trees() won't do anything
+	 * outside narrow area, so we need to make sure narrow_base
+	 * and to be merged trees are compatible.
+	 */
 	if (opts.merge) {
 		if (stage < 2)
 			die("just how do you expect me to merge %d trees?", stage-1);
+		/* If merge, consider narrow base in index too */
+		if (is_narrow_clone() &&
+		    base_index >= 0 &&
+		    !same_narrow_base(trees[base_index]->object.sha1,
+				      the_index.narrow_base))
+				base_index = -1;
 		switch (stage - 1) {
 		case 1:
 			opts.fn = opts.prefix ? bind_merge : oneway_merge;
@@ -206,9 +233,21 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 		case 2:
 			opts.fn = twoway_merge;
 			opts.initial_checkout = is_cache_unborn();
+			/*
+			 * This is a fast-forward, trees[0] and
+			 * narrow_base being the same is enough
+			 */
+			if (base_index == -1) {
+				if (same_narrow_base(trees[0]->object.sha1,
+						     the_index.narrow_base))
+					base_index = 1;
+			}
+			else
+				base_index = 1; /* prefer the new tree */
 			break;
 		case 3:
 		default:
+			/* if (base_index == -1) FIXME; */
 			opts.fn = threeway_merge;
 			break;
 		}
@@ -218,6 +257,9 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 		else
 			opts.head_idx = 1;
 	}
+
+	if (base_index < 0)
+		die("Cannot find suitable narrow base");
 
 	if (opts.debug_unpack)
 		opts.fn = debug_merge;
@@ -243,6 +285,8 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	if (nr_trees == 1 && !opts.prefix)
 		prime_cache_tree(&the_index, trees[0]);
 
+	if (nr_trees)
+		hashcpy(the_index.narrow_base, trees[base_index]->object.sha1);
 	if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 		die("unable to write new index file");
 	return 0;
