@@ -36,7 +36,7 @@ int buffer_deinit(void)
 }
 
 /* Read a line without trailing newline. */
-char *buffer_read_line(void)
+char *buffer_fgets(FILE *infile)
 {
 	char *end;
 	if (!fgets(line_buffer, sizeof(line_buffer), infile))
@@ -55,6 +55,11 @@ char *buffer_read_line(void)
 		 */
 		return NULL;
 	return line_buffer;
+}
+
+char *buffer_read_line(void)
+{
+	return buffer_fgets(infile);
 }
 
 char *buffer_read_string(uint32_t len)
