@@ -286,6 +286,7 @@ static void create_base_index(const struct commit *current_head)
 	struct tree *tree;
 	struct unpack_trees_options opts;
 	struct tree_desc t;
+	unsigned char narrow_base[20];
 
 	if (!current_head) {
 		discard_cache();
@@ -305,8 +306,10 @@ static void create_base_index(const struct commit *current_head)
 		die(_("failed to unpack HEAD tree object"));
 	parse_tree(tree);
 	init_tree_desc(&t, tree->buffer, tree->size);
+	hashcpy(narrow_base, the_index.narrow_base);
 	if (unpack_trees(1, &t, &opts))
 		exit(128); /* We've already reported the error, finish dying */
+	hashcpy(the_index.narrow_base, narrow_base);
 }
 
 static void refresh_cache_or_die(int refresh_flags)
