@@ -25,7 +25,7 @@ check_summary_oneline() {
 	test_cmp exp act
 }
 
-test_expect_success 'output summary format' '
+test_expect_success NO_GETTEXT_POISON 'output summary format' '
 
 	echo new >file1 &&
 	git add file1 &&
@@ -36,12 +36,12 @@ test_expect_success 'output summary format' '
 	check_summary_oneline "" "a change"
 '
 
-test_expect_success 'output summary format for commit with an empty diff' '
+test_expect_success NO_GETTEXT_POISON 'output summary format for commit with an empty diff' '
 
 	check_summary_oneline "" "empty" "--allow-empty"
 '
 
-test_expect_success 'output summary format for merges' '
+test_expect_success NO_GETTEXT_POISON 'output summary format for merges' '
 
 	git checkout -b recursive-base &&
 	test_commit base file1 &&
@@ -70,7 +70,7 @@ output_tests_cleanup() {
 	git commit -m "cleanup"
 }
 
-test_expect_success 'the basics' '
+test_expect_success NO_GETTEXT_POISON 'the basics' '
 
 	output_tests_cleanup &&
 
@@ -91,7 +91,7 @@ test_expect_success 'the basics' '
 
 '
 
-test_expect_success 'partial' '
+test_expect_success NO_GETTEXT_POISON 'partial' '
 
 	echo another >"commit is" &&
 	echo another >not/forbid &&
@@ -103,7 +103,7 @@ test_expect_success 'partial' '
 
 '
 
-test_expect_success 'partial modification in a subdirectory' '
+test_expect_success NO_GETTEXT_POISON 'partial modification in a subdirectory' '
 
 	test_tick &&
 	git commit -m "partial commit to subdirectory" not &&
@@ -113,7 +113,7 @@ test_expect_success 'partial modification in a subdirectory' '
 
 '
 
-test_expect_success 'partial removal' '
+test_expect_success NO_GETTEXT_POISON 'partial removal' '
 
 	git rm not/forbid &&
 	git commit -m "partial commit to remove not/forbid" not &&
@@ -165,7 +165,7 @@ test_expect_success 'verbose respects diff config' '
 	git config --unset color.diff
 '
 
-test_expect_success 'cleanup commit messages (verbatim,-t)' '
+test_expect_success NO_GETTEXT_POISON 'cleanup commit messages (verbatim,-t)' '
 
 	echo >>negative &&
 	{ echo;echo "# text";echo; } >expect &&
@@ -175,7 +175,7 @@ test_expect_success 'cleanup commit messages (verbatim,-t)' '
 
 '
 
-test_expect_success 'cleanup commit messages (verbatim,-F)' '
+test_expect_success NO_GETTEXT_POISON 'cleanup commit messages (verbatim,-F)' '
 
 	echo >>negative &&
 	git commit --cleanup=verbatim -F expect -a &&
@@ -184,7 +184,7 @@ test_expect_success 'cleanup commit messages (verbatim,-F)' '
 
 '
 
-test_expect_success 'cleanup commit messages (verbatim,-m)' '
+test_expect_success NO_GETTEXT_POISON 'cleanup commit messages (verbatim,-m)' '
 
 	echo >>negative &&
 	git commit --cleanup=verbatim -m "$(cat expect)" -a &&
@@ -220,7 +220,7 @@ echo "sample
 # Please enter the commit message for your changes. Lines starting
 # with '#' will be ignored, and an empty message aborts the commit." >expect
 
-test_expect_success 'cleanup commit messages (strip,-F,-e)' '
+test_expect_success NO_GETTEXT_POISON 'cleanup commit messages (strip,-F,-e)' '
 
 	echo >>negative &&
 	{ echo;echo sample;echo; } >text &&
@@ -234,7 +234,7 @@ echo "#
 # Author:    $GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL>
 #" >> expect
 
-test_expect_success 'author different from committer' '
+test_expect_success NO_GETTEXT_POISON 'author different from committer' '
 
 	echo >>negative &&
 	git commit -e -m "sample"
@@ -248,7 +248,7 @@ rm -f expect.tmp
 echo "# Committer:
 #" >> expect
 
-test_expect_success 'committer is automatic' '
+test_expect_success NO_GETTEXT_POISON 'committer is automatic' '
 
 	echo >>negative &&
 	(
@@ -370,66 +370,66 @@ try_commit () {
 
 try_commit_status_combo () {
 
-	test_expect_success 'commit' '
+	test_expect_success NO_GETTEXT_POISON 'commit' '
 		clear_config commit.status &&
 		try_commit "" &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit' '
+	test_expect_success NO_GETTEXT_POISON 'commit' '
 		clear_config commit.status &&
 		try_commit "" &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --status' '
+	test_expect_success NO_GETTEXT_POISON 'commit --status' '
 		clear_config commit.status &&
 		try_commit --status &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --no-status' '
+	test_expect_success NO_GETTEXT_POISON 'commit --no-status' '
 		clear_config commit.status &&
 		try_commit --no-status
 		! grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit with commit.status = yes' '
+	test_expect_success NO_GETTEXT_POISON 'commit with commit.status = yes' '
 		clear_config commit.status &&
 		git config commit.status yes &&
 		try_commit "" &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit with commit.status = no' '
+	test_expect_success NO_GETTEXT_POISON 'commit with commit.status = no' '
 		clear_config commit.status &&
 		git config commit.status no &&
 		try_commit "" &&
 		! grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --status with commit.status = yes' '
+	test_expect_success NO_GETTEXT_POISON 'commit --status with commit.status = yes' '
 		clear_config commit.status &&
 		git config commit.status yes &&
 		try_commit --status &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --no-status with commit.status = yes' '
+	test_expect_success NO_GETTEXT_POISON 'commit --no-status with commit.status = yes' '
 		clear_config commit.status &&
 		git config commit.status yes &&
 		try_commit --no-status &&
 		! grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --status with commit.status = no' '
+	test_expect_success NO_GETTEXT_POISON 'commit --status with commit.status = no' '
 		clear_config commit.status &&
 		git config commit.status no &&
 		try_commit --status &&
 		grep "^# Changes to be committed:" .git/COMMIT_EDITMSG
 	'
 
-	test_expect_success 'commit --no-status with commit.status = no' '
+	test_expect_success NO_GETTEXT_POISON 'commit --no-status with commit.status = no' '
 		clear_config commit.status &&
 		git config commit.status no &&
 		try_commit --no-status &&

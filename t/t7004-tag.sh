@@ -1044,12 +1044,14 @@ test_expect_success GPG \
 	'verify signed tag fails when public key is not present' \
 	'test_must_fail git tag -v signed-tag'
 
-test_expect_success \
+# "POISON" isn't a comment, so skip under GETTEXT_POISON
+test_expect_success NO_GETTEXT_POISON \
 	'git tag -a fails if tag annotation is empty' '
 	! (GIT_EDITOR=cat git tag -a initial-comment)
 '
 
-test_expect_success \
+# Likewise GETTEXT_POISON doesn't emit something that looks like a comment
+test_expect_success NO_GETTEXT_POISON \
 	'message in editor has initial comment' '
 	GIT_EDITOR=cat git tag -a initial-comment > actual
 	# check the first line --- should be empty

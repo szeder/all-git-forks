@@ -27,7 +27,7 @@ done
 
 for i in ign dir/ign dir/sub dir/sub/*ign sub/file sub sub/*
 do
-	test_expect_success "complaints for ignored $i" '
+	test_expect_success NO_GETTEXT_POISON "complaints for ignored $i" '
 		rm -f .git/index &&
 		test_must_fail git add "$i" 2>err &&
 		git ls-files "$i" >out &&
@@ -36,7 +36,7 @@ do
 		cat err
 	'
 
-	test_expect_success "complaints for ignored $i with unignored file" '
+	test_expect_success NO_GETTEXT_POISON "complaints for ignored $i with unignored file" '
 		rm -f .git/index &&
 		test_must_fail git add "$i" file 2>err &&
 		git ls-files "$i" >out &&
@@ -48,7 +48,7 @@ done
 
 for i in sub sub/*
 do
-	test_expect_success "complaints for ignored $i in dir" '
+	test_expect_success NO_GETTEXT_POISON "complaints for ignored $i in dir" '
 		rm -f .git/index &&
 		(
 			cd dir &&
@@ -63,7 +63,7 @@ done
 
 for i in ign file
 do
-	test_expect_success "complaints for ignored $i in sub" '
+	test_expect_success NO_GETTEXT_POISON "complaints for ignored $i in sub" '
 		rm -f .git/index &&
 		(
 			cd sub &&
