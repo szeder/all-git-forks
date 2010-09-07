@@ -15,6 +15,7 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "split-index.h"
+#include "narrow-tree.h"
 
 /*
  * Default to not allowing changes to the list of files. The
@@ -911,6 +912,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	int lock_error = 0;
 	int split_index = -1;
 	struct lock_file *lock_file;
+	const char *narrow_base = NULL;
 	struct parse_opt_ctx_t ctx;
 	int parseopt_state = PARSE_OPT_UNKNOWN;
 	struct option options[] = {
@@ -929,6 +931,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		OPT_BIT(0, "unmerged", &refresh_args.flags,
 			N_("refresh even if index contains unmerged entries"),
 			REFRESH_UNMERGED),
+		OPT_STRING(0, "narrow-base", &narrow_base, "treeish",
+			   "tree base for update narrow index"),
 		{OPTION_CALLBACK, 0, "refresh", &refresh_args, NULL,
 			N_("refresh stat information"),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG,
@@ -1125,6 +1129,15 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	} else if (!untracked_cache && the_index.untracked) {
 		the_index.untracked = NULL;
 		the_index.cache_changed |= UNTRACKED_CHANGED;
+	}
+	if (narrow_base) {
+		unsigned char sha1[20];
+		if (get_sha1_treeish(narrow_base, sha1))
+			die(_("narrow base is not a valid SHA-1 %s"), narrow_base);
+		if (sha1_object_info(sha1, NULL) != OBJ_TREE)
+			die(_("narrow basse is not a tree %s"), sha1_to_hex(sha1));
+		hashcpy(the_index.narrow_base, sha1);
+		the_index.cache_changed |= NARROW_CHANGED;
 	}
 
 	if (active_cache_changed) {

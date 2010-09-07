@@ -823,6 +823,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				free(p);
 				continue;
 			}
+			if (!strcmp(arg, "--narrow-base")) {
+				if (read_cache() < 0)
+					die(_("cannot read the index"));
+				if (the_index.narrow_base)
+					puts(sha1_to_hex(the_index.narrow_base));
+				continue;
+			}
 			if (show_flag(arg) && verify)
 				die_no_single_rev(quiet);
 			continue;

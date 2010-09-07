@@ -21,7 +21,7 @@ SYNOPSIS
 	     [--[no-|force-]untracked-cache]
 	     [--really-refresh] [--unresolve] [--again | -g]
 	     [--info-only] [--index-info]
-	     [-z] [--stdin] [--index-version <n>]
+	     [-z] [--stdin] [--index-version <n>] [--narrow-base <tree>]
 	     [--verbose]
 	     [--] [<file>...]
 
@@ -156,6 +156,9 @@ size by 30%-50% on large repositories, which results in faster load
 time. Version 4 is relatively young (first released in in 1.8.0 in
 October 2012). Other Git implementations such as JGit and libgit2
 may not support it yet.
+
+--narrow-base <tree>::
+	Add or update narrow base.
 
 -z::
 	Only meaningful with `--stdin` or `--index-info`; paths are

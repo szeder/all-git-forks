@@ -251,6 +251,9 @@ print a message to stderr and exit with nonzero status.
 	path of the top-level directory relative to the current
 	directory (typically a sequence of "../", or an empty string).
 
+--narrow-base::
+	Print the narrow base in index if available.
+
 --show-prefix::
 	When the command is invoked from a subdirectory, show the
 	path of the current directory relative to the top-level
