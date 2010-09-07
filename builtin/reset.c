@@ -82,6 +82,8 @@ static int reset_index(const unsigned char *sha1, int reset_type, int quiet)
 		return error(_("Failed to find tree of %s."), sha1_to_hex(sha1));
 	if (unpack_trees(nr, desc, &opts))
 		return -1;
+	hashcpy(the_index.narrow_base,
+		lookup_commit_reference(sha1)->tree->object.sha1);
 
 	if (reset_type == MIXED || reset_type == HARD) {
 		tree = parse_tree_indirect(sha1);
