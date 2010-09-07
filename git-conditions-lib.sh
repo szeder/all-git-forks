@@ -30,5 +30,16 @@ check_staged_0()
 	fi
 }
 
+check_untracked_0()
+{
+	if test $(git ls-files -o --exclude-standard | wc -l) -ne 0
+	then
+		echo "There are untracked files."
+	else
+		echo "There are no untracked files."
+		false
+	fi
+}
+
 
 fi
