@@ -22,6 +22,7 @@
 #include "merge-recursive.h"
 #include "dir.h"
 #include "submodule.h"
+#include "narrow-tree.h"
 
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)
@@ -224,6 +225,23 @@ static int git_merge_trees(int index_only,
 	int rc;
 	struct tree_desc t[3];
 	struct unpack_trees_options opts;
+	const struct tree *base_tree;
+
+	if (is_narrow_clone()) {
+		if (same_narrow_base(common->object.sha1,
+				     head->object.sha1))
+			base_tree = head;
+		else if(same_narrow_base(common->object.sha1,
+					 merge->object.sha1))
+			base_tree = merge;
+		else if (same_narrow_base(head->object.sha1,
+					  merge->object.sha1))
+			base_tree = merge;
+		else {
+			error("Cannot find suitable narrow base");
+			return -1;
+		}
+	}
 
 	memset(&opts, 0, sizeof(opts));
 	if (index_only)
@@ -242,6 +260,8 @@ static int git_merge_trees(int index_only,
 	init_tree_desc_from_tree(t+2, merge);
 
 	rc = unpack_trees(3, t, &opts);
+	if (is_narrow_clone())
+		hashcpy(the_index.narrow_base, base_tree->object.sha1);
 	cache_tree_free(&active_cache_tree);
 	return rc;
 }
