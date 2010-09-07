@@ -45,7 +45,7 @@ OPTIONS
 	them.  This used to be optional but now it is the default.
 +
 Note that the patch is always used as-is without charset
-conversion, even with this flag.
+conversion, even with this flag.  Unless --recode-patch is used.
 
 --encoding=<encoding>::
 	Similar to -u.  But when re-coding, the charset specified here is
@@ -53,6 +53,10 @@ conversion, even with this flag.
 
 -n::
 	Disable all charset re-coding of the metadata.
+
+--recode-patch::
+	Similar to -u.  But what is re-coded is the patch instead of the
+	metainfo.  The default is off.
 
 --scissors::
 	Remove everything in body before a scissors line.  A line that

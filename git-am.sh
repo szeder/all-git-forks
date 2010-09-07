@@ -14,6 +14,7 @@ b,binary*       (historical option -- no-op)
 q,quiet         be quiet
 s,signoff       add a Signed-off-by line to the commit message
 u,utf8          recode into utf8 (default)
+recode-patch    pass --recode-patch flag to git-mailinfo
 k,keep          pass -k flag to git-mailinfo
 keep-cr         pass --keep-cr flag to git-mailsplit for mbox format
 no-keep-cr      do not pass --keep-cr flag to git-mailsplit independent of am.keepcr
@@ -295,7 +296,7 @@ split_patches () {
 prec=4
 dotest="$GIT_DIR/rebase-apply"
 sign= utf8=t keep= keepcr= skip= interactive= resolved= rebasing= abort=
-resolvemsg= resume= scissors= no_inbody_headers=
+resolvemsg= resume= scissors= no_inbody_headers= recode_patch=
 git_apply_opt=
 committer_date_is_author_date=
 ignore_date=
@@ -321,6 +322,8 @@ do
 		utf8=t ;; # this is now default
 	--no-utf8)
 		utf8= ;;
+	--recode-patch)
+		recode_patch=t ;;
 	-k|--keep)
 		keep=t ;;
 	-c|--scissors)
@@ -464,6 +467,7 @@ else
 	echo "$threeway" >"$dotest/threeway"
 	echo "$sign" >"$dotest/sign"
 	echo "$utf8" >"$dotest/utf8"
+	echo "$recode_patch" >"$dotest/recode_patch"
 	echo "$keep" >"$dotest/keep"
 	echo "$keepcr" >"$dotest/keepcr"
 	echo "$scissors" >"$dotest/scissors"
@@ -504,6 +508,10 @@ then
 	utf8=-u
 else
 	utf8=-n
+fi
+if test "$(cat "$dotest/recode_patch")" = t
+then
+	recodepatch=--recode-patch
 fi
 if test "$(cat "$dotest/keep")" = t
 then
@@ -581,7 +589,8 @@ do
 	# by the user, or the user can tell us to do so by --resolved flag.
 	case "$resume" in
 	'')
-		git mailinfo $keep $no_inbody_headers $scissors $utf8 "$dotest/msg" "$dotest/patch" \
+		git mailinfo $keep $no_inbody_headers $scissors $utf8 \
+		$recodepatch "$dotest/msg" "$dotest/patch" \
 			<"$dotest/$msgnum" >"$dotest/info" ||
 			stop_here $this
 
