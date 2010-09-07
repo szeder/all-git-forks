@@ -43,6 +43,11 @@ all::
 # on platforms where we don't expect glibc (Linux, Hurd,
 # GNU/kFreeBSD), which includes libintl.
 #
+# Define GNU_GETTEXT if you're using the GNU implementation of
+# libintl. We define this everywhere except on Solaris, which has its
+# own gettext implementation. If GNU_GETTEXT is set we'll use GNU
+# extensions like `msgfmt --check'.
+#
 # Define GETTEXT_POISON to turn all strings that use gettext into
 # gibberish. This option should only be used by the Git developers to
 # check that the Git gettext implementation itself is sane.
@@ -783,6 +788,10 @@ EXTLIBS =
 ifndef NO_GETTEXT
 	# Systems that use GNU gettext and glibc are the exception
 	NEEDS_LIBINTL = YesPlease
+
+	# Systems that don't use GNU gettext are the exception. Only
+	# Solaris has a mature non-GNU gettext implementation.
+	GNU_GETTEXT = YesPlease
 endif
 
 # We choose to avoid "if .. else if .. else .. endif endif"
@@ -872,6 +881,9 @@ ifeq ($(uname_S),SunOS)
 	NO_MKDTEMP = YesPlease
 	NO_MKSTEMPS = YesPlease
 	NO_REGEX = YesPlease
+ifndef NO_GETTEXT
+	GNU_GETTEXT =
+endif
 	ifeq ($(uname_R),5.6)
 		SOCKLEN_T = int
 		NO_HSTRERROR = YesPlease
