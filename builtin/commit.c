@@ -1142,6 +1142,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		use_editor = edit_flag;
 
 	/* Sanity check options */
+	if (is_narrow_clone() && s->is_initial)
+		die("You cannot make initial commit in narrow repositories");
 	if (amend && !current_head)
 		die(_("You have nothing to amend."));
 	if (amend && whence != FROM_COMMIT) {
