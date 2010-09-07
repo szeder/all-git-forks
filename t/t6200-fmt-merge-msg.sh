@@ -129,6 +129,117 @@ test_expect_success '[merge] summary/log configuration' '
 	test_cmp expected actual2
 '
 
+test_expect_success 'configurable shortlog length: merge.log' '
+	cat >expected_a <<-EOF &&
+	Merge branch ${apos}left${apos}
+
+	* left: (5 commits)
+	  Left #5
+	  Left #4
+	  Left #3
+	  ...
+	EOF
+
+	git config merge.log 3 &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg <.git/FETCH_HEAD >actual1 &&
+
+	test_might_fail git config --unset-all merge.log &&
+	git config merge.summary 3 &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg <.git/FETCH_HEAD >actual2 &&
+
+	echo "Merge branch ${apos}left${apos}" >expected_b &&
+
+	git config merge.log 0 &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg <.git/FETCH_HEAD >actual3 &&
+
+	test_might_fail git config --unset-all merge.log &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg <.git/FETCH_HEAD >actual4 &&
+
+	test_cmp expected_a actual1 &&
+	test_cmp expected_a actual2 &&
+	test_cmp expected_b actual3 &&
+	test_cmp expected_b actual4
+'
+
+test_expect_success 'configurable shortlog length: --log' '
+	cat >expected1 <<-EOF &&
+	Merge branch ${apos}left${apos}
+
+	* left: (5 commits)
+	  Left #5
+	  Left #4
+	  Left #3
+	  ...
+	EOF
+
+	test_might_fail git config --unset-all merge.log &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg --log=3 <.git/FETCH_HEAD >actual1 &&
+
+	cat >expected_b <<-EOF &&
+	Merge branch ${apos}left${apos}
+
+	* left:
+	  Left #5
+	  Left #4
+	  Left #3
+	  Common #2
+	  Common #1
+	EOF
+
+	test_might_fail git config --unset-all merge.log &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg --log <.git/FETCH_HEAD >actual2 &&
+
+	echo "Merge branch ${apos}left${apos}" >expected_c &&
+
+	test_might_fail git config --unset-all merge.log &&
+	test_might_fail git config --unset-all merge.summary &&
+
+	git checkout master &&
+	test_tick &&
+	git fetch . left &&
+
+	git fmt-merge-msg --no-log <.git/FETCH_HEAD >actual3 &&
+
+	test_cmp expected_a actual1 &&
+	test_cmp expected_b actual2 &&
+	test_cmp expected_c actual3
+'
+
 test_expect_success 'fmt-merge-msg -m' '
 	echo "Sync with left" >expected &&
 	cat >expected.log <<-EOF &&
