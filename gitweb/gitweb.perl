@@ -39,7 +39,10 @@ sub evaluate_uri {
 
 	# Base URL for relative URLs in gitweb ($logo, $favicon, ...),
 	# needed and used only for URLs with nonempty PATH_INFO
-	our $base_url = $my_url;
+	# When rewriting url will contain directory without leading "/"
+	# Either request original name:
+	our $base_url = $cgi->url(-rewrite => 0);
+	# Or append "/" if neccessary (XXX when?)
 
 	# When the script is used as DirectoryIndex, the URL does not contain the name
 	# of the script file itself, and $cgi->url() fails to strip PATH_INFO, so we
