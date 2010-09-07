@@ -93,7 +93,7 @@ static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2, const 
  *  - zero for no
  *  - negative for "no, and no subsequent entries will be either"
  */
-static int tree_entry_interesting(struct tree_desc *desc, const char *base, int baselen, struct diff_options *opt)
+int tree_entry_interesting(struct tree_desc *desc, const char *base, int baselen, struct diff_options *opt)
 {
 	const char *path;
 	const unsigned char *sha1;

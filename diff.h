@@ -171,6 +171,7 @@ extern int diff_tree_sha1(const unsigned char *old, const unsigned char *new,
 			  const char *base, struct diff_options *opt);
 extern int diff_root_tree_sha1(const unsigned char *new, const char *base,
                                struct diff_options *opt);
+extern int tree_entry_interesting(struct tree_desc *desc, const char *base, int baselen, struct diff_options *opt);
 
 struct combine_diff_path {
 	struct combine_diff_path *next;
