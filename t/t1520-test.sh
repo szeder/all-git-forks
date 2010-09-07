@@ -250,6 +250,30 @@ test_expect_success 'git test --staged # when there are only unstaged files' \
 	git test --not-staged
 '
 
+test_expect_success 'git test --untracked # should fail' \
+'
+	test_must_fail git test --untracked
+'
+
+test_expect_success 'git test --not-untracked' \
+'
+	git test --not-untracked
+'
+
+test_expect_success 'git test --untracked # when there are untracked files' \
+'
+	test_when_finished "git clean -fd" && 
+	:> untracked &&
+	git test --untracked
+'
+
+test_expect_success 'git test --not-untracked # when there are untracked files - should fail' \
+'
+	test_when_finished "git clean -fd" && 
+	:> untracked &&
+	test_must_fail git test --not-untracked
+'
+
 '
     test_when_finished "git reset --hard HEAD && git checkout master" && 
     git test --not-staged --not-unstaged && 
