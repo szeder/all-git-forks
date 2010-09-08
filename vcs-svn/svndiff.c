@@ -235,24 +235,25 @@ void svndiff_apply(FILE *src_fd)
 		case copyfrom_source:
 			fseek(src_fd, op->offset, SEEK_SET);
 			buffer_fcat(op->length, src_fd, target_fd);
+			fseek(src_fd, op->offset, SEEK_SET);
+			buffer_fcat(op->length, src_fd, stdout);
 			break;
 		case copyfrom_target:
 			fseek(target_fd, op->offset, SEEK_SET);
 			fread(buf, op->length, 1, target_fd);
 			fseek(target_fd, 0, SEEK_END);
 			fwrite(buf, op->length, 1, target_fd);
+			fwrite(buf, op->length, 1, stdout);
 			break;
 		case copyfrom_new:
 			fseek(target_fd, 0, SEEK_END);
+			target_fd_end = ftell(target_fd);
 			buffer_fcat(op->length, stdin, target_fd);
+			fseek(target_fd, target_fd_end, SEEK_SET);
+			buffer_fcat(op->length, target_fd, stdout);
 			break;
 		}
 	}
-
-	/* Finally output result to stdout */
-	target_fd_end = ftell(target_fd);
-	fseek(target_fd, 0, SEEK_SET);
-	buffer_fcat(target_fd_end, target_fd, stdout);
 
 	/* Memeory cleanup */
 	op_free(op_pool.size);
