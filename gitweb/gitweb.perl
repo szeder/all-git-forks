@@ -3422,6 +3422,7 @@ sub git_header_html {
 <meta name="generator" content="gitweb/$version git/$git_version$mod_perl_version"/>
 <meta name="robots" content="index, nofollow"/>
 <title>$title</title>
+
 EOF
 	# the stylesheet, favicon etc urls won't work correctly with path_info
 	# unless we set the appropriate base URL
@@ -3484,8 +3485,10 @@ EOF
 		print qq(<link rel="shortcut icon" href="$favicon" type="image/png" />\n);
 	}
 
+	print qq!<script type="text/javascript" src="google-code-prettify/src/prettify.js"></script>\n!;
+
 	print "</head>\n" .
-	      "<body>\n";
+	      "<body onload=\"prettyPrint()\">\n";
 
 	if (defined $site_header && -f $site_header) {
 		insert_file($site_header);
@@ -5615,7 +5618,7 @@ sub git_blob {
 		      "<div class=\"title\">$hash</div>\n";
 	}
 	git_print_page_path($file_name, "blob", $hash_base);
-	print "<div class=\"page_body\">\n";
+	print "<div class=\"page_body blob\">\n";
 	if ($mimetype =~ m!^image/!) {
 		print qq!<img type="$mimetype"!;
 		if ($file_name) {
@@ -5627,13 +5630,24 @@ sub git_blob {
 		      qq!" />\n!;
 	} else {
 		my $nr;
+
+		use File::Basename;
+		my (undef, undef, $file_ext) = fileparse($file_name, qr/\.[^.]*/);
+		## XXX escape/remove characters invalid for css class name
+		## TODO only prettyprint for list of known extensions
+		## TODO detect by mime
+		$file_ext =~ s/^\.//;
+		my $syntax_class = ($file_ext?"prettyprint lang-".$file_ext:"");
+
+		print "<pre id=\"blobdata\" class=\"".$syntax_class."\" style=\"border: 0; margin: 0; padding: 0;\">";
 		while (my $line = <$fd>) {
 			chomp $line;
 			$nr++;
 			$line = untabify($line);
-			printf qq!<div class="pre"><a id="l%i" href="%s#l%i" class="linenr">%4i</a> %s</div>\n!,
+			printf qq!<span class="nocode pre"><a id="l%i" href="%s#l%i" class="linenr">%4i</a></span> %s\n!,
 			       $nr, href(-replay => 1), $nr, $nr, $syntax ? $line : esc_html($line, -nbsp=>1);
 		}
+		print "</pre>\n";
 	}
 	close $fd
 		or print "Reading blob failed.\n";
