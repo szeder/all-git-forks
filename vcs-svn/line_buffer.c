@@ -106,6 +106,26 @@ void buffer_copy_bytes(uint32_t len)
 	buffer_fcat(len, infile, stdout);
 }
 
+void buffer_ftee_self(size_t start, uint32_t len, FILE *file)
+{
+	uint32_t in;   
+	size_t advance = ftell(file) - start;
+	while (len > 0 && !feof(infile) && !ferror(infile)) {
+		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+		in = in < advance ? in : advance;
+		fseek(file, start, SEEK_SET);
+		in = fread(byte_buffer, 1, in, file);
+		len -= in;
+		start += in;
+		fseek(file, 0, SEEK_END);
+		fwrite(byte_buffer, 1, in, file);
+		fwrite(byte_buffer, 1, in, stdout);
+		if (ferror(file) || ferror(stdout)) {
+			break;
+		}
+	}
+}
+
 void buffer_reset(void)
 {
 	blob_reset();

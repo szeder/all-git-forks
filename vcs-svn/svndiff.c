@@ -239,11 +239,7 @@ void svndiff_apply(FILE *src_fd)
 			buffer_fcat(op->length, src_fd, stdout);
 			break;
 		case copyfrom_target:
-			fseek(target_fd, op->offset, SEEK_SET);
-			fread(buf, op->length, 1, target_fd);
-			fseek(target_fd, 0, SEEK_END);
-			fwrite(buf, op->length, 1, target_fd);
-			fwrite(buf, op->length, 1, stdout);
+			buffer_ftee_self(op->offset, op->length, target_fd);
 			break;
 		case copyfrom_new:
 			fseek(target_fd, 0, SEEK_END);

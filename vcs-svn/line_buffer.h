@@ -11,5 +11,6 @@ void buffer_copy_bytes(uint32_t len);
 void buffer_fskip(uint32_t len, FILE *infile);
 void buffer_skip_bytes(uint32_t len);
 void buffer_reset(void);
+void buffer_ftee_self(size_t start, uint32_t len, FILE *file);
 
 #endif
