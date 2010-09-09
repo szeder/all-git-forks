@@ -29,7 +29,8 @@ static const char *dirty;
 
 /* diff-index command arguments to check if working tree is dirty. */
 static const char *diff_index_args[] = {
-	"diff-index", "--quiet", "HEAD", "--", NULL
+	"diff-index", "--quiet", "--ignore-submodules=untracked", "HEAD",
+	"--", NULL
 };
 
 
