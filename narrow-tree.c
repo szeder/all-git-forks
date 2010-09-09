@@ -1,10 +1,13 @@
 #include "cache.h"
+#include "diff.h"
+#include "tree-walk.h"
 #include "narrow-tree.h"
 #include "pathspec.h"
 #include "argv-array.h"
 #include "tree-walk.h"
 
 static struct pathspec narrow_pathspec;
+static struct diff_options same_base_diffopts;
 
 static void validate_prefix(const char *prefix, const char *prev_prefix)
 {
@@ -63,6 +66,16 @@ void check_narrow_prefix(void)
 		       "", av.argv);
 	narrow_pathspec.recursive = 1;
 	initialized = 1;
+
+	diff_setup(&same_base_diffopts);
+	DIFF_OPT_SET(&same_base_diffopts, RECURSIVE);
+	DIFF_OPT_SET(&same_base_diffopts, QUICK);
+	init_pathspec(&same_base_diffopts.pathspec, narrow_pathspec.raw);
+	/*
+	for (i = 0; i < narrow_pathspec.nr; i++)
+		same_base_diffopts.pathspec.items[i].to_exclude = 1;
+	same_base_diffopts.pathspec.include_by_default = 1;
+	*/
 }
 
 char *get_narrow_string(void)
@@ -131,4 +144,11 @@ static int replace_subtrees(const char *in, unsigned long size,
  */
 int complete_cache_tree(struct index_state *istate)
 {
+}
+
+int same_narrow_base(const unsigned char *t1, const unsigned char *t2)
+{
+	DIFF_OPT_CLR(&same_base_diffopts, HAS_CHANGES);
+	return diff_tree_sha1(t1, t2, "", &same_base_diffopts) == 0 &&
+		!DIFF_OPT_TST(&same_base_diffopts, HAS_CHANGES);
 }
