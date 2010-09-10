@@ -268,7 +268,7 @@ our %feature = (
 	# return value of feature-sub indicates if to enable specified feature
 	#
 	# if there is no 'sub' key (no feature-sub), then feature cannot be
-	# overriden
+	# overridden
 	#
 	# use gitweb_get_feature(<feature>) to retrieve the <feature> value
 	# (an array) or gitweb_check_feature(<feature>) to check if <feature>
@@ -1060,7 +1060,11 @@ sub run_request {
 	reset_timer();
 
 	evaluate_uri();
+	evaluate_gitweb_config();
 	check_loadavg();
+
+	# $projectroot and $projects_list might be set in gitweb config file
+	$projects_list ||= $projectroot;
 
 	evaluate_query_params();
 	evaluate_path_info();
@@ -1109,11 +1113,7 @@ sub evaluate_argv {
 
 sub run {
 	evaluate_argv();
-	evaluate_gitweb_config();
 	evaluate_git_version();
-
-	# $projectroot and $projects_list might be set in gitweb config file
-	$projects_list ||= $projectroot;
 
 	$pre_listen_hook->()
 		if $pre_listen_hook;
@@ -1346,7 +1346,7 @@ sub esc_param {
 	return $str;
 }
 
-# quote unsafe chars in whole URL, so some charactrs cannot be quoted
+# quote unsafe chars in whole URL, so some characters cannot be quoted
 sub esc_url {
 	my $str = shift;
 	return undef unless defined $str;
@@ -3781,9 +3781,9 @@ sub git_print_authorship {
 }
 
 # Outputs table rows containing the full author or committer information,
-# in the format expected for 'commit' view (& similia).
+# in the format expected for 'commit' view (& similar).
 # Parameters are a commit hash reference, followed by the list of people
-# to output information for. If the list is empty it defalts to both
+# to output information for. If the list is empty it defaults to both
 # author and committer.
 sub git_print_authorship_rows {
 	my $co = shift;
@@ -4512,8 +4512,8 @@ sub git_patchset_body {
 		print "</div>\n"; # class="patch"
 	}
 
-	# for compact combined (--cc) format, with chunk and patch simpliciaction
-	# patchset might be empty, but there might be unprocessed raw lines
+	# for compact combined (--cc) format, with chunk and patch simplification
+	# the patchset might be empty, but there might be unprocessed raw lines
 	for (++$patch_idx if $patch_number > 0;
 	     $patch_idx < @$difftree;
 	     ++$patch_idx) {
@@ -5191,15 +5191,15 @@ sub git_summary {
 }
 
 sub git_tag {
-	my $head = git_get_head_hash($project);
-	git_header_html();
-	git_print_page_nav('','', $head,undef,$head);
 	my %tag = parse_tag($hash);
 
 	if (! %tag) {
 		die_error(404, "Unknown tag object");
 	}
 
+	my $head = git_get_head_hash($project);
+	git_header_html();
+	git_print_page_nav('','', $head,undef,$head);
 	git_print_header_div('commit', esc_html($tag{'name'}), $hash);
 	print "<div class=\"title_text\">\n" .
 	      "<table class=\"object_header\">\n" .
@@ -6521,12 +6521,13 @@ sub git_search {
 			$paging_nav .= " &sdot; next";
 		}
 
-		if ($#commitlist >= 100) {
-		}
-
 		git_print_page_nav('','', $hash,$co{'tree'},$hash, $paging_nav);
 		git_print_header_div('commit', esc_html($co{'title'}), $hash);
-		git_search_grep_body(\@commitlist, 0, 99, $next_link);
+		if ($page == 0 && !@commitlist) {
+			print "<p>No match.</p>\n";
+		} else {
+			git_search_grep_body(\@commitlist, 0, 99, $next_link);
+		}
 	}
 
 	if ($searchtype eq 'pickaxe') {

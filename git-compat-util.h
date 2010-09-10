@@ -312,6 +312,11 @@ extern size_t gitstrlcpy(char *, const char *, size_t);
 extern uintmax_t gitstrtoumax(const char *, char **, int);
 #endif
 
+#ifdef NO_STRTOK_R
+#define strtok_r gitstrtok_r
+extern char *gitstrtok_r(char *s, const char *delim, char **save_ptr);
+#endif
+
 #ifdef NO_HSTRERROR
 #define hstrerror githstrerror
 extern const char *githstrerror(int herror);
@@ -388,6 +393,8 @@ extern int odb_pack_keep(char *name, size_t namesz, unsigned char *sha1);
 
 static inline size_t xsize_t(off_t len)
 {
+	if (len > (size_t) len)
+		die("Cannot handle files this big");
 	return (size_t)len;
 }
 

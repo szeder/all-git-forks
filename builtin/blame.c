@@ -1407,7 +1407,8 @@ static void get_commit_info(struct commit *commit,
 			    int detailed)
 {
 	int len;
-	char *tmp, *endp, *reencoded, *message;
+	const char *subject;
+	char *reencoded, *message;
 	static char author_name[1024];
 	static char author_mail[1024];
 	static char committer_name[1024];
@@ -1449,22 +1450,13 @@ static void get_commit_info(struct commit *commit,
 		    &ret->committer_time, &ret->committer_tz);
 
 	ret->summary = summary_buf;
-	tmp = strstr(message, "\n\n");
-	if (!tmp) {
-	error_out:
+	len = find_commit_subject(message, &subject);
+	if (len && len < sizeof(summary_buf)) {
+		memcpy(summary_buf, subject, len);
+		summary_buf[len] = 0;
+	} else {
 		sprintf(summary_buf, "(%s)", sha1_to_hex(commit->object.sha1));
-		free(reencoded);
-		return;
 	}
-	tmp += 2;
-	endp = strchr(tmp, '\n');
-	if (!endp)
-		endp = tmp + strlen(tmp);
-	len = endp - tmp;
-	if (len >= sizeof(summary_buf) || len == 0)
-		goto error_out;
-	memcpy(summary_buf, tmp, len);
-	summary_buf[len] = 0;
 	free(reencoded);
 }
 
@@ -2376,11 +2368,11 @@ parse_done:
 	 *
 	 * The remaining are:
 	 *
-	 * (1) if dashdash_pos != 0, its either
+	 * (1) if dashdash_pos != 0, it is either
 	 *     "blame [revisions] -- <path>" or
 	 *     "blame -- <path> <rev>"
 	 *
-	 * (2) otherwise, its one of the two:
+	 * (2) otherwise, it is one of the two:
 	 *     "blame [revisions] <path>"
 	 *     "blame <path> <rev>"
 	 *

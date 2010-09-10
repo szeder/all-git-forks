@@ -209,7 +209,7 @@ test_expect_success 'fetch branch with replacement' '
 
 test_expect_success 'bisect and replacements' '
      git bisect start $HASH7 $HASH1 &&
-     test "$S" = "$(git rev-parse --verify HEAD)" &&
+     test "$PARA3" = "$(git rev-parse --verify HEAD)" &&
      git bisect reset &&
      GIT_NO_REPLACE_OBJECTS=1 git bisect start $HASH7 $HASH1 &&
      test "$HASH4" = "$(git rev-parse --verify HEAD)" &&
@@ -217,6 +217,12 @@ test_expect_success 'bisect and replacements' '
      git --no-replace-objects bisect start $HASH7 $HASH1 &&
      test "$HASH4" = "$(git rev-parse --verify HEAD)" &&
      git bisect reset
+'
+
+test_expect_success 'index-pack and replacements' '
+	git --no-replace-objects rev-list --objects HEAD |
+	git --no-replace-objects pack-objects test- &&
+	git index-pack test-*.pack
 '
 
 #

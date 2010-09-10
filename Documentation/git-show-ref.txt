@@ -73,8 +73,8 @@ OPTIONS
 --exclude-existing[=<pattern>]::
 
 	Make 'git show-ref' act as a filter that reads refs from stdin of the
-	form "^(?:<anything>\s)?<refname>(?:\^\{\})?$" and performs the
-	following actions on each:
+	form "^(?:<anything>\s)?<refname>(?:{backslash}{caret}\{\})?$"
+	and performs the following actions on each:
 	(1) strip "^{}" at the end of line if any;
 	(2) ignore if pattern is provided and does not head-match refname;
 	(3) warn if refname is not a well-formed refname and skip;
@@ -163,9 +163,15 @@ flag, so you can do
 
 to get a listing of all tags together with what they dereference.
 
+FILES
+-----
+`.git/refs/*`, `.git/packed-refs`
+
 SEE ALSO
 --------
-linkgit:git-ls-remote[1]
+linkgit:git-ls-remote[1],
+linkgit:git-update-ref[1],
+linkgit:gitrepository-layout[5]
 
 AUTHORS
 -------
