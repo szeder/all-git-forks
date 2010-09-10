@@ -68,6 +68,7 @@ Patterns have the following format:
    for readability.
 
  - A line starting with # serves as a comment.
+   Use `\#` for a literal # character starting filename.
 
  - An optional prefix '!' which negates the pattern; any
    matching file excluded by a previous pattern will become
@@ -97,6 +98,12 @@ Patterns have the following format:
  - A leading slash matches the beginning of the pathname.
    For example, "/{asterisk}.c" matches "cat-file.c" but not
    "mozilla-sha1/sha1.c".
+
+ - You can escape special characters using backslash.
+   For example, "{backslash}#*" matches files beginning in `#`
+   (otherwise it would be considered comment),
+   and "{backslash}!*{backslash}?" matches files starting with `!`
+   (negate pattern prefix) and ending with `?` (glob wildcard).
 
 An example:
 
