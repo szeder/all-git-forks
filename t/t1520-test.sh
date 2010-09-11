@@ -468,4 +468,39 @@ test_expect_success 'git test --not-conflicted # should fail when there are conf
 	
 '
 
+test_expect_success 'git test --rebasing # should fail' \
+'
+	test_must_fail git test --rebasing
+'
+
+test_expect_success 'git test --not-rebasing' \
+'
+	git test --not-rebasing
+'
+
+test_expect_success 'git test --rebasing' \
+'
+	test_when_finished "
+		git reset --hard HEAD &&
+		git checkout -f master && 
+		git branch -D rebase
+	" && 
+        git branch rebase F &&
+        ! git rebase --onto D F~1 F
+	git test --rebasing 
+	
+'
+
+test_expect_success 'git test --not-rebasing' \
+'
+	test_when_finished "
+		git reset --hard HEAD &&
+		git checkout -f master &&
+		git branch -D rebase
+	" && 
+        git branch rebase F &&
+        ! git rebase --onto D F~1 F
+	test_must_fail git test --not-rebasing
+'
+
 test_done
