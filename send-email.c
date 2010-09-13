@@ -619,6 +619,16 @@ int main(int argc, const char **argv)
 	git_config(git_send_email_config, NULL);
 	argc = parse_options(argc, argv, NULL, options, send_email_usage, 0);
 
+	if (reply_to) {
+		char *p = strchr(reply_to, '<');
+		if (p)
+			reply_to = p + 1;
+		p = strrchr(reply_to, '>');
+		if (p)
+			*p = '\0';
+		printf("<%s>\n", reply_to);
+	}
+
 	for (i = 0; i < argc; ++i) {
 		struct stat st;
 		const char *arg = argv[i];
