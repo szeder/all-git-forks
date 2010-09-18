@@ -108,6 +108,8 @@
 /git-relink
 /git-remote
 /git-remote-curl
+/git-remote-ext
+/git-remote-fd
 /git-remote-http
 /git-remote-https
 /git-remote-ftp
