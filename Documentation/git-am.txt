@@ -73,6 +73,10 @@ default.   You can use `--no-utf8` to override this.
 	Pass `-n` flag to 'git mailinfo' (see
 	linkgit:git-mailinfo[1]).
 
+--recode-patch::
+	Pass `--recode-patch` flag to 'git mailinfo' (see
+	linkgit:git-mailinfo[1]).
+
 -3::
 --3way::
 	When the patch does not apply cleanly, fall back on
