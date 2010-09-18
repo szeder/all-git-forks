@@ -240,7 +240,7 @@ void show_submodule_summary(FILE *f, const char *path,
 
 int fetch_populated_submodules(int forced)
 {
-	int result = 0;
+	int i, result = 0;
 	struct child_process cp;
 	const char *argv[] = {
 		"fetch",
@@ -251,31 +251,44 @@ int fetch_populated_submodules(int forced)
 	if (!work_tree)
 		return 0;
 
+	if (!the_index.initialized)
+		if (read_cache() < 0)
+			die("index file corrupt");
+
 	memset(&cp, 0, sizeof(cp));
 	cp.argv = argv;
 	cp.env = local_repo_env;
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 
-	for_each_string_list_item(name_for_path, &config_name_for_path) {
+	for (i = 0; i < active_nr; i++) {
 		struct strbuf submodule_path = STRBUF_INIT;
 		struct strbuf submodule_git_dir = STRBUF_INIT;
-		const char *git_dir;
+		struct cache_entry *ce = active_cache[i];
+		const char *git_dir, *name;
+
+		if (!S_ISGITLINK(ce->ce_mode))
+			continue;
+
+		name = ce->name;
+		name_for_path = unsorted_string_list_lookup(&config_name_for_path, ce->name);
+		if (name_for_path)
+			name = name_for_path->util;
 
 		if (!forced) {
 			struct string_list_item *fetch_option;
-			fetch_option = unsorted_string_list_lookup(&config_fetch_for_name, name_for_path->util);
+			fetch_option = unsorted_string_list_lookup(&config_fetch_for_name, name);
 			if (fetch_option && !fetch_option->util)
 				continue;
 		}
 
-		strbuf_addf(&submodule_path, "%s/%s", work_tree, name_for_path->string);
+		strbuf_addf(&submodule_path, "%s/%s", work_tree, ce->name);
 		strbuf_addf(&submodule_git_dir, "%s/.git", submodule_path.buf);
 		git_dir = read_gitfile_gently(submodule_git_dir.buf);
 		if (!git_dir)
 			git_dir = submodule_git_dir.buf;
 		if (is_directory(git_dir)) {
-			printf("Fetching submodule %s\n", name_for_path->string);
+			printf("Fetching submodule %s\n", ce->name);
 			cp.dir = submodule_path.buf;
 			if (run_command(&cp))
 				result = 1;
