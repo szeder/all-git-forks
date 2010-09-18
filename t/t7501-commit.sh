@@ -14,8 +14,11 @@ test_tick
 test_expect_success \
 	"initial status" \
 	"echo 'bongo bongo' >file &&
-	 git add file && \
-	 git status | grep 'Initial commit'"
+	 git add file"
+
+test_expect_success NO_GETTEXT_POISON \
+	"Constructing initial commit" \
+	"git status | grep 'Initial commit'"
 
 test_expect_success \
 	"fail initial amend" \
@@ -142,7 +145,8 @@ cat >msg <<EOF
 A good commit message.
 EOF
 
-test_expect_success \
+# Can't rely on editor with POISON
+test_expect_success NO_GETTEXT_POISON \
 	'editor not invoked if -F is given' '
 	 echo "moo" >file &&
 	 EDITOR=./editor git commit -a -F msg &&
@@ -163,7 +167,9 @@ d381ac431806e53f3dd7ac2f1ae0534f36d738b9
 402702b49136e7587daa9280e91e4bb7cb2179f7
 EOF
 
-test_expect_success \
+# rev-list won't be OK under GETTEXT_POISON since the above test won't
+# run.
+test_expect_success NO_GETTEXT_POISON \
     'validate git rev-list output.' \
     'test_cmp expected current'
 
