@@ -16,29 +16,49 @@ add_upstream_commit() {
 		git add subfile &&
 		git commit -m new subfile &&
 		head2=$(git rev-parse --short HEAD) &&
-		echo "From $pwd/submodule" > ../expect.err
-		echo "   $head1..$head2  master     -> origin/master" >> ../expect.err
+		echo "From $pwd/submodule" >../expect.err &&
+		echo "   $head1..$head2  master     -> origin/master" >>../expect.err
+	) &&
+	(
+		cd deepsubmodule &&
+		head1=$(git rev-parse --short HEAD) &&
+		echo new >> deepsubfile &&
+		test_tick &&
+		git add deepsubfile &&
+		git commit -m new deepsubfile &&
+		head2=$(git rev-parse --short HEAD) &&
+		echo "From $pwd/deepsubmodule" >>../expect.err &&
+		echo "   $head1..$head2  master     -> origin/master" >>../expect.err
 	)
 }
 
 test_expect_success setup '
+	mkdir deepsubmodule &&
+	(
+		cd deepsubmodule &&
+		git init &&
+		echo deepsubcontent >deepsubfile &&
+		git add deepsubfile &&
+		git commit -m new deepsubfile
+	) &&
 	mkdir submodule &&
 	(
 		cd submodule &&
 		git init &&
 		echo subcontent > subfile &&
 		git add subfile &&
-		git commit -m new subfile
+		git submodule add "$pwd/deepsubmodule" deepsubmodule &&
+		git commit -a -m new
 	) &&
 	git submodule add "$pwd/submodule" submodule &&
 	git commit -am initial &&
 	git clone . downstream &&
 	(
 		cd downstream &&
-		git submodule init &&
-		git submodule update
+		git submodule update --init --recursive
 	) &&
-	echo "Fetching submodule submodule" > expect.out
+	echo "Fetching submodule submodule" >expect.out &&
+	echo "Fetching submodule deepsubmodule" >>expect.out
 '
 
 test_expect_success "fetch recurses into submodules" '

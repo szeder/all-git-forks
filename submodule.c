@@ -256,7 +256,6 @@ int fetch_populated_submodules(int forced)
 	cp.env = local_repo_env;
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
-	cp.out = -1;
 
 	for_each_string_list_item(name_for_path, &config_name_for_path) {
 		struct strbuf submodule_path = STRBUF_INIT;
