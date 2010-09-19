@@ -126,7 +126,7 @@ install-indep: build-arch-stamp build-indep-stamp
 	$(MAKE) -CDocumentation install-webdoc WEBDOC_DEST='$(TMP)'/html \
 	  2>/dev/null
 	# RelNotes are shipped in git
-	rm -f '$(TMP)'/html/RelNotes*
+	rm -rf '$(TMP)'/html/RelNotes
 	# git-doc
 	rm -rf '$(GIT)'-doc
 	install -d -m0755 '$(GIT)'-doc

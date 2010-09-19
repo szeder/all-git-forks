@@ -20,6 +20,12 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
       running format-patch (closes: #607044).
     * log et al: accept un-sticked "git log -S needle" command-line
       syntax (closes: #606975).
+
+  [ Anders Kaseorg ]
+  * debian/git.docs, debian/rules: deal with RelNotes being moved to
+    a subdirectory.
+
+  [ Jonathan Nieder ]
   * update gitweb and instaweb to v1.7.2.x:
     - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove,
       no longer needed.
