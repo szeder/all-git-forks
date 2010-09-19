@@ -3677,6 +3677,21 @@ if {[info exists repo_config(gui.wmstate)]} {
 	catch {wm state . $repo_config(gui.wmstate)}
 }
 
+proc mac_freeze_workaround {cmd} {
+	if {[is_MacOSX] && $::have_tk85} {
+		# Tk 8.5 on Mac OS X has a bug whereby a dialog opened from a key
+		# binding will hang; see issue 3044863 in the Tk issue tracker.
+		# <http://sourceforge.net/tracker/?func=detail&aid=3044863&group_id=12997&atid=112997>
+		#
+		# To work around this, we perform commands that open a dialog after a brief
+		# delay; 150 ms seems to be a good compromise between short enough as to be
+		# not annoying, and long enough to reliably work around the issue.
+		after 150 $cmd
+	} else {
+		$cmd
+	}
+}
+
 # -- Key Bindings
 #
 bind $ui_comm <$M1B-Key-Return> {do_commit;break}
@@ -3684,8 +3699,8 @@ bind $ui_comm <$M1B-Key-t> {do_add_selection;break}
 bind $ui_comm <$M1B-Key-T> {do_add_selection;break}
 bind $ui_comm <$M1B-Key-u> {do_unstage_selection;break}
 bind $ui_comm <$M1B-Key-U> {do_unstage_selection;break}
-bind $ui_comm <$M1B-Key-j> {do_revert_selection;break}
-bind $ui_comm <$M1B-Key-J> {do_revert_selection;break}
+bind $ui_comm <$M1B-Key-j> {mac_freeze_workaround do_revert_selection;break}
+bind $ui_comm <$M1B-Key-J> {mac_freeze_workaround do_revert_selection;break}
 bind $ui_comm <$M1B-Key-i> {do_add_all;break}
 bind $ui_comm <$M1B-Key-I> {do_add_all;break}
 bind $ui_comm <$M1B-Key-x> {tk_textCut %W;break}
@@ -3723,16 +3738,16 @@ bind $ui_diff <Control-Key-f> {catch {%W yview scroll  1 pages};break}
 bind $ui_diff <Button-1>   {focus %W}
 
 if {[is_enabled branch]} {
-	bind . <$M1B-Key-n> branch_create::dialog
-	bind . <$M1B-Key-N> branch_create::dialog
-	bind . <$M1B-Key-o> branch_checkout::dialog
-	bind . <$M1B-Key-O> branch_checkout::dialog
-	bind . <$M1B-Key-m> merge::dialog
-	bind . <$M1B-Key-M> merge::dialog
+	bind . <$M1B-Key-n> {mac_freeze_workaround branch_create::dialog}
+	bind . <$M1B-Key-N> {mac_freeze_workaround branch_create::dialog}
+	bind . <$M1B-Key-o> {mac_freeze_workaround branch_checkout::dialog}
+	bind . <$M1B-Key-O> {mac_freeze_workaround branch_checkout::dialog}
+	bind . <$M1B-Key-m> {mac_freeze_workaround merge::dialog}
+	bind . <$M1B-Key-M> {mac_freeze_workaround merge::dialog}
 }
 if {[is_enabled transport]} {
-	bind . <$M1B-Key-p> do_push_anywhere
-	bind . <$M1B-Key-P> do_push_anywhere
+	bind . <$M1B-Key-p> {mac_freeze_workaround do_push_anywhere}
+	bind . <$M1B-Key-P> {mac_freeze_workaround do_push_anywhere}
 }
 
 bind .   <Key-F5>     ui_do_rescan
@@ -3742,8 +3757,8 @@ bind .   <$M1B-Key-s> do_signoff
 bind .   <$M1B-Key-S> do_signoff
 bind .   <$M1B-Key-t> do_add_selection
 bind .   <$M1B-Key-T> do_add_selection
-bind .   <$M1B-Key-j> do_revert_selection
-bind .   <$M1B-Key-J> do_revert_selection
+bind .   <$M1B-Key-j> {mac_freeze_workaround do_revert_selection}
+bind .   <$M1B-Key-J> {mac_freeze_workaround do_revert_selection}
 bind .   <$M1B-Key-i> do_add_all
 bind .   <$M1B-Key-I> do_add_all
 bind .   <$M1B-Key-minus> {show_less_context;break}
