@@ -25,6 +25,7 @@ static int abbrev = -1; /* unspecified */
 static int max_candidates = 10;
 static struct hash_table names;
 static int have_util;
+static int first_parent;
 static const char *pattern;
 static int always;
 static const char *dirty;
@@ -335,7 +336,7 @@ static void describe(const char *arg, int last_one)
 			if (!(p->object.flags & SEEN))
 				commit_list_insert_by_date(p, &list);
 			p->object.flags |= c->object.flags;
-			parents = parents->next;
+			parents = first_parent ? NULL : parents->next;
 		}
 	}
 
@@ -413,6 +414,8 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 			   N_("only consider tags matching <pattern>")),
 		OPT_BOOLEAN(0, "always",     &always,
 			   N_("show abbreviated commit object as fallback")),
+		OPT_BOOLEAN(0, "first-parent",     &first_parent,
+			   "follow first parents only"),
 		{OPTION_STRING, 0, "dirty",  &dirty, N_("mark"),
 			   N_("append <mark> on dirty working tree (default: \"-dirty\")"),
 		 PARSE_OPT_OPTARG, NULL, (intptr_t) "-dirty"},
@@ -433,6 +436,9 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	if (longformat && abbrev == 0)
 		die(_("--long is incompatible with --abbrev=0"));
+
+	if (contains && first_parent)
+		die(_("--contains is incompatible with --first-parent"));
 
 	if (contains) {
 		const char **args = xmalloc((7 + argc) * sizeof(char *));
