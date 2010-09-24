@@ -442,4 +442,30 @@ test_expect_success 'existence' \
        --not-branch-exists A 
 '
 
+test_expect_success 'git test --conflicted # should fail' \
+'
+	test_must_fail git test --conflicted
+'
+
+test_expect_success 'git test --not-conflicted' \
+'
+	git test --not-conflicted
+'
+
+test_expect_success 'git test --conflicted' \
+'
+	test_when_finished "git reset --hard HEAD" && 
+        ! git merge F &&
+	git test --conflicted 
+	
+'
+
+test_expect_success 'git test --not-conflicted # should fail when there are conflcted files' \
+'
+	test_when_finished "git reset --hard HEAD" && 
+        ! git merge F &&
+	test_must_fail git test --not-conflicted 
+	
+'
+
 test_done
