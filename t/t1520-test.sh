@@ -440,6 +440,6 @@ test_expect_success 'existence' \
        --not-tag-exists N \
        --not-tag-exists master \
        --not-branch-exists A 
- '
+'
 
 test_done
