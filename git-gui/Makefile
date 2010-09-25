@@ -177,7 +177,7 @@ git-gui: GIT-VERSION-FILE GIT-GUI-VARS
 	echo then >>$@+ && \
 	echo '	'echo \'git-gui version '$(GITGUI_VERSION)'\' >>$@+ && \
 	echo else >>$@+ && \
-	echo '	'exec \''$(libdir_SQ)/Git Gui.app/Contents/MacOS/$(subst \,,$(TKEXECUTABLE))'\' \
+	echo '	'exec \''$(libdir_SQ)/Git Gui.app/Contents/MacOS/Wish'\' \
 		'"$$0" "$$@"' >>$@+ && \
 	echo fi >>$@+ && \
 	chmod +x $@+ && \
@@ -193,11 +193,11 @@ Git\ Gui.app: GIT-VERSION-FILE GIT-GUI-VARS \
 	mkdir -p '$@'+/Contents/MacOS && \
 	mkdir -p '$@'+/Contents/Resources/Scripts && \
 	cp '$(subst ','\'',$(subst \,,$(TKFRAMEWORK)/Contents/MacOS/$(TKEXECUTABLE)))' \
-		'$@'+/Contents/MacOS && \
+		'$@'+/Contents/MacOS/Wish && \
 	cp macosx/git-gui.icns '$@'+/Contents/Resources && \
 	cp macosx/activate_by_pid '$@'+/Contents/Resources && \
 	sed -e 's/@@GITGUI_VERSION@@/$(GITGUI_VERSION)/g' \
-		-e 's/@@GITGUI_TKEXECUTABLE@@/$(TKEXECUTABLE)/g' \
+		-e 's/@@GITGUI_TKEXECUTABLE@@/Wish/g' \
 		macosx/Info.plist \
 		>'$@'+/Contents/Info.plist && \
 	sed -e 's|@@gitexecdir@@|$(gitexecdir_SQ)|' \
