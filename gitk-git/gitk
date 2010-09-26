@@ -9,6 +9,9 @@ exec wish "$0" -- "$@"
 
 package require Tk
 
+# Hack! Shouldn't hard-code the path to Git Gui.app.
+exec {/usr/local/git/share/git-gui/lib/Git Gui.app/Contents/Resources/activate_by_pid} [pid]
+
 proc hasworktree {} {
     return [expr {[exec git rev-parse --is-bare-repository] == "false" &&
 		  [exec git rev-parse --is-inside-git-dir] == "false"}]

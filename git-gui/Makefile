@@ -187,13 +187,15 @@ Git\ Gui.app: GIT-VERSION-FILE GIT-GUI-VARS \
 		macosx/Info.plist \
 		macosx/git-gui.icns \
 		macosx/AppMain.tcl \
-		$(TKFRAMEWORK)/Contents/MacOS/$(TKEXECUTABLE)
+		$(TKFRAMEWORK)/Contents/MacOS/$(TKEXECUTABLE) \
+		macosx/activate_by_pid
 	$(QUIET_GEN)rm -rf '$@' '$@'+ && \
 	mkdir -p '$@'+/Contents/MacOS && \
 	mkdir -p '$@'+/Contents/Resources/Scripts && \
 	cp '$(subst ','\'',$(subst \,,$(TKFRAMEWORK)/Contents/MacOS/$(TKEXECUTABLE)))' \
 		'$@'+/Contents/MacOS && \
 	cp macosx/git-gui.icns '$@'+/Contents/Resources && \
+	cp macosx/activate_by_pid '$@'+/Contents/Resources && \
 	sed -e 's/@@GITGUI_VERSION@@/$(GITGUI_VERSION)/g' \
 		-e 's/@@GITGUI_TKEXECUTABLE@@/$(TKEXECUTABLE)/g' \
 		macosx/Info.plist \
@@ -203,6 +205,11 @@ Git\ Gui.app: GIT-VERSION-FILE GIT-GUI-VARS \
 		macosx/AppMain.tcl \
 		>'$@'+/Contents/Resources/Scripts/AppMain.tcl && \
 	mv '$@'+ '$@'
+
+CFLAGS ?= -O2 -Wall
+
+macosx/activate_by_pid: macosx/activate_by_pid.c
+	$(CC) $(CFLAGS) $< -o $@ -framework Carbon
 endif
 
 ifdef GITGUI_WINDOWS_WRAPPER
