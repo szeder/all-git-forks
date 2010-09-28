@@ -905,7 +905,7 @@ struct ref {
 	struct ref *next;
 	unsigned char old_sha1[20];
 	unsigned char new_sha1[20];
-	char *symref;
+	char *symref, *impure;
 	unsigned int force:1,
 		merge:1,
 		nonfastforward:1,
