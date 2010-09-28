@@ -907,6 +907,7 @@ static struct ref *copy_ref(const struct ref *ref)
 	memcpy(cpy, ref, sizeof(struct ref) + len + 1);
 	cpy->next = NULL;
 	cpy->symref = ref->symref ? xstrdup(ref->symref) : NULL;
+	cpy->impure = ref->impure ? xstrdup(ref->impure) : NULL;
 	cpy->remote_status = ref->remote_status ? xstrdup(ref->remote_status) : NULL;
 	cpy->peer_ref = copy_ref(ref->peer_ref);
 	return cpy;
@@ -931,6 +932,7 @@ static void free_ref(struct ref *ref)
 	free_ref(ref->peer_ref);
 	free(ref->remote_status);
 	free(ref->symref);
+	free(ref->impure);
 	free(ref);
 }
 
@@ -1453,7 +1455,11 @@ int resolve_remote_symref(struct ref *ref, struct ref *list)
 		return 0;
 	for (; list; list = list->next)
 		if (!strcmp(ref->symref, list->name)) {
-			hashcpy(ref->old_sha1, list->old_sha1);
+			if (list->impure) {
+				ref->impure = xstrdup(list->impure);
+			} else {
+				hashcpy(ref->old_sha1, list->old_sha1);
+			}
 			return 0;
 		}
 	return 1;

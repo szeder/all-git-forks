@@ -307,6 +307,29 @@ static int release_helper(struct transport *transport)
 	return 0;
 }
 
+/* Map an impure ref to its actual value within Git. */
+static void map_impure_ref(int nr_heads, struct ref **to_fetch, char *map)
+{
+	int i;
+	char *eov;
+
+	eov = strchr(map, ' ');
+	if (!eov)
+		die("Malformed impure ref mapping: %s", map);
+	*eov = '\0';
+
+	/* There may be multiple impure refs with the same value, be sure to
+	 * map all of them. */
+	for (i = 0; i < nr_heads; i++) {
+		struct ref *posn = to_fetch[i];
+		if (posn->impure && !strcmp(map, posn->impure)) {
+			get_sha1_hex(eov + 1, posn->old_sha1);
+			free(posn->impure);
+			posn->impure = NULL;
+		}
+	}
+}
+
 static int fetch_with_fetch(struct transport *transport,
 			    int nr_heads, struct ref **to_fetch)
 {
@@ -318,11 +341,17 @@ static int fetch_with_fetch(struct transport *transport,
 
 	for (i = 0; i < nr_heads; i++) {
 		const struct ref *posn = to_fetch[i];
+
 		if (posn->status & REF_STATUS_UPTODATE)
 			continue;
 
-		strbuf_addf(&buf, "fetch %s %s\n",
+		if (posn->impure) {
+			strbuf_addf(&buf, "fetch %s %s\n",
+				posn->impure, posn->name);
+		} else {
+			strbuf_addf(&buf, "fetch %s %s\n",
 			    sha1_to_hex(posn->old_sha1), posn->name);
+		}
 	}
 
 	strbuf_addch(&buf, '\n');
@@ -337,12 +366,18 @@ static int fetch_with_fetch(struct transport *transport,
 				warning("%s also locked %s", data->name, name);
 			else
 				transport->pack_lockfile = xstrdup(name);
+		} else if (!prefixcmp(buf.buf, "map ")) {
+			map_impure_ref(nr_heads, to_fetch, buf.buf + 4);
 		}
 		else if (!buf.len)
 			break;
 		else
 			warning("%s unexpectedly said: '%s'", data->name, buf.buf);
 	}
+
+	/* The helper may have created one or more new packs. */
+	reprepare_packed_git();
+
 	strbuf_release(&buf);
 	return 0;
 }
@@ -824,7 +859,9 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 		*tail = alloc_ref(eov + 1);
 		if (buf.buf[0] == '@')
 			(*tail)->symref = xstrdup(buf.buf + 1);
-		else if (buf.buf[0] != '?')
+		else if (buf.buf[0] == ':') {
+			(*tail)->impure = xstrdup(buf.buf + 1);
+		} else if (buf.buf[0] != '?')
 			get_sha1_hex(buf.buf, (*tail)->old_sha1);
 		if (eon) {
 			if (has_attribute(eon + 1, "unchanged")) {
