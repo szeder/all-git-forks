@@ -1304,6 +1304,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 {
 	const char *arg = argv[0];
 	const char *optarg;
+	unsigned char sha1[20];
 	int argcount;
 
 	/* pseudo revision arguments */
@@ -1406,6 +1407,15 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--parents")) {
 		revs->rewrite_parents = 1;
 		revs->print_parents = 1;
+	} else if ((argcount = parse_long_opt("parent", argv, &optarg))) {
+		struct commit *a;
+		if (get_sha1(optarg, sha1))
+			return error("Not a valid object name: %s", optarg);
+		a = lookup_commit_reference(sha1);
+		if (!a)
+			return error("Couldn't look up commit object for '%s'", optarg);
+		commit_list_insert(a, &(revs->parent_list));
+		return argcount;
 	} else if (!strcmp(arg, "--dense")) {
 		revs->dense = 1;
 	} else if (!strcmp(arg, "--sparse")) {
@@ -2371,6 +2381,14 @@ enum commit_action get_commit_action(struct rev_info *revs, struct commit *commi
 		if ((n < revs->min_parents) ||
 		    ((revs->max_parents >= 0) && (n > revs->max_parents)))
 			return commit_ignore;
+	}
+	if (revs->parent_list) {
+		struct commit_list *a, *b;
+		for (b = revs->parent_list; b; b = b->next)
+			for (a = commit->parents; a; a = a->next)
+				if (!hashcmp(b->item->object.sha1, a->item->object.sha1))
+					return commit_show;
+		return commit_ignore;
 	}
 	if (!commit_match(commit, revs))
 		return commit_ignore;

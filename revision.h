@@ -146,6 +146,9 @@ struct rev_info {
 	int		show_log_size;
 	struct string_list *mailmap;
 
+	/* Filter by parents */
+	struct commit_list *parent_list;
+
 	/* Filter by commit log message */
 	struct grep_opt	grep_filter;
 
