@@ -2046,6 +2046,9 @@ export NO_SVN_TESTS
 test: all
 	$(MAKE) -C t/ all
 
+t/%: all
+	$(MAKE) -C t/ $*
+
 test-ctype$X: ctype.o
 
 test-date$X: date.o ctype.o
@@ -2061,6 +2064,7 @@ test-string-pool$X: vcs-svn/lib.a
 test-svn-fe$X: vcs-svn/lib.a
 
 .PRECIOUS: $(TEST_OBJS)
+.PHONY: t/%
 
 test-%$X: test-%.o $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(filter %.a,$^) $(LIBS)
