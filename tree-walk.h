@@ -13,6 +13,8 @@ struct tree_desc {
 	unsigned int size;
 };
 
+const char *decode_tree_mode(const char *str, unsigned int *modep);
+
 static inline const unsigned char *tree_entry_extract(struct tree_desc *desc, const char **pathp, unsigned int *modep)
 {
 	*pathp = desc->entry.path;
