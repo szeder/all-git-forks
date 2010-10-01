@@ -362,10 +362,7 @@ static int fetch_with_fetch(struct transport *transport,
 
 		if (!prefixcmp(buf.buf, "lock ")) {
 			const char *name = buf.buf + 5;
-			if (transport->pack_lockfile)
-				warning("%s also locked %s", data->name, name);
-			else
-				transport->pack_lockfile = xstrdup(name);
+			transport_keep(transport, name);
 		} else if (!prefixcmp(buf.buf, "map ")) {
 			map_impure_ref(nr_heads, to_fetch, buf.buf + 4);
 		}
