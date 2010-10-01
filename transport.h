@@ -78,7 +78,14 @@ struct transport {
 	 * use. disconnect() releases these resources.
 	 **/
 	int (*disconnect)(struct transport *connection);
-	char *pack_lockfile;
+
+	/** The transport can create zero or more pack files which need to be
+	 * kept until we can update the refs. This array holds the names of the
+	 * keep files which we have to delete once the refs are updated.
+	 **/
+	const char **keep;
+	int keep_nr, keep_alloc;
+
 	signed verbose : 3;
 	/**
 	 * Transports should not set this directly, and should use this
@@ -164,5 +171,7 @@ int transport_refs_pushed(struct ref *ref);
 
 void transport_print_push_status(const char *dest, struct ref *refs,
 		  int verbose, int porcelain, int *nonfastforward);
+
+void transport_keep(struct transport *transport, const char *keepfile);
 
 #endif

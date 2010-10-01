@@ -518,6 +518,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 	struct fetch_pack_args args;
 	int i;
 	struct ref *refs_tmp = NULL;
+	char *keepfile = NULL;
 
 	memset(&args, 0, sizeof(args));
 	args.uploadpack = data->options.uploadpack;
@@ -541,7 +542,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 
 	refs = fetch_pack(&args, data->fd, data->conn,
 			  refs_tmp ? refs_tmp : transport->remote_refs,
-			  dest, nr_heads, heads, &transport->pack_lockfile);
+			  dest, nr_heads, heads, &keepfile);
 	close(data->fd[0]);
 	close(data->fd[1]);
 	if (finish_connect(data->conn))
@@ -556,6 +557,10 @@ static int fetch_refs_via_pack(struct transport *transport,
 	free(origh);
 	free(heads);
 	free(dest);
+
+	if (keepfile)
+		transport_keep(transport, keepfile);
+
 	return (refs ? 0 : -1);
 }
 
@@ -1116,11 +1121,15 @@ int transport_fetch_refs(struct transport *transport, struct ref *refs)
 
 void transport_unlock_pack(struct transport *transport)
 {
-	if (transport->pack_lockfile) {
-		unlink_or_warn(transport->pack_lockfile);
-		free(transport->pack_lockfile);
-		transport->pack_lockfile = NULL;
+	int i;
+
+	for (i = 0; i < transport->keep_nr; ++i) {
+		char *keepfile = (char *) transport->keep[i];
+		unlink_or_warn(keepfile);
+		free(keepfile);
 	}
+
+	transport->keep_nr = 0;
 }
 
 int transport_connect(struct transport *transport, const char *name,
@@ -1137,6 +1146,7 @@ int transport_disconnect(struct transport *transport)
 	int ret = 0;
 	if (transport->disconnect)
 		ret = transport->disconnect(transport);
+	free(transport->keep);
 	free(transport);
 	return ret;
 }
@@ -1187,4 +1197,11 @@ char *transport_anonymize_url(const char *url)
 	return anon_url;
 literal_copy:
 	return xstrdup(url);
+}
+
+void transport_keep(struct transport *transport, const char *keepfile)
+{
+	int nr = transport->keep_nr + 1;
+	ALLOC_GROW(transport->keep, nr, transport->keep_alloc);
+	transport->keep[transport->keep_nr++] = keepfile;
 }
