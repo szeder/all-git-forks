@@ -114,6 +114,7 @@
 /git-remote-ftp
 /git-remote-ftps
 /git-remote-testgit
+/git-remote-svn
 /git-repack
 /git-replace
 /git-repo-config
