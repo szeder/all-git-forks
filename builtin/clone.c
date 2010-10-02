@@ -348,12 +348,15 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 	return local_refs;
 }
 
-static void write_remote_refs(const struct ref *local_refs)
+static void write_remote_refs(const struct ref *local_refs, struct ref *silent)
 {
 	const struct ref *r;
 
 	for (r = local_refs; r; r = r->next)
 		add_extra_ref(r->peer_ref->name, r->old_sha1, 0);
+
+	for (r = silent; r; r = r->next)
+		add_extra_ref(r->name, r->old_sha1, 0);
 
 	pack_refs(PACK_REFS_ALL);
 	clear_extra_refs();
@@ -369,7 +372,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	const struct ref *refs, *remote_head;
 	const struct ref *remote_head_points_at;
 	const struct ref *our_head_points_at;
-	struct ref *mapped_refs;
+	struct ref *mapped_refs, *silent = NULL;
 	struct strbuf key = STRBUF_INIT, value = STRBUF_INIT;
 	struct strbuf branch_top = STRBUF_INIT, reflog_msg = STRBUF_INIT;
 	struct transport *transport = NULL;
@@ -542,14 +545,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		refs = transport_get_remote_refs(transport);
 		if (refs) {
 			mapped_refs = wanted_peer_refs(refs, refspec);
-			transport_fetch_refs(transport, mapped_refs);
+			transport_fetch_refs(transport, mapped_refs, &silent);
 		}
 	}
 
 	if (refs) {
 		clear_extra_refs();
 
-		write_remote_refs(mapped_refs);
+		write_remote_refs(mapped_refs, silent);
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =

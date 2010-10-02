@@ -313,7 +313,7 @@ static int update_local_ref(struct ref *ref,
 }
 
 static int store_updated_refs(const char *raw_url, const char *remote_name,
-		struct ref *ref_map)
+		struct ref *ref_map, struct ref *silent)
 {
 	FILE *fp;
 	struct commit *commit;
@@ -411,6 +411,13 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 				fprintf(stderr, " %s\n", note);
 		}
 	}
+
+	/* Also update the silent refs. */
+	for (rm = silent; rm; rm = rm->next) {
+		snprintf(note, 1024, "note here"); /* TODO */
+		update_local_ref(rm, rm->name, note);
+	}
+
 	free(url);
 	fclose(fp);
 	if (rc & STORE_REF_ERROR_DF_CONFLICT)
@@ -496,13 +503,15 @@ static int quickfetch(struct ref *ref_map)
 
 static int fetch_refs(struct transport *transport, struct ref *ref_map)
 {
+	struct ref *silent = NULL;
+
 	int ret = quickfetch(ref_map);
 	if (ret)
-		ret = transport_fetch_refs(transport, ref_map);
+		ret = transport_fetch_refs(transport, ref_map, &silent);
 	if (!ret)
 		ret |= store_updated_refs(transport->url,
 				transport->remote->name,
-				ref_map);
+				ref_map, silent);
 	transport_unlock_pack(transport);
 	return ret;
 }
