@@ -394,6 +394,10 @@ static int fetch_with_fetch(struct transport *transport,
 		else
 			warning("%s unexpectedly said: '%s'", data->name, buf.buf);
 	}
+
+	/* The helper may have created one or more new packs. */
+	reprepare_packed_git();
+
 	strbuf_release(&buf);
 	return 0;
 }
