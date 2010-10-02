@@ -109,7 +109,12 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 			continue;
 		if (!tail_match(pattern, ref->name))
 			continue;
-		printf("%s	%s\n", sha1_to_hex(ref->old_sha1), ref->name);
+		if (ref->impure) {
+			int len = strlen(ref->impure) + strlen(" (impure)");
+			printf("%s (impure)%*s  %s\n", ref->impure, 40 - len, " ", ref->name);
+		} else {
+			printf("%s      %s\n", sha1_to_hex(ref->old_sha1), ref->name);
+		}
 	}
 	return 0;
 }
