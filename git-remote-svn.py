@@ -205,18 +205,19 @@ class RemoteHelperSubversion(RemoteHelper):
 		# The range we want to import
 		revs = xrange(old or 1, new + 1)
 		marks = { }
-
+		msha1 = None
+		
 		for r in revs:
 			sha1 = feed(self.repo, self.fs, r, prefix, sha1, fih)
 			if sha1:
 				marks[r] = sha1
 
 			if len(marks) >= 10:
-				msha1 = update_marks(self.repo, self.fs, r, marks, prefix, fih)
+				msha1 = update_marks(self.repo, self.fs, r, msha1, marks, prefix, fih)
 				marks = { }
 
 		if len(marks) > 0:
-			msha1 = update_marks(self.repo, self.fs, new, marks, prefix, fih)
+			msha1 = update_marks(self.repo, self.fs, new, msha1, marks, prefix, fih)
 
 		return (sha1, msha1,)	
 
@@ -307,7 +308,7 @@ def add_mark(repo, fs, mark, rev, prefix, fih):
 	fih.write(note)
 	fih.write("\n")
 
-def update_marks(repo, fs, rev, marks, prefix, fih):
+def update_marks(repo, fs, rev, msha1, marks, prefix, fih):
 	fih.write("commit refs/notes/svn\n")
 	fih.write("mark :svn-notes\n")
 
@@ -318,6 +319,10 @@ def update_marks(repo, fs, rev, marks, prefix, fih):
 	log = "Update svn notes to r%s" % rev
 	fih.write("data %s\n" % len(log))
 	fih.write(log)
+	if msha1:
+		fih.write("from %s\n" % msha1)
+	else:
+		fih.write("from refs/notes/svn^0\n")
 	
 	for rev, mark in marks.iteritems():
 		add_mark(repo, fs, mark, rev, prefix, fih)
