@@ -402,6 +402,7 @@ EXTRA_PROGRAMS =
 PROGRAMS += $(EXTRA_PROGRAMS)
 
 PROGRAM_OBJS += fast-import.o
+PROGRAM_OBJS += fast-import-helper.o
 PROGRAM_OBJS += imap-send.o
 PROGRAM_OBJS += shell.o
 PROGRAM_OBJS += show-index.o

@@ -42,6 +42,7 @@
 /git-describe
 /git-fast-export
 /git-fast-import
+/git-fast-import-helper
 /git-fetch
 /git-fetch--tool
 /git-fetch-pack
