@@ -253,7 +253,8 @@ static struct ref *get_refs_via_rsync(struct transport *transport, int for_push)
 }
 
 static int fetch_objs_via_rsync(struct transport *transport,
-				int nr_objs, struct ref **to_fetch)
+				int nr_objs, struct ref **to_fetch,
+				struct ref **silent)
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct child_process rsync;
@@ -428,7 +429,8 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_from_bundle(struct transport *transport,
-			       int nr_heads, struct ref **to_fetch)
+			       int nr_heads, struct ref **to_fetch,
+			       struct ref **silent)
 {
 	struct bundle_transport_data *data = transport->data;
 	return unbundle(&data->header, data->fd);
@@ -508,7 +510,8 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_via_pack(struct transport *transport,
-			       int nr_heads, struct ref **to_fetch)
+			       int nr_heads, struct ref **to_fetch,
+			       struct ref **silent)
 {
 	struct git_transport_data *data = transport->data;
 	char **heads = xmalloc(nr_heads * sizeof(*heads));
@@ -1083,7 +1086,8 @@ const struct ref *transport_get_remote_refs(struct transport *transport)
 	return transport->remote_refs;
 }
 
-int transport_fetch_refs(struct transport *transport, struct ref *refs)
+int transport_fetch_refs(struct transport *transport, struct ref *refs,
+				struct ref **silent)
 {
 	int rc;
 	int nr_heads = 0, nr_alloc = 0, nr_refs = 0;
@@ -1113,9 +1117,9 @@ int transport_fetch_refs(struct transport *transport, struct ref *refs)
 			heads[nr_heads++] = rm;
 	}
 
-	rc = transport->fetch(transport, nr_heads, heads);
-
+	rc = transport->fetch(transport, nr_heads, heads, silent);
 	free(heads);
+
 	return rc;
 }
 

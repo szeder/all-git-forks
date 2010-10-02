@@ -330,8 +330,29 @@ static void map_impure_ref(int nr_heads, struct ref **to_fetch, char *map)
 	}
 }
 
+/* `buf` points to the 'silent' response from the helper. Parse it and
+ * add the ref to the `silent` list. */
+static void add_silent_ref(struct strbuf *buf, struct ref **silent)
+{
+	if (!silent)
+		return;
+
+	struct ref *ref;
+	char *eon = strchr(buf->buf + 7, ' ');
+	if (!eon)
+		warning("Malformed helper response: %s", buf->buf);
+
+	*eon = '\0';
+	ref = alloc_ref(buf->buf + 7);
+	get_sha1_hex(eon + 1, ref->new_sha1);
+	
+	ref->next = *silent;
+	*silent = ref;
+}
+
 static int fetch_with_fetch(struct transport *transport,
-			    int nr_heads, struct ref **to_fetch)
+			    int nr_heads, struct ref **to_fetch,
+			    struct ref **silent)
 {
 	struct helper_data *data = transport->data;
 	int i;
@@ -365,6 +386,8 @@ static int fetch_with_fetch(struct transport *transport,
 			transport_keep(transport, name);
 		} else if (!prefixcmp(buf.buf, "map ")) {
 			map_impure_ref(nr_heads, to_fetch, buf.buf + 4);
+		} else if (!prefixcmp(buf.buf, "silent ")) {
+			add_silent_ref(&buf, silent);
 		}
 		else if (!buf.len)
 			break;
@@ -555,14 +578,15 @@ static int connect_helper(struct transport *transport, const char *name,
 }
 
 static int fetch(struct transport *transport,
-		 int nr_heads, struct ref **to_fetch)
+		 int nr_heads, struct ref **to_fetch,
+		 struct ref **silent)
 {
 	struct helper_data *data = transport->data;
 	int i, count;
 
 	if (process_connect(transport, 0)) {
 		do_take_over(transport);
-		return transport->fetch(transport, nr_heads, to_fetch);
+		return transport->fetch(transport, nr_heads, to_fetch, silent);
 	}
 
 	count = 0;
@@ -574,7 +598,7 @@ static int fetch(struct transport *transport,
 		return 0;
 
 	if (data->fetch)
-		return fetch_with_fetch(transport, nr_heads, to_fetch);
+		return fetch_with_fetch(transport, nr_heads, to_fetch, silent);
 
 	if (data->import)
 		return fetch_with_import(transport, nr_heads, to_fetch);
