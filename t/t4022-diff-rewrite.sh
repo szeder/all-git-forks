@@ -8,7 +8,7 @@ test_expect_success setup '
 
 	cat "$TEST_DIRECTORY"/../COPYING >test &&
 	git add test &&
-	tr \
+	test-tr \
 	  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 	  "nopqrstuvwxyzabcdefghijklmNOPQRSTUVWXYZABCDEFGHIJKLM" \
 	  <"$TEST_DIRECTORY"/../COPYING >test

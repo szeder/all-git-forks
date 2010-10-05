@@ -5,7 +5,7 @@ test_description='CRLF conversion'
 . ./test-lib.sh
 
 has_cr() {
-	tr '\015' Q <"$1" | grep Q >/dev/null
+	test-tr '\015' Q <"$1" | grep Q >/dev/null
 }
 
 test_expect_success setup '
@@ -481,7 +481,7 @@ test_expect_success 'files are clean after checkout' '
 '
 
 cr_to_Q_no_NL () {
-    tr '\015' Q | tr -d '\012'
+    test-tr '\015' Q | test-tr -d '\012'
 }
 
 test_expect_success 'LF only file gets CRLF with autocrlf' '
@@ -497,7 +497,7 @@ test_expect_success 'CRLF only file has CRLF with autocrlf' '
 '
 
 test_expect_success 'New CRLF file gets LF in repo' '
-	tr -d "\015" < alllf | append_cr > alllf2 &&
+	test-tr -d "\015" < alllf | append_cr > alllf2 &&
 	git add alllf2 &&
 	git commit -m "alllf2 added" &&
 	git config core.autocrlf false &&

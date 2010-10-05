@@ -22,8 +22,8 @@ setup_repository () {
 }
 
 tokens_match () {
-	echo "$1" | tr ' ' '\012' | sort | sed -e '/^$/d' >expect &&
-	echo "$2" | tr ' ' '\012' | sort | sed -e '/^$/d' >actual &&
+	echo "$1" | test-tr ' ' '\012' | sort | sed -e '/^$/d' >expect &&
+	echo "$2" | test-tr ' ' '\012' | sort | sed -e '/^$/d' >actual &&
 	test_cmp expect actual
 }
 

@@ -249,15 +249,15 @@ test_decode_color () {
 }
 
 q_to_nul () {
-	perl -pe 'y/Q/\000/'
+	test-tr Q '\000'
 }
 
 q_to_cr () {
-	tr Q '\015'
+	test-tr Q '\015'
 }
 
 q_to_tab () {
-	tr Q '\011'
+	test-tr Q '\011'
 }
 
 append_cr () {
@@ -265,7 +265,7 @@ append_cr () {
 }
 
 remove_cr () {
-	tr '\015' Q | sed -e 's/Q$//'
+	test-tr '\015' Q | sed -e 's/Q$//'
 }
 
 test_tick () {
@@ -866,7 +866,7 @@ GIT_TEMPLATE_DIR="$GIT_BUILD_DIR"/templates/blt
 unset GIT_CONFIG
 GIT_CONFIG_NOSYSTEM=1
 GIT_CONFIG_NOGLOBAL=1
-export PATH GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_NOGLOBAL
+export GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_NOGLOBAL
 
 . "$GIT_BUILD_DIR"/GIT-BUILD-OPTIONS
 
@@ -893,6 +893,11 @@ then
 	test -d "$GIT_BUILD_DIR"/git_remote_helpers/build || {
 		error "You haven't built git_remote_helpers yet, have you?"
 	}
+fi
+
+if ! test -x "$GIT_BUILD_DIR"/test-tr; then
+	echo >&2 'You need to "make test-tr" in the source (toplevel) directory'
+	exit 1
 fi
 
 if ! test -x "$GIT_BUILD_DIR"/test-chmtime; then

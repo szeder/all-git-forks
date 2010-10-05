@@ -78,7 +78,7 @@ test_expect_success 'apply binary patch' \
 	 test "$tree1" = "$tree0"'
 
 nul_to_q() {
-	perl -pe 'y/\000/Q/'
+	test-tr '\000' 'Q'
 }
 
 test_expect_success 'diff --no-index with binary creation' '
