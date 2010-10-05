@@ -181,8 +181,15 @@ int git_config_colorbool(const char *var, const char *value, int stdout_is_tty)
 		stdout_is_tty = isatty(1);
 	if (stdout_is_tty || (pager_in_use() && pager_use_color)) {
 		char *term = getenv("TERM");
-		if (term && strcmp(term, "dumb"))
-			return 1;
+		char *emacs = getenv("EMACS");
+		if (!term)
+		    return 0;
+		if (strcmp(term, "emacs-grep") == 0)
+		    return 0;
+		if (strcmp(term, "dumb") != 0)
+		    return 1;
+		if (emacs)
+		    return 1;
 	}
 	return 0;
 }
