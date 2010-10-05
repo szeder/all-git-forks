@@ -51,8 +51,13 @@ static void wait_for_pager_signal(int signo)
 const char *git_pager(int stdout_is_tty)
 {
 	const char *pager;
+	const char *term;
 
 	if (!stdout_is_tty)
+		return NULL;
+
+	term = getenv("TERM");
+	if (term && !strcmp(term, "emacs-grep"))
 		return NULL;
 
 	pager = getenv("GIT_PAGER");
