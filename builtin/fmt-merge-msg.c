@@ -173,7 +173,7 @@ static void shortlog(const char *name, unsigned char *sha1,
 		if (subjects.nr > limit)
 			continue;
 
-		format_commit_message(commit, "%s", &sb, &ctx);
+		format_commit_message(commit, "%s", &sb, &ctx, NULL);
 		strbuf_ltrim(&sb);
 
 		if (!sb.len)

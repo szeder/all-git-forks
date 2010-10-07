@@ -92,7 +92,8 @@ extern char *get_header(const struct commit *commit, const char *key);
 extern void userformat_find_requirements(const char *fmt, struct userformat_want *w);
 extern void format_commit_message(const struct commit *commit,
 				  const char *format, struct strbuf *sb,
-				  const struct pretty_print_context *context);
+				  const struct pretty_print_context *context,
+				  const char *output_encoding);
 extern void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 				struct strbuf *sb,
 				const struct pretty_print_context *context);
