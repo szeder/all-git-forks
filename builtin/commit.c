@@ -896,17 +896,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (!use_message && renew_authorship)
 		die("--reset-author can be used only with -C, -c or --amend.");
 	if (use_message) {
-		unsigned char sha1[20];
 		static char utf8[] = "UTF-8";
 		const char *out_enc;
 		char *enc;
 		struct commit *commit;
 
-		if (get_sha1(use_message, sha1))
-			die("could not lookup commit %s", use_message);
-		commit = lookup_commit_reference(sha1);
-		if (!commit || parse_commit(commit))
-			die("could not parse commit %s", use_message);
+		commit = lookup_commit_reference_by_name(use_message);
 
 		enc = get_header(commit, "encoding");
 		enc = enc ? enc : utf8;
