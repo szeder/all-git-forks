@@ -905,7 +905,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 
 		enc = get_header(commit, "encoding");
 		enc = enc ? enc : utf8;
-		out_enc = git_commit_encoding ? git_commit_encoding : utf8;
+		out_enc = get_commit_output_encoding();
 
 		if (strcmp(out_enc, enc))
 			use_message_buffer =
