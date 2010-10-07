@@ -348,7 +348,7 @@ static void add_merge_info(enum cmit_fmt fmt, struct strbuf *sb,
 	strbuf_addch(sb, '\n');
 }
 
-static char *get_header(const struct commit *commit, const char *key)
+char *get_header(const struct commit *commit, const char *key)
 {
 	int key_len = strlen(key);
 	const char *line = commit->buffer;

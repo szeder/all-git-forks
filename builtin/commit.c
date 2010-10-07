@@ -899,7 +899,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		unsigned char sha1[20];
 		static char utf8[] = "UTF-8";
 		const char *out_enc;
-		char *enc, *end;
+		char *enc;
 		struct commit *commit;
 
 		if (get_sha1(use_message, sha1))
@@ -908,13 +908,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		if (!commit || parse_commit(commit))
 			die("could not parse commit %s", use_message);
 
-		enc = strstr(commit->buffer, "\nencoding");
-		if (enc) {
-			end = strchr(enc + 10, '\n');
-			enc = xstrndup(enc + 10, end - (enc + 10));
-		} else {
-			enc = utf8;
-		}
+		enc = get_header(commit, "encoding");
+		enc = enc ? enc : utf8;
 		out_enc = git_commit_encoding ? git_commit_encoding : utf8;
 
 		if (strcmp(out_enc, enc))
