@@ -35,6 +35,11 @@ int buffer_deinit(void)
 	return err;
 }
 
+int buffer_ferror(void)
+{
+	return ferror(infile);
+}
+
 /* Read a line without trailing newline. */
 char *buffer_read_line(void)
 {
