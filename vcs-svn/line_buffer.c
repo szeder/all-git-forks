@@ -66,7 +66,7 @@ char *buffer_read_string(uint32_t len)
 	return ferror(infile) ? NULL : s;
 }
 
-void buffer_copy_bytes(uint32_t len)
+void buffer_copy_bytes(off_t len)
 {
 	uint32_t in;
 	while (len > 0 && !feof(infile) && !ferror(infile)) {
@@ -81,7 +81,7 @@ void buffer_copy_bytes(uint32_t len)
 	}
 }
 
-void buffer_skip_bytes(uint32_t len)
+void buffer_skip_bytes(off_t len)
 {
 	uint32_t in;
 	while (len > 0 && !feof(infile) && !ferror(infile)) {
