@@ -86,14 +86,15 @@ void buffer_copy_bytes(uint32_t len)
 	}
 }
 
-void buffer_skip_bytes(uint32_t len)
+uint32_t buffer_skip_bytes(uint32_t nbytes)
 {
-	uint32_t in;
-	while (len > 0 && !feof(infile) && !ferror(infile)) {
-		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
-		in = fread(byte_buffer, 1, in, infile);
-		len -= in;
+	uint32_t done = 0;
+	while (done < nbytes && !feof(infile) && !ferror(infile)) {
+		uint32_t len = nbytes - done;
+		uint32_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+		done += fread(byte_buffer, 1, in, infile);
 	}
+	return done;
 }
 
 void buffer_reset(void)
