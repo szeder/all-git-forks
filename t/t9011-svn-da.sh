@@ -117,4 +117,16 @@ test_expect_success 'preimage view: accept truncated preimage' '
 	test_cmp empty actual.longread
 '
 
+test_expect_success 'inline data' '
+	printf "SVNQ%b%s%b%s" "QQQQ\003" "bar" "QQQQ\001" "x" |
+		q_to_nul >inline.clear &&
+	test-svn-fe -d preimage inline.clear 18 >actual &&
+	test_cmp empty actual
+'
+
+test_expect_success 'truncated inline data' '
+	printf "SVNQ%b%s" "QQQQ\003" "b" | q_to_nul >inline.trunc &&
+	test_must_fail test-svn-fe -d preimage inline.trunc 10
+'
+
 test_done
