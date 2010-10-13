@@ -105,16 +105,13 @@ test_expect_success 'preimage view: offsets compared by value' '
 	test_cmp empty actual
 '
 
-test_expect_success 'preimage view: accept truncated preimage' '
+test_expect_success 'preimage view: reject truncated preimage' '
 	printf "SVNQ%b" "\010QQQQ" | q_to_nul >clear.lateemptyread &&
 	printf "SVNQ%b" "\010\001QQQ" | q_to_nul >clear.latenonemptyread &&
 	printf "SVNQ%b" "\001\010QQQ" | q_to_nul >clear.longread &&
-	test-svn-fe -d preimage clear.lateemptyread 9 >actual.emptyread &&
-	test-svn-fe -d preimage clear.latenonemptyread 9 >actual.nonemptyread &&
-	test-svn-fe -d preimage clear.longread 9 >actual.longread &&
-	test_cmp empty actual.emptyread &&
-	test_cmp empty actual.nonemptyread &&
-	test_cmp empty actual.longread
+	test_must_fail test-svn-fe -d preimage clear.lateemptyread 9 &&
+	test_must_fail test-svn-fe -d preimage clear.latenonemptyread 9 &&
+	test_must_fail test-svn-fe -d preimage clear.longread 9
 '
 
 test_expect_success 'unconsumed inline data' '
