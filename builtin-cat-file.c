@@ -178,7 +178,10 @@ static int batch_one_object(const char *obj_name, int print_contents)
 	fflush(stdout);
 
 	if (print_contents == BATCH) {
-		write_or_die(1, contents, size);
+		if (size > (50 * 1024))
+			write_or_die(1, contents, 50 * 1024);
+		else
+			write_or_die(1, contents, size);
 		printf("\n");
 		fflush(stdout);
 		free(contents);
