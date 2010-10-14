@@ -12,10 +12,10 @@ test_dump() {
 		svnadmin load "$label-svn" < "$TEST_DIRECTORY/$dump" &&
 		svn_cmd export "file://$PWD/$label-svn" "$label-svnco" &&
 		git init "$label-git" &&
-		test-svn-fe "$TEST_DIRECTORY/$dump" >"$label.fe" &&
 		(
-			cd "$label-git" &&
-			git fast-import < ../"$label.fe"
+			cd "$label-git" && mkfifo backchannel && \
+			test-svn-fe "$TEST_DIRECTORY/$dump" 3< backchannel | \
+			git fast-import --cat-blob-fd=3 3> backchannel
 		) &&
 		(
 			cd "$label-svnco" &&
