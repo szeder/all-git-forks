@@ -72,6 +72,6 @@ void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len,
 		len -= 5;
 	}
 	printf("blob\nmark :%"PRIu32"\ndata %"PRIu32"\n", mark, len);
-	buffer_copy_bytes(len);
+	buffer_copy_bytes(stdout, len);
 	fputc('\n', stdout);
 }

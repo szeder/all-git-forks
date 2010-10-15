@@ -66,15 +66,15 @@ char *buffer_read_string(uint32_t len)
 	return ferror(infile) ? NULL : s;
 }
 
-void buffer_copy_bytes(uint32_t len)
+void buffer_copy_bytes(FILE *outfile, uint32_t len)
 {
 	uint32_t in;
 	while (len > 0 && !feof(infile) && !ferror(infile)) {
 		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		in = fread(byte_buffer, 1, in, infile);
 		len -= in;
-		fwrite(byte_buffer, 1, in, stdout);
-		if (ferror(stdout)) {
+		fwrite(byte_buffer, 1, in, outfile);
+		if (ferror(outfile)) {
 			buffer_skip_bytes(len);
 			return;
 		}

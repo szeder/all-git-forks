@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 		buffer_skip_bytes(1);
 		if (!(s = buffer_read_line()))
 			break;
-		buffer_copy_bytes(strtouint32(s) + 1);
+		buffer_copy_bytes(stdout, strtouint32(s) + 1);
 	}
 	if (buffer_deinit())
 		die("input error");
