@@ -65,14 +65,16 @@ test_expect_success 'clone remote repository' '
 	git clone $HTTPD_URL/smart/test_repo.git test_repo_clone
 '
 
-test_expect_success 'push to remote repository' '
+test_expect_success 'push to remote repository (standard)' '
 	cd "$ROOT_PATH"/test_repo_clone &&
 	: >path2 &&
 	git add path2 &&
 	test_tick &&
 	git commit -m path2 &&
 	HEAD=$(git rev-parse --verify HEAD) &&
-	git push &&
+	GIT_CURL_VERBOSE=1 git push -v -v 2>err &&
+	! grep "Expect: 100-continue" err &&
+	grep "POST git-receive-pack (376 bytes)" err &&
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/test_repo.git &&
 	 test $HEAD = $(git rev-parse --verify HEAD))
 '
