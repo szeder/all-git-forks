@@ -77,6 +77,7 @@ prepare_httpd() {
 	mkdir -p "$HTTPD_DOCUMENT_ROOT_PATH"
 
 	ln -s "$LIB_HTTPD_MODULE_PATH" "$HTTPD_ROOT_PATH/modules"
+	cp "$TEST_PATH/.htpasswd" "$HTTPD_ROOT_PATH"
 
 	if test -n "$LIB_HTTPD_SSL"
 	then
