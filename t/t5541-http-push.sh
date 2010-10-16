@@ -162,5 +162,29 @@ test_expect_success 'push (chunked)' '
 	 test $BRANCH_REF = $(git rev-parse --verify refs/heads/$BRANCH))
 '
 
+test_expect_success 'push (chunked)' '
+	BRANCH=master-chunked2 &&
+	REPO=test_repo_chunked2 &&
+
+	(cd "$HTTPD_DOCUMENT_ROOT_PATH" &&
+	 cp -R test_repo.git $REPO) &&
+	HTTPD_URL=$(echo $HTTPD_URL | sed "s|^\(http://\)|\1user:pwd@|") &&
+	#HTTPD_URL = add_basic_cred HTTPD_URL &&
+	git remote set-url origin $HTTPD_URL/smart_basicauth/$REPO &&
+
+	# to trigger chunked pushing, we need a sufficiently large pack - use
+	# git v0.99
+	GIT_REPO=$TEST_DIRECTORY/../.git &&
+	test -d $GIT_REPO &&
+	echo $GIT_REPO/objects > .git/objects/info/alternates &&
+	git fetch $GIT_REPO refs/tags/v0.99 &&
+	git branch $BRANCH FETCH_HEAD &&
+	BRANCH_REF=$(git rev-parse --verify refs/heads/$BRANCH) &&
+	GIT_CURL_VERBOSE=1 git push -v -v origin $BRANCH &&
+	grep "POST git-receive-pack (chunked)" err &&
+	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/$REPO &&
+	 test $BRANCH_REF = $(git rev-parse --verify refs/heads/$BRANCH))
+'
+
 stop_httpd
 test_done
