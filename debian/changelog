@@ -1,3 +1,10 @@
+git (1:1.7.2.3-2) unstable; urgency=low
+
+  * merge branch debian-experimental.
+  * debian/gitweb.NEWS.Debian: typo (thx Jonathan Nieder).
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 17 Oct 2010 20:07:22 +0000
+
 git (1:1.7.2.3-1) experimental; urgency=low
 
   * new upstream release.

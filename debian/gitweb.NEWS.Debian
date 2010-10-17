@@ -1,4 +1,4 @@
-gitweb (1:1.7.2.3-0.1) unstable; urgency=low
+gitweb (1:1.7.2.3-1) experimental; urgency=low
 
   Since version 1.6.6-rc1, gitweb includes a "git blame" feature that
   loads asynchronously using the gitweb.js script.  You may need to
