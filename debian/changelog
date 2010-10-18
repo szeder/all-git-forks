@@ -1,3 +1,26 @@
+git (1:1.7.2.5-2.1) experimental; urgency=low
+
+  [ Daniel Baumann ]
+  * add an init.d script for git-daemon (closes: #422139).
+    * debian/control, debian/rules: new package git-daemon-sysvinit;
+      Depends: adduser; Conflicts: git-daemon-run; package git now
+      Suggests and git-all Recommends: git-daemon-run |
+      git-daemon-sysvinit.
+    * debian/git-daemon/sysvinit: new; script to start or stop
+      git-daemon.
+    * debian/git-daemon/default: new; provide some default settings and
+      disable the daemon by default on first installation.
+    * debian/git-daemon-sysvinit.README.Debian: new; explain how to get
+      started.
+    * debian/git-daemon-sysvinit.conffiles: new; treat
+      /etc/default/git-daemon as a conffile.
+    * debian/git-daemon-sysvinit.postinst: new; add gitdaemon system
+      user; register and invoke init script to start git-daemon.
+    * debian/git-daemon-sysvinit.prerm: new; stops git-daemon.
+    * debian/git-daemon-sysvinit.postrm: new; unregisters init script.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 16 Jun 2011 21:47:40 -0500
+
 git (1:1.7.2.5-2) stable; urgency=low
 
   * debian/git-daemon-run.postrm purge: terminate the git-daemon/log
