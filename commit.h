@@ -36,6 +36,7 @@ struct commit *lookup_commit(const unsigned char *sha1);
 struct commit *lookup_commit_reference(const unsigned char *sha1);
 struct commit *lookup_commit_reference_gently(const unsigned char *sha1,
 					      int quiet);
+struct commit *lookup_commit_reference_by_name(const char *name);
 
 int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size);
 
@@ -87,10 +88,12 @@ struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
 extern char *reencode_commit_message(const struct commit *commit,
 				     const char **encoding_p);
 extern void get_commit_format(const char *arg, struct rev_info *);
+extern char *get_header(const struct commit *commit, const char *key);
 extern void userformat_find_requirements(const char *fmt, struct userformat_want *w);
 extern void format_commit_message(const struct commit *commit,
 				  const char *format, struct strbuf *sb,
-				  const struct pretty_print_context *context);
+				  const struct pretty_print_context *context,
+				  const char *output_encoding);
 extern void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 				struct strbuf *sb,
 				const struct pretty_print_context *context);

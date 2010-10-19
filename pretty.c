@@ -348,7 +348,7 @@ static void add_merge_info(enum cmit_fmt fmt, struct strbuf *sb,
 	strbuf_addch(sb, '\n');
 }
 
-static char *get_header(const struct commit *commit, const char *key)
+char *get_header(const struct commit *commit, const char *key)
 {
 	int key_len = strlen(key);
 	const char *line = commit->buffer;
@@ -1009,16 +1009,47 @@ void userformat_find_requirements(const char *fmt, struct userformat_want *w)
 
 void format_commit_message(const struct commit *commit,
 			   const char *format, struct strbuf *sb,
-			   const struct pretty_print_context *pretty_ctx)
+			   const struct pretty_print_context *pretty_ctx,
+			   const char *output_encoding)
 {
 	struct format_commit_context context;
+	static char utf8[] = "UTF-8";
+	char *enc;
+	char *buffer;
+	char *enc_buffer;
+	struct strbuf scratch_sb = STRBUF_INIT;
+	struct strbuf *sb_ptr;
+
+	enc = get_header(commit, "encoding");
+	enc = enc ? enc : utf8;
+	if(output_encoding && strcmp(enc,output_encoding)) {
+		sb_ptr = &scratch_sb;
+	} else {
+		sb_ptr = sb;
+	}
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
-	strbuf_expand(sb, format, format_commit_item, &context);
-	rewrap_message_tail(sb, &context, 0, 0, 0);
+	strbuf_expand(sb_ptr, format, format_commit_item, &context);
+	rewrap_message_tail(sb_ptr, &context, 0, 0, 0);
+
+	if(sb_ptr != sb) {
+		/* if re-encoding fails, take the content byte-for-byte */
+		buffer = strbuf_detach(sb_ptr, 0);
+		enc_buffer = reencode_string(buffer, output_encoding, enc);
+		enc_buffer = enc_buffer ? enc_buffer : buffer;
+
+		strbuf_addstr(sb,enc_buffer);
+
+		if(enc_buffer != buffer)
+			free(enc_buffer);
+		free(buffer);
+	}
+
+	if(enc != utf8)
+		free(enc);
 }
 
 static void pp_header(enum cmit_fmt fmt,
@@ -1159,11 +1190,7 @@ char *reencode_commit_message(const struct commit *commit, const char **encoding
 {
 	const char *encoding;
 
-	encoding = (git_log_output_encoding
-		    ? git_log_output_encoding
-		    : git_commit_encoding);
-	if (!encoding)
-		encoding = "UTF-8";
+	encoding = get_log_output_encoding();
 	if (encoding_p)
 		*encoding_p = encoding;
 	return logmsg_reencode(commit, encoding);
@@ -1181,7 +1208,7 @@ void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 	int need_8bit_cte = context->need_8bit_cte;
 
 	if (fmt == CMIT_FMT_USERFORMAT) {
-		format_commit_message(commit, user_format, sb, context);
+		format_commit_message(commit, user_format, sb, context, NULL);
 		return;
 	}
 
