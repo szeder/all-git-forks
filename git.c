@@ -246,13 +246,23 @@ struct cmd_struct {
 
 static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 {
-	int status, help;
+	int status;
 	struct stat st;
 	const char *prefix;
 
 	prefix = NULL;
-	help = argc == 2 && !strcmp(argv[1], "-h");
-	if (!help) {
+	startup_info->help = argc == 2 && !strcmp(argv[1], "-h");
+	if (startup_info->help) {
+		/*
+		 * Fast path for "git foo -h", no setup is done.
+		 * Other functions might set .git up automatically
+		 * and potentially die() along the way. It's best
+		 * to check this flag from the beginning, print its
+		 * help usage and exit, nothing more.
+		 */
+		;
+	}
+	else {
 		if (p->option & RUN_SETUP)
 			prefix = setup_git_directory();
 		if (p->option & RUN_SETUP_GENTLY) {
@@ -267,7 +277,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 	}
 	commit_pager_choice();
 
-	if (!help && p->option & NEED_WORK_TREE)
+	if (!startup_info->help && p->option & NEED_WORK_TREE)
 		setup_work_tree();
 
 	trace_argv_printf(argv, "trace: built-in: git");
