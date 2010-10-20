@@ -12,13 +12,13 @@ test_help() {
 	"
 }
 
-test_help failure branch
-test_help failure checkout-index
-test_help failure commit
-test_help failure gc
-test_help failure ls-files
-test_help failure merge
-test_help failure update-index
-test_help failure upload-archive
+test_help success branch
+test_help success checkout-index
+test_help success commit
+test_help success gc
+test_help success ls-files
+test_help success merge
+test_help success update-index
+test_help success upload-archive
 
 test_done
