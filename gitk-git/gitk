@@ -2529,6 +2529,8 @@ proc makewindow {} {
 	{mc "Highlight this only" command {flist_hl 1}}
 	{mc "External diff" command {external_diff}}
 	{mc "Blame parent commit" command {external_blame 1}}
+	{mc "Checkout from this commit" command {external_checkout}}
+	{mc "Checkout from parent commit" command {external_checkout 1}}
     }
     $flist_menu configure -tearoff 0
 
@@ -3565,6 +3567,20 @@ proc make_relative {f} {
 }
 
 proc external_blame {parent_idx {line {}}} {
+
+    set cmdline [list git gui blame]
+    if {$line ne {} && $line > 1} {
+	lappend cmdline "--line=$line"
+    }
+    run_command_on_selected_file $cmdline $parent_idx
+}
+
+proc external_checkout {{parent_idx 0}} {
+    set cmdline [list git checkout]
+    run_command_on_selected_file $cmdline $parent_idx
+}
+
+proc run_command_on_selected_file {cmdline parent_idx} {
     global flist_menu_file cdup
     global nullid nullid2
     global parentlist selectedline currentid
@@ -3580,17 +3596,13 @@ proc external_blame {parent_idx {line {}}} {
 	return
     }
 
-    set cmdline [list git gui blame]
-    if {$line ne {} && $line > 1} {
-	lappend cmdline "--line=$line"
-    }
     set f [file join $cdup $flist_menu_file]
-    # Unfortunately it seems git gui blame doesn't like
+    # Unfortunately some commands do not like
     # being given an absolute path...
     set f [make_relative $f]
     lappend cmdline $base_commit $f
     if {[catch {eval exec $cmdline &} err]} {
-	error_popup "[mc "git gui blame: command failed:"] $err"
+	error_popup "[mc "$cmdline: command failed:"] $err"
     }
 }
 
