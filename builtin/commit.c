@@ -826,7 +826,7 @@ static const char *find_author_by_nickname(const char *name)
 		struct pretty_print_context ctx = {0};
 		ctx.date_mode = DATE_NORMAL;
 		strbuf_release(&buf);
-		format_commit_message(commit, "%an <%ae>", &buf, &ctx);
+		format_commit_message(commit, "%an <%ae>", &buf, &ctx, NULL);
 		return strbuf_detach(&buf, NULL);
 	}
 	die("No existing author found with '%s'", name);
@@ -1127,8 +1127,10 @@ static void print_summary(const char *prefix, const unsigned char *sha1)
 
 	strbuf_addstr(&format, "format:%h] %s");
 
-	format_commit_message(commit, "%an <%ae>", &author_ident, &pctx);
-	format_commit_message(commit, "%cn <%ce>", &committer_ident, &pctx);
+	format_commit_message(commit, "%an <%ae>", &author_ident,
+			      &pctx, NULL);
+	format_commit_message(commit, "%cn <%ce>", &committer_ident,
+			      &pctx, NULL);
 	if (strbuf_cmp(&author_ident, &committer_ident)) {
 		strbuf_addstr(&format, "\n Author: ");
 		strbuf_addbuf_percentquote(&format, &author_ident);

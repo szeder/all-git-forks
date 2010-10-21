@@ -217,7 +217,7 @@ void show_submodule_summary(FILE *f, const char *path,
 			}
 			else if (add)
 				strbuf_addstr(&sb, add);
-			format_commit_message(commit, format, &sb, &ctx);
+			format_commit_message(commit, format, &sb, &ctx, NULL);
 			if (reset)
 				strbuf_addstr(&sb, reset);
 			strbuf_addch(&sb, '\n');
@@ -362,7 +362,7 @@ static void print_commit(struct commit *commit)
 	struct strbuf sb = STRBUF_INIT;
 	struct pretty_print_context ctx = {0};
 	ctx.date_mode = DATE_NORMAL;
-	format_commit_message(commit, " %h: %m %s", &sb, &ctx);
+	format_commit_message(commit, " %h: %m %s", &sb, &ctx, NULL);
 	fprintf(stderr, "%s\n", sb.buf);
 	strbuf_release(&sb);
 }

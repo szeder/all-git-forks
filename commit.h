@@ -85,13 +85,16 @@ struct userformat_want {
 
 extern int has_non_ascii(const char *text);
 struct rev_info; /* in revision.h, it circularly uses enum cmit_fmt */
+extern char *logmsg_reencode(const struct commit *commit,
+			     const char *output_encoding);
 extern char *reencode_commit_message(const struct commit *commit,
 				     const char **encoding_p);
 extern void get_commit_format(const char *arg, struct rev_info *);
 extern void userformat_find_requirements(const char *fmt, struct userformat_want *w);
 extern void format_commit_message(const struct commit *commit,
 				  const char *format, struct strbuf *sb,
-				  const struct pretty_print_context *context);
+				  const struct pretty_print_context *context,
+				  const char *output_encoding);
 extern void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 				struct strbuf *sb,
 				const struct pretty_print_context *context);
