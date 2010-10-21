@@ -1132,15 +1132,11 @@ static char *git_header_name(char *line, int llen)
 		case '\n':
 			return NULL;
 		case '\t': case ' ':
-			second = name+len;
-			for (;;) {
-				char c = *second++;
-				if (c == '\n')
-					return NULL;
-				if (c == '/')
-					break;
-			}
-			if (second[len] == '\n' && !memcmp(name, second, len)) {
+			second = stop_at_slash(name + len, (name - line) + len);
+			if (!second)
+				return NULL;
+			second++;
+			if (second[len] == '\n' && !strncmp(name, second, len)) {
 				return xmemdupz(name, len);
 			}
 		}
