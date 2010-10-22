@@ -92,8 +92,12 @@ static void setup_git_env(void)
 		git_dir = read_gitfile_gently(DEFAULT_GIT_DIR_ENVIRONMENT);
 		git_dir = git_dir ? xstrdup(git_dir) : NULL;
 	}
-	if (!git_dir)
+	if (!git_dir) {
+		trace_printf("setup: GIT_DIR defaults to .git\n");
 		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT;
+	}
+	else
+		trace_printf("setup: GIT_DIR set to %s\n", git_dir);
 	git_object_dir = getenv(DB_ENVIRONMENT);
 	if (!git_object_dir) {
 		git_object_dir = xmalloc(strlen(git_dir) + 9);
