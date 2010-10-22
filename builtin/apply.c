@@ -922,28 +922,28 @@ static int gitdiff_newfile(const char *line, struct patch *patch)
 static int gitdiff_copysrc(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_copydst(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_renamesrc(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_renamedst(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
@@ -1135,15 +1135,11 @@ static char *git_header_name(char *line, int llen)
 		case '\n':
 			return NULL;
 		case '\t': case ' ':
-			second = name+len;
-			for (;;) {
-				char c = *second++;
-				if (c == '\n')
-					return NULL;
-				if (c == '/')
-					break;
-			}
-			if (second[len] == '\n' && !memcmp(name, second, len)) {
+			second = stop_at_slash(name + len, (name - line) + len);
+			if (!second)
+				return NULL;
+			second++;
+			if (second[len] == '\n' && !strncmp(name, second, len)) {
 				return xmemdupz(name, len);
 			}
 		}
