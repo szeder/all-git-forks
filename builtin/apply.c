@@ -919,28 +919,28 @@ static int gitdiff_newfile(const char *line, struct patch *patch)
 static int gitdiff_copysrc(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_copydst(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_renamesrc(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
 static int gitdiff_renamedst(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value - 1, 0);
 	return 0;
 }
 
