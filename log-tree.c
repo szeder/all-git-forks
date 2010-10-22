@@ -274,7 +274,7 @@ void get_patch_filename(struct commit *commit, int nr, const char *suffix,
 		struct pretty_print_context ctx = {0};
 		ctx.date_mode = DATE_NORMAL;
 
-		format_commit_message(commit, "%f", buf, &ctx);
+		format_commit_message(commit, "%f", buf, &ctx, NULL);
 		if (max_len < buf->len)
 			strbuf_setlen(buf, max_len);
 		strbuf_addstr(buf, suffix);
