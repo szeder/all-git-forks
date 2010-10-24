@@ -7,6 +7,10 @@ git (1:1.7.2.3-2.2.1) experimental; urgency=low
     again with emacs23 (closes: #576887).
   * debian/rules, debian/git.emacsen-install: install emacs support
     files to /usr/share/git-core, not /usr/share/doc.
+  * debian/implicit: install all debian/$pkg.README.* files, not just
+    README.source and README.Debian.
+  * debian/git.README.emacs: new file, explaining how to use the
+    packaged emacs modules (text taken from contrib/emacs/README).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:10:19 -0600
 

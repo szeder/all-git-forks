@@ -46,12 +46,10 @@ deb-checkuid:
 	  fi; \
 	  sh -cx "install -m0644 $$i debian/$*/usr/share/doc/$*/" || exit 1; \
 	done
-	@test ! -r debian/$*.README.Debian || \
-	  sh -cx 'install -m0644 debian/$*.README.Debian \
-	    debian/$*/usr/share/doc/$*/README.Debian'
-	@test ! -r debian/$*.README.source || \
-	  sh -cx 'install -m0644 debian/$*.README.source \
-	    debian/$*/usr/share/doc/$*/README.source'
+	@for i in `ls -d debian/$*.README.* 2>/dev/null || :`; do  \
+	  sh -cx "install -m0644 $$i \
+	    debian/$*/usr/share/doc/$*/$${i#debian/$*.}" || exit 1; \
+	done
 	@if test -r debian/$*.NEWS.Debian; then \
 	  sh -cx 'install -m0644 debian/$*.NEWS.Debian \
 	    debian/$*/usr/share/doc/$*/NEWS.Debian && \
