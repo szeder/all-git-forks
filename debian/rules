@@ -105,6 +105,11 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	  '$(GIT)'/usr/lib/emacsen-common/packages/install/git
 	install -m0755 -D debian/git.emacsen-remove \
 	  '$(GIT)'/usr/lib/emacsen-common/packages/remove/git
+	install -d -m0755 '$(GIT)'/usr/share/git-core/emacs
+	install -m0644 contrib/emacs/git-blame.el \
+	  '$(GIT)'/usr/share/git-core/emacs/git-blame.el
+	install -m0644 contrib/emacs/git.el \
+	  '$(GIT)'/usr/share/git-core/emacs/git.el
 	# bash completion
 	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
@@ -113,6 +118,9 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
+	rm -rf '$(GIT)'/usr/share/doc/git/contrib/emacs
+	ln -s ../../../../git-core/emacs \
+	  '$(GIT)'/usr/share/doc/git/contrib/emacs
 	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644
 	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
 	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
