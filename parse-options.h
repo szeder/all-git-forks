@@ -17,6 +17,7 @@ enum parse_opt_type {
 	OPTION_STRING,
 	OPTION_INTEGER,
 	OPTION_CALLBACK,
+	OPTION_LOWLEVEL_CALLBACK,
 	OPTION_FILENAME
 };
 
@@ -40,8 +41,16 @@ enum parse_opt_option_flags {
 	PARSE_OPT_SHELL_EVAL = 256
 };
 
+enum parse_opt_ll_flags {
+	OPT_SHORT = 1,
+	OPT_UNSET = 2
+};
+
 struct option;
+struct parse_opt_ctx_t;
 typedef int parse_opt_cb(const struct option *, const char *arg, int unset);
+typedef int parse_opt_ll_cb(struct parse_opt_ctx_t *ctx,
+			    const struct option *opt, int flags);
 
 /*
  * `type`::
