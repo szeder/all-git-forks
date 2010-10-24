@@ -1,0 +1,4 @@
+#!/bin/sh
+set -e
+test -x /usr/lib/emacsen-common/emacs-package-remove || exit 0
+exec /usr/lib/emacsen-common/emacs-package-remove git

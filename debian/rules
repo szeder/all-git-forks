@@ -101,6 +101,10 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# emacs
 	install -m0644 -D debian/git.emacsen-startup \
 	  '$(GIT)'/etc/emacs/site-start.d/50git-core.el
+	install -m0755 -D debian/git.emacsen-install \
+	  '$(GIT)'/usr/lib/emacsen-common/packages/install/git
+	install -m0755 -D debian/git.emacsen-remove \
+	  '$(GIT)'/usr/lib/emacsen-common/packages/remove/git
 	# bash completion
 	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \

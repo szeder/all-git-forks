@@ -1,3 +1,13 @@
+git (1:1.7.2.3-2.2.1) experimental; urgency=low
+
+  [ Kevin Ryde ]
+  * debian/rules, debian/git.emacsen-*, debian/git.postinst,
+    debian/git.prerm: update emacs support to follow current best
+    practices.  Make M-x git-status and git-blame modes available
+    again with emacs23 (closes: #576887).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:10:19 -0600
+
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
   * Non-maintainer upload.
