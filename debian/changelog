@@ -1,3 +1,11 @@
+git (1:1.7.2.3-2.2.1) experimental; urgency=low
+
+  * debian/rules: git-gui: install git-gui--askpass helper to
+    /usr/lib/git-core, avoiding error dialogues when "git gui" tries
+    fetch by ssh and SSH_ASKPASS is not set (closes: #598245).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:25:09 -0600
+
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
   * Non-maintainer upload.

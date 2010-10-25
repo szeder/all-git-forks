@@ -171,6 +171,8 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-gui/usr/lib/git-core
 	install -m0755 '$(TMP)'/usr/lib/git-core/git-gui \
 	  '$(GIT)'-gui/usr/lib/git-core/
+	install -m0755 '$(TMP)'/usr/lib/git-core/git-gui--askpass \
+	  '$(GIT)'-gui/usr/lib/git-core/
 	install -m0755 '$(TMP)'/usr/lib/git-core/git-citool \
 	  '$(GIT)'-gui/usr/lib/git-core/
 	install -d -m0755 '$(GIT)'-gui/usr/share/man/man1
