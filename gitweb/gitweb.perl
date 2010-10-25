@@ -2772,6 +2772,53 @@ sub git_get_last_activity {
 	return (undef, undef);
 }
 
+# Returns a hash ref mapping remote names to their fetch and push URLs.
+# We return a hash ref rather than a hash so that a simple check with defined
+# can be used to tell apart the "no remotes" case from other kinds of
+# failures.
+#
+# It is possible to limit the retrieved remotes to only single remote by
+# passing its name as a parameter to git_get_remotes_list.
+#
+# Implementation note: When a single remote is wanted, we cannot use 'git remote
+# show -n' because that command always work (assuming it's a remote URL if it's
+# not defined), and we cannot use 'git remote show' because that would try to
+# make a network roundtrip. So the only way to find if that particular remote is
+# defined is to walk the list provided by 'git remote -v' and stop if and when
+# we find what we want.
+sub git_get_remotes_list {
+	my $wanted = shift;
+	my %remotes = ();
+
+	open my $fd, '-|' , git_cmd(), 'remote', '-v';
+	return unless $fd;
+	while (my $remote = <$fd>) {
+		chomp $remote;
+		next unless ($remote =~ s!\t(.*?)\s+\((\w+)\)$!!);
+		# $wanted remote might be present multiple times in output
+		next if ($wanted && $remote ne $wanted);
+		my ($url, $key) = ($1, $2);
+
+		$remotes{$remote}{$key} = $url;
+	}
+	close $fd or return;
+	return \%remotes;
+}
+
+# Takes a hash of remotes as first parameter and fills it by adding the
+# available remote heads for each of the indicated remotes.
+sub fill_remote_heads {
+	my $remotes = shift;
+
+	my @heads = map { "remotes/$_" } keys %$remotes;
+	## A QUESTION: perhaps it would be better to pass @remoteheads as parameter?
+	my @remoteheads = git_get_heads_list(undef, @heads);
+	foreach my $remote (keys %$remotes) {
+		$remotes->{$remote}{'heads'} =
+			[ grep { $_->{'name'} =~ s!^$remote/!! } @remoteheads ];
+	}
+}
+
 sub git_get_references {
 	my $type = shift || "";
 	my %refs;
@@ -3171,7 +3218,7 @@ sub parse_from_to_diffinfo {
 
 sub git_get_heads_list {
 	my ($limit, @classes) = @_;
-	unless (defined @classes) {
+	unless (@classes) {
 		my $remote_heads = gitweb_check_feature('remote_heads');
 		@classes = ('heads', $remote_heads ? 'remotes' : ());
 	}
@@ -5054,6 +5101,102 @@ sub git_heads_body {
 	print "</table>\n";
 }
 
+# Display a block for a single remote
+sub git_remote_block {
+	my ($remote, $rdata, $limit, $head) = @_;
+
+	my ($heads, $fetch, $push) = @{$rdata}{qw(heads fetch push)};
+
+	my $urls = "<table class=\"projects_list\">\n";
+	if (defined $fetch) {
+		if ($fetch eq $push) {
+			$urls .= format_repo_url("URL", $fetch);
+		} else {
+			$urls .= format_repo_url("Fetch URL", $fetch);
+			$urls .= format_repo_url("Push URL", $push) if defined $push;
+		}
+	} elsif (defined $push) {
+		$urls .= format_repo_url("Push URL", $push);
+	} else {
+		$urls .= format_repo_url("", "No remote URL");
+	}
+	$urls .= "</table>\n";
+
+	my $dots;
+	if (defined $limit && $limit < @$heads) {
+		$dots = $cgi->a({-href => href(action=>"remotes", hash=>$remote)}, "...");
+	}
+
+	print $urls;
+	git_heads_body($heads, $head, 0, $limit, $dots);
+}
+
+# Display a list of remote names with the respective fetch and push URLs,
+# without displaying remote heads (used when there are too many remotes).
+sub git_remotes_list {
+	my ($remotedata, $limit) = @_;
+
+	print "<table class=\"heads\">\n";
+	my $alternate = 1;
+	my @remotes = sort keys %$remotedata;
+	$limit = scalar @remotes
+		unless defined $limit;
+
+	for (my $i = 0; $i < $limit; $i++) {
+		my $remote = $remotes[$i];
+		my $rdata = $remotedata->{$remote};
+		my $fetch = $rdata->{'fetch'};
+		my $push  = $rdata->{'push'};
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		print "<td>" .
+		      $cgi->a({-href=> href(action=>'remotes', hash=>$remote),
+		               -class=> "list name"}, esc_html($remote)) .
+		      "</td>";
+		print "<td class=\"link\">" .
+		      (defined $fetch ? $cgi->a({-href=> $fetch}, "fetch") : "fetch") .
+		      " | " .
+		      (defined $push  ? $cgi->a({-href=> $push},  "push")  : "push") .
+		      "</td>";
+
+		print "</tr>\n";
+	}
+	if ($limit < @remotes) {
+		print "<tr>\n" .
+		      "<td colspan=\"3\">" .
+		      $cgi->a({-href => href(action=>"remotes")}, "...") .
+		      "</td>\n" .
+		      "</tr>\n";
+	}
+	print "</table>"; # class="heads"
+}
+
+# Display remote heads grouped by remote, unless there are too many
+# remotes, in which case we only display the remote names
+sub git_remotes_body {
+	my ($remotedata, $limit, $head) = @_;
+
+	if (defined $limit && $limit < scalar keys %$remotedata) {
+		# $limit limits number of displayed remotes
+		git_remotes_list($remotedata, $limit);
+
+	} else {
+		# $limit limits number of displayed heads in each remote
+		fill_remote_heads($remotedata);
+		while (my ($remote, $rdata) = each %$remotedata) {
+			git_print_section(
+				{-class=>"remote", -id=>$remote},
+				["remotes", $remote, $remote],
+				sub { git_remote_block($remote, $rdata, $limit, $head) }
+			);
+		}
+	}
+}
+
 sub git_search_grep_body {
 	my ($commitlist, $from, $to, $extra) = @_;
 	$from = 0 unless defined $from;
@@ -5200,7 +5343,7 @@ sub git_summary {
 	# there are more ...
 	my @taglist  = git_get_tags_list(16);
 	my @headlist = git_get_heads_list(16, 'heads');
-	my @remotelist = $remote_heads ? git_get_heads_list(16, 'remotes') : ();
+	my $remotedata = $remote_heads ? git_get_remotes_list() : undef;
 	my @forklist;
 	my $check_forks = gitweb_check_feature('forks');
 
@@ -5278,11 +5421,9 @@ sub git_summary {
 		               $cgi->a({-href => href(action=>"heads")}, "..."));
 	}
 
-	if (@remotelist) {
+	if ($remotedata) {
 		git_print_header_div('remotes');
-		git_heads_body(\@remotelist, $head, 0, 15,
-		               $#remotelist <= 15 ? undef :
-		               $cgi->a({-href => href(action=>"remotes")}, "..."));
+		git_remotes_body($remotedata, 16, $head);
 	}
 
 	if (@forklist) {
@@ -5599,6 +5740,7 @@ sub git_heads {
 	git_footer_html();
 }
 
+# dual lived: used both for single remote view, and for list of all remotes
 sub git_remotes {
 	gitweb_check_feature('remote_heads')
 		or die_error(403, "Remote heads view is disabled");
@@ -5606,18 +5748,16 @@ sub git_remotes {
 	my $head = git_get_head_hash($project);
 	my $remote = $input_params{'hash'};
 
-	my @remotelist;
+	my $remotedata = git_get_remotes_list($remote);
+	die_error(500, "Unable to get remote information")
+		unless defined $remotedata;
 
-	if (defined $remote) {
-		# only display the heads in a given remote
-		@remotelist = map {
-			my $ref = $_ ;
-			$ref->{'name'} =~ s!^$remote/!!;
-			$ref
-		} git_get_heads_list(undef, "remotes/$remote");
-	} else {
-		@remotelist = git_get_heads_list(undef, 'remotes');
+	unless (%$remotedata) {
+		die_error(404, defined $remote ?
+			"Remote $remote not found" :
+			"No remotes found");
 	}
+	fill_remote_heads($remotedata);
 
 	git_header_html(undef, undef, -action_extra => $remote);
 	git_print_page_nav('', '',  $head, undef, $head,
@@ -5625,12 +5765,10 @@ sub git_remotes {
 
 	if (defined $remote) {
 		git_print_header_div('remotes', "$remote remote for $project");
+		git_remote_block($remote, $remotedata->{$remote}, undef, $head);
 	} else {
 		git_print_header_div('summary', "$project remotes");
-	}
-
-	if (@remotelist) {
-		git_heads_body(\@remotelist, $head);
+		git_remotes_body($remotedata, undef, $head);
 	}
 
 	git_footer_html();
