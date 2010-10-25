@@ -1,3 +1,10 @@
+git (1:1.7.2.3-2.2.1) experimental; urgency=low
+
+  * debian/control: git-cvs: clarify relationship to cvs2git in the
+    long description (closes: #585725).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:22:50 -0600
+
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
   * Non-maintainer upload.

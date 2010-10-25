@@ -102,9 +102,15 @@ Description: fast, scalable, distributed revision control system (cvs interopera
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides tools for interoperating with CVS repositories,
- importing CVS development history, and providing CVS client access to
- git repositories.
+ This package provides the git cvsimport, cvsexportcommit, and cvsserver
+ tools, which allow Git to read from and write to CVS repositories and
+ offer access over CVS protocol to Git repositories.
+ .
+ The git cvsimport tool can incrementally import from a repository that
+ is being actively developed and only requires remote access over CVS
+ protocol. Unfortunately, in many situations the import leads to
+ incorrect results. For reliable, one-shot imports, cvs2git from the
+ cvs2svn package or parsecvs may be a better fit.
 
 Package: git-svn
 Architecture: all
