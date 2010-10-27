@@ -78,7 +78,7 @@ static struct notes_merge_pair *find_notes_merge_pair_pos(
 	 * _appends_), we don't care that inserting into the middle of the
 	 * list is expensive (using memmove()).
 	 */
-	static int last_index = 0;
+	static int last_index;
 	int i = last_index < len ? last_index : len - 1;
 	int prev_cmp = 0, cmp = -1;
 	while (i >= 0 && i < len) {
@@ -584,14 +584,14 @@ int notes_merge(struct notes_merge_options *o,
 		if (!check_ref_format(o->remote_ref)) {
 			hashclr(remote_sha1);
 			remote = NULL;
-		}
-		else
+		} else {
 			die("Failed to resolve remote notes ref '%s'",
 			    o->remote_ref);
-	}
-	else if (!(remote = lookup_commit_reference(remote_sha1)))
+		}
+	} else if (!(remote = lookup_commit_reference(remote_sha1))) {
 		die("Could not parse remote commit %s (%s)",
 		    sha1_to_hex(remote_sha1), o->remote_ref);
+	}
 	trace_printf("\tremote commit: %.7s\n", sha1_to_hex(remote_sha1));
 
 	if (!local && !remote)

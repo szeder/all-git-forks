@@ -928,9 +928,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		return cmd_reset(nargc, nargv, prefix);
 	}
 
-	if (read_cache_unmerged()) {
+	if (read_cache_unmerged())
 		die_resolve_conflict("merge");
-	}
+
 	if (file_exists(git_path("MERGE_HEAD"))) {
 		/*
 		 * There is no unmerged entry, don't advise 'git
