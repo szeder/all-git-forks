@@ -32,7 +32,7 @@ BEGIN {
 our $version = "++GIT_VERSION++";
 
 # Output buffer variable
-$output = "";
+our $output = "";
 
 our ($my_url, $my_uri, $base_url, $path_info, $home_link);
 sub evaluate_uri {
@@ -241,6 +241,57 @@ our %avatar_size = (
 # If gitweb cannot determined server load, it is taken to be 0.
 # Leave it undefined (or set to 'undef') to turn off load checking.
 our $maxload = 300;
+
+# This enables/disables the caching layer in gitweb.  This currently only supports the
+# 'dumb' file based caching layer, primarily used on git.kernel.org.  this is reasonably
+# effective but it has the downside of requiring a huge amount of disk space if there
+# are a number of repositories involved.  It is not uncommon for git.kernel.org to have
+# on the order of 80G - 120G accumulate over the course of a few months.  It is recommended
+# that the cache directory be periodically completely deleted, and this is safe to perform.
+# Suggested mechanism
+# mv $cacheidr $cachedir.flush;mkdir $cachedir;rm -rf $cachedir.flush
+# Value is binary. 0 = disabled (default), 1 = enabled.
+#
+# Values of caching:
+# 	1 = 'dumb' file based caching used on git.kernel.org
+our $cache_enable = 0;
+
+# Used to set the minimum cache timeout for the dynamic caching algorithm.  Basically
+# if we calculate the cache to be under this number of seconds we set the cache timeout
+# to this minimum.
+# Value is in seconds.  1 = 1 seconds, 60 = 1 minute, 600 = 10 minutes, 3600 = 1 hour
+our $minCacheTime = 20;
+
+# Used to set the maximum cache timeout for the dynamic caching algorithm.  Basically
+# if we calculate the cache to exceed this number of seconds we set the cache timeout
+# to this maximum.
+# Value is in seconds.  1 = 1 seconds, 60 = 1 minute, 600 = 10 minutes, 3600 = 1 hour
+our $maxCacheTime = 1200;
+
+# If you need to change the location of the caching directory, override this
+# otherwise this will probably do fine for you
+our $cachedir = 'cache';
+
+# If this is set (to 1) cache will do it's best to always display something instead
+# of making someone wait for the cache to update.  This will launch the cacheUpdate
+# into the background and it will lock a <file>.bg file and will only lock the
+# actual cache file when it needs to write into it.  In theory this will make
+# gitweb seem more responsive at the price of possibly stale data.
+our $backgroundCache = 1;
+
+# Used to set the maximum cache file life.  If a cache files last modify time exceeds
+# this value, it will assume that the data is just too old, and HAS to be regenerated
+# instead of trying to display the existing cache data.
+# Value is in seconds.  1 = 1 seconds, 60 = 1 minute, 600 = 10 minutes, 3600 = 1 hour
+# 18000 = 5 hours
+our $maxCacheLife = 18000;
+
+# Used to enable or disable background forking of the gitweb caching.  Mainly here for debugging purposes
+our $cacheDoFork = 1;
+
+our $fullhashpath = *STDOUT;
+our $fullhashbinpath = *STDOUT;
+our $fullhashbinpathfinal = *STDOUT;
 
 # configuration for 'highlight' (http://www.andre-simon.de/)
 # match by basename
@@ -497,6 +548,11 @@ our %feature = (
 		'override' => 0,
 		'default' => [0]},
 );
+
+#
+# Includes
+#
+do 'cache.pm';
 
 sub gitweb_get_feature {
 	my ($name) = @_;
@@ -1064,7 +1120,8 @@ sub dispatch {
 	    !$project) {
 		die_error(400, "Project needed");
 	}
-	$actions{$action}->();
+	#$actions{$action}->();
+	cache_fetch($action);
 }
 
 sub reset_timer {
@@ -1133,6 +1190,7 @@ sub change_output {
 
 	# Trap the 'proper' STDOUT to STDOUT_REAL for things like error messages and such
 	open(STDOUT_REAL,">&STDOUT") or die "Unable to capture STDOUT $!\n";
+	print STDOUT_REAL "";
 
 	# Close STDOUT, so that it isn't being used anymore.
 	close STDOUT;
@@ -1159,10 +1217,7 @@ sub run {
 		$pre_dispatch_hook->()
 			if $pre_dispatch_hook;
 
-		change_output();
 		run_request();
-		reset_output();
-		print $output;
 
 		$post_dispatch_hook->()
 			if $post_dispatch_hook;
@@ -3439,7 +3494,9 @@ sub git_header_html {
 	# support xhtml+xml but choking when it gets what it asked for.
 	if (defined $cgi->http('HTTP_ACCEPT') &&
 	    $cgi->http('HTTP_ACCEPT') =~ m/(,|;|\s|^)application\/xhtml\+xml(,|;|\s|$)/ &&
-	    $cgi->Accept('application/xhtml+xml') != 0) {
+	    $cgi->Accept('application/xhtml+xml') != 0
+	    &&
+	    $cache_enable == 0) {
 		$content_type = 'application/xhtml+xml';
 	} else {
 		$content_type = 'text/html';
@@ -3584,6 +3641,7 @@ sub git_footer_html {
 	my $feed_class = 'rss_logo';
 
 	print "<div class=\"page_footer\">\n";
+	print "<div class=\"cachetime\">Cache Last Updated: ". gmtime( time ) ." GMT</div>\n";
 	if (defined $project) {
 		my $descr = git_get_project_description($project);
 		if (defined $descr) {
@@ -3672,6 +3730,11 @@ sub die_error {
 		500 => '500 Internal Server Error',
 		503 => '503 Service Unavailable',
 	);
+	# The output handlers for die_error need to be reset to STDOUT
+	# so that half the message isn't being output to random and
+	# half to STDOUT as expected.  This is mainly for the benefit
+	# of using git_header_html() and git_footer_html() since
+	#
 	# Reset the output so that we are actually going to STDOUT as opposed
 	# to buffering the output.
 	reset_output();
@@ -5584,9 +5647,15 @@ sub git_blob_plain {
 			($sandbox ? 'attachment' : 'inline')
 			. '; filename="' . $save_as . '"');
 	local $/ = undef;
-	binmode STDOUT, ':raw';
-	print <$fd>;
-	binmode STDOUT, ':utf8'; # as set at the beginning of gitweb.cgi
+	if( $cache_enable != 0){
+		open BINOUT, '>', $fullhashbinpath or die_error(500, "Could not open bin dump file");
+	}else{
+		open BINOUT, '>', \$fullhashbinpath or die_error(500, "Could not open bin dump file");
+	}
+	binmode BINOUT, ':raw';
+	print BINOUT <$fd>;
+	binmode BINOUT, ':utf8'; # as set at the beginning of gitweb.cgi
+	close BINOUT;
 	close $fd;
 }
 
@@ -5871,9 +5940,15 @@ sub git_snapshot {
 
 	open my $fd, "-|", $cmd
 		or die_error(500, "Execute git-archive failed");
-	binmode STDOUT, ':raw';
-	print <$fd>;
-	binmode STDOUT, ':utf8'; # as set at the beginning of gitweb.cgi
+	if( $cache_enable != 0){
+		open BINOUT, '>', $fullhashbinpath or die_error(500, "Could not open bin dump file");
+	}else{
+		open BINOUT, '>', \$fullhashbinpath or die_error(500, "Could not open bin dump file");
+	}
+	binmode BINOUT, ':raw';
+	print BINOUT <$fd>;
+	binmode BINOUT, ':utf8'; # as set at the beginning of gitweb.cgi
+	close BINOUT;
 	close $fd;
 }
 
