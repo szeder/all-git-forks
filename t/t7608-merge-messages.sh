@@ -54,7 +54,7 @@ test_expect_success 'remote-tracking branch' '
 	git checkout master &&
 	test_commit master-5 &&
 	git merge origin/master &&
-	check_oneline "Merge remote branch Qorigin/masterQ"
+	check_oneline "Merge remote-tracking branch Qorigin/masterQ"
 '
 
 test_done
