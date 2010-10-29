@@ -3772,4 +3772,72 @@ EOF
 	test_repo 25/sub
 '
 
+#
+# case #26
+#
+############################################################
+#
+# Input:
+#
+#  - GIT_WORK_TREE is not set
+#  - GIT_DIR is set
+#  - core.worktree is not set
+#  - .git is a file
+#  - core.bare is set
+#
+# Output:
+#
+# #18 except git_dir is set according to .git file
+
+test_expect_success '#26: setup' '
+	unset GIT_DIR GIT_WORK_TREE &&
+	mkdir 26 26/sub &&
+	cd 26 &&
+	git init &&
+	git config core.bare true &&
+	mv .git ../26.git &&
+	echo gitdir: ../26.git >.git &&
+	cd ..
+'
+
+test_expect_failure '#26: (rel) at root' '
+	cat >26/expected <<EOF &&
+setup: git_dir: $TRASH_DIRECTORY/26.git
+setup: worktree: (null)
+setup: cwd: $TRASH_DIRECTORY/26
+setup: prefix: (null)
+EOF
+	 GIT_DIR=.git test_repo 26
+'
+
+test_expect_failure '#26: at root' '
+	cat >26/expected <<EOF &&
+setup: git_dir: $TRASH_DIRECTORY/26.git
+setup: worktree: (null)
+setup: cwd: $TRASH_DIRECTORY/26
+setup: prefix: (null)
+EOF
+	 GIT_DIR="$TRASH_DIRECTORY/26/.git" test_repo 26
+'
+
+test_expect_failure '#26: (rel) in subdir' '
+	cat >26/sub/expected <<EOF &&
+setup: git_dir: $TRASH_DIRECTORY/26.git
+setup: worktree: (null)
+setup: cwd: $TRASH_DIRECTORY/26/sub
+setup: prefix: (null)
+EOF
+	GIT_DIR=../.git test_repo 26/sub
+'
+
+test_expect_failure '#26: in subdir' '
+	cat >26/sub/expected <<EOF &&
+setup: git_dir: $TRASH_DIRECTORY/26.git
+setup: worktree: (null)
+setup: cwd: $TRASH_DIRECTORY/26/sub
+setup: prefix: (null)
+EOF
+	GIT_DIR="$TRASH_DIRECTORY/26/.git" test_repo 26/sub
+'
+
 test_done
