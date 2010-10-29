@@ -59,7 +59,7 @@ static struct option builtin_fetch_options[] = {
 	OPT_SET_INT('n', NULL, &tags,
 		    "do not fetch all tags (--no-tags)", TAGS_UNSET),
 	OPT_BOOLEAN('p', "prune", &prune,
-		    "prune tracking branches no longer on remote"),
+		    "prune remote-tracking branches no longer on remote"),
 	OPT_SET_INT(0, "recursive", &recursive,
 		    "control recursive fetching of submodules", RECURSIVE_SET),
 	OPT_BOOLEAN(0, "dry-run", &dry_run,
@@ -107,7 +107,7 @@ static void add_merge_config(struct ref **head,
 			continue;
 
 		/*
-		 * Not fetched to a tracking branch?  We need to fetch
+		 * Not fetched to a remote-tracking branch?  We need to fetch
 		 * it anyway to allow this branch's "branch.$name.merge"
 		 * to be honored by 'git pull', but we do not have to
 		 * fail if branch.$name.merge is misconfigured to point
@@ -368,7 +368,7 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 			what = rm->name + 10;
 		}
 		else if (!prefixcmp(rm->name, "refs/remotes/")) {
-			kind = "remote branch";
+			kind = "remote-tracking branch";
 			what = rm->name + 13;
 		}
 		else {

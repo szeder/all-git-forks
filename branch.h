@@ -22,7 +22,7 @@ void create_branch(const char *head, const char *name, const char *start_name,
 void remove_branch_state(void);
 
 /*
- * Configure local branch "local" to merge remote branch "remote"
+ * Configure local branch "local" to merge remote-tracking branch "remote"
  * taken from origin "origin".
  */
 #define BRANCH_CONFIG_VERBOSE 01

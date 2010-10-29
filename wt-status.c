@@ -88,7 +88,7 @@ static void wt_status_print_dirty_header(struct wt_status *s,
 {
 	const char *c = color(WT_STATUS_HEADER, s);
 
-	color_fprintf_ln(s->fp, c, _("# Changed but not updated:"));
+	color_fprintf_ln(s->fp, c, _("# Changes not staged for commit:"));
 	if (!advice_status_hints)
 		return;
 	if (!has_deleted)
