@@ -123,8 +123,8 @@ test_expect_success 'Add a few hundred commits w/notes to trigger fanout (x -> y
 	done &&
 	test "$(git rev-parse refs/notes/y)" != "$(git rev-parse refs/notes/x)" &&
 	# Expected number of commits and notes
-	test "$(git rev-list HEAD | wc -l)" = "$num" &&
-	test "$(git notes list | wc -l)" = "$num" &&
+	test $(git rev-list HEAD | wc -l) = $num &&
+	test $(git notes list | wc -l) = $num &&
 	# 5 first notes unchanged
 	verify_notes y commit5
 '
