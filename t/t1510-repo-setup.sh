@@ -779,7 +779,7 @@ EOF
 	GIT_DIR="$TRASH_DIRECTORY/6/.git" test_repo 6/sub/sub
 '
 
-test_expect_failure '#6: GIT_DIR(rel), core.worktree=../.. at root' '
+test_expect_success '#6: GIT_DIR(rel), core.worktree=../.. at root' '
 	cat >6/expected <<EOF &&
 setup: git_dir: $TRASH_DIRECTORY/6/.git
 setup: worktree: $TRASH_DIRECTORY
@@ -790,7 +790,7 @@ EOF
 	GIT_DIR=.git test_repo 6
 '
 
-test_expect_failure '#6: GIT_DIR(rel), core.worktree=../..(rel) at root' '
+test_expect_success '#6: GIT_DIR(rel), core.worktree=../..(rel) at root' '
 	cat >6/expected <<EOF &&
 setup: git_dir: $TRASH_DIRECTORY/6/.git
 setup: worktree: $TRASH_DIRECTORY
