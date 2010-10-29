@@ -403,8 +403,8 @@ static char *replace_encoding_header(char *buf, const char *encoding)
 	return strbuf_detach(&tmp, NULL);
 }
 
-static char *logmsg_reencode(const struct commit *commit,
-			     const char *output_encoding)
+char *logmsg_reencode(const struct commit *commit,
+		      const char *output_encoding)
 {
 	static const char *utf8 = "UTF-8";
 	const char *use_encoding;
@@ -555,6 +555,7 @@ struct format_commit_context {
 	const struct pretty_print_context *pretty_ctx;
 	unsigned commit_header_parsed:1;
 	unsigned commit_message_parsed:1;
+	char *message;
 	size_t width, indent1, indent2;
 
 	/* These offsets are relative to the start of the commit message. */
@@ -591,7 +592,7 @@ static int add_again(struct strbuf *sb, struct chunk *chunk)
 
 static void parse_commit_header(struct format_commit_context *context)
 {
-	const char *msg = context->commit->buffer;
+	const char *msg = context->message;
 	int i;
 
 	for (i = 0; msg[i]; i++) {
@@ -677,8 +678,8 @@ const char *format_subject(struct strbuf *sb, const char *msg,
 
 static void parse_commit_message(struct format_commit_context *c)
 {
-	const char *msg = c->commit->buffer + c->message_off;
-	const char *start = c->commit->buffer;
+	const char *msg = c->message + c->message_off;
+	const char *start = c->message;
 
 	msg = skip_empty_lines(msg);
 	c->subject_off = msg - start;
@@ -741,7 +742,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 {
 	struct format_commit_context *c = context;
 	const struct commit *commit = c->commit;
-	const char *msg = commit->buffer;
+	const char *msg = c->message;
 	struct commit_list *p;
 	int h1, h2;
 
@@ -886,8 +887,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	case 'N':
 		if (c->pretty_ctx->show_notes) {
 			format_display_notes(commit->object.sha1, sb,
-				    git_log_output_encoding ? git_log_output_encoding
-							    : git_commit_encoding, 0);
+				    get_log_output_encoding(), 0);
 			return 1;
 		}
 		return 0;
@@ -1009,16 +1009,29 @@ void userformat_find_requirements(const char *fmt, struct userformat_want *w)
 
 void format_commit_message(const struct commit *commit,
 			   const char *format, struct strbuf *sb,
-			   const struct pretty_print_context *pretty_ctx)
+			   const struct pretty_print_context *pretty_ctx,
+			   const char *output_encoding)
 {
 	struct format_commit_context context;
+	static char utf8[] = "UTF-8";
+	char *enc;
+
+	enc = get_header(commit, "encoding");
+	enc = enc ? enc : utf8;
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
+	if (output_encoding && strcmp(enc, output_encoding))
+		context.message = logmsg_reencode(commit, output_encoding);
+	context.message = context.message ? context.message : commit->buffer;
+
 	strbuf_expand(sb, format, format_commit_item, &context);
 	rewrap_message_tail(sb, &context, 0, 0, 0);
+
+	if (context.message != commit->buffer)
+		free(context.message);
 }
 
 static void pp_header(enum cmit_fmt fmt,
@@ -1159,11 +1172,7 @@ char *reencode_commit_message(const struct commit *commit, const char **encoding
 {
 	const char *encoding;
 
-	encoding = (git_log_output_encoding
-		    ? git_log_output_encoding
-		    : git_commit_encoding);
-	if (!encoding)
-		encoding = "UTF-8";
+	encoding = get_log_output_encoding();
 	if (encoding_p)
 		*encoding_p = encoding;
 	return logmsg_reencode(commit, encoding);
@@ -1181,7 +1190,7 @@ void pretty_print_commit(enum cmit_fmt fmt, const struct commit *commit,
 	int need_8bit_cte = context->need_8bit_cte;
 
 	if (fmt == CMIT_FMT_USERFORMAT) {
-		format_commit_message(commit, user_format, sb, context);
+		format_commit_message(commit, user_format, sb, context, NULL);
 		return;
 	}
 
