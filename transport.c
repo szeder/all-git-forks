@@ -1002,12 +1002,27 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 	transport->progress = force_progress || (verbosity >= 0 && isatty(2));
 }
 
+static void verify_submodules_available( struct transport *transport,
+		   int refspec_nr, const char **refspec, int flags)
+
+{
+	int problem = 0;
+
+	if (flags && TRANSPORT_PUSH_FORCE)
+		return;
+
+	if (problem)
+		die("Submodule %s's commit %s is not contained"
+		    " in any registered remote", "X", "YZ");
+}
+
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   int *nonfastforward)
 {
 	*nonfastforward = 0;
 	transport_verify_remote_names(refspec_nr, refspec);
+	verify_submodules_available(transport, refspec_nr, refspec, flags);
 
 	if (transport->push) {
 		/* Maybe FIXME. But no important transport uses this case. */

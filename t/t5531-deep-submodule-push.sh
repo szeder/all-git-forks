@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='unpack-objects'
+test_description='test push of submodules works correctly'
 
 . ./test-lib.sh
 
@@ -25,9 +25,26 @@ test_expect_success setup '
 	)
 '
 
-test_expect_success push '
+test_expect_failure 'push superproject with not pushed subproject' '
 	(
 		cd work &&
+		test_must_fail git push ../pub.git master &&
+		git push -f ../pub.git master
+	)
+'
+
+test_expect_failure 'push superproject with pushed subproject' '
+	(
+		cd work/gar/bage &&
+		> junk2 &&
+		git add junk2 &&
+		git commit -m "More Junk" &&
+		git push ../../../../sub.git
+	) &&
+	(
+		cd work &&
+		git add gar/bage &&
+		git commit -m "More superproject" &&
 		git push ../pub.git master
 	)
 '
