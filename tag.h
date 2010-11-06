@@ -4,6 +4,7 @@
 #include "object.h"
 
 #define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
+#define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
 
 extern const char *tag_type;
 
