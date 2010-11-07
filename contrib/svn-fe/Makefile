@@ -9,12 +9,11 @@ LDFLAGS =
 ALL_CFLAGS = $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
 PTHREAD_LIBS = -lpthread
-EXTLIBS = -lz $(PTHREAD_LIBS)
+EXTLIBS = $(PTHREAD_LIBS)
 
 GIT_LIB = ../../libgit.a
 VCSSVN_LIB = ../../vcs-svn/lib.a
-XDIFF_LIB = ../../xdiff/lib.a
-LIBS = $(VCSSVN_LIB) $(GIT_LIB) $(XDIFF_LIB) $(EXTLIBS)
+LIBS = $(VCSSVN_LIB) $(GIT_LIB) $(EXTLIBS)
 
 QUIET_SUBDIR0 = +$(MAKE) -C # space to separate -C and subdir
 QUIET_SUBDIR1 =
