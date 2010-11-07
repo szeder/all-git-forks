@@ -33,6 +33,8 @@
 /* Create memory pool for log messages */
 obj_pool_gen(log, char, 4096)
 
+static struct line_buffer input = LINE_BUFFER_INIT;
+
 static char* log_copy(uint32_t length, char *log)
 {
 	char *buffer;
@@ -144,14 +146,14 @@ static void read_props(void)
 	uint32_t key = ~0;
 	char *val = NULL;
 	char *t;
-	while ((t = buffer_read_line()) && strcmp(t, "PROPS-END")) {
+	while ((t = buffer_read_line(&input)) && strcmp(t, "PROPS-END")) {
 		if (!strncmp(t, "K ", 2)) {
 			len = atoi(&t[2]);
-			key = pool_intern(buffer_read_string(len));
-			buffer_read_line();
+			key = pool_intern(buffer_read_string(&input, len));
+			buffer_read_line(&input);
 		} else if (!strncmp(t, "V ", 2)) {
 			len = atoi(&t[2]);
-			val = buffer_read_string(len);
+			val = buffer_read_string(&input, len);
 			if (key == keys.svn_log) {
 				/* Value length excludes terminating nul. */
 				rev_ctx.log = log_copy(len + 1, val);
@@ -166,11 +168,11 @@ static void read_props(void)
 				node_ctx.type = REPO_MODE_LNK;
 			}
 			key = ~0;
-			buffer_read_line();
+			buffer_read_line(&input);
 		} else if (!strncmp(t, "D ", 2)) {
 			len = atoi(&t[2]);
-			key = pool_intern(buffer_read_string(len));
-			buffer_read_line();
+			key = pool_intern(buffer_read_string(&input, len));
+			buffer_read_line(&input);
 			if (key == keys.svn_executable) {
 				if (node_ctx.type == REPO_MODE_EXE)
 					node_ctx.type = REPO_MODE_BLB;
@@ -234,9 +236,10 @@ static void handle_node(void)
 
 	if (node_ctx.mark)
 		fast_export_blob(node_ctx.type, node_ctx.mark, node_ctx.textLength,
-				node_ctx.text_delta, node_ctx.srcMark, node_ctx.srcMode);
+				 &input,
+				 node_ctx.text_delta, node_ctx.srcMark, node_ctx.srcMode);
 	else if (node_ctx.textLength != LENGTH_UNKNOWN)
-		buffer_skip_bytes(node_ctx.textLength);
+		buffer_skip_bytes(&input, node_ctx.textLength);
 }
 
 static void handle_revision(void)
@@ -255,7 +258,7 @@ void svndump_read(const char *url)
 	uint32_t key;
 
 	reset_dump_ctx(pool_intern(url));
-	while ((t = buffer_read_line())) {
+	while ((t = buffer_read_line(&input))) {
 		val = strstr(t, ": ");
 		if (!val)
 			continue;
@@ -325,7 +328,7 @@ void svndump_read(const char *url)
 				val, SHA1_HEX_LENGTH + 1);
 		} else if (key == keys.content_length) {
 			len = atoi(val);
-			buffer_read_line();
+			buffer_read_line(&input);
 			if (active_ctx == REV_CTX) {
 				read_props();
 			} else if (active_ctx == NODE_CTX) {
@@ -333,7 +336,7 @@ void svndump_read(const char *url)
 				active_ctx = REV_CTX;
 			} else {
 				fprintf(stderr, "Unexpected content length header: %"PRIu32"\n", len);
-				buffer_skip_bytes(len);
+				buffer_skip_bytes(&input, len);
 			}
 		}
 	}
@@ -345,7 +348,7 @@ void svndump_read(const char *url)
 
 void svndump_init(const char *filename)
 {
-	buffer_init(filename);
+	buffer_init(&input, filename);
 	repo_init();
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
@@ -360,7 +363,7 @@ void svndump_deinit(void)
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
-	if (buffer_deinit())
+	if (buffer_deinit(&input))
 		fprintf(stderr, "Input error\n");
 	if (ferror(stdout))
 		fprintf(stderr, "Output error\n");
@@ -369,7 +372,7 @@ void svndump_deinit(void)
 void svndump_reset(void)
 {
 	log_reset();
-	buffer_reset();
+	buffer_reset(&input);
 	repo_reset();
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
