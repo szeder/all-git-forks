@@ -5,47 +5,59 @@
 
 #include "git-compat-util.h"
 #include "line_buffer.h"
-#include "obj_pool.h"
+#include "strbuf.h"
 
-#define LINE_BUFFER_LEN 10000
 #define COPY_BUFFER_LEN 4096
 
-/* Create memory pool for char sequence of known length */
-obj_pool_gen(blob, char, 4096)
-
-static char line_buffer[LINE_BUFFER_LEN];
-static char byte_buffer[COPY_BUFFER_LEN];
-static FILE *infile;
-
-int buffer_init(const char *filename)
+int buffer_init(struct line_buffer *buf, const char *filename)
 {
-	infile = filename ? fopen(filename, "r") : stdin;
-	if (!infile)
+	buf->infile = filename ? fopen(filename, "r") : stdin;
+	if (!buf->infile)
 		return -1;
 	return 0;
 }
 
-int buffer_deinit(void)
+int buffer_deinit(struct line_buffer *buf)
 {
 	int err;
-	if (infile == stdin)
-		return ferror(infile);
-	err = ferror(infile);
-	err |= fclose(infile);
+	if (buf->infile == stdin)
+		return ferror(buf->infile);
+	err = ferror(buf->infile);
+	err |= fclose(buf->infile);
 	return err;
 }
 
+int buffer_ferror(struct line_buffer *buf)
+{
+	return ferror(buf->infile);
+}
+
+int buffer_at_eof(struct line_buffer *buf)
+{
+	int ch;
+	if ((ch = fgetc(buf->infile)) == EOF)
+		return 1;
+	if (ungetc(ch, buf->infile) == EOF)
+		return error("cannot unget %c: %s\n", ch, strerror(errno));
+	return 0;
+}
+
+int buffer_read_char(struct line_buffer *buf)
+{
+	return fgetc(buf->infile);
+}
+
 /* Read a line without trailing newline. */
-char *buffer_read_line(void)
+char *buffer_read_line(struct line_buffer *buf)
 {
 	char *end;
-	if (!fgets(line_buffer, sizeof(line_buffer), infile))
+	if (!fgets(buf->line_buffer, sizeof(buf->line_buffer), buf->infile))
 		/* Error or data exhausted. */
 		return NULL;
-	end = line_buffer + strlen(line_buffer);
+	end = buf->line_buffer + strlen(buf->line_buffer);
 	if (end[-1] == '\n')
 		end[-1] = '\0';
-	else if (feof(infile))
+	else if (feof(buf->infile))
 		; /* No newline at end of file.  That's fine. */
 	else
 		/*
@@ -54,44 +66,51 @@ char *buffer_read_line(void)
 		 * but for now let's return an error.
 		 */
 		return NULL;
-	return line_buffer;
+	return buf->line_buffer;
 }
 
-char *buffer_read_string(uint32_t len)
+char *buffer_read_string(struct line_buffer *buf, uint32_t len)
 {
-	char *s;
-	blob_free(blob_pool.size);
-	s = blob_pointer(blob_alloc(len + 1));
-	s[fread(s, 1, len, infile)] = '\0';
-	return ferror(infile) ? NULL : s;
+	strbuf_reset(&buf->blob_buffer);
+	strbuf_fread(&buf->blob_buffer, len, buf->infile);
+	return ferror(buf->infile) ? NULL : buf->blob_buffer.buf;
 }
 
-void buffer_copy_bytes(uint32_t len)
+void buffer_read_binary(struct strbuf *sb, uint32_t size,
+			struct line_buffer *buf)
 {
+	strbuf_fread(sb, size, buf->infile);
+}
+
+void buffer_copy_bytes(struct line_buffer *buf, off_t len)
+{
+	char byte_buffer[COPY_BUFFER_LEN];
 	uint32_t in;
-	while (len > 0 && !feof(infile) && !ferror(infile)) {
+	while (len > 0 && !feof(buf->infile) && !ferror(buf->infile)) {
 		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
-		in = fread(byte_buffer, 1, in, infile);
+		in = fread(byte_buffer, 1, in, buf->infile);
 		len -= in;
 		fwrite(byte_buffer, 1, in, stdout);
 		if (ferror(stdout)) {
-			buffer_skip_bytes(len);
+			buffer_skip_bytes(buf, len);
 			return;
 		}
 	}
 }
 
-void buffer_skip_bytes(uint32_t len)
+off_t buffer_skip_bytes(struct line_buffer *buf, off_t nbytes)
 {
-	uint32_t in;
-	while (len > 0 && !feof(infile) && !ferror(infile)) {
-		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
-		in = fread(byte_buffer, 1, in, infile);
-		len -= in;
+	off_t done = 0;
+	while (done < nbytes && !feof(buf->infile) && !ferror(buf->infile)) {
+		char byte_buffer[COPY_BUFFER_LEN];
+		off_t len = nbytes - done;
+		uint32_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+		done += fread(byte_buffer, 1, in, buf->infile);
 	}
+	return done;
 }
 
-void buffer_reset(void)
+void buffer_reset(struct line_buffer *buf)
 {
-	blob_reset();
+	strbuf_release(&buf->blob_buffer);
 }
