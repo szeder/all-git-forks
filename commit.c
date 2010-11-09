@@ -11,6 +11,7 @@
 #include "commit-slab.h"
 #include "prio-queue.h"
 #include "sha1-lookup.h"
+#include "progress.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -1505,16 +1506,43 @@ static int verify_utf8(struct strbuf *buf)
 	}
 }
 
+const uint32_t units = 10000;
+int calculate(char *b, uint32_t start, uint32_t end, git_SHA_CTX base,
+		struct progress *prog, const char *id_prefix)
+{
+	unsigned char sha[20];
+	int32_t i;
+	for (i = 0; i < UINT32_MAX; ++i) {
+		git_SHA_CTX c = base;
+		const char *chars = " \t\r\n";
+		int j;
+
+		for (j = 0; j < 32; j += 2)
+			b[j/2] = chars[(i >> j) & 3];
+
+		git_SHA1_Update(&c, b, 16);
+
+		git_SHA1_Final(sha, &c);
+
+		if (0 == strncmp(id_prefix, sha1_to_hex(sha), strlen(id_prefix)))
+			return 1;
+
+		display_progress(prog, i/units);
+	}
+	return 0;
+}
+
+
 static const char commit_utf8_warn[] =
 "Warning: commit message did not conform to UTF-8.\n"
 "You may want to amend it after fixing the message, or set the config\n"
 "variable i18n.commitencoding to the encoding your project uses.\n";
 
-int commit_tree_extended(const char *msg, size_t msg_len,
+int commit_tree_extended_harder(const char *msg, size_t msg_len,
 			 const unsigned char *tree,
 			 struct commit_list *parents, unsigned char *ret,
 			 const char *author, const char *sign_commit,
-			 struct commit_extra_header *extra)
+			 struct commit_extra_header *extra, const char *id_prefix)
 {
 	int result;
 	int encoding_is_utf8;
@@ -1563,6 +1591,36 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 	if (encoding_is_utf8 && !verify_utf8(&buffer))
 		fprintf(stderr, commit_utf8_warn);
 
+	if (id_prefix)
+	{
+		char hdr[32];
+		int hdrlen;
+		int success;
+		git_SHA_CTX super;
+		char b[17];
+		struct progress *prog = start_progress("Searching",
+				(1 << (4u*strlen(id_prefix)))/units);
+		b[16] = 0;
+
+		hdrlen = sprintf(hdr, "%s %lu", commit_type, buffer.len + 16)+1;
+
+		git_SHA1_Init(&super);
+		git_SHA1_Update(&super, hdr, hdrlen);
+		git_SHA1_Update(&super, buffer.buf, buffer.len);
+
+		success = calculate(b, 0, UINT32_MAX, super, prog, id_prefix);
+		stop_progress(&prog);
+
+		if (success)
+			strbuf_addstr(&buffer, b);
+		else
+		{
+			fprintf(stderr, "Couldn't generate a hash that matches that template.\n");
+			return 17;
+		}
+	}
+
+
 	if (sign_commit && do_sign_commit(&buffer, sign_commit))
 		return -1;
 
@@ -1570,6 +1628,17 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 	strbuf_release(&buffer);
 	return result;
 }
+
+int commit_tree_extended(const char *msg, size_t msg_len,
+			 const unsigned char *tree,
+			 struct commit_list *parents, unsigned char *ret,
+			 const char *author, const char *sign_commit,
+			 struct commit_extra_header *extra)
+{
+	return commit_tree_extended_harder(msg, msg_len, tree, parents, ret,
+			author, sign_commit, extra, NULL);
+}
+
 
 struct commit *get_merge_parent(const char *name)
 {
