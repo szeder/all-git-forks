@@ -10,6 +10,7 @@
 
 struct commit_list {
 	struct commit *item;
+	unsigned long depth;
 	struct commit_list *next;
 };
 
