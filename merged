@@ -5,7 +5,7 @@ show() {
 }
 
 check_merge() {
-	if test -z "`git cherry $2 $1 | grep -v ^-`"; then
+	if test -z "`git cherry $2 $1 $3 | grep -v ^-`"; then
 		show $1 "merged to $2"
 		return 0
 	fi
@@ -13,8 +13,9 @@ check_merge() {
 }
 
 for i in `Meta/topics`; do
-	check_merge $i origin/master ||
-	check_merge $i origin/next ||
+	upstream=`git for-each-ref --format='%(upstream)' refs/heads/$i`
+	check_merge $i origin/master ${upstream:-origin} ||
+	check_merge $i origin/next ${upstream:-origin} ||
 	show $i 'not merged'
 done
 exit 0
