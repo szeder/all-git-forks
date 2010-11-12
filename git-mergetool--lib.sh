@@ -189,7 +189,8 @@ run_merge_tool () {
 	vimdiff2|gvimdiff2)
 		if merge_mode; then
 			touch "$BACKUP"
-			"$merge_tool_path" -f -d -c "wincmd l" \
+			"$merge_tool_path" -f -d \
+				-c 'wincmd H' -c 'wincmd b' -c 'wincmd L' \
 				"$LOCAL" "$MERGED" "$REMOTE"
 			check_unchanged
 		else
