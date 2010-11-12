@@ -177,7 +177,8 @@ run_merge_tool () {
 				"$merge_tool_path" -f -d -c "wincmd J" \
 					"$MERGED" "$LOCAL" "$BASE" "$REMOTE"
 			else
-				"$merge_tool_path" -f -d -c "wincmd l" \
+				"$merge_tool_path" -f -d \
+					-c 'wincmd H' -c 'wincmd b' -c 'wincmd L' \
 					"$LOCAL" "$MERGED" "$REMOTE"
 			fi
 			check_unchanged
