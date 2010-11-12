@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+my %local = (
+	map { $_ => 1 }
+	map { chomp; $_ }
+	`Meta/topics`
+);
+my %remote = (
+	map { $_ => 1 }
+	map { s,^github/,,; $_ }
+	map { chomp; $_ }
+	`git for-each-ref --format='%(refname:short)' refs/remotes/github/jk`
+);
+
+my @push = grep { !$remote{$_} } (sort keys(%local));
+my @prune = grep { !$local{$_} } (sort keys(%remote));
+
+if (@push) {
+	print "Local branches that need pushed:\n";
+	print $_, "\n" foreach @push;
+}
+if (@prune) {
+	print "\n" if @push;
+	print "Remote branches that need pruned:\n";
+	print $_, "\n" foreach @prune;
+}
