@@ -12,3 +12,12 @@ jk/follow-multiple
 
 jk/fast-contains
   RFC'd upstream.
+
+jk/prove
+  wip, waiting for more discussion
+
+jk/command-pager
+  submitted, probably needs repost
+
+jk/apply-bogus-binary
+  submitted, including here for testing
