@@ -1,3 +1,17 @@
+git (1:1.7.2.3-2.1) unstable; urgency=low
+
+  * debian/diff/0010...0033: new from the upstream 'maint' branch:
+    * cache_tree_free: Fix small memory leak.
+    * diff.c: call regfree to free memory allocated by regcomp.
+    * gitweb: allow configurations that change with each request
+      (fixes a regression from v1.7.2-rc2 in some gitolite setups).
+    * Documentation: 19 formatting fixes (thx Frédéric Brière,
+      closes: #540001, #600422).
+    * setup: make sure git dir path is in a permanent buffer.
+    * do not depend on signed integer overflow.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 14 Nov 2010 14:36:41 -0600
+
 git (1:1.7.2.3-2) unstable; urgency=low
 
   * merge branch debian-experimental.

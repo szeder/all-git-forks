@@ -1,0 +1,59 @@
+From c2651b1b4e62cb480e2b6600bf6ee066d5d7bb4a Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:32:36 -0500
+Subject: Documentation/technical: avoid stray backslash in parse-options API docs
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Due to some unpleasant interaction between the `quote', 'italics',
+and `monospace` rules, a certain paragraph ends up rendered like so:
+
+	‘short` is a character for the short option
+	  (e.g. <tt>'e\’</tt> for <tt>-e</tt>, use <tt>0</tt> to omit),
+
+Use the {apostrophe} to avoid this.
+
+While at it, escape "->" strings: they are meant as a literal
+two-character C operator, not a right-pointing arrow.
+
+Reported-by: Frédéric Brière <fbriere@fbriere.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 6dcca4d0ea4fe9ee09c939eaa0898f5895e5100a)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/technical/api-parse-options.txt |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/technical/api-parse-options.txt b/Documentation/technical/api-parse-options.txt
+index 312e3b2..c5d141c 100644
+--- a/Documentation/technical/api-parse-options.txt
++++ b/Documentation/technical/api-parse-options.txt
+@@ -201,7 +201,7 @@ The last element of the array must be `OPT_END()`.
+ If not stated otherwise, interpret the arguments as follows:
+ 
+ * `short` is a character for the short option
+-  (e.g. `\'e\'` for `-e`, use `0` to omit),
++  (e.g. `{apostrophe}e{apostrophe}` for `-e`, use `0` to omit),
+ 
+ * `long` is a string for the long option
+   (e.g. `"example"` for `\--example`, use `NULL` to omit),
+@@ -228,10 +228,10 @@ The function must be defined in this form:
+ The callback mechanism is as follows:
+ 
+ * Inside `func`, the only interesting member of the structure
+-  given by `opt` is the void pointer `opt->value`.
+-  `\*opt->value` will be the value that is saved into `var`, if you
++  given by `opt` is the void pointer `opt\->value`.
++  `\*opt\->value` will be the value that is saved into `var`, if you
+   use `OPT_CALLBACK()`.
+-  For example, do `*(unsigned long *)opt->value = 42;` to get 42
++  For example, do `*(unsigned long *)opt\->value = 42;` to get 42
+   into an `unsigned long` variable.
+ 
+ * Return value `0` indicates success and non-zero return
+-- 
+1.7.2.3.557.gab647.dirty
+

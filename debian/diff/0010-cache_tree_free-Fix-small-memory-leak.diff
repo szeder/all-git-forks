@@ -1,0 +1,33 @@
+From a6e2f18e92f6f8a7aa9c3064a522651ff204d08d Mon Sep 17 00:00:00 2001
+From: Elijah Newren <newren@gmail.com>
+Date: Mon, 6 Sep 2010 15:40:16 -0600
+Subject: cache_tree_free: Fix small memory leak
+
+Signed-off-by: Elijah Newren <newren@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit e92fa514a9ade4526ad5c119e3f12e69621c97b6)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ cache-tree.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/cache-tree.c b/cache-tree.c
+index c60cf91..f755590 100644
+--- a/cache-tree.c
++++ b/cache-tree.c
+@@ -22,8 +22,10 @@ void cache_tree_free(struct cache_tree **it_p)
+ 	if (!it)
+ 		return;
+ 	for (i = 0; i < it->subtree_nr; i++)
+-		if (it->down[i])
++		if (it->down[i]) {
+ 			cache_tree_free(&it->down[i]->cache_tree);
++			free(it->down[i]);
++		}
+ 	free(it->down);
+ 	free(it);
+ 	*it_p = NULL;
+-- 
+1.7.2.3.557.gab647.dirty
+

@@ -1,0 +1,38 @@
+From 042bb9410c594d199f87d30e629aca88bed2ad1a Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:34:29 -0500
+Subject: Documentation: remove backslash before ~ in fast-import manual
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Use the {tilde} entity to get a literal tilde without fuss.
+With \~, asciidoc 8.5.2 (and probably earlier versions) keeps the
+backslash in the output.
+
+Reported-by: Frédéric Brière <fbriere@fbriere.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit fc621bd08aefb9e81c85998247197137f383aa3d)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/git-fast-export.txt |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/Documentation/git-fast-export.txt b/Documentation/git-fast-export.txt
+index 98ec6b5..cbc31c1 100644
+--- a/Documentation/git-fast-export.txt
++++ b/Documentation/git-fast-export.txt
+@@ -93,7 +93,7 @@ marks the same across runs.
+ [git-rev-list-args...]::
+        A list of arguments, acceptable to 'git rev-parse' and
+        'git rev-list', that specifies the specific objects and references
+-       to export.  For example, `master\~10..master` causes the
++       to export.  For example, `master{tilde}10..master` causes the
+        current master reference to be exported along with all objects
+        added since its 10th ancestor commit.
+ 
+-- 
+1.7.2.3.557.gab647.dirty
+

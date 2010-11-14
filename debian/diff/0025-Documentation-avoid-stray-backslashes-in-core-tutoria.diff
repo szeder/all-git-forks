@@ -1,0 +1,105 @@
+From 31cdacb9a20992c1246fb839a9dc71a9490d1b27 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:37:51 -0500
+Subject: Documentation: avoid stray backslashes in core tutorial
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+While at it:
+
+ - remove some single-quotes that were being rendered as ’\n\';
+
+ - do not escape ellipses (...) when they do not represent the
+   literal three characters "...".  We may want to ensure the
+   manpages render these as three ASCII periods to make the
+   manual pages easier to search, but that would be a global
+   output generation setting, not a context-specific thing;
+
+Reported-by: Frédéric Brière <fbriere@fbriere.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 70676e69a58025ff6e224bd6f0ed80ae1b158388)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/gitcore-tutorial.txt |   18 +++++++++---------
+ 1 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/Documentation/gitcore-tutorial.txt b/Documentation/gitcore-tutorial.txt
+index ed3ddc9..5e9c5eb 100644
+--- a/Documentation/gitcore-tutorial.txt
++++ b/Documentation/gitcore-tutorial.txt
+@@ -110,7 +110,7 @@ An 'object' is identified by its 160-bit SHA1 hash, aka 'object name',
+ and a reference to an object is always the 40-byte hex
+ representation of that SHA1 name. The files in the `refs`
+ subdirectory are expected to contain these hex references
+-(usually with a final `\'\n\'` at the end), and you should thus
++(usually with a final `\n` at the end), and you should thus
+ expect to see a number of 41-byte files containing these
+ references in these `refs` subdirectories when you actually start
+ populating your tree.
+@@ -310,7 +310,7 @@ and this will just output the name of the resulting tree, in this case
+ ----------------
+ 
+ which is another incomprehensible object name. Again, if you want to,
+-you can use `git cat-file -t 8988d\...` to see that this time the object
++you can use `git cat-file -t 8988d...` to see that this time the object
+ is not a "blob" object, but a "tree" object (you can also use
+ `git cat-file` to actually output the raw object contents, but you'll see
+ mainly a binary mess, so that's less interesting).
+@@ -436,8 +436,8 @@ $ git update-index hello
+ (note how we didn't need the `\--add` flag this time, since git knew
+ about the file already).
+ 
+-Note what happens to the different 'git diff-\*' versions here. After
+-we've updated `hello` in the index, `git diff-files -p` now shows no
++Note what happens to the different 'git diff-{asterisk}' versions here.
++After we've updated `hello` in the index, `git diff-files -p` now shows no
+ differences, but `git diff-index -p HEAD` still *does* show that the
+ current state is different from the state we committed. In fact, now
+ 'git diff-index' shows the same difference whether we use the `--cached`
+@@ -494,7 +494,7 @@ and it will show what the last commit (in `HEAD`) actually changed.
+ [NOTE]
+ ============
+ Here is an ASCII art by Jon Loeliger that illustrates how
+-various diff-\* commands compare things.
++various 'diff-{asterisk}' commands compare things.
+ 
+                       diff-tree
+                        +----+
+@@ -958,11 +958,11 @@ $ git show-branch --topo-order --more=1 master mybranch
+ The first two lines indicate that it is showing the two branches
+ and the first line of the commit log message from their
+ top-of-the-tree commits, you are currently on `master` branch
+-(notice the asterisk `\*` character), and the first column for
++(notice the asterisk `{asterisk}` character), and the first column for
+ the later output lines is used to show commits contained in the
+ `master` branch, and the second column for the `mybranch`
+ branch. Three commits are shown along with their log messages.
+-All of them have non blank characters in the first column (`*`
++All of them have non blank characters in the first column (`{asterisk}`
+ shows an ordinary commit on the current branch, `-` is a merge commit), which
+ means they are now part of the `master` branch. Only the "Some
+ work" commit has the plus `+` character in the second column,
+@@ -1092,7 +1092,7 @@ Downloader from http and https URL
+ first obtains the topmost commit object name from the remote site
+ by looking at the specified refname under `repo.git/refs/` directory,
+ and then tries to obtain the
+-commit object by downloading from `repo.git/objects/xx/xxx\...`
++commit object by downloading from `repo.git/objects/xx/xxx...`
+ using the object name of that commit object.  Then it reads the
+ commit object to find out its parent commits and the associate
+ tree object; it repeats this process until it gets all the
+@@ -1420,7 +1420,7 @@ packed, and stores the packed file in `.git/objects/pack`
+ directory.
+ 
+ [NOTE]
+-You will see two files, `pack-\*.pack` and `pack-\*.idx`,
++You will see two files, `pack-{asterisk}.pack` and `pack-{asterisk}.idx`,
+ in `.git/objects/pack` directory. They are closely related to
+ each other, and if you ever copy them by hand to a different
+ repository for whatever reason, you should make sure you copy
+-- 
+1.7.2.3.557.gab647.dirty
+

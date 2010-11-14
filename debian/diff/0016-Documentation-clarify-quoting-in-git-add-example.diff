@@ -1,0 +1,57 @@
+From 549e775f1f9191e39bea063c958454146959da8c Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:26:13 -0500
+Subject: Documentation: clarify quoting in "git add" example
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+The intended text looks like this:
+
+	· Adds content from all *.txt files under Documentation
+	  directory and its subdirectories:
+
+		$ git add Documentation/\*.txt
+
+	  Note that the asterisk * is quoted from the shell in this
+	  example; this lets the command include the files from
+	  subdirectories of Documentation/ directory.
+
+The current asciidoc 8.5.2 output has a backslash before _every_
+asterisk, which is more confusing than it needs to be.
+
+Reported-by: Frédéric Brière <fbriere@fbriere.net>
+Cc: Junio C Hamano <gitster@pobox.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 1b6c6cf006eb18cbd7c93b53a8cb494bd35e963a)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/git-add.txt |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/git-add.txt b/Documentation/git-add.txt
+index e22a62f..e213a2e 100644
+--- a/Documentation/git-add.txt
++++ b/Documentation/git-add.txt
+@@ -157,14 +157,14 @@ those in info/exclude.  See linkgit:gitrepository-layout[5].
+ EXAMPLES
+ --------
+ 
+-* Adds content from all `\*.txt` files under `Documentation` directory
++* Adds content from all `*.txt` files under `Documentation` directory
+ and its subdirectories:
+ +
+ ------------
+ $ git add Documentation/\*.txt
+ ------------
+ +
+-Note that the asterisk `\*` is quoted from the shell in this
++Note that the asterisk `*` is quoted from the shell in this
+ example; this lets the command include the files from
+ subdirectories of `Documentation/` directory.
+ 
+-- 
+1.7.2.3.557.gab647.dirty
+

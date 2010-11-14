@@ -1,0 +1,33 @@
+From 3c7d77ce6acf1c84de2d8249796eea4141cb58da Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:38:14 -0500
+Subject: Documentation: avoid stray backslash in user manual
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit 3c56c84eb8d6e74a6a0457ddc3853f2f0200acb5)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/user-manual.txt |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/user-manual.txt b/Documentation/user-manual.txt
+index 22aee34..fecc4eb 100644
+--- a/Documentation/user-manual.txt
++++ b/Documentation/user-manual.txt
+@@ -4251,9 +4251,9 @@ Two things are interesting here:
+   negative numbers in case of different errors--and 0 on success.
+ 
+ - the variable `sha1` in the function signature of `get_sha1()` is `unsigned
+-  char \*`, but is actually expected to be a pointer to `unsigned
++  char {asterisk}`, but is actually expected to be a pointer to `unsigned
+   char[20]`.  This variable will contain the 160-bit SHA-1 of the given
+-  commit.  Note that whenever a SHA-1 is passed as `unsigned char \*`, it
++  commit.  Note that whenever a SHA-1 is passed as `unsigned char {asterisk}`, it
+   is the binary representation, as opposed to the ASCII representation in
+   hex characters, which is passed as `char *`.
+ 
+-- 
+1.7.2.3.557.gab647.dirty
+

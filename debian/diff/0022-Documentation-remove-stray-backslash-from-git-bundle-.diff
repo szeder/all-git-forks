@@ -1,0 +1,63 @@
+From 014e22bd18e195f9e0c2fa461ae2c564987a5270 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:33:48 -0500
+Subject: Documentation: remove stray backslash from "git bundle" manual
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In v1.6.2.2~6^2~4 (Documentation: minor grammatical fixes
+and rewording in git-bundle.txt, 2009-03-22), backslashes were
+introduced before ~ to avoid introducing unintentional
+superscripts.  In one paragraph there is only one ~, though,
+making that not a candidate for quoting, and asciidoc 8.5.8
+passes the backslash through so the man page says "\~10..master".
+
+Maybe there is an asciidoc behavior change involved.
+
+In any case, we should replace tildes with a {tilde} entity which
+means the same thing regardless of where it is found.
+
+Reported-by: Frédéric Brière <fbriere@fbriere.net>
+Cc: David J. Mellor <dmellor@whistlingcat.com>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit e1906c46697a5081a0e2d7667f5325557a477418)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/git-bundle.txt |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Documentation/git-bundle.txt b/Documentation/git-bundle.txt
+index a5ed8fb..f0b75c7 100644
+--- a/Documentation/git-bundle.txt
++++ b/Documentation/git-bundle.txt
+@@ -60,7 +60,7 @@ unbundle <file>::
+ [git-rev-list-args...]::
+        A list of arguments, acceptable to 'git rev-parse' and
+        'git rev-list', that specifies the specific objects and references
+-       to transport.  For example, `master\~10..master` causes the
++       to transport.  For example, `master~10..master` causes the
+        current master reference to be packaged along with all objects
+        added since its 10th ancestor commit.  There is no explicit
+        limit to the number of references and objects that may be
+@@ -79,12 +79,12 @@ SPECIFYING REFERENCES
+ 
+ 'git bundle' will only package references that are shown by
+ 'git show-ref': this includes heads, tags, and remote heads.  References
+-such as `master\~1` cannot be packaged, but are perfectly suitable for
++such as `master{tilde}1` cannot be packaged, but are perfectly suitable for
+ defining the basis.  More than one reference may be packaged, and more
+ than one basis can be specified.  The objects packaged are those not
+ contained in the union of the given bases.  Each basis can be
+-specified explicitly (e.g. `^master\~10`), or implicitly (e.g.
+-`master\~10..master`, `--since=10.days.ago master`).
++specified explicitly (e.g. `^master{tilde}10`), or implicitly (e.g.
++`master{tilde}10..master`, `--since=10.days.ago master`).
+ 
+ It is very important that the basis used be held by the destination.
+ It is okay to err on the side of caution, causing the bundle file
+-- 
+1.7.2.3.557.gab647.dirty
+

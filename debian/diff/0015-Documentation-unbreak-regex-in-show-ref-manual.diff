@@ -1,0 +1,51 @@
+From 6afb01f7c6ab4c40b4349706746f01f5d281735e Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Fri, 20 Aug 2010 05:23:54 -0500
+Subject: Documentation: unbreak regex in show-ref manual
+
+I am not sure why, but the regular expression "(?:\^\{\})" gets
+rendered by asciidoc as "(?:\{})".  The intent seems to be a regex
+matching the literal string "^{}", so this rewrites the markup to
+produce "(?:\^{})" as output.
+
+Cc: Julian Phillips <julian@quantumfyre.co.uk>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit f1005987e2c5295f57b19504baa86f1e8fc4a8c2)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ Documentation/asciidoc.conf    |    1 +
+ Documentation/git-show-ref.txt |    4 ++--
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/Documentation/asciidoc.conf b/Documentation/asciidoc.conf
+index 6be8ba3..b5f0f29 100644
+--- a/Documentation/asciidoc.conf
++++ b/Documentation/asciidoc.conf
+@@ -16,6 +16,7 @@ plus=&#43;
+ caret=&#94;
+ startsb=&#91;
+ endsb=&#93;
++backslash=&#92;
+ tilde=&#126;
+ apostrophe=&#39;
+ backtick=&#96;
+diff --git a/Documentation/git-show-ref.txt b/Documentation/git-show-ref.txt
+index 75780d7..4696af7 100644
+--- a/Documentation/git-show-ref.txt
++++ b/Documentation/git-show-ref.txt
+@@ -73,8 +73,8 @@ OPTIONS
+ --exclude-existing[=<pattern>]::
+ 
+ 	Make 'git show-ref' act as a filter that reads refs from stdin of the
+-	form "^(?:<anything>\s)?<refname>(?:\^\{\})?$" and performs the
+-	following actions on each:
++	form "^(?:<anything>\s)?<refname>(?:{backslash}{caret}\{\})?$"
++	and performs the following actions on each:
+ 	(1) strip "^{}" at the end of line if any;
+ 	(2) ignore if pattern is provided and does not head-match refname;
+ 	(3) warn if refname is not a well-formed refname and skip;
+-- 
+1.7.2.3.557.gab647.dirty
+

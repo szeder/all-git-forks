@@ -1,0 +1,33 @@
+From 26a2faa81ef4d1bf6efb1ccba839d2f71658f05f Mon Sep 17 00:00:00 2001
+From: Brandon Casey <drafnel@gmail.com>
+Date: Thu, 9 Sep 2010 14:02:45 -0500
+Subject: diff.c: call regfree to free memory allocated by regcomp when necessary
+
+Signed-off-by: Brandon Casey <casey@nrlssc.navy.mil>
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit ef5644ea6ecec4ee6d6254612af2ed58499ac2fe)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ diff.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/diff.c b/diff.c
+index 9300492..19b5bf6 100644
+--- a/diff.c
++++ b/diff.c
+@@ -912,7 +912,10 @@ static void free_diff_words_data(struct emit_callback *ecbdata)
+ 		free (ecbdata->diff_words->minus.orig);
+ 		free (ecbdata->diff_words->plus.text.ptr);
+ 		free (ecbdata->diff_words->plus.orig);
+-		free(ecbdata->diff_words->word_regex);
++		if (ecbdata->diff_words->word_regex) {
++			regfree(ecbdata->diff_words->word_regex);
++			free(ecbdata->diff_words->word_regex);
++		}
+ 		free(ecbdata->diff_words);
+ 		ecbdata->diff_words = NULL;
+ 	}
+-- 
+1.7.2.3.557.gab647.dirty
+
