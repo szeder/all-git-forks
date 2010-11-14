@@ -2453,8 +2453,9 @@ proc makewindow {} {
                 allcanvs yview scroll $delta units
             }
             bindall <Shift-MouseWheel> {
-                set delta [expr {- (%D)}]
-                $canv xview scroll $delta units
+                # Intentionally left empty. This prevents the canvas from
+                # scrolling vertically for horizontal wheel events, e.g.
+                # when moving diagonally with two fingers on a trackpad.
             }
         }
     }
