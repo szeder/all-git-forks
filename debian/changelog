@@ -9,6 +9,10 @@ git (1:1.7.2.3-2.1) unstable; urgency=low
       closes: #540001, #600422).
     * setup: make sure git dir path is in a permanent buffer.
     * do not depend on signed integer overflow.
+  * debian/control: gitweb: weaken dependencies to allow configurations
+    using mod_perl or fastcgi rather than CGI; explain dependencies in
+    the package description (thx Servilio Afre Puentes,
+    closes: #600413).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 14 Nov 2010 14:36:41 -0600
 

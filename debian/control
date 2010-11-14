@@ -199,8 +199,8 @@ Description: fast, scalable, distributed revision control system (revision tree 
 Package: gitweb
 Architecture: all
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
- perl, apache2 | httpd-cgi
-Suggests: git-doc
+ perl, apache2 | httpd
+Suggests: httpd-cgi | libcgi-fast-perl, git-doc
 Description: fast, scalable, distributed revision control system (web interface)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -212,6 +212,13 @@ Description: fast, scalable, distributed revision control system (web interface)
  central server.
  .
  This package provides a web interface for browsing git repositories.
+ .
+ If apache2 is installed, the web interface is automatically made
+ available at http://localhost/gitweb.  Other servers that support CGI
+ or mod_perl are supported through manual configuration.
+ .
+ If libcgi-fast-perl is installed, gitweb can be also be run over
+ FastCGI (and served by nginx, for example).
 
 Package: git-all
 Architecture: all
