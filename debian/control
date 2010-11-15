@@ -217,8 +217,8 @@ Description: fast, scalable, distributed revision control system (web interface)
  available at http://localhost/gitweb.  Other servers that support CGI
  or mod_perl are supported through manual configuration.
  .
- If libcgi-fast-perl is installed, gitweb can be also be run over
- FastCGI (and served by nginx, for example).
+ If libcgi-fast-perl is installed, gitweb can also be run over FastCGI
+ (and served by nginx, for example).
 
 Package: git-all
 Architecture: all
