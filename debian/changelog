@@ -1,5 +1,6 @@
 git (1:1.7.2.3-2.1) unstable; urgency=low
 
+  * Non-maintainer upload.
   * debian/diff/0010...0033: new from the upstream 'maint' branch:
     * cache_tree_free: Fix small memory leak.
     * diff.c: call regfree to free memory allocated by regcomp.
@@ -14,7 +15,7 @@ git (1:1.7.2.3-2.1) unstable; urgency=low
     the package description (thx Servilio Afre Puentes,
     closes: #600413).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 14 Nov 2010 14:36:41 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 18 Nov 2010 19:04:09 -0600
 
 git (1:1.7.2.3-2) unstable; urgency=low
 
