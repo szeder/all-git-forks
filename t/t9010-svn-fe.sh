@@ -51,6 +51,14 @@ text_no_props () {
 
 >empty
 
+test_expect_success 'setup: have pipes?' '
+	rm -f frob &&
+	if mkfifo frob
+	then
+		test_set_prereq PIPE
+	fi
+'
+
 test_expect_success 'empty dump' '
 	reinit_git &&
 	echo "SVN-fs-dump-format-version: 2" >input &&
@@ -467,7 +475,9 @@ test_expect_success 'change file mode and reiterate content' '
 	test_cmp hello actual.target
 '
 
-test_expect_success 'deltas not supported' '
+test_expect_success PIPE 'deltas supported' '
+	reinit_git &&
+	rm -f backflow &&
 	{
 		# (old) h + (inline) ello + (old) \n
 		printf "SVNQ%b%b%s" "Q\003\006\005\004" "\001Q\0204\001\002" "ello" |
@@ -527,7 +537,9 @@ test_expect_success 'deltas not supported' '
 		echo PROPS-END &&
 		cat delta
 	} >delta.dump &&
-	test_must_fail test-svn-fe delta.dump
+	mkfifo backflow &&
+	test_must_fail test-svn-fe delta.dump 3<backflow |
+	git fast-import --cat-blob-fd=3 3>backflow
 '
 
 test_expect_success 'property deltas supported' '
@@ -735,6 +747,114 @@ test_expect_success 'deltas for typechange' '
 		sed "s/$_x40/OBJID/g"
 	} >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success PIPE 'deltas need not consume the whole preimage' '
+	reinit_git &&
+	cat >expect <<-\EOF &&
+	OBJID
+	:120000 100644 OBJID OBJID T	postimage
+	OBJID
+	:100644 120000 OBJID OBJID T	postimage
+	OBJID
+	:000000 100644 OBJID OBJID A	postimage
+	EOF
+	echo "first preimage" >expect.1 &&
+	printf target >expect.2 &&
+	printf lnk >expect.3 &&
+	rm -f backflow &&
+	{
+		printf "SVNQ%b%b%b" "QQ\017\001\017" "\0217" "first preimage\n" |
+		q_to_nul
+	} >delta.1 &&
+	{
+		properties svn:special "*" &&
+		echo PROPS-END
+	} >symlink.props &&
+	{
+		printf "SVNQ%b%b%b" "Q\002\013\004\012" "\0201\001\001\0211" "lnk target" |
+		q_to_nul
+	} >delta.2 &&
+	{
+		printf "SVNQ%b%b" "Q\004\003\004Q" "\001Q\002\002" |
+		q_to_nul
+	} >delta.3 &&
+	{
+		cat <<-\EOF &&
+		SVN-fs-dump-format-version: 3
+
+		Revision-number: 1
+		Prop-content-length: 10
+		Content-length: 10
+
+		PROPS-END
+
+		Node-path: postimage
+		Node-kind: file
+		Node-action: add
+		Text-delta: true
+		Prop-content-length: 10
+		EOF
+		echo Text-content-length: $(wc -c <delta.1) &&
+		echo Content-length: $((10 + $(wc -c <delta.1))) &&
+		echo &&
+		echo PROPS-END &&
+		cat delta.1 &&
+		cat <<-\EOF &&
+
+		Revision-number: 2
+		Prop-content-length: 10
+		Content-length: 10
+
+		PROPS-END
+
+		Node-path: postimage
+		Node-kind: file
+		Node-action: change
+		Text-delta: true
+		EOF
+		echo Prop-content-length: $(wc -c <symlink.props) &&
+		echo Text-content-length: $(wc -c <delta.2) &&
+		echo Content-length: $(($(wc -c <symlink.props) + $(wc -c <delta.2))) &&
+		echo &&
+		cat symlink.props &&
+		cat delta.2 &&
+		cat <<-\EOF &&
+
+		Revision-number: 3
+		Prop-content-length: 10
+		Content-length: 10
+
+		PROPS-END
+
+		Node-path: postimage
+		Node-kind: file
+		Node-action: change
+		Text-delta: true
+		Prop-content-length: 10
+		EOF
+		echo Text-content-length: $(wc -c <delta.3) &&
+		echo Content-length: $((10 + $(wc -c <delta.3))) &&
+		echo &&
+		echo PROPS-END &&
+		cat delta.3 &&
+		echo
+	} >deltapartial.dump &&
+	mkfifo backflow &&
+	test-svn-fe deltapartial.dump 3<backflow |
+	git fast-import --cat-blob-fd=3 3>backflow &&
+	{
+		git rev-list HEAD |
+		git diff-tree --root --stdin |
+		sed "s/$_x40/OBJID/g"
+	} >actual &&
+	test_cmp expect actual &&
+	git show HEAD:postimage >actual.3 &&
+	git show HEAD^:postimage >actual.2 &&
+	git show HEAD^^:postimage >actual.1 &&
+	test_cmp expect.1 actual.1 &&
+	test_cmp expect.2 actual.2 &&
+	test_cmp expect.3 actual.3
 '
 
 test_expect_success 't9135/svn.dump' '

@@ -4,14 +4,39 @@
  */
 
 #include "git-compat-util.h"
+#include "strbuf.h"
 #include "fast_export.h"
-#include "line_buffer.h"
 #include "repo_tree.h"
+#include "svndiff.h"
+#include "sliding_window.h"
+#include "line_buffer.h"
 #include "string_pool.h"
 
 #define MAX_GITSVN_LINE_LEN 4096
+#define REPORT_FILENO 3
 
 static uint32_t first_commit_done;
+static struct line_buffer postimage = LINE_BUFFER_INIT;
+static struct line_buffer report_buffer = LINE_BUFFER_INIT;
+
+/* NEEDSWORK: move to fast_export_init() */
+static int init_postimage(void)
+{
+	static int postimage_initialized;
+	if (postimage_initialized)
+		return 0;
+	postimage_initialized = 1;
+	return buffer_tmpfile_init(&postimage);
+}
+
+static int init_report_buffer(int fd)
+{
+	static int report_buffer_initialized;
+	if (report_buffer_initialized)
+		return 0;
+	report_buffer_initialized = 1;
+	return buffer_fdinit(&report_buffer, fd);
+}
 
 void fast_export_delete(uint32_t depth, uint32_t *path)
 {
@@ -70,6 +95,78 @@ static void die_short_read(struct line_buffer *input)
 	die("invalid dump: unexpected end of file");
 }
 
+static int ends_with(const char *s, size_t len, const char *suffix)
+{
+	const size_t suffixlen = strlen(suffix);
+	if (len < suffixlen)
+		return 0;
+	return !memcmp(s + len - suffixlen, suffix, suffixlen);
+}
+
+static int parse_cat_response_line(const char *header, off_t *len)
+{
+	size_t headerlen = strlen(header);
+	const char *type;
+	const char *end;
+
+	if (ends_with(header, headerlen, " missing"))
+		return error("cat-blob reports missing blob: %s", header);
+	type = memmem(header, headerlen, " blob ", strlen(" blob "));
+	if (!type)
+		return error("cat-blob header has wrong object type: %s", header);
+	*len = strtoumax(type + strlen(" blob "), (char **) &end, 10);
+	if (end == type + strlen(" blob "))
+		return error("cat-blob header does not contain length: %s", header);
+	if (*end)
+		return error("cat-blob header contains garbage after length: %s", header);
+	return 0;
+}
+
+static const char *get_response_line(void)
+{
+	return buffer_read_line(&report_buffer);
+}
+
+static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
+			uint32_t old_mark, uint32_t old_mode)
+{
+	long ret;
+	off_t preimage_len = 0;
+	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
+	FILE *out;
+
+	if (init_postimage() || !(out = buffer_tmpfile_rewind(&postimage)))
+		die("cannot open temporary file for blob retrieval");
+	if (init_report_buffer(REPORT_FILENO))
+		die("cannot open fd 3 for feedback from fast-import");
+	if (old_mark) {
+		const char *response;
+		printf("cat-blob :%"PRIu32"\n", old_mark);
+		fflush(stdout);
+		response = get_response_line();
+		if (parse_cat_response_line(response, &preimage_len))
+			die("invalid cat-blob response: %s", response);
+	}
+	if (old_mode == REPO_MODE_LNK) {
+		strbuf_addstr(&preimage.buf, "link ");
+		preimage_len += strlen("link ");
+	}
+	if (svndiff0_apply(input, len, &preimage, out))
+		die("cannot apply delta");
+	if (old_mark) {
+		/* Read the remainder of preimage and trailing newline. */
+		if (move_window(&preimage, preimage_len, 1))
+			die("cannot seek to end of input");
+		if (preimage.buf.buf[0] != '\n')
+			die("missing newline after cat-blob response");
+	}
+	ret = buffer_tmpfile_prepare_to_read(&postimage);
+	if (ret < 0)
+		die("cannot read temporary file for blob retrieval");
+	strbuf_release(&preimage.buf);
+	return ret;
+}
+
 void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len, struct line_buffer *input)
 {
 	if (mode == REPO_MODE_LNK) {
@@ -81,5 +178,22 @@ void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len, struct line_bu
 	printf("blob\nmark :%"PRIu32"\ndata %"PRIu32"\n", mark, len);
 	if (buffer_copy_bytes(input, len) != len)
 		die_short_read(input);
+	fputc('\n', stdout);
+}
+
+void fast_export_blob_delta(uint32_t mode, uint32_t mark,
+				uint32_t old_mode, uint32_t old_mark,
+				uint32_t len, struct line_buffer *input)
+{
+	long postimage_len;
+	if (len > maximum_signed_value_of_type(off_t))
+		die("enormous delta");
+	postimage_len = apply_delta(mark, (off_t) len, input, old_mark, old_mode);
+	if (mode == REPO_MODE_LNK) {
+		buffer_skip_bytes(&postimage, strlen("link "));
+		postimage_len -= strlen("link ");
+	}
+	printf("blob\nmark :%"PRIu32"\ndata %ld\n", mark, postimage_len);
+	buffer_copy_bytes(&postimage, postimage_len);
 	fputc('\n', stdout);
 }
