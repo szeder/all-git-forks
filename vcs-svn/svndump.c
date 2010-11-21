@@ -115,8 +115,7 @@ static void init_keys(void)
 	keys.prop_delta = pool_intern("Prop-delta");
 }
 
-static void handle_property(uint32_t key, const char *val, uint32_t len,
-				uint32_t *type_set)
+static void handle_property(uint32_t key, const char *val, uint32_t len)
 {
 	if (key == keys.svn_log) {
 		if (!val)
@@ -130,20 +129,16 @@ static void handle_property(uint32_t key, const char *val, uint32_t len,
 			die("invalid dump: unsets svn:date");
 		if (parse_date_basic(val, &rev_ctx.timestamp, NULL))
 			warning("invalid timestamp: %s", val);
-	} else if (key == keys.svn_executable || key == keys.svn_special) {
-		if (*type_set) {
-			if (!val)
-				return;
-			die("invalid dump: sets type twice");
-		}
-		if (!val) {
+	} else if (key == keys.svn_executable) {
+		if (val)
+			node_ctx.type = REPO_MODE_EXE;
+		else if (node_ctx.type == REPO_MODE_EXE)
 			node_ctx.type = REPO_MODE_BLB;
-			return;
-		}
-		*type_set = 1;
-		node_ctx.type = key == keys.svn_executable ?
-				REPO_MODE_EXE :
-				REPO_MODE_LNK;
+	} else if (key == keys.svn_special) {
+		if (val)
+			node_ctx.type = REPO_MODE_LNK;
+		else if (node_ctx.type == REPO_MODE_LNK)
+			node_ctx.type = REPO_MODE_BLB;
 	}
 }
 
@@ -151,19 +146,6 @@ static void read_props(void)
 {
 	uint32_t key = ~0;
 	const char *t;
-	/*
-	 * NEEDSWORK: to support simple mode changes like
-	 *	K 11
-	 *	svn:special
-	 *	V 1
-	 *	*
-	 *	D 14
-	 *	svn:executable
-	 * we keep track of whether a mode has been set and reset to
-	 * plain file only if not.  We should be keeping track of the
-	 * symlink and executable bits separately instead.
-	 */
-	uint32_t type_set = 0;
 	while ((t = buffer_read_line()) && strcmp(t, "PROPS-END")) {
 		uint32_t len;
 		const char *val;
@@ -185,7 +167,7 @@ static void read_props(void)
 			len = 0;
 			/* fall through */
 		case 'V':
-			handle_property(key, val, len, &type_set);
+			handle_property(key, val, len);
 			key = ~0;
 			continue;
 		default:
