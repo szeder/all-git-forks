@@ -5,6 +5,8 @@ GIT web Interface with support for SyntaxHighlighter
   walks the DOM to convert plain text code into code with syntax
   highlighting. 
 
+  This code has been tested and works with version 3.0.83!
+
   SyntaxHighlighter by Alex Gorbatchev:
   http://alexgorbatchev.com/wiki/SyntaxHighlighter
 
@@ -13,6 +15,34 @@ GIT web Interface with support for SyntaxHighlighter
   highlighter developed in JavaScript. To get an idea of what 
   SyntaxHighlighter is capable of, have a look at the demo page.
   http://alexgorbatchev.com/wiki/SyntaxHighlighter:Demo
+
+  Edit your /etc/gitweb.conf file and add the variable:
+  $syntaxhighlighter_path = "/syntaxhighlighter";
+
+  The above addition assumes that syntaxhighlighter is in the root 
+  directory of gitweb.
+
+GIT web Interface with support for Categories
+=============================================
+
+  This version supports adding projects into "categories".  To enable
+  the use of categories, add the following to gitweb.conf
+
+  $show_column_category = 1;
+
+  To change the order precedence, add the following to gitweb.conf
+
+  $default_projects_order = "category";
+
+  And finally, if you don't want the column name to be "Category", add
+  the following to gitweb.conf
+
+  $column_category_name = '<name-you-want>';
+
+  To add a project to a cateogry, add the folowing to .git/config under
+  the [gitweb] heading (without the < and > symbols)
+
+  category = <category-name>
 
 GIT web Interface
 =================
