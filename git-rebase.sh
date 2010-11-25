@@ -111,7 +111,7 @@ call_merge () {
 	export GITHEAD_$cmt GITHEAD_$hd
 	if test -n "$GIT_QUIET"
 	then
-		export GIT_MERGE_VERBOSITY=1
+		GIT_MERGE_VERBOSITY=1 && export GIT_MERGE_VERBOSITY
 	fi
 	eval 'git-merge-$strategy' $strategy_opts '"$cmt^" -- "$hd" "$cmt"'
 	rv=$?
@@ -311,10 +311,6 @@ do
 		esac
 		strategy_opts="$strategy_opts $(git rev-parse --sq-quote "--$newopt")"
 		do_merge=t
-		if test -n "$strategy"
-		then
-			strategy=recursive
-		fi
 		;;
 	-s=*|--s=*|--st=*|--str=*|--stra=*|--strat=*|--strate=*|\
 		--strateg=*|--strategy=*|\

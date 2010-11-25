@@ -21,6 +21,11 @@
 #    2) Added the following line to your .bashrc:
 #        source ~/.git-completion.sh
 #
+#       Or, add the following lines to your .zshrc:
+#        autoload bashcompinit
+#        bashcompinit
+#        source ~/.git-completion.sh
+#
 #    3) Consider changing your PS1 to also show the current branch:
 #        PS1='[\u@\h \W$(__git_ps1 " (%s)")]\$ '
 #
@@ -138,11 +143,12 @@ __git_ps1_show_upstream ()
 		# get the upstream from the "git-svn-id: ..." in a commit message
 		# (git-svn uses essentially the same procedure internally)
 		local svn_upstream=($(git log --first-parent -1 \
-					--grep="^git-svn-id: \(${svn_url_pattern:2}\)" 2>/dev/null))
+					--grep="^git-svn-id: \(${svn_url_pattern#??}\)" 2>/dev/null))
 		if [[ 0 -ne ${#svn_upstream[@]} ]]; then
 			svn_upstream=${svn_upstream[ ${#svn_upstream[@]} - 2 ]}
 			svn_upstream=${svn_upstream%@*}
-			for ((n=1; "$n" <= "${#svn_remote[@]}"; ++n)); do
+			local n_stop="${#svn_remote[@]}"
+			for ((n=1; n <= n_stop; ++n)); do
 				svn_upstream=${svn_upstream#${svn_remote[$n]}}
 			done
 
@@ -380,16 +386,19 @@ __git_tags ()
 	done
 }
 
-# __git_refs accepts 0 or 1 arguments (to pass to __gitdir)
+# __git_refs accepts 0, 1 (to pass to __gitdir), or 2 arguments
+# presence of 2nd argument means use the guess heuristic employed
+# by checkout for tracking branches
 __git_refs ()
 {
-	local i is_hash=y dir="$(__gitdir "${1-}")"
+	local i is_hash=y dir="$(__gitdir "${1-}")" track="${2-}"
 	local cur="${COMP_WORDS[COMP_CWORD]}" format refs
 	if [ -d "$dir" ]; then
 		case "$cur" in
 		refs|refs/*)
 			format="refname"
 			refs="${cur%/*}"
+			track=""
 			;;
 		*)
 			for i in HEAD FETCH_HEAD ORIG_HEAD MERGE_HEAD; do
@@ -401,6 +410,21 @@ __git_refs ()
 		esac
 		git --git-dir="$dir" for-each-ref --format="%($format)" \
 			$refs
+		if [ -n "$track" ]; then
+			# employ the heuristic used by git checkout
+			# Try to find a remote branch that matches the completion word
+			# but only output if the branch name is unique
+			local ref entry
+			git --git-dir="$dir" for-each-ref --shell --format="ref=%(refname:short)" \
+				"refs/remotes/" | \
+			while read entry; do
+				eval "$entry"
+				ref="${ref#*/}"
+				if [[ "$ref" == "$cur"* ]]; then
+					echo "$ref"
+				fi
+			done | uniq -u
+		fi
 		return
 	fi
 	for i in $(git ls-remote "$dir" 2>/dev/null); do
@@ -750,6 +774,19 @@ __git_compute_porcelain_commands ()
 	: ${__git_porcelain_commands:=$(__git_list_porcelain_commands)}
 }
 
+__git_pretty_aliases ()
+{
+	local i IFS=$'\n'
+	for i in $(git --git-dir="$(__gitdir)" config --get-regexp "pretty\..*" 2>/dev/null); do
+		case "$i" in
+		pretty.*)
+			i="${i#pretty.}"
+			echo "${i/ */}"
+			;;
+		esac
+	done
+}
+
 __git_aliases ()
 {
 	local i IFS=$'\n'
@@ -907,12 +944,16 @@ _git_bisect ()
 	local subcommands="start bad good skip reset visualize replay log run"
 	local subcommand="$(__git_find_on_cmdline "$subcommands")"
 	if [ -z "$subcommand" ]; then
-		__gitcomp "$subcommands"
+		if [ -f "$(__gitdir)"/BISECT_START ]; then
+			__gitcomp "$subcommands"
+		else
+			__gitcomp "replay start"
+		fi
 		return
 	fi
 
 	case "$subcommand" in
-	bad|good|reset|skip)
+	bad|good|reset|skip|start)
 		__gitcomp "$(__git_refs)"
 		;;
 	*)
@@ -988,7 +1029,13 @@ _git_checkout ()
 			"
 		;;
 	*)
-		__gitcomp "$(__git_refs)"
+		# check if --track, --no-track, or --no-guess was specified
+		# if so, disable DWIM mode
+		local flags="--track --no-track --no-guess" track=1
+		if [ -n "$(__git_find_on_cmdline "$flags")" ]; then
+			track=''
+		fi
+		__gitcomp "$(__git_refs '' $track)"
 		;;
 	esac
 }
@@ -1368,12 +1415,12 @@ _git_log ()
 	fi
 	case "$cur" in
 	--pretty=*)
-		__gitcomp "$__git_log_pretty_formats
+		__gitcomp "$__git_log_pretty_formats $(__git_pretty_aliases)
 			" "" "${cur##--pretty=}"
 		return
 		;;
 	--format=*)
-		__gitcomp "$__git_log_pretty_formats
+		__gitcomp "$__git_log_pretty_formats $(__git_pretty_aliases)
 			" "" "${cur##--format=}"
 		return
 		;;
@@ -1468,18 +1515,50 @@ _git_name_rev ()
 
 _git_notes ()
 {
-	local subcommands="edit show"
-	if [ -z "$(__git_find_on_cmdline "$subcommands")" ]; then
-		__gitcomp "$subcommands"
-		return
-	fi
+	local subcommands='add append copy edit list prune remove show'
+	local subcommand="$(__git_find_on_cmdline "$subcommands")"
+	local cur="${COMP_WORDS[COMP_CWORD]}"
 
-	case "${COMP_WORDS[COMP_CWORD-1]}" in
-	-m|-F)
-		COMPREPLY=()
+	case "$subcommand,$cur" in
+	,--*)
+		__gitcomp '--ref'
+		;;
+	,*)
+		case "${COMP_WORDS[COMP_CWORD-1]}" in
+		--ref)
+			__gitcomp "$(__git_refs)"
+			;;
+		*)
+			__gitcomp "$subcommands --ref"
+			;;
+		esac
+		;;
+	add,--reuse-message=*|append,--reuse-message=*)
+		__gitcomp "$(__git_refs)" "" "${cur##--reuse-message=}"
+		;;
+	add,--reedit-message=*|append,--reedit-message=*)
+		__gitcomp "$(__git_refs)" "" "${cur##--reedit-message=}"
+		;;
+	add,--*|append,--*)
+		__gitcomp '--file= --message= --reedit-message=
+				--reuse-message='
+		;;
+	copy,--*)
+		__gitcomp '--stdin'
+		;;
+	prune,--*)
+		__gitcomp '--dry-run --verbose'
+		;;
+	prune,*)
 		;;
 	*)
-		__gitcomp "$(__git_refs)"
+		case "${COMP_WORDS[COMP_CWORD-1]}" in
+		-m|-F)
+			;;
+		*)
+			__gitcomp "$(__git_refs)"
+			;;
+		esac
 		;;
 	esac
 }
@@ -2100,12 +2179,12 @@ _git_show ()
 	local cur="${COMP_WORDS[COMP_CWORD]}"
 	case "$cur" in
 	--pretty=*)
-		__gitcomp "$__git_log_pretty_formats
+		__gitcomp "$__git_log_pretty_formats $(__git_pretty_aliases)
 			" "" "${cur##--pretty=}"
 		return
 		;;
 	--format=*)
-		__gitcomp "$__git_log_pretty_formats
+		__gitcomp "$__git_log_pretty_formats $(__git_pretty_aliases)
 			" "" "${cur##--format=}"
 		return
 		;;
@@ -2339,6 +2418,11 @@ _git ()
 {
 	local i c=1 command __git_dir
 
+	if [[ -n ${ZSH_VERSION-} ]]; then
+		emulate -L bash
+		setopt KSH_TYPESET
+	fi
+
 	while [ $c -lt $COMP_CWORD ]; do
 		i="${COMP_WORDS[c]}"
 		case "$i" in
@@ -2372,17 +2456,22 @@ _git ()
 	fi
 
 	local completion_func="_git_${command//-/_}"
-	declare -F $completion_func >/dev/null && $completion_func && return
+	declare -f $completion_func >/dev/null && $completion_func && return
 
 	local expansion=$(__git_aliased_command "$command")
 	if [ -n "$expansion" ]; then
 		completion_func="_git_${expansion//-/_}"
-		declare -F $completion_func >/dev/null && $completion_func
+		declare -f $completion_func >/dev/null && $completion_func
 	fi
 }
 
 _gitk ()
 {
+	if [[ -n ${ZSH_VERSION-} ]]; then
+		emulate -L bash
+		setopt KSH_TYPESET
+	fi
+
 	__git_has_doubledash && return
 
 	local cur="${COMP_WORDS[COMP_CWORD]}"
@@ -2416,4 +2505,30 @@ complete -o bashdefault -o default -o nospace -F _gitk gitk 2>/dev/null \
 if [ Cygwin = "$(uname -o 2>/dev/null)" ]; then
 complete -o bashdefault -o default -o nospace -F _git git.exe 2>/dev/null \
 	|| complete -o default -o nospace -F _git git.exe
+fi
+
+if [[ -n ${ZSH_VERSION-} ]]; then
+	shopt () {
+		local option
+		if [ $# -ne 2 ]; then
+			echo "USAGE: $0 (-q|-s|-u) <option>" >&2
+			return 1
+		fi
+		case "$2" in
+		nullglob)
+			option="$2"
+			;;
+		*)
+			echo "$0: invalid option: $2" >&2
+			return 1
+		esac
+		case "$1" in
+		-q)	setopt | grep -q "$option" ;;
+		-u)	unsetopt "$option" ;;
+		-s)	setopt "$option" ;;
+		*)
+			echo "$0: invalid flag: $1" >&2
+			return 1
+		esac
+	}
 fi

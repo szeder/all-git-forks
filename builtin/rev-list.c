@@ -11,9 +11,9 @@
 static const char rev_list_usage[] =
 "git rev-list [OPTION] <commit-id>... [ -- paths... ]\n"
 "  limiting output:\n"
-"    --max-count=nr\n"
-"    --max-age=epoch\n"
-"    --min-age=epoch\n"
+"    --max-count=<n>\n"
+"    --max-age=<epoch>\n"
+"    --min-age=<epoch>\n"
 "    --sparse\n"
 "    --no-merges\n"
 "    --remove-empty\n"
@@ -33,7 +33,7 @@ static const char rev_list_usage[] =
 "    --objects | --objects-edge\n"
 "    --unpacked\n"
 "    --header | --pretty\n"
-"    --abbrev=nr | --no-abbrev\n"
+"    --abbrev=<n> | --no-abbrev\n"
 "    --abbrev-commit\n"
 "    --left-right\n"
 "  special purpose:\n"
@@ -147,8 +147,10 @@ static void show_commit(struct commit *commit, void *data)
 			}
 		} else {
 			if (revs->commit_format != CMIT_FMT_USERFORMAT ||
-			    buf.len)
-				printf("%s%c", buf.buf, info->hdr_termination);
+			    buf.len) {
+				fwrite(buf.buf, 1, buf.len, stdout);
+				putchar(info->hdr_termination);
+			}
 		}
 		strbuf_release(&buf);
 	} else {
