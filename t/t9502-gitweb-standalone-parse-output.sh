@@ -112,4 +112,43 @@ test_expect_success 'snapshot: hierarchical branch name (xx/test)' '
 '
 test_debug 'cat gitweb.headers'
 
+
+# ----------------------------------------------------------------------
+# whether gitweb with caching enabled produces the same output
+
+test_expect_success 'setup for caching tests (utf8 commit, binary file)' '
+	. "$TEST_DIRECTORY"/t3901-utf8.txt &&
+	cp "$TEST_DIRECTORY"/test9200a.png image.png &&
+	git add image.png &&
+	git commit -F "$TEST_DIRECTORY"/t3900/1-UTF-8.txt &&
+	gitweb_run "p=.git;a=patch" &&
+	mv gitweb.body no_cache.html &&
+	gitweb_run "p=.git;a=blob_plain;f=image.png" &&
+	mv gitweb.body no_cache.png
+'
+
+test_expect_success 'enable caching' '
+	cat >>gitweb_config.perl <<-\EOF &&
+	$caching_enabled = 1;
+	$cachedir = "cache"; # to clear right thing
+	EOF
+	rm -rf cache
+'
+
+for desc in 'generating cache' 'cached version'; do
+	test_expect_success "caching enabled, HTML output, $desc" '
+		gitweb_run "p=.git;a=patch" &&
+		mv gitweb.body cache.html &&
+		test_cmp no_cache.html cache.html
+	'
+done
+
+for desc in 'generating cache' 'cached version'; do
+	test_expect_success "caching enabled, binary output, $desc" '
+		gitweb_run "p=.git;a=blob_plain;f=image.png" &&
+		mv gitweb.body cache.png &&
+		cmp no_cache.png cache.png
+	'
+done
+
 test_done
