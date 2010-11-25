@@ -8,9 +8,6 @@ static int parse_options_usage(struct parse_opt_ctx_t *ctx,
 			       const char * const *usagestr,
 			       const struct option *opts, int err);
 
-#define OPT_SHORT 1
-#define OPT_UNSET 2
-
 static int opterror(const struct option *opt, const char *reason, int flags)
 {
 	if (flags & OPT_SHORT)
@@ -50,6 +47,9 @@ static int get_value(struct parse_opt_ctx_t *p,
 	const char *s, *arg;
 	const int unset = flags & OPT_UNSET;
 	int err;
+
+	if (opt->type == OPTION_LOWLEVEL_CALLBACK)
+		return (*(parse_opt_ll_cb *)opt->callback)(p, opt, flags);
 
 	if (unset && p->opt)
 		return opterror(opt, "takes no value", flags);
@@ -374,7 +374,7 @@ int parse_options_step(struct parse_opt_ctx_t *ctx,
 			if (parse_nodash_opt(ctx, arg, options) == 0)
 				continue;
 			if (ctx->flags & PARSE_OPT_STOP_AT_NON_OPTION)
-				break;
+				return PARSE_OPT_NON_OPTION;
 			ctx->out[ctx->cpidx++] = ctx->argv[0];
 			continue;
 		}
@@ -456,6 +456,7 @@ int parse_options(int argc, const char **argv, const char *prefix,
 	switch (parse_options_step(&ctx, options, usagestr)) {
 	case PARSE_OPT_HELP:
 		exit(129);
+	case PARSE_OPT_NON_OPTION:
 	case PARSE_OPT_DONE:
 		break;
 	default: /* PARSE_OPT_UNKNOWN */
