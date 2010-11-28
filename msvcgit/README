@@ -1,0 +1,10 @@
+Building Git with MSVC
+----------------------
+
+Simply run the setup_32bit_env.cmd batch script before opening
+running make in GIT_DIR, or opening the generated Vcprojs in
+Visual Studio.
+
+The batch script will setup the correct environment variables
+required for the build process to find the libraries, and for
+running the executables afterwards.
