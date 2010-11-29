@@ -27,7 +27,6 @@
 #include <malloc.h>
 
 #include <sys/types.h>
-#include "poll.h"
 #include <errno.h>
 #include <limits.h>
 #include <assert.h>
@@ -54,6 +53,7 @@
 #endif
 
 #include <time.h>
+#include "poll.h"
 
 #ifndef INFTIM
 # define INFTIM (-1)

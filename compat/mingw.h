@@ -48,8 +48,10 @@ typedef int socklen_t;
 #define F_SETFD 2
 #define FD_CLOEXEC 0x1
 
+#ifndef _INC_ERRNO
 #define EAFNOSUPPORT WSAEAFNOSUPPORT
 #define ECONNABORTED WSAECONNABORTED
+#endif
 
 struct passwd {
 	char *pw_name;
