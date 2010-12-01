@@ -2,6 +2,6 @@
 
 ./configure \
   --prefix=/usr/local/git \
-  --with-tcltk="'/usr/local/git/share/git-gui/lib/Git Gui.app/Contents/MacOS/Wish'"
+  --with-tcltk="'/usr/local/git/share/gitk/lib/Gitk.app/Contents/MacOS/Wish'"
 
 echo NO_DARWIN_PORTS=YesPlease >config.mak

@@ -2134,11 +2134,20 @@ proc do_gitk {revs {is_submodule false}} {
 	global current_diff_path file_states current_diff_side ui_index
 	global _gitdir _gitworktree
 
-	# -- Always start gitk through whatever we were loaded with.  This
-	#    lets us bypass using shell process on Windows systems.
-	#
 	set exe [_which gitk -script]
-	set cmd [list [info nameofexecutable] $exe]
+	if {[is_MacOSX]} {
+		# -- On Mac we start gitk directly; that way it uses its own Dock
+		#    icon, not ours.
+		#
+		set cmd {gitk}
+		set double_dash_for_wish {}
+	} else {
+		# -- Always start gitk through whatever we were loaded with.  This
+		#    lets us bypass using shell process on Windows systems.
+		#
+		set cmd [list [info nameofexecutable] $exe]
+		set double_dash_for_wish {--}
+	}
 	if {$exe eq {}} {
 		error_popup [mc "Couldn't find gitk in PATH"]
 	} else {
@@ -2178,7 +2187,7 @@ proc do_gitk {revs {is_submodule false}} {
 			unset env(GIT_DIR)
 			unset env(GIT_WORK_TREE)
 		}
-		eval exec $cmd $revs "--" "--" &
+		eval exec $cmd $revs $double_dash_for_wish "--" &
 
 		set env(GIT_DIR) $_gitdir
 		set env(GIT_WORK_TREE) $_gitworktree
