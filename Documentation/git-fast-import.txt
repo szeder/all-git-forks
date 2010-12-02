@@ -192,7 +192,8 @@ especially when a higher level language such as Perl, Python or
 Ruby is being used.
 
 fast-import is very strict about its input.  Where we say SP below we mean
-*exactly* one space.  Likewise LF means one (and only one) linefeed.
+*exactly* one space.  Likewise LF means one (and only one) linefeed
+and HT one (and only one) horizontal tab.
 Supplying additional whitespace characters will cause unexpected
 results, such as branch names or file names with leading or trailing
 spaces in their name, or early termination of fast-import when it encounters
@@ -327,6 +328,11 @@ and control the current import process.  More detailed discussion
 
 `cat-blob`::
 	Causes fast-import to print a blob in 'cat-file --batch'
+	format to the file descriptor set with `--cat-blob-fd` or
+	`stdout` if unspecified.
+
+`ls`::
+	Causes fast-import to print a directory entry in 'ls-tree'
 	format to the file descriptor set with `--cat-blob-fd` or
 	`stdout` if unspecified.
 
@@ -915,6 +921,47 @@ output uses the same format as `git cat-file --batch`:
 This command can be used anywhere in the stream that comments are
 accepted.  In particular, the `cat-blob` command can be used in the
 middle of a commit but not in the middle of a `data` command.
+
+`ls`
+~~~~
+Prints a directory entry to a file descriptor previously arranged with
+the `--cat-blob-fd` argument.  In the current implementation, if that
+entry represents a subdirectory in the current commit, it will be
+stored in the object database, but it is not advisable to rely on this
+detail since it maybe change.
+
+....
+	'ls' (SP <dataref>)? SP <path> LF
+....
+
+The `<dataref>` can be either a mark reference (`:<idnum>`) or a full
+40-byte SHA-1 of a Git tag, commit, or tree object, preexisting or
+waiting to be written.  The directory entry printed is that named by
+the path, relative to the top level of that tree.
+
+The `ls` command can be used anywhere in the stream that comments are
+accepted, including the middle of a commit.
+
+In the middle of a `commit`, the `<dataref>` part of the command can
+be omitted, in which case the path names a directory entry within
+fast-import's active commit.  The path must be quoted in this case.
+
+Output uses the same format as `git ls-tree <tree> -- <path>`:
+
+====
+	<mode> SP ('blob' | 'tree') SP <dataref> HT <path> LF
+====
+
+Since git repositories do not distinguish between missing paths and
+empty subtrees, if a path is not found it will be reported as an
+empty tree.  Backends for version control systems that do have a
+notion of empty trees may write
+
+====
+	missing SP <path> LF
+====
+
+for paths that do not correspond to a blob or subtree.
 
 `feature`
 ~~~~~~~~~
