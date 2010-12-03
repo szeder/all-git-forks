@@ -153,14 +153,6 @@ run_pre_rebase_hook () {
 	fi
 }
 
-require_clean_work_tree () {
-	# test if working tree is dirty
-	git rev-parse --verify HEAD > /dev/null &&
-	git update-index --ignore-submodules --refresh &&
-	git diff-files --quiet --ignore-submodules &&
-	git diff-index --cached --quiet HEAD --ignore-submodules -- ||
-	die "Working tree is dirty"
-}
 
 ORIG_REFLOG_ACTION="$GIT_REFLOG_ACTION"
 
@@ -557,7 +549,7 @@ do_next () {
 			exit "$status"
 		fi
 		# Run in subshell because require_clean_work_tree can die.
-		if ! (require_clean_work_tree)
+		if ! (require_clean_work_tree "rebase")
 		then
 			warn "Commit or stash your changes, and then run"
 			warn
@@ -675,9 +667,27 @@ get_saved_options () {
 # comes immediately after the former, and change "pick" to
 # "fixup"/"squash".
 rearrange_squash () {
-	sed -n -e 's/^pick \([0-9a-f]*\) \(squash\)! /\1 \2 /p' \
-		-e 's/^pick \([0-9a-f]*\) \(fixup\)! /\1 \2 /p' \
-		"$1" >"$1.sq"
+	# extract fixup!/squash! lines and resolve any referenced sha1's
+	while read -r pick sha1 message
+	do
+		case "$message" in
+		"squash! "*|"fixup! "*)
+			action="${message%%!*}"
+			rest="${message#*! }"
+			echo "$sha1 $action $rest"
+			# if it's a single word, try to resolve to a full sha1 and
+			# emit a second copy. This allows us to match on both message
+			# and on sha1 prefix
+			if test "${rest#* }" = "$rest"; then
+				fullsha="$(git rev-parse -q --verify "$rest" 2>/dev/null)"
+				if test -n "$fullsha"; then
+					# prefix the action to uniquely identify this line as
+					# intended for full sha1 match
+					echo "$sha1 +$action $fullsha"
+				fi
+			fi
+		esac
+	done >"$1.sq" <"$1"
 	test -s "$1.sq" || return
 
 	used=
@@ -687,14 +697,26 @@ rearrange_squash () {
 		*" $sha1 "*) continue ;;
 		esac
 		printf '%s\n' "$pick $sha1 $message"
+		used="$used$sha1 "
 		while read -r squash action msg
 		do
-			case "$message" in
-			"$msg"*)
+			case " $used" in
+			*" $squash "*) continue ;;
+			esac
+			emit=0
+			case "$action" in
+			+*)
+				action="${action#+}"
+				# full sha1 prefix test
+				case "$msg" in "$sha1"*) emit=1;; esac ;;
+			*)
+				# message prefix test
+				case "$message" in "$msg"*) emit=1;; esac ;;
+			esac
+			if test $emit = 1; then
 				printf '%s\n' "$action $squash $action! $msg"
 				used="$used$squash "
-				;;
-			esac
+			fi
 		done <"$1.sq"
 	done >"$1.rearranged" <"$1"
 	cat "$1.rearranged" >"$1"
@@ -768,7 +790,7 @@ first and then run 'git rebase --continue' again."
 
 		record_in_rewritten "$(cat "$DOTEST"/stopped-sha)"
 
-		require_clean_work_tree
+		require_clean_work_tree "rebase"
 		do_rest
 		;;
 	--abort)
@@ -866,7 +888,7 @@ first and then run 'git rebase --continue' again."
 
 		comment_for_reflog start
 
-		require_clean_work_tree
+		require_clean_work_tree "rebase" "Please commit or stash them."
 
 		if test ! -z "$1"
 		then
