@@ -46,7 +46,6 @@ SKIP: {
 		unless ($GitwebCache::SimpleFileCache::DEFAULT_CACHE_ROOT &&
 		        $GitwebCache::SimpleFileCache::DEFAULT_CACHE_DEPTH);
 
-	is($cache->get_namespace(), '', "default namespace is ''");
 	cmp_ok($cache->get_root(),  'eq', $GitwebCache::SimpleFileCache::DEFAULT_CACHE_ROOT,
 		"default cache root is '$GitwebCache::SimpleFileCache::DEFAULT_CACHE_ROOT'");
 	cmp_ok($cache->get_depth(), '==', $GitwebCache::SimpleFileCache::DEFAULT_CACHE_DEPTH,

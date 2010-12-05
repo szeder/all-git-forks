@@ -21,8 +21,9 @@ use strict;
 use warnings;
 
 use Carp;
-use File::Path qw(mkpath);
-use File::Temp qw(tempfile);
+use File::Path qw(mkpath rmtree);
+use File::Temp qw(tempfile mktemp);
+use File::Find qw(find);
 use Digest::MD5 qw(md5_hex);
 
 # by default, the cache nests all entries on the filesystem single
@@ -38,7 +39,7 @@ our $DEFAULT_CACHE_ROOT = "cache";
 # by default we don't use cache namespace (empty namespace);
 # empty namespace does not allow for simple implementation of clear() method.
 #
-our $DEFAULT_NAMESPACE = '';
+our $DEFAULT_NAMESPACE = "gitweb";
 
 # ......................................................................
 # constructor
@@ -393,7 +394,7 @@ sub get_size {
 
 
 # ......................................................................
-# interface methods
+# interface methods dealing with single item
 
 # Removing and expiring
 
@@ -545,6 +546,45 @@ sub compute_fh {
 	}
 
 	return ($fh, $filename);
+}
+
+# ......................................................................
+# interface methods dealing with whole namespace
+
+# $cache->clear();
+#
+# Remove all entries from the namespace.
+# Namespace must be defined and not empty.
+sub clear {
+	my $self = shift;
+
+	return unless $self->get_namespace();
+
+	my $namespace_dir = $self->path_to_namespace();
+	return if !-d $namespace_dir;
+
+	my $renamed_dir = mktemp($namespace_dir . '.XXXX');
+	rename($namespace_dir, $renamed_dir);
+	rmtree($renamed_dir);
+	die "Couldn't remove '$renamed_dir' directory"
+		if -d $renamed_dir;
+}
+
+# $size = $cache->size();
+#
+# Size of whole names (or whole cache if namespace empty)
+sub size {
+	my $self = shift;
+
+	my $namespace_dir = $self->path_to_namespace();
+	return if !-d $namespace_dir;
+
+	my $total_size = 0;
+	my $add_size = sub { $total_size += -s $File::Find::name };
+
+	File::Find::find({ wanted => $add_size, no_chdir => 1 }, $namespace_dir);
+
+	return $total_size;
 }
 
 1;
