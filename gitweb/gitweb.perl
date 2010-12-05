@@ -25,6 +25,8 @@ use Encode;
 use Fcntl qw(:mode :flock);
 use File::Find qw();
 use File::Basename qw(basename);
+use POSIX; # for POSIX::ceil($x)
+
 binmode STDOUT, ':utf8';
 
 our $t0;
@@ -888,11 +890,20 @@ sub evaluate_actions_info {
 	map { $actions_info{$_}{'output_format'} = undef }
 		qw(blob_plain object);
 	$actions_info{'snapshot'}{'output_format'} = 'binary';
+
+	# specify uncacheable actions
+	map { $actions_info{$_}{'uncacheable'} = 1 }
+		qw(cache clear_cache);
 }
 
 sub action_outputs_html {
 	my $action = shift;
 	return $actions_info{$action}{'output_format'} eq 'html';
+}
+
+sub action_is_cacheable {
+	my $action = shift;
+	return !$actions_info{$action}{'uncacheable'};
 }
 
 sub browser_is_robot {
@@ -1245,12 +1256,13 @@ sub dispatch {
 	if (!defined($actions{$action})) {
 		die_error(400, "Unknown action");
 	}
-	if ($action !~ m/^(?:opml|project_list|project_index)$/ &&
+	if ($action !~ m/^(?:opml|project_list|project_index|cache|clear_cache)$/ &&
 	    !$project) {
 		die_error(400, "Project needed");
 	}
 
-	if ($caching_enabled) {
+	if ($caching_enabled &&
+	    action_is_cacheable($action)) {
 		# human readable key identifying gitweb output
 		my $output_key = href(-replay => 1, -full => 1, -path_info => 0);
 
@@ -1397,6 +1409,10 @@ sub configure_caching {
 		require GitwebCache::Capture::Simple;
 		$capture = GitwebCache::Capture::Simple->new();
 	}
+
+	# some actions are available only if cache is turned on
+	$actions{'cache'} = \&git_cache_admin;
+	$actions{'clear_cache'} = \&git_cache_clear;
 }
 
 run();
@@ -3760,7 +3776,7 @@ sub git_header_html {
 	my $expires = shift;
 	my %opts = @_;
 
-	my $title = get_page_title();
+	my $title = $opts{'-title'} || get_page_title();
 	my $content_type;
 	# require explicit support from the UA if we are to send the page as
 	# 'application/xhtml+xml', otherwise send it as plain old 'text/html'.
@@ -3938,10 +3954,18 @@ sub git_footer_html {
 
 	} else {
 		print $cgi->a({-href => href(project=>undef, action=>"opml"),
-		              -class => $feed_class}, "OPML") . " ";
+		              -class => $feed_class}, "OPML") . "\n";
 		print $cgi->a({-href => href(project=>undef, action=>"project_index"),
 		              -class => $feed_class}, "TXT") . "\n";
+
 	}
+
+	if ($actions{'cache'} &&
+	    cache_admin_auth_ok()) {
+		print $cgi->a({-href => href(project=>undef, action=>"cache"),
+		              -class => $feed_class}, "<i>admin</i>") . "\n";
+	}
+
 	print "</div>\n"; # class="page_footer"
 
 	# timing info doesn't make much sense with output (response) caching,
@@ -7413,4 +7437,110 @@ XML
 </body>
 </opml>
 XML
+}
+
+# see Number::Bytes::Human
+sub human_readable_size {
+	my $bytes = shift || return;
+
+	my @units = ('', 'KiB', 'MiB', 'GiB', 'TiB');
+	my $block = 1024;
+
+	my $x = $bytes;
+	my $unit;
+	foreach (@units) {
+		$unit = $_, last if POSIX::ceil($x) < $block;
+		$x /= $block;
+	}
+
+	my $num;
+	if ($x < 10.0) {
+		$num = sprintf("%.1f", POSIX::ceil($x*10)/10); 
+	} else {
+		$num = sprintf("%d", POSIX::ceil($x));
+	}
+
+	return "$num $unit";
+}
+
+sub cache_admin_auth_ok {
+	if (defined $ENV{'REMOTE_ADDR'}) {
+		if (defined $ENV{'SERVER_ADDR'}) {
+			# SERVER_ADDR is not in RFC 3875
+			return $ENV{'SERVER_ADDR'} eq $ENV{'REMOTE_ADDR'};
+		} elsif ($ENV{'REMOTE_ADDR'} =~ m!^(?:127\.0\.0\.1|::1/128)$!) {
+			# localhost in IPv4 or IPv6
+			return 1;
+		}
+	} else {
+		# REMOTE_ADDR not defined, probably calling gitweb as script
+		return 1;
+	}
+
+	# restrict all but specified cases
+	return 0;
+}
+
+sub git_cache_admin {
+	$caching_enabled
+		or die_error(403, "Caching disabled");
+	cache_admin_auth_ok()
+		or die_error(403, "Cache administration not allowed");
+	$cache && ref($cache)
+		or die_error(500, "Cache is not present");
+
+	git_header_html(undef, undef,
+		-title => to_utf8($site_name) . " - Gitweb cache");
+
+	print <<'EOF_HTML';
+<table class="cache_admin">
+<tr><th>Cache location</th><th>Size</th><th>&nbsp;</th></tr>
+EOF_HTML
+	print '<tr class="light">' .
+	      '<td class="path">' . esc_path($cache->path_to_namespace()) . '</td>' .
+	      '<td>';
+	my $size;
+	if ($cache->can('size')) {
+		$size = $cache->size();
+	} elsif ($cache->can('get_size')) {
+		$size = $cache->get_size();
+	}
+	if (defined $size) {
+		print human_readable_size($size);
+	} else {
+		print '-';
+	}
+	print '</td><td>';
+	if ($cache->can('clear')) {
+		print $cgi->start_form({-method => "POST",
+		                        -action => $my_uri,
+		                        -enctype => CGI::URL_ENCODED}) .
+		      $cgi->input({-name=>"a", -value=>"clear_cache", -type=>"hidden"}) .
+		      $cgi->submit({-label => 'Clear cache'}) .
+		      $cgi->end_form();
+	}
+	print <<'EOF_HTML';
+</td></tr>
+</table>
+EOF_HTML
+
+	git_footer_html();
+}
+
+sub git_cache_clear {
+	$caching_enabled
+		or die_error(403, "Caching disabled");
+	cache_admin_auth_ok()
+		or die_error(403, "Clearing cache not allowed");
+	$cache && ref($cache)
+		or die_error(500, "Cache is not present");
+
+	if ($cgi->request_method() eq 'POST') {
+
+		$cache->clear();
+	}
+
+	#print "cleared";
+	print $cgi->redirect(-uri => href(action=>'cache', -full=>1),
+	                     -status => '303 See Other');
 }
