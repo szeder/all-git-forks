@@ -61,6 +61,22 @@ our $DEFAULT_NAMESPACE = '';
 #    'expires_in' (CHI compatibile) [seconds]
 #    The expiration time for objects place in the cache.
 #    Defaults to -1 (never expire) if not explicitly set.
+#    Sets 'expires_min' to given value.
+#  * 'expires_min' [seconds]
+#    The minimum expiration time for objects in cache (e.g. with 0% CPU load).
+#    Used as lower bound in adaptive cache lifetime / expiration.
+#    Defaults to 20 seconds; 'expires_in' sets it also.
+#  * 'expires_max' [seconds]
+#    The maximum expiration time for objects in cache.
+#    Used as upper bound in adaptive cache lifetime / expiration.
+#    Defaults to 1200 seconds, if not set; 
+#    defaults to 'expires_min' if 'expires_in' is used.
+#  * 'check_load'
+#    Subroutine (code) used for adaptive cache lifetime / expiration.
+#    If unset, adaptive caching is turned off; defaults to unset.
+#  * 'increase_factor' [seconds / 100% CPU load]
+#    Factor multiplying 'check_load' result when calculating cache lietime.
+#    Defaults to 60 seconds for 100% SPU load ('check_load' returning 1.0).
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
@@ -68,7 +84,8 @@ sub new {
 	my $self = {};
 	$self = bless($self, $class);
 
-	my ($root, $depth, $ns, $expires_in);
+	my ($root, $depth, $ns);
+	my ($expires_min, $expires_max, $increase_factor, $check_load);
 	if (%opts) {
 		$root =
 			$opts{'cache_root'} ||
@@ -77,19 +94,31 @@ sub new {
 			$opts{'cache_depth'} ||
 			$opts{'depth'};
 		$ns = $opts{'namespace'};
-		$expires_in =
+		$expires_min =
+			$opts{'expires_min'} ||
 			$opts{'default_expires_in'} ||
 			$opts{'expires_in'};
+		$expires_max =
+			$opts{'expires_max'};
+		$increase_factor = $opts{'expires_factor'};
+		$check_load      = $opts{'check_load'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
 	$ns    = $DEFAULT_NAMESPACE   unless defined($ns);
-	$expires_in = -1 unless defined($expires_in); # <0 means never
+	$expires_min = -1 unless defined($expires_min);
+	$expires_max = $expires_min
+		if (!defined($expires_max) && exists $opts{'expires_in'});
+	$expires_max = -1 unless (defined($expires_max));
+	$increase_factor = 60 unless defined($increase_factor);
 
 	$self->set_root($root);
 	$self->set_depth($depth);
 	$self->set_namespace($ns);
-	$self->set_expires_in($expires_in);
+	$self->set_expires_min($expires_min);
+	$self->set_expires_max($expires_max);
+	$self->set_increase_factor($increase_factor);
+	$self->set_check_load($check_load);
 
 	return $self;
 }
@@ -101,7 +130,8 @@ sub new {
 # http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
 
 # creates get_depth() and set_depth($depth) etc. methods
-foreach my $i (qw(depth root namespace expires_in)) {
+foreach my $i (qw(depth root namespace
+                  expires_min expires_max increase_factor check_load)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -114,6 +144,45 @@ foreach my $i (qw(depth root namespace expires_in)) {
 	};
 }
 
+# ......................................................................
+# pseudo-accessors
+
+# returns adaptive lifetime of cache entry for given $key [seconds]
+sub get_expires_in {
+	my ($self) = @_;
+
+	# short-circuit
+	if (!defined $self->{'check_load'} ||
+	    $self->{'expires_max'} <= $self->{'expires_min'}) {
+		return $self->{'expires_min'};
+	}
+
+	my $expires_in =
+		#$self->{'expires_min'} +
+		$self->{'increase_factor'} * $self->check_load();
+
+	if ($expires_in < $self->{'expires_min'}) {
+		return $self->{'expires_min'};
+	} elsif ($expires_in > $self->{'expires_max'}) {
+		return $self->{'expires_max'};
+	}
+
+	return $expires_in;
+}
+
+# sets expiration time to $duration, turns off adaptive cache lifetime
+sub set_expires_in {
+	my ($self, $duration) = @_;
+
+	$self->{'expires_min'} = $self->{'expires_max'} = $duration;
+}
+
+# runs 'check_load' subroutine, for adaptive cache lifetime.
+# Note: check in caller that 'check_load' exists.
+sub check_load {
+	my $self = shift;
+	return $self->{'check_load'}->();
+}
 
 # ----------------------------------------------------------------------
 # utility functions and methods

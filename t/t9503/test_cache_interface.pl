@@ -101,4 +101,37 @@ subtest 'cache expiration' => sub {
 	done_testing();
 };
 
+# Test assertions for adaptive cache expiration
+#
+my $load = 0.0;
+sub load { return $load; }
+my $expires_min = 10;
+my $expires_max = 30;
+$cache->set_expires_in(-1);
+$cache->set_expires_min($expires_min);
+$cache->set_expires_max($expires_max);
+$cache->set_check_load(\&load);
+subtest 'adaptive cache expiration' => sub {
+	cmp_ok($cache->get_expires_min(), '==', $expires_min,
+	       '"expires min" set correctly');
+	cmp_ok($cache->get_expires_max(), '==', $expires_max,
+	       '"expires max" set correctly');
+
+	$load = 0.0;
+	cmp_ok($cache->get_expires_in(), '>=', $expires_min,
+	       '"expires in" bound from down for load=0');
+	cmp_ok($cache->get_expires_in(), '<=', $expires_max,
+	       '"expires in" bound from up   for load=0');
+	
+	$load = 1_000;
+	cmp_ok($cache->get_expires_in(), '>=', $expires_min,
+	       '"expires in" bound from down for heavy load');
+	cmp_ok($cache->get_expires_in(), '<=', $expires_max,
+	       '"expires in" bound from up   for heavy load');
+
+	done_testing();
+};
+
+$cache->set_expires_in(-1);
+
 done_testing();
