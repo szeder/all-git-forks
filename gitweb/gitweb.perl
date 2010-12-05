@@ -818,6 +818,25 @@ our %allowed_options = (
 	"--no-merges" => [ qw(rss atom log shortlog history) ],
 );
 
+our %actions_info = ();
+sub evaluate_actions_info {
+	our %actions_info;
+	our (%actions);
+
+	# unless explicitely stated otherwise, default output format is html
+	foreach my $action (keys %actions) {
+		$actions_info{$action}{'output_format'} = 'html';
+	}
+	# list all exceptions; undef means variable (no definite format)
+	map { $actions_info{$_}{'output_format'} = 'text' }
+		qw(commitdiff_plain patch patches project_index blame_data);
+	map { $actions_info{$_}{'output_format'} = 'xml' }
+		qw(rss atom opml); # there are different types (document formats) of XML
+	map { $actions_info{$_}{'output_format'} = undef }
+		qw(blob_plain object);
+	$actions_info{'snapshot'}{'output_format'} = 'binary';
+}
+
 # fill %input_params with the CGI parameters. All values except for 'opt'
 # should be single values, but opt can be an array. We should probably
 # build an array of parameters that can be multi-valued, but since for the time
@@ -1226,6 +1245,7 @@ sub evaluate_argv {
 
 sub run {
 	evaluate_argv();
+	evaluate_actions_info();
 
 	$pre_listen_hook->()
 		if $pre_listen_hook;
