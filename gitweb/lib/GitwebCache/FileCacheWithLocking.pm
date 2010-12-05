@@ -25,7 +25,88 @@ use File::Path qw(mkpath);
 use Fcntl qw(:flock);
 
 # ......................................................................
-# constructor is inherited from GitwebCache::SimpleFileCache
+# constructor
+
+# The options are set by passing in a reference to a hash containing
+# any of the following keys:
+#  * 'namespace'
+#    The namespace associated with this cache.  This allows easy separation of
+#    multiple, distinct caches without worrying about key collision.  Defaults
+#    to $DEFAULT_NAMESPACE.
+#  * 'cache_root' (Cache::FileCache compatibile),
+#    'root_dir' (CHI::Driver::File compatibile),
+#    The location in the filesystem that will hold the root of the cache.
+#    Defaults to $DEFAULT_CACHE_ROOT.
+#  * 'cache_depth' (Cache::FileCache compatibile),
+#    'depth' (CHI::Driver::File compatibile),
+#    The number of subdirectories deep to cache object item.  This should be
+#    large enough that no cache directory has more than a few hundred objects.
+#    Defaults to $DEFAULT_CACHE_DEPTH unless explicitly set.
+#  * 'default_expires_in' (Cache::Cache compatibile),
+#    'expires_in' (CHI compatibile) [seconds]
+#    The expiration time for objects place in the cache.
+#    Defaults to -1 (never expire) if not explicitly set.
+#    Sets 'expires_min' to given value.
+#  * 'expires_min' [seconds]
+#    The minimum expiration time for objects in cache (e.g. with 0% CPU load).
+#    Used as lower bound in adaptive cache lifetime / expiration.
+#    Defaults to 20 seconds; 'expires_in' sets it also.
+#  * 'expires_max' [seconds]
+#    The maximum expiration time for objects in cache.
+#    Used as upper bound in adaptive cache lifetime / expiration.
+#    Defaults to 1200 seconds, if not set; 
+#    defaults to 'expires_min' if 'expires_in' is used.
+#  * 'check_load'
+#    Subroutine (code) used for adaptive cache lifetime / expiration.
+#    If unset, adaptive caching is turned off; defaults to unset.
+#  * 'increase_factor' [seconds / 100% CPU load]
+#    Factor multiplying 'check_load' result when calculating cache lietime.
+#    Defaults to 60 seconds for 100% SPU load ('check_load' returning 1.0).
+#
+# (all the above are inherited from GitwebCache::SimpleFileCache)
+#
+#  * 'max_lifetime' [seconds]
+#    If it is greater than 0, and cache entry is expired but not older
+#    than it, serve stale data when waiting for cache entry to be 
+#    regenerated (refreshed).  Non-adaptive.
+#    Defaults to -1 (never expire / always serve stale).
+sub new {
+	my $class = shift;
+	my %opts = ref $_[0] ? %{ $_[0] } : @_;
+
+	my $self = $class->SUPER::new(\%opts);
+
+	my ($max_lifetime);
+	if (%opts) {
+		$max_lifetime =
+			$opts{'max_lifetime'} ||
+			$opts{'max_cache_lifetime'};
+	}
+	$max_lifetime = -1 unless defined($max_lifetime);
+
+	$self->set_max_lifetime($max_lifetime);
+
+	return $self;
+}
+
+# ......................................................................
+# accessors
+
+# http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
+
+# creates get_depth() and set_depth($depth) etc. methods
+foreach my $i (qw(max_lifetime)) {
+	my $field = $i;
+	no strict 'refs';
+	*{"get_$field"} = sub {
+		my $self = shift;
+		return $self->{$field};
+	};
+	*{"set_$field"} = sub {
+		my ($self, $value) = @_;
+		$self->{$field} = $value;
+	};
+}
 
 # ----------------------------------------------------------------------
 # utility functions and methods
@@ -67,7 +148,7 @@ sub _tempfile_to_path {
 
 sub _compute_generic {
 	my ($self, $key,
-	    $get_code, $set_code, $get_locked) = @_;
+	    $get_code, $fetch_code, $set_code, $fetch_locked) = @_;
 
 	my @result = $get_code->();
 	return @result if @result;
@@ -91,17 +172,23 @@ sub _compute_generic {
 				or die "Could't close lockfile '$lockfile': $!";
 
 		} else {
+			# try to retrieve stale data
+			@result = $fetch_code->()
+				if $self->is_valid($key, $self->get_max_lifetime());
+			return @result if @result;
+
 			# get readers lock (wait for writer)
+			# if there is no stale data to serve
 			flock($lock_fh, LOCK_SH);
 			# closing lockfile releases lock
-			if ($get_locked) {
-				@result = $get_code->();
+			if ($fetch_locked) {
+				@result = $fetch_code->();
 				close $lock_fh
 					or die "Could't close lockfile '$lockfile': $!";
 			} else {
 				close $lock_fh
 					or die "Could't close lockfile '$lockfile': $!";
-				@result = $get_code->();
+				@result = $fetch_code->();
 			}
 		}
 	} until (@result || $lock_state);
@@ -124,6 +211,9 @@ sub compute {
 	return ($self->_compute_generic($key,
 		sub {
 			return $self->get($key);
+		},
+		sub {
+			return $self->fetch($key);
 		},
 		sub {
 			my $data = $code->();
@@ -152,9 +242,12 @@ sub compute_fh {
 			return $self->get_fh($key);
 		},
 		sub {
+			return $self->fetch_fh($key);
+		},
+		sub {
 			return $self->set_coderef_fh($key, $code_fh);
 		},
-		1 # $self->get_fh($key); just opens file
+		1 # $self->fetch_fh($key); just opens file
 	);
 }
 

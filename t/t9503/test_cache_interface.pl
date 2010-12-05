@@ -22,7 +22,9 @@ BEGIN { use_ok('GitwebCache::FileCacheWithLocking'); }
 diag("Using lib '$INC[0]'");
 diag("Testing '$INC{'GitwebCache/FileCacheWithLocking.pm'}'");
 
-my $cache = new_ok('GitwebCache::FileCacheWithLocking');
+my $cache = new_ok('GitwebCache::FileCacheWithLocking', [ {
+	'max_lifetime' => 0, # turn it off
+} ]);
 isa_ok($cache, 'GitwebCache::SimpleFileCache');
 
 # Test that default values are defined
@@ -294,6 +296,70 @@ subtest 'parallel access' => sub {
 
 	done_testing();
 };
+
+# Test that cache returns stale data in existing but expired cache situation
+# (probably should be run only if GIT_TEST_LONG)
+#
+my $stale_value = 'Stale Value';
+
+subtest 'serving stale data when (re)generating' => sub {
+	$cache->set($key, $stale_value);
+	$call_count = 0;
+	$cache->set_expires_in(0);    # expire now
+	$cache->set_max_lifetime(-1); # forever (always serve stale data)
+
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print $data;
+	};
+	ok(scalar(grep { $_ eq $stale_value } @output),
+	   'stale data in at least one process when expired');
+
+	$cache->set_expires_in(-1); # never expire for next ->get
+	is($cache->get($key), $value,
+	   'value got set correctly, even if stale data returned');
+
+
+# 	$cache->set($key, $stale_value);
+# 	unlink($lock_file);
+# 	@output = parallel_run {
+# 		my $data = eval { cache_compute($cache, $key, \&get_value_die_once); };
+# 		my $eval_error = $@;
+# 		print "$data" if defined $data;
+# 		print "$sep";
+# 		print "$eval_error" if defined $eval_error;
+# 	};
+#  TODO: {
+# 		local $TODO = 'not implemented';
+#
+# 		is_deeply(
+# 			[sort @output],
+# 			[sort ("$value${sep}", "${sep}get_value_die_once\n")],
+# 			'return non-stale value, even if process regenerating it died'
+# 		);
+#
+# 		$cache->set_expires_in(-1); # never expire for next ->get
+# 		is($cache->get($key), $value,
+# 		   'value got regenerated, even if process regenerating it died');
+# 	};
+# 	unlink($lock_file);
+
+	$cache->set($key, $stale_value);
+	$cache->set_expires_in(0);   # expire now
+	$cache->set_max_lifetime(0); # don't serve stale data
+
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print $data;
+	};
+	# no returning stale data
+	ok(!scalar(grep { $_ eq $stale_value } @output),
+	   'no stale data if configured');
+
+
+	done_testing();
+};
+$cache->set_expires_in(-1);
 
 done_testing();
 

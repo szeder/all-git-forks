@@ -365,12 +365,13 @@ sub remove {
 		or die "Couldn't remove file '$file': $!";
 }
 
-# $cache->is_valid($key)
+# $cache->is_valid($key[, $expires_in])
 #
 # Returns a boolean indicating whether $key exists in the cache
-# and has not expired (global per-cache 'expires_in').
+# and has not expired.  Uses global per-cache expires time, unless
+# passed optional $expires_in argument.
 sub is_valid {
-	my ($self, $key) = @_;
+	my ($self, $key, $expires_in) = @_;
 
 	my $path = $self->path_to_key($key);
 
@@ -383,7 +384,7 @@ sub is_valid {
 	return 0 unless ((stat(_))[7] > 0);
 
 	# expire time can be set to never
-	my $expires_in = $self->get_expires_in();
+	$expires_in = defined $expires_in ? $expires_in : $self->get_expires_in();
 	return 1 unless (defined $expires_in && $expires_in >= 0);
 
 	# is file expired?
@@ -441,16 +442,23 @@ sub compute {
 # ......................................................................
 # nonstandard interface methods
 
-sub get_fh {
+sub fetch_fh {
 	my ($self, $key) = @_;
 
 	my $path = $self->path_to_key($key);
 	return unless (defined $path);
 
-	return unless ($self->is_valid($key));
-
 	open my $fh, '<', $path or return;
 	return ($fh, $path);
+}
+
+
+sub get_fh {
+	my ($self, $key) = @_;
+
+	return unless ($self->is_valid($key));
+
+	return $self->fetch_fh($key);
 }
 
 sub set_coderef_fh {
