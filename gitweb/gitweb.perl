@@ -365,6 +365,20 @@ our %cache_options = (
 	# finishes within this time, then generating error pages should be safe
 	# from infinite "Generating page..." loop.
 	'generating_info_is_safe' => 1,
+
+	# How to handle runtime errors occurring during cache gets and cache
+	# sets.  Options are:
+	#  * "die" (the default) - call die() with an appropriate message
+	#  * "warn" - call warn() with an appropriate message
+	#  * "ignore" - do nothing
+	#  * <coderef> - call this code reference with an appropriate message
+	# Note that gitweb catches 'die <message>' via custom handle_errors_html
+	# handler, set via set_message() from CGI::Carp.  'warn <message>' are
+	# written to web server logs.
+	#
+	# The default is to use cache_error_handler, which wraps die_error.
+	# Only first argument passed to cache_error_handler is used (c.f. CHI)
+	'on_error' => \&cache_error_handler,
 );
 # You define site-wide options for "Generating..." page (if enabled) here
 # (which means that $cache_options{'generating_info'} is set to coderef);
@@ -1186,6 +1200,17 @@ sub configure_gitweb_features {
 	}
 }
 
+# custom error handler for caching engine (Internal Server Error)
+sub cache_error_handler {
+	my $error = shift;
+
+	$error = to_utf8($error);
+	$error =
+		"Error in caching layer: <i>".ref($cache)."</i><br>\n".
+		CGI::escapeHTML($error);
+	# die_error() would exit
+	die_error(undef, undef, $error);
+}
 # custom error handler: 'die <message>' is Internal Server Error
 sub handle_errors_html {
 	my $msg = shift; # it is already HTML escaped
@@ -1348,6 +1373,8 @@ sub configure_caching {
 			# (CHI compatibile initialization)
 			'root_dir' => $cache_options{'cache_root'},
 			'depth' => $cache_options{'cache_depth'},
+			'on_get_error' => $cache_options{'on_error'},
+			'on_set_error' => $cache_options{'on_error'},
 		});
 	}
 	unless (defined $capture && ref($capture)) {

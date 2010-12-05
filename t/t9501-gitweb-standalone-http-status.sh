@@ -147,5 +147,13 @@ test_expect_success 'caching enabled (non-existent commit, 404 error)' '
 test_debug 'echo "headers" && cat gitweb.headers'
 test_debug 'echo "body"    && cat gitweb.body'
 
+test_expect_success 'caching errors are 500 Internal Server Error' '
+	chmod 0000 cache/ &&
+	test_when_finished "chmod 0777 cache/" &&
+	gitweb_run "p=.git" &&
+	grep "Status: 500 Internal Server Error" gitweb.headers &&
+	grep "500 - Internal Server Error" gitweb.body
+'
+test_debug 'echo "headers" && cat gitweb.headers'
 
 test_done
