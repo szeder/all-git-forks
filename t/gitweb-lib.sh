@@ -58,6 +58,7 @@ gitweb_enable_caching () {
 		$caching_enabled = 1;
 		$cache_options{"expires_in"} = -1;      # never expire cache for tests
 		$cache_options{"cache_root"} = "cache"; # to clear the right thing
+		$cache_options{"generating_info"} = undef;
 		EOF
 		rm -rf cache/
 	'

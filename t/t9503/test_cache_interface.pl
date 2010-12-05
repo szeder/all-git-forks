@@ -395,6 +395,85 @@ subtest 'serving stale data when (re)generating' => sub {
 };
 $cache->set_expires_in(-1);
 
+
+# Test 'generating_info' feature
+#
+$cache->remove($key);
+my $progress_info = "Generating...";
+sub test_generating_info {
+	local $| = 1;
+	print "$progress_info";
+}
+$cache->set_generating_info(\&test_generating_info);
+
+subtest 'generating progress info' => sub {
+	my @progress;
+
+	# without background generation
+	$cache->set_background_cache(0);
+	$cache->remove($key);
+
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print "$sep$data";
+	};
+	@progress = map { s/^(.*)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		[sort @progress],
+		[sort ('', $progress_info)],
+		'no background: one process waiting for data prints progress info'
+	);
+	is_deeply(
+		\@output,
+		[ ($value) x 2 ],
+		'no background: both processes return correct value'
+	);
+
+
+	# without background generation, with stale value
+	$cache->set($key, $stale_value);
+	$cache->set_expires_in(0);    # set value is now expired
+	$cache->set_max_lifetime(-1); # stale data never expire
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print "$sep$data";
+	};
+	is_deeply(
+		[sort @output],
+	## no progress for generating process without background generation;
+	#	[sort ("$progress_info$sep$value", "$sep$stale_value")],
+		[sort ("$sep$value", "$sep$stale_value")],
+		'no background, stale data: generating gets data, other gets stale data'
+	) or diag('@output is ', join ", ", sort @output);
+	$cache->set_expires_in(-1);
+
+
+	# with background generation
+	$cache->set_background_cache(1);
+	$cache->remove($key);
+
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print "$sep$data";
+	};
+	@progress = map { s/^(.*)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		\@progress,
+		[ ($progress_info) x 2],
+		'background: both process print progress info'
+	);
+	is_deeply(
+		\@output,
+		[ ($value) x 2 ],
+		'background: both processes return correct value'
+	);
+
+
+	done_testing();
+};
+$cache->set_expires_in(-1);
+
+
 done_testing();
 
 

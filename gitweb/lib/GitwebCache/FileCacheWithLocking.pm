@@ -74,24 +74,32 @@ use POSIX qw(setsid);
 #  * 'background_cache' (boolean)
 #    This enables/disables regenerating cache in background process.
 #    Defaults to true.
+#  * 'generating_info'
+#    Subroutine (code) called when process has to wait for cache entry
+#    to be (re)generated (when there is no not-too-stale data to serve
+#    instead), for other process (or bacground process).  It is passed
+#    $cache instance, $key, and opened $lock_fh filehandle to lockfile.
+#    Unset by default (which means no activity indicator).
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
 
 	my $self = $class->SUPER::new(\%opts);
 
-	my ($max_lifetime, $background_cache);
+	my ($max_lifetime, $background_cache, $generating_info);
 	if (%opts) {
 		$max_lifetime =
 			$opts{'max_lifetime'} ||
 			$opts{'max_cache_lifetime'};
 		$background_cache = $opts{'background_cache'};
+		$generating_info  = $opts{'generating_info'};
 	}
 	$max_lifetime = -1 unless defined($max_lifetime);
 	$background_cache = 1 unless defined($background_cache);
 
 	$self->set_max_lifetime($max_lifetime);
 	$self->set_background_cache($background_cache);
+	$self->set_generating_info($generating_info);
 
 	return $self;
 }
@@ -102,7 +110,7 @@ sub new {
 # http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
 
 # creates get_depth() and set_depth($depth) etc. methods
-foreach my $i (qw(max_lifetime background_cache)) {
+foreach my $i (qw(max_lifetime background_cache generating_info)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -113,6 +121,17 @@ foreach my $i (qw(max_lifetime background_cache)) {
 		my ($self, $value) = @_;
 		$self->{$field} = $value;
 	};
+}
+
+# $cache->generating_info($key, $lock);
+# runs 'generating_info' subroutine, for activity indicator,
+# checking if it is defined first.
+sub generating_info {
+	my $self = shift;
+
+	if (defined $self->{'generating_info'}) {
+		$self->{'generating_info'}->($self, @_);
+	}
 }
 
 # ----------------------------------------------------------------------
@@ -153,6 +172,33 @@ sub _tempfile_to_path {
 # ......................................................................
 # interface methods
 
+sub _wait_for_data {
+	my ($self, $key,
+	    $lock_fh, $lockfile,
+	    $fetch_code, $fetch_locked) = @_;
+	my @result;
+
+	# provide "generating page..." info, if exists
+	$self->generating_info($key, $lock_fh);
+	# generating info may exit, so we can not get there
+
+	# get readers lock, i.e. wait for writer,
+	# which might be background process
+	flock($lock_fh, LOCK_SH);
+	# closing lockfile releases lock
+	if ($fetch_locked) {
+		@result = $fetch_code->();
+		close $lock_fh
+			or die "Could't close lockfile '$lockfile': $!";
+	} else {
+		close $lock_fh
+			or die "Could't close lockfile '$lockfile': $!";
+		@result = $fetch_code->();
+	}
+
+	return @result;
+}
+
 sub _set_maybe_background {
 	my ($self, $key, $fetch_code, $set_code) = @_;
 
@@ -165,8 +211,10 @@ sub _set_maybe_background {
 			if $self->is_valid($key, $self->get_max_lifetime());
 
 		# fork if there is stale data, for background process
-		# to regenerate/refresh the cache (generate data)
-		$pid = fork() if (@stale_result);
+		# to regenerate/refresh the cache (generate data),
+		# or if main process would show progress indicator
+		$pid = fork()
+			if (@stale_result || $self->{'generating_info'});
 	}
 
 	if ($pid) {
@@ -221,9 +269,18 @@ sub _compute_generic {
 			## acquired writers lock, have to generate data
 			@result = $self->_set_maybe_background($key, $fetch_code, $set_code);
 
-			# closing lockfile releases lock
+			# closing lockfile releases writer lock
 			close $lock_fh
 				or die "Could't close lockfile '$lockfile': $!";
+
+			if (!@result) {
+				# wait for background process to finish generating data
+				open $lock_fh, '<', $lockfile
+					or die "Couldn't reopen (for reading) lockfile '$lockfile': $!";
+
+				@result = $self->_wait_for_data($key, $lock_fh, $lockfile,
+				                                $fetch_code, $fetch_locked);
+			}
 
 		} else {
 			## didn't acquire writers lock, get stale data or wait for regeneration
@@ -233,19 +290,10 @@ sub _compute_generic {
 				if $self->is_valid($key, $self->get_max_lifetime());
 			return @result if @result;
 
-			# get readers lock (wait for writer)
-			# if there is no stale data to serve
-			flock($lock_fh, LOCK_SH);
-			# closing lockfile releases lock
-			if ($fetch_locked) {
-				@result = $fetch_code->();
-				close $lock_fh
-					or die "Could't close lockfile '$lockfile': $!";
-			} else {
-				close $lock_fh
-					or die "Could't close lockfile '$lockfile': $!";
-				@result = $fetch_code->();
-			}
+			# wait for regeneration
+			@result = $self->_wait_for_data($key, $lock_fh, $lockfile,
+			                                $fetch_code, $fetch_locked);
+
 		}
 	} until (@result || $lock_state);
 	# repeat until we have data, or we tried generating data oneself and failed

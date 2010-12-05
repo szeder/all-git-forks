@@ -22,7 +22,7 @@ use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
 use Encode;
-use Fcntl ':mode';
+use Fcntl qw(:mode :flock);
 use File::Find qw();
 use File::Basename qw(basename);
 binmode STDOUT, ':utf8';
@@ -344,6 +344,31 @@ our %cache_options = (
 	# In theory this will make gitweb seem more responsive at the price of
 	# serving possibly stale data.
 	'background_cache' => 1,
+
+	# Subroutine which would be called when gitweb has to wait for data to
+	# be generated (it can't serve stale data because there isn't any,
+	# or if it exists it is older than 'max_lifetime').  The default
+	# is to use git_generating_data_html(), which creates "Generating..."
+	# page, which would then redirect or redraw/rewrite the page when
+	# data is ready.
+	# Set it to `undef' to disable this feature.
+	#
+	# Such subroutine (if invoked from GitwebCache::SimpleFileCache)
+	# is passed the following parameters: $cache instance, human-readable
+	# $key to current page, and filehandle $lock_fh to lockfile.
+	'generating_info' => \&git_generating_data_html,
+);
+# You define site-wide options for "Generating..." page (if enabled) here
+# (which means that $cache_options{'generating_info'} is set to coderef);
+# override them with $GITWEB_CONFIG as necessary.
+our %generating_options = (
+	# The time between generating new piece of output to prevent from
+	# redirection before data is ready, i.e. time between printing each
+	# dot in activity indicator / progress info, in seconds.
+	'print_interval' => 2,
+	# Maximum time "Generating..." page would be present, waiting for data,
+	# before unconditional redirect, in seconds.
+	'timeout' => $cache_options{'expires_min'},
 );
 # Set to _initialized_ instance of GitwebCache::Capture compatibile capturing
 # engine, i.e. one implementing ->new() constructor, and ->capture($code)
@@ -835,6 +860,23 @@ sub evaluate_actions_info {
 	map { $actions_info{$_}{'output_format'} = undef }
 		qw(blob_plain object);
 	$actions_info{'snapshot'}{'output_format'} = 'binary';
+}
+
+sub action_outputs_html {
+	my $action = shift;
+	return $actions_info{$action}{'output_format'} eq 'html';
+}
+
+sub browser_is_robot {
+	return 1 if !exists $ENV{'HTTP_USER_AGENT'}; # gitweb run as script
+	if (eval { require HTTP::BrowserDetect; }) {
+		my $browser = HTTP::BrowserDetect->new();
+		return $browser->robot();
+	}
+	# fallback on detecting known web browsers
+	return 0 if ($ENV{'HTTP_USER_AGENT'} =~ /\b(?:Mozilla|Opera|Safari|IE)\b/);
+	# be conservative; if not sure, assume non-interactive
+	return 1;
 }
 
 # fill %input_params with the CGI parameters. All values except for 'opt'
@@ -3553,6 +3595,93 @@ sub get_page_title {
 	}
 
 	return $title;
+}
+
+# creates "Generating..." page when caching enabled and not in cache
+sub git_generating_data_html {
+	my ($cache, $key, $lock_fh) = @_;
+
+	# whitelist of actions that should get "Generating..." page
+	if (!action_outputs_html($action) ||
+	    browser_is_robot()) {
+		return;
+	}
+
+	my $title = "[Generating...] " . get_page_title();
+	# TODO: the following line of code duplicates the one
+	# in git_header_html, and it should probably be refactored.
+	my $mod_perl_version = $ENV{'MOD_PERL'} ? " $ENV{'MOD_PERL'}" : '';
+
+	# Use the trick that 'refresh' HTTP header equivalent (set via http-equiv)
+	# with timeout of 0 seconds would redirect as soon as page is finished.
+	# It assumes that browser would display partially received page.
+	# This "Generating..." redirect page should not be cached (externally).
+	my %no_cache = (
+		# HTTP/1.0
+		-Pragma => 'no-cache',
+		# HTTP/1.1
+		-Cache_Control => join(', ', qw(private no-cache no-store must-revalidate
+		                                max-age=0 pre-check=0 post-check=0)),
+	);
+	print STDOUT $cgi->header(-type => 'text/html', -charset => 'utf-8',
+	                          -status=> '200 OK', -expires => 'now',
+	                          %no_cache);
+	print STDOUT <<"EOF";
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+                      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+<!-- git web interface version $version -->
+<!-- git core binaries version $git_version -->
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<meta http-equiv="refresh" content="0" />
+<meta name="generator" content="gitweb/$version git/$git_version$mod_perl_version" />
+<meta name="robots" content="noindex, nofollow" />
+<title>$title</title>
+</head>
+<body>
+EOF
+
+	local $| = 1; # autoflush
+	print STDOUT 'Generating...';
+
+	my $total_time = 0;
+	my $interval = $generating_options{'print_interval'} || 1;
+	my $timeout  = $generating_options{'timeout'};
+	my $alarm_handler = sub {
+		local $! = 1;
+		print STDOUT '.';
+		$total_time += $interval;
+		if ($total_time > $timeout) {
+			die "timeout\n";
+		}
+	};
+	eval {
+		local $SIG{ALRM} = $alarm_handler;
+		Time::HiRes::alarm($interval, $interval);
+		my $lock_acquired;
+		do {
+			# loop is needed here because SIGALRM (from 'alarm')
+			# can interrupt process of acquiring lock
+			$lock_acquired = flock($lock_fh, LOCK_SH); # blocking readers lock
+		} until ($lock_acquired);
+		alarm 0;
+	};
+	# It doesn't really matter if we got lock, or timed-out
+	# but we should re-throw unknown (unexpected) errors
+	die $@ if ($@ and $@ !~ /timeout/);
+
+	print STDOUT <<"EOF";
+
+</body>
+</html>
+EOF
+
+	# after refresh web browser would reload page and send new request
+	goto DONE_GITWEB;
+	#exit 0;
+	#return;
 }
 
 sub git_header_html {
