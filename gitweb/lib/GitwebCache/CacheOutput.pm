@@ -17,6 +17,8 @@ package GitwebCache::CacheOutput;
 use strict;
 use warnings;
 
+use File::Copy;
+
 use Exporter qw(import);
 our @EXPORT      = qw(cache_output capture_stop);
 our %EXPORT_TAGS = (all => [ @EXPORT ]);
@@ -37,6 +39,21 @@ sub cache_output {
 	my ($cache, $capture, $key, $code) = @_;
 
 	$capture = setup_capture($capture);
+
+	if ($cache->can('compute_fh')) {
+		my ($fh, $filename) = $cache->compute_fh($key, sub {
+			my $fh = shift;
+			$capture->capture($code, $fh);
+		});
+
+		if (defined $fh) {
+			binmode $fh, ':raw';
+			binmode STDOUT, ':raw';
+			copy($fh, \*STDOUT);
+		}
+
+		return;
+	}
 
 	my $data;
 	if ($cache->can('compute')) {

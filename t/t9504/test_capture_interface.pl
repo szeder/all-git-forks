@@ -6,6 +6,7 @@ use strict;
 use utf8;
 
 use Test::More;
+use File::Compare;
 
 # test source version
 use lib $ENV{GITWEBLIBDIR} || "$ENV{GIT_BUILD_DIR}/gitweb/lib";
@@ -83,6 +84,22 @@ SKIP: {
 	});
 	is($captured, '', "doesn't print while capturing");
 }
+
+# Test capturing to file
+#
+my $test_data = 'Capture this';
+open my $fh, '>', 'expected' or die "Couldn't open file for writing: $!";
+print {$fh} $test_data;
+close $fh;
+
+$capture->capture(sub { print $test_data; }, 'actual');
+cmp_ok(compare('expected', 'actual'), '==', 0, 'capturing to file via filename');
+
+open my $fh, '>', 'actual' or die "Couldn't open file for writing: $!";
+$capture->capture(sub { print $test_data; }, $fh);
+close $fh;
+cmp_ok(compare('expected', 'actual'), '==', 0, 'capturing to file via filehandle');
+
 
 done_testing();
 

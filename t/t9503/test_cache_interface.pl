@@ -82,6 +82,38 @@ subtest 'CHI interface' => sub {
 	done_testing();
 };
 
+# Test the getting and setting of a cached value
+# (compute_fh interface)
+#
+$call_count = 0;
+sub write_value {
+	my $fh = shift;
+	$call_count++;
+	print {$fh} $value;
+}
+sub compute_fh_output {
+	my ($cache, $key, $code_fh) = @_;
+
+	my ($fh, $filename) = $cache->compute_fh($key, $code_fh);
+
+	local $/ = undef;
+	return <$fh>;
+}
+subtest 'compute_fh interface' => sub {
+	can_ok($cache, qw(compute_fh));
+
+	$cache->remove($key);
+	is(compute_fh_output($cache, $key, \&write_value), $value,
+	   "compute_fh 1st time (set) returns '$value'");
+	is(compute_fh_output($cache, $key, \&write_value), $value,
+	   "compute_fh 2nd time (get) returns '$value'");
+	is(compute_fh_output($cache, $key, \&write_value), $value,
+	   "compute_fh 3rd time (get) returns '$value'");
+	cmp_ok($call_count, '==', 1, 'write_value() is called once from compute_fh');
+
+	done_testing();
+};
+
 # Test cache expiration
 #
 subtest 'cache expiration' => sub {

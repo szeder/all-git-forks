@@ -18,6 +18,7 @@ use strict;
 use warnings;
 
 use PerlIO;
+use Symbol qw(qualify_to_ref);
 
 # Constructor
 sub new {
@@ -32,7 +33,7 @@ sub new {
 sub capture {
 	my ($self, $code) = @_;
 
-	$self->capture_start();
+	$self->capture_start(@_[2..$#_]); # pass rest of params
 	$code->();
 	return $self->capture_stop();
 }
@@ -42,6 +43,7 @@ sub capture {
 # Start capturing data (STDOUT)
 sub capture_start {
 	my $self = shift;
+	my $to = shift;
 
 	# save copy of real STDOUT via duplicating it
 	my @layers = PerlIO::get_layers(\*STDOUT);
@@ -51,11 +53,23 @@ sub capture_start {
 	# close STDOUT, so that it isn't used anymode (to have it fd0)
 	close STDOUT;
 
-	# reopen STDOUT as in-memory file
-	$self->{'data'} = '';
-	unless (open STDOUT, '>', \$self->{'data'}) {
-		open STDOUT, '>&', fileno($self->{'orig_stdout'});
-		die "Couldn't reopen STDOUT as in-memory file for capture: $!";
+	if (defined $to) {
+		$self->{'to'} = $to;
+		if (defined fileno(qualify_to_ref($to))) {
+			# if $to is filehandle, redirect
+			open STDOUT, '>&', fileno($to);
+		} elsif (! ref($to)) {
+			# if $to is name of file, open it
+			open STDOUT, '>', $to;
+		}
+
+	} else {
+		# reopen STDOUT as in-memory file
+		$self->{'data'} = '';
+		unless (open STDOUT, '>', \$self->{'data'}) {
+			open STDOUT, '>&', fileno($self->{'orig_stdout'});
+			die "Couldn't reopen STDOUT as in-memory file for capture: $!";
+		}
 	}
 	_relayer(\*STDOUT, \@layers);
 
@@ -76,7 +90,7 @@ sub capture_stop {
 	open STDOUT, '>&', fileno($self->{'orig_stdout'});
 	_relayer(\*STDOUT, \@layers);
 
-	return $self->{'data'};
+	return exists $self->{'to'} ? $self->{'to'} : $self->{'data'};
 }
 
 # taken from Capture::Tiny by David Golden, Apache License 2.0

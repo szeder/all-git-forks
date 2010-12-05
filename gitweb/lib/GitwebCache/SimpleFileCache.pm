@@ -438,6 +438,65 @@ sub compute {
 	return $data;
 }
 
+# ......................................................................
+# nonstandard interface methods
+
+sub get_fh {
+	my ($self, $key) = @_;
+
+	my $path = $self->path_to_key($key);
+	return unless (defined $path);
+
+	return unless ($self->is_valid($key));
+
+	open my $fh, '<', $path or return;
+	return ($fh, $path);
+}
+
+sub set_coderef_fh {
+	my ($self, $key, $code) = @_;
+
+	my $path = $self->path_to_key($key, \my $dir);
+	return unless (defined $path && defined $dir);
+
+	# ensure that directory leading to cache file exists
+	if (!-d $dir) {
+		# mkpath will croak()/die() if there is an error
+		mkpath($dir, 0, 0777);
+	}
+
+	# generate a temporary file
+	my ($fh, $tempfile) = _tempfile_to_path($path, $dir);
+
+	# code writes to filehandle or file
+	$code->($fh, $tempfile);
+
+	close $fh;
+	rename($tempfile, $path)
+		or die "Couldn't rename temporary file '$tempfile' to '$path': $!";
+
+	open $fh, '<', $path or return;
+	return ($fh, $path);
+}
+
+# ($fh, $filename) = $cache->compute_fh($key, $code);
+#
+# Combines the get and set operations in a single call.  Attempts to
+# get $key; if successful, returns the filehandle it can be read from.
+# Otherwise, calls $code passing filehandle to write to as a
+# parameter; contents of this file is then used as the new value for
+# $key; returns filehandle from which one can read newly generated data.
+sub compute_fh {
+	my ($self, $key, $code) = @_;
+
+	my ($fh, $filename) = $self->get_fh($key);
+	if (!defined $fh) {
+		($fh, $filename) = $self->set_coderef_fh($key, $code);
+	}
+
+	return ($fh, $filename);
+}
+
 1;
 __END__
 # end of package GitwebCache::SimpleFileCache;
