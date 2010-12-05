@@ -310,6 +310,8 @@ sub is_valid {
 	# get its modification time
 	my $mtime = (stat(_))[9] # _ to reuse stat structure used in -f test
 		or die "Couldn't stat file '$path': $!";
+	# cache entry is invalid if it is size 0 (in bytes)
+	return 0 unless ((stat(_))[7] > 0);
 
 	# expire time can be set to never
 	my $expires_in = $self->get_expires_in();
