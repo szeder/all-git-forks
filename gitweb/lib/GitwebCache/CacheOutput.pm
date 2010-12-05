@@ -38,6 +38,36 @@ sub cache_output {
 
 	$capture = setup_capture($capture);
 
+	my $data;
+	if ($cache->can('compute')) {
+		$data = cache_output_compute($cache, $capture, $key, $code);
+	} else {
+		$data = cache_output_get_set($cache, $capture, $key, $code);
+	}
+
+	if (defined $data) {
+		binmode STDOUT, ':raw';
+		print $data;
+	}
+
+	return $data;
+}
+
+# for $cache which can ->compute($key, $code)
+sub cache_output_compute {
+	my ($cache, $capture, $key, $code) = @_;
+
+	my $data = $cache->compute($key, sub {
+		$capture->capture($code);
+	});
+
+	return $data;
+}
+
+# for $cache which can ->get($key) and ->set($key, $data)
+sub cache_output_get_set {
+	my ($cache, $capture, $key, $code) = @_;
+
 	# check if data is in the cache
 	my $data = $cache->get($key);
 
@@ -45,12 +75,6 @@ sub cache_output {
 	if (!defined $data) {
 		$data = $capture->capture($code);
 		$cache->set($key, $data) if defined $data;
-	}
-
-	# print cached data
-	if (defined $data) {
-		binmode STDOUT, ':raw';
-		print $data;
 	}
 
 	return $data;
