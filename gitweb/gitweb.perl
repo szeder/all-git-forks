@@ -284,6 +284,9 @@ our $caching_enabled = 0;
 # Suggested mechanism:
 # mv $cachedir $cachedir.flush && mkdir $cachedir && rm -rf $cachedir.flush
 our $cache;
+
+# Legacy options configuring behavior of git.kernel.org caching
+our ($minCacheTime, $maxCacheTime, $cachedir, $backgroundCache, $maxCacheLife);
 # You define site-wide cache options defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %cache_options = (
@@ -1363,6 +1366,19 @@ sub configure_caching {
 		$cache ||= 'GitwebCache::FileCacheWithLocking';
 		eval "require $cache";
 		die $@ if $@;
+
+		# support for legacy config variables configuring cache behavior
+		# (those variables are/were used by caching engine by John Hawley,
+		# used among others by custom gitweb at http://git.kernel.org);
+		# it assumes that if those variables are defined, then we should
+		# use them - no provision is made for having both legacy variables
+		# and new %cache_options set in config file(s).
+		$cache_options{'cache_root'} = $cachedir if defined $cachedir;
+		$cache_options{'expires_min'} = $minCacheTime if defined $minCacheTime;
+		$cache_options{'expires_max'} = $maxCacheTime if defined $maxCacheTime;
+		$cache_options{'background_cache'} = $backgroundCache if defined $backgroundCache;
+		$cache_options{'max_lifetime'} = $maxCacheLife if defined $maxCacheLife;
+
 		$cache = $cache->new({
 			%cache_options,
 			#'cache_root' => '/tmp/cache',
