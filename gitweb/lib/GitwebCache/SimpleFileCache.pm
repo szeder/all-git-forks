@@ -20,6 +20,7 @@ package GitwebCache::SimpleFileCache;
 use strict;
 use warnings;
 
+use Carp;
 use File::Path qw(mkpath);
 use File::Temp qw(tempfile);
 use Digest::MD5 qw(md5_hex);
@@ -77,6 +78,14 @@ our $DEFAULT_NAMESPACE = '';
 #  * 'increase_factor' [seconds / 100% CPU load]
 #    Factor multiplying 'check_load' result when calculating cache lietime.
 #    Defaults to 60 seconds for 100% SPU load ('check_load' returning 1.0).
+#  * 'on_error' (similar to CHI 'on_get_error'/'on_set_error')
+#    How to handle runtime errors occurring during cache gets and cache
+#    sets, which may or may not be considered fatal in your application.
+#    Options are:
+#    * "die" (the default) - call die() with an appropriate message
+#    * "warn" - call warn() with an appropriate message
+#    * "ignore" - do nothing
+#    * <coderef> - call this code reference with an appropriate message
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
@@ -86,6 +95,7 @@ sub new {
 
 	my ($root, $depth, $ns);
 	my ($expires_min, $expires_max, $increase_factor, $check_load);
+	my ($on_error);
 	if (%opts) {
 		$root =
 			$opts{'cache_root'} ||
@@ -102,6 +112,11 @@ sub new {
 			$opts{'expires_max'};
 		$increase_factor = $opts{'expires_factor'};
 		$check_load      = $opts{'check_load'};
+		$on_error =
+			$opts{'on_error'} ||
+			$opts{'on_get_error'} ||
+			$opts{'on_set_error'} ||
+			$opts{'error_handler'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
@@ -111,6 +126,9 @@ sub new {
 		if (!defined($expires_max) && exists $opts{'expires_in'});
 	$expires_max = -1 unless (defined($expires_max));
 	$increase_factor = 60 unless defined($increase_factor);
+	$on_error = "die"
+		unless (defined $on_error &&
+		        (ref($on_error) eq 'CODE' || $on_error =~ /^die|warn|ignore$/));
 
 	$self->set_root($root);
 	$self->set_depth($depth);
@@ -119,6 +137,7 @@ sub new {
 	$self->set_expires_max($expires_max);
 	$self->set_increase_factor($increase_factor);
 	$self->set_check_load($check_load);
+	$self->set_on_error($on_error);
 
 	return $self;
 }
@@ -131,7 +150,8 @@ sub new {
 
 # creates get_depth() and set_depth($depth) etc. methods
 foreach my $i (qw(depth root namespace
-                  expires_min expires_max increase_factor check_load)) {
+                  expires_min expires_max increase_factor check_load
+                  on_error)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -234,7 +254,7 @@ sub path_to_key {
 }
 
 sub read_file {
-	my $filename = shift;
+	my ($self, $filename) = @_;
 
 	# Fast slurp, adapted from File::Slurp::read, with unnecessary options removed
 	# via CHI::Driver::File (from CHI-0.33)
@@ -255,12 +275,12 @@ sub read_file {
 	}
 
 	close $read_fh
-		or die "Couldn't close file '$filename' opened for reading: $!";
+		or $self->_handle_error("Couldn't close file '$filename' opened for reading: $!");
 	return $buf;
 }
 
 sub write_fh {
-	my ($write_fh, $filename, $data) = @_;
+	my ($self, $write_fh, $filename, $data) = @_;
 
 	# Fast spew, adapted from File::Slurp::write, with unnecessary options removed
 	# via CHI::Driver::File (from CHI-0.33)
@@ -278,7 +298,20 @@ sub write_fh {
 	}
 
 	close $write_fh
-		or die "Couldn't close file '$filename' opened for writing: $!";
+		or $self->_handle_error("Couldn't close file '$filename' opened for writing: $!");
+}
+
+sub ensure_path {
+	my $self = shift;
+	my $dir = shift || return;
+
+	if (!-d $dir) {
+		# mkpath will croak()/die() if there is an error
+		eval {
+			mkpath($dir, 0, 0777);
+			1;
+		} or $self->_handle_error($@);
+	}
 }
 
 # ----------------------------------------------------------------------
@@ -291,12 +324,27 @@ sub _tempfile_to_path {
 	my ($self, $file, $dir) = @_;
 
 	# tempfile will croak() if there is an error
-	return tempfile("${file}_XXXXX",
-		#DIR => $dir,
-		'UNLINK' => 0, # ensure that we don't unlink on close; file is renamed
-		'SUFFIX' => '.tmp');
+	my ($temp_fh, $tempname);
+	eval {
+		($temp_fh, $tempname) = tempfile("${file}_XXXXX",
+			#DIR => $dir,
+			'UNLINK' => 0, # ensure that we don't unlink on close; file is renamed
+			'SUFFIX' => '.tmp');
+	} or $self->_handle_error($@);
+	return ($temp_fh, $tempname);
 }
 
+# based on _handle_get_error and _dispatch_error_msg from CHI::Driver
+sub _handle_error {
+	my ($self, $error) = @_;
+
+	for ($self->get_on_error()) {
+		(ref($_) eq 'CODE') && do { $_->($error) };
+		/^ignore$/ && do { };
+		/^warn$/   && do { carp $error };
+		/^die$/    && do { croak $error };
+	}
+}
 
 # ----------------------------------------------------------------------
 # worker methods
@@ -307,7 +355,7 @@ sub fetch {
 	my $file = $self->path_to_key($key);
 	return unless (defined $file && -f $file);
 
-	return read_file($file);
+	return $self->read_file($file);
 }
 
 sub store {
@@ -318,20 +366,17 @@ sub store {
 	return unless (defined $file && defined $dir);
 
 	# ensure that directory leading to cache file exists
-	if (!-d $dir) {
-		# mkpath will croak()/die() if there is an error
-		mkpath($dir, 0, 0777);
-	}
+	$self->ensure_path($dir);
 
 	# generate a temporary file
 	my ($temp_fh, $tempname) = $self->_tempfile_to_path($file, $dir);
 	chmod 0666, $tempname
 		or warn "Couldn't change permissions to 0666 / -rw-rw-rw- for '$tempname': $!";
 
-	write_fh($temp_fh, $tempname, $data);
+	$self->write_fh($temp_fh, $tempname, $data);
 
 	rename($tempname, $file)
-		or die "Couldn't rename temporary file '$tempname' to '$file': $!";
+		or $self->_handle_error("Couldn't rename temporary file '$tempname' to '$file': $!");
 }
 
 # get size of an element associated with the $key (not the size of whole cache)
@@ -362,7 +407,7 @@ sub remove {
 		or return;
 	return unless -f $file;
 	unlink($file)
-		or die "Couldn't remove file '$file': $!";
+		or $self->_handle_error("Couldn't remove file '$file': $!");
 }
 
 # $cache->is_valid($key[, $expires_in])
@@ -379,7 +424,7 @@ sub is_valid {
 	return 0 unless -f $path;
 	# get its modification time
 	my $mtime = (stat(_))[9] # _ to reuse stat structure used in -f test
-		or die "Couldn't stat file '$path': $!";
+		or $self->_handle_error("Couldn't stat file '$path': $!");
 	# cache entry is invalid if it is size 0 (in bytes)
 	return 0 unless ((stat(_))[7] > 0);
 
@@ -468,10 +513,7 @@ sub set_coderef_fh {
 	return unless (defined $path && defined $dir);
 
 	# ensure that directory leading to cache file exists
-	if (!-d $dir) {
-		# mkpath will croak()/die() if there is an error
-		mkpath($dir, 0, 0777);
-	}
+	$self->ensure_path($dir);
 
 	# generate a temporary file
 	my ($fh, $tempfile) = $self->_tempfile_to_path($path, $dir);
@@ -481,7 +523,7 @@ sub set_coderef_fh {
 
 	close $fh;
 	rename($tempfile, $path)
-		or die "Couldn't rename temporary file '$tempfile' to '$path': $!";
+		or $self->_handle_error("Couldn't rename temporary file '$tempfile' to '$path': $!");
 
 	open $fh, '<', $path or return;
 	return ($fh, $path);

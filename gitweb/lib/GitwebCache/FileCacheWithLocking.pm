@@ -63,6 +63,14 @@ use POSIX qw(setsid);
 #  * 'increase_factor' [seconds / 100% CPU load]
 #    Factor multiplying 'check_load' result when calculating cache lietime.
 #    Defaults to 60 seconds for 100% SPU load ('check_load' returning 1.0).
+#  * 'on_error' (similar to CHI 'on_get_error'/'on_set_error')
+#    How to handle runtime errors occurring during cache gets and cache
+#    sets, which may or may not be considered fatal in your application.
+#    Options are:
+#    * "die" (the default) - call die() with an appropriate message
+#    * "warn" - call warn() with an appropriate message
+#    * "ignore" - do nothing
+#    * <coderef> - call this code reference with an appropriate message
 #
 # (all the above are inherited from GitwebCache::SimpleFileCache)
 #
@@ -155,10 +163,7 @@ sub get_lockname {
 	my $lockfile = $self->path_to_key($key, \my $dir) . '.lock';
 
 	# ensure that directory leading to lockfile exists
-	if (!-d $dir) {
-		eval { mkpath($dir, 0, 0777); 1 }
-			or die "Couldn't mkpath '$dir' for lockfile: $!";
-	}
+	$self->ensure_path($dir);
 
 	return $lockfile;
 }
@@ -174,7 +179,7 @@ sub _tempfile_to_path {
 
 	my $tempname = "$file.tmp";
 	open my $temp_fh, '>', $tempname
-		or die "Couldn't open temporary file '$tempname' for writing: $!";
+		or $self->_handle_error("Couldn't open temporary file '$tempname' for writing: $!");
 
 	return ($temp_fh, $tempname);
 }
@@ -199,10 +204,10 @@ sub _wait_for_data {
 	if ($fetch_locked) {
 		@result = $fetch_code->();
 		close $lock_fh
-			or die "Could't close lockfile '$lockfile': $!";
+			or $self->_handle_error("Could't close lockfile '$lockfile': $!");
 	} else {
 		close $lock_fh
-			or die "Could't close lockfile '$lockfile': $!";
+			or $self->_handle_error("Could't close lockfile '$lockfile': $!");
 		@result = $fetch_code->();
 	}
 
@@ -273,7 +278,7 @@ sub _compute_generic {
 	my $lock_state; # needed for loop condition
 	do {
 		open my $lock_fh, '+>', $lockfile
-			or die "Could't open lockfile '$lockfile': $!";
+			or $self->_handle_error("Could't open lockfile '$lockfile': $!");
 
 		$lock_state = flock($lock_fh, LOCK_EX | LOCK_NB);
 		if ($lock_state) {
@@ -282,12 +287,12 @@ sub _compute_generic {
 
 			# closing lockfile releases writer lock
 			close $lock_fh
-				or die "Could't close lockfile '$lockfile': $!";
+				or $self->_handle_error("Could't close lockfile '$lockfile': $!");
 
 			if (!@result) {
 				# wait for background process to finish generating data
 				open $lock_fh, '<', $lockfile
-					or die "Couldn't reopen (for reading) lockfile '$lockfile': $!";
+					or $self->_handle_error("Couldn't reopen (for reading) lockfile '$lockfile': $!");
 
 				@result = $self->_wait_for_data($key, $lock_fh, $lockfile,
 				                                $fetch_code, $fetch_locked);

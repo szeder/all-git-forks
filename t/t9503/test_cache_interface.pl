@@ -9,6 +9,7 @@ use Fcntl qw(:DEFAULT);
 use IO::Handle;
 use IO::Select;
 use IO::Pipe;
+use File::Basename;
 
 use Test::More;
 
@@ -473,6 +474,49 @@ subtest 'generating progress info' => sub {
 	done_testing();
 };
 $cache->set_expires_in(-1);
+
+
+# ----------------------------------------------------------------------
+# ERROR HANDLING
+
+# Test 'on_error' handler
+#
+sub test_handler {
+	die "test_handler\n"; # newline needed
+}
+SKIP: {
+	# prepare error condition
+	my $is_prepared = 1;
+	$is_prepared &&= $cache->set($key, $value);
+	$is_prepared &&= chmod 0555, dirname($cache->path_to_key($key));
+
+	my $ntests = 1; # in subtest
+	skip "could't prepare error condition for 'on_error' tests", $ntests
+		unless $is_prepared;
+	skip "cannot test reliably 'on_error' as root (id=$>)", $ntests
+		unless $> != 0;
+
+	subtest 'error handler' => sub {
+		my ($result, $error);
+
+		# check that error handler works
+		$cache->set_on_error(\&test_handler);
+		$result = eval {
+			$cache->remove($key);
+		} or $error = $@;
+		ok(!defined $result,         'on_error: died on error (via handler)');
+		diag("result is $result") if defined $result;
+		is($error, "test_handler\n", 'on_error: test_handler was used');
+
+		# check that "ignore" works
+		$cache->set_on_error('ignore');
+		$result = eval {
+			$cache->remove($key);
+		} or $error = $@;
+		ok(defined $result,          'on_error: error ignored if requested');
+	};
+}
+chmod 0777, dirname($cache->path_to_key($key));
 
 
 done_testing();
