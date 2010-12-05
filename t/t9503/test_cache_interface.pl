@@ -4,6 +4,12 @@ use lib (split(/:/, $ENV{GITPERLLIB}));
 use warnings;
 use strict;
 
+use POSIX qw(dup2);
+use Fcntl qw(:DEFAULT);
+use IO::Handle;
+use IO::Select;
+use IO::Pipe;
+
 use Test::More;
 
 # test source version
@@ -12,11 +18,12 @@ use lib $ENV{GITWEBLIBDIR} || "$ENV{GIT_BUILD_DIR}/gitweb/lib";
 
 # Test creating a cache
 #
-BEGIN { use_ok('GitwebCache::SimpleFileCache'); }
+BEGIN { use_ok('GitwebCache::FileCacheWithLocking'); }
 diag("Using lib '$INC[0]'");
-diag("Testing '$INC{'GitwebCache/SimpleFileCache.pm'}'");
+diag("Testing '$INC{'GitwebCache/FileCacheWithLocking.pm'}'");
 
-my $cache = new_ok('GitwebCache::SimpleFileCache');
+my $cache = new_ok('GitwebCache::FileCacheWithLocking');
+isa_ok($cache, 'GitwebCache::SimpleFileCache');
 
 # Test that default values are defined
 #
@@ -38,6 +45,9 @@ SKIP: {
 	cmp_ok($cache->get_depth(), '==', $GitwebCache::SimpleFileCache::DEFAULT_CACHE_DEPTH,
 		"default cache depth is $GitwebCache::SimpleFileCache::DEFAULT_CACHE_DEPTH");
 }
+
+# ----------------------------------------------------------------------
+# CACHE API
 
 # Test the getting, setting, and removal of a cached value
 # (Cache::Cache interface)
@@ -91,23 +101,15 @@ sub write_value {
 	$call_count++;
 	print {$fh} $value;
 }
-sub compute_fh_output {
-	my ($cache, $key, $code_fh) = @_;
-
-	my ($fh, $filename) = $cache->compute_fh($key, $code_fh);
-
-	local $/ = undef;
-	return <$fh>;
-}
 subtest 'compute_fh interface' => sub {
 	can_ok($cache, qw(compute_fh));
 
 	$cache->remove($key);
-	is(compute_fh_output($cache, $key, \&write_value), $value,
+	is(cache_compute_fh($cache, $key, \&write_value), $value,
 	   "compute_fh 1st time (set) returns '$value'");
-	is(compute_fh_output($cache, $key, \&write_value), $value,
+	is(cache_compute_fh($cache, $key, \&write_value), $value,
 	   "compute_fh 2nd time (get) returns '$value'");
-	is(compute_fh_output($cache, $key, \&write_value), $value,
+	is(cache_compute_fh($cache, $key, \&write_value), $value,
 	   "compute_fh 3rd time (get) returns '$value'");
 	cmp_ok($call_count, '==', 1, 'write_value() is called once from compute_fh');
 
@@ -166,4 +168,257 @@ subtest 'adaptive cache expiration' => sub {
 
 $cache->set_expires_in(-1);
 
+# ----------------------------------------------------------------------
+# CONCURRENT ACCESS
+sub parallel_run (&); # forward declaration of prototype
+
+# Test 'stampeding herd' / 'cache miss stampede' problem
+#
+
+my $slow_time = 1; # how many seconds to sleep in mockup of slow generation
+sub get_value_slow {
+	$call_count++;
+	sleep $slow_time;
+	return $value;
+}
+sub get_value_slow_fh {
+	my $fh = shift;
+
+	$call_count++;
+	sleep $slow_time;
+	print {$fh} $value;
+}
+
+sub get_value_die {
+	$call_count++;
+	die "get_value_die\n";
+}
+
+my $lock_file = "$0.$$.lock";
+sub get_value_die_once {
+	if (sysopen my $fh, $lock_file, (O_WRONLY | O_CREAT | O_EXCL)) {
+		close $fh;
+		die "get_value_die_once\n";
+	} else {
+		sleep $slow_time;
+		return $value;
+	}
+}
+
+my @output;
+my $sep = '|';
+my $total_count = 0;
+
+note("Following tests contain artifical delay of $slow_time seconds");
+subtest 'parallel access' => sub {
+	$cache->remove($key);
+	@output = parallel_run {
+		$call_count = 0;
+		my $data = cache_get_set($cache, $key, \&get_value_slow);
+		print "$data$sep$call_count";
+	};
+	$total_count = 0;
+	foreach (@output) {
+		my ($child_out, $child_count) = split(quotemeta $sep, $_);
+		#is($child_out, $value, "get/set (parallel) returns '$value'");
+		$total_count += $child_count;
+	}
+	cmp_ok($total_count, '==', 2, 'parallel get/set: get_value_slow() called twice');
+
+	$cache->remove($key);
+	@output = parallel_run {
+		$call_count = 0;
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print "$data$sep$call_count";
+	};
+	$total_count = 0;
+	foreach (@output) {
+		my ($child_out, $child_count) = split(quotemeta $sep, $_);
+		#is($child_out, $value, "compute (parallel) returns '$value'");
+		$total_count += $child_count;
+	}
+	cmp_ok($total_count, '==', 1, 'parallel compute: get_value_slow() called once');
+
+	$cache->remove($key);
+	@output = parallel_run {
+		$call_count = 0;
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print "$data$sep$call_count";
+	};
+	$total_count = 0;
+	foreach (@output) {
+		my ($child_out, $child_count) = split(quotemeta $sep, $_);
+		#is($child_out, $value, "compute_fh (parallel) returns '$value'");
+		$total_count += $child_count;
+	}
+	cmp_ok($total_count, '==', 1, 'parallel compute_fh: get_value_slow_fh() called once');
+
+	eval {
+		local $SIG{ALRM} = sub { die "alarm\n"; };
+		alarm 4*$slow_time;
+
+		@output = parallel_run {
+			$call_count = 0;
+			my $data = eval { cache_compute($cache, 'No Key', \&get_value_die); };
+			my $eval_error = $@;
+			print "$data" if defined $data;
+			print "$sep";
+			print "$eval_error" if defined $eval_error;
+		};
+		is_deeply(
+			\@output,
+			[ ( "${sep}get_value_die\n" ) x 2 ],
+			'parallel compute: get_value_die() died in both'
+		);
+
+		alarm 0;
+	};
+	ok(!$@, 'parallel compute: no alarm call (neither process hung)');
+	diag($@) if $@;
+
+	$cache->remove($key);
+	unlink($lock_file);
+	@output = parallel_run {
+		my $data = eval { cache_compute($cache, $key, \&get_value_die_once); };
+		my $eval_error = $@;
+		print "$data" if defined $data;
+		print "$sep";
+		print "$eval_error" if defined $eval_error;
+	};
+	is_deeply(
+		[sort @output],
+		[sort ("$value$sep", "${sep}get_value_die_once\n")],
+		'parallel compute: return correct value even if other process died'
+	);
+	unlink($lock_file);
+
+	done_testing();
+};
+
 done_testing();
+
+
+#######################################################################
+#######################################################################
+#######################################################################
+
+# use ->get($key) and ->set($key, $data) interface
+sub cache_get_set {
+	my ($cache, $key, $code) = @_;
+
+	my $data = $cache->get($key);
+	if (!defined $data) {
+		$data = $code->();
+		$cache->set($key, $data);
+	}
+
+	return $data;
+}
+
+# use ->compute($key, $code) interface
+sub cache_compute {
+	my ($cache, $key, $code) = @_;
+
+	my $data = $cache->compute($key, $code);
+	return $data;
+}
+# use ->compute_fh($key, $code_fh) interface
+sub cache_compute_fh {
+	my ($cache, $key, $code_fh) = @_;
+
+	my ($fh, $filename) = $cache->compute_fh($key, $code_fh);
+
+	local $/ = undef;
+	return <$fh>;
+}
+
+# from http://aaroncrane.co.uk/talks/pipes_and_processes/
+sub fork_child (&) {
+	my ($child_process_code) = @_;
+
+	my $pid = fork();
+	die "Failed to fork: $!\n" if !defined $pid;
+
+	return $pid if $pid != 0;
+
+	# Now we're in the new child process
+	$child_process_code->();
+	exit;
+}
+
+sub parallel_run (&) {
+	my $child_code = shift;
+	my $nchildren = 2;
+
+	my %children;
+	my (%pid_for_child, %fd_for_child);
+	my $sel = IO::Select->new();
+	foreach my $child_idx (1..$nchildren) {
+		my $pipe = IO::Pipe->new()
+			or die "Failed to create pipe: $!\n";
+
+		my $pid = fork_child {
+			$pipe->writer()
+				or die "$$: Child \$pipe->writer(): $!\n";
+			dup2(fileno($pipe), fileno(STDOUT))
+				or die "$$: Child $child_idx failed to reopen stdout to pipe: $!\n";
+			close $pipe
+				or die "$$: Child $child_idx failed to close pipe: $!\n";
+
+			# From Test-Simple-0.96/t/subtest/fork.t
+			#
+			# Force all T::B output into the pipe (redirected to STDOUT),
+			# for the parent builder as well as the current subtest builder.
+			{
+				no warnings 'redefine';
+				*Test::Builder::output         = sub { *STDOUT };
+				*Test::Builder::failure_output = sub { *STDOUT };
+				*Test::Builder::todo_output    = sub { *STDOUT };
+			}
+
+			$child_code->();
+
+			*STDOUT->flush();
+			close(STDOUT);
+		};
+
+		$pid_for_child{$pid} = $child_idx;
+		$pipe->reader()
+			or die "Failed to \$pipe->reader(): $!\n";
+		$fd_for_child{$pipe} = $child_idx;
+		$sel->add($pipe);
+
+		$children{$child_idx} = {
+			'pid'    => $pid,
+			'stdout' => $pipe,
+			'output' => '',
+		};
+	}
+
+	while (my @ready = $sel->can_read()) {
+		foreach my $fh (@ready) {
+			my $buf = '';
+			my $nread = sysread($fh, $buf, 1024);
+
+			exists $fd_for_child{$fh}
+				or die "Cannot find child for fd: $fh\n";
+
+			if ($nread > 0) {
+				$children{$fd_for_child{$fh}}{'output'} .= $buf;
+			} else {
+				$sel->remove($fh);
+			}
+		}
+	}
+
+	while (%pid_for_child) {
+		my $pid = waitpid -1, 0;
+		warn "Child $pid_for_child{$pid} ($pid) failed with status: $?\n"
+			if $? != 0;
+		delete $pid_for_child{$pid};
+	}
+
+	return map { $children{$_}{'output'} } keys %children;
+}
+
+__END__

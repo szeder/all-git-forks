@@ -351,8 +351,12 @@ cache config (see below), and ignore unrecognized options.  Such caching
 engine should also implement (at least) ->get($key) and ->set($key, $data)
 methods (Cache::Cache and CHI compatible interface).
 
+You can set $cache to 'GitwebCache::SimpleFileCache' if you don't want
+to use locking, but then some advanced features, like generating data in
+background, wouldn't work because they require locking.
+
 If $cache is left unset (if it is left undefined), then gitweb would use
-GitwebCache::SimpleFileCache as caching engine.  This engine is 'dumb' (but
+GitwebCache::FileCacheWithLocking as caching engine.  This engine is 'dumb' (but
 fast) file based caching layer, currently without any support for cache size
 limiting, or even removing expired / grossly expired entries.  It has
 therefore the downside of requiring a huge amount of disk space if there are

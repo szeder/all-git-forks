@@ -277,7 +277,7 @@ our $caching_enabled = 0;
 # Set to _initialized_ instance of cache interface implementing (at least)
 # get($key) and set($key, $data) methods (Cache::Cache and CHI interfaces),
 # or to name of class of cache interface implementing said methods.
-# If unset, GitwebCache::SimpleFileCache would be used, which is 'dumb'
+# If unset, GitwebCache::FileCacheWithLocking would be used, which is 'dumb'
 # (but fast) file based caching layer, currently without any support for
 # cache size limiting.  It is therefore recommended that the cache directory
 # be periodically completely deleted; this operation is safe to perform.
@@ -1245,7 +1245,7 @@ sub configure_caching {
 	# $cache might be initialized (instantiated) cache, i.e. cache object,
 	# or it might be name of class, or it might be undefined
 	unless (defined $cache && ref($cache)) {
-		$cache ||= 'GitwebCache::SimpleFileCache';
+		$cache ||= 'GitwebCache::FileCacheWithLocking';
 		eval "require $cache";
 		die $@ if $@;
 		$cache = $cache->new({
