@@ -288,7 +288,7 @@ sub write_fh {
 # return filehandle and filename of open temporary file,
 # like File::Temp::tempfile
 sub _tempfile_to_path {
-	my ($file, $dir) = @_;
+	my ($self, $file, $dir) = @_;
 
 	# tempfile will croak() if there is an error
 	return tempfile("${file}_XXXXX",
@@ -324,7 +324,7 @@ sub store {
 	}
 
 	# generate a temporary file
-	my ($temp_fh, $tempname) = _tempfile_to_path($file, $dir);
+	my ($temp_fh, $tempname) = $self->_tempfile_to_path($file, $dir);
 	chmod 0666, $tempname
 		or warn "Couldn't change permissions to 0666 / -rw-rw-rw- for '$tempname': $!";
 
@@ -466,7 +466,7 @@ sub set_coderef_fh {
 	}
 
 	# generate a temporary file
-	my ($fh, $tempfile) = _tempfile_to_path($path, $dir);
+	my ($fh, $tempfile) = $self->_tempfile_to_path($path, $dir);
 
 	# code writes to filehandle or file
 	$code->($fh, $tempfile);

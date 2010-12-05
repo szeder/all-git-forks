@@ -46,6 +46,22 @@ sub get_lockname {
 	return $lockfile;
 }
 
+# ----------------------------------------------------------------------
+# "private" utility functions and methods
+
+# take a file path to cache entry, and its directory
+# return filehandle and filename of open temporary file,
+# like File::Temp::tempfile
+sub _tempfile_to_path {
+	my ($self, $file, $dir) = @_;
+
+	my $tempname = "$file.tmp";
+	open my $temp_fh, '>', $tempname
+		or die "Couldn't open temporary file '$tempname' for writing: $!";
+
+	return ($temp_fh, $tempname);
+}
+
 # ......................................................................
 # interface methods
 
