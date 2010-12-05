@@ -545,6 +545,7 @@ extern int assume_unchanged;
 extern int prefer_symlink_refs;
 extern int log_all_ref_updates;
 extern int warn_ambiguous_refs;
+extern int unique_abbrev_extra_length;
 extern int shared_repository;
 extern const char *apply_default_whitespace;
 extern const char *apply_default_ignorewhitespace;
@@ -1003,6 +1004,9 @@ extern int git_env_bool(const char *, int);
 extern int git_config_system(void);
 extern int git_config_global(void);
 extern int config_error_nonbool(const char *);
+extern const char *get_log_output_encoding(void);
+extern const char *get_commit_output_encoding(void);
+
 extern const char *config_exclusive_filename;
 
 #define MAX_GITNAME (1000)
