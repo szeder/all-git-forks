@@ -333,6 +333,7 @@ subtest 'serving stale data when (re)generating' => sub {
 
 	# with background generation
 	$cache->set_background_cache(1);
+	$cache->set_generating_info_is_safe(1);
 
 	$cache->set($key, $stale_value);
 	$cache->set_expires_in(0);    # set value is now expired

@@ -80,26 +80,35 @@ use POSIX qw(setsid);
 #    instead), for other process (or bacground process).  It is passed
 #    $cache instance, $key, and opened $lock_fh filehandle to lockfile.
 #    Unset by default (which means no activity indicator).
+#  * 'generating_info_is_safe' (boolean)
+#    If true, run 'generating_info' subroutine also in the project that
+#    is generating data.  This has effect only when 'background_cache'
+#    is true (both 'background_cache' and 'generating_info_is_safe' must
+#    be true for project generating data to run 'generating_info').
+#    Defaults to false for safety.
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
 
 	my $self = $class->SUPER::new(\%opts);
 
-	my ($max_lifetime, $background_cache, $generating_info);
+	my ($max_lifetime, $background_cache, $generating_info, $gen_info_is_safe);
 	if (%opts) {
 		$max_lifetime =
 			$opts{'max_lifetime'} ||
 			$opts{'max_cache_lifetime'};
 		$background_cache = $opts{'background_cache'};
 		$generating_info  = $opts{'generating_info'};
+		$gen_info_is_safe = $opts{'generating_info_is_safe'};
 	}
 	$max_lifetime = -1 unless defined($max_lifetime);
 	$background_cache = 1 unless defined($background_cache);
+	$gen_info_is_safe = 0 unless defined($gen_info_is_safe);
 
 	$self->set_max_lifetime($max_lifetime);
 	$self->set_background_cache($background_cache);
 	$self->set_generating_info($generating_info);
+	$self->set_generating_info_is_safe($gen_info_is_safe);
 
 	return $self;
 }
@@ -110,7 +119,8 @@ sub new {
 # http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
 
 # creates get_depth() and set_depth($depth) etc. methods
-foreach my $i (qw(max_lifetime background_cache generating_info)) {
+foreach my $i (qw(max_lifetime background_cache
+                  generating_info generating_info_is_safe)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -214,7 +224,8 @@ sub _set_maybe_background {
 		# to regenerate/refresh the cache (generate data),
 		# or if main process would show progress indicator
 		$pid = fork()
-			if (@stale_result || $self->{'generating_info'});
+			if (@stale_result ||
+			    ($self->{'generating_info'} && $self->{'generating_info_is_safe'}));
 	}
 
 	if ($pid) {
