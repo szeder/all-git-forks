@@ -57,6 +57,10 @@ our $DEFAULT_NAMESPACE = '';
 #    The number of subdirectories deep to cache object item.  This should be
 #    large enough that no cache directory has more than a few hundred objects.
 #    Defaults to $DEFAULT_CACHE_DEPTH unless explicitly set.
+#  * 'default_expires_in' (Cache::Cache compatibile),
+#    'expires_in' (CHI compatibile) [seconds]
+#    The expiration time for objects place in the cache.
+#    Defaults to -1 (never expire) if not explicitly set.
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
@@ -64,7 +68,7 @@ sub new {
 	my $self = {};
 	$self = bless($self, $class);
 
-	my ($root, $depth, $ns);
+	my ($root, $depth, $ns, $expires_in);
 	if (%opts) {
 		$root =
 			$opts{'cache_root'} ||
@@ -73,14 +77,19 @@ sub new {
 			$opts{'cache_depth'} ||
 			$opts{'depth'};
 		$ns = $opts{'namespace'};
+		$expires_in =
+			$opts{'default_expires_in'} ||
+			$opts{'expires_in'};
 	}
 	$root  = $DEFAULT_CACHE_ROOT  unless defined($root);
 	$depth = $DEFAULT_CACHE_DEPTH unless defined($depth);
 	$ns    = $DEFAULT_NAMESPACE   unless defined($ns);
+	$expires_in = -1 unless defined($expires_in); # <0 means never
 
 	$self->set_root($root);
 	$self->set_depth($depth);
 	$self->set_namespace($ns);
+	$self->set_expires_in($expires_in);
 
 	return $self;
 }
@@ -92,7 +101,7 @@ sub new {
 # http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
 
 # creates get_depth() and set_depth($depth) etc. methods
-foreach my $i (qw(depth root namespace)) {
+foreach my $i (qw(depth root namespace expires_in)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -287,6 +296,31 @@ sub remove {
 		or die "Couldn't remove file '$file': $!";
 }
 
+# $cache->is_valid($key)
+#
+# Returns a boolean indicating whether $key exists in the cache
+# and has not expired (global per-cache 'expires_in').
+sub is_valid {
+	my ($self, $key) = @_;
+
+	my $path = $self->path_to_key($key);
+
+	# does file exists in cache?
+	return 0 unless -f $path;
+	# get its modification time
+	my $mtime = (stat(_))[9] # _ to reuse stat structure used in -f test
+		or die "Couldn't stat file '$path': $!";
+
+	# expire time can be set to never
+	my $expires_in = $self->get_expires_in();
+	return 1 unless (defined $expires_in && $expires_in >= 0);
+
+	# is file expired?
+	my $now = time();
+
+	return (($now - $mtime) < $expires_in);
+}
+
 # Getting and setting
 
 # $cache->set($key, $data);
@@ -309,6 +343,8 @@ sub set {
 # or has expired, returns undef.
 sub get {
 	my ($self, $key) = @_;
+
+	return unless $self->is_valid($key);
 
 	return $self->fetch($key);;
 }

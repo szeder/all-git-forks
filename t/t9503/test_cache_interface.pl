@@ -82,4 +82,23 @@ subtest 'CHI interface' => sub {
 	done_testing();
 };
 
+# Test cache expiration
+#
+subtest 'cache expiration' => sub {
+	$cache->set_expires_in(60*60*24); # set expire time to 1 day
+	cmp_ok($cache->get_expires_in(), '>', 0, '"expires in" is greater than 0');
+	is($cache->get($key), $value,            'get returns cached value (not expired in 1d)');
+
+	$cache->set_expires_in(-1); # set expire time to never expire
+	is($cache->get_expires_in(), -1,         '"expires in" is set to never (-1)');
+	is($cache->get($key), $value,            'get returns cached value (not expired)');
+
+	$cache->set_expires_in(0);
+	is($cache->get_expires_in(),  0,         '"expires in" is set to now (0)');
+	$cache->set($key, $value);
+	ok(!defined($cache->get($key)),          'cache is expired');
+
+	done_testing();
+};
+
 done_testing();
