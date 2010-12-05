@@ -24,8 +24,12 @@ diag("Testing '$INC{'GitwebCache/FileCacheWithLocking.pm'}'");
 
 my $cache = new_ok('GitwebCache::FileCacheWithLocking', [ {
 	'max_lifetime' => 0, # turn it off
+	'background_cache' => 0,
 } ]);
 isa_ok($cache, 'GitwebCache::SimpleFileCache');
+
+# compute can fork, don't generate zombies
+#local $SIG{CHLD} = 'IGNORE';
 
 # Test that default values are defined
 #
@@ -303,6 +307,9 @@ subtest 'parallel access' => sub {
 my $stale_value = 'Stale Value';
 
 subtest 'serving stale data when (re)generating' => sub {
+	# without background generation
+	$cache->set_background_cache(0);
+
 	$cache->set($key, $stale_value);
 	$call_count = 0;
 	$cache->set_expires_in(0);    # expire now
@@ -312,12 +319,39 @@ subtest 'serving stale data when (re)generating' => sub {
 		my $data = cache_compute($cache, $key, \&get_value_slow);
 		print $data;
 	};
-	ok(scalar(grep { $_ eq $stale_value } @output),
-	   'stale data in at least one process when expired');
+	# returning stale data works
+	is_deeply(
+		[sort @output],
+		[sort ($value, $stale_value)],
+		'no background: stale data returned by one process'
+	);
 
 	$cache->set_expires_in(-1); # never expire for next ->get
 	is($cache->get($key), $value,
-	   'value got set correctly, even if stale data returned');
+	   'no background: value got set correctly, even if stale data returned');
+
+
+	# with background generation
+	$cache->set_background_cache(1);
+
+	$cache->set($key, $stale_value);
+	$cache->set_expires_in(0);    # set value is now expired
+	@output = parallel_run {
+		my $data = cache_compute($cache, $key, \&get_value_slow);
+		print $data;
+	};
+	# returning stale data works
+	is_deeply(
+		\@output,
+		[ ($stale_value) x 2 ],
+		'background: stale data returned by both process when expired'
+	);
+
+	$cache->set_expires_in(-1); # never expire for next ->get
+	note('waiting for background process to have time to set data');
+	sleep $slow_time; # wait for background process to have chance to set data
+	is($cache->get($key), $value,
+	   'background: value got set correctly by background process');
 
 
 # 	$cache->set($key, $stale_value);

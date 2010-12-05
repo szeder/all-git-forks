@@ -23,6 +23,7 @@ use warnings;
 
 use File::Path qw(mkpath);
 use Fcntl qw(:flock);
+use POSIX qw(setsid);
 
 # ......................................................................
 # constructor
@@ -70,21 +71,27 @@ use Fcntl qw(:flock);
 #    than it, serve stale data when waiting for cache entry to be 
 #    regenerated (refreshed).  Non-adaptive.
 #    Defaults to -1 (never expire / always serve stale).
+#  * 'background_cache' (boolean)
+#    This enables/disables regenerating cache in background process.
+#    Defaults to true.
 sub new {
 	my $class = shift;
 	my %opts = ref $_[0] ? %{ $_[0] } : @_;
 
 	my $self = $class->SUPER::new(\%opts);
 
-	my ($max_lifetime);
+	my ($max_lifetime, $background_cache);
 	if (%opts) {
 		$max_lifetime =
 			$opts{'max_lifetime'} ||
 			$opts{'max_cache_lifetime'};
+		$background_cache = $opts{'background_cache'};
 	}
 	$max_lifetime = -1 unless defined($max_lifetime);
+	$background_cache = 1 unless defined($background_cache);
 
 	$self->set_max_lifetime($max_lifetime);
+	$self->set_background_cache($background_cache);
 
 	return $self;
 }
@@ -95,7 +102,7 @@ sub new {
 # http://perldesignpatterns.com/perldesignpatterns.html#AccessorPattern
 
 # creates get_depth() and set_depth($depth) etc. methods
-foreach my $i (qw(max_lifetime)) {
+foreach my $i (qw(max_lifetime background_cache)) {
 	my $field = $i;
 	no strict 'refs';
 	*{"get_$field"} = sub {
@@ -146,6 +153,52 @@ sub _tempfile_to_path {
 # ......................................................................
 # interface methods
 
+sub _set_maybe_background {
+	my ($self, $key, $fetch_code, $set_code) = @_;
+
+	my $pid;
+	my (@result, @stale_result);
+
+	if ($self->{'background_cache'}) {
+		# try to retrieve stale data
+		@stale_result = $fetch_code->()
+			if $self->is_valid($key, $self->get_max_lifetime());
+
+		# fork if there is stale data, for background process
+		# to regenerate/refresh the cache (generate data)
+		$pid = fork() if (@stale_result);
+	}
+
+	if ($pid) {
+		## forked and are in parent process
+		# reap child, which spawned grandchild process (detaching it)
+		waitpid $pid, 0;
+
+	}	else {
+		## didn't fork, or are in background process
+
+		# daemonize background process, detaching it from parent
+		# see also Proc::Daemonize, Apache2::SubProcess
+		if (defined $pid) {
+			## in background process
+			POSIX::setsid(); # or setpgrp(0, 0);
+			fork() && CORE::exit(0);
+		}
+
+		@result = $set_code->();
+
+		if (defined $pid) {
+			## in background process; parent will serve stale data
+
+			# lockfile will be automatically closed on exit,
+			# and therefore lockfile would be unlocked
+			CORE::exit(0);
+		}
+	}
+
+	return @result > 0 ? @result : @stale_result;
+}
+
 sub _compute_generic {
 	my ($self, $key,
 	    $get_code, $fetch_code, $set_code, $fetch_locked) = @_;
@@ -162,16 +215,19 @@ sub _compute_generic {
 	do {
 		open my $lock_fh, '+>', $lockfile
 			or die "Could't open lockfile '$lockfile': $!";
+
 		$lock_state = flock($lock_fh, LOCK_EX | LOCK_NB);
 		if ($lock_state) {
-			# acquired writers lock
-			@result = $set_code->();
+			## acquired writers lock, have to generate data
+			@result = $self->_set_maybe_background($key, $fetch_code, $set_code);
 
 			# closing lockfile releases lock
 			close $lock_fh
 				or die "Could't close lockfile '$lockfile': $!";
 
 		} else {
+			## didn't acquire writers lock, get stale data or wait for regeneration
+
 			# try to retrieve stale data
 			@result = $fetch_code->()
 				if $self->is_valid($key, $self->get_max_lifetime());
