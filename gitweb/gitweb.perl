@@ -357,11 +357,22 @@ our %cache_options = (
 	# is passed the following parameters: $cache instance, human-readable
 	# $key to current page, and filehandle $lock_fh to lockfile.
 	'generating_info' => \&git_generating_data_html,
+
+	# This enables/disables using 'generating_info' subroutine by process
+	# generating data, when not too stale data is not available (data is then
+	# generated in background).  Because git_generating_data_html() includes
+	# initial delay (of 1 second by default), and we can assume that die_error
+	# finishes within this time, then generating error pages should be safe
+	# from infinite "Generating page..." loop.
+	'generating_info_is_safe' => 1,
 );
 # You define site-wide options for "Generating..." page (if enabled) here
 # (which means that $cache_options{'generating_info'} is set to coderef);
 # override them with $GITWEB_CONFIG as necessary.
 our %generating_options = (
+	# The delay before displaying "Generating..." page, in seconds.  It is
+	# intended for "Generating..." page to be shown only when really needed.
+	'startup_delay' => 1,
 	# The time between generating new piece of output to prevent from
 	# redirection before data is ready, i.e. time between printing each
 	# dot in activity indicator / progress info, in seconds.
@@ -3605,6 +3616,23 @@ sub git_generating_data_html {
 	if (!action_outputs_html($action) ||
 	    browser_is_robot()) {
 		return;
+	}
+
+	# Initial delay
+	if ($generating_options{'startup_delay'} > 0) {
+		eval {
+			local $SIG{ALRM} = sub { die "alarm clock restart\n" }; # NB: \n required
+			alarm $generating_options{'startup_delay'};
+			flock($lock_fh, LOCK_SH); # blocking readers lock
+			alarm 0;
+		};
+		if ($@) {
+			# propagate unexpected errors
+			die $@ if $@ !~ /alarm clock restart/;
+		} else {
+			# we got response within 'startup_delay' timeout
+			return;
+		}
 	}
 
 	my $title = "[Generating...] " . get_page_title();
