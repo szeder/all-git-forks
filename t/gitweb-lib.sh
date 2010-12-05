@@ -52,6 +52,17 @@ EOF
 	export SCRIPT_NAME
 }
 
+gitweb_enable_caching () {
+	test_expect_success 'enable caching' '
+		cat >>gitweb_config.perl <<-\EOF &&
+		$caching_enabled = 1;
+		$cache_options{"expires_in"} = -1;      # never expire cache for tests
+		$cache_options{"cache_root"} = "cache"; # to clear the right thing
+		EOF
+		rm -rf cache/
+	'
+}
+
 gitweb_run () {
 	GATEWAY_INTERFACE='CGI/1.1'
 	HTTP_ACCEPT='*/*'

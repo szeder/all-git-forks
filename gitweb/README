@@ -246,6 +246,12 @@ not include variables usually directly set during build):
    http://www.andre-simon.de due to assumptions about parameters and output).
    Useful if highlight is not installed on your webserver's PATH.
    [Default: highlight]
+ * $caching_enabled
+   If true, gitweb would use caching to speed up generating response.
+   Currently supported is only output (response) caching.  See "Gitweb caching"
+   section below for details on how to configure and customize caching.
+   The default is false (caching is disabled).
+
 
 Projects list file format
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -315,6 +321,58 @@ You can use the following files in repository:
  * various gitweb.* config variables (in config)
    Read description of %feature hash for detailed list, and some
    descriptions.
+
+
+Gitweb caching
+~~~~~~~~~~~~~~
+
+Currently gitweb supports only output (HTTP response) caching, similar
+to the one used on http://git.kernel.org.  To turn it on, set 
+$caching_enabled variable to true value in gitweb config file, i.e.:
+
+   our $caching_enabled = 1;
+
+You can choose which caching engine should gitweb use by setting $cache
+variable to _initialized_ instance of cache interface, e.g.:
+
+   use CHI;
+   our $cache = CHI->new( driver => 'Memcached',
+   	servers => [ "10.0.0.15:11211", "10.0.0.15:11212" ],
+   	l1_cache => { driver => 'FastMmap', root_dir => '/var/cache/gitweb' }
+   );
+
+Alternatively you can set $cache variable to the name of cache class,
+e.g.:
+
+   our $cache = 'Cache::FileCache';
+
+In this case caching engine should support Cache::Cache or CHI names for
+cache config (see below), and ignore unrecognized options.  Such caching
+engine should also implement (at least) ->get($key) and ->set($key, $data)
+methods (Cache::Cache and CHI compatible interface).
+
+If $cache is left unset (if it is left undefined), then gitweb would use
+GitwebCache::SimpleFileCache as caching engine.  This engine is 'dumb' (but
+fast) file based caching layer, currently without any support for cache size
+limiting, or even removing expired / grossly expired entries.  It has
+therefore the downside of requiring a huge amount of disk space if there are
+a number of repositories involved.  It is not uncommon for git.kernel.org to
+have on the order of 80G - 120G accumulate over the course of a few months.
+It is therefore recommended that the cache directory be periodically
+completely deleted; this operation is safe to perform.  Suggested mechanism
+(substitute $cachedir for actual path to gitweb cache):
+
+   # mv $cachedir $cachedir.flush && mkdir $cachedir && rm -rf $cachedir.flush
+
+Site-wide cache options are defined in %cache_options hash.  Those options
+apply only when $cache is unset (GitwebCache::SimpleFileCache is used), or
+if $cache is name of cache class (e.g. $cache = 'Cache::FileCache').  You
+can override cache options in gitweb config, e.g.:
+
+   $cache_options{'expires_in'} = 60; # 60 seconds = 1 minute
+
+Please read comments for %cache_options entries in gitweb/gitweb.perl for
+description of available cache options.
 
 
 Webserver configuration
