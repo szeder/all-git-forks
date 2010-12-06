@@ -328,7 +328,8 @@ static off_t pack_size;
 /* Table of objects we've written. */
 static unsigned int object_entry_alloc = 5000;
 static struct object_entry_pool *blocks;
-static struct object_entry *object_table[1 << 16];
+static struct object_entry *object_table[1 << 22];
+static uint64_t object_bitmap[1 << 22];
 static struct mark_set *marks;
 static const char *export_marks_file;
 static const char *import_marks_file;
@@ -569,25 +570,23 @@ static struct object_entry *new_object(unsigned char *sha1)
 
 static struct object_entry *find_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
+	unsigned int h = sha1[0] << 13 | sha1[1] << 5 | sha1[2] >> 3;
 	struct object_entry *e;
-	for (e = object_table[h]; e; e = e->next)
-		if (!hashcmp(sha1, e->idx.sha1))
-			return e;
+	if (object_bitmap[h] & m)
+		for (e = object_table[h]; e; e = e->next)
+			if (!hashcmp(sha1, e->idx.sha1))
+				return e;
 	return NULL;
 }
 
 static struct object_entry *insert_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
-	struct object_entry *e = object_table[h];
-
-	while (e) {
-		if (!hashcmp(sha1, e->idx.sha1))
-			return e;
-		e = e->next;
-	}
-
+	unsigned int h = sha1[0] << 13 | sha1[1] << 5 | sha1[2] >> 3;
+	uint64_t m = 1ll << (1 << (sha1[3] & 63));
+	struct object_entry *e;
+	if ((e = find_object(sha1)))
+		return e;
+	object_bitmap[h] |= m;
 	e = new_object(sha1);
 	e->next = object_table[h];
 	e->idx.offset = 0;
