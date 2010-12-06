@@ -93,7 +93,7 @@ proc hint_gc {} {
 	set limit 8
 	if {[is_Windows]} {
 		set ndirs 4
-		set limit 1
+		set limit 8
 	}
 
 	set count [llength [glob \
