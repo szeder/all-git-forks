@@ -231,7 +231,9 @@ sub removeDuplicates
 sub handleCompileLine
 {
     my ($line, $lineno) = @_;
-    my @parts = split(' ', $line);
+	
+	my @parts = ($line =~ m/('.*?'|".*?"|\S+)/g);
+	
     my $sourcefile;
     shift(@parts); # ignore cmd
     while (my $part = shift @parts) {
@@ -250,7 +252,8 @@ sub handleCompileLine
         } elsif ($part =~ /\.(c|cc|cpp)$/) {
             $sourcefile = $part;
         } else {
-            die "Unhandled compiler option @ line $lineno: $part";
+            #die "Unhandled compiler option @ line $lineno: $part";
+			print "BAD PARAM $lineno : $part\n";
         }
     }
     @{$compile_options{"${sourcefile}_CFLAGS"}} = @cflags;
