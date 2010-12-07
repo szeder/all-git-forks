@@ -86,7 +86,11 @@ void setup_pager(void)
 	pager_process.argv = pager_argv;
 	pager_process.in = -1;
 	if (!getenv("LESS")) {
+#ifndef WIN32
 		static const char *env[] = { "LESS=FRSX", NULL };
+#else
+        static const char *env[] = { "LESS=SX", NULL };
+#endif
 		pager_process.env = env;
 	}
 #ifndef WIN32
