@@ -24,6 +24,7 @@ static int longformat;
 static int abbrev = DEFAULT_ABBREV;
 static int max_candidates = 10;
 static struct hash_table names;
+static int have_util;
 static const char *pattern;
 static int always;
 static const char *dirty;
@@ -60,6 +61,15 @@ static inline struct commit_name *find_commit_name(const unsigned char *peeled)
 	return n;
 }
 
+static int set_util(void *vn)
+{
+	struct commit_name *n = vn;
+	struct commit *c = lookup_commit_reference_gently(n->peeled, 1);
+	if (c)
+		c->util = n;
+	return 0;
+}
+
 static int replace_name(struct commit_name *e,
 			       int prio,
 			       const unsigned char *sha1,
@@ -94,18 +104,16 @@ static int replace_name(struct commit_name *e,
 }
 
 static void add_to_known_names(const char *path,
-			       struct commit *commit,
+			       const unsigned char *peeled,
 			       int prio,
 			       const unsigned char *sha1)
 {
-	const unsigned char *peeled = commit->object.sha1;
 	struct commit_name *e = find_commit_name(peeled);
 	struct tag *tag = NULL;
 	if (replace_name(e, prio, sha1, &tag)) {
 		if (!e) {
 			void **pos;
 			e = xmalloc(sizeof(struct commit_name));
-			commit->util = e;
 			hashcpy(e->peeled, peeled);
 			pos = insert_hash(hash_sha1(peeled), e, &names);
 			if (pos) {
@@ -126,8 +134,6 @@ static void add_to_known_names(const char *path,
 static int get_name(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
 	int might_be_tag = !prefixcmp(path, "refs/tags/");
-	struct commit *commit;
-	struct object *object;
 	unsigned char peeled[20];
 	int is_tag, prio;
 
@@ -135,16 +141,10 @@ static int get_name(const char *path, const unsigned char *sha1, int flag, void 
 		return 0;
 
 	if (!peel_ref(path, peeled) && !is_null_sha1(peeled)) {
-		commit = lookup_commit_reference_gently(peeled, 1);
-		if (!commit)
-			return 0;
-		is_tag = !!hashcmp(sha1, commit->object.sha1);
+		is_tag = !!hashcmp(sha1, peeled);
 	} else {
-		commit = lookup_commit_reference_gently(sha1, 1);
-		object = parse_object(sha1);
-		if (!commit || !object)
-			return 0;
-		is_tag = object->type == OBJ_TAG;
+		hashcpy(peeled, sha1);
+		is_tag = 0;
 	}
 
 	/* If --all, then any refs are used.
@@ -167,7 +167,7 @@ static int get_name(const char *path, const unsigned char *sha1, int flag, void 
 		if (!prio)
 			return 0;
 	}
-	add_to_known_names(all ? path + 5 : path + 10, commit, prio, sha1);
+	add_to_known_names(all ? path + 5 : path + 10, peeled, prio, sha1);
 	return 0;
 }
 
@@ -283,6 +283,11 @@ static void describe(const char *arg, int last_one)
 		die("no tag exactly matches '%s'", sha1_to_hex(cmit->object.sha1));
 	if (debug)
 		fprintf(stderr, "searching to describe %s\n", arg);
+
+	if (!have_util) {
+		for_each_hash(&names, set_util);
+		have_util = 1;
+	}
 
 	list = NULL;
 	cmit->object.flags = SEEN;
