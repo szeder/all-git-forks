@@ -1769,8 +1769,17 @@ test_expect_success 'R: feature cat-blob supported' '
 	git fast-import
 '
 
+test_expect_success 'R: no command line option for cat-blob feature' '
+	test_must_fail git fast-import --cat-blob <empty
+'
+
 test_expect_success 'R: cat-blob-fd must be a nonnegative integer' '
 	test_must_fail git fast-import --cat-blob-fd=-1 </dev/null
+'
+
+test_expect_success 'R: cat-blob-fd cannot be specified in stream' '
+	echo "feature cat-blob-fd=1" |
+	test_must_fail git fast-import
 '
 
 test_expect_success 'R: print old blob' '

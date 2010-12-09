@@ -2977,8 +2977,10 @@ static int parse_one_feature(const char *feature, int from_stream)
 		option_import_marks(feature + 13, from_stream);
 	} else if (!prefixcmp(feature, "export-marks=")) {
 		option_export_marks(feature + 13);
-	} else if (!strcmp(feature, "cat-blob")) {
+	} else if (from_stream && !strcmp(feature, "cat-blob")) {
 		; /* Don't die - this feature is supported */
+	} else if (!from_stream && !prefixcmp(feature, "cat-blob-fd=")) {
+		option_cat_blob_fd(feature + strlen("cat-blob-fd="));
 	} else if (!prefixcmp(feature, "relative-marks")) {
 		relative_marks_paths = 1;
 	} else if (!prefixcmp(feature, "no-relative-marks")) {
@@ -3072,11 +3074,6 @@ static void parse_argv(void)
 
 		if (parse_one_feature(a + 2, 0))
 			continue;
-
-		if (!prefixcmp(a + 2, "cat-blob-fd=")) {
-			option_cat_blob_fd(a + 2 + strlen("cat-blob-fd="));
-			continue;
-		}
 
 		die("unknown option %s", a);
 	}
