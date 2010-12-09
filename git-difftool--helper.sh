@@ -40,19 +40,22 @@ launch_merge_tool () {
 	if should_prompt; then
 		printf "\nViewing: '$MERGED'\n"
 		if use_ext_cmd; then
-			printf "Hit return to launch '%s': " \
+			printf "Hit return to launch '%s' or hit 's' to skip this file: " \
 				"$GIT_DIFFTOOL_EXTCMD"
 		else
-			printf "Hit return to launch '%s': " "$merge_tool"
+			printf "Hit return to launch '%s' or hit 's' to skip this file: " \
+				"$merge_tool"
 		fi
 		read ans
 	fi
 
-	if use_ext_cmd; then
-		export BASE
-		eval $GIT_DIFFTOOL_EXTCMD '"$LOCAL"' '"$REMOTE"'
-	else
-		run_merge_tool "$merge_tool"
+	if [ "$ans" != "s" ]; then
+		if use_ext_cmd; then
+			export BASE
+			eval $GIT_DIFFTOOL_EXTCMD '"$LOCAL"' '"$REMOTE"'
+		else
+			run_merge_tool "$merge_tool"
+		fi
 	fi
 }
 
