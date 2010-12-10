@@ -9,6 +9,7 @@
 #include "object.h"
 #include "remote.h"
 #include "transport.h"
+#include "hash.h"
 
 static const char receive_pack_usage[] = "git receive-pack <git-dir>";
 
@@ -34,6 +35,8 @@ static int auto_update_server_info;
 static int auto_gc = 1;
 static const char *head_name;
 static int sent_capabilities;
+
+static struct hash_table sha1_references = {0, 0, NULL};
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -704,7 +707,11 @@ static int add_refs_from_alternate(struct alternate_object_database *e, void *un
 	for (extra = transport_get_remote_refs(transport);
 	     extra;
 	     extra = extra->next) {
-		add_extra_ref(".have", extra->old_sha1, 0);
+		unsigned int *oid_buffer = (unsigned int *)(&extra->old_sha1);
+		if (!lookup_hash(oid_buffer[0], &sha1_references)) {
+			add_extra_ref(".have", extra->old_sha1, 0);
+			insert_hash(oid_buffer[0], (void *)1, &sha1_references);
+		}
 	}
 	transport_disconnect(transport);
 	free(other);
