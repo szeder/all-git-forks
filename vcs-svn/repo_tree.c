@@ -293,7 +293,7 @@ void repo_commit(uint32_t revision, const char *author,
 static void mark_init(void)
 {
 	uint32_t i;
-	mark = 0;
+	mark = 1024 * 1024 * 1024;
 	for (i = 0; i < dent_pool.size; i++)
 		if (!repo_dirent_is_dir(dent_pointer(i)) &&
 		    dent_pointer(i)->content_offset > mark)
