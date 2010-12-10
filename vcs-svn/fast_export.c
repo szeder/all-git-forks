@@ -153,26 +153,24 @@ static off_t cat_mark(uint32_t mark)
 	return length;
 }
 
-static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
-			uint32_t old_mark, uint32_t old_mode)
+static long apply_delta(off_t len, struct line_buffer *input,
+			off_t preimage_len, uint32_t old_mode)
 {
 	long ret;
-	off_t preimage_len = 0;
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
 	FILE *out;
 
 	out = buffer_tmpfile_rewind(&postimage);
 	if (!out)
 		die("cannot open temporary file for blob retrieval");
-	if (old_mark)
-		preimage_len = cat_mark(old_mark);
 	if (old_mode == REPO_MODE_LNK) {
 		strbuf_addstr(&preimage.buf, "link ");
-		preimage_len += strlen("link ");
+		if (preimage_len >= 0)
+			preimage_len += strlen("link ");
 	}
 	if (svndiff0_apply(input, len, &preimage, out))
 		die("cannot apply delta");
-	if (old_mark) {
+	if (preimage_len >= 0) {
 		/* Read the remainder of preimage and trailing newline. */
 		if (move_window(&preimage, preimage_len, 1))
 			die("cannot seek to end of input");
@@ -195,6 +193,34 @@ void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len, struct line_bu
 		len -= 5;
 	}
 	printf("blob\nmark :%"PRIu32"\ndata %"PRIu32"\n", mark, len);
+<<<<<<< HEAD
 	buffer_copy_bytes(input, len);
+=======
+<<<<<<< HEAD
+	buffer_copy_bytes(len);
+=======
+	if (buffer_copy_bytes(input, len) != len)
+		die_short_read(input);
+	fputc('\n', stdout);
+}
+
+void fast_export_blob_delta(uint32_t mode, uint32_t mark,
+				uint32_t old_mode, uint32_t old_mark,
+				uint32_t len, struct line_buffer *input)
+{
+	long postimage_len;
+	if (len > maximum_signed_value_of_type(off_t))
+		die("enormous delta");
+	postimage_len = apply_delta((off_t) len, input,
+						old_mark ? cat_mark(old_mark) : -1,
+						old_mode);
+	if (mode == REPO_MODE_LNK) {
+		buffer_skip_bytes(&postimage, strlen("link "));
+		postimage_len -= strlen("link ");
+	}
+	printf("blob\nmark :%"PRIu32"\ndata %ld\n", mark, postimage_len);
+	buffer_copy_bytes(&postimage, postimage_len);
+>>>>>>> d47733d... vcs-svn: make apply_delta caller retrieve preimage
+>>>>>>> vcs-svn: make apply_delta caller retrieve preimage
 	fputc('\n', stdout);
 }
