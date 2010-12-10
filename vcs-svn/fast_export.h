@@ -17,5 +17,8 @@ void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len,
 void fast_export_blob_delta(uint32_t mode, uint32_t mark,
 			uint32_t old_mode, uint32_t old_mark,
 			uint32_t len, struct line_buffer *input);
+void fast_export_blob_delta_rev(uint32_t mode, uint32_t mark, uint32_t old_mode,
+			uint32_t old_rev, const uint32_t *old_path,
+			uint32_t len, struct line_buffer *input);
 
 #endif

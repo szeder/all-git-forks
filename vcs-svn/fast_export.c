@@ -98,12 +98,36 @@ static void die_short_read(struct line_buffer *input)
 	die("invalid dump: unexpected end of file");
 }
 
+static void ls_from_rev(uint32_t rev, const uint32_t *path)
+{
+	/* ls :5 path/to/old/file */
+	printf("ls :%"PRIu32" ", rev);
+	pool_print_seq(REPO_MAX_PATH_DEPTH, path, '/', stdout);
+	putchar('\n');
+	fflush(stdout);
+}
+
 static int ends_with(const char *s, size_t len, const char *suffix)
 {
 	const size_t suffixlen = strlen(suffix);
 	if (len < suffixlen)
 		return 0;
 	return !memcmp(s + len - suffixlen, suffix, suffixlen);
+}
+
+static int parse_ls_response_line(const char *line, struct strbuf *objnam)
+{
+	const char *end = line + strlen(line);
+	const char *name, *tab;
+
+	if (end - line < strlen("100644 blob "))
+		return error("ls response too short: %s", line);
+	name = line + strlen("100644 blob ");
+	tab = memchr(name, '\t', end - name);
+	if (!tab)
+		return error("ls response does not contain tab: %s", line);
+	strbuf_add(objnam, name, tab - name);
+	return 0;
 }
 
 static int parse_cat_response_line(const char *header, off_t *len)
@@ -145,6 +169,26 @@ static off_t cat_mark(uint32_t mark)
 	response = get_response_line();
 	if (parse_cat_response_line(response, &length))
 		die("invalid cat-blob response: %s", response);
+	return length;
+}
+
+static off_t cat_from_rev(uint32_t rev, const uint32_t *path)
+{
+	const char *response;
+	off_t length = length;
+	struct strbuf blob_name = STRBUF_INIT;
+
+	ls_from_rev(rev, path);
+	response = get_response_line();
+	if (parse_ls_response_line(response, &blob_name))
+		die("invalid ls response: %s", response);
+
+	printf("cat-blob %s\n", blob_name.buf);
+	fflush(stdout);
+	response = get_response_line();
+	if (parse_cat_response_line(response, &length))
+		die("invalid cat-blob response: %s", response);
+	strbuf_release(&blob_name);
 	return length;
 }
 
@@ -214,6 +258,20 @@ void fast_export_blob_delta(uint32_t mode, uint32_t mark,
 		die("enormous delta");
 	postimage_len = apply_delta((off_t) len, input,
 						old_mark ? cat_mark(old_mark) : -1,
+						old_mode);
+	record_postimage(mark, mode, postimage_len);
+}
+
+void fast_export_blob_delta_rev(uint32_t mode, uint32_t mark,
+				uint32_t old_mode, uint32_t old_rev,
+				const uint32_t *old_path, uint32_t len,
+				struct line_buffer *input)
+{
+	long postimage_len;
+	if (len > maximum_signed_value_of_type(off_t))
+		die("enormous delta");
+	postimage_len = apply_delta((off_t) len, input,
+						cat_from_rev(old_rev, old_path),
 						old_mode);
 	record_postimage(mark, mode, postimage_len);
 }

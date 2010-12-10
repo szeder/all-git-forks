@@ -260,6 +260,12 @@ static void handle_node(void)
 				mark, node_ctx.textLength, &input);
 		return;
 	}
+	if (node_ctx.srcRev) {
+		fast_export_blob_delta_rev(node_ctx.type, mark, old_mode,
+					node_ctx.srcRev, node_ctx.src,
+					node_ctx.textLength, &input);
+		return;
+	}
 	fast_export_blob_delta(node_ctx.type, mark, old_mode, old_mark,
 				node_ctx.textLength, &input);
 }
