@@ -87,7 +87,7 @@ static struct repo_dir *repo_clone_dir(struct repo_dir *orig_dir)
 	return dir_pointer(new_o);
 }
 
-static struct repo_dirent *repo_read_dirent(uint32_t revision, uint32_t *path)
+static struct repo_dirent *repo_read_dirent(uint32_t revision, const uint32_t *path)
 {
 	uint32_t name = 0;
 	struct repo_dirent *key = dent_pointer(dent_alloc(1));
@@ -157,7 +157,28 @@ static void repo_write_dirent(uint32_t *path, uint32_t mode,
 		dent_remove(&dir_pointer(parent_dir_o)->entries, dent);
 }
 
+<<<<<<< HEAD
 uint32_t repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
+=======
+uint32_t repo_read_path(uint32_t *path)
+{
+	uint32_t content_offset = 0;
+	struct repo_dirent *dent = repo_read_dirent(active_commit, path);
+	if (dent != NULL)
+		content_offset = dent->content_offset;
+	return content_offset;
+}
+
+uint32_t repo_read_mode(const uint32_t *path)
+{
+	struct repo_dirent *dent = repo_read_dirent(active_commit, path);
+	if (dent == NULL)
+		die("invalid dump: path to be modified is missing");
+	return dent->mode;
+}
+
+void repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
+>>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
 {
 	uint32_t mode = 0, content_offset = 0;
 	struct repo_dirent *src_dent;
@@ -167,7 +188,6 @@ uint32_t repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
 		content_offset = src_dent->content_offset;
 		repo_write_dirent(dst, mode, content_offset, 0);
 	}
-	return mode;
 }
 
 void repo_add(uint32_t *path, uint32_t mode, uint32_t blob_mark)
@@ -175,7 +195,12 @@ void repo_add(uint32_t *path, uint32_t mode, uint32_t blob_mark)
 	repo_write_dirent(path, mode, blob_mark, 0);
 }
 
+<<<<<<< HEAD
 uint32_t repo_modify_path(uint32_t *path, uint32_t mode, uint32_t blob_mark)
+=======
+<<<<<<< HEAD
+uint32_t repo_replace(uint32_t *path, uint32_t blob_mark)
+>>>>>>> vcs-svn: simplify repo_modify_path and repo_copy
 {
 	struct repo_dirent *src_dent;
 	src_dent = repo_read_dirent(active_commit, path);
@@ -189,6 +214,8 @@ uint32_t repo_modify_path(uint32_t *path, uint32_t mode, uint32_t blob_mark)
 	return mode;
 }
 
+=======
+>>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
 void repo_delete(uint32_t *path)
 {
 	repo_write_dirent(path, 0, 0, 1);
