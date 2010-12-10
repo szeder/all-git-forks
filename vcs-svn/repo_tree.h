@@ -15,13 +15,19 @@ uint32_t next_blob_mark(void);
 void repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst);
 void repo_add(uint32_t *path, uint32_t mode, uint32_t blob_mark);
 <<<<<<< HEAD
+<<<<<<< HEAD
 uint32_t repo_modify_path(uint32_t *path, uint32_t mode, uint32_t blob_mark);
 =======
+=======
+>>>>>>> vcs-svn: eliminate repo_tree structure
 <<<<<<< HEAD
 uint32_t repo_replace(uint32_t *path, uint32_t blob_mark);
 void repo_modify(uint32_t *path, uint32_t mode, uint32_t blob_mark);
 =======
 uint32_t repo_read_path(uint32_t *path);
+=======
+const char *repo_read_path(uint32_t *path);
+>>>>>>> 7e69325... vcs-svn: eliminate repo_tree structure
 uint32_t repo_read_mode(const uint32_t *path);
 >>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
 >>>>>>> vcs-svn: simplify repo_modify_path and repo_copy
