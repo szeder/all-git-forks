@@ -236,9 +236,7 @@ static void handle_node(void)
 		old_mark = repo_read_path(node_ctx.dst);
 		if (!have_text)
 			mark = old_mark;
-		mode = repo_modify_path(node_ctx.dst, 0, 0);
-		if (!mode)
-			die("invalid dump: path to be modified is missing");
+		mode = repo_read_mode(node_ctx.dst);
 		if (mode == REPO_MODE_DIR && type != REPO_MODE_DIR)
 			die("invalid dump: cannot modify a directory into a file");
 		if (mode != REPO_MODE_DIR && type == REPO_MODE_DIR)
