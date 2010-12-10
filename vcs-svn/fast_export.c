@@ -179,6 +179,18 @@ static long apply_delta(off_t len, struct line_buffer *input,
 	return ret;
 }
 
+static void record_postimage(uint32_t mark, uint32_t mode,
+				long postimage_len)
+{
+	if (mode == REPO_MODE_LNK) {
+		buffer_skip_bytes(&postimage, strlen("link "));
+		postimage_len -= strlen("link ");
+	}
+	printf("blob\nmark :%"PRIu32"\ndata %ld\n", mark, postimage_len);
+	buffer_copy_bytes(&postimage, postimage_len);
+	fputc('\n', stdout);
+}
+
 void fast_export_blob(uint32_t mode, uint32_t mark, uint32_t len, struct line_buffer *input)
 {
 	if (mode == REPO_MODE_LNK) {
@@ -203,11 +215,5 @@ void fast_export_blob_delta(uint32_t mode, uint32_t mark,
 	postimage_len = apply_delta((off_t) len, input,
 						old_mark ? cat_mark(old_mark) : -1,
 						old_mode);
-	if (mode == REPO_MODE_LNK) {
-		buffer_skip_bytes(&postimage, strlen("link "));
-		postimage_len -= strlen("link ");
-	}
-	printf("blob\nmark :%"PRIu32"\ndata %ld\n", mark, postimage_len);
-	buffer_copy_bytes(&postimage, postimage_len);
-	fputc('\n', stdout);
+	record_postimage(mark, mode, postimage_len);
 }
