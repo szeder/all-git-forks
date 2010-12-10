@@ -133,6 +133,19 @@ static const char *get_response_line(void)
 	die("unexpected end of fast-import feedback");
 }
 
+static off_t cat_mark(uint32_t mark)
+{
+	const char *response;
+	off_t length = length;
+
+	printf("cat-blob :%"PRIu32"\n", mark);
+	fflush(stdout);
+	response = get_response_line();
+	if (parse_cat_response_line(response, &length))
+		die("invalid cat-blob response: %s", response);
+	return length;
+}
+
 static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
 			uint32_t old_mark, uint32_t old_mode)
 {
@@ -145,14 +158,8 @@ static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
 		die("cannot open temporary file for blob retrieval");
 	if (init_report_buffer(REPORT_FILENO))
 		die("cannot open fd 3 for feedback from fast-import");
-	if (old_mark) {
-		const char *response;
-		printf("cat-blob :%"PRIu32"\n", old_mark);
-		fflush(stdout);
-		response = get_response_line();
-		if (parse_cat_response_line(response, &preimage_len))
-			die("invalid cat-blob response: %s", response);
-	}
+	if (old_mark)
+		preimage_len = cat_mark(old_mark);
 	if (old_mode == REPO_MODE_LNK) {
 		strbuf_addstr(&preimage.buf, "link ");
 		preimage_len += strlen("link ");
