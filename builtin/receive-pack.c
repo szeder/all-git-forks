@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "sha1-lookup.h"
 #include "pack.h"
 #include "refs.h"
 #include "pkt-line.h"
@@ -35,6 +36,9 @@ static int auto_update_server_info;
 static int auto_gc = 1;
 static const char *head_name;
 static int sent_capabilities;
+
+static unsigned char (*sha1_table)[20];
+static int sha1_alloc, sha1_nr;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -731,6 +735,12 @@ static int delete_only(struct command *commands)
 	return 1;
 }
 
+static const unsigned char *sha1_access(size_t index, void *table)
+{
+	unsigned char (*array)[20] = table;
+	return array[index];
+}
+
 static int add_refs_from_alternate(struct alternate_object_database *e, void *unused)
 {
 	char *other;
@@ -738,6 +748,7 @@ static int add_refs_from_alternate(struct alternate_object_database *e, void *un
 	struct remote *remote;
 	struct transport *transport;
 	const struct ref *extra;
+	int pos;
 
 	e->name[-1] = '\0';
 	other = xstrdup(make_absolute_path(e->base));
@@ -758,7 +769,23 @@ static int add_refs_from_alternate(struct alternate_object_database *e, void *un
 	for (extra = transport_get_remote_refs(transport);
 	     extra;
 	     extra = extra->next) {
-		add_extra_ref(".have", extra->old_sha1, 0);
+		pos = sha1_pos(extra->old_sha1, sha1_table, sha1_nr, sha1_access);
+		if (0 > pos) {
+			pos = -pos - 1;
+			if (sha1_alloc <= ++sha1_nr) {
+				sha1_alloc = alloc_nr(sha1_alloc);
+				sha1_table = xrealloc(sha1_table,
+						      sizeof(*sha1_table) *
+						      sha1_alloc);
+			}
+			if (pos < sha1_nr)
+				memmove(sha1_table + pos + 1,
+					sha1_table + pos,
+					(sha1_nr - pos - 1) *
+					sizeof(*sha1_table));
+			hashcpy(sha1_table[pos], extra->old_sha1);
+			add_extra_ref(".have", extra->old_sha1, 0);
+		}
 	}
 	transport_disconnect(transport);
 	free(other);
