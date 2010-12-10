@@ -148,26 +148,24 @@ static off_t cat_mark(uint32_t mark)
 	return length;
 }
 
-static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
-			uint32_t old_mark, uint32_t old_mode)
+static long apply_delta(off_t len, struct line_buffer *input,
+			off_t preimage_len, uint32_t old_mode)
 {
 	long ret;
-	off_t preimage_len = 0;
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
 	FILE *out;
 
 	out = buffer_tmpfile_rewind(&postimage);
 	if (!out)
 		die("cannot open temporary file for blob retrieval");
-	if (old_mark)
-		preimage_len = cat_mark(old_mark);
 	if (old_mode == REPO_MODE_LNK) {
 		strbuf_addstr(&preimage.buf, "link ");
-		preimage_len += strlen("link ");
+		if (preimage_len >= 0)
+			preimage_len += strlen("link ");
 	}
 	if (svndiff0_apply(input, len, &preimage, out))
 		die("cannot apply delta");
-	if (old_mark) {
+	if (preimage_len >= 0) {
 		/* Read the remainder of preimage and trailing newline. */
 		if (move_window(&preimage, preimage_len, 1))
 			die("cannot seek to end of input");
@@ -202,7 +200,9 @@ void fast_export_blob_delta(uint32_t mode, uint32_t mark,
 	long postimage_len;
 	if (len > maximum_signed_value_of_type(off_t))
 		die("enormous delta");
-	postimage_len = apply_delta(mark, (off_t) len, input, old_mark, old_mode);
+	postimage_len = apply_delta((off_t) len, input,
+						old_mark ? cat_mark(old_mark) : -1,
+						old_mode);
 	if (mode == REPO_MODE_LNK) {
 		buffer_skip_bytes(&postimage, strlen("link "));
 		postimage_len -= strlen("link ");
