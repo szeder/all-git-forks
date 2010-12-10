@@ -244,6 +244,7 @@ static void handle_node(void)
 	} else {
 		die("invalid dump: Node-path block lacks Node-action");
 	}
+<<<<<<< HEAD
 	if (have_props) {
 		const uint32_t old_mode = node_ctx.type;
 		if (!node_ctx.prop_delta)
@@ -256,6 +257,34 @@ static void handle_node(void)
 	if (mark)
 		fast_export_blob(node_ctx.type, mark,
 				 node_ctx.textLength, &input);
+=======
+<<<<<<< HEAD
+
+	if (node_ctx.propLength == LENGTH_UNKNOWN && node_ctx.srcMode)
+		node_ctx.type = node_ctx.srcMode;
+
+	if (node_ctx.mark)
+		fast_export_blob(node_ctx.type, node_ctx.mark, node_ctx.textLength);
+	else if (node_ctx.textLength != LENGTH_UNKNOWN)
+		buffer_skip_bytes(node_ctx.textLength);
+=======
+	if (!mark)
+		return;
+	if (!node_ctx.text_delta) {
+		fast_export_blob(node_ctx.type,
+				mark, node_ctx.textLength, &input);
+		return;
+	}
+	if (node_ctx.srcRev) {
+		fast_export_blob_delta_rev(node_ctx.type, mark, old_mode,
+					node_ctx.srcRev, node_ctx.src,
+					node_ctx.textLength, &input);
+		return;
+	}
+	fast_export_blob_delta(node_ctx.type, mark, old_mode, old_mark,
+				node_ctx.textLength, &input);
+>>>>>>> ae828d6... vcs-svn: do not rely on marks for old blobs
+>>>>>>> vcs-svn: do not rely on marks for old blobs
 }
 
 static void handle_revision(void)
