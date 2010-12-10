@@ -201,11 +201,12 @@ static void handle_node(void)
 	uint32_t mark = 0, old_mode, old_mark;
 	const uint32_t type = node_ctx.type;
 	const int have_props = node_ctx.propLength != LENGTH_UNKNOWN;
+	const int have_text = node_ctx.textLength != LENGTH_UNKNOWN;
 
-	if (node_ctx.textLength != LENGTH_UNKNOWN)
+	if (have_text)
 		mark = next_blob_mark();
 	if (node_ctx.action == NODEACT_DELETE) {
-		if (mark || have_props || node_ctx.srcRev)
+		if (have_text || have_props || node_ctx.srcRev)
 			die("invalid dump: deletion node has "
 				"copyfrom info, text, or properties");
 		return repo_delete(node_ctx.dst);
@@ -219,8 +220,13 @@ static void handle_node(void)
 		if (node_ctx.action == NODEACT_ADD)
 			node_ctx.action = NODEACT_CHANGE;
 	}
-	if (mark && type == REPO_MODE_DIR)
+	if (have_text && type == REPO_MODE_DIR)
 		die("invalid dump: directories cannot have text attached");
+
+	/*
+	 * Find old content (old_mark) and decide on the new content (mark)
+	 * and mode (node_ctx.type).
+	 */
 	if (node_ctx.action == NODEACT_CHANGE && !~*node_ctx.dst) {
 		if (type != REPO_MODE_DIR)
 			die("invalid dump: root of tree is not a regular file");
@@ -228,7 +234,9 @@ static void handle_node(void)
 	} else if (node_ctx.action == NODEACT_CHANGE) {
 		uint32_t mode;
 		old_mark = repo_read_path(node_ctx.dst);
-		mode = repo_modify_path(node_ctx.dst, 0, mark);
+		if (!have_text)
+			mark = old_mark;
+		mode = repo_modify_path(node_ctx.dst, 0, 0);
 		if (!mode)
 			die("invalid dump: path to be modified is missing");
 		if (mode == REPO_MODE_DIR && type != REPO_MODE_DIR)
@@ -237,23 +245,29 @@ static void handle_node(void)
 			die("invalid dump: cannot modify a file into a directory");
 		node_ctx.type = mode;
 	} else if (node_ctx.action == NODEACT_ADD) {
-		if (!mark && type != REPO_MODE_DIR)
+		if (!have_text && type != REPO_MODE_DIR)
 			die("invalid dump: adds node without text");
-		repo_add(node_ctx.dst, type, mark);
 		old_mark = 0;
 	} else {
 		die("invalid dump: Node-path block lacks Node-action");
 	}
+
+	/*
+	 * Adjust mode to reflect properties.
+	 */
 	old_mode = node_ctx.type;
 	if (have_props) {
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
 		if (node_ctx.propLength)
 			read_props();
-		if (node_ctx.type != old_mode)
-			repo_modify_path(node_ctx.dst, node_ctx.type, mark);
 	}
-	if (!mark)
+
+	/*
+	 * Save the result.
+	 */
+	repo_add(node_ctx.dst, node_ctx.type, mark);
+	if (!have_text)
 		return;
 	if (!node_ctx.text_delta) {
 		fast_export_blob(node_ctx.type,
