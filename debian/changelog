@@ -1,3 +1,12 @@
+git (1:1.7.2.3-2.2.1) experimental; urgency=low
+
+  * gitweb.conf: disable use of rename patches by default
+    (@diff_opts = ()).
+  * debian/diff/0001-Revert-gitweb-Use-diff_opts...diff: remove;
+    no longer needed.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:31:23 -0600
+
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
   * Non-maintainer upload.
