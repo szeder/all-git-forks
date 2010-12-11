@@ -1,5 +1,4 @@
 #include "cache.h"
-#include "sha1-lookup.h"
 #include "pack.h"
 #include "refs.h"
 #include "pkt-line.h"
