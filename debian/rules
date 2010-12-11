@@ -195,9 +195,10 @@ install-indep: build-arch-stamp build-indep-stamp
 	# gitweb
 	rm -rf '$(GIT)'web
 	install -d -m0755 '$(GIT)'web/usr/lib/cgi-bin
-	install -m0755 gitweb/gitweb.cgi '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
+	ln -s ../../share/gitweb/index.cgi \
+	  '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
 	install -d -m0755 '$(GIT)'web/usr/share/gitweb
-	ln -s ../../lib/cgi-bin/gitweb.cgi \
+	install -m0755 gitweb/gitweb.cgi \
 	  '$(GIT)'web/usr/share/gitweb/index.cgi
 	install -m0644 gitweb/gitweb.css \
 	  '$(GIT)'web/usr/share/gitweb/gitweb.css
