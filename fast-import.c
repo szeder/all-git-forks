@@ -570,7 +570,8 @@ static struct object_entry *new_object(unsigned char *sha1)
 
 static struct object_entry *find_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 13 | sha1[1] << 5 | sha1[2] >> 3;
+	unsigned int h = sha1[0] << 11 | sha1[1] << 3 | sha1[2] >> 5;
+	uint64_t m = 1ll << (1 << (sha1[3] & 63));
 	struct object_entry *e;
 	if (object_bitmap[h] & m)
 		for (e = object_table[h]; e; e = e->next)
@@ -581,7 +582,7 @@ static struct object_entry *find_object(unsigned char *sha1)
 
 static struct object_entry *insert_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 13 | sha1[1] << 5 | sha1[2] >> 3;
+	unsigned int h = sha1[0] << 11 | sha1[1] << 3 | sha1[2] >> 5;
 	uint64_t m = 1ll << (1 << (sha1[3] & 63));
 	struct object_entry *e;
 	if ((e = find_object(sha1)))
