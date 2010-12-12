@@ -314,7 +314,7 @@ static size_t total_allocd;
 static struct mem_pool *mem_pool;
 
 /* Atom management */
-static unsigned int atom_table_sz = 4451;
+static unsigned int atom_table_sz = 65535;
 static unsigned int atom_cnt;
 static struct atom_str **atom_table;
 
