@@ -77,7 +77,10 @@ test_expect_success 'obj pool: high-water mark' '
 '
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> vcs-svn: drop trp.h
 <<<<<<< HEAD
 test_expect_success 'line buffer' '
 	echo HELLO >expected1 &&
@@ -174,4 +177,6 @@ test_expect_success 'treap sort' '
 	test_cmp expected actual
 '
 
+=======
+>>>>>>> 2a1514c... vcs-svn: drop trp.h
 test_done
