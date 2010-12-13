@@ -53,8 +53,8 @@ configuration that looks like this:
     HeaderName HEADER
     # bogus but safe DocumentRoot
     DocumentRoot /var/cache/git
-    ErrorLog /var/log/apache-ssl/git.example.org-error.log
-    CustomLog /var/log/apache-ssl/git.example.org-access.log combined
+    ErrorLog /var/log/apache2/git.example.org-error.log
+    CustomLog /var/log/apache2/git.example.org-access.log combined
     Alias /robots.txt /var/www/cvs.robots.txt
     Alias /gitweb.css /usr/share/gitweb/gitweb.css
     Alias /gitweb.js /usr/share/gitweb/gitweb.js

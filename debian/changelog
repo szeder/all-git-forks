@@ -1,3 +1,10 @@
+git (1:1.7.2.3-2.2.1) experimental; urgency=low
+
+  * debian/git.README.Debian: server logs go in /var/log/apache2, not
+    /var/log/apache-ssl.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:52:32 -0600
+
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
   * Non-maintainer upload.
