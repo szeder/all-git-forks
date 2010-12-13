@@ -8,7 +8,7 @@
 #include "repo_tree.h"
 #include "fast_export.h"
 
-const char *repo_read_path(uint32_t *path)
+const char *repo_read_path(const char *path)
 {
 	uint32_t unused;
 	static struct strbuf buf = STRBUF_INIT;
@@ -138,35 +138,42 @@ uint32_t repo_read_path(uint32_t *path)
 	return content_offset;
 =======
 	strbuf_reset(&buf);
-	fast_export_ls(REPO_MAX_PATH_DEPTH, path, &unused, &buf);
+	fast_export_ls(path, &unused, &buf);
 	return buf.buf;
 >>>>>>> 7e69325... vcs-svn: eliminate repo_tree structure
 }
 
-uint32_t repo_read_mode(const uint32_t *path)
+uint32_t repo_read_mode(const char *path)
 {
 	uint32_t result;
 	struct strbuf unused = STRBUF_INIT;
 
-	fast_export_ls(REPO_MAX_PATH_DEPTH, path, &result, &unused);
+	fast_export_ls(path, &result, &unused);
 	strbuf_release(&unused);
 	return result;
 }
 
+<<<<<<< HEAD
 void repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
 >>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
+=======
+void repo_copy(uint32_t revision, const char *src, const char *dst)
+>>>>>>> 01823f6... vcs-svn: pass paths through to fast-import
 {
 	uint32_t mode;
 	struct strbuf data = STRBUF_INIT;
 
-	fast_export_ls_rev(revision, REPO_MAX_PATH_DEPTH, src, &mode, &data);
-	fast_export_modify(REPO_MAX_PATH_DEPTH, dst, mode, data.buf);
+	fast_export_ls_rev(revision, src, &mode, &data);
+	fast_export_modify(dst, mode, data.buf);
 	strbuf_release(&data);
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 uint32_t repo_modify_path(uint32_t *path, uint32_t mode, uint32_t blob_mark)
 =======
+=======
+>>>>>>> vcs-svn: pass paths through to fast-import
 <<<<<<< HEAD
 uint32_t repo_replace(uint32_t *path, uint32_t blob_mark)
 >>>>>>> vcs-svn: simplify repo_modify_path and repo_copy
@@ -186,6 +193,9 @@ uint32_t repo_replace(uint32_t *path, uint32_t blob_mark)
 =======
 >>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
 void repo_delete(uint32_t *path)
+=======
+void repo_delete(const char *path)
+>>>>>>> 01823f6... vcs-svn: pass paths through to fast-import
 {
-	fast_export_delete(REPO_MAX_PATH_DEPTH, path);
+	fast_export_delete(path);
 }
