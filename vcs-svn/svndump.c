@@ -37,7 +37,7 @@ static struct line_buffer input = LINE_BUFFER_INIT;
 
 static struct {
 	uint32_t action, propLength, textLength, srcRev, type;
-	uint32_t src[REPO_MAX_PATH_DEPTH], dst[REPO_MAX_PATH_DEPTH];
+	struct strbuf src, dst;
 	uint32_t text_delta, prop_delta;
 } node_ctx;
 
@@ -66,9 +66,11 @@ static void reset_node_ctx(char *fname)
 	node_ctx.action = NODEACT_UNKNOWN;
 	node_ctx.propLength = LENGTH_UNKNOWN;
 	node_ctx.textLength = LENGTH_UNKNOWN;
-	node_ctx.src[0] = ~0;
+	strbuf_reset(&node_ctx.src);
 	node_ctx.srcRev = 0;
-	pool_tok_seq(REPO_MAX_PATH_DEPTH, node_ctx.dst, "/", fname);
+	strbuf_reset(&node_ctx.dst);
+	if (fname)
+		strbuf_addstr(&node_ctx.dst, fname);
 	node_ctx.text_delta = 0;
 	node_ctx.prop_delta = 0;
 }
@@ -211,14 +213,14 @@ static void handle_node(void)
 		if (have_text || have_props || node_ctx.srcRev)
 			die("invalid dump: deletion node has "
 				"copyfrom info, text, or properties");
-		return repo_delete(node_ctx.dst);
+		return repo_delete(node_ctx.dst.buf);
 	}
 	if (node_ctx.action == NODEACT_REPLACE) {
-		repo_delete(node_ctx.dst);
+		repo_delete(node_ctx.dst.buf);
 		node_ctx.action = NODEACT_ADD;
 	}
 	if (node_ctx.srcRev) {
-		repo_copy(node_ctx.srcRev, node_ctx.src, node_ctx.dst);
+		repo_copy(node_ctx.srcRev, node_ctx.src.buf, node_ctx.dst.buf);
 		if (node_ctx.action == NODEACT_ADD)
 			node_ctx.action = NODEACT_CHANGE;
 	}
@@ -228,14 +230,14 @@ static void handle_node(void)
 	/*
 	 * Find old content (old_data) and decide on the new mode.
 	 */
-	if (node_ctx.action == NODEACT_CHANGE && !~*node_ctx.dst) {
+	if (node_ctx.action == NODEACT_CHANGE && !*node_ctx.dst.buf) {
 		if (type != REPO_MODE_DIR)
 			die("invalid dump: root of tree is not a regular file");
 		old_data = NULL;
 	} else if (node_ctx.action == NODEACT_CHANGE) {
 		uint32_t mode;
-		old_data = repo_read_path(node_ctx.dst);
-		mode = repo_read_mode(node_ctx.dst);
+		old_data = repo_read_path(node_ctx.dst.buf);
+		mode = repo_read_mode(node_ctx.dst.buf);
 		if (mode == REPO_MODE_DIR && type != REPO_MODE_DIR)
 			die("invalid dump: cannot modify a directory into a file");
 		if (mode != REPO_MODE_DIR && type == REPO_MODE_DIR)
@@ -272,12 +274,10 @@ static void handle_node(void)
 		/* For the fast_export_* functions, NULL means empty. */
 		old_data = NULL;
 	if (!have_text) {
-		fast_export_modify(REPO_MAX_PATH_DEPTH, node_ctx.dst,
-					node_ctx.type, old_data);
+		fast_export_modify(node_ctx.dst.buf, node_ctx.type, old_data);
 		return;
 	}
-	fast_export_modify(REPO_MAX_PATH_DEPTH, node_ctx.dst,
-				node_ctx.type, "inline");
+	fast_export_modify(node_ctx.dst.buf, node_ctx.type, "inline");
 	fast_export_data(node_ctx.type, node_ctx.textLength, &input);
 }
 
@@ -356,7 +356,8 @@ void svndump_read(const char *url)
 				node_ctx.action = NODEACT_UNKNOWN;
 			}
 		} else if (key == keys.node_copyfrom_path) {
-			pool_tok_seq(REPO_MAX_PATH_DEPTH, node_ctx.src, "/", val);
+			strbuf_reset(&node_ctx.src);
+			strbuf_addstr(&node_ctx.src, val);
 		} else if (key == keys.node_copyfrom_rev) {
 			node_ctx.srcRev = atoi(val);
 		} else if (key == keys.text_content_length) {
@@ -395,6 +396,8 @@ int svndump_init(const char *filename)
 		return error("cannot open %s: %s", filename, strerror(errno));
 	fast_export_init(REPORT_FILENO);
 	strbuf_init(&rev_ctx.log, 4096);
+	strbuf_init(&node_ctx.src, 4096);
+	strbuf_init(&node_ctx.dst, 4096);
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
@@ -409,6 +412,8 @@ void svndump_deinit(void)
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);
+	strbuf_release(&node_ctx.src);
+	strbuf_release(&node_ctx.dst);
 	if (buffer_deinit(&input))
 		fprintf(stderr, "Input error\n");
 	if (ferror(stdout))
@@ -419,7 +424,5 @@ void svndump_reset(void)
 {
 	fast_export_reset();
 	buffer_reset(&input);
-	reset_dump_ctx(~0);
-	reset_rev_ctx(0);
-	reset_node_ctx(NULL);
+	pool_reset();
 }
