@@ -73,6 +73,7 @@ static struct {
 	uint32_t version, uuid, url;
 } dump_ctx;
 
+<<<<<<< HEAD
 static struct {
 	uint32_t uuid, revision_number, node_path, node_kind, node_action,
 		node_copyfrom_path, node_copyfrom_rev, text_content_length,
@@ -81,6 +82,8 @@ static struct {
 		text_delta, prop_delta;
 } keys;
 
+=======
+>>>>>>> 66a9029... vcs-svn: implement perfect hash for top-level keys
 static void reset_node_ctx(char *fname)
 {
 	node_ctx.type = 0;
@@ -123,6 +126,7 @@ static void reset_dump_ctx(uint32_t url)
 	dump_ctx.uuid = ~0;
 }
 
+<<<<<<< HEAD
 static void init_keys(void)
 {
 	keys.uuid = pool_intern("UUID");
@@ -148,12 +152,17 @@ static void init_keys(void)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 static void handle_property(uint32_t key, const char *val, uint32_t len,
 				uint32_t *type_set)
 =======
 static void handle_property(uint32_t key, const char *val, uint32_t len)
 >>>>>>> vcs-svn: pass paths through to fast-import
 =======
+=======
+=======
+>>>>>>> 66a9029... vcs-svn: implement perfect hash for top-level keys
+>>>>>>> vcs-svn: implement perfect hash for top-level keys
 static void handle_property(char *key, const char *val, uint32_t len)
 >>>>>>> vcs-svn: implement perfect hash for node-prop keys
 {
@@ -556,7 +565,6 @@ void svndump_read(const char *url)
 	char *t;
 	uint32_t active_ctx = DUMP_CTX;
 	uint32_t len;
-	uint32_t key;
 
 	reset_dump_ctx(pool_intern(url));
 	while ((t = buffer_read_line(&input))) {
@@ -565,16 +573,25 @@ void svndump_read(const char *url)
 			continue;
 		*val++ = '\0';
 		*val++ = '\0';
-		key = pool_intern(t);
 
-		if (key == keys.svn_fs_dump_format_version) {
+		/* strlen(key) */
+		switch (val - t - 2) { 
+		case 26:
+			if (memcmp(t, "SVN-fs-dump-format-version", 26))
+				continue;
 			dump_ctx.version = atoi(val);
 			if (dump_ctx.version > 3)
 				die("expected svn dump format version <= 3, found %"PRIu32,
 				    dump_ctx.version);
-		} else if (key == keys.uuid) {
+			break;
+		case 4:
+			if (memcmp(t, "UUID", 4))
+				continue;
 			dump_ctx.uuid = pool_intern(val);
-		} else if (key == keys.revision_number) {
+			break;
+		case 15:
+			if (memcmp(t, "Revision-number", 15))
+				continue;
 			if (active_ctx == NODE_CTX)
 				handle_node();
 			if (active_ctx == REV_CTX)
@@ -583,21 +600,31 @@ void svndump_read(const char *url)
 				end_revision();
 			active_ctx = REV_CTX;
 			reset_rev_ctx(atoi(val));
-		} else if (key == keys.node_path) {
-			if (active_ctx == NODE_CTX)
-				handle_node();
-			if (active_ctx == REV_CTX)
-				begin_revision();
-			active_ctx = NODE_CTX;
-			reset_node_ctx(val);
-		} else if (key == keys.node_kind) {
+			break;
+		case 9:
+			if (prefixcmp(t, "Node-"))
+				continue;
+			if (!memcmp(t + strlen("Node-"), "path", 4)) {
+				if (active_ctx == NODE_CTX)
+					handle_node();
+				if (active_ctx == REV_CTX)
+					begin_revision();
+				active_ctx = NODE_CTX;
+				reset_node_ctx(val);
+				break;
+			}
+			if (memcmp(t + strlen("Node-"), "kind", 4))
+				continue;
 			if (!strcmp(val, "dir"))
 				node_ctx.type = REPO_MODE_DIR;
 			else if (!strcmp(val, "file"))
 				node_ctx.type = REPO_MODE_BLB;
 			else
 				fprintf(stderr, "Unknown node-kind: %s\n", val);
-		} else if (key == keys.node_action) {
+			break;
+		case 11:
+			if (memcmp(t, "Node-action", 11))
+				continue;
 			if (!strcmp(val, "delete")) {
 				node_ctx.action = NODEACT_DELETE;
 			} else if (!strcmp(val, "add")) {
@@ -610,20 +637,50 @@ void svndump_read(const char *url)
 				fprintf(stderr, "Unknown node-action: %s\n", val);
 				node_ctx.action = NODEACT_UNKNOWN;
 			}
-		} else if (key == keys.node_copyfrom_path) {
+			break;
+		case 18:
+			if (memcmp(t, "Node-copyfrom-path", 18))
+				continue;
 			strbuf_reset(&node_ctx.src);
 			strbuf_addstr(&node_ctx.src, val);
-		} else if (key == keys.node_copyfrom_rev) {
+			break;
+		case 17:
+			if (memcmp(t, "Node-copyfrom-rev", 17))
+				continue;
 			node_ctx.srcRev = atoi(val);
-		} else if (key == keys.text_content_length) {
-			node_ctx.textLength = atoi(val);
-		} else if (key == keys.prop_content_length) {
+			break;
+		case 19:
+			if (!memcmp(t, "Text-content-length", 19)) {
+				node_ctx.textLength = atoi(val);
+				break;
+			}
+			if (memcmp(t, "Prop-content-length", 19))
+				continue;
 			node_ctx.propLength = atoi(val);
+<<<<<<< HEAD
 		} else if (key == keys.text_delta) {
 			node_ctx.text_delta = !strcmp(val, "true");
 		} else if (key == keys.prop_delta) {
 			node_ctx.prop_delta = !strcmp(val, "true");
+=======
+<<<<<<< HEAD
+>>>>>>> vcs-svn: implement perfect hash for top-level keys
 		} else if (key == keys.content_length) {
+=======
+			break;
+		case 10:
+			if (!memcmp(t, "Text-delta", 10)) {
+				node_ctx.text_delta = !strcmp(val, "true");
+				break;
+			}
+			if (memcmp(t, "Prop-delta", 10))
+				continue;
+			node_ctx.prop_delta = !strcmp(val, "true");
+			break;
+		case 14:
+			if (memcmp(t, "Content-length", 14))
+				continue;
+>>>>>>> 66a9029... vcs-svn: implement perfect hash for top-level keys
 			len = atoi(val);
 			buffer_read_line(&input);
 			if (active_ctx == REV_CTX) {
@@ -666,8 +723,15 @@ int svndump_init(const char *filename)
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
+<<<<<<< HEAD
 	init_keys();
+<<<<<<< HEAD
 	return 0;
+=======
+=======
+	return 0;
+>>>>>>> 66a9029... vcs-svn: implement perfect hash for top-level keys
+>>>>>>> vcs-svn: implement perfect hash for top-level keys
 }
 
 void svndump_deinit(void)
