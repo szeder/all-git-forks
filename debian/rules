@@ -105,6 +105,9 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
 	  '$(GIT)'/etc/bash_completion.d/git
+	# gitweb
+	install -d -m0755 '$(GIT)'/usr/share/gitweb
+	ln -s gitweb.cgi '$(GIT)'/usr/share/gitweb/index.cgi
 	# contrib
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
@@ -195,25 +198,13 @@ install-indep: build-arch-stamp build-indep-stamp
 	# gitweb
 	rm -rf '$(GIT)'web
 	install -d -m0755 '$(GIT)'web/usr/lib/cgi-bin
-	ln -s ../../share/gitweb/index.cgi \
+	ln -s ../../share/gitweb/gitweb.cgi \
 	  '$(GIT)'web/usr/lib/cgi-bin/gitweb.cgi
-	install -d -m0755 '$(GIT)'web/usr/share/gitweb
-	install -m0755 gitweb/gitweb.cgi \
-	  '$(GIT)'web/usr/share/gitweb/index.cgi
-	install -m0644 gitweb/gitweb.css \
-	  '$(GIT)'web/usr/share/gitweb/gitweb.css
-	install -m0644 gitweb/gitweb.js \
-	  '$(GIT)'web/usr/share/gitweb/gitweb.js
-	install -m0644 gitweb/git-favicon.png \
-	  '$(GIT)'web/usr/share/gitweb/git-favicon.png
-	install -m0644 gitweb/git-logo.png \
-	  '$(GIT)'web/usr/share/gitweb/git-logo.png
 	install -d -m0755 '$(GIT)'web/etc
 	install -m0644 debian/gitweb.conf '$(GIT)'web/etc/gitweb.conf
 	install -d -m0755 '$(GIT)'web/etc/apache2/conf.d
 	install -m0644 debian/gitweb.apache2.conf \
 	  '$(GIT)'web/etc/apache2/conf.d/gitweb
-	install -d -m0755 '$(GIT)'web/var/cache/git/
 	# git-all
 	rm -rf '$(GIT)'-all
 	install -d -m0755 '$(GIT)'-all

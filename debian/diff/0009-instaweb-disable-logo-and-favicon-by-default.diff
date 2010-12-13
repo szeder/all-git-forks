@@ -17,18 +17,18 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 2 insertions(+), 0 deletions(-)
 
 diff --git a/git-instaweb.sh b/git-instaweb.sh
-index faf9868..c3bc7da 100755
+index dd09f3d..7e89268 100755
 --- a/git-instaweb.sh
 +++ b/git-instaweb.sh
-@@ -389,6 +389,8 @@ s#(my|our) \$gitbin =.*#$1 \$gitbin = "'$GIT_EXEC_PATH'";#;
- s#(my|our) \$projects_list =.*#$1 \$projects_list = \$projectroot;#;
- s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;
- s#(my|our) \$GITWEB_CONFIG_SYSTEM =.*#$1 \$GITWEB_CONFIG_SYSTEM = "";#;
-+s#(my|our) \$favicon =.*#$1 \$favicon = undef;#;
-+s#(my|our) \$logo =.*#$1 \$logo = undef;#;
- '
+@@ -561,6 +561,8 @@ our \$projectroot = "$(dirname "$fqgitdir")";
+ our \$git_temp = "$fqgitdir/gitweb/tmp";
+ our \$projects_list = \$projectroot;
+ our \$GITWEB_CONFIG_SYSTEM = "";
++our \$favicon = undef;
++our \$logo = undef;
+ EOF
+ }
  
- gitweb_cgi () {
 -- 
 1.7.2.2
 

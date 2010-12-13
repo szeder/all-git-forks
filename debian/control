@@ -211,7 +211,7 @@ Description: fast, scalable, distributed revision control system (web interface)
  revision tracking capabilities, not dependent on network access or a
  central server.
  .
- This package provides a web interface for browsing git repositories.
+ This package configures a web interface for browsing git repositories.
  .
  If apache2 is installed, the web interface is automatically made
  available at http://localhost/gitweb.  Other servers that support CGI

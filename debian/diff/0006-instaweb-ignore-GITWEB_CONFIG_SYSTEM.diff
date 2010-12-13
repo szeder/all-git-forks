@@ -18,29 +18,28 @@ gitweb structure, 2010-05-28), instaweb will provide its own
 gitweb_config.perl, making this patch a no-op.  gitweb does not look
 at the fallback /etc/gitweb.conf when supplied with a config file.
 
+[jn: forward-ported to post-1.7.2 world.  Probably worth dropping.]
+
 Reported-by: Uwe Kleine-König <u.kleine-koenig@pengutronix.de>
 Acked-by: Eric Wong <normalperson@yhbt.net>
 Helped-by: Junio C Hamano <gitster@pobox.com>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- git-instaweb.sh |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ git-instaweb.sh |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/git-instaweb.sh b/git-instaweb.sh
-index 0c6e103..faf9868 100755
+index b7342e2..dd09f3d 100755
 --- a/git-instaweb.sh
 +++ b/git-instaweb.sh
-@@ -387,7 +387,9 @@ script='
- s#^(my|our) \$projectroot =.*#$1 \$projectroot = "'$(dirname "$fqgitdir")'";#;
- s#(my|our) \$gitbin =.*#$1 \$gitbin = "'$GIT_EXEC_PATH'";#;
- s#(my|our) \$projects_list =.*#$1 \$projects_list = \$projectroot;#;
--s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;'
-+s#(my|our) \$git_temp =.*#$1 \$git_temp = "'$fqgitdir/gitweb/tmp'";#;
-+s#(my|our) \$GITWEB_CONFIG_SYSTEM =.*#$1 \$GITWEB_CONFIG_SYSTEM = "";#;
-+'
+@@ -560,6 +560,7 @@ gitweb_conf() {
+ our \$projectroot = "$(dirname "$fqgitdir")";
+ our \$git_temp = "$fqgitdir/gitweb/tmp";
+ our \$projects_list = \$projectroot;
++our \$GITWEB_CONFIG_SYSTEM = "";
+ EOF
+ }
  
- gitweb_cgi () {
- 	cat > "$1.tmp" <<\EOFGITWEB
 -- 
 1.7.2.2
 

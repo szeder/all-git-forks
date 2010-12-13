@@ -1,8 +1,21 @@
 git (1:1.7.2.3-2.2.1) experimental; urgency=low
 
+  * update gitweb and instaweb to v1.7.2.x:
+    - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove,
+      no longer needed.
+    - debian/diff/0006...0009-instaweb-disable-logo...diff: adapt.
+    - debian/rules:
+      + package git: install gitweb for use by instaweb using
+        standard "make install" target.
+      + package gitweb: do not install anything except
+        configuration, to avoid file conflicts with the git package.
+    - debian/control: describe gitweb as a configuration package.
+    - debian/gitweb.NEWS.Debian, debian/git.README.Debian,
+      debian/gitweb.conf: auxiliary files have been moved to
+      /usr/share/gitweb/static.
   * gitweb.conf: disable use of rename patches by default
     (@diff_opts = ()).
-  * debian/diff/0001-Revert-gitweb-Use-diff_opts...diff: remove;
+  * debian/diff/0001-Revert-gitweb-Use-diff_opts...diff: remove,
     no longer needed.
   * debian/rules: gitweb: move gitweb.cgi content to /usr/share,
     symlink to /usr/lib/cgi-bin.
