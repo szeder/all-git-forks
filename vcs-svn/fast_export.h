@@ -51,9 +51,15 @@ void fast_export_modify(uint32_t depth, const uint32_t *path,
 =======
 void fast_export_delete(const char *path);
 void fast_export_modify(const char *path, uint32_t mode, const char *dataref);
+<<<<<<< HEAD
 >>>>>>> 01823f6... vcs-svn: pass paths through to fast-import
 void fast_export_begin_commit(uint32_t revision, uint32_t author, char *log,
 			uint32_t uuid, uint32_t url, unsigned long timestamp);
+=======
+void fast_export_begin_commit(uint32_t revision, const char *author,
+			const char *log, const char *uuid, const char *url,
+			unsigned long timestamp);
+>>>>>>> 4f1c5cb... vcs-svn: factor out usage of string_pool
 void fast_export_end_commit(uint32_t revision);
 void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input);
 void fast_export_delta(uint32_t mode, const char *path,
