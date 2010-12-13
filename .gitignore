@@ -176,7 +176,6 @@
 /test-run-command
 /test-sha1
 /test-sigchain
-/test-string-pool
 /test-subprocess
 /test-svn-fe
 /test-treap
