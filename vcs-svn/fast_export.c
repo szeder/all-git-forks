@@ -11,7 +11,6 @@
 #include "svndiff.h"
 #include "sliding_window.h"
 #include "line_buffer.h"
-#include "string_pool.h"
 
 #define MAX_GITSVN_LINE_LEN 4096
 
@@ -68,25 +67,23 @@ void fast_export_modify(const char *path, uint32_t mode, const char *dataref)
 }
 
 static char gitsvnline[MAX_GITSVN_LINE_LEN];
-void fast_export_begin_commit(uint32_t revision, uint32_t author, char *log,
-			uint32_t uuid, uint32_t url,
+void fast_export_begin_commit(uint32_t revision, const char *author,
+			const char *log, const char *uuid, const char *url,
 			unsigned long timestamp)
 {
-	if (!log)
-		log = "";
-	if (~uuid && ~url) {
+	if (*uuid && *url) {
 		snprintf(gitsvnline, MAX_GITSVN_LINE_LEN,
 				"\n\ngit-svn-id: %s@%"PRIu32" %s\n",
-				 pool_fetch(url), revision, pool_fetch(uuid));
+				 url, revision, uuid);
 	} else {
 		*gitsvnline = '\0';
 	}
 	printf("commit refs/heads/master\n");
 	printf("mark :%"PRIu32"\n", revision);
 	printf("committer %s <%s@%s> %ld +0000\n",
-		   ~author ? pool_fetch(author) : "nobody",
-		   ~author ? pool_fetch(author) : "nobody",
-		   ~uuid ? pool_fetch(uuid) : "local", timestamp);
+		   *author ? author : "nobody",
+		   *author ? author : "nobody",
+		   *uuid ? uuid : "local", timestamp);
 	printf("data %"PRIu32"\n%s%s\n",
 		   (uint32_t) (strlen(log) + strlen(gitsvnline)),
 		   log, gitsvnline);
