@@ -8,9 +8,8 @@
 #include "repo_tree.h"
 #include "fast_export.h"
 
-const char *repo_read_path(const char *path)
+const char *repo_read_path(const char *path, uint32_t *mode_out)
 {
-	uint32_t unused;
 	static struct strbuf buf = STRBUF_INIT;
 
 <<<<<<< HEAD
@@ -138,11 +137,12 @@ uint32_t repo_read_path(uint32_t *path)
 	return content_offset;
 =======
 	strbuf_reset(&buf);
-	fast_export_ls(path, &unused, &buf);
+	fast_export_ls(path, mode_out, &buf);
 	return buf.buf;
 >>>>>>> 7e69325... vcs-svn: eliminate repo_tree structure
 }
 
+<<<<<<< HEAD
 uint32_t repo_read_mode(const char *path)
 {
 	uint32_t result;
@@ -157,6 +157,8 @@ uint32_t repo_read_mode(const char *path)
 void repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
 >>>>>>> efb4d0f... vcs-svn: simplify repo_modify_path and repo_copy
 =======
+=======
+>>>>>>> fe5ffd8... vcs-svn: avoid using ls command twice
 void repo_copy(uint32_t revision, const char *src, const char *dst)
 >>>>>>> 01823f6... vcs-svn: pass paths through to fast-import
 {
