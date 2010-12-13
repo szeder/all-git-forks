@@ -74,8 +74,7 @@ static struct {
 } dump_ctx;
 
 static struct {
-	uint32_t svn_log, svn_author, svn_date, svn_executable, svn_special, uuid,
-		revision_number, node_path, node_kind, node_action,
+	uint32_t uuid, revision_number, node_path, node_kind, node_action,
 		node_copyfrom_path, node_copyfrom_rev, text_content_length,
 		prop_content_length, content_length, svn_fs_dump_format_version,
 		/* version 3 format */
@@ -126,11 +125,6 @@ static void reset_dump_ctx(uint32_t url)
 
 static void init_keys(void)
 {
-	keys.svn_log = pool_intern("svn:log");
-	keys.svn_author = pool_intern("svn:author");
-	keys.svn_date = pool_intern("svn:date");
-	keys.svn_executable = pool_intern("svn:executable");
-	keys.svn_special = pool_intern("svn:special");
 	keys.uuid = pool_intern("UUID");
 	keys.revision_number = pool_intern("Revision-number");
 	keys.node_path = pool_intern("Node-path");
@@ -153,13 +147,20 @@ static void init_keys(void)
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 static void handle_property(uint32_t key, const char *val, uint32_t len,
 				uint32_t *type_set)
 =======
 static void handle_property(uint32_t key, const char *val, uint32_t len)
 >>>>>>> vcs-svn: pass paths through to fast-import
+=======
+static void handle_property(char *key, const char *val, uint32_t len)
+>>>>>>> vcs-svn: implement perfect hash for node-prop keys
 {
-	if (key == keys.svn_log) {
+	switch (strlen(key)) {
+	case 7:
+		if (memcmp(key, "svn:log", 7))
+			break;
 		if (!val)
 			die("invalid dump: unsets svn:log");
 		/* Value length excludes terminating nul. */
@@ -167,14 +168,25 @@ static void handle_property(uint32_t key, const char *val, uint32_t len)
 		rev_ctx.log = log_copy(len + 1, val);
 =======
 		strbuf_add(&rev_ctx.log, val, len + 1);
+<<<<<<< HEAD
 >>>>>>> vcs-svn: pass paths through to fast-import
 	} else if (key == keys.svn_author) {
+=======
+		break;
+	case 10:
+		if (memcmp(key, "svn:author", 10))
+			break;
+>>>>>>> vcs-svn: implement perfect hash for node-prop keys
 		rev_ctx.author = pool_intern(val);
-	} else if (key == keys.svn_date) {
+		break;
+	case 8:
+		if (memcmp(key, "svn:date", 8))
+			break;
 		if (!val)
 			die("invalid dump: unsets svn:date");
 		if (parse_date_basic(val, &rev_ctx.timestamp, NULL))
 			warning("invalid timestamp: %s", val);
+<<<<<<< HEAD
 <<<<<<< HEAD
 	} else if (key == keys.svn_executable || key == keys.svn_special) {
 		if (*type_set) {
@@ -193,15 +205,25 @@ static void handle_property(uint32_t key, const char *val, uint32_t len)
 	}
 =======
 	} else if (key == keys.svn_executable) {
+=======
+		break;
+	case 14:
+		if (memcmp(key, "svn:executable", 14))
+			break;
+>>>>>>> vcs-svn: implement perfect hash for node-prop keys
 		if (val)
 			node_ctx.type = REPO_MODE_EXE;
 		else if (node_ctx.type == REPO_MODE_EXE)
 			node_ctx.type = REPO_MODE_BLB;
-	} else if (key == keys.svn_special) {
+		break;
+	case 11:
+		if (memcmp(key, "svn:special", 11))
+			break;
 		if (val)
 			node_ctx.type = REPO_MODE_LNK;
 		else if (node_ctx.type == REPO_MODE_LNK)
 			node_ctx.type = REPO_MODE_BLB;
+		break;
 	}
 }
 
@@ -216,6 +238,11 @@ static void die_short_read(struct line_buffer *input)
 
 static void read_props(void)
 {
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+	uint32_t len;
+>>>>>>> vcs-svn: implement perfect hash for node-prop keys
 	uint32_t key = ~0;
 	const char *t;
 	/*
@@ -254,9 +281,56 @@ static void read_props(void)
 		case 'V':
 			handle_property(key, val, len, &type_set);
 			key = ~0;
+<<<<<<< HEAD
 			continue;
 		default:
 			die("invalid property line: %s\n", t);
+=======
+			buffer_read_line();
+=======
+	char key[16] = {0};
+	for (;;) {
+		char *t = buffer_read_line(&input);
+		uint32_t len;
+		const char *val;
+		char type;
+
+		if (!t)
+			die_short_read(&input);
+		if (!strcmp(t, "PROPS-END"))
+			return;
+
+		type = t[0];
+		if (!type || t[1] != ' ')
+			die("invalid property line: %s\n", t);
+		len = atoi(&t[2]);
+		val = buffer_read_string(&input, len);
+		if (!val)
+			die_short_read(&input);
+		if (buffer_read_char(&input) != '\n')
+			die("invalid dump: incorrect key length");
+
+		switch (type) {
+		case 'K':
+		case 'D':
+			if (len < sizeof(key))
+				memcpy(key, val, len + 1);
+			else	/* nonstandard key. */
+				*key = '\0';
+			if (type == 'K')
+				continue;
+			assert(type == 'D');
+			val = NULL;
+			len = 0;
+			/* fall through */
+		case 'V':
+			handle_property(key, val, len);
+			*key = '\0';
+			continue;
+		default:
+			die("invalid property line: %s\n", t);
+>>>>>>> 8dfcb73... vcs-svn: implement perfect hash for node-prop keys
+>>>>>>> vcs-svn: implement perfect hash for node-prop keys
 		}
 	}
 }
