@@ -170,8 +170,11 @@
 /test-index-version
 /test-line-buffer
 /test-match-trees
+<<<<<<< HEAD
 /test-mktemp
 /test-obj-pool
+=======
+>>>>>>> vcs-svn: drop obj_pool.h
 /test-parse-options
 /test-path-utils
 /test-run-command
