@@ -11,7 +11,6 @@
 #include "repo_tree.h"
 #include "fast_export.h"
 #include "line_buffer.h"
-#include "string_pool.h"
 #include "strbuf.h"
 
 #define REPORT_FILENO 3
@@ -42,13 +41,14 @@ static struct {
 } node_ctx;
 
 static struct {
-	uint32_t revision, author;
+	uint32_t revision;
 	unsigned long timestamp;
-	struct strbuf log;
+	struct strbuf log, author;
 } rev_ctx;
 
 static struct {
-	uint32_t version, uuid, url;
+	uint32_t version;
+	struct strbuf uuid, url;
 } dump_ctx;
 
 static void reset_node_ctx(char *fname)
@@ -71,14 +71,16 @@ static void reset_rev_ctx(uint32_t revision)
 	rev_ctx.revision = revision;
 	rev_ctx.timestamp = 0;
 	strbuf_reset(&rev_ctx.log);
-	rev_ctx.author = ~0;
+	strbuf_reset(&rev_ctx.author);
 }
 
-static void reset_dump_ctx(uint32_t url)
+static void reset_dump_ctx(const char *url)
 {
-	dump_ctx.url = url;
+	strbuf_reset(&dump_ctx.url);
+	if (url)
+		strbuf_addstr(&dump_ctx.url, url);
 	dump_ctx.version = 1;
-	dump_ctx.uuid = ~0;
+	strbuf_reset(&dump_ctx.uuid);
 }
 
 /* Compare string to literal of equal length; must be guarded by length test. */
@@ -101,7 +103,9 @@ static void handle_property(struct strbuf *key_buf, const char *val, uint32_t le
 	case sizeof("svn:author"):
 		if (constcmp(key, "svn:author"))
 			break;
-		rev_ctx.author = pool_intern(val);
+		strbuf_reset(&rev_ctx.author);
+		if (val)
+			strbuf_add(&rev_ctx.author, val, len);
 		break;
 	case sizeof("svn:date"):
 		if (constcmp(key, "svn:date"))
@@ -277,8 +281,9 @@ static void begin_revision(void)
 {
 	if (!rev_ctx.revision)	/* revision 0 gets no git commit. */
 		return;
-	fast_export_begin_commit(rev_ctx.revision, rev_ctx.author, rev_ctx.log.buf,
-		dump_ctx.uuid, dump_ctx.url, rev_ctx.timestamp);
+	fast_export_begin_commit(rev_ctx.revision, rev_ctx.author.buf,
+		rev_ctx.log.buf, dump_ctx.uuid.buf, dump_ctx.url.buf,
+		rev_ctx.timestamp);
 }
 
 static void end_revision(void)
@@ -294,7 +299,7 @@ void svndump_read(const char *url)
 	uint32_t active_ctx = DUMP_CTX;
 	uint32_t len;
 
-	reset_dump_ctx(pool_intern(url));
+	reset_dump_ctx(url);
 	while ((t = buffer_read_line(&input))) {
 		val = strstr(t, ": ");
 		if (!val)
@@ -315,7 +320,8 @@ void svndump_read(const char *url)
 		case sizeof("UUID"):
 			if (constcmp(t, "UUID"))
 				continue;
-			dump_ctx.uuid = pool_intern(val);
+			strbuf_reset(&dump_ctx.uuid);
+			strbuf_addstr(&dump_ctx.uuid, val);
 			break;
 		case sizeof("Revision-number"):
 			if (constcmp(t, "Revision-number"))
@@ -444,10 +450,13 @@ int svndump_init(const char *filename)
 	if (buffer_init(&input, filename))
 		return error("cannot open %s: %s", filename, strerror(errno));
 	fast_export_init(REPORT_FILENO);
+	strbuf_init(&dump_ctx.uuid, 4096);
+	strbuf_init(&dump_ctx.url, 4096);
 	strbuf_init(&rev_ctx.log, 4096);
+	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(~0);
+	reset_dump_ctx(NULL);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
@@ -456,7 +465,7 @@ int svndump_init(const char *filename)
 void svndump_deinit(void)
 {
 	fast_export_deinit();
-	reset_dump_ctx(~0);
+	reset_dump_ctx(NULL);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);
@@ -472,5 +481,10 @@ void svndump_reset(void)
 {
 	fast_export_reset();
 	buffer_reset(&input);
-	pool_reset();
+	strbuf_release(&dump_ctx.uuid);
+	strbuf_release(&dump_ctx.url);
+	strbuf_release(&rev_ctx.log);
+	strbuf_release(&rev_ctx.author);
+	strbuf_release(&node_ctx.src);
+	strbuf_release(&node_ctx.dst);
 }
