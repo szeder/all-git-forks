@@ -51,8 +51,65 @@ test_expect_success default '
 
 '
 
+test_expect_success 'default (attribute)' '
+
+	test_might_fail git config --unset core.whitespace &&
+	echo "F whitespace" >.gitattributes &&
+	prepare_output &&
+
+	grep Eight error >/dev/null &&
+	grep HT error >/dev/null &&
+	grep With error >/dev/null &&
+	grep Return error >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
+test_expect_success 'default, tabwidth=10 (attribute)' '
+
+	git config core.whitespace "tabwidth=10" &&
+	echo "F whitespace" >.gitattributes &&
+	prepare_output &&
+
+	grep Eight normal >/dev/null &&
+	grep HT error >/dev/null &&
+	grep With error >/dev/null &&
+	grep Return error >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
+test_expect_success 'no check (attribute)' '
+
+	test_might_fail git config --unset core.whitespace &&
+	echo "F -whitespace" >.gitattributes &&
+	prepare_output &&
+
+	grep Eight normal >/dev/null &&
+	grep HT normal >/dev/null &&
+	grep With normal >/dev/null &&
+	grep Return normal >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
+test_expect_success 'no check, tabwidth=10 (attribute), must be irrelevant' '
+
+	git config core.whitespace "tabwidth=10" &&
+	echo "F -whitespace" >.gitattributes &&
+	prepare_output &&
+
+	grep Eight normal >/dev/null &&
+	grep HT normal >/dev/null &&
+	grep With normal >/dev/null &&
+	grep Return normal >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
 test_expect_success 'without -trail' '
 
+	rm -f .gitattributes &&
 	git config core.whitespace -trail &&
 	prepare_output &&
 
@@ -134,6 +191,34 @@ test_expect_success 'with indent-non-tab only (attribute)' '
 
 '
 
+test_expect_success 'with indent-non-tab only, tabwidth=10' '
+
+	rm -f .gitattributes &&
+	git config core.whitespace indent,tabwidth=10,-trailing,-space &&
+	prepare_output &&
+
+	grep Eight normal >/dev/null &&
+	grep HT normal >/dev/null &&
+	grep With normal >/dev/null &&
+	grep Return normal >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
+test_expect_success 'with indent-non-tab only, tabwidth=10 (attribute)' '
+
+	test_might_fail git config --unset core.whitespace &&
+	echo "F whitespace=indent,-trailing,-space,tabwidth=10" >.gitattributes &&
+	prepare_output &&
+
+	grep Eight normal >/dev/null &&
+	grep HT normal >/dev/null &&
+	grep With normal >/dev/null &&
+	grep Return normal >/dev/null &&
+	grep No normal >/dev/null
+
+'
+
 test_expect_success 'with cr-at-eol' '
 
 	rm -f .gitattributes &&
@@ -176,6 +261,15 @@ test_expect_success 'trailing empty lines (2)' '
 	echo "F -whitespace" >.gitattributes &&
 	git diff --check >output &&
 	! test -s output
+
+'
+
+test_expect_success 'checkdiff shows correct line number for trailing blank lines' '
+
+	printf "a\nb\n" > G &&
+	git add G &&
+	printf "x\nx\nx\na\nb\nc\n\n" > G &&
+	[ "$(git diff --check -- G)" = "G:7: new blank line at EOF." ]
 
 '
 

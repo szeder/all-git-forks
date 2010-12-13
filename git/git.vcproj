@@ -40,11 +40,11 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="-GL -MTd  -nologo"
+				AdditionalOptions="-MTd  -wd4018 -wd4090 -wd4244"
 				Optimization="0"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="&quot;..\.\.&quot;;&quot;..\.\../zlib&quot;;&quot;..\.\compat&quot;;&quot;..\.\compat/fnmatch&quot;;&quot;..\.\compat/regex&quot;;&quot;..\.\compat/vcbuild&quot;;&quot;..\.\compat/vcbuild/include&quot;;&quot;..\.\compat/win32&quot;"
-				PreprocessorDefinitions="WIN32,_DEBUG,GIT_HTML_PATH=\&quot;share/doc/git-doc\&quot;,GIT_INFO_PATH=\&quot;share/info\&quot;,GIT_MAN_PATH=\&quot;share/man\&quot;,DEFAULT_GIT_TEMPLATE_DIR=\&quot;share/git-core/templates\&quot;,GIT_VERSION=\&quot;1.7.3.2.346.ge2171.dirty.MSVC\&quot;,HAVE_ALLOCA_H,HAVE_STRING_H,NOGDI,NO_C99_FORMAT,NO_CURL,NO_ICONV,NO_IPV6,NO_LIBGEN_H,NO_MEMMEM,NO_MKDTEMP,NO_MKSTEMPS,NO_NSEC,NO_POSIX_GOODIES,NO_PREAD,NO_SETENV,NO_STRCASESTR,NO_STRLCPY,NO_STRTOK_R,NO_STRTOULL,NO_STRTOUMAX,NO_ST_BLOCKS_IN_STRUCT_STAT,NO_SYMLINK_HEAD,NO_UNSETENV,OBJECT_CREATION_MODE=1,RUNTIME_PREFIX,SHA1_HEADER=\&quot;block-sha1/sha1.h\&quot;,SNPRINTF_RETURNS_BOGUS,STRIP_EXTENSION=\&quot;.exe\&quot;,UNRELIABLE_FSTAT,USE_WIN32_MMAP,WIN32,_CONSOLE,_CRT_NONSTDC_NO_DEPRECATE,_CRT_SECURE_NO_WARNINGS,__USE_MINGW_ACCESS"
+				PreprocessorDefinitions="WIN32,_DEBUG,GIT_HTML_PATH=\&quot;share/doc/git-doc\&quot;,GIT_INFO_PATH=\&quot;share/info\&quot;,GIT_MAN_PATH=\&quot;share/man\&quot;,DEFAULT_GIT_TEMPLATE_DIR=\&quot;share/git-core/templates\&quot;,GIT_VERSION=\&quot;1.7.3.3.564.ga3b89.dirty.MSVC\&quot;,HAVE_ALLOCA_H,HAVE_STRING_H,NOGDI,NO_C99_FORMAT,NO_CURL,NO_FNMATCH,NO_ICONV,NO_IPV6,NO_LIBGEN_H,NO_MEMMEM,NO_MKDTEMP,NO_MKSTEMPS,NO_NSEC,NO_POSIX_GOODIES,NO_PREAD,NO_SETENV,NO_STRCASESTR,NO_STRLCPY,NO_STRTOK_R,NO_STRTOULL,NO_STRTOUMAX,NO_ST_BLOCKS_IN_STRUCT_STAT,NO_SYMLINK_HEAD,NO_UNSETENV,OBJECT_CREATION_MODE=1,RUNTIME_PREFIX,SHA1_HEADER=\&quot;block-sha1/sha1.h\&quot;,SNPRINTF_RETURNS_BOGUS,STRIP_EXTENSION=\&quot;.exe\&quot;,UNRELIABLE_FSTAT,USE_WIN32_MMAP,WIN32,_CONSOLE,_CRT_NONSTDC_NO_DEPRECATE,_CRT_SECURE_NO_WARNINGS,__USE_MINGW_ACCESS"
 				MinimalRebuild="true"
 				RuntimeLibrary="1"
 				UsePrecompiledHeader="0"
@@ -63,14 +63,12 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
+				AdditionalOptions="-IGNORE:4049 -IGNORE:4217 -NODEFAULTLIB:MSVCRT.lib -NOLOGO -SUBSYSTEM:CONSOLE -LIBPATH:..\."
 				AdditionalDependencies=" advapi32.lib libgit.lib shell32.lib wininet.lib ws2_32.lib xdiff_lib.lib zlib.lib"
 				LinkIncremental="2"
-				AdditionalLibraryDirectories=".."
-				IgnoreDefaultLibraryNames="MSVCRT.lib"
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="1"
-				CLRUnmanagedCodeCheck="false"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -120,12 +118,12 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="-GL -MT -Os -nologo"
+				AdditionalOptions="-MT -Os -wd4018 -wd4090 -wd4244"
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				EnableIntrinsicFunctions="true"
 				AdditionalIncludeDirectories="&quot;..\.\.&quot;;&quot;..\.\../zlib&quot;;&quot;..\.\compat&quot;;&quot;..\.\compat/fnmatch&quot;;&quot;..\.\compat/regex&quot;;&quot;..\.\compat/vcbuild&quot;;&quot;..\.\compat/vcbuild/include&quot;;&quot;..\.\compat/win32&quot;"
-				PreprocessorDefinitions="WIN32,NDEBUG,GIT_HTML_PATH=\&quot;share/doc/git-doc\&quot;,GIT_INFO_PATH=\&quot;share/info\&quot;,GIT_MAN_PATH=\&quot;share/man\&quot;,DEFAULT_GIT_TEMPLATE_DIR=\&quot;share/git-core/templates\&quot;,GIT_VERSION=\&quot;1.7.3.2.346.ge2171.dirty.MSVC\&quot;,HAVE_ALLOCA_H,HAVE_STRING_H,NOGDI,NO_C99_FORMAT,NO_CURL,NO_ICONV,NO_IPV6,NO_LIBGEN_H,NO_MEMMEM,NO_MKDTEMP,NO_MKSTEMPS,NO_NSEC,NO_POSIX_GOODIES,NO_PREAD,NO_SETENV,NO_STRCASESTR,NO_STRLCPY,NO_STRTOK_R,NO_STRTOULL,NO_STRTOUMAX,NO_ST_BLOCKS_IN_STRUCT_STAT,NO_SYMLINK_HEAD,NO_UNSETENV,OBJECT_CREATION_MODE=1,RUNTIME_PREFIX,SHA1_HEADER=\&quot;block-sha1/sha1.h\&quot;,SNPRINTF_RETURNS_BOGUS,STRIP_EXTENSION=\&quot;.exe\&quot;,UNRELIABLE_FSTAT,USE_WIN32_MMAP,WIN32,_CONSOLE,_CRT_NONSTDC_NO_DEPRECATE,_CRT_SECURE_NO_WARNINGS,__USE_MINGW_ACCESS"
+				PreprocessorDefinitions="WIN32,NDEBUG,GIT_HTML_PATH=\&quot;share/doc/git-doc\&quot;,GIT_INFO_PATH=\&quot;share/info\&quot;,GIT_MAN_PATH=\&quot;share/man\&quot;,DEFAULT_GIT_TEMPLATE_DIR=\&quot;share/git-core/templates\&quot;,GIT_VERSION=\&quot;1.7.3.3.564.ga3b89.dirty.MSVC\&quot;,HAVE_ALLOCA_H,HAVE_STRING_H,NOGDI,NO_C99_FORMAT,NO_CURL,NO_FNMATCH,NO_ICONV,NO_IPV6,NO_LIBGEN_H,NO_MEMMEM,NO_MKDTEMP,NO_MKSTEMPS,NO_NSEC,NO_POSIX_GOODIES,NO_PREAD,NO_SETENV,NO_STRCASESTR,NO_STRLCPY,NO_STRTOK_R,NO_STRTOULL,NO_STRTOUMAX,NO_ST_BLOCKS_IN_STRUCT_STAT,NO_SYMLINK_HEAD,NO_UNSETENV,OBJECT_CREATION_MODE=1,RUNTIME_PREFIX,SHA1_HEADER=\&quot;block-sha1/sha1.h\&quot;,SNPRINTF_RETURNS_BOGUS,STRIP_EXTENSION=\&quot;.exe\&quot;,UNRELIABLE_FSTAT,USE_WIN32_MMAP,WIN32,_CONSOLE,_CRT_NONSTDC_NO_DEPRECATE,_CRT_SECURE_NO_WARNINGS,__USE_MINGW_ACCESS"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -144,7 +142,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalOptions="-IGNORE:4049 -IGNORE:4217 -LTCG -NODEFAULTLIB:MSVCRT.lib -NOLOGO -SUBSYSTEM:CONSOLE -nologo -LIBPATH:..\."
+				AdditionalOptions="-IGNORE:4049 -IGNORE:4217 -NODEFAULTLIB:MSVCRT.lib -NOLOGO -SUBSYSTEM:CONSOLE -LIBPATH:..\."
 				AdditionalDependencies=" advapi32.lib libgit.lib shell32.lib wininet.lib ws2_32.lib xdiff_lib.lib zlib.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
@@ -442,6 +440,14 @@
 			</File>
 			<File
 				RelativePath="..\.\builtin\reflog.c"
+				>
+			</File>
+			<File
+				RelativePath="..\.\builtin\remote-ext.c"
+				>
+			</File>
+			<File
+				RelativePath="..\.\builtin\remote-fd.c"
 				>
 			</File>
 			<File

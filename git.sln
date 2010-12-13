@@ -285,4 +285,7 @@ Global
 		{6171953F-DD26-44C7-A3BE-CC45F86FC11F}.Release|Win32.ActiveCfg = Release|Win32
 		{6171953F-DD26-44C7-A3BE-CC45F86FC11F}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 EndGlobal

@@ -28,6 +28,7 @@ continue           continue rebasing process
 abort              abort rebasing process and restore original branch
 skip               skip current patch and continue rebasing process
 no-verify          override pre-rebase hook from stopping the operation
+verify             allow pre-rebase hook to run
 root               rebase all reachable commmits up to the root(s)
 autosquash         move commits that begin with squash!/fixup! under -i
 "
@@ -153,14 +154,6 @@ run_pre_rebase_hook () {
 	fi
 }
 
-require_clean_work_tree () {
-	# test if working tree is dirty
-	git rev-parse --verify HEAD > /dev/null &&
-	git update-index --ignore-submodules --refresh &&
-	git diff-files --quiet --ignore-submodules &&
-	git diff-index --cached --quiet HEAD --ignore-submodules -- ||
-	die "Working tree is dirty"
-}
 
 ORIG_REFLOG_ACTION="$GIT_REFLOG_ACTION"
 
@@ -557,7 +550,7 @@ do_next () {
 			exit "$status"
 		fi
 		# Run in subshell because require_clean_work_tree can die.
-		if ! (require_clean_work_tree)
+		if ! (require_clean_work_tree "rebase")
 		then
 			warn "Commit or stash your changes, and then run"
 			warn
@@ -757,6 +750,7 @@ do
 		OK_TO_SKIP_PRE_REBASE=yes
 		;;
 	--verify)
+		OK_TO_SKIP_PRE_REBASE=
 		;;
 	--continue)
 		is_standalone "$@" || usage
@@ -798,7 +792,7 @@ first and then run 'git rebase --continue' again."
 
 		record_in_rewritten "$(cat "$DOTEST"/stopped-sha)"
 
-		require_clean_work_tree
+		require_clean_work_tree "rebase"
 		do_rest
 		;;
 	--abort)
@@ -896,7 +890,7 @@ first and then run 'git rebase --continue' again."
 
 		comment_for_reflog start
 
-		require_clean_work_tree
+		require_clean_work_tree "rebase" "Please commit or stash them."
 
 		if test ! -z "$1"
 		then

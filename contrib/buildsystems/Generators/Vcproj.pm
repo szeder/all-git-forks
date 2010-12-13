@@ -120,10 +120,12 @@ sub createLibProject {
         if (/^-LTCG/) {
         } elsif (/^-L/) {
             $_ =~ s/^-L/-LIBPATH:$rel_dir\//;
+        } elsif (/^-wd/) {
+            next;
         }
         push(@tmp2, $_);
     }
-    my $lflags = join(" ", sort(@tmp));
+    my $lflags = join(" ", sort(@tmp2));
 
     $defines =~ s/-D//g;
     $defines =~ s/\"/\\&quot;/g;
@@ -136,12 +138,13 @@ sub createLibProject {
 <?xml version="1.0" encoding = "Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="$target"
 	ProjectGUID="$uuid">
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -279,16 +282,21 @@ sub createLibProject {
 			/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
+			>
 EOM
     foreach(@sources) {
         print F << "EOM";
 			<File
-				RelativePath="$_"/>
+				RelativePath="$_"
+				>
+			</File>
 EOM
     }
     print F << "EOM";
@@ -338,16 +346,19 @@ sub createAppProject {
         $_ =~ s/\//_/g;
         $libs .= " $_";
     }
+    
     my @tmp  = @{$$build_structure{"APPS_${appname}_LFLAGS"}};
     my @tmp2 = ();
     foreach (@tmp) {
         if (/^-LTCG/) {
         } elsif (/^-L/) {
             $_ =~ s/^-L/-LIBPATH:$rel_dir\//;
+        } elsif (/^-wd/) {
+            next;
         }
         push(@tmp2, $_);
     }
-    my $lflags = join(" ", sort(@tmp)) . " -LIBPATH:$rel_dir";
+    my $lflags = join(" ", sort(@tmp2)) . " -LIBPATH:$rel_dir";
 
     $defines =~ s/-D//g;
     $defines =~ s/\"/\\&quot;/g;
@@ -361,12 +372,13 @@ sub createAppProject {
 <?xml version="1.0" encoding = "Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="$target"
 	ProjectGUID="$uuid">
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -418,8 +430,8 @@ sub createAppProject {
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="$libs"
 				AdditionalOptions="$lflags"
+				AdditionalDependencies="$libs"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -490,14 +502,14 @@ sub createAppProject {
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="$libs"
 				AdditionalOptions="$lflags"
+				AdditionalDependencies="$libs"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
-				TargetMachine="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -516,16 +528,21 @@ sub createAppProject {
 			/>
 		</Configuration>
 	</Configurations>
+	<References>
+	</References>
 	<Files>
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
-			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
+			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
+			>
 EOM
     foreach(@sources) {
         print F << "EOM";
 			<File
-				RelativePath="$_"/>
+				RelativePath="$_"
+				>
+			</File>
 EOM
     }
     print F << "EOM";
