@@ -335,6 +335,9 @@ static struct commit_list *first_interesting_parent(struct git_graph *graph)
 	if (!parents)
 		return NULL;
 
+	if ((graph->revs->first_parent_only == 2) && parents->next &&
+		graph_is_interesting(graph, parents->next->item))
+		return parents->next;
 	/*
 	 * If the first parent is interesting, return it
 	 */

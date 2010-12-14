@@ -593,6 +593,10 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 
 		if (parse_commit(p) < 0)
 			return -1;
+		/* skip 1st prnt if there is a 2nd one for --second-parent */
+		if ((revs->first_parent_only == 2) && (parent->next) &&
+		    (parent == commit->parents))
+			continue;
 		if (revs->show_source && !p->util)
 			p->util = commit->util;
 		p->object.flags |= left_flag;
@@ -600,6 +604,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 			p->object.flags |= SEEN;
 			commit_list_insert_by_date_cached(p, list, cached_base, cache_ptr);
 		}
+		/* only use 1 parent for --first/second-parent */
 		if (revs->first_parent_only)
 			break;
 	}
@@ -1359,6 +1364,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		return argcount;
 	} else if (!strcmp(arg, "--first-parent")) {
 		revs->first_parent_only = 1;
+	} else if (!strcmp(arg, "--second-parent")) {
+		revs->first_parent_only = 2;
 	} else if (!strcmp(arg, "--ancestry-path")) {
 		revs->ancestry_path = 1;
 		revs->simplify_history = 0;

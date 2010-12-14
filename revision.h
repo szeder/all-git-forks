@@ -96,7 +96,7 @@ struct rev_info {
 			cherry_mark:1,
 			bisect:1,
 			ancestry_path:1,
-			first_parent_only:1;
+			first_parent_only:2;
 
 	/* Diff flags */
 	unsigned int	diff:1,

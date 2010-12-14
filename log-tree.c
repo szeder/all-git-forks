@@ -736,7 +736,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 			 * parent, showing summary diff of the others
 			 * we merged _in_.
 			 */
-			diff_tree_sha1(parents->item->object.sha1, sha1, "", &opt->diffopt);
+			diff_tree_sha1(((opt->first_parent_only == 2) ? parents->next : parents)->item->object.sha1, sha1, "", &opt->diffopt);
 			log_tree_diff_flush(opt);
 			return !opt->loginfo;
 		}
