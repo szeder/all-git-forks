@@ -33,7 +33,7 @@ License: LGPL-2.1+
  can be found in /usr/share/common-licenses/LGPL-2.1.
 
 Files: git-gui/*
-Copyright: © 2006-2009, Shawn Pearce, et al.
+Copyright: © 2005-2010, Shawn Pearce, et. al.
 License: GPL-2+
 
 Files: git-gui/po/de.po, git-gui/po/fr.po, git-gui/po/glossary/*
@@ -60,6 +60,37 @@ Copyright: © 2007, Fredrik Kuivinen <frekui@gmail.com>
              2007, Petr Baudis <pasky@suse.cz>
         2008-2009, Jakub Narebski <jnareb@gmail.com>
 License: GPL-2+
+
+Files: vcs-svn/*
+Copyright: © 2010, David Barr <david.barr@cordelta.com>
+           © 2008, Jason Evans <jasone@canonware.com>
+           © 2005, Stefan Hegny, hydrografix Consulting GmbH,
+                   Frankfurt/Main, Germany
+                   and others, see http://svn2cc.sarovar.org
+License: two-clause BSD-style
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice(s), this list of conditions and the following disclaimer
+    unmodified other than the allowable addition of one or more
+    copyright notices.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice(s), this list of conditions and the following disclaimer in
+    the documentation and/or other materials provided with the
+    distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER(S) ``AS IS'' AND ANY
+ EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT HOLDER(S) BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+ BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+ OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Files: imap-send.c
 Copyright: © 2000-2002, Michael R. Elkins <me@mutt.org>
@@ -132,6 +163,24 @@ License: ISC
  ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS
  SOFTWARE.
 
+Files: compat/win32/sys/poll.c, compat/win32/sys/poll.h
+Copyright: © 2001-2003, 2006-2010, Free Software Foundation, Inc.
+Name: Emulation for poll(2) from gnulib.
+License: GPL-2+
+
+Files: compat/vcbuild/include/sys/utime.h
+Copyright: ?
+License: PD
+ This file has no copyright assigned and is placed in the Public Domain.
+ This file is a part of the mingw-runtime package.
+ .
+ The mingw-runtime package and its code is distributed in the hope that it
+ will be useful but WITHOUT ANY WARRANTY.  ALL WARRANTIES, EXPRESSED OR
+ IMPLIED ARE HEREBY DISCLAIMED.  This includes but is not limited to
+ warranties of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ You are free to use this package and its code without limitation.
+
 Files: compat/nedmalloc/*
 Copyright: © 2005-2006 Niall Douglas
 License:
@@ -199,9 +248,14 @@ License:
  DEALINGS IN THE SOFTWARE.
 
 Files: compat/regex/*
-Copyright: © 1985, 1989-1993, Free Software Foundation, Inc.
-Name: Extended regular expression matching and search library, version 0.12.
-License: GPL-2+
+Copyright: © 1985, 1989-93, 1995-2010, Free Software Foundation, Inc.
+Name: Extended regular expression matching and search library
+License: LGPL-2.1+
+
+Files: compat/strtok_r.c
+Copyright: © 1991, 1996-1999, 2001, 2004, Free Software Foundation, Inc.
+Name: Reentrant string tokenizer.  Generic version.
+License: LGPL-2.1+
 
 Files: contrib/fast-import/git-p4
 Copyright: © 2007, Simon Hausmann <simon@lst.de>
