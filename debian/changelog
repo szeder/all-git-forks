@@ -1,3 +1,13 @@
+git (1:1.7.2.3-2.2) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * debian/diff/0034-gitweb-Introduce-esc_attr...diff: new from
+    upstream: gitweb: do not parrot filenames or other arguments given
+    in a request without proper quoting (closes: #607248,
+    CVE-2010-3906).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 16 Dec 2010 01:00:30 -0600
+
 git (1:1.7.2.3-2.1) unstable; urgency=low
 
   * Non-maintainer upload.
