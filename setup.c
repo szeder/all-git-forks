@@ -4,7 +4,7 @@
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
 
-const char *prefix_path(const char *prefix, int len, const char *path)
+char *prefix_path(const char *prefix, int len, const char *path)
 {
 	const char *orig = path;
 	char *sanitized = xmalloc(len + strlen(path) + 1);
@@ -512,8 +512,10 @@ const char *setup_git_directory_gently(int *nongit_ok)
 	const char *prefix;
 
 	prefix = setup_git_directory_gently_1(nongit_ok);
-	if (startup_info)
+	if (startup_info) {
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;
+		startup_info->prefix = prefix;
+	}
 	return prefix;
 }
 

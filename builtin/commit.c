@@ -1011,6 +1011,8 @@ static int parse_status_slot(const char *var, int offset)
 {
 	if (!strcasecmp(var+offset, "header"))
 		return WT_STATUS_HEADER;
+	if (!strcasecmp(var+offset, "branch"))
+		return WT_STATUS_ONBRANCH;
 	if (!strcasecmp(var+offset, "updated")
 		|| !strcasecmp(var+offset, "added"))
 		return WT_STATUS_UPDATED;
@@ -1096,6 +1098,9 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		  PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 		OPT_END(),
 	};
+
+	if (argc == 2 && !strcmp(argv[1], "-h"))
+		usage_with_options(builtin_status_usage, builtin_status_options);
 
 	if (null_termination && status_format == STATUS_FORMAT_LONG)
 		status_format = STATUS_FORMAT_PORCELAIN;
@@ -1281,6 +1286,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct stat statbuf;
 	int allow_fast_forward = 1;
 	struct wt_status s;
+
+	if (argc == 2 && !strcmp(argv[1], "-h"))
+		usage_with_options(builtin_commit_usage, builtin_commit_options);
 
 	wt_status_prepare(&s);
 	git_config(git_commit_config, &s);

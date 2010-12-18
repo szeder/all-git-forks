@@ -7,6 +7,30 @@ test_description='git status'
 
 . ./test-lib.sh
 
+test_expect_success 'status -h in broken repository' '
+	mkdir broken &&
+	test_when_finished "rm -fr broken" &&
+	(
+		cd broken &&
+		git init &&
+		echo "[status] showuntrackedfiles = CORRUPT" >>.git/config &&
+		test_expect_code 129 git status -h >usage 2>&1
+	) &&
+	grep "[Uu]sage" broken/usage
+'
+
+test_expect_success 'commit -h in broken repository' '
+	mkdir broken &&
+	test_when_finished "rm -fr broken" &&
+	(
+		cd broken &&
+		git init &&
+		echo "[status] showuntrackedfiles = CORRUPT" >>.git/config &&
+		test_expect_code 129 git commit -h >usage 2>&1
+	) &&
+	grep "[Uu]sage" broken/usage
+'
+
 test_expect_success 'setup' '
 	: >tracked &&
 	: >modified &&
@@ -381,12 +405,13 @@ test_expect_success 'status --porcelain ignores relative paths setting' '
 
 test_expect_success 'setup unique colors' '
 
-	git config status.color.untracked blue
+	git config status.color.untracked blue &&
+	git config status.color.branch green
 
 '
 
 cat >expect <<\EOF
-# On branch master
+# On branch <GREEN>master<RESET>
 # Changes to be committed:
 #   (use "git reset HEAD <file>..." to unstage)
 #
