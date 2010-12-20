@@ -1,5 +1,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <io.h>
 
 /*
  * things that are not available in header files
