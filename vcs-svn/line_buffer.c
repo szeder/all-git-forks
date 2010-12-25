@@ -98,10 +98,10 @@ char *buffer_read_string(struct line_buffer *buf, uint32_t len)
 	return ferror(buf->infile) ? NULL : buf->blob_buffer.buf;
 }
 
-void buffer_read_binary(struct line_buffer *buf,
-				struct strbuf *sb, uint32_t size)
+off_t buffer_read_binary(struct line_buffer *buf,
+				struct strbuf *sb, off_t size)
 {
-	strbuf_fread(sb, size, buf->infile);
+	return strbuf_fread(sb, size, buf->infile);
 }
 
 off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes)
