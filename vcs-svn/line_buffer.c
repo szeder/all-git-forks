@@ -71,19 +71,19 @@ char *buffer_read_string(uint32_t len)
 	return ferror(infile) ? NULL : s;
 }
 
-void buffer_copy_bytes(uint32_t len)
+uint32_t buffer_copy_bytes(uint32_t nbytes)
 {
-	uint32_t in;
-	while (len > 0 && !feof(infile) && !ferror(infile)) {
-		in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+	uint32_t done = 0;
+	while (done < nbytes && !feof(infile) && !ferror(infile)) {
+		uint32_t len = nbytes - done;
+		uint32_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		in = fread(byte_buffer, 1, in, infile);
-		len -= in;
+		done += in;
 		fwrite(byte_buffer, 1, in, stdout);
-		if (ferror(stdout)) {
-			buffer_skip_bytes(len);
-			return;
-		}
+		if (ferror(stdout))
+			return done + buffer_skip_bytes(nbytes - done);
 	}
+	return done;
 }
 
 uint32_t buffer_skip_bytes(uint32_t nbytes)
