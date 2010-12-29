@@ -1,5 +1,25 @@
-git (1:1.7.2.3-2.2.1) experimental; urgency=low
+git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
 
+  * new upstream release candidate.
+    * apply: notice spaces in filenames in traditional patches
+      (closes: #578752).
+    * read-tree --reset: let read-tree -u remove index entries
+      outside sparse area (closes: #583699).
+    * gui--askpass: ensure correct application termination
+      (closes: #588103).
+    * user manual: add a !DOCTYPE (closes: #507476).
+    * remove stray backslash from "git bundle" manual
+      (closes: #540001).
+    * allow test suite to be run as root (closes: #524309).
+    * do not ignore custom strategies for trivial merges
+      (closes: #581691).
+    * merge-recursive: fix directory/file conflicts
+      (closes: #600785).
+    * git-blame.el: add (require 'format-spec) (closes: #577471).
+    * rebase: protect against diff.noprefix configuration when
+      running format-patch (closes: #607044).
+    * log et al: accept un-sticked "git log -S needle" command-line
+      syntax (closes: #606975).
   * update gitweb and instaweb to v1.7.2.x:
     - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove,
       no longer needed.
@@ -17,6 +37,7 @@ git (1:1.7.2.3-2.2.1) experimental; urgency=low
     (@diff_opts = ()).
   * debian/diff/0001-Revert-gitweb-Use-diff_opts...diff: remove,
     no longer needed.
+  * debian/diff/0003, 0010-0034: remove, applied upstream.
   * debian/rules: gitweb: move gitweb.cgi content to /usr/share,
     symlink to /usr/lib/cgi-bin.
 

@@ -1,4 +1,4 @@
-From 7a839c0fc57070f4afefc9566b8e8339dc5ba821 Mon Sep 17 00:00:00 2001
+From d5b9fbbde597d2d740745c5977a4a4495b0b1b7d Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 3 Sep 2010 19:44:39 -0500
 Subject: gitweb: skip logo in atom feed when there is none
@@ -15,10 +15,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/gitweb/gitweb.perl b/gitweb/gitweb.perl
-index 77a74a3..ae5d41c 100755
+index 4779618..c65af1a 100755
 --- a/gitweb/gitweb.perl
 +++ b/gitweb/gitweb.perl
-@@ -6858,7 +6858,7 @@ XML
+@@ -7169,7 +7169,7 @@ XML
  		if (defined $favicon) {
  			print "<icon>" . esc_url($favicon) . "</icon>\n";
  		}
@@ -28,5 +28,5 @@ index 77a74a3..ae5d41c 100755
  			print "<logo>" . esc_url($logo) . "</logo>\n";
  		}
 -- 
-1.7.2.2
+1.7.2.3.554.gc9b5c.dirty
 
