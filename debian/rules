@@ -41,7 +41,7 @@ patch-stamp:
 	touch patch-stamp
 
 build: deb-checkdir build-arch-stamp build-indep-stamp
-build-arch-stamp: patch-stamp build-indep-stamp
+build-arch-stamp: patch-stamp
 	-$(CC) -v
 	DESTDIR='$(GIT)' $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
@@ -51,7 +51,7 @@ build-arch-stamp: patch-stamp build-indep-stamp
 	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' \
 	    $(MAKE) $(TEST) CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
-build-indep-stamp:
+build-indep-stamp: patch-stamp build-arch-stamp
 	$(MAKE) -CDocumentation man html $(DOC_OPTS)
 	touch build-indep-stamp
 
