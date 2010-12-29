@@ -1,8 +1,8 @@
 git (1:1.7.2.3-2.2.1) experimental; urgency=low
 
   * move manpages to new git-man package.
-  * debian/rules: make build-indep target depend on build-arch, not
-    vice-versa.
+  * debian/rules, debian/control: do not build documentation on
+    buildds.  Build-depends-indep: asciidoc, xmlto, docbook-xsl.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 12:16:14 -0600
 

@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 ARCH ?=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+BUILD_DOCS =$(shell if type asciidoc >/dev/null 2>&1; then echo 1; fi)
 
 CC =gcc
 CFLAGS =-g -Wall
@@ -52,7 +53,11 @@ build-arch-stamp: patch-stamp
 	    $(MAKE) $(TEST) CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
 build-indep-stamp: patch-stamp build-arch-stamp
-	$(MAKE) -CDocumentation man html $(DOC_OPTS)
+	: 'Work around bug #478524'
+	set -e; if test '$(BUILD_DOCS)' = 1; \
+	then \
+		$(MAKE) -CDocumentation man html $(DOC_OPTS); \
+	fi
 	touch build-indep-stamp
 
 clean: deb-checkdir
@@ -108,7 +113,13 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
-install-indep: build-arch-stamp build-indep-stamp
+install-indep:
+	: 'Work around bug #478524'
+	set -e; if test '$(BUILD_DOCS)' = 1; \
+	then \
+		$(MAKE) -f debian/rules install-indep-real; \
+	fi
+install-indep-real: build-arch-stamp build-indep-stamp
 	rm -rf '$(TMP)'
 	install -d -m0755 '$(TMP)'
 	DESTDIR='$(TMP)' $(MAKE) install install-doc \
@@ -247,7 +258,7 @@ binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done
 
-.PHONY: patch build clean install install-arch install-indep binary \
-	  binary-arch binary-indep
+.PHONY: patch build clean install install-arch install-indep install-indep-real \
+	  binary binary-arch binary-indep
 
 include debian/implicit
