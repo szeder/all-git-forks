@@ -1,6 +1,6 @@
 git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
 
-  * new upstream release candidate.
+  * new upstream release candidate, from the development repository.
     * apply: notice spaces in filenames in traditional patches
       (closes: #578752).
     * read-tree --reset: let read-tree -u remove index entries
