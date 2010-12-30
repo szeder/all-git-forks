@@ -1,6 +1,8 @@
-git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
+git (1:1.7.4~rc0-0.1) experimental; urgency=low
 
-  * new upstream release candidate, from the development repository.
+  * non-maintainer upload.
+  * new release candidate from the development repository
+    (closes: #600566).
     * apply: notice spaces in filenames in traditional patches
       (closes: #578752).
     * read-tree --reset: let read-tree -u remove index entries
@@ -75,7 +77,7 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
   * debian/rules: gitweb: move gitweb.cgi content to /usr/share,
     symlink to /usr/lib/cgi-bin.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 29 Dec 2010 04:31:23 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 30 Dec 2010 05:34:19 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
