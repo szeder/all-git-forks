@@ -44,6 +44,9 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
     long description (closes: #585725).
   * debian/control: git-core: clarify that it is still needed to
     satisfy dependencies (thx Denis Laxalde).
+  * debian/rules: git-gui: install git-gui--askpass helper to
+    /usr/lib/git-core, avoiding error dialogues when fetching by ssh
+    without SSH_ASKPASS set (closes: #598245).
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
   * update gitweb and instaweb to v1.7.2.x:
