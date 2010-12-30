@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 ARCH ?=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+BUILD_DOCS =$(shell if type asciidoc >/dev/null 2>&1; then echo 1; fi)
 
 CC =gcc
 CFLAGS =-g -Wall
@@ -41,7 +42,7 @@ patch-stamp:
 	touch patch-stamp
 
 build: deb-checkdir build-arch-stamp build-indep-stamp
-build-arch-stamp: patch-stamp build-indep-stamp
+build-arch-stamp: patch-stamp
 	-$(CC) -v
 	DESTDIR='$(GIT)' $(MAKE) all \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
@@ -51,8 +52,12 @@ build-arch-stamp: patch-stamp build-indep-stamp
 	  GIT_TEST_OPTS=--verbose DESTDIR='$(GIT)' \
 	    $(MAKE) $(TEST) CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	touch build-arch-stamp
-build-indep-stamp:
-	$(MAKE) -CDocumentation man html $(DOC_OPTS)
+build-indep-stamp: patch-stamp build-arch-stamp
+	: 'Work around bug #478524'
+	set -e; if test '$(BUILD_DOCS)' = 1; \
+	then \
+		$(MAKE) -CDocumentation man html $(DOC_OPTS); \
+	fi
 	touch build-indep-stamp
 
 clean: deb-checkdir
@@ -63,7 +68,7 @@ clean: deb-checkdir
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
 	  '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui \
-	  '$(GIT)'k '$(GIT)'web '$(GIT)'-all '$(GIT)'-core
+	  '$(GIT)'k '$(GIT)'web '$(GIT)'-all '$(GIT)'-man '$(GIT)'-core
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
@@ -71,7 +76,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# git
 	rm -rf '$(GIT)'
 	install -d -m0755 '$(GIT)'/usr/bin
-	DESTDIR='$(GIT)' $(MAKE) install install-doc \
+	DESTDIR='$(GIT)' $(MAKE) install \
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	install -d -m0755 '$(GIT)'/var/cache/git
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
@@ -91,13 +96,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -rf '$(GIT)'/usr/share/git-gui/
 	# don't include gitk's lib
 	rm -rf '$(GIT)'/usr/share/gitk/
-	# don't include arch, cvs, svn, email, gui, and gitk man pages
-	for i in git-archimport git-cvs git-svn git-send-email gitk \
-	 git-gui git-citool; do \
-	  rm -f '$(GIT)'/usr/share/man/man1/$$i*; \
-	done
-	chmod 0644 '$(GIT)'/usr/share/man/man?/*.[0-9]*
-	gzip -9 '$(GIT)'/usr/share/man/man?/*.[0-9]*
 	# emacs
 	install -m0644 -D debian/git.emacsen-startup \
 	  '$(GIT)'/etc/emacs/site-start.d/50git-core.el
@@ -130,7 +128,13 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	# upstream changelog
 	test -r changelog || ln -s debian/changelog.upstream changelog
 
-install-indep: build-arch-stamp build-indep-stamp
+install-indep:
+	: 'Work around bug #478524'
+	set -e; if test '$(BUILD_DOCS)' = 1; \
+	then \
+		$(MAKE) -f debian/rules install-indep-real; \
+	fi
+install-indep-real: build-arch-stamp build-indep-stamp
 	rm -rf '$(TMP)'
 	install -d -m0755 '$(TMP)'
 	DESTDIR='$(TMP)' $(MAKE) install install-doc \
@@ -139,6 +143,21 @@ install-indep: build-arch-stamp build-indep-stamp
 	  2>/dev/null
 	# RelNotes are shipped in git
 	rm -rf '$(TMP)'/html/RelNotes
+	# git-man
+	rm -rf '$(GIT)'-man
+	install -d -m0755 '$(GIT)'-man/usr/share/man/man3
+	DESTDIR='$(GIT)'-man $(MAKE) install-doc \
+	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
+	install -m 0644 '$(TMP)'/usr/share/man/man3/Git.3pm \
+	  '$(GIT)'-man/usr/share/man/man3/Git.3pm
+	rm -f '$(GIT)'-man/usr/share/man/man3/private-Error.3pm
+	# don't include arch, cvs, svn, email, gui, and gitk man pages
+	for i in git-archimport git-cvs git-svn git-send-email gitk \
+	 git-gui git-citool; do \
+	  rm -f '$(GIT)'-man/usr/share/man/man1/$$i*; \
+	done
+	chmod 0644 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
+	gzip -9 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
 	# git-doc
 	rm -rf '$(GIT)'-doc
 	install -d -m0755 '$(GIT)'-doc
@@ -237,15 +256,15 @@ binary-arch: install-arch git.deb
 	dpkg -b '$(GIT)' ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
 	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb \
-	  git-all.deb git-core.deb-DEBIAN
+	  git-all.deb git-man.deb git-core.deb-DEBIAN
 	rm -f debian/substvars
 	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -all \
-	 -core; do \
+	 -core -man; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done
 
-.PHONY: patch build clean install install-arch install-indep binary \
-	  binary-arch binary-indep
+.PHONY: patch build clean install install-arch install-indep install-indep-real \
+	  binary binary-arch binary-indep
 
 include debian/implicit
