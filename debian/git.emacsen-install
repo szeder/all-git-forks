@@ -1,0 +1,38 @@
+#!/bin/sh
+set -e
+
+# This install uses the ".el symlinks with the .elc" style.
+# It makes the .el source available to the various Emacs
+# help tools, and having the .el and .elc in the same dir
+# makes `list-load-path-shadows' happy.
+#
+# There used to be a copy of vc-git.el in git-core, but no
+# longer.  It's included in Emacs itself in Emacs 22.2 up.
+#
+
+FLAVOR=$1
+echo install/git: Handling install of emacsen flavor $FLAVOR
+
+el_files="git.el git-blame.el"
+el_dir=/usr/share/git-core/emacs
+elc_dir=/usr/share/$FLAVOR/site-lisp/git
+
+if [ $FLAVOR != emacs ]
+then
+  echo install/git: byte-compiling for $FLAVOR
+
+  [ -d $elc_dir ] || mkdir $elc_dir
+
+  # Symlink .el file(s)
+  cd $elc_dir
+  for i in $el_files
+  do
+    ln -s $el_dir/$i $i
+  done
+
+  # Byte compile .el file(s)
+  set -x
+  $FLAVOR -batch -q -no-site-file -f batch-byte-compile $el_files
+  set +x
+fi
+exit 0

@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+FLAVOR=$1
+elc_dir=/usr/share/${FLAVOR}/site-lisp/git
+
+echo remove/git: Handling removal of emacsen flavor ${FLAVOR}
+
+if [ ${FLAVOR} != emacs ]
+then
+  echo git: purging byte-compiled files for ${FLAVOR}
+
+  # -f to ignore if the directory is somehow already gone
+  rm -f $elc_dir/*.el $elc_dir/*.elc
+  # || true to quietly ignore if the directory is somehow not empty
+  rmdir $elc_dir || true
+fi
+exit 0

@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+test "$1" = configure || exit 0
+test -x /usr/lib/emacsen-common/emacs-package-install || exit 0
+exec /usr/lib/emacsen-common/emacs-package-install git

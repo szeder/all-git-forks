@@ -25,6 +25,18 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
   * debian/git.docs, debian/rules: deal with RelNotes being moved to
     a subdirectory.
 
+  [ Kevin Ryde ]
+  * debian/rules, debian/git.emacsen-*, debian/git.postinst,
+    debian/git.prerm: update emacs support to follow current best
+    practices.  Make M-x git-status and git-blame modes available
+    again with emacs23 (closes: #576887).
+  * debian/rules, debian/git.emacsen-install: install emacs support
+    files to /usr/share/git-core, not /usr/share/doc.
+  * debian/implicit: install all debian/$pkg.README.* files, not just
+    README.source and README.Debian.
+  * debian/git.README.emacs: new file, explaining how to use the
+    packaged emacs modules (text taken from contrib/emacs/README).
+
   [ Jonathan Nieder ]
   * debian/diff/0003, 0010-0034: remove, applied upstream.
   * update debian/copyright.
