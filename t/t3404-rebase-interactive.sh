@@ -7,33 +7,38 @@ test_description='git rebase interactive
 
 This test runs git rebase "interactively", by faking an edit, and verifies
 that the result still makes sense.
+
+Initial setup:
+
+     one - two - three - four (conflict-branch)
+   /
+ A - B - C - D - E            (master)
+ | \
+ |   F - G - H                (branch1)
+ |     \
+ |\      I                    (branch2)
+ | \
+ |   J - K - L - M            (no-conflict-branch)
+  \
+    N - O - P                 (no-ff-branch)
+
+ where A, B, D and G all touch file1, and one, two, three, four all
+ touch file "conflict".
 '
 . ./test-lib.sh
 
 . "$TEST_DIRECTORY"/lib-rebase.sh
 
+test_cmp_rev () {
+	git rev-parse --verify "$1" >expect.rev &&
+	git rev-parse --verify "$2" >actual.rev &&
+	test_cmp expect.rev actual.rev
+}
+
 set_fake_editor
 
-# Set up the repository like this:
-#
-#     one - two - three - four (conflict-branch)
-#   /
-# A - B - C - D - E            (master)
-# | \
-# |   F - G - H                (branch1)
-# |     \
-# |\      I                    (branch2)
-# | \
-# |   J - K - L - M            (no-conflict-branch)
-#  \
-#    N - O - P                 (no-ff-branch)
-#
-# where A, B, D and G all touch file1, and one, two, three, four all
-# touch file "conflict".
-#
 # WARNING: Modifications to the initial repository can change the SHA ID used
 # in the expect2 file for the 'stop on conflicting pick' test.
-
 
 test_expect_success 'setup' '
 	test_commit A file1 &&
@@ -46,22 +51,71 @@ test_expect_success 'setup' '
 	test_commit G file1 &&
 	test_commit H file5 &&
 	git checkout -b branch2 F &&
-	test_commit I file6
+	test_commit I file6 &&
 	git checkout -b conflict-branch A &&
-	for n in one two three four
-	do
-		test_commit $n conflict
-	done &&
+	test_commit one conflict &&
+	test_commit two conflict &&
+	test_commit three conflict &&
+	test_commit four conflict &&
 	git checkout -b no-conflict-branch A &&
-	for n in J K L M
-	do
-		test_commit $n file$n
-	done &&
+	test_commit J fileJ &&
+	test_commit K fileK &&
+	test_commit L fileL &&
+	test_commit M fileM &&
 	git checkout -b no-ff-branch A &&
-	for n in N O P
-	do
-		test_commit $n file$n
-	done
+	test_commit N fileN &&
+	test_commit O fileO &&
+	test_commit P fileP
+'
+
+# "exec" commands are ran with the user shell by default, but this may
+# be non-POSIX. For example, if SHELL=zsh then ">file" doesn't work
+# to create a file. Unseting SHELL avoids such non-portable behavior
+# in tests. It must be exported for it to take effect where needed.
+SHELL=
+export SHELL
+
+test_expect_success 'rebase -i with the exec command' '
+	git checkout master &&
+	(
+	FAKE_LINES="1 exec_>touch-one
+		2 exec_>touch-two exec_false exec_>touch-three
+		3 4 exec_>\"touch-file__name_with_spaces\";_>touch-after-semicolon 5" &&
+	export FAKE_LINES &&
+	test_must_fail git rebase -i A
+	) &&
+	test_path_is_file touch-one &&
+	test_path_is_file touch-two &&
+	test_path_is_missing touch-three " (should have stopped before)" &&
+	test_cmp_rev C HEAD &&
+	git rebase --continue &&
+	test_path_is_file touch-three &&
+	test_path_is_file "touch-file  name with spaces" &&
+	test_path_is_file touch-after-semicolon &&
+	test_cmp_rev master HEAD &&
+	rm -f touch-*
+'
+
+test_expect_success 'rebase -i with the exec command runs from tree root' '
+	git checkout master &&
+	mkdir subdir && (cd subdir &&
+	FAKE_LINES="1 exec_>touch-subdir" \
+		git rebase -i HEAD^
+	) &&
+	test_path_is_file touch-subdir &&
+	rm -fr subdir
+'
+
+test_expect_success 'rebase -i with the exec command checks tree cleanness' '
+	git checkout master &&
+	(
+	FAKE_LINES="exec_echo_foo_>file1 1" &&
+	export FAKE_LINES &&
+	test_must_fail git rebase -i HEAD^
+	) &&
+	test_cmp_rev master^ HEAD &&
+	git reset --hard &&
+	git rebase --continue
 '
 
 test_expect_success 'no changes are a nop' '
@@ -143,16 +197,17 @@ test_expect_success 'abort' '
 	git rebase --abort &&
 	test $(git rev-parse new-branch1) = $(git rev-parse HEAD) &&
 	test "$(git symbolic-ref -q HEAD)" = "refs/heads/branch1" &&
-	! test -d .git/rebase-merge
+	test_path_is_missing .git/rebase-merge
 '
 
 test_expect_success 'abort with error when new base cannot be checked out' '
 	git rm --cached file1 &&
 	git commit -m "remove file in base" &&
 	test_must_fail git rebase -i master > output 2>&1 &&
-	grep "Untracked working tree file .file1. would be overwritten" \
+	grep "The following untracked working tree files would be overwritten by checkout:" \
 		output &&
-	! test -d .git/rebase-merge &&
+	grep "file1" output &&
+	test_path_is_missing .git/rebase-merge &&
 	git reset --hard HEAD^
 '
 
@@ -522,7 +577,7 @@ test_expect_success 'do "noop" when there is nothing to cherry-pick' '
 
 	git checkout -b branch4 HEAD &&
 	GIT_EDITOR=: git commit --amend \
-		--author="Somebody else <somebody@else.com>" 
+		--author="Somebody else <somebody@else.com>" &&
 	test $(git rev-parse branch3) != $(git rev-parse branch4) &&
 	git rebase -i branch3 &&
 	test $(git rev-parse branch3) = $(git rev-parse branch4)
@@ -537,7 +592,7 @@ test_expect_success 'submodule rebase setup' '
 		git add elif && git commit -m "submodule initial"
 	) &&
 	echo 1 >file1 &&
-	git add file1 sub
+	git add file1 sub &&
 	test_tick &&
 	git commit -m "One" &&
 	echo 2 >file1 &&
@@ -593,6 +648,7 @@ test_expect_success 'rebase -i can copy notes' '
 
 cat >expect <<EOF
 an earlier note
+
 a note
 EOF
 

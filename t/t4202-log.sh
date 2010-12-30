@@ -100,13 +100,11 @@ test_expect_success 'oneline' '
 
 test_expect_success 'diff-filter=A' '
 
-	actual=$(git log --pretty="format:%s" --diff-filter=A HEAD) &&
-	expect=$(echo fifth ; echo fourth ; echo third ; echo initial) &&
-	test "$actual" = "$expect" || {
-		echo Oops
-		echo "Actual: $actual"
-		false
-	}
+	git log --pretty="format:%s" --diff-filter=A HEAD > actual &&
+	git log --pretty="format:%s" --diff-filter A HEAD > actual-separate &&
+	printf "fifth\nfourth\nthird\ninitial" > expect &&
+	test_cmp expect actual &&
+	test_cmp expect actual-separate
 
 '
 
@@ -193,7 +191,7 @@ test_expect_success 'git show <commits> leaves list of commits as given' '
 test_expect_success 'setup case sensitivity tests' '
 	echo case >one &&
 	test_tick &&
-	git add one
+	git add one &&
 	git commit -a -m Second
 '
 
@@ -201,6 +199,13 @@ test_expect_success 'log --grep' '
 	echo second >expect &&
 	git log -1 --pretty="tformat:%s" --grep=sec >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'log --grep option parsing' '
+	echo second >expect &&
+	git log -1 --pretty="tformat:%s" --grep sec >actual &&
+	test_cmp expect actual &&
+	test_must_fail git log -1 --pretty="tformat:%s" --grep
 '
 
 test_expect_success 'log -i --grep' '
@@ -336,7 +341,7 @@ test_expect_success 'set up more tangled history' '
 	test_commit octopus-b &&
 	git checkout master &&
 	test_commit seventh &&
-	git merge octopus-a octopus-b
+	git merge octopus-a octopus-b &&
 	git merge reach
 '
 
@@ -388,7 +393,7 @@ test_expect_success 'log --graph with merge' '
 '
 
 test_expect_success 'log.decorate configuration' '
-	git config --unset-all log.decorate || :
+	test_might_fail git config --unset-all log.decorate &&
 
 	git log --oneline >expect.none &&
 	git log --oneline --decorate >expect.short &&
@@ -415,6 +420,15 @@ test_expect_success 'log.decorate configuration' '
 	test_cmp expect.short actual &&
 	git log --oneline --decorate=full >actual &&
 	test_cmp expect.full actual &&
+
+	git config --unset-all log.decorate &&
+	git config log.decorate 1 &&
+	git log --oneline >actual &&
+	test_cmp expect.short actual &&
+	git log --oneline --decorate=full >actual &&
+	test_cmp expect.full actual &&
+	git log --oneline --decorate=no >actual &&
+	test_cmp expect.none actual &&
 
 	git config --unset-all log.decorate &&
 	git config log.decorate short &&

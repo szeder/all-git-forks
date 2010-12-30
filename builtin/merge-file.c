@@ -28,7 +28,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 	xmparam_t xmp = {{0}};
 	int ret = 0, i = 0, to_stdout = 0;
 	int quiet = 0;
-	int nongit;
+	int prefixlen = 0;
 	struct option options[] = {
 		OPT_BOOLEAN('p', "stdout", &to_stdout, "send results to standard output"),
 		OPT_SET_INT(0, "diff3", &xmp.style, "use a diff3 based merge", XDL_MERGE_DIFF3),
@@ -40,7 +40,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 			    XDL_MERGE_FAVOR_UNION),
 		OPT_INTEGER(0, "marker-size", &xmp.marker_size,
 			    "for conflicts, use this marker size"),
-		OPT__QUIET(&quiet),
+		OPT__QUIET(&quiet, "do not warn about conflicts"),
 		OPT_CALLBACK('L', NULL, names, "name",
 			     "set labels for file1/orig_file/file2", &label_cb),
 		OPT_END(),
@@ -50,8 +50,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 	xmp.style = 0;
 	xmp.favor = 0;
 
-	prefix = setup_git_directory_gently(&nongit);
-	if (!nongit) {
+	if (startup_info->have_repository) {
 		/* Read the configuration file */
 		git_config(git_xmerge_config, NULL);
 		if (0 <= git_xmerge_style)
@@ -67,10 +66,14 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 				     "%s\n", strerror(errno));
 	}
 
+	if (prefix)
+		prefixlen = strlen(prefix);
+
 	for (i = 0; i < 3; i++) {
+		const char *fname = prefix_filename(prefix, prefixlen, argv[i]);
 		if (!names[i])
 			names[i] = argv[i];
-		if (read_mmfile(mmfs + i, argv[i]))
+		if (read_mmfile(mmfs + i, fname))
 			return -1;
 		if (buffer_is_binary(mmfs[i].ptr, mmfs[i].size))
 			return error("Cannot merge binary files: %s\n",

@@ -243,7 +243,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	struct commit *commit;
 	char *reflog_action, msg[1024];
 	const struct option options[] = {
-		OPT__QUIET(&quiet),
+		OPT__QUIET(&quiet, "be quiet, only report errors"),
 		OPT_SET_INT(0, "mixed", &reset_type,
 						"reset HEAD and index", MIXED),
 		OPT_SET_INT(0, "soft", &reset_type, "reset only HEAD", SOFT),
@@ -318,7 +318,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	 * affecting the working tree nor HEAD. */
 	if (i < argc) {
 		if (reset_type == MIXED)
-			warning("--mixed option is deprecated with paths.");
+			warning("--mixed with paths is deprecated; use 'git reset -- <paths>' instead.");
 		else if (reset_type != NONE)
 			die("Cannot do %s reset with paths.",
 					reset_type_names[reset_type]);

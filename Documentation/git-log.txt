@@ -31,7 +31,7 @@ OPTIONS
 	either <since> or <until> is omitted, it defaults to
 	`HEAD`, i.e. the tip of the current branch.
 	For a more complete list of ways to spell <since>
-	and <until>, see linkgit:gitrevisions[1].
+	and <until>, see linkgit:gitrevisions[7].
 
 --follow::
 	Continue listing the history of a file beyond renames
@@ -116,7 +116,7 @@ git log --follow builtin-rev-list.c::
 git log --branches --not --remotes=origin::
 
 	Shows all commits that are in any of local branches but not in
-	any of remote tracking branches for 'origin' (what you have that
+	any of remote-tracking branches for 'origin' (what you have that
 	origin doesn't).
 
 git log master --not --remotes=*/master::

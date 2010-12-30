@@ -212,8 +212,10 @@ int read_mmfile(mmfile_t *ptr, const char *filename)
 		return error("Could not open %s", filename);
 	sz = xsize_t(st.st_size);
 	ptr->ptr = xmalloc(sz ? sz : 1);
-	if (sz && fread(ptr->ptr, sz, 1, f) != 1)
+	if (sz && fread(ptr->ptr, sz, 1, f) != 1) {
+		fclose(f);
 		return error("Could not read %s", filename);
+	}
 	fclose(f);
 	ptr->size = sz;
 	return 0;
@@ -286,9 +288,8 @@ static long ff_regexp(const char *line, long len,
 	result = pmatch[i].rm_eo - pmatch[i].rm_so;
 	if (result > buffer_size)
 		result = buffer_size;
-	else
-		while (result > 0 && (isspace(line[result - 1])))
-			result--;
+	while (result > 0 && (isspace(line[result - 1])))
+		result--;
 	memcpy(buffer, line, result);
  fail:
 	free(line_buffer);

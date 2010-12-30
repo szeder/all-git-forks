@@ -10,12 +10,13 @@
 #include "cache.h"
 #include "dir.h"
 #include "parse-options.h"
+#include "string-list.h"
 #include "quote.h"
 
 static int force = -1; /* unset */
 
 static const char *const builtin_clean_usage[] = {
-	"git clean [-d] [-f] [-n] [-q] [-x | -X] [--] <paths>...",
+	"git clean [-d] [-f] [-n] [-q] [-e <pattern>] [-x | -X] [--] <paths>...",
 	NULL
 };
 
@@ -26,24 +27,34 @@ static int git_clean_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
+static int exclude_cb(const struct option *opt, const char *arg, int unset)
+{
+	struct string_list *exclude_list = opt->value;
+	string_list_append(exclude_list, arg);
+	return 0;
+}
+
 int cmd_clean(int argc, const char **argv, const char *prefix)
 {
 	int i;
 	int show_only = 0, remove_directories = 0, quiet = 0, ignored = 0;
-	int ignored_only = 0, baselen = 0, config_set = 0, errors = 0;
+	int ignored_only = 0, config_set = 0, errors = 0;
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
 	static const char **pathspec;
 	struct strbuf buf = STRBUF_INIT;
+	struct string_list exclude_list = STRING_LIST_INIT_NODUP;
 	const char *qname;
 	char *seen = NULL;
 	struct option options[] = {
-		OPT__QUIET(&quiet),
-		OPT__DRY_RUN(&show_only),
-		OPT_BOOLEAN('f', "force", &force, "force"),
+		OPT__QUIET(&quiet, "do not print names of files removed"),
+		OPT__DRY_RUN(&show_only, "dry run"),
+		OPT__FORCE(&force, "force"),
 		OPT_BOOLEAN('d', NULL, &remove_directories,
 				"remove whole directories"),
+		{ OPTION_CALLBACK, 'e', "exclude", &exclude_list, "pattern",
+		  "exclude <pattern>", PARSE_OPT_NONEG, exclude_cb },
 		OPT_BOOLEAN('x', NULL, &ignored, "remove ignored files, too"),
 		OPT_BOOLEAN('X', NULL, &ignored_only,
 				"remove only ignored files"),
@@ -80,6 +91,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	if (!ignored)
 		setup_standard_excludes(&dir);
+
+	for (i = 0; i < exclude_list.nr; i++)
+		add_exclude(exclude_list.items[i].string, "", 0, dir.exclude_list);
 
 	pathspec = get_pathspec(prefix, argv);
 
@@ -124,7 +138,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (pathspec) {
 			memset(seen, 0, argc > 0 ? argc : 1);
 			matches = match_pathspec(pathspec, ent->name, len,
-						 baselen, seen);
+						 0, seen);
 		}
 
 		if (S_ISDIR(st.st_mode)) {
@@ -139,7 +153,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 					printf("Removing %s\n", qname);
 				if (remove_dir_recursively(&directory,
 							   rm_flags) != 0) {
-					warning("failed to remove '%s'", qname);
+					warning("failed to remove %s", qname);
 					errors++;
 				}
 			} else if (show_only) {
@@ -159,7 +173,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				printf("Removing %s\n", qname);
 			}
 			if (unlink(ent->name) != 0) {
-				warning("failed to remove '%s'", qname);
+				warning("failed to remove %s", qname);
 				errors++;
 			}
 		}
@@ -167,5 +181,6 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	free(seen);
 
 	strbuf_release(&directory);
+	string_list_clear(&exclude_list, 0);
 	return (errors != 0);
 }

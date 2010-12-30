@@ -12,11 +12,12 @@
 #include "parse-options.h"
 #include "sigchain.h"
 #include "transport.h"
+#include "submodule.h"
 
 static const char * const builtin_fetch_usage[] = {
 	"git fetch [<options>] [<repository> [<refspec>...]]",
 	"git fetch [<options>] <group>",
-	"git fetch --multiple [<options>] [<repository> | <group>]...",
+	"git fetch --multiple [<options>] [(<repository> | <group>)...]",
 	"git fetch --all [<options>]",
 	NULL
 };
@@ -27,13 +28,20 @@ enum {
 	TAGS_SET = 2
 };
 
+enum {
+	RECURSE_SUBMODULES_OFF = 0,
+	RECURSE_SUBMODULES_DEFAULT = 1,
+	RECURSE_SUBMODULES_ON = 2
+};
+
 static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity;
-static int progress;
+static int progress, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT;
 static const char *depth;
 static const char *upload_pack;
 static struct strbuf default_rla = STRBUF_INIT;
 static struct transport *transport;
+static const char *submodule_prefix = "";
 
 static struct option builtin_fetch_options[] = {
 	OPT__VERBOSITY(&verbosity),
@@ -43,8 +51,7 @@ static struct option builtin_fetch_options[] = {
 		    "append to .git/FETCH_HEAD instead of overwriting"),
 	OPT_STRING(0, "upload-pack", &upload_pack, "PATH",
 		   "path to upload pack on remote end"),
-	OPT_BOOLEAN('f', "force", &force,
-		    "force overwrite of local branch"),
+	OPT__FORCE(&force, "force overwrite of local branch"),
 	OPT_BOOLEAN('m', "multiple", &multiple,
 		    "fetch from multiple remotes"),
 	OPT_SET_INT('t', "tags", &tags,
@@ -52,7 +59,10 @@ static struct option builtin_fetch_options[] = {
 	OPT_SET_INT('n', NULL, &tags,
 		    "do not fetch all tags (--no-tags)", TAGS_UNSET),
 	OPT_BOOLEAN('p', "prune", &prune,
-		    "prune tracking branches no longer on remote"),
+		    "prune remote-tracking branches no longer on remote"),
+	OPT_SET_INT(0, "recurse-submodules", &recurse_submodules,
+		    "control recursive fetching of submodules",
+		    RECURSE_SUBMODULES_ON),
 	OPT_BOOLEAN(0, "dry-run", &dry_run,
 		    "dry run"),
 	OPT_BOOLEAN('k', "keep", &keep, "keep downloaded pack"),
@@ -61,6 +71,8 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOLEAN(0, "progress", &progress, "force progress reporting"),
 	OPT_STRING(0, "depth", &depth, "DEPTH",
 		   "deepen history of shallow clone"),
+	{ OPTION_STRING, 0, "submodule-prefix", &submodule_prefix, "DIR",
+		   "prepend this to submodule path output", PARSE_OPT_HIDDEN },
 	OPT_END()
 };
 
@@ -98,7 +110,7 @@ static void add_merge_config(struct ref **head,
 			continue;
 
 		/*
-		 * Not fetched to a tracking branch?  We need to fetch
+		 * Not fetched to a remote-tracking branch?  We need to fetch
 		 * it anyway to allow this branch's "branch.$name.merge"
 		 * to be honored by 'git pull', but we do not have to
 		 * fail if branch.$name.merge is misconfigured to point
@@ -146,7 +158,10 @@ static struct ref *get_ref_map(struct transport *transport,
 		struct remote *remote = transport->remote;
 		struct branch *branch = branch_get(NULL);
 		int has_merge = branch_has_merge_config(branch);
-		if (remote && (remote->fetch_refspec_nr || has_merge)) {
+		if (remote &&
+		    (remote->fetch_refspec_nr ||
+		     /* Note: has_merge implies non-NULL branch->remote_name */
+		     (has_merge && !strcmp(branch->remote_name, remote->name)))) {
 			for (i = 0; i < remote->fetch_refspec_nr; i++) {
 				get_fetch_map(remote_refs, &remote->fetch[i], &tail, 0);
 				if (remote->fetch[i].dst &&
@@ -160,6 +175,8 @@ static struct ref *get_ref_map(struct transport *transport,
 			 * if the remote we're fetching from is the same
 			 * as given in branch.<name>.remote, we add the
 			 * ref given in branch.<name>.merge, too.
+			 *
+			 * Note: has_merge implies non-NULL branch->remote_name
 			 */
 			if (has_merge &&
 			    !strcmp(branch->remote_name, remote->name))
@@ -354,7 +371,7 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 			what = rm->name + 10;
 		}
 		else if (!prefixcmp(rm->name, "refs/remotes/")) {
-			kind = "remote branch";
+			kind = "remote-tracking branch";
 			what = rm->name + 13;
 		}
 		else {
@@ -544,40 +561,14 @@ static int will_fetch(struct ref **head, const unsigned char *sha1)
 	return 0;
 }
 
-struct tag_data {
-	struct ref **head;
-	struct ref ***tail;
-};
-
-static int add_to_tail(struct string_list_item *item, void *cb_data)
-{
-	struct tag_data *data = (struct tag_data *)cb_data;
-	struct ref *rm = NULL;
-
-	/* We have already decided to ignore this item */
-	if (!item->util)
-		return 0;
-
-	rm = alloc_ref(item->string);
-	rm->peer_ref = alloc_ref(item->string);
-	hashcpy(rm->old_sha1, item->util);
-
-	**data->tail = rm;
-	*data->tail = &rm->next;
-
-	return 0;
-}
-
 static void find_non_local_tags(struct transport *transport,
 			struct ref **head,
 			struct ref ***tail)
 {
-	struct string_list existing_refs = { NULL, 0, 0, 0 };
-	struct string_list remote_refs = { NULL, 0, 0, 0 };
-	struct tag_data data;
+	struct string_list existing_refs = STRING_LIST_INIT_NODUP;
+	struct string_list remote_refs = STRING_LIST_INIT_NODUP;
 	const struct ref *ref;
 	struct string_list_item *item = NULL;
-	data.head = head; data.tail = tail;
 
 	for_each_ref(add_existing, &existing_refs);
 	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
@@ -631,10 +622,20 @@ static void find_non_local_tags(struct transport *transport,
 		item->util = NULL;
 
 	/*
-	 * For all the tags in the remote_refs string list, call
-	 * add_to_tail to add them to the list of refs to be fetched
+	 * For all the tags in the remote_refs string list,
+	 * add them to the list of refs to be fetched
 	 */
-	for_each_string_list(&remote_refs, add_to_tail, &data);
+	for_each_string_list_item(item, &remote_refs) {
+		/* Unless we have already decided to ignore this item... */
+		if (item->util)
+		{
+			struct ref *rm = alloc_ref(item->string);
+			rm->peer_ref = alloc_ref(item->string);
+			hashcpy(rm->old_sha1, item->util);
+			**tail = rm;
+			*tail = &rm->next;
+		}
+	}
 
 	string_list_clear(&remote_refs, 0);
 }
@@ -667,7 +668,7 @@ static int truncate_fetch_head(void)
 static int do_fetch(struct transport *transport,
 		    struct refspec *refs, int ref_count)
 {
-	struct string_list existing_refs = { NULL, 0, 0, 0 };
+	struct string_list existing_refs = STRING_LIST_INIT_NODUP;
 	struct string_list_item *peer_item = NULL;
 	struct ref *ref_map;
 	struct ref *rm;
@@ -795,28 +796,36 @@ static int add_remote_or_group(const char *name, struct string_list *list)
 	return 1;
 }
 
+static void add_options_to_argv(int *argc, const char **argv)
+{
+	if (dry_run)
+		argv[(*argc)++] = "--dry-run";
+	if (prune)
+		argv[(*argc)++] = "--prune";
+	if (update_head_ok)
+		argv[(*argc)++] = "--update-head-ok";
+	if (force)
+		argv[(*argc)++] = "--force";
+	if (keep)
+		argv[(*argc)++] = "--keep";
+	if (recurse_submodules == RECURSE_SUBMODULES_ON)
+		argv[(*argc)++] = "--recurse-submodules";
+	if (verbosity >= 2)
+		argv[(*argc)++] = "-v";
+	if (verbosity >= 1)
+		argv[(*argc)++] = "-v";
+	else if (verbosity < 0)
+		argv[(*argc)++] = "-q";
+
+}
+
 static int fetch_multiple(struct string_list *list)
 {
 	int i, result = 0;
-	const char *argv[11] = { "fetch", "--append" };
+	const char *argv[12] = { "fetch", "--append" };
 	int argc = 2;
 
-	if (dry_run)
-		argv[argc++] = "--dry-run";
-	if (prune)
-		argv[argc++] = "--prune";
-	if (update_head_ok)
-		argv[argc++] = "--update-head-ok";
-	if (force)
-		argv[argc++] = "--force";
-	if (keep)
-		argv[argc++] = "--keep";
-	if (verbosity >= 2)
-		argv[argc++] = "-v";
-	if (verbosity >= 1)
-		argv[argc++] = "-v";
-	else if (verbosity < 0)
-		argv[argc++] = "-q";
+	add_options_to_argv(&argc, argv);
 
 	if (!append && !dry_run) {
 		int errcode = truncate_fetch_head();
@@ -893,7 +902,7 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 int cmd_fetch(int argc, const char **argv, const char *prefix)
 {
 	int i;
-	struct string_list list = { NULL, 0, 0, 0 };
+	struct string_list list = STRING_LIST_INIT_NODUP;
 	struct remote *remote;
 	int result = 0;
 
@@ -935,6 +944,21 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			remote = remote_get(argv[0]);
 			result = fetch_one(remote, argc-1, argv+1);
 		}
+	}
+
+	if (!result && (recurse_submodules != RECURSE_SUBMODULES_OFF)) {
+		const char *options[10];
+		int num_options = 0;
+		/* Set recursion as default when we already are recursing */
+		if (submodule_prefix[0])
+			set_config_fetch_recurse_submodules(1);
+		gitmodules_config();
+		git_config(submodule_config, NULL);
+		add_options_to_argv(&num_options, options);
+		result = fetch_populated_submodules(num_options, options,
+						    submodule_prefix,
+						    recurse_submodules == RECURSE_SUBMODULES_ON,
+						    verbosity < 0);
 	}
 
 	/* All names were strdup()ed or strndup()ed */

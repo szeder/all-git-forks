@@ -4,6 +4,9 @@
 #include "tree.h"
 #include "blob.h"
 
+#define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
+#define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
+
 const char *tag_type = "tag";
 
 struct object *deref_tag(struct object *o, const char *warn, int warnlen)
@@ -28,12 +31,12 @@ struct tag *lookup_tag(const unsigned char *sha1)
 		return create_object(sha1, OBJ_TAG, alloc_tag_node());
 	if (!obj->type)
 		obj->type = OBJ_TAG;
-        if (obj->type != OBJ_TAG) {
-                error("Object %s is a %s, not a tag",
-                      sha1_to_hex(sha1), typename(obj->type));
-                return NULL;
-        }
-        return (struct tag *) obj;
+	if (obj->type != OBJ_TAG) {
+		error("Object %s is a %s, not a tag",
+		      sha1_to_hex(sha1), typename(obj->type));
+		return NULL;
+	}
+	return (struct tag *) obj;
 }
 
 static unsigned long parse_tag_date(const char *buf, const char *tail)
@@ -132,4 +135,16 @@ int parse_tag(struct tag *item)
 	ret = parse_tag_buffer(item, data, size);
 	free(data);
 	return ret;
+}
+
+size_t parse_signature(const char *buf, unsigned long size)
+{
+	char *eol;
+	size_t len = 0;
+	while (len < size && prefixcmp(buf + len, PGP_SIGNATURE) &&
+			prefixcmp(buf + len, PGP_MESSAGE)) {
+		eol = memchr(buf + len, '\n', size - len);
+		len += eol ? eol - (buf + len) + 1 : size - len;
+	}
+	return len;
 }

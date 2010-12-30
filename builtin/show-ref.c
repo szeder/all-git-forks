@@ -120,7 +120,7 @@ static int add_existing(const char *refname, const unsigned char *sha1, int flag
  */
 static int exclude_existing(const char *match)
 {
-	static struct string_list existing_refs = { NULL, 0, 0, 0 };
+	static struct string_list existing_refs = STRING_LIST_INIT_NODUP;
 	char buf[1024];
 	int matchlen = match ? strlen(match) : 0;
 
@@ -193,7 +193,8 @@ static const struct option show_ref_options[] = {
 	  "only show SHA1 hash using <n> digits",
 	  PARSE_OPT_OPTARG, &hash_callback },
 	OPT__ABBREV(&abbrev),
-	OPT__QUIET(&quiet),
+	OPT__QUIET(&quiet,
+		   "do not print results to stdout (useful with --verify)"),
 	{ OPTION_CALLBACK, 0, "exclude-existing", &exclude_existing_arg,
 	  "pattern", "show refs from stdin that aren't in local repository",
 	  PARSE_OPT_OPTARG | PARSE_OPT_NONEG, exclude_existing_callback },

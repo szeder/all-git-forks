@@ -55,15 +55,15 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	int i, newfd;
 	int verbose = 0, show_only = 0, force = 0, ignore_errors = 0;
 	struct option builtin_mv_options[] = {
-		OPT__DRY_RUN(&show_only),
-		OPT_BOOLEAN('f', "force", &force, "force move/rename even if target exists"),
+		OPT__DRY_RUN(&show_only, "dry run"),
+		OPT__FORCE(&force, "force move/rename even if target exists"),
 		OPT_BOOLEAN('k', NULL, &ignore_errors, "skip move/rename errors"),
 		OPT_END(),
 	};
 	const char **source, **destination, **dest_path;
 	enum update_mode { BOTH = 0, WORKING_DIRECTORY, INDEX } *modes;
 	struct stat st;
-	struct string_list src_for_dst = {NULL, 0, 0, 0};
+	struct string_list src_for_dst = STRING_LIST_INIT_NODUP;
 
 	git_config(git_default_config, NULL);
 

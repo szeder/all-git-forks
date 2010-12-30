@@ -179,11 +179,11 @@ test_expect_success 'git clean -d with prefix and path' '
 
 '
 
-test_expect_success 'git clean symbolic link' '
+test_expect_success SYMLINKS 'git clean symbolic link' '
 
 	mkdir -p build docs &&
 	touch a.out src/part3.c docs/manual.txt obj.o build/lib.so &&
-	ln -s docs/manual.txt src/part4.c
+	ln -s docs/manual.txt src/part4.c &&
 	git clean &&
 	test -f Makefile &&
 	test -f README &&
@@ -388,16 +388,15 @@ test_expect_success 'core.excludesfile' '
 
 '
 
-test_expect_success 'removal failure' '
+test_expect_success SANITY 'removal failure' '
 
 	mkdir foo &&
 	touch foo/bar &&
 	(exec <foo/bar &&
 	 chmod 0 foo &&
-	 test_must_fail git clean -f -d)
-
+	 test_must_fail git clean -f -d &&
+	 chmod 755 foo)
 '
-chmod 755 foo
 
 test_expect_success 'nested git work tree' '
 	rm -fr foo bar &&
@@ -436,6 +435,22 @@ test_expect_success 'force removal of nested git work tree' '
 	git clean -f -f -d &&
 	! test -d foo &&
 	! test -d bar
+'
+
+test_expect_success 'git clean -e' '
+	rm -fr repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+		touch known 1 2 3 &&
+		git add known &&
+		git clean -f -e 1 -e 2 &&
+		test -e 1 &&
+		test -e 2 &&
+		! (test -e 3) &&
+		test -e known
+	)
 '
 
 test_done

@@ -44,11 +44,13 @@ To restore the original branch and stop rebasing run \"git rebase --abort\".
 "
 unset newbase
 strategy=recursive
+strategy_opts=
 do_merge=
 dotest="$GIT_DIR"/rebase-merge
 prec=4
 verbose=
-diffstat=$(git config --bool rebase.stat)
+diffstat=
+test "$(git config --bool rebase.stat)" = true && diffstat=t
 git_am_opt=
 rebase_root=
 force_rebase=
@@ -110,9 +112,9 @@ call_merge () {
 	export GITHEAD_$cmt GITHEAD_$hd
 	if test -n "$GIT_QUIET"
 	then
-		export GIT_MERGE_VERBOSITY=1
+		GIT_MERGE_VERBOSITY=1 && export GIT_MERGE_VERBOSITY
 	fi
-	git-merge-$strategy "$cmt^" -- "$hd" "$cmt"
+	eval 'git-merge-$strategy' $strategy_opts '"$cmt^" -- "$hd" "$cmt"'
 	rv=$?
 	case "$rv" in
 	0)
@@ -204,6 +206,9 @@ do
 	--no-verify)
 		OK_TO_SKIP_PRE_REBASE=yes
 		;;
+	--verify)
+		OK_TO_SKIP_PRE_REBASE=
+		;;
 	--continue)
 		test -d "$dotest" -o -d "$GIT_DIR"/rebase-apply ||
 			die "No rebase in progress?"
@@ -273,15 +278,16 @@ do
 			die "No rebase in progress?"
 
 		git rerere clear
-		if test -d "$dotest"
-		then
-			GIT_QUIET=$(cat "$dotest/quiet")
-			move_to_original_branch
-		else
-			dotest="$GIT_DIR"/rebase-apply
-			GIT_QUIET=$(cat "$dotest/quiet")
-			move_to_original_branch
-		fi
+
+		test -d "$dotest" || dotest="$GIT_DIR"/rebase-apply
+
+		head_name="$(cat "$dotest"/head-name)" &&
+		case "$head_name" in
+		refs/*)
+			git symbolic-ref HEAD $head_name ||
+			die "Could not move back to $head_name"
+			;;
+		esac
 		git reset --hard $(cat "$dotest/orig-head")
 		rm -r "$dotest"
 		exit
@@ -292,6 +298,23 @@ do
 		shift
 		;;
 	-M|-m|--m|--me|--mer|--merg|--merge)
+		do_merge=t
+		;;
+	-X*|--strategy-option*)
+		case "$#,$1" in
+		1,-X|1,--strategy-option)
+			usage ;;
+		*,-X|*,--strategy-option)
+			newopt="$2"
+			shift ;;
+		*,--strategy-option=*)
+			newopt="$(expr " $1" : ' --strategy-option=\(.*\)')" ;;
+		*,-X*)
+			newopt="$(expr " $1" : ' -X\(.*\)')" ;;
+		1,*)
+			usage ;;
+		esac
+		strategy_opts="$strategy_opts $(git rev-parse --sq-quote "--$newopt")"
 		do_merge=t
 		;;
 	-s=*|--s=*|--st=*|--str=*|--stra=*|--strat=*|--strate=*|\
@@ -394,19 +417,7 @@ else
 	fi
 fi
 
-# The tree must be really really clean.
-if ! git update-index --ignore-submodules --refresh > /dev/null; then
-	echo >&2 "cannot rebase: you have unstaged changes"
-	git diff-files --name-status -r --ignore-submodules -- >&2
-	exit 1
-fi
-diff=$(git diff-index --cached --name-status -r --ignore-submodules HEAD --)
-case "$diff" in
-?*)	echo >&2 "cannot rebase: your index contains uncommitted changes"
-	echo >&2 "$diff"
-	exit 1
-	;;
-esac
+require_clean_work_tree "rebase" "Please commit or stash them."
 
 if test -z "$rebase_root"
 then
@@ -544,6 +555,7 @@ fi
 if test -z "$do_merge"
 then
 	git format-patch -k --stdout --full-index --ignore-if-in-upstream \
+		--src-prefix=a/ --dst-prefix=b/ \
 		--no-renames $root_flag "$revisions" |
 	git am $git_am_opt --rebasing --resolvemsg="$RESOLVEMSG" &&
 	move_to_original_branch

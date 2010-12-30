@@ -13,6 +13,7 @@
 #include "revision.h"
 #include "log-tree.h"
 #include "builtin.h"
+#include "submodule.h"
 
 struct blobinfo {
 	unsigned char sha1[20];
@@ -21,7 +22,7 @@ struct blobinfo {
 };
 
 static const char builtin_diff_usage[] =
-"git diff <options> <rev>{0,2} -- <path>*";
+"git diff [<options>] [<commit> [<commit>]] [--] [<path>...]";
 
 static void stuff_change(struct diff_options *opt,
 			 unsigned old_mode, unsigned new_mode,
@@ -279,6 +280,7 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	 */
 
 	prefix = setup_git_directory_gently(&nongit);
+	gitmodules_config();
 	git_config(git_diff_ui_config, NULL);
 
 	if (diff_use_color_default == -1)

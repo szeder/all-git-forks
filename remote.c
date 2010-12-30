@@ -493,7 +493,7 @@ static void read_config(void)
 }
 
 /*
- * We need to make sure the tracking branches are well formed, but a
+ * We need to make sure the remote-tracking branches are well formed, but a
  * wildcard refspec in "struct refspec" must have a trailing slash. We
  * temporarily drop the trailing '/' while calling check_ref_format(),
  * and put it back.  The caller knows that a CHECK_REF_FORMAT_ONELEVEL
@@ -754,7 +754,7 @@ int for_each_remote(each_remote_fn fn, void *priv)
 
 void ref_remove_duplicates(struct ref *ref_map)
 {
-	struct string_list refs = { NULL, 0, 0, 0 };
+	struct string_list refs = STRING_LIST_INIT_NODUP;
 	struct string_list_item *item = NULL;
 	struct ref *prev = NULL, *next = NULL;
 	for (; ref_map; prev = ref_map, ref_map = next) {
@@ -1704,7 +1704,7 @@ static int get_stale_heads_cb(const char *refname,
 struct ref *get_stale_heads(struct remote *remote, struct ref *fetch_map)
 {
 	struct ref *ref, *stale_refs = NULL;
-	struct string_list ref_names = { NULL, 0, 0, 0 };
+	struct string_list ref_names = STRING_LIST_INIT_NODUP;
 	struct stale_heads_info info;
 	info.remote = remote;
 	info.ref_names = &ref_names;

@@ -8,6 +8,7 @@
 #include "cache.h"
 #include "exec_cmd.h"
 #include "strbuf.h"
+#include "quote.h"
 
 #define MAXNAME (256)
 
@@ -34,6 +35,19 @@ static void lowercase(char *p)
 		*p = tolower(*p);
 }
 
+void git_config_push_parameter(const char *text)
+{
+	struct strbuf env = STRBUF_INIT;
+	const char *old = getenv(CONFIG_DATA_ENVIRONMENT);
+	if (old) {
+		strbuf_addstr(&env, old);
+		strbuf_addch(&env, ' ');
+	}
+	sq_quote_buf(&env, text);
+	setenv(CONFIG_DATA_ENVIRONMENT, env.buf, 1);
+	strbuf_release(&env);
+}
+
 int git_config_parse_parameter(const char *text)
 {
 	struct config_item *ct;
@@ -58,6 +72,37 @@ int git_config_parse_parameter(const char *text)
 	lowercase(ct->name);
 	*config_parameters_tail = ct;
 	config_parameters_tail = &ct->next;
+	return 0;
+}
+
+int git_config_parse_environment(void) {
+	const char *env = getenv(CONFIG_DATA_ENVIRONMENT);
+	char *envw;
+	const char **argv = NULL;
+	int nr = 0, alloc = 0;
+	int i;
+
+	if (!env)
+		return 0;
+	/* sq_dequote will write over it */
+	envw = xstrdup(env);
+
+	if (sq_dequote_to_argv(envw, &argv, &nr, &alloc) < 0) {
+		free(envw);
+		return error("bogus format in " CONFIG_DATA_ENVIRONMENT);
+	}
+
+	for (i = 0; i < nr; i++) {
+		if (git_config_parse_parameter(argv[i]) < 0) {
+			error("bogus config parameter: %s", argv[i]);
+			free(argv);
+			free(envw);
+			return -1;
+		}
+	}
+
+	free(argv);
+	free(envw);
 	return 0;
 }
 
@@ -365,7 +410,7 @@ unsigned long git_config_ulong(const char *name, const char *value)
 	return ret;
 }
 
-int git_config_maybe_bool(const char *name, const char *value)
+static int git_config_maybe_bool_text(const char *name, const char *value)
 {
 	if (!value)
 		return 1;
@@ -382,9 +427,19 @@ int git_config_maybe_bool(const char *name, const char *value)
 	return -1;
 }
 
+int git_config_maybe_bool(const char *name, const char *value)
+{
+	long v = git_config_maybe_bool_text(name, value);
+	if (0 <= v)
+		return v;
+	if (git_parse_long(value, &v))
+		return !!v;
+	return -1;
+}
+
 int git_config_bool_or_int(const char *name, const char *value, int *is_bool)
 {
-	int v = git_config_maybe_bool(name, value);
+	int v = git_config_maybe_bool_text(name, value);
 	if (0 <= v) {
 		*is_bool = 1;
 		return v;
@@ -441,6 +496,13 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.ignorecase")) {
 		ignore_case = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.abbrevguard")) {
+		unique_abbrev_extra_length = git_config_int(var, value);
+		if (unique_abbrev_extra_length < 0)
+			unique_abbrev_extra_length = 0;
 		return 0;
 	}
 
@@ -559,6 +621,9 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.editor"))
 		return git_config_string(&editor_program, var, value);
+
+	if (!strcmp(var, "core.askpass"))
+		return git_config_string(&askpass_program, var, value);
 
 	if (!strcmp(var, "core.excludesfile"))
 		return git_config_pathname(&excludes_file, var, value);
@@ -773,17 +838,23 @@ int git_config_global(void)
 
 int git_config_from_parameters(config_fn_t fn, void *data)
 {
+	static int loaded_environment;
 	const struct config_item *ct;
+
+	if (!loaded_environment) {
+		if (git_config_parse_environment() < 0)
+			return -1;
+		loaded_environment = 1;
+	}
 	for (ct = config_parameters; ct; ct = ct->next)
 		if (fn(ct->name, ct->value, data) < 0)
 			return -1;
 	return 0;
 }
 
-int git_config(config_fn_t fn, void *data)
+int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 {
 	int ret = 0, found = 0;
-	char *repo_config = NULL;
 	const char *home = NULL;
 
 	/* Setting $GIT_CONFIG makes git read _only_ the given config file. */
@@ -805,20 +876,27 @@ int git_config(config_fn_t fn, void *data)
 		free(user_config);
 	}
 
-	repo_config = git_pathdup("config");
-	if (!access(repo_config, R_OK)) {
+	if (repo_config && !access(repo_config, R_OK)) {
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
-	free(repo_config);
 
-	if (config_parameters) {
-		ret += git_config_from_parameters(fn, data);
+	ret += git_config_from_parameters(fn, data);
+	if (config_parameters)
 		found += 1;
-	}
 
-	if (found == 0)
-		return -1;
+	return ret == 0 ? found : ret;
+}
+
+int git_config(config_fn_t fn, void *data)
+{
+	char *repo_config = NULL;
+	int ret;
+
+	repo_config = git_pathdup("config");
+	ret = git_config_early(fn, data, repo_config);
+	if (repo_config)
+		free(repo_config);
 	return ret;
 }
 

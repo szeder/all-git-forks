@@ -7,9 +7,9 @@
 #include "unpack-trees.h"
 
 static char const * const archive_usage[] = {
-	"git archive [options] <tree-ish> [path...]",
+	"git archive [options] <tree-ish> [<path>...]",
 	"git archive --list",
-	"git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [path...]",
+	"git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]",
 	"git archive --remote <repo> [--exec <cmd>] --list",
 	NULL
 };
@@ -314,7 +314,7 @@ static int parse_archive_args(int argc, const char **argv,
 			"write the archive to this file"),
 		OPT_BOOLEAN(0, "worktree-attributes", &worktree_attributes,
 			"read .gitattributes in working directory"),
-		OPT__VERBOSE(&verbose),
+		OPT__VERBOSE(&verbose, "report archived files on stderr"),
 		OPT__COMPR('0', &compression_level, "store only", 0),
 		OPT__COMPR('1', &compression_level, "compress faster", 1),
 		OPT__COMPR_HIDDEN('2', &compression_level, 2),

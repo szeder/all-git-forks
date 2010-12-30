@@ -11,7 +11,7 @@
 #include "list-objects.h"
 #include "run-command.h"
 
-static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=nn] <dir>";
+static const char upload_pack_usage[] = "git upload-pack [--strict] [--timeout=<n>] <dir>";
 
 /* bits #0..7 in revision.h, #8..10 in commit.c */
 #define THEY_HAVE	(1u << 11)
@@ -105,7 +105,7 @@ static void show_edge(struct commit *commit)
 	fprintf(pack_pipe, "-%s\n", sha1_to_hex(commit->object.sha1));
 }
 
-static int do_rev_list(int in, int out, void *create_full_pack)
+static int do_rev_list(int in, int out, void *user_data)
 {
 	int i;
 	struct rev_info revs;
@@ -118,23 +118,18 @@ static int do_rev_list(int in, int out, void *create_full_pack)
 	if (use_thin_pack)
 		revs.edge_hint = 1;
 
-	if (create_full_pack) {
-		const char *args[] = {"rev-list", "--all", NULL};
-		setup_revisions(2, args, &revs, NULL);
-	} else {
-		for (i = 0; i < want_obj.nr; i++) {
-			struct object *o = want_obj.objects[i].item;
-			/* why??? */
-			o->flags &= ~UNINTERESTING;
-			add_pending_object(&revs, o, NULL);
-		}
-		for (i = 0; i < have_obj.nr; i++) {
-			struct object *o = have_obj.objects[i].item;
-			o->flags |= UNINTERESTING;
-			add_pending_object(&revs, o, NULL);
-		}
-		setup_revisions(0, NULL, &revs, NULL);
+	for (i = 0; i < want_obj.nr; i++) {
+		struct object *o = want_obj.objects[i].item;
+		/* why??? */
+		o->flags &= ~UNINTERESTING;
+		add_pending_object(&revs, o, NULL);
 	}
+	for (i = 0; i < have_obj.nr; i++) {
+		struct object *o = have_obj.objects[i].item;
+		o->flags |= UNINTERESTING;
+		add_pending_object(&revs, o, NULL);
+	}
+	setup_revisions(0, NULL, &revs, NULL);
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
 	mark_edges_uninteresting(revs.commits, &revs, show_edge);
@@ -371,7 +366,7 @@ static int reachable(struct commit *want)
 {
 	struct commit_list *work = NULL;
 
-	insert_by_date(want, &work);
+	commit_list_insert_by_date(want, &work);
 	while (work) {
 		struct commit_list *list = work->next;
 		struct commit *commit = work->item;
@@ -392,7 +387,7 @@ static int reachable(struct commit *want)
 		for (list = commit->parents; list; list = list->next) {
 			struct commit *parent = list->item;
 			if (!(parent->object.flags & REACHABLE))
-				insert_by_date(parent, &work);
+				commit_list_insert_by_date(parent, &work);
 		}
 	}
 	want->object.flags |= REACHABLE;
@@ -487,7 +482,7 @@ static int get_common_commits(void)
 
 static void receive_needs(void)
 {
-	struct object_array shallows = {0, 0, NULL};
+	struct object_array shallows = OBJECT_ARRAY_INIT;
 	static char line[1000];
 	int len, depth = 0;
 
@@ -554,7 +549,8 @@ static void receive_needs(void)
 		 */
 		o = lookup_object(sha1_buf);
 		if (!o || !(o->flags & OUR_REF))
-			die("git upload-pack: not our ref %s", line+5);
+			die("git upload-pack: not our ref %s",
+			    sha1_to_hex(sha1_buf));
 		if (!(o->flags & WANTED)) {
 			o->flags |= WANTED;
 			add_object_array(o, NULL, &want_obj);

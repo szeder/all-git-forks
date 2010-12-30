@@ -416,48 +416,210 @@ static char *squash_slash(char *name)
 	return name;
 }
 
-static char *find_name(const char *line, char *def, int p_value, int terminate)
+static char *find_name_gnu(const char *line, char *def, int p_value)
+{
+	struct strbuf name = STRBUF_INIT;
+	char *cp;
+
+	/*
+	 * Proposed "new-style" GNU patch/diff format; see
+	 * http://marc.theaimsgroup.com/?l=git&m=112927316408690&w=2
+	 */
+	if (unquote_c_style(&name, line, NULL)) {
+		strbuf_release(&name);
+		return NULL;
+	}
+
+	for (cp = name.buf; p_value; p_value--) {
+		cp = strchr(cp, '/');
+		if (!cp) {
+			strbuf_release(&name);
+			return NULL;
+		}
+		cp++;
+	}
+
+	/* name can later be freed, so we need
+	 * to memmove, not just return cp
+	 */
+	strbuf_remove(&name, 0, cp - name.buf);
+	free(def);
+	if (root)
+		strbuf_insert(&name, 0, root, root_len);
+	return squash_slash(strbuf_detach(&name, NULL));
+}
+
+static size_t sane_tz_len(const char *line, size_t len)
+{
+	const char *tz, *p;
+
+	if (len < strlen(" +0500") || line[len-strlen(" +0500")] != ' ')
+		return 0;
+	tz = line + len - strlen(" +0500");
+
+	if (tz[1] != '+' && tz[1] != '-')
+		return 0;
+
+	for (p = tz + 2; p != line + len; p++)
+		if (!isdigit(*p))
+			return 0;
+
+	return line + len - tz;
+}
+
+static size_t tz_with_colon_len(const char *line, size_t len)
+{
+	const char *tz, *p;
+
+	if (len < strlen(" +08:00") || line[len - strlen(":00")] != ':')
+		return 0;
+	tz = line + len - strlen(" +08:00");
+
+	if (tz[0] != ' ' || (tz[1] != '+' && tz[1] != '-'))
+		return 0;
+	p = tz + 2;
+	if (!isdigit(*p++) || !isdigit(*p++) || *p++ != ':' ||
+	    !isdigit(*p++) || !isdigit(*p++))
+		return 0;
+
+	return line + len - tz;
+}
+
+static size_t date_len(const char *line, size_t len)
+{
+	const char *date, *p;
+
+	if (len < strlen("72-02-05") || line[len-strlen("-05")] != '-')
+		return 0;
+	p = date = line + len - strlen("72-02-05");
+
+	if (!isdigit(*p++) || !isdigit(*p++) || *p++ != '-' ||
+	    !isdigit(*p++) || !isdigit(*p++) || *p++ != '-' ||
+	    !isdigit(*p++) || !isdigit(*p++))	/* Not a date. */
+		return 0;
+
+	if (date - line >= strlen("19") &&
+	    isdigit(date[-1]) && isdigit(date[-2]))	/* 4-digit year */
+		date -= strlen("19");
+
+	return line + len - date;
+}
+
+static size_t short_time_len(const char *line, size_t len)
+{
+	const char *time, *p;
+
+	if (len < strlen(" 07:01:32") || line[len-strlen(":32")] != ':')
+		return 0;
+	p = time = line + len - strlen(" 07:01:32");
+
+	/* Permit 1-digit hours? */
+	if (*p++ != ' ' ||
+	    !isdigit(*p++) || !isdigit(*p++) || *p++ != ':' ||
+	    !isdigit(*p++) || !isdigit(*p++) || *p++ != ':' ||
+	    !isdigit(*p++) || !isdigit(*p++))	/* Not a time. */
+		return 0;
+
+	return line + len - time;
+}
+
+static size_t fractional_time_len(const char *line, size_t len)
+{
+	const char *p;
+	size_t n;
+
+	/* Expected format: 19:41:17.620000023 */
+	if (!len || !isdigit(line[len - 1]))
+		return 0;
+	p = line + len - 1;
+
+	/* Fractional seconds. */
+	while (p > line && isdigit(*p))
+		p--;
+	if (*p != '.')
+		return 0;
+
+	/* Hours, minutes, and whole seconds. */
+	n = short_time_len(line, p - line);
+	if (!n)
+		return 0;
+
+	return line + len - p + n;
+}
+
+static size_t trailing_spaces_len(const char *line, size_t len)
+{
+	const char *p;
+
+	/* Expected format: ' ' x (1 or more)  */
+	if (!len || line[len - 1] != ' ')
+		return 0;
+
+	p = line + len;
+	while (p != line) {
+		p--;
+		if (*p != ' ')
+			return line + len - (p + 1);
+	}
+
+	/* All spaces! */
+	return len;
+}
+
+static size_t diff_timestamp_len(const char *line, size_t len)
+{
+	const char *end = line + len;
+	size_t n;
+
+	/*
+	 * Posix: 2010-07-05 19:41:17
+	 * GNU: 2010-07-05 19:41:17.620000023 -0500
+	 */
+
+	if (!isdigit(end[-1]))
+		return 0;
+
+	n = sane_tz_len(line, end - line);
+	if (!n)
+		n = tz_with_colon_len(line, end - line);
+	end -= n;
+
+	n = short_time_len(line, end - line);
+	if (!n)
+		n = fractional_time_len(line, end - line);
+	end -= n;
+
+	n = date_len(line, end - line);
+	if (!n)	/* No date.  Too bad. */
+		return 0;
+	end -= n;
+
+	if (end == line)	/* No space before date. */
+		return 0;
+	if (end[-1] == '\t') {	/* Success! */
+		end--;
+		return line + len - end;
+	}
+	if (end[-1] != ' ')	/* No space before date. */
+		return 0;
+
+	/* Whitespace damage. */
+	end -= trailing_spaces_len(line, end - line);
+	return line + len - end;
+}
+
+static char *find_name_common(const char *line, char *def, int p_value,
+				const char *end, int terminate)
 {
 	int len;
 	const char *start = NULL;
 
 	if (p_value == 0)
 		start = line;
-
-	if (*line == '"') {
-		struct strbuf name = STRBUF_INIT;
-
-		/*
-		 * Proposed "new-style" GNU patch/diff format; see
-		 * http://marc.theaimsgroup.com/?l=git&m=112927316408690&w=2
-		 */
-		if (!unquote_c_style(&name, line, NULL)) {
-			char *cp;
-
-			for (cp = name.buf; p_value; p_value--) {
-				cp = strchr(cp, '/');
-				if (!cp)
-					break;
-				cp++;
-			}
-			if (cp) {
-				/* name can later be freed, so we need
-				 * to memmove, not just return cp
-				 */
-				strbuf_remove(&name, 0, cp - name.buf);
-				free(def);
-				if (root)
-					strbuf_insert(&name, 0, root, root_len);
-				return squash_slash(strbuf_detach(&name, NULL));
-			}
-		}
-		strbuf_release(&name);
-	}
-
-	for (;;) {
+	while (line != end) {
 		char c = *line;
 
-		if (isspace(c)) {
+		if (!end && isspace(c)) {
 			if (c == '\n')
 				break;
 			if (name_terminate(start, line-start, c, terminate))
@@ -497,6 +659,37 @@ static char *find_name(const char *line, char *def, int p_value, int terminate)
 	return squash_slash(xmemdupz(start, len));
 }
 
+static char *find_name(const char *line, char *def, int p_value, int terminate)
+{
+	if (*line == '"') {
+		char *name = find_name_gnu(line, def, p_value);
+		if (name)
+			return name;
+	}
+
+	return find_name_common(line, def, p_value, NULL, terminate);
+}
+
+static char *find_name_traditional(const char *line, char *def, int p_value)
+{
+	size_t len = strlen(line);
+	size_t date_len;
+
+	if (*line == '"') {
+		char *name = find_name_gnu(line, def, p_value);
+		if (name)
+			return name;
+	}
+
+	len = strchrnul(line, '\n') - line;
+	date_len = diff_timestamp_len(line, len);
+	if (!date_len)
+		return find_name_common(line, def, p_value, NULL, TERM_TAB);
+	len -= date_len;
+
+	return find_name_common(line, def, p_value, line + len, 0);
+}
+
 static int count_slashes(const char *cp)
 {
 	int cnt = 0;
@@ -519,7 +712,7 @@ static int guess_p_value(const char *nameline)
 
 	if (is_dev_null(nameline))
 		return -1;
-	name = find_name(nameline, NULL, 0, TERM_SPACE | TERM_TAB);
+	name = find_name_traditional(nameline, NULL, 0);
 	if (!name)
 		return -1;
 	cp = strchr(name, '/');
@@ -560,8 +753,8 @@ static int has_epoch_timestamp(const char *nameline)
 		" "
 		"[0-2][0-9]:[0-5][0-9]:00(\\.0+)?"
 		" "
-		"([-+][0-2][0-9][0-5][0-9])\n";
-	const char *timestamp = NULL, *cp;
+		"([-+][0-2][0-9]:?[0-5][0-9])\n";
+	const char *timestamp = NULL, *cp, *colon;
 	static regex_t *stamp;
 	regmatch_t m[10];
 	int zoneoffset;
@@ -591,8 +784,11 @@ static int has_epoch_timestamp(const char *nameline)
 		return 0;
 	}
 
-	zoneoffset = strtol(timestamp + m[3].rm_so + 1, NULL, 10);
-	zoneoffset = (zoneoffset / 100) * 60 + (zoneoffset % 100);
+	zoneoffset = strtol(timestamp + m[3].rm_so + 1, (char **) &colon, 10);
+	if (*colon == ':')
+		zoneoffset = zoneoffset * 60 + strtol(colon + 1, NULL, 10);
+	else
+		zoneoffset = (zoneoffset / 100) * 60 + (zoneoffset % 100);
 	if (timestamp[m[3].rm_so] == '-')
 		zoneoffset = -zoneoffset;
 
@@ -638,16 +834,16 @@ static void parse_traditional_patch(const char *first, const char *second, struc
 	if (is_dev_null(first)) {
 		patch->is_new = 1;
 		patch->is_delete = 0;
-		name = find_name(second, NULL, p_value, TERM_SPACE | TERM_TAB);
+		name = find_name_traditional(second, NULL, p_value);
 		patch->new_name = name;
 	} else if (is_dev_null(second)) {
 		patch->is_new = 0;
 		patch->is_delete = 1;
-		name = find_name(first, NULL, p_value, TERM_SPACE | TERM_TAB);
+		name = find_name_traditional(first, NULL, p_value);
 		patch->old_name = name;
 	} else {
-		name = find_name(first, NULL, p_value, TERM_SPACE | TERM_TAB);
-		name = find_name(second, name, p_value, TERM_SPACE | TERM_TAB);
+		name = find_name_traditional(first, NULL, p_value);
+		name = find_name_traditional(second, name, p_value);
 		if (has_epoch_timestamp(first)) {
 			patch->is_new = 1;
 			patch->is_delete = 0;
@@ -746,28 +942,28 @@ static int gitdiff_newfile(const char *line, struct patch *patch)
 static int gitdiff_copysrc(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
 
 static int gitdiff_copydst(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
 
 static int gitdiff_renamesrc(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->old_name = find_name(line, NULL, 0, 0);
+	patch->old_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
 
 static int gitdiff_renamedst(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
-	patch->new_name = find_name(line, NULL, 0, 0);
+	patch->new_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
 
@@ -852,7 +1048,7 @@ static char *git_header_name(char *line, int llen)
 {
 	const char *name;
 	const char *second = NULL;
-	size_t len;
+	size_t len, line_len;
 
 	line += strlen("diff --git ");
 	llen -= strlen("diff --git ");
@@ -952,6 +1148,10 @@ static char *git_header_name(char *line, int llen)
 	 * Accept a name only if it shows up twice, exactly the same
 	 * form.
 	 */
+	second = strchr(name, '\n');
+	if (!second)
+		return NULL;
+	line_len = second - name;
 	for (len = 0 ; ; len++) {
 		switch (name[len]) {
 		default:
@@ -959,15 +1159,11 @@ static char *git_header_name(char *line, int llen)
 		case '\n':
 			return NULL;
 		case '\t': case ' ':
-			second = name+len;
-			for (;;) {
-				char c = *second++;
-				if (c == '\n')
-					return NULL;
-				if (c == '/')
-					break;
-			}
-			if (second[len] == '\n' && !memcmp(name, second, len)) {
+			second = stop_at_slash(name + len, line_len - len);
+			if (!second)
+				return NULL;
+			second++;
+			if (second[len] == '\n' && !strncmp(name, second, len)) {
 				return xmemdupz(name, len);
 			}
 		}
@@ -2472,6 +2668,12 @@ static int apply_binary_fragment(struct image *img, struct patch *patch)
 	unsigned long len;
 	void *dst;
 
+	if (!fragment)
+		return error("missing binary patch data for '%s'",
+			     patch->new_name ?
+			     patch->new_name :
+			     patch->old_name);
+
 	/* Binary patch is irreversible without the optional second hunk */
 	if (apply_in_reverse) {
 		if (!fragment->next)
@@ -3606,11 +3808,11 @@ static int option_parse_directory(const struct option *opt,
 	return 0;
 }
 
-int cmd_apply(int argc, const char **argv, const char *unused_prefix)
+int cmd_apply(int argc, const char **argv, const char *prefix_)
 {
 	int i;
 	int errs = 0;
-	int is_not_gitdir;
+	int is_not_gitdir = !startup_info->have_repository;
 	int binary;
 	int force_apply = 0;
 
@@ -3670,7 +3872,7 @@ int cmd_apply(int argc, const char **argv, const char *unused_prefix)
 			"don't expect at least one line of context"),
 		OPT_BOOLEAN(0, "reject", &apply_with_reject,
 			"leave the rejected hunks in corresponding *.rej files"),
-		OPT__VERBOSE(&apply_verbosely),
+		OPT__VERBOSE(&apply_verbosely, "be verbose"),
 		OPT_BIT(0, "inaccurate-eof", &options,
 			"tolerate incorrectly detected missing new-line at the end of file",
 			INACCURATE_EOF),
@@ -3683,7 +3885,7 @@ int cmd_apply(int argc, const char **argv, const char *unused_prefix)
 		OPT_END()
 	};
 
-	prefix = setup_git_directory_gently(&is_not_gitdir);
+	prefix = prefix_;
 	prefix_length = prefix ? strlen(prefix) : 0;
 	git_config(git_apply_config, NULL);
 	if (apply_default_whitespace)

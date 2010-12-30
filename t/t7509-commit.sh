@@ -40,7 +40,7 @@ test_expect_success '-C option copies only the message with --reset-author' '
 	test_tick &&
 	git commit -a -C Initial --reset-author &&
 	echo "author $GIT_AUTHOR_NAME <$GIT_AUTHOR_EMAIL> $GIT_AUTHOR_DATE" >expect &&
-	author_header HEAD >actual
+	author_header HEAD >actual &&
 	test_cmp expect actual &&
 
 	message_body Initial >expect &&
@@ -111,7 +111,7 @@ test_expect_success '--amend option with empty author' '
 	test_when_finished "git checkout Initial" &&
 	echo "Empty author test" >>foo &&
 	test_tick &&
-	! git commit -a -m "empty author" --amend 2>err &&
+	test_must_fail git commit -a -m "empty author" --amend 2>err &&
 	grep "empty ident" err
 '
 
@@ -125,7 +125,7 @@ test_expect_success '--amend option with missing author' '
 	test_when_finished "git checkout Initial" &&
 	echo "Missing author test" >>foo &&
 	test_tick &&
-	! git commit -a -m "malformed author" --amend 2>err &&
+	test_must_fail git commit -a -m "malformed author" --amend 2>err &&
 	grep "empty ident" err
 '
 

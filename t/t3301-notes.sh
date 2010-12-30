@@ -52,7 +52,7 @@ test_expect_success 'refusing to edit notes in refs/remotes/' '
 
 # 1 indicates caught gracefully by die, 128 means git-show barked
 test_expect_success 'handle empty notes gracefully' '
-	git notes show ; test 1 = $?
+	test_expect_code 1 git notes show
 '
 
 test_expect_success 'show non-existent notes entry with %N' '
@@ -299,7 +299,7 @@ cat expect-F >> expect-rm-F
 test_expect_success 'verify note removal with -F /dev/null' '
 	git log -4 > output &&
 	test_cmp expect-rm-F output &&
-	! git notes show
+	test_must_fail git notes show
 '
 
 test_expect_success 'do not create empty note with -m "" (setup)' '
@@ -309,7 +309,7 @@ test_expect_success 'do not create empty note with -m "" (setup)' '
 test_expect_success 'verify non-creation of note with -m ""' '
 	git log -4 > output &&
 	test_cmp expect-rm-F output &&
-	! git notes show
+	test_must_fail git notes show
 '
 
 cat > expect-combine_m_and_F << EOF
@@ -357,13 +357,20 @@ cat expect-multiline >> expect-rm-remove
 test_expect_success 'verify note removal with "git notes remove"' '
 	git log -4 > output &&
 	test_cmp expect-rm-remove output &&
-	! git notes show HEAD^
+	test_must_fail git notes show HEAD^
 '
 
 cat > expect << EOF
 c18dc024e14f08d18d14eea0d747ff692d66d6a3 1584215f1d29c65e99c6c6848626553fdd07fd75
 c9c6af7f78bc47490dbf3e822cf2f3c24d4b9061 268048bfb8a1fb38e703baceb8ab235421bf80c5
 EOF
+
+test_expect_success 'removing non-existing note should not create new commit' '
+	git rev-parse --verify refs/notes/commits > before_commit &&
+	test_must_fail git notes remove HEAD^ &&
+	git rev-parse --verify refs/notes/commits > after_commit &&
+	test_cmp before_commit after_commit
+'
 
 test_expect_success 'list notes with "git notes list"' '
 	git notes list > output &&
@@ -620,16 +627,16 @@ test_expect_success '--show-notes=ref accumulates' '
 
 test_expect_success 'Allow notes on non-commits (trees, blobs, tags)' '
 	git config core.notesRef refs/notes/other &&
-	echo "Note on a tree" > expect
+	echo "Note on a tree" > expect &&
 	git notes add -m "Note on a tree" HEAD: &&
 	git notes show HEAD: > actual &&
 	test_cmp expect actual &&
-	echo "Note on a blob" > expect
+	echo "Note on a blob" > expect &&
 	filename=$(git ls-tree --name-only HEAD | head -n1) &&
 	git notes add -m "Note on a blob" HEAD:$filename &&
 	git notes show HEAD:$filename > actual &&
 	test_cmp expect actual &&
-	echo "Note on a tag" > expect
+	echo "Note on a tag" > expect &&
 	git tag -a -m "This is an annotated tag" foobar HEAD^ &&
 	git notes add -m "Note on a tag" foobar &&
 	git notes show foobar > actual &&
@@ -955,6 +962,7 @@ Date:   Thu Apr 7 15:27:13 2005 -0700
 
 Notes (other):
     a fresh note
+$whitespace
     another fresh note
 EOF
 
@@ -976,8 +984,11 @@ Date:   Thu Apr 7 15:27:13 2005 -0700
 
 Notes (other):
     a fresh note
+$whitespace
     another fresh note
+$whitespace
     append 1
+$whitespace
     append 2
 EOF
 
@@ -1052,6 +1063,25 @@ test_expect_success 'GIT_NOTES_REWRITE_REF overrides config' '
 test_expect_success 'git notes copy diagnoses too many or too few parameters' '
 	test_must_fail git notes copy &&
 	test_must_fail git notes copy one two three
+'
+
+test_expect_success 'git notes get-ref (no overrides)' '
+	git config --unset core.notesRef &&
+	unset GIT_NOTES_REF &&
+	test "$(git notes get-ref)" = "refs/notes/commits"
+'
+
+test_expect_success 'git notes get-ref (core.notesRef)' '
+	git config core.notesRef refs/notes/foo &&
+	test "$(git notes get-ref)" = "refs/notes/foo"
+'
+
+test_expect_success 'git notes get-ref (GIT_NOTES_REF)' '
+	test "$(GIT_NOTES_REF=refs/notes/bar git notes get-ref)" = "refs/notes/bar"
+'
+
+test_expect_success 'git notes get-ref (--ref)' '
+	test "$(GIT_NOTES_REF=refs/notes/bar git notes --ref=baz get-ref)" = "refs/notes/baz"
 '
 
 test_done
