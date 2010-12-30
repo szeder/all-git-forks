@@ -62,7 +62,9 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
         standard "make install" target.
       + package gitweb: do not install anything except
         configuration, to avoid file conflicts with the git package.
-    - debian/control: describe gitweb as a configuration package.
+    - debian/control:
+      + package git: Replaces: old gitweb.
+      + package gitweb: explain that it is a configuration package.
     - debian/gitweb.NEWS.Debian, debian/git.README.Debian,
       debian/gitweb.conf: auxiliary files have been moved to
       /usr/share/gitweb/static.
