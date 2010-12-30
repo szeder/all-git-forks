@@ -28,7 +28,8 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
   [ Jonathan Nieder ]
   * debian/diff/0003, 0010-0034: remove, applied upstream.
   * update debian/copyright.
-
+  * debian/git.README.Debian: server logs go in /var/log/apache2, not
+    /var/log/apache-ssl.
   * update gitweb and instaweb to v1.7.2.x:
     - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove,
       no longer needed.
