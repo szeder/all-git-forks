@@ -42,6 +42,8 @@ git (1:1.7.4~rc0-0.0.1) experimental; urgency=low
   * update debian/copyright.
   * debian/control: git-cvs: clarify relationship to cvs2git in the
     long description (closes: #585725).
+  * debian/control: git-core: clarify that it is still needed to
+    satisfy dependencies (thx Denis Laxalde).
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
   * update gitweb and instaweb to v1.7.2.x:
