@@ -1836,7 +1836,8 @@ endif
 XDIFF_OBJS = xdiff/xdiffi.o xdiff/xprepare.o xdiff/xutils.o xdiff/xemit.o \
 	xdiff/xmerge.o xdiff/xpatience.o
 VCSSVN_OBJS = vcs-svn/line_buffer.o vcs-svn/repo_tree.o \
-	vcs-svn/fast_export.o vcs-svn/svndump.o
+	vcs-svn/fast_export.o vcs-svn/svndump.o \
+	vcs-svn/sliding_window.o
 VCSSVN_TEST_OBJS = test-obj-pool.o test-line-buffer.o test-treap.o
 OBJECTS := $(GIT_OBJS) $(XDIFF_OBJS) $(VCSSVN_OBJS)
 
@@ -1962,7 +1963,7 @@ xdiff-interface.o $(XDIFF_OBJS): \
 
 $(VCSSVN_OBJS) $(VCSSVN_TEST_OBJS): $(LIB_H) \
 	vcs-svn/line_buffer.h vcs-svn/repo_tree.h vcs-svn/fast_export.h \
-	vcs-svn/svndump.h
+	vcs-svn/svndump.h vcs-svn/sliding_window.h
 
 test-svn-fe.o: vcs-svn/svndump.h
 endif
