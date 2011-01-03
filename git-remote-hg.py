@@ -19,7 +19,7 @@ def get_repo(alias, url):
         die("Mercurial python libraries not installed")
 
     ui = ui.ui()
-    source, revs = hg.parseurl(ui.expandpath(url), ['tip'])
+    source, revs = hg.parseurl(ui.expandpath(url), ['tip'])[:2]
     repo = hg.repository(ui, source)
 
     prefix = 'refs/hg/%s/' % alias
