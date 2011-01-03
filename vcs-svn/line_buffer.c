@@ -91,28 +91,28 @@ char *buffer_read_line(struct line_buffer *buf)
 	return buf->line_buffer;
 }
 
-char *buffer_read_string(struct line_buffer *buf, uint32_t len)
+char *buffer_read_string(struct line_buffer *buf, size_t len)
 {
 	strbuf_reset(&buf->blob_buffer);
 	strbuf_fread(&buf->blob_buffer, len, buf->infile);
 	return ferror(buf->infile) ? NULL : buf->blob_buffer.buf;
 }
 
-uint32_t buffer_read_binary(struct line_buffer *buf,
-				struct strbuf *sb, uint32_t size)
+size_t buffer_read_binary(struct line_buffer *buf,
+				struct strbuf *sb, size_t size)
 {
 	size_t oldsize = sb->len;
 	strbuf_fread(sb, size, buf->infile);
 	return sb->len - oldsize;
 }
 
-uint32_t buffer_copy_bytes(struct line_buffer *buf, uint32_t nbytes)
+off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes)
 {
 	char byte_buffer[COPY_BUFFER_LEN];
-	uint32_t done = 0;
+	off_t done = 0;
 	while (done < nbytes && !feof(buf->infile) && !ferror(buf->infile)) {
-		uint32_t len = nbytes - done;
-		uint32_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+		off_t len = nbytes - done;
+		size_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		in = fread(byte_buffer, 1, in, buf->infile);
 		done += in;
 		fwrite(byte_buffer, 1, in, stdout);
@@ -122,13 +122,13 @@ uint32_t buffer_copy_bytes(struct line_buffer *buf, uint32_t nbytes)
 	return done;
 }
 
-uint32_t buffer_skip_bytes(struct line_buffer *buf, uint32_t nbytes)
+off_t buffer_skip_bytes(struct line_buffer *buf, off_t nbytes)
 {
 	char byte_buffer[COPY_BUFFER_LEN];
-	uint32_t done = 0;
+	off_t done = 0;
 	while (done < nbytes && !feof(buf->infile) && !ferror(buf->infile)) {
-		uint32_t len = nbytes - done;
-		uint32_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
+		off_t len = nbytes - done;
+		size_t in = len < COPY_BUFFER_LEN ? len : COPY_BUFFER_LEN;
 		done += fread(byte_buffer, 1, in, buf->infile);
 	}
 	return done;
