@@ -109,20 +109,37 @@ static void init_keys(void)
 	keys.content_length = pool_intern("Content-length");
 }
 
+static void die_short_read(struct line_buffer *input)
+{
+	if (buffer_ferror(input))
+		die_errno("error reading dump file");
+	die("invalid dump: unexpected end of file");
+}
+
 static void read_props(void)
 {
 	uint32_t len;
 	uint32_t key = ~0;
 	char *val = NULL;
-	char *t;
-	while ((t = buffer_read_line(&input)) && strcmp(t, "PROPS-END")) {
+	for (;;) {
+		char *t = buffer_read_line(&input);
+		if (!t)
+			die_short_read(&input);
+		if (!strcmp(t, "PROPS-END"))
+			return;
 		if (!strncmp(t, "K ", 2)) {
 			len = atoi(&t[2]);
-			key = pool_intern(buffer_read_string(&input, len));
-			buffer_read_line(&input);
+			t = buffer_read_line(&input);
+			if (!t)
+				die_short_read(&input);
+			if (strlen(t) != len)
+				die("invalid dump: incorrect key length");
+			key = pool_intern(t);
 		} else if (!strncmp(t, "V ", 2)) {
 			len = atoi(&t[2]);
 			val = buffer_read_string(&input, len);
+			if (!t)
+				die_short_read(&input);
 			if (key == keys.svn_log) {
 				/* Value length excludes terminating nul. */
 				rev_ctx.log = log_copy(len + 1, val);
@@ -137,7 +154,11 @@ static void read_props(void)
 				node_ctx.type = REPO_MODE_LNK;
 			}
 			key = ~0;
-			buffer_read_line(&input);
+			t = buffer_read_line(&input);
+			if (!t)
+				die_short_read(&input);
+			if (*t)
+				die("invalid dump: incorrect value length");
 		}
 	}
 }
@@ -178,11 +199,13 @@ static void handle_node(void)
 	if (node_ctx.propLength == LENGTH_UNKNOWN && node_ctx.srcMode)
 		node_ctx.type = node_ctx.srcMode;
 
-	if (node_ctx.mark)
-		fast_export_blob(node_ctx.type,
-				 node_ctx.mark, node_ctx.textLength, &input);
-	else if (node_ctx.textLength != LENGTH_UNKNOWN)
-		buffer_skip_bytes(&input, node_ctx.textLength);
+	if (node_ctx.mark) {
+		fast_export_blob(node_ctx.type, node_ctx.mark,
+					node_ctx.textLength, &input);
+	} else if (node_ctx.textLength != LENGTH_UNKNOWN) {
+		if (buffer_skip_bytes(&input, node_ctx.textLength) != node_ctx.textLength)
+			die_short_read(&input);
+	}
 }
 
 static void handle_revision(void)
@@ -253,18 +276,25 @@ void svndump_read(const char *url)
 			node_ctx.propLength = atoi(val);
 		} else if (key == keys.content_length) {
 			len = atoi(val);
-			buffer_read_line(&input);
+			t = buffer_read_line(&input);
+			if (!t)
+				die_short_read(&input);
+			if (*t)
+				die("invalid dump: expected blank line after content length header");
 			if (active_ctx == REV_CTX) {
 				read_props();
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
 				active_ctx = REV_CTX;
 			} else {
-				fprintf(stderr, "Unexpected content length header: %"PRIu32"\n", len);
-				buffer_skip_bytes(&input, len);
+				fprintf(stderr, "Unexpected content length header: %d\n", len);
+				if (buffer_skip_bytes(&input, len) != len)
+					die_short_read(&input);
 			}
 		}
 	}
+	if (buffer_ferror(&input))
+		die_short_read(&input);
 	if (active_ctx == NODE_CTX)
 		handle_node();
 	if (active_ctx != DUMP_CTX)
@@ -273,7 +303,8 @@ void svndump_read(const char *url)
 
 void svndump_init(const char *filename)
 {
-	buffer_init(&input, filename);
+	if (buffer_init(&input, filename))
+		die_errno("cannot open dump file: %s", filename);
 	repo_init();
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
