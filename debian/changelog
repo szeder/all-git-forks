@@ -56,9 +56,10 @@ git (1:1.7.4~rc0-0.1) experimental; urgency=low
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
   * update gitweb and instaweb to v1.7.2.x:
-    - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove,
+    - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove.
+    - debian/diff/0006-instaweb...diff, 0009-instaweb...diff: remove,
       no longer needed.
-    - debian/diff/0006...0009-instaweb-disable-logo...diff: adapt.
+    - debian/diff/0007, 0008-gitweb-make-logo-optional...diff: adapt.
     - debian/rules:
       + package git: install gitweb for use by instaweb using
         standard "make install" target.

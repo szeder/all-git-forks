@@ -1,0 +1,47 @@
+From 60d864c8098be8ae3282ca48129489ad650c1812 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Mon, 3 Jan 2011 22:04:46 -0600
+Subject: daemon: support <directory> arguments again
+
+Ever since v1.7.4-rc0~125^2~8 (daemon: use run-command api for async
+serving, 2010-11-04), git daemon spawns child processes instead of
+forking to serve requests.  The child processes learn that they are
+being run for this purpose from the presence of the --serve command
+line flag.
+
+When running with <ok_path> arguments, the --serve flag is treated
+as one of the path arguments and the special child behavior does
+not kick in.  So the child becomes an ordinary git daemon process,
+notices that all the addresses it needs are in use, and exits with
+the message "fatal: unable to allocate any listen sockets on port
+9418".
+
+Fix it by putting --serve at the beginning of the command line,
+where the flag cannot be mistaken for a path argument.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ daemon.c |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/daemon.c b/daemon.c
+index d2a4e02..347fd0c 100644
+--- a/daemon.c
++++ b/daemon.c
+@@ -1226,9 +1226,10 @@ int main(int argc, char **argv)
+ 
+ 	/* prepare argv for serving-processes */
+ 	cld_argv = xmalloc(sizeof (char *) * (argc + 2));
+-	for (i = 0; i < argc; ++i)
+-		cld_argv[i] = argv[i];
+-	cld_argv[argc] = "--serve";
++	cld_argv[0] = argv[0];	/* git-daemon */
++	cld_argv[1] = "--serve";
++	for (i = 1; i < argc; ++i)
++		cld_argv[i+1] = argv[i];
+ 	cld_argv[argc+1] = NULL;
+ 
+ 	return serve(&listen_addr, listen_port, cred);
+-- 
+1.7.4.rc0
+
