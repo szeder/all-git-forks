@@ -12,6 +12,33 @@
 #define MAX_GITSVN_LINE_LEN 4096
 
 static uint32_t first_commit_done;
+<<<<<<< HEAD
+=======
+static struct line_buffer postimage = LINE_BUFFER_INIT;
+static struct line_buffer report_buffer = LINE_BUFFER_INIT;
+
+void fast_export_init(int fd)
+{
+	if (buffer_fdinit(&report_buffer, fd))
+		die_errno("cannot read from file descriptor %d", fd);
+	if (buffer_tmpfile_init(&postimage))
+		die_errno("cannot write temporary file for delta application");
+}
+
+void fast_export_deinit(void)
+{
+	if (buffer_deinit(&report_buffer))
+		die_errno("error closing fast-import feedback stream");
+	if (buffer_deinit(&postimage))
+		die_errno("error removing temporary file for delta application");
+}
+
+void fast_export_reset(void)
+{
+	buffer_reset(&report_buffer);
+	buffer_reset(&postimage);
+}
+>>>>>>> 8ab8687... vcs-svn: explicitly close streams used for delta application at exit
 
 void fast_export_delete(uint32_t depth, uint32_t *path)
 {
@@ -134,10 +161,9 @@ static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
 	FILE *out;
 
-	if (init_postimage() || !(out = buffer_tmpfile_rewind(&postimage)))
+	out = buffer_tmpfile_rewind(&postimage);
+	if (!out)
 		die("cannot open temporary file for blob retrieval");
-	if (init_report_buffer(REPORT_FILENO))
-		die("cannot open fd 3 for feedback from fast-import");
 	if (old_mark)
 		preimage_len = cat_mark(old_mark);
 	if (old_mode == REPO_MODE_LNK) {
