@@ -80,7 +80,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	  CC='$(CC)' CFLAGS='$(CFLAGS)' $(OPTS)
 	install -d -m0755 '$(GIT)'/var/cache/git
 	rm -f '$(GIT)'/usr/share/perl5/Error.pm
-	rm -f '$(GIT)'/usr/share/man/man3/private-Error.3pm
+	rm -rf '$(GIT)'/usr/share/man
 	chmod 644 '$(GIT)'/usr/share/perl5/Git.pm
 	# don't include arch, cvs, svn, email, gui tools, and gitk program
 	for i in git-archimport git-cvs git-svn git-send-email \
