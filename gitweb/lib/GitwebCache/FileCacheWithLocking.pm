@@ -73,6 +73,16 @@ our $EXPIRE_NOW = 0;
 #    If it is greater than 0, and cache entry is expired but not older
 #    than it, serve stale data when waiting for cache entry to be 
 #    regenerated (refreshed).  Non-adaptive.
+#  * 'background_cache' (boolean)
+#    This enables/disables regenerating cache in background process.
+#    Defaults to true.
+#  * 'generating_info'
+#    Subroutine (code) called when process has to wait for cache entry
+#    to be (re)generated (when there is no not-too-stale data to serve
+#    instead), for other process (or bacground process).  It is passed
+#    $cache instance, $key, and $wait_code subroutine (code reference)
+#    to invoke (to call) to wait for cache entry to be ready.
+#    Unset by default (which means no activity indicator).
 #  * 'on_error' (similar to CHI 'on_get_error'/'on_set_error')
 #    How to handle runtime errors occurring during cache gets and cache
 #    sets, which may or may not be considered fatal in your application.
@@ -107,6 +117,11 @@ sub new {
 		exists $opts{'max_lifetime'}       ? $opts{'max_lifetime'} :
 		exists $opts{'max_cache_lifetime'} ? $opts{'max_cache_lifetime'} :
 		$NEVER_EXPIRE;
+	$self->{'background_cache'} =
+		exists $opts{'background_cache'} ? $opts{'background_cache'} :
+		1;
+	$self->{'generating_info'} = $opts{'generating_info'}
+		if exists $opts{'generating_info'};
 	$self->{'on_error'} =
 		exists $opts{'on_error'}      ? $opts{'on_error'} :
 		exists $opts{'on_get_error'}  ? $opts{'on_get_error'} :
@@ -127,6 +142,7 @@ sub new {
 
 # creates get_depth() and set_depth($depth) etc. methods
 foreach my $i (qw(depth root namespace expires_in max_lifetime
+                  background_cache generating_info
                   on_error)) {
 	my $field = $i;
 	no strict 'refs';
@@ -140,6 +156,16 @@ foreach my $i (qw(depth root namespace expires_in max_lifetime
 	};
 }
 
+# $cache->generating_info($wait_code);
+# runs 'generating_info' subroutine, for activity indicator,
+# checking if it is defined first.
+sub generating_info {
+	my $self = shift;
+
+	if (defined $self->{'generating_info'}) {
+		$self->{'generating_info'}->($self, @_);
+	}
+}
 
 # ----------------------------------------------------------------------
 # utility functions and methods
@@ -246,12 +272,67 @@ sub _wait_for_data {
 	my ($self, $key, $sync_coderef) = @_;
 	my @result;
 
+	# provide "generating page..." info, if exists
+	$self->generating_info($key, $sync_coderef);
+	# generating info may exit, so we can not get there
+
 	# wait for data to be available
 	$sync_coderef->();
 	# fetch data
 	@result = $self->fetch_fh($key);
 
 	return @result;
+}
+
+sub _set_maybe_background {
+	my ($self, $key, $code) = @_;
+
+	my ($pid, $detach);
+	my (@result, @stale_result);
+
+	if ($self->{'background_cache'}) {
+		# try to retrieve stale data
+		@stale_result = $self->get_fh($key,
+			'expires_in' => $self->get_max_lifetime());
+
+		# fork if there is stale data, for background process
+		# to regenerate/refresh the cache (generate data),
+		# or if main process would show progress indicator
+		$detach = @stale_result;
+		$pid = fork()
+			if (@stale_result || $self->{'generating_info'});
+	}
+
+	if ($pid) {
+		## forked and are in parent process
+		# reap child, which spawned grandchild process (detaching it)
+		waitpid $pid, 0
+			if $detach;
+
+	} else {
+		## didn't fork, or are in background process
+
+		# daemonize background process, detaching it from parent
+		# see also Proc::Daemonize, Apache2::SubProcess
+		if (defined $pid && $detach) {
+			## in background process
+			POSIX::setsid(); # or setpgrp(0, 0);
+			fork() && CORE::exit(0);
+		}
+
+		@result = $self->set_coderef_fh($key, $code);
+
+		if (defined $pid) { # && !$pid
+			## in background process; parent or grandparent
+			## will serve stale data, or just generated data
+
+			# lockfile will be automatically closed on exit,
+			# and therefore lockfile would be unlocked
+			CORE::exit(0);
+		}
+	}
+
+	return @result > 0 ? @result : @stale_result;
 }
 
 # $self->_handle_error($raw_error)
@@ -408,13 +489,36 @@ sub compute_fh {
 		$lock_state = flock($lock_fh, LOCK_EX | LOCK_NB);
 		if ($lock_state) {
 			## acquired writers lock, have to generate data
-			@result = eval { $self->set_coderef_fh($key, $code_fh) };
+			eval { @result = $self->_set_maybe_background($key, $code_fh) };
 			$self->_handle_error($@) if $@;
 
 			# closing lockfile releases writer lock
-			flock($lock_fh, LOCK_UN);
+			#flock($lock_fh, LOCK_UN); # it would unlock here and in background process
 			close $lock_fh
 				or $self->_handle_error("Could't close lockfile '$lockfile': $!");
+
+			if (!@result) {
+				# wait for background process to finish generating data
+				open $lock_fh, '<', $lockfile
+					or $self->_handle_error("Couldn't reopen (for reading) lockfile '$lockfile': $!");
+
+				eval {
+					@result = $self->_wait_for_data($key, sub {
+						flock($lock_fh, LOCK_SH);
+						# or 'waitpid -1, 0;', or 'wait;', as we don't detach now in this situation
+					});
+				};
+				$self->_handle_error($@) if $@;
+
+				# closing lockfile releases readers lock used to wait for data
+				flock($lock_fh, LOCK_UN);
+				close $lock_fh
+					or $self->_handle_error("Could't close reopened lockfile '$lockfile': $!");
+
+				# we didn't detach, so wait for the child to reap it
+				# (it should finish working, according to lock status)
+				wait;
+			}
 
 		} else {
 			## didn't acquire writers lock, get stale data or wait for regeneration
@@ -429,12 +533,13 @@ sub compute_fh {
 
 			# wait for regeneration if no stale data to serve,
 			# using shared / readers lock to sync (wait for data)
-			@result = eval {
-				$self->_wait_for_data($key, sub {
+			eval {
+				@result = $self->_wait_for_data($key, sub {
 					flock($lock_fh, LOCK_SH);
 				});
 			};
 			$self->_handle_error($@) if $@;
+
 			# closing lockfile releases readers lock
 			flock($lock_fh, LOCK_UN);
 			close $lock_fh

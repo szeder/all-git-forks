@@ -57,7 +57,9 @@ gitweb_enable_caching () {
 		cat >>gitweb_config.perl <<-\EOF &&
 		$caching_enabled = 1;
 		$cache_options{"expires_in"} = -1;      # never expire cache for tests
-		$cache_options{"cache_root"} = "cache"; # to clear the right thing
+		$cache_options{"cache_root"} = "$TRASH_DIRECTORY/cache"; # to clear the right thing
+		$cache_options{"background_cache"} = 0; # no background processes in test suite
+		$cache_options{"generating_info"} = undef; # tests do not use web browser
 		EOF
 		rm -rf cache/
 	'

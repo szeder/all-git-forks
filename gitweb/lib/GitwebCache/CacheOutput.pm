@@ -35,15 +35,23 @@ our %EXPORT_TAGS = (all => [ @EXPORT ]);
 # in ':raw' format (and thus restored in ':raw' from cache)
 #
 # Supported options:
-# * -cache_errors => 0|1  - whether error output should be cached
+# * -cache_errors => undef|0|1  - whether error output should be cached,
+#                                 undef means cache if we are in detached process
 sub cache_output {
 	my ($cache, $capture, $key, $code, %opts) = @_;
 
+
+	my $pid = $$;
 	my ($fh, $filename);
 	my ($capture_fh, $capture_filename);
 	eval { # this `eval` is to catch rethrown error, so we can print captured output
 		($fh, $filename) = $cache->compute_fh($key, sub {
 			($capture_fh, $capture_filename) = @_;
+
+			if (!defined $opts{'-cache_errors'}) {
+				# cache errors if we are in detached process
+				$opts{'-cache_errors'} = ($$ != $pid && getppid() != $pid);
+			}
 
 			# this `eval` is to be able to cache error output (up till 'die')
 			eval { $capture->capture($code, $capture_fh); };

@@ -23,7 +23,13 @@ BEGIN { use_ok('GitwebCache::FileCacheWithLocking'); }
 note("Using lib '$INC[0]'");
 note("Testing '$INC{'GitwebCache/FileCacheWithLocking.pm'}'");
 
-my $cache = new_ok('GitwebCache::FileCacheWithLocking');
+my $cache = new_ok('GitwebCache::FileCacheWithLocking', [
+	'max_lifetime' => 0, # turn it off
+	'background_cache' => 0,
+]);
+
+# ->compute_fh() can fork, don't generate zombies
+#local $SIG{CHLD} = 'IGNORE';
 
 # Test that default values are defined
 #
@@ -239,6 +245,7 @@ subtest 'parallel access' => sub {
 my $stale_value = 'Stale Value';
 
 subtest 'serving stale data when regenerating' => sub {
+	$cache->remove($key);
 	cache_set_fh($cache, $key, $stale_value);
 	$cache->set_expires_in(-1);   # never expire, for next check
 	is(cache_get_fh($cache, $key), $stale_value,
@@ -246,7 +253,10 @@ subtest 'serving stale data when regenerating' => sub {
 
 	$call_count = 0;
 	$cache->set_expires_in(0);    # expire now (so there are no fresh data)
-	$cache->set_max_lifetime(-1); # forever (always serve stale data)
+	$cache->set_max_lifetime(-1); # stale data is valid forever
+
+	# without background generation
+	$cache->set_background_cache(0);
 
 	@output = parallel_run {
 		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
@@ -262,6 +272,31 @@ subtest 'serving stale data when regenerating' => sub {
 	$cache->set_expires_in(-1); # never expire for next ->get
 	is(cache_get_fh($cache, $key), $value,
 	   'no background: value got set correctly, even if stale data returned');
+
+
+	# with background generation
+	$cache->set_background_cache(1);
+	$call_count = 0;
+	cache_set_fh($cache, $key, $stale_value);
+	$cache->set_expires_in(0);  # expire now (so there are no fresh data)
+
+	@output = parallel_run {
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print "$call_count$sep";
+		print $data if defined $data;
+	};
+	# returning stale data works
+	is_deeply(
+		[sort @output],
+		[sort ("0$sep$stale_value", "0$sep$stale_value")],
+		'background: stale data returned by both processes'
+	);
+	$cache->set_expires_in(-1); # never expire for next ->get
+	note("waiting $slow_time sec. for background process to have time to set data");
+	sleep $slow_time; # wait for background process to have chance to set data
+	is(cache_get_fh($cache, $key), $value,
+	   'background: value got set correctly by background process');
+	$cache->set_expires_in(0);  # expire now (so there are no fresh data)
 
 
 	cache_set_fh($cache, $key, $stale_value);
@@ -281,6 +316,116 @@ subtest 'serving stale data when regenerating' => sub {
 };
 $cache->set_expires_in(-1);
 
+
+# Test 'generating_info' feature
+#
+$cache->remove($key);
+my $progress_info = "Generating...";
+sub test_generating_info {
+	local $| = 1;
+	print "$progress_info";
+}
+$cache->set_generating_info(\&test_generating_info);
+
+subtest 'generating progress info' => sub {
+	my @progress;
+
+	# without background generation, and without stale value
+	$cache->set_background_cache(0);
+	$cache->remove($key); # no data and no stale data
+	$call_count = 0;
+
+	@output = parallel_run {
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print "$sep$call_count$sep";
+		print $data if defined $data;
+	};
+	# split progress and output
+	@progress = map { s/^(.*)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		[sort @progress],
+		[sort ("${sep}1", "$progress_info${sep}0")],
+		'no background, no stale data: the process waiting for data prints progress info'
+	);
+	is_deeply(
+		\@output,
+		[ ($value) x 2 ],
+		'no background, no stale data: both processes return correct value'
+	);
+
+
+	# without background generation, with stale value
+	cache_set_fh($cache, $key, $stale_value);
+	$cache->set_expires_in(0);    # set value is now expired
+	$cache->set_max_lifetime(-1); # stale data never expire
+	$call_count = 0;
+
+	@output = parallel_run {
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print "$sep$call_count$sep";
+		print $data if defined $data;
+	};
+	@progress = map { s/^(.*?)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		\@progress,
+		[ ('') x 2],
+		'no background, stale data: neither process prints progress info'
+	);
+	is_deeply(
+		[sort @output],
+		[sort ("1$sep$value", "0$sep$stale_value")],
+		'no background, stale data: generating gets data, other gets stale data'
+	);
+	$cache->set_expires_in(-1);
+
+
+	# with background generation
+	$cache->set_background_cache(1);
+	$cache->remove($key); # no data and no stale value
+	$call_count = 0;
+
+	@output = parallel_run {
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print $sep;
+		print $data if defined $data;
+	};
+	@progress = map { s/^(.*)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		\@progress,
+		[ ($progress_info) x 2],
+		'background, no stale data: both process print progress info'
+	);
+	is_deeply(
+		\@output,
+		[ ($value) x 2 ],
+		'background, no stale data: both processes return correct value'
+	);
+
+
+	# with background generation, with stale value
+	cache_set_fh($cache, $key, $stale_value);
+	$cache->set_expires_in(0);    # set value is now expired
+	$cache->set_max_lifetime(-1); # stale data never expire
+	$call_count = 0;
+
+	@output = parallel_run {
+		my $data = cache_compute_fh($cache, $key, \&get_value_slow_fh);
+		print $sep;
+		print $data if defined $data;
+	};
+	@progress = map { s/^(.*)\Q${sep}\E//o && $1 } @output;
+	is_deeply(
+		\@progress,
+		[ ('') x 2],
+		'background, stale data: neither process prints progress info'
+	);
+	note("waiting $slow_time sec. for background process to have time to set data");
+	sleep $slow_time; # wait for background process to have chance to set data
+
+
+	done_testing();
+};
+$cache->set_expires_in(-1);
 
 done_testing();
 
