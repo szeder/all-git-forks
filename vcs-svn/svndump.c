@@ -196,12 +196,10 @@ static void read_props(void)
 
 static void handle_node(void)
 {
-	uint32_t mark = 0;
+	uint32_t mark = 0, old_mode, old_mark;
 	const uint32_t type = node_ctx.type;
 	const int have_props = node_ctx.propLength != LENGTH_UNKNOWN;
 
-	if (node_ctx.text_delta)
-		die("text deltas not supported");
 	if (node_ctx.textLength != LENGTH_UNKNOWN)
 		mark = next_blob_mark();
 	if (node_ctx.action == NODEACT_DELETE) {
@@ -224,8 +222,11 @@ static void handle_node(void)
 	if (node_ctx.action == NODEACT_CHANGE && !~*node_ctx.dst) {
 		if (type != REPO_MODE_DIR)
 			die("invalid dump: root of tree is not a regular file");
+		old_mark = 0;
 	} else if (node_ctx.action == NODEACT_CHANGE) {
-		uint32_t mode = repo_modify_path(node_ctx.dst, 0, mark);
+		uint32_t mode;
+		old_mark = repo_read_path(node_ctx.dst);
+		mode = repo_modify_path(node_ctx.dst, 0, mark);
 		if (!mode)
 			die("invalid dump: path to be modified is missing");
 		if (mode == REPO_MODE_DIR && type != REPO_MODE_DIR)
@@ -237,11 +238,12 @@ static void handle_node(void)
 		if (!mark && type != REPO_MODE_DIR)
 			die("invalid dump: adds node without text");
 		repo_add(node_ctx.dst, type, mark);
+		old_mark = 0;
 	} else {
 		die("invalid dump: Node-path block lacks Node-action");
 	}
+	old_mode = node_ctx.type;
 	if (have_props) {
-		const uint32_t old_mode = node_ctx.type;
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
 		if (node_ctx.propLength)
@@ -249,8 +251,15 @@ static void handle_node(void)
 		if (node_ctx.type != old_mode)
 			repo_modify_path(node_ctx.dst, node_ctx.type, mark);
 	}
-	if (mark)
-		fast_export_blob(node_ctx.type, mark, node_ctx.textLength, &input);
+	if (!mark)
+		return;
+	if (!node_ctx.text_delta) {
+		fast_export_blob(node_ctx.type,
+				mark, node_ctx.textLength, &input);
+		return;
+	}
+	fast_export_blob_delta(node_ctx.type, mark, old_mode, old_mark,
+				node_ctx.textLength, &input);
 }
 
 static void handle_revision(void)

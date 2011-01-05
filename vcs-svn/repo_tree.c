@@ -157,6 +157,15 @@ static void repo_write_dirent(uint32_t *path, uint32_t mode,
 		dent_remove(&dir_pointer(parent_dir_o)->entries, dent);
 }
 
+uint32_t repo_read_path(uint32_t *path)
+{
+	uint32_t content_offset = 0;
+	struct repo_dirent *dent = repo_read_dirent(active_commit, path);
+	if (dent != NULL)
+		content_offset = dent->content_offset;
+	return content_offset;
+}
+
 uint32_t repo_copy(uint32_t revision, uint32_t *src, uint32_t *dst)
 {
 	uint32_t mode = 0, content_offset = 0;
