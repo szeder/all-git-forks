@@ -13,7 +13,8 @@ int main(int argc, char *argv[])
 	static const char test_svnfe_usage[] =
 		"test-svn-fe (<dumpfile> | [-d] <preimage> <delta> <len>)";
 	if (argc == 2) {
-		svndump_init(argv[1]);
+		if (svndump_init(argv[1]))
+			return 1;
 		svndump_read(NULL);
 		svndump_deinit();
 		svndump_reset();
