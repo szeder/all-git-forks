@@ -12,7 +12,7 @@ use strict;
 use warnings;
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
-use CGI::Carp qw(fatalsToBrowser set_message);
+use CGI::Carp qw(fatalsToBrowser);
 use Encode;
 use Fcntl ':mode';
 use File::Find qw();
@@ -1045,21 +1045,6 @@ sub configure_gitweb_features {
 	}
 }
 
-# custom error handler: 'die <message>' is Internal Server Error
-sub handle_errors_html {
-	my $msg = shift; # it is already HTML escaped
-
-	# to avoid infinite loop where error occurs in die_error,
-	# change handler to default handler, disabling handle_errors_html
-	set_message("Error occured when inside die_error:\n$msg");
-
-	# you cannot jump out of die_error when called as error handler;
-	# the subroutine set via CGI::Carp::set_message is called _after_
-	# HTTP headers are already written, so it cannot write them itself
-	die_error(undef, undef, $msg, -error_handler => 1, -no_http_header => 1);
-}
-set_message(\&handle_errors_html);
-
 # dispatch
 sub dispatch {
 	if (!defined $action) {
@@ -1167,7 +1152,11 @@ sub run {
 		$pre_dispatch_hook->()
 			if $pre_dispatch_hook;
 
-		run_request();
+		eval { run_request() };
+		if (defined $@ && !ref($@)) {
+			# some Perl error, but not one thrown by die_error
+			die_error(undef, undef, $@, -error_handler => 1);
+		}
 
 	DONE_REQUEST:
 		$post_dispatch_hook->()
@@ -3768,7 +3757,8 @@ EOF
 	print "</div>\n";
 
 	git_footer_html();
-	goto DONE_REQUEST
+
+	die {'status' => $status, 'error' => $error}
 		unless ($opts{'-error_handler'});
 }
 
