@@ -750,6 +750,54 @@ our %allowed_options = (
 	"--no-merges" => [ qw(rss atom log shortlog history) ],
 );
 
+# action => {
+# 	# what is the output format (content-type) of action
+# 	'output_format' => ('html' | 'text' | 'feed' | 'binary' | undef),
+# 	# does action require $project parameter to work
+# 	'needs_project' => (boolean | undef),
+# 	# log-like action, can start with arbitrary ref or revision
+# 	'log_like' => (boolean | undef),
+# 	# has no specific feed, or should lik to OPML / generic project feed
+# 	'no_feed' => (boolean | undef),
+# 	# allowed options to be passed ussing 'opt' parameter
+# 	'allowed_options' => { 'option_1' => 1 [, ... ] },
+# }
+our %actions_info = ();
+sub evaluate_actions_info {
+	our %actions_info;
+	our (%actions);
+
+	# unless explicitely stated otherwise, default output format is html
+	# most actions needs $project parameter
+	foreach my $action (keys %actions) {
+		$actions_info{$action}{'output_format'} = 'html';
+		$actions_info{$action}{'needs_project'} = 1;
+	}
+	# list all exceptions; undef means variable format (no definite format)
+	$actions_info{$_}{'output_format'} = 'text'
+		foreach qw(commitdiff_plain patch patches project_index blame_data);
+	$actions_info{$_}{'output_format'} = 'feed'
+		foreach qw(rss atom opml); # there are different types (document formats) of XML
+	$actions_info{$_}{'output_format'} = undef
+		foreach qw(blob_plain object);
+	$actions_info{'snapshot'}{'output_format'} = 'binary';
+
+	$actions_info{$_}{'needs_project'} = 0
+		foreach qw(opml project_list project_index);
+
+	$actions_info{$_}{'log_like'} = 1
+		foreach qw(log shortlog history);
+
+	$actions_info{$_}{'no_feed'} = 1
+		foreach qw(tags heads forks tag search);
+
+	foreach my $opt (keys %allowed_options) {
+		foreach my $act (@{$allowed_options{$opt}}) {
+			$actions_info{$act}{'allowed_options'}{$opt} = 1;
+		}
+	}
+}
+
 # fill %input_params with the CGI parameters. All values except for 'opt'
 # should be single values, but opt can be an array. We should probably
 # build an array of parameters that can be multi-valued, but since for the time
@@ -981,7 +1029,7 @@ sub evaluate_and_validate_params {
 		if (not exists $allowed_options{$opt}) {
 			die_error(400, "Invalid option parameter");
 		}
-		if (not grep(/^$action$/, @{$allowed_options{$opt}})) {
+		if (!$actions_info{$action}{'allowed_options'}{$opt}) {
 			die_error(400, "Invalid option parameter for this action");
 		}
 	}
@@ -1062,7 +1110,7 @@ sub dispatch {
 	if (!defined($actions{$action})) {
 		die_error(400, "Unknown action");
 	}
-	if ($action !~ m/^(?:opml|project_list|project_index)$/ &&
+	if ($actions_info{$action}{'needs_project'} &&
 	    !$project) {
 		die_error(400, "Project needed");
 	}
@@ -1143,6 +1191,7 @@ sub evaluate_argv {
 
 sub run {
 	evaluate_argv();
+	evaluate_actions_info();
 
 	$first_request = 1;
 	$pre_listen_hook->()
@@ -1808,7 +1857,7 @@ sub format_ref_marker {
 
 			if ($indirect) {
 				$dest_action = "tag" unless $action eq "tag";
-			} elsif ($action =~ /^(history|(short)?log)$/) {
+			} elsif ($actions_info{$action}{'log_like'}) {
 				$dest_action = $action;
 			}
 
@@ -2282,7 +2331,7 @@ sub get_feed_info {
 	return unless (defined $project);
 	# some views should link to OPML, or to generic project feed,
 	# or don't have specific feed yet (so they should use generic)
-	return if ($action =~ /^(?:tags|heads|forks|tag|search)$/x);
+	return if ($actions_info{$action}{'no_feed'});
 
 	my $branch;
 	# branches refs uses 'refs/heads/' prefix (fullname) to differentiate
