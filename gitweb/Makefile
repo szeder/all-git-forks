@@ -113,6 +113,11 @@ endif
 
 GITWEB_FILES += static/git-logo.png static/git-favicon.png
 
+# gitweb output caching
+GITWEB_MODULES += GitwebCache/CacheOutput.pm
+GITWEB_MODULES += GitwebCache/SimpleFileCache.pm
+GITWEB_MODULES += GitwebCache/Capture/Simple.pm
+
 GITWEB_REPLACE = \
 	-e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
 	-e 's|++GIT_BINDIR++|$(bindir)|g' \

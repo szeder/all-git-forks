@@ -269,6 +269,71 @@ our %highlight_ext = (
 	map { $_ => 'xml' } qw(xhtml html htm),
 );
 
+
+# This enables/disables the caching layer in gitweb.  Currently supported
+# is only output (response) caching, similar to the one used on git.kernel.org.
+our $caching_enabled = 0;
+# Set to _initialized_ instance of cache interface implementing (for now)
+# compute_fh($key, $code) method (non-standard CHI-inspired interface),
+# or to name of class of cache interface implementing said method.
+# If unset, GitwebCache::FileCacheWithLocking would be used, which is 'dumb'
+# (but fast) file based caching layer, currently without any support for
+# cache size limiting.  It is therefore recommended that the cache directory
+# be periodically completely deleted; this operation is safe to perform.
+#
+# Suggested mechanism to clear cache:
+#   mv $cachedir $cachedir.flush && mkdir $cachedir && rm -rf $cachedir.flush
+# where $cachedir is directory where cache is, i.e. $cache_options{'cache_root'}
+our $cache;
+# You define site-wide cache options defaults here; override them with
+# $GITWEB_CONFIG as necessary.
+our %cache_options = (
+	# The location in the filesystem that will hold the root of the cache.
+	# This directory will be created as needed (if possible) on the first
+	# cache set.  Note that either this directory must exists and web server
+	# has to have write permissions to it, or web server must be able to
+	# create this directory.
+	# Possible values:
+	# * 'cache' (relative to gitweb),
+	# * File::Spec->catdir(File::Spec->tmpdir(), 'gitweb-cache'),
+	# * '/var/cache/gitweb' (FHS compliant, requires being set up),
+	'cache_root' => 'cache',
+
+	# The number of subdirectories deep to cache object item.  This should be
+	# large enough that no cache directory has more than a few hundred
+	# objects.  Each non-leaf directory contains up to 256 subdirectories
+	# (00-ff).  Must be larger than 0.
+	'cache_depth' => 1,
+
+	# The (global) expiration time for objects placed in the cache, in seconds.
+	'expires_in' => 20,
+
+	# How to handle runtime errors occurring during cache gets and cache
+	# sets.  Options are:
+	#  * "die" (the default) - call die() with an appropriate message
+	#  * "warn" - call warn() with an appropriate message
+	#  * "ignore" - do nothing
+	#  * <coderef> - call this code reference with an appropriate message
+	# Note that gitweb catches 'die <message>' via custom handle_errors_html
+	# handler, set via set_message() from CGI::Carp.  'warn <message>' are
+	# written to web server logs.
+	#
+	# The default is to use cache_error_handler, which wraps die_error.
+	# Only first argument passed to cache_error_handler is used (c.f. CHI)
+	'on_error' => \&cache_error_handler,
+
+	# Extra options passed to GitwebCache::CacheOutput::cache_output subroutine
+	'cache_output' => {
+		# Enable caching of error pages (boolean).  Default is false.
+		'-cache_errors' => 0,
+	},
+);
+# Set to _initialized_ instance of GitwebCache::Capture::ToFile
+# compatibile capturing engine, i.e. one implementing ->new()
+# constructor, and ->capture($code, $file) method.  If unset
+# (default), the GitwebCache::Capture::ToFile would be used.
+our $capture;
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -1122,7 +1187,16 @@ sub dispatch {
 	    !$project) {
 		die_error(400, "Project needed");
 	}
-	$actions{$action}->();
+
+	if ($caching_enabled) {
+		# human readable key identifying gitweb output
+		my $output_key = href(-replay => 1, -full => 1, -path_info => 0);
+
+		cache_output($cache, $capture, $output_key, $actions{$action},
+			%{$cache_options{'cache_output'}});
+	} else {
+		$actions{$action}->();
+	}
 }
 
 sub reset_timer {
@@ -1148,6 +1222,8 @@ sub run_request {
 		}
 	}
 	check_loadavg();
+	configure_caching()
+		if ($caching_enabled);
 
 	# $projectroot and $projects_list might be set in gitweb config file
 	$projects_list ||= $projectroot;
@@ -1230,6 +1306,49 @@ sub run {
 
  DONE_GITWEB:
 	1;
+}
+
+sub configure_caching {
+	if (!eval { require GitwebCache::CacheOutput; 1; }) {
+		die_error(500,
+			"Caching enabled and error loading GitwebCache::CacheOutput",
+			esc_html($@));
+
+		# turn off caching and warn instead
+		#$caching_enabled = 0;
+		#warn "Caching enabled and GitwebCache::CacheOutput not found";
+	}
+	GitwebCache::CacheOutput->import();
+
+	# $cache might be initialized (instantiated) cache, i.e. cache object,
+	# or it might be name of class, or it might be undefined
+	unless (defined $cache && ref($cache)) {
+		$cache ||= 'GitwebCache::FileCacheWithLocking';
+		eval "require $cache";
+		if ($@) {
+			die_error(500,
+				"Error loading $cache",
+				esc_html($@));
+		}
+
+		$cache = $cache->new({
+			%cache_options,
+			#'cache_root' => '/tmp/cache',
+			#'cache_depth' => 2,
+			#'expires_in' => 20, # in seconds (CHI compatibile)
+			# (Cache::Cache compatibile initialization)
+			'default_expires_in' => $cache_options{'expires_in'},
+			# (CHI compatibile initialization)
+			'root_dir' => $cache_options{'cache_root'},
+			'depth' => $cache_options{'cache_depth'},
+			'on_get_error' => $cache_options{'on_error'},
+			'on_set_error' => $cache_options{'on_error'},
+		});
+	}
+	unless (defined $capture && ref($capture)) {
+		require GitwebCache::Capture::ToFile;
+		$capture = GitwebCache::Capture::ToFile->new();
+	}
 }
 
 run();
@@ -3602,7 +3721,9 @@ sub git_header_html {
 	# 'application/xhtml+xml', otherwise send it as plain old 'text/html'.
 	# we have to do this because MSIE sometimes globs '*/*', pretending to
 	# support xhtml+xml but choking when it gets what it asked for.
-	if (defined $cgi->http('HTTP_ACCEPT') &&
+	# Disable content-type negotiation when caching (use mimetype good for all).
+	if (!$caching_enabled &&
+	    defined $cgi->http('HTTP_ACCEPT') &&
 	    $cgi->http('HTTP_ACCEPT') =~ m/(,|;|\s|^)application\/xhtml\+xml(,|;|\s|$)/ &&
 	    $cgi->Accept('application/xhtml+xml') != 0) {
 		$content_type = 'application/xhtml+xml';
@@ -3627,7 +3748,9 @@ sub git_header_html {
 EOF
 	# the stylesheet, favicon etc urls won't work correctly with path_info
 	# unless we set the appropriate base URL
-	if ($ENV{'PATH_INFO'}) {
+	# if caching is enabled we can get it from cache for path_info when it
+	# is generated without path_info
+	if ($ENV{'PATH_INFO'} || $caching_enabled) {
 		print "<base href=\"".esc_url($base_url)."\" />\n";
 	}
 	# print out each stylesheet that exist, providing backwards capability
@@ -3744,17 +3867,25 @@ sub git_footer_html {
 	}
 	print "</div>\n"; # class="page_footer"
 
-	if (defined $t0 && gitweb_check_feature('timed')) {
+	# timing info doesn't make much sense with output (response) caching,
+	# so when caching is enabled gitweb prints the time of page generation
+	if ((defined $t0 || $caching_enabled) &&
+	    gitweb_check_feature('timed')) {
 		print "<div id=\"generating_info\">\n";
-		print 'This page took '.
-		      '<span id="generating_time" class="time_span">'.
-		      tv_interval($t0, [ gettimeofday() ]).
-		      ' seconds </span>'.
-		      ' and '.
-		      '<span id="generating_cmd">'.
-		      $number_of_git_cmds.
-		      '</span> git commands '.
-		      " to generate.\n";
+		if ($caching_enabled) {
+			print 'This page was generated at '.
+			      gmtime( time() )." GMT\n";
+		} else {
+			print 'This page took '.
+			      '<span id="generating_time" class="time_span">'.
+			      tv_interval($t0, [ gettimeofday() ]).
+			      ' seconds </span>'.
+			      ' and '.
+			      '<span id="generating_cmd">'.
+			      $number_of_git_cmds.
+			      '</span> git commands '.
+			      " to generate.\n";
+		}
 		print "</div>\n"; # class="page_footer"
 	}
 
@@ -3763,8 +3894,8 @@ sub git_footer_html {
 	}
 
 	print qq!<script type="text/javascript" src="!.esc_url($javascript).qq!"></script>\n!;
-	if (defined $action &&
-	    $action eq 'blame_incremental') {
+	if (!$caching_enabled &&
+	    defined $action && $action eq 'blame_incremental') {
 		print qq!<script type="text/javascript">\n!.
 		      qq!startBlame("!. href(action=>"blame_data", -replay=>1) .qq!",\n!.
 		      qq!           "!. href() .qq!");\n!.
@@ -3842,6 +3973,22 @@ EOF
 	print "</div>\n";
 
 	git_footer_html();
+}
+
+# custom error handler for caching engine (Internal Server Error)
+sub cache_error_handler {
+	my $error = shift;
+
+	# just rethrow error that came from die_error
+	# thrown from $actions{$action}->()
+	die $error if (ref $error);
+
+	$error = to_utf8($error);
+	$error =
+		"Error in caching layer: <i>".ref($cache)."</i><br>\n".
+		CGI::escapeHTML($error);
+	# die_error() would exit
+	die_error(undef, undef, $error);
 }
 
 ## ----------------------------------------------------------------------
@@ -5579,7 +5726,8 @@ sub git_tag {
 
 sub git_blame_common {
 	my $format = shift || 'porcelain';
-	if ($format eq 'porcelain' && $cgi->param('js')) {
+	if ($format eq 'porcelain' && $cgi->param('js') &&
+	    !$caching_enabled) {
 		$format = 'incremental';
 		$action = 'blame_incremental'; # for page title etc
 	}
@@ -5633,7 +5781,8 @@ sub git_blame_common {
 			or print "ERROR $!\n";
 
 		print 'END';
-		if (defined $t0 && gitweb_check_feature('timed')) {
+		if (!$caching_enabled &&
+		    defined $t0 && gitweb_check_feature('timed')) {
 			print ' '.
 			      tv_interval($t0, [ gettimeofday() ]).
 			      ' '.$number_of_git_cmds;
@@ -5653,7 +5802,7 @@ sub git_blame_common {
 		$formats_nav .=
 			$cgi->a({-href => href(action=>"blame", javascript=>0, -replay=>1)},
 			        "blame") . " (non-incremental)";
-	} else {
+	} elsif (!$caching_enabled) {
 		$formats_nav .=
 			$cgi->a({-href => href(action=>"blame_incremental", -replay=>1)},
 			        "blame") . " (incremental)";
@@ -5812,7 +5961,7 @@ sub git_blame {
 }
 
 sub git_blame_incremental {
-	git_blame_common('incremental');
+	git_blame_common(!$caching_enabled ? 'incremental' : undef);
 }
 
 sub git_blame_data {

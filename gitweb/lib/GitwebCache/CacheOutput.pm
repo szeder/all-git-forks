@@ -64,7 +64,7 @@ sub cache_output {
 	if (defined $fh || defined $filename) {
 		# set binmode only if $fh is defined (is a filehandle)
 		# File::Copy::copy opens files given by filename in binary mode
-		binmode $fh,    ':raw' if (defined $h);
+		binmode $fh,    ':raw' if (defined $fh);
 		binmode STDOUT, ':raw';
 		File::Copy::copy($fh || $filename, \*STDOUT);
 	}

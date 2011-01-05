@@ -258,6 +258,12 @@ not include variables usually directly set during build):
    their default values before every request, so if you want to change
    them, be sure to set this variable to true or a code reference effecting
    the desired changes.  The default is true.
+ * $caching_enabled
+   If true, gitweb would use caching to speed up generating response.
+   Currently supported is only output (response) caching.  See "Gitweb caching"
+   section below for details on how to configure and customize caching.
+   The default is false (caching is disabled).
+
 
 Projects list file format
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -327,6 +333,46 @@ You can use the following files in repository:
  * various gitweb.* config variables (in config)
    Read description of %feature hash for detailed list, and some
    descriptions.
+
+
+Gitweb caching
+~~~~~~~~~~~~~~
+
+Currently gitweb supports only output (HTTP response) caching, similar
+to the one used on http://git.kernel.org.  To turn it on, set 
+$caching_enabled variable to true value in gitweb config file, i.e.:
+
+   our $caching_enabled = 1;
+
+You can choose which caching engine should gitweb use by setting
+$cache variable to _initialized_ instance of cache interface, or to
+the name of cache class.
+
+Currenly though only cache which implements non-standard ->compute_fh()
+method is supported.  Provided GitwebCache::FileCacheWithLocking implements
+this method; it is the default caching engine used if $cache is not defined.
+
+The GitwebCache::FileCacheWithLocking is 'dumb' (but fast) file based
+caching engine, currently without any support for cache size limiting, or
+even removing expired / grossly expired entries.  It has therefore the
+downside of requiring a huge amount of disk space if there are a number of
+repositories involved.  It is not uncommon for git.kernel.org to have on the
+order of 80G - 120G accumulate over the course of a few months.  It is
+therefore recommended that the cache directory be periodically completely
+deleted; this operation is safe to perform.  Suggested mechanism (substitute
+$cachedir for actual path to gitweb cache):
+
+   # mv $cachedir $cachedir.flush && mkdir $cachedir && rm -rf $cachedir.flush
+
+Site-wide cache options are defined in %cache_options hash.  Those options
+apply only when $cache is unset (GitwebCache::FileCacheWithLocking is used),
+or if $cache is name of cache class.  You can override cache options in
+gitweb config, e.g.:
+
+   $cache_options{'expires_in'} = 60; # 60 seconds = 1 minute
+
+Please read comments for %cache_options entries in gitweb/gitweb.perl for
+description of available cache options.
 
 
 Webserver configuration
