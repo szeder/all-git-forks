@@ -124,7 +124,12 @@ static int parse_cat_response_line(const char *header, off_t *len)
 
 static const char *get_response_line(void)
 {
-	return buffer_read_line(&report_buffer);
+	const char *line = buffer_read_line(&report_buffer);
+	if (line)
+		return line;
+	if (buffer_ferror(&report_buffer))
+		die_errno("error reading from fast-import");
+	die("unexpected end of fast-import feedback");
 }
 
 static long apply_delta(uint32_t mark, off_t len, struct line_buffer *input,
