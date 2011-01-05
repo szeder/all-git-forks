@@ -6,6 +6,8 @@ use strict;
 
 use Test::More;
 
+use CGI qw(:standard);
+
 # test source version
 use lib $ENV{GITWEBLIBDIR} || "$ENV{GIT_BUILD_DIR}/gitweb/lib";
 
@@ -155,6 +157,29 @@ subtest 'errors are cached with -cache_errors => 1' => sub {
 	diag($error) if $error;
 
 	done_testing();
+};
+
+
+# caching HTTP output
+subtest 'HTTP output' => sub {
+	$cache->remove($key);
+	$cache->set_expires_in(60);
+
+	my $header =
+		header(-status=>'200 OK', -type=>'text/plain', -charset => 'utf-8');
+	my $data = "1234567890";
+	$action_output = $header.$data;
+	$test_data = capture_output_of_cache_output(\&action, '-http_output' => 1);
+
+	$header =~ s/\r\n$//;
+	my $length = do { use bytes; length($data); };
+	like($test_data, qr/^\Q$header\E/, 'http: starts with provided http header');
+	like($test_data, qr/\Q$data\E$/,   'http: ends with body (payload)');
+	like($test_data, qr/^Expires: /m,  'http: some "Expires:" header added');
+	like($test_data, qr/^Cache-Control: max-age=\d+\r\n/m,
+	                                   'http: "Cache-Control:" with max-age added');
+	like($test_data, qr/^Content-Length: $length\r\n/m,
+	                                   'http: "Content-Length:" header with correct value'); 
 };
 
 

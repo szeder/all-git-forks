@@ -457,6 +457,30 @@ sub is_valid {
 	return (($now - $mtime) < $expires_in);
 }
 
+# $cache->expires_in($key)
+#
+# Returns number of seconds an entry would be valid, or undef
+# if cache entry for given $key does not exists.
+sub expires_in {
+	my ($self, $key) = @_;
+
+	my $path = $self->path_to_key($key);
+
+	# does file exists in cache?
+	return undef unless -f $path;
+	# get its modification time
+	my $mtime = (stat(_))[9] # _ to reuse stat structure used in -f test
+		or $self->_handle_error("Couldn't stat file '$path' for key '$key': $!");
+
+	my $expires_in = $self->get_expires_in();
+
+	my $now = time();
+	print STDERR __PACKAGE__."now=$now; mtime=$mtime; ".
+		"expires_in=$expires_in; diff=".($now - $mtime)."\n";
+
+	return $expires_in == 0 ? 0 : ($self->get_expires_in() - ($now - $mtime));
+}
+
 # Getting and setting
 
 # ($fh, $filename) = $cache->compute_fh($key, $code);

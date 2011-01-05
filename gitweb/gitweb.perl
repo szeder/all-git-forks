@@ -360,6 +360,9 @@ our %cache_options = (
 		# pages will be cached if were generated in detached process).
 		# Default is undef.
 		'-cache_errors' => undef,
+		# Mark that we are caching HTTP response, and that we want extra treatment,
+		# i.e. automatic adding of Expires/Cache-Control and Content-Length headers
+		'-http_output' => 1,
 	},
 );
 # You define site-wide options for "Generating..." page (if enabled) here

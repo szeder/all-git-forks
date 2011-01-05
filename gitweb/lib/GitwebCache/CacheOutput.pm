@@ -19,6 +19,7 @@ use warnings;
 
 use File::Copy qw();
 use Symbol qw(qualify_to_ref);
+use CGI::Util qw(expires);
 
 use Exporter qw(import);
 our @EXPORT      = qw(cache_output);
@@ -67,6 +68,37 @@ sub cache_output {
 	# then ->compute_fh will not set $fh nor $filename; use those used for capture
 	if (!defined $fh) {
 		$filename ||= $capture_filename;
+	}
+
+	if ($opts{'-http_output'}) {
+		# we need filehandle; filename is not enough
+		open $fh, '<', $filename unless defined $fh;
+
+		# get HTTP headers first
+		my (@headers, %norm_headers);
+		while (my $line = <$fh>) {
+			last if $line eq "\r\n";
+			push @headers, $line;
+			if ($line =~ /^([^:]+:)\s+(.*)$/) {
+				(my $header = lc($1)) =~ s/_/-/;
+				$norm_headers{$header} = $2;
+			}
+		}
+		print join('', @headers);
+
+		# extra headers
+		if (!exists $norm_headers{lc('Expires')} &&
+		    !exists $norm_headers{lc('Cache-Control')}) {
+			my $expires_in = $cache->expires_in($key);
+			print "Expires: " . expires($expires_in, 'http')."\r\n".
+			      "Cache-Control: max-age=$expires_in\r\n";
+		}
+		if (!exists $norm_headers{lc('Content-Length')}) {
+			my $length = (-s $fh) - (tell $fh);
+			print "Content-Length: $length\r\n" if $length;
+		}
+
+		print "\r\n"; # separates headers from body
 	}
 
 	if (defined $fh || defined $filename) {
