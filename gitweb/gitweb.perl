@@ -18,6 +18,7 @@ use Fcntl ':mode';
 use File::Find qw();
 use File::Basename qw(basename);
 use Time::HiRes qw(gettimeofday tv_interval);
+use Data::Dumper::Concise;
 binmode STDOUT, ':utf8';
 
 our $t0 = [ gettimeofday() ];
@@ -1153,9 +1154,13 @@ sub run {
 			if $pre_dispatch_hook;
 
 		eval { run_request() };
-		if (defined $@ && !ref($@)) {
+		my $error = $@;
+		if ($error) {
 			# some Perl error, but not one thrown by die_error
-			die_error(undef, undef, $@, -error_handler => 1);
+			$error = gen_error(undef, undef, $error)
+				unless ref($error);
+
+			send_error($error);
 		}
 
 	DONE_REQUEST:
@@ -3730,11 +3735,14 @@ sub git_footer_html {
 #      an unknown error occurred (e.g. the git binary died unexpectedly).
 # 503: The server is currently unavailable (because it is overloaded,
 #      or down for maintenance).  Generally, this is a temporary state.
-sub die_error {
+
+# gen_error()  generates error object from parameters
+# die_error()  uses gen_error() to generate error object and dies
+# send_error() generates an error page from provided error object
+sub gen_error {
 	my $status = shift || 500;
 	my $error = esc_html(shift) || "Internal Server Error";
 	my $extra = shift;
-	my %opts = @_;
 
 	my %http_responses = (
 		400 => '400 Bad Request',
@@ -3743,23 +3751,40 @@ sub die_error {
 		500 => '500 Internal Server Error',
 		503 => '503 Service Unavailable',
 	);
-	git_header_html($http_responses{$status}, undef, %opts);
+
+	my $err = {
+		'status' => $status,
+		'http_status' => $http_responses{$status},
+		'error'  => $error,
+		'extra'  => $extra,
+	};
+	return $err;
+}
+
+sub die_error {
+	my $error = gen_error(@_);
+	print STDERR Dumper($error);
+	die $error;
+}
+
+sub send_error {
+	my $error = shift;
+
+	git_header_html($error->{'http_status'}, undef);
+
 	print <<EOF;
 <div class="page_body">
 <br /><br />
-$status - $error
+$error->{'status'} - $error->{'error'}
 <br />
 EOF
-	if (defined $extra) {
+	if (defined $error->{'extra'}) {
 		print "<hr />\n" .
-		      "$extra\n";
+		      "$error->{'extra'}\n";
 	}
 	print "</div>\n";
 
 	git_footer_html();
-
-	die {'status' => $status, 'error' => $error}
-		unless ($opts{'-error_handler'});
 }
 
 ## ----------------------------------------------------------------------
