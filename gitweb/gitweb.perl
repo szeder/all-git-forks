@@ -1169,6 +1169,7 @@ sub run {
 
 		run_request();
 
+	DONE_REQUEST:
 		$post_dispatch_hook->()
 			if $post_dispatch_hook;
 		$first_request = 0;
@@ -3767,7 +3768,7 @@ EOF
 	print "</div>\n";
 
 	git_footer_html();
-	goto DONE_GITWEB
+	goto DONE_REQUEST
 		unless ($opts{'-error_handler'});
 }
 
