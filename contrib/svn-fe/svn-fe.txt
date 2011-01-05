@@ -7,11 +7,9 @@ svn-fe - convert an SVN "dumpfile" to a fast-import stream
 
 SYNOPSIS
 --------
-svnadmin dump REPO | svn-fe [url] | git fast-import
-
 [verse]
 mkfifo backchannel &&
-svnadmin dump --deltas REPO |
+svnadmin dump [--deltas] REPO |
 	svn-fe [url] 3<backchannel |
 	git fast-import --cat-blob-fd=3 3>backchannel
 

@@ -14,15 +14,19 @@
 #include "obj_pool.h"
 #include "string_pool.h"
 
+#define REPORT_FILENO 3
+
 #define NODEACT_REPLACE 4
 #define NODEACT_DELETE 3
 #define NODEACT_ADD 2
 #define NODEACT_CHANGE 1
 #define NODEACT_UNKNOWN 0
 
-#define DUMP_CTX 0
-#define REV_CTX  1
-#define NODE_CTX 2
+/* States: */
+#define DUMP_CTX 0	/* dump metadata */
+#define REV_CTX  1	/* revision metadata */
+#define NODE_CTX 2	/* node metadata */
+#define INTERNODE_CTX 3	/* between nodes */
 
 #define LENGTH_UNKNOWN (~0)
 #define DATE_RFC2822_LEN 31
@@ -196,14 +200,21 @@ static void read_props(void)
 
 static void handle_node(void)
 {
-	uint32_t mark = 0, old_mode, old_mark;
+	uint32_t old_mode;
 	const uint32_t type = node_ctx.type;
 	const int have_props = node_ctx.propLength != LENGTH_UNKNOWN;
+	const int have_text = node_ctx.textLength != LENGTH_UNKNOWN;
+	/*
+	 * Old text for this node (preimage for delta):
+	 *  NULL	- directory or bug
+	 *  empty_blob	- empty
+	 *  "<dataref>"	- data to be retrieved from fast-import
+	 */
+	static const char *const empty_blob = "::empty::";
+	const char *old_data = NULL;
 
-	if (node_ctx.textLength != LENGTH_UNKNOWN)
-		mark = next_blob_mark();
 	if (node_ctx.action == NODEACT_DELETE) {
-		if (mark || have_props || node_ctx.srcRev)
+		if (have_text || have_props || node_ctx.srcRev)
 			die("invalid dump: deletion node has "
 				"copyfrom info, text, or properties");
 		return repo_delete(node_ctx.dst);
@@ -217,56 +228,83 @@ static void handle_node(void)
 		if (node_ctx.action == NODEACT_ADD)
 			node_ctx.action = NODEACT_CHANGE;
 	}
-	if (mark && type == REPO_MODE_DIR)
+	if (have_text && type == REPO_MODE_DIR)
 		die("invalid dump: directories cannot have text attached");
+
+	/*
+	 * Find old content (old_data) and decide on the new mode.
+	 */
 	if (node_ctx.action == NODEACT_CHANGE && !~*node_ctx.dst) {
 		if (type != REPO_MODE_DIR)
 			die("invalid dump: root of tree is not a regular file");
-		old_mark = 0;
+		old_data = NULL;
 	} else if (node_ctx.action == NODEACT_CHANGE) {
 		uint32_t mode;
-		old_mark = repo_read_path(node_ctx.dst);
-		mode = repo_modify_path(node_ctx.dst, 0, mark);
-		if (!mode)
-			die("invalid dump: path to be modified is missing");
+		old_data = repo_read_path(node_ctx.dst);
+		mode = repo_read_mode(node_ctx.dst);
 		if (mode == REPO_MODE_DIR && type != REPO_MODE_DIR)
 			die("invalid dump: cannot modify a directory into a file");
 		if (mode != REPO_MODE_DIR && type == REPO_MODE_DIR)
 			die("invalid dump: cannot modify a file into a directory");
 		node_ctx.type = mode;
 	} else if (node_ctx.action == NODEACT_ADD) {
-		if (!mark && type != REPO_MODE_DIR)
+		if (type == REPO_MODE_DIR)
+			old_data = NULL;
+		else if (have_text)
+			old_data = empty_blob;
+		else
 			die("invalid dump: adds node without text");
-		repo_add(node_ctx.dst, type, mark);
-		old_mark = 0;
 	} else {
 		die("invalid dump: Node-path block lacks Node-action");
 	}
+
+	/*
+	 * Adjust mode to reflect properties.
+	 */
 	old_mode = node_ctx.type;
 	if (have_props) {
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
 		if (node_ctx.propLength)
 			read_props();
-		if (node_ctx.type != old_mode)
-			repo_modify_path(node_ctx.dst, node_ctx.type, mark);
 	}
-	if (!mark)
+
+	/*
+	 * Save the result.
+	 */
+	if (type == REPO_MODE_DIR)	/* directories are not tracked. */
 		return;
+	assert(old_data);
+	if (old_data == empty_blob)
+		/* For the fast_export_* functions, NULL means empty. */
+		old_data = NULL;
+	if (!have_text) {
+		fast_export_modify(REPO_MAX_PATH_DEPTH, node_ctx.dst,
+					node_ctx.type, old_data);
+		return;
+	}
 	if (!node_ctx.text_delta) {
-		fast_export_blob(node_ctx.type,
-				mark, node_ctx.textLength, &input);
+		fast_export_modify(REPO_MAX_PATH_DEPTH, node_ctx.dst,
+					node_ctx.type, "inline");
+		fast_export_data(node_ctx.type, node_ctx.textLength, &input);
 		return;
 	}
-	fast_export_blob_delta(node_ctx.type, mark, old_mode, old_mark,
-				node_ctx.textLength, &input);
+	fast_export_delta(node_ctx.type, REPO_MAX_PATH_DEPTH, node_ctx.dst,
+				old_mode, old_data, node_ctx.textLength, &input);
 }
 
-static void handle_revision(void)
+static void begin_revision(void)
+{
+	if (!rev_ctx.revision)	/* revision 0 gets no git commit. */
+		return;
+	fast_export_begin_commit(rev_ctx.revision, rev_ctx.author, rev_ctx.log,
+		dump_ctx.uuid, dump_ctx.url, rev_ctx.timestamp);
+}
+
+static void end_revision(void)
 {
 	if (rev_ctx.revision)
-		repo_commit(rev_ctx.revision, rev_ctx.author, rev_ctx.log,
-			dump_ctx.uuid, dump_ctx.url, rev_ctx.timestamp);
+		fast_export_end_commit(rev_ctx.revision);
 }
 
 void svndump_read(const char *url)
@@ -296,13 +334,17 @@ void svndump_read(const char *url)
 		} else if (key == keys.revision_number) {
 			if (active_ctx == NODE_CTX)
 				handle_node();
+			if (active_ctx == REV_CTX)
+				begin_revision();
 			if (active_ctx != DUMP_CTX)
-				handle_revision();
+				end_revision();
 			active_ctx = REV_CTX;
 			reset_rev_ctx(atoi(val));
 		} else if (key == keys.node_path) {
 			if (active_ctx == NODE_CTX)
 				handle_node();
+			if (active_ctx == REV_CTX)
+				begin_revision();
 			active_ctx = NODE_CTX;
 			reset_node_ctx(val);
 		} else if (key == keys.node_kind) {
@@ -348,7 +390,7 @@ void svndump_read(const char *url)
 				read_props();
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
-				active_ctx = REV_CTX;
+				active_ctx = INTERNODE_CTX;
 			} else {
 				fprintf(stderr, "Unexpected content length header: %d\n", len);
 				if (buffer_skip_bytes(&input, len) != len)
@@ -360,15 +402,17 @@ void svndump_read(const char *url)
 		die_short_read(&input);
 	if (active_ctx == NODE_CTX)
 		handle_node();
+	if (active_ctx == REV_CTX)
+		begin_revision();
 	if (active_ctx != DUMP_CTX)
-		handle_revision();
+		end_revision();
 }
 
 int svndump_init(const char *filename)
 {
 	if (buffer_init(&input, filename))
 		return error("cannot open %s: %s", filename, strerror(errno));
-	repo_init();
+	fast_export_init(REPORT_FILENO);
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
@@ -379,7 +423,7 @@ int svndump_init(const char *filename)
 void svndump_deinit(void)
 {
 	log_reset();
-	repo_reset();
+	fast_export_deinit();
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
@@ -392,8 +436,8 @@ void svndump_deinit(void)
 void svndump_reset(void)
 {
 	log_reset();
+	fast_export_reset();
 	buffer_reset(&input);
-	repo_reset();
 	reset_dump_ctx(~0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
