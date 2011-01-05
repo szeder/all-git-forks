@@ -26,9 +26,11 @@
 #define NODEACT_CHANGE 1
 #define NODEACT_UNKNOWN 0
 
-#define DUMP_CTX 0
-#define REV_CTX  1
-#define NODE_CTX 2
+/* States: */
+#define DUMP_CTX 0	/* dump metadata */
+#define REV_CTX  1	/* revision metadata */
+#define NODE_CTX 2	/* node metadata */
+#define INTERNODE_CTX 3	/* between nodes */
 
 #define LENGTH_UNKNOWN (~0)
 #define DATE_RFC2822_LEN 31
@@ -270,7 +272,14 @@ static void handle_node(void)
 				 node_ctx.textLength, &input);
 }
 
-static void handle_revision(void)
+static void begin_revision(void)
+{
+	if (!rev_ctx.revision)	/* revision 0 gets no git commit. */
+		return;
+	fast_export_begin_commit(rev_ctx.revision);
+}
+
+static void end_revision(void)
 {
 	if (rev_ctx.revision)
 		repo_commit(rev_ctx.revision, rev_ctx.author.buf,
@@ -316,8 +325,10 @@ void svndump_read(const char *url)
 				continue;
 			if (active_ctx == NODE_CTX)
 				handle_node();
+			if (active_ctx == REV_CTX)
+				begin_revision();
 			if (active_ctx != DUMP_CTX)
-				handle_revision();
+				end_revision();
 			active_ctx = REV_CTX;
 			reset_rev_ctx(atoi(val));
 			break;
@@ -327,6 +338,8 @@ void svndump_read(const char *url)
 			if (!constcmp(t + strlen("Node-"), "path")) {
 				if (active_ctx == NODE_CTX)
 					handle_node();
+				if (active_ctx == REV_CTX)
+					begin_revision();
 				active_ctx = NODE_CTX;
 				reset_node_ctx(val);
 				break;
@@ -397,7 +410,7 @@ void svndump_read(const char *url)
 				read_props();
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
-				active_ctx = REV_CTX;
+				active_ctx = INTERNODE_CTX;
 			} else {
 				fprintf(stderr, "Unexpected content length header: %"PRIu32"\n", len);
 				if (buffer_skip_bytes(&input, len) != len)
@@ -409,8 +422,10 @@ void svndump_read(const char *url)
 		die_short_read();
 	if (active_ctx == NODE_CTX)
 		handle_node();
+	if (active_ctx == REV_CTX)
+		begin_revision();
 	if (active_ctx != DUMP_CTX)
-		handle_revision();
+		end_revision();
 }
 
 int svndump_init(const char *filename)
