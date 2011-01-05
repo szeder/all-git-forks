@@ -313,12 +313,7 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 					   (struct object *)commit, refname);
 	}
 
-	/* Resize buffer */
-	if (ref_list->index >= ref_list->alloc) {
-		ref_list->alloc = alloc_nr(ref_list->alloc);
-		ref_list->list = xrealloc(ref_list->list,
-				ref_list->alloc * sizeof(struct ref_item));
-	}
+	ALLOC_GROW(ref_list->list, ref_list->index + 1, ref_list->alloc);
 
 	/* Record the new item */
 	newitem = &(ref_list->list[ref_list->index++]);
@@ -667,6 +662,9 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		},
 		OPT_END(),
 	};
+
+	if (argc == 2 && !strcmp(argv[1], "-h"))
+		usage_with_options(builtin_branch_usage, options);
 
 	git_config(git_branch_config, NULL);
 

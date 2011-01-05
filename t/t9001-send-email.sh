@@ -319,7 +319,7 @@ test_expect_success $PREREQ 'In-Reply-To without --chain-reply-to' '
 	git send-email \
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
-		--no-chain-reply-to \
+		--nochain-reply-to \
 		--in-reply-to="$(cat expect)" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		$patches $patches $patches \
@@ -1135,7 +1135,7 @@ test_expect_success $PREREQ '--8bit-encoding also treats subject' '
 # Note that the patches in this test are deliberately out of order; we
 # want to make sure it works even if the cover-letter is not in the
 # first mail.
-test_expect_success 'refusing to send cover letter template' '
+test_expect_success $PREREQ 'refusing to send cover letter template' '
 	clean_fake_sendmail &&
 	rm -fr outdir &&
 	git format-patch --cover-letter -2 -o outdir &&
@@ -1151,7 +1151,7 @@ test_expect_success 'refusing to send cover letter template' '
 	test -z "$(ls msgtxt*)"
 '
 
-test_expect_success '--force sends cover letter template anyway' '
+test_expect_success $PREREQ '--force sends cover letter template anyway' '
 	clean_fake_sendmail &&
 	rm -fr outdir &&
 	git format-patch --cover-letter -2 -o outdir &&

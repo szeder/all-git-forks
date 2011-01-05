@@ -14,12 +14,6 @@ typedef int socklen_t;
 #define S_ISLNK(x) (((x) & S_IFMT) == S_IFLNK)
 #define S_ISSOCK(x) 0
 
-#ifndef _STAT_H_
-#define S_IRUSR 0
-#define S_IWUSR 0
-#define S_IXUSR 0
-#define S_IRWXU (S_IRUSR | S_IWUSR | S_IXUSR)
-#endif
 #define S_IRGRP 0
 #define S_IWGRP 0
 #define S_IXGRP 0
@@ -36,6 +30,9 @@ typedef int socklen_t;
 #define WIFSIGNALED(x) 0
 #define WEXITSTATUS(x) ((x) & 0xff)
 #define WTERMSIG(x) SIGTERM
+
+#define EWOULDBLOCK EAGAIN
+#define SHUT_WR SD_SEND
 
 #define SIGHUP 1
 #define SIGQUIT 3
@@ -318,35 +315,6 @@ int main(int argc, const char **argv) \
 	return mingw_main(argc, argv); \
 } \
 static int mingw_main(c,v)
-
-#ifndef NO_MINGW_REPLACE_READDIR
-/*
- * A replacement of readdir, to ensure that it reads the file type at
- * the same time. This avoid extra unneeded lstats in git on MinGW
- */
-#undef DT_UNKNOWN
-#undef DT_DIR
-#undef DT_REG
-#undef DT_LNK
-#define DT_UNKNOWN	0
-#define DT_DIR		1
-#define DT_REG		2
-#define DT_LNK		3
-
-struct mingw_dirent
-{
-	long		d_ino;			/* Always zero. */
-	union {
-		unsigned short	d_reclen;	/* Always zero. */
-		unsigned char   d_type;		/* Reimplementation adds this */
-	};
-	unsigned short	d_namlen;		/* Length of name in d_name. */
-	char		d_name[FILENAME_MAX];	/* File name. */
-};
-#define dirent mingw_dirent
-#define readdir(x) mingw_readdir(x)
-struct dirent *mingw_readdir(DIR *dir);
-#endif // !NO_MINGW_REPLACE_READDIR
 
 /*
  * Used by Pthread API implementation for Windows
