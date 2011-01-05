@@ -267,11 +267,9 @@ static int apply_one_window(struct line_buffer *delta, off_t *delta_len,
 	/* "source view" offset and length already handled; */
 	if (read_length(delta, &out_len, delta_len) ||
 	    read_length(delta, &instructions_len, delta_len) ||
-	    read_length(delta, &data_len, delta_len))
-		goto error_out;
-	if (read_chunk(delta, delta_len, &ctx.instructions, instructions_len))
-		goto error_out;
-	if (read_chunk(delta, delta_len, &ctx.data, data_len))
+	    read_length(delta, &data_len, delta_len) ||
+	    read_chunk(delta, delta_len, &ctx.instructions, instructions_len) ||
+	    read_chunk(delta, delta_len, &ctx.data, data_len))
 		goto error_out;
 	strbuf_grow(&ctx.out, out_len);
 	if (apply_window_in_core(&ctx))
