@@ -5,12 +5,12 @@
 
 #include "git-compat-util.h"
 #include "strbuf.h"
+#include "quote.h"
 #include "fast_export.h"
 #include "repo_tree.h"
 #include "svndiff.h"
 #include "sliding_window.h"
 #include "line_buffer.h"
-#include "string_pool.h"
 
 #define MAX_GITSVN_LINE_LEN 4096
 
@@ -40,52 +40,50 @@ void fast_export_reset(void)
 	buffer_reset(&postimage);
 }
 
-void fast_export_delete(uint32_t depth, const uint32_t *path)
+void fast_export_delete(const char *path)
 {
-	printf("D \"");
-	pool_print_seq_q(depth, path, '/', stdout);
-	printf("\"\n");
+	putchar('D');
+	putchar(' ');
+	quote_c_style(path, NULL, stdout, 0);
+	putchar('\n');
 }
 
-static void fast_export_truncate(uint32_t depth, const uint32_t *path, uint32_t mode)
+static void fast_export_truncate(const char *path, uint32_t mode)
 {
-	fast_export_modify(depth, path, mode, "inline");
+	fast_export_modify(path, mode, "inline");
 	printf("data 0\n\n");
 }
 
-void fast_export_modify(uint32_t depth, const uint32_t *path, uint32_t mode,
-			const char *dataref)
+void fast_export_modify(const char *path, uint32_t mode, const char *dataref)
 {
 	/* Mode must be 100644, 100755, 120000, or 160000. */
 	if (!dataref) {
-		fast_export_truncate(depth, path, mode);
+		fast_export_truncate(path, mode);
 		return;
 	}
-	printf("M %06"PRIo32" %s \"", mode, dataref);
-	pool_print_seq_q(depth, path, '/', stdout);
-	printf("\"\n");
+	printf("M %06"PRIo32" %s ", mode, dataref);
+	quote_c_style(path, NULL, stdout, 0);
+	putchar('\n');
 }
 
 static char gitsvnline[MAX_GITSVN_LINE_LEN];
-void fast_export_begin_commit(uint32_t revision, uint32_t author, char *log,
-			uint32_t uuid, uint32_t url,
+void fast_export_begin_commit(uint32_t revision, const char *author,
+			const char *log, const char *uuid, const char *url,
 			unsigned long timestamp)
 {
-	if (!log)
-		log = "";
-	if (~uuid && ~url) {
+	if (*uuid && *url) {
 		snprintf(gitsvnline, MAX_GITSVN_LINE_LEN,
 				"\n\ngit-svn-id: %s@%"PRIu32" %s\n",
-				 pool_fetch(url), revision, pool_fetch(uuid));
+				 url, revision, uuid);
 	} else {
 		*gitsvnline = '\0';
 	}
 	printf("commit refs/heads/master\n");
 	printf("mark :%"PRIu32"\n", revision);
 	printf("committer %s <%s@%s> %ld +0000\n",
-		   ~author ? pool_fetch(author) : "nobody",
-		   ~author ? pool_fetch(author) : "nobody",
-		   ~uuid ? pool_fetch(uuid) : "local", timestamp);
+		   *author ? author : "nobody",
+		   *author ? author : "nobody",
+		   *uuid ? uuid : "local", timestamp);
 	printf("data %"PRIu32"\n%s%s\n",
 		   (uint32_t) (strlen(log) + strlen(gitsvnline)),
 		   log, gitsvnline);
@@ -108,20 +106,20 @@ static void die_short_read(struct line_buffer *input)
 	die("invalid dump: unexpected end of file");
 }
 
-static void ls_from_rev(uint32_t rev, uint32_t depth, const uint32_t *path)
+static void ls_from_rev(uint32_t rev, const char *path)
 {
 	/* ls :5 path/to/old/file */
-	printf("ls :%"PRIu32" \"", rev);
-	pool_print_seq_q(depth, path, '/', stdout);
-	printf("\"\n");
+	printf("ls :%"PRIu32" ", rev);
+	quote_c_style(path, NULL, stdout, 0);
+	putchar('\n');
 	fflush(stdout);
 }
 
-static void ls_from_active_commit(uint32_t depth, const uint32_t *path)
+static void ls_from_active_commit(const char *path)
 {
 	/* ls "path/to/file" */
 	printf("ls \"");
-	pool_print_seq_q(depth, path, '/', stdout);
+	quote_c_style(path, NULL, stdout, 1);
 	printf("\"\n");
 	fflush(stdout);
 }
@@ -233,7 +231,7 @@ void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input)
 	fputc('\n', stdout);
 }
 
-void fast_export_delta(uint32_t mode, uint32_t depth, const uint32_t *path,
+void fast_export_delta(uint32_t mode, const char *path,
 				uint32_t old_mode, const char *dataref,
 				uint32_t len, struct line_buffer *input)
 {
@@ -244,7 +242,7 @@ void fast_export_delta(uint32_t mode, uint32_t depth, const uint32_t *path,
 	preimage_len = dataref ? cat_dataref(dataref) : -1;
 
 	/* NEEDSWORK: Will deadlock with very long paths. */
-	fast_export_modify(depth, path, mode, "inline");
+	fast_export_modify(path, mode, "inline");
 	postimage_len = apply_delta((off_t) len, input, preimage_len, old_mode);
 	record_postimage(mode, postimage_len);
 }
@@ -286,16 +284,15 @@ static void parse_ls_response(const char *response, uint32_t *mode,
 	strbuf_add(dataref, response, tab - response);
 }
 
-void fast_export_ls_rev(uint32_t rev, uint32_t depth, const uint32_t *path,
+void fast_export_ls_rev(uint32_t rev, const char *path,
 				uint32_t *mode, struct strbuf *dataref)
 {
-	ls_from_rev(rev, depth, path);
+	ls_from_rev(rev, path);
 	parse_ls_response(get_response_line(), mode, dataref);
 }
 
-void fast_export_ls(uint32_t depth, const uint32_t *path,
-				uint32_t *mode, struct strbuf *dataref)
+void fast_export_ls(const char *path, uint32_t *mode, struct strbuf *dataref)
 {
-	ls_from_active_commit(depth, path);
+	ls_from_active_commit(path);
 	parse_ls_response(get_response_line(), mode, dataref);
 }
