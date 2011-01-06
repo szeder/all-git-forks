@@ -37,8 +37,9 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     /usr/share/doc.
     - debian/git.emacsen-install, debian/rules: .el files go in
       /usr/share/git-core/emacs.
-    - debian/rules: add /usr/share/doc/git/contrib/emacs symlink to
-      avoid breaking user startup files.
+    - debian/rules, debian/git.postinst, debian/git.prerm: add
+      /usr/share/doc/git/contrib/emacs symlink to avoid breaking user
+      startup files.
   * debian/implicit: install all debian/$pkg.README.* files, not just
     README.source and README.Debian.
   * debian/git.README.emacs: new file, explaining how to use the

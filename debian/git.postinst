@@ -1,5 +1,17 @@
 #!/bin/sh
 set -e
 test "$1" = configure || exit 0
-test -x /usr/lib/emacsen-common/emacs-package-install || exit 0
-exec /usr/lib/emacsen-common/emacs-package-install git
+if test -x /usr/lib/emacsen-common/emacs-package-install; then
+  /usr/lib/emacsen-common/emacs-package-install git
+fi
+
+# Replace the old /usr/share/doc/git/contrib/emacs directory
+# with a symlink.
+test -n "$2" || exit 0
+dpkg --compare-versions "$2" le '1:1.7.2.3-2.2' || exit 0
+test -d /usr/share/doc/git/contrib/emacs || exit 0
+if ! rmdir /usr/share/doc/git/contrib/emacs; then
+  echo Moving /usr/share/doc/git/contrib/emacs to emacs.old >&2
+  mv -f /usr/share/doc/git/contrib/emacs /usr/share/doc/git/contrib/emacs.old
+fi
+ln -s ../../../git-core/emacs /usr/share/doc/git/contrib/emacs
