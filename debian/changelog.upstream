@@ -1,4 +1,4 @@
-Version v1.7.4-rc0; changes since v1.7.2.3:
+Version v1.7.4-rc1; changes since v1.7.2.3:
 -------------------------------------------
 
 Alan Raison (1):
@@ -45,9 +45,10 @@ Andrew Waters (1):
 Anselm Kruis (1):
       Add a new option 'core.askpass'.
 
-Antonio Ospite (2):
+Antonio Ospite (3):
       t/t9001-send-email.sh: fix stderr redirection in 'Invalid In-Reply-To'
       git-send-email.perl: make initial In-Reply-To apply only to first email
+      t/t9001-send-email.sh: fix '&&' chain in some tests
 
 Bert Wesarg (1):
       Documentation: update-index: -z applies also to --index-info
@@ -498,7 +499,7 @@ Jon Seymour (16):
 Jonathan "Duke" Leto (1):
       Correct help blurb in checkout -p and friends
 
-Jonathan Nieder (169):
+Jonathan Nieder (172):
       Teach fast-import to import subtrees named by tree id
       Export parse_date_basic() to convert a date string to timestamp
       t1501 (rev-parse): clarify
@@ -643,6 +644,7 @@ Jonathan Nieder (169):
       Documentation: split gitignore page into sections
       Documentation: point to related commands from gitignore
       Describe various forms of "be quiet" using OPT__QUIET
+      vcs-svn: Error out for v3 dumps
       fast-import: treat SIGUSR1 as a request to access objects early
       git-rev-parse.txt: clarify --git-dir
       gitweb: document $per_request_config better
@@ -668,6 +670,8 @@ Jonathan Nieder (169):
       t9300: use perl "head -c" clone in place of "dd bs=1 count=16000" kluge
       t0050: fix printf format strings for portability
       t0001: test git init when run via an alias
+      gitweb: skip logo in atom feed when there is none
+      daemon: support <directory> arguments again
 
 Joshua Jensen (6):
       Add string comparison functions that respect the ignore_case variable.
@@ -677,7 +681,7 @@ Joshua Jensen (6):
       Support case folding for git add when core.ignorecase=true
       Support case folding in git fast-import when core.ignorecase=true
 
-Junio C Hamano (66):
+Junio C Hamano (69):
       cvs tests: do not touch test CVS repositories shipped with source
       compat/regex: get rid of old-style definition
       autoconf: regex library detection typofix
@@ -741,9 +745,12 @@ Junio C Hamano (66):
       commit: die before asking to edit the log message
       set_try_to_free_routine(NULL) means "do nothing special"
       am --abort: keep unrelated commits since the last failure and warn
+      t0021: avoid getting filter killed with SIGPIPE
       rebase --skip: correctly wrap-up when skipping the last patch
       Prepare for 1.7.3.5
       Git 1.7.4-rc0
+      Git 1.7.3.5
+      Git 1.7.4-rc1
 
 Justin Frankel (2):
       merge-recursive --patience
@@ -838,7 +845,7 @@ Matthieu Moy (26):
       user-manual.txt: explain better the remote(-tracking) branch terms
       git-branch.txt: mention --set-upstream as a way to change upstream configuration
 
-Michael J Gruber (26):
+Michael J Gruber (28):
       git-bundle.txt: Cleanup
       git-bundle.txt: whitespace cleanup
       git-bundle.txt: Clarify rev-list-args restrictions
@@ -860,11 +867,13 @@ Michael J Gruber (26):
       tag: factor out sig detection for body edits
       tag: factor out sig detection for tag display
       tag: recognize rfc1991 signatures
+      cvsimport: partial whitespace cleanup
       git-rm.txt: Fix quoting
       t800?-blame.sh: retitle uniquely
       git-difftool.txt: correct the description of $BASE and describe $MERGED
       difftool: provide basename to external tools
       t1020-subdirectory: test alias expansion in a subdirectory
+      cvsimport: handle the parsing of uppercase config options
 
 Mike Lundy (1):
       rebase: support -X to pass through strategy options
@@ -1013,6 +1022,9 @@ Pat Thoyts (19):
       git-gui: use wordprocessor tab style to ensure tabs work as expected
       git-gui: apply color information from git diff output
 
+Pete Wyckoff (1):
+      convert filter: supply path to external driver
+
 Peter Krefting (2):
       git-gui: Update Swedish translation (521t).
       gitk: Update Swedish translation (290t)
@@ -1027,8 +1039,9 @@ Petr Onderka (2):
 Ralf Thielow (1):
       commit.c: Remove backward goto in read_craft_line()
 
-Ralf Wildenhues (1):
+Ralf Wildenhues (2):
       Typos in code comments, an error message, documentation
+      Fix typos in the documentation
 
 Ramkumar Ramachandra (12):
       builtin/checkout: Fix message when switching to an existing branch
@@ -1072,8 +1085,9 @@ René Scharfe (11):
       verify-tag: document --verbose
       close file on error in read_mmfile()
 
-Robin H. Johnson (1):
+Robin H. Johnson (2):
       Fix false positives in t3404 due to SHELL=/bin/false
+      t9001: Fix test prerequisites
 
 SZEDER Gábor (7):
       bisect: improve error message of 'bisect log' while not bisecting
