@@ -31,14 +31,19 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     debian/git.prerm: update emacs support to follow current best
     practices.  Make M-x git-status and git-blame modes available
     again with emacs23 (closes: #576887).
-  * debian/rules, debian/git.emacsen-install: install emacs support
-    files to /usr/share/git-core, not /usr/share/doc.
+
+  [ Jonathan Nieder ]
+  * install emacs support files to /usr/share/git-core, not
+    /usr/share/doc.
+    - debian/git.emacsen-install, debian/rules: .el files go in
+      /usr/share/git-core/emacs.
+    - debian/rules: add /usr/share/doc/git/contrib/emacs symlink to
+      avoid breaking user startup files.
   * debian/implicit: install all debian/$pkg.README.* files, not just
     README.source and README.Debian.
   * debian/git.README.emacs: new file, explaining how to use the
     packaged emacs modules (text taken from contrib/emacs/README).
 
-  [ Jonathan Nieder ]
   * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
   * update debian/copyright.
   * debian/control: git-cvs: clarify relationship to cvs2git in the
