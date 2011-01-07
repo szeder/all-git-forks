@@ -5,9 +5,10 @@ deb-checkdir:
 deb-checkuid:
 	@test "`id -u`" -eq 0 || sh -cx '! : need root privileges'
 
-%.deb: %.deb-docs %.deb-lintian %.deb-DEBIAN
+%.deb: %.deb-docs %.deb-lintian %.deb-doc-base %.deb-DEBIAN
 	@rm -f $*.deb $*.deb-checkdir $*.deb-docs $*.deb-docs-base \
-	  $*.deb-docs-docs $*.deb-docs-examples $*.deb-lintian $*.deb-DEBIAN \
+	  $*.deb-docs-docs $*.deb-docs-examples \
+	  $*.deb-lintian $*.deb-doc-base $*.deb-DEBIAN \
 	  $*.deb-DEBIAN-dir $*.deb-DEBIAN-scripts $*.deb-DEBIAN-md5sums
 
 %.udeb: %.deb-DEBIAN
@@ -74,6 +75,14 @@ deb-checkuid:
 	@test ! -r debian/$*.lintian-overrides || \
 	  sh -cx "install -m0644 debian/$*.lintian-overrides \
 	    debian/$*/usr/share/lintian/overrides/$*"
+%.deb-doc-base: %.deb-checkdir
+	: debian/$*/usr/share/doc-base
+	@! ls -d debian/$*.doc-base.* || \
+	  install -d -m0755 debian/$*/usr/share/doc-base
+	@for i in `ls -d debian/$*.doc-base.* 2>/dev/null || :`; do \
+	  sh -cx "install -m0644 $$i \
+	    debian/$*/usr/share/doc-base/$${i#debian/$*.doc-base.}" || exit 1; \
+	done
 
 %.deb-DEBIAN-base: install
 	@rm -rf debian/$*/DEBIAN

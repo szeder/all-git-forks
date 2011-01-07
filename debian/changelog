@@ -71,6 +71,8 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     /usr/share/lintian/overrides/.
   * debian/git.lintian-overrides: new; document intentional deviations
     from lintian guidelines.
+  * debian/implicit: install debian/pkg.doc-base.docid to
+    /usr/share/doc-base/docid.
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
