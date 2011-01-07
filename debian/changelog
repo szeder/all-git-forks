@@ -59,6 +59,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     /usr/lib/git-core, avoiding error dialogues when fetching by ssh
     without SSH_ASKPASS set (closes: #598245).
   * debian/watch: new; document upstream source location.
+  * debian/implicit: create DEBIAN/md5sums with correct permissions.
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
