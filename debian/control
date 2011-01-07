@@ -10,7 +10,7 @@ Build-Depends: libz-dev,
  unzip, libio-pty-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
 Build-Depends-Indep: asciidoc (>> 8.0.0), xmlto, docbook-xsl (>> 1.72)
-Standards-Version: 3.8.4.0
+Standards-Version: 3.9.1.0
 Homepage: http://git-scm.com/
 Vcs-Git: http://smarden.org/git/git.git/
 
@@ -21,9 +21,10 @@ Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
 Recommends: patch, less, rsync, ssh-client
 Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
-Replaces: gitweb (<< 1:1.7.4~rc0),
+Replaces: gitweb (<< 1:1.7.4~rc1),
  cogito (<< 0.16rc2-0), git-core (<= 1:1.7.0.4-1)
-Breaks: qgit (<< 1.5.5), git-buildpackage (<< 0.4.38), cogito (<= 0.18.2+),
+Breaks: gitweb (<< 1:1.7.4~rc1),
+ qgit (<< 1.5.5), git-buildpackage (<< 0.4.38), cogito (<= 0.18.2+),
  stgit (<< 0.15), stgit-contrib (<< 0.15), gitpkg (<< 0.15),
  guilt (<< 0.33), gitosis (<< 0.2+20090917-7)
 Conflicts: git-core (<= 1:1.7.0.4-1)
@@ -45,8 +46,9 @@ Description: fast, scalable, distributed revision control system
 
 Package: git-man
 Architecture: all
-Replaces: git (<< 1:1.7.4~rc0),
+Replaces: git (<< 1:1.7.4~rc1),
  cogito (<< 0.16rc2-0), git-core (<= 1:1.7.0.4-1)
+Breaks: git (<< 1:1.7.4~rc1)
 Description: fast, scalable, distributed revision control system (manual pages)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile

@@ -75,6 +75,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     /usr/share/doc-base/docid.
   * debian/git-doc.doc-base.*: new; register documentation with
     doc-base.
+  * debian/control: Standards-Version: 3.9.1.0.
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
@@ -89,7 +90,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
       + package gitweb: do not install anything except
         configuration, to avoid file conflicts with the git package.
     - debian/control:
-      + package git: Replaces: old gitweb.
+      + package git: Replaces, Breaks: old gitweb.
       + package gitweb: explain that it is a configuration package.
     - debian/gitweb.NEWS.Debian, debian/git.README.Debian,
       debian/gitweb.conf: auxiliary files have been moved to
