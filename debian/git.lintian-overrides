@@ -1,0 +1,6 @@
+# the git manual pages are in the git-man package.
+git binary: binary-without-manpage usr/bin/git
+git binary: binary-without-manpage usr/bin/git-receive-pack
+git binary: binary-without-manpage usr/bin/git-shell
+git binary: binary-without-manpage usr/bin/git-upload-archive
+git binary: binary-without-manpage usr/bin/git-upload-pack
