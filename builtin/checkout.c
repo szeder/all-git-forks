@@ -840,6 +840,13 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 				;
 			else
 				new.path = NULL;
+			if (hashcmp(new.commit->object.sha1, rev))
+				/*
+				 * Yikes, arg is an ambiguous and higher
+				 * precedence SHA-1 expression than the
+				 * branch name
+				 */
+				new.commit = lookup_commit_reference_gently(rev, 1);
 			parse_commit(new.commit);
 			source_tree = new.commit->tree;
 		} else
