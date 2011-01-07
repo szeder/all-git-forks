@@ -60,6 +60,10 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     without SSH_ASKPASS set (closes: #598245).
   * debian/watch: new; document upstream source location.
   * debian/implicit: create DEBIAN/md5sums with correct permissions.
+  * debian/diff/0004-remove-shebang...diff: new; explain how each
+    shell library is meant to be used in its opening comments.
+  * debian/rules: do not try to strip scripts even if they begin with
+    "# " in place of "#!".
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
