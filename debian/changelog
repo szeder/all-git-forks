@@ -64,6 +64,9 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     shell library is meant to be used in its opening comments.
   * debian/rules: do not try to strip scripts even if they begin with
     "# " in place of "#!".
+  * debian/diff/0005-pre-rebase-hook-capture...diff: new; capture
+    documentation at the end (which is never executed) of sample
+    pre-rebase hook in a <<here document to avoid breaking sh syntax.
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
