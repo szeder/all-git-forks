@@ -31,7 +31,7 @@ test_expect_success 'checkout reports switch to detached HEAD' '
 	! grep "^HEAD is now at" stderr
 '
 
-test_expect_failure 'checkout vague ref succeeds' '
+test_expect_success 'checkout vague ref succeeds' '
 	git checkout vagueness >stdout 2>stderr &&
 	test_set_prereq VAGUENESS_SUCCESS
 '
