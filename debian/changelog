@@ -102,7 +102,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
   * debian/rules: gitweb: move gitweb.cgi content to /usr/share,
     symlink to /usr/lib/cgi-bin.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 06 Jan 2011 00:05:28 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 07 Jan 2011 12:42:22 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
