@@ -5,9 +5,9 @@ deb-checkdir:
 deb-checkuid:
 	@test "`id -u`" -eq 0 || sh -cx '! : need root privileges'
 
-%.deb: %.deb-docs %.deb-DEBIAN
+%.deb: %.deb-docs %.deb-lintian %.deb-DEBIAN
 	@rm -f $*.deb $*.deb-checkdir $*.deb-docs $*.deb-docs-base \
-	  $*.deb-docs-docs $*.deb-docs-examples $*.deb-DEBIAN \
+	  $*.deb-docs-docs $*.deb-docs-examples $*.deb-lintian $*.deb-DEBIAN \
 	  $*.deb-DEBIAN-dir $*.deb-DEBIAN-scripts $*.deb-DEBIAN-md5sums
 
 %.udeb: %.deb-DEBIAN
@@ -66,6 +66,14 @@ deb-checkuid:
 	done
 %.deb-docs: %.deb-checkdir %.deb-docs-base %.deb-docs-docs %.deb-docs-examples
 	: debian/$*/usr/share/doc/$*/ ok
+
+%.deb-lintian: %.deb-checkdir
+	: debian/$*/usr/share/lintian/overrides
+	@test ! -r debian/$*.lintian-overrides || \
+	  install -d -m0755 debian/$*/usr/share/lintian/overrides
+	@test ! -r debian/$*.lintian-overrides || \
+	  sh -cx "install -m0644 debian/$*.lintian-overrides \
+	    debian/$*/usr/share/lintian/overrides/$*"
 
 %.deb-DEBIAN-base: install
 	@rm -rf debian/$*/DEBIAN
