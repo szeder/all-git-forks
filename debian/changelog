@@ -67,6 +67,10 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
   * debian/diff/0005-pre-rebase-hook-capture...diff: new; capture
     documentation at the end (which is never executed) of sample
     pre-rebase hook in a <<here document to avoid breaking sh syntax.
+  * debian/implicit: install package-specific lintian exceptions to
+    /usr/share/lintian/overrides/.
+  * debian/git.lintian-overrides: new; document intentional deviations
+    from lintian guidelines.
 
   * debian/git.README.Debian: server logs go in /var/log/apache2, not
     /var/log/apache-ssl.
