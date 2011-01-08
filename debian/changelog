@@ -7,6 +7,8 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
 
   [ Anders Kaseorg ]
   * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
+  * debian/diff/0004-gitk-Take-only-numeric-...diff: new; gitk: do
+    not error out when git version number contains "-rc".
 
   [ Jonathan Nieder ]
   * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
