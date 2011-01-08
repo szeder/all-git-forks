@@ -1,106 +1,69 @@
 git (1:1.7.4~rc1-0.1) experimental; urgency=low
 
   * non-maintainer upload.
-  * new upstream release candidate (closes: #600566).
-    * apply: notice spaces in filenames in traditional patches
-      (closes: #578752).
-    * read-tree --reset: let read-tree -u remove index entries
-      outside sparse area (closes: #583699).
-    * gui--askpass: ensure correct application termination
-      (closes: #588103).
-    * user manual: add a !DOCTYPE (closes: #507476).
-    * remove stray backslash from "git bundle" manual
-      (closes: #540001).
-    * allow test suite to be run as root (closes: #524309).
-    * do not ignore custom strategies for trivial merges
-      (closes: #581691).
-    * merge-recursive: fix directory/file conflicts
-      (closes: #600785).
-    * git-blame.el: add (require 'format-spec) (closes: #577471).
-    * rebase: protect against diff.noprefix configuration when
-      running format-patch (closes: #607044).
-    * log et al: accept un-sticked "git log -S needle" command-line
-      syntax (closes: #606975).
+  * new upstream release candidate (closes: #600566, #578752,
+    #583699, #588103, #507476, #540001, #524309, #581691, #600785,
+    #577471, #607044, #606975).
 
   [ Anders Kaseorg ]
-  * debian/git.docs, debian/rules: deal with RelNotes being moved to
-    a subdirectory.
+  * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
+
+  [ Jonathan Nieder ]
+  * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
+  * update debian/copyright.
+  * debian/control: git-cvs: recommend cvs2git for one-time conversions
+    (closes: #585725).
+  * debian/control: git-core: explain that it still may be needed (thx
+    Denis Laxalde).
+  * debian/control, debian/rules: new architecture-independent package
+    git-man: manual pages that were previously in the main git package.
+  * debian/rules: do not build documentation on autobuilders (closes:
+    #499002).
+  * debian/control: Build-Depends-Indep: asciidoc, xmlto, docbook-xsl.
+  * debian/rules: git-gui: install git-gui--askpass helper to
+    /usr/lib/git-core (closes: #598245).
+  * debian/watch: new; point to upstream sources.
+  * debian/implicit: create DEBIAN/md5sums with correct permissions.
+  * debian/diff/0004-remove-shebang...diff: new; do not start shell
+    libraries with #!/bin/sh.
+  * debian/rules: do not try to strip scripts even if they begin
+    with "# " in place of "#!".
+  * debian/diff/0005-pre-rebase-hook-capture...diff: new;
+    hooks/pre-rebase: use a <<HERE document to prevent syntax checkers
+    from treating documentation as code.
+  * debian/implicit: check for debian/$pkg.doc-base.$docid.
+  * debian/git-doc.doc-base.*: new; catalog provided documentation.
+  * debian/implicit: check for debian/$pkg.lintian-overrides.
+  * debian/git.lintian-overrides: new; document some deviations from
+    lintian guidelines.
+  * debian/control: Standards-Version: 3.9.1.0.
+
+  * debian/git.README.Debian: server logs go in /var/log/apache2.
+  * debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove.
+  * debian/diff/0006, 0009-instaweb...diff: remove, no longer needed.
+  * debian/diff/0008-gitweb-make-logo-optional...diff: adapt.
+  * debian/rules, debian/control: move gitweb script to the main git
+    package for use by instaweb; make gitweb into a configuration
+    package.
+  * debian/gitweb.NEWS.Debian, debian/git.README.Debian,
+    debian/gitweb.conf: static files moved to /usr/share/gitweb/static.
+  * debian/gitweb.conf: disable rename patches (@diff_opts = ()).
+  * debian/diff/0001-Revert-gitweb-...diff: remove; no longer needed.
+  * debian/rules: gitweb: move gitweb.cgi script to /usr/share;
+    add a symlink at /usr/lib/cgi-bin/gitweb.cgi for compatibility.
+
+  * debian/git.emacsen-install, debian/rules, debian/git.postinst,
+    debian/git.prerm: put emacs support files in /usr/share/git-core
+    instead of /usr/share/doc/git/contrib.
+  * debian/implicit: check for arbitrary debian/$pkg.README.*, not just
+    README.source and README.Debian.
+  * debian/git.README.emacs: new; introduction to the emacs support
+    (text taken from contrib/emacs/README).
 
   [ Kevin Ryde ]
   * debian/rules, debian/git.emacsen-*, debian/git.postinst,
-    debian/git.prerm: update emacs support to follow current best
-    practices.  Make M-x git-status and git-blame modes available
-    again with emacs23 (closes: #576887).
-
-  [ Jonathan Nieder ]
-  * install emacs support files to /usr/share/git-core, not
-    /usr/share/doc.
-    - debian/git.emacsen-install, debian/rules: .el files go in
-      /usr/share/git-core/emacs.
-    - debian/rules, debian/git.postinst, debian/git.prerm: add
-      /usr/share/doc/git/contrib/emacs symlink to avoid breaking user
-      startup files.
-  * debian/implicit: install all debian/$pkg.README.* files, not just
-    README.source and README.Debian.
-  * debian/git.README.emacs: new file, explaining how to use the
-    packaged emacs modules (text taken from contrib/emacs/README).
-
-  * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
-  * update debian/copyright.
-  * debian/control: git-cvs: clarify relationship to cvs2git in the
-    long description (closes: #585725).
-  * debian/control: git-core: clarify that it is still needed to
-    satisfy dependencies (thx Denis Laxalde).
-  * move manpages to new git-man package.
-  * debian/rules, do not process documentation on autobuilders
-    (closes: #499002).
-  * debian/control: Build-Depends-Indep: asciidoc, xmlto, docbook-xsl.
-  * debian/rules: git-gui: install git-gui--askpass helper to
-    /usr/lib/git-core, avoiding error dialogues when fetching by ssh
-    without SSH_ASKPASS set (closes: #598245).
-  * debian/watch: new; document upstream source location.
-  * debian/implicit: create DEBIAN/md5sums with correct permissions.
-  * debian/diff/0004-remove-shebang...diff: new; explain how each
-    shell library is meant to be used in its opening comments.
-  * debian/rules: do not try to strip scripts even if they begin with
-    "# " in place of "#!".
-  * debian/diff/0005-pre-rebase-hook-capture...diff: new; capture
-    documentation at the end (which is never executed) of sample
-    pre-rebase hook in a <<here document to avoid breaking sh syntax.
-  * debian/implicit: install package-specific lintian exceptions to
-    /usr/share/lintian/overrides/.
-  * debian/git.lintian-overrides: new; document intentional deviations
-    from lintian guidelines.
-  * debian/implicit: install debian/pkg.doc-base.docid to
-    /usr/share/doc-base/docid.
-  * debian/git-doc.doc-base.*: new; register documentation with
-    doc-base.
-  * debian/control: Standards-Version: 3.9.1.0.
-
-  * debian/git.README.Debian: server logs go in /var/log/apache2, not
-    /var/log/apache-ssl.
-  * update gitweb and instaweb to match upstream:
-    - debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove.
-    - debian/diff/0006-instaweb...diff, 0009-instaweb...diff: remove,
-      no longer needed.
-    - debian/diff/0007, 0008-gitweb-make-logo-optional...diff: adapt.
-    - debian/rules:
-      + package git: install gitweb for use by instaweb using
-        standard "make install" target.
-      + package gitweb: do not install anything except
-        configuration, to avoid file conflicts with the git package.
-    - debian/control:
-      + package git: Replaces, Breaks: old gitweb.
-      + package gitweb: explain that it is a configuration package.
-    - debian/gitweb.NEWS.Debian, debian/git.README.Debian,
-      debian/gitweb.conf: auxiliary files have been moved to
-      /usr/share/gitweb/static.
-  * gitweb.conf: disable use of rename patches by default
-    (@diff_opts = ()).
-  * debian/diff/0001-Revert-gitweb-Use-diff_opts...diff: remove,
-    no longer needed.
-  * debian/rules: gitweb: move gitweb.cgi content to /usr/share,
-    symlink to /usr/lib/cgi-bin.
+    debian/git.prerm: Make M-x git-status and git-blame modes available
+    with emacs23 (closes: #576887).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 07 Jan 2011 12:42:22 -0600
 
