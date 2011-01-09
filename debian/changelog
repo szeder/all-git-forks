@@ -14,6 +14,11 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     Kaseorg).
   * debian/rules: use patch -N -r- so patch application is idempotent.
   * update debian/copyright.
+  * debian/diff/0006-gitk-use-...diff: new; gitk: use standard desktop
+    fonts by default.  The appearance for users that already have a
+    generated ~/.gitk file is not affected (closes: #466471).
+  * debian/diff/0007-gitk-...diff: new; gitk: avoid spurious matches
+    in "All fields" search (thx Frédéric Brière, closes: #465776).
   * debian/control: git-cvs: recommend cvs2git for one-time conversions
     (closes: #585725).
   * debian/control: git-core: explain that it still may be needed (thx

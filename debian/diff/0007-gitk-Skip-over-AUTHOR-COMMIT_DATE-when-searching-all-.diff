@@ -1,0 +1,54 @@
+From 0755763b44b6c35c6c73906c2a3b6b7fdf8b093a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
+Date: Sun, 14 Mar 2010 18:59:09 -0400
+Subject: gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This prevents searches on "All Fields" from matching against the
+author/commit timestamps.  Not only are these timestamps not searchable
+by themselves, but the displayed format will not match the query string
+anyway.
+
+Signed-off-by: Frédéric Brière <fbriere@fbriere.net>
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ gitk-git/gitk |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/gitk-git/gitk b/gitk-git/gitk
+index 86b97b9..36d3996 100644
+--- a/gitk-git/gitk
++++ b/gitk-git/gitk
+@@ -4626,8 +4626,9 @@ proc askfindhighlight {row id} {
+     }
+     set info $commitinfo($id)
+     set isbold 0
+-    set fldtypes [list [mc Headline] [mc Author] [mc Date] [mc Committer] [mc CDate] [mc Comments]]
++    set fldtypes [list [mc Headline] [mc Author] "" [mc Committer] "" [mc Comments]]
+     foreach f $info ty $fldtypes {
++	if {$ty eq ""} continue
+ 	if {($findloc eq [mc "All fields"] || $findloc eq $ty) &&
+ 	    [doesmatch $f]} {
+ 	    if {$ty eq [mc "Author"]} {
+@@ -6473,7 +6474,7 @@ proc findmore {} {
+     if {![info exists find_dirn]} {
+ 	return 0
+     }
+-    set fldtypes [list [mc "Headline"] [mc "Author"] [mc "Date"] [mc "Committer"] [mc "CDate"] [mc "Comments"]]
++    set fldtypes [list [mc "Headline"] [mc "Author"] "" [mc "Committer"] "" [mc "Comments"]]
+     set l $findcurline
+     set moretodo 0
+     if {$find_dirn > 0} {
+@@ -6534,6 +6535,7 @@ proc findmore {} {
+ 	    }
+ 	    set info $commitinfo($id)
+ 	    foreach f $info ty $fldtypes {
++		if {$ty eq ""} continue
+ 		if {($findloc eq [mc "All fields"] || $findloc eq $ty) &&
+ 		    [doesmatch $f]} {
+ 		    set found 1
+-- 
+1.7.4.rc1
+
