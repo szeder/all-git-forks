@@ -12,6 +12,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
   * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
   * debian/rules: accept patches with .patch suffix, too (thx Anders
     Kaseorg).
+  * debian/rules: use patch -N -r- so patch application is idempotent.
   * update debian/copyright.
   * debian/control: git-cvs: recommend cvs2git for one-time conversions
     (closes: #585725).
