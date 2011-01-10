@@ -36,7 +36,8 @@ GIT =$(shell pwd)/debian/git
 
 patch: deb-checkdir patch-stamp
 patch-stamp:
-	for i in `ls -1 debian/diff/*.diff || :`; do \
+	for i in `ls -1 debian/diff/*.diff debian/diff/*.patch \
+	    2>/dev/null || :`; do \
 	  patch -p1 <$$i || exit 1; \
 	done
 	touch patch-stamp
@@ -63,7 +64,10 @@ build-indep-stamp: patch-stamp build-arch-stamp
 clean: deb-checkdir
 	$(MAKE) clean $(OPTS)
 	! test -e patch-stamp || \
-	  for i in `ls -1r debian/diff/*.diff || :`; do patch -p1 -R <$$i; done
+	  for i in `ls -1r debian/diff/*.diff debian/diff/*.patch \
+	      2>/dev/null || :`; do \
+	    patch -p1 -R <$$i; \
+	  done
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs \
