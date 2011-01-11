@@ -2158,7 +2158,7 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 
 			ecbdata.ws_rule = data.ws_rule;
 			check_blank_at_eof(&mf1, &mf2, &ecbdata);
-			blank_at_eof = ecbdata.blank_at_eof_in_preimage;
+			blank_at_eof = ecbdata.blank_at_eof_in_postimage;
 
 			if (blank_at_eof) {
 				static char *err;
@@ -2391,10 +2391,14 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 	}
 	else {
 		enum object_type type;
-		if (size_only)
+		if (size_only) {
 			type = sha1_object_info(s->sha1, &s->size);
-		else {
+			if (type < 0)
+				die("unable to read %s", sha1_to_hex(s->sha1));
+		} else {
 			s->data = read_sha1_file(s->sha1, &type, &s->size);
+			if (!s->data)
+				die("unable to read %s", sha1_to_hex(s->sha1));
 			s->should_free = 1;
 		}
 	}
@@ -3148,20 +3152,20 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (!prefixcmp(arg, "-B") || !prefixcmp(arg, "--break-rewrites=") ||
 		 !strcmp(arg, "--break-rewrites")) {
 		if ((options->break_opt = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -B: %s", arg+2);
 	}
-	else if (!prefixcmp(arg, "-M") || !prefixcmp(arg, "--detect-renames=") ||
-		 !strcmp(arg, "--detect-renames")) {
+	else if (!prefixcmp(arg, "-M") || !prefixcmp(arg, "--find-renames=") ||
+		 !strcmp(arg, "--find-renames")) {
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -M: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_RENAME;
 	}
-	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--detect-copies=") ||
-		 !strcmp(arg, "--detect-copies")) {
+	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--find-copies=") ||
+		 !strcmp(arg, "--find-copies")) {
 		if (options->detect_rename == DIFF_DETECT_COPY)
 			DIFF_OPT_SET(options, FIND_COPIES_HARDER);
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -C: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_COPY;
 	}
 	else if (!strcmp(arg, "--no-renames"))
@@ -3380,12 +3384,12 @@ static int diff_scoreopt_parse(const char *opt)
 			opt += strlen("break-rewrites");
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'B';
-		} else if (!prefixcmp(opt, "detect-copies")) {
-			opt += strlen("detect-copies");
+		} else if (!prefixcmp(opt, "find-copies")) {
+			opt += strlen("find-copies");
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'C';
-		} else if (!prefixcmp(opt, "detect-renames")) {
-			opt += strlen("detect-renames");
+		} else if (!prefixcmp(opt, "find-renames")) {
+			opt += strlen("find-renames");
 			if (*opt == 0 || *opt++ == '=')
 				cmd = 'M';
 		}
@@ -4408,7 +4412,7 @@ size_t fill_textconv(struct userdiff_driver *driver,
 		return df->size;
 	}
 
-	if (driver->textconv_cache) {
+	if (driver->textconv_cache && df->sha1_valid) {
 		*outbuf = notes_cache_get(driver->textconv_cache, df->sha1,
 					  &size);
 		if (*outbuf)
@@ -4419,7 +4423,7 @@ size_t fill_textconv(struct userdiff_driver *driver,
 	if (!*outbuf)
 		die("unable to read files to diff");
 
-	if (driver->textconv_cache) {
+	if (driver->textconv_cache && df->sha1_valid) {
 		/* ignore errors, as we might be in a readonly repository */
 		notes_cache_put(driver->textconv_cache, df->sha1, *outbuf,
 				size);

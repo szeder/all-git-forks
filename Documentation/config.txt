@@ -317,24 +317,17 @@ false), while all other repositories are assumed to be bare (bare
 = true).
 
 core.worktree::
-	Set the path to the root of the work tree.
+	Set the path to the working tree.  The value will not be
+	used in combination with repositories found automatically in
+	a .git directory (i.e. $GIT_DIR is not set).
 	This can be overridden by the GIT_WORK_TREE environment
 	variable and the '--work-tree' command line option. It can be
-	an absolute path or a relative path to the .git directory,
-	either specified by --git-dir or GIT_DIR, or automatically
-	discovered.
-	If --git-dir or GIT_DIR are specified but none of
+	an absolute path or relative path to the directory specified by
+	--git-dir or GIT_DIR.
+	Note: If --git-dir or GIT_DIR are specified but none of
 	--work-tree, GIT_WORK_TREE and core.worktree is specified,
-	the current working directory is regarded as the root of the
-	work tree.
-+
-Note that this variable is honored even when set in a configuration
-file in a ".git" subdirectory of a directory, and its value differs
-from the latter directory (e.g. "/path/to/.git/config" has
-core.worktree set to "/different/path"), which is most likely a
-misconfiguration.  Running git commands in "/path/to" directory will
-still use "/different/path" as the root of the work tree and can cause
-great confusion to the users.
+	the current working directory is regarded as the top directory
+	of your working tree.
 
 core.logAllRefUpdates::
 	Enable the reflog. Updates to a ref <ref> is logged to the file
@@ -373,6 +366,15 @@ core.sharedRepository::
 core.warnAmbiguousRefs::
 	If true, git will warn you if the ref name you passed it is ambiguous
 	and might match multiple refs in the .git/refs/ tree. True by default.
+
+core.abbrevguard::
+	Even though git makes sure that it uses enough hexdigits to show
+	an abbreviated object name unambiguously, as more objects are
+	added to the repository over time, a short name that used to be
+	unique will stop being unique.  Git uses this many extra hexdigits
+	that are more than necessary to make the object name currently
+	unique, in the hope that its output will stay unique a bit longer.
+	Defaults to 0.
 
 core.compression::
 	An integer -1..9, indicating a default compression level.
@@ -513,6 +515,9 @@ core.whitespace::
   part of the line terminator, i.e. with it, `trailing-space`
   does not trigger if the character before such a carriage-return
   is not a whitespace (not enabled by default).
+* `tabwidth=<n>` tells how many character positions a tab occupies; this
+  is relevant for `indent-with-non-tab` and when git fixes `tab-in-indent`
+  errors. The default tab width is 8. Allowed values are 1 to 63.
 
 core.fsyncobjectfiles::
 	This boolean will enable 'fsync()' when writing object files.
@@ -554,9 +559,13 @@ core.sparseCheckout::
 	linkgit:git-read-tree[1] for more information.
 
 add.ignore-errors::
+add.ignoreErrors::
 	Tells 'git add' to continue adding files when some files cannot be
 	added due to indexing errors. Equivalent to the '--ignore-errors'
-	option of linkgit:git-add[1].
+	option of linkgit:git-add[1].  Older versions of git accept only
+	`add.ignore-errors`, which does not follow the usual naming
+	convention for configuration variables.  Newer versions of git
+	honor `add.ignoreErrors` as well.
 
 alias.*::
 	Command aliases for the linkgit:git[1] command wrapper - e.g.
@@ -601,8 +610,9 @@ branch.autosetupmerge::
 	this behavior can be chosen per-branch using the `--track`
 	and `--no-track` options. The valid settings are: `false` -- no
 	automatic setup is done; `true` -- automatic setup is done when the
-	starting point is a remote branch; `always` -- automatic setup is
-	done when the starting point is either a local branch or remote
+	starting point is a remote-tracking branch; `always` --
+	automatic setup is done when the starting point is either a
+	local branch or remote-tracking
 	branch. This option defaults to true.
 
 branch.autosetuprebase::
@@ -613,7 +623,7 @@ branch.autosetuprebase::
 	When `local`, rebase is set to true for tracked branches of
 	other local branches.
 	When `remote`, rebase is set to true for tracked branches of
-	remote branches.
+	remote-tracking branches.
 	When `always`, rebase will be set to true for all tracking
 	branches.
 	See "branch.autosetupmerge" for details on how to set up a
@@ -680,7 +690,7 @@ color.branch::
 color.branch.<slot>::
 	Use customized color for branch coloration. `<slot>` is one of
 	`current` (the current branch), `local` (a local branch),
-	`remote` (a tracking branch in refs/remotes/), `plain` (other
+	`remote` (a remote-tracking branch in refs/remotes/), `plain` (other
 	refs).
 +
 The value for these configuration variables is a list of colors (at most
@@ -708,7 +718,7 @@ color.diff.<slot>::
 color.decorate.<slot>::
 	Use customized color for 'git log --decorate' output.  `<slot>` is one
 	of `branch`, `remoteBranch`, `tag`, `stash` or `HEAD` for local
-	branches, remote tracking branches, tags, stash and HEAD, respectively.
+	branches, remote-tracking branches, tags, stash and HEAD, respectively.
 
 color.grep::
 	When set to `always`, always highlight matches.  When `false` (or
@@ -773,7 +783,8 @@ color.status.<slot>::
 	one of `header` (the header text of the status message),
 	`added` or `updated` (files which are added but not committed),
 	`changed` (files which are changed but not added in the index),
-	`untracked` (files which are not tracked by git), or
+	`untracked` (files which are not tracked by git),
+	`branch` (the current branch), or
 	`nobranch` (the color the 'no branch' warning is shown in, defaulting
 	to red). The values of these variables may be specified as in
 	color.branch.<slot>.
@@ -879,6 +890,11 @@ diff.wordRegex::
 	sequences that match the regular expression are "words", all other
 	characters are *ignorable* whitespace.
 
+fetch.recurseSubmodules::
+	A boolean value which changes the behavior for fetch and pull, the
+	default is to not recursively fetch populated submodules unless
+	configured otherwise.
+
 fetch.unpackLimit::
 	If the number of objects fetched over the git native
 	transfer is below this
@@ -973,7 +989,7 @@ gc.packrefs::
 	Running `git pack-refs` in a repository renders it
 	unclonable by Git versions prior to 1.5.1.2 over dumb
 	transports such as HTTP.  This variable determines whether
-	'git gc' runs `git pack-refs`. This can be set to `nobare`
+	'git gc' runs `git pack-refs`. This can be set to `notbare`
 	to enable it within all non-bare repos or it can be set to a
 	boolean value.  The default is `true`.
 
@@ -1102,7 +1118,7 @@ gui.newbranchtemplate::
 	linkgit:git-gui[1].
 
 gui.pruneduringfetch::
-	"true" if linkgit:git-gui[1] should prune tracking branches when
+	"true" if linkgit:git-gui[1] should prune remote-tracking branches when
 	performing a fetch. The default value is "false".
 
 gui.trustmtime::
@@ -1531,11 +1547,13 @@ pack.packSizeLimit::
 	supported.
 
 pager.<cmd>::
-	Allows turning on or off pagination of the output of a
-	particular git subcommand when writing to a tty.  If
-	`\--paginate` or `\--no-pager` is specified on the command line,
-	it takes precedence over this option.  To disable pagination for
-	all commands, set `core.pager` or `GIT_PAGER` to `cat`.
+	If the value is boolean, turns on or off pagination of the
+	output of a particular git subcommand when writing to a tty.
+	Otherwise, turns on pagination for the subcommand using the
+	pager specified by the value of `pager.<cmd>`.  If `\--paginate`
+	or `\--no-pager` is specified on the command line, it takes
+	precedence over this option.  To disable pagination for all
+	commands, set `core.pager` or `GIT_PAGER` to `cat`.
 
 pretty.<name>::
 	Alias for a --pretty= format string, as specified in
@@ -1790,6 +1808,13 @@ submodule.<name>.update::
 	by 'git submodule init'; edit them to override the
 	URL and other values found in the `.gitmodules` file.  See
 	linkgit:git-submodule[1] and linkgit:gitmodules[5] for details.
+
+submodule.<name>.fetchRecurseSubmodules::
+	This option can be used to enable/disable recursive fetching of this
+	submodule. It can be overridden by using the --[no-]recurse-submodules
+	command line option to "git fetch" and "git pull".
+	This setting will override that from in the linkgit:gitmodules[5]
+	file.
 
 submodule.<name>.ignore::
 	Defines under what circumstances "git status" and the diff family show

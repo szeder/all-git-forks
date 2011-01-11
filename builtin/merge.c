@@ -57,6 +57,7 @@ static const char *branch;
 static int option_renormalize;
 static int verbosity;
 static int allow_rerere_auto;
+static int abort_current_merge;
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -197,6 +198,8 @@ static struct option builtin_merge_options[] = {
 		"message to be used for the merge commit (if any)",
 		option_parse_message),
 	OPT__VERBOSITY(&verbosity),
+	OPT_BOOLEAN(0, "abort", &abort_current_merge,
+		"abort the current in-progress merge"),
 	OPT_END()
 };
 
@@ -232,6 +235,24 @@ static void save_state(void)
 	strbuf_setlen(&buffer, buffer.len-1);
 	if (get_sha1(buffer.buf, stash))
 		die("not a valid object: %s", buffer.buf);
+}
+
+static void read_empty(unsigned const char *sha1, int verbose)
+{
+	int i = 0;
+	const char *args[7];
+
+	args[i++] = "read-tree";
+	if (verbose)
+		args[i++] = "-v";
+	args[i++] = "-m";
+	args[i++] = "-u";
+	args[i++] = EMPTY_TREE_SHA1_HEX;
+	args[i++] = sha1_to_hex(sha1);
+	args[i] = NULL;
+
+	if (run_command_v_opt(args, RUN_GIT_CMD))
+		die("read-tree failed");
 }
 
 static void reset_hard(unsigned const char *sha1, int verbose)
@@ -403,7 +424,7 @@ static void merge_name(const char *remote, struct strbuf *msg)
 			goto cleanup;
 		}
 		if (!prefixcmp(found_ref, "refs/remotes/")) {
-			strbuf_addf(msg, "%s\t\tremote branch '%s' of .\n",
+			strbuf_addf(msg, "%s\t\tremote-tracking branch '%s' of .\n",
 				    sha1_to_hex(branch_head), remote);
 			goto cleanup;
 		}
@@ -901,22 +922,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	const char *best_strategy = NULL, *wt_strategy = NULL;
 	struct commit_list **remotes = &remoteheads;
 
-	if (read_cache_unmerged()) {
-		die_resolve_conflict("merge");
-	}
-	if (file_exists(git_path("MERGE_HEAD"))) {
-		/*
-		 * There is no unmerged entry, don't advise 'git
-		 * add/rm <file>', just 'git commit'.
-		 */
-		if (advice_resolve_conflict)
-			die("You have not concluded your merge (MERGE_HEAD exists).\n"
-			    "Please, commit your changes before you can merge.");
-		else
-			die("You have not concluded your merge (MERGE_HEAD exists).");
-	}
+	if (argc == 2 && !strcmp(argv[1], "-h"))
+		usage_with_options(builtin_merge_usage, builtin_merge_options);
 
-	resolve_undo_clear();
 	/*
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a
 	 * current branch.
@@ -935,6 +943,34 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix, builtin_merge_options,
 			builtin_merge_usage, 0);
+
+	if (abort_current_merge) {
+		int nargc = 2;
+		const char *nargv[] = {"reset", "--merge", NULL};
+
+		if (!file_exists(git_path("MERGE_HEAD")))
+			die("There is no merge to abort (MERGE_HEAD missing).");
+
+		/* Invoke 'git reset --merge' */
+		return cmd_reset(nargc, nargv, prefix);
+	}
+
+	if (read_cache_unmerged())
+		die_resolve_conflict("merge");
+
+	if (file_exists(git_path("MERGE_HEAD"))) {
+		/*
+		 * There is no unmerged entry, don't advise 'git
+		 * add/rm <file>', just 'git commit'.
+		 */
+		if (advice_resolve_conflict)
+			die("You have not concluded your merge (MERGE_HEAD exists).\n"
+			    "Please, commit your changes before you can merge.");
+		else
+			die("You have not concluded your merge (MERGE_HEAD exists).");
+	}
+	resolve_undo_clear();
+
 	if (verbosity < 0)
 		show_diffstat = 0;
 
@@ -985,7 +1021,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			die("%s - not something we can merge", argv[0]);
 		update_ref("initial pull", "HEAD", remote_head->sha1, NULL, 0,
 				DIE_ON_ERR);
-		reset_hard(remote_head->sha1, 0);
+		read_empty(remote_head->sha1, 0);
 		return 0;
 	} else {
 		struct strbuf merge_names = STRBUF_INIT;
