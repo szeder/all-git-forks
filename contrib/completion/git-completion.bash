@@ -944,11 +944,7 @@ _git_bisect ()
 	local subcommands="start bad good skip reset visualize replay log run"
 	local subcommand="$(__git_find_on_cmdline "$subcommands")"
 	if [ -z "$subcommand" ]; then
-		if [ -f "$(__gitdir)"/BISECT_START ]; then
-			__gitcomp "$subcommands"
-		else
-			__gitcomp "replay start"
-		fi
+		__gitcomp "$subcommands"
 		return
 	fi
 
