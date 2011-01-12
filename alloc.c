@@ -52,9 +52,9 @@ DEFINE_ALLOCATOR(tag, struct tag)
 DEFINE_ALLOCATOR(object, union any_object)
 
 #ifdef NO_C99_FORMAT
-#define SZ_FMT "%u"
+#define SZ_FMT "%U"
 #else
-#define SZ_FMT "%zu"
+#define SZ_FMT "%zU"
 #endif
 
 static void report(const char *name, unsigned int count, size_t size)
