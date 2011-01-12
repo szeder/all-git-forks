@@ -1,7 +1,7 @@
 #include "cache.h"
 #include "color.h"
 
-int git_use_color_default = 0;
+int git_use_color_default = 0; /* Not using default colors */
 
 static int parse_color(const char *name, int len)
 {
