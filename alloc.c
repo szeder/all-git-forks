@@ -16,7 +16,7 @@
 #include "commit.h"
 #include "tag.h"
 
-#define BLOCKING 1024
+#define BLOCKING 512
 
 #define DEFINE_ALLOCATOR(name, type)				\
 static unsigned int name##_allocs;				\
