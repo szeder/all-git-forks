@@ -2049,6 +2049,9 @@ VCSSVN_OBJS += vcs-svn/repo_tree.o
 VCSSVN_OBJS += vcs-svn/fast_export.o
 VCSSVN_OBJS += vcs-svn/svndiff.o
 VCSSVN_OBJS += vcs-svn/svndump.o
+VCSSVN_OBJS += vcs-svn/svnload.o
+VCSSVN_OBJS += vcs-svn/dump_export.o
+VCSSVN_OBJS += vcs-svn/dir_cache.o
 
 VCSSVN_TEST_OBJS += test-line-buffer.o
 
