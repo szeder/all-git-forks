@@ -30,6 +30,8 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
   * debian/control: Build-Depends-Indep: asciidoc, xmlto, docbook-xsl.
   * debian/rules: git-gui: install git-gui--askpass helper to
     /usr/lib/git-core (closes: #598245).
+  * debian/rules: git-doc: install symlink to html documentation in
+    /usr/share/doc/git (thx Ian Jackson).
   * debian/watch: new; point to upstream sources.
   * debian/implicit: create DEBIAN/md5sums with correct permissions.
   * debian/diff/0004-remove-shebang...diff: new; do not start shell

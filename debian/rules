@@ -166,7 +166,8 @@ install-indep-real: build-arch-stamp build-indep-stamp
 	gzip -9 '$(GIT)'-man/usr/share/man/man?/*.[0-9]*
 	# git-doc
 	rm -rf '$(GIT)'-doc
-	install -d -m0755 '$(GIT)'-doc
+	install -d -m0755 '$(GIT)'-doc/usr/share/doc/git
+	ln -s ../git-doc '$(GIT)'-doc/usr/share/doc/git/html
 	# git-cvs, git-svn
 	for i in cvs svn; do \
 	  rm -rf '$(GIT)'-$$i && \
