@@ -905,6 +905,7 @@ enum date_mode {
 	DATE_RAW
 };
 
+struct tm *time_to_tm(unsigned long time, int tz);
 const char *show_date(unsigned long time, int timezone, enum date_mode mode);
 const char *show_date_relative(unsigned long time, int tz,
 			       const struct timeval *now,
