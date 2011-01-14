@@ -1,4 +1,4 @@
-git (1:1.7.4~rc1-0.1) experimental; urgency=low
+git (1:1.7.4~rc2-0.1) experimental; urgency=low
 
   * non-maintainer upload.
   * new upstream release candidate (closes: #600566, #578752,
@@ -7,7 +7,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
 
   [ Anders Kaseorg ]
   * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
-  * debian/diff/0004-gitk-Take-only-numeric-...diff: new; gitk: do
+  * debian/diff/0007-gitk-Take-only-numeric-...diff: new; gitk: do
     not error out when git version number contains "-rc".
 
   [ Jonathan Nieder ]
@@ -16,10 +16,10 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     Kaseorg).
   * debian/rules: use patch -N -r- so patch application is idempotent.
   * update debian/copyright.
-  * debian/diff/0006-gitk-use-...diff: new; gitk: use standard desktop
+  * debian/diff/0005-gitk-use-...diff: new; gitk: use standard desktop
     fonts by default.  The appearance for users that already have a
     generated ~/.gitk file is not affected (closes: #466471).
-  * debian/diff/0007-gitk-...diff: new; gitk: avoid spurious matches
+  * debian/diff/0006-gitk-...diff: new; gitk: avoid spurious matches
     in "All fields" search (thx Frédéric Brière, closes: #465776).
   * debian/control: git-cvs: recommend cvs2git for one-time conversions
     (closes: #585725).
@@ -36,11 +36,11 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     /usr/share/doc/git (thx Ian Jackson).
   * debian/watch: new; point to upstream sources.
   * debian/implicit: create DEBIAN/md5sums with correct permissions.
-  * debian/diff/0004-remove-shebang...diff: new; do not start shell
+  * debian/diff/0003-remove-shebang...diff: new; do not start shell
     libraries with #!/bin/sh.
   * debian/rules: do not try to strip scripts even if they begin
     with "# " in place of "#!".
-  * debian/diff/0005-pre-rebase-hook-capture...diff: new;
+  * debian/diff/0004-pre-rebase-hook-capture...diff: new;
     hooks/pre-rebase: use a <<HERE document to prevent syntax checkers
     from treating documentation as code.
   * debian/implicit: check for debian/$pkg.doc-base.$docid.
@@ -52,8 +52,8 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
 
   * debian/git.README.Debian: server logs go in /var/log/apache2.
   * debian/diff/0002-Revert-Merge-branch-jn-gitweb...diff: remove.
-  * debian/diff/0006, 0009-instaweb...diff: remove, no longer needed.
-  * debian/diff/0008-gitweb-make-logo-optional...diff: adapt.
+  * debian/diff/0006, 0008, 0009-instaweb...diff: remove, no longer
+    needed.
   * debian/rules, debian/control: move gitweb script to the main git
     package for use by instaweb; make gitweb into a configuration
     package.
@@ -77,7 +77,7 @@ git (1:1.7.4~rc1-0.1) experimental; urgency=low
     debian/git.prerm: Make M-x git-status and git-blame modes available
     with emacs23 (closes: #576887).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 07 Jan 2011 12:42:22 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 13 Jan 2011 21:50:11 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 

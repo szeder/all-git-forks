@@ -1,4 +1,4 @@
-Version v1.7.4-rc1; changes since v1.7.2.3:
+Version v1.7.4-rc2; changes since v1.7.2.3:
 -------------------------------------------
 
 Alan Raison (1):
@@ -25,13 +25,14 @@ Alexander Sulfrian (2):
 Alexandre Erwin Ittner (1):
       gitk: Add Brazilian Portuguese (pt-BR) translation
 
-Anders Kaseorg (6):
+Anders Kaseorg (7):
       gitweb: Don't die_error in git_tag after already printing headers
       apply: Recognize epoch timestamps with : in the timezone
       describe: Use for_each_rawref
       describe: Do not use a flex array in struct commit_name
       describe: Store commit_names in a hash table by commit SHA1
       describe: Delay looking up commits until searching for an inexact match
+      Mark gitk script executable
 
 Andreas Gruenbacher (1):
       Clarify and extend the "git diff" format documentation
@@ -53,7 +54,7 @@ Antonio Ospite (3):
 Bert Wesarg (1):
       Documentation: update-index: -z applies also to --index-info
 
-Brandon Casey (23):
+Brandon Casey (26):
       git-rebase--interactive.sh: rework skip_unnecessary_picks
       git-rebase--interactive.sh: use printf instead of echo to print commit message
       t/t5510: demonstrate failure to fetch when current branch has merge ref
@@ -77,6 +78,9 @@ Brandon Casey (23):
       test-lib.sh/test_decode_color(): use octal not hex in awk script
       Makefile: add NO_FNMATCH_CASEFOLD to IRIX sections
       t9001: use older Getopt::Long boolean prefix '--no' rather than '--no-'
+      trace.c: ensure NULL is not passed to printf
+      t0001,t1510,t3301: use sane_unset which always returns with status 0
+      t3032: limit sed branch labels to 8 characters
 
 Brian Gernhardt (6):
       t7610: cd inside subshell instead of around
@@ -377,7 +381,7 @@ Jason Evans (1):
 Jay Soffian (1):
       git-ls-files.txt: clarify -x/--exclude option
 
-Jeff King (27):
+Jeff King (28):
       docs: fix Makefile dependency for user manual
       pass "git -c foo=bar" params through environment
       tests: make test_must_fail more verbose
@@ -405,6 +409,7 @@ Jeff King (27):
       handle arbitrary ints in git_config_maybe_bool
       t2107: mark passing test as success
       ident: die on bogus date format
+      docs: explain diff.*.binary option
 
 Jens Lehmann (17):
       Submodules: Add the new "ignore" config option for diff and status
@@ -499,7 +504,7 @@ Jon Seymour (16):
 Jonathan "Duke" Leto (1):
       Correct help blurb in checkout -p and friends
 
-Jonathan Nieder (172):
+Jonathan Nieder (175):
       Teach fast-import to import subtrees named by tree id
       Export parse_date_basic() to convert a date string to timestamp
       t1501 (rev-parse): clarify
@@ -670,8 +675,11 @@ Jonathan Nieder (172):
       t9300: use perl "head -c" clone in place of "dd bs=1 count=16000" kluge
       t0050: fix printf format strings for portability
       t0001: test git init when run via an alias
+      diff: funcname and word patterns for perl
       gitweb: skip logo in atom feed when there is none
+      gitweb: make logo optional
       daemon: support <directory> arguments again
+      t9010: svnadmin can fail even if available
 
 Joshua Jensen (6):
       Add string comparison functions that respect the ignore_case variable.
@@ -681,7 +689,7 @@ Joshua Jensen (6):
       Support case folding for git add when core.ignorecase=true
       Support case folding in git fast-import when core.ignorecase=true
 
-Junio C Hamano (69):
+Junio C Hamano (71):
       cvs tests: do not touch test CVS repositories shipped with source
       compat/regex: get rid of old-style definition
       autoconf: regex library detection typofix
@@ -747,10 +755,12 @@ Junio C Hamano (69):
       am --abort: keep unrelated commits since the last failure and warn
       t0021: avoid getting filter killed with SIGPIPE
       rebase --skip: correctly wrap-up when skipping the last patch
+      userdiff/perl: catch BEGIN/END/... and POD as headers
       Prepare for 1.7.3.5
       Git 1.7.4-rc0
       Git 1.7.3.5
       Git 1.7.4-rc1
+      Git 1.7.4-rc2
 
 Justin Frankel (2):
       merge-recursive --patience
@@ -817,7 +827,7 @@ Martin von Zweigbergk (7):
 Mathias Lafeldt (1):
       git-svn: fix processing of decorated commit hashes
 
-Matthieu Moy (26):
+Matthieu Moy (27):
       diff: parse separate options like -S foo
       diff: parse separate options --stat-width n, --stat-name-width n
       log: parse separate options like git log --grep foo
@@ -844,8 +854,9 @@ Matthieu Moy (26):
       Change incorrect "remote branch" to "remote tracking branch" in C code
       user-manual.txt: explain better the remote(-tracking) branch terms
       git-branch.txt: mention --set-upstream as a way to change upstream configuration
+      commit: suggest --amend --reset-author to fix commiter identity
 
-Michael J Gruber (28):
+Michael J Gruber (29):
       git-bundle.txt: Cleanup
       git-bundle.txt: whitespace cleanup
       git-bundle.txt: Clarify rev-list-args restrictions
@@ -874,6 +885,7 @@ Michael J Gruber (28):
       difftool: provide basename to external tools
       t1020-subdirectory: test alias expansion in a subdirectory
       cvsimport: handle the parsing of uppercase config options
+      RelNotes/1.7.4: minor fixes
 
 Mike Lundy (1):
       rebase: support -X to pass through strategy options
@@ -1057,7 +1069,7 @@ Ramkumar Ramachandra (12):
       Porcelain scripts: Rewrite cryptic "needs update" error message
       t9010 (svn-fe): Eliminate dependency on svn perl bindings
 
-Ramsay Allan Jones (13):
+Ramsay Allan Jones (20):
       vcs-svn: Fix some printf format compiler warnings
       t1503: Fix arithmetic expansion syntax error when using dash
       msvc: Fix compilation errors in compat/win32/sys/poll.c
@@ -1071,6 +1083,13 @@ Ramsay Allan Jones (13):
       t9501-*.sh: Fix a test failure on Cygwin
       difftool: Fix failure on Cygwin
       t3419-*.sh: Fix arithmetic expansion syntax error
+      lib-git-svn.sh: Move web-server handling code into separate function
+      t9157-*.sh: Add an svn version check
+      t6038-*.sh: Pass the -b (--binary) option to sed on cygwin
+      t3032-*.sh: Pass the -b (--binary) option to sed on cygwin
+      t3032-*.sh: Do not strip CR from line-endings while grepping on MinGW
+      t4135-*.sh: Skip the "backslash" tests on cygwin
+      t9157-*.sh: Make the svn version check more precise
 
 René Scharfe (11):
       compat/nedmalloc: don't force NDEBUG on the rest of git
@@ -1127,6 +1146,9 @@ Stephen Boyd (4):
       parse-options: Don't call parse_options_check() so much
       parse-options: do not infer PARSE_OPT_NOARG from option type
 
+StephenB (1):
+      git svn: fix the final example in man page
+
 Steven Walter (3):
       git svn: URL-decode left-hand side of svn refspec
       git-svn: check_cherry_pick should exclude commits already in our history
@@ -1137,6 +1159,10 @@ Sven Eckelmann (1):
 
 Sverre Rabbelier (1):
       config: add --local option
+
+Sylvain Rabot (2):
+      gitweb: add extensions to highlight feature map
+      gitweb: remove unnecessary test when closing file descriptor
 
 Tay Ray Chuan (18):
       add tests for checkout -b
@@ -1167,7 +1193,7 @@ Thiago Farina (7):
       builtin/branch.c: Use ALLOC_GROW instead of alloc_nr and xrealloc.
       builtin/rm.c: Use ALLOC_GROW instead of alloc_nr and xrealloc.
 
-Thomas Rast (12):
+Thomas Rast (16):
       Do not unquote + into ' ' in URLs
       ls-files: learn a debugging dump format
       Makefile: make gcov invocation configurable
@@ -1180,6 +1206,10 @@ Thomas Rast (12):
       t0003: properly quote $HOME
       gitk: Add the equivalent of diff --color-words
       userdiff: fix typo in ruby and python word regexes
+      Documentation/git-archive: spell --worktree-attributes correctly
+      Documentation/githooks: post-rewrite-copy-notes never existed
+      submodule: fix relative url parsing for scp-style origin
+      t0000: quote TAP snippets in test code
 
 Tomas Carnecky (1):
       stash drops the stash even if creating the branch fails because it already exists
