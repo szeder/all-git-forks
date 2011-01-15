@@ -165,6 +165,7 @@
 /git-verify-tag
 /git-web--browse
 /git-whatchanged
+/git-work
 /git-write-tree
 /git-core-*/?*
 /gitk-git/gitk-wish

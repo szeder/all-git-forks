@@ -1,0 +1,163 @@
+git-work(1)
+===========
+
+NAME
+----
+git-work - manage the current branch as a working branch
+
+SYNOPSIS
+--------
+[verse]
+'git work'
+'git work' 'list'   ['commit'|'dependency']
+'git work' 'merge'  [merge-options] [dependency ...]
+'git work' 'remerge' [--keep-tree]
+'git work' 'rebase' ['-i'|[dependency [rebase-options]]]
+'git work' 'pivot'  [pivot]
+'git work' 'create' ['--pivot-first'] topic [pivot [on-base]]
+'git work' 'update' ['--pivot-first'] topic [pivot]
+
+DESCRIPTION
+-----------
+In the discussion that follows, the current branch is referred to by the symbol \{branch\} and the commit at the base of \{branch\} is referred to by the symbol \{base\}. The symbol \{head\} is used to refer to the commit at the tip of \{branch\}.
+
+COMMANDS
+--------
+Without arguments, reports the base and head of the current branch as a range suitable for use with git rev-list. Use --as-refs to print the range with symbolic references.
+
+'list'::
+	Lists the commits in the working branch or the dependencies of the working branch.
+
+'merge'::
+	Merge the specified dependencies with \{base\}, then rebase \{base\}..\{head\} onto that merge. The head reference is updated with the result of the merge. The base reference is updated with dependency. If not specified, dependency defaults to the tracked branch, if any.
+
+'remerge'::
+	Rebuild the base of the branch using the current dependencies. Unless --keep-tree is specified, perform a piece-wise merge of each dependency. If --keep-tree is specified, then perform an information only merge of the current dependencies and preserve the tree of existing base.
+
+'rebase'::
+	Rebase \{base\}..\{head\} onto dependency and the base reference is updated to refer to dependency. If the -i option is specified, invokes git rebase -i \{base\}..\{branch\}. If not specified, dependency defaults to the tracked branch, if any.
+
+'pivot'::
+	Rebase pivot..\{head\} onto \{base\} and then rebase \{base\}..pivot onto the result of the first rebase. The head reference of the branch is updated to refer to the result of the final rebase. The pivot argument must satisfy the base invariant of \{branch\}.
+
+'create'::
+
+	Rebase pivot..\{branch\} onto on-base and initialize the topic head reference to the resulting commit; the topic base reference to on-base and the head reference of \{branch\} to pivot. Then merge the topic head into the base of \{branch\} using git work merge. If specified, pivot must satisfy the base invariant. If not specified, on-base and pivot default to \{base\}.
+
+'update'::
+	Performs the same operation as create but uses the head of an existing topic as on-base.
+
+Unless otherwise specified, if this command completes successfully the base reference will be updated to reflect the current calculated base for \{branch\}.
+
+OPTIONS
+-------
+--as-refs::
+	For the default subcommand, report the SHA1 hashes as symbolic reference names, not as SHA1 hashes.
+--pivot-first::
+	If this option is specified on a create or update subcommand, a pivot operation is logically performed first, in effect allowing
+        the commits below, rather than above, the pivot point to be moved from the current topic to the specified topic.
+
+ERROR HANDLING
+--------------
+Any rebases and merges performed by git work must succeed otherwise the working tree, index and references touched by git base are rolled back to their initial state, which must be clean to begin with.
+
+DISCUSSION
+----------
+git work is designed to support workflows where a developer's workspace perpetually contains a mixture of work items at different levels of maturity. Examples of such work items might be:
+
+* the upstream integration branch
+* published topics that are yet to be integrated into the integraton branch
+* completed, but unpublished topics
+* published topics received from other developers that have not yet been integrated in the integration branch
+* adhoc patches
+
+One way to manage such complexity is to maintain separate topic branches for each work item and then create temporary or throw-away branches to test the combined work. Such a practice has the advantage of keeping the artifacts of each work stream separate but can potentially incur significant process overheads and can be confusing for a developer to manage since at any given point in time a given work item that was recently worked on may, or may not be, integrated into the current work tree.
+
+From an individual developer's point of view, it can be more productive to work on a single working branch which accretes recent work and dependencies over time and only use isolated topic branches for the purposes of sharing stabilised work with others.
+
+The key to making this work is to ensure that dependencies are always merged into the base of the working branch, new work is done on the head of the branch, and mature work is rebased from the head of the working branch to heads of stable topic branches and then reintegrated back into the base of the working branch.
+
+With such a practice, the developer gains the convenience of a single working branch without sacrificing the cleanliness of topic-based development.
+
+git work is a porcelain that enables such work practices by providing commands that understand the concept of a branch base, how it relates to the branch head and the importance of merging dependencies into the branch base, rather than into the branch head. In particular, git work knows how to discover, establish and maintain the base of a branch as the maturity of work items merged into the branch evolves over time.
+
+In summary, git work allows a developer to keep his working tree stable while keeping his commit history sane.
+
+EXAMPLES
+--------
+* print the range of commits in the current working branch
++
+---------
+$ git work
+---------
+* lists the commits in the current working branch
++
+---------
+$ git work list
+---------
+* list the dependencies of the current working branch
++
+---------
+$ git work list dependency
+---------
+* start gitk, showing only the current work
++
+---------
+$ git work $(git work)
+---------
+* list the commits in the current working branch with a one line description
++
+---------
+$ git rev-list --oneline $(git work)
+---------
+* merge the upstream/master into the base of the current branch
++
+---------
+$ git work merge upstream/master
+---------
+* rebase the working branch onto the upstream/master
++
+---------
+$ git work rebase upstream/master
+---------
+* create a topic branch based on upstream/master from the top 2 commits of the current branch
++
+---------
+$ git work create mytopic HEAD~2 upstream/master
+---------
+* create a topic branch using the commits under the top 2 commits of the current branch
++
+---------
+$ git work --pivot-first create mytopic HEAD~2 upstream/master
+---------
+* update an existing topic branch with the top commit of the current branch
++
+---------
+$ git work update mytopic HEAD~1
+---------
+* clean up the base history by rewriting the base as an octopus merge with the same tree as the current base
++
+---------
+$ git work remerge --keep-tree
+---------
+* visualize the merge structure of the dependencies of the current work
++
+---------
+gitk $(git base) --not $(git work list dependency)
+---------
+
+SEE ALSO
+--------
+linkgit:git-base[1]
+
+Author
+------
+Written by Jon Seymour <jon.seymour@gmail.com>
+
+Documentation
+-------------
+Documentation by Jon Seymour
+
+GIT
+---
+Part of the linkgit:git[7] suite
