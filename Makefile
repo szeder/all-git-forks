@@ -380,6 +380,7 @@ SCRIPT_SH += git-stash.sh
 SCRIPT_SH += git-submodule.sh
 SCRIPT_SH += git-test.sh
 SCRIPT_SH += git-web--browse.sh
+SCRIPT_SH += git-work.sh
 
 SCRIPT_LIB += git-atomic-lib
 SCRIPT_LIB += git-conditions-lib
