@@ -11,6 +11,7 @@ static FILE *cmitmsg, *patchfile, *fin, *fout;
 
 static int keep_subject;
 static int keep_non_patch_brackets_in_subject;
+static int allow_any_name;
 static const char *metainfo_charset;
 static struct strbuf line = STRBUF_INIT;
 static struct strbuf name = STRBUF_INIT;
@@ -38,8 +39,9 @@ static void cleanup_space(struct strbuf *sb);
 static void get_sane_name(struct strbuf *out, struct strbuf *name, struct strbuf *email)
 {
 	struct strbuf *src = name;
-	if (name->len < 3 || 60 < name->len || strchr(name->buf, '@') ||
-		strchr(name->buf, '<') || strchr(name->buf, '>'))
+	if (!allow_any_name && (name->len < 3 || 60 < name->len ||
+	    strchr(name->buf, '@') || strchr(name->buf, '<') ||
+	    strchr(name->buf, '>')))
 		src = email;
 	else if (name == out)
 		return;
@@ -1061,6 +1063,8 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 			use_scissors = 0;
 		else if (!strcmp(argv[1], "--no-inbody-headers"))
 			use_inbody_headers = 0;
+		else if (!strcmp(argv[1], "--allow-any-name"))
+			allow_any_name = 1;
 		else
 			usage(mailinfo_usage);
 		argc--; argv++;

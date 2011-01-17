@@ -617,6 +617,12 @@ then
 else
 	SIGNOFF=
 fi
+if test -n "$rebasing"
+then
+	allow_any_name=--allow-any-name
+else
+	allow_any_name=
+fi
 
 last=`cat "$dotest/last"`
 this=`cat "$dotest/next"`
@@ -646,7 +652,7 @@ do
 	# by the user, or the user can tell us to do so by --resolved flag.
 	case "$resume" in
 	'')
-		git mailinfo $keep $no_inbody_headers $scissors $utf8 "$dotest/msg" "$dotest/patch" \
+		git mailinfo $keep $no_inbody_headers $scissors $utf8 $allow_any_name "$dotest/msg" "$dotest/patch" \
 			<"$dotest/$msgnum" >"$dotest/info" ||
 			stop_here $this
 

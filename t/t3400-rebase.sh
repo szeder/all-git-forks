@@ -218,4 +218,11 @@ test_expect_success 'rebase -m can copy notes' '
 	test "a note" = "$(git notes show HEAD)"
 '
 
+test_expect_success 'rebase with short name' '
+	git reset --hard topic &&
+	git commit -C HEAD --amend --author="A <foo@bar>" &&
+	git rebase master &&
+	test "A" = "$(git log --pretty=format:%an -1)"
+'
+
 test_done
