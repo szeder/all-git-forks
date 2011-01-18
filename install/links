@@ -1,0 +1,8 @@
+#!/bin/sh
+
+cd $HOME/local/git &&
+
+for i in *; do
+  test -d $i && ! test -h $i || continue
+  ln -sfTv ../git/$i/bin/git ../bin/git.$i
+done
