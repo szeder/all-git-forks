@@ -1,4 +1,4 @@
-prefix := /home/peff/local/git/$(shell git install-prefix)
+prefix := /home/peff/local/git/$(shell Meta/install/prefix)
 CC = ccache gcc
 CFLAGS = -g -Wall -Werror
 LDFLAGS = -g
