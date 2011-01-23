@@ -2854,6 +2854,11 @@ void diff_setup(struct diff_options *options)
 		DIFF_OPT_SET(options, COLOR_DIFF);
 	options->detect_rename = diff_detect_rename_default;
 
+	struct stat buf;
+	if (fstat(fileno(options->file), &buf) != -1 && S_ISREG(buf.st_mode)) {
+		DIFF_OPT_CLR(options, COLOR_DIFF);
+	}
+
 	if (diff_no_prefix) {
 		options->a_prefix = options->b_prefix = "";
 	} else if (!diff_mnemonic_prefix) {
