@@ -1,4 +1,4 @@
-From 2733d40767b94a122b1f2b3cac83e0a0216a42cf Mon Sep 17 00:00:00 2001
+From 235af1384f097364e3707a8bd72c0bcdea7efc49 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 24 Oct 2010 21:12:42 -0500
 Subject: gitk: use symbolic font names "sans" and "monospace"
@@ -29,7 +29,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/gitk-git/gitk b/gitk-git/gitk
-index e82c6bf..86b97b9 100644
+index e82c6bf..86b97b9 100755
 --- a/gitk-git/gitk
 +++ b/gitk-git/gitk
 @@ -11405,9 +11405,9 @@ if {[tk windowingsystem] eq "aqua"} {
@@ -46,5 +46,5 @@ index e82c6bf..86b97b9 100644
  set tabstop 8
  set findmergefiles 0
 -- 
-1.7.4.rc1
+1.7.4.rc2
 

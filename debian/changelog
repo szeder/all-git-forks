@@ -1,4 +1,4 @@
-git (1:1.7.4~rc2-0.1) experimental; urgency=low
+git (1:1.7.4~rc3-0.1) experimental; urgency=low
 
   * non-maintainer upload.
   * new upstream release candidate (closes: #600566, #578752,

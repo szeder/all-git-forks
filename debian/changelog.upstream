@@ -1,4 +1,4 @@
-Version v1.7.4-rc2; changes since v1.7.2.3:
+Version v1.7.4-rc3; changes since v1.7.2.3:
 -------------------------------------------
 
 Alan Raison (1):
@@ -24,6 +24,9 @@ Alexander Sulfrian (2):
 
 Alexandre Erwin Ittner (1):
       gitk: Add Brazilian Portuguese (pt-BR) translation
+
+Alexey Shumkin (1):
+      userdiff: match Pascal class methods
 
 Anders Kaseorg (7):
       gitweb: Don't die_error in git_tag after already printing headers
@@ -53,6 +56,9 @@ Antonio Ospite (3):
 
 Bert Wesarg (1):
       Documentation: update-index: -z applies also to --index-info
+
+Björn Steinbrink (1):
+      Correctly report corrupted objects
 
 Brandon Casey (26):
       git-rebase--interactive.sh: rework skip_unnecessary_picks
@@ -265,7 +271,7 @@ Eric Wong (5):
       t9155: fix compatibility with older SVN
       Documentation/git-svn: discourage "noMetadata"
 
-Erik Faye-Lund (22):
+Erik Faye-Lund (23):
       mingw: do not crash on open(NULL, ...)
       do not depend on signed integer overflow
       inet_ntop: fix a couple of old-style decls
@@ -288,6 +294,7 @@ Erik Faye-Lund (22):
       win32: use our own dirent.h
       mingw: do not set errno to 0 on success
       help: always suggest common-cmds if prefix of cmd
+      exec_cmd: remove unused extern
 
 Eyvind Bernhardsen (3):
       Avoid conflicts when merging branches with mixed normalization
@@ -475,13 +482,15 @@ Johannes Schindelin (5):
       Fix typo in pack-objects' usage
       merge-octopus: Work around environment issue on Windows
 
-Johannes Sixt (6):
+Johannes Sixt (8):
       Fix compat/regex ANSIfication on MinGW
       fast-export: ensure that a renamed file is printed after all references
       t7300: add a missing SYMLINKS prerequisite
       apply --whitespace=fix: fix tab-in-indent
       Make the tab width used for whitespace checks configurable
       Avoid duplicate test number t7609
+      Fix expected values of setup tests on Windows
+      t/README: hint about using $(pwd) rather than $PWD in tests
 
 Jon Seymour (16):
       detached-stash: introduce parse_flags_and_revs function
@@ -504,7 +513,7 @@ Jon Seymour (16):
 Jonathan "Duke" Leto (1):
       Correct help blurb in checkout -p and friends
 
-Jonathan Nieder (175):
+Jonathan Nieder (184):
       Teach fast-import to import subtrees named by tree id
       Export parse_date_basic() to convert a date string to timestamp
       t1501 (rev-parse): clarify
@@ -680,6 +689,15 @@ Jonathan Nieder (175):
       gitweb: make logo optional
       daemon: support <directory> arguments again
       t9010: svnadmin can fail even if available
+      ll-merge: simplify opts == NULL case
+      Documentation/fast-import: capitalize beginning of sentence
+      remote-ext: do not segfault for blank lines
+      Documentation/fast-import: put explanation of M 040000 <dataref> "" in context
+      tests: cosmetic improvements to the repo-setup test
+      tests: compress the setup tests
+      Documentation: do not treat reset --keep as a special case
+      Subject: setup: officially support --work-tree without --git-dir
+      t1510: fix typo in the comment of a test
 
 Joshua Jensen (6):
       Add string comparison functions that respect the ignore_case variable.
@@ -689,7 +707,7 @@ Joshua Jensen (6):
       Support case folding for git add when core.ignorecase=true
       Support case folding in git fast-import when core.ignorecase=true
 
-Junio C Hamano (71):
+Junio C Hamano (73):
       cvs tests: do not touch test CVS repositories shipped with source
       compat/regex: get rid of old-style definition
       autoconf: regex library detection typofix
@@ -761,6 +779,8 @@ Junio C Hamano (71):
       Git 1.7.3.5
       Git 1.7.4-rc1
       Git 1.7.4-rc2
+      Documentation updates for 'GIT_WORK_TREE without GIT_DIR' historical usecase
+      Git 1.7.4-rc3
 
 Justin Frankel (2):
       merge-recursive --patience
@@ -1069,7 +1089,7 @@ Ramkumar Ramachandra (12):
       Porcelain scripts: Rewrite cryptic "needs update" error message
       t9010 (svn-fe): Eliminate dependency on svn perl bindings
 
-Ramsay Allan Jones (20):
+Ramsay Allan Jones (21):
       vcs-svn: Fix some printf format compiler warnings
       t1503: Fix arithmetic expansion syntax error when using dash
       msvc: Fix compilation errors in compat/win32/sys/poll.c
@@ -1090,6 +1110,7 @@ Ramsay Allan Jones (20):
       t3032-*.sh: Do not strip CR from line-endings while grepping on MinGW
       t4135-*.sh: Skip the "backslash" tests on cygwin
       t9157-*.sh: Make the svn version check more precise
+      svndump.c: Fix a printf format compiler warning
 
 René Scharfe (11):
       compat/nedmalloc: don't force NDEBUG on the rest of git
