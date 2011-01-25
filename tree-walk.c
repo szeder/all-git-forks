@@ -544,7 +544,8 @@ static int match_dir_prefix(const char *base, int baselen,
 /*
  * Is a tree entry interesting given the pathspec we have?
  *
- * Pre-condition: baselen == 0 || base[baselen-1] == '/'
+ * Pre-condition: either baselen == base_offset (i.e. empty path)
+ * or base[baselen-1] == '/' (i.e. with trailing slash).
  *
  * Return:
  *  - 2 for "yes, and all subsequent entries will be"
