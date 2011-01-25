@@ -1,9 +1,9 @@
 git (1:1.7.4~rc3-0.1) experimental; urgency=low
 
   * non-maintainer upload.
-  * new upstream release candidate (closes: #600566, #578752,
+  * new upstream release candidate (closes: #600566, #575917, #578752,
     #583699, #588103, #507476, #540001, #524309, #581691, #600785,
-    #577471, #607044, #606975).
+    #577471, #607044, #606975, #610423, #610481).
 
   [ Anders Kaseorg ]
   * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
