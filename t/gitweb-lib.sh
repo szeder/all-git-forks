@@ -48,6 +48,8 @@ EOF
 		say "# Testing $SCRIPT_NAME"
 	else # normal case, use source version of gitweb
 		SCRIPT_NAME="$GIT_BUILD_DIR/gitweb/gitweb.perl"
+		GITWEBLIBDIR="$GIT_BUILD_DIR/gitweb/lib"
+		export GITWEBLIBDIR
 	fi
 	export SCRIPT_NAME
 }

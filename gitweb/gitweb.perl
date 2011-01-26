@@ -10,6 +10,10 @@
 use 5.008;
 use strict;
 use warnings;
+
+use lib $ENV{'GITWEBLIBDIR'} || "++GITWEBLIBDIR++";
+
+use File::Spec;
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
