@@ -24,6 +24,8 @@ git (1:1.7.4~rc3-0.0.1) local; urgency=low
     (closes: #585725).
   * debian/control: git-core: explain that it still may be needed (thx
     Denis Laxalde).
+  * debian/control: gitweb: allow lynx-cur to satisfy dependency on a
+    CGI implementation (thx Ivan Shmakov).
   * debian/control, debian/rules: new architecture-independent package
     git-man: manual pages that were previously in the main git package.
   * debian/rules: do not build documentation on autobuilders (closes:
