@@ -2,5 +2,5 @@
 
 ref=`git rev-parse --symbolic-full-name ${1:-HEAD}`
 upstream=$(git for-each-ref --format='%(upstream)' "$ref" 2>/dev/null)
-GIT_EDITOR='sed -i "/^pick .*/aexec make -j8 test"' \
+GIT_EDITOR='sed -i "/^pick .*/aexec unset GIT_REFLOG_ACTION; unset GIT_CHERRY_PICK_HELP; make -j8 test"' \
 	git rebase -i "${upstream:-origin}" $1
