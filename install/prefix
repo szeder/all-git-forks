@@ -1,9 +1,9 @@
 #!/bin/sh
 
 describe() {
-  if v=`git describe --exact-match HEAD 2>/dev/null`; then
+  if v=`git describe --exact-match $1 2>/dev/null`; then
     echo $v
-  elif v=`git describe --exact-match --all HEAD 2>/dev/null`; then
+  elif v=`git describe --exact-match --all $1 2>/dev/null`; then
     # dereference symbolic links
     shorten `git rev-parse --symbolic-full-name "$v"`
   else
@@ -19,5 +19,8 @@ shorten() {
   esac
 }
 
-describe | tr / .
+test -z "$1" && set -- HEAD
+for i in "$@"; do
+	describe $i | tr / .
+done
 exit 0
