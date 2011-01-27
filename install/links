@@ -1,8 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
-cd $HOME/local/git &&
+have() {
+	for i in $HOME/local/bin/git.*; do
+		echo ${i#$HOME/local/bin/git.}
+	done
+}
 
-for i in *; do
-  test -d $i && ! test -h $i || continue
-  ln -sfTv ../git/$i/bin/git ../bin/git.$i
+want() {
+	Meta/install/versions
+}
+
+comm -23 <(have) <(want) |
+while read version; do
+	rm -vf $HOME/local/bin/git.$version
+done
+
+comm -13 <(have) <(want) |
+while read version; do
+  ln -sfTv ../git/$version/bin/git $HOME/local/bin/git.$version
 done
