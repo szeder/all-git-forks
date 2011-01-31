@@ -562,7 +562,7 @@ int tree_entry_interesting(const struct name_entry *entry,
 
 	if (!ps->nr) {
 		if (!ps->recursive || ps->max_depth == -1)
-			return 1;
+			return 2;
 		return !!within_depth(base->buf + base_offset, baselen,
 				      !!S_ISDIR(entry->mode),
 				      ps->max_depth);
@@ -570,7 +570,7 @@ int tree_entry_interesting(const struct name_entry *entry,
 
 	pathlen = tree_entry_len(entry->path, entry->sha1);
 
-	for (i = ps->nr-1; i >= 0; i--) {
+	for (i = ps->nr - 1; i >= 0; i--) {
 		const struct pathspec_item *item = ps->items+i;
 		const char *match = item->match;
 		const char *base_str = base->buf + base_offset;
