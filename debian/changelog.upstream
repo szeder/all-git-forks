@@ -1,5 +1,8 @@
-Version v1.7.4-rc3; changes since v1.7.2.3:
--------------------------------------------
+Version v1.7.4; changes since v1.7.2.3:
+---------------------------------------
+
+Adam Tkac (1):
+      Don't pass "--xhtml" to hightlight in gitweb.perl script.
 
 Alan Raison (1):
       contrib/hooks/post-receive-email: fix return values from prep_for_email
@@ -388,7 +391,7 @@ Jason Evans (1):
 Jay Soffian (1):
       git-ls-files.txt: clarify -x/--exclude option
 
-Jeff King (28):
+Jeff King (31):
       docs: fix Makefile dependency for user manual
       pass "git -c foo=bar" params through environment
       tests: make test_must_fail more verbose
@@ -417,6 +420,9 @@ Jeff King (28):
       t2107: mark passing test as success
       ident: die on bogus date format
       docs: explain diff.*.binary option
+      rebase: use explicit "--" with checkout
+      rebase: give a better error message for bogus branch
+      tests: sanitize more git environment variables
 
 Jens Lehmann (17):
       Submodules: Add the new "ignore" config option for diff and status
@@ -513,7 +519,7 @@ Jon Seymour (16):
 Jonathan "Duke" Leto (1):
       Correct help blurb in checkout -p and friends
 
-Jonathan Nieder (184):
+Jonathan Nieder (186):
       Teach fast-import to import subtrees named by tree id
       Export parse_date_basic() to convert a date string to timestamp
       t1501 (rev-parse): clarify
@@ -698,6 +704,8 @@ Jonathan Nieder (184):
       Documentation: do not treat reset --keep as a special case
       Subject: setup: officially support --work-tree without --git-dir
       t1510: fix typo in the comment of a test
+      fast-import: treat filemodify with empty tree as delete
+      rebase -i: clarify in-editor documentation of "exec"
 
 Joshua Jensen (6):
       Add string comparison functions that respect the ignore_case variable.
@@ -707,7 +715,7 @@ Joshua Jensen (6):
       Support case folding for git add when core.ignorecase=true
       Support case folding in git fast-import when core.ignorecase=true
 
-Junio C Hamano (73):
+Junio C Hamano (74):
       cvs tests: do not touch test CVS repositories shipped with source
       compat/regex: get rid of old-style definition
       autoconf: regex library detection typofix
@@ -781,6 +789,7 @@ Junio C Hamano (73):
       Git 1.7.4-rc2
       Documentation updates for 'GIT_WORK_TREE without GIT_DIR' historical usecase
       Git 1.7.4-rc3
+      Git 1.7.4
 
 Justin Frankel (2):
       merge-recursive --patience

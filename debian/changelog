@@ -1,8 +1,8 @@
-git (1:1.7.4~rc3-0.0.1) local; urgency=low
+git (1:1.7.4-0.1) local; urgency=low
 
-  * new upstream release candidate (closes: #600566, #575917, #578752,
-    #583699, #588103, #507476, #540001, #524309, #581691, #600785,
-    #577471, #607044, #606975, #610423, #610481).
+  * new upstream release (closes: #600566, #575917, #578752, #583699,
+    #588103, #507476, #540001, #524309, #581691, #600785, #577471,
+    #607044, #606975, #610423, #610481).
 
   [ Anders Kaseorg ]
   * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
@@ -78,7 +78,7 @@ git (1:1.7.4~rc3-0.0.1) local; urgency=low
     debian/git.prerm: Make M-x git-status and git-blame modes available
     with emacs23 (closes: #576887).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 24 Jan 2011 22:04:52 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 31 Jan 2011 00:06:06 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
