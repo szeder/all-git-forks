@@ -560,7 +560,7 @@ int tree_entry_interesting(const struct name_entry *entry,
 
 	if (!ps->nr) {
 		if (!ps->recursive || ps->max_depth == -1)
-			return 1;
+			return 2;
 		return !!within_depth(base->buf + base_offset, baselen,
 				      !!S_ISDIR(entry->mode),
 				      ps->max_depth);
