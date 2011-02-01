@@ -368,8 +368,9 @@ proc do_import_patches {} {
 	set p [file normalize $p]
 	set p [lsort $p]
 
-	set cmd [list $exe am -3]
+	set cmd [lappend exe am -3 --]
 	append cmd { } $p
+
 	if {[catch {eval exec $cmd} {err}]} {
 		if {[ask_popup [mc "Applying patch series failed: %s\n\n\
 Do you want to abort?" $err]] eq {yes}} {
