@@ -1113,6 +1113,7 @@ int git_config_set(const char *key, const char *value)
 int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 {
 	int i, dot, baselen;
+	int keylen = strlen(key);
 	const char *last_dot = strrchr(key, '.');
 
 	/*
@@ -1120,8 +1121,13 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 	 * key name separated by a dot, we have to know where the dot is.
 	 */
 
-	if (last_dot == NULL) {
+	if (last_dot == NULL || *key == '.') {
 		error("key does not contain a section: %s", key);
+		return -2;
+	}
+
+	if (keylen && key[keylen-1] == '.') {
+		error("key does not contain variable name: %s", key);
 		return -2;
 	}
 
@@ -1132,7 +1138,7 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 	/*
 	 * Validate the key and while at it, lower case it for matching.
 	 */
-	*store_key = xmalloc(strlen(key) + 1);
+	*store_key = xmalloc(keylen + 1);
 
 	dot = 0;
 	for (i = 0; key[i]; i++) {
