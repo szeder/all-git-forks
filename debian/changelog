@@ -1,8 +1,8 @@
 git (1:1.7.4-0.1) local; urgency=low
 
-  * new upstream release (closes: #600566, #575917, #578752, #583699,
-    #588103, #507476, #540001, #524309, #581691, #600785, #577471,
-    #607044, #606975, #610423, #610481).
+  * new upstream release (closes: #600566, #575917, #578752, #583693,
+    #583699, #588103, #507476, #540001, #524309, #581691, #600785,
+    #577471, #607044, #606975, #610423, #610481).
 
   [ Anders Kaseorg ]
   * debian/git.docs, debian/rules: deal with RelNotes subdirectory.
