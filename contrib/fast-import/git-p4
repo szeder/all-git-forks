@@ -884,6 +884,18 @@ class P4Sync(Command):
         if gitConfig("git-p4.syncFromOrigin") == "false":
             self.syncWithOrigin = False
 
+    # The p4 wildcards are not allowed in filenames.  It complains
+    # if you try to add them, but you can override with "-f", in
+    # which case it translates them into %xx encoding.  Search for
+    # and fix just these four characters.  Do % last so it does
+    # not inadvertantly create new %-escapes.
+    def wildcard_decode(self, path):
+        path = path.replace("%23", "#") \
+                   .replace("%2A", "*") \
+                   .replace("%40", "@") \
+                   .replace("%25", "%")
+        return path
+
     def extractFilesFromCommit(self, commit):
         self.cloneExclude = [re.sub(r"\.\.\.$", "", path)
                              for path in self.cloneExclude]
@@ -962,6 +974,7 @@ class P4Sync(Command):
 	    return
 
         relPath = self.stripRepoPath(file['depotFile'], self.branchPrefixes)
+        relPath = self.wildcard_decode(relPath)
         if verbose:
             sys.stderr.write("%s\n" % relPath)
 
