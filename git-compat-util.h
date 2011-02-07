@@ -409,6 +409,7 @@ typedef void (*try_to_free_t)(size_t);
 extern try_to_free_t set_try_to_free_routine(try_to_free_t);
 
 extern char *xstrdup(const char *str);
+extern char *xgetenv(const char *name);
 extern void *xmalloc(size_t size);
 extern void *xmallocz(size_t size);
 extern void *xmemdupz(const void *data, size_t len);

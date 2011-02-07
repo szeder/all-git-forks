@@ -30,6 +30,12 @@ char *xstrdup(const char *str)
 	return ret;
 }
 
+char *xgetenv(const char *name)
+{
+	char *tmp = getenv(name);
+	return tmp ? xstrdup(tmp) : NULL;
+}
+
 void *xmalloc(size_t size)
 {
 	void *ret = malloc(size);
