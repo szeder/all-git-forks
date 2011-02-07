@@ -69,15 +69,16 @@ test_expect_success 'cache tree has not been corrupted' '
 test_expect_success 'update from a subdirectory' '
 	(
 		cd dir1 &&
-		echo more >sub2 &&
+		echo more >>sub2 &&
 		git add -u sub2
-	)
+	) &&
+	test "$(git diff-files --name-status dir1)" = ""
 '
 
-test_expect_success 'change gets noticed' '
-
-	test "$(git diff-files --name-status dir1)" = ""
-
+test_expect_success 'update without args from subdir' '
+	echo more >>top &&
+	( cd dir1 && git add -u ) &&
+	test "$(git diff-files --name-status top)" = ""
 '
 
 test_expect_success SYMLINKS 'replace a file with a symlink' '

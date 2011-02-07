@@ -389,7 +389,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		die("-A and -u are mutually incompatible");
 	if (!show_only && ignore_missing)
 		die("Option --ignore-missing can only be used together with --dry-run");
-	if ((addremove || take_worktree_changes) && !argc) {
+	if (addremove && !argc) {
 		static const char *here[2] = { ".", NULL };
 		argc = 1;
 		argv = here;
@@ -412,7 +412,10 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		fprintf(stderr, "Maybe you wanted to say 'git add .'?\n");
 		return 0;
 	}
-	pathspec = validate_pathspec(argc, argv, prefix);
+	if (take_worktree_changes && !argc)
+		pathspec = NULL;
+	else
+		pathspec = validate_pathspec(argc, argv, prefix);
 
 	if (read_cache() < 0)
 		die("index file corrupt");
