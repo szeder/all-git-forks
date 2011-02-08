@@ -147,7 +147,7 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 	if (!strcmp(argv[0], "clear")) {
 		for (i = 0; i < merge_rr.nr; i++) {
 			const char *name = (const char *)merge_rr.items[i].util;
-			if (!name)
+			if (name == RERERE_UTIL_PUNTED || name == RERERE_UTIL_STAGED)
 				continue;
 			if (!has_rerere_resolution(name))
 				unlink_rr_item(name);
@@ -162,13 +162,17 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 			printf("%s\n", merge_rr.items[i].string);
 		}
 	else if (!strcmp(argv[0], "remaining"))
-		for (i = 0; i < merge_rr.nr; i++)
+		for (i = 0; i < merge_rr.nr; i++) {
+			const char *name = (const char *)merge_rr.items[i].util;
+			if (name == RERERE_UTIL_STAGED)
+				continue;
 			printf("%s\n", merge_rr.items[i].string);
+		}
 	else if (!strcmp(argv[0], "diff"))
 		for (i = 0; i < merge_rr.nr; i++) {
 			const char *path = merge_rr.items[i].string;
 			const char *name = (const char *)merge_rr.items[i].util;
-			if (!name)
+			if (name == RERERE_UTIL_PUNTED || name == RERERE_UTIL_STAGED)
 				continue;
 			diff_two(rerere_path(name, "preimage"), path, path, path);
 		}

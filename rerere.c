@@ -7,6 +7,10 @@
 #include "ll-merge.h"
 #include "attr.h"
 
+#define RERERE_UTIL_ELIGIBLE NULL
+void *RERERE_UTIL_PUNTED = &RERERE_UTIL_PUNTED;
+void *RERERE_UTIL_STAGED = &RERERE_UTIL_STAGED;
+
 /* if rerere_enabled == -1, fall back to detection of .git/rr-cache */
 static int rerere_enabled = -1;
 
@@ -352,18 +356,20 @@ static int find_conflict(struct string_list *conflict)
 		return error("Could not read index");
 
 	/*
-	 * Collect paths with conflict, mark them with NULL (punted) or
-	 * !NULL (eligible) in their ->util field.
+	 * Collect paths with conflict, mark them according to type in
+	 * their ->util field.
 	 */
 	for (i = 0; i < active_nr; i++) {
 		struct cache_entry *e = active_cache[i];
 		struct string_list_item *it;
 
-		if (!ce_stage(e))
+		if (!ce_stage(e)) {
 			continue;
+		}
 		it = string_list_insert(conflict, (const char *)e->name);
-		it->util = NULL;
+		it->util = RERERE_UTIL_PUNTED;
 		if (ce_stage(e) == 1) {
+			it->util = RERERE_UTIL_STAGED;
 			if (active_nr <= ++i)
 				break;
 		}
@@ -377,7 +383,7 @@ static int find_conflict(struct string_list *conflict)
 			    ce_same_name(e, e3) &&
 			    S_ISREG(e2->ce_mode) &&
 			    S_ISREG(e3->ce_mode))
-				it->util = (void *) 1;
+				it->util = RERERE_UTIL_ELIGIBLE;
 		}
 
 		/* Skip the entries with the same name */
@@ -395,9 +401,10 @@ static void add_punted(struct string_list *merge_rr)
 
 	find_conflict(&conflict);
 	for (i = 0; i < conflict.nr; i++) {
-		if (conflict.items[i].util)
+		if (conflict.items[i].util == RERERE_UTIL_ELIGIBLE)
 			continue;
-		string_list_insert(merge_rr, conflict.items[i].string);
+		string_list_insert(merge_rr, conflict.items[i].string)->util =
+			conflict.items[i].util;
 	}
 }
 
@@ -487,8 +494,9 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 
 	for (i = 0; i < conflict.nr; i++) {
 		const char *path = conflict.items[i].string;
-		if (!conflict.items[i].util)
-			continue; /* punted */
+		if (conflict.items[i].util == RERERE_UTIL_PUNTED ||
+			conflict.items[i].util == RERERE_UTIL_STAGED)
+			continue;
 		if (!string_list_has_string(rr, path)) {
 			unsigned char sha1[20];
 			char *hex;
@@ -648,8 +656,9 @@ int rerere_forget(const char **pathspec)
 	find_conflict(&conflict);
 	for (i = 0; i < conflict.nr; i++) {
 		struct string_list_item *it = &conflict.items[i];
-		if (!conflict.items[i].util)
-			continue; /* punted */
+		if (conflict.items[i].util == RERERE_UTIL_PUNTED ||
+			conflict.items[i].util == RERERE_UTIL_STAGED)
+			continue;
 		if (!match_pathspec(pathspec, it->string, strlen(it->string),
 				    0, NULL))
 			continue;
