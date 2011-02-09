@@ -248,7 +248,6 @@ generate_email_footer()
 	cat <<-EOF
 
 
-	hooks/post-receive
 	--${SPACE}
 	$projectdesc
 	EOF
