@@ -6,6 +6,9 @@
 #define RERERE_AUTOUPDATE   01
 #define RERERE_NOAUTOUPDATE 02
 
+extern void *RERERE_UTIL_PUNTED;
+extern void *RERERE_UTIL_STAGED;
+
 extern int setup_rerere(struct string_list *, int);
 extern int rerere(int);
 extern const char *rerere_path(const char *hex, const char *file);
