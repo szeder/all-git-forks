@@ -37,8 +37,8 @@ struct strategy {
 };
 
 static const char * const builtin_merge_usage[] = {
-	"git merge [options] <branch>...",
-	"git merge [options] <msg> HEAD <branch>",
+	"git merge [options] [<branch>...]",
+	"git merge [options] <msg> HEAD <remote>",
 	NULL
 };
 
@@ -58,6 +58,8 @@ static int option_renormalize;
 static int verbosity;
 static int allow_rerere_auto;
 static int abort_current_merge;
+static int default_to_upstream;
+static const char *upstream_branch;
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -523,7 +525,8 @@ static int per_branch_config(const char *k, const char *v, void *cb)
 			      builtin_merge_usage, 0);
 		free(buf);
 		return 0;
-	}
+	} else if (!strcmp(variable, ".merge"))
+		return git_config_string(&upstream_branch, k, v);
 
 	return 1; /* not what I handle */
 }
@@ -550,6 +553,9 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 			return error("%s: negative length %s", k, v);
 		if (is_bool && shortlog_len)
 			shortlog_len = DEFAULT_MERGE_LOG_LEN;
+		return 0;
+	} else if (!strcmp(k, "merge.defaulttoupstream")) {
+		default_to_upstream = git_config_bool(k, v);
 		return 0;
 	}
 	return git_diff_ui_config(k, v, cb);
@@ -1016,9 +1022,12 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	if (!allow_fast_forward && fast_forward_only)
 		die("You cannot combine --no-ff with --ff-only.");
 
-	if (!argc)
-		usage_with_options(builtin_merge_usage,
-			builtin_merge_options);
+	if (!argc) {
+		if (!default_to_upstream || !upstream_branch)
+			usage_with_options(builtin_merge_usage,
+					builtin_merge_options);
+		setup_merge_commit(&buf, &remotes, upstream_branch);
+	}
 
 	/*
 	 * This could be traditional "merge <msg> HEAD <commit>..."  and
@@ -1081,9 +1090,14 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (head_invalid || !argc)
-		usage_with_options(builtin_merge_usage,
-			builtin_merge_options);
+	if (head_invalid)
+		usage_msg_opt("cannot use old-style invocation from an unborn"
+				"branch",
+				builtin_merge_usage, builtin_merge_options);
+
+	if (!argc && !(default_to_upstream && upstream_branch))
+		usage_msg_opt("no commit to merge specified",
+				builtin_merge_usage, builtin_merge_options);
 
 	strbuf_addstr(&buf, "merge");
 	for (i = 0; i < argc; i++)

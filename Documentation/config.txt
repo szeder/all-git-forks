@@ -1389,6 +1389,12 @@ man.<tool>.path::
 
 include::merge-config.txt[]
 
+merge.defaultToUpstream::
+	If merge is called without any ref arguments, merge from the branch
+	specified in branch.<current branch>.merge, which is considered to be
+	the upstream branch for the current branch, possibly set by --track or
+	--set-upstream.
+
 mergetool.<tool>.path::
 	Override the path for the given tool.  This is useful in case
 	your tool is not in the PATH.
