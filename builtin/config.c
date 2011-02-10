@@ -166,8 +166,6 @@ static int get_value(const char *key_, const char *regex_)
 			system_wide = git_etc_gitconfig();
 	}
 
-	key = xstrdup(key_);
-
 	if (use_key_regexp) {
 		char *tl;
 
@@ -176,6 +174,8 @@ static int get_value(const char *key_, const char *regex_)
 		 * work for more complex patterns like "^[^.]*Foo.*bar".
 		 * Perhaps we should deprecate this altogether someday.
 		 */
+
+		key = xstrdup(key_);
 		for (tl = key + strlen(key) - 1;
 		     tl >= key && *tl != '.';
 		     tl--)
@@ -186,6 +186,7 @@ static int get_value(const char *key_, const char *regex_)
 		key_regexp = (regex_t*)xmalloc(sizeof(regex_t));
 		if (regcomp(key_regexp, key, REG_EXTENDED)) {
 			fprintf(stderr, "Invalid key pattern: %s\n", key_);
+			free(key);
 			goto free_strings;
 		}
 	} else {

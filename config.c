@@ -1141,7 +1141,8 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 			dot = 1;
 		/* Leave the extended basename untouched.. */
 		if (!dot || i > baselen) {
-			if (!iskeychar(c) || (i == baselen+1 && !isalpha(c))) {
+			if (!iskeychar(c) ||
+			    (i == baselen + 1 && !isalpha(c))) {
 				error("invalid key: %s", key);
 				goto out_free_ret_1;
 			}
@@ -1197,7 +1198,8 @@ int git_config_set_multivar(const char *key, const char *value,
 	else
 		config_filename = git_pathdup("config");
 
-	ret = -git_config_parse_key(key, &store.key, &store.baselen);
+	/* parse-key returns negative; flip the sign to feed exit(3) */
+	ret = 0 - git_config_parse_key(key, &store.key, &store.baselen);
 	if (ret)
 		goto out_free;
 
