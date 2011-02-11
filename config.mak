@@ -1,4 +1,5 @@
-prefix := $(HOME)/local/git/$(shell Meta/install/prefix)
+Meta = $(HOME)/compile/git/Meta
+prefix := $(HOME)/local/git/$(shell $(Meta)/install/prefix)
 CC = ccache gcc
 CFLAGS = -g -Wall -Werror
 LDFLAGS = -g
