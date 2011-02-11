@@ -271,6 +271,61 @@ proc update_all_remotes_menu_entry {} {
 	}
 }
 
+proc fetch_all_remotes {} {
+	global all_remotes
+
+	foreach r $all_remotes {
+		fetch_from $r
+	}
+}
+
+proc prune_all_remotes {} {
+	global all_remotes
+
+	foreach r $all_remotes {
+		prune_from $r
+	}
+}
+
+proc update_all_remotes_menu_entry {} {
+	global all_remotes
+
+	set have_remote 0
+	foreach r $all_remotes {
+		set have_remote 1
+	}
+
+	set remote_m .mbar.remote
+	set fetch_m $remote_m.fetch
+	set prune_m $remote_m.prune
+	if {$have_remote} {
+		make_sure_remote_submenues_exist $remote_m
+		if {[$fetch_m entrycget 0 -label] ne "All"} {
+
+			$fetch_m insert 0 separator
+			$fetch_m insert 0 command \
+				-label "All" \
+				-command fetch_all_remotes
+
+			$prune_m insert 0 separator
+			$prune_m insert 0 command \
+	  			-label "All" \
+				-command prune_all_remotes
+       }
+	} else {
+		if {[winfo exists $fetch_m]} {
+			if {[$fetch_m type end] eq "separator"} {
+
+				delete_from_menu $fetch_m 0
+				delete_from_menu $fetch_m 0
+
+				delete_from_menu $prune_m 0
+				delete_from_menu $prune_m 0
+			}
+		}
+	}
+}
+
 proc populate_remotes_menu {} {
 	global all_remotes
 
