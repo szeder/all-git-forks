@@ -1,4 +1,4 @@
-gitweb (1:1.7.4-0.1) local; urgency=low
+gitweb (1:1.7.4.1-0.1) local; urgency=low
 
   The gitweb auxiliary files gitweb.css, git-favicon.png,
   git-logo.png, and gitweb.js have been moved from /usr/share/gitweb

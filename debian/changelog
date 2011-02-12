@@ -1,4 +1,4 @@
-git (1:1.7.4-0.1) local; urgency=low
+git (1:1.7.4.1-0.1) local; urgency=low
 
   * new upstream release (closes: #600566, #575917, #578752, #583693,
     #583699, #588103, #507476, #540001, #524309, #581691, #600785,
@@ -80,7 +80,7 @@ git (1:1.7.4-0.1) local; urgency=low
     debian/git.prerm: Make M-x git-status and git-blame modes available
     with emacs23 (closes: #576887).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 31 Jan 2011 00:06:06 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 11 Feb 2011 21:35:55 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 

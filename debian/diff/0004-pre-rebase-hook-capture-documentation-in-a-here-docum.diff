@@ -1,4 +1,4 @@
-From 48013dc6a93dc417685cb08f1eb35ce1f6d292e7 Mon Sep 17 00:00:00 2001
+From 967a1c4601266de06598174fff52070fb806e60c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
 Subject: pre-rebase hook: capture documentation in a <<here document
@@ -11,23 +11,23 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 3 insertions(+), 0 deletions(-)
 
 diff --git a/templates/hooks--pre-rebase.sample b/templates/hooks--pre-rebase.sample
-index 053f111..4d8efd4 100755
+index 053f111..7fccd3d 100755
 --- a/templates/hooks--pre-rebase.sample
 +++ b/templates/hooks--pre-rebase.sample
-@@ -91,6 +91,7 @@ fi
+@@ -90,6 +90,7 @@ fi
+ 
  exit 0
  
++<<\DOC_END
  ################################################################
-+<<\EOF
  
  This sample hook safeguards topic branches that have been
- published from being rewound.
 @@ -167,3 +168,5 @@ To compute (2):
  	git rev-list master..topic
  
  	if this is empty, it is fully merged to "master".
 +
-+EOF
++DOC_END
 -- 
-1.7.4.rc1
+1.7.4
 

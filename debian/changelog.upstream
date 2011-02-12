@@ -1,5 +1,5 @@
-Version v1.7.4; changes since v1.7.2.3:
----------------------------------------
+Version v1.7.4.1; changes since v1.7.2.3:
+-----------------------------------------
 
 Adam Tkac (1):
       Don't pass "--xhtml" to hightlight in gitweb.perl script.
@@ -104,6 +104,9 @@ Charles Bailey (1):
 
 Chris Johnsen (1):
       git-rebase--interactive.sh: replace cut with ${v%% *}
+
+Chris Packham (1):
+      clone: fixup recurse_submodules option
 
 Christian Couder (12):
       revert: report success when using option --strategy
@@ -351,7 +354,7 @@ Ilari Liusvaara (4):
       git-remote-ext
       remote-fd/ext: finishing touches after code review
 
-Jakub Narebski (15):
+Jakub Narebski (16):
       gitweb: Fix typo in run() subroutine
       t/gitweb-lib.sh: Use GIT_BUILD_DIR
       t/gitweb-lib.sh: Use tabs for indent consistently
@@ -367,6 +370,7 @@ Jakub Narebski (15):
       gitweb: Fix handling of whitespace in generated links
       gitweb: Introduce esc_attr to escape attributes of HTML elements
       gitweb: Include links to feeds in HTML header only for '200 OK' response
+      gitweb: Mention optional Perl modules in INSTALL
 
 Jan Krüger (3):
       read-tree: deprecate syntax without tree-ish args
@@ -424,7 +428,7 @@ Jeff King (31):
       rebase: give a better error message for bogus branch
       tests: sanitize more git environment variables
 
-Jens Lehmann (17):
+Jens Lehmann (19):
       Submodules: Add the new "ignore" config option for diff and status
       Submodules: Use "ignore" settings from .gitmodules too for diff and status
       Add tests for the diff.ignoreSubmodules config option
@@ -442,6 +446,8 @@ Jens Lehmann (17):
       Add the 'fetch.recurseSubmodules' config setting
       Submodules: Add the "fetchRecurseSubmodules" config option
       git submodule: Remove now obsolete tests before cloning a repo
+      t5526: Fix wrong argument order in "git config"
+      pull: Document the "--[no-]recurse-submodules" options
 
 Jiang Xin (1):
       Fix typo in git-gc document.
@@ -488,7 +494,7 @@ Johannes Schindelin (5):
       Fix typo in pack-objects' usage
       merge-octopus: Work around environment issue on Windows
 
-Johannes Sixt (8):
+Johannes Sixt (10):
       Fix compat/regex ANSIfication on MinGW
       fast-export: ensure that a renamed file is printed after all references
       t7300: add a missing SYMLINKS prerequisite
@@ -497,6 +503,8 @@ Johannes Sixt (8):
       Avoid duplicate test number t7609
       Fix expected values of setup tests on Windows
       t/README: hint about using $(pwd) rather than $PWD in tests
+      start_command: flush buffers in the WIN32 code path as well
+      t4120-apply-popt: help systems with core.filemode=false
 
 Jon Seymour (16):
       detached-stash: introduce parse_flags_and_revs function
@@ -519,7 +527,7 @@ Jon Seymour (16):
 Jonathan "Duke" Leto (1):
       Correct help blurb in checkout -p and friends
 
-Jonathan Nieder (186):
+Jonathan Nieder (191):
       Teach fast-import to import subtrees named by tree id
       Export parse_date_basic() to convert a date string to timestamp
       t1501 (rev-parse): clarify
@@ -706,6 +714,11 @@ Jonathan Nieder (186):
       t1510: fix typo in the comment of a test
       fast-import: treat filemodify with empty tree as delete
       rebase -i: clarify in-editor documentation of "exec"
+      quote.h: simplify the inclusion
+      fast-import: clarify documentation of "feature" command
+      fast-import: introduce "feature notes" command
+      compat: helper for detecting unsigned overflow
+      svn-fe: warn about experimental status
 
 Joshua Jensen (6):
       Add string comparison functions that respect the ignore_case variable.
@@ -715,7 +728,7 @@ Joshua Jensen (6):
       Support case folding for git add when core.ignorecase=true
       Support case folding in git fast-import when core.ignorecase=true
 
-Junio C Hamano (74):
+Junio C Hamano (77):
       cvs tests: do not touch test CVS repositories shipped with source
       compat/regex: get rid of old-style definition
       autoconf: regex library detection typofix
@@ -789,7 +802,10 @@ Junio C Hamano (74):
       Git 1.7.4-rc2
       Documentation updates for 'GIT_WORK_TREE without GIT_DIR' historical usecase
       Git 1.7.4-rc3
+      fsck: drop unused parameter from traverse_one_object()
+      fsck: do not give up too early in fsck_dir()
       Git 1.7.4
+      Git 1.7.4.1
 
 Justin Frankel (2):
       merge-recursive --patience
@@ -927,7 +943,7 @@ Mike Pape (3):
 Nathan W. Panike (1):
       Fix a formatting error in git-merge.txt
 
-Nguyễn Thái Ngọc Duy (90):
+Nguyễn Thái Ngọc Duy (94):
       upload-pack: remove unused "create_full_pack" code in do_rev_list
       setup: do not forget working dir from subdir of gitdir
       Revert "rehabilitate 'git index-pack' inside the object store"
@@ -1018,6 +1034,10 @@ Nguyễn Thái Ngọc Duy (90):
       Revert "Documentation: always respect core.worktree if set"
       git.txt: correct where --work-tree path is relative to
       setup_work_tree: adjust relative $GIT_WORK_TREE after moving cwd
+      diff: support --cached on unborn branches
+      Add const to parse_{commit,tag}_buffer()
+      sha1_file.c: move find_cached_object up so sha1_object_info can use it
+      sha1_object_info: examine cached_object store too
 
 Nicolas Pitre (3):
       Documentation: move RelNotes into a directory of their own
@@ -1042,7 +1062,7 @@ Pat Notz (8):
       commit: --squash option for use with rebase --autosquash
       add tests of commit --squash
 
-Pat Thoyts (19):
+Pat Thoyts (21):
       git-gui: Make usage statement visible on Windows.
       git-gui: display error launching blame as a message box.
       git-gui: handle textconv filter on Windows and in development
@@ -1062,6 +1082,8 @@ Pat Thoyts (19):
       git-gui: correct assignment of work-tree
       git-gui: use wordprocessor tab style to ensure tabs work as expected
       git-gui: apply color information from git diff output
+      t3509: use unconstrained initial test to setup repository.
+      t7407: fix line endings for mingw build
 
 Pete Wyckoff (1):
       convert filter: supply path to external driver
@@ -1159,9 +1181,13 @@ Sebastian Schuberth (3):
       MinGW: Add missing file mode bit defines
       On Windows, avoid git-gui to call Cygwin's nice utility
 
-Shawn O. Pearce (2):
+Shawn O. Pearce (3):
       Use git_open_noatime when accessing pack data
       Work around EMFILE when there are too many pack files
+      bundle: Use OFS_DELTA in bundle files
+
+Sitaram Chamarty (1):
+      post-receive-email: suppress error if description file missing
 
 Spencer E. Olson (1):
       Allow HTTP user agent string to be modified.
@@ -1250,9 +1276,10 @@ Tony Luck (1):
 Torsten Bögershausen (1):
       t9143: do not fail when unhandled.log.gz is not created
 
-Uwe Kleine-König (2):
+Uwe Kleine-König (3):
       get_author_ident_from_commit(): remove useless quoting
       Documentation/git-clone: describe --mirror more verbosely
+      Documentation/merge subtree How-To: fix typo
 
 Vasyl' Vavrychuk (1):
       trace.c: mark file-local function static
