@@ -271,22 +271,6 @@ proc update_all_remotes_menu_entry {} {
 	}
 }
 
-proc fetch_all_remotes {} {
-	global all_remotes
-
-	foreach r $all_remotes {
-		fetch_from $r
-	}
-}
-
-proc prune_all_remotes {} {
-	global all_remotes
-
-	foreach r $all_remotes {
-		prune_from $r
-	}
-}
-
 proc update_all_remotes_menu_entry {} {
 	global all_remotes
 
@@ -305,13 +289,13 @@ proc update_all_remotes_menu_entry {} {
 			$fetch_m insert 0 separator
 			$fetch_m insert 0 command \
 				-label "All" \
-				-command fetch_all_remotes
+				-command fetch_from_all
 
 			$prune_m insert 0 separator
 			$prune_m insert 0 command \
-	  			-label "All" \
-				-command prune_all_remotes
-       }
+				-label "All" \
+				-command prune_from_all
+		}
 	} else {
 		if {[winfo exists $fetch_m]} {
 			if {[$fetch_m type end] eq "separator"} {
