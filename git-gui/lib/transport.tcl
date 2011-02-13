@@ -15,6 +15,7 @@ proc fetch_from {remote {close_after {}}} {
 	}
 	lappend cmds [list set fetch_from_finished 1]
 	set ok [console::chain $w $cmds]
+	load_all_remotes
 
 	if {$ok} {
 		if {$close_after ne {}} {
@@ -43,6 +44,7 @@ proc fetch_from_all {} {
 	}
 
 	console::exec $w $cmd
+	load_all_remotes
 }
 
 proc prune_from_all {} {
@@ -69,6 +71,7 @@ proc push_to {remote} {
 	lappend cmd -v
 	lappend cmd $remote
 	console::exec $w $cmd
+	load_all_remotes
 }
 
 proc compose_email {to subject {body {}}} {

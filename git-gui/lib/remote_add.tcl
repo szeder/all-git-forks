@@ -128,10 +128,7 @@ method _add {} {
 
 	switch -- $opt_action {
 	fetch {
-		set c [console::new \
-			[mc "fetch %s" $name] \
-			[mc "Fetching the %s" $name]]
-		console::exec $c [list git fetch $name]
+		fetch_from $name
 	}
 	push {
 		set cmds [list]
@@ -164,6 +161,7 @@ method _add {} {
 
 		lappend cmds [list exec git push -v --all $name]
 		console::chain $c $cmds
+		load_all_remotes
 	}
 	none {
 	}
