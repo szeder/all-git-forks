@@ -199,6 +199,13 @@ generate_email()
 	if [ -z "$describe" ]; then
 		describe=$rev
 	fi
+        
+	# Author list (unique, separted by comma)
+	authors=""
+	if [ ${change_type} = "update" ]; then
+		authors=$(git log --pretty='format:%an' $oldrev..$newrev | sort -u | tr "\n" "," | sed -e 's/,$//' -e 's/,/, /g')
+		authors="by $authors"
+	fi
 
 	generate_email_header
 
@@ -228,7 +235,7 @@ generate_email_header()
 	# Generate header
 	cat <<-EOF
 	To: $recipients
-	Subject: ${emailprefix} $refname_type $short_refname ${change_type}d
+	Subject: ${emailprefix}$refname_type $short_refname ${change_type}d $authors
 	X-Git-Refname: $refname
 	X-Git-Reftype: $refname_type
 	X-Git-Oldrev: $oldrev
