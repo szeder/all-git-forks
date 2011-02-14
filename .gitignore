@@ -177,6 +177,7 @@
 /test-sha1
 /test-sigchain
 /test-string-pool
+/test-subprocess
 /test-svn-fe
 /test-treap
 /common-cmds.h
@@ -217,3 +218,8 @@
 *.pdb
 /Debug/
 /Release/
+
+*.ilk
+libgit/Debug/
+xdiff_lib/Debug/
+vcs-svn_lib/Debug/

@@ -70,6 +70,9 @@ unset GIT_NOTES_REF
 unset GIT_NOTES_DISPLAY_REF
 unset GIT_NOTES_REWRITE_REF
 unset GIT_NOTES_REWRITE_MODE
+unset GIT_REFLOG_ACTION
+unset GIT_CHERRY_PICK_HELP
+unset GIT_QUIET
 GIT_MERGE_VERBOSITY=5
 export GIT_MERGE_VERBOSITY
 export GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME
@@ -260,7 +263,7 @@ test_decode_color () {
 			if (n == 47) return "BWHITE";
 		}
 		{
-			while (match($0, /\x1b\[[0-9;]*m/) != 0) {
+			while (match($0, /\033\[[0-9;]*m/) != 0) {
 				printf "%s<", substr($0, 1, RSTART-1);
 				codes = substr($0, RSTART+2, RLENGTH-3);
 				if (length(codes) == 0)
@@ -1057,6 +1060,13 @@ case $(uname -s) in
 	# backslashes in pathspec are converted to '/'
 	# exec does not inherit the PID
 	test_set_prereq MINGW
+	test_set_prereq SED_STRIPS_CR
+	;;
+*CYGWIN*)
+	test_set_prereq POSIXPERM
+	test_set_prereq EXECKEEPSPID
+	test_set_prereq NOT_MINGW
+	test_set_prereq SED_STRIPS_CR
 	;;
 *)
 	test_set_prereq POSIXPERM

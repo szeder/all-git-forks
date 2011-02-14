@@ -253,6 +253,18 @@ static void *read_skip_worktree_file_from_index(const char *path, size_t *size)
 	return data;
 }
 
+void free_excludes(struct exclude_list *el)
+{
+	int i;
+
+	for (i = 0; i < el->nr; i++)
+		free(el->excludes[i]);
+	free(el->excludes);
+
+	el->nr = 0;
+	el->excludes = NULL;
+}
+
 int add_excludes_from_file_to_list(const char *fname,
 				   const char *base,
 				   int baselen,
@@ -389,13 +401,6 @@ int excluded_from_list(const char *pathname,
 			int to_exclude = x->to_exclude;
 
 			if (x->flags & EXC_FLAG_MUSTBEDIR) {
-				if (!dtype) {
-					if (!prefixcmp(pathname, exclude) &&
-					    pathname[x->patternlen] == '/')
-						return to_exclude;
-					else
-						continue;
-				}
 				if (*dtype == DT_UNKNOWN)
 					*dtype = get_dtype(NULL, pathname, pathlen);
 				if (*dtype != DT_DIR)
@@ -1033,6 +1038,12 @@ char *get_relative_cwd(char *buffer, int size, const char *dir)
 	case '/':
 		return cwd + 1;
 	default:
+		/*
+		 * dir can end with a path separator when it's root
+		 * directory. Return proper prefix in that case.
+		 */
+		if (dir[-1] == '/')
+			return cwd;
 		return NULL;
 	}
 }

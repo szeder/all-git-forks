@@ -177,24 +177,24 @@ static int handle_alias(int *argcp, const char ***argv)
 	alias_string = alias_lookup(alias_command);
 	if (alias_string) {
 		if (alias_string[0] == '!') {
-			commit_pager_choice();
-			if (*argcp > 1) {
-				struct strbuf buf;
+			const char **alias_argv;
+			int argc = *argcp, i;
 
-				strbuf_init(&buf, PATH_MAX);
-				strbuf_addstr(&buf, alias_string);
-				sq_quote_argv(&buf, (*argv) + 1, PATH_MAX);
-				free(alias_string);
-				alias_string = buf.buf;
-			}
-			trace_printf("trace: alias to shell cmd: %s => %s\n",
-				     alias_command, alias_string + 1);
-			ret = system(alias_string + 1);
-			if (ret >= 0 && WIFEXITED(ret) &&
-			    WEXITSTATUS(ret) != 127)
-				exit(WEXITSTATUS(ret));
-			die("Failed to run '%s' when expanding alias '%s'",
-			    alias_string + 1, alias_command);
+			commit_pager_choice();
+
+			/* build alias_argv */
+			alias_argv = xmalloc(sizeof(*alias_argv) * (argc + 1));
+			alias_argv[0] = alias_string + 1;
+			for (i = 1; i < argc; ++i)
+				alias_argv[i] = (*argv)[i];
+			alias_argv[argc] = NULL;
+
+			ret = run_command_v_opt(alias_argv, RUN_USING_SHELL);
+			if (ret >= 0)   /* normal exit */
+				exit(ret);
+
+			die_errno("While expanding alias '%s': '%s'",
+			    alias_command, alias_string + 1);
 		}
 		count = split_cmdline(alias_string, &new_argv);
 		if (count < 0)
@@ -275,6 +275,10 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 			use_pager = check_pager_config(p->cmd);
 		if (use_pager == -1 && p->option & USE_PAGER)
 			use_pager = 1;
+
+		if ((p->option & (RUN_SETUP | RUN_SETUP_GENTLY)) &&
+		    startup_info->have_repository) /* get_git_dir() may set up repo, avoid that */
+			trace_repo_setup(prefix);
 	}
 	commit_pager_choice();
 

@@ -42,9 +42,12 @@ typedef unsigned long long   uint64_t;
 
 typedef long long  intmax_t;
 typedef unsigned long long uintmax_t;
-#define INTMAX_MAX LLONG_MAX
 
 typedef int64_t off64_t;
+
+#define INTMAX_MIN  _I64_MIN
+#define INTMAX_MAX  _I64_MAX
+#define UINTMAX_MAX _UI64_MAX
 
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
