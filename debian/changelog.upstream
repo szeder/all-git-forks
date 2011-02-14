@@ -1,3 +1,45 @@
+Version v1.7.2.5; changes since v1.7.2.3:
+-----------------------------------------
+
+Brandon Casey (2):
+      diff.c: call regfree to free memory allocated by regcomp when necessary
+      xdiff-interface.c: always trim trailing space from xfuncname matches
+
+Elijah Newren (2):
+      cache_tree_free: Fix small memory leak
+      revert: Fix trivial comment style issue
+
+Jakub Narebski (1):
+      gitweb: Introduce esc_attr to escape attributes of HTML elements
+
+Jared Hance (1):
+      Fix whitespace issue in object.c
+
+Jari Aalto (1):
+      git-commit.txt: (synopsis): move -i and -o before "--"
+
+Jens Lehmann (1):
+      t5505: add missing &&
+
+Jonathan Nieder (1):
+      add: introduce add.ignoreerrors synonym for add.ignore-errors
+
+Junio C Hamano (4):
+      tag.c: whitespace breakages fix
+      t3101: modernise style
+      Git 1.7.0.8
+      Git 1.6.4.5
+
+Mark Lodato (1):
+      config.txt: fix placement of diff.noprefix
+
+René Scharfe (1):
+      compat/nedmalloc: don't force NDEBUG on the rest of git
+
+knittl (1):
+      bash: Match lightweight tags in prompt
+
+
 Version v1.7.2.3; changes since v1.7.1:
 ---------------------------------------
 
