@@ -647,6 +647,45 @@ proc load_current_branch {} {
 	}
 }
 
+proc set_current_state {state} {
+	global current_state disable_on_rebase
+
+	set current_state $state
+	if {$state eq {}} {
+		enable_ui $disable_on_rebase
+		.branch.state configure -foreground black
+	} else {
+		disable_ui $disable_on_rebase
+		.branch.state configure -foreground red
+	}
+}
+
+proc load_current_state {} {
+	global current_state _gitdir
+
+	set_current_state ""
+
+	if {[file exists "$_gitdir/rebase-merge/interactive"]} {
+		set_current_state "(Interactive rebase in progress)"
+	} elseif {[file exists "$_gitdir/rebase-merge"]} {
+		set_current_state "(Rebase merge conflict in progress)"
+	} else {
+		if {[file exists "$_gitdir/rebase-apply"]} {
+			if {[file exists "$_gitdir/rebase-apply/rebasing"]} {
+				set_current_state "(Rebase in progress)"
+			} elseif {[file exists "$_gitdir/rebase-apply/applying"]} {
+				set_current_state "(Applying of patch series in progress)"
+			} else {
+				set_current_state "(Rebase or patch series in progress)"
+			}
+		} elseif {[file exists "$_gitdir/MERGE_HEAD"]} {
+			set_current_state "(Merge in progress)"
+		} elseif {[file exists "$_gitdir/BISECT_LOG"]} {
+			set_current_state "(Bisecting in progress)"
+		}
+	}
+}
+
 auto_load tk_optionMenu
 rename tk_optionMenu real__tkOptionMenu
 proc tk_optionMenu {w varName args} {
@@ -1263,6 +1302,7 @@ set MERGE_HEAD [list]
 set commit_type {}
 set empty_tree {}
 set current_branch {}
+set current_state {}
 set is_detached 0
 set current_diff_path {}
 set is_3way_diff 0
@@ -1283,6 +1323,7 @@ set diff_active 0
 set last_clicked {}
 
 set disable_on_lock [list]
+set disable_on_rebase [list]
 set index_lock_type none
 
 proc disable_ui {disable_list} {
@@ -1711,6 +1752,7 @@ proc ui_ready {{test {}}} {
 	if {[info exists main_status]} {
 		$main_status show [mc "Ready."] $test
 	}
+	load_current_state
 }
 
 proc escape_path {path} {
@@ -2664,14 +2706,16 @@ if {[is_enabled branch]} {
 	.mbar.branch add command -label [mc "Create..."] \
 		-command branch_create::dialog \
 		-accelerator $M1T-N
-	lappend disable_on_lock [list .mbar.branch entryconf \
-		[.mbar.branch index last] -state]
+	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
+	lappend disable_on_lock $mi
+	lappend disable_on_rebase $mi
 
 	.mbar.branch add command -label [mc "Checkout..."] \
 		-command branch_checkout::dialog \
 		-accelerator $M1T-O
-	lappend disable_on_lock [list .mbar.branch entryconf \
-		[.mbar.branch index last] -state]
+	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
+	lappend disable_on_lock $mi
+	lappend disable_on_rebase $mi
 
 	.mbar.branch add command -label [mc "Rename..."] \
 		-command branch_rename::dialog
@@ -2685,8 +2729,9 @@ if {[is_enabled branch]} {
 
 	.mbar.branch add command -label [mc "Reset..."] \
 		-command merge::reset_hard
-	lappend disable_on_lock [list .mbar.branch entryconf \
-		[.mbar.branch index last] -state]
+	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
+	lappend disable_on_lock $mi
+	lappend disable_on_rebase $mi
 }
 
 # -- Commit Menu
@@ -2784,12 +2829,14 @@ if {[is_enabled branch]} {
 	.mbar.merge add command -label [mc "Local Merge..."] \
 		-command merge::dialog \
 		-accelerator $M1T-M
-	lappend disable_on_lock \
-		[list .mbar.merge entryconf [.mbar.merge index last] -state]
+	set mi [list .mbar.merge entryconf [.mbar.merge index last] -state]
+	lappend disable_on_lock $mi
+	lappend disable_on_rebase $mi
 	.mbar.merge add command -label [mc "Abort Merge..."] \
 		-command merge::reset_hard
-	lappend disable_on_lock \
-		[list .mbar.merge entryconf [.mbar.merge index last] -state]
+	set mi [list .mbar.merge entryconf [.mbar.merge index last] -state]
+	lappend disable_on_lock $mi
+	lappend disable_on_rebase $mi
 }
 
 # -- Transport Menu
@@ -3035,8 +3082,13 @@ ${NS}::label .branch.cb \
 	-textvariable current_branch \
 	-anchor w \
 	-justify left
+${NS}::label .branch.state \
+	-textvariable current_state \
+	-anchor center \
+	-justify center
 pack .branch.l1 -side left
 pack .branch.cb -side left -fill x
+pack .branch.state -side left -fill x -expand true
 pack .branch -side top -fill x
 
 # -- Main Window Layout
