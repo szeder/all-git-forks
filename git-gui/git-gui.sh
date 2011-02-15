@@ -1285,14 +1285,24 @@ set last_clicked {}
 set disable_on_lock [list]
 set index_lock_type none
 
+proc disable_ui {disable_list} {
+	foreach w $disable_list {
+		uplevel #0 $w disabled
+	}
+}
+
+proc enable_ui {enable_list} {
+	foreach w $enable_list {
+		uplevel #0 $w normal
+	}
+}
+
 proc lock_index {type} {
 	global index_lock_type disable_on_lock
 
 	if {$index_lock_type eq {none}} {
 		set index_lock_type $type
-		foreach w $disable_on_lock {
-			uplevel #0 $w disabled
-		}
+		disable_ui $disable_on_lock
 		return 1
 	} elseif {$index_lock_type eq "begin-$type"} {
 		set index_lock_type $type
@@ -1305,9 +1315,7 @@ proc unlock_index {} {
 	global index_lock_type disable_on_lock
 
 	set index_lock_type none
-	foreach w $disable_on_lock {
-		uplevel #0 $w normal
-	}
+	enable_ui $disable_on_lock
 }
 
 ######################################################################
