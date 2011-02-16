@@ -290,6 +290,10 @@ for (my $i = 0; $i < @ARGV; $i++) {
 	}
 };
 
+# to reduce numbers of calls of Git::config('svn.pathnameencoding')
+# global variable is used
+$main::svn_pathnameencoding = Git::config('svn.pathnameencoding');
+
 # make sure we're always running at the top-level working directory
 unless ($cmd && $cmd =~ /(?:clone|init|multi-init)$/) {
 	unless (-d $ENV{GIT_DIR}) {
@@ -3233,6 +3237,7 @@ sub mkemptydirs {
 	my $strip = qr/\A\Q$self->{path}\E(?:\/|$)/;
 	foreach my $d (sort keys %empty_dirs) {
 		$d = uri_decode($d);
+		$d = Git::SVN::from_utf8($d);
 		$d =~ s/$strip//;
 		next unless length($d);
 		next if -d $d;
@@ -3252,6 +3257,7 @@ sub get_untracked {
 	foreach (sort keys %$h) {
 		my $act = $h->{$_} ? '+empty_dir' : '-empty_dir';
 		push @out, "  $act: " . uri_encode($_);
+		$_ = $ed->git_path($_);
 		warn "W: $act: $_\n";
 	}
 	foreach my $t (qw/dir_prop file_prop/) {
@@ -3544,6 +3550,24 @@ sub has_no_changes {
 
 	return (command_oneline("rev-parse", "$commit^{tree}") eq
 		command_oneline("rev-parse", "$commit~1^{tree}"));
+}
+
+sub from_utf8 {
+	my ($path, $enc) = @_;
+	if ($main::svn_pathnameencoding) {
+		require Encode;
+		Encode::from_to($path, 'UTF-8', $main::svn_pathnameencoding);
+	}
+	$path;
+}
+
+sub to_utf8 {
+	my ($path) = @_;
+	if ($main::svn_pathnameencoding) {
+		require Encode;
+		Encode::from_to($path, $main::svn_pathnameencoding, 'UTF-8');
+	}
+	$path;
 }
 
 # The GIT_DIR environment variable is not always set until after the command
@@ -4249,7 +4273,8 @@ sub _new {
 	bless {
 		ref_id => $ref_id, dir => $dir, index => "$dir/index",
 	        path => $path, config => "$ENV{GIT_DIR}/svn/config",
-	        map_root => "$dir/.rev_map", repo_id => $repo_id }, $class;
+	        map_root => "$dir/.rev_map", repo_id => $repo_id
+	}, $class;
 }
 
 # for read-only access of old .rev_db formats
@@ -4490,7 +4515,6 @@ sub new {
 	$self->{absent_dir} = {};
 	$self->{absent_file} = {};
 	$self->{gii} = $git_svn->tmp_index_do(sub { Git::IndexInfo->new });
-	$self->{pathnameencoding} = Git::config('svn.pathnameencoding');
 	$self;
 }
 
@@ -4574,10 +4598,7 @@ sub open_directory {
 
 sub git_path {
 	my ($self, $path) = @_;
-	if (my $enc = $self->{pathnameencoding}) {
-		require Encode;
-		Encode::from_to($path, 'UTF-8', $enc);
-	}
+	$path = Git::SVN::from_utf8($path);
 	if ($self->{path_strip}) {
 		$path =~ s!$self->{path_strip}!! or
 		  die "Failed to strip path '$path' ($self->{path_strip})\n";
@@ -5069,10 +5090,7 @@ sub split_path {
 
 sub repo_path {
 	my ($self, $path) = @_;
-	if (my $enc = $self->{pathnameencoding}) {
-		require Encode;
-		Encode::from_to($path, $enc, 'UTF-8');
-	}
+	$path = Git::SVN::to_utf8($path);
 	$self->{path_prefix}.(defined $path ? $path : '');
 }
 
@@ -5131,7 +5149,10 @@ sub rmdirs {
 
 sub open_or_add_dir {
 	my ($self, $full_path, $baton) = @_;
-	my $t = $self->{types}->{$full_path};
+	# as far $self->{types} are in local encoding
+	# and $full_path comes in UTF-8
+	# so convert it back for comparison
+	my $t = $self->{types}->{ Git::SVN::from_utf8($full_path) };
 	if (!defined $t) {
 		die "$full_path not known in r$self->{r} or we have a bug!\n";
 	}
@@ -5512,7 +5533,7 @@ sub check_path {
 		return $cache->{data}->{$path};
 	}
 	my $pool = SVN::Pool->new;
-	my $t = $self->SUPER::check_path($path, $r, $pool);
+	my $t = $self->SUPER::check_path(Git::SVN::to_utf8($path), $r, $pool);
 	$pool->clear;
 	if ($r != $cache->{r}) {
 		%{$cache->{data}} = ();

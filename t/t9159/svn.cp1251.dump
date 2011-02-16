@@ -1,0 +1,102 @@
+SVN-fs-dump-format-version: 2
+
+UUID: 822de043-116b-e64a-81eb-cda8b1fa0d21
+
+Revision-number: 0
+Prop-content-length: 56
+Content-length: 56
+
+K 8
+svn:date
+V 27
+2011-02-11T12:00:09.541188Z
+PROPS-END
+
+Revision-number: 1
+Prop-content-length: 116
+Content-length: 116
+
+K 7
+svn:log
+V 17
+cp1251 –ø–∞–ø–∫–∞
+K 10
+svn:author
+V 4
+AShu
+K 8
+svn:date
+V 27
+2011-02-11T12:01:02.767332Z
+PROPS-END
+
+Node-path: cp1251-–ø–∞–ø–∫–∞
+Node-kind: dir
+Node-action: add
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+
+Revision-number: 2
+Prop-content-length: 114
+Content-length: 114
+
+K 7
+svn:log
+V 15
+cp1251 —Ñ–∞–π–ª
+K 10
+svn:author
+V 4
+AShu
+K 8
+svn:date
+V 27
+2011-02-11T12:02:20.904186Z
+PROPS-END
+
+Node-path: cp1251-–ø–∞–ø–∫–∞/cp1251-—Ñ–∞–π–ª.txt
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 25
+Text-content-md5: 2b386585aea8c8e7f33a772f44381c77
+Text-content-sha1: 369838d564357bdea8f70a54a5010ef1c14353dc
+Content-length: 35
+
+PROPS-END
+‘‡ÈÎ ‚ ÒËÏ‚ÓÎ‡ÏË ‚ cp1251
+
+Revision-number: 3
+Prop-content-length: 140
+Content-length: 140
+
+K 7
+svn:log
+V 41
+–¥–æ–±–∞–≤–ª–µ–Ω —Ñ–∞–π–ª –≤ –∫–æ—Ä–µ–Ω—å
+K 10
+svn:author
+V 4
+AShu
+K 8
+svn:date
+V 27
+2011-02-11T17:09:42.553404Z
+PROPS-END
+
+Node-path: —Ñ–∞–π–ª-–≤-–∫–æ—Ä–Ω–µ-–ø–∞–ø–∫–∏.file
+Node-kind: file
+Node-action: add
+Prop-content-length: 10
+Text-content-length: 24
+Text-content-md5: 2c4e94d6bf66977c89a0045ff04a3559
+Text-content-sha1: f487288b8c5612a3f24c38a1558d5637c9d65d1c
+Content-length: 34
+
+PROPS-END
+Ù‡ÈÎ-‚-ÍÓÌÂ-Ô‡ÔÍË.file
+
+
