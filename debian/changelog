@@ -10,6 +10,7 @@ git (1:1.7.4.1-0.1) local; urgency=low
     not error out when git version number contains "-rc".
 
   [ Jonathan Nieder ]
+  * add myself as uploader.
   * debian/diff/0003, 0007, 0010-0034: remove, applied upstream.
   * debian/rules: accept patches with .patch suffix, too (thx Anders
     Kaseorg).
