@@ -1,7 +1,9 @@
 #!/bin/sh
 
 describe() {
-  if v=`git describe --exact-match $1 2>/dev/null`; then
+  if test "$i" = "HEAD" && `git bisect log >/dev/null`; then
+    echo test
+  elif v=`git describe --exact-match $1 2>/dev/null`; then
     echo $v
   elif v=`git describe --exact-match --all $1 2>/dev/null`; then
     # dereference symbolic links
