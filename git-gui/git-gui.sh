@@ -647,22 +647,47 @@ proc load_current_branch {} {
 	}
 }
 
-proc set_current_state {state} {
-	global current_state disable_on_rebase
+proc set_current_state {state {type {}}} {
+	global current_state disable_on_rebase disable_on_lock
+	global disable_on_merge
 
 	set current_state $state
+
+	# first reset everything cause we could be directly changing from
+	# one special status to another
+	enable_ui $disable_on_rebase
+	enable_ui $disable_on_merge
+	enable_ui $disable_on_lock
+	.branch.state configure -foreground black
 	if {$state eq {}} {
-		enable_ui $disable_on_rebase
-		.branch.state configure -foreground black
-	} else {
+		return
+	}
+
+	# there is some special state
+	.branch.state configure -foreground red
+	if {$type eq {}} {
 		disable_ui $disable_on_rebase
-		.branch.state configure -foreground red
+		return
+	}
+
+	if {$type eq "merge"} {
+		disable_ui $disable_on_merge
+	}
+
+	if {$type eq "bisect"} {
+		# TODO: we do not have a proper list for bisect yet
+		# lets reuse the one for lock first
+		disable_ui $disable_on_lock
 	}
 }
 
 proc load_current_state {} {
 	global current_state _gitdir
 
+	# This function is based on the information found in
+	# contrib/completion/git-completion.bash
+	#
+	# TODO: use file isdirectory in appropriate places
 	set_current_state ""
 
 	if {[file exists "$_gitdir/rebase-merge/interactive"]} {
@@ -679,9 +704,9 @@ proc load_current_state {} {
 				set_current_state "(Rebase or patch series in progress)"
 			}
 		} elseif {[file exists "$_gitdir/MERGE_HEAD"]} {
-			set_current_state "(Merge in progress)"
+			set_current_state "(Merge in progress)" merge
 		} elseif {[file exists "$_gitdir/BISECT_LOG"]} {
-			set_current_state "(Bisecting in progress)"
+			set_current_state "(Bisecting in progress)" bisect
 		}
 	}
 }
@@ -1324,6 +1349,7 @@ set last_clicked {}
 
 set disable_on_lock [list]
 set disable_on_rebase [list]
+set disable_on_merge [list]
 set index_lock_type none
 
 proc disable_ui {disable_list} {
@@ -1704,6 +1730,7 @@ proc rescan_done {fd buf after} {
 	display_all_files
 	if {$current_diff_path ne {}} { reshow_diff $after }
 	if {$current_diff_path eq {}} { select_first_diff $after }
+	load_current_state
 }
 
 proc prune_selection {} {
@@ -2709,6 +2736,7 @@ if {[is_enabled branch]} {
 	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
 	lappend disable_on_lock $mi
 	lappend disable_on_rebase $mi
+	lappend disable_on_merge $mi
 
 	.mbar.branch add command -label [mc "Checkout..."] \
 		-command branch_checkout::dialog \
@@ -2716,6 +2744,7 @@ if {[is_enabled branch]} {
 	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
 	lappend disable_on_lock $mi
 	lappend disable_on_rebase $mi
+	lappend disable_on_merge $mi
 
 	.mbar.branch add command -label [mc "Rename..."] \
 		-command branch_rename::dialog
@@ -2732,6 +2761,7 @@ if {[is_enabled branch]} {
 	set mi [list .mbar.branch entryconf [.mbar.branch index last] -state]
 	lappend disable_on_lock $mi
 	lappend disable_on_rebase $mi
+	lappend disable_on_merge $mi
 }
 
 # -- Commit Menu
@@ -2832,6 +2862,8 @@ if {[is_enabled branch]} {
 	set mi [list .mbar.merge entryconf [.mbar.merge index last] -state]
 	lappend disable_on_lock $mi
 	lappend disable_on_rebase $mi
+	lappend disable_on_merge $mi
+
 	.mbar.merge add command -label [mc "Abort Merge..."] \
 		-command merge::reset_hard
 	set mi [list .mbar.merge entryconf [.mbar.merge index last] -state]
