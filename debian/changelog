@@ -1,7 +1,6 @@
-git (1:1.7.2.5-0.1) stable; urgency=low
+git (1:1.7.2.5-1) stable; urgency=low
 
-  * Non-maintainer upload.
-  * New upstream point release.
+  * new upstream point release.
     * support "add.ignoreErrors" synonym for the existing
       "add.ignore-errors" configuration variable.
     * bash completion: match lightweight tags in prompt.
@@ -12,8 +11,9 @@ git (1:1.7.2.5-0.1) stable; urgency=low
     debian/diff/0011-diff.c-call-regfree....diff,
     debian/diff/0034-gitweb-Introduce-esc_attr...diff: remove; applied
     upstream.
+  * add myself as uploader.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 14 Feb 2011 04:25:19 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 18 Feb 2011 14:05:10 -0600
 
 git (1:1.7.2.3-2.2) unstable; urgency=medium
 
