@@ -696,12 +696,12 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		char *ai_tmp, *ci_tmp;
 		if (in_merge)
 			fprintf(fp,
-				"#\n"
+				_("#\n"
 				"# It looks like you may be committing a MERGE.\n"
 				"# If this is not correct, please remove the file\n"
 				"#	%s\n"
 				"# and try again.\n"
-				"#\n",
+				"#\n"),
 				git_path("MERGE_HEAD"));
 
 		fprintf(fp,
@@ -725,15 +725,15 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		ci_tmp = cut_ident_timestamp_part(committer_ident.buf);
 		if (strcmp(author_ident->buf, committer_ident.buf))
 			fprintf(fp,
-				"%s"
-				"# Author:    %s\n",
+				_("%s"
+				"# Author:    %s\n"),
 				ident_shown++ ? "" : "#\n",
 				author_ident->buf);
 
 		if (!user_ident_sufficiently_given())
 			fprintf(fp,
-				"%s"
-				"# Committer: %s\n",
+				_("%s"
+				"# Committer: %s\n"),
 				ident_shown++ ? "" : "#\n",
 				committer_ident.buf);
 
