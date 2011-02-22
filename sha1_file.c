@@ -2914,3 +2914,8 @@ void assert_sha1_type(const unsigned char *sha1, enum object_type expect)
 		die("%s is not a valid '%s' object", sha1_to_hex(sha1),
 		    typename(expect));
 }
+
+int hash_sha1_refname(const char *path, unsigned char *refsha1)
+{
+	return hash_sha1_file((void *) path, strlen(path), typename(OBJ_BLOB), refsha1);
+}
