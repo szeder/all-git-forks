@@ -1,3 +1,10 @@
+git (1:1.7.4.1-1.1) unstable; urgency=low
+
+  * README.emacs: git-blame.el does not print a summary in the
+    echo area (documents: #611935).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 22 Feb 2011 16:53:27 -0600
+
 git (1:1.7.4.1-1) unstable; urgency=low
 
   * new upstream release (closes: #600566, #575917, #578752, #583693,
