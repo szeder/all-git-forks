@@ -470,7 +470,13 @@ static int is_branch(const char *refname)
 
 static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
-	struct object *obj;
+	struct object *obj, *refobj;
+	unsigned char refsha1[20];
+
+	pretend_sha1_file((void *) refname, strlen(refname), OBJ_BLOB, refsha1);
+	refobj = parse_object(refsha1);
+	refobj->used = 1;
+	mark_object_reachable(refobj);
 
 	obj = parse_object(sha1);
 	if (!obj) {
