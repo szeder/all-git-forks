@@ -2333,6 +2333,37 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 	return 0;
 }
 
+static int refname_handle_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+{
+	unsigned char refsha1[20];
+	void **bufptr = cb_data;
+
+	hash_sha1_refname(refname, refsha1);
+	if (hashcmp((unsigned char*) *bufptr, refsha1))
+		return 0;
+	*bufptr = xmemdupz(refname, strlen(refname));
+	return 1;
+}
+
+static void *read_refname_sha1(const unsigned char *sha1, enum object_type *type,
+			 unsigned long *size)
+{
+	void *buf = (void *) sha1;
+	if (!for_each_ref(refname_handle_ref, (void *) &buf))
+		return NULL;
+	*type = OBJ_BLOB;
+	*size = strlen(buf);
+	return buf;
+}
+
+
+static int has_refname_sha1(const unsigned char* sha1)
+{
+	enum object_type type;
+	unsigned long size;
+	return read_refname_sha1(sha1, &type, &size) != NULL;
+}
+
 static void *read_object(const unsigned char *sha1, enum object_type *type,
 			 unsigned long *size)
 {
@@ -2357,7 +2388,10 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 		return buf;
 	}
 	reprepare_packed_git();
-	return read_packed_sha1(sha1, type, size);
+	buf = read_packed_sha1(sha1, type, size);
+	if (buf)
+		return buf;
+	return read_refname_sha1(sha1, type, size);
 }
 
 /*
@@ -2706,7 +2740,7 @@ int has_sha1_file(const unsigned char *sha1)
 
 	if (find_pack_entry(sha1, &e))
 		return 1;
-	return has_loose_object(sha1);
+	return has_loose_object(sha1) || has_refname_sha1(sha1);
 }
 
 static void check_tree(const void *buf, size_t size)
