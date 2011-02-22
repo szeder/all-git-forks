@@ -19,9 +19,10 @@ Package: git
 Architecture: any
 Depends: ${shlibs:Depends}, perl-modules, liberror-perl,
  git-man (>> ${source:Upstream-Version}), git-man (<< ${source:Upstream-Version}-.),
+ emacsen-common,
  libc6.1 (>= 2.10.2-6) [ia64]
 Recommends: patch, less, rsync, ssh-client
-Suggests: git-doc, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
+Suggests: git-doc, git-el, git-arch, git-cvs, git-svn, git-email, git-daemon-run, git-gui, gitk, gitweb
 Replaces: gitweb (<< 1:1.7.4~rc1),
  cogito (<< 0.16rc2-0), git-core (<= 1:1.7.0.4-1)
 Breaks: gitweb (<< 1:1.7.4~rc1),
@@ -230,6 +231,42 @@ Description: fast, scalable, distributed revision control system (revision tree 
  .
  This package provides the gitk program, a tcl/tk revision tree visualizer.
 
+Package: git-el
+Architecture: all
+Depends: git (>= 1:1.7.4.1-1.1), emacs | emacsen
+Replaces: git (<< 1:1.7.4.1-1.1)
+Breaks: git (<< 1:1.7.4.1-1.1)
+Description: fast, scalable, distributed revision control system (emacs support)
+ Git is popular version control system designed to handle very large
+ projects with speed and efficiency; it is used for many high profile
+ open source projects, most notably the Linux kernel.
+ .
+ Git falls in the category of distributed source code management tools.
+ Every Git working directory is a full-fledged repository with full
+ revision tracking capabilities, not dependent on network access or a
+ central server.
+ .
+ This package provides two modules for integration with Emacs:
+ .
+  * git.el:
+ .
+    Status manager that displays the state of all the files of the
+    project and provides easy access to the most frequently used git
+    commands. The user interface is intended to be similar to the
+    pcl-cvs mode. It can be started with `M-x git-status'.
+ .
+  * git-blame.el:
+ .
+    Emacs implementation of incremental "git blame".  When you turn it
+    on while viewing a file, the editor buffer will be updated by
+    setting the background of individual lines to a color that reflects
+    which commit it comes from.
+ .
+ This package does not contain the VC-mode backend for git. That is
+ part of standard Emacs distributions, starting with version 22.2.
+ .
+ For a more polished Emacs interface for Git, see the magit package.
+
 Package: gitweb
 Architecture: all
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
@@ -256,7 +293,8 @@ Description: fast, scalable, distributed revision control system (web interface)
 
 Package: git-all
 Architecture: all
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), git-doc, git-arch, git-cvs, git-svn, git-email, git-gui, gitk, gitweb
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.),
+ git-doc, git-el, git-arch, git-cvs, git-svn, git-email, git-gui, gitk, gitweb
 Recommends: git-daemon-run
 Description: fast, scalable, distributed revision control system (all subpackages)
  Git is popular version control system designed to handle very large

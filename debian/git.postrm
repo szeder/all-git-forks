@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+# Now /etc/emacs/site-start.d/50git-core.el belongs to the
+# git-el package.
+#
+# NOTE: this leaves behind a /etc/emacs/site-start.d/50git-core.el
+# file if it was modified while the broken 1.7.4.1-1 package
+# was installed.  Installing and purging git-el works around
+# that.
+
+dpkg-maintscript-helper rm_conffile \
+	/etc/emacs/site-start.d/50git-core.el \
+	1:1.7.4.1-1.1~ -- "$@"

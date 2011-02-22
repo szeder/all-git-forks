@@ -1,9 +1,5 @@
 #!/bin/sh
 set -e
-if test -x /usr/lib/emacsen-common/emacs-package-remove; then
-  /usr/lib/emacsen-common/emacs-package-remove git
-fi
-
 # The /usr/share/doc/git/contrib/emacs directory was replaced
 # with a symlink in 1:1.7.4~rc1-0.1.
 # If downgrading, put the directory back.

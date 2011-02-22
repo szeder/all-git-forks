@@ -1,6 +1,6 @@
-The git package provides various modules for Emacs support.
+The git-el package provides various modules for Emacs support.
 
-When the git package is installed, the modules will be automatically
+When the git-el package is installed, the modules will be automatically
 made available to installed Emacs versions.  The configuration
 can be overridden in /etc/emacs/site-start.d/50git-core.el.
 

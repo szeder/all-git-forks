@@ -1,8 +1,20 @@
 #!/bin/sh
 set -e
 test "$1" = configure || exit 0
-if test -x /usr/lib/emacsen-common/emacs-package-install; then
-  /usr/lib/emacsen-common/emacs-package-install git
+
+if dpkg --compare-versions "$2" lt '1:1.7.4.1-1.1'; then
+  /usr/lib/emacsen-common/emacs-package-remove git
+fi
+
+removed_conffile=/etc/emacs/site-start.d/50git-core.el
+dpkg-maintscript-helper rm_conffile \
+	"$removed_conffile" \
+	1:1.7.4.1-1.1~ -- "$@"
+# HACK: carry over modifications so git-el can use them.
+if dpkg --compare-versions "$2" lt '1:1.7.4.1-1.1' &&
+   ! test -e "$removed_conffile" &&
+   test -r "$removed_conffile".dpkg-bak; then
+  mv "$removed_conffile".dpkg-bak "$removed_conffile"
 fi
 
 # Replace the old /usr/share/doc/git/contrib/emacs directory
