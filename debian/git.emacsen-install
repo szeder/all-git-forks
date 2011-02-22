@@ -27,7 +27,7 @@ then
   cd $elc_dir
   for i in $el_files
   do
-    ln -s $el_dir/$i $i
+    ln -sf $el_dir/$i $i
   done
 
   # Byte compile .el file(s)

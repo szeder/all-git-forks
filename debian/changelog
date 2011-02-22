@@ -2,6 +2,8 @@ git (1:1.7.4.1-1.1) unstable; urgency=low
 
   * README.emacs: git-blame.el does not print a summary in the
     echo area (documents: #611935).
+  * git.emacsen-install: overwrite .el symlinks if they already
+    exist (closes: #614659).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 22 Feb 2011 16:53:27 -0600
 
