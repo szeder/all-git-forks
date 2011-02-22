@@ -763,6 +763,9 @@ extern void *map_sha1_file(const unsigned char *sha1, unsigned long *size);
 extern int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz);
 extern int parse_sha1_header(const char *hdr, unsigned long *sizep);
 
+/* refname objects */
+extern int hash_sha1_refname(const char *path, unsigned char *refsha1);
+
 /* global flag to enable extra checks when accessing packed objects */
 extern int do_check_packed_object_crc;
 
