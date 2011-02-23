@@ -37,8 +37,8 @@ struct strategy {
 };
 
 static const char * const builtin_merge_usage[] = {
-	"git merge [options] <remote>...",
-	"git merge [options] <msg> HEAD <remote>",
+	"git merge [options] <branch>...",
+	"git merge [options] <msg> HEAD <branch>",
 	NULL
 };
 
@@ -498,11 +498,15 @@ cleanup:
 	strbuf_release(&bname);
 }
 
-static int git_merge_config(const char *k, const char *v, void *cb)
+static int per_branch_config(const char *k, const char *v, void *cb)
 {
-	if (branch && !prefixcmp(k, "branch.") &&
-		!prefixcmp(k + 7, branch) &&
-		!strcmp(k + 7 + strlen(branch), ".mergeoptions")) {
+	const char *variable;
+	if (!branch || prefixcmp(k, "branch.") ||
+	   prefixcmp(k + 7, branch))
+		return 1; /* not what I handle */
+
+	variable = k + 7 + strlen(branch);
+	if (!strcmp(variable, ".mergeoptions")) {
 		const char **argv;
 		int argc;
 		char *buf;
@@ -518,7 +522,18 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 		parse_options(argc, argv, NULL, builtin_merge_options,
 			      builtin_merge_usage, 0);
 		free(buf);
+		return 0;
 	}
+
+	return 1; /* not what I handle */
+}
+
+static int git_merge_config(const char *k, const char *v, void *cb)
+{
+	int status = per_branch_config(k, v, cb);
+
+	if (status <= 0)
+		return status;
 
 	if (!strcmp(k, "merge.diffstat") || !strcmp(k, "merge.stat"))
 		show_diffstat = git_config_bool(k, v);
@@ -941,6 +956,24 @@ static int evaluate_result(void)
 	return cnt;
 }
 
+static void setup_merge_commit(struct strbuf *buf,
+	struct commit_list ***remotes, const char *s)
+{
+	struct object *o;
+	struct commit *commit;
+
+	o = peel_to_type(s, 0, NULL, OBJ_COMMIT);
+	if (!o)
+		die("%s - not something we can merge", s);
+	commit = lookup_commit(o->sha1);
+	commit->util = (void *)s;
+	*remotes = &commit_list_insert(commit, *remotes)->next;
+
+	strbuf_addf(buf, "GITHEAD_%s", sha1_to_hex(o->sha1));
+	setenv(buf->buf, s, 1);
+	strbuf_reset(buf);
+}
+
 int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
@@ -1095,21 +1128,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	setenv("GIT_REFLOG_ACTION", buf.buf, 0);
 	strbuf_reset(&buf);
 
-	for (i = 0; i < argc; i++) {
-		struct object *o;
-		struct commit *commit;
-
-		o = peel_to_type(argv[i], 0, NULL, OBJ_COMMIT);
-		if (!o)
-			die("%s - not something we can merge", argv[i]);
-		commit = lookup_commit(o->sha1);
-		commit->util = (void *)argv[i];
-		remotes = &commit_list_insert(commit, remotes)->next;
-
-		strbuf_addf(&buf, "GITHEAD_%s", sha1_to_hex(o->sha1));
-		setenv(buf.buf, argv[i], 1);
-		strbuf_reset(&buf);
-	}
+	for (i = 0; i < argc; i++)
+		setup_merge_commit(&buf, &remotes, argv[i]);
 
 	if (!use_strategies) {
 		if (!remoteheads->next)
