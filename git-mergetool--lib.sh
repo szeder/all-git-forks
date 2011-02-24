@@ -48,7 +48,7 @@ valid_tool () {
 	case "$1" in
 	kdiff3 | tkdiff | xxdiff | meld | opendiff | \
 	vimdiff | gvimdiff | vimdiff2 | gvimdiff2 | \
-	emerge | ecmerge | diffuse | araxis | p4merge)
+	emerge | ecmerge | diffuse | araxis | p4merge | bcompare)
 		;; # happy
 	tortoisemerge)
 		if ! merge_mode; then
@@ -304,6 +304,20 @@ run_merge_tool () {
 				>/dev/null 2>&1
 		fi
 		;;
+	bcompare)
+		if merge_mode; then
+			if $base_present; then
+				"$merge_tool_path" \
+					"$BASE" "$LOCAL" "$REMOTE" -mergeoutput="$MERGED"
+			else
+				"$merge_tool_path" \
+					"$LOCAL" "$REMOTE" -mergeoutput="$MERGED"
+			fi
+			check_unchanged
+		else
+			"$merge_tool_path" "$LOCAL" "$REMOTE"
+		fi
+		;;
 	*)
 		merge_tool_cmd="$(get_merge_tool_cmd "$1")"
 		if test -z "$merge_tool_cmd"; then
@@ -343,7 +357,7 @@ guess_merge_tool () {
 		else
 			tools="opendiff kdiff3 tkdiff xxdiff meld $tools"
 		fi
-		tools="$tools gvimdiff diffuse ecmerge p4merge araxis"
+		tools="$tools gvimdiff diffuse ecmerge p4merge araxis bcompare"
 	fi
 	case "${VISUAL:-$EDITOR}" in
 	*vim*)
