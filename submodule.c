@@ -12,7 +12,8 @@
 struct string_list config_name_for_path;
 struct string_list config_fetch_recurse_submodules_for_name;
 struct string_list config_ignore_for_name;
-static int config_fetch_recurse_submodules;
+static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
+struct string_list changed_submodule_paths;
 
 static int add_submodule_odb(const char *path)
 {
@@ -70,7 +71,7 @@ int submodule_config(const char *var, const char *value, void *cb)
 	if (!prefixcmp(var, "submodule."))
 		return parse_submodule_config_option(var, value);
 	else if (!strcmp(var, "fetch.recursesubmodules")) {
-		config_fetch_recurse_submodules = git_config_bool(var, value);
+		config_fetch_recurse_submodules = parse_fetch_recurse_submodules_arg(value);
 		return 0;
 	}
 	return 0;
@@ -112,7 +113,7 @@ int parse_submodule_config_option(const char *var, const char *value)
 		if (!config)
 			config = string_list_append(&config_fetch_recurse_submodules_for_name,
 						    strbuf_detach(&submodname, NULL));
-		config->util = git_config_bool(var, value) ? (void *)1 : NULL;
+		config->util = (void *)(size_t)parse_fetch_recurse_submodules_arg(value);
 		strbuf_release(&submodname);
 	} else if ((len > 7) && !strcmp(var + len - 7, ".ignore")) {
 		if (strcmp(value, "untracked") && strcmp(value, "dirty") &&
@@ -150,6 +151,20 @@ void handle_ignore_submodules_arg(struct diff_options *diffopt,
 		DIFF_OPT_SET(diffopt, IGNORE_DIRTY_SUBMODULES);
 	else if (strcmp(arg, "none"))
 		die("bad --ignore-submodules argument: %s", arg);
+}
+
+int parse_fetch_recurse_submodules_arg(const char *arg)
+{
+	switch (git_config_maybe_bool("", arg)) {
+	case 1:
+		return RECURSE_SUBMODULES_ON;
+	case 0:
+		return RECURSE_SUBMODULES_OFF;
+	default:
+		if (!strcmp(arg, "on-demand"))
+			return RECURSE_SUBMODULES_ON_DEMAND;
+		die("bad --recurse-submodules argument: %s", arg);
+	}
 }
 
 void show_submodule_summary(FILE *f, const char *path,
@@ -248,11 +263,80 @@ void set_config_fetch_recurse_submodules(int value)
 	config_fetch_recurse_submodules = value;
 }
 
+static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
+{
+	if (!add_submodule_odb(path))
+		return lookup_commit_reference(sha1) != 0;
+	return 0;
+}
+
+static void submodule_collect_changed_cb(struct diff_queue_struct *q,
+					 struct diff_options *options,
+					 void *data)
+{
+	int i;
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+		if (!S_ISGITLINK(p->two->mode))
+			continue;
+
+		if (S_ISGITLINK(p->one->mode)) {
+			/* NEEDSWORK: We should honor the name configured in
+			 * the .gitmodules file of the commit we are examining
+			 * here to be able to correctly follow submodules
+			 * being moved around. */
+			struct string_list_item *path;
+			path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
+			if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
+				string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
+		} else {
+			/* Submodule is new or was moved here */
+			/* NEEDSWORK: When the .git directories of submodules
+			 * live inside the superprojects .git directory some
+			 * day we should fetch new submodules directly into
+			 * that location too when config or options request
+			 * that so they can be checked out from there. */
+			continue;
+		}
+	}
+}
+
+void check_for_new_submodule_commits(unsigned char new_sha1[20])
+{
+	struct rev_info rev;
+	struct commit *commit;
+	int argc = 5;
+	const char *argv[] = {NULL, NULL, "--not", "--branches", "--remotes", NULL};
+
+	init_revisions(&rev, NULL);
+	argv[1] = xstrdup(sha1_to_hex(new_sha1));
+	setup_revisions(argc, argv, &rev, NULL);
+	if (prepare_revision_walk(&rev))
+		die("revision walk setup failed");
+
+	while ((commit = get_revision(&rev))) {
+		struct commit_list *parent = commit->parents;
+		while (parent) {
+			struct diff_options diff_opts;
+			diff_setup(&diff_opts);
+			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
+			diff_opts.format_callback = submodule_collect_changed_cb;
+			if (diff_setup_done(&diff_opts) < 0)
+				die("diff_setup_done failed");
+			diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
+			diffcore_std(&diff_opts);
+			diff_flush(&diff_opts);
+			parent = parent->next;
+		}
+	}
+	free((char *)argv[1]);
+}
+
 int fetch_populated_submodules(int num_options, const char **options,
-			       const char *prefix, int ignore_config,
+			       const char *prefix, int command_line_option,
 			       int quiet)
 {
-	int i, result = 0, argc = 0;
+	int i, result = 0, argc = 0, default_argc;
 	struct child_process cp;
 	const char **argv;
 	struct string_list_item *name_for_path;
@@ -264,11 +348,13 @@ int fetch_populated_submodules(int num_options, const char **options,
 		if (read_cache() < 0)
 			die("index file corrupt");
 
-	/* 4: "fetch" (options) "--submodule-prefix" prefix NULL */
-	argv = xcalloc(num_options + 4, sizeof(const char *));
+	/* 6: "fetch" (options) --submodule-default default "--submodule-prefix" prefix NULL */
+	argv = xcalloc(num_options + 6, sizeof(const char *));
 	argv[argc++] = "fetch";
 	for (i = 0; i < num_options; i++)
 		argv[argc++] = options[i];
+	argv[argc++] = "--submodule-default";
+	default_argc = argc++;
 	argv[argc++] = "--submodule-prefix";
 
 	memset(&cp, 0, sizeof(cp));
@@ -282,7 +368,7 @@ int fetch_populated_submodules(int num_options, const char **options,
 		struct strbuf submodule_git_dir = STRBUF_INIT;
 		struct strbuf submodule_prefix = STRBUF_INIT;
 		struct cache_entry *ce = active_cache[i];
-		const char *git_dir, *name;
+		const char *git_dir, *name, *default_argv;
 
 		if (!S_ISGITLINK(ce->ce_mode))
 			continue;
@@ -292,16 +378,31 @@ int fetch_populated_submodules(int num_options, const char **options,
 		if (name_for_path)
 			name = name_for_path->util;
 
-		if (!ignore_config) {
+		default_argv = "yes";
+		if (command_line_option == RECURSE_SUBMODULES_DEFAULT) {
 			struct string_list_item *fetch_recurse_submodules_option;
 			fetch_recurse_submodules_option = unsorted_string_list_lookup(&config_fetch_recurse_submodules_for_name, name);
 			if (fetch_recurse_submodules_option) {
-				if (!fetch_recurse_submodules_option->util)
+				if ((size_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_OFF)
 					continue;
+				if ((size_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_ON_DEMAND) {
+					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+						continue;
+					default_argv = "on-demand";
+				}
 			} else {
-				if (!config_fetch_recurse_submodules)
+				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_OFF)
 					continue;
+				if (config_fetch_recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND) {
+					if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+						continue;
+					default_argv = "on-demand";
+				}
 			}
+		} else if (command_line_option == RECURSE_SUBMODULES_ON_DEMAND) {
+			if (!unsorted_string_list_lookup(&changed_submodule_paths, ce->name))
+				continue;
+			default_argv = "on-demand";
 		}
 
 		strbuf_addf(&submodule_path, "%s/%s", work_tree, ce->name);
@@ -314,6 +415,7 @@ int fetch_populated_submodules(int num_options, const char **options,
 			if (!quiet)
 				printf("Fetching submodule %s%s\n", prefix, ce->name);
 			cp.dir = submodule_path.buf;
+			argv[default_argc] = default_argv;
 			argv[argc] = submodule_prefix.buf;
 			if (run_command(&cp))
 				result = 1;
