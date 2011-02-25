@@ -7,10 +7,15 @@ dots() {
 	perl -aF/ -ne 'print map { "../" } (1..$#F)'
 }
 
+force_link() {
+	test -d "$2" && ! test -h "$2" && rm -rf "$2"
+	ln -vsfT "$1" "$2"
+}
+
 link() {
 	dest="`dots $2`$1"
 	test "`readlink $2`" = "$dest" ||
-	ln -vsfT "$dest" "$2"
+	force_link "$dest" "$2"
 }
 
 link $c/exclude .git/info/exclude
