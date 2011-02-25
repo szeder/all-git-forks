@@ -1,0 +1,14 @@
+#!/bin/sh
+
+test "$2" = 'commit' &&
+git notes list "$3" >/dev/null 2>&1 ||
+exit 0
+
+tmp="$1.tmp"
+{
+	sed '/^#/d' "$1" &&
+	echo --- &&
+	git notes show "$3" &&
+	sed -n '/^#/p' "$1"
+} >"$tmp" &&
+mv "$tmp" "$1"

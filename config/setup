@@ -20,3 +20,4 @@ link() {
 
 link $c/exclude .git/info/exclude
 link $c/config.mak config.mak
+link $c/hooks .git/hooks
