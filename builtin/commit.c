@@ -33,6 +33,7 @@
 #include "notes-utils.h"
 #include "mailmap.h"
 #include "sigchain.h"
+#include "blob.h"
 
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [<options>] [--] <pathspec>..."),
@@ -139,6 +140,8 @@ static enum commit_whence whence;
 static int sequencer_in_use;
 static int use_editor = 1, include_status = 1;
 static int show_ignored_in_status, have_option_m;
+static const char *edit_notes;
+static struct notes_tree edit_notes_tree;
 static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
 
@@ -657,6 +660,68 @@ static void adjust_comment_line_char(const struct strbuf *sb)
 	comment_line_char = *p;
 }
 
+static void init_edit_notes(void) {
+	struct strbuf ref = STRBUF_INIT;
+	if (edit_notes_tree.initialized)
+		return;
+	strbuf_addstr(&ref, edit_notes);
+	expand_notes_ref(&ref);
+	init_notes(&edit_notes_tree, ref.buf,
+		   combine_notes_overwrite, 0);
+}
+
+static void add_notes_from_commit(struct strbuf *out, const char *name)
+{
+	struct commit *commit;
+	struct strbuf note = STRBUF_INIT;
+
+	init_edit_notes();
+
+	commit = lookup_commit_reference_by_name(name);
+	if (!commit)
+		die("could not lookup commit %s", name);
+	format_note(&edit_notes_tree, commit->object.oid.hash, &note,
+		    get_commit_output_encoding(), 0);
+
+	if (note.len) {
+		strbuf_addstr(out, "\n---\n");
+		strbuf_addbuf(out, &note);
+	}
+	strbuf_release(&note);
+}
+
+static void extract_notes_from_message(struct strbuf *msg, struct strbuf *notes)
+{
+	const char *separator = strstr(msg->buf, "\n---\n");
+
+	if (!separator)
+		return;
+
+	strbuf_addstr(notes, separator + 5);
+	strbuf_setlen(msg, separator - msg->buf + 1);
+}
+
+static void update_notes_for_commit(struct strbuf *notes,
+				    unsigned char *commit_sha1)
+{
+	init_edit_notes();
+
+	if (cleanup_mode != CLEANUP_NONE)
+		stripspace(notes, cleanup_mode == CLEANUP_ALL);
+
+	if (!notes->len)
+		remove_note(&edit_notes_tree, commit_sha1);
+	else {
+		unsigned char blob_sha1[20];
+		if (write_sha1_file(notes->buf, notes->len,
+				    blob_type, blob_sha1) < 0)
+			die("unable to write note blob");
+		add_note(&edit_notes_tree, commit_sha1, blob_sha1,
+			 combine_notes_overwrite);
+	}
+	commit_notes(&edit_notes_tree, "updated by commit --notes");
+}
+
 static int prepare_to_commit(const char *index_file, const char *prefix,
 			     struct commit *current_head,
 			     struct wt_status *s,
@@ -792,6 +857,8 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	if (signoff)
 		append_signoff(&sb, ignore_non_trailer(sb.buf, sb.len), 0);
 
+	if (edit_notes && amend)
+		add_notes_from_commit(&sb, "HEAD");
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
 		die_errno(_("could not write commit template"));
 
@@ -1157,6 +1224,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		use_editor = 0;
 	if (0 <= edit_flag)
 		use_editor = edit_flag;
+
+	if (!use_editor)
+		edit_notes = NULL;
+	/* Magic value for "no ref passed" */
+	if (edit_notes == (void *)1)
+		edit_notes = default_notes_ref();
 
 	/* Sanity check options */
 	if (amend && !current_head)
@@ -1599,6 +1672,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "status", &include_status, N_("include status in commit message template")),
 		{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
 		  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
+		{ OPTION_STRING, 0, "notes", &edit_notes, "ref",
+		  N_("edit notes interactively"), PARSE_OPT_OPTARG, NULL, 1 },
 		/* end commit message options */
 
 		OPT_GROUP(N_("Commit contents options")),
@@ -1634,6 +1709,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 
 	struct strbuf sb = STRBUF_INIT;
 	struct strbuf author_ident = STRBUF_INIT;
+	struct strbuf notes = STRBUF_INIT;
 	const char *index_file, *reflog_msg;
 	char *nl;
 	unsigned char sha1[20];
@@ -1737,6 +1813,9 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	    cleanup_mode == CLEANUP_SCISSORS)
 		wt_status_truncate_message_at_cut_line(&sb);
 
+	if (edit_notes)
+		extract_notes_from_message(&sb, &notes);
+
 	if (cleanup_mode != CLEANUP_NONE)
 		strbuf_stripspace(&sb, cleanup_mode == CLEANUP_ALL);
 	if (template_untouched(&sb) && !allow_empty_message) {
@@ -1765,6 +1844,10 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	}
 	strbuf_release(&author_ident);
 	free_commit_extra_headers(extra);
+
+	if (edit_notes)
+		update_notes_for_commit(&notes, sha1);
+	strbuf_release(&notes);
 
 	nl = strchr(sb.buf, '\n');
 	if (nl)
@@ -1800,7 +1883,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 
 	rerere(0);
 	run_commit_hook(use_editor, get_index_file(), "post-commit", NULL);
-	if (amend && !no_post_rewrite) {
+	if (!edit_notes && amend && !no_post_rewrite) {
 		struct notes_rewrite_cfg *cfg;
 		cfg = init_copy_notes_for_rewrite("amend");
 		if (cfg) {

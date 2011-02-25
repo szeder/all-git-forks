@@ -266,6 +266,9 @@ struct display_notes_opt {
  */
 void init_display_notes(struct display_notes_opt *opt);
 
+void format_note(struct notes_tree *t, const unsigned char *object_sha1,
+		 struct strbuf *sb, const char *output_encoding, int raw);
+
 /*
  * Append notes for the given 'object_sha1' from all trees set up by
  * init_display_notes() to 'sb'.  The 'flags' are a bitwise
