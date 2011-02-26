@@ -9,6 +9,7 @@ git (1:1.7.4.1-1.1) unstable; urgency=low
     exist (closes: #614659).
   * git-el.emacsen-remove: Do not complain if the site-lisp
     directory is nonempty or is already missing.
+  * debian/control: git-man: Section: doc.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 22 Feb 2011 16:53:27 -0600
 
