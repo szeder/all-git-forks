@@ -7,6 +7,8 @@ git (1:1.7.4.1-1.1) unstable; urgency=low
     up the old emacs support files on upgrade (closes: #614578)
   * git-el.emacsen-install: Overwrite .el symlinks if they already
     exist (closes: #614659).
+  * git-el.emacsen-remove: Do not complain if the site-lisp
+    directory is nonempty or is already missing.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 22 Feb 2011 16:53:27 -0600
 

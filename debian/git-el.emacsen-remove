@@ -13,6 +13,6 @@ then
   # -f to ignore if the directory is somehow already gone
   rm -f $elc_dir/*.el $elc_dir/*.elc
   # || true to quietly ignore if the directory is somehow not empty
-  rmdir $elc_dir || true
+  rmdir $elc_dir 2>/dev/null || true
 fi
 exit 0
