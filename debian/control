@@ -234,9 +234,9 @@ Description: fast, scalable, distributed revision control system (revision tree 
 
 Package: git-el
 Architecture: all
-Depends: git (>= 1:1.7.4.1-1.1), emacs | emacsen
-Replaces: git (<< 1:1.7.4.1-1.1)
-Breaks: git (<< 1:1.7.4.1-1.1)
+Depends: git (>= 1:1.7.4.1-2), emacs | emacsen
+Replaces: git (<< 1:1.7.4.1-2)
+Breaks: git (<< 1:1.7.4.1-2)
 Description: fast, scalable, distributed revision control system (emacs support)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile

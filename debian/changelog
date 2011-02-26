@@ -1,17 +1,17 @@
-git (1:1.7.4.1-1.1) unstable; urgency=low
+git (1:1.7.4.1-2) unstable; urgency=low
 
-  * README.emacs: git-blame.el does not print a summary in the
-    echo area (documents: #611935).
+  * README.emacs: git-blame.el does not print a summary in the echo
+    area (documents: #611935).
   * Move emacs support files to a separate git-el package.
-  * Make git depend on emacsen-support, so it can reliably clean
-    up the old emacs support files on upgrade (closes: #614578)
+  * Make git depend on emacsen-support, so it can reliably clean up
+    the old emacs support files on upgrade (closes: #614578)
   * git-el.emacsen-install: Overwrite .el symlinks if they already
     exist (closes: #614659).
   * git-el.emacsen-remove: Do not complain if the site-lisp
     directory is nonempty or is already missing.
   * debian/control: git-man: Section: doc.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 22 Feb 2011 16:53:27 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 26 Feb 2011 04:07:01 -0600
 
 git (1:1.7.4.1-1) unstable; urgency=low
 

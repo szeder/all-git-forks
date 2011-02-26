@@ -2,11 +2,11 @@
 set -e
 
 # Now /etc/emacs/site-start.d/50git-core.el belongs to the
-# git-el package.  If we are upgrading from a pre- 1.7.4.1-1.1
+# git-el package.  If we are upgrading from a pre- 1.7.4.1-2
 # version then git-el is at most unpacked (so its version
 # is 50git-core.el.dpkg-new if present), and we can remove
 # an unchanged 50git-core.el file without danger.
 #
 dpkg-maintscript-helper rm_conffile \
 	/etc/emacs/site-start.d/50git-core.el \
-	1:1.7.4.1-1.1~ -- "$@"
+	1:1.7.4.1-2~ -- "$@"
