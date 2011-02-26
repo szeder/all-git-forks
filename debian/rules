@@ -115,8 +115,6 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/emacs
-	ln -s ../../../git-core/emacs \
-	  '$(GIT)'/usr/share/doc/git/contrib/emacs
 	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644
 	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
 	find '$(GIT)'/usr/share/doc/git/ -name .gitignore | xargs rm -f
@@ -212,6 +210,9 @@ install-indep-real: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-el/usr/share/doc/git-el
 	ln -s ../git/README.emacs \
 	  '$(GIT)'-el/usr/share/doc/git-el/README.Debian
+	install -d -m0755 '$(GIT)'-el/usr/share/doc/git/contrib
+	ln -s ../../../git-core/emacs \
+	  '$(GIT)'-el/usr/share/doc/git/contrib/emacs
 	# git-gui
 	rm -rf '$(GIT)'-gui
 	install -d -m0755 '$(GIT)'-gui/usr/lib/git-core
