@@ -64,14 +64,19 @@ static void set_refspecs(const char **refs, int nr)
 	}
 }
 
-static void setup_push_upstream(void)
+static void setup_push_upstream(struct remote *remote)
 {
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
 	if (!branch)
 		die("You are not currently on a branch.");
 	if (!branch->merge_nr || !branch->merge)
-		die("The current branch %s has no upstream branch.",
+		die("The current branch %s has no upstream branch.\n"
+		    "To push the current branch and set the remote as upstream, use\n"
+		    "\n"
+		    "    git push --set-upstream %s %s\n",
+		    branch->name,
+		    remote->name,
 		    branch->name);
 	if (branch->merge_nr != 1)
 		die("The current branch %s has multiple upstream branches, "
@@ -80,7 +85,7 @@ static void setup_push_upstream(void)
 	add_refspec(refspec.buf);
 }
 
-static void setup_default_push_refspecs(void)
+static void setup_default_push_refspecs(struct remote *remote)
 {
 	switch (push_default) {
 	default:
@@ -89,7 +94,7 @@ static void setup_default_push_refspecs(void)
 		break;
 
 	case PUSH_DEFAULT_UPSTREAM:
-		setup_push_upstream();
+		setup_push_upstream(remote);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
@@ -175,7 +180,7 @@ static int do_push(const char *repo, int flags)
 			refspec = remote->push_refspec;
 			refspec_nr = remote->push_refspec_nr;
 		} else if (!(flags & TRANSPORT_PUSH_MIRROR))
-			setup_default_push_refspecs();
+			setup_default_push_refspecs(remote);
 	}
 	errs = 0;
 	if (remote->pushurl_nr) {
