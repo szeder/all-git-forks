@@ -69,7 +69,8 @@ static void setup_push_upstream(struct remote *remote)
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
 	if (!branch)
-		die("You are not currently on a branch.");
+		die("You are not currently on a branch (detached HEAD).\n"
+		    "Please, checkout the branch you want to push first or specify it on the command line.");
 	if (!branch->merge_nr || !branch->merge)
 		die("The current branch %s has no upstream branch.\n"
 		    "To push the current branch and set the remote as upstream, use\n"
@@ -152,7 +153,14 @@ static int do_push(const char *repo, int flags)
 	if (!remote) {
 		if (repo)
 			die("bad repository '%s'", repo);
-		die("No destination configured to push to.");
+		die("No destination configured to push to.\n"
+		    "Either specify the URL from the command line or configure a remote repository using\n"
+		    "\n"
+		    "    git remote add <name> <url>\n"
+		    "\n"
+		    "and then push using the remote name like\n"
+		    "\n"
+		    "    git push <name>\n");
 	}
 
 	if (remote->mirror)
