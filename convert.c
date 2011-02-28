@@ -736,7 +736,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 	const char *filter = NULL;
 
 	setup_convert_check(check);
-	if (!git_checkattr(path, ARRAY_SIZE(check), check)) {
+	if (!git_checkattr(path, ARRAY_SIZE(check), check, 0)) {
 		struct convert_driver *drv;
 		action = git_path_check_crlf(path, check + 4);
 		if (action == CRLF_GUESS)
@@ -773,7 +773,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	const char *filter = NULL;
 
 	setup_convert_check(check);
-	if (!git_checkattr(path, ARRAY_SIZE(check), check)) {
+	if (!git_checkattr(path, ARRAY_SIZE(check), check, 0)) {
 		struct convert_driver *drv;
 		action = git_path_check_crlf(path, check + 4);
 		if (action == CRLF_GUESS)

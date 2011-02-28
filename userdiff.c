@@ -245,7 +245,7 @@ struct userdiff_driver *userdiff_find_by_name(const char *name) {
 	return userdiff_find_by_namelen(name, len);
 }
 
-struct userdiff_driver *userdiff_find_by_path(const char *path)
+struct userdiff_driver *userdiff_find_by_path(const char *path, unsigned short mode)
 {
 	static struct git_attr *attr;
 	struct git_attr_check check;
@@ -256,7 +256,7 @@ struct userdiff_driver *userdiff_find_by_path(const char *path)
 
 	if (!path)
 		return NULL;
-	if (git_checkattr(path, 1, &check))
+	if (git_checkattr(path, 1, &check, mode))
 		return NULL;
 
 	if (ATTR_TRUE(check.value))

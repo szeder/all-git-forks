@@ -1784,8 +1784,7 @@ static void diff_filespec_load_driver(struct diff_filespec *one)
 	if (one->driver)
 		return;
 
-	if (S_ISREG(one->mode))
-		one->driver = userdiff_find_by_path(one->path);
+	one->driver = userdiff_find_by_path(one->path, one->mode);
 
 	/* Fallback to default settings */
 	if (!one->driver)
@@ -2683,7 +2682,7 @@ static void run_diff_cmd(const char *pgm,
 	if (!DIFF_OPT_TST(o, ALLOW_EXTERNAL))
 		pgm = NULL;
 	else {
-		struct userdiff_driver *drv = userdiff_find_by_path(attr_path);
+		struct userdiff_driver *drv = userdiff_find_by_path(attr_path, two->mode);
 		if (drv && drv->external)
 			pgm = drv->external;
 	}
