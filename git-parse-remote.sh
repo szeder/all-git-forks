@@ -29,29 +29,7 @@ get_data_source () {
 }
 
 get_remote_url () {
-	data_source=$(get_data_source "$1")
-	case "$data_source" in
-	'')
-		echo "$1"
-		;;
-	self)
-		echo "$1"
-		;;
-	config)
-		git config --get "remote.$1.url"
-		;;
-	remotes)
-		sed -ne '/^URL: */{
-			s///p
-			q
-		}' "$GIT_DIR/remotes/$1"
-		;;
-	branches)
-		sed -e 's/#.*//' "$GIT_DIR/branches/$1"
-		;;
-	*)
-		die "internal error: get-remote-url $1" ;;
-	esac
+	git ls-remote --get-url "$1"
 }
 
 get_default_remote () {
