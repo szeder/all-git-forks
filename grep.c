@@ -877,7 +877,7 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 	memset(&xecfg, 0, sizeof(xecfg));
 	if (opt->funcname && !opt->unmatch_name_only && !opt->status_only &&
 	    !opt->name_only && !binary_match_only && !collect_hits) {
-		struct userdiff_driver *drv = userdiff_find_by_path(name);
+		struct userdiff_driver *drv = userdiff_find_by_path(name, 0);
 		if (drv && drv->funcname.pattern) {
 			const struct userdiff_funcname *pe = &drv->funcname;
 			xdiff_set_find_func(&xecfg, pe->pattern, pe->cflags);

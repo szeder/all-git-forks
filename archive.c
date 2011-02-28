@@ -124,7 +124,7 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 	path_without_prefix = path.buf + args->baselen;
 
 	setup_archive_check(check);
-	if (!git_checkattr(path_without_prefix, ARRAY_SIZE(check), check)) {
+	if (!git_checkattr(path_without_prefix, ARRAY_SIZE(check), check, mode)) {
 		if (ATTR_TRUE(check[0].value))
 			return 0;
 		convert = ATTR_TRUE(check[1].value);

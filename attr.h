@@ -29,7 +29,7 @@ struct git_attr_check {
 	const char *value;
 };
 
-int git_checkattr(const char *path, int, struct git_attr_check *);
+int git_checkattr(const char *path, int, struct git_attr_check *, unsigned short mode);
 
 enum git_attr_direction {
 	GIT_ATTR_CHECKIN,

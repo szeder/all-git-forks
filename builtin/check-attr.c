@@ -24,7 +24,12 @@ static void check_attr(int cnt, struct git_attr_check *check,
 	const char** name, const char *file)
 {
 	int j;
-	if (git_checkattr(file, cnt, check))
+	unsigned int mode = 0;
+	struct stat st;
+
+	if (!lstat(file, &st))
+		mode = st.st_mode;
+	if (git_checkattr(file, cnt, check, mode))
 		die("git_checkattr died");
 	for (j = 0; j < cnt; j++) {
 		const char *value = check[j].value;

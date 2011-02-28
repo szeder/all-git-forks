@@ -708,16 +708,24 @@ static int macroexpand_one(int attr_nr, int rem)
 	return rem;
 }
 
-int git_checkattr(const char *path, int num, struct git_attr_check *check)
+int git_checkattr(const char *path, int num, struct git_attr_check *check, unsigned short mode)
 {
 	struct attr_stack *stk;
-	const char *cp;
+	const char *cp, *modestr;
 	int dirlen, pathlen, i, rem;
 
 	bootstrap_attr_stack();
 	for (i = 0; i < attr_nr; i++)
 		check_all_attr[i].value = ATTR__UNKNOWN;
 
+	modestr = ""; /* S_ISREG or unknown */
+	if (S_ISDIR(mode))
+		modestr = ":directory:";
+	else if (S_ISLNK(mode))
+		modestr = ":symlink:";
+	else if (S_ISGITLINK(mode))
+		modestr = ":submodule:";
+	path = prefix_filename(modestr, strlen(modestr), path);
 	pathlen = strlen(path);
 	cp = strrchr(path, '/');
 	if (!cp)
