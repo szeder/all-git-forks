@@ -1,6 +1,0 @@
-#!/bin/sh
-
-note="`git rev-parse --git-dir`/NOTE_MSG"
-test -s "$note" || exit 0
-git notes add -F "$note" &&
-rm -f "$note"
