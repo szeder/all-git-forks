@@ -467,7 +467,7 @@ cmd_update()
 			if test -z "$nofetch"
 			then
 				(clear_local_git_env; cd "$path" &&
-					git-fetch) ||
+					(git rev-parse --verify $sha1 >/dev/null || git-fetch)) ||
 				die "Unable to fetch in submodule path '$path'"
 			fi
 
