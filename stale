@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if test -n "`git rev-list -1 private..private@{u}`"; then
+	echo MERGE:private
+fi
+
+Meta/extra --stale
+
+for i in `Meta/topics`; do
+	if test -n "`git rev-list -1 $i..github/$i`"; then
+		echo PUSH:all
+		break;
+	fi
+done
