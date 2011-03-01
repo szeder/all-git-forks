@@ -15,6 +15,12 @@ my %remote = (
 my @push = grep { !$remote{$_} } (sort keys(%local));
 my @prune = grep { !$local{$_} } (sort keys(%remote));
 
+if (grep { $_ eq "--stale" } @ARGV) {
+	print "PUSH:$_\n" foreach @push;
+	print "PRUNE:$_\n" foreach @prune;
+	exit 0;
+}
+
 if (@push) {
 	print "Local branches that need pushed:\n";
 	print $_, "\n" foreach @push;
