@@ -1263,6 +1263,7 @@ static int try_delta(struct unpacked *trg, struct unpacked *src,
 	 * on an earlier try, but only when reusing delta data.
 	 */
 	if (reuse_delta && trg_entry->in_pack &&
+	    !pretend_pack_as_exploded(trg_entry->in_pack) &&
 	    trg_entry->in_pack == src_entry->in_pack &&
 	    trg_entry->in_pack_type != OBJ_REF_DELTA &&
 	    trg_entry->in_pack_type != OBJ_OFS_DELTA)
