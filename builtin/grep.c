@@ -955,7 +955,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	}
 
 	if (i < argc)
-		paths = get_pathspec(prefix, argv + i);
+		paths = get_pathspec(!full_tree ? prefix : NULL, argv + i);
 	else if (prefix && !full_tree) {
 		paths = xcalloc(2, sizeof(const char *));
 		paths[0] = prefix;
