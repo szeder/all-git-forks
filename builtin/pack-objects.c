@@ -986,6 +986,11 @@ static void cleanup_preferred_base(void)
 	done_pbase_paths_num = done_pbase_paths_alloc = 0;
 }
 
+static int allow_reusing_delta(struct object_entry *entry)
+{
+	return (reuse_delta && !entry->preferred_base);
+}
+
 static void check_object(struct object_entry *entry)
 {
 	if (entry->in_pack) {
@@ -1025,7 +1030,7 @@ static void check_object(struct object_entry *entry)
 			unuse_pack(&w_curs);
 			return;
 		case OBJ_REF_DELTA:
-			if (reuse_delta && !entry->preferred_base)
+			if (allow_reusing_delta(entry))
 				base_ref = use_pack(p, &w_curs,
 						entry->in_pack_offset + used, NULL);
 			entry->in_pack_header_size = used + 20;
@@ -1052,7 +1057,7 @@ static void check_object(struct object_entry *entry)
 				      sha1_to_hex(entry->idx.sha1));
 				goto give_up;
 			}
-			if (reuse_delta && !entry->preferred_base) {
+			if (allow_reusing_delta(entry)) {
 				struct revindex_entry *revidx;
 				revidx = find_pack_revindex(p, ofs);
 				if (!revidx)
