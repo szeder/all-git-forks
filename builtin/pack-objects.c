@@ -74,6 +74,7 @@ static const char *base_name;
 static int progress = 1;
 static int window = 10;
 static unsigned long pack_size_limit, pack_size_limit_cfg;
+static unsigned long pack_too_tiny_limit;
 static int depth = 50;
 static int delta_search_threads;
 static int pack_to_stdout;
@@ -102,6 +103,14 @@ static int object_ix_hashsz;
 static uint32_t written, written_delta;
 static uint32_t reused, reused_delta;
 
+static int pretend_pack_as_exploded(const struct packed_git *p)
+{
+	/*
+	 * NEEDSWORK: perhaps take the relative age of the pack
+	 * relative to other packs into account.
+	 */
+	return (p->num_objects < pack_too_tiny_limit);
+}
 
 static void *get_delta(struct object_entry *entry)
 {
@@ -988,7 +997,8 @@ static void cleanup_preferred_base(void)
 
 static int allow_reusing_delta(struct object_entry *entry)
 {
-	return (reuse_delta && !entry->preferred_base);
+	return (reuse_delta && !entry->preferred_base &&
+		!pretend_pack_as_exploded(entry->in_pack));
 }
 
 static void check_object(struct object_entry *entry)
@@ -1895,6 +1905,10 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		pack_size_limit_cfg = git_config_ulong(k, v);
 		return 0;
 	}
+	if (!strcmp(k, "pack.tootinylimit")) {
+		pack_too_tiny_limit = git_config_ulong(k, v);
+		return 0;
+	}
 	return git_default_config(k, v, cb);
 }
 
@@ -2138,6 +2152,14 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	git_config(git_pack_config, NULL);
 	if (!pack_compression_seen && core_compression_seen)
 		pack_compression_level = core_compression_level;
+	if (!pack_too_tiny_limit) {
+		/*
+		 * NEEDSWORK: tie this with configured fetch.unpacklimit
+		 * and transfer.unpacklimit, perhas four times their value.
+		 * Also do not forget to deprecate fetch.unpacklimit some day.
+		 */
+		pack_too_tiny_limit = 400;
+	}
 
 	progress = isatty(2);
 	for (i = 1; i < argc; i++) {
