@@ -7,9 +7,10 @@ my %local = (
 );
 my %remote = (
 	map { $_ => 1 }
+	grep { m{/} }
 	map { s,^github/,,; $_ }
 	map { chomp; $_ }
-	`git for-each-ref --format='%(refname:short)' refs/remotes/github/jk`
+	`git for-each-ref --format='%(refname:short)' refs/remotes/github`
 );
 
 if (grep { $_ eq "--matched" } @ARGV) {
