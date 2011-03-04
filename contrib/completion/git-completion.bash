@@ -1356,7 +1356,7 @@ _git_diff ()
 		return
 		;;
 	esac
-	__git_complete_file
+	__git_complete_revlist
 }
 
 __git_mergetools_common="diffuse ecmerge emerge kdiff3 meld opendiff
