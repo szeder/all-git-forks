@@ -2643,6 +2643,14 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 				apply = 0;
 		}
 
+		if (apply_verbosely && applied_pos != pos) {
+			int offset = applied_pos - pos;
+			if (offset < 0)
+				offset = 0 - offset;
+			fprintf(stderr, "Applied at %d (offset %d line(s)).\n",
+				applied_pos + 1, offset);
+		}
+
 		/*
 		 * Warn if it was necessary to reduce the number
 		 * of context lines.
