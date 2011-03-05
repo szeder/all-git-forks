@@ -20,6 +20,8 @@
  */
 #define constcmp(s, ref) memcmp(s, ref, sizeof(ref) - 1)
 
+#define REPORT_FILENO 3
+
 #define NODEACT_REPLACE 4
 #define NODEACT_DELETE 3
 #define NODEACT_ADD 2
@@ -437,6 +439,7 @@ int svndump_init(const char *filename)
 	strbuf_init(&dump_ctx.url, 4096);
 	strbuf_init(&rev_ctx.log, 4096);
 	strbuf_init(&rev_ctx.author, 4096);
+	fast_export_init(REPORT_FILENO);
 	reset_dump_ctx(NULL);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
@@ -445,6 +448,7 @@ int svndump_init(const char *filename)
 
 void svndump_deinit(void)
 {
+	fast_export_deinit();
 	repo_reset();
 	reset_dump_ctx(NULL);
 	reset_rev_ctx(0);
@@ -458,6 +462,7 @@ void svndump_deinit(void)
 
 void svndump_reset(void)
 {
+	fast_export_reset();
 	buffer_reset(&input);
 	repo_reset();
 	strbuf_release(&dump_ctx.uuid);
