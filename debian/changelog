@@ -1,5 +1,10 @@
-git (1:1.7.4.1-2) unstable; urgency=low
+git (1:1.7.4.1-3) unstable; urgency=low
 
+  [ Anders Kaseorg ]
+  * Loosen versioned replaces/conflicts on git-core, to fix upgrades from
+    lucid.
+
+  [ Jonathan Nieder ]
   * README.emacs: git-blame.el does not print a summary in the echo
     area (documents: #611935).
   * Move emacs support files to a separate git-el package.
@@ -11,7 +16,7 @@ git (1:1.7.4.1-2) unstable; urgency=low
     directory is nonempty or is already missing.
   * debian/control: git-man: Section: doc.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 26 Feb 2011 04:07:01 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 04 Mar 2011 18:26:27 -0600
 
 git (1:1.7.4.1-1) unstable; urgency=low
 
