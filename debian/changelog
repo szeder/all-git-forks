@@ -1,3 +1,10 @@
+git (1:1.7.4.1-3.1) experimental; urgency=low
+
+  * git-el.postinst: check if /usr/share/doc/git/contrib/emacs is
+    already a symlink before making room for one.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 09 Mar 2011 16:52:14 -0600
+
 git (1:1.7.4.1-3) unstable; urgency=low
 
   [ Anders Kaseorg ]

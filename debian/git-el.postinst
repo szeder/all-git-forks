@@ -5,8 +5,10 @@ test "$1" = configure || exit 0
 
 # Replace the old /usr/share/doc/git/contrib/emacs directory
 # with a symlink.
-test -z "$2" || exit 0
+test -z "$2" &&
+! test -L /usr/share/doc/git/contrib/emacs &&
 test -d /usr/share/doc/git/contrib/emacs || exit 0
+
 if ! rmdir /usr/share/doc/git/contrib/emacs; then
   echo Moving /usr/share/doc/git/contrib/emacs to emacs.old >&2
   mv -f /usr/share/doc/git/contrib/emacs /usr/share/doc/git/contrib/emacs.old
