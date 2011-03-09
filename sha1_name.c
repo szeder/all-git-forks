@@ -1358,6 +1358,20 @@ static int get_sha1_with_context_1(const char *name,
 
 			free(new_filename);
 			return ret;
+		} else if (!memcmp(name, "ref", 3)) {
+			unsigned char discard[20];
+			char *full;
+
+			switch (dwim_ref(name+4, strlen(name+4), discard, &full)) {
+			case 0:
+				die("Invalid refname '%s'.", name+4);
+			case 1: /* happy */
+				break;
+			default: /* ambiguous */
+				error("Refname '%s' is ambiguous.", name+4);
+				break;
+			}
+			return hash_sha1_refname(full, sha1);
 		} else {
 			if (only_to_die)
 				die("Invalid object name '%s'.", object_name);
