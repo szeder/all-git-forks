@@ -6,11 +6,11 @@ set -e
 FLAVOR=$1
 elc_dir=/usr/share/${FLAVOR}/site-lisp/git
 
-echo remove/git: Handling removal of emacsen flavor ${FLAVOR}
+printf 'remove/git: Handling removal of emacsen flavor %s\n' "$FLAVOR"
 
 if [ ${FLAVOR} != emacs ]
 then
-  echo git: purging byte-compiled files for ${FLAVOR}
+  printf 'remove/git: purging byte-compiled files for %s\n' "$FLAVOR"
 
   # -f to ignore if the directory is somehow already gone
   rm -f $elc_dir/*.el $elc_dir/*.elc

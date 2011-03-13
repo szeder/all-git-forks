@@ -8,7 +8,7 @@
 
 set -e
 FLAVOR=$1
-echo install/git: Handling install of emacsen flavor $FLAVOR
+printf 'install/git: Handling install of emacsen flavor %s\n' "$FLAVOR"
 
 el_files="git.el git-blame.el"
 el_dir=/usr/share/git-core/emacs
@@ -16,7 +16,7 @@ elc_dir=/usr/share/$FLAVOR/site-lisp/git
 
 if [ $FLAVOR != emacs ]
 then
-  echo install/git: byte-compiling for $FLAVOR
+  printf 'install/git: byte-compiling for %s\n' "$FLAVOR"
 
   [ -d $elc_dir ] || mkdir $elc_dir
 
