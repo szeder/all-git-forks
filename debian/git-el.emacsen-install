@@ -1,15 +1,12 @@
 #!/bin/sh
+# Based on /usr/share/doc/emacsen-common/sample-package-install-foo.gz.
+#
+# Unlike the example, we place symlinks to the elisp source alongside
+# the compiled bytecode, so the .el source is available to the various
+# Emacs help tools.  Putting .el and .elc files in the same directory
+# keeps "list-load-path-shadows" happy.
+
 set -e
-
-# This install uses the ".el symlinks with the .elc" style.
-# It makes the .el source available to the various Emacs
-# help tools, and having the .el and .elc in the same dir
-# makes `list-load-path-shadows' happy.
-#
-# There used to be a copy of vc-git.el in git-core, but no
-# longer.  It's included in Emacs itself in Emacs 22.2 up.
-#
-
 FLAVOR=$1
 echo install/git: Handling install of emacsen flavor $FLAVOR
 
