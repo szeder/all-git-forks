@@ -1,4 +1,4 @@
-git (1:1.7.4.1-3.1) experimental; urgency=low
+git (1:1.7.4.1-4) experimental; urgency=low
 
   * git-el.postinst: check if /usr/share/doc/git/contrib/emacs is a
     symlink before changing it to one (closes: #617631).
@@ -15,7 +15,7 @@ git (1:1.7.4.1-3.1) experimental; urgency=low
       install.
     - make output less noisy --- for example, do not say "+ set +x".
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 09 Mar 2011 16:52:14 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 13 Mar 2011 05:03:44 -0500
 
 git (1:1.7.4.1-3) unstable; urgency=low
 
