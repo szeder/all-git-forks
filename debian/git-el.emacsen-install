@@ -8,28 +8,26 @@
 
 set -e
 FLAVOR=$1
-printf 'install/git: Handling install of emacsen flavor %s\n' "$FLAVOR"
-
 el_files="git.el git-blame.el"
 el_dir=/usr/share/git-core/emacs
 elc_dir=/usr/share/$FLAVOR/site-lisp/git
 
-if [ $FLAVOR != emacs ]
-then
-  printf 'install/git: byte-compiling for %s\n' "$FLAVOR"
+# The emacs startup file looks for these files in
+# /usr/share/${debian-emacs-flavor}/site-lisp/git.
+# Installing to the generic /usr/share/emacs/site-list/git would be
+# pointless.
+[ "$FLAVOR" != emacs ] || exit 0
 
-  [ -d $elc_dir ] || mkdir $elc_dir
-
-  # Symlink .el file(s)
+printf 'install/git: Handling install of emacsen flavor %s\n' "$FLAVOR"
+[ -d "$elc_dir" ] || mkdir "$elc_dir"
+(
   cd $elc_dir
   for i in $el_files
   do
     ln -sf $el_dir/$i $i
   done
 
-  # Byte compile .el file(s)
+  printf 'install/git: Byte-compiling for %s\n' "$FLAVOR"
   set -x
   $FLAVOR -batch -q -no-site-file -f batch-byte-compile $el_files
-  set +x
-fi
-exit 0
+)

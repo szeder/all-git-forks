@@ -4,17 +4,13 @@
 #  2. Remove .el symlinks from the site-lisp directory.
 set -e
 FLAVOR=$1
-elc_dir=/usr/share/${FLAVOR}/site-lisp/git
+el_files="git.el git-blame.el"
+elc_files="git.elc git-blame.elc"
+elc_dir=/usr/share/$FLAVOR/site-lisp/git
 
+[ "$FLAVOR" != emacs ] || exit 0
 printf 'remove/git: Handling removal of emacsen flavor %s\n' "$FLAVOR"
-
-if [ ${FLAVOR} != emacs ]
-then
-  printf 'remove/git: purging byte-compiled files for %s\n' "$FLAVOR"
-
-  # -f to ignore if the directory is somehow already gone
-  rm -f $elc_dir/*.el $elc_dir/*.elc
-  # || true to quietly ignore if the directory is somehow not empty
-  rmdir $elc_dir 2>/dev/null || true
-fi
-exit 0
+[ -d "$elc_dir" ] || exit 0
+(cd "$elc_dir"; rm -f $elc_files $el_files)
+# Simulate --ignore-fail-on-non-empty (which is a GNU extension).
+rmdir "$elc_dir" 2>/dev/null || true
