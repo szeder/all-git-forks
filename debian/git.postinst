@@ -2,10 +2,6 @@
 set -e
 test "$1" = configure || exit 0
 
-if dpkg --compare-versions "$2" lt '1:1.7.4.1-2~'; then
-  /usr/lib/emacsen-common/emacs-package-remove git
-fi
-
 removed_conffile=/etc/emacs/site-start.d/50git-core.el
 dpkg-maintscript-helper rm_conffile \
 	"$removed_conffile" \
