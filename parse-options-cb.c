@@ -4,6 +4,7 @@
 #include "commit.h"
 #include "color.h"
 #include "string-list.h"
+#include "notes.h"
 
 /*----- some often used options -----*/
 
@@ -83,6 +84,26 @@ int parse_opt_with_commit(const struct option *opt, const char *arg, int unset)
 	if (!commit)
 		return error("no such commit %s", arg);
 	commit_list_insert(commit, opt->value);
+	return 0;
+}
+
+int parse_opt_with_notes(const struct option *opt, const char *arg, int unset)
+{
+	const char *notes_ref;
+	if (!arg)
+		notes_ref = default_notes_ref();
+	else {
+		struct strbuf buf = STRBUF_INIT;
+		if (!prefixcmp(arg, "refs/"))
+			/* happy */;
+		else if (!prefixcmp(arg, "notes/"))
+			strbuf_addstr(&buf, "refs/");
+		else
+			strbuf_addstr(&buf, "refs/notes/");
+		strbuf_addstr(&buf, arg);
+		notes_ref = strbuf_detach(&buf, NULL);
+	}
+	*(const char **)(opt->value) = notes_ref;
 	return 0;
 }
 
