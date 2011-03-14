@@ -485,7 +485,7 @@ static void add_verbose_info(struct strbuf *out, struct ref_item *item,
 }
 
 static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
-			   int abbrev, int current, char *prefix)
+			   int abbrev, int current, char *prefix, int with_notes)
 {
 	char c;
 	int color;
@@ -528,11 +528,23 @@ static void print_ref_item(struct ref_item *item, int maxwidth, int verbose,
 	else if (verbose)
 		/* " f7c0c00 [ahead 58, behind 197] vcs-svn: drop obj_pool.h" */
 		add_verbose_info(&out, item, verbose, abbrev);
+	if (with_notes) {
+		strbuf_addch(&out, '\n');
+		unsigned char refsha1[20];
+		strbuf_reset(&name);
+		strbuf_addstr(&name, (item->kind == REF_LOCAL_BRANCH) ?
+			"refs/heads/" : "refs/remotes/" );
+		strbuf_addstr(&name, item->name);
+		hash_sha1_refname(name.buf, refsha1);
+		format_note(NULL, refsha1, &out, NULL, NOTES_INDENT);
+	}
 	if (column_active(colopts)) {
 		assert(!verbose && "--column and --verbose are incompatible");
 		string_list_append(&output, out.buf);
 	} else {
-		printf("%s\n", out.buf);
+		if (!with_notes)
+			strbuf_addch(&out, '\n');
+		fputs(out.buf, stdout);
 	}
 	strbuf_release(&name);
 	strbuf_release(&out);
@@ -564,12 +576,12 @@ static void show_detached(struct ref_list *ref_list)
 		item.commit = head_commit;
 		if (item.width > ref_list->maxwidth)
 			ref_list->maxwidth = item.width;
-		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1, "");
+		print_ref_item(&item, ref_list->maxwidth, ref_list->verbose, ref_list->abbrev, 1, "", 0);
 		free(item.name);
 	}
 }
 
-static int print_ref_list(int kinds, int detached, int verbose, int abbrev, struct commit_list *with_commit, const char **pattern)
+static int print_ref_list(int kinds, int detached, int verbose, int abbrev, struct commit_list *with_commit, const char **pattern, int with_notes)
 {
 	int i;
 	struct append_ref_cb cb;
@@ -616,7 +628,7 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 				ref_list.list[i].kind == REF_REMOTE_BRANCH)
 				? "remotes/" : "";
 		print_ref_item(&ref_list.list[i], ref_list.maxwidth, verbose,
-			       abbrev, current, prefix);
+			       abbrev, current, prefix, with_notes);
 	}
 
 	free_ref_list(&ref_list);
@@ -736,12 +748,13 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 {
 	int delete = 0, rename = 0, force_create = 0, list = 0;
 	int verbose = 0, abbrev = -1, detached = 0;
-	int reflog = 0, edit_description = 0;
+	int reflog = 0, edit_description = 0, with_notes = 0;
 	int quiet = 0, unset_upstream = 0;
 	const char *new_upstream = NULL;
 	enum branch_track track;
 	int kinds = REF_LOCAL_BRANCH;
 	struct commit_list *with_commit = NULL;
+	char *notes_ref = NULL;
 
 	struct option options[] = {
 		OPT_GROUP(N_("Generic options")),
@@ -770,6 +783,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			parse_opt_with_commit, (intptr_t) "HEAD",
 		},
 		OPT__ABBREV(&abbrev),
+		OPT__NOTES(&notes_ref),
 
 		OPT_GROUP(N_("Specific git-branch actions:")),
 		OPT_SET_INT('a', "all", &kinds, N_("list both remote-tracking and local branches"),
@@ -837,11 +851,16 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		colopts = 0;
 	}
 
+	if (notes_ref) {
+		init_notes(NULL, notes_ref, NULL, 0);
+		with_notes = 1;
+	}
+
 	if (delete)
 		return delete_branches(argc, argv, delete > 1, kinds, quiet);
 	else if (list) {
 		int ret = print_ref_list(kinds, detached, verbose, abbrev,
-					 with_commit, argv);
+					 with_commit, argv, with_notes);
 		print_columns(&output, colopts, NULL);
 		string_list_clear(&output, 0);
 		return ret;
