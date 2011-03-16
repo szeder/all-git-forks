@@ -1,4 +1,4 @@
-git (1:1.7.4.1-4.1) unstable; urgency=low
+git (1:1.7.4.1-5) unstable; urgency=low
 
   * merge branch debian-experimental.
   * debian/diff/0008...0036: new from the upstream 'maint' branch:
@@ -10,7 +10,7 @@ git (1:1.7.4.1-4.1) unstable; urgency=low
     * various documentation, usage string, and code clarity
       improvements
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 16 Mar 2011 10:22:31 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 16 Mar 2011 12:48:52 -0500
 
 git (1:1.7.4.1-4) experimental; urgency=low
 
