@@ -1,6 +1,14 @@
 git (1:1.7.4.1-4.1) unstable; urgency=low
 
   * merge branch debian-experimental.
+  * debian/diff/0008...0036: new from the upstream 'maint' branch:
+    * revert "core.abbrevguard: Ensure short object names stay
+      unique a bit longer"
+    * parse_tag_buffer(): do not prefixcmp() out of range
+    * pull: do not display fetch usage on --help-all
+    * gitweb: address warnings from perl 5.13
+    * various documentation, usage string, and code clarity
+      improvements
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 16 Mar 2011 10:22:31 -0500
 

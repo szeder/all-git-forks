@@ -1,3 +1,77 @@
+Version release+patches; changes since v1.7.4.1:
+------------------------------------------------
+
+Adam Monsen (1):
+      diff format documentation: clarify --cc and -c
+
+Alexei Sholik (2):
+      Documentation: remove redundant colons in git-for-each-ref.txt
+      Add Author and Documentation sections to git-for-each-ref.txt
+
+Anders Kaseorg (1):
+      gitk: Take only numeric version components when computing $git_version
+
+Clemens Buchacher (1):
+      Documentation: clarify -u<mode> option defaults
+
+Eric Hanchrow (1):
+      branch_merged: fix grammar in warning
+
+Frédéric Brière (1):
+      gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+
+Gerrit Pape (2):
+      ident: check /etc/mailname if author email is unknown
+      bug#506445: hooks/post-receive-email: set encoding to utf-8
+
+Jeff King (1):
+      string_list_append: always set util pointer to NULL
+
+Jonathan Nieder (4):
+      remove shebang line from shell libraries
+      pre-rebase hook: capture documentation in a <<here document
+      gitk: use symbolic font names "sans" and "monospace"
+      correct type of EMPTY_TREE_SHA1_BIN
+
+Junio C Hamano (3):
+      verify-pack: add --stat-only to the synopsis section
+      SubmittingPatches: clarify the expected commit log description
+      Revert "core.abbrevguard: Ensure short object names stay unique a bit longer"
+
+Mathias Lafeldt (1):
+      Fix typo in t/README
+
+Michael J Gruber (9):
+      commit,tag: use same wording for -F
+      commit,status: describe --porcelain just like push
+      clone,init: describe --template using the same wording
+      commit,merge,tag: describe -m likewise
+      add: describe --patch like checkout, reset
+      commit,status: describe -u likewise
+      git-tag.txt: list all modes in the description
+      pull: do not display fetch usage on --help-all
+      rev-list-options.txt: typo fix
+
+Michał Kiedrowicz (1):
+      Documentation: fix a typo in git-apply.txt
+
+Nguyễn Thái Ngọc Duy (2):
+      parse_tag_buffer(): do not prefixcmp() out of range
+      init: remove unnecessary check
+
+Piotr Krukowiecki (1):
+      ls-remote documentation: <refs> argument is optional
+
+Ralf Wildenhues (1):
+      configure: use AC_LANG_PROGRAM consistently
+
+Ævar Arnfjörð Bjarmason (4):
+      gitweb/gitweb.perl: remove use of qw(...) as parentheses
+      gitweb/gitweb.perl: don't call S_ISREG() with undef
+      t/gitweb-lib.sh: Ensure that errors are shown for --debug --immediate
+      t/t7500-commit.sh: use test_cmp instead of test
+
+
 Version v1.7.4.1; changes since v1.7.2.3:
 -----------------------------------------
 
