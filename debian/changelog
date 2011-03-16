@@ -1,3 +1,10 @@
+git (1:1.7.2.5-2) stable; urgency=low
+
+  * debian/git-daemon-run.postrm purge: terminate the git-daemon/log
+    service before removing the gitlog user (closes: #610099).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 20 Apr 2011 17:17:27 -0500
+
 git (1:1.7.2.5-1) stable; urgency=low
 
   * new upstream point release.
