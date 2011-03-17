@@ -11,6 +11,10 @@ Alexei Sholik (2):
 Anders Kaseorg (1):
       gitk: Take only numeric version components when computing $git_version
 
+Carlos Martín Nieto (2):
+      valgrind: ignore SSE-based strlen invalid reads
+      make_absolute_path: return the input path if it points to our buffer
+
 Clemens Buchacher (1):
       Documentation: clarify -u<mode> option defaults
 
@@ -24,24 +28,51 @@ Gerrit Pape (2):
       ident: check /etc/mailname if author email is unknown
       bug#506445: hooks/post-receive-email: set encoding to utf-8
 
-Jeff King (1):
-      string_list_append: always set util pointer to NULL
+Jay Soffian (1):
+      merge: honor prepare-commit-msg hook
 
-Jonathan Nieder (4):
+Jeff King (4):
+      string_list_append: always set util pointer to NULL
+      clone: die when trying to clone missing local path
+      diff: handle diffstat of rewritten binary files
+      diff: don't retrieve binary blobs for diffstat
+
+Johan Herland (1):
+      push.default: Rename 'tracking' to 'upstream'
+
+Jonathan Nieder (12):
       remove shebang line from shell libraries
       pre-rebase hook: capture documentation in a <<here document
       gitk: use symbolic font names "sans" and "monospace"
       correct type of EMPTY_TREE_SHA1_BIN
+      tests: skip terminal output tests on OS X
+      commit: error out for missing commit message template
+      enums: omit trailing comma for portability
+      compat: make gcc bswap an inline function
+      standardize brace placement in struct definitions
+      branch: split off function that writes tracking info and commit subject
+      cherry: split off function to print output lines
+      diff --submodule: split into bite-sized pieces
 
-Junio C Hamano (3):
+Junio C Hamano (5):
       verify-pack: add --stat-only to the synopsis section
       SubmittingPatches: clarify the expected commit log description
       Revert "core.abbrevguard: Ensure short object names stay unique a bit longer"
+      CodingGuidelines: downcase placeholders in usage messages
+      Prepare draft release notes to 1.7.4.2
+
+Kevin Cernekee (1):
+      gitweb: highlight: replace tabs with spaces
+
+Linus Torvalds (3):
+      for_each_hash: allow passing a 'void *data' pointer to callback
+      diffcore-rename: properly honor the difference between -M and -C
+      diffcore-rename: improve estimate_similarity() heuristics
 
 Mathias Lafeldt (1):
       Fix typo in t/README
 
-Michael J Gruber (9):
+Michael J Gruber (16):
       commit,tag: use same wording for -F
       commit,status: describe --porcelain just like push
       clone,init: describe --template using the same wording
@@ -51,6 +82,13 @@ Michael J Gruber (9):
       git-tag.txt: list all modes in the description
       pull: do not display fetch usage on --help-all
       rev-list-options.txt: typo fix
+      Make <identifier> lowercase as per CodingGuidelines
+      Make <identifier> lowercase as per CodingGuidelines
+      Make <identifier> lowercase as per CodingGuidelines
+      Make <identifier> lowercase in Documentation
+      git-patch-id: test for "no newline" markers
+      git-patch-id: do not trip over "no newline" markers
+      mergetool-lib: call vim in readonly mode for diffs
 
 Michał Kiedrowicz (1):
       Documentation: fix a typo in git-apply.txt
