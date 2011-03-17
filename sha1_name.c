@@ -1362,13 +1362,15 @@ static int get_sha1_with_context_1(const char *name,
 			unsigned char discard[20];
 			char *full;
 
-			switch (dwim_ref(name+4, strlen(name+4), discard, &full)) {
+			if (!strlen(cp+1))
+				cp = ":HEAD";
+			switch (dwim_ref(cp+1, strlen(cp+1), discard, &full)) {
 			case 0:
-				die("Invalid refname '%s'.", name+4);
+				die("Invalid refname '%s'.", cp+1);
 			case 1: /* happy */
 				break;
 			default: /* ambiguous */
-				error("Refname '%s' is ambiguous.", name+4);
+				error("Refname '%s' is ambiguous.", cp+1);
 				break;
 			}
 			return hash_sha1_refname(full, sha1);
