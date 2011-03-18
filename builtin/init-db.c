@@ -21,6 +21,7 @@
 static int init_is_bare_repository = 0;
 static int init_shared_repository = -1;
 static const char *init_db_template_dir;
+static const char *git_link;
 
 static void safe_create_dir(const char *dir, int share)
 {
@@ -311,9 +312,41 @@ static void create_object_directory(void)
 	free(path);
 }
 
+int set_git_dir_init(const char *git_dir, const char *real_git_dir)
+{
+	if (real_git_dir) {
+		struct stat st;
+
+		if (!stat(git_dir, &st))
+			die("%s already exists", git_dir);
+		git_link = git_dir;
+	}
+	else {
+		real_git_dir = git_dir;
+		git_link = NULL;
+	}
+	set_git_dir(real_path(real_git_dir));
+	return 0;
+}
+
 int init_db(const char *template_dir, unsigned int flags)
 {
 	int reinit;
+
+	if (git_link) {
+		struct stat st;
+		FILE *fp;
+
+		/* TODO: allow --real-git-dir to move repo elsewhere */
+		if (!lstat(git_link, &st))
+			die("%s already exists", git_link);
+
+		fp = fopen(git_link, "w");
+		if (!fp)
+			die("Could not create git link %s", git_link);
+		fprintf(fp, "gitdir: %s\n", get_git_dir());
+		fclose(fp);
+	}
 
 	safe_create_dir(get_git_dir(), 0);
 
@@ -420,6 +453,7 @@ static const char *const init_db_usage[] = {
 int cmd_init_db(int argc, const char **argv, const char *prefix)
 {
 	const char *git_dir;
+	const char *real_git_dir = NULL;
 	const char *work_tree;
 	const char *template_dir = NULL;
 	unsigned int flags = 0;
@@ -433,6 +467,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 			"specify that the git repository is to be shared amongst several users",
 			PARSE_OPT_OPTARG | PARSE_OPT_NONEG, shared_callback, 0},
 		OPT_BIT('q', "quiet", &flags, "be quiet", INIT_DB_QUIET),
+		OPT_STRING(0, "real-git-dir", &real_git_dir, "git-dir",
+			   "directory where real .git is initialized"),
 		OPT_END()
 	};
 
@@ -528,7 +564,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 			set_git_work_tree(real_path(work_tree));
 	}
 
-	set_git_dir(real_path(git_dir));
+	set_git_dir_init(git_dir, real_git_dir);
 
 	return init_db(template_dir, flags);
 }
