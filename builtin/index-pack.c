@@ -11,7 +11,7 @@
 #include "exec_cmd.h"
 
 static const char index_pack_usage[] =
-"git index-pack [-v] [-o <index-file>] [ --keep | --keep=<msg> ] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
+"git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
 
 struct object_entry {
 	struct pack_idx_entry idx;
@@ -389,7 +389,18 @@ static void *get_data_from_pack(struct object_entry *obj)
 	return data;
 }
 
-static int find_delta(const union delta_base *base)
+static int compare_delta_bases(const union delta_base *base1,
+			       const union delta_base *base2,
+			       enum object_type type1,
+			       enum object_type type2)
+{
+	int cmp = type1 - type2;
+	if (cmp)
+		return cmp;
+	return memcmp(base1, base2, UNION_BASE_SZ);
+}
+
+static int find_delta(const union delta_base *base, enum object_type type)
 {
 	int first = 0, last = nr_deltas;
 
@@ -398,7 +409,8 @@ static int find_delta(const union delta_base *base)
                 struct delta_entry *delta = &deltas[next];
                 int cmp;
 
-                cmp = memcmp(base, &delta->base, UNION_BASE_SZ);
+		cmp = compare_delta_bases(base, &delta->base,
+					  type, objects[delta->obj_no].type);
                 if (!cmp)
                         return next;
                 if (cmp < 0) {
@@ -411,9 +423,10 @@ static int find_delta(const union delta_base *base)
 }
 
 static void find_delta_children(const union delta_base *base,
-				int *first_index, int *last_index)
+				int *first_index, int *last_index,
+				enum object_type type)
 {
-	int first = find_delta(base);
+	int first = find_delta(base, type);
 	int last = first;
 	int end = nr_deltas - 1;
 
@@ -541,11 +554,13 @@ static void find_unresolved_deltas(struct base_data *base,
 		union delta_base base_spec;
 
 		hashcpy(base_spec.sha1, base->obj->idx.sha1);
-		find_delta_children(&base_spec, &ref_first, &ref_last);
+		find_delta_children(&base_spec,
+				    &ref_first, &ref_last, OBJ_REF_DELTA);
 
 		memset(&base_spec, 0, sizeof(base_spec));
 		base_spec.offset = base->obj->idx.offset;
-		find_delta_children(&base_spec, &ofs_first, &ofs_last);
+		find_delta_children(&base_spec,
+				    &ofs_first, &ofs_last, OBJ_OFS_DELTA);
 	}
 
 	if (ref_last == -1 && ofs_last == -1) {
@@ -557,24 +572,24 @@ static void find_unresolved_deltas(struct base_data *base,
 
 	for (i = ref_first; i <= ref_last; i++) {
 		struct object_entry *child = objects + deltas[i].obj_no;
-		if (child->real_type == OBJ_REF_DELTA) {
-			struct base_data result;
-			resolve_delta(child, base, &result);
-			if (i == ref_last && ofs_last == -1)
-				free_base_data(base);
-			find_unresolved_deltas(&result, base);
-		}
+		struct base_data result;
+
+		assert(child->real_type == OBJ_REF_DELTA);
+		resolve_delta(child, base, &result);
+		if (i == ref_last && ofs_last == -1)
+			free_base_data(base);
+		find_unresolved_deltas(&result, base);
 	}
 
 	for (i = ofs_first; i <= ofs_last; i++) {
 		struct object_entry *child = objects + deltas[i].obj_no;
-		if (child->real_type == OBJ_OFS_DELTA) {
-			struct base_data result;
-			resolve_delta(child, base, &result);
-			if (i == ofs_last)
-				free_base_data(base);
-			find_unresolved_deltas(&result, base);
-		}
+		struct base_data result;
+
+		assert(child->real_type == OBJ_OFS_DELTA);
+		resolve_delta(child, base, &result);
+		if (i == ofs_last)
+			free_base_data(base);
+		find_unresolved_deltas(&result, base);
 	}
 
 	unlink_base_data(base);
@@ -584,7 +599,11 @@ static int compare_delta_entry(const void *a, const void *b)
 {
 	const struct delta_entry *delta_a = a;
 	const struct delta_entry *delta_b = b;
-	return memcmp(&delta_a->base, &delta_b->base, UNION_BASE_SZ);
+
+	/* group by type (ref vs ofs) and then by value (sha-1 or offset) */
+	return compare_delta_bases(&delta_a->base, &delta_b->base,
+				   objects[delta_a->obj_no].type,
+				   objects[delta_b->obj_no].type);
 }
 
 /* Parse all objects and return the pack content SHA1 hash */
@@ -859,24 +878,97 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 
 static int git_index_pack_config(const char *k, const char *v, void *cb)
 {
+	struct pack_idx_option *opts = cb;
+
 	if (!strcmp(k, "pack.indexversion")) {
-		pack_idx_default_version = git_config_int(k, v);
-		if (pack_idx_default_version > 2)
-			die("bad pack.indexversion=%"PRIu32,
-				pack_idx_default_version);
+		opts->version = git_config_int(k, v);
+		if (opts->version > 2)
+			die("bad pack.indexversion=%"PRIu32, opts->version);
 		return 0;
 	}
 	return git_default_config(k, v, cb);
 }
 
+static int cmp_uint32(const void *a_, const void *b_)
+{
+	uint32_t a = *((uint32_t *)a_);
+	uint32_t b = *((uint32_t *)b_);
+
+	return (a < b) ? -1 : (a != b);
+}
+
+static void read_v2_anomalous_offsets(struct packed_git *p,
+				      struct pack_idx_option *opts)
+{
+	const uint32_t *idx1, *idx2;
+	uint32_t i;
+
+	/* The address of the 4-byte offset table */
+	idx1 = (((const uint32_t *)p->index_data)
+		+ 2 /* 8-byte header */
+		+ 256 /* fan out */
+		+ 5 * p->num_objects /* 20-byte SHA-1 table */
+		+ p->num_objects /* CRC32 table */
+		);
+
+	/* The address of the 8-byte offset table */
+	idx2 = idx1 + p->num_objects;
+
+	for (i = 0; i < p->num_objects; i++) {
+		uint32_t off = ntohl(idx1[i]);
+		if (!(off & 0x80000000))
+			continue;
+		off = off & 0x7fffffff;
+		if (idx2[off * 2])
+			continue;
+		/*
+		 * The real offset is ntohl(idx2[off * 2]) in high 4
+		 * octets, and ntohl(idx2[off * 2 + 1]) in low 4
+		 * octets.  But idx2[off * 2] is Zero!!!
+		 */
+		ALLOC_GROW(opts->anomaly, opts->anomaly_nr + 1, opts->anomaly_alloc);
+		opts->anomaly[opts->anomaly_nr++] = ntohl(idx2[off * 2 + 1]);
+	}
+
+	if (1 < opts->anomaly_nr)
+		qsort(opts->anomaly, opts->anomaly_nr, sizeof(uint32_t), cmp_uint32);
+}
+
+static void read_idx_option(struct pack_idx_option *opts, const char *pack_name)
+{
+	struct packed_git *p = add_packed_git(pack_name, strlen(pack_name), 1);
+
+	if (!p)
+		die("Cannot open existing pack file '%s'", pack_name);
+	if (open_pack_index(p))
+		die("Cannot open existing pack idx file for '%s'", pack_name);
+
+	/* Read the attributes from the existing idx file */
+	opts->version = p->index_version;
+
+	if (opts->version == 2)
+		read_v2_anomalous_offsets(p, opts);
+
+	/*
+	 * Get rid of the idx file as we do not need it anymore.
+	 * NEEDSWORK: extract this bit from free_pack_by_name() in
+	 * sha1_file.c, perhaps?  It shouldn't matter very much as we
+	 * know we haven't installed this pack (hence we never have
+	 * read anything from it).
+	 */
+	close_pack_index(p);
+	free(p);
+}
+
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
-	int i, fix_thin_pack = 0;
+	int i, fix_thin_pack = 0, verify = 0;
 	const char *curr_pack, *curr_index;
 	const char *index_name = NULL, *pack_name = NULL;
 	const char *keep_name = NULL, *keep_msg = NULL;
 	char *index_name_buf = NULL, *keep_name_buf = NULL;
 	struct pack_idx_entry **idx_objects;
+	struct pack_idx_option opts;
 	unsigned char pack_sha1[20];
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
@@ -884,7 +976,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 
 	read_replace_refs = 0;
 
-	git_config(git_index_pack_config, NULL);
+	reset_pack_idx_option(&opts);
+	git_config(git_index_pack_config, &opts);
 	if (prefix && chdir(prefix))
 		die("Cannot come back to cwd");
 
@@ -898,6 +991,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				fix_thin_pack = 1;
 			} else if (!strcmp(arg, "--strict")) {
 				strict = 1;
+			} else if (!strcmp(arg, "--verify")) {
+				verify = 1;
 			} else if (!strcmp(arg, "--keep")) {
 				keep_msg = "";
 			} else if (!prefixcmp(arg, "--keep=")) {
@@ -923,12 +1018,12 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				index_name = argv[++i];
 			} else if (!prefixcmp(arg, "--index-version=")) {
 				char *c;
-				pack_idx_default_version = strtoul(arg + 16, &c, 10);
-				if (pack_idx_default_version > 2)
+				opts.version = strtoul(arg + 16, &c, 10);
+				if (opts.version > 2)
 					die("bad %s", arg);
 				if (*c == ',')
-					pack_idx_off32_limit = strtoul(c+1, &c, 0);
-				if (*c || pack_idx_off32_limit & 0x80000000)
+					opts.off32_limit = strtoul(c+1, &c, 0);
+				if (*c || opts.off32_limit & 0x80000000)
 					die("bad %s", arg);
 			} else
 				usage(index_pack_usage);
@@ -963,6 +1058,12 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		memcpy(keep_name_buf, pack_name, len - 5);
 		strcpy(keep_name_buf + len - 5, ".keep");
 		keep_name = keep_name_buf;
+	}
+	if (verify) {
+		if (!index_name)
+			die("--verify with no packfile name given");
+		read_idx_option(&opts, index_name);
+		opts.flags |= WRITE_IDX_VERIFY;
 	}
 
 	curr_pack = open_pack_file(pack_name);
@@ -1011,13 +1112,16 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	idx_objects = xmalloc((nr_objects) * sizeof(struct pack_idx_entry *));
 	for (i = 0; i < nr_objects; i++)
 		idx_objects[i] = &objects[i].idx;
-	curr_index = write_idx_file(index_name, idx_objects, nr_objects, pack_sha1);
+	curr_index = write_idx_file(index_name, idx_objects, nr_objects, &opts, pack_sha1);
 	free(idx_objects);
 
-	final(pack_name, curr_pack,
-		index_name, curr_index,
-		keep_name, keep_msg,
-		pack_sha1);
+	if (!verify)
+		final(pack_name, curr_pack,
+		      index_name, curr_index,
+		      keep_name, keep_msg,
+		      pack_sha1);
+	else
+		close(input_fd);
 	free(objects);
 	free(index_name_buf);
 	free(keep_name_buf);
