@@ -9,11 +9,12 @@ static const char *argv0_path;
 const char *system_path(const char *path)
 {
 #ifdef RUNTIME_PREFIX
-	static const char *prefix;
+	static const char *prefix = NULL;
 #else
 	static const char *prefix = PREFIX;
 #endif
-	struct strbuf d = STRBUF_INIT;
+	static char buf[PATH_MAX];
+	int ret;
 
 	if (is_absolute_path(path))
 		return path;
@@ -33,9 +34,13 @@ const char *system_path(const char *path)
 	}
 #endif
 
-	strbuf_addf(&d, "%s/%s", prefix, path);
-	path = strbuf_detach(&d, NULL);
-	return path;
+	ret = snprintf(buf, sizeof(buf), "%s/%s", prefix, path);
+	if (ret >= sizeof(buf))
+		die("system path too long for %s", path);
+	else if (ret < 0)
+		die_errno("encoding error");
+
+	return buf;
 }
 
 const char *git_extract_argv0_path(const char *argv0)
