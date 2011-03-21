@@ -784,6 +784,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	const char *msg;
 	struct shortlog log;
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf note = STRBUF_INIT;
 	int i;
 	const char *encoding = "UTF-8";
 	struct diff_options opts;
@@ -809,12 +810,23 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	msg = body;
 	pp.fmt = CMIT_FMT_EMAIL;
 	pp.date_mode = DATE_RFC2822;
+	if (rev->show_notes) {
+		char *full;
+		unsigned char refsha1[20];
+		if (!dwim_ref("HEAD", strlen("HEAD"), refsha1, &full))
+			die("Invalid HEAD");
+		hash_sha1_refname(full, refsha1);
+		format_note(NULL, refsha1, &note, NULL, 0);
+		if (strlen(note.buf))
+			msg = note.buf;
+	}
 	pp_user_info(&pp, NULL, &sb, committer, encoding);
 	pp_title_line(&pp, &msg, &sb, encoding, need_8bit_cte);
 	pp_remainder(&pp, &msg, &sb, 0);
 	add_branch_description(&sb, branch_name);
 	printf("%s\n", sb.buf);
 
+	strbuf_release(&note);
 	strbuf_release(&sb);
 
 	shortlog_init(&log);
