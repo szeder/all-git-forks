@@ -1377,15 +1377,14 @@ static void print_commit(char sign, struct commit *commit, int verbose,
 
 int cmd_cherry(int argc, const char **argv, const char *prefix)
 {
-	struct rev_info revs;
-	struct patch_ids ids;
-	struct commit *commit;
-	struct commit_list *list = NULL;
 	struct branch *current_branch;
 	const char *upstream;
 	const char *head = "HEAD";
 	const char *limit = NULL;
 	int verbose = 0, abbrev = 0;
+	const char **args;
+	int ac;
+	struct strbuf buf = STRBUF_INIT;
 
 	struct option options[] = {
 		OPT__ABBREV(&abbrev),
@@ -1419,50 +1418,21 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 		upstream = current_branch->merge[0]->dst;
 	}
 
-	init_revisions(&revs, prefix);
-	revs.diff = 1;
-	revs.combine_merges = 0;
-	revs.ignore_merges = 1;
-	DIFF_OPT_SET(&revs.diffopt, RECURSIVE);
+	args = xcalloc(sizeof(const char *), 10); // TODO);
+	ac = 0;
+	args[ac++] = "log";
+	args[ac++] = "--cherry";
+	args[ac++] = abbrev ? "--abbrev=" : "--abbrev=0"; // TODO
+	args[ac++] = verbose ? "--pretty=oneline" : "--pretty=%h";
+	strbuf_addstr(&buf, upstream);
+	strbuf_addstr(&buf, "...");
+	strbuf_addstr(&buf, head);
+	args[ac++] = buf.buf;
+	
+	args[ac] = NULL;
 
-	if (add_pending_commit(head, &revs, 0))
-		die("Unknown commit %s", head);
-	if (add_pending_commit(upstream, &revs, UNINTERESTING))
-		die("Unknown commit %s", upstream);
-
-	/* Don't say anything if head and upstream are the same. */
-	if (revs.pending.nr == 2) {
-		struct object_array_entry *o = revs.pending.objects;
-		if (hashcmp(o[0].item->sha1, o[1].item->sha1) == 0)
-			return 0;
-	}
-
-	get_patch_ids(&revs, &ids, prefix);
-
-	if (limit && add_pending_commit(limit, &revs, UNINTERESTING))
-		die("Unknown commit %s", limit);
-
-	/* reverse the list of commits */
-	if (prepare_revision_walk(&revs))
-		die("revision walk setup failed");
-	while ((commit = get_revision(&revs)) != NULL) {
-		/* ignore merges */
-		if (commit->parents && commit->parents->next)
-			continue;
-
-		commit_list_insert(commit, &list);
-	}
-
-	while (list) {
-		char sign = '+';
-
-		commit = list->item;
-		if (has_commit_patch_id(commit, &ids))
-			sign = '-';
-		print_commit(sign, commit, verbose, abbrev);
-		list = list->next;
-	}
-
-	free_patch_ids(&ids);
+	run_command_v_opt(args, RUN_GIT_CMD);
+	free(args);
+	strbuf_release(&buf);
 	return 0;
 }
