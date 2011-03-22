@@ -19,6 +19,25 @@ static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
 
+/* NEEDSWORK: move to fast_export_init() */
+static int init_postimage(void)
+{
+	static int postimage_initialized;
+	if (postimage_initialized)
+		return 0;
+	postimage_initialized = 1;
+	return buffer_tmpfile_init(&postimage);
+}
+
+static int init_report_buffer(int fd)
+{
+	static int report_buffer_initialized;
+	if (report_buffer_initialized)
+		return 0;
+	report_buffer_initialized = 1;
+	return buffer_fdinit(&report_buffer, fd);
+}
+
 void fast_export_init(int fd)
 {
 	if (buffer_fdinit(&report_buffer, fd))
@@ -147,34 +166,11 @@ static int parse_cat_response_line(const char *header, off_t *len)
 	return 0;
 }
 
-static const char *get_response_line(void)
-{
-	const char *line = buffer_read_line(&report_buffer);
-	if (line)
-		return line;
-	if (buffer_ferror(&report_buffer))
-		die_errno("error reading from fast-import");
-	die("unexpected end of fast-import feedback");
-}
-
-static off_t cat_dataref(const char *dataref)
-{
-	const char *response;
-	off_t length = length;
-	assert(dataref);
-
-	printf("cat-blob %s\n", dataref);
-	fflush(stdout);
-	response = get_response_line();
-	if (parse_cat_response_line(response, &length))
-		die("invalid cat-blob response: %s", response);
-	return length;
-}
-
 static long apply_delta(off_t len, struct line_buffer *input,
-			off_t preimage_len, uint32_t old_mode)
+			const char *old_data, uint32_t old_mode)
 {
 	long ret;
+	off_t preimage_len = 0;
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
 	FILE *out;
 
@@ -208,17 +204,6 @@ static long apply_delta(off_t len, struct line_buffer *input,
 		die("cannot read temporary file for blob retrieval");
 	strbuf_release(&preimage.buf);
 	return ret;
-}
-
-static void record_postimage(uint32_t mode, long postimage_len)
-{
-	if (mode == REPO_MODE_LNK) {
-		buffer_skip_bytes(&postimage, strlen("link "));
-		postimage_len -= strlen("link ");
-	}
-	printf("data %ld\n", postimage_len);
-	buffer_copy_bytes(&postimage, postimage_len);
-	fputc('\n', stdout);
 }
 
 void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input)
