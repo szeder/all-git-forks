@@ -60,6 +60,11 @@
 #       per-repository basis by setting the bash.showUpstream config
 #       variable.
 #
+#       When working in a big repository on a slow USB disk or network
+#       drive, __git_ps1 may result in a noticeable delay before the prompt
+#       reappears.  To temporarily disable the use of __git_ps1, set
+#       NO_GIT_PS1 to a nonempty value.
+#
 #
 # To submit patches:
 #
@@ -225,6 +230,7 @@ __git_ps1_show_upstream ()
 # returns text to add to bash PS1 prompt (includes branch name)
 __git_ps1 ()
 {
+	[ -z "$NO_GIT_PS1" ] || return
 	local g="$(__gitdir)"
 	if [ -n "$g" ]; then
 		local r=""
