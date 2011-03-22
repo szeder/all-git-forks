@@ -14,6 +14,7 @@
 #include "line_buffer.h"
 
 #define MAX_GITSVN_LINE_LEN 4096
+#define REPORT_FILENO 3
 
 static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
