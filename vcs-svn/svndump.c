@@ -364,27 +364,47 @@ void svndump_read(const char *url)
 				reset_node_ctx(val);
 				break;
 			}
-			if (memcmp(t + strlen("Node-"), "kind", 4))
+			if (constcmp(t + strlen("Node-"), "kind"))
 				continue;
-			if (!strcmp(val, "dir"))
+			switch (strlen(val) + 1) {
+			case sizeof("dir"):
+				if (constcmp(val, "dir"))
+					break;
 				node_ctx.type = REPO_MODE_DIR;
-			else if (!strcmp(val, "file"))
+				break;
+			case sizeof("file"):
+				if (constcmp(val, "file"))
+					break;
 				node_ctx.type = REPO_MODE_BLB;
-			else
+				break;
+			default:
 				fprintf(stderr, "Unknown node-kind: %s\n", val);
+			}
 			break;
-		case 11:
-			if (memcmp(t, "Node-action", 11))
+		case sizeof("Node-action"):
+			if (constcmp(t, "Node-action"))
 				continue;
-			if (!strcmp(val, "delete")) {
-				node_ctx.action = NODEACT_DELETE;
-			} else if (!strcmp(val, "add")) {
+			switch (strlen(val) + 1) {
+			case sizeof("add"):
+				if (constcmp(val, "add"))
+					break;
 				node_ctx.action = NODEACT_ADD;
-			} else if (!strcmp(val, "change")) {
-				node_ctx.action = NODEACT_CHANGE;
-			} else if (!strcmp(val, "replace")) {
+				break;
+			case sizeof("change"):
+				if (!constcmp(val, "change")) {
+					node_ctx.action = NODEACT_CHANGE;
+					break;
+				}
+				if (constcmp(val, "delete"))
+					break;
+				node_ctx.action = NODEACT_DELETE;
+				break;
+			case sizeof("replace"):
+				if (constcmp(val, "replace"))
+					break;
 				node_ctx.action = NODEACT_REPLACE;
-			} else {
+				break;
+			default:
 				fprintf(stderr, "Unknown node-action: %s\n", val);
 				node_ctx.action = NODEACT_UNKNOWN;
 			}
