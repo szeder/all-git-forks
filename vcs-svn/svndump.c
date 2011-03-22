@@ -261,7 +261,6 @@ static void handle_node(void)
 	/*
 	 * Adjust mode to reflect properties.
 	 */
-	old_mode = node_ctx.type;
 	if (have_props) {
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
