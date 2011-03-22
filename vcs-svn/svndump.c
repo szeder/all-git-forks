@@ -324,24 +324,24 @@ void svndump_read(const char *url)
 			continue;
 		*val++ = '\0';
 
-		/* strlen(key) */
-		switch (val - t - 2) { 
-		case 26:
-			if (memcmp(t, "SVN-fs-dump-format-version", 26))
+		/* strlen(key) + 1 */
+		switch (val - t - 1) {
+		case sizeof("SVN-fs-dump-format-version"):
+			if (constcmp(t, "SVN-fs-dump-format-version"))
 				continue;
 			dump_ctx.version = atoi(val);
 			if (dump_ctx.version > 3)
-				die("expected svn dump format version <= 3, found %d",
+				die("expected svn dump format version <= 3, found %"PRIu32,
 				    dump_ctx.version);
 			break;
-		case 4:
-			if (memcmp(t, "UUID", 4))
+		case sizeof("UUID"):
+			if (constcmp(t, "UUID"))
 				continue;
 			strbuf_reset(&dump_ctx.uuid);
 			strbuf_addstr(&dump_ctx.uuid, val);
 			break;
-		case 15:
-			if (memcmp(t, "Revision-number", 15))
+		case sizeof("Revision-number"):
+			if (constcmp(t, "Revision-number"))
 				continue;
 			if (active_ctx == NODE_CTX)
 				handle_node();
@@ -444,7 +444,7 @@ void svndump_read(const char *url)
 			len = atoi(val);
 			t = buffer_read_line(&input);
 			if (!t)
-				die_short_read(&input);
+				die_short_read();
 			if (*t)
 				die("invalid dump: expected blank line after content length header");
 			if (active_ctx == REV_CTX) {
