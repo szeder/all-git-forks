@@ -14,7 +14,6 @@ struct line_buffer {
 
 int buffer_init(struct line_buffer *buf, const char *filename);
 int buffer_fdinit(struct line_buffer *buf, int fd);
-int buffer_ferror(struct line_buffer *buf);
 int buffer_deinit(struct line_buffer *buf);
 void buffer_reset(struct line_buffer *buf);
 
