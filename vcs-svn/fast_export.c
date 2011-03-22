@@ -114,13 +114,6 @@ void fast_export_end_commit(uint32_t revision)
 	printf("progress Imported commit %"PRIu32".\n\n", revision);
 }
 
-static void die_short_read(struct line_buffer *input)
-{
-	if (buffer_ferror(input))
-		die_errno("error reading dump file");
-	die("invalid dump: unexpected end of file");
-}
-
 static void ls_from_rev(uint32_t rev, const char *path)
 {
 	/* ls :5 path/to/old/file */
