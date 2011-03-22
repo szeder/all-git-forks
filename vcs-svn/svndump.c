@@ -504,4 +504,10 @@ void svndump_reset(void)
 {
 	fast_export_reset();
 	buffer_reset(&input);
+	strbuf_release(&dump_ctx.uuid);
+	strbuf_release(&dump_ctx.url);
+	strbuf_release(&rev_ctx.log);
+	strbuf_release(&rev_ctx.author);
+	strbuf_release(&node_ctx.src);
+	strbuf_release(&node_ctx.dst);
 }
