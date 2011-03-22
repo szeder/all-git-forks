@@ -200,7 +200,6 @@ static void read_props(void)
 
 static void handle_node(void)
 {
-	uint32_t old_mode;
 	const uint32_t type = node_ctx.type;
 	const int have_props = node_ctx.propLength != LENGTH_UNKNOWN;
 	const int have_text = node_ctx.textLength != LENGTH_UNKNOWN;
