@@ -228,6 +228,7 @@ static void handle_node(void)
 		if (mode != REPO_MODE_DIR && type == REPO_MODE_DIR)
 			die("invalid dump: cannot modify a file into a directory");
 		node_ctx.type = mode;
+		old_mode = mode;
 	} else if (node_ctx.action == NODEACT_ADD) {
 		if (type == REPO_MODE_DIR)
 			old_data = NULL;
@@ -268,8 +269,9 @@ static void handle_node(void)
 		fast_export_data(node_ctx.type, node_ctx.textLength, &input);
 		return;
 	}
-	fast_export_delta(node_ctx.type, node_ctx.dst.buf,
-				old_mode, old_data, node_ctx.textLength, &input);
+	fast_export_modify(node_ctx.dst.buf, node_ctx.type, "inline");
+	fast_export_blob_delta(node_ctx.type, old_mode, old_data,
+				node_ctx.textLength, &input);
 }
 
 static void begin_revision(void)
