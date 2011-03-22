@@ -12,8 +12,7 @@
 
 static int debug;
 
-struct helper_data
-{
+struct helper_data {
 	const char *name;
 	struct child_process *helper;
 	FILE *out;
@@ -973,7 +972,7 @@ static int udt_do_read(struct unidirectional_transfer *t)
  */
 static int udt_do_write(struct unidirectional_transfer *t)
 {
-	size_t bytes;
+	ssize_t bytes;
 
 	if (t->bufuse == 0)
 		return 0;	/* Nothing to write. */

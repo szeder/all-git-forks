@@ -38,7 +38,7 @@ static uint32_t mark;
 static int repo_dirent_name_cmp(const void *a, const void *b);
 
 /* Treap for directory entries */
-trp_gen(static, dent_, struct repo_dirent, children, dent, repo_dirent_name_cmp);
+trp_gen(static, dent_, struct repo_dirent, children, dent, repo_dirent_name_cmp)
 
 uint32_t next_blob_mark(void)
 {
@@ -175,25 +175,18 @@ void repo_add(uint32_t *path, uint32_t mode, uint32_t blob_mark)
 	repo_write_dirent(path, mode, blob_mark, 0);
 }
 
-uint32_t repo_replace(uint32_t *path, uint32_t blob_mark)
-{
-	uint32_t mode = 0;
-	struct repo_dirent *src_dent;
-	src_dent = repo_read_dirent(active_commit, path);
-	if (src_dent != NULL) {
-		mode = src_dent->mode;
-		repo_write_dirent(path, mode, blob_mark, 0);
-	}
-	return mode;
-}
-
-void repo_modify(uint32_t *path, uint32_t mode, uint32_t blob_mark)
+uint32_t repo_modify_path(uint32_t *path, uint32_t mode, uint32_t blob_mark)
 {
 	struct repo_dirent *src_dent;
 	src_dent = repo_read_dirent(active_commit, path);
-	if (src_dent != NULL && blob_mark == 0)
+	if (!src_dent)
+		return 0;
+	if (!blob_mark)
 		blob_mark = src_dent->content_offset;
+	if (!mode)
+		mode = src_dent->mode;
 	repo_write_dirent(path, mode, blob_mark, 0);
+	return mode;
 }
 
 void repo_delete(uint32_t *path)

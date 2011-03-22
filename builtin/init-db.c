@@ -419,7 +419,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	unsigned int flags = 0;
 	const struct option init_db_options[] = {
 		OPT_STRING(0, "template", &template_dir, "template-directory",
-				"provide the directory from which templates will be used"),
+				"directory from which templates will be used"),
 		OPT_SET_INT(0, "bare", &is_bare_repository_cfg,
 				"create a bare repository", 1),
 		{ OPTION_CALLBACK, 0, "shared", &init_shared_repository,
@@ -498,13 +498,11 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		is_bare_repository_cfg = guess_repository_type(git_dir);
 
 	if (!is_bare_repository_cfg) {
-		if (git_dir) {
-			const char *git_dir_parent = strrchr(git_dir, '/');
-			if (git_dir_parent) {
-				char *rel = xstrndup(git_dir, git_dir_parent - git_dir);
-				git_work_tree_cfg = xstrdup(make_absolute_path(rel));
-				free(rel);
-			}
+		const char *git_dir_parent = strrchr(git_dir, '/');
+		if (git_dir_parent) {
+			char *rel = xstrndup(git_dir, git_dir_parent - git_dir);
+			git_work_tree_cfg = xstrdup(real_path(rel));
+			free(rel);
 		}
 		if (!git_work_tree_cfg) {
 			git_work_tree_cfg = xcalloc(PATH_MAX, 1);
@@ -512,7 +510,7 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 				die_errno ("Cannot access current working directory");
 		}
 		if (work_tree)
-			set_git_work_tree(make_absolute_path(work_tree));
+			set_git_work_tree(real_path(work_tree));
 		else
 			set_git_work_tree(git_work_tree_cfg);
 		if (access(get_git_work_tree(), X_OK))
@@ -521,10 +519,10 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	}
 	else {
 		if (work_tree)
-			set_git_work_tree(make_absolute_path(work_tree));
+			set_git_work_tree(real_path(work_tree));
 	}
 
-	set_git_dir(make_absolute_path(git_dir));
+	set_git_dir(real_path(git_dir));
 
 	return init_db(template_dir, flags);
 }
