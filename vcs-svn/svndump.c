@@ -32,6 +32,8 @@
 
 static struct line_buffer input = LINE_BUFFER_INIT;
 
+#define REPORT_FILENO 3
+
 static struct {
 	uint32_t action, propLength, textLength, srcRev, type;
 	struct strbuf src, dst;
@@ -81,89 +83,105 @@ static void reset_dump_ctx(const char *url)
 	strbuf_reset(&dump_ctx.uuid);
 }
 
-static void handle_property(char *key, const char *val, uint32_t len)
+/* Compare string to literal of equal length; must be guarded by length test. */
+#define constcmp(s, ref) memcmp((s), (ref), sizeof(ref) - 1)
+
+static void handle_property(struct strbuf *key_buf, const char *val, uint32_t len,
+				uint32_t *type_set)
 {
-	switch (strlen(key)) {
-	case 7:
-		if (memcmp(key, "svn:log", 7))
+	const int sizeof_key = key_buf->len + 1;
+	const char *key = key_buf->buf;
+	switch (sizeof_key) {
+	case sizeof("svn:log"):
+		if (constcmp(key, "svn:log"))
 			break;
 		if (!val)
 			die("invalid dump: unsets svn:log");
-		strbuf_reset(&rev_ctx.log);
-		strbuf_add(&rev_ctx.log, val, len);
+		/* Value length excludes terminating nul. */
+		strbuf_add(&rev_ctx.log, val, len + 1);
 		break;
-	case 10:
-		if (memcmp(key, "svn:author", 10))
+	case sizeof("svn:author"):
+		if (constcmp(key, "svn:author"))
 			break;
 		strbuf_reset(&rev_ctx.author);
 		if (val)
 			strbuf_add(&rev_ctx.author, val, len);
 		break;
-	case 8:
-		if (memcmp(key, "svn:date", 8))
+	case sizeof("svn:date"):
+		if (constcmp(key, "svn:date"))
 			break;
 		if (!val)
 			die("invalid dump: unsets svn:date");
 		if (parse_date_basic(val, &rev_ctx.timestamp, NULL))
 			warning("invalid timestamp: %s", val);
 		break;
-	case 14:
-		if (memcmp(key, "svn:executable", 14))
+	case sizeof("svn:executable"):
+	case sizeof("svn:special"):
+		if (sizeof_key == sizeof("svn:executable") &&
+		    constcmp(key, "svn:executable"))
 			break;
-		if (val)
-			node_ctx.type = REPO_MODE_EXE;
-		else if (node_ctx.type == REPO_MODE_EXE)
-			node_ctx.type = REPO_MODE_BLB;
-		break;
-	case 11:
-		if (memcmp(key, "svn:special", 11))
+		if (sizeof_key == sizeof("svn:special") &&
+		    constcmp(key, "svn:special"))
 			break;
-		if (val)
-			node_ctx.type = REPO_MODE_LNK;
-		else if (node_ctx.type == REPO_MODE_LNK)
+		if (*type_set) {
+			if (!val)
+				return;
+			die("invalid dump: sets type twice");
+		}
+		if (!val) {
 			node_ctx.type = REPO_MODE_BLB;
-		break;
+			return;
+		}
+		*type_set = 1;
+		node_ctx.type = sizeof_key == sizeof("svn:executable") ?
+				REPO_MODE_EXE :
+				REPO_MODE_LNK;
 	}
 }
 
-static void die_short_read(struct line_buffer *input)
+static void die_short_read(void)
 {
-	if (buffer_ferror(input))
+	if (buffer_ferror(&input))
 		die_errno("error reading dump file");
 	die("invalid dump: unexpected end of file");
 }
 
 static void read_props(void)
 {
-	char key[16] = {0};
-	for (;;) {
-		char *t = buffer_read_line(&input);
+	static struct strbuf key = STRBUF_INIT;
+	const char *t;
+	/*
+	 * NEEDSWORK: to support simple mode changes like
+	 *	K 11
+	 *	svn:special
+	 *	V 1
+	 *	*
+	 *	D 14
+	 *	svn:executable
+	 * we keep track of whether a mode has been set and reset to
+	 * plain file only if not.  We should be keeping track of the
+	 * symlink and executable bits separately instead.
+	 */
+	uint32_t type_set = 0;
+	while ((t = buffer_read_line(&input)) && strcmp(t, "PROPS-END")) {
 		uint32_t len;
 		const char *val;
-		char type;
+		const char type = t[0];
 
-		if (!t)
-			die_short_read(&input);
-		if (!strcmp(t, "PROPS-END"))
-			return;
-
-		type = t[0];
 		if (!type || t[1] != ' ')
 			die("invalid property line: %s\n", t);
 		len = atoi(&t[2]);
 		val = buffer_read_string(&input, len);
-		if (!val)
-			die_short_read(&input);
-		if (buffer_read_char(&input) != '\n')
-			die("invalid dump: incorrect key length");
+		/* Discard trailing newline. */
+		if (buffer_skip_bytes(&input, 1) != 1)
+			die_short_read();
 
 		switch (type) {
 		case 'K':
 		case 'D':
-			if (len < sizeof(key))
-				memcpy(key, val, len + 1);
-			else	/* nonstandard key. */
-				*key = '\0';
+			strbuf_reset(&key);
+			if (val)
+				strbuf_add(&key, val, len);
 			if (type == 'K')
 				continue;
 			assert(type == 'D');
@@ -171,8 +189,8 @@ static void read_props(void)
 			len = 0;
 			/* fall through */
 		case 'V':
-			handle_property(key, val, len);
-			*key = '\0';
+			handle_property(&key, val, len, &type_set);
+			strbuf_reset(&key);
 			continue;
 		default:
 			die("invalid property line: %s\n", t);
@@ -187,10 +205,10 @@ static void handle_node(void)
 	const int have_props = node_ctx.propLength != LENGTH_UNKNOWN;
 	const int have_text = node_ctx.textLength != LENGTH_UNKNOWN;
 	/*
-	 * Old text for this node (preimage for delta):
+	 * Old text for this node:
 	 *  NULL	- directory or bug
 	 *  empty_blob	- empty
-	 *  "<dataref>"	- data to be retrieved from fast-import
+	 *  "<dataref>"	- data retrievable from fast-import
 	 */
 	static const char *const empty_blob = "::empty::";
 	const char *old_data = NULL;
@@ -334,10 +352,10 @@ void svndump_read(const char *url)
 			active_ctx = REV_CTX;
 			reset_rev_ctx(atoi(val));
 			break;
-		case 9:
+		case sizeof("Node-path"):
 			if (prefixcmp(t, "Node-"))
 				continue;
-			if (!memcmp(t + strlen("Node-"), "path", 4)) {
+			if (!constcmp(t + strlen("Node-"), "path")) {
 				if (active_ctx == NODE_CTX)
 					handle_node();
 				if (active_ctx == REV_CTX)
@@ -371,37 +389,37 @@ void svndump_read(const char *url)
 				node_ctx.action = NODEACT_UNKNOWN;
 			}
 			break;
-		case 18:
-			if (memcmp(t, "Node-copyfrom-path", 18))
+		case sizeof("Node-copyfrom-path"):
+			if (constcmp(t, "Node-copyfrom-path"))
 				continue;
 			strbuf_reset(&node_ctx.src);
 			strbuf_addstr(&node_ctx.src, val);
 			break;
-		case 17:
-			if (memcmp(t, "Node-copyfrom-rev", 17))
+		case sizeof("Node-copyfrom-rev"):
+			if (constcmp(t, "Node-copyfrom-rev"))
 				continue;
 			node_ctx.srcRev = atoi(val);
 			break;
-		case 19:
-			if (!memcmp(t, "Text-content-length", 19)) {
+		case sizeof("Text-content-length"):
+			if (!constcmp(t, "Text-content-length")) {
 				node_ctx.textLength = atoi(val);
 				break;
 			}
-			if (memcmp(t, "Prop-content-length", 19))
+			if (constcmp(t, "Prop-content-length"))
 				continue;
 			node_ctx.propLength = atoi(val);
 			break;
-		case 10:
-			if (!memcmp(t, "Text-delta", 10)) {
+		case sizeof("Text-delta"):
+			if (!constcmp(t, "Text-delta")) {
 				node_ctx.text_delta = !strcmp(val, "true");
 				break;
 			}
-			if (memcmp(t, "Prop-delta", 10))
+			if (constcmp(t, "Prop-delta"))
 				continue;
 			node_ctx.prop_delta = !strcmp(val, "true");
 			break;
-		case 14:
-			if (memcmp(t, "Content-length", 14))
+		case sizeof("Content-length"):
+			if (constcmp(t, "Content-length"))
 				continue;
 			len = atoi(val);
 			t = buffer_read_line(&input);
@@ -415,14 +433,14 @@ void svndump_read(const char *url)
 				handle_node();
 				active_ctx = INTERNODE_CTX;
 			} else {
-				fprintf(stderr, "Unexpected content length header: %d\n", len);
+				fprintf(stderr, "Unexpected content length header: %"PRIu32"\n", len);
 				if (buffer_skip_bytes(&input, len) != len)
-					die_short_read(&input);
+					die_short_read();
 			}
 		}
 	}
 	if (buffer_ferror(&input))
-		die_short_read(&input);
+		die_short_read();
 	if (active_ctx == NODE_CTX)
 		handle_node();
 	if (active_ctx == REV_CTX)

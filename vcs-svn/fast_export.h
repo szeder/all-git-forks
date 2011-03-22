@@ -15,13 +15,14 @@ void fast_export_begin_commit(uint32_t revision, const char *author,
 			unsigned long timestamp);
 void fast_export_end_commit(uint32_t revision);
 void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input);
-void fast_export_delta(uint32_t mode, const char *path,
-			uint32_t old_mode, const char *dataref,
+void fast_export_blob_delta(uint32_t mode,
+			uint32_t old_mode, const char *old_data,
 			uint32_t len, struct line_buffer *input);
 
-void fast_export_ls_rev(uint32_t rev, const char *path,
+/* If there is no such file at that rev, returns -1, errno == ENOENT. */
+int fast_export_ls_rev(uint32_t rev, const char *path,
 			uint32_t *mode_out, struct strbuf *dataref_out);
-void fast_export_ls(const char *path,
+int fast_export_ls(const char *path,
 			uint32_t *mode_out, struct strbuf *dataref_out);
 
 #endif

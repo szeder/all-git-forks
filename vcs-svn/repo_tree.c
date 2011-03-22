@@ -10,6 +10,7 @@
 
 const char *repo_read_path(const char *path, uint32_t *mode_out)
 {
+	int err;
 	static struct strbuf buf = STRBUF_INIT;
 
 	strbuf_reset(&buf);
@@ -19,12 +20,19 @@ const char *repo_read_path(const char *path, uint32_t *mode_out)
 
 void repo_copy(uint32_t revision, const char *src, const char *dst)
 {
+	int err;
 	uint32_t mode;
-	struct strbuf data = STRBUF_INIT;
+	static struct strbuf data = STRBUF_INIT;
 
-	fast_export_ls_rev(revision, src, &mode, &data);
+	strbuf_reset(&data);
+	err = fast_export_ls_rev(revision, src, &mode, &data);
+	if (err) {
+		if (errno != ENOENT)
+			die_errno("BUG: unexpected fast_export_ls_rev error");
+		fast_export_delete(dst);
+		return;
+	}
 	fast_export_modify(dst, mode, data.buf);
-	strbuf_release(&data);
 }
 
 void repo_delete(const char *path)

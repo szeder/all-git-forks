@@ -8,6 +8,7 @@
 #include "quote.h"
 #include "fast_export.h"
 #include "repo_tree.h"
+#include "strbuf.h"
 #include "svndiff.h"
 #include "sliding_window.h"
 #include "line_buffer.h"
@@ -22,22 +23,17 @@ void fast_export_init(int fd)
 {
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
-	if (buffer_tmpfile_init(&postimage))
-		die_errno("cannot write temporary file for delta application");
 }
 
 void fast_export_deinit(void)
 {
 	if (buffer_deinit(&report_buffer))
 		die_errno("error closing fast-import feedback stream");
-	if (buffer_deinit(&postimage))
-		die_errno("error removing temporary file for delta application");
 }
 
 void fast_export_reset(void)
 {
 	buffer_reset(&report_buffer);
-	buffer_reset(&postimage);
 }
 
 void fast_export_delete(const char *path)
@@ -182,17 +178,25 @@ static long apply_delta(off_t len, struct line_buffer *input,
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
 	FILE *out;
 
-	out = buffer_tmpfile_rewind(&postimage);
-	if (!out)
+	if (init_postimage() || !(out = buffer_tmpfile_rewind(&postimage)))
 		die("cannot open temporary file for blob retrieval");
+	if (init_report_buffer(REPORT_FILENO))
+		die("cannot open fd 3 for feedback from fast-import");
+	if (old_data) {
+		const char *response;
+		printf("cat-blob %s\n", old_data);
+		fflush(stdout);
+		response = get_response_line();
+		if (parse_cat_response_line(response, &preimage_len))
+			die("invalid cat-blob response: %s", response);
+	}
 	if (old_mode == REPO_MODE_LNK) {
 		strbuf_addstr(&preimage.buf, "link ");
-		if (preimage_len >= 0)
-			preimage_len += strlen("link ");
+		preimage_len += strlen("link ");
 	}
 	if (svndiff0_apply(input, len, &preimage, out))
 		die("cannot apply delta");
-	if (preimage_len >= 0) {
+	if (old_data) {
 		/* Read the remainder of preimage and trailing newline. */
 		if (move_window(&preimage, preimage_len, 1))
 			die("cannot seek to end of input");
@@ -282,17 +286,35 @@ static void parse_ls_response(const char *response, uint32_t *mode,
 	if (!tab)
 		die("invalid ls response: missing tab: %s", response);
 	strbuf_add(dataref, response, tab - response);
+	return 0;
 }
 
-void fast_export_ls_rev(uint32_t rev, const char *path,
+int fast_export_ls_rev(uint32_t rev, const char *path,
 				uint32_t *mode, struct strbuf *dataref)
 {
 	ls_from_rev(rev, path);
-	parse_ls_response(get_response_line(), mode, dataref);
+	return parse_ls_response(get_response_line(), mode, dataref);
 }
 
-void fast_export_ls(const char *path, uint32_t *mode, struct strbuf *dataref)
+int fast_export_ls(const char *path, uint32_t *mode, struct strbuf *dataref)
 {
 	ls_from_active_commit(path);
-	parse_ls_response(get_response_line(), mode, dataref);
+	return parse_ls_response(get_response_line(), mode, dataref);
+}
+
+void fast_export_blob_delta(uint32_t mode,
+				uint32_t old_mode, const char *old_data,
+				uint32_t len, struct line_buffer *input)
+{
+	long postimage_len;
+	if (len > maximum_signed_value_of_type(off_t))
+		die("enormous delta");
+	postimage_len = apply_delta((off_t) len, input, old_data, old_mode);
+	if (mode == REPO_MODE_LNK) {
+		buffer_skip_bytes(&postimage, strlen("link "));
+		postimage_len -= strlen("link ");
+	}
+	printf("data %ld\n", postimage_len);
+	buffer_copy_bytes(&postimage, postimage_len);
+	fputc('\n', stdout);
 }

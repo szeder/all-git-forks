@@ -59,14 +59,14 @@ long buffer_tmpfile_prepare_to_read(struct line_buffer *buf)
 	return pos;
 }
 
-int buffer_read_char(struct line_buffer *buf)
-{
-	return fgetc(buf->infile);
-}
-
 int buffer_ferror(struct line_buffer *buf)
 {
 	return ferror(buf->infile);
+}
+
+int buffer_read_char(struct line_buffer *buf)
+{
+	return fgetc(buf->infile);
 }
 
 /* Read a line without trailing newline. */
@@ -98,12 +98,10 @@ char *buffer_read_string(struct line_buffer *buf, uint32_t len)
 	return ferror(buf->infile) ? NULL : buf->blob_buffer.buf;
 }
 
-size_t buffer_read_binary(struct line_buffer *buf,
-				struct strbuf *sb, size_t size)
+off_t buffer_read_binary(struct line_buffer *buf,
+				struct strbuf *sb, off_t size)
 {
-	size_t oldsize = sb->len;
-	strbuf_fread(sb, size, buf->infile);
-	return sb->len - oldsize;
+	return strbuf_fread(sb, size, buf->infile);
 }
 
 off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes)
