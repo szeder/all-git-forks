@@ -139,6 +139,23 @@ static void ls_from_active_commit(const char *path)
 	fflush(stdout);
 }
 
+static const char *get_response_line(void)
+{
+	const char *line = buffer_read_line(&report_buffer);
+	if (line)
+		return line;
+	if (buffer_ferror(&report_buffer))
+		die_errno("error reading from fast-import");
+	die("unexpected end of fast-import feedback");
+}
+
+static void die_short_read(struct line_buffer *input)
+{
+	if (buffer_ferror(input))
+		die_errno("error reading dump file");
+	die("invalid dump: unexpected end of file");
+}
+
 static int ends_with(const char *s, size_t len, const char *suffix)
 {
 	const size_t suffixlen = strlen(suffix);
