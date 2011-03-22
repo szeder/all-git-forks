@@ -237,23 +237,7 @@ void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input)
 	fputc('\n', stdout);
 }
 
-void fast_export_delta(uint32_t mode, const char *path,
-				uint32_t old_mode, const char *dataref,
-				uint32_t len, struct line_buffer *input)
-{
-	off_t preimage_len;
-	long postimage_len;
-	if (len > maximum_signed_value_of_type(off_t))
-		die("enormous delta");
-	preimage_len = dataref ? cat_dataref(dataref) : -1;
-
-	/* NEEDSWORK: Will deadlock with very long paths. */
-	fast_export_modify(path, mode, "inline");
-	postimage_len = apply_delta((off_t) len, input, preimage_len, old_mode);
-	record_postimage(mode, postimage_len);
-}
-
-static void parse_ls_response(const char *response, uint32_t *mode,
+static int parse_ls_response(const char *response, uint32_t *mode,
 					struct strbuf *dataref)
 {
 	const char *tab;
@@ -261,8 +245,11 @@ static void parse_ls_response(const char *response, uint32_t *mode,
 
 	assert(response);
 	response_end = response + strlen(response);
-	if (*response == 'm')	/* missing! */
-		die("unexpected ls response: %s", response);
+
+	if (*response == 'm') {	/* Missing. */
+		errno = ENOENT;
+		return -1;
+	}
 
 	/* Mode. */
 	if (response_end - response < strlen("100644") ||
