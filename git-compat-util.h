@@ -316,6 +316,11 @@ extern ssize_t read_in_full(int fd, void *buf, size_t count);
 extern int gitsetenv(const char *, const char *, int);
 #endif
 
+#ifdef GETENV_POISON
+#define getenv gitgetenv
+extern char *gitgetenv(const char *name);
+#endif
+
 #ifdef NO_MKDTEMP
 #define mkdtemp gitmkdtemp
 extern char *gitmkdtemp(char *);
