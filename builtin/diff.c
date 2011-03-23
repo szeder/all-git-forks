@@ -146,20 +146,9 @@ static int builtin_diff_tree(struct rev_info *revs,
 			     int argc, const char **argv,
 			     struct object_array_entry *ent)
 {
-	const unsigned char *(sha1[2]);
-	int swap = 0;
-
 	if (argc > 1)
 		usage(builtin_diff_usage);
-
-	/* We saw two trees, ent[0] and ent[1].
-	 * if ent[1] is uninteresting, they are swapped
-	 */
-	if (ent[1].item->flags & UNINTERESTING)
-		swap = 1;
-	sha1[swap] = ent[0].item->sha1;
-	sha1[1-swap] = ent[1].item->sha1;
-	diff_tree_sha1(sha1[0], sha1[1], "", &revs->diffopt);
+	diff_tree_sha1(ent[0].item->sha1, ent[1].item->sha1, "", &revs->diffopt);
 	log_tree_diff_flush(revs);
 	return 0;
 }
