@@ -12,6 +12,8 @@
  */
 
 static int spawned_pager;
+FILE *original_stderr;
+int original_stderr_fd = -1;
 
 #ifndef WIN32
 static void pager_preexec(void)
@@ -97,8 +99,11 @@ void setup_pager(void)
 
 	/* original process continues, but writes to the pipe */
 	dup2(pager_process.in, 1);
-	if (isatty(2))
+	if (isatty(2)) {
+		original_stderr_fd = dup(2);
+		original_stderr = fdopen(original_stderr_fd, "w");
 		dup2(pager_process.in, 2);
+	}
 	close(pager_process.in);
 
 	/* this makes sure that the parent terminates after the pager */
