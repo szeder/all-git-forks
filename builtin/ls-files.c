@@ -338,7 +338,7 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 {
 	struct tree *tree;
 	unsigned char sha1[20];
-	const char **match;
+	struct pathspec pathspecs;
 	struct cache_entry *last_stage0 = NULL;
 	int i;
 
@@ -360,10 +360,11 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 		static const char *(matchbuf[2]);
 		matchbuf[0] = prefix;
 		matchbuf[1] = NULL;
-		match = matchbuf;
+		init_pathspec(&pathspecs, matchbuf);
+		pathspecs.items[0].has_wildcard = 0;
 	} else
-		match = NULL;
-	if (read_tree(tree, 1, match))
+		init_pathspec(&pathspecs, NULL);
+	if (read_tree(tree, 1, &pathspecs))
 		die("unable to read tree entries %s", tree_name);
 
 	for (i = 0; i < active_nr; i++) {
