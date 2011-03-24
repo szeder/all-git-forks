@@ -507,11 +507,7 @@ static const char sign_off_header[] = "Signed-off-by: ";
 
 static void determine_author_info(struct strbuf *author_ident)
 {
-	char *name, *email, *date;
-
-	name = getenv("GIT_AUTHOR_NAME");
-	email = getenv("GIT_AUTHOR_EMAIL");
-	date = getenv("GIT_AUTHOR_DATE");
+	char *name = NULL, *email = NULL, *date = NULL;
 
 	if (author_message) {
 		const char *a, *lb, *rb, *eol;
@@ -543,14 +539,29 @@ static void determine_author_info(struct strbuf *author_ident)
 
 		if (!lb || !rb)
 			die("malformed --author parameter");
+
+		free(name);
+		free(email);
+
 		name = xstrndup(force_author, lb - force_author);
 		email = xstrndup(lb + 2, rb - (lb + 2));
 	}
 
 	if (force_date)
-		date = force_date;
+		date = xstrdup(force_date);
+
+	if (!name)
+		name = xstrdup(getenv("GIT_AUTHOR_NAME"));
+	if (!email)
+		email = xstrdup(getenv("GIT_AUTHOR_EMAIL"));
+	if (!date)
+		date = xstrdup(getenv("GIT_AUTHOR_DATE"));
+
 	strbuf_addstr(author_ident, fmt_ident(name, email, date,
 					      IDENT_ERROR_ON_NO_NAME));
+	free(name);
+	free(email);
+	free(date);
 }
 
 static int ends_rfc2822_footer(struct strbuf *sb)
