@@ -309,7 +309,7 @@ static const struct ref *clone_local(const char *src_repo,
 	return ret;
 }
 
-static const char *junk_work_tree;
+static char *junk_work_tree;
 static const char *junk_git_dir;
 static pid_t junk_pid;
 
@@ -327,6 +327,8 @@ static void remove_junk(void)
 		strbuf_addstr(&sb, junk_work_tree);
 		remove_dir_recursively(&sb, 0);
 		strbuf_reset(&sb);
+		free(junk_work_tree);
+		junk_work_tree = NULL;
 	}
 }
 
@@ -450,7 +452,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 
 	if (!option_bare) {
-		junk_work_tree = work_tree;
+		junk_work_tree = xstrdup(work_tree);
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die_errno("could not create leading directories of '%s'",
 				  work_tree);
