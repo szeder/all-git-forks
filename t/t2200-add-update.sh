@@ -81,7 +81,6 @@ test_expect_success 'change gets noticed' '
 '
 
 test_expect_success 'update from a subdirectory without pathspec (no config)' '
-	# This test needs to be adjusted when warning message is removed
 	test_might_fail git config --remove add.treewideupdate &&
 	test_might_fail git reset check dir1 &&
 	echo changed >check &&
@@ -93,7 +92,7 @@ test_expect_success 'update from a subdirectory without pathspec (no config)' '
 	git diff-files --name-only dir1 check >actual &&
 	: >expect &&
 	test_cmp expect actual &&
-	grep warning expect.warning
+	! grep warning expect.warning
 '
 
 test_expect_success 'update from a subdirectory without pathspec (local)' '
