@@ -10,6 +10,7 @@
 
 #include "git-compat-util.h"
 #include "progress.h"
+#include "cache.h"
 
 #define TP_IDX_MAX      8
 
@@ -71,6 +72,7 @@ static void clear_progress_signal(void)
 
 static int display(struct progress *progress, unsigned n, const char *done)
 {
+	FILE *out = original_stderr ? original_stderr : stderr;
 	const char *eol, *tp;
 
 	if (progress->delay) {
@@ -95,16 +97,16 @@ static int display(struct progress *progress, unsigned n, const char *done)
 		unsigned percent = n * 100 / progress->total;
 		if (percent != progress->last_percent || progress_update) {
 			progress->last_percent = percent;
-			fprintf(stderr, "%s: %3u%% (%u/%u)%s%s",
+			fprintf(out, "%s: %3u%% (%u/%u)%s%s",
 				progress->title, percent, n,
 				progress->total, tp, eol);
-			fflush(stderr);
+			fflush(out);
 			progress_update = 0;
 			return 1;
 		}
 	} else if (progress_update) {
-		fprintf(stderr, "%s: %u%s%s", progress->title, n, tp, eol);
-		fflush(stderr);
+		fprintf(out, "%s: %u%s%s", progress->title, n, tp, eol);
+		fflush(out);
 		progress_update = 0;
 		return 1;
 	}
@@ -211,11 +213,12 @@ int display_progress(struct progress *progress, unsigned n)
 struct progress *start_progress_delay(const char *title, unsigned total,
 				       unsigned percent_treshold, unsigned delay)
 {
+	FILE *out = original_stderr ? original_stderr : stderr;
 	struct progress *progress = malloc(sizeof(*progress));
 	if (!progress) {
 		/* unlikely, but here's a good fallback */
-		fprintf(stderr, "%s...\n", title);
-		fflush(stderr);
+		fprintf(out, "%s...\n", title);
+		fflush(out);
 		return NULL;
 	}
 	progress->title = title;
