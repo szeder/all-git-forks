@@ -133,8 +133,8 @@ int cmd_diff_tree(int argc, const char **argv, const char *prefix)
 	}
 
 	/*
-	 * NOTE! We expect "a ^b" to be equal to "a..b", so we
-	 * reverse the order of the objects if the second one
+	 * NOTE! We expect "b ^a" to have come from "rev-parse a..b",
+	 * so we reverse the order of the objects if the second one
 	 * is marked UNINTERESTING.
 	 */
 	nr_sha1 = opt->pending.nr;

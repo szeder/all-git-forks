@@ -142,24 +142,29 @@ static int builtin_diff_index(struct rev_info *revs,
 	return run_diff_index(revs, cached);
 }
 
+static void check_useless_use_of_range(struct object_array_entry *ent)
+{
+	if (!(ent[0].item->flags & UNINTERESTING) ||
+	    ent[1].item->flags & UNINTERESTING)
+		return; /* not a range made by "A..B" notation */
+
+	if ((ent[0].name == dotdot_default_HEAD) ||
+	    (ent[1].name == dotdot_default_HEAD))
+		return;	/* "A.." or "..B" */
+
+	warning("Do not write 'git diff A..B' but write 'git diff A B'");
+	warning("diff is about two endpoints!");
+}
+
 static int builtin_diff_tree(struct rev_info *revs,
 			     int argc, const char **argv,
 			     struct object_array_entry *ent)
 {
-	const unsigned char *(sha1[2]);
-	int swap = 0;
-
 	if (argc > 1)
 		usage(builtin_diff_usage);
 
-	/* We saw two trees, ent[0] and ent[1].
-	 * if ent[1] is uninteresting, they are swapped
-	 */
-	if (ent[1].item->flags & UNINTERESTING)
-		swap = 1;
-	sha1[swap] = ent[0].item->sha1;
-	sha1[1-swap] = ent[1].item->sha1;
-	diff_tree_sha1(sha1[0], sha1[1], "", &revs->diffopt);
+	check_useless_use_of_range(ent);
+	diff_tree_sha1(ent[0].item->sha1, ent[1].item->sha1, "", &revs->diffopt);
 	log_tree_diff_flush(revs);
 	return 0;
 }

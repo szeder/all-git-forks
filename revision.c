@@ -1009,6 +1009,8 @@ static void prepare_show_merge(struct rev_info *revs)
 	revs->limited = 1;
 }
 
+const char dotdot_default_HEAD[] = "HEAD";
+
 int handle_revision_arg(const char *arg, struct rev_info *revs,
 			int flags,
 			int cant_be_filename)
@@ -1031,9 +1033,9 @@ int handle_revision_arg(const char *arg, struct rev_info *revs,
 		next += symmetric;
 
 		if (!*next)
-			next = "HEAD";
+			next = dotdot_default_HEAD;
 		if (dotdot == arg)
-			this = "HEAD";
+			this = dotdot_default_HEAD;
 		if (!get_sha1(this, from_sha1) &&
 		    !get_sha1(next, sha1)) {
 			struct commit *a, *b;

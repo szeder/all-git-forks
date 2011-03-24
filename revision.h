@@ -151,6 +151,7 @@ struct rev_info {
 /* revision.c */
 typedef void (*show_early_output_fn_t)(struct rev_info *, struct commit_list *);
 extern volatile show_early_output_fn_t show_early_output;
+extern const char dotdot_default_HEAD[];
 
 struct setup_revision_opt {
 	const char *def;
