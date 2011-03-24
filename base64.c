@@ -37,3 +37,46 @@ void decode_64(struct strbuf *out, const char *data, size_t len)
 		}
 	} while (--len);
 }
+
+void encode_64(struct strbuf *out, const char *data, size_t len)
+{
+	const char *alpha =
+	    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	    "abcdefghijklmnopqrstuvwxyz"
+	    "0123456789+/";
+
+	if (!len) {
+		strbuf_addch(out, '=');
+		return;
+	}
+
+	do {
+		uint32_t buf = (data[0] << 16) | (data[1] << 8) | data[2];
+		char temp[4] = {
+			alpha[(buf >> 18) & 63],
+			alpha[(buf >> 12) & 63],
+			alpha[(buf >>  6) & 63],
+			alpha[(buf >>  0) & 63]
+		};
+		strbuf_add(out, temp, 4);
+
+		data += 3;
+		len -= 3;
+	} while (len >= 3);
+
+	if (len > 0) {
+		int n = 0;
+		uint32_t buf  = data[0] << 16;
+		if (len > 1) buf |= data[1] << 8;
+		if (len > 2) buf |= data[2];
+
+		do {
+			strbuf_addch(out, alpha[(buf >> 18) & 63]);
+			buf <<= 6;
+			n += 6;
+		} while (n < len * 8);
+
+		for (; n < 24; n += 6)
+			strbuf_addch(out, '=');
+	}
+}

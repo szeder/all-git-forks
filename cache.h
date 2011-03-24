@@ -1188,6 +1188,7 @@ void encode_85(char *buf, const unsigned char *data, int bytes);
 
 /* base64 */
 void decode_64(struct strbuf *out, const char *data, size_t len);
+void encode_64(struct strbuf *out, const char *data, size_t len);
 
 /* alloc.c */
 extern void *alloc_blob_node(void);
