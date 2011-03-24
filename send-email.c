@@ -23,7 +23,7 @@ static const char *const send_email_usage[] = {
 	NULL
 };
 
-static int verbose = 0, smtp_debug = 0, format_patch = -1;
+static int verbose = 0, smtp_debug = 0, format_patch = -1, multiedit = 1;
 static struct string_list to_rcpts, cc_rcpts, bcc_rcpts;
 
 struct smtp_socket {
@@ -385,7 +385,10 @@ static int git_send_email_config(const char *var, const char *value, void *cb)
 		return git_config_string(&smtp_pass, var, value);
 	if (!strcmp(var, "to") || !strcmp(var, "cc") || !strcmp(var, "bcc"))
 		return add_rcpt(var, value);
-
+	if (!strcmp(var, "multiedit")) {
+		multiedit = git_config_bool(var, value);
+		return 0;
+	}
 	return 0;
 }
 
@@ -557,6 +560,58 @@ const char *maildomain()
 	return "localhost.localdomain";
 }
 
+const char *get_patch_subject(const char *fname)
+{
+	static char buf[1000];
+	struct strbuf line = STRBUF_INIT;
+
+	FILE *fp = fopen(fname, "r");
+	if (!fp)
+		die_errno("fopen(%s)", fname);
+
+	while (strbuf_getline(&line, fp, '\n') != EOF) {
+		if (prefixcmp(line.buf, "Subject: "))
+			continue;
+
+		snprintf(buf, sizeof(buf), "GIT: %s", line.buf + 9);
+		fclose(fp);
+		return buf;
+	}
+	fclose(fp);
+	die("No subject line in %s ?", fname);
+}
+
+void do_edit(const char *file, struct string_list *files)
+{
+	int i;
+	if (!multiedit) {
+		/* edit files in serial */
+		if (file)
+			launch_editor(file, NULL, NULL);
+		if (files)
+			for (i = 0; i < files->nr; ++i)
+				if (launch_editor(files->items[i].string,
+				    NULL, NULL))
+					die("the editor exited uncleanly, aborting everything");
+	} else {
+		int num_files = (files ? files->nr : 0) + (file != 0),
+		    curr_arg = 0;
+		const char **args = xmalloc(sizeof(char *) * (num_files + 2));
+		args[curr_arg++] = git_editor();
+		if (file)
+			args[curr_arg++] = file;
+		if (files)
+			for (i = 0; i < files->nr; ++i)
+				args[curr_arg++] = files->items[i].string;
+		args[curr_arg++] = NULL;
+		assert(curr_arg == num_files + 2);
+
+		if (run_command_v_opt(args, RUN_USING_SHELL))
+			die("the editor exited uncleanly, aborting everything");
+		free(args);
+	}
+}
+
 int main(int argc, const char **argv)
 {
 	char hostname[256];
@@ -565,9 +620,13 @@ int main(int argc, const char **argv)
 	int i, use_esmtp, nongit_ok, prompting;
 	struct string_list files = { 0 };
 
-	int quiet = 0, dry_run = 0, nport = -1, thread = 1, force = 0;
-	const char *sender = NULL, *subject = NULL, *reply_to = NULL;
+	int quiet = 0, dry_run = 0, nport = -1, thread = 1, force = 0,
+	    compose = 0, annotate = 0;
+	const char *sender = NULL, *initial_subject = NULL,
+	    *initial_reply_to = NULL;
 	const char *smtp_encryption = "";
+	const char *repoauthor, *repocommitter;
+	char compose_filename[PATH_MAX];
 
 	struct option options[] = {
 		OPT_GROUP("Composing:"),
@@ -575,10 +634,12 @@ int main(int argc, const char **argv)
 		OPT_CALLBACK(0, "to", NULL, "str", "Email To:", xadd_rcpt),
 		OPT_CALLBACK(0, "cc", NULL, "str", "Email Cc:", xadd_rcpt),
 		OPT_CALLBACK(0, "bcc", NULL, "str", "Email Bcc:", xadd_rcpt),
-		OPT_STRING(0, "subject", &subject, "str", "Email \"Subject:\""),
-		OPT_STRING(0, "in-reply-to", &reply_to, "str", "Email \"In-Reply-To:\""),
-		/* TODO: OPT_BOOLEAN(0, "annotate", &annotate, "Review each patch that will be sent in an editor."), */
-		/* TODO: OPT_BOOLEAN(0, "compose", &compose, "Open an editor for introduction."), */
+		OPT_STRING(0, "subject", &initial_subject, "str",
+		    "Email \"Subject:\""),
+		OPT_STRING(0, "in-reply-to", &initial_reply_to,
+		    "str", "Email \"In-Reply-To:\""),
+		OPT_BOOLEAN(0, "annotate", &annotate, "Review each patch that will be sent in an editor."),
+		OPT_BOOLEAN(0, "compose", &compose, "Open an editor for introduction."),
 		/* TODO: OPT_STRING(0, "8bit-encoding", &encoding, "str", "Encoding to assume 8bit mails if undeclared"), */
 
 		OPT_GROUP("Sending:"),
@@ -619,15 +680,8 @@ int main(int argc, const char **argv)
 	git_config(git_send_email_config, NULL);
 	argc = parse_options(argc, argv, NULL, options, send_email_usage, 0);
 
-	if (reply_to) {
-		char *p = strchr(reply_to, '<');
-		if (p)
-			reply_to = p + 1;
-		p = strrchr(reply_to, '>');
-		if (p)
-			*p = '\0';
-		printf("<%s>\n", reply_to);
-	}
+	repoauthor = git_author_info(IDENT_NO_DATE);
+	repocommitter = git_committer_info(IDENT_NO_DATE);
 
 	for (i = 0; i < argc; ++i) {
 		struct stat st;
@@ -702,14 +756,60 @@ int main(int argc, const char **argv)
 		usage_with_options(send_email_usage, options);
 	}
 
-	/* TODO: compose
 	if (compose) {
+		int fd;
+		struct strbuf sb = STRBUF_INIT;
+		const char *tpl_sender = sender, *tpl_subject = initial_subject,
+		    *tpl_reply_to = initial_reply_to;
+
+		if (!tpl_sender)
+			tpl_sender = repoauthor;
+		if (!tpl_sender)
+			tpl_sender = repocommitter;
+
+		if (!tpl_subject)
+			tpl_subject = "";
+		if (!tpl_reply_to)
+			tpl_reply_to = "";
+
+		strbuf_addf(&sb,
+"From %s # This line is ignored.\n"
+"GIT: Lines beginning in \"GIT:\" will be removed.\n"
+"GIT: Consider including an overall diffstat or table of contents\n"
+"GIT: for the patch you are writing.\n"
+"GIT:\n"
+"GIT: Clear the body content if you don't wish to send a summary.\n"
+"From: %s\n"
+"Subject: %s\n"
+"In-Reply-To: %s\n"
+"\n", tpl_sender, tpl_sender, tpl_subject, tpl_reply_to);
+
+		for (i = 0; i < files.nr; ++i)
+			strbuf_addf(&sb,
+			    get_patch_subject(files.items[i].string));
+
+		fd = git_mkstemp(compose_filename, PATH_MAX,
+		    ".gitsendemail.msg.XXXXXX");
+		if (fd < 0)
+			die_errno("could not create temporary file '%s'",
+			    compose_filename);
+		if (write_in_full(fd, sb.buf, sb.len) < 0)
+			die_errno("failed writing temporary file '%s'",
+			    compose_filename);
+		close(fd);
+		strbuf_release(&sb);
+
+		if (annotate) {
+			do_edit(compose_filename, &files);
+		} else {
+			do_edit(compose_filename, NULL);
+		}
 	} else if (annotate) {
-		do_edit(files);
-	} */
+		do_edit(NULL, &files);
+	}
+
 	/* TODO: check encoding */
 
-	/* TODO: write get_patch_subject
 	if (!force)
 		for (i = 0; i < files.nr; ++i)
 			if (!strcmp(get_patch_subject(files.items[i].string), "*** SUBJECT HERE ***"))
@@ -719,14 +819,13 @@ int main(int argc, const char **argv)
 "has the template subject '*** SUBJECT HERE ***.\n"
 "Pass --force if you really want to send.\n",
 				    files.items[i].string);
-	*/
 
 	prompting = 0;
 	if (!sender) {
 		char temp[1000];
-		sender = git_author_info(IDENT_NO_DATE);
+		sender = repoauthor;
 		if (!sender)
-			sender = git_committer_info(IDENT_NO_DATE);
+			sender = repocommitter;
 
 		snprintf(temp, sizeof(temp),
 		    "Who should the emails appear to be from? [%s] ",
@@ -747,9 +846,19 @@ int main(int argc, const char **argv)
 
 	/* TODO: expand alliases */
 
-	if (thread && !reply_to && prompting)
-		reply_to = ask("Message-ID to be used as In-Reply-To for the first email? ",
+	if (thread && !initial_reply_to && prompting)
+		initial_reply_to = ask(
+"Message-ID to be used as In-Reply-To for the first email? ",
 		    NULL, NULL);
+
+	if (initial_reply_to) {
+		char *p = strchr(initial_reply_to, '<');
+		if (p)
+			initial_reply_to = p + 1;
+		p = strrchr(initial_reply_to, '>');
+		if (p)
+			*p = '\0';
+	}
 
 	if (!smtp_server) {
 		if (!access("/usr/sbin/sendmail", X_OK))
