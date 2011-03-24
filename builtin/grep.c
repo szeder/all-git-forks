@@ -729,6 +729,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 {
 	int hit = 0;
 	int cached = 0;
+	int full_tree = 0;
 	int seen_dashdash = 0;
 	int external_grep_allowed__ignored;
 	const char *show_in_pager = NULL, *default_pager = "dummy";
@@ -774,6 +775,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BIT('H', NULL, &opt.pathname, "show filenames", 1),
 		OPT_NEGBIT(0, "full-name", &opt.relative,
 			"show filenames relative to top directory", 1),
+		OPT_BIT(0, "full-tree", &full_tree,
+			"search from the top of the tree", 1),
 		OPT_BOOLEAN('l', "files-with-matches", &opt.name_only,
 			"show only filenames instead of matching lines"),
 		OPT_BOOLEAN(0, "name-only", &opt.name_only,
@@ -957,8 +960,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	}
 
 	if (i < argc)
-		paths = get_pathspec(prefix, argv + i);
-	else if (prefix) {
+		paths = get_pathspec(!full_tree ? prefix : NULL, argv + i);
+	else if (prefix && !full_tree) {
 		paths = xcalloc(2, sizeof(const char *));
 		paths[0] = prefix;
 		paths[1] = NULL;
