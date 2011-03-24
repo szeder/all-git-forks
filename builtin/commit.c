@@ -726,9 +726,11 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		struct strbuf sob = STRBUF_INIT;
 		int i;
 
+		char *name = xstrdup(getenv("GIT_COMMITTER_NAME")),
+		     *email = getenv("GIT_COMMITTER_EMAIL");
+
 		strbuf_addstr(&sob, sign_off_header);
-		strbuf_addstr(&sob, fmt_name(getenv("GIT_COMMITTER_NAME"),
-					     getenv("GIT_COMMITTER_EMAIL")));
+		strbuf_addstr(&sob, fmt_name(name, email));
 		strbuf_addch(&sob, '\n');
 		for (i = sb.len - 1; i > 0 && sb.buf[i - 1] != '\n'; i--)
 			; /* do nothing */
@@ -738,6 +740,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 			strbuf_addbuf(&sb, &sob);
 		}
 		strbuf_release(&sob);
+		free(name);
 	}
 
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
