@@ -20,7 +20,12 @@ try_to_free_t set_try_to_free_routine(try_to_free_t routine)
 
 char *xstrdup(const char *str)
 {
-	char *ret = strdup(str);
+	char *ret;
+
+	if (!str)
+		return NULL;
+
+	ret = strdup(str);
 	if (!ret) {
 		try_to_free_routine(strlen(str) + 1);
 		ret = strdup(str);
