@@ -78,7 +78,10 @@ static int update_some(const unsigned char *sha1, const char *base, int baselen,
 
 static int read_tree_some(struct tree *tree, const char **pathspec)
 {
-	read_tree_recursive(tree, "", 0, 0, pathspec, update_some, NULL);
+	struct pathspec pathspecs;
+	init_pathspec(&pathspecs, pathspec);
+	read_tree_recursive(tree, "", 0, 0, &pathspecs, update_some, NULL);
+	free_pathspec(&pathspecs);
 
 	/* update the index with the given tree's info
 	 * for all args, expanding wildcards, and exit
