@@ -27,6 +27,7 @@ static int default_show_root = 1;
 static int decoration_style;
 static const char *fmt_patch_subject_prefix = "PATCH";
 static const char *fmt_pretty;
+static int progress = -1;
 
 static const char * const builtin_log_usage =
 	"git log [<options>] [<since>..<until>] [[--] <path>...]\n"
@@ -109,9 +110,16 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 			rev->show_source = 1;
 		} else if (!strcmp(arg, "-h")) {
 			usage(builtin_log_usage);
+		} else if (!strcmp(arg, "--progress")) {
+			progress = 1;
+		} else if (!strcmp(arg, "--no-progress")) {
+			progress = 0;
 		} else
 			die("unrecognized argument: %s", arg);
 	}
+
+	if (progress == -1)
+		progress = isatty(2);
 
 	/*
 	 * defeat log.decorate configuration interacting with --pretty=raw
@@ -257,19 +265,26 @@ static int cmd_log_walk(struct rev_info *rev)
 	if (rev->early_output)
 		finish_early_output(rev);
 
+	if (progress)
+		rev->diffopt.show_rename_progress = 1;
+
 	/*
 	 * For --check and --exit-code, the exit code is based on CHECK_FAILED
 	 * and HAS_CHANGES being accumulated in rev->diffopt, so be careful to
 	 * retain that state information if replacing rev->diffopt in this loop
 	 */
 	while ((commit = get_revision(rev)) != NULL) {
-		if (!log_tree_commit(rev, commit) &&
-		    rev->max_count >= 0)
+		if (!log_tree_commit(rev, commit)) {
 			/*
 			 * We decremented max_count in get_revision,
 			 * but we didn't actually show the commit.
 			 */
-			rev->max_count++;
+			if (rev->max_count >= 0)
+				rev->max_count++;
+		} else {
+			/* Once we have output, progress will clutter the terminal. */
+			rev->diffopt.show_rename_progress = 0;
+		}
 		if (!rev->reflog_info) {
 			/* we allow cycles in reflog ancestry */
 			free(commit->buffer);
