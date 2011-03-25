@@ -49,7 +49,7 @@ static struct option builtin_fetch_options[] = {
 		    "fetch from all remotes"),
 	OPT_BOOLEAN('a', "append", &append,
 		    "append to .git/FETCH_HEAD instead of overwriting"),
-	OPT_STRING(0, "upload-pack", &upload_pack, "PATH",
+	OPT_STRING(0, "upload-pack", &upload_pack, "path",
 		   "path to upload pack on remote end"),
 	OPT__FORCE(&force, "force overwrite of local branch"),
 	OPT_BOOLEAN('m', "multiple", &multiple,
@@ -69,9 +69,9 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOLEAN('u', "update-head-ok", &update_head_ok,
 		    "allow updating of HEAD ref"),
 	OPT_BOOLEAN(0, "progress", &progress, "force progress reporting"),
-	OPT_STRING(0, "depth", &depth, "DEPTH",
+	OPT_STRING(0, "depth", &depth, "depth",
 		   "deepen history of shallow clone"),
-	{ OPTION_STRING, 0, "submodule-prefix", &submodule_prefix, "DIR",
+	{ OPTION_STRING, 0, "submodule-prefix", &submodule_prefix, "dir",
 		   "prepend this to submodule path output", PARSE_OPT_HIDDEN },
 	OPT_END()
 };
@@ -905,6 +905,8 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	struct string_list list = STRING_LIST_INIT_NODUP;
 	struct remote *remote;
 	int result = 0;
+
+	packet_trace_identity("fetch");
 
 	/* Record the command line for the reflog */
 	strbuf_addstr(&default_rla, "fetch");

@@ -323,7 +323,7 @@ static int rev_compare_tree(struct rev_info *revs, struct commit *parent, struct
 		 * tagged commit by specifying both --simplify-by-decoration
 		 * and pathspec.
 		 */
-		if (!revs->prune_data)
+		if (!revs->prune_data.nr)
 			return REV_TREE_SAME;
 	}
 
@@ -535,6 +535,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 	int left_count = 0, right_count = 0;
 	int left_first;
 	struct patch_ids ids;
+	unsigned cherry_flag;
 
 	/* First count the commits on the left and on the right */
 	for (p = list; p; p = p->next) {
@@ -553,11 +554,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 
 	left_first = left_count < right_count;
 	init_patch_ids(&ids);
-	if (revs->diffopt.nr_paths) {
-		ids.diffopts.nr_paths = revs->diffopt.nr_paths;
-		ids.diffopts.paths = revs->diffopt.paths;
-		ids.diffopts.pathlens = revs->diffopt.pathlens;
-	}
+	ids.diffopts.pathspec = revs->diffopt.pathspec;
 
 	/* Compute patch-ids for one side */
 	for (p = list; p; p = p->next) {
@@ -575,6 +572,9 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 			continue;
 		commit->util = add_commit_patch_id(commit, &ids);
 	}
+
+	/* either cherry_mark or cherry_pick are true */
+	cherry_flag = revs->cherry_mark ? PATCHSAME : SHOWN;
 
 	/* Check the other side */
 	for (p = list; p; p = p->next) {
@@ -598,7 +598,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 		if (!id)
 			continue;
 		id->seen = 1;
-		commit->object.flags |= SHOWN;
+		commit->object.flags |= cherry_flag;
 	}
 
 	/* Now check the original side for seen ones */
@@ -610,7 +610,7 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 		if (!ent)
 			continue;
 		if (ent->seen)
-			commit->object.flags |= SHOWN;
+			commit->object.flags |= cherry_flag;
 		commit->util = NULL;
 	}
 
@@ -733,6 +733,23 @@ static struct commit_list *collect_bottom_commits(struct commit_list *list)
 	return bottom;
 }
 
+/* Assumes either left_only or right_only is set */
+static void limit_left_right(struct commit_list *list, struct rev_info *revs)
+{
+	struct commit_list *p;
+
+	for (p = list; p; p = p->next) {
+		struct commit *commit = p->item;
+
+		if (revs->right_only) {
+			if (commit->object.flags & SYMMETRIC_LEFT)
+				commit->object.flags |= SHOWN;
+		} else	/* revs->left_only is set */
+			if (!(commit->object.flags & SYMMETRIC_LEFT))
+				commit->object.flags |= SHOWN;
+	}
+}
+
 static int limit_list(struct rev_info *revs)
 {
 	int slop = SLOP;
@@ -785,8 +802,11 @@ static int limit_list(struct rev_info *revs)
 		show(revs, newlist);
 		show_early_output = NULL;
 	}
-	if (revs->cherry_pick)
+	if (revs->cherry_pick || revs->cherry_mark)
 		cherry_pick_list(newlist, revs);
+
+	if (revs->left_only || revs->right_only)
+		limit_left_right(newlist, revs);
 
 	if (bottom) {
 		limit_to_ancestry(bottom, newlist);
@@ -973,7 +993,7 @@ static void prepare_show_merge(struct rev_info *revs)
 		struct cache_entry *ce = active_cache[i];
 		if (!ce_stage(ce))
 			continue;
-		if (ce_path_match(ce, revs->prune_data)) {
+		if (ce_path_match(ce, &revs->prune_data)) {
 			prune_num++;
 			prune = xrealloc(prune, sizeof(*prune) * prune_num);
 			prune[prune_num-2] = ce->name;
@@ -983,7 +1003,8 @@ static void prepare_show_merge(struct rev_info *revs)
 		       ce_same_name(ce, active_cache[i+1]))
 			i++;
 	}
-	revs->prune_data = prune;
+	free_pathspec(&revs->prune_data);
+	init_pathspec(&revs->prune_data, prune);
 	revs->limited = 1;
 }
 
@@ -1263,9 +1284,32 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->boundary = 1;
 	} else if (!strcmp(arg, "--left-right")) {
 		revs->left_right = 1;
+	} else if (!strcmp(arg, "--left-only")) {
+		if (revs->right_only)
+			die("--left-only is incompatible with --right-only"
+			    " or --cherry");
+		revs->left_only = 1;
+	} else if (!strcmp(arg, "--right-only")) {
+		if (revs->left_only)
+			die("--right-only is incompatible with --left-only");
+		revs->right_only = 1;
+	} else if (!strcmp(arg, "--cherry")) {
+		if (revs->left_only)
+			die("--cherry is incompatible with --left-only");
+		revs->cherry_mark = 1;
+		revs->right_only = 1;
+		revs->no_merges = 1;
+		revs->limited = 1;
 	} else if (!strcmp(arg, "--count")) {
 		revs->count = 1;
+	} else if (!strcmp(arg, "--cherry-mark")) {
+		if (revs->cherry_pick)
+			die("--cherry-mark is incompatible with --cherry-pick");
+		revs->cherry_mark = 1;
+		revs->limited = 1; /* needs limit_list() */
 	} else if (!strcmp(arg, "--cherry-pick")) {
+		if (revs->cherry_mark)
+			die("--cherry-pick is incompatible with --cherry-mark");
 		revs->cherry_pick = 1;
 		revs->limited = 1;
 	} else if (!strcmp(arg, "--objects")) {
@@ -1620,7 +1664,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	}
 
 	if (prune_data)
-		revs->prune_data = get_pathspec(revs->prefix, prune_data);
+		init_pathspec(&revs->prune_data, get_pathspec(revs->prefix, prune_data));
 
 	if (revs->def == NULL)
 		revs->def = opt ? opt->def : NULL;
@@ -1651,13 +1695,13 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->topo_order)
 		revs->limited = 1;
 
-	if (revs->prune_data) {
-		diff_tree_setup_paths(revs->prune_data, &revs->pruning);
+	if (revs->prune_data.nr) {
+		diff_tree_setup_paths(revs->prune_data.raw, &revs->pruning);
 		/* Can't prune commits with rename following: the paths change.. */
 		if (!DIFF_OPT_TST(&revs->diffopt, FOLLOW_RENAMES))
 			revs->prune = 1;
 		if (!revs->full_diff)
-			diff_tree_setup_paths(revs->prune_data, &revs->diffopt);
+			diff_tree_setup_paths(revs->prune_data.raw, &revs->diffopt);
 	}
 	if (revs->combine_merges)
 		revs->ignore_merges = 0;
@@ -2234,4 +2278,33 @@ struct commit *get_revision(struct rev_info *revs)
 	if (c && revs->graph)
 		graph_update(revs->graph, c);
 	return c;
+}
+
+char *get_revision_mark(const struct rev_info *revs, const struct commit *commit)
+{
+	if (commit->object.flags & BOUNDARY)
+		return "-";
+	else if (commit->object.flags & UNINTERESTING)
+		return "^";
+	else if (commit->object.flags & PATCHSAME)
+		return "=";
+	else if (!revs || revs->left_right) {
+		if (commit->object.flags & SYMMETRIC_LEFT)
+			return "<";
+		else
+			return ">";
+	} else if (revs->graph)
+		return "*";
+	else if (revs->cherry_mark)
+		return "+";
+	return "";
+}
+
+void put_revision_mark(const struct rev_info *revs, const struct commit *commit)
+{
+	char *mark = get_revision_mark(revs, commit);
+	if (!strlen(mark))
+		return;
+	fputs(mark, stdout);
+	putchar(' ');
 }

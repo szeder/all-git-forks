@@ -64,23 +64,33 @@ static void set_refspecs(const char **refs, int nr)
 	}
 }
 
-static void setup_push_tracking(void)
+static void setup_push_upstream(struct remote *remote)
 {
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
 	if (!branch)
-		die("You are not currently on a branch.");
+		die("You are not currently on a branch.\n"
+		    "To push the history leading to the current (detached HEAD)\n"
+		    "state now, use\n"
+		    "\n"
+		    "    git push %s HEAD:<name-of-remote-branch>\n",
+		    remote->name);
 	if (!branch->merge_nr || !branch->merge)
-		die("The current branch %s is not tracking anything.",
+		die("The current branch %s has no upstream branch.\n"
+		    "To push the current branch and set the remote as upstream, use\n"
+		    "\n"
+		    "    git push --set-upstream %s %s\n",
+		    branch->name,
+		    remote->name,
 		    branch->name);
 	if (branch->merge_nr != 1)
-		die("The current branch %s is tracking multiple branches, "
+		die("The current branch %s has multiple upstream branches, "
 		    "refusing to push.", branch->name);
 	strbuf_addf(&refspec, "%s:%s", branch->name, branch->merge[0]->src);
 	add_refspec(refspec.buf);
 }
 
-static void setup_default_push_refspecs(void)
+static void setup_default_push_refspecs(struct remote *remote)
 {
 	switch (push_default) {
 	default:
@@ -88,8 +98,8 @@ static void setup_default_push_refspecs(void)
 		add_refspec(":");
 		break;
 
-	case PUSH_DEFAULT_TRACKING:
-		setup_push_tracking();
+	case PUSH_DEFAULT_UPSTREAM:
+		setup_push_upstream(remote);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
@@ -147,7 +157,14 @@ static int do_push(const char *repo, int flags)
 	if (!remote) {
 		if (repo)
 			die("bad repository '%s'", repo);
-		die("No destination configured to push to.");
+		die("No configured push destination.\n"
+		    "Either specify the URL from the command-line or configure a remote repository using\n"
+		    "\n"
+		    "    git remote add <name> <url>\n"
+		    "\n"
+		    "and then push using the remote name\n"
+		    "\n"
+		    "    git push <name>\n");
 	}
 
 	if (remote->mirror)
@@ -175,7 +192,7 @@ static int do_push(const char *repo, int flags)
 			refspec = remote->push_refspec;
 			refspec_nr = remote->push_refspec_nr;
 		} else if (!(flags & TRANSPORT_PUSH_MIRROR))
-			setup_default_push_refspecs();
+			setup_default_push_refspecs(remote);
 	}
 	errs = 0;
 	if (remote->pushurl_nr) {
@@ -228,6 +245,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
+	packet_trace_identity("push");
 	git_config(git_default_config, NULL);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
 
