@@ -95,6 +95,68 @@ static int socket_read(struct smtp_socket *sock, void *data, int len)
 	return n;
 }
 
+#ifndef NO_IPV6
+
+/* use IPv6 API */
+static int connect_socket(const char *host, int nport)
+{
+	int gai, sockfd = -1;
+	struct addrinfo hints, *ai0, *ai;
+	char portstr[6];
+
+	snprintf(portstr, sizeof(portstr), "%d", nport);
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	if (verbose)
+		fprintf(stderr, "Looking up %s ... ", host);
+
+	gai = getaddrinfo(host, portstr, &hints, &ai);
+	if (gai)
+		die("Unable to look up %s (port %d) (%s)", host, nport, gai_strerror(gai));
+
+	if (verbose)
+		fprintf(stderr, "done.\nConnecting to %s (port %d) ... ", host, nport);
+
+	for (ai0 = ai; ai; ai = ai->ai_next) {
+		char addr[NI_MAXHOST];
+
+		sockfd = socket(ai->ai_family, ai->ai_socktype,
+			   ai->ai_protocol);
+		if (sockfd < 0)
+			continue;
+
+		getnameinfo(ai->ai_addr, ai->ai_addrlen, addr,
+			    sizeof(addr), NULL, 0, NI_NUMERICHOST);
+
+		if (verbose)
+			fprintf(stderr, "Connecting to [%s]:%s... ", addr, portstr);
+
+		if (connect(sockfd, ai->ai_addr, ai->ai_addrlen) >= 0)
+			break;
+
+		/* try next address in list, if any */
+		perror(host);
+		close(sockfd);
+		sockfd = -1;
+	}
+
+	freeaddrinfo(ai0);
+
+	if (sockfd < 0)
+		die_errno("unable to connect a socket (%s)", strerror(errno));
+
+	if (verbose)
+		fprintf(stderr, "done.\n");
+
+	return sockfd;
+}
+
+#else /* NO_IPV6 */
+
+/* use IPv4 API */
 static int connect_socket(const char *host, int nport)
 {
 	int sockfd = -1;
@@ -148,6 +210,7 @@ static int connect_socket(const char *host, int nport)
 
 	return sockfd;
 }
+#endif
 
 #ifndef NO_OPENSSL
 static void connect_ssl(struct smtp_socket *sock)
