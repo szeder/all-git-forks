@@ -2,19 +2,11 @@ git (1:1.7.4.2-0.1) unstable; urgency=low
 
   * new upstream point release.
   * debian/diff/0008...0064: remove; applied upstream.
-  * package git: remove unpack-time and configuration-time
-    dependencies on dpkg (>= 1.15.7.2) (thx Anders Kaseorg and
-    Marc Haber; closes: #618708).
-    - git.preinst, git.postinst, git.postrm: reimplement the
-      functionality from dpkg-maintscript-helper that we need.
-  * terminate git-daemon/log service before deleting the gitlog user
-    (closes: #610099).
-    * git-daemon-run.postrm: use the full path /etc/sv/git-daemon to
-      name the git-daemon service for sv; otherwise sv would look for
-      /etc/service/git-daemon, which prerm has already removed.
-    * git-daemon-run.postrm: use the sv force-shutdown command, not
-      force-stop, so both git-daemon and its logging service are
-      coaxed to exit.
+  * debian/git.preinst, debian/git.postinst, debian/git.postrm:
+    don't use dpkg-maintscript-helper, avoiding a dependency on
+    recent dpkg (thx Anders Kaseorg and Marc Haber; closes: #618708).
+  * debian/git-daemon-run.postrm: terminate the git-daemon/log
+    service before deleting the gitlog user (closes: #610099).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 24 Mar 2011 03:52:04 -0500
 
