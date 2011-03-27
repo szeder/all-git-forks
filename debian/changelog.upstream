@@ -1,19 +1,24 @@
-Version release+patches; changes since v1.7.4.1:
-------------------------------------------------
+Version v1.7.4.2; changes since v1.7.4.1:
+-----------------------------------------
 
 Adam Monsen (1):
       diff format documentation: clarify --cc and -c
 
-Alexei Sholik (2):
+Alexei Sholik (3):
       Documentation: remove redundant colons in git-for-each-ref.txt
       Add Author and Documentation sections to git-for-each-ref.txt
+      docs: fix grammar in gitattributes.txt
 
-Anders Kaseorg (1):
-      gitk: Take only numeric version components when computing $git_version
+Arnout Engelen (1):
+      Improve error messages when temporary file creation fails
 
-Carlos Martín Nieto (2):
+Ben Walton (1):
+      Work around broken ln on solaris as used in t8006
+
+Carlos Martín Nieto (3):
       valgrind: ignore SSE-based strlen invalid reads
       make_absolute_path: return the input path if it points to our buffer
+      t/README: Add a note about running commands under valgrind
 
 Clemens Buchacher (1):
       Documentation: clarify -u<mode> option defaults
@@ -21,29 +26,27 @@ Clemens Buchacher (1):
 Eric Hanchrow (1):
       branch_merged: fix grammar in warning
 
-Frédéric Brière (1):
-      gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+Erik Faye-Lund (1):
+      mingw: add minimum getrlimit() compatibility stub
 
-Gerrit Pape (2):
-      ident: check /etc/mailname if author email is unknown
-      bug#506445: hooks/post-receive-email: set encoding to utf-8
+Jakub Narebski (2):
+      gitweb: Always call parse_date with timezone parameter
+      gitweb: Fix handling of fractional timezones in parse_date
 
 Jay Soffian (1):
       merge: honor prepare-commit-msg hook
 
-Jeff King (4):
+Jeff King (5):
       string_list_append: always set util pointer to NULL
       clone: die when trying to clone missing local path
       diff: handle diffstat of rewritten binary files
       diff: don't retrieve binary blobs for diffstat
+      bisect: visualize with git-log if gitk is unavailable
 
 Johan Herland (1):
       push.default: Rename 'tracking' to 'upstream'
 
-Jonathan Nieder (12):
-      remove shebang line from shell libraries
-      pre-rebase hook: capture documentation in a <<here document
-      gitk: use symbolic font names "sans" and "monospace"
+Jonathan Nieder (9):
       correct type of EMPTY_TREE_SHA1_BIN
       tests: skip terminal output tests on OS X
       commit: error out for missing commit message template
@@ -54,12 +57,15 @@ Jonathan Nieder (12):
       cherry: split off function to print output lines
       diff --submodule: split into bite-sized pieces
 
-Junio C Hamano (5):
+Junio C Hamano (8):
+      CodingGuidelines: downcase placeholders in usage messages
       verify-pack: add --stat-only to the synopsis section
       SubmittingPatches: clarify the expected commit log description
       Revert "core.abbrevguard: Ensure short object names stay unique a bit longer"
-      CodingGuidelines: downcase placeholders in usage messages
       Prepare draft release notes to 1.7.4.2
+      bisect: explain the rationale behind 125
+      Update draft release notes to 1.7.4.2
+      Git 1.7.4.2
 
 Kevin Cernekee (1):
       gitweb: highlight: replace tabs with spaces
@@ -68,6 +74,9 @@ Linus Torvalds (3):
       for_each_hash: allow passing a 'void *data' pointer to callback
       diffcore-rename: properly honor the difference between -M and -C
       diffcore-rename: improve estimate_similarity() heuristics
+
+Masatake Osanai (1):
+      perl: command_bidi_pipe() method should set-up git environmens
 
 Mathias Lafeldt (1):
       Fix typo in t/README
@@ -81,7 +90,6 @@ Michael J Gruber (16):
       commit,status: describe -u likewise
       git-tag.txt: list all modes in the description
       pull: do not display fetch usage on --help-all
-      rev-list-options.txt: typo fix
       Make <identifier> lowercase as per CodingGuidelines
       Make <identifier> lowercase as per CodingGuidelines
       Make <identifier> lowercase as per CodingGuidelines
@@ -89,6 +97,11 @@ Michael J Gruber (16):
       git-patch-id: test for "no newline" markers
       git-patch-id: do not trip over "no newline" markers
       mergetool-lib: call vim in readonly mode for diffs
+      rev-list-options.txt: typo fix
+
+Michal Rokos (2):
+      Makefile: add NO_FNMATCH_CASEFOLD to HP-UX section
+      git-compat-util.h: Honor HP C's noreturn attribute
 
 Michał Kiedrowicz (1):
       Documentation: fix a typo in git-apply.txt
@@ -102,6 +115,17 @@ Piotr Krukowiecki (1):
 
 Ralf Wildenhues (1):
       configure: use AC_LANG_PROGRAM consistently
+
+SZEDER Gábor (1):
+      git-am.txt: advertise 'git am --abort' instead of 'rm .git/rebase-apply'
+
+Shawn O. Pearce (2):
+      Limit file descriptors used by packs
+      sha1_file.c: Don't retain open fds on small packs
+
+Spencer E. Olson (2):
+      submodule: no [--merge|--rebase] when newly cloned
+      t7406: "git submodule update {--merge|--rebase]" with new submodules
 
 Ævar Arnfjörð Bjarmason (4):
       gitweb/gitweb.perl: remove use of qw(...) as parentheses
