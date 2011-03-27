@@ -6,7 +6,7 @@ set -e
 rm_conffile () {
 	CONFFILE=$1; shift
 	test "$1" = install || test "$1" = upgrade || return 0
-	dpkg --compare-version "$2" lt-nl '1:1.7.4.1-2~' || return 0
+	dpkg --compare-versions "$2" lt-nl '1:1.7.4.1-2~' || return 0
 	test -e "$CONFFILE" || return 0
 
 	md5sum=$(md5sum $CONFFILE | sed -e 's/ .*//')
