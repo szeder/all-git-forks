@@ -20,8 +20,7 @@ static int zlib_compression_seen;
 
 const char *config_exclusive_filename = NULL;
 
-struct config_item
-{
+struct config_item {
 	struct config_item *next;
 	char *name;
 	char *value;
@@ -499,13 +498,6 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "core.abbrevguard")) {
-		unique_abbrev_extra_length = git_config_int(var, value);
-		if (unique_abbrev_extra_length < 0)
-			unique_abbrev_extra_length = 0;
-		return 0;
-	}
-
 	if (!strcmp(var, "core.bare")) {
 		is_bare_repository_cfg = git_config_bool(var, value);
 		return 0;
@@ -737,8 +729,10 @@ static int git_default_push_config(const char *var, const char *value)
 			push_default = PUSH_DEFAULT_NOTHING;
 		else if (!strcmp(value, "matching"))
 			push_default = PUSH_DEFAULT_MATCHING;
-		else if (!strcmp(value, "tracking"))
-			push_default = PUSH_DEFAULT_TRACKING;
+		else if (!strcmp(value, "upstream"))
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(value, "tracking")) /* deprecated */
+			push_default = PUSH_DEFAULT_UPSTREAM;
 		else if (!strcmp(value, "current"))
 			push_default = PUSH_DEFAULT_CURRENT;
 		else {
