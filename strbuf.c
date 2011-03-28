@@ -296,6 +296,17 @@ size_t strbuf_fread(struct strbuf *sb, size_t size, FILE *f)
 	return res;
 }
 
+size_t strbuf_fwrite(struct strbuf *sb, size_t size, FILE *f)
+{
+	size_t res;
+
+	if (size > sb->len)
+		res = fwrite(sb->buf, 1, sb->len, f);
+	else
+		res = fwrite(sb->buf, 1, size, f);
+	return res;
+}
+
 ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
 {
 	size_t oldlen = sb->len;

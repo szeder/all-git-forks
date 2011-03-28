@@ -109,6 +109,7 @@ static inline void strbuf_complete_line(struct strbuf *sb)
 }
 
 extern size_t strbuf_fread(struct strbuf *, size_t, FILE *);
+extern size_t strbuf_fwrite(struct strbuf *, size_t, FILE *);
 /* XXX: if read fails, any partial read is undone */
 extern ssize_t strbuf_read(struct strbuf *, int fd, size_t hint);
 extern int strbuf_read_file(struct strbuf *sb, const char *path, size_t hint);
