@@ -2775,8 +2775,8 @@ __git_main ()
 			--help
 			"
 			;;
-		*)     __git_compute_porcelain_commands
-		       __gitcomp "$__git_porcelain_commands $(__git_aliases)" ;;
+		*)    __git_compute_all_commands
+		      __gitcomp "$__git_all_commands $(__git_aliases)" ;;
 		esac
 		return
 	fi
