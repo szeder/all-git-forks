@@ -89,7 +89,7 @@ static void cmd_log_init(int argc, const char **argv, const char *prefix,
 		rev->always_show_header = 0;
 	if (DIFF_OPT_TST(&rev->diffopt, FOLLOW_RENAMES)) {
 		rev->always_show_header = 0;
-		if (rev->diffopt.nr_paths != 1)
+		if (rev->diffopt.pathspec.nr != 1)
 			usage("git logs can only follow renames on one pathname at a time");
 	}
 	for (i = 1; i < argc; i++) {
@@ -263,7 +263,13 @@ static int cmd_log_walk(struct rev_info *rev)
 	 * retain that state information if replacing rev->diffopt in this loop
 	 */
 	while ((commit = get_revision(rev)) != NULL) {
-		log_tree_commit(rev, commit);
+		if (!log_tree_commit(rev, commit) &&
+		    rev->max_count >= 0)
+			/*
+			 * We decremented max_count in get_revision,
+			 * but we didn't actually show the commit.
+			 */
+			rev->max_count++;
 		if (!rev->reflog_info) {
 			/* we allow cycles in reflog ancestry */
 			free(commit->buffer);
@@ -1055,7 +1061,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	rev.commit_format = CMIT_FMT_EMAIL;
 	rev.verbose_header = 1;
 	rev.diff = 1;
-	rev.no_merges = 1;
+	rev.max_parents = 1;
 	DIFF_OPT_SET(&rev.diffopt, RECURSIVE);
 	rev.subject_prefix = fmt_patch_subject_prefix;
 	memset(&s_r_opt, 0, sizeof(s_r_opt));
@@ -1352,6 +1358,23 @@ static const char * const cherry_usage[] = {
 	NULL
 };
 
+static void print_commit(char sign, struct commit *commit, int verbose,
+			 int abbrev)
+{
+	if (!verbose) {
+		printf("%c %s\n", sign,
+		       find_unique_abbrev(commit->object.sha1, abbrev));
+	} else {
+		struct strbuf buf = STRBUF_INIT;
+		struct pretty_print_context ctx = {0};
+		pretty_print_commit(CMIT_FMT_ONELINE, commit, &buf, &ctx);
+		printf("%c %s %s\n", sign,
+		       find_unique_abbrev(commit->object.sha1, abbrev),
+		       buf.buf);
+		strbuf_release(&buf);
+	}
+}
+
 int cmd_cherry(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
@@ -1436,22 +1459,7 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 		commit = list->item;
 		if (has_commit_patch_id(commit, &ids))
 			sign = '-';
-
-		if (verbose) {
-			struct strbuf buf = STRBUF_INIT;
-			struct pretty_print_context ctx = {0};
-			pretty_print_commit(CMIT_FMT_ONELINE, commit,
-					    &buf, &ctx);
-			printf("%c %s %s\n", sign,
-			       find_unique_abbrev(commit->object.sha1, abbrev),
-			       buf.buf);
-			strbuf_release(&buf);
-		}
-		else {
-			printf("%c %s\n", sign,
-			       find_unique_abbrev(commit->object.sha1, abbrev));
-		}
-
+		print_commit(sign, commit, verbose, abbrev);
 		list = list->next;
 	}
 

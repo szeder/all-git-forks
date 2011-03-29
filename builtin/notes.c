@@ -423,7 +423,7 @@ void finish_copy_notes_for_rewrite(struct notes_rewrite_cfg *c)
 	free(c);
 }
 
-int notes_copy_from_stdin(int force, const char *rewrite_cmd)
+static int notes_copy_from_stdin(int force, const char *rewrite_cmd)
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct notes_rewrite_cfg *c = NULL;
@@ -537,16 +537,16 @@ static int add(int argc, const char **argv, const char *prefix)
 	const unsigned char *note;
 	struct msg_arg msg = { 0, 0, STRBUF_INIT };
 	struct option options[] = {
-		{ OPTION_CALLBACK, 'm', "message", &msg, "MSG",
+		{ OPTION_CALLBACK, 'm', "message", &msg, "msg",
 			"note contents as a string", PARSE_OPT_NONEG,
 			parse_msg_arg},
-		{ OPTION_CALLBACK, 'F', "file", &msg, "FILE",
+		{ OPTION_CALLBACK, 'F', "file", &msg, "file",
 			"note contents in a file", PARSE_OPT_NONEG,
 			parse_file_arg},
-		{ OPTION_CALLBACK, 'c', "reedit-message", &msg, "OBJECT",
+		{ OPTION_CALLBACK, 'c', "reedit-message", &msg, "object",
 			"reuse and edit specified note object", PARSE_OPT_NONEG,
 			parse_reedit_arg},
-		{ OPTION_CALLBACK, 'C', "reuse-message", &msg, "OBJECT",
+		{ OPTION_CALLBACK, 'C', "reuse-message", &msg, "object",
 			"reuse specified note object", PARSE_OPT_NONEG,
 			parse_reuse_arg},
 		OPT__FORCE(&force, "replace existing notes"),
@@ -682,16 +682,16 @@ static int append_edit(int argc, const char **argv, const char *prefix)
 	const char * const *usage;
 	struct msg_arg msg = { 0, 0, STRBUF_INIT };
 	struct option options[] = {
-		{ OPTION_CALLBACK, 'm', "message", &msg, "MSG",
+		{ OPTION_CALLBACK, 'm', "message", &msg, "msg",
 			"note contents as a string", PARSE_OPT_NONEG,
 			parse_msg_arg},
-		{ OPTION_CALLBACK, 'F', "file", &msg, "FILE",
+		{ OPTION_CALLBACK, 'F', "file", &msg, "file",
 			"note contents in a file", PARSE_OPT_NONEG,
 			parse_file_arg},
-		{ OPTION_CALLBACK, 'c', "reedit-message", &msg, "OBJECT",
+		{ OPTION_CALLBACK, 'c', "reedit-message", &msg, "object",
 			"reuse and edit specified note object", PARSE_OPT_NONEG,
 			parse_reedit_arg},
-		{ OPTION_CALLBACK, 'C', "reuse-message", &msg, "OBJECT",
+		{ OPTION_CALLBACK, 'C', "reuse-message", &msg, "object",
 			"reuse specified note object", PARSE_OPT_NONEG,
 			parse_reuse_arg},
 		OPT_END()
@@ -819,7 +819,7 @@ static int merge_commit(struct notes_merge_options *o)
 	t = xcalloc(1, sizeof(struct notes_tree));
 	init_notes(t, "NOTES_MERGE_PARTIAL", combine_notes_overwrite, 0);
 
-	o->local_ref = resolve_ref("NOTES_MERGE_REF", sha1, 0, 0);
+	o->local_ref = resolve_ref("NOTES_MERGE_REF", sha1, 0, NULL);
 	if (!o->local_ref)
 		die("Failed to resolve NOTES_MERGE_REF");
 

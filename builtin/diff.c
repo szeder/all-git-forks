@@ -135,7 +135,7 @@ static int builtin_diff_index(struct rev_info *revs,
 	    revs->max_count != -1 || revs->min_age != -1 ||
 	    revs->max_age != -1)
 		usage(builtin_diff_usage);
-	if (read_cache_preload(revs->diffopt.paths) < 0) {
+	if (read_cache_preload(revs->diffopt.pathspec.raw) < 0) {
 		perror("read_cache_preload");
 		return -1;
 	}
@@ -197,12 +197,7 @@ static void refresh_index_quietly(void)
 	discard_cache();
 	read_cache();
 	refresh_cache(REFRESH_QUIET|REFRESH_UNMERGED);
-
-	if (active_cache_changed &&
-	    !write_cache(fd, active_cache, active_nr))
-		commit_locked_index(lock_file);
-
-	rollback_lock_file(lock_file);
+	update_index_if_able(&the_index, lock_file);
 }
 
 static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv)
@@ -237,7 +232,7 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 		revs->combine_merges = revs->dense_combined_merges = 1;
 
 	setup_work_tree();
-	if (read_cache_preload(revs->diffopt.paths) < 0) {
+	if (read_cache_preload(revs->diffopt.pathspec.raw) < 0) {
 		perror("read_cache_preload");
 		return -1;
 	}
@@ -374,14 +369,10 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		}
 		die("unhandled object '%s' given.", name);
 	}
-	if (rev.prune_data) {
-		const char **pathspec = rev.prune_data;
-		while (*pathspec) {
-			if (!path)
-				path = *pathspec;
-			paths++;
-			pathspec++;
-		}
+	if (rev.prune_data.nr) {
+		if (!path)
+			path = rev.prune_data.items[0].match;
+		paths += rev.prune_data.nr;
 	}
 
 	/*

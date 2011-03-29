@@ -1,4 +1,4 @@
-#include "cache.h"
+#include "builtin.h"
 #include "refs.h"
 #include "pkt-line.h"
 #include "commit.h"
@@ -9,6 +9,7 @@
 #include "fetch-pack.h"
 #include "remote.h"
 #include "run-command.h"
+#include "transport.h"
 
 static int transfer_unpack_limit = -1;
 static int fetch_unpack_limit = -1;
@@ -217,11 +218,35 @@ static void send_request(int fd, struct strbuf *buf)
 		safe_write(fd, buf->buf, buf->len);
 }
 
+static void insert_one_alternate_ref(const struct ref *ref, void *unused)
+{
+	rev_list_insert_ref(NULL, ref->old_sha1, 0, NULL);
+}
+
+static void insert_alternate_refs(void)
+{
+	foreach_alt_odb(refs_from_alternate_cb, insert_one_alternate_ref);
+}
+
+#define INITIAL_FLUSH 16
+#define LARGE_FLUSH 1024
+
+static int next_flush(int count)
+{
+	if (count < INITIAL_FLUSH * 2)
+		count += INITIAL_FLUSH;
+	else if (count < LARGE_FLUSH)
+		count <<= 1;
+	else
+		count += LARGE_FLUSH;
+	return count;
+}
+
 static int find_common(int fd[2], unsigned char *result_sha1,
 		       struct ref *refs)
 {
 	int fetching;
-	int count = 0, flushes = 0, retval;
+	int count = 0, flushes = 0, flush_at = INITIAL_FLUSH, retval;
 	const unsigned char *sha1;
 	unsigned in_vain = 0;
 	int got_continue = 0;
@@ -235,6 +260,7 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 	marked = 1;
 
 	for_each_ref(rev_list_insert_ref, NULL);
+	insert_alternate_refs();
 
 	fetching = 0;
 	for ( ; refs ; refs = refs->next) {
@@ -332,19 +358,20 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 		if (args.verbose)
 			fprintf(stderr, "have %s\n", sha1_to_hex(sha1));
 		in_vain++;
-		if (!(31 & ++count)) {
+		if (flush_at <= ++count) {
 			int ack;
 
 			packet_buf_flush(&req_buf);
 			send_request(fd[1], &req_buf);
 			strbuf_setlen(&req_buf, state_len);
 			flushes++;
+			flush_at = next_flush(count);
 
 			/*
 			 * We keep one window "ahead" of the other side, and
 			 * will wait for an ACK only on the next one
 			 */
-			if (!args.stateless_rpc && count == 32)
+			if (!args.stateless_rpc && count == INITIAL_FLUSH)
 				continue;
 
 			consume_shallow_list(fd[0]);
@@ -379,6 +406,8 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 					retval = 0;
 					in_vain = 0;
 					got_continue = 1;
+					if (ack == ACK_ready)
+						rev_list = NULL;
 					break;
 					}
 				}
@@ -803,6 +832,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	char *pack_lockfile = NULL;
 	char **pack_lockfile_ptr = NULL;
 	struct child_process *conn;
+
+	packet_trace_identity("fetch-pack");
 
 	nr_heads = 0;
 	heads = NULL;

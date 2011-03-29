@@ -21,7 +21,7 @@ static int debug;	/* Display lots of verbose info */
 static int all;	/* Any valid ref can be used */
 static int tags;	/* Allow lightweight tags */
 static int longformat;
-static int abbrev = DEFAULT_ABBREV;
+static int abbrev = -1; /* unspecified */
 static int max_candidates = 10;
 static struct hash_table names;
 static int have_util;
@@ -63,7 +63,7 @@ static inline struct commit_name *find_commit_name(const unsigned char *peeled)
 	return n;
 }
 
-static int set_util(void *chain)
+static int set_util(void *chain, void *data)
 {
 	struct commit_name *n;
 	for (n = chain; n; n = n->next) {
@@ -289,7 +289,7 @@ static void describe(const char *arg, int last_one)
 		fprintf(stderr, "searching to describe %s\n", arg);
 
 	if (!have_util) {
-		for_each_hash(&names, set_util);
+		for_each_hash(&names, set_util, NULL);
 		have_util = 1;
 	}
 
@@ -420,7 +420,11 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 		OPT_END(),
 	};
 
+	git_config(git_default_config, NULL);
 	argc = parse_options(argc, argv, prefix, options, describe_usage, 0);
+	if (abbrev < 0)
+		abbrev = DEFAULT_ABBREV;
+
 	if (max_candidates < 0)
 		max_candidates = 0;
 	else if (max_candidates > MAX_TAGS)
