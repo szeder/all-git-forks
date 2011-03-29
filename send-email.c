@@ -23,7 +23,8 @@ static const char *const send_email_usage[] = {
 	NULL
 };
 
-static int verbose = 0, smtp_debug = 0, format_patch = -1, multiedit = 1;
+static int verbose = 0, dry_run = 0, smtp_debug = 0, format_patch = -1, multiedit = 1;
+static const char *sender = NULL;
 static struct string_list to_rcpts, cc_rcpts, bcc_rcpts;
 
 struct smtp_socket {
@@ -368,6 +369,7 @@ static int xadd_rcpt(const struct option *opt, const char *arg, int unset)
 
 static const char *smtp_server = NULL, *port = NULL,
     *smtp_domain = NULL, *smtp_user = NULL, *smtp_pass = NULL;
+static const char *smtp_encryption = "";
 
 static int git_send_email_config(const char *var, const char *value, void *cb)
 {
@@ -612,19 +614,170 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
+void send_message(const char *header, const char *message)
+{
+	int nport = -1;
+	if (dry_run)
+		; /* we don't want to send the email. */
+	else if (is_absolute_path(smtp_server)) {
+		const char *argv[] = { smtp_server, "-i", "kusmabite@gmail.com", NULL };
+		struct child_process cld;
+		int status;
+
+		memset(&cld, 0, sizeof(cld));
+		cld.argv = argv;
+		cld.in = -1;
+		if (start_command(&cld))
+			die("unable to fork '%s'", smtp_server);
+		write_in_full(cld.in, header, strlen(header));
+		write_in_full(cld.in, message, strlen(message));
+		close(cld.in);
+		status = finish_command(&cld);
+		if (status)
+			exit(status);
+
+	} else {
+		struct smtp_socket sock = { 0 };
+		char hostname[256];
+		struct string_list helo_reply = { 0 };
+		int i, use_esmtp;
+		char *mbox;
+
+		if (!smtp_server)
+			die("The required SMTP server is not properly defined.");
+
+		if (NULL != port) {
+			char *ep;
+			nport = strtoul(port, &ep, 10);
+			if (ep == port || *ep) {
+				struct servent *se = getservbyname(port, "tcp");
+				if (!se)
+					die("Unknown port %s", port);
+				nport = se->s_port;
+			}
+		}
+
+		if (nport < 0) {
+			if      (!strcmp(smtp_encryption, "tls")) nport = 587;
+			else if (!strcmp(smtp_encryption, "ssl")) nport = 465;
+			else nport = 25;
+		}
+
+		sock.fd = connect_socket(smtp_server, nport);
+
+		if (!strcmp(smtp_encryption, "ssl"))
+#ifndef NO_OPENSSL
+			connect_ssl(&sock);
+#else
+			die("OpenSSL not available");
+#endif
+
+		demand_reply_code(&sock, 2);
+
+		gethostname(hostname, 256);
+		helo_reply.strdup_strings = 1;
+		use_esmtp = send_helo(&sock, hostname, &helo_reply);
+
+		if (!strcmp(smtp_encryption, "tls")) {
+#ifndef NO_OPENSSL
+			write_command(&sock, "STARTTLS");
+			demand_reply_code(&sock, 2);
+			connect_ssl(&sock);
+
+			/* extensions can change after STARTTLS */
+			string_list_clear(&helo_reply, 0);
+			use_esmtp = send_helo(&sock, hostname, &helo_reply);
+#else
+			die("OpenSSL not available");
+#endif
+		}
+
+		if (smtp_user) {
+			const char *auth_line = NULL;
+			if (!smtp_pass)
+				smtp_pass = getpass("Password: ");
+			if (!smtp_pass)
+				die_errno("Could not read password");
+
+			for (i = 0; i < helo_reply.nr; ++i)
+				if (!prefixcmp(helo_reply.items[i].string + 4, "AUTH "))
+					auth_line = helo_reply.items[i].string;
+
+			if (auth_line) {
+				if (strstr(auth_line, " PLAIN"))
+					auth_plain(&sock, smtp_user, smtp_pass);
+				else if (strstr(auth_line, " LOGIN"))
+					auth_login(&sock, smtp_user, smtp_pass);
+				else
+					die("No appropriate SASL mechanism found");
+			}
+			else
+				die("username specified, but SMTP server does not support the AUTH extension");
+		}
+
+		mbox = extract_mailbox(sender);
+		write_command(&sock, "MAIL FROM:<%s>", mbox);
+		free(mbox);
+		demand_reply_code(&sock, 2);
+
+		printf("to_rcpts: %d\n", to_rcpts.nr);
+		for (i = 0; i < to_rcpts.nr; ++i) {
+			write_command(&sock, "RCPT TO:<%s>", to_rcpts.items[i].string);
+			demand_reply_code(&sock, 2);
+		}
+
+		write_command(&sock, "DATA");
+		demand_reply_code(&sock, 3);
+
+		{
+			struct strbuf headers = STRBUF_INIT;
+
+			/* build From-field */
+			strbuf_addf(&headers, "From: %s\r\n", sender);
+
+			/* build To-field*/
+			strbuf_addstr(&headers, "To:");
+			for (i = 0; i < to_rcpts.nr; ++i)
+				strbuf_addf(&headers, "\t%s%s\r\n",
+					to_rcpts.items[i].string,
+					i != to_rcpts.nr - 1 ? "," : "");
+
+			/* build Cc-field*/
+			if (cc_rcpts.nr > 1) {
+				strbuf_addstr(&headers, "Cc:");
+				for (i = 0; i < cc_rcpts.nr; ++i)
+					strbuf_addf(&headers, "\t%s%s\r\n",
+						cc_rcpts.items[i].string,
+						i != cc_rcpts.nr - 1 ? "," : "");
+			}
+
+			strbuf_addf(&headers, "Subject: %s\r\n", "git-send-email.c test");
+			strbuf_addstr(&headers, "X-Mailer: " GIT_XMAILER "\r\n");
+
+			socket_write(&sock, headers.buf, headers.len);
+		}
+
+		socket_write(&sock, message, strlen(message));
+		socket_write(&sock, "\r\n.\r\n", 5);
+		demand_reply_code(&sock, 2);
+
+		if (verbose)
+			fprintf(stderr, "Closing connection\n");
+
+		write_command(&sock, "QUIT");
+		demand_reply_code(&sock, 2);
+	}
+}
+
 int main(int argc, const char **argv)
 {
-	char hostname[256];
-	struct smtp_socket sock = { 0 };
-	struct string_list helo_reply = { 0 };
-	int i, use_esmtp, nongit_ok, prompting;
+	int i, nongit_ok, prompting;
 	struct string_list files = { 0 };
 
-	int quiet = 0, dry_run = 0, nport = -1, thread = 1, force = 0,
+	int quiet = 0, thread = 1, force = 0,
 	    compose = 0, annotate = 0;
-	const char *sender = NULL, *initial_subject = NULL,
+	const char *initial_subject = NULL,
 	    *initial_reply_to = NULL;
-	const char *smtp_encryption = "";
 	const char *repoauthor, *repocommitter;
 	char compose_filename[PATH_MAX];
 
@@ -869,8 +1022,15 @@ int main(int argc, const char **argv)
 			smtp_server = "localhost";
 	}
 
-#if 0
 	for (i = 0; i < files.nr; ++i) {
+		const char *header =
+		    "Subject: Test!\r\n"
+		    "Content-Type: text/plain; charset=UTF-8\r\n"
+		    "Content-Transfer-Encoding: quoted-printable\r\n"
+		    "\r\n";
+		const char *message =
+		    "Hello there! \"=C3=85\"\r\n";
+
 		const char *fname = files.items[i].string;
 		FILE *fp;
 		struct strbuf line = STRBUF_INIT;
@@ -898,168 +1058,9 @@ int main(int argc, const char **argv)
 
 		fclose(fp);
 		strbuf_release(&line);
+
+		send_message(header, message);
 	}
-#endif
-
-	if (is_absolute_path(smtp_server)) {
-		const char *data =
-			"Subject: Test!\r\n"
-			"Content-Type: text/plain; charset=UTF-8\r\n"
-			"Content-Transfer-Encoding: quoted-printable\r\n"
-			"\r\n"
-			"Hello there! \"=C3=85\"\r\n";
-
-		const char *argv[] = { smtp_server, "-i", "kusmabite@gmail.com", NULL };
-		struct child_process cld;
-		int status;
-
-		memset(&cld, 0, sizeof(cld));
-		cld.argv = argv;
-		cld.in = -1;
-		if (start_command(&cld))
-			die("unable to fork '%s'", smtp_server);
-		write_in_full(cld.in, data, strlen(data));
-		close(cld.in);
-		status = finish_command(&cld);
-		if (status)
-			exit(status);
-
-		exit(0); /* hack */
-	} else {
-		if (NULL != port) {
-			char *ep;
-			nport = strtoul(port, &ep, 10);
-			if (ep == port || *ep) {
-				struct servent *se = getservbyname(port, "tcp");
-				if (!se)
-					die("Unknown port %s", port);
-				nport = se->s_port;
-			}
-		}
-
-		if (nport < 0) {
-			if      (!strcmp(smtp_encryption, "tls")) nport = 587;
-			else if (!strcmp(smtp_encryption, "ssl")) nport = 465;
-			else nport = 25;
-		}
-
-		sock.fd = connect_socket(smtp_server, nport);
-
-		if (!strcmp(smtp_encryption, "ssl"))
-#ifndef NO_OPENSSL
-			connect_ssl(&sock);
-#else
-			die("OpenSSL not available");
-#endif
-
-		demand_reply_code(&sock, 2);
-
-		gethostname(hostname, 256);
-		helo_reply.strdup_strings = 1;
-		use_esmtp = send_helo(&sock, hostname, &helo_reply);
-
-		if (!strcmp(smtp_encryption, "tls")) {
-#ifndef NO_OPENSSL
-			write_command(&sock, "STARTTLS");
-			demand_reply_code(&sock, 2);
-			connect_ssl(&sock);
-
-			/* extensions can change after STARTTLS */
-			string_list_clear(&helo_reply, 0);
-			use_esmtp = send_helo(&sock, hostname, &helo_reply);
-#else
-			die("OpenSSL not available");
-#endif
-		}
-
-		if (smtp_user) {
-			const char *auth_line = NULL;
-			if (!smtp_pass)
-				smtp_pass = getpass("Password: ");
-			if (!smtp_pass)
-				die_errno("Could not read password");
-
-
-			for (i = 0; i < helo_reply.nr; ++i)
-				if (!prefixcmp(helo_reply.items[i].string + 4, "AUTH "))
-					auth_line = helo_reply.items[i].string;
-
-			if (auth_line) {
-				if (strstr(auth_line, " PLAIN"))
-					auth_plain(&sock, smtp_user, smtp_pass);
-				else if (strstr(auth_line, " LOGIN"))
-					auth_login(&sock, smtp_user, smtp_pass);
-				else
-					die("No appropriate SASL mechanism found");
-			}
-			else
-				die("username specified, but SMTP server does not support the AUTH extension");
-		}
-	}
-
-#if 1
-	{
-		char *mbox = extract_mailbox(sender);
-		write_command(&sock, "MAIL FROM:<%s>", mbox);
-		free(mbox);
-		demand_reply_code(&sock, 2);
-	}
-
-	printf("to_rcpts: %d\n", to_rcpts.nr);
-	for (i = 0; i < to_rcpts.nr; ++i) {
-		write_command(&sock, "RCPT TO:<%s>", to_rcpts.items[i].string);
-		demand_reply_code(&sock, 2);
-	}
-
-	write_command(&sock, "DATA");
-	demand_reply_code(&sock, 3);
-
-	{
-		struct strbuf headers = STRBUF_INIT;
-
-		/* build From-field */
-		strbuf_addf(&headers, "From: %s\r\n", sender);
-
-		/* build To-field*/
-		strbuf_addstr(&headers, "To:");
-		for (i = 0; i < to_rcpts.nr; ++i)
-			strbuf_addf(&headers, "\t%s%s\r\n",
-				to_rcpts.items[i].string,
-				i != to_rcpts.nr - 1 ? "," : "");
-
-		/* build Cc-field*/
-		if (cc_rcpts.nr > 1) {
-			strbuf_addstr(&headers, "Cc:");
-			for (i = 0; i < cc_rcpts.nr; ++i)
-				strbuf_addf(&headers, "\t%s%s\r\n",
-					cc_rcpts.items[i].string,
-					i != cc_rcpts.nr - 1 ? "," : "");
-		}
-
-		strbuf_addf(&headers, "Subject: %s\r\n", "git-send-email.c test");
-		strbuf_addstr(&headers, "X-Mailer: " GIT_XMAILER "\r\n");
-
-		socket_write(&sock, headers.buf, headers.len);
-	}
-
-	{
-		const char *data =
-			"Subject: Test!\r\n"
-			"Content-Type: text/plain; charset=UTF-8\r\n"
-			"Content-Transfer-Encoding: quoted-printable\r\n"
-			"\r\n"
-			"Hello there! \"=C3=85\"\r\n";
-
-		socket_write(&sock, data, strlen(data));
-		socket_write(&sock, "\r\n.\r\n", 5);
-		demand_reply_code(&sock, 2);
-	}
-#endif
-
-	if (verbose)
-		fprintf(stderr, "Closing connection\n");
-	write_command(&sock, "QUIT");
-	demand_reply_code(&sock, 2);
 
 	return 0;
 }
