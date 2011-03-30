@@ -1,5 +1,5 @@
 #!/bin/sh
 
 upstream=`git rev-parse --symbolic-full-name "$1@{u}" >/dev/null 2>&1`
-GIT_EDITOR='sed -i "/^pick .*/aexec unset GIT_REFLOG_ACTION; unset GIT_CHERRY_PICK_HELP; make -j8 test"' \
+GIT_EDITOR='sed -i "/^pick .*/aexec make -j8 test"' \
 	git rebase -i "${upstream:-origin}" $1
