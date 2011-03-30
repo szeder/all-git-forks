@@ -614,7 +614,7 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
-void send_message(const char *message)
+void send_message(struct strbuf *message)
 {
 	int nport = -1;
 	struct strbuf header = STRBUF_INIT;
@@ -626,6 +626,13 @@ void send_message(const char *message)
 	const char *xh =
 	    "Content-Type: text/plain; charset=UTF-8\r\n"
 	    "Content-Transfer-Encoding: quoted-printable\r\n";
+	const char *date;
+
+	time_t now;
+
+	time(&now);
+	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
+
 
 	strbuf_addf(&header, "From: %s\r\n", sender);
 	strbuf_addf(&header, "To: %s\r\n", to);
@@ -660,7 +667,8 @@ void send_message(const char *message)
 		if (start_command(&cld))
 			die("unable to fork '%s'", smtp_server);
 		write_in_full(cld.in, header.buf, header.len);
-		write_in_full(cld.in, message, strlen(message));
+		write_in_full(cld.in, "\n", 1);
+		write_in_full(cld.in, message->buf, message->len);
 		close(cld.in);
 		status = finish_command(&cld);
 		if (status)
@@ -760,7 +768,8 @@ void send_message(const char *message)
 		demand_reply_code(&sock, 3);
 
 		socket_write(&sock, header.buf, header.len);
-		socket_write(&sock, message, strlen(message));
+		socket_write(&sock, "\r\n", 2);
+		socket_write(&sock, message->buf, message->len);
 		socket_write(&sock, "\r\n.\r\n", 5);
 		demand_reply_code(&sock, 2);
 
@@ -1050,13 +1059,7 @@ int main(int argc, const char **argv)
 				break;
 		}
 
-		printf("*** PARSING MESSAGE\n");
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
-			/* strip CR if CRLF */
-			if (line.buf[line.len] == '\r')
-				line.buf[--line.len] = '\0';
-
-			/* add message-line */
 			strbuf_addbuf(&message, &line);
 			if (message.buf[message.len - 1] != '\r')
 				strbuf_addch(&message, '\r');
@@ -1066,7 +1069,7 @@ int main(int argc, const char **argv)
 		fclose(fp);
 		strbuf_release(&line);
 
-		send_message(message.buf);
+		send_message(&message);
 		strbuf_release(&message);
 	}
 
