@@ -149,11 +149,14 @@ static void die_short_read(void)
 	die("invalid dump: unexpected end of file");
 }
 
-static void read_props(void)
+static void read_props(size_t prop_length)
 {
 	static struct strbuf key = STRBUF_INIT;
 	static struct strbuf val = STRBUF_INIT;
+	static struct strbuf props = STRBUF_INIT;
 	const char *t;
+	const char *t_next;
+	const char *props_end;
 	/*
 	 * NEEDSWORK: to support simple mode changes like
 	 *	K 11
@@ -167,21 +170,32 @@ static void read_props(void)
 	 * symlink and executable bits separately instead.
 	 */
 	uint32_t type_set = 0;
-	while ((t = buffer_read_line(&input)) && strcmp(t, "PROPS-END")) {
+	strbuf_reset(&props);
+	buffer_read_binary(&input, &props, prop_length);
+	if (props.len < prop_length)
+		die_short_read();
+	strbuf_addch(&props, '\n');
+	for (t = props.buf, props_end = props.buf + props.len;
+	     t < props_end &&
+	      (t + sizeof("PROPS-END") >= props_end || constcmp(t, "PROPS-END"));
+	     t = t_next) {
 		uint32_t len;
 		const char type = t[0];
 		int ch;
+		t_next = rawmemchr(t, '\n') + 1;
 
 		if (!type || t[1] != ' ')
 			die("invalid property line: %s\n", t);
 		len = atoi(&t[2]);
 		strbuf_reset(&val);
-		buffer_read_binary(&input, &val, len);
-		if (val.len < len)
+		if (t_next + len <= props_end) {
+			strbuf_add(&val, t_next, len);
+			t_next += len;
+		} else
 			die_short_read();
 
 		/* Discard trailing newline. */
-		ch = buffer_read_char(&input);
+		ch = t_next < props_end ? *t_next++ : EOF;
 		if (ch == EOF)
 			die_short_read();
 		if (ch != '\n')
@@ -272,7 +286,7 @@ static void handle_node(void)
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
 		if (node_ctx.propLength)
-			read_props();
+			read_props(node_ctx.propLength);
 	}
 
 	/*
@@ -434,7 +448,7 @@ void svndump_read(const char *url)
 			if (*t)
 				die("invalid dump: expected blank line after content length header");
 			if (active_ctx == REV_CTX) {
-				read_props();
+				read_props(node_ctx.propLength);
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
 				active_ctx = INTERNODE_CTX;
