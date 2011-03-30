@@ -614,9 +614,39 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
-void send_message(const char *header, const char *message)
+void send_message(const char *message)
 {
 	int nport = -1;
+	struct strbuf header = STRBUF_INIT;
+
+	const char *to = "kusmabite@gmail.com";
+	const char *cc = NULL;
+	const char *subject = "Hellos!";
+	const char *in_reply_to = NULL;
+	const char *xh =
+	    "Content-Type: text/plain; charset=UTF-8\r\n"
+	    "Content-Transfer-Encoding: quoted-printable\r\n";
+
+	strbuf_addf(&header, "From: %s\r\n", sender);
+	strbuf_addf(&header, "To: %s\r\n", to);
+	if (cc)
+		strbuf_addf(&header, "Cc: %s\r\n", cc);
+	strbuf_addf(&header, "Subject: %s\r\n", subject);
+/* TODO:
+	strbuf_addf(&header, "Date: %s\r\n", date);
+	strbuf_addf(&header, "Message-Id: %s\r\n", message_id); */
+	strbuf_addstr(&header, "X-Mailer: " GIT_XMAILER "\r\n");
+
+	if (in_reply_to) {
+		strbuf_addf(&header, "In-Reply-To: %s\r\n", in_reply_to);
+/* TODO:
+		strbuf_addf(&header, "References: %s\r\n", references);
+*/
+	}
+
+	if (xh)
+		strbuf_addstr(&header, xh);
+
 	if (dry_run)
 		; /* we don't want to send the email. */
 	else if (is_absolute_path(smtp_server)) {
@@ -629,7 +659,7 @@ void send_message(const char *header, const char *message)
 		cld.in = -1;
 		if (start_command(&cld))
 			die("unable to fork '%s'", smtp_server);
-		write_in_full(cld.in, header, strlen(header));
+		write_in_full(cld.in, header.buf, header.len);
 		write_in_full(cld.in, message, strlen(message));
 		close(cld.in);
 		status = finish_command(&cld);
@@ -729,34 +759,7 @@ void send_message(const char *header, const char *message)
 		write_command(&sock, "DATA");
 		demand_reply_code(&sock, 3);
 
-		{
-			struct strbuf headers = STRBUF_INIT;
-
-			/* build From-field */
-			strbuf_addf(&headers, "From: %s\r\n", sender);
-
-			/* build To-field*/
-			strbuf_addstr(&headers, "To:");
-			for (i = 0; i < to_rcpts.nr; ++i)
-				strbuf_addf(&headers, "\t%s%s\r\n",
-					to_rcpts.items[i].string,
-					i != to_rcpts.nr - 1 ? "," : "");
-
-			/* build Cc-field*/
-			if (cc_rcpts.nr > 1) {
-				strbuf_addstr(&headers, "Cc:");
-				for (i = 0; i < cc_rcpts.nr; ++i)
-					strbuf_addf(&headers, "\t%s%s\r\n",
-						cc_rcpts.items[i].string,
-						i != cc_rcpts.nr - 1 ? "," : "");
-			}
-
-			strbuf_addf(&headers, "Subject: %s\r\n", "git-send-email.c test");
-			strbuf_addstr(&headers, "X-Mailer: " GIT_XMAILER "\r\n");
-
-			socket_write(&sock, headers.buf, headers.len);
-		}
-
+		socket_write(&sock, header.buf, header.len);
 		socket_write(&sock, message, strlen(message));
 		socket_write(&sock, "\r\n.\r\n", 5);
 		demand_reply_code(&sock, 2);
@@ -1023,17 +1026,10 @@ int main(int argc, const char **argv)
 	}
 
 	for (i = 0; i < files.nr; ++i) {
-		const char *header =
-		    "Subject: Test!\r\n"
-		    "Content-Type: text/plain; charset=UTF-8\r\n"
-		    "Content-Transfer-Encoding: quoted-printable\r\n"
-		    "\r\n";
-		const char *message =
-		    "Hello there! \"=C3=85\"\r\n";
-
 		const char *fname = files.items[i].string;
 		FILE *fp;
 		struct strbuf line = STRBUF_INIT;
+		struct strbuf message = STRBUF_INIT;
 
 		if (verbose)
 			fprintf(stderr, "Opening \"%s\"\n", fname);
@@ -1044,8 +1040,10 @@ int main(int argc, const char **argv)
 
 		printf("*** PARSING HEADERS\n");
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
-			if (!prefixcmp(line.buf, "From "))
+			if (!prefixcmp(line.buf, "From ")) {
+/*				input_format = "mbox"; */
 				continue;
+			}
 
 			printf("line: \"%s\"\n", line.buf);
 			if (!line.len)
@@ -1053,13 +1051,23 @@ int main(int argc, const char **argv)
 		}
 
 		printf("*** PARSING MESSAGE\n");
-		while (strbuf_getline(&line, fp, '\n') != EOF)
-			printf("line: \"%s\"\n", line.buf);
+		while (strbuf_getline(&line, fp, '\n') != EOF) {
+			/* strip CR if CRLF */
+			if (line.buf[line.len] == '\r')
+				line.buf[--line.len] = '\0';
+
+			/* add message-line */
+			strbuf_addbuf(&message, &line);
+			if (message.buf[message.len - 1] != '\r')
+				strbuf_addch(&message, '\r');
+			strbuf_addch(&message, '\n');
+		}
 
 		fclose(fp);
 		strbuf_release(&line);
 
-		send_message(header, message);
+		send_message(message.buf);
+		strbuf_release(&message);
 	}
 
 	return 0;
