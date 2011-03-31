@@ -64,7 +64,7 @@ static struct tm *time_to_tm(unsigned long time, int tz)
  * What value of "tz" was in effect back then at "time" in the
  * local timezone?
  */
-static int local_tzoffset(unsigned long time)
+int local_tzoffset(unsigned long time)
 {
 	time_t t, t_local;
 	struct tm tm;
