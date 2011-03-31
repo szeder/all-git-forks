@@ -439,6 +439,16 @@ int finish_async(struct async *async)
 	return ret;
 }
 
+void abort_async(struct async *async)
+{
+#ifndef WIN32
+	kill(async->pid, 15);
+#else
+	/* no clue */
+#endif
+	finish_async(async);
+}
+
 int run_hook(const char *index_file, const char *name, ...)
 {
 	struct child_process hook;
