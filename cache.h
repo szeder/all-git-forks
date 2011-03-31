@@ -1071,6 +1071,8 @@ extern int pager_use_color;
 extern const char *editor_program;
 extern const char *askpass_program;
 extern const char *excludes_file;
+extern FILE *original_stderr;
+extern int original_stderr_fd;
 
 /* base85 */
 int decode_85(char *dst, const char *line, int linelen);

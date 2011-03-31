@@ -212,6 +212,8 @@ void diff_no_index(struct rev_info *revs,
 			options |= DIFF_SILENT_ON_REMOVED;
 			i++;
 		}
+		else if (!strcmp(argv[i], "--progress"))
+			; /* handled elsewhere */
 		else if (!strcmp(argv[i], "--"))
 			i++;
 		else {
