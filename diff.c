@@ -1949,7 +1949,11 @@ static void builtin_diff(const char *name_a,
 		}
 	}
 
-	if (!DIFF_OPT_TST(o, TEXT) &&
+	if (o->irreversible_delete && lbl[1][0] == '/') {
+		fprintf(o->file, "%s", header.buf);
+		strbuf_reset(&header);
+		goto free_ab_and_return;
+	} else if (!DIFF_OPT_TST(o, TEXT) &&
 	    ( (!textconv_one && diff_filespec_is_binary(one)) ||
 	      (!textconv_two && diff_filespec_is_binary(two)) )) {
 		if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
@@ -1969,8 +1973,7 @@ static void builtin_diff(const char *name_a,
 			fprintf(o->file, "%sBinary files %s and %s differ\n",
 				line_prefix, lbl[0], lbl[1]);
 		o->found_changes = 1;
-	}
-	else {
+	} else {
 		/* Crazy xdl interfaces.. */
 		const char *diffopts = getenv("GIT_DIFF_OPTS");
 		xpparam_t xpp;
@@ -3167,6 +3170,9 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
 			return error("invalid argument to -M: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_RENAME;
+	}
+	else if (!strcmp(arg, "-D") || !strcmp(arg, "--irreversible-delete")) {
+		options->irreversible_delete = 1;
 	}
 	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--find-copies=") ||
 		 !strcmp(arg, "--find-copies")) {
