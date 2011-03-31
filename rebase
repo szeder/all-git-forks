@@ -3,10 +3,12 @@
 for i in `Meta/topics`; do
 	upstream=`git for-each-ref --format='%(upstream)' refs/heads/$i`
 	upstream=${upstream:-origin}
-	if test -n "`git rev-list -1 "$upstream" ^$i`"; then
-		echo "===> Rebasing $i"
-		git rebase "$upstream" $i || exit 1
-	else
+
+	if test -z "`git rev-list -1 "$upstream" ^$i`"; then
 		echo "===> Skipping $i"
+		continue
 	fi
+
+	echo "===> Rebasing $i"
+	git rebase "$upstream" $i || exit 1
 done
