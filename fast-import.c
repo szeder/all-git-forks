@@ -300,9 +300,8 @@ static size_t total_allocd;
 static struct mem_pool *mem_pool;
 
 /* Atom management */
-static unsigned int atom_table_sz = 4451;
 static unsigned int atom_cnt;
-static struct atom_str **atom_table;
+static struct hash_table atom_table;
 
 /* The .pack file being generated */
 static unsigned int pack_id;
@@ -680,10 +679,11 @@ static struct object_entry *find_mark(uintmax_t idnum)
 
 static struct atom_str *to_atom(const char *s, unsigned short len)
 {
-	unsigned int hc = hc_str(s, len) % atom_table_sz;
+	unsigned int hc = hc_str(s, len);
 	struct atom_str *c;
+	void **pos;
 
-	for (c = atom_table[hc]; c; c = c->next_atom)
+	for (c = lookup_hash(hc, &atom_table); c; c = c->next_atom)
 		if (c->str_len == len && !strncmp(s, c->str_dat, len))
 			return c;
 
@@ -691,8 +691,11 @@ static struct atom_str *to_atom(const char *s, unsigned short len)
 	c->str_len = len;
 	strncpy(c->str_dat, s, len);
 	c->str_dat[len] = 0;
-	c->next_atom = atom_table[hc];
-	atom_table[hc] = c;
+	c->next_atom = NULL;
+	if ((pos = insert_hash(hc, c, &atom_table))) {
+		c->next_atom = *pos;
+		*pos = c;
+	}
 	atom_cnt++;
 	return c;
 }
@@ -3263,7 +3266,6 @@ int main(int argc, const char **argv)
 
 	alloc_objects(object_entry_alloc);
 	strbuf_init(&command_buf, 0);
-	atom_table = xcalloc(atom_table_sz, sizeof(struct atom_str*));
 	branch_table = xcalloc(branch_table_sz, sizeof(struct branch*));
 	avail_tree_table = xcalloc(avail_tree_table_sz, sizeof(struct avail_tree_content*));
 	marks = pool_calloc(1, sizeof(struct mark_set));
