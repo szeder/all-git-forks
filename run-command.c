@@ -427,7 +427,7 @@ error:
 int finish_async(struct async *async)
 {
 #ifndef WIN32
-	int ret = wait_or_whine(async->pid, "child process", 0);
+	int ret = wait_or_whine(async->pid, "child process", 1);
 #else
 	DWORD ret = 0;
 	if (WaitForSingleObject(async->tid, INFINITE) != WAIT_OBJECT_0)
