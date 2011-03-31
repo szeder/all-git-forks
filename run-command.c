@@ -240,7 +240,7 @@ fail_pipe:
 	return 0;
 }
 
-static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
+static int wait_or_whine(pid_t pid, const char *argv0, int quiet)
 {
 	int status, code = -1;
 	pid_t waiting;
@@ -256,7 +256,8 @@ static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
 		error("waitpid is confused (%s)", argv0);
 	} else if (WIFSIGNALED(status)) {
 		code = WTERMSIG(status);
-		error("%s died of signal %d", argv0, code);
+		if (!quiet)
+			error("%s died of signal %d", argv0, code);
 		/*
 		 * This return value is chosen so that code & 0xff
 		 * mimics the exit code that a POSIX shell would report for
@@ -271,7 +272,7 @@ static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
 		if (code == 127) {
 			code = -1;
 			failed_errno = ENOENT;
-			if (!silent_exec_failure)
+			if (!quiet)
 				error("cannot run %s: %s", argv0,
 					strerror(ENOENT));
 		}
