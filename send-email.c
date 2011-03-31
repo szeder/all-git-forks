@@ -614,6 +614,40 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
+void add_header_field(struct strbuf *sb, const char *name, const char *body)
+{
+	struct strbuf line = STRBUF_INIT;
+	strbuf_addf(&line, "%s: %s", name, body);
+
+	/* CR or LF is not allowed in header fields */
+	if (strpbrk(line.buf, "\r\n"))
+		die("header field contains CR or LF");
+
+	/* non-ASCII should already be quoted */
+	if (has_non_ascii(line.buf))
+		die("header field contains non-ASCII characters");
+
+	/* long lines should be folded */
+	while (line.len > 78) {
+		int pos;
+		/* find a place to fold */
+		for (pos = 78; pos > 0; --pos)
+			if (isspace(line.buf[pos]))
+				break;
+
+		if (!pos)
+			die("cannot fold line: '%s'", line.buf);
+
+		strbuf_add(sb, line.buf, pos);
+		strbuf_addstr(sb, "\r\n");
+		strbuf_remove(&line, 0, pos);
+	}
+
+	strbuf_addbuf(sb, &line);
+	strbuf_addstr(sb, "\r\n");
+	strbuf_release(&line);
+}
+
 void send_message(struct strbuf *message)
 {
 	int nport = -1;
@@ -634,18 +668,18 @@ void send_message(struct strbuf *message)
 	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
 
 
-	strbuf_addf(&header, "From: %s\r\n", sender);
-	strbuf_addf(&header, "To: %s\r\n", to);
+	add_header_field(&header, "From", sender);
+	add_header_field(&header, "To", to);
 	if (cc)
-		strbuf_addf(&header, "Cc: %s\r\n", cc);
-	strbuf_addf(&header, "Subject: %s\r\n", subject);
+		add_header_field(&header, "Cc", cc);
+	add_header_field(&header, "Subject", subject);
+	add_header_field(&header, "Date", date);
 /* TODO:
-	strbuf_addf(&header, "Date: %s\r\n", date);
 	strbuf_addf(&header, "Message-Id: %s\r\n", message_id); */
-	strbuf_addstr(&header, "X-Mailer: " GIT_XMAILER "\r\n");
+	add_header_field(&header, "X-Mailer", GIT_XMAILER);
 
 	if (in_reply_to) {
-		strbuf_addf(&header, "In-Reply-To: %s\r\n", in_reply_to);
+		add_header_field(&header, "In-Reply-To", in_reply_to);
 /* TODO:
 		strbuf_addf(&header, "References: %s\r\n", references);
 */
