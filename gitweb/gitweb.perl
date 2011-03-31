@@ -261,6 +261,49 @@ our %highlight_ext = (
 	map { $_ => 'xml' } qw(xhtml html htm),
 );
 
+
+# Enable / Disable the ability for gitweb to use a small amount of
+# javascript, along with a javascript cookie, to display commit
+# times in the preffered timezone.  Time zones can be pre-set
+# by specifying it in $jslocaltime with one of the following:
+#
+#	utc
+#	local
+#	-1200
+#	-1100
+#	-1000
+#	-0900
+#	-0800
+#	-0700
+#	-0600
+#	-0500
+#	-0400
+#	-0300
+#	-0200
+#	-0100
+#	+0000
+#	+0100
+#	+0200
+#	+0300
+#	+0400
+#	+0500
+#	+0600
+#	+0700
+#	+0800
+#	+0900
+#	+1000
+#	+1100
+#	+1200
+#
+# utc is identical to +0000, and local will use the
+# timezone that the browser thinks it is in.
+#
+# Enabled by default.
+#
+# To disable set to null or ''
+
+our $jslocaltime = 'local';
+
 # You define site-wide feature defaults here; override them with
 # $GITWEB_CONFIG as necessary.
 our %feature = (
@@ -504,6 +547,7 @@ our %feature = (
 		'sub' => sub { feature_bool('remote_heads', @_) },
 		'override' => 0,
 		'default' => [0]},
+
 );
 
 sub gitweb_get_feature {
@@ -3738,6 +3782,19 @@ sub git_footer_html {
 		      qq!</script>\n!;
 	}
 
+	print "<!-- jslocaltime: $jslocaltime -->";
+	if( $jslocaltime ne '' ){
+		my $js_path = File::Basename::dirname($javascript);
+		print qq!<script type="text/javascript" src="!. esc_url( $js_path ."/js/common-defs.js" )	.qq!"></script>\n!;
+		print qq!<script type="text/javascript" src="!. esc_url( $js_path ."/js/common-lib.js" )	.qq!"></script>\n!;
+		print qq!<script type="text/javascript" src="!. esc_url( $js_path ."/js/date.js" )		.qq!"></script>\n!;
+		print qq!<script type="text/javascript" src="!. esc_url( $js_path ."/js/cookies.js" )		.qq!"></script>\n!;
+		print "<script type=\"text/javascript\">\n".
+				"var tzDefault = \"$jslocaltime\";\n".
+				"onloadTZSetup();\n".
+		      "</script>";
+	}
+
 	print "</body>\n" .
 	      "</html>";
 }
@@ -3966,7 +4023,7 @@ sub git_print_authorship {
 	my %ad = parse_date($co->{'author_epoch'}, $co->{'author_tz'});
 	print "<$tag class=\"author_date\">" .
 	      format_search_author($author, "author", esc_html($author)) .
-	      " [$ad{'rfc2822'}";
+	      " [<span class=\"dtcommit\" title=\"$ad{'iso-8601'}\">$ad{'rfc2822'}</span>";
 	print_local_time(%ad) if ($opts{-localtime});
 	print "]" . git_get_avatar($co->{'author_email'}, -pad_before => 1)
 		  . "</$tag>\n";
@@ -3993,7 +4050,7 @@ sub git_print_authorship_rows {
 		      git_get_avatar($co->{"${who}_email"}, -size => 'double') .
 		      "</td></tr>\n" .
 		      "<tr>" .
-		      "<td></td><td> $wd{'rfc2822'}";
+		      "<td></td><td> <span class=\"dtcommit\" title=\"$wd{'iso-8601'}\">$wd{'rfc2822'}</span>";
 		print_local_time(%wd);
 		print "</td>" .
 		      "</tr>\n";
@@ -5410,7 +5467,8 @@ sub git_summary {
 	      "<tr id=\"metadata_desc\"><td>description</td><td>" . esc_html($descr) . "</td></tr>\n" .
 	      "<tr id=\"metadata_owner\"><td>owner</td><td>" . esc_html($owner) . "</td></tr>\n";
 	if (defined $cd{'rfc2822'}) {
-		print "<tr id=\"metadata_lchange\"><td>last change</td><td>$cd{'rfc2822'}</td></tr>\n";
+		print "<tr id=\"metadata_lchange\"><td>last change</td>\n";
+		print "<td><span class=\"dtcommit\" title=\"$cd{'iso-8601'}\">$cd{'rfc2822'}</span></td></tr>\n";
 	}
 
 	# use per project git URL list in $projectroot/$project/cloneurl
