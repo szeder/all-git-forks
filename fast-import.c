@@ -313,7 +313,7 @@ static off_t pack_size;
 /* Table of objects we've written. */
 static unsigned int object_entry_alloc = 5000;
 static struct object_entry_pool *blocks;
-static struct object_entry *object_table[1 << 16];
+static struct hash_table object_table;
 static struct mark_set *marks;
 static const char *export_marks_file;
 static const char *import_marks_file;
@@ -555,9 +555,10 @@ static struct object_entry *new_object(unsigned char *sha1)
 
 static struct object_entry *find_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
+	unsigned int h;
 	struct object_entry *e;
-	for (e = object_table[h]; e; e = e->next)
+	memcpy(&h, sha1, sizeof(unsigned int));
+	for (e = lookup_hash(h, &object_table); e; e = e->next)
 		if (!hashcmp(sha1, e->idx.sha1))
 			return e;
 	return NULL;
@@ -565,19 +566,19 @@ static struct object_entry *find_object(unsigned char *sha1)
 
 static struct object_entry *insert_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
-	struct object_entry *e = object_table[h];
-
-	while (e) {
-		if (!hashcmp(sha1, e->idx.sha1))
-			return e;
-		e = e->next;
-	}
-
+	unsigned int h;
+	struct object_entry *e;
+	void **pos;
+	if ((e = find_object(sha1)))
+		return e;
 	e = new_object(sha1);
-	e->next = object_table[h];
+	e->next = NULL;
 	e->idx.offset = 0;
-	object_table[h] = e;
+	memcpy(&h, sha1, sizeof(unsigned int));
+	if ((pos = insert_hash(h, e, &object_table))) {
+		e->next = *pos;
+		*pos = e;
+	}
 	return e;
 }
 
