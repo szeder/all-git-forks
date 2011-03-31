@@ -313,7 +313,7 @@ static off_t pack_size;
 /* Table of objects we've written. */
 static unsigned int object_entry_alloc = 5000;
 static struct object_entry_pool *blocks;
-static struct object_entry *object_table[1 << 16];
+static struct hash_table object_table;
 static struct mark_set *marks;
 static const char *export_marks_file;
 static const char *import_marks_file;
@@ -553,11 +553,18 @@ static struct object_entry *new_object(unsigned char *sha1)
 	return e;
 }
 
+static unsigned int hash_sha1(const unsigned char *sha1)
+{
+	unsigned int h;
+	memcpy(&h, sha1, sizeof(unsigned int));
+	return h;
+}
+
 static struct object_entry *find_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
+	unsigned int h = hash_sha1(sha1);
 	struct object_entry *e;
-	for (e = object_table[h]; e; e = e->next)
+	for (e = lookup_hash(h, &object_table); e; e = e->next)
 		if (!hashcmp(sha1, e->idx.sha1))
 			return e;
 	return NULL;
@@ -565,8 +572,9 @@ static struct object_entry *find_object(unsigned char *sha1)
 
 static struct object_entry *insert_object(unsigned char *sha1)
 {
-	unsigned int h = sha1[0] << 8 | sha1[1];
-	struct object_entry *e = object_table[h];
+	unsigned int h = hash_sha1(sha1);
+	struct object_entry *e = lookup_hash(h, &object_table);
+	void **pos;
 
 	while (e) {
 		if (!hashcmp(sha1, e->idx.sha1))
@@ -575,9 +583,13 @@ static struct object_entry *insert_object(unsigned char *sha1)
 	}
 
 	e = new_object(sha1);
-	e->next = object_table[h];
+	e->next = NULL;
 	e->idx.offset = 0;
-	object_table[h] = e;
+	pos = insert_hash(h, e, &object_table);
+	if (pos) {
+		e->next = *pos;
+		*pos = e;
+	}
 	return e;
 }
 
@@ -3261,6 +3273,7 @@ int main(int argc, const char **argv)
 	atom_table = xcalloc(atom_table_sz, sizeof(struct atom_str*));
 	branch_table = xcalloc(branch_table_sz, sizeof(struct branch*));
 	avail_tree_table = xcalloc(avail_tree_table_sz, sizeof(struct avail_tree_content*));
+	init_hash(&object_table);
 	marks = pool_calloc(1, sizeof(struct mark_set));
 
 	global_argc = argc;
