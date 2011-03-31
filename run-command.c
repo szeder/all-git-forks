@@ -607,7 +607,7 @@ void abort_async(struct async *async)
 #ifdef NO_PTHREADS
 	kill(async->pid, 15);
 #else
-	/* no clue */
+	pthread_cancel(async->tid);
 #endif
 	finish_async(async);
 }
