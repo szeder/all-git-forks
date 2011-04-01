@@ -180,6 +180,9 @@ int mingw_rmdir(const char *path);
 int mingw_open (const char *filename, int oflags, ...);
 #define open mingw_open
 
+int mingw_close(int fd);
+#define close mingw_close
+
 int mingw_fgetc(FILE *stream);
 #define fgetc mingw_fgetc
 

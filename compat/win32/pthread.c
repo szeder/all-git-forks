@@ -18,6 +18,7 @@ static unsigned __stdcall win32_start_routine(void *arg)
 	pthread_t *thread = arg;
 	thread->tid = GetCurrentThreadId();
 	thread->arg = thread->start_routine(thread->arg);
+	CloseHandle(thread->cancel_event);
 	return 0;
 }
 
@@ -26,6 +27,9 @@ int pthread_create(pthread_t *thread, const void *unused,
 {
 	thread->arg = arg;
 	thread->start_routine = start_routine;
+	thread->cancel_event = CreateEvent(NULL, FALSE, FALSE, NULL);
+	if (!thread->cancel_event)
+		die("failed to create event");
 	thread->handle = (HANDLE)
 		_beginthreadex(NULL, 0, win32_start_routine, thread, 0, NULL);
 

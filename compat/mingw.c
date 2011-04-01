@@ -366,6 +366,14 @@ int mingw_open (const char *filename, int oflags, ...)
 	return fd;
 }
 
+#undef close
+int mingw_close(int fd)
+{
+	int ret = close(fd);
+	pthread_testcancel();
+	return ret;
+}
+
 static BOOL WINAPI ctrl_ignore(DWORD type)
 {
 	return TRUE;
