@@ -97,7 +97,11 @@ static inline void *pthread_getspecific(pthread_key_t key)
 	return TlsGetValue(key);
 }
 
-#define pthread_cancel(a) SetEvent(a.cancel_event)
+static inline int pthread_cancel(pthread_t thread)
+{
+	SetEvent(thread.cancel_event);
+	CancelSynchronousIo(thread.handle);
+}
 
 static inline void pthread_testcancel(void)
 {
