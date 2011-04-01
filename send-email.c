@@ -614,6 +614,30 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
+void quote_rfc2047(struct strbuf *sb, const char *encoding)
+{
+	int i;
+	size_t len;
+	unsigned char *input;
+
+	if (!has_non_ascii(sb->buf))
+		return;
+
+	input = (unsigned char *)strbuf_detach(sb, &len);
+	strbuf_addf(sb, "=?%s?Q?", encoding ? encoding : "UTF-8");
+	for (i = 0; i < len; ++i) {
+		int ch = input[i];
+		if (isascii(ch)) {
+			strbuf_addch(sb, ch);
+			continue;
+		}
+		strbuf_addf(sb, "=%02X", ch);
+	}
+	strbuf_addstr(sb, "?=");
+
+	free(input);
+}
+
 void add_header_field(struct strbuf *sb, const char *name, const char *body)
 {
 	struct strbuf line = STRBUF_INIT;
@@ -651,9 +675,9 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 void send_message(struct strbuf *message)
 {
 	int nport = -1;
-	struct strbuf header = STRBUF_INIT;
+	struct strbuf header = STRBUF_INIT, from = STRBUF_INIT;
 
-	const char *to = "kusmabite@gmail.com";
+	const char *to = "Erik F\xc3\xa6ye-Lund <kusmabite@gmail.com>";
 	const char *cc = NULL;
 	const char *subject = "Hellos!";
 	const char *in_reply_to = NULL;
@@ -667,8 +691,9 @@ void send_message(struct strbuf *message)
 	time(&now);
 	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
 
-
-	add_header_field(&header, "From", sender);
+	strbuf_addstr(&from, sender);
+	quote_rfc2047(&from, NULL);
+	add_header_field(&header, "From", from.buf);
 	add_header_field(&header, "To", to);
 	if (cc)
 		add_header_field(&header, "Cc", cc);
