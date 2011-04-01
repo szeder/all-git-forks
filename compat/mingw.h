@@ -178,6 +178,9 @@ int mingw_rmdir(const char *path);
 int mingw_open (const char *filename, int oflags, ...);
 #define open mingw_open
 
+int mingw_close(int fd);
+#define close mingw_close
+
 ssize_t mingw_write(int fd, const void *buf, size_t count);
 #define write mingw_write
 

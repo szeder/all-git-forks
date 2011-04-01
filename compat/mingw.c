@@ -352,6 +352,14 @@ int mingw_open (const char *filename, int oflags, ...)
 	return fd;
 }
 
+#undef close
+int mingw_close(int fd)
+{
+	int ret = close(fd);
+	pthread_testcancel();
+	return ret;
+}
+
 #undef write
 ssize_t mingw_write(int fd, const void *buf, size_t count)
 {

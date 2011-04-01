@@ -56,6 +56,7 @@ extern int pthread_cond_broadcast(pthread_cond_t *cond);
  */
 typedef struct {
 	HANDLE handle;
+	HANDLE cancel_event;
 	void *(*start_routine)(void*);
 	void *arg;
 	DWORD tid;
@@ -94,6 +95,15 @@ static inline int pthread_setspecific(pthread_key_t key, const void *value)
 static inline void *pthread_getspecific(pthread_key_t key)
 {
 	return TlsGetValue(key);
+}
+
+#define pthread_cancel(a) SetEvent(a.cancel_event)
+
+static inline void pthread_testcancel(void)
+{
+	pthread_t thread = pthread_self();
+	if (WaitForSingleObject(thread.cancel_event, 0) == WAIT_OBJECT_0)
+		pthread_exit(NULL);
 }
 
 #endif /* PTHREAD_H */
