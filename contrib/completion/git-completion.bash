@@ -2546,7 +2546,11 @@ _git_submodule ()
 	__git_has_doubledash && return
 
 	local subcommands="add status init update summary foreach sync"
-	if [ -z "$(__git_find_on_cmdline "$subcommands")" ]; then
+	local subcommand="$(__git_find_on_cmdline "$subcommands")"
+	local cur
+	_get_comp_words_by_ref -n =: cur
+
+	if [ -z "$subcommand" ]; then
 		local cur
 		_get_comp_words_by_ref -n =: cur
 		case "$cur" in
@@ -2558,6 +2562,30 @@ _git_submodule ()
 			;;
 		esac
 		return
+	else
+		case "$subcommand,$cur" in
+		add,--*)
+			__gitcomp "--branch= --force --reference="
+			;;
+		status,--*)
+			__gitcomp "--cached --recursive"
+			;;
+		update,--*)
+			__gitcomp "--init --no-fetch --rebase --reference= --merge --recursive"
+			;;
+		summary,--*)
+			__gitcomp "--cached --files --summary-limit="
+			;;
+		summary,*)
+			__gitcomp "$(__git_refs)"
+			;;
+		foreach,--*)
+			__gitcomp "--recursive"
+			;;
+		*)
+			COMPREPLY=()
+			;;
+		esac 
 	fi
 }
 
