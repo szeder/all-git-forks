@@ -1511,7 +1511,7 @@ _git_help ()
 		;;
 	esac
 	__git_compute_all_commands
-	__gitcomp "$__git_all_commands
+	__gitcomp "$__git_all_commands $(__git_aliases)
 		attributes cli core-tutorial cvs-migration
 		diffcore gitk glossary hooks ignore modules
 		repository-layout tutorial tutorial-2
@@ -1577,6 +1577,8 @@ __git_log_common_options="
 	--max-count=
 	--max-age= --since= --after=
 	--min-age= --until= --before=
+	--min-parents= --max-parents=
+	--no-min-parents --no-max-parents
 "
 # Options that go well for log and gitk (not shortlog)
 __git_log_gitk_options="
