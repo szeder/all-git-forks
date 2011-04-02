@@ -437,6 +437,7 @@ extern void verify_non_filename(const char *prefix, const char *name);
 
 #define INIT_DB_QUIET 0x0001
 
+extern int set_git_dir_init(const char *git_dir, const char *real_git_dir, int);
 extern int init_db(const char *template_dir, unsigned int flags);
 
 #define alloc_nr(x) (((x)+16)*3/2)
@@ -543,6 +544,7 @@ extern NORETURN void unable_to_lock_index_die(const char *path, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
 extern int commit_lock_file(struct lock_file *);
+extern void update_index_if_able(struct index_state *, struct lock_file *);
 
 extern int hold_locked_index(struct lock_file *, int);
 extern int commit_locked_index(struct lock_file *);
@@ -556,6 +558,7 @@ extern int trust_executable_bit;
 extern int trust_ctime;
 extern int quote_path_fully;
 extern int has_symlinks;
+extern int minimum_abbrev, default_abbrev;
 extern int ignore_case;
 extern int assume_unchanged;
 extern int prefer_symlink_refs;
@@ -725,6 +728,7 @@ int set_shared_perm(const char *path, int mode);
 #define adjust_shared_perm(path) set_shared_perm((path), 0)
 int safe_create_leading_directories(char *path);
 int safe_create_leading_directories_const(const char *path);
+int mkdir_in_gitdir(const char *path);
 extern char *expand_user_path(const char *path);
 char *enter_repo(char *path, int strict);
 static inline int is_absolute_path(const char *path)
@@ -775,8 +779,8 @@ static inline unsigned int hexval(unsigned char c)
 }
 
 /* Convert to/from hex/sha1 representation */
-#define MINIMUM_ABBREV 4
-#define DEFAULT_ABBREV 7
+#define MINIMUM_ABBREV minimum_abbrev
+#define DEFAULT_ABBREV default_abbrev
 
 struct object_context {
 	unsigned char tree[20];
@@ -1022,7 +1026,6 @@ extern const char *git_etc_gitconfig(void);
 extern int check_repository_format_version(const char *var, const char *value, void *cb);
 extern int git_env_bool(const char *, int);
 extern int git_config_system(void);
-extern int git_config_global(void);
 extern int config_error_nonbool(const char *);
 extern const char *get_log_output_encoding(void);
 extern const char *get_commit_output_encoding(void);
