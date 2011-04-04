@@ -1,0 +1,46 @@
+git-subtree(1)
+==============
+
+NAME
+----
+git-subtree - Create, merge, split, or view subtrees
+
+
+SYNOPSIS
+--------
+[verse]
+'git subtree' add
+'git subtree' list
+'git subtree' merge
+'git subtree' pull
+'git subtree' push
+'git subtree' split
+
+
+DESCRIPTION
+-----------
+
+
+COMMANDS
+--------
+add::
+
+list::
+
+merge::
+
+pull:
+
+push::
+
+split::
+
+OPTIONS
+-------
+-P::
+--prefix::
+	Prefix (folder) to perform the subtree operation on.
+
+GIT
+---
+Part of the linkgit:git[1] suite

@@ -40,7 +40,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalOptions="-MTd  -wd4018 -wd4090 -wd4244"
+				AdditionalOptions="-MTd"
 				Optimization="0"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="&quot;..\.\.&quot;;&quot;..\.\../zlib&quot;;&quot;..\.\compat&quot;;&quot;..\.\compat/fnmatch&quot;;&quot;..\.\compat/regex&quot;;&quot;..\.\compat/vcbuild&quot;;&quot;..\.\compat/vcbuild/include&quot;;&quot;..\.\compat/win32&quot;"
@@ -51,6 +51,7 @@
 				ProgramDataBaseFileName="$(IntDir)\$(TargetName).pdb"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				DisableSpecificWarnings="4018;4090;4244"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -500,6 +501,10 @@
 			</File>
 			<File
 				RelativePath="..\.\builtin\stripspace.c"
+				>
+			</File>
+			<File
+				RelativePath="..\builtin\subtree.c"
 				>
 			</File>
 			<File

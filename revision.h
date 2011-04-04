@@ -2,6 +2,7 @@
 #define REVISION_H
 
 #include "parse-options.h"
+#include "diff.h"
 #include "grep.h"
 #include "notes.h"
 
