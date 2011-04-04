@@ -88,6 +88,7 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 	po.in = -1;
 	po.out = args->stateless_rpc ? -1 : fd;
 	po.git_cmd = 1;
+	po.clean_on_exit = 1;
 	if (start_command(&po))
 		die_errno("git pack-objects failed");
 
