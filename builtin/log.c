@@ -431,6 +431,8 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 	opt.def = "HEAD";
 	opt.tweak = show_rev_tweak_rev;
 	cmd_log_init(argc, argv, prefix, &rev, &opt);
+	if (rev.no_walk)
+		rev.prune = 0;
 
 	count = rev.pending.nr;
 	objects = rev.pending.objects;
