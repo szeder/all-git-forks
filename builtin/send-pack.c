@@ -340,7 +340,7 @@ int send_pack(struct send_pack_args *args,
 			for (ref = remote_refs; ref; ref = ref->next)
 				ref->status = REF_STATUS_NONE;
 			if (use_sideband)
-				finish_async(&demux);
+				abort_async(&demux);
 			return -1;
 		}
 	}
