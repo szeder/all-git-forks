@@ -33,7 +33,7 @@ static int opt_string_list(const struct option *opt, const char *arg, int unset)
     return 0;
 }
 
-static int debug_printf_enabled = 1;
+static int debug_printf_enabled = 0;
 #define debug(...) if( debug_printf_enabled ) printf(__VA_ARGS__)
 
 /*---------------------------------------------------------------------------*/
@@ -356,12 +356,13 @@ struct split_opts {
     int create_subtree_merge;
     int change_committer;
     int always_create;
-    int rejoin;                     /* TODO */
-    int squash;                     /* TODO */
+    int rejoin;                     /* TODO: Make them just do a merge? */
+    int squash;                     /* TODO: Also implement for merge, add, reset */
     const char *annotation;
     const char *footer;
-    struct string_list onto_list;   /* TODO */
+    struct string_list onto_list;
     struct string_list prefix_list;
+    const char *output;             /* TODO: Output format to show all commits or just head(s) */
 };
 
 static struct path_info {
@@ -369,7 +370,7 @@ static struct path_info {
 } *pathinfo;
 
 static struct string_list *prefix_list;
-static int prefix_count = 0;
+static struct commit_list *onto_list;
 
 struct commit_util {
     struct commit *remapping;
@@ -420,10 +421,19 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
         int prefix_len;
         struct commit_util *util;
 
-        /* Don't bother with ignored subtrees */
+        /* 
+         * Don't bother with ignored subtrees other than to propagate the 
+         * ignore
+         */
         util = get_commit_util(commit, i, 0);
-        if (util && util->ignore)
+        if (util && util->ignore) {
+            struct commit_list *parent = commit->parents;
+            while (parent) {
+                get_commit_util( parent->item, i, 1)->ignore = 1;
+                parent = parent->next;
+            }
             continue;
+        }
 
         prefix = prefix_list->items[i].string;
         prefix_len = (int) prefix_list->items[i].util;
@@ -678,14 +688,19 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     struct commit *commit;
     struct commit *rewritten_commit;
     struct commit_list *interesting_commits = NULL;
+    struct commit_list **rewriteen_commits = NULL;
+    int sz;
+    int cnt;
     int has_subtree_data;
-
+    
     /* Parse arguments */
     memset(&opts, 0, sizeof(opts));
-    argc = parse_options(argc, argv, prefix, options, builtin_subtree_split_usage, PARSE_OPT_KEEP_DASHDASH);
+    argc = parse_options(argc, argv, prefix, options, builtin_subtree_split_usage, PARSE_OPT_KEEP_UNKNOWN);
 
-    /* Populate the util with the string length so we're not constantly 
-       recomputing and allocate memory for the returned tree SHA1s */
+    /*
+     * Populate the util with the string length so we're not constantly 
+     * recomputing and allocate memory for the returned tree SHA1s 
+     */
     prefix_list = &opts.prefix_list;
     for (i = 0; i < prefix_list->nr; i++) {
         int len = strlen(opts.prefix_list.items[i].string);
@@ -699,6 +714,27 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     pathinfo_sz = sizeof(*pathinfo) * prefix_list->nr;
     pathinfo = xmalloc(pathinfo_sz);
 
+    /*
+     * Setup the onto list
+     */
+    onto_list = NULL;
+    for(i = 0; i < opts.onto_list.nr; i++)
+    {
+        int j;
+        commit = lookup_commit_reference_by_name(opts.onto_list.items[i].string);
+        if (!commit)
+            die("git subtree split: unable to resolve onto %s", opts.onto_list.items[i].string);
+
+        parse_commit(commit);
+        commit_list_insert(commit, &onto_list);
+
+        /* 
+         * We don't need to process any of these commits 
+        */
+        for( j = 0; j <= prefix_list->nr; j++)
+            get_commit_util(commit, j, 1)->ignore = 1;
+    }
+
     /* Setup the walk */
     init_revisions(&rev, prefix);
     rev.topo_order = 1;
@@ -708,8 +744,10 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
     /* HACK: argv[0] is ignored by setup_revisions */
     argc = setup_revisions(argc+1, argv-1, &rev, &opt) - 1;
-    prepare_revision_walk(&rev);
+    if (argc)
+        die("Unknown option: %s", argv[0]);
 
+    prepare_revision_walk(&rev);
     while ((commit = get_revision(&rev))) {
         debug("%s (%08X) processing...\n", 
             sha1_to_hex(commit->object.sha1), 
@@ -718,9 +756,43 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         memset(pathinfo, 0, pathinfo_sz);
         read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
         has_subtree_data = 0;
-        for (i = 0; i < prefix_list->nr; i++) { 
+        for (i = 0; i < prefix_list->nr; i++) {
             if (pathinfo[i].tree) {
                 struct commit_util *util;
+                struct commit_list *onto;
+
+                /* 
+                 * If the tree id matches one of the onto trees, we don't need
+                 * to search any further
+                 */
+                onto = onto_list;
+                while (onto) {
+                    struct commit_list *parents;
+                    if (pathinfo[i].tree == onto->item->tree) {
+                        
+                        debug("\tFound onto %s for %s\n", 
+                            sha1_to_hex(onto->item->object.sha1), 
+                            opts.prefix_list.items[i].string);
+
+                        util = get_commit_util(commit, i, 1);
+                        util->remapping = onto->item;
+                        util->tree = onto->item->tree;
+                        util->ignore = 0;
+                        
+                        parents = commit->parents;
+	                    while (parents) {
+                            util = get_commit_util(parents->item, i, 1);
+                            util->ignore = 1;
+		                    parents = parents->next;
+	                    }
+                        /* TODO: Remove from the onto list */
+                        break;
+                    }
+                    onto = onto->next;
+                }
+                if (onto)
+                    continue;
+
                 /* 
                  * Check to see if one of this commit's parents is already the subtree
                  * merge we're going to be generating 
@@ -779,9 +851,14 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         /* Add this commit to the list for processing (in reverse order) */
         if (has_subtree_data)
             commit_list_insert(commit, &interesting_commits);
+        /* TODO: Else ignore? */
     }
 
     debug("\n\n");
+
+    sz = sizeof(*rewriteen_commits) * (prefix_list->nr + 1);
+    rewriteen_commits = malloc(sz);
+    memset(rewriteen_commits, 0, sz);
 
     /*
      * Now that we've collected all of the relevant commits, we'll go through
@@ -864,6 +941,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 commit_util->remapping = rewritten_commit;
                 commit_util->created = 1;
                 debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
+                commit_list_insert(commit, &rewriteen_commits[i]);
             }
         }
         
@@ -910,12 +988,31 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 rewritten_commit = rewrite_commit(commit, commit->tree, remapped_parents, 0, &opts);
                 commit_util->remapping = rewritten_commit;
                 debug("\t*** REWRITE %s\n", sha1_to_hex(rewritten_commit->object.sha1));
+                commit_list_insert(commit, &rewriteen_commits[prefix_list->nr]);
             }
             else {
                 free_commit_list(remapped_parents);
             }
         }
     }
+
+    cnt = prefix_list->nr;
+    if (opts.create_subtree_merge)
+        cnt++;
+    for (i = 0; i < cnt; i++) {
+        struct commit_list *rewritten;
+        printf("%s\n", i < prefix_list->nr ? prefix_list->items[i].string : "HEAD");
+        
+        rewritten = rewriteen_commits[i];
+        while (rewritten) {
+            printf("\t%s %s\n", sha1_to_hex(get_commit_util(rewritten->item, i, 2)->remapping->object.sha1), sha1_to_hex(rewritten->item->object.sha1));
+            rewritten = rewritten->next;
+        }
+
+        free_commit_list(rewriteen_commits[i]);
+    }
+    free(rewriteen_commits);
+
 
     free(pathinfo);
 
@@ -942,12 +1039,13 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     const char *split1b = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
     const char *split2 = "subtree split 140dee624e7c29d65543fffaf28cb0dde2c71e48 -P blue -P red --rewrite-parents --always-create";
-    const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto HEAD --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
+    const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
+    const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
     const char *add1 = "subtree add -P green green";
     const char *merge1 = "subtree merge -P green green2";
     const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = split3;
+    const char *command = splitAll;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
