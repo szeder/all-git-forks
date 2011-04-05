@@ -365,17 +365,15 @@ static int add_files(struct dir_struct *dir, int flags)
 }
 
 static const char *warn_add_uA_180_migration_msg[] = {
-	"In release 1.8.0, running 'git add -u' (or 'git add -A') from",
-	"a subdirectory without giving any pathspec WILL take effect",
+	"Since release 1.8.0, running 'git add -u' (or 'git add -A')",
+	"from a subdirectory without giving any pathspec takes effect",
 	"on the whole working tree, not just the part under the current",
-	"directory. You can set add.treewideupdate configuration variable",
-	"to 'false' to keep the current behaviour.",
-	"You can set the configuration variable to 'true' to make the",
-	"'git add -u/-A' command without pathspec take effect on the whole",
-	"working tree now. If you do so, you can use '.' at the end of",
-	"the command, e.g. 'git add -u .' when you want to limit the",
-	"operation to the current directory.",
-	"This warning will be issued until you set the configuration variable",
+	"directory. If you want to limit the operation to the current",
+	"directory, please add '.' at the end of the command, like",
+	"'git add -u .'",
+	"Alternatively, you can set add.treewideupdate configuration",
+	"variable to 'false' to keep using the old behaviour.",
+	"This warning will be issued until you set the variable",
 	"to either 'true' or 'false'."
 };
 
@@ -384,7 +382,7 @@ static int warn_180_migration(void)
 	int i;
 	for (i = 0; i < ARRAY_SIZE(warn_add_uA_180_migration_msg); i++)
 		warning("%s", warn_add_uA_180_migration_msg[i]);
-	return 0; /* default to "no" (not tree-wide, i.e. local) */
+	return 1; /* default to "true" (tree-wide, i.e. not local) */
 }
 
 int cmd_add(int argc, const char **argv, const char *prefix)
