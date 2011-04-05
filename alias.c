@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "alias.h"
 
 static const char *alias_key;
 static char *alias_val;
@@ -18,6 +19,11 @@ char *alias_lookup(const char *alias)
 {
 	alias_key = alias;
 	alias_val = NULL;
+	struct alias *alias_ptr;
+
+	for (alias_ptr = internal_aliases; alias_ptr->key; alias_ptr++)
+		if (!strcmp(alias, alias_ptr->key))
+			return xstrdup(alias_ptr->val);
 	git_config(alias_lookup_cb, NULL);
 	return alias_val;
 }

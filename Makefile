@@ -495,6 +495,7 @@ XDIFF_LIB=xdiff/lib.a
 VCSSVN_LIB=vcs-svn/lib.a
 
 LIB_H += advice.h
+LIB_H += alias.h
 LIB_H += archive.h
 LIB_H += attr.h
 LIB_H += blob.h
