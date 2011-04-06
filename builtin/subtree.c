@@ -439,7 +439,7 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
         }
 
         prefix = prefix_list->items[i].string;
-        prefix_len = (int) prefix_list->items[i].util;
+        prefix_len = (int)((intptr_t) prefix_list->items[i].util);
         
         if (baselen > prefix_len) 
             continue;
@@ -581,7 +581,7 @@ static struct commit *find_subtree_parent(struct commit *commit,
             struct compare_details matches;
             struct commit *c = parent->item;
             memset(&matches, 0, sizeof(matches));
-            compare_trees(tree, c->tree, TRUE, &matches);
+            compare_trees(tree, c->tree, 1, &matches);
             if (matches.same > best_val)
             {
                 best_val = matches.same;
@@ -722,7 +722,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             len--;
             opts.prefix_list.items[i].string[len] = '\0';
         }
-        opts.prefix_list.items[i].util = (void*) len;
+        opts.prefix_list.items[i].util = (void*) ((intptr_t) len);
     }
     pathinfo_sz = sizeof(*pathinfo) * prefix_list->nr;
     pathinfo = xmalloc(pathinfo_sz);
@@ -770,9 +770,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
     prepare_revision_walk(&rev);
     while ((commit = get_revision(&rev))) {
-        debug("%s (%08X) processing...\n", 
-            sha1_to_hex(commit->object.sha1), 
-            commit->util);
+        debug("%s processing...\n", sha1_to_hex(commit->object.sha1));
         
         memset(pathinfo, 0, pathinfo_sz);
         read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
@@ -885,9 +883,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
      * and generate subtree commits for them as needed.
      */
     while ((commit = pop_commit(&interesting_commits)) != NULL) {
-        debug("%s (%08X) Creating subtree...\n", 
-            sha1_to_hex(commit->object.sha1), 
-            commit->util);
+        debug("%s Creating subtree...\n", sha1_to_hex(commit->object.sha1));
 
         /*
          * Generate the split out commits
@@ -922,7 +918,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 p = p->next;
 
                 parent_util = get_commit_util(parent->item, i, 0);
-                debug("\t\tChecking parent %s (%08x)\n", sha1_to_hex(parent->item->object.sha1), parent_util);
+                debug("\t\tChecking parent %s\n", sha1_to_hex(parent->item->object.sha1));
                 if (!parent_util) {
                 }
                 else
@@ -1002,7 +998,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                      * Mark the remapped commit as ignored so we know it
                      * has parents and doesn't need to be displayed.
                      */
-                    tmp_util = get_commit_util(tmp_util->remapping, i, 2);
+                    tmp_util = get_commit_util(tmp_util->remapping, i, 1);
                     tmp_util->ignore = 1;
                 } 
                 else {
@@ -1159,19 +1155,20 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
-    const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
-    const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
-    const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
-    const char *split1_squash = "subtree split local-change-to-subtree -P red -P blue -P not-a-subtree -P nested/directory --rejoin --squash";
-    const char *split2 = "subtree split 140dee624e7c29d65543fffaf28cb0dde2c71e48 -P blue -P red --rewrite-parents --always-create";
-    const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
-    const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
-    const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
-    const char *add1 = "subtree add -P green green";
-    const char *merge1 = "subtree merge -P green green2";
-    const char *pull1 = "subtree pull -P green ../green HEAD";
+    const char *split0 = "subtree split -P red -P blue --rewrite-parents";
+    //const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
+    //const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
+    //const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
+    //const char *split1_squash = "subtree split local-change-to-subtree -P red -P blue -P not-a-subtree -P nested/directory --rejoin --squash";
+    //const char *split2 = "subtree split 140dee624e7c29d65543fffaf28cb0dde2c71e48 -P blue -P red --rewrite-parents --always-create";
+    //const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
+    //const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
+    //const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
+    //const char *add1 = "subtree add -P green green";
+    //const char *merge1 = "subtree merge -P green green2";
+    //const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = split1_squash;
+    const char *command = split0;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
