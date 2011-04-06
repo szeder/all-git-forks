@@ -9,6 +9,7 @@
 
 #include "builtin.h"
 #include "cache-tree.h"
+#include "dir.h"
 #include "parse-options.h"
 #include "refs.h"
 #include "revision.h"
@@ -72,10 +73,14 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     unsigned char result_tree[20];
     unsigned char result_commit[20];
     struct commit_list* parents = NULL;
+    struct strbuf commit_msg = STRBUF_INIT;
+    struct checkout state;
+    static char topath[PATH_MAX + 1];
+    const char* pathspec[2];
     struct option options[] = {
-        OPT_STRING(0, "repository", &opts.repo, "repo", "Location of external repository to fetch branch from"),
+        OPT_STRING(0, "repository", &opts.repo, "repo", "Location of external repository to fetch branch from"), /* TODO */
         OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"), /* TODO */
-        OPT_STRING('n', "name", &opts.prefix, "subtree name", "Name of the subtree"),
+        OPT_STRING('n', "name", &opts.name, "subtree name", "Name of the subtree"), /* TODO: Add .subtree or remove name option */
         OPT_STRING('P', "prefix", &opts.prefix, "prefix", "Location to add subtree"),
         OPT_END(),
         };
@@ -105,7 +110,7 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     if (get_sha1(argv[0], merge_sha1))
         die("git subtree add: Valid branch must be specified");
 
-    printf("Add commit %s\n", sha1_to_hex(merge_sha1));
+    debug("Add commit %s\n", sha1_to_hex(merge_sha1));
 
     tree = parse_tree_indirect(merge_sha1);
     init_tree_desc(&tree_desc, tree->buffer, tree->size);
@@ -114,7 +119,7 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     setup_work_tree();
 
     memset(&unpack_opts, 0, sizeof(unpack_opts));
-    unpack_opts.head_idx = -1;
+    unpack_opts.head_idx = 1;
     unpack_opts.src_index = &the_index;
     unpack_opts.dst_index = &the_index;
     unpack_opts.prefix = opts.prefix;
@@ -123,21 +128,28 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     unpack_opts.fn = bind_merge;
 
 	cache_tree_free(&active_cache_tree);
-
-    if (unpack_trees(1, &tree_desc, &unpack_opts))
+    if (unpack_trees(1, &tree_desc, &unpack_opts)) {
+        rollback_lock_file(&lock_file);
         die("Unable to read tree");
+    }
 
+    /* checkout */
+    strcpy(topath, prefix);
+    memset(&state, 0, sizeof(state));
+    state.base_dir = "";
+    state.force = 1;
+    state.refresh_cache = 1;
+    pathspec[0] = opts.prefix;
+    pathspec[1] = NULL;
 	for (i = 0; i < the_index.cache_nr; i++) 
     {
-	    struct checkout costate;
         struct cache_entry *ce = the_index.cache[i];
-        static char topath[PATH_MAX + 1];
-	    /* checkout */
-	    memset(&costate, 0, sizeof(costate));
-	    costate.base_dir = "";
-	    costate.refresh_cache = 1;
-        strcpy(topath, prefix);
-        checkout_entry(ce, &costate, topath);
+		if (match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
+			if (!ce_stage(ce)) {
+				checkout_entry(ce, &state, NULL);
+				continue;
+			}
+		}
     }
 
     if (write_cache(newfd, active_cache, active_nr) || commit_locked_index(&lock_file))
@@ -150,12 +162,23 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     
 	if (write_cache_as_tree(result_tree, 0, NULL))
 		die("git write-tree failed to write a tree");
-	commit_tree("subtree add"/*TODO*/, result_tree, parents, result_commit, NULL, NULL);
 
-    printf("Created new commit %s\n", sha1_to_hex(result_commit));
+    strbuf_addstr(&commit_msg, "Subtree add ");
+    strbuf_addstr(&commit_msg, argv[0]);
+    if (opts.repo) {
+        strbuf_addstr(&commit_msg, " on ");
+        strbuf_addstr(&commit_msg, opts.repo);
+    }
+    strbuf_addstr(&commit_msg, " into ");
+    strbuf_addstr(&commit_msg, opts.prefix);
+
+	commit_tree(commit_msg.buf, result_tree, parents, result_commit, NULL, NULL);
+    strbuf_release(&commit_msg);
+
+    printf("%s\n", sha1_to_hex(result_commit));
 
     /* Now we just need to move the current tree up to the newly created commit */
-    update_ref("subtree add"/*TODO*/, "HEAD", result_commit, NULL, 0, DIE_ON_ERR);
+    update_ref("subtree add", "HEAD", result_commit, NULL, 0, DIE_ON_ERR);
     return 0;
 }
  
@@ -1063,7 +1086,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                     parents = parents->next;
                 }
 
-                /* TODO: Take all of the commit messages from these and build them into one? */
+                /* TODO: Optionally take all of the commit messages from these and build them into one? */
             }
             else {
                 util_remap = get_commit_util(util_rewrite->remapping, i, 0);
@@ -1129,7 +1152,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         /* Print out in same format as rewrite-parents would */
         printf("%s\n", "HEAD");
         printf("\t%s %s\n", sha1_to_hex(result_commit), sha1_to_hex(head->object.sha1));
-        //update_ref("subtree split"/*TODO*/, "HEAD", result_commit, NULL, 0, DIE_ON_ERR);
+        update_ref("subtree split", "HEAD", result_commit, NULL, 0, DIE_ON_ERR);
     } 
     else {
         free_commit_list(interesting_commits);
@@ -1155,7 +1178,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
-    const char *split0 = "subtree split -P red -P blue --rewrite-parents";
+    //const char *split0 = "subtree split -P red -P blue --rewrite-parents";
     //const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
@@ -1164,11 +1187,11 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
     //const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
     //const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
-    //const char *add1 = "subtree add -P green green";
+    const char *add1 = "subtree add -P green green";
     //const char *merge1 = "subtree merge -P green green2";
     //const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = split0;
+    const char *command = add1;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
@@ -1242,14 +1265,37 @@ int cmd_subtree(int argc, const char **argv, const char *prefix)
     return 0;
 }
 
-/*---------------------------------------------------------
-            http://patorjk.com/software/taag/ 
-                        BANNER
-              #     #####   #####  ### ### 
-             # #   #     # #     #  #   #  
-            #   #  #       #        #   #  
-           #     #  #####  #        #   #  
-           #######       # #        #   #  
-           #     # #     # #     #  #   #  
-           #     #  #####   #####  ### ###
----------------------------------------------------------*/
+/*-----------------------------------------------------------------------------
+                          http://patorjk.com/software/taag/ 
+                                      BANNER
+                            #     #####   #####  ### ### 
+                           # #   #     # #     #  #   #  
+                          #   #  #       #        #   #  
+                         #     #  #####  #        #   #  
+                         #######       # #        #   #  
+                         #     # #     # #     #  #   #  
+                         #     #  #####   #####  ### ###
+-----------------------------------------------------------------------------*/
+
+/*-----------------------------------------------------------------------------
+                       ####### ####### ######  #######                       
+                          #    #     # #     # #     #                       
+                          #    #     # #     # #     #                       
+                          #    #     # #     # #     #                       
+                          #    #     # #     # #     #                       
+                          #    #     # #     # #     #                       
+                          #    ####### ######  #######                       
+ -----------------------------------------------------------------------------
+* Figure out how to make tab auto complete find branch names, remotes, etc.
+* Add subtree reset command?
+* Add options to reflog to ignore subtrees
+-----------------------------------------------------------------------------*/
+
+
+
+
+
+
+
+                                 
+
