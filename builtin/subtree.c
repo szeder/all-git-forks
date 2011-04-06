@@ -357,7 +357,7 @@ struct split_opts {
     int change_committer;
     int always_create;
     int rejoin;
-    int squash; /* implies rejoin *//* TODO: Also implement for merge, add, reset */
+    int squash;
     const char *annotation;
     const char *footer;
     struct string_list onto_list;
@@ -375,8 +375,11 @@ static struct commit_list *onto_list;
 struct commit_util {
     struct commit *remapping;
     struct tree *tree;
-    int ignore : 1;
+    int ignore : 1;   
+    /* Did we create this commit */
     int created : 1;
+    /* Is this commit on the subtree (meaning remapping points to original commit) */
+    int is_subtree : 1;
 };
 
 __inline struct commit_util *get_commit_util(struct commit *commit, 
@@ -693,13 +696,19 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     int sz;
     int cnt;
     int has_subtree_data;
-    
+    struct commit* head;
+
     /* Parse arguments */
     memset(&opts, 0, sizeof(opts));
     argc = parse_options(argc, argv, prefix, options, builtin_subtree_split_usage, PARSE_OPT_KEEP_UNKNOWN);
 
-    if (opts.rewrite_parents && (opts.squash || opts.rejoin))
-        die("git subtree split: Can't rewrite parents and do a squash or a join");
+    if (opts.squash || opts.rejoin) {
+        if (opts.rewrite_parents )
+            die("git subtree split: Can't rewrite parents and do a squash or a join");
+        
+        head = lookup_commit_reference_by_name("HEAD");
+        parse_commit(head);
+    }
 
     /*
      * Populate the util with the string length so we're not constantly 
@@ -958,6 +967,12 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
                 commit_util->remapping = rewritten_commit;
                 commit_util->created = 1;
+
+                tmp_util = get_commit_util(rewritten_commit, i, 1);
+                tmp_util->remapping = commit;
+                tmp_util->created = 1;
+                tmp_util->is_subtree = 1;
+
                 debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
                 commit_list_insert(commit, &rewritten_commits[i]);
             }
@@ -987,7 +1002,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                      * Mark the remapped commit as ignored so we know it
                      * has parents and doesn't need to be displayed.
                      */
-                    tmp_util = get_commit_util(tmp_util->remapping, i, 1);
+                    tmp_util = get_commit_util(tmp_util->remapping, i, 2);
                     tmp_util->ignore = 1;
                 } 
                 else {
@@ -1022,26 +1037,71 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
     interesting_commits = NULL;
     cnt = prefix_list->nr;
-    /* TODO: If we're rewriting, we only need to list the HEADs since the subtrees will be merges into those commits */
     if (opts.rewrite_parents)
         cnt++;
     for (i = 0; i < cnt; i++) {
         struct commit_list *rewritten;
+        struct commit_list *squash_commits = NULL;
         printf("%s\n", i < prefix_list->nr ? prefix_list->items[i].string : "HEAD");
         
         rewritten = rewritten_commits[i];
         while (rewritten) {
-            struct commit_util *util_remap;
             struct commit_util *util_rewrite;
+            struct commit_util *util_remap;
 
             util_rewrite = get_commit_util(rewritten->item, i, 2);
-            util_remap = get_commit_util(util_rewrite->remapping, i, 0);
-            if (!util_remap || !util_remap->ignore) {
-                printf("\t%s %s\n", sha1_to_hex(util_rewrite->remapping->object.sha1), sha1_to_hex(rewritten->item->object.sha1));
-                commit_list_insert(util_rewrite->remapping, &interesting_commits);
+ 
+            if (opts.squash) {
+                /* 
+                 * TODO: This could be optimized quite a bit above, but this is
+                 * quick and easy to implement
+                 */
+                struct commit_list *parents = util_rewrite->remapping->parents;
+                while (parents)
+                {
+                    util_remap = get_commit_util(parents->item, i, 0);
+                    if (!util_remap || !util_remap->created) {
+                        debug("\tSquash %s to %s\n", sha1_to_hex(util_rewrite->remapping->object.sha1), sha1_to_hex(parents->item->object.sha1));
+                        commit_list_insert(parents->item, &squash_commits);
+                    }
+                    parents = parents->next;
+                }
+
+                /* TODO: Take all of the commit messages from these and build them into one? */
+            }
+            else {
+                util_remap = get_commit_util(util_rewrite->remapping, i, 0);
+                if (!util_remap || !util_remap->ignore) {
+                    printf("\t%s %s\n", sha1_to_hex(util_rewrite->remapping->object.sha1), sha1_to_hex(rewritten->item->object.sha1));
+                    commit_list_insert(util_rewrite->remapping, &interesting_commits);
+                }
             }
 
             rewritten = rewritten->next;
+        }
+
+        if (opts.squash) {
+            unsigned char result_commit[20];
+            struct commit_util *util;
+            struct strbuf commit_msg = STRBUF_INIT;
+            strbuf_addstr(&commit_msg, "Subtree split squash ");
+            strbuf_addstr(&commit_msg, prefix_list->items[i].string);
+
+            util = get_commit_util(head, i, 0);
+	        commit_tree
+                (
+                commit_msg.buf,
+                util->tree->object.sha1, 
+                squash_commits, 
+                result_commit, 
+                NULL, 
+                NULL
+                );
+            strbuf_release(&commit_msg);
+
+            commit = lookup_commit(result_commit);
+            commit_list_insert(commit, &interesting_commits);
+            printf("\t%s %s\n", sha1_to_hex(commit->object.sha1), sha1_to_hex(head->object.sha1));
         }
 
         free_commit_list(rewritten_commits[i]);
@@ -1050,25 +1110,30 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     free(pathinfo);
 
     if (opts.rejoin) {
-        struct commit* head;
         unsigned char result_commit[20];
-        head = lookup_commit_reference_by_name("HEAD");
-        parse_commit(head);
+        struct strbuf commit_msg = STRBUF_INIT;
+        strbuf_addstr(&commit_msg, "Subtree split rejoin\n\n");
+        for (i = 0; i < prefix_list->nr; i++) {
+            strbuf_addstr(&commit_msg, prefix_list->items[i].string);
+            strbuf_addstr(&commit_msg, "\n");
+        }
 
         commit_list_insert(head, &interesting_commits);
         
 	    commit_tree
             (
-            "subtree merge rejoin", /* TODO: Make this meaningful. At least list the split out trees */
+            commit_msg.buf,
             head->tree->object.sha1, 
             interesting_commits, 
             result_commit, 
             NULL, 
             NULL
             );
+        strbuf_release(&commit_msg);
         /* Print out in same format as rewrite-parents would */
         printf("%s\n", "HEAD");
         printf("\t%s %s\n", sha1_to_hex(result_commit), sha1_to_hex(head->object.sha1));
+        //update_ref("subtree split"/*TODO*/, "HEAD", result_commit, NULL, 0, DIE_ON_ERR);
     } 
     else {
         free_commit_list(interesting_commits);
@@ -1097,6 +1162,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
     const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
+    const char *split1_squash = "subtree split local-change-to-subtree -P red -P blue -P not-a-subtree -P nested/directory --rejoin --squash";
     const char *split2 = "subtree split 140dee624e7c29d65543fffaf28cb0dde2c71e48 -P blue -P red --rewrite-parents --always-create";
     const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
     const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
@@ -1105,7 +1171,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     const char *merge1 = "subtree merge -P green green2";
     const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = split1_join;
+    const char *command = split1_squash;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
