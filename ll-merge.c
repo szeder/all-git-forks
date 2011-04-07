@@ -148,9 +148,9 @@ static int ll_ext_merge(const struct ll_merge_driver *fn,
 			const struct ll_merge_options *opts,
 			int marker_size)
 {
-	char temp[4][50];
+	char temp[5][50];
 	struct strbuf cmd = STRBUF_INIT;
-	struct strbuf_expand_dict_entry dict[5];
+	struct strbuf_expand_dict_entry dict[6];
 	const char *args[] = { NULL, NULL };
 	int status, fd, i;
 	struct stat st;
@@ -160,7 +160,8 @@ static int ll_ext_merge(const struct ll_merge_driver *fn,
 	dict[1].placeholder = "A"; dict[1].value = temp[1];
 	dict[2].placeholder = "B"; dict[2].value = temp[2];
 	dict[3].placeholder = "L"; dict[3].value = temp[3];
-	dict[4].placeholder = NULL; dict[4].value = NULL;
+	dict[4].placeholder = "N"; dict[4].value = temp[4];
+	dict[5].placeholder = NULL; dict[5].value = NULL;
 
 	if (fn->cmdline == NULL)
 		die("custom merge driver %s lacks command line.", fn->name);
@@ -171,6 +172,8 @@ static int ll_ext_merge(const struct ll_merge_driver *fn,
 	create_temp(src1, temp[1]);
 	create_temp(src2, temp[2]);
 	sprintf(temp[3], "%d", marker_size);
+	sprintf(temp[4], "%s", path);
+
 
 	strbuf_expand(&cmd, fn->cmdline, strbuf_expand_dict_cb, &dict);
 
@@ -260,6 +263,7 @@ static int read_merge_config(const char *var, const char *value, void *cb)
 		 * The command-line will be interpolated with the following
 		 * tokens and is given to the shell:
 		 *
+		 *    %N - file name
 		 *    %O - temporary file name for the merge base.
 		 *    %A - temporary file name for our version.
 		 *    %B - temporary file name for the other branches' version.
