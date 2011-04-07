@@ -722,7 +722,8 @@ command to run to merge ancestor's version (`%O`), current
 version (`%A`) and the other branches' version (`%B`).  These
 three tokens are replaced with the names of temporary files that
 hold the contents of these versions when the command line is
-built. Additionally, %L will be replaced with the conflict marker
+built. Additionally, %N will be replaced with the file path and
+%L with the conflict marker
 size (see below).
 
 The merge driver is expected to leave the result of the merge in
