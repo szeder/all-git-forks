@@ -263,7 +263,7 @@ static int read_merge_config(const char *var, const char *value, void *cb)
 		 * The command-line will be interpolated with the following
 		 * tokens and is given to the shell:
 		 *
-		 *    %N - file name
+		 *    %N - file path
 		 *    %O - temporary file name for the merge base.
 		 *    %A - temporary file name for our version.
 		 *    %B - temporary file name for the other branches' version.
