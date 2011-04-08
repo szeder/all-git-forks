@@ -765,7 +765,7 @@ static struct ref *do_fetch_pack(int fd[2],
 		goto all_done;
 	}
 	if (find_common(fd, sha1, ref) < 0)
-		if (!args.keep_pack)
+		if (!args.quiet && !args.keep_pack)
 			/* When cloning, it is not unusual to have
 			 * no common commit.
 			 */
