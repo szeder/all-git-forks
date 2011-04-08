@@ -98,7 +98,7 @@ static inline void set_cloexec(int fd)
 		fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
 }
 
-static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
+static int wait_or_whine(pid_t pid, const char *argv0, int quiet)
 {
 	int status, code = -1;
 	pid_t waiting;
@@ -114,7 +114,8 @@ static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
 		error("waitpid is confused (%s)", argv0);
 	} else if (WIFSIGNALED(status)) {
 		code = WTERMSIG(status);
-		error("%s died of signal %d", argv0, code);
+		if (!quiet)
+			error("%s died of signal %d", argv0, code);
 		/*
 		 * This return value is chosen so that code & 0xff
 		 * mimics the exit code that a POSIX shell would report for
@@ -129,7 +130,7 @@ static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
 		if (code == 127) {
 			code = -1;
 			failed_errno = ENOENT;
-			if (!silent_exec_failure)
+			if (!quiet)
 				error("cannot run %s: %s", argv0,
 					strerror(ENOENT));
 		}
@@ -598,7 +599,7 @@ error:
 int finish_async(struct async *async)
 {
 #ifdef NO_PTHREADS
-	return wait_or_whine(async->pid, "child process", 0);
+	return wait_or_whine(async->pid, "child process", 1);
 #else
 	void *ret = (void *)(intptr_t)(-1);
 
@@ -606,6 +607,16 @@ int finish_async(struct async *async)
 		error("pthread_join failed");
 	return (int)(intptr_t)ret;
 #endif
+}
+
+void abort_async(struct async *async)
+{
+#ifdef NO_PTHREADS
+	kill(async->pid, 15);
+#else
+	pthread_cancel(async->tid);
+#endif
+	finish_async(async);
 }
 
 int run_hook(const char *index_file, const char *name, ...)
