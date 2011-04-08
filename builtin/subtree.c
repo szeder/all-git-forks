@@ -76,9 +76,10 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     struct strbuf commit_msg = STRBUF_INIT;
     struct checkout state;
     static char topath[PATH_MAX + 1];
-    const char* pathspec[2];
+    const char *pathspec[2];
+    const char *branch_name;
     struct option options[] = {
-        OPT_STRING(0, "repository", &opts.repo, "repo", "Location of external repository to fetch branch from"), /* TODO */
+        OPT_STRING('r', "remote", &opts.repo, "repo", "Location of external repository to fetch branch from"),
         OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"), /* TODO */
         OPT_STRING('n', "name", &opts.name, "subtree name", "Name of the subtree"), /* TODO: Add .subtree or remove name option */
         OPT_STRING('P', "prefix", &opts.prefix, "prefix", "Location to add subtree"),
@@ -89,15 +90,12 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     memset(&opts, 0, sizeof(opts));
     argc = parse_options(argc, argv, prefix, options, builtin_subtree_add_usage, PARSE_OPT_KEEP_DASHDASH);
 
-    if (opts.prefix == NULL)
-    {
+    if (opts.prefix == NULL) {
         die("git subtree add: must specify prefix");
     }
 
     /* TODO: Verify this prefix doesn't already exist in the tree (or locally)? */
-
-    if (argc != 1) 
-    {
+    if (argc != 1) {
         die("git subtree add: branch must be specified");
     }
 
@@ -106,8 +104,27 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     if (read_cache_unmerged())
         die("You need to resolve your current index first");
 
+    if (opts.repo) {
+        char *fetch_argv[10];
+        int fetch_result;
+        int i = 0;
+        fetch_argv[i++] = "fetch";
+        fetch_argv[i++] = opts.repo;
+        fetch_argv[i++] = argv[0];
+        fetch_argv[i++] = "--quiet";
+        fetch_argv[i] = NULL;
+        fetch_result = cmd_fetch(i, fetch_argv, "");
+        if (fetch_result)
+            return fetch_result;
+
+        branch_name = "FETCH_HEAD";
+    }
+    else {
+        branch_name = argv[0];
+    }
+
     /* TODO: Add option to fetch from a remote first, then use FETCH_HEAD to get sha1. */
-    if (get_sha1(argv[0], merge_sha1))
+    if (get_sha1(branch_name, merge_sha1))
         die("git subtree add: Valid branch must be specified");
 
     debug("Add commit %s\n", sha1_to_hex(merge_sha1));
@@ -141,8 +158,7 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     state.refresh_cache = 1;
     pathspec[0] = opts.prefix;
     pathspec[1] = NULL;
-	for (i = 0; i < the_index.cache_nr; i++) 
-    {
+	for (i = 0; i < the_index.cache_nr; i++)  {
         struct cache_entry *ce = the_index.cache[i];
 		if (match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, NULL)) {
 			if (!ce_stage(ce)) {
@@ -157,7 +173,32 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     
     /* At this point things are staged & in the index, but not committed */
     parents = NULL;
-    commit_list_insert(lookup_commit(merge_sha1), &parents);
+    if (opts.squash) {
+        struct commit *commit;
+        unsigned char result_commit[20];
+        struct strbuf commit_msg = STRBUF_INIT;
+        strbuf_addstr(&commit_msg, "Subtree add squash ");
+        strbuf_addstr(&commit_msg, argv[0]);
+
+        commit = lookup_commit(merge_sha1);
+        parse_commit(commit);
+        commit_tree
+            (
+            commit_msg.buf,
+            commit->tree->object.sha1, 
+            NULL, 
+            result_commit, 
+            NULL, 
+            NULL
+            );
+        strbuf_release(&commit_msg);
+
+        commit = lookup_commit(result_commit);
+        commit_list_insert(commit, &parents);
+    }
+    else {
+        commit_list_insert(lookup_commit(merge_sha1), &parents);
+    }
     commit_list_insert(lookup_commit_reference_by_name("HEAD"), &parents);
     
 	if (write_cache_as_tree(result_tree, 0, NULL))
@@ -250,6 +291,7 @@ static int cmd_subtree_merge(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
         OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"), /* TODO */
         OPT_STRING('P', "prefix", &opts.prefix, "prefix", "Location to add subtree"),
+        //OPT_STRING('r', "remote", &opts.repo, "repo", "Location of external repository to merge branch from"), /* TODO */
 		OPT_END()
 	};
 
@@ -1187,11 +1229,12 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
     //const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
     //const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
-    const char *add1 = "subtree add -P green green";
-    //const char *merge1 = "subtree merge -P green green2";
+    //const char *add1 = "subtree add -P green green";
+    //const char *add2 = "subtree add -P green -r ../green green --squash";
+    const char *merge1 = "subtree merge -P green green2";
     //const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = add1;
+    const char *command = merge1;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
