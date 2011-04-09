@@ -27,8 +27,8 @@
 /*              #####  ####### #     # #     # ####### #     #               */
 /*---------------------------------------------------------------------------*/
 
-static int debug_printf_enabled = 1;
-#define debug(...) if( debug_printf_enabled ) printf(__VA_ARGS__)
+static int debug_printf_enabled = 0;
+#define debug(...) if( debug_printf_enabled ) fprintf(stderr, __VA_ARGS__)
 
 static struct string_list *g_prefix_list;
 static struct path_info {
@@ -420,7 +420,7 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     const char *branch_name;
     struct option options[] = {
         OPT_STRING('r', "remote", &opts.remote, "repo", "Location of external repository to fetch branch from"),
-        OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"), /* TODO */
+        OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"),
         OPT_STRING('n', "name", &opts.name, "subtree name", "Name of the subtree"), /* TODO: Add .subtree or remove name option */
         OPT_STRING('P', "prefix", &opts.prefix, "prefix", "Location to add subtree"),
         OPT_END(),
@@ -625,6 +625,8 @@ static int cmd_subtree_merge(int argc, const char **argv, const char *prefix)
 	}
 
     branch_name = argc > 0 ? argv[0] : NULL;
+
+    /* TODO: This is the same as subtree pull...unify? Have pull call this since we support squash here */
     if (opts.remote) {
         fetch_branch(opts.remote, branch_name);
         branch_name = "FETCH_HEAD";
@@ -803,6 +805,7 @@ static int cmd_subtree_push(int argc, const char **argv, const char *prefix)
 /*---------------------------------------------------------------------------*/
 
 struct split_opts {
+    int rewrite_head;
     int rewrite_parents;
     int change_committer;
     int always_create;
@@ -895,7 +898,8 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 {
     struct split_opts opts;
     struct option options[] = {
-        OPT_BOOLEAN(0, "rewrite-parents", &opts.rewrite_parents, "Rewrite the commits that are split from to include the generated commit as a subtree merge"), /* TODO: Take an argument as to which commits to rewrite */
+        OPT_BOOLEAN(0, "rewrite-head", &opts.rewrite_head, "Rewrite the head to include the generated commit as a subtree merge"),
+        OPT_BOOLEAN(0, "rewrite-parents", &opts.rewrite_parents, "Rewrite the commits that are split from to include the generated commit as a subtree merge"), /* TODO: Take an argument as a list of commits to rewrite? */
         OPT_BOOLEAN(0, "rejoin", &opts.rejoin, "Add a merge commit that joins the split out subtree with the source"), 
         OPT_BOOLEAN(0, "squash", &opts.squash, "Don't bring in the entire split history"), 
         OPT_BOOLEAN(0, "committer", &opts.change_committer, "Rewritten commits will use current commiter information"),
@@ -922,9 +926,9 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     memset(&opts, 0, sizeof(opts));
     argc = parse_options(argc, argv, prefix, options, builtin_subtree_split_usage, PARSE_OPT_KEEP_UNKNOWN);
 
-    if (opts.squash || opts.rejoin) {
-        if (opts.rewrite_parents )
-            die("git subtree split: Can't rewrite parents and do a squash or a join");
+    if (opts.squash || opts.rejoin || opts.rewrite_head) {
+        if (opts.rewrite_parents || (opts.rewrite_head && (opts.squash || opts.rejoin)))
+            die("git subtree split: Can't rewrite and do a squash or a join");
         
         head = lookup_commit_reference_by_name("HEAD");
         parse_commit(head);
@@ -1224,8 +1228,8 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
  
             if (opts.squash) {
                 /* 
-                 * TODO: This could be optimized quite a bit above, but this is
-                 * quick and easy to implement
+                 * TODO: This could be optimized quite a bit by tracking this
+                 * above, but this is quick and easy to implement
                  */
                 struct commit_list *parents = util_rewrite->remapping->parents;
                 while (parents)
@@ -1264,7 +1268,22 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     free(rewritten_commits);
     free(g_pathinfo);
 
-    if (opts.rejoin) {
+    if (opts.rewrite_head) {
+        struct commit_list *parents = NULL;
+        struct commit_list **insert = &interesting_commits;
+        commit = head;
+        parents = head->parents;
+        while (parents) {
+            /* This will prepend the parents to the list, keeping their original order */
+            insert = &commit_list_insert(parents->item, insert)->next;
+            parents = parents->next;
+        }
+        rewritten_commit = rewrite_commit(commit, commit->tree, interesting_commits, 0, &opts);
+
+        printf("%s\n", "HEAD");
+        printf("\t%s %s\n", sha1_to_hex(rewritten_commit->object.sha1), sha1_to_hex(head->object.sha1));
+    }
+    else if (opts.rejoin) {
         unsigned char result_commit[20];
         struct strbuf commit_msg = STRBUF_INIT;
         strbuf_addstr(&commit_msg, "Subtree split rejoin\n\n");
@@ -1314,7 +1333,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
-    //const char *split0 = "subtree split -P red -P blue --rewrite-parents";
+    const char *split0 = "subtree split -P red -P blue --rewrite-head";
     //const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
@@ -1326,7 +1345,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *add1 = "subtree add -P green green";
     //const char *add2 = "subtree add -P green -r ../green green1";
     //const char *merge1 = "subtree merge -P green olive --squash";
-    const char *merge1b = "subtree merge -P green green-head --squash";
+    //const char *merge1b = "subtree merge -P green green-head --squash";
     //const char *merge2 = "subtree merge -P green -r ../green --squash";
     //const char *pull1 = "subtree pull -P green ../green HEAD";
 
@@ -1428,4 +1447,10 @@ int cmd_subtree(int argc, const char **argv, const char *prefix)
 * Figure out how to make tab auto complete find branch names, remotes, etc.
 * Add subtree reset command?
 * Add options to reflog to ignore subtrees
+* Add push. Figure out how to push split out changes when split from a merge
+  commit
+* Detailed squash commit messages
+* Figure out how to present split --all (or any split that includes multiple
+  branches
+* Subtree cherry-pick command?
 -----------------------------------------------------------------------------*/
