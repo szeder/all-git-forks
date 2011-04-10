@@ -37,11 +37,50 @@ test_expect_success 'add p4 files' '
 	echo file1 >file1 &&
 	p4 add file1 &&
 	p4 submit -d "file1" &&
+	echo file2 >file2 &&
+	p4 add file2 &&
+	p4 submit -d "file2" &&
 	cd "$TRASH_DIRECTORY"
 '
 
 test_expect_success 'basic git-p4 clone' '
 	"$GITP4" clone --dest="$git" //depot &&
+	cd "$git" &&
+	git log --oneline >lines &&
+	test_line_count = 1 lines &&
+	cd .. &&
+	rm -rf "$git" && mkdir "$git"
+'
+
+test_expect_success 'git-p4 clone @all' '
+	"$GITP4" clone --dest="$git" //depot@all &&
+	cd "$git" &&
+	git log --oneline >lines &&
+	test_line_count = 2 lines &&
+	cd .. &&
+	rm -rf "$git" && mkdir "$git"
+'
+
+test_expect_success 'git-p4 sync uninitialized repo' '
+	test_create_repo "$git" &&
+	cd "$git" &&
+	test_must_fail "$GITP4" sync &&
+	rm -rf "$git" && mkdir "$git"
+'
+
+#
+# Create a git repo by hand.  Add a commit so that HEAD is valid.
+# Test imports a new p4 repository into a new git branch.
+#
+test_expect_success 'git-p4 sync new branch' '
+	test_create_repo "$git" &&
+	cd "$git" &&
+	test_commit head &&
+	"$GITP4" sync --branch=refs/remotes/p4/depot //depot@all &&
+	git log --oneline p4/depot >lines &&
+	cat lines &&
+	test_line_count = 2 lines &&
+	cd .. &&
 	rm -rf "$git" && mkdir "$git"
 '
 
