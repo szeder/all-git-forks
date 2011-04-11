@@ -572,6 +572,9 @@ cmd_summary() {
 		--for-status)
 			for_status="$1"
 			;;
+		-q|--quiet)
+			GIT_QUIET=1
+			;;
 		-n|--summary-limit)
 			if summary_limit=$(($2 + 0)) 2>/dev/null && test "$summary_limit" = "$2"
 			then
@@ -606,8 +609,14 @@ cmd_summary() {
 		# before the first commit: compare with an empty tree
 		head=$(git hash-object -w -t tree --stdin </dev/null)
 		test -z "$1" || shift
-	else
+	elif test $quiet -eq 1
+	then
+    		# Rev has not been found so we use HEAD in quiet mode
 		head="HEAD"
+	else
+    		# Rev has not been found so we exit with an error
+    		git rev-parse --default HEAD ${1+"$1"} > /dev/null
+    		exit $?
 	fi
 
 	if [ -n "$files" ]
