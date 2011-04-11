@@ -421,7 +421,7 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     struct option options[] = {
         OPT_STRING('r', "remote", &opts.remote, "repo", "Location of external repository to fetch branch from"),
         OPT_BOOLEAN(0, "squash", &opts.squash, "Bring history in as one commit"),
-        OPT_STRING('n', "name", &opts.name, "subtree name", "Name of the subtree"), /* TODO: Add .subtree or remove name option */
+        OPT_STRING('n', "name", &opts.name, "subtree name", "Name of the subtree"),
         OPT_STRING('P', "prefix", &opts.prefix, "prefix", "Location to add subtree"),
         OPT_END(),
         };
@@ -495,6 +495,27 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 		}
+    }
+
+    /* If a name was given, we'll record the info in the .gitsubtree file */
+    if (opts.name) {
+        struct strbuf config_key = STRBUF_INIT;
+        config_exclusive_filename = ".gitsubtree";
+        strbuf_addstr(&config_key, "subtree.");
+        strbuf_addstr(&config_key, opts.name);
+        if (opts.remote) {
+            strbuf_addstr(&config_key, ".url");
+		    git_config_set(config_key.buf, opts.remote );
+            strbuf_setlen(&config_key, config_key.len - 4);
+        }
+        strbuf_addstr(&config_key, ".path");
+	    git_config_set(config_key.buf, opts.prefix );
+        strbuf_release(&config_key);
+
+        config_exclusive_filename = NULL;
+
+        /* Stage .gitsubtree */
+	    add_file_to_cache(".gitsubtree", 0);
     }
 
     if (write_cache(newfd, active_cache, active_nr) || commit_locked_index(&lock_file))
@@ -1333,7 +1354,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
-    const char *split0 = "subtree split -P red -P blue --rewrite-head";
+    //const char *split0 = "subtree split -P red -P blue --rewrite-head";
     //const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
@@ -1342,14 +1363,14 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *split3 = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
     //const char *split4 = "subtree split local-change-to-subtree -P not-a-subtree";
     //const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
-    //const char *add1 = "subtree add -P green green";
-    //const char *add2 = "subtree add -P green -r ../green green1";
+    //const char *add1 = "subtree add -P green --name green green";
+    const char *add2 = "subtree add -P green -r ../green master -n green";
     //const char *merge1 = "subtree merge -P green olive --squash";
     //const char *merge1b = "subtree merge -P green green-head --squash";
     //const char *merge2 = "subtree merge -P green -r ../green --squash";
     //const char *pull1 = "subtree pull -P green ../green HEAD";
 
-    const char *command = split0;
+    const char *command = add2;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
@@ -1448,9 +1469,12 @@ int cmd_subtree(int argc, const char **argv, const char *prefix)
 * Add subtree reset command?
 * Add options to reflog to ignore subtrees
 * Add push. Figure out how to push split out changes when split from a merge
-  commit
+   commit
 * Detailed squash commit messages
 * Figure out how to present split --all (or any split that includes multiple
-  branches
+   branches
 * Subtree cherry-pick command?
+* Example post-commit hook that rewrites head to split subtrees
+* Passing an invalid remote (or remote branch) to add doesn't cleanup 
+   index.lock
 -----------------------------------------------------------------------------*/

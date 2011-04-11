@@ -14,6 +14,11 @@
 
 static FILE *config_file;
 static const char *config_file_name;
+
+static const char *config_data;
+static int config_data_sz;
+static int config_data_ofst;
+
 static int config_linenr;
 static int config_file_eof;
 static int zlib_compression_seen;
@@ -105,29 +110,57 @@ int git_config_parse_environment(void) {
 	return 0;
 }
 
+static int read_char()
+{
+    if (config_file != NULL) {
+        return fgetc(config_file);
+    }
+    else if (config_data != NULL && config_data_ofst < config_data_sz) {
+        return config_data[config_data_ofst++];
+    }
+    else {
+        return EOF;
+    }
+}
+
+static int peek_char()
+{
+    int c;
+    if (config_file != NULL) {
+        c = fgetc(config_file);
+        ungetc(c, config_file);
+    }
+    else if (config_data != NULL && config_data_ofst < config_data_sz) {
+        c = config_data[config_data_ofst];
+    }
+    else {
+        c = EOF;
+    }
+
+    return c;
+}
+
+
 static int get_next_char(void)
 {
 	int c;
-	FILE *f;
 
-	c = '\n';
-	if ((f = config_file) != NULL) {
-		c = fgetc(f);
-		if (c == '\r') {
-			/* DOS like systems */
-			c = fgetc(f);
-			if (c != '\n') {
-				ungetc(c, f);
-				c = '\r';
-			}
-		}
-		if (c == '\n')
-			config_linenr++;
-		if (c == EOF) {
-			config_file_eof = 1;
-			c = '\n';
+	c = read_char();
+	if (c == '\r') {
+		/* DOS like systems */
+		c = peek_char();
+		if (c == '\n') {
+			read_char();
 		}
 	}
+	else if (c == '\n') {
+		config_linenr++;
+    }
+	else if (c == EOF) {
+		config_file_eof = 1;
+		c = '\n';
+	}
+
 	return c;
 }
 
@@ -198,7 +231,7 @@ static inline int iskeychar(int c)
 	return isalnum(c) || c == '-';
 }
 
-static int get_value(config_fn_t fn, void *data, char *name, unsigned int len)
+static int get_value(config_fn_t fn, void *context, char *name, unsigned int len)
 {
 	int c;
 	char *value;
@@ -226,7 +259,7 @@ static int get_value(config_fn_t fn, void *data, char *name, unsigned int len)
 		if (!value)
 			return -1;
 	}
-	return fn(name, value, data);
+	return fn(name, value, context);
 }
 
 static int get_extended_base_var(char *name, int baselen, int c)
@@ -284,7 +317,7 @@ static int get_base_var(char *name)
 	}
 }
 
-static int git_parse_file(config_fn_t fn, void *data)
+static int git_parse_config(config_fn_t fn, void *context)
 {
 	int comment = 0;
 	int baselen = 0;
@@ -334,7 +367,7 @@ static int git_parse_file(config_fn_t fn, void *data)
 		if (!isalpha(c))
 			break;
 		var[baselen] = tolower(c);
-		if (get_value(fn, data, var, baselen+1) < 0)
+		if (get_value(fn, context, var, baselen+1) < 0)
 			break;
 	}
 	die("bad config file line %d in %s", config_linenr, config_file_name);
@@ -796,22 +829,40 @@ int git_default_config(const char *var, const char *value, void *dummy)
 	return 0;
 }
 
-int git_config_from_file(config_fn_t fn, const char *filename, void *data)
+int git_config_from_file(config_fn_t fn, const char *filename, void *context)
 {
 	int ret;
 	FILE *f = fopen(filename, "r");
 
 	ret = -1;
 	if (f) {
+        config_data = NULL;
 		config_file = f;
 		config_file_name = filename;
 		config_linenr = 1;
 		config_file_eof = 0;
-		ret = git_parse_file(fn, data);
+		ret = git_parse_config(fn, context);
 		fclose(f);
 		config_file_name = NULL;
 	}
 	return ret;
+}
+
+extern int git_config_from_buffer(config_fn_t fn, const char *data, int sz, void *context)
+{
+	int ret;
+
+    config_file = NULL;
+    config_data = data;
+    config_data_sz = sz;
+    config_data_ofst = 0;
+
+	config_linenr = 1;
+	config_file_eof = 0;
+	ret = -1;
+    ret = git_parse_config(fn, context);
+
+    return ret;
 }
 
 const char *git_etc_gitconfig(void)
@@ -833,7 +884,7 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
-int git_config_from_parameters(config_fn_t fn, void *data)
+int git_config_from_parameters(config_fn_t fn, void *context)
 {
 	static int loaded_environment;
 	const struct config_item *ct;
@@ -844,22 +895,21 @@ int git_config_from_parameters(config_fn_t fn, void *data)
 		loaded_environment = 1;
 	}
 	for (ct = config_parameters; ct; ct = ct->next)
-		if (fn(ct->name, ct->value, data) < 0)
+		if (fn(ct->name, ct->value, context) < 0)
 			return -1;
 	return 0;
 }
 
-int git_config_early(config_fn_t fn, void *data, const char *repo_config)
+int git_config_early(config_fn_t fn, void *context, const char *repo_config)
 {
 	int ret = 0, found = 0;
 	const char *home = NULL;
 
 	/* Setting $GIT_CONFIG makes git read _only_ the given config file. */
 	if (config_exclusive_filename)
-		return git_config_from_file(fn, config_exclusive_filename, data);
+		return git_config_from_file(fn, config_exclusive_filename, context);
 	if (git_config_system() && !access(git_etc_gitconfig(), R_OK)) {
-		ret += git_config_from_file(fn, git_etc_gitconfig(),
-					    data);
+		ret += git_config_from_file(fn, git_etc_gitconfig(), context);
 		found += 1;
 	}
 
@@ -867,31 +917,31 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 	if (home) {
 		char *user_config = xstrdup(mkpath("%s/.gitconfig", home));
 		if (!access(user_config, R_OK)) {
-			ret += git_config_from_file(fn, user_config, data);
+			ret += git_config_from_file(fn, user_config, context);
 			found += 1;
 		}
 		free(user_config);
 	}
 
 	if (repo_config && !access(repo_config, R_OK)) {
-		ret += git_config_from_file(fn, repo_config, data);
+		ret += git_config_from_file(fn, repo_config, context);
 		found += 1;
 	}
 
-	ret += git_config_from_parameters(fn, data);
+	ret += git_config_from_parameters(fn, context);
 	if (config_parameters)
 		found += 1;
 
 	return ret == 0 ? found : ret;
 }
 
-int git_config(config_fn_t fn, void *data)
+int git_config(config_fn_t fn, void *context)
 {
 	char *repo_config = NULL;
 	int ret;
 
 	repo_config = git_pathdup("config");
-	ret = git_config_early(fn, data, repo_config);
+	ret = git_config_early(fn, context, repo_config);
 	if (repo_config)
 		free(repo_config);
 	return ret;

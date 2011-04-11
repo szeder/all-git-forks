@@ -1004,6 +1004,7 @@ extern int update_server_info(int);
 typedef int (*config_fn_t)(const char *, const char *, void *);
 extern int git_default_config(const char *, const char *, void *);
 extern int git_config_from_file(config_fn_t fn, const char *, void *);
+extern int git_config_from_buffer(config_fn_t fn, const char *, int, void *);
 extern void git_config_push_parameter(const char *text);
 extern int git_config_parse_parameter(const char *text);
 extern int git_config_parse_environment(void);
