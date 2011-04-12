@@ -27,7 +27,7 @@
 /*              #####  ####### #     # #     # ####### #     #               */
 /*---------------------------------------------------------------------------*/
 
-static int debug_printf_enabled = 0;
+static int debug_printf_enabled = 1;
 #define debug(...) if( debug_printf_enabled ) fprintf(stderr, __VA_ARGS__)
 
 static struct string_list *g_prefix_list;
@@ -36,14 +36,22 @@ static struct path_info {
 } *g_pathinfo;
 static int g_pathinfo_sz;
 
+#define IGNORE_NONE      0
+#define IGNORE_SUBTREE   1
+#define IGNORE_SUPERTREE 2
+
 struct commit_util {
     struct commit *remapping;
     struct tree *tree;
-    int ignore : 1;   
+    /* Is this a subtree or supertree commit that is fully resolved */
+    /* TODO: I don't really need to differentiate...it is just handy for debugging */
+    unsigned int ignore : 2;
+    /* Override ignore */
+    unsigned int force : 1;
     /* Did we create this commit */
-    int created : 1;
+    unsigned int created : 1;
     /* Is this commit on the subtree (meaning remapping points to original commit) */
-    int is_subtree : 1;
+    unsigned int is_subtree : 1;
 };
 
 /*-----------------------------------------------------------------------------
@@ -170,16 +178,12 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
 
         /* 
          * Don't bother with ignored subtrees other than to propagate the 
-         * ignore
+         * ignore. We only need to check this once
          */
-        util = get_commit_util(commit, i, 0);
-        if (util && util->ignore) {
-            struct commit_list *parent = commit->parents;
-            while (parent) {
-                get_commit_util( parent->item, i, 1)->ignore = 1;
-                parent = parent->next;
-            }
-            continue;
+        if (baselen == 0) {
+            util = get_commit_util(commit, i, 0);
+            if (util && util->ignore)
+                continue;
         }
 
         prefix = g_prefix_list->items[i].string;
@@ -199,6 +203,45 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
     }
 
     return result;
+}
+
+/*-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
+void find_subtrees(struct commit *commit)
+{
+    int i;
+    int work_to_do = 0;
+
+    /*
+     * First, propagate the ignore flags to children
+     */
+    for (i = 0; i < g_prefix_list->nr; i++) {
+        struct commit_util *util;
+        util = get_commit_util(commit, i, 0);
+        if (util && util->ignore) {
+            struct commit_list *parent = commit->parents;
+            while (parent) {
+                get_commit_util( parent->item, i, 1)->ignore |= util->ignore;
+                parent = parent->next;
+            }
+            debug("\t%s\n", g_prefix_list->items[i].string);
+            debug("\t\tIgnore: %d\n", util->ignore);
+            debug("\t\tForce: %d\n", util->force);
+            if (util->force)
+                util->ignore = IGNORE_NONE;
+            else
+                continue;
+        }
+        work_to_do = 1;
+    }
+
+    /*
+     * Read the tree to get the subtree's SHA1 (if it exists)
+     */
+    memset(g_pathinfo, 0, g_pathinfo_sz);
+    if (work_to_do)
+        read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
 }
 
 /*-----------------------------------------------------------------------------
@@ -342,9 +385,6 @@ static struct commit *find_subtree_parent(struct commit *commit,
 
     if (best_commit) {
         struct commit_util *util;
-        debug("\tFound existing parent %s for %s\n", 
-            sha1_to_hex(best_commit->object.sha1), 
-            g_prefix_list->items[prefix_index].string);
 
         /*
          * We've found an existing subtree commit. Set the 
@@ -354,7 +394,7 @@ static struct commit *find_subtree_parent(struct commit *commit,
         util = get_commit_util(commit, prefix_index, 1);
         util->remapping = best_commit;
         util->tree = best_commit->tree;
-        util->ignore = 0;
+        util->ignore = IGNORE_NONE;
 
         /*
          * We'll propagate this as we see subtree commits to 
@@ -369,7 +409,7 @@ static struct commit *find_subtree_parent(struct commit *commit,
         parent = commit->parents;
         while (parent) {
             util = get_commit_util(parent->item, prefix_index, 1);
-            util->ignore = 1;
+            util->ignore |= (parent->item == best_commit ) ? IGNORE_SUBTREE : IGNORE_SUPERTREE;
             parent = parent->next;
         }
     }
@@ -678,8 +718,7 @@ static int cmd_subtree_merge(int argc, const char **argv, const char *prefix)
         prepare_revision_walk(&rev);
         parent = NULL;
         while ((commit = get_revision(&rev))) {
-            memset(g_pathinfo, 0, g_pathinfo_sz);
-            read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
+            find_subtrees(commit);
             for (i = 0; i < g_prefix_list->nr; i++) {
                 if (!g_pathinfo[i].tree)
                     continue;
@@ -979,7 +1018,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
          * We don't need to process any of these commits 
         */
         for( j = 0; j <= g_prefix_list->nr; j++)
-            get_commit_util(commit, j, 1)->ignore = 1;
+            get_commit_util(commit, j, 1)->ignore = IGNORE_SUBTREE;
     }
 
     /* 
@@ -1006,13 +1045,13 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     while ((commit = get_revision(&rev))) {
         debug("%s processing...\n", sha1_to_hex(commit->object.sha1));
         
-        memset(g_pathinfo, 0, g_pathinfo_sz);
-        read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
+        find_subtrees(commit);
         has_subtree_data = 0;
         for (i = 0; i < g_prefix_list->nr; i++) {
             if (g_pathinfo[i].tree) {
                 struct commit_util *util;
                 struct commit_list *onto;
+                struct commit_list *parents;
 
                 /* 
                  * If the tree id matches one of the onto trees, we don't need
@@ -1020,7 +1059,6 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                  */
                 onto = onto_list;
                 while (onto) {
-                    struct commit_list *parents;
                     if (g_pathinfo[i].tree == onto->item->tree) {
                         
                         debug("\tFound onto %s for %s\n", 
@@ -1030,12 +1068,12 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                         util = get_commit_util(commit, i, 1);
                         util->remapping = onto->item;
                         util->tree = onto->item->tree;
-                        util->ignore = 0;
+                        util->ignore = IGNORE_NONE;
                         
                         parents = commit->parents;
 	                    while (parents) {
                             util = get_commit_util(parents->item, i, 1);
-                            util->ignore = 1;
+                            util->ignore |= (parents->item == onto->item) ? IGNORE_SUBTREE : IGNORE_SUPERTREE;
 		                    parents = parents->next;
 	                    }
                         /* TODO: Remove from the onto list */
@@ -1051,17 +1089,35 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                  * merge we're going to be generating 
                  */
                 if (!opts.always_create) {
-                    if (find_subtree_parent(commit, i, 0))
+                    struct commit *parent = find_subtree_parent(commit, i, 0);
+                    if (parent) {
+                        debug("\tFound existing subtree parent %s for %s\n", 
+                            sha1_to_hex(parent->object.sha1),
+                            opts.prefix_list.items[i].string);
                         continue;
+                    }
                 }
 
                 util = get_commit_util(commit, i, 1);
-                util->ignore = 0;
+                util->ignore = IGNORE_NONE;
                 util->tree = g_pathinfo[i].tree;
 
                 debug("\tFound tree %s for %s\n", 
                     sha1_to_hex(g_pathinfo[i].tree->object.sha1), 
                     opts.prefix_list.items[i].string);
+
+                /*
+                 * This tree has some potential subtree data. We need to mark
+                 * it's parents so we know they'll need to be processed. This
+                 * is necessary so a branch doesn't cause us to ignore data
+                 * for a parallel branch.
+                 */
+                parents = commit->parents;
+                while (parents) {
+                    util = get_commit_util(parents->item, i, 1);
+                    util->force = 1;
+                    parents = parents->next;
+                }
 
                 has_subtree_data = 1;
             }
@@ -1119,20 +1175,17 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
                 parent_util = get_commit_util(parent->item, i, 0);
                 debug("\t\tChecking parent %s\n", sha1_to_hex(parent->item->object.sha1));
-                if (!parent_util) {
-                }
-                else
-                {
+                if (parent_util) {
                     if (parent_util->remapping) {
                         parse_commit(parent_util->remapping);
                         if (parent_util->remapping->tree == commit_util->tree) {
                             /* 
-                             * The tree hasn't changed from one of our parents
-                             * so we don't need to merge it in.
+                             * The tree hasn't changed from this parent
+                             * so we don't need to create a new commit.
                              */
                             commit_util->remapping = parent_util->remapping;
                             debug("\t\tFOUND\n");
-                            break;;
+                            continue;
                         }
                     }
                     if (parent_util->ignore) {
@@ -1155,7 +1208,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                          * has parents and doesn't need to be displayed.
                          */
                         tmp_util = get_commit_util(tmp_util->remapping, i, 1);
-                        tmp_util->ignore = 1;
+                        tmp_util->ignore |= IGNORE_SUBTREE;
                     }
                     tmp_parent = tmp_parent->next;
                 }
@@ -1199,7 +1252,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                      * has parents and doesn't need to be displayed.
                      */
                     tmp_util = get_commit_util(tmp_util->remapping, i, 1);
-                    tmp_util->ignore = 1;
+                    tmp_util->ignore |= IGNORE_SUPERTREE;
                 } 
                 else {
                     insert = &commit_list_insert(tmp_parent->item, insert)->next;
