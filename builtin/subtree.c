@@ -1230,35 +1230,111 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                     struct commit_list *search_list = NULL;
                     struct commit_list *next_list;
                     struct commit *next;
+                    int is_unnecessary = 0;
 
-                    debug("\t\tExpensive check to validate parents are necessary\n");
+                    /*
+                     * TODO: First step is to make sure there aren't any
+                     * duplicate entries in the remapped_parents list
+                     */
+
+                    debug("\tExpensive check to validate parents are necessary\n");
                     /*
                      * Check to make sure none of our parents are direct
                      * ancestors of any of our other parents
                      */
                     next_list = remapped_parents;
                     while (next_list) {
-                        commit_list_insert(next_list->item, &search_list);
+                        struct commit_list *next_list_parents;
+                        next_list_parents = next_list->item->parents;
+                        while (next_list_parents) {
+                            commit_list_insert(next_list_parents->item, &search_list);
+                            debug("\tSearch %s\n", sha1_to_hex(next_list_parents->item->object.sha1));
+                            next_list_parents = next_list_parents->next;
+                        }
                         next_list = next_list->next;
                     }
                     
-                    while (next = pop_commit(&search_list)) {
+                    while ((next = pop_commit(&search_list)) && remapped_parents->next) {
+                        next_list = remapped_parents;
+                        while (next_list) {
+                            struct commit_list *next_parents;
+                            if (next_list->item == next) {
+                                struct commit_list **prev;
+                                /* Remove this commit from the remapped parents */
+                                debug("\tFound unnecessary parent %s\n", sha1_to_hex(next->object.sha1));
+                                is_unnecessary = 1;
+                                prev = &remapped_parents;
+                                while (*prev) {
+                                    if ((*prev)->item == next) {
+                                        *prev = (*prev)->next;
+                                        break;
+                                    }
+                                    prev = &(*prev)->next;
+                                }
+
+                            }
+
+                            // TODO: If the tree id changed, we know that this commit is necessary. 
+                            //       Since we're searching all parents at once we probably need some extra bookkeeping to do this
+                            /*
+                             * Add this commit's parents to the search list. Do
+                             * breadth first searching to not search the same
+                             * branch twice (TODO: I still see the same branch 2x).
+                             */
+                            next_parents = next->parents;
+                            while (next_parents) {
+                                insert = &search_list;
+                                while (*insert) {
+                                    if ((*insert)->item == next_parents->item)
+                                        break;
+                                    insert = &(*insert)->next;
+                                }
+                                if (*insert == NULL) {
+                                    commit_list_insert(next_parents->item, insert);
+                                    debug("\tSearch %s\n", sha1_to_hex(next_parents->item->object.sha1));
+                                }
+                                next_parents = next_parents->next;
+                            }
+                            next_list = next_list->next;
+                        }
+
                     }
 
                     free_commit_list(search_list);
+
+                    /* 
+                     * It is possible this commit is no longer needed. 
+                     * Check remapped parent's tree id's against the subtree.
+                     */
+                    if (is_unnecessary) {
+                        is_rewrite_needed = 0;
+                        next_list = remapped_parents;
+                        while (next_list) {
+                            if (next_list->item->tree != commit_util->tree) {
+                                is_rewrite_needed = 1;
+                                break;
+                            }
+                            next_list = next_list->next;
+                        }
+                    }
                 }
 
-                rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
-                commit_util->remapping = rewritten_commit;
-                commit_util->created = 1;
+                if (is_rewrite_needed) {
+                    rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
+                    commit_util->remapping = rewritten_commit;
+                    commit_util->created = 1;
 
-                tmp_util = get_commit_util(rewritten_commit, i, 1);
-                tmp_util->remapping = commit;
-                tmp_util->created = 1;
-                tmp_util->is_subtree = 1;
+                    tmp_util = get_commit_util(rewritten_commit, i, 1);
+                    tmp_util->remapping = commit;
+                    tmp_util->created = 1;
+                    tmp_util->is_subtree = 1;
 
-                debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
-                commit_list_insert(commit, &rewritten_commits[i]);
+                    debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
+                    commit_list_insert(commit, &rewritten_commits[i]);
+                }
+                else {
+                    free_commit_list(remapped_parents);
+                }
             }
         }
         
