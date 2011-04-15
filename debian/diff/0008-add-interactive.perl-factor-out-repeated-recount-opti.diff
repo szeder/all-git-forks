@@ -1,0 +1,79 @@
+From 12a1558a531b0d1c7d6792015d9d153204a7df6a Mon Sep 17 00:00:00 2001
+From: Junio C Hamano <gitster@pobox.com>
+Date: Wed, 6 Apr 2011 14:12:34 -0700
+Subject: add--interactive.perl: factor out repeated --recount option
+
+Depending on the direction and the target of patch application, we would
+need to pass --cached and --reverse to underlying "git apply".  Also we
+only pass --check when we are not applying but just checking.
+
+But we always pass --recount since 8cbd431 (git-add--interactive: replace
+hunk recounting with apply --recount, 2008-07-02).  Instead of repeating
+the same --recount over and over again, move it to a single place that
+actually runs the command, namely, "run_git_apply" subroutine.
+
+Signed-off-by: Junio C Hamano <gitster@pobox.com>
+(cherry picked from commit b988ac18ffb19d643b150a7cb0159be3b2de398a)
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ git-add--interactive.perl |   16 ++++++++--------
+ 1 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/git-add--interactive.perl b/git-add--interactive.perl
+index a329c5a..6a439db 100755
+--- a/git-add--interactive.perl
++++ b/git-add--interactive.perl
+@@ -705,7 +705,7 @@ sub add_untracked_cmd {
+ sub run_git_apply {
+ 	my $cmd = shift;
+ 	my $fh;
+-	open $fh, '| git ' . $cmd;
++	open $fh, '| git ' . $cmd . " --recount";
+ 	print $fh @_;
+ 	return close $fh;
+ }
+@@ -1050,7 +1050,7 @@ EOF
+ 
+ sub diff_applies {
+ 	my $fh;
+-	return run_git_apply($patch_mode_flavour{APPLY_CHECK} . ' --recount --check',
++	return run_git_apply($patch_mode_flavour{APPLY_CHECK} . ' --check',
+ 			     map { @{$_->{TEXT}} } @_);
+ }
+ 
+@@ -1139,7 +1139,7 @@ EOF
+ 
+ sub apply_patch {
+ 	my $cmd = shift;
+-	my $ret = run_git_apply $cmd . ' --recount', @_;
++	my $ret = run_git_apply $cmd, @_;
+ 	if (!$ret) {
+ 		print STDERR @_;
+ 	}
+@@ -1148,17 +1148,17 @@ sub apply_patch {
+ 
+ sub apply_patch_for_checkout_commit {
+ 	my $reverse = shift;
+-	my $applies_index = run_git_apply 'apply '.$reverse.' --cached --recount --check', @_;
+-	my $applies_worktree = run_git_apply 'apply '.$reverse.' --recount --check', @_;
++	my $applies_index = run_git_apply 'apply '.$reverse.' --cached --check', @_;
++	my $applies_worktree = run_git_apply 'apply '.$reverse.' --check', @_;
+ 
+ 	if ($applies_worktree && $applies_index) {
+-		run_git_apply 'apply '.$reverse.' --cached --recount', @_;
+-		run_git_apply 'apply '.$reverse.' --recount', @_;
++		run_git_apply 'apply '.$reverse.' --cached', @_;
++		run_git_apply 'apply '.$reverse, @_;
+ 		return 1;
+ 	} elsif (!$applies_index) {
+ 		print colored $error_color, "The selected hunks do not apply to the index!\n";
+ 		if (prompt_yesno "Apply them to the worktree anyway? ") {
+-			return run_git_apply 'apply '.$reverse.' --recount', @_;
++			return run_git_apply 'apply '.$reverse, @_;
+ 		} else {
+ 			print colored $error_color, "Nothing was applied.\n";
+ 			return 0;
+-- 
+1.7.5.rc0
+

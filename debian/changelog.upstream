@@ -1,8 +1,11 @@
-Version v1.7.4.2; changes since v1.7.4.1:
+Version v1.7.4.4; changes since v1.7.4.1:
 -----------------------------------------
 
 Adam Monsen (1):
       diff format documentation: clarify --cc and -c
+
+Alex Riesen (1):
+      HOME must be set before calling git-init when creating test repositories
 
 Alexei Sholik (3):
       Documentation: remove redundant colons in git-for-each-ref.txt
@@ -15,13 +18,15 @@ Arnout Engelen (1):
 Ben Walton (1):
       Work around broken ln on solaris as used in t8006
 
-Carlos Martín Nieto (3):
+Carlos Martín Nieto (4):
       valgrind: ignore SSE-based strlen invalid reads
       make_absolute_path: return the input path if it points to our buffer
       t/README: Add a note about running commands under valgrind
+      Documentation/config.txt: make truth value of numbers more explicit
 
-Clemens Buchacher (1):
+Clemens Buchacher (2):
       Documentation: clarify -u<mode> option defaults
+      do not overwrite untracked symlinks
 
 Eric Hanchrow (1):
       branch_merged: fix grammar in warning
@@ -29,24 +34,43 @@ Eric Hanchrow (1):
 Erik Faye-Lund (1):
       mingw: add minimum getrlimit() compatibility stub
 
-Jakub Narebski (2):
+Fabian Keil (1):
+      git-cvsimport.perl: Bail out right away when reading from the server fails
+
+Jakub Narebski (4):
+      git-instaweb: Change how gitweb.psgi is made runnable as standalone app
       gitweb: Always call parse_date with timezone parameter
       gitweb: Fix handling of fractional timezones in parse_date
+      gitweb: Fix parsing of negative fractional timezones in JavaScript
 
 Jay Soffian (1):
       merge: honor prepare-commit-msg hook
 
-Jeff King (5):
+Jeff King (10):
       string_list_append: always set util pointer to NULL
       clone: die when trying to clone missing local path
       diff: handle diffstat of rewritten binary files
       diff: don't retrieve binary blobs for diffstat
+      strbuf: add fixed-length version of add_wrapped_text
+      format-patch: wrap long header lines
+      format-patch: rfc2047-encode newlines in headers
       bisect: visualize with git-log if gitk is unavailable
+      docs: fix filter-branch subdir example for exotic repo names
+      pull: do not clobber untracked files on initial pull
 
-Johan Herland (1):
+Joe Ratterman (1):
+      grep: Add the option '--line-number'
+
+Johan Herland (2):
       push.default: Rename 'tracking' to 'upstream'
+      branch/checkout --track: Ensure that upstream branch is indeed a branch
 
-Jonathan Nieder (9):
+Johannes Sixt (3):
+      Demonstrate breakage: checkout overwrites untracked symlink with directory
+      stash: fix incorrect quoting in cleanup of temporary files
+      stash: copy the index using --index-output instead of cp -p
+
+Jonathan Nieder (10):
       correct type of EMPTY_TREE_SHA1_BIN
       tests: skip terminal output tests on OS X
       commit: error out for missing commit message template
@@ -56,24 +80,45 @@ Jonathan Nieder (9):
       branch: split off function that writes tracking info and commit subject
       cherry: split off function to print output lines
       diff --submodule: split into bite-sized pieces
+      compat: add missing #include <sys/resource.h>
 
-Junio C Hamano (8):
+Junio C Hamano (23):
+      checkout: fix bug with ambiguous refs
       CodingGuidelines: downcase placeholders in usage messages
       verify-pack: add --stat-only to the synopsis section
+      apply: do not patch lines that were already patched
+      apply -v: show offset count when patch did not apply exactly
       SubmittingPatches: clarify the expected commit log description
       Revert "core.abbrevguard: Ensure short object names stay unique a bit longer"
+      list-objects.c: don't add an unparsed NULL as a pending tree
+      diff --quiet: disable optimization when --diff-filter=X is used
       Prepare draft release notes to 1.7.4.2
       bisect: explain the rationale behind 125
       Update draft release notes to 1.7.4.2
+      Rename core.abbrevlength back to core.abbrev
+      diff/status: refactor opportunistic index update
+      update $GIT_INDEX_FILE when there are racily clean entries
+      doc: technical details about the index file format
       Git 1.7.4.2
+      t8001: check the exit status of the command being tested
+      parse-remote: typofix
+      Doc: mention --delta-base-offset is the default for Porcelain commands
+      Git 1.7.4.3
+      Start preparing for 1.7.4.4
+      Git 1.7.4.4
 
 Kevin Cernekee (1):
       gitweb: highlight: replace tabs with spaces
 
-Linus Torvalds (3):
+Libor Pechacek (2):
+      Sanity-check config variable names
+      Disallow empty section and variable names
+
+Linus Torvalds (4):
       for_each_hash: allow passing a 'void *data' pointer to callback
       diffcore-rename: properly honor the difference between -M and -C
       diffcore-rename: improve estimate_similarity() heuristics
+      Make the default abbrev length configurable
 
 Masatake Osanai (1):
       perl: command_bidi_pipe() method should set-up git environmens
@@ -81,7 +126,13 @@ Masatake Osanai (1):
 Mathias Lafeldt (1):
       Fix typo in t/README
 
-Michael J Gruber (16):
+Matthieu Moy (1):
+      log: fix --max-count when used together with -S or -G
+
+Maxin john (1):
+      contrib/thunderbird-patch-inline: do not require bash to run the script
+
+Michael J Gruber (20):
       commit,tag: use same wording for -F
       commit,status: describe --porcelain just like push
       clone,init: describe --template using the same wording
@@ -98,6 +149,15 @@ Michael J Gruber (16):
       git-patch-id: do not trip over "no newline" markers
       mergetool-lib: call vim in readonly mode for diffs
       rev-list-options.txt: typo fix
+      git-log.txt,rev-list-options.txt: -n/--max-count is commit limiting
+      git-log.txt,rev-list-options.txt: put option blocks in proper order
+      git-bisect.txt: streamline run presentation
+      git-bisect.txt: example for bisecting with hot-fix
+
+Michael Witten (3):
+      git tag documentation grammar fixes and readability updates
+      Typos: t/README
+      strbuf.h: remove a tad stale docs-in-comment and reference api-doc instead
 
 Michal Rokos (2):
       Makefile: add NO_FNMATCH_CASEFOLD to HP-UX section
@@ -106,18 +166,25 @@ Michal Rokos (2):
 Michał Kiedrowicz (1):
       Documentation: fix a typo in git-apply.txt
 
-Nguyễn Thái Ngọc Duy (2):
+Nguyễn Thái Ngọc Duy (3):
       parse_tag_buffer(): do not prefixcmp() out of range
+      doc: technical details about the index file format
       init: remove unnecessary check
 
-Piotr Krukowiecki (1):
+Nicolas Morey-Chaisemartin (1):
+      submodule: process conflicting submodules only once
+
+Piotr Krukowiecki (3):
       ls-remote documentation: <refs> argument is optional
+      git stash: show status relative to current directory
+      Add test: git stash shows status relative to current dir
 
 Ralf Wildenhues (1):
       configure: use AC_LANG_PROGRAM consistently
 
-SZEDER Gábor (1):
+SZEDER Gábor (2):
       git-am.txt: advertise 'git am --abort' instead of 'rm .git/rebase-apply'
+      Documentation: trivial grammar fix in core.worktree description
 
 Shawn O. Pearce (2):
       Limit file descriptors used by packs
@@ -126,6 +193,10 @@ Shawn O. Pearce (2):
 Spencer E. Olson (2):
       submodule: no [--merge|--rebase] when newly cloned
       t7406: "git submodule update {--merge|--rebase]" with new submodules
+
+Stephen Boyd (2):
+      parse-remote: replace unnecessary sed invocation
+      git-pack-objects.txt: fix grammatical errors
 
 Ævar Arnfjörð Bjarmason (4):
       gitweb/gitweb.perl: remove use of qw(...) as parentheses

@@ -1,7 +1,8 @@
-From 0dc9a62bc779c701c9ceb14a4d40d028ae6ab2db Mon Sep 17 00:00:00 2001
+From acdb679c9e94bcff94626138113981d8c531f3c2 Mon Sep 17 00:00:00 2001
 From: Anders Kaseorg <andersk@MIT.EDU>
 Date: Thu, 6 Jan 2011 17:42:33 -0700
-Subject: gitk: Take only numeric version components when computing $git_version
+Subject: gitk: Take only numeric version components when computing
+ $git_version
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -41,5 +42,5 @@ index 36d3996..233b69b 100755
  set show_notes {}
  if {[package vcompare $git_version "1.6.6.2"] >= 0} {
 -- 
-1.7.4.1
+1.7.5.rc0
 

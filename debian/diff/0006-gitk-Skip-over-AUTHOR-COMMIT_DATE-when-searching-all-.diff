@@ -1,4 +1,4 @@
-From ef2b4c7d374f03cc3934b0e5c37b73717c733727 Mon Sep 17 00:00:00 2001
+From c032bf1f93b8fe56fadc9a5abb1fdda28f070358 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
 Date: Sun, 14 Mar 2010 18:59:09 -0400
 Subject: gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
@@ -50,5 +50,5 @@ index 86b97b9..36d3996 100755
  		    [doesmatch $f]} {
  		    set found 1
 -- 
-1.7.4.1
+1.7.5.rc0
 

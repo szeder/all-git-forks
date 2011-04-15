@@ -1,4 +1,4 @@
-From 03bad587abad163a2d24bc9295d367194060ce7b Mon Sep 17 00:00:00 2001
+From 5d2ddd6c348b7ab779be2a6d3dd4b63bebb31986 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
 Subject: remove shebang line from shell libraries
@@ -33,7 +33,7 @@ index 78ce49e..a0a10eb 100644
  	test "$TOOL_MODE" = diff
  }
 diff --git a/git-parse-remote.sh b/git-parse-remote.sh
-index 1cc2ba6..a091a0e 100644
+index 9b950be..a25e856 100644
 --- a/git-parse-remote.sh
 +++ b/git-parse-remote.sh
 @@ -1,6 +1,4 @@
@@ -62,5 +62,5 @@ index aa16b83..264966d 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.4.1
+1.7.5.rc0
 

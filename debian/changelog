@@ -1,7 +1,12 @@
-git (1:1.7.4.2-1) unstable; urgency=low
+git (1:1.7.4.4-0.1) unstable; urgency=low
 
   * new upstream point release.
   * debian/diff/0008...0064: remove; applied upstream.
+  * debian/diff/0008-add...diff, 0009-add-p-work...diff: new from
+    upstream; add -p: do not error out for attempts to stage hunks
+    after splitting and editing them.  This fixes a regression
+    introduced by v1.7.4.3~10^2 (apply: do not patch lines that were
+    already patched, 2011-03-04).
   * debian/git.preinst, debian/git.postinst, debian/git.postrm:
     don't use dpkg-maintscript-helper, avoiding a dependency on
     recent dpkg (thx Anders Kaseorg and Marc Haber; closes: #618708).

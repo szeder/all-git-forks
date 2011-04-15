@@ -1,4 +1,4 @@
-From c2432b65188c99b25844dc1b9010d8f9ac8d8ae0 Mon Sep 17 00:00:00 2001
+From 8a9c767a0fcc7eb946461b2bf17b41b1c7c9b143 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
 Subject: bug#506445: hooks/post-receive-email: set encoding to utf-8
@@ -26,5 +26,5 @@ index 21989fc..01a32d6 100755
  	X-Git-Reftype: $refname_type
  	X-Git-Oldrev: $oldrev
 -- 
-1.7.4.1
+1.7.5.rc0
 
