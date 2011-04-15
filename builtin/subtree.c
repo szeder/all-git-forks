@@ -28,13 +28,14 @@
 /*---------------------------------------------------------------------------*/
 
 static int debug_printf_enabled = 1;
-#define debug(...) if( debug_printf_enabled ) fprintf(stderr, __VA_ARGS__)
+#define debug(...) if (debug_printf_enabled) fprintf(stderr, __VA_ARGS__)
 
 static struct string_list *g_prefix_list;
 static struct path_info {
     struct tree* tree;
 } *g_pathinfo;
-static int g_pathinfo_sz;
+static unsigned int g_pathinfo_sz;
+static unsigned int g_created;
 
 #define IGNORE_NONE      0
 #define IGNORE_SUBTREE   1
@@ -48,10 +49,10 @@ struct commit_util {
     unsigned int ignore : 2;
     /* Override ignore */
     unsigned int force : 1;
-    /* Did we create this commit */
-    unsigned int created : 1;
     /* Is this commit on the subtree (meaning remapping points to original commit) */
     unsigned int is_subtree : 1;
+    /* Did we create this commit */
+    unsigned int created;
 };
 
 /*-----------------------------------------------------------------------------
@@ -87,13 +88,14 @@ __inline struct commit_util *get_commit_util(struct commit *commit,
             return NULL;
 
         /* Allocate one for each prefix, and an extra for self */
-        sz = sizeof(struct commit_util) * ( g_prefix_list->nr + 1);
+        sz = sizeof(struct commit_util) * (g_prefix_list->nr + 1);
         /* TODO: Find a way to eventually free this memory? */
         commit->util = malloc(sz);
         memset(commit->util, 0, sz);
     }
     return &((struct commit_util*)commit->util)[index];
 }
+
 /*-----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------*/
@@ -222,7 +224,7 @@ void find_subtrees(struct commit *commit)
         if (util && util->ignore) {
             struct commit_list *parent = commit->parents;
             while (parent) {
-                get_commit_util( parent->item, i, 1)->ignore |= util->ignore;
+                get_commit_util(parent->item, i, 1)->ignore |= util->ignore;
                 parent = parent->next;
             }
             debug("\t%s\n", g_prefix_list->items[i].string);
@@ -937,7 +939,7 @@ static struct commit *rewrite_commit(struct commit *commit,
     strbuf_release(&body_str);
     /* commit_tree frees remapped_parents for us */
 
-    return lookup_commit( output_commit_sha1 );
+    return lookup_commit(output_commit_sha1);
 }
 
 /*-----------------------------------------------------------------------------
@@ -1004,7 +1006,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
      * Setup the onto list
      */
     onto_list = NULL;
-    for(i = 0; i < opts.onto_list.nr; i++)
+    for (i = 0; i < opts.onto_list.nr; i++)
     {
         int j;
         commit = lookup_commit_reference_by_name(opts.onto_list.items[i].string);
@@ -1017,7 +1019,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         /* 
          * We don't need to process any of these commits 
         */
-        for( j = 0; j <= g_prefix_list->nr; j++)
+        for (j = 0; j <= g_prefix_list->nr; j++)
             get_commit_util(commit, j, 1)->ignore = IGNORE_SUBTREE;
     }
 
@@ -1229,84 +1231,124 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 if (remapped_parents && remapped_parents->next) {
                     struct commit_list *search_list = NULL;
                     struct commit_list *next_list;
-                    struct commit *next;
-                    int is_unnecessary = 0;
-
-                    /*
-                     * TODO: First step is to make sure there aren't any
-                     * duplicate entries in the remapped_parents list
-                     */
+                    struct commit *search;
+                    int found_unnecessary = 0;
+                    unsigned int min_create = UINT_MAX;
 
                     debug("\tExpensive check to validate parents are necessary\n");
+
                     /*
-                     * Check to make sure none of our parents are direct
-                     * ancestors of any of our other parents
+                     * We know the element that was created first cannot have
+                     * elements created after as parents, so we'll only search
+                     * their ancestors. 
+                     *
+                     * We also know that there can only be as many nodes 
+                     * between them as the difference between their creation
+                     * order. Unfortunately we can't gaurentee we'll search in
+                     * that same order so I haven't been able to take advantage
+                     * of that fact. Also, is that still true when we're rewriting?
+                     */
+
+                    /*
+                     * Sort the remapped parents by their created time, newest
+                     * (high number) to oldest (low number)
                      */
                     next_list = remapped_parents;
                     while (next_list) {
-                        struct commit_list *next_list_parents;
-                        next_list_parents = next_list->item->parents;
-                        while (next_list_parents) {
-                            commit_list_insert(next_list_parents->item, &search_list);
-                            debug("\tSearch %s\n", sha1_to_hex(next_list_parents->item->object.sha1));
-                            next_list_parents = next_list_parents->next;
-                        }
-                        next_list = next_list->next;
-                    }
-                    
-                    while ((next = pop_commit(&search_list)) && remapped_parents->next) {
-                        next_list = remapped_parents;
-                        while (next_list) {
-                            struct commit_list *next_parents;
-                            if (next_list->item == next) {
-                                struct commit_list **prev;
-                                /* Remove this commit from the remapped parents */
-                                debug("\tFound unnecessary parent %s\n", sha1_to_hex(next->object.sha1));
-                                is_unnecessary = 1;
-                                prev = &remapped_parents;
-                                while (*prev) {
-                                    if ((*prev)->item == next) {
-                                        *prev = (*prev)->next;
-                                        break;
-                                    }
-                                    prev = &(*prev)->next;
-                                }
-
+                        struct commit_util *next_list_util = get_commit_util(next_list->item, i, 2);
+                        if (min_create > next_list_util->created)
+                            min_create = next_list_util->created;
+                        insert = &search_list;
+                        while (*insert) {
+                            struct commit_util *insert_util = get_commit_util((*insert)->item, i, 2);
+                            if (insert_util->created < next_list_util->created) {
+                                break;
                             }
 
-                            // TODO: If the tree id changed, we know that this commit is necessary. 
-                            //       Since we're searching all parents at once we probably need some extra bookkeeping to do this
-                            /*
-                             * Add this commit's parents to the search list. Do
-                             * breadth first searching to not search the same
-                             * branch twice (TODO: I still see the same branch 2x).
-                             */
-                            next_parents = next->parents;
+                            insert = &(*insert)->next;
+                        }
+                        commit_list_insert(next_list->item, insert);
+                        next_list = next_list->next;
+                    }
+
+                    /*
+                     * For each item in the search list, search its history for
+                     * the other commits in the list.
+                     */
+                    while (search = pop_commit(&search_list)) {
+                        struct commit_util *search_util = get_commit_util(search, i, 2);
+                        struct commit_list *working_list = NULL;
+                        struct commit *working_commit;
+                        struct commit_list *iter_list = NULL;
+
+                        debug("\t\tSearch %s (%u)\n", sha1_to_hex(search->object.sha1), search_util->created);
+
+                        /* 
+                         * Add the current search item to the working list. 
+                         * We'll process it first, then move on to its
+                         * parents until we know we've passed the commit
+                         * we're interested in.
+                         */
+                        iter_list = search_list;
+                        commit_list_insert(search, &working_list);
+                        while (search_list && (working_commit = pop_commit(&working_list))) {
+                            struct commit_list *next_parents;
+                            debug("\t\t\t%s (%u)\n", sha1_to_hex(working_commit->object.sha1), get_commit_util(working_commit, i, 2)->created);
+
+                            /* If the working commit is in the search list, it is an unnecessary parent */
+                            iter_list = search_list;
+                            while (iter_list) {
+                                if (working_commit == iter_list->item) {
+                                    struct commit_list **prev;
+                                    /* Remove this commit from the search list & remapped parents */
+                                    debug("\t\tFound unnecessary parent %s\n", sha1_to_hex(working_commit->object.sha1));
+                                    found_unnecessary = 1;
+                                    prev = &remapped_parents;
+                                    while (*prev) {
+                                        if ((*prev)->item == working_commit) {
+                                            *prev = (*prev)->next;
+                                            break;
+                                        }
+                                        prev = &(*prev)->next;
+                                    }
+                                    prev = &search_list;
+                                    while (*prev) {
+                                        if ((*prev)->item == working_commit) {
+                                            *prev = (*prev)->next;
+                                            break;
+                                        }
+                                        prev = &(*prev)->next;
+                                    }
+                                    break;
+                                }
+                                iter_list = iter_list->next;
+                            }
+                            
+                            next_parents = working_commit->parents;
                             while (next_parents) {
-                                insert = &search_list;
+                                insert = &working_list;
                                 while (*insert) {
                                     if ((*insert)->item == next_parents->item)
                                         break;
                                     insert = &(*insert)->next;
                                 }
                                 if (*insert == NULL) {
-                                    commit_list_insert(next_parents->item, insert);
-                                    debug("\tSearch %s\n", sha1_to_hex(next_parents->item->object.sha1));
+                                    struct commit_util *next_util = get_commit_util(next_parents->item, i, 2);
+                                    if (next_util->created >= min_create)
+                                        commit_list_insert(next_parents->item, insert);
                                 }
                                 next_parents = next_parents->next;
                             }
-                            next_list = next_list->next;
                         }
+                        free_commit_list(working_list);
 
                     }
-
-                    free_commit_list(search_list);
 
                     /* 
                      * It is possible this commit is no longer needed. 
                      * Check remapped parent's tree id's against the subtree.
                      */
-                    if (is_unnecessary) {
+                    if (found_unnecessary) {
                         is_rewrite_needed = 0;
                         next_list = remapped_parents;
                         while (next_list) {
@@ -1322,11 +1364,11 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 if (is_rewrite_needed) {
                     rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
                     commit_util->remapping = rewritten_commit;
-                    commit_util->created = 1;
+                    commit_util->created = ++g_created;
 
                     tmp_util = get_commit_util(rewritten_commit, i, 1);
                     tmp_util->remapping = commit;
-                    tmp_util->created = 1;
+                    tmp_util->created = g_created;
                     tmp_util->is_subtree = 1;
 
                     debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
