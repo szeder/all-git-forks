@@ -42,7 +42,7 @@ static unsigned int g_created;
 #define IGNORE_SUPERTREE 2
 
 struct commit_util {
-    struct commit *remapping;
+    struct commit_list *remapping;
     struct tree *tree;
     /* Is this a subtree or supertree commit that is fully resolved */
     /* TODO: I don't really need to differentiate...it is just handy for debugging */
@@ -394,7 +394,7 @@ static struct commit *find_subtree_parent(struct commit *commit,
          * commit in the next stage
          */
         util = get_commit_util(commit, prefix_index, 1);
-        util->remapping = best_commit;
+        commit_list_insert(best_commit, &util->remapping);
         util->tree = best_commit->tree;
         util->ignore = IGNORE_NONE;
 
@@ -1068,7 +1068,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                             opts.prefix_list.items[i].string);
 
                         util = get_commit_util(commit, i, 1);
-                        util->remapping = onto->item;
+                        commit_list_insert(onto->item, &util->remapping);
                         util->tree = onto->item->tree;
                         util->ignore = IGNORE_NONE;
                         
@@ -1175,17 +1175,22 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                     parent_util = get_commit_util(parent->item, i, 0);
                     debug("\t\tChecking parent %s\n", sha1_to_hex(parent->item->object.sha1));
                     if (parent_util) {
-                        if (parent_util->remapping) {
-                            parse_commit(parent_util->remapping);
-                            if (parent_util->remapping->tree == commit_util->tree) {
+                        struct commit_list *remapping_list = parent_util->remapping;
+                        while (remapping_list) { /* TODO: I'm not sure how this works with multiple remapped parents */
+                            parse_commit(remapping_list->item);
+                            if (remapping_list->item->tree == commit_util->tree) {
                                 /* 
                                  * The tree hasn't changed from this parent
                                  * so we don't need to create a new commit.
                                  */
-                                commit_util->remapping = parent_util->remapping;
-                                debug("\t\tFOUND\n");
-                                continue;
+                                commit_list_insert(remapping_list->item, &commit_util->remapping);
+                                break;
                             }
+                            remapping_list = remapping_list->next;
+                        }
+                        if (remapping_list) {
+                            debug("\t\tFOUND\n");
+                            continue;
                         }
                         if (parent_util->ignore) {
                             /* 
@@ -1211,13 +1216,18 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 while (tmp_parent) {
                     tmp_util = get_commit_util(tmp_parent->item, i, 0);
                     if (tmp_util && tmp_util->remapping) {
-                        insert = &commit_list_insert(tmp_util->remapping, insert)->next;
-                        /*
-                         * Mark the remapped commit as ignored so we know it
-                         * has parents and doesn't need to be displayed.
-                         */
-                        tmp_util = get_commit_util(tmp_util->remapping, i, 1);
-                        tmp_util->ignore |= IGNORE_SUBTREE;
+                        struct commit_list *remapping_list = tmp_util->remapping;
+                        while (remapping_list) {
+                            insert = &commit_list_insert(remapping_list->item, insert)->next;
+
+                            /*
+                             * Mark the remapped commit as ignored so we know it
+                             * has parents and doesn't need to be displayed.
+                             */
+                            tmp_util = get_commit_util(remapping_list->item, i, 1);
+                            tmp_util->ignore |= IGNORE_SUBTREE;
+                            remapping_list = remapping_list->next;
+                        }
                     }
                     tmp_parent = tmp_parent->next;
                 }
@@ -1363,13 +1373,16 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
                 if (is_rewrite_needed) {
                     rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
-                    commit_util->remapping = rewritten_commit;
+                    commit_list_insert(rewritten_commit, &commit_util->remapping);
                     commit_util->created = ++g_created;
 
+                    /* 
+                     * Set the information about the created commit.
+                     */
                     tmp_util = get_commit_util(rewritten_commit, i, 1);
-                    tmp_util->remapping = commit;
+                    commit_list_insert(commit, &tmp_util->remapping);
                     tmp_util->created = g_created;
-                    tmp_util->is_subtree = 1;
+                    tmp_util->is_subtree = 1; /* TODO: This never gets used. Do we care? */
 
                     debug("\t\t*** CREATED %s\n", sha1_to_hex(rewritten_commit->object.sha1));
                     commit_list_insert(commit, &rewritten_commits[i]);
@@ -1398,14 +1411,19 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             while (tmp_parent) {
                 tmp_util = get_commit_util(tmp_parent->item, g_prefix_list->nr, 0);
                 if (tmp_util && tmp_util->remapping) {
-                    insert = &commit_list_insert(tmp_util->remapping, insert)->next;
-                    is_changed = 1;
-                    /*
-                     * Mark the remapped commit as ignored so we know it
-                     * has parents and doesn't need to be displayed.
-                     */
-                    tmp_util = get_commit_util(tmp_util->remapping, i, 1);
-                    tmp_util->ignore |= IGNORE_SUPERTREE;
+                    struct commit_list *remapping_list = tmp_util->remapping;
+                    while (remapping_list) {
+                        insert = &commit_list_insert(remapping_list->item, insert)->next;
+
+                        /*
+                         * Mark the remapped commit as ignored so we know it
+                         * has parents and doesn't need to be displayed.
+                         */
+                        tmp_util = get_commit_util(remapping_list->item, i, 1);
+                        tmp_util->ignore |= IGNORE_SUPERTREE;
+                        remapping_list = remapping_list->next;
+                        is_changed = 1;
+                    }
                 } 
                 else {
                     insert = &commit_list_insert(tmp_parent->item, insert)->next;
@@ -1419,7 +1437,11 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             for (i = 0; i < g_prefix_list->nr; i++) {
                 tmp_util = get_commit_util(commit, i, 2);
                 if (tmp_util->created) {
-                    insert = &commit_list_insert(tmp_util->remapping, insert)->next;
+                    struct commit_list *remapping_list = tmp_util->remapping;
+                    while (remapping_list) {
+                        insert = &commit_list_insert(remapping_list->item, insert)->next;
+                        remapping_list = remapping_list->next;
+                    }
                     is_changed = 1;
                 }
             }
@@ -1427,7 +1449,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             if (is_changed) {
                 commit_util = get_commit_util(commit, g_prefix_list->nr, 2);
                 rewritten_commit = rewrite_commit(commit, commit->tree, remapped_parents, 0, &opts);
-                commit_util->remapping = rewritten_commit;
+                commit_list_insert(rewritten_commit, &commit_util->remapping);
                 debug("\t*** REWRITE %s\n", sha1_to_hex(rewritten_commit->object.sha1));
                 commit_list_insert(commit, &rewritten_commits[g_prefix_list->nr]);
             }
@@ -1443,40 +1465,42 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         cnt++;
     for (i = 0; i < cnt; i++) {
         struct commit_list *rewritten;
-        struct commit_list *squash_commits = NULL;
+        struct commit_list *squash_parents = NULL;
         printf("%s\n", i < g_prefix_list->nr ? g_prefix_list->items[i].string : "HEAD");
         
         rewritten = rewritten_commits[i];
         while (rewritten) {
             struct commit_util *util_rewrite;
             struct commit_util *util_remap;
+            struct commit_list *remapping_list;
 
+            /* TODO: Re-verify this with changes for remapping to possibly be more than one commit */
             util_rewrite = get_commit_util(rewritten->item, i, 2);
- 
-            if (opts.squash) {
-                /* 
-                 * TODO: This could be optimized quite a bit by tracking this
-                 * above, but this is quick and easy to implement
-                 */
-                struct commit_list *parents = util_rewrite->remapping->parents;
-                while (parents)
-                {
-                    util_remap = get_commit_util(parents->item, i, 0);
-                    if (!util_remap || !util_remap->created) {
-                        debug("\tSquash %s to %s\n", sha1_to_hex(util_rewrite->remapping->object.sha1), sha1_to_hex(parents->item->object.sha1));
-                        commit_list_insert(parents->item, &squash_commits);
+            remapping_list = util_rewrite->remapping;
+            while (remapping_list) {
+                if (opts.squash) {
+                    struct commit_list *parents = remapping_list->item->parents;
+                    while (parents)
+                    {
+                        util_remap = get_commit_util(parents->item, i, 0);
+                        if (!util_remap || !util_remap->created) {
+                            debug("\tSquash %s to %s\n", sha1_to_hex(remapping_list->item->object.sha1), sha1_to_hex(parents->item->object.sha1));
+                            commit_list_insert(parents->item, &squash_parents);
+                        }
+                        parents = parents->next;
                     }
-                    parents = parents->next;
+
+                    /* TODO: Optionally take all of the commit messages from these and build them into one? */
+                }
+                else {
+                    util_remap = get_commit_util(remapping_list->item, i, 0);
+                    if (!util_remap || !util_remap->ignore) {
+                        printf("\t%s %s\n", sha1_to_hex(remapping_list->item->object.sha1), sha1_to_hex(rewritten->item->object.sha1));
+                        commit_list_insert(remapping_list->item, &interesting_commits);
+                    }
                 }
 
-                /* TODO: Optionally take all of the commit messages from these and build them into one? */
-            }
-            else {
-                util_remap = get_commit_util(util_rewrite->remapping, i, 0);
-                if (!util_remap || !util_remap->ignore) {
-                    printf("\t%s %s\n", sha1_to_hex(util_rewrite->remapping->object.sha1), sha1_to_hex(rewritten->item->object.sha1));
-                    commit_list_insert(util_rewrite->remapping, &interesting_commits);
-                }
+                remapping_list = remapping_list->next;
             }
 
             rewritten = rewritten->next;
@@ -1485,7 +1509,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         if (opts.squash) {
             struct commit_util *util;
             util = get_commit_util(head, i, 0);
-            commit = create_squash_commit(util->tree, squash_commits, g_prefix_list->items[i].string);
+            commit = create_squash_commit(util->tree, squash_parents, g_prefix_list->items[i].string);
             commit_list_insert(commit, &interesting_commits);
             printf("\t%s %s\n", sha1_to_hex(commit->object.sha1), sha1_to_hex(head->object.sha1));
         }
