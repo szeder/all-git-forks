@@ -1145,16 +1145,19 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
          * Generate the split out commits
          */
         for (i = 0; i < g_prefix_list->nr; i++) {
+            int is_rewrite_needed = 0;
+            struct commit_list *remapped_parents = NULL;
             struct commit_util *commit_util;
-            struct commit_list *p;
+            struct commit_util *tmp_util;
             struct commit_list *parent;
-            struct commit_util *parent_util;
 
             debug("\t%s\n", g_prefix_list->items[i].string);
 
             commit_util = get_commit_util(commit, i, 2);
-            if (commit_util->ignore || !commit_util->tree)
+            if (commit_util->ignore || !commit_util->tree) {
+                debug("\t\tUninteresting %d\n", commit_util->ignore);
                 continue;
+            }
             if (commit_util->remapping) {
                 debug("\t\tAlready split\n");
                 continue;
@@ -1163,37 +1166,41 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             /*
              * Check this commit's parents and see if the tree id has changed
              */
-            p = commit->parents;
-            while (p) {
-                struct commit_list *remapped_parents = NULL;
-                struct commit_util *tmp_util;
-                struct commit_list *tmp_parent;
-                struct commit_list **insert;
-
-                parent = p;
-                p = p->next;
-
-                parent_util = get_commit_util(parent->item, i, 0);
-                debug("\t\tChecking parent %s\n", sha1_to_hex(parent->item->object.sha1));
-                if (parent_util) {
-                    if (parent_util->remapping) {
-                        parse_commit(parent_util->remapping);
-                        if (parent_util->remapping->tree == commit_util->tree) {
+            parent = commit->parents;
+            do {
+                struct commit_util *parent_util;
+                if (parent) {
+                    parent_util = get_commit_util(parent->item, i, 0);
+                    debug("\t\tChecking parent %s\n", sha1_to_hex(parent->item->object.sha1));
+                    if (parent_util) {
+                        if (parent_util->remapping) {
+                            parse_commit(parent_util->remapping);
+                            if (parent_util->remapping->tree == commit_util->tree) {
+                                /* 
+                                 * The tree hasn't changed from this parent
+                                 * so we don't need to create a new commit.
+                                 */
+                                commit_util->remapping = parent_util->remapping;
+                                debug("\t\tFOUND\n");
+                                continue;
+                            }
+                        }
+                        if (parent_util->ignore) {
                             /* 
-                             * The tree hasn't changed from this parent
-                             * so we don't need to create a new commit.
+                             * This commit is known to not contain subtree.
                              */
-                            commit_util->remapping = parent_util->remapping;
-                            debug("\t\tFOUND\n");
+                            debug("\t\tIGNORE\n");
                             continue;
                         }
                     }
-                    if (parent_util->ignore) {
-                        debug("\t\tIGNORE\n");
-                        continue;
-                    }
                 }
 
+                is_rewrite_needed = 1;
+            } while (parent != NULL && (parent = parent->next) != NULL);
+
+            if (is_rewrite_needed) {
+                struct commit_list *tmp_parent;
+                struct commit_list **insert;
                 /* 
                  * Map the existing parents to their new values 
                  */
@@ -1211,6 +1218,34 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                         tmp_util->ignore |= IGNORE_SUBTREE;
                     }
                     tmp_parent = tmp_parent->next;
+                }
+
+                /*
+                 * Before we create the commit, we need to make sure that all
+                 * of its parents contain an interesting commit. This can 
+                 * happen when a branch that didn't affect the subtree is
+                 * merged in to a branch that did affect the subtree.
+                 */
+                if (remapped_parents && remapped_parents->next) {
+                    struct commit_list *search_list = NULL;
+                    struct commit_list *next_list;
+                    struct commit *next;
+
+                    debug("\t\tExpensive check to validate parents are necessary\n");
+                    /*
+                     * Check to make sure none of our parents are direct
+                     * ancestors of any of our other parents
+                     */
+                    next_list = remapped_parents;
+                    while (next_list) {
+                        commit_list_insert(next_list->item, &search_list);
+                        next_list = next_list->next;
+                    }
+                    
+                    while (next = pop_commit(&search_list)) {
+                    }
+
+                    free_commit_list(search_list);
                 }
 
                 rewritten_commit = rewrite_commit(commit, commit_util->tree, remapped_parents, 1, &opts);
