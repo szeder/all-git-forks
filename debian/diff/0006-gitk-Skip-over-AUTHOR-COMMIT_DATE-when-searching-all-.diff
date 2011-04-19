@@ -1,7 +1,7 @@
-From c032bf1f93b8fe56fadc9a5abb1fdda28f070358 Mon Sep 17 00:00:00 2001
+From fd8dfd217a64ef4a0f0055d936cd7305c1e49311 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
 Date: Sun, 14 Mar 2010 18:59:09 -0400
-Subject: gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+Subject: [PATCH 6/8] gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -18,10 +18,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/gitk-git/gitk b/gitk-git/gitk
-index 86b97b9..36d3996 100755
+index 31c48cd..5d8b5a6 100755
 --- a/gitk-git/gitk
 +++ b/gitk-git/gitk
-@@ -4626,8 +4626,9 @@ proc askfindhighlight {row id} {
+@@ -4627,8 +4627,9 @@ proc askfindhighlight {row id} {
      }
      set info $commitinfo($id)
      set isbold 0
@@ -32,7 +32,7 @@ index 86b97b9..36d3996 100755
  	if {($findloc eq [mc "All fields"] || $findloc eq $ty) &&
  	    [doesmatch $f]} {
  	    if {$ty eq [mc "Author"]} {
-@@ -6473,7 +6474,7 @@ proc findmore {} {
+@@ -6475,7 +6476,7 @@ proc findmore {} {
      if {![info exists find_dirn]} {
  	return 0
      }
@@ -41,7 +41,7 @@ index 86b97b9..36d3996 100755
      set l $findcurline
      set moretodo 0
      if {$find_dirn > 0} {
-@@ -6534,6 +6535,7 @@ proc findmore {} {
+@@ -6536,6 +6537,7 @@ proc findmore {} {
  	    }
  	    set info $commitinfo($id)
  	    foreach f $info ty $fldtypes {
@@ -50,5 +50,5 @@ index 86b97b9..36d3996 100755
  		    [doesmatch $f]} {
  		    set found 1
 -- 
-1.7.5.rc0
+1.7.4.1
 
