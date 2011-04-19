@@ -283,10 +283,10 @@ enum tree_compare_result {
 };
 
 struct compare_details {
-    int add;
-    int remove;
-    int same;
-    int change;
+    unsigned int add;
+    unsigned int remove;
+    unsigned int same;
+    unsigned int change;
 };
 
 static enum tree_compare_result compare_trees(struct tree *tree1,
@@ -389,12 +389,15 @@ static struct commit *find_subtree_parent(struct commit *commit,
         parent = parent->next;
     }
 
-    /* If we allow non-exact matches, lets try a bit harder to see how close
-        we are by ranking each parent and picking the highest non-zero ranking
-        match */
+    /* 
+     * If we allow non-exact matches, lets try a bit harder to see how close
+     * we are by ranking each parent and picking the highest non-zero ranking
+     * match.
+     */
     if (!best_commit && !exact_match)
     {
-        int best_val = 0;
+        unsigned int best_val = 0;
+        unsigned int alt_val = UINT_MAX;
         parent = commit->parents;
         while (parent)
         {
@@ -402,9 +405,20 @@ static struct commit *find_subtree_parent(struct commit *commit,
             struct commit *c = parent->item;
             memset(&matches, 0, sizeof(matches));
             compare_trees(tree, c->tree, 1, &matches);
-            if (matches.same > best_val)
-            {
+            if (matches.same > best_val) {
                 best_val = matches.same;
+                best_commit = c;
+            }
+            /* 
+             * If we don't have anything with any matches, pick the thing that
+             * has many similarly named files, if there aren't more adds/removes
+             * than there are changes
+             */
+            if (best_val == 0
+                && alt_val > (matches.add + matches.remove) 
+                && matches.change > (matches.add + matches.remove)) {
+
+                alt_val = (matches.add + matches.remove);
                 best_commit = c;
             }
             parent = parent->next;
