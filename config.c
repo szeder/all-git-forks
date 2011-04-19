@@ -828,9 +828,9 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 
 const char *git_etc_gitconfig(void)
 {
-	static const char *system_wide;
-	if (!system_wide)
-		system_wide = system_path(ETC_GITCONFIG);
+	static char system_wide[PATH_MAX];
+	if (!system_wide[0])
+		strlcpy(system_wide, system_path(ETC_GITCONFIG), PATH_MAX);
 	return system_wide;
 }
 

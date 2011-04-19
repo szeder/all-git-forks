@@ -467,9 +467,9 @@ static void drop_attr_stack(void)
 
 const char *git_etc_gitattributes(void)
 {
-	static const char *system_wide;
-	if (!system_wide)
-		system_wide = system_path(ETC_GITATTRIBUTES);
+	static char system_wide[PATH_MAX];
+	if (!system_wide[0])
+		strlcpy(system_wide, system_path(ETC_GITATTRIBUTES), PATH_MAX);
 	return system_wide;
 }
 
