@@ -16,8 +16,10 @@ extern void *RERERE_RESOLVED;
 extern int setup_rerere(struct string_list *, int);
 extern int rerere(int);
 extern const char *rerere_path(const char *hex, const char *file);
+extern void unlink_rerere_item(const char *name);
 extern int has_rerere_resolution(const char *hex);
 extern int rerere_forget(const char **);
+extern int rerere_clear(void);
 extern int rerere_remaining(struct string_list *);
 
 #define OPT_RERERE_AUTOUPDATE(v) OPT_UYN(0, "rerere-autoupdate", (v), \
