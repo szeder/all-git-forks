@@ -259,19 +259,27 @@ sub conn {
 		if ($pass) {
 			$pass = $self->_scramble($pass);
 		} else {
-			open(H,$ENV{'HOME'}."/.cvspass") and do {
-				# :pserver:cvs@mea.tmt.tele.fi:/cvsroot/zmailer Ah<Z
-				while (<H>) {
-					chomp;
-					s/^\/\d+\s+//;
-					my ($w,$p) = split(/\s/,$_,2);
-					if ($w eq $rr or $w eq $rr2) {
-						$pass = $p;
-						last;
+			my @cvspasslocations = ($ENV{'HOME'}."/.cvspass", $ENV{'HOME'}."/.cvs/cvspass");
+			my $filecount = 0;
+			foreach my $cvspass (@cvspasslocations) {
+
+				open(H, $cvspass) and do {
+					# :pserver:cvs@mea.tmt.tele.fi:/cvsroot/zmailer Ah<Z
+					$filecount++;
+					while (<H>) {
+						chomp;
+						s/^\/\d+\s+//;
+						my ($w,$p) = split(/[\s=]/,$_,2);
+						if ($w eq $rr or $w eq $rr2) {
+							$pass = $p;
+							last;
+						}
 					}
-				}
-			};
-			$pass = "A" unless $pass;
+				};
+			}
+
+			die("Two CVS password files found: @cvspasslocations, please remove one") if $filecount > 1;
+			die("Password not found for CVSROOT: $opt_d\n") unless $pass;
 		}
 
 		my ($s, $rep);
