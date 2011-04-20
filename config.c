@@ -12,6 +12,9 @@
 
 #define MAXNAME (256)
 
+/* TODO: Check .gitattributes for the config file to be written */
+#define LINE_ENDING ( (config_exclusive_filename && auto_crlf == AUTO_CRLF_TRUE) ? "\r\n" : "\n")
+
 static FILE *config_file;
 static const char *config_file_name;
 
@@ -1055,9 +1058,10 @@ static int store_write_section(int fd, const char *key)
 				strbuf_addch(&sb, '\\');
 			strbuf_addch(&sb, key[i]);
 		}
-		strbuf_addstr(&sb, "\"]\n");
+		strbuf_addstr(&sb, "\"]");
+        strbuf_addstr(&sb, LINE_ENDING);
 	} else {
-		strbuf_addf(&sb, "[%.*s]\n", store.baselen, key);
+        strbuf_addf(&sb, "[%.*s]%s", store.baselen, key, LINE_ENDING);
 	}
 
 	success = write_in_full(fd, sb.buf, sb.len) == sb.len;
@@ -1106,7 +1110,7 @@ static int store_write_pair(int fd, const char *key, const char *value)
 			strbuf_addch(&sb, value[i]);
 			break;
 		}
-	strbuf_addf(&sb, "%s\n", quote);
+	strbuf_addf(&sb, "%s%s", quote, LINE_ENDING);
 
 	success = write_in_full(fd, sb.buf, sb.len) == sb.len;
 	strbuf_release(&sb);
@@ -1382,7 +1386,7 @@ int git_config_set_multivar(const char *key, const char *value,
 				    copy_end - copy_begin)
 					goto write_err_out;
 				if (new_line &&
-				    write_str_in_full(fd, "\n") != 1)
+				    write_str_in_full(fd, LINE_ENDING) != 1)
 					goto write_err_out;
 			}
 			copy_begin = store.offset[i];
