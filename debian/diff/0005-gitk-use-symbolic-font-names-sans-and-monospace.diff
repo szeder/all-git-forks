@@ -1,4 +1,4 @@
-From 11bdb4cb673e633cfa4945d6c8fcb4badf9c248a Mon Sep 17 00:00:00 2001
+From c97705792df8dec4cf2a9d0464e3771a884dcdbe Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 24 Oct 2010 21:12:42 -0500
 Subject: [PATCH 5/8] gitk: use symbolic font names "sans" and "monospace"

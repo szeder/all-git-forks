@@ -1,4 +1,4 @@
-From 1640187ecbc9576e5f12fd530e0a39e59978da3c Mon Sep 17 00:00:00 2001
+From d5b22c9f3f9ea5385a3e750fc72a8f4ca30db59a Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Wed, 6 Apr 2011 14:12:34 -0700
 Subject: [PATCH 7/8] add--interactive.perl: factor out repeated --recount option

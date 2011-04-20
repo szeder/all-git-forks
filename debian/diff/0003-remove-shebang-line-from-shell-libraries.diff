@@ -1,4 +1,4 @@
-From b77115fac6446bf5d6da4ad583f0d49a614f1224 Mon Sep 17 00:00:00 2001
+From 92cddf9fbfc6b0d8ce07fbb2994f90219be7968f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
 Subject: [PATCH 3/8] remove shebang line from shell libraries

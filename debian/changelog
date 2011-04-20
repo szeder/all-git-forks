@@ -1,11 +1,11 @@
-git (1:1.7.5~rc2-1) experimental; urgency=low
+git (1:1.7.5~rc3-1) experimental; urgency=low
 
-  * merge branch debian-sid.
   * new upstream release candidate.
+  * merge branch debian-sid.
   * 0007-gitk-Take-only-numeric-version-components-when-comput.diff:
     remove; applied upstream.
 
- -- Gerrit Pape <pape@smarden.org>  Tue, 19 Apr 2011 11:09:59 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 20 Apr 2011 07:46:58 +0000
 
 git (1:1.7.4.4-1) unstable; urgency=low
 

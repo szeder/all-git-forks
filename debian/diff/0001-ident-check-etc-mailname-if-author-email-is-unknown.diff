@@ -1,4 +1,4 @@
-From 1a57647d2892b95b597f582e38423e8298ad9425 Mon Sep 17 00:00:00 2001
+From 98f084f71b5680ac6c657762342a6dc286dd03e5 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
 Subject: [PATCH 1/8] ident: check /etc/mailname if author email is unknown

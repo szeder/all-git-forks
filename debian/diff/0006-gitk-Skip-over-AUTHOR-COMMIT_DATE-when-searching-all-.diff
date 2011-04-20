@@ -1,4 +1,4 @@
-From fd8dfd217a64ef4a0f0055d936cd7305c1e49311 Mon Sep 17 00:00:00 2001
+From 5a37979110fe1e22b6017cf3418dae6599ad45d2 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
 Date: Sun, 14 Mar 2010 18:59:09 -0400
 Subject: [PATCH 6/8] gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
