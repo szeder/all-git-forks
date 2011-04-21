@@ -95,6 +95,39 @@ __inline struct commit_util *get_commit_util(struct commit *commit,
 /*-----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------*/
+__inline void debug_commit(struct commit *commit, int index) {
+    struct commit_util *util;
+
+    parse_commit(commit);
+    util = get_commit_util(commit, index, 0);
+    
+    debug("------------------------------------------------\n");
+    debug("Commit: %s\n", sha1_to_hex(commit->object.sha1));
+    debug("Tree: %s\n", sha1_to_hex(commit->tree->object.sha1));
+    debug("Util(%d): \"%s\"\n", index, g_prefix_list->items[index]);
+    if (util) {
+        struct commit_list *temp;
+        debug("\tCreated: %d\n", util->created);
+        debug("\tForce: %d\n", util->force);
+        debug("\tIgnore: %d\n", util->ignore);
+        debug("\tIs Subtree: %d\n", util->is_subtree);
+        debug("\tTree: %s\n", util->tree ? sha1_to_hex(util->tree->object.sha1) : "");
+        debug("\tRemapping(s):\n");
+        temp = util->remapping;
+        while (temp) {
+            debug("\t\t%s\n", sha1_to_hex(temp->item->object.sha1));
+            temp = temp->next;
+        }
+    }
+    else {
+        debug("\t<null>\n");
+    }
+    debug("------------------------------------------------\n");
+}
+
+/*-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
 static int read_subtree_config(const char *var, const char *value, void *context)
 {
     struct string_list *config = context;
@@ -990,7 +1023,8 @@ static struct commit *rewrite_commit(struct commit *commit,
 }
 
 /*-----------------------------------------------------------------------------
-
+Walk the tree and make a list of all commits that may potentially need to be
+split into subtree commits.
 -----------------------------------------------------------------------------*/
 static struct commit_list *get_interesting_commits(int argc, const char **argv, const char *prefix)
 {
@@ -1075,7 +1109,10 @@ static struct commit_list *get_interesting_commits(int argc, const char **argv, 
                     debug("\tFound existing subtree parent %s for %s\n",
                         sha1_to_hex(parent->object.sha1),
                         g_prefix_list->items[i].string);
-                    /* If the trees aren't the same, it is still interesting */
+                    /* 
+                     * If the trees aren't the same, it is still interesting.
+                     * It means that somebody amended the subtree merge commit.
+                     */
                     if (parent->tree == g_pathinfo[i].tree)
                         continue;
                 }
@@ -1083,11 +1120,6 @@ static struct commit_list *get_interesting_commits(int argc, const char **argv, 
                 util = get_commit_util(commit, i, 1);
                 util->ignore = 0;
                 util->tree = g_pathinfo[i].tree;
-                if (parent) {
-                    commit_list_insert(parent, &util->remapping);
-                    util = get_commit_util(parent, i, 1);
-                    commit_list_insert(commit, &util->remapping);                    
-                }
 
                 debug("\tFound tree %s for %s\n",
                     sha1_to_hex(g_pathinfo[i].tree->object.sha1),
@@ -1370,6 +1402,9 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         }
     }
 
+    /*
+     * Get the list of commits that may have subtrees
+     */
     interesting_commits = get_interesting_commits(argc, argv, prefix);
 
     debug("\n\n");
@@ -1383,10 +1418,9 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
      * and generate subtree commits for them as needed.
      */
     while ((commit = pop_commit(&interesting_commits)) != NULL) {
-        debug("%s Creating subtree...\n", sha1_to_hex(commit->object.sha1));
 
         /*
-         * Generate the split out commits
+         * Generate the split out commits for each prefix
          */
         for (i = 0; i < g_prefix_list->nr; i++) {
             int is_rewrite_needed = 0;
@@ -1395,27 +1429,32 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             struct commit_util *tmp_util;
             struct commit_list *parent;
 
-            debug("\t%s\n", g_prefix_list->items[i].string);
+            debug_commit(commit, i);
 
             commit_util = get_commit_util(commit, i, 2);
             if (commit_util->ignore || !commit_util->tree) {
                 debug("\t\tUninteresting %d\n", commit_util->ignore);
                 continue;
             }
+            /* 
+             * Having a remapping here implies we've already rewritten this
+             * commit...and you can only have one subtree per prefix so there
+             * can only be zero or one item in this list.
+             */
             if (commit_util->remapping) {
-                struct commit_list * next = commit_util->remapping;
-                while (next) {
-                    if (commit_util->tree == next->item->tree)
-                        break;
-                    next = next->next;
-                }
-                if (next) {
+                if (commit_util->tree == commit_util->remapping->item->tree) {
                     debug("\t\tAlready split\n");
                     continue;
                 }
                 else {
+                    /*
+                     * If we're modifying a split commit, adjust the parentage
+                     * of the current split to point to itself.
+                     */
                     debug("\t\tAlready split, but changes made\n");
-                    //is_rewrite_needed = 1;
+                    is_rewrite_needed = 1;
+                    tmp_util = get_commit_util(commit_util->remapping->item, i, 2);
+                    commit_list_insert( commit_util->remapping->item, &tmp_util->remapping);
                 }
             }
 
@@ -1432,7 +1471,6 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                         struct commit_list *remapping_list = parent_util->remapping;
                         if (!remapping_list) {
                             debug("\t\tNON-SUBTREE\n");
-                            //commit_list_insert(parent->item, &commit_util->remapping);
                             continue;
                         }
                         if (parent_util->ignore) {
@@ -1449,6 +1487,8 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                                 /*
                                  * The tree hasn't changed from this parent
                                  * so we don't need to create a new commit.
+                                 * Just map to the already existing split out
+                                 * commit.
                                  */
                                 commit_list_insert(remapping_list->item, &commit_util->remapping);
                                 break;
@@ -1471,6 +1511,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             if (is_rewrite_needed) {
                 struct commit_list *tmp_parent;
                 struct commit_list **insert;
+
                 /*
                  * Map the existing parents to their new values
                  */
@@ -1629,7 +1670,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
                 }
                 else {
                     util_remap = get_commit_util(remapping_list->item, i, 0);
-                    if (!util_remap || !util_remap->ignore) {
+                    if (!util_remap || (!util_remap->ignore && util_remap->created)) {
                         printf("\t%s\n", sha1_to_hex(remapping_list->item->object.sha1));
                         commit_list_insert(remapping_list->item, &interesting_commits);
                     }
@@ -1719,7 +1760,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
-    const char *split = "subtree split --rewrite-head -P folder";
+    const char *split = "subtree split --rewrite-head";
     //const char *split0 = "subtree split -P red -P blue --rewrite-head";
     //const char *split1 = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
     //const char *split1_resplit = "subtree split split-branch -P not-a-subtree -P nested/directory --rewrite-parents";
