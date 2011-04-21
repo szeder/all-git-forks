@@ -113,7 +113,7 @@ int git_config_parse_environment(void) {
 	return 0;
 }
 
-static int read_char()
+static int read_char(void)
 {
     if (config_file != NULL) {
         return fgetc(config_file);
@@ -126,7 +126,7 @@ static int read_char()
     }
 }
 
-static int peek_char()
+static int peek_char(void)
 {
     int c;
     if (config_file != NULL) {

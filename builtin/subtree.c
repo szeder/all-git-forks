@@ -56,7 +56,7 @@ struct commit_util {
 -----------------------------------------------------------------------------*/
 void fetch_branch(const char* remote, const char* branch)
 {
-    char *fetch_argv[10];
+    const char *fetch_argv[10];
     int fetch_result;
     int i = 0;
     fetch_argv[i++] = "fetch";
@@ -104,7 +104,7 @@ __inline void debug_commit(struct commit *commit, int index) {
     debug("------------------------------------------------\n");
     debug("Commit: %s\n", sha1_to_hex(commit->object.sha1));
     debug("Tree: %s\n", sha1_to_hex(commit->tree->object.sha1));
-    debug("Util(%d): \"%s\"\n", index, g_prefix_list->items[index]);
+    debug("Util(%d): \"%s\"\n", index, g_prefix_list->items[index].string);
     if (util) {
         struct commit_list *temp;
         debug("\tCreated: %d\n", util->created);
@@ -133,10 +133,10 @@ static int read_subtree_config(const char *var, const char *value, void *context
     struct string_list *config = context;
     const char* substr = NULL;
 
-    if (substr = strstr( var, "subtree." )) {
+    if ((substr = strstr(var, "subtree."))) {
         const char* dot;
         substr += 8; /* Skip past subtree. */
-        if (dot = strstr( substr, "." )) {
+        if ((dot = strstr(substr, "."))) {
             dot += 1; /* Skip past the . */
             if( strstr( dot, "path" ) ) {
                 struct strbuf tmp = STRBUF_INIT;
@@ -1045,8 +1045,8 @@ static struct commit_list *get_interesting_commits(int argc, const char **argv, 
     rev.reverse = 0;
     rev.bisect = 0;
     rev.ignore_merges = 0;
-    rev.max_parents = -1;
-    rev.min_parents = 0;
+	rev.max_parents = -1;
+	rev.min_parents = 0;
 
     memset(&opt, 0, sizeof(opt));
     opt.def = "HEAD";
@@ -1231,7 +1231,7 @@ int cleanup_remapped_parents(struct commit *commit, int index, struct commit_lis
          * For each item in the search list, search its history for
          * the other commits in the list.
          */
-        while (search = pop_commit(&search_list)) {
+        while ((search = pop_commit(&search_list))) {
             struct commit_util *search_util = get_commit_util(search, index, 2);
             struct commit_list *working_list = NULL;
             struct commit *working_commit;
@@ -1360,7 +1360,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
     struct commit_list **rewritten_commits = NULL;
     int sz;
     int cnt;
-    struct commit* head;
+    struct commit* head = NULL;
 
     /* Parse arguments */
     memset(&opts, 0, sizeof(opts));
