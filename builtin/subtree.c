@@ -512,7 +512,7 @@ struct add_opts {
 };
 
 static const char * const builtin_subtree_add_usage[] = {
-    "git subtree add [options] branch",
+    "git subtree add -P <prefix> [-n | --name] [(-r | --remote)=<remote>] [--squash] <branch>",
     NULL
 };
 
@@ -728,7 +728,7 @@ static int cmd_subtree_list(int argc, const char **argv, const char *prefix)
 /*---------------------------------------------------------------------------*/
 
 static const char * const builtin_subtree_merge_usage[] = {
-    "git subtree merge -P <prefix> <commit> [merge options]",
+    "git subtree merge -P <prefix> [-r | --remote=<remote>] [--squash] <branch> [merge options]",
     NULL
 };
 
@@ -873,6 +873,7 @@ struct pull_opts {
     const char* prefix;
 };
 
+/* TODO: Replace this with a call to merge with the --remote option */
 static int cmd_subtree_pull(int argc, const char **argv, const char *prefix)
 {
     int retval;
@@ -1327,7 +1328,7 @@ int cleanup_remapped_parents(struct commit *commit, int index, struct commit_lis
 -----------------------------------------------------------------------------*/
 
 static const char * const builtin_subtree_split_usage[] = {
-    "git subtree split [options] <paths>",
+    "git subtree split [(-P <prefix>)...] [options] <paths>",
     "git subtree split [options] <branch> <paths>",
     "git subtree split [options] [<branch>] -- <paths>",
     NULL,
@@ -1885,4 +1886,6 @@ int cmd_subtree(int argc, const char **argv, const char *prefix)
 * Passing an invalid remote (or remote branch) to add doesn't cleanup
    index.lock
 * On add, detect existing subtree and (optionally?) do a merge with it
+* Allow them to specify names instead of prefixes (to lookup prefix from 
+   .subtree)
 -----------------------------------------------------------------------------*/
