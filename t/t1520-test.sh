@@ -46,7 +46,7 @@ test_expect_assertion_failure()
 {
 	test=$1
 	message=$2
-	shift 
+	shift
 	test_expect_success $1 \
 "
 	! actual_message=$(git test "$@" 1>&2) &&
@@ -62,11 +62,11 @@ test_expect_assertion_failure()
 
 test_expect_success 'setup' \
 '
-	git add test-assertions-lib.sh empty-assertions-lib.sh && 
+	git add test-assertions-lib.sh empty-assertions-lib.sh &&
 	test_commit base &&
 	test_commit A &&
 	git checkout A^1 &&
-	test_commit B && 
+	test_commit B &&
 	git checkout master &&
 	test_merge M B &&
 	echo C >> B.t &&
@@ -85,7 +85,7 @@ test_expect_success 'setup' \
 	git checkout A^0 -- &&
 	test_commit G &&
 	git checkout master &&
-	git reset --hard D     
+	git reset --hard D
 '
 
 test_expect_success 'git test # no arguments' \
@@ -194,7 +194,7 @@ test_expect_success 'git test --not-unstaged' \
 
 test_expect_success 'git test --unstaged # when there are unstaged files' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_UNSTAGED &&
 	git test --unstaged
@@ -202,7 +202,7 @@ test_expect_success 'git test --unstaged # when there are unstaged files' \
 
 test_expect_success 'git test --not-unstaged # when there are unstaged files - should fail' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_UNSTAGED &&
 	test_must_fail git test --not-unstaged
@@ -210,7 +210,7 @@ test_expect_success 'git test --not-unstaged # when there are unstaged files - s
 
 test_expect_success 'git test --unstaged # when there are only staged files' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_STAGED &&
 	git test --not-unstaged
@@ -228,7 +228,7 @@ test_expect_success 'git test --not-staged' \
 
 test_expect_success 'git test --staged # when there are staged files' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_STAGED &&
 	git test --staged
@@ -236,7 +236,7 @@ test_expect_success 'git test --staged # when there are staged files' \
 
 test_expect_success 'git test --not-staged # when there are staged files - should fail' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_STAGED &&
 	test_must_fail git test --not-staged
@@ -244,7 +244,7 @@ test_expect_success 'git test --not-staged # when there are staged files - shoul
 
 test_expect_success 'git test --staged # when there are only unstaged files' \
 '
-	test_when_finished "git reset --hard HEAD && git checkout master" && 
+	test_when_finished "git reset --hard HEAD && git checkout master" &&
 	git checkout -f M^0 &&
 	git stash apply --index STASH_UNSTAGED &&
 	git test --not-staged
@@ -262,14 +262,14 @@ test_expect_success 'git test --not-untracked' \
 
 test_expect_success 'git test --untracked # when there are untracked files' \
 '
-	test_when_finished "git clean -fd" && 
+	test_when_finished "git clean -fd" &&
 	:> untracked &&
 	git test --untracked
 '
 
 test_expect_success 'git test --not-untracked # when there are untracked files - should fail' \
 '
-	test_when_finished "git clean -fd" && 
+	test_when_finished "git clean -fd" &&
 	:> untracked &&
 	test_must_fail git test --not-untracked
 '
@@ -286,14 +286,14 @@ test_expect_success 'git test --detached # should fail' \
 
 test_expect_success 'git test --not-detached # when detached, should fail' \
 '
-	test_when_finished "git checkout -f master" && 
+	test_when_finished "git checkout -f master" &&
 	git checkout HEAD^0 &&
 	test_must_fail git test --not-detached
 '
 
 test_expect_success 'git test --detached # when detached' \
 '
-	test_when_finished "git checkout -f master" && 
+	test_when_finished "git checkout -f master" &&
 	git checkout HEAD^0 &&
 	git test --detached
 '
@@ -413,7 +413,7 @@ test_expect_success 'same' \
    git test \
       --same master HEAD \
       --not-same D D1 \
-      --not-same C D 
+      --not-same C D
 '
 
 test_expect_success 'clean' \
@@ -424,7 +424,7 @@ test_expect_success 'clean' \
        --not-detached \
        --not-untracked \
        --not-rebasing \
-       --not-conflicted 
+       --not-conflicted
 '
 
 test_expect_success 'existence' \
@@ -439,7 +439,7 @@ test_expect_success 'existence' \
        --tag-exists D \
        --not-tag-exists N \
        --not-tag-exists master \
-       --not-branch-exists A 
+       --not-branch-exists A
 '
 
 test_expect_success 'git test --conflicted # should fail' \
@@ -454,17 +454,17 @@ test_expect_success 'git test --not-conflicted' \
 
 test_expect_success 'git test --conflicted' \
 '
-	test_when_finished "git reset --hard HEAD" && 
+	test_when_finished "git reset --hard HEAD" &&
         ! git merge F &&
-	git test --conflicted 
+	git test --conflicted
 	
 '
 
 test_expect_success 'git test --not-conflicted # should fail when there are conflcted files' \
 '
-	test_when_finished "git reset --hard HEAD" && 
+	test_when_finished "git reset --hard HEAD" &&
         ! git merge F &&
-	test_must_fail git test --not-conflicted 
+	test_must_fail git test --not-conflicted
 	
 '
 
@@ -482,12 +482,12 @@ test_expect_success 'git test --rebasing' \
 '
 	test_when_finished "
 		git reset --hard HEAD &&
-		git checkout -f master && 
+		git checkout -f master &&
 		git branch -D rebase
-	" && 
+	" &&
         git branch rebase F &&
         ! git rebase --onto D F~1 F
-	git test --rebasing 
+	git test --rebasing
 	
 '
 
@@ -497,7 +497,7 @@ test_expect_success 'git test --not-rebasing' \
 		git reset --hard HEAD &&
 		git checkout -f master &&
 		git branch -D rebase
-	" && 
+	" &&
         git branch rebase F &&
         ! git rebase --onto D F~1 F
 	test_must_fail git test --not-rebasing
