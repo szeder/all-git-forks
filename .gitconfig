@@ -1,0 +1,9 @@
+[user]
+	name = suenami
+	email = suenami@yurugachi.info
+[color]
+	status = always
+	branch = always
+[core]
+	editor = vim -c \"set fenc=utf-8\"
+	pager = less
