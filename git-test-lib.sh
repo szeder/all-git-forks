@@ -34,7 +34,7 @@ require_lib()
 require_condition_libs() {
 	eval $(
 		git config --get-all condition.lib | while read lib
-		do 
+		do
 			echo "require_lib \"$lib\" \;"
 		done	
 	)
@@ -42,7 +42,7 @@ require_condition_libs() {
 
 assertion_failed() {
 	rc=$1
-	shift 
+	shift
 	message="${MESSAGE:-$*}"
 	if ! ${QUIET:-false}
 	then
@@ -98,6 +98,7 @@ impl() {
 		shift
 		case $word in
 			--message)
+			test $# -gt 0 || die "--message requires the following argument to be a message"
 			MESSAGE=$1
 			shift
 			continue
@@ -106,7 +107,7 @@ impl() {
 				test $# -gt 0 || die "can't shift 1 argument for --include option"
 				test -f "$1" || die "'$1' must be a file"
 				require_lib "$1"
-				shift 
+				shift
 				continue
 			;;
 			-q)
@@ -143,7 +144,7 @@ impl() {
 
 		exprs="${exprs}${exprs:+ }${negation}${negation:+ }$word $try check_${dehyphenated}_$try $args"
 
-	done 
+	done
 
 	set -- $exprs
 	while test $# -gt 0
@@ -158,7 +159,7 @@ impl() {
 		word=$1
 		nargs=$2
 		shift 2
-		message=$(eval $negation "$@") 
+		message=$(eval $negation "$@")
 		rc=$?
 		if test $rc -ne 0
 		then
