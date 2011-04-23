@@ -7,7 +7,7 @@ git-test - evaluates one or more conditions about the state of the git working t
 
 SYNOPSIS
 --------
-The git test API is available in the form of a command and also as a shell library. 
+The git test API is available in the form of a command and also as a shell library.
 
 COMMAND SYNOPSIS
 ----------------
@@ -27,28 +27,28 @@ DESCRIPTION
 `git test` provides a uniform, extensible API for evaluating various conditions that
 pertain to the state of a git working tree, index and repository.
 
-Specified conditions are evaluated from left to right. If any condition evaluates to false, 
-the command conditionally prints a diagnostic message to stderr and sets a 
-non-zero status code. Otherwise, sets a status code of zero. 
+Specified conditions are evaluated from left to right. If any condition evaluates to false,
+the command conditionally prints a diagnostic message to stderr and sets a
+non-zero status code. Otherwise, sets a status code of zero.
 
 The message used to report a assertion failure may be overidden by specifying the --message option.
 
-Diagnostic output resulting from an assertion failure may be suppressed with the -q option. 
-Note that the -q option does not suppress diagnostic output that results from the failure to 
+Diagnostic output resulting from an assertion failure may be suppressed with the -q option.
+Note that the -q option does not suppress diagnostic output that results from the failure to
 successfully parse the arguments that configure the test API.
 
-The `assert` and `test_condition` functions differ according to how they handle failing conditions. 
+The `assert` and `test_condition` functions differ according to how they handle failing conditions.
 
-The `assert` function behaves like the test command but assertion failures will cause 
+The `assert` function behaves like the test command but assertion failures will cause
 the current shell to exit with a non-zero status code. To prevent this occurring, invoke
 the `assert` function within a subshell or use the `test_condition` function instead.
 
 The `test_condition` function will not exit the current shell in the event that an assertion failure
-is detected nor will it generate diagnostic relating to an assertion failure to stderr. 
+is detected nor will it generate diagnostic relating to an assertion failure to stderr.
 
-Note, however, that `test_condition` may still exit the current shell with a non-zero status code 
-if it is unable to successfully parse the arguments presented to it. Callers who need to protect 
-against this possibility either guarantee that the required arguments are available or 
+Note, however, that `test_condition` may still exit the current shell with a non-zero status code
+if it is unable to successfully parse the arguments presented to it. Callers who need to protect
+against this possibility either guarantee that the required arguments are available or
 imbed calls to `test_condition` within a subshell.
 
 The `require_condition_libs` function may be used to include any condition libs listed
@@ -77,7 +77,7 @@ CONDITIONS
 '--detached'|'--not-detached'::
 	Tests if the head is (not) detached.
 '--branch-exists'|'--not-branch-exists branch'::
-        Tests if the specified branch does (not) exist.				    
+	Tests if the specified branch does (not) exist.
 '--tag-exists'|'--not-tag-exists tag'::
         Tests if the specified tag does (not) exist.
 '--ref-exists'|'--not-ref-exists tag'::
@@ -95,15 +95,15 @@ CONDITIONS
 
 EXTENDING THE CONDITION LIBRARY
 -------------------------------
-The library of conditions that the assert API can process may be extended by 
-adding functions of the form check_\{dehyphenated_condition_name\}_N to the 
-shell environment, where \{dehyphenated_condition_name\} is the result of 
-replacing any occurrence of \'-\' in the condition name with \'_\' and 
+The library of conditions that the assert API can process may be extended by
+adding functions of the form check_\{dehyphenated_condition_name\}_N to the
+shell environment, where \{dehyphenated_condition_name\} is the result of
+replacing any occurrence of \'-\' in the condition name with \'_\' and
 N is the number of arguments that need to be passed to the function.
 
-For example, suppose you are writing a script, foo.sh, that includes the git test library 
-and that you want to add a new, 1-argument, condition, foo-X to the library of 
-conditions that can be tested by the git testion framework. 
+For example, suppose you are writing a script, foo.sh, that includes the git test library
+and that you want to add a new, 1-argument, condition, foo-X to the library of
+conditions that can be tested by the git testion framework.
 
 ---------
 #/bin/sh
@@ -133,8 +133,8 @@ executes without generating any output on stdout. The resulting
 state will then be interpreted as condition evaluation failure
 rather than an assertion failure.
 
-To make such conditions available to the git test command line, put the 
-function in a file called ~/foo-lib,sh add a reference 
+To make such conditions available to the git test command line, put the
+function in a file called ~/foo-lib,sh add a reference
 to the library to the git configuration, like so:
 
 ---------
@@ -163,9 +163,9 @@ git test --not-staged --not-unstaged && git reset --hard another-commit
 -----------
 . $(git --exec-path)/git-test-lib
 assert --not-staged   	      	                              # die if there are any staged files
-assert --message "there are staged files" --not-staged	      # die with an alternative message 
+assert --message "there are staged files" --not-staged	      # die with an alternative message
                                                               # if there are any staged files
-test_condition --not-staged || echo "there are staged files"  # check whether there are staged files, 
+test_condition --not-staged || echo "there are staged files"  # check whether there are staged files,
                                                               # but do not die if there are
 -----------
 
