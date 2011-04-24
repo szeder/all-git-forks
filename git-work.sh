@@ -1,5 +1,5 @@
 #!/bin/sh
-USAGE='[help|list|merge|remerge|rebase|pivot|create|update]'
+USAGE='[help|list|merge|rebase|pivot|create|update]'
 LONG_USAGE='
 git work
     Print the range that defines the boundaries of the branch
@@ -7,8 +7,6 @@ git work list [commit|dependency]
     List the commits or dependencies of the current working branch.
 git work merge [dependency ...]
     Merge the specified dependencies into the base of the branch
-git work remerge [--keep-tree]
-    Rebuild the base of the current working branch from the dependencies
 git work pivot [pivot]
     Swap two segments of the working branch at the commit specified by the pivot
 git work rebase [-i]
@@ -110,12 +108,6 @@ work_merge()
 	git rebase --onto HEAD \${BASE} \${BRANCH} &&
 	git update-ref \${BASEREF} \${MERGE}
 "
-}
-
-work_remerge()
-{
-   assert --not-staged --not-unstaged
-   not_yet_implemented
 }
 
 work_rebase()
@@ -315,7 +307,7 @@ case "$#" in
     case "$cmd" in
     help)
 	    git work -h "$@" ;;
-    list|merge|remerge|rebase|pivot|create|update)
+    list|merge|rebase|pivot|create|update)
 	    work_$cmd "$@" ;;
     *)
 	    usage "$@" ;;
