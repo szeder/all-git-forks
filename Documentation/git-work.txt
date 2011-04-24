@@ -11,7 +11,6 @@ SYNOPSIS
 'git work'
 'git work' 'list'   ['commit'|'dependency']
 'git work' 'merge'  [merge-options] [dependency ...]
-'git work' 'remerge' [--keep-tree]
 'git work' 'rebase' ['-i'|[dependency [rebase-options]]]
 'git work' 'pivot'  [pivot]
 'git work' 'create' ['--pivot-first'] topic [pivot [on-base]]
@@ -30,9 +29,6 @@ Without arguments, reports the base and head of the current branch as a range su
 
 'merge'::
 	Merge the specified dependencies with \{base\}, then rebase \{base\}..\{head\} onto that merge. The head reference is updated with the result of the merge. The base reference is updated with dependency. If not specified, dependency defaults to the tracked branch, if any.
-
-'remerge'::
-	Rebuild the base of the branch using the current dependencies. Unless --keep-tree is specified, perform a piece-wise merge of each dependency. If --keep-tree is specified, then perform an information only merge of the current dependencies and preserve the tree of existing base.
 
 'rebase'::
 	Rebase \{base\}..\{head\} onto dependency and the base reference is updated to refer to dependency. If the -i option is specified, invokes git rebase -i \{base\}..\{branch\}. If not specified, dependency defaults to the tracked branch, if any.
@@ -134,11 +130,6 @@ $ git work --pivot-first create mytopic HEAD~2 upstream/master
 +
 ---------
 $ git work update mytopic HEAD~1
----------
-* clean up the base history by rewriting the base as an octopus merge with the same tree as the current base
-+
----------
-$ git work remerge --keep-tree
 ---------
 * visualize the merge structure of the dependencies of the current work
 +
