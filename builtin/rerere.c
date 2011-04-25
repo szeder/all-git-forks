@@ -28,14 +28,6 @@ static time_t rerere_last_used_at(const char *name)
 	return stat(rerere_path(name, "postimage"), &st) ? (time_t) 0 : st.st_mtime;
 }
 
-static void unlink_rr_item(const char *name)
-{
-	unlink(rerere_path(name, "thisimage"));
-	unlink(rerere_path(name, "preimage"));
-	unlink(rerere_path(name, "postimage"));
-	rmdir(git_path("rr-cache/%s", name));
-}
-
 static int git_rerere_gc_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "gc.rerereresolved"))
@@ -76,7 +68,7 @@ static void garbage_collect(struct string_list *rr)
 			string_list_append(&to_remove, e->d_name);
 	}
 	for (i = 0; i < to_remove.nr; i++)
-		unlink_rr_item(to_remove.items[i].string);
+		unlink_rerere_item(to_remove.items[i].string);
 	string_list_clear(&to_remove, 0);
 }
 
@@ -142,19 +134,14 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 		pathspec = get_pathspec(prefix, argv + 1);
 		return rerere_forget(pathspec);
 	}
+	if (!strcmp(argv[0], "clear"))
+		return rerere_clear();
 
 	fd = setup_rerere(&merge_rr, flags);
 	if (fd < 0)
 		return 0;
 
-	if (!strcmp(argv[0], "clear")) {
-		for (i = 0; i < merge_rr.nr; i++) {
-			const char *name = (const char *)merge_rr.items[i].util;
-			if (!has_rerere_resolution(name))
-				unlink_rr_item(name);
-		}
-		unlink_or_warn(git_path("MERGE_RR"));
-	} else if (!strcmp(argv[0], "gc"))
+	if (!strcmp(argv[0], "gc"))
 		garbage_collect(&merge_rr);
 	else if (!strcmp(argv[0], "status"))
 		for (i = 0; i < merge_rr.nr; i++)
