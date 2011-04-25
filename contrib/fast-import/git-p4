@@ -377,18 +377,19 @@ def findUpstreamBranchPoint(head = "HEAD"):
             paths = ",".join(settings["depot-paths"])
             branchByDepotPath[paths] = "remotes/p4/" + branch
 
+    #previous code was just going throught parents of the current branch
+    #which wouldn't work if you merged the p4 branch in your code. It was
+    #going through "left" parents only (so it was skipping merged branches)
     settings = None
-    parent = 0
-    while parent < 65535:
-        commit = head + "~%s" % parent
-        log = extractLogMessageFromGitCommit(commit)
-        settings = extractSettingsGitLog(log)
-        if settings.has_key("depot-paths"):
-            paths = ",".join(settings["depot-paths"])
-            if branchByDepotPath.has_key(paths):
-                return [branchByDepotPath[paths], settings]
-
-        parent = parent + 1
+    for paths, branch in branchByDepotPath.items():
+        next = read_pipe("git merge-base %s %s" % (head, branch))
+        if len(next) != 0:
+            log = extractLogMessageFromGitCommit(next)
+            settings = extractSettingsGitLog(log)
+            if settings.has_key("depot-paths"):
+                paths = ",".join(settings["depot-paths"])
+                if branchByDepotPath.has_key(paths):
+                    return [next, settings]
 
     return ["", settings]
 
