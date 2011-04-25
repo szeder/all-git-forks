@@ -40,7 +40,9 @@ When ever I edit this document, I do:
 
      git add README.md
      git commit -m "Updates to README"
-     git work update jonseymour HEAD~1   # updates jonseymour with the last commit, merges that commit with $(git base), rebases remaining work on that
+     git work update jonseymour HEAD~1   # updates jonseymour with the last commit, 
+                                         # merges that commit with $(git base)
+                                         # rebases remaining unpublished work on that
      git push public $(git base):master jonseymour:jonseymour # updates github with my (relatively) stable work
 
 The net effect is that:
