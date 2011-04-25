@@ -629,8 +629,8 @@ class P4Submit(Command):
 
         return template
 
-    def applyCommit(self, id):
-        print "Applying %s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % id))
+    def applyCommit(self, origin, master):
+        print "Applying %s" % (read_pipe("git log --max-count=1 --pretty=oneline %s" % origin))
 
         if not self.detectRenames:
             # If not explicitly set check the config variable
@@ -647,7 +647,7 @@ class P4Submit(Command):
         if gitConfig("git-p4.detectCopiesHarder").lower() == "true":
             diffOpts += " --find-copies-harder"
 
-        diff = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (diffOpts, id, id))
+        diff = read_pipe_lines("git diff-tree -r %s \"%s\" \"%s\"" % (diffOpts, origin, master))
         filesToAdd = set()
         filesToDelete = set()
         editedFiles = set()
@@ -694,7 +694,7 @@ class P4Submit(Command):
             else:
                 die("unknown modifier %s for %s" % (modifier, path))
 
-        diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
+        diffcmd = "git format-patch -k --stdout \"%s\"..\"%s\"" % (origin, master)
         patchcmd = diffcmd + " | git apply "
         tryPatchCmd = patchcmd + "--check -"
         applyPatchCmd = patchcmd + "--check --apply -"
@@ -742,7 +742,7 @@ class P4Submit(Command):
             mode = filesToChangeExecBit[f]
             setP4ExecBit(f, mode)
 
-        logMessage = extractLogMessageFromGitCommit(id)
+        logMessage = extractLogMessageFromGitCommit(origin)
         logMessage = logMessage.strip()
 
         template = self.prepareSubmitTemplate()
@@ -851,6 +851,7 @@ class P4Submit(Command):
         chdir(self.clientPath)
         print "Synchronizing p4 checkout..."
         p4_system("sync ...")
+        # we should use remote-sync here.
 
         self.check()
 
