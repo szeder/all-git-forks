@@ -16,18 +16,22 @@ BRANCHES
 
 <dl>
 <dt><a href="http://github.com/jonseymour/git" target="browse">master</a></dt>
-<dd>My integration branch.</dd>
+<dd>The base of my working branch. Contains my stabilised dependencies. Does not contain my unpublished work in progress. Rebuilt occasionally if and when topic branches are rebased. Not suitable for use as an upstream.</dd>
 <dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">work</a></dt>
-<dd>Contains the current iteration of four proposed git commands I find useful - git work, git base, git test and git atomic.
-For details about this work, refer to the man pages:
+<dd>
+<p>Contains the current iteration of four proposed git commands I find useful - git work, git base, git test and git atomic. For details about this work, refer to the man pages:</p>
 <ul>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-work.html" target="browse">git-work(1)</a></li>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-base.html" target="browse">git-base(1)]</a></li>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-atomic.html" target="browse">git-atomic(1)</a></li>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-test.html" target="browse">git-test(1)</a></li>
+</ul>
+<p>
+This branch will be rebuilt as the patch series is reworked.
+</p>
 </dd>
 <dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">jonseymour</a></dt>
-<dd>Contains this documentation.</dd>
+<dd>Contains this documentation. Maintained as a separate topic so that it doesn't infect topics I may want to deliver.</dd>
 </dl>
 
 HOW I MAINTAIN THIS DOCUMENT
