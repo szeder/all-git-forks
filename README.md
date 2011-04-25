@@ -30,6 +30,23 @@ For details about this work, refer to the man pages:
 <dd>Contains this documentation.</dd>
 </dl>
 
+HOW I MAINTAIN THIS DOCUMENT
+============================
+When ever I edit this document, I do:
+
+     git add README.md
+     git commit -m "Updates to README"
+     git work update jonseymour HEAD~1   # updates jonseymour with the last commit, merges that commit with $(git base), rebases remaining work on that
+     git push public $(git base):master jonseymour:jonseymour # updates github with my (relatively) stable work
+
+The net effect is that:
+
+* My changes to README.md go to my jonseymour branch.
+* My public github branch reflects the work I have stabilised with **git work update** - it contains my stable dependencies, but not work in progress.
+* I keep my work in progress rebased on top of my public github master branch.
+* I keep my unpublished work private.
+* My working tree remains stable - **git work update** doesn't change the tree, it only changes the history. 
+
 TAGS
 ====
 
