@@ -17,21 +17,30 @@ BRANCHES
 <dl>
 <dt><a href="http://github.com/jonseymour/git" target="browse">master</a></dt>
 <dd>The base of my working branch. Contains my stabilised dependencies. Does not contain my unpublished work in progress. Rebuilt occasionally if and when topic branches are rebased. Not suitable for use as an upstream.</dd>
-<dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">work</a></dt>
+<dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">work</a><a name="work"/></dt>
 <dd>
 <p>Contains the current iteration of four proposed git commands I find useful - git work, git base, git test and git atomic. For details about this work, refer to the man pages:</p>
 <ul>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-work.html" target="browse">git-work(1)</a></li>
-<li><a href="https://jonseymour.s3.amazonaws.com/git-base.html" target="browse">git-base(1)]</a></li>
+<li><a href="https://jonseymour.s3.amazonaws.com/git-base.html" target="browse">git-base(1)</a></li>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-atomic.html" target="browse">git-atomic(1)</a></li>
 <li><a href="https://jonseymour.s3.amazonaws.com/git-test.html" target="browse">git-test(1)</a></li>
 </ul>
 <p>
 This branch will be rebuilt as the patch series is reworked.
 </p>
+<p>Please note also, this is just a proposal at this stage. It may yet not be accepted for inclusion in git.</p>
 </dd>
 <dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">jonseymour</a></dt>
 <dd>Contains this documentation. Maintained as a separate topic so that it doesn't infect topics I may want to deliver.</dd>
+</dl>
+
+TAGS
+====
+
+<dl>
+<dt><a href="http://github.com/jonseymour/git/tree/work-20110423" target="browse">work-20110423</a></dt>
+<dd>A copy of the patch series I mailed to the git list on 2011/04/23.</dd>
 </dl>
 
 HOW I MAINTAIN THIS DOCUMENT
@@ -53,10 +62,3 @@ The net effect is that:
 * I keep my unpublished work private.
 * My working tree remains stable - **git work update** doesn't change the tree, it only changes the history. 
 
-TAGS
-====
-
-<dl>
-<dt><a href="http://github.com/jonseymour/git/tree/work-20110423" target="browse">work-20110423</a></dt>
-<dd>A copy of the patch series I mailed to the git list on 2011/04/23.</dd>
-</dl>
