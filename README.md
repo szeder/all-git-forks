@@ -31,7 +31,7 @@ This branch will be rebuilt as the patch series is reworked.
 </p>
 <p>Please note also, this is just a proposal at this stage. It may yet not be accepted for inclusion in git.</p>
 </dd>
-<dt><a href="http://github.com/jonseymour/git/tree/work" target="browse">jonseymour</a></dt>
+<dt><a href="http://github.com/jonseymour/git/tree/jonseymour" target="browse">jonseymour</a></dt>
 <dd>Contains this documentation. Maintained as a separate topic so that it doesn't infect topics I may want to deliver.</dd>
 </dl>
 
