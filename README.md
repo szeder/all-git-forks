@@ -5,10 +5,11 @@ jonseymour/git - a fork of git.
 DESCRIPTION
 ===========
 
-git://github.com/jonseymour/git is my public for of the git repo.
+git://github.com/jonseymour/git is my public fork of the git repo.
 
-No attempt is made to keep any of the branches stable. If you want stability, use one of the tags, but be prepared to rebase your work later. Obviously, 
-this policy will change if and when I get any active collaborators.
+No attempt is made to keep any of the branches stable. If you want stability, please use one of the published tags, but be prepared to rebase your work later. 
+
+Obviously, this policy will change if and when I get any active collaborators.
 
 BRANCHES
 ========
