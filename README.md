@@ -41,6 +41,8 @@ TAGS
 <dl>
 <dt><a href="http://github.com/jonseymour/git/tree/work-20110423" target="browse">work-20110423</a></dt>
 <dd>A copy of the patch series I mailed to the git list on 2011/04/23.</dd>
+<dt><a href="http://github.com/jonseymour/git/tree/gitwork-v0.0.0" target="browse">gitwork-v0.0.0</a></dt>
+<dd>A snapshot of work branch used to build v0.0.0 of the gitwork package. See <a href="http://github.com/jonseymour/gitwork/">gitwork</a> for more details about this package.</dd>
 </dl>
 
 HOW I MAINTAIN THIS DOCUMENT
