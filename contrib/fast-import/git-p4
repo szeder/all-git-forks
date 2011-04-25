@@ -30,7 +30,7 @@ def p4_build_cmd(cmd):
 
     password = gitConfig("git-p4.password")
     if len(password) > 0:
-        real_cmd += "-P %s " % password
+        real_cmd += "-P '%s' " % password
 
     port = gitConfig("git-p4.port")
     if len(port) > 0:
