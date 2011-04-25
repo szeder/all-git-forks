@@ -1,5 +1,5 @@
 git-atomic(1)
-===========
+=============
 
 NAME
 ----
@@ -89,4 +89,4 @@ Documentation by Jon Seymour
 
 GIT
 ---
-Part of the linkgit:git[7] suite
+**PROPOSED** Part of the linkgit:git[7] suite.
