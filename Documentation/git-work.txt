@@ -28,7 +28,7 @@ Without arguments, reports the base and head of the current branch as a range su
 	Lists the commits in the working branch or the dependencies of the working branch.
 
 'merge'::
-	Merge the specified dependencies with \{base\}, then rebase \{base\}..\{head\} onto that merge. The head reference is updated with the result of the merge. The base reference is updated with dependency. If not specified, dependency defaults to the tracked branch, if any.
+	Merge the specified dependencies with \{base\}, then rebase \{base\}..\{head\} onto that merge. The head reference is updated with the result of the rebase. The base reference is updated with dependency. If not specified, dependency defaults to the tracked branch, if any.
 
 'rebase'::
 	Rebase \{base\}..\{head\} onto dependency and the base reference is updated to refer to dependency. If the -i option is specified, invokes git rebase -i \{base\}..\{branch\}. If not specified, dependency defaults to the tracked branch, if any.
