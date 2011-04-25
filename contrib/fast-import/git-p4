@@ -555,6 +555,98 @@ class P4RollBack(Command):
 
         return True
 
+
+class P4Edit(Command):
+    def __init__(self):
+        Command.__init__(self)
+        self.options = [
+                optparse.make_option("--verbose", dest="verbose", action="store_true"),
+                optparse.make_option("--origin", dest="origin"),
+                optparse.make_option("-M", dest="detectRename", action="store_true"),
+        ]
+        self.description = "Submit changes from git to the perforce depot."
+        self.usage += " [name of git branch to submit into perforce depot]"
+        self.interactive = False
+        self.origin = ""
+        self.detectRename = False
+        self.verbose = False
+        self.isWindows = (platform.system() == "Windows")
+
+    def applyCommit(self, origin, master):
+        diffOpts = ("", "-M")[self.detectRename]
+        diff = read_pipe_lines("git diff-tree -r %s \"%s\" \"%s\"" % (diffOpts, origin, master))
+        filesToAdd = set()
+        filesToDelete = set()
+        editedFiles = set()
+        for line in diff:
+            if self.verbose:
+                print "Parsing line: %s" % line
+            diff = parseDiffTreeEntry(line)
+            modifier = diff['status']
+            path = diff['src']
+            if modifier == "M":
+                p4_system("edit \"%s\"" % path)
+                editedFiles.add(path)
+            elif modifier == "A":
+                filesToAdd.add(path)
+                if path in filesToDelete:
+                    filesToDelete.remove(path)
+            elif modifier == "D":
+                filesToDelete.add(path)
+                if path in filesToAdd:
+                    filesToAdd.remove(path)
+            elif modifier == "R":
+                src, dest = diff['src'], diff['dst']
+                p4_system("integrate -Dt \"%s\" \"%s\"" % (src, dest))
+                p4_system("edit \"%s\"" % (dest))
+                editedFiles.add(dest)
+                filesToDelete.add(src)
+            else:
+                die("unknown modifier %s for %s" % (modifier, path))
+
+        for f in filesToAdd:
+            p4_system("add \"%s\"" % f)
+        for f in filesToDelete:
+            p4_system("delete \"%s\"" % f)
+
+
+    def run(self, args):
+        if len(args) == 0:
+            self.master = currentGitBranch()
+            if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
+                die("Detecting current git branch failed!")
+        elif len(args) == 1:
+            self.master = args[0]
+        else:
+            return False
+
+        [upstream, settings] = findUpstreamBranchPoint()
+        self.depotPath = settings['depot-paths'][0]
+        if len(self.origin) == 0:
+            self.origin = upstream
+        self.origin = self.origin.strip()
+
+        if self.verbose:
+            print "Origin branch is " + self.origin
+
+        if len(self.depotPath) == 0:
+            print "Internal error: cannot locate perforce depot path from existing branches"
+            sys.exit(128)
+
+        print "P4 Remote Sync (ensures that perforce repository is at the same changelist) ..."
+        P4RemoteSync().run([])
+
+        # revert all checked-out status, but without reverting current changes
+        print "P4 Revert (reset all checked out files) ..."
+        p4_system("revert -k ...")
+
+        print "Applying changes from %s to %s ..." % (self.origin, self.master)
+        self.applyCommit(self.origin, self.master)
+        print "All changes applied!"
+
+        return True
+
+
 class P4Submit(Command):
     def __init__(self):
         Command.__init__(self)
@@ -878,6 +970,64 @@ class P4Submit(Command):
             rebase.rebase()
 
         return True
+
+
+class P4RemoteSync(Command):
+    def __init__(self):
+        Command.__init__(self)
+        self.options = [
+                optparse.make_option("--verbose", dest="verbose", action="store_true"),
+        ]
+        self.description = "Sync remote perforce depot to the same upstream branch point"
+        self.usage += " [name of git branch to submit into perforce depot]"
+        self.verbose = False
+        self.isWindows = (platform.system() == "Windows")
+        self.origin = ""
+
+    def check(self):
+        if len(p4CmdList("opened ...")) > 0:
+            die("You have files opened with perforce! Close them before starting the sync.")
+
+
+    def run(self, args):
+        if len(args) == 0:
+            self.master = currentGitBranch()
+            if len(self.master) == 0 or not gitBranchExists("refs/heads/%s" % self.master):
+                die("Detecting current git branch failed!")
+        elif len(args) == 1:
+            self.master = args[0]
+        else:
+            return False
+
+        [upstream, settings] = findUpstreamBranchPoint()
+        self.depotPath = settings['depot-paths'][0]
+        if len(self.origin) == 0:
+            self.origin = upstream
+
+        if self.verbose:
+            print "Origin branch is " + self.origin
+            print "Depot path is", self.depotPath
+
+        if len(self.depotPath) == 0:
+            print "Internal error: cannot locate perforce depot path from existing branches"
+            sys.exit(128)
+
+        self.clientPath = p4Where(self.depotPath)
+
+        if len(self.clientPath) == 0:
+            print "Error: Cannot locate perforce checkout of %s in client view" % self.depotPath
+            sys.exit(128)
+
+        print "Perforce checkout for depot path %s located at %s" % (self.depotPath, self.clientPath)
+        self.oldWorkingDirectory = os.getcwd()
+
+        chdir(self.clientPath)
+        print "Current dir:", os.getcwd()
+        print "Synchronizing: p4 sync -k ...@%s" % settings['change']
+        p4_system("sync -k ...@%s" % settings['change'])
+
+        return True
+
 
 class P4Sync(Command):
     delete_actions = ( "delete", "move/delete", "purge" )
@@ -1988,6 +2138,8 @@ commands = {
     "debug" : P4Debug,
     "submit" : P4Submit,
     "commit" : P4Submit,
+    "remote-sync" : P4RemoteSync,
+    "edit" : P4Edit,
     "sync" : P4Sync,
     "rebase" : P4Rebase,
     "clone" : P4Clone,
