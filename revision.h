@@ -5,6 +5,7 @@
 #include "diff.h"
 #include "grep.h"
 #include "notes.h"
+#include "string-list.h"
 
 #define SEEN		(1u<<0)
 #define UNINTERESTING   (1u<<1)
@@ -38,6 +39,7 @@ struct rev_info {
 	const char *def;
 	struct pathspec prune_data;
 	unsigned int early_output;
+    struct string_list subtrees;
 
 	/* Traversal flags */
 	unsigned int	dense:1,
@@ -71,7 +73,8 @@ struct rev_info {
 			cherry_mark:1,
 			bisect:1,
 			ancestry_path:1,
-			first_parent_only:1;
+			first_parent_only:1,
+            hide_subtrees:1;
 
 	/* Diff flags */
 	unsigned int	diff:1,

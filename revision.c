@@ -13,6 +13,7 @@
 #include "decorate.h"
 #include "log-tree.h"
 #include "string-list.h"
+#include "subtree.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -776,6 +777,18 @@ static int limit_list(struct rev_info *revs)
 
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
+        
+        if (revs->hide_subtrees && commit->parents) {
+            struct commit_list *parent = commit->parents;
+            struct commit *subtree;
+            struct commit_list *subtrees;
+            subtrees = get_subtrees(commit, &revs->subtrees, 0);
+            while ((subtree = pop_commit(&subtrees)))
+                subtree->object.flags |= UNINTERESTING;
+
+            parent = parent->next;
+        }
+
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
 			return -1;
 		if (obj->flags & UNINTERESTING) {
@@ -792,6 +805,7 @@ static int limit_list(struct rev_info *revs)
 		}
 		if (revs->min_age != -1 && (commit->date > revs->min_age))
 			continue;
+
 		date = commit->date;
 		p = &commit_list_insert(commit, p)->next;
 
