@@ -1,0 +1,4 @@
+.ssh/
+.viminfo
+.gem/
+.*_history
