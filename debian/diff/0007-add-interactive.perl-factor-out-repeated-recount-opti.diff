@@ -1,7 +1,7 @@
-From d5b22c9f3f9ea5385a3e750fc72a8f4ca30db59a Mon Sep 17 00:00:00 2001
+From ac1809a33c21821853d48b316d32bfe2c3194761 Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Wed, 6 Apr 2011 14:12:34 -0700
-Subject: [PATCH 7/8] add--interactive.perl: factor out repeated --recount option
+Subject: add--interactive.perl: factor out repeated --recount option
 
 Depending on the direction and the target of patch application, we would
 need to pass --cached and --reverse to underlying "git apply".  Also we
@@ -75,5 +75,5 @@ index a329c5a..6a439db 100755
  			print colored $error_color, "Nothing was applied.\n";
  			return 0;
 -- 
-1.7.4.1
+1.7.5.rc3
 

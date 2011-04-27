@@ -1,7 +1,7 @@
-From 5a37979110fe1e22b6017cf3418dae6599ad45d2 Mon Sep 17 00:00:00 2001
+From 78c64641c2d2f2c1ee65f7fdb63d1fd7a214afc8 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
 Date: Sun, 14 Mar 2010 18:59:09 -0400
-Subject: [PATCH 6/8] gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+Subject: gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit
@@ -50,5 +50,5 @@ index 31c48cd..5d8b5a6 100755
  		    [doesmatch $f]} {
  		    set found 1
 -- 
-1.7.4.1
+1.7.5.rc3
 

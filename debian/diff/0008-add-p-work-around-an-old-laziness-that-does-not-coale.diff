@@ -1,7 +1,7 @@
-From ae9f3f5ef4273597712e0f2e808ab0d61f99d9db Mon Sep 17 00:00:00 2001
+From 459f1e8f3567f293b994c7f7d7cdf774fe65e5db Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Wed, 6 Apr 2011 14:20:57 -0700
-Subject: [PATCH 8/8] "add -p": work-around an old laziness that does not coalesce hunks
+Subject: "add -p": work-around an old laziness that does not coalesce hunks
 
 Since 0beee4c (git-add--interactive: remove hunk coalescing, 2008-07-02),
 "git add--interactive" behaves lazily and passes overlapping hunks to the
@@ -73,5 +73,5 @@ index 6a439db..8de96d9 100755
  	return close $fh;
  }
 -- 
-1.7.4.1
+1.7.5.rc3
 

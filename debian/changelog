@@ -1,9 +1,10 @@
-git (1:1.7.5~rc3-1.1) experimental; urgency=low
+git (1:1.7.5-0.1) experimental; urgency=low
 
+  * new upstream release.
   * debian/changelog.upstream, debian/versions.upstream: do not skip
     versions not packaged for Debian (thx Gerrit Pape).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 26 Apr 2011 19:52:20 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 26 Apr 2011 21:48:10 -0500
 
 git (1:1.7.5~rc3-1) experimental; urgency=low
 
