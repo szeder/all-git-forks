@@ -71,9 +71,9 @@ static int builtin_diff_b_f(struct rev_info *revs,
 		usage(builtin_diff_usage);
 
 	if (lstat(path, &st))
-		die_errno("failed to stat '%s'", path);
+		die_errno(_("failed to stat '%s'"), path);
 	if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode)))
-		die("'%s': not a regular file or symlink", path);
+		die(_("'%s': not a regular file or symlink"), path);
 
 	diff_set_mnemonic_prefix(&revs->diffopt, "o/", "w/");
 
@@ -135,7 +135,7 @@ static int builtin_diff_index(struct rev_info *revs,
 	    revs->max_count != -1 || revs->min_age != -1 ||
 	    revs->max_age != -1)
 		usage(builtin_diff_usage);
-	if (read_cache_preload(revs->diffopt.paths) < 0) {
+	if (read_cache_preload(revs->diffopt.pathspec.raw) < 0) {
 		perror("read_cache_preload");
 		return -1;
 	}
@@ -197,17 +197,11 @@ static void refresh_index_quietly(void)
 	discard_cache();
 	read_cache();
 	refresh_cache(REFRESH_QUIET|REFRESH_UNMERGED);
-
-	if (active_cache_changed &&
-	    !write_cache(fd, active_cache, active_nr))
-		commit_locked_index(lock_file);
-
-	rollback_lock_file(lock_file);
+	update_index_if_able(&the_index, lock_file);
 }
 
 static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv)
 {
-	int result;
 	unsigned int options = 0;
 
 	while (1 < argc && argv[1][0] == '-') {
@@ -222,7 +216,7 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 		else if (!strcmp(argv[1], "-h"))
 			usage(builtin_diff_usage);
 		else
-			return error("invalid option: %s", argv[1]);
+			return error(_("invalid option: %s"), argv[1]);
 		argv++; argc--;
 	}
 
@@ -237,12 +231,11 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 		revs->combine_merges = revs->dense_combined_merges = 1;
 
 	setup_work_tree();
-	if (read_cache_preload(revs->diffopt.paths) < 0) {
+	if (read_cache_preload(revs->diffopt.pathspec.raw) < 0) {
 		perror("read_cache_preload");
 		return -1;
 	}
-	result = run_diff_files(revs, options);
-	return diff_result_code(&revs->diffopt, result);
+	return run_diff_files(revs, options);
 }
 
 int cmd_diff(int argc, const char **argv, const char *prefix)
@@ -299,12 +292,12 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	DIFF_OPT_SET(&rev.diffopt, ALLOW_TEXTCONV);
 
 	if (nongit)
-		die("Not a git repository");
+		die(_("Not a git repository"));
 	argc = setup_revisions(argc, argv, &rev, NULL);
 	if (!rev.diffopt.output_format) {
 		rev.diffopt.output_format = DIFF_FORMAT_PATCH;
 		if (diff_setup_done(&rev.diffopt) < 0)
-			die("diff_setup_done failed");
+			die(_("diff_setup_done failed"));
 	}
 
 	DIFF_OPT_SET(&rev.diffopt, RECURSIVE);
@@ -330,8 +323,11 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 			else if (!strcmp(arg, "--cached") ||
 				 !strcmp(arg, "--staged")) {
 				add_head_to_pending(&rev);
-				if (!rev.pending.nr)
-					die("No HEAD commit to compare with (yet)");
+				if (!rev.pending.nr) {
+					struct tree *tree;
+					tree = lookup_tree((const unsigned char*)EMPTY_TREE_SHA1_BIN);
+					add_pending_object(&rev, &tree->object, "HEAD");
+				}
 				break;
 			}
 		}
@@ -346,12 +342,12 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 			obj = parse_object(obj->sha1);
 		obj = deref_tag(obj, NULL, 0);
 		if (!obj)
-			die("invalid object '%s' given.", name);
+			die(_("invalid object '%s' given."), name);
 		if (obj->type == OBJ_COMMIT)
 			obj = &((struct commit *)obj)->tree->object;
 		if (obj->type == OBJ_TREE) {
 			if (ARRAY_SIZE(ent) <= ents)
-				die("more than %d trees given: '%s'",
+				die(_("more than %d trees given: '%s'"),
 				    (int) ARRAY_SIZE(ent), name);
 			obj->flags |= flags;
 			ent[ents].item = obj;
@@ -361,7 +357,7 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		}
 		if (obj->type == OBJ_BLOB) {
 			if (2 <= blobs)
-				die("more than two blobs given: '%s'", name);
+				die(_("more than two blobs given: '%s'"), name);
 			hashcpy(blob[blobs].sha1, obj->sha1);
 			blob[blobs].name = name;
 			blob[blobs].mode = list->mode;
@@ -369,16 +365,12 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 			continue;
 
 		}
-		die("unhandled object '%s' given.", name);
+		die(_("unhandled object '%s' given."), name);
 	}
-	if (rev.prune_data) {
-		const char **pathspec = rev.prune_data;
-		while (*pathspec) {
-			if (!path)
-				path = *pathspec;
-			paths++;
-			pathspec++;
-		}
+	if (rev.prune_data.nr) {
+		if (!path)
+			path = rev.prune_data.items[0].match;
+		paths += rev.prune_data.nr;
 	}
 
 	/*

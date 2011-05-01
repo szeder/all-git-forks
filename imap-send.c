@@ -1069,7 +1069,7 @@ static struct store *imap_open_store(struct imap_server_conf *srvc)
 
 	if (srvc->tunnel) {
 		const char *argv[] = { srvc->tunnel, NULL };
-		struct child_process tunnel = {0};
+		struct child_process tunnel = {NULL};
 
 		imap_info("Starting tunnel '%s'... ", srvc->tunnel);
 
@@ -1193,13 +1193,13 @@ static struct store *imap_open_store(struct imap_server_conf *srvc)
 	if (!preauth) {
 #ifndef NO_OPENSSL
 		if (!srvc->use_ssl && CAP(STARTTLS)) {
-			if (imap_exec(ctx, 0, "STARTTLS") != RESP_OK)
+			if (imap_exec(ctx, NULL, "STARTTLS") != RESP_OK)
 				goto bail;
 			if (ssl_socket_connect(&imap->buf.sock, 1,
 					       srvc->ssl_verify))
 				goto bail;
 			/* capabilities may have changed, so get the new capabilities */
-			if (imap_exec(ctx, 0, "CAPABILITY") != RESP_OK)
+			if (imap_exec(ctx, NULL, "CAPABILITY") != RESP_OK)
 				goto bail;
 		}
 #endif

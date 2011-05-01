@@ -83,10 +83,8 @@ struct rename_df_conflict_info {
  * Since we want to write the index eventually, we cannot reuse the index
  * for these (temporary) data.
  */
-struct stage_data
-{
-	struct
-	{
+struct stage_data {
+	struct {
 		unsigned mode;
 		unsigned char sha[20];
 	} stages[4];
@@ -137,7 +135,6 @@ static void flush_output(struct merge_options *o)
 __attribute__((format (printf, 3, 4)))
 static void output(struct merge_options *o, int v, const char *fmt, ...)
 {
-	int len;
 	va_list ap;
 
 	if (!show(o, v))
@@ -148,21 +145,9 @@ static void output(struct merge_options *o, int v, const char *fmt, ...)
 	strbuf_setlen(&o->obuf, o->obuf.len + o->call_depth * 2);
 
 	va_start(ap, fmt);
-	len = vsnprintf(o->obuf.buf + o->obuf.len, strbuf_avail(&o->obuf), fmt, ap);
+	strbuf_vaddf(&o->obuf, fmt, ap);
 	va_end(ap);
 
-	if (len < 0)
-		len = 0;
-	if (len >= strbuf_avail(&o->obuf)) {
-		strbuf_grow(&o->obuf, len + 2);
-		va_start(ap, fmt);
-		len = vsnprintf(o->obuf.buf + o->obuf.len, strbuf_avail(&o->obuf), fmt, ap);
-		va_end(ap);
-		if (len >= strbuf_avail(&o->obuf)) {
-			die("this should not happen, your snprintf is broken");
-		}
-	}
-	strbuf_setlen(&o->obuf, o->obuf.len + len);
 	strbuf_add(&o->obuf, "\n", 1);
 	if (!o->buffer_output)
 		flush_output(o);
@@ -354,10 +339,11 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 	 * make room for the corresponding directory.  Such paths will
 	 * later be processed in process_df_entry() at the end.  If
 	 * the corresponding directory ends up being removed by the
-	 * merge, then the file will be reinstated at that time;
-	 * otherwise, if the file is not supposed to be removed by the
-	 * merge, the contents of the file will be placed in another
-	 * unique filename.
+	 * merge, then the file will be reinstated at that time
+	 * (albeit with a different timestamp!); otherwise, if the
+	 * file is not supposed to be removed by the merge, the
+	 * contents of the file will be placed in another unique
+	 * filename.
 	 *
 	 * NOTE: This function relies on the fact that entries for a
 	 * D/F conflict will appear adjacent in the index, with the
@@ -366,8 +352,14 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 	 */
 	const char *last_file = NULL;
 	int last_len = 0;
-	struct stage_data *last_e;
 	int i;
+
+	/*
+	 * Do not do any of this crazyness during the recursive; we don't
+	 * even write anything to the working tree!
+	 */
+	if (o->call_depth)
+		return;
 
 	for (i = 0; i < entries->nr; i++) {
 		const char *path = entries->items[i].string;
@@ -396,15 +388,13 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 		if (S_ISREG(e->stages[2].mode) || S_ISLNK(e->stages[2].mode)) {
 			last_file = path;
 			last_len = len;
-			last_e = e;
 		} else {
 			last_file = NULL;
 		}
 	}
 }
 
-struct rename
-{
+struct rename {
 	struct diff_filepair *pair;
 	struct stage_data *src_entry;
 	struct stage_data *dst_entry;
@@ -434,14 +424,16 @@ static struct string_list *get_renames(struct merge_options *o,
 	opts.detect_rename = DIFF_DETECT_RENAME;
 	opts.rename_limit = o->merge_rename_limit >= 0 ? o->merge_rename_limit :
 			    o->diff_rename_limit >= 0 ? o->diff_rename_limit :
-			    500;
+			    1000;
 	opts.rename_score = o->rename_score;
-	opts.warn_on_too_large_rename = 1;
+	opts.show_rename_progress = o->show_rename_progress;
 	opts.output_format = DIFF_FORMAT_NO_OUTPUT;
 	if (diff_setup_done(&opts) < 0)
 		die("diff setup failed");
 	diff_tree_sha1(o_tree->object.sha1, tree->object.sha1, "", &opts);
 	diffcore_std(&opts);
+	if (opts.needed_rename_limit > o->needed_rename_limit)
+		o->needed_rename_limit = opts.needed_rename_limit;
 	for (i = 0; i < diff_queued_diff.nr; ++i) {
 		struct string_list_item *item;
 		struct rename *re;
@@ -717,8 +709,7 @@ static void update_file(struct merge_options *o,
 
 /* Low level file merging, update and removal */
 
-struct merge_file_info
-{
+struct merge_file_info {
 	unsigned char sha[20];
 	unsigned mode;
 	unsigned clean:1,
@@ -971,7 +962,6 @@ static int process_renames(struct merge_options *o,
 	}
 
 	for (i = 0, j = 0; i < a_renames->nr || j < b_renames->nr;) {
-		char *src;
 		struct string_list *renames1, *renames2Dst;
 		struct rename *ren1 = NULL, *ren2 = NULL;
 		const char *branch1, *branch2;
@@ -1006,7 +996,6 @@ static int process_renames(struct merge_options *o,
 			ren2 = ren1;
 			ren1 = tmp;
 		}
-		src = ren1->pair->one->path;
 
 		ren1->dst_entry->processed = 1;
 		ren1->src_entry->processed = 1;
@@ -1274,9 +1263,13 @@ static int merge_content(struct merge_options *o,
 	}
 
 	if (mfi.clean && !df_conflict_remains &&
-	    sha_eq(mfi.sha, a_sha) && mfi.mode == a.mode)
+	    sha_eq(mfi.sha, a_sha) && mfi.mode == a.mode &&
+	    !o->call_depth && !lstat(path, &st)) {
 		output(o, 3, "Skipped %s (merged same as existing)", path);
-	else
+		add_cacheinfo(mfi.mode, mfi.sha, path,
+			      0 /*stage*/, 1 /*refresh*/, 0 /*options*/);
+		return mfi.clean;
+	} else
 		output(o, 2, "Auto-merging %s", path);
 
 	if (!mfi.clean) {
@@ -1666,6 +1659,9 @@ int merge_recursive(struct merge_options *o,
 		commit_list_insert(h2, &(*result)->parents->next);
 	}
 	flush_output(o);
+	if (show(o, 2))
+		diff_warn_rename_limit("merge.renamelimit",
+				       o->needed_rename_limit, 0);
 	return clean;
 }
 

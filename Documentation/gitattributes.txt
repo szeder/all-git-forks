@@ -504,6 +504,8 @@ patterns are available:
 
 - `pascal` suitable for source code in the Pascal/Delphi language.
 
+- `perl` suitable for source code in the Perl language.
+
 - `php` suitable for source code in the PHP language.
 
 - `python` suitable for source code in the Python language.
@@ -591,13 +593,46 @@ and now produces better output), you can remove the cache
 manually with `git update-ref -d refs/notes/textconv/jpg` (where
 "jpg" is the name of the diff driver, as in the example above).
 
+Marking files as binary
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Git usually guesses correctly whether a blob contains text or binary
+data by examining the beginning of the contents. However, sometimes you
+may want to override its decision, either because a blob contains binary
+data later in the file, or because the content, while technically
+composed of text characters, is opaque to a human reader. For example,
+many postscript files contain only ascii characters, but produce noisy
+and meaningless diffs.
+
+The simplest way to mark a file as binary is to unset the diff
+attribute in the `.gitattributes` file:
+
+------------------------
+*.ps -diff
+------------------------
+
+This will cause git to generate `Binary files differ` (or a binary
+patch, if binary patches are enabled) instead of a regular diff.
+
+However, one may also want to specify other diff driver attributes. For
+example, you might want to use `textconv` to convert postscript files to
+an ascii representation for human viewing, but otherwise treat them as
+binary files. You cannot specify both `-diff` and `diff=ps` attributes.
+The solution is to use the `diff.*.binary` config option:
+
+------------------------
+[diff "ps"]
+  textconv = ps2ascii
+  binary = true
+------------------------
+
 Performing a three-way merge
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `merge`
 ^^^^^^^
 
-The attribute `merge` affects how three versions of a file is
+The attribute `merge` affects how three versions of a file are
 merged when a file-level merge is necessary during `git merge`,
 and other commands such as `git revert` and `git cherry-pick`.
 
@@ -611,15 +646,15 @@ Unset::
 
 	Take the version from the current branch as the
 	tentative merge result, and declare that the merge has
-	conflicts.  This is suitable for binary files that does
+	conflicts.  This is suitable for binary files that do
 	not have a well-defined merge semantics.
 
 Unspecified::
 
 	By default, this uses the same built-in 3-way merge
-	driver as is the case the `merge` attribute is set.
-	However, `merge.default` configuration variable can name
-	different merge driver to be used for paths to which the
+	driver as is the case when the `merge` attribute is set.
+	However, the `merge.default` configuration variable can name
+	different merge driver to be used with paths for which the
 	`merge` attribute is unspecified.
 
 String::

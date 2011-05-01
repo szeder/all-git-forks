@@ -43,33 +43,25 @@ TERM=dumb
 export LANG LC_ALL PAGER TERM TZ
 EDITOR=:
 unset VISUAL
-unset GIT_EDITOR
-unset AUTHOR_DATE
-unset AUTHOR_EMAIL
-unset AUTHOR_NAME
-unset COMMIT_AUTHOR_EMAIL
-unset COMMIT_AUTHOR_NAME
 unset EMAIL
-unset GIT_ALTERNATE_OBJECT_DIRECTORIES
-unset GIT_AUTHOR_DATE
+unset $(perl -e '
+	my @env = keys %ENV;
+	my $ok = join("|", qw(
+		TRACE
+		DEBUG
+		USE_LOOKUP
+		TEST
+		.*_TEST
+		PROVE
+		VALGRIND
+	));
+	my @vars = grep(/^GIT_/ && !/^GIT_($ok)/o, @env);
+	print join("\n", @vars);
+')
 GIT_AUTHOR_EMAIL=author@example.com
 GIT_AUTHOR_NAME='A U Thor'
-unset GIT_COMMITTER_DATE
 GIT_COMMITTER_EMAIL=committer@example.com
 GIT_COMMITTER_NAME='C O Mitter'
-unset GIT_DIFF_OPTS
-unset GIT_DIR
-unset GIT_WORK_TREE
-unset GIT_EXTERNAL_DIFF
-unset GIT_INDEX_FILE
-unset GIT_OBJECT_DIRECTORY
-unset GIT_CEILING_DIRECTORIES
-unset SHA1_FILE_DIRECTORIES
-unset SHA1_FILE_DIRECTORY
-unset GIT_NOTES_REF
-unset GIT_NOTES_DISPLAY_REF
-unset GIT_NOTES_REWRITE_REF
-unset GIT_NOTES_REWRITE_MODE
 GIT_MERGE_VERBOSITY=5
 export GIT_MERGE_VERBOSITY
 export GIT_AUTHOR_EMAIL GIT_AUTHOR_NAME
@@ -583,7 +575,7 @@ test_external () {
 test_external_without_stderr () {
 	# The temporary file has no (and must have no) security
 	# implications.
-	tmp="$TMPDIR"; if [ -z "$tmp" ]; then tmp=/tmp; fi
+	tmp=${TMPDIR:-/tmp}
 	stderr="$tmp/git-external-stderr.$$.tmp"
 	test_external "$@" 4> "$stderr"
 	[ -f "$stderr" ] || error "Internal error: $stderr disappeared."
@@ -809,12 +801,14 @@ test_done () {
 		mkdir -p "$test_results_dir"
 		test_results_path="$test_results_dir/${0%.sh}-$$.counts"
 
-		echo "total $test_count" >> $test_results_path
-		echo "success $test_success" >> $test_results_path
-		echo "fixed $test_fixed" >> $test_results_path
-		echo "broken $test_broken" >> $test_results_path
-		echo "failed $test_failure" >> $test_results_path
-		echo "" >> $test_results_path
+		cat >>"$test_results_path" <<-EOF
+		total $test_count
+		success $test_success
+		fixed $test_fixed
+		broken $test_broken
+		failed $test_failure
+
+		EOF
 	fi
 
 	if test "$test_fixed" != 0
@@ -951,8 +945,8 @@ fi
 GIT_TEMPLATE_DIR="$GIT_BUILD_DIR"/templates/blt
 unset GIT_CONFIG
 GIT_CONFIG_NOSYSTEM=1
-GIT_CONFIG_NOGLOBAL=1
-export PATH GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_CONFIG_NOGLOBAL
+GIT_ATTR_NOSYSTEM=1
+export PATH GIT_EXEC_PATH GIT_TEMPLATE_DIR GIT_CONFIG_NOSYSTEM GIT_ATTR_NOSYSTEM
 
 . "$GIT_BUILD_DIR"/GIT-BUILD-OPTIONS
 
@@ -1001,13 +995,13 @@ rm -fr "$test" || {
 	exit 1
 }
 
+HOME="$TRASH_DIRECTORY"
+export HOME
+
 test_create_repo "$test"
 # Use -P to resolve symlinks in our working directory so that the cwd
 # in subprocesses like git equals our $PWD (for pathname comparisons).
 cd -P "$test" || exit 1
-
-HOME=$(pwd)
-export HOME
 
 this_test=${0##*/}
 this_test=${this_test%%-*}
@@ -1057,6 +1051,13 @@ case $(uname -s) in
 	# backslashes in pathspec are converted to '/'
 	# exec does not inherit the PID
 	test_set_prereq MINGW
+	test_set_prereq SED_STRIPS_CR
+	;;
+*CYGWIN*)
+	test_set_prereq POSIXPERM
+	test_set_prereq EXECKEEPSPID
+	test_set_prereq NOT_MINGW
+	test_set_prereq SED_STRIPS_CR
 	;;
 *)
 	test_set_prereq POSIXPERM
@@ -1068,6 +1069,15 @@ esac
 
 test -z "$NO_PERL" && test_set_prereq PERL
 test -z "$NO_PYTHON" && test_set_prereq PYTHON
+
+# Can we rely on git's output in the C locale?
+if test -n "$GETTEXT_POISON"
+then
+	GIT_GETTEXT_POISON=YesPlease
+	export GIT_GETTEXT_POISON
+else
+	test_set_prereq C_LOCALE_OUTPUT
+fi
 
 # test whether the filesystem supports symbolic links
 ln -s x y 2>/dev/null && test -h y 2>/dev/null && test_set_prereq SYMLINKS

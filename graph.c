@@ -59,27 +59,6 @@ enum graph_state {
 	GRAPH_COLLAPSING
 };
 
-/*
- * The list of available column colors.
- */
-static const char *column_colors_ansi[] = {
-	GIT_COLOR_RED,
-	GIT_COLOR_GREEN,
-	GIT_COLOR_YELLOW,
-	GIT_COLOR_BLUE,
-	GIT_COLOR_MAGENTA,
-	GIT_COLOR_CYAN,
-	GIT_COLOR_BOLD_RED,
-	GIT_COLOR_BOLD_GREEN,
-	GIT_COLOR_BOLD_YELLOW,
-	GIT_COLOR_BOLD_BLUE,
-	GIT_COLOR_BOLD_MAGENTA,
-	GIT_COLOR_BOLD_CYAN,
-	GIT_COLOR_RESET,
-};
-
-#define COLUMN_COLORS_ANSI_MAX (ARRAY_SIZE(column_colors_ansi) - 1)
-
 static const char **column_colors;
 static unsigned short column_colors_max;
 
@@ -228,7 +207,7 @@ struct git_graph *graph_init(struct rev_info *opt)
 
 	if (!column_colors)
 		graph_set_column_colors(column_colors_ansi,
-					COLUMN_COLORS_ANSI_MAX);
+					column_colors_ansi_max);
 
 	graph->commit = NULL;
 	graph->revs = opt;
@@ -798,22 +777,9 @@ static void graph_output_commit_char(struct git_graph *graph, struct strbuf *sb)
 	}
 
 	/*
-	 * If revs->left_right is set, print '<' for commits that
-	 * come from the left side, and '>' for commits from the right
-	 * side.
+	 * get_revision_mark() handles all other cases without assert()
 	 */
-	if (graph->revs && graph->revs->left_right) {
-		if (graph->commit->object.flags & SYMMETRIC_LEFT)
-			strbuf_addch(sb, '<');
-		else
-			strbuf_addch(sb, '>');
-		return;
-	}
-
-	/*
-	 * Print '*' in all other cases
-	 */
-	strbuf_addch(sb, '*');
+	strbuf_addstr(sb, get_revision_mark(graph->revs, graph->commit));
 }
 
 /*

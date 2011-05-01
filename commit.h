@@ -38,7 +38,7 @@ struct commit *lookup_commit_reference_gently(const unsigned char *sha1,
 					      int quiet);
 struct commit *lookup_commit_reference_by_name(const char *name);
 
-int parse_commit_buffer(struct commit *item, void *buffer, unsigned long size);
+int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size);
 int parse_commit(struct commit *item);
 
 /* Find beginning and length of commit subject. */
@@ -68,8 +68,7 @@ enum cmit_fmt {
 	CMIT_FMT_UNSPECIFIED
 };
 
-struct pretty_print_context
-{
+struct pretty_print_context {
 	int abbrev;
 	const char *subject;
 	const char *after_subject;
@@ -91,6 +90,8 @@ extern char *logmsg_reencode(const struct commit *commit,
 extern char *reencode_commit_message(const struct commit *commit,
 				     const char **encoding_p);
 extern void get_commit_format(const char *arg, struct rev_info *);
+extern const char *format_subject(struct strbuf *sb, const char *msg,
+				  const char *line_separator);
 extern void userformat_find_requirements(const char *fmt, struct userformat_want *w);
 extern void format_commit_message(const struct commit *commit,
 				  const char *format, struct strbuf *sb,

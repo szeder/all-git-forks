@@ -250,13 +250,14 @@ our %highlight_ext = (
 	# main extensions, defining name of syntax;
 	# see files in /usr/share/highlight/langDefs/ directory
 	map { $_ => $_ }
-		qw(py c cpp rb java css php sh pl js tex bib xml awk bat ini spec tcl),
+		qw(py c cpp rb java css php sh pl js tex bib xml awk bat ini spec tcl sql make),
 	# alternate extensions, see /etc/highlight/filetypes.conf
 	'h' => 'c',
+	map { $_ => 'sh'  } qw(bash zsh ksh),
 	map { $_ => 'cpp' } qw(cxx c++ cc),
-	map { $_ => 'php' } qw(php3 php4),
+	map { $_ => 'php' } qw(php3 php4 php5 phps),
 	map { $_ => 'pl'  } qw(perl pm), # perhaps also 'cgi'
-	'mak' => 'make',
+	map { $_ => 'make'} qw(mak mk),
 	map { $_ => 'xml' } qw(xhtml html htm),
 );
 
@@ -1198,10 +1199,14 @@ if (defined caller) {
 # -full => 0|1      - use absolute/full URL ($my_uri/$my_url as base)
 # -replay => 1      - start from a current view (replay with modifications)
 # -path_info => 0|1 - don't use/use path_info URL (if possible)
+# -anchor => ANCHOR - add #ANCHOR to end of URL, implies -replay if used alone
 sub href {
 	my %params = @_;
 	# default is to use -absolute url() i.e. $my_uri
 	my $href = $params{-full} ? $my_url : $my_uri;
+
+	# implicit -replay, must be first of implicit params
+	$params{-replay} = 1 if (keys %params == 1 && $params{-anchor});
 
 	$params{'project'} = $project unless exists $params{'project'};
 
@@ -1312,6 +1317,10 @@ sub href {
 
 	# final transformation: trailing spaces must be escaped (URI-encoded)
 	$href =~ s/(\s+)$/CGI::escape($1)/e;
+
+	if ($params{-anchor}) {
+		$href .= "#".esc_param($params{-anchor});
+	}
 
 	return $href;
 }
@@ -2912,8 +2921,10 @@ sub parse_date {
 	$date{'iso-8601'}  = sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ",
 	                     1900+$year, 1+$mon, $mday, $hour ,$min, $sec;
 
-	$tz =~ m/^([+\-][0-9][0-9])([0-9][0-9])$/;
-	my $local = $epoch + ((int $1 + ($2/60)) * 3600);
+	my ($tz_sign, $tz_hour, $tz_min) =
+		($tz =~ m/^([-+])(\d\d)(\d\d)$/);
+	$tz_sign = ($tz_sign eq '-' ? -1 : +1);
+	my $local = $epoch + $tz_sign*((($tz_hour*60) + $tz_min)*60);
 	($sec, $min, $hour, $mday, $mon, $year, $wday, $yday) = gmtime($local);
 	$date{'hour_local'} = $hour;
 	$date{'minute_local'} = $min;
@@ -3464,11 +3475,10 @@ sub run_highlighter {
 	my ($fd, $highlight, $syntax) = @_;
 	return $fd unless ($highlight && defined $syntax);
 
-	close $fd
-		or die_error(404, "Reading blob failed");
+	close $fd;
 	open $fd, quote_command(git_cmd(), "cat-file", "blob", $hash)." | ".
 	          quote_command($highlight_bin).
-	          " --xhtml --fragment --syntax $syntax |"
+	          " --replace-tabs=8 --fragment --syntax $syntax |"
 		or die_error(500, "Couldn't open file or run syntax highlighter");
 	return $fd;
 }
@@ -3501,7 +3511,7 @@ sub print_feed_meta {
 			$href_params{'-title'} = 'log';
 		}
 
-		foreach my $format qw(RSS Atom) {
+		foreach my $format (qw(RSS Atom)) {
 			my $type = lc($format);
 			my %link_attr = (
 				'-rel' => 'alternate',
@@ -3601,10 +3611,15 @@ EOF
 		insert_file($site_header);
 	}
 
-	print "<div class=\"page_header\">\n" .
-	      $cgi->a({-href => esc_url($logo_url),
-	               -title => $logo_label},
-	              qq(<img src=").esc_url($logo).qq(" width="72" height="27" alt="git" class="logo"/>));
+	print "<div class=\"page_header\">\n";
+	if (defined $logo) {
+		print $cgi->a({-href => esc_url($logo_url),
+		               -title => $logo_label},
+		              $cgi->img({-src => esc_url($logo),
+		                         -width => 72, -height => 27,
+		                         -alt => "git",
+		                         -class => "logo"}));
+	}
 	print $cgi->a({-href => esc_url($home_link)}, $home_link_str) . " / ";
 	if (defined $project) {
 		print $cgi->a({-href => href(action=>"summary")}, esc_html($project));
@@ -3677,7 +3692,7 @@ sub git_footer_html {
 		}
 		$href_params{'-title'} ||= 'log';
 
-		foreach my $format qw(RSS Atom) {
+		foreach my $format (qw(RSS Atom)) {
 			$href_params{'action'} = lc($format);
 			print $cgi->a({-href => href(%href_params),
 			              -title => "$href_params{'-title'} $format feed",
@@ -4330,7 +4345,8 @@ sub git_difftree_body {
 				# link to patch
 				$patchno++;
 				print "<td class=\"link\">" .
-				      $cgi->a({-href => "#patch$patchno"}, "patch") .
+				      $cgi->a({-href => href(-anchor=>"patch$patchno")},
+				              "patch") .
 				      " | " .
 				      "</td>\n";
 			}
@@ -4407,7 +4423,7 @@ sub git_difftree_body {
 		}
 		if ($diff->{'from_mode'} ne ('0' x 6)) {
 			$from_mode_oct = oct $diff->{'from_mode'};
-			if (S_ISREG($to_mode_oct)) { # only for regular file
+			if (S_ISREG($from_mode_oct)) { # only for regular file
 				$from_mode_str = sprintf("%04o", $from_mode_oct & 0777); # permission bits
 			}
 			$from_file_type = file_type($diff->{'from_mode'});
@@ -4427,8 +4443,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch");
-				print " | ";
+				print $cgi->a({-href => href(-anchor=>"patch$patchno")},
+				              "patch") .
+				      " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
 			                             hash_base=>$hash, file_name=>$diff->{'file'})},
@@ -4447,8 +4464,9 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch");
-				print " | ";
+				print $cgi->a({-href => href(-anchor=>"patch$patchno")},
+				              "patch") .
+				      " | ";
 			}
 			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'from_id'},
 			                             hash_base=>$parent, file_name=>$diff->{'file'})},
@@ -4489,7 +4507,8 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				print $cgi->a({-href => href(-anchor=>"patch$patchno")},
+				              "patch") .
 				      " | ";
 			} elsif ($diff->{'to_id'} ne $diff->{'from_id'}) {
 				# "commit" view and modified file (not onlu mode changed)
@@ -4534,7 +4553,8 @@ sub git_difftree_body {
 			if ($action eq 'commitdiff') {
 				# link to patch
 				$patchno++;
-				print $cgi->a({-href => "#patch$patchno"}, "patch") .
+				print $cgi->a({-href => href(-anchor=>"patch$patchno")},
+				              "patch") .
 				      " | ";
 			} elsif ($diff->{'to_id'} ne $diff->{'from_id'}) {
 				# "commit" view and modified file (not only pure rename or copy)
@@ -4901,7 +4921,6 @@ sub git_log_body {
 		next if !%co;
 		my $commit = $co{'id'};
 		my $ref = format_ref_marker($refs, $commit);
-		my %ad = parse_date($co{'author_epoch'});
 		git_print_header_div('commit',
 		               "<span class=\"age\">$co{'age_string'}</span>" .
 		               esc_html($co{'title'}) . $ref,
@@ -7059,7 +7078,7 @@ sub git_feed {
 	if (defined($commitlist[0])) {
 		%latest_commit = %{$commitlist[0]};
 		my $latest_epoch = $latest_commit{'committer_epoch'};
-		%latest_date   = parse_date($latest_epoch);
+		%latest_date   = parse_date($latest_epoch, $latest_commit{'comitter_tz'});
 		my $if_modified = $cgi->http('IF_MODIFIED_SINCE');
 		if (defined $if_modified) {
 			my $since;
@@ -7190,7 +7209,7 @@ XML
 		if (($i >= 20) && ((time - $co{'author_epoch'}) > 48*60*60)) {
 			last;
 		}
-		my %cd = parse_date($co{'author_epoch'});
+		my %cd = parse_date($co{'author_epoch'}, $co{'author_tz'});
 
 		# get list of changed files
 		open my $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,

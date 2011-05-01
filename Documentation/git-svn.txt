@@ -66,7 +66,7 @@ COMMANDS
 	Set the 'rewriteRoot' option in the [svn-remote] config.
 --rewrite-uuid=<UUID>;;
 	Set the 'rewriteUUID' option in the [svn-remote] config.
---username=<USER>;;
+--username=<user>;;
 	For transports that SVN handles authentication for (http,
 	https, and plain svn), specify the username.  For other
 	transports (eg svn+ssh://), you must include the username in
@@ -217,6 +217,13 @@ config key: svn.commiturl (overwrites all svn-remote.<name>.commiturl options)
 Using this option for any other purpose (don't ask) is very strongly
 discouraged.
 
+--mergeinfo=<mergeinfo>;;
+	Add the given merge information during the dcommit
+	(e.g. `--mergeinfo="/branches/foo:1-10"`). All svn server versions can
+	store this information (as a property), and svn clients starting from
+	version 1.5 can make use of it. 'git svn' currently does not use it
+	and does not set it automatically.
+
 'branch'::
 	Create a branch in the SVN repository.
 
@@ -343,6 +350,8 @@ Any other arguments are passed directly to 'git log'
 	Empty directories are automatically recreated when using
 	"git svn clone" and "git svn rebase", so "mkdirs" is intended
 	for use after commands like "git checkout" or "git reset".
+	(See the svn-remote.<name>.automkdirs config file option for
+	more information.)
 
 'commit-diff'::
 	Commits the diff of two tree-ish arguments from the
@@ -443,8 +452,8 @@ OPTIONS
 	Only used with the 'init' command.
 	These are passed directly to 'git init'.
 
--r <ARG>::
---revision <ARG>::
+-r <arg>::
+--revision <arg>::
 	   Used with the 'fetch' command.
 +
 This allows revision ranges for partial/cauterized history
@@ -648,6 +657,16 @@ svn-remote.<name>.rewriteUUID::
 	where the original UUID is not available via either useSvmProps
 	or useSvnsyncProps.
 
+svn-remote.<name>.pushurl::
+
+	Similar to git's 'remote.<name>.pushurl', this key is designed
+	to be used in cases where 'url' points to an SVN repository
+	via a read-only transport, to provide an alternate read/write
+	transport. It is assumed that both keys point to the same
+	repository. Unlike 'commiturl', 'pushurl' is a base path. If
+	either 'commiturl' or 'pushurl' could be used, 'commiturl'
+	takes precedence.
+
 svn.brokenSymlinkWorkaround::
 	This disables potentially expensive checks to workaround
 	broken symlinks checked into SVN by broken clients.  Set this
@@ -662,6 +681,14 @@ svn.pathnameencoding::
 	It can be used by windows users and by those who work in non-utf8
 	locales to avoid corrupted file names with non-ASCII characters.
 	Valid encodings are the ones supported by Perl's Encode module.
+
+svn-remote.<name>.automkdirs::
+	Normally, the "git svn clone" and "git svn rebase" commands
+	attempt to recreate empty directories that are in the
+	Subversion repository.  If this option is set to "false", then
+	empty directories will only be created if the "git svn mkdirs"
+	command is run explicitly.  If unset, 'git svn' assumes this
+	option to be "true".
 
 Since the noMetadata, rewriteRoot, rewriteUUID, useSvnsyncProps and useSvmProps
 options all affect the metadata generated and used by 'git svn'; they
@@ -878,10 +905,6 @@ SEE ALSO
 --------
 linkgit:git-rebase[1]
 
-Author
-------
-Written by Eric Wong <normalperson@yhbt.net>.
-
-Documentation
--------------
-Written by Eric Wong <normalperson@yhbt.net>.
+GIT
+---
+Part of the linkgit:git[1] suite

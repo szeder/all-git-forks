@@ -59,6 +59,7 @@ use File::Find;
 use Getopt::Long qw/:config gnu_getopt no_ignore_case auto_abbrev/;
 use IPC::Open3;
 use Git;
+use Memoize;  # core since 5.8.0, Jul 2002
 
 BEGIN {
 	# import functions from Git into our packages, en masse
@@ -72,6 +73,8 @@ BEGIN {
 			*{"${package}::$_"} = \&{"Git::$_"};
 		}
 	}
+	Memoize::memoize 'Git::config';
+	Memoize::memoize 'Git::config_bool';
 }
 
 my ($SVN);
@@ -528,7 +531,7 @@ sub cmd_dcommit {
 		$url = eval { command_oneline('config', '--get',
 			      "svn-remote.$gs->{repo_id}.commiturl") };
 		if (!$url) {
-			$url = $gs->full_url
+			$url = $gs->full_pushurl
 		}
 	}
 
@@ -676,7 +679,7 @@ sub cmd_branch {
 	$head ||= 'HEAD';
 
 	my (undef, $rev, undef, $gs) = working_head_info($head);
-	my $src = $gs->full_url;
+	my $src = $gs->full_pushurl;
 
 	my $remote = Git::SVN::read_all_remotes()->{$gs->{repo_id}};
 	my $allglobs = $remote->{ $_tag ? 'tags' : 'branches' };
@@ -727,7 +730,7 @@ sub cmd_branch {
 		$url = eval { command_oneline('config', '--get',
 			"svn-remote.$gs->{repo_id}.commiturl") };
 		if (!$url) {
-			$url = $remote->{url};
+			$url = $remote->{pushurl} || $remote->{url};
 		}
 	}
 	my $dst = join '/', $url, $lft, $branch_name, ($rgt || ());
@@ -781,6 +784,15 @@ sub cmd_find_rev {
 	print "$result\n" if $result;
 }
 
+sub auto_create_empty_directories {
+	my ($gs) = @_;
+	my $var = eval { command_oneline('config', '--get', '--bool',
+					 "svn-remote.$gs->{repo_id}.automkdirs") };
+	# By default, create empty directories by consulting the unhandled log,
+	# but allow setting it to 'false' to skip it.
+	return !($var && $var eq 'false');
+}
+
 sub cmd_rebase {
 	command_noisy(qw/update-index --refresh/);
 	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD');
@@ -804,7 +816,9 @@ sub cmd_rebase {
 		$_fetch_all ? $gs->fetch_all : $gs->fetch;
 	}
 	command_noisy(rebase_cmd(), $gs->refname);
-	$gs->mkemptydirs;
+	if (auto_create_empty_directories($gs)) {
+		$gs->mkemptydirs;
+	}
 }
 
 sub cmd_show_ignore {
@@ -1242,7 +1256,9 @@ sub post_fetch_checkout {
 	command_noisy(qw/read-tree -m -u -v HEAD HEAD/);
 	print STDERR "Checked out HEAD:\n  ",
 	             $gs->full_url, " r", $gs->last_rev, "\n";
-	$gs->mkemptydirs($gs->last_rev);
+	if (auto_create_empty_directories($gs)) {
+		$gs->mkemptydirs($gs->last_rev);
+	}
 }
 
 sub complete_svn_url {
@@ -1831,6 +1847,8 @@ sub read_all_remotes {
 			$r->{$1}->{svm} = {};
 		} elsif (m!^(.+)\.url=\s*(.*)\s*$!) {
 			$r->{$1}->{url} = $2;
+		} elsif (m!^(.+)\.pushurl=\s*(.*)\s*$!) {
+			$r->{$1}->{pushurl} = $2;
 		} elsif (m!^(.+)\.(branches|tags)=$svn_refspec$!) {
 			my ($remote, $t, $local_ref, $remote_ref) =
 			                                     ($1, $2, $3, $4);
@@ -2068,6 +2086,8 @@ sub new {
 	$self->{url} = command_oneline('config', '--get',
 	                               "svn-remote.$repo_id.url") or
                   die "Failed to read \"svn-remote.$repo_id.url\" in config\n";
+	$self->{pushurl} = eval { command_oneline('config', '--get',
+	                          "svn-remote.$repo_id.pushurl") };
 	$self->rebuild;
 	$self;
 }
@@ -2545,6 +2565,15 @@ sub full_url {
 	$self->{url} . (length $self->{path} ? '/' . $self->{path} : '');
 }
 
+sub full_pushurl {
+	my ($self) = @_;
+	if ($self->{pushurl}) {
+		return $self->{pushurl} . (length $self->{path} ? '/' .
+		       $self->{path} : '');
+	} else {
+		return $self->full_url;
+	}
+}
 
 sub set_commit_header_env {
 	my ($log_entry) = @_;
@@ -3197,6 +3226,8 @@ sub has_no_changes {
 		Memoize::unmemoize 'check_cherry_pick';
 		Memoize::unmemoize 'has_no_changes';
 	}
+
+	Memoize::memoize 'Git::SVN::repos_root';
 }
 
 END {
@@ -5734,7 +5765,7 @@ sub cmd_show_log {
 	my (@k, $c, $d, $stat);
 	my $esc_color = qr/(?:\033\[(?:(?:\d+;)*\d*)?m)*/;
 	while (<$log>) {
-		if (/^${esc_color}commit -?($::sha1_short)/o) {
+		if (/^${esc_color}commit (- )?($::sha1_short)/o) {
 			my $cmt = $1;
 			if ($c && cmt_showable($c) && $c->{r} != $r_last) {
 				$r_last = $c->{r};

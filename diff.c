@@ -23,7 +23,7 @@
 #endif
 
 static int diff_detect_rename_default;
-static int diff_rename_limit_default = 200;
+static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
 int diff_use_color_default = -1;
 static const char *diff_word_regex_cfg;
@@ -243,6 +243,15 @@ static int fill_mmfile(mmfile_t *mf, struct diff_filespec *one)
 	mf->ptr = one->data;
 	mf->size = one->size;
 	return 0;
+}
+
+/* like fill_mmfile, but only for size, so we can avoid retrieving blob */
+static unsigned long diff_filespec_size(struct diff_filespec *one)
+{
+	if (!DIFF_FILE_VALID(one))
+		return 0;
+	diff_populate_filespec(one, 1);
+	return one->size;
 }
 
 static int count_trailing_blank(mmfile_t *mf, unsigned ws_rule)
@@ -572,11 +581,14 @@ static void emit_rewrite_diff(const char *name_a,
 		line_prefix, metainfo, a_name.buf, name_a_tab, reset,
 		line_prefix, metainfo, b_name.buf, name_b_tab, reset,
 		line_prefix, fraginfo);
-	print_line_count(o->file, lc_a);
+	if (!o->irreversible_delete)
+		print_line_count(o->file, lc_a);
+	else
+		fprintf(o->file, "?,?");
 	fprintf(o->file, " +");
 	print_line_count(o->file, lc_b);
 	fprintf(o->file, " @@%s\n", reset);
-	if (lc_a)
+	if (lc_a && !o->irreversible_delete)
 		emit_rewrite_lines(&ecbdata, '-', data_one, size_one);
 	if (lc_b)
 		emit_rewrite_lines(&ecbdata, '+', data_two, size_two);
@@ -606,22 +618,20 @@ static void diff_words_append(char *line, unsigned long len,
 	buffer->text.ptr[buffer->text.size] = '\0';
 }
 
-struct diff_words_style_elem
-{
+struct diff_words_style_elem {
 	const char *prefix;
 	const char *suffix;
 	const char *color; /* NULL; filled in by the setup code if
 			    * color is enabled */
 };
 
-struct diff_words_style
-{
+struct diff_words_style {
 	enum diff_words_type type;
 	struct diff_words_style_elem new, old, ctx;
 	const char *newline;
 };
 
-struct diff_words_style diff_words_styles[] = {
+static struct diff_words_style diff_words_styles[] = {
 	{ DIFF_WORDS_PORCELAIN, {"+", "\n"}, {"-", "\n"}, {" ", "\n"}, "~\n" },
 	{ DIFF_WORDS_PLAIN, {"{+", "+}"}, {"[-", "-]"}, {"", ""}, "\n" },
 	{ DIFF_WORDS_COLOR, {"", ""}, {"", ""}, {"", ""}, "\n" }
@@ -1235,7 +1245,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	uintmax_t max_change = 0, max_len = 0;
 	int total_files = data->nr;
 	int width, name_width;
-	const char *reset, *set, *add_c, *del_c;
+	const char *reset, *add_c, *del_c;
 	const char *line_prefix = "";
 	struct strbuf *msg = NULL;
 
@@ -1262,7 +1272,6 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 
 	/* Find the longest filename and max number of changes */
 	reset = diff_get_color_opt(options, DIFF_RESET);
-	set   = diff_get_color_opt(options, DIFF_PLAIN);
 	add_c = diff_get_color_opt(options, DIFF_FILE_NEW);
 	del_c = diff_get_color_opt(options, DIFF_FILE_OLD);
 
@@ -1532,8 +1541,36 @@ static void show_dirstat(struct diff_options *options)
 		struct diff_filepair *p = q->queue[i];
 		const char *name;
 		unsigned long copied, added, damage;
+		int content_changed;
 
-		name = p->one->path ? p->one->path : p->two->path;
+		name = p->two->path ? p->two->path : p->one->path;
+
+		if (p->one->sha1_valid && p->two->sha1_valid)
+			content_changed = hashcmp(p->one->sha1, p->two->sha1);
+		else
+			content_changed = 1;
+
+		if (!content_changed) {
+			/*
+			 * The SHA1 has not changed, so pre-/post-content is
+			 * identical. We can therefore skip looking at the
+			 * file contents altogether.
+			 */
+			damage = 0;
+			goto found_damage;
+		}
+
+		if (DIFF_OPT_TST(options, DIRSTAT_BY_FILE)) {
+			/*
+			 * In --dirstat-by-file mode, we don't really need to
+			 * look at the actual file contents at all.
+			 * The fact that the SHA1 changed is enough for us to
+			 * add this file to the list of results
+			 * (with each file contributing equal damage).
+			 */
+			damage = 1;
+			goto found_damage;
+		}
 
 		if (DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two)) {
 			diff_populate_filespec(p->one, 0);
@@ -1557,14 +1594,18 @@ static void show_dirstat(struct diff_options *options)
 		/*
 		 * Original minus copied is the removed material,
 		 * added is the new material.  They are both damages
-		 * made to the preimage. In --dirstat-by-file mode, count
-		 * damaged files, not damaged lines. This is done by
-		 * counting only a single damaged line per file.
+		 * made to the preimage.
+		 * If the resulting damage is zero, we know that
+		 * diffcore_count_changes() considers the two entries to
+		 * be identical, but since content_changed is true, we
+		 * know that there must have been _some_ kind of change,
+		 * so we force all entries to have damage > 0.
 		 */
 		damage = (p->one->size - copied) + added;
-		if (DIFF_OPT_TST(options, DIRSTAT_BY_FILE) && damage > 0)
+		if (!damage)
 			damage = 1;
 
+found_damage:
 		ALLOC_GROW(dir.files, dir.nr + 1, dir.alloc);
 		dir.files[dir.nr].name = name;
 		dir.files[dir.nr].changed = damage;
@@ -1943,7 +1984,11 @@ static void builtin_diff(const char *name_a,
 		}
 	}
 
-	if (!DIFF_OPT_TST(o, TEXT) &&
+	if (o->irreversible_delete && lbl[1][0] == '/') {
+		fprintf(o->file, "%s", header.buf);
+		strbuf_reset(&header);
+		goto free_ab_and_return;
+	} else if (!DIFF_OPT_TST(o, TEXT) &&
 	    ( (!textconv_one && diff_filespec_is_binary(one)) ||
 	      (!textconv_two && diff_filespec_is_binary(two)) )) {
 		if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
@@ -1963,8 +2008,7 @@ static void builtin_diff(const char *name_a,
 			fprintf(o->file, "%sBinary files %s and %s differ\n",
 				line_prefix, lbl[0], lbl[1]);
 		o->found_changes = 1;
-	}
-	else {
+	} else {
 		/* Crazy xdl interfaces.. */
 		const char *diffopts = getenv("GIT_DIFF_OPTS");
 		xpparam_t xpp;
@@ -2079,24 +2123,27 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 		data->is_unmerged = 1;
 		return;
 	}
-	if (complete_rewrite) {
+
+	if (diff_filespec_is_binary(one) || diff_filespec_is_binary(two)) {
+		data->is_binary = 1;
+		data->added = diff_filespec_size(two);
+		data->deleted = diff_filespec_size(one);
+	}
+
+	else if (complete_rewrite) {
 		diff_populate_filespec(one, 0);
 		diff_populate_filespec(two, 0);
 		data->deleted = count_lines(one->data, one->size);
 		data->added = count_lines(two->data, two->size);
-		goto free_and_return;
 	}
-	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
-		die("unable to read files to diff");
 
-	if (diff_filespec_is_binary(one) || diff_filespec_is_binary(two)) {
-		data->is_binary = 1;
-		data->added = mf2.size;
-		data->deleted = mf1.size;
-	} else {
+	else {
 		/* Crazy xdl interfaces.. */
 		xpparam_t xpp;
 		xdemitconf_t xecfg;
+
+		if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
+			die("unable to read files to diff");
 
 		memset(&xpp, 0, sizeof(xpp));
 		memset(&xecfg, 0, sizeof(xecfg));
@@ -2105,7 +2152,6 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 			      &xpp, &xecfg);
 	}
 
- free_and_return:
 	diff_free_filespec_data(one);
 	diff_free_filespec_data(two);
 }
@@ -3160,6 +3206,9 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 			return error("invalid argument to -M: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_RENAME;
 	}
+	else if (!strcmp(arg, "-D") || !strcmp(arg, "--irreversible-delete")) {
+		options->irreversible_delete = 1;
+	}
 	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--find-copies=") ||
 		 !strcmp(arg, "--find-copies")) {
 		if (options->detect_rename == DIFF_DETECT_COPY)
@@ -3947,6 +3996,28 @@ static int is_summary_empty(const struct diff_queue_struct *q)
 	return 1;
 }
 
+static const char rename_limit_warning[] =
+"inexact rename detection was skipped due to too many files.";
+
+static const char degrade_cc_to_c_warning[] =
+"only found copies from modified paths due to too many files.";
+
+static const char rename_limit_advice[] =
+"you may want to set your %s variable to at least "
+"%d and retry the command.";
+
+void diff_warn_rename_limit(const char *varname, int needed, int degraded_cc)
+{
+	if (degraded_cc)
+		warning(degrade_cc_to_c_warning);
+	else if (needed)
+		warning(rename_limit_warning);
+	else
+		return;
+	if (0 < needed && needed < 32767)
+		warning(rename_limit_advice, varname, needed);
+}
+
 void diff_flush(struct diff_options *options)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -4228,6 +4299,10 @@ void diffcore_std(struct diff_options *options)
 int diff_result_code(struct diff_options *opt, int status)
 {
 	int result = 0;
+
+	diff_warn_rename_limit("diff.renamelimit",
+			       opt->needed_rename_limit,
+			       opt->degraded_cc_to_c);
 	if (!DIFF_OPT_TST(opt, EXIT_WITH_STATUS) &&
 	    !(opt->output_format & DIFF_FORMAT_CHECKDIFF))
 		return status;
