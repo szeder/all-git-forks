@@ -25,6 +25,14 @@ const char *rerere_path(const char *hex, const char *file)
 	return git_path("rr-cache/%s/%s", hex, file);
 }
 
+void unlink_rerere_item(const char *name)
+{
+	unlink(rerere_path(name, "thisimage"));
+	unlink(rerere_path(name, "preimage"));
+	unlink(rerere_path(name, "postimage"));
+	rmdir(git_path("rr-cache/%s", name));
+}
+
 int has_rerere_resolution(const char *hex)
 {
 	struct stat st;
@@ -670,4 +678,23 @@ int rerere_forget(const char **pathspec)
 		rerere_forget_one_path(it->string, &merge_rr);
 	}
 	return write_rr(&merge_rr, fd);
+}
+
+int rerere_clear(void)
+{
+	int i, fd;
+	struct string_list merge_rr = STRING_LIST_INIT_DUP;
+
+	fd = setup_rerere(&merge_rr, RERERE_NOAUTOUPDATE);
+	if (fd < 0)
+		return 0;
+
+	for (i = 0; i < merge_rr.nr; i++) {
+		const char *name = (const char *)merge_rr.items[i].util;
+		if (!has_rerere_resolution(name))
+			unlink_rerere_item(name);
+	}
+	string_list_clear(&merge_rr, 1);
+	unlink_or_warn(git_path("MERGE_RR"));
+	return 0;
 }
