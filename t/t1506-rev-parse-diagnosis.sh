@@ -75,4 +75,18 @@ test_expect_success 'invalid @{n} reference' '
 	grep "fatal: Log for [^ ]* only has [0-9][0-9]* entries." error
 '
 
+test_expect_success 'dotdot is not an empty set' '
+	( H=$(git rev-parse HEAD) && echo $H ; echo ^$H ) >expect &&
+
+	git rev-parse HEAD.. >actual &&
+	test_cmp expect actual &&
+
+	git rev-parse ..HEAD >actual &&
+	test_cmp expect actual &&
+
+	echo .. >expect &&
+	git rev-parse .. >actual &&
+	test_cmp expect actual
+'
+
 test_done
