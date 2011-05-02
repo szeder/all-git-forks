@@ -405,18 +405,18 @@ int add_excludes_from_file_to_list(const char *fname,
 		}
 	}
 	else {
-		size = xsize_t(st.st_size);
-		if (size == 0) {
-			close(fd);
-			return 0;
-		}
-		buf = xmalloc(size+1);
-		if (read_in_full(fd, buf, size) != size) {
-			free(buf);
+		struct strbuf sb = STRBUF_INIT;
+		if (strbuf_read(&sb, fd, 0) < 0) {
 			close(fd);
 			return -1;
 		}
-		buf[size++] = '\n';
+		if (!sb.len) {
+			close(fd);
+			return 0;
+		}
+
+		strbuf_addch(&sb, '\n');
+		buf = strbuf_detach(&sb, &size);
 		close(fd);
 	}
 
