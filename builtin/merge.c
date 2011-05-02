@@ -325,7 +325,7 @@ static void squash_message(struct commit *commit)
 	struct pretty_print_context ctx = {0};
 
 	printf(_("Squash commit -- not updating HEAD\n"));
-	fd = open(git_path("SQUASH_MSG"), O_WRONLY | O_CREAT, 0666);
+	fd = open(git_path("SQUASH_MSG"), O_WRONLY | O_CREAT | O_TEXT, 0666);
 	if (fd < 0)
 		die_errno(_("Could not write to '%s'"), git_path("SQUASH_MSG"));
 
@@ -853,7 +853,8 @@ static void add_strategies(const char *string, unsigned attr)
 
 static void write_merge_msg(struct strbuf *msg)
 {
-	int fd = open(git_path("MERGE_MSG"), O_WRONLY | O_CREAT, 0666);
+	int fd = open(git_path("MERGE_MSG"), O_WRONLY | O_CREAT | O_TEXT,
+	    0666);
 	if (fd < 0)
 		die_errno(_("Could not open '%s' for writing"),
 			  git_path("MERGE_MSG"));

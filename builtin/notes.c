@@ -170,7 +170,7 @@ static void create_note(const unsigned char *object, struct msg_arg *msg,
 
 		/* write the template message before editing: */
 		path = git_pathdup("NOTES_EDITMSG");
-		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+		fd = open(path, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0600);
 		if (fd < 0)
 			die_errno(_("could not create file '%s'"), path);
 

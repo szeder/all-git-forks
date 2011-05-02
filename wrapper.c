@@ -300,7 +300,7 @@ int git_mkstemps_mode(char *pattern, int suffix_len, int mode)
 		template[4] = letters[v % num_letters]; v /= num_letters;
 		template[5] = letters[v % num_letters]; v /= num_letters;
 
-		fd = open(pattern, O_CREAT | O_EXCL | O_RDWR, mode);
+		fd = open(pattern, O_CREAT | O_EXCL | O_RDWR | O_BINARY, mode);
 		if (fd > 0)
 			return fd;
 		/*

@@ -3226,7 +3226,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			die ("Could not add %s to temporary index", name);
 	}
 
-	fd = open(filename, O_WRONLY | O_CREAT, 0666);
+	fd = open(filename, O_WRONLY | O_CREAT | O_BINARY, 0666);
 	if (fd < 0 || write_index(&result, fd) || close(fd))
 		die ("Could not write temporary index to %s", filename);
 
@@ -3424,7 +3424,8 @@ static int try_create_file(const char *path, unsigned int mode, const char *buf,
 		 */
 		return symlink(buf, path);
 
-	fd = open(path, O_CREAT | O_EXCL | O_WRONLY, (mode & 0100) ? 0777 : 0666);
+	fd = open(path, O_CREAT | O_EXCL | O_WRONLY | O_BINARY,
+	    (mode & 0100) ? 0777 : 0666);
 	if (fd < 0)
 		return -1;
 
@@ -3943,7 +3944,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		} else if (0 < prefix_length)
 			arg = prefix_filename(prefix, prefix_length, arg);
 
-		fd = open(arg, O_RDONLY);
+		fd = open(arg, O_RDONLY | O_TEXT);
 		if (fd < 0)
 			die_errno("can't open patch '%s'", arg);
 		read_stdin = 0;

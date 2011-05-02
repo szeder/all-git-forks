@@ -1242,7 +1242,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	/*
 	 * If .git/config does not exist yet, write a minimal version.
 	 */
-	in_fd = open(config_filename, O_RDONLY);
+	in_fd = open(config_filename, O_RDONLY | O_TEXT);
 	if ( in_fd < 0 ) {
 		free(store.key);
 

@@ -2546,7 +2546,7 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		}
 		if (size_only)
 			return 0;
-		fd = open(s->path, O_RDONLY);
+		fd = open(s->path, O_RDONLY | O_BINARY);
 		if (fd < 0)
 			goto err_empty;
 		s->data = xmmap(NULL, s->size, PROT_READ, MAP_PRIVATE, fd, 0);

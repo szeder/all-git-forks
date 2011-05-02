@@ -177,12 +177,13 @@ static const char *open_pack_file(const char *pack_name)
 						"pack/tmp_pack_XXXXXX");
 			pack_name = xstrdup(tmpfile);
 		} else
-			output_fd = open(pack_name, O_CREAT|O_EXCL|O_RDWR, 0600);
+			output_fd = open(pack_name, O_CREAT|O_EXCL|O_RDWR|
+			    O_BINARY, 0600);
 		if (output_fd < 0)
 			die_errno("unable to create '%s'", pack_name);
 		pack_fd = output_fd;
 	} else {
-		input_fd = open(pack_name, O_RDONLY);
+		input_fd = open(pack_name, O_RDONLY | O_BINARY);
 		if (input_fd < 0)
 			die_errno("cannot open packfile '%s'", pack_name);
 		output_fd = -1;

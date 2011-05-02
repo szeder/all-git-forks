@@ -1153,7 +1153,7 @@ static int git_open_noatime(const char *name)
 	static int sha1_file_open_flag = O_NOATIME;
 
 	for (;;) {
-		int fd = open(name, O_RDONLY | sha1_file_open_flag);
+		int fd = open(name, O_RDONLY | O_BINARY | sha1_file_open_flag);
 		if (fd >= 0)
 			return fd;
 
@@ -2781,7 +2781,7 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 
 	switch (st->st_mode & S_IFMT) {
 	case S_IFREG:
-		fd = open(path, O_RDONLY);
+		fd = open(path, O_RDONLY | O_BINARY);
 		if (fd < 0)
 			return error("open(\"%s\"): %s", path,
 				     strerror(errno));

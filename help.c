@@ -134,7 +134,7 @@ if ((st.st_mode & S_IXUSR) == 0)
 {	/* cannot trust the executable bit, peek into the file instead */
 	char buf[3] = { 0 };
 	int n;
-	int fd = open(name, O_RDONLY);
+	int fd = open(name, O_RDONLY | O_BINARY);
 	st.st_mode &= ~S_IXUSR;
 	if (fd >= 0) {
 		n = read(fd, buf, 2);

@@ -183,7 +183,7 @@ int validate_headref(const char *path)
 	/*
 	 * Anything else, just open it and try to see if it is a symbolic ref.
 	 */
-	fd = open(path, O_RDONLY);
+	fd = open(path, O_RDONLY | O_TEXT);
 	if (fd < 0)
 		return -1;
 	len = read_in_full(fd, buffer, sizeof(buffer)-1);

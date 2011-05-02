@@ -176,7 +176,7 @@ static int ll_ext_merge(const struct ll_merge_driver *fn,
 
 	args[0] = cmd.buf;
 	status = run_command_v_opt(args, RUN_USING_SHELL);
-	fd = open(temp[1], O_RDONLY);
+	fd = open(temp[1], O_RDONLY | O_BINARY);
 	if (fd < 0)
 		goto bad;
 	if (fstat(fd, &st))

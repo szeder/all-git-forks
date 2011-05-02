@@ -463,7 +463,7 @@ static void *load_file(const char *filename, size_t *sz)
 	if (!S_ISREG(st.st_mode))
 		return NULL;
 	*sz = xsize_t(st.st_size);
-	i = open(filename, O_RDONLY);
+	i = open(filename, O_RDONLY | O_BINARY);
 	if (i < 0)
 		goto err_ret;
 	data = xmalloc(*sz + 1);

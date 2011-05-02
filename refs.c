@@ -446,7 +446,7 @@ static int resolve_gitlink_ref_recursive(struct ref_cache *refs,
 	path = *refs->name
 		? git_path_submodule(refs->name, "%s", refname)
 		: git_path("%s", refname);
-	fd = open(path, O_RDONLY);
+	fd = open(path, O_RDONLY | O_TEXT);
 	if (fd < 0)
 		return resolve_gitlink_packed_ref(refs, refname, sha1);
 
@@ -576,7 +576,7 @@ const char *resolve_ref(const char *refname, unsigned char *sha1, int reading, i
 		 * Anything else, just open it and try to use it as
 		 * a ref
 		 */
-		fd = open(path, O_RDONLY);
+		fd = open(path, O_RDONLY | O_TEXT);
 		if (fd < 0)
 			return NULL;
 		len = read_in_full(fd, buffer, sizeof(buffer)-1);
@@ -1575,7 +1575,7 @@ static int copy_msg(char *buf, const char *msg)
 
 int log_ref_setup(const char *refname, char *logfile, int bufsize)
 {
-	int logfd, oflags = O_APPEND | O_WRONLY;
+	int logfd, oflags = O_APPEND | O_WRONLY | O_TEXT;
 
 	git_snpath(logfile, bufsize, "logs/%s", refname);
 	if (log_all_ref_updates &&

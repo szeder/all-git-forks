@@ -669,7 +669,7 @@ static void mark_expected_rev(char *bisect_rev_hex)
 {
 	int len = strlen(bisect_rev_hex);
 	const char *filename = git_path("BISECT_EXPECTED_REV");
-	int fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
+	int fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY | O_TEXT, 0600);
 
 	if (fd < 0)
 		die_errno("could not create file '%s'", filename);

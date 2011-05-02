@@ -61,7 +61,7 @@ static int split_one(FILE *mbox, const char *name, int allow_bare)
 	if (is_bare && !allow_bare)
 		goto corrupt;
 
-	fd = open(name, O_WRONLY | O_CREAT | O_EXCL, 0666);
+	fd = open(name, O_WRONLY | O_CREAT | O_EXCL | O_TEXT, 0666);
 	if (fd < 0)
 		die_errno("cannot open output file '%s'", name);
 	output = xfdopen(fd, "w");

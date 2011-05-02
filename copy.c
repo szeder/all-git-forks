@@ -53,9 +53,10 @@ int copy_file(const char *dst, const char *src, int mode)
 	int fdi, fdo, status;
 
 	mode = (mode & 0111) ? 0777 : 0666;
-	if ((fdi = open(src, O_RDONLY)) < 0)
+	if ((fdi = open(src, O_RDONLY | O_BINARY)) < 0)
 		return fdi;
-	if ((fdo = open(dst, O_WRONLY | O_CREAT | O_EXCL, mode)) < 0) {
+	if ((fdo = open(dst, O_WRONLY | O_CREAT | O_EXCL | O_BINARY,
+		    mode)) < 0) {
 		close(fdi);
 		return fdo;
 	}

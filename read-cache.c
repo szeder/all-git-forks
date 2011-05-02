@@ -88,7 +88,7 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 static int ce_compare_data(struct cache_entry *ce, struct stat *st)
 {
 	int match = -1;
-	int fd = open(ce->name, O_RDONLY);
+	int fd = open(ce->name, O_RDONLY | O_BINARY);
 
 	if (fd >= 0) {
 		unsigned char sha1[20];
@@ -1268,7 +1268,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	errno = ENOENT;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
-	fd = open(path, O_RDONLY);
+	fd = open(path, O_RDONLY | O_BINARY);
 	if (fd < 0) {
 		if (errno == ENOENT)
 			return 0;

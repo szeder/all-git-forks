@@ -551,6 +551,14 @@ void git_qsort(void *base, size_t nmemb, size_t size,
 #define fstat_is_reliable() 1
 #endif
 
+/* O_BINARY and O_TEXT aren't defined (nor needed) on all platforms */
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
+#ifndef O_TEXT
+#define O_TEXT 0
+#endif
+
 #ifndef va_copy
 /*
  * Since an obvious implementation of va_list would be to make it a
