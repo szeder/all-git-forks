@@ -391,7 +391,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	if (!refs_found)
 		return -1;
 
-	if (warn_ambiguous_refs && refs_found > 1)
+	if (warn_ambiguous_refs && refs_found > 1 && isatty(2))
 		warning(warn_msg, len, str);
 
 	if (reflog_len) {
