@@ -307,7 +307,7 @@ version() if $_version;
 usage(1) unless defined $cmd;
 load_authors() if $_authors;
 if (defined $_authors_prog) {
-	$_authors_prog = "'" . File::Spec->rel2abs($_authors_prog) . "'";
+	$_authors_prog = "'" . File::Spec->rel2abs(glob($_authors_prog)) . "'";
 }
 
 unless ($cmd =~ /^(?:clone|init|multi-init|commit-diff)$/) {
