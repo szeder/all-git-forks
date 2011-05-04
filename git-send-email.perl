@@ -140,9 +140,17 @@ my $smtp;
 my $auth;
 
 # Variables we fill in automatically, or via prompting:
-my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
+my (@to,$no_to,@initial_to,%cc,$no_cc,@bcclist,$no_bcc,@xh,
 	$initial_reply_to,$initial_subject,@files,
 	$author,$sender,$smtp_authpass,$annotate,$compose,$time);
+
+sub all_cc {
+	my @keys = @_;
+	@keys = qw(initial from cc body cc-cmd) unless @keys;
+	return map { ref($_) ? @$_ : () } @cc{@keys};
+
+	#return map { ref($_) ? @$_ : () } values %cc;
+}
 
 my $envelope_sender;
 
@@ -221,7 +229,7 @@ my %config_settings = (
     "smtpdomain" => \$smtp_domain,
     "to" => \@initial_to,
     "tocmd" => \$to_cmd,
-    "cc" => \@initial_cc,
+    "cc" => \@{$cc{'initial'}},
     "cccmd" => \$cc_cmd,
     "aliasfiletype" => \$aliasfiletype,
     "bcc" => \@bcclist,
@@ -281,7 +289,7 @@ my $rc = GetOptions("sender|from=s" => \$sender,
 		    "to=s" => \@initial_to,
 		    "to-cmd=s" => \$to_cmd,
 		    "no-to" => \$no_to,
-		    "cc=s" => \@initial_cc,
+		    "cc=s" => \@{$cc{'initial'}},
 		    "no-cc" => \$no_cc,
 		    "bcc=s" => \@bcclist,
 		    "no-bcc" => \$no_bcc,
@@ -423,7 +431,7 @@ foreach my $entry (@initial_to) {
 	die "Comma in --to entry: $entry'\n" unless $entry !~ m/,/;
 }
 
-foreach my $entry (@initial_cc) {
+foreach my $entry (@{$cc{'initial'}}) {
 	die "Comma in --cc entry: $entry'\n" unless $entry !~ m/,/;
 }
 
@@ -753,7 +761,7 @@ sub expand_one_alias {
 
 @initial_to = expand_aliases(@initial_to);
 @initial_to = (map { sanitize_address($_) } @initial_to);
-@initial_cc = expand_aliases(@initial_cc);
+@{$cc{'initial'}} = expand_aliases(@{$cc{'initial'}});
 @bcclist = expand_aliases(@bcclist);
 
 if ($thread && !defined $initial_reply_to && $prompting) {
@@ -959,12 +967,14 @@ sub maildomain {
 
 sub send_message {
 	my @recipients = unique_email_list(@to);
-	@cc = (grep { my $cc = extract_valid_address($_);
-		      not grep { $cc eq $_ || $_ =~ /<\Q${cc}\E>$/ } @recipients
-		    }
-	       map { sanitize_address($_) }
-	       @cc);
-	my $to = join (",\n\t", @recipients);
+	my $to = join(",\n\t", @recipients);
+	my @cc =
+		grep {
+			my $cc = extract_valid_address($_);
+			not grep { $cc eq $_ || $_ =~ /<\Q${cc}\E>$/ } @recipients
+		}
+		map { sanitize_address($_) }
+		all_cc();
 	@recipients = unique_email_list(@recipients,@cc,@bcclist);
 	@recipients = (map { extract_valid_address($_) } @recipients);
 	my $date = format_2822_time($time++);
@@ -1159,7 +1169,7 @@ foreach my $t (@files) {
 	my $has_content_type;
 	my $body_encoding;
 	@to = ();
-	@cc = ();
+	$cc{$_} = [] foreach (qw(from cc body));
 	@xh = ();
 	my $input_format = undef;
 	my @header = ();
@@ -1197,7 +1207,7 @@ foreach my $t (@files) {
 				next if $suppress_cc{'self'} and $author eq $sender;
 				printf("(mbox) Adding cc: %s from line '%s'\n",
 					$1, $_) unless $quiet;
-				push @cc, $1;
+				push @{$cc{'from'}}, $1;
 			}
 			elsif (/^To:\s+(.*)$/) {
 				foreach my $addr (parse_address_line($1)) {
@@ -1215,7 +1225,7 @@ foreach my $t (@files) {
 					}
 					printf("(mbox) Adding cc: %s from line '%s'\n",
 						$addr, $_) unless $quiet;
-					push @cc, $addr;
+					push @{$cc{'cc'}}, $addr;
 				}
 			}
 			elsif (/^Content-type:/i) {
@@ -1239,10 +1249,10 @@ foreach my $t (@files) {
 			# line 2 = subject
 			# So let's support that, too.
 			$input_format = 'lots';
-			if (@cc == 0 && !$suppress_cc{'cc'}) {
+			if (all_cc() == 0 && !$suppress_cc{'cc'}) {
 				printf("(non-mbox) Adding cc: %s from line '%s'\n",
 					$_, $_) unless $quiet;
-				push @cc, $_;
+				push @{$cc{'cc'}}, $_;
 			} elsif (!defined $subject) {
 				$subject = $_;
 			}
@@ -1261,7 +1271,7 @@ foreach my $t (@files) {
 				next if $suppress_cc{'sob'} and $what =~ /Signed-off-by/i;
 				next if $suppress_cc{'bodycc'} and $what =~ /Cc/i;
 			}
-			push @cc, $c;
+			push @{$cc{'body'}}, $c;
 			printf("(body) Adding cc: %s from line '%s'\n",
 				$c, $_) unless $quiet;
 		}
@@ -1270,7 +1280,7 @@ foreach my $t (@files) {
 
 	push @to, recipients_cmd("to-cmd", "to", $to_cmd, $t)
 		if defined $to_cmd;
-	push @cc, recipients_cmd("cc-cmd", "cc", $cc_cmd, $t)
+	push @{$cc{'cc-cmd'}}, recipients_cmd("cc-cmd", "cc", $cc_cmd, $t)
 		if defined $cc_cmd && !$suppress_cc{'cccmd'};
 
 	if ($broken_encoding{$t} && !$has_content_type) {
@@ -1308,14 +1318,14 @@ foreach my $t (@files) {
 		}
 	}
 
+	my $has_cc = all_cc();
 	$needs_confirm = (
 		$confirm eq "always" or
-		($confirm =~ /^(?:auto|cc)$/ && @cc) or
+		($confirm =~ /^(?:auto|cc)$/ && $has_cc) or
 		($confirm =~ /^(?:auto|compose)$/ && $compose && $message_num == 1));
-	$needs_confirm = "inform" if ($needs_confirm && $confirm_unconfigured && @cc);
+	$needs_confirm = "inform" if ($needs_confirm && $confirm_unconfigured && $has_cc);
 
 	@to = (@initial_to, @to);
-	@cc = (@initial_cc, @cc);
 
 	my $message_was_sent = send_message();
 
