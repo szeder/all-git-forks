@@ -1,4 +1,4 @@
-From ac1809a33c21821853d48b316d32bfe2c3194761 Mon Sep 17 00:00:00 2001
+From ab27f1ef083c40574e05f2f0469ac0bd2b5a0fff Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Wed, 6 Apr 2011 14:12:34 -0700
 Subject: add--interactive.perl: factor out repeated --recount option
@@ -13,7 +13,7 @@ the same --recount over and over again, move it to a single place that
 actually runs the command, namely, "run_git_apply" subroutine.
 
 Signed-off-by: Junio C Hamano <gitster@pobox.com>
-(cherry picked from commit b988ac18ffb19d643b150a7cb0159be3b2de398a)
+(cherry picked from commit 9dce832354502a04e724c5776e60fc6189182307)
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -21,7 +21,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 8 insertions(+), 8 deletions(-)
 
 diff --git a/git-add--interactive.perl b/git-add--interactive.perl
-index a329c5a..6a439db 100755
+index 4fb8cd0..fced0ce 100755
 --- a/git-add--interactive.perl
 +++ b/git-add--interactive.perl
 @@ -705,7 +705,7 @@ sub add_untracked_cmd {
@@ -75,5 +75,5 @@ index a329c5a..6a439db 100755
  			print colored $error_color, "Nothing was applied.\n";
  			return 0;
 -- 
-1.7.5.rc3
+1.7.5
 

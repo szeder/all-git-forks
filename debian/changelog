@@ -1,3 +1,18 @@
+git (1:1.7.5.1-0.1) unstable; urgency=low
+
+  * new upstream point release.
+  * merge branch debian-experimental.
+  * debian/diff/:
+    - 0009-upload-pack-start-pack-objects-before-async-rev-...diff:
+      remove; applied upstream.
+    - 0007, 0008 (the add -p split-and-edit fix): rename to 0009-*,
+      0010-*.
+    - 0007-add-p-q-should-really-quit.diff, 0008-t3701-...diff: new
+      from upstream; tests: check that the add -p split-and-edit bug
+      has not resurfaced.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 05 May 2011 01:11:51 -0500
+
 git (1:1.7.5-1) experimental; urgency=low
 
   * new upstream release.

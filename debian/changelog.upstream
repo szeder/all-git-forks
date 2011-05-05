@@ -1,3 +1,48 @@
+Version v1.7.5.1; changes since v1.7.5:
+---------------------------------------
+
+Alex Riesen (1):
+      clean: unreadable directory may still be rmdir-able if it is empty
+
+Dan McGee (2):
+      stash: add two more tests for --no-keep-index
+      stash: ensure --no-keep-index and --patch can be used in any order
+
+Jeff King (3):
+      stash: fix accidental apply of non-existent stashes
+      stash: drop dirty worktree check on apply
+      upload-pack: start pack-objects before async rev-list
+
+Johan Herland (4):
+      --dirstat: Describe non-obvious differences relative to --stat or regular diff
+      --dirstat-by-file: Make it faster and more correct
+      Teach --dirstat not to completely ignore rearranged lines within a file
+      --dirstat: In case of renames, use target filename instead of source filename
+
+Jon Seymour (1):
+      stash: fix false positive in the invalid ref test.
+
+Junio C Hamano (4):
+      Teach core.bigfilethreashold to pack-objects
+      http: clear POSTFIELDS when initializing a slot
+      Start 1.7.5.1 maintenance track
+      Git 1.7.5.1
+
+Michael J Gruber (6):
+      builtin/log.c: separate default and setup of cmd_log_init()
+      t/t1411: test reflog with formats
+      reflog: fix overriding of command line options
+      t1506: factor out test for "Did you mean..."
+      sha1_name: Suggest commit:./file for path in subdir
+      date: avoid "X years, 12 months" in relative dates
+
+Sylvain Rabot (1):
+      git-send-email: fix missing space in error message
+
+Valentin Haenel (1):
+      git-add.txt: document 'add.ignoreErrors'
+
+
 Version v1.7.5; changes since v1.7.5-rc3:
 -----------------------------------------
 

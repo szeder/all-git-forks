@@ -1,4 +1,4 @@
-From 459f1e8f3567f293b994c7f7d7cdf774fe65e5db Mon Sep 17 00:00:00 2001
+From 96856bb5a373796fa21d1ac037151d52cb48001f Mon Sep 17 00:00:00 2001
 From: Junio C Hamano <gitster@pobox.com>
 Date: Wed, 6 Apr 2011 14:20:57 -0700
 Subject: "add -p": work-around an old laziness that does not coalesce hunks
@@ -17,7 +17,7 @@ Do not even advertise the option, as this is merely a workaround, and the
 correct fix is to make "add -p" correctly coalesce adjacent patch hunks.
 
 Signed-off-by: Junio C Hamano <gitster@pobox.com>
-(cherry picked from commit 19847a86af20d472899e1649256f1a8900a77572)
+(cherry picked from commit 933e44d3a040c41a1e45d53a416edd107cc3ae0a)
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -60,7 +60,7 @@ index 36e1507..530d4bb 100644
  		OPT_BIT(0, "inaccurate-eof", &options,
  			"tolerate incorrectly detected missing new-line at the end of file",
 diff --git a/git-add--interactive.perl b/git-add--interactive.perl
-index 6a439db..8de96d9 100755
+index fced0ce..4f08fe7 100755
 --- a/git-add--interactive.perl
 +++ b/git-add--interactive.perl
 @@ -705,7 +705,7 @@ sub add_untracked_cmd {
@@ -73,5 +73,5 @@ index 6a439db..8de96d9 100755
  	return close $fh;
  }
 -- 
-1.7.5.rc3
+1.7.5
 
