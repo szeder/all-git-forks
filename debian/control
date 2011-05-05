@@ -11,7 +11,7 @@ Build-Depends: libz-dev,
  unzip, libio-pty-perl,
  libc6.1 (>= 2.10.2-6) [ia64]
 Build-Depends-Indep: asciidoc (>> 8.0.0), xmlto, docbook-xsl (>> 1.72)
-Standards-Version: 3.9.1.0
+Standards-Version: 3.9.2.0
 Homepage: http://git-scm.com/
 Vcs-Git: http://smarden.org/git/git.git/
 

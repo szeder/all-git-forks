@@ -1,4 +1,4 @@
-git (1:1.7.5.1-0.1) unstable; urgency=low
+git (1:1.7.5.1-1) unstable; urgency=low
 
   * new upstream point release.
   * merge branch debian-experimental.
@@ -16,8 +16,9 @@ git (1:1.7.5.1-0.1) unstable; urgency=low
   * debian/control: package git: Conflicts: git-core from
     Debian 4.0 (etch) which provided /usr/bin/git through the
     alternatives system.
+  * debian/control: Standards-Version: 3.9.2.0.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 05 May 2011 01:11:51 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 05 May 2011 03:41:36 -0500
 
 git (1:1.7.5-1) experimental; urgency=low
 
