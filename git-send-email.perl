@@ -968,22 +968,32 @@ sub maildomain {
 sub send_message {
 	my @recipients = unique_email_list(@to);
 	my $to = join(",\n\t", @recipients);
-	my @cc =
-		grep {
-			my $cc = extract_valid_address($_);
-			not grep { $cc eq $_ || $_ =~ /<\Q${cc}\E>$/ } @recipients
-		}
-		map { sanitize_address($_) }
-		all_cc();
-	@recipients = unique_email_list(@recipients,@cc,@bcclist);
+	my $sanitize_cc = sub {
+		return
+			grep {
+				my $cc = extract_valid_address($_);
+				not grep { $cc eq $_ || $_ =~ /<\Q${cc}\E>$/ } @recipients
+			}
+			map { sanitize_address($_) }
+			all_cc(@_);
+	};
+	my @cc = $sanitize_cc->(qw(initial from cc cc-cmd));
+	my @cc_extra = $sanitize_cc->(qw(body));
+
+	my (%seen, @recipients_extra);
+	@recipients = unique_email_list(\%seen,@recipients,@cc,@bcclist);
 	@recipients = (map { extract_valid_address($_) } @recipients);
+	@recipients_extra =
+		map { extract_valid_address($_) }
+		unique_email_list(\%seen,@cc_extra);
+
 	my $date = format_2822_time($time++);
 	my $gitversion = '@@GIT_VERSION@@';
 	if ($gitversion =~ m/..GIT_VERSION../) {
 	    $gitversion = Git::version();
 	}
 
-	my $cc = join(",\n\t", unique_email_list(@cc));
+	my $cc = join(",\n\t", unique_email_list(@cc,@cc_extra));
 	my $ccline = "";
 	if ($cc ne '') {
 		$ccline = "\nCc: $cc";
@@ -1007,7 +1017,7 @@ X-Mailer: git-send-email $gitversion
 		$header .= join("\n", @xh) . "\n";
 	}
 
-	my @sendmail_parameters = ('-i', @recipients);
+	my @sendmail_parameters = ('-i', @recipients,@recipients_extra);
 	my $raw_from = $sanitized_sender;
 	if (defined $envelope_sender && $envelope_sender ne "auto") {
 		$raw_from = $envelope_sender;
@@ -1126,6 +1136,7 @@ X-Mailer: git-send-email $gitversion
 
 		$smtp->mail( $raw_from ) or die $smtp->message;
 		$smtp->to( @recipients ) or die $smtp->message;
+		$smtp->to( @recipients_extra, { Notify => ['NEVER'], SkipBad => 1 });
 		$smtp->data or die $smtp->message;
 		$smtp->datasend("$header\n$message") or die $smtp->message;
 		$smtp->dataend() or die $smtp->message;
@@ -1138,8 +1149,8 @@ X-Mailer: git-send-email $gitversion
 		if ($smtp_server !~ m#^/#) {
 			print "Server: $smtp_server\n";
 			print "MAIL FROM:<$raw_from>\n";
-			foreach my $entry (@recipients) {
-			    print "RCPT TO:<$entry>\n";
+			foreach my $entry (@recipients,@recipients_extra) {
+				print "RCPT TO:<$entry>\n";
 			}
 		} else {
 			print "Sendmail: $smtp_server ".join(' ',@sendmail_parameters)."\n";
@@ -1375,13 +1386,12 @@ sub cleanup_compose_files {
 $smtp->quit if $smtp;
 
 sub unique_email_list {
-	my %seen;
+	my $seen = ref $_[0] eq 'HASH' ? shift : {};
 	my @emails;
 
 	foreach my $entry (@_) {
 		if (my $clean = extract_valid_address($entry)) {
-			$seen{$clean} ||= 0;
-			next if $seen{$clean}++;
+			next if $seen->{$clean}++;
 			push @emails, $entry;
 		} else {
 			print STDERR "W: unable to extract a valid address",
