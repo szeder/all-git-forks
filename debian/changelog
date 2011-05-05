@@ -10,6 +10,12 @@ git (1:1.7.5.1-0.1) unstable; urgency=low
     - 0007-add-p-q-should-really-quit.diff, 0008-t3701-...diff: new
       from upstream; tests: check that the add -p split-and-edit bug
       has not resurfaced.
+  * debian/control: package git: no longer Conflicts: but Breaks:
+    git-core from Debian 5.0 (lenny) to simplify the upgrade path
+    (thx Russ Allbery for suggesting it through lintian).
+  * debian/control: package git: Conflicts: git-core from
+    Debian 4.0 (etch) which provided /usr/bin/git through the
+    alternatives system.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 05 May 2011 01:11:51 -0500
 
