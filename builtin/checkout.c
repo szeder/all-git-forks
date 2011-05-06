@@ -699,8 +699,13 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	if (ret)
 		return ret;
 
-	if (!opts->quiet && !old.path && old.commit && new->commit != old.commit)
-		orphaned_commit_warning(old.commit);
+	if (!opts->quiet && !old.path && old.commit && new->commit != old.commit) {
+		if (advice_detached_head)
+			orphaned_commit_warning(old.commit);
+		else
+			describe_detached_head(_("Previous HEAD position was"),
+					       old.commit);
+	}
 
 	update_refs_for_switch(opts, &old, new);
 
