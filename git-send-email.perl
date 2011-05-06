@@ -1136,11 +1136,20 @@ X-Mailer: git-send-email $gitversion
 
 		$smtp->mail( $raw_from ) or die $smtp->message;
 		$smtp->to( @recipients ) or die $smtp->message;
-		$smtp->to( @recipients_extra, { Notify => ['NEVER'], SkipBad => 1 });
+		my @good_recips =
+			$smtp->to( @recipients_extra, { Notify => ['NEVER'], SkipBad => 1 });
 		$smtp->data or die $smtp->message;
 		$smtp->datasend("$header\n$message") or die $smtp->message;
 		$smtp->dataend() or die $smtp->message;
 		$smtp->code =~ /250|200/ or die "Failed to send $subject\n".$smtp->message;
+
+		%seen = ();
+		unique_email_list(\%seen, @good_recips);
+		# bad recipients are those not seen on list of good recipients
+		my @bad_recips = unique_email_list(\%seen, @recipients_extra);
+		@bad_recips and
+			warn "W: The following addresses added from body were rejected:\n\t".
+				join("\n\t", @bad_recips)."\n";
 	}
 	if ($quiet) {
 		printf (($dry_run ? "Dry-" : "")."Sent %s\n", $subject);
