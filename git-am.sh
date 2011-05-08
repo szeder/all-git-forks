@@ -89,8 +89,8 @@ safe_to_abort () {
 	then
 		return 0
 	fi
-	echo >&2 "You seem to have moved HEAD since the last 'am' failure."
-	echo >&2 "Not rewinding to ORIG_HEAD"
+	echo >&2 "$(gettext "You seem to have moved HEAD since the last 'am' failure.
+Not rewinding to ORIG_HEAD")"
 	return 1
 }
 
