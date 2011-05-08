@@ -1,0 +1,36 @@
+git-sh-i18n--envsubst(1)
+========================
+
+NAME
+----
+git-sh-i18n--envsubst - Git's own envsubst(1) for i18n fallbacks
+
+DESCRIPTION
+-----------
+
+This is not a command the end user would want to run.  Ever.
+This documentation is meant for people who are studying the
+plumbing scripts and/or are writing new ones.
+
+git-sh-i18n--envsubst is Git's stripped-down copy of the GNU
+`envsubst(1)` program that comes with the GNU gettext
+package. It's used internally by linkgit:git-sh-i18n[1] to
+provide the `eval_gettext` fallback on Solaris and systems
+that don't have a gettext implementation.
+
+No promises are made about the interface, or that this
+program won't disappear without warning in the next version
+of Git. Don't use it.
+
+Author
+------
+Written by Ævar Arnfjörð Bjarmason <avarab@gmail.com>
+
+Documentation
+--------------
+Documentation by Ævar Arnfjörð Bjarmason and the git-list
+<git@vger.kernel.org>.
+
+GIT
+---
+Part of the linkgit:git[1] suite
