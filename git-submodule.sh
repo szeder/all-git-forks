@@ -444,7 +444,8 @@ cmd_update()
 	fi
 
 	cloned_modules=
-	module_list "$@" |
+	module_list "$@" | {
+	err=
 	while read mode sha1 stage path
 	do
 		if test "$stage" = U
@@ -525,17 +526,46 @@ cmd_update()
 				;;
 			esac
 
-			(clear_local_git_env; cd "$path" && $command "$sha1") ||
-			die "Unable to $action '$sha1' in submodule path '$path'"
-			say "Submodule path '$path': $msg '$sha1'"
+			if (clear_local_git_env; cd "$path" && $command "$sha1")
+			then
+				say "Submodule path '$path': $msg '$sha1'"
+			else
+				say "Unable to $action '$sha1' in submodule path '$path'"
+				case $action in
+				rebase)
+				merge)
+					die "Unable to $action '$sha1' in submodule path '$path'" 2
+					;;
+				*)
+					err="Failed to $action one or more submodule(s)"
+					continue
+					;;
+				esac
+			fi
 		fi
 
 		if test -n "$recursive"
 		then
-			(clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags") ||
-			die "Failed to recurse into submodule path '$path'"
+			res=(clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags")
+			if test $res gt 0
+			then
+				if test $res eq 1
+				then
+					say "Failed to recurse into submodule path '$path'"
+					continue
+				else
+					die "Failed to recurse into submodule path '$path'" 2
+				fi
+			fi
 		fi
 	done
+
+	if test -n "$err"
+	then
+		die "$err"
+	fi
+
+	}
 }
 
 set_name_rev () {
