@@ -17,6 +17,7 @@
 #define ADDED		(1u<<7)	/* Parents already parsed and added? */
 #define SYMMETRIC_LEFT	(1u<<8)
 #define PATCHSAME	(1u<<9)
+#define SUBTREE 	(1u<<25) /* TODO: Put this at 10, make sure it doesn't collide */
 #define ALL_REV_FLAGS	((1u<<10)-1)
 
 #define DECORATE_SHORT_REFS	1
@@ -74,7 +75,8 @@ struct rev_info {
 			bisect:1,
 			ancestry_path:1,
 			first_parent_only:1,
-            hide_subtrees:1;
+            hide_subtrees:1,
+            only_subtrees:1;
 
 	/* Diff flags */
 	unsigned int	diff:1,

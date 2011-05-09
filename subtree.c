@@ -6,6 +6,7 @@
  */
 
 #include "builtin.h"
+#include "subtree.h"
 #include "string-list.h"
 #include "tree-walk.h"
 
@@ -15,13 +16,7 @@ static int debug_printf_enabled = 0;
 struct subtree_details
 {
     struct commit *commit;
-    int nr;
-    struct 
-    {
-	    const char *prefix;
-	    size_t len;
-        struct tree *tree;
-    } items[];
+    struct subtree_detail d;
 };
 
 /*-----------------------------------------------------------------------------
@@ -94,12 +89,12 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
     }
 
     pathlen = strlen(pathname);
-    for (i = 0; i < details->nr; i++) {
+    for (i = 0; i < details->d.nr; i++) {
         char *prefix;
         int prefix_len;
       
-        prefix = details->items[i].prefix;
-        prefix_len = details->items[i].len;
+        prefix = details->d.items[i].prefix;
+        prefix_len = details->d.items[i].len;
 
         if (baselen > prefix_len)
             continue;
@@ -108,7 +103,7 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
 
         if (strncmp(pathname, &prefix[baselen], pathlen) == 0) {
             if (baselen + pathlen == prefix_len)
-                details->items[i].tree = lookup_tree(sha1);
+                details->d.items[i].tree = lookup_tree(sha1);
             else
                 result = READ_TREE_RECURSIVE;
         }
@@ -210,9 +205,9 @@ static enum tree_compare_result compare_trees(struct tree *tree1,
 /*-----------------------------------------------------------------------------
 Find the subtree parent for this commit that matches the given tree
 -----------------------------------------------------------------------------*/
-static struct commit *find_subtree_parent(struct commit *commit,
-                                          struct tree *tree,
-                                          int exact_match)
+struct commit *subtree_find_parent(struct commit *commit,
+                                   struct tree *tree,
+                                   int exact_match)
 {
     struct commit_list *parent;
     struct commit *best_commit = NULL;
@@ -270,19 +265,18 @@ static struct commit *find_subtree_parent(struct commit *commit,
     return best_commit;
 }
 
-/*-----------------------------------------------------------------------------
 
+/*-----------------------------------------------------------------------------
+Convert the given commit & prefix list to a subtree_details structure. 
+The caller is responsible for freeing the memory.
 -----------------------------------------------------------------------------*/
-struct commit_list *get_subtrees(struct commit *commit, struct string_list *prefix_list, int exact)
-{
-    struct commit_list *subtree_commits = NULL;
+struct subtree_details *get_details(struct commit *commit, struct string_list *prefix_list)
+{   
+    struct subtree_details *details = NULL;
     struct string_list prefixes = STRING_LIST_INIT_NODUP;
     unsigned int i;
-    struct subtree_details *details = NULL;
 
-    debug("get_subtrees(%s)\n", sha1_to_hex(commit->object.sha1));
-
-    /* 
+    /*
      * If we weren't given a list of subtree,s get the .subtree file's SHA,
      * and read in the list of subtree paths.
      */
@@ -314,27 +308,49 @@ struct commit_list *get_subtrees(struct commit *commit, struct string_list *pref
         strbuf_release(&subtree_blob_sha1);
     }
 
-    details = xmalloc(sizeof(*details) + sizeof(*(details->items)) * prefixes.nr);
+    details = xmalloc(sizeof(*details) + sizeof(*(details->d.items)) * prefixes.nr);
     for (i = 0; i < prefixes.nr; i++) {
         const char* str = prefixes.items[i].string;
-        details->items[i].prefix = str;
-        details->items[i].len = strlen(str);
-        details->items[i].tree = NULL;
+        details->d.items[i].prefix = str;
+        details->d.items[i].len = strlen(str);
+        details->d.items[i].tree = NULL;
     }
-    details->nr = prefixes.nr;
+    details->d.nr = prefixes.nr;
 
     details->commit = commit;
-    read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, details);
-    for (i = 0; i < prefixes.nr; i++) {
-        debug("\t%s (%s)\n", prefixes.items[i].string, details->items[i].tree ? sha1_to_hex(details->items[i].tree->object.sha1) : "none");
+    
+    // TODO: Save this in details, and have a free_details function that cleans this all up?
+    //string_list_clear(&prefixes, 0);
 
-        if (details->items[i].tree) {
+    return details;
+}
+
+
+/*-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
+struct commit_list *get_subtrees(struct commit *commit, struct string_list *prefix_list, int exact)
+{
+    struct commit_list *subtree_commits = NULL;
+    struct subtree_details *details = NULL;
+    int i;
+
+    debug("get_subtrees(%s)\n", sha1_to_hex(commit->object.sha1));
+
+    details = get_details(commit, prefix_list);
+
+    read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, details);
+    
+    for (i = 0; i < details->d.nr; i++) {
+        debug("\t%s (%s)\n", details->d.items[i].prefix, details->d.items[i].tree ? sha1_to_hex(details->d.items[i].tree->object.sha1) : "none");
+
+        if (details->d.items[i].tree) {
             struct commit *parent = NULL;
             /*
              * Check to see if one of this commit's parents is already the subtree
              * merge we're going to be generating
              */
-            parent = find_subtree_parent(commit, details->items[i].tree, exact);
+            parent = subtree_find_parent(commit, details->d.items[i].tree, exact);
             if (parent) {
                 commit_list_insert(parent, &subtree_commits);
                 debug("\t\tFound subtree parent %s\n", sha1_to_hex(parent->object.sha1));
@@ -342,8 +358,33 @@ struct commit_list *get_subtrees(struct commit *commit, struct string_list *pref
         }
     }
 
-    /* Free the list. */
-    string_list_clear(&prefixes, 0);
+    free(details);
 
     return subtree_commits;
+}
+
+/*-----------------------------------------------------------------------------
+Returns a list of tree objects for the commit with the given prefix list.
+TODO: Change to a tree_list
+-----------------------------------------------------------------------------*/
+struct subtree_detail *get_subtree_trees(struct commit *commit, struct string_list *prefix_list)
+{
+    int i;
+    int sz;
+    struct subtree_details *details = get_details(commit, prefix_list);
+    struct subtree_detail *detail;
+
+    /*
+     * Read the tree to get the subtree's SHA1 (if it exists)
+     */
+    for (i = 0; i < details->d.nr; i++)
+        details->d.items[i].tree = NULL;
+    read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, details);
+
+    sz = sizeof(*detail) + sizeof(*(detail->items)) * details->d.nr;
+    detail = xmalloc(sz);
+    memcpy(detail, &details->d, sz);
+    free(details);
+
+    return detail;
 }

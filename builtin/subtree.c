@@ -347,7 +347,6 @@ static int cmd_subtree_list(int argc, const char **argv, const char *prefix)
          * don't try and look for the .subtree or splitting it? This would
          * require we propagate referenced and not only look at merges.
          */
-
         while ((commit = pop_commit(&subtree_commits))) {
             printf("%s\n", sha1_to_hex(commit->object.sha1));
         }
@@ -584,6 +583,13 @@ static int cmd_subtree_push(int argc, const char **argv, const char *prefix)
 /*                     #####  #       ####### ###    #                       */
 /*---------------------------------------------------------------------------*/
 
+static const char * const builtin_subtree_split_usage[] = {
+    "git subtree split [(-P <prefix>)...] [options] <paths>",
+    "git subtree split [options] <branch> <paths>",
+    "git subtree split [options] [<branch>] -- <paths>",
+    NULL,
+};
+
 struct split_opts {
     int rewrite_head;
     int rewrite_parents;
@@ -592,25 +598,14 @@ struct split_opts {
     int squash;
     const char *annotation;
     const char *footer;
-    struct string_list onto_list;
     struct string_list prefix_list;
-    const char *output;             /* TODO: Output format to show all commits, just head(s), commits by prefix, etc */
 };
 
-static struct commit_list *onto_list;
 
-struct subtree_details
-{
-    struct commit *commit;
-    int nr;
-    struct 
-    {
-	    const char *prefix;
-	    size_t len;
-        struct tree *tree;
-    } items[];
-};
-static struct subtree_details *g_details;
+/*-----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
+static int g_prefix_count = 0;
 
 struct commit_util {
     struct commit_list *remapping;
@@ -625,9 +620,6 @@ struct commit_util {
     unsigned int created;
 };
 
-/*-----------------------------------------------------------------------------
-
------------------------------------------------------------------------------*/
 __inline struct commit_util *get_commit_util(struct commit *commit,
                                              int index,
                                              int create) /* =2 if assert on non-existence */
@@ -639,7 +631,7 @@ __inline struct commit_util *get_commit_util(struct commit *commit,
             return NULL;
 
         /* Allocate one for each prefix, and an extra for self */
-        sz = sizeof(struct commit_util) * (g_details->nr + 1);
+        sz = sizeof(struct commit_util) * (g_prefix_count + 1);
         /* TODO: Find a way to eventually free this memory? */
         commit->util = malloc(sz);
         memset(commit->util, 0, sz);
@@ -650,7 +642,7 @@ __inline struct commit_util *get_commit_util(struct commit *commit,
 /*-----------------------------------------------------------------------------
 
 -----------------------------------------------------------------------------*/
-__inline void debug_commit(struct commit *commit, int index) {
+__inline void debug_commit(struct commit *commit, struct subtree_detail *details, int index) {
     struct commit_util *util;
 
     parse_commit(commit);
@@ -659,7 +651,7 @@ __inline void debug_commit(struct commit *commit, int index) {
     debug("------------------------------------------------\n");
     debug("Commit: %s\n", sha1_to_hex(commit->object.sha1));
     debug("Tree: %s\n", sha1_to_hex(commit->tree->object.sha1));
-    debug("Util(%d): \"%s\"\n", index, g_details->items[index].prefix);
+    debug("Util(%d): %s\n", index, details ? details->items[index].prefix : "");
     if (util) {
         struct commit_list *temp;
         debug("\tCreated: %d\n", util->created);
@@ -681,364 +673,7 @@ __inline void debug_commit(struct commit *commit, int index) {
 }
 
 /*-----------------------------------------------------------------------------
-
------------------------------------------------------------------------------*/
-static int read_subtree_config(const char *var, const char *value, void *context)
-{
-    struct string_list *config = context;
-    const char* substr = NULL;
-
-    if ((substr = strstr(var, "subtree."))) {
-        const char* dot;
-        substr += 8; /* Skip past subtree. */
-        if ((dot = strstr(substr, "."))) {
-            dot += 1; /* Skip past the . */
-            if( strstr( dot, "path" ) ) {
-                struct strbuf tmp = STRBUF_INIT;
-                strbuf_addstr(&tmp, value);
-                string_list_append(config, tmp.buf);
-                config->items[config->nr - 1].util = (void*) ((intptr_t) strlen(tmp.buf));
-            }
-        }
-
-    }
-    return 0;
-}
-
-/*-----------------------------------------------------------------------------
-
------------------------------------------------------------------------------*/
-static void setup_prefix_list(struct string_list *prefix_list)
-{
-    int i;
-    struct string_list subtree_list = STRING_LIST_INIT_NODUP;
-
-    if (prefix_list->nr == 0) {
-        /*
-         * Read the prefixes from .gitsubtree
-         */
-        git_config_from_file(read_subtree_config, ".gitsubtree", &subtree_list);
-        prefix_list = &subtree_list;
-    }
-
-    g_details = xrealloc(g_details, sizeof(*g_details) + sizeof(*(g_details->items)) * prefix_list->nr);
-    for (i = 0; i < prefix_list->nr; i++) {
-        const char* str = prefix_list->items[i].string;
-        g_details->items[i].prefix = str;
-        g_details->items[i].len = strlen(str);
-        g_details->items[i].tree = NULL;
-    }
-    g_details->nr = prefix_list->nr;
-
-    string_list_clear(&subtree_list, 0);
-}
-
-/*-----------------------------------------------------------------------------
-Find the tree sha1 values of the given prefixes and store them in pathinfo
------------------------------------------------------------------------------*/
-static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
-                                   int baselen, const char *pathname,
-                                   unsigned mode, int stage, void *context)
-{
-    int result = 0;
-    int i;
-    int pathlen;
-    struct commit *commit = context;
-
-    if (!S_ISDIR(mode)) {
-        /* This isn't a folder, so we can't split off of it */
-        return result;
-    }
-
-    pathlen = strlen(pathname);
-    for (i = 0; i < g_details->nr; i++) {
-        char *prefix;
-        int prefix_len;
-        struct commit_util *util;
-
-        /*
-         * Don't bother with ignored subtrees other than to propagate the
-         * ignore. 
-         */
-        util = get_commit_util(commit, i, 0);
-        if (util && util->referenced)
-            continue;
-       
-        prefix = g_details->items[i].prefix;
-        prefix_len = g_details->items[i].len;
-
-        if (baselen > prefix_len)
-            continue;
-        if (strncmp(prefix, base, baselen) != 0)
-            continue;
-
-        if (strncmp(pathname, &prefix[baselen], pathlen) == 0) {
-            if (baselen + pathlen == prefix_len)
-                g_details->items[i].tree = lookup_tree(sha1);
-            else
-                result = READ_TREE_RECURSIVE;
-        }
-    }
-
-    return result;
-}
-
-/*-----------------------------------------------------------------------------
-Find the subtree tree SHA1 for the given commit based on the subtrees in 
-g_details
------------------------------------------------------------------------------*/
-void find_subtrees(struct commit *commit)
-{
-    int i;
-    int work_to_do = 0;
-
-    /*
-     * First, propagate the referenced flags to children
-     */
-    for (i = 0; i < g_details->nr; i++) {
-        struct commit_util *util;
-        util = get_commit_util(commit, i, 0);
-        if (util && util->referenced) {
-            struct commit_list *parent = commit->parents;
-            while (parent) {
-                get_commit_util(parent->item, i, 1)->referenced |= util->referenced;
-                parent = parent->next;
-            }
-            if (util->force)
-                util->referenced = 0;
-            else
-                continue;
-        }
-        work_to_do = 1;
-    }
-
-    /*
-     * Read the tree to get the subtree's SHA1 (if it exists)
-     */
-    for (i = 0; i < g_details->nr; i++)
-        g_details->items[i].tree = NULL;
-    if (work_to_do)
-        read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, commit);
-}
-
-/*-----------------------------------------------------------------------------
-compare_trees
-Compare 2 trees, count added, removed, changed, and unchanged files
------------------------------------------------------------------------------*/
-enum tree_compare_result {
-    TREE_SAME,
-    TREE_MODIFIED,
-    TREE_DIFFERENT
-};
-
-struct compare_details {
-    unsigned int add;
-    unsigned int remove;
-    unsigned int same;
-    unsigned int change;
-};
-
-static enum tree_compare_result compare_trees(struct tree *tree1,
-                                              struct tree *tree2,
-                                              int recurse,
-                                              struct compare_details *details)
-{
-    struct tree_desc t1, t2;
-    int pathlen1;
-    int pathlen2;
-    int cmp;
-    struct compare_details detail;
-    memset(&detail, 0, sizeof(detail));
-
-    /* Count up the number of matching tree objects between left & right */
-    parse_tree(tree1);
-    parse_tree(tree2);
-    init_tree_desc(&t1, tree1->buffer, tree1->size);
-    init_tree_desc(&t2, tree2->buffer, tree2->size);
-
-    while (t1.size || t2.size) {
-        pathlen1 = tree_entry_len(t1.entry.path, t1.entry.sha1);
-        pathlen2 = tree_entry_len(t2.entry.path, t2.entry.sha1);
-        if (t1.size == 0)
-            cmp = -1;
-        else if (t2.size == 0)
-            cmp = 1;
-        else
-            cmp = base_name_compare(t1.entry.path, pathlen1, t1.entry.mode,
-                                    t2.entry.path, pathlen2, t2.entry.mode);
-        if (cmp < 0) {
-            /* Removed from tree1 */
-            detail.remove++;
-        }
-        else if (cmp > 0) {
-            /* Added to tree 1 */
-            detail.add++;
-        }
-        else if (t1.entry.mode == t2.entry.mode &&
-                 hashcmp(t1.entry.sha1, t2.entry.sha1) == 0) {
-            /* No changes */
-            detail.same++;
-        }
-        else {
-            /* Changed */
-            if (recurse && S_ISDIR(t1.entry.mode) && S_ISDIR(t2.entry.mode)) {
-                compare_trees(lookup_tree(t1.entry.sha1),
-                              lookup_tree(t2.entry.sha1),
-                              recurse, &detail);
-            }
-            else {
-                detail.change++;
-            }
-        }
-
-        update_tree_entry(&t1);
-        update_tree_entry(&t2);
-    }
-
-    if (details) {
-        details->add += detail.add;
-        details->change += detail.change;
-        details->remove += detail.remove;
-        details->same += detail.same;
-    }
-
-    if (detail.same > 0) {
-        if (detail.add + detail.change + detail.remove > 0)
-            return TREE_MODIFIED;
-        else
-            return TREE_SAME;
-    }
-    else
-        return TREE_DIFFERENT;
-}
-
-/*-----------------------------------------------------------------------------
-
------------------------------------------------------------------------------*/
-static struct commit *find_subtree_parent(struct commit *commit,
-                                          int prefix_index,
-                                          int exact_match,
-                                          int update_util)
-{
-    struct commit_list *parent;
-    struct commit *best_commit = NULL;
-    struct tree *tree;
-
-    tree = g_details->items[prefix_index].tree;
-
-    /* Check our parents to see if this tree matches the tree node there */
-    parent = commit->parents;
-    while (parent)
-    {
-        struct commit *c = parent->item;
-        if (c->tree == tree)
-        {
-            best_commit = c;
-            break;
-        }
-        parent = parent->next;
-    }
-
-    /* 
-     * If we allow non-exact matches, lets try a bit harder to see how close
-     * we are by ranking each parent and picking the highest non-zero ranking
-     * match.
-     */
-    if (!best_commit && !exact_match)
-    {
-        unsigned int best_val = 0;
-        unsigned int alt_val = UINT_MAX;
-        parent = commit->parents;
-        while (parent)
-        {
-            struct compare_details matches;
-            struct commit *c = parent->item;
-            memset(&matches, 0, sizeof(matches));
-            parse_commit(c);
-            compare_trees(tree, c->tree, 1, &matches);
-            if (matches.same > best_val) {
-                best_val = matches.same;
-                best_commit = c;
-            }
-            /* 
-             * If we don't have anything with any matches, pick the thing that
-             * has many similarly named files, if there aren't more adds/removes
-             * than there are changes
-             */
-            if (best_val == 0
-                && alt_val > (matches.add + matches.remove) 
-                && matches.change > (matches.add + matches.remove)) {
-
-                alt_val = (matches.add + matches.remove);
-                best_commit = c;
-            }
-            parent = parent->next;
-        }
-    }
-
-    if (update_util && best_commit) {
-        struct commit_util *util;
-
-        /*
-         * We've found an existing subtree commit. Set the
-         * remap info so we know not to try to create a new
-         * commit in the next stage
-         */
-        util = get_commit_util(commit, prefix_index, 1);
-        commit_list_insert(best_commit, &util->remapping);
-        util->tree = tree;
-        util->referenced = 0;
-
-        /*
-         * We'll propagate this as we see subtree commits to
-         * save on setting this on things we may never even
-         * go far enough to see.
-         * TODO: How will this work with --all passed in as a
-         * refspec and a feature branch that removed the subtree?
-         * Setting a flag on the parent saying it needs to
-         * process that can override the don't process flag
-         * would work I guess..
-         */
-        parent = commit->parents;
-        while (parent) {
-            util = get_commit_util(parent->item, prefix_index, 1);
-            util->referenced = 1;
-            util->is_subtree = (parent->item == best_commit);
-            parent = parent->next;
-        }
-    }
-
-    return best_commit;
-}
-
-/*-----------------------------------------------------------------------------
-Store the SHA1 of the .subtree file in the strbuf pointed to by context
------------------------------------------------------------------------------*/
-static int get_subtree_sha1_read_tree(const unsigned char *sha1, const char *base, 
-                                      int baselen, const char *pathname, 
-                                      unsigned mode, int stage, void *context)
-{
-    int retval = 0;
-
-    if (S_ISGITLINK(mode)) {
-        return 0;
-    } else if (S_ISDIR(mode)) {
-        /* TODO: Support nested subtrees, or is that just a horrible idea? */
-        //return READ_TREE_RECURSIVE;
-        return 0;
-    }
-
-    if( strcmp( pathname, ".gitsubtree" ) == 0 ) {
-        strbuf_addstr(context, (char *)sha1);
-        /* Found it, stop looking */
-        return -1;
-    }
-
-    return retval;
-}
-
-/*-----------------------------------------------------------------------------
-
+Rewrite the commit with the new parents
 -----------------------------------------------------------------------------*/
 static struct commit *rewrite_commit(struct commit *commit,
                                      struct tree *tree,
@@ -1097,135 +732,6 @@ static struct commit *rewrite_commit(struct commit *commit,
 
     return lookup_commit(output_commit_sha1);
 }
-
-/*-----------------------------------------------------------------------------
-Walk the tree and make a list of all commits that may potentially need to be
-split into subtree commits.
------------------------------------------------------------------------------*/
-static struct commit_list *get_interesting_split_commits(int argc, const char **argv, const char *prefix)
-{
-    struct commit_list *interesting_commits = NULL;
-    struct rev_info rev;
-    struct setup_revision_opt opt;
-    struct commit *commit;
-    int has_subtree_data;
-    int i;
-
-    /*
-     * Setup the walk. Make sure the user didn't pass any flags that will
-     * mess things up
-     */
-    init_revisions(&rev, prefix);
-    rev.topo_order = 1;
-    rev.reverse = 0;
-    rev.bisect = 0;
-    rev.ignore_merges = 0;
-	rev.max_parents = -1;
-	rev.min_parents = 0;
-
-    memset(&opt, 0, sizeof(opt));
-    opt.def = "HEAD";
-
-    /* HACK: argv[0] is ignored by setup_revisions */
-    argc = setup_revisions(argc+1, argv-1, &rev, &opt) - 1;
-    if (argc)
-        die("Unknown option: %s", argv[0]);
-
-    prepare_revision_walk(&rev);
-    while ((commit = get_revision(&rev))) {
-        debug("%s processing...\n", sha1_to_hex(commit->object.sha1));
-
-        find_subtrees(commit);
-        has_subtree_data = 0;
-        for (i = 0; i < g_details->nr; i++) {
-            if (g_details->items[i].tree) {
-                struct commit_util *util;
-                struct commit_list *onto;
-                struct commit_list *parents;
-                struct commit *parent = NULL;
-
-                /*
-                 * If the tree id matches one of the onto trees, we don't need
-                 * to search any further
-                 */
-                onto = onto_list;
-                while (onto) {
-                    if (g_details->items[i].tree == onto->item->tree) {
-
-                        debug("\tFound onto %s for %s\n",
-                            sha1_to_hex(onto->item->object.sha1),
-                            g_details->items[i].prefix);
-
-                        util = get_commit_util(commit, i, 1);
-                        commit_list_insert(onto->item, &util->remapping);
-                        util->tree = onto->item->tree;
-                        util->referenced = 0;
-
-                        parents = commit->parents;
-                        while (parents) {
-                            util = get_commit_util(parents->item, i, 1);
-                            util->referenced = 1;
-                            util->is_subtree = (parents->item == onto->item);
-                            parents = parents->next;
-                        }
-                        /* TODO: Remove from the onto list */
-                        break;
-                    }
-                    onto = onto->next;
-                }
-                if (onto)
-                    continue;
-
-                /*
-                 * Check to see if one of this commit's parents is already the subtree
-                 * merge we're going to be generating
-                 */
-                parent = find_subtree_parent(commit, i, 0, 1);
-                if (parent) {
-                    debug("\tFound existing subtree parent %s for %s\n",
-                        sha1_to_hex(parent->object.sha1),
-                        g_details->items[i].prefix);
-                    /* 
-                     * If the trees aren't the same, it is still interesting.
-                     * It means that somebody amended the subtree merge commit.
-                     */
-                    if (parent->tree == g_details->items[i].tree)
-                        continue;
-                }
-                
-                util = get_commit_util(commit, i, 1);
-                util->referenced = 0;
-                util->tree = g_details->items[i].tree;
-
-                debug("\tFound tree %s for %s\n",
-                    sha1_to_hex(g_details->items[i].tree->object.sha1),
-                    g_details->items[i].prefix);
-
-                /*
-                 * This tree has some potential subtree data. We need to mark
-                 * it's parents so we know they'll need to be processed. This
-                 * is necessary so a branch doesn't cause us to ignore data
-                 * for a parallel branch.
-                 */
-                parents = commit->parents;
-                while (parents) {
-                    util = get_commit_util(parents->item, i, 1);
-                    util->force = 1;
-                    parents = parents->next;
-                }
-
-                has_subtree_data = 1;
-            }
-        }
-
-        /* Add this commit to the list for processing (in reverse order) */
-        if (has_subtree_data)
-            commit_list_insert(commit, &interesting_commits);
-    }
-
-    return interesting_commits;
-}
-
 
 /*-----------------------------------------------------------------------------
 Returns true if parents were cleaned up and we no longer need to create a commit
@@ -1399,19 +905,136 @@ int cleanup_remapped_parents(struct commit *commit, int index, struct commit_lis
 }
 
 /*-----------------------------------------------------------------------------
-
+Walk the tree and make a list of all commits that may potentially need to be
+split into subtree commits.
 -----------------------------------------------------------------------------*/
+static struct commit_list *get_interesting_split_commits(int argc, 
+                                                         const char **argv, 
+                                                         const char *prefix,
+                                                         struct string_list *prefix_list)
+{
+    struct commit_list *interesting_commits = NULL;
+    struct rev_info rev;
+    struct setup_revision_opt opt;
+    struct commit *commit;
+    int has_subtree_data;
 
-static const char * const builtin_subtree_split_usage[] = {
-    "git subtree split [(-P <prefix>)...] [options] <paths>",
-    "git subtree split [options] <branch> <paths>",
-    "git subtree split [options] [<branch>] -- <paths>",
-    NULL,
-};
+    /*
+     * Setup the walk. Make sure the user didn't pass any flags that will
+     * mess things up
+     */
+    init_revisions(&rev, prefix);
+    rev.topo_order = 1;
+    rev.reverse = 0;
+    rev.bisect = 0;
+    rev.ignore_merges = 0;
+	rev.max_parents = -1;
+	rev.min_parents = 0;
+
+    memset(&opt, 0, sizeof(opt));
+    opt.def = "HEAD";
+
+    /* HACK: argv[0] is ignored by setup_revisions */
+    argc = setup_revisions(argc+1, argv-1, &rev, &opt) - 1;
+    if (argc)
+        die("Unknown option: %s", argv[0]);
+
+    prepare_revision_walk(&rev);
+    while ((commit = get_revision(&rev))) {
+        struct subtree_detail *details;
+        int i;
+
+        debug("%s processing...\n", sha1_to_hex(commit->object.sha1));
+
+        details = get_subtree_trees(commit, prefix_list);
+
+        has_subtree_data = 0;
+        for (i = 0; i < details->nr; i++) {
+            int j;
+            int work_to_do = 0;
+
+            /*
+             * propagate the referenced flags to children
+             */
+            for (j = 0; j < details->nr; j++) {
+                struct commit_util *util;
+                util = get_commit_util(commit, j, 0);
+                if (util && util->referenced) {
+                    struct commit_list *parent = commit->parents;
+                    while (parent) {
+                        get_commit_util(parent->item, j, 1)->referenced |= util->referenced;
+                        parent = parent->next;
+                    }
+                    if (util->force)
+                        util->referenced = 0;
+                    else
+                        continue;
+                }
+                work_to_do = 1;
+            }
+            if (!work_to_do) {
+                debug("\tSkip %s\n", details->items[i].prefix);
+                continue;
+            }
+
+            if (details->items[i].tree) {
+                struct commit_util *util;
+                struct commit_list *parents;
+                struct commit *parent = NULL;
+
+                /*
+                 * Check to see if one of this commit's parents is already the subtree
+                 * merge we're going to be generating
+                 */
+                parent = subtree_find_parent(commit, details->items[i].tree, 0);
+                if (parent) {
+                    debug("\tFound existing subtree parent %s for %s\n",
+                        sha1_to_hex(parent->object.sha1),
+                        details->items[i].prefix);
+
+                    /* 
+                     * If we have a parent, and it's tree is the same as ours,
+                     * we don't need to create a new commit
+                     */
+                    if (parent->tree == details->items[i].tree)
+                        continue;
+                }
+                
+                util = get_commit_util(commit, i, 1);
+                util->referenced = 0;
+                util->tree = details->items[i].tree;
+
+                debug("\tFound tree %s for %s\n",
+                    sha1_to_hex(details->items[i].tree->object.sha1),
+                    details->items[i].prefix);
+
+                /*
+                 * This tree has some potential subtree data. We need to mark
+                 * it's parents so we know they'll need to be processed. This
+                 * is necessary so a branch doesn't cause us to ignore data
+                 * for a parallel branch.
+                 */
+                parents = commit->parents;
+                while (parents) {
+                    util = get_commit_util(parents->item, i, 1);
+                    util->force = 1;
+                    parents = parents->next;
+                }
+
+                has_subtree_data = 1;
+            }
+        }
+
+        /* Add this commit to the list for processing (in reverse order) */
+        if (has_subtree_data)
+            commit_list_insert(commit, &interesting_commits);
+    }
+
+    return interesting_commits;
+}
 
 /*-----------------------------------------------------------------------------
-TODO: Could split get confused when using 'onto' if the specified onto tree is in
-the history multiple times (due to a undo commit)
+
 -----------------------------------------------------------------------------*/
 static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 {
@@ -1422,20 +1045,19 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         OPT_BOOLEAN(0, "rejoin", &opts.rejoin, "Add a merge commit that joins the split out subtree with the source"),
         OPT_BOOLEAN(0, "squash", &opts.squash, "Don't bring in the entire split history"),
         OPT_BOOLEAN(0, "committer", &opts.change_committer, "Rewritten commits will use current commiter information"),
-        OPT_CALLBACK(0, "onto", &opts.onto_list, "commit", "Graft the split subtree onto the given commit", opt_string_list),
         OPT_STRING(0, "annotate", &opts.annotation, "annotation", "Add an annotation to the beginning of the commit message of split commits"),
         OPT_STRING(0, "footer", &opts.footer, "annotation", "Add an annotation to the end of the commit message of split commits"),
         OPT_CALLBACK('P', "prefix", &opts.prefix_list, "prefix", "prefix <path>", opt_string_list),
         OPT_END(),
     };
-    int i;
-    struct commit *rewritten_commit;
-    struct commit *commit;
-    struct commit_list *interesting_commits = NULL;
-    struct commit_list **rewritten_commits = NULL;
-    int sz;
-    int cnt;
     struct commit* head = NULL;
+    struct commit_list *interesting_commits = NULL;
+    int sz;
+    struct commit_list **rewritten_commits = NULL;
+    struct commit *commit;
+    struct commit *rewritten_commit;
+    int cnt;
+    int i;
 
     /* Parse arguments */
     memset(&opts, 0, sizeof(opts));
@@ -1449,43 +1071,20 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         parse_commit(head);
     }
 
-    /*
-     * Populate the util with the string length so we're not constantly
-     * recomputing and allocate memory for the returned tree SHA1s
-     */
-    setup_prefix_list(&opts.prefix_list);
+    g_prefix_count = opts.prefix_list.nr;
 
-    /*
-     * Setup the onto list
-     */
-    onto_list = NULL;
-    for (i = 0; i < opts.onto_list.nr; i++)
-    {
-        int j;
-        commit = lookup_commit_reference_by_name(opts.onto_list.items[i].string);
-        if (!commit)
-            die("git subtree split: unable to resolve onto %s", opts.onto_list.items[i].string);
-
-        parse_commit(commit);
-        commit_list_insert(commit, &onto_list);
-
-        /*
-         * We don't need to process any of these commits
-        */
-        for (j = 0; j <= g_details->nr; j++) {
-            get_commit_util(commit, j, 1)->referenced = 1;
-            get_commit_util(commit, j, 1)->is_subtree = 1;
-        }
-    }
+    /* TODO: Allow split based off of .gitsubtree file for each commit */
+    if (g_prefix_count == 0)
+        die("You must specify at least 1 prefix");
 
     /*
      * Get the list of commits that may have subtrees
      */
-    interesting_commits = get_interesting_split_commits(argc, argv, prefix);
+    interesting_commits = get_interesting_split_commits(argc, argv, prefix, &opts.prefix_list);
 
     debug("\n\n");
 
-    sz = sizeof(*rewritten_commits) * (g_details->nr + 1);
+    sz = sizeof(*rewritten_commits) * (g_prefix_count + 1);
     rewritten_commits = malloc(sz);
     memset(rewritten_commits, 0, sz);
 
@@ -1494,24 +1093,25 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
      * and generate subtree commits for them as needed.
      */
     while ((commit = pop_commit(&interesting_commits)) != NULL) {
-
+        int i;
         /*
          * Generate the split out commits for each prefix
          */
-        for (i = 0; i < g_details->nr; i++) {
-            int is_rewrite_needed = 0;
-            struct commit_list *remapped_parents = NULL;
+        for (i = 0; i < g_prefix_count; i++) {
             struct commit_util *commit_util;
-            struct commit_util *tmp_util;
+            int is_rewrite_needed = 0;
+            struct commit_util *tmp_util;        
             struct commit_list *parent;
+            struct commit_list *remapped_parents = NULL;
 
-            debug_commit(commit, i);
+            debug_commit(commit, NULL, i);
 
             commit_util = get_commit_util(commit, i, 2);
             if (commit_util->referenced || !commit_util->tree) {
                 debug("\t\tUninteresting %d\n", commit_util->referenced);
                 continue;
             }
+
             /* 
              * Having a remapping here implies we've already rewritten this
              * commit...and you can only have one subtree per prefix so there
@@ -1663,7 +1263,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             insert = &remapped_parents;
             tmp_parent = commit->parents;
             while (tmp_parent) {
-                tmp_util = get_commit_util(tmp_parent->item, g_details->nr, 0);
+                tmp_util = get_commit_util(tmp_parent->item, g_prefix_count, 0);
                 if (tmp_util && tmp_util->remapping) {
                     struct commit_list *remapping_list = tmp_util->remapping;
                     while (remapping_list) {
@@ -1688,7 +1288,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             /*
              * Now add any created subtrees
              */
-            for (i = 0; i < g_details->nr; i++) {
+            for (i = 0; i < g_prefix_count; i++) {
                 tmp_util = get_commit_util(commit, i, 2);
                 if (tmp_util->created) {
                     struct commit_list *remapping_list = tmp_util->remapping;
@@ -1701,26 +1301,29 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
             }
 
             if (is_changed) {
-                commit_util = get_commit_util(commit, g_details->nr, 2);
+                commit_util = get_commit_util(commit, g_prefix_count, 2);
                 rewritten_commit = rewrite_commit(commit, commit->tree, remapped_parents, 0, &opts);
                 commit_list_insert(rewritten_commit, &commit_util->remapping);
                 debug("\t*** REWRITE %s\n", sha1_to_hex(rewritten_commit->object.sha1));
-                commit_list_insert(commit, &rewritten_commits[g_details->nr]);
+                commit_list_insert(commit, &rewritten_commits[g_prefix_count]);
             }
             else {
                 free_commit_list(remapped_parents);
             }
         }
+
     }
 
     interesting_commits = NULL;
-    cnt = g_details->nr;
+    cnt = g_prefix_count;
     if (opts.rewrite_parents)
         cnt++;
+
     for (i = 0; i < cnt; i++) {
         struct commit_list *rewritten;
         struct commit_list *squash_parents = NULL;
-        printf("%s\n", i < g_details->nr ? g_details->items[i].prefix : "HEAD");
+        /* TODO: Figure out how to preserve this information. Save the detail struct? */
+        //printf("%s\n", i < g_prefix_count ? g_details->items[i].prefix : "HEAD");
 
         rewritten = rewritten_commits[i];
         while (rewritten) {
@@ -1763,7 +1366,7 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         if (opts.squash) {
             struct commit_util *util;
             util = get_commit_util(head, i, 0);
-            commit = create_squash_commit(util->tree, squash_parents, g_details->items[i].prefix);
+            commit = create_squash_commit(util->tree, squash_parents, "TODO"/*g_details->items[i].prefix*/);
             commit_list_insert(commit, &interesting_commits);
             printf("\t%s\n", sha1_to_hex(commit->object.sha1));
         }
@@ -1791,8 +1394,8 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         unsigned char result_commit[20];
         struct strbuf commit_msg = STRBUF_INIT;
         strbuf_addstr(&commit_msg, "Subtree split rejoin\n\n");
-        for (i = 0; i < g_details->nr; i++) {
-            strbuf_addstr(&commit_msg, g_details->items[i].prefix);
+        for (i = 0; i < g_prefix_count; i++) {
+            strbuf_addstr(&commit_msg, "TODO"/*g_details->items[i].prefix*/);
             strbuf_addstr(&commit_msg, "\n");
         }
 
@@ -1817,7 +1420,10 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
         free_commit_list(interesting_commits);
     }
 
-    free(g_details);
+    /* TODO: Output format to show all commits, just head(s), commits by prefix, etc */
+
+    /* TODO: Option to do like what filter-branch does and create a new refs/ and rename the current */
+
     return 0;
 }
 
@@ -1838,6 +1444,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     struct strbuf **args;
     struct strbuf split_me = STRBUF_INIT;
 
+    const char *split = "subtree split -P folder --rewrite-head";
     //const char *split = "subtree split --rewrite-head";
     //const char *split = "subtree split -P red -P blue --rewrite-head";
     //const char *split = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rewrite-parents";
@@ -1845,7 +1452,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *split_join = "subtree split local-change-to-subtree -P not-a-subtree -P nested/directory --rejoin";
     //const char *split_squash = "subtree split local-change-to-subtree -P red -P blue -P not-a-subtree -P nested/directory --rejoin --squash";
     //const char *split = "subtree split 140dee624e7c29d65543fffaf28cb0dde2c71e48 -P blue -P red --rewrite-parents --always-create";
-    //const char *split = "subtree split local-change-to-subtree -P red -P blue --onto 2075c241ce953a8db2b37e0aac731dc60c82a5af --onto b5450a2b82e0072abd37c1791a2bc3810b6e61f0 --footer \nFooter --annotate Split: --always-create";
+    //const char *split = "subtree split local-change-to-subtree -P red -P blue --footer \nFooter --annotate Split: --always-create";
     //const char *split = "subtree split local-change-to-subtree -P not-a-subtree";
     //const char *split = "subtree split -P indigo --rewrite-head";
     //const char *splitAll = "subtree split -P red -P blue --all --rewrite-parents";
@@ -1853,11 +1460,11 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *add = "subtree add -P green -r ../green master -n green";
     //const char *merge = "subtree merge -P green olive --squash --name green";
     //const char *merge = "subtree merge -P green green-head --squash";
-    const char *merge = "subtree merge -P green -r ../green olive";
+    //const char *merge = "subtree merge -P green -r ../green olive";
     //const char *pull = "subtree pull -P green ../green HEAD";
     //const char *list = "subtree list";
 
-    const char *command = merge;
+    const char *command = split;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
@@ -1870,8 +1477,9 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
         i++;
     }
     split_argv[i] = 0;
-    cmd_subtree(i, split_argv, "");
-    return 0;
+
+    //cmd_subtree(i, split_argv, "");
+    //return 0;
 
 
     // rev-list --format=oneline HEAD
@@ -1896,19 +1504,19 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
         
         rev.hide_subtrees = 1;
         string_list_append(&rev.subtrees, "blue");
-        string_list_append(&rev.subtrees, "green");
-        string_list_append(&rev.subtrees, "orange");
-        string_list_append(&rev.subtrees, "red");
-        string_list_append(&rev.subtrees, "violet");
-        string_list_append(&rev.subtrees, "yellow");
-        string_list_append(&rev.subtrees, "end-of-the-rainbow/gold");
+        //string_list_append(&rev.subtrees, "green");
+        //string_list_append(&rev.subtrees, "orange");
+        //string_list_append(&rev.subtrees, "red");
+        //string_list_append(&rev.subtrees, "violet");
+        //string_list_append(&rev.subtrees, "yellow");
+        //string_list_append(&rev.subtrees, "end-of-the-rainbow/gold");
         rev.limited = 1;
 
         memset(&opt, 0, sizeof(opt));
         opt.def = "HEAD";
 
         {
-            const char *filter[] = { "ignored", "HEAD", "--", "end*/go*" };
+            const char *filter[] = { "ignored", "HEAD", "--", "end*/go*", NULL };
             setup_revisions(2, filter, &rev, &opt);
         }
         //argc = setup_revisions(argc, argv, &rev, &opt);

@@ -778,15 +778,32 @@ static int limit_list(struct rev_info *revs)
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
         
+        if (revs->only_subtrees) {
+            if (commit->parents) {
+                if (commit->object.flags & SUBTREE) {
+                    struct commit_list *parent = commit->parents;
+                    /* Mark the parents as subtrees as well */
+                    while (parent) {
+                        parent->item->object.flags |= SUBTREE;
+                        parent = parent->next;
+                    }
+                }
+                else {
+                    struct commit *subtree;
+                    struct commit_list *subtrees;
+                    subtrees = get_subtrees(commit, &revs->subtrees, 0);
+                    while ((subtree = pop_commit(&subtrees)))
+                        subtree->object.flags |= SUBTREE;
+                }
+            }
+        }
+
         if (revs->hide_subtrees && commit->parents) {
-            struct commit_list *parent = commit->parents;
             struct commit *subtree;
             struct commit_list *subtrees;
             subtrees = get_subtrees(commit, &revs->subtrees, 0);
             while ((subtree = pop_commit(&subtrees)))
                 subtree->object.flags |= UNINTERESTING;
-
-            parent = parent->next;
         }
 
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
@@ -2074,6 +2091,9 @@ enum commit_action get_commit_action(struct rev_info *revs, struct commit *commi
 				return commit_ignore;
 		}
 	}
+    if (revs->only_subtrees && !(commit->object.flags & SUBTREE))
+        return commit_ignore;
+
 	return commit_show;
 }
 
