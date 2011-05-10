@@ -256,6 +256,7 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	const char *entry = *pathspec;
 	const char **src, **dst;
 	int prefixlen;
+	int has_root_widen = 0;
 
 	if (!prefix && !entry)
 		return NULL;
@@ -272,10 +273,15 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	dst = pathspec;
 	prefixlen = prefix ? strlen(prefix) : 0;
 	while (*src) {
-		*(dst++) = prefix_pathspec(prefix, prefixlen, *src);
+		const char *elem = prefix_pathspec(prefix, prefixlen, *src);
+		*(dst++) = elem;
+		if (!elem)
+			has_root_widen = 1;
 		src++;
 	}
 	*dst = NULL;
+	if (has_root_widen && src != pathspec + 1)
+		die("an empty ':' pathspec with other pathspecs");
 	if (!*pathspec)
 		return NULL;
 	return pathspec;
