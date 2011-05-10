@@ -1,0 +1,160 @@
+git-sign(1)
+============
+
+NAME
+----
+git-sign - Add or show object signatures
+
+SYNOPSIS
+--------
+[verse]
+'git sign' [<options>] [<rev-list> | <object>]
+'git sign' verify [--quiet] [<rev-list> | <object>]
+'git sign' remove [<options>] [<rev-list> | <object>]
+'git sign' show [<options>] [<rev-list> | <object>]
+
+
+DESCRIPTION
+-----------
+Adds, removes, verifies or lists GPG signatures attached to
+objects.
+
+Any object can be signed, and the signature can contain metadata
+indicating the purpose of the signature, for instance to claim
+authorship of a commit, or to claim to have reviewed a commit.
+
+Signatures can include metadata, which itself is also signed. The
+metadata cannot be altered without invalidating the signature.
+
+Signatures are saved to and read from `refs/notes/signatures`. If
+this ref does not exist, it will be quietly created when it is
+first needed to store a note.
+
+Signatures use the notes facility for storage, and as such, can
+be displayed using the git-notes commands, and in the
+git-log. This display is less useful than the information
+available using git-sign, because git-sign knows how to parse and
+verify signatures.
+
+
+SUBCOMMANDS
+-----------
+
+verify::
+	Verify some set of signatures and either display the output,
+	or return an error code to stderr for consumption by other
+	tools.
+
+remove::
+	Remove some set of signatures from the repository. The
+	signatures can be selected by optional criteria.
+
+show::
+	Display a set of signatures meeting some optional criteria.
+
+OPTIONS
+-------
+
+--author::
+	When signing a commit, sign as the commit's author, adding
+	following metadata to the signature:
+
+	Authored-By: <signer-identifier>
+
+	Where `<signer-identifier>` is the identifier associated with
+	the signing key.
+
+--author[=<pattern>]::
+	When showing, verifying or deleting signatures, restrict the
+	set of signatures operated on to those with "author"
+	signatures. With the optional `<pattern>`, restrict the
+	results further, to only those signatures with an author that
+	matches `<pattern>`.
+
+--no-author::
+	When showing, verifying or deleting signatures, restrict the
+	signatures operated on to those with no "author" signatures.
+
+--committer::
+	When signing a commit, sign as the committer, adding
+	following metadata to the signature:
+
+	Committed-By: <signer-identifier>
+
+	Where `<signer-identifier>` is the identifier associated with
+	the signing key.
+
+--committer[=<pattern>]::
+	When showing, verifying or deleting signatures, restrict the
+	set of signatures operated on to those with "committer"
+	signatures. With the optional `<pattern>`, restrict the
+	results further, to only those signatures with a committer that
+	matches `<pattern>`.
+
+--no-committer::
+	When showing, verifying or deleting signatures, restrict the
+	signatures operated on to those with no "committer" signatures.
+
+--reviewer::
+	When signing a commit, sign as the commit's reviewer, adding
+	following metadata to the signature:
+
+	Reviewed-By: <signer-identifier>
+
+	Where `<signer-identifier>` is the identifier associated with
+	the signing key.
+
+--reviewer[=<pattern>]::
+	When showing, verifying or deleting signatures, restrict the
+	set of signatures operated on to those with "reviewer"
+	signatures. With the optional `<pattern>`, restrict the
+	results further, to only those signatures with a reviewer
+	that matches `<pattern>`.
+
+--no-reviewer::
+	When showing, verifying or deleting signatures, restrict the
+	signatures operated on to those with no "reviewer" signatures.
+
+--metadata[=<metadata>]::
+	When signing a commit, add the specified metadata to the
+	signature. The metadata can be any string. When showing,
+	verifying or deleting signatures, restrict the set of
+	signatures operated on to signatures with the exact specified
+	metadata.
+
+--verified::
+	When showing or deleting signatures, restrict the set of signatures
+	operated on to those that are verified.
+
+--no-verified::
+	When showing or deleting signatures, restrict the set of signatures
+	operated on to those that fail verification.
+
+--all-match:
+	When showing, verifying or deleting signatures, restrict the
+	signatures output to those that match all given --author,
+	--reviewer, --committer, --metadata and --verified options,
+	instead of those that match at least one.
+
+-u <key-id>::
+	Create the signature with the given key.
+
+--plain::
+	Add a signature with no associated metadata. Providing no
+	metadata option is the same as specifiying "--plain". When
+	showing, deleting or verifying signatures, restrict the
+	sigatures operated on to those that have no associated
+	metadata of any kind.
+
+--quiet::
+	Do not produce output on stdout. For `git-sign verify`,
+	return 1 to stderr if any signatures could not be verified.
+
+
+Author
+------
+Written by Richard Peterson <richard@rcpeterson.com>
+
+Documentation
+-------------
+Documentation by Richard Peterson
