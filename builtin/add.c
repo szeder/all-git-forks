@@ -406,12 +406,12 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		 (!(addremove || take_worktree_changes)
 		  ? ADD_CACHE_IGNORE_REMOVAL : 0));
 
-	if (require_pathspec && argc == 0) {
+	pathspec = validate_pathspec(argc, argv, prefix);
+	if (require_pathspec && (!argc || !pathspec)) {
 		fprintf(stderr, "Nothing specified, nothing added.\n");
 		fprintf(stderr, "Maybe you wanted to say 'git add .'?\n");
 		return 0;
 	}
-	pathspec = validate_pathspec(argc, argv, prefix);
 
 	if (read_cache() < 0)
 		die("index file corrupt");
