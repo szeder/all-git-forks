@@ -77,8 +77,12 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 		die(_("index file corrupt"));
 
 	source = copy_pathspec(prefix, argv, argc, 0);
-	modes = xcalloc(argc, sizeof(enum update_mode));
+	if (!source)
+		die("copying from nowhere?");
+	modes = xcalloc(count_pathspec(source), sizeof(enum update_mode));
 	dest_path = copy_pathspec(prefix, argv + argc, 1, 0);
+	if (!dest_path)
+		die("copying to nowhere?");
 
 	if (dest_path[0][0] == '\0')
 		/* special case: "." was normalized to "" */

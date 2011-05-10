@@ -930,6 +930,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	char *conflict_style = NULL;
 	int patch_mode = 0;
 	int dwim_new_local_branch = 1;
+	const char **pathspec;
 	struct option options[] = {
 		OPT__QUIET(&opts.quiet, "suppress progress reporting"),
 		OPT_STRING('b', NULL, &opts.new_branch, "branch",
@@ -1044,12 +1045,8 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	if (opts.track == BRANCH_TRACK_UNSPECIFIED)
 		opts.track = git_branch_track;
 
-	if (argc) {
-		const char **pathspec = get_pathspec(prefix, argv);
-
-		if (!pathspec)
-			die(_("invalid path specification"));
-
+	pathspec = get_pathspec(prefix, argv);
+	if (argc && pathspec) {
 		if (patch_mode)
 			return interactive_checkout(new.name, pathspec, &opts);
 

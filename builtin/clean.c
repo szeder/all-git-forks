@@ -101,6 +101,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		add_exclude(exclude_list.items[i].string, "", 0, dir.exclude_list);
 
 	pathspec = get_pathspec(prefix, argv);
+	argc = count_pathspec(pathspec);
 
 	fill_directory(&dir, pathspec);
 

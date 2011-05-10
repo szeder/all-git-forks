@@ -162,11 +162,13 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		die(_("index file corrupt"));
 
 	pathspec = get_pathspec(prefix, argv);
+	if (!pathspec)
+		die("removing nothing?");
 	refresh_index(&the_index, REFRESH_QUIET, pathspec, NULL, NULL);
 
 	seen = NULL;
 	for (i = 0; pathspec[i] ; i++)
-		/* nothing */;
+		; /* nothing */
 	seen = xcalloc(i, 1);
 
 	for (i = 0; i < active_nr; i++) {
