@@ -287,6 +287,16 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	return pathspec;
 }
 
+int count_pathspec(const char **pathspec)
+{
+	int i;
+	if (!pathspec)
+		return 0;
+	for (i = 0; pathspec[i]; i++)
+		; /* just counting */
+	return i;
+}
+
 /*
  * Test if it looks like we're at a git directory.
  * We want to see:
