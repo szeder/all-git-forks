@@ -163,7 +163,7 @@ int in_merge_bases(struct commit *, struct commit **, int);
 
 int contains(struct commit *, const struct commit_list *);
 
-extern int interactive_add(int argc, const char **argv, const char *prefix);
+extern int interactive_add(int argc, const char **argv, const char *prefix, int patch);
 extern int run_add_interactive(const char *revision, const char *patch_mode,
 			       const char **pathspec);
 
