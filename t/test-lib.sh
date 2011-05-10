@@ -89,6 +89,9 @@ esac
 _x05='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
 _x40="$_x05$_x05$_x05$_x05$_x05$_x05$_x05$_x05"
 
+# Zero SHA-1
+_z40=0000000000000000000000000000000000000000
+
 # Each test should start with something like this, after copyright notices:
 #
 # test_description='Description of this test...
@@ -1084,6 +1087,32 @@ then
 else
 	test_set_prereq C_LOCALE_OUTPUT
 fi
+
+# Use this instead of test_cmp to compare files that contain expected and
+# actual output from git commands that can be translated.  When running
+# under GETTEXT_POISON this pretends that the command produced expected
+# results.
+test_i18ncmp () {
+	test -n "$GETTEXT_POISON" || test_cmp "$@"
+}
+
+# Use this instead of "grep expected-string actual" to see if the
+# output from a git command that can be translated either contains an
+# expected string, or does not contain an unwanted one.  When running
+# under GETTEXT_POISON this pretends that the command produced expected
+# results.
+test_i18ngrep () {
+	if test -n "$GETTEXT_POISON"
+	then
+	    : # pretend success
+	elif test "x!" = "x$1"
+	then
+		shift
+		! grep "$@"
+	else
+		grep "$@"
+	fi
+}
 
 # test whether the filesystem supports symbolic links
 ln -s x y 2>/dev/null && test -h y 2>/dev/null && test_set_prereq SYMLINKS
