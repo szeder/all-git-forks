@@ -40,7 +40,11 @@ git_broken_path_fix () {
 # @@BROKEN_PATH_FIX@@
 
 die() {
-	echo >&2 "$@"
+	echo >&2 "$1"
+	if test $2
+	then
+		exit $2
+	fi
 	exit 1
 }
 
