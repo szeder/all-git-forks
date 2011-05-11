@@ -18,6 +18,8 @@ struct subtree_details
     struct commit *commit;
     struct subtree_detail d;
 };
+       
+static struct pathspec empty_pathspec;
 
 /*-----------------------------------------------------------------------------
 Parse the .subtree config file and put the paths (prefixes) for all subtrees
@@ -288,8 +290,9 @@ struct subtree_details *get_details(struct commit *commit, struct string_list *p
     }
     else {
         struct strbuf subtree_blob_sha1 = STRBUF_INIT;
+
         parse_commit(commit);
-        read_tree_recursive(commit->tree, "", 0, 0, NULL, get_subtree_sha1_read_tree, &subtree_blob_sha1);
+        read_tree_recursive(commit->tree, "", 0, 0, &empty_pathspec, get_subtree_sha1_read_tree, &subtree_blob_sha1);
         if (subtree_blob_sha1.len > 0)
         {
             /* Read the .gitsubtree data for this commit */
@@ -339,7 +342,7 @@ struct commit_list *get_subtrees(struct commit *commit, struct string_list *pref
 
     details = get_details(commit, prefix_list);
 
-    read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, details);
+    read_tree_recursive(commit->tree, "", 0, 0, &empty_pathspec, read_tree_find_subtrees, details);
     
     for (i = 0; i < details->d.nr; i++) {
         debug("\t%s (%s)\n", details->d.items[i].prefix, details->d.items[i].tree ? sha1_to_hex(details->d.items[i].tree->object.sha1) : "none");
@@ -379,7 +382,7 @@ struct subtree_detail *get_subtree_trees(struct commit *commit, struct string_li
      */
     for (i = 0; i < details->d.nr; i++)
         details->d.items[i].tree = NULL;
-    read_tree_recursive(commit->tree, "", 0, 0, NULL, read_tree_find_subtrees, details);
+    read_tree_recursive(commit->tree, "", 0, 0, &empty_pathspec, read_tree_find_subtrees, details);
 
     sz = sizeof(*detail) + sizeof(*(detail->items)) * details->d.nr;
     detail = xmalloc(sz);

@@ -363,30 +363,6 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 
-		if (!strcmp(arg, "--subtree")) {
-            revs.limited = 1;
-			revs.only_subtrees = 1;
-			continue;
-		}
-		if (!strncmp(arg, "--subtree=", 10)) {
-            revs.limited = 1;
-			revs.only_subtrees = 1;
-            string_list_append(&revs.subtrees, arg+10);
-			continue;
-		}
-
-        if (!strcmp(arg, "--no-subtree")) {
-            revs.limited = 1;
-			revs.hide_subtrees = 1;
-			continue;
-		}
-		if (!strncmp(arg, "--no-subtree=", 13)) {
-            revs.limited = 1;
-			revs.hide_subtrees = 1;
-            string_list_append(&revs.subtrees, arg+13);
-			continue;
-		}
-
 		usage(rev_list_usage);
 
 	}

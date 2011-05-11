@@ -1681,6 +1681,29 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 				continue;
 			}
 
+		    if (!strcmp(arg, "--subtree")) {
+                revs->limited = 1;
+			    revs->only_subtrees = 1;
+			    continue;
+		    }
+		    if (!strncmp(arg, "--subtree=", 10)) {
+                revs->limited = 1;
+			    revs->only_subtrees = 1;
+                string_list_append(&revs->subtrees, arg+10);
+			    continue;
+		    }
+
+            if (!strcmp(arg, "--no-subtree")) {
+                revs->limited = 1;
+			    revs->hide_subtrees = 1;
+			    continue;
+		    }
+		    if (!strncmp(arg, "--no-subtree=", 13)) {
+                revs->limited = 1;
+			    revs->hide_subtrees = 1;
+                string_list_append(&revs->subtrees, arg+13);
+			    continue;
+		    }
 			opts = handle_revision_opt(revs, argc - i, argv + i, &left, argv);
 			if (opts > 0) {
 				i += opts - 1;
