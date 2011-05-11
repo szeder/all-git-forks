@@ -414,10 +414,10 @@ static void *load_file(const char *filename, size_t *sz)
 	err_ret:
 		if (errno != ENOENT)
 			error(_("'%s': %s"), filename, strerror(errno));
-		return 0;
+		return NULL;
 	}
 	if (!S_ISREG(st.st_mode))
-		return 0;
+		return NULL;
 	*sz = xsize_t(st.st_size);
 	i = open(filename, O_RDONLY);
 	if (i < 0)
@@ -427,7 +427,7 @@ static void *load_file(const char *filename, size_t *sz)
 		error(_("'%s': short read %s"), filename, strerror(errno));
 		close(i);
 		free(data);
-		return 0;
+		return NULL;
 	}
 	close(i);
 	data[*sz] = 0;
@@ -533,18 +533,18 @@ static int grep_cache(struct grep_opt *opt, const struct pathspec *pathspec, int
 static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 		     struct tree_desc *tree, struct strbuf *base, int tn_len)
 {
-	int hit = 0, matched = 0;
+	int hit = 0, match = 0;
 	struct name_entry entry;
 	int old_baselen = base->len;
 
 	while (tree_entry(tree, &entry)) {
 		int te_len = tree_entry_len(entry.path, entry.sha1);
 
-		if (matched != 2) {
-			matched = tree_entry_interesting(&entry, base, tn_len, pathspec);
-			if (matched == -1)
-				break; /* no more matches */
-			if (!matched)
+		if (match != 2) {
+			match = tree_entry_interesting(&entry, base, tn_len, pathspec);
+			if (match < 0)
+				break;
+			if (match == 0)
 				continue;
 		}
 

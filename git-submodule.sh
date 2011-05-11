@@ -8,7 +8,7 @@ dashless=$(basename "$0" | sed -e 's/-/ /')
 USAGE="[--quiet] add [-b branch] [-f|--force] [--reference <repository>] [--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
-   or: $dashless [--quiet] update [--init] [-N|--no-fetch] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [-N|--no-fetch] [-f|--force] [--rebase] [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--] [<path>...]"
@@ -72,7 +72,24 @@ resolve_relative_url ()
 #
 module_list()
 {
-	git ls-files --error-unmatch --stage -- "$@" | sane_grep '^160000 '
+	git ls-files --error-unmatch --stage -- "$@" |
+	perl -e '
+	my %unmerged = ();
+	my ($null_sha1) = ("0" x 40);
+	while (<STDIN>) {
+		chomp;
+		my ($mode, $sha1, $stage, $path) =
+			/^([0-7]+) ([0-9a-f]{40}) ([0-3])\t(.*)$/;
+		next unless $mode eq "160000";
+		if ($stage ne "0") {
+			if (!$unmerged{$path}++) {
+				print "$mode $null_sha1 U\t$path\n";
+			}
+			next;
+		}
+		print "$_\n";
+	}
+	'
 }
 
 #
@@ -385,6 +402,9 @@ cmd_update()
 		-N|--no-fetch)
 			nofetch=1
 			;;
+		-f|--force)
+			force=$1
+			;;
 		-r|--rebase)
 			update="rebase"
 			;;
@@ -427,6 +447,11 @@ cmd_update()
 	module_list "$@" |
 	while read mode sha1 stage path
 	do
+		if test "$stage" = U
+		then
+			echo >&2 "Skipping unmerged submodule $path"
+			continue
+		fi
 		name=$(module_name "$path") || exit
 		url=$(git config submodule."$name".url)
 		update_module=$(git config submodule."$name".update)
@@ -458,16 +483,20 @@ cmd_update()
 
 		if test "$subsha1" != "$sha1"
 		then
-			force=
-			if test -z "$subsha1"
+			subforce=$force
+			# If we don't already have a -f flag and the submodule has never been checked out
+			if test -z "$subsha1" -a -z "$force"
 			then
-				force="-f"
+				subforce="-f"
 			fi
 
 			if test -z "$nofetch"
 			then
+				# Run fetch only if $sha1 isn't present or it
+				# is not reachable from a ref.
 				(clear_local_git_env; cd "$path" &&
-					git-fetch) ||
+					((rev=$(git rev-list -n 1 $sha1 --not --all 2>/dev/null) &&
+					 test -z "$rev") || git-fetch)) ||
 				die "Unable to fetch in submodule path '$path'"
 			fi
 
@@ -490,7 +519,7 @@ cmd_update()
 				msg="merged in"
 				;;
 			*)
-				command="git checkout $force -q"
+				command="git checkout $subforce -q"
 				action="checkout"
 				msg="checked out"
 				;;
@@ -770,6 +799,11 @@ cmd_status()
 		name=$(module_name "$path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath="$prefix$path"
+		if test "$stage" = U
+		then
+			say "U$sha1 $displaypath"
+			continue
+		fi
 		if test -z "$url" || ! test -d "$path"/.git -o -f "$path"/.git
 		then
 			say "-$sha1 $displaypath"

@@ -72,8 +72,7 @@ static void notify_parent(void)
 	 * know, so failures like ENOENT can be handled right away; but
 	 * otherwise, finish_command will still report the error.
 	 */
-	if (write(child_notifier, "", 1))
-		; /* yes, dear gcc -D_FORTIFY_SOURCE, there was an error. */
+	xwrite(child_notifier, "", 1);
 }
 
 static NORETURN void die_child(const char *err, va_list params)
@@ -83,10 +82,9 @@ static NORETURN void die_child(const char *err, va_list params)
 	if (len > sizeof(msg))
 		len = sizeof(msg);
 
-	if (write(child_err, "fatal: ", 7) ||
-	    write(child_err, msg, len) ||
-	    write(child_err, "\n", 1))
-		; /* yes, gcc -D_FORTIFY_SOURCE, we know there was an error. */
+	write_in_full(child_err, "fatal: ", 7);
+	write_in_full(child_err, msg, len);
+	write_in_full(child_err, "\n", 1);
 	exit(128);
 }
 #endif

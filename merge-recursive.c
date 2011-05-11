@@ -22,11 +22,6 @@
 #include "dir.h"
 #include "submodule.h"
 
-static const char rename_limit_advice[] =
-"inexact rename detection was skipped because there were too many\n"
-"  files. You may want to set your merge.renamelimit variable to at least\n"
-"  %d and retry this merge.";
-
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)
 {
@@ -278,7 +273,9 @@ static int save_files_dirs(const unsigned char *sha1,
 static int get_files_dirs(struct merge_options *o, struct tree *tree)
 {
 	int n;
-	if (read_tree_recursive(tree, "", 0, 0, NULL, save_files_dirs, o))
+	struct pathspec match_all;
+	init_pathspec(&match_all, NULL);
+	if (read_tree_recursive(tree, "", 0, 0, &match_all, save_files_dirs, o))
 		return 0;
 	n = o->current_file_set.nr + o->current_directory_set.nr;
 	return n;
@@ -344,10 +341,11 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 	 * make room for the corresponding directory.  Such paths will
 	 * later be processed in process_df_entry() at the end.  If
 	 * the corresponding directory ends up being removed by the
-	 * merge, then the file will be reinstated at that time;
-	 * otherwise, if the file is not supposed to be removed by the
-	 * merge, the contents of the file will be placed in another
-	 * unique filename.
+	 * merge, then the file will be reinstated at that time
+	 * (albeit with a different timestamp!); otherwise, if the
+	 * file is not supposed to be removed by the merge, the
+	 * contents of the file will be placed in another unique
+	 * filename.
 	 *
 	 * NOTE: This function relies on the fact that entries for a
 	 * D/F conflict will appear adjacent in the index, with the
@@ -356,8 +354,14 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 	 */
 	const char *last_file = NULL;
 	int last_len = 0;
-	struct stage_data *last_e;
 	int i;
+
+	/*
+	 * Do not do any of this crazyness during the recursive; we don't
+	 * even write anything to the working tree!
+	 */
+	if (o->call_depth)
+		return;
 
 	for (i = 0; i < entries->nr; i++) {
 		const char *path = entries->items[i].string;
@@ -386,7 +390,6 @@ static void make_room_for_directories_of_df_conflicts(struct merge_options *o,
 		if (S_ISREG(e->stages[2].mode) || S_ISLNK(e->stages[2].mode)) {
 			last_file = path;
 			last_len = len;
-			last_e = e;
 		} else {
 			last_file = NULL;
 		}
@@ -961,7 +964,6 @@ static int process_renames(struct merge_options *o,
 	}
 
 	for (i = 0, j = 0; i < a_renames->nr || j < b_renames->nr;) {
-		char *src;
 		struct string_list *renames1, *renames2Dst;
 		struct rename *ren1 = NULL, *ren2 = NULL;
 		const char *branch1, *branch2;
@@ -996,7 +998,6 @@ static int process_renames(struct merge_options *o,
 			ren2 = ren1;
 			ren1 = tmp;
 		}
-		src = ren1->pair->one->path;
 
 		ren1->dst_entry->processed = 1;
 		ren1->src_entry->processed = 1;
@@ -1264,9 +1265,13 @@ static int merge_content(struct merge_options *o,
 	}
 
 	if (mfi.clean && !df_conflict_remains &&
-	    sha_eq(mfi.sha, a_sha) && mfi.mode == a.mode)
+	    sha_eq(mfi.sha, a_sha) && mfi.mode == a.mode &&
+	    !o->call_depth && !lstat(path, &st)) {
 		output(o, 3, "Skipped %s (merged same as existing)", path);
-	else
+		add_cacheinfo(mfi.mode, mfi.sha, path,
+			      0 /*stage*/, 1 /*refresh*/, 0 /*options*/);
+		return mfi.clean;
+	} else
 		output(o, 2, "Auto-merging %s", path);
 
 	if (!mfi.clean) {
@@ -1656,8 +1661,9 @@ int merge_recursive(struct merge_options *o,
 		commit_list_insert(h2, &(*result)->parents->next);
 	}
 	flush_output(o);
-	if (o->needed_rename_limit)
-		warning(rename_limit_advice, o->needed_rename_limit);
+	if (show(o, 2))
+		diff_warn_rename_limit("merge.renamelimit",
+				       o->needed_rename_limit, 0);
 	return clean;
 }
 
