@@ -1597,7 +1597,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	if (!num_theirs)
-		strbuf_addf(sb, "Your branch is ahead of '%s' "
+		strbuf_addf(sb, "DYour branch is ahead of '%s' "
 			    "by %d commit%s.\n",
 			    base, num_ours, (num_ours == 1) ? "" : "s");
 	else if (!num_ours)
