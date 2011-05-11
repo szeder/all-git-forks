@@ -147,6 +147,7 @@ struct rev_info {
 	/* commit counts */
 	int count_left;
 	int count_right;
+	int count_same;
 };
 
 #define REV_TREE_SAME		0

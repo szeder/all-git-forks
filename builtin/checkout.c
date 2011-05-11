@@ -79,7 +79,10 @@ static int update_some(const unsigned char *sha1, const char *base, int baselen,
 
 static int read_tree_some(struct tree *tree, const char **pathspec)
 {
-	read_tree_recursive(tree, "", 0, 0, pathspec, update_some, NULL);
+	struct pathspec ps;
+	init_pathspec(&ps, pathspec);
+	read_tree_recursive(tree, "", 0, 0, &ps, update_some, NULL);
+	free_pathspec(&ps);
 
 	/* update the index with the given tree's info
 	 * for all args, expanding wildcards, and exit
@@ -648,18 +651,30 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
 		if (more == 1)
 			describe_one_orphan(&sb, last);
 		else
-			strbuf_addf(&sb, " ... and %d more.\n", more);
+			strbuf_addf(&sb, _(" ... and %d more.\n"), more);
 	}
 
 	fprintf(stderr,
-		"Warning: you are leaving %d commit%s behind, "
+		Q_(
+		/* The singular version */
+		"Warning: you are leaving %d commit behind, "
+		"not connected to\n"
+		"any of your branches:\n\n"
+		"%s\n"
+		"If you want to keep it by creating a new branch, "
+		"this may be a good time\nto do so with:\n\n"
+		" git branch new_branch_name %s\n\n",
+		/* The plural version */
+		"Warning: you are leaving %d commits behind, "
 		"not connected to\n"
 		"any of your branches:\n\n"
 		"%s\n"
 		"If you want to keep them by creating a new branch, "
 		"this may be a good time\nto do so with:\n\n"
 		" git branch new_branch_name %s\n\n",
-		lost, ((1 < lost) ? "s" : ""),
+		/* Give ngettext() the count */
+		lost),
+		lost,
 		sb.buf,
 		sha1_to_hex(commit->object.sha1));
 	strbuf_release(&sb);
@@ -961,9 +976,9 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		die (_("--patch is incompatible with all other options"));
 
 	if (opts.force_detach && (opts.new_branch || opts.new_orphan_branch))
-		die("--detach cannot be used with -b/-B/--orphan");
+		die(_("--detach cannot be used with -b/-B/--orphan"));
 	if (opts.force_detach && 0 < opts.track)
-		die("--detach cannot be used with -t");
+		die(_("--detach cannot be used with -t"));
 
 	/* --track without -b should DWIM */
 	if (0 < opts.track && !opts.new_branch) {
@@ -1043,7 +1058,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		}
 
 		if (opts.force_detach)
-			die("git checkout: --detach does not take a path argument");
+			die(_("git checkout: --detach does not take a path argument"));
 
 		if (1 < !!opts.writeout_stage + !!opts.force + !!opts.merge)
 			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\nchecking out of the index."));

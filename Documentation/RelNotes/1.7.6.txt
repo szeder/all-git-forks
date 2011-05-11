@@ -1,0 +1,106 @@
+Git v1.7.6 Release Notes (draft)
+========================
+
+Updates since v1.7.5
+--------------------
+
+ * Various git-svn updates.
+
+ * Clean-up of the C part of i18n (but not l10n---please wait)
+   continues.
+
+ * Processes spawned by "[alias] <name> = !process" in the configuration
+   can inspect GIT_PREFIX environment variable to learn where in the
+   working tree the original command was invoked.
+
+ * "git blame" learned "--abbrev[=<n>]" option to control the minimum
+   number of hexdigits shown for commit object names.
+
+ * "git cvsimport" learned that CVSNT stores its password file in a
+   location different from the traditional CVS.
+
+ * "git diff -C -C" used to disable the rename detection entirely when
+   there are too many copy candidate paths in the tree; now it falls
+   back to "-C" when doing so would keep the copy candidate paths
+   under the rename detection limit.
+
+ * "git format-patch" learned "--quiet" option to suppress the output of
+   the names of generated files.
+
+ * "git format-patch" quotes people's names when it has RFC822 special
+   characters in it, e.g. "Junio C. Hamano" <jch@example.com>.  Earlier
+   it was up to the user to do this when using its output.
+
+ * "git log" and friends learned a new "--notes" option to replace the
+   "--show-notes" option.  Unlike "--show-notes", "--notes=<ref>" does
+   not imply showing the default notes.
+
+ * "git merge" learned "-" as a short-hand for "the previous branch", just
+   like the way "git checkout -" works.
+
+ * "git merge-one-file" learned to honor GIT_WORK_TREE settings when
+   handling "both sides added, differently" conflict.
+
+ * "git rev-list --count" used with "--cherry-mark" counts the cherry-picked
+   commits separately, producing more a useful output.
+
+ * "git submodule update" learned "--force" option to get rid of local
+   changes in submodules and replace them with the up-to-date version.
+
+ * Compressed tarball gitweb generates is made without the timestamp of
+   the tarball generation; snapshot from the same tree should result in
+   a same tarball.
+
+ * "git-p4" (in contrib) learned to merge a file that was added on both
+   branches differently by using 2-way merge.
+
+Also contains various documentation updates and minor miscellaneous
+changes.
+
+
+Fixes since v1.7.5
+------------------
+
+Unless otherwise noted, all the fixes in 1.7.5.X maintenance track are
+included in this release.
+
+ * "git config" used to choke with an insanely long line.
+   (merge ef/maint-strbuf-init later)
+
+ * "git diff-files" did not show the mode information from the working
+   tree side of an unmerged path correctly.
+   (merge jc/fix-diff-files-unmerged later)
+
+ * "git diff -M --cached" used to use unmerged path as a possible rename
+   source candidate, which made no sense.
+   (merge mz/maint-rename-unmerged later)
+
+ * "git format-patch" when run with "--quiet" option used to produce a
+   nonsense result that consists of alternating empty output.
+   (merge early part of cn/format-patch-quiet later)
+
+ * "git format-patch" did not quote RFC822 special characters in the
+   email address (e.g From: Junio C. Hamano <jch@example.com>, not
+   From: "Junio C. Hamano" <jch@example.com>).
+   (merge jk/format-patch-quote-special-in-from later)
+
+ * "git mergetool" did not handle conflicted submoudules gracefully.
+   (merge jm/mergetool-submodules later)
+
+ * "git rebase -i -p" failed to preserve the history when there is a
+   redundant merge created with the --no-ff option.
+   (merge aw/maint-rebase-i-p-no-ff later)
+
+ * "git stash -p --no-keep-index" and "git stash --no-keep-index -p" now
+   mean the same thing.
+   (merge dm/stash-k-i-p later)
+
+ * "git upload-pack" (hence "git push" over git native protocol) had a
+   subtle race condition that could lead to a deadlock.
+   (merge jk/maint-upload-pack-shallow later)
+
+---
+exec >/var/tmp/1
+echo O=$(git describe master)
+O=v1.7.5.1-216-g3970fc5
+git shortlog --no-merges ^maint ^$O master
