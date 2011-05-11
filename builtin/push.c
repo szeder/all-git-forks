@@ -264,11 +264,11 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	//struct branch *branch = branch_get("4a9514adf203a19ac658ead1be792b6bdcdf3b2d");
 	//struct branch *branch = branch_get("ecd4722d772bc082a47965a4a54d4f1ce50f5d67");
-	struct branch *branch = branch_get("master");
+	struct branch *branch = branch_get(NULL);
 	int num_ours, num_theirs;	
 	if (stat_tracking_info(branch, &num_ours, &num_theirs))
 		printf("Tracking problem\n");
-	printf("DO PUSH\n");
+	printf("DO PUSH|%s|\n",repo);
 	exit(0);
 
 	rc = do_push(repo, flags);
