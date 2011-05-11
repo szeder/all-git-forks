@@ -83,8 +83,7 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
     int i;
     int pathlen;
     struct subtree_details *details = context;
-    struct commit *commit = details->commit;
-
+    
     if (!S_ISDIR(mode)) {
         /* This isn't a folder, so we can't split off of it */
         return result;
@@ -92,7 +91,7 @@ static int read_tree_find_subtrees(const unsigned char *sha1, const char *base,
 
     pathlen = strlen(pathname);
     for (i = 0; i < details->d.nr; i++) {
-        char *prefix;
+        const char *prefix;
         int prefix_len;
       
         prefix = details->d.items[i].prefix;
@@ -298,10 +297,10 @@ struct subtree_details *get_details(struct commit *commit, struct string_list *p
             /* Read the .gitsubtree data for this commit */
             unsigned long size;
             enum object_type type;
-            char *buf = read_sha1_file(subtree_blob_sha1.buf, &type, &size);
+            char *buf = read_sha1_file((unsigned char *)subtree_blob_sha1.buf, &type, &size);
 
             if (!buf) {
-               error("Could not read object %s", sha1_to_hex(subtree_blob_sha1.buf));
+               error("Could not read object %s", sha1_to_hex((unsigned char *)subtree_blob_sha1.buf));
                return NULL;
             }
 

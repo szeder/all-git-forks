@@ -311,8 +311,6 @@ static int cmd_subtree_list(int argc, const char **argv, const char *prefix)
     struct rev_info rev;
     struct setup_revision_opt opt;
     struct commit *commit;
-    static struct string_list prefix_list;
-
     
     /* Parse arguments */
     memset(&opts, 0, sizeof(opts));
@@ -1484,11 +1482,9 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
 
     // rev-list --format=oneline HEAD
     {
-        struct commit_list *subtree_commits = NULL;
         struct rev_info rev;
         struct setup_revision_opt opt;
         struct commit *commit;
-        static struct string_list prefix_list;
 
         /*
          * Setup the walk. Make sure the user didn't pass any flags that will
@@ -1622,7 +1618,7 @@ int cmd_subtree(int argc, const char **argv, const char *prefix)
 * On add, detect existing subtree and (optionally?) do a merge with it
 * Allow them to specify names instead of prefixes (to lookup prefix from 
    .subtree)
-* Pull down subtree refs/ into refs/subtree/<name>/*
+* Pull down subtree refs/ into refs/subtree/<name>/ *
 * Wildcard searches for prefixes in list & rev-list? This could be hard 
    since a lot of the logic assumes 1 subtree per prefix.
 -----------------------------------------------------------------------------*/
