@@ -64,7 +64,7 @@ static int get_subtree_sha1_read_tree(const unsigned char *sha1, const char *bas
     }
 
     if( strcmp( pathname, ".gitsubtree" ) == 0 ) {
-        strbuf_addstr(context, (char *)sha1);
+        strbuf_add(context, (char *)sha1, 40);
         /* Found it, stop looking */
         return -1;
     }
@@ -338,6 +338,9 @@ struct commit_list *get_subtrees(struct commit *commit, struct string_list *pref
     int i;
 
     debug("get_subtrees(%s)\n", sha1_to_hex(commit->object.sha1));
+
+if (strcmp(sha1_to_hex(commit->object.sha1), "9636663fc8d39b0809070192ad81376d12e6b6c8")==0)
+    i = 0;
 
     details = get_details(commit, prefix_list);
 
