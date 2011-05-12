@@ -57,6 +57,48 @@ test_expect_success 'setup a submodule tree' '
 	 git submodule add ../merging merging &&
 	 test_tick &&
 	 git commit -m "rebasing"
+	) &&
+	mkdir a && (cd a && git init --bare) &&
+	mkdir b && (cd b && git init --bare) &&
+	mkdir c && (cd c && git init --bare) && 
+	mkdir d && (cd d && git init --bare) &&
+	mkdir wt  &&
+	(cd wt &&
+	 git clone ../a &&
+	 (cd a &&
+	  test_commit "initial_commit_a" a &&
+	  git push origin master
+	 ) &&
+	 git clone ../b &&
+	 (cd b &&
+	  test_commit "initial_commit_b" b &&
+	  git push origin master
+	 ) &&
+	 git clone ../c &&
+	 (cd c &&
+	  test_commit "initial_commit_c" c &&
+	  git push origin master
+	 ) &&
+	 git clone ../d &&
+	 (cd d &&
+	  test_commit "initial_commit_d" d &&
+	  git push origin master
+	 ) &&
+	 (cd a &&
+	 # This points to /wt/../b
+	  git submodule add ../b b &&
+	 # This points to /c
+	  git submodule add ../../../c c &&
+	  git commit -am "added submodules" &&
+	  git push &&
+	  (cd b &&
+	   git submodule add ../d d &&
+	   git commit -am "added submodule" &&
+	   git push 
+	  ) &&
+	  git commit -am "updated b" &&
+	  git push
+	 )
 	)
 '
 
@@ -297,5 +339,3 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	 test_cmp expect actual
 	)
 '
-
-test_done
