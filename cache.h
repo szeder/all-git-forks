@@ -1022,6 +1022,35 @@ extern unsigned long unpack_object_header_buffer(const unsigned char *buf, unsig
 extern unsigned long get_size_from_delta(struct packed_git *, struct pack_window **, off_t);
 extern int packed_object_info_detail(struct packed_git *, off_t, unsigned long *, unsigned long *, unsigned int *, unsigned char *);
 
+struct object_info {
+	/* Request */
+	unsigned long *sizep;
+	int want_deltainfo;
+
+	/* Response */
+	enum {
+		OI_CACHED,
+		OI_LOOSE,
+		OI_PACKED
+	} whence;
+	union {
+		/*
+		 * struct {
+		 * 	... Nothing to expose in this case
+		 * } cached;
+		 * struct {
+		 * 	... Nothing to expose in this case
+		 * } loose;
+		 */
+		struct {
+			off_t offset;
+			unsigned int delta;
+			struct packed_git *pack;
+		} packed;
+	} u;
+};
+extern int sha1_object_info_extended(const unsigned char *, struct object_info *);
+
 /* Dumb servers support */
 extern int update_server_info(int);
 

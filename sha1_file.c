@@ -2093,7 +2093,8 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	return status;
 }
 
-int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+/* returns enum object_type or negative */
+int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 {
 	struct cached_object *co;
 	struct pack_entry e;
@@ -2101,16 +2102,19 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 
 	co = find_cached_object(sha1);
 	if (co) {
-		if (sizep)
-			*sizep = co->size;
+		if (oi->sizep)
+			*(oi->sizep) = co->size;
+		oi->whence = OI_CACHED;
 		return co->type;
 	}
 
 	if (!find_pack_entry(sha1, &e)) {
 		/* Most likely it's a loose object. */
-		status = sha1_loose_object_info(sha1, sizep);
-		if (status >= 0)
+		status = sha1_loose_object_info(sha1, oi->sizep);
+		if (status >= 0) {
+			oi->whence = OI_LOOSE;
 			return status;
+		}
 
 		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
@@ -2118,13 +2122,41 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 			return status;
 	}
 
-	status = packed_object_info(e.p, e.offset, sizep);
+	if (!oi->want_deltainfo) {
+		status = packed_object_info(e.p, e.offset, oi->sizep);
+	} else {
+		unsigned long size, store_size;
+		unsigned int delta_chain_length;
+		unsigned char base_sha1[20];
+		status = packed_object_info_detail(e.p, e.offset,
+						   &size, &store_size,
+						   &delta_chain_length,
+						   base_sha1);
+		if (0 <= status) {
+			if (oi->sizep)
+				*oi->sizep = size;
+			oi->u.packed.delta = delta_chain_length;
+		}
+	}
 	if (status < 0) {
 		mark_bad_packed_object(e.p, sha1);
-		status = sha1_object_info(sha1, sizep);
+		status = sha1_object_info_extended(sha1, oi);
+	} else {
+		oi->whence = OI_PACKED;
+		oi->u.packed.offset = e.offset;
+		oi->u.packed.pack = e.p;
 	}
 
 	return status;
+}
+
+int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+{
+	struct object_info oi;
+
+	oi.sizep = sizep;
+	oi.want_deltainfo = 0;
+	return sha1_object_info_extended(sha1, &oi);
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
