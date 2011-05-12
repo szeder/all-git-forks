@@ -299,6 +299,21 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 '
 
 test_expect_success 'submodule update continues after error' '
+	(cd super &&
+	 git reset --hard HEAD &&
+	 git submodule add ../submodule submodule2 &&
+	 git add submodule2 &&
+	 test_commit "new_submodule"
+	 (cd submodule &&
+	  test_commit "update_submodule" file
+	 ) &&
+	 (cd submodule2 &&
+	  test_commit "update_submodule2" file 
+	 ) &&
+	 git add submodule &&
+	 git add submodule2 &&
+	 git commit -m "two_new_submodule_commits"
+	) 
 	bash
 '
 
