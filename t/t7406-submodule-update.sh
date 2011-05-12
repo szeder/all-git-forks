@@ -339,3 +339,36 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	 test_cmp expect actual
 	)
 '
+
+test_expect_success 'submodule update continues after checkout error' '
+	(cd wt &&
+	 (cd a &&
+	  (cd b &&
+	   test_commit "update" b &&
+	   git push
+	  ) &&
+
+	  (cd c &&
+	   test_commit "update" c &&
+	   git push
+	  ) &&
+
+	  git commit -am "updated both modules" &&
+	  git push &&
+
+	  git checkout HEAD^ &&
+	  git submodule update &&
+
+	  (cd b &&
+	   test_commit "update" b &&
+	   git push 
+	  ) &&
+	
+	  git checkout master &&
+	  git submodule update 
+	 )
+	)
+'
+test_expect_success 'submodule update stops after rebase/merge error' '
+'
+test_done
