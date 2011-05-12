@@ -317,9 +317,8 @@ test_expect_success 'submodule update continues after error' '
 	 	echo "" > file
 	 ) &&
 	 git checkout HEAD^
-	 git submodule update
+	 test_must_fail git submodule update
 	) 
-	bash
 '
 
 test_done
