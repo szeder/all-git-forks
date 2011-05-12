@@ -303,7 +303,7 @@ test_expect_success 'submodule update continues after error' '
 	 git reset --hard HEAD &&
 	 git submodule add ../submodule submodule2 &&
 	 git add submodule2 &&
-	 test_commit "new_submodule"
+	 git commit -am "new_submodule"
 	 (cd submodule &&
 	  test_commit "update_submodule" file
 	 ) &&
@@ -312,7 +312,12 @@ test_expect_success 'submodule update continues after error' '
 	 ) &&
 	 git add submodule &&
 	 git add submodule2 &&
-	 git commit -m "two_new_submodule_commits"
+	 git commit -m "two_new_submodule_commits" &&
+	 (cd submodule &&
+	 	echo "" > file
+	 ) &&
+	 git checkout HEAD^
+	 git submodule update
 	) 
 	bash
 '
