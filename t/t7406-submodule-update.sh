@@ -298,4 +298,8 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	)
 '
 
+test_expect_success 'submodule update continues after error' '
+	bash
+'
+
 test_done
