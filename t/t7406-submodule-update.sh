@@ -57,48 +57,6 @@ test_expect_success 'setup a submodule tree' '
 	 git submodule add ../merging merging &&
 	 test_tick &&
 	 git commit -m "rebasing"
-	) &&
-	mkdir a && (cd a && git init --bare) &&
-	mkdir b && (cd b && git init --bare) &&
-	mkdir c && (cd c && git init --bare) && 
-	mkdir d && (cd d && git init --bare) &&
-	mkdir wt  &&
-	(cd wt &&
-	 git clone ../a &&
-	 (cd a &&
-	  test_commit "initial_commit_a" a &&
-	  git push origin master
-	 ) &&
-	 git clone ../b &&
-	 (cd b &&
-	  test_commit "initial_commit_b" b &&
-	  git push origin master
-	 ) &&
-	 git clone ../c &&
-	 (cd c &&
-	  test_commit "initial_commit_c" c &&
-	  git push origin master
-	 ) &&
-	 git clone ../d &&
-	 (cd d &&
-	  test_commit "initial_commit_d" d &&
-	  git push origin master
-	 ) &&
-	 (cd a &&
-	 # This points to /wt/../b
-	  git submodule add ../b b &&
-	 # This points to /c
-	  git submodule add ../../../c c &&
-	  git commit -am "added submodules" &&
-	  git push &&
-	  (cd b &&
-	   git submodule add ../d d &&
-	   git commit -am "added submodule" &&
-	   git push 
-	  ) &&
-	  git commit -am "updated b" &&
-	  git push
-	 )
 	)
 '
 
@@ -369,34 +327,17 @@ test_expect_success 'submodule update continues after checkout error' '
 	 )
 	) 
 '
-#test_expect_success 'submodule update dies direct after rebase error' '
+#test_expect_success 'submodule update continues after recursive checkout error' '
 #	(cd super &&
 #	 git reset --hard HEAD &&
-#	 git submodule add ../submodule submodule2 &&
-#	 git commit -am "new_submodule" &&
-#	 (cd submodule2 &&
-#	  git rev-parse HEAD > expect
-#	 ) &&
-#	 (cd submodule &&
-#	  test_commit "update_submodule" file
-#	 ) &&
-#	 (cd submodule2 &&
-#	  test_commit "update_submodule2" file
-#	 ) &&
-#	 git add submodule &&
-#	 git add submodule2 &&
-#	 git commit -m "two_new_submodule_commits" &&
-#	 (cd submodule &&
-#	 	echo "" > file
-#	 ) &&
-#	 git checkout HEAD^ &&
-#	 git submodule init &&
-#	 test_must_fail git submodule update &&
-#	 (cd submodule2 &&
-#	  git rev-parse HEAD > actual &&
-#	  test_cmp expected actual
-#	 )
+#	 rm -rf actual &&
+#	 rm -rf expect &&
 #	 bash
+#	 rm -rf submodule &&
+#	 rm -rf submodule2 &&
+#	 git checkout master &&
+#	 git submodule init &&
+#	 git submodule update 
 #	) 
 #'
 #test_expect_success 'submodule update dies direct after merge error' '
@@ -426,6 +367,37 @@ test_expect_success 'submodule update continues after checkout error' '
 #	  git rev-parse HEAD > actual &&
 #	  test_cmp expected actual
 #	 )
+#	) 
+#'
+
+#test_expect_success 'submodule update dies direct after recursive rebase error' '
+#	(cd super &&
+#	 git reset --hard HEAD &&
+#	 git submodule add ../submodule submodule2 &&
+#	 git commit -am "new_submodule" &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > expect
+#	 ) &&
+#	 (cd submodule &&
+#	  test_commit "update_submodule" file
+#	 ) &&
+#	 (cd submodule2 &&
+#	  test_commit "update_submodule2" file
+#	 ) &&
+#	 git add submodule &&
+#	 git add submodule2 &&
+#	 git commit -m "two_new_submodule_commits" &&
+#	 (cd submodule &&
+#	 	echo "" > file
+#	 ) &&
+#	 git checkout HEAD^ &&
+#	 git submodule init &&
+#	 test_must_fail git submodule update &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > actual &&
+#	  test_cmp expected actual
+#	 )
+#	 bash
 #	) 
 #'
 test_done
