@@ -545,8 +545,9 @@ cmd_update()
 
 		if test -n "$recursive"
 		then
-			res=$(clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags")
-			if test $res gt 0
+			clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags"
+			res=$?
+			if test $res -gt 0
 			then
 				if test $res -eq 1
 				then
