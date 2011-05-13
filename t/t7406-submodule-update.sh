@@ -305,7 +305,7 @@ test_expect_success 'submodule update continues after checkout error' '
 	 git submodule init &&
 	 git commit -am "new_submodule" &&
 	 (cd submodule2 &&
-	  git rev-parse HEAD > expect
+	  git rev-parse HEAD > ../expect
 	 ) &&
 	 (cd submodule &&
 	  test_commit "update_submodule" file
@@ -322,9 +322,9 @@ test_expect_success 'submodule update continues after checkout error' '
 	 git checkout HEAD^ &&
 	 test_must_fail git submodule update &&
 	 (cd submodule2 &&
-	  git rev-parse HEAD > actual &&
-	  test_cmp expect actual
-	 )
+	  git rev-parse HEAD > ../actual
+	 ) &&
+	 test_cmp expect actual
 	) 
 '
 test_expect_success 'submodule update continues after recursive checkout error' '
@@ -334,8 +334,7 @@ test_expect_success 'submodule update continues after recursive checkout error' 
  	  rm -rf expect actual
 	 ) &&
 	 (cd submodule2 &&
- 	  git reset --hard HEAD &&
- 	  rm -rf expect actual
+ 	  git reset --hard HEAD 
 	 ) &&
 	 git reset --hard HEAD &&
 	 rm -rf actual &&
@@ -352,13 +351,13 @@ test_expect_success 'submodule update continues after recursive checkout error' 
 	 (cd submodule &&
 	  (cd subsubmodule &&
 	   test_commit "update_subsubmodule" file
-	  )  && 
-	  git add subsubmodule
+	  ) && 
+	  git add subsubmodule &&
 	  test_commit "update_submodule_again" file
 	 ) &&
 	 (cd submodule2 &&
 	  test_commit "update_submodule2_again" file
-	 ) 
+	 ) &&
 	 git add submodule
 	 git add submodule2
 	 git commit -m "new_commits"
@@ -366,7 +365,7 @@ test_expect_success 'submodule update continues after recursive checkout error' 
 	 (cd submodule &&
 	  git checkout HEAD^ &&
 	  echo "" > file
-	 ) &&
+	 ) 
 	 bash
 	) 
 '
