@@ -298,16 +298,19 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	)
 '
 
-test_expect_success 'submodule update continues after error' '
+test_expect_success 'submodule update continues after checkout error' '
 	(cd super &&
 	 git reset --hard HEAD &&
 	 git submodule add ../submodule submodule2 &&
 	 git commit -am "new_submodule" &&
+	 (cd submodule2 &&
+	  git rev-parse HEAD > expect
+	 ) &&
 	 (cd submodule &&
 	  test_commit "update_submodule" file
 	 ) &&
 	 (cd submodule2 &&
-	  test_commit "update_submodule2" file 
+	  test_commit "update_submodule2" file
 	 ) &&
 	 git add submodule &&
 	 git add submodule2 &&
@@ -316,9 +319,71 @@ test_expect_success 'submodule update continues after error' '
 	 	echo "" > file
 	 ) &&
 	 git checkout HEAD^ &&
-	 test_must_fail git submodule update
-	 bash
+	 git submodule init &&
+	 test_must_fail git submodule update &&
+	 (cd submodule2 &&
+	  git rev-parse HEAD > actual &&
+	  test_cmp expect actual
+	 )
 	) 
 '
-
+#test_expect_success 'submodule update dies direct after rebase error' '
+#	(cd super &&
+#	 git reset --hard HEAD &&
+#	 git submodule add ../submodule submodule2 &&
+#	 git commit -am "new_submodule" &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > expect
+#	 ) &&
+#	 (cd submodule &&
+#	  test_commit "update_submodule" file
+#	 ) &&
+#	 (cd submodule2 &&
+#	  test_commit "update_submodule2" file
+#	 ) &&
+#	 git add submodule &&
+#	 git add submodule2 &&
+#	 git commit -m "two_new_submodule_commits" &&
+#	 (cd submodule &&
+#	 	echo "" > file
+#	 ) &&
+#	 git checkout HEAD^ &&
+#	 git submodule init &&
+#	 test_must_fail git submodule update &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > actual &&
+#	  test_cmp expected actual
+#	 )
+#	 bash
+#	) 
+#'
+#test_expect_success 'submodule update dies direct after merge error' '
+#	(cd super &&
+#	 git reset --hard HEAD &&
+#	 git submodule add ../submodule submodule2 &&
+#	 git commit -am "new_submodule" &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > expect
+#	 ) &&
+#	 (cd submodule &&
+#	  test_commit "update_submodule" file
+#	 ) &&
+#	 (cd submodule2 &&
+#	  test_commit "update_submodule2" file
+#	 ) &&
+#	 git add submodule &&
+#	 git add submodule2 &&
+#	 git commit -m "two_new_submodule_commits" &&
+#	 (cd submodule &&
+#	 	echo "" > file
+#	 ) &&
+#	 git checkout HEAD^ &&
+#	 git submodule init &&
+#	 test_must_fail git submodule update &&
+#	 (cd submodule2 &&
+#	  git rev-parse HEAD > actual &&
+#	  test_cmp expected actual
+#	 )
+#	) 
+#'
 test_done
