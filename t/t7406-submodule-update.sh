@@ -366,6 +366,7 @@ test_expect_success 'submodule update continues after recursive checkout error' 
 	  git checkout HEAD^ &&
 	  echo "" > file
 	 ) 
+	 git submodule update --recursive
 	 bash
 	) 
 '
