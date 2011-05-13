@@ -327,19 +327,48 @@ test_expect_success 'submodule update continues after checkout error' '
 	 )
 	) 
 '
-#test_expect_success 'submodule update continues after recursive checkout error' '
-#	(cd super &&
-#	 git reset --hard HEAD &&
-#	 rm -rf actual &&
-#	 rm -rf expect &&
-#	 bash
-#	 rm -rf submodule &&
-#	 rm -rf submodule2 &&
-#	 git checkout master &&
-#	 git submodule init &&
-#	 git submodule update 
-#	) 
-#'
+test_expect_success 'submodule update continues after recursive checkout error' '
+	(cd super &&
+	 (cd submodule &&
+ 	  git reset --hard HEAD &&
+ 	  rm -rf expect actual
+	 ) &&
+	 (cd submodule2 &&
+ 	  git reset --hard HEAD &&
+ 	  rm -rf expect actual
+	 ) &&
+	 git reset --hard HEAD &&
+	 rm -rf actual &&
+	 rm -rf expect &&
+	 git checkout master &&
+	 git submodule update 
+	 (cd submodule &&
+	  git submodule add ../submodule subsubmodule &&
+	  git submodule update
+	  git commit -m "new_subsubmodule"
+	 ) &&
+	 git add submodule &&
+	 git commit -m "update_submodule"
+	 (cd submodule &&
+	  (cd subsubmodule &&
+	   test_commit "update_subsubmodule" file
+	  )  && 
+	  git add subsubmodule
+	  test_commit "update_submodule_again" file
+	 ) &&
+	 (cd submodule2 &&
+	  test_commit "update_submodule2_again" file
+	 ) 
+	 git add submodule
+	 git add submodule2
+	 git commit -m "new_commits"
+	 git checkout HEAD^
+	 (cd submodule &&
+	  echo "" > file
+	 ) &&
+	 bash
+	) 
+'
 #test_expect_success 'submodule update dies direct after merge error' '
 #	(cd super &&
 #	 git reset --hard HEAD &&
