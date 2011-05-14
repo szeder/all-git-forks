@@ -298,4 +298,33 @@ test_expect_success 'submodule update ignores update=rebase config for new submo
 	)
 '
 
+test_expect_success 'submodule update continues after checkout error' '
+	(cd super &&
+	 git reset --hard HEAD &&
+	 git submodule add ../submodule submodule2 &&
+	 git submodule init &&
+	 git commit -am "new_submodule" &&
+	 (cd submodule2 &&
+	  git rev-parse HEAD > ../expect
+	 ) &&
+	 (cd submodule &&
+	  test_commit "update_submodule" file
+	 ) &&
+	 (cd submodule2 &&
+	  test_commit "update_submodule2" file
+	 ) &&
+	 git add submodule &&
+	 git add submodule2 &&
+	 git commit -m "two_new_submodule_commits" &&
+	 (cd submodule &&
+	 	echo "" > file
+	 ) &&
+	 git checkout HEAD^ &&
+	 test_must_fail git submodule update &&
+	 (cd submodule2 &&
+	  git rev-parse HEAD > ../actual
+	 ) &&
+	 test_cmp expect actual
+	) 
+'
 test_done
