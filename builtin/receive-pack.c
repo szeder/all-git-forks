@@ -25,6 +25,7 @@ static int deny_non_fast_forwards;
 static enum deny_action deny_current_branch = DENY_UNCONFIGURED;
 static enum deny_action deny_delete_current = DENY_UNCONFIGURED;
 static int receive_fsck_objects;
+static int receive_object_count_limit;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int unpack_limit = 100;
@@ -60,6 +61,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "receive.denynonfastforwards") == 0) {
 		deny_non_fast_forwards = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (strcmp(var, "receive.objectcountlimit") == 0) {
+		receive_object_count_limit = git_config_int(var, value);
 		return 0;
 	}
 
@@ -648,7 +654,13 @@ static const char *unpack(void)
 			"--pack_header=%"PRIu32",%"PRIu32,
 			ntohl(hdr.hdr_version), ntohl(hdr.hdr_entries));
 
-	if (ntohl(hdr.hdr_entries) < unpack_limit) {
+	if (receive_object_count_limit > 0 &&
+	    ntohl(hdr.hdr_entries) > receive_object_count_limit) {
+		char buf[1024];
+		while (xread(0, buf, 1024) > 0)
+			; /* nothing */
+		return "received pack exceeds configured receive.objectCountLimit";
+	} else if (ntohl(hdr.hdr_entries) < unpack_limit) {
 		int code, i = 0;
 		const char *unpacker[4];
 		unpacker[i++] = "unpack-objects";
