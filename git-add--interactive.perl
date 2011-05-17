@@ -1123,6 +1123,7 @@ sub help_patch_cmd {
 y - $verb this hunk$target
 n - do not $verb this hunk$target
 q - quit; do not $verb this hunk nor any of the remaining ones
+Q - $verb this hunk but none of the remaining ones
 a - $verb this hunk and all later hunks in the file
 d - do not $verb this hunk nor any of the later hunks in the file
 g - select a hunk to go to
@@ -1313,7 +1314,7 @@ sub patch_update_file {
 		   $hunk[$ix]{TYPE} eq 'deletion' ? ' deletion' :
 		   ' this hunk'),
 		  $patch_mode_flavour{TARGET},
-		  " [y,n,q,a,d,/$other,?]? ";
+		  " [y,n,q,Q,a,d,/$other,?]? ";
 		my $line = prompt_single_character;
 		if ($line) {
 			if ($line =~ /^y/i) {
@@ -1366,6 +1367,9 @@ sub patch_update_file {
 				next;
 			}
 			elsif ($line =~ /^q/i) {
+				if ($line =~ /^Q/) {
+					$hunk[$ix]{USE} = 1;
+				}
 				for ($i = 0; $i < $num; $i++) {
 					if (!defined $hunk[$i]{USE}) {
 						$hunk[$i]{USE} = 0;
