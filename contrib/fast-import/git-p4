@@ -1594,7 +1594,30 @@ class P4Sync(Command):
     def importChanges(self, changes):
         cnt = 1
         for change in changes:
-            description = p4Cmd("describe %s" % change)
+            # Using option "-s" for "p4 describe", since that's the only thing we need.
+            # Doing so, we bypass the following problem:
+            #
+            # command: "p4 describe 390824"
+            # result:
+            #
+            #   "Operation 'user-describe' failed. Can't find //pathtofile's successor rev"
+            #
+            # This is a previously reported "p4 describe" problem with file revisions that 
+            # are a combination of move and integrate. Two related fixes were released in 
+            # Perforce Server 2010.1:
+            #
+            #   #273231 (Bug #41819) **
+            #     'p4 describe' could spend a long time scanning the 'db.integed'
+            #     table before giving up with the error 'Can't find successor rev'.
+            #     This was due to bug #37058 which is also fixed in this release.
+            #
+            #   #253055 (Bug #37058) **
+            #     A 'copy' resolve will no longer override an earlier 'moved' and
+            #     change it to an 'ignored'.  This should prevent a subsequent
+            #     'describe' of that change from producing a 'can't find
+            #     successor rev!' error.
+            #
+            description = p4Cmd("describe -s %s" % change)
             self.updateOptionDict(description)
 
             if not self.silent:
