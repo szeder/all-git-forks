@@ -341,4 +341,8 @@ test_expect_success \
      test_cmp DFDF.out DFDFcheck.out &&
      check_cache_at DF/DF clean'
 
+test_expect_success \
+    '-u is not allowed with -n' \
+    'test_must_fail git read-tree -n -u -m $treeDF $treeDFDF'
+
 test_done
