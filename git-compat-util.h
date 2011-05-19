@@ -351,6 +351,11 @@ extern uintmax_t gitstrtoumax(const char *, char **, int);
 extern char *gitstrtok_r(char *s, const char *delim, char **save_ptr);
 #endif
 
+#ifdef NO_GETPASS
+#define getpass gitgetpass
+extern char *gitgetpass(const char *prompt);
+#endif
+
 #ifdef NO_HSTRERROR
 #define hstrerror githstrerror
 extern const char *githstrerror(int herror);

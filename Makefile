@@ -65,6 +65,8 @@ all::
 #
 # Define NO_STRTOK_R if you don't have strtok_r in the C library.
 #
+# Define NO_GETPASS if you don't have getpass in the C library.
+#
 # Define NO_FNMATCH if you don't have fnmatch in the C library.
 #
 # Define NO_FNMATCH_CASEFOLD if your fnmatch function doesn't have the
@@ -1385,6 +1387,10 @@ endif
 ifdef NO_STRTOK_R
 	COMPAT_CFLAGS += -DNO_STRTOK_R
 	COMPAT_OBJS += compat/strtok_r.o
+endif
+ifdef NO_GETPASS
+	COMPAT_CFLAGS += -DNO_GETPASS
+	COMPAT_OBJS += compat/getpass.o
 endif
 ifdef NO_FNMATCH
 	COMPAT_CFLAGS += -Icompat/fnmatch
