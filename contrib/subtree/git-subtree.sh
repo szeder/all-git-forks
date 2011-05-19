@@ -720,26 +720,40 @@ cmd_merge()
 
 cmd_pull()
 {
-	ensure_clean
-	git fetch "$@" || exit $?
-	revs=FETCH_HEAD
-	set -- $revs
-	cmd_merge "$@"
+	if test $# -ne 1
+	then
+		die "You must provide <branch>"
+	fi
+	if test -e "$dir"
+	then
+		ensure_clean
+		repository=$(git config -f .gittrees subtree."$prefix".url)
+		refspec="$1"
+		git fetch "$repository" "$refspec" || exit $?
+		echo "git fetch using: $repository $refspec"
+		revs=FETCH_HEAD
+		set -- $revs
+		cmd_merge "$@"
+	else
+		die "'$dir' must already exist. Try 'git subtree add'."
+	fi
 }
 
 cmd_push()
 {
-	if [ $# -ne 2 ]; then
-	    die "You must provide <repository> <refspec>"
+	if test $# -ne 1
+	then
+		die "You must provide <branch>"
 	fi
-	if [ -e "$dir" ]; then
+	if test -e "$dir"
+	then
 	    push_opts=
 	    if [ "$force" == "1" ]; then
 		push_opts="$push_opts --force"
 	    fi
 	    repository=$1
 	    refspec=$2
-	    echo "git push using: " $repository $refspec
+	    echo "git push using: $repository $refspec"
 	    rev=$(git subtree split --prefix=$prefix)
 	    if [ -n "$rev" ]; then
 		git push $push_opts $repository $rev:refs/heads/$refspec
