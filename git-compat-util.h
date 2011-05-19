@@ -111,6 +111,7 @@
 #include <regex.h>
 #include <utime.h>
 #include <syslog.h>
+#include <termios.h>
 #ifndef NO_SYS_POLL_H
 #include <sys/poll.h>
 #else
@@ -120,7 +121,6 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
-#include <termios.h>
 #ifndef NO_SYS_SELECT_H
 #include <sys/select.h>
 #endif
