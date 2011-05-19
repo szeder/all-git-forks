@@ -1186,7 +1186,7 @@ static int open_sha1_file(const unsigned char *sha1)
 	return -1;
 }
 
-static void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 {
 	void *map;
 	int fd;
@@ -1245,7 +1245,7 @@ unsigned long unpack_object_header_buffer(const unsigned char *buf,
 	return used;
 }
 
-static int unpack_sha1_header(z_stream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz)
+int unpack_sha1_header(z_stream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz)
 {
 	unsigned long size, used;
 	static const char valid_loose_object_type[8] = {
@@ -1342,7 +1342,7 @@ static void *unpack_sha1_rest(z_stream *stream, void *buffer, unsigned long size
  * too permissive for what we want to check. So do an anal
  * object header parse by hand.
  */
-static int parse_sha1_header(const char *hdr, unsigned long *sizep)
+int parse_sha1_header(const char *hdr, unsigned long *sizep)
 {
 	char type[10];
 	int i;
@@ -1523,10 +1523,10 @@ static int packed_delta_info(struct packed_git *p,
 	return type;
 }
 
-static int unpack_object_header(struct packed_git *p,
-				struct pack_window **w_curs,
-				off_t *curpos,
-				unsigned long *sizep)
+int unpack_object_header(struct packed_git *p,
+			 struct pack_window **w_curs,
+			 off_t *curpos,
+			 unsigned long *sizep)
 {
 	unsigned char *base;
 	unsigned int left;
@@ -1549,7 +1549,7 @@ static int unpack_object_header(struct packed_git *p,
 	return type;
 }
 
-const char *packed_object_info_detail(struct packed_git *p,
+int packed_object_info_detail(struct packed_git *p,
 				      off_t obj_offset,
 				      unsigned long *size,
 				      unsigned long *store_size,
@@ -1580,7 +1580,7 @@ const char *packed_object_info_detail(struct packed_git *p,
 		case OBJ_BLOB:
 		case OBJ_TAG:
 			unuse_pack(&w_curs);
-			return typename(type);
+			return type;
 		case OBJ_OFS_DELTA:
 			obj_offset = get_delta_base(p, &w_curs, &curpos, type, obj_offset);
 			if (!obj_offset)
@@ -1693,6 +1693,13 @@ static unsigned long pack_entry_hash(struct packed_git *p, off_t base_offset)
 	hash = (unsigned long)p + (unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
 	return hash % MAX_DELTA_CACHE;
+}
+
+static int in_delta_base_cache(struct packed_git *p, off_t base_offset)
+{
+	unsigned long hash = pack_entry_hash(p, base_offset);
+	struct delta_base_cache_entry *ent = delta_base_cache + hash;
+	return (ent->data && ent->p == p && ent->base_offset == base_offset);
 }
 
 static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
@@ -2093,7 +2100,8 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	return status;
 }
 
-int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+/* returns enum object_type or negative */
+int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 {
 	struct cached_object *co;
 	struct pack_entry e;
@@ -2101,16 +2109,19 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 
 	co = find_cached_object(sha1);
 	if (co) {
-		if (sizep)
-			*sizep = co->size;
+		if (oi->sizep)
+			*(oi->sizep) = co->size;
+		oi->whence = OI_CACHED;
 		return co->type;
 	}
 
 	if (!find_pack_entry(sha1, &e)) {
 		/* Most likely it's a loose object. */
-		status = sha1_loose_object_info(sha1, sizep);
-		if (status >= 0)
+		status = sha1_loose_object_info(sha1, oi->sizep);
+		if (status >= 0) {
+			oi->whence = OI_LOOSE;
 			return status;
+		}
 
 		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
@@ -2118,13 +2129,43 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 			return status;
 	}
 
-	status = packed_object_info(e.p, e.offset, sizep);
+	if (!oi->want_deltainfo) {
+		status = packed_object_info(e.p, e.offset, oi->sizep);
+	} else {
+		unsigned long size, store_size;
+		unsigned int delta_chain_length;
+		unsigned char base_sha1[20];
+		status = packed_object_info_detail(e.p, e.offset,
+						   &size, &store_size,
+						   &delta_chain_length,
+						   base_sha1);
+		if (0 <= status) {
+			if (oi->sizep)
+				*oi->sizep = size;
+			oi->u.packed.delta = delta_chain_length;
+		}
+	}
 	if (status < 0) {
 		mark_bad_packed_object(e.p, sha1);
-		status = sha1_object_info(sha1, sizep);
+		status = sha1_object_info_extended(sha1, oi);
+	} else if (in_delta_base_cache(e.p, e.offset)) {
+		oi->whence = OI_DBCACHED;
+	} else {
+		oi->whence = OI_PACKED;
+		oi->u.packed.offset = e.offset;
+		oi->u.packed.pack = e.p;
 	}
 
 	return status;
+}
+
+int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+{
+	struct object_info oi;
+
+	oi.sizep = sizep;
+	oi.want_deltainfo = 0;
+	return sha1_object_info_extended(sha1, &oi);
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
