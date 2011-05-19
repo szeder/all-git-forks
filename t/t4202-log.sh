@@ -463,4 +463,11 @@ test_expect_success 'show added path under "--follow -M"' '
 	)
 '
 
+test_expect_success 'dotdot is a parent directory' '
+	mkdir -p a/b &&
+	( echo sixth && echo fifth ) >expect &&
+	( cd a/b && git log --format=%s .. ) >actual &&
+	test_cmp expect actual
+'
+
 test_done
