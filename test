@@ -1,5 +1,10 @@
 #!/bin/sh
 
+if test -z "$GIT_META_TEST"; then
+	GIT_META_TEST='make -j8 test'
+	export GIT_META_TEST
+fi
+
 upstream=`git rev-parse --symbolic-full-name "$1@{u}" >/dev/null 2>&1`
-GIT_EDITOR='sed -i "/^pick .*/aexec make -j8 test"' \
+GIT_EDITOR='sed -i "/^pick .*/aexec $GIT_META_TEST"' \
 	git rebase -i "${upstream:-origin}" $1
