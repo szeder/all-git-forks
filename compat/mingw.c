@@ -6,7 +6,6 @@
 #include "../cache.h"
 
 static const int delay[] = { 0, 1, 10, 20, 40 };
-unsigned int _CRT_fmode = _O_BINARY;
 
 int err_win_to_posix(DWORD winerr)
 {
@@ -1890,9 +1889,6 @@ void mingw_startup()
 	/* initialize critical section for waitpid pinfo_t list */
 	InitializeCriticalSection(&pinfo_cs);
 
-	/* set up default file mode and file modes for stdin/out/err */
+	/* set up default file mode */
 	_fmode = _O_BINARY;
-	_setmode(_fileno(stdin), _O_BINARY);
-	_setmode(_fileno(stdout), _O_BINARY);
-	_setmode(_fileno(stderr), _O_BINARY);
 }

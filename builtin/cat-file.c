@@ -285,6 +285,10 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		usage_with_options(cat_file_usage, options);
 	}
 
+#ifdef WIN32
+	_setmode(_fileno(stdout), _O_BINARY);
+#endif
+
 	if (batch)
 		return batch_objects(batch);
 

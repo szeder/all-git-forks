@@ -2420,6 +2420,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		}
 		if (!strcmp("--stdout", arg)) {
 			pack_to_stdout = 1;
+#ifdef WIN32
+			_setmode(_fileno(stdout), _O_BINARY);
+#endif
 			continue;
 		}
 		if (!strcmp("--revs", arg)) {

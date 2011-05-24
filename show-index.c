@@ -13,6 +13,9 @@ int main(int argc, char **argv)
 
 	if (argc != 1)
 		usage(show_index_usage);
+#ifdef WIN32
+	_setmode(_fileno(stdin), _O_BINARY);
+#endif
 	if (fread(top_index, 2 * 4, 1, stdin) != 1)
 		die("unable to read header");
 	if (top_index[0] == htonl(PACK_IDX_SIGNATURE)) {

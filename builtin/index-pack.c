@@ -171,6 +171,9 @@ static const char *open_pack_file(const char *pack_name)
 {
 	if (from_stdin) {
 		input_fd = 0;
+#ifdef WIN32
+		_setmode(input_fd, _O_BINARY);
+#endif
 		if (!pack_name) {
 			static char tmpfile[PATH_MAX];
 			output_fd = odb_mkstemp(tmpfile, sizeof(tmpfile),
@@ -872,6 +875,11 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 		char buf[48];
 		int len = snprintf(buf, sizeof(buf), "%s\t%s\n",
 				   report, sha1_to_hex(sha1));
+
+#ifdef WIN32
+		_setmode(1, _O_BINARY);
+#endif
+
 		write_or_die(1, buf, len);
 
 		/*

@@ -106,6 +106,10 @@ int cmd_archive(int argc, const char **argv, const char *prefix)
 
 	if (output)
 		create_output_file(output);
+#ifdef WIN32
+	else
+		_setmode(_fileno(stdout), _O_BINARY);
+#endif
 
 	if (remote)
 		return run_remote_archiver(argc, argv, remote, exec, output);
