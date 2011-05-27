@@ -1316,7 +1316,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	int i, len, add, del, adds = 0, dels = 0;
 	uintmax_t max_change = 0, max_len = 0;
 	int total_files = data->nr;
-	int width, name_width;
+	int width, name_width, count;
 	const char *reset, *add_c, *del_c;
 	const char *line_prefix = "";
 	struct strbuf *msg = NULL;
@@ -1331,6 +1331,8 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 
 	width = options->stat_width ? options->stat_width : 80;
 	name_width = options->stat_name_width ? options->stat_name_width : 50;
+	count = (options->stat_count && options->stat_count < data->nr)
+					? options->stat_count : data->nr;
 
 	/* Sanity: give at least 5 columns to the graph,
 	 * but leave at least 10 columns for the name.
@@ -1347,7 +1349,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	add_c = diff_get_color_opt(options, DIFF_FILE_NEW);
 	del_c = diff_get_color_opt(options, DIFF_FILE_OLD);
 
-	for (i = 0; i < data->nr; i++) {
+	for (i = 0; i < count; i++) {
 		struct diffstat_file *file = data->files[i];
 		uintmax_t change = file->added + file->deleted;
 		fill_print_name(file);
@@ -1374,7 +1376,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	else
 		width = max_change;
 
-	for (i = 0; i < data->nr; i++) {
+	for (i = 0; i < count; i++) {
 		const char *prefix = "";
 		char *name = data->files[i]->print_name;
 		uintmax_t added = data->files[i]->added;
@@ -1440,6 +1442,19 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		show_graph(options->file, '+', add, add_c, reset);
 		show_graph(options->file, '-', del, del_c, reset);
 		fprintf(options->file, "\n");
+	}
+	if (count < data->nr)
+		fprintf(options->file, "%s ...\n", line_prefix);
+	for (i = count; i < data->nr; i++) {
+		uintmax_t added = data->files[i]->added;
+		uintmax_t deleted = data->files[i]->deleted;
+		if (!data->files[i]->is_renamed &&
+			 (added + deleted == 0)) {
+			total_files--;
+			continue;
+		}
+		adds += added;
+		dels += deleted;
 	}
 	fprintf(options->file, "%s", line_prefix);
 	fprintf(options->file,
@@ -1984,19 +1999,7 @@ struct userdiff_driver *get_textconv(struct diff_filespec *one)
 		return NULL;
 
 	diff_filespec_load_driver(one);
-	if (!one->driver->textconv)
-		return NULL;
-
-	if (one->driver->textconv_want_cache && !one->driver->textconv_cache) {
-		struct notes_cache *c = xmalloc(sizeof(*c));
-		struct strbuf name = STRBUF_INIT;
-
-		strbuf_addf(&name, "textconv/%s", one->driver->name);
-		notes_cache_init(c, name.buf, one->driver->textconv);
-		one->driver->textconv_cache = c;
-	}
-
-	return one->driver;
+	return userdiff_get_textconv(one->driver);
 }
 
 static void builtin_diff(const char *name_a,
@@ -3220,6 +3223,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 	char *end;
 	int width = options->stat_width;
 	int name_width = options->stat_name_width;
+	int count = options->stat_count;
 	int argcount = 1;
 
 	arg += strlen("--stat");
@@ -3247,12 +3251,24 @@ static int stat_opt(struct diff_options *options, const char **av)
 				name_width = strtoul(av[1], &end, 10);
 				argcount = 2;
 			}
+		} else if (!prefixcmp(arg, "-count")) {
+			arg += strlen("-count");
+			if (*arg == '=')
+				count = strtoul(arg + 1, &end, 10);
+			else if (!*arg && !av[1])
+				die("Option '--stat-count' requires a value");
+			else if (!*arg) {
+				count = strtoul(av[1], &end, 10);
+				argcount = 2;
+			}
 		}
 		break;
 	case '=':
 		width = strtoul(arg+1, &end, 10);
 		if (*end == ',')
 			name_width = strtoul(end+1, &end, 10);
+		if (*end == ',')
+			count = strtoul(end+1, &end, 10);
 	}
 
 	/* Important! This checks all the error cases! */
@@ -3261,6 +3277,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 	options->output_format |= DIFF_FORMAT_DIFFSTAT;
 	options->stat_name_width = name_width;
 	options->stat_width = width;
+	options->stat_count = count;
 	return argcount;
 }
 
@@ -3325,7 +3342,7 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (!strcmp(arg, "-s"))
 		options->output_format |= DIFF_FORMAT_NO_OUTPUT;
 	else if (!prefixcmp(arg, "--stat"))
-		/* --stat, --stat-width, or --stat-name-width */
+		/* --stat, --stat-width, --stat-name-width, or --stat-count */
 		return stat_opt(options, av);
 
 	/* renames options */

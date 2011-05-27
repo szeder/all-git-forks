@@ -61,7 +61,7 @@ struct object_entry {
  */
 static struct object_entry *objects;
 static struct pack_idx_entry **written_list;
-static uint32_t nr_objects, nr_alloc, nr_result, nr_written;
+static uint32_t nr_objects, nr_alloc, nr_result, nr_commits, nr_written;
 
 static int non_empty;
 static int reuse_delta = 1, reuse_object = 1;
@@ -70,6 +70,7 @@ static int local;
 static int incremental;
 static int ignore_packed_keep;
 static int allow_ofs_delta;
+static struct pack_idx_option pack_idx_opts;
 static const char *base_name;
 static int progress = 1;
 static int window = 10;
@@ -229,7 +230,7 @@ static unsigned long write_object(struct sha1file *f,
 
 	if (!entry->delta)
 		usable_delta = 0;	/* no delta */
-	else if (!pack_size_limit)
+	else if (!pack_size_limit || pack_to_stdout)
 	       usable_delta = 1;	/* unlimited packfile */
 	else if (entry->delta->idx.offset == (off_t)-1)
 		usable_delta = 0;	/* base was written to another pack */
@@ -478,6 +479,9 @@ static void write_pack_file(void)
 		 * If so, rewrite it like in fast-import
 		 */
 		if (pack_to_stdout) {
+			if (nr_written != nr_remaining)
+				die("unable to make pack within the pack size"
+				    " limit (%lu bytes)", pack_size_limit);
 			sha1close(f, sha1, CSUM_CLOSE);
 		} else if (nr_written == nr_remaining) {
 			sha1close(f, sha1, CSUM_FSYNC);
@@ -493,8 +497,8 @@ static void write_pack_file(void)
 			const char *idx_tmp_name;
 			char tmpname[PATH_MAX];
 
-			idx_tmp_name = write_idx_file(NULL, written_list,
-						      nr_written, sha1);
+			idx_tmp_name = write_idx_file(NULL, written_list, nr_written,
+						      &pack_idx_opts, sha1);
 
 			snprintf(tmpname, sizeof(tmpname), "%s-%s.pack",
 				 base_name, sha1_to_hex(sha1));
@@ -653,8 +657,11 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 	if (ix >= 0) {
 		if (exclude) {
 			entry = objects + object_ix[ix] - 1;
-			if (!entry->preferred_base)
+			if (!entry->preferred_base) {
 				nr_result--;
+				if (entry->type == OBJ_COMMIT)
+					nr_commits--;
+			}
 			entry->preferred_base = 1;
 		}
 		return 0;
@@ -694,8 +701,11 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 		entry->type = type;
 	if (exclude)
 		entry->preferred_base = 1;
-	else
+	else {
 		nr_result++;
+		if (type == OBJ_COMMIT)
+			nr_commits++;
+	}
 	if (found_pack) {
 		entry->in_pack = found_pack;
 		entry->in_pack_offset = found_offset;
@@ -1132,22 +1142,44 @@ static int pack_offset_sort(const void *_a, const void *_b)
 			(a->in_pack_offset > b->in_pack_offset);
 }
 
+static unsigned long estimate_packed_size(const struct object_entry *entry)
+{
+	if (entry->in_pack) {
+		/* Assume that all packed objects are reused as-is */
+		struct revindex_entry *revidx = find_pack_revindex(
+			entry->in_pack,
+			entry->in_pack_offset);
+		return revidx[1].offset - entry->in_pack_offset;
+	}
+	return 0;
+}
+
 static void get_object_details(void)
 {
 	uint32_t i;
 	struct object_entry **sorted_by_offset;
+	unsigned long sum_size;
 
 	sorted_by_offset = xcalloc(nr_objects, sizeof(struct object_entry *));
 	for (i = 0; i < nr_objects; i++)
 		sorted_by_offset[i] = objects + i;
 	qsort(sorted_by_offset, nr_objects, sizeof(*sorted_by_offset), pack_offset_sort);
 
+	if (pack_to_stdout && pack_size_limit)
+		sum_size = sizeof(struct pack_header) + 20; /* pack overhead */
+
 	for (i = 0; i < nr_objects; i++) {
 		struct object_entry *entry = sorted_by_offset[i];
 		check_object(entry);
 		if (big_file_threshold <= entry->size)
 			entry->no_try_delta = 1;
+		if (pack_to_stdout && pack_size_limit && !entry->preferred_base)
+			sum_size += estimate_packed_size(entry);
 	}
+
+	if (pack_to_stdout && pack_size_limit && sum_size > pack_size_limit)
+		die("estimated pack size exceeds the pack size limit (%lu bytes)",
+		    pack_size_limit);
 
 	free(sorted_by_offset);
 }
@@ -1884,10 +1916,10 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		return 0;
 	}
 	if (!strcmp(k, "pack.indexversion")) {
-		pack_idx_default_version = git_config_int(k, v);
-		if (pack_idx_default_version > 2)
+		pack_idx_opts.version = git_config_int(k, v);
+		if (pack_idx_opts.version > 2)
 			die("bad pack.indexversion=%"PRIu32,
-				pack_idx_default_version);
+			    pack_idx_opts.version);
 		return 0;
 	}
 	if (!strcmp(k, "pack.packsizelimit")) {
@@ -2125,6 +2157,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	const char **rp_av;
 	int rp_ac_alloc = 64;
 	int rp_ac;
+	unsigned long commit_count_limit = 0;
 
 	read_replace_refs = 0;
 
@@ -2134,6 +2167,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	rp_av[1] = "--objects"; /* --thin will make it --objects-edge */
 	rp_ac = 2;
 
+	reset_pack_idx_option(&pack_idx_opts);
 	git_config(git_pack_config, NULL);
 	if (!pack_compression_seen && core_compression_seen)
 		pack_compression_level = core_compression_level;
@@ -2176,6 +2210,11 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		if (!prefixcmp(arg, "--max-pack-size=")) {
 			pack_size_limit_cfg = 0;
 			if (!git_parse_ulong(arg+16, &pack_size_limit))
+				usage(pack_usage);
+			continue;
+		}
+		if (!prefixcmp(arg, "--max-commit-count=")) {
+			if (!git_parse_ulong(arg+19, &commit_count_limit))
 				usage(pack_usage);
 			continue;
 		}
@@ -2278,12 +2317,12 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		}
 		if (!prefixcmp(arg, "--index-version=")) {
 			char *c;
-			pack_idx_default_version = strtoul(arg + 16, &c, 10);
-			if (pack_idx_default_version > 2)
+			pack_idx_opts.version = strtoul(arg + 16, &c, 10);
+			if (pack_idx_opts.version > 2)
 				die("bad %s", arg);
 			if (*c == ',')
-				pack_idx_off32_limit = strtoul(c+1, &c, 0);
-			if (*c || pack_idx_off32_limit & 0x80000000)
+				pack_idx_opts.off32_limit = strtoul(c+1, &c, 0);
+			if (*c || pack_idx_opts.off32_limit & 0x80000000)
 				die("bad %s", arg);
 			continue;
 		}
@@ -2315,12 +2354,13 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 
 	if (!pack_to_stdout && !pack_size_limit)
 		pack_size_limit = pack_size_limit_cfg;
-	if (pack_to_stdout && pack_size_limit)
-		die("--max-pack-size cannot be used to build a pack for transfer.");
-	if (pack_size_limit && pack_size_limit < 1024*1024) {
+	if (!pack_to_stdout && pack_size_limit && pack_size_limit < 1024*1024) {
 		warning("minimum pack size limit is 1 MiB");
 		pack_size_limit = 1024*1024;
 	}
+
+	if (!pack_to_stdout && commit_count_limit)
+		die("--max-commit-count is only useful together with --stdout.");
 
 	if (!pack_to_stdout && thin)
 		die("--thin cannot be used to build an indexable pack.");
@@ -2348,6 +2388,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 
 	if (non_empty && !nr_result)
 		return 0;
+	if (pack_to_stdout && commit_count_limit && commit_count_limit < nr_commits)
+		die("unable to make pack within the commit count limit"
+			" (%lu commits)", commit_count_limit);
 	if (nr_result)
 		prepare_pack(window, depth);
 	write_pack_file();

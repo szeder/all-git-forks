@@ -382,7 +382,7 @@ const char *read_gitfile_gently(const char *path)
 	const char *slash;
 	struct stat st;
 	int fd;
-	size_t len;
+	ssize_t len;
 
 	if (stat(path, &st))
 		return NULL;
@@ -710,6 +710,11 @@ const char *setup_git_directory_gently(int *nongit_ok)
 	const char *prefix;
 
 	prefix = setup_git_directory_gently_1(nongit_ok);
+	if (prefix)
+		setenv("GIT_PREFIX", prefix, 1);
+	else
+		setenv("GIT_PREFIX", "", 1);
+
 	if (startup_info) {
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;
 		startup_info->prefix = prefix;
