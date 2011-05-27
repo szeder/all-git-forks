@@ -166,6 +166,7 @@ static int ends_with(const char *s, size_t len, const char *suffix)
 static int parse_cat_response_line(const char *header, off_t *len)
 {
 	size_t headerlen = strlen(header);
+	uintmax_t n;
 	const char *type;
 	const char *end;
 
@@ -174,20 +175,30 @@ static int parse_cat_response_line(const char *header, off_t *len)
 	type = memmem(header, headerlen, " blob ", strlen(" blob "));
 	if (!type)
 		return error("cat-blob header has wrong object type: %s", header);
-	*len = strtoumax(type + strlen(" blob "), (char **) &end, 10);
+	n = strtoumax(type + strlen(" blob "), (char **) &end, 10);
 	if (end == type + strlen(" blob "))
 		return error("cat-blob header does not contain length: %s", header);
+	if (memchr(type + strlen(" blob "), '-', end - type - strlen(" blob ")))
+		return error("cat-blob header contains negative length: %s", header);
+	if (n == UINTMAX_MAX || n > maximum_signed_value_of_type(off_t))
+		return error("blob too large for current definition of off_t");
+	*len = n;
 	if (*end)
 		return error("cat-blob header contains garbage after length: %s", header);
 	return 0;
+}
+
+static void check_preimage_overflow(off_t a, off_t b)
+{
+	if (signed_add_overflows(a, b))
+		die("blob too large for current definition of off_t");
 }
 
 static long apply_delta(off_t len, struct line_buffer *input,
 			const char *old_data, uint32_t old_mode)
 {
 	long ret;
-	off_t preimage_len = 0;
-	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer);
+	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer, 0);
 	FILE *out;
 
 	if (init_postimage() || !(out = buffer_tmpfile_rewind(&postimage)))
@@ -199,18 +210,23 @@ static long apply_delta(off_t len, struct line_buffer *input,
 		printf("cat-blob %s\n", old_data);
 		fflush(stdout);
 		response = get_response_line();
-		if (parse_cat_response_line(response, &preimage_len))
+		if (parse_cat_response_line(response, &preimage.max_off))
 			die("invalid cat-blob response: %s", response);
+		check_preimage_overflow(preimage.max_off, 1);
 	}
 	if (old_mode == REPO_MODE_LNK) {
 		strbuf_addstr(&preimage.buf, "link ");
-		preimage_len += strlen("link ");
+		check_preimage_overflow(preimage.max_off, strlen("link "));
+		preimage.max_off += strlen("link ");
+		check_preimage_overflow(preimage.max_off, 1);
 	}
 	if (svndiff0_apply(input, len, &preimage, out))
 		die("cannot apply delta");
 	if (old_data) {
 		/* Read the remainder of preimage and trailing newline. */
-		if (move_window(&preimage, preimage_len, 1))
+		assert(!signed_add_overflows(preimage.max_off, 1));
+		preimage.max_off++;	/* room for newline */
+		if (move_window(&preimage, preimage.max_off - 1, 1))
 			die("cannot seek to end of input");
 		if (preimage.buf.buf[0] != '\n')
 			die("missing newline after cat-blob response");
