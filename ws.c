@@ -374,6 +374,7 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 	int last_tab_in_indent = -1;
 	int last_space_in_indent = -1;
 	int need_fix_leading_space = 0;
+	int col_offset = 0;
 
 	/*
 	 * Strip trailing whitespace
@@ -387,10 +388,17 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 				len--;
 			}
 		}
-		if (0 < len && isspace(src[len - 1])) {
-			while (0 < len && isspace(src[len-1]))
-				len--;
-			fixed = 1;
+		if (0 < len) {
+			int orig_len = len;
+			while (len) {
+				if (isspace(src[len - 1]))
+					len--;
+				else if (1 < len && is_nbsp(&src[len - 2]))
+					len -= 2;
+				else
+					break;
+			}
+			fixed = (orig_len != len);
 		}
 	}
 
@@ -404,13 +412,23 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 			if ((ws_rule & WS_SPACE_BEFORE_TAB) &&
 			    0 <= last_space_in_indent)
 			    need_fix_leading_space = 1;
-		} else if (ch == ' ') {
-			last_space_in_indent = i;
-			if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
-			    ws_tab_width(ws_rule) <= i - last_tab_in_indent)
-				need_fix_leading_space = 1;
-		} else
+			col_offset = 0;
+			continue;
+		}
+
+		if (ch == ' ') {
+			;
+		} else if ((i < len - 1) && is_nbsp(src + i)) {
+			i++;
+			col_offset++;
+		} else {
 			break;
+		}
+		last_space_in_indent = i;
+
+		if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
+		    ws_tab_width(ws_rule) <= (i - col_offset) - last_tab_in_indent)
+			need_fix_leading_space = 1;
 	}
 
 	if (need_fix_leading_space) {
@@ -432,15 +450,20 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 		 */
 		for (i = 0; i < last; i++) {
 			char ch = src[i];
-			if (ch != ' ') {
+
+			if (ch == ' ') {
+				;
+			} else if ((i < last - 1) && is_nbsp(src + i)) {
+				i++;
+			} else {
 				consecutive_spaces = 0;
 				strbuf_addch(dst, ch);
-			} else {
-				consecutive_spaces++;
-				if (consecutive_spaces == ws_tab_width(ws_rule)) {
-					strbuf_addch(dst, '\t');
-					consecutive_spaces = 0;
-				}
+				continue;
+			}
+			consecutive_spaces++;
+			if (consecutive_spaces == ws_tab_width(ws_rule)) {
+				strbuf_addch(dst, '\t');
+				consecutive_spaces = 0;
 			}
 		}
 		while (0 < consecutive_spaces--)
@@ -465,7 +488,20 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 		fixed = 1;
 	}
 
-	strbuf_add(dst, src, len);
+	if (ws_rule & WS_NBSP) {
+		while (len--) {
+			if (len && is_nbsp(src)) {
+				src++;
+				len--;
+				strbuf_addch(dst, ' ');
+			} else {
+				strbuf_addch(dst, *src);
+			}
+			src++;
+		}
+	} else {
+		strbuf_add(dst, src, len);
+	}
 	if (add_cr_to_tail)
 		strbuf_addch(dst, '\r');
 	if (add_nl_to_tail)
