@@ -550,6 +550,15 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 		if (is_bool && shortlog_len)
 			shortlog_len = DEFAULT_MERGE_LOG_LEN;
 		return 0;
+	} else if (!strcmp(k, "merge.ff")) {
+		int boolval = git_config_maybe_bool(k, v);
+		if (0 <= boolval) {
+			allow_fast_forward = boolval;
+		} else if (v && !strcmp(v, "only")) {
+			allow_fast_forward = 1;
+			fast_forward_only = 1;
+		} /* do not barf on values from future versions of git */
+		return 0;
 	} else if (!strcmp(k, "merge.defaulttoupstream")) {
 		default_to_upstream = git_config_bool(k, v);
 		return 0;
@@ -599,6 +608,14 @@ static void write_tree_trivial(unsigned char *sha1)
 		die(_("git write-tree failed to write a tree"));
 }
 
+static const char *merge_argument(struct commit *commit)
+{
+	if (commit)
+		return sha1_to_hex(commit->object.sha1);
+	else
+		return EMPTY_TREE_SHA1_HEX;
+}
+
 int try_merge_command(const char *strategy, size_t xopts_nr,
 		      const char **xopts, struct commit_list *common,
 		      const char *head_arg, struct commit_list *remotes)
@@ -619,11 +636,11 @@ int try_merge_command(const char *strategy, size_t xopts_nr,
 		args[i++] = s;
 	}
 	for (j = common; j; j = j->next)
-		args[i++] = xstrdup(sha1_to_hex(j->item->object.sha1));
+		args[i++] = xstrdup(merge_argument(j->item));
 	args[i++] = "--";
 	args[i++] = head_arg;
 	for (j = remotes; j; j = j->next)
-		args[i++] = xstrdup(sha1_to_hex(j->item->object.sha1));
+		args[i++] = xstrdup(merge_argument(j->item));
 	args[i] = NULL;
 	ret = run_command_v_opt(args, RUN_GIT_CMD);
 	strbuf_release(&buf);

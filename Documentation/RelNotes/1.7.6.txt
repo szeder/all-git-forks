@@ -6,17 +6,52 @@ Updates since v1.7.5
 
  * Various git-svn updates.
 
- * Updates the way content tags are handled in gitweb.
+ * Updates the way content tags are handled in gitweb.  Also adds
+   a UI to choose common timezone for displaying the dates.
+
+ * Similar to branch names, tagnames that begin with "-" are now
+   disallowed.
 
  * Clean-up of the C part of i18n (but not l10n---please wait)
    continues.
+
+ * The scripting part of the codebase is getting prepared for i18n/l10n.
+
+ * Pushing and pulling from a repository with large number of refs that
+   point to identical commits are optimized by not listing the same commit
+   during the common ancestor negotiation exchange with the other side.
+
+ * Adding a file larger than core.bigfilethreshold (defaults to 1/2 Gig)
+   using "git add" will send the contents straight to a packfile without
+   having to hold it and its compressed representation both at the same
+   time in memory.
 
  * Processes spawned by "[alias] <name> = !process" in the configuration
    can inspect GIT_PREFIX environment variable to learn where in the
    working tree the original command was invoked.
 
+ * A magic pathspec ":/" tells a command that limits its operation to
+   the current directory when ran from a subdirectory to work on the
+   entire working tree. In general, ":/path/to/file" would be relative
+   to the root of the working tree hierarchy.
+
+   After "git reset --hard; edit Makefile; cd t/", "git add -u" would
+   be a no-op, but "git add -u :/" would add the updated contents of
+   the Makefile at the top level. If you want to name a path in the
+   current subdirectory whose unusual name begins with ":/", you can
+   name it by "./:/that/path" or by "\:/that/path".
+
  * "git blame" learned "--abbrev[=<n>]" option to control the minimum
    number of hexdigits shown for commit object names.
+
+ * "git blame" learned "--line-porcelain" that is less efficient but is
+   easier to parse.
+
+ * Aborting "git commit --interactive" discards updates to the index
+   made during the interctive session.
+
+ * "git commit" learned a "--patch" option to directly jump to the
+   per-hunk selection UI of the interactive mode.
 
  * "git diff -C -C" used to disable the rename detection entirely when
    there are too many copy candidate paths in the tree; now it falls
@@ -41,8 +76,22 @@ Updates since v1.7.5
    "--show-notes" option.  Unlike "--show-notes", "--notes=<ref>" does
    not imply showing the default notes.
 
+ * They also learned a log.abbrevCommit configuration variable to augment
+   the --abbrev-commit command line option.
+
+ * "git ls-remote" learned "--exit-code" option to consider it a
+   different kind of error when no remote ref to be shown.
+
  * "git merge" learned "-" as a short-hand for "the previous branch", just
    like the way "git checkout -" works.
+
+ * "git merge" uses "merge.ff" configuration variable to decide to always
+   create a merge commit (i.e. --no-ff, aka merge.ff=no), refuse to create
+   a merge commit (i.e. --ff-only, aka merge.ff=only). Setting merge.ff=yes
+   (or not setting it at all) restores the default behaviour of allowing
+   fast-forward to happen when possible.
+
+ * p4-import (from contrib) learned a new option --preserve-user.
 
  * "git rebase" that does not specify on top of which branch to rebase
    the current branch now uses @{upstream} of the current branch.
@@ -53,9 +102,9 @@ Updates since v1.7.5
  * "git submodule update" learned "--force" option to get rid of local
    changes in submodules and replace them with the up-to-date version.
 
- * Compressed tarball gitweb generates is made without the timestamp of
-   the tarball generation; snapshot from the same tree should result in
-   a same tarball.
+ * "git status" and friends ignore .gitmodules file while the file is
+   still in a conflicted state during a merge, to avoid using information
+   that is not final and possibly corrupt with conflict markers.
 
 Also contains various documentation updates and minor miscellaneous
 changes.
@@ -67,41 +116,16 @@ Fixes since v1.7.5
 Unless otherwise noted, all the fixes in 1.7.5.X maintenance track are
 included in this release.
 
- * "git add -p" did not work correctly when a hunk is split and then
-   one of them was given to the editor.
-   (merge jc/maint-add-p-overlapping-hunks later)
-
- * "git add -u" did not resolve a conflict where our history deleted and
-   their history modified the same file, and the working tree resolved to
-   keep a file.
-   (merge jc/fix-add-u-unmerged later)
+ * The single-key mode of "git add -p" was easily fooled into thinking
+   that it was told to add everthing ('a') when up-arrow was pressed by
+   mistake.
+   (merge tr/add-i-no-escape later)
 
  * "git config" used to choke with an insanely long line.
    (merge ef/maint-strbuf-init later)
 
- * "git format-patch" when run with "--quiet" option used to produce a
-   nonsense result that consists of alternating empty output.
-   (merge early part of cn/format-patch-quiet later)
-
- * "git format-patch" did not quote RFC822 special characters in the
-   email address (e.g From: Junio C. Hamano <jch@example.com>, not
-   From: "Junio C. Hamano" <jch@example.com>).
-   (merge jk/format-patch-quote-special-in-from later)
-
- * In "git merge", per-branch branch.<name>.mergeoptions configuration
-   variables did not override the fallback default merge.<option>
-   configuration variables such as merge.ff, merge.log, etc.
-   (merge jc/maint-branch-mergeoptions later)
-
- * "git mergetool" did not handle conflicted submoudules gracefully.
-   (merge jm/mergetool-submodules later)
-
- * "git send-pack" (hence "git push") over smalt-HTTP protocol could
-   deadlock when the client side pack-object died early.
-   (merge js/maint-send-pack-stateless-rpc-deadlock-fix later)
-
 ---
 exec >/var/tmp/1
 echo O=$(git describe master)
-O=v1.7.5.1-288-ge4ae6ef
+O=v1.7.5.3-365-g7eacc2b
 git shortlog --no-merges ^maint ^$O master
