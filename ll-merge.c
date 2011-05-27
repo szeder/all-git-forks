@@ -58,6 +58,83 @@ static int ll_binary_merge(const struct ll_merge_driver *drv_unused,
 	return 1;
 }
 
+static int mmbuf_iconv(	const char *fromcode, const char *tocode,
+			mmbuffer_t *result,
+			mmfile_t   *src,
+			const char *pathname,
+			const char *filename)
+{
+	iconv_t iconv_handle = iconv_open(tocode, fromcode);
+	size_t inbuf_remain;
+	size_t outbuf_remain;
+	char *p_in, *p_out;
+	int rv_errno = 0;
+
+	if (iconv_handle == (iconv_t)-1) {
+		assert(errno != 0);
+		rv_errno = errno;
+		warning("When merging %s: Failed to initialize iconv from %s to %s: %s",
+			pathname, fromcode, tocode, strerror(rv_errno));
+		return rv_errno;
+	}
+
+	result->size = src->size;
+	result->ptr  = malloc(result->size);
+
+	inbuf_remain  = src->size;
+	outbuf_remain = result->size;
+
+	p_in  = src->ptr;
+	p_out = result->ptr;
+
+	while (inbuf_remain) {
+		assert(outbuf_remain + p_out == result->ptr + result->size);
+
+		size_t cvtcount = iconv(iconv_handle,
+					&p_in, &inbuf_remain,
+					&p_out, &outbuf_remain);
+		if (cvtcount != (size_t)-1)
+			continue;
+		if (errno == E2BIG) {
+			// We need to expand the output buffer
+			ptrdiff_t cur_offset = p_out - result->ptr;
+			size_t expand_sz = result->size;
+			if (expand_sz > 16384) // arbitrrary limit
+				expand_sz = 16384;
+
+			result->size += expand_sz;
+			char *newptr = realloc(result->ptr, result->size);
+			if (!newptr)
+				goto err_out;
+
+			p_out = cur_offset + newptr;
+			result->ptr = newptr;
+			outbuf_remain += expand_sz;
+
+			continue;
+		}
+
+		// Some other failure
+		goto err_out;
+	}
+	// Shrink the buffer to fit its new contents
+	result->size = p_out - result->ptr;
+	result->ptr = realloc(result->ptr, result->size);
+	assert(result->ptr);
+
+	rv_errno = 0;
+	goto out;
+err_out:
+	rv_errno = errno;
+	warning("When merging %s: Failed to convert %s from %s to %s: %s", pathname, filename, fromcode, tocode, strerror(rv_errno));
+	free(result->ptr);
+	result->ptr = NULL;
+	result->size = 0;
+out:
+	iconv_close(iconv_handle);
+	return rv_errno;
+}
+
 static int ll_xdl_merge(const struct ll_merge_driver *drv_unused,
 			mmbuffer_t *result,
 			const char *path,
@@ -68,19 +145,34 @@ static int ll_xdl_merge(const struct ll_merge_driver *drv_unused,
 			int marker_size)
 {
 	xmparam_t xmp;
+	mmbuffer_t orig_cvt = { NULL, 0 };
+	mmbuffer_t src1_cvt = { NULL, 0 };
+	mmbuffer_t src2_cvt = { NULL, 0 };
+	int did_cvt = 0;
+
 	assert(opts);
 
-	if (buffer_is_binary(orig->ptr, orig->size) ||
-	    buffer_is_binary(src1->ptr, src1->size) ||
-	    buffer_is_binary(src2->ptr, src2->size)) {
-		warning("Cannot merge binary files: %s (%s vs. %s)\n",
-			path, name1, name2);
-		return ll_binary_merge(drv_unused, result,
-				       path,
-				       orig, orig_name,
-				       src1, name1,
-				       src2, name2,
-				       opts, marker_size);
+	if (opts->encoding && strcasecmp(opts->encoding, "UTF-8")) {
+		did_cvt = 1;
+
+		if (mmbuf_iconv(opts->encoding, "UTF-8", &orig_cvt, orig, orig_name, path))
+			goto binary_fallback;
+		if (mmbuf_iconv(opts->encoding, "UTF-8", &src1_cvt, src1, name1, path))
+			goto binary_fallback;
+		if (mmbuf_iconv(opts->encoding, "UTF-8", &src2_cvt, src2, name2, path))
+			goto binary_fallback;
+
+		orig = (mmfile_t *)&orig_cvt;
+		src1 = (mmfile_t *)&src1_cvt;
+		src2 = (mmfile_t *)&src2_cvt;
+	} else {
+		if (buffer_is_binary(orig->ptr, orig->size) ||
+		    buffer_is_binary(src1->ptr, src1->size) ||
+		    buffer_is_binary(src2->ptr, src2->size)) {
+			warning("Cannot merge binary files: %s (%s vs. %s)\n",
+				path, name1, name2);
+			goto binary_fallback;
+		}
 	}
 
 	memset(&xmp, 0, sizeof(xmp));
@@ -94,7 +186,41 @@ static int ll_xdl_merge(const struct ll_merge_driver *drv_unused,
 	xmp.ancestor = orig_name;
 	xmp.file1 = name1;
 	xmp.file2 = name2;
-	return xdl_merge(orig, src1, src2, &xmp, result);
+	int rv = xdl_merge(orig, src1, src2, &xmp, result);
+
+	if (!did_cvt)
+		return rv;
+
+	if (rv < 0) {
+		free(orig_cvt.ptr);
+		free(src1_cvt.ptr);
+		free(src2_cvt.ptr);
+		return rv;
+	}
+
+	mmbuffer_t utf8_result = *result;
+
+	int final_cvt = mmbuf_iconv("UTF-8", opts->encoding, result, (mmfile_t *)&utf8_result, path, "merge result");
+
+	free(utf8_result.ptr);
+
+	if (final_cvt == 0)
+		return rv;
+
+	/*
+	 * Otherwise, conversion from UTF-8 failed, so fall through to binary merging
+	 */
+binary_fallback:
+	free(orig_cvt.ptr);
+	free(src1_cvt.ptr);
+	free(src2_cvt.ptr);
+
+	return ll_binary_merge(drv_unused, result,
+			       path,
+			       orig, orig_name,
+			       src1, name1,
+			       src2, name2,
+			       opts, marker_size);
 }
 
 static int ll_union_merge(const struct ll_merge_driver *drv_unused,
@@ -329,8 +455,9 @@ static int git_path_check_merge(const char *path, struct git_attr_check check[2]
 	if (!check[0].attr) {
 		check[0].attr = git_attr("merge");
 		check[1].attr = git_attr("conflict-marker-size");
+		check[2].attr = git_attr("encoding");
 	}
-	return git_checkattr(path, 2, check);
+	return git_checkattr(path, 3, check);
 }
 
 static void normalize_file(mmfile_t *mm, const char *path)
@@ -350,16 +477,19 @@ int ll_merge(mmbuffer_t *result_buf,
 	     mmfile_t *theirs, const char *their_label,
 	     const struct ll_merge_options *opts)
 {
-	static struct git_attr_check check[2];
+	static struct git_attr_check check[3];
 	static const struct ll_merge_options default_opts;
+	struct ll_merge_options file_opts;
 	const char *ll_driver_name = NULL;
 	int marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 	const struct ll_merge_driver *driver;
 
 	if (!opts)
-		opts = &default_opts;
+		file_opts = default_opts;
+	else
+		file_opts = *opts;
 
-	if (opts->renormalize) {
+	if (file_opts.renormalize) {
 		normalize_file(ancestor, path);
 		normalize_file(ours, path);
 		normalize_file(theirs, path);
@@ -371,13 +501,14 @@ int ll_merge(mmbuffer_t *result_buf,
 			if (marker_size <= 0)
 				marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 		}
+		file_opts.encoding = check[2].value;
 	}
 	driver = find_ll_merge_driver(ll_driver_name);
-	if (opts->virtual_ancestor && driver->recursive)
+	if (file_opts.virtual_ancestor && driver->recursive)
 		driver = find_ll_merge_driver(driver->recursive);
 	return driver->fn(driver, result_buf, path, ancestor, ancestor_label,
 			  ours, our_label, theirs, their_label,
-			  opts, marker_size);
+			  &file_opts, marker_size);
 }
 
 int ll_merge_marker_size(const char *path)

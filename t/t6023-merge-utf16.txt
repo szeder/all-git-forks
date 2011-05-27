@@ -1,0 +1,62 @@
+#!/bin/sh
+
+test_description='RCS merge replacement: merge-file'
+. ./test-lib.sh
+
+convert() {
+	iconv -f utf8 -t utf16
+}
+
+convert > common.txt <<EOF
+Hello, world!
+EOF
+
+convert > master.txt <<EOF
+Testing 1-2-3
+EOF
+
+convert > branch.txt <<EOF
+Foo bar
+EOF
+
+convert > xout.txt <<EOF
+<<<<<<< HEAD
+Testing 1-2-3
+=======
+Foo bar
+>>>>>>> branch
+EOF
+
+cat > gitattributes <<EOF
+*.txt encoding=utf-16
+EOF
+
+test_expect_success 'setup' '
+	cp common.txt test.txt &&
+	git add test.txt &&
+	git commit -m "initial commit" &&
+	git checkout -b branch &&
+	cp branch.txt test.txt &&
+	git commit test.txt -m "branch commit" &&
+	git checkout master &&
+	cp master.txt test.txt &&
+	git commit test.txt -m "master commit"
+'
+
+test_expect_success 'merge with ,gitattributes' '
+    cp gitattributes .gitattributes &&
+	test_must_fail git merge branch &&
+	test_cmp test.txt xout.txt &&
+	git reset --hard master &&
+	rm .gitattributes
+'
+
+test_expect_success 'merge with info/gitattributes' '
+    cp gitattributes .git/info/attributes &&
+	test_must_fail git merge branch &&
+	test_cmp test.txt xout.txt &&
+	git reset --hard master &&
+	rm .git/info/attributes
+'
+
+test_done
