@@ -441,6 +441,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 	int nongit;
 	char *alias;
 	enum help_format parsed_help_format;
+    int i = 0;
 
 	argc = parse_options(argc, argv, prefix, builtin_help_options,
 			builtin_help_usage, 0);
@@ -481,9 +482,18 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 
 	alias = alias_lookup(argv[0]);
 	if (alias && !is_git_command(argv[0])) {
-		printf_ln(_("`git %s' is aliased to `%s'"), argv[0], alias);
-		free(alias);
-		return 0;
+    if (alias[0] == '!') {
+	printf("`git %s' is aliased to shell command `%s'\n", argv[0], alias+ 1);
+	return 0;
+    }
+	printf("`git %s' is aliased to `%s'\n", argv[0], alias);
+    while(alias[i]!='\0' && alias[i]!=' ') {
+	i++;
+    }
+
+    alias[i] = '\0';
+
+    argv[0] = alias;
 	}
 
 	switch (help_format) {
