@@ -274,8 +274,7 @@ STRIP ?= strip
 #   mandir
 #   infodir
 #   htmldir
-#   ETC_GITCONFIG (but not sysconfdir)
-#   ETC_GITATTRIBUTES
+#   sysconfdir
 # can be specified as a relative path some/where/else;
 # this is interpreted as relative to $(prefix) and "git" at
 # runtime figures out where they are based on the path to the executable.
@@ -291,15 +290,8 @@ sharedir = $(prefix)/share
 gitwebdir = $(sharedir)/gitweb
 template_dir = share/git-core/templates
 htmldir = share/doc/git-doc
-ifeq ($(prefix),/usr)
-sysconfdir = /etc
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
 ETC_GITATTRIBUTES = $(sysconfdir)/gitattributes
-else
-sysconfdir = $(prefix)/etc
-ETC_GITCONFIG = etc/gitconfig
-ETC_GITATTRIBUTES = etc/gitattributes
-endif
 lib = lib
 # DESTDIR=
 pathsep = :
@@ -1192,6 +1184,14 @@ endif
 -include config.mak.autogen
 -include config.mak
 
+ifndef sysconfdir
+ifeq ($(prefix),/usr)
+sysconfdir = /etc
+else
+sysconfdir = etc
+endif
+endif
+
 ifdef CHECK_HEADER_DEPENDENCIES
 COMPUTE_HEADER_DEPENDENCIES =
 USE_COMPUTED_HEADER_DEPENDENCIES =
@@ -1747,33 +1747,7 @@ $(patsubst %.perl,%,$(SCRIPT_PERL)): % : %.perl
 gitweb:
 	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) all
 
-ifdef JSMIN
-GITWEB_PROGRAMS += gitweb/static/gitweb.min.js
-GITWEB_JS = gitweb/static/gitweb.min.js
-else
-GITWEB_JS = gitweb/static/gitweb.js
-endif
-ifdef CSSMIN
-GITWEB_PROGRAMS += gitweb/static/gitweb.min.css
-GITWEB_CSS = gitweb/static/gitweb.min.css
-else
-GITWEB_CSS = gitweb/static/gitweb.css
-endif
-OTHER_PROGRAMS +=  gitweb/gitweb.cgi  $(GITWEB_PROGRAMS)
-gitweb/gitweb.cgi: gitweb/gitweb.perl $(GITWEB_PROGRAMS)
-	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) $(patsubst gitweb/%,%,$@)
-
-ifdef JSMIN
-gitweb/static/gitweb.min.js: gitweb/static/gitweb.js
-	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) $(patsubst gitweb/%,%,$@)
-endif # JSMIN
-ifdef CSSMIN
-gitweb/static/gitweb.min.css: gitweb/static/gitweb.css
-	$(QUIET_SUBDIR0)gitweb $(QUIET_SUBDIR1) $(patsubst gitweb/%,%,$@)
-endif # CSSMIN
-
-
-git-instaweb: git-instaweb.sh gitweb/gitweb.cgi gitweb/static/gitweb.css gitweb/static/gitweb.js
+git-instaweb: git-instaweb.sh gitweb
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	    -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
