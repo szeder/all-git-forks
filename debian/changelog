@@ -1,3 +1,10 @@
+git (1:1.7.5.3-1.1) unstable; urgency=low
+
+  * debian/changelog.upstream, debian/versions.upstream: update upstream
+    changelog.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 27 May 2011 14:24:51 +0000
+
 git (1:1.7.5.3-1) unstable; urgency=low
 
   * new upstream point release.
