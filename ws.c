@@ -116,36 +116,31 @@ unsigned whitespace_rule(const char *pathname)
 	}
 }
 
+static void add_err_item(struct strbuf *err, const char *message)
+{
+	if (err->len)
+		strbuf_addstr(err, ", ");
+	strbuf_addstr(err, message);
+}
+
 /* The returned string should be freed by the caller. */
 char *whitespace_error_string(unsigned ws)
 {
 	struct strbuf err = STRBUF_INIT;
-	if ((ws & WS_TRAILING_SPACE) == WS_TRAILING_SPACE)
-		strbuf_addstr(&err, "trailing whitespace");
-	else {
+	if ((ws & WS_TRAILING_SPACE) == WS_TRAILING_SPACE) {
+		add_err_item(&err, "trailing whitespace");
+	} else {
 		if (ws & WS_BLANK_AT_EOL)
-			strbuf_addstr(&err, "trailing whitespace");
-		if (ws & WS_BLANK_AT_EOF) {
-			if (err.len)
-				strbuf_addstr(&err, ", ");
-			strbuf_addstr(&err, "new blank line at EOF");
-		}
+			add_err_item(&err, "trailing whitespace");
+		if (ws & WS_BLANK_AT_EOF)
+			add_err_item(&err, "new blank line at EOF");
 	}
-	if (ws & WS_SPACE_BEFORE_TAB) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "space before tab in indent");
-	}
-	if (ws & WS_INDENT_WITH_NON_TAB) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "indent with spaces");
-	}
-	if (ws & WS_TAB_IN_INDENT) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "tab in indent");
-	}
+	if (ws & WS_SPACE_BEFORE_TAB)
+		add_err_item(&err, "space before tab in indent");
+	if (ws & WS_INDENT_WITH_NON_TAB)
+		add_err_item(&err, "indent with spaces");
+	if (ws & WS_TAB_IN_INDENT)
+		add_err_item(&err, "tab in indent");
 	return strbuf_detach(&err, NULL);
 }
 
