@@ -431,15 +431,26 @@ static void list_common_guides_help(void)
 static const char *check_git_cmd(const char* cmd)
 {
 	char *alias;
+  int i = 0;
 
 	if (is_git_command(cmd))
 		return cmd;
 
 	alias = alias_lookup(cmd);
 	if (alias) {
-		printf_ln(_("`git %s' is aliased to `%s'"), cmd, alias);
-		free(alias);
-		exit(0);
+    if (alias[0] == '!') {
+      printf("`git %s' is aliased to shell command `%s'\n", cmd, alias+ 1);
+      free(alias);
+      return 0;
+    }
+    printf("`git %s' is aliased to `%s'\n", cmd, alias);
+    while(alias[i]!='\0' && alias[i]!=' ') {
+      i++;
+    }
+
+    alias[i] = '\0';
+
+    return alias;
 	}
 
 	if (exclude_guides)
