@@ -144,6 +144,12 @@ char *whitespace_error_string(unsigned ws)
 	return strbuf_detach(&err, NULL);
 }
 
+static int is_nbsp(const char *at_)
+{
+	unsigned const char *at = (unsigned const char *)at_;
+	return at[0] == 0xc2 && at[1] == 0xa0;
+}
+
 /* If stream is non-NULL, emits the line after checking. */
 static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 				FILE *stream, const char *set,
@@ -154,7 +160,7 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 	int trailing_whitespace = -1;
 	int trailing_newline = 0;
 	int trailing_carriage_return = 0;
-	int i;
+	int i, col_offset;
 
 	/* Logic is simpler if we temporarily ignore the trailing newline. */
 	if (len > 0 && line[len - 1] == '\n') {
@@ -170,11 +176,16 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 	/* Check for trailing whitespace. */
 	if (ws_rule & WS_BLANK_AT_EOL) {
 		for (i = len - 1; i >= 0; i--) {
-			if (isspace(line[i])) {
+			int is_space = isspace(line[i]);
+
+			if (!is_space && i && is_nbsp(&line[i-1])) {
+				is_space = 1;
+				i--;
+			}
+			if (is_space) {
 				trailing_whitespace = i;
 				result |= WS_BLANK_AT_EOL;
-			}
-			else
+			} else
 				break;
 		}
 	}
@@ -183,9 +194,14 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 		trailing_whitespace = len;
 
 	/* Check indentation */
-	for (i = 0; i < trailing_whitespace; i++) {
+	for (i = col_offset = 0; i < trailing_whitespace; i++) {
 		if (line[i] == ' ')
 			continue;
+		if (i + 1 < trailing_whitespace && is_nbsp(&line[i])) {
+			i++;
+			col_offset++;
+			continue;
+		}
 		if (line[i] != '\t')
 			break;
 		if ((ws_rule & WS_SPACE_BEFORE_TAB) && written < i) {
@@ -208,10 +224,12 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 			fwrite(line + written, i - written + 1, 1, stream);
 		}
 		written = i + 1;
+		col_offset = 0;
 	}
 
 	/* Check for indent using non-tab. */
-	if ((ws_rule & WS_INDENT_WITH_NON_TAB) && i - written >= ws_tab_width(ws_rule)) {
+	if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
+	    i - written - col_offset >= ws_tab_width(ws_rule)) {
 		result |= WS_INDENT_WITH_NON_TAB;
 		if (stream) {
 			fputs(ws, stream);
@@ -270,7 +288,13 @@ int ws_blank_line(const char *line, int len, unsigned ws_rule)
 	 * for now we just use this stupid definition.
 	 */
 	while (len-- > 0) {
-		if (!isspace(*line))
+		if (isspace(*line))
+			;
+		else if (len && is_nbsp(line)) {
+			line++;
+			len--;
+		}
+		else
 			return 0;
 		line++;
 	}
