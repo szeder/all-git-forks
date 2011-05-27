@@ -20,6 +20,7 @@ static struct whitespace_rule {
 	{ "blank-at-eol", WS_BLANK_AT_EOL, 0 },
 	{ "blank-at-eof", WS_BLANK_AT_EOF, 0 },
 	{ "tab-in-indent", WS_TAB_IN_INDENT, 0, 1 },
+	{ "nbsp", WS_NBSP, 0, 0 },
 };
 
 unsigned parse_whitespace_rule(const char *string)
@@ -141,6 +142,8 @@ char *whitespace_error_string(unsigned ws)
 		add_err_item(&err, "indent with spaces");
 	if (ws & WS_TAB_IN_INDENT)
 		add_err_item(&err, "tab in indent");
+	if (ws & WS_NBSP)
+		add_err_item(&err, "&nbsp; in source");
 	return strbuf_detach(&err, NULL);
 }
 
@@ -148,6 +151,45 @@ static int is_nbsp(const char *at_)
 {
 	unsigned const char *at = (unsigned const char *)at_;
 	return at[0] == 0xc2 && at[1] == 0xa0;
+}
+
+/*
+ * Show line while highlighting nbsp " " (c2a0) if ws is set
+ */
+static void emit_with_nbsp_hilite(FILE *stream,
+				  const char *set, const char *reset,
+				  const char *ws,
+				  const char *line, int len)
+{
+	if (!len)
+		return;
+	while (len) {
+		/* number of bytes in the leading segment w/o nbsp error */
+		int ok;
+		if (!ws) {
+			ok = len;
+		} else {
+			for (ok = 0; ok < len; ok++) {
+				if (ok < len - 1 && is_nbsp(line + ok))
+					break;
+			}
+		}
+		if (ok) {
+			fputs(set, stream);
+			fwrite(line, ok, 1, stream);
+			fputs(reset, stream);
+		}
+		line += ok;
+		len -= ok;
+		if (len) {
+			/* do not bother bundling consecutive ones */
+			fputs(ws, stream);
+			fwrite(line, 2, 1, stream);
+			fputs(reset, stream);
+			line += 2;
+			len -= 2;
+		}
+	}
 }
 
 /* If stream is non-NULL, emits the line after checking. */
@@ -171,6 +213,24 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 	    len > 0 && line[len - 1] == '\r') {
 		trailing_carriage_return = 1;
 		len--;
+	}
+
+	/* Check for nbsp in UTF-8 (c2a0) */
+	if (ws_rule & WS_NBSP) {
+		for (i = 1; i < len; i++) {
+			switch (line[i] & 0xff) {
+			case 0xc2:
+				break;
+			case 0xa0:
+				if ((line[i-1] & 0xff) == 0xc2) {
+					result |= WS_NBSP;
+					continue;
+				}
+				/* fallthru */
+			default:
+				i++;
+			}
+		}
 	}
 
 	/* Check for trailing whitespace. */
@@ -245,13 +305,11 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 		 * The non-highlighted part ends at "trailing_whitespace".
 		 */
 
-		/* Emit non-highlighted (middle) segment. */
-		if (trailing_whitespace - written > 0) {
-			fputs(set, stream);
-			fwrite(line + written,
-			    trailing_whitespace - written, 1, stream);
-			fputs(reset, stream);
-		}
+		/* Emit middle segment, highlighting nbsp as needed */
+		emit_with_nbsp_hilite(stream, set, reset,
+				      (result & WS_NBSP) ? ws : NULL,
+				      line + written,
+				      trailing_whitespace - written);
 
 		/* Highlight errors in trailing whitespace. */
 		if (trailing_whitespace != len) {

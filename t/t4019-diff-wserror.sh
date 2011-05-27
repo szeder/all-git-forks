@@ -56,7 +56,7 @@ test_expect_success default '
 	grep End error >/dev/null
 '
 
-test_expect_success 'default (attribute)' '
+test_expect_success 'default (attribute) -- must check all available rule' '
 
 	test_might_fail git config --unset core.whitespace &&
 	echo "F whitespace" >.gitattributes &&
@@ -68,7 +68,7 @@ test_expect_success 'default (attribute)' '
 	grep Return error >/dev/null &&
 	grep No normal >/dev/null &&
 	grep Enough error >/dev/null &&
-	grep Bit normal >/dev/null &&
+	grep Bit error >/dev/null &&
 	grep End error >/dev/null
 '
 
@@ -83,8 +83,8 @@ test_expect_success 'default, tabwidth=10 (attribute)' '
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
 	grep No normal >/dev/null &&
-	grep Enough normal >/dev/null &&
-	grep Bit normal >/dev/null &&
+	grep Enough error >/dev/null &&
+	grep Bit error >/dev/null &&
 	grep End error >/dev/null
 '
 

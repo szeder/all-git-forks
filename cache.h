@@ -1122,17 +1122,19 @@ void shift_tree_by(const unsigned char *, const unsigned char *, unsigned char *
 /*
  * whitespace rules.
  * used by both diff and apply
- * last two digits are tab width
+ * last 6-bits are tab width
  */
-#define WS_BLANK_AT_EOL         0100
-#define WS_SPACE_BEFORE_TAB     0200
-#define WS_INDENT_WITH_NON_TAB  0400
-#define WS_CR_AT_EOL           01000
-#define WS_BLANK_AT_EOF        02000
-#define WS_TAB_IN_INDENT       04000
+#define WS_TAB_WIDTH_MASK       077
+#define WS_BLANK_AT_EOL         (1<< 6)
+#define WS_SPACE_BEFORE_TAB     (1<< 7)
+#define WS_INDENT_WITH_NON_TAB  (1<< 8)
+#define WS_CR_AT_EOL            (1<< 9)
+#define WS_BLANK_AT_EOF         (1<<10)
+#define WS_TAB_IN_INDENT        (1<<11)
+#define WS_NBSP                 (1<<12)
 #define WS_TRAILING_SPACE      (WS_BLANK_AT_EOL|WS_BLANK_AT_EOF)
 #define WS_DEFAULT_RULE (WS_TRAILING_SPACE|WS_SPACE_BEFORE_TAB|8)
-#define WS_TAB_WIDTH_MASK        077
+
 extern unsigned whitespace_rule_cfg;
 extern unsigned whitespace_rule(const char *);
 extern unsigned parse_whitespace_rule(const char *);
