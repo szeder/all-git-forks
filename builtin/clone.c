@@ -81,7 +81,7 @@ static struct option builtin_clone_options[] = {
 		   "path to git-upload-pack on the remote"),
 	OPT_STRING(0, "depth", &option_depth, "depth",
 		    "create a shallow clone of that depth"),
-	OPT_STRING('L', "separate-git-dir", &real_git_dir, "gitdir",
+	OPT_STRING(0, "separate-git-dir", &real_git_dir, "gitdir",
 		   "separate git dir from working tree"),
 
 	OPT_END()
@@ -417,7 +417,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (path)
 		repo = xstrdup(absolute_path(repo_name));
 	else if (!strchr(repo_name, ':'))
-		die("repository '%s' does not exist", repo_name);
+		die(_("repository '%s' does not exist"), repo_name);
 	else
 		repo = repo_name;
 	is_local = path && !is_bundle;

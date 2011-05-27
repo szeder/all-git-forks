@@ -12,6 +12,7 @@
 #include "fast_export.h"
 #include "line_buffer.h"
 #include "strbuf.h"
+#include "svndump.h"
 
 /*
  * Compare start of string to literal of equal length;

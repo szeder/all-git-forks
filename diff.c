@@ -31,6 +31,7 @@ static const char *external_diff_cmd_cfg;
 int diff_auto_refresh_index = 1;
 static int diff_mnemonic_prefix;
 static int diff_no_prefix;
+static int diff_dirstat_permille_default = 30;
 static struct diff_options default_diff_options;
 
 static char diff_colors[][COLOR_MAXLEN] = {
@@ -64,6 +65,58 @@ static int parse_diff_color_slot(const char *var, int ofs)
 	if (!strcasecmp(var+ofs, "func"))
 		return DIFF_FUNCINFO;
 	return -1;
+}
+
+static int parse_dirstat_params(struct diff_options *options, const char *params,
+				struct strbuf *errmsg)
+{
+	const char *p = params;
+	int p_len, ret = 0;
+
+	while (*p) {
+		p_len = strchrnul(p, ',') - p;
+		if (!memcmp(p, "changes", p_len)) {
+			DIFF_OPT_CLR(options, DIRSTAT_BY_LINE);
+			DIFF_OPT_CLR(options, DIRSTAT_BY_FILE);
+		} else if (!memcmp(p, "lines", p_len)) {
+			DIFF_OPT_SET(options, DIRSTAT_BY_LINE);
+			DIFF_OPT_CLR(options, DIRSTAT_BY_FILE);
+		} else if (!memcmp(p, "files", p_len)) {
+			DIFF_OPT_CLR(options, DIRSTAT_BY_LINE);
+			DIFF_OPT_SET(options, DIRSTAT_BY_FILE);
+		} else if (!memcmp(p, "noncumulative", p_len)) {
+			DIFF_OPT_CLR(options, DIRSTAT_CUMULATIVE);
+		} else if (!memcmp(p, "cumulative", p_len)) {
+			DIFF_OPT_SET(options, DIRSTAT_CUMULATIVE);
+		} else if (isdigit(*p)) {
+			char *end;
+			int permille = strtoul(p, &end, 10) * 10;
+			if (*end == '.' && isdigit(*++end)) {
+				/* only use first digit */
+				permille += *end - '0';
+				/* .. and ignore any further digits */
+				while (isdigit(*++end))
+					; /* nothing */
+			}
+			if (end - p == p_len)
+				options->dirstat_permille = permille;
+			else {
+				strbuf_addf(errmsg, _("  Failed to parse dirstat cut-off percentage '%.*s'\n"),
+					    p_len, p);
+				ret++;
+			}
+		} else {
+			strbuf_addf(errmsg, _("  Unknown dirstat parameter '%.*s'\n"),
+				    p_len, p);
+			ret++;
+		}
+
+		p += p_len;
+
+		if (*p)
+			p++; /* more parameters, swallow separator */
+	}
+	return ret;
 }
 
 static int git_config_rename(const char *var, const char *value)
@@ -142,6 +195,17 @@ int git_diff_basic_config(const char *var, const char *value, void *cb)
 			/* for backwards compatibility */
 			!strcmp(var, "diff.suppress-blank-empty")) {
 		diff_suppress_blank_empty = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "diff.dirstat")) {
+		struct strbuf errmsg = STRBUF_INIT;
+		default_diff_options.dirstat_permille = diff_dirstat_permille_default;
+		if (parse_dirstat_params(&default_diff_options, value, &errmsg))
+			warning(_("Found errors in 'diff.dirstat' config variable:\n%s"),
+				errmsg.buf);
+		strbuf_release(&errmsg);
+		diff_dirstat_permille_default = default_diff_options.dirstat_permille;
 		return 0;
 	}
 
@@ -581,11 +645,14 @@ static void emit_rewrite_diff(const char *name_a,
 		line_prefix, metainfo, a_name.buf, name_a_tab, reset,
 		line_prefix, metainfo, b_name.buf, name_b_tab, reset,
 		line_prefix, fraginfo);
-	print_line_count(o->file, lc_a);
+	if (!o->irreversible_delete)
+		print_line_count(o->file, lc_a);
+	else
+		fprintf(o->file, "?,?");
 	fprintf(o->file, " +");
 	print_line_count(o->file, lc_b);
 	fprintf(o->file, " @@%s\n", reset);
-	if (lc_a)
+	if (lc_a && !o->irreversible_delete)
 		emit_rewrite_lines(&ecbdata, '-', data_one, size_one);
 	if (lc_b)
 		emit_rewrite_lines(&ecbdata, '+', data_two, size_two);
@@ -1050,8 +1117,16 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 			emit_line(ecbdata->opt, plain, reset, line, len);
 			fputs("~\n", ecbdata->opt->file);
 		} else {
-			/* don't print the prefix character */
-			emit_line(ecbdata->opt, plain, reset, line+1, len-1);
+			/*
+			 * Skip the prefix character, if any.  With
+			 * diff_suppress_blank_empty, there may be
+			 * none.
+			 */
+			if (line[0] != '\n') {
+			      line++;
+			      len--;
+			}
+			emit_line(ecbdata->opt, plain, reset, line, len);
 		}
 		return;
 	}
@@ -1452,7 +1527,7 @@ struct dirstat_file {
 
 struct dirstat_dir {
 	struct dirstat_file *files;
-	int alloc, nr, percent, cumulative;
+	int alloc, nr, permille, cumulative;
 };
 
 static long gather_dirstat(struct diff_options *opt, struct dirstat_dir *dir,
@@ -1499,12 +1574,11 @@ static long gather_dirstat(struct diff_options *opt, struct dirstat_dir *dir,
 	 *    under this directory (sources == 1).
 	 */
 	if (baselen && sources != 1) {
-		int permille = this_dir * 1000 / changed;
-		if (permille) {
-			int percent = permille / 10;
-			if (percent >= dir->percent) {
+		if (this_dir) {
+			int permille = this_dir * 1000 / changed;
+			if (permille >= dir->permille) {
 				fprintf(opt->file, "%s%4d.%01d%% %.*s\n", line_prefix,
-					percent, permille % 10, baselen, base);
+					permille / 10, permille % 10, baselen, base);
 				if (!dir->cumulative)
 					return 0;
 			}
@@ -1530,7 +1604,7 @@ static void show_dirstat(struct diff_options *options)
 	dir.files = NULL;
 	dir.alloc = 0;
 	dir.nr = 0;
-	dir.percent = options->dirstat_percent;
+	dir.permille = options->dirstat_permille;
 	dir.cumulative = DIFF_OPT_TST(options, DIRSTAT_CUMULATIVE);
 
 	changed = 0;
@@ -1538,8 +1612,36 @@ static void show_dirstat(struct diff_options *options)
 		struct diff_filepair *p = q->queue[i];
 		const char *name;
 		unsigned long copied, added, damage;
+		int content_changed;
 
-		name = p->one->path ? p->one->path : p->two->path;
+		name = p->two->path ? p->two->path : p->one->path;
+
+		if (p->one->sha1_valid && p->two->sha1_valid)
+			content_changed = hashcmp(p->one->sha1, p->two->sha1);
+		else
+			content_changed = 1;
+
+		if (!content_changed) {
+			/*
+			 * The SHA1 has not changed, so pre-/post-content is
+			 * identical. We can therefore skip looking at the
+			 * file contents altogether.
+			 */
+			damage = 0;
+			goto found_damage;
+		}
+
+		if (DIFF_OPT_TST(options, DIRSTAT_BY_FILE)) {
+			/*
+			 * In --dirstat-by-file mode, we don't really need to
+			 * look at the actual file contents at all.
+			 * The fact that the SHA1 changed is enough for us to
+			 * add this file to the list of results
+			 * (with each file contributing equal damage).
+			 */
+			damage = 1;
+			goto found_damage;
+		}
 
 		if (DIFF_FILE_VALID(p->one) && DIFF_FILE_VALID(p->two)) {
 			diff_populate_filespec(p->one, 0);
@@ -1563,16 +1665,64 @@ static void show_dirstat(struct diff_options *options)
 		/*
 		 * Original minus copied is the removed material,
 		 * added is the new material.  They are both damages
-		 * made to the preimage. In --dirstat-by-file mode, count
-		 * damaged files, not damaged lines. This is done by
-		 * counting only a single damaged line per file.
+		 * made to the preimage.
+		 * If the resulting damage is zero, we know that
+		 * diffcore_count_changes() considers the two entries to
+		 * be identical, but since content_changed is true, we
+		 * know that there must have been _some_ kind of change,
+		 * so we force all entries to have damage > 0.
 		 */
 		damage = (p->one->size - copied) + added;
-		if (DIFF_OPT_TST(options, DIRSTAT_BY_FILE) && damage > 0)
+		if (!damage)
 			damage = 1;
 
+found_damage:
 		ALLOC_GROW(dir.files, dir.nr + 1, dir.alloc);
 		dir.files[dir.nr].name = name;
+		dir.files[dir.nr].changed = damage;
+		changed += damage;
+		dir.nr++;
+	}
+
+	/* This can happen even with many files, if everything was renames */
+	if (!changed)
+		return;
+
+	/* Show all directories with more than x% of the changes */
+	qsort(dir.files, dir.nr, sizeof(dir.files[0]), dirstat_compare);
+	gather_dirstat(options, &dir, changed, "", 0);
+}
+
+static void show_dirstat_by_line(struct diffstat_t *data, struct diff_options *options)
+{
+	int i;
+	unsigned long changed;
+	struct dirstat_dir dir;
+
+	if (data->nr == 0)
+		return;
+
+	dir.files = NULL;
+	dir.alloc = 0;
+	dir.nr = 0;
+	dir.permille = options->dirstat_permille;
+	dir.cumulative = DIFF_OPT_TST(options, DIRSTAT_CUMULATIVE);
+
+	changed = 0;
+	for (i = 0; i < data->nr; i++) {
+		struct diffstat_file *file = data->files[i];
+		unsigned long damage = file->added + file->deleted;
+		if (file->is_binary)
+			/*
+			 * binary files counts bytes, not lines. Must find some
+			 * way to normalize binary bytes vs. textual lines.
+			 * The following heuristic assumes that there are 64
+			 * bytes per "line".
+			 * This is stupid and ugly, but very cheap...
+			 */
+			damage = (damage + 63) / 64;
+		ALLOC_GROW(dir.files, dir.nr + 1, dir.alloc);
+		dir.files[dir.nr].name = file->name;
 		dir.files[dir.nr].changed = damage;
 		changed += damage;
 		dir.nr++;
@@ -1949,7 +2099,11 @@ static void builtin_diff(const char *name_a,
 		}
 	}
 
-	if (!DIFF_OPT_TST(o, TEXT) &&
+	if (o->irreversible_delete && lbl[1][0] == '/') {
+		fprintf(o->file, "%s", header.buf);
+		strbuf_reset(&header);
+		goto free_ab_and_return;
+	} else if (!DIFF_OPT_TST(o, TEXT) &&
 	    ( (!textconv_one && diff_filespec_is_binary(one)) ||
 	      (!textconv_two && diff_filespec_is_binary(two)) )) {
 		if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
@@ -1969,8 +2123,7 @@ static void builtin_diff(const char *name_a,
 			fprintf(o->file, "%sBinary files %s and %s differ\n",
 				line_prefix, lbl[0], lbl[1]);
 		o->found_changes = 1;
-	}
-	else {
+	} else {
 		/* Crazy xdl interfaces.. */
 		const char *diffopts = getenv("GIT_DIFF_OPTS");
 		xpparam_t xpp;
@@ -2853,7 +3006,7 @@ void diff_setup(struct diff_options *options)
 	options->line_termination = '\n';
 	options->break_opt = -1;
 	options->rename_limit = -1;
-	options->dirstat_percent = 3;
+	options->dirstat_permille = diff_dirstat_permille_default;
 	options->context = 3;
 
 	options->change = diff_change;
@@ -3111,6 +3264,21 @@ static int stat_opt(struct diff_options *options, const char **av)
 	return argcount;
 }
 
+static int parse_dirstat_opt(struct diff_options *options, const char *params)
+{
+	struct strbuf errmsg = STRBUF_INIT;
+	if (parse_dirstat_params(options, params, &errmsg))
+		die(_("Failed to parse --dirstat/-X option parameter:\n%s"),
+		    errmsg.buf);
+	strbuf_release(&errmsg);
+	/*
+	 * The caller knows a dirstat-related option is given from the command
+	 * line; allow it to say "return this_function();"
+	 */
+	options->output_format |= DIFF_FORMAT_DIRSTAT;
+	return 1;
+}
+
 int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 {
 	const char *arg = av[0];
@@ -3130,15 +3298,19 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		options->output_format |= DIFF_FORMAT_NUMSTAT;
 	else if (!strcmp(arg, "--shortstat"))
 		options->output_format |= DIFF_FORMAT_SHORTSTAT;
-	else if (opt_arg(arg, 'X', "dirstat", &options->dirstat_percent))
-		options->output_format |= DIFF_FORMAT_DIRSTAT;
-	else if (!strcmp(arg, "--cumulative")) {
-		options->output_format |= DIFF_FORMAT_DIRSTAT;
-		DIFF_OPT_SET(options, DIRSTAT_CUMULATIVE);
-	} else if (opt_arg(arg, 0, "dirstat-by-file",
-			   &options->dirstat_percent)) {
-		options->output_format |= DIFF_FORMAT_DIRSTAT;
-		DIFF_OPT_SET(options, DIRSTAT_BY_FILE);
+	else if (!strcmp(arg, "-X") || !strcmp(arg, "--dirstat"))
+		return parse_dirstat_opt(options, "");
+	else if (!prefixcmp(arg, "-X"))
+		return parse_dirstat_opt(options, arg + 2);
+	else if (!prefixcmp(arg, "--dirstat="))
+		return parse_dirstat_opt(options, arg + 10);
+	else if (!strcmp(arg, "--cumulative"))
+		return parse_dirstat_opt(options, "cumulative");
+	else if (!strcmp(arg, "--dirstat-by-file"))
+		return parse_dirstat_opt(options, "files");
+	else if (!prefixcmp(arg, "--dirstat-by-file=")) {
+		parse_dirstat_opt(options, "files");
+		return parse_dirstat_opt(options, arg + 18);
 	}
 	else if (!strcmp(arg, "--check"))
 		options->output_format |= DIFF_FORMAT_CHECKDIFF;
@@ -3167,6 +3339,9 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
 			return error("invalid argument to -M: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_RENAME;
+	}
+	else if (!strcmp(arg, "-D") || !strcmp(arg, "--irreversible-delete")) {
+		options->irreversible_delete = 1;
 	}
 	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--find-copies=") ||
 		 !strcmp(arg, "--find-copies")) {
@@ -3955,11 +4130,34 @@ static int is_summary_empty(const struct diff_queue_struct *q)
 	return 1;
 }
 
+static const char rename_limit_warning[] =
+"inexact rename detection was skipped due to too many files.";
+
+static const char degrade_cc_to_c_warning[] =
+"only found copies from modified paths due to too many files.";
+
+static const char rename_limit_advice[] =
+"you may want to set your %s variable to at least "
+"%d and retry the command.";
+
+void diff_warn_rename_limit(const char *varname, int needed, int degraded_cc)
+{
+	if (degraded_cc)
+		warning(degrade_cc_to_c_warning);
+	else if (needed)
+		warning(rename_limit_warning);
+	else
+		return;
+	if (0 < needed && needed < 32767)
+		warning(rename_limit_advice, varname, needed);
+}
+
 void diff_flush(struct diff_options *options)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i, output_format = options->output_format;
 	int separator = 0;
+	int dirstat_by_line = 0;
 
 	/*
 	 * Order: raw, stat, summary, patch
@@ -3980,7 +4178,11 @@ void diff_flush(struct diff_options *options)
 		separator++;
 	}
 
-	if (output_format & (DIFF_FORMAT_DIFFSTAT|DIFF_FORMAT_SHORTSTAT|DIFF_FORMAT_NUMSTAT)) {
+	if (output_format & DIFF_FORMAT_DIRSTAT && DIFF_OPT_TST(options, DIRSTAT_BY_LINE))
+		dirstat_by_line = 1;
+
+	if (output_format & (DIFF_FORMAT_DIFFSTAT|DIFF_FORMAT_SHORTSTAT|DIFF_FORMAT_NUMSTAT) ||
+	    dirstat_by_line) {
 		struct diffstat_t diffstat;
 
 		memset(&diffstat, 0, sizeof(struct diffstat_t));
@@ -3995,10 +4197,12 @@ void diff_flush(struct diff_options *options)
 			show_stats(&diffstat, options);
 		if (output_format & DIFF_FORMAT_SHORTSTAT)
 			show_shortstats(&diffstat, options);
+		if (output_format & DIFF_FORMAT_DIRSTAT)
+			show_dirstat_by_line(&diffstat, options);
 		free_diffstat_info(&diffstat);
 		separator++;
 	}
-	if (output_format & DIFF_FORMAT_DIRSTAT)
+	if ((output_format & DIFF_FORMAT_DIRSTAT) && !dirstat_by_line)
 		show_dirstat(options);
 
 	if (output_format & DIFF_FORMAT_SUMMARY && !is_summary_empty(q)) {
@@ -4236,6 +4440,10 @@ void diffcore_std(struct diff_options *options)
 int diff_result_code(struct diff_options *opt, int status)
 {
 	int result = 0;
+
+	diff_warn_rename_limit("diff.renamelimit",
+			       opt->needed_rename_limit,
+			       opt->degraded_cc_to_c);
 	if (!DIFF_OPT_TST(opt, EXIT_WITH_STATUS) &&
 	    !(opt->output_format & DIFF_FORMAT_CHECKDIFF))
 		return status;
@@ -4349,20 +4557,20 @@ void diff_change(struct diff_options *options,
 		DIFF_OPT_SET(options, HAS_CHANGES);
 }
 
-void diff_unmerge(struct diff_options *options,
-		  const char *path,
-		  unsigned mode, const unsigned char *sha1)
+struct diff_filepair *diff_unmerge(struct diff_options *options, const char *path)
 {
+	struct diff_filepair *pair;
 	struct diff_filespec *one, *two;
 
 	if (options->prefix &&
 	    strncmp(path, options->prefix, options->prefix_length))
-		return;
+		return NULL;
 
 	one = alloc_filespec(path);
 	two = alloc_filespec(path);
-	fill_filespec(one, sha1, mode);
-	diff_queue(&diff_queued_diff, one, two)->is_unmerged = 1;
+	pair = diff_queue(&diff_queued_diff, one, two);
+	pair->is_unmerged = 1;
+	return pair;
 }
 
 static char *run_textconv(const char *pgm, struct diff_filespec *spec,
