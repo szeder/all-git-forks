@@ -119,7 +119,7 @@ Description: fast, scalable, distributed revision control system (arch interoper
 
 Package: git-cvs
 Architecture: all
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), cvsps (>> 2.1-0), libdbd-sqlite3-perl
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), cvsps, libdbd-sqlite3-perl
 Suggests: git-doc, cvs
 Replaces: cogito (<< 0.16rc2-0)
 Description: fast, scalable, distributed revision control system (cvs interoperability)
@@ -199,7 +199,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
 
 Package: git-gui
 Architecture: all
-Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk (>= 8.4)
+Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk
 Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
 Suggests: git-doc
