@@ -1,7 +1,7 @@
-From 0fd046360c7b3eeaaa07d68ec8f76278c3da931c Mon Sep 17 00:00:00 2001
+From 6f649bca819ae203ba81358f6b0cc5a3df0fd3f1 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
-Subject: remove shebang line from shell libraries
+Subject: [PATCH 3/6] remove shebang line from shell libraries
 
 As v1.7.0-rc1~9 (2009-11-25) explained, even if a script is expected
 to be sourced instead of executed on its own, the #!/bin/sh line
@@ -22,7 +22,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index fb3f52b..3c7ed0e 100644
+index 4db9212..309e78b 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
@@ -62,5 +62,5 @@ index aa16b83..264966d 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.5
+1.7.5.1
 

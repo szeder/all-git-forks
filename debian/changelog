@@ -1,3 +1,11 @@
+git (1:1.7.5.3-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/0007-...diff, 0008-...diff, 0009-...diff, 0010-...diff:
+    remove; included upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Fri, 27 May 2011 12:41:24 +0000
+
 git (1:1.7.5.1-1) unstable; urgency=low
 
   * new upstream point release.
