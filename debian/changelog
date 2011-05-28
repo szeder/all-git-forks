@@ -1,12 +1,11 @@
 git (1:1.7.2.5-2.1) stable; urgency=low
 
-  * debian/git-daemon/run: pass --reuseaddr to git-daemon so the
-    server can restart without waiting for old connections to time
-    out (thx Daniel Kahn Gillmor; closes: #609405).
-  * debian/git-daemon-run.postrm purge: terminate git-daemon/log
-    by sending signals instead of just closing its standard input,
-    so the git-daemon-run package can be purged even if there is a
-    connection active (thx Daniel Kahn Gillmor; closes: #627314).
+  * debian/git-daemon/run: use SO_REUSEADDR when binding the listening
+    socket so the server does not have to wait for old connections to
+    time out to restart (thx Daniel Kahn Gillmor; closes: #609405).
+  * debian/git-daemon-run.postrm purge: terminate git-daemon/log even if
+    there is an active connection using it, to allow the logs and gitlog
+    user to be removed (thx Daniel Kahn Gillmor; closes: #627314).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 20 May 2011 21:21:53 -0500
 
