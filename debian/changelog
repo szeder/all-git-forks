@@ -7,6 +7,12 @@ git (1:1.7.5.3-1.1) unstable; urgency=low
   [ Jonathan Nieder ]
   * debian/changelog.upstream.sh: use set -e to avoid continuing
     blithely after errors.
+  * debian/git-daemon/run: use SO_REUSEADDR when binding the listening
+    socket so the server does not have to wait for old connections to
+    time out to restart (thx Daniel Kahn Gillmor; closes: #609405).
+  * debian/git-daemon-run.postrm purge: terminate git-daemon/log even if
+    there is an active connection using it, to allow the logs and gitlog
+    user to be removed (thx Daniel Kahn Gillmor; closes: #627314).
 
  -- Gerrit Pape <pape@smarden.org>  Fri, 27 May 2011 14:24:51 +0000
 
