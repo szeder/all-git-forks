@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 : >debian/changelog.upstream
 exec <debian/versions.upstream
 read old
