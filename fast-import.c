@@ -783,7 +783,7 @@ static struct branch *new_branch(const char *name)
 
 static unsigned int hc_entries(unsigned int cnt)
 {
-	cnt = cnt & 7 ? (cnt / 8) + 1 : cnt / 8;
+	cnt = DIV_ROUND_UP(cnt, 8);
 	return cnt < avail_tree_table_sz ? cnt : avail_tree_table_sz - 1;
 }
 
@@ -803,7 +803,7 @@ static struct tree_content *new_tree_content(unsigned int cnt)
 		else
 			avail_tree_table[hc] = f->next_avail;
 	} else {
-		cnt = cnt & 7 ? ((cnt / 8) + 1) * 8 : cnt;
+		cnt = DIV_ROUND_UP(cnt, 8) * 8;
 		f = pool_alloc(sizeof(*t) + sizeof(t->entries[0]) * cnt);
 		f->entry_capacity = cnt;
 	}
