@@ -20,6 +20,7 @@ static struct whitespace_rule {
 	{ "blank-at-eol", WS_BLANK_AT_EOL, 0 },
 	{ "blank-at-eof", WS_BLANK_AT_EOF, 0 },
 	{ "tab-in-indent", WS_TAB_IN_INDENT, 0, 1 },
+	{ "nbsp", WS_NBSP, 0, 0 },
 };
 
 unsigned parse_whitespace_rule(const char *string)
@@ -116,37 +117,79 @@ unsigned whitespace_rule(const char *pathname)
 	}
 }
 
+static void add_err_item(struct strbuf *err, const char *message)
+{
+	if (err->len)
+		strbuf_addstr(err, ", ");
+	strbuf_addstr(err, message);
+}
+
 /* The returned string should be freed by the caller. */
 char *whitespace_error_string(unsigned ws)
 {
 	struct strbuf err = STRBUF_INIT;
-	if ((ws & WS_TRAILING_SPACE) == WS_TRAILING_SPACE)
-		strbuf_addstr(&err, "trailing whitespace");
-	else {
+	if ((ws & WS_TRAILING_SPACE) == WS_TRAILING_SPACE) {
+		add_err_item(&err, "trailing whitespace");
+	} else {
 		if (ws & WS_BLANK_AT_EOL)
-			strbuf_addstr(&err, "trailing whitespace");
-		if (ws & WS_BLANK_AT_EOF) {
-			if (err.len)
-				strbuf_addstr(&err, ", ");
-			strbuf_addstr(&err, "new blank line at EOF");
+			add_err_item(&err, "trailing whitespace");
+		if (ws & WS_BLANK_AT_EOF)
+			add_err_item(&err, "new blank line at EOF");
+	}
+	if (ws & WS_SPACE_BEFORE_TAB)
+		add_err_item(&err, "space before tab in indent");
+	if (ws & WS_INDENT_WITH_NON_TAB)
+		add_err_item(&err, "indent with spaces");
+	if (ws & WS_TAB_IN_INDENT)
+		add_err_item(&err, "tab in indent");
+	if (ws & WS_NBSP)
+		add_err_item(&err, "&nbsp; in source");
+	return strbuf_detach(&err, NULL);
+}
+
+static int is_nbsp(const char *at_)
+{
+	unsigned const char *at = (unsigned const char *)at_;
+	return at[0] == 0xc2 && at[1] == 0xa0;
+}
+
+/*
+ * Show line while highlighting nbsp " " (c2a0) if ws is set
+ */
+static void emit_with_nbsp_hilite(FILE *stream,
+				  const char *set, const char *reset,
+				  const char *ws,
+				  const char *line, int len)
+{
+	if (!len)
+		return;
+	while (len) {
+		/* number of bytes in the leading segment w/o nbsp error */
+		int ok;
+		if (!ws) {
+			ok = len;
+		} else {
+			for (ok = 0; ok < len; ok++) {
+				if (ok < len - 1 && is_nbsp(line + ok))
+					break;
+			}
+		}
+		if (ok) {
+			fputs(set, stream);
+			fwrite(line, ok, 1, stream);
+			fputs(reset, stream);
+		}
+		line += ok;
+		len -= ok;
+		if (len) {
+			/* do not bother bundling consecutive ones */
+			fputs(ws, stream);
+			fwrite(line, 2, 1, stream);
+			fputs(reset, stream);
+			line += 2;
+			len -= 2;
 		}
 	}
-	if (ws & WS_SPACE_BEFORE_TAB) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "space before tab in indent");
-	}
-	if (ws & WS_INDENT_WITH_NON_TAB) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "indent with spaces");
-	}
-	if (ws & WS_TAB_IN_INDENT) {
-		if (err.len)
-			strbuf_addstr(&err, ", ");
-		strbuf_addstr(&err, "tab in indent");
-	}
-	return strbuf_detach(&err, NULL);
 }
 
 /* If stream is non-NULL, emits the line after checking. */
@@ -159,7 +202,7 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 	int trailing_whitespace = -1;
 	int trailing_newline = 0;
 	int trailing_carriage_return = 0;
-	int i;
+	int i, col_offset;
 
 	/* Logic is simpler if we temporarily ignore the trailing newline. */
 	if (len > 0 && line[len - 1] == '\n') {
@@ -172,14 +215,37 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 		len--;
 	}
 
+	/* Check for nbsp in UTF-8 (c2a0) */
+	if (ws_rule & WS_NBSP) {
+		for (i = 1; i < len; i++) {
+			switch (line[i] & 0xff) {
+			case 0xc2:
+				break;
+			case 0xa0:
+				if ((line[i-1] & 0xff) == 0xc2) {
+					result |= WS_NBSP;
+					continue;
+				}
+				/* fallthru */
+			default:
+				i++;
+			}
+		}
+	}
+
 	/* Check for trailing whitespace. */
 	if (ws_rule & WS_BLANK_AT_EOL) {
 		for (i = len - 1; i >= 0; i--) {
-			if (isspace(line[i])) {
+			int is_space = isspace(line[i]);
+
+			if (!is_space && i && is_nbsp(&line[i-1])) {
+				is_space = 1;
+				i--;
+			}
+			if (is_space) {
 				trailing_whitespace = i;
 				result |= WS_BLANK_AT_EOL;
-			}
-			else
+			} else
 				break;
 		}
 	}
@@ -188,9 +254,14 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 		trailing_whitespace = len;
 
 	/* Check indentation */
-	for (i = 0; i < trailing_whitespace; i++) {
+	for (i = col_offset = 0; i < trailing_whitespace; i++) {
 		if (line[i] == ' ')
 			continue;
+		if (i + 1 < trailing_whitespace && is_nbsp(&line[i])) {
+			i++;
+			col_offset++;
+			continue;
+		}
 		if (line[i] != '\t')
 			break;
 		if ((ws_rule & WS_SPACE_BEFORE_TAB) && written < i) {
@@ -213,10 +284,12 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 			fwrite(line + written, i - written + 1, 1, stream);
 		}
 		written = i + 1;
+		col_offset = 0;
 	}
 
 	/* Check for indent using non-tab. */
-	if ((ws_rule & WS_INDENT_WITH_NON_TAB) && i - written >= ws_tab_width(ws_rule)) {
+	if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
+	    i - written - col_offset >= ws_tab_width(ws_rule)) {
 		result |= WS_INDENT_WITH_NON_TAB;
 		if (stream) {
 			fputs(ws, stream);
@@ -232,13 +305,11 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 		 * The non-highlighted part ends at "trailing_whitespace".
 		 */
 
-		/* Emit non-highlighted (middle) segment. */
-		if (trailing_whitespace - written > 0) {
-			fputs(set, stream);
-			fwrite(line + written,
-			    trailing_whitespace - written, 1, stream);
-			fputs(reset, stream);
-		}
+		/* Emit middle segment, highlighting nbsp as needed */
+		emit_with_nbsp_hilite(stream, set, reset,
+				      (result & WS_NBSP) ? ws : NULL,
+				      line + written,
+				      trailing_whitespace - written);
 
 		/* Highlight errors in trailing whitespace. */
 		if (trailing_whitespace != len) {
@@ -275,7 +346,13 @@ int ws_blank_line(const char *line, int len, unsigned ws_rule)
 	 * for now we just use this stupid definition.
 	 */
 	while (len-- > 0) {
-		if (!isspace(*line))
+		if (isspace(*line))
+			;
+		else if (len && is_nbsp(line)) {
+			line++;
+			len--;
+		}
+		else
 			return 0;
 		line++;
 	}
@@ -297,6 +374,7 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 	int last_tab_in_indent = -1;
 	int last_space_in_indent = -1;
 	int need_fix_leading_space = 0;
+	int col_offset = 0;
 
 	/*
 	 * Strip trailing whitespace
@@ -310,10 +388,17 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 				len--;
 			}
 		}
-		if (0 < len && isspace(src[len - 1])) {
-			while (0 < len && isspace(src[len-1]))
-				len--;
-			fixed = 1;
+		if (0 < len) {
+			int orig_len = len;
+			while (len) {
+				if (isspace(src[len - 1]))
+					len--;
+				else if (1 < len && is_nbsp(&src[len - 2]))
+					len -= 2;
+				else
+					break;
+			}
+			fixed = (orig_len != len);
 		}
 	}
 
@@ -327,13 +412,23 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 			if ((ws_rule & WS_SPACE_BEFORE_TAB) &&
 			    0 <= last_space_in_indent)
 			    need_fix_leading_space = 1;
-		} else if (ch == ' ') {
-			last_space_in_indent = i;
-			if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
-			    ws_tab_width(ws_rule) <= i - last_tab_in_indent)
-				need_fix_leading_space = 1;
-		} else
+			col_offset = 0;
+			continue;
+		}
+
+		if (ch == ' ') {
+			;
+		} else if ((i < len - 1) && is_nbsp(src + i)) {
+			i++;
+			col_offset++;
+		} else {
 			break;
+		}
+		last_space_in_indent = i;
+
+		if ((ws_rule & WS_INDENT_WITH_NON_TAB) &&
+		    ws_tab_width(ws_rule) <= (i - col_offset) - last_tab_in_indent)
+			need_fix_leading_space = 1;
 	}
 
 	if (need_fix_leading_space) {
@@ -355,15 +450,20 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 		 */
 		for (i = 0; i < last; i++) {
 			char ch = src[i];
-			if (ch != ' ') {
+
+			if (ch == ' ') {
+				;
+			} else if ((i < last - 1) && is_nbsp(src + i)) {
+				i++;
+			} else {
 				consecutive_spaces = 0;
 				strbuf_addch(dst, ch);
-			} else {
-				consecutive_spaces++;
-				if (consecutive_spaces == ws_tab_width(ws_rule)) {
-					strbuf_addch(dst, '\t');
-					consecutive_spaces = 0;
-				}
+				continue;
+			}
+			consecutive_spaces++;
+			if (consecutive_spaces == ws_tab_width(ws_rule)) {
+				strbuf_addch(dst, '\t');
+				consecutive_spaces = 0;
 			}
 		}
 		while (0 < consecutive_spaces--)
@@ -388,7 +488,20 @@ void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule,
 		fixed = 1;
 	}
 
-	strbuf_add(dst, src, len);
+	if (ws_rule & WS_NBSP) {
+		while (len--) {
+			if (len && is_nbsp(src)) {
+				src++;
+				len--;
+				strbuf_addch(dst, ' ');
+			} else {
+				strbuf_addch(dst, *src);
+			}
+			src++;
+		}
+	} else {
+		strbuf_add(dst, src, len);
+	}
 	if (add_cr_to_tail)
 		strbuf_addch(dst, '\r');
 	if (add_nl_to_tail)

@@ -14,6 +14,9 @@ test_expect_success setup '
 	echo "With trailing SP " >>F &&
 	echo "Carriage ReturnQ" | tr Q "\015" >>F &&
 	echo "No problem" >>F &&
+	echo "        Enough NBSP and Space" >>F &&
+	echo "      Bit of NBSP and Space" >>F &&
+	echo "NBSP At End  " >>F &&
 	echo >>F
 
 '
@@ -47,11 +50,13 @@ test_expect_success default '
 	grep HT error >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
-	grep No normal >/dev/null
-
+	grep Enough normal >/dev/null &&
+	grep No normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End error >/dev/null
 '
 
-test_expect_success 'default (attribute)' '
+test_expect_success 'default (attribute) -- must check all available rule' '
 
 	test_might_fail git config --unset core.whitespace &&
 	echo "F whitespace" >.gitattributes &&
@@ -61,8 +66,10 @@ test_expect_success 'default (attribute)' '
 	grep HT error >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough error >/dev/null &&
+	grep Bit error >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'default, tabwidth=10 (attribute)' '
@@ -75,8 +82,10 @@ test_expect_success 'default, tabwidth=10 (attribute)' '
 	grep HT error >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough error >/dev/null &&
+	grep Bit error >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'no check (attribute)' '
@@ -89,8 +98,10 @@ test_expect_success 'no check (attribute)' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'no check, tabwidth=10 (attribute), must be irrelevant' '
@@ -103,8 +114,10 @@ test_expect_success 'no check, tabwidth=10 (attribute), must be irrelevant' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'without -trail' '
@@ -117,8 +130,10 @@ test_expect_success 'without -trail' '
 	grep HT error >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'without -trail (attribute)' '
@@ -131,8 +146,10 @@ test_expect_success 'without -trail (attribute)' '
 	grep HT error >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'without -space' '
@@ -145,8 +162,10 @@ test_expect_success 'without -space' '
 	grep HT normal >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'without -space (attribute)' '
@@ -159,8 +178,10 @@ test_expect_success 'without -space (attribute)' '
 	grep HT normal >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return error >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'with indent-non-tab only' '
@@ -173,8 +194,10 @@ test_expect_success 'with indent-non-tab only' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough error >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'with indent-non-tab only (attribute)' '
@@ -187,8 +210,10 @@ test_expect_success 'with indent-non-tab only (attribute)' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough error >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'with indent-non-tab only, tabwidth=10' '
@@ -201,8 +226,10 @@ test_expect_success 'with indent-non-tab only, tabwidth=10' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'with indent-non-tab only, tabwidth=10 (attribute)' '
@@ -215,8 +242,10 @@ test_expect_success 'with indent-non-tab only, tabwidth=10 (attribute)' '
 	grep HT normal >/dev/null &&
 	grep With normal >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End normal >/dev/null
 '
 
 test_expect_success 'with cr-at-eol' '
@@ -229,8 +258,10 @@ test_expect_success 'with cr-at-eol' '
 	grep HT error >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'with cr-at-eol (attribute)' '
@@ -243,8 +274,10 @@ test_expect_success 'with cr-at-eol (attribute)' '
 	grep HT error >/dev/null &&
 	grep With error >/dev/null &&
 	grep Return normal >/dev/null &&
-	grep No normal >/dev/null
-
+	grep No normal >/dev/null &&
+	grep Enough normal >/dev/null &&
+	grep Bit normal >/dev/null &&
+	grep End error >/dev/null
 '
 
 test_expect_success 'trailing empty lines (1)' '
