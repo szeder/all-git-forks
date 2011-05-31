@@ -334,8 +334,7 @@ static struct strbuf new_tree = STRBUF_INIT;
 /* Branch data */
 static unsigned long max_active_branches = 5;
 static unsigned long cur_active_branches;
-static unsigned long branch_table_sz = 1039;
-static struct branch **branch_table;
+static struct hash_table branch_table;
 static struct branch *active_branches;
 
 /* Tag data */
@@ -364,8 +363,10 @@ static void parse_argv(void);
 static void parse_cat_blob(void);
 static void parse_ls(struct branch *b);
 
-static void write_branch_report(FILE *rpt, struct branch *b)
+static int write_branch_report(struct branch *b, void *cb)
 {
+	FILE *rpt = cb;
+
 	fprintf(rpt, "%s:\n", b->name);
 
 	fprintf(rpt, "  status      :");
@@ -388,6 +389,34 @@ static void write_branch_report(FILE *rpt, struct branch *b)
 	fputc('\n', rpt);
 
 	fputc('\n', rpt);
+
+	return 0;
+}
+
+struct for_each_branch_data {
+	int (*fn)(struct branch *, void *);
+	void *data;
+};
+
+static int for_each_branch_helper(void *bucket, void *helper_data)
+{
+	struct for_each_branch_data *cb = helper_data;
+	struct branch *b;
+	int sum = 0;
+
+	for (b = bucket; b; b = b->table_next_branch) {
+		int val = cb->fn(b, cb->data);
+		if (val < 0)
+			return val;
+		sum += val;
+	}
+	return sum;
+}
+
+static int for_each_branch(int (*fn)(struct branch *, void *), void *data)
+{
+	struct for_each_branch_data cb = { fn, data };
+	return for_each_hash(&branch_table, for_each_branch_helper, &cb);
 }
 
 static void dump_marks_helper(FILE *, uintmax_t, struct mark_set *);
@@ -445,10 +474,7 @@ static void write_crash_report(const char *err)
 	fputc('\n', rpt);
 	fputs("Inactive Branches\n", rpt);
 	fputs("-----------------\n", rpt);
-	for (lu = 0; lu < branch_table_sz; lu++) {
-		for (b = branch_table[lu]; b; b = b->table_next_branch)
-			write_branch_report(rpt, b);
-	}
+	for_each_branch(write_branch_report, rpt);
 
 	if (first_tag) {
 		struct tag *tg;
@@ -714,10 +740,10 @@ static struct atom_str *to_atom(const char *s, unsigned short len)
 
 static struct branch *lookup_branch(const char *name)
 {
-	unsigned int hc = hc_str(name, strlen(name)) % branch_table_sz;
+	unsigned int hc = hc_str(name, strlen(name));
 	struct branch *b;
 
-	for (b = branch_table[hc]; b; b = b->table_next_branch)
+	for (b = lookup_hash(hc, &branch_table); b; b = b->table_next_branch)
 		if (!strcmp(name, b->name))
 			return b;
 	return NULL;
@@ -725,8 +751,9 @@ static struct branch *lookup_branch(const char *name)
 
 static struct branch *new_branch(const char *name)
 {
-	unsigned int hc = hc_str(name, strlen(name)) % branch_table_sz;
+	unsigned int hc = hc_str(name, strlen(name));
 	struct branch *b = lookup_branch(name);
+	void **pos;
 
 	if (b)
 		die("Invalid attempt to create duplicate branch: %s", name);
@@ -740,13 +767,16 @@ static struct branch *new_branch(const char *name)
 
 	b = pool_calloc(1, sizeof(struct branch));
 	b->name = pool_strdup(name);
-	b->table_next_branch = branch_table[hc];
 	b->branch_tree.versions[0].mode = S_IFDIR;
 	b->branch_tree.versions[1].mode = S_IFDIR;
 	b->num_notes = 0;
 	b->active = 0;
 	b->pack_id = MAX_PACK_ID;
-	branch_table[hc] = b;
+	pos = insert_hash(hc, b, &branch_table);
+	if (pos) {
+		b->table_next_branch = *pos;
+		*pos = b;
+	}
 	branch_count++;
 	return b;
 }
@@ -956,6 +986,15 @@ static void unkeep_all_packs(void)
 	}
 }
 
+static int print_sha1_if_same_pack(struct branch *b, void *cb)
+{
+	const unsigned int *pack_id = cb;
+
+	if (b->pack_id == *pack_id)
+		fprintf(pack_edges, " %s", sha1_to_hex(b->sha1));
+	return 0;
+}
+
 static void end_packfile(void)
 {
 	struct packed_git *old_p = pack_data, *new_p;
@@ -964,8 +1003,6 @@ static void end_packfile(void)
 	if (object_count) {
 		unsigned char cur_pack_sha1[20];
 		char *idx_name;
-		int i;
-		struct branch *b;
 		struct tag *t;
 
 		close_pack_windows(pack_data);
@@ -986,12 +1023,7 @@ static void end_packfile(void)
 		/* Print the boundary */
 		if (pack_edges) {
 			fprintf(pack_edges, "%s:", new_p->pack_name);
-			for (i = 0; i < branch_table_sz; i++) {
-				for (b = branch_table[i]; b; b = b->table_next_branch) {
-					if (b->pack_id == pack_id)
-						fprintf(pack_edges, " %s", sha1_to_hex(b->sha1));
-				}
-			}
+			for_each_branch(print_sha1_if_same_pack, &pack_id);
 			for (t = first_tag; t; t = t->next_tag) {
 				if (t->pack_id == pack_id)
 					fprintf(pack_edges, " %s", sha1_to_hex(t->sha1));
@@ -1667,7 +1699,8 @@ static int tree_content_get(
 	return 0;
 }
 
-static int update_branch(struct branch *b)
+/* 1 means failure; -1 means stop. */
+static int update_branch(struct branch *b, void *unused)
 {
 	static const char *msg = "fast-import";
 	struct ref_lock *lock;
@@ -1678,8 +1711,10 @@ static int update_branch(struct branch *b)
 	if (read_ref(b->name, old_sha1))
 		hashclr(old_sha1);
 	lock = lock_any_ref_for_update(b->name, old_sha1, 0);
-	if (!lock)
-		return error("Unable to lock %s", b->name);
+	if (!lock) {
+		error("Unable to lock %s", b->name);
+		return 1;
+	}
 	if (!force_update && !is_null_sha1(old_sha1)) {
 		struct commit *old_cmit, *new_cmit;
 
@@ -1687,7 +1722,8 @@ static int update_branch(struct branch *b)
 		new_cmit = lookup_commit_reference_gently(b->sha1, 0);
 		if (!old_cmit || !new_cmit) {
 			unlock_ref(lock);
-			return error("Branch %s is missing commits.", b->name);
+			error("Branch %s is missing commits.", b->name);
+			return 1;
 		}
 
 		if (!in_merge_bases(old_cmit, &new_cmit, 1)) {
@@ -1695,23 +1731,19 @@ static int update_branch(struct branch *b)
 			warning("Not updating %s"
 				" (new tip %s does not contain %s)",
 				b->name, sha1_to_hex(b->sha1), sha1_to_hex(old_sha1));
-			return -1;
+			return 1;
 		}
 	}
-	if (write_ref_sha1(lock, b->sha1, msg) < 0)
-		return error("Unable to update %s", b->name);
+	if (write_ref_sha1(lock, b->sha1, msg) < 0) {
+		error("Unable to update %s", b->name);
+		return 1;
+	}
 	return 0;
 }
 
 static void dump_branches(void)
 {
-	unsigned int i;
-	struct branch *b;
-
-	for (i = 0; i < branch_table_sz; i++) {
-		for (b = branch_table[i]; b; b = b->table_next_branch)
-			failure |= update_branch(b);
-	}
+	failure |= for_each_branch(update_branch, NULL);
 }
 
 static void dump_tags(void)
@@ -3275,7 +3307,7 @@ int main(int argc, const char **argv)
 	alloc_objects(object_entry_alloc);
 	strbuf_init(&command_buf, 0);
 	init_hash(&atom_table);
-	branch_table = xcalloc(branch_table_sz, sizeof(struct branch*));
+	init_hash(&branch_table);
 	avail_tree_table = xcalloc(avail_tree_table_sz, sizeof(struct avail_tree_content*));
 	init_hash(&object_table);
 	marks = pool_calloc(1, sizeof(struct mark_set));
