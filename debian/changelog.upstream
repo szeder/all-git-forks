@@ -1,3 +1,325 @@
+Version v1.7.6-rc0; changes since v1.7.5.4:
+-------------------------------------------
+
+Boris Faure (1):
+      Do not strip empty lines / trailing spaces from a commit message template
+
+Carlos Martín Nieto (1):
+      log: convert to parse-options
+
+Conrad Irwin (5):
+      Use a temporary index for git commit --interactive
+      Allow git commit --interactive with paths
+      Add support for -p/--patch to git-commit
+      Add commit to list of config.singlekey commands
+      Test atomic git-commit --interactive
+
+Csaba Henk (1):
+      rebase: create HEAD reflog entry when aborting
+
+Dan McGee (4):
+      Share color list between graph and show-branch
+      http: make curl callbacks match contracts from curl header
+      http-push: use const for strings in signatures
+      http-push: refactor curl_easy_setup madness
+
+Elijah Newren (3):
+      t6022: New test checking for unnecessary updates of renamed+modified files
+      t6022: New test checking for unnecessary updates of files in D/F conflicts
+      merge-recursive: When we detect we can skip an update, actually skip it
+
+Erik Faye-Lund (2):
+      strbuf: make sure buffer is zero-terminated
+      config: support values longer than 1023 bytes
+
+Heiko Voigt (1):
+      test that git status works with merge conflict in, .gitmodules
+
+Ingo Molnar (1):
+      hashcmp(): inline memcmp() by hand to optimize
+
+Jakub Narebski (13):
+      gitweb: Restructure projects list generation
+      gitweb: Change the way "content tags" ('ctags') are handled
+      gitweb: Mark matched 'ctag' / contents tag (?by_tag=foo)
+      gitweb: Split JavaScript for maintability, combining on build
+      gitweb.js: Update and improve comments in JavaScript files
+      gitweb.js: Provide default values for padding in padLeftStr and padLeft
+      gitweb.js: Extract and improve datetime handling
+      gitweb.js: Introduce code to handle cookies from JavaScript
+      gitweb.js: Provide getElementsByClassName method (if it not exists)
+      gitweb: Refactor generating of long dates into format_timestamp_html
+      gitweb: Unify the way long timestamp is displayed
+      gitweb: Make JavaScript ability to adjust timezones configurable
+      gitweb: Refactor reading and parsing config file into read_config_file
+
+Jay Soffian (2):
+      "git log -h": typofix misspelled 'suppress'
+      Add log.abbrevCommit config variable
+
+Jeff King (26):
+      notes: make expand_notes_ref globally accessible
+      revision.c: refactor notes ref expansion
+      notes: refactor display notes extra refs field
+      notes: refactor display notes default handling
+      revision.c: support --notes command-line option
+      revision.c: make --no-notes reset --notes list
+      format-patch: wrap email addresses after long names
+      add tests for various blame formats
+      blame: refactor porcelain output
+      blame: add --line-porcelain output format
+      t7501.8: feed a meaningful command
+      fetch: avoid repeated commits in mark_complete
+      Makefile: sort TEST_PROGRAMS list
+      refactor refs_from_alternate_cb to allow passing extra data
+      bisect: refactor sha1_array into a generic sha1 list
+      receive-pack: eliminate duplicate .have refs
+      doc: discuss textconv versus external diff drivers
+      remote: allow "-t" with fetch mirrors
+      read_in_full: always report errors
+      t: test subject handling in format-patch / am pipeline
+      mailinfo: always clean up rfc822 header folding
+      pretty: add pp_commit_easy function for simple callers
+      clean up calling conventions for pretty.c functions
+      format-patch: preserve subject newlines with -k
+      rebase: write a reflog entry when finishing
+      format-patch: make zero-length subject prefixes prettier
+
+Jens Lehmann (3):
+      Submodules: Don't parse .gitmodules when it contains, merge conflicts
+      unpack-trees: add the dry_run flag to unpack_trees_options
+      Teach read-tree the -n|--dry-run option
+
+Jim Meyering (2):
+      diffcore-rename.c: avoid set-but-not-used warning
+      plug a DIR buffer leak in rerere.c
+
+Johan Herland (10):
+      log/pretty-options: Document --[no-]notes and deprecate old notes options
+      Make "git notes add" more user-friendly when there are existing notes
+      Add several testcases for --dirstat and friends
+      Make --dirstat=0 output directories that contribute < 0.1% of changes
+      Refactor --dirstat parsing; deprecate --cumulative and --dirstat-by-file
+      Add config variable for specifying default --dirstat behavior
+      Allow specifying --dirstat cut-off percentage as a floating point number
+      New --dirstat=lines mode, doing dirstat analysis based on diffstat
+      Improve error handling when parsing dirstat parameters
+      Mark dirstat error messages for translation
+
+Johannes Sixt (3):
+      t3703: Skip tests using directory name ":" on Windows
+      Tweak t3102-ls-tree-wildcards to run on Windows
+      Windows: add a wrapper for the shutdown() system call
+
+John 'Warthog9' Hawley (2):
+      gitweb: JavaScript ability to adjust time based on timezone
+      gitweb.js: Add UI for selecting common timezone to display dates
+
+Jon Seymour (1):
+      git: add --info-path and --man-path options
+
+Jonathan Nieder (15):
+      revisions: split out handle_revision_pseudo_opt function
+      revisions: allow --glob and friends in parse_options-enabled commands
+      Documentation: clarify meaning of --html-path, --man-path, and --info-path
+      tests: eliminate unnecessary setup test assertions
+      tests: teach verify_parents to check for extra parents
+      tests: check git does not barf on merge.ff values for future versions of git
+      completion: move private shopt shim for zsh to __git_ namespace
+      t4018 (funcname patterns): make .gitattributes state easier to track
+      t4018 (funcname patterns): make configuration easier to track
+      t4018 (funcname patterns): minor cleanups
+      userdiff/perl: anchor "sub" and "package" patterns on the left
+      userdiff/perl: match full line of POD headers
+      userdiff/perl: catch sub with brace on second line
+      tests: make test_expect_code quieter on success
+      userdiff/perl: tighten BEGIN/END block pattern to reject here-doc delimiters
+
+Junio C Hamano (53):
+      merge-recursive: tweak magic band-aid
+      git diff -D: omit the preimage of deletes
+      pathspec: rename per-item field has_wildcard to use_wildcard
+      magic pathspec: add tentative ":/path/from/top/level" pathspec support
+      merge: allow "-" as a short-hand for "previous branch"
+      magic pathspec: futureproof shorthand form
+      magic pathspec: add ":(icase)path" to match case insensitively
+      Start 1.7.6 cycle
+      Update draft release notes to 1.7.6
+      Update draft release notes to 1.7.6
+      Update draft release notes to 1.7.6
+      Update draft release notes to 1.7.6
+      merge: introduce merge.ff configuration variable
+      rerere: libify rerere_clear() and rerere_gc()
+      index_fd(): turn write_object and format_check arguments into one flag
+      index_fd(): split into two helper functions
+      convert: rename the "eol" global variable to "core_eol"
+      convert: give saner names to crlf/eol variables, types and functions
+      convert: make it safer to add conversion attributes
+      convert: make it harder to screw up adding a conversion attribute
+      git-grep: do not die upon -F/-P when grep.extendedRegexp is set.
+      Revert "magic pathspec: add ":(icase)path" to match case insensitively"
+      pathspec: drop "lone : means no pathspec" from get_pathspec()
+      grep: use get_pathspec() correctly
+      fix overstrict :<path> diagnosis
+      fix overslow :/no-such-string-ever-existed diagnostics
+      rev/path disambiguation: further restrict "misspelled index entry" diag
+      Revert "completion: don't declare 'local words' to make zsh happy"
+      Update draft release notes to 1.7.6
+      revision.c: leave a note for "a lone :" enhancement
+      Update draft release notes to 1.7.6
+      Bigfile: teach "git add" to send a large file straight to a pack
+      Declare lookup_replace_object() in cache.h, not in commit.h
+      t6050: make sure we test not just commit replacement
+      read_sha1_file(): get rid of read_sha1_file_repl() madness
+      inline lookup_replace_object() calls
+      read_sha1_file(): allow selective bypassing of replacement mechanism
+      Sync release notes for 1.7.6 to exclude what are in maintenance track
+      git-grep: update tests now regexp type is "last one wins"
+      Makefile: Pass USE_LIBPCRE down in GIT-BUILD-OPTIONS
+      Update release notes to 1.7.6
+      notes remove: allow removing more than one
+      notes remove: --ignore-missing
+      notes remove: --stdin reads from the standard input
+      show: --ignore-missing
+      Revert "Merge branch 'en/merge-recursive'"
+      Update draft release notes to 1.7.6
+      Update 1.7.6 draft release notes
+      require-work-tree wants more than what its name says
+      compat/fnmatch/fnmatch.c: give a fall-back definition for NULL
+      Update 1.7.6 draft release notes
+      log: --quiet should serve as synonym to -s
+      Update draft release notes to 1.7.6
+
+Luke Diamand (3):
+      git-p4: add option to preserve user names
+      git-p4: small improvements to user-preservation
+      git-p4: warn if git authorship won't be retained
+
+Marius Storm-Olsen (1):
+      Automatically autoload bashcompinit for ZSH, when needed
+
+Martin von Zweigbergk (34):
+      rebase: clearer names for directory variables
+      rebase: refactor reading of state
+      rebase: read state outside loop
+      rebase: remove unused rebase state 'prev_head'
+      rebase: improve detection of rebase in progress
+      rebase: act on command line outside parsing loop
+      rebase: stricter check of standalone sub command
+      rebase: align variable names
+      rebase: align variable content
+      rebase: factor out command line option processing
+      rebase -i: remove now unnecessary directory checks
+      rebase: reorder validation steps
+      rebase: factor out reference parsing
+      rebase: factor out clean work tree check
+      rebase: factor out call to pre-rebase hook
+      rebase -i: support --stat
+      rebase: remove $branch as synonym for $orig_head
+      rebase: extract merge code to new source file
+      rebase: extract am code to new source file
+      rebase: show consistent conflict resolution hint
+      rebase -i: align variable names
+      rebase: make -v a tiny bit more verbose
+      rebase: factor out sub command handling
+      rebase: extract code for writing basic state
+      rebase: remember verbose option
+      rebase: remember strategy and strategy options
+      rebase -m: remember allow_rerere_autoupdate option
+      rebase -m: don't print exit code 2 when merge fails
+      git-rebase--am: remove unnecessary --3way option
+      rebase -i: don't read unused variable preserve_merges
+      rebase -i: remove unnecessary state rebase-root
+      rebase: use @{upstream} if no upstream specified
+      Makefile: do not install sourced rebase scripts
+      rebase: define options in OPTIONS_SPEC
+
+Mathias Lafeldt (1):
+      t/test-lib.sh: minor readability improvements
+
+Michael Haggerty (1):
+      git-svn: add an option to skip the creation of empty directories
+
+Michael J Gruber (7):
+      contrib/completion: --notes, --no-notes
+      rev-list --count: separate count for --cherry-mark
+      t1020: test !alias in subdirectory
+      handle_alias: provide GIT_PREFIX to !alias
+      config: define and document exit codes
+      config: Give error message when not changing a multivar
+      sh-18n: quell "unused variable" warning
+
+Michael Schubert (2):
+      tag: disallow '-' as tag name
+      ls-remote: the --exit-code option reports "no matching refs"
+
+Michał Kiedrowicz (11):
+      Documentation: Add --line-number to git-grep synopsis
+      contrib/completion: --line-number to git grep
+      grep: Put calls to fixmatch() and regmatch() into patmatch()
+      grep: Fix a typo in a comment
+      grep: Extract compile_regexp_failed() from compile_regexp()
+      git-grep: Learn PCRE
+      configure: Check for libpcre
+      grep: Add basic tests
+      git-grep: Bail out when -P is used with -F or -E
+      git-grep: Update tests (mainly for -P)
+      git-grep: Fix problems with recently added tests
+
+Namhyung Kim (1):
+      blame: add --abbrev command line option and make it honor core.abbrev
+
+Nguyễn Thái Ngọc Duy (8):
+      Reimplement read_tree_recursive() using tree_entry_interesting()
+      Convert read_tree{,_recursive} to support struct pathspec
+      Improve tree_entry_interesting() handling code
+      setup: return correct prefix if worktree is '/'
+      Kill off get_relative_cwd()
+      t1011: fix sparse-checkout initialization and add new file
+      sparse checkout: do not eagerly decide the fate for whole directory
+      t3703, t4208: add test cases for magic pathspec
+
+Nicolas Morey-Chaisemartin (1):
+      submodule: Add --force option for git submodule update
+
+Rafael Gieschke (1):
+      ident: add NO_GECOS_IN_PWENT for systems without pw_gecos in struct passwd
+
+Ramsay Allan Jones (9):
+      Makefile: Use cgcc rather than sparse in the check target
+      sparse: Fix an "symbol 'cmd_index_pack' not declared" warning
+      sparse: Fix some "Using plain integer as NULL pointer" warnings
+      sparse: Fix an "symbol 'format_subject' not declared" warning
+      sparse: Fix an "symbol 'merge_file' not decared" warning
+      sparse: Fix errors due to missing target-specific variables
+      sparse: Fix some "symbol not declared" warnings
+      setup.c: Fix some "symbol not declared" sparse warnings
+      config.c: Remove unused git_config_global() function
+
+René Scharfe (1):
+      strbuf: clarify assertion in strbuf_setlen()
+
+SZEDER Gábor (3):
+      completion: don't modify the $cur variable in completion functions
+      completion: remove unnecessary _get_comp_words_by_ref() invocations
+      completion: don't declare 'local words' to make zsh happy
+
+Sebastien Cevey (3):
+      gitweb: Split git_project_list_body in two functions
+      gitweb: Modularized git_get_project_description to be more generic
+      gitweb: Optional grouping of projects by category
+
+Tay Ray Chuan (1):
+      t5541-http-push: add test for chunked
+
+Ævar Arnfjörð Bjarmason (5):
+      git-sh-i18n--envsubst: our own envsubst(1) for eval_gettext()
+      git-sh-i18n.sh: add no-op gettext() and eval_gettext() wrappers
+      git-sh-i18n.sh: add GIT_GETTEXT_POISON support
+      Makefile: add xgettext target for *.sh files
+      git-sh-i18n--envsubst: add SYNOPSIS section to the documentation
+
+
 Version v1.7.5.4; changes since v1.7.5.3:
 -----------------------------------------
 
