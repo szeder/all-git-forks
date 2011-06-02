@@ -1,4 +1,4 @@
-From 5c03383b81744c1e3995e301ad55a3ea42a0a2d4 Mon Sep 17 00:00:00 2001
+From c8b064f92e9aa2348afd3e2713f56024ea29639a Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
 Subject: [PATCH 1/6] ident: check /etc/mailname if author email is unknown
@@ -48,5 +48,5 @@ index 8e56b5e..47ceeb6 100644
  	if (!strchr(git_default_email+len, '.')) {
  		struct hostent *he = gethostbyname(git_default_email + len);
 -- 
-1.7.5.1
+1.7.5.3
 

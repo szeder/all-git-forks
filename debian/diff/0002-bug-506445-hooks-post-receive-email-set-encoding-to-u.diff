@@ -1,4 +1,4 @@
-From 366a82494c6dc07eb778627e89f0b98c2031ed73 Mon Sep 17 00:00:00 2001
+From 98e3bad29e27805c683507d65990c0eb5b26b04c Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
 Subject: [PATCH 2/6] bug#506445: hooks/post-receive-email: set encoding to
@@ -27,5 +27,5 @@ index 21989fc..01a32d6 100755
  	X-Git-Reftype: $refname_type
  	X-Git-Oldrev: $oldrev
 -- 
-1.7.5.1
+1.7.5.3
 
