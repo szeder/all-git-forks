@@ -78,6 +78,7 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_IGNORE_UNTRACKED_IN_SUBMODULES (1 << 25)
 #define DIFF_OPT_IGNORE_DIRTY_SUBMODULES (1 << 26)
 #define DIFF_OPT_OVERRIDE_SUBMODULE_CONFIG (1 << 27)
+#define DIFF_OPT_DIRSTAT_BY_LINE     (1 << 28)
 
 #define DIFF_OPT_TST(opts, flag)    ((opts)->flags & DIFF_OPT_##flag)
 #define DIFF_OPT_SET(opts, flag)    ((opts)->flags |= DIFF_OPT_##flag)
@@ -104,6 +105,7 @@ struct diff_options {
 	int interhunkcontext;
 	int break_opt;
 	int detect_rename;
+	int irreversible_delete;
 	int skip_stat_unmatch;
 	int line_termination;
 	int output_format;
@@ -113,7 +115,7 @@ struct diff_options {
 	int needed_rename_limit;
 	int degraded_cc_to_c;
 	int show_rename_progress;
-	int dirstat_percent;
+	int dirstat_permille;
 	int setup;
 	int abbrev;
 	const char *prefix;
