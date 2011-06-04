@@ -6,7 +6,8 @@ Updates since v1.7.5
 
  * Various git-svn updates.
 
- * Updates the way content tags are handled in gitweb.
+ * Updates the way content tags are handled in gitweb.  Also adds
+   a UI to choose common timezone for displaying the dates.
 
  * Similar to branch names, tagnames that begin with "-" are now
    disallowed.
@@ -15,6 +16,15 @@ Updates since v1.7.5
    continues.
 
  * The scripting part of the codebase is getting prepared for i18n/l10n.
+
+ * Pushing and pulling from a repository with large number of refs that
+   point to identical commits are optimized by not listing the same commit
+   during the common ancestor negotiation exchange with the other side.
+
+ * Adding a file larger than core.bigfilethreshold (defaults to 1/2 Gig)
+   using "git add" will send the contents straight to a packfile without
+   having to hold it and its compressed representation both at the same
+   time in memory.
 
  * Processes spawned by "[alias] <name> = !process" in the configuration
    can inspect GIT_PREFIX environment variable to learn where in the
@@ -43,11 +53,6 @@ Updates since v1.7.5
  * "git commit" learned a "--patch" option to directly jump to the
    per-hunk selection UI of the interactive mode.
 
- * "git diff -C -C" used to disable the rename detection entirely when
-   there are too many copy candidate paths in the tree; now it falls
-   back to "-C" when doing so would keep the copy candidate paths
-   under the rename detection limit.
-
  * "git diff" and its family of commands learned --dirstat=0 to show
    directories that contribute less than 0.1% of changes.
 
@@ -62,9 +67,14 @@ Updates since v1.7.5
    characters in it, e.g. "Junio C. Hamano" <jch@example.com>.  Earlier
    it was up to the user to do this when using its output.
 
+ * "git format-patch" can take an empty --subject-prefix now.
+
  * "git log" and friends learned a new "--notes" option to replace the
    "--show-notes" option.  Unlike "--show-notes", "--notes=<ref>" does
    not imply showing the default notes.
+
+ * They also learned a log.abbrevCommit configuration variable to augment
+   the --abbrev-commit command line option.
 
  * "git ls-remote" learned "--exit-code" option to consider it a
    different kind of error when no remote ref to be shown.
@@ -80,8 +90,19 @@ Updates since v1.7.5
 
  * p4-import (from contrib) learned a new option --preserve-user.
 
+ * "git read-tree -m" learned "--dry-run" option that reports if a merge
+   would fail without touching the index nor the working tree.
+
  * "git rebase" that does not specify on top of which branch to rebase
    the current branch now uses @{upstream} of the current branch.
+
+ * "git rebase" finished either normally or with --abort did not
+   update the reflog for HEAD to record the event to come back to
+   where it started from.
+
+ * "git remote add -t only-this-branch --mirror=fetch" is now allowed. Earlier
+   a fetch-mode mirror meant mirror everything, but now it only means refs are
+   not renamed.
 
  * "git rev-list --count" used with "--cherry-mark" counts the cherry-picked
    commits separately, producing more a useful output.
@@ -93,10 +114,6 @@ Updates since v1.7.5
    still in a conflicted state during a merge, to avoid using information
    that is not final and possibly corrupt with conflict markers.
 
- * Compressed tarball gitweb generates is made without the timestamp of
-   the tarball generation; snapshot from the same tree should result in
-   a same tarball.
-
 Also contains various documentation updates and minor miscellaneous
 changes.
 
@@ -107,45 +124,11 @@ Fixes since v1.7.5
 Unless otherwise noted, all the fixes in 1.7.5.X maintenance track are
 included in this release.
 
- * Setting $(prefix) in config.mak did not affect where etc/gitconfig
-   file is read from, even though passing it from the command line of
-   $(MAKE) did.
-   (merge kk/maint-prefix-in-config-mak later)
-
- * The bash completion scripts should correctly work using zsh's bash
-   completion emulation layer now.
-   (merge fc/completion-zsh later)
-
- * The logic to handle "&" (expand to UNIX username) in GECOS field
-   miscounted the length of the name it formatted.
-   (merge rg/copy-gecos-username later)
-
- * The single-key mode of "git add -p" was easily fooled into thinking
-   that it was told to add everthing ('a') when up-arrow was pressed by
-   mistake.
-   (merge tr/add-i-no-escape later)
-
- * "git cherry-pick -s resolve" failed to cherry-pick a root commit.
-   (merge jk/cherry-pick-root-with-resolve later)
-
  * "git config" used to choke with an insanely long line.
    (merge ef/maint-strbuf-init later)
-
- * "git diff --word-diff" misbehaved when diff.suppress-blank-empty was
-   in effect.
-   (merge jm/maint-diff-words-with-sbe later)
-
- * "git log --stdin path" with an input that has additional pathspec
-   used to corrupt memory.
-   (merge jc/maint-pathspec-stdin-and-cmdline later)
-
- * "git send-pack" (hence "git push") over smalt-HTTP protocol could
-   deadlock when the client side pack-object died early.
-   (merge js/maint-send-pack-stateless-rpc-deadlock-fix later)
-   (merge jk/git-connection-deadlock-fix later)
 
 ---
 exec >/var/tmp/1
 echo O=$(git describe master)
-O=v1.7.5.2-352-g4961210
+O=v1.7.5.3-365-g7eacc2b
 git shortlog --no-merges ^maint ^$O master
