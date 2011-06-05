@@ -1182,6 +1182,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 		compat/win32/sys/poll.o compat/win32/dirent.o
 	EXTLIBS += -lws2_32
 	PTHREAD_LIBS =
+	BASIC_LDFLAGS=-Wl,--stack,33554432
 	X = .exe
 ifneq (,$(wildcard ../THIS_IS_MSYSGIT))
 	htmldir=doc/git/html/
