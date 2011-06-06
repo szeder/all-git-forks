@@ -12,6 +12,7 @@ struct ref_lock {
 
 #define REF_ISSYMREF 01
 #define REF_ISPACKED 02
+#define REF_ISCOMMIT 04
 
 /*
  * Calls the specified function for each ref file until it returns nonzero,

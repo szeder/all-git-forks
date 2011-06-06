@@ -5,8 +5,8 @@
 #include "dir.h"
 
 /* ISSYMREF=01 and ISPACKED=02 are public interfaces */
-#define REF_KNOWS_PEELED 04
-#define REF_BROKEN 010
+#define REF_KNOWS_PEELED 010
+#define REF_BROKEN 020
 
 struct ref_list {
 	struct ref_list *next;
@@ -198,7 +198,7 @@ static void read_packed_refs(FILE *f, struct cached_refs *cached_refs)
 		if (!strncmp(refline, header, sizeof(header)-1)) {
 			const char *traits = refline + sizeof(header) - 1;
 			if (strstr(traits, " peeled "))
-				flag |= REF_KNOWS_PEELED;
+				flag |= REF_ISCOMMIT | REF_KNOWS_PEELED;
 			/* perhaps other traits later as well */
 			continue;
 		}
@@ -212,8 +212,10 @@ static void read_packed_refs(FILE *f, struct cached_refs *cached_refs)
 		    refline[0] == '^' &&
 		    strlen(refline) == 42 &&
 		    refline[41] == '\n' &&
-		    !get_sha1_hex(refline + 1, sha1))
+		    !get_sha1_hex(refline + 1, sha1)) {
+			last->flag &= ~REF_ISCOMMIT;
 			hashcpy(last->peeled, sha1);
+		}
 	}
 	cached_refs->packed = sort_ref_list(list);
 }
