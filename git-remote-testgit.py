@@ -111,12 +111,18 @@ def update_local_repo(repo):
     return repo
 
 
+did_import = False
 def do_import(repo, args):
     """Exports a fast-import stream from testgit for git to import.
     """
+    global did_import
 
     if len(args) != 1:
         die("Import needs exactly one ref")
+
+    if did_import:
+        return
+    did_import = True
 
     if not repo.gitdir:
         die("Need gitdir to import")
