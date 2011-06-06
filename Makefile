@@ -1347,6 +1347,11 @@ ifdef NO_TRUSTABLE_FILEMODE
 endif
 ifdef NO_IPV6
 	BASIC_CFLAGS += -DNO_IPV6
+	LIB_OBJS += dns-ipv4.o
+	LIB_H += dns-ipv4.h
+else
+	LIB_OBJS += dns-ipv6.o
+	LIB_H += dns-ipv6.h
 endif
 ifdef NO_INTPTR_T
 	COMPAT_CFLAGS += -DNO_INTPTR_T
