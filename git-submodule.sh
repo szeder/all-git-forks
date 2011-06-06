@@ -33,10 +33,10 @@ prefix=
 # Resolve relative url by appending to parent's url
 resolve_relative_url ()
 {
+	url="$1"
 	remote=$(get_default_remote)
 	remoteurl=$(git config "remote.$remote.url") ||
-		die "$(eval_gettext "remote (\$remote) does not have a url defined in .git/config")"
-	url="$1"
+		die "$(eval_gettext "Cannot resolve \"\$url\" relative to this repository's \"\$remote\" remote: The remote's URL is not set in .git/config")"
 	remoteurl=${remoteurl%/}
 	sep=/
 	while test -n "$url"
