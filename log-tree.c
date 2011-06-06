@@ -79,13 +79,13 @@ int parse_decorate_color_config(const char *var, const int ofs, const char *valu
 #define decorate_get_color_opt(o, ix) \
 	decorate_get_color(DIFF_OPT_TST((o), COLOR_DIFF), ix)
 
-static void add_name_decoration(enum decoration_type type, const char *name, struct object *obj)
+static void add_name_decoration(enum decoration_type type, const char *name, const unsigned char *sha1)
 {
 	int nlen = strlen(name);
 	struct name_decoration *res = xmalloc(sizeof(struct name_decoration) + nlen);
 	memcpy(res->name, name, nlen + 1);
 	res->type = type;
-	res->next = add_decoration(&name_decoration, obj, res);
+	res->next = add_decoration(&name_decoration, sha1, res);
 }
 
 static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
@@ -108,12 +108,12 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 
 	if (!cb_data || *(int *)cb_data == DECORATE_SHORT_REFS)
 		refname = prettify_refname(refname);
-	add_name_decoration(type, refname, obj);
+	add_name_decoration(type, refname, sha1);
 	while (obj->type == OBJ_TAG) {
 		obj = ((struct tag *)obj)->tagged;
 		if (!obj)
 			break;
-		add_name_decoration(DECORATION_REF_TAG, refname, obj);
+		add_name_decoration(DECORATION_REF_TAG, refname, obj->sha1);
 	}
 	return 0;
 }
@@ -150,7 +150,7 @@ void show_decorations(struct rev_info *opt, struct commit *commit)
 		printf("\t%s", (char *) commit->util);
 	if (!opt->show_decorations)
 		return;
-	decoration = lookup_decoration(&name_decoration, &commit->object);
+	decoration = lookup_decoration(&name_decoration, commit->object.sha1);
 	if (!decoration)
 		return;
 	prefix = " (";

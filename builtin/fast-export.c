@@ -86,7 +86,7 @@ static inline uint32_t ptr_to_mark(void * mark)
 
 static inline void mark_object(struct object *object, uint32_t mark)
 {
-	add_decoration(&idnums, object, mark_to_ptr(mark));
+	add_decoration(&idnums, object->sha1, mark_to_ptr(mark));
 }
 
 static inline void mark_next_object(struct object *object)
@@ -96,7 +96,7 @@ static inline void mark_next_object(struct object *object)
 
 static int get_object_mark(struct object *object)
 {
-	void *decoration = lookup_decoration(&idnums, object);
+	void *decoration = lookup_decoration(&idnums, object->sha1);
 	if (!decoration)
 		return 0;
 	return ptr_to_mark(decoration);
@@ -547,12 +547,15 @@ static void export_marks(char *file)
 		die_errno("Unable to open marks file %s for writing.", file);
 
 	for (i = 0; i < idnums.size; i++) {
-		if (deco->base && deco->base->type == 1) {
-			mark = ptr_to_mark(deco->decoration);
-			if (fprintf(f, ":%"PRIu32" %s\n", mark,
-				sha1_to_hex(deco->base->sha1)) < 0) {
-			    e = 1;
-			    break;
+		if (!is_null_sha1(deco->sha1)) {
+			const struct object *obj = parse_object(deco->sha1);
+			if (obj && obj->type == 1) {
+				mark = ptr_to_mark(deco->decoration);
+				if (fprintf(f, ":%"PRIu32" %s\n", mark,
+							sha1_to_hex(deco->sha1)) < 0) {
+					e = 1;
+					break;
+				}
 			}
 		}
 		deco++;

@@ -91,7 +91,7 @@ static void show_commit(struct commit *commit, void *data)
 	if (revs->children.name) {
 		struct commit_list *children;
 
-		children = lookup_decoration(&revs->children, &commit->object);
+		children = lookup_decoration(&revs->children, commit->object.sha1);
 		while (children) {
 			printf(" %s", sha1_to_hex(children->item->object.sha1));
 			children = children->next;

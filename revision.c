@@ -314,7 +314,7 @@ static int rev_compare_tree(struct rev_info *revs, struct commit *parent, struct
 		 * If we are simplifying by decoration, then the commit
 		 * is worth showing if it has a tag pointing at it.
 		 */
-		if (lookup_decoration(&name_decoration, &commit->object))
+		if (lookup_decoration(&name_decoration, commit->object.sha1))
 			return REV_TREE_DIFFERENT;
 		/*
 		 * A commit that is not pointed by a tag is uninteresting
@@ -1686,7 +1686,7 @@ static void add_child(struct rev_info *revs, struct commit *parent, struct commi
 	struct commit_list *l = xcalloc(1, sizeof(*l));
 
 	l->item = child;
-	l->next = add_decoration(&revs->children, &parent->object, l);
+	l->next = add_decoration(&revs->children, parent->object.sha1, l);
 }
 
 static int remove_duplicate_parents(struct commit *commit)
@@ -1722,10 +1722,10 @@ static struct merge_simplify_state *locate_simplify_state(struct rev_info *revs,
 {
 	struct merge_simplify_state *st;
 
-	st = lookup_decoration(&revs->merge_simplification, &commit->object);
+	st = lookup_decoration(&revs->merge_simplification, commit->object.sha1);
 	if (!st) {
 		st = xcalloc(1, sizeof(*st));
-		add_decoration(&revs->merge_simplification, &commit->object, st);
+		add_decoration(&revs->merge_simplification, commit->object.sha1, st);
 	}
 	return st;
 }

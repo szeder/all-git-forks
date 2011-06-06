@@ -3,25 +3,24 @@
  * data.
  */
 #include "cache.h"
-#include "object.h"
 #include "decorate.h"
 
-static unsigned int hash_obj(const struct object *obj, unsigned int n)
+static unsigned int hash_obj(const unsigned char *sha1, unsigned int n)
 {
 	unsigned int hash;
 
-	memcpy(&hash, obj->sha1, sizeof(unsigned int));
+	memcpy(&hash, sha1, sizeof(unsigned int));
 	return hash % n;
 }
 
-static void *insert_decoration(struct decoration *n, const struct object *base, void *decoration)
+static void *insert_decoration(struct decoration *n, const unsigned char *sha1, void *decoration)
 {
 	int size = n->size;
 	struct object_decoration *hash = n->hash;
-	unsigned int j = hash_obj(base, size);
+	unsigned int j = hash_obj(sha1, size);
 
-	while (hash[j].base) {
-		if (hash[j].base == base) {
+	while (!is_null_sha1(hash[j].sha1)) {
+		if (hashcmp(hash[j].sha1, sha1) == 0) {
 			void *old = hash[j].decoration;
 			hash[j].decoration = decoration;
 			return old;
@@ -29,7 +28,7 @@ static void *insert_decoration(struct decoration *n, const struct object *base, 
 		if (++j >= size)
 			j = 0;
 	}
-	hash[j].base = base;
+	hashcpy(hash[j].sha1, sha1);
 	hash[j].decoration = decoration;
 	n->nr++;
 	return NULL;
@@ -46,41 +45,41 @@ static void grow_decoration(struct decoration *n)
 	n->nr = 0;
 
 	for (i = 0; i < old_size; i++) {
-		const struct object *base = old_hash[i].base;
+		const unsigned char *sha1 = old_hash[i].sha1;
 		void *decoration = old_hash[i].decoration;
 
-		if (!base)
+		if (is_null_sha1(sha1))
 			continue;
-		insert_decoration(n, base, decoration);
+		insert_decoration(n, sha1, decoration);
 	}
 	free(old_hash);
 }
 
 /* Add a decoration pointer, return any old one */
-void *add_decoration(struct decoration *n, const struct object *obj,
+void *add_decoration(struct decoration *n, const unsigned char *sha1,
 		void *decoration)
 {
 	int nr = n->nr + 1;
 
 	if (nr > n->size * 2 / 3)
 		grow_decoration(n);
-	return insert_decoration(n, obj, decoration);
+	return insert_decoration(n, sha1, decoration);
 }
 
 /* Lookup a decoration pointer */
-void *lookup_decoration(struct decoration *n, const struct object *obj)
+void *lookup_decoration(struct decoration *n, const unsigned char *sha1)
 {
 	unsigned int j;
 
 	/* nothing to lookup */
 	if (!n->size)
 		return NULL;
-	j = hash_obj(obj, n->size);
+	j = hash_obj(sha1, n->size);
 	for (;;) {
 		struct object_decoration *ref = n->hash + j;
-		if (ref->base == obj)
+		if (hashcmp(ref->sha1, sha1) == 0)
 			return ref->decoration;
-		if (!ref->base)
+		if (is_null_sha1(ref->sha1))
 			return NULL;
 		if (++j == n->size)
 			j = 0;

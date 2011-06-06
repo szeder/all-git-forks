@@ -1183,7 +1183,7 @@ static struct commit_list *first_scapegoat(struct rev_info *revs, struct commit 
 {
 	if (!reverse)
 		return commit->parents;
-	return lookup_decoration(&revs->children, &commit->object);
+	return lookup_decoration(&revs->children, commit->object.sha1);
 }
 
 static int num_scapegoats(struct rev_info *revs, struct commit *commit)

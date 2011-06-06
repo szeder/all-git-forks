@@ -35,7 +35,7 @@ static struct decoration obj_decorate;
 
 static struct obj_buffer *lookup_object_buffer(struct object *base)
 {
-	return lookup_decoration(&obj_decorate, base);
+	return lookup_decoration(&obj_decorate, base->sha1);
 }
 
 static void add_object_buffer(struct object *object, char *buffer, unsigned long size)
@@ -44,7 +44,7 @@ static void add_object_buffer(struct object *object, char *buffer, unsigned long
 	obj = xcalloc(1, sizeof(struct obj_buffer));
 	obj->buffer = buffer;
 	obj->size = size;
-	if (add_decoration(&obj_decorate, object, obj))
+	if (add_decoration(&obj_decorate, object->sha1, obj))
 		die("object %s tried to add buffer twice!", sha1_to_hex(object->sha1));
 }
 

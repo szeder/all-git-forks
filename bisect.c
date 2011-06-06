@@ -230,7 +230,7 @@ static struct commit_list *best_bisection_sorted(struct commit_list *list, int n
 		struct object *obj = &(array[i].commit->object);
 
 		sprintf(r->name, "dist=%d", array[i].distance);
-		r->next = add_decoration(&name_decoration, obj, r);
+		r->next = add_decoration(&name_decoration, obj->sha1, r);
 		p->item = array[i].commit;
 		p = p->next;
 	}
