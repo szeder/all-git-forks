@@ -33,19 +33,19 @@ struct obj_buffer {
 
 static struct decoration obj_decorate;
 
-static struct obj_buffer *lookup_object_buffer(struct object *base)
+static struct obj_buffer *lookup_object_buffer(const unsigned char *sha1)
 {
-	return lookup_decoration(&obj_decorate, base->sha1);
+	return lookup_decoration(&obj_decorate, sha1);
 }
 
-static void add_object_buffer(struct object *object, char *buffer, unsigned long size)
+static void add_object_buffer(const unsigned char *sha1, char *buffer, unsigned long size)
 {
 	struct obj_buffer *obj;
 	obj = xcalloc(1, sizeof(struct obj_buffer));
 	obj->buffer = buffer;
 	obj->size = size;
-	if (add_decoration(&obj_decorate, object->sha1, obj))
-		die("object %s tried to add buffer twice!", sha1_to_hex(object->sha1));
+	if (add_decoration(&obj_decorate, sha1, obj))
+		die("object %s tried to add buffer twice!", sha1_to_hex(sha1));
 }
 
 /*
@@ -167,7 +167,7 @@ static unsigned nr_objects;
 static void write_cached_object(struct object *obj)
 {
 	unsigned char sha1[20];
-	struct obj_buffer *obj_buf = lookup_object_buffer(obj);
+	struct obj_buffer *obj_buf = lookup_object_buffer(obj->sha1);
 	if (write_sha1_file(obj_buf->buffer, obj_buf->size, typename(obj->type), sha1) < 0)
 		die("failed to write object %s", sha1_to_hex(obj->sha1));
 	obj->flags |= FLAG_WRITTEN;
@@ -253,7 +253,7 @@ static void write_object(unsigned nr, enum object_type type,
 		obj = parse_object_buffer(obj_list[nr].sha1, type, size, buf, &eaten);
 		if (!obj)
 			die("invalid %s", typename(type));
-		add_object_buffer(obj, buf, size);
+		add_object_buffer(obj->sha1, buf, size);
 		obj->flags |= FLAG_OPEN;
 		obj_list[nr].obj = obj;
 	}
@@ -318,7 +318,7 @@ static int resolve_against_held(unsigned nr, const unsigned char *base,
 	obj = lookup_object(base);
 	if (!obj)
 		return 0;
-	obj_buffer = lookup_object_buffer(obj);
+	obj_buffer = lookup_object_buffer(obj->sha1);
 	if (!obj_buffer)
 		return 0;
 	resolve_delta(nr, obj->type, obj_buffer->buffer,

@@ -84,19 +84,19 @@ static inline uint32_t ptr_to_mark(void * mark)
 	return (uint32_t *)mark - (uint32_t *)NULL;
 }
 
-static inline void mark_object(struct object *object, uint32_t mark)
+static inline void mark_object(const unsigned char *sha1, uint32_t mark)
 {
-	add_decoration(&idnums, object->sha1, mark_to_ptr(mark));
+	add_decoration(&idnums, sha1, mark_to_ptr(mark));
 }
 
-static inline void mark_next_object(struct object *object)
+static inline void mark_next_object(const unsigned char *sha1)
 {
-	mark_object(object, ++last_idnum);
+	mark_object(sha1, ++last_idnum);
 }
 
-static int get_object_mark(struct object *object)
+static int get_object_mark(const unsigned char *sha1)
 {
-	void *decoration = lookup_decoration(&idnums, object->sha1);
+	void *decoration = lookup_decoration(&idnums, sha1);
 	if (!decoration)
 		return 0;
 	return ptr_to_mark(decoration);
@@ -135,7 +135,7 @@ static void handle_object(const unsigned char *sha1)
 	if (!buf)
 		die ("Could not read blob %s", sha1_to_hex(sha1));
 
-	mark_next_object(object);
+	mark_next_object(sha1);
 
 	printf("blob\nmark :%"PRIu32"\ndata %lu\n", last_idnum, size);
 	if (size && fwrite(buf, size, 1, stdout) != 1)
@@ -219,9 +219,8 @@ static void show_filemodify(struct diff_queue_struct *q,
 				printf("M %06o %s %s\n", spec->mode,
 				       sha1_to_hex(spec->sha1), spec->path);
 			else {
-				struct object *object = lookup_object(spec->sha1);
 				printf("M %06o :%d %s\n", spec->mode,
-				       get_object_mark(object), spec->path);
+				       get_object_mark(spec->sha1), spec->path);
 			}
 			break;
 
@@ -279,7 +278,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 		message += 2;
 
 	if (commit->parents &&
-	    get_object_mark(&commit->parents->item->object) != 0 &&
+	    get_object_mark(commit->parents->item->object.sha1) != 0 &&
 	    !full_tree) {
 		parse_commit(commit->parents->item);
 		diff_tree_sha1(commit->parents->item->tree->object.sha1,
@@ -294,7 +293,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 		if (!S_ISGITLINK(diff_queued_diff.queue[i]->two->mode))
 			handle_object(diff_queued_diff.queue[i]->two->sha1);
 
-	mark_next_object(&commit->object);
+	mark_next_object(commit->object.sha1);
 	if (!is_encoding_utf8(encoding))
 		reencoded = reencode_string(message, "UTF-8", encoding);
 	if (!commit->parents)
@@ -310,7 +309,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 	free(reencoded);
 
 	for (i = 0, p = commit->parents; p; p = p->next) {
-		int mark = get_object_mark(&p->item->object);
+		int mark = get_object_mark(p->item->object.sha1);
 		if (!mark)
 			continue;
 		if (i == 0)
@@ -412,7 +411,7 @@ static void handle_tag(const char *name, struct tag *tag)
 
 	/* handle tag->tagged having been filtered out due to paths specified */
 	tagged = tag->tagged;
-	tagged_mark = get_object_mark(tagged);
+	tagged_mark = get_object_mark(tagged->sha1);
 	if (!tagged_mark) {
 		switch(tag_of_filtered_mode) {
 		case ABORT:
@@ -441,7 +440,7 @@ static void handle_tag(const char *name, struct tag *tag)
 					     sha1_to_hex(tag->object.sha1));
 				p = p->parents->item;
 			}
-			tagged_mark = get_object_mark(&p->object);
+			tagged_mark = get_object_mark(p->object.sha1);
 		}
 	}
 
@@ -527,7 +526,7 @@ static void handle_tags_and_duplicates(struct string_list *extra_refs)
 			/* create refs pointing to already seen commits */
 			commit = (struct commit *)object;
 			printf("reset %s\nfrom :%d\n\n", name,
-			       get_object_mark(&commit->object));
+			       get_object_mark(commit->object.sha1));
 			show_progress();
 			break;
 		}
@@ -597,7 +596,7 @@ static void import_marks(char *input_file)
 		if (object->flags & SHOWN)
 			error("Object %s already has a mark", sha1);
 
-		mark_object(object, mark);
+		mark_object(sha1, mark);
 		if (last_idnum < mark)
 			last_idnum = mark;
 
