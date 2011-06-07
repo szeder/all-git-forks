@@ -40,8 +40,14 @@ git_broken_path_fix () {
 # @@BROKEN_PATH_FIX@@
 
 die() {
-	echo >&2 "$@"
-	exit 1
+	die_with_status 1 "$@"
+}
+
+die_with_status() {
+	stat=$1
+	shift
+	echo >&2 "$*"
+	exit $stat
 }
 
 GIT_QUIET=
