@@ -102,7 +102,7 @@ test_expect_failure PYTHON_24 'fetch multiple branches' '
 	compare_refs server new localclone refs/remotes/origin/new
 '
 
-test_expect_failure PYTHON_24 'push when remote has extra refs' '
+test_expect_success PYTHON_24 'push when remote has extra refs' '
 	(cd clone &&
 	 echo content >>file &&
 	 git commit -a -m six &&
