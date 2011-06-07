@@ -90,10 +90,14 @@ static void add_name_decoration(enum decoration_type type, const char *name, con
 
 static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
 {
-	struct object *obj = parse_object(sha1);
+	struct object *obj = NULL;
 	enum decoration_type type = DECORATION_NONE;
-	if (!obj)
-		return 0;
+
+	if (!(flags & REF_ISCOMMIT)) {
+		obj = parse_object(sha1);
+		if (!obj)
+			return 0;
+	}
 
 	if (!prefixcmp(refname, "refs/heads"))
 		type = DECORATION_REF_LOCAL;
@@ -109,7 +113,7 @@ static int add_ref_decoration(const char *refname, const unsigned char *sha1, in
 	if (!cb_data || *(int *)cb_data == DECORATE_SHORT_REFS)
 		refname = prettify_refname(refname);
 	add_name_decoration(type, refname, sha1);
-	while (obj->type == OBJ_TAG) {
+	while (obj && obj->type == OBJ_TAG) {
 		obj = ((struct tag *)obj)->tagged;
 		if (!obj)
 			break;
