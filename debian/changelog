@@ -2,9 +2,9 @@ git (1:1.7.6~rc0-0.1) experimental; urgency=low
 
   * new upstream release candidate from the development repository.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 02 Jun 2011 16:47:26 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 07 Jun 2011 13:30:19 -0500
 
-git (1:1.7.5.4-0.1) unstable; urgency=low
+git (1:1.7.5.4-1) unstable; urgency=low
 
   * new upstream point release.
 
@@ -13,16 +13,16 @@ git (1:1.7.5.4-0.1) unstable; urgency=low
     changelog.
 
   [ Jonathan Nieder ]
-  * debian/changelog.upstream.sh: use set -e to avoid continuing
-    blithely after errors.
+  * debian/changelog.upstream.sh: use set -e.
   * debian/git-daemon/run: use SO_REUSEADDR when binding the listening
-    socket so the server does not have to wait for old connections to
-    time out to restart (thx Daniel Kahn Gillmor; closes: #609405).
-  * debian/git-daemon-run.postrm purge: terminate git-daemon/log even if
-    there is an active connection using it, to allow the logs and gitlog
-    user to be removed (thx Daniel Kahn Gillmor; closes: #627314).
+    socket so the server can restart without waiting for old connections
+    to time out (thx Daniel Kahn Gillmor; closes: #609405).
+  * debian/git-daemon-run.postrm purge: terminate the git-daemon/log
+    service, even if there is an active connection using it, before
+    deleting logs and the gitlog user (thx Daniel Kahn Gillmor; closes:
+    #627314).
 
- -- Gerrit Pape <pape@smarden.org>  Fri, 27 May 2011 14:24:51 +0000
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 07 Jun 2011 13:23:58 -0500
 
 git (1:1.7.5.3-1) unstable; urgency=low
 
