@@ -81,7 +81,7 @@ test_expect_success PYTHON_24 'pushing remote local repo' '
 	compare_refs clone HEAD server HEAD
 '
 
-test_expect_failure PYTHON_24 'fetch new branch' '
+test_expect_success PYTHON_24 'fetch new branch' '
 	(cd public &&
 	 git checkout -b new &&
 	 echo content >>file &&
