@@ -1,0 +1,151 @@
+From 0f59b2a7040216a6c510a8f2b3a1e7ede5579d1e Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Mon, 6 Jun 2011 04:38:45 -0500
+Subject: daemon: make host resolution into a separate function
+
+For each incoming connection, the git daemon runs a DNS query using
+the client-supplied hostname parameter, to determine the canonical
+hostname and IP address in case it is needed by the
+--interpolated-path feature (to distinguish between virtual hosts).
+Put the code for this in a separate function so the details of this
+lookup can be easily tweaked.
+
+Signed-off-by; Jonathan Nieder <jrnieder@gmail.com>
+---
+ daemon.c |  112 +++++++++++++++++++++++++++++++++++---------------------------
+ 1 files changed, 63 insertions(+), 49 deletions(-)
+
+diff --git a/daemon.c b/daemon.c
+index 4c8346d..3958cb6 100644
+--- a/daemon.c
++++ b/daemon.c
+@@ -432,6 +432,65 @@ static void parse_host_and_port(char *hostport, char **host,
+ 	}
+ }
+ 
++#ifndef NO_IPV6
++
++static void locate_host(const char *hostname, char **ip_address,
++						char **canon_hostname)
++{
++	struct addrinfo hints;
++	struct addrinfo *ai;
++	int gai;
++	static char addrbuf[HOST_NAME_MAX + 1];
++	struct sockaddr_in *sin_addr;
++
++	memset(&hints, 0, sizeof(hints));
++	hints.ai_flags = AI_CANONNAME;
++
++	gai = getaddrinfo(hostname, NULL, &hints, &ai);
++	if (gai)
++		return;
++
++	sin_addr = (void *)ai->ai_addr;
++	inet_ntop(AF_INET, &sin_addr->sin_addr, addrbuf, sizeof(addrbuf));
++	free(*ip_address);
++	*ip_address = xstrdup(addrbuf);
++
++	free(*canon_hostname);
++	*canon_hostname = xstrdup(ai->ai_canonname ?
++				  ai->ai_canonname : *ip_address);
++
++	freeaddrinfo(ai);
++}
++
++#else
++
++static void locate_host(const char *hostname, char **ip_address,
++						char **canon_hostname)
++{
++	struct hostent *hent;
++	struct sockaddr_in sa;
++	char **ap;
++	static char addrbuf[HOST_NAME_MAX + 1];
++
++	hent = gethostbyname(hostname);
++
++	ap = hent->h_addr_list;
++	memset(&sa, 0, sizeof sa);
++	sa.sin_family = hent->h_addrtype;
++	sa.sin_port = htons(0);
++	memcpy(&sa.sin_addr, *ap, hent->h_length);
++
++	inet_ntop(hent->h_addrtype, &sa.sin_addr,
++		  addrbuf, sizeof(addrbuf));
++
++	free(*canon_hostname);
++	*canon_hostname = xstrdup(hent->h_name);
++	free(*ip_address);
++	*ip_address = xstrdup(addrbuf);
++}
++
++#endif
++
+ /*
+  * Read the host as supplied by the client connection.
+  */
+@@ -467,56 +526,11 @@ static void parse_host_arg(char *extra_args, int buflen)
+ 	}
+ 
+ 	/*
+-	 * Locate canonical hostname and its IP address.
++	 * Locate canonical hostname and its IP address,
++	 * if possible.
+ 	 */
+-	if (hostname) {
+-#ifndef NO_IPV6
+-		struct addrinfo hints;
+-		struct addrinfo *ai;
+-		int gai;
+-		static char addrbuf[HOST_NAME_MAX + 1];
+-
+-		memset(&hints, 0, sizeof(hints));
+-		hints.ai_flags = AI_CANONNAME;
+-
+-		gai = getaddrinfo(hostname, NULL, &hints, &ai);
+-		if (!gai) {
+-			struct sockaddr_in *sin_addr = (void *)ai->ai_addr;
+-
+-			inet_ntop(AF_INET, &sin_addr->sin_addr,
+-				  addrbuf, sizeof(addrbuf));
+-			free(ip_address);
+-			ip_address = xstrdup(addrbuf);
+-
+-			free(canon_hostname);
+-			canon_hostname = xstrdup(ai->ai_canonname ?
+-						 ai->ai_canonname : ip_address);
+-
+-			freeaddrinfo(ai);
+-		}
+-#else
+-		struct hostent *hent;
+-		struct sockaddr_in sa;
+-		char **ap;
+-		static char addrbuf[HOST_NAME_MAX + 1];
+-
+-		hent = gethostbyname(hostname);
+-
+-		ap = hent->h_addr_list;
+-		memset(&sa, 0, sizeof sa);
+-		sa.sin_family = hent->h_addrtype;
+-		sa.sin_port = htons(0);
+-		memcpy(&sa.sin_addr, *ap, hent->h_length);
+-
+-		inet_ntop(hent->h_addrtype, &sa.sin_addr,
+-			  addrbuf, sizeof(addrbuf));
+-
+-		free(canon_hostname);
+-		canon_hostname = xstrdup(hent->h_name);
+-		free(ip_address);
+-		ip_address = xstrdup(addrbuf);
+-#endif
+-	}
++	if (hostname)
++		locate_host(hostname, &ip_address, &canon_hostname);
+ }
+ 
+ 
+-- 
+1.7.5.4
+

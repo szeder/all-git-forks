@@ -1,6 +1,10 @@
 git (1:1.7.6~rc0-0.1) experimental; urgency=low
 
   * new upstream release candidate from the development repository.
+  * debian/diff/0007-...diff, ..., 0012-transport-learn...diff: new;
+    teach the git client to pay attention to SRV records (thx Julien
+    Cristau; closes: #627839).
+  * debian/rules: add USE_SRV_RR=1 to OPTS.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 07 Jun 2011 13:30:19 -0500
 
