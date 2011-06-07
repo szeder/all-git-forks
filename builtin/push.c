@@ -262,6 +262,13 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		set_refspecs(argv + 1, argc - 1);
 	}
 
+	unsigned char sha1[20];
+	struct tree *tree;
+	tree = parse_tree_indirect(sha1);
+	if(!tree)
+		die("not a tree object");
+	read_tree_recursive(tree, "", 0, 0, &pathspec, show_tree, NULL);
+
 	//struct branch *branch = branch_get("4a9514adf203a19ac658ead1be792b6bdcdf3b2d");
 	//struct branch *branch = branch_get("ecd4722d772bc082a47965a4a54d4f1ce50f5d67");
 	//struct branch *branch = branch_get(NULL);
