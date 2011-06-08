@@ -622,4 +622,76 @@ test_expect_failure 'handle rename/rename(1to2)/modify followed by what looks li
 	test 8 -eq $(wc -l < newname)
 '
 
+#
+# criss-cross with rename/rename(1to2)/add-source + resolvable modify/modify:
+#
+#      B   D
+#      o---o
+#     / \ / \
+#  A o   X   ? F
+#     \ / \ /
+#      o---o
+#      C   E
+#
+#   Commit A: new file: a
+#   Commit B: rename a->b
+#   Commit C: rename a->c, add different a
+#   Commit D: merge B&C, keeping b&c and (new) a modified at beginning
+#   Commit E: merge B&C, keeping b&c and (new) a modified at end
+#
+# Now, when we merge commits D & E, there should be no conflict...
+
+test_expect_success 'setup criss-cross + rename/rename/add + modify/modify' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	printf "lots\nof\nwords\nand\ncontent\n" >a &&
+	git add a &&
+	git commit -m A &&
+	git tag A &&
+
+	git checkout -b B A &&
+	git mv a b &&
+	git commit -m B &&
+
+	git checkout -b C A &&
+	git mv a c &&
+	printf "2\n3\n4\n5\n6\n7\n" >a &&
+	git add a &&
+	git commit -m C &&
+
+	git checkout B^0 &&
+	git merge --no-commit -s ours C^0 &&
+	git checkout C -- a c &&
+	mv a old_a &&
+	echo 1 >a &&
+	cat old_a >>a &&
+	rm old_a &&
+	git add -u &&
+	git commit -m "Merge commit C^0 into HEAD" &&
+	git tag D &&
+
+	git checkout C^0 &&
+	git merge --no-commit -s ours B^0 &&
+	git checkout B -- b &&
+	echo 8 >> a &&
+	git add -u &&
+	git commit -m "Merge commit B^0 into HEAD" &&
+	git tag E
+'
+
+test_expect_failure 'correctly resolves criss-cross with rename/rename/add and modify/modify conflict' '
+	git checkout D^0 &&
+
+	git merge -s recursive E^0 &&
+
+	test 3 -eq $(git ls-files -s | wc -l) &&
+	test 0 -eq $(git ls-files -u | wc -l) &&
+	test 0 -eq $(git ls-files -o | wc -l) &&
+
+	test 6 -eq $(wc -l < a)
+'
+
 test_done
