@@ -351,11 +351,11 @@ cat >expected <<\EOF &&
 8
 9
 10
-<<<<<<< HEAD
+<<<<<<< HEAD:dir
 12
 =======
 11
->>>>>>> dir-not-in-way
+>>>>>>> dir-not-in-way:sub/file
 EOF
 
 test_expect_success 'Rename+D/F conflict; renamed file cannot merge, dir not in way' '
@@ -405,11 +405,11 @@ cat >expected <<\EOF &&
 8
 9
 10
-<<<<<<< HEAD
+<<<<<<< HEAD:dir
 11
 =======
 12
->>>>>>> renamed-file-has-conflicts
+>>>>>>> renamed-file-has-conflicts:sub/file
 EOF
 
 test_expect_success 'Same as previous, but merged other way' '
