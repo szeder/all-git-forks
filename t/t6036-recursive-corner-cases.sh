@@ -397,4 +397,153 @@ test_expect_failure 'git detects conflict w/ criss-cross+contrived resolution' '
 	test $(git rev-parse :3:file) = $(git rev-parse E:file)
 '
 
+#
+# criss-cross + d/f conflict via add/add:
+#   Commit A: Neither file 'a' nor directory 'a/' exist.
+#   Commit B: Introduce 'a'
+#   Commit C: Introduce 'a/file'
+# Two different later cases:
+#   Commit D1: Merge B & C, keeping 'a' and deleting 'a/'
+#   Commit E1: Merge B & C, deleting 'a' but keeping 'a/file'
+#
+#   Commit D2: Merge B & C, keeping a modified 'a' and deleting 'a/'
+#   Commit E2: Merge B & C, deleting 'a' but keeping a modified 'a/file'
+#
+#   Note: D == D1.
+# Finally, someone goes to merge D1&E1 or D1&E2 or D2&E1.  What happens?
+#
+#      B   D1 or D2
+#      o---o
+#     / \ / \
+#  A o   X   ? F
+#     \ / \ /
+#      o---o
+#      C   E1 or E2
+#
+
+test_expect_success 'setup differently handled merges of directory/file conflict' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	>irrelevant-file &&
+	git add irrelevant-file &&
+	test_tick &&
+	git commit -m A &&
+
+	git branch B &&
+	git checkout -b C &&
+	mkdir a &&
+	echo 10 >a/file &&
+	git add a/file &&
+	test_tick &&
+	git commit -m C &&
+
+	git checkout B &&
+	echo 5 >a &&
+	git add a &&
+	test_tick &&
+	git commit -m B &&
+
+	git checkout B^0 &&
+	test_must_fail git merge C &&
+	git clean -f &&
+	rm -rf a/ &&
+	echo 5 >a &&
+	git add a &&
+	test_tick &&
+	git commit -m D &&
+	git tag D &&
+
+	git checkout C^0 &&
+	test_must_fail git merge B &&
+	git clean -f &&
+	git rm --cached a &&
+	echo 10 >a/file &&
+	git add a/file &&
+	test_tick &&
+	git commit -m E1 &&
+	git tag E1 &&
+
+	git checkout C^0 &&
+	test_must_fail git merge B &&
+	git clean -f &&
+	git rm --cached a &&
+	printf "10\n11\n" >a/file &&
+	git add a/file &&
+	test_tick &&
+	git commit -m E2 &&
+	git tag E2
+'
+
+test_expect_failure 'git detects conflict and handles merge of D & E1 correctly' '
+	git reset --hard &&
+	git reset --hard &&
+	git clean -fdqx &&
+	git checkout D^0 &&
+
+	# FIXME: If merge-base could keep both a and a/file in its tree, then
+	# we could this merge would actually be able to succeed.
+	test_must_fail git merge -s recursive E1^0 &&
+
+	test 2 -eq $(git ls-files -s | wc -l) &&
+	test 1 -eq $(git ls-files -u | wc -l) &&
+	test 0 -eq $(git ls-files -o | wc -l) &&
+
+	test $(git rev-parse :2:a) = $(git rev-parse B:a)
+'
+
+test_expect_failure 'git detects conflict and handles merge of E1 & D correctly' '
+	git reset --hard &&
+	git reset --hard &&
+	git clean -fdqx &&
+	git checkout E1^0 &&
+
+	# FIXME: If merge-base could keep both a and a/file in its tree, then
+	# we could this merge would actually be able to succeed.
+	test_must_fail git merge -s recursive D^0 &&
+
+	test 2 -eq $(git ls-files -s | wc -l) &&
+	test 1 -eq $(git ls-files -u | wc -l) &&
+	test 0 -eq $(git ls-files -o | wc -l) &&
+
+	test $(git rev-parse :3:a) = $(git rev-parse B:a)
+'
+
+test_expect_success 'git detects conflict and handles merge of D & E2 correctly' '
+	git reset --hard &&
+	git reset --hard &&
+	git clean -fdqx &&
+	git checkout D^0 &&
+
+	test_must_fail git merge -s recursive E2^0 &&
+
+	test 3 -eq $(git ls-files -s | wc -l) &&
+	test 2 -eq $(git ls-files -u | wc -l) &&
+	test 1 -eq $(git ls-files -o | wc -l) &&
+
+	test $(git rev-parse :2:a) = $(git rev-parse B:a) &&
+	test $(git rev-parse :3:a/file) = $(git rev-parse E1:a/file)
+	test $(git rev-parse :1:a/file) = $(git rev-parse C:a/file)
+'
+
+test_expect_failure 'git detects conflict and handles merge of E2 & D correctly' '
+	git reset --hard &&
+	git reset --hard &&
+	git clean -fdqx &&
+	git checkout E2^0 &&
+
+	test_must_fail git merge -s recursive D^0 &&
+
+	test 3 -eq $(git ls-files -s | wc -l) &&
+	test 2 -eq $(git ls-files -u | wc -l) &&
+	test 1 -eq $(git ls-files -o | wc -l) &&
+
+	test $(git rev-parse :3:a) = $(git rev-parse B:a) &&
+	test $(git rev-parse :2:a/file) = $(git rev-parse E1:a/file)
+	test $(git rev-parse :1:a/file) = $(git rev-parse C:a/file)
+'
+
+
 test_done
