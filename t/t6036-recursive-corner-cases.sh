@@ -477,7 +477,7 @@ test_expect_success 'setup differently handled merges of directory/file conflict
 	git tag E2
 '
 
-test_expect_failure 'git detects conflict and handles merge of D & E1 correctly' '
+test_expect_success 'git detects conflict and handles merge of D & E1 correctly' '
 	git reset --hard &&
 	git reset --hard &&
 	git clean -fdqx &&
