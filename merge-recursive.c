@@ -658,11 +658,23 @@ static int would_lose_untracked(const char *path)
 	return !was_tracked(path) && file_exists(path);
 }
 
-static int make_room_for_path(const char *path)
+static int make_room_for_path(const struct merge_options *o, const char *path)
 {
-	int status;
+	int status, i;
 	const char *msg = "failed to create path '%s'%s";
 
+	/* Unlink any D/F conflict files that are in the way */
+	for (i = 0; i < o->df_conflict_file_set.nr; i++) {
+		const char *df_path = o->df_conflict_file_set.items[i].string;
+		size_t pathlen = strlen(path);
+		size_t df_pathlen = strlen(df_path);
+		if (df_pathlen < pathlen && strncmp(path, df_path, df_pathlen) == 0) {
+			unlink(df_path);
+			break;
+		}
+	}
+
+	/* Make sure leading directories are created */
 	status = safe_create_leading_directories_const(path);
 	if (status) {
 		if (status == -3) {
@@ -730,7 +742,7 @@ static void update_file_flags(struct merge_options *o,
 			}
 		}
 
-		if (make_room_for_path(path) < 0) {
+		if (make_room_for_path(o, path) < 0) {
 			update_wd = 0;
 			free(buf);
 			goto update_index;
