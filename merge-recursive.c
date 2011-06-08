@@ -1316,11 +1316,26 @@ error_return:
 
 static void handle_delete_modify(struct merge_options *o,
 				 const char *path,
-				 const char *new_path,
+				 unsigned char *o_sha, int o_mode,
 				 unsigned char *a_sha, int a_mode,
 				 unsigned char *b_sha, int b_mode)
 {
-	if (!a_sha) {
+	char *new_path = NULL;
+	int free_me = 0;
+	if (dir_in_way(path, !o->call_depth)) {
+		new_path = unique_path(o, path, a_sha ? o->branch1 : o->branch2);
+		free_me = 1;
+	}
+
+	if (o->call_depth) {
+		/*
+		 * We cannot arbitrarily accept either a_sha or b_sha as
+		 * correct; since there is no true "middle point" between
+		 * them, simply reuse the base version for virtual merge base.
+		 */
+		remove_file_from_cache(path);
+		update_file(o, 0, o_sha, o_mode, new_path ? new_path : path);
+	} else if (!a_sha) {
 		output(o, 1, "CONFLICT (delete/modify): %s deleted in %s "
 		       "and modified in %s. Version %s of %s left in tree%s%s.",
 		       path, o->branch1,
@@ -1337,6 +1352,9 @@ static void handle_delete_modify(struct merge_options *o,
 		       NULL == new_path ? "" : new_path);
 		update_file(o, 0, a_sha, a_mode, new_path ? new_path : path);
 	}
+	if (free_me)
+		free(new_path);
+
 }
 
 static int merge_content(struct merge_options *o,
@@ -1489,17 +1507,9 @@ static int process_entry(struct merge_options *o,
 			remove_file(o, 1, path, !a_sha);
 		} else {
 			/* Modify/delete; deleted side may have put a directory in the way */
-			char *new_path = NULL;
-			int free_me = 0;
 			clean_merge = 0;
-			if (dir_in_way(path, !o->call_depth)) {
-				new_path = unique_path(o, path, a_sha ? o->branch1 : o->branch2);
-				free_me = 1;
-			}
-			handle_delete_modify(o, path, new_path,
+			handle_delete_modify(o, path, o_sha, o_mode,
 					     a_sha, a_mode, b_sha, b_mode);
-			if (free_me)
-				free(new_path);
 		}
 	} else if ((!o_sha && a_sha && !b_sha) ||
 		   (!o_sha && !a_sha && b_sha)) {
