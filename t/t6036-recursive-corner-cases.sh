@@ -494,7 +494,7 @@ test_expect_failure 'git detects conflict and handles merge of D & E1 correctly'
 	test $(git rev-parse :2:a) = $(git rev-parse B:a)
 '
 
-test_expect_failure 'git detects conflict and handles merge of E1 & D correctly' '
+test_expect_success 'git detects conflict and handles merge of E1 & D correctly' '
 	git reset --hard &&
 	git reset --hard &&
 	git clean -fdqx &&
@@ -528,7 +528,7 @@ test_expect_success 'git detects conflict and handles merge of D & E2 correctly'
 	test $(git rev-parse :1:a/file) = $(git rev-parse C:a/file)
 '
 
-test_expect_failure 'git detects conflict and handles merge of E2 & D correctly' '
+test_expect_success 'git detects conflict and handles merge of E2 & D correctly' '
 	git reset --hard &&
 	git reset --hard &&
 	git clean -fdqx &&
