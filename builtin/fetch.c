@@ -994,7 +994,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			set_config_fetch_recurse_submodules(arg);
 		}
 		gitmodules_config();
-		git_config(submodule_config, NULL);
+		git_config(git_submodule_config, NULL);
 	}
 
 	if (all) {

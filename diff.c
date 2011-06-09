@@ -265,7 +265,7 @@ int git_diff_basic_config(const char *var, const char *value, void *cb)
 	}
 
 	if (!prefixcmp(var, "submodule."))
-		return parse_submodule_config_option(var, value);
+		return git_submodule_config(var, value, NULL);
 
 	return git_default_config(var, value, cb);
 }

@@ -86,45 +86,7 @@ void set_diffopt_flags_from_submodule_config(struct diff_options *diffopt,
 	}
 }
 
-int submodule_config(const char *var, const char *value, void *cb)
-{
-	if (!prefixcmp(var, "submodule."))
-		return parse_submodule_config_option(var, value);
-	else if (!strcmp(var, "fetch.recursesubmodules")) {
-		config_fetch_recurse_submodules = parse_fetch_recurse_submodules_arg(var, value);
-		return 0;
-	}
-	return 0;
-}
-
-void gitmodules_config(void)
-{
-	const char *work_tree = get_git_work_tree();
-	if (work_tree) {
-		struct strbuf gitmodules_path = STRBUF_INIT;
-		int pos;
-		strbuf_addstr(&gitmodules_path, work_tree);
-		strbuf_addstr(&gitmodules_path, "/.gitmodules");
-		if (read_cache() < 0)
-			die("index file corrupt");
-		pos = cache_name_pos(".gitmodules", 11);
-		if (pos < 0) { /* .gitmodules not found or isn't merged */
-			pos = -1 - pos;
-			if (active_nr > pos) {  /* there is a .gitmodules */
-				const struct cache_entry *ce = active_cache[pos];
-				if (ce_namelen(ce) == 11 &&
-				    !memcmp(ce->name, ".gitmodules", 11))
-					gitmodules_is_unmerged = 1;
-			}
-		}
-
-		if (!gitmodules_is_unmerged)
-			git_config_from_file(submodule_config, gitmodules_path.buf, NULL);
-		strbuf_release(&gitmodules_path);
-	}
-}
-
-int parse_submodule_config_option(const char *var, const char *value)
+static int git_default_submodule_config(const char *var, const char *value)
 {
 	struct string_list_item *config;
 	const char *name, *key;
@@ -168,6 +130,44 @@ int parse_submodule_config_option(const char *var, const char *value)
 		return 0;
 	}
 	return 0;
+}
+
+int git_submodule_config(const char *var, const char *value, void *cb)
+{
+	if (!prefixcmp(var, "submodule."))
+		return git_default_submodule_config(var, value);
+	else if (!strcmp(var, "fetch.recursesubmodules")) {
+		config_fetch_recurse_submodules = parse_fetch_recurse_submodules_arg(var, value);
+		return 0;
+	}
+	return 0;
+}
+
+void gitmodules_config(void)
+{
+	const char *work_tree = get_git_work_tree();
+	if (work_tree) {
+		struct strbuf gitmodules_path = STRBUF_INIT;
+		int pos;
+		strbuf_addstr(&gitmodules_path, work_tree);
+		strbuf_addstr(&gitmodules_path, "/.gitmodules");
+		if (read_cache() < 0)
+			die("index file corrupt");
+		pos = cache_name_pos(".gitmodules", 11);
+		if (pos < 0) { /* .gitmodules not found or isn't merged */
+			pos = -1 - pos;
+			if (active_nr > pos) {  /* there is a .gitmodules */
+				const struct cache_entry *ce = active_cache[pos];
+				if (ce_namelen(ce) == 11 &&
+				    !memcmp(ce->name, ".gitmodules", 11))
+					gitmodules_is_unmerged = 1;
+			}
+		}
+
+		if (!gitmodules_is_unmerged)
+			git_config_from_file(git_submodule_config, gitmodules_path.buf, NULL);
+		strbuf_release(&gitmodules_path);
+	}
 }
 
 void handle_ignore_submodules_arg(struct diff_options *diffopt,
