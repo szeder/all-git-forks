@@ -120,7 +120,7 @@ sub get_last_local_revision {
 		# Notes are formatted : mediawiki_revision: #number
 		$lastrevision_number = $note_info[1];
 		chomp($lastrevision_number);
-		print STDERR "Last local mediawiki revision found is $lastrevision_number";
+		print STDERR "Last local mediawiki revision found is $lastrevision_number.\n";
 	}
 	return $lastrevision_number;
 }
@@ -150,8 +150,16 @@ sub get_last_remote_revision {
 		$max_rev_num = ($lastrev->{revid} > $max_rev_num ? $lastrev->{revid} : $max_rev_num);
 	}
 
-	print STDERR "Last remote revision found is $max_rev_num\n";
+	print STDERR "Last remote revision found is $max_rev_num.\n";
 	return $max_rev_num;
+}
+
+sub mediawiki_filter($) {
+	# Mediawiki does not allow blank space at the end of a page and ends with a single \n.
+	# This function right trims a string and adds a \n at the end to follow this rule
+	my $string = shift;
+	$string =~ s/\s+$//;
+	return $string."\n";
 }
 
 sub literal_data {
