@@ -148,6 +148,14 @@ sub get_last_remote_revision {
 	return $max_rev_num;
 }
 
+sub mediawiki_filter($) {
+	# Mediawiki does not allow blank space at the end of a page and ends with a single \n.
+	# This function right trims a string and adds a \n at the end to follow this rule
+	my $string = shift;
+	$string =~ s/\s+$//;
+	return $string."\n";
+}
+
 sub literal_data {
 	my ($content) = @_;
 	print STDOUT "data ", bytes::length($content), "\n", $content;
@@ -175,6 +183,7 @@ sub mw_list {
 }
 
 sub mw_option {
+	print STDERR "remote-helper capability 'option' not yet implemented \n";
 	print STDOUT "unsupported\n";
 }
 
@@ -318,5 +327,87 @@ sub mw_import {
 }
 
 sub mw_push {
-	print STDERR "Push not yet implemented\n";
+
+	sub push_file {
+		#$_[0] contains a string in this format :
+		#100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>\0<filename.mw>\0
+		#$_[1] contains the title of the commit message (the only phrase kept in the revision message)
+		my @blob_info_split = split(/ |\t|\0/, $_[0]);
+
+		my $sha1 = $blob_info_split[3];
+		my $complete_file_name = $blob_info_split[5];
+		# complete_file_name = uri_unescape($complete_file_name); # If we use the uri escape before
+		# we should unescape here, before anything
+
+		if (substr($complete_file_name,-3) eq ".mw"){
+			my $title = substr($complete_file_name,0,-3);
+			$title =~ s/$slash_replacement/\//g;
+
+			my $file_content = run_git("cat-file -p $sha1");
+
+			my $mw = MediaWiki::API->new();
+			$mw->{config}->{api_url} = "$url/api.php";
+
+			# log in to the wiki : here should be added a way to push changes with an identity
+			#$mw->login( { lgname => 'login', lgpassword => 'passwd' })
+			#|| die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+
+			$mw->edit( {
+				action => 'edit',
+				summary => $_[1],
+				title => $title,
+				text => mediawiki_filter($file_content),
+			}, {
+				skip_encoding => 1 # Helps with names with accentuated characters
+			}) || die 'Fatal: Error ' . $mw->{error}->{code} . ' from mediwiki: ' . $mw->{error}->{details};
+
+			print STDERR "Pushed file : $sha1 - $title\n";
+		} else {
+			print STDERR "$complete_file_name not a mediawiki file. '(Not pushable on this version)\n"
+		}
+	}
+
+	my $last_local_revid = get_last_local_revision();
+	my $last_remote_revid = get_last_remote_revision();
+
+	# Get sha1 of commit pointed by local HEAD
+	my $HEAD_sha1 = run_git("rev-parse $_[0] 2>/dev/null"); chomp($HEAD_sha1);
+	# Get sha1 of commit pointed by remotes/origin/master
+	my $remoteorigin_sha1 = run_git("rev-parse refs/remotes/origin/master 2>/dev/null"); chomp($remoteorigin_sha1);
+
+	if ($last_local_revid < $last_remote_revid){
+		my $message = "\"To prevent you from losing history, non-fast-forward updates were rejected \\n";
+		$message .= "Merge the remote changes (e.g. 'git pull') before pushing again. See the";
+		$message .= " 'Note about fast-forwards' section of 'git push --help' for details.\"";
+		print STDOUT "error $_[0] $message\n";
+		print STDOUT "\n";
+	} elsif ($HEAD_sha1 ne $remoteorigin_sha1) {
+		# Get every commit in between HEAD and refs/remotes/origin/master,
+		# including HEAD and refs/remotes/origin/master
+		my $parsed_sha1 = $remoteorigin_sha1;
+		while ($parsed_sha1 ne $HEAD_sha1) {
+			my @commit_info =  grep(/^$parsed_sha1/, `git rev-list --children $_[0]`);
+			my @commit_info_split = split(/ |\n/, $commit_info[0]);
+			# $commit_info_split[0] is the sha1 of the commit itself
+			# $commit_info_split[1] is the sha1 of its direct child
+			my $blob_infos = run_git("diff --raw --abbrev=40 -z $commit_info_split[0] $commit_info_split[1]");
+			my @blob_info_list = split(/\n/, $blob_infos);
+			# Keep the first line of the commit message as mediawiki comment for the revision
+			my $commit_msg = (split(/\n/, run_git("show --pretty=format:\"%s\" $commit_info_split[1]")))[0];
+			chomp($commit_msg);
+			foreach my $blob_info (@blob_info_list) {
+				# Push every blob
+				push_file($blob_info, $commit_msg);
+			}
+			$parsed_sha1 = $commit_info_split[1];
+		}
+
+		print STDOUT "ok $_[1]\n";
+		print STDOUT "\n";
+
+		# Pulling from mediawiki after pushing in order to keep things synchronized
+		exec("git pull --rebase >/dev/null");
+	} else {
+		print STDOUT "\n";
+	}
 }
