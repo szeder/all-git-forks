@@ -357,5 +357,6 @@ int fsck_error_function(struct object *obj, int type, const char *fmt, ...)
 
 	error("%s", sb.buf);
 	strbuf_release(&sb);
-	return 1;
+
+	return (type == FSCK_WARN) ? 0 : 1;
 }
