@@ -1,3 +1,30 @@
+Version v1.7.6-rc1; changes since v1.7.6-rc0:
+---------------------------------------------
+
+Alex Riesen (1):
+      t3703: skip more tests using colons in file names on Windows
+
+Brandon Casey (2):
+      t7508: demonstrate status's failure to use --porcelain format with -z
+      builtin/commit.c: set status_format _after_ option parsing
+
+Jakub Narebski (4):
+      gitweb: Move information about installation from README to INSTALL
+      gitweb: Describe CSSMIN and JSMIN in gitweb/INSTALL
+      gitweb: Move "Requirements" up in gitweb/INSTALL
+      gitweb: Fix usability of $prevent_xss
+
+Jeff King (1):
+      diff_tree: disable QUICK optimization with diff filter
+
+Jim Meyering (1):
+      fetch: do not leak a refspec
+
+Junio C Hamano (2):
+      diff: futureproof "stop feeding the backend early" logic
+      Git 1.7.6-rc1
+
+
 Version v1.7.6-rc0; changes since v1.7.5.4:
 -------------------------------------------
 

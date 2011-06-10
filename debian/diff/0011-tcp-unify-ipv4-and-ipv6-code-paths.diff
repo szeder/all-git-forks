@@ -1,4 +1,4 @@
-From 4d351293d3ec4a98bd8dde121b0378fe945b6d53 Mon Sep 17 00:00:00 2001
+From ca8b2377ed55ff656f9542788b410edf4817d816 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths
@@ -507,5 +507,5 @@ index 9916272..aacc2d1 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.5.4
+1.7.6.rc0
 

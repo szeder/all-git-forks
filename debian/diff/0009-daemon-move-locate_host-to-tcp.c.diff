@@ -1,4 +1,4 @@
-From 4848a78679a55bac8b43a5760df73f701c557cb9 Mon Sep 17 00:00:00 2001
+From a6501669b8528cd8e987edd049c48ab86b5a2c06 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host to tcp.c
@@ -199,5 +199,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.5.4
+1.7.6.rc0
 

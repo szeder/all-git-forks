@@ -1,11 +1,5 @@
 Format-Specification: http://dep.debian.net/deps/dep5/
-Source:
-  $ git clone git://git.kernel.org/pub/scm/git/git.git
-  $ cd git
-  $ git checkout v1.7.6-rc0
-  $ make dist
-  $ gunzip git-1.7.6.rc0.tar.gz
-  $ gzip -n --rsyncable -9 <git-1.7.6.rc0.tar >../git_1.7.6~rc0.orig.tar.gz
+Source: http://www.kernel.org/pub/software/scm/git/
 
 Files: *
 Copyright: © 2005-2010, Linus Torvalds and others.
