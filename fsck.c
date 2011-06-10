@@ -346,6 +346,9 @@ int fsck_object(struct object *obj, int strict, fsck_error error_func)
 
 int fsck_error_function(struct object *obj, int type, const char *fmt, ...)
 {
+	if (type == FSCK_WARN)
+		return 0;
+
 	va_list ap;
 	struct strbuf sb = STRBUF_INIT;
 
@@ -357,6 +360,5 @@ int fsck_error_function(struct object *obj, int type, const char *fmt, ...)
 
 	error("%s", sb.buf);
 	strbuf_release(&sb);
-
-	return (type == FSCK_WARN) ? 0 : 1;
+	return 1;
 }
