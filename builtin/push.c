@@ -262,11 +262,10 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		set_refspecs(argv + 1, argc - 1);
 	}
 
-	printf("DIE\n");
-	printf(repo);
-
-	if(!(flags & TRANSPORT_PUSH_FORCE) && is_submodules_pushed())
-		die(_("There's unpushed submodules. Aborting"));
+	if(!(flags & TRANSPORT_PUSH_FORCE) && is_submodules_pushed()) {
+		printf("There's unpushed submodules, aborting. Use -f to force a push\n");
+		exit(1);
+	}
 	printf("exit\n");
 	exit(1);
 

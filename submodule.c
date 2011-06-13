@@ -282,28 +282,15 @@ void set_config_fetch_recurse_submodules(int value)
 	config_fetch_recurse_submodules = value;
 }
 
-int is_submodules_pushed()
-{
-	// git rev-list --all
-	// minus
-	// git rev-list --remotes
-	// for all do 
-	// find submodules
-	// is_submodules_pushed
-	return 1;
-}
-
-
 static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 {
-	int is_present = 0;
-	/*
+	int is_pushed = 0;
 	if (!add_submodule_odb(path) && lookup_commit_reference(sha1)) {
 		struct child_process cp;
-		const char *argv[] = {"rev-list", "--remotes"};
+		const char *argv[] = {"rev-list", NULL, "--not", "--remotes", "-n", "1" , NULL};
 		struct strbuf buf = STRBUF_INIT;
 
-		argv[3] = sha1_to_hex(sha1);
+		argv[1] = sha1_to_hex(sha1);
 		memset(&cp, 0, sizeof(cp));
 		cp.argv = argv;
 		cp.env = local_repo_env;
@@ -311,16 +298,41 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 		cp.no_stdin = 1;
 		cp.out = -1;
 		cp.dir = path;
-		if (!run_command(&cp) && !strbuf_read(&buf, cp.out, 1024))
-			is_present = 1;
-		print_r(cp.out);
+		if (!run_command(&cp) && strbuf_read(&buf, cp.out, 40))
+			is_pushed = 1;
 
 		close(cp.out);
 		strbuf_release(&buf);
 	}
-	*/
-	return is_present;
+	return is_pushed;
 }
+
+int is_submodules_pushed()
+{
+	int unpushed = 0;
+	// git rev-list --all
+	// minus
+	// git rev-list --remotes
+	// for all do 
+	// find submodules
+	printf("check if pushed\n");
+	unsigned char sha1[20];
+        char *hex0 = "01fa4818be50be1544fd4ad1cd10e3ab7d658980";
+        char *hex1 = "e2b271dd19d87457ff723c5e7f458f39ce7bb149";
+	if(get_sha1_hex(hex0, sha1)) 
+		die(_("Error converting sha1"));
+	unpushed = is_submodule_commit_pushed("b",sha1);
+	printf("result: %d\n",unpushed);
+	if(get_sha1_hex(hex1, sha1)) 
+		die(_("Error converting sha1"));
+	unpushed = is_submodule_commit_pushed("b",sha1);
+	printf("result: %d\n",unpushed);
+
+	if(unpushed > 1)
+		unpushed = 1;
+	return unpushed;
+}
+
 static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 {
 	int is_present = 0;
