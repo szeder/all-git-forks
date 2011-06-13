@@ -310,11 +310,31 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 int is_submodules_pushed()
 {
 	int unpushed = 0;
-	// git rev-list --all
-	// minus
-	// git rev-list --remotes
+	struct child_process cp;
+	const char *argv[] = {"rev-list", "--all", "--not", "--remotes", NULL};
+	struct strbuf buf = STRBUF_INIT;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.argv = argv;
+	cp.env = local_repo_env;
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.out = -1;
+	if (!run_command(&cp) && strbuf_read(&buf, cp.out, 1024)) {
+		printf("strlen %d\n",buf.len);
+		printf("buf\n%s\n",buf.buf);
+		int itr = buf.len%41;
+		for(int i = 0; i < itr; i++) {
+			printf("");
+		}
+	}
+
+	close(cp.out);
+	strbuf_release(&buf);
+
 	// for all do 
 	// find submodules
+	// Run is_submodules_pushed
 	printf("check if pushed\n");
 	unsigned char sha1[20];
         char *hex0 = "01fa4818be50be1544fd4ad1cd10e3ab7d658980";

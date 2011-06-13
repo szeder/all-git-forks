@@ -266,8 +266,8 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		printf("There's unpushed submodules, aborting. Use -f to force a push\n");
 		exit(1);
 	}
-	printf("exit\n");
-	exit(1);
+	//printf("exit\n");
+	//exit(1);
 
 	rc = do_push(repo, flags);
 	if (rc == -1)
