@@ -281,14 +281,26 @@ void set_config_fetch_recurse_submodules(int value)
 {
 	config_fetch_recurse_submodules = value;
 }
+
+int is_submodules_pushed()
+{
+	// git rev-list --all
+	// minus
+	// git rev-list --remotes
+	// for all do 
+	// find submodules
+	// is_submodules_pushed
+	return 1;
+}
+
+
 static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 {
 	int is_present = 0;
+	/*
 	if (!add_submodule_odb(path) && lookup_commit_reference(sha1)) {
-		/* Even if the submodule is checked out and the commit is
-		 * present, make sure it is reachable from a ref. */
 		struct child_process cp;
-		const char *argv[] = {"rev-list", "-n", "1", NULL, "--not", "--all", NULL};
+		const char *argv[] = {"rev-list", "--remotes"};
 		struct strbuf buf = STRBUF_INIT;
 
 		argv[3] = sha1_to_hex(sha1);
@@ -301,10 +313,12 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 		cp.dir = path;
 		if (!run_command(&cp) && !strbuf_read(&buf, cp.out, 1024))
 			is_present = 1;
+		print_r(cp.out);
 
 		close(cp.out);
 		strbuf_release(&buf);
 	}
+	*/
 	return is_present;
 }
 static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
