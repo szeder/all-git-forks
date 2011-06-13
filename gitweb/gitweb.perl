@@ -6127,7 +6127,15 @@ sub git_blob_plain {
 	# want to be sure not to break that by serving the image as an
 	# attachment (though Firefox 3 doesn't seem to care).
 	my $sandbox = $prevent_xss &&
-		$type !~ m!^(?:text/plain|image/(?:gif|png|jpeg))(?:[ ;]|$)!;
+		$type !~ m!^(?:text/[a-z]+|image/(?:gif|png|jpeg))(?:[ ;]|$)!;
+
+	# serve text/* as text/plain
+	if ($prevent_xss &&
+	    $type =~ m!^text/([a-z]+)\b(.*)$!) {
+		my ($subtype, $rest) = ($1, $2);
+		$rest = '' unless defined $rest;
+		$type = "text/plain$rest";
+	}
 
 	print $cgi->header(
 		-type => $type,
