@@ -300,6 +300,7 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 		cp.dir = path;
 		if (!run_command(&cp) && strbuf_read(&buf, cp.out, 40))
 			is_pushed = 1;
+		printf("size: %d\n",buf.len);
 
 		close(cp.out);
 		strbuf_release(&buf);
@@ -328,7 +329,7 @@ int is_submodules_pushed()
 	printf("%s\n",sha1_to_hex(tree->object.sha1));
 
         char *hex0 = "01fa4818be50be1544fd4ad1cd10e3ab7d658980";
-        char *hex1 = "e2b271dd19d87457ff723c5e7f458f39ce7bb149";
+        char *hex1 = "ad1a96fe52ef009e5b5ba4c6f670d903eb30da20";
 	if(get_sha1_hex(hex0, sha1)) 
 		die(_("Error converting sha1"));
 	unpushed = is_submodule_commit_pushed("b",sha1);
