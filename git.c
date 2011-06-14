@@ -426,6 +426,7 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "version", cmd_version },
 		{ "whatchanged", cmd_whatchanged, RUN_SETUP },
 		{ "write-tree", cmd_write_tree, RUN_SETUP },
+		{ "heiko", cmd_heiko, RUN_SETUP_GENTLY },
 	};
 	int i;
 	static const char ext[] = STRIP_EXTENSION;
