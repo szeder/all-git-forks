@@ -36,8 +36,8 @@ do_fetch () {
 
 do_import () {
        revs=$1 url=$2
-       (svnrdump dump --non-interactive --username=Guest --password= \
-               -r"$revs" "$url" | svn-fe) 3<&0 || die "FAILURE"
+       svnrdump dump --non-interactive --username=Guest --password= \
+               -r"$revs" "$url" | svn-fe || die "FAILURE"
 }
 
 test "${2+set}" ||
