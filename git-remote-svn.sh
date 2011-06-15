@@ -56,6 +56,7 @@ do
        case $cmd in
        capabilities)
                echo import
+               echo done
                echo
                ;;
        list)
@@ -73,6 +74,7 @@ do
                die "remote-svn: unsupported import ref argument: $args"
 
                do_import 0:HEAD "$url"
+               echo done
                ;;
        '')
                echo
