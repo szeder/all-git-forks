@@ -310,7 +310,11 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 static int examine_tree(const unsigned char *sha1, const char *base, int baselen, 
 		const char *pathname, unsigned mode, int stage, void *context)
 {
-	printf("%s: base: %s path: %s\n",find_unique_abbrev(sha1, DEFAULT_ABBREV), base, pathname);
+	if (S_ISGITLINK(mode)) {
+		printf("submodule!\n");
+		printf("%s: base: %s path: %s\n",find_unique_abbrev(sha1, DEFAULT_ABBREV), base, pathname);
+		return 0;
+	}
 	return READ_TREE_RECURSIVE;
 }
 
