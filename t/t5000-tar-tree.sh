@@ -256,11 +256,11 @@ test_expect_success 'setup fake tar filter' '
 	git config tarfilter.fake.command "cat >/dev/null; echo args: "
 '
 
-test_expect_failure 'filter does not allow compression levels by default' '
+test_expect_success 'filter does not allow compression levels by default' '
 	test_must_fail git archive --format=fake -9 HEAD >output
 '
 
-test_expect_failure 'filters can allow compression levels' '
+test_expect_success 'filters can allow compression levels' '
 	git config tarfilter.fake.compressionlevels true &&
 	echo "args: -9" >expect &&
 	git archive --format=fake -9 HEAD >output &&
@@ -283,7 +283,7 @@ test_expect_success 'setup slightly more useful tar filter' '
 	git config --add tarfilter.foo.extension bar
 '
 
-test_expect_failure 'archive outputs in configurable format' '
+test_expect_success 'archive outputs in configurable format' '
 	git archive --format=foo HEAD >config.tar.foo &&
 	tr ab ba <config.tar.foo >config.tar &&
 	test_cmp b.tar config.tar

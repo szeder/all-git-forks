@@ -14,6 +14,7 @@ struct archiver_args {
 	unsigned int verbose : 1;
 	unsigned int worktree_attributes : 1;
 	int compression_level;
+	struct tar_filter *tar_filter;
 };
 
 typedef int (*write_archive_fn_t)(struct archiver_args *);
@@ -25,6 +26,7 @@ typedef int (*write_archive_entry_fn_t)(struct archiver_args *args, const unsign
  */
 extern int write_tar_archive(struct archiver_args *);
 extern int write_zip_archive(struct archiver_args *);
+extern int write_tar_filter_archive(struct archiver_args *);
 
 extern int write_archive_entries(struct archiver_args *args, write_archive_entry_fn_t write_entry);
 extern int write_archive(int argc, const char **argv, const char *prefix, int setup_prefix);

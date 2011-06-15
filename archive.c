@@ -24,6 +24,9 @@ static const struct archiver {
 	{ "tar", write_tar_archive },
 	{ "zip", write_zip_archive, USES_ZLIB_COMPRESSION },
 };
+static const struct archiver tar_filter_archiver = {
+	"tar-filter", write_tar_filter_archive
+};
 
 static void format_subst(const struct commit *commit,
                          const char *src, size_t len,
@@ -364,12 +367,19 @@ static int parse_archive_args(int argc, const char **argv,
 	if (argc < 1)
 		usage_with_options(archive_usage, opts);
 	*ar = lookup_archiver(format);
-	if (!*ar)
-		die("Unknown archive format '%s'", format);
+
+	/* Fallback to user-configured tar filters */
+	if (!*ar) {
+		args->tar_filter = tar_filter_by_name(format);
+		if (!args->tar_filter)
+			die("Unknown archive format '%s'", format);
+		*ar = &tar_filter_archiver;
+	}
 
 	args->compression_level = Z_DEFAULT_COMPRESSION;
 	if (compression_level != -1) {
-		if ((*ar)->flags & USES_ZLIB_COMPRESSION)
+		if ((*ar)->flags & USES_ZLIB_COMPRESSION ||
+		    (args->tar_filter && args->tar_filter->use_compression))
 			args->compression_level = compression_level;
 		else {
 			die("Argument not supported for format '%s': -%d",

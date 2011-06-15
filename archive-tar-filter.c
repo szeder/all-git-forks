@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "archive.h"
+#include "run-command.h"
 
 struct tar_filter *tar_filters;
 static struct tar_filter **tar_filters_tail = &tar_filters;
@@ -109,4 +110,51 @@ extern void tar_filter_load_config(void)
 
 	git_config(tar_filter_config, NULL);
 	remove_filters_without_command();
+}
+
+static int write_tar_to_filter(struct archiver_args *args, const char *cmd)
+{
+	struct child_process filter;
+	const char *argv[2];
+	int r;
+
+	memset(&filter, 0, sizeof(filter));
+	argv[0] = cmd;
+	argv[1] = NULL;
+	filter.argv = argv;
+	filter.use_shell = 1;
+	filter.in = -1;
+
+	if (start_command(&filter) < 0)
+		die_errno("unable to start '%s' filter", argv[0]);
+	close(1);
+	if (dup2(filter.in, 1) < 0)
+		die_errno("unable to redirect descriptor");
+	close(filter.in);
+
+	r = write_tar_archive(args);
+
+	close(1);
+	if (finish_command(&filter) != 0)
+		die("'%s' filter reported error", argv[0]);
+
+	return r;
+}
+
+int write_tar_filter_archive(struct archiver_args *args)
+{
+	struct strbuf cmd = STRBUF_INIT;
+	int r;
+
+	if (!args->tar_filter)
+		die("BUG: tar-filter archiver called with no filter defined");
+
+	strbuf_addstr(&cmd, args->tar_filter->command);
+	if (args->tar_filter->use_compression && args->compression_level >= 0)
+		strbuf_addf(&cmd, " -%d", args->compression_level);
+
+	r = write_tar_to_filter(args, cmd.buf);
+
+	strbuf_release(&cmd);
+	return r;
 }
