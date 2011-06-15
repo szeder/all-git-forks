@@ -395,6 +395,7 @@ int write_archive(int argc, const char **argv, const char *prefix,
 		prefix = setup_git_directory_gently(&nongit);
 
 	git_config(git_default_config, NULL);
+	tar_filter_load_config();
 
 	argc = parse_archive_args(argc, argv, &ar, &args);
 	if (nongit) {

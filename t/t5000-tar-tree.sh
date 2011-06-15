@@ -252,4 +252,58 @@ test_expect_success 'git-archive --prefix=olde-' '
 	test -f h/olde-a/bin/sh
 '
 
+test_expect_success 'setup fake tar filter' '
+	git config tarfilter.fake.command "cat >/dev/null; echo args: "
+'
+
+test_expect_failure 'filter does not allow compression levels by default' '
+	test_must_fail git archive --format=fake -9 HEAD >output
+'
+
+test_expect_failure 'filters can allow compression levels' '
+	git config tarfilter.fake.compressionlevels true &&
+	echo "args: -9" >expect &&
+	git archive --format=fake -9 HEAD >output &&
+	test_cmp expect output
+'
+
+test_expect_failure 'archive --list mentions user filter' '
+	git archive --list >output &&
+	grep "^fake\$" output
+'
+
+test_expect_failure 'archive --list shows remote user filters' '
+	git archive --list --remote=. >output &&
+	grep "^fake\$" output
+'
+
+test_expect_success 'setup slightly more useful tar filter' '
+	git config tarfilter.foo.command "tr ab ba" &&
+	git config --add tarfilter.foo.extension tar.foo &&
+	git config --add tarfilter.foo.extension bar
+'
+
+test_expect_failure 'archive outputs in configurable format' '
+	git archive --format=foo HEAD >config.tar.foo &&
+	tr ab ba <config.tar.foo >config.tar &&
+	test_cmp b.tar config.tar
+'
+
+test_expect_failure 'archive selects implicit format by configured extension' '
+	git archive -o config-implicit.tar.foo HEAD &&
+	test_cmp config.tar.foo config-implicit.tar.foo &&
+	git archive -o config-implicit.bar HEAD &&
+	test_cmp config.tar.foo config-implicit.bar
+'
+
+test_expect_success 'default output format remains tar' '
+	git archive -o config-implicit.baz HEAD &&
+	test_cmp b.tar config-implicit.baz
+'
+
+test_expect_failure 'extension matching requires dot' '
+	git archive -o config-implicittar.foo HEAD &&
+	test_cmp b.tar config-implicittar.foo
+'
+
 test_done
