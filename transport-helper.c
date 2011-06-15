@@ -430,10 +430,11 @@ static int fetch_with_import(struct transport *transport,
 		strbuf_reset(&buf);
 	}
 
-	write_constant(data->helper->in, "\n");
-
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
+
+	write_constant(data->helper->in, "\n");
+
 	free(fastimport.argv);
 	fastimport.argv = NULL;
 
