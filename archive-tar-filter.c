@@ -126,6 +126,17 @@ static void remove_filters_without_command(void)
 	}
 }
 
+static void load_builtin_filters(void)
+{
+	struct tar_filter *tf;
+
+	tf = tar_filter_new("tgz", strlen("tgz"));
+	tf->command = xstrdup("gzip -n");
+	string_list_append(&tf->extensions, "tgz");
+	string_list_append(&tf->extensions, "tar.gz");
+	tf->use_compression = 1;
+}
+
 /*
  * We don't want to load twice, since some of our
  * values actually append rather than overwrite.
@@ -137,6 +148,7 @@ extern void tar_filter_load_config(void)
 		return;
 	tar_filter_config_loaded = 1;
 
+	load_builtin_filters();
 	git_config(tar_filter_config, NULL);
 	remove_filters_without_command();
 }

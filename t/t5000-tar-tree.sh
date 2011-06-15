@@ -26,6 +26,7 @@ commit id embedding:
 
 . ./test-lib.sh
 UNZIP=${UNZIP:-unzip}
+GUNZIP=${GUNZIP:-gzip -d}
 
 SUBSTFORMAT=%H%n
 
@@ -304,6 +305,53 @@ test_expect_success 'default output format remains tar' '
 test_expect_success 'extension matching requires dot' '
 	git archive -o config-implicittar.foo HEAD &&
 	test_cmp b.tar config-implicittar.foo
+'
+
+test_expect_success 'git archive --format=tgz' '
+	git archive --format=tgz HEAD >j.tgz
+'
+
+test_expect_success 'infer tgz from .tgz filename' '
+	git archive --output=j1.tgz HEAD &&
+	test_cmp j.tgz j1.tgz
+'
+
+test_expect_success 'infer tgz from .tar.gz filename' '
+	git archive --output=j2.tar.gz HEAD &&
+	test_cmp j.tgz j2.tar.gz
+'
+
+if $GUNZIP --version >/dev/null 2>&1; then
+	test_set_prereq GUNZIP
+else
+	say "Skipping some tgz tests because gunzip was not found"
+fi
+
+test_expect_success GUNZIP 'extract tgz file' '
+	$GUNZIP -c <j.tgz >j.tar &&
+	test_cmp b.tar j.tar
+'
+
+test_expect_success GUNZIP 'tgz allows compression levels' '
+	git archive -1 --output=j3.tgz HEAD
+'
+
+test_expect_success 'disable builtin tgz via config' '
+	git config tarfilter.tgz.command ""
+'
+
+test_expect_success 'disabled filter does not appear in --list' '
+	git archive --list >output &&
+	! grep tgz output
+'
+
+test_expect_success 'disabled filter cannot be used' '
+	test_must_fail git archive --format=tgz HEAD >output
+'
+
+test_expect_success 'disabled filter does not match extensions' '
+	git archive -o disabled.tar.gz HEAD &&
+	test_cmp b.tar disabled.tar.gz
 '
 
 test_done
