@@ -73,6 +73,7 @@ do
                die "remote-svn: unsupported import ref argument: $args"
 
                do_import 0:HEAD "$url"
+               exit 0
                ;;
        '')
                echo
