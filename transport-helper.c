@@ -363,12 +363,15 @@ static int fetch_with_fetch(struct transport *transport,
 
 static int get_importer(struct transport *transport, struct child_process *fastimport)
 {
+	char buf[256];
 	struct child_process *helper = get_helper(transport);
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
 	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
 	fastimport->argv[0] = "fast-import";
 	fastimport->argv[1] = "--quiet";
+	snprintf(buf, 256, "--cat-blob-fd=%d", dup(helper->in));
+	fastimport->argv[2] = buf;
 
 	fastimport->git_cmd = 1;
 	return start_command(fastimport);
