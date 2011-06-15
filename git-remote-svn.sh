@@ -70,11 +70,15 @@ do
                do_fetch 0:HEAD "$url" "$tempdir"
                ;;
        import)
-               test "$args" = "refs/heads/master" ||
-               die "remote-svn: unsupported import ref argument: $args"
+               while read -r ref
+               do
+                       test "z$ref" = "z" && break
+                       test "$ref" = "refs/heads/master" ||
+                       die "remote-svn: unsupported import ref argument: $ref"
 
-               do_import 0:HEAD "$url"
-               echo done
+                       do_import 0:HEAD "$url"
+                       echo done
+               done
                ;;
        '')
                echo
