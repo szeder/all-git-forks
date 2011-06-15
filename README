@@ -1,0 +1,12 @@
+[suenami@suenami ~]$ rm .bash_logout
+[suenami@suenami ~]$ rm .bash_profile
+[suenami@suenami ~]$ rm .bashrc
+[suenami@suenami ~]$ ln -s .bash_logout .
+[suenami@suenami ~]$ ln -s conf/.bash_profile .
+[suenami@suenami ~]$ ln -s conf/.bashrc
+[suenami@suenami ~]$ ln -s conf/.gitconfig .
+[suenami@suenami ~]$ ln -s conf/.hgrc .
+[suenami@suenami ~]$ ln -s conf/.npmrc .
+[suenami@suenami ~]$ ln -s conf/.screenrc .
+[suenami@suenami ~]$ ln -s conf/.vim .
+[suenami@suenami ~]$ ln -s conf/.vimrc .
