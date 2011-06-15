@@ -298,9 +298,8 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 		cp.no_stdin = 1;
 		cp.out = -1;
 		cp.dir = path;
-		if (!run_command(&cp) && strbuf_read(&buf, cp.out, 40))
+		if (!run_command(&cp) && strbuf_read(&buf, cp.out, 41))
 			is_pushed = 1;
-		printf("size: %d\n",buf.len);
 
 		close(cp.out);
 		strbuf_release(&buf);
