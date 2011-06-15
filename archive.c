@@ -24,6 +24,9 @@ static const struct archiver {
 	{ "tar", write_tar_archive },
 	{ "zip", write_zip_archive, USES_ZLIB_COMPRESSION },
 };
+static const struct archiver tar_filter_archiver = {
+	"tar-filter", write_tar_filter_archive
+};
 
 static void format_subst(const struct commit *commit,
                          const char *src, size_t len,
@@ -299,9 +302,10 @@ static void parse_treeish_arg(const char **argv,
 	  PARSE_OPT_NOARG | PARSE_OPT_NONEG | PARSE_OPT_HIDDEN, NULL, (p) }
 
 static int parse_archive_args(int argc, const char **argv,
-		const struct archiver **ar, struct archiver_args *args)
+		const struct archiver **ar, struct archiver_args *args,
+		const char *name_hint)
 {
-	const char *format = "tar";
+	const char *format = NULL;
 	const char *base = NULL;
 	const char *remote = NULL;
 	const char *exec = NULL;
@@ -355,21 +359,36 @@ static int parse_archive_args(int argc, const char **argv,
 		base = "";
 
 	if (list) {
+		struct tar_filter *p;
 		for (i = 0; i < ARRAY_SIZE(archivers); i++)
 			printf("%s\n", archivers[i].name);
+		for (p = tar_filters; p; p = p->next)
+			printf("%s\n", p->name);
 		exit(0);
 	}
+
+	if (!format && name_hint)
+		format = archive_format_from_filename(name_hint);
+	if (!format)
+		format = "tar";
 
 	/* We need at least one parameter -- tree-ish */
 	if (argc < 1)
 		usage_with_options(archive_usage, opts);
 	*ar = lookup_archiver(format);
-	if (!*ar)
-		die("Unknown archive format '%s'", format);
+
+	/* Fallback to user-configured tar filters */
+	if (!*ar) {
+		args->tar_filter = tar_filter_by_name(format);
+		if (!args->tar_filter)
+			die("Unknown archive format '%s'", format);
+		*ar = &tar_filter_archiver;
+	}
 
 	args->compression_level = Z_DEFAULT_COMPRESSION;
 	if (compression_level != -1) {
-		if ((*ar)->flags & USES_ZLIB_COMPRESSION)
+		if ((*ar)->flags & USES_ZLIB_COMPRESSION ||
+		    (args->tar_filter && args->tar_filter->use_compression))
 			args->compression_level = compression_level;
 		else {
 			die("Argument not supported for format '%s': -%d",
@@ -385,19 +404,53 @@ static int parse_archive_args(int argc, const char **argv,
 }
 
 int write_archive(int argc, const char **argv, const char *prefix,
-		int setup_prefix)
+		int setup_prefix, const char *name_hint)
 {
+	int nongit = 0;
 	const struct archiver *ar = NULL;
 	struct archiver_args args;
 
-	argc = parse_archive_args(argc, argv, &ar, &args);
 	if (setup_prefix && prefix == NULL)
-		prefix = setup_git_directory();
+		prefix = setup_git_directory_gently(&nongit);
+
+	git_config(git_default_config, NULL);
+	tar_filter_load_config();
+
+	argc = parse_archive_args(argc, argv, &ar, &args, name_hint);
+	if (nongit) {
+		/*
+		 * We know this will die() with an error, so we could just
+		 * die ourselves; but its error message will be more specific
+		 * than what we could write here.
+		 */
+		setup_git_directory();
+	}
 
 	parse_treeish_arg(argv, &args, prefix);
 	parse_pathspec_arg(argv + 1, &args);
 
-	git_config(git_default_config, NULL);
-
 	return ar->write_archive(&args);
+}
+
+const char *archive_format_from_filename(const char *filename)
+{
+	struct tar_filter *tf;
+	const char *ext = strrchr(filename, '.');
+	if (!ext)
+		return NULL;
+	ext++;
+	if (!strcasecmp(ext, "zip"))
+		return "zip";
+
+	/*
+	 * Fallback to user-configured tar filters; but note
+	 * that we might have to load config ourselves, first,
+	 * if we are not being called via write_archive.
+	 */
+	tar_filter_load_config();
+	tf = tar_filter_by_extension(filename);
+	if (tf)
+		return tf->name;
+
+	return NULL;
 }
