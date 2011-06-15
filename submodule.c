@@ -307,6 +307,14 @@ static int is_submodule_commit_pushed(const char *path, unsigned char sha1[20])
 	return is_pushed;
 }
 
+static int examine_tree(const unsigned char *sha1, const char *base, int baselen, 
+		const char *pathname, unsigned mode, int stage, void *context)
+{
+	printf("%s\n",sha1);
+	return 0;
+}
+
+
 int is_submodules_pushed()
 {
 	int unpushed = 0;
@@ -326,18 +334,12 @@ int is_submodules_pushed()
 	struct tree *tree;
 	tree = parse_tree_indirect(sha1);
 	printf("%s\n",sha1_to_hex(tree->object.sha1));
+	read_tree_recursive(tree, "", 0, 0, NULL, examine_tree, NULL);
 
-        char *hex0 = "01fa4818be50be1544fd4ad1cd10e3ab7d658980";
-        char *hex1 = "ad1a96fe52ef009e5b5ba4c6f670d903eb30da20";
-	if(get_sha1_hex(hex0, sha1)) 
-		die(_("Error converting sha1"));
-	unpushed = is_submodule_commit_pushed("b",sha1);
-	printf("result: %d\n",unpushed);
-	if(get_sha1_hex(hex1, sha1)) 
-		die(_("Error converting sha1"));
-	unpushed = is_submodule_commit_pushed("b",sha1);
-	printf("result: %d\n",unpushed);
-
+	/* 
+	 * This would be nicer with return !!unpushed; as junio does but
+	 * the git codelines prevents this
+	 */
 	if(unpushed > 1)
 		unpushed = 1;
 	return unpushed;
