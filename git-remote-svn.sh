@@ -60,7 +60,7 @@ do
                test "$args" = "$_z40 refs/heads/master" ||
                die "remote-svn: unsupported fetch arguments: $args"
 
-               do_fetch 0: "$url" "$tempdir"
+               do_fetch 0:HEAD "$url" "$tempdir"
                ;;
        '')
                echo
