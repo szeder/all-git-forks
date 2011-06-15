@@ -267,12 +267,12 @@ test_expect_success 'filters can allow compression levels' '
 	test_cmp expect output
 '
 
-test_expect_failure 'archive --list mentions user filter' '
+test_expect_success 'archive --list mentions user filter' '
 	git archive --list >output &&
 	grep "^fake\$" output
 '
 
-test_expect_failure 'archive --list shows remote user filters' '
+test_expect_success 'archive --list shows remote user filters' '
 	git archive --list --remote=. >output &&
 	grep "^fake\$" output
 '

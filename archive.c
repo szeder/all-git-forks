@@ -358,8 +358,11 @@ static int parse_archive_args(int argc, const char **argv,
 		base = "";
 
 	if (list) {
+		struct tar_filter *p;
 		for (i = 0; i < ARRAY_SIZE(archivers); i++)
 			printf("%s\n", archivers[i].name);
+		for (p = tar_filters; p; p = p->next)
+			printf("%s\n", p->name);
 		exit(0);
 	}
 
