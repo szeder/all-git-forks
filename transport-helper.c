@@ -222,7 +222,7 @@ static int disconnect_helper(struct transport *transport)
 		if (debug)
 			fprintf(stderr, "Debug: Disconnecting.\n");
 		if (!data->no_disconnect_req) {
-			strbuf_addf(&buf, "\n");
+			strbuf_addf(&buf, "exit\n");
 			sendline(data, &buf);
 		}
 		close(data->helper->in);
