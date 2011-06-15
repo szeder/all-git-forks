@@ -34,6 +34,12 @@ do_fetch () {
        wait "$gitfi_pid" || die "remote-svn: git fast-import failed: $?"
 }
 
+do_import () {
+       revs=$1 url=$2
+       (svnrdump dump --non-interactive --username=Guest --password= \
+               -r"$revs" "$url" | svn-fe) 3<&0 || die "FAILURE"
+}
+
 test "${2+set}" ||
 usage 'git remote-svn <repository> <URL> < commandlist'
 url=$2
@@ -49,7 +55,7 @@ while read -r cmd args
 do
        case $cmd in
        capabilities)
-               echo fetch
+               echo import
                echo
                ;;
        list)
@@ -61,6 +67,12 @@ do
                die "remote-svn: unsupported fetch arguments: $args"
 
                do_fetch 0:HEAD "$url" "$tempdir"
+               ;;
+       import)
+               test "$args" = "refs/heads/master" ||
+               die "remote-svn: unsupported import ref argument: $args"
+
+               do_import 0:HEAD "$url"
                ;;
        '')
                echo
