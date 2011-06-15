@@ -39,6 +39,35 @@ struct tar_filter *tar_filter_by_name(const char *name)
 	return tar_filter_by_namelen(name, strlen(name));
 }
 
+static int match_extension(const char *filename, const char *ext)
+{
+	int prefixlen = strlen(filename) - strlen(ext);
+
+	/*
+	 * We need 1 character for the '.', and 1 character to ensure that the
+	 * prefix is non-empty (i.e., we don't match ".tar.gz" with no actual
+	 * filename).
+	 */
+	if (prefixlen < 2 || filename[prefixlen-1] != '.')
+		return 0;
+	return !strcmp(filename + prefixlen, ext);
+}
+
+struct tar_filter *tar_filter_by_extension(const char *filename)
+{
+	struct tar_filter *p;
+
+	for (p = tar_filters; p; p = p->next) {
+		int i;
+		for (i = 0; i < p->extensions.nr; i++) {
+			const char *ext = p->extensions.items[i].string;
+			if (match_extension(filename, ext))
+				return p;
+		}
+	}
+	return NULL;
+}
+
 static int tar_filter_config(const char *var, const char *value, void *data)
 {
 	struct tar_filter *tf;

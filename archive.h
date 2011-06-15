@@ -41,6 +41,7 @@ struct tar_filter {
 
 extern struct tar_filter *tar_filters;
 extern struct tar_filter *tar_filter_by_name(const char *name);
+extern struct tar_filter *tar_filter_by_extension(const char *filename);
 
 extern void tar_filter_load_config(void);
 

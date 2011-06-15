@@ -289,7 +289,7 @@ test_expect_success 'archive outputs in configurable format' '
 	test_cmp b.tar config.tar
 '
 
-test_expect_failure 'archive selects implicit format by configured extension' '
+test_expect_success 'archive selects implicit format by configured extension' '
 	git archive -o config-implicit.tar.foo HEAD &&
 	test_cmp config.tar.foo config-implicit.tar.foo &&
 	git archive -o config-implicit.bar HEAD &&
@@ -301,7 +301,7 @@ test_expect_success 'default output format remains tar' '
 	test_cmp b.tar config-implicit.baz
 '
 
-test_expect_failure 'extension matching requires dot' '
+test_expect_success 'extension matching requires dot' '
 	git archive -o config-implicittar.foo HEAD &&
 	test_cmp b.tar config-implicittar.foo
 '

@@ -434,11 +434,23 @@ int write_archive(int argc, const char **argv, const char *prefix,
 
 const char *archive_format_from_filename(const char *filename)
 {
+	struct tar_filter *tf;
 	const char *ext = strrchr(filename, '.');
 	if (!ext)
 		return NULL;
 	ext++;
 	if (!strcasecmp(ext, "zip"))
 		return "zip";
+
+	/*
+	 * Fallback to user-configured tar filters; but note
+	 * that we might have to load config ourselves, first,
+	 * if we are not being called via write_archive.
+	 */
+	tar_filter_load_config();
+	tf = tar_filter_by_extension(filename);
+	if (tf)
+		return tf->name;
+
 	return NULL;
 }
