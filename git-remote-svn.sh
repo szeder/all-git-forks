@@ -65,6 +65,9 @@ do
        '')
                echo
                ;;
+       exit)
+               exit 0
+               ;;
        *)
                die "remote-svn: unsupported command: $cmd $args"
        esac
