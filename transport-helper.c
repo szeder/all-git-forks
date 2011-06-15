@@ -107,9 +107,18 @@ static struct child_process *get_helper(struct transport *transport)
 	int refspec_alloc = 0;
 	int duped;
 	int code;
+	int backflow[2];
 
 	if (data->helper)
 		return data->helper;
+
+	dup2(2, 3);
+	dup2(2, 4);
+	pipe(backflow);
+	dup2(backflow[0], 3);
+	dup2(backflow[1], 4);
+	close(backflow[0]);
+	close(backflow[1]);
 
 	helper = xcalloc(1, sizeof(*helper));
 	helper->in = -1;
@@ -370,7 +379,7 @@ static int get_importer(struct transport *transport, struct child_process *fasti
 	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
 	fastimport->argv[0] = "fast-import";
 	fastimport->argv[1] = "--quiet";
-	snprintf(buf, 256, "--cat-blob-fd=%d", dup(helper->in));
+	snprintf(buf, 256, "--cat-blob-fd=%d", 4);
 	fastimport->argv[2] = buf;
 
 	fastimport->git_cmd = 1;
