@@ -14,6 +14,7 @@ static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static struct string_list changed_submodule_paths;
+static int found_unpushed_submodules;
 
 static int add_submodule_odb(const char *path)
 {
@@ -280,6 +281,61 @@ void show_submodule_summary(FILE *f, const char *path,
 void set_config_fetch_recurse_submodules(int value)
 {
 	config_fetch_recurse_submodules = value;
+}
+
+static int is_submodule_commit_pushed(const char *path, const unsigned char sha1[20])
+{
+	int is_pushed = 0;
+	if (!add_submodule_odb(path) && lookup_commit_reference(sha1)) {
+		struct child_process cp;
+		const char *argv[] = {"rev-list", NULL, "--not", "--remotes", "-n", "1" , NULL};
+		struct strbuf buf = STRBUF_INIT;
+
+		argv[1] = sha1_to_hex(sha1);
+		memset(&cp, 0, sizeof(cp));
+		cp.argv = argv;
+		cp.env = local_repo_env;
+		cp.git_cmd = 1;
+		cp.no_stdin = 1;
+		cp.out = -1;
+		cp.dir = path;
+		if (!run_command(&cp) && strbuf_read(&buf, cp.out, 41))
+			is_pushed = 1;
+
+		close(cp.out);
+		strbuf_release(&buf);
+	}
+	return is_pushed;
+}
+
+static int examine_tree(const unsigned char *sha1, const char *base, int baselen, 
+		const char *pathname, unsigned mode, int stage, void *context)
+{
+	if (S_ISGITLINK(mode)) {
+		if(is_submodule_commit_pushed(pathname,sha1))
+			found_unpushed_submodules = 1;
+		return 0;
+	}
+	return READ_TREE_RECURSIVE;
+}
+
+
+int is_submodules_pushed()
+{
+	unsigned char * sha1;
+	struct tree *tree;
+	struct commit * c;
+	struct pathspec pathspec;
+	found_unpushed_submodules = 0;
+       
+	c = lookup_commit_reference_by_name("HEAD");
+	sha1 = c->object.sha1;
+	tree = parse_tree_indirect(sha1);
+
+	init_pathspec(&pathspec, NULL);
+	read_tree_recursive(tree, "", 0, 0, &pathspec, examine_tree, NULL);
+
+	return found_unpushed_submodules;
 }
 
 static int is_submodule_commit_present(const char *path, unsigned char sha1[20])

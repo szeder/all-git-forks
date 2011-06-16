@@ -262,6 +262,13 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		set_refspecs(argv + 1, argc - 1);
 	}
 
+	if(!(flags & TRANSPORT_PUSH_FORCE) && is_submodules_pushed()) {
+		printf("There's unpushed submodules, aborting. Use -f to force a push\n");
+		exit(1);
+	}
+	printf("exit\n");
+	exit(1);
+
 	rc = do_push(repo, flags);
 	if (rc == -1)
 		usage_with_options(push_usage, options);
