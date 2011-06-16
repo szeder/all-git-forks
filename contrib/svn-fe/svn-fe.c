@@ -8,7 +8,7 @@
 
 int main(int argc, char **argv)
 {
-	if (svndump_init(NULL))
+	if (svndump_init(NULL, "refs/heads/master"))
 		return 1;
 	svndump_read((argc > 1) ? argv[1] : NULL);
 	svndump_deinit();

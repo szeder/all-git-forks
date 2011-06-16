@@ -40,7 +40,7 @@ static int apply_delta(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	if (argc == 2) {
-		if (svndump_init(argv[1]))
+		if (svndump_init(argv[1], "refs/heads/master"))
 			return 1;
 		svndump_read(NULL);
 		svndump_deinit();

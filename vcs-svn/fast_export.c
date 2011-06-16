@@ -19,6 +19,7 @@
 static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
+static struct strbuf branch_name = STRBUF_INIT;
 
 /* NEEDSWORK: move to fast_export_init() */
 static int init_postimage(void)
@@ -39,8 +40,9 @@ static int init_report_buffer(int fd)
 	return buffer_fdinit(&report_buffer, fd);
 }
 
-void fast_export_init(int fd)
+void fast_export_init(int fd, const char* branch)
 {
+	strbuf_addstr(&branch_name, branch);
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
 }
@@ -98,7 +100,7 @@ void fast_export_begin_commit(uint32_t revision, const char *author,
 	} else {
 		*gitsvnline = '\0';
 	}
-	printf("commit refs/heads/master\n");
+	printf("commit %s\n", branch_name.buf);
 	printf("mark :%"PRIu32"\n", revision);
 	printf("committer %s <%s@%s> %ld +0000\n",
 		   *author ? author : "nobody",
