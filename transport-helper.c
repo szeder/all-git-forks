@@ -16,6 +16,7 @@ struct helper_data {
 	const char *name;
 	struct child_process *helper;
 	FILE *out;
+	int backflow_pipe[2];
 	unsigned fetch : 1,
 		import : 1,
 		export : 1,
@@ -92,6 +93,8 @@ static void do_take_over(struct transport *transport)
 	data = (struct helper_data *)transport->data;
 	transport_take_over(transport, data->helper);
 	fclose(data->out);
+	close(data->backflow_pipe[0]);
+	close(data->backflow_pipe[1]);
 	free(data);
 }
 
@@ -120,6 +123,24 @@ static struct child_process *get_helper(struct transport *transport)
 	helper->argv[2] = remove_ext_force(transport->url);
 	helper->git_cmd = 0;
 	helper->silent_exec_failure = 1;
+
+	/*
+	 * Set up backflow pipe, read end must be file descriptor 3.
+	 * This must be done before spawning a helper process, so it
+	 * will inherit descriptor 3, and before using new descriptors
+	 * so that number 3 is available.
+	 */
+	if (fcntl(3, F_GETFD) >= 0 || errno != EBADF)
+		die("Oops: file descriptor number 3 isn't available (for a backflow pipe)");
+	if (dup2(2, 3) < 0)
+		die_errno("Can't dup2 stderr");
+	if (pipe(data->backflow_pipe) < 0)
+		die_errno("Can't create backflow pipe");
+	if (dup2(data->backflow_pipe[0], 3) < 0)
+		die_errno("Can't dup2 backflow pipe read end to descriptor 3");
+	close(data->backflow_pipe[0]);
+	data->backflow_pipe[0] = 3;
+
 	code = start_command(helper);
 	if (code < 0 && errno == ENOENT)
 		die("Unable to find remote helper for '%s'", data->name);
@@ -215,6 +236,8 @@ static int disconnect_helper(struct transport *transport)
 		close(data->helper->in);
 		close(data->helper->out);
 		fclose(data->out);
+		close(data->backflow_pipe[0]);
+		close(data->backflow_pipe[1]);
 		finish_command(data->helper);
 		free((char *)data->helper->argv[0]);
 		free(data->helper->argv);
@@ -349,12 +372,16 @@ static int fetch_with_fetch(struct transport *transport,
 
 static int get_importer(struct transport *transport, struct child_process *fastimport)
 {
+	char buf[32];
+	struct helper_data *data = transport->data;
 	struct child_process *helper = get_helper(transport);
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
-	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
+	fastimport->argv = xcalloc(6, sizeof(*fastimport->argv));
 	fastimport->argv[0] = "fast-import";
 	fastimport->argv[1] = "--quiet";
+	snprintf(buf, 32, "--cat-blob-fd=%d", data->backflow_pipe[1]);
+	fastimport->argv[2] = buf;
 
 	fastimport->git_cmd = 1;
 	return start_command(fastimport);
