@@ -28,6 +28,7 @@ test_expect_success setup '
 test_expect_success push '
 	(
 		cd work &&
+		bash &&
 		git push ../pub.git master
 	)
 '

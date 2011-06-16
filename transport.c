@@ -793,6 +793,9 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.dry_run = !!(flags & TRANSPORT_PUSH_DRY_RUN);
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
 
+	printf("I was here !\n");
+	exit(1);
+
 	ret = send_pack(&args, data->fd, data->conn, remote_refs,
 			&data->extra_have);
 
@@ -1040,6 +1043,17 @@ int transport_push(struct transport *transport,
 		set_ref_status_for_push(remote_refs,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
+
+		struct ref *ref = remote_refs;
+		for (; ref; ref = ref->next) {
+			struct strbuf old = STRBUF_INIT;
+			struct strbuf new = STRBUF_INIT;
+			strbuf_addstr(&old, find_unique_abbrev(ref->old_sha1, DEFAULT_ABBREV));
+			strbuf_addstr(&new, find_unique_abbrev(ref->new_sha1, DEFAULT_ABBREV));
+			printf("pushing: %s %s..%s\n", ref->name, old.buf, new.buf);
+			strbuf_release(&old);
+			strbuf_release(&new);
+		}
 
 		push_ret = transport->push_refs(transport, remote_refs, flags);
 		err = push_had_errors(remote_refs);
