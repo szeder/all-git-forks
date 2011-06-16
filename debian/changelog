@@ -13,7 +13,7 @@ git (1:1.7.2.5-2.1) experimental; urgency=low
     * debian/git-daemon-sysvinit.README.Debian: new; explain how to get
       started.
     * debian/git-daemon-sysvinit.conffiles: new; treat
-      /etc/default/git-daemon as a conffile.
+      /etc/default/git-daemon, /etc/init.d/git-daemon as conffiles.
     * debian/git-daemon-sysvinit.postinst: new; add gitdaemon system
       user; register and invoke init script to start git-daemon.
     * debian/git-daemon-sysvinit.prerm: new; stops git-daemon.
