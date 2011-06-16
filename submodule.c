@@ -14,7 +14,6 @@ static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static struct string_list changed_submodule_paths;
-static int found_unpushed_submodules;
 
 static int add_submodule_odb(const char *path)
 {
@@ -311,9 +310,11 @@ static int is_submodule_commit_pushed(const char *path, const unsigned char sha1
 static int examine_tree(const unsigned char *sha1, const char *base, int baselen, 
 		const char *pathname, unsigned mode, int stage, void *context)
 {
+	int *found_unpushed_submodules = context;
+
 	if (S_ISGITLINK(mode)) {
 		if(is_submodule_commit_pushed(pathname,sha1))
-			found_unpushed_submodules = 1;
+			*found_unpushed_submodules = 1;
 		return 0;
 	}
 	return READ_TREE_RECURSIVE;
@@ -326,14 +327,15 @@ int is_submodules_pushed()
 	struct tree *tree;
 	struct commit * c;
 	struct pathspec pathspec;
-	found_unpushed_submodules = 0;
-       
+	int found_unpushed_submodules = 0;
+
 	c = lookup_commit_reference_by_name("HEAD");
 	sha1 = c->object.sha1;
 	tree = parse_tree_indirect(sha1);
 
 	init_pathspec(&pathspec, NULL);
-	read_tree_recursive(tree, "", 0, 0, &pathspec, examine_tree, NULL);
+	read_tree_recursive(tree, "", 0, 0, &pathspec, examine_tree,
+			&found_unpushed_submodules);
 
 	return found_unpushed_submodules;
 }
