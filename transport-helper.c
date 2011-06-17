@@ -24,6 +24,7 @@ struct helper_data {
 		push : 1,
 		connect : 1,
 		no_disconnect_req : 1;
+		backflow_accepted : 1;
 	/* These go from remote name (as in "list") to private name */
 	struct refspec *refspecs;
 	int refspec_nr;
@@ -97,6 +98,9 @@ static void do_take_over(struct transport *transport)
 	close(data->backflow_pipe[1]);
 	free(data);
 }
+
+static int set_helper_option(struct transport *transport,
+			  const char *name, const char *value);
 
 static struct child_process *get_helper(struct transport *transport)
 {
@@ -205,6 +209,9 @@ static struct child_process *get_helper(struct transport *transport)
 			    "helper probably needs newer version of Git.\n",
 			    capname);
 		}
+	}
+	if (!set_helper_option(transport, "read-blob-fd", "3")) {
+		data->backflow_accepted = 1;
 	}
 	if (refspecs) {
 		int i;
