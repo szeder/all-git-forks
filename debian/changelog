@@ -6,9 +6,9 @@ git (1:1.7.2.5-2.1) experimental; urgency=low
       Depends: adduser; Conflicts: git-daemon-run; package git now
       Suggests and git-all Recommends: git-daemon-run |
       git-daemon-sysvinit.
-    * debian/git-daemon/sysvinit: new; script to start or stop
+    * debian/git-daemon.init: new; script to start or stop
       git-daemon.
-    * debian/git-daemon/default: new; provide some default settings and
+    * debian/git-daemon.default: new; provide some default settings and
       disable the daemon by default on first installation.
     * debian/git-daemon-sysvinit.README.Debian: new; explain how to get
       started.

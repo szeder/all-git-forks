@@ -170,10 +170,10 @@ install-indep: build-arch-stamp build-indep-stamp
 	# git-daemon-sysvinit
 	rm -rf '$(GIT)'-daemon-sysvinit
 	install -d -m0755 '$(GIT)'-daemon-sysvinit/etc/init.d
-	install -m0755 debian/git-daemon/sysvinit \
+	install -m0755 debian/git-daemon.init \
 	  '$(GIT)'-daemon-sysvinit/etc/init.d/git-daemon
 	install -d -m0755 '$(GIT)'-daemon-sysvinit/etc/default
-	install -m0644 debian/git-daemon/default \
+	install -m0644 debian/git-daemon.default \
 	  '$(GIT)'-daemon-sysvinit/etc/default/git-daemon
 	# git-gui
 	rm -rf '$(GIT)'-gui
