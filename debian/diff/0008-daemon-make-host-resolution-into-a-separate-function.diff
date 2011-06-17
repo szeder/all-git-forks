@@ -1,4 +1,4 @@
-From 12f72e3afab68ed887653308b4339086a5b02c7e Mon Sep 17 00:00:00 2001
+From 00c140e64491837197dd87d1ae46faad9fbec31c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
 Subject: daemon: make host resolution into a separate function

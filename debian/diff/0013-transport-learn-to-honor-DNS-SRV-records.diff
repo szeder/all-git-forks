@@ -1,4 +1,4 @@
-From e8c78e4bb4dccd0f11a20b9b22f3cb89b9ce5c2d Mon Sep 17 00:00:00 2001
+From c62979f97575f4ef1902f5bdc05cd800d9367a46 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: learn to honor DNS SRV records

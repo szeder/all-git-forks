@@ -1,4 +1,4 @@
-From 771c18ae4a945ae955a5571fc9afe183f18a3adb Mon Sep 17 00:00:00 2001
+From 5deaebaa8715ac2d8d0fa69a1e22267b813a8410 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host to tcp.c

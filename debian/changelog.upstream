@@ -1,3 +1,13 @@
+Version v1.7.6-rc2; changes since v1.7.6-rc1:
+---------------------------------------------
+
+Jonathan Nieder (1):
+      gitweb: do not misparse nonnumeric content tag files that contain a digit
+
+Junio C Hamano (1):
+      Git 1.7.6-rc2
+
+
 Version v1.7.6-rc1; changes since v1.7.6-rc0:
 ---------------------------------------------
 
