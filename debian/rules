@@ -74,9 +74,9 @@ clean: deb-checkdir
 	rm -rf '$(TMP)'
 	rm -f patch-stamp build-arch-stamp build-indep-stamp
 	rm -rf '$(GIT)' '$(GIT)'-doc '$(GIT)'-arch '$(GIT)'-cvs
-	rm -rf '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-daemon-run '$(GIT)'-gui
+	rm -rf '$(GIT)'-svn '$(GIT)'-email '$(GIT)'-el
+	rm -rf '$(GIT)'-daemon-run '$(GIT)'-daemon-sysvinit '$(GIT)'-gui
 	rm -rf '$(GIT)'k '$(GIT)'web '$(GIT)'-all '$(GIT)'-man '$(GIT)'-core
-	rm -rf '$(GIT)'-el
 	rm -f debian/files debian/substvars changelog
 
 install: install-arch install-indep
@@ -197,6 +197,18 @@ install-indep-real: build-arch-stamp build-indep-stamp
 	  '$(GIT)'-daemon-run/etc/sv/git-daemon/run
 	install -m0755 debian/git-daemon/log/run \
 	  '$(GIT)'-daemon-run/etc/sv/git-daemon/log/run
+	# git-daemon-sysvinit
+	rm -rf '$(GIT)'-daemon-sysvinit
+	install -d -m0755 '$(GIT)'-daemon-sysvinit/etc/init.d
+	install -m0755 debian/git-daemon.init \
+	  '$(GIT)'-daemon-sysvinit/etc/init.d/git-daemon
+	install -d -m0755 '$(GIT)'-daemon-sysvinit/etc/default
+	install -m0644 debian/git-daemon.default \
+	  '$(GIT)'-daemon-sysvinit/etc/default/git-daemon
+	install -d -m0755 '$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit
+	>'$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit/sentinel
+	chmod 0644 \
+	  '$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit/sentinel
 	# git-el
 	rm -rf '$(GIT)'-el
 	install -m0644 -D debian/git-el.emacsen-startup \
@@ -271,11 +283,12 @@ binary-arch: install-arch git.deb
 	dpkg-gencontrol -isp -pgit -P'$(GIT)'
 	dpkg -b '$(GIT)' ..
 binary-indep: install-indep git-doc.deb git-arch.deb git-cvs.deb git-svn.deb \
-	  git-daemon-run.deb git-email.deb git-gui.deb gitk.deb gitweb.deb \
+	  git-daemon-run.deb git-daemon-sysvinit.deb \
+	  git-email.deb git-gui.deb gitk.deb gitweb.deb \
 	  git-all.deb git-el.deb git-man.deb git-core.deb-DEBIAN
 	rm -f debian/substvars
-	for i in -doc -arch -cvs -svn -daemon-run -email -gui k web -all \
-	 -core -el -man; do \
+	for i in -doc -arch -cvs -svn -daemon-run -daemon-sysvinit \
+	 -email -gui k web -all -core -el -man; do \
 	  dpkg-gencontrol -isp -pgit$$i -P'$(GIT)'$$i && \
 	  dpkg -b '$(GIT)'$$i .. || exit 1; \
 	done
