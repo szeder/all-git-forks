@@ -19,6 +19,16 @@ git (1:1.7.6~rc1-1.1) experimental; urgency=low
     * debian/git-daemon-sysvinit.prerm: new; stops git-daemon.
     * debian/git-daemon-sysvinit.postrm: new; unregisters init script.
 
+  [ Jonathan Nieder ]
+  * debian/diff/:
+    * 0009-daemon-move-...diff, 0011-tcp-...diff: move fallback
+      definition of HOST_NAME_MAX to new use sites (fixes FTBFS on
+      kfreebsd).
+    * 0012-transport-learn-to-honor...diff: rename to 0013-*.
+    * 0012-daemon-check-for-errors-retrieving-canonical-IP-addre.diff:
+      new; daemon: check for errors when retrieving IP address for use
+      by the --interpolated-path feature.
+
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 16 Jun 2011 22:06:30 -0500
 
 git (1:1.7.6~rc1-1) experimental; urgency=low

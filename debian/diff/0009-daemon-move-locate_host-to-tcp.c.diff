@@ -1,4 +1,4 @@
-From a6501669b8528cd8e987edd049c48ab86b5a2c06 Mon Sep 17 00:00:00 2001
+From 771c18ae4a945ae955a5571fc9afe183f18a3adb Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: daemon: move locate_host to tcp.c
@@ -9,10 +9,10 @@ can learn from each other and perhaps share code in the future.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |    2 +-
- daemon.c |   62 ++------------------------------------------------------------
- tcp.c    |   53 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- tcp.h    |    3 +++
- 4 files changed, 59 insertions(+), 61 deletions(-)
+ daemon.c |   66 +------------------------------------------------------------
+ tcp.c    |   57 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tcp.h    |    3 ++
+ 4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
 index fa3a47f..df84157 100644
@@ -28,17 +28,26 @@ index fa3a47f..df84157 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/daemon.c b/daemon.c
-index 3958cb6..3261616 100644
+index 3958cb6..15f95d5 100644
 --- a/daemon.c
 +++ b/daemon.c
-@@ -1,5 +1,6 @@
+@@ -1,14 +1,11 @@
  #include "cache.h"
  #include "pkt-line.h"
 +#include "tcp.h"
  #include "exec_cmd.h"
  #include "run-command.h"
  #include "strbuf.h"
-@@ -432,65 +433,6 @@ static void parse_host_and_port(char *hostport, char **host,
+ #include "string-list.h"
+ 
+-#ifndef HOST_NAME_MAX
+-#define HOST_NAME_MAX 256
+-#endif
+-
+ #ifndef NI_MAXSERV
+ #define NI_MAXSERV 32
+ #endif
+@@ -432,65 +429,6 @@ static void parse_host_and_port(char *hostport, char **host,
  	}
  }
  
@@ -104,7 +113,7 @@ index 3958cb6..3261616 100644
  /*
   * Read the host as supplied by the client connection.
   */
-@@ -530,7 +472,7 @@ static void parse_host_arg(char *extra_args, int buflen)
+@@ -530,7 +468,7 @@ static void parse_host_arg(char *extra_args, int buflen)
  	 * if possible.
  	 */
  	if (hostname)
@@ -114,10 +123,21 @@ index 3958cb6..3261616 100644
  
  
 diff --git a/tcp.c b/tcp.c
-index 89f5c62..2cb90db 100644
+index 89f5c62..69da17a 100644
 --- a/tcp.c
 +++ b/tcp.c
-@@ -97,6 +97,34 @@ static const char *ai_name(const struct addrinfo *ai)
+@@ -1,6 +1,10 @@
+ #include "cache.h"
+ #include "run-command.h"
+ 
++#ifndef HOST_NAME_MAX
++#define HOST_NAME_MAX 256
++#endif
++
+ #define STR_(s)	# s
+ #define STR(s)	STR_(s)
+ 
+@@ -97,6 +101,34 @@ static const char *ai_name(const struct addrinfo *ai)
  	return addr;
  }
  
@@ -152,7 +172,7 @@ index 89f5c62..2cb90db 100644
  /*
   * Returns a connected socket() fd, or else die()s.
   */
-@@ -162,6 +190,31 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -162,6 +194,31 @@ static int git_tcp_connect_sock(char *host, int flags)
  
  #else /* NO_IPV6 */
  
@@ -199,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.6.rc0
+1.7.6.rc1
 

@@ -1,4 +1,4 @@
-From 15bb0aa78cab524d422d23b198f347fabe3afcab Mon Sep 17 00:00:00 2001
+From e8c78e4bb4dccd0f11a20b9b22f3cb89b9ce5c2d Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: learn to honor DNS SRV records
@@ -387,7 +387,7 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index aacc2d1..de90991 100644
+index 2707c49..fa747e3 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,5 +1,6 @@
@@ -397,7 +397,7 @@ index aacc2d1..de90991 100644
  
  #ifndef NO_IPV6
  #include "dns-ipv6.h"
-@@ -120,49 +121,74 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -122,49 +123,74 @@ void git_locate_host(const char *hostname, char **ip_address,
  static int git_tcp_connect_sock(char *host, int flags)
  {
  	int sockfd = -1, saved_errno = 0;
@@ -503,7 +503,7 @@ index aacc2d1..de90991 100644
  
  	if (sockfd < 0)
  		die("unable to connect a socket (%s)", strerror(saved_errno));
-@@ -170,6 +196,11 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -172,6 +198,11 @@ static int git_tcp_connect_sock(char *host, int flags)
  	if (flags & CONNECT_VERBOSE)
  		fprintf(stderr, "done.\n");
  
@@ -516,5 +516,5 @@ index aacc2d1..de90991 100644
  }
  
 -- 
-1.7.6.rc0
+1.7.6.rc1
 

@@ -62,5 +62,5 @@ index 94e26ed..3054df9 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.6.rc0
+1.7.6.rc1
 

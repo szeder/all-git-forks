@@ -48,5 +48,5 @@ index 35a6f26..193025c 100644
  	if (!strchr(git_default_email+len, '.')) {
  		struct hostent *he = gethostbyname(git_default_email + len);
 -- 
-1.7.6.rc0
+1.7.6.rc1
 

@@ -1,4 +1,4 @@
-From ca8b2377ed55ff656f9542788b410edf4817d816 Mon Sep 17 00:00:00 2001
+From 024f57ed824e62b453324803eea17f5893ac7311 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths
@@ -33,11 +33,11 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile   |    5 ++
  dns-ipv4.c |   33 +++++++++++
- dns-ipv4.h |   65 ++++++++++++++++++++++
- dns-ipv6.c |   45 +++++++++++++++
+ dns-ipv4.h |   69 +++++++++++++++++++++++
+ dns-ipv6.c |   49 ++++++++++++++++
  dns-ipv6.h |   31 ++++++++++
- tcp.c      |  180 +++++++++++-------------------------------------------------
- 6 files changed, 211 insertions(+), 148 deletions(-)
+ tcp.c      |  180 ++++++++++--------------------------------------------------
+ 6 files changed, 217 insertions(+), 150 deletions(-)
  create mode 100644 dns-ipv4.c
  create mode 100644 dns-ipv4.h
  create mode 100644 dns-ipv6.c
@@ -100,12 +100,16 @@ index 0000000..39849c3
 +}
 diff --git a/dns-ipv4.h b/dns-ipv4.h
 new file mode 100644
-index 0000000..ef7208f
+index 0000000..4d03d9c
 --- /dev/null
 +++ b/dns-ipv4.h
-@@ -0,0 +1,65 @@
+@@ -0,0 +1,69 @@
 +#ifndef DNS_IPV4_H
 +#define DNS_IPV4_H
++
++#ifndef HOST_NAME_MAX
++#define HOST_NAME_MAX 256
++#endif
 +
 +struct ipv4_address {
 +	char **ap;
@@ -171,12 +175,16 @@ index 0000000..ef7208f
 +#endif
 diff --git a/dns-ipv6.c b/dns-ipv6.c
 new file mode 100644
-index 0000000..b5f298a
+index 0000000..f446ba1
 --- /dev/null
 +++ b/dns-ipv6.c
-@@ -0,0 +1,45 @@
+@@ -0,0 +1,49 @@
 +#include "cache.h"
 +#include "dns-ipv6.h"
++
++#ifndef HOST_NAME_MAX
++#define HOST_NAME_MAX 256
++#endif
 +
 +const char *dns_name(const resolved_address *i)
 +{
@@ -258,23 +266,23 @@ index 0000000..339877f
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index 9916272..aacc2d1 100644
+index a838b9f..aacc2d1 100644
 --- a/tcp.c
 +++ b/tcp.c
-@@ -1,6 +1,12 @@
+@@ -1,8 +1,10 @@
  #include "cache.h"
  #include "run-command.h"
  
+-#ifndef HOST_NAME_MAX
+-#define HOST_NAME_MAX 256
 +#ifndef NO_IPV6
 +#include "dns-ipv6.h"
 +#else
 +#include "dns-ipv4.h"
-+#endif
-+
- #define STR_(s)	# s
- #define STR(s)	STR_(s)
+ #endif
  
-@@ -85,44 +91,27 @@ static void get_host_and_port(char **host, const char **port)
+ #define STR_(s)	# s
+@@ -89,44 +91,27 @@ static void get_host_and_port(char **host, const char **port)
  	}
  }
  
@@ -332,7 +340,7 @@ index 9916272..aacc2d1 100644
  }
  
  /*
-@@ -132,52 +121,48 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -136,52 +121,48 @@ static int git_tcp_connect_sock(char *host, int flags)
  {
  	int sockfd = -1, saved_errno = 0;
  	const char *port = STR(DEFAULT_GIT_PORT);
@@ -398,7 +406,7 @@ index 9916272..aacc2d1 100644
  
  	if (sockfd < 0)
  		die("unable to connect a socket (%s)", strerror(saved_errno));
-@@ -188,107 +173,6 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -192,107 +173,6 @@ static int git_tcp_connect_sock(char *host, int flags)
  	return sockfd;
  }
  
@@ -507,5 +515,5 @@ index 9916272..aacc2d1 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.6.rc0
+1.7.6.rc1
 
