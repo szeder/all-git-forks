@@ -112,6 +112,7 @@ static struct child_process *get_helper(struct transport *transport)
 	int refspec_alloc = 0;
 	int duped;
 	int code;
+	char fdbuf[32];
 
 	if (data->helper)
 		return data->helper;
@@ -129,21 +130,11 @@ static struct child_process *get_helper(struct transport *transport)
 	helper->silent_exec_failure = 1;
 
 	/*
-	 * Set up backflow pipe, read end must be file descriptor 3.
-	 * This must be done before spawning a helper process, so it
-	 * will inherit descriptor 3, and before using new descriptors
-	 * so that number 3 is available.
+	 * Set up backflow pipe. This must be done before spawning a helper process,
+	 * so it will inherit descriptor.
 	 */
-	if (fcntl(3, F_GETFD) >= 0 || errno != EBADF)
-		die("Oops: file descriptor number 3 isn't available (for a backflow pipe)");
-	if (dup2(2, 3) < 0)
-		die_errno("Can't dup2 stderr");
 	if (pipe(data->backflow_pipe) < 0)
 		die_errno("Can't create backflow pipe");
-	if (dup2(data->backflow_pipe[0], 3) < 0)
-		die_errno("Can't dup2 backflow pipe read end to descriptor 3");
-	close(data->backflow_pipe[0]);
-	data->backflow_pipe[0] = 3;
 
 	code = start_command(helper);
 	if (code < 0 && errno == ENOENT)
@@ -210,7 +201,8 @@ static struct child_process *get_helper(struct transport *transport)
 			    capname);
 		}
 	}
-	if (!set_helper_option(transport, "read-blob-fd", "3")) {
+	snprintf(fdbuf, 32, "%d", data->backflow_pipe[0]);
+	if (!set_helper_option(transport, "read-blob-fd", fdbuf)) {
 		data->backflow_accepted = 1;
 	}
 	if (refspecs) {
