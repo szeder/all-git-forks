@@ -175,6 +175,10 @@ install-indep: build-arch-stamp build-indep-stamp
 	install -d -m0755 '$(GIT)'-daemon-sysvinit/etc/default
 	install -m0644 debian/git-daemon.default \
 	  '$(GIT)'-daemon-sysvinit/etc/default/git-daemon
+	install -d -m0755 '$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit
+	>'$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit/sentinel
+	chmod 0644 \
+	  '$(GIT)'-daemon-sysvinit/usr/share/git-core/sysvinit/sentinel
 	# git-gui
 	rm -rf '$(GIT)'-gui
 	install -d -m0755 '$(GIT)'-gui/usr/lib/git-core
