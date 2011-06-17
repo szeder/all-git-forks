@@ -26,9 +26,10 @@ SCRIPTNAME=/etc/init.d/$NAME
 [ -r /etc/default/$NAME ] && . /etc/default/$NAME
 
 GIT_DAEMON_USER=${GIT_DAEMON_USER:-gitdaemon}
+GIT_DAEMON_BASE_PATH=${GIT_DAEMON_BASE_PATH:-/var/cache}
 GIT_DAEMON_DIRECTORY=${GIT_DAEMON_DIRECTORY:-/var/cache/git}
 
-DAEMON_ARGS="--user=$GIT_DAEMON_USER --pid-file=$PIDFILE --reuseaddr --syslog --verbose $GIT_DAEMON_OPTIONS --base-path=$GIT_DAEMON_DIRECTORY $GIT_DAEMON_DIRECTORY"
+DAEMON_ARGS="--user=$GIT_DAEMON_USER --pid-file=$PIDFILE --reuseaddr --syslog --verbose $GIT_DAEMON_OPTIONS --base-path=$GIT_DAEMON_BASE_PATH $GIT_DAEMON_DIRECTORY"
 
 # Load the VERBOSE setting and other rcS variables
 . /lib/init/vars.sh
