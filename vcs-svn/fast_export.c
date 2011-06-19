@@ -32,6 +32,8 @@ static int init_postimage(void)
 
 void fast_export_init(int fd, const char* branch)
 {
+	first_commit_done = 0;
+	strbuf_reset(&branch_name);
 	strbuf_addstr(&branch_name, branch);
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
@@ -45,7 +47,9 @@ void fast_export_deinit(void)
 
 void fast_export_reset(void)
 {
+	first_commit_done = 0;
 	buffer_reset(&report_buffer);
+	strbuf_reset(&branch_name);
 }
 
 void fast_export_delete(const char *path)
