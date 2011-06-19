@@ -128,6 +128,38 @@ def run_command (args, cwd = None, shell = False, add_env = None,
     return (exit_code, output, errors)
 
 
+# from python2.7:subprocess.py
+def call(*popenargs, **kwargs):
+    """Run command with arguments.  Wait for command to complete, then
+    return the returncode attribute.
+
+    The arguments are the same as for the Popen constructor.  Example:
+
+    retcode = call(["ls", "-l"])
+    """
+    return subprocess.Popen(*popenargs, **kwargs).wait()
+
+
+# from python2.7:subprocess.py
+def check_call(*popenargs, **kwargs):
+    """Run command with arguments.  Wait for command to complete.  If
+    the exit code was zero then return, otherwise raise
+    CalledProcessError.  The CalledProcessError object will have the
+    return code in the returncode attribute.
+
+    The arguments are the same as for the Popen constructor.  Example:
+
+    check_call(["ls", "-l"])
+    """
+    retcode = call(*popenargs, **kwargs)
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        raise subprocess.CalledProcessError(retcode, cmd)
+    return 0
+
+
 def file_reader_method (missing_ok = False):
     """Decorator for simplifying reading of files.
 
