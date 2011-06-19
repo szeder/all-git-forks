@@ -8,9 +8,9 @@
 
 int main(int argc, char **argv)
 {
-	if (svndump_init(NULL))
+	if (svndump_init(NULL, (argc > 1) ? argv[1] : NULL))
 		return 1;
-	svndump_read((argc > 1) ? argv[1] : NULL);
+	svndump_read();
 	svndump_deinit();
 	svndump_reset();
 	return 0;

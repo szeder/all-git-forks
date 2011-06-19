@@ -40,9 +40,9 @@ static int apply_delta(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	if (argc == 2) {
-		if (svndump_init(argv[1]))
+		if (svndump_init(argv[1], NULL))
 			return 1;
-		svndump_read(NULL);
+		svndump_read();
 		svndump_deinit();
 		svndump_reset();
 		return 0;
