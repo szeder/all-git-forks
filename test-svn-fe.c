@@ -14,6 +14,8 @@ static const char * const test_svnfe_usage[] = {
 	NULL
 };
 
+static struct svndump_args args;
+
 static int d;
 
 static struct option test_svnfe_options[] = {
@@ -56,9 +58,10 @@ int main(int argc, const char *argv[])
 		return apply_delta(argc, argv);
 
 	if (argc == 1) {
-		if (svndump_init(argv[0]))
+		args.filename = argv[0];
+		if (svndump_init(&args))
 			return 1;
-		svndump_read(NULL);
+		svndump_read();
 		svndump_deinit();
 		svndump_reset();
 		return 0;

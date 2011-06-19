@@ -12,6 +12,7 @@
 #include "fast_export.h"
 #include "line_buffer.h"
 #include "strbuf.h"
+#include "svndump.h"
 
 /*
  * Compare start of string to literal of equal length;
@@ -313,14 +314,13 @@ static void end_revision(void)
 		fast_export_end_commit(rev_ctx.revision);
 }
 
-void svndump_read(const char *url)
+void svndump_read(void)
 {
 	char *val;
 	char *t;
 	uint32_t active_ctx = DUMP_CTX;
 	uint32_t len;
 
-	reset_dump_ctx(url);
 	while ((t = buffer_read_line(&input))) {
 		val = strchr(t, ':');
 		if (!val)
@@ -455,10 +455,10 @@ void svndump_read(const char *url)
 		end_revision();
 }
 
-int svndump_init(const char *filename)
+int svndump_init(const struct svndump_args *args)
 {
-	if (buffer_init(&input, filename))
-		return error("cannot open %s: %s", filename, strerror(errno));
+	if (buffer_init(&input, args->filename))
+		return error("cannot open %s: %s", args->filename, strerror(errno));
 	fast_export_init(REPORT_FILENO);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
@@ -466,7 +466,7 @@ int svndump_init(const char *filename)
 	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(NULL);
+	reset_dump_ctx(args->url);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
