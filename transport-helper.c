@@ -375,8 +375,9 @@ static int get_exporter(struct transport *transport,
 	/* we need to duplicate helper->in because we want to use it after
 	 * fastexport is done with it. */
 	fastexport->out = dup(helper->in);
-	fastexport->argv = xcalloc(4 + revlist_args->nr, sizeof(*fastexport->argv));
+	fastexport->argv = xcalloc(5 + revlist_args->nr, sizeof(*fastexport->argv));
 	fastexport->argv[argc++] = "fast-export";
+	fastexport->argv[argc++] = "--use-done-feature";
 	if (export_marks)
 		fastexport->argv[argc++] = export_marks;
 	if (import_marks)
@@ -412,11 +413,8 @@ static int fetch_with_import(struct transport *transport,
 		sendline(data, &buf);
 		strbuf_reset(&buf);
 	}
-	if (disconnect_helper(transport))
-		die("Error while disconnecting helper");
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
-
 	free(fastimport.argv);
 	fastimport.argv = NULL;
 
@@ -762,8 +760,6 @@ static int push_refs_with_export(struct transport *transport,
 	data->no_disconnect_req = 1;
 	if (finish_command(&exporter))
 		die("Error while running fast-export");
-	if (disconnect_helper(transport))
-		die("Error while disconnecting helper");
 	return 0;
 }
 
