@@ -12,10 +12,10 @@ static const char * const svn_fe_usage[] = {
 	NULL
 };
 
-static const char *url;
+static struct svndump_options options;
 
 static struct option svn_fe_options[] = {
-	OPT_STRING(0, "git-svn-id-url", &url, "url",
+	OPT_STRING(0, "git-svn-id-url", &options.git_svn_url, "url",
 		"add git-svn-id line to log messages, imitating git-svn"),
 	OPT_END()
 };
@@ -28,15 +28,15 @@ int main(int argc, const char **argv)
 		usage_with_options(svn_fe_usage, svn_fe_options);
 
 	if (argc == 1) {
-		if (url)
+		if (options.git_svn_url)
 			usage_msg_opt("git-svn-id-url is set twice: as a "
 					"--parameter and as a [parameter]",
 					svn_fe_usage, svn_fe_options);
-		url = argv[0];
+		options.git_svn_url = argv[0];
 	}
-	if (svndump_init(NULL))
+	if (svndump_init(&options))
 		return 1;
-	svndump_read(url);
+	svndump_read();
 	svndump_deinit();
 	svndump_reset();
 	return 0;
