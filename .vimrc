@@ -1,5 +1,5 @@
 set number
-set smartindent
+"set smartindent
 set showmatch
 set tabstop=4
 
