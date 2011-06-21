@@ -675,20 +675,12 @@ static int cleanup_sequencer_data(void)
 	return 0;
 }
 
-static int pick_commits(struct replay_opts *opts)
+static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 {
-	struct commit_list *todo_list = NULL;
-	unsigned char sha1[20];
 	struct commit_list *cur;
 	int res;
 
-	read_and_refresh_cache(me, opts);
 	setenv(GIT_REFLOG_ACTION, me, 0);
-
-	walk_revs_populate_todo(&todo_list, opts);
-	if (!get_sha1("HEAD", sha1))
-		persist_head(sha1_to_hex(sha1));
-	persist_todo(todo_list, opts);
 
 	for (cur = todo_list; cur; cur = cur->next) {
 		persist_todo(cur, opts);
@@ -700,6 +692,21 @@ static int pick_commits(struct replay_opts *opts)
 	/* Sequence of picks finished successfully; cleanup by
 	   removing the .git/sequencer directory */
 	return cleanup_sequencer_data();
+}
+
+static int process_continuation(struct replay_opts *opts)
+{
+	struct commit_list *todo_list = NULL;
+	unsigned char sha1[20];
+
+	read_and_refresh_cache(me, opts);
+
+	walk_revs_populate_todo(&todo_list, opts);
+	if (!get_sha1("HEAD", sha1))
+		persist_head(sha1_to_hex(sha1));
+	persist_todo(todo_list, opts);
+
+	return pick_commits(todo_list, opts);
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
@@ -714,7 +721,11 @@ int cmd_revert(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	me = "revert";
 	parse_args(argc, argv, &opts);
-	res = pick_commits(&opts);
+
+	/* Decide what to do depending on the arguments; a fresh
+	   cherry-pick should be handled differently from an existing
+	   one that is being continued */
+	res = process_continuation(&opts);
 	if (res > 0)
 		/* Exit status from conflict */
 		return res;
@@ -734,7 +745,7 @@ int cmd_cherry_pick(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	me = "cherry-pick";
 	parse_args(argc, argv, &opts);
-	res = pick_commits(&opts);
+	res = process_continuation(&opts);
 	if (res > 0)
 		return res;
 	if (res < 0)
