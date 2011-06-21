@@ -34,4 +34,18 @@ test_expect_success 'cherry-pick cleans up sequencer directory upon success' '
 	test_path_is_missing .git/sequencer
 '
 
+test_expect_success '--skip-all complains when no cherry-pick is in progress' '
+	pristine_detach initial &&
+	test_must_fail git cherry-pick --skip-all >actual 2>&1 &&
+	test_i18ngrep "error" actual
+'
+
+test_expect_success '--skip-all cleans up sequencer directory' '
+	pristine_detach initial &&
+	head=$(git rev-parse HEAD) &&
+	test_must_fail git cherry-pick base..picked &&
+	git cherry-pick --skip-all &&
+	test_must_fail test -d .git/sequencer
+'
+
 test_done

@@ -113,8 +113,10 @@ test_expect_success '--ignore-space-change makes merge succeed' '
 test_expect_success 'naive cherry-pick fails' '
 	git read-tree --reset -u HEAD &&
 	test_must_fail git cherry-pick --no-commit remote &&
+	git cherry-pick --skip-all &&
 	git read-tree --reset -u HEAD &&
 	test_must_fail git cherry-pick remote &&
+	git cherry-pick --skip-all &&
 	test_must_fail git update-index --refresh &&
 	grep "<<<<<<" text.txt
 '

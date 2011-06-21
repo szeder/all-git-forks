@@ -46,6 +46,9 @@ enum replay_action { REVERT, CHERRY_PICK };
 struct replay_opts {
 	enum replay_action action;
 
+	/* --skip-all */
+	int skipall_oper;
+
 	/* Boolean options */
 	int edit;
 	int record_origin;
@@ -108,6 +111,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	int noop;
 	struct option options[] = {
+		OPT_BOOLEAN(0, "skip-all", &opts->skipall_oper, "skip remaining instructions"),
 		OPT_BOOLEAN('n', "no-commit", &opts->no_commit, "don't automatically commit"),
 		OPT_BOOLEAN('e', "edit", &opts->edit, "edit the commit message"),
 		{ OPTION_BOOLEAN, 'r', NULL, &noop, NULL, "no-op (backward compatibility)",
@@ -136,7 +140,21 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 	opts->commit_argc = parse_options(argc, argv, NULL, options, usage_str,
 					PARSE_OPT_KEEP_ARGV0 |
 					PARSE_OPT_KEEP_UNKNOWN);
-	if (opts->commit_argc < 2)
+
+	/* Check for incompatible command line arguments */
+	if (opts->skipall_oper) {
+		verify_opt_compatible(me, "--skip-all",
+				"--no-commit", opts->no_commit,
+				"--signoff", opts->signoff,
+				"--mainline", opts->mainline,
+				"--strategy", opts->strategy ? 1 : 0,
+				"--strategy-option", opts->xopts ? 1 : 0,
+				"-x", opts->record_origin,
+				"--ff", opts->allow_ff,
+				NULL);
+	}
+
+	else if (opts->commit_argc < 2)
 		usage_with_options(usage_str, options);
 
 	if (opts->allow_ff)
@@ -624,12 +642,9 @@ static void persist_head(const char *head)
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
-	if (file_exists(SEQ_DIR)) {
-		if (!is_directory(SEQ_DIR) && remove_path(SEQ_DIR) < 0) {
-			strbuf_release(&buf);
-			die(_("Could not remove %s"), SEQ_DIR);
-		}
-	} else {
+	if (file_exists(SEQ_DIR))
+		die(_("%s already exists.  Please examine and remove before continuing."), SEQ_DIR);
+	else {
 		if (mkdir(SEQ_DIR, 0777) < 0) {
 			strbuf_release(&buf);
 			die_errno(_("Could not create sequencer directory '%s'."), SEQ_DIR);
@@ -701,12 +716,28 @@ static int process_continuation(struct replay_opts *opts)
 
 	read_and_refresh_cache(me, opts);
 
-	walk_revs_populate_todo(&todo_list, opts);
-	if (!get_sha1("HEAD", sha1))
-		persist_head(sha1_to_hex(sha1));
-	persist_todo(todo_list, opts);
+	if (opts->skipall_oper) {
+		if (!file_exists(TODO_FILE))
+			goto error;
+		return cleanup_sequencer_data();
+	} else {
+		/* Start a new cherry-pick/ revert sequence; but
+		   first, make sure that an existing one isn't in
+		   progress */
+		if (file_exists(TODO_FILE)) {
+			error(_("A %s is already in progress"), me);
+			advise(_("Use %s --skip-all to forget about it"), me);
+			return -1;
+		}
 
+		walk_revs_populate_todo(&todo_list, opts);
+		if (!get_sha1("HEAD", sha1))
+			persist_head(sha1_to_hex(sha1));
+		persist_todo(todo_list, opts);
+	}
 	return pick_commits(todo_list, opts);
+error:
+	return error(_("No %s in progress"), me);
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
