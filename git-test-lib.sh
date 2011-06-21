@@ -10,7 +10,7 @@ __GIT_ASSERT_LIB_INCLUDED=t
 
 is_a_function()
 {
-    test "$(type $1 2>/dev/null | sed -n "s/is a .*function/is a function/p")" == "$1 is a function"
+    test "$(type $1 2>/dev/null | sed -n "s/is a .*function/is a function/p")" = "$1 is a function"
 }
 
 if ! is_a_function die
