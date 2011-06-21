@@ -16,6 +16,7 @@ atomic()
 
     STASH=$(git stash create) || setup_failed "failed to stash"
     REF=$(git rev-parse --symbolic-full-name HEAD) || setup_failed "failed to acquire REF"
+    REBASE_DIR=$(git rev-parse --git-dir)/rebase-apply
     REBASE_COUNT=1
     test_condition -q --rebasing || REBASE_COUNT=0
 
