@@ -4,6 +4,7 @@
 [color]
 	status = always
 	branch = always
+    diff = always
 [core]
 	editor = vim -c \"set fenc=utf-8\"
 	pager = less
