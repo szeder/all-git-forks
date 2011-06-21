@@ -48,4 +48,32 @@ test_expect_success '--skip-all cleans up sequencer directory' '
 	test_must_fail test -d .git/sequencer
 '
 
+test_expect_success '--continue complains when no cherry-pick is in progress' '
+	pristine_detach initial &&
+	test_must_fail git cherry-pick --continue >actual 2>&1 &&
+	test_i18ngrep "error" actual
+'
+
+test_expect_success '--continue complains when there are unresolved conflicts' '
+	pristine_detach initial &&
+	head=$(git rev-parse HEAD) &&
+	test_must_fail git cherry-pick base..picked &&
+	test_must_fail git cherry-pick --continue &&
+	git cherry-pick --skip-all
+'
+
+test_expect_success '--continue continues after conflicts are resolved' '
+	pristine_detach initial &&
+	head=$(git rev-parse HEAD) &&
+	test_must_fail git cherry-pick base..picked &&
+	echo "resolved" >foo &&
+	git add foo &&
+	git commit &&
+	git cherry-pick --continue &&
+	test_must_fail test -d .git/sequencer &&
+	git rev-list --count HEAD >actual &&
+	echo 3 >expect &&
+	test_cmp expect actual
+'
+
 test_done

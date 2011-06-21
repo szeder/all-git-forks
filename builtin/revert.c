@@ -46,8 +46,9 @@ enum replay_action { REVERT, CHERRY_PICK };
 struct replay_opts {
 	enum replay_action action;
 
-	/* --skip-all */
+	/* --skip-all and --continue */
 	int skipall_oper;
+	int continue_oper;
 
 	/* Boolean options */
 	int edit;
@@ -106,12 +107,37 @@ static void verify_opt_compatible(const char *me, const char *base_opt, ...)
 	va_end(ap);
 }
 
+static void verify_opt_mutually_compatible(const char *me, ...)
+{
+	const char *opt1, *opt2;
+	va_list ap;
+	int set;
+
+	va_start(ap, me);
+	while ((opt1 = va_arg(ap, const char *))) {
+		set = va_arg(ap, int);
+		if (set)
+			break;
+	}
+	if (!opt1)
+		goto ok;
+	while ((opt2 = va_arg(ap, const char *))) {
+		set = va_arg(ap, int);
+		if (set)
+			die(_("%s: %s cannot be used with %s"),
+				me, opt1, opt2);
+	}
+ok:
+	va_end(ap);
+}
+
 static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	int noop;
 	struct option options[] = {
 		OPT_BOOLEAN(0, "skip-all", &opts->skipall_oper, "skip remaining instructions"),
+		OPT_BOOLEAN(0, "continue", &opts->continue_oper, "continue the current operation"),
 		OPT_BOOLEAN('n', "no-commit", &opts->no_commit, "don't automatically commit"),
 		OPT_BOOLEAN('e', "edit", &opts->edit, "edit the commit message"),
 		{ OPTION_BOOLEAN, 'r', NULL, &noop, NULL, "no-op (backward compatibility)",
@@ -141,9 +167,21 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 					PARSE_OPT_KEEP_ARGV0 |
 					PARSE_OPT_KEEP_UNKNOWN);
 
+	/* Check for mutually incompatible command line arguments */
+	verify_opt_mutually_compatible(me,
+				"--skip-all", opts->skipall_oper,
+				"--continue", opts->continue_oper,
+				NULL);
+
 	/* Check for incompatible command line arguments */
-	if (opts->skipall_oper) {
-		verify_opt_compatible(me, "--skip-all",
+	if (opts->skipall_oper || opts->continue_oper) {
+		char *this_oper;
+		if (opts->skipall_oper)
+			this_oper = "--skip-all";
+		else
+			this_oper = "--continue";
+
+		verify_opt_compatible(me, this_oper,
 				"--no-commit", opts->no_commit,
 				"--signoff", opts->signoff,
 				"--mainline", opts->mainline,
@@ -614,6 +652,78 @@ static void format_todo(struct strbuf *buf, struct commit_list *todo_list,
 	}
 }
 
+static void read_populate_todo(struct commit_list **todo_list,
+			struct replay_opts *opts)
+{
+	struct strbuf buf = STRBUF_INIT;
+	enum replay_action action;
+	struct commit *commit;
+	struct commit_list *new_item;
+	struct commit_list *cur = NULL;
+	unsigned char commit_sha1[20];
+	char sha1_abbrev[40];
+	char *p;
+	int insn_len = 0;
+	char *insn;
+	int fd;
+
+	fd = open(TODO_FILE, O_RDONLY);
+	if (fd < 0) {
+		strbuf_release(&buf);
+		die_errno(_("Could not open %s."), TODO_FILE);
+	}
+	if (strbuf_read(&buf, fd, 0) < buf.len) {
+		close(fd);
+		strbuf_release(&buf);
+		die(_("Could not read %s."), TODO_FILE);
+	}
+	close(fd);
+
+	for (p = buf.buf; *p; p = strchr(p, '\n') + 1) {
+		insn = p;
+		if (!(p = strchr(p, ' ')))
+			goto error;
+		insn_len = p - insn;
+		if (!(p = strchr(p + 1, ' ')))
+			goto error;
+		p += 1;
+		strlcpy(sha1_abbrev, insn + insn_len + 1,
+			p - (insn + insn_len + 1));
+
+		if (!strncmp(insn, "pick", insn_len))
+			action = CHERRY_PICK;
+		else if (!strncmp(insn, "revert", insn_len))
+			action = REVERT;
+		else
+			goto error;
+
+		/* Verify that the action matches up with the one in
+		   opts; we don't support arbitrary instructions */
+		if (action != opts->action)
+			goto error;
+
+		/* Now create a commit corresponding to sha1_abbrev
+		   and put it into the todo_list */
+		if ((get_sha1(sha1_abbrev, commit_sha1) < 0)
+			|| !(commit = lookup_commit_reference(commit_sha1)))
+			goto error;
+		new_item = xmalloc(sizeof(struct commit_list));
+		new_item->item = commit;
+		if (cur)
+			cur->next = new_item;
+		else
+			*todo_list = new_item;
+		cur = new_item;
+	}
+	cur->next = NULL;
+	strbuf_release(&buf);
+
+	return;
+error:
+	strbuf_release(&buf);
+	die(_("Malformed instruction sheet: %s"), TODO_FILE);
+}
+
 static void walk_revs_populate_todo(struct commit_list **todo_list,
 				struct replay_opts *opts)
 {
@@ -720,13 +830,22 @@ static int process_continuation(struct replay_opts *opts)
 		if (!file_exists(TODO_FILE))
 			goto error;
 		return cleanup_sequencer_data();
+	} else if (opts->continue_oper) {
+		if (!file_exists(TODO_FILE))
+			goto error;
+		read_populate_todo(&todo_list, opts);
+
+		/* Verify that the conflict has been resolved */
+		if (!index_differs_from("HEAD", 0))
+			todo_list = todo_list->next;
 	} else {
 		/* Start a new cherry-pick/ revert sequence; but
 		   first, make sure that an existing one isn't in
 		   progress */
 		if (file_exists(TODO_FILE)) {
 			error(_("A %s is already in progress"), me);
-			advise(_("Use %s --skip-all to forget about it"), me);
+			advise(_("Use %s --continue to continue the operation"), me);
+			advise(_("or --skip-all to skip all the remaining instructions"), me);
 			return -1;
 		}
 
