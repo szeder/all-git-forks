@@ -205,9 +205,12 @@ install-html: html
 #
 # Determine "include::" file references in asciidoc files.
 #
-doc.dep : $(wildcard *.txt) build-docdep.perl
+doc.dep : $(wildcard *.txt) build-docdep.perl make-config-list.perl
 	$(QUIET_GEN)$(RM) $@+ $@ && \
 	$(PERL_PATH) ./build-docdep.perl >$@+ $(QUIET_STDERR) && \
+	$(PERL_PATH) ./make-config-list.perl --deps=config-vars.txt \
+		--mainlist=config-vars-src.txt $(MAN_TXT) \
+		>>$@+ $(QUIET_STDERR) && \
 	mv $@+ $@
 
 -include doc.dep
@@ -311,6 +314,11 @@ $(patsubst %.txt,%.texi,$(MAN_TXT)): %.texi : %.xml
 howto-index.txt: howto-index.sh $(wildcard howto/*.txt)
 	$(QUIET_GEN)$(RM) $@+ $@ && \
 	'$(SHELL_PATH_SQ)' ./howto-index.sh $(wildcard howto/*.txt) >$@+ && \
+	mv $@+ $@
+
+config-vars.txt: config-vars-src.txt $(MAN_TXT) make-config-list.perl
+	$(PERL_PATH) ./make-config-list.perl \
+		--mainlist=$< --ignore=$@ $(MAN_TXT) >$@+ && \
 	mv $@+ $@
 
 $(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt
