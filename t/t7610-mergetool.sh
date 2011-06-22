@@ -81,7 +81,7 @@ test_expect_success 'custom mergetool' '
     git checkout -b test1 branch1 &&
     git submodule update -N &&
     test_must_fail git merge master >/dev/null 2>&1 &&
-    ( yes "" | git mergetool file1 >/dev/null 2>&1 ) &&
+    ( yes "" | git mergetool file1 file1 ) &&
     ( yes "" | git mergetool file2 "spaced name" >/dev/null 2>&1 ) &&
     ( yes "" | git mergetool subdir/file3 >/dev/null 2>&1 ) &&
     ( yes "d" | git mergetool file11 >/dev/null 2>&1 ) &&
@@ -181,6 +181,24 @@ test_expect_success 'mergetool skips resolved paths when rerere is active' '
     git submodule update -N &&
     output="$(yes "n" | git mergetool --no-prompt)" &&
     test "$output" = "No files need merging" &&
+    git reset --hard
+'
+
+test_expect_success 'mergetool takes partial path' '
+    git config rerere.enabled false &&
+    git checkout -b test12 branch1 &&
+    git submodule update -N &&
+    test_must_fail git merge master &&
+
+    #shouldnt need these lines
+    #( yes "d" | git mergetool file11 >/dev/null 2>&1 ) &&
+    #( yes "d" | git mergetool file12 >/dev/null 2>&1 ) &&
+    #( yes "l" | git mergetool submod >/dev/null 2>&1 ) &&
+    #( yes "" | git mergetool file1 file2 >/dev/null 2>&1 ) &&
+
+    ( yes "" | git mergetool subdir ) &&
+
+    test "$(cat subdir/file3)" = "master new sub" &&
     git reset --hard
 '
 
@@ -392,7 +410,7 @@ test_expect_success 'directory vs modified submodule' '
     test "$(cat submod/file16)" = "not a submodule" &&
     rm -rf submod.orig &&
 
-    git reset --hard &&
+    git reset --hard >/dev/null 2>&1 &&
     test_must_fail git merge master &&
     test -n "$(git ls-files -u)" &&
     test ! -e submod.orig &&
@@ -404,7 +422,7 @@ test_expect_success 'directory vs modified submodule' '
     ( cd submod && git clean -f && git reset --hard ) &&
     git submodule update -N &&
     test "$(cat submod/bar)" = "master submodule" &&
-    git reset --hard && rm -rf submod-movedaside &&
+    git reset --hard >/dev/null 2>&1 && rm -rf submod-movedaside &&
 
     git checkout -b test11.c master &&
     git submodule update -N &&
@@ -414,7 +432,7 @@ test_expect_success 'directory vs modified submodule' '
     git submodule update -N &&
     test "$(cat submod/bar)" = "master submodule" &&
 
-    git reset --hard &&
+    git reset --hard >/dev/null 2>&1 &&
     git submodule update -N &&
     test_must_fail git merge test11 &&
     test -n "$(git ls-files -u)" &&
@@ -422,7 +440,7 @@ test_expect_success 'directory vs modified submodule' '
     ( yes "r" | git mergetool submod ) &&
     test "$(cat submod/file16)" = "not a submodule" &&
 
-    git reset --hard master &&
+    git reset --hard master >/dev/null 2>&1 &&
     ( cd submod && git clean -f && git reset --hard ) &&
     git submodule update -N
 '
