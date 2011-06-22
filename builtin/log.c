@@ -23,6 +23,7 @@
 /* Set a default date-time format for git log ("log.date" config variable) */
 static const char *default_date_mode = NULL;
 
+static int default_abbrev_commit;
 static int default_show_root = 1;
 static int decoration_style;
 static int decoration_given;
@@ -77,6 +78,7 @@ static void cmd_log_init_defaults(struct rev_info *rev)
 		get_commit_format(fmt_pretty, rev);
 	rev->verbose_header = 1;
 	DIFF_OPT_SET(&rev->diffopt, RECURSIVE);
+	rev->abbrev_commit = default_abbrev_commit;
 	rev->show_root_diff = default_show_root;
 	rev->subject_prefix = fmt_patch_subject_prefix;
 	DIFF_OPT_SET(&rev->diffopt, ALLOW_TEXTCONV);
@@ -92,7 +94,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 	int quiet = 0, source = 0;
 
 	const struct option builtin_log_options[] = {
-		OPT_BOOLEAN(0, "quiet", &quiet, "supress diff output"),
+		OPT_BOOLEAN(0, "quiet", &quiet, "suppress diff output"),
 		OPT_BOOLEAN(0, "source", &source, "show source"),
 		{ OPTION_CALLBACK, 0, "decorate", NULL, NULL, "decorate options",
 		  PARSE_OPT_OPTARG, decorate_callback},
@@ -105,6 +107,8 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 			     PARSE_OPT_KEEP_DASHDASH);
 
 	argc = setup_revisions(argc, argv, rev, opt);
+	if (quiet)
+		rev->diffopt.output_format |= DIFF_FORMAT_NO_OUTPUT;
 
 	/* Any arguments at this point are not recognized */
 	if (argc > 1)
@@ -129,13 +133,16 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 	if (source)
 		rev->show_source = 1;
 
-	/*
-	 * defeat log.decorate configuration interacting with --pretty=raw
-	 * from the command line.
-	 */
-	if (!decoration_given && rev->pretty_given
-	    && rev->commit_format == CMIT_FMT_RAW)
-		decoration_style = 0;
+	if (rev->pretty_given && rev->commit_format == CMIT_FMT_RAW) {
+		/*
+		 * "log --pretty=raw" is special; ignore UI oriented
+		 * configuration variables such as decoration.
+		 */
+		if (!decoration_given)
+			decoration_style = 0;
+		if (!rev->abbrev_commit_given)
+			rev->abbrev_commit = 0;
+	}
 
 	if (decoration_style) {
 		rev->show_decorations = 1;
@@ -323,6 +330,10 @@ static int git_log_config(const char *var, const char *value, void *cb)
 		return git_config_string(&fmt_pretty, var, value);
 	if (!strcmp(var, "format.subjectprefix"))
 		return git_config_string(&fmt_patch_subject_prefix, var, value);
+	if (!strcmp(var, "log.abbrevcommit")) {
+		default_abbrev_commit = git_config_bool(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "log.date"))
 		return git_config_string(&default_date_mode, var, value);
 	if (!strcmp(var, "log.decorate")) {
@@ -365,9 +376,11 @@ int cmd_whatchanged(int argc, const char **argv, const char *prefix)
 static void show_tagger(char *buf, int len, struct rev_info *rev)
 {
 	struct strbuf out = STRBUF_INIT;
+	struct pretty_print_context pp = {0};
 
-	pp_user_info("Tagger", rev->commit_format, &out, buf, rev->date_mode,
-		get_log_output_encoding());
+	pp.fmt = rev->commit_format;
+	pp.date_mode = rev->date_mode;
+	pp_user_info(&pp, "Tagger", &out, buf, get_log_output_encoding());
 	printf("%s", out.buf);
 	strbuf_release(&out);
 }
@@ -516,11 +529,11 @@ int cmd_log_reflog(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&rev, prefix);
 	init_reflog_walk(&rev.reflog_info);
-	rev.abbrev_commit = 1;
 	rev.verbose_header = 1;
 	memset(&opt, 0, sizeof(opt));
 	opt.def = "HEAD";
 	cmd_log_init_defaults(&rev);
+	rev.abbrev_commit = 1;
 	rev.commit_format = CMIT_FMT_ONELINE;
 	rev.use_terminator = 1;
 	rev.always_show_header = 1;
@@ -751,10 +764,8 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 			      int quiet)
 {
 	const char *committer;
-	const char *subject_start = NULL;
 	const char *body = "*** SUBJECT HERE ***\n\n*** BLURB HERE ***\n";
 	const char *msg;
-	const char *extra_headers = rev->extra_headers;
 	struct shortlog log;
 	struct strbuf sb = STRBUF_INIT;
 	int i;
@@ -762,6 +773,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	struct diff_options opts;
 	int need_8bit_cte = 0;
 	struct commit *commit = NULL;
+	struct pretty_print_context pp = {0};
 
 	if (rev->commit_format != CMIT_FMT_EMAIL)
 		die(_("Cover letter needs email format"));
@@ -793,7 +805,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 		free(commit);
 	}
 
-	log_write_email_headers(rev, head, &subject_start, &extra_headers,
+	log_write_email_headers(rev, head, &pp.subject, &pp.after_subject,
 				&need_8bit_cte);
 
 	for (i = 0; !need_8bit_cte && i < nr; i++)
@@ -801,11 +813,11 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 			need_8bit_cte = 1;
 
 	msg = body;
-	pp_user_info(NULL, CMIT_FMT_EMAIL, &sb, committer, DATE_RFC2822,
-		     encoding);
-	pp_title_line(CMIT_FMT_EMAIL, &msg, &sb, subject_start, extra_headers,
-		      encoding, need_8bit_cte);
-	pp_remainder(CMIT_FMT_EMAIL, &msg, &sb, 0);
+	pp.fmt = CMIT_FMT_EMAIL;
+	pp.date_mode = DATE_RFC2822;
+	pp_user_info(&pp, NULL, &sb, committer, encoding);
+	pp_title_line(&pp, &msg, &sb, encoding, need_8bit_cte);
+	pp_remainder(&pp, &msg, &sb, 0);
 	printf("%s\n", sb.buf);
 
 	strbuf_release(&sb);
@@ -1169,6 +1181,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		die (_("-n and -k are mutually exclusive."));
 	if (keep_subject && subject_prefix)
 		die (_("--subject-prefix and -k are mutually exclusive."));
+	rev.preserve_subject = keep_subject;
 
 	argc = setup_revisions(argc, argv, &rev, &s_r_opt);
 	if (argc > 1)
@@ -1399,8 +1412,7 @@ static void print_commit(char sign, struct commit *commit, int verbose,
 		       find_unique_abbrev(commit->object.sha1, abbrev));
 	} else {
 		struct strbuf buf = STRBUF_INIT;
-		struct pretty_print_context ctx = {0};
-		pretty_print_commit(CMIT_FMT_ONELINE, commit, &buf, &ctx);
+		pp_commit_easy(CMIT_FMT_ONELINE, commit, &buf);
 		printf("%c %s %s\n", sign,
 		       find_unique_abbrev(commit->object.sha1, abbrev),
 		       buf.buf);

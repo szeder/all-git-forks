@@ -731,12 +731,11 @@ test_expect_code () {
 	exit_code=$?
 	if test $exit_code = $want_code
 	then
-		echo >&2 "test_expect_code: command exited with $exit_code: $*"
 		return 0
-	else
-		echo >&2 "test_expect_code: command exited with $exit_code, we wanted $want_code $*"
-		return 1
 	fi
+
+	echo >&2 "test_expect_code: command exited with $exit_code, we wanted $want_code $*"
+	return 1
 }
 
 # test_cmp is a helper function to compare actual and expected output.
@@ -885,8 +884,13 @@ then
 	}
 
 	make_valgrind_symlink () {
-		# handle only executables
-		test -x "$1" || return
+		# handle only executables, unless they are shell libraries that
+		# need to be in the exec-path.  We will just use "#!" as a
+		# guess for a shell-script, since we have no idea what the user
+		# may have configured as the shell path.
+		test -x "$1" ||
+		test "#!" = "$(head -c 2 <"$1")" ||
+		return;
 
 		base=$(basename "$1")
 		symlink_target=$GIT_BUILD_DIR/$base
@@ -1072,6 +1076,7 @@ esac
 
 test -z "$NO_PERL" && test_set_prereq PERL
 test -z "$NO_PYTHON" && test_set_prereq PYTHON
+test -n "$USE_LIBPCRE" && test_set_prereq LIBPCRE
 
 # Can we rely on git's output in the C locale?
 if test -n "$GETTEXT_POISON"

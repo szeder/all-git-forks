@@ -133,6 +133,8 @@ void mark_parents_uninteresting(struct commit *commit)
 
 static void add_pending_object_with_mode(struct rev_info *revs, struct object *obj, const char *name, unsigned mode)
 {
+	if (!obj)
+		return;
 	if (revs->no_walk && (obj->flags & UNINTERESTING))
 		revs->no_walk = 0;
 	if (revs->reflog_info && obj->type == OBJ_COMMIT) {
@@ -174,8 +176,11 @@ static struct object *get_reference(struct rev_info *revs, const char *name, con
 	struct object *object;
 
 	object = parse_object(sha1);
-	if (!object)
+	if (!object) {
+		if (revs->ignore_missing)
+			return object;
 		die("bad object %s", name);
+	}
 	object->flags |= flags;
 	return object;
 }
@@ -906,6 +911,8 @@ static int add_parents_only(struct rev_info *revs, const char *arg, int flags)
 		return 0;
 	while (1) {
 		it = get_reference(revs, arg, sha1, 0);
+		if (!it && revs->ignore_missing)
+			return 0;
 		if (it->type != OBJ_TAG)
 			break;
 		if (!((struct tag*)it)->tagged)
@@ -1044,6 +1051,8 @@ int handle_revision_arg(const char *arg, struct rev_info *revs,
 			a = lookup_commit_reference(from_sha1);
 			b = lookup_commit_reference(sha1);
 			if (!a || !b) {
+				if (revs->ignore_missing)
+					return 0;
 				die(symmetric ?
 				    "Invalid symmetric difference expression %s...%s" :
 				    "Invalid revision range %s..%s",
@@ -1090,7 +1099,7 @@ int handle_revision_arg(const char *arg, struct rev_info *revs,
 		arg++;
 	}
 	if (get_sha1_with_mode(arg, sha1, &mode))
-		return -1;
+		return revs->ignore_missing ? 0 : -1;
 	if (!cant_be_filename)
 		verify_non_filename(revs->prefix, arg);
 	object = get_reference(revs, arg, sha1, flags ^ local_flags);
@@ -1098,35 +1107,34 @@ int handle_revision_arg(const char *arg, struct rev_info *revs,
 	return 0;
 }
 
-static void read_pathspec_from_stdin(struct rev_info *revs, struct strbuf *sb, const char ***prune_data)
+struct cmdline_pathspec {
+	int alloc;
+	int nr;
+	const char **path;
+};
+
+static void append_prune_data(struct cmdline_pathspec *prune, const char **av)
 {
-	const char **prune = *prune_data;
-	int prune_nr;
-	int prune_alloc;
+	while (*av) {
+		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		prune->path[prune->nr++] = *(av++);
+	}
+}
 
-	/* count existing ones */
-	if (!prune)
-		prune_nr = 0;
-	else
-		for (prune_nr = 0; prune[prune_nr]; prune_nr++)
-			;
-	prune_alloc = prune_nr; /* not really, but we do not know */
-
+static void read_pathspec_from_stdin(struct rev_info *revs, struct strbuf *sb,
+				     struct cmdline_pathspec *prune)
+{
 	while (strbuf_getwholeline(sb, stdin, '\n') != EOF) {
 		int len = sb->len;
 		if (len && sb->buf[len - 1] == '\n')
 			sb->buf[--len] = '\0';
-		ALLOC_GROW(prune, prune_nr+1, prune_alloc);
-		prune[prune_nr++] = xstrdup(sb->buf);
+		ALLOC_GROW(prune->path, prune->nr+1, prune->alloc);
+		prune->path[prune->nr++] = xstrdup(sb->buf);
 	}
-	if (prune) {
-		ALLOC_GROW(prune, prune_nr+1, prune_alloc);
-		prune[prune_nr] = NULL;
-	}
-	*prune_data = prune;
 }
 
-static void read_revisions_from_stdin(struct rev_info *revs, const char ***prune)
+static void read_revisions_from_stdin(struct rev_info *revs,
+				      struct cmdline_pathspec *prune)
 {
 	struct strbuf sb;
 	int seen_dashdash = 0;
@@ -1429,6 +1437,9 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 			revs->abbrev = 40;
 	} else if (!strcmp(arg, "--abbrev-commit")) {
 		revs->abbrev_commit = 1;
+		revs->abbrev_commit_given = 1;
+	} else if (!strcmp(arg, "--no-abbrev-commit")) {
+		revs->abbrev_commit = 0;
 	} else if (!strcmp(arg, "--full-diff")) {
 		revs->diff = 1;
 		revs->full_diff = 1;
@@ -1475,6 +1486,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--children")) {
 		revs->children.name = "children";
 		revs->limited = 1;
+	} else if (!strcmp(arg, "--ignore-missing")) {
+		revs->ignore_missing = 1;
 	} else {
 		int opts = diff_opt_parse(&revs->diffopt, argv, argc);
 		if (!opts)
@@ -1507,34 +1520,6 @@ static int for_each_bad_bisect_ref(const char *submodule, each_ref_fn fn, void *
 static int for_each_good_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in_submodule(submodule, "refs/bisect/good", fn, cb_data);
-}
-
-static void append_prune_data(const char ***prune_data, const char **av)
-{
-	const char **prune = *prune_data;
-	int prune_nr;
-	int prune_alloc;
-
-	if (!prune) {
-		*prune_data = av;
-		return;
-	}
-
-	/* count existing ones */
-	for (prune_nr = 0; prune[prune_nr]; prune_nr++)
-		;
-	prune_alloc = prune_nr; /* not really, but we do not know */
-
-	while (*av) {
-		ALLOC_GROW(prune, prune_nr+1, prune_alloc);
-		prune[prune_nr++] = *av;
-		av++;
-	}
-	if (prune) {
-		ALLOC_GROW(prune, prune_nr+1, prune_alloc);
-		prune[prune_nr] = NULL;
-	}
-	*prune_data = prune;
 }
 
 static int handle_revision_pseudo_opt(const char *submodule,
@@ -1610,9 +1595,10 @@ static int handle_revision_pseudo_opt(const char *submodule,
 int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct setup_revision_opt *opt)
 {
 	int i, flags, left, seen_dashdash, read_from_stdin, got_rev_arg = 0;
-	const char **prune_data = NULL;
+	struct cmdline_pathspec prune_data;
 	const char *submodule = NULL;
 
+	memset(&prune_data, 0, sizeof(prune_data));
 	if (opt)
 		submodule = opt->submodule;
 
@@ -1625,7 +1611,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		argv[i] = NULL;
 		argc = i;
 		if (argv[i + 1])
-			prune_data = argv + i + 1;
+			append_prune_data(&prune_data, argv + i + 1);
 		seen_dashdash = 1;
 		break;
 	}
@@ -1688,8 +1674,26 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			got_rev_arg = 1;
 	}
 
-	if (prune_data)
-		init_pathspec(&revs->prune_data, get_pathspec(revs->prefix, prune_data));
+	if (prune_data.nr) {
+		/*
+		 * If we need to introduce the magic "a lone ':' means no
+		 * pathspec whatsoever", here is the place to do so.
+		 *
+		 * if (prune_data.nr == 1 && !strcmp(prune_data[0], ":")) {
+		 *	prune_data.nr = 0;
+		 *	prune_data.alloc = 0;
+		 *	free(prune_data.path);
+		 *	prune_data.path = NULL;
+		 * } else {
+		 *	terminate prune_data.alloc with NULL and
+		 *	call init_pathspec() to set revs->prune_data here.
+		 * }
+		 */
+		ALLOC_GROW(prune_data.path, prune_data.nr+1, prune_data.alloc);
+		prune_data.path[prune_data.nr++] = NULL;
+		init_pathspec(&revs->prune_data,
+			      get_pathspec(revs->prefix, prune_data.path));
+	}
 
 	if (revs->def == NULL)
 		revs->def = opt ? opt->def : NULL;

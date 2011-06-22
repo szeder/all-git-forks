@@ -1117,8 +1117,16 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 			emit_line(ecbdata->opt, plain, reset, line, len);
 			fputs("~\n", ecbdata->opt->file);
 		} else {
-			/* don't print the prefix character */
-			emit_line(ecbdata->opt, plain, reset, line+1, len-1);
+			/*
+			 * Skip the prefix character, if any.  With
+			 * diff_suppress_blank_empty, there may be
+			 * none.
+			 */
+			if (line[0] != '\n') {
+			      line++;
+			      len--;
+			}
+			emit_line(ecbdata->opt, plain, reset, line, len);
 		}
 		return;
 	}
@@ -4446,6 +4454,13 @@ int diff_result_code(struct diff_options *opt, int status)
 	    DIFF_OPT_TST(opt, CHECK_FAILED))
 		result |= 02;
 	return result;
+}
+
+int diff_can_quit_early(struct diff_options *opt)
+{
+	return (DIFF_OPT_TST(opt, QUICK) &&
+		!opt->filter &&
+		DIFF_OPT_TST(opt, HAS_CHANGES));
 }
 
 /*
