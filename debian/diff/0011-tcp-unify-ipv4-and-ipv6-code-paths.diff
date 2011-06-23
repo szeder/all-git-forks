@@ -1,4 +1,4 @@
-From 39e0565c8a7615fda790914f21a488068a1c0ae9 Mon Sep 17 00:00:00 2001
+From 85b01f1000277efe6e0b1f8e10a66290063e816a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths

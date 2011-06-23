@@ -1,3 +1,33 @@
+Version v1.7.6-rc3; changes since v1.7.6-rc2:
+---------------------------------------------
+
+Andreas Schwab (1):
+      builtin/gc.c: add missing newline in message
+
+Brandon Casey (1):
+      sh-i18n--envsubst.c: do not #include getopt.h
+
+Christof Krüger (1):
+      Documentation: git diff --check respects core.whitespace
+
+Dmitry Ivankov (1):
+      Fix typo: existant->existent
+
+Jakub Narebski (1):
+      gitweb: 'pickaxe' and 'grep' features requires 'search' to be enabled
+
+Jeff King (2):
+      t/Makefile: pass test opts to valgrind target properly
+      tests: link shell libraries into valgrind directory
+
+Jim Meyering (1):
+      plug a few coverity-spotted leaks
+
+Junio C Hamano (2):
+      t7810: avoid unportable use of "echo"
+      Git 1.7.6-rc3
+
+
 Version v1.7.6-rc2; changes since v1.7.6-rc1:
 ---------------------------------------------
 

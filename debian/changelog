@@ -1,5 +1,6 @@
-git (1:1.7.6~rc2-1.1) experimental; urgency=low
+git (1:1.7.6~rc3-1) experimental; urgency=low
 
+  * new upstream release candidate.
   * debian/diff:
     * 0012-daemon-check-for-errors...diff: clarify patch description.
     * 0013-transport-learn-to-honor-DNS-SRV...diff: rename to 0014-*.
@@ -16,7 +17,7 @@ git (1:1.7.6~rc2-1.1) experimental; urgency=low
     * 0015-Makefile-do-not-use-setgid...diff: new; Makefile: set
       DIR_HAS_BSD_GROUP_SEMANTICS on GNU/kFreeBSD.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 23 Jun 2011 06:31:45 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 23 Jun 2011 08:17:41 -0500
 
 git (1:1.7.6~rc2-1) experimental; urgency=low
 

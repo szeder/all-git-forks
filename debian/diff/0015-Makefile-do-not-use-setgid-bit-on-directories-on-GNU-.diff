@@ -1,4 +1,4 @@
-From e25d4cfd43616b4834b57c7548e4c3d26e6e8f09 Mon Sep 17 00:00:00 2001
+From af3d79e84f792b8c5196b1ab02b621b8ac80d303 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 07:27:06 -0500
 Subject: Makefile: do not use setgid bit on directories on GNU/kFreeBSD

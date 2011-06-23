@@ -1,4 +1,4 @@
-From 61c5ad557c130a50fbcf17dc66344349ce837be8 Mon Sep 17 00:00:00 2001
+From afa53d0b6c78be9def0dbec15777ae4b3c5d6521 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:40:54 -0500
 Subject: transport: fix index in ipv6 connection failed message

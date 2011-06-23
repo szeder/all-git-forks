@@ -1,4 +1,4 @@
-From 6374a195b057ca2b8ef188322c7443eac0e93996 Mon Sep 17 00:00:00 2001
+From 5b1775547c7e9db86db9247034d6a3b13031d4db Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
 Subject: pre-rebase hook: capture documentation in a <<here document
@@ -29,5 +29,5 @@ index 053f111..7fccd3d 100755
 +
 +DOC_END
 -- 
-1.7.6.rc1
+1.7.6.rc2
 

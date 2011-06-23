@@ -1,4 +1,4 @@
-From 9a885e12e5f5d9a65fbde0461064098e153191f1 Mon Sep 17 00:00:00 2001
+From bf8c3a988511f28c9f06d29309da2283d1662c7a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
 Subject: daemon: check for errors retrieving IP address
