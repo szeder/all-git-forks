@@ -1,7 +1,7 @@
-From c62979f97575f4ef1902f5bdc05cd800d9367a46 Mon Sep 17 00:00:00 2001
+From 33b08244a6c3ba8766a8b8699785c42db3cc9145 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: transport: learn to honor DNS SRV records
+Subject: transport: honor DNS SRV records
 
 As rfc2782 explains, SRV records allow administrators "to use serveral
 servers for a single domain, to move services from host to host with
@@ -10,27 +10,27 @@ service and others as backups".  Someone noticed in a recent server
 move that that second part would have been very handy (since the git
 protocol doesn't include a concept of redirects).
 
-Sadly, getaddrinfo itself does not include a facility to resolve SRV
-records automatically.  Therefore this patch uses the libbind
-functions from libresolv to parse the response for ourselves.
-Hopefully after reading enough specimens of code like this, someone
-will be disgusted enough to extend libc to make them obsolete.
+Sadly, getaddrinfo itself does not provide a means to resolve SRV
+records automatically.  Therefore this patch uses the BIND 8 API
+provided by libresolv to parse the response for ourselves.  Hopefully
+after reading enough specimens of code like this, someone will be
+disgusted enough to extend libc and make them obsolete.
 
 RFC 2782 requires some non-determinism in the order of hosts
 contacted; this patch uses drand48() for that.  To avoid causing
 trouble for platforms without the libbind ns_* functions or drand48(),
-the new SRV support is only built when requested with the USE_SRV_RR
-compile-time option.
+the new SRV support is only provided when requested with the
+USE_SRV_RR compile-time option.
 
 Based on a patch by Julien Cristau <jcristau@debian.org>.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |   10 ++
- srv.c    |  290 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ srv.c    |  308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  srv.h    |   15 +++
- tcp.c    |   93 +++++++++++++-------
- 4 files changed, 377 insertions(+), 31 deletions(-)
+ tcp.c    |  101 ++++++++++++++-------
+ 4 files changed, 401 insertions(+), 33 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
@@ -71,10 +71,10 @@ index 7d3cb41..316b29e 100644
  
 diff --git a/srv.c b/srv.c
 new file mode 100644
-index 0000000..5ab591c
+index 0000000..f0c2cdd
 --- /dev/null
 +++ b/srv.c
-@@ -0,0 +1,290 @@
+@@ -0,0 +1,308 @@
 +#include "cache.h"
 +#include "strbuf.h"
 +#include "srv.h"
@@ -156,28 +156,44 @@ index 0000000..5ab591c
 +	return 0;
 +}
 +
-+static struct parsed_srv_rr *srv_parse(ns_msg *msg, int n)
++static int srv_parse(ns_msg *msg, struct parsed_srv_rr **res)
 +{
-+	struct parsed_srv_rr *rrs;
++	struct parsed_srv_rr *rrs = NULL;
 +	int nr_parsed = 0;
-+	int i;
++	int cnames = 0;
++	int i, n;
++
++	n = ns_msg_count(*msg, ns_s_an);
++
++	/* skip CNAME records */
++	for (i = 0; i < n; i++) {
++		ns_rr rr;
++		if (ns_parserr(msg, ns_s_an, i, &rr))
++			goto fail;
++		if (ns_rr_type(rr) != ns_t_cname)
++			break;
++	}
++	cnames = i;
++	n -= cnames;
 +
 +	rrs = xmalloc(n * sizeof(*rrs));
 +	for (i = 0; i < n; i++) {
 +		ns_rr rr;
 +
-+		if (ns_parserr(msg, ns_s_an, i, &rr) ||
++		if (ns_parserr(msg, ns_s_an, cnames + i, &rr) ||
++		    ns_rr_type(rr) != ns_t_srv ||
 +		    srv_parse_rr(msg, &rr, rrs + i))
 +			goto fail;
 +		nr_parsed++;
 +	}
 +
-+	return rrs;
++	*res = rrs;
++	return n;
 +fail:
 +	for (i = 0; i < nr_parsed; i++)
 +		free(rrs[i].target);
 +	free(rrs);
-+	return NULL;
++	return -1;
 +}
 +
 +static int weighted_item(struct parsed_srv_rr *rrs, int n, unsigned int pos)
@@ -240,7 +256,7 @@ index 0000000..5ab591c
 +
 +	/*
 +	 * Calculate total weight and move weight-zero
-+	 * records to the left.
++	 * records to the beginning of the array.
 +	 */
 +	assert(n < (1 << 16));
 +	for (i = j = 0; i < n; i++) {
@@ -275,8 +291,9 @@ index 0000000..5ab591c
 +		 * except those of weight 0 are at the start of the list
 +		 * (ending with rrs[j-1]).
 +		 *
-+		 * Pick an item at random, taking weights into account, and
-+		 * make it rrs[i], preserving that invariant.
++		 * Pick an item from rrs[i]..rrs[n] at random, taking weights
++		 * into account, and reorder to make it rrs[i], preserving
++		 * that invariant.
 +		 */
 +		shuffle_one(rrs, n, i, &j, &total);
 +}
@@ -324,18 +341,19 @@ index 0000000..5ab591c
 +	if (len < 0)
 +		goto out;
 +
++	/* If a SRV RR cannot be parsed, give up. */
++	ret = -1;
++
 +	if (ns_initparse(buf, len, &msg))
 +		goto out;
-+	n = ns_msg_count(msg, ns_s_an);
-+	if (!n)
++	n = srv_parse(&msg, &rrs);
++	if (n < 0)
 +		goto out;
++	if (!n) {
++		ret = 0;
++		goto out;
++	}
 +	assert(n < (1 << 16));
-+
-+	/* Parse reply.  If a SRV RR cannot be parsed, give up. */
-+	ret = -1;
-+	rrs = srv_parse(&msg, n);
-+	if (!rrs)
-+		goto out;
 +
 +	/* A single RR with target "." means "go away". */
 +	if (n == 1 &&
@@ -387,7 +405,7 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index 2707c49..fa747e3 100644
+index 2707c49..f93175b 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,5 +1,6 @@
@@ -397,17 +415,18 @@ index 2707c49..fa747e3 100644
  
  #ifndef NO_IPV6
  #include "dns-ipv6.h"
-@@ -122,49 +123,74 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -121,57 +122,91 @@ void git_locate_host(const char *hostname, char **ip_address,
+  */
  static int git_tcp_connect_sock(char *host, int flags)
  {
- 	int sockfd = -1, saved_errno = 0;
+-	int sockfd = -1, saved_errno = 0;
 -	const char *port = STR(DEFAULT_GIT_PORT);
+-	resolver_result ai;
+-	resolved_address i;
+-	int cnt = -1;
++	int sockfd = -1, saved_errno = 0, gai = 0;
 +	const char *port = NULL;
 +	struct host *hosts = NULL;
- 	resolver_result ai;
- 	resolved_address i;
--	int cnt = -1;
-+	int cnt;
 +	int j, n = 0;
  
  	get_host_and_port(&host, &port);
@@ -431,10 +450,13 @@ index 2707c49..fa747e3 100644
 -
 -	if (dns_resolve(host, port, 0, &ai))
 -		die("BUG: dns_resolve returned error?");
--
++	for (j = 0; j < n; j++) {
++		resolver_result ai;
++		resolved_address i;
++		int cnt;
+ 
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
-+	for (j = 0; j < n; j++) {
 +		if (flags & CONNECT_VERBOSE)
 +			fprintf(stderr, "Looking up %s ... ", hosts[j].hostname);
  
@@ -455,8 +477,9 @@ index 2707c49..fa747e3 100644
 -				strerror(saved_errno));
 -			close(sockfd);
 -			sockfd = -1;
-+		if (dns_resolve(hosts[j].hostname,
-+				hosts[j].port, RESOLVE_IGNORE_ERROR, &ai)) {
++		gai = dns_resolve(hosts[j].hostname,
++				hosts[j].port, RESOLVE_IGNORE_ERROR, &ai);
++		if (gai) {
 +			if (flags & CONNECT_VERBOSE)
 +				fprintf(stderr, "failed.\n");
  			continue;
@@ -493,17 +516,19 @@ index 2707c49..fa747e3 100644
 +				fprintf(stderr, "%s ", dns_name(&i));
 +			break;
 +		}
-+
-+		dns_free(ai);
  
 -	dns_free(ai);
++		dns_free(ai);
++
 +		if (sockfd >= 0)
 +			break;
 +	}
  
++	if (gai)
++		die("Unable to look up %s: %s", host, dns_strerror(gai));
  	if (sockfd < 0)
  		die("unable to connect a socket (%s)", strerror(saved_errno));
-@@ -172,6 +198,11 @@ static int git_tcp_connect_sock(char *host, int flags)
+ 
  	if (flags & CONNECT_VERBOSE)
  		fprintf(stderr, "done.\n");
  
@@ -516,5 +541,5 @@ index 2707c49..fa747e3 100644
  }
  
 -- 
-1.7.6.rc1
+1.7.6.rc2
 

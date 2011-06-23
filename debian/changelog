@@ -1,3 +1,21 @@
+git (1:1.7.6~rc2-1.1) experimental; urgency=low
+
+  * debian/diff:
+    * 0012-daemon-check-for-errors...diff: clarify patch description.
+    * 0013-transport-learn-to-honor-DNS-SRV...diff: rename to 0014-*.
+    * 0013-tcp-make-dns_resolve-return-an-error-code.diff: new; teach
+      dns_resolve() to pass on return value from getaddrinfo.
+    * 0014-transport-honor-DNS-SRV-records.diff: fix two regressions
+      introduced by this patch when it was added in 1:1.7.6~rc1-1.
+      * use descriptive messages like "Unable to look up
+        git.example.com: Out of memory" to report errors from the
+        resolver, instead of "unable to connect to a socket (success)".
+      * tolerate alias (CNAME) records in the DNS reply for
+        _git._tcp.<host>, instead of confusing them for invalid SRV
+        records and erroring out.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 23 Jun 2011 06:31:45 -0500
+
 git (1:1.7.6~rc2-1) experimental; urgency=low
 
   * new upstream release candidate.

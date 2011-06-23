@@ -1,0 +1,99 @@
+From 46236c2b628a5ca06167c52b7904ba6c92e19fc5 Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Thu, 23 Jun 2011 05:23:57 -0500
+Subject: tcp: make dns_resolve return an error code
+
+Both getaddrinfo and gethostbyname report errors through an error
+code.  Use the error code as the return value for dns_resolve when the
+RESOLVE_IGNORE_ERROR flag is set, so callers can conveniently save the
+result and print it later:
+
+	int saved_rerrno = dns_resolve(...);
+	...
+	if (saved_rerrno)
+		die("resolver failed: %s", dns_strerror(saved_rerrno));
+
+POSIX.1-2004 does not specify whether 0 is a valid value for h_errno
+on error, but luckily common practice is for h_errno to be a small,
+strictly positive integer (HOST_NOT_FOUND = 1, NO_DATA = 2,
+NO_RECOVERY = 3, or TRY_AGAIN = 4).  If some platform makes
+gethostbyname error out with h_errno == 0, die with a message
+indicating a BUG.
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ dns-ipv4.c |    7 +++++--
+ dns-ipv4.h |    5 +++++
+ dns-ipv6.c |    2 +-
+ dns-ipv6.h |    1 +
+ 4 files changed, 12 insertions(+), 3 deletions(-)
+
+diff --git a/dns-ipv4.c b/dns-ipv4.c
+index 39849c3..6275b1c 100644
+--- a/dns-ipv4.c
++++ b/dns-ipv4.c
+@@ -9,8 +9,11 @@ int dns_resolve(const char *host, const char *port, int flags,
+ 	unsigned int nport;
+ 
+ 	he = gethostbyname(host);
+-	if (!he && (flags & RESOLVE_IGNORE_ERROR))
+-		return -1;
++	if (!he && (flags & RESOLVE_IGNORE_ERROR)) {
++		if (!h_errno)
++			die("BUG: gethostbyname failed but h_errno == 0");
++		return h_errno;
++	}
+ 	if (!he)
+ 		die("Unable to look up %s (%s)", host, hstrerror(h_errno));
+ 
+diff --git a/dns-ipv4.h b/dns-ipv4.h
+index 9e6f590..602df2f 100644
+--- a/dns-ipv4.h
++++ b/dns-ipv4.h
+@@ -22,6 +22,10 @@ typedef struct ipv4_address resolved_address;
+ 
+ enum {
+ 	RESOLVE_CANONNAME = 1,
++	/*
++	 * Quietly return error code instead of exiting on error.
++	 * Callers can use dns_strerror() to get an error string.
++	 */
+ 	RESOLVE_IGNORE_ERROR = 2
+ };
+ extern int dns_resolve(const char *host, const char *port, int flags,
+@@ -67,6 +71,7 @@ static inline int dns_fill_sockaddr_(char *ap,
+ #define dns_addrlen(addr, ai) sizeof((addr).sa)
+ #define dns_canonname(addr, ai) ((ai).he->h_name)
+ 
++#define dns_strerror(n) hstrerror(n)
+ #define dns_free(ai) do { /* nothing */ } while (0)
+ 
+ #endif
+diff --git a/dns-ipv6.c b/dns-ipv6.c
+index dcfeac4..49f8121 100644
+--- a/dns-ipv6.c
++++ b/dns-ipv6.c
+@@ -41,7 +41,7 @@ int dns_resolve(const char *host, const char *port, int flags,
+ 
+ 	gai = getaddrinfo(host, port, &hints, res);
+ 	if (gai && (flags & RESOLVE_IGNORE_ERROR))
+-		return -1;
++		return gai;
+ 	if (gai)
+ 		die("Unable to look up %s (port %s) (%s)", host, port, gai_strerror(gai));
+ 
+diff --git a/dns-ipv6.h b/dns-ipv6.h
+index 339877f..de6036a 100644
+--- a/dns-ipv6.h
++++ b/dns-ipv6.h
+@@ -26,6 +26,7 @@ extern char *dns_ip_address(const resolved_address *i,
+ #define dns_addrlen(i, ai) ((i)->ai_addrlen)
+ #define dns_canonname(i, ai) ((i)->ai_canonname)
+ 
++#define dns_strerror(gai) gai_strerror(gai)
+ #define dns_free(ai) freeaddrinfo(ai)
+ 
+ #endif
+-- 
+1.7.6.rc2
+

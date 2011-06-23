@@ -1,4 +1,4 @@
-From cb07e4d08b9eb1508c9b07790d0d995bb535eb3e Mon Sep 17 00:00:00 2001
+From 61c5ad557c130a50fbcf17dc66344349ce837be8 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:40:54 -0500
 Subject: transport: fix index in ipv6 connection failed message
@@ -45,5 +45,5 @@ index 69da17a..a838b9f 100644
  				ai->ai_socktype, ai->ai_protocol);
  		if (sockfd < 0) {
 -- 
-1.7.6.rc1
+1.7.6.rc2
 

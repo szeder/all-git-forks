@@ -1,31 +1,36 @@
-From 4915072523af200947c899a3be82ebd17a859465 Mon Sep 17 00:00:00 2001
+From 9a885e12e5f5d9a65fbde0461064098e153191f1 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
-Subject: daemon: check for errors retrieving canonical IP address
+Subject: daemon: check for errors retrieving IP address
 
-To convert a resolver result to an IP address for interpolation
-in the --interpolated-path=...%IP... feature, currently the
-git daemon calls inet_ntop to fill a buffer of size HOST_NAME_MAX + 1
-and copies it, ignoring errors.  That has a few problems:
+To retrieve a canonical IP address for possible use by the
+--interpolated-path=%IP feature, currently the git daemon calls
+inet_ntop to fill a buffer of size HOST_NAME_MAX+1, ignoring errors,
+and copies it.  If the result has length > HOST_NAME_MAX then
+inet_ntop could error out, leading the git daemon to copy
+uninitialized data.
 
- - there is no principled reason for the buffer to have size
-   HOST_NAME_MAX (which can be as small as 8).
- - when an error occurs, this means copying a possibly uninitialized
-   buffer.
+Probably this never comes up in practice because modern systems either
+use a HOST_NAME_MAX of at least 64, which is plenty (POSIX requires at
+least 255) or have no compile-time maximum at all and let git fall
+back to a buffer size of 256.  Still, it would be more comforting not
+to have to rely on that detail, so let's use a more principled buffer
+size and handle errors by interpolating an empty string.  More
+precisely:
 
-Fix them:
+. In the ipv4 code path, read into a buffer of size INET6_ADDRSTRLEN
+  (the maximum size of an ipv6 address string), falling back to
+  INET_ADDRSTRLEN if the build system is ignorant about ipv6 addresses.
 
- - in the ipv4 code path, make the buffer size INET6_ADDRSTRLEN (the
-   maximum size of an ipv6 address string), falling back to
-   INET_ADDRSTRLEN if the build system is ignorant about the size of
-   ipv6 addresses.
+. In the ipv6 codepath, use getnameinfo to retrieve the numeric
+  address string, since it is more convenient and already used
+  elsewhere.  The buffer holding the result is of size NI_MAXHOST.
 
- - in the ipv6 codepath, use getnameinfo to write the numeric address
-   string, since it is a little more convenient and already used
-   elsewhere.  The buffer to receive the result is of size NI_MAXHOST.
+. Return NULL on error.  strbuf_expand_dict_cb treats NULL as an empty
+  substitution string.
 
- - return NULL on error.  strbuf_expand_dict_cb treats NULL as an
-   empty substitution string.
+As a bonus, this means we can remove the fallback HOST_NAME_MAX for
+platforms that don't define it.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -117,5 +122,5 @@ index aacc2d1..2707c49 100644
  	}
  
 -- 
-1.7.6.rc1
+1.7.6.rc2
 
