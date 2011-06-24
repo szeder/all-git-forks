@@ -147,6 +147,9 @@ struct option {
 		parse_opt_color_flag_cb, (intptr_t)"always" }
 
 
+extern int optbug(const struct option *opt, const char *reason);
+extern int opterror(const struct option *opt, const char *reason, int flags);
+
 /* parse_options() will filter out the processed options and leave the
  * non-option arguments in argv[].
  * Returns the number of arguments left in argv[].
