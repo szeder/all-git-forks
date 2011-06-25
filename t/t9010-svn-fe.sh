@@ -21,9 +21,10 @@ try_dump () {
 	maybe_fail_svnfe=${2:+test_$2} &&
 	maybe_fail_fi=${3:+test_$3} &&
 	ref=${4:-refs/heads/master} &&
+	fd=${5:-3} &&
 
 	{
-		$maybe_fail_svnfe test-svn-fe "$input" "$ref" >stream 3<backflow &
+		eval "$maybe_fail_svnfe test-svn-fe "$input" "$ref" "$fd" >stream $fd<backflow" &
 	} &&
 	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
 	wait $!
@@ -1157,6 +1158,50 @@ test_expect_success PIPE 'import to notmaster ref' '
 	test_cmp hi directory/somefile &&
 	git show-ref | cut -d " " -f 2- > actual.refs &&
 	test_cmp expect.refs actual.refs
+'
+
+test_expect_success PIPE 'use different backflow fd' '
+	reinit_git &&
+	printf "%s\n" directory/somefile >expect.files &&
+	echo hi >hi &&
+	{
+		properties \
+			svn:author author@example.com \
+			svn:date "1999-02-01T00:01:002.000000Z" \
+			svn:log "add directory with some files in it" &&
+		echo PROPS-END
+	} >props &&
+	{
+		cat <<-EOF &&
+		SVN-fs-dump-format-version: 3
+
+		Revision-number: 1
+		EOF
+		echo Prop-content-length: $(wc -c <props) &&
+		echo Content-length: $(wc -c <props) &&
+		echo &&
+		cat props &&
+		cat <<-\EOF &&
+
+		Node-path: directory
+		Node-kind: dir
+		Node-action: add
+		Prop-content-length: 10
+		Content-length: 10
+
+		PROPS-END
+		Node-path: directory/somefile
+		Node-kind: file
+		Node-action: add
+		EOF
+		text_no_props hi
+	} >directory.dump &&
+	try_dump directory.dump "" "" "" 7 &&
+
+	git ls-tree -r --name-only HEAD >actual.files &&
+	git checkout HEAD directory &&
+	test_cmp expect.files actual.files &&
+	test_cmp hi directory/somefile
 '
 
 test_done

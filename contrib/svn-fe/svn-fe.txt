@@ -10,7 +10,7 @@ SYNOPSIS
 [verse]
 mkfifo backchannel &&
 svnadmin dump --deltas REPO |
-	svn-fe [options] [git-svn-id-url] 3<backchannel |
+	svn-fe [options] [git-svn-id-url] fileno<backchannel |
 	git fast-import --cat-blob-fd=3 3>backchannel
 
 DESCRIPTION
@@ -34,6 +34,10 @@ OPTIONS
 --ref=<dst_ref>::
 	Ref to be written by the generated stream.
 	Default is refs/heads/master.
+--read-blob-fd=<fileno>::
+	Integer number of file descriptor from which
+	responses to 'ls' and 'cat-blob' requests will come.
+	Default is fileno=3.
 
 INPUT FORMAT
 ------------
