@@ -62,7 +62,7 @@ int main(int argc, const char *argv[])
 		return apply_delta(argc, argv);
 
 	if (argc == 1) {
-		if (svndump_init(argv[0], NULL, ref, backflow_fd))
+		if (svndump_init(argv[0], NULL, ref, backflow_fd, 1))
 			return 1;
 		svndump_read();
 		svndump_deinit();
