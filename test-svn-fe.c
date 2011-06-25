@@ -10,7 +10,7 @@
 #include "vcs-svn/line_buffer.h"
 
 static const char * const test_svnfe_usage[] = {
-	"test-svn-fe (<dumpfile> | -d <preimage> <delta> <len>)",
+	"test-svn-fe ([options] <dumpfile> | -d <preimage> <delta> <len>)",
 	NULL
 };
 
@@ -20,6 +20,8 @@ static int d;
 
 static struct option test_svnfe_options[] = {
 	OPT_SET_INT('d', NULL, &d, "test apply_delta", 1),
+	OPT_STRING(0, "ref", &args.ref, "dst_ref",
+		"write to dst_ref instead of refs/heads/master"),
 	OPT_END()
 };
 
@@ -51,6 +53,7 @@ static int apply_delta(int argc, const char *argv[])
 
 int main(int argc, const char *argv[])
 {
+	args.ref = "refs/heads/master";
 	argc = parse_options(argc, argv, NULL, test_svnfe_options,
 						test_svnfe_usage, 0);
 

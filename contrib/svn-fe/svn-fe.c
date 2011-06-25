@@ -17,11 +17,14 @@ static struct svndump_args args;
 static struct option svn_fe_options[] = {
 	OPT_STRING(0, "git-svn-id-url", &args.url, "url",
 		"append git-svn metadata line to commit messages"),
+	OPT_STRING(0, "ref", &args.ref, "dst_ref",
+		"write to dst_ref instead of refs/heads/master"),
 	OPT_END()
 };
 
 int main(int argc, const char **argv)
 {
+	args.ref = "refs/heads/master";
 	argc = parse_options(argc, argv, NULL, svn_fe_options,
 						svn_fe_usage, 0);
 	if (argc == 1) {

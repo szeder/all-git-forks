@@ -3,6 +3,7 @@
 
 struct svndump_args {
 	const char *filename, *url;
+	const char *ref;
 };
 
 int svndump_init(const struct svndump_args *args);
