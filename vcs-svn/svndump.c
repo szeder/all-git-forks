@@ -37,6 +37,8 @@
 
 #define MAX_GITSVN_LINE_LEN 4096
 
+static int print_progress;
+
 static struct line_buffer input = LINE_BUFFER_INIT;
 
 static struct {
@@ -344,7 +346,8 @@ static void begin_revision(void)
 static void end_revision(void)
 {
 	if (rev_ctx.revision) {
-		fast_export_progress(rev_ctx.revision);
+		if (print_progress)
+			fast_export_progress(rev_ctx.revision);
 		dump_ctx.first_commit_done = 1;
 	}
 }
@@ -497,6 +500,7 @@ int svndump_init(const struct svndump_options *o)
 		ref = "refs/heads/master";
 	if (buffer_init(&input, o->dumpfile))
 		return error("cannot open %s: %s", o->dumpfile, strerror(errno));
+	print_progress = o->progress;
 	fast_export_init(o->backflow_fd);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
