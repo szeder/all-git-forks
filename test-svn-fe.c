@@ -23,6 +23,8 @@ static struct option test_svnfe_options[] = {
 	OPT_SET_INT('d', "apply-delta", &delta_test, "test apply_delta", 1),
 	OPT_STRING(0, "ref", &options.ref, "refname",
 		"write to <refname> instead of refs/heads/master"),
+	OPT_INTEGER(0, "read-blob-fd", &options.backflow_fd,
+		"read blobs and trees from this fd instead of 3"),
 	OPT_END()
 };
 
@@ -54,6 +56,7 @@ static int apply_delta(int argc, const char *argv[])
 
 int main(int argc, const char *argv[])
 {
+	options.backflow_fd = 3;
 	argc = parse_options(argc, argv, NULL, test_svnfe_options,
 						test_svnfe_usage, 0);
 

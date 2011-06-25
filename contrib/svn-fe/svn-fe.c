@@ -19,11 +19,14 @@ static struct option svn_fe_options[] = {
 		"add git-svn-id line to log messages, imitating git-svn"),
 	OPT_STRING(0, "ref", &options.ref, "refname",
 		"write to <refname> instead of refs/heads/master"),
+	OPT_INTEGER(0, "read-blob-fd", &options.backflow_fd,
+		"read blobs and trees from this fd instead of 3"),
 	OPT_END()
 };
 
 int main(int argc, const char **argv)
 {
+	options.backflow_fd = 3;
 	argc = parse_options(argc, argv, NULL, svn_fe_options,
 						svn_fe_usage, 0);
 	if (argc > 1)
