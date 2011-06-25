@@ -37,6 +37,8 @@
 
 #define MAX_GITSVN_LINE_LEN 4096
 
+static int print_progress;
+
 static struct line_buffer input = LINE_BUFFER_INIT;
 
 static struct {
@@ -332,7 +334,8 @@ static void end_revision(void)
 {
 	if (rev_ctx.revision) {
 		fast_export_end_commit(rev_ctx.revision);
-		printf("progress Imported commit %"PRIu32".\n\n", rev_ctx.revision);
+		if (print_progress)
+			printf("progress Imported commit %"PRIu32".\n\n", rev_ctx.revision);
 		dump_ctx.first_commit_done = 1;
 	}
 }
@@ -482,6 +485,7 @@ int svndump_init(const struct svndump_args *args)
 {
 	if (buffer_init(&input, args->filename))
 		return error("cannot open %s: %s", args->filename, strerror(errno));
+	print_progress = args->progress;
 	fast_export_init(args->backflow_fd);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);

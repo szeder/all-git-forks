@@ -15,6 +15,9 @@ static const char * const svn_fe_usage[] = {
 static struct svndump_args args;
 
 static struct option svn_fe_options[] = {
+	{ OPTION_BIT, 0, "progress", &args.progress,
+		NULL, "don't write a progress line after each commit",
+		PARSE_OPT_NOARG | PARSE_OPT_NEGHELP, NULL, 1 },
 	OPT_STRING(0, "git-svn-id-url", &args.url, "url",
 		"append git-svn metadata line to commit messages"),
 	OPT_STRING(0, "ref", &args.ref, "dst_ref",

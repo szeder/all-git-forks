@@ -5,6 +5,7 @@ struct svndump_args {
 	const char *filename, *url;
 	const char *ref;
 	int backflow_fd;
+	int progress;
 };
 
 int svndump_init(const struct svndump_args *args);

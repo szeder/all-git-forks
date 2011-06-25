@@ -57,6 +57,7 @@ int main(int argc, const char *argv[])
 {
 	args.ref = "refs/heads/master";
 	args.backflow_fd = 3;
+	args.progress = 1;
 	argc = parse_options(argc, argv, NULL, test_svnfe_options,
 						test_svnfe_usage, 0);
 
