@@ -16,11 +16,14 @@ static const char * const test_svnfe_usage[] = {
 
 static const char *ref = "refs/heads/master";
 static int d;
+static int backflow_fd = 3;
 
 static struct option test_svnfe_options[] = {
 	OPT_SET_INT('d', NULL, &d, "test apply_delta", 1),
 	OPT_STRING(0, "ref", &ref, "dst_ref",
 		"write to dst_ref instead of refs/heads/master"),
+	OPT_INTEGER(0, "read-blob-fd", &backflow_fd,
+		"read blobs and trees from this fd instead of 3"),
 	OPT_END()
 };
 
@@ -59,7 +62,7 @@ int main(int argc, const char *argv[])
 		return apply_delta(argc, argv);
 
 	if (argc == 1) {
-		if (svndump_init(argv[0], NULL, ref))
+		if (svndump_init(argv[0], NULL, ref, backflow_fd))
 			return 1;
 		svndump_read();
 		svndump_deinit();

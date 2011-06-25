@@ -18,20 +18,21 @@ reinit_git () {
 
 try_dump_ext () {
 	args=$1 &&
-	shift &&
+	fd=${2:-3} &&
+	shift 2 &&
 	input=$1 &&
 	maybe_fail_svnfe=${2:+test_$2} &&
 	maybe_fail_fi=${3:+test_$3} &&
 
 	{
-		$maybe_fail_svnfe test-svn-fe $args "$input" >stream 3<backflow &
+		eval "$maybe_fail_svnfe test-svn-fe $args "$input" >stream $fd<backflow" &
 	} &&
 	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
 	wait $!
 }
 
 try_dump () {
-	try_dump_ext "" $@
+	try_dump_ext "" "" $@
 }
 
 properties () {
@@ -1120,10 +1121,59 @@ test_expect_success SVNREPO,PIPE 't9135/svn.dump' '
 
 test_expect_success PIPE 'import to notmaster ref' '
 	reinit_git &&
-	try_dump_ext "--ref=refs/heads/notmaster" emptyprop.dump &&
+	try_dump_ext "--ref=refs/heads/notmaster" 3 emptyprop.dump &&
 
 	git rev-parse --verify notmaster &&
 	test_must_fail git rev-parse --verify master
+'
+
+test_expect_success PIPE 'use different backflow fd' '
+	reinit_git &&
+	echo hi >hi &&
+	{
+		properties \
+			svn:author author@example.com \
+			svn:date "1999-02-01T00:01:002.000000Z" \
+			svn:log "add directory with some files in it" &&
+		echo PROPS-END
+	} >props &&
+	{
+		echo Prop-content-length: $(wc -c <props) &&
+		echo Content-length: $(wc -c <props) &&
+		echo &&
+		cat props
+	} >revprops &&
+	{
+		cat <<-EOF &&
+		SVN-fs-dump-format-version: 3
+
+		Revision-number: 1
+		EOF
+		cat revprops &&
+		cat <<-EOF &&
+		Node-path: directory
+		Node-kind: dir
+		Node-action: add
+		Node-path: directory/somefile
+		Node-kind: file
+		Node-action: add
+		EOF
+		text_no_props hi &&
+
+		echo "Revision-number: 2" &&
+		cat revprops &&
+		cat <<-\EOF
+		Node-path: otherfile
+		Node-kind: file
+		Node-action: add
+		Node-copyfrom-rev: 1
+		Node-copyfrom-path: directory/somefile
+		EOF
+	} >directory.dump &&
+	try_dump_ext "--read-blob-fd=7" 7 directory.dump &&
+
+	git checkout HEAD otherfile &&
+	test_cmp hi otherfile
 '
 
 test_done

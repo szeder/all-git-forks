@@ -14,12 +14,15 @@ static const char * const svn_fe_usage[] = {
 
 static const char *url;
 static const char *ref = "refs/heads/master";
+static int backflow_fd = 3;
 
 static struct option svn_fe_options[] = {
 	OPT_STRING(0, "git-svn-id-url", &url, "url",
 		"append git-svn metadata line to commit messages"),
 	OPT_STRING(0, "ref", &ref, "dst_ref",
 		"write to dst_ref instead of refs/heads/master"),
+	OPT_INTEGER(0, "read-blob-fd", &backflow_fd,
+		"read blobs and trees from this fd instead of 3"),
 	OPT_END()
 };
 
@@ -35,7 +38,7 @@ int main(int argc, const char **argv)
 		url = argv[0];
 	} else if (argc)
 		usage_with_options(svn_fe_usage, svn_fe_options);
-	if (svndump_init(NULL, url, ref))
+	if (svndump_init(NULL, url, ref, backflow_fd))
 		return 1;
 	svndump_read();
 	svndump_deinit();

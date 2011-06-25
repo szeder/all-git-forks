@@ -8,9 +8,9 @@ svn-fe - convert an SVN "dumpfile" to a fast-import stream
 SYNOPSIS
 --------
 [verse]
-mkfifo backchannel &&
+mkfifo backchannel && fd=3 &&
 svnadmin dump --deltas REPO |
-	svn-fe [options] [git-svn-id-url] 3<backchannel |
+	eval "svn-fe [options] [git-svn-id-url] $fd<backchannel" |
 	git fast-import --cat-blob-fd=3 3>backchannel
 
 DESCRIPTION
@@ -35,6 +35,10 @@ OPTIONS
 --ref=<dst_ref>::
 	Ref to be written by the generated stream.
 	Default is refs/heads/master.
+--read-blob-fd=<fd>::
+	Integer number of file descriptor from which
+	responses to 'ls' and 'cat-blob' requests will come.
+	Default is fd=3.
 
 INPUT FORMAT
 ------------
