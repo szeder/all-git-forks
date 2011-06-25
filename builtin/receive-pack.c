@@ -34,6 +34,7 @@ static int prefer_ofs_delta = 1;
 static int auto_update_server_info;
 static int auto_gc = 1;
 static const char *head_name;
+static const char *hide_refs;
 static int sent_capabilities;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
@@ -103,12 +104,17 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (strcmp(var, "receive.hiderefs") == 0) {
+		git_config_string(&hide_refs, var, value);
+		return 0;
+	}
+
 	return git_default_config(var, value, cb);
 }
 
 static int show_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
-	if (strncmp(path, "refs/pull/", strlen("refs/pull/")) == 0)
+	if (hide_refs && strncmp(path, hide_refs, strlen(hide_refs)) == 0)
 		return 0;
 
 	if (sent_capabilities)
