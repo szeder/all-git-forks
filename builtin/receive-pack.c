@@ -108,6 +108,9 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 static int show_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
+	if (strncmp(path, "refs/pull/", strlen("refs/pull/")) == 0)
+		return 0;
+
 	if (sent_capabilities)
 		packet_write(1, "%s %s\n", sha1_to_hex(sha1), path);
 	else
