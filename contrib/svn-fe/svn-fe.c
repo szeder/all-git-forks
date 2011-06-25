@@ -13,10 +13,13 @@ static const char * const svn_fe_usage[] = {
 };
 
 static const char *url;
+static const char *ref = "refs/heads/master";
 
 static struct option svn_fe_options[] = {
 	OPT_STRING(0, "git-svn-id-url", &url, "url",
 		"if set commit messages will have git-svn-id: line appended"),
+	OPT_STRING(0, "ref", &ref, "dst_ref",
+		"git ref to be updated with svn commits (default is refs/heads/master)"),
 	OPT_END()
 };
 
@@ -30,7 +33,7 @@ int main(int argc, const char **argv)
 	}
 	if (argc)
 		usage_with_options(svn_fe_usage, svn_fe_options);
-	if (svndump_init(NULL))
+	if (svndump_init(NULL, ref))
 		return 1;
 	svndump_read(url);
 	svndump_deinit();

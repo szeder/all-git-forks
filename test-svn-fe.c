@@ -9,7 +9,7 @@
 #include "vcs-svn/line_buffer.h"
 
 static const char test_svnfe_usage[] =
-	"test-svn-fe (<dumpfile> | [-d] <preimage> <delta> <len>)";
+	"test-svn-fe (<dumpfile> <ref> | [-d] <preimage> <delta> <len>)";
 
 static int apply_delta(int argc, char *argv[])
 {
@@ -39,8 +39,8 @@ static int apply_delta(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	if (argc == 2) {
-		if (svndump_init(argv[1]))
+	if (argc == 3) {
+		if (svndump_init(argv[1], argv[2]))
 			return 1;
 		svndump_read(NULL);
 		svndump_deinit();
@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	if (argc >= 2 && !strcmp(argv[1], "-d"))
+	if (argc >= 3 && !strcmp(argv[1], "-d"))
 		return apply_delta(argc, argv);
 	usage(test_svnfe_usage);
 }
