@@ -4,6 +4,11 @@ CC = gcc
 RM = rm -f
 MV = mv
 
+ASCIIDOC=asciidoc
+ASCIIDOC_EXTRA =
+MANPAGE_XSL = ../../Documentation/manpage-normal.xsl
+XMLTO_EXTRA =
+
 CFLAGS = -g -O2 -Wall
 LDFLAGS =
 ALL_CFLAGS = $(CFLAGS)
@@ -32,6 +37,12 @@ ifndef V
 	                $(MAKE) $(PRINT_DIR) -C $$subdir
 endif
 endif
+
+man:
+	$(ASCIIDOC) -b docbook -d manpage -f ../../Documentation/asciidoc.conf \
+		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o svn-fe.xml+ svn-fe.txt && \
+	mv svn-fe.xml+ svn-fe.xml && \
+	xmlto -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man svn-fe.xml
 
 svn-fe$X: svn-fe.o $(VCSSVN_LIB) $(GIT_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ svn-fe.o \
