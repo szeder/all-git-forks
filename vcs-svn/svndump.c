@@ -20,8 +20,6 @@
  */
 #define constcmp(s, ref) memcmp(s, ref, sizeof(ref) - 1)
 
-#define REPORT_FILENO 3
-
 #define NODEACT_REPLACE 4
 #define NODEACT_DELETE 3
 #define NODEACT_ADD 2
@@ -484,7 +482,7 @@ int svndump_init(const struct svndump_args *args)
 {
 	if (buffer_init(&input, args->filename))
 		return error("cannot open %s: %s", args->filename, strerror(errno));
-	fast_export_init(REPORT_FILENO);
+	fast_export_init(args->backflow_fd);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
 	strbuf_init(&rev_ctx.log, 4096);
