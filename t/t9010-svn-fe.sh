@@ -16,16 +16,22 @@ reinit_git () {
 	mkfifo stream backflow
 }
 
-try_dump () {
+try_dump_ext () {
+	args=$1 &&
+	shift &&
 	input=$1 &&
 	maybe_fail_svnfe=${2:+test_$2} &&
 	maybe_fail_fi=${3:+test_$3} &&
 
 	{
-		$maybe_fail_svnfe test-svn-fe "$input" >stream 3<backflow &
+		$maybe_fail_svnfe test-svn-fe $args "$input" >stream 3<backflow &
 	} &&
 	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
 	wait $!
+}
+
+try_dump () {
+	try_dump_ext "" $@
 }
 
 properties () {
@@ -53,6 +59,22 @@ text_no_props () {
 }
 
 >empty
+
+cat >emptyprop.dump <<-EOF &&
+SVN-fs-dump-format-version: 3
+
+Revision-number: 1
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Revision-number: 2
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+EOF
 
 test_expect_success 'setup: have pipes?' '
 	rm -f frob &&
@@ -97,21 +119,6 @@ test_expect_failure PIPE 'empty revision' '
 test_expect_success PIPE 'empty properties' '
 	reinit_git &&
 	printf "rev <nobody, nobody@local>: %s\n" "" "" >expect &&
-	cat >emptyprop.dump <<-\EOF &&
-	SVN-fs-dump-format-version: 3
-
-	Revision-number: 1
-	Prop-content-length: 10
-	Content-length: 10
-
-	PROPS-END
-
-	Revision-number: 2
-	Prop-content-length: 10
-	Content-length: 10
-
-	PROPS-END
-	EOF
 	try_dump emptyprop.dump &&
 	git log -p --format="rev <%an, %ae>: %s" HEAD >actual &&
 	test_cmp expect actual
@@ -1109,6 +1116,14 @@ test_expect_success SVNREPO,PIPE 't9135/svn.dump' '
 		git fetch ../simple-git master &&
 		git diff --exit-code FETCH_HEAD
 	)
+'
+
+test_expect_success PIPE 'import to notmaster ref' '
+	reinit_git &&
+	try_dump_ext "--ref=refs/heads/notmaster" emptyprop.dump &&
+
+	git rev-parse --verify notmaster &&
+	test_must_fail git rev-parse --verify master
 '
 
 test_done

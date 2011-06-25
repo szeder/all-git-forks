@@ -18,6 +18,7 @@
 static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
+static struct strbuf ref_name = STRBUF_INIT;
 
 /* NEEDSWORK: move to fast_export_init() */
 static int init_postimage(void)
@@ -29,15 +30,18 @@ static int init_postimage(void)
 	return buffer_tmpfile_init(&postimage);
 }
 
-void fast_export_init(int fd)
+void fast_export_init(int fd, const char *dst_ref)
 {
 	first_commit_done = 0;
+	strbuf_reset(&ref_name);
+	strbuf_addstr(&ref_name, dst_ref);
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
 }
 
 void fast_export_deinit(void)
 {
+	strbuf_release(&ref_name);
 	if (buffer_deinit(&report_buffer))
 		die_errno("error closing fast-import feedback stream");
 }
@@ -89,7 +93,7 @@ void fast_export_begin_commit(uint32_t revision, const char *author,
 	} else {
 		*gitsvnline = '\0';
 	}
-	printf("commit refs/heads/master\n");
+	printf("commit %s\n", ref_name.buf);
 	printf("mark :%"PRIu32"\n", revision);
 	printf("committer %s <%s@%s> %ld +0000\n",
 		   *author ? author : "nobody",

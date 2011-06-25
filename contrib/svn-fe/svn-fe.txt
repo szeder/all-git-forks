@@ -32,6 +32,9 @@ OPTIONS
 	Url to be used in git-svn-id: lines in git-svn
 	metadata lines format. See NOTES for more detailed
 	description.
+--ref=<dst_ref>::
+	Ref to be written by the generated stream.
+	Default is refs/heads/master.
 
 INPUT FORMAT
 ------------
