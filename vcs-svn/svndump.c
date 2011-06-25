@@ -57,6 +57,7 @@ static struct {
 	uint32_t version;
 	struct strbuf uuid, url;
 	int first_commit_done;
+	struct strbuf ref_name;
 } dump_ctx;
 
 static void reset_node_ctx(char *fname)
@@ -82,7 +83,7 @@ static void reset_rev_ctx(uint32_t revision)
 	strbuf_reset(&rev_ctx.author);
 }
 
-static void reset_dump_ctx(const char *url)
+static void reset_dump_ctx(const char *url, const char *dst_ref)
 {
 	strbuf_reset(&dump_ctx.url);
 	if (url)
@@ -90,6 +91,8 @@ static void reset_dump_ctx(const char *url)
 	dump_ctx.version = 1;
 	strbuf_reset(&dump_ctx.uuid);
 	dump_ctx.first_commit_done = 0;
+	strbuf_reset(&dump_ctx.ref_name);
+	strbuf_addstr(&dump_ctx.ref_name, dst_ref);
 }
 
 static void handle_property(const struct strbuf *key_buf,
@@ -336,8 +339,8 @@ static void begin_revision(void)
 
 	add_metadata_trailer(&rev_ctx.log);
 
-	fast_export_begin_commit("refs/heads/master", rev_ctx.revision, buf,
-		author, email.buf, &rev_ctx.log, rev_ctx.timestamp);
+	fast_export_begin_commit(dump_ctx.ref_name.buf, rev_ctx.revision, buf,
+				author, email.buf, &rev_ctx.log, rev_ctx.timestamp);
 }
 
 static void end_revision(void)
@@ -491,6 +494,9 @@ void svndump_read(void)
 
 int svndump_init(const struct svndump_options *o)
 {
+	const char *ref = o->ref;
+	if (!ref)
+		ref = "refs/heads/master";
 	if (buffer_init(&input, o->dumpfile))
 		return error("cannot open %s: %s", o->dumpfile, strerror(errno));
 	fast_export_init(REPORT_FILENO);
@@ -500,7 +506,7 @@ int svndump_init(const struct svndump_options *o)
 	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(o->git_svn_url);
+	reset_dump_ctx(o->git_svn_url, ref);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
@@ -509,7 +515,7 @@ int svndump_init(const struct svndump_options *o)
 void svndump_deinit(void)
 {
 	fast_export_deinit();
-	reset_dump_ctx(NULL);
+	reset_dump_ctx(NULL, "");
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);
