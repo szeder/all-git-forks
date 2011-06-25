@@ -8,7 +8,9 @@ CFLAGS = -g -O2 -Wall
 LDFLAGS =
 ALL_CFLAGS = $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
-EXTLIBS =
+EXTLIBS = -lssl -lpthread \
+	../../xdiff/xmerge.o ../../xdiff/xprepare.o ../../xdiff/xutils.o \
+	../../xdiff/xdiffi.o ../../xdiff/xemit.o ../../xdiff/xpatience.o
 
 GIT_LIB = ../../libgit.a
 VCSSVN_LIB = ../../vcs-svn/lib.a
