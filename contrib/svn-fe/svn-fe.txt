@@ -38,6 +38,9 @@ OPTIONS
 	Integer number of file descriptor from which
 	responses to 'ls' and 'cat-blob' requests will come.
 	Default is fileno=3.
+--[no-]progress::
+	Write 'progress' lines to fast-import stream. These
+	can be displayed by fast-import.
 
 INPUT FORMAT
 ------------

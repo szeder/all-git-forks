@@ -15,8 +15,12 @@ static const char * const svn_fe_usage[] = {
 static const char *url;
 static const char *ref = "refs/heads/master";
 static int backflow_fd = 3;
+static int progress = 1;
 
 static struct option svn_fe_options[] = {
+	OPT_BIT(0, "progress", &progress,
+		"print 'progress' lines after each commit to the fast-export stream",
+		1),
 	OPT_STRING(0, "git-svn-id-url", &url, "url",
 		"if set commit messages will have git-svn-id: line appended"),
 	OPT_STRING(0, "ref", &ref, "dst_ref",
@@ -36,7 +40,7 @@ int main(int argc, const char **argv)
 	}
 	if (argc)
 		usage_with_options(svn_fe_usage, svn_fe_options);
-	if (svndump_init(NULL, ref, backflow_fd))
+	if (svndump_init(NULL, ref, backflow_fd, progress))
 		return 1;
 	svndump_read(url);
 	svndump_deinit();

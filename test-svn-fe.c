@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		return apply_delta(argc, argv);
 
 	if (argc == 4) {
-		if (svndump_init(argv[1], argv[2], atoi(argv[3])))
+		if (svndump_init(argv[1], argv[2], atoi(argv[3]), 1))
 			return 1;
 		svndump_read(NULL);
 		svndump_deinit();

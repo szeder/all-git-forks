@@ -4,7 +4,7 @@
 struct strbuf;
 struct line_buffer;
 
-void fast_export_init(int fd, const char *dst_ref);
+void fast_export_init(int fd, const char *dst_ref, int progress);
 void fast_export_deinit(void);
 void fast_export_reset(void);
 

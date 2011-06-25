@@ -19,6 +19,7 @@ static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
 static struct strbuf ref_name = STRBUF_INIT;
+static int print_progress;
 
 /* NEEDSWORK: move to fast_export_init() */
 static int init_postimage(void)
@@ -30,8 +31,9 @@ static int init_postimage(void)
 	return buffer_tmpfile_init(&postimage);
 }
 
-void fast_export_init(int fd, const char *dst_ref)
+void fast_export_init(int fd, const char *dst_ref, int progress)
 {
+	print_progress = progress;
 	strbuf_reset(&ref_name);
 	strbuf_addstr(&ref_name, dst_ref);
 	if (buffer_fdinit(&report_buffer, fd))
@@ -110,7 +112,8 @@ void fast_export_begin_commit(uint32_t revision, const char *author,
 
 void fast_export_end_commit(uint32_t revision)
 {
-	printf("progress Imported commit %"PRIu32".\n\n", revision);
+	if (print_progress)
+		printf("progress Imported commit %"PRIu32".\n\n", revision);
 }
 
 static void ls_from_rev(uint32_t rev, const char *path)
