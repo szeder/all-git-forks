@@ -42,6 +42,10 @@ OPTIONS
 	responses to 'ls' and 'cat-blob' requests will come.
 	Default is fd=3.
 
+--[no-]progress::
+	Write 'progress' lines to fast-import stream. These
+	can be displayed by fast-import.
+
 INPUT FORMAT
 ------------
 Subversion's repository dump format is documented in full in

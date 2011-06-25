@@ -57,6 +57,7 @@ static int apply_delta(int argc, const char *argv[])
 int main(int argc, const char *argv[])
 {
 	options.backflow_fd = 3;
+	options.progress = 1;
 	argc = parse_options(argc, argv, NULL, test_svnfe_options,
 						test_svnfe_usage, 0);
 
