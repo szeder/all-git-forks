@@ -33,6 +33,10 @@ OPTIONS
 	metadata lines format. See NOTES for more detailed
 	description.
 
+--ref=<refname>::
+	Ref to be written by the generated stream.
+	Default is refs/heads/master.
+
 INPUT FORMAT
 ------------
 Subversion's repository dump format is documented in full in

@@ -6,6 +6,7 @@ struct svndump_options {
 	 * dumpfile is opened in svndump_init and is read in svndump_read.
 	 */
 	const char *dumpfile, *git_svn_url;
+	const char *ref;
 };
 
 int svndump_init(const struct svndump_options *o);

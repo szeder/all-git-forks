@@ -17,6 +17,8 @@ static struct svndump_options options;
 static struct option svn_fe_options[] = {
 	OPT_STRING(0, "git-svn-id-url", &options.git_svn_url, "url",
 		"add git-svn-id line to log messages, imitating git-svn"),
+	OPT_STRING(0, "ref", &options.ref, "refname",
+		"write to <refname> instead of refs/heads/master"),
 	OPT_END()
 };
 
