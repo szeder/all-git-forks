@@ -33,6 +33,8 @@ ifndef V
 endif
 endif
 
+man: svn-fe.1
+
 svn-fe$X: svn-fe.o $(VCSSVN_LIB) $(GIT_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ svn-fe.o \
 		$(ALL_LDFLAGS) $(LIBS)
