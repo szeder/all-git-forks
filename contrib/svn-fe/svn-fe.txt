@@ -10,7 +10,7 @@ SYNOPSIS
 [verse]
 mkfifo backchannel &&
 svnadmin dump --deltas REPO |
-	svn-fe [url] 3<backchannel |
+	svn-fe [options] [git-svn-id-url] 3<backchannel |
 	git fast-import --cat-blob-fd=3 3>backchannel
 
 DESCRIPTION
@@ -24,6 +24,13 @@ command.
 
 Note: this tool is very young.  The details of its commandline
 interface may change in backward incompatible ways.
+
+OPTIONS
+-------
+
+--git-svn-id-url=<url>::
+	Url to be used in git-svn-id: lines. See NOTES for
+	a description.
 
 INPUT FORMAT
 ------------
@@ -52,7 +59,8 @@ and 'UUID' the repository's identifier.
 
 To support incremental imports, 'svn-fe' puts a `git-svn-id` line at
 the end of each commit log message if passed an url on the command
-line.  This line has the form `git-svn-id: URL@REVNO UUID`.
+line.  This line has the form `git-svn-id: URL@REVNO UUID`. If the
+`git-svn-id-url` isn't specified the line is not put at all.
 
 The resulting repository will generally require further processing
 to put each project in its own repository and to separate the history
