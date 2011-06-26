@@ -19,23 +19,11 @@ static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
 
-/* NEEDSWORK: move to fast_export_init() */
-static int init_postimage(void)
-{
-	static int postimage_initialized;
-	if (postimage_initialized)
-		return 0;
-	postimage_initialized = 1;
-	postimage.infile = tmpfile();
-	if (!postimage.infile)
-		return -1;
-	return 0;
-}
-
 void fast_export_init(int fd)
 {
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
+	postimage.infile = tmpfile();
 }
 
 void fast_export_deinit(void)
@@ -192,11 +180,10 @@ static long apply_delta(off_t len, struct line_buffer *input,
 {
 	long ret;
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer, 0);
-	FILE *out;
+	FILE *out = postimage.infile;
 
-	if (init_postimage() || fseek(postimage.infile, 0, SEEK_SET))
+	if (!out || fseek(out, 0, SEEK_SET))
 		die("cannot open temporary file for blob retrieval");
-	out = postimage.infile;
 	if (old_data) {
 		const char *response;
 		printf("cat-blob %s\n", old_data);
