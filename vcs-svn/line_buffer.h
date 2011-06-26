@@ -13,12 +13,9 @@ struct line_buffer {
 
 int buffer_init(struct line_buffer *buf, const char *filename);
 int buffer_fdinit(struct line_buffer *buf, int fd);
+int buffer_fileinit(struct line_buffer *buf, FILE *infile);
 int buffer_deinit(struct line_buffer *buf);
 void buffer_reset(struct line_buffer *buf);
-
-int buffer_tmpfile_init(struct line_buffer *buf);
-FILE *buffer_tmpfile_rewind(struct line_buffer *buf);	/* prepare to write. */
-long buffer_tmpfile_prepare_to_read(struct line_buffer *buf);
 
 int buffer_ferror(struct line_buffer *buf);
 char *buffer_read_line(struct line_buffer *buf);

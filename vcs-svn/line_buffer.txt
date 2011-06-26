@@ -31,17 +31,19 @@ Temporary files provide a place to store data that should not outlive
 the calling program.  A program
 
  - initializes a `struct line_buffer` to LINE_BUFFER_INIT
- - requests a temporary file with `buffer_tmpfile_init`
- - acquires an output handle by calling `buffer_tmpfile_rewind`
+ - creates a temporary file (with `tmpfile()` for example) and calls
+   `buffer_fileinit` right away or later when it'll need to read
  - uses standard I/O functions like `fprintf` and `fwrite` to fill
    the temporary file
- - declares writing is over with `buffer_tmpfile_prepare_to_read`
+ - prepares the file for reading, `rewind` if necessarily
+ - call `buffer_fileinit` if it wasn't called yet
  - can re-read what was written with `buffer_read_line`,
    `buffer_copy_bytes`, and so on
- - can reuse the temporary file by calling `buffer_tmpfile_rewind`
-   again
+ - can reuse the temporary file by calling `rewind` or like
  - removes the temporary file with `buffer_deinit`, perhaps to
-   reuse the line_buffer for some other file.
+   reuse the line_buffer for some other file. `buffer_deinit`
+   calls `close` which causes file created by `tmpfile` to be
+   removed completely, if it wasn't opened once more.
 
 When finished, the calling program can use `buffer_reset` to deallocate
 resources.

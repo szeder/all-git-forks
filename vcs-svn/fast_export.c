@@ -26,7 +26,10 @@ static int init_postimage(void)
 	if (postimage_initialized)
 		return 0;
 	postimage_initialized = 1;
-	return buffer_tmpfile_init(&postimage);
+	postimage.infile = tmpfile();
+	if (!postimage.infile)
+		return -1;
+	return 0;
 }
 
 void fast_export_init(int fd)
@@ -191,8 +194,9 @@ static long apply_delta(off_t len, struct line_buffer *input,
 	struct sliding_view preimage = SLIDING_VIEW_INIT(&report_buffer, 0);
 	FILE *out;
 
-	if (init_postimage() || !(out = buffer_tmpfile_rewind(&postimage)))
+	if (init_postimage() || fseek(postimage.infile, 0, SEEK_SET))
 		die("cannot open temporary file for blob retrieval");
+	out = postimage.infile;
 	if (old_data) {
 		const char *response;
 		printf("cat-blob %s\n", old_data);
@@ -219,9 +223,11 @@ static long apply_delta(off_t len, struct line_buffer *input,
 		if (preimage.buf.buf[0] != '\n')
 			die("missing newline after cat-blob response");
 	}
-	ret = buffer_tmpfile_prepare_to_read(&postimage);
+	ret = ftell(out);
 	if (ret < 0)
-		die("cannot read temporary file for blob retrieval");
+		die("cannot read temporary file for blob retrieval (ftell failed)");
+	if (fseek(postimage.infile, 0, SEEK_SET) < 0)
+		die("cannot read temporary file for blob retrieval (rewind failed)");
 	strbuf_release(&preimage.buf);
 	return ret;
 }
