@@ -45,25 +45,6 @@ struct region {
 	int begin2, end2;
 };
 
-#define LCS_REPLACE	1
-#define LCS_DELETE	2
-#define LCS_INSERT		3
-#define LCS_EMPTY		4
-
-static int region_type(struct region *lcs)
-{
-	if (lcs->begin1 < lcs->end1)
-		if (lcs->begin2 < lcs->end2)
-			return LCS_REPLACE;
-		else
-			return LCS_DELETE;
-	else
-		if (lcs->begin2 < lcs->end2)
-			return LCS_INSERT;
-		else
-			return LCS_EMPTY;
-}
-
 #define INDEX_NEXT(i, a) (i->next[(a) - i->ptr_shift])
 #define INDEX_REC_IDXS(i, a) (i->rec_idxs[(a) - i->ptr_shift])
 
@@ -317,7 +298,7 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 		result = fall_back_to_classic_diff(&index, line1, count1, line2, count2);
 	else {
 		result = 0;
-		if (region_type(&lcs) == LCS_EMPTY) {
+		if (lcs.begin1 == lcs.end1 && lcs.begin2 == lcs.end2) {
 			int ptr;
 			for (ptr = 0; ptr < count1; ptr++)
 				env->xdf1.rchg[line1 + ptr - 1] = 1;
