@@ -103,7 +103,7 @@ work_merge()
 	BRANCH=${BRANCH} &&
 	MERGE_OPTIONS='${MERGE_OPTIONS}'
 	git checkout -q \${BASE} &&
-	git merge -q \${DEPENDENCY} \${MERGE_OPTIONS} &&
+	git merge --no-ff -q \${DEPENDENCY} \${MERGE_OPTIONS} &&
 	MERGE=\$(git rev-parse HEAD) &&
 	git rebase --onto HEAD \${BASE} \${BRANCH} &&
 	git update-ref \${BASEREF} \${MERGE}
