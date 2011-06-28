@@ -15,7 +15,7 @@ usage () {
 do_import () {
 	revs=$1 url=$2
 	(svnrdump dump --non-interactive --username=Guest --password= \
-		-r"$revs" "$url" | svn-fe) 3<&0 || die "FAILURE"
+		-r"$revs" "$url" --quiet | svn-fe) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
