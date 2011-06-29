@@ -243,6 +243,9 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 	int sz;
 	int result = -1;
 
+	if (count1 <= 0 && count2 <= 0)
+		return 0;
+
 	if (!count1) {
 		while(count2--)
 			env->xdf2.rchg[line2++ - 1] = 1;
