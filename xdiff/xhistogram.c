@@ -18,7 +18,8 @@
 	(((int) (r >> REC_PTR_SHIFT)) & REC_PTR_MASK)
 #define REC_CNT(a) (((int) a) & REC_CNT_MASK)
 
-#define LINE_END(s, c) (s+c-1)
+#define LINE_END(n) (line##n+count##n-1)
+#define LINE_END_PTR(n) (*line##n+*count##n-1)
 
 struct histindex {
 	int *table;
@@ -74,7 +75,7 @@ static int scanA(struct histindex *index, int line1, int count1)
 	int new_cnt;
 	long rec;
 
-	for (ptr = LINE_END(line1, count1); line1 <= ptr; ptr--) {
+	for (ptr = LINE_END(1); line1 <= ptr; ptr--) {
 		tbl_idx = table_hash(index, 1, ptr);
 
 		chain_len = 0;
@@ -153,7 +154,7 @@ static int try_lcs(struct histindex *index, struct region *lcs, int b_ptr,
 				if (1 < rc)
 					rc = XDL_MIN(rc, REC_CNT(index->recs[INDEX_REC_IDXS(index, as)]));
 			}
-			while (ae < LINE_END(line1, count1) && be < LINE_END(line2, count2)
+			while (ae < LINE_END(1) && be < LINE_END(2)
 				&& cmp(index, 1, ae+1, 2, be+1)) {
 				if (1 < rc)
 					rc = XDL_MIN(rc, REC_CNT(index->recs[INDEX_REC_IDXS(index, ae)]));
@@ -200,7 +201,7 @@ static int find_lcs(struct histindex *index, struct region *lcs,
 
 	index->cnt = index->max_chain_length + 1;
 
-	for (b_ptr = line2; b_ptr <= LINE_END(line2, count2); )
+	for (b_ptr = line2; b_ptr <= LINE_END(2); )
 		b_ptr = try_lcs(index, lcs, b_ptr, line1, count1, line2, count2);
 
 	return index->has_common && index->max_chain_length < index->cnt;
@@ -217,7 +218,7 @@ static void reduce_common_start_end(struct histindex *index,
 		(*line2)++;
 		(*count2)--;
 	}
-	while (*count1 > 1 && *count2 > 1 && cmp(index, 1, LINE_END(*line1, *count1), 2, LINE_END(*line2, *count2))) {
+	while (*count1 > 1 && *count2 > 1 && cmp(index, 1, LINE_END_PTR(1), 2, LINE_END_PTR(2))) {
 		(*count1)--;
 		(*count2)--;
 	}
@@ -259,7 +260,7 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 
  	reduce_common_start_end(&index, &line1, &count1, &line2, &count2);
 
-	if (LINE_END(line1, count1) >= MAX_PTR)
+	if (LINE_END(1) >= MAX_PTR)
 		return -1;
 
 	index.table = NULL;
@@ -309,8 +310,8 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 				line1, lcs.begin1 - line1,
 				line2, lcs.begin2 - line2);
 			histogram_diff(file1, file2, xpp, env,
-				lcs.end1 + 1, LINE_END(line1, count1) - lcs.end1,
-				lcs.end2 + 1, LINE_END(line2, count2) - lcs.end2);
+				lcs.end1 + 1, LINE_END(1) - lcs.end1,
+				lcs.end2 + 1, LINE_END(2) - lcs.end2);
 		}
 	}
 
