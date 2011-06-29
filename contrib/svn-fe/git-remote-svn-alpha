@@ -1,22 +1,22 @@
-#!/bin/env bash
+#!/bin/bash
 set -o pipefail
 set -e
 
 die () {
-       printf >&2 'fatal: %s\n' "$*"
-       exit 128
+	printf >&2 'fatal: %s\n' "$*"
+	exit 128
 }
 
 usage () {
-       printf >&2 'usage: %s\n' "$*"
-       exit 129
+	printf >&2 'usage: %s\n' "$*"
+	exit 129
 }
 
 do_import () {
-       revs=$1 url=$2
-       (svnrdump dump --non-interactive --username=Guest --password= \
-               -r"$revs" "$url" | svn-fe) 3<&0 || die "FAILURE"
-       exec 1>&-
+	revs=$1 url=$2
+	(svnrdump dump --non-interactive --username=Guest --password= \
+		-r"$revs" "$url" | svn-fe) 3<&0 || die "FAILURE"
+	exec 1>&-
 }
 
 test "${2+set}" ||
@@ -27,29 +27,29 @@ need_import=""
 
 while read -r cmd args
 do
-       case $cmd in
-       capabilities)
-               echo import
-               echo "refspec HEAD:refs/heads/master"
-               echo "refspec refs/heads/master:refs/heads/master"
-               echo
-               ;;
-       list)
-               echo '? HEAD'
-               echo '? refs/heads/master'
-               echo
-               ;;
-       import)
-               test "$args" = "HEAD" || test "$args" = "refs/heads/master" ||
-               die "remote-svn-alpha: unsupported import ref argument: $args"
-               need_import="yes"
-               ;;
-       '')
-               test "$need_import" = "yes" || exit 0
-               do_import 0:HEAD "$url"
-               need_import=""
-               ;;
-       *)
-               die "remote-svn-alpha: unsupported command: $cmd $args"
-       esac
+	case $cmd in
+	capabilities)
+		echo import
+		echo "refspec HEAD:refs/heads/master"
+		echo "refspec refs/heads/master:refs/heads/master"
+		echo
+		;;
+	list)
+		echo '? HEAD'
+		echo '? refs/heads/master'
+		echo
+		;;
+	import)
+		test "$args" = "HEAD" || test "$args" = "refs/heads/master" ||
+		die "remote-svn-alpha: unsupported import ref argument: $args"
+		need_import="yes"
+		;;
+	'')
+		test "$need_import" = "yes" || exit 0
+		do_import 0:HEAD "$url"
+		need_import=""
+		;;
+	*)
+		die "remote-svn-alpha: unsupported command: $cmd $args"
+	esac
 done
