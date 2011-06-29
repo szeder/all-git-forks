@@ -12,10 +12,32 @@ usage () {
 	exit 129
 }
 
+try_svnrdump () {
+	command -v svnrdump >/dev/null &&
+	echo "svnrdump dump --non-interactive --username=Guest --password= \
+		--quiet --incremental" ||
+	true
+}
+
+svnadmin_wrap () {
+	path=${1##file://} &&
+	test "z$path" != "z$1" &&
+	svnadmin dump --incremental --deltas --quiet "$path" "$2"
+}
+
+try_svnadmin () {
+	command -v svnadmin >/dev/null &&
+	echo svnadmin_wrap ||
+	true
+}
+
+SVNDUMP=""
+SVNDUMP=${SVNDUMP:-`try_svnrdump`}
+SVNDUMP=${SVNDUMP:-`try_svnadmin`}
+
 do_import () {
 	revs=$1 url=$2
-	(svnrdump dump --non-interactive --username=Guest --password= \
-		-r"$revs" "$url" --quiet | svn-fe) 3<&0 || die "FAILURE"
+	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
