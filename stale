@@ -7,7 +7,7 @@ fi
 Meta/extra --stale
 
 for i in `Meta/extra --matched`; do
-	if test -n "`git rev-list -1 $i..github/$i`"; then
+	if test -n "`git rev-list -1 github/$i..$i`"; then
 		echo PUSH:all
 		break;
 	fi
