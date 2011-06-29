@@ -28,9 +28,38 @@ svnrdump_wrap () {
 	fi
 }
 
+try_svnrdump () {
+	command -v svnrdump >/dev/null &&
+	echo svnrdump_wrap ||
+	true
+}
+
+svnadmin_wrap () {
+	path=${1##file://} &&
+	test "z$path" != "z$1" &&
+	latest=$(svnlook youngest "$path") &&
+	future=$(( $latest + 1 )) &&
+	asked=${2#-r} &&
+	asked=${asked%:*} &&
+	test "$asked" -eq "$future" ||
+	svnadmin dump --incremental --deltas --quiet "$path" "$2"
+}
+
+try_svnadmin () {
+	command -v svnadmin >/dev/null &&
+	command -v svnlook >/dev/null &&
+	echo svnadmin_wrap ||
+	true
+}
+
+SVNDUMP=""
+SVNDUMP=${SVNDUMP:-`try_svnrdump`}
+SVNDUMP=${SVNDUMP:-`try_svnadmin`}
+test -n "$SVNDUMP" || die "neither svnrdump nor svnadmin & svnlook was found"
+
 do_import () {
 	revs=$1 url=$2
-	(svnrdump_wrap "$url" -r"$revs" | svn-fe) 3<&0 || die "FAILURE"
+	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
