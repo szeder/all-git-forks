@@ -51,6 +51,7 @@ struct object_entry {
 				       * objects against.
 				       */
 	unsigned char no_try_delta;
+	unsigned char tagged; /* near the very tip of refs */
 };
 
 /*
@@ -95,6 +96,7 @@ static unsigned long window_memory_limit = 0;
  */
 static int *object_ix;
 static int object_ix_hashsz;
+static struct object_entry *locate_object_entry(const unsigned char *sha1);
 
 /*
  * stats
@@ -199,6 +201,7 @@ static void copy_pack_data(struct sha1file *f,
 	}
 }
 
+/* Return 0 if we will bust the pack-size limit */
 static unsigned long write_object(struct sha1file *f,
 				  struct object_entry *entry,
 				  off_t write_offset)
@@ -433,9 +436,25 @@ static int write_one(struct sha1file *f,
 	return 1;
 }
 
+static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
+		       void *cb_data)
+{
+	unsigned char peeled[20];
+	struct object_entry *entry = locate_object_entry(sha1);
+
+	if (entry)
+		entry->tagged = 1;
+	if (!peel_ref(path, peeled)) {
+		entry = locate_object_entry(peeled);
+		if (entry)
+			entry->tagged = 1;
+	}
+	return 0;
+}
+
 static void write_pack_file(void)
 {
-	uint32_t i = 0, j;
+	uint32_t i, j, start_index = 0;
 	struct sha1file *f;
 	off_t offset;
 	struct pack_header hdr;
@@ -445,6 +464,10 @@ static void write_pack_file(void)
 	if (progress > pack_to_stdout)
 		progress_state = start_progress("Writing objects", nr_result);
 	written_list = xmalloc(nr_objects * sizeof(*written_list));
+
+	for (i = 0; i < nr_objects; i++)
+		objects[i].tagged = 0;
+	for_each_ref(mark_tagged, NULL);
 
 	do {
 		unsigned char sha1[20];
@@ -467,7 +490,14 @@ static void write_pack_file(void)
 		sha1write(f, &hdr, sizeof(hdr));
 		offset = sizeof(hdr);
 		nr_written = 0;
-		for (; i < nr_objects; i++) {
+		for (i = start_index; i < nr_objects; i++) {
+			if (!objects[i].tagged)
+				continue;
+			if (!write_one(f, objects + i, &offset))
+				break;
+			display_progress(progress_state, written);
+		}
+		for (i = start_index; i < nr_objects; i++) {
 			if (!write_one(f, objects + i, &offset))
 				break;
 			display_progress(progress_state, written);
@@ -542,6 +572,7 @@ static void write_pack_file(void)
 			written_list[j]->offset = (off_t)-1;
 		}
 		nr_remaining -= nr_written;
+		start_index = i;
 	} while (nr_remaining && i < nr_objects);
 
 	free(written_list);
