@@ -1139,4 +1139,14 @@ test_expect_failure '.git/config ignore=all suppresses submodule summary' '
 	git config -f .gitmodules  --remove-section submodule.subname
 '
 
+test_expect_success 'Check if git-dir is ignored when gitfile is used' '
+	git init gitdir-test &&
+	cd gitdir-test &&
+	mv .git real-git-dir &&
+	echo "gitdir: real-git-dir" > .git &&
+	git status -s real-git-dir > actual &&
+	> expect &&
+	test_cmp actual expect
+'
+
 test_done

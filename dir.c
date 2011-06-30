@@ -1215,6 +1215,13 @@ int remove_dir_recursively(struct strbuf *path, int flag)
 void setup_standard_excludes(struct dir_struct *dir)
 {
 	const char *path;
+	const char *work_tree;
+	const char *git_dir;
+	struct strbuf wt_full;
+	struct strbuf gd_base;
+	struct strbuf gd_relpath;
+	struct strbuf gd;
+	int i = 0;
 
 	dir->exclude_per_dir = ".gitignore";
 	path = git_path("info/exclude");
@@ -1222,6 +1229,27 @@ void setup_standard_excludes(struct dir_struct *dir)
 		add_excludes_from_file(dir, path);
 	if (excludes_file && !access(excludes_file, R_OK))
 		add_excludes_from_file(dir, excludes_file);
+	work_tree = get_git_work_tree();
+	strbuf_init(&wt_full,0);
+	strbuf_addstr(&wt_full,work_tree);
+	strbuf_addstr(&wt_full,"/.git");
+	git_dir = read_gitfile_gently(wt_full.buf);
+	strbuf_remove(&wt_full,wt_full.len-5,5);
+	if(git_dir) {
+		strbuf_init(&gd,0);
+		strbuf_addstr(&gd,git_dir);
+		if(gd.len > wt_full.len) {
+			strbuf_init(&gd_base,0);
+			strbuf_add(&gd_base,wt_full.buf,wt_full.len);
+			if(!strbuf_cmp(&gd_base,&wt_full)) {
+				strbuf_init(&gd_relpath,0);
+				for(i = gd_base.len + 1; i < gd.len; i++) {
+					strbuf_addch(&gd_relpath,gd.buf[i]);
+				}
+				add_exclude(gd_relpath.buf,"",0,&dir->exclude_list[EXC_FILE]);
+			}
+		}
+	}
 }
 
 int remove_path(const char *name)
