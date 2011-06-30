@@ -311,12 +311,13 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 			for (ptr = 0; ptr < count2; ptr++)
 				env->xdf2.rchg[line2 + ptr - 1] = 1;
 		} else {
-			histogram_diff(file1, file2, xpp, env,
+			result = histogram_diff(file1, file2, xpp, env,
 				line1, lcs.begin1 - line1,
 				line2, lcs.begin2 - line2);
-			histogram_diff(file1, file2, xpp, env,
+			result = histogram_diff(file1, file2, xpp, env,
 				lcs.end1 + 1, LINE_END(1) - lcs.end1,
 				lcs.end2 + 1, LINE_END(2) - lcs.end2);
+			result *= -1;
 		}
 	}
 
