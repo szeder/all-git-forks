@@ -3,28 +3,38 @@
  */
 
 #include "git-compat-util.h"
+#include "parse-options.h"
 #include "vcs-svn/svndump.h"
 #include "vcs-svn/svndiff.h"
 #include "vcs-svn/sliding_window.h"
 #include "vcs-svn/line_buffer.h"
 
-static const char test_svnfe_usage[] =
-	"test-svn-fe (<dumpfile> | [-d] <preimage> <delta> <len>)";
+static const char * const test_svnfe_usage[] = {
+	"test-svn-fe (<dumpfile> | -d <preimage> <delta> <len>)",
+	NULL
+};
 
-static int apply_delta(int argc, char *argv[])
+static int d;
+
+static struct option test_svnfe_options[] = {
+	OPT_SET_INT('d', NULL, &d, "test apply_delta", 1),
+	OPT_END()
+};
+
+static int apply_delta(int argc, const char *argv[])
 {
 	struct line_buffer preimage = LINE_BUFFER_INIT;
 	struct line_buffer delta = LINE_BUFFER_INIT;
 	struct sliding_view preimage_view = SLIDING_VIEW_INIT(&preimage, -1);
 
-	if (argc != 5)
-		usage(test_svnfe_usage);
+	if (argc != 3)
+		usage_with_options(test_svnfe_usage, test_svnfe_options);
 
-	if (buffer_init(&preimage, argv[2]))
+	if (buffer_init(&preimage, argv[0]))
 		die_errno("cannot open preimage");
-	if (buffer_init(&delta, argv[3]))
+	if (buffer_init(&delta, argv[1]))
 		die_errno("cannot open delta");
-	if (svndiff0_apply(&delta, (off_t) strtoull(argv[4], NULL, 0),
+	if (svndiff0_apply(&delta, (off_t) strtoull(argv[2], NULL, 0),
 					&preimage_view, stdout))
 		return 1;
 	if (buffer_deinit(&preimage))
@@ -37,10 +47,16 @@ static int apply_delta(int argc, char *argv[])
 	return 0;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
-	if (argc == 2) {
-		if (svndump_init(argv[1]))
+	argc = parse_options(argc, argv, NULL, test_svnfe_options,
+						test_svnfe_usage, 0);
+
+	if (d)
+		return apply_delta(argc, argv);
+
+	if (argc == 1) {
+		if (svndump_init(argv[0]))
 			return 1;
 		svndump_read(NULL);
 		svndump_deinit();
@@ -48,7 +64,5 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	if (argc >= 2 && !strcmp(argv[1], "-d"))
-		return apply_delta(argc, argv);
-	usage(test_svnfe_usage);
+	usage_with_options(test_svnfe_usage, test_svnfe_options);
 }
