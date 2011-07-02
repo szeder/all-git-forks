@@ -105,6 +105,7 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 static void add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 	unsigned int set, unsigned int clear)
 {
+	printf("ADD ENTRY\n");
 	unsigned int size = ce_size(ce);
 	struct cache_entry *new = xmalloc(size);
 
@@ -128,6 +129,7 @@ static int add_rejected_path(struct unpack_trees_options *o,
 			     enum unpack_trees_error_types e,
 			     const char *path)
 {
+	printf("REJECT: %s\n",path);
 	if (!o->show_all_errors)
 		return error(ERRORMSG(o, e), path);
 
@@ -168,6 +170,11 @@ static void display_error_msgs(struct unpack_trees_options *o)
  */
 static void unlink_entry(struct cache_entry *ce)
 {
+	printf("UNLINK\n");
+	if(S_ISGITLINK(ce->ce_mode)) {
+		printf("UNLINK GITLINK %s\n",sha1_to_hex(ce->sha1));
+		remove_submodule_worktree(ce);
+	}
 	if (!check_leading_path(ce->name, ce_namelen(ce)))
 		return;
 	if (remove_or_warn(ce->ce_mode, ce->name))
@@ -1164,6 +1171,7 @@ static int verify_uptodate_1(struct cache_entry *ce,
 				   struct unpack_trees_options *o,
 				   enum unpack_trees_error_types error_type)
 {
+	printf("VERIFYING %s\n",ce->name);
 	struct stat st;
 
 	if (o->index_only || (!((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce)) && (o->reset || ce_uptodate(ce))))
@@ -1171,6 +1179,7 @@ static int verify_uptodate_1(struct cache_entry *ce,
 
 	if (!lstat(ce->name, &st)) {
 		unsigned changed = ie_match_stat(o->src_index, ce, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE);
+		printf("VERIFYING2 %s C%d\n",ce->name,changed);
 		if (!changed)
 			return 0;
 		/*
@@ -1180,8 +1189,10 @@ static int verify_uptodate_1(struct cache_entry *ce,
 		 * submodules that are marked to be automatically
 		 * checked out.
 		 */
-		if (S_ISGITLINK(ce->ce_mode))
+		if (S_ISGITLINK(ce->ce_mode)) {
+			printf("FOUND GItliNK VERIFY\n");
 			return 0;
+		}
 		errno = 0;
 	}
 	if (errno == ENOENT)
@@ -1241,6 +1252,7 @@ static int verify_clean_subdirectory(struct cache_entry *ce,
 
 	if (S_ISGITLINK(ce->ce_mode) &&
 	    resolve_gitlink_ref(ce->name, "HEAD", sha1) == 0) {
+			printf("HHHERE\n");
 		/* If we are not going to update the submodule, then
 		 * we don't care.
 		 */

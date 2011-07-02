@@ -69,6 +69,7 @@ static struct cached_object *find_cached_object(const unsigned char *sha1)
 
 int mkdir_in_gitdir(const char *path)
 {
+	printf("CREATE DIR %s\n",path);
 	if (mkdir(path, 0777)) {
 		int saved_errno = errno;
 		struct stat st;

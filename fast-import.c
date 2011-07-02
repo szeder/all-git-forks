@@ -2592,6 +2592,7 @@ static void parse_new_commit(void)
 	prev_fanout = convert_num_notes_to_fanout(b->num_notes);
 
 	/* file_change* */
+	printf("COM BUF: %s\n",command_buf.buf);
 	while (command_buf.len > 0) {
 		if (!prefixcmp(command_buf.buf, "M "))
 			file_change_m(b);

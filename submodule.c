@@ -728,3 +728,49 @@ int merge_submodule(unsigned char result[20], const char *path,
 	free(merges.objects);
 	return 0;
 }
+
+int remove_submodule_worktree(struct cache_entry *ce)
+{
+	printf("REMOVING SUBMODULE: %s\n",sha1_to_hex(ce->sha1));
+	struct child_process cp;
+	printf("%s\n", ce->name);
+	const char *argv[] = {"ls-tree", NULL, "--full-name", "--name-only", NULL};
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf to_remove = STRBUF_INIT;
+	char * wt;
+
+	wt = get_git_work_tree();
+	argv[1] = sha1_to_hex(ce->sha1);
+	memset(&cp, 0, sizeof(cp));
+	cp.argv = argv;
+	cp.env = local_repo_env;
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.out = -1;
+	cp.dir = ce->name;
+	if (!run_command(&cp) && strbuf_read(&buf, cp.out, 1024)) {
+		strbuf_add(&to_remove,wt,strlen(wt));
+		strbuf_add(&to_remove,"/",1);
+		strbuf_add(&to_remove,ce->name,strlen(ce->name));
+		strbuf_add(&to_remove,"/",1);
+		strbuf_add(&to_remove,buf.buf,buf.len);
+		strbuf_trim(&to_remove);
+		int r = unlink_or_warn(to_remove.buf);
+		printf("FILE: %s RES: %d ERR %s\n",to_remove.buf,r,strerror(errno));
+		strbuf_reset(&to_remove);
+	}
+	strbuf_add(&to_remove,wt,strlen(wt));
+	strbuf_add(&to_remove,"/",1);
+	strbuf_add(&to_remove,ce->name,strlen(ce->name));
+	strbuf_add(&to_remove,"/",1);
+	strbuf_add(&to_remove,".git",4);
+	strbuf_trim(&to_remove);
+	int r = unlink_or_warn(to_remove.buf);
+	printf("FILE: %s RES: %d ERR %s\n",to_remove.buf,r,strerror(errno));
+
+
+	close(cp.out);
+
+	strbuf_release(&buf);
+	return 0;
+}

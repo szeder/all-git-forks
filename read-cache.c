@@ -283,6 +283,7 @@ int ie_match_stat(const struct index_state *istate,
 		return DATA_CHANGED | TYPE_CHANGED | MODE_CHANGED;
 
 	changed = ce_match_stat_basic(ce, st);
+	printf("CC %d\n",changed);
 
 	/*
 	 * Within 1 second of this sequence:

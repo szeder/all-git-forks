@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "blob.h"
 #include "dir.h"
+#include "submodule.h"
 
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
@@ -45,6 +46,7 @@ static void create_directories(const char *path, int path_len,
 
 static void remove_subtree(const char *path)
 {
+	printf("REMOVE SUBTREE %s\n",path);
 	DIR *dir = opendir(path);
 	struct dirent *de;
 	char pathbuf[PATH_MAX];
@@ -198,6 +200,7 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 	struct stat st;
 	int len = state->base_dir_len;
 
+		printf("CHECKOUT\n");
 	if (topath)
 		return write_entry(ce, topath, state, 1);
 
@@ -214,7 +217,6 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 				fprintf(stderr, "%s already exists, no checkout\n", path);
 			return -1;
 		}
-
 		/*
 		 * We unlink the old file, to get the new one with the
 		 * right permissions (including umask, which is nasty
@@ -223,8 +225,10 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 		 */
 		if (S_ISDIR(st.st_mode)) {
 			/* If it is a gitlink, leave it alone! */
-			if (S_ISGITLINK(ce->ce_mode))
+			if (S_ISGITLINK(ce->ce_mode)) {
+				printf("ENTRY REMOVE SUBMODULE\n");
 				return 0;
+			}
 			if (!state->force)
 				return error("%s is a directory", path);
 			remove_subtree(path);
