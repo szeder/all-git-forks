@@ -226,4 +226,13 @@ test_expect_success SMALL_SVN 'fetch each rev of SMALL separately' '
 	test_cmp ref7_2 ref_2
 '
 
+test_expect_success TINY_SVN 'fetch TINY does not write to refs/heads/master' '
+	reinit_git &&
+	url=$(svnurl tiny.svn) &&
+	git remote add svn "$url" &&
+	git fetch svn &&
+	git show-ref --verify refs/remotes/svn/master &&
+	test_must_fail git show-ref --verify refs/heads/master
+'
+
 test_done
