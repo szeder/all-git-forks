@@ -59,7 +59,7 @@ test -n "$SVNDUMP" || die "neither svnrdump nor svnadmin & svnlook was found"
 
 do_import () {
 	revs=$1 url=$2
-	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe) 3<&0 || die "FAILURE"
+	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe --no-progress) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
