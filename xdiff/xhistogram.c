@@ -248,6 +248,9 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 	if (count1 <= 0 && count2 <= 0)
 		return 0;
 
+	if (LINE_END(1) >= MAX_PTR)
+		return -1;
+
 	if (!count1) {
 		while(count2--)
 			env->xdf2.rchg[line2++ - 1] = 1;
@@ -264,9 +267,6 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 	index.xpp = xpp;
 
  	reduce_common_start_end(&index, &line1, &count1, &line2, &count2);
-
-	if (LINE_END(1) >= MAX_PTR)
-		return -1;
 
 	index.table = NULL;
 	index.recs = NULL;
