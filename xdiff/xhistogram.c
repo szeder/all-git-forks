@@ -236,8 +236,7 @@ static int fall_back_to_classic_diff(struct histindex *index,
 				  line1, count1, line2, count2);
 }
 
-static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
-	xpparam_t const *xpp, xdfenv_t *env,
+static int histogram_diff(xpparam_t const *xpp, xdfenv_t *env,
 	int line1, int count1, int line2, int count2)
 {
 	struct histindex index;
@@ -311,10 +310,10 @@ static int histogram_diff(mmfile_t *file1, mmfile_t *file2,
 			for (ptr = 0; ptr < count2; ptr++)
 				env->xdf2.rchg[line2 + ptr - 1] = 1;
 		} else {
-			result = histogram_diff(file1, file2, xpp, env,
+			result = histogram_diff(xpp, env,
 				line1, lcs.begin1 - line1,
 				line2, lcs.begin2 - line2);
-			result = histogram_diff(file1, file2, xpp, env,
+			result = histogram_diff(xpp, env,
 				lcs.end1 + 1, LINE_END(1) - lcs.end1,
 				lcs.end2 + 1, LINE_END(2) - lcs.end2);
 			result *= -1;
