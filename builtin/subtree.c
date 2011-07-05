@@ -28,7 +28,7 @@
 /*              #####  ####### #     # #     # ####### #     #               */
 /*---------------------------------------------------------------------------*/
 
-static int debug_printf_enabled = 1;
+static int debug_printf_enabled = 0;
 #define debug(...) if (debug_printf_enabled) fprintf(stderr, __VA_ARGS__)
 
 /*-----------------------------------------------------------------------------
@@ -154,8 +154,6 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
         die("git subtree add: branch must be specified");
     }
 
-    newfd = hold_locked_index(&lock_file, 1);
-
     if (read_cache_unmerged())
         die("You need to resolve your current index first");
 
@@ -168,6 +166,8 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
         branch_merge_name = argv[0];
         branch_name = branch_merge_name;
     }
+
+    newfd = hold_locked_index(&lock_file, 1);
 
     /* TODO: Add option to fetch from a remote first, then use FETCH_HEAD to get sha1. */
     if (get_sha1(branch_merge_name, merge_sha1))
@@ -197,7 +197,10 @@ static int cmd_subtree_add(int argc, const char **argv, const char *prefix)
     }
 
     /* checkout */
-    strcpy(topath, prefix);
+    if (prefix)
+        strcpy(topath, prefix);
+    else
+        topath[0] = '\0';
     memset(&state, 0, sizeof(state));
     state.base_dir = "";
     state.force = 1;
@@ -1437,6 +1440,8 @@ static int cmd_subtree_split(int argc, const char **argv, const char *prefix)
 
 static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
 {
+#if TRUE
+
     int i;
     const char *split_argv[200];
     struct strbuf **args;
@@ -1462,7 +1467,9 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     //const char *pull = "subtree pull -P green ../green HEAD";
     //const char *list = "subtree list";
 
-    const char *command = split;
+    const char *awesim = "subtree add -P packages/dbg -n technology/os/dbg --remote=ssh://gerrit.consumer.garmin.com:29418/technology/os/dbg";
+
+    const char *command = awesim;
 
     strbuf_addstr(&split_me, command);
     args = strbuf_split(&split_me, ' ');
@@ -1476,9 +1483,10 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
     }
     split_argv[i] = 0;
 
-    //cmd_subtree(i, split_argv, "");
-    //return 0;
+    cmd_subtree(i, split_argv, "");
+    return 0;
 
+#else
 
     // rev-list --format=oneline HEAD
     {
@@ -1523,6 +1531,8 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
         }
     }
 
+#endif
+
     return 0;
 }
 
@@ -1537,7 +1547,7 @@ static int cmd_subtree_debug(int argc, const char **argv, const char *prefix)
 /*---------------------------------------------------------------------------*/
 
 static const char * const builtin_subtree_usage[] = {
-    "git subtree add"
+    "git subtree add",
     "git subtree list",
     "git subtree merge",
     "git subtree pull",
