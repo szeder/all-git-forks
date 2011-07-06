@@ -638,6 +638,34 @@ static void read_and_refresh_cache(const char *me, struct replay_opts *opts)
 	rollback_lock_file(&index_lock);
 }
 
+static void format_args(struct strbuf *buf, struct replay_opts *opts)
+{
+	int i;
+
+	if (opts->no_commit)
+		strbuf_addstr(buf, "-n ");
+	if (opts->edit)
+		strbuf_addstr(buf, "-e ");
+	if (opts->signoff)
+		strbuf_addstr(buf, "-s ");
+	if (opts->mainline)
+		strbuf_addf(buf, "-m %d ", opts->mainline);
+	if (opts->strategy)
+		strbuf_addf(buf, "--strategy %s ", opts->strategy);
+	if (opts->xopts)
+		for (i = 0; i < opts->xopts_nr; i ++)
+			strbuf_addf(buf, "-X %s ", opts->xopts[i]);
+	if (opts->record_origin)
+		strbuf_addstr(buf, "-x ");
+	if (opts->allow_ff)
+		strbuf_addstr(buf, "--ff ");
+}
+
+/*
+ * Instruction sheet format ::
+ * pick -s 537d2e # revert: Introduce --continue to continue the operation
+ * pick 4a15c1 # revert: Introduce --reset to cleanup sequencer data
+ */
 static void format_todo(struct strbuf *buf, struct commit_list *todo_list,
 			struct replay_opts *opts)
 {
@@ -651,29 +679,53 @@ static void format_todo(struct strbuf *buf, struct commit_list *todo_list,
 		sha1_abbrev = find_unique_abbrev(cur->item->object.sha1, DEFAULT_ABBREV);
 		if (get_message(cur->item, &msg))
 			die(_("Cannot get commit message for %s"), sha1_abbrev);
-		strbuf_addf(buf, "%s %s %s\n", action, sha1_abbrev, msg.subject);
+		strbuf_addf(buf, "%s ", action);
+		format_args(buf, opts);
+		strbuf_addf(buf, "%s # %s\n", sha1_abbrev, msg.subject);
 	}
 }
 
-static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
+static void parse_cmdline_args(struct strbuf *args_to_parse,
+			int *argc, const char ***argv)
+{
+	return;
+}
+
+static struct commit *parse_insn_line(const char *start, struct replay_opts *opts)
 {
 	unsigned char commit_sha1[20];
 	char sha1_abbrev[40];
 	struct commit *commit;
 	enum replay_action action;
 	int insn_len = 0;
-	char *p;
+	char *p, *end;
 
-	p = start;
+	int argc = 0;
+	const char **argv = NULL;
+	struct strbuf args_to_parse = STRBUF_INIT;
+
+	p = (char *) start;
 	if (!(p = strchr(p, ' ')))
 		return NULL;
 	insn_len = p - start;
-	if (!(p = strchr(p + 1, ' ')))
+	if (!(end = strchr(p + 1, '#')))
 		return NULL;
-	p += 1;
-	strlcpy(sha1_abbrev, start + insn_len + 1,
-		p - (start + insn_len + 1));
+	*(end - 1) = '\0';
+	strbuf_addstr(&args_to_parse, p + 1);
 
+	/* Parse argc, argv out of args_to_parse */
+	/* TODO: Implement parse_cmdline_args! */
+	parse_cmdline_args(&args_to_parse, &argc, &argv);
+	strbuf_release(&args_to_parse);
+	if (argc)
+		parse_args(argc, argv, opts);
+
+	/* Copy out the sha1_abbrev explicitly */
+	if (!(p = strrchr(p, ' ')))
+		return NULL;
+	strcpy(sha1_abbrev, p + 1);
+
+	/* Determine the action */
 	if (!strncmp(start, "pick", insn_len))
 		action = CHERRY_PICK;
 	else if (!strncmp(start, "revert", insn_len))
@@ -718,7 +770,7 @@ static void read_populate_todo(struct commit_list **todo_list,
 	close(fd);
 
 	next = todo_list;
-	for (p = buf.buf; *p; p = strchr(p, '\n') + 1) {
+	for (p = buf.buf; *p;) {
 		if (!(commit = parse_insn_line(p, opts))) {
 			strbuf_release(&buf);
 			die(_("Malformed instruction sheet: %s"), git_path(SEQ_TODO_FILE));
@@ -727,6 +779,11 @@ static void read_populate_todo(struct commit_list **todo_list,
 		new->item = commit;
 		*next = new;
 		next = &new->next;
+
+		if ((p = strchr(p, '\n')))
+			p += 1;
+		else
+			break;
 	}
 	*next = NULL;
 	strbuf_release(&buf);
