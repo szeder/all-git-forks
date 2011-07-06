@@ -13,6 +13,7 @@
 #include "rerere.h"
 #include "merge-recursive.h"
 #include "refs.h"
+#include "dir.h"
 
 /*
  * This implements the builtins revert and cherry-pick.
@@ -24,6 +25,10 @@
  * Copyright (c) 2005 Linus Torvalds
  * Copyright (c) 2005 Junio C Hamano
  */
+
+#define SEQ_DIR		"sequencer"
+#define SEQ_HEAD_FILE	"sequencer/head"
+#define SEQ_TODO_FILE	"sequencer/todo"
 
 static const char * const revert_usage[] = {
 	"git revert [options] <commit-ish>",
@@ -417,7 +422,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 			return error(_("Your index file is unmerged."));
 	} else {
 		if (get_sha1("HEAD", head))
-			return error(_("You do not have a valid HEAD"));
+			return error(_("Can't %s on an unborn branch"), me);
 		if (index_differs_from("HEAD", 0))
 			return error_dirty_index(me, opts->action);
 	}
@@ -578,10 +583,106 @@ static void read_and_refresh_cache(const char *me, struct replay_opts *opts)
 	rollback_lock_file(&index_lock);
 }
 
-static int pick_commits(struct replay_opts *opts)
+static void format_todo(struct strbuf *buf, struct commit_list *todo_list,
+			struct replay_opts *opts)
+{
+	struct commit_list *cur = NULL;
+	struct commit_message msg = { NULL, NULL, NULL, NULL, NULL };
+	const char *sha1_abbrev = NULL;
+	const char *action;
+
+	action = (opts->action == REVERT ? "revert" : "pick");
+	for (cur = todo_list; cur; cur = cur->next) {
+		sha1_abbrev = find_unique_abbrev(cur->item->object.sha1, DEFAULT_ABBREV);
+		if (get_message(cur->item, &msg))
+			die(_("Cannot get commit message for %s"), sha1_abbrev);
+		strbuf_addf(buf, "%s %s %s\n", action, sha1_abbrev, msg.subject);
+	}
+}
+
+static void walk_revs_populate_todo(struct commit_list **todo_list,
+				struct replay_opts *opts)
 {
 	struct rev_info revs;
 	struct commit *commit;
+	struct commit_list *new;
+	struct commit_list **next;
+
+	prepare_revs(&revs, opts);
+
+	/* Insert into todo_list in the same order */
+	/* NEEDSWORK: Expose this as commit_list_append */
+	next = todo_list;
+	while ((commit = get_revision(&revs))) {
+		new = xmalloc(sizeof(struct commit_list));
+		new->item = commit;
+		*next = new;
+		next = &new->next;
+	}
+	*next = NULL;
+}
+
+static void create_seq_dir(void)
+{
+	if (file_exists(git_path(SEQ_DIR))) {
+		if (!is_directory(git_path(SEQ_DIR)) && remove_path(git_path(SEQ_DIR)) < 0)
+			die(_("Could not remove %s"), git_path(SEQ_DIR));
+	} else if (mkdir(git_path(SEQ_DIR), 0777) < 0)
+		die_errno(_("Could not create sequencer directory '%s'."), git_path(SEQ_DIR));
+}
+
+static void save_head(const char *head)
+{
+	static struct lock_file head_lock;
+	struct strbuf buf = STRBUF_INIT;
+	int fd;
+
+	fd = hold_lock_file_for_update(&head_lock, git_path(SEQ_HEAD_FILE), LOCK_DIE_ON_ERROR);
+	strbuf_addf(&buf, "%s\n", head);
+	if (write_in_full(fd, buf.buf, buf.len) < 0)
+		die_errno(_("Could not write to %s."), git_path(SEQ_HEAD_FILE));
+	if (commit_lock_file(&head_lock) < 0)
+		die(_("Error wrapping up %s"), git_path(SEQ_HEAD_FILE));
+}
+
+static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
+{
+	static struct lock_file todo_lock;
+	struct strbuf buf = STRBUF_INIT;
+	int fd;
+
+	fd = hold_lock_file_for_update(&todo_lock, git_path(SEQ_TODO_FILE), LOCK_DIE_ON_ERROR);
+	format_todo(&buf, todo_list, opts);
+	if (write_in_full(fd, buf.buf, buf.len) < 0) {
+		strbuf_release(&buf);
+		die_errno(_("Could not write to %s."), git_path(SEQ_TODO_FILE));
+	}
+	if (commit_lock_file(&todo_lock) < 0) {
+		strbuf_release(&buf);
+		die(_("Error wrapping up %s"), git_path(SEQ_TODO_FILE));
+	}
+	strbuf_release(&buf);
+}
+
+static int cleanup_sequencer_data(void)
+{
+	static struct strbuf seq_dir = STRBUF_INIT;
+
+	strbuf_addf(&seq_dir, "%s", git_path(SEQ_DIR));
+	if (remove_dir_recursively(&seq_dir, 0) < 0) {
+		strbuf_release(&seq_dir);
+		return error(_("Unable to clean up after successful %s"), me);
+	}
+	strbuf_release(&seq_dir);
+	return 0;
+}
+
+static int pick_commits(struct replay_opts *opts)
+{
+	struct commit_list *todo_list = NULL;
+	unsigned char sha1[20];
+	struct commit_list *cur;
+	int res;
 
 	setenv(GIT_REFLOG_ACTION, me, 0);
 	if (opts->allow_ff)
@@ -589,15 +690,24 @@ static int pick_commits(struct replay_opts *opts)
 				opts->record_origin || opts->edit));
 	read_and_refresh_cache(me, opts);
 
-	prepare_revs(&revs, opts);
+	walk_revs_populate_todo(&todo_list, opts);
+	create_seq_dir();
+	if (!get_sha1("HEAD", sha1))
+		save_head(sha1_to_hex(sha1));
+	save_todo(todo_list, opts);
 
-	while ((commit = get_revision(&revs))) {
-		int res = do_pick_commit(commit, opts);
+	for (cur = todo_list; cur; cur = cur->next) {
+		save_todo(cur, opts);
+		res = do_pick_commit(cur->item, opts);
 		if (res)
 			return res;
 	}
 
-	return 0;
+	/*
+	 * Sequence of picks finished successfully; cleanup by
+	 * removing the .git/sequencer directory
+	 */
+	return cleanup_sequencer_data();
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
