@@ -23,10 +23,9 @@ test_expect_success setup '
 '
 
 test_expect_success 'cherry-pick an empty commit' '
-	git checkout master && {
-		git cherry-pick empty-branch^
-		test "$?" = 1
-	}
+	git checkout master &&
+	test_expect_code 1 git cherry-pick empty-branch^
+	git cherry-pick --reset
 '
 
 test_expect_success 'index lockfile was removed' '
@@ -36,10 +35,9 @@ test_expect_success 'index lockfile was removed' '
 '
 
 test_expect_success 'cherry-pick a commit with an empty message' '
-	git checkout master && {
-		git cherry-pick empty-branch
-		test "$?" = 1
-	}
+	git checkout master &&
+	test_expect_code 1 git cherry-pick empty-branch &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'index lockfile was removed' '

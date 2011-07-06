@@ -29,6 +29,7 @@ test_expect_success 'fixup' '
 
 test_expect_success 'cherry-pick conflict' '
 	test_must_fail git cherry-pick master &&
+	git cherry-pick --reset &&
 	test_cmp expect foo
 '
 
@@ -39,6 +40,7 @@ test_expect_success 'reconfigure' '
 
 test_expect_success 'cherry-pick conflict without rerere' '
 	test_must_fail git cherry-pick master &&
+	git cherry-pick --reset &&
 	test_must_fail test_cmp expect foo
 '
 

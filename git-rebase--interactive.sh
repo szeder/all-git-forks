@@ -136,6 +136,10 @@ make_patch () {
 		get_author_ident_from_commit "$1" > "$author_script"
 }
 
+clear_cherry_pick_state () {
+	git cherry-pick --reset
+}
+
 die_with_patch () {
 	echo "$1" > "$state_dir"/stopped-sha
 	make_patch "$1"
@@ -279,8 +283,10 @@ pick_one_preserving_merges () {
 			echo "$sha1 $(git rev-parse HEAD^0)" >> "$rewritten_list"
 			;;
 		*)
-			output git cherry-pick "$@" ||
+			output git cherry-pick "$@" || {
+				clear_cherry_pick_state
 				die_with_patch $sha1 "Could not pick $sha1"
+			}
 			;;
 		esac
 		;;
@@ -385,16 +391,20 @@ do_next () {
 		comment_for_reflog pick
 
 		mark_action_done
-		pick_one $sha1 ||
+		pick_one $sha1 || {
+			clear_cherry_pick_state
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
+		}
 		record_in_rewritten $sha1
 		;;
 	reword|r)
 		comment_for_reflog reword
 
 		mark_action_done
-		pick_one $sha1 ||
+		pick_one $sha1 || {
+			clear_cherry_pick_state
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
+		}
 		git commit --amend --no-post-rewrite
 		record_in_rewritten $sha1
 		;;
@@ -402,8 +412,10 @@ do_next () {
 		comment_for_reflog edit
 
 		mark_action_done
-		pick_one $sha1 ||
+		pick_one $sha1 || {
+			clear_cherry_pick_state
 			die_with_patch $sha1 "Could not apply $sha1... $rest"
+		}
 		echo "$sha1" > "$state_dir"/stopped-sha
 		make_patch $sha1
 		git rev-parse --verify HEAD > "$amend"
@@ -438,7 +450,10 @@ do_next () {
 		echo "$author_script_content" > "$author_script"
 		eval "$author_script_content"
 		output git reset --soft HEAD^
-		pick_one -n $sha1 || die_failed_squash $sha1 "$rest"
+		pick_one -n $sha1 || {
+			clear_cherry_pick_state
+			die_failed_squash $sha1 "$rest"
+		}
 		case "$(peek_next_command)" in
 		squash|s|fixup|f)
 			# This is an intermediate commit; its message will only be
