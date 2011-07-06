@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2011-07-06 19:20+0000\n"
-"PO-Revision-Date: 2010-09-02 19:09 +0000\n"
+"PO-Revision-Date: 2011-07-06 19:24+0000\n"
 "Last-Translator: Sam Reed <sam@reedyboy.net>\n"
 "Language-Team: Git Mailing List <git@vger.kernel.org>\n"
 "Language: en-gb\n"
@@ -192,7 +192,7 @@ msgstr ""
 #: wt-status.c:731
 #, fuzzy
 msgid "Initial commit"
-msgstr "Initialised empty"
+msgstr ""
 
 #: wt-status.c:745
 msgid "Untracked"
