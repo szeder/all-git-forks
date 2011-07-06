@@ -47,6 +47,7 @@ struct replay_opts {
 	enum replay_action action;
 
 	int reset;
+	int contin;
 
 	/* Boolean options */
 	int edit;
@@ -105,12 +106,37 @@ static void verify_opt_compatible(const char *me, const char *base_opt, ...)
 	va_end(ap);
 }
 
+static void verify_opt_mutually_compatible(const char *me, ...)
+{
+	const char *opt1, *opt2;
+	va_list ap;
+	int set;
+
+	va_start(ap, me);
+	while ((opt1 = va_arg(ap, const char *))) {
+		set = va_arg(ap, int);
+		if (set)
+			break;
+	}
+	if (!opt1)
+		goto ok;
+	while ((opt2 = va_arg(ap, const char *))) {
+		set = va_arg(ap, int);
+		if (set)
+			die(_("%s: %s cannot be used with %s"),
+				me, opt1, opt2);
+	}
+ok:
+	va_end(ap);
+}
+
 static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	int noop;
 	struct option options[] = {
 		OPT_BOOLEAN(0, "reset", &opts->reset, "forget the current operation"),
+		OPT_BOOLEAN(0, "continue", &opts->contin, "continue the current operation"),
 		OPT_BOOLEAN('n', "no-commit", &opts->no_commit, "don't automatically commit"),
 		OPT_BOOLEAN('e', "edit", &opts->edit, "edit the commit message"),
 		{ OPTION_BOOLEAN, 'r', NULL, &noop, NULL, "no-op (backward compatibility)",
@@ -140,9 +166,21 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 					PARSE_OPT_KEEP_ARGV0 |
 					PARSE_OPT_KEEP_UNKNOWN);
 
+	/* Check for mutually incompatible command line arguments */
+	verify_opt_mutually_compatible(me,
+				"--reset", opts->reset,
+				"--continue", opts->contin,
+				NULL);
+
 	/* Check for incompatible command line arguments */
-	if (opts->reset) {
-		verify_opt_compatible(me, "--reset",
+	if (opts->reset || opts->contin) {
+		char *this_operation;
+		if (opts->reset)
+			this_operation = "--reset";
+		else
+			this_operation = "--continue";
+
+		verify_opt_compatible(me, this_operation,
 				"--no-commit", opts->no_commit,
 				"--signoff", opts->signoff,
 				"--mainline", opts->mainline,
@@ -617,6 +655,83 @@ static void format_todo(struct strbuf *buf, struct commit_list *todo_list,
 	}
 }
 
+static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
+{
+	unsigned char commit_sha1[20];
+	char sha1_abbrev[40];
+	struct commit *commit;
+	enum replay_action action;
+	int insn_len = 0;
+	char *p;
+
+	p = start;
+	if (!(p = strchr(p, ' ')))
+		return NULL;
+	insn_len = p - start;
+	if (!(p = strchr(p + 1, ' ')))
+		return NULL;
+	p += 1;
+	strlcpy(sha1_abbrev, start + insn_len + 1,
+		p - (start + insn_len + 1));
+
+	if (!strncmp(start, "pick", insn_len))
+		action = CHERRY_PICK;
+	else if (!strncmp(start, "revert", insn_len))
+		action = REVERT;
+	else
+		return NULL;
+
+	/*
+	 * Verify that the action matches up with the one in
+	 * opts; we don't support arbitrary instructions
+	 */
+	if (action != opts->action)
+		return NULL;
+
+	if ((get_sha1(sha1_abbrev, commit_sha1) < 0)
+		|| !(commit = lookup_commit_reference(commit_sha1)))
+		return NULL;
+
+	return commit;
+}
+
+static void read_populate_todo(struct commit_list **todo_list,
+			struct replay_opts *opts)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct commit_list *new;
+	struct commit_list **next;
+	struct commit *commit;
+	char *p;
+	int fd;
+
+	fd = open(git_path(SEQ_TODO_FILE), O_RDONLY);
+	if (fd < 0) {
+		strbuf_release(&buf);
+		die_errno(_("Could not open %s."), git_path(SEQ_TODO_FILE));
+	}
+	if (strbuf_read(&buf, fd, 0) < buf.len) {
+		close(fd);
+		strbuf_release(&buf);
+		die(_("Could not read %s."), git_path(SEQ_TODO_FILE));
+	}
+	close(fd);
+
+	next = todo_list;
+	for (p = buf.buf; *p; p = strchr(p, '\n') + 1) {
+		if (!(commit = parse_insn_line(p, opts))) {
+			strbuf_release(&buf);
+			die(_("Malformed instruction sheet: %s"), git_path(SEQ_TODO_FILE));
+		}
+		new = xmalloc(sizeof(struct commit_list));
+		new->item = commit;
+		*next = new;
+		next = &new->next;
+	}
+	*next = NULL;
+	strbuf_release(&buf);
+}
+
 static void walk_revs_populate_todo(struct commit_list **todo_list,
 				struct replay_opts *opts)
 {
@@ -733,6 +848,14 @@ static int process_continuation(struct replay_opts *opts)
 		if (!file_exists(git_path(SEQ_TODO_FILE)))
 			goto error;
 		return cleanup_sequencer_data();
+	} else if (opts->contin) {
+		if (!file_exists(git_path(SEQ_TODO_FILE)))
+			goto error;
+		read_populate_todo(&todo_list, opts);
+
+		/* Verify that the conflict has been resolved */
+		if (!index_differs_from("HEAD", 0))
+			todo_list = todo_list->next;
 	} else {
 		/*
 		 * Start a new cherry-pick/ revert sequence; but
@@ -741,7 +864,8 @@ static int process_continuation(struct replay_opts *opts)
 		 */
 		if (file_exists(git_path(SEQ_TODO_FILE))) {
 			error(_("A %s is already in progress"), me);
-			advise(_("Use %s --reset to forget about it"), me);
+			advise(_("Use %s --continue to continue the operation"), me);
+			advise(_("or use %s --reset to forget about it"), me);
 			return -1;
 		}
 
