@@ -307,6 +307,7 @@ gitexecdir = libexec/git-core
 mergetoolsdir = $(gitexecdir)/mergetools
 sharedir = $(prefix)/share
 gitwebdir = $(sharedir)/gitweb
+gitworkdir = $(sharedir)/git-work
 template_dir = share/git-core/templates
 htmldir = share/doc/git-doc
 ETC_GITCONFIG = $(sysconfdir)/gitconfig
@@ -2449,6 +2450,13 @@ dist-doc:
 	cd .doc-tmp-dir && $(TAR) cf ../$(manpages).tar .
 	gzip -n -9 -f $(manpages).tar
 	$(RM) -r .doc-tmp-dir
+
+dist-git-work:
+	$(RM) -r .gitwork-tmp-dir
+	mkdir .gitwork-tmp-dir
+	zipdir=$$(cd .gitwork-tmp-dir; pwd) && $(MAKE) prefix=$$zipdir install install-man
+	cd .gitwork-tmp-dir && zip -@ ../git-work.zip < ../FILES.git-work
+	$(RM) -r .gitwork-tmp-dir
 
 ### Cleaning rules
 
