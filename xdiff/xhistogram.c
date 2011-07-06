@@ -50,25 +50,24 @@ struct region {
 #define INDEX_REC_IDXS(i, a) (i->rec_idxs[(a) - i->ptr_shift])
 
 #define get_rec(env, s, l) \
-	((s == 1 ? env->xdf1 : env->xdf2).recs[l-1])
+	(env->xdf##s.recs[l-1])
 
-static int cmp_env(xpparam_t const *xpp, xdfenv_t *env,
-	int side1, int line1, int side2, int line2)
+static int cmp_recs(xpparam_t const *xpp, xdfenv_t *env,
+	xrecord_t *r1, xrecord_t *r2)
 {
-	xrecord_t *r1 = get_rec(env, side1, line1),
-		  *r2 = get_rec(env, side2, line2);
 	return r1->ha == r2->ha &&
 		xdl_recmatch(r1->ptr, r1->size, r2->ptr, r2->size,
 			    xpp->flags);
 }
 
+#define cmp_env(xpp, env, s1, l1, s2, l2) \
+	(cmp_recs(xpp, env, get_rec(env, s1, l1), get_rec(env, s2, l2)))
+
 #define cmp(i, s1, l1, s2, l2) \
 	(cmp_env(i->xpp, i->env, s1, l1, s2, l2))
 
-static unsigned int table_hash(struct histindex *index, int side, int line)
-{
-	return XDL_HASHLONG((get_rec(index->env, side, line))->ha, index->table_bits);
-}
+#define table_hash(index, side, line) \
+	XDL_HASHLONG((get_rec(index->env, side, line))->ha, index->table_bits)
 
 static int scanA(struct histindex *index, int line1, int count1)
 {
