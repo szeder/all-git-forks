@@ -842,10 +842,40 @@ void send_message(struct strbuf *message)
 	}
 }
 
+char *tmpdir;
+void cleanup_tmpdir()
+{
+	struct dirent *de;
+	DIR *dir = opendir(tmpdir);
+	if (!dir) {
+		error("Failed to opendir '%s': %s", tmpdir, strerror(errno));
+		return;
+	}
+	while ((de = readdir(dir)) != NULL) {
+		struct stat st;
+		char path[PATH_MAX];
+		strcpy(path, tmpdir);
+		strcat(path, "/");
+		strcat(path, de->d_name);
+		if (stat(path, &st)) {
+			error("stat('%s') failed: %s", path, strerror(errno));
+			return;
+		}
+		if (!S_ISREG(st.st_mode))
+			continue;
+		if (verbose)
+			fprintf(stderr, "deleting '%s'\n", path);
+		unlink(path);
+	}
+	closedir(dir);
+	rmdir(tmpdir);
+	free(tmpdir);
+}
+
 int main(int argc, const char **argv)
 {
 	int i, nongit_ok, prompting;
-	struct string_list files = { 0 };
+	struct string_list files = { 0 }, rev_list_opts = { 0 };
 
 	int quiet = 0, thread = 1, force = 0,
 	    compose = 0, annotate = 0;
@@ -904,7 +934,7 @@ int main(int argc, const char **argv)
 	git_extract_argv0_path(argv[0]);
 	setup_git_directory_gently(&nongit_ok);
 	git_config(git_send_email_config, NULL);
-	argc = parse_options(argc, argv, NULL, options, send_email_usage, 0);
+	argc = parse_options(argc, argv, NULL, options, send_email_usage, PARSE_OPT_KEEP_UNKNOWN);
 
 	repoauthor = git_author_info(IDENT_NO_DATE);
 	repocommitter = git_committer_info(IDENT_NO_DATE);
@@ -917,9 +947,12 @@ int main(int argc, const char **argv)
 			/* fill in */
 			break;
 		} else if (!lstat(arg, &st) && S_ISDIR(st.st_mode)) {
+			int j;
 			DIR *dir;
 			struct dirent *de;
+			struct string_list dir_files = { 0 };
 
+			/* collect files in directory */
 			dir = opendir(arg);
 			if (!dir)
 				die("Failed to opendir '%s': %s", arg, strerror(errno));
@@ -933,45 +966,63 @@ int main(int argc, const char **argv)
 					die_errno("lstat '%s'", path);
 
 				if (S_ISREG(st.st_mode))
-					string_list_append(&files, xstrdup(path));
+					string_list_append(&dir_files, xstrdup(path));
 			}
 			closedir(dir);
-		} else if (!access(arg, R_OK))
+
+			/* sort dir-entries and insert them */
+			sort_string_list(&dir_files);
+			for (j = 0; j < dir_files.nr; ++j)
+				string_list_append(&files, dir_files.items[j].string);
+		} else if (!access(arg, R_OK) && !check_file_rev_conflict(arg))
 			string_list_append(&files, arg);
-		else {
-			struct rev_info revs;
-			/* needs to clone the string, since
-			   handle_revision_arg modifies the input */
-			char *temp_arg = xstrdup(arg);
-			init_revisions(&revs, NULL);
-			if (!handle_revision_arg(temp_arg, &revs, 0, 1)) {
-				char *tmp;
-
-				if (!lstat(arg, &st))
-					die(
-"File '%s' exists but it could also be the range of commits\n"
-"to produce patches for.  Please disambiguate by...\n"
-"\n"
-"    * Saying './%s' if you mean a file; or\n"
-"    * Giving --format-patch option if you mean a range.\n",
-					arg, arg);
-
-				printf("'%s' is a revision-range\n", arg);
-
-				tmp = xstrdup(getenv("TMPDIR"));
-				if (!tmp)
-					tmp = xstrdup("/tmp");
-
-				printf("wat: %s\n", git_path("send-email-XXXXXX"));
-				tmp = mkdtemp(xstrdup(git_path("send-email-XXXXXX")));
-				if (!tmp)
-					die("mkdtemp: %s", strerror(errno));
-				printf("tmpdir = '%s'\n", tmp);
-				rmdir(tmp);
-			}
-			free(temp_arg);
-		}
+		else
+			string_list_append(&rev_list_opts, arg);
 	}
+
+	if (rev_list_opts.nr) {
+		int j;
+		char **cld_argv = xmalloc(sizeof(*cld_argv) * (4 +
+		    rev_list_opts.nr));
+		struct child_process cld = { (const char **)cld_argv };
+		struct strbuf buf = STRBUF_INIT;
+		struct strbuf **lines = NULL;
+
+		char template[PATH_MAX];
+
+		tmpdir = getenv("TMPDIR");
+		if (!tmpdir)
+			tmpdir = "/tmp";
+
+		snprintf(template, sizeof(template), "%s/bleh.XXXXXX", tmpdir);
+		tmpdir = xstrdup(mktemp(template));
+		atexit(cleanup_tmpdir);
+
+		/* prepare argv */
+		cld_argv[0] = "format-patch";
+		cld_argv[1] = "-o";
+		cld_argv[2] = tmpdir;
+
+		for (j = 0; j < rev_list_opts.nr; ++j)
+			cld_argv[3 + j] = rev_list_opts.items[j].string;
+		cld_argv[3 + rev_list_opts.nr] = NULL;
+
+		cld.git_cmd = 1;
+		cld.out = -1;
+		if (start_command(&cld))
+			die("unable to fork");
+
+		/* read lines */
+		strbuf_read(&buf, cld.out, 64);
+		lines = strbuf_split(&buf, '\n');
+		for (i = 0; lines[i]; i++) {
+			strbuf_rtrim(lines[i]);
+			string_list_append(&files, lines[i]->buf);
+		}
+		finish_command(&cld);
+	}
+
+	/* TODO: validate patch */
 
 	if (files.nr) {
 		if (!quiet)
