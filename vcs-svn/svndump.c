@@ -37,6 +37,8 @@
 #define LENGTH_UNKNOWN (~0)
 #define DATE_RFC2822_LEN 31
 
+#define MAX_GITSVN_LINE_LEN 4096
+
 static struct line_buffer input = LINE_BUFFER_INIT;
 
 static struct {
@@ -54,6 +56,7 @@ static struct {
 static struct {
 	uint32_t version;
 	struct strbuf uuid, url;
+	int first_commit_done;
 } dump_ctx;
 
 static void reset_node_ctx(char *fname)
@@ -86,6 +89,7 @@ static void reset_dump_ctx(const char *url)
 		strbuf_addstr(&dump_ctx.url, url);
 	dump_ctx.version = 1;
 	strbuf_reset(&dump_ctx.uuid);
+	dump_ctx.first_commit_done = 0;
 }
 
 static void handle_property(const struct strbuf *key_buf,
@@ -299,19 +303,49 @@ static void handle_node(void)
 				node_ctx.textLength, &input);
 }
 
+static void add_metadata_trailer(struct strbuf *buf)
+{
+	if (*dump_ctx.uuid.buf && *dump_ctx.url.buf)
+		strbuf_addf(buf, "\n\ngit-svn-id: %s@%"PRIu32" %s\n",
+			 dump_ctx.url.buf, rev_ctx.revision, dump_ctx.uuid.buf);
+}
+
 static void begin_revision(void)
 {
+	static struct strbuf email;
+	const char *author;
+	uint32_t prev;
+	char buf[32];
+
 	if (!rev_ctx.revision)	/* revision 0 gets no git commit. */
 		return;
-	fast_export_begin_commit(rev_ctx.revision, rev_ctx.author.buf,
-		&rev_ctx.log, dump_ctx.uuid.buf, dump_ctx.url.buf,
-		rev_ctx.timestamp);
+	prev = dump_ctx.first_commit_done ? rev_ctx.revision - 1 : 0;
+	if (prev)
+		snprintf(buf, 32, ":%"PRIu32, prev);
+	else
+		*buf = 0;
+	author = *rev_ctx.author.buf ? rev_ctx.author.buf : "nobody";
+
+	strbuf_reset(&email);
+	strbuf_addstr(&email, author);
+	strbuf_addch(&email, '@');
+	if (*dump_ctx.uuid.buf)
+		strbuf_addstr(&email, dump_ctx.uuid.buf);
+	else
+		strbuf_addstr(&email, "local");
+
+	add_metadata_trailer(&rev_ctx.log);
+
+	fast_export_begin_commit("refs/heads/master", rev_ctx.revision, buf,
+		author, email.buf, &rev_ctx.log, rev_ctx.timestamp);
 }
 
 static void end_revision(void)
 {
-	if (rev_ctx.revision)
-		fast_export_end_commit(rev_ctx.revision);
+	if (rev_ctx.revision) {
+		fast_export_progress(rev_ctx.revision);
+		dump_ctx.first_commit_done = 1;
+	}
 }
 
 void svndump_read(void)
