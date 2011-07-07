@@ -124,4 +124,11 @@ test_expect_success 'push succeeds if submodule has no remote and is on the firs
 	)
 '
 
+test_expect_success 'push succeeds when --no-recurse-submodules is used' '
+	(
+		cd work &&
+		git push ../pub.git --no-recurse-submodules
+	)
+'
+
 test_done
