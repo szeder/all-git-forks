@@ -10,9 +10,11 @@ void fast_export_reset(void);
 
 void fast_export_delete(const char *path);
 void fast_export_modify(const char *path, uint32_t mode, const char *dataref);
-void fast_export_begin_commit(uint32_t revision, const char *author,
-			const struct strbuf *log, const char *uuid,
-			const char *url, unsigned long timestamp);
+void fast_export_begin_commit(uint32_t set_mark, const char *committer_name,
+			const char *committer_login, const char *committer_domain,
+			const struct strbuf *log, const char *gitsvnline,
+			unsigned long timestamp, uint32_t from_mark,
+			const char *dst_ref);
 void fast_export_end_commit(uint32_t revision);
 void fast_export_data(uint32_t mode, uint32_t len, struct line_buffer *input);
 void fast_export_blob_delta(uint32_t mode,
