@@ -19,7 +19,8 @@ reinit_git () {
 try_dump_ext () {
 	args=$1 &&
 	fd=${2:-3} &&
-	shift 2 &&
+	fi_args=${3:-} &&
+	shift 3 &&
 	input=$1 &&
 	maybe_fail_svnfe=${2:+test_$2} &&
 	maybe_fail_fi=${3:+test_$3} &&
@@ -27,12 +28,12 @@ try_dump_ext () {
 	{
 		eval "$maybe_fail_svnfe test-svn-fe $args "$input" >stream $fd<backflow" &
 	} &&
-	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
+	eval "$maybe_fail_fi git fast-import $fi_args --cat-blob-fd=3 <stream 3>backflow" &&
 	wait $!
 }
 
 try_dump () {
-	try_dump_ext "" "" $@
+	try_dump_ext "" "" "" $@
 }
 
 properties () {
@@ -71,6 +72,15 @@ Content-length: 10
 PROPS-END
 
 Revision-number: 2
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+EOF
+cat >moreempty.dump <<-EOF &&
+SVN-fs-dump-format-version: 3
+
+Revision-number: 3
 Prop-content-length: 10
 Content-length: 10
 
@@ -1121,7 +1131,7 @@ test_expect_success SVNREPO,PIPE 't9135/svn.dump' '
 
 test_expect_success PIPE 'import to notmaster ref' '
 	reinit_git &&
-	try_dump_ext "--ref=refs/heads/notmaster" 3 emptyprop.dump &&
+	try_dump_ext "--ref=refs/heads/notmaster" 3 "" emptyprop.dump &&
 
 	git rev-parse --verify notmaster &&
 	test_must_fail git rev-parse --verify master
@@ -1170,10 +1180,24 @@ test_expect_success PIPE 'use different backflow fd' '
 		Node-copyfrom-path: directory/somefile
 		EOF
 	} >directory.dump &&
-	try_dump_ext "--read-blob-fd=7" 7 directory.dump &&
+	try_dump_ext "--read-blob-fd=7" 7 "" directory.dump &&
 
 	git checkout HEAD otherfile &&
 	test_cmp hi otherfile
+'
+
+test_expect_success PIPE 'incremental import' '
+	reinit_git &&
+	>./marks &&
+
+	try_dump_ext "--incremental" "" "--export-marks=./marks" emptyprop.dump &&
+	test_line_count = 2 ./marks &&
+
+	try_dump_ext "--incremental" "" "--import-marks=./marks --export-marks=./marks" moreempty.dump &&
+	test_line_count = 3 ./marks &&
+
+	git log --format=oneline >history &&
+	test_line_count = 3 ./history
 '
 
 test_done

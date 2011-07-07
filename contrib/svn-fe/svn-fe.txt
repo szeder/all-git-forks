@@ -42,6 +42,11 @@ OPTIONS
 --[no-]progress::
 	Write 'progress' lines to fast-import stream. These
 	can be displayed by fast-import.
+--incremental::
+	If the first revision in dump has number greater than
+	1, make :(revision - 1) it's parent. For this to work
+	fast-import must be supplied with import-marks file
+	and the dump must be incremental.
 
 INPUT FORMAT
 ------------

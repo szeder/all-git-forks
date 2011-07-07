@@ -58,6 +58,7 @@ static struct {
 	struct strbuf uuid, url;
 	int first_commit_done;
 	struct strbuf ref_name;
+	int incremental;
 } dump_ctx;
 
 static void reset_node_ctx(char *fname)
@@ -83,7 +84,7 @@ static void reset_rev_ctx(uint32_t revision)
 	strbuf_reset(&rev_ctx.author);
 }
 
-static void reset_dump_ctx(const char *url, const char *dst_ref)
+static void reset_dump_ctx(const char *url, const char *dst_ref, int incremental)
 {
 	strbuf_reset(&dump_ctx.url);
 	if (url)
@@ -93,6 +94,7 @@ static void reset_dump_ctx(const char *url, const char *dst_ref)
 	dump_ctx.first_commit_done = 0;
 	strbuf_reset(&dump_ctx.ref_name);
 	strbuf_addstr(&dump_ctx.ref_name, dst_ref);
+	dump_ctx.incremental = incremental;
 }
 
 static void handle_property(const struct strbuf *key_buf,
@@ -321,7 +323,10 @@ static void begin_revision(void)
 	} else {
 		*gitsvnline = 0;
 	}
-	from_mark = dump_ctx.first_commit_done ? rev_ctx.revision - 1 : 0;
+	if (dump_ctx.incremental)
+		from_mark = rev_ctx.revision - 1;
+	else
+		from_mark = dump_ctx.first_commit_done ? rev_ctx.revision - 1 : 0;
 	author = *rev_ctx.author.buf ? rev_ctx.author.buf : "nobody";
 	domain = *dump_ctx.uuid.buf ? dump_ctx.uuid.buf : "local";
 
@@ -493,7 +498,7 @@ int svndump_init(const struct svndump_args *args)
 	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(args->url, args->ref);
+	reset_dump_ctx(args->url, args->ref, args->incremental);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
@@ -502,7 +507,7 @@ int svndump_init(const struct svndump_args *args)
 void svndump_deinit(void)
 {
 	fast_export_deinit();
-	reset_dump_ctx(NULL, "");
+	reset_dump_ctx(NULL, "", 0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);
