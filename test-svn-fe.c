@@ -23,6 +23,9 @@ static struct option test_svnfe_options[] = {
 	OPT_SET_INT('d', "apply-delta", &delta_test, "test apply_delta", 1),
 	OPT_STRING(0, "ref", &options.ref, "refname",
 		"write to <refname> instead of refs/heads/master"),
+	OPT_SET_INT(0, "incremental", &options.incremental,
+		"resume export, requires marks and incremental dump",
+		1),
 	OPT_INTEGER(0, "read-blob-fd", &options.backflow_fd,
 		"read blobs and trees from this fd instead of 3"),
 	OPT_END()
