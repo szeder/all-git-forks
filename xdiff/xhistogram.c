@@ -52,7 +52,7 @@ struct region {
 #define get_rec(env, s, l) \
 	(env->xdf##s.recs[l-1])
 
-static int cmp_recs(xpparam_t const *xpp, xdfenv_t *env,
+static int cmp_recs(xpparam_t const *xpp,
 	xrecord_t *r1, xrecord_t *r2)
 {
 	return r1->ha == r2->ha &&
@@ -61,7 +61,7 @@ static int cmp_recs(xpparam_t const *xpp, xdfenv_t *env,
 }
 
 #define cmp_env(xpp, env, s1, l1, s2, l2) \
-	(cmp_recs(xpp, env, get_rec(env, s1, l1), get_rec(env, s2, l2)))
+	(cmp_recs(xpp, get_rec(env, s1, l1), get_rec(env, s2, l2)))
 
 #define cmp(i, s1, l1, s2, l2) \
 	(cmp_env(i->xpp, i->env, s1, l1, s2, l2))
