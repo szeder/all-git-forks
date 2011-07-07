@@ -855,6 +855,8 @@ int main(int argc, const char **argv)
 	do {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF)
 			break;
+		if (buf.len == 0)
+			break;
 		if (!prefixcmp(buf.buf, "fetch ")) {
 			if (nongit)
 				die("Fetch attempted without a local repo");
@@ -893,6 +895,7 @@ int main(int argc, const char **argv)
 			printf("\n");
 			fflush(stdout);
 		} else {
+			fprintf(stderr, "Unknown command '%s'\n", buf.buf);
 			return 1;
 		}
 		strbuf_reset(&buf);
