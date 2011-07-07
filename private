@@ -1,13 +1,5 @@
 #!/bin/bash
 
-config() {
-	sed -ne "s/^$1//p" .git/private 2>/dev/null
-}
-
-branches() {
-	comm -23 <((Meta/topics; config +) | sort) <(config - | sort)
-}
-
 upstream=`git for-each-ref --format='%(upstream)' refs/heads/private`
 upstream=${upstream:-origin}
 
@@ -47,7 +39,14 @@ else
 	git checkout -q ${force:+-f} private^0 || exit
 fi
 
-for i in `branches`; do
+for i in `Meta/topics`; do
+	case "$i" in
+	*-wip)
+		echo >&2 "Skipping $i (wip)..."
+		continue
+		;;
+	esac
+
 	echo >&2 Merging $i...
 	if ! git rev-parse -q --verify "$i" >/dev/null; then
 		i=`git for-each-ref --format='%(refname:short)' refs/remotes |
