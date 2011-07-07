@@ -100,4 +100,10 @@ test_expect_success 'push fails when commit on multiple branches if one branch h
 		test_must_fail git push ../pub.git
 	)
 '
+test_expect_success 'push succeeds when --no-recurse-submodules is used' '
+	(
+		cd work &&
+		git push ../pub.git --no-recurse-submodules
+	)
+'
 test_done
