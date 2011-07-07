@@ -39,6 +39,7 @@ test_expect_success 'failed cherry-pick does not advance HEAD' '
 
 	head=$(git rev-parse HEAD) &&
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 	newhead=$(git rev-parse HEAD) &&
 
 	test "$head" = "$newhead"
@@ -55,6 +56,7 @@ test_expect_success 'advice from failed cherry-pick' "
 	hint: and commit the result with 'git commit'
 	EOF
 	test_must_fail git cherry-pick picked 2>actual &&
+	git cherry-pick --reset &&
 
 	test_i18ncmp expected actual
 "
@@ -62,7 +64,8 @@ test_expect_success 'advice from failed cherry-pick' "
 test_expect_success 'failed cherry-pick sets CHERRY_PICK_HEAD' '
 	pristine_detach initial &&
 	test_must_fail git cherry-pick picked &&
-	test_cmp_rev picked CHERRY_PICK_HEAD
+	test_cmp_rev picked CHERRY_PICK_HEAD &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'successful cherry-pick does not set CHERRY_PICK_HEAD' '
@@ -84,13 +87,15 @@ test_expect_success 'GIT_CHERRY_PICK_HELP suppresses CHERRY_PICK_HEAD' '
 		export GIT_CHERRY_PICK_HELP &&
 		test_must_fail git cherry-pick picked
 	) &&
-	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD
+	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'git reset clears CHERRY_PICK_HEAD' '
 	pristine_detach initial &&
 
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 	git reset &&
 
 	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD
@@ -102,7 +107,8 @@ test_expect_success 'failed commit does not clear CHERRY_PICK_HEAD' '
 	test_must_fail git cherry-pick picked &&
 	test_must_fail git commit &&
 
-	test_cmp_rev picked CHERRY_PICK_HEAD
+	test_cmp_rev picked CHERRY_PICK_HEAD &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'cancelled commit does not clear CHERRY_PICK_HEAD' '
@@ -119,7 +125,8 @@ test_expect_success 'cancelled commit does not clear CHERRY_PICK_HEAD' '
 		test_must_fail git commit
 	) &&
 
-	test_cmp_rev picked CHERRY_PICK_HEAD
+	test_cmp_rev picked CHERRY_PICK_HEAD &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'successful commit clears CHERRY_PICK_HEAD' '
@@ -130,13 +137,15 @@ test_expect_success 'successful commit clears CHERRY_PICK_HEAD' '
 	git add foo &&
 	git commit &&
 
-	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD
+	test_must_fail git rev-parse --verify CHERRY_PICK_HEAD &&
+	git cherry-pick --reset
 '
 
 test_expect_success 'failed cherry-pick produces dirty index' '
 	pristine_detach initial &&
 
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 
 	test_must_fail git update-index --refresh -q &&
 	test_must_fail git diff-index --exit-code HEAD
@@ -160,6 +169,7 @@ test_expect_success 'failed cherry-pick registers participants in index' '
 	git read-tree -u --reset HEAD &&
 
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 	git ls-files --stage --unmerged > actual &&
 
 	test_cmp expected actual
@@ -176,6 +186,7 @@ test_expect_success 'failed cherry-pick describes conflict in work tree' '
 	EOF
 
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 
 	sed "s/[a-f0-9]*\.\.\./objid/" foo > actual &&
 	test_cmp expected actual
@@ -195,6 +206,7 @@ test_expect_success 'diff3 -m style' '
 	EOF
 
 	test_must_fail git cherry-pick picked &&
+	git cherry-pick --reset &&
 
 	sed "s/[a-f0-9]*\.\.\./objid/" foo > actual &&
 	test_cmp expected actual
@@ -227,6 +239,7 @@ test_expect_success 'revert also handles conflicts sanely' '
 
 	head=$(git rev-parse HEAD) &&
 	test_must_fail git revert picked &&
+	git revert --reset &&
 	newhead=$(git rev-parse HEAD) &&
 	git ls-files --stage --unmerged > actual-stages &&
 
@@ -252,6 +265,7 @@ test_expect_success 'revert conflict, diff3 -m style' '
 	EOF
 
 	test_must_fail git revert picked &&
+	git revert --reset &&
 
 	sed "s/[a-f0-9]*\.\.\./objid/" foo > actual &&
 	test_cmp expected actual

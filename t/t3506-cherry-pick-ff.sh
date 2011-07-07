@@ -67,12 +67,14 @@ test_expect_success 'merge setup' '
 test_expect_success 'cherry-pick a non-merge with --ff and -m should fail' '
 	git reset --hard A -- &&
 	test_must_fail git cherry-pick --ff -m 1 B &&
+	git cherry-pick --reset &&
 	git diff --exit-code A --
 '
 
 test_expect_success 'cherry pick a merge with --ff but without -m should fail' '
 	git reset --hard A -- &&
 	test_must_fail git cherry-pick --ff C &&
+	git cherry-pick --reset &&
 	git diff --exit-code A --
 '
 
@@ -93,6 +95,7 @@ test_expect_success 'cherry pick with --ff a merge (2)' '
 test_expect_success 'cherry pick a merge relative to nonexistent parent with --ff should fail' '
 	git reset --hard B -- &&
 	test_must_fail git cherry-pick --ff -m 3 C
+	git cherry-pick --reset
 '
 
 test_expect_success 'cherry pick a root commit with --ff' '
