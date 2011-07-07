@@ -22,11 +22,12 @@ try_dump () {
 	maybe_fail_fi=${3:+test_$3} &&
 	args=${4:-} &&
 	fd=${5:-3} &&
+	fi_args=${6:-} &&
 
 	{
 		eval "$maybe_fail_svnfe test-svn-fe $args "$input" >stream $fd<backflow" &
 	} &&
-	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
+	eval "$maybe_fail_fi git fast-import $fi_args --cat-blob-fd=3 <stream 3>backflow" &&
 	wait $!
 }
 
@@ -66,6 +67,15 @@ Content-length: 10
 PROPS-END
 
 Revision-number: 2
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+EOF
+cat >moreempty.dump <<-EOF &&
+SVN-fs-dump-format-version: 3
+
+Revision-number: 3
 Prop-content-length: 10
 Content-length: 10
 
@@ -1169,6 +1179,20 @@ test_expect_success PIPE 'use different backflow fd' '
 
 	git checkout HEAD otherfile &&
 	test_cmp hi otherfile
+'
+
+test_expect_success PIPE 'incremental import' '
+	reinit_git &&
+	>./marks &&
+
+	try_dump emptyprop.dump "" "" "--incremental" "" "--export-marks=./marks" &&
+	test_line_count = 2 ./marks &&
+
+	try_dump moreempty.dump "" "" "--incremental" "" "--import-marks=./marks --export-marks=./marks" &&
+	test_line_count = 3 ./marks &&
+
+	git log --format=oneline >history &&
+	test_line_count = 3 ./history
 '
 
 test_done

@@ -8,7 +8,7 @@ struct svndump_options {
 	const char *dumpfile, *git_svn_url;
 	const char *ref;
 	int backflow_fd;
-	int progress;
+	int progress, incremental;
 };
 
 int svndump_init(const struct svndump_options *o);
