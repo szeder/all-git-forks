@@ -7,7 +7,8 @@ enum {
 	RECURSE_SUBMODULES_ON_DEMAND = -1,
 	RECURSE_SUBMODULES_OFF = 0,
 	RECURSE_SUBMODULES_DEFAULT = 1,
-	RECURSE_SUBMODULES_ON = 2
+	RECURSE_SUBMODULES_ON = 2,
+	RECURSE_SUBMODULES_CHECK = 3
 };
 
 void set_diffopt_flags_from_submodule_config(struct diff_options *diffopt,

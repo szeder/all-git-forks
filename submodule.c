@@ -243,6 +243,8 @@ int parse_fetch_recurse_submodules_arg(const char *opt, const char *arg)
 	default:
 		if (!strcmp(arg, "on-demand"))
 			return RECURSE_SUBMODULES_ON_DEMAND;
+		if (!strcmp(arg, "check"))
+			return RECURSE_SUBMODULES_CHECK;
 		die("bad %s argument: %s", opt, arg);
 	}
 }
@@ -313,8 +315,10 @@ static int has_remote(const char *refname, const unsigned char *sha1, int flags,
 	return 1;
 }
 
-/* checks for unpushed submodules based on their remote tracking
- * branches returns 1 in case no remate tracking branches are found
+/*
+ * stecks whether a certain submodule commit is pushed based on the
+ * submodules remote tracking branches. returns 1 in case no remote
+ * tracking branches are found.
  */
 static int is_submodule_commit_pushed(const char *path, const unsigned char sha1[20])
 {
@@ -378,7 +382,7 @@ static int collect_unpushed_submodules_in_tree(const unsigned char *sha1, const 
 	return READ_TREE_RECURSIVE;
 }
 
-static void parent_commits_pushed(struct commit *commit, struct commit_list *parent, int *found_unpushed_submodule)
+static void parent_commits_is_pushed(struct commit *commit, struct commit_list *parent, int *found_unpushed_submodule)
 {
 	while (parent) {
 		struct diff_options diff_opts;
@@ -396,7 +400,7 @@ static void parent_commits_pushed(struct commit *commit, struct commit_list *par
 	}
 }
 
-static void tree_commits_pushed(struct commit *commit, int *found_unpushed_submodule)
+static void tree_commits_is_pushed(struct commit *commit, int *found_unpushed_submodule)
 {
 	struct tree * tree;
 	struct pathspec pathspec;
@@ -425,9 +429,9 @@ int check_for_unpushed_submodule_commits(unsigned char new_sha1[20])
 	while ((commit = get_revision(&rev)) && !found_unpushed_submodule) {
 		struct commit_list *parent = commit->parents;
 		if(parent)
-			parent_commits_pushed(commit, parent, &found_unpushed_submodule);
+			parent_commits_is_pushed(commit, parent, &found_unpushed_submodule);
 		else
-			tree_commits_pushed(commit, &found_unpushed_submodule);
+			tree_commits_is_pushed(commit, &found_unpushed_submodule);
 	}
 
 	free(sha1_copy);

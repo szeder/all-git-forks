@@ -1006,7 +1006,7 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
-		   int *nonfastforward)
+		   int *nonfastforward, int recurse_submodules)
 {
 	*nonfastforward = 0;
 	transport_verify_remote_names(refspec_nr, refspec);
@@ -1042,11 +1042,12 @@ int transport_push(struct transport *transport,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
 
-		if(!(flags & TRANSPORT_PUSH_FORCE) && !is_bare_repository()) {
+		if((recurse_submodules == RECURSE_SUBMODULES_CHECK) &&
+		   !is_bare_repository()) {
 			struct ref *ref = remote_refs;
 			for (; ref; ref = ref->next)
 				if(!is_null_sha1(ref->new_sha1) && check_for_unpushed_submodule_commits(ref->new_sha1))
-					die("There are unpushed submodules, aborting. Use -f to force a push");
+					die("There are unpushed submodules, aborting.");
 		}
 
 		push_ret = transport->push_refs(transport, remote_refs, flags);

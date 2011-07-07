@@ -138,7 +138,7 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 
 int transport_push(struct transport *connection,
 		   int refspec_nr, const char **refspec, int flags,
-		   int * nonfastforward);
+		   int * nonfastforward, int recurse_submodules);
 
 const struct ref *transport_get_remote_refs(struct transport *transport);
 

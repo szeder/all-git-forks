@@ -32,7 +32,7 @@ test_expect_success push '
 	)
 '
 
-test_expect_failure 'push if submodule has no remote' '
+test_expect_success 'push if submodule has no remote' '
 	(
 		cd work/gar/bage &&
 		>junk2 &&
@@ -62,7 +62,7 @@ test_expect_success 'push fails if submodule commit not on remote' '
 		cd work &&
 		git add gar/bage &&
 		git commit -m "Third commit for gar/bage" &&
-		test_must_fail git push ../pub.git master
+		test_must_fail git push --recurse-submodules=check ../pub.git master
 	)
 '
 
@@ -97,7 +97,7 @@ test_expect_success 'push fails when commit on multiple branches if one branch h
 		>junk1 &&
 		git add junk1 &&
 		git commit -m "First junk" &&
-		test_must_fail git push ../pub.git
+		test_must_fail git push --recurse-submodules=check ../pub.git
 	)
 '
 
@@ -121,6 +121,13 @@ test_expect_success 'push succeeds if submodule has no remote and is on the firs
 		git add b &&
 		git commit -m "added submodule" &&
 		git push origin master
+	)
+'
+
+test_expect_success 'push succeeds when --no-recurse-submodules is used' '
+	(
+		cd work &&
+		git push ../pub.git --no-recurse-submodules
 	)
 '
 
