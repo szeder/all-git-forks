@@ -13,9 +13,6 @@
 #include "sliding_window.h"
 #include "line_buffer.h"
 
-#define MAX_GITSVN_LINE_LEN 4096
-
-static uint32_t first_commit_done;
 static struct line_buffer postimage = LINE_BUFFER_INIT;
 static struct line_buffer report_buffer = LINE_BUFFER_INIT;
 
@@ -31,7 +28,6 @@ static int init_postimage(void)
 
 void fast_export_init(int fd)
 {
-	first_commit_done = 0;
 	if (buffer_fdinit(&report_buffer, fd))
 		die_errno("cannot read from file descriptor %d", fd);
 }
@@ -73,40 +69,23 @@ void fast_export_modify(const char *path, uint32_t mode, const char *dataref)
 	putchar('\n');
 }
 
-static char gitsvnline[MAX_GITSVN_LINE_LEN];
-void fast_export_begin_commit(uint32_t revision, const char *author,
-			const struct strbuf *log,
-			const char *uuid, const char *url,
-			unsigned long timestamp)
+void fast_export_begin_commit(const char *ref, uint32_t mark, const char *from,
+			const char *author_name, const char *author_email,
+			const struct strbuf *log, unsigned long timestamp)
 {
-	static const struct strbuf empty = STRBUF_INIT;
-	if (!log)
-		log = &empty;
-	if (*uuid && *url) {
-		snprintf(gitsvnline, MAX_GITSVN_LINE_LEN,
-				"\n\ngit-svn-id: %s@%"PRIu32" %s\n",
-				 url, revision, uuid);
-	} else {
-		*gitsvnline = '\0';
-	}
-	printf("commit refs/heads/master\n");
-	printf("mark :%"PRIu32"\n", revision);
-	printf("committer %s <%s@%s> %ld +0000\n",
-		   *author ? author : "nobody",
-		   *author ? author : "nobody",
-		   *uuid ? uuid : "local", timestamp);
-	printf("data %"PRIuMAX"\n",
-		(uintmax_t) (log->len + strlen(gitsvnline)));
+	printf("commit %s\n", ref);
+	if (mark)
+		printf("mark :%"PRIu32"\n", mark);
+	printf("committer %s <%s> %ld +0000\n",
+		author_name, author_email, timestamp);
+	printf("data %"PRIuMAX"\n", (uintmax_t) log->len);
 	fwrite(log->buf, log->len, 1, stdout);
-	printf("%s\n", gitsvnline);
-	if (!first_commit_done) {
-		if (revision > 1)
-			printf("from :%"PRIu32"\n", revision - 1);
-		first_commit_done = 1;
-	}
+	putchar('\n');
+	if (from && *from)
+		printf("from %s\n", from);
 }
 
-void fast_export_end_commit(uint32_t revision)
+void fast_export_progress(uint32_t revision)
 {
 	printf("progress Imported commit %"PRIu32".\n\n", revision);
 }
