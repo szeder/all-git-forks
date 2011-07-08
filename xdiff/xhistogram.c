@@ -165,8 +165,8 @@ static int try_lcs(struct histindex *index, struct region *lcs, int b_ptr,
 					rc = XDL_MIN(rc, REC_CNT(index->recs[INDEX_REC_IDXS(index, ae)]));
 			}
 
-			if (b_next < be)
-				b_next = be;
+			if (b_next <= be)
+				b_next = be + 1;
 			if (lcs->end1 - lcs->begin1 + 1 < ae - as || rc < index->cnt) {
 				lcs->begin1 = as;
 				lcs->begin2 = bs;
@@ -178,7 +178,7 @@ static int try_lcs(struct histindex *index, struct region *lcs, int b_ptr,
 			if (np == 0)
 				break;
 
-			while (np < ae) {
+			while (np <= ae) {
 				np = INDEX_NEXT(index, np);
 				if (np == 0) {
 					should_break = 1;
