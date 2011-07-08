@@ -2,7 +2,7 @@ Meta = $(HOME)/compile/git/Meta
 prefix := $(HOME)/local/git/$(shell $(Meta)/install/prefix)
 
 CC = ccache gcc
-CFLAGS = -g -Wall -Werror
+CFLAGS = -g -Wall -Werror -Wno-error=unused-but-set-variable
 LDFLAGS = -g
 
 USE_LIBPCRE = YesPlease
