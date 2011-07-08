@@ -19,3 +19,5 @@ comm -13 <(have) <(want) |
 while read version; do
   ln -sfTv ../git/$version/bin/git $HOME/local/bin/git.$version
 done
+
+ln -sfTv $PWD/bin-wrappers/git $HOME/local/bin/git.compile
