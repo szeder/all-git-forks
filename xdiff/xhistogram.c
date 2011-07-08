@@ -167,7 +167,7 @@ static int try_lcs(struct histindex *index, struct region *lcs, int b_ptr,
 
 			if (b_next <= be)
 				b_next = be + 1;
-			if (lcs->end1 - lcs->begin1 + 1 < ae - as || rc < index->cnt) {
+			if (lcs->end1 - lcs->begin1 < ae - as || rc < index->cnt) {
 				lcs->begin1 = as;
 				lcs->begin2 = bs;
 				lcs->end1 = ae;
