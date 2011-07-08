@@ -58,7 +58,7 @@ ignore-whitespace! passed to 'git apply'
 C=!                passed to 'git apply'
  Actions:
 continue!          continue rebasing process
-abort!             abort rebasing process and restore original branch
+abort!             abort rebasing process and reset HEAD to <branch>
 skip!              skip current patch and continue rebasing process
 "
 . git-sh-setup
