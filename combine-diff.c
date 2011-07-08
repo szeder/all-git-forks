@@ -1074,7 +1074,7 @@ void diff_tree_combined(const unsigned char *sha1,
 		 * when doing combined diff.
 		 */
 		int stat_opt = (opt->output_format &
-				(DIFF_FORMAT_NUMSTAT|DIFF_FORMAT_DIFFSTAT));
+				(DIFF_FORMAT_NUMSTAT|DIFF_FORMAT_DIFFSTAT|DIFF_FORMAT_CALLBACK));
 		if (i == 0 && stat_opt)
 			diffopts.output_format = stat_opt;
 		else
