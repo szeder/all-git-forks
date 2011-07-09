@@ -358,10 +358,10 @@ test_expect_success 'update --init' '
 	git submodule update init > update.out &&
 	cat update.out &&
 	grep "not initialized" update.out &&
-	! test -d init/.git &&
+	! test -f init/.git &&
 
 	git submodule update --init init &&
-	test -d init/.git
+	test -n $(grep "/^gitdir: /" init/.git)
 '
 
 test_expect_success 'do not add files from a submodule' '

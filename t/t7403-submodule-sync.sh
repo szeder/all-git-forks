@@ -55,7 +55,7 @@ test_expect_success '"git submodule sync" should update submodule URLs' '
 	 git pull --no-recurse-submodules &&
 	 git submodule sync
 	) &&
-	test -d "$(git config -f super-clone/submodule/.git/config \
+	test -d "$(git config -f super-clone/.git/modules/submodule/config \
 	                        remote.origin.url)" &&
 	(cd super-clone/submodule &&
 	 git checkout master &&
