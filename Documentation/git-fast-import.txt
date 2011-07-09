@@ -1005,6 +1005,11 @@ import-marks::
 	second, an --import-marks= command-line option overrides
 	any "feature import-marks" command in the stream.
 
+import-marks-if-exists::
+	Like import-marks but instead of erroring out, silently
+	skips the file if it does not exist. Differences from --
+	version are the same as with import-marks feature above.
+
 cat-blob::
 ls::
 	Require that the backend support the 'cat-blob' or 'ls' command.
