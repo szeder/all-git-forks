@@ -58,8 +58,8 @@ SVNDUMP=${SVNDUMP:-`try_svnadmin`}
 test -n "$SVNDUMP" || die "neither svnrdump nor svnadmin & svnlook was found"
 
 do_import () {
-	revs=$1 url=$2 dst=$3
-	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe --ref="$dst" --no-progress) 3<&0 || die "FAILURE"
+	revs=$1 url=$2 dst=$3 notes=$4
+	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe --ref="$dst" --notes_ref="$notes" --no-progress) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
@@ -70,6 +70,8 @@ url=$2
 need_import=""
 remote_ref="refs/heads/master"
 private_ref="refs/svn-alpha/$repo/SVNHEAD"
+remote_notes="refs/notes/svnr"
+private_notes="refs/svn-alpha/$repo/SVNR"
 
 while read -r cmd args
 do
@@ -78,6 +80,7 @@ do
 		echo import
 		echo "refspec HEAD:$private_ref"
 		echo "refspec $remote_ref:$private_ref"
+		echo "refspec $remote_notes:$private_notes"
 		echo
 		;;
 	list)
@@ -92,7 +95,7 @@ do
 		;;
 	'')
 		test "$need_import" = "yes" || exit 0
-		do_import 0:HEAD "$url" "$private_ref"
+		do_import 0:HEAD "$url" "$private_ref" "$private_notes"
 		need_import=""
 		;;
 	*)

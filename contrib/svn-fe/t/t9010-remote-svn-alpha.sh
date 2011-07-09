@@ -265,4 +265,15 @@ test_expect_success TINY_SVN 'fetch TINY does not write to refs/heads/master' '
 	test_must_fail git show-ref --verify refs/heads/master
 '
 
+test_expect_success SMALL_SVN 'fetch SMALL writes revnum notes' '
+	reinit_git &&
+	url=$(svnurl small.svn) &&
+	git remote add svn "$url" &&
+	git fetch svn &&
+	git log --show-notes=refs/svn-alpha/svn/SVNR --format=%N -1 refs/remotes/svn/master^ >actual.note &&
+	echo r9 >expect.note &&
+	echo >>expect.note &&
+	test_cmp expect.note actual.note
+'
+
 test_done
