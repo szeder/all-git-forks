@@ -276,4 +276,76 @@ test_expect_success SMALL_SVN 'fetch SMALL writes revnum notes' '
 	test_cmp expect.note actual.note
 '
 
+test_expect_success SMALL_SVN 'marks from notes regeneration' '
+	reinit_git &&
+	url=$(svnurl link.svn) &&
+	git remote add svn "$url" &&
+
+	ln -sfn small.svn.r0-5 link.svn &&
+	git fetch svn &&
+	test_nr_revs 5 .git refs/remotes/svn/master &&
+
+	rm -rf .git/info/fast-import/svn-alpha &&
+
+	ln -sfn small.svn.r0-10 link.svn &&
+	git fetch svn &&
+	test_nr_revs 10 .git refs/remotes/svn/master
+'
+
+test_expect_success SMALL_SVN 'clone to bootstrap' '
+	deinit_git &&
+	url=$(svnurl link.svn) &&
+	ln -sfn small.svn.r0-5 link.svn &&
+	git clone -b master "$url" master.git &&
+	{
+		cd master.git &&
+		git branch pub_head refs/svn-alpha/origin/SVNHEAD &&
+		git branch pub_notes refs/svn-alpha/origin/SVNR &&
+		cd ..
+	} &&
+	ln -sfn small.svn.r0-8 link.svn &&
+	git clone master.git slave.git &&
+	{
+		cd slave.git &&
+		git remote add svn "$url" &&
+		git update-ref refs/svn-alpha/svn/SVNHEAD refs/remotes/origin/pub_head &&
+		git update-ref refs/svn-alpha/svn/SVNR refs/remotes/origin/pub_notes &&
+		git fetch svn &&
+		git merge-base refs/svn-alpha/svn/SVNR refs/remotes/origin/pub_notes &&
+		cd ..
+	} &&
+	test_nr_revs 8 slave.git/.git refs/remotes/svn/master
+'
+
+test_expect_success SMALL_SVN 'clone and exchange' '
+	deinit_git &&
+	url=$(svnurl link.svn) &&
+	ln -sfn small.svn.r0-1 link.svn &&
+	git clone -b master "$url" A.git &&
+	git clone -b master "$url" B.git &&
+	test_nr_revs 1 A.git/.git origin/master &&
+	test_nr_revs 1 B.git/.git origin/master &&
+
+	git --git-dir=A.git/.git remote add B B.git &&
+	git --git-dir=B.git/.git remote add A A.git &&
+	refspecs="+refs/svn-alpha/origin/SVNR:refs/svn-alpha/origin/SVNR"
+	refspecs="$refspecs refs/svn-alpha/origin/SVNHEAD:refs/svn-alpha/origin/SVNHEAD"
+
+	ln -sfn small.svn.r0-2 link.svn &&
+	git --git-dir=A.git/.git fetch origin &&
+
+	git --git-dir=B.git/.git fetch -f A $refspecs &&
+
+	ln -sfn small.svn.r0-3 link.svn &&
+	git --git-dir=B.git/.git fetch origin &&
+
+	git --git-dir=A.git/.git fetch B $refspecs &&
+
+	git --git-dir=A.git/.git fetch origin &&
+	git --git-dir=B.git/.git fetch origin &&
+
+	test_nr_revs 3 A.git/.git origin/master &&
+	test_nr_revs 3 B.git/.git origin/master
+'
+
 test_done
