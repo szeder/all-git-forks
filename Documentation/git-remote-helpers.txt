@@ -159,6 +159,14 @@ Supported if the helper has the "import" capability.
 +
 Supported if the helper has the "connect" capability.
 
+'gitdir' <path>::
+	Tells helper the location of current repository .git
+	directory. The path is absolute. The command is issued
+	immediately after "gitdir" capability line is read by
+	the caller.
++
+Supported if the helper has the "gitdir" capability.
+
 If a fatal error occurs, the program writes the error message to
 stderr and exits. The caller should expect that a suitable error
 message has been printed if the child closes the connection without
@@ -175,6 +183,7 @@ CAPABILITIES
 'push'::
 'import'::
 'connect'::
+'gitdir'::
 	This helper supports the corresponding command with the same name.
 
 'refspec' 'spec'::
@@ -186,6 +195,12 @@ CAPABILITIES
 	refs/svn/origin/branches/name. If this capability is used at
 	all, it must cover all refs reported by the list command; if
 	it is not used, it is effectively "{asterisk}:{asterisk}"
+
+'gitdir'::
+	The helper wants to know .git directory location. The gitdir
+	command is sent immediately after reading this capability.
+	The helper can read it immediately too or it can proceed with
+	reporting other capabilities and read it as a next command.
 
 REF LIST ATTRIBUTES
 -------------------
