@@ -583,6 +583,52 @@ const char *get_patch_subject(const char *fname)
 	die("No subject line in %s ?", fname);
 }
 
+int body_or_subject_has_nonascii(const char *fname)
+{
+	struct strbuf line = STRBUF_INIT;
+	FILE *fp = fopen(fname, "r");
+	if (!fp)
+		die_errno("unable to open %s", fname);
+	while (strbuf_getline(&line, fp, '\n') != EOF) {
+		if (!line.len)
+			break;
+
+		if (!prefixcmp(line.buf, "Subject: "))
+			if (has_non_ascii(line.buf + 9)) {
+				fclose(fp);
+				return 1;
+			}
+	}
+
+	while (strbuf_getline(&line, fp, '\n') != EOF)
+		if (has_non_ascii(line.buf)) {
+			fclose(fp);
+			return 1;
+		}
+
+	fclose(fp);
+	return 0;
+}
+
+int file_declares_8bit_cte(const char *fname)
+{
+	struct strbuf line = STRBUF_INIT;
+	FILE *fp = fopen(fname, "r");
+	if (!fp)
+		die_errno("unable to open %s", fname);
+
+	while (strbuf_getline(&line, fp, '\n') != EOF) {
+		if (!line.len)
+			break;
+		if (!prefixcmp(line.buf, "Content-Transfer-Encoding: ") &&
+		     strstr(line.buf + 27, "8bit"))
+			return 1;
+	}
+
+	fclose(fp);
+	return 0;
+}
+
 void do_edit(const char *file, struct string_list *files)
 {
 	int i;
@@ -875,7 +921,8 @@ void cleanup_tmpdir()
 int main(int argc, const char **argv)
 {
 	int i, nongit_ok, prompting;
-	struct string_list files = { 0 }, rev_list_opts = { 0 };
+	struct string_list files = { 0 }, rev_list_opts = { 0 },
+	    broken_encoding = { 0 };
 
 	int quiet = 0, thread = 1, force = 0,
 	    compose = 0, annotate = 0;
@@ -1085,7 +1132,21 @@ int main(int argc, const char **argv)
 		do_edit(NULL, &files);
 	}
 
-	/* TODO: check encoding */
+	for (i = 0; i < files.nr; ++i) {
+		const char *fname = files.items[i].string;
+		/* TODO: check encoding */
+		if (body_or_subject_has_nonascii(fname) &&
+		    !file_declares_8bit_cte(fname))
+			string_list_append(&broken_encoding, fname);
+	}
+
+	if (/* !auto_8bit_encoding && */ broken_encoding.nr) {
+		printf("The following files are 8bit, but do not declare "
+		    "a Content-Transfer-Encoding.\n");
+		sort_string_list(&broken_encoding);
+		for (i = 0; i < broken_encoding.nr; ++i)
+			printf("    %s\n", broken_encoding.items[i].string);
+	}
 
 	if (!force)
 		for (i = 0; i < files.nr; ++i) {
