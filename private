@@ -6,6 +6,7 @@ upstream=${upstream:-origin}
 cont=
 force=
 noautorerere=
+while test $# -gt 0; do
 case "$1" in
 --continue)
 	cont=t
@@ -20,6 +21,7 @@ case "$1" in
 	shift
 	;;
 esac
+done
 
 if test -z "$force" &&
    test -z "`git rev-list -1 private..$upstream`"; then
