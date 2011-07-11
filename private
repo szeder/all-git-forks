@@ -23,11 +23,6 @@ case "$1" in
 esac
 done
 
-if test -z "$force" &&
-   test -z "`git rev-list -1 private..$upstream`"; then
-	cont=t
-fi
-
 if test -z "$cont"; then
 	test -z "$force" &&
 	test -n "`git rev-list -1 --no-merges --first-parent \
