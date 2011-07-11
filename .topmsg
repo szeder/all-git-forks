@@ -1,6 +1,7 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/gsoc-diff/001-use-memset
+Subject: [PATCH] xdiff/xprepare: use memset()
 
-<patch description>
+Use memset() instead of a for loop to initialize. This could give a
+performance advantage.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
