@@ -1088,14 +1088,17 @@ int main(int argc, const char **argv)
 	/* TODO: check encoding */
 
 	if (!force)
-		for (i = 0; i < files.nr; ++i)
-			if (!strcmp(get_patch_subject(files.items[i].string), "*** SUBJECT HERE ***"))
+		for (i = 0; i < files.nr; ++i) {
+			const char *file = files.items[i].string,
+			    *subject = get_patch_subject(file);
+			if (!strcmp(subject, "*** SUBJECT HERE ***"))
 				die(
 "Refusing to send because the patch\n"
 "%s\n"
 "has the template subject '*** SUBJECT HERE ***.\n"
 "Pass --force if you really want to send.\n",
 				    files.items[i].string);
+		}
 
 	prompting = 0;
 	if (!sender) {
