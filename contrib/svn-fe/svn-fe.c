@@ -25,6 +25,8 @@ static struct option svn_fe_options[] = {
 		"append git-svn metadata line to commit messages"),
 	OPT_STRING(0, "ref", &args.ref, "dst_ref",
 		"write to dst_ref instead of refs/heads/master"),
+	OPT_STRING(0, "notes-ref", &args.notes_ref, "notes",
+		"write \"rN\" notes to the <notes> tree"),
 	OPT_INTEGER(0, "read-blob-fd", &args.backflow_fd,
 		"read blobs and trees from this fd instead of 3"),
 	OPT_END()

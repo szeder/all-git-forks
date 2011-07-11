@@ -35,6 +35,9 @@ OPTIONS
 --ref=<dst_ref>::
 	Ref to be written by the generated stream.
 	Default is refs/heads/master.
+--notes-ref=<notes_ref>::
+	Write "rN" notes to the notes_ref tree for each
+	imported commit.
 --read-blob-fd=<fd>::
 	Integer number of file descriptor from which
 	responses to 'ls' and 'cat-blob' requests will come.

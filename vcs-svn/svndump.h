@@ -3,7 +3,7 @@
 
 struct svndump_args {
 	const char *filename, *url;
-	const char *ref;
+	const char *ref, *notes_ref;
 	int backflow_fd;
 	int progress, incremental;
 };

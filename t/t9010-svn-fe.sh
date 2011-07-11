@@ -1200,4 +1200,36 @@ test_expect_success PIPE 'incremental import' '
 	test_line_count = 3 ./history
 '
 
+test_expect_success PIPE 'write notes' '
+	reinit_git &&
+	cat >expect <<-EOF &&
+	r2
+
+	r1
+
+	EOF
+	try_dump_ext "--notes=refs/notes/test" "" "" emptyprop.dump &&
+	git log --show-notes=refs/notes/test --format=%N >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success PIPE 'write notes incremental' '
+	reinit_git &&
+	>./marks &&
+	cat >expect <<-EOF &&
+	r3
+
+	r2
+
+	r1
+
+	EOF
+
+	try_dump_ext "--notes=refs/notes/test" "" "--export-marks=marks" emptyprop.dump &&
+	try_dump_ext "--incremental --notes=refs/notes/test" "" "--import-marks=marks" moreempty.dump &&
+
+	git log --show-notes=refs/notes/test --format=%N >actual &&
+	test_cmp expect actual
+'
+
 test_done

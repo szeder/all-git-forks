@@ -57,7 +57,7 @@ static struct {
 	uint32_t version;
 	struct strbuf uuid, url;
 	int first_commit_done;
-	struct strbuf ref_name;
+	struct strbuf ref_name, notes_ref_name;
 	int incremental;
 } dump_ctx;
 
@@ -84,7 +84,7 @@ static void reset_rev_ctx(uint32_t revision)
 	strbuf_reset(&rev_ctx.author);
 }
 
-static void reset_dump_ctx(const char *url, const char *dst_ref, int incremental)
+static void reset_dump_ctx(const char *url, const char *dst_ref, int incremental, const char *dst_notes_ref)
 {
 	strbuf_reset(&dump_ctx.url);
 	if (url)
@@ -95,6 +95,9 @@ static void reset_dump_ctx(const char *url, const char *dst_ref, int incremental
 	strbuf_reset(&dump_ctx.ref_name);
 	strbuf_addstr(&dump_ctx.ref_name, dst_ref);
 	dump_ctx.incremental = incremental;
+	strbuf_reset(&dump_ctx.notes_ref_name);
+	if (dst_notes_ref)
+		strbuf_addstr(&dump_ctx.notes_ref_name, dst_notes_ref);
 }
 
 static void handle_property(const struct strbuf *key_buf,
@@ -337,8 +340,25 @@ static void begin_revision(void)
 
 static void end_revision(void)
 {
+	char buf[32];
+	char tmbuf[32];
 	if (rev_ctx.revision) {
 		fast_export_end_commit(rev_ctx.revision);
+		if (dump_ctx.notes_ref_name.len) {
+			datestamp(tmbuf, 32);
+			printf("commit %s\n", dump_ctx.notes_ref_name.buf);
+			printf("committer %s <%s@%s> %s\n",
+					"vcs-svn", "vcs-svn", "local", tmbuf);
+			printf("data <<EOF\n");
+			printf("imported r%d\n", rev_ctx.revision);
+			printf("EOF\n\n");
+			if (!dump_ctx.first_commit_done && dump_ctx.incremental && rev_ctx.revision > 1)
+				printf("from %s^0\n", dump_ctx.notes_ref_name.buf);
+			snprintf(buf, 32, "r%d", rev_ctx.revision);
+			printf("N inline :%d\n", rev_ctx.revision);
+			printf("data %ld\n", strlen(buf));
+			printf("%s\n", buf);
+		}
 		if (print_progress)
 			printf("progress Imported commit %"PRIu32".\n\n", rev_ctx.revision);
 		dump_ctx.first_commit_done = 1;
@@ -498,7 +518,7 @@ int svndump_init(const struct svndump_args *args)
 	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(args->url, args->ref, args->incremental);
+	reset_dump_ctx(args->url, args->ref, args->incremental, args->notes_ref);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
@@ -507,7 +527,7 @@ int svndump_init(const struct svndump_args *args)
 void svndump_deinit(void)
 {
 	fast_export_deinit();
-	reset_dump_ctx(NULL, "", 0);
+	reset_dump_ctx(NULL, "", 0, "");
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);
