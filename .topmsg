@@ -1,6 +1,10 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/gsoc-diff/002-refactor-abort
+Subject: [PATCH] xdiff/xprepare: refactor abort cleanups
 
-<patch description>
+Group free()'s that are called when a malloc() fails in
+xdl_prepare_ctx(), making for more readable code.
+
+Also add a free() on ha, in case future git hackers add allocs after the
+ha malloc.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
