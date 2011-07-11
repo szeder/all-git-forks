@@ -672,6 +672,8 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 	strbuf_release(&line);
 }
 
+time_t now;
+
 void send_message(struct strbuf *message)
 {
 	int nport = -1;
@@ -686,10 +688,8 @@ void send_message(struct strbuf *message)
 	    "Content-Transfer-Encoding: quoted-printable\r\n";
 	const char *date;
 
-	time_t now;
-
-	time(&now);
 	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
+	now++;
 
 	strbuf_addstr(&from, sender);
 	quote_rfc2047(&from, NULL);
@@ -1145,6 +1145,9 @@ int main(int argc, const char **argv)
 		else
 			smtp_server = "localhost";
 	}
+
+	time(&now);
+	now -= files.nr;
 
 	for (i = 0; i < files.nr; ++i) {
 		const char *fname = files.items[i].string;
