@@ -688,6 +688,8 @@ void send_message(struct strbuf *message)
 	if (xh)
 		strbuf_addstr(&header, xh);
 
+	fputs(header.buf, stderr);
+
 	if (dry_run)
 		; /* we don't want to send the email. */
 	else if (is_absolute_path(smtp_server)) {
