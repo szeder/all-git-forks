@@ -32,8 +32,6 @@ if test -z "$cont"; then
 		  exit 1
 	  }
 	git checkout -q ${force:+-f} $upstream^0 || exit
-else
-	git checkout -q ${force:+-f} private^0 || exit
 fi
 
 for i in `Meta/topics`; do
