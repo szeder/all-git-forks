@@ -66,6 +66,7 @@ static int is_rev_argument(const char *arg)
 		"--topo-order",
 		"--date-order",
 		"--unpacked",
+		"--is-well-formed-git-dir",
 		NULL
 	};
 	const char **p = rev_args;
@@ -696,6 +697,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				show_datestring("--min-age=", arg+8);
 				continue;
 			}
+			if (!prefixcmp(arg, "--is-well-formed-git-dir"))
+				return !resolve_gitdir(argv[i+1]);
 			if (show_flag(arg) && verify)
 				die_no_single_rev(quiet);
 			continue;

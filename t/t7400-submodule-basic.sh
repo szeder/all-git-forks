@@ -358,10 +358,10 @@ test_expect_success 'update --init' '
 	git submodule update init > update.out &&
 	cat update.out &&
 	test_i18ngrep "not initialized" update.out &&
-	! test -d init/.git &&
+	! (cd init && git rev-parse --is-well-formed-git-dir .git) &&
 
 	git submodule update --init init &&
-	test -d init/.git
+	(cd init && git rev-parse --is-well-formed-git-dir .git)
 '
 
 test_expect_success 'do not add files from a submodule' '
