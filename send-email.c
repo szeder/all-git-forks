@@ -718,6 +718,36 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 	strbuf_release(&line);
 }
 
+/* alias list must be sorted */
+struct string_list aliases = STRING_LIST_INIT_NODUP;
+
+void expand_one_alias(struct string_list *dst, const char *alias);
+void expand_aliases(struct string_list *dst, const struct string_list *src)
+{
+	int i;
+	for (i = 0; i < src->nr; ++i)
+		expand_one_alias(dst, src->items[i].string);
+}
+
+void expand_one_alias(struct string_list *dst, const char *alias)
+{
+	struct string_list *tmp;
+	struct string_list_item *item = string_list_lookup(&aliases, alias);
+	if (!item)
+		string_list_append(dst, alias);
+	if (!item->util)
+		die("alias '%s' expands to itself", alias);
+
+	/* mark alias as expanded by setting it's util pointer to NULL */
+	tmp = item->util;
+	item->util = NULL;
+
+	expand_aliases(dst, tmp);
+
+	/* restore util-pointer so it's no longer marked as expanded */
+	item->util = tmp;
+}
+
 time_t now;
 
 void send_message(struct strbuf *message)
