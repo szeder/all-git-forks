@@ -1,9 +1,17 @@
 #!/bin/sh
 
+export GIT_META_TEST
 if test -z "$GIT_META_TEST"; then
 	GIT_META_TEST='make -j8 test'
-	export GIT_META_TEST
 fi
+
+while test $# -gt 0; do
+	case "$1" in
+	-c) GIT_META_TEST='make -j8' ;;
+	*) break ;;
+	esac
+	shift
+done
 
 upstream=`git rev-parse --symbolic-full-name "$1@{u}" >/dev/null 2>&1`
 GIT_EDITOR='sed -i "/^pick .*/aexec $GIT_META_TEST"' \
