@@ -12,10 +12,25 @@ usage () {
 	exit 129
 }
 
+svnrdump_wrap () {
+	exec 6<&1 &&
+
+	EX=$(
+		(svnrdump dump --non-interactive --username=Guest --password= \
+			--quiet "$1" "$2" >&6) 2>&1; test $? -ne 0 || echo Success
+	) &&
+	if test "z$EX" != "zSuccess"; then
+		if test "z$EX" = "zLOWER cannot be greater than UPPER."; then
+			return 0
+		fi
+		echo "$EX" >&2
+		return 1
+	fi
+}
+
 do_import () {
 	revs=$1 url=$2
-	(svnrdump dump --non-interactive --username=Guest --password= \
-		-r"$revs" "$url" --quiet | svn-fe) 3<&0 || die "FAILURE"
+	(svnrdump_wrap "$url" -r"$revs" | svn-fe) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
 
