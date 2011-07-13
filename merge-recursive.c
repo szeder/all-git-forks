@@ -359,6 +359,8 @@ static int string_list_df_name_compare(const void *a, const void *b)
 {
 	const struct string_list_item *one = a;
 	const struct string_list_item *two = b;
+	int onelen = strlen(one->string);
+	int twolen = strlen(two->string);
 	/*
 	 * Here we only care that entries for D/F conflicts are
 	 * adjacent, in particular with the file of the D/F conflict
@@ -371,8 +373,15 @@ static int string_list_df_name_compare(const void *a, const void *b)
 	 * since in other cases any changes in their order due to
 	 * sorting cause no problems for us.
 	 */
-	return df_name_compare(one->string, strlen(one->string), S_IFDIR,
-			       two->string, strlen(two->string), S_IFDIR);
+	int cmp = df_name_compare(one->string, onelen, S_IFDIR,
+				  two->string, twolen, S_IFDIR);
+	/*
+	 * Now that 'foo' and 'foo/bar' compare equal, we have to make sure
+	 * that 'foo' comes before 'foo/bar'.
+	 */
+	if (cmp)
+		return cmp;
+	return onelen - twolen;
 }
 
 static void record_df_conflict_files(struct merge_options *o,
