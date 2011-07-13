@@ -78,14 +78,31 @@ do_gen_marks () {
 prepare_marks () {
 	dst=$1 notes=$2 rev=$3
 	test "z$git_dir" != "$z" || die "we were not told the gitdir"
-	mkdir -p "$git_dir/$marks_dir"
-	if test ! -f "$git_dir/$marks_dir/marks"; then
-		touch "$git_dir/$marks_dir/marks"
+	path="$git_dir/$marks_dir"
+	mkdir -p "$path"
+	path="$path/marks"
+
+	if test ! -f "$path"; then
+		touch "$path"
 	fi
 	if test "$rev" = "-1"; then
 		return 0
 	fi
-	do_gen_marks "$notes" >"$git_dir/$marks_dir/marks"
+	mark_sha=""
+	{
+		while read -r m sha
+		do
+			if test "$m" = ":$rev"; then
+				mark_sha="$sha"
+			fi
+		done
+	} <"$path"
+	dst_sha=$( git rev-parse "$dst" )
+	if test -n "$mark_sha"; then
+		test "$mark_sha" = "$dst_sha" || die "latest mark and note diverge"
+	else
+		do_gen_marks "$notes" >"$path"
+	fi
 }
 
 last_imported_rev () {
@@ -110,6 +127,7 @@ do_import () {
 	revs="$start_rev:HEAD"
 	prepare_marks $dst $notes $rev
 	echo "feature import-marks=$git_dir/$marks_dir/marks"
+	echo "feature export-marks=$git_dir/$marks_dir/marks"
 	(eval "$SVNDUMP \"$url\" -r\"$revs\"" |	svn-fe --ref="$dst" --notes-ref="$notes" --incremental --no-progress) 3<&0 || die "FAILURE"
 	exec 1>&-
 }
