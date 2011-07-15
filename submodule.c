@@ -737,7 +737,9 @@ int remove_submodule_worktree(struct cache_entry *ce)
 	const char *argv[] = {"ls-tree", NULL, "--full-name", "--name-only", NULL};
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf to_remove = STRBUF_INIT;
-	char * wt;
+	const char * wt;
+	struct strbuf **lines = NULL;
+	int i;
 
 	wt = get_git_work_tree();
 	argv[1] = sha1_to_hex(ce->sha1);
@@ -749,15 +751,22 @@ int remove_submodule_worktree(struct cache_entry *ce)
 	cp.out = -1;
 	cp.dir = ce->name;
 	if (!run_command(&cp) && strbuf_read(&buf, cp.out, 1024)) {
-		strbuf_add(&to_remove,wt,strlen(wt));
-		strbuf_add(&to_remove,"/",1);
-		strbuf_add(&to_remove,ce->name,strlen(ce->name));
-		strbuf_add(&to_remove,"/",1);
-		strbuf_add(&to_remove,buf.buf,buf.len);
-		strbuf_trim(&to_remove);
-		int r = unlink_or_warn(to_remove.buf);
-		printf("FILE: %s RES: %d ERR %s\n",to_remove.buf,r,strerror(errno));
-		strbuf_reset(&to_remove);
+		lines = strbuf_split(&buf,'\n');
+		for(i = 0; lines[i]; i++) {
+			if (lines[i]->buf[lines[i]->len - 1] == '\n')
+				strbuf_setlen(lines[i], lines[i]->len - 1);
+			if (!lines[i]->len)
+				continue; /* skip empty lines */
+			strbuf_add(&to_remove,wt,strlen(wt));
+			strbuf_add(&to_remove,"/",1);
+			strbuf_add(&to_remove,ce->name,strlen(ce->name));
+			strbuf_add(&to_remove,"/",1);
+			strbuf_add(&to_remove,lines[i]->buf,lines[i]->len);
+			strbuf_trim(&to_remove);
+			int r = unlink_or_warn(to_remove.buf);
+			printf("FILE: %s RES: %d ERR %s\n",to_remove.buf,r,strerror(errno));
+			strbuf_reset(&to_remove);
+		}
 	}
 	strbuf_add(&to_remove,wt,strlen(wt));
 	strbuf_add(&to_remove,"/",1);
