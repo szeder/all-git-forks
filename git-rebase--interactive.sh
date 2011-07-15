@@ -1054,23 +1054,20 @@ then
 		sed -n "s/^>//p" > "$state_dir"/not-cherry-picks
 	# Now all commits and note which ones are missing in
 	# not-cherry-picks and hence being dropped
-	git rev-list $revisions |
+	git rev-list $revisions | \
+		sane_grep -vxFf "$state_dir"/not-cherry-picks |
 	while read rev
 	do
-		if test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
+		sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
+		if test t = "$preserve_merges" -a -f "$rewritten"/$rev
 		then
-			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
-			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
-			if test t = "$preserve_merges" -a -f "$rewritten"/$rev
-			then
-				# Use -f2 because if rev-list is telling us this
-				# commit is not worthwhile, we don't want to
-				# track its multiple heads, just the history of
-				# its first-parent for others that will be
-				# rebasing on top of it
-				git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
-				rm "$rewritten"/$rev
-			fi
+			# Use -f2 because if rev-list is telling us this
+			# commit is not worthwhile, we don't want to track its
+			# multiple heads, just the history of its first-parent
+			# for others that will be rebasing on top of it
+			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
+			rm "$rewritten"/$rev
 		fi
 	done
 fi
