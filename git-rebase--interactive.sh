@@ -765,12 +765,21 @@ then
 		echo $onto > "$rewritten"/root ||
 			die "Could not init rewritten commits"
 	fi
+	merges_option=
+else
+	merges_option="--no-merges"
+fi
+
+if test t = "$preserve_merges"
+then
 	# No cherry-pick because our first pass is to determine
 	# parents to rewrite and skipping dropped commits would
 	# prematurely end our probe
-	merges_option=
+	late_cherry_pick=t
+	cherry_pick_option=
 else
-	merges_option="--no-merges --cherry-pick"
+	late_cherry_pick=
+	cherry_pick_option="--cherry-pick"
 fi
 
 shorthead=$(git rev-parse --short $orig_head)
@@ -785,8 +794,8 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
+git rev-list $merges_option $cherry_pick_option --pretty=oneline \
+	--abbrev-commit --abbrev=7 --reverse --left-right --topo-order \
 	$revisions | \
 	sed -n "s/^>//p" |
 while read -r shortsha1 rest
@@ -818,7 +827,7 @@ do
 done
 
 # Watch for commits that been dropped by --cherry-pick
-if test t = "$preserve_merges"
+if test t = "$late_cherry_pick"
 then
 	mkdir "$dropped"
 	# Save all non-cherry-picked changes
@@ -829,16 +838,20 @@ then
 	git rev-list $revisions |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev -a "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
 		then
-			# Use -f2 because if rev-list is telling us this commit is
-			# not worthwhile, we don't want to track its multiple heads,
-			# just the history of its first-parent for others that will
-			# be rebasing on top of it
-			git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
 			short=$(git rev-list -1 --abbrev-commit --abbrev=7 $rev)
 			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
-			rm "$rewritten"/$rev
+			if test t = "$preserve_merges" -a -f "$rewritten"/$rev
+			then
+				# Use -f2 because if rev-list is telling us this
+				# commit is not worthwhile, we don't want to
+				# track its multiple heads, just the history of
+				# its first-parent for others that will be
+				# rebasing on top of it
+				git rev-list --parents -1 $rev | cut -d' ' -s -f2 > "$dropped"/$rev
+				rm "$rewritten"/$rev
+			fi
 		fi
 	done
 fi
