@@ -1,7 +1,6 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] xdiff/xprepare: use memset()
+Subject: [PATCH] tg/gsoc-diff/remove-mmfile_next
 
-Use memset() instead of a for loop to initialize. This could give a
-performance advantage.
+<patch description>
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
