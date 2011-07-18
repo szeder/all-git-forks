@@ -136,16 +136,17 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
  */
 static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 			 xdfile_t *xdf1, xdfile_t *xdf2) {
-	long i, bsize;
+	long i;
 	char const *prev1, *prev2, *cur1, *cur2, *top1, *top2;
 
-	if ((cur1 = xdl_mmfile_first(mf1, &bsize)) == NULL)
-		return 0;
-	top1 = cur1 + bsize;
+	cur1 = mf1->ptr;
+	cur2 = mf2->ptr;
 
-	if ((cur2 = xdl_mmfile_first(mf2, &bsize)) == NULL)
+	if (!cur1 || !cur2)
 		return 0;
-	top2 = cur2 + bsize;
+
+	top1 = cur1 + mf1->size;
+	top2 = cur2 + mf2->size;
 
 	/* TODO: trim on whitespace rules */
 	i = 0;
