@@ -211,6 +211,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			prev = cur;
 			if (cur < xdf->rstart) {
 				cur = memchr(cur, '\n', top - cur);
+				cur++;
 				hav = 0;
 			} else
 				hav = xdl_hash_record(&cur, top, xpp->flags);
