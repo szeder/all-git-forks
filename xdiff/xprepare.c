@@ -149,6 +149,8 @@ static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 	/* TODO: trim on whitespace rules */
 	i = 0;
+	prev1 = cur1;
+	prev2 = cur2;
 	while (cur1 < top1 && cur2 < top2) {
 		prev1 = cur1;
 		prev2 = cur2;
@@ -163,6 +165,8 @@ static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 		i++;
 	}
 	xdf1->dstart = xdf2->dstart = i;
+	xdf1->rstart = prev1;
+	xdf2->rstart = prev2;
 
 	return 0;
 }
@@ -205,7 +209,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	if ((cur = blk = xdl_mmfile_first(mf, &bsize)) != NULL) {
 		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
-			if (nrec <= xdf->dstart) {
+			if (cur < xdf->rstart) {
 				cur = memchr(cur, '\n', top - cur);
 				hav = 0;
 			} else
@@ -278,7 +282,6 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	xdf->rindex = rindex;
 	xdf->nreff = 0;
 	xdf->ha = ha;
-	xdf->dstart = 0;
 	xdf->dend = nrec - 1;
 
 	return 0;
