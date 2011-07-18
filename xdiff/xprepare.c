@@ -130,6 +130,36 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 }
 
 
+/*
+ * Early trim initial and terminal matching records.
+ */
+static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
+	xdfile_t *xdf1, xdfile_t *xdf2) {
+	long i, lim;
+	xrecord_t **recs1, **recs2;
+
+	recs1 = xdf1->recs;
+	recs2 = xdf2->recs;
+	for (i = 0, lim = XDL_MIN(xdf1->nrec, xdf2->nrec); i < lim;
+	     i++, recs1++, recs2++)
+		if ((*recs1)->ha != (*recs2)->ha)
+			break;
+
+	xdf1->dstart = xdf2->dstart = i;
+
+	recs1 = xdf1->recs + xdf1->nrec - 1;
+	recs2 = xdf2->recs + xdf2->nrec - 1;
+	for (lim -= i, i = 0; i < lim; i++, recs1--, recs2--)
+		if ((*recs1)->ha != (*recs2)->ha)
+			break;
+
+	xdf1->dend = xdf1->nrec - i - 1;
+	xdf2->dend = xdf2->nrec - i - 1;
+
+	return 0;
+}
+
+
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			   xdlclassifier_t *cf, xdfile_t *xdf) {
 	unsigned int hbits;
@@ -268,6 +298,12 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 	if (xdl_init_classifier(&cf, enl1 + enl2 + 1, xpp->flags) < 0) {
 
+		return -1;
+	}
+	
+	if (xdl_trim_ends(mf1, mf2, xpp, &xe->xdf1, &xe->xdf2) < 0) {
+
+		xdl_free_classifier(&cf);
 		return -1;
 	}
 
@@ -429,35 +465,6 @@ static int xdl_cleanup_records(xdfile_t *xdf1, xdfile_t *xdf2) {
 	xdf2->nreff = nreff;
 
 	xdl_free(dis);
-
-	return 0;
-}
-
-
-/*
- * Early trim initial and terminal matching records.
- */
-static int xdl_trim_ends(xdfile_t *xdf1, xdfile_t *xdf2) {
-	long i, lim;
-	xrecord_t **recs1, **recs2;
-
-	recs1 = xdf1->recs;
-	recs2 = xdf2->recs;
-	for (i = 0, lim = XDL_MIN(xdf1->nrec, xdf2->nrec); i < lim;
-	     i++, recs1++, recs2++)
-		if ((*recs1)->ha != (*recs2)->ha)
-			break;
-
-	xdf1->dstart = xdf2->dstart = i;
-
-	recs1 = xdf1->recs + xdf1->nrec - 1;
-	recs2 = xdf2->recs + xdf2->nrec - 1;
-	for (lim -= i, i = 0; i < lim; i++, recs1--, recs2--)
-		if ((*recs1)->ha != (*recs2)->ha)
-			break;
-
-	xdf1->dend = xdf1->nrec - i - 1;
-	xdf2->dend = xdf2->nrec - i - 1;
 
 	return 0;
 }
