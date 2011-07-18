@@ -195,11 +195,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 
 	nrec = 0;
 	if ((cur = blk = xdl_mmfile_first(mf, &bsize)) != NULL) {
-		for (top = blk + bsize;;) {
-			if (cur >= top) {
-				cur = blk = NULL;
-				break;
-			}
+		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
 			hav = xdl_hash_record(&cur, top, xpp->flags);
 			if (nrec >= narec) {
