@@ -15,3 +15,4 @@ autocmd InsertLeave * highlight StatusLine guifg=#2E4340 guibg=#ccdc90
 augroup END
 
 autocmd BufNewFile,BufRead *.html.erb set filetype=html
+autocmd BufNewFile,BufRead *.html.twig set filetype=html
