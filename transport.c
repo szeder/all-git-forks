@@ -10,6 +10,7 @@
 #include "refs.h"
 #include "branch.h"
 #include "url.h"
+#include "submodule.h"
 
 /* rsync support */
 
@@ -1058,6 +1059,9 @@ int transport_push(struct transport *transport,
 			for (ref = remote_refs; ref; ref = ref->next)
 				transport_update_tracking_ref(transport->remote, ref, verbose);
 		}
+
+		if (flags & TRANSPORT_PUSH_SUBMODULES)
+			push_submodules();
 
 		if (porcelain && !push_ret)
 			puts("Done");

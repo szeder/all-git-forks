@@ -175,13 +175,14 @@ test_expect_failure 'push recursive' '
 	 git add junk &&
 	 git commit -m "update" &&
 	 git push --recurse-submodules origin master &&
-	 echo '' > expected &&
-	 rev-list HEAD --not --remotes > actual &&
+	 git rev-list HEAD --not --all > expected &&
+	 git rev-list HEAD --not --remotes > actual &&
 	 test_cmp actual expected &&
 	 (cd b &&
-	  rev-list HEAD --not --remotes > ../actual &&
-	  test_cmp actual expected
+	  git rev-list HEAD --not --remotes > ../actual &&
+	 bash
 	 )
+	 test_cmp actual expected
 	)
 '
 test_done

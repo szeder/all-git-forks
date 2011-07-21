@@ -728,3 +728,74 @@ int merge_submodule(unsigned char result[20], const char *path,
 	free(merges.objects);
 	return 0;
 }
+
+static void push_submodule(const char *path)
+{
+	if (!add_submodule_odb(path)) {
+		struct child_process cp;
+		const char *argv[] = {"push", NULL};
+		struct strbuf buf = STRBUF_INIT;
+
+		memset(&cp, 0, sizeof(cp));
+		cp.argv = argv;
+		cp.env = local_repo_env;
+		cp.git_cmd = 1;
+		cp.no_stdin = 1;
+		cp.out = -1;
+		cp.dir = path;
+		if(!run_command(&cp))
+			printf("Unable to push %s\n",path);
+
+		close(cp.out);
+		strbuf_release(&buf);
+	}
+}
+
+static void submodule_push_unpushed_cb(struct diff_queue_struct *q,
+					 struct diff_options *options,
+					 void *data)
+{
+	int i;
+
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+		if (S_ISGITLINK(p->two->mode))
+			push_submodule(p->two->path);
+	}
+}
+
+void push_unpushed_submodule_commits(unsigned char new_sha1[20])
+{
+	//TODO
+	struct rev_info rev;
+	struct commit *commit;
+	const char *argv[] = {NULL, NULL, "--not", "--remotes", NULL};
+	int argc = ARRAY_SIZE(argv) - 1;
+	char *sha1_copy;
+	int found_unpushed_submodule = 0;
+
+	init_revisions(&rev, NULL);
+	sha1_copy = xstrdup(sha1_to_hex(new_sha1));
+	argv[1] = sha1_copy;
+	setup_revisions(argc, argv, &rev, NULL);
+	if (prepare_revision_walk(&rev))
+		die("revision walk setup failed");
+
+	while ((commit = get_revision(&rev)) && !found_unpushed_submodule) {
+		struct commit_list *parent = commit->parents;
+		while (parent) {
+			struct diff_options diff_opts;
+			diff_setup(&diff_opts);
+			DIFF_OPT_SET(&diff_opts, RECURSIVE);
+			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
+			diff_opts.format_callback = submodule_push_unpushed_cb;
+			if (diff_setup_done(&diff_opts) < 0)
+				die("diff_setup_done failed");
+			diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
+			diffcore_std(&diff_opts);
+			diff_flush(&diff_opts);
+			parent = parent->next;
+		}
+	}
+	free(sha1_copy);
+}
