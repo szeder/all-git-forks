@@ -149,7 +149,7 @@ void credential_fill(struct credential *c, const struct string_list *methods)
 		for (i = 0; i < methods->nr; i++)
 			strbuf_addf(&err, "\n  %s", methods->items[i].string);
 	}
-	die(err.buf);
+	die("%s", err.buf);
 }
 
 int credential_fill_gently(struct credential *c,
