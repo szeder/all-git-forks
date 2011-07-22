@@ -200,10 +200,9 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
 			if (cur < xdf->rstart) {
-				if (arec) {
-					cur += arec[1]->ptr - arec[0]->ptr;
-					arec++;
-				} else
+				if (arec)
+					cur += (arec++)[0]->size;
+				else
 					cur = memchr(cur, '\n', top - cur) + 1;
 				hav = 0;
 			} else
