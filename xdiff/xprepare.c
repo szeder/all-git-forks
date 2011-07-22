@@ -137,32 +137,21 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 			 xdfile_t *xdf1, xdfile_t *xdf2) {
 	long i;
-	char const *prev1, *prev2, *cur1, *cur2, *top1, *top2;
+	char const *cur, *top;
+	char const *prev1, *prev2;
 
-	cur1 = mf1->ptr;
-	cur2 = mf2->ptr;
+	prev1 = xdf1->rstart = cur = mf1->ptr;
+	prev2 = xdf2->rstart = mf2->ptr;
 
-	if (!cur1 || !cur2)
-		return 0;
-
-	top1 = cur1 + mf1->size;
-	top2 = cur2 + mf2->size;
+	top = cur + XDL_MIN(mf1->size, mf2->size);
 
 	/* TODO: trim on whitespace rules */
 	i = 0;
-	prev1 = cur1;
-	prev2 = cur2;
-	while (cur1 < top1 && cur2 < top2) {
-		prev1 = cur1;
-		prev2 = cur2;
-		cur1 = memchr(cur1, '\n', top1 - cur1);
-		cur2 = memchr(cur2, '\n', top2 - cur2);
-		if (!cur1 || !cur2
-			|| cur1 - prev1 != cur2 - prev2
-			|| memcmp(prev1, prev2, cur1 - prev1))
-			break;
-		cur1++;
-		cur2++;
+	while (cur < top
+		&& (cur = memchr(cur, '\n', top - cur))
+		&& !memcmp(prev1, prev2, cur - prev1)) {
+		prev2 += ++cur - prev1;
+		prev1 = cur;
 		i++;
 	}
 	xdf1->dstart = xdf2->dstart = i;
