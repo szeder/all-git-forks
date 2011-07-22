@@ -53,7 +53,7 @@ static void xdl_free_classifier(xdlclassifier_t *cf);
 static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned int hbits,
 			       xrecord_t *rec);
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
-			   xdlclassifier_t *cf, xdfile_t *xdf);
+			   xdlclassifier_t *cf, xdfile_t *xdf, xrecord_t **arec);
 static void xdl_free_ctx(xdfile_t *xdf);
 static int xdl_clean_mmatch(char const *dis, long i, long s, long e);
 static int xdl_cleanup_records(xdfile_t *xdf1, xdfile_t *xdf2);
@@ -163,7 +163,7 @@ static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
-			   xdlclassifier_t *cf, xdfile_t *xdf) {
+			   xdlclassifier_t *cf, xdfile_t *xdf, xrecord_t **arec) {
 	unsigned int hbits;
 	long nrec, hsize, bsize;
 	unsigned long hav;
@@ -200,8 +200,11 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
 			if (cur < xdf->rstart) {
-				cur = memchr(cur, '\n', top - cur);
-				cur++;
+				if (arec) {
+					cur += arec[1]->ptr - arec[0]->ptr;
+					arec++;
+				} else
+					cur = memchr(cur, '\n', top - cur) + 1;
 				hav = 0;
 			} else
 				hav = xdl_hash_record(&cur, top, xpp->flags);
@@ -309,12 +312,12 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 		return -1;
 	}
 
-	if (xdl_prepare_ctx(mf1, enl1, xpp, &cf, &xe->xdf1) < 0) {
+	if (xdl_prepare_ctx(mf1, enl1, xpp, &cf, &xe->xdf1, NULL) < 0) {
 
 		xdl_free_classifier(&cf);
 		return -1;
 	}
-	if (xdl_prepare_ctx(mf2, enl2, xpp, &cf, &xe->xdf2) < 0) {
+	if (xdl_prepare_ctx(mf2, enl2, xpp, &cf, &xe->xdf2, xe->xdf1.recs) < 0) {
 
 		xdl_free_ctx(&xe->xdf1);
 		xdl_free_classifier(&cf);
