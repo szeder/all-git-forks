@@ -136,25 +136,42 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
  */
 static int xdl_trim_ends(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 			 xdfile_t *xdf1, xdfile_t *xdf2) {
-	long i;
+
+	const int blk = 128;
+	long trimmed = 0, recovered = 0;
+	long smaller = XDL_MIN(mf1->size, mf2->size);
+	char const *p1, *p2;
 	char const *cur, *top;
 	char const *prev1, *prev2;
 
-	prev1 = xdf1->rstart = cur = mf1->ptr;
-	prev2 = xdf2->rstart = mf2->ptr;
+	/* part 1: blocks */
+	p1 = mf1->ptr;
+	p2 = mf2->ptr;
 
-	top = cur + XDL_MIN(mf1->size, mf2->size);
+	while (blk + trimmed <= smaller && !memcmp(p1, p2, blk)) {
+		trimmed += blk;
+		p1 += blk;
+		p2 += blk;
+	}
 
-	/* TODO: trim on whitespace rules */
-	i = 0;
+	while (recovered < trimmed)
+		if (*(p1 - recovered++) == '\n')
+			break;
+	p1 -= recovered;
+	p2 -= recovered;
+
+	prev1 = xdf1->rstart = cur = p1;
+	prev2 = xdf2->rstart = p2;
+
+	top = cur + smaller - trimmed + recovered;
+
+	/* part 2: line based */
 	while (cur < top
 		&& (cur = memchr(cur, '\n', top - cur))
 		&& !memcmp(prev1, prev2, cur - prev1)) {
 		prev2 += ++cur - prev1;
 		prev1 = cur;
-		i++;
 	}
-	xdf1->dstart = xdf2->dstart = i;
 	xdf1->rstart = prev1;
 	xdf2->rstart = prev2;
 
@@ -196,6 +213,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	memset(rhash, 0, hsize * sizeof(xrecord_t *));
 
 	nrec = 0;
+	xdf->dstart = 0;
 	if ((cur = blk = xdl_mmfile_first(mf, &bsize)) != NULL) {
 		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
@@ -205,6 +223,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 				else
 					cur = memchr(cur, '\n', top - cur) + 1;
 				hav = 0;
+				xdf->dstart++;
 			} else
 				hav = xdl_hash_record(&cur, top, xpp->flags);
 			if (nrec >= narec) {
