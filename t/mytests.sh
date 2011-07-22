@@ -15,6 +15,9 @@ test_expect_success 'push with submodules without remote' '
 	) &&
 	git clone a a1 &&
 	(cd a1 &&
+	 >junk &&
+	 git add junk &&
+	 git commit -m "initianl" &&
 	 mkdir b &&
 	 (cd b &&
 	  git init &&
