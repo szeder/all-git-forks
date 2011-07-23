@@ -139,7 +139,6 @@ static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	long smaller = XDL_MIN(mf1->size, mf2->size);
 	char const *p1, *p2;
 	char const *cur, *top;
-	char const *prev1, *prev2;
 
 	/* part 1: blocks */
 	p1 = mf1->ptr;
@@ -159,19 +158,17 @@ static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	p1 -= recovered;
 	p2 -= recovered;
 
-	prev1 = xdf1->rstart = cur = p1;
-	prev2 = xdf2->rstart = p2;
-
 	/* part 2: line based */
+	cur = p1;
 	while (cur < top
 		&& (cur = memchr(cur, '\n', top - cur))
-		&& !memcmp(prev1, prev2, ++cur - prev1)) {
-		prev2 += cur - prev1;
-		prev1 = cur;
+		&& !memcmp(p1, p2, ++cur - p1)) {
+		p2 += cur - p1;
+		p1 = cur;
 	}
 
-	xdf1->rstart = prev1;
-	xdf2->rstart = prev2;
+	xdf1->rstart = p1;
+	xdf2->rstart = p2;
 }
 
 
