@@ -26,6 +26,7 @@
 #define XDL_KPDIS_RUN 4
 #define XDL_MAX_EQLIMIT 1024
 #define XDL_SIMSCAN_WINDOW 100
+#define XDL_TRIM_BLK 128
 
 
 typedef struct s_xdlclass {
@@ -134,7 +135,6 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 			 xdfile_t *xdf1, xdfile_t *xdf2) {
 
-	const int blk = 128;
 	long trimmed = 0, recovered = 0;
 	long smaller = XDL_MIN(mf1->size, mf2->size);
 	char const *p1, *p2;
@@ -147,10 +147,10 @@ static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 	top = p1 + smaller;
 
-	while (blk + trimmed <= smaller && !memcmp(p1, p2, blk)) {
-		trimmed += blk;
-		p1 += blk;
-		p2 += blk;
+	while (XDL_TRIM_BLK + trimmed <= smaller && !memcmp(p1, p2, XDL_TRIM_BLK)) {
+		trimmed += XDL_TRIM_BLK;
+		p1 += XDL_TRIM_BLK;
+		p2 += XDL_TRIM_BLK;
 	}
 
 	while (recovered < trimmed)
