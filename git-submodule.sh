@@ -35,7 +35,7 @@ resolve_relative_url ()
 {
 	remote=$(get_default_remote)
 	remoteurl=$(git config "remote.$remote.url") ||
-		die "$(eval_gettext "remote (\$remote) does not have a url defined in .git/config")"
+		remoteurl=$(pwd) # the repository is its own authoritative upstream
 	url="$1"
 	remoteurl=${remoteurl%/}
 	sep=/
@@ -242,15 +242,6 @@ Use -f if you really want to add it." &&
 			die "$(eval_gettext "'\$path' already exists and is not a valid git repo")"
 		fi
 
-		case "$repo" in
-		./*|../*)
-			url=$(resolve_relative_url "$repo") || exit
-		    ;;
-		*)
-			url="$repo"
-			;;
-		esac
-		git config submodule."$path".url "$url"
 	else
 
 		module_clone "$path" "$realrepo" "$reference" || exit
@@ -264,6 +255,7 @@ Use -f if you really want to add it." &&
 			esac
 		) || die "$(eval_gettext "Unable to checkout submodule '\$path'")"
 	fi
+	git config submodule."$path".url "$realrepo"
 
 	git add $force "$path" ||
 	die "$(eval_gettext "Failed to add submodule '\$path'")"
@@ -304,6 +296,10 @@ cmd_foreach()
 
 	toplevel=$(pwd)
 
+	# dup stdin so that it can be restored when running the external
+	# command in the subshell (and a recursive call to this function)
+	exec 3<&0
+
 	module_list |
 	while read mode sha1 stage path
 	do
@@ -320,7 +316,7 @@ cmd_foreach()
 				then
 					cmd_foreach "--recursive" "$@"
 				fi
-			) ||
+			) <&3 3<&- ||
 			die "$(eval_gettext "Stopping at '\$path'; script returned non-zero status.")"
 		fi
 	done
@@ -359,25 +355,26 @@ cmd_init()
 	do
 		# Skip already registered paths
 		name=$(module_name "$path") || exit
-		url=$(git config submodule."$name".url)
-		test -z "$url" || continue
+		if test -z "$(git config "submodule.$name.url")"
+		then
+			url=$(git config -f .gitmodules submodule."$name".url)
+			test -z "$url" &&
+			die "$(eval_gettext "No url found for submodule path '\$path' in .gitmodules")"
 
-		url=$(git config -f .gitmodules submodule."$name".url)
-		test -z "$url" &&
-		die "$(eval_gettext "No url found for submodule path '\$path' in .gitmodules")"
+			# Possibly a url relative to parent
+			case "$url" in
+			./*|../*)
+				url=$(resolve_relative_url "$url") || exit
+				;;
+			esac
+			git config submodule."$name".url "$url" ||
+			die "$(eval_gettext "Failed to register url for submodule path '\$path'")"
+		fi
 
-		# Possibly a url relative to parent
-		case "$url" in
-		./*|../*)
-			url=$(resolve_relative_url "$url") || exit
-			;;
-		esac
-
-		git config submodule."$name".url "$url" ||
-		die "$(eval_gettext "Failed to register url for submodule path '\$path'")"
-
+		# Copy "update" setting when it is not set yet
 		upd="$(git config -f .gitmodules submodule."$name".update)"
 		test -z "$upd" ||
+		test -n "$(git config submodule."$name".update)" ||
 		git config submodule."$name".update "$upd" ||
 		die "$(eval_gettext "Failed to register update mode for submodule path '\$path'")"
 
@@ -448,7 +445,8 @@ cmd_update()
 	fi
 
 	cloned_modules=
-	module_list "$@" |
+	module_list "$@" | {
+	err=
 	while read mode sha1 stage path
 	do
 		if test "$stage" = U
@@ -511,16 +509,19 @@ Maybe you want to use 'update --init'?")"
 				update_module= ;;
 			esac
 
+			must_die_on_failure=
 			case "$update_module" in
 			rebase)
 				command="git rebase"
 				die_msg="$(eval_gettext "Unable to rebase '\$sha1' in submodule path '\$path'")"
 				say_msg="$(eval_gettext "Submodule path '\$path': rebased into '\$sha1'")"
+				must_die_on_failure=yes
 				;;
 			merge)
 				command="git merge"
 				die_msg="$(eval_gettext "Unable to merge '\$sha1' in submodule path '\$path'")"
 				say_msg="$(eval_gettext "Submodule path '\$path': merged in '\$sha1'")"
+				must_die_on_failure=yes
 				;;
 			*)
 				command="git checkout $subforce -q"
@@ -529,16 +530,51 @@ Maybe you want to use 'update --init'?")"
 				;;
 			esac
 
-			(clear_local_git_env; cd "$path" && $command "$sha1") || die $die_msg
-			say $say_msg
+			if (clear_local_git_env; cd "$path" && $command "$sha1")
+			then
+				say "$say_msg"
+			elif test -n "$must_die_on_failure"
+			then
+				die_with_status 2 "$die_msg"
+			else
+				err="${err};$die_msg"
+				continue
+			fi
 		fi
 
 		if test -n "$recursive"
 		then
-			(clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags") ||
-			die "$(eval_gettext "Failed to recurse into submodule path '\$path'")"
+			(clear_local_git_env; cd "$path" && eval cmd_update "$orig_flags")
+			res=$?
+			if test $res -gt 0
+			then
+				die_msg="$(eval_gettext "Failed to recurse into submodule path '\$path'")"
+				if test $res -eq 1
+				then
+					err="${err};$die_msg"
+					continue
+				else
+					die_with_status $res "$die_msg"
+				fi
+			fi
 		fi
 	done
+
+	if test -n "$err"
+	then
+		OIFS=$IFS
+		IFS=';'
+		for e in $err
+		do
+			if test -n "$e"
+			then
+				echo >&2 "$e"
+			fi
+		done
+		IFS=$OIFS
+		exit 1
+	fi
+	}
 }
 
 set_name_rev () {
@@ -882,17 +918,20 @@ cmd_sync()
 			;;
 		esac
 
-		say "$(eval_gettext "Synchronizing submodule url for '\$name'")"
-		git config submodule."$name".url "$url"
-
-		if test -e "$path"/.git
+		if git config "submodule.$name.url" >/dev/null 2>/dev/null
 		then
-		(
-			clear_local_git_env
-			cd "$path"
-			remote=$(get_default_remote)
-			git config remote."$remote".url "$url"
-		)
+			say "$(eval_gettext "Synchronizing submodule url for '\$name'")"
+			git config submodule."$name".url "$url"
+
+			if test -e "$path"/.git
+			then
+			(
+				clear_local_git_env
+				cd "$path"
+				remote=$(get_default_remote)
+				git config remote."$remote".url "$url"
+			)
+			fi
 		fi
 	done
 }
