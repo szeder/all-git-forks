@@ -51,7 +51,6 @@ typedef struct s_xdfile {
 	unsigned int hbits;
 	xrecord_t **rhash;
 	long dstart, dend;
-	const char *rstart, *rend;
 	xrecord_t **recs;
 	char *rchg;
 	long *rindex;
