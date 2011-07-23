@@ -655,7 +655,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		refs = transport_get_remote_refs(transport);
 		if (refs) {
 			mapped_refs = wanted_peer_refs(refs, refspec);
-			transport_fetch_refs(transport, mapped_refs);
+			if (transport_fetch_refs(transport, mapped_refs))
+				die(_("could not fetch refs from %s"),
+				    transport->url);
 		}
 	}
 
