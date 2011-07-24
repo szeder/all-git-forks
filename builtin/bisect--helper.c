@@ -3,17 +3,21 @@
 #include "parse-options.h"
 #include "bisect.h"
 
+
 static const char * const git_bisect_helper_usage[] = {
-	"git bisect--helper --next-all",
+	"git bisect--helper --next-all [ --ignore-checkout-failure ]",
 	NULL
 };
 
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 {
 	int next_all = 0;
+	int ignore_checkout_failure = 0;
 	struct option options[] = {
 		OPT_BOOLEAN(0, "next-all", &next_all,
 			    "perform 'git bisect next'"),
+		OPT_BOOLEAN(0, "ignore-checkout-failure", &ignore_checkout_failure,
+			    "ignore checkout failure"),
 		OPT_END()
 	};
 
@@ -24,5 +28,5 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		usage_with_options(git_bisect_helper_usage, options);
 
 	/* next-all */
-	return bisect_next_all(prefix);
+	return bisect_next_all(prefix, ignore_checkout_failure);
 }

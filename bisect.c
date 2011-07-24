@@ -24,6 +24,7 @@ struct argv_array {
 
 static const char *argv_checkout[] = {"checkout", "-q", NULL, "--", NULL};
 static const char *argv_show_branch[] = {"show-branch", NULL, NULL};
+static int module_ignore_checkout_failure = 0;
 
 /* bits #0-15 in revision.h */
 
@@ -909,13 +910,15 @@ static void show_diff_tree(const char *prefix, struct commit *commit)
  * the bisection process finished successfully.
  * In this case the calling shell script should exit 0.
  */
-int bisect_next_all(const char *prefix)
+int bisect_next_all(const char *prefix, const int ignore_checkout_failure)
 {
 	struct rev_info revs;
 	struct commit_list *tried;
 	int reaches = 0, all = 0, nr, steps;
 	const unsigned char *bisect_rev;
 	char bisect_rev_hex[41];
+
+	module_ignore_checkout_failure = ignore_checkout_failure;
 
 	if (read_bisect_refs())
 		die("reading bisect refs failed");
