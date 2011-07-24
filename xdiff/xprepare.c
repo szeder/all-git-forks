@@ -137,7 +137,6 @@ static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 	long trimmed = 0, recovered = 0;
 	long smaller = XDL_MIN(mf1->size, mf2->size);
-	long blk;
 	char const *p1, *p2;
 	char const *cur, *top;
 
@@ -170,11 +169,18 @@ static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 	xdf1->rstart = p1;
 	xdf2->rstart = p2;
+}
 
-	/* trim tail */
-	p1 = mf1->ptr + mf1->size;
-	p2 = mf2->ptr + mf2->size;
-	trimmed = recovered = 0;
+
+static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
+			  xdfile_t *xdf1, xdfile_t *xdf2) {
+
+	long trimmed = 0, recovered = 0;
+	long smaller = XDL_MIN(mf1->size, mf2->size);
+	long blk;
+	char const *p1 = mf1->ptr + mf1->size;
+	char const *p2 = mf2->ptr + mf2->size;
+	char const *cur, *top;
 
 	while (XDL_TRIM_BLK + trimmed <= smaller && !memcmp(p1 - XDL_TRIM_BLK, p2 - XDL_TRIM_BLK, XDL_TRIM_BLK)) {
 		trimmed += XDL_TRIM_BLK;
@@ -356,6 +362,7 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	}
 
 	xdl_trim_head(mf1, mf2, xpp, &xe->xdf1, &xe->xdf2);
+	xdl_trim_tail(mf1, mf2, xpp, &xe->xdf1, &xe->xdf2);
 
 	if (xdl_prepare_ctx(mf1, enl1, xpp, &cf, &xe->xdf1, NULL, &ntail1) < 0) {
 
