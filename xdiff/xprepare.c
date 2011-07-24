@@ -133,7 +133,7 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 
 
 static void xdl_trim_head(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
-			 xdfile_t *xdf1, xdfile_t *xdf2) {
+			  xdfile_t *xdf1, xdfile_t *xdf2) {
 
 	long trimmed = 0, recovered = 0;
 	long smaller = XDL_MIN(mf1->size, mf2->size);
