@@ -76,7 +76,7 @@ bisect_start() {
 	then
 		# Reset to the rev from where we started.
 		start_head=$(cat "$GIT_DIR/BISECT_START")
-		git checkout "$start_head" -- || exit
+		bisect_checkout_with_ignore "$start_head"
 	else
 		# Get rev from where we start.
 		case "$head" in
@@ -359,7 +359,7 @@ bisect_reset() {
 	*)
 	    usage ;;
 	esac
-	if git checkout "$branch" -- ; then
+	if ( bisect_checkout_with_ignore "$branch" ) ; then
 		bisect_clean_state
 	else
 		die "$(eval_gettext "Could not check out original HEAD '\$branch'.
