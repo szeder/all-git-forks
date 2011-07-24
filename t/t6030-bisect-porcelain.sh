@@ -624,4 +624,73 @@ test_expect_success 'bisect fails if tree is broken on trial commit' '
         test_cmp expected.missing-tree.default error.txt
 '
 
+test_expect_success 'bisect: --ignore-checkout-failure - start commit bad' '
+        git bisect reset &&
+        git bisect start $BROKEN_HASH7 $HASH4 --ignore-checkout-failure 2>error.txt
+        test_cmp expected.missing-tree.ignored error.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        git bisect reset
+'
+
+test_expect_success 'bisect: --ignore-checkout-failure - trial commit bad' '
+        git bisect reset &&
+        git bisect start broken $HASH4 --ignore-checkout-failure 2>error.txt
+        test_cmp expected.missing-tree.ignored error.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        git bisect reset
+'
+
+test_expect_success 'bisect: --ignore-checkout-failure - target before breakage' '
+        git bisect reset &&
+        git bisect start broken $HASH4 --ignore-checkout-failure 2>error.txt
+        test_cmp expected.missing-tree.ignored error.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        git bisect bad HEAD &&
+        broken5=$(git rev-parse HEAD) &&
+        test "$broken5" = "$BROKEN_HASH5" &&
+        git bisect bad HEAD > my_bisect_log.txt &&
+        broken4=$(git rev-parse HEAD) &&
+        test "$broken4" = "$HASH4" &&
+        echo "$BROKEN_HASH5 is the first bad commit" > expected.txt &&
+        test_cmp expected.txt my_bisect_log.txt
+        git bisect reset
+'
+
+test_expect_success 'bisect: --ignore-checkout-failure - target in breakage' '
+        git bisect reset &&
+        git bisect start broken $HASH4 --ignore-checkout-failure 2>error.txt
+        test_cmp expected.missing-tree.ignored error.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        git bisect bad HEAD &&
+        broken5=$(git rev-parse HEAD) &&
+        test "$broken5" = "$BROKEN_HASH5" &&
+        git bisect good HEAD > my_bisect_log.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        echo "$BROKEN_HASH6 is the first bad commit" > expected.txt &&
+        test_cmp expected.txt my_bisect_log.txt
+        git bisect reset
+'
+
+test_expect_success 'bisect: --ignore-checkout-failure - target after breakage' '
+        git bisect reset &&
+        git bisect start broken $HASH4 --ignore-checkout-failure 2>error.txt
+        test_cmp expected.missing-tree.ignored error.txt &&
+        broken6=$(git rev-parse HEAD) &&
+        test "$broken6" = "$BROKEN_HASH6" &&
+        git bisect good HEAD &&
+        broken8=$(git rev-parse HEAD) &&
+        test "$broken8" = "$BROKEN_HASH8" &&
+        git bisect good HEAD > my_bisect_log.txt &&
+        broken9=$(git rev-parse HEAD) &&
+        test "$broken9" = "$BROKEN_HASH9" &&
+        echo "$BROKEN_HASH9 is the first bad commit" > expected.txt &&
+        test_cmp expected.txt my_bisect_log.txt
+        git bisect reset
+'
+
 test_done
