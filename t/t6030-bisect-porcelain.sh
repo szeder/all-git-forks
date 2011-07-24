@@ -573,5 +573,55 @@ test_expect_success 'erroring out when using bad path parameters' '
 '
 
 #
+# This creates a broken branch which cannot be checked out because
+# the tree created has been deleted.
 #
+# H1-H2-H3-H4-H5-H6-H7  <--other
+#            \
+#             S5-S6'-S7'-S8'-S9  <--broken
+#
+# Commits marked with ' have a missing tree.
+#
+test_expect_success 'broken branch creation' '
+        git bisect reset &&
+        git checkout -b broken $HASH4 &&
+        add_line_into_file "5(broken): first line on a broken branch" hello2 &&
+        BROKEN_HASH5=$(git rev-parse --verify HEAD) &&
+        mkdir missing &&
+        :> missing/MISSING &&
+        git add missing/MISSING &&
+        git commit -m "Added file that will be deleted"
+        BROKEN_HASH6=$(git rev-parse --verify HEAD) &&
+        add_line_into_file "6(broken): second line on a broken branch" hello2 &&
+        BROKEN_HASH7=$(git rev-parse --verify HEAD) &&
+        add_line_into_file "7(broken): third line on a broken branch" hello2 &&
+        BROKEN_HASH8=$(git rev-parse --verify HEAD) &&
+        git rm missing/MISSING &&
+        git commit -m "Remove missing file"
+        BROKEN_HASH9=$(git rev-parse --verify HEAD) &&
+        rm .git/objects/39/f7e61a724187ab767d2e08442d9b6b9dab587d
+'
+
+echo "" > expected.ok
+cat > expected.missing-tree.default <<EOF
+fatal: unable to read tree 39f7e61a724187ab767d2e08442d9b6b9dab587d
+EOF
+cat > expected.missing-tree.ignored <<EOF
+fatal: unable to read tree 39f7e61a724187ab767d2e08442d9b6b9dab587d
+warn: checkout failed. Updating HEAD directly. The working tree and index may be inconsistent.
+EOF
+
+test_expect_success 'bisect fails if tree is broken on start commit' '
+        git bisect reset &&
+        test_must_fail git bisect start $BROKEN_HASH7 $HASH4 2>error.txt &&
+        test_cmp expected.missing-tree.default error.txt
+'
+
+test_expect_success 'bisect fails if tree is broken on trial commit' '
+        git bisect reset &&
+        test_must_fail git bisect start $BROKEN_HASH9 $HASH4 2>error.txt &&
+        git update-ref --no-deref HEAD broken &&
+        test_cmp expected.missing-tree.default error.txt
+'
+
 test_done
