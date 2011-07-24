@@ -34,6 +34,8 @@ require_work_tree
 _x40='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
 _x40="$_x40$_x40$_x40$_x40$_x40$_x40$_x40$_x40"
 
+IGNORE_CHECKOUT_FAILURE=$(test -f "${GIT_DIR}/BISECT_IGNORE_CHECKOUT_FAILURE" && cat "${GIT_DIR}/BISECT_IGNORE_CHECKOUT_FAILURE")
+
 bisect_autostart() {
 	test -s "$GIT_DIR/BISECT_START" || {
 		(
@@ -323,6 +325,23 @@ bisect_visualize() {
 	fi
 
 	eval '"$@"' --bisect -- $(cat "$GIT_DIR/BISECT_NAMES")
+}
+
+bisect_checkout_with_ignore()
+{
+    ref=$1
+    if test -z "$IGNORE_CHECKOUT_FAILURE"; then
+	git checkout "$ref" -- || exit
+    else
+	if git checkout "$ref" -- 2>/dev/null; then
+	# If the current tree contains missing objects
+	# git checkout will fail. It might be
+	# possible to recover from this if we update
+	# the HEAD first.
+	    git update-ref --no-deref HEAD "$ref" &&
+	    git checkout "$ref" -- || exit
+	fi
+    fi
 }
 
 bisect_reset() {
