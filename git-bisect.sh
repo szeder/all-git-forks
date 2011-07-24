@@ -3,7 +3,7 @@
 USAGE='[help|start|bad|good|skip|next|reset|visualize|replay|log|run]'
 LONG_USAGE='git bisect help
         print this long help message.
-git bisect start [<bad> [<good>...]] [--] [<pathspec>...]
+git bisect start [--ignore-checkout-failure] [<bad> [<good>...]] [--] [<pathspec>...]
         reset bisect state and start bisection.
 git bisect bad [<rev>]
         mark <rev> a known-bad revision.
@@ -115,6 +115,11 @@ bisect_start() {
 	    --)
 		shift
 		break
+		;;
+	    --ignore-checkout-failure)
+		IGNORE_CHECKOUT_FAILURE=$arg
+		echo "$arg" > $GIT_DIR/BISECT_IGNORE_CHECKOUT_FAILURE
+		shift
 		;;
 	    *)
 		rev=$(git rev-parse -q --verify "$arg^{commit}") || {
@@ -293,7 +298,7 @@ bisect_next() {
 	bisect_next_check good
 
 	# Perform all bisection computation, display and checkout
-	git bisect--helper --next-all
+	git bisect--helper --next-all ${IGNORE_CHECKOUT_FAILURE}
 	res=$?
 
         # Check if we should exit because bisection is finished
@@ -379,6 +384,7 @@ bisect_clean_state() {
 	rm -f "$GIT_DIR/BISECT_LOG" &&
 	rm -f "$GIT_DIR/BISECT_NAMES" &&
 	rm -f "$GIT_DIR/BISECT_RUN" &&
+	rm -f "$GIT_DIR/BISECT_IGNORE_CHECKOUT_FAILURE" &&
 	# Cleanup head-name if it got left by an old version of git-bisect
 	rm -f "$GIT_DIR/head-name" &&
 
