@@ -212,6 +212,12 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 }
 
 
+static void xdl_set_dend(xdfile_t *xdf, long lim, long ntail)
+{
+	xdf->dend = xdf->nrec - XDL_MIN(lim - xdf->dstart, ntail) - 1;
+}
+
+
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			   xdlclassifier_t *cf, xdfile_t *xdf,
 			   xrecord_t **arec, long *ntail) {
@@ -377,8 +383,8 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	}
 
 	lim = XDL_MIN(xe->xdf1.nrec, xe->xdf2.nrec);
-	xe->xdf1.dend = xe->xdf1.nrec - XDL_MIN(lim - xe->xdf1.dstart, ntail1) - 1;
-	xe->xdf2.dend = xe->xdf2.nrec - XDL_MIN(lim - xe->xdf2.dstart, ntail2) - 1;
+	xdl_set_dend(&xe->xdf1, lim, ntail1);
+	xdl_set_dend(&xe->xdf2, lim, ntail2);
 
 	xdl_free_classifier(&cf);
 
