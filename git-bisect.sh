@@ -121,6 +121,9 @@ bisect_start() {
 		echo "$arg" > $GIT_DIR/BISECT_IGNORE_CHECKOUT_FAILURE
 		shift
 		;;
+	    --*)
+		die "unrecognised option: $arg"
+		;;
 	    *)
 		rev=$(git rev-parse -q --verify "$arg^{commit}") || {
 		    test $has_double_dash -eq 1 &&
