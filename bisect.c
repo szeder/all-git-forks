@@ -24,6 +24,7 @@ struct argv_array {
 
 static const char *argv_checkout[] = {"checkout", "-q", NULL, "--", NULL};
 static const char *argv_show_branch[] = {"show-branch", NULL, NULL};
+static const char *argv_update_ref[] = {"update-ref", "--no-deref", "HEAD", NULL, NULL};
 static int module_ignore_checkout_failure = 0;
 
 /* bits #0-15 in revision.h */
@@ -716,8 +717,18 @@ static int bisect_checkout(char *bisect_rev_hex)
 
 	argv_checkout[2] = bisect_rev_hex;
 	res = run_command_v_opt(argv_checkout, RUN_GIT_CMD);
-	if (res)
+	if (res) {
+	  if (!module_ignore_checkout_failure) {
 		exit(res);
+	  } else {
+	    fprintf(stderr, "warn: checkout failed. Updating HEAD directly. The working tree and index may be inconsistent.\n");
+	    argv_update_ref[3] = bisect_rev_hex;
+	    res = run_command_v_opt(argv_update_ref, RUN_GIT_CMD);
+	    if (res) {
+	      die("update-ref --no-deref HEAD failed on %s", bisect_rev_hex);
+	    }
+	  }
+	}
 
 	argv_show_branch[1] = bisect_rev_hex;
 	return run_command_v_opt(argv_show_branch, RUN_GIT_CMD);
