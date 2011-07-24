@@ -17,7 +17,7 @@ The command takes various subcommands, and different options depending
 on the subcommand:
 
  git bisect help
- git bisect start [<bad> [<good>...]] [--] [<paths>...]
+ git bisect start [--ignore-checkout-failure] [<bad> [<good>...]] [--] [<paths>...]
  git bisect bad [<rev>]
  git bisect good [<rev>...]
  git bisect skip [(<rev>|<range>)...]
@@ -262,6 +262,17 @@ revision (possibly with the needed patch) passed the test and then
 rewind the tree to the pristine state.  Finally the script should exit
 with the status of the real test to let the "git bisect run" command loop
 determine the eventual outcome of the bisect session.
+
+OPTIONS
+-------
+--ignore-checkout-failure::
++
+This option, specified on the "git bisect start" subcommand, causes
+bisect to ignore checkout failures during the bisection process. This allows
+git bisect to be used on repositories that contain damaged trees. The
+user should expect that, in cases where checkout fails, the detached
+HEAD refers to the trial commit, but the working tree and index
+may differ from that commit.
 
 EXAMPLES
 --------
