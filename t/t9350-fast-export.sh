@@ -414,4 +414,15 @@ test_expect_success SYMLINKS 'directory becomes symlink'        '
 	(cd result && git show master:foo)
 '
 
+cat > expected << EOF
+reset refs/heads/master
+from $(git rev-parse master)
+
+EOF
+
+test_expect_failure 'refs are updated even if no commits need to be exported' '
+	git fast-export master..master > actual &&
+	test_cmp expected actual
+'
+
 test_done
