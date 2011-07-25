@@ -834,7 +834,7 @@ static int in_window(struct pack_window *win, off_t offset)
 unsigned char *use_pack(struct packed_git *p,
 		struct pack_window **w_cursor,
 		off_t offset,
-		unsigned int *left)
+		unsigned long *left)
 {
 	struct pack_window *win = *w_cursor;
 
@@ -1186,7 +1186,7 @@ static int open_sha1_file(const unsigned char *sha1)
 	return -1;
 }
 
-static void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 {
 	void *map;
 	int fd;
@@ -1205,20 +1205,29 @@ static void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 	return map;
 }
 
-static int legacy_loose_object(unsigned char *map)
+/*
+ * There used to be a second loose object header format which
+ * was meant to mimic the in-pack format, allowing for direct
+ * copy of the object data.  This format turned up not to be
+ * really worth it and we no longer write loose objects in that
+ * format.
+ */
+static int experimental_loose_object(unsigned char *map)
 {
 	unsigned int word;
 
 	/*
 	 * Is it a zlib-compressed buffer? If so, the first byte
 	 * must be 0x78 (15-bit window size, deflated), and the
-	 * first 16-bit word is evenly divisible by 31
+	 * first 16-bit word is evenly divisible by 31. If so,
+	 * we are looking at the official format, not the experimental
+	 * one.
 	 */
 	word = (map[0] << 8) + map[1];
 	if (map[0] == 0x78 && !(word % 31))
-		return 1;
-	else
 		return 0;
+	else
+		return 1;
 }
 
 unsigned long unpack_object_header_buffer(const unsigned char *buf,
@@ -1245,7 +1254,7 @@ unsigned long unpack_object_header_buffer(const unsigned char *buf,
 	return used;
 }
 
-static int unpack_sha1_header(z_stream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz)
+int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz)
 {
 	unsigned long size, used;
 	static const char valid_loose_object_type[8] = {
@@ -1262,37 +1271,32 @@ static int unpack_sha1_header(z_stream *stream, unsigned char *map, unsigned lon
 	stream->next_out = buffer;
 	stream->avail_out = bufsiz;
 
-	if (legacy_loose_object(map)) {
+	if (experimental_loose_object(map)) {
+		/*
+		 * The old experimental format we no longer produce;
+		 * we can still read it.
+		 */
+		used = unpack_object_header_buffer(map, mapsize, &type, &size);
+		if (!used || !valid_loose_object_type[type])
+			return -1;
+		map += used;
+		mapsize -= used;
+
+		/* Set up the stream for the rest.. */
+		stream->next_in = map;
+		stream->avail_in = mapsize;
 		git_inflate_init(stream);
-		return git_inflate(stream, 0);
+
+		/* And generate the fake traditional header */
+		stream->total_out = 1 + snprintf(buffer, bufsiz, "%s %lu",
+						 typename(type), size);
+		return 0;
 	}
-
-
-	/*
-	 * There used to be a second loose object header format which
-	 * was meant to mimic the in-pack format, allowing for direct
-	 * copy of the object data.  This format turned up not to be
-	 * really worth it and we don't write it any longer.  But we
-	 * can still read it.
-	 */
-	used = unpack_object_header_buffer(map, mapsize, &type, &size);
-	if (!used || !valid_loose_object_type[type])
-		return -1;
-	map += used;
-	mapsize -= used;
-
-	/* Set up the stream for the rest.. */
-	stream->next_in = map;
-	stream->avail_in = mapsize;
 	git_inflate_init(stream);
-
-	/* And generate the fake traditional header */
-	stream->total_out = 1 + snprintf(buffer, bufsiz, "%s %lu",
-					 typename(type), size);
-	return 0;
+	return git_inflate(stream, 0);
 }
 
-static void *unpack_sha1_rest(z_stream *stream, void *buffer, unsigned long size, const unsigned char *sha1)
+static void *unpack_sha1_rest(git_zstream *stream, void *buffer, unsigned long size, const unsigned char *sha1)
 {
 	int bytes = strlen(buffer) + 1;
 	unsigned char *buf = xmallocz(size);
@@ -1342,7 +1346,7 @@ static void *unpack_sha1_rest(z_stream *stream, void *buffer, unsigned long size
  * too permissive for what we want to check. So do an anal
  * object header parse by hand.
  */
-static int parse_sha1_header(const char *hdr, unsigned long *sizep)
+int parse_sha1_header(const char *hdr, unsigned long *sizep)
 {
 	char type[10];
 	int i;
@@ -1391,7 +1395,7 @@ static int parse_sha1_header(const char *hdr, unsigned long *sizep)
 static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type, unsigned long *size, const unsigned char *sha1)
 {
 	int ret;
-	z_stream stream;
+	git_zstream stream;
 	char hdr[8192];
 
 	ret = unpack_sha1_header(&stream, map, mapsize, hdr, sizeof(hdr));
@@ -1407,7 +1411,7 @@ unsigned long get_size_from_delta(struct packed_git *p,
 {
 	const unsigned char *data;
 	unsigned char delta_head[20], *in;
-	z_stream stream;
+	git_zstream stream;
 	int st;
 
 	memset(&stream, 0, sizeof(stream));
@@ -1481,7 +1485,7 @@ static off_t get_delta_base(struct packed_git *p,
 
 /* forward declaration for a mutually recursive function */
 static int packed_object_info(struct packed_git *p, off_t offset,
-			      unsigned long *sizep);
+			      unsigned long *sizep, int *rtype);
 
 static int packed_delta_info(struct packed_git *p,
 			     struct pack_window **w_curs,
@@ -1495,7 +1499,7 @@ static int packed_delta_info(struct packed_git *p,
 	base_offset = get_delta_base(p, w_curs, &curpos, type, obj_offset);
 	if (!base_offset)
 		return OBJ_BAD;
-	type = packed_object_info(p, base_offset, NULL);
+	type = packed_object_info(p, base_offset, NULL, NULL);
 	if (type <= OBJ_NONE) {
 		struct revindex_entry *revidx;
 		const unsigned char *base_sha1;
@@ -1523,13 +1527,13 @@ static int packed_delta_info(struct packed_git *p,
 	return type;
 }
 
-static int unpack_object_header(struct packed_git *p,
-				struct pack_window **w_curs,
-				off_t *curpos,
-				unsigned long *sizep)
+int unpack_object_header(struct packed_git *p,
+			 struct pack_window **w_curs,
+			 off_t *curpos,
+			 unsigned long *sizep)
 {
 	unsigned char *base;
-	unsigned int left;
+	unsigned long left;
 	unsigned long used;
 	enum object_type type;
 
@@ -1549,63 +1553,8 @@ static int unpack_object_header(struct packed_git *p,
 	return type;
 }
 
-const char *packed_object_info_detail(struct packed_git *p,
-				      off_t obj_offset,
-				      unsigned long *size,
-				      unsigned long *store_size,
-				      unsigned int *delta_chain_length,
-				      unsigned char *base_sha1)
-{
-	struct pack_window *w_curs = NULL;
-	off_t curpos;
-	unsigned long dummy;
-	unsigned char *next_sha1;
-	enum object_type type;
-	struct revindex_entry *revidx;
-
-	*delta_chain_length = 0;
-	curpos = obj_offset;
-	type = unpack_object_header(p, &w_curs, &curpos, size);
-
-	revidx = find_pack_revindex(p, obj_offset);
-	*store_size = revidx[1].offset - obj_offset;
-
-	for (;;) {
-		switch (type) {
-		default:
-			die("pack %s contains unknown object type %d",
-			    p->pack_name, type);
-		case OBJ_COMMIT:
-		case OBJ_TREE:
-		case OBJ_BLOB:
-		case OBJ_TAG:
-			unuse_pack(&w_curs);
-			return typename(type);
-		case OBJ_OFS_DELTA:
-			obj_offset = get_delta_base(p, &w_curs, &curpos, type, obj_offset);
-			if (!obj_offset)
-				die("pack %s contains bad delta base reference of type %s",
-				    p->pack_name, typename(type));
-			if (*delta_chain_length == 0) {
-				revidx = find_pack_revindex(p, obj_offset);
-				hashcpy(base_sha1, nth_packed_object_sha1(p, revidx->nr));
-			}
-			break;
-		case OBJ_REF_DELTA:
-			next_sha1 = use_pack(p, &w_curs, curpos, NULL);
-			if (*delta_chain_length == 0)
-				hashcpy(base_sha1, next_sha1);
-			obj_offset = find_pack_entry_one(next_sha1, p);
-			break;
-		}
-		(*delta_chain_length)++;
-		curpos = obj_offset;
-		type = unpack_object_header(p, &w_curs, &curpos, &dummy);
-	}
-}
-
 static int packed_object_info(struct packed_git *p, off_t obj_offset,
-			      unsigned long *sizep)
+			      unsigned long *sizep, int *rtype)
 {
 	struct pack_window *w_curs = NULL;
 	unsigned long size;
@@ -1613,6 +1562,8 @@ static int packed_object_info(struct packed_git *p, off_t obj_offset,
 	enum object_type type;
 
 	type = unpack_object_header(p, &w_curs, &curpos, &size);
+	if (rtype)
+		*rtype = type; /* representation type */
 
 	switch (type) {
 	case OBJ_OFS_DELTA:
@@ -1642,7 +1593,7 @@ static void *unpack_compressed_entry(struct packed_git *p,
 				    unsigned long size)
 {
 	int st;
-	z_stream stream;
+	git_zstream stream;
 	unsigned char *buffer, *in;
 
 	buffer = xmallocz(size);
@@ -1693,6 +1644,13 @@ static unsigned long pack_entry_hash(struct packed_git *p, off_t base_offset)
 	hash = (unsigned long)p + (unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
 	return hash % MAX_DELTA_CACHE;
+}
+
+static int in_delta_base_cache(struct packed_git *p, off_t base_offset)
+{
+	unsigned long hash = pack_entry_hash(p, base_offset);
+	struct delta_base_cache_entry *ent = delta_base_cache + hash;
+	return (ent->data && ent->p == p && ent->base_offset == base_offset);
 }
 
 static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
@@ -2075,7 +2033,7 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	int status;
 	unsigned long mapsize, size;
 	void *map;
-	z_stream stream;
+	git_zstream stream;
 	char hdr[32];
 
 	map = map_sha1_file(sha1, &mapsize);
@@ -2093,24 +2051,28 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	return status;
 }
 
-int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+/* returns enum object_type or negative */
+int sha1_object_info_extended(const unsigned char *sha1, struct object_info *oi)
 {
 	struct cached_object *co;
 	struct pack_entry e;
-	int status;
+	int status, rtype;
 
 	co = find_cached_object(sha1);
 	if (co) {
-		if (sizep)
-			*sizep = co->size;
+		if (oi->sizep)
+			*(oi->sizep) = co->size;
+		oi->whence = OI_CACHED;
 		return co->type;
 	}
 
 	if (!find_pack_entry(sha1, &e)) {
 		/* Most likely it's a loose object. */
-		status = sha1_loose_object_info(sha1, sizep);
-		if (status >= 0)
+		status = sha1_loose_object_info(sha1, oi->sizep);
+		if (status >= 0) {
+			oi->whence = OI_LOOSE;
 			return status;
+		}
 
 		/* Not a loose object; someone else may have just packed it. */
 		reprepare_packed_git();
@@ -2118,13 +2080,29 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 			return status;
 	}
 
-	status = packed_object_info(e.p, e.offset, sizep);
+	status = packed_object_info(e.p, e.offset, oi->sizep, &rtype);
 	if (status < 0) {
 		mark_bad_packed_object(e.p, sha1);
-		status = sha1_object_info(sha1, sizep);
+		status = sha1_object_info_extended(sha1, oi);
+	} else if (in_delta_base_cache(e.p, e.offset)) {
+		oi->whence = OI_DBCACHED;
+	} else {
+		oi->whence = OI_PACKED;
+		oi->u.packed.offset = e.offset;
+		oi->u.packed.pack = e.p;
+		oi->u.packed.is_delta = (rtype == OBJ_REF_DELTA ||
+					 rtype == OBJ_OFS_DELTA);
 	}
 
 	return status;
+}
+
+int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
+{
+	struct object_info oi;
+
+	oi.sizep = sizep;
+	return sha1_object_info_extended(sha1, &oi);
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
@@ -2424,7 +2402,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 {
 	int fd, ret;
 	unsigned char compressed[4096];
-	z_stream stream;
+	git_zstream stream;
 	git_SHA_CTX c;
 	unsigned char parano_sha1[20];
 	char *filename;
@@ -2441,7 +2419,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 
 	/* Set it up */
 	memset(&stream, 0, sizeof(stream));
-	deflateInit(&stream, zlib_compression_level);
+	git_deflate_init(&stream, zlib_compression_level);
 	stream.next_out = compressed;
 	stream.avail_out = sizeof(compressed);
 	git_SHA1_Init(&c);
@@ -2449,8 +2427,8 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	/* First header.. */
 	stream.next_in = (unsigned char *)hdr;
 	stream.avail_in = hdrlen;
-	while (deflate(&stream, 0) == Z_OK)
-		/* nothing */;
+	while (git_deflate(&stream, 0) == Z_OK)
+		; /* nothing */
 	git_SHA1_Update(&c, hdr, hdrlen);
 
 	/* Then the data itself.. */
@@ -2458,7 +2436,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	stream.avail_in = len;
 	do {
 		unsigned char *in0 = stream.next_in;
-		ret = deflate(&stream, Z_FINISH);
+		ret = git_deflate(&stream, Z_FINISH);
 		git_SHA1_Update(&c, in0, stream.next_in - in0);
 		if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
 			die("unable to write sha1 file");
@@ -2468,7 +2446,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 
 	if (ret != Z_STREAM_END)
 		die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
-	ret = deflateEnd(&stream);
+	ret = git_deflate_end_gently(&stream);
 	if (ret != Z_OK)
 		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
 	git_SHA1_Final(parano_sha1, &c);
@@ -2704,7 +2682,7 @@ static int index_stream(unsigned char *sha1, int fd, size_t size,
 	while (size) {
 		char buf[10240];
 		size_t sz = size < sizeof(buf) ? size : sizeof(buf);
-		size_t actual;
+		ssize_t actual;
 
 		actual = read_in_full(fd, buf, sz);
 		if (actual < 0)
