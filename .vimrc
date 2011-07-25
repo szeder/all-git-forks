@@ -16,3 +16,4 @@ augroup END
 
 autocmd BufNewFile,BufRead *.html.erb set filetype=html
 autocmd BufNewFile,BufRead *.html.twig set filetype=html
+autocmd BufNewFile,BufRead *.ctp set filetype=php
