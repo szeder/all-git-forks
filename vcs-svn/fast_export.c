@@ -290,8 +290,6 @@ void fast_export_blob_delta(uint32_t mode,
 				uint32_t len, struct line_buffer *input)
 {
 	long postimage_len;
-	if (len > maximum_signed_value_of_type(off_t))
-		die("enormous delta");
 	postimage_len = apply_delta((off_t) len, input, old_data, old_mode);
 	if (mode == REPO_MODE_LNK) {
 		buffer_skip_bytes(&postimage, strlen("link "));
