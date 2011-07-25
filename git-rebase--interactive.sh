@@ -510,7 +510,9 @@ do_next () {
 	refs/*)
 		message="$GIT_REFLOG_ACTION: $head_name onto $shortonto" &&
 		git update-ref -m "$message" $head_name $newhead $orig_head &&
-		git symbolic-ref HEAD $head_name
+		git symbolic-ref \
+		  -m "$GIT_REFLOG_ACTION: returning to $head_name" \
+		  HEAD $head_name
 		;;
 	esac && {
 		test ! -f "$state_dir"/verbose ||
@@ -711,7 +713,6 @@ then
 	# parents to rewrite and skipping dropped commits would
 	# prematurely end our probe
 	merges_option=
-	first_after_upstream="$(git rev-list --reverse --first-parent $upstream..$orig_head | head -n 1)"
 else
 	merges_option="--no-merges --cherry-pick"
 fi
@@ -744,7 +745,7 @@ do
 			preserve=t
 			for p in $(git rev-list --parents -1 $sha1 | cut -d' ' -s -f2-)
 			do
-				if test -f "$rewritten"/$p -a \( $p != $onto -o $sha1 = $first_after_upstream \)
+				if test -f "$rewritten"/$p
 				then
 					preserve=f
 				fi

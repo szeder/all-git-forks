@@ -304,7 +304,8 @@ struct subtree_details *get_details(struct commit *commit, struct string_list *p
                return NULL;
             }
 
-            git_config_from_buffer(read_subtree_config, buf, size, &prefixes);
+            die("Processing .gitsubtree not implemented");
+            //git_config_from_buffer(read_subtree_config, buf, size, &prefixes);
             free(buf);
         }
         strbuf_release(&subtree_blob_sha1);
