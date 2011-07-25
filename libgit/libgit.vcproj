@@ -547,6 +547,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\sha1-array.c"
+				>
+			</File>
+			<File
 				RelativePath="..\.\sha1-lookup.c"
 				>
 			</File>
@@ -584,6 +588,10 @@
 			</File>
 			<File
 				RelativePath="..\.\compat\strcasestr.c"
+				>
+			</File>
+			<File
+				RelativePath="..\streaming.c"
 				>
 			</File>
 			<File

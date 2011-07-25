@@ -306,9 +306,8 @@ static void show_local_changes(struct object *head, struct diff_options *opts)
 static void describe_detached_head(const char *msg, struct commit *commit)
 {
 	struct strbuf sb = STRBUF_INIT;
-	struct pretty_print_context ctx = {0};
 	parse_commit(commit);
-	pretty_print_commit(CMIT_FMT_ONELINE, commit, &sb, &ctx);
+	pp_commit_easy(CMIT_FMT_ONELINE, commit, &sb);
 	fprintf(stderr, "%s %s... %s\n", msg,
 		find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV), sb.buf);
 	strbuf_release(&sb);
@@ -623,14 +622,12 @@ static int clear_commit_marks_from_one_ref(const char *refname,
 
 static void describe_one_orphan(struct strbuf *sb, struct commit *commit)
 {
-	struct pretty_print_context ctx = { 0 };
-
 	parse_commit(commit);
 	strbuf_addstr(sb, "  ");
 	strbuf_addstr(sb,
 		find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
 	strbuf_addch(sb, ' ');
-	pretty_print_commit(CMIT_FMT_ONELINE, commit, sb, &ctx);
+	pp_commit_easy(CMIT_FMT_ONELINE, commit, sb);
 	strbuf_addch(sb, '\n');
 }
 
@@ -660,24 +657,25 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
 		"Warning: you are leaving %d commit behind, "
 		"not connected to\n"
 		"any of your branches:\n\n"
-		"%s\n"
-		"If you want to keep it by creating a new branch, "
-		"this may be a good time\nto do so with:\n\n"
-		" git branch new_branch_name %s\n\n",
+		"%s\n",
 		/* The plural version */
 		"Warning: you are leaving %d commits behind, "
 		"not connected to\n"
 		"any of your branches:\n\n"
-		"%s\n"
-		"If you want to keep them by creating a new branch, "
-		"this may be a good time\nto do so with:\n\n"
-		" git branch new_branch_name %s\n\n",
+		"%s\n",
 		/* Give ngettext() the count */
 		lost),
 		lost,
-		sb.buf,
-		sha1_to_hex(commit->object.sha1));
+		sb.buf);
 	strbuf_release(&sb);
+
+	if (advice_detached_head)
+		fprintf(stderr,
+			_(
+			"If you want to keep them by creating a new branch, "
+			"this may be a good time\nto do so with:\n\n"
+			" git branch new_branch_name %s\n\n"),
+			sha1_to_hex(commit->object.sha1));
 }
 
 /*
@@ -718,10 +716,12 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	unsigned char rev[20];
 	int flag;
 	memset(&old, 0, sizeof(old));
-	old.path = resolve_ref("HEAD", rev, 0, &flag);
+	old.path = xstrdup(resolve_ref("HEAD", rev, 0, &flag));
 	old.commit = lookup_commit_reference_gently(rev, 1);
-	if (!(flag & REF_ISSYMREF))
+	if (!(flag & REF_ISSYMREF)) {
+		free((char *)old.path);
 		old.path = NULL;
+	}
 
 	if (old.path && !prefixcmp(old.path, "refs/heads/"))
 		old.name = old.path + strlen("refs/heads/");
@@ -744,6 +744,7 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	update_refs_for_switch(opts, &old, new);
 
 	ret = post_checkout_hook(old.commit, new->commit, 1);
+	free((char *)old.path);
 	return ret || opts->writeout_error;
 }
 
@@ -1074,7 +1075,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		if (strbuf_check_branch_ref(&buf, opts.new_branch))
 			die(_("git checkout: we do not like '%s' as a branch name."),
 			    opts.new_branch);
-		if (!get_sha1(buf.buf, rev)) {
+		if (ref_exists(buf.buf)) {
 			opts.branch_exists = 1;
 			if (!opts.new_branch_force)
 				die(_("git checkout: branch %s already exists"),
