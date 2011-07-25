@@ -47,7 +47,7 @@ test_expect_failure 'push if submodule has no remote' '
 	)
 '
 
-test_expect_failure 'push fails if submodule commit not on remote' '
+test_expect_success 'push fails if submodule commit not on remote' '
 	(
 		cd work/gar &&
 		git clone --bare bage ../../submodule.git &&
@@ -66,7 +66,7 @@ test_expect_failure 'push fails if submodule commit not on remote' '
 	)
 '
 
-test_expect_failure 'push succeeds after commit was pushed to remote' '
+test_expect_success 'push succeeds after commit was pushed to remote' '
 	(
 		cd work/gar/bage &&
 		git push origin master
@@ -76,4 +76,52 @@ test_expect_failure 'push succeeds after commit was pushed to remote' '
 		git push ../pub.git master
 	)
 '
+
+test_expect_success 'push fails when commit on multiple branches if one branch has no remote' '
+	(
+		cd work/gar/bage &&
+		>junk4 &&
+		git add junk4 &&
+		git commit -m "Fourth junk"
+	) &&
+	(
+		cd work &&
+		git branch branch2 &&
+		git add gar/bage &&
+		git commit -m "Fourth commit for gar/bage" &&
+		git checkout branch2 &&
+		(
+			cd gar/bage &&
+			git checkout HEAD~1
+		) &&
+		>junk1 &&
+		git add junk1 &&
+		git commit -m "First junk" &&
+		test_must_fail git push ../pub.git
+	)
+'
+
+test_expect_success 'push succeeds if submodule has no remote and is on the first superproject commit' '
+	mkdir a &&
+	(
+		cd a &&
+		git init --bare
+	) &&
+	git clone a a1 &&
+	(
+		cd a1 &&
+		mkdir b &&
+		(
+			cd b &&
+			git init &&
+			>junk &&
+			git add junk &&
+			git commit -m "initial"
+		) &&
+		git add b &&
+		git commit -m "added submodule" &&
+		git push origin master
+	)
+'
+
 test_done
