@@ -619,7 +619,7 @@ static unsigned name_hash(const char *name)
 	return hash;
 }
 
-static void setup_delta_attr_check(struct git_attr_check *check)
+static void setup_delta_attr_check(struct git_attr_value *check)
 {
 	static struct git_attr *attr_delta;
 
@@ -631,7 +631,7 @@ static void setup_delta_attr_check(struct git_attr_check *check)
 
 static int no_try_delta(const char *path)
 {
-	struct git_attr_check check[1];
+	struct git_attr_value check[1];
 
 	setup_delta_attr_check(check);
 	if (git_checkattr(path, ARRAY_SIZE(check), check))

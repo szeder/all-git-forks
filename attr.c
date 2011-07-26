@@ -33,7 +33,7 @@ struct git_attr {
 };
 static int attr_nr;
 
-static struct git_attr_check *check_all_attr;
+static struct git_attr_value *check_all_attr;
 static struct git_attr *(git_attr_hash[HASHSIZE]);
 
 char *git_attr_name(struct git_attr *attr) {
@@ -645,7 +645,7 @@ static int macroexpand_one(int attr_nr, int rem);
 
 static int fill_one(const char *what, struct match_attr *a, int rem)
 {
-	struct git_attr_check *check = check_all_attr;
+	struct git_attr_value *check = check_all_attr;
 	int i;
 
 	for (i = a->num_attr - 1; 0 < rem && 0 <= i; i--) {
@@ -705,7 +705,7 @@ static int macroexpand_one(int attr_nr, int rem)
 	return rem;
 }
 
-int git_checkattr(const char *path, int num, struct git_attr_check *check)
+int git_checkattr(const char *path, int num, struct git_attr_value *check)
 {
 	struct attr_stack *stk;
 	const char *cp;
@@ -736,7 +736,7 @@ int git_checkattr(const char *path, int num, struct git_attr_check *check)
 	return 0;
 }
 
-int git_allattrs(const char *path, int *num, struct git_attr_check **check)
+int git_allattrs(const char *path, int *num, struct git_attr_value **check)
 {
 	struct attr_stack *stk;
 	const char *cp;
