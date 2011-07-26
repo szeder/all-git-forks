@@ -425,6 +425,18 @@ const char *read_gitfile_gently(const char *path)
 	return path;
 }
 
+const char *resolve_gitdir(const char *path)
+{
+	const char *dir = read_gitfile_gently(path);
+	if (dir)
+		return result;
+
+	if (!is_git_directory(path))
+		die("Not a git repository: %s", dir);
+
+	return path;
+}
+
 static const char *setup_explicit_git_dir(const char *gitdirenv,
 					  char *cwd, int len,
 					  int *nongit_ok)
