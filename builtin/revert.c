@@ -40,7 +40,7 @@ static const char * const cherry_pick_usage[] = {
 };
 
 enum replay_action { REVERT, CHERRY_PICK };
-enum replay_subcommand { REPLAY_NONE, REPLAY_RESET };
+enum replay_subcommand { REPLAY_NONE, REPLAY_RESET, REPLAY_CONTINUE };
 
 struct replay_opts {
 	enum replay_action action;
@@ -65,7 +65,6 @@ struct replay_opts {
 };
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
-#define MAYBE_UNUSED __attribute__((__unused__))
 
 static const char *action_name(const struct replay_opts *opts)
 {
@@ -109,14 +108,40 @@ static void verify_opt_compatible(const char *me, const char *base_opt, ...)
 	va_end(ap);
 }
 
+static void verify_opt_mutually_compatible(const char *me, ...)
+{
+       const char *opt1, *opt2;
+       va_list ap;
+       int set;
+
+       va_start(ap, me);
+       while ((opt1 = va_arg(ap, const char *))) {
+	       set = va_arg(ap, int);
+	       if (set)
+		       break;
+       }
+       if (!opt1)
+	       goto ok;
+       while ((opt2 = va_arg(ap, const char *))) {
+	       set = va_arg(ap, int);
+	       if (set)
+		       die(_("%s: %s cannot be used with %s"),
+			       me, opt1, opt2);
+       }
+ok:
+       va_end(ap);
+}
+
 static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	const char *me = action_name(opts);
 	int noop;
 	int reset = 0;
+	int contin = 0;
 	struct option options[] = {
 		OPT_BOOLEAN(0, "reset", &reset, "forget the current operation"),
+		OPT_BOOLEAN(0, "continue", &contin, "continue the current operation"),
 		OPT_BOOLEAN('n', "no-commit", &opts->no_commit, "don't automatically commit"),
 		OPT_BOOLEAN('e', "edit", &opts->edit, "edit the commit message"),
 		{ OPTION_BOOLEAN, 'r', NULL, &noop, NULL, "no-op (backward compatibility)",
@@ -146,15 +171,29 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 					PARSE_OPT_KEEP_ARGV0 |
 					PARSE_OPT_KEEP_UNKNOWN);
 
+	/* Check for incompatible subcommands */
+	verify_opt_mutually_compatible(me,
+				"--reset", reset,
+				"--continue", contin,
+				NULL);
+
 	/* Set the subcommand */
 	if (reset)
 		opts->subcommand = REPLAY_RESET;
+	else if (contin)
+		opts->subcommand = REPLAY_CONTINUE;
 	else
 		opts->subcommand = REPLAY_NONE;
 
 	/* Check for incompatible command line arguments */
-	if (opts->subcommand == REPLAY_RESET) {
-		verify_opt_compatible(me, "--reset",
+	if (opts->subcommand != REPLAY_NONE) {
+		char *this_operation;
+		if (opts->subcommand == REPLAY_RESET)
+			this_operation = "--reset";
+		else
+			this_operation = "--continue";
+
+		verify_opt_compatible(me, this_operation,
 				"--no-commit", opts->no_commit,
 				"--signoff", opts->signoff,
 				"--mainline", opts->mainline,
@@ -702,8 +741,8 @@ static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
 	return commit;
 }
 
-static void MAYBE_UNUSED read_populate_todo(struct commit_list **todo_list,
-					struct replay_opts *opts)
+static void read_populate_todo(struct commit_list **todo_list,
+			struct replay_opts *opts)
 {
 	const char *todo_file = git_path(SEQ_TODO_FILE);
 	struct strbuf buf = STRBUF_INIT;
@@ -772,7 +811,7 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 	return 0;
 }
 
-static void MAYBE_UNUSED read_populate_opts(struct replay_opts **opts_ptr)
+static void read_populate_opts(struct replay_opts **opts_ptr)
 {
 	const char *opts_file = git_path(SEQ_OPTS_FILE);
 
@@ -923,6 +962,15 @@ static int pick_revisions(struct replay_opts *opts)
 	if (opts->subcommand == REPLAY_RESET) {
 		remove_sequencer_state(1);
 		return 0;
+	} else if (opts->subcommand == REPLAY_CONTINUE) {
+		if (!file_exists(git_path(SEQ_TODO_FILE)))
+			goto error;
+		read_populate_opts(&opts);
+		read_populate_todo(&todo_list, opts);
+
+		/* Verify that the conflict has been resolved */
+		if (!index_differs_from("HEAD", 0))
+			todo_list = todo_list->next;
 	} else {
 		/*
 		 * Start a new cherry-pick/ revert sequence; but
@@ -933,7 +981,8 @@ static int pick_revisions(struct replay_opts *opts)
 		walk_revs_populate_todo(&todo_list, opts);
 		if (create_seq_dir() < 0) {
 			advise(_("A cherry-pick or revert is in progress."));
-			advise(_("Use --reset to forget about it"));
+			advise(_("Use --continue to continue the operation"));
+			advise(_("or --reset to forget about it"));
 			return -1;
 		}
 		if (get_sha1("HEAD", sha1)) {
@@ -946,6 +995,8 @@ static int pick_revisions(struct replay_opts *opts)
 		save_todo(todo_list, opts);
 	}
 	return pick_commits(todo_list, opts);
+error:
+	return error(_("No %s in progress"), me);
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
