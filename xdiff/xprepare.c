@@ -68,7 +68,7 @@ static int xdl_init_classifier(xdlclassifier_t *cf, long size, long flags) {
 	cf->flags = flags;
 
 	cf->hbits = xdl_hashbits((unsigned int) size);
-	cf->hsize = 1 << cf->hbits;
+	cf->hsize = 1L + (1 << cf->hbits);
 
 	if (xdl_cha_init(&cf->ncha, sizeof(xdlclass_t), size / 4 + 1) < 0) {
 
@@ -101,7 +101,7 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 	xdlclass_t *rcrec;
 
 	line = rec->ptr;
-	hi = (long) XDL_HASHLONG(rec->ha, cf->hbits);
+	hi = rec->ha == 0 ? 0 : 1L + (long) XDL_HASHLONG(rec->ha, cf->hbits);
 	for (rcrec = cf->rchash[hi]; rcrec; rcrec = rcrec->next)
 		if (rec->ha == 0 ||
 			(rcrec->ha == rec->ha &&
@@ -124,7 +124,7 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 
 	rec->ha = (unsigned long) rcrec->idx;
 
-	hi = (long) XDL_HASHLONG(rec->ha, hbits);
+	hi = rec->ha == 0 ? 0 : 1L + (long) XDL_HASHLONG(rec->ha, hbits);
 	rec->next = rhash[hi];
 	rhash[hi] = rec;
 
@@ -260,7 +260,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	}
 
 	hbits = xdl_hashbits((unsigned int) narec);
-	hsize = 1 << hbits;
+	hsize = 1L + (1 << hbits);
 	if (!(rhash = (xrecord_t **) xdl_malloc(hsize * sizeof(xrecord_t *)))) {
 
 		xdl_free(recs);
@@ -508,7 +508,7 @@ static int xdl_cleanup_records(xdfile_t *xdf1, xdfile_t *xdf2) {
 		mlim = XDL_MAX_EQLIMIT;
 	for (i = xdf1->dstart, recs = &xdf1->recs[xdf1->dstart]; i <= xdf1->dend; i++, recs++) {
 		hav = (*recs)->ha;
-		rhi = (long) XDL_HASHLONG(hav, xdf2->hbits);
+		rhi = hav == 0 ? 0 : 1L + ((long) XDL_HASHLONG(hav, xdf2->hbits));
 		for (nm = 0, rec = xdf2->rhash[rhi]; rec; rec = rec->next)
 			if (rec->ha == hav && ++nm == mlim)
 				break;
@@ -519,7 +519,7 @@ static int xdl_cleanup_records(xdfile_t *xdf1, xdfile_t *xdf2) {
 		mlim = XDL_MAX_EQLIMIT;
 	for (i = xdf2->dstart, recs = &xdf2->recs[xdf2->dstart]; i <= xdf2->dend; i++, recs++) {
 		hav = (*recs)->ha;
-		rhi = (long) XDL_HASHLONG(hav, xdf1->hbits);
+		rhi = hav == 0 ? 0 : 1L + (long) XDL_HASHLONG(hav, xdf1->hbits);
 		for (nm = 0, rec = xdf1->rhash[rhi]; rec; rec = rec->next)
 			if (rec->ha == hav && ++nm == mlim)
 				break;
