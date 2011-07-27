@@ -74,7 +74,7 @@ unsigned parse_whitespace_rule(const char *string)
 	return rule;
 }
 
-static void setup_whitespace_attr_check(struct git_attr_check *check)
+static void setup_whitespace_attr_check(struct git_attr_value *check)
 {
 	static struct git_attr *attr_whitespace;
 
@@ -85,7 +85,7 @@ static void setup_whitespace_attr_check(struct git_attr_check *check)
 
 unsigned whitespace_rule(const char *pathname)
 {
-	struct git_attr_check attr_whitespace_rule;
+	struct git_attr_value attr_whitespace_rule;
 
 	setup_whitespace_attr_check(&attr_whitespace_rule);
 	if (!git_checkattr(pathname, 1, &attr_whitespace_rule)) {

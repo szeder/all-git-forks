@@ -14,22 +14,38 @@ struct git_attr *git_attr(const char *);
 extern const char git_attr__true[];
 extern const char git_attr__false[];
 
-/* For public to check git_attr_check results */
+/* For public to check git_attr_value results */
 #define ATTR_TRUE(v) ((v) == git_attr__true)
 #define ATTR_FALSE(v) ((v) == git_attr__false)
 #define ATTR_UNSET(v) ((v) == NULL)
 
 /*
- * Send one or more git_attr_check to git_checkattr(), and
+ * Send one or more git_attr_value to git_checkattr(), and
  * each 'value' member tells what its value is.
  * Unset one is returned as NULL.
  */
-struct git_attr_check {
+struct git_attr_value {
 	struct git_attr *attr;
 	const char *value;
 };
 
-int git_checkattr(const char *path, int, struct git_attr_check *);
+/*
+ * Return the name of the attribute represented by the argument.  The
+ * return value is a pointer to a null-delimited string that is part
+ * of the internal data structure; it should not be modified or freed.
+ */
+char *git_attr_name(struct git_attr *);
+
+int git_checkattr(const char *path, int, struct git_attr_value *);
+
+/*
+ * Retrieve all attributes that apply to the specified path.  *num
+ * will be set the the number of attributes on the path; **check will
+ * be set to point at a newly-allocated array of git_attr_value
+ * objects describing the attributes and their values.  *check must be
+ * free()ed by the caller.
+ */
+int git_allattrs(const char *path, int *num, struct git_attr_value **check);
 
 enum git_attr_direction {
 	GIT_ATTR_CHECKIN,
