@@ -217,16 +217,14 @@ static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
 {
 	long i, ha;
 	xrecord_t *rec;
-	char const *old_ptr;
 
 	xdf->dend = xdf->nrec - XDL_MIN(lim - xdf->dstart, ntail) - 1;
 
 	i = xdf->nrec - ntail;
 	while (i < xdf->nrec) {
 		rec = xdf->recs[i];
-		old_ptr = rec->ptr;
 		rec->ha = xdl_hash_record(&rec->ptr, rec->ptr + rec->size, xpp->flags);
-		rec->ptr = old_ptr;
+		rec->ptr -= rec->size;
 
 		xdl_classify_record(cf, xdf->rhash, xdf->hbits, rec);
 
