@@ -796,12 +796,15 @@ static void walk_revs_populate_todo(struct commit_list **todo_list,
 		next = commit_list_append(commit, next);
 }
 
-static void create_seq_dir(void)
+static int create_seq_dir(void)
 {
 	const char *seq_dir = git_path(SEQ_DIR);
 
-	if (!file_exists(seq_dir) && mkdir(seq_dir, 0777) < 0)
+	if (file_exists(seq_dir))
+		return error(_("%s already exists."), seq_dir);
+	else if (mkdir(seq_dir, 0777) < 0)
 		die_errno(_("Could not create sequencer directory '%s'."), seq_dir);
+	return 0;
 }
 
 static void save_head(const char *head)
@@ -912,6 +915,7 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 static int pick_revisions(struct replay_opts *opts)
 {
 	struct commit_list *todo_list = NULL;
+	const char *me = action_name(opts);
 	unsigned char sha1[20];
 
 	read_and_refresh_cache(opts);
@@ -920,9 +924,18 @@ static int pick_revisions(struct replay_opts *opts)
 		remove_sequencer_state(1);
 		return 0;
 	} else {
-		/* Start a new cherry-pick/ revert sequence */
+		/*
+		 * Start a new cherry-pick/ revert sequence; but
+		 * first, make sure that an existing one isn't in
+		 * progress
+		 */
+
 		walk_revs_populate_todo(&todo_list, opts);
-		create_seq_dir();
+		if (create_seq_dir() < 0) {
+			advise(_("A cherry-pick or revert is in progress."));
+			advise(_("Use --reset to forget about it"));
+			return -1;
+		}
 		if (get_sha1("HEAD", sha1)) {
 			if (opts->action == REVERT)
 				return error(_("Can't revert as initial commit"));
