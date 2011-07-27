@@ -65,6 +65,7 @@ struct replay_opts {
 #define SEQ_DIR         "sequencer"
 #define SEQ_HEAD_FILE   "sequencer/head"
 #define SEQ_TODO_FILE   "sequencer/todo"
+#define SEQ_OPTS_FILE   "sequencer/opts"
 
 static const char *action_name(const struct replay_opts *opts)
 {
@@ -716,6 +717,49 @@ error:
 	die(_("Unusable instruction sheet: %s"), todo_file);
 }
 
+static int populate_opts_cb(const char *key, const char *value, void *data)
+{
+	struct replay_opts *opts = data;
+	int error_flag = 1;
+
+	if (!value)
+		error_flag = 0;
+	else if (!strcmp(key, "core.no-commit"))
+		opts->no_commit = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "core.edit"))
+		opts->edit = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "core.signoff"))
+		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "core.record-origin"))
+		opts->record_origin = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "core.allow-ff"))
+		opts->allow_ff = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "core.mainline"))
+		opts->mainline = git_config_int(key, value);
+	else if (!strcmp(key, "core.strategy"))
+		git_config_string(&opts->strategy, key, value);
+	else if (!strcmp(key, "core.strategy-option")) {
+		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
+		opts->xopts[opts->xopts_nr++] = xstrdup(value);
+	} else
+		return error(_("Invalid key: %s"), key);
+
+	if (!error_flag)
+		return error(_("Invalid value for %s: %s"), key, value);
+
+	return 0;
+}
+
+static void MAYBE_UNUSED read_populate_opts(struct replay_opts **opts_ptr)
+{
+	const char *opts_file = git_path(SEQ_OPTS_FILE);
+
+	if (!file_exists(opts_file))
+		return;
+	if (git_config_from_file(populate_opts_cb, opts_file, *opts_ptr) < 0)
+		die(_("Malformed options sheet: %s"), opts_file);
+}
+
 static void walk_revs_populate_todo(struct commit_list **todo_list,
 				struct replay_opts *opts)
 {
@@ -774,6 +818,39 @@ static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 	strbuf_release(&buf);
 }
 
+static void save_opts(struct replay_opts *opts)
+{
+	const char *opts_file = git_path(SEQ_OPTS_FILE);
+	struct strbuf buf = STRBUF_INIT;
+	int i;
+
+	if (opts->no_commit)
+		git_config_set_in_file(opts_file, "core.no-commit", "true");
+	if (opts->edit)
+		git_config_set_in_file(opts_file, "core.edit", "true");
+	if (opts->signoff)
+		git_config_set_in_file(opts_file, "core.signoff", "true");
+	if (opts->record_origin)
+		git_config_set_in_file(opts_file, "core.record-origin", "true");
+	if (opts->allow_ff)
+		git_config_set_in_file(opts_file, "core.allow-ff", "true");
+	if (opts->mainline) {
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "%d", opts->mainline);
+		git_config_set_in_file(opts_file, "core.mainline", buf.buf);
+	}
+	if (opts->strategy)
+		git_config_set_in_file(opts_file, "core.strategy", opts->strategy);
+	if (opts->xopts) {
+		for (i = 0; i < opts->xopts_nr; i ++)
+			git_config_set_multivar_in_file(opts_file,
+							"core.strategy-option",
+							opts->xopts[i], "^$", 0);
+	}
+
+	strbuf_release(&buf);
+}
+
 static int pick_commits(struct replay_opts *opts)
 {
 	struct commit_list *todo_list = NULL;
@@ -796,6 +873,7 @@ static int pick_commits(struct replay_opts *opts)
 		return error(_("Can't cherry-pick into empty head"));
 	} else
 		save_head(sha1_to_hex(sha1));
+	save_opts(opts);
 	save_todo(todo_list, opts);
 
 	for (cur = todo_list; cur; cur = cur->next) {

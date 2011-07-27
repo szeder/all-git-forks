@@ -32,10 +32,36 @@ test_expect_success setup '
 
 test_expect_success 'cherry-pick persists data on failure' '
 	pristine_detach initial &&
-	test_must_fail git cherry-pick base..anotherpick &&
+	test_must_fail git cherry-pick -s base..anotherpick &&
 	test_path_is_dir .git/sequencer &&
 	test_path_is_file .git/sequencer/head &&
 	test_path_is_file .git/sequencer/todo &&
+	test_path_is_file .git/sequencer/opts &&
+	rm -rf .git/sequencer
+'
+
+test_expect_success 'cherry-pick persists opts correctly' '
+	pristine_detach initial &&
+	test_must_fail git cherry-pick -s -m 1 --strategy=recursive -X patience -X ours base..anotherpick &&
+	test_path_is_dir .git/sequencer &&
+	test_path_is_file .git/sequencer/head &&
+	test_path_is_file .git/sequencer/todo &&
+	test_path_is_file .git/sequencer/opts &&
+	echo "true" >expect
+	git config --file=.git/sequencer/opts --get-all core.signoff >actual &&
+	test_cmp expect actual &&
+	echo "1" >expect
+	git config --file=.git/sequencer/opts --get-all core.mainline >actual &&
+	test_cmp expect actual &&
+	echo "recursive" >expect
+	git config --file=.git/sequencer/opts --get-all core.strategy >actual &&
+	test_cmp expect actual &&
+	cat >expect <<-\EOF
+	patience
+	ours
+	EOF
+	git config --file=.git/sequencer/opts --get-all core.strategy-option >actual &&
+	test_cmp expect actual &&
 	rm -rf .git/sequencer
 '
 
