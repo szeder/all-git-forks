@@ -213,7 +213,7 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 
 
 static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
-			 long lim, long ntail)
+			 xdlclassifier_t *cf, long lim, long ntail)
 {
 	long i, ha;
 	xrecord_t *rec;
@@ -227,6 +227,9 @@ static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
 		old_ptr = rec->ptr;
 		rec->ha = xdl_hash_record(&rec->ptr, rec->ptr + rec->size, xpp->flags);
 		rec->ptr = old_ptr;
+
+		xdl_classify_record(cf, xdf->rhash, xdf->hbits, rec);
+
 		i++;
 	}
 }
@@ -307,7 +310,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			crec->ha = hav;
 			recs[nrec++] = crec;
 
-			if (xdl_classify_record(cf, rhash, hbits, crec) < 0) {
+			if (!*ntail && xdl_classify_record(cf, rhash, hbits, crec) < 0) {
 
 				xdl_free(rhash);
 				xdl_free(recs);
@@ -399,8 +402,8 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	}
 
 	lim = XDL_MIN(xe->xdf1.nrec, xe->xdf2.nrec);
-	xdl_set_dend(&xe->xdf1, xpp, lim, ntail1);
-	xdl_set_dend(&xe->xdf2, xpp, lim, ntail2);
+	xdl_set_dend(&xe->xdf1, xpp, &cf, lim, ntail1);
+	xdl_set_dend(&xe->xdf2, xpp, &cf, lim, ntail2);
 
 	xdl_free_classifier(&cf);
 
