@@ -37,7 +37,7 @@ test_expect_success 'cherry-pick persists data on failure' '
 	test_path_is_file .git/sequencer/head &&
 	test_path_is_file .git/sequencer/todo &&
 	test_path_is_file .git/sequencer/opts &&
-	rm -rf .git/sequencer
+	git cherry-pick --reset
 '
 
 test_expect_success 'cherry-pick persists opts correctly' '
@@ -62,12 +62,24 @@ test_expect_success 'cherry-pick persists opts correctly' '
 	EOF
 	git config --file=.git/sequencer/opts --get-all core.strategy-option >actual &&
 	test_cmp expect actual &&
-	rm -rf .git/sequencer
+	git cherry-pick --reset
 '
 
 test_expect_success 'cherry-pick cleans up sequencer state upon success' '
 	pristine_detach initial &&
 	git cherry-pick initial..picked &&
+	test_path_is_missing .git/sequencer
+'
+
+test_expect_success '--reset does not complain when no cherry-pick is in progress' '
+	pristine_detach initial &&
+	git cherry-pick --reset
+'
+
+test_expect_success '--reset cleans up sequencer state' '
+	pristine_detach initial &&
+	test_must_fail git cherry-pick base..picked &&
+	git cherry-pick --reset &&
 	test_path_is_missing .git/sequencer
 '
 
