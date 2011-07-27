@@ -13,6 +13,7 @@
 #include "rerere.h"
 #include "merge-recursive.h"
 #include "refs.h"
+#include "dir.h"
 
 /*
  * This implements the builtins revert and cherry-pick.
@@ -59,6 +60,11 @@ struct replay_opts {
 };
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
+#define MAYBE_UNUSED __attribute__((__unused__))
+
+#define SEQ_DIR         "sequencer"
+#define SEQ_HEAD_FILE   "sequencer/head"
+#define SEQ_TODO_FILE   "sequencer/todo"
 
 static const char *action_name(const struct replay_opts *opts)
 {
@@ -269,7 +275,7 @@ static void write_message(struct strbuf *msgbuf, const char *filename)
 		die_errno(_("Could not write to %s."), filename);
 	strbuf_release(msgbuf);
 	if (commit_lock_file(&msg_file) < 0)
-		die(_("Error wrapping up %s"), filename);
+		die(_("Error wrapping up %s."), filename);
 }
 
 static struct tree *empty_tree(void)
@@ -582,10 +588,199 @@ static void read_and_refresh_cache(struct replay_opts *opts)
 	rollback_lock_file(&index_lock);
 }
 
-static int pick_commits(struct replay_opts *opts)
+/*
+ * Append a commit to the end of the commit_list.
+ *
+ * next starts by pointing to the variable that holds the head of an
+ * empty commit_list, and is updated to point to the "next" field of
+ * the last item on the list as new commits are appended.
+ *
+ * Usage example:
+ *
+ *     struct commit_list *list;
+ *     struct commit_list **next = &list;
+ *
+ *     next = commit_list_append(c1, next);
+ *     next = commit_list_append(c2, next);
+ *     assert(commit_list_count(list) == 2);
+ *     return list;
+ */
+struct commit_list **commit_list_append(struct commit *commit,
+					struct commit_list **next)
+{
+	struct commit_list *new = xmalloc(sizeof(struct commit_list));
+	new->item = commit;
+	*next = new;
+	new->next = NULL;
+	return &new->next;
+}
+
+static int format_todo(struct strbuf *buf, struct commit_list *todo_list,
+		struct replay_opts *opts)
+{
+	struct commit_list *cur = NULL;
+	struct commit_message msg = { NULL, NULL, NULL, NULL, NULL };
+	const char *sha1_abbrev = NULL;
+	const char *action_str = opts->action == REVERT ? "revert" : "pick";
+
+	for (cur = todo_list; cur; cur = cur->next) {
+		sha1_abbrev = find_unique_abbrev(cur->item->object.sha1, DEFAULT_ABBREV);
+		if (get_message(cur->item, &msg))
+			return error(_("Cannot get commit message for %s"), sha1_abbrev);
+		strbuf_addf(buf, "%s %s %s\n", action_str, sha1_abbrev, msg.subject);
+	}
+	return 0;
+}
+
+static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
+{
+	unsigned char commit_sha1[20];
+	char sha1_abbrev[40];
+	struct commit *commit;
+	enum replay_action action;
+	int insn_len = 0;
+	char *p, *q;
+
+	if (!prefixcmp(start, "pick ")) {
+		action = CHERRY_PICK;
+		insn_len = strlen("pick");
+		p = start + insn_len + 1;
+	}
+	else if (!prefixcmp(start, "revert ")) {
+		action = REVERT;
+		insn_len = strlen("revert");
+		p = start + insn_len + 1;
+	}
+	else
+		return NULL;
+
+	q = strchr(p, ' ');
+	if (!q)
+		return NULL;
+	q++;
+
+	strlcpy(sha1_abbrev, p, q - p);
+
+	/*
+	 * Verify that the action matches up with the one in
+	 * opts; we don't support arbitrary instructions
+	 */
+	if (action != opts->action) {
+		const char *action_str;
+		action_str = action == REVERT ? "revert" : "cherry-pick";
+		error(_("Cannot %s during a %s"), action_str, action_name(opts));
+		return NULL;
+	}
+
+	if ((get_sha1(sha1_abbrev, commit_sha1) < 0)
+		|| !(commit = lookup_commit_reference(commit_sha1)))
+		return NULL;
+
+	return commit;
+}
+
+static void MAYBE_UNUSED read_populate_todo(struct commit_list **todo_list,
+					struct replay_opts *opts)
+{
+	const char *todo_file = git_path(SEQ_TODO_FILE);
+	struct strbuf buf = STRBUF_INIT;
+	struct commit_list **next;
+	struct commit *commit;
+	char *p;
+	int fd;
+
+	fd = open(todo_file, O_RDONLY);
+	if (fd < 0) {
+		strbuf_release(&buf);
+		die_errno(_("Could not open %s."), todo_file);
+	}
+	if (strbuf_read(&buf, fd, 0) < buf.len) {
+		close(fd);
+		strbuf_release(&buf);
+		die(_("Could not read %s."), todo_file);
+	}
+	close(fd);
+
+	next = todo_list;
+	for (p = buf.buf; *p; p = strchr(p, '\n') + 1) {
+		if (!(commit = parse_insn_line(p, opts)))
+			goto error;
+		next = commit_list_append(commit, next);
+	}
+	if (!*todo_list)
+		goto error;
+	strbuf_release(&buf);
+	return;
+error:
+	strbuf_release(&buf);
+	die(_("Unusable instruction sheet: %s"), todo_file);
+}
+
+static void walk_revs_populate_todo(struct commit_list **todo_list,
+				struct replay_opts *opts)
 {
 	struct rev_info revs;
 	struct commit *commit;
+	struct commit_list **next;
+
+	prepare_revs(&revs, opts);
+
+	next = todo_list;
+	while ((commit = get_revision(&revs)))
+		next = commit_list_append(commit, next);
+}
+
+static void create_seq_dir(void)
+{
+	const char *seq_dir = git_path(SEQ_DIR);
+
+	if (!file_exists(seq_dir) && mkdir(seq_dir, 0777) < 0)
+		die_errno(_("Could not create sequencer directory '%s'."), seq_dir);
+}
+
+static void save_head(const char *head)
+{
+	const char *head_file = git_path(SEQ_HEAD_FILE);
+	static struct lock_file head_lock;
+	struct strbuf buf = STRBUF_INIT;
+	int fd;
+
+	fd = hold_lock_file_for_update(&head_lock, head_file, LOCK_DIE_ON_ERROR);
+	strbuf_addf(&buf, "%s\n", head);
+	if (write_in_full(fd, buf.buf, buf.len) < 0)
+		die_errno(_("Could not write to %s."), head_file);
+	if (commit_lock_file(&head_lock) < 0)
+		die(_("Error wrapping up %s."), head_file);
+}
+
+static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
+{
+	const char *todo_file = git_path(SEQ_TODO_FILE);
+	static struct lock_file todo_lock;
+	struct strbuf buf = STRBUF_INIT;
+	int fd;
+
+	fd = hold_lock_file_for_update(&todo_lock, todo_file, LOCK_DIE_ON_ERROR);
+	if (format_todo(&buf, todo_list, opts) < 0)
+		die(_("Could not format %s."), todo_file);
+	if (write_in_full(fd, buf.buf, buf.len) < 0) {
+		strbuf_release(&buf);
+		die_errno(_("Could not write to %s."), todo_file);
+	}
+	if (commit_lock_file(&todo_lock) < 0) {
+		strbuf_release(&buf);
+		die(_("Error wrapping up %s."), todo_file);
+	}
+	strbuf_release(&buf);
+}
+
+static int pick_commits(struct replay_opts *opts)
+{
+	struct commit_list *todo_list = NULL;
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+	struct commit_list *cur;
+	int res;
 
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
 	if (opts->allow_ff)
@@ -593,14 +788,29 @@ static int pick_commits(struct replay_opts *opts)
 				opts->record_origin || opts->edit));
 	read_and_refresh_cache(opts);
 
-	prepare_revs(&revs, opts);
+	walk_revs_populate_todo(&todo_list, opts);
+	create_seq_dir();
+	if (get_sha1("HEAD", sha1)) {
+		if (opts->action == REVERT)
+			return error(_("Can't revert as initial commit"));
+		return error(_("Can't cherry-pick into empty head"));
+	} else
+		save_head(sha1_to_hex(sha1));
+	save_todo(todo_list, opts);
 
-	while ((commit = get_revision(&revs))) {
-		int res = do_pick_commit(commit, opts);
+	for (cur = todo_list; cur; cur = cur->next) {
+		save_todo(cur, opts);
+		res = do_pick_commit(cur->item, opts);
 		if (res)
 			return res;
 	}
 
+	/*
+	 * Sequence of picks finished successfully; cleanup by
+	 * removing the .git/sequencer directory
+	 */
+	strbuf_addf(&buf, "%s", git_path(SEQ_DIR));
+	remove_dir_recursively(&buf, 0);
 	return 0;
 }
 
