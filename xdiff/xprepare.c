@@ -212,9 +212,23 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 }
 
 
-static void xdl_set_dend(xdfile_t *xdf, long lim, long ntail)
+static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
+			 long lim, long ntail)
 {
+	long i, ha;
+	xrecord_t *rec;
+	char const *old_ptr;
+
 	xdf->dend = xdf->nrec - XDL_MIN(lim - xdf->dstart, ntail) - 1;
+
+	i = xdf->nrec - ntail;
+	while (i < xdf->nrec) {
+		rec = xdf->recs[i];
+		old_ptr = rec->ptr;
+		rec->ha = xdl_hash_record(&rec->ptr, rec->ptr + rec->size, xpp->flags);
+		rec->ptr = old_ptr;
+		i++;
+	}
 }
 
 
@@ -257,8 +271,6 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	if ((cur = blk = xdl_mmfile_first(mf, &bsize)) != NULL) {
 		for (top = blk + bsize; cur < top; ) {
 			prev = cur;
-			if (cur > xdf->rend)
-				(*ntail)++;
 			if (cur < xdf->rstart) {
 				if (arec)
 					cur += (arec++)[0]->size;
@@ -266,6 +278,10 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 					cur = memchr(cur, '\n', top - cur) + 1;
 				hav = 0;
 				xdf->dstart++;
+			} else if (cur > xdf->rend) {
+				cur = memchr(cur, '\n', top - cur) + 1;
+				hav = 0;
+				(*ntail)++;
 			} else
 				hav = xdl_hash_record(&cur, top, xpp->flags);
 			if (nrec >= narec) {
@@ -383,8 +399,8 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	}
 
 	lim = XDL_MIN(xe->xdf1.nrec, xe->xdf2.nrec);
-	xdl_set_dend(&xe->xdf1, lim, ntail1);
-	xdl_set_dend(&xe->xdf2, lim, ntail2);
+	xdl_set_dend(&xe->xdf1, xpp, lim, ntail1);
+	xdl_set_dend(&xe->xdf2, xpp, lim, ntail2);
 
 	xdl_free_classifier(&cf);
 
