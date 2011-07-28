@@ -737,6 +737,49 @@ int git_checkattr(const char *path, int num, struct git_attr_check *check)
 	return 0;
 }
 
+int git_allattrs(const char *path, int *num, struct git_attr_check **check)
+{
+	struct attr_stack *stk;
+	const char *cp;
+	int dirlen, pathlen, i, rem, count, j;
+
+	bootstrap_attr_stack();
+	for (i = 0; i < attr_nr; i++)
+		check_all_attr[i].value = ATTR__UNKNOWN;
+
+	pathlen = strlen(path);
+	cp = strrchr(path, '/');
+	if (!cp)
+		dirlen = 0;
+	else
+		dirlen = cp - path;
+	prepare_attr_stack(path, dirlen);
+	rem = attr_nr;
+	for (stk = attr_stack; 0 < rem && stk; stk = stk->prev)
+		rem = fill(path, pathlen, stk, rem);
+
+	/* Count the number of attributes that are set. */
+	count = 0;
+	for (i = 0; i < attr_nr; i++) {
+		const char *value = check_all_attr[i].value;
+		if (value != ATTR__UNSET && value != ATTR__UNKNOWN)
+			++count;
+	}
+	*num = count;
+	*check = xmalloc(sizeof(*check_all_attr) * count);
+	j = 0;
+	for (i = 0; i < attr_nr; i++) {
+		const char *value = check_all_attr[i].value;
+		if (value != ATTR__UNSET && value != ATTR__UNKNOWN) {
+			(*check)[j].attr = check_all_attr[i].attr;
+			(*check)[j].value = value;
+			++j;
+		}
+	}
+
+	return 0;
+}
+
 void git_attr_set_direction(enum git_attr_direction new, struct index_state *istate)
 {
 	enum git_attr_direction old = direction;
