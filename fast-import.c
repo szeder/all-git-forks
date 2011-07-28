@@ -1006,6 +1006,30 @@ static void cycle_packfile(void)
 	start_packfile();
 }
 
+static void prepare_object_hash(
+	enum object_type type,
+	struct strbuf *dat,
+	unsigned char *hdr_out,
+	unsigned long *hdrlen_out,
+	unsigned char *sha1_out
+)
+{
+	unsigned char hdr_[96];
+	unsigned char *hdr = hdr_out ? hdr_out : hdr_;
+	unsigned long hdrlen;
+	git_SHA_CTX c;
+
+	hdrlen = sprintf((char *)hdr,"%s %lu", typename(type),
+		(unsigned long)dat->len) + 1;
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, hdr, hdrlen);
+	git_SHA1_Update(&c, dat->buf, dat->len);
+	git_SHA1_Final(sha1_out, &c);
+
+	if (hdrlen_out)
+		*hdrlen_out = hdrlen;
+}
+
 static int store_object(
 	enum object_type type,
 	struct strbuf *dat,
@@ -1018,15 +1042,9 @@ static int store_object(
 	unsigned char hdr[96];
 	unsigned char sha1[20];
 	unsigned long hdrlen, deltalen;
-	git_SHA_CTX c;
 	git_zstream s;
 
-	hdrlen = sprintf((char *)hdr,"%s %lu", typename(type),
-		(unsigned long)dat->len) + 1;
-	git_SHA1_Init(&c);
-	git_SHA1_Update(&c, hdr, hdrlen);
-	git_SHA1_Update(&c, dat->buf, dat->len);
-	git_SHA1_Final(sha1, &c);
+	prepare_object_hash(type, dat, hdr, &hdrlen, sha1);
 	if (sha1out)
 		hashcpy(sha1out, sha1);
 
