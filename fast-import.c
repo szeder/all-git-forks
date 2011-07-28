@@ -1540,6 +1540,7 @@ static int tree_content_set(
 	if (slash1) {
 		e->tree = new_tree_content(8);
 		e->versions[1].mode = S_IFDIR;
+		hashclr(e->versions[1].sha1);
 		tree_content_set(e, slash1 + 1, sha1, mode, subtree);
 	} else {
 		e->tree = subtree;
