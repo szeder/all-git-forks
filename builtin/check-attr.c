@@ -22,7 +22,7 @@ static const struct option check_attr_options[] = {
 	OPT_END()
 };
 
-static void output_attr(int cnt, struct git_attr_check *check,
+static void output_attr(int cnt, struct git_attr_value *check,
 	const char *file)
 {
 	int j;
@@ -41,7 +41,7 @@ static void output_attr(int cnt, struct git_attr_check *check,
 	}
 }
 
-static void check_attr(int cnt, struct git_attr_check *check,
+static void check_attr(int cnt, struct git_attr_value *check,
 	const char *file)
 {
 	if (check != NULL) {
@@ -56,7 +56,7 @@ static void check_attr(int cnt, struct git_attr_check *check,
 	}
 }
 
-static void check_attr_stdin_paths(int cnt, struct git_attr_check *check)
+static void check_attr_stdin_paths(int cnt, struct git_attr_value *check)
 {
 	struct strbuf buf, nbuf;
 	int line_termination = null_term_line ? 0 : '\n';
@@ -85,7 +85,7 @@ static NORETURN void error_with_usage(const char *msg)
 
 int cmd_check_attr(int argc, const char **argv, const char *prefix)
 {
-	struct git_attr_check *check;
+	struct git_attr_value *check;
 	int cnt, i, doubledash, filei;
 
 	argc = parse_options(argc, argv, prefix, check_attr_options,
