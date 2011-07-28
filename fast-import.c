@@ -2951,6 +2951,9 @@ static void parse_ls(struct branch *b)
 	} else {
 		struct object_entry *e = parse_treeish_dataref(&p);
 		root = new_tree_entry();
+		hashclr(root->versions[0].sha1);
+		root->versions[0].mode = 0;
+		root->versions[1].mode = S_IFDIR;
 		hashcpy(root->versions[1].sha1, e->idx.sha1);
 		load_tree(root);
 		if (*p++ != ' ')
