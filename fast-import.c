@@ -1389,14 +1389,6 @@ static void load_tree_content(struct tree_content **root, unsigned char *sha1)
 	free(buf);
 }
 
-static void load_tree(struct tree_entry *root)
-{
-	root->tree = t = new_tree_content(8);
-	if (is_null_sha1(sha1))
-		return;
-       load_tree_content(&root->tree, root->versions[1].sha1);
-}
-
 static int tecmp0 (const void *_a, const void *_b)
 {
 	struct tree_entry *a = *((struct tree_entry**)_a);
@@ -1440,6 +1432,66 @@ static void mktree(struct tree_content *t, int v, struct strbuf *b)
 					e->name->str_dat, '\0');
 		strbuf_add(b, e->versions[v].sha1, 20);
 	}
+}
+
+static void load_tree(struct tree_entry *root)
+{
+	struct tree_content *oldt;
+	size_t n, i, j;
+
+	root->tree = new_tree_content(8);
+	if (is_null_sha1(root->versions[1].sha1)) {
+		if (!S_ISDIR(root->versions[0].mode) || is_null_sha1(root->versions[0].sha1) || !hashcmp(root->versions[0].sha1, root->versions[1].sha1))
+			return;
+		// looks like it is currently unreachable, but let it be for a while
+		load_tree_content(&root->tree, root->versions[0].sha1);
+		for (i = 0; i < root->tree->entry_count; ++i) {
+			root->tree->entries[i]->versions[1].mode = 0;
+			hashclr(root->tree->entries[i]->versions[1].sha1);
+		}
+		return;
+	}
+
+	load_tree_content(&root->tree, root->versions[1].sha1);
+	if (!S_ISDIR(root->versions[0].mode) || is_null_sha1(root->versions[0].sha1) || !hashcmp(root->versions[0].sha1, root->versions[1].sha1))
+ 		return;
+
+	oldt = new_tree_content(8);
+	load_tree_content(&oldt, root->versions[0].sha1);
+
+	qsort(root->tree->entries, root->tree->entry_count, sizeof(root->tree->entries[0]), tecmp1);
+	qsort(oldt->entries, oldt->entry_count, sizeof(oldt->entries[0]), tecmp1);
+
+	n = root->tree->entry_count;
+	i = 0;
+	j = 0;
+	while (i < n || j < oldt->entry_count) {
+		int cmp = i == n ? 1 : j == oldt->entry_count ? -1 : tecmp1(root->tree->entries + i, oldt->entries + j);
+		if (cmp > 0) {
+			if (root->tree->entry_count == root->tree->entry_capacity)
+				root->tree = grow_tree_content(root->tree, root->tree->entry_count);
+			oldt->entries[j]->versions[1].mode = 0;
+			hashclr(oldt->entries[j]->versions[1].sha1);
+			root->tree->entries[root->tree->entry_count++] = oldt->entries[j];
+			oldt->entries[j] = NULL;
+			++j;
+		} else if (cmp < 0) {
+			root->tree->entries[i]->versions[0].mode = 0;
+			hashclr(root->tree->entries[i]->versions[0].sha1);
+			++i;
+		} else {
+			root->tree->entries[i]->versions[0].mode = oldt->entries[j]->versions[1].mode;
+			hashcpy(root->tree->entries[i]->versions[0].sha1, oldt->entries[j]->versions[1].sha1);
+			++i;
+			++j;
+		}
+	}
+	for (j = 0; j < oldt->entry_count; ++j)
+		if (oldt->entries[j]) {
+			release_tree_entry(oldt->entries[j]);
+			oldt->entries[j] = NULL;
+		}
+	release_tree_content(oldt);
 }
 
 static void drop_old(struct tree_entry *root)
