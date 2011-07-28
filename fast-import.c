@@ -1344,18 +1344,13 @@ static const char *get_mode(const char *str, uint16_t *modep)
 	return str;
 }
 
-static void load_tree(struct tree_entry *root)
+static void load_tree_content(struct tree_content **root, unsigned char *sha1)
 {
-	unsigned char *sha1 = root->versions[1].sha1;
 	struct object_entry *myoe;
-	struct tree_content *t;
+	struct tree_content *t = *root;
 	unsigned long size;
 	char *buf;
 	const char *c;
-
-	root->tree = t = new_tree_content(8);
-	if (is_null_sha1(sha1))
-		return;
 
 	myoe = find_object(sha1);
 	if (myoe && myoe->pack_id != MAX_PACK_ID) {
@@ -1377,7 +1372,7 @@ static void load_tree(struct tree_entry *root)
 		struct tree_entry *e = new_tree_entry();
 
 		if (t->entry_count == t->entry_capacity)
-			root->tree = t = grow_tree_content(t, t->entry_count);
+			*root = t = grow_tree_content(t, t->entry_count);
 		t->entries[t->entry_count++] = e;
 
 		e->tree = NULL;
@@ -1392,6 +1387,14 @@ static void load_tree(struct tree_entry *root)
 		c += 20;
 	}
 	free(buf);
+}
+
+static void load_tree(struct tree_entry *root)
+{
+	root->tree = t = new_tree_content(8);
+	if (is_null_sha1(sha1))
+		return;
+       load_tree_content(&root->tree, root->versions[1].sha1);
 }
 
 static int tecmp0 (const void *_a, const void *_b)
