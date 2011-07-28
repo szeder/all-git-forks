@@ -1439,12 +1439,36 @@ static void mktree(struct tree_content *t, int v, struct strbuf *b)
 	}
 }
 
-static void store_tree(struct tree_entry *root)
+static void drop_old(struct tree_entry *root)
 {
 	struct tree_content *t = root->tree;
 	unsigned int i, j, del;
+
+	hashcpy(root->versions[0].sha1, root->versions[1].sha1);
+	root->versions[0].mode = root->versions[1].mode;
+
+	if (!t)
+		return;
+
+	for (i = 0, j = 0, del = 0; i < t->entry_count; i++) {
+		struct tree_entry *e = t->entries[i];
+		if (e->versions[1].mode) {
+			drop_old(e);
+			t->entries[j++] = e;
+		} else {
+			release_tree_entry(e);
+			del++;
+		}
+	}
+	t->entry_count -= del;
+}
+
+static void store_tree(struct tree_entry *root)
+{
+	struct tree_content *t = root->tree;
 	struct last_object lo = { STRBUF_INIT, 0, 0, /* no_swap */ 1 };
 	struct object_entry *le;
+	unsigned int i;
 
 	if (!is_null_sha1(root->versions[1].sha1))
 		return;
@@ -1464,20 +1488,7 @@ static void store_tree(struct tree_entry *root)
 
 	mktree(t, 1, &new_tree);
 	store_object(OBJ_TREE, &new_tree, &lo, root->versions[1].sha1, 0);
-
 	t->delta_depth = lo.depth;
-	for (i = 0, j = 0, del = 0; i < t->entry_count; i++) {
-		struct tree_entry *e = t->entries[i];
-		if (e->versions[1].mode) {
-			e->versions[0].mode = e->versions[1].mode;
-			hashcpy(e->versions[0].sha1, e->versions[1].sha1);
-			t->entries[j++] = e;
-		} else {
-			release_tree_entry(e);
-			del++;
-		}
-	}
-	t->entry_count -= del;
 }
 
 static void tree_content_replace(
@@ -2640,8 +2651,7 @@ static void parse_new_commit(void)
 
 	/* build the tree and the commit */
 	store_tree(&b->branch_tree);
-	hashcpy(b->branch_tree.versions[0].sha1,
-		b->branch_tree.versions[1].sha1);
+	drop_old(&b->branch_tree);
 
 	strbuf_reset(&new_data);
 	strbuf_addf(&new_data, "tree %s\n",
