@@ -1469,7 +1469,8 @@ static void drop_old(struct tree_entry *root)
 static void store_tree(struct tree_entry *root)
 {
 	struct tree_content *t = root->tree;
-	struct last_object lo = { STRBUF_INIT, 0, 0, /* no_swap */ 1 };
+	struct strbuf empty = STRBUF_INIT;
+	struct last_object lo = { empty, 0, 0, /* no_swap */ 1 };
 	struct object_entry *le;
 	unsigned int i;
 
@@ -1486,10 +1487,21 @@ static void store_tree(struct tree_entry *root)
 
 	le = find_object(root->versions[0].sha1);
 	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
+		unsigned char sh[20];
 		mktree(t, 0, &old_tree);
 		lo.data = old_tree;
 		lo.offset = le->idx.offset;
 		lo.depth = t->delta_depth;
+
+		prepare_object_hash(OBJ_TREE, &old_tree, NULL, NULL, sh);
+		if (hashcmp(sh, root->versions[0].sha1)) {
+			fprintf(stderr, "internal sha1 delta base mismatch,"
+					" won't use delta for that tree\n");
+			lo.data = empty;
+			lo.offset = 0;
+			lo.depth = 0;
+		}
+
 	}
 
 	mktree(t, 1, &new_tree);
