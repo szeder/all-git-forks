@@ -1474,8 +1474,11 @@ static void store_tree(struct tree_entry *root)
 		return;
 
 	for (i = 0; i < t->entry_count; i++) {
-		if (t->entries[i]->tree)
-			store_tree(t->entries[i]);
+		if (!S_ISDIR(t->entries[i]->versions[1].mode))
+			continue;
+		if (!t->entries[i]->tree)
+			load_tree(t->entries[i]);
+		store_tree(t->entries[i]);
 	}
 
 	le = find_object(root->versions[0].sha1);
