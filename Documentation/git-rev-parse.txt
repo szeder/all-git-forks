@@ -179,6 +179,9 @@ print a message to stderr and exit with nonzero status.
 <args>...::
 	Flags and parameters to be parsed.
 
+--is-well-formed-git-dir [path]::
+	Check if [path] is a valid git-dir or a git-file pointing to a valid
+	git-dir.
 
 include::revisions.txt[]
 

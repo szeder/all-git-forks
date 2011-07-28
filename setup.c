@@ -808,3 +808,19 @@ const char *setup_git_directory(void)
 {
 	return setup_git_directory_gently(NULL);
 }
+
+int is_well_formed_gitdir(const char *suspect)
+{
+	const char * gitd;
+	int res = 0;
+	gitd = read_gitfile_gently(suspect);
+	if(gitd)
+		res = 1;
+	else
+		res = is_git_directory(suspect);
+	if(res)
+		printf("%s is a well formed git-dir\n",suspect);
+	else
+		printf("%s is NOT a well formed git-dir\n",suspect);
+	return res;
+}
