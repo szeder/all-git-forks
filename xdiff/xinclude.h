@@ -38,5 +38,6 @@
 #include "xdiffi.h"
 #include "xemit.h"
 
+#include "git-compat-util.h"
 
 #endif /* #if !defined(XINCLUDE_H) */
