@@ -180,7 +180,7 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	long blk;
 	char const *p1 = mf1->ptr + mf1->size;
 	char const *p2 = mf2->ptr + mf2->size;
-	char const *cur, *top;
+	char const *cur, *top = p1;
 
 	while (XDL_TRIM_BLK + trimmed <= smaller && !memcmp(p1 - XDL_TRIM_BLK, p2 - XDL_TRIM_BLK, XDL_TRIM_BLK)) {
 		trimmed += XDL_TRIM_BLK;
