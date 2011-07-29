@@ -207,6 +207,12 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 		p1 -= blk;
 		p2 -= blk;
 	}
+
+	if (p1 < xdf1->rstart) {
+		p2 += xdf1->rstart - p1;
+		p1 = xdf1->rstart;
+	}
+
 	xdf1->rend = p1;
 	xdf2->rend = p2;
 }
