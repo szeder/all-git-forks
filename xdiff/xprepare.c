@@ -223,7 +223,7 @@ static void xdl_trim_tail(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
 			 xdlclassifier_t *cf, long lim, long ntail)
 {
-	long i, ha;
+	long i;
 	xrecord_t *rec;
 
 	xdf->dend = xdf->nrec - XDL_MIN(lim - xdf->dstart, ntail) - 1;
