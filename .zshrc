@@ -2,6 +2,7 @@
 
 # User specific aliases and functions
 alias grep='grep --color=always'
+alias ll='ls -l --color'
 
 PROMPT="%/%% "
 PROMPT2="%_%% "
