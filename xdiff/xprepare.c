@@ -323,7 +323,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			crec->ha = hav;
 			recs[nrec++] = crec;
 
-			if (!*ntail && xdl_classify_record(cf, rhash, hbits, crec) < 0) {
+			if (nrec > xdf->dstart && !*ntail && xdl_classify_record(cf, rhash, hbits, crec) < 0) {
 
 				xdl_free(rhash);
 				xdl_free(recs);
