@@ -270,7 +270,7 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 	nrec = 0;
 	xdf->dstart = *ntail = 0;
 	if ((cur = blk = xdl_mmfile_first(mf, &bsize)) != NULL) {
-		for (top = blk + bsize; cur < top; ) {
+		for (top = blk + bsize; cur && cur < top; ) {
 			prev = cur;
 			if (cur < xdf->rstart) {
 				if (arec)
