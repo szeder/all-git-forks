@@ -24,7 +24,7 @@ static struct string_list changed_submodule_paths;
  */
 static int gitmodules_is_unmerged;
 
-static int add_submodule_odb(const char *path)
+int add_submodule_odb(const char *path)
 {
 	struct strbuf objects_directory = STRBUF_INIT;
 	struct alternate_object_database *alt_odb;

@@ -9,26 +9,36 @@
 #include "refs.h"
 #include "string-list.h"
 
+static int handle_remote_submodule_ref(const char *refname,
+		const unsigned char *sha1, int flags, void *cb_data)
+{
+	struct strbuf *output = cb_data;
+
+	strbuf_addf(output, "%s\n", refname);
+
+	return 0;
+}
 
 int cmd_heiko(int argc, const char **argv2, const char *prefix)
 {
-	int is_present = 0;
-	struct child_process cp;
-	const char *argv[] = {"rev-list", "-n", "1", "HEAD", NULL};
-	struct strbuf buf = STRBUF_INIT;
+	struct strbuf output = STRBUF_INIT;
+	const char *submodule;
 
-	memset(&cp, 0, sizeof(cp));
-	cp.argv = argv;
-	cp.env = local_repo_env;
-	cp.git_cmd = 1;
-	cp.no_stdin = 1;
-	cp.out = -1;
-	if (!run_command(&cp) && !strbuf_read(&buf, cp.out, 1024))
-		is_present = 1;
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <submodule>", argv2[0]);
+		return 1;
+	}
 
-	fprintf(stderr, "len: %zu\n", (int) buf.len);
-	close(cp.out);
-	strbuf_release(&buf);
+	submodule = argv2[1];
 
+	if (add_submodule_odb(submodule)) {
+		fprintf(stderr, "Error submodule '%s' not populated.",
+				submodule);
+		return 1;
+	}
+	for_each_remote_ref_submodule(submodule, handle_remote_submodule_ref,
+			&output);
+
+	printf("%s", output.buf);
 	return 0;
 }

@@ -10,6 +10,7 @@ enum {
 	RECURSE_SUBMODULES_ON = 2
 };
 
+int add_submodule_odb(const char *path);
 void set_diffopt_flags_from_submodule_config(struct diff_options *diffopt,
 		const char *path);
 int submodule_config(const char *var, const char *value, void *cb);
