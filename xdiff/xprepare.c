@@ -275,12 +275,17 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			if (cur < xdf->rstart) {
 				if (arec)
 					cur += (arec++)[0]->size;
-				else
-					cur = memchr(cur, '\n', top - cur) + 1;
+				else {
+					cur = memchr(cur, '\n', top - cur);
+					if (cur)
+						cur++;
+				}
 				hav = 0;
 				xdf->dstart++;
 			} else if (cur > xdf->rend) {
-				cur = memchr(cur, '\n', top - cur) + 1;
+				cur = memchr(cur, '\n', top - cur);
+				if (cur)
+					cur++;
 				hav = 0;
 				(*ntail)++;
 			} else
