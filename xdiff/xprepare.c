@@ -55,6 +55,7 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 			       xrecord_t *rec);
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			   xdlclassifier_t *cf, xdfile_t *xdf, long *ntail,
+			   unsigned long tail_max,
 			   xrecord_t **arec, xrecord_t **brec);
 static void xdl_free_ctx(xdfile_t *xdf);
 static int xdl_clean_mmatch(char const *dis, long i, long s, long e);
@@ -247,6 +248,7 @@ static void xdl_set_dend(xdfile_t *xdf, xpparam_t const *xpp,
 
 static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 			   xdlclassifier_t *cf, xdfile_t *xdf, long *ntail,
+			   unsigned long tail_max,
 			   xrecord_t **arec, xrecord_t **brec) {
 	unsigned int hbits;
 	long nrec, hsize, bsize;
@@ -291,6 +293,8 @@ static int xdl_prepare_ctx(mmfile_t *mf, long narec, xpparam_t const *xpp,
 				hav = 0;
 				xdf->dstart++;
 			} else if (cur > xdf->rend) {
+				if (*ntail >= tail_max)
+					break;
 				if (brec)
 					cur += (brec++)[0]->size;
 				else {
@@ -363,7 +367,7 @@ static void xdl_free_ctx(xdfile_t *xdf) {
 
 
 int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
-		    xdfenv_t *xe) {
+		    xdfenv_t *xe, unsigned long tail_max) {
 	long lim;
 	long enl1, enl2;
 	long ntail1, ntail2;
@@ -380,13 +384,13 @@ int xdl_prepare_env(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	xdl_trim_head(mf1, mf2, xpp, &xe->xdf1, &xe->xdf2);
 	xdl_trim_tail(mf1, mf2, xpp, &xe->xdf1, &xe->xdf2);
 
-	if (xdl_prepare_ctx(mf1, enl1, xpp, &cf, &xe->xdf1, &ntail1,
+	if (xdl_prepare_ctx(mf1, enl1, xpp, &cf, &xe->xdf1, &ntail1, tail_max,
 		NULL, NULL) < 0) {
 
 		xdl_free_classifier(&cf);
 		return -1;
 	}
-	if (xdl_prepare_ctx(mf2, enl2, xpp, &cf, &xe->xdf2, &ntail2,
+	if (xdl_prepare_ctx(mf2, enl2, xpp, &cf, &xe->xdf2, &ntail2, tail_max,
 		xe->xdf1.recs, xe->xdf1.recs + xe->xdf1.nrec - ntail1) < 0) {
 
 		xdl_free_ctx(&xe->xdf1);

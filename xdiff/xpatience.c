@@ -306,7 +306,7 @@ static int fall_back_to_classic_diff(struct hashmap *map,
 	subfile2.size = map->env->xdf2.recs[line2 + count2 - 2]->ptr +
 		map->env->xdf2.recs[line2 + count2 - 2]->size - subfile2.ptr;
 	xpp.flags = map->xpp->flags & ~XDF_PATIENCE_DIFF;
-	if (xdl_do_diff(&subfile1, &subfile2, &xpp, &env) < 0)
+	if (xdl_do_diff(&subfile1, &subfile2, &xpp, &env, NULL) < 0)
 		return -1;
 
 	memcpy(map->env->xdf1.rchg + line1 - 1, env.xdf1.rchg, count1);

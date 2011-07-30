@@ -322,13 +322,13 @@ int xdl_recs_cmp(diffdata_t *dd1, long off1, long lim1,
 
 
 int xdl_do_diff(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
-		xdfenv_t *xe) {
+		xdfenv_t *xe, xdemitconf_t const *xecfg) {
 	long ndiags;
 	long *kvd, *kvdf, *kvdb;
 	xdalgoenv_t xenv;
 	diffdata_t dd1, dd2;
 
-	if (xdl_prepare_env(mf1, mf2, xpp, xe) < 0)
+	if (xdl_prepare_env(mf1, mf2, xpp, xe, xecfg ? xecfg->ctxlen : -1) < 0)
 		return -1;
 
 	if (xpp->flags & XDF_PATIENCE_DIFF)
@@ -541,7 +541,7 @@ int xdl_diff(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp,
 	emit_func_t ef = xecfg->emit_func ?
 		(emit_func_t)xecfg->emit_func : xdl_emit_diff;
 
-	if (xdl_do_diff(mf1, mf2, xpp, &xe) < 0) {
+	if (xdl_do_diff(mf1, mf2, xpp, &xe, xecfg) < 0) {
 
 		return -1;
 	}

@@ -291,7 +291,7 @@ static int xdl_refine_conflicts(xdfenv_t *xe1, xdfenv_t *xe2, xdmerge_t *m,
 		t2.ptr = (char *)xe2->xdf2.recs[m->i2]->ptr;
 		t2.size = xe2->xdf2.recs[m->i2 + m->chg2 - 1]->ptr
 			+ xe2->xdf2.recs[m->i2 + m->chg2 - 1]->size - t2.ptr;
-		if (xdl_do_diff(&t1, &t2, xpp, &xe) < 0)
+		if (xdl_do_diff(&t1, &t2, xpp, &xe, NULL) < 0)
 			return -1;
 		if (xdl_change_compact(&xe.xdf1, &xe.xdf2, xpp->flags) < 0 ||
 		    xdl_change_compact(&xe.xdf2, &xe.xdf1, xpp->flags) < 0 ||
@@ -579,8 +579,8 @@ int xdl_merge(mmfile_t *orig, mmfile_t *mf1, mmfile_t *mf2,
 	result->ptr = NULL;
 	result->size = 0;
 
-	if (xdl_do_diff(orig, mf1, xpp, &xe1) < 0 ||
-			xdl_do_diff(orig, mf2, xpp, &xe2) < 0) {
+	if (xdl_do_diff(orig, mf1, xpp, &xe1, NULL) < 0 ||
+			xdl_do_diff(orig, mf2, xpp, &xe2, NULL) < 0) {
 		return -1;
 	}
 	if (xdl_change_compact(&xe1.xdf1, &xe1.xdf2, xpp->flags) < 0 ||
