@@ -122,9 +122,13 @@ static int xdl_classify_record(xdlclassifier_t *cf, xrecord_t **rhash, unsigned 
 		cf->rchash[hi] = rcrec;
 	}
 
-	rec->ha = (unsigned long) rcrec->idx;
+	if (!rec->ha)
+		hi = 0;
+	else {
+		rec->ha = 1UL + (unsigned long) rcrec->idx;
+		hi = 1L + (long) XDL_HASHLONG(rec->ha, hbits);
+	}
 
-	hi = rec->ha == 0 ? 0 : 1L + (long) XDL_HASHLONG(rec->ha, hbits);
 	rec->next = rhash[hi];
 	rhash[hi] = rec;
 
