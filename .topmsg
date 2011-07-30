@@ -1,6 +1,7 @@
 From: Tay Ray Chuan <rctay89@gmail.com>
-Subject: [PATCH] tg/gsoc-diff/refactor-prepare-calls
+Subject: [PATCH] xdiff/xpatience: factor out xdl_prepare_env() call
 
-<patch description>
+Call xdl_prepare_env() in xdl_do_diff() before running the patience
+diff.
 
 Signed-off-by: Tay Ray Chuan <rctay89@gmail.com>
