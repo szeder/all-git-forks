@@ -1,0 +1,78 @@
+git-repair(1)
+=============
+
+NAME
+----
+git-repair - salvage a damaged repository.
+
+
+SYNOPSIS
+--------
+[verse]
+'git repair start' <commit> ...
+
+DESCRIPTION
+-----------
+
+COLORING ALGORITHM
+------------------
+
+Commits are colored as follows.
+
+black::
++
+The commit is either missing or locally corrupt.
+
+grey::
++
+The commit is black, but its tree is not fully traversable.
+
+red::
++
+The commit is neither grey or black, its tree is fully traversable and at least one of its parents is grey or black.
+
+orange::
++
+The commit is neither black, grey or red, its tree is fully traversable, and at least one of its parents is
+either red or orange.
+
+green::
++
+The commit is neither black, grey, red or orange, its tree is fully traversable and all its parents, if any, are
+also green.	
+
+white::
++
+The analysis for the commit is still pending.
+
+The reference refs/repair/orange can reach all orange commits.
+The reference refs/repair/green can reach all green commits.
+The reference refs/repair/red can reach all red commits.
+
+There is one reference of the form refs/repair/black-<sha1> or refs/repair/grey-<sha1> for each commit
+that is marked grey or black.
+
+There is one reference of the form refs/replace/<sha1> for each commit that is either grey or black or red.
+
+There is one entry in .git/info/grafts for each commit that is grey, black or red.
+
+ALGORITHM
+---------
+1. A specified set of commits are marked white.
++
+2. For each of the white commits, enumerate the boundary commits using git rev-list --boundary.
++
+For each boundary:
++
+* if the boundary does not exist, mark the boundary black. break.
+* if the boundary exists, but the tree is not fully reachable, mark the boundary grey. break.
+* check if the boundary is green and if so, merge the boundary into refs/repair/green. break.
+3. 
+
+SEE ALSO
+--------
+linkgit:git-fsck[1].
+
+GIT
+---
+Part of the linkgit:git[1] suite
