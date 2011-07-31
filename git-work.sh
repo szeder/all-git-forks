@@ -118,7 +118,7 @@ work_rebase()
    then
         PIVOT=${1:-$(git base)}
 	git base -q check ${PIVOT} || die "${PIVOT} is not a valid pivot commit"
-	git rebase -i ${PIVOT} HEAD "$@"
+	git rebase -i ${PIVOT} ${BRANCH} "$@"
    else
 
       DEPENDENCY=$1
