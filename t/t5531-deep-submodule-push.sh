@@ -131,4 +131,19 @@ test_expect_success 'push succeeds when --no-recurse-submodules is used' '
 	)
 '
 
+test_expect_success 'push submodules if submodule commit not on remote' '
+	(
+		cd a1/b
+		>junk2 &&
+		git add junk2 &&
+		git commit -m "Second junk"
+	) &&
+	(
+		cd a1 &&
+		git add b &&
+		git commit -m "commit for b" &&
+		git push --recurse-submodules=on-demand
+	)
+'
+
 test_done

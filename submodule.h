@@ -31,5 +31,6 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked);
 int merge_submodule(unsigned char result[20], const char *path, const unsigned char base[20],
 		    const unsigned char a[20], const unsigned char b[20]);
 int check_for_unpushed_submodule_commits(unsigned char sha1[20]);
+int push_unpushed_submodule_commits(unsigned char new_sha1[20]);
 
 #endif

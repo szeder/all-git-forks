@@ -438,6 +438,111 @@ int check_for_unpushed_submodule_commits(unsigned char new_sha1[20])
 	return found_unpushed_submodule;
 }
 
+static int push_submodule(const char *path)
+{
+	int err = -1;
+	if (!add_submodule_odb(path)) {
+		struct child_process cp;
+		const char *argv[] = {"push", NULL};
+		memset(&cp, 0, sizeof(cp));
+		cp.argv = argv;
+		cp.env = local_repo_env;
+		cp.git_cmd = 1;
+		cp.no_stdin = 1;
+		cp.out = -1;
+		cp.dir = path;
+		err = run_command(&cp);
+		close(cp.out);
+	}
+	return err;
+}
+
+static void push_unpushed_submodules_from_revs(struct diff_queue_struct *q,
+					 struct diff_options *options,
+					 void *data)
+{
+	int i;
+	int *err = data;
+
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+		if (!S_ISGITLINK(p->two->mode))
+			continue;
+		if (!is_submodule_commit_pushed(p->two->path, p->two->sha1)) {
+			*err = push_submodule(p->two->path);
+		}
+	}
+}
+
+static int push_unpushed_submodules_in_tree(const unsigned char *sha1, const char *base, int baselen,
+						const char *pathname, unsigned mode, int stage, void *context)
+{
+	int *err = context;
+	struct strbuf path = STRBUF_INIT;
+
+	strbuf_add(&path, base, strlen(base));
+	strbuf_add(&path, pathname, strlen(pathname));
+
+	if (S_ISGITLINK(mode)) {
+		*err = push_submodule(path.buf);
+	}
+	return READ_TREE_RECURSIVE;
+}
+
+static void parent_commits_push(struct commit *commit, struct commit_list *parent, int *err)
+{
+	while (parent) {
+		struct diff_options diff_opts;
+		diff_setup(&diff_opts);
+		DIFF_OPT_SET(&diff_opts, RECURSIVE);
+		diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
+		diff_opts.format_callback = push_unpushed_submodules_from_revs;
+		diff_opts.format_callback_data = err;
+		if (diff_setup_done(&diff_opts) < 0)
+			die("diff_setup_done failed");
+		diff_tree_sha1(parent->item->object.sha1, commit->object.sha1, "", &diff_opts);
+		diffcore_std(&diff_opts);
+		diff_flush(&diff_opts);
+		parent = parent->next;
+	}
+}
+
+static void tree_commits_push(struct commit *commit, int *err)
+{
+	struct tree * tree;
+	struct pathspec pathspec;
+	tree = parse_tree_indirect(commit->object.sha1);
+	init_pathspec(&pathspec,NULL);
+	read_tree_recursive(tree, "", 0, 0, &pathspec, push_unpushed_submodules_in_tree, err);
+}
+int push_unpushed_submodule_commits(unsigned char new_sha1[20])
+{
+	struct rev_info rev;
+	struct commit *commit;
+	const char *argv[] = {NULL, NULL, "--not", "--remotes", NULL};
+	int argc = ARRAY_SIZE(argv) - 1;
+	char *sha1_copy;
+	int err = 0;
+
+	init_revisions(&rev, NULL);
+	sha1_copy = xstrdup(sha1_to_hex(new_sha1));
+	argv[1] = sha1_copy;
+	setup_revisions(argc, argv, &rev, NULL);
+	if (prepare_revision_walk(&rev))
+		die("revision walk setup failed");
+
+	while ((commit = get_revision(&rev)) && !err) {
+		struct commit_list *parent = commit->parents;
+		if(parent)
+			parent_commits_push(commit, parent, &err);
+		else
+			tree_commits_push(commit, &err);
+	}
+
+	free(sha1_copy);
+	return err;
+}
+
 static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 {
 	int is_present = 0;
