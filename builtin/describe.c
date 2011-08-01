@@ -24,7 +24,6 @@ static int longformat;
 static int abbrev = -1; /* unspecified */
 static int max_candidates = 10;
 static struct hash_table names;
-static struct lock_file index_lock; /* real index */
 static int have_util;
 static const char *pattern;
 static int always;
@@ -400,7 +399,6 @@ static void describe(const char *arg, int last_one)
 int cmd_describe(int argc, const char **argv, const char *prefix)
 {
 	int contains = 0;
-	int fd;
 	struct option options[] = {
 		OPT_BOOLEAN(0, "contains",   &contains, "find the tag that comes after the commit"),
 		OPT_BOOLEAN(0, "debug",      &debug, "debug search strategy on stderr"),
@@ -465,13 +463,18 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 
 	if (argc == 0) {
 		if (dirty) {
-			read_cache();
-			refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, NULL, NULL, NULL);
+			static struct lock_file index_lock;
+			int fd;
+
+			read_cache_preload(NULL);
+			refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED,
+				      NULL, NULL, NULL);
 			fd = hold_locked_index(&index_lock, 0);
 			if (0 <= fd)
 				update_index_if_able(&the_index, &index_lock);
 
-			if (!cmd_diff_index(ARRAY_SIZE(diff_index_args) - 1, diff_index_args, prefix))
+			if (!cmd_diff_index(ARRAY_SIZE(diff_index_args) - 1,
+					    diff_index_args, prefix))
 				dirty = NULL;
 		}
 		describe("HEAD", 1);
