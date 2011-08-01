@@ -329,13 +329,15 @@ static int histogram_diff(xpparam_t const *xpp, xdfenv_t *env,
 				env->xdf2.rchg[line2++ - 1] = 1;
 			result = 0;
 		} else {
-			if (result = histogram_diff(xpp, env,
-				line1, lcs.begin1 - line1,
-				line2, lcs.begin2 - line2))
+			result = histogram_diff(xpp, env,
+						line1, lcs.begin1 - line1,
+						line2, lcs.begin2 - line2);
+			if (result)
 				goto cleanup;
-			if (result = histogram_diff(xpp, env,
-				lcs.end1 + 1, LINE_END(1) - lcs.end1,
-				lcs.end2 + 1, LINE_END(2) - lcs.end2))
+			result = histogram_diff(xpp, env,
+						lcs.end1 + 1, LINE_END(1) - lcs.end1,
+						lcs.end2 + 1, LINE_END(2) - lcs.end2);
+			if (result)
 				goto cleanup;
 		}
 	}
