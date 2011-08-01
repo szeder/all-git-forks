@@ -1823,3 +1823,18 @@ pid_t waitpid(pid_t pid, int *status, int options)
 	errno = EINVAL;
 	return -1;
 }
+
+#undef strerror
+char *mingw_strerror(int errnum)
+{
+	/* strerror can't look up winsock errors, but FormatMessage can */
+	if (errnum >= WSABASEERR) {
+		static char buf[4096];
+		FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, errnum,
+			     MAKELANGID(LANG_NEUTRAL, SUBLANG_NEUTRAL),
+			     buf, sizeof(buf), NULL);
+		return buf;
+	}
+
+	return strerror(errnum);
+}

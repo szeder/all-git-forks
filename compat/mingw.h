@@ -240,6 +240,9 @@ int mingw_accept(int sockfd, struct sockaddr *sa, socklen_t *sz);
 int mingw_rename(const char*, const char*);
 #define rename mingw_rename
 
+char *mingw_strerror(int);
+#define strerror mingw_strerror
+
 #if defined(USE_WIN32_MMAP) || defined(_MSC_VER)
 int mingw_getpagesize(void);
 #define getpagesize mingw_getpagesize
