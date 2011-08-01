@@ -1,13 +1,9 @@
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
 /*
  * things that are not available in header files
  */
 
 typedef int pid_t;
 typedef int uid_t;
-typedef int socklen_t;
 #define hstrerror strerror
 
 #define S_IFLNK    0120000 /* Symbolic link */
@@ -189,42 +185,6 @@ char *mingw_getcwd(char *pointer, int len);
 
 char *mingw_getenv(const char *name);
 #define getenv mingw_getenv
-
-struct hostent *mingw_gethostbyname(const char *host);
-#define gethostbyname mingw_gethostbyname
-
-void mingw_freeaddrinfo(struct addrinfo *res);
-#define freeaddrinfo mingw_freeaddrinfo
-
-int mingw_getaddrinfo(const char *node, const char *service,
-		      const struct addrinfo *hints, struct addrinfo **res);
-#define getaddrinfo mingw_getaddrinfo
-
-int mingw_getnameinfo(const struct sockaddr *sa, socklen_t salen,
-		      char *host, DWORD hostlen, char *serv, DWORD servlen,
-		      int flags);
-#define getnameinfo mingw_getnameinfo
-
-int mingw_socket(int domain, int type, int protocol);
-#define socket mingw_socket
-
-int mingw_connect(int sockfd, struct sockaddr *sa, size_t sz);
-#define connect mingw_connect
-
-int mingw_bind(int sockfd, struct sockaddr *sa, size_t sz);
-#define bind mingw_bind
-
-int mingw_setsockopt(int sockfd, int lvl, int optname, void *optval, int optlen);
-#define setsockopt mingw_setsockopt
-
-int mingw_shutdown(int sockfd, int how);
-#define shutdown mingw_shutdown
-
-int mingw_listen(int sockfd, int backlog);
-#define listen mingw_listen
-
-int mingw_accept(int sockfd, struct sockaddr *sa, socklen_t *sz);
-#define accept mingw_accept
 
 int mingw_rename(const char*, const char*);
 #define rename mingw_rename
