@@ -1427,7 +1427,10 @@ int mingw_socket(int domain, int type, int protocol)
 int mingw_connect(int sockfd, struct sockaddr *sa, size_t sz)
 {
 	SOCKET s = (SOCKET)_get_osfhandle(sockfd);
-	return connect(s, sa, sz);
+	int ret = connect(s, sa, sz);
+	if (ret < 0)
+		errno = WSAGetLastError();
+	return ret;
 }
 
 #undef bind
