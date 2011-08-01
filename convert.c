@@ -641,7 +641,7 @@ static int ident_to_worktree(const char *path, const char *src, size_t len,
 	return 1;
 }
 
-static int git_path_check_crlf(const char *path, struct git_attr_check *check)
+static int git_path_check_crlf(const char *path, struct git_attr_value *check)
 {
 	const char *value = check->value;
 
@@ -658,7 +658,7 @@ static int git_path_check_crlf(const char *path, struct git_attr_check *check)
 	return CRLF_GUESS;
 }
 
-static int git_path_check_eol(const char *path, struct git_attr_check *check)
+static int git_path_check_eol(const char *path, struct git_attr_value *check)
 {
 	const char *value = check->value;
 
@@ -672,7 +672,7 @@ static int git_path_check_eol(const char *path, struct git_attr_check *check)
 }
 
 static struct convert_driver *git_path_check_convert(const char *path,
-					     struct git_attr_check *check)
+					     struct git_attr_value *check)
 {
 	const char *value = check->value;
 	struct convert_driver *drv;
@@ -685,7 +685,7 @@ static struct convert_driver *git_path_check_convert(const char *path,
 	return NULL;
 }
 
-static int git_path_check_ident(const char *path, struct git_attr_check *check)
+static int git_path_check_ident(const char *path, struct git_attr_value *check)
 {
 	const char *value = check->value;
 
@@ -718,7 +718,7 @@ static const char *conv_attr_name[] = {
 static void convert_attrs(struct conv_attrs *ca, const char *path)
 {
 	int i;
-	static struct git_attr_check ccheck[NUM_CONV_ATTRS];
+	static struct git_attr_value ccheck[NUM_CONV_ATTRS];
 
 	if (!ccheck[0].attr) {
 		for (i = 0; i < NUM_CONV_ATTRS; i++)
