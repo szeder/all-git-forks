@@ -48,7 +48,7 @@ test_expect_success 'ls-files -c' '
 		done >expect &&
 		echo "Did you forget to ${sq}git add${sq}?" >>expect &&
 		ls ../x* >>expect &&
-		(git ls-files -c --error-unmatch ../[xy]* || true) >actual 2>&1 &&
+		test_must_fail git ls-files -c --error-unmatch ../[xy]* >actual 2>&1 &&
 		test_cmp expect actual
 	)
 '
@@ -58,11 +58,11 @@ test_expect_success 'ls-files -o' '
 		cd top/sub &&
 		for f in ../x*
 		do
-			echo "error: pathspec ${sq}${f}${sq} did not match any file(s) known to git."
+			echo "error: pathspec $sq$f$sq did not match any file(s) known to git."
 		done >expect &&
 		echo "Did you forget to ${sq}git add${sq}?" >>expect &&
 		ls ../y* >>expect &&
-		(git ls-files -o --error-unmatch ../[xy]* || true) >actual 2>&1 &&
+		test_must_fail git ls-files -o --error-unmatch ../[xy]* >actual 2>&1 &&
 		test_cmp expect actual
 	)
 '

@@ -388,8 +388,7 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 	}
 }
 
-int report_path_error(const char *ps_matched, const char **pathspec,
-		const char *prefix, int prefix_len)
+int report_path_error(const char *ps_matched, const char **pathspec, const char *prefix)
 {
 	/*
 	 * Make sure all pathspec matched; otherwise it is an error.
@@ -616,7 +615,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 
 	if (ps_matched) {
 		int bad;
-		bad = report_path_error(ps_matched, pathspec, prefix, prefix_len);
+		bad = report_path_error(ps_matched, pathspec, prefix);
 		if (bad)
 			fprintf(stderr, "Did you forget to 'git add'?\n");
 
