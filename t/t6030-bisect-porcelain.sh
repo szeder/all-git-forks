@@ -641,24 +641,24 @@ test_expect_success 'bisect fails if tree is broken on trial commit' '
 test_expect_success 'bisect: --no-checkout - start commit bad' '
 	git bisect reset &&
 	git bisect start BROKEN_HASH7 BROKEN_HASH4 --no-checkout &&
-	check_same BROKEN_HASH6 HEAD &&
+	check_same BROKEN_HASH6 BISECT_HEAD &&
 	git bisect reset
 '
 
 test_expect_success 'bisect: --no-checkout - trial commit bad' '
 	git bisect reset &&
 	git bisect start broken BROKEN_HASH4 --no-checkout &&
-	check_same BROKEN_HASH6 HEAD &&
+	check_same BROKEN_HASH6 BISECT_HEAD &&
 	git bisect reset
 '
 
 test_expect_success 'bisect: --no-checkout - target before breakage' '
 	git bisect reset &&
 	git bisect start broken BROKEN_HASH4 --no-checkout &&
-	check_same BROKEN_HASH6 HEAD &&
-	git bisect bad HEAD &&
-	check_same BROKEN_HASH5 HEAD &&
-	git bisect bad HEAD &&
+	check_same BROKEN_HASH6 BISECT_HEAD &&
+	git bisect bad BISECT_HEAD &&
+	check_same BROKEN_HASH5 BISECT_HEAD &&
+	git bisect bad BISECT_HEAD &&
 	check_same BROKEN_HASH5 bisect/bad &&
 	git bisect reset
 '
@@ -666,10 +666,10 @@ test_expect_success 'bisect: --no-checkout - target before breakage' '
 test_expect_success 'bisect: --no-checkout - target in breakage' '
 	git bisect reset &&
 	git bisect start broken BROKEN_HASH4 --no-checkout &&
-	check_same BROKEN_HASH6 HEAD &&
-	git bisect bad HEAD &&
-	check_same BROKEN_HASH5 HEAD &&
-	git bisect good HEAD &&
+	check_same BROKEN_HASH6 BISECT_HEAD &&
+	git bisect bad BISECT_HEAD &&
+	check_same BROKEN_HASH5 BISECT_HEAD &&
+	git bisect good BISECT_HEAD &&
 	check_same BROKEN_HASH6 bisect/bad &&
 	git bisect reset
 '
@@ -677,10 +677,10 @@ test_expect_success 'bisect: --no-checkout - target in breakage' '
 test_expect_success 'bisect: --no-checkout - target after breakage' '
 	git bisect reset &&
 	git bisect start broken BROKEN_HASH4 --no-checkout &&
-	check_same BROKEN_HASH6 HEAD &&
-	git bisect good HEAD &&
-	check_same BROKEN_HASH8 HEAD &&
-	git bisect good HEAD &&
+	check_same BROKEN_HASH6 BISECT_HEAD &&
+	git bisect good BISECT_HEAD &&
+	check_same BROKEN_HASH8 BISECT_HEAD &&
+	git bisect good BISECT_HEAD &&
 	check_same BROKEN_HASH9 bisect/bad &&
 	git bisect reset
 '
@@ -691,7 +691,7 @@ test_expect_success 'bisect: demonstrate identification of damage boundary' "
 	git bisect start broken master --no-checkout &&
 	git bisect run eval '
 rc=1;
-if git rev-list --objects HEAD >tmp.$$; then
+if git rev-list --objects BISECT_HEAD >tmp.$$; then
    git pack-objects --stdout >/dev/null < tmp.$$ && rc=0;
 fi;
 rm tmp.$$;

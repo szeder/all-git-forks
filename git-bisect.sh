@@ -36,6 +36,15 @@ _x40="$_x40$_x40$_x40$_x40$_x40$_x40$_x40$_x40"
 
 BISECT_MODE=$(test -f "$GIT_DIR/BISECT_MODE" && cat "$GIT_DIR/BISECT_MODE")
 
+bisect_head()
+{
+    if test "$BISECT_MODE" = "--no-checkout"; then
+	echo BISECT_HEAD;
+    else
+	echo HEAD
+    fi
+}
+
 bisect_autostart() {
 	test -s "$GIT_DIR/BISECT_START" || {
 		(
@@ -116,7 +125,7 @@ bisect_start() {
 		# Reset to the rev from where we started.
 		start_head=$(cat "$GIT_DIR/BISECT_START")
 		if test "$BISECT_MODE" = "--no-checkout"; then
-		    git update-ref --no-deref HEAD "$start_head"
+		    git update-ref --no-deref $(bisect_head) "$start_head"
 		else
 		    git checkout "$start_head" --
 		fi
@@ -219,8 +228,8 @@ bisect_state() {
 	0,*)
 		die "$(gettext "Please call 'bisect_state' with at least one argument.")" ;;
 	1,bad|1,good|1,skip)
-		rev=$(git rev-parse --verify HEAD) ||
-			die "$(gettext "Bad rev input: HEAD")"
+		rev=$(git rev-parse --verify $(bisect_head)) ||
+			die "$(gettext "Bad rev input: $(bisect_head)")"
 		bisect_write "$state" "$rev"
 		check_expected_revs "$rev" ;;
 	2,bad|*,good|*,skip)
@@ -354,7 +363,7 @@ bisect_reset() {
 	    usage ;;
 	esac
 	if test "$BISECT_MODE" = "--no-checkout"; then
-		git symbolic-ref HEAD $(git rev-parse --symbolic-full-name "${branch}")
+		git symbolic-ref $(bisect_head) $(git rev-parse --symbolic-full-name "${branch}")
 	else
 		if git checkout "$branch" --; then
 			bisect_clean_state

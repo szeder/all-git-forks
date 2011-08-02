@@ -267,9 +267,9 @@ OPTIONS
 -------
 --no-checkout::
 +
-This option is used to specify that 'git bisect' should not modify the working
-tree or index on each iteration of the bisection process but should
-update HEAD instead.
+This option is used to specify that 'git bisect' should not checkout the
+new working tree at each iteration of the bisection process but should
+instead update BISECT_HEAD.
 +
 This option is useful in circumstances in which checkout is either not
 possible (because of a damaged respository) or is otherwise not required.
@@ -360,7 +360,7 @@ on a single line.
 $ git bisect start HEAD <known-good-commit> [ <boundary-commit> ... ] --no-checkout
 $ git bisect run eval '
 rc=1;
-if git rev-list --objects HEAD >tmp.$$; then
+if git rev-list --objects BISECT_HEAD >tmp.$$; then
    git pack-objects --stdout >/dev/null < tmp.$$ && rc=0;
 fi;
 rm tmp.$$;
