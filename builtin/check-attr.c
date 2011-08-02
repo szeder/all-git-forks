@@ -44,7 +44,7 @@ static void output_attr(int cnt, struct git_attr_value *check,
 static void check_attr(const char *prefix, int cnt,
 	struct git_attr_value *check, const char *file)
 {
-	const char *full_path =
+	char *full_path =
 		prefix_path(prefix, prefix ? strlen(prefix) : 0, file);
 	if (check != NULL) {
 		if (git_checkattr(full_path, cnt, check))
