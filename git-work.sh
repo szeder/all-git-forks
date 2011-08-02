@@ -111,6 +111,46 @@ work_merge()
 "
 }
 
+work_unmerge()
+{
+    assert --not-unstaged --not-staged --not-detached
+
+    work_list dependency | sort > .git/git-work.unmerge.list
+
+    for arg; do
+	git rev-parse --verify "$arg" 2>/dev/null
+    done | sort  > .git/git-work.unmerge.args
+
+    saved=$(diff -u .git/git-work.unmerge.list .git/git-work.unmerge.args | tail -n +4 | grep "^[+|-]" | while read c
+    do
+	case $c in
+	    +*)
+		die "'${c#+}' is not a dependency."
+		;;
+	    -*)
+		git rev-parse --verify "${c#-}" 2>/dev/null || die "'$c' is not a commit."
+		;;
+	esac
+    done | tr \\012 ' ') || exit $?
+
+    test -n "$saved" || die "You must preserve at least one dependency."
+
+    atomic eval "
+	set -- $saved;
+	git checkout \$1 || die 'Failed to checkout a merge commit.';
+	shift;
+
+	while test \$# -gt 0
+	do
+		git merge \$1 || die \"Failed to merge '\$1'\";
+		shift;
+	done &&
+	NEWBASE=$(git rev-parse HEAD) &&
+	git rebase --onto HEAD $BASE $BRANCH &&
+	git base set "$NEWBASE"
+"
+}
+
 work_rebase()
 {
    git base -q check || die "use 'git base' to establish a base for this branch"
@@ -308,7 +348,7 @@ case "$#" in
     case "$cmd" in
     help)
 	    git work -h "$@" ;;
-    list|merge|rebase|pivot|create|update)
+    list|merge|rebase|pivot|create|update|unmerge)
 	    work_$cmd "$@" ;;
     *)
 	    usage "$@" ;;
