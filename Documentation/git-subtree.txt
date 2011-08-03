@@ -1,0 +1,120 @@
+git-subtree(1)
+==============
+
+NAME
+----
+git-subtree - Create, merge, split, or view subtrees
+
+
+SYNOPSIS
+--------
+[verse]
+'git subtree' add -P <prefix> <branchname>
+'git subtree' list *TODO*
+'git subtree' merge -P <prefix>
+'git subtree' pull -P <prefix>
+'git subtree' push *TODO*
+'git subtree' split
+
+
+DESCRIPTION
+-----------
+
+
+COMMANDS
+--------
+'add'::
+	Create the <prefix> subtree by importing its contents
+	from the given <refspec> or <repository> and remote <refspec>.
+	A new commit is created	automatically, joining the imported
+	project's history with your own.  
+	
+	With `-n` or `--name`, the subtree is named and added to the
+	.gitsubtree file for easy manipulation without specifying a prefix
+	list for other subtree commands like 'split'.
+	
+	With `-r` or `--remote`, fetches the branch name from the given
+	repository instead of using a local branch.
+	
+	With `--squash`, imports only a single commit from the 
+	subproject, rather than its entire history.
+
+'list'::
+	*TODO*
+
+'merge'::
+	Merge recent changes up to <commit> into the <prefix>
+	subtree. As with normal 'git merge', this doesn't
+	remove your own local changes; it just merges those
+	changes into the latest <commit>.  With '--squash',
+	creates only one commit that contains all the changes,
+	rather than merging in the entire history.
+
+	With `-r` or `--remote`, fetches the branch name from the given
+	repository instead of using a local branch.
+	
+	With `--squash`, imports only a single commit from the 
+	subproject, rather than its entire history.
+
+'pull':
+	Exactly like 'merge', but parallels 'git pull' in that
+	it fetches the given commit from the specified remote
+	repository.
+
+'push'::
+	*TODO*
+
+'split'::
+	Extract a new, synthetic project history from the
+	history of the <prefix> subtree(s).  The new history
+	includes only the commits (including merges) that
+	affected <prefix>, and each of those commits now has the
+	contents of <prefix> at the root of the project instead
+	of in a subdirectory.  Thus, the newly created history
+	is suitable for export as a separate git repository.
+	
+	After splitting successfully, a single commit id is
+	printed to stdout.  This corresponds to the HEAD of the
+	newly created tree, which you can manipulate however you
+	want.
+	
+	Repeated splits of exactly the same history are
+	guaranteed to be identical (ie. to produce the same
+	commit ids).  Because of this, if you add new commits
+	and then re-split, the new commits will be attached as
+	commits on top of the history you generated last time,
+	so 'git merge' and friends will work as expected.
+		
+	With `rewrite-head`, rewrite the head to include the 
+	generated commit as a subtree merge.
+	
+	With `rewrite-parents`, rewrite the commits that are 
+	split from to include the generated commit as a subtree
+	merge.
+	
+	With `rejoin`, add a merge commit that joins the split 
+	out subtree with the source.
+
+	With `--squash`, imports only a single commit from the 
+	subproject, rather than its entire history.
+	
+	With `committer`, rewritten commits will use current 
+	commiter information.
+	
+	With `onto`, graft the split subtree onto the given commit.
+	
+	With `annotate`, add an annotation to the beginning of the
+	commit message of split commits.
+
+	With `footer`, add an annotation to the end of the commit 
+	message of split commits.
+
+OPTIONS
+-------
+-P::
+--prefix::
+	Prefix (folder) to perform the subtree operation on.
+
+GIT
+---
+Part of the linkgit:git[1] suite

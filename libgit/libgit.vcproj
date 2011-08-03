@@ -615,6 +615,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\subtree.c"
+				>
+			</File>
+			<File
 				RelativePath="..\.\symlinks.c"
 				>
 			</File>

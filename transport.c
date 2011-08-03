@@ -950,10 +950,10 @@ struct transport *transport_get(struct remote *remote, const char *url)
 
 	if (ret->smart_options) {
 		ret->smart_options->thin = 1;
-		ret->smart_options->uploadpack = "git-upload-pack";
+		ret->smart_options->uploadpack = "git upload-pack";
 		if (remote->uploadpack)
 			ret->smart_options->uploadpack = remote->uploadpack;
-		ret->smart_options->receivepack = "git-receive-pack";
+		ret->smart_options->receivepack = "git receive-pack";
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
 	}
