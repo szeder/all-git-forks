@@ -4,6 +4,7 @@
 #include "parse-options.h"
 #include "grep.h"
 #include "notes.h"
+#include "diff.h"
 
 #define SEEN		(1u<<0)
 #define UNINTERESTING   (1u<<1)

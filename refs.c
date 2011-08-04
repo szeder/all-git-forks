@@ -8,8 +8,8 @@
 #define REF_KNOWS_PEELED 04
 #define REF_BROKEN 010
 
-struct ref_list {
-	struct ref_list *next;
+struct refs_list {
+	struct refs_list *next;
 	unsigned char flag; /* ISSYMREF? ISPACKED? */
 	unsigned char sha1[20];
 	unsigned char peeled[20];
@@ -44,16 +44,16 @@ static const char *parse_ref_line(char *line, unsigned char *sha1)
 	return line;
 }
 
-static struct ref_list *add_ref(const char *name, const unsigned char *sha1,
-				int flag, struct ref_list *list,
-				struct ref_list **new_entry)
+static struct refs_list *add_ref(const char *name, const unsigned char *sha1,
+				int flag, struct refs_list *list,
+				struct refs_list **new_entry)
 {
 	int len;
-	struct ref_list *entry;
+	struct refs_list *entry;
 
 	/* Allocate it and add it in.. */
 	len = strlen(name) + 1;
-	entry = xmalloc(sizeof(struct ref_list) + len);
+	entry = xmalloc(sizeof(struct refs_list) + len);
 	hashcpy(entry->sha1, sha1);
 	hashclr(entry->peeled);
 	memcpy(entry->name, name, len);
@@ -65,11 +65,11 @@ static struct ref_list *add_ref(const char *name, const unsigned char *sha1,
 }
 
 /* merge sort the ref list */
-static struct ref_list *sort_ref_list(struct ref_list *list)
+static struct refs_list *sort_refs_list(struct refs_list *list)
 {
 	int psize, qsize, last_merge_count, cmp;
-	struct ref_list *p, *q, *l, *e;
-	struct ref_list *new_list = list;
+	struct refs_list *p, *q, *l, *e;
+	struct refs_list *new_list = list;
 	int k = 1;
 	int merge_count = 0;
 
@@ -155,16 +155,16 @@ static struct ref_list *sort_ref_list(struct ref_list *list)
 static struct cached_refs {
 	char did_loose;
 	char did_packed;
-	struct ref_list *loose;
-	struct ref_list *packed;
+	struct refs_list *loose;
+	struct refs_list *packed;
 } cached_refs, submodule_refs;
-static struct ref_list *current_ref;
+static struct refs_list *current_ref;
 
-static struct ref_list *extra_refs;
+static struct refs_list *extra_refs;
 
-static void free_ref_list(struct ref_list *list)
+static void free_refs_list(struct refs_list *list)
 {
-	struct ref_list *next;
+	struct refs_list *next;
 	for ( ; list; list = next) {
 		next = list->next;
 		free(list);
@@ -176,17 +176,17 @@ static void invalidate_cached_refs(void)
 	struct cached_refs *ca = &cached_refs;
 
 	if (ca->did_loose && ca->loose)
-		free_ref_list(ca->loose);
+		free_refs_list(ca->loose);
 	if (ca->did_packed && ca->packed)
-		free_ref_list(ca->packed);
+		free_refs_list(ca->packed);
 	ca->loose = ca->packed = NULL;
 	ca->did_loose = ca->did_packed = 0;
 }
 
 static void read_packed_refs(FILE *f, struct cached_refs *cached_refs)
 {
-	struct ref_list *list = NULL;
-	struct ref_list *last = NULL;
+	struct refs_list *list = NULL;
+	struct refs_list *last = NULL;
 	char refline[PATH_MAX];
 	int flag = REF_ISPACKED;
 
@@ -215,7 +215,7 @@ static void read_packed_refs(FILE *f, struct cached_refs *cached_refs)
 		    !get_sha1_hex(refline + 1, sha1))
 			hashcpy(last->peeled, sha1);
 	}
-	cached_refs->packed = sort_ref_list(list);
+	cached_refs->packed = sort_refs_list(list);
 }
 
 void add_extra_ref(const char *name, const unsigned char *sha1, int flag)
@@ -225,11 +225,11 @@ void add_extra_ref(const char *name, const unsigned char *sha1, int flag)
 
 void clear_extra_refs(void)
 {
-	free_ref_list(extra_refs);
+	free_refs_list(extra_refs);
 	extra_refs = NULL;
 }
 
-static struct ref_list *get_packed_refs(const char *submodule)
+static struct refs_list *get_packed_refs(const char *submodule)
 {
 	const char *packed_refs_file;
 	struct cached_refs *refs;
@@ -237,7 +237,7 @@ static struct ref_list *get_packed_refs(const char *submodule)
 	if (submodule) {
 		packed_refs_file = git_path_submodule(submodule, "packed-refs");
 		refs = &submodule_refs;
-		free_ref_list(refs->packed);
+		free_refs_list(refs->packed);
 	} else {
 		packed_refs_file = git_path("packed-refs");
 		refs = &cached_refs;
@@ -255,8 +255,8 @@ static struct ref_list *get_packed_refs(const char *submodule)
 	return refs->packed;
 }
 
-static struct ref_list *get_ref_dir(const char *submodule, const char *base,
-				    struct ref_list *list)
+static struct refs_list *get_ref_dir(const char *submodule, const char *base,
+				    struct refs_list *list)
 {
 	DIR *dir;
 	const char *path;
@@ -319,7 +319,7 @@ static struct ref_list *get_ref_dir(const char *submodule, const char *base,
 		free(ref);
 		closedir(dir);
 	}
-	return sort_ref_list(list);
+	return sort_refs_list(list);
 }
 
 struct warn_if_dangling_data {
@@ -356,10 +356,10 @@ void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname)
 	for_each_rawref(warn_if_dangling_symref, &data);
 }
 
-static struct ref_list *get_loose_refs(const char *submodule)
+static struct refs_list *get_loose_refs(const char *submodule)
 {
 	if (submodule) {
-		free_ref_list(submodule_refs.loose);
+		free_refs_list(submodule_refs.loose);
 		submodule_refs.loose = get_ref_dir(submodule, "refs", NULL);
 		return submodule_refs.loose;
 	}
@@ -379,7 +379,7 @@ static int resolve_gitlink_packed_ref(char *name, int pathlen, const char *refna
 {
 	FILE *f;
 	struct cached_refs refs;
-	struct ref_list *ref;
+	struct refs_list *ref;
 	int retval;
 
 	strcpy(name + pathlen, "packed-refs");
@@ -398,7 +398,7 @@ static int resolve_gitlink_packed_ref(char *name, int pathlen, const char *refna
 		}
 		ref = ref->next;
 	}
-	free_ref_list(refs.packed);
+	free_refs_list(refs.packed);
 	return retval;
 }
 
@@ -499,7 +499,7 @@ const char *resolve_ref(const char *ref, unsigned char *sha1, int reading, int *
 		git_snpath(path, sizeof(path), "%s", ref);
 		/* Special case: non-existing file. */
 		if (lstat(path, &st) < 0) {
-			struct ref_list *list = get_packed_refs(NULL);
+			struct refs_list *list = get_packed_refs(NULL);
 			while (list) {
 				if (!strcmp(ref, list->name)) {
 					hashcpy(sha1, list->sha1);
@@ -582,7 +582,7 @@ int read_ref(const char *ref, unsigned char *sha1)
 
 #define DO_FOR_EACH_INCLUDE_BROKEN 01
 static int do_one_ref(const char *base, each_ref_fn fn, int trim,
-		      int flags, void *cb_data, struct ref_list *entry)
+		      int flags, void *cb_data, struct refs_list *entry)
 {
 	if (strncmp(base, entry->name, trim))
 		return 0;
@@ -628,7 +628,7 @@ int peel_ref(const char *ref, unsigned char *sha1)
 		return -1;
 
 	if ((flag & REF_ISPACKED)) {
-		struct ref_list *list = get_packed_refs(NULL);
+		struct refs_list *list = get_packed_refs(NULL);
 
 		while (list) {
 			if (!strcmp(list->name, ref)) {
@@ -659,16 +659,16 @@ static int do_for_each_ref(const char *submodule, const char *base, each_ref_fn 
 			   int trim, int flags, void *cb_data)
 {
 	int retval = 0;
-	struct ref_list *packed = get_packed_refs(submodule);
-	struct ref_list *loose = get_loose_refs(submodule);
+	struct refs_list *packed = get_packed_refs(submodule);
+	struct refs_list *loose = get_loose_refs(submodule);
 
-	struct ref_list *extra;
+	struct refs_list *extra;
 
 	for (extra = extra_refs; extra; extra = extra->next)
 		retval = do_one_ref(base, fn, trim, flags, cb_data, extra);
 
 	while (packed && loose) {
-		struct ref_list *entry;
+		struct refs_list *entry;
 		int cmp = strcmp(packed->name, loose->name);
 		if (!cmp) {
 			packed = packed->next;
@@ -978,7 +978,7 @@ static int remove_empty_directories(const char *file)
 }
 
 static int is_refname_available(const char *ref, const char *oldref,
-				struct ref_list *list, int quiet)
+				struct refs_list *list, int quiet)
 {
 	int namlen = strlen(ref); /* e.g. 'foo/bar' */
 	while (list) {
@@ -1102,12 +1102,12 @@ static struct lock_file packlock;
 
 static int repack_without_ref(const char *refname)
 {
-	struct ref_list *list, *packed_ref_list;
+	struct refs_list *list, *packed_refs_list;
 	int fd;
 	int found = 0;
 
-	packed_ref_list = get_packed_refs(NULL);
-	for (list = packed_ref_list; list; list = list->next) {
+	packed_refs_list = get_packed_refs(NULL);
+	for (list = packed_refs_list; list; list = list->next) {
 		if (!strcmp(refname, list->name)) {
 			found = 1;
 			break;
@@ -1121,7 +1121,7 @@ static int repack_without_ref(const char *refname)
 		return error("cannot delete '%s' from packed refs", refname);
 	}
 
-	for (list = packed_ref_list; list; list = list->next) {
+	for (list = packed_refs_list; list; list = list->next) {
 		char line[PATH_MAX + 100];
 		int len;
 

@@ -348,6 +348,30 @@ int find_commit_subject(const char *commit_buffer, const char **subject)
 	return eol - p;
 }
 
+int find_commit_author(const char *commit_buffer, const char **author)
+{
+	const char *p = strstr(commit_buffer, "author ");
+	p += 7;
+	*author = p;
+
+	while (*p && (*p != '\n'))
+		p++;
+
+	return p - *author;
+}
+
+int find_commit_committer(const char *commit_buffer, const char **committer)
+{
+	const char *p = strstr(commit_buffer, "committer ");
+	p += 10;
+	*committer = p;
+
+	while (*p && (*p != '\n'))
+		p++;
+
+	return p - *committer;
+}
+
 struct commit_list *commit_list_insert(struct commit *item, struct commit_list **list_p)
 {
 	struct commit_list *new_list = xmalloc(sizeof(struct commit_list));
@@ -831,7 +855,7 @@ static const char commit_utf8_warn[] =
 
 int commit_tree(const char *msg, unsigned char *tree,
 		struct commit_list *parents, unsigned char *ret,
-		const char *author)
+		const char *author, const char *committer)
 {
 	int result;
 	int encoding_is_utf8;
@@ -862,7 +886,9 @@ int commit_tree(const char *msg, unsigned char *tree,
 	if (!author)
 		author = git_author_info(IDENT_ERROR_ON_NO_NAME);
 	strbuf_addf(&buffer, "author %s\n", author);
-	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_ERROR_ON_NO_NAME));
+    if (!committer)
+        committer = git_committer_info(IDENT_ERROR_ON_NO_NAME);
+	strbuf_addf(&buffer, "committer %s\n", committer);
 	if (!encoding_is_utf8)
 		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
 	strbuf_addch(&buffer, '\n');

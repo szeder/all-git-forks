@@ -43,6 +43,8 @@ int parse_commit(struct commit *item);
 
 /* Find beginning and length of commit subject. */
 int find_commit_subject(const char *commit_buffer, const char **subject);
+int find_commit_author(const char *commit_buffer, const char **author);
+int find_commit_committer(const char *commit_buffer, const char **committer);
 
 struct commit_list *commit_list_insert(struct commit *item,
 					struct commit_list **list);
@@ -174,6 +176,6 @@ struct commit_list *reduce_heads(struct commit_list *heads);
 
 extern int commit_tree(const char *msg, unsigned char *tree,
 		struct commit_list *parents, unsigned char *ret,
-		const char *author);
+		const char *author, const char *committer);
 
 #endif /* COMMIT_H */

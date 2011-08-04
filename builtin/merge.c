@@ -872,7 +872,7 @@ static int merge_trivial(void)
 	parent->next->item = remoteheads->item;
 	parent->next->next = NULL;
 	run_prepare_commit_msg();
-	commit_tree(merge_msg.buf, result_tree, parent, result_commit, NULL);
+	commit_tree(merge_msg.buf, result_tree, parent, result_commit, NULL, NULL);
 	finish(result_commit, "In-index merge");
 	drop_save();
 	return 0;
@@ -902,7 +902,7 @@ static int finish_automerge(struct commit_list *common,
 	free_commit_list(remoteheads);
 	strbuf_addch(&merge_msg, '\n');
 	run_prepare_commit_msg();
-	commit_tree(merge_msg.buf, result_tree, parents, result_commit, NULL);
+	commit_tree(merge_msg.buf, result_tree, parents, result_commit, NULL, NULL);
 	strbuf_addf(&buf, "Merge made by %s.", wt_strategy);
 	finish(result_commit, buf.buf);
 	strbuf_release(&buf);

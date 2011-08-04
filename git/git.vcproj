@@ -65,7 +65,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="-IGNORE:4049 -IGNORE:4217 -NODEFAULTLIB:MSVCRT.lib -NOLOGO -SUBSYSTEM:CONSOLE -LIBPATH:..\."
-				AdditionalDependencies=" advapi32.lib libgit.lib shell32.lib wininet.lib ws2_32.lib xdiff_lib.lib zlib.lib"
+				AdditionalDependencies="advapi32.lib shell32.lib wininet.lib ws2_32.lib zlib.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -144,7 +144,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="-IGNORE:4049 -IGNORE:4217 -NODEFAULTLIB:MSVCRT.lib -NOLOGO -SUBSYSTEM:CONSOLE -LIBPATH:..\."
-				AdditionalDependencies=" advapi32.lib libgit.lib shell32.lib wininet.lib ws2_32.lib xdiff_lib.lib zlib.lib"
+				AdditionalDependencies="advapi32.lib shell32.lib wininet.lib ws2_32.lib zlib.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
