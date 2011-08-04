@@ -28,7 +28,6 @@ colors
 # デフォルトの補完機能を有効
 autoload -U compinit
 compinit
-<<<<<<< HEAD
 
 # disable Ctrl+s, Ctrl+q
 #setopt not_flow_controll
@@ -51,5 +50,3 @@ local RIGHTC=$'%{\e[38;5;88m%}'
 local DEFAULTC=$'%{\e[m%}'
 export PROMPT=$LEFTC"%U$USER%%%u "$DEFAULTC
 export RPROMPT=$RIGHTC"[%~]"$DEFAULTC
-=======
->>>>>>> 19db1bcac8e1e97e68fdc49b67f175a9615a314e
