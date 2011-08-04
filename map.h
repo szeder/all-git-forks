@@ -40,7 +40,13 @@ extern void map_persist_attach_##name(struct map_persist_##name *, \
 				      unsigned int len); \
 extern int map_persist_flush_##name(struct map_persist_##name *, int fd);
 
+struct sha1 {
+	unsigned char v[20];
+};
+
 DECLARE_MAP(object_uint32, const struct object *, uint32_t)
 DECLARE_MAP(object_void, const struct object *, void *)
+DECLARE_MAP(object_sha1, const struct object *, struct sha1)
+DECLARE_MAP_PERSIST(object_sha1)
 
 #endif /* MAP_H */

@@ -33,6 +33,16 @@ static void disk_to_uint32(const unsigned char *disk, uint32_t *out)
 	*out = ntohl(*out);
 }
 
+static void sha1_to_disk(struct sha1 v, unsigned char *out)
+{
+	hashcpy(out, v.v);
+}
+
+static void disk_to_sha1(const unsigned char *disk, struct sha1 *out)
+{
+	hashcpy(out->v, disk);
+}
+
 static const unsigned char *disk_lookup_sha1(const unsigned char *buf,
 					     unsigned nr,
 					     unsigned ksize, unsigned vsize,
@@ -244,3 +254,9 @@ int map_persist_flush_##name(struct map_persist_##name *m, int fd) \
 
 IMPLEMENT_MAP(object_uint32, obj_equal, hash_obj)
 IMPLEMENT_MAP(object_void, obj_equal, hash_obj)
+
+IMPLEMENT_MAP(object_sha1, obj_equal, hash_obj)
+IMPLEMENT_MAP_PERSIST(object_sha1,
+		      20, obj_to_disk,
+		      20, sha1_to_disk, disk_to_sha1,
+		      disk_lookup_sha1)
