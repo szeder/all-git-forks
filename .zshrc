@@ -2,6 +2,8 @@
 
 # User specific aliases and functions
 alias grep='grep --color=always'
+#alias less='/usr/share/vim/vim70/macros/less.sh'
+alias less='~/less.sh'
 
 PROMPT="%/%% "
 PROMPT2="%_%% "
@@ -15,6 +17,17 @@ colors
 autoload -U compinit
 compinit
 
+# disable Ctrl+s, Ctrl+q
+#setopt not_flow_controll
+
+# ディレクトリ記憶
+setopt auto_pushd
+
+# コマンド間違い
+setopt correct
+# コマンド予測
+autoload predict-on
+predict-on
 #
 # thx. http://ho-ki-boshi.blogspot.com/2007/12/zsh.html
 #
