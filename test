@@ -13,6 +13,6 @@ while test $# -gt 0; do
 	shift
 done
 
-upstream=`git rev-parse --symbolic-full-name "$1@{u}" >/dev/null 2>&1`
+upstream=`git rev-parse --symbolic-full-name "$1@{u}" 2>/dev/null`
 GIT_EDITOR='sed -i "/^pick .*/aexec $GIT_META_TEST"' \
 	git rebase -i "${upstream:-origin}" $1
