@@ -5,19 +5,19 @@
 USAGE='[help|set|check|reset|init]'
 LONG_USAGE='
 git base [--as-ref]
-        print the SHA1 hash of the base reference or its symbolic name (--as-ref)
+	print the SHA1 hash of the base reference or its symbolic name (--as-ref)
 git base set [-f] <commit>
-        set the base of the branch to commit nearest <commit> that satisifies the base invariant.
+	set the base of the branch to commit nearest <commit> that satisifies the base invariant.
 git base clear
-        As per set, but never update the base reference.
+	As per set, but never update the base reference.
 git base check <commit>
-        test if the specified commit satisfies the base invariant
+	test if the specified commit satisfies the base invariant
 git base init <reset-cmd>
 	Initialise the git base command to be called when git base reset is invoked.
 git base reset
 	Invoke the configured reset command (see git base init) or git base clear, if not such command is configured.
 git base help
-        print this help
+	print this help
 
 Please use "git help base" to get the full man page.'
 
@@ -92,8 +92,8 @@ closest()
 {
 	commit=$1
 	state=${2:-$(invariant_state $commit)}
-	
-	case $state in	
+
+	case $state in
 		UNDEFINED|INVALID)
 			:
 		;;
@@ -113,7 +113,7 @@ describe()
 {
 	commit=$1
 	state=$2
-	
+
 	case $state in
 		UNDEFINED)
 			echo "No commit specified."
@@ -151,7 +151,7 @@ base_default()
 
 	revs=$(git rev-parse --revs-only "$@")
 
-	if state=$(invariant_state "${BASEREF}")	
+	if state=$(invariant_state "${BASEREF}")
 	then
 		if test -z "$ASREF"
 		then
@@ -166,7 +166,7 @@ base_default()
 			then
 				base_set $revs && return 0
 			fi
-	
+
 			describe "${BASEREF}" $state 1>&2
 			base_reset
 		else
@@ -194,7 +194,7 @@ base_init()
 		set -- $(git config branch.${BRANCH}.merge)
 		MERGE=$1
 		set -- $(git config branch.${BRANCH}.remote)
-		case "$1" in	
+		case "$1" in
 		.)
 			OPTION="set ${MERGE}"
 		;;
@@ -207,7 +207,7 @@ base_init()
 		esac
 		set -- ${OPTION}
 	else
-		case "$1" in	
+		case "$1" in
 			set|clear|check)
 			:
 			;;
@@ -256,14 +256,14 @@ base_set()
 	test -n "$1" || die "$USAGE"
 
 	commit=$1
-	
+
 	if state=$(invariant_state "$commit")
 	then
 		git update-ref "${BASEREF}" "$commit" || die "failed to update $BASEREF"
 		echo $(git rev-parse $commit)
 	else
 
-		case $state in	
+		case $state in
 			INVALID)
 				die "The specified reference $commit is not a valid."
 			;;
@@ -325,7 +325,7 @@ do
 	case "$arg" in
 	       -b)
 			test -n "$1" || die "-b requires a branch to be specified"
-		        BRANCH=$1 && shift
+			BRANCH=$1 && shift
 			BRANCHREF=$(git rev-parse --quiet --symbolic-full-name --verify "${BRANCH}" --)
 			BRANCH=${BRANCHREF#refs/heads/}
 			test "${BRANCH}" = "${BRANCHREF}" || VALID_BRANCH=t
@@ -335,21 +335,21 @@ do
 		-f)
 			FORCE=-f;
 		;;
-                -d)
-                        DELETE=-d;
-                ;;
+		-d)
+			DELETE=-d;
+		;;
 		-q)
 			QUIET=-q
-	        ;;
-		--)
-			break;			
 		;;
-		--as-ref)	
+		--)
+			break;
+		;;
+		--as-ref)
 			ASREF=--as-ref;
-		;;	
+		;;
 		default|check|clear|init|reset|set|help)
 			if test -z "$CMD"
-			then	
+			then
 				CMD=$arg
 			else
 				POSITIONAL="${POSITIONAL}${POSITIONAL:+ }$arg"
@@ -357,7 +357,7 @@ do
 		;;
 		*)
 			POSITIONAL="${POSITIONAL}${POSITIONAL:+ }$arg"
-	        ;;
+		;;
 	esac
 done
 
