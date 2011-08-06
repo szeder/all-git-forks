@@ -79,8 +79,8 @@ test_expect_success 'setup' \
 	git tag D1 &&
 	test_commit E &&
 	git checkout M^0 -- &&
-        echo F >> B.t &&
-        git add B.t &&
+	echo F >> B.t &&
+	git add B.t &&
 	test_commit F &&
 	git checkout A^0 -- &&
 	test_commit G &&
@@ -351,95 +351,95 @@ test_expect_success 'git test --not-reachable A does-not-exist-2 #should fail' \
 
 test_expect_success 'git test --reachable A C' \
 '
-       git test --reachable A C
+	git test --reachable A C
 '
 
 test_expect_success 'git test --not-reachable A C # should fail' \
 '
-       test_must_fail git test --not-reachable A C
+	test_must_fail git test --not-reachable A C
 '
 
 test_expect_success 'git test --reachable C A # should fail' \
 '
-       test_must_fail git test --reachable C A
+	test_must_fail git test --reachable C A
 '
 
 test_expect_success 'git test --not-reachable C A # should fail' \
 '
-       git test --not-reachable C A
+	git test --not-reachable C A
 '
 
 test_expect_success 'git test --reachable C C' \
 '
-       git test --reachable C C
+	git test --reachable C C
 '
 
 test_expect_success 'git test --not-reachable C C' \
 '
-       test_must_fail git test --not-reachable C C
+	test_must_fail git test --not-reachable C C
 '
 
 test_expect_success 'git test --reachable C F' \
 '
-       test_must_fail git test --reachable C F
+	test_must_fail git test --reachable C F
 '
 
 test_expect_success 'git test --not-reachable C F' \
 '
-       git test --not-reachable C F
+	git test --not-reachable C F
 '
 
 test_expect_success 'git test --reachable F C' \
 '
-       test_must_fail git test --reachable F C
+	test_must_fail git test --reachable F C
 '
 
 test_expect_success 'git test --not-reachable F C' \
 '
-       git test --not-reachable F C
+	git test --not-reachable F C
 '
 
 test_expect_success 'tree-same' \
 '
-   git test \
-     --tree-same master HEAD \
-     --tree-same D D1 \
-     --not-tree-same C D
+	git test \
+	--tree-same master HEAD \
+	--tree-same D D1 \
+	--not-tree-same C D
 
 '
 
 test_expect_success 'same' \
 '
-   git test \
-      --same master HEAD \
-      --not-same D D1 \
-      --not-same C D
+	git test \
+	--same master HEAD \
+	--not-same D D1 \
+	--not-same C D
 '
 
 test_expect_success 'clean' \
 '
-    git test \
-       --not-staged \
-       --not-unstaged \
-       --not-detached \
-       --not-untracked \
-       --not-rebasing \
-       --not-conflicted
+	git test \
+	--not-staged \
+	--not-unstaged \
+	--not-detached \
+	--not-untracked \
+	--not-rebasing \
+	--not-conflicted
 '
 
 test_expect_success 'existence' \
 '
-    git test \
-       --commit-exists M \
-       --not-commit-exists N \
-       --ref-exists refs/tags/M \
-       --not-ref-exists refs/tags/N \
-       --branch-exists master \
-       --not-branch-exists N \
-       --tag-exists D \
-       --not-tag-exists N \
-       --not-tag-exists master \
-       --not-branch-exists A
+	git test \
+	--commit-exists M \
+	--not-commit-exists N \
+	--ref-exists refs/tags/M \
+	--not-ref-exists refs/tags/N \
+	--branch-exists master \
+	--not-branch-exists N \
+	--tag-exists D \
+	--not-tag-exists N \
+	--not-tag-exists master \
+	--not-branch-exists A
 '
 
 test_expect_success 'git test --conflicted # should fail' \
@@ -455,17 +455,17 @@ test_expect_success 'git test --not-conflicted' \
 test_expect_success 'git test --conflicted' \
 '
 	test_when_finished "git reset --hard HEAD" &&
-        ! git merge F &&
+	! git merge F &&
 	git test --conflicted
-	
+
 '
 
 test_expect_success 'git test --not-conflicted # should fail when there are conflcted files' \
 '
 	test_when_finished "git reset --hard HEAD" &&
-        ! git merge F &&
+	! git merge F &&
 	test_must_fail git test --not-conflicted
-	
+
 '
 
 test_expect_success 'git test --rebasing # should fail' \
@@ -485,10 +485,10 @@ test_expect_success 'git test --rebasing' \
 		git checkout -f master &&
 		git branch -D rebase
 	" &&
-        git branch rebase F &&
-        ! git rebase --onto D F~1 F
+	git branch rebase F &&
+	! git rebase --onto D F~1 F
 	git test --rebasing
-	
+
 '
 
 test_expect_success 'git test --not-rebasing' \
@@ -498,8 +498,8 @@ test_expect_success 'git test --not-rebasing' \
 		git checkout -f master &&
 		git branch -D rebase
 	" &&
-        git branch rebase F &&
-        ! git rebase --onto D F~1 F
+	git branch rebase F &&
+	! git rebase --onto D F~1 F
 	test_must_fail git test --not-rebasing
 '
 

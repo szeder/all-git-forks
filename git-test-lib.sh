@@ -36,7 +36,7 @@ require_condition_libs() {
 		git config --get-all condition.lib | while read lib
 		do
 			echo "require_lib \"$lib\" \;"
-		done	
+		done
 	)
 }
 
@@ -75,7 +75,7 @@ replace() {
 	word=$1
 	from=$2
 	to=$3
-	
+
 	prefix=${word%${from}*}
 	suffix=${word#${prefix}${from}}
 
@@ -134,7 +134,7 @@ impl() {
 		try=0
 
 		while ! is_a_function check_${dehyphenated}_$try
-		do	
+		do
 			test -n "$1" || die "condition $condition is not supported or insufficient arguments were supplied"
 			test "${1#--}" = "$1" || die "condition $condition is not supported or insufficient arguments were supplied"
 			args="${args}${args:+ }$(git rev-parse --sq-quote $1)"

@@ -9,9 +9,9 @@ atomic()
     HEAD=$(git rev-parse --verify HEAD) || setup_failed "failed to resolve HEAD"
     if REF=$(git symbolic-ref -q HEAD)
     then
-          BRANCH=${REF#refs/heads/}
+	  BRANCH=${REF#refs/heads/}
     else
-        BRANCH=${HEAD}
+	BRANCH=${HEAD}
     fi
 
     STASH=$(git stash create) || setup_failed "failed to stash"
@@ -27,21 +27,21 @@ atomic()
 
        command_failed()
        {
-           rc=$1
+	   rc=$1
 	   shift
-           echo "command failed: $* rc=$rc" 1>&2
-           exit 1
+	   echo "command failed: $* rc=$rc" 1>&2
+	   exit 1
        }
 
        restore_failed()
        {
-           echo "restore failed: $*" 1>&2
-           exit 2
+	   echo "restore failed: $*" 1>&2
+	   exit 2
        }
 
        if test $REBASE_COUNT -eq 0 && test -d "$REBASE_DIR"
        then
-            git rebase --abort || restore_failed "failed to abort rebase"
+	    git rebase --abort || restore_failed "failed to abort rebase"
        fi
 
 	{

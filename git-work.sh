@@ -59,14 +59,14 @@ work_list_dependency()
     limits="$*"
     while true
     do
-         top=$(git rev-list $BASE $limits --no-merges --max-count=1)
+	 top=$(git rev-list $BASE $limits --no-merges --max-count=1)
 	 if test -z "$top"
-         then
-             break;
-         else
+	 then
+	     break;
+	 else
 	     echo $top
-             limits="$limits ^$top"
-         fi
+	     limits="$limits ^$top"
+	 fi
     done
 }
 
@@ -79,7 +79,7 @@ work_list()
 	    git rev-list $(work_default)
        ;;
        dependency)
-            work_list_dependency "$@"
+	    work_list_dependency "$@"
        ;;
        *)
 	    die "$type is not a supported type for this command"
@@ -156,7 +156,7 @@ work_rebase()
    git base -q check || die "use 'git base' to establish a base for this branch"
    if test -n "${INTERACTIVE}"
    then
-        PIVOT=${1:-$(git base)}
+	PIVOT=${1:-$(git base)}
 	git base -q check ${PIVOT} || die "${PIVOT} is not a valid pivot commit"
 	git rebase -i ${PIVOT} ${BRANCH} "$@"
    else

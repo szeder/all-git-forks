@@ -78,7 +78,7 @@ check_detached_0()
 check_branch_exists_1()
 {
 	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
- 	if test "${symbolic#refs/heads/}" != "${symbolic}"
+	if test "${symbolic#refs/heads/}" != "${symbolic}"
 	then
 		echo "Branch '$1' exists."
 	else
@@ -90,7 +90,7 @@ check_branch_exists_1()
 check_tag_exists_1()
 {
 	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
- 	if test "${symbolic#refs/tags/}" != "${symbolic}"
+	if test "${symbolic#refs/tags/}" != "${symbolic}"
 	then
 		echo "Tag '$1' exists."
 	else
@@ -102,7 +102,7 @@ check_tag_exists_1()
 check_ref_exists_1()
 {
 	symbolic=$(git rev-parse --quiet --symbolic-full-name --verify "$1")
- 	if test "${symbolic#refs/}" != "${symbolic}"
+	if test "${symbolic#refs/}" != "${symbolic}"
 	then
 		echo "Reference '$1' exists."
 	else
@@ -114,7 +114,7 @@ check_ref_exists_1()
 check_commit_exists_1()
 {
 	if test "$(git cat-file -t "$1")" = 'commit'
-	then	
+	then
 		echo "Commit '$1' exists."
 	else
 		echo "Commit '$1' does not exist."
