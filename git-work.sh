@@ -145,9 +145,9 @@ work_unmerge()
 		git merge \$1 || die \"Failed to merge '\$1'\";
 		shift;
 	done &&
-	NEWBASE=$(git rev-parse HEAD) &&
+	NEWBASE=\$(git rev-parse HEAD) &&
 	git rebase --onto HEAD $BASE $BRANCH &&
-	git base set "$NEWBASE"
+	git base set \$NEWBASE
 "
 }
 
