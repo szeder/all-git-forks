@@ -202,14 +202,6 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 
 	if (crlf_action == CRLF_AUTO || crlf_action == CRLF_GUESS) {
 		/*
-		 * We're currently not going to even try to convert stuff
-		 * that has bare CR characters. Does anybody do that crazy
-		 * stuff?
-		 */
-		if (stats.cr != stats.crlf)
-			return 0;
-
-		/*
 		 * And add some heuristics for binary vs text, of course...
 		 */
 		if (is_binary(len, &stats))
@@ -235,17 +227,23 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 	if (strbuf_avail(buf) + buf->len < len)
 		strbuf_grow(buf, len - buf->len);
 	dst = buf->buf;
-	if (crlf_action == CRLF_AUTO || crlf_action == CRLF_GUESS) {
-		/*
-		 * If we guessed, we already know we rejected a file with
-		 * lone CR, and we can strip a CR without looking at what
-		 * follow it.
-		 */
-		do {
-			unsigned char c = *src++;
-			if (c != '\r')
-				*dst++ = c;
-		} while (--len);
+    
+    if (stats.cr != stats.crlf) {
+        /*
+         * There are lone CRs in this stream. More thorough checks
+         * will need to be made.
+         */
+        do {
+            unsigned char c = *src++;
+            if (c == '\r') {
+                if (! (1<len && *src == '\n')) // Lone CR, replace with LF
+                    *dst++ = '\n';
+                else continue; // Skip CR in CRLF
+            }
+            else {
+                *dst++ = c;
+            }
+        } while (--len);
 	} else {
 		do {
 			unsigned char c = *src++;
