@@ -123,9 +123,9 @@ test_expect_success 'alias expansion' '
 test_expect_success '!alias expansion' '
 	pwd >expect &&
 	(
-		git config alias.test !pwd &&
+		git config alias.test1 !pwd &&
 		cd dir &&
-		git test >../actual
+		git test1 >../actual
 	) &&
 	test_cmp expect actual
 '
@@ -133,9 +133,9 @@ test_expect_success '!alias expansion' '
 test_expect_success 'GIT_PREFIX for !alias' '
 	printf "dir/" >expect &&
 	(
-		git config alias.test "!sh -c \"printf \$GIT_PREFIX\"" &&
+		git config alias.test1 "!sh -c \"printf \$GIT_PREFIX\"" &&
 		cd dir &&
-		git test >../actual
+		git test1 >../actual
 	) &&
 	test_cmp expect actual
 '
