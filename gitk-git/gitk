@@ -2503,6 +2503,7 @@ proc makewindow {} {
 	{mc "Compare with marked commit" command compare_commits}
 	{mc "Visualize this merge" command visualize_merge}
 	{mc "Visualize mark to here" command visualize_mark}
+	{mc "Rebase branch to here" command rebase_branch}
     }
     $rowctxmenu configure -tearoff 0
 
@@ -2541,7 +2542,6 @@ proc makewindow {} {
     $diff_menu configure -tearoff 0
 }
 
-
 proc sel_parent_cmt {side} {
     global parentlist selectedline currentid
 
@@ -2558,6 +2558,56 @@ proc sel_parent_cmt {side} {
     set rparen [lindex $parentlist $selectedline $parent_idx]
     set row [rowofcommit $rparen]
     selectline $row 1
+}
+
+proc valid_rebase {id} {
+    return 1
+
+    set revs [exec git rev-list $id..HEAD]
+    puts "Revs to rebase: $revs"
+    if {$revs == ""} {
+	return 0
+    }
+    return 1
+}
+
+proc rebase_branch {} {
+    global rowmenuid markedid
+
+    set rebase_tgt_id  $rowmenuid
+    set rebase_tgt_row [rowofcommit $rowmenuid]
+
+    if {[info exists markedid]} {
+	# this will be a --onto rebase commit
+	set rebase_args "$markedid --onto $rebase_tgt_id"
+    } else {
+	set rebase_args "$rebase_tgt_id"
+    }
+
+    puts "Rebase target: $rebase_tgt_id $rebase_tgt_row" 
+
+    set branchname [exec git branch | grep "*"]
+    set branchname [string range $branchname 2 end]
+
+    set num_commits_to_rebase [llength [exec git rev-list $rowmenuid..HEAD]]
+
+    # Give user chance to abort if something seems amiss
+    set keep_going [confirm_popup "Rebase $num_commits_to_rebase commits from $branchname to [string range $rebase_tgt_id 0 8]?"]
+    if {$keep_going == 0} {
+	puts "Aborting rebase"
+	return
+    }
+    
+    #exec git rebase $rebase_tgt_id
+    set retval [catch {exec git rebase $rebase_args} err]
+    puts "rebase retval: $retval"
+    puts "err $err"
+
+    if {$retval != 0} {
+	error_popup $err
+	return
+    }
+    updatecommits
 
 }
 
@@ -8515,6 +8565,11 @@ proc rowmenu {x y id} {
 	    $menu entryconfigure 12 -state disabled
 	} else {
 	    $menu entryconfigure 12 -state normal
+	}
+	if {[valid_rebase $rowmenuid]} {
+	    $menu entryconfigure 13 -state normal
+	} else {
+	    $menu entryconfigure 13 -state disabled
 	}
 
 	if {[info exists markedid] && $markedid ne $id} {
