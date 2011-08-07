@@ -131,7 +131,7 @@ work_unmerge()
 	done &&
 	NEWBASE=\$(git rev-parse HEAD) &&
 	git rebase --onto HEAD $BASE $BRANCH &&
-	git base set \$NEWBASE
+	git base -q set \$NEWBASE
 "
 }
 
