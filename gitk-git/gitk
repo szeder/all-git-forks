@@ -8504,6 +8504,12 @@ proc rowmenu {x y id} {
 	    $menu entryconfigure 7 -label [mc "Detached head: can't reset" $mainhead] -state disabled
 	}
 
+	if {[info exists markedid] && $markedid eq $rowmenuid} {
+	    $menu entryconfigure 8 -label [mc "Unmark commit"]
+	} else {
+	    $menu entryconfigure 8 -label [mc "Mark commit"]
+	}
+
 	# Disable visualize-merge on only one parent
 	if {[get_id_numparents $id] == 1} {
 	    $menu entryconfigure 12 -state disabled
@@ -8533,9 +8539,17 @@ proc rowmenu {x y id} {
 
 proc markhere {} {
     global rowmenuid markedid canv
+    global linehtag canv 
+    # fgcolor
 
-    set markedid $rowmenuid
-    make_idmark $markedid
+    if {[info exists markedid] && $markedid eq $rowmenuid} {
+	if {![info exists linehtag($markedid)]} return
+	$canv delete markid
+	unset markedid
+    } else {
+	set markedid $rowmenuid
+	make_idmark $markedid
+    }
 }
 
 proc gotomark {} {
