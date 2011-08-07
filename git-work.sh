@@ -73,7 +73,7 @@ work_list_dependency()
 work_list()
 {
     type=$1
-    shift 1
+    test $# -gt 0 && shift
     case "$type" in
        ""|commit)
 	    git rev-list $(work_default)
