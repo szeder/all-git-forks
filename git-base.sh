@@ -24,7 +24,7 @@ Please use "git help base" to get the full man page.'
 OPTIONS_SPEC=
 
 SUBDIRECTORY_OK=true
-. git-sh-setup
+. "$(git --exec-path)/git-sh-setup"
 require_work_tree
 
 warn()
