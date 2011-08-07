@@ -115,23 +115,7 @@ work_unmerge()
 {
     assert --not-unstaged --not-staged --not-detached
 
-    work_list dependency | sort > .git/git-work.unmerge.list
-
-    for arg; do
-	git rev-parse --verify "$arg" 2>/dev/null
-    done | sort  > .git/git-work.unmerge.args
-
-    saved=$(diff -u .git/git-work.unmerge.list .git/git-work.unmerge.args | tail -n +4 | grep "^[+|-]" | while read c
-    do
-	case $c in
-	    +*)
-		die "'${c#+}' is not a dependency."
-		;;
-	    -*)
-		git rev-parse --verify "${c#-}" 2>/dev/null || die "'$c' is not a commit."
-		;;
-	esac
-    done | tr \\012 ' ') || exit $?
+    saved=$(work_list dependency --not "$@" | tr \\012 ' ') || exit $?
 
     test -n "$saved" || die "You must preserve at least one dependency."
 
