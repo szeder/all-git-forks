@@ -9,13 +9,13 @@ SYNOPSIS
 --------
 [verse]
 'git work'
-'git work' 'list'   ['commit'|'dependency'] 
-'git work' 'merge'  [merge-options] [dependency ...]
-'git work' 'unmerge' dependency [dependency ...]
-'git work' 'rebase' ['-i'|[dependency [rebase-options]]]
-'git work' 'pivot'  [pivot]
-'git work' 'create' ['--pivot-first'] topic [pivot [on-base]]
-'git work' 'update' ['--pivot-first'] topic [pivot]
+'git work' 'list'    ['commit'|'dependency'] 
+'git work' 'merge'   [<merge-options>] [<dependency> ...]
+'git work' 'unmerge' [<limit> ...]
+'git work' 'rebase'  ['-i'|[<dependency> [<rebase-options>]]]
+'git work' 'pivot'   [<pivot>]
+'git work' 'create'  ['--pivot-first'] <topic> [<pivot> [<on-base>]]
+'git work' 'update'  ['--pivot-first'] <topic> [<pivot>]
 
 DESCRIPTION
 -----------
@@ -32,8 +32,7 @@ Without arguments, reports the base and head of the current branch as a range su
 	Merge the specified dependencies with \{base\}, then rebase \{base\}..\{head\} onto that merge. The head reference is updated with the result of the rebase. The base reference is updated with dependency. If not specified, dependency defaults to the tracked branch, if any.
 
 'unmerge'::
-	Unmerge removes the specified dependencies from the list of dependencies reported by 'git work list dependency', remerges the remaining dependencies
-and then rebases the commit between $(git base) and the tip of the branch onto the new base. The command fails atomically in the merge or rebase fails.
+	Create a new merge with the output of `git work list dependency --not [<limit> ...]`, then rebase the \{base\}..\{branch\} onto that merge.
 
 'rebase'::
 	Rebase \{base\}..\{head\} onto dependency and the base reference is updated to refer to dependency. If the -i option is specified, invokes git rebase -i \{base\}..\{branch\}. If not specified, dependency defaults to the tracked branch, if any.
