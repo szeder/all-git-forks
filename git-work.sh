@@ -31,7 +31,7 @@ as-refs print the range as references
 X pass-thru options to merge or rebase
 i,interactive perform an interactive rebase
 "
-. git-sh-setup
+. "$(git --exec-path)/git-sh-setup"
 . git-atomic-lib
 
 warn()
