@@ -56,10 +56,10 @@ work_default()
 
 work_list_dependency()
 {
-    limits="$*"
+    limits=""
     while true
     do
-	 top=$(git rev-list $BASE $limits --no-merges --max-count=1)
+	 top=$(git rev-list $BASE $limits --no-merges --max-count=1 "$@")
 	 if test -z "$top"
 	 then
 	     break;
