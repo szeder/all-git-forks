@@ -26,15 +26,17 @@ standard format, deflated with 4KB window size: Agit/JGit on Android
 '
 
 . ./test-lib.sh
+LF='
+'
 
 assert_blob_equals() {
-	echo -n $2 > expected &&
-	git cat-file -p $1 > actual &&
+	printf "%s" "$2" >expected &&
+	git cat-file -p "$1" >actual &&
 	test_cmp expected actual
 }
 
 test_expect_success setup '
-	cp -R ../t1013/objects .git/
+	cp -R "$TEST_DIRECTORY/t1013/objects" .git/
 	git --version
 '
 
@@ -42,7 +44,7 @@ test_expect_success 'read standard-format loose objects' '
 	git cat-file tag 8d4e360d6c70fbd72411991c02a09c442cf7a9fa &&
 	git cat-file commit 6baee0540ea990d9761a3eb9ab183003a71c3696 &&
 	git ls-tree 7a37b887a73791d12d26c0d3e39568a8fb0fa6e8 &&
-	assert_blob_equals "257cc5642cb1a054f08cc83f2d943e56fd3ebe99" "foo\n"
+	assert_blob_equals "257cc5642cb1a054f08cc83f2d943e56fd3ebe99" "foo$LF"
 '
 
 test_expect_success 'read experimental-format loose objects' '
