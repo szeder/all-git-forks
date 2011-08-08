@@ -270,9 +270,9 @@ test_expect_success 'test "update --recursive" with a flag with spaces' '
 		git rev-parse --is-well-formed-git-dir nested1/.git &&
 		git rev-parse --is-well-formed-git-dir nested1/nested2/.git &&
 		git rev-parse --is-well-formed-git-dir nested1/nested2/nested3/.git &&
-		test -f nested1/.git/objects/info/alternates &&
-		test -f nested1/nested2/.git/objects/info/alternates &&
-		test -f nested1/nested2/nested3/.git/objects/info/alternates
+		test -f .git/modules/nested1/objects/info/alternates &&
+		test -f .git/modules/nested1/modules/nested2/objects/info/alternates &&
+		test -f .git/modules/nested1/modules/nested2/modules/nested3/objects/info/alternates
 	)
 '
 
