@@ -9,7 +9,7 @@ git-merge-tree - Show three-way merge without touching index
 SYNOPSIS
 --------
 [verse]
-'git merge-tree' <base-tree> <branch1> <branch2>
+'git merge-tree' [-U<n> | --unified=<n>] <base-tree> <branch1> <branch2>
 
 DESCRIPTION
 -----------
@@ -23,6 +23,12 @@ This is meant to be used by higher level scripts to compute
 merge results outside of the index, and stuff the results back into the
 index.  For this reason, the output from the command omits
 entries that match the <branch1> tree.
+
+OPTIONS
+-------
+-U<n>::
+--unified=<n>::
+	Generate diffs with <n> lines of context instead of the usual three.
 
 GIT
 ---

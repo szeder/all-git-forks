@@ -4,9 +4,15 @@
 #include "blob.h"
 #include "exec_cmd.h"
 #include "merge-file.h"
+#include "parse-options.h"
 
-static const char merge_tree_usage[] = "git merge-tree <base-tree> <branch1> <branch2>";
+static const char * const merge_tree_usage[] = {
+	"git merge-tree [options] <base-tree> <branch1> <branch2>",
+	NULL
+};
+
 static int resolve_directories = 1;
+static long ctxlen = 3;
 
 struct merge_list {
 	struct merge_list *next;
@@ -108,7 +114,7 @@ static void show_diff(struct merge_list *entry)
 
 	xpp.flags = 0;
 	memset(&xecfg, 0, sizeof(xecfg));
-	xecfg.ctxlen = 3;
+	xecfg.ctxlen = ctxlen;
 	ecb.outf = show_outf;
 	ecb.priv = NULL;
 
@@ -341,13 +347,19 @@ int cmd_merge_tree(int argc, const char **argv, const char *prefix)
 {
 	struct tree_desc t[3];
 	void *buf1, *buf2, *buf3;
+	const struct option opts[] = {
+		OPT_INTEGER('U', "unified", &ctxlen, "number of diff context lines"),
+		OPT_END()
+	};
 
-	if (argc != 4)
-		usage(merge_tree_usage);
+	argc = parse_options(argc, argv, prefix, opts, merge_tree_usage, 0);
 
-	buf1 = get_tree_descriptor(t+0, argv[1]);
-	buf2 = get_tree_descriptor(t+1, argv[2]);
-	buf3 = get_tree_descriptor(t+2, argv[3]);
+	if (argc != 3)
+		usage(*merge_tree_usage);
+
+	buf1 = get_tree_descriptor(t+0, argv[0]);
+	buf2 = get_tree_descriptor(t+1, argv[1]);
+	buf3 = get_tree_descriptor(t+2, argv[2]);
 	merge_trees(t, "");
 	free(buf1);
 	free(buf2);
