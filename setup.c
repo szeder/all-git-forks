@@ -811,7 +811,7 @@ const char *setup_git_directory(void)
 
 const char *resolve_gitdir(const char *suspect)
 {
-	if(is_git_directory(suspect))
+	if (is_git_directory(suspect))
 		return suspect;
 	return read_gitfile_gently(suspect);
 }

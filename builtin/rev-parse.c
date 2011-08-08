@@ -455,14 +455,6 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	unsigned char sha1[20];
 	const char *name = NULL;
 
-	if (argc > 2 && !strcmp(argv[1], "--is-well-formed-git-dir")) {
-		const char *gitdir = resolve_gitdir(argv[2]);
-		if(!gitdir)
-			die("not a gitdir");
-		puts(gitdir);
-		return 0;
-	}
-
 	if (argc > 1 && !strcmp("--parseopt", argv[1]))
 		return cmd_parseopt(argc - 1, argv + 1, prefix);
 
@@ -473,6 +465,14 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		int i;
 		for (i = 0; local_repo_env[i]; i++)
 			printf("%s\n", local_repo_env[i]);
+		return 0;
+	}
+
+	if (argc > 2 && !strcmp(argv[1], "--is-well-formed-git-dir")) {
+		const char *gitdir = resolve_gitdir(argv[2]);
+		if (!gitdir)
+			die("not a gitdir '%s'", argv[2]);
+		puts(gitdir);
 		return 0;
 	}
 
