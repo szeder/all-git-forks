@@ -455,6 +455,14 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	unsigned char sha1[20];
 	const char *name = NULL;
 
+	if (argc > 2 && !strcmp(argv[1], "--is-well-formed-git-dir")) {
+		const char *gitdir = resolve_gitdir(argv[2]);
+		if(!gitdir)
+			die("not a gitdir");
+		puts(gitdir);
+		return 0;
+	}
+
 	if (argc > 1 && !strcmp("--parseopt", argv[1]))
 		return cmd_parseopt(argc - 1, argv + 1, prefix);
 
