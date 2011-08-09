@@ -136,6 +136,7 @@ done
 test_commit_autosquash_flags () {
 	H=$1
 	flag=$2
+	mopt=$3
 	test_expect_success "commit --$flag with $H encoding" '
 		git config i18n.commitencoding $H &&
 		git checkout -b $H-$flag C0 &&
@@ -147,7 +148,7 @@ test_commit_autosquash_flags () {
 		git commit -a -m "intermediate commit" &&
 		test_tick &&
 		echo $H $flag >>F &&
-		git commit -a --$flag HEAD~1 $3 &&
+		git commit -a --$flag HEAD~1 $mopt &&
 		E=$(git cat-file commit '$H-$flag' |
 			sed -ne "s/^encoding //p") &&
 		test "z$E" = "z$H" &&
@@ -160,6 +161,6 @@ test_commit_autosquash_flags () {
 
 test_commit_autosquash_flags eucJP fixup
 
-test_commit_autosquash_flags ISO-2022-JP squash '-m "squash message"'
+test_commit_autosquash_flags ISO-2022-JP squash '-m squash_message'
 
 test_done
