@@ -221,6 +221,7 @@ struct tree_entry {
 		uint16_t mode;
 		unsigned char sha1[20];
 	} versions[2];
+	unsigned no_delta : 1;
 };
 
 struct tree_content {
@@ -1368,6 +1369,7 @@ static void load_tree(struct tree_entry *root)
 		if (!c)
 			die("Corrupt mode in %s", sha1_to_hex(sha1));
 		e->versions[0].mode = e->versions[1].mode;
+		e->no_delta = 0;
 		e->name = to_atom(c, strlen(c));
 		c += e->name->str_len + 1;
 		hashcpy(e->versions[0].sha1, (unsigned char *)c);
@@ -1437,7 +1439,10 @@ static void store_tree(struct tree_entry *root)
 			store_tree(t->entries[i]);
 	}
 
-	le = find_object(root->versions[0].sha1);
+	if (root->no_delta)
+		le = NULL;
+	else
+		le = find_object(root->versions[0].sha1);
 	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
 		mktree(t, 0, &old_tree);
 		lo.data = old_tree;
@@ -1453,6 +1458,7 @@ static void store_tree(struct tree_entry *root)
 		struct tree_entry *e = t->entries[i];
 		if (e->versions[1].mode) {
 			e->versions[0].mode = e->versions[1].mode;
+			e->no_delta = 0;
 			hashcpy(e->versions[0].sha1, e->versions[1].sha1);
 			t->entries[j++] = e;
 		} else {
@@ -1471,6 +1477,7 @@ static void tree_content_replace(
 {
 	if (!S_ISDIR(mode))
 		die("Root cannot be a non-directory");
+	hashclr(root->versions[0].sha1);
 	hashcpy(root->versions[1].sha1, sha1);
 	if (root->tree)
 		release_tree_content_recursive(root->tree);
@@ -1515,11 +1522,28 @@ static int tree_content_set(
 				if (e->tree)
 					release_tree_content_recursive(e->tree);
 				e->tree = subtree;
+
+				/*
+				 * We need to leave e->versions[0].sha1 alone
+				 * to avoid modifying the preimage tree used
+				 * when writing out the parent directory.
+				 * But after replacing the subdir with a
+				 * completely different one, e->versions[0]
+				 * is not a good delta base any more, and
+				 * besides, we've thrown away the tree
+				 * entries needed to make a delta against it.
+				 *
+				 * Let's just disable deltas when the time
+				 * comes to write this subtree to pack.
+				 */
+				e->no_delta = 1;
+
 				hashclr(root->versions[1].sha1);
 				return 1;
 			}
 			if (!S_ISDIR(e->versions[1].mode)) {
 				e->tree = new_tree_content(8);
+				e->no_delta = 1;
 				e->versions[1].mode = S_IFDIR;
 			}
 			if (!e->tree)
@@ -1537,6 +1561,7 @@ static int tree_content_set(
 	e = new_tree_entry();
 	e->name = to_atom(p, n);
 	e->versions[0].mode = 0;
+	e->no_delta = 0;
 	hashclr(e->versions[0].sha1);
 	t->entries[t->entry_count++] = e;
 	if (slash1) {
