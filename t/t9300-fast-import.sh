@@ -764,7 +764,7 @@ M 040000 @E g/b
 M 040000 @E g/b/h
 INPUT_END
 
-test_expect_failure \
+test_expect_success \
     'L: verify internal tree delta base' \
 	'git fast-import <input &&
 	A=$(git ls-tree L2 a | tr " " "\t" | cut -f 3) &&
