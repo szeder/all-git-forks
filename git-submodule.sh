@@ -123,18 +123,58 @@ module_clone()
 	url=$2
 	reference="$3"
 	quiet=
+	gitdir=
+	gitdir_base=
+
 	if test -n "$GIT_QUIET"
 	then
 		quiet=-q
 	fi
-
-	if test -n "$reference"
+	name=$(module_name "$path")
+	if test -z "$name"
 	then
-		git-clone $quiet "$reference" -n "$url" "$path"
+		name="$path"
+	fi
+	base_path=$(dirname "$path")
+
+	gitdir=$(git rev-parse --git-dir)
+	gitdir_base="$gitdir/modules/$base_path"
+	gitdir="$gitdir/modules/$path"
+
+	case $gitdir in
+	/*)
+		a="$(cd_to_toplevel && pwd)/"
+		b=$gitdir
+		while [ "$b" ] && [ "${a%%/*}" = "${b%%/*}" ]
+		do
+			a=${a#*/} b=${b#*/};
+		done
+
+		rel="$a$name"
+		rel=`echo $rel | sed -e 's|[^/]*|..|g'`
+		rel_gitdir="$rel/$b"
+		;;
+	*)
+		rel=`echo $name | sed -e 's|[^/]*|..|g'`
+		rel_gitdir="$rel/$gitdir"
+		;;
+	esac
+
+	if test -d "$gitdir"
+	then
+		mkdir -p "$path"
+		echo "gitdir: $rel_gitdir" >"$path/.git"
+		rm -f "$gitdir/index"
 	else
-		git-clone $quiet -n "$url" "$path"
-	fi ||
-	die "$(eval_gettext "Clone of '\$url' into submodule path '\$path' failed")"
+		mkdir -p "$gitdir_base"
+		if test -n "$reference"
+		then
+			git-clone $quiet "$reference" -n "$url" "$path" --separate-git-dir "$gitdir"
+		else
+			git-clone $quiet -n "$url" "$path" --separate-git-dir "$gitdir"
+		fi ||
+		die "$(eval_gettext "Clone of '\$url' into submodule path '\$path' failed")"
+	fi
 }
 
 #
