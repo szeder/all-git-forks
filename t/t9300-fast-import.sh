@@ -734,6 +734,44 @@ test_expect_success \
 	 git diff-tree --abbrev --raw L^ L >output &&
 	 test_cmp expect output'
 
+cat >input <<INPUT_END
+blob
+mark :1
+data <<EOF
+the data
+EOF
+
+commit refs/heads/L2
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+init L2
+COMMIT
+
+M 644 :1 a/b/c
+M 644 :1 a/b/d
+M 644 :1 a/e/f
+INPUT_END
+
+cat >input2 <<INPUT_END
+commit refs/heads/L2
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data <<COMMIT
+update L2
+COMMIT
+from refs/heads/L2^0
+M 040000 @A g
+M 040000 @E g/b
+M 040000 @E g/b/h
+INPUT_END
+
+test_expect_failure \
+    'L: verify internal tree delta base' \
+	'git fast-import <input &&
+	A=$(git ls-tree L2 a | tr " " "\t" | cut -f 3) &&
+	E=$(git ls-tree L2 a/e | tr " " "\t" | cut -f 3) &&
+	cat input2 | sed -e "s/@A/$A/" -e "s/@E/$E/" >input &&
+	git fast-import <input'
+
 ###
 ### series M
 ###

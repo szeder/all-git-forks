@@ -1455,12 +1455,22 @@ static void store_tree(struct tree_entry *root)
 			store_tree(t->entries[i]);
 	}
 
-	le = find_object(root->versions[0].sha1);
-	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
+	if (!is_null_sha1(root->versions[0].sha1)
+					&& S_ISDIR(root->versions[0].mode)) {
+		unsigned char old_tree_sha1[20];
 		mktree(t, 0, &old_tree);
-		lo.data = old_tree;
-		lo.offset = le->idx.offset;
-		lo.depth = t->delta_depth;
+		prepare_object_hash(OBJ_TREE, &old_tree,
+						NULL, NULL, old_tree_sha1);
+
+		if (hashcmp(old_tree_sha1, root->versions[0].sha1))
+			die("internal tree delta base sha1 mismatch");
+
+		le = find_object(root->versions[0].sha1);
+		if (le && le->pack_id == pack_id) {
+			lo.data = old_tree;
+			lo.offset = le->idx.offset;
+			lo.depth = t->delta_depth;
+		}
 	}
 
 	mktree(t, 1, &new_tree);
