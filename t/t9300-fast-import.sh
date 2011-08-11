@@ -765,7 +765,7 @@ g/b/f
 g/b/h
 EOF
 
-test_expect_failure \
+test_expect_success \
     'L: modifying a copied tree does not produce a corrupt pack' \
 	'test_when_finished "git update-ref -d refs/heads/L2" &&
 	git fast-import <input &&
