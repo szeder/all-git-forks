@@ -1550,6 +1550,31 @@ static int tree_content_set(
 	return 1;
 }
 
+static int tree_content_clear(
+	struct tree_entry *root,
+	struct tree_entry *backup_leaf)
+{
+	if (backup_leaf)
+		memcpy(backup_leaf, root, sizeof(*backup_leaf));
+	else if (root->tree)
+		release_tree_content_recursive(root->tree);
+	root->tree = NULL;
+	hashclr(root->versions[1].sha1);
+	return 1;
+}
+
+static int is_empty_tree(struct tree_entry *root)
+{
+	int n;
+	if (!root->tree)
+		load_tree(root);
+	for (n = 0; n < root->tree->entry_count; n++) {
+		if (root->tree->entries[n]->versions[1].mode)
+			return 0;
+	}
+	return 1;
+}
+
 static int tree_content_remove(
 	struct tree_entry *root,
 	const char *p,
@@ -1585,11 +1610,9 @@ static int tree_content_remove(
 			if (!e->tree)
 				load_tree(e);
 			if (tree_content_remove(e, slash1 + 1, backup_leaf)) {
-				for (n = 0; n < e->tree->entry_count; n++) {
-					if (e->tree->entries[n]->versions[1].mode) {
-						hashclr(root->versions[1].sha1);
-						return 1;
-					}
+				if (!is_empty_tree(e)) {
+					hashclr(root->versions[1].sha1);
+					return 1;
 				}
 				backup_leaf = NULL;
 				goto del_entry;
@@ -1608,6 +1631,19 @@ del_entry:
 	e->versions[1].mode = 0;
 	hashclr(e->versions[1].sha1);
 	hashclr(root->versions[1].sha1);
+	return 1;
+}
+
+static int tree_content_copy_root(
+	struct tree_entry *root,
+	struct tree_entry *leaf
+)
+{
+	memcpy(leaf, root, sizeof(*leaf));
+	if (root->tree && is_null_sha1(root->versions[1].sha1))
+		leaf->tree = dup_tree_content(root->tree);
+	else
+		leaf->tree = NULL;
 	return 1;
 }
 
@@ -2327,10 +2363,17 @@ static void file_change_cr(struct branch *b, int rename)
 	}
 
 	memset(&leaf, 0, sizeof(leaf));
-	if (rename)
-		tree_content_remove(&b->branch_tree, s, &leaf);
-	else
-		tree_content_get(&b->branch_tree, s, &leaf);
+	if (rename) {
+		if (!*s)
+			tree_content_clear(&b->branch_tree, &leaf);
+		else
+			tree_content_remove(&b->branch_tree, s, &leaf);
+	} else {
+		if (!*s)
+			tree_content_copy_root(&b->branch_tree, &leaf);
+		else
+			tree_content_get(&b->branch_tree, s, &leaf);
+	}
 	if (!leaf.versions[1].mode)
 		die("Path %s not in branch", s);
 	if (!*d) {	/* C "path/to/subdir" "" */
@@ -2338,6 +2381,14 @@ static void file_change_cr(struct branch *b, int rename)
 			leaf.versions[1].sha1,
 			leaf.versions[1].mode,
 			leaf.tree);
+		return;
+	}
+	/*
+	 * Git does not track empty, non-toplevel directories.
+	 * At this point destination is non-toplevel, so if source is
+	 * toplevel and empty, leave it as is all empty.
+	 */
+	if (!*s && is_empty_tree(&leaf)) {
 		return;
 	}
 	tree_content_set(&b->branch_tree, d,
@@ -2967,7 +3018,11 @@ static void parse_ls(struct branch *b)
 			die("Garbage after path in: %s", command_buf.buf);
 		p = uq.buf;
 	}
-	tree_content_get(root, p, &leaf);
+	if (!*p) {
+		if (!is_empty_tree(root))
+			tree_content_copy_root(root, &leaf);
+	} else
+		tree_content_get(root, p, &leaf);
 	/*
 	 * A directory in preparation would have a sha1 of zero
 	 * until it is saved.  Save, for simplicity.
