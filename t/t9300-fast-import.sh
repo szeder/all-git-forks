@@ -978,6 +978,64 @@ test_expect_success PIPE 'N: empty directory reads as missing' '
 '
 
 test_expect_success \
+	'N: ls root directory' \
+	'cat >expect <<-\EOF &&
+	missing
+	040000
+	EOF
+	cat >input <<-EOF &&
+	commit refs/heads/ls-root
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+	data <<COMMIT
+	On empty tree: ls add file ls.
+	COMMIT
+	ls ""
+	M 644 inline file1
+	data 0
+	ls ""
+	EOF
+	git fast-import --quiet <input >tmp &&
+	cat tmp | cut -d " " -f 1 >actual &&
+	test_cmp expect actual'
+
+test_expect_success \
+	'N: move root directory' \
+	'echo "root/a/b" >expect &&
+	cat >input <<-EOF &&
+	commit refs/heads/move-root
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+	data <<COMMIT
+	Add stuff and move it.
+	COMMIT
+	M 644 inline a/b
+	data 0
+	R "" root
+	EOF
+	git fast-import <input &&
+	git ls-tree -r --name-only refs/heads/move-root >actual &&
+	test_cmp expect actual'
+
+test_expect_success \
+	'N: copy root directory' \
+	'cat <<-\EOF >expect &&
+	a/b
+	a/root/a/b
+	EOF
+	cat >input <<-EOF &&
+	commit refs/heads/copy-root
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+	data <<COMMIT
+	Add stuff and move it.
+	COMMIT
+	M 644 inline a/b
+	data 0
+	C "" a/root
+	EOF
+	git fast-import <input &&
+	git ls-tree -r --name-only refs/heads/copy-root >actual &&
+	test_cmp expect actual'
+
+test_expect_success \
 	'N: copy root directory by tree hash' \
 	'cat >expect <<-\EOF &&
 	:100755 000000 f1fb5da718392694d0076d677d6d0e364c79b0bc 0000000000000000000000000000000000000000 D	file3/newf
