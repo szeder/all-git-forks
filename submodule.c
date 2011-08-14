@@ -9,6 +9,8 @@
 #include "refs.h"
 #include "string-list.h"
 
+typedef int (*needs_push_func_t)(const char *path, const unsigned char sha1[20],
+		void *data);
 static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
