@@ -9,8 +9,6 @@
 #include "refs.h"
 #include "string-list.h"
 
-typedef int (*needs_push_func_t)(const char *path, const unsigned char sha1[20],
-		void *data);
 static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
 static struct string_list config_ignore_for_name;
@@ -25,6 +23,12 @@ static struct string_list changed_submodule_paths;
  * ignored.
  */
 static int gitmodules_is_unmerged;
+
+struct func_n_data {
+	needs_push_func_t func;
+	void *data;
+	int stop_after_first_commit;
+};
 
 static int add_submodule_odb(const char *path)
 {
@@ -315,7 +319,7 @@ static int has_remote(const char *refname, const unsigned char *sha1, int flags,
 	return 1;
 }
 
-static int submodule_needs_pushing(const char *path, const unsigned char sha1[20])
+int submodule_needs_pushing(const char *path, const unsigned char sha1[20])
 {
 	if (add_submodule_odb(path) || !lookup_commit_reference(sha1))
 		return 0;
@@ -348,26 +352,54 @@ static int submodule_needs_pushing(const char *path, const unsigned char sha1[20
 	return 0;
 }
 
+int push_submodule(const char *path, const unsigned char sha1[20])
+{
+	if (add_submodule_odb(path) || !lookup_commit_reference(sha1))
+		return 0;
+
+	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
+		struct child_process cp;
+		const char *argv[] = {"push", NULL};
+
+		memset(&cp, 0, sizeof(cp));
+		cp.argv = argv;
+		cp.env = local_repo_env;
+		cp.git_cmd = 1;
+		cp.no_stdin = 1;
+		cp.out = -1;
+		cp.dir = path;
+		if (start_command(&cp))
+			die("Could not run 'git push' command in submodule %s", path);
+		finish_command(&cp);
+		close(cp.out);
+	}
+
+	return 0;
+}
+
 static void collect_submodules_from_diff(struct diff_queue_struct *q,
 					 struct diff_options *options,
 					 void *data)
 {
 	int i;
-	int *needs_pushing = data;
+	struct func_n_data *fnd = data;
+	int *needs_pushing = fnd->data;
+	needs_push_func_t func = fnd->func;
 
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
-		if (submodule_needs_pushing(p->two->path, p->two->sha1)) {
+		if (func(p->two->path, p->two->sha1)) {
 			*needs_pushing = 1;
-			break;
+			if (fnd->stop_after_first_commit)
+				break;
 		}
 	}
 }
 
 
-static void commit_need_pushing(struct commit *commit, struct commit_list *parent, int *needs_pushing)
+static void commit_need_pushing(struct commit *commit, struct commit_list *parent, struct func_n_data *fnd)
 {
 	const unsigned char (*parents)[20];
 	unsigned int i, n;
@@ -384,13 +416,14 @@ static void commit_need_pushing(struct commit *commit, struct commit_list *paren
 	init_revisions(&rev, NULL);
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
 	rev.diffopt.format_callback = collect_submodules_from_diff;
-	rev.diffopt.format_callback_data = needs_pushing;
+	rev.diffopt.format_callback_data = fnd;
 	diff_tree_combined(commit->object.sha1, parents, n, 1, &rev);
 
 	free(parents);
 }
 
-int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remotes_name)
+static int inspect_superproject_commits(unsigned char new_sha1[20], const char *remotes_name, needs_push_func_t func,
+		int stop_after_first_commit)
 {
 	struct rev_info rev;
 	struct commit *commit;
@@ -399,6 +432,11 @@ int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remote
 	char *sha1_copy;
 	int needs_pushing = 0;
 	struct strbuf remotes_arg = STRBUF_INIT;
+	struct func_n_data fnd;
+
+	fnd.func = submodule_needs_pushing;
+	fnd.data = &needs_pushing;
+	fnd.stop_after_first_commit = stop_after_first_commit;
 
 	strbuf_addf(&remotes_arg, "--remotes=%s", remotes_name);
 	init_revisions(&rev, NULL);
@@ -409,13 +447,27 @@ int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remote
 	if (prepare_revision_walk(&rev))
 		die("revision walk setup failed");
 
-	while ((commit = get_revision(&rev)) && !needs_pushing)
-		commit_need_pushing(commit, commit->parents, &needs_pushing);
+	if(stop_after_first_commit)
+		while ((commit = get_revision(&rev)) && !needs_pushing)
+			commit_need_pushing(commit, commit->parents, &fnd);
+	else
+		while ((commit = get_revision(&rev)))
+			commit_need_pushing(commit, commit->parents, &fnd);
 
 	free(sha1_copy);
 	strbuf_release(&remotes_arg);
 
 	return needs_pushing;
+}
+
+int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remotes_name)
+{
+	return inspect_superproject_commits(new_sha1, remotes_name, submodule_needs_pushing, 1);
+}
+
+void push_unpushed_submodules(unsigned char new_sha1[20], const char *remotes_name)
+{
+	inspect_superproject_commits(new_sha1, remotes_name, push_submodule, 0);
 }
 
 static int is_submodule_commit_present(const char *path, unsigned char sha1[20])

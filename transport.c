@@ -1050,6 +1050,13 @@ int transport_push(struct transport *transport,
 					die("There are unpushed submodules, aborting.");
 		}
 
+		if ((flags & TRANSPORT_RECURSE_SUBMODULES_PUSH) && !is_bare_repository()) {
+			struct ref *ref = remote_refs;
+			for (; ref; ref = ref->next)
+				if (!is_null_sha1(ref->new_sha1))
+				    push_unpushed_submodules(ref->new_sha1,transport->remote->name);
+		}
+
 		push_ret = transport->push_refs(transport, remote_refs, flags);
 		err = push_had_errors(remote_refs);
 		ret = push_ret | err;

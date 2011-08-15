@@ -126,4 +126,19 @@ test_expect_success 'push succeeds when --no-recurse-submodules is used' '
 	)
 '
 
+test_expect_success 'push unpushed submodules' '
+	(
+		cd work &&
+		(
+			cd gar/bage &&
+			>junk4 &&
+			git add junk4 &&
+			git commit -m "junk4"
+		) &&
+		git add gar/bage &&
+		git commit -m "updated submodule" &&
+		git push ../pub.git --recurse-submodules=on-demand
+	)
+'
+
 test_done
