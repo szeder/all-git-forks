@@ -170,6 +170,7 @@ useful if you write an alias or script around 'git push'.
 			  and the command will exit with non-zero status.
 	on-demand 	- Push all submodule commits used by the revisions
 			  to be pushed.
+	none            - Do not check or push submodules.
 
 
 include::urls-remotes.txt[]

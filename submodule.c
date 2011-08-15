@@ -80,6 +80,15 @@ void set_diffopt_flags_from_submodule_config(struct diff_options *diffopt,
 	}
 }
 
+int parse_push_recurse_submodules_arg(const char *opt, const char *arg)
+{
+	if (!strcmp(arg, "check"))
+		return TRANSPORT_RECURSE_SUBMODULES_CHECK;
+	else if (!strcmp(arg, "on-demand"))
+		return TRANSPORT_RECURSE_SUBMODULES_PUSH;
+	return 0;
+}
+
 int submodule_config(const char *var, const char *value, void *cb)
 {
 	if (!prefixcmp(var, "submodule."))
@@ -87,7 +96,8 @@ int submodule_config(const char *var, const char *value, void *cb)
 	else if (!strcmp(var, "fetch.recursesubmodules")) {
 		config_fetch_recurse_submodules = parse_fetch_recurse_submodules_arg(var, value);
 		return 0;
-	}
+	} else if (!strcmp(var, "push.recursesubmodules"))
+		return  parse_push_recurse_submodules_arg(var, value);
 	return 0;
 }
 

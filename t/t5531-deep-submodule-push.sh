@@ -173,4 +173,11 @@ test_expect_success 'check unpushed submodules config' '
 	)
 '
 
+test_expect_success 'push unpushed submodules config' '
+       (
+               cd work &&
+               git config push.recursesubmodules on-demand &&
+               git push ../pub.git origin master
+       )
+
 test_done

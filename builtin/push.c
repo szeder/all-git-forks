@@ -229,7 +229,10 @@ static int option_parse_recurse_submodules(const struct option *opt,
 			*flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
 		else if (!strcmp(arg, "on-demand"))
 			*flags |= TRANSPORT_RECURSE_SUBMODULES_PUSH;
-		else
+		else if (!strcmp(arg, "none")) {
+			*flags &= TRANSPORT_RECURSE_SUBMODULES_PUSH;
+			*flags &= TRANSPORT_RECURSE_SUBMODULES_CHECK;
+		} else
 			die("bad %s argument: %s", opt->long_name, arg);
 	}
 	return 0;
@@ -266,6 +269,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	packet_trace_identity("push");
 	git_config(git_default_config, NULL);
+	git_config(submodule_config, NULL);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
 
 	if (deleterefs && (tags || (flags & (TRANSPORT_PUSH_ALL | TRANSPORT_PUSH_MIRROR))))
