@@ -2,7 +2,6 @@
 #define SUBMODULE_H
 
 struct diff_options;
-typedef int (*needs_push_func_t)(const char *path, const unsigned char sha1[20]);
 
 enum {
 	RECURSE_SUBMODULES_ON_DEMAND = -1,
