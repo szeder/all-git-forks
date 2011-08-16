@@ -245,14 +245,18 @@ static int fsck_ident(char **ident, struct object *obj, fsck_error error_func)
 	if (**ident != ' ')
 		return error_func(obj, FSCK_ERROR, "invalid author/committer line - bad date");
 	(*ident)++;
-	if ((**ident != '+' && **ident != '-') ||
-	    !isdigit((*ident)[1]) ||
-	    !isdigit((*ident)[2]) ||
-	    !isdigit((*ident)[3]) ||
-	    !isdigit((*ident)[4]) ||
-	    ((*ident)[5] != '\n'))
+
+	if (**ident != '+' && **ident != '-')
 		return error_func(obj, FSCK_ERROR, "invalid author/committer line - bad time zone");
-	(*ident) += 6;
+	(*ident)++;
+
+	do {
+		if (!isdigit(**ident))
+			return error_func(obj, FSCK_ERROR, "invalid author/committer line - bad time zone");
+		(*ident)++;
+	} while (**ident != '\n');
+	(*ident)++;
+
 	return 0;
 }
 
