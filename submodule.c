@@ -222,10 +222,13 @@ static void print_submodule_summary(struct rev_info *rev, FILE *f,
 	static const char format[] = "  %m %s";
 	struct strbuf sb = STRBUF_INIT;
 	struct commit *commit;
+	const char *log_output_encoding;
 
+	log_output_encoding = get_log_output_encoding();
 	while ((commit = get_revision(rev))) {
 		struct pretty_print_context ctx = {0};
 		ctx.date_mode = rev->date_mode;
+		ctx.output_encoding = log_output_encoding;
 		strbuf_setlen(&sb, 0);
 		if (commit->object.flags & SYMMETRIC_LEFT) {
 			if (del)

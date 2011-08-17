@@ -104,7 +104,10 @@ static void print_new_head_line(struct commit *commit)
 
 	hex = find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV);
 	printf(_("HEAD is now at %s"), hex);
-	body = strstr(commit->buffer, "\n\n");
+	body = reencode_commit_message(commit, NULL);
+	if (!body)
+		body = commit->buffer;
+	body = strstr(body, "\n\n");
 	if (body) {
 		const char *eol;
 		size_t len;

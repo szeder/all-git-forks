@@ -116,7 +116,7 @@ Thu, 7 Apr 2005 15:13:13 -0700
 1112911993
 EOF
 
-test_format failure encoding %e <<EOF
+test_format encoding %e <<EOF
 commit $head2
 commit $head1
 EOF
@@ -127,7 +127,7 @@ commit $head1\n\
 $added
 ")
 
-test_format failure subject %s <<EOF
+test_format subject %s <<EOF
 $expected
 EOF
 
@@ -143,7 +143,7 @@ commit $head1\n\
 $added
 ")
 
-test_format failure raw-body %B <<EOF
+test_format raw-body %B <<EOF
 $expected
 
 EOF
@@ -199,11 +199,11 @@ commit $head1\n\
 $added
 ")
 
-test_format failure complex-subject %s <<EOF
+test_format complex-subject %s <<EOF
 $expected
 EOF
 
-test_format failure complex-body %b <<EOF
+test_format complex-body %b <<EOF
 commit $head3
 This commit message is much longer than the others,
 and it will be encoded in cp1251. We should therefore

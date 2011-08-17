@@ -51,7 +51,7 @@ EOF
 commit_file sm1 &&
 head2=$(add_file sm1 foo3)
 
-test_expect_failure 'modified submodule(forward)' "
+test_expect_success 'modified submodule(forward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
 	printf \"Submodule sm1 $head1..$head2:\n\
   > Add foo3 ($added foo3)\n\
@@ -59,7 +59,7 @@ test_expect_failure 'modified submodule(forward)' "
 	test_cmp expected actual
 "
 
-test_expect_failure 'modified submodule(forward)' "
+test_expect_success 'modified submodule(forward)' "
 	git diff --submodule=log >actual &&
 	printf \"Submodule sm1 $head1..$head2:\n\
   > Add foo3 ($added foo3)\n\
@@ -67,7 +67,7 @@ test_expect_failure 'modified submodule(forward)' "
 	test_cmp expected actual
 "
 
-test_expect_failure 'modified submodule(forward) --submodule' "
+test_expect_success 'modified submodule(forward) --submodule' "
 	git diff --submodule >actual &&
 	printf \"Submodule sm1 $head1..$head2:\n\
   > Add foo3 ($added foo3)\n\
@@ -98,7 +98,7 @@ head3=$(
 	git rev-parse --verify HEAD | cut -c1-7
 )
 
-test_expect_failure 'modified submodule(backward)' "
+test_expect_success 'modified submodule(backward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
 	printf \"Submodule sm1 $head2..$head3 (rewind):\n\
   < Add foo3 ($added foo3)\n\
@@ -109,7 +109,7 @@ test_expect_failure 'modified submodule(backward)' "
 
 head4=$(add_file sm1 foo4 foo5) &&
 head4_full=$(GIT_DIR=sm1/.git git rev-parse --verify HEAD)
-test_expect_failure 'modified submodule(backward and forward)' "
+test_expect_success 'modified submodule(backward and forward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
 	printf \"Submodule sm1 $head2...$head4:\n\
   > Add foo5 ($added foo5)\n\
