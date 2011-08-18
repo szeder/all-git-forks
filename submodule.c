@@ -347,8 +347,7 @@ int submodule_needs_pushing(const char *path, const unsigned char sha1[20], void
 		finish_command(&cp);
 		close(cp.out);
 		strbuf_release(&buf);
-		printf("RETURN 0\n");
-		return 0;
+		return !*needs_pushing;
 	}
 
 	return 1;
@@ -370,11 +369,9 @@ int push_submodule(const char *path, const unsigned char sha1[20], void *data)
 		cp.no_stdin = 1;
 		cp.out = -1;
 		cp.dir = path;
-		if (start_command(&cp))
+		if (run_command(&cp))
 			die("Could not run 'git push' command in submodule %s", path);
-		finish_command(&cp);
 		close(cp.out);
-		return 1;
 	}
 
 	return 1;
@@ -459,7 +456,7 @@ static int inspect_superproject_commits(unsigned char new_sha1[20], const char *
 
 int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remotes_name)
 {
-	int needs_push;
+	int needs_push = 0;
 	inspect_superproject_commits(new_sha1, remotes_name, submodule_needs_pushing, &needs_push);
 	return needs_push;
 }
