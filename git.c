@@ -258,6 +258,9 @@ static int handle_alias(int *argcp, const char ***argv)
 	alias_command = (*argv)[0];
 	alias_string = alias_lookup(alias_command);
 	if (alias_string) {
+		if (use_pager == -1)
+			use_pager = check_pager_config(alias_command);
+
 		if (alias_string[0] == '!') {
 			struct child_process child = CHILD_PROCESS_INIT;
 
