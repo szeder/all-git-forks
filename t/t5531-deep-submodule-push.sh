@@ -62,7 +62,7 @@ test_expect_success 'push fails if submodule commit not on remote' '
 		cd work &&
 		git add gar/bage &&
 		git commit -m "Third commit for gar/bage" &&
-		test_must_fail git push --recurse-submodules=check ../pub.git master
+		test_must_fail git push ../pub.git master --recurse-submodules=check
 	)
 '
 
