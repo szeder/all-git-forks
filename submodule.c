@@ -439,6 +439,7 @@ static int inspect_superproject_commits(unsigned char new_sha1[20], const char *
 	int argc = ARRAY_SIZE(argv) - 1;
 	char *sha1_copy;
 	struct strbuf remotes_arg = STRBUF_INIT;
+	int do_continue = 1;
 
 	strbuf_addf(&remotes_arg, "--remotes=%s", remotes_name);
 	init_revisions(&rev, NULL);
@@ -449,8 +450,8 @@ static int inspect_superproject_commits(unsigned char new_sha1[20], const char *
 	if (prepare_revision_walk(&rev))
 		die("revision walk setup failed");
 
-	while ((commit = get_revision(&rev)))
-		commit_need_pushing(commit, commit->parents, func, data);
+	while ((commit = get_revision(&rev)) && do_continue)
+		do_continue = commit_need_pushing(commit, commit->parents, func, data);
 
 	free(sha1_copy);
 	strbuf_release(&remotes_arg);
