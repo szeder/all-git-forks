@@ -383,6 +383,7 @@ int push_submodule(const char *path, const unsigned char sha1[20], void *data)
 struct collect_submodules_data {
 	module_func_t func;
 	void *data;
+	int ret;
 };
 
 static void collect_submodules_from_diff(struct diff_queue_struct *q,
@@ -391,17 +392,18 @@ static void collect_submodules_from_diff(struct diff_queue_struct *q,
 {
 	int i;
 	struct collect_submodules_data *me = data;
+	me->ret = 1;
 
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
-		if (!me->func(p->two->path, p->two->sha1, me->data))
+		if (!(me->ret = me->func(p->two->path, p->two->sha1, me->data)))
 			break;
 	}
 }
 
-static void commit_need_pushing(struct commit *commit, struct commit_list *parent,
+static int commit_need_pushing(struct commit *commit, struct commit_list *parent,
 	module_func_t func, void *data)
 {
 	const unsigned char (*parents)[20];
@@ -427,6 +429,8 @@ static void commit_need_pushing(struct commit *commit, struct commit_list *paren
 	diff_tree_combined(commit->object.sha1, parents, n, 1, &rev);
 
 	free(parents);
+
+	return cb.ret;
 }
 
 static int inspect_superproject_commits(unsigned char new_sha1[20], const char *remotes_name,
