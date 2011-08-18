@@ -225,11 +225,17 @@ static int option_parse_recurse_submodules(const struct option *opt,
 {
 	int *flags = opt->value;
 	if (arg) {
-		if (!strcmp(arg, "check"))
+		if (!strcmp(arg, "check")) {
 			*flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
-		else
+		} else if (!strcmp(arg, "on-demand")) {
+			*flags |= TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND;
+		} else
 			die("bad %s argument: %s", opt->long_name, arg);
 	}
+
+	if (*flags & (TRANSPORT_RECURSE_SUBMODULES_CHECK) &&
+		(*flags & TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND))
+		die("check and on-demand cannot be used at the same time");
 	return 0;
 }
 
