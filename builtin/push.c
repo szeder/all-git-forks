@@ -227,6 +227,8 @@ static int option_parse_recurse_submodules(const struct option *opt,
 	if (arg) {
 		if (!strcmp(arg, "check"))
 			*flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
+		else if (!strcmp(arg, "on-demand"))
+			*flags |= TRANSPORT_RECURSE_SUBMODULES_PUSH;
 		else
 			die("bad %s argument: %s", opt->long_name, arg);
 	}
