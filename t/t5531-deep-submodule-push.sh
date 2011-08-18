@@ -137,7 +137,7 @@ test_expect_success 'push unpushed submodules' '
 		) &&
 		git add gar/bage &&
 		git commit -m "updated submodule" &&
-		git push ../pub.git --recurse-submodules=on-demand
+		git push ../pub.git --recurse-submodules=on-demand origin master
 	)
 '
 
@@ -153,7 +153,23 @@ test_expect_success 'push unpushed submodules when not needed' '
 		) &&
 		git add gar/bage &&
 		git commit -m "updated submodule" &&
-		git push ../pub.git --recurse-submodules=on-demand
+		git push ../pub.git --recurse-submodules=on-demand origin master
+	)
+'
+
+test_expect_success 'check unpushed submodules config' '
+	(
+		cd work &&
+		(
+			cd gar/bage &&
+			>junk4 &&
+			git add junk4 &&
+			git commit -m "junk5"
+		) &&
+		git add gar/bage &&
+		git commit -m "updated submodule" &&
+		git config push.recursesubmodules check &&
+		test_must_fail git push ../pub.git origin master
 	)
 '
 
