@@ -50,7 +50,6 @@ static int fast_forward_only;
 static int allow_trivial = 1, have_message;
 static struct strbuf merge_msg;
 static struct commit_list *remoteheads;
-static unsigned char head[20];
 static struct strategy **use_strategies;
 static size_t use_strategies_nr, use_strategies_alloc;
 static const char **xopts;
@@ -279,7 +278,8 @@ static void reset_hard(unsigned const char *sha1, int verbose)
 		die(_("read-tree failed"));
 }
 
-static void restore_state(const unsigned char *stash)
+static void restore_state(const unsigned char *head,
+			  const unsigned char *stash)
 {
 	struct strbuf sb = STRBUF_INIT;
 	const char *args[] = { "stash", "apply", NULL, NULL };
@@ -309,10 +309,9 @@ static void finish_up_to_date(const char *msg)
 	drop_save();
 }
 
-static void squash_message(void)
+static void squash_message(struct commit *commit)
 {
 	struct rev_info rev;
-	struct commit *commit;
 	struct strbuf out = STRBUF_INIT;
 	struct commit_list *j;
 	int fd;
@@ -327,7 +326,6 @@ static void squash_message(void)
 	rev.ignore_merges = 1;
 	rev.commit_format = CMIT_FMT_MEDIUM;
 
-	commit = lookup_commit(head);
 	commit->object.flags |= UNINTERESTING;
 	add_pending_object(&rev, &commit->object, NULL);
 
@@ -356,9 +354,11 @@ static void squash_message(void)
 	strbuf_release(&out);
 }
 
-static void finish(const unsigned char *new_head, const char *msg)
+static void finish(struct commit *head_commit,
+		   const unsigned char *new_head, const char *msg)
 {
 	struct strbuf reflog_message = STRBUF_INIT;
+	const unsigned char *head = head_commit->object.sha1;
 
 	if (!msg)
 		strbuf_addstr(&reflog_message, getenv("GIT_REFLOG_ACTION"));
@@ -369,7 +369,7 @@ static void finish(const unsigned char *new_head, const char *msg)
 			getenv("GIT_REFLOG_ACTION"), msg);
 	}
 	if (squash) {
-		squash_message();
+		squash_message(head_commit);
 	} else {
 		if (verbosity >= 0 && !merge_msg.len)
 			printf(_("No merge message -- not updating HEAD\n"));
@@ -664,7 +664,7 @@ int try_merge_command(const char *strategy, size_t xopts_nr,
 }
 
 static int try_merge_strategy(const char *strategy, struct commit_list *common,
-			      const char *head_arg)
+			      struct commit *head, const char *head_arg)
 {
 	int index_fd;
 	struct lock_file *lock = xcalloc(1, sizeof(struct lock_file));
@@ -710,7 +710,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 			commit_list_insert(j->item, &reversed);
 
 		index_fd = hold_locked_index(lock, 1);
-		clean = merge_recursive(&o, lookup_commit(head),
+		clean = merge_recursive(&o, head,
 				remoteheads->item, reversed, &result);
 		if (active_cache_changed &&
 				(write_cache(index_fd, active_cache, active_nr) ||
@@ -861,25 +861,26 @@ static void run_prepare_commit_msg(void)
 	read_merge_msg();
 }
 
-static int merge_trivial(void)
+static int merge_trivial(struct commit *head)
 {
 	unsigned char result_tree[20], result_commit[20];
 	struct commit_list *parent = xmalloc(sizeof(*parent));
 
 	write_tree_trivial(result_tree);
 	printf(_("Wonderful.\n"));
-	parent->item = lookup_commit(head);
+	parent->item = head;
 	parent->next = xmalloc(sizeof(*parent->next));
 	parent->next->item = remoteheads->item;
 	parent->next->next = NULL;
 	run_prepare_commit_msg();
 	commit_tree(merge_msg.buf, result_tree, parent, result_commit, NULL);
-	finish(result_commit, "In-index merge");
+	finish(head, result_commit, "In-index merge");
 	drop_save();
 	return 0;
 }
 
-static int finish_automerge(struct commit_list *common,
+static int finish_automerge(struct commit *head,
+			    struct commit_list *common,
 			    unsigned char *result_tree,
 			    const char *wt_strategy)
 {
@@ -890,12 +891,12 @@ static int finish_automerge(struct commit_list *common,
 	free_commit_list(common);
 	if (allow_fast_forward) {
 		parents = remoteheads;
-		commit_list_insert(lookup_commit(head), &parents);
+		commit_list_insert(head, &parents);
 		parents = reduce_heads(parents);
 	} else {
 		struct commit_list **pptr = &parents;
 
-		pptr = &commit_list_insert(lookup_commit(head),
+		pptr = &commit_list_insert(head,
 				pptr)->next;
 		for (j = remoteheads; j; j = j->next)
 			pptr = &commit_list_insert(j->item, pptr)->next;
@@ -905,7 +906,7 @@ static int finish_automerge(struct commit_list *common,
 	run_prepare_commit_msg();
 	commit_tree(merge_msg.buf, result_tree, parents, result_commit, NULL);
 	strbuf_addf(&buf, "Merge made by %s.", wt_strategy);
-	finish(result_commit, buf.buf);
+	finish(head, result_commit, buf.buf);
 	strbuf_release(&buf);
 	drop_save();
 	return 0;
@@ -939,7 +940,8 @@ static int suggest_conflicts(int renormalizing)
 	return 1;
 }
 
-static struct commit *is_old_style_invocation(int argc, const char **argv)
+static struct commit *is_old_style_invocation(int argc, const char **argv,
+					      const unsigned char *head)
 {
 	struct commit *second_token = NULL;
 	if (argc > 2) {
@@ -1012,9 +1014,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
 	unsigned char stash[20];
+	unsigned char head[20];
+	struct commit *head_commit = NULL;
 	struct strbuf buf = STRBUF_INIT;
 	const char *head_arg;
-	int flag, head_invalid = 0, i;
+	int flag, i;
 	int best_cnt = -1, merge_was_ok = 0, automerge_was_ok = 0;
 	struct commit_list *common = NULL;
 	const char *best_strategy = NULL, *wt_strategy = NULL;
@@ -1030,8 +1034,11 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	branch = resolve_ref("HEAD", head, 0, &flag);
 	if (branch && !prefixcmp(branch, "refs/heads/"))
 		branch += 11;
-	if (is_null_sha1(head))
-		head_invalid = 1;
+	if (!is_null_sha1(head)) {
+		head_commit = lookup_commit(head);
+		if (!head_commit)
+			die(_("could not parse HEAD"));
+	}
 
 	git_config(git_merge_config, NULL);
 
@@ -1112,12 +1119,12 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * additional safety measure to check for it.
 	 */
 
-	if (!have_message && is_old_style_invocation(argc, argv)) {
+	if (!have_message && is_old_style_invocation(argc, argv, head)) {
 		strbuf_addstr(&merge_msg, argv[0]);
 		head_arg = argv[1];
 		argv += 2;
 		argc -= 2;
-	} else if (head_invalid) {
+	} else if (!head_commit) {
 		struct object *remote_head;
 		/*
 		 * If the merged head is a valid one there is no reason
@@ -1164,7 +1171,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (head_invalid || !argc)
+	if (!head_commit || !argc)
 		usage_with_options(builtin_merge_usage,
 			builtin_merge_options);
 
@@ -1205,11 +1212,10 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	}
 
 	if (!remoteheads->next)
-		common = get_merge_bases(lookup_commit(head),
-				remoteheads->item, 1);
+		common = get_merge_bases(head_commit, remoteheads->item, 1);
 	else {
 		struct commit_list *list = remoteheads;
-		commit_list_insert(lookup_commit(head), &list);
+		commit_list_insert(head_commit, &list);
 		common = get_octopus_merge_bases(list);
 		free(list);
 	}
@@ -1254,7 +1260,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		if (checkout_fast_forward(head, remoteheads->item->object.sha1))
 			return 1;
 
-		finish(o->sha1, msg.buf);
+		finish(head_commit, o->sha1, msg.buf);
 		drop_save();
 		return 0;
 	} else if (!remoteheads->next && common->next)
@@ -1275,7 +1281,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			printf(_("Trying really trivial in-index merge...\n"));
 			if (!read_tree_trivial(common->item->object.sha1,
 					head, remoteheads->item->object.sha1))
-				return merge_trivial();
+				return merge_trivial(head_commit);
 			printf(_("Nope.\n"));
 		}
 	} else {
@@ -1294,8 +1300,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			 * merge_bases again, otherwise "git merge HEAD^
 			 * HEAD^^" would be missed.
 			 */
-			common_one = get_merge_bases(lookup_commit(head),
-				j->item, 1);
+			common_one = get_merge_bases(head_commit, j->item, 1);
 			if (hashcmp(common_one->item->object.sha1,
 				j->item->object.sha1)) {
 				up_to_date = 0;
@@ -1333,7 +1338,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		int ret;
 		if (i) {
 			printf(_("Rewinding the tree to pristine...\n"));
-			restore_state(stash);
+			restore_state(head, stash);
 		}
 		if (use_strategies_nr != 1)
 			printf(_("Trying merge strategy %s...\n"),
@@ -1345,7 +1350,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		wt_strategy = use_strategies[i]->name;
 
 		ret = try_merge_strategy(use_strategies[i]->name,
-			common, head_arg);
+					 common, head_commit, head_arg);
 		if (!option_commit && !ret) {
 			merge_was_ok = 1;
 			/*
@@ -1387,14 +1392,15 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * auto resolved the merge cleanly.
 	 */
 	if (automerge_was_ok)
-		return finish_automerge(common, result_tree, wt_strategy);
+		return finish_automerge(head_commit, common, result_tree,
+					wt_strategy);
 
 	/*
 	 * Pick the result from the best strategy and have the user fix
 	 * it up.
 	 */
 	if (!best_strategy) {
-		restore_state(stash);
+		restore_state(head, stash);
 		if (use_strategies_nr > 1)
 			fprintf(stderr,
 				_("No merge strategy handled the merge.\n"));
@@ -1406,14 +1412,14 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		; /* We already have its result in the working tree. */
 	else {
 		printf(_("Rewinding the tree to pristine...\n"));
-		restore_state(stash);
+		restore_state(head, stash);
 		printf(_("Using the %s to prepare resolving by hand.\n"),
 			best_strategy);
-		try_merge_strategy(best_strategy, common, head_arg);
+		try_merge_strategy(best_strategy, common, head_commit, head_arg);
 	}
 
 	if (squash)
-		finish(NULL, NULL);
+		finish(head_commit, NULL, NULL);
 	else {
 		int fd;
 		struct commit_list *j;
