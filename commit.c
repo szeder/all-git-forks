@@ -39,6 +39,25 @@ struct commit *lookup_commit_reference(const unsigned char *sha1)
 	return lookup_commit_reference_gently(sha1, 0);
 }
 
+/*
+ * Look sha1 up for a commit, defer if needed. If deference occurs,
+ * update "sha1" for consistency with retval->object.sha1. Also warn
+ * users this case because it is expected that sha1 points directly to
+ * a commit.
+ */
+struct commit *lookup_commit_or_die(unsigned char *sha1, const char *ref_name)
+{
+	struct commit *c = lookup_commit_reference(sha1);
+	if (!c)
+		die(_("could not parse %s"), ref_name);
+	if (hashcmp(sha1, c->object.sha1)) {
+		warning(_("%s %s is not a commit!"),
+			ref_name, sha1_to_hex(sha1));
+		hashcpy(sha1, c->object.sha1);
+	}
+	return c;
+}
+
 struct commit *lookup_commit(const unsigned char *sha1)
 {
 	struct object *obj = lookup_object(sha1);
