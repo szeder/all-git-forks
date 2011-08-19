@@ -224,6 +224,11 @@ static int option_parse_recurse_submodules(const struct option *opt,
 				   const char *arg, int unset)
 {
 	int *flags = opt->value;
+
+	if (*flags & (TRANSPORT_RECURSE_SUBMODULES_CHECK |
+		      TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND))
+		die("%s can only be used once.", opt->long_name);
+
 	if (arg) {
 		if (!strcmp(arg, "check")) {
 			*flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
@@ -233,9 +238,6 @@ static int option_parse_recurse_submodules(const struct option *opt,
 			die("bad %s argument: %s", opt->long_name, arg);
 	}
 
-	if (*flags & (TRANSPORT_RECURSE_SUBMODULES_CHECK) &&
-		(*flags & TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND))
-		die("check and on-demand cannot be used at the same time");
 	return 0;
 }
 
