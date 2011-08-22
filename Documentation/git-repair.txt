@@ -25,7 +25,7 @@ The commit is either missing or locally corrupt.
 
 grey::
 +
-The commit is black, but its tree is not fully traversable.
+The commit is not black, but its tree is not fully traversable.
 
 red::
 +
@@ -45,7 +45,6 @@ white::
 +
 The analysis for the commit is still pending.
 
-The reference refs/repair/orange can reach all orange commits.
 The reference refs/repair/green can reach all green commits.
 The reference refs/repair/red can reach all red commits.
 
@@ -58,7 +57,10 @@ There is one entry in .git/info/grafts for each commit that is grey, black or re
 
 ALGORITHM
 ---------
-1. A specified set of commits are marked white.
+1. clear refs/repair/green, refs/repair/red
+2. run git fsck
+3. create empty replacement commits for each missing commit
+4. 
 +
 2. For each of the white commits, enumerate the boundary commits using git rev-list --boundary.
 +
