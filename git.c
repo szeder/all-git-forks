@@ -194,6 +194,9 @@ static int handle_alias(int *argcp, const char ***argv)
 	alias_command = (*argv)[0];
 	alias_string = alias_lookup(alias_command);
 	if (alias_string) {
+		if (use_pager == -1)
+			use_pager = check_pager_config(alias_command);
+
 		if (alias_string[0] == '!') {
 			const char **alias_argv;
 			int argc = *argcp, i;
@@ -473,6 +476,8 @@ static void execv_dashed_external(const char **argv)
 	const char *tmp;
 	int status;
 
+	if (use_pager == -1)
+		use_pager = check_pager_config(argv[0]);
 	commit_pager_choice();
 
 	strbuf_addf(&cmd, "git-%s", argv[0]);

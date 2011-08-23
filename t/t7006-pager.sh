@@ -450,4 +450,71 @@ test_expect_success TTY 'command-specific pager overridden by environment' '
 	test_cmp expect actual
 '
 
+test_expect_success 'setup external command' '
+	cat >git-external <<-\EOF &&
+	#!/bin/sh
+	git "$@"
+	EOF
+	chmod +x git-external
+'
+
+test_expect_success TTY 'command-specific pager works for external commands' '
+	sane_unset PAGER GIT_PAGER &&
+	echo "foo:initial" >expect &&
+	>actual &&
+	test_config pager.external "sed s/^/foo:/ >actual" &&
+	test_terminal git --exec-path="`pwd`" external log --format=%s -1 &&
+	test_cmp expect actual
+'
+
+test_expect_success TTY 'sub-commands of externals use their own pager' '
+	sane_unset PAGER GIT_PAGER &&
+	echo "foo:initial" >expect &&
+	>actual &&
+	test_config pager.log "sed s/^/foo:/ >actual" &&
+	test_terminal git --exec-path=. external log --format=%s -1 &&
+	test_cmp expect actual
+'
+
+test_expect_success TTY 'external command pagers override sub-commands' '
+	sane_unset PAGER GIT_PAGER &&
+	>expect &&
+	>actual &&
+	test_config pager.external false &&
+	test_config pager.log "sed s/^/log:/ >actual" &&
+	test_terminal git --exec-path=. external log --format=%s -1 &&
+	test_cmp expect actual
+'
+
+test_expect_success TTY 'command-specific pager works for aliases' '
+	sane_unset PAGER GIT_PAGER &&
+	echo "foo:initial" >expect &&
+	>actual &&
+	test_config alias.aliaslog "log --format=%s" &&
+	test_config pager.aliaslog "sed s/^/foo:/ >actual" &&
+	test_terminal git aliaslog -1 &&
+	test_cmp expect actual
+'
+
+test_expect_success TTY 'non-shell alias falls back to command pager config' '
+	sane_unset PAGER GIT_PAGER &&
+	echo "foo:initial" >expect &&
+	>actual &&
+	test_config alias.aliaslog "log --format=%s" &&
+	test_config pager.log "sed s/^/foo:/ >actual" &&
+	test_terminal git aliaslog -1 &&
+	test_cmp expect actual
+'
+
+test_expect_success TTY 'alias-specific pager can override aliased command' '
+	sane_unset PAGER GIT_PAGER &&
+	>expect &&
+	>actual &&
+	test_config alias.aliaslog "log --format=%s" &&
+	test_config pager.log "sed s/^/log:/ >actual" &&
+	test_config pager.aliaslog false &&
+	test_terminal git aliaslog -1 &&
+	test_cmp expect actual
+'
+
 test_done
