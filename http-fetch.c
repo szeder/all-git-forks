@@ -56,6 +56,9 @@ int main(int argc, const char **argv)
 		commits = 1;
 	}
 
+	if (get_all == 0)
+	  warning("http-fetch: use without -a is deprecated; -a will become the default in a future release");
+
 	if (argv[arg])
 		str_end_url_with_slash(argv[arg], &url);
 
