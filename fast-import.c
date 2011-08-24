@@ -355,7 +355,7 @@ static unsigned int cmd_save = 100;
 static uintmax_t next_mark;
 static struct strbuf new_data = STRBUF_INIT;
 static int seen_data_command;
-static int require_explicit_termination;
+static int require_explicit_termination = 0;
 
 /* Signal handling */
 static volatile sig_atomic_t checkpoint_requested;
