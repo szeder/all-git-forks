@@ -16,10 +16,12 @@ my $slash_replacement = "%2F";
 
 my $remotename = $ARGV[0];
 my $url = $ARGV[1];
+
 # Accept both space-separated and multiple keys in config file.
 # Spaces should be written as _ anyway because we'll use chomp.
 my @pages_titles = split(/[ \n]/, run_git("config --get-all remote.". $remotename .".pages"));
 chomp(@pages_titles);
+
 my $wiki_login = run_git("config --get remote.". $remotename .".mwLogin");
 # TODO: ideally, this should be able to read from keyboard, but we're
 # inside a remote helper, so our stdin is connect to git, not to a
@@ -27,6 +29,7 @@ my $wiki_login = run_git("config --get remote.". $remotename .".mwLogin");
 my $wiki_passwd = run_git("config --get remote.". $remotename .".mwPassword");
 chomp ($wiki_login);
 chomp ($wiki_passwd);
+
 my $wiki_name = $url;
 $wiki_name =~ s/[^\/]*:\/\///;
 
