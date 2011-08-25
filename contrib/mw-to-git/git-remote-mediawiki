@@ -4,6 +4,10 @@ use strict;
 use MediaWiki::API;
 use DateTime::Format::ISO8601;
 use encoding 'utf8';
+
+# DEBUG
+use Data::Dumper;
+
 # use encoding 'utf8' doesn't change STDERROR
 # but we're going to output UTF-8 filenames to STDERR
 binmode STDERR, ":utf8";
@@ -19,8 +23,11 @@ my $url = $ARGV[1];
 
 # Accept both space-separated and multiple keys in config file.
 # Spaces should be written as _ anyway because we'll use chomp.
-my @pages_titles = split(/[ \n]/, run_git("config --get-all remote.". $remotename .".pages"));
-chomp(@pages_titles);
+my @tracked_pages = split(/[ \n]/, run_git("config --get-all remote.". $remotename .".pages"));
+chomp(@tracked_pages);
+
+my @tracked_categories = split(/[ \n]/, run_git("config --get-all remote.". $remotename .".categories"));
+chomp(@tracked_categories);
 
 my $wiki_login = run_git("config --get remote.". $remotename .".mwLogin");
 # TODO: ideally, this should be able to read from keyboard, but we're
@@ -86,13 +93,13 @@ sub mw_connect_maybe {
 			lgname => $wiki_login,
 			lgpassword => $wiki_passwd,
 		})) {
-			print STDERR "Failed to log in mediawiki user $wiki_login on $url\n";
+			print STDERR "Failed to log in mediawiki user \"$wiki_login\" on $url\n";
 			print STDERR "(error " .
 			    $mediawiki->{error}->{code} . ': ' .
 			    $mediawiki->{error}->{details} . ")\n";
 			exit 1;
 		} else {
-			print STDERR "Logged in with user $wiki_login and password.\n";
+			print STDERR "Logged in with user \"$wiki_login\".\n";
 		}
 	}
 }
@@ -100,8 +107,61 @@ sub mw_connect_maybe {
 sub get_pages {
 	mw_connect_maybe();
 
-	my $pages;
-	if (!@pages_titles){
+	my $pages; # array reference
+	if (@tracked_pages) {
+		# The user provided a list of pages titles, but we
+		# still need to query the API to get the page IDs.
+
+		# TODO: Also, according to the mediawiki API, we can
+		# TODO: send only 51 titles at a time. So we need to
+		# TODO: break this into pieces.
+
+		# the list of titles should follow the pattern 'page1|page2|...'
+		my $titles = join('|', @tracked_pages);
+
+		my $mw_pages = $mediawiki->api({
+			action => 'query',
+			titles => $titles,
+		});
+		if (!defined($mw_pages)) {
+			print STDERR "fatal: could not query the list of wiki pages.\n";
+			print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
+			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
+			exit 1;
+		}
+		while (my ($id, $page) = each (%{$mw_pages->{query}->{pages}})) {
+			if ($id < 0) {
+				print STDERR "Warning: page $page->{title} not found on wiki\n";
+			} else {
+				push(@$pages, $page);
+			}
+		}
+	}
+	if (@tracked_categories) {
+		if (!$pages) {
+			my @empty = ();
+			$pages = [];
+			my @foo = ("one", "two");
+			print STDERR "pages=",Dumper($pages),".\n";
+		}
+		foreach my $category (@tracked_categories) {
+			if (index($category, ':') < 0) {
+				$category = "Category:" . $category;
+			}
+			print STDERR $category ."\n";
+			my $mw_pages = $mediawiki->list ( {
+				action => 'query',
+				list => 'categorymembers',
+				cmtitle => $category,
+				cmlimit => 'max' } )
+			    || die $mediawiki->{error}->{code} . ': ' . $mediawiki->{error}->{details};
+			print STDERR "mw = ", Dumper(@{$mw_pages});
+			print STDERR "before = ",Dumper($pages);
+			@$pages = (@$pages, @{$mw_pages});
+			print STDERR "after=",Dumper(@$pages);
+		}
+	}
+	if (!$pages) {
 		# No user-provided list, get the list of pages from
 		# the API.
 		$pages = $mediawiki->list({
@@ -115,30 +175,8 @@ sub get_pages {
 			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
 			exit 1;
 		}
-		return @$pages;
-	} else {
-		# The user provided a list of pages titles, but we
-		# still need to query the API to get the page IDs.
-
-		# TODO: Also, according to the mediawiki API, we can
-		# TODO: send only 51 titles at a time. So we need to
-		# TODO: break this into pieces.
-
-		# the list of titles should follow the pattern 'page1|page2|...'
-		my $titles = join('|', @pages_titles);
-
-		$pages = $mediawiki->api({
-			action => 'query',
-			titles => $titles,
-		});
-		if (!defined($pages)) {
-			print STDERR "fatal: could not query the list of wiki pages.\n";
-			print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
-			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
-			exit 1;
-		}
-		return values (%{$pages->{query}->{pages}});
 	}
+	return @$pages;
 }
 
 sub run_git {
@@ -257,9 +295,9 @@ sub mw_import {
 	print STDERR "Searching revisions...\n";
 	my $fetch_from = get_last_local_revision() + 1;
 	if ($fetch_from == 1) {
-		print STDERR ", fetching from beginning\n";
+		print STDERR ", fetching from beginning.\n";
 	} else {
-		print STDERR ", fetching from here\n";
+		print STDERR ", fetching from here.\n";
 	}
 	my $n = 1;
 	foreach my $page (@pages) {
