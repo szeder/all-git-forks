@@ -1,9 +1,10 @@
 #!/bin/sh
 
 Meta/topics -u |
+while read ref upstream; do
+	echo $ref ${upstream:-origin}
+done |
 while read i upstream; do
-	upstream=${upstream:-origin}
-
 	case "$i" in
 	*/maint-*)
 		echo "===> Skipping $i (maint)"
