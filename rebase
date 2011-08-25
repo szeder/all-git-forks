@@ -1,7 +1,7 @@
 #!/bin/sh
 
-for i in `Meta/topics`; do
-	upstream=`git for-each-ref --format='%(upstream)' refs/heads/$i`
+Meta/topics -u |
+while read i upstream; do
 	upstream=${upstream:-origin}
 
 	case "$i" in

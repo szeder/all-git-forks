@@ -2,11 +2,12 @@
 
 format='%(refname:short)'
 sortby=refname
-set -- $(getopt vt "$@")
+set -- $(getopt vtu "$@")
 while test $# -gt 0; do
 	case "$1" in
 	-v) format='%(refname:short) %(subject)' ;;
 	-t) sortby=-authordate ;;
+	-u) format='%(refname:short) %(upstream:short)' ;;
 	--) break ;;
 	 *) echo >&2 "unknown option: $1"; exit 100 ;;
 	esac
