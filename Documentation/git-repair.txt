@@ -9,13 +9,30 @@ git-repair - salvage a damaged repository.
 SYNOPSIS
 --------
 [verse]
-'git repair start' <commit> ...
+'git repair color' <commit> [<color> ...]
+'git repair reset'
+'git repair grafts' <rev-list-arg>...
 
 DESCRIPTION
 -----------
+'git repair' provides tools to assist with the salvaging of damaged git repositories.
 
-COLORING ALGORITHM
-------------------
+SUBCOMMANDS
+-----------
+color <commit>::
++
+Given a commit, answer the color of the commit. Or, if a color is specified, verify that the commit satisfies the invariant of the specified color or exit with a non-zero exit code otherwise.
+
+reset::
++
+Reset salvaging state.
+
+grafts <rev-list-arg>...::
++
+Outputs the minimal set of grafts required to make the generated revision list fully traversable in the sense of git pack-objects.
+
+COLORING INVARIANTS
+-------------------
 
 Commits are colored as follows.
 
@@ -39,37 +56,52 @@ either red or orange.
 green::
 +
 The commit is neither black, grey, red or orange, its tree is fully traversable and all its parents, if any, are
-also green.	
+also green.
 
 white::
 +
 The analysis for the commit is still pending.
 
-The reference refs/repair/green can reach all green commits.
-The reference refs/repair/red can reach all red commits.
+REWRITING RULES
+---------------
+All black commits are replaced with a commit referencing the empty tree with the message:
+...............
+replacement for missing commit: <sha1>
+...............
 
-There is one reference of the form refs/repair/black-<sha1> or refs/repair/grey-<sha1> for each commit
-that is marked grey or black.
+All grey commits are replaced with a commit referencing the empty tree with the message:
+..............
+replacement for damaged commit: <sha1>
 
-There is one reference of the form refs/replace/<sha1> for each commit that is either grey or black or red.
-
-There is one entry in .git/info/grafts for each commit that is grey, black or red.
+<original message>
+..............
+A graft is created for each grey or red commit that references a black or grey commit.  Each parent in the graft is the original parent, if that parent is orange, red or green. Otherwise, that commit is replaced by a reference to the replacement commit.
 
 ALGORITHM
 ---------
-1. clear refs/repair/green, refs/repair/red
-2. run git fsck
-3. create empty replacement commits for each missing commit
-4. 
-+
-2. For each of the white commits, enumerate the boundary commits using git rev-list --boundary.
-+
-For each boundary:
-+
-* if the boundary does not exist, mark the boundary black. break.
-* if the boundary exists, but the tree is not fully reachable, mark the boundary grey. break.
-* check if the boundary is green and if so, merge the boundary into refs/repair/green. break.
-3. 
+..............
+while git rev-list <args...> fails
+	if there is a message of the form ... <commit>, then classify <commit>
+
+while ! git rev-list --objects <args...> --not $LIMITS | git pack-objects --stdout >/dev/null
+do
+	#
+	#
+	#
+	git rev-list --reverse <args...> --not $LIMITS | while read commit
+	do
+		classify <commit>
+		if <commit> is green, then break;
+	done
+
+	discover new limit
+	classify <limit>
+	append <limit> to LIMIT
+done
+
+git rev-list <args...> --not $LIMITS | egrep "^(${grafts})\$"
+..............
+
 
 SEE ALSO
 --------
