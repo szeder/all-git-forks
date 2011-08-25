@@ -6,7 +6,7 @@ use DateTime::Format::ISO8601;
 use encoding 'utf8';
 # use encoding 'utf8' doesn't change STDERROR
 # but we're going to output UTF-8 filenames to STDERR
-binmode STDERR, ":utf8"; 
+binmode STDERR, ":utf8";
 
 use URI::Escape;
 use warnings;
@@ -15,12 +15,20 @@ use warnings;
 my $slash_replacement = "%2F";
 
 my $remotename = $ARGV[0];
-# Current syntax to fetch only a set of pages mediawiki::http://mediawikiurl##A_Page##Another_Page
-my @pages_titles = split(/##/,$ARGV[1]);
-my $url = shift (@pages_titles);
-my @wiki_name = split(/:\/\//,$url);
-my $wiki_name = $wiki_name[1];
-
+my $url = $ARGV[1];
+# Accept both space-separated and multiple keys in config file.
+# Spaces should be written as _ anyway because we'll use chomp.
+my @pages_titles = split(/[ \n]/, run_git("config --get-all remote.". $remotename .".pages"));
+chomp(@pages_titles);
+my $wiki_login = run_git("config --get remote.". $remotename .".mwLogin");
+# TODO: ideally, this should be able to read from keyboard, but we're
+# inside a remote helper, so our stdin is connect to git, not to a
+# terminal.
+my $wiki_passwd = run_git("config --get remote.". $remotename .".mwPassword");
+chomp ($wiki_login);
+chomp ($wiki_passwd);
+my $wiki_name = $url;
+$wiki_name =~ s/[^\/]*:\/\///;
 
 # Commands parser
 my $entry;
@@ -60,38 +68,70 @@ while (1) {
 }
 
 ########################## Functions ##############################
-sub get_pages {
-	my $mediawiki = MediaWiki::API->new;
+
+# MediaWiki API instance, created lazily.
+my $mediawiki;
+
+sub mw_connect_maybe {
+	if ($mediawiki) {
+	    return;
+	}
+	$mediawiki = MediaWiki::API->new;
 	$mediawiki->{config}->{api_url} = "$url/api.php";
+	if ($wiki_login) {
+		if (!$mediawiki->login({
+			lgname => $wiki_login,
+			lgpassword => $wiki_passwd,
+		})) {
+			print STDERR "Failed to log in mediawiki user $wiki_login on $url\n";
+			print STDERR "(error " .
+			    $mediawiki->{error}->{code} . ': ' .
+			    $mediawiki->{error}->{details} . ")\n";
+			exit 1;
+		} else {
+			print STDERR "Logged in with user $wiki_login and password.\n";
+		}
+	}
+}
+
+sub get_pages {
+	mw_connect_maybe();
 
 	my $pages;
 	if (!@pages_titles){
+		# No user-provided list, get the list of pages from
+		# the API.
 		$pages = $mediawiki->list({
 			action => 'query',
 			list => 'allpages',
 			aplimit => 500,
 		});
 		if (!defined($pages)) {
+			print STDERR "fatal: could not get the list of wiki pages.\n";
 			print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
-			print STDERR "fatal: make sure '$url/api.php' is a valid page\n";
+			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
 			exit 1;
 		}
 		return @$pages;
 	} else {
+		# The user provided a list of pages titles, but we
+		# still need to query the API to get the page IDs.
+
+		# TODO: Also, according to the mediawiki API, we can
+		# TODO: send only 51 titles at a time. So we need to
+		# TODO: break this into pieces.
+
 		# the list of titles should follow the pattern 'page1|page2|...'
-		my $titles = "";
-		foreach my $title (@pages_titles){
-			$titles .= "$title|";
-		}
-		# supress the last | that is add in the foreach
-		chop($titles);
+		my $titles = join('|', @pages_titles);
 
 		$pages = $mediawiki->api({
 			action => 'query',
 			titles => $titles,
 		});
 		if (!defined($pages)) {
-			print STDERR "fatal: None of the pages exist \n";
+			print STDERR "fatal: could not query the list of wiki pages.\n";
+			print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
+			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
 			exit 1;
 		}
 		return values (%{$pages->{query}->{pages}});
@@ -120,14 +160,13 @@ sub get_last_local_revision {
 		# Notes are formatted : mediawiki_revision: #number
 		$lastrevision_number = $note_info[1];
 		chomp($lastrevision_number);
-		print STDERR "Last local mediawiki revision found is $lastrevision_number.\n";
+		print STDERR "Last local mediawiki revision found is $lastrevision_number";
 	}
 	return $lastrevision_number;
 }
 
 sub get_last_remote_revision {
-	my $mediawiki = MediaWiki::API->new;
-	$mediawiki->{config}->{api_url} = "$url/api.php";
+	mw_connect_maybe();
 
 	my @pages = get_pages();
 
@@ -154,11 +193,16 @@ sub get_last_remote_revision {
 	return $max_rev_num;
 }
 
-sub mediawiki_filter($) {
+sub mediawiki_filter {
+	my $string = shift;
+	my $page_created = shift;
 	# Mediawiki does not allow blank space at the end of a page and ends with a single \n.
 	# This function right trims a string and adds a \n at the end to follow this rule
-	my $string = shift;
 	$string =~ s/\s+$//;
+	if ($string eq "" && $page_created) {
+		# Creating empty pages is forbidden.
+		$string = "<!-- empty page -->";
+	}
 	return $string."\n";
 }
 
@@ -193,7 +237,7 @@ sub mw_option {
 
 sub mw_import {
 	my $ref = shift;
-	# the remote helper will call "import HEAD" and 
+	# the remote helper will call "import HEAD" and
 	# "import refs/heads/master"
 	# Since HEAD is a symbolic ref to master (by convention,
 	# followed by the output of the command "list" that we gave),
@@ -202,8 +246,7 @@ sub mw_import {
 		return;
 	}
 
-	my $mediawiki = MediaWiki::API->new;
-	$mediawiki->{config}->{api_url} = "$url/api.php";
+	mw_connect_maybe();
 
 	my @pages = get_pages();
 
@@ -350,7 +393,9 @@ sub mw_push {
 		# $_[1] contains the title of the commit message (the only phrase kept in the revision message)
 		my @blob_info_split = split(/ |\t|\0/, $_[0]);
 
-		my $sha1 = $blob_info_split[3];
+		my $new_sha1 = $blob_info_split[3];
+		my $old_sha1 = $blob_info_split[2];
+		my $page_created = ($old_sha1 eq "0000000000000000000000000000000000000000");
 		my $complete_file_name = $blob_info_split[5];
 		# complete_file_name = uri_unescape($complete_file_name); # If we use the uri escape before
 		# we should unescape here, before anything
@@ -359,50 +404,56 @@ sub mw_push {
 			my $title = substr($complete_file_name,0,-3);
 			$title =~ s/$slash_replacement/\//g;
 
-			my $file_content = run_git("cat-file -p $sha1");
+			my $file_content = run_git("cat-file -p $new_sha1");
 
-			my $mw = MediaWiki::API->new();
-			$mw->{config}->{api_url} = "$url/api.php";
+			mw_connect_maybe();
 
-			# log in to the wiki : here should be added a way to push changes with an identity
-			# $mw->login( { lgname => 'login', lgpassword => 'passwd' })
-			# || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-
-			$mw->edit( {
+			$mediawiki->edit( {
 				action => 'edit',
 				summary => $_[1],
 				title => $title,
-				text => mediawiki_filter($file_content),
+				text => mediawiki_filter($file_content, $page_created),
 			}, {
 				skip_encoding => 1 # Helps with names with accentuated characters
-			}) || die 'Fatal: Error ' . $mw->{error}->{code} . ' from mediwiki: ' . $mw->{error}->{details};
+			}) || die 'Fatal: Error ' .
+				$mediawiki->{error}->{code} .
+				' from mediwiki: ' . $mediawiki->{error}->{details};
 
-			print STDERR "Pushed file : $sha1 - $title\n";
+			print STDERR "Pushed file : $new_sha1 - $title\n";
 		} else {
 			print STDERR "$complete_file_name not a mediawiki file. '(Not pushable on this version)\n"
 		}
 	}
 
 	my $last_local_revid = get_last_local_revision();
+	print STDERR ".\n"; # Finish sentence started by get_last_local_revision()
 	my $last_remote_revid = get_last_remote_revision();
 
 	# Get sha1 of commit pointed by local HEAD
 	my $HEAD_sha1 = run_git("rev-parse $_[0] 2>/dev/null"); chomp($HEAD_sha1);
 	# Get sha1 of commit pointed by remotes/origin/master
-	my $remoteorigin_sha1 = run_git("rev-parse refs/remotes/origin/master 2>/dev/null"); chomp($remoteorigin_sha1);
+	my $remoteorigin_sha1 = run_git("rev-parse refs/remotes/origin/master 2>/dev/null");
+	chomp($remoteorigin_sha1);
 
 	if ($last_local_revid < $last_remote_revid){
-		my $message = "\"To prevent you from losing history, non-fast-forward updates were rejected\\n";
-		$message .= "Merge the remote changes (e.g. 'git pull') before pushing again. See the\\n";
-		$message .= " 'Note about fast-forwards' section of 'git push --help' for details.\"";
-		print STDOUT "error $_[0] $message\n";
+		# Native git-push would show this after the summary.
+		# We can't ask it to display it cleanly, so print it
+		# ourselves before.
+		print STDERR "To prevent you from losing history, non-fast-forward updates were rejected\n";
+		print STDERR "Merge the remote changes (e.g. 'git pull') before pushing again. See the\n";
+		print STDERR "'Note about fast-forwards' section of 'git push --help' for details.\n";
+
+		print STDOUT "error $_[0] \"non-fast-forward\"\n";
 		print STDOUT "\n";
 	} elsif ($HEAD_sha1 ne $remoteorigin_sha1) {
 		# Get every commit in between HEAD and refs/remotes/origin/master,
 		# including HEAD and refs/remotes/origin/master
 		my $parsed_sha1 = $remoteorigin_sha1;
 		while ($parsed_sha1 ne $HEAD_sha1) {
-			my @commit_info =  grep(/^$parsed_sha1/, `git rev-list --children $_[0]`);
+			my @commit_info =  grep(/^$parsed_sha1/, split(/\n/, run_git("rev-list --children $_[0]")));
+			if (!@commit_info) {
+				die("Could not find $parsed_sha1 in history of $_[0]");
+			}
 			my @commit_info_split = split(/ |\n/, $commit_info[0]);
 			# $commit_info_split[0] is the sha1 of the commit itself
 			# $commit_info_split[1] is the sha1 of its direct child
@@ -421,7 +472,7 @@ sub mw_push {
 		print STDOUT "ok $_[1]\n";
 		print STDOUT "\n";
 
-		print STDERR "Just pushed some revisions to MediaWiki\n";
+		print STDERR "Just pushed some revisions to MediaWiki.\n";
 		print STDERR "The pushed revisions now have to be re-imported, and your current branch\n";
 		print STDERR "needs to be updated with these re-imported commits. You can do this with\n";
 		print STDERR "\n";
