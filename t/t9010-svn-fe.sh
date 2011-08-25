@@ -413,7 +413,7 @@ test_expect_success PIPE 'action: add node without text' '
 	try_dump textless.dump must_fail
 '
 
-test_expect_failure PIPE 'change file mode but keep old content' '
+test_expect_success PIPE 'change file mode but keep old content' '
 	reinit_git &&
 	cat >expect <<-\EOF &&
 	OBJID

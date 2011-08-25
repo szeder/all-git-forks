@@ -209,7 +209,11 @@ static long apply_delta(off_t len, struct line_buffer *input,
 		preimage.max_off += strlen("link ");
 		check_preimage_overflow(preimage.max_off, 1);
 	}
-	if (svndiff0_apply(input, len, &preimage, out))
+
+	if (!input) {
+		if (svndiff0_identity(&preimage, out))
+			die("cannot cat blob");
+	} else if (svndiff0_apply(input, len, &preimage, out))
 		die("cannot apply delta");
 	if (old_data) {
 		/* Read the remainder of preimage and trailing newline. */

@@ -285,7 +285,21 @@ static void handle_node(void)
 		/* For the fast_export_* functions, NULL means empty. */
 		old_data = NULL;
 	if (!have_text) {
-		fast_export_modify(node_ctx.dst.buf, node_ctx.type, old_data);
+		/*
+		 * This is clean content copy in svn, but we alter the content
+		 * of symlinks (add/remove "link " prefix used by svn). So when
+		 * mode changes from/to symlink specify (recreate) data inline.
+		 */
+		if (node_ctx.type != old_mode && (old_mode == REPO_MODE_LNK
+					|| node_ctx.type == REPO_MODE_LNK)) {
+
+			fast_export_modify(node_ctx.dst.buf,
+						node_ctx.type, "inline");
+			fast_export_blob_delta(node_ctx.type, old_mode,
+						old_data, 0, NULL);
+		} else
+			fast_export_modify(node_ctx.dst.buf,
+						node_ctx.type, old_data);
 		return;
 	}
 	if (!node_ctx.text_delta) {

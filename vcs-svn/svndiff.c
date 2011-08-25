@@ -306,3 +306,20 @@ int svndiff0_apply(struct line_buffer *delta, off_t delta_len,
 	}
 	return 0;
 }
+int svndiff0_identity(struct sliding_view *preimage, FILE *postimage)
+{
+	assert(preimage && postimage);
+	off_t pre_off = 0;
+
+	while (pre_off != preimage->max_off) {
+		size_t pre_len = 8192;
+		if (pre_off + pre_len > preimage->max_off)
+			pre_len = preimage->max_off - pre_off;
+		if (move_window(preimage, pre_off, pre_len) ||
+			write_strbuf(&preimage->buf, postimage))
+			return -1;
+		pre_off += pre_len;
+	}
+
+	return 0;
+}
