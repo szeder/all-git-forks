@@ -1,9 +1,37 @@
 #!/bin/sh
 
+tsort() {
+	perl -alne '
+	BEGIN {
+		my %visited;
+		sub visit {
+			my $n = shift;
+			return () unless defined $edges{$n};
+			return () if $visited{$n}++;
+			return (visit($edges{$n}), $n);
+		}
+		sub tsort {
+			return map { visit($_) }
+			grep { !$incoming{$_} }
+			@_;
+		}
+	}
+
+	push @nodes, $F[0];
+	$edges{$F[0]} = $F[1];
+	$incoming{$F[1]}++;
+
+	END {
+		print "$_ $edges{$_}" for tsort(@nodes);
+	}
+	'
+}
+
 Meta/topics -u |
 while read ref upstream; do
 	echo $ref ${upstream:-origin}
 done |
+tsort |
 while read i upstream; do
 	case "$i" in
 	*/maint-*)
