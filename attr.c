@@ -294,6 +294,24 @@ static void free_attr_elem(struct attr_stack *e)
 
 static const char *builtin_attr[] = {
 	"[attr]binary -diff -text",
+	"*.html diff=html",
+	"*.java diff=java",
+	"*.perl diff=perl",
+	"*.pl diff=perl",
+	"*.php diff=php",
+	"*.py diff=python",
+	"*.rb diff=ruby",
+	"*.bib diff=bibtex",
+	"*.tex diff=tex",
+	"*.c diff=cpp",
+	"*.cc diff=cpp",
+	"*.cxx diff=cpp",
+	"*.h diff=cpp",
+	"*.hpp diff=cpp",
+	"*.cs diff=csharp",
+	"*.f diff=fortran",
+	"*.f[0-9][0-9] diff=fortran",
+	"*.m objc",
 	NULL,
 };
 
