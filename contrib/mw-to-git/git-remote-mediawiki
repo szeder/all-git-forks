@@ -107,8 +107,10 @@ sub mw_connect_maybe {
 sub get_pages {
 	mw_connect_maybe();
 
-	my $pages; # array reference
+	my %pages; # hash on page titles to avoid duplicates
+	my $user_defined;
 	if (@tracked_pages) {
+		$user_defined = 1;
 		# The user provided a list of pages titles, but we
 		# still need to query the API to get the page IDs.
 
@@ -133,50 +135,49 @@ sub get_pages {
 			if ($id < 0) {
 				print STDERR "Warning: page $page->{title} not found on wiki\n";
 			} else {
-				push(@$pages, $page);
+				$pages{$page->{title}} = $page;
 			}
 		}
 	}
 	if (@tracked_categories) {
-		if (!$pages) {
-			my @empty = ();
-			$pages = [];
-			my @foo = ("one", "two");
-			print STDERR "pages=",Dumper($pages),".\n";
-		}
+		$user_defined = 1;
 		foreach my $category (@tracked_categories) {
 			if (index($category, ':') < 0) {
+				# Mediawiki requires the Category
+				# prefix, but let's not force the user
+				# to specify it.
 				$category = "Category:" . $category;
 			}
-			print STDERR $category ."\n";
 			my $mw_pages = $mediawiki->list ( {
 				action => 'query',
 				list => 'categorymembers',
 				cmtitle => $category,
 				cmlimit => 'max' } )
 			    || die $mediawiki->{error}->{code} . ': ' . $mediawiki->{error}->{details};
-			print STDERR "mw = ", Dumper(@{$mw_pages});
-			print STDERR "before = ",Dumper($pages);
-			@$pages = (@$pages, @{$mw_pages});
-			print STDERR "after=",Dumper(@$pages);
+			foreach my $page (@{$mw_pages}) {
+				$pages{$page->{title}} = $page;
+			}
 		}
 	}
-	if (!$pages) {
+	if (!$user_defined) {
 		# No user-provided list, get the list of pages from
 		# the API.
-		$pages = $mediawiki->list({
+		my $mw_pages = $mediawiki->list({
 			action => 'query',
 			list => 'allpages',
 			aplimit => 500,
 		});
-		if (!defined($pages)) {
+		if (!defined($mw_pages)) {
 			print STDERR "fatal: could not get the list of wiki pages.\n";
 			print STDERR "fatal: '$url' does not appear to be a mediawiki\n";
 			print STDERR "fatal: make sure '$url/api.php' is a valid page.\n";
 			exit 1;
 		}
+		foreach my $page (@{$mw_pages}) {
+			$pages{$page->{title}} = $page;
+		}
 	}
-	return @$pages;
+	return values(%pages);
 }
 
 sub run_git {
