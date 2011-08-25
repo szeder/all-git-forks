@@ -47,9 +47,9 @@ OPTIONS
 
 -e <pattern>::
 --exclude=<pattern>::
-	Specify special exceptions to not be cleaned.  Each <pattern> is
-	the same form as in $GIT_DIR/info/excludes and this option can be
-	given multiple times.
+	In addition to those found in .gitignore (per directory) and
+	$GIT_DIR/info/exclude, also consider these patterns to be in the
+	set of the ignore rules in effect.
 
 -x::
 	Don't use the ignore rules.  This allows removing all untracked
