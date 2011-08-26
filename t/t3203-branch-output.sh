@@ -81,6 +81,16 @@ test_expect_success 'git branch -v shows branch summaries' '
 '
 
 cat >expect <<'EOF'
+two
+one
+EOF
+test_expect_success 'git branch -v pattern shows branch summaries' '
+	git branch -v branch* >tmp &&
+	awk "{print \$NF}" <tmp >actual &&
+	test_cmp expect actual
+'
+
+cat >expect <<'EOF'
 * (no branch)
   branch-one
   branch-two
