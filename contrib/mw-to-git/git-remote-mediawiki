@@ -83,7 +83,7 @@ while (<STDIN>) {
 		# blank line: we should terminate
 		last;
 	}
-	
+
 	BEGIN { $| = 1 } # flush STDOUT, to make sure the previous
 			 # command is fully processed.
 }
@@ -402,7 +402,7 @@ sub import_file_revision {
 	my $content = $commit{content};
 	my $author = $commit{author};
 	my $date = $commit{date};
-	
+
 	print STDOUT "commit refs/mediawiki/$remotename/master\n";
 	print STDOUT "mark :$n\n";
 	print STDOUT "committer $author <$author\@$wiki_name> ", $date->epoch, " +0000\n";
@@ -521,7 +521,7 @@ sub error_non_fast_forward {
 	print STDERR "To prevent you from losing history, non-fast-forward updates were rejected\n";
 	print STDERR "Merge the remote changes (e.g. 'git pull') before pushing again. See the\n";
 	print STDERR "'Note about fast-forwards' section of 'git push --help' for details.\n";
-	
+
 	print STDOUT "error $_[0] \"non-fast-forward\"\n";
 	print STDOUT "\n";
 }
