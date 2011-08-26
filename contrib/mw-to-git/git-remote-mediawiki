@@ -40,6 +40,17 @@ my $wiki_passwd = run_git("config --get remote.". $remotename .".mwPassword");
 chomp ($wiki_login);
 chomp ($wiki_passwd);
 
+# Import only last revisions (both for clone and fetch)
+my $shallow_import = run_git("config --get --bool remote.". $remotename .".shallow");
+chomp($shallow_import);
+$shallow_import = ($shallow_import eq "true");
+
+if ($shallow_import) {
+	print STDERR "Shallow import\n";
+} else {
+	print STDERR "Normal import\n";
+}
+
 my $wiki_name = $url;
 $wiki_name =~ s/[^\/]*:\/\///;
 
@@ -120,7 +131,7 @@ sub mw_connect_maybe {
 	}
 }
 
-sub get_pages {
+sub get_mw_pages {
 	mw_connect_maybe();
 
 	my %pages; # hash on page titles to avoid duplicates
@@ -226,7 +237,7 @@ sub get_last_local_revision {
 sub get_last_remote_revision {
 	mw_connect_maybe();
 
-	my @pages = get_pages();
+	my @pages = get_mw_pages();
 
 	my $max_rev_num = 0;
 
@@ -327,6 +338,65 @@ sub mw_option {
 	print STDOUT "unsupported\n";
 }
 
+sub fetch_mw_revisions_for_page {
+	my $page = shift;
+	my $id = shift;
+	my $fetch_from = shift;
+	my @page_revs = ();
+	my $query = {
+		action => 'query',
+		prop => 'revisions',
+		rvprop => 'ids',
+		rvdir => 'newer',
+		rvstartid => $fetch_from,
+		rvlimit => 500,
+		pageids => $id,
+	};
+
+	my $revnum = 0;
+	# Get 500 revisions at a time due to the mediawiki api limit
+	while (1) {
+		my $result = $mediawiki->api($query);
+
+		# Parse each of those 500 revisions
+		foreach my $revision (@{$result->{query}->{pages}->{$id}->{revisions}}) {
+			my $page_rev_ids;
+			$page_rev_ids->{pageid} = $page->{pageid};
+			$page_rev_ids->{revid} = $revision->{revid};
+			push (@page_revs, $page_rev_ids);
+			$revnum++;
+		}
+		last unless $result->{'query-continue'};
+		$query->{rvstartid} = $result->{'query-continue'}->{revisions}->{rvstartid};
+	}
+	if ($shallow_import && @page_revs) {
+		print STDERR "  Found 1 revision (shallow import).\n";
+		@page_revs = sort {$b <=> $a} @page_revs;
+		my $last_rev = $page_revs[0];
+		return ($last_rev);
+	}
+	print STDERR "  Found ", $revnum, " revision(s).\n";
+	return @page_revs;
+}
+
+sub fetch_mw_revisions {
+	my $pages = shift; my @pages = @{$pages};
+	my $fetch_from = shift;
+
+	my @revisions = ();
+	my $n = 1;
+	foreach my $page (@pages) {
+		my $id = $page->{pageid};
+
+		print STDERR "page $n/", scalar(@pages), ": ". $page->{title} ."\n";
+		$n++;
+		my @page_revs = fetch_mw_revisions_for_page($page, $id, $fetch_from);
+		@revisions = (@page_revs, @revisions);
+	}
+
+	return ($n, @revisions);
+}
+
 sub mw_import {
 	$import_started = 1;
 	my $ref = shift;
@@ -341,9 +411,8 @@ sub mw_import {
 
 	mw_connect_maybe();
 
-	my @pages = get_pages();
+	my @pages = get_mw_pages();
 
-	my @revisions = ();
 	print STDERR "Searching revisions...\n";
 	my $last_local = get_last_local_revision();
 	my $fetch_from = $last_local + 1;
@@ -352,41 +421,7 @@ sub mw_import {
 	} else {
 		print STDERR ", fetching from here.\n";
 	}
-	my $n = 1;
-	foreach my $page (@pages) {
-		my $id = $page->{pageid};
-
-		print STDERR "page $n/", scalar(@pages), ": ". $page->{title} ."\n";
-		$n++;
-
-		my $query = {
-			action => 'query',
-			prop => 'revisions',
-			rvprop => 'ids',
-			rvdir => 'newer',
-			rvstartid => $fetch_from,
-			rvlimit => 500,
-			pageids => $id,
-		};
-
-		my $revnum = 0;
-		# Get 500 revisions at a time due to the mediawiki api limit
-		while (1) {
-			my $result = $mediawiki->api($query);
-
-			# Parse each of those 500 revisions
-			foreach my $revision (@{$result->{query}->{pages}->{$id}->{revisions}}) {
-				my $page_rev_ids;
-				$page_rev_ids->{pageid} = $page->{pageid};
-				$page_rev_ids->{revid} = $revision->{revid};
-				push (@revisions, $page_rev_ids);
-				$revnum++;
-			}
-			last unless $result->{'query-continue'};
-			$query->{rvstartid} = $result->{'query-continue'}->{revisions}->{rvstartid};
-		}
-		print STDERR "  Found ", $revnum, " revision(s).\n";
-	}
+	my ($n, @revisions) = fetch_mw_revisions(\@pages, $fetch_from);
 
 	# Creation of the fast-import stream
 	print STDERR "Fetching & writing export data...\n";
@@ -422,7 +457,7 @@ sub mw_import {
 		my $title = $result->{query}->{pages}->{$pagerevids->{pageid}}->{title};
 		$title = mediawiki_smudge_filename($title);
 
-		my $content = $rev->{'*'};
+		my $content = mediawiki_smudge($rev->{'*'});
 
 		print STDERR "$n/", scalar(@revisions), ": Revision #$pagerevids->{revid} of $title\n";
 
@@ -436,7 +471,7 @@ sub mw_import {
 		}
 		if ($content ne DELETED_CONTENT) {
 			print STDOUT "M 644 inline $title.mw\n";
-			literal_data(mediawiki_smudge($content));
+			literal_data($content);
 			print STDOUT "\n\n";
 		} else {
 			print STDOUT "D $title.mw\n";
@@ -481,57 +516,54 @@ sub error_non_fast_forward {
 	print STDOUT "\n";
 }
 
-sub mw_push {
+sub mw_push_file {
+	# $_[0] contains a string in this format :
+	# 100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>\0<filename.mw>\0
+	# $_[1] contains the title of the commit message (the only phrase kept in the revision message)
+	my @blob_info_split_z = split(/\0/, $_[0]);
+	my @blob_info_split = split(/[ \t]/, $blob_info_split_z[0]);
 
-	sub push_file {
-		# $_[0] contains a string in this format :
-		# 100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>\0<filename.mw>\0
-		# $_[1] contains the title of the commit message (the only phrase kept in the revision message)
-		my @blob_info_split_z = split(/\0/, $_[0]);
-		print STDERR Dumper(@blob_info_split_z);
-		my @blob_info_split = split(/[ \t]/, $blob_info_split_z[0]);
-		print STDERR Dumper(@blob_info_split);
+	my $new_sha1 = $blob_info_split[3];
+	my $old_sha1 = $blob_info_split[2];
+	my $page_created = ($old_sha1 eq NULL_SHA1);
+	my $page_deleted = ($new_sha1 eq NULL_SHA1);
+	my $complete_file_name = $blob_info_split_z[1];
+	$complete_file_name = mediawiki_clean_filename($complete_file_name);
 
-		my $new_sha1 = $blob_info_split[3];
-		my $old_sha1 = $blob_info_split[2];
-		my $page_created = ($old_sha1 eq NULL_SHA1);
-		my $page_deleted = ($new_sha1 eq NULL_SHA1);
-		my $complete_file_name = $blob_info_split_z[1];
-		$complete_file_name = mediawiki_clean_filename($complete_file_name);
+	if (substr($complete_file_name,-3) eq ".mw"){
+		my $title = substr($complete_file_name,0,-3);
 
-		if (substr($complete_file_name,-3) eq ".mw"){
-			my $title = substr($complete_file_name,0,-3);
-
-			my $file_content;
-			if ($page_deleted) {
-				# Deleting a page usually requires
-				# special priviledges. A common
-				# convention is to replace the page
-				# with this content instead:
-				$file_content = DELETED_CONTENT;
-			} else {
-				$file_content = run_git("cat-file -p $new_sha1");
-			}
-
-			mw_connect_maybe();
-
-			$mediawiki->edit( {
-				action => 'edit',
-				summary => $_[1],
-				title => $title,
-				text => mediawiki_clean($file_content, $page_created),
-			}, {
-				skip_encoding => 1 # Helps with names with accentuated characters
-			}) || die 'Fatal: Error ' .
-				$mediawiki->{error}->{code} .
-				' from mediwiki: ' . $mediawiki->{error}->{details};
-
-			print STDERR "Pushed file : $new_sha1 - $title\n";
+		my $file_content;
+		if ($page_deleted) {
+			# Deleting a page usually requires
+			# special priviledges. A common
+			# convention is to replace the page
+			# with this content instead:
+			$file_content = DELETED_CONTENT;
 		} else {
-			print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version).\n"
+			$file_content = run_git("cat-file -p $new_sha1");
 		}
-	}
 
+		mw_connect_maybe();
+
+		my $result = $mediawiki->edit( {
+			action => 'edit',
+			summary => $_[1],
+			title => $title,
+			text => mediawiki_clean($file_content, $page_created),
+				  }, {
+					  skip_encoding => 1 # Helps with names with accentuated characters
+				  }) || die 'Fatal: Error ' .
+				  $mediawiki->{error}->{code} .
+				  ' from mediwiki: ' . $mediawiki->{error}->{details};
+		print STDERR "result=".Dumper($result)."\n";
+		print STDERR "Pushed file : $new_sha1 - $title\n";
+	} else {
+		print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version).\n"
+	}
+}
+
+sub mw_push {
 	my $last_local_revid = get_last_local_revision();
 	print STDERR ".\n"; # Finish sentence started by get_last_local_revision()
 	my $last_remote_revid = get_last_remote_revision();
@@ -565,7 +597,7 @@ sub mw_push {
 			chomp($commit_msg);
 			foreach my $blob_info (@blob_info_list) {
 				# Push every blob
-				push_file($blob_info, $commit_msg);
+				mw_push_file($blob_info, $commit_msg);
 			}
 			$parsed_sha1 = $commit_info_split[1];
 		}
