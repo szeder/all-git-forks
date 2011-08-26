@@ -16,7 +16,10 @@ use URI::Escape;
 use warnings;
 
 # Mediawiki filenames can contain forward slashes. This variable decides by which pattern they should be replaced
-my $slash_replacement = "%2F";
+use constant SLASH_REPLACEMENT => "%2F";
+use constant DELETED_CONTENT => "[[Category:Deleted]]\n";
+use constant EMPTY_CONTENT => "<!-- empty page -->\n";
+use constant NULL_SHA1 => "0000000000000000000000000000000000000000";
 
 my $remotename = $ARGV[0];
 my $url = $ARGV[1];
@@ -40,41 +43,54 @@ chomp ($wiki_passwd);
 my $wiki_name = $url;
 $wiki_name =~ s/[^\/]*:\/\///;
 
+my $import_started;
+
 # Commands parser
 my $entry;
 my @cmd;
-while (1) {
-	BEGIN { $| = 1 } # flush STDOUT, to make sure the previous
-			 # command is fully processed.
-	$entry = <STDIN>;
-	chomp($entry);
-	@cmd = split(/ /,$entry);
+while (<STDIN>) {
+	chomp;
+	@cmd = split(/ /);
 	if (defined($cmd[0])) {
+		# Line not blank
 		if ($cmd[0] eq "capabilities") {
-			last unless (!defined($cmd[1]));
+			die("Too many arguments for capabilities") unless (!defined($cmd[1]));
 			mw_capabilities();
 		} elsif ($cmd[0] eq "list") {
-			last unless (!defined($cmd[2]));
+			die("Too many arguments for list") unless (!defined($cmd[2]));
 			mw_list($cmd[1]);
 		} elsif ($cmd[0] eq "import") {
-			last unless ($cmd[1] ne "" && !defined($cmd[2]));
+			die("Invalid arguments for import") unless ($cmd[1] ne "" && !defined($cmd[2]));
 			mw_import($cmd[1]);
 		} elsif ($cmd[0] eq "option") {
-			last unless ($cmd[1] ne "" && $cmd[2] ne "" && !defined($cmd[3]));
+			die("Too many arguments for option") unless ($cmd[1] ne "" && $cmd[2] ne "" && !defined($cmd[3]));
 			mw_option($cmd[1],$cmd[2]);
 		} elsif ($cmd[0] eq "push") {
 			# Check the pattern <src>:<dst>
 			my @pushargs = split(/:/,$cmd[1]);
-			last unless ($pushargs[1] ne "" && !defined($pushargs[2]));
+			die("Invalid arguments for push") unless ($pushargs[1] ne "" && !defined($pushargs[2]));
 			mw_push($pushargs[0],$pushargs[1]);
 		} else {
 			print STDERR "Unknown command. Aborting...\n";
 			last;
 		}
 	} else {
-		# End of input
+		# blank line: we should terminate
 		last;
 	}
+	
+	BEGIN { $| = 1 } # flush STDOUT, to make sure the previous
+			 # command is fully processed.
+}
+# End of input
+if ($import_started) {
+	# Terminate the fast-import stream properly.
+	# Git requires one "done" command, and only
+	# one This is OK since we only have one
+	# branch, so import will be called only once
+	# (plus once for HEAD, for which we won't
+	# reach this point).
+	print STDOUT "done\n";
 }
 
 ########################## Functions ##############################
@@ -235,7 +251,8 @@ sub get_last_remote_revision {
 	return $max_rev_num;
 }
 
-sub mediawiki_filter {
+# Clean content before sending it to MediaWiki
+sub mediawiki_clean {
 	my $string = shift;
 	my $page_created = shift;
 	# Mediawiki does not allow blank space at the end of a page and ends with a single \n.
@@ -243,9 +260,42 @@ sub mediawiki_filter {
 	$string =~ s/\s+$//;
 	if ($string eq "" && $page_created) {
 		# Creating empty pages is forbidden.
-		$string = "<!-- empty page -->";
+		$string = EMPTY_CONTENT;
 	}
 	return $string."\n";
+}
+
+# Filter applied on MediaWiki data before adding them to Git
+sub mediawiki_smudge {
+	my $string = shift;
+	if ($string eq EMPTY_CONTENT) {
+		$string = "";
+	}
+	# This \n is important. This is due to mediawiki's way to handle end of files.
+	return $string."\n";
+}
+
+sub mediawiki_clean_filename {
+	my $filename = shift;
+	$filename =~ s/@{[SLASH_REPLACEMENT]}/\//g;
+	# [, ], {, and } are forbidden by MediaWiki, even URL-encoded.
+	# Do a variant of URL-encoding, i.e. looks like URL-encoding,
+	# but with _ added to prevent MediaWiki from thinking this is
+	# an actual special character.
+	$filename =~ s/[\[\]\{\}]/sprintf("_%%_%x", ord($&))/ge;
+	# If we use the uri escape before
+	# we should unescape here, before anything
+
+	return $filename;
+}
+
+sub mediawiki_smudge_filename {
+	my $filename = shift;
+	$filename =~ s/\//@{[SLASH_REPLACEMENT]}/g;
+	$filename =~ s/ /_/g;
+	# Decode forbidden characters encoded in mediawiki_clean_filename
+	$filename =~ s/_%_([0-9a-fA-F][0-9a-fA-F])/sprintf("%c", hex($1))/ge;
+	return $filename;
 }
 
 sub literal_data {
@@ -278,6 +328,7 @@ sub mw_option {
 }
 
 sub mw_import {
+	$import_started = 1;
 	my $ref = shift;
 	# the remote helper will call "import HEAD" and
 	# "import refs/heads/master"
@@ -294,7 +345,8 @@ sub mw_import {
 
 	my @revisions = ();
 	print STDERR "Searching revisions...\n";
-	my $fetch_from = get_last_local_revision() + 1;
+	my $last_local = get_last_local_revision();
+	my $fetch_from = $last_local + 1;
 	if ($fetch_from == 1) {
 		print STDERR ", fetching from beginning.\n";
 	} else {
@@ -368,14 +420,9 @@ sub mw_import {
 		my $comment = defined $rev->{comment} ? $rev->{comment} : '*Empty MediaWiki Message*';
 
 		my $title = $result->{query}->{pages}->{$pagerevids->{pageid}}->{title};
-		$title =~ y/ /_/;
-		# $title = uri_escape($title); #It would be nice to use uri_escape to be cross compatible
-		# on different file systems handling accentuated characters differently
-		$title =~ s/\//$slash_replacement/g;
+		$title = mediawiki_smudge_filename($title);
 
 		my $content = $rev->{'*'};
-		# This \n is important. This is due to mediawiki's way to handle end of files.
-		$content .= "\n";
 
 		print STDERR "$n/", scalar(@revisions), ": Revision #$pagerevids->{revid} of $title\n";
 
@@ -387,12 +434,13 @@ sub mw_import {
 		if ($fetch_from != 1 && $n == 1) {
 			print STDOUT "from refs/mediawiki/$remotename/master^0\n";
 		}
-		print STDOUT "M 644 inline $title.mw\n";
-		literal_data($content);
-		print STDOUT "\n\n";
-
-
-
+		if ($content ne DELETED_CONTENT) {
+			print STDOUT "M 644 inline $title.mw\n";
+			literal_data(mediawiki_smudge($content));
+			print STDOUT "\n\n";
+		} else {
+			print STDOUT "D $title.mw\n";
+		}
 
 		# mediawiki revision number in the git note
 		if ($fetch_from == 1 && $n == 1) {
@@ -419,12 +467,18 @@ sub mw_import {
 			# thrown saying that HEAD is refering to unknown object 0000000000000000000
 		}
 	}
-	# Terminate the fast-import stream properly.
-	# Git requires one "done" command, and only one
-	# This is OK since we only have one branch, so import will be
-	# called only once (plus once for HEAD, for which we won't
-	# reach this point).
-	print STDOUT "done\n";
+}
+
+sub error_non_fast_forward {
+	# Native git-push would show this after the summary.
+	# We can't ask it to display it cleanly, so print it
+	# ourselves before.
+	print STDERR "To prevent you from losing history, non-fast-forward updates were rejected\n";
+	print STDERR "Merge the remote changes (e.g. 'git pull') before pushing again. See the\n";
+	print STDERR "'Note about fast-forwards' section of 'git push --help' for details.\n";
+	
+	print STDOUT "error $_[0] \"non-fast-forward\"\n";
+	print STDOUT "\n";
 }
 
 sub mw_push {
@@ -433,20 +487,31 @@ sub mw_push {
 		# $_[0] contains a string in this format :
 		# 100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>\0<filename.mw>\0
 		# $_[1] contains the title of the commit message (the only phrase kept in the revision message)
-		my @blob_info_split = split(/ |\t|\0/, $_[0]);
+		my @blob_info_split_z = split(/\0/, $_[0]);
+		print STDERR Dumper(@blob_info_split_z);
+		my @blob_info_split = split(/[ \t]/, $blob_info_split_z[0]);
+		print STDERR Dumper(@blob_info_split);
 
 		my $new_sha1 = $blob_info_split[3];
 		my $old_sha1 = $blob_info_split[2];
-		my $page_created = ($old_sha1 eq "0000000000000000000000000000000000000000");
-		my $complete_file_name = $blob_info_split[5];
-		# complete_file_name = uri_unescape($complete_file_name); # If we use the uri escape before
-		# we should unescape here, before anything
+		my $page_created = ($old_sha1 eq NULL_SHA1);
+		my $page_deleted = ($new_sha1 eq NULL_SHA1);
+		my $complete_file_name = $blob_info_split_z[1];
+		$complete_file_name = mediawiki_clean_filename($complete_file_name);
 
 		if (substr($complete_file_name,-3) eq ".mw"){
 			my $title = substr($complete_file_name,0,-3);
-			$title =~ s/$slash_replacement/\//g;
 
-			my $file_content = run_git("cat-file -p $new_sha1");
+			my $file_content;
+			if ($page_deleted) {
+				# Deleting a page usually requires
+				# special priviledges. A common
+				# convention is to replace the page
+				# with this content instead:
+				$file_content = DELETED_CONTENT;
+			} else {
+				$file_content = run_git("cat-file -p $new_sha1");
+			}
 
 			mw_connect_maybe();
 
@@ -454,7 +519,7 @@ sub mw_push {
 				action => 'edit',
 				summary => $_[1],
 				title => $title,
-				text => mediawiki_filter($file_content, $page_created),
+				text => mediawiki_clean($file_content, $page_created),
 			}, {
 				skip_encoding => 1 # Helps with names with accentuated characters
 			}) || die 'Fatal: Error ' .
@@ -463,7 +528,7 @@ sub mw_push {
 
 			print STDERR "Pushed file : $new_sha1 - $title\n";
 		} else {
-			print STDERR "$complete_file_name not a mediawiki file. '(Not pushable on this version)\n"
+			print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version).\n"
 		}
 	}
 
@@ -478,15 +543,7 @@ sub mw_push {
 	chomp($remoteorigin_sha1);
 
 	if ($last_local_revid < $last_remote_revid){
-		# Native git-push would show this after the summary.
-		# We can't ask it to display it cleanly, so print it
-		# ourselves before.
-		print STDERR "To prevent you from losing history, non-fast-forward updates were rejected\n";
-		print STDERR "Merge the remote changes (e.g. 'git pull') before pushing again. See the\n";
-		print STDERR "'Note about fast-forwards' section of 'git push --help' for details.\n";
-
-		print STDOUT "error $_[0] \"non-fast-forward\"\n";
-		print STDOUT "\n";
+		return error_non_fast_forward($_[0]);
 	} elsif ($HEAD_sha1 ne $remoteorigin_sha1) {
 		# Get every commit in between HEAD and refs/remotes/origin/master,
 		# including HEAD and refs/remotes/origin/master
@@ -494,12 +551,14 @@ sub mw_push {
 		while ($parsed_sha1 ne $HEAD_sha1) {
 			my @commit_info =  grep(/^$parsed_sha1/, split(/\n/, run_git("rev-list --children $_[0]")));
 			if (!@commit_info) {
-				die("Could not find $parsed_sha1 in history of $_[0]");
+				return error_non_fast_forward($_[0]);
 			}
 			my @commit_info_split = split(/ |\n/, $commit_info[0]);
 			# $commit_info_split[0] is the sha1 of the commit itself
 			# $commit_info_split[1] is the sha1 of its direct child
-			my $blob_infos = run_git("diff --raw --abbrev=40 -z $commit_info_split[0] $commit_info_split[1]");
+			my $blob_infos = run_git("diff-tree -r --raw -z $commit_info_split[0] $commit_info_split[1]");
+			# TODO: we could detect rename, and encode them with a #redirect on the wiki.
+			# TODO: for now, it's just a delete+add
 			my @blob_info_list = split(/\n/, $blob_infos);
 			# Keep the first line of the commit message as mediawiki comment for the revision
 			my $commit_msg = (split(/\n/, run_git("show --pretty=format:\"%s\" $commit_info_split[1]")))[0];
