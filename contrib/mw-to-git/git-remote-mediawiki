@@ -45,12 +45,6 @@ my $shallow_import = run_git("config --get --bool remote.". $remotename .".shall
 chomp($shallow_import);
 $shallow_import = ($shallow_import eq "true");
 
-if ($shallow_import) {
-	print STDERR "Shallow import\n";
-} else {
-	print STDERR "Normal import\n";
-}
-
 my $wiki_name = $url;
 $wiki_name =~ s/[^\/]*:\/\///;
 
@@ -397,6 +391,49 @@ sub fetch_mw_revisions {
 	return ($n, @revisions);
 }
 
+sub import_file_revision {
+	my $commit = shift;
+	my %commit = %{$commit};
+	my $full_import = shift;
+	my $n = shift;
+
+	my $title = $commit{title};
+	my $comment = $commit{comment};
+	my $content = $commit{content};
+	my $author = $commit{author};
+	my $date = $commit{date};
+	
+	print STDOUT "commit refs/mediawiki/$remotename/master\n";
+	print STDOUT "mark :$n\n";
+	print STDOUT "committer $author <$author\@$wiki_name> ", $date->epoch, " +0000\n";
+	literal_data($comment);
+	# If it's not a clone, needs to know where to start from
+	if (!$full_import && $n == 1) {
+		print STDOUT "from refs/mediawiki/$remotename/master^0\n";
+	}
+	if ($content ne DELETED_CONTENT) {
+		print STDOUT "M 644 inline $title.mw\n";
+		literal_data($content);
+		print STDOUT "\n\n";
+	} else {
+		print STDOUT "D $title.mw\n";
+	}
+
+	# mediawiki revision number in the git note
+	if ($full_import && $n == 1) {
+		print STDOUT "reset refs/notes/mediawiki\n";
+	}
+	print STDOUT "commit refs/notes/mediawiki\n";
+	print STDOUT "committer $author <$author\@$wiki_name> ", $date->epoch, " +0000\n";
+	literal_data("note added by git-mediawiki");
+	if (!$full_import && $n == 1) {
+		print STDOUT "from refs/notes/mediawiki^0\n";
+	}
+	print STDOUT "N inline :$n\n";
+	literal_data("mediawiki_revision: " . $commit{mw_revision});
+	print STDOUT "\n\n";
+}
+
 sub mw_import {
 	$import_started = 1;
 	my $ref = shift;
@@ -443,53 +480,26 @@ sub mw_import {
 		my $rev = pop(@{$result->{query}->{pages}->{$pagerevids->{pageid}}->{revisions}});
 
 		$n++;
-		my $user = $rev->{user} || 'Anonymous';
+
+		my %commit;
+		$commit{author} = $rev->{user} || 'Anonymous';
+		$commit{comment} = $rev->{comment} ? $rev->{comment} : '*Empty MediaWiki Message*';
+		$commit{title} = mediawiki_smudge_filename(
+			$result->{query}->{pages}->{$pagerevids->{pageid}}->{title}
+		    );
+		$commit{mw_revision} = $pagerevids->{revid};
+		$commit{content} = mediawiki_smudge($rev->{'*'});
 
 		if (!defined($rev->{timestamp})) {
 			$last_timestamp++;
 		} else {
 			$last_timestamp = $rev->{timestamp};
 		}
-		my $dt = DateTime::Format::ISO8601->parse_datetime($last_timestamp);
+		$commit{date} = DateTime::Format::ISO8601->parse_datetime($last_timestamp);
 
-		my $comment = defined $rev->{comment} ? $rev->{comment} : '*Empty MediaWiki Message*';
+		print STDERR "$n/", scalar(@revisions), ": Revision #$pagerevids->{revid} of $commit{title}\n";
 
-		my $title = $result->{query}->{pages}->{$pagerevids->{pageid}}->{title};
-		$title = mediawiki_smudge_filename($title);
-
-		my $content = mediawiki_smudge($rev->{'*'});
-
-		print STDERR "$n/", scalar(@revisions), ": Revision #$pagerevids->{revid} of $title\n";
-
-		print STDOUT "commit refs/mediawiki/$remotename/master\n";
-		print STDOUT "mark :$n\n";
-		print STDOUT "committer $user <$user\@$wiki_name> ", $dt->epoch, " +0000\n";
-		literal_data($comment);
-		# If it's not a clone, needs to know where to start from
-		if ($fetch_from != 1 && $n == 1) {
-			print STDOUT "from refs/mediawiki/$remotename/master^0\n";
-		}
-		if ($content ne DELETED_CONTENT) {
-			print STDOUT "M 644 inline $title.mw\n";
-			literal_data($content);
-			print STDOUT "\n\n";
-		} else {
-			print STDOUT "D $title.mw\n";
-		}
-
-		# mediawiki revision number in the git note
-		if ($fetch_from == 1 && $n == 1) {
-			print STDOUT "reset refs/notes/mediawiki\n";
-		}
-		print STDOUT "commit refs/notes/mediawiki\n";
-		print STDOUT "committer $user <$user\@$wiki_name> ", $dt->epoch, " +0000\n";
-		literal_data("note added by git-mediawiki");
-		if ($fetch_from != 1 && $n == 1) {
-			print STDOUT "from refs/notes/mediawiki^0\n";
-		}
-		print STDOUT "N inline :$n\n";
-		literal_data("mediawiki_revision: " . $pagerevids->{revid});
-		print STDOUT "\n\n";
+		import_file_revision(\%commit, ($fetch_from == 1), $n);
 	}
 
 	if ($fetch_from == 1) {
@@ -517,17 +527,20 @@ sub error_non_fast_forward {
 }
 
 sub mw_push_file {
-	# $_[0] contains a string in this format :
-	# 100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>\0<filename.mw>\0
-	# $_[1] contains the title of the commit message (the only phrase kept in the revision message)
-	my @blob_info_split_z = split(/\0/, $_[0]);
-	my @blob_info_split = split(/[ \t]/, $blob_info_split_z[0]);
+	my $diff_info = shift;
+	# $diff_info contains a string in this format:
+	# 100644 100644 <sha1_of_blob_before_commit> <sha1_of_blob_now> <status>
+	my @diff_info_split = split(/[ \t]/, $diff_info);
 
-	my $new_sha1 = $blob_info_split[3];
-	my $old_sha1 = $blob_info_split[2];
+	# Filename, including .mw extension
+	my $complete_file_name = shift;
+	# Commit message
+	my $summary = shift;
+
+	my $new_sha1 = $diff_info_split[3];
+	my $old_sha1 = $diff_info_split[2];
 	my $page_created = ($old_sha1 eq NULL_SHA1);
 	my $page_deleted = ($new_sha1 eq NULL_SHA1);
-	my $complete_file_name = $blob_info_split_z[1];
 	$complete_file_name = mediawiki_clean_filename($complete_file_name);
 
 	if (substr($complete_file_name,-3) eq ".mw"){
@@ -548,7 +561,7 @@ sub mw_push_file {
 
 		my $result = $mediawiki->edit( {
 			action => 'edit',
-			summary => $_[1],
+			summary => $summary,
 			title => $title,
 			text => mediawiki_clean($file_content, $page_created),
 				  }, {
@@ -556,7 +569,6 @@ sub mw_push_file {
 				  }) || die 'Fatal: Error ' .
 				  $mediawiki->{error}->{code} .
 				  ' from mediwiki: ' . $mediawiki->{error}->{details};
-		print STDERR "result=".Dumper($result)."\n";
 		print STDERR "Pushed file : $new_sha1 - $title\n";
 	} else {
 		print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version).\n"
@@ -588,16 +600,18 @@ sub mw_push {
 			my @commit_info_split = split(/ |\n/, $commit_info[0]);
 			# $commit_info_split[0] is the sha1 of the commit itself
 			# $commit_info_split[1] is the sha1 of its direct child
-			my $blob_infos = run_git("diff-tree -r --raw -z $commit_info_split[0] $commit_info_split[1]");
+			my $diff_infos = run_git("diff-tree -r --raw -z $commit_info_split[0] $commit_info_split[1]");
 			# TODO: we could detect rename, and encode them with a #redirect on the wiki.
 			# TODO: for now, it's just a delete+add
-			my @blob_info_list = split(/\n/, $blob_infos);
+			my @diff_info_list = split(/\0/, $diff_infos);
 			# Keep the first line of the commit message as mediawiki comment for the revision
 			my $commit_msg = (split(/\n/, run_git("show --pretty=format:\"%s\" $commit_info_split[1]")))[0];
 			chomp($commit_msg);
-			foreach my $blob_info (@blob_info_list) {
+			while (@diff_info_list) {
 				# Push every blob
-				mw_push_file($blob_info, $commit_msg);
+				my $info = shift(@diff_info_list);
+				my $file = shift(@diff_info_list);
+				mw_push_file($info, $file, $commit_msg);
 			}
 			$parsed_sha1 = $commit_info_split[1];
 		}
