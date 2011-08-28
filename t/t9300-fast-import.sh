@@ -1882,6 +1882,53 @@ test_expect_success 'R: --import-marks-if-exists' '
 	test_cmp expect io.marks
 '
 
+test_expect_success 'R: feature import-marks-if-exists' '
+	rm -f io.marks &&
+	>expect &&
+
+	git fast-import --export-marks=io.marks <<-\EOF &&
+	feature import-marks-if-exists=not_io.marks
+	EOF
+	test_cmp expect io.marks &&
+
+	blob=$(echo hi | git hash-object --stdin) &&
+
+	echo ":1 $blob" >io.marks &&
+	echo ":1 $blob" >expect &&
+	echo ":2 $blob" >>expect &&
+
+	git fast-import --export-marks=io.marks <<-\EOF &&
+	feature import-marks-if-exists=io.marks
+	blob
+	mark :2
+	data 3
+	hi
+
+	EOF
+	test_cmp expect io.marks &&
+
+	echo ":3 $blob" >>expect &&
+
+	git fast-import --import-marks=io.marks \
+			--export-marks=io.marks <<-\EOF &&
+	feature import-marks-if-exists=not_io.marks
+	blob
+	mark :3
+	data 3
+	hi
+
+	EOF
+	test_cmp expect io.marks &&
+
+	>expect &&
+
+	git fast-import --import-marks-if-exists=not_io.marks \
+			--export-marks=io.marks <<-\EOF
+	feature import-marks-if-exists=io.marks
+	EOF
+	test_cmp expect io.marks
+'
+
 cat >input << EOF
 feature import-marks=marks.out
 feature export-marks=marks.new
@@ -2195,6 +2242,48 @@ EOF
 test_expect_success 'R: quiet option results in no stats being output' '
     cat input | git fast-import 2> output &&
     test_cmp empty output
+'
+
+test_expect_success 'R: feature done means terminating "done" is mandatory' '
+	echo feature done | test_must_fail git fast-import &&
+	test_must_fail git fast-import --done </dev/null
+'
+
+test_expect_success 'R: terminating "done" with trailing gibberish is ok' '
+	git fast-import <<-\EOF &&
+	feature done
+	done
+	trailing gibberish
+	EOF
+	git fast-import <<-\EOF
+	done
+	more trailing gibberish
+	EOF
+'
+
+test_expect_success 'R: terminating "done" within commit' '
+	cat >expect <<-\EOF &&
+	OBJID
+	:000000 100644 OBJID OBJID A	hello.c
+	:000000 100644 OBJID OBJID A	hello2.c
+	EOF
+	git fast-import <<-EOF &&
+	commit refs/heads/done-ends
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+	data <<EOT
+	Commit terminated by "done" command
+	EOT
+	M 100644 inline hello.c
+	data <<EOT
+	Hello, world.
+	EOT
+	C hello.c hello2.c
+	done
+	EOF
+	git rev-list done-ends |
+	git diff-tree -r --stdin --root --always |
+	sed -e "s/$_x40/OBJID/g" >actual &&
+	test_cmp expect actual
 '
 
 cat >input <<EOF

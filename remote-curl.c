@@ -762,7 +762,9 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 		argv[argc++] = "--thin";
 	if (options.dry_run)
 		argv[argc++] = "--dry-run";
-	if (options.verbosity > 1)
+	if (options.verbosity < 0)
+		argv[argc++] = "--quiet";
+	else if (options.verbosity > 1)
 		argv[argc++] = "--verbose";
 	argv[argc++] = url;
 	for (i = 0; i < nr_spec; i++)
@@ -855,7 +857,14 @@ int main(int argc, const char **argv)
 	http_init(remote);
 
 	do {
-		if (strbuf_getline(&buf, stdin, '\n') == EOF)
+		if (strbuf_getline(&buf, stdin, '\n') == EOF) {
+			if (ferror(stdin))
+				fprintf(stderr, "Error reading command stream\n");
+			else
+				fprintf(stderr, "Unexpected end of command stream\n");
+			return 1;
+		}
+		if (buf.len == 0)
 			break;
 		if (!prefixcmp(buf.buf, "fetch ")) {
 			if (nongit)
@@ -895,6 +904,7 @@ int main(int argc, const char **argv)
 			printf("\n");
 			fflush(stdout);
 		} else {
+			fprintf(stderr, "Unknown command '%s'\n", buf.buf);
 			return 1;
 		}
 		strbuf_reset(&buf);

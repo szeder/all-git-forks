@@ -30,15 +30,15 @@ all::
 # Define LIBPCREDIR=/foo/bar if your libpcre header and library files are in
 # /foo/bar/include and /foo/bar/lib directories.
 #
-# Define NO_CURL if you do not have libcurl installed.  git-http-pull and
+# Define NO_CURL if you do not have libcurl installed.  git-http-fetch and
 # git-http-push are not built, and you cannot use http:// and https://
-# transports.
+# transports (neither smart nor dumb).
 #
 # Define CURLDIR=/foo/bar if your curl header and library files are in
 # /foo/bar/include and /foo/bar/lib directories.
 #
 # Define NO_EXPAT if you do not have expat installed.  git-http-push is
-# not built, and you cannot push using http:// and https:// transports.
+# not built, and you cannot push using http:// and https:// transports (dumb).
 #
 # Define EXPATDIR=/foo/bar if your expat header and library files are in
 # /foo/bar/include and /foo/bar/lib directories.
@@ -114,6 +114,10 @@ all::
 # Define NEEDS_CRYPTO_WITH_SSL if you need -lcrypto when using -lssl (Darwin).
 #
 # Define NEEDS_SSL_WITH_CRYPTO if you need -lssl when using -lcrypto (Darwin).
+#
+# Define NEEDS_SSL_WITH_CURL if you need -lssl with -lcurl (Minix).
+#
+# Define NEEDS_IDN_WITH_CURL if you need -lidn when using -lcurl (Minix).
 #
 # Define NEEDS_LIBICONV if linking with libc is not enough (Darwin).
 #
@@ -298,6 +302,7 @@ bindir = $(prefix)/$(bindir_relative)
 mandir = share/man
 infodir = share/info
 gitexecdir = libexec/git-core
+mergetoolsdir = $(gitexecdir)/mergetools
 sharedir = $(prefix)/share
 gitwebdir = $(sharedir)/gitweb
 template_dir = share/git-core/templates
@@ -639,6 +644,7 @@ LIB_OBJS += pack-revindex.o
 LIB_OBJS += pack-write.o
 LIB_OBJS += pager.o
 LIB_OBJS += parse-options.o
+LIB_OBJS += parse-options-cb.o
 LIB_OBJS += patch-delta.o
 LIB_OBJS += patch-ids.o
 LIB_OBJS += path.o
@@ -1150,6 +1156,20 @@ ifeq ($(uname_S),Interix)
 		NO_FNMATCH_CASEFOLD = YesPlease
 	endif
 endif
+ifeq ($(uname_S),Minix)
+	NO_IPV6 = YesPlease
+	NO_ST_BLOCKS_IN_STRUCT_STAT = YesPlease
+	NO_NSEC = YesPlease
+	NEEDS_LIBGEN =
+	NEEDS_CRYPTO_WITH_SSL = YesPlease
+	NEEDS_IDN_WITH_CURL = YesPlease
+	NEEDS_SSL_WITH_CURL = YesPlease
+	NEEDS_RESOLV =
+	NO_HSTRERROR = YesPlease
+	NO_MMAP = YesPlease
+	NO_CURL =
+	NO_EXPAT =
+endif
 ifneq (,$(findstring MINGW,$(uname_S)))
 	pathsep = ;
 	NO_PREAD = YesPlease
@@ -1294,6 +1314,16 @@ else
 	else
 		CURL_LIBCURL = -lcurl
 	endif
+	ifdef NEEDS_SSL_WITH_CURL
+		CURL_LIBCURL +=	-lssl
+		ifdef NEEDS_CRYPTO_WITH_SSL
+			CURL_LIBCURL += -lcrypto
+		endif
+	endif
+	ifdef NEEDS_IDN_WITH_CURL
+		CURL_LIBCURL += -lidn
+	endif
+
 	REMOTE_CURL_PRIMARY = git-remote-http$X
 	REMOTE_CURL_ALIASES = git-remote-https$X git-remote-ftp$X git-remote-ftps$X
 	REMOTE_CURL_NAMES = $(REMOTE_CURL_PRIMARY) $(REMOTE_CURL_ALIASES)
@@ -1330,7 +1360,7 @@ ifndef NO_OPENSSL
 		OPENSSL_LINK =
 	endif
 	ifdef NEEDS_CRYPTO_WITH_SSL
-		OPENSSL_LINK += -lcrypto
+		OPENSSL_LIBSSL += -lcrypto
 	endif
 else
 	BASIC_CFLAGS += -DNO_OPENSSL
@@ -1849,7 +1879,7 @@ ifndef NO_CURL
 	GIT_OBJS += http.o http-walker.o remote-curl.o
 endif
 XDIFF_OBJS = xdiff/xdiffi.o xdiff/xprepare.o xdiff/xutils.o xdiff/xemit.o \
-	xdiff/xmerge.o xdiff/xpatience.o
+	xdiff/xmerge.o xdiff/xpatience.o xdiff/xhistogram.o
 VCSSVN_OBJS = vcs-svn/string_pool.o vcs-svn/line_buffer.o \
 	vcs-svn/repo_tree.o vcs-svn/fast_export.o vcs-svn/svndump.o
 VCSSVN_TEST_OBJS = test-obj-pool.o test-string-pool.o \
@@ -2177,7 +2207,7 @@ test-delta$X: diff-delta.o patch-delta.o
 
 test-line-buffer$X: vcs-svn/lib.a
 
-test-parse-options$X: parse-options.o
+test-parse-options$X: parse-options.o parse-options-cb.o
 
 test-string-pool$X: vcs-svn/lib.a
 
@@ -2230,6 +2260,13 @@ endif
 gitexec_instdir_SQ = $(subst ','\'',$(gitexec_instdir))
 export gitexec_instdir
 
+ifneq ($(filter /%,$(firstword $(mergetoolsdir))),)
+mergetools_instdir = $(mergetoolsdir)
+else
+mergetools_instdir = $(prefix)/$(mergetoolsdir)
+endif
+mergetools_instdir_SQ = $(subst ','\'',$(mergetools_instdir))
+
 install_bindir_programs := $(patsubst %,%$X,$(BINDIR_PROGRAMS_NEED_X)) $(BINDIR_PROGRAMS_NO_X)
 
 install: all
@@ -2239,6 +2276,9 @@ install: all
 	$(INSTALL) -m 644 $(SCRIPT_LIB) '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 	$(INSTALL) $(install_bindir_programs) '$(DESTDIR_SQ)$(bindir_SQ)'
 	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
+	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
+	(cd mergetools && $(TAR) cf - .) | \
+	(cd '$(DESTDIR_SQ)$(mergetools_instdir_SQ)' && umask 022 && $(TAR) xof -)
 ifndef NO_PERL
 	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
 	$(MAKE) -C gitweb install

@@ -122,12 +122,17 @@ module_clone()
 	path=$1
 	url=$2
 	reference="$3"
+	quiet=
+	if test -n "$GIT_QUIET"
+	then
+		quiet=-q
+	fi
 
 	if test -n "$reference"
 	then
-		git-clone "$reference" -n "$url" "$path"
+		git-clone $quiet "$reference" -n "$url" "$path"
 	else
-		git-clone -n "$url" "$path"
+		git-clone $quiet -n "$url" "$path"
 	fi ||
 	die "$(eval_gettext "Clone of '\$url' into submodule path '\$path' failed")"
 }
@@ -223,12 +228,9 @@ cmd_add()
 
 	if test -z "$force" && ! git add --dry-run --ignore-missing "$path" > /dev/null 2>&1
 	then
-		(
-			eval_gettext "The following path is ignored by one of your .gitignore files:
+		eval_gettextln "The following path is ignored by one of your .gitignore files:
 \$path
-Use -f if you really want to add it." &&
-			echo
-		) >&2
+Use -f if you really want to add it." >&2
 		exit 1
 	fi
 
@@ -237,7 +239,7 @@ Use -f if you really want to add it." &&
 	then
 		if test -d "$path"/.git -o -f "$path"/.git
 		then
-			eval_gettext "Adding existing repo at '\$path' to the index"; echo
+			eval_gettextln "Adding existing repo at '\$path' to the index"
 		else
 			die "$(eval_gettext "'\$path' already exists and is not a valid git repo")"
 		fi
@@ -696,10 +698,7 @@ cmd_summary() {
 				;; # removed
 			*)
 				# unexpected type
-				(
-					eval_gettext "unexpected mode \$mod_dst" &&
-					echo
-				) >&2
+				eval_gettextln "unexpected mode \$mod_dst" >&2
 				continue ;;
 			esac
 		fi
@@ -786,9 +785,9 @@ cmd_summary() {
 	done |
 	if test -n "$for_status"; then
 		if [ -n "$files" ]; then
-			gettext "# Submodules changed but not updated:"; echo
+			gettextln "# Submodules changed but not updated:"
 		else
-			gettext "# Submodule changes to be committed:"; echo
+			gettextln "# Submodule changes to be committed:"
 		fi
 		echo "#"
 		sed -e 's|^|# |' -e 's|^# $|#|'
