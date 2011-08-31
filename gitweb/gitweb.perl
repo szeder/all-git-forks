@@ -757,6 +757,7 @@ our @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 	ctag => "by_tag",
+	pathpattern => "pp",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -775,6 +776,7 @@ our %actions = (
 	"commitdiff_plain" => \&git_commitdiff_plain,
 	"commit" => \&git_commit,
 	"forks" => \&git_forks,
+	"findtree" => \&git_find_tree,
 	"heads" => \&git_heads,
 	"history" => \&git_history,
 	"log" => \&git_log,
@@ -6601,6 +6603,41 @@ sub git_tree {
 	print "</table>\n" .
 	      "</div>";
 	git_footer_html();
+}
+
+# used for autocompletion
+sub git_find_tree {
+	if (!defined $hash_base) {
+		$hash_base = "HEAD";
+	}
+	if (!defined $hash) {
+		if (defined $file_name) {
+			$hash = git_get_hash_by_path($hash_base, $file_name, "tree");
+		} else {
+			$hash = $hash_base;
+		}
+	}
+	die_error(404, "No such tree") unless defined($hash);
+
+	# determine the regular expression to use
+
+	my $pattern = $input_params{pathpattern};
+	my $regex = join ".*", map { "\Q$_\E" } split(' ', $pattern)
+
+	my @matches;
+	open my $fd, "-|", git_cmd(), "ls-tree", '-r', $hash
+		or die_error(500, "Open git-ls-tree failed");
+	while (<$fd>) {
+		chomp;
+		my ($mode, $type, $id, $path) = split(' ', $_, 4);
+		push(@matches, $path) if $path =~ m/$regex/i;
+	}
+	close $fd
+		or die_error(404, "Reading tree failed");
+
+	print $cgi->header(-type=>"text/plain", -charset => "utf-8", -status=> "200 OK");
+	local $| = 1; # output autoflush
+	print "$_\n" for @matches;
 }
 
 sub snapshot_name {
