@@ -1852,11 +1852,9 @@ static void read_marks(void)
 		if (!mark || end == line + 1
 			|| *end != ' ' || get_sha1(end + 1, sha1))
 			die("corrupt mark line: %s", line);
-		e = find_object(sha1);
-		if (!e) {
-			e = insert_object(sha1);
+		e = insert_object(sha1);
+		if (!e->idx.offset)
 			resolve_sha1_object(e);
-		}
 		insert_mark(mark, e);
 	}
 	fclose(f);
