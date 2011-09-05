@@ -2394,9 +2394,9 @@ static void note_change_n(struct branch *b, unsigned char old_fanout)
 {
 	const char *p = command_buf.buf + 2;
 	static struct strbuf uq = STRBUF_INIT;
-	struct object_entry *oe = oe;
+	struct object_entry *oe = NULL;
 	struct branch *s;
-	unsigned char sha1[20], commit_sha1[20];
+	unsigned char commit_sha1[20];
 	char path[60];
 	uint16_t inline_data = 0;
 	unsigned char new_fanout;
@@ -2405,15 +2405,16 @@ static void note_change_n(struct branch *b, unsigned char old_fanout)
 	if (*p == ':') {
 		char *x;
 		oe = find_mark(strtoumax(p + 1, &x, 10));
-		hashcpy(sha1, oe->idx.sha1);
 		p = x;
 	} else if (!prefixcmp(p, "inline")) {
 		inline_data = 1;
 		p += 6;
 	} else {
+		unsigned char sha1[20];
 		if (get_sha1_hex(p, sha1))
 			die("Invalid SHA1: %s", command_buf.buf);
-		oe = find_object(sha1);
+		if (!is_null_sha1(sha1))
+			oe = insert_object(sha1);
 		p += 40;
 	}
 	if (*p++ != ' ')
@@ -2440,36 +2441,39 @@ static void note_change_n(struct branch *b, unsigned char old_fanout)
 		die("Invalid ref name or SHA1 expression: %s", p);
 
 	if (inline_data) {
+		unsigned char sha1[20];
 		if (p != uq.buf) {
 			strbuf_addstr(&uq, p);
 			p = uq.buf;
 		}
 		read_next_command();
 		parse_and_store_blob(&last_blob, sha1, 0);
+		oe = find_object(sha1);
 	} else if (oe) {
+		if (!oe->idx.offset) {
+			enum object_type type = sha1_object_info(oe->idx.sha1, NULL);
+			if (type < 0)
+				die("Blob not found: %s", command_buf.buf);
+			oe->type = type;
+			oe->pack_id = MAX_PACK_ID;
+			oe->idx.offset = 1; /* nonzero */
+		}
 		if (oe->type != OBJ_BLOB)
 			die("Not a blob (actually a %s): %s",
 				typename(oe->type), command_buf.buf);
-	} else if (!is_null_sha1(sha1)) {
-		enum object_type type = sha1_object_info(sha1, NULL);
-		if (type < 0)
-			die("Blob not found: %s", command_buf.buf);
-		if (type != OBJ_BLOB)
-			die("Not a blob (actually a %s): %s",
-			    typename(type), command_buf.buf);
 	}
 
 	construct_path_with_fanout(sha1_to_hex(commit_sha1), old_fanout, path);
 	if (tree_content_remove(&b->branch_tree, path, NULL))
 		b->num_notes--;
 
-	if (is_null_sha1(sha1))
+	if (!oe)
 		return; /* nothing to insert */
 
 	b->num_notes++;
 	new_fanout = convert_num_notes_to_fanout(b->num_notes);
 	construct_path_with_fanout(sha1_to_hex(commit_sha1), new_fanout, path);
-	tree_content_set(&b->branch_tree, path, sha1, S_IFREG | 0644, NULL);
+	tree_content_set(&b->branch_tree, path, oe->idx.sha1, S_IFREG | 0644, NULL);
 }
 
 static void file_change_deleteall(struct branch *b)
