@@ -2891,15 +2891,11 @@ static void parse_cat_blob(void)
 	cat_blob(oe);
 }
 
-static struct object_entry *dereference(struct object_entry *oe,
-					unsigned char sha1[20])
+static struct object_entry *dereference(struct object_entry *oe)
 {
+	unsigned char next_sha1[20];
 	unsigned long size;
 	char *buf = NULL;
-	if (!oe) {
-		oe = insert_object(sha1);
-		resolve_sha1_object(oe);
-	}
 	switch (oe->type) {
 	case OBJ_TREE:	/* easy case. */
 		return oe;
@@ -2914,26 +2910,31 @@ static struct object_entry *dereference(struct object_entry *oe,
 		buf = gfi_unpack_entry(oe, &size);
 	} else {
 		enum object_type unused;
-		buf = read_sha1_file(sha1, &unused, &size);
+		buf = read_sha1_file(oe->idx.sha1, &unused, &size);
 	}
 	if (!buf)
-		die("Can't load object %s", sha1_to_hex(sha1));
+		die("Can't load object %s", sha1_to_hex(oe->idx.sha1));
 
 	/* Peel one layer. */
 	switch (oe->type) {
 	case OBJ_TAG:
 		if (size < 40 + strlen("object ") ||
-		    get_sha1_hex(buf + strlen("object "), sha1))
+		    get_sha1_hex(buf + strlen("object "), next_sha1))
 			die("Invalid SHA1 in tag: %s", command_buf.buf);
 		break;
 	case OBJ_COMMIT:
 		if (size < 40 + strlen("tree ") ||
-		    get_sha1_hex(buf + strlen("tree "), sha1))
+		    get_sha1_hex(buf + strlen("tree "), next_sha1))
 			die("Invalid SHA1 in commit: %s", command_buf.buf);
 	}
 
 	free(buf);
-	return find_object(sha1);
+
+	oe = insert_object(next_sha1);
+	if (!oe->idx.offset)
+		resolve_sha1_object(oe);
+
+	return oe;
 }
 
 static struct object_entry *parse_treeish_dataref(const char **p)
@@ -2953,12 +2954,14 @@ static struct object_entry *parse_treeish_dataref(const char **p)
 	} else {	/* <sha1> */
 		if (get_sha1_hex(*p, sha1))
 			die("Invalid SHA1: %s", command_buf.buf);
-		e = find_object(sha1);
+		e = insert_object(sha1);
+		if (!e->idx.offset)
+			resolve_sha1_object(e);
 		*p += 40;
 	}
 
-	while (!e || e->type != OBJ_TREE)
-		e = dereference(e, sha1);
+	while (e->type != OBJ_TREE)
+		e = dereference(e);
 	return e;
 }
 
