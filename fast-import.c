@@ -1009,6 +1009,8 @@ static void end_packfile(void)
 static void cycle_packfile(void)
 {
 	end_packfile();
+	if (pack_id >= MAX_PACK_ID)
+		die("too many (%u) packs produced", pack_id);
 	start_packfile();
 }
 
