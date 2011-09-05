@@ -2732,11 +2732,14 @@ static void parse_new_tag(void)
 		type = oe->type;
 		hashcpy(sha1, oe->idx.sha1);
 	} else if (!get_sha1(from, sha1)) {
-		struct object_entry *oe = find_object(sha1);
-		if (!oe) {
+		struct object_entry *oe = insert_object(sha1);
+		if (!oe->idx.offset) {
 			type = sha1_object_info(sha1, NULL);
 			if (type < 0)
 				die("Not a valid object: %s", from);
+			oe->type = type;
+			oe->pack_id = MAX_PACK_ID;
+			oe->idx.offset = 1; /* nonzero */
 		} else
 			type = oe->type;
 	} else
