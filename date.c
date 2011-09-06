@@ -556,15 +556,21 @@ static int match_tz(const char *date, int *offp)
 	int min, hour;
 	int n = end - date - 1;
 
-	min = offset % 100;
-	hour = offset / 100;
+	if (n == 2 && *end == ':') {
+		hour = offset;
+		offset = strtoul(date+4, &end, 10);
+		min = offset % 100;
+	} else {
+		hour = offset / 100;
+		min = offset % 100;
+	}
 
 	/*
-	 * Don't accept any random crap.. At least 3 digits, and
+	 * Don't accept any random crap.. At least 2 digits, and
 	 * a valid minute. We might want to check that the minutes
 	 * are divisible by 30 or something too.
 	 */
-	if (min < 60 && n > 2) {
+	if (min < 60 && n > 1) {
 		offset = hour*60+min;
 		if (*date == '-')
 			offset = -offset;
