@@ -31,6 +31,7 @@ struct tag_filter {
 	const char **patterns;
 	int lines;
 	struct commit_list *with_commit;
+	int with_notes;
 };
 
 static struct sha1_array points_at;
@@ -146,6 +147,22 @@ free_return:
 	free(buf);
 }
 
+static int show_tag_note(const char *refname)
+{
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf out = STRBUF_INIT;
+	unsigned char refsha1[20];
+
+	strbuf_addstr(&name, "refs/tags/");
+	strbuf_addstr(&name, refname);
+	hash_sha1_refname(name.buf, refsha1);
+	format_note(NULL, refsha1, &out, NULL, NOTES_INDENT);
+	fputs(out.buf, stdout);
+	strbuf_release(&out);
+	strbuf_release(&name);
+	return 0;
+}
+
 static int show_reference(const char *refname, const unsigned char *sha1,
 			  int flag, void *cb_data)
 {
@@ -167,24 +184,29 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 
 		if (!filter->lines) {
 			printf("%s\n", refname);
+			if (filter->with_notes)
+				show_tag_note(refname);
 			return 0;
 		}
 		printf("%-15s ", refname);
 		show_tag_lines(sha1, filter->lines);
 		putchar('\n');
+		if (filter->with_notes)
+			show_tag_note(refname);
 	}
 
 	return 0;
 }
 
 static int list_tags(const char **patterns, int lines,
-			struct commit_list *with_commit)
+			struct commit_list *with_commit, int with_notes)
 {
 	struct tag_filter filter;
 
 	filter.patterns = patterns;
 	filter.lines = lines;
 	filter.with_commit = with_commit;
+	filter.with_notes = with_notes;
 
 	for_each_tag_ref(show_reference, (void *) &filter);
 
@@ -439,7 +461,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct create_tag_options opt;
 	char *cleanup_arg = NULL;
 	int annotate = 0, force = 0, lines = -1, list = 0,
-		delete = 0, verify = 0;
+		delete = 0, verify = 0, with_notes = 0;
+	char *notes_ref = NULL;
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
 	struct commit_list *with_commit = NULL;
@@ -448,6 +471,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		{ OPTION_INTEGER, 'n', NULL, &lines, N_("n"),
 				N_("print <n> lines of each tag message"),
 				PARSE_OPT_OPTARG, NULL, 1 },
+		OPT__NOTES(&notes_ref),
 		OPT_BOOLEAN('d', "delete", &delete, N_("delete tags")),
 		OPT_BOOLEAN('v', "verify", &verify, N_("verify tags")),
 
@@ -493,6 +517,10 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		annotate = 1;
 	if (argc == 0 && !(delete || verify))
 		list = 1;
+	if (notes_ref) {
+		init_notes(NULL, notes_ref, NULL, 0);
+		with_notes = 1;
+	}
 
 	if ((annotate || msg.given || msgfile || force) &&
 	    (list || delete || verify))
@@ -514,7 +542,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			copts.padding = 2;
 			run_column_filter(colopts, &copts);
 		}
-		ret = list_tags(argv, lines == -1 ? 0 : lines, with_commit);
+		ret = list_tags(argv, lines == -1 ? 0 : lines, with_commit, with_notes);
 		if (column_active(colopts))
 			stop_column_filter();
 		return ret;
