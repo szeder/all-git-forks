@@ -17,6 +17,6 @@ done
 git for-each-ref --sort=$sortby --format="$format" refs/heads |
 egrep '^[a-z]{2,3}/' |
 perl -pe '
-  s/(\S+) /$1 . " " x (30 - length($1))/e; # line up subjects
+  s/(\S+) /$& . " " x (30 - length($1))/e; # line up subjects
   s/^(.{79}).*/$1/; # truncate long lines
 '
