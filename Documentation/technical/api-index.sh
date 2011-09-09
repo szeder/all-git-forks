@@ -2,27 +2,27 @@
 
 (
 	c=////////////////////////////////////////////////////////////////
-	skel=api-index-skel.txt
+	skel=api-index-skel.asciidoc
 	sed -e '/^\/\/ table of contents begin/q' "$skel"
 	echo "$c"
 
-	ls api-*.txt |
+	ls api-*.asciidoc |
 	while read filename
 	do
 		case "$filename" in
-		api-index-skel.txt | api-index.txt) continue ;;
+		api-index-skel.asciidoc | api-index.asciidoc) continue ;;
 		esac
 		title=$(sed -e 1q "$filename")
-		html=${filename%.txt}.html
+		html=${filename%.asciidoc}.html
 		echo "* link:$html[$title]"
 	done
 	echo "$c"
 	sed -n -e '/^\/\/ table of contents end/,$p' "$skel"
-) >api-index.txt+
+) >api-index.asciidoc+
 
-if test -f api-index.txt && cmp api-index.txt api-index.txt+ >/dev/null
+if test -f api-index.asciidoc && cmp api-index.asciidoc api-index.asciidoc+ >/dev/null
 then
-	rm -f api-index.txt+
+	rm -f api-index.asciidoc+
 else
-	mv api-index.txt+ api-index.txt
+	mv api-index.asciidoc+ api-index.asciidoc
 fi

@@ -3,7 +3,7 @@
 my %include = ();
 my %included = ();
 
-for my $text (<*.txt>) {
+for my $text (<*.asciidoc>) {
     open I, '<', $text || die "cannot read: $text";
     while (<I>) {
 	if (/^include::/) {
@@ -40,7 +40,7 @@ while ($changed) {
 
 while (my ($text, $included) = each %include) {
     if (! exists $included{$text} &&
-	(my $base = $text) =~ s/\.txt$//) {
+	(my $base = $text) =~ s/\.asciidoc$//) {
 	print "$base.html $base.xml : ", join(" ", keys %$included), "\n";
     }
 }

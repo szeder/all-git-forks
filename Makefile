@@ -1783,9 +1783,9 @@ $(BUILT_INS): git$X
 	ln -s git$X $@ 2>/dev/null || \
 	cp git$X $@
 
-common-cmds.h: ./generate-cmdlist.sh command-list.txt
+common-cmds.h: ./generate-cmdlist.sh command-list.asciidoc
 
-common-cmds.h: $(wildcard Documentation/git-*.txt)
+common-cmds.h: $(wildcard Documentation/git-*.asciidoc)
 	$(QUIET_GEN)./generate-cmdlist.sh > $@+ && mv $@+ $@
 
 define cmd_munge_script
@@ -2471,9 +2471,9 @@ check-docs::
 		git-remote-* | git-stage | \
 		git-?*--?* ) continue ;; \
 		esac ; \
-		test -f "Documentation/$$v.txt" || \
+		test -f "Documentation/$$v.asciidoc" || \
 		echo "no doc: $$v"; \
-		sed -e '/^#/d' command-list.txt | \
+		sed -e '/^#/d' command-list.asciidoc | \
 		grep -q "^$$v[ 	]" || \
 		case "$$v" in \
 		git) ;; \
@@ -2483,10 +2483,10 @@ check-docs::
 	( \
 		sed -e '/^#/d' \
 		    -e 's/[ 	].*//' \
-		    -e 's/^/listed /' command-list.txt; \
-		ls -1 Documentation/git*txt | \
+		    -e 's/^/listed /' command-list.asciidoc; \
+		ls -1 Documentation/git*asciidoc | \
 		sed -e 's|Documentation/|documented |' \
-		    -e 's/\.txt//'; \
+		    -e 's/\.asciidoc//'; \
 	) | while read how cmd; \
 	do \
 		case "$$how,$$cmd" in \

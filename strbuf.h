@@ -1,7 +1,7 @@
 #ifndef STRBUF_H
 #define STRBUF_H
 
-/* See Documentation/technical/api-strbuf.txt */
+/* See Documentation/technical/api-strbuf.asciidoc */
 
 extern char strbuf_slopbuf[];
 struct strbuf {

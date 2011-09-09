@@ -6,7 +6,7 @@
 *.pdf
 git.info
 gitman.info
-howto-index.txt
+howto-index.asciidoc
 doc.dep
-cmds-*.txt
+cmds-*.asciidoc
 manpage-base-url.xsl

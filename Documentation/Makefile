@@ -1,17 +1,17 @@
-MAN1_TXT= \
-	$(filter-out $(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
-		$(wildcard git-*.txt)) \
-	gitk.txt git.txt
-MAN5_TXT=gitattributes.txt gitignore.txt gitmodules.txt githooks.txt \
-	gitrepository-layout.txt
-MAN7_TXT=gitcli.txt gittutorial.txt gittutorial-2.txt \
-	gitcvs-migration.txt gitcore-tutorial.txt gitglossary.txt \
-	gitdiffcore.txt gitnamespaces.txt gitrevisions.txt gitworkflows.txt
-MAN7_TXT += gitcredentials.txt
+MAN1_ASCIIDOC= \
+	$(filter-out $(addsuffix .asciidoc, $(ARTICLES) $(SP_ARTICLES)), \
+		$(wildcard git-*.asciidoc)) \
+	gitk.asciidoc git.asciidoc
+MAN5_ASCIIDOC=gitattributes.asciidoc gitignore.asciidoc gitmodules.asciidoc githooks.asciidoc \
+	gitrepository-layout.asciidoc
+MAN7_ASCIIDOC=gitcli.asciidoc gittutorial.asciidoc gittutorial-2.asciidoc \
+	gitcvs-migration.asciidoc gitcore-tutorial.asciidoc gitglossary.asciidoc \
+	gitdiffcore.asciidoc gitnamespaces.asciidoc gitrevisions.asciidoc gitworkflows.asciidoc
+MAN7_ASCIIDOC += gitcredentials.asciidoc
 
-MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
-MAN_XML=$(patsubst %.txt,%.xml,$(MAN_TXT))
-MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
+MAN_asciidoc = $(MAN1_ASCIIDOC) $(MAN5_ASCIIDOC) $(MAN7_ASCIIDOC)
+MAN_XML=$(patsubst %.asciidoc,%.xml,$(MAN_asciidoc))
+MAN_HTML=$(patsubst %.asciidoc,%.html,$(MAN_asciidoc))
 
 DOC_HTML=$(MAN_HTML)
 
@@ -21,15 +21,15 @@ ARTICLES += git-tools
 ARTICLES += git-bisect-lk2009
 # with their own formatting rules.
 SP_ARTICLES = howto/revert-branch-rebase howto/using-merge-subtree user-manual
-API_DOCS = $(patsubst %.txt,%,$(filter-out technical/api-index-skel.txt technical/api-index.txt, $(wildcard technical/api-*.txt)))
+API_DOCS = $(patsubst %.asciidoc,%,$(filter-out technical/api-index-skel.asciidoc technical/api-index.asciidoc, $(wildcard technical/api-*.asciidoc)))
 SP_ARTICLES += $(API_DOCS)
 SP_ARTICLES += technical/api-index
 
 DOC_HTML += $(patsubst %,%.html,$(ARTICLES) $(SP_ARTICLES))
 
-DOC_MAN1=$(patsubst %.txt,%.1,$(MAN1_TXT))
-DOC_MAN5=$(patsubst %.txt,%.5,$(MAN5_TXT))
-DOC_MAN7=$(patsubst %.txt,%.7,$(MAN7_TXT))
+DOC_MAN1=$(patsubst %.asciidoc,%.1,$(MAN1_ASCIIDOC))
+DOC_MAN5=$(patsubst %.asciidoc,%.5,$(MAN5_ASCIIDOC))
+DOC_MAN7=$(patsubst %.asciidoc,%.7,$(MAN7_ASCIIDOC))
 
 prefix?=$(HOME)
 bindir?=$(prefix)/bin
@@ -206,40 +206,40 @@ install-html: html
 #
 # Determine "include::" file references in asciidoc files.
 #
-doc.dep : $(wildcard *.txt) build-docdep.perl
+doc.dep : $(wildcard *.asciidoc) build-docdep.perl
 	$(QUIET_GEN)$(RM) $@+ $@ && \
 	$(PERL_PATH) ./build-docdep.perl >$@+ $(QUIET_STDERR) && \
 	mv $@+ $@
 
 -include doc.dep
 
-cmds_txt = cmds-ancillaryinterrogators.txt \
-	cmds-ancillarymanipulators.txt \
-	cmds-mainporcelain.txt \
-	cmds-plumbinginterrogators.txt \
-	cmds-plumbingmanipulators.txt \
-	cmds-synchingrepositories.txt \
-	cmds-synchelpers.txt \
-	cmds-purehelpers.txt \
-	cmds-foreignscminterface.txt
+cmds_asciidoc = cmds-ancillaryinterrogators.asciidoc \
+	cmds-ancillarymanipulators.asciidoc \
+	cmds-mainporcelain.asciidoc \
+	cmds-plumbinginterrogators.asciidoc \
+	cmds-plumbingmanipulators.asciidoc \
+	cmds-synchingrepositories.asciidoc \
+	cmds-synchelpers.asciidoc \
+	cmds-purehelpers.asciidoc \
+	cmds-foreignscminterface.asciidoc
 
-$(cmds_txt): cmd-list.made
+$(cmds_asciidoc): cmd-list.made
 
-cmd-list.made: cmd-list.perl ../command-list.txt $(MAN1_TXT)
+cmd-list.made: cmd-list.perl ../command-list.asciidoc $(MAN1_ASCIIDOC)
 	$(QUIET_GEN)$(RM) $@ && \
-	$(PERL_PATH) ./cmd-list.perl ../command-list.txt $(QUIET_STDERR) && \
+	$(PERL_PATH) ./cmd-list.perl ../command-list.asciidoc $(QUIET_STDERR) && \
 	date >$@
 
 clean:
 	$(RM) *.xml *.xml+ *.html *.html+ *.1 *.5 *.7
 	$(RM) *.texi *.texi+ *.texi++ git.info gitman.info
 	$(RM) *.pdf
-	$(RM) howto-index.txt howto/*.html doc.dep
-	$(RM) technical/api-*.html technical/api-index.txt
-	$(RM) $(cmds_txt) *.made
+	$(RM) howto-index.asciidoc howto/*.html doc.dep
+	$(RM) technical/api-*.html technical/api-index.asciidoc
+	$(RM) $(cmds_asciidoc) *.made
 	$(RM) manpage-base-url.xsl
 
-$(MAN_HTML): %.html : %.txt
+$(MAN_HTML): %.html : %.asciidoc
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
@@ -252,24 +252,24 @@ manpage-base-url.xsl: manpage-base-url.xsl.in
 	$(QUIET_XMLTO)$(RM) $@ && \
 	xmlto -m $(MANPAGE_XSL) $(XMLTO_EXTRA) man $<
 
-%.xml : %.txt
+%.xml : %.asciidoc
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) -b docbook -d manpage -f asciidoc.conf \
 		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
 	mv $@+ $@
 
-user-manual.xml: user-manual.txt user-manual.conf
+user-manual.xml: user-manual.asciidoc user-manual.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	$(ASCIIDOC) $(ASCIIDOC_EXTRA) -b docbook -d book -o $@+ $< && \
 	mv $@+ $@
 
-technical/api-index.txt: technical/api-index-skel.txt \
-	technical/api-index.sh $(patsubst %,%.txt,$(API_DOCS))
+technical/api-index.asciidoc: technical/api-index-skel.asciidoc \
+	technical/api-index.sh $(patsubst %,%.asciidoc,$(API_DOCS))
 	$(QUIET_GEN)cd technical && '$(SHELL_PATH_SQ)' ./api-index.sh
 
-$(patsubst %,%.html,$(API_DOCS) technical/api-index): %.html : %.txt
+$(patsubst %,%.html,$(API_DOCS) technical/api-index): %.html : %.asciidoc
 	$(QUIET_ASCIIDOC)$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
-		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) $*.txt
+		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) $*.asciidoc
 
 XSLT = docbook.xsl
 XSLTOPTS = --xinclude --stringparam html.stylesheet docbook-xsl.css
@@ -305,22 +305,22 @@ gitman.texi: $(MAN_XML) cat-texi.perl
 gitman.info: gitman.texi
 	$(QUIET_MAKEINFO)$(MAKEINFO) --no-split --no-validate $*.texi
 
-$(patsubst %.txt,%.texi,$(MAN_TXT)): %.texi : %.xml
+$(patsubst %.asciidoc,%.texi,$(MAN_asciidoc)): %.texi : %.xml
 	$(QUIET_DB2TEXI)$(RM) $@+ $@ && \
 	$(DOCBOOK2X_TEXI) --to-stdout $*.xml >$@+ && \
 	mv $@+ $@
 
-howto-index.txt: howto-index.sh $(wildcard howto/*.txt)
+howto-index.asciidoc: howto-index.sh $(wildcard howto/*.asciidoc)
 	$(QUIET_GEN)$(RM) $@+ $@ && \
-	'$(SHELL_PATH_SQ)' ./howto-index.sh $(wildcard howto/*.txt) >$@+ && \
+	'$(SHELL_PATH_SQ)' ./howto-index.sh $(wildcard howto/*.asciidoc) >$@+ && \
 	mv $@+ $@
 
-$(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt
-	$(QUIET_ASCIIDOC)$(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 $*.txt
+$(patsubst %,%.html,$(ARTICLES)) : %.html : %.asciidoc
+	$(QUIET_ASCIIDOC)$(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 $*.asciidoc
 
 WEBDOC_DEST = /pub/software/scm/git/docs
 
-$(patsubst %.txt,%.html,$(wildcard howto/*.txt)): %.html : %.txt
+$(patsubst %.asciidoc,%.html,$(wildcard howto/*.asciidoc)): %.html : %.asciidoc
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
 	sed -e '1,/^$$/d' $< | $(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 - >$@+ && \
 	mv $@+ $@

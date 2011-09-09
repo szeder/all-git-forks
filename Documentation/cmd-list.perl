@@ -7,7 +7,7 @@ sub format_one {
 	my ($name, $attr) = @$nameattr;
 	my ($state, $description);
 	$state = 0;
-	open I, '<', "$name.txt" or die "No such file $name.txt";
+	open I, '<', "$name.asciidoc" or die "No such file $name.asciidoc";
 	while (<I>) {
 		if (/^NAME$/) {
 			$state = 1;
@@ -24,7 +24,7 @@ sub format_one {
 	}
 	close I;
 	if (!defined $description) {
-		die "No description found in $name.txt";
+		die "No description found in $name.asciidoc";
 	}
 	if (my ($verify_name, $text) = ($description =~ /^($name) - (.*)/)) {
 		print $out "linkgit:$name\[1\]::\n\t";
@@ -57,7 +57,7 @@ for my $cat (qw(ancillaryinterrogators
 		foreignscminterface
 		purehelpers
 		synchelpers)) {
-	my $out = "cmds-$cat.txt";
+	my $out = "cmds-$cat.asciidoc";
 	open O, '>', "$out+" or die "Cannot open output file $out+";
 	for (@{$cmds{$cat}}) {
 		format_one(\*O, $_);

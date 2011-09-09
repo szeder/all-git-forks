@@ -663,7 +663,7 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -685,7 +685,7 @@ static int git_default_user_config(const char *var, const char *value)
 		return 0;
 	}
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -697,7 +697,7 @@ static int git_default_i18n_config(const char *var, const char *value)
 	if (!strcmp(var, "i18n.logoutputencoding"))
 		return git_config_string(&git_log_output_encoding, var, value);
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -727,7 +727,7 @@ static int git_default_branch_config(const char *var, const char *value)
 		return 0;
 	}
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -754,7 +754,7 @@ static int git_default_push_config(const char *var, const char *value)
 		return 0;
 	}
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -763,7 +763,7 @@ static int git_default_mailmap_config(const char *var, const char *value)
 	if (!strcmp(var, "mailmap.file"))
 		return git_config_string(&git_mailmap_file, var, value);
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 
@@ -798,7 +798,7 @@ int git_default_config(const char *var, const char *value, void *dummy)
 	if (!prefixcmp(var, "credential."))
 		return git_default_credential_config(var, value);
 
-	/* Add other config variables here and to Documentation/config.txt. */
+	/* Add other config variables here and to Documentation/config.asciidoc. */
 	return 0;
 }
 

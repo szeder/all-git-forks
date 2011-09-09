@@ -11,7 +11,7 @@ EOF
 
 for txt
 do
-	title=`expr "$txt" : '.*/\(.*\)\.txt$'`
+	title=`expr "$txt" : '.*/\(.*\)\.asciidoc$'`
 	from=`sed -ne '
 	/^$/q
 	/^From:[ 	]/{
@@ -43,7 +43,7 @@ do
 
 	if grep 'Content-type: text/asciidoc' >/dev/null $txt
 	then
-		file=`expr "$txt" : '\(.*\)\.txt$'`.html
+		file=`expr "$txt" : '\(.*\)\.asciidoc$'`.html
 	else
 		file="$txt"
 	fi

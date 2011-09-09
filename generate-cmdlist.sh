@@ -8,7 +8,7 @@ struct cmdname_help {
 
 static struct cmdname_help common_cmds[] = {"
 
-sed -n -e 's/^git-\([^ 	]*\)[ 	].* common.*/\1/p' command-list.txt |
+sed -n -e 's/^git-\([^ 	]*\)[ 	].* common.*/\1/p' command-list.asciidoc |
 sort |
 while read cmd
 do
@@ -18,6 +18,6 @@ do
 	    x
 	    s/.*git-'"$cmd"' - \(.*\)/  {"'"$cmd"'", "\1"},/
 	    p
-     }' "Documentation/git-$cmd.txt"
+     }' "Documentation/git-$cmd.asciidoc"
 done
 echo "};"

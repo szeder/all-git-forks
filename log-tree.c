@@ -45,7 +45,7 @@ static int parse_decorate_color_slot(const char *slot)
 	 * (because config.c sets them all tolower),
 	 * but let's match the letters in the literal
 	 * string values here with how they are
-	 * documented in Documentation/config.txt, for
+	 * documented in Documentation/config.asciidoc, for
 	 * consistency.
 	 *
 	 * We love being consistent, don't we?

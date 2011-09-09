@@ -1,5 +1,5 @@
 /*
-(See Documentation/git-fast-import.txt for maintained documentation.)
+(See Documentation/git-fast-import.asciidoc for maintained documentation.)
 Format of STDIN stream:
 
   stream ::= cmd*;
