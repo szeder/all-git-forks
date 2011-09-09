@@ -312,4 +312,6 @@ void string_list_add_refs_from_colon_sep(struct string_list *list,
 /* Expand inplace a note ref like "foo" or "notes/foo" into "refs/notes/foo" */
 void expand_notes_ref(struct strbuf *sb);
 
+void get_note_text(struct strbuf *, struct notes_tree *, const unsigned char *);
+
 #endif

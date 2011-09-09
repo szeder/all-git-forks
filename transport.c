@@ -11,6 +11,12 @@
 #include "branch.h"
 #include "url.h"
 #include "submodule.h"
+#include "gpg-interface.h"
+#include "commit.h"
+#include "notes.h"
+#include "notes-merge.h"
+#include "blob.h"
+#include "tag.h"
 
 /* rsync support */
 
@@ -1004,6 +1010,112 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 	transport->progress = force_progress || (verbosity >= 0 && isatty(2));
 }
 
+static int is_ref_pushed(const struct ref *ref)
+{
+	if (!ref->peer_ref || ref->deletion)
+		return 0;
+
+	/* Filter out unchanged ones */
+	switch (ref->status) {
+	case REF_STATUS_REJECT_NONFASTFORWARD:
+	case REF_STATUS_UPTODATE:
+		return 0;
+	default:
+		; /* ok */
+	}
+
+	return 1;
+}
+
+static const char push_signature_note[] = "refs/notes/signed-push";
+
+static int add_push_signature_note(struct ref *signature_note,
+				   struct ref *ref,
+				   struct strbuf *cert)
+{
+	struct notes_tree *notes_tree;
+	struct strbuf nbuf = STRBUF_INIT;
+	int ret = 0;
+	unsigned char parent[20], commit[20];
+	struct ref_lock *lock;
+
+	init_notes(NULL, push_signature_note, NULL, 0);
+	notes_tree = &default_notes_tree;
+
+	resolve_ref(notes_tree->ref, parent, 0, NULL);
+	lock = lock_any_ref_for_update(notes_tree->ref, parent, 0);
+
+	for ( ; ref; ref = ref->next) {
+		unsigned char nsha1[20];
+
+		if ((ref == signature_note) || !is_ref_pushed(ref))
+			continue;
+		get_note_text(&nbuf, notes_tree, ref->new_sha1);
+		if (nbuf.len)
+			strbuf_addch(&nbuf, '\n');
+		strbuf_add(&nbuf, cert->buf, cert->len);
+		if (write_sha1_file(nbuf.buf, nbuf.len, blob_type, nsha1) ||
+		    add_note(notes_tree, ref->new_sha1, nsha1, NULL))
+			ret = error(_("unable to write note object"));
+		strbuf_reset(&nbuf);
+	}
+
+	if (!ret) {
+		create_notes_commit(notes_tree, NULL, "push", commit);
+		ret = write_ref_sha1(lock, commit, "signed push");
+	}
+	free_notes(notes_tree);
+
+	if (!ret) {
+		hashcpy(signature_note->new_sha1, commit);
+		if (!signature_note->peer_ref)
+			signature_note->peer_ref = alloc_ref(push_signature_note);
+	}
+	return ret;
+}
+
+static int sign_push_certificate(struct strbuf *cert)
+{
+	return sign_buffer(cert, git_committer_info(IDENT_NO_DATE));
+}
+
+static int sign_push(struct transport *transport,
+		     struct ref *remote_refs,
+		     int flags)
+{
+	struct ref *ref, *tail = NULL, *signature_note = NULL;
+	struct strbuf push_cert = STRBUF_INIT;
+	int updates = 0, ret = 0;
+
+	if (flags & TRANSPORT_PUSH_DRY_RUN)
+		return 0;
+
+	strbuf_addstr(&push_cert, "Push-Certificate-Version: 0\n");
+	strbuf_addf(&push_cert, "Pusher: %s\n", git_committer_info(0));
+
+	for (ref = remote_refs; ref; ref = ref->next) {
+		tail = ref;
+		if (!strcmp(ref->name, push_signature_note))
+			signature_note = ref;
+		if (!is_ref_pushed(ref))
+			continue;
+		updates++;
+		strbuf_addf(&push_cert, "Update: %s %s\n",
+			    sha1_to_hex(ref->new_sha1), ref->name);
+	}
+
+	if (updates && !sign_push_certificate(&push_cert)) {
+		if (!signature_note) {
+			signature_note = alloc_ref(push_signature_note);
+			tail->next = signature_note;
+		}
+		ret = add_push_signature_note(signature_note,
+					      remote_refs, &push_cert);
+	}
+	strbuf_release(&push_cert);
+	return ret;
+}
+
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   int *nonfastforward)
@@ -1015,6 +1127,9 @@ int transport_push(struct transport *transport,
 		/* Maybe FIXME. But no important transport uses this case. */
 		if (flags & TRANSPORT_PUSH_SET_UPSTREAM)
 			die("This transport does not support using --set-upstream");
+		/* Likewise */
+		if (flags & TRANSPORT_PUSH_SIGNED)
+			die("This transport does not support using --signed");
 
 		return transport->push(transport, refspec_nr, refspec, flags);
 	} else if (transport->push_refs) {
@@ -1048,6 +1163,11 @@ int transport_push(struct transport *transport,
 				if (!is_null_sha1(ref->new_sha1) &&
 				    check_submodule_needs_pushing(ref->new_sha1,transport->remote->name))
 					die("There are unpushed submodules, aborting.");
+		}
+
+		if (flags & TRANSPORT_PUSH_SIGNED) {
+			if (sign_push(transport, remote_refs, flags))
+				return -1;
 		}
 
 		push_ret = transport->push_refs(transport, remote_refs, flags);

@@ -1296,3 +1296,19 @@ void expand_notes_ref(struct strbuf *sb)
 	else
 		strbuf_insert(sb, 0, "refs/notes/", 11);
 }
+
+void get_note_text(struct strbuf *buf, struct notes_tree *t,
+		   const unsigned char *object)
+{
+	const unsigned char *sha1 = get_note(t, object);
+	char *text;
+	unsigned long len;
+	enum object_type type;
+
+	if (!sha1)
+		return;
+	text = read_sha1_file(sha1, &type, &len);
+	if (text && len && type == OBJ_BLOB)
+		strbuf_add(buf, text, len);
+	free(text);
+}
