@@ -211,6 +211,13 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 	return 0;
 }
 
+static struct reflog_info *peek_reflog_ent(struct commit_reflog *clog)
+{
+	if (clog->recno < 0)
+		return NULL;
+	return &clog->reflogs->items[clog->recno];
+}
+
 void fake_reflog_parent(struct reflog_walk_info *info, struct commit *commit)
 {
 	struct commit_info *commit_info =
@@ -223,20 +230,20 @@ void fake_reflog_parent(struct reflog_walk_info *info, struct commit *commit)
 		return;
 
 	commit_reflog = commit_info->util;
-	if (commit_reflog->recno < 0) {
+	reflog = peek_reflog_ent(commit_reflog);
+	if (!reflog) {
 		commit->parents = NULL;
 		return;
 	}
-
-	reflog = &commit_reflog->reflogs->items[commit_reflog->recno];
 	info->last_commit_reflog = commit_reflog;
 	commit_reflog->recno--;
-	commit_info->commit = (struct commit *)parse_object(reflog->osha1);
-	if (!commit_info->commit) {
+	reflog = peek_reflog_ent(commit_reflog);
+	if (!reflog) {
 		commit->parents = NULL;
 		return;
 	}
 
+	commit_info->commit = (struct commit *)parse_object(reflog->nsha1);
 	commit->parents = xcalloc(sizeof(struct commit_list), 1);
 	commit->parents->item = commit_info->commit;
 }
