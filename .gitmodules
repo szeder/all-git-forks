@@ -1,0 +1,3 @@
+[submodule "vendors/opsplorer"]
+	path = vendors/opsplorer
+	url = git://github.com/vim-scripts/opsplorer.git

@@ -1,0 +1,1 @@
+../../vendors/opsplorer/plugin/opsplorer.vim

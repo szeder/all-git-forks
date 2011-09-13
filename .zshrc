@@ -38,8 +38,8 @@ setopt auto_pushd
 # コマンド間違い
 setopt correct
 # コマンド予測
-autoload predict-on
-predict-on
+#autoload predict-on
+#predict-on
 #
 # thx. http://ho-ki-boshi.blogspot.com/2007/12/zsh.html
 #
