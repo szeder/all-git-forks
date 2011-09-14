@@ -2,8 +2,12 @@ git (1:1.7.6.3-1) unstable; urgency=low
 
   * merge branch debian-experimental.
   * new upstream point release.
+  * debian/diff:
+    * 0007-...diff, ..., 0014-...diff: slightly rework as 0008...0015-*
+      to provide better error reporting (thx Jonathan Nieder).
+    * 0015-Makefile-do-not-use-setgid-bit-on-...diff: rename to 0007-*.
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 14 Sep 2011 09:31:26 +0000
+ -- Gerrit Pape <pape@smarden.org>  Wed, 14 Sep 2011 11:33:23 +0000
 
 git (1:1.7.6-1) experimental; urgency=low
 

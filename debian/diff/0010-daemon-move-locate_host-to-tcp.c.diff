@@ -1,7 +1,7 @@
-From 76a17a34e2ea1a3cc65ecd9f376a523cab572983 Mon Sep 17 00:00:00 2001
+From 76463604a7e43a18fb2bb54135b963dd5bd7576f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: [PATCH 09/15] daemon: move locate_host to tcp.c
+Subject: [PATCH 10/15] daemon: move locate_host to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -15,10 +15,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 59889bb..e4ef311 100644
+index 6f86d11..987126f 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1959,7 +1959,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -1960,7 +1960,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
@@ -123,7 +123,7 @@ index 3958cb6..15f95d5 100644
  
  
 diff --git a/tcp.c b/tcp.c
-index 89f5c62..69da17a 100644
+index 0ab3c1b..fff37f8 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,6 +1,10 @@
@@ -137,7 +137,7 @@ index 89f5c62..69da17a 100644
  #define STR_(s)	# s
  #define STR(s)	STR_(s)
  
-@@ -97,6 +101,34 @@ static const char *ai_name(const struct addrinfo *ai)
+@@ -38,6 +42,34 @@ static const char *ai_name(const struct addrinfo *ai)
  	return addr;
  }
  
@@ -172,7 +172,7 @@ index 89f5c62..69da17a 100644
  /*
   * Returns a connected socket() fd, or else die()s.
   */
-@@ -162,6 +194,31 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -100,6 +132,31 @@ static int git_tcp_connect_sock(char *host, int flags)
  
  #else /* NO_IPV6 */
  

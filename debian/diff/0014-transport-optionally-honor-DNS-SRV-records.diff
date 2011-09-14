@@ -1,7 +1,7 @@
-From 6767a1f8a95bfb2210c6798828b417a362ce6cd3 Mon Sep 17 00:00:00 2001
+From 735b97ca55cad660c836dd728f6b51da2c44c48b Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: [PATCH 14/15] transport: honor DNS SRV records
+Subject: [PATCH 14/15] transport: optionally honor DNS SRV records
 
 As rfc2782 explains, SRV records allow administrators "to use serveral
 servers for a single domain, to move services from host to host with
@@ -14,13 +14,13 @@ Sadly, getaddrinfo itself does not provide a means to resolve SRV
 records automatically.  Therefore this patch uses the BIND 8 API
 provided by libresolv to parse the response for ourselves.  Hopefully
 after reading enough specimens of code like this, someone will be
-disgusted enough to extend libc and make them obsolete.
+inspired to extend libc and make them obsolete.
 
 RFC 2782 requires some non-determinism in the order of hosts
 contacted; this patch uses drand48() for that.  To avoid causing
-trouble for platforms without the libbind ns_* functions or drand48(),
-the new SRV support is only provided when requested with the
-USE_SRV_RR compile-time option.
+trouble for platforms that lack the libbind ns_* functions or
+drand48(), the SRV support is only provided when requested by setting
+the USE_SRV_RR compile-time option.
 
 Based on a patch by Julien Cristau <jcristau@debian.org>.
 
@@ -29,13 +29,13 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  Makefile |   10 ++
  srv.c    |  308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  srv.h    |   15 +++
- tcp.c    |  101 ++++++++++++++-------
- 4 files changed, 401 insertions(+), 33 deletions(-)
+ tcp.c    |  104 +++++++++++++++------
+ 4 files changed, 407 insertions(+), 30 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index a3c1def..3077100 100644
+index d56a42e..bfdd200 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -124,6 +124,10 @@ all::
@@ -49,7 +49,7 @@ index a3c1def..3077100 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
-@@ -1357,6 +1361,11 @@ endif
+@@ -1358,6 +1362,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -61,7 +61,7 @@ index a3c1def..3077100 100644
  ifdef NEEDS_RESOLV
  	EXTLIBS += -lresolv
  endif
-@@ -1965,6 +1974,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
+@@ -1966,6 +1975,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
  connect.o daemon.o tcp.o: tcp.h
@@ -71,11 +71,11 @@ index a3c1def..3077100 100644
  
 diff --git a/srv.c b/srv.c
 new file mode 100644
-index 0000000..f0c2cdd
+index 0000000..a0bc148
 --- /dev/null
 +++ b/srv.c
 @@ -0,0 +1,308 @@
-+#include "cache.h"
++#include "git-compat-util.h"
 +#include "strbuf.h"
 +#include "srv.h"
 +
@@ -405,7 +405,7 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index 2707c49..f93175b 100644
+index d0cd709..7a8a244 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,5 +1,6 @@
@@ -415,16 +415,16 @@ index 2707c49..f93175b 100644
  
  #ifndef NO_IPV6
  #include "dns-ipv6.h"
-@@ -121,57 +122,91 @@ void git_locate_host(const char *hostname, char **ip_address,
-  */
+@@ -63,53 +64,96 @@ void git_locate_host(const char *hostname, char **ip_address,
  static int git_tcp_connect_sock(char *host, int flags)
  {
--	int sockfd = -1, saved_errno = 0;
+ 	struct strbuf error_message = STRBUF_INIT;
+-	int sockfd = -1;
 -	const char *port = STR(DEFAULT_GIT_PORT);
 -	resolver_result ai;
 -	resolved_address i;
 -	int cnt = -1;
-+	int sockfd = -1, saved_errno = 0, gai = 0;
++	int sockfd = -1, gai = 0;
 +	const char *port = NULL;
 +	struct host *hosts = NULL;
 +	int j, n = 0;
@@ -447,41 +447,43 @@ index 2707c49..f93175b 100644
  
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "Looking up %s ... ", host);
--
--	if (dns_resolve(host, port, 0, &ai))
--		die("BUG: dns_resolve returned error?");
 +	for (j = 0; j < n; j++) {
 +		resolver_result ai;
 +		resolved_address i;
 +		int cnt;
  
--	if (flags & CONNECT_VERBOSE)
--		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
+-	if (dns_resolve(host, port, 0, &ai))
+-		die("BUG: dns_resolve returned error?");
 +		if (flags & CONNECT_VERBOSE)
 +			fprintf(stderr, "Looking up %s ... ", hosts[j].hostname);
  
--	for_each_address(i, ai) {
--		cnt++;
--		sockfd = socket(dns_family(i, ai),
--				dns_socktype(i, ai), dns_protocol(i, ai));
--		if (sockfd < 0) {
--			saved_errno = errno;
--			continue;
--		}
--		if (connect(sockfd, dns_addr(i, ai), dns_addrlen(i, ai)) < 0) {
--			saved_errno = errno;
--			fprintf(stderr, "%s[%d: %s]: errno=%s\n",
--				host,
--				cnt,
--				dns_name(&i),
--				strerror(saved_errno));
--			close(sockfd);
--			sockfd = -1;
+-	if (flags & CONNECT_VERBOSE)
+-		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
 +		gai = dns_resolve(hosts[j].hostname,
 +				hosts[j].port, RESOLVE_IGNORE_ERROR, &ai);
 +		if (gai) {
 +			if (flags & CONNECT_VERBOSE)
 +				fprintf(stderr, "failed.\n");
+ 
+-	for_each_address(i, ai) {
+-		cnt++;
+-		sockfd = socket(dns_family(i, ai),
+-				dns_socktype(i, ai), dns_protocol(i, ai));
+-		if (sockfd < 0 ||
+-		    connect(sockfd, dns_addr(i, ai), dns_addrlen(i, ai)) < 0) {
+-			strbuf_addf(&error_message, "%s[%d: %s]: errno=%s\n",
+-				    host, cnt, dns_name(&i), strerror(errno));
+-			if (0 <= sockfd)
+-				close(sockfd);
+-			sockfd = -1;
++			if (n == 1 && !strcmp(host, hosts[j].hostname))
++				strbuf_addf(&error_message, "%s: %s\n",
++					host, dns_strerror(gai));
++			else
++				strbuf_addf(&error_message,
++					"%s[%d: %s:%s]: %s\n", host, j,
++					hosts[j].hostname, hosts[j].port,
++					dns_strerror(gai));
  			continue;
  		}
 +
@@ -497,18 +499,15 @@ index 2707c49..f93175b 100644
 +			cnt++;
 +			sockfd = socket(dns_family(i, ai),
 +					dns_socktype(i, ai), dns_protocol(i, ai));
-+			if (sockfd < 0) {
-+				saved_errno = errno;
-+				continue;
-+			}
-+			if (connect(sockfd, dns_addr(i, ai), dns_addrlen(i, ai)) < 0) {
-+				saved_errno = errno;
-+				fprintf(stderr, "%s[%d: %s]: errno=%s\n",
-+					hosts[j].hostname,
-+					cnt,
-+					dns_name(&i),
-+					strerror(saved_errno));
-+				close(sockfd);
++			if (sockfd < 0 ||
++			    connect(sockfd, dns_addr(i, ai), dns_addrlen(i, ai)) < 0) {
++				strbuf_addf(&error_message, "%s[%d: %s]: errno=%s\n",
++						hosts[j].hostname,
++						cnt,
++						dns_name(&i),
++						strerror(errno));
++				if (0 <= sockfd)
++					close(sockfd);
 +				sockfd = -1;
 +				continue;
 +			}
@@ -520,14 +519,13 @@ index 2707c49..f93175b 100644
 -	dns_free(ai);
 +		dns_free(ai);
  
+-	if (sockfd < 0)
 +		if (sockfd >= 0)
 +			break;
 +	}
 +
-+	if (gai)
-+		die("Unable to look up %s: %s", host, dns_strerror(gai));
- 	if (sockfd < 0)
- 		die("unable to connect a socket (%s)", strerror(saved_errno));
++	if (gai || sockfd < 0)
+ 		die("unable to connect to %s:\n%s", host, error_message.buf);
  
  	if (flags & CONNECT_VERBOSE)
  		fprintf(stderr, "done.\n");
@@ -537,6 +535,8 @@ index 2707c49..f93175b 100644
 +		free(hosts[j].port);
 +	}
 +	free(hosts);
+ 	strbuf_release(&error_message);
+-
  	return sockfd;
  }
  

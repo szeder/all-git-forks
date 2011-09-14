@@ -1,24 +1,25 @@
-From 62fd8f927ec010dc663ce8dc253e956fb52a397a Mon Sep 17 00:00:00 2001
+From 7548af1ebdb76c9c144d48d8d03cf85a6532ff6a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 05:23:57 -0500
 Subject: [PATCH 13/15] tcp: make dns_resolve return an error code
 
 Both getaddrinfo and gethostbyname report errors through an error
-code.  Use the error code as the return value for dns_resolve when the
-RESOLVE_IGNORE_ERROR flag is set, so callers can conveniently save the
-result and print it later:
+code.  Use that error code as the return value for dns_resolve when
+the RESOLVE_IGNORE_ERROR flag is set, so callers can conveniently save
+the result and print it later:
 
 	int saved_rerrno = dns_resolve(...);
 	...
 	if (saved_rerrno)
 		die("resolver failed: %s", dns_strerror(saved_rerrno));
 
-POSIX.1-2004 does not specify whether 0 is a valid value for h_errno
-on error, but luckily common practice is for h_errno to be a small,
-strictly positive integer (HOST_NOT_FOUND = 1, NO_DATA = 2,
-NO_RECOVERY = 3, or TRY_AGAIN = 4).  If some platform makes
-gethostbyname error out with h_errno == 0, die with a message
-indicating a BUG.
+Caveat: in the ipv4 codepath, we assume that h_errno will never be 0
+on error.  POSIX.1-2004 does not specify whether 0 is a valid value
+for h_errno on error, but luckily common practice is for h_errno to be
+a small, strictly positive integer (HOST_NOT_FOUND = 1, NO_DATA = 2,
+NO_RECOVERY = 3, or TRY_AGAIN = 4).  If on some platform gethostbyname
+errors out with h_errno == 0, git will die with a message indicating a
+BUG.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -47,10 +48,10 @@ index 39849c3..6275b1c 100644
  		die("Unable to look up %s (%s)", host, hstrerror(h_errno));
  
 diff --git a/dns-ipv4.h b/dns-ipv4.h
-index 9e6f590..602df2f 100644
+index 18feb51..bafad70 100644
 --- a/dns-ipv4.h
 +++ b/dns-ipv4.h
-@@ -22,6 +22,10 @@ typedef struct ipv4_address resolved_address;
+@@ -18,6 +18,10 @@ typedef struct ipv4_address resolved_address;
  
  enum {
  	RESOLVE_CANONNAME = 1,
@@ -61,7 +62,7 @@ index 9e6f590..602df2f 100644
  	RESOLVE_IGNORE_ERROR = 2
  };
  extern int dns_resolve(const char *host, const char *port, int flags,
-@@ -67,6 +71,7 @@ static inline int dns_fill_sockaddr_(char *ap,
+@@ -63,6 +67,7 @@ static inline int dns_fill_sockaddr_(char *ap,
  #define dns_addrlen(addr, ai) sizeof((addr).sa)
  #define dns_canonname(addr, ai) ((ai).he->h_name)
  

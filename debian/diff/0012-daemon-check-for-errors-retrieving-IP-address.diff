@@ -1,62 +1,56 @@
-From 2a8ac1ec00900f63d6f26892eec404f0c46277dd Mon Sep 17 00:00:00 2001
+From b98296254d630220876f1fe3a30f8586e5ed7587 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
 Subject: [PATCH 12/15] daemon: check for errors retrieving IP address
 
-To retrieve a canonical IP address for possible use by the
---interpolated-path=%IP feature, currently the git daemon calls
-inet_ntop to fill a buffer of size HOST_NAME_MAX+1, ignoring errors,
-and copies it.  If the result has length > HOST_NAME_MAX then
-inet_ntop could error out, leading the git daemon to copy
-uninitialized data.
+To retrieve a canonical IP address for possible use in a
+--interpolated-path=%IP string, the git daemon calls inet_ntop to fill
+a buffer of size HOST_NAME_MAX+1, ignoring errors, and copies the
+reuslt.  If the address has length > HOST_NAME_MAX (which was as low
+as 8 in ancient times) then inet_ntop could error out, leading the git
+daemon to copy uninitialized data.
 
-Probably this never comes up in practice because modern systems either
-use a HOST_NAME_MAX of at least 64, which is plenty (POSIX requires at
-least 255) or have no compile-time maximum at all and let git fall
-back to a buffer size of 256.  Still, it would be more comforting not
-to have to rely on that detail, so let's use a more principled buffer
-size and handle errors by interpolating an empty string.  More
-precisely:
+This probably never happens in practice because modern systems allow
+such long hostnames as 64 chars (POSIX requires at least 255) or have
+no compile-time maximum at all and let git fall back to a buffer size
+of 256.  But it would be more comforting not to rely on that.  So:
 
-. In the ipv4 code path, read into a buffer of size INET6_ADDRSTRLEN
-  (the maximum size of an ipv6 address string), falling back to
-  INET_ADDRSTRLEN if the build system is ignorant about ipv6 addresses.
+ - in ipv4 code, use a buffer of size 64 (which is long enough to
+   hold an ipv6 address if needed).
 
-. In the ipv6 codepath, use getnameinfo to retrieve the numeric
-  address string, since it is more convenient and already used
-  elsewhere.  The buffer holding the result is of size NI_MAXHOST.
+ - in ipv6 code, use the "getnameinfo" function already used to
+   convert addresses to text in error messages (it uses a buffer of
+   length NI_MAXHOST).
 
-. Return NULL on error.  strbuf_expand_dict_cb treats NULL as an empty
-  substitution string.
+ - check for errors and return NULL when they occur.
+   strbuf_expand_dict_cb treats NULL as an empty substitution string.
 
-As a bonus, this means we can remove the fallback HOST_NAME_MAX for
-platforms that don't define it.
+As a nice side effect, this means we can remove the fallback
+definition of HOST_NAME_MAX on platforms that don't define it.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
- dns-ipv4.h |   13 ++++++++-----
+ dns-ipv4.h |   11 +++++------
  dns-ipv6.c |   16 ++++++++--------
  tcp.c      |    6 ++++--
- 3 files changed, 20 insertions(+), 15 deletions(-)
+ 3 files changed, 17 insertions(+), 16 deletions(-)
 
 diff --git a/dns-ipv4.h b/dns-ipv4.h
-index 4d03d9c..9e6f590 100644
+index 4d03d9c..18feb51 100644
 --- a/dns-ipv4.h
 +++ b/dns-ipv4.h
-@@ -1,8 +1,10 @@
+@@ -1,9 +1,7 @@
  #ifndef DNS_IPV4_H
  #define DNS_IPV4_H
  
 -#ifndef HOST_NAME_MAX
 -#define HOST_NAME_MAX 256
-+#ifdef INET6_ADDRSTRLEN
-+#define ADDRBUFLEN INET6_ADDRSTRLEN
-+#else
-+#define ADDRBUFLEN INET_ADDRSTRLEN
- #endif
+-#endif
++#define ADDRBUFLEN 64	/* 46 for an ipv6 address, plus a little extra */
  
  struct ipv4_address {
-@@ -33,9 +35,10 @@ static inline const char *dns_name(const resolved_address *addr)
+ 	char **ap;
+@@ -33,9 +31,10 @@ static inline const char *dns_name(const resolved_address *addr)
  static inline char *dns_ip_address(const resolved_address *addr,
  					const resolver_result *ai)
  {
@@ -105,10 +99,10 @@ index f446ba1..dcfeac4 100644
  
  int dns_resolve(const char *host, const char *port, int flags,
 diff --git a/tcp.c b/tcp.c
-index aacc2d1..2707c49 100644
+index 18952fd..d0cd709 100644
 --- a/tcp.c
 +++ b/tcp.c
-@@ -106,8 +106,10 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -47,8 +47,10 @@ void git_locate_host(const char *hostname, char **ip_address,
  		*ip_address = dns_ip_address(&i, &ai);
  
  		free(*canon_hostname);

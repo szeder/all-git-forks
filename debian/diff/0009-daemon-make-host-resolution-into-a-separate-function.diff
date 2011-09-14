@@ -1,14 +1,14 @@
-From 4c9689a956fb740da322fb446daa3240ba6e4d9f Mon Sep 17 00:00:00 2001
+From 81a058da8a8681666cb410d9f815878a01270206 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
-Subject: [PATCH 08/15] daemon: make host resolution into a separate function
+Subject: [PATCH 09/15] daemon: make host resolution into a separate function
 
 For each incoming connection, the git daemon runs a DNS query using
 the client-supplied hostname parameter, to determine the canonical
 hostname and IP address in case it is needed by the
 --interpolated-path feature (to distinguish between virtual hosts).
-Put the code for this in a separate function so the details of this
-lookup can be easily tweaked.
+Make the code for this a separate function so the details of the
+lookup can be tweaked more easily.
 
 Signed-off-by; Jonathan Nieder <jrnieder@gmail.com>
 ---

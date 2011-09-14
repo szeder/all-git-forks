@@ -1,0 +1,95 @@
+From 8aeab6bc121ddd2ed1465c34ebc6bf87baa873ce Mon Sep 17 00:00:00 2001
+From: Jonathan Nieder <jrnieder@gmail.com>
+Date: Mon, 5 Sep 2011 16:29:02 -0500
+Subject: [PATCH 15/15] srv: make errors less quiet
+
+When parsing of SRV records fails, explain why before giving up with
+"fatal: Unable to look up foo.example.com".
+
+Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
+---
+ srv.c |   29 +++++++++++++++++++++--------
+ 1 files changed, 21 insertions(+), 8 deletions(-)
+
+diff --git a/srv.c b/srv.c
+index a0bc148..2716206 100644
+--- a/srv.c
++++ b/srv.c
+@@ -39,7 +39,7 @@ static int get_qname_for_srv(struct strbuf *sb, const char *host)
+ 
+ 	hostlen = strlen(host);
+ 	if (unsigned_add_overflows(strlen(prefix) + 1, hostlen))
+-		return -1;
++		return error("absurdly long hostname");
+ 
+ 	strbuf_reset(sb);
+ 	strbuf_grow(sb, strlen(prefix) + hostlen);
+@@ -55,7 +55,7 @@ static int srv_parse_rr(const ns_msg *msg,
+ 	char buf[1024];
+ 
+ 	if (ns_rr_rdlen(*rr) < 2+2+2 /* priority, weight, port */)
+-		return -1;
++		return error("SRV RR is too short");
+ 
+ 	p = ns_rr_rdata(*rr);
+ 	res->priority = *p++ << CHAR_BIT;
+@@ -73,7 +73,7 @@ static int srv_parse_rr(const ns_msg *msg,
+ 	 */
+ 	if (dn_expand(ns_msg_base(*msg), ns_msg_end(*msg), p,
+ 			buf, sizeof(buf)) < 0)
+-		return -1;
++		return error("cannot expand target domain name in SRV RR");
+ 
+ 	res->target = xstrdup(buf);
+ 	return 0;
+@@ -91,8 +91,10 @@ static int srv_parse(ns_msg *msg, struct parsed_srv_rr **res)
+ 	/* skip CNAME records */
+ 	for (i = 0; i < n; i++) {
+ 		ns_rr rr;
+-		if (ns_parserr(msg, ns_s_an, i, &rr))
++		if (ns_parserr(msg, ns_s_an, i, &rr)) {
++			error("cannot parse DNS RR: %s", strerror(errno));
+ 			goto fail;
++		}
+ 		if (ns_rr_type(rr) != ns_t_cname)
+ 			break;
+ 	}
+@@ -103,9 +105,17 @@ static int srv_parse(ns_msg *msg, struct parsed_srv_rr **res)
+ 	for (i = 0; i < n; i++) {
+ 		ns_rr rr;
+ 
+-		if (ns_parserr(msg, ns_s_an, cnames + i, &rr) ||
+-		    ns_rr_type(rr) != ns_t_srv ||
+-		    srv_parse_rr(msg, &rr, rrs + i))
++		if (ns_parserr(msg, ns_s_an, cnames + i, &rr)) {
++			error("cannot parse DNS RR: %s", strerror(errno));
++			goto fail;
++		}
++		if (ns_rr_type(rr) != ns_t_srv) {
++			error("expected SRV RR, found RR type %d",
++						(int) ns_rr_type(rr));
++			goto fail;
++		}
++		if (srv_parse_rr(msg, &rr, rrs + i))
++			/* srv_parse_rr writes a message */
+ 			goto fail;
+ 		nr_parsed++;
+ 	}
+@@ -267,10 +277,13 @@ int get_srv(const char *host, struct host **hosts)
+ 	/* If a SRV RR cannot be parsed, give up. */
+ 	ret = -1;
+ 
+-	if (ns_initparse(buf, len, &msg))
++	if (ns_initparse(buf, len, &msg)) {
++		error("cannot initialize DNS parser: %s", strerror(errno));
+ 		goto out;
++	}
+ 	n = srv_parse(&msg, &rrs);
+ 	if (n < 0)
++		/* srv_parse writes a message */
+ 		goto out;
+ 	if (!n) {
+ 		ret = 0;
+-- 
+1.7.5.4
+
