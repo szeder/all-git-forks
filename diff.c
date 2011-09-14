@@ -1839,20 +1839,20 @@ static unsigned char *deflate_it(char *data,
 {
 	int bound;
 	unsigned char *deflated;
-	z_stream stream;
+	git_zstream stream;
 
 	memset(&stream, 0, sizeof(stream));
-	deflateInit(&stream, zlib_compression_level);
-	bound = deflateBound(&stream, size);
+	git_deflate_init(&stream, zlib_compression_level);
+	bound = git_deflate_bound(&stream, size);
 	deflated = xmalloc(bound);
 	stream.next_out = deflated;
 	stream.avail_out = bound;
 
 	stream.next_in = (unsigned char *)data;
 	stream.avail_in = size;
-	while (deflate(&stream, Z_FINISH) == Z_OK)
+	while (git_deflate(&stream, Z_FINISH) == Z_OK)
 		; /* nothing */
-	deflateEnd(&stream);
+	git_deflate_end(&stream);
 	*result_size = stream.total_out;
 	return deflated;
 }
@@ -1984,19 +1984,7 @@ struct userdiff_driver *get_textconv(struct diff_filespec *one)
 		return NULL;
 
 	diff_filespec_load_driver(one);
-	if (!one->driver->textconv)
-		return NULL;
-
-	if (one->driver->textconv_want_cache && !one->driver->textconv_cache) {
-		struct notes_cache *c = xmalloc(sizeof(*c));
-		struct strbuf name = STRBUF_INIT;
-
-		strbuf_addf(&name, "textconv/%s", one->driver->name);
-		notes_cache_init(c, name.buf, one->driver->textconv);
-		one->driver->textconv_cache = c;
-	}
-
-	return one->driver;
+	return userdiff_get_textconv(one->driver);
 }
 
 static void builtin_diff(const char *name_a,

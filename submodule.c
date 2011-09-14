@@ -373,6 +373,10 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 	const char *argv[] = {NULL, NULL, "--not", "--all", NULL};
 	int argc = ARRAY_SIZE(argv) - 1;
 
+	/* No need to check if there are no submodules configured */
+	if (!config_name_for_path.nr)
+		return;
+
 	init_revisions(&rev, NULL);
 	argv[1] = xstrdup(sha1_to_hex(new_sha1));
 	setup_revisions(argc, argv, &rev, NULL);
@@ -388,6 +392,7 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 		while (parent) {
 			struct diff_options diff_opts;
 			diff_setup(&diff_opts);
+			DIFF_OPT_SET(&diff_opts, RECURSIVE);
 			diff_opts.output_format |= DIFF_FORMAT_CALLBACK;
 			diff_opts.format_callback = submodule_collect_changed_cb;
 			if (diff_setup_done(&diff_opts) < 0)

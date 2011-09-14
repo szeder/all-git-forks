@@ -715,10 +715,12 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	unsigned char rev[20];
 	int flag;
 	memset(&old, 0, sizeof(old));
-	old.path = resolve_ref("HEAD", rev, 0, &flag);
+	old.path = xstrdup(resolve_ref("HEAD", rev, 0, &flag));
 	old.commit = lookup_commit_reference_gently(rev, 1);
-	if (!(flag & REF_ISSYMREF))
+	if (!(flag & REF_ISSYMREF)) {
+		free((char *)old.path);
 		old.path = NULL;
+	}
 
 	if (old.path && !prefixcmp(old.path, "refs/heads/"))
 		old.name = old.path + strlen("refs/heads/");
@@ -741,6 +743,7 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	update_refs_for_switch(opts, &old, new);
 
 	ret = post_checkout_hook(old.commit, new->commit, 1);
+	free((char *)old.path);
 	return ret || opts->writeout_error;
 }
 
@@ -1071,7 +1074,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		if (strbuf_check_branch_ref(&buf, opts.new_branch))
 			die(_("git checkout: we do not like '%s' as a branch name."),
 			    opts.new_branch);
-		if (!get_sha1(buf.buf, rev)) {
+		if (ref_exists(buf.buf)) {
 			opts.branch_exists = 1;
 			if (!opts.new_branch_force)
 				die(_("git checkout: branch %s already exists"),
