@@ -1,4 +1,4 @@
-From 5ef518c99883fbf980aff4de4b1c0d3d7738cc6e Mon Sep 17 00:00:00 2001
+From 949072f7c34a9f3f1169fef26ca114c452fba2c5 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 07:27:06 -0500
 Subject: [PATCH 07/15] Makefile: do not use setgid bit on directories on
@@ -30,10 +30,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 75b407c..6ec11c4 100644
+index 8d6d451..924749e 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -805,6 +805,7 @@ ifeq ($(uname_S),GNU/kFreeBSD)
+@@ -820,6 +820,7 @@ ifeq ($(uname_S),GNU/kFreeBSD)
  	NO_STRLCPY = YesPlease
  	NO_MKSTEMPS = YesPlease
  	HAVE_PATHS_H = YesPlease

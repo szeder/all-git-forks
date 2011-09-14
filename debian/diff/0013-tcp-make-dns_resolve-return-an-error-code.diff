@@ -1,4 +1,4 @@
-From 7548af1ebdb76c9c144d48d8d03cf85a6532ff6a Mon Sep 17 00:00:00 2001
+From a265e5199250aa9d85ca06c0ee0a400b547bb77e Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 05:23:57 -0500
 Subject: [PATCH 13/15] tcp: make dns_resolve return an error code

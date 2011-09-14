@@ -1,4 +1,4 @@
-From d512034c4705600841f71a24f6000856be57fb37 Mon Sep 17 00:00:00 2001
+From 730bcbe95ef4563152a33a6ab55d78bbde6ff53e Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
 Subject: [PATCH 03/15] remove shebang line from shell libraries
@@ -22,7 +22,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index 4db9212..309e78b 100644
+index 8fc65d0..c506a23 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
@@ -45,7 +45,7 @@ index b24119d..0be785b 100644
  GIT_DIR=$(git rev-parse -q --git-dir) || :;
  
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 94e26ed..3054df9 100644
+index 8e427da..836ff78 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@

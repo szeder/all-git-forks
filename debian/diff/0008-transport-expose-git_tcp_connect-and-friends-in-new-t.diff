@@ -1,4 +1,4 @@
-From f76cd009b77cf84de8a02acc0bfb744c766b74f7 Mon Sep 17 00:00:00 2001
+From db4be1527a781cd5c24f3ae11afe12825c5112c7 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: [PATCH 08/15] transport: expose git_tcp_connect and friends in new
@@ -11,18 +11,18 @@ connect to it to a separate tcp.c file.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |    2 +
- connect.c |  267 +------------------------------------------------------------
- tcp.c     |  265 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ connect.c |  264 +------------------------------------------------------------
+ tcp.c     |  265 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |    8 ++
- 4 files changed, 276 insertions(+), 266 deletions(-)
+ 4 files changed, 276 insertions(+), 263 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index 6ec11c4..6f86d11 100644
+index 924749e..8050857 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -666,6 +666,7 @@ LIB_OBJS += string-list.o
+@@ -681,6 +681,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -30,7 +30,7 @@ index 6ec11c4..6f86d11 100644
  LIB_OBJS += trace.o
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
-@@ -1959,6 +1960,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2003,6 +2004,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
@@ -39,7 +39,7 @@ index 6ec11c4..6f86d11 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/connect.c b/connect.c
-index d2ce57f..9dafcc8 100644
+index ee1d4b4..9dafcc8 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -5,6 +5,7 @@
@@ -50,7 +50,7 @@ index d2ce57f..9dafcc8 100644
  #include "url.h"
  
  static char *server_capabilities;
-@@ -150,272 +151,6 @@ static enum protocol get_protocol(const char *name)
+@@ -150,269 +151,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  
@@ -158,7 +158,8 @@ index d2ce57f..9dafcc8 100644
 - */
 -static int git_tcp_connect_sock(char *host, int flags)
 -{
--	int sockfd = -1, saved_errno = 0;
+-	struct strbuf error_message = STRBUF_INIT;
+-	int sockfd = -1;
 -	const char *port = STR(DEFAULT_GIT_PORT);
 -	char *ep;
 -	struct hostent *he;
@@ -188,25 +189,21 @@ index d2ce57f..9dafcc8 100644
 -		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
 -
 -	for (cnt = 0, ap = he->h_addr_list; *ap; ap++, cnt++) {
--		sockfd = socket(he->h_addrtype, SOCK_STREAM, 0);
--		if (sockfd < 0) {
--			saved_errno = errno;
--			continue;
--		}
--
 -		memset(&sa, 0, sizeof sa);
 -		sa.sin_family = he->h_addrtype;
 -		sa.sin_port = htons(nport);
 -		memcpy(&sa.sin_addr, *ap, he->h_length);
 -
--		if (connect(sockfd, (struct sockaddr *)&sa, sizeof sa) < 0) {
--			saved_errno = errno;
--			fprintf(stderr, "%s[%d: %s]: errno=%s\n",
+-		sockfd = socket(he->h_addrtype, SOCK_STREAM, 0);
+-		if ((sockfd < 0) ||
+-		    connect(sockfd, (struct sockaddr *)&sa, sizeof sa) < 0) {
+-			strbuf_addf(&error_message, "%s[%d: %s]: errno=%s\n",
 -				host,
 -				cnt,
 -				inet_ntoa(*(struct in_addr *)&sa.sin_addr),
--				strerror(saved_errno));
--			close(sockfd);
+-				strerror(errno));
+-			if (0 <= sockfd)
+-				close(sockfd);
 -			sockfd = -1;
 -			continue;
 -		}
@@ -217,7 +214,7 @@ index d2ce57f..9dafcc8 100644
 -	}
 -
 -	if (sockfd < 0)
--		die("unable to connect a socket (%s)", strerror(saved_errno));
+-		die("unable to connect to %s:\n%s", host, error_message.buf);
 -
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\n");

@@ -1,4 +1,4 @@
-From 76463604a7e43a18fb2bb54135b963dd5bd7576f Mon Sep 17 00:00:00 2001
+From 1edc20fe6b28189cba3ec8fcf00d3768c77efd65 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: [PATCH 10/15] daemon: move locate_host to tcp.c
@@ -15,10 +15,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 6f86d11..987126f 100644
+index 8050857..ac7b9c9 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1960,7 +1960,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2004,7 +2004,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h

@@ -1,4 +1,4 @@
-From 8aeab6bc121ddd2ed1465c34ebc6bf87baa873ce Mon Sep 17 00:00:00 2001
+From df9e2cc19ed443fcabed17c913a15928e04ede11 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 5 Sep 2011 16:29:02 -0500
 Subject: [PATCH 15/15] srv: make errors less quiet

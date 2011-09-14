@@ -1,4 +1,4 @@
-From bec45422c517b516f4e5b7369199a591150c7aa9 Mon Sep 17 00:00:00 2001
+From a7db24523a6cc6c8e6dc86cd10aba0bc44b6638c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
 Subject: [PATCH 04/15] pre-rebase hook: capture documentation in a <<here

@@ -1,4 +1,4 @@
-From 12528895b9291caee7a73eb08f3ec09d2dca26b9 Mon Sep 17 00:00:00 2001
+From 0d1281680509b7bb36dcd41a4ea06c9fc3dc7e0a Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Thu, 11 Dec 2008 20:27:21 +0000
 Subject: [PATCH 02/15] bug#506445: hooks/post-receive-email: set encoding to
@@ -15,10 +15,10 @@ On Fri, Nov 21, 2008 at 05:42:47PM +0300, Alexander Gerasiov wrote:
  1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
-index 21989fc..01a32d6 100755
+index fa6d41a..cd5a0fe 100755
 --- a/contrib/hooks/post-receive-email
 +++ b/contrib/hooks/post-receive-email
-@@ -229,6 +229,7 @@ generate_email_header()
+@@ -234,6 +234,7 @@ generate_email_header()
  	cat <<-EOF
  	To: $recipients
  	Subject: ${emailprefix}$projectdesc $refname_type $short_refname ${change_type}d. $describe
