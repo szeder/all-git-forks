@@ -2527,7 +2527,7 @@ int write_sha1_file_flags(const void *buf, unsigned long len, const char *type, 
 
 int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *returnsha1)
 {
-	write_sha1_file_flags(buf, len, type, returnsha1, 0);
+	return write_sha1_file_flags(buf, len, type, returnsha1, 0);
 }
 
 int force_object_loose(const unsigned char *sha1, time_t mtime)
