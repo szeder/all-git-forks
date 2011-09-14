@@ -1,7 +1,7 @@
-From 0e23c6f4d559d45ef4b32114d6732fd3db1026b3 Mon Sep 17 00:00:00 2001
+From 6767a1f8a95bfb2210c6798828b417a362ce6cd3 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: transport: honor DNS SRV records
+Subject: [PATCH 14/15] transport: honor DNS SRV records
 
 As rfc2782 explains, SRV records allow administrators "to use serveral
 servers for a single domain, to move services from host to host with
@@ -35,7 +35,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 7d3cb41..316b29e 100644
+index a3c1def..3077100 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -124,6 +124,10 @@ all::
@@ -519,11 +519,11 @@ index 2707c49..f93175b 100644
  
 -	dns_free(ai);
 +		dns_free(ai);
-+
+ 
 +		if (sockfd >= 0)
 +			break;
 +	}
- 
++
 +	if (gai)
 +		die("Unable to look up %s: %s", host, dns_strerror(gai));
  	if (sockfd < 0)
@@ -541,5 +541,5 @@ index 2707c49..f93175b 100644
  }
  
 -- 
-1.7.6.rc2
+1.7.5.4
 

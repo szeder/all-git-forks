@@ -1,7 +1,7 @@
-From 55e02f35f3de8ad2bfc4f43d2fde29f25ca0ca9a Mon Sep 17 00:00:00 2001
+From 8d480812c9fef902962b8e2a6d1189ba1cd3c647 Mon Sep 17 00:00:00 2001
 From: Gerrit Pape <pape@smarden.org>
 Date: Fri, 2 Nov 2007 20:11:19 +0000
-Subject: ident: check /etc/mailname if author email is unknown
+Subject: [PATCH 01/15] ident: check /etc/mailname if author email is unknown
 
 Before falling back to gethostname(), check /etc/mailname on Debian if
 GIT_AUTHOR_EMAIL is not set in the environment or through config files;
@@ -48,5 +48,5 @@ index 35a6f26..193025c 100644
  	if (!strchr(git_default_email+len, '.')) {
  		struct hostent *he = gethostbyname(git_default_email + len);
 -- 
-1.7.6.rc2
+1.7.5.4
 

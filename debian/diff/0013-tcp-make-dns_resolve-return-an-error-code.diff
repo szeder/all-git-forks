@@ -1,7 +1,7 @@
-From f90bf69f046d472d606a0c1bbf82203982c122f4 Mon Sep 17 00:00:00 2001
+From 62fd8f927ec010dc663ce8dc253e956fb52a397a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 05:23:57 -0500
-Subject: tcp: make dns_resolve return an error code
+Subject: [PATCH 13/15] tcp: make dns_resolve return an error code
 
 Both getaddrinfo and gethostbyname report errors through an error
 code.  Use the error code as the return value for dns_resolve when the
@@ -95,5 +95,5 @@ index 339877f..de6036a 100644
  
  #endif
 -- 
-1.7.6.rc2
+1.7.5.4
 

@@ -1,7 +1,7 @@
-From f4340d8346385aa08e4a2b09aca9c101f267183e Mon Sep 17 00:00:00 2001
+From c3980e2a60571f9cded01d99018c61d7a9ee5da8 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
-Subject: remove shebang line from shell libraries
+Subject: [PATCH 03/15] remove shebang line from shell libraries
 
 As v1.7.0-rc1~9 (2009-11-25) explained, even if a script is expected
 to be sourced instead of executed on its own, the #!/bin/sh line
@@ -62,5 +62,5 @@ index 94e26ed..3054df9 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.6.rc2
+1.7.5.4
 

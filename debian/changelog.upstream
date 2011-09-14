@@ -1,3 +1,208 @@
+Version v1.7.6.3; changes since v1.7.6.2:
+-----------------------------------------
+
+Dave Zarzycki (1):
+      Do not log unless all connect() attempts fail
+
+Jeff King (9):
+      status: fix bug with missing --ignore files
+      tag: speed up --contains calculation
+      strbuf_split: add a max parameter
+      fix "git -c" parsing of values with equals signs
+      config: die on error in command-line config
+      config: avoid segfault when parsing command-line config
+      strbuf: allow strbuf_split to work on non-strbufs
+      config: use strbuf_split_str instead of a temporary strbuf
+      reset: give better reflog messages
+
+Jens Lehmann (1):
+      fetch: skip on-demand checking when no submodules are configured
+
+Jonathan Nieder (2):
+      Documentation: quote double-dash for AsciiDoc
+      Documentation/i18n: quote double-dash for AsciiDoc
+
+Junio C Hamano (4):
+      git status --ignored: tests and docs
+      mergetool: check return value from read
+      Prepare for 1.7.6.3 maintenance release
+      Git 1.7.6.3
+
+Michael Schubert (1):
+      reflog: actually default to subcommand 'show'
+
+Sverre Rabbelier (1):
+      SubmittingPathces: remove Cogito reference
+
+Vitaliy Ivanov (1):
+      tests: cleanup binary test vector files
+
+
+Version v1.7.6.2; changes since v1.7.6.1:
+-----------------------------------------
+
+Junio C Hamano (3):
+      whitespace: have SP on both sides of an assignment "="
+      Revert "Merge branch 'cb/maint-quiet-push' into maint"
+      Git 1.7.6.2
+
+Pang Yan Han (1):
+      update-ref: whitespace fix
+
+Thomas Rast (1):
+      Documentation: clarify effects of -- <path> arguments
+
+
+Version v1.7.6.1; changes since v1.7.6:
+---------------------------------------
+
+Alex Neronskiy (2):
+      Fix documentation of fetch-pack that implies that the client can disconnect after sending wants.
+      Document the underlying protocol used by shallow repositories and --depth commands.
+
+Andrew Wong (1):
+      rebase -i -p: include non-first-parent commits in todo list
+
+Bert Wesarg (1):
+      Documentation: clearly specify what refs are honored by core.logAllRefUpdates
+
+Brandon Casey (2):
+      t/t7407: demonstrate that the command called by 'submodule foreach' loses stdin
+      git-submodule.sh: preserve stdin for the command spawned by foreach
+
+Brian Harring (1):
+      get_indexed_object can return NULL if nothing is in that slot; check for it
+
+Carlos Martín Nieto (1):
+      Documentation: clarify the invalidated tree entry format
+
+Clemens Buchacher (3):
+      error_routine: use parent's stderr if exec fails
+      propagate --quiet to send-pack/receive-pack
+      notice error exit from pager
+
+Dmitry Ivankov (1):
+      doc/fast-import: clarify notemodify command
+
+Emilio G. Cota (2):
+      Documentation: ignore *.pdf files
+      Documentation/Makefile: add *.pdf to `clean' target
+
+Erik Faye-Lund (1):
+      connect: correctly number ipv6 network adapter
+
+Fredrik Kuivinen (1):
+      Makefile: Track changes to LDFLAGS and relink when necessary
+
+Heiko Voigt (2):
+      add gitignore entry to description about how to write a builtin
+      add technical documentation about ref iteration
+
+Jack Nagel (1):
+      Documentation: minor grammatical fix in rev-list-options.txt
+
+Jakub Narebski (2):
+      gitweb: Serve text/* 'blob_plain' as text/plain with $prevent_xss
+      gitweb: Serve */*+xml 'blob_plain' as text/plain with $prevent_xss
+
+Jeff King (10):
+      combine-diff: split header printing into its own function
+      combine-diff: calculate mode_differs earlier
+      combine-diff: handle binary files as binary
+      refactor get_textconv to not require diff_filespec
+      combine-diff: respect textconv attributes
+      tag: accept multiple patterns for --list
+      docs: document --textconv diff option
+      t7400: fix bogus test failure with symlinked trash
+      fast-export: quote paths in output
+      am: refresh the index at start and --resolved
+
+Jens Lehmann (7):
+      submodule add: test failure when url is not configured in superproject
+      submodule add: allow relative repository path even when no url is set
+      submodule add: clean up duplicated code
+      fetch: Also fetch submodules in subdirectories in on-demand mode
+      submodule add: always initialize .git/config entry
+      tests: print failed test numbers at the end of the test run
+      submodule: update and add must honor --quiet flag
+
+Johannes Schindelin (1):
+      get_pwd_cwd(): Do not trust st_dev/st_ino blindly
+
+Jon Seymour (2):
+      Add a test to check that git ls-tree sets non-zero exit code on error.
+      Ensure git ls-tree exits with a non-zero exit code if read_tree_recursive fails.
+
+Julian Phillips (1):
+      remote-curl: Add a format check to parsing of info/refs
+
+Junio C Hamano (29):
+      diff-index --quiet: learn the "stop feeding the backend early" logic
+      checkout -b <name>: correctly detect existing branch
+      sha1_file.c: "legacy" is really the current format
+      zlib wrapper: refactor error message formatter
+      zlib: wrap remaining calls to direct inflate/inflateEnd
+      zlib: wrap inflateInit2 used to accept only for gzip format
+      zlib: wrap deflate side of the API
+      zlib: wrap deflateBound() too
+      zlib: zlib can only process 4GB at a time
+      zlib: allow feeding more than 4GB in one go
+      t/gitweb-lib.sh: skip gitweb tests when perl dependencies are not met
+      cygwin: trust executable bit by default
+      git-remote.txt: avoid sounding as if loose refs are the only ones in the world
+      check-ref-format doc: de-emphasize the implementation detail of a ref
+      git.txt: de-emphasize the implementation detail of a ref
+      glossary: update description of "tag"
+      glossary: update description of head and ref
+      glossary: clarify description of HEAD
+      submodule sync: do not auto-vivify uninteresting submodule
+      "branch -d" can remove more than one branches
+      test: skip clean-up when running under --immediate mode
+      checkout: do not write bogus reflog entry out
+      reset [<commit>] paths...: do not mishandle unmerged paths
+      diff -c/--cc: do not mistake "resolved as deletion" as "use working tree"
+      receive-pack: do not overstep command line argument array
+      helping smart-http/stateless-rpc fetch race
+      Prepare for 1.7.6.1
+      Update draft release notes for 1.7.6.1
+      Git 1.7.6.1
+
+Martin von Zweigbergk (2):
+      Documentation: use [verse] for SYNOPSIS sections
+      rebase: clarify "restore the original branch"
+
+Michael Haggerty (6):
+      git-svn: Demonstrate a bug with root commits in mergeinfo ranges
+      git-svn: Disambiguate rev-list arguments to improve error message
+      git-svn: Correctly handle root commits in mergeinfo ranges
+      gitattributes: Clarify discussion of attribute macros
+      gitattributes: Reword "attribute macro" to "macro attribute"
+      Do not use C++-style comments
+
+Michael Schubert (1):
+      help_unknown_cmd: do not propose an "unknown" cmd
+
+Michael Witten (1):
+      filter-branch: Export variable `workdir' for --commit-filter
+
+Namhyung Kim (1):
+      git-remote.txt: fix wrong remote refspec
+
+Nguyễn Thái Ngọc Duy (3):
+      Break down no-lstat() condition checks in verify_uptodate()
+      checkout-index: remove obsolete comment
+      fetch-pack: check for valid commit from server
+
+Ori Avtalion (1):
+      pull: remove extra space from reflog message
+
+Pavan Kumar Sunkara (1):
+      git-config: Remove extra whitespaces
+
+Peter Collingbourne (1):
+      Documentation: git-filter-branch honors replacement refs
+
+
 Version v1.7.6; changes since v1.7.6-rc3:
 -----------------------------------------
 
@@ -24907,7 +25112,7 @@ Theodore Ts'o (2):
       Fix formatting for urls section of fetch, pull, and push manpages
 
 
-Version v1.5.0-rc0; changes since v1.4.4.5:
+Version v1.5.0-rc0; changes since v1.4.4.4:
 -------------------------------------------
 
 Alex Riesen (1):
@@ -25282,17 +25487,6 @@ Terje Sten Bjerkseth (1):
 
 Uwe Kleine-König (1):
       Fix documentation copy&paste typo
-
-
-Version v1.4.4.5; changes since v1.4.4.4:
------------------------------------------
-
-Nicolas Pitre (5):
-      clean up pack index handling a bit
-      clean up and optimize nth_packed_object_sha1() usage
-      get rid of num_packed_objects()
-      pack-objects: learn about pack index version 2
-      sha1_file.c: learn about index version 2
 
 
 Version v1.4.4.4; changes since v1.4.4.3:

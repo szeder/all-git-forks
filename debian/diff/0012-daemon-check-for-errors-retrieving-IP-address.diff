@@ -1,7 +1,7 @@
-From bf8c3a988511f28c9f06d29309da2283d1662c7a Mon Sep 17 00:00:00 2001
+From 2a8ac1ec00900f63d6f26892eec404f0c46277dd Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
-Subject: daemon: check for errors retrieving IP address
+Subject: [PATCH 12/15] daemon: check for errors retrieving IP address
 
 To retrieve a canonical IP address for possible use by the
 --interpolated-path=%IP feature, currently the git daemon calls
@@ -122,5 +122,5 @@ index aacc2d1..2707c49 100644
  	}
  
 -- 
-1.7.6.rc2
+1.7.5.4
 

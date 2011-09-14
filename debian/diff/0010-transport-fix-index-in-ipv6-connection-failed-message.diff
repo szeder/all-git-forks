@@ -1,7 +1,7 @@
-From afa53d0b6c78be9def0dbec15777ae4b3c5d6521 Mon Sep 17 00:00:00 2001
+From ed65c194146b84336464cfbfea3de68dac80e987 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:40:54 -0500
-Subject: transport: fix index in ipv6 connection failed message
+Subject: [PATCH 10/15] transport: fix index in ipv6 connection failed message
 
 Ever since v1.5.3-rc0~185^2~1 (Verbose connect messages to show
 the IP addresses used, 2007-05-23), git's ipv4 connection failure
@@ -45,5 +45,5 @@ index 69da17a..a838b9f 100644
  				ai->ai_socktype, ai->ai_protocol);
  		if (sockfd < 0) {
 -- 
-1.7.6.rc2
+1.7.5.4
 

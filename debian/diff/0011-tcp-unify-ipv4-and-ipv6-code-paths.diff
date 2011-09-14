@@ -1,7 +1,7 @@
-From 85b01f1000277efe6e0b1f8e10a66290063e816a Mon Sep 17 00:00:00 2001
+From 255bc05945b9c825952814041876799f6483c931 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH 11/15] tcp: unify ipv4 and ipv6 code paths
 
 The new DNS API abstracts away differences between the gethostbyname-
 and getaddrinfo-centric interfaces for looking up a host, making the
@@ -44,7 +44,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index df84157..7d3cb41 100644
+index e4ef311..a3c1def 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1474,6 +1474,11 @@ ifdef NO_TRUSTABLE_FILEMODE
@@ -340,7 +340,7 @@ index a838b9f..aacc2d1 100644
  }
  
  /*
-@@ -136,52 +121,48 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -136,151 +121,48 @@ static int git_tcp_connect_sock(char *host, int flags)
  {
  	int sockfd = -1, saved_errno = 0;
  	const char *port = STR(DEFAULT_GIT_PORT);
@@ -402,14 +402,16 @@ index a838b9f..aacc2d1 100644
  	}
  
 -	freeaddrinfo(ai0);
-+	dns_free(ai);
- 
- 	if (sockfd < 0)
- 		die("unable to connect a socket (%s)", strerror(saved_errno));
-@@ -192,107 +173,6 @@ static int git_tcp_connect_sock(char *host, int flags)
- 	return sockfd;
- }
- 
+-
+-	if (sockfd < 0)
+-		die("unable to connect a socket (%s)", strerror(saved_errno));
+-
+-	if (flags & CONNECT_VERBOSE)
+-		fprintf(stderr, "done.\n");
+-
+-	return sockfd;
+-}
+-
 -#else /* NO_IPV6 */
 -
 -void git_locate_host(const char *hostname, char **ip_address,
@@ -499,21 +501,19 @@ index a838b9f..aacc2d1 100644
 -				inet_ntoa(*(struct in_addr *)&sa.sin_addr));
 -		break;
 -	}
--
--	if (sockfd < 0)
--		die("unable to connect a socket (%s)", strerror(saved_errno));
--
--	if (flags & CONNECT_VERBOSE)
--		fprintf(stderr, "done.\n");
--
--	return sockfd;
--}
--
++	dns_free(ai);
+ 
+ 	if (sockfd < 0)
+ 		die("unable to connect a socket (%s)", strerror(saved_errno));
+@@ -291,8 +173,6 @@ static int git_tcp_connect_sock(char *host, int flags)
+ 	return sockfd;
+ }
+ 
 -#endif /* NO_IPV6 */
 -
  void git_tcp_connect(int fd[2], char *host, int flags)
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.6.rc2
+1.7.5.4
 

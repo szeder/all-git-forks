@@ -1,7 +1,8 @@
-From af3d79e84f792b8c5196b1ab02b621b8ac80d303 Mon Sep 17 00:00:00 2001
+From 745197140e3d271954e7e729d4e6aef2447fc35b Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 07:27:06 -0500
-Subject: Makefile: do not use setgid bit on directories on GNU/kFreeBSD
+Subject: [PATCH 15/15] Makefile: do not use setgid bit on directories on
+ GNU/kFreeBSD
 
 The g+s bit on directories to make group ownership inherited is a
 SysVism; BSD and most of its descendants do not need that since they
@@ -29,7 +30,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 316b29e..3ba3b97 100644
+index 3077100..bfdd200 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -810,6 +810,7 @@ ifeq ($(uname_S),GNU/kFreeBSD)
@@ -41,5 +42,5 @@ index 316b29e..3ba3b97 100644
  ifeq ($(uname_S),UnixWare)
  	CC = cc
 -- 
-1.7.6.rc2
+1.7.5.4
 
