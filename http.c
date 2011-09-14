@@ -41,6 +41,7 @@ static long curl_low_speed_limit = -1;
 static long curl_low_speed_time = -1;
 static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
+static const char *curl_cookie_file;
 static char *user_name, *user_pass;
 static const char *user_agent;
 
@@ -190,6 +191,9 @@ static int http_options(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp("http.proxy", var))
 		return git_config_string(&curl_http_proxy, var, value);
+
+	if (!strcmp("http.cookiefile", var))
+		return git_config_string(&curl_cookie_file, var, value);
 
 	if (!strcmp("http.postbuffer", var)) {
 		http_post_buffer = git_config_int(var, value);
@@ -531,6 +535,7 @@ struct active_request_slot *get_active_slot(void)
 	slot->finished = NULL;
 	slot->callback_data = NULL;
 	slot->callback_func = NULL;
+	curl_easy_setopt(slot->curl, CURLOPT_COOKIEFILE, curl_cookie_file);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPHEADER, pragma_header);
 	curl_easy_setopt(slot->curl, CURLOPT_ERRORBUFFER, curl_errorstr);
 	curl_easy_setopt(slot->curl, CURLOPT_CUSTOMREQUEST, NULL);
@@ -1116,9 +1121,8 @@ struct http_pack_request *new_http_pack_request(
 	struct strbuf buf = STRBUF_INIT;
 	struct http_pack_request *preq;
 
-	preq = xmalloc(sizeof(*preq));
+	preq = xcalloc(1, sizeof(*preq));
 	preq->target = target;
-	preq->range_header = NULL;
 
 	end_url_with_slash(&buf, base_url);
 	strbuf_addf(&buf, "objects/pack/pack-%s.pack",
@@ -1210,7 +1214,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	struct curl_slist *range_header = NULL;
 	struct http_object_request *freq;
 
-	freq = xmalloc(sizeof(*freq));
+	freq = xcalloc(1, sizeof(*freq));
 	hashcpy(freq->sha1, sha1);
 	freq->localfile = -1;
 
@@ -1247,8 +1251,6 @@ struct http_object_request *new_http_object_request(const char *base_url,
 		      freq->tmpfile, strerror(errno));
 		goto abort;
 	}
-
-	memset(&freq->stream, 0, sizeof(freq->stream));
 
 	git_inflate_init(&freq->stream);
 
@@ -1324,7 +1326,6 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	return freq;
 
 abort:
-	free(filename);
 	free(freq->url);
 	free(freq);
 	return NULL;

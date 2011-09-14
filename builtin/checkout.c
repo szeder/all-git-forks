@@ -201,7 +201,7 @@ static int checkout_merged(int pos, struct checkout *state)
 }
 
 static int checkout_paths(struct tree *source_tree, const char **pathspec,
-			  struct checkout_opts *opts)
+			  const char *prefix, struct checkout_opts *opts)
 {
 	int pos;
 	struct checkout state;
@@ -231,7 +231,7 @@ static int checkout_paths(struct tree *source_tree, const char **pathspec,
 		match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, ps_matched);
 	}
 
-	if (report_path_error(ps_matched, pathspec, 0))
+	if (report_path_error(ps_matched, pathspec, prefix))
 		return 1;
 
 	/* "checkout -m path" to recreate conflicted state */
@@ -657,24 +657,25 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
 		"Warning: you are leaving %d commit behind, "
 		"not connected to\n"
 		"any of your branches:\n\n"
-		"%s\n"
-		"If you want to keep it by creating a new branch, "
-		"this may be a good time\nto do so with:\n\n"
-		" git branch new_branch_name %s\n\n",
+		"%s\n",
 		/* The plural version */
 		"Warning: you are leaving %d commits behind, "
 		"not connected to\n"
 		"any of your branches:\n\n"
-		"%s\n"
-		"If you want to keep them by creating a new branch, "
-		"this may be a good time\nto do so with:\n\n"
-		" git branch new_branch_name %s\n\n",
+		"%s\n",
 		/* Give ngettext() the count */
 		lost),
 		lost,
-		sb.buf,
-		sha1_to_hex(commit->object.sha1));
+		sb.buf);
 	strbuf_release(&sb);
+
+	if (advice_detached_head)
+		fprintf(stderr,
+			_(
+			"If you want to keep them by creating a new branch, "
+			"this may be a good time\nto do so with:\n\n"
+			" git branch new_branch_name %s\n\n"),
+			sha1_to_hex(commit->object.sha1));
 }
 
 /*
@@ -1063,7 +1064,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		if (1 < !!opts.writeout_stage + !!opts.force + !!opts.merge)
 			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\nchecking out of the index."));
 
-		return checkout_paths(source_tree, pathspec, &opts);
+		return checkout_paths(source_tree, pathspec, prefix, &opts);
 	}
 
 	if (patch_mode)
@@ -1071,15 +1072,9 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 
 	if (opts.new_branch) {
 		struct strbuf buf = STRBUF_INIT;
-		if (strbuf_check_branch_ref(&buf, opts.new_branch))
-			die(_("git checkout: we do not like '%s' as a branch name."),
-			    opts.new_branch);
-		if (ref_exists(buf.buf)) {
-			opts.branch_exists = 1;
-			if (!opts.new_branch_force)
-				die(_("git checkout: branch %s already exists"),
-				    opts.new_branch);
-		}
+
+		opts.branch_exists = validate_new_branchname(opts.new_branch, &buf, !!opts.new_branch_force);
+
 		strbuf_release(&buf);
 	}
 
