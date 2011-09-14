@@ -10,12 +10,13 @@
 #include "parse-options.h"
 #include "exec_cmd.h"
 
-static void hash_fd(int fd, const char *type, int write_object, const char *path)
+static void hash_fd(int fd, const char *type, int write_object, int force, const char *path)
 {
 	struct stat st;
 	unsigned char sha1[20];
 	unsigned flags = (HASH_FORMAT_CHECK |
-			  (write_object ? HASH_WRITE_OBJECT : 0));
+			  (write_object ? HASH_WRITE_OBJECT : 0) |
+			  (force ? HASH_WRITE_OBJECT_FORCE : 0));
 
 	if (fstat(fd, &st) < 0 ||
 	    index_fd(sha1, fd, &st, type_from_string(type), path, flags))
@@ -27,18 +28,18 @@ static void hash_fd(int fd, const char *type, int write_object, const char *path
 }
 
 static void hash_object(const char *path, const char *type, int write_object,
-			const char *vpath)
+			int force, const char *vpath)
 {
 	int fd;
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		die_errno("Cannot open '%s'", path);
-	hash_fd(fd, type, write_object, vpath);
+	hash_fd(fd, type, write_object, force, vpath);
 }
 
 static int no_filters;
 
-static void hash_stdin_paths(const char *type, int write_objects)
+static void hash_stdin_paths(const char *type, int write_objects, int force)
 {
 	struct strbuf buf = STRBUF_INIT, nbuf = STRBUF_INIT;
 
@@ -49,7 +50,7 @@ static void hash_stdin_paths(const char *type, int write_objects)
 				die("line is badly quoted");
 			strbuf_swap(&buf, &nbuf);
 		}
-		hash_object(buf.buf, type, write_objects,
+		hash_object(buf.buf, type, write_objects, force,
 		    no_filters ? NULL : buf.buf);
 	}
 	strbuf_release(&buf);
@@ -64,6 +65,7 @@ static const char * const hash_object_usage[] = {
 
 static const char *type;
 static int write_object;
+static int force_write_object;
 static int hashstdin;
 static int stdin_paths;
 static const char *vpath;
@@ -71,6 +73,7 @@ static const char *vpath;
 static const struct option hash_object_options[] = {
 	OPT_STRING('t', NULL, &type, "type", "object type"),
 	OPT_BOOLEAN('w', NULL, &write_object, "write the object into the object database"),
+	OPT_BOOLEAN( 0 , "force-write", &force_write_object, "write the object, even if it exists"),
 	OPT_BOOLEAN( 0 , "stdin", &hashstdin, "read the object from stdin"),
 	OPT_BOOLEAN( 0 , "stdin-paths", &stdin_paths, "read file names from stdin"),
 	OPT_BOOLEAN( 0 , "no-filters", &no_filters, "store file as is without filters"),
@@ -88,6 +91,9 @@ int cmd_hash_object(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, NULL, hash_object_options,
 			     hash_object_usage, 0);
+
+	if (force_write_object)
+		write_object = 1;
 
 	if (write_object) {
 		prefix = setup_git_directory();
@@ -119,19 +125,19 @@ int cmd_hash_object(int argc, const char **argv, const char *prefix)
 	}
 
 	if (hashstdin)
-		hash_fd(0, type, write_object, vpath);
+		hash_fd(0, type, write_object, force_write_object, vpath);
 
 	for (i = 0 ; i < argc; i++) {
 		const char *arg = argv[i];
 
 		if (0 <= prefix_length)
 			arg = prefix_filename(prefix, prefix_length, arg);
-		hash_object(arg, type, write_object,
+		hash_object(arg, type, write_object, force_write_object,
 			    no_filters ? NULL : vpath ? vpath : arg);
 	}
 
 	if (stdin_paths)
-		hash_stdin_paths(type, write_object);
+		hash_stdin_paths(type, write_object, force_write_object);
 
 	return 0;
 }

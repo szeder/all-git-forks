@@ -2508,7 +2508,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	return move_temp_to_file(tmpfile, filename);
 }
 
-int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *returnsha1)
+int write_sha1_file_flags(const void *buf, unsigned long len, const char *type, unsigned char *returnsha1, int flags)
 {
 	unsigned char sha1[20];
 	char hdr[32];
@@ -2520,9 +2520,14 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
 	if (returnsha1)
 		hashcpy(returnsha1, sha1);
-	if (has_sha1_file(sha1))
+	if (!(flags & HASH_WRITE_OBJECT_FORCE) && has_sha1_file(sha1))
 		return 0;
 	return write_loose_object(sha1, hdr, hdrlen, buf, len, 0);
+}
+
+int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *returnsha1)
+{
+	write_sha1_file_flags(buf, len, type, returnsha1, 0);
 }
 
 int force_object_loose(const unsigned char *sha1, time_t mtime)
@@ -2628,7 +2633,8 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 	}
 
 	if (write_object)
-		ret = write_sha1_file(buf, size, typename(type), sha1);
+		ret = write_sha1_file_flags(buf, size, typename(type), sha1,
+					    flags);
 	else
 		ret = hash_sha1_file(buf, size, typename(type), sha1);
 	if (re_allocated)
