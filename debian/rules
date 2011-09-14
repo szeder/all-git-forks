@@ -98,6 +98,7 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	rm -f '$(GIT)'/usr/bin/git-cvsserver
 	rm -f '$(GIT)'/usr/bin/gitk
 	for i in '$(GIT)'/usr/bin/* '$(GIT)'/usr/lib/git-core/*; do \
+	  test -d $$i || \
 	  test "`head -c2 $$i`" = '#!' || \
 	  test "`head -c2 $$i`" = '# ' || \
 	  $(STRIP) -R .comment -R .note $$i; \
