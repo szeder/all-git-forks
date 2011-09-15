@@ -8,6 +8,15 @@ enum notes_merge_verbosity {
 	NOTES_MERGE_VERBOSITY_MAX = 5
 };
 
+struct notes_merge_options;
+
+typedef int (*notes_merge_fn)(struct notes_merge_options *,
+			      unsigned char *result,
+			      const unsigned char *obj,
+			      const unsigned char *base,
+			      const unsigned char *ours,
+			      const unsigned char *theirs);
+
 struct notes_merge_options {
 	const char *local_ref;
 	const char *remote_ref;
@@ -18,8 +27,10 @@ struct notes_merge_options {
 		NOTES_MERGE_RESOLVE_OURS,
 		NOTES_MERGE_RESOLVE_THEIRS,
 		NOTES_MERGE_RESOLVE_UNION,
-		NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ
+		NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ,
+		NOTES_MERGE_RESOLVE_CALLBACK
 	} strategy;
+	notes_merge_fn merge_fn;
 	unsigned has_worktree:1;
 };
 

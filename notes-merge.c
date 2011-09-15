@@ -426,6 +426,21 @@ static int merge_one_change_manual(struct notes_merge_options *o,
 	return 1;
 }
 
+static int merge_one_change_callback(struct notes_merge_options *o,
+				     struct notes_merge_pair *p,
+				     struct notes_tree *t)
+{
+	unsigned char result[20];
+	int status;
+
+	status = o->merge_fn(o, result, p->obj, p->base, p->local, p->remote);
+	if (!status) {
+		if (add_note(t, p->obj, result, combine_notes_overwrite))
+			die("BUG: combine_notes_overwrite failed");
+	}
+	return status;
+}
+
 static int merge_one_change(struct notes_merge_options *o,
 			    struct notes_merge_pair *p, struct notes_tree *t)
 {
@@ -460,8 +475,11 @@ static int merge_one_change(struct notes_merge_options *o,
 			die("failed to concatenate notes "
 			    "(combine_notes_cat_sort_uniq)");
 		return 0;
+	case NOTES_MERGE_RESOLVE_CALLBACK:
+		return merge_one_change_callback(o, p, t);
+	default:
+		die("Unknown strategy (%i).", o->strategy);
 	}
-	die("Unknown strategy (%i).", o->strategy);
 }
 
 static int merge_changes(struct notes_merge_options *o,
