@@ -3,8 +3,14 @@ prefix := $(HOME)/local/git/$(shell $(Meta)/install/prefix)
 
 CC = ccache gcc
 CFLAGS = -g -Wall -Werror
-CFLAGS += -Wno-error=unused-but-set-variable
 LDFLAGS = -g
+
+# Relax compilation on a detached HEAD (which is probably
+# historical, and may contain compiler warnings that later
+# got fixed).
+ifeq ($(shell git symbolic-ref HEAD 2>/dev/null),)
+  CFLAGS += -Wno-error=unused-but-set-variable
+endif
 
 USE_LIBPCRE = YesPlease
 
