@@ -45,13 +45,19 @@ static struct {
 	uint32_t action, propLength, textLength, srcRev, type;
 	struct strbuf src, dst;
 	uint32_t text_delta, prop_delta;
-} node_ctx;
+} node_ctx = {
+	.src = STRBUF_INIT;
+	.dst = STRBUF_INIT;
+};
 
 static struct {
 	uint32_t revision;
 	unsigned long timestamp;
 	struct strbuf log, author;
-} rev_ctx;
+} rev_ctx = {
+	.log = STRBUF_INIT;
+	.author = STRBUF_INIT;
+};
 
 static struct {
 	uint32_t version;
@@ -59,7 +65,11 @@ static struct {
 	int first_commit_done;
 	struct strbuf ref_name;
 	int incremental;
-} dump_ctx;
+} dump_ctx = {
+	.uuid = STRBUF_INIT;
+	.url = STRBUF_INIT;
+	.ref_name = STRBUF_INIT;
+};
 
 static void reset_node_ctx(char *fname)
 {
@@ -317,7 +327,7 @@ static void add_metadata_trailer(struct strbuf *buf)
 
 static void begin_revision(void)
 {
-	static struct strbuf email;
+	static struct strbuf email = STRBUF_INIT;
 	const char *author;
 	uint32_t prev;
 	char buf[32];
