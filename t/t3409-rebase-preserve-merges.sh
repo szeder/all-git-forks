@@ -27,7 +27,25 @@ export GIT_AUTHOR_EMAIL
 #    \
 #     B2       <-- origin/topic
 #
-# In both cases, 'topic' is rebased onto 'origin/topic'.
+# Clone 3 (no-ff merge):
+#
+# A1--A2--B3   <-- origin/master
+#  \
+#   B1------M  <-- topic
+#    \     /
+#     \--A3    <-- topic2
+#      \
+#       B2     <-- origin/topic
+#
+# Clone 4 (merge using second parent as base):
+#
+# A1--A2--B3   <-- origin/master
+#  \
+#   B1--A3--M  <-- topic
+#    \     /
+#     \--A4    <-- topic2
+#      \
+#       B2     <-- origin/topic
 
 test_expect_success 'setup for merge-preserving rebase' \
 	'echo First > A &&
@@ -47,6 +65,13 @@ test_expect_success 'setup for merge-preserving rebase' \
 	git merge origin/master
 	) &&
 
+	git clone ./. clone4 &&
+	(
+		cd clone4 &&
+		git checkout -b topic origin/topic &&
+		git merge origin/master
+	) &&
+
 	echo Fifth > B &&
 	git add B &&
 	git commit -m "Add different B" &&
@@ -59,6 +84,16 @@ test_expect_success 'setup for merge-preserving rebase' \
 		echo Resolved >B &&
 		git add B &&
 		git commit -m "Merge origin/master into topic"
+	) &&
+
+	git clone ./. clone3 &&
+	(
+		cd clone3 &&
+		git checkout -b topic2 origin/topic &&
+		echo Sixth > A &&
+		git commit -a -m "Modify A3" &&
+		git checkout -b topic origin/topic &&
+		git merge --no-ff topic2
 	) &&
 
 	git checkout topic &&
@@ -90,6 +125,27 @@ test_expect_success '--continue works after a conflict' '
 	test 1 = $(git rev-list --all --pretty=oneline | grep "Modify A" | wc -l) &&
 	test 1 = $(git rev-list --all --pretty=oneline | grep "Add different" | wc -l) &&
 	test 1 = $(git rev-list --all --pretty=oneline | grep "Merge origin" | wc -l)
+	)
+'
+
+test_expect_success 'rebase -p preserves no-ff merges' '
+	(
+	cd clone3 &&
+	git fetch &&
+	git rebase -p origin/topic &&
+	test 3 = $(git rev-list --all --pretty=oneline | grep "Modify A" | wc -l) &&
+	test 1 = $(git rev-list --all --pretty=oneline | grep "Merge branch" | wc -l)
+	)
+'
+
+test_expect_success 'rebase -p works when base inside second parent' '
+	(
+	cd clone4 &&
+	git fetch &&
+	git rebase -p HEAD^2 &&
+	test 1 = $(git rev-list --all --pretty=oneline | grep "Modify A" | wc -l) &&
+	test 1 = $(git rev-list --all --pretty=oneline | grep "Modify B" | wc -l) &&
+	test 1 = $(git rev-list --all --pretty=oneline | grep "Merge remote-tracking branch " | wc -l)
 	)
 '
 

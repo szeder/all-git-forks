@@ -89,6 +89,9 @@ esac
 _x05='[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'
 _x40="$_x05$_x05$_x05$_x05$_x05$_x05$_x05$_x05"
 
+# Zero SHA-1
+_z40=0000000000000000000000000000000000000000
+
 # Each test should start with something like this, after copyright notices:
 #
 # test_description='Description of this test...
@@ -443,9 +446,14 @@ test_debug () {
 
 test_run_ () {
 	test_cleanup=:
+	expecting_failure=$2
 	eval >&3 2>&4 "$1"
 	eval_ret=$?
-	eval >&3 2>&4 "$test_cleanup"
+
+	if test -z "$immediate" || test $eval_ret = 0 || test -n "$expecting_failure"
+	then
+		eval >&3 2>&4 "$test_cleanup"
+	fi
 	if test "$verbose" = "t" && test -n "$HARNESS_ACTIVE"; then
 		echo ""
 	fi
@@ -494,7 +502,7 @@ test_expect_failure () {
 	if ! test_skip "$@"
 	then
 		say >&3 "checking known breakage: $2"
-		test_run_ "$2"
+		test_run_ "$2" expecting_failure
 		if [ "$?" = 0 -a "$eval_ret" = 0 ]
 		then
 			test_known_broken_ok_ "$1"
@@ -575,7 +583,7 @@ test_external () {
 test_external_without_stderr () {
 	# The temporary file has no (and must have no) security
 	# implications.
-	tmp="$TMPDIR"; if [ -z "$tmp" ]; then tmp=/tmp; fi
+	tmp=${TMPDIR:-/tmp}
 	stderr="$tmp/git-external-stderr.$$.tmp"
 	test_external "$@" 4> "$stderr"
 	[ -f "$stderr" ] || error "Internal error: $stderr disappeared."
@@ -728,12 +736,11 @@ test_expect_code () {
 	exit_code=$?
 	if test $exit_code = $want_code
 	then
-		echo >&2 "test_expect_code: command exited with $exit_code: $*"
 		return 0
-	else
-		echo >&2 "test_expect_code: command exited with $exit_code, we wanted $want_code $*"
-		return 1
 	fi
+
+	echo >&2 "test_expect_code: command exited with $exit_code, we wanted $want_code $*"
+	return 1
 }
 
 # test_cmp is a helper function to compare actual and expected output.
@@ -772,6 +779,9 @@ test_cmp() {
 #
 # except that the greeting and config --unset must both succeed for
 # the test to pass.
+#
+# Note that under --immediate mode, no clean-up is done to help diagnose
+# what went wrong.
 
 test_when_finished () {
 	test_cleanup="{ $*
@@ -801,12 +811,14 @@ test_done () {
 		mkdir -p "$test_results_dir"
 		test_results_path="$test_results_dir/${0%.sh}-$$.counts"
 
-		echo "total $test_count" >> $test_results_path
-		echo "success $test_success" >> $test_results_path
-		echo "fixed $test_fixed" >> $test_results_path
-		echo "broken $test_broken" >> $test_results_path
-		echo "failed $test_failure" >> $test_results_path
-		echo "" >> $test_results_path
+		cat >>"$test_results_path" <<-EOF
+		total $test_count
+		success $test_success
+		fixed $test_fixed
+		broken $test_broken
+		failed $test_failure
+
+		EOF
 	fi
 
 	if test "$test_fixed" != 0
@@ -880,8 +892,13 @@ then
 	}
 
 	make_valgrind_symlink () {
-		# handle only executables
-		test -x "$1" || return
+		# handle only executables, unless they are shell libraries that
+		# need to be in the exec-path.  We will just use "#!" as a
+		# guess for a shell-script, since we have no idea what the user
+		# may have configured as the shell path.
+		test -x "$1" ||
+		test "#!" = "$(head -c 2 <"$1")" ||
+		return;
 
 		base=$(basename "$1")
 		symlink_target=$GIT_BUILD_DIR/$base
@@ -1067,6 +1084,7 @@ esac
 
 test -z "$NO_PERL" && test_set_prereq PERL
 test -z "$NO_PYTHON" && test_set_prereq PYTHON
+test -n "$USE_LIBPCRE" && test_set_prereq LIBPCRE
 
 # Can we rely on git's output in the C locale?
 if test -n "$GETTEXT_POISON"
@@ -1076,6 +1094,32 @@ then
 else
 	test_set_prereq C_LOCALE_OUTPUT
 fi
+
+# Use this instead of test_cmp to compare files that contain expected and
+# actual output from git commands that can be translated.  When running
+# under GETTEXT_POISON this pretends that the command produced expected
+# results.
+test_i18ncmp () {
+	test -n "$GETTEXT_POISON" || test_cmp "$@"
+}
+
+# Use this instead of "grep expected-string actual" to see if the
+# output from a git command that can be translated either contains an
+# expected string, or does not contain an unwanted one.  When running
+# under GETTEXT_POISON this pretends that the command produced expected
+# results.
+test_i18ngrep () {
+	if test -n "$GETTEXT_POISON"
+	then
+	    : # pretend success
+	elif test "x!" = "x$1"
+	then
+		shift
+		! grep "$@"
+	else
+		grep "$@"
+	fi
+}
 
 # test whether the filesystem supports symbolic links
 ln -s x y 2>/dev/null && test -h y 2>/dev/null && test_set_prereq SYMLINKS

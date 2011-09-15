@@ -1,6 +1,12 @@
 #ifndef GREP_H
 #define GREP_H
 #include "color.h"
+#ifdef USE_LIBPCRE
+#include <pcre.h>
+#else
+typedef int pcre;
+typedef int pcre_extra;
+#endif
 
 enum grep_pat_token {
 	GREP_PATTERN,
@@ -33,6 +39,8 @@ struct grep_pat {
 	size_t patternlen;
 	enum grep_header_field field;
 	regex_t regexp;
+	pcre *pcre_regexp;
+	pcre_extra *pcre_extra_info;
 	unsigned fixed:1;
 	unsigned ignore_case:1;
 	unsigned word_regexp:1;
@@ -83,6 +91,7 @@ struct grep_opt {
 #define GREP_BINARY_TEXT	2
 	int binary;
 	int extended;
+	int pcre;
 	int relative;
 	int pathname;
 	int null_following_name;
@@ -101,6 +110,8 @@ struct grep_opt {
 	unsigned post_context;
 	unsigned last_shown;
 	int show_hunk_mark;
+	int file_break;
+	int heading;
 	void *priv;
 
 	void (*output)(struct grep_opt *opt, const void *data, size_t size);
