@@ -8,9 +8,9 @@ svn-fe - convert an SVN "dumpfile" to a fast-import stream
 SYNOPSIS
 --------
 [verse]
-mkfifo backchannel &&
+mkfifo backchannel && fd=3 &&
 svnadmin dump --deltas REPO |
-	svn-fe [url] 3<backchannel |
+	eval "svn-fe [options] [git-svn-id-url] $fd<backchannel" |
 	git fast-import --cat-blob-fd=3 3>backchannel
 
 DESCRIPTION
@@ -24,6 +24,33 @@ command.
 
 Note: this tool is very young.  The details of its commandline
 interface may change in backward incompatible ways.
+
+OPTIONS
+-------
+
+--git-svn-id-url=<url>::
+	Url to be used in git-svn-id: lines in git-svn
+	metadata lines format. See NOTES for more detailed
+	description.
+
+--ref=<refname>::
+	Ref to be written by the generated stream.
+	Default is refs/heads/master.
+
+--read-blob-fd=<fd>::
+	Integer number of file descriptor from which
+	responses to 'ls' and 'cat-blob' requests will come.
+	Default is fd=3.
+
+--[no-]progress::
+	Write 'progress' lines to fast-import stream. These
+	can be displayed by fast-import.
+
+--incremental::
+	If the first revision in dump has number greater than
+	1, make :(revision - 1) it's parent. For this to work
+	fast-import must be supplied with import-marks file
+	and the dump must be incremental.
 
 INPUT FORMAT
 ------------
@@ -50,9 +77,10 @@ user <user@UUID>
 as committer, where 'user' is the value of the `svn:author` property
 and 'UUID' the repository's identifier.
 
-To support incremental imports, 'svn-fe' puts a `git-svn-id` line at
-the end of each commit log message if passed an url on the command
-line.  This line has the form `git-svn-id: URL@REVNO UUID`.
+'svn-fe' can be used in preparing a repository for 'git-svn' as follows.
+If `git-svn-id-url` is specified, 'svn-fe' will put `git-svn-id` line at
+the end of each commit log message.
+This line has the form `git-svn-id: URL@REVNO UUID`.
 
 The resulting repository will generally require further processing
 to put each project in its own repository and to separate the history

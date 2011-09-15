@@ -20,8 +20,6 @@
  */
 #define constcmp(s, ref) memcmp(s, ref, sizeof(ref) - 1)
 
-#define REPORT_FILENO 3
-
 #define NODEACT_REPLACE 4
 #define NODEACT_DELETE 3
 #define NODEACT_ADD 2
@@ -36,6 +34,10 @@
 
 #define LENGTH_UNKNOWN (~0)
 #define DATE_RFC2822_LEN 31
+
+#define MAX_GITSVN_LINE_LEN 4096
+
+static int print_progress;
 
 static struct line_buffer input = LINE_BUFFER_INIT;
 
@@ -54,6 +56,9 @@ static struct {
 static struct {
 	uint32_t version;
 	struct strbuf uuid, url;
+	int first_commit_done;
+	struct strbuf ref_name;
+	int incremental;
 } dump_ctx;
 
 static void reset_node_ctx(char *fname)
@@ -79,13 +84,17 @@ static void reset_rev_ctx(uint32_t revision)
 	strbuf_reset(&rev_ctx.author);
 }
 
-static void reset_dump_ctx(const char *url)
+static void reset_dump_ctx(const char *url, const char *dst_ref, int incremental)
 {
 	strbuf_reset(&dump_ctx.url);
 	if (url)
 		strbuf_addstr(&dump_ctx.url, url);
 	dump_ctx.version = 1;
 	strbuf_reset(&dump_ctx.uuid);
+	dump_ctx.first_commit_done = 0;
+	strbuf_reset(&dump_ctx.ref_name);
+	strbuf_addstr(&dump_ctx.ref_name, dst_ref);
+	dump_ctx.incremental = incremental;
 }
 
 static void handle_property(const struct strbuf *key_buf,
@@ -299,29 +308,62 @@ static void handle_node(void)
 				node_ctx.textLength, &input);
 }
 
+static void add_metadata_trailer(struct strbuf *buf)
+{
+	if (*dump_ctx.uuid.buf && *dump_ctx.url.buf)
+		strbuf_addf(buf, "\n\ngit-svn-id: %s@%"PRIu32" %s\n",
+			 dump_ctx.url.buf, rev_ctx.revision, dump_ctx.uuid.buf);
+}
+
 static void begin_revision(void)
 {
+	static struct strbuf email;
+	const char *author;
+	uint32_t prev;
+	char buf[32];
+
 	if (!rev_ctx.revision)	/* revision 0 gets no git commit. */
 		return;
-	fast_export_begin_commit(rev_ctx.revision, rev_ctx.author.buf,
-		&rev_ctx.log, dump_ctx.uuid.buf, dump_ctx.url.buf,
-		rev_ctx.timestamp);
+	if (dump_ctx.incremental)
+		prev = rev_ctx.revision - 1;
+	else
+		prev = dump_ctx.first_commit_done ? rev_ctx.revision - 1 : 0;
+	if (prev)
+		snprintf(buf, 32, ":%"PRIu32, prev);
+	else
+		*buf = 0;
+	author = *rev_ctx.author.buf ? rev_ctx.author.buf : "nobody";
+
+	strbuf_reset(&email);
+	strbuf_addstr(&email, author);
+	strbuf_addch(&email, '@');
+	if (*dump_ctx.uuid.buf)
+		strbuf_addstr(&email, dump_ctx.uuid.buf);
+	else
+		strbuf_addstr(&email, "local");
+
+	add_metadata_trailer(&rev_ctx.log);
+
+	fast_export_begin_commit(dump_ctx.ref_name.buf, rev_ctx.revision, buf,
+				author, email.buf, &rev_ctx.log, rev_ctx.timestamp);
 }
 
 static void end_revision(void)
 {
-	if (rev_ctx.revision)
-		fast_export_end_commit(rev_ctx.revision);
+	if (rev_ctx.revision) {
+		if (print_progress)
+			fast_export_progress(rev_ctx.revision);
+		dump_ctx.first_commit_done = 1;
+	}
 }
 
-void svndump_read(const char *url)
+void svndump_read(void)
 {
 	char *val;
 	char *t;
 	uint32_t active_ctx = DUMP_CTX;
 	uint32_t len;
 
-	reset_dump_ctx(url);
 	while ((t = buffer_read_line(&input))) {
 		val = strchr(t, ':');
 		if (!val)
@@ -456,18 +498,22 @@ void svndump_read(const char *url)
 		end_revision();
 }
 
-int svndump_init(const char *filename)
+int svndump_init(const struct svndump_options *o)
 {
-	if (buffer_init(&input, filename))
-		return error("cannot open %s: %s", filename, strerror(errno));
-	fast_export_init(REPORT_FILENO);
+	const char *ref = o->ref;
+	if (!ref)
+		ref = "refs/heads/master";
+	if (buffer_init(&input, o->dumpfile))
+		return error("cannot open %s: %s", o->dumpfile, strerror(errno));
+	print_progress = o->progress;
+	fast_export_init(o->backflow_fd);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
 	strbuf_init(&rev_ctx.log, 4096);
 	strbuf_init(&rev_ctx.author, 4096);
 	strbuf_init(&node_ctx.src, 4096);
 	strbuf_init(&node_ctx.dst, 4096);
-	reset_dump_ctx(NULL);
+	reset_dump_ctx(o->git_svn_url, ref, o->incremental);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	return 0;
@@ -476,7 +522,7 @@ int svndump_init(const char *filename)
 void svndump_deinit(void)
 {
 	fast_export_deinit();
-	reset_dump_ctx(NULL);
+	reset_dump_ctx(NULL, "", 0);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
 	strbuf_release(&rev_ctx.log);

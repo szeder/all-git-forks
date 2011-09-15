@@ -20,11 +20,14 @@ try_dump () {
 	input=$1 &&
 	maybe_fail_svnfe=${2:+test_$2} &&
 	maybe_fail_fi=${3:+test_$3} &&
+	args=${4:-} &&
+	fd=${5:-3} &&
+	fi_args=${6:-} &&
 
 	{
-		$maybe_fail_svnfe test-svn-fe "$input" >stream 3<backflow &
+		eval "$maybe_fail_svnfe test-svn-fe $args "$input" >stream $fd<backflow" &
 	} &&
-	$maybe_fail_fi git fast-import --cat-blob-fd=3 <stream 3>backflow &&
+	eval "$maybe_fail_fi git fast-import $fi_args --cat-blob-fd=3 <stream 3>backflow" &&
 	wait $!
 }
 
@@ -53,6 +56,31 @@ text_no_props () {
 }
 
 >empty
+
+cat >emptyprop.dump <<\EOF
+SVN-fs-dump-format-version: 3
+
+Revision-number: 1
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+
+Revision-number: 2
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+EOF
+cat >moreempty.dump <<-EOF &&
+SVN-fs-dump-format-version: 3
+
+Revision-number: 3
+Prop-content-length: 10
+Content-length: 10
+
+PROPS-END
+EOF
 
 test_expect_success 'setup: have pipes?' '
 	rm -f frob &&
@@ -97,24 +125,17 @@ test_expect_failure PIPE 'empty revision' '
 test_expect_success PIPE 'empty properties' '
 	reinit_git &&
 	printf "rev <nobody, nobody@local>: %s\n" "" "" >expect &&
-	cat >emptyprop.dump <<-\EOF &&
-	SVN-fs-dump-format-version: 3
-
-	Revision-number: 1
-	Prop-content-length: 10
-	Content-length: 10
-
-	PROPS-END
-
-	Revision-number: 2
-	Prop-content-length: 10
-	Content-length: 10
-
-	PROPS-END
-	EOF
 	try_dump emptyprop.dump &&
 	git log -p --format="rev <%an, %ae>: %s" HEAD >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success PIPE 'import to notmaster ref' '
+	reinit_git &&
+	try_dump emptyprop.dump "" "" "--ref=refs/heads/notmaster" &&
+
+	git rev-parse --verify notmaster &&
+	test_must_fail git rev-parse --verify master
 '
 
 test_expect_success PIPE 'author name and commit message' '
@@ -1109,6 +1130,69 @@ test_expect_success SVNREPO,PIPE 't9135/svn.dump' '
 		git fetch ../simple-git master &&
 		git diff --exit-code FETCH_HEAD
 	)
+'
+
+test_expect_success PIPE 'use different backflow fd' '
+	reinit_git &&
+	echo hi >hi &&
+	{
+		properties \
+			svn:author author@example.com \
+			svn:date "1999-02-01T00:01:002.000000Z" \
+			svn:log "add directory with some files in it" &&
+		echo PROPS-END
+	} >props &&
+	{
+		echo Prop-content-length: $(wc -c <props) &&
+		echo Content-length: $(wc -c <props) &&
+		echo &&
+		cat props
+	} >revprops &&
+	{
+		cat <<-EOF &&
+		SVN-fs-dump-format-version: 3
+
+		Revision-number: 1
+		EOF
+		cat revprops &&
+		cat <<-EOF &&
+		Node-path: directory
+		Node-kind: dir
+		Node-action: add
+		Node-path: directory/somefile
+		Node-kind: file
+		Node-action: add
+		EOF
+		text_no_props hi &&
+
+		echo "Revision-number: 2" &&
+		cat revprops &&
+		cat <<-\EOF
+		Node-path: otherfile
+		Node-kind: file
+		Node-action: add
+		Node-copyfrom-rev: 1
+		Node-copyfrom-path: directory/somefile
+		EOF
+	} >directory.dump &&
+	try_dump directory.dump "" "" "--read-blob-fd=7" 7 &&
+
+	git checkout HEAD otherfile &&
+	test_cmp hi otherfile
+'
+
+test_expect_success PIPE 'incremental import' '
+	reinit_git &&
+	>./marks &&
+
+	try_dump emptyprop.dump "" "" "--incremental" "" "--export-marks=./marks" &&
+	test_line_count = 2 ./marks &&
+
+	try_dump moreempty.dump "" "" "--incremental" "" "--import-marks=./marks --export-marks=./marks" &&
+	test_line_count = 3 ./marks &&
+
+	git log --format=oneline >history &&
+	test_line_count = 3 ./history
 '
 
 test_done
