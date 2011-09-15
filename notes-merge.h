@@ -8,18 +8,30 @@ enum notes_merge_verbosity {
 	NOTES_MERGE_VERBOSITY_MAX = 5
 };
 
+struct notes_merge_options;
+struct notes_merge_pair {
+	unsigned char obj[20], base[20], local[20], remote[20];
+};
+typedef int (*notes_merge_resolve_fn)(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+
+extern int notes_merge_resolve_manual(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+extern int notes_merge_resolve_ours(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+extern int notes_merge_resolve_theirs(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+extern int notes_merge_resolve_union(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+extern int notes_merge_resolve_cat_sort_uniq(struct notes_merge_options *, struct notes_merge_pair *, struct notes_tree *);
+
+#define NOTES_MERGE_RESOLVE_MANUAL notes_merge_resolve_manual
+#define NOTES_MERGE_RESOLVE_OURS notes_merge_resolve_ours
+#define NOTES_MERGE_RESOLVE_THEIRS notes_merge_resolve_theirs
+#define NOTES_MERGE_RESOLVE_UNION notes_merge_resolve_union
+#define NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ notes_merge_resolve_cat_sort_uniq
+
 struct notes_merge_options {
 	const char *local_ref;
 	const char *remote_ref;
 	struct strbuf commit_msg;
 	int verbosity;
-	enum {
-		NOTES_MERGE_RESOLVE_MANUAL = 0,
-		NOTES_MERGE_RESOLVE_OURS,
-		NOTES_MERGE_RESOLVE_THEIRS,
-		NOTES_MERGE_RESOLVE_UNION,
-		NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ
-	} strategy;
+	notes_merge_resolve_fn strategy;
 	unsigned has_worktree:1;
 };
 

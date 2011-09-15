@@ -10,10 +10,6 @@
 #include "notes-merge.h"
 #include "strbuf.h"
 
-struct notes_merge_pair {
-	unsigned char obj[20], base[20], local[20], remote[20];
-};
-
 void init_notes_merge_options(struct notes_merge_options *o)
 {
 	memset(o, 0, sizeof(struct notes_merge_options));
@@ -426,6 +422,56 @@ static int merge_one_change_manual(struct notes_merge_options *o,
 	return 1;
 }
 
+int notes_merge_resolve_manual(struct notes_merge_options *o,
+			       struct notes_merge_pair *p,
+			       struct notes_tree *t)
+{
+	return merge_one_change_manual(o, p, t);
+}
+
+int notes_merge_resolve_ours(struct notes_merge_options *o,
+			     struct notes_merge_pair *p,
+			     struct notes_tree *t)
+{
+	OUTPUT(o, 2, "Using local notes for %s", sha1_to_hex(p->obj));
+	/* nothing to do */
+	return 0;
+}
+
+int notes_merge_resolve_theirs(struct notes_merge_options *o,
+			       struct notes_merge_pair *p,
+			       struct notes_tree *t)
+{
+	OUTPUT(o, 2, "Using remote notes for %s", sha1_to_hex(p->obj));
+	if (add_note(t, p->obj, p->remote, combine_notes_overwrite))
+		die("BUG: combine_notes_overwrite failed");
+	return 0;
+}
+
+int notes_merge_resolve_union(struct notes_merge_options *o,
+			      struct notes_merge_pair *p,
+			      struct notes_tree *t)
+{
+	OUTPUT(o, 2, "Concatenating local and remote notes for %s",
+	       sha1_to_hex(p->obj));
+	if (add_note(t, p->obj, p->remote, combine_notes_concatenate))
+		die("failed to concatenate notes "
+		    "(combine_notes_concatenate)");
+	return 0;
+}
+
+int notes_merge_resolve_cat_sort_uniq(struct notes_merge_options *o,
+				      struct notes_merge_pair *p,
+				      struct notes_tree *t)
+{
+	OUTPUT(o, 2, "Concatenating unique lines in local and remote "
+	       "notes for %s", sha1_to_hex(p->obj));
+	if (add_note(t, p->obj, p->remote, combine_notes_cat_sort_uniq))
+		die("failed to concatenate notes "
+		    "(combine_notes_cat_sort_uniq)");
+	return 0;
+}
+
 static int merge_one_change(struct notes_merge_options *o,
 			    struct notes_merge_pair *p, struct notes_tree *t)
 {
@@ -434,34 +480,11 @@ static int merge_one_change(struct notes_merge_options *o,
 	 * Return 1 is change results in a conflict (NOT stored in notes_tree,
 	 * but instead written to NOTES_MERGE_WORKTREE with conflict markers).
 	 */
-	switch (o->strategy) {
-	case NOTES_MERGE_RESOLVE_MANUAL:
-		return merge_one_change_manual(o, p, t);
-	case NOTES_MERGE_RESOLVE_OURS:
-		OUTPUT(o, 2, "Using local notes for %s", sha1_to_hex(p->obj));
-		/* nothing to do */
-		return 0;
-	case NOTES_MERGE_RESOLVE_THEIRS:
-		OUTPUT(o, 2, "Using remote notes for %s", sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_overwrite))
-			die("BUG: combine_notes_overwrite failed");
-		return 0;
-	case NOTES_MERGE_RESOLVE_UNION:
-		OUTPUT(o, 2, "Concatenating local and remote notes for %s",
-		       sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_concatenate))
-			die("failed to concatenate notes "
-			    "(combine_notes_concatenate)");
-		return 0;
-	case NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ:
-		OUTPUT(o, 2, "Concatenating unique lines in local and remote "
-		       "notes for %s", sha1_to_hex(p->obj));
-		if (add_note(t, p->obj, p->remote, combine_notes_cat_sort_uniq))
-			die("failed to concatenate notes "
-			    "(combine_notes_cat_sort_uniq)");
-		return 0;
-	}
-	die("Unknown strategy (%i).", o->strategy);
+	notes_merge_resolve_fn fn = o->strategy;
+
+	if (!fn)
+		fn = notes_merge_resolve_manual;
+	return fn(o, p, t);
 }
 
 static int merge_changes(struct notes_merge_options *o,
