@@ -3025,12 +3025,11 @@ static void parse_ls(struct branch *b)
 static void checkpoint(void)
 {
 	checkpoint_requested = 0;
-	if (object_count) {
+	if (object_count)
 		cycle_packfile();
-		dump_branches();
-		dump_tags();
-		dump_marks();
-	}
+	dump_branches();
+	dump_tags();
+	dump_marks();
 }
 
 static void parse_checkpoint(void)
