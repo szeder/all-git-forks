@@ -381,7 +381,7 @@ data 0
 
 from 0000000000000000000000000000000000000000
 INPUT_END
-test_expect_failure 'B: fail on "from 0{40}"' '
+test_expect_success 'B: fail on "from 0{40}"' '
     test_must_fail git fast-import <input
 '
 rm -f .git/objects/pack_* .git/objects/index_*
