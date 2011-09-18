@@ -290,7 +290,6 @@ static uintmax_t object_count_by_type[1 << TYPE_BITS];
 static uintmax_t duplicate_count_by_type[1 << TYPE_BITS];
 static uintmax_t delta_count_by_type[1 << TYPE_BITS];
 static uintmax_t delta_count_attempts_by_type[1 << TYPE_BITS];
-static unsigned long object_count;
 static unsigned long branch_count;
 static unsigned long branch_load_count;
 static int failure;
@@ -316,6 +315,7 @@ static struct sha1file *pack_file;
 static struct packed_git *pack_data;
 static struct packed_git **all_packs;
 static off_t pack_size;
+static unsigned long pack_object_count;
 
 /* Table of objects we've written. */
 static unsigned int object_entry_alloc = 5000;
@@ -880,7 +880,7 @@ static void start_packfile(void)
 
 	pack_data = p;
 	pack_size = sizeof(hdr);
-	object_count = 0;
+	pack_object_count = 0;
 
 	all_packs = xrealloc(all_packs, sizeof(*all_packs) * (pack_id + 1));
 	all_packs[pack_id] = p;
@@ -894,17 +894,17 @@ static const char *create_index(void)
 	struct object_entry_pool *o;
 
 	/* Build the table of object IDs. */
-	idx = xmalloc(object_count * sizeof(*idx));
+	idx = xmalloc(pack_object_count * sizeof(*idx));
 	c = idx;
 	for (o = blocks; o; o = o->next_pool)
 		for (e = o->next_free; e-- != o->entries;)
 			if (pack_id == e->pack_id)
 				*c++ = &e->idx;
-	last = idx + object_count;
+	last = idx + pack_object_count;
 	if (c != last)
 		die("internal consistency error creating the index");
 
-	tmpfile = write_idx_file(NULL, idx, object_count, &pack_idx_opts, pack_data->sha1);
+	tmpfile = write_idx_file(NULL, idx, pack_object_count, &pack_idx_opts, pack_data->sha1);
 	free(idx);
 	return tmpfile;
 }
@@ -953,7 +953,7 @@ static void end_packfile(void)
 	struct packed_git *old_p = pack_data, *new_p;
 
 	clear_delta_base_cache();
-	if (object_count) {
+	if (pack_object_count) {
 		unsigned char cur_pack_sha1[20];
 		char *idx_name;
 		int i;
@@ -963,7 +963,7 @@ static void end_packfile(void)
 		close_pack_windows(pack_data);
 		sha1close(pack_file, cur_pack_sha1, 0);
 		fixup_pack_header_footer(pack_data->pack_fd, pack_data->sha1,
-				    pack_data->pack_name, object_count,
+				    pack_data->pack_name, pack_object_count,
 				    cur_pack_sha1, pack_size);
 		close(pack_data->pack_fd);
 		idx_name = keep_pack(create_index());
@@ -1103,7 +1103,7 @@ static int store_object(
 	e->type = type;
 	e->pack_id = pack_id;
 	e->idx.offset = pack_size;
-	object_count++;
+	pack_object_count++;
 	object_count_by_type[type]++;
 
 	crc32_begin(pack_file);
@@ -1267,7 +1267,7 @@ static void stream_blob(uintmax_t len, unsigned char *sha1out, uintmax_t mark)
 		e->pack_id = pack_id;
 		e->idx.offset = offset;
 		e->idx.crc32 = crc32_end(pack_file);
-		object_count++;
+		pack_object_count++;
 		object_count_by_type[OBJ_BLOB]++;
 	}
 
@@ -3025,7 +3025,7 @@ static void parse_ls(struct branch *b)
 static void checkpoint(void)
 {
 	checkpoint_requested = 0;
-	if (object_count)
+	if (pack_object_count)
 		cycle_packfile();
 	dump_branches();
 	dump_tags();
