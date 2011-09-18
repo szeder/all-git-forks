@@ -375,6 +375,18 @@ test_expect_success 'B: fail on invalid branch name "bad[branch]name"' '
 rm -f .git/objects/pack_* .git/objects/index_*
 
 cat >input <<INPUT_END
+commit refs/heads/zeromaster
+committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+data 0
+
+from 0000000000000000000000000000000000000000
+INPUT_END
+test_expect_failure 'B: fail on "from 0{40}"' '
+    test_must_fail git fast-import <input
+'
+rm -f .git/objects/pack_* .git/objects/index_*
+
+cat >input <<INPUT_END
 commit TEMP_TAG
 committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
 data <<COMMIT
