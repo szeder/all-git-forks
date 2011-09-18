@@ -2816,16 +2816,18 @@ static void cat_blob_write(const char *buf, unsigned long size)
 		die_errno("Write to frontend failed");
 }
 
-static void cat_blob(struct object_entry *oe, unsigned char sha1[20])
+static void cat_blob(struct object_entry *oe)
 {
 	struct strbuf line = STRBUF_INIT;
 	unsigned long size;
 	enum object_type type = 0;
 	char *buf;
 
-	if (!oe || oe->pack_id == MAX_PACK_ID) {
-		buf = read_sha1_file(sha1, &type, &size);
-	} else {
+	if (!oe->idx.offset)
+		buf = resolve_sha1_object_read(oe, &type, &size);
+	else if (oe->pack_id == MAX_PACK_ID)
+		buf = read_sha1_file(oe->idx.sha1, &type, &size);
+	else {
 		type = oe->type;
 		buf = gfi_unpack_entry(oe, &size);
 	}
@@ -2835,25 +2837,25 @@ static void cat_blob(struct object_entry *oe, unsigned char sha1[20])
 	 */
 	if (type <= 0) {
 		strbuf_reset(&line);
-		strbuf_addf(&line, "%s missing\n", sha1_to_hex(sha1));
+		strbuf_addf(&line, "%s missing\n", sha1_to_hex(oe->idx.sha1));
 		cat_blob_write(line.buf, line.len);
 		strbuf_release(&line);
 		free(buf);
 		return;
 	}
 	if (!buf)
-		die("Can't read object %s", sha1_to_hex(sha1));
+		die("Can't read object %s", sha1_to_hex(oe->idx.sha1));
 	if (type != OBJ_BLOB)
 		die("Object %s is a %s but a blob was expected.",
-		    sha1_to_hex(sha1), typename(type));
+		    sha1_to_hex(oe->idx.sha1), typename(type));
 	strbuf_reset(&line);
-	strbuf_addf(&line, "%s %s %lu\n", sha1_to_hex(sha1),
+	strbuf_addf(&line, "%s %s %lu\n", sha1_to_hex(oe->idx.sha1),
 						typename(type), size);
 	cat_blob_write(line.buf, line.len);
 	strbuf_release(&line);
 	cat_blob_write(buf, size);
 	cat_blob_write("\n", 1);
-	if (oe && oe->pack_id == pack_id) {
+	if (oe->pack_id == pack_id) {
 		last_blob.offset = oe->idx.offset;
 		strbuf_attach(&last_blob.data, buf, size, size);
 		last_blob.depth = oe->depth;
@@ -2878,16 +2880,15 @@ static void parse_cat_blob(void)
 			die("Unknown mark: %s", command_buf.buf);
 		if (*x)
 			die("Garbage after mark: %s", command_buf.buf);
-		hashcpy(sha1, oe->idx.sha1);
 	} else {
 		if (get_sha1_hex(p, sha1))
 			die("Invalid SHA1: %s", command_buf.buf);
 		if (p[40])
 			die("Garbage after SHA1: %s", command_buf.buf);
-		oe = find_object(sha1);
+		oe = insert_object(sha1);
 	}
 
-	cat_blob(oe, sha1);
+	cat_blob(oe);
 }
 
 static struct object_entry *dereference(struct object_entry *oe,
