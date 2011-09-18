@@ -589,6 +589,28 @@ static struct object_entry *insert_object(unsigned char *sha1)
 	return e;
 }
 
+static void resolve_sha1_object(struct object_entry *oe)
+{
+	enum object_type type = sha1_object_info(oe->idx.sha1, NULL);
+	if (type < 0)
+		die("object not found: %s", sha1_to_hex(oe->idx.sha1));
+	oe->type = type;
+	oe->pack_id = MAX_PACK_ID;
+	oe->idx.offset = 1; /* nonzero */
+}
+
+static int try_resolve_sha1_pack_object(struct object_entry *e,
+						enum object_type type)
+{
+	if (!find_sha1_pack(e->idx.sha1, packed_git))
+		return 0;
+
+	e->type = type;
+	e->pack_id = MAX_PACK_ID;
+	e->idx.offset = 1; /* just not zero! */
+	return 1;
+}
+
 static unsigned int hc_str(const char *s, size_t len)
 {
 	unsigned int r = 0;
@@ -1042,10 +1064,7 @@ static int store_object(
 	if (e->idx.offset) {
 		duplicate_count_by_type[type]++;
 		return 1;
-	} else if (find_sha1_pack(sha1, packed_git)) {
-		e->type = type;
-		e->pack_id = MAX_PACK_ID;
-		e->idx.offset = 1; /* just not zero! */
+	} else if (try_resolve_sha1_pack_object(e, type)) {
 		duplicate_count_by_type[type]++;
 		return 1;
 	}
@@ -1252,10 +1271,7 @@ static void stream_blob(uintmax_t len, unsigned char *sha1out, uintmax_t mark)
 		duplicate_count_by_type[OBJ_BLOB]++;
 		truncate_pack(offset, &pack_file_ctx);
 
-	} else if (find_sha1_pack(sha1, packed_git)) {
-		e->type = OBJ_BLOB;
-		e->pack_id = MAX_PACK_ID;
-		e->idx.offset = 1; /* just not zero! */
+	} else if (try_resolve_sha1_pack_object(e, OBJ_BLOB)) {
 		duplicate_count_by_type[OBJ_BLOB]++;
 		truncate_pack(offset, &pack_file_ctx);
 
@@ -1838,13 +1854,8 @@ static void read_marks(void)
 			die("corrupt mark line: %s", line);
 		e = find_object(sha1);
 		if (!e) {
-			enum object_type type = sha1_object_info(sha1, NULL);
-			if (type < 0)
-				die("object not found: %s", sha1_to_hex(sha1));
 			e = insert_object(sha1);
-			e->type = type;
-			e->pack_id = MAX_PACK_ID;
-			e->idx.offset = 1; /* just not zero! */
+			resolve_sha1_object(e);
 		}
 		insert_mark(mark, e);
 	}
@@ -2299,16 +2310,8 @@ static void file_change_m(struct branch *b)
 						OBJ_TREE: OBJ_BLOB;
 		if (!oe)
 			oe = insert_object(sha1);
-		if (!oe->idx.offset) {
-			enum object_type type = sha1_object_info(oe->idx.sha1, NULL);
-			if (type < 0)
-				die("%s not found: %s",
-						S_ISDIR(mode) ?  "Tree" : "Blob",
-						command_buf.buf);
-			oe->type = type;
-			oe->pack_id = MAX_PACK_ID;
-			oe->idx.offset = 1; /* nonzero */
-		}
+		if (!oe->idx.offset)
+			resolve_sha1_object(oe);
 		if (oe->type != expected)
 			die("Not a %s (actually a %s): %s",
 				typename(expected), typename(oe->type),
@@ -2450,14 +2453,8 @@ static void note_change_n(struct branch *b, unsigned char old_fanout)
 		parse_and_store_blob(&last_blob, sha1, 0);
 		oe = find_object(sha1);
 	} else if (oe) {
-		if (!oe->idx.offset) {
-			enum object_type type = sha1_object_info(oe->idx.sha1, NULL);
-			if (type < 0)
-				die("Blob not found: %s", command_buf.buf);
-			oe->type = type;
-			oe->pack_id = MAX_PACK_ID;
-			oe->idx.offset = 1; /* nonzero */
-		}
+		if (!oe->idx.offset)
+			resolve_sha1_object(oe);
 		if (oe->type != OBJ_BLOB)
 			die("Not a blob (actually a %s): %s",
 				typename(oe->type), command_buf.buf);
@@ -2737,15 +2734,10 @@ static void parse_new_tag(void)
 		hashcpy(sha1, oe->idx.sha1);
 	} else if (!get_sha1(from, sha1)) {
 		struct object_entry *oe = insert_object(sha1);
-		if (!oe->idx.offset) {
-			type = sha1_object_info(sha1, NULL);
-			if (type < 0)
-				die("Not a valid object: %s", from);
-			oe->type = type;
-			oe->pack_id = MAX_PACK_ID;
-			oe->idx.offset = 1; /* nonzero */
-		} else
-			type = oe->type;
+		if (!oe->idx.offset)
+			resolve_sha1_object(oe);
+
+		type = oe->type;
 	} else
 		die("Invalid ref name or SHA1 expression: %s", from);
 	read_next_command();
@@ -2892,14 +2884,8 @@ static struct object_entry *dereference(struct object_entry *oe,
 	unsigned long size;
 	char *buf = NULL;
 	if (!oe) {
-		enum object_type type = sha1_object_info(sha1, NULL);
-		if (type < 0)
-			die("object not found: %s", sha1_to_hex(sha1));
-		/* cache it! */
 		oe = insert_object(sha1);
-		oe->type = type;
-		oe->pack_id = MAX_PACK_ID;
-		oe->idx.offset = 1;
+		resolve_sha1_object(oe);
 	}
 	switch (oe->type) {
 	case OBJ_TREE:	/* easy case. */
