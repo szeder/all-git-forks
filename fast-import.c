@@ -599,6 +599,17 @@ static void resolve_sha1_object(struct object_entry *oe)
 	oe->idx.offset = 1; /* nonzero */
 }
 
+static void *resolve_sha1_object_read(struct object_entry *oe, enum object_type *type, unsigned long *size)
+{
+	void *ret = read_sha1_file(oe->idx.sha1, type, size);
+	if (!ret)
+		return ret;
+	oe->type = *type;
+	oe->pack_id = MAX_PACK_ID;
+	oe->idx.offset = 1; /* nonzero */
+	return ret;
+}
+
 static int try_resolve_sha1_pack_object(struct object_entry *e,
 						enum object_type type)
 {
@@ -1363,8 +1374,8 @@ static void load_tree(struct tree_entry *root)
 	if (is_null_sha1(sha1))
 		return;
 
-	myoe = find_object(sha1);
-	if (myoe && myoe->pack_id != MAX_PACK_ID) {
+	myoe = insert_object(sha1);
+	if (myoe->idx.offset && myoe->pack_id != MAX_PACK_ID) {
 		if (myoe->type != OBJ_TREE)
 			die("Not a tree: %s", sha1_to_hex(sha1));
 		t->delta_depth = myoe->depth;
@@ -1373,7 +1384,10 @@ static void load_tree(struct tree_entry *root)
 			die("Can't load tree %s", sha1_to_hex(sha1));
 	} else {
 		enum object_type type;
-		buf = read_sha1_file(sha1, &type, &size);
+		if (!myoe->idx.offset)
+			buf = resolve_sha1_object_read(myoe, &type, &size);
+		else
+			buf = read_sha1_file(sha1, &type, &size);
 		if (!buf || type != OBJ_TREE)
 			die("Can't load tree %s", sha1_to_hex(sha1));
 	}
