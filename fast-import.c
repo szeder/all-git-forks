@@ -2297,15 +2297,21 @@ static void file_change_m(struct branch *b)
 	} else {
 		enum object_type expected = S_ISDIR(mode) ?
 						OBJ_TREE: OBJ_BLOB;
-		enum object_type type = oe ? oe->type :
-					sha1_object_info(sha1, NULL);
-		if (type < 0)
-			die("%s not found: %s",
-					S_ISDIR(mode) ?  "Tree" : "Blob",
-					command_buf.buf);
-		if (type != expected)
+		if (!oe)
+			oe = insert_object(sha1);
+		if (!oe->idx.offset) {
+			enum object_type type = sha1_object_info(oe->idx.sha1, NULL);
+			if (type < 0)
+				die("%s not found: %s",
+						S_ISDIR(mode) ?  "Tree" : "Blob",
+						command_buf.buf);
+			oe->type = type;
+			oe->pack_id = MAX_PACK_ID;
+			oe->idx.offset = 1; /* nonzero */
+		}
+		if (oe->type != expected)
 			die("Not a %s (actually a %s): %s",
-				typename(expected), typename(type),
+				typename(expected), typename(oe->type),
 				command_buf.buf);
 	}
 
