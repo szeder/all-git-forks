@@ -147,31 +147,12 @@ static void write_head_info(void)
 struct command {
 	struct command *next;
 	const char *error_string;
-	unsigned int skip_update;
+	unsigned int skip_update:1,
+		     did_not_exist:1;
 	unsigned char old_sha1[20];
 	unsigned char new_sha1[20];
 	char ref_name[FLEX_ARRAY]; /* more */
 };
-
-/* For invalid refs */
-static struct command **invalid_delete;
-static size_t invalid_delete_nr;
-static size_t invalid_delete_alloc;
-
-static void invalid_delete_append(struct command *cmd)
-{
-	ALLOC_GROW(invalid_delete, invalid_delete_nr + 1, invalid_delete_alloc);
-	invalid_delete[invalid_delete_nr++] = cmd;
-}
-
-static int is_invalid_delete(struct command *cmd)
-{
-	size_t i;
-	for (i = 0; i < invalid_delete_nr; i++)
-		if (invalid_delete[i] == cmd)
-			return 1;
-	return 0;
-}
 
 static const char pre_receive_hook[] = "hooks/pre-receive";
 static const char post_receive_hook[] = "hooks/post-receive";
@@ -235,7 +216,7 @@ static int run_receive_hook(struct command *commands, const char *hook_name)
 	int have_input = 0, code;
 
 	for (cmd = commands; !have_input && cmd; cmd = cmd->next) {
-		if (!cmd->error_string && !is_invalid_delete(cmd))
+		if (!cmd->error_string && !cmd->did_not_exist)
 			have_input = 1;
 	}
 
@@ -268,7 +249,7 @@ static int run_receive_hook(struct command *commands, const char *hook_name)
 	}
 
 	for (cmd = commands; cmd; cmd = cmd->next) {
-		if (!cmd->error_string && !is_invalid_delete(cmd)) {
+		if (!cmd->error_string && !cmd->did_not_exist) {
 			size_t n = snprintf(buf, sizeof(buf), "%s %s %s\n",
 				sha1_to_hex(cmd->old_sha1),
 				sha1_to_hex(cmd->new_sha1),
@@ -465,10 +446,13 @@ static const char *update(struct command *cmd)
 
 	if (is_null_sha1(new_sha1)) {
 		if (!parse_object(old_sha1)) {
-			rp_warning("Allowing deletion of corrupt ref.");
 			old_sha1 = NULL;
-			if (!ref_exists((char *) name))
-				invalid_delete_append(cmd);
+			if (ref_exists(name)) {
+				rp_warning("Allowing deletion of corrupt ref.");
+			} else {
+				rp_warning("Deleting a non-existent ref.");
+				cmd->did_not_exist = 1;
+			}
 		}
 		if (delete_ref(namespaced_name, old_sha1, 0)) {
 			rp_error("failed to delete %s", name);
@@ -499,7 +483,7 @@ static void run_update_post_hook(struct command *commands)
 	struct child_process proc;
 
 	for (argc = 0, cmd = commands; cmd; cmd = cmd->next) {
-		if (cmd->error_string || is_invalid_delete(cmd))
+		if (cmd->error_string || cmd->did_not_exist)
 			continue;
 		argc++;
 	}
@@ -510,7 +494,7 @@ static void run_update_post_hook(struct command *commands)
 
 	for (argc = 1, cmd = commands; cmd; cmd = cmd->next) {
 		char *p;
-		if (cmd->error_string || is_invalid_delete(cmd))
+		if (cmd->error_string || cmd->did_not_exist)
 			continue;
 		p = xmalloc(strlen(cmd->ref_name) + 1);
 		strcpy(p, cmd->ref_name);
@@ -888,6 +872,5 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 	}
 	if (use_sideband)
 		packet_flush(1);
-	free(invalid_delete);
 	return 0;
 }
