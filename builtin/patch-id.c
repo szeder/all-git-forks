@@ -58,6 +58,8 @@ static int scan_hunk_header(const char *p, int *p_before, int *p_after)
 
 static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx)
 {
+	printf("get_one_patchid\n");
+	/* printf("get_one_patchid %x %x\n", next_sha1, ctx); */
 	static char line[1000];
 	int patchlen = 0, found_next = 0;
 	int before = -1, after = -1;
@@ -66,14 +68,24 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx)
 		char *p = line;
 		int len;
 
-		if (!memcmp(line, "diff-tree ", 10))
+		printf("p: %p\n", p);
+
+		if (!memcmp(line, "diff-tree ", 10)) {
+			printf("found diff-tree\n");
 			p += 10;
-		else if (!memcmp(line, "commit ", 7))
+		}
+		else if (!memcmp(line, "commit ", 7)) {
+			printf("found commit\n");
 			p += 7;
-		else if (!memcmp(line, "From ", 5))
+		}
+		else if (!memcmp(line, "From ", 5)) {
+			printf("found From\n");
 			p += 5;
-		else if (!memcmp(line, "\\ ", 2) && 12 < strlen(line))
+		}
+		else if (!memcmp(line, "\\ ", 2) && 12 < strlen(line)) {
+			printf("last else if\n");
 			continue;
+		}
 
 		if (!get_sha1_hex(p, next_sha1)) {
 			found_next = 1;
@@ -90,8 +102,10 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx)
 				continue;
 			else if (!memcmp(line, "--- ", 4))
 				before = after = 1;
-			else if (!isalpha(line[0]))
+			else if (!isalpha(line[0])) {
+				printf("diff header breakpoint\n");
 				break;
+			}
 		}
 
 		/* Looking for a valid hunk header?  */
@@ -103,8 +117,10 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx)
 			}
 
 			/* Split at the end of the patch.  */
-			if (memcmp(line, "diff ", 5))
+			if (memcmp(line, "diff ", 5)) {
+				printf("end of patch break\n");
 				break;
+			}
 
 			/* Else we're parsing another header.  */
 			before = after = -1;
@@ -122,8 +138,10 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx)
 		git_SHA1_Update(ctx, line, len);
 	}
 
-	if (!found_next)
+	if (!found_next) {
+		printf("not found next\n");
 		hashclr(next_sha1);
+	}
 
 	return patchlen;
 }
@@ -138,6 +156,12 @@ static void generate_id_list(void)
 	hashclr(sha1);
 	while (!feof(stdin)) {
 		patchlen = get_one_patchid(n, &ctx);
+		int i;
+		printf("n:");
+		for (i=0; i<20; i++)
+			printf("%c", n[i]);
+		printf("\n");
+		printf("patchlen: %d, num: %d\n", patchlen, ctx.num);
 		flush_current_id(patchlen, sha1, &ctx);
 		hashcpy(sha1, n);
 	}
