@@ -1098,6 +1098,10 @@ X-Mailer: git-send-email $gitversion
 		}
 
 		if (defined $smtp_authuser) {
+			eval {
+				require Authen::SASL;
+				Authen::SASL->import(qw(Perl));
+			};
 
 			if (!defined $smtp_authpass) {
 
