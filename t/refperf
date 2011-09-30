@@ -1,0 +1,153 @@
+#! /bin/sh
+
+set -e
+
+GIT=$(pwd)/bin-wrappers/git
+TIMES=$(pwd)/refperf.times
+rm -f $TIMES
+
+drop_caches() {
+    sync
+    sudo sh -c 'echo 3 >/proc/sys/vm/drop_caches'
+}
+
+config_repo() {
+    quiet $GIT config user.name 'Lou User'
+    quiet $GIT config user.email 'luser@example.com'
+    quiet $GIT config gc.auto 0
+    quiet $GIT config gc.packrefs false
+    echo '/times' >.git/info/exclude
+}
+
+benchmark() {
+    msg="$1"
+    shift
+    echo >&2 "$msg..."
+    echo "======== $msg ========"
+    time -f "%e $msg" -o $TIMES -a "$@" 2>&1 || (echo >&2 "Command failed: $*"; exit 1)
+}
+
+quiet() {
+    "$@" 2>&1 || (echo >&2 "Command failed: $*"; exit 1)
+}
+
+add_commit() {
+    filename="$1"
+    touch "$filename"
+    quiet $GIT add "$filename"
+    quiet $GIT commit -m "Add $filename"
+}
+
+ORIG=refperf-repo
+REPO=refperf-repo-copy
+URL=file://$(pwd)/$ORIG
+
+test -d $ORIG || (echo >&2 "Input repository ($ORIG) is missing"; exit 1)
+
+rm -rf $REPO
+cp -r $ORIG $REPO
+cd $REPO
+drop_caches
+benchmark 'branch-loose-cold' $GIT branch b1
+benchmark 'branch-loose-warm' $GIT branch b2
+
+drop_caches
+benchmark 'for-each-ref-loose-cold' $GIT for-each-ref
+benchmark 'for-each-ref-loose-warm' $GIT for-each-ref
+
+drop_caches
+benchmark 'checkout-loose-cold' $GIT checkout b1
+benchmark 'checkout-loose-warm' $GIT checkout b2
+
+benchmark 'checkout-orphan-loose' $GIT checkout --orphan o
+add_commit b.txt
+quiet $GIT checkout HEAD^0
+quiet $GIT branch -D o
+orphan=$($GIT rev-parse HEAD)
+
+drop_caches
+benchmark 'checkout-from-detached-loose-cold' $GIT checkout master
+quiet $GIT co $orphan
+benchmark 'checkout-from-detached-loose-warm' $GIT checkout master
+
+drop_caches
+benchmark 'branch-contains-loose-cold' $GIT branch -a --contains initial
+quiet $GIT co $orphan
+benchmark 'branch-contains-loose-warm' $GIT branch -a --contains initial
+
+benchmark 'pack-refs-loose' $GIT pack-refs --all
+
+drop_caches
+benchmark 'branch-packed-cold' $GIT branch b3
+benchmark 'branch-packed-warm' $GIT branch b4
+
+drop_caches
+benchmark 'for-each-ref-packed-cold' $GIT for-each-ref
+benchmark 'for-each-ref-packed-warm' $GIT for-each-ref
+
+drop_caches
+benchmark 'checkout-packed-cold' $GIT checkout b1
+benchmark 'checkout-packed-warm' $GIT checkout b2
+
+benchmark 'checkout-orphan-packed' $GIT checkout --orphan o
+add_commit b.txt
+quiet $GIT checkout HEAD^0
+quiet $GIT branch -D o
+orphan=$($GIT rev-parse HEAD)
+
+drop_caches
+benchmark 'checkout-from-detached-packed-cold' $GIT checkout master
+quiet $GIT co $orphan
+benchmark 'checkout-from-detached-packed-warm' $GIT checkout master
+
+drop_caches
+benchmark 'branch-contains-packed-cold' $GIT branch -a --contains initial
+benchmark 'branch-contains-packed-warm' $GIT branch -a --contains initial
+cd ..
+rm -rf $REPO
+
+drop_caches
+benchmark 'clone-loose-cold' $GIT clone $URL $REPO
+rm -rf $REPO
+benchmark 'clone-loose-warm' $GIT clone $URL $REPO
+
+cd $REPO
+config_repo
+benchmark 'fetch-nothing-loose' $GIT fetch origin
+benchmark 'pack-refs' $GIT pack-refs --all
+benchmark 'fetch-nothing-packed' $GIT fetch origin
+cd ..
+rm -rf $REPO.2
+drop_caches
+benchmark 'clone-packed-cold' $GIT clone $REPO $REPO.2
+rm -rf $REPO.2
+benchmark 'clone-packed-warm' $GIT clone $REPO $REPO.2
+rm -rf $REPO.2
+rm -rf $REPO
+
+mkdir $REPO
+cd $REPO
+quiet $GIT init
+quiet $GIT remote add origin $URL
+drop_caches
+benchmark 'fetch-everything-cold' $GIT fetch origin 2>&1 | grep -v 'new branch'
+cd ..
+rm -rf $REPO
+
+mkdir $REPO
+cd $REPO
+quiet $GIT init
+quiet $GIT remote add origin $URL
+benchmark 'fetch-everything-warm' $GIT fetch origin 2>&1 | grep -v 'new branch'
+cd ..
+rm -rf $REPO
+
+cp -r $ORIG $REPO
+cd $REPO
+rm -rf times
+quiet $GIT update-index -q --ignore-submodules --refresh
+benchmark 'filter-branch-warm' $GIT filter-branch --msg-filter 'cat; echo addendum' --tag-name-filter 'cat' master
+cd ..
+rm -rf $REPO
+
+exit 0

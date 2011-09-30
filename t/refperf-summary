@@ -1,0 +1,104 @@
+#! /usr/bin/python
+
+"""Summarize the results of many refperf runs.
+
+Usage: refperf-summary REF [...]
+
+This should be run from the top-level of a git repository where
+refperf-many was run.  It generates a crude ASCII table summarizing
+the results from different revisions, one column per revision.
+
+"""
+
+import sys
+import os
+import subprocess
+
+
+def get_sha1(rev):
+    p = subprocess.Popen(
+        ['git', 'rev-parse', rev],
+        stdout=subprocess.PIPE,
+        )
+    (out, err) = p.communicate()
+    if p.wait() or err:
+        sys.exit('git rev-parse failed')
+    return out.strip()
+
+
+class TimesFile(object):
+    def __init__(self, filename):
+        self.filename = filename
+        f = open(filename)
+        l = f.readline()
+        self.sha1 = l.split()[2]
+        l = f.readline()
+        if l and l.startswith('# '):
+            self.description = l[2:].strip()
+            l = f.readline()
+        else:
+            self.description = 'Unknown repository'
+        results = []
+        while l:
+            [time, key] = l.strip().split()
+            time = float(time)
+            results.append((key, time))
+            l = f.readline()
+
+        f.close()
+        self.data = dict(results)
+        self.keys = [
+            key
+            for (key, time) in results
+            ]
+
+    def get_name(self):
+        p = subprocess.Popen(
+            ['git', 'log', '--oneline', '--decorate', '-1', self.sha1],
+            stdout=subprocess.PIPE,
+            )
+        (out, err) = p.communicate()
+        if p.wait() or err:
+            sys.exit('git rev-parse failed')
+        return out.strip()
+
+
+def main(args):
+    times_files = []
+    keys = None
+    for arg in args:
+        if os.path.isfile(arg):
+            times_file = TimesFile(arg)
+        else:
+            sha1 = get_sha1(arg)
+            times_file = TimesFile(os.path.join('refperf-repo', 'times', '%s.out' % (sha1,)))
+        times_files.append(times_file)
+        if not keys:
+            keys = times_files[-1].keys
+        else:
+            assert times_files[-1].keys == keys
+
+    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+    sys.stdout.write('%-35s' % ('Test name',))
+    for i in range(len(times_files)):
+        sys.stdout.write('  %7s' % ('[%d]' % (i,),))
+    sys.stdout.write('\n')
+    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+    for key in keys:
+        sys.stdout.write('%-35s' % (key,))
+        for times_file in times_files:
+            sys.stdout.write('  %7.2f' % (times_file.data[key],))
+        sys.stdout.write('\n')
+    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+
+    sys.stdout.write('\n')
+    sys.stdout.write('\n')
+    for (i, times_file) in enumerate(times_files):
+        header = '[%d] ' % (i,)
+        sys.stdout.write('%s%s\n' % (header, times_file.get_name(),))
+        sys.stdout.write('%s%s\n' % (' ' * len(header), times_file.description,))
+    sys.stdout.write('\n')
+
+
+main(sys.argv[1:])
+

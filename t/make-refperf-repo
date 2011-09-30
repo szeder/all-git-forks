@@ -1,0 +1,216 @@
+#! /usr/bin/python
+
+"""Create a git repository with many references.
+
+Create a git repository with many references for ref-related
+performance testing.  Repositories with various characteristics can be
+created.
+
+"""
+
+usage = '%prog [OPTIONS] PATH'
+
+import sys
+import os
+import optparse
+import subprocess
+import shutil
+import time
+
+
+VERBOSE = False
+
+DEFAULT_REFS = 5000
+DEFAULT_COMMITS_PER_REF = 1
+
+# These values can be changed via command-line options:
+GIT = os.path.join(os.getcwd(), 'bin-wrappers', 'git')
+GIT_REPO = 'refperf-repo'
+NO_REPLACE_OBJECTS = False
+
+
+def run_git(git_cmd, *args, **kw):
+    cmd = [GIT]
+    if NO_REPLACE_OBJECTS:
+        cmd += ['--no-replace-objects']
+    cmd += list(git_cmd)
+    if VERBOSE:
+        sys.stderr.write('Running %s\n' % (repr(cmd),))
+    kw['cwd'] = GIT_REPO
+    subprocess.check_call(cmd, *args, **kw)
+
+
+def get_name(refs, i, length, tags=True, reverse=False, shuffle=False, shard=False):
+    if reverse:
+        i = refs - 1 - i
+    name = '%0*d' % (length, i)
+    # "name" backwards:
+    eman = ''.join(reversed(name))
+
+    if tags:
+        prefix = 'refs/tags'
+    else:
+        prefix = 'refs/heads'
+
+    if shard and shuffle:
+        return '%s/a%s/b%s/c%s' % (prefix, eman[0], eman[1], name,)
+    elif shard:
+        return '%s/a%s/b%s/c%s' % (prefix, name[0], name[1], name,)
+    elif shuffle:
+        return '%s/b%s' % (prefix, eman,)
+    else:
+        return '%s/b%s' % (prefix, name,)
+
+
+def make_repo(
+    description,
+    commits, refs,
+    tags=True, reverse=False, shuffle=False, shard=False,
+    pack_refs_interval=None,
+    ):
+    if os.path.exists(GIT_REPO):
+        shutil.rmtree(GIT_REPO)
+
+    subprocess.check_call([GIT, 'init', GIT_REPO])
+
+    open(os.path.join(GIT_REPO, '.git', 'description'), 'w').write(description + '\n')
+
+    run_git(['config', 'user.name', 'Lou User'])
+    run_git(['config', 'user.email', 'luser@example.com'])
+    run_git(['config', 'gc.auto', '0'])
+    run_git(['config', 'gc.packrefs', 'false'])
+    open(os.path.join(GIT_REPO, '.git', 'info', 'exclude'), 'w').write('/times\n')
+
+    filename = os.path.join(GIT_REPO, 'a.txt')
+
+    open(filename, 'w')
+    run_git(['add', 'a.txt'])
+    run_git(['commit', '-m', 'initial commit'])
+    run_git(['update-ref', 'refs/heads/initial', 'HEAD'])
+
+    length = max(3, len(str(refs - 1)))
+
+    num_refs = 0
+
+    for i in range(commits):
+        open(filename, 'w').write('%d\n' % (i,))
+        run_git(['commit', '-a', '-m', 'Commit %d' % (i,)])
+        while num_refs < refs * (i + 1) // commits:
+            name = get_name(
+                refs, num_refs, length,
+                tags=tags, reverse=reverse, shuffle=shuffle, shard=shard,
+                )
+            run_git(['update-ref', name, 'HEAD'])
+            num_refs += 1
+            if pack_refs_interval is not None and num_refs % pack_refs_interval == 0:
+                pack_refs()
+
+
+def pack_refs():
+    run_git(['pack-refs', '--all', '--prune'])
+
+
+def main(args):
+    parser = optparse.OptionParser(
+        usage=usage,
+        description=__doc__,
+        )
+    parser.add_option(
+        '--description', action='store',
+        default='Test repository created using: %s' % (' '.join(sys.argv),),
+        help='Set description of this repository',
+        )
+    parser.add_option(
+        '--reverse', action='store_true', default=False,
+        help='Reverse order of references relative to commits',
+        )
+    parser.add_option(
+        '--shuffle', action='store_true', default=False,
+        help='Shuffle order of references relative to commits',
+        )
+    parser.add_option(
+        '--shard', action='store_true', default=False,
+        help='Shard references into many directories',
+        )
+    parser.add_option(
+        '--refs', '-n', action='store', type='int', default=DEFAULT_REFS,
+        help=(
+            'Set the total number of refs in repository (default is %d)'
+            % (DEFAULT_REFS,)
+            ),
+        )
+    parser.set_defaults(tags=True)
+    parser.add_option(
+        '--tags', action='store_true', dest='tags',
+        help='Make tags (put the references under "refs/tags").  This is the default',
+        )
+    parser.add_option(
+        '--branches', action='store_false', dest='tags',
+        help='Make branches (put the references under "refs/heads")',
+        )
+    parser.add_option(
+        '--commits', '-N', action='store', type='int', default=None,
+        help=(
+            'Set the total number of commits in repository (default is %d per ref)'
+            % (DEFAULT_COMMITS_PER_REF,)
+            ),
+        )
+    parser.add_option(
+        '--pack-refs', action='store_true', default=False,
+        help='Pack references when done',
+        )
+    parser.add_option(
+        '--pack-refs-interval', metavar='N', action='store', type='int', default=None,
+        help='Pack references after every N reference creations',
+        )
+    parser.add_option(
+        '--no-replace-objects', action='store_true', default=False,
+        help='Pass the --no-replace-objects argument to git',
+        )
+    parser.add_option(
+        '--git', action='store', default=None,
+        help='Specify git executable to use',
+        )
+
+    (options, args) = parser.parse_args(args)
+
+    if len(args) == 0:
+        # Use the default GIT_REPO
+        pass
+    elif len(args) == 1:
+        global GIT_REPO
+        GIT_REPO = args[0]
+    else:
+        parser.error('A single repository name must be specified')
+
+    if options.commits is None:
+        options.commits = DEFAULT_COMMITS_PER_REF * options.refs
+
+    if options.git is not None:
+        global GIT
+        if os.path.isfile(options.git):
+            GIT = os.path.abspath(options.git)
+        else:
+            # Assume that options.git is in PATH.
+            GIT = options.git
+
+    if options.no_replace_objects:
+        global NO_REPLACE_OBJECTS
+        NO_REPLACE_OBJECTS = True
+
+    make_repo(
+        description=options.description,
+        commits=options.commits, refs=options.refs,
+        tags=options.tags,
+        reverse=options.reverse, shuffle=options.shuffle, shard=options.shard,
+        pack_refs_interval=options.pack_refs_interval,
+        )
+
+    if options.pack_refs:
+        pack_refs()
+
+    run_git(['gc'])
+
+
+main(sys.argv[1:])
+

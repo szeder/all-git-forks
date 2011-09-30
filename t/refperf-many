@@ -1,0 +1,36 @@
+#! /bin/sh
+
+# Usage: refperf-many REV [...]
+#
+# Run refperf on many different revisions, storing the results to
+# files with names like refperf-repo/times/$sha1.out
+#
+# This script should be run from the top level of a git working tree
+# that is already configured and already has a refperf-repo at the top
+# level.  It should be copied to outside the git source tree before
+# being used, because it jumps from one git revision to another.
+
+set -e
+
+REFPERF_BRANCH=origin/refperf
+OUT=refperf-repo/times
+
+mkdir -p $OUT
+
+for r in "$@"
+do
+    sha1=$(git rev-parse $r) &&
+    echo "$r ($sha1)"
+    (
+	git co $sha1 &&
+	git merge $REFPERF_BRANCH &&
+	make &&
+	time t/refperf
+    ) >$OUT/$sha1.log
+    (
+	echo "# $r $sha1" &&
+	echo "# $(cat refperf-repo/.git/description)" &&
+	cat refperf.times
+    ) >$OUT/$sha1.out
+done
+
