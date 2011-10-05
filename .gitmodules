@@ -1,3 +1,12 @@
 [submodule "vendors/opsplorer"]
 	path = vendors/opsplorer
 	url = git://github.com/vim-scripts/opsplorer.git
+[submodule "vendors/vtreeexplorer"]
+	path = vendors/vtreeexplorer
+	url = git://github.com/vim-scripts/vtreeexplorer.git
+[submodule "vendors/PHP-dictionary"]
+	path = vendors/PHP-dictionary
+	url = git://github.com/vim-scripts/PHP-dictionary.git
+[submodule "vendors/PDV--phpDocumentor-for-Vim"]
+	path = vendors/PDV--phpDocumentor-for-Vim
+	url = git://github.com/vim-scripts/PDV--phpDocumentor-for-Vim.git

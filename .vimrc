@@ -22,3 +22,9 @@ autocmd BufNewFile,BufRead *.html.twig set filetype=html
 autocmd BufNewFile,BufRead *.twig set syntax=htmljinja
 autocmd BufNewFile,BufRead *.php.cache set filetype=php
 autocmd BufNewFile,BufRead *.ctp set filetype=php
+
+"php
+autocmd FileType php set dictionary=dictionary/PHP.dict
+inoremap <C-P> <ESC>:call PhpDocSingle()<CR>i
+nnoremap <C-P> :call PhpDocSingle()<CR>i
+vnoremap <C-P> :call PhpDocRange()<CR>

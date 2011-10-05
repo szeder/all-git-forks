@@ -1,0 +1,1 @@
+../../vendors/PDV--phpDocumentor-for-Vim/plugin/php-doc.vim
