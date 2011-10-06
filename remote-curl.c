@@ -846,6 +846,7 @@ int main(int argc, const char **argv)
 
 	if (argc > 2) {
 		end_url_with_slash(&buf, argv[2]);
+		remote->url[0] = xstrdup(argv[2]);
 	} else {
 		end_url_with_slash(&buf, remote->url[0]);
 	}
