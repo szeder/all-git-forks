@@ -38,15 +38,16 @@ launch_merge_tool () {
 
 	# $LOCAL and $REMOTE are temporary files so prompt
 	# the user with the real $MERGED name before launching $merge_tool.
+	ans=y
 	if should_prompt
 	then
 		printf "\nViewing: '$MERGED'\n"
 		if use_ext_cmd
 		then
-			printf "Hit return to launch '%s': " \
+			printf "Launch '%s' [Y/n]: " \
 				"$GIT_DIFFTOOL_EXTCMD"
 		else
-			printf "Hit return to launch '%s': " "$merge_tool"
+			printf "Launch '%s' [Y/n]: " "$merge_tool"
 		fi
 		read ans
 	fi
@@ -54,9 +55,9 @@ launch_merge_tool () {
 	if use_ext_cmd
 	then
 		export BASE
-		eval $GIT_DIFFTOOL_EXTCMD '"$LOCAL"' '"$REMOTE"'
+		test "$ans" != "n" && eval $GIT_DIFFTOOL_EXTCMD '"$LOCAL"' '"$REMOTE"'
 	else
-		run_merge_tool "$merge_tool"
+		test "$ans" != "n" && run_merge_tool "$merge_tool"
 	fi
 }
 
