@@ -8,8 +8,9 @@
 #include "tree.h"
 #include "builtin.h"
 #include "utf8.h"
+#include "gpg-interface.h"
 
-static const char commit_tree_usage[] = "git commit-tree [(-p <sha1>)...] [-m <message>] [-x <extra>] <sha1> < changelog";
+static const char commit_tree_usage[] = "git commit-tree [-S<signer>] [(-p <sha1>)...] [-m <message>] [-x <extra>] <sha1> < changelog";
 
 static void new_parent(struct commit *parent, struct commit_list **parents_p)
 {
@@ -25,6 +26,14 @@ static void new_parent(struct commit *parent, struct commit_list **parents_p)
 	commit_list_insert(parent, parents_p);
 }
 
+static int commit_tree_config(const char *var, const char *value, void *cb)
+{
+	int status = git_gpg_config(var, value, NULL);
+	if (status)
+		return status;
+	return git_default_config(var, value, cb);
+}
+
 int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 {
 	int i, got_tree = 0;
@@ -33,11 +42,15 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 	unsigned char commit_sha1[20];
 	struct strbuf buffer = STRBUF_INIT;
 	struct commit_extra_header *extra = NULL, **extra_tail = &extra;
+	const char *sign_commit = NULL;
 
-	git_config(git_default_config, NULL);
+	git_config(commit_tree_config, NULL);
 
 	if (argc < 2 || !strcmp(argv[1], "-h"))
 		usage(commit_tree_usage);
+
+	if (get_sha1(argv[1], tree_sha1))
+		die("Not a valid object name %s", argv[1]);
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -49,6 +62,11 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 				die("Not a valid object name %s", argv[i]);
 			assert_sha1_type(sha1, OBJ_COMMIT);
 			new_parent(lookup_commit(sha1), &parents);
+			continue;
+		}
+
+		if (!memcmp(arg, "-S", 2)) {
+			sign_commit = arg + 2;
 			continue;
 		}
 
@@ -114,7 +132,7 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 	}
 
 	if (commit_tree_extended(buffer.buf, tree_sha1, parents, commit_sha1,
-				 NULL, extra)) {
+				 NULL, sign_commit, extra)) {
 		strbuf_release(&buffer);
 		return 1;
 	}
