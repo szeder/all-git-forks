@@ -15,7 +15,9 @@ static int transfer_unpack_limit = -1;
 static int fetch_unpack_limit = -1;
 static int unpack_limit = 100;
 static int prefer_ofs_delta = 1;
-static int no_done = 0;
+static int no_done;
+static int fetch_fsck_objects = -1;
+static int transfer_fsck_objects = -1;
 static struct fetch_pack_args args = {
 	/* .uploadpack = */ "git-upload-pack",
 };
@@ -183,6 +185,36 @@ static void consume_shallow_list(int fd)
 			die("git fetch-pack: expected shallow list");
 		}
 	}
+}
+
+struct write_shallow_data {
+	struct strbuf *out;
+	int use_pack_protocol;
+	int count;
+};
+
+static int write_one_shallow(const struct commit_graft *graft, void *cb_data)
+{
+	struct write_shallow_data *data = cb_data;
+	const char *hex = sha1_to_hex(graft->sha1);
+	data->count++;
+	if (data->use_pack_protocol)
+		packet_buf_write(data->out, "shallow %s", hex);
+	else {
+		strbuf_addstr(data->out, hex);
+		strbuf_addch(data->out, '\n');
+	}
+	return 0;
+}
+
+static int write_shallow_commits(struct strbuf *out, int use_pack_protocol)
+{
+	struct write_shallow_data data;
+	data.out = out;
+	data.use_pack_protocol = use_pack_protocol;
+	data.count = 0;
+	for_each_commit_graft(write_one_shallow, &data);
+	return data.count;
 }
 
 static enum ack_type get_ack(int fd, unsigned char *result_sha1)
@@ -395,6 +427,8 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 				case ACK_continue: {
 					struct commit *commit =
 						lookup_commit(result_sha1);
+					if (!commit)
+						die("invalid commit %s", sha1_to_hex(result_sha1));
 					if (args.stateless_rpc
 					 && ack == ACK_common
 					 && !(commit->object.flags & COMMON)) {
@@ -702,6 +736,12 @@ static int get_pack(int xd[2], char **pack_lockfile)
 	}
 	if (*hdr_arg)
 		*av++ = hdr_arg;
+	if (fetch_fsck_objects >= 0
+	    ? fetch_fsck_objects
+	    : transfer_fsck_objects >= 0
+	    ? transfer_fsck_objects
+	    : 0)
+		*av++ = "--strict";
 	*av++ = NULL;
 
 	cmd.in = demux.out;
@@ -818,6 +858,16 @@ static int fetch_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "repack.usedeltabaseoffset") == 0) {
 		prefer_ofs_delta = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "fetch.fsckobjects")) {
+		fetch_fsck_objects = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "transfer.fsckobjects")) {
+		transfer_fsck_objects = git_config_bool(var, value);
 		return 0;
 	}
 

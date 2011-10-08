@@ -325,7 +325,7 @@ static int grep_config(const char *var, const char *value, void *cb)
 	}
 
 	if (!strcmp(var, "color.grep"))
-		opt->color = git_config_colorbool(var, value, -1);
+		opt->color = git_config_colorbool(var, value);
 	else if (!strcmp(var, "color.grep.context"))
 		color = opt->color_context;
 	else if (!strcmp(var, "color.grep.filename"))
@@ -598,8 +598,11 @@ static int grep_object(struct grep_opt *opt, const struct pathspec *pathspec,
 		struct strbuf base;
 		int hit, len;
 
+		read_sha1_lock();
 		data = read_object_with_reference(obj->sha1, tree_type,
 						  &size, NULL);
+		read_sha1_unlock();
+
 		if (!data)
 			die(_("unable to read tree (%s)"), sha1_to_hex(obj->sha1));
 
@@ -827,17 +830,19 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "heading", &opt.heading,
 			"show filename only once above matches from same file"),
 		OPT_GROUP(""),
-		OPT_CALLBACK('C', NULL, &opt, "n",
+		OPT_CALLBACK('C', "context", &opt, "n",
 			"show <n> context lines before and after matches",
 			context_callback),
-		OPT_INTEGER('B', NULL, &opt.pre_context,
+		OPT_INTEGER('B', "before-context", &opt.pre_context,
 			"show <n> context lines before matches"),
-		OPT_INTEGER('A', NULL, &opt.post_context,
+		OPT_INTEGER('A', "after-context", &opt.post_context,
 			"show <n> context lines after matches"),
 		OPT_NUMBER_CALLBACK(&opt, "shortcut for -C NUM",
 			context_callback),
 		OPT_BOOLEAN('p', "show-function", &opt.funcname,
 			"show a line with the function name before matches"),
+		OPT_BOOLEAN('W', "function-context", &opt.funcbody,
+			"show the surrounding function"),
 		OPT_GROUP(""),
 		OPT_CALLBACK('f', NULL, &opt, "file",
 			"read patterns from file", file_callback),
@@ -896,8 +901,6 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	strcpy(opt.color_sep, GIT_COLOR_CYAN);
 	opt.color = -1;
 	git_config(grep_config, &opt);
-	if (opt.color == -1)
-		opt.color = git_use_color_default;
 
 	/*
 	 * If there is no -- then the paths must exist in the working
@@ -980,7 +983,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		use_threads = 0;
 
 	if (use_threads) {
-		if (opt.pre_context || opt.post_context || opt.file_break)
+		if (opt.pre_context || opt.post_context || opt.file_break ||
+		    opt.funcbody)
 			skip_first_line = 1;
 		start_threads(&opt);
 	}

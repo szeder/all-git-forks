@@ -198,8 +198,8 @@ save_stash () {
 			#    $ git stash save --blah-blah 2>&1 | head -n 2
 			#    error: unknown option for 'stash save': --blah-blah
 			#           To provide a message, use git stash save -- '--blah-blah'
-			eval_gettext "$("error: unknown option for 'stash save': \$option
-       To provide a message, use git stash save -- '\$option'")"; echo
+			eval_gettextln "$("error: unknown option for 'stash save': \$option
+       To provide a message, use git stash save -- '\$option'")"
 			usage
 			;;
 		*)
@@ -211,7 +211,7 @@ save_stash () {
 
 	if test -n "$patch_mode" && test -n "$untracked"
 	then
-	    die "Can't use --patch and ---include-untracked or --all at the same time"
+	    die "Can't use --patch and --include-untracked or --all at the same time"
 	fi
 
 	stash_msg="$*"
@@ -240,7 +240,7 @@ save_stash () {
 		test "$untracked" = "all" && CLEAN_X_OPTION=-x || CLEAN_X_OPTION=
 		if test -n "$untracked"
 		then
-			git clean --force --quiet $CLEAN_X_OPTION
+			git clean --force --quiet -d $CLEAN_X_OPTION
 		fi
 
 		if test "$keep_index" = "t" && test -n $i_tree
@@ -470,10 +470,7 @@ apply_stash () {
 		status=$?
 		if test -n "$INDEX_OPTION"
 		then
-			(
-				gettext "Index was not unstashed." &&
-				echo
-			) >&2
+			gettextln "Index was not unstashed." >&2
 		fi
 		exit $status
 	fi

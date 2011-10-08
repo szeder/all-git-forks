@@ -40,34 +40,6 @@ char *prefix_path(const char *prefix, int len, const char *path)
 	return sanitized;
 }
 
-/*
- * Unlike prefix_path, this should be used if the named file does
- * not have to interact with index entry; i.e. name of a random file
- * on the filesystem.
- */
-const char *prefix_filename(const char *pfx, int pfx_len, const char *arg)
-{
-	static char path[PATH_MAX];
-#ifndef WIN32
-	if (!pfx_len || is_absolute_path(arg))
-		return arg;
-	memcpy(path, pfx, pfx_len);
-	strcpy(path + pfx_len, arg);
-#else
-	char *p;
-	/* don't add prefix to absolute paths, but still replace '\' by '/' */
-	if (is_absolute_path(arg))
-		pfx_len = 0;
-	else if (pfx_len)
-		memcpy(path, pfx, pfx_len);
-	strcpy(path + pfx_len, arg);
-	for (p = path + pfx_len; *p; p++)
-		if (*p == '\\')
-			*p = '/';
-#endif
-	return path;
-}
-
 int check_filename(const char *prefix, const char *arg)
 {
 	const char *name;
@@ -264,6 +236,38 @@ const char **get_pathspec(const char *prefix, const char **pathspec)
 	return pathspec;
 }
 
+const char *pathspec_prefix(const char *prefix, const char **pathspec)
+{
+	const char **p, *n, *prev;
+	unsigned long max;
+
+	if (!pathspec)
+		return prefix ? xmemdupz(prefix, strlen(prefix)) : NULL;
+
+	prev = NULL;
+	max = PATH_MAX;
+	for (p = pathspec; (n = *p) != NULL; p++) {
+		int i, len = 0;
+		for (i = 0; i < max; i++) {
+			char c = n[i];
+			if (prev && prev[i] != c)
+				break;
+			if (!c || c == '*' || c == '?')
+				break;
+			if (c == '/')
+				len = i+1;
+		}
+		prev = n;
+		if (len < max) {
+			max = len;
+			if (!max)
+				break;
+		}
+	}
+
+	return max ? xmemdupz(prev, max) : NULL;
+}
+
 /*
  * Test if it looks like we're at a git directory.
  * We want to see:
@@ -375,7 +379,7 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
  * Try to read the location of the git directory from the .git file,
  * return path to git directory if found.
  */
-const char *read_gitfile_gently(const char *path)
+const char *read_gitfile(const char *path)
 {
 	char *buf;
 	char *dir;
@@ -437,7 +441,7 @@ static const char *setup_explicit_git_dir(const char *gitdirenv,
 	if (PATH_MAX - 40 < strlen(gitdirenv))
 		die("'$%s' too big", GIT_DIR_ENVIRONMENT);
 
-	gitfile = (char*)read_gitfile_gently(gitdirenv);
+	gitfile = (char*)read_gitfile(gitdirenv);
 	if (gitfile) {
 		gitfile = xstrdup(gitfile);
 		gitdirenv = gitfile;
@@ -661,7 +665,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 	if (one_filesystem)
 		current_device = get_device_or_die(".", NULL);
 	for (;;) {
-		gitfile = (char*)read_gitfile_gently(DEFAULT_GIT_DIR_ENVIRONMENT);
+		gitfile = (char*)read_gitfile(DEFAULT_GIT_DIR_ENVIRONMENT);
 		if (gitfile)
 			gitdirenv = gitfile = xstrdup(gitfile);
 		else {
