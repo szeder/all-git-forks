@@ -31,3 +31,12 @@ if dpkg --compare-versions "$2" lt '1:1.7.4.1-2~' &&
    test -r "$removed_conffile".dpkg-bak; then
   mv "$removed_conffile".dpkg-bak "$removed_conffile"
 fi
+
+# 1.7.7-1 replaces /usr/share/doc/git/contrib/hooks with a symlink,
+# but dpkg doesn't do so on package upgrade
+if dpkg --compare-versions "$2" lt '1:1.7.7-1' &&
+   test -d /usr/share/doc/git/contrib/hooks; then
+  rmdir /usr/share/doc/git/contrib/hooks &&
+  ln -s ../../../git-core/contrib/hooks \
+    /usr/share/doc/git/contrib/hooks
+fi

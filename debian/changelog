@@ -2,8 +2,11 @@ git (1:1.7.7-1) unstable; urgency=low
 
   * new upstream release.
   * merge branch debian-experimental.
+  * debian/rules, debian/git.postinst: move contrib hooks from
+    /usr/share/doc/git-core/ into /usr/share/git-core/; provide symlink
+    for backward compatibility (closes: #640949).
 
- -- Gerrit Pape <pape@smarden.org>  Sun, 09 Oct 2011 20:48:40 +0000
+ -- Gerrit Pape <pape@smarden.org>  Sun, 09 Oct 2011 21:00:07 +0000
 
 git (1:1.7.7~rc1-1) experimental; urgency=low
 
