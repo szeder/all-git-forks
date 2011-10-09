@@ -1,4 +1,4 @@
-From 8594096c8e751f987783aa00358b5b673b6c814e Mon Sep 17 00:00:00 2001
+From 62745a89a1b7ca640729519381b6af0bb7033cca Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 24 Oct 2010 21:12:42 -0500
 Subject: [PATCH 05/15] gitk: use symbolic font names "sans" and "monospace"
@@ -46,5 +46,5 @@ index 4cde0c4..31c48cd 100755
  set tabstop 8
  set findmergefiles 0
 -- 
-1.7.5.4
+1.7.6.3
 

@@ -1,3 +1,38 @@
+Version v1.7.7; changes since v1.7.7-rc1:
+-----------------------------------------
+
+Allan Caffee (1):
+      describe: Refresh the index when run with --dirty
+
+Bryan Jacobs (1):
+      git-svn: teach git-svn to populate svn:mergeinfo
+
+Frédéric Heitzmann (1):
+      Disambiguate duplicate t9160* tests
+
+Gerrit Pape (2):
+      contrib/hooks: adapt comment about Debian install location for contrib hooks
+      templates/hooks--*: remove sample hooks without any functionality
+
+Jay Soffian (1):
+      git-mergetool: check return value from read
+
+Jeff King (1):
+      t4014: clean up format.thread config after each test
+
+Junio C Hamano (7):
+      Documentation/gitnamespaces.txt: cater to older asciidoc
+      branch --set-upstream: regression fix
+      Git 1.7.7-rc2
+      Git 1.7.6.4
+      merge-recursive: Do not look at working tree during a virtual ancestor merge
+      Git 1.7.7-rc3
+      Git 1.7.7
+
+Pang Yan Han (1):
+      format-patch: ignore ui.color
+
+
 Version v1.7.7-rc1; changes since v1.7.7-rc0:
 ---------------------------------------------
 

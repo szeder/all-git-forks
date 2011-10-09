@@ -1,4 +1,4 @@
-From 323cbd0299d3bfabfd6d8ce245e267ef58de0196 Mon Sep 17 00:00:00 2001
+From b167024db1d9832aceca55a9bd59a3032324ff17 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
 Subject: [PATCH 12/15] daemon: check for errors retrieving IP address
@@ -116,5 +116,5 @@ index 18952fd..d0cd709 100644
  	}
  
 -- 
-1.7.5.4
+1.7.6.3
 

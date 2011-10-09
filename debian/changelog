@@ -1,3 +1,10 @@
+git (1:1.7.7-1) unstable; urgency=low
+
+  * new upstream release.
+  * merge branch debian-experimental.
+
+ -- Gerrit Pape <pape@smarden.org>  Sun, 09 Oct 2011 20:48:40 +0000
+
 git (1:1.7.7~rc1-1) experimental; urgency=low
 
   * merge branch debian-sid.

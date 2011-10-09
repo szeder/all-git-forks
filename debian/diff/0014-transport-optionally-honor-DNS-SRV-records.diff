@@ -1,4 +1,4 @@
-From 85c9d1e9fe8e857ef8bfa4b3ca25b1585a38ce05 Mon Sep 17 00:00:00 2001
+From 5455a2af4703a857f3a76d007b2a7661b84f3d30 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: [PATCH 14/15] transport: optionally honor DNS SRV records
@@ -541,5 +541,5 @@ index d0cd709..7a8a244 100644
  }
  
 -- 
-1.7.5.4
+1.7.6.3
 

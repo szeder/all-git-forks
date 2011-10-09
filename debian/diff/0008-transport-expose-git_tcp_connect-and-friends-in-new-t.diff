@@ -1,4 +1,4 @@
-From db4be1527a781cd5c24f3ae11afe12825c5112c7 Mon Sep 17 00:00:00 2001
+From 037fc0b479a7c96650b75d9a1b21286dad956dec Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: [PATCH 08/15] transport: expose git_tcp_connect and friends in new
@@ -606,5 +606,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.5.4
+1.7.6.3
 

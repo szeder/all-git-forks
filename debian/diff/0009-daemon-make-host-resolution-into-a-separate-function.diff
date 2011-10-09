@@ -1,4 +1,4 @@
-From e4138a6d3353148db36554ee8d49e6d70a06ecc8 Mon Sep 17 00:00:00 2001
+From 647b18ceee329650f3ac3227c9c5552b787a5af0 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
 Subject: [PATCH 09/15] daemon: make host resolution into a separate function
@@ -147,5 +147,5 @@ index 4c8346d..3958cb6 100644
  
  
 -- 
-1.7.5.4
+1.7.6.3
 

@@ -1,4 +1,4 @@
-From 730bcbe95ef4563152a33a6ab55d78bbde6ff53e Mon Sep 17 00:00:00 2001
+From 47cadc1adbfbed7bb165962279f7325e198dc637 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
 Subject: [PATCH 03/15] remove shebang line from shell libraries
@@ -22,7 +22,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/git-mergetool--lib.sh b/git-mergetool--lib.sh
-index 8fc65d0..c506a23 100644
+index ed630b2..7a0f499 100644
 --- a/git-mergetool--lib.sh
 +++ b/git-mergetool--lib.sh
 @@ -1,5 +1,4 @@
@@ -62,5 +62,5 @@ index 8e427da..836ff78 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.5.4
+1.7.6.3
 

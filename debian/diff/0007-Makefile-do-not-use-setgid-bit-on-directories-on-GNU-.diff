@@ -1,4 +1,4 @@
-From 949072f7c34a9f3f1169fef26ca114c452fba2c5 Mon Sep 17 00:00:00 2001
+From 1d18bd1467574858c3d99ae9585b4e3b5977837c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 07:27:06 -0500
 Subject: [PATCH 07/15] Makefile: do not use setgid bit on directories on
@@ -42,5 +42,5 @@ index 8d6d451..924749e 100644
  ifeq ($(uname_S),UnixWare)
  	CC = cc
 -- 
-1.7.5.4
+1.7.6.3
 
