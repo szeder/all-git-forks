@@ -223,7 +223,7 @@ static struct cached_refs *get_cached_refs(const char *submodule)
 	return refs;
 }
 
-static void invalidate_ref_cache(const char *submodule)
+void invalidate_ref_cache(const char *submodule)
 {
 	clear_cached_refs(get_cached_refs(submodule));
 }
