@@ -223,13 +223,9 @@ static struct cached_refs *get_cached_refs(const char *submodule)
 	return refs;
 }
 
-static void invalidate_ref_cache(void)
+static void invalidate_ref_cache(const char *submodule)
 {
-	struct cached_refs *refs = cached_refs;
-	while (refs) {
-		clear_cached_refs(refs);
-		refs = refs->next;
-	}
+	clear_cached_refs(get_cached_refs(submodule));
 }
 
 static struct ref_list *read_packed_refs(FILE *f)
@@ -1212,7 +1208,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 	ret |= repack_without_ref(refname);
 
 	unlink_or_warn(git_path("logs/%s", lock->ref_name));
-	invalidate_ref_cache();
+	invalidate_ref_cache(NULL);
 	unlock_ref(lock);
 	return ret;
 }
@@ -1511,7 +1507,7 @@ int write_ref_sha1(struct ref_lock *lock,
 		unlock_ref(lock);
 		return -1;
 	}
-	invalidate_ref_cache();
+	invalidate_ref_cache(NULL);
 	if (log_ref_write(lock->ref_name, lock->old_sha1, sha1, logmsg) < 0 ||
 	    (strcmp(lock->ref_name, lock->orig_ref_name) &&
 	     log_ref_write(lock->orig_ref_name, lock->old_sha1, sha1, logmsg) < 0)) {
