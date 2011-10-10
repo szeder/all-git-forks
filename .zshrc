@@ -2,9 +2,8 @@
 
 # User specific aliases and functions
 alias grep='grep --color=always'
-#alias less='/usr/share/vim/vim70/macros/less.sh'
 alias less='~/less.sh'
-alias ll='ls -l --color'
+alias ll='ls -al --color'
 
 export LESSCHARSET=utf-8
 
