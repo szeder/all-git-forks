@@ -175,14 +175,26 @@ static void free_ref_list(struct ref_list *list)
 	}
 }
 
-static void clear_cached_refs(struct cached_refs *refs)
+static void clear_cached_packed_refs(struct cached_refs *refs)
+{
+	if (refs->did_packed && refs->packed)
+		free_ref_list(refs->packed);
+	refs->packed = NULL;
+	refs->did_packed = 0;
+}
+
+static void clear_cached_loose_refs(struct cached_refs *refs)
 {
 	if (refs->did_loose && refs->loose)
 		free_ref_list(refs->loose);
-	if (refs->did_packed && refs->packed)
-		free_ref_list(refs->packed);
-	refs->loose = refs->packed = NULL;
-	refs->did_loose = refs->did_packed = 0;
+	refs->loose = NULL;
+	refs->did_loose = 0;
+}
+
+static void clear_cached_refs(struct cached_refs *refs)
+{
+	clear_cached_packed_refs(refs);
+	clear_cached_loose_refs(refs);
 }
 
 static struct cached_refs *create_cached_refs(const char *submodule)
