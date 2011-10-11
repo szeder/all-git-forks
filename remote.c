@@ -1701,12 +1701,12 @@ static int find_in_refs(struct refspec *refs, int ref_count, struct refspec *que
 			continue;
 
 		/*
-		 * No '*' means that it must match exactly. If it does
-		 * have it, try to match it against the pattern. If
-		 * the refspec matches, store the ref name as it would
-		 * appear in the server in query->src.
+		 * If the refspec doesn't have a pattern, try to match
+		 * the dst exactly; otherwise, try to match the
+		 * pattern. If it matches, store the ref name as it
+		 * would appear in the server in query->src.
 		 */
-		if (!strchr(refspec->dst, '*')) {
+		if (!refspec->pattern) {
 			if (!strcmp(query->dst, refspec->dst)) {
 				query->src = xstrdup(refspec->src);
 				return 0;
@@ -1725,15 +1725,11 @@ static int get_stale_heads_cb(const char *refname,
 {
 	struct stale_heads_info *info = cb_data;
 	struct refspec refspec;
-	int ret;
 	memset(&refspec, 0, sizeof(refspec));
 	refspec.dst = (char *)refname;
 
-	ret = find_in_refs(info->refs, info->ref_count, &refspec);
-
-	/* No matches */
-	if (ret)
-		return 0;
+	if (find_in_refs(info->refs, info->ref_count, &refspec))
+		return 0; /* No matches */
 
 	/*
 	 * If we did find a suitable refspec and it's not a symref and
