@@ -253,7 +253,7 @@ Vitor Antunes (9):
       git-p4: Add simple test case for branch import
 
 
-Version v1.7.7-rc0; changes since v1.7.6.3:
+Version v1.7.7-rc0; changes since v1.7.6.4:
 -------------------------------------------
 
 Allan Caffee (1):
@@ -263,9 +263,8 @@ Andi Kleen (2):
       Add profile feedback build to git
       Add explanation of the profile feedback build to the README
 
-Clemens Buchacher (2):
+Clemens Buchacher (1):
       commit: allow partial commits with relative paths
-      ls-files: fix pathspec display on error
 
 David Aguilar (8):
       setup: Provide GIT_PREFIX to built-ins
@@ -486,11 +485,10 @@ Michael Haggerty (29):
       test-path-utils: Add subcommand "absolute_path"
       test-path-utils: Add subcommand "prefix_path"
 
-Michael J Gruber (4):
+Michael J Gruber (3):
       diff.c: omit hidden entries from namelen calculation with --stat
       diff: introduce --stat-lines to limit the stat lines
       diff-options.txt: describe --stat-{width,name-width,count}
-      branch.c: use the parsed branch name
 
 Pete Wyckoff (4):
       git-p4: use test_when_finished in tests
@@ -609,6 +607,41 @@ maximilian attems (2):
 
 张忠山 (1):
       gitweb: pass string after encoding in utf-8 to syntax highlighter
+
+
+Version v1.7.6.4; changes since v1.7.6.3:
+-----------------------------------------
+
+Allan Caffee (1):
+      describe: Refresh the index when run with --dirty
+
+Clemens Buchacher (1):
+      ls-files: fix pathspec display on error
+
+Giuseppe Bilotta (1):
+      am: format is in $patch_format, not parse_patch
+
+Jay Soffian (1):
+      git-mergetool: check return value from read
+
+Johannes Sixt (1):
+      t3005: do not assume a particular order of stdout and stderr of git-ls-files
+
+Junio C Hamano (4):
+      read_gitfile_gently(): rename misnamed function to read_gitfile()
+      clone: allow more than one --reference
+      clone: clone from a repository with relative alternates
+      Git 1.7.6.4
+
+Michael Haggerty (2):
+      check-ref-format --print: Normalize refnames that start with slashes
+      Forbid DEL characters in reference names
+
+Michael J Gruber (1):
+      branch.c: use the parsed branch name
+
+Nguyễn Thái Ngọc Duy (1):
+      clone: allow to clone from .git file
 
 
 Version v1.7.6.3; changes since v1.7.6.2:

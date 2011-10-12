@@ -23,6 +23,8 @@ git (1:1.7.7-1.1) unstable; urgency=low
   * update debian/copyright.
   * debian/watch, debian/copyright: point to code.google.com for now.
     The upstream tarballs haven't been added back to kernel.org yet.
+  * debian/changelog.upstream, debian/versions.upstream: include
+    v1.7.6.4.
 
   [ Simon Chopin ]
   * debian/git.postinst: fix fresh install contrib/hooks cleaning
