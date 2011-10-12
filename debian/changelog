@@ -1,3 +1,11 @@
+git (1:1.7.7-1.1) unstable; urgency=low
+
+  * debian/git.postinst: check if /usr/share/doc/git/contrib/hooks is a
+    symlink before changing it to one (thx Євгеній Мещеряков; closes:
+    #645005).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 12 Oct 2011 01:03:36 -0500
+
 git (1:1.7.7-1) unstable; urgency=low
 
   * new upstream release.
