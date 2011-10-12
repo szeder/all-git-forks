@@ -1,5 +1,5 @@
 Format-Specification: http://dep.debian.net/deps/dep5/
-Source: http://www.kernel.org/pub/software/scm/git/
+Source: http://code.google.com/p/git-core/downloads/list
 
 Files: *
 Copyright: © 2005-2011, Linus Torvalds and others.

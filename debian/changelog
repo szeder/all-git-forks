@@ -21,6 +21,8 @@ git (1:1.7.7-1.1) unstable; urgency=low
   * debian/rules: add NO_HARDLINKS=1 to OPTS (thx Bastian Blank;
     closes: #642603).
   * update debian/copyright.
+  * debian/watch, debian/copyright: point to code.google.com for now.
+    The upstream tarballs haven't been added back to kernel.org yet.
 
   [ Simon Chopin ]
   * debian/git.postinst: fix fresh install contrib/hooks cleaning
