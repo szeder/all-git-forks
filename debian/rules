@@ -116,13 +116,16 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/usr/share/gitweb
 	ln -s gitweb.cgi '$(GIT)'/usr/share/gitweb/index.cgi
 	# contrib hooks
-	install -d -m0755 '$(GIT)'/usr/share/git-core/contrib
-	cp -R contrib/hooks '$(GIT)'/usr/share/git-core/contrib/
+	install -d -m0755 '$(GIT)'/usr/share/git-core/contrib/hooks
+	install -m0644 contrib/hooks/* \
+	  '$(GIT)'/usr/share/git-core/contrib/hooks/
 	# contrib
 	install -d -m0755 '$(GIT)'/usr/share/doc/git
 	cp -R contrib '$(GIT)'/usr/share/doc/git/
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/completion
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/emacs
+	find '$(GIT)'/usr/share/doc/git/contrib -type f | xargs chmod 0644
+	find '$(GIT)'/usr/share/doc/git/contrib -type d | xargs chmod 0755
 	  # remove contrib hooks, they are now installed in
 	  # /usr/share/git-core/contrib, keep symlink for backward compatibility
 	rm -rf '$(GIT)'/usr/share/doc/git/contrib/hooks
