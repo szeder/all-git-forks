@@ -94,3 +94,4 @@ test_expect_success 'Criss-cross merge fails (-s resolve)' \
 test_must_fail git merge -s resolve -m "final merge" B'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

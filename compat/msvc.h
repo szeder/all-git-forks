@@ -39,3 +39,4 @@ int mingw_fstat(int fd, struct stat *buf);
 #undef ALREADY_DECLARED_STAT_FUNCS
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

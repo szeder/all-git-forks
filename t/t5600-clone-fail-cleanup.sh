@@ -40,3 +40,4 @@ test_expect_success \
     'cd bar'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

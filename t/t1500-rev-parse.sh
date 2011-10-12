@@ -85,3 +85,4 @@ git config --unset core.bare
 test_rev_parse 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

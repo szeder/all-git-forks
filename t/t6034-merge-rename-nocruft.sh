@@ -137,3 +137,4 @@ test_expect_success 'merge blue into white (A->B, mod A, A untracked)' \
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

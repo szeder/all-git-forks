@@ -34,3 +34,4 @@ test_expect_success 'git log HEAD -- :/' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

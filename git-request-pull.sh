@@ -76,3 +76,4 @@ echo &&
 git shortlog ^$baserev $headrev &&
 git diff -M --stat --summary $patch $merge_base..$headrev || exit
 exit $status
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

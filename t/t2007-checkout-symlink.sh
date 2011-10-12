@@ -50,3 +50,4 @@ test_expect_success SYMLINKS 'switch from dir to symlink' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

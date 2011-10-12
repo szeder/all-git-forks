@@ -33,3 +33,4 @@ test_expect_success 'create files in new directory with dcommit' "
 	"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

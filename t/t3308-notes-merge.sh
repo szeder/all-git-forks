@@ -366,3 +366,4 @@ test_expect_success 'merge w into x => Non-conflicting history-less merge' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

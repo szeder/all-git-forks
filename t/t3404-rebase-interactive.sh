@@ -725,3 +725,4 @@ test_expect_success 'rebase-i history with funny messages' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

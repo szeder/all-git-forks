@@ -70,3 +70,4 @@ test_expect_success 'ls-files -o' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

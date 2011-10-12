@@ -446,3 +446,4 @@ test_expect_success 'directory vs modified submodule' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

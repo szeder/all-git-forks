@@ -317,3 +317,4 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 	create_directories(path, len, state);
 	return write_entry(ce, path, state, 0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

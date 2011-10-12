@@ -21,3 +21,4 @@ do
      }' "Documentation/git-$cmd.txt"
 done
 echo "};"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

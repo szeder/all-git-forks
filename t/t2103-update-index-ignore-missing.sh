@@ -87,3 +87,4 @@ test_expect_success '--ignore-submodules --refresh (2)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

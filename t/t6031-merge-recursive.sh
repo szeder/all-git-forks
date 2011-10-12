@@ -85,3 +85,4 @@ test_expect_success 'merging with triple rename across D/F conflict' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

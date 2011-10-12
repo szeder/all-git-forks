@@ -1346,3 +1346,4 @@ void pp_commit_easy(enum cmit_fmt fmt, const struct commit *commit,
 	pp.fmt = fmt;
 	pretty_print_commit(&pp, commit, sb);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

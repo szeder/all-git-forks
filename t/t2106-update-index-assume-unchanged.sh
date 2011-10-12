@@ -22,3 +22,4 @@ test_expect_success 'do not switch branches with dirty file' \
 	 test_must_fail git checkout master'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

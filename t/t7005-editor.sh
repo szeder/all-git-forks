@@ -135,3 +135,4 @@ test_expect_success SPACES_IN_FILENAMES 'core.editor with a space' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

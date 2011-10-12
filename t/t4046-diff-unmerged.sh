@@ -85,3 +85,4 @@ test_expect_success 'diff-files -3' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

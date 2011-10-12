@@ -38,3 +38,4 @@ test_expect_success 'checkout from unborn merges identical index contents' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

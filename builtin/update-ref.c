@@ -56,3 +56,4 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 		return update_ref(msg, refname, sha1, oldval ? oldsha1 : NULL,
 				  flags, DIE_ON_ERR);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

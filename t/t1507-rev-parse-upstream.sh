@@ -137,3 +137,4 @@ test_expect_success 'log -g other@{u}@{now}' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

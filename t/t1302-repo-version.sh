@@ -68,3 +68,4 @@ test_expect_success 'gitdir required mode' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

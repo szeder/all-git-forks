@@ -13,3 +13,4 @@ extern int close_istream(struct git_istream *);
 extern ssize_t read_istream(struct git_istream *, char *, size_t);
 
 #endif /* STREAMING_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

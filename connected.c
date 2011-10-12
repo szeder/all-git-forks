@@ -60,3 +60,4 @@ int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
 	sigchain_pop(SIGPIPE);
 	return finish_command(&rev_list) || err;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

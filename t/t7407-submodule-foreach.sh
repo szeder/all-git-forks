@@ -314,3 +314,4 @@ test_expect_success 'command passed to foreach --recursive retains notion of std
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -50,3 +50,4 @@ int cmd_diff_index(int argc, const char **argv, const char *prefix)
 	result = run_diff_index(&rev, cached);
 	return diff_result_code(&rev.diffopt, result);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

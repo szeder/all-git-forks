@@ -188,3 +188,4 @@ test_expect_success 'alternation in pattern' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

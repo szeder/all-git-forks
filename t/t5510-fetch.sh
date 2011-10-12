@@ -395,3 +395,4 @@ test_expect_success "should be able to fetch with duplicate refspecs" '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -101,3 +101,4 @@ test_expect_success 'revert forbidden on dirty working tree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

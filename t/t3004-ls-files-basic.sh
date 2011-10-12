@@ -37,3 +37,4 @@ test_expect_success 'ls-files -h in corrupt repository' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

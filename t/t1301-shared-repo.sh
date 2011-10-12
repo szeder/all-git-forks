@@ -168,3 +168,4 @@ test_expect_success POSIXPERM 'forced modes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

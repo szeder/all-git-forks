@@ -1169,3 +1169,4 @@ test_expect_success $PREREQ '--force sends cover letter template anyway' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

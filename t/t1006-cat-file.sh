@@ -242,3 +242,4 @@ test_expect_success "--batch-check with multiple sha1s gives correct format" '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

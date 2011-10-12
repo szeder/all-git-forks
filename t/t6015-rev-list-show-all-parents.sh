@@ -29,3 +29,4 @@ test_expect_success '--parents --show-all does not rewrites TREESAME parents' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

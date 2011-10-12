@@ -258,3 +258,4 @@ test_expect_success 'revert conflict, diff3 -m style' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

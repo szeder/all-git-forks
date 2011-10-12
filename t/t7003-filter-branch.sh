@@ -368,3 +368,4 @@ test_expect_success 'replace submodule revision' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -36,3 +36,4 @@ ldd git | grep '/' | sed 's,.*\s\(/[^ ]*\).*,\1,' | while read i; do
 	cp "$i" "$R/$i"
 done
 echo "Execute this in root: 'chroot $R /bin/su - $(id -nu)'"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

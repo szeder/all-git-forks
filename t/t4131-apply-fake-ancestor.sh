@@ -40,3 +40,4 @@ test_expect_success 'apply --build-fake-ancestor in a subdirectory' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

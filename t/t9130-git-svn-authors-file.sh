@@ -112,3 +112,4 @@ test_expect_success 'fresh clone with svn.authors-file in config' '
 test_debug 'GIT_DIR=gitconfig.clone/.git git log'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

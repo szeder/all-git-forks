@@ -44,3 +44,4 @@ test_expect_success 'reset --hard did not corrupt index nor cached-tree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

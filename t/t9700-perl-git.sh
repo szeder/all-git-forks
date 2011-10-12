@@ -54,3 +54,4 @@ test_external_without_stderr \
     "$PERL_PATH" "$TEST_DIRECTORY"/t9700/test.pl
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

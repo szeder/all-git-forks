@@ -77,3 +77,4 @@ void add_object_array_with_mode(struct object *obj, const char *name, struct obj
 void object_array_remove_duplicates(struct object_array *);
 
 #endif /* OBJECT_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

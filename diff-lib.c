@@ -519,3 +519,4 @@ int index_differs_from(const char *def, int diff_flags)
 		free(rev.pending.objects);
 	return (DIFF_OPT_TST(&rev.diffopt, HAS_CHANGES) != 0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

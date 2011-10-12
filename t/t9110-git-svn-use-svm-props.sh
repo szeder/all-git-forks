@@ -59,3 +59,4 @@ test_expect_success 'empty rebase' "
 	"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

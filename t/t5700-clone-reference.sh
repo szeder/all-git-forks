@@ -147,3 +147,4 @@ test_expect_success 'cloning with reference being subset of source (-l -s)' \
 cd "$base_dir"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

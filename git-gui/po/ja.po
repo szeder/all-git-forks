@@ -2553,3 +2553,4 @@ msgstr "Thin Pack を使う（遅いネットワーク接続）"
 #: lib/transport.tcl:179
 msgid "Include tags"
 msgstr "タグを含める"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

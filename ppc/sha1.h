@@ -23,3 +23,4 @@ int ppc_SHA1_Final(unsigned char *hash, ppc_SHA_CTX *c);
 #define git_SHA1_Init	ppc_SHA1_Init
 #define git_SHA1_Update	ppc_SHA1_Update
 #define git_SHA1_Final	ppc_SHA1_Final
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

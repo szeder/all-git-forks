@@ -87,3 +87,4 @@ test_expect_success '"git submodule sync" should not vivify uninteresting submod
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

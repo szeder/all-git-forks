@@ -14,3 +14,4 @@ extern int unmerge_index_entry_at(struct index_state *, int);
 extern void unmerge_index(struct index_state *, const char **);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

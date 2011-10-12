@@ -459,3 +459,4 @@ test_expect_success 'amend can copy notes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

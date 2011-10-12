@@ -212,3 +212,4 @@ sub printstats {
 	printf OUT "  mode=%04o  uid=$uid  gid=$gid\n", $mode & 07777;
     }
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

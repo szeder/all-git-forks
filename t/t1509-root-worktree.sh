@@ -247,3 +247,4 @@ test_expect_success 'go to /foo' 'cd /foo'
 test_vars 'auto gitdir, root' "/" "" ""
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

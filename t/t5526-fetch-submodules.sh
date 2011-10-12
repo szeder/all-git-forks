@@ -451,3 +451,4 @@ test_expect_success "don't fetch submodule when newly recorded commits are alrea
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

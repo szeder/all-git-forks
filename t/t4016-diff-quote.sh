@@ -76,3 +76,4 @@ test_expect_success TABS_IN_FILENAMES 'git diff --stat -M HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

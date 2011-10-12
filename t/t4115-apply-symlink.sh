@@ -47,3 +47,4 @@ test_expect_success SYMLINKS 'apply --index symlink patch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

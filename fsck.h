@@ -31,3 +31,4 @@ int fsck_walk(struct object *obj, fsck_walk_func walk, void *data);
 int fsck_object(struct object *obj, int strict, fsck_error error_func);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

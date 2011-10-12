@@ -1252,3 +1252,4 @@ msgstr "Arguments invalides pour gitk :"
 #: gitk:11249
 msgid "Command line"
 msgstr "Ligne de commande"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

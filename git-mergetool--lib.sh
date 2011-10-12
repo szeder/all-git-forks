@@ -210,3 +210,4 @@ get_merge_tool () {
 	fi
 	echo "$merge_tool"
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

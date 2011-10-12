@@ -32,3 +32,4 @@ int cmd_merge_ours(int argc, const char **argv, const char *prefix)
 		exit(2);
 	exit(0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

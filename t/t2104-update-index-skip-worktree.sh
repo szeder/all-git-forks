@@ -55,3 +55,4 @@ test_expect_success 'index version is back to 2 when there is no skip-worktree e
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

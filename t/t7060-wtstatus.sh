@@ -119,3 +119,4 @@ test_expect_success 'git diff-index --cached -C shows 2 copies + 1 unmerged' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

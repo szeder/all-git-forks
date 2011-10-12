@@ -63,3 +63,4 @@ test_expect_success 'rebase -n overrides config rebase.stat config' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

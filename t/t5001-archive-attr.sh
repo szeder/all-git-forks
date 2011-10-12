@@ -89,3 +89,4 @@ test_expect_success 'git tar-tree vs. git archive with worktree attrs, bare' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

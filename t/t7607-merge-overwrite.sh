@@ -182,3 +182,4 @@ test_expect_success 'will not clobber WT/index when merging into unborn' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

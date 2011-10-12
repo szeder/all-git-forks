@@ -26,3 +26,4 @@ test_expect_success 'gc -h with invalid configuration' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

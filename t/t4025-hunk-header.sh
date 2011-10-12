@@ -42,3 +42,4 @@ test_expect_success 'hunk header truncation with an overly long line' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

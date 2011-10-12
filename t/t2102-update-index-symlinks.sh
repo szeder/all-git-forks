@@ -29,3 +29,4 @@ case "`git ls-files --stage --cached symlink`" in
 esac'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

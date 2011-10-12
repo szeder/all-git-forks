@@ -56,3 +56,4 @@ test_expect_success COLON_DIR 'a file with the same (short) magic name exists' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

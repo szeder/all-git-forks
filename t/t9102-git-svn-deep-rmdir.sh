@@ -29,3 +29,4 @@ test_expect_success 'Try a commit on rmdir' '
 
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

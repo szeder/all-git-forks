@@ -47,3 +47,4 @@ test_expect_success 'merge @{-1} when there is not enough switches yet' '
 
 test_done
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

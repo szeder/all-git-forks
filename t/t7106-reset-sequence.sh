@@ -42,3 +42,4 @@ test_expect_success 'reset --hard cleans up sequencer state, providing one-level
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

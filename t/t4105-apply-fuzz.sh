@@ -55,3 +55,4 @@ dotest 'fuzz with plus offset' -C2 F2.diff
 dotest 'fuzz with big offset' -C2 F3.diff
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

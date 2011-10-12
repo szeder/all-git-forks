@@ -5,3 +5,4 @@ Talk about our calling convention to xdiff library, including
 xdiff_emit_consume_fn.
 
 (Dscho, JC)
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

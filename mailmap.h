@@ -8,3 +8,4 @@ int map_user(struct string_list *mailmap,
 	     char *email, int maxlen_email, char *name, int maxlen_name);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

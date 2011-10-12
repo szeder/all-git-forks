@@ -398,3 +398,4 @@ proc merge_tool_finish {fd} {
 		reshow_diff
 	}
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

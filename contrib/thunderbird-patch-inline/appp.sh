@@ -53,3 +53,4 @@ LAST_DIR=`dirname "${PATCH}"`
 grep -v "^LAST_DIR=" "${CONFFILE}" > "${CONFFILE}_"
 echo "LAST_DIR=${LAST_DIR}" >> "${CONFFILE}_"
 mv "${CONFFILE}_" "${CONFFILE}"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

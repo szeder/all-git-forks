@@ -144,3 +144,4 @@ test_expect_success 'git-clean, dirty case' '
 #TODO test_expect_failure 'git-checkout' false
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

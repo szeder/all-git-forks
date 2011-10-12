@@ -370,3 +370,4 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 	write_in_full(STDOUT_FILENO, output.buf, output.len);
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

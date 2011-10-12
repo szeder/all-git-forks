@@ -208,3 +208,4 @@ test_expect_success '--count --left-right' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -91,3 +91,4 @@ test_expect_success 'trivial merge with custom strategy' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

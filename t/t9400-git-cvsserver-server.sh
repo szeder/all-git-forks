@@ -518,3 +518,4 @@ test_expect_success 'cvs annotate' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

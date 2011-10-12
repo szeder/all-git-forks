@@ -1270,3 +1270,4 @@ test_expect_success 'mixing incompatibles modes and options is forbidden' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

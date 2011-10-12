@@ -331,3 +331,4 @@ test_expect_success PERL 'split hunk "add -p (edit)"' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

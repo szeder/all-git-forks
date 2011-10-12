@@ -42,3 +42,4 @@ test_expect_success 'commit-diff to a sub-directory (with git svn config)' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

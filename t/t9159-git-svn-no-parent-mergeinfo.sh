@@ -39,3 +39,4 @@ test_expect_success 'test handling of root commits in merge ranges' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

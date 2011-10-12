@@ -334,3 +334,4 @@ test_expect_success 'word-diff with diff.sbe' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

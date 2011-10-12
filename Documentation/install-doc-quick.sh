@@ -29,3 +29,4 @@ if test -n "$GZ"; then
 	xargs gzip -f
 fi
 rm -f "$GIT_INDEX_FILE"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

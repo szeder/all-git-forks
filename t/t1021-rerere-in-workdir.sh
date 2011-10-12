@@ -53,3 +53,4 @@ test_expect_failure SYMLINKS 'rerere in workdir (relative)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

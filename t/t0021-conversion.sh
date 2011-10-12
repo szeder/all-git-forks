@@ -154,3 +154,4 @@ test_expect_success 'filter shell-escaped filenames' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

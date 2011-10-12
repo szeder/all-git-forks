@@ -272,3 +272,4 @@ test_expect_success 'diff --submodule with merge conflict in .gitmodules' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

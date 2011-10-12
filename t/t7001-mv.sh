@@ -256,3 +256,4 @@ test_expect_success SYMLINKS 'git mv should overwrite file with a symlink' '
 rm -f moved symlink
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

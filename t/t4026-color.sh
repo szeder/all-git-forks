@@ -90,3 +90,4 @@ test_expect_success 'unknown color slots are ignored (status)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

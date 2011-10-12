@@ -231,3 +231,4 @@ int diffcore_count_changes(struct diff_filespec *src,
 	*literal_added = la;
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

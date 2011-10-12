@@ -359,3 +359,4 @@ test_expect_success 'info --url unknown-symlink-directory' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

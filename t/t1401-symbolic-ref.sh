@@ -34,3 +34,4 @@ test_expect_success 'symbolic-ref refuses bare sha1' '
 reset_to_sane
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -117,3 +117,4 @@ test_expect_success '--orphan refuses to switch if a merge is needed' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

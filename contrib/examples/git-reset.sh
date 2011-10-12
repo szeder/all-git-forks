@@ -104,3 +104,4 @@ rm -f "$GIT_DIR/MERGE_HEAD" "$GIT_DIR/rr-cache/MERGE_RR" \
 	"$GIT_DIR/SQUASH_MSG" "$GIT_DIR/MERGE_MSG"
 
 exit $update_ref_status
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

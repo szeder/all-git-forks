@@ -716,3 +716,4 @@ void diffcore_rename(struct diff_options *options)
 	rename_src_nr = rename_src_alloc = 0;
 	return;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

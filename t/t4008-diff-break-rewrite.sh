@@ -186,3 +186,4 @@ test_expect_success \
     'compare_diff_raw expected current'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

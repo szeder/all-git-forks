@@ -1693,3 +1693,4 @@ struct ref *get_stale_heads(struct remote *remote, struct ref *fetch_map)
 	string_list_clear(&ref_names, 0);
 	return stale_refs;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -29,3 +29,4 @@ Fixes since v1.5.3.2
 
  * git-log sometimes invoked underlying "diff" machinery
    unnecessarily.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

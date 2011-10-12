@@ -802,3 +802,4 @@ proc apply_range_or_line {x y} {
 
 	unlock_index
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

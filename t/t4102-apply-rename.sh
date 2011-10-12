@@ -56,3 +56,4 @@ test_expect_success 'apply copy' \
      test "$(cat bar)" = "This is bar" -a "$(cat foo)" = "This is foo"'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

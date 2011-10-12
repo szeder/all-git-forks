@@ -296,3 +296,4 @@ test_expect_success 'git add --dry-run --ignore-missing of non-existing file out
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

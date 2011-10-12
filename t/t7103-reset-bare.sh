@@ -67,3 +67,4 @@ test_expect_success '"soft" reset is allowed in bare' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

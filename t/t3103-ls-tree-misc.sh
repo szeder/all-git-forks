@@ -22,3 +22,4 @@ test_expect_success 'ls-tree fails with non-zero exit code on broken tree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -144,3 +144,4 @@ test_expect_success 'apply binary diff (copy).' \
 	 test -z "$(git diff --name-status binary)"'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

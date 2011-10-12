@@ -190,3 +190,4 @@ test_expect_success SYMLINKS 'detection should not be fooled by a symlink' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -103,3 +103,4 @@ test_expect_success 'diff-tree -r with wildcard' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

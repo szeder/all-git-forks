@@ -149,3 +149,4 @@ test_expect_success 'shortlog encoding' '
 test_cmp expect out'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

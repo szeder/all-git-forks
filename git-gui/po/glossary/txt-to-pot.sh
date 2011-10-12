@@ -46,3 +46,4 @@ msgstr ""
 #Yes this is the most simple awk script you've ever seen :)
 awk -F'\t' '{if ($2 != "") print "#. "$2; print "msgid "$1; print "msgstr \"\"\n"}' \
 $GLOSSARY_CSV
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

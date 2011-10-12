@@ -54,3 +54,4 @@ test_expect_success 'post-merge from squash merge receives the right argument ' 
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

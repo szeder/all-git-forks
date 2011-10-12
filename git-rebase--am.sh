@@ -28,3 +28,4 @@ move_to_original_branch
 ret=$?
 test 0 != $ret -a -d "$state_dir" && write_basic_state
 exit $ret
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

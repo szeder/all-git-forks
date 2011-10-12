@@ -37,3 +37,4 @@ compare_diff_patch () {
     ' <"$2" >.tmp-2
     test_cmp .tmp-1 .tmp-2 && rm -f .tmp-1 .tmp-2
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

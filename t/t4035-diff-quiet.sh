@@ -78,3 +78,4 @@ test_expect_success 'git diff-index --cached HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

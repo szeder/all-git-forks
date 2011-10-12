@@ -99,3 +99,4 @@ test_expect_success 'update git svn-cloned repo again' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -20,3 +20,4 @@ if {[file tail [lindex $argv 0]] eq {gitk}} {
 unset gitexecdir gitguilib
 set argv [lrange $argv 1 end]
 source $AppMain_source
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

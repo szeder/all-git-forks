@@ -24,3 +24,4 @@ proc win32_create_lnk {lnk_path lnk_exec lnk_dir} {
 		$lnk_dir \
 		$lnk_exec] $lnk_args
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

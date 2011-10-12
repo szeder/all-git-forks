@@ -100,3 +100,4 @@ test_expect_success 'patch-id handles no-nl-at-eof markers' '
 	test_cmp patch-id_nonl patch-id_withnl
 '
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

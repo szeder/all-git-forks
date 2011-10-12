@@ -149,3 +149,4 @@ test_expect_success SYMLINKS 'merge should not have F/D conflicts (recursive)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

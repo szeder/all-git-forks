@@ -101,3 +101,4 @@ test_expect_success 'massive simple rename does not spam added files' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

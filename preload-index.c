@@ -107,3 +107,4 @@ int read_index_preload(struct index_state *index, const char **pathspec)
 	preload_index(index, pathspec);
 	return retval;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

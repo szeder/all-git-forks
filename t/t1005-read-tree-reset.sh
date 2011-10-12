@@ -89,3 +89,4 @@ test_expect_success 'Porcelain checkout -f HEAD should remove remnants too' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -135,3 +135,4 @@ test_expect_success \
 test_expect_success \
     'obfuscated email parsed' \
     'check_count A 1 B 1 B1 1 B2 1 "A U Thor" 1 C 1 D 1 E 1'
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

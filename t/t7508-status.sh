@@ -1261,3 +1261,4 @@ test_expect_failure '.git/config ignore=all suppresses submodule summary' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

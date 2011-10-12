@@ -36,3 +36,4 @@ test_expect_success 'add gitlink to relative .git file' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

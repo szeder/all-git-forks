@@ -53,3 +53,4 @@ test_expect_success 'clone to target directory with --stdlayout' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

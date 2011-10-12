@@ -744,3 +744,4 @@ test_expect_success 'bisect: demonstrate identification of damage boundary' "
 "
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

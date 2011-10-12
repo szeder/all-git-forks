@@ -148,3 +148,4 @@ test_expect_success 'Report match with --exit-code' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

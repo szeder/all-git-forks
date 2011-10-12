@@ -517,3 +517,4 @@ test_expect_success 'show added path under "--follow -M"' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

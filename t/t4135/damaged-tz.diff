@@ -3,3 +3,4 @@ diff -urN -X /usr/people/jes/exclude-linux linux-2.6.12-rc2-mm3-vanilla/post ima
 +++ linux-2.6.12-rc2-mm3/post image.txt 2005-04-12 02:14:06 -07:00
 @@ -0,0 +1 @@
 +postimage
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

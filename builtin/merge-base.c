@@ -100,3 +100,4 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 		rev[rev_nr++] = get_commit_reference(*argv++);
 	return show_merge_base(rev, rev_nr, show_all);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

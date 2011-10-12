@@ -169,3 +169,4 @@ test_expect_success 'with failing hook (--no-verify)' '
 
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -263,3 +263,4 @@ test_expect_success 'rm removes subdirectories recursively' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

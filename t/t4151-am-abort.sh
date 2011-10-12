@@ -73,3 +73,4 @@ test_expect_success 'am --abort will keep the local commits intact' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

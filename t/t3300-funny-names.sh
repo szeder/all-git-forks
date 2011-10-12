@@ -196,3 +196,4 @@ test_expect_success TABS_IN_FILENAMES 'git apply non-git diff' \
 	 test_cmp expected current'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

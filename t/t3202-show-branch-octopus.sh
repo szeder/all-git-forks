@@ -65,3 +65,4 @@ test_expect_success 'show-branch with showbranch.default' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

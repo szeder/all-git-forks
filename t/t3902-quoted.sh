@@ -150,3 +150,4 @@ test_expect_success TABS_IN_FILENAMES 'check fully quoted output from ls-tree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

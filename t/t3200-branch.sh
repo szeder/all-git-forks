@@ -600,3 +600,4 @@ test_expect_success 'use set-upstream on the current branch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

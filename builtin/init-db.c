@@ -594,3 +594,4 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 
 	return init_db(template_dir, flags);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

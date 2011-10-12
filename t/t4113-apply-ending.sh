@@ -51,3 +51,4 @@ test_expect_success 'apply at the beginning' \
 	'test_must_fail git apply --index test-patch'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

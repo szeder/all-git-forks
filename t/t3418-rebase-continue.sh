@@ -96,3 +96,4 @@ test_expect_success 'rebase --continue remembers --rerere-autoupdate' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

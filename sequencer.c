@@ -17,3 +17,4 @@ void remove_sequencer_state(int aggressive)
 	strbuf_release(&seq_dir);
 	strbuf_release(&seq_old_dir);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

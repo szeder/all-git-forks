@@ -313,3 +313,4 @@ void string_list_add_refs_from_colon_sep(struct string_list *list,
 void expand_notes_ref(struct strbuf *sb);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

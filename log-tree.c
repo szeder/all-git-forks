@@ -676,3 +676,4 @@ int log_tree_commit(struct rev_info *opt, struct commit *commit)
 	maybe_flush_or_die(stdout, "stdout");
 	return shown;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

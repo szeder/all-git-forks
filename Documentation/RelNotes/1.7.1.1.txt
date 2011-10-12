@@ -94,3 +94,4 @@ Fixes since v1.7.1
  * "git status" showed excess "hints" even when advice.statusHints is set to false.
 
 And other minor fixes and documentation updates.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

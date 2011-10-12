@@ -100,3 +100,4 @@ test_expect_success 'git grep y<NUL>x a' "
 "
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

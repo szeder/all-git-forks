@@ -527,3 +527,4 @@ test_expect_success \
     git ls-files --stage'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

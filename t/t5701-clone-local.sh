@@ -158,3 +158,4 @@ test_expect_success 'cloning non-git directory fails' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -66,3 +66,4 @@ test_expect_success 'clone -b with bogus branch chooses HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

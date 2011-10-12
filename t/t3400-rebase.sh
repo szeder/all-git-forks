@@ -219,3 +219,4 @@ test_expect_success 'rebase -m can copy notes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

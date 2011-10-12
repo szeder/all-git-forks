@@ -64,3 +64,4 @@ test_expect_success 'Commit Decorations Colored Correctly' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

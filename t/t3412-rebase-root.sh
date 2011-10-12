@@ -278,3 +278,4 @@ test_expect_success 'rebase -i -p --root with conflict (second part)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

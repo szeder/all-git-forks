@@ -39,3 +39,4 @@ test_expect_success "fetch with tagopt=--tags gets tag" '
 	git show-ref tag_two
 	'
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -139,3 +139,4 @@ test_expect_success 'rebase -s funny -Xopt' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

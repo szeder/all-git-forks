@@ -557,3 +557,4 @@ test_expect_success 'diff that introduces a line with only tabs' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -47,3 +47,4 @@ void remove_branch_state(void);
 extern void install_branch_config(int flag, const char *local, const char *origin, const char *remote);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

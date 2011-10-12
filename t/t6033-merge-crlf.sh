@@ -42,3 +42,4 @@ test_expect_success 'Check that conflict file is CRLF' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

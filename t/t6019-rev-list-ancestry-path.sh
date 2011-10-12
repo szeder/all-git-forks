@@ -109,3 +109,4 @@ test_expect_success 'criss-cross: rev-list --ancestry-path --all ^cb' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

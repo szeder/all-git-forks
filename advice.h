@@ -16,3 +16,4 @@ int error_resolve_conflict(const char *me);
 extern void NORETURN die_resolve_conflict(const char *me);
 
 #endif /* ADVICE_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

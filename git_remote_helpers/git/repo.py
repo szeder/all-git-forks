@@ -74,3 +74,4 @@ class GitRepo(object):
         path = os.path.join(self.gitpath, "HEAD")
         head = open(path).readline()
         self.head, _ = sanitize(head, ' ')
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

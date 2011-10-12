@@ -153,3 +153,4 @@ $test_unicode 'merge (silent unicode normalization)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

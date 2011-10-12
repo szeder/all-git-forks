@@ -320,3 +320,4 @@ test_expect_success 'diff --cached -- file on unborn branch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

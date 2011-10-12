@@ -177,3 +177,4 @@ test_expect_success 'up-to-date merge without common ancestor' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

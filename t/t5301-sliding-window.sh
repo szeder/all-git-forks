@@ -58,3 +58,4 @@ test_expect_success \
      git verify-pack -v "$pack2"'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

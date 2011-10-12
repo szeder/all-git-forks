@@ -136,3 +136,4 @@ test_expect_success 'send-pack stderr contains hook messages' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

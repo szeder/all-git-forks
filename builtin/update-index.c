@@ -890,3 +890,4 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 
 	return has_errors ? 1 : 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

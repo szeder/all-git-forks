@@ -17,3 +17,4 @@ Fixes since v1.6.5.6
   repository, e.g. "rev-list HEAD -- /home", the code tried to run
   strlen() on NULL, which is the result of get_git_work_tree(), and
   segfaulted.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -13,3 +13,4 @@ if expr "$less" : '[a-z][a-z]*$' >/dev/null
 then
 	test_set_prereq SIMPLEPAGER
 fi
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

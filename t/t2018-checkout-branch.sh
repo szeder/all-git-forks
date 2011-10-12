@@ -198,3 +198,4 @@ test_expect_success 'checkout -B to the current branch fails before merging' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

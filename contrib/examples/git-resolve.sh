@@ -110,3 +110,4 @@ git update-ref -m "resolve $merge_name: In-index merge" \
 	HEAD "$result_commit" "$head"
 git diff-tree -p $head $result_commit | git apply --stat
 dropheads
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

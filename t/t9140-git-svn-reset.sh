@@ -64,3 +64,4 @@ test_expect_success 'refetch succeeds not ignoring any files' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -418,3 +418,4 @@ test_expect_success SYMLINKS 're-init to move gitdir symlink' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

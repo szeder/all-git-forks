@@ -173,3 +173,4 @@ test_expect_success 'stash save --all is stash poppable' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

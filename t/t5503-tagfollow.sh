@@ -164,3 +164,4 @@ test_expect_success NOT_MINGW 'new clone fetch master and tags' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

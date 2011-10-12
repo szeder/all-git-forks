@@ -42,3 +42,4 @@ test_expect_success POSIXPERM,SANITY 'add should notice unwritable repository' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

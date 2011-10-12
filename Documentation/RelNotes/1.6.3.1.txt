@@ -8,3 +8,4 @@ Fixes since v1.6.3
   incorrectly primed the in-index cache-tree, resulting a wrong tree
   object to be written out of the index.  This is a grave regression
   since the last 1.6.2.X maintenance release.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

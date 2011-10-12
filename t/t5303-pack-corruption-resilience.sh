@@ -285,3 +285,4 @@ test_expect_success \
      test_must_fail git cat-file blob $blob_3 > /dev/null'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -61,3 +61,4 @@ test_expect_success FILEMODE 'mode update (index only)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

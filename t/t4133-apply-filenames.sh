@@ -36,3 +36,4 @@ test_expect_success 'apply diff with inconsistent filenames in headers' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

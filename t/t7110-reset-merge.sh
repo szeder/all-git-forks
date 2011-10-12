@@ -293,3 +293,4 @@ test_expect_success '--keep fails with added/deleted merge' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

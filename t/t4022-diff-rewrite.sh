@@ -68,3 +68,4 @@ test_expect_success 'suppress deletion diff with -B -D' '
 
 test_done
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -12,3 +12,4 @@ test_expect_success 'Blame --show-email works' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

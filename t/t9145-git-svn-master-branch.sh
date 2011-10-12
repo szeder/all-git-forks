@@ -23,3 +23,4 @@ test_expect_success 'git svn clone --stdlayout sets up trunk as master' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

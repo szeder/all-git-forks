@@ -136,3 +136,4 @@ test_expect_success 'not_uptodate_dir porcelain checkout error' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

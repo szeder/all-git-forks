@@ -295,3 +295,4 @@ test_expect_success 'color new trailing blank lines' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

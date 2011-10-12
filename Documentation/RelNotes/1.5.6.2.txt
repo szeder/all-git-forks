@@ -38,3 +38,4 @@ Fixes since v1.5.6.1
 
 * "git-svn" mangled remote nickname used in the configuration file
   unnecessarily.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

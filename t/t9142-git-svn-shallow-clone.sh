@@ -29,3 +29,4 @@ test_expect_success 'clone trunk with "-r HEAD"' '
 stop_httpd
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

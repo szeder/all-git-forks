@@ -68,3 +68,4 @@ proc do_about {} {
 	wm title $w "About [appname]"
 	tkwait window $w
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

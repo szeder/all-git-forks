@@ -134,3 +134,4 @@ test_expect_success 'dodecapus' '
 	check_revlist "--min-parents=4 --max-parents=11" tetrapus
 '
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

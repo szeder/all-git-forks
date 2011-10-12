@@ -63,3 +63,4 @@ test_expect_success '"checkout <submodule>" honors submodule.*.ignore from .git/
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -259,3 +259,4 @@ $ git clone --bare -l -s /pub/scm/.../torvalds/linux-2.6.git \
 GIT
 ---
 Part of the linkgit:git[1] suite
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

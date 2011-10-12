@@ -103,3 +103,4 @@ test_expect_success 'setup for many rename source candidates' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

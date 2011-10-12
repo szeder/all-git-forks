@@ -134,3 +134,4 @@ included in this release.
 
  * "git status -z" did not default to --porcelain output format.
    (merge bc/maint-status-z-to-use-porcelain later)
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

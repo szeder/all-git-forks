@@ -7,3 +7,4 @@ $(PO_TEMPLATE): $(subst .pot,.txt,$(PO_TEMPLATE))
 
 update-po:: git-gui-glossary.pot
 	$(foreach p, $(ALL_POFILES), echo Updating $p ; msgmerge -U $p $(PO_TEMPLATE) ; )
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

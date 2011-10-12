@@ -31,3 +31,4 @@ test_expect_success 'diff -M' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

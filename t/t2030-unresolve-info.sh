@@ -168,3 +168,4 @@ test_expect_success 'rerere and rerere forget (subdirectory)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

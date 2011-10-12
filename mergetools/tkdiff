@@ -10,3 +10,4 @@ merge_cmd () {
 		"$merge_tool_path" -o "$MERGED" "$LOCAL" "$REMOTE"
 	fi
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

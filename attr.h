@@ -55,3 +55,4 @@ enum git_attr_direction {
 void git_attr_set_direction(enum git_attr_direction, struct index_state *);
 
 #endif /* ATTR_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

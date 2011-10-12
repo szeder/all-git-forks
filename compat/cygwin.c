@@ -140,3 +140,4 @@ static int cygwin_lstat_stub(const char *file_name, struct stat *buf)
 stat_fn_t cygwin_stat_fn = cygwin_stat_stub;
 stat_fn_t cygwin_lstat_fn = cygwin_lstat_stub;
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

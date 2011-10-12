@@ -72,3 +72,4 @@ test_expect_success 'rewrite diff respects textconv' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

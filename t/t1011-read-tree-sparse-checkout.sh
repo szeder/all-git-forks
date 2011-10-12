@@ -235,3 +235,4 @@ test_expect_success 'read-tree --reset removes outside worktree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -179,3 +179,4 @@ else
 	git --no-pager log -1 --pretty=tformat:"%h %s" $newest
 	echo "** $new_name already exists, doing nothing"
 fi
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

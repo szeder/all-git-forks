@@ -248,3 +248,4 @@ void remove_branch_state(void)
 	unlink(git_path("SQUASH_MSG"));
 	remove_sequencer_state(0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

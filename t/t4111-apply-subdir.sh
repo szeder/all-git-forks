@@ -140,3 +140,4 @@ test_expect_success 'apply --cached from subdir of .git dir' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

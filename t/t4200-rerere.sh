@@ -392,3 +392,4 @@ test_expect_success 'rerere -h' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -489,3 +489,4 @@ static open_method_decl(incore)
 
 	return st->u.incore.buf ? 0 : -1;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

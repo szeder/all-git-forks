@@ -82,3 +82,4 @@ test_expect_success SYMLINKS 'pushing from symlinked subdir' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

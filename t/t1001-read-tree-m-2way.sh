@@ -408,3 +408,4 @@ test_expect_success '-m references the correct modified tree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

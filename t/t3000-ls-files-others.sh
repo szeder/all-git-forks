@@ -66,3 +66,4 @@ test_expect_success '--no-empty-directory hides empty directory' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

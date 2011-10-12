@@ -101,3 +101,4 @@ test_expect_success 'Cherry-pick with rename to different D/F conflict succeeds 
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

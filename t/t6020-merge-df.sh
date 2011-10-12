@@ -108,3 +108,4 @@ test_expect_success 'modify/delete + directory/file conflict; other way' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

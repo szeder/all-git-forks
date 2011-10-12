@@ -83,3 +83,4 @@ test_expect_success 'checkout in superproject' \
 # git diff --name-status -M save master
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

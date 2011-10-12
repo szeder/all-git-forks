@@ -59,3 +59,4 @@ test_expect_success SETFACL 'git gc does not break ACLs with restrictive umask' 
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

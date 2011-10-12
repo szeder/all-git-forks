@@ -318,3 +318,4 @@ void diff_tree_setup_paths(const char **p, struct diff_options *opt)
 {
 	init_pathspec(&opt->pathspec, p);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

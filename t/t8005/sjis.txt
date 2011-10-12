@@ -1,2 +1,3 @@
 SJIS_NAME="山田 太郎"
 SJIS_MSG="ブレームのテストです。"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

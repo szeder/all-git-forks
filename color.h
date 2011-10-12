@@ -88,3 +88,4 @@ void color_print_strbuf(FILE *fp, const char *color, const struct strbuf *sb);
 int color_is_nil(const char *color);
 
 #endif /* COLOR_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

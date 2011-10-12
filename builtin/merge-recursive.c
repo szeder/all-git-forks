@@ -78,3 +78,4 @@ int cmd_merge_recursive(int argc, const char **argv, const char *prefix)
 		return 128; /* die() error code */
 	return failed;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

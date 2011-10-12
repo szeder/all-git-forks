@@ -221,3 +221,4 @@ test_expect_success "hook doesn't edit commit message (editor)" '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

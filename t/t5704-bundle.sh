@@ -54,3 +54,4 @@ test_expect_failure 'bundle --stdin <rev-list options>' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

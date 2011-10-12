@@ -673,3 +673,4 @@ link:user-manual.html[O Manual do Usuário git]
 GIT
 ---
 Parte da suite linkgit:git[1].
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

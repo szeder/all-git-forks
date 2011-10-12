@@ -253,3 +253,4 @@ test_expect_success 'rebase --merge (L/U)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

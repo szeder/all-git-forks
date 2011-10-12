@@ -18,3 +18,4 @@ typedef int (*sha1_iterate_fn)(void *, unsigned char [20]);
 extern int check_everything_connected(sha1_iterate_fn, int quiet, void *cb_data);
 
 #endif /* CONNECTED_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -157,3 +157,4 @@ test_expect_success 'cherry-pick --stdin works' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

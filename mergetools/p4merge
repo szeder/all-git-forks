@@ -8,3 +8,4 @@ merge_cmd () {
 	"$merge_tool_path" "$BASE" "$LOCAL" "$REMOTE" "$MERGED"
 	check_unchanged
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

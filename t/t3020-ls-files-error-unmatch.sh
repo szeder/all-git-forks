@@ -26,3 +26,4 @@ test_expect_success \
     'git ls-files --error-unmatch foo bar'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

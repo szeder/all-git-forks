@@ -167,3 +167,4 @@ scripts that read the output to tell if the current record being read is
 a single-path record or a rename/copy record without reading ahead.
 After reading added and deleted lines, reading up to `NUL` would yield
 the pathname, but if that is `NUL`, the record will show two paths.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

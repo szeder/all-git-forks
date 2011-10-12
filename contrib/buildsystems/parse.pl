@@ -226,3 +226,4 @@ sub handleLinkLine
     @{$build_structure{"APPS_${appout}_LIBS"}} = @libs;
     clearCompileStep();
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

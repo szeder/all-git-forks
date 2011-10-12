@@ -75,3 +75,4 @@ Functions
 
 `buffer_reset`::
 	Deallocates non-static buffers.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

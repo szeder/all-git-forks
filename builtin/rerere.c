@@ -108,3 +108,4 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 	string_list_clear(&merge_rr, 1);
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -100,3 +100,4 @@ test_expect_success SYMLINKS '"bar" remains a proper symlink' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

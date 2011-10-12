@@ -120,3 +120,4 @@ test_expect_success 'push succeeds if submodule has no remote and is on the firs
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

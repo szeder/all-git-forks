@@ -96,3 +96,4 @@ test_expect_success 'master: branch --no-merged' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -10,3 +10,4 @@ struct revindex_entry *find_pack_revindex(struct packed_git *p, off_t ofs);
 void discard_revindex(void);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

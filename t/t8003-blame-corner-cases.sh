@@ -186,3 +186,4 @@ test_expect_success 'indent of line numbers, ten lines' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

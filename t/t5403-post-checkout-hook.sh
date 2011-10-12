@@ -86,3 +86,4 @@ test_expect_success 'post-checkout hook is triggered by clone' '
 fi
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

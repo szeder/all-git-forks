@@ -75,3 +75,4 @@ test_expect_success 'merge -s subtree up-to-date' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

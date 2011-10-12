@@ -19,3 +19,4 @@ install: all
 	$(EMACS) -batch -f batch-byte-compile $<
 
 clean:; $(RM) $(ELC)
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

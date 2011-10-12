@@ -32,3 +32,4 @@ test_expect_success 'reflog shows all entries' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -88,3 +88,4 @@ int cmd_stripspace(int argc, const char **argv, const char *prefix)
 	strbuf_release(&buf);
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

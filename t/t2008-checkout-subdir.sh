@@ -80,3 +80,4 @@ test_expect_success 'incorrect relative path should fail (3)' \
 	'( cd dir1 && test_must_fail git checkout HEAD -- ../../file0 )'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

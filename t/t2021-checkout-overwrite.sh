@@ -48,3 +48,4 @@ test_expect_success SYMLINKS 'checkout commit with dir must not remove untracked
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

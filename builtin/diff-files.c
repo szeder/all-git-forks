@@ -68,3 +68,4 @@ int cmd_diff_files(int argc, const char **argv, const char *prefix)
 	result = run_diff_files(&rev, options);
 	return diff_result_code(&rev.diffopt, result);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

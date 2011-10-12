@@ -38,3 +38,4 @@ test_expect_success 'clone -c config is available during clone' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

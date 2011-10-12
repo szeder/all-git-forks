@@ -101,3 +101,4 @@ test_expect_success 'merge fast-forward output uses pretty names' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

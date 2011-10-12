@@ -81,3 +81,4 @@ test_expect_success 'authors-prog handled special characters in username' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -110,3 +110,4 @@ test_expect_success 'apply --directory (quoted filename)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -170,3 +170,4 @@ void unmerge_index(struct index_state *istate, const char **pathspec)
 		i = unmerge_index_entry_at(istate, i);
 	}
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

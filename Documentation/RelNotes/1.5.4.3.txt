@@ -25,3 +25,4 @@ Fixes since v1.5.4.2
    the current subdirectory you are in, just like other commands.
 
  * git-gui updates to work on OSX and Windows better.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

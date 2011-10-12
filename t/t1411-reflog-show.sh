@@ -92,3 +92,4 @@ test_expect_success 'empty reflog file' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

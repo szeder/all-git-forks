@@ -83,3 +83,4 @@ test_expect_success 'keep different-resolution merges with -p' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -26,3 +26,4 @@ test_expect_success \
 test "$(git hash-object -t blob symlink)" = $l'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

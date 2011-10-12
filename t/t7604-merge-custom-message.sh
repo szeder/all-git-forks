@@ -48,3 +48,4 @@ test_expect_success 'merge --log appends to custom message' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

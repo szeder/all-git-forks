@@ -166,3 +166,4 @@ test_expect_success 'run from subdir' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

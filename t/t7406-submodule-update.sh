@@ -612,3 +612,4 @@ test_expect_success 'submodule update places git-dir in superprojects git-dir re
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

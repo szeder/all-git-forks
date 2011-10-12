@@ -273,3 +273,4 @@ def file_writer_method (method):
             if not isinstance(filename, file):
                 f.close()
     return _new_method
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

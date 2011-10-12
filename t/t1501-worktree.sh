@@ -347,3 +347,4 @@ test_expect_success 'relative $GIT_WORK_TREE and git subprocesses' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

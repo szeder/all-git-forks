@@ -203,3 +203,4 @@ if [ "$annotate" ]; then
 fi
 
 git update-ref "refs/tags/$name" "$object" "$prev"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

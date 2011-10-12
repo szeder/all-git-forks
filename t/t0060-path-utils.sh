@@ -140,3 +140,4 @@ test_expect_success 'strip_path_suffix' '
 		c:/msysgit/libexec//git-core libexec/git-core)
 '
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

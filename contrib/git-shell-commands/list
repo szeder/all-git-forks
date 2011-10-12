@@ -8,3 +8,4 @@ print_if_bare_repo='
 '
 
 find -type d -name "*.git" -exec sh -c "$print_if_bare_repo" -- \{} \; -prune 2>/dev/null
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

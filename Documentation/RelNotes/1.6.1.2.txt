@@ -37,3 +37,4 @@ Fixes since v1.6.1.1
 
 * "git gc" with no grace period needlessly ejected packed but unreachable
   objects in their loose form, only to delete them right away.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

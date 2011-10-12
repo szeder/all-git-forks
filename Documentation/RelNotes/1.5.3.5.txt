@@ -92,3 +92,4 @@ Fixes since v1.5.3.4
 
  * "git-rebase --interactive" did not handle its "--strategy" option
    properly.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

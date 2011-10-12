@@ -1073,3 +1073,4 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	free_grep_patterns(&opt);
 	return !hit;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

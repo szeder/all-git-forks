@@ -18,3 +18,4 @@ Fixes since v1.6.5
  * "git pull" over http did not work on msys.
 
 Other minor documentation updates are included.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

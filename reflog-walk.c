@@ -312,3 +312,4 @@ void show_reflog_message(struct reflog_walk_info *reflog_info, int oneline,
 		strbuf_release(&selector);
 	}
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

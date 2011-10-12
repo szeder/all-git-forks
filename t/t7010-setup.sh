@@ -159,3 +159,4 @@ test_expect_success 'add a file outside the work tree, nasty case 2' '(
 )'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

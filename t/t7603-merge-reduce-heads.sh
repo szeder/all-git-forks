@@ -114,3 +114,4 @@ test_expect_success 'verify merge result' '
 	test $(git rev-parse HEAD^2) = $(git rev-parse I2)
 '
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

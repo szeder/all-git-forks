@@ -8,3 +8,4 @@ The next version, Git 1.7.4, and future versions, will support both
 old and incorrect name and the new corrected name, but without this
 backport, users who want to use the new name "add.ignoreErrors" in
 their repositories cannot use older versions of Git.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

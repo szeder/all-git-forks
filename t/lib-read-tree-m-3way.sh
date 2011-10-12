@@ -156,3 +156,4 @@ test_expect_success \
      git read-tree $tree_B &&
      mkdir .orig-B &&
      git checkout-index --prefix=.orig-B/ -f -q -a'
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

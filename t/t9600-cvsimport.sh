@@ -157,3 +157,4 @@ test_expect_success PERL 'no .git/cvs-revisions created by default' '
 test_expect_success PERL 'test entire HEAD' 'test_cmp_branch_tree master'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

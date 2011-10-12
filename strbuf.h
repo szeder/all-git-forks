@@ -116,3 +116,4 @@ extern int strbuf_branchname(struct strbuf *sb, const char *name);
 extern int strbuf_check_branch_ref(struct strbuf *sb, const char *name);
 
 #endif /* STRBUF_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

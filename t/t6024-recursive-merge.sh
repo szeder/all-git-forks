@@ -120,3 +120,4 @@ test_expect_success 'mark rename/delete as unmerged' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

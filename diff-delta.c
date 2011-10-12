@@ -487,3 +487,4 @@ create_delta(const struct delta_index *index,
 	*delta_size = outpos;
 	return out;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

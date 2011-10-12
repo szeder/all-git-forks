@@ -23,3 +23,4 @@ test_expect_success SYMLINKS 'add beyond symlinks' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

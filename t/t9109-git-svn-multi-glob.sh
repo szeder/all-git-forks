@@ -158,3 +158,4 @@ test_expect_success 'test disallow multiple globs' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

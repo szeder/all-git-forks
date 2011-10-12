@@ -895,3 +895,4 @@ test_expect_success 'format patch ignores color.ui' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

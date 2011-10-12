@@ -172,3 +172,4 @@ test_expect_success 'relative path when startup_info is NULL' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

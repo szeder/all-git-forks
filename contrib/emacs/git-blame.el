@@ -481,3 +481,4 @@ See also function `git-blame-mode'."
 (provide 'git-blame)
 
 ;;; git-blame.el ends here
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

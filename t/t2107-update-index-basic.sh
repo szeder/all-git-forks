@@ -30,3 +30,4 @@ test_expect_success 'update-index -h with corrupt index' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

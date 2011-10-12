@@ -113,3 +113,4 @@ Compress the database now?" $objects_current]] eq yes} {
 		}
 	}
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

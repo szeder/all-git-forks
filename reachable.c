@@ -219,3 +219,4 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog)
 		die("revision walk setup failed");
 	walk_commit_list(revs);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

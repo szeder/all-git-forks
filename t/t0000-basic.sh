@@ -474,3 +474,4 @@ test_expect_success 'very long name in the index handled sanely' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

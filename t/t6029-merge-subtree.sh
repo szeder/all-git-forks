@@ -122,3 +122,4 @@ test_expect_success 'merge2 using explicit' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

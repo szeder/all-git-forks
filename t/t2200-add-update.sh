@@ -172,3 +172,4 @@ test_expect_success '"add -u non-existent" should fail' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

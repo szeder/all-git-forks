@@ -106,3 +106,4 @@ int graph_show_remainder(struct git_graph *graph);
 void graph_show_commit_msg(struct git_graph *graph, struct strbuf const *sb);
 
 #endif /* GRAPH_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

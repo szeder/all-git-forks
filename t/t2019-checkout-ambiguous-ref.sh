@@ -57,3 +57,4 @@ test_expect_success VAGUENESS_SUCCESS 'checkout reports switch to branch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

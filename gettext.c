@@ -12,3 +12,4 @@ int use_gettext_poison(void)
 		poison_requested = getenv("GIT_GETTEXT_POISON") ? 1 : 0;
 	return poison_requested;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

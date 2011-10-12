@@ -26,3 +26,4 @@ Fixes since v1.5.6
 
 * Running "git-rebase --continue/--skip/--abort" before starting a
   rebase gave nonsense error messages.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

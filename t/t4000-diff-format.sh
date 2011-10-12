@@ -60,3 +60,4 @@ test_expect_success \
     'compare_diff_patch current expected'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

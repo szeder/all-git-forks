@@ -2566,3 +2566,4 @@ msgstr "Usar compactação minimalista (para redes lentas)"
 #: lib/transport.tcl:179
 msgid "Include tags"
 msgstr "Incluir etiquetas"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

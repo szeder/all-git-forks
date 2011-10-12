@@ -67,3 +67,4 @@ test_expect_success 'mktree refuses to read ls-tree -r output (2)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

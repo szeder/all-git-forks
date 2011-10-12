@@ -29,3 +29,4 @@ test_expect_success 'diff-files does not examine assume-unchanged entries' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

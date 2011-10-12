@@ -34,3 +34,4 @@ test_expect_success 'redirected clone -v' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

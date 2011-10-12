@@ -67,3 +67,4 @@ test_expect_success SYMLINKS \
     'compare_diff_patch current expected'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

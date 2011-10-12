@@ -602,3 +602,4 @@ test_expect_success 'stash apply shows status same as git status (relative to cu
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

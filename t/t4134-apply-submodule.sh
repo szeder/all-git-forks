@@ -36,3 +36,4 @@ test_expect_success 'removing a submodule also removes all leading subdirectorie
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

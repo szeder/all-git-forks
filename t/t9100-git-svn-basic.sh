@@ -301,3 +301,4 @@ test_expect_success 'git-svn works in a bare repository' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

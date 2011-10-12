@@ -76,3 +76,4 @@ test_expect_success 'moved back to branch correctly' '
 test_debug 'gitk --all & sleep 1'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

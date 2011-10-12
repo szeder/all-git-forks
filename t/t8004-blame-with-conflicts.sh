@@ -71,3 +71,4 @@ test_expect_success 'blame runs on conflicted file in stages 1,3' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

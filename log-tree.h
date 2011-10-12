@@ -25,3 +25,4 @@ void get_patch_filename(struct commit *commit, int nr, const char *suffix,
 			struct strbuf *buf);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

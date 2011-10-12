@@ -99,3 +99,4 @@ test_expect_success 'check renamed file' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

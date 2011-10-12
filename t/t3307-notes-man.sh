@@ -36,3 +36,4 @@ test_expect_success 'example 2: binary notes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -219,3 +219,4 @@ test_expect_success "multi-fetch works off a 'clean' repository" '
 test_debug 'gitk --all &'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

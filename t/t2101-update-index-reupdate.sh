@@ -82,3 +82,4 @@ test_expect_success 'update-index --update with pathspec' \
 	cmp current expected'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

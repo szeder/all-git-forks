@@ -56,3 +56,4 @@ Fixes since v1.7.4.1
    also used incorrect variable when showing the file mode in a diff.
 
 And other minor fixes and documentation updates.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

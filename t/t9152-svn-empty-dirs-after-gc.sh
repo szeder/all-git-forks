@@ -38,3 +38,4 @@ test_expect_success 'git svn mkdirs recreates empty directories after git svn gc
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

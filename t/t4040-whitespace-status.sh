@@ -73,3 +73,4 @@ test_expect_success 'diff-tree --diff-filter --quiet' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -46,3 +46,4 @@ test_expect_success 'merge c2 to c3 (fails)' '
 	test_must_fail git merge -s resolve c3
 '
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

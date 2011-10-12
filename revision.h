@@ -227,3 +227,4 @@ extern enum commit_action get_commit_action(struct rev_info *revs, struct commit
 extern enum commit_action simplify_commit(struct rev_info *revs, struct commit *commit);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -104,3 +104,4 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 
 	return ret;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

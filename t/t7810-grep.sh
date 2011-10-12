@@ -826,3 +826,4 @@ test_expect_success 'mimic ack-grep --group' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

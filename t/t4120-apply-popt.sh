@@ -88,3 +88,4 @@ test_expect_success 'apply (-p2) diff, rename' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

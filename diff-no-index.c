@@ -273,3 +273,4 @@ void diff_no_index(struct rev_info *revs,
 	 */
 	exit(revs->diffopt.found_changes);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

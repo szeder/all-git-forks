@@ -90,3 +90,4 @@ test_expect_success 'stash with a dirty submodule' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

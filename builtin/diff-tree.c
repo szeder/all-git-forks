@@ -190,3 +190,4 @@ int cmd_diff_tree(int argc, const char **argv, const char *prefix)
 
 	return diff_result_code(&opt->diffopt, 0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

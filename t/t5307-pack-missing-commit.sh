@@ -37,3 +37,4 @@ test_expect_success 'pack-objects notices corruption' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

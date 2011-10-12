@@ -16,3 +16,4 @@ do
 	*) [ -f "$cmd" ] && [ -x "$cmd" ] && echo "$cmd" ;;
 	esac
 done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

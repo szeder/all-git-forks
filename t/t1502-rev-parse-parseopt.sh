@@ -100,3 +100,4 @@ test_expect_success 'test --parseopt --keep-dashdash --stop-at-non-option withou
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

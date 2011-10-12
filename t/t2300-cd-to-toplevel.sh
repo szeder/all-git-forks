@@ -35,3 +35,4 @@ ln -s sub/dir internal-link 2>/dev/null
 test_cd_to_toplevel internal-link 'at internal symbolic subdir' SYMLINKS
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

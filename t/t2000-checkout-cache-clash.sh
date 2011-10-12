@@ -58,3 +58,4 @@ test_expect_success SYMLINKS 'checkout-index -f twice with --prefix' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

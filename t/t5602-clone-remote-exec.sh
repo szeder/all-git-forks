@@ -32,3 +32,4 @@ test_expect_success 'clone calls specified git upload-pack with -u option' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

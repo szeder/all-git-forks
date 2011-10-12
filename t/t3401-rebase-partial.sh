@@ -59,3 +59,4 @@ test_expect_success \
 	 test ! -d .git/rebase-merge'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

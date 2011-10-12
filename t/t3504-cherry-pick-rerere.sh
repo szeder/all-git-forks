@@ -43,3 +43,4 @@ test_expect_success 'cherry-pick conflict without rerere' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

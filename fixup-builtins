@@ -14,3 +14,4 @@ sed -i 's/git merge-one-file/git-merge-one-file/g
 s/git rebase-todo/git-rebase-todo/g' $(git ls-files '*.sh')
 git update-index --refresh >& /dev/null
 exit 0
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

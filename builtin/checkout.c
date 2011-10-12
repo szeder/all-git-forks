@@ -1076,3 +1076,4 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 
 	return switch_branches(&opts, &new);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

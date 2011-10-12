@@ -1293,3 +1293,4 @@ msgstr "Parancs sor"
 #~ msgstr ""
 #~ "Sajnáljuk, de a gitk nem futtatható ezzel a Tcl/Tk verzióval.\n"
 #~ "Gitk futtatásához legalább Tcl/Tk 8.4 szükséges."
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

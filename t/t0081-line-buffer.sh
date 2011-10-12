@@ -88,3 +88,4 @@ test_expect_success 'long binary reads are truncated' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

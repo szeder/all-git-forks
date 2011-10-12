@@ -434,3 +434,4 @@ EOF
 test_expect_success 'notes tree still has fanout after merge (m)' 'verify_fanout m'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

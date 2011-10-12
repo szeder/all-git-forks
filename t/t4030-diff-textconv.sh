@@ -124,3 +124,4 @@ test_expect_success 'textconv does not act on symlinks' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

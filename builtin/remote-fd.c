@@ -77,3 +77,4 @@ int cmd_remote_fd(int argc, const char **argv, const char *prefix)
 	command_loop(input_fd, output_fd);
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

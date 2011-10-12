@@ -317,3 +317,4 @@ test_expect_success 'Abort merge with pre- and post-merge index changes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

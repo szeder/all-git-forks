@@ -256,3 +256,4 @@ test_expect_success 'Blame output (complex mapping)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

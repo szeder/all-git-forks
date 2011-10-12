@@ -284,3 +284,4 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		die("Unable to write new index file");
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

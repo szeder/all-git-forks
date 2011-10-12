@@ -787,3 +787,4 @@ const char *resolve_gitdir(const char *suspect)
 		return suspect;
 	return read_gitfile(suspect);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

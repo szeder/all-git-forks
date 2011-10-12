@@ -23,3 +23,4 @@ set env(PATH) "$bindir;$env(PATH)"
 unset bindir
 
 source [file join [file dirname [info script]] git-gui.tcl]
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

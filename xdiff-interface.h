@@ -26,3 +26,4 @@ extern int git_xmerge_config(const char *var, const char *value, void *cb);
 extern int git_xmerge_style;
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

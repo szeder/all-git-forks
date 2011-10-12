@@ -36,3 +36,4 @@ test_expect_success 'repack does not lose detached HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

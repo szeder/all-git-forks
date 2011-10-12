@@ -76,3 +76,4 @@ test_expect_success 'not only --stdin' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

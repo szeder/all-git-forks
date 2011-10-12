@@ -57,3 +57,4 @@ test_expect_success 'fetch from git mirror and partial-rebuild' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

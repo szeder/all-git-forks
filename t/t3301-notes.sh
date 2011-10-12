@@ -1223,3 +1223,4 @@ test_expect_success 'git notes get-ref (--ref)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

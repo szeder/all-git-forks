@@ -168,3 +168,4 @@ test_expect_success 'diff --cached' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

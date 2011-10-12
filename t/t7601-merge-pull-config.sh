@@ -154,3 +154,4 @@ test_expect_success 'merge errors out on invalid strategy' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

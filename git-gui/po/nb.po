@@ -2472,3 +2472,4 @@ msgstr "Bruk tynne pakker (for tregere nettverkstilkoblinger)"
 #: lib/transport.tcl:168
 msgid "Include tags"
 msgstr "Inkluder tagger"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

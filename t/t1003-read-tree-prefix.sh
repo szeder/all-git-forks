@@ -25,3 +25,4 @@ test_expect_success 'read-tree --prefix' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

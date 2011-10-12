@@ -19,3 +19,4 @@ PATH='@@BUILD_DIR@@/bin-wrappers:'"$PATH"
 export GIT_EXEC_PATH GITPERLLIB PATH
 
 exec "${GIT_EXEC_PATH}/@@PROG@@" "$@"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

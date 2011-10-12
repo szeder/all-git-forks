@@ -93,3 +93,4 @@ test_expect_success 'recursive merge between F and G, causes segfault' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

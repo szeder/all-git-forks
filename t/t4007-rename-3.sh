@@ -88,3 +88,4 @@ test_expect_success 'rename, limited to a subtree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

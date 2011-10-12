@@ -91,3 +91,4 @@ test_expect_success 'diff --no-index with binary creation' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

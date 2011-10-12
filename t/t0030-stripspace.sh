@@ -398,3 +398,4 @@ test_expect_success 'strip comments, too' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -352,3 +352,4 @@ test_expect_success 'combined (with submodule)' '
 
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

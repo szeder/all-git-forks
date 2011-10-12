@@ -98,3 +98,4 @@ test_expect_success 'merge-one-file respects core.worktree' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

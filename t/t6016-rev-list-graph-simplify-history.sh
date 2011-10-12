@@ -265,3 +265,4 @@ test_expect_success '--graph --boundary ^C3' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

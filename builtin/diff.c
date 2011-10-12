@@ -417,3 +417,4 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		refresh_index_quietly();
 	return result;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

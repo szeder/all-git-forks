@@ -6,3 +6,4 @@
 <tag <GREEN>newattr="newvalue"<RESET>><GREEN>added<RESET> content</tag>
 <tag attr=<RED>"value"<RESET><GREEN>"newvalue"<RESET>><RED>content<RESET><GREEN>changed<RESET></tag>
 <<RED>tag<RESET><GREEN>newtag<RESET>>content <RED>&entity;<RESET><GREEN>&newentity;<RESET><<RED>/tag<RESET><GREEN>/newtag<RESET>>
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

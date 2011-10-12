@@ -22,3 +22,4 @@ test_expect_success 'checkout-index -h in broken repository' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

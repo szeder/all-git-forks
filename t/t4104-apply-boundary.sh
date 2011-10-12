@@ -144,3 +144,4 @@ test_expect_success 'apply patch with 3 context lines matching at end' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

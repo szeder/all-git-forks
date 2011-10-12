@@ -88,3 +88,4 @@ test_expect_success 'apply A->B (rename), C->A (rename), A->A -- should pass.' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

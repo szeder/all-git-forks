@@ -1218,3 +1218,4 @@ void diff_tree_combined_merge(const unsigned char *sha1,
 			parents->item->object.sha1);
 	diff_tree_combined(sha1, parent, num_parent, dense, rev);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

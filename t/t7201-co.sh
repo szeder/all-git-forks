@@ -671,3 +671,4 @@ test_expect_success 'custom merge driver with checkout -m' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

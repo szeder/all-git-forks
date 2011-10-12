@@ -452,3 +452,4 @@ test_expect_success 'merge-msg lots of commits' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

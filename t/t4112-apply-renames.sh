@@ -142,3 +142,4 @@ test_expect_success 'check rename/copy patch' 'git apply --check patch'
 test_expect_success 'apply rename/copy patch' 'git apply --index patch'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

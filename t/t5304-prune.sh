@@ -196,3 +196,4 @@ test_expect_success 'gc: prune old objects after local clone' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

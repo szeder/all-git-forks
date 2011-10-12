@@ -83,3 +83,4 @@ test_expect_success PERL 'a vendor branch whose tag has been removed' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

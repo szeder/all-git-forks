@@ -187,3 +187,4 @@ test_expect_success '--reset-author with CHERRY_PICK_HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

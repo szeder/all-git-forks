@@ -241,3 +241,4 @@ test_expect_success 'git pull --rebase against local branch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

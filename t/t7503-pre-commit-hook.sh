@@ -119,3 +119,4 @@ test_expect_success 'with failing hook requiring GIT_PREFIX' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

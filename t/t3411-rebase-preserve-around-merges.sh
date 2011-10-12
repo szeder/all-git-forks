@@ -72,3 +72,4 @@ test_expect_success 'rebase two levels of merge' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

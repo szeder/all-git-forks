@@ -103,3 +103,4 @@ test_expect_success 'rebase -i --onto master...side' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

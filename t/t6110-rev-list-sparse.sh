@@ -18,3 +18,4 @@ test_expect_success 'rev-list --first-parent --boundary' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

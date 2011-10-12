@@ -1274,3 +1274,4 @@ msgstr "Gitk: argomenti errati:"
 #: gitk:11587
 msgid "Command line"
 msgstr "Linea di comando"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -10,3 +10,4 @@ test_expect_success 'load svn dumpfile'  '
 test_expect_success 'clone using git svn' 'git svn clone -s "$svnrepo" x'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

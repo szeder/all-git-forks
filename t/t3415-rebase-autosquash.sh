@@ -194,3 +194,4 @@ test_expect_success 'use commit --squash' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

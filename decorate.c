@@ -86,3 +86,4 @@ void *lookup_decoration(struct decoration *n, const struct object *obj)
 			j = 0;
 	}
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

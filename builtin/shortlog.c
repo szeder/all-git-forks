@@ -351,3 +351,4 @@ void shortlog_output(struct shortlog *log)
 	string_list_clear(&log->list, 1);
 	clear_mailmap(&log->mailmap);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

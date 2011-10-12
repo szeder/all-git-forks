@@ -53,3 +53,4 @@ test_expect_success SYMLINKS 'check result' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

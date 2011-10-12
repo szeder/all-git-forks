@@ -487,3 +487,4 @@ test_expect_success TTY 'external command pagers override sub-commands' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

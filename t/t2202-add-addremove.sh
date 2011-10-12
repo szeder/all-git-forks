@@ -42,3 +42,4 @@ test_expect_success 'git add --all' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

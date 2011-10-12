@@ -84,3 +84,4 @@ test_expect_success SYMLINKS 'moves and renames' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

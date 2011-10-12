@@ -155,3 +155,4 @@ test_expect_success 'diff -U0' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

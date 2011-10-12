@@ -23,3 +23,4 @@ test_expect_success 'empty index file' '
 
 test_done
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

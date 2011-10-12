@@ -134,3 +134,4 @@ diff.tool::
 	"kompare".  Any other value is treated as a custom diff tool,
 	and there must be a corresponding `difftool.<tool>.cmd`
 	option.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

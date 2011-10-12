@@ -140,3 +140,4 @@ test_expect_success 'quickfetch should handle ~1000 refs (on Windows)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

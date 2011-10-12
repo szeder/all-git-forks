@@ -65,3 +65,4 @@ int try_merge_command(const char *strategy, size_t xopts_nr,
 		const char *head_arg, struct commit_list *remotes);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

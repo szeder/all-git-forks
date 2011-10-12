@@ -84,3 +84,4 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 	*dst_size = out - dst_buf;
 	return dst_buf;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

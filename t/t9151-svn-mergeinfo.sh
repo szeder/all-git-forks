@@ -55,3 +55,4 @@ test_expect_failure 'everything got merged in the end' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -84,3 +84,4 @@ int cmd_prune_packed(int argc, const char **argv, const char *prefix)
 	prune_packed_objects(opts);
 	return 0;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

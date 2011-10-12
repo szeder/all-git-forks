@@ -487,3 +487,4 @@ test_expect_success 'same, but with CR-LF line endings && cr-at-eol unset' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

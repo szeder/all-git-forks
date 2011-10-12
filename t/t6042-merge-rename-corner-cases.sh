@@ -576,3 +576,4 @@ test_expect_success 'rename/rename/add-dest merge still knows about conflicting 
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

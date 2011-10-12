@@ -79,3 +79,4 @@ static int handle_remote_ref(const char *refname,
 	for_each_remote_ref(handle_remote_ref, &output);
 	printf("%s", output.buf);
 ----
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -143,3 +143,5 @@ echo O=$(git describe --always master)
 git log --first-parent --oneline --reverse ^$O master
 echo
 git shortlog --no-merges ^$O master
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

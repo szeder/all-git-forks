@@ -843,3 +843,4 @@ test -d "$rewritten" || test -n "$force_rebase" || skip_unnecessary_picks
 output git checkout $onto || die_abort "could not detach HEAD"
 git update-ref ORIG_HEAD $orig_head
 do_rest
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -20,3 +20,4 @@ test_expect_success 'checkout master from invalid HEAD' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

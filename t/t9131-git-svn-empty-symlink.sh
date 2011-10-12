@@ -108,3 +108,4 @@ test_expect_success '"bar" does not become a symlink' '! test -L z/bar'
 
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

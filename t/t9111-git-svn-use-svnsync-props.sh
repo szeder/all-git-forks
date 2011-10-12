@@ -49,3 +49,4 @@ test_expect_success 'verify metadata for /dir' "
 	"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

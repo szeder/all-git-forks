@@ -38,3 +38,4 @@ test_expect_success 'ls-files -i lists only tracked-but-ignored files' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

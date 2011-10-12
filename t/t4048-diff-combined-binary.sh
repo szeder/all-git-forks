@@ -210,3 +210,4 @@ test_expect_success 'diff --cc respects textconv on worktree file' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

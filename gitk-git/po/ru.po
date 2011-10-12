@@ -1083,3 +1083,4 @@ msgstr "Неправильные аргументы для gitk:"
 msgid "Command line"
 msgstr "Командная строка"
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

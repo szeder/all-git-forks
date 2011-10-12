@@ -96,3 +96,4 @@ test_expect_success 'updating remote name updates that remote' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

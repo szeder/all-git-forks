@@ -644,3 +644,4 @@ test_expect_success 'amending no-ff merge commit' '
 test_debug 'git log --graph --decorate --oneline --all'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

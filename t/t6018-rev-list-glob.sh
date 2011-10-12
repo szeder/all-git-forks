@@ -264,3 +264,4 @@ test_expect_failure 'shortlog --glob is not confused by option-like argument' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

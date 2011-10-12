@@ -108,3 +108,4 @@ int cmd_merge_index(int argc, const char **argv, const char *prefix)
 		die("merge program failed");
 	return err;
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

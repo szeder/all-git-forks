@@ -1453,3 +1453,4 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	} else
 		return suggest_conflicts(option_renormalize);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

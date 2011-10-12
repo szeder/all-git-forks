@@ -94,3 +94,4 @@ test_expect_success SYMLINKS \
      test -f tmp-path1/file1'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

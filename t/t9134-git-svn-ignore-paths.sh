@@ -145,3 +145,4 @@ test_expect_success 'update git svn-cloned repo again (option ignore)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

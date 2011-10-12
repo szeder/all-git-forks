@@ -93,3 +93,4 @@ test_expect_success 'verify merge commit message' "
 	"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

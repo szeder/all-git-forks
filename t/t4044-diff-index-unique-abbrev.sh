@@ -33,3 +33,4 @@ test_expect_success 'diff does not produce ambiguous index line' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -62,3 +62,4 @@ test_expect_success 'can "commit -a" with an i-t-a entry' '
 
 test_done
 
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

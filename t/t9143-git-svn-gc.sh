@@ -49,3 +49,4 @@ test_expect_success 'git svn gc does not change unhandled.log files' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

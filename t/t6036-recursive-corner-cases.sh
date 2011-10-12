@@ -774,3 +774,4 @@ test_expect_success 'virtual merge base handles rename/rename(1to2)/add-dest' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

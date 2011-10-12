@@ -411,3 +411,4 @@ ftp> cp -r .git /home/user/myproject.git
 +
 <1> make sure your info/refs and objects/info/packs are up-to-date
 <2> upload to public HTTP server hosted by your ISP.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

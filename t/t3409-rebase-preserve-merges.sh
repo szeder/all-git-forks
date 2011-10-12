@@ -150,3 +150,4 @@ test_expect_success 'rebase -p works when base inside second parent' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

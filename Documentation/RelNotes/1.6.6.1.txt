@@ -35,3 +35,4 @@ Fixes since v1.6.6
  * "git checkout -m some-branch" while on an unborn branch crashed.
 
 Other minor documentation updates are included.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

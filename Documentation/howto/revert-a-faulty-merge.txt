@@ -267,3 +267,4 @@ and mainline's history will look like this:
  P---o---o---M---x---x---W---x---M2
   \         /
    A---B---C
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -90,3 +90,4 @@ test_expect_success 'diagnose truncated file' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

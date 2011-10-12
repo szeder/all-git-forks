@@ -1276,3 +1276,4 @@ msgstr "Falsche Kommandozeilen-Parameter für gitk:"
 #: gitk:11587
 msgid "Command line"
 msgstr "Kommandozeile"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

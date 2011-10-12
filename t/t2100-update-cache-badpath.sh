@@ -59,3 +59,4 @@ do
 	    "test_must_fail git update-index --add -- $p"
 done
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

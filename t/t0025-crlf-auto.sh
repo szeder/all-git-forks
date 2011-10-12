@@ -153,3 +153,4 @@ test_expect_success 'eol=crlf _does_ normalize binary files' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

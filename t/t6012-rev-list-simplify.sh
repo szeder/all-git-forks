@@ -88,3 +88,4 @@ check_result 'I B A' -- file
 check_result 'I B A' --topo-order -- file
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

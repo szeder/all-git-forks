@@ -102,3 +102,4 @@ test_expect_success 'dcommit a merge at the top of a stack' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

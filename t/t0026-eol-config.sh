@@ -81,3 +81,4 @@ test_expect_success 'autocrlf=true overrides unset eol' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

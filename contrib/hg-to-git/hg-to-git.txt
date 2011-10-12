@@ -19,3 +19,4 @@ are not stable across different repositories the hg-to-git.py state file
 is forever tied to one hg repository.
 
 Stelian Pop <stelian@popies.net>
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

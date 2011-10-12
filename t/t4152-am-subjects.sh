@@ -75,3 +75,4 @@ test_expect_success 'multiline subject preserved (format-patch -k | am -k)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -176,3 +176,4 @@ test_expect_success 'bare repository: test info/attributes' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

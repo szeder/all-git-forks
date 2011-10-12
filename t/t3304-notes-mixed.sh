@@ -204,3 +204,4 @@ test_expect_success "verify contents of non-notes after git-notes" '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

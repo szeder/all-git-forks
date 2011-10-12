@@ -96,3 +96,4 @@ int notes_merge_commit(struct notes_merge_options *o,
 int notes_merge_abort(struct notes_merge_options *o);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

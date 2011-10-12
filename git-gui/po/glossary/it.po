@@ -182,3 +182,4 @@ msgstr "verifica, verificare"
 #. "The tree of actual checked out files."
 msgid "working copy, working tree"
 msgstr "directory di lavoro, copia di lavoro"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

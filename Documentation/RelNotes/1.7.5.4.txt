@@ -19,3 +19,4 @@ Fixes since v1.7.5.3
  * "git rerere" did not diagnose a corrupt MERGE_RR file in some cases.
 
 And other minor fixes and documentation updates.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

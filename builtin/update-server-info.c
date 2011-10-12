@@ -22,3 +22,4 @@ int cmd_update_server_info(int argc, const char **argv, const char *prefix)
 
 	return !!update_server_info(force);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

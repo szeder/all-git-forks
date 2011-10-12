@@ -32,3 +32,4 @@ if (argv.length == 1) {
 	lnk.WorkingDirectory = dir_path;
 	lnk.Save();
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

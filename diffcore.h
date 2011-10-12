@@ -130,3 +130,4 @@ extern int diffcore_count_changes(struct diff_filespec *src,
 				  unsigned long *literal_added);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

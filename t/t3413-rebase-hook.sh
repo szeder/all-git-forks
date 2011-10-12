@@ -144,3 +144,4 @@ test_expect_success 'rebase --no-verify overrides pre-rebase (2)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

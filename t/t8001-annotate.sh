@@ -14,3 +14,4 @@ test_expect_success 'Annotating an old revision works' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

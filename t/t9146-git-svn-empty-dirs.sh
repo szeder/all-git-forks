@@ -157,3 +157,4 @@ test_expect_success 'git svn gc-ed files work' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -119,3 +119,4 @@ setup_environment();
 # allowing the caller of git difftool better handling of failures.
 my $rc = system(generate_command());
 exit($rc | ($rc >> 8));
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

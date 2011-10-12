@@ -662,3 +662,4 @@ int offset_1st_component(const char *path)
 		return 2 + is_dir_sep(path[2]);
 	return is_dir_sep(path[0]);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

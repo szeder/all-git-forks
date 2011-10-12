@@ -49,3 +49,4 @@ test_expect_success 'index lockfile was removed' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

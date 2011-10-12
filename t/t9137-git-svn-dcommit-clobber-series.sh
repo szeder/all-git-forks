@@ -61,3 +61,4 @@ test_expect_success 'attempt to dcommit with a dirty index' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

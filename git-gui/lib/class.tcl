@@ -191,3 +191,4 @@ auto_mkindex_parser::command constructor {name args} {
 		[format { [list source [file join $dir %s]]} \
 		[file split $scriptFile]] "\n"
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -415,3 +415,4 @@ test_expect_success \
      grep "SHA1 COLLISION FOUND" msg'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

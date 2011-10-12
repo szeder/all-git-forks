@@ -35,3 +35,4 @@ test_expect_success POSIXPERM 'run_command reports EACCES' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

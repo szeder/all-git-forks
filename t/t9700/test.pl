@@ -127,3 +127,4 @@ printf "1..%d\n", Test::More->builder->current_test;
 
 my $is_passing = eval { Test::More->is_passing };
 exit($is_passing ? 0 : 1) unless $@ =~ /Can't locate object method/;
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

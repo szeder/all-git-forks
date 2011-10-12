@@ -33,3 +33,4 @@ test_expect_success PERL 'set up terminal for tests' '
 		}
 	fi
 '
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

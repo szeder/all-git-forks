@@ -103,3 +103,4 @@ test_expect_success 'resolve, continue the rebase and dcommit' "
 	"
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

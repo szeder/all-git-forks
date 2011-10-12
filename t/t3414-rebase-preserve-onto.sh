@@ -78,3 +78,4 @@ test_expect_success 'rebase from C1 onto H1' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

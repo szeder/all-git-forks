@@ -189,3 +189,4 @@ test_expect_success 'Test delete/normalize conflict' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

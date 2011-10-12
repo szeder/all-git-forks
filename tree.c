@@ -241,3 +241,4 @@ struct tree *parse_tree_indirect(const unsigned char *sha1)
 			parse_object(obj->sha1);
 	} while (1);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

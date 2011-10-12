@@ -64,3 +64,4 @@ test_expect_success 'read standard-format objects deflated with smaller window b
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

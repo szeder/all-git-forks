@@ -43,3 +43,4 @@ Fixes since v1.5.3.6
    file called "HEAD" in your work tree.
 
 Also it contains updates to the user manual and documentation.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

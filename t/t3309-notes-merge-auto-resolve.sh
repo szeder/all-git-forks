@@ -645,3 +645,4 @@ test_expect_success 'merge y into z with "cat_sort_uniq" strategy => Non-conflic
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

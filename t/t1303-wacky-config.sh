@@ -48,3 +48,4 @@ test_expect_success 'do not crash on special long config line' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

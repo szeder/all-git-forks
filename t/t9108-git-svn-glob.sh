@@ -109,3 +109,4 @@ test_expect_success 'test disallow multi-globs' '
 	'
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

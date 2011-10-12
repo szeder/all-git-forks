@@ -215,3 +215,4 @@ test_expect_success 'subdirectory ignore (l1)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -507,3 +507,4 @@ test_expect_success 'New CRLF file gets LF in repo' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -107,3 +107,4 @@ test_expect_success 'switching diff driver produces correct results' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

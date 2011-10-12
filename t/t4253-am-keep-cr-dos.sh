@@ -94,3 +94,4 @@ test_expect_success 'am with unix files config am.keepcr overriden by --no-keep-
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

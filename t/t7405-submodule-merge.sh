@@ -229,3 +229,4 @@ test_expect_success 'merging with a modify/modify conflict between merge bases' 
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

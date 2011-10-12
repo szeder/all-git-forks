@@ -195,3 +195,4 @@ this release, unless otherwise noted.
   - rebasing (without -m) a series that changes a symlink to a directory
     in the middle of a path confused git-apply greatly and refused to
     operate.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

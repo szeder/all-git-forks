@@ -18,3 +18,4 @@ int notes_cache_put(struct notes_cache *c, unsigned char sha1[20],
 		    const char *data, size_t size);
 
 #endif /* NOTES_CACHE_H */
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

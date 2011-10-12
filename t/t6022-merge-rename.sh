@@ -885,3 +885,4 @@ test_expect_success 'no spurious "refusing to lose untracked" message' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

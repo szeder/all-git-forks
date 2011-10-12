@@ -24,3 +24,4 @@ test_expect_success 'git apply --numstat - < patch patch' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

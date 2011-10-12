@@ -183,3 +183,4 @@ test_expect_success 'patch5 fails (--no-ignore-whitespace)' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

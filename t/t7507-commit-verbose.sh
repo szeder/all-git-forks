@@ -71,3 +71,4 @@ test_expect_failure 'diff in message is retained with -v' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

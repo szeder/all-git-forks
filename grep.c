@@ -1186,3 +1186,4 @@ int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsigned long
 
 	return grep_buffer_1(opt, name, buf, size, 0);
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

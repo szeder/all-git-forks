@@ -49,3 +49,4 @@ test_expect_success 'rev-list --objects with pathspecs and copied files' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

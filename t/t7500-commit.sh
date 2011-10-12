@@ -323,3 +323,4 @@ test_expect_success 'invalid message options when using --fixup' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

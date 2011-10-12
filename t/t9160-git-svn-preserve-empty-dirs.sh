@@ -151,3 +151,4 @@ test_expect_success 'placeholder list persistence during subsqeuent rebase' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

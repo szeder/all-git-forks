@@ -335,3 +335,4 @@ test_expect_success 'use the same checkout for Git and CVS' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

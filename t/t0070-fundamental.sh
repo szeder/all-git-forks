@@ -26,3 +26,4 @@ test_expect_success POSIXPERM 'mktemp to unwritable directory prints filename' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

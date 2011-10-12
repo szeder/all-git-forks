@@ -762,3 +762,4 @@ void rerere_clear(struct string_list *merge_rr)
 	}
 	unlink_or_warn(git_path("MERGE_RR"));
 }
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

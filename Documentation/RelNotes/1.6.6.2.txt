@@ -44,3 +44,4 @@ Fixes since v1.6.6.1
  * "git status" shouldn't require an write access to the repository.
 
 Other minor documentation updates are included.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -158,3 +158,4 @@ Pack file entry: <+
     corresponding packfile.
 
     20-byte SHA1-checksum of all of the above.
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

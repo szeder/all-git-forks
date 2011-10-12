@@ -115,3 +115,4 @@ test_expect_success SYMLINKS 'symlinks do not respect userdiff config by path' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

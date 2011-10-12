@@ -70,3 +70,4 @@ diff --git a/git-pull-script b/git-pull-script
  
  git-resolve-script \
  	"$(cat "$GIT_DIR"/HEAD)" \
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

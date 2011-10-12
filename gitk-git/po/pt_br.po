@@ -1275,3 +1275,4 @@ msgstr "Argumentos incorretos para o gitk:"
 #: gitk:11604
 msgid "Command line"
 msgstr "Linha de comando"
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

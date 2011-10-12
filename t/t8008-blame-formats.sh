@@ -88,3 +88,4 @@ test_expect_success 'blame --line-porcelain output' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

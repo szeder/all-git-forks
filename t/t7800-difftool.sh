@@ -266,3 +266,4 @@ test_expect_success PERL 'difftool --extcmd cat arg2' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

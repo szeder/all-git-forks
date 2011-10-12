@@ -16,3 +16,4 @@ extern void *add_decoration(struct decoration *n, const struct object *obj, void
 extern void *lookup_decoration(struct decoration *n, const struct object *obj);
 
 #endif
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

@@ -461,3 +461,4 @@ test_expect_success SANITY 'git clean -d with an unreadable empty directory' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

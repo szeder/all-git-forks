@@ -43,3 +43,4 @@ test_expect_success 'git show -C -C report renames' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

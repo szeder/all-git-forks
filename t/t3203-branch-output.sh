@@ -107,3 +107,4 @@ test_expect_success 'git branch shows detached HEAD properly' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

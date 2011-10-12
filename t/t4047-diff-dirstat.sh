@@ -977,3 +977,4 @@ test_expect_success 'diff.dirstat=future_param,0,lines should warn, but still wo
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl

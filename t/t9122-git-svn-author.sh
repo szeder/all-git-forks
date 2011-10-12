@@ -82,3 +82,4 @@ test_expect_success 'interact with it via git svn' '
 '
 
 test_done
+sdlkfjgdhslkgjhsdfglkjsdhglksdjfhgsdlkfjghl
