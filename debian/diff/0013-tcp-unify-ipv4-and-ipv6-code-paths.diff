@@ -1,7 +1,7 @@
-From 362dda25dfccf619f1c278b237c06a7321a0e3cb Mon Sep 17 00:00:00 2001
+From 9d6c6b9284cf18b0859d3e2d0744859b313cab1c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: [PATCH 11/15] tcp: unify ipv4 and ipv6 code paths
+Subject: tcp: unify ipv4 and ipv6 code paths
 
 The new DNS API abstracts away differences between the gethostbyname-
 and getaddrinfo-centric interfaces for looking up a host, making the
@@ -44,7 +44,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index ac7b9c9..dd99db0 100644
+index 9bbac6b..e32a7bf 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1519,6 +1519,11 @@ ifdef NO_TRUSTABLE_FILEMODE
@@ -306,12 +306,12 @@ index fff37f8..18952fd 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
--
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
+-
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,
@@ -508,5 +508,5 @@ index fff37f8..18952fd 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.6.3
+1.7.7
 

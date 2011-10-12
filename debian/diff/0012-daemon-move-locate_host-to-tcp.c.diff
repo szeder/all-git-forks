@@ -1,7 +1,7 @@
-From bd1e51fb370934dde2fc3e799f810b15a371633d Mon Sep 17 00:00:00 2001
+From b43a6e624d94bb69efb75043099bb3e126714dbb Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: [PATCH 10/15] daemon: move locate_host to tcp.c
+Subject: daemon: move locate_host to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -15,7 +15,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 8050857..ac7b9c9 100644
+index 0a991f2..9bbac6b 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -2004,7 +2004,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.6.3
+1.7.7
 

@@ -4,6 +4,17 @@ git (1:1.7.7-1.1) unstable; urgency=low
   * debian/git.postinst: check if /usr/share/doc/git/contrib/hooks is a
     symlink before changing it to one (thx Євгеній Мещеряков; closes:
     #645005).
+  * debian/diff:
+    * 0001-ident-check-etc-mailname-if-author-email-is-unknown.diff,
+      0007-Makefile-do-not-use-setgid-bit-on-...diff: remove; obsolete.
+    * 0002...0006, 0008...0015: rename to 0005-*, ..., 0017-*.
+    * 0001...0004: new from the upstream 'master' branch:
+      * ident: check /etc/mailname if email is unknown
+      * ident: do not retrieve default ident when unnecessary
+      * init --shared: do not set setgid bit on directories on
+        GNU/kFreeBSD
+      * Makefile: fix permissions of mergetools/ when building from
+        source extracted with permissive umask
 
   [ Simon Chopin ]
   * debian/git.postinst: fix fresh install contrib/hooks cleaning

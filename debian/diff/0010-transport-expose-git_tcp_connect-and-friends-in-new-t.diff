@@ -1,8 +1,7 @@
-From 037fc0b479a7c96650b75d9a1b21286dad956dec Mon Sep 17 00:00:00 2001
+From c10b311a74e1d944b7ca9a0aaee144354992a2b7 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: [PATCH 08/15] transport: expose git_tcp_connect and friends in new
- tcp.h
+Subject: transport: expose git_tcp_connect and friends in new tcp.h
 
 As preparation for adding functionality to them, move the functions
 git_tcp_connect and git_proxy_connect used to resolve a hostname and
@@ -19,7 +18,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index 924749e..8050857 100644
+index 9ad15bf..0a991f2 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -681,6 +681,7 @@ LIB_OBJS += string-list.o
@@ -606,5 +605,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.6.3
+1.7.7
 

@@ -1,7 +1,7 @@
-From 5455a2af4703a857f3a76d007b2a7661b84f3d30 Mon Sep 17 00:00:00 2001
+From 40a6291a2f37c46c78f7922ce095ee0dfeb29ca5 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: [PATCH 14/15] transport: optionally honor DNS SRV records
+Subject: transport: optionally honor DNS SRV records
 
 As rfc2782 explains, SRV records allow administrators "to use serveral
 servers for a single domain, to move services from host to host with
@@ -29,13 +29,13 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  Makefile |   10 ++
  srv.c    |  308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  srv.h    |   15 +++
- tcp.c    |  104 +++++++++++++++------
- 4 files changed, 407 insertions(+), 30 deletions(-)
+ tcp.c    |  100 +++++++++++++++------
+ 4 files changed, 405 insertions(+), 28 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index dd99db0..280fce0 100644
+index e32a7bf..9afdcf2 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -128,6 +128,10 @@ all::
@@ -490,7 +490,6 @@ index d0cd709..7a8a244 100644
  		if (flags & CONNECT_VERBOSE)
 -			fprintf(stderr, "%s ", dns_name(&i));
 -		break;
--	}
 +			fprintf(stderr, "done.\nConnecting to %s (port %s) ... ",
 +					hosts[j].hostname, hosts[j].port);
 +
@@ -515,15 +514,16 @@ index d0cd709..7a8a244 100644
 +				fprintf(stderr, "%s ", dns_name(&i));
 +			break;
 +		}
- 
--	dns_free(ai);
++
 +		dns_free(ai);
- 
--	if (sockfd < 0)
++
 +		if (sockfd >= 0)
 +			break;
-+	}
-+
+ 	}
+ 
+-	dns_free(ai);
+-
+-	if (sockfd < 0)
 +	if (gai || sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
  
@@ -541,5 +541,5 @@ index d0cd709..7a8a244 100644
  }
  
 -- 
-1.7.6.3
+1.7.7
 

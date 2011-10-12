@@ -1,8 +1,7 @@
-From 10f71c7ddb3409c6ee95cf73f7ceba85b92a9f73 Mon Sep 17 00:00:00 2001
+From dcced988e2b0da55e7ef0b10adb9277b3302da82 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
-Subject: [PATCH 04/15] pre-rebase hook: capture documentation in a <<here
- document
+Subject: pre-rebase hook: capture documentation in a <<here document
 
 With this change, the sample hook passes a syntax check (sh -n).
 
@@ -30,5 +29,5 @@ index 053f111..7fccd3d 100755
 +
 +DOC_END
 -- 
-1.7.6.3
+1.7.7
 

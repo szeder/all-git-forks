@@ -1,12 +1,12 @@
-From b167024db1d9832aceca55a9bd59a3032324ff17 Mon Sep 17 00:00:00 2001
+From 300bc0d1a95044c34ed14578662e56af1f7ec658 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
-Subject: [PATCH 12/15] daemon: check for errors retrieving IP address
+Subject: daemon: check for errors retrieving IP address
 
 To retrieve a canonical IP address for possible use in a
 --interpolated-path=%IP string, the git daemon calls inet_ntop to fill
 a buffer of size HOST_NAME_MAX+1, ignoring errors, and copies the
-reuslt.  If the address has length > HOST_NAME_MAX (which was as low
+result.  If the address has length > HOST_NAME_MAX (which was as low
 as 8 in ancient times) then inet_ntop could error out, leading the git
 daemon to copy uninitialized data.
 
@@ -116,5 +116,5 @@ index 18952fd..d0cd709 100644
  	}
  
 -- 
-1.7.6.3
+1.7.7
 

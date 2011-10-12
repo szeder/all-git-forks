@@ -1,7 +1,7 @@
-From 647b18ceee329650f3ac3227c9c5552b787a5af0 Mon Sep 17 00:00:00 2001
+From c869e37b65c73b2b2c126be855808422a85395ed Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:38:45 -0500
-Subject: [PATCH 09/15] daemon: make host resolution into a separate function
+Subject: daemon: make host resolution into a separate function
 
 For each incoming connection, the git daemon runs a DNS query using
 the client-supplied hostname parameter, to determine the canonical
@@ -147,5 +147,5 @@ index 4c8346d..3958cb6 100644
  
  
 -- 
-1.7.6.3
+1.7.7
 
