@@ -691,42 +691,34 @@ static int format_todo(struct strbuf *buf, struct replay_insn_list *todo_list)
 	return 0;
 }
 
-static int parse_insn_line(char *start, struct replay_insn_list *item)
+static int parse_insn_line(char *bol, char *eol, struct replay_insn_list *item)
 {
 	unsigned char commit_sha1[20];
-	char sha1_abbrev[40];
-	const char *p, *q;
+	char *end_of_object_name;
+	int saved, status;
 
-	p = start;
-	if (!prefixcmp(start, "pick ")) {
+	if (!prefixcmp(bol, "pick ")) {
 		item->action = REPLAY_PICK;
-		p += strlen("pick ");
-	} else if (!prefixcmp(start, "revert ")) {
+		bol += strlen("pick ");
+	} else if (!prefixcmp(bol, "revert ")) {
 		item->action = REPLAY_REVERT;
-		p += strlen("revert ");
+		bol += strlen("revert ");
 	} else {
-		size_t len = strchrnul(p, '\n') - p;
-		if (len > 255)
-			len = 255;
-		return error(_("Unrecognized action: %.*s"), (int)len, p);
+		return error(_("Unrecognized action: %s"), bol);
 	}
 
-	q = p + strcspn(p, " \n");
-	if (q - p + 1 > sizeof(sha1_abbrev)) {
-		size_t len = q - p;
-		if (len > 255)
-			len = 255;
-		return error(_("Object name too large: %.*s"), (int)len, p);
-	}
-	memcpy(sha1_abbrev, p, q - p);
-	sha1_abbrev[q - p] = '\0';
+	end_of_object_name = bol + strcspn(bol, " \n");
+	saved = *end_of_object_name;
+	*end_of_object_name = '\0';
+	status = get_sha1(bol, commit_sha1);
+	*end_of_object_name = saved;
 
-	if (get_sha1(sha1_abbrev, commit_sha1) < 0)
-		return error(_("Malformed object name: %s"), sha1_abbrev);
+	if (status < 0)
+		return error(_("Malformed object name: %s"), bol);
 
 	item->operand = lookup_commit_reference(commit_sha1);
 	if (!item->operand)
-		return error(_("Not a valid commit: %s"), sha1_abbrev);
+		return error(_("Not a valid commit: %s"), bol);
 
 	item->next = NULL;
 	return 0;
@@ -740,12 +732,11 @@ static int parse_insn_buffer(char *buf, struct replay_insn_list **todo_list)
 	int i;
 
 	for (i = 1; *p; i++) {
-		if (parse_insn_line(p, &item) < 0)
+		char *eol = strchrnul(p, '\n');
+		if (parse_insn_line(p, eol, &item) < 0)
 			return error(_("on line %d."), i);
 		next = replay_insn_list_append(item.action, item.operand, next);
-		p = strchrnul(p, '\n');
-		if (*p)
-			p++;
+		p = *eol ? eol + 1 : eol;
 	}
 	if (!*todo_list)
 		return error(_("No commits parsed."));
