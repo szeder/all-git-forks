@@ -994,12 +994,34 @@ const char *ref_fetch_rules[] = {
 	NULL
 };
 
+static int refname_ok_at_root_level(const char *str, int len)
+{
+	int seen_non_root_char = 0;
+
+	while (len--) {
+		char ch = *str++;
+
+		if (ch == '/')
+			return 1;
+		/*
+		 * Only accept likes of .git/HEAD, .git/MERGE_HEAD at
+		 * the root level as a ref.
+		 */
+		if (ch != '_' && (ch < 'A' || 'Z' < ch))
+			seen_non_root_char = 1;
+	}
+	return !seen_non_root_char;
+}
+
 int refname_match(const char *abbrev_name, const char *full_name, const char **rules)
 {
 	const char **p;
 	const int abbrev_name_len = strlen(abbrev_name);
 
 	for (p = rules; *p; p++) {
+		if (p == rules &&
+		    !refname_ok_at_root_level(abbrev_name, abbrev_name_len))
+			continue;
 		if (!strcmp(full_name, mkpath(*p, abbrev_name_len, abbrev_name))) {
 			return 1;
 		}
@@ -1100,6 +1122,8 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 		unsigned char *this_result;
 		int flag;
 
+		if (p == ref_rev_parse_rules && !refname_ok_at_root_level(str, len))
+			continue;
 		this_result = refs_found ? sha1_from_ref : sha1;
 		mksnpath(fullref, sizeof(fullref), *p, len, str);
 		r = resolve_ref(fullref, this_result, 1, &flag);
@@ -1128,6 +1152,8 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
 		char path[PATH_MAX];
 		const char *ref, *it;
 
+		if (p == ref_rev_parse_rules && !refname_ok_at_root_level(str, len))
+			continue;
 		mksnpath(path, sizeof(path), *p, len, str);
 		ref = resolve_ref(path, hash, 1, NULL);
 		if (!ref)
@@ -2045,11 +2071,13 @@ char *shorten_unambiguous_ref(const char *ref, int strict)
 	/* buffer for scanf result, at most ref must fit */
 	short_name = xstrdup(ref);
 
-	/* skip first rule, it will always match */
-	for (i = nr_rules - 1; i > 0 ; --i) {
+	for (i = nr_rules - 1; i >= 0; i--) {
 		int j;
 		int rules_to_fail = i;
 		int short_name_len;
+
+		if (!i && !refname_ok_at_root_level(ref, strlen(ref)))
+			continue;
 
 		if (1 != sscanf(ref, scanf_fmts[i], short_name))
 			continue;
@@ -2074,6 +2102,10 @@ char *shorten_unambiguous_ref(const char *ref, int strict)
 
 			/* skip matched rule */
 			if (i == j)
+				continue;
+
+			if (!j &&
+			    !refname_ok_at_root_level(short_name, short_name_len))
 				continue;
 
 			/*
