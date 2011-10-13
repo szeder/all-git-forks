@@ -762,6 +762,7 @@ our @cgi_param_mapping = (
 	search_use_regexp => "sr",
 	ctag => "by_tag",
 	diff_style => "ds",
+	lines_around => "la",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -7390,12 +7391,15 @@ sub git_commitdiff {
 			@{$co{'parents'}} > 1 ? '--cc' : $co{'parent'} || '--root';
 	}
 
+	my $lines_around = $input_params{lines_around};
+
 	# read commitdiff
 	my $fd;
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
+            (defined $lines_around ? "--unified=$lines_around" : ()),
 			$hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
 
