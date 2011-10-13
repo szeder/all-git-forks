@@ -4832,7 +4832,9 @@ sub format_diff_chunk {
 		                 } @chunk[scalar @partial..scalar @chunk-1]),
 		                 "</div></div>");
 	} else {
-		return join '', ("<div class='chunk'><div style='old'>",
+		return join '', ("<div class='chunk'><div class='",
+		                 ($first_class eq 'add' ? 'new' : 'old'),
+		                 "'>",
 		                 @partial,
 		                 "</div></div>");
 	}
