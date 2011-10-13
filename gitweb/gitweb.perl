@@ -757,6 +757,7 @@ our @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 	ctag => "by_tag",
+	unified => "unified",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -7076,6 +7077,21 @@ sub git_blobdiff_plain {
 	git_blobdiff('plain');
 }
 
+sub diff_nav {
+	my ($value) = @_;
+
+	join ' ', ($cgi->start_form({ method => 'get' }),
+	           '(show',
+	           $cgi->hidden('p'),
+	           $cgi->hidden('a'),
+	           $cgi->hidden('h'),
+	           $cgi->hidden('hp'),
+	           $cgi->input({ type => 'text', size => 2, name => 'unified',
+	                         value => $value }),
+	           'lines around each change)',
+	           $cgi->end_form);
+}
+
 sub git_commitdiff {
 	my %params = @_;
 	my $format = $params{-format} || 'html';
@@ -7167,12 +7183,15 @@ sub git_commitdiff {
 			@{$co{'parents'}} > 1 ? '--cc' : $co{'parent'} || '--root';
 	}
 
+	my $num_lines = $input_params{unified};
+
 	# read commitdiff
 	my $fd;
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
+			(defined $num_lines ? "--unified=$num_lines" : ()),
 			$hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
 
@@ -7228,7 +7247,7 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav(defined $input_params{unified} ? $input_params{unified} : 3));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
