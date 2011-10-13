@@ -2235,25 +2235,25 @@ sub format_diff_line {
 		# combined diff
 		my $prefix = substr($line, 0, scalar @{$from->{'href'}});
 		if ($line =~ m/^\@{3}/) {
-			$diff_class = " chunk_header";
+			$diff_class = "chunk_header";
 		} elsif ($line =~ m/^\\/) {
-			$diff_class = " incomplete";
+			$diff_class = "incomplete";
 		} elsif ($prefix =~ tr/+/+/) {
-			$diff_class = " add";
+			$diff_class = "add";
 		} elsif ($prefix =~ tr/-/-/) {
-			$diff_class = " rem";
+			$diff_class = "rem";
 		}
 	} else {
 		# assume ordinary diff
 		my $char = substr($line, 0, 1);
 		if ($char eq '+') {
-			$diff_class = " add";
+			$diff_class = "add";
 		} elsif ($char eq '-') {
-			$diff_class = " rem";
+			$diff_class = "rem";
 		} elsif ($char eq '@') {
-			$diff_class = " chunk_header";
+			$diff_class = "chunk_header";
 		} elsif ($char eq "\\") {
-			$diff_class = " incomplete";
+			$diff_class = "incomplete";
 		}
 	}
 	$line = untabify($line);
@@ -2274,7 +2274,7 @@ sub format_diff_line {
 		}
 		$line = "<span class=\"chunk_info\">@@ $from_text $to_text @@</span>" .
 		        "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "<div class=\"diff$diff_class\">$line</div>\n";
+		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n";
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		my ($prefix, $ranges, $section) = $line =~ m/^(\@+) (.*?) \@+(.*)$/;
 		my (@from_text, @from_start, @from_nlines, $to_text, $to_start, $to_nlines);
@@ -2307,9 +2307,9 @@ sub format_diff_line {
 		}
 		$line .= " $prefix</span>" .
 		         "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "<div class=\"diff$diff_class\">$line</div>\n";
+		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n";
 	}
-	return "<div class=\"diff$diff_class\">" . esc_html($line, -nbsp=>1) . "</div>\n";
+	return $diff_class, "<div class=\"diff $diff_class\">" . esc_html($line, -nbsp=>1) . "</div>\n";
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -4826,8 +4826,30 @@ sub git_difftree_body {
 	print "</table>\n";
 }
 
+sub format_diff_chunk {
+	my @chunk = @_;
+
+	my $first_class = $chunk[0]->[0];
+	my @partial = map { $_->[1] } grep { $_->[0] eq $first_class } @chunk;
+
+	if (scalar @partial < scalar @chunk) {
+		return join '', ("<div class='chunk'><div class='old'>",
+		                 @partial,
+		                 "</div>",
+		                 "<div class='new'>",
+		                 (map {
+		                     $_->[1];
+		                 } @chunk[scalar @partial..scalar @chunk-1]),
+		                 "</div></div>");
+	} else {
+		return join '', ("<div class='chunk'><div style='old'>",
+		                 @partial,
+		                 "</div></div>");
+	}
+}
+
 sub git_patchset_body {
-	my ($fd, $difftree, $hash, @hash_parents) = @_;
+	my ($fd, $is_inline, $difftree, $hash, @hash_parents) = @_;
 	my ($hash_parent) = $hash_parents[0];
 
 	my $is_combined = (@hash_parents > 1);
@@ -4938,12 +4960,29 @@ sub git_patchset_body {
 
 		# the patch itself
 	LINE:
+		my @chunk;
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
 			next PATCH if ($patch_line =~ m/^diff /);
 
-			print format_diff_line($patch_line, \%from, \%to);
+			my ($class, $line) = format_diff_line($patch_line, \%from, \%to);
+			if ($class eq 'add' || $class eq 'rem') {
+				push @chunk, [ $class, $line ];
+			} else {
+				if (@chunk) {
+					print format_diff_chunk(@chunk);
+					@chunk = ();
+				} elsif ($class eq 'chunk_header') {
+					print $line;
+				} else {
+					print q{<div class='chunk'><div class='old'>},
+					      $line,
+					      q{</div><div class='new'>},
+					      $line,
+					      q{</div></div>};
+				}
+			}
 		}
 
 	} continue {
@@ -7051,7 +7090,7 @@ sub git_blobdiff {
 	if ($format eq 'html') {
 		print "<div class=\"page_body\">\n";
 
-		git_patchset_body($fd, [ \%diffinfo ], $hash_base, $hash_parent_base);
+		git_patchset_body($fd, 1, [ \%diffinfo ], $hash_base, $hash_parent_base);
 		close $fd;
 
 		print "</div>\n"; # class="page_body"
@@ -7282,7 +7321,7 @@ sub git_commitdiff {
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		print "<br/>\n";
 
-		git_patchset_body($fd, \@difftree, $hash,
+		git_patchset_body($fd, 1, \@difftree, $hash,
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		close $fd;
 		print "</div>\n"; # class="page_body"
