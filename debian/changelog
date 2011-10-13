@@ -1,4 +1,4 @@
-git (1:1.7.7-1.1) unstable; urgency=low
+git (1:1.7.7-2) unstable; urgency=low
 
   [ Jonathan Nieder ]
   * debian/git.postinst: check if /usr/share/doc/git/contrib/hooks is a
@@ -31,7 +31,7 @@ git (1:1.7.7-1.1) unstable; urgency=low
   * debian/git.postinst: fix fresh install contrib/hooks cleaning
     (#645005).
 
- -- Gerrit Pape <pape@smarden.org>  Wed, 12 Oct 2011 02:39:07 +0000
+ -- Gerrit Pape <pape@smarden.org>  Thu, 13 Oct 2011 00:04:49 +0000
 
 git (1:1.7.7-1) unstable; urgency=low
 
