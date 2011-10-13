@@ -757,6 +757,7 @@ our @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 	ctag => "by_tag",
+	diff_style => "ds",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -1072,6 +1073,8 @@ sub evaluate_and_validate_params {
 		}
 		$search_regexp = $search_use_regexp ? $searchtext : quotemeta $searchtext;
 	}
+
+	$input_params{diff_style} ||= 'inline';
 }
 
 # path to the current git repository
@@ -4969,7 +4972,9 @@ sub git_patchset_body {
 			next PATCH if ($patch_line =~ m/^diff /);
 
 			my ($class, $line) = format_diff_line($patch_line, \%from, \%to);
-			if ($class eq 'add' || $class eq 'rem') {
+			if ($is_inline) {
+				print $line;
+			} elsif ($class eq 'add' || $class eq 'rem') {
 				push @chunk, [ $class, $line ];
 			} else {
 				if (@chunk) {
@@ -7063,7 +7068,7 @@ sub git_blobdiff {
 			        "raw");
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
-			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
+			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav . diff_nav($input_params{diff_style}));
 			git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 		} else {
 			print "<div class=\"page_nav\"><br/>$formats_nav<br/></div>\n";
@@ -7092,7 +7097,7 @@ sub git_blobdiff {
 	if ($format eq 'html') {
 		print "<div class=\"page_body\">\n";
 
-		git_patchset_body($fd, 1, [ \%diffinfo ], $hash_base, $hash_parent_base);
+		git_patchset_body($fd, $input_params{diff_style} eq 'inline', [ \%diffinfo ], $hash_base, $hash_parent_base);
 		close $fd;
 
 		print "</div>\n"; # class="page_body"
@@ -7115,6 +7120,22 @@ sub git_blobdiff {
 
 sub git_blobdiff_plain {
 	git_blobdiff('plain');
+}
+
+sub diff_nav {
+	my ($style) = @_;
+
+	my %pairs = (inline => 'inline', 'sidebyside' => 'side by side');
+	join '', ($cgi->start_form({ method => 'get' }),
+	          $cgi->hidden('p'),
+	          $cgi->hidden('a'),
+	          $cgi->hidden('h'),
+	          $cgi->hidden('hp'),
+	          $cgi->hidden('hb'),
+	          $cgi->hidden('hpb'),
+	          $cgi->popup_menu('ds', [keys %pairs], $style, \%pairs),
+	          $cgi->submit('change'),
+	          $cgi->end_form);
 }
 
 sub git_commitdiff {
@@ -7269,7 +7290,7 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
@@ -7323,7 +7344,8 @@ sub git_commitdiff {
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		print "<br/>\n";
 
-		git_patchset_body($fd, 1, \@difftree, $hash,
+		git_patchset_body($fd, $input_params{diff_style} eq 'inline',
+                          \@difftree, $hash,
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		close $fd;
 		print "</div>\n"; # class="page_body"
