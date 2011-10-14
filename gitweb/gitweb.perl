@@ -758,6 +758,7 @@ our @cgi_param_mapping = (
 	search_use_regexp => "sr",
 	ctag => "by_tag",
 	diff_style => "ds",
+	diff_around => "da",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -1075,6 +1076,7 @@ sub evaluate_and_validate_params {
 	}
 
 	$input_params{diff_style} ||= 'inline';
+	$input_params{diff_around} ||= 3;
 }
 
 # path to the current git repository
@@ -7068,7 +7070,7 @@ sub git_blobdiff {
 			        "raw");
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
-			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav . diff_nav($input_params{diff_style}));
+			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav . diff_nav($input_params{diff_style}, $input_params{diff_around}));
 			git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 		} else {
 			print "<div class=\"page_nav\"><br/>$formats_nav<br/></div>\n";
@@ -7123,7 +7125,7 @@ sub git_blobdiff_plain {
 }
 
 sub diff_nav {
-	my ($style) = @_;
+	my ($style, $around) = @_;
 
 	my %pairs = (inline => 'inline', 'sidebyside' => 'side by side');
 	join '', ($cgi->start_form({ method => 'get' }),
@@ -7134,6 +7136,10 @@ sub diff_nav {
 	          $cgi->hidden('hb'),
 	          $cgi->hidden('hpb'),
 	          $cgi->popup_menu('ds', [keys %pairs], $style, \%pairs),
+              '(show',
+              $cgi->input({ type => 'text', size => 2, name => 'da',
+                            value => $around }),
+              'lines around each change)',
 	          $cgi->submit('change'),
 	          $cgi->end_form);
 }
@@ -7229,12 +7235,15 @@ sub git_commitdiff {
 			@{$co{'parents'}} > 1 ? '--cc' : $co{'parent'} || '--root';
 	}
 
+	my $around = $input_params{diff_around};
+
 	# read commitdiff
 	my $fd;
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
+			"--unified=$around",
 			$hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
 
@@ -7290,7 +7299,7 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}));
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}, $input_params{diff_around}));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
