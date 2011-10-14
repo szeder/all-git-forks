@@ -5310,6 +5310,11 @@ sub git_shortlog_body {
 	$from = 0 unless defined $from;
 	$to = $#{$commitlist} if (!defined $to || $#{$commitlist} < $to);
 
+	print $cgi->start_form(-method => "get"),
+	      $cgi->submit(-value => "view changes"),
+	      $cgi->hidden("p"),
+	      $cgi->input({-name=>"a", -value=>"commitdiff", -type=>"hidden"});
+
 	print "<table class=\"shortlog\">\n";
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
@@ -5322,6 +5327,16 @@ sub git_shortlog_body {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
+		print "<td>",
+		      $cgi->input({
+		          -name => "hp", -value => $commit, -type => "radio",
+		          ($i == $to) ? (-checked => "checked") : (),
+		      }),
+		      $cgi->input({
+		          -name => "h", -value => $commit, -type => "radio",
+		          ($i == $from) ? (-checked => "checked") : (),
+		      }),
+		      "</td>";
 		# git_summary() used print "<td><i>$co{'age_string'}</i></td>\n" .
 		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 		      format_author_html('td', \%co, 10) . "<td>";
@@ -5345,6 +5360,7 @@ sub git_shortlog_body {
 		      "</tr>\n";
 	}
 	print "</table>\n";
+	print $cgi->end_form;
 }
 
 sub git_history_body {
