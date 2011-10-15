@@ -1,3 +1,11 @@
+git (1:1.7.7-2.1) unstable; urgency=low
+
+  * debian/git.preinst: replace hard links to /usr/lib/git-core/git with
+    symlinks before upgrading from git <= 1:1.7.7-1 (thx Antti Kultanen;
+    closes: #642603).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 15 Oct 2011 06:46:51 -0500
+
 git (1:1.7.7-2) unstable; urgency=low
 
   [ Jonathan Nieder ]
