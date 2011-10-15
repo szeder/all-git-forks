@@ -754,7 +754,12 @@ cmd_push()
         refspec=$(git config -f .gittrees subtree.$prefix.branch)
       fi
 	    echo "git push using: " $repository $refspec
-	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
+	    rev=$(git subtree split --prefix=$prefix)
+	    if [ -n "$rev" ]; then
+	        git push $repository $rev:refs/heads/$refspec
+	    else
+	        die "Couldn't push, 'git subtree split' failed."
+	    fi
 	else
 	    die "'$dir' must already exist. Try 'git subtree add'."
 	fi
