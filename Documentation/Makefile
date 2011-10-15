@@ -170,6 +170,9 @@ info: git.info gitman.info
 
 pdf: user-manual.pdf
 
+GITWEB_DOC = $(filter gitweb.%,$(DOC_HTML) $(DOC_MAN1) $(DOC_MAN5) $(DOC_MAN7))
+gitweb-doc: $(GITWEB_DOC)
+
 install: install-man
 
 install-man: man
