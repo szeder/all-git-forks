@@ -28,7 +28,7 @@ tokens_match () {
 }
 
 check_remote_track () {
-	actual=$(git remote show "$1" | sed -ne 's|^    \(.*\) tracked$|\1|p')
+	actual=$(git remote -v show "$1" | sed -ne 's|^    \(.*\) tracked$|\1|p')
 	shift &&
 	tokens_match "$*" "$actual"
 }
@@ -140,6 +140,15 @@ cat > test/expect << EOF
 * remote origin
   Fetch URL: $(pwd)/one
   Push  URL: $(pwd)/one
+* remote two
+  Fetch URL: ../two
+  Push  URL: ../three
+EOF
+
+cat > test/expectv << EOF
+* remote origin
+  Fetch URL: $(pwd)/one
+  Push  URL: $(pwd)/one
   HEAD branch: master
   Remote branches:
     master new (next fetch will store in remotes/origin)
@@ -191,8 +200,10 @@ test_expect_success 'show' '
 	 git config --add remote.two.push +refs/heads/ahead:refs/heads/master &&
 	 git config --add remote.two.push refs/heads/master:refs/heads/another &&
 	 git remote show origin two > output &&
+	 git remote -v show origin two > outputv &&
 	 git branch -d rebase octopus &&
-	 test_cmp expect output)
+	 test_cmp expect output &&
+	 test_cmp expectv outputv)
 '
 
 cat > test/expect << EOF

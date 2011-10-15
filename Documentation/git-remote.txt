@@ -143,11 +143,12 @@ error.
 
 'show'::
 
-Gives some information about the remote <name>.
-+
-With `-n` option, the remote heads are not queried first with
+Gives some information about the remote <name> (fetch and push URL).
+With `-v', show also information about remote heads and branches.
+With `-n`, the remote heads are not queried first with
 `git ls-remote <name>`; cached information is used instead.
-
++
+`-n` implies `-v`.
 'prune'::
 
 Deletes all stale remote-tracking branches under <name>.

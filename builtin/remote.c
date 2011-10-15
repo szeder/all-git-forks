@@ -1093,7 +1093,8 @@ static int show(int argc, const char **argv)
 	if (argc < 1)
 		return show_all();
 
-	if (!no_query)
+	verbose = verbose || no_query;
+	if (!no_query && verbose)
 		query_flag = (GET_REF_STATES | GET_HEAD_NAMES | GET_PUSH_REF_STATES);
 
 	memset(&states, 0, sizeof(states));
@@ -1121,6 +1122,9 @@ static int show(int argc, const char **argv)
 			printf("  Push  URL: %s\n", url[i]);
 		if (!i)
 			printf("  Push  URL: %s\n", "(no URL)");
+		if (!verbose)
+			continue;
+
 		if (no_query)
 			printf("  HEAD branch: (not queried)\n");
 		else if (!states.heads.nr)
