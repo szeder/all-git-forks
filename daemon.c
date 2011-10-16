@@ -109,7 +109,7 @@ static void NORETURN daemon_die(const char *err, va_list params)
 	exit(1);
 }
 
-static char *path_ok(char *directory)
+static int path_ok(char *directory, const char **return_path)
 {
 	static char rpath[PATH_MAX];
 	static char interp_path[PATH_MAX];
@@ -120,13 +120,13 @@ static char *path_ok(char *directory)
 
 	if (daemon_avoid_alias(dir)) {
 		logerror("'%s': aliased", dir);
-		return NULL;
+		return -1;
 	}
 
 	if (*dir == '~') {
 		if (!user_path) {
 			logerror("'%s': User-path not allowed", dir);
-			return NULL;
+			return EACCES;
 		}
 		if (*user_path) {
 			/* Got either "~alice" or "~alice/foo";
@@ -158,7 +158,7 @@ static char *path_ok(char *directory)
 		if (*dir != '/') {
 			/* Allow only absolute */
 			logerror("'%s': Non-absolute path denied (interpolated-path active)", dir);
-			return NULL;
+			return EACCES;
 		}
 
 		strbuf_expand(&expanded_path, interpolated_path,
@@ -173,7 +173,7 @@ static char *path_ok(char *directory)
 		if (*dir != '/') {
 			/* Allow only absolute */
 			logerror("'%s': Non-absolute path denied (base-path active)", dir);
-			return NULL;
+			return EACCES;
 		}
 		snprintf(rpath, PATH_MAX, "%s%s", base_path, dir);
 		dir = rpath;
@@ -190,10 +190,14 @@ static char *path_ok(char *directory)
 	}
 
 	if (!path) {
+		int ret = -1;
+		if (errno == EACCES)
+		       ret = EACCES;
 		logerror("'%s' does not appear to be a git repository", dir);
-		return NULL;
+		return ret;
 	}
 
+	*return_path = path;
 	if ( ok_paths && *ok_paths ) {
 		char **pp;
 		int pathlen = strlen(path);
@@ -211,17 +215,17 @@ static char *path_ok(char *directory)
 			    !memcmp(*pp, path, len) &&
 			    (path[len] == '\0' ||
 			     (!strict_paths && path[len] == '/')))
-				return path;
+				return 0;
 		}
 	}
 	else {
 		/* be backwards compatible */
 		if (!strict_paths)
-			return path;
+			return 0;
 	}
 
 	logerror("'%s': not in whitelist", path);
-	return NULL;		/* Fallthrough. Deny by default */
+	return EACCES;		/* Fallthrough. Deny by default */
 }
 
 typedef int (*daemon_service_fn)(void);
@@ -258,6 +262,7 @@ static int daemon_error(const char *dir, const char *msg)
 
 static int run_service(char *dir, struct daemon_service *service)
 {
+	int err;
 	const char *path;
 	int enabled = service->enabled;
 
@@ -269,8 +274,13 @@ static int run_service(char *dir, struct daemon_service *service)
 		return daemon_error(dir, "service not enabled");
 	}
 
-	if (!(path = path_ok(dir)))
-		return daemon_error(dir, "no such repository");
+	err = path_ok(dir, &path);
+	if (err) {
+		if (err == EACCES)
+			return daemon_error(dir, "permission denied");
+		else
+			return daemon_error(dir, "no such repository");
+	}
 
 	/*
 	 * Security on the cheap.
