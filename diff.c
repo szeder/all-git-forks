@@ -2274,6 +2274,8 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 		memset(&xpp, 0, sizeof(xpp));
 		memset(&xecfg, 0, sizeof(xecfg));
 		xpp.flags = o->xdl_opts;
+		xecfg.ctxlen = o->context;
+		xecfg.interhunkctxlen = o->interhunkcontext;
 		xdi_diff_outf(&mf1, &mf2, diffstat_consume, diffstat,
 			      &xpp, &xecfg);
 	}
@@ -3385,6 +3387,10 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	}
 
 	/* xdiff options */
+	else if (!strcmp(arg, "--minimal"))
+		DIFF_XDL_SET(options, NEED_MINIMAL);
+	else if (!strcmp(arg, "--no-minimal"))
+		DIFF_XDL_CLR(options, NEED_MINIMAL);
 	else if (!strcmp(arg, "-w") || !strcmp(arg, "--ignore-all-space"))
 		DIFF_XDL_SET(options, IGNORE_WHITESPACE);
 	else if (!strcmp(arg, "-b") || !strcmp(arg, "--ignore-space-change"))

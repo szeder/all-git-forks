@@ -225,13 +225,16 @@ my %config_settings = (
     "cccmd" => \$cc_cmd,
     "aliasfiletype" => \$aliasfiletype,
     "bcc" => \@bcclist,
-    "aliasesfile" => \@alias_files,
     "suppresscc" => \@suppress_cc,
     "envelopesender" => \$envelope_sender,
     "multiedit" => \$multiedit,
     "confirm"   => \$confirm,
     "from" => \$sender,
     "assume8bitencoding" => \$auto_8bit_encoding,
+);
+
+my %config_path_settings = (
+    "aliasesfile" => \@alias_files,
 );
 
 # Help users prepare for 1.7.0
@@ -331,6 +334,19 @@ sub read_config {
 	foreach my $setting (keys %config_bool_settings) {
 		my $target = $config_bool_settings{$setting}->[0];
 		$$target = Git::config_bool(@repo, "$prefix.$setting") unless (defined $$target);
+	}
+
+	foreach my $setting (keys %config_path_settings) {
+		my $target = $config_path_settings{$setting};
+		if (ref($target) eq "ARRAY") {
+			unless (@$target) {
+				my @values = Git::config_path(@repo, "$prefix.$setting");
+				@$target = @values if (@values && defined $values[0]);
+			}
+		}
+		else {
+			$$target = Git::config_path(@repo, "$prefix.$setting") unless (defined $$target);
+		}
 	}
 
 	foreach my $setting (keys %config_settings) {
@@ -1098,6 +1114,12 @@ X-Mailer: git-send-email $gitversion
 		}
 
 		if (defined $smtp_authuser) {
+			# Workaround AUTH PLAIN/LOGIN interaction defect
+			# with Authen::SASL::Cyrus
+			eval {
+				require Authen::SASL;
+				Authen::SASL->import(qw(Perl));
+			};
 
 			if (!defined $smtp_authpass) {
 
