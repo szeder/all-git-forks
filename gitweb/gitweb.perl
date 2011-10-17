@@ -2235,28 +2235,30 @@ sub format_diff_line {
 		# combined diff
 		my $prefix = substr($line, 0, scalar @{$from->{'href'}});
 		if ($line =~ m/^\@{3}/) {
-			$diff_class = " chunk_header";
+			$diff_class = "chunk_header";
 		} elsif ($line =~ m/^\\/) {
-			$diff_class = " incomplete";
+			$diff_class = "incomplete";
 		} elsif ($prefix =~ tr/+/+/) {
-			$diff_class = " add";
+			$diff_class = "add";
 		} elsif ($prefix =~ tr/-/-/) {
-			$diff_class = " rem";
+			$diff_class = "rem";
 		}
 	} else {
 		# assume ordinary diff
 		my $char = substr($line, 0, 1);
 		if ($char eq '+') {
-			$diff_class = " add";
+			$diff_class = "add";
 		} elsif ($char eq '-') {
-			$diff_class = " rem";
+			$diff_class = "rem";
 		} elsif ($char eq '@') {
-			$diff_class = " chunk_header";
+			$diff_class = "chunk_header";
 		} elsif ($char eq "\\") {
-			$diff_class = " incomplete";
+			$diff_class = "incomplete";
 		}
 	}
 	$line = untabify($line);
+
+	my $div_open = '<div class="' . (join ' ', ('diff', $diff_class)) . '">';
 	if ($from && $to && $line =~ m/^\@{2} /) {
 		my ($from_text, $from_start, $from_lines, $to_text, $to_start, $to_lines, $section) =
 			$line =~ m/^\@{2} (-(\d+)(?:,(\d+))?) (\+(\d+)(?:,(\d+))?) \@{2}(.*)$/;
@@ -2274,7 +2276,7 @@ sub format_diff_line {
 		}
 		$line = "<span class=\"chunk_info\">@@ $from_text $to_text @@</span>" .
 		        "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "<div class=\"diff$diff_class\">$line</div>\n";
+		return "$div_open$line</div>\n";
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		my ($prefix, $ranges, $section) = $line =~ m/^(\@+) (.*?) \@+(.*)$/;
 		my (@from_text, @from_start, @from_nlines, $to_text, $to_start, $to_nlines);
@@ -2307,9 +2309,9 @@ sub format_diff_line {
 		}
 		$line .= " $prefix</span>" .
 		         "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "<div class=\"diff$diff_class\">$line</div>\n";
+		return "$div_open$line</div>\n";
 	}
-	return "<div class=\"diff$diff_class\">" . esc_html($line, -nbsp=>1) . "</div>\n";
+	return $div_open . esc_html($line, -nbsp=>1) . "</div>\n";
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
