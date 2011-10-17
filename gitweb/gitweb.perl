@@ -757,6 +757,7 @@ our @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 	ctag => "by_tag",
+	diff_style => "ds",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -1072,6 +1073,8 @@ sub evaluate_and_validate_params {
 		}
 		$search_regexp = $search_use_regexp ? $searchtext : quotemeta $searchtext;
 	}
+
+	$input_params{diff_style} ||= 'inline';
 }
 
 # path to the current git repository
@@ -2276,7 +2279,7 @@ sub format_diff_line {
 		}
 		$line = "<span class=\"chunk_info\">@@ $from_text $to_text @@</span>" .
 		        "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "$div_open$line</div>\n";
+		return $diff_class, "$div_open$line</div>\n";
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		my ($prefix, $ranges, $section) = $line =~ m/^(\@+) (.*?) \@+(.*)$/;
 		my (@from_text, @from_start, @from_nlines, $to_text, $to_start, $to_nlines);
@@ -2309,9 +2312,9 @@ sub format_diff_line {
 		}
 		$line .= " $prefix</span>" .
 		         "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return "$div_open$line</div>\n";
+		return $diff_class, "$div_open$line</div>\n";
 	}
-	return $div_open . esc_html($line, -nbsp=>1) . "</div>\n";
+	return $diff_class, $div_open . esc_html($line, -nbsp=>1) . "</div>\n";
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -4828,8 +4831,32 @@ sub git_difftree_body {
 	print "</table>\n";
 }
 
+sub format_diff_chunk {
+	my @chunk = @_;
+
+	my $first_class = $chunk[0]->[0];
+	my @partial = map { $_->[1] } grep { $_->[0] eq $first_class } @chunk;
+
+	if (scalar @partial < scalar @chunk) {
+		return join '', ("<div class='chunk'><div class='old'>",
+		             @partial,
+		             "</div>",
+		             "<div class='new'>",
+		             (map {
+		                 $_->[1];
+		             } @chunk[scalar @partial..scalar @chunk-1]),
+		             "</div></div>");
+	} else {
+		return join '', ("<div class='chunk'><div class='",
+		             ($first_class eq 'add' ? 'new' : 'old'),
+		             "'>",
+		             @partial,
+		             "</div></div>");
+	}
+}
+
 sub git_patchset_body {
-	my ($fd, $difftree, $hash, @hash_parents) = @_;
+	my ($fd, $is_inline, $difftree, $hash, @hash_parents) = @_;
 	my ($hash_parent) = $hash_parents[0];
 
 	my $is_combined = (@hash_parents > 1);
@@ -4940,12 +4967,31 @@ sub git_patchset_body {
 
 		# the patch itself
 	LINE:
+		my @chunk;
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
 			next PATCH if ($patch_line =~ m/^diff /);
 
-			print format_diff_line($patch_line, \%from, \%to);
+			my ($class, $line) = format_diff_line($patch_line, \%from, \%to);
+			if ($is_inline) {
+				print $line;
+			} elsif ($class eq 'add' || $class eq 'rem') {
+				push @chunk, [ $class, $line ];
+			} else {
+				if (@chunk) {
+					print format_diff_chunk(@chunk);
+					@chunk = ();
+				} elsif ($class eq 'chunk_header') {
+					print $line;
+				} else {
+					print '<div class="chunk"><div class="old">',
+					      $line,
+					      '</div><div class="new">',
+					      $line,
+					      '</div></div>';
+				}
+			}
 		}
 
 	} continue {
@@ -7053,7 +7099,8 @@ sub git_blobdiff {
 	if ($format eq 'html') {
 		print "<div class=\"page_body\">\n";
 
-		git_patchset_body($fd, [ \%diffinfo ], $hash_base, $hash_parent_base);
+		git_patchset_body($fd, $input_params{diff_style} eq 'inline',
+		                  [ \%diffinfo ], $hash_base, $hash_parent_base);
 		close $fd;
 
 		print "</div>\n"; # class="page_body"
@@ -7076,6 +7123,22 @@ sub git_blobdiff {
 
 sub git_blobdiff_plain {
 	git_blobdiff('plain');
+}
+
+sub diff_nav {
+	my ($style) = @_;
+
+	my %pairs = (inline => 'inline', 'sidebyside' => 'side by side');
+	join '', ($cgi->start_form({ method => 'get' }),
+	          $cgi->hidden('p'),
+	          $cgi->hidden('a'),
+	          $cgi->hidden('h'),
+	          $cgi->hidden('hp'),
+	          $cgi->hidden('hb'),
+	          $cgi->hidden('hpb'),
+	          $cgi->popup_menu('ds', [keys %pairs], $style, \%pairs),
+	          $cgi->submit('change'),
+	          $cgi->end_form);
 }
 
 sub git_commitdiff {
@@ -7230,7 +7293,8 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash,
+		                   $formats_nav . diff_nav($input_params{diff_style}));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
@@ -7284,7 +7348,8 @@ sub git_commitdiff {
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		print "<br/>\n";
 
-		git_patchset_body($fd, \@difftree, $hash,
+		git_patchset_body($fd, $input_params{diff_style} eq 'inline',
+		                  \@difftree, $hash,
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		close $fd;
 		print "</div>\n"; # class="page_body"
