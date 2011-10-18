@@ -1444,6 +1444,10 @@ _git_gitk ()
 	_gitk
 }
 
+_git_grep_ctag_match() {
+	awk -v ORS=' ' "/^${1////\\/}/ { print \$1 }" "$2"
+}
+
 _git_grep ()
 {
 	__git_has_doubledash && return
@@ -1464,6 +1468,13 @@ _git_grep ()
 			"
 		return
 		;;
+	esac
+
+	case "$COMP_CWORD,$prev" in
+	2,*|*,-*)
+		test -r tags || return
+		COMPREPLY=( $(compgen -W "`_git_grep_ctag_match "$cur" tags`") )
+		return
 	esac
 
 	__gitcomp_nl "$(__git_refs)"
