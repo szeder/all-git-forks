@@ -707,7 +707,7 @@ static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
 		return NULL;
 
 	q = strchr(p, ' ');
-	if (!q)
+	if (!q || q - p + 1 > sizeof(sha1_abbrev))
 		return NULL;
 	q++;
 

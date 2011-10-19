@@ -12,6 +12,9 @@ test_description='Test cherry-pick continuation features
 
 . ./test-lib.sh
 
+# Repeat first match 10 times
+_r10='\1\1\1\1\1\1\1\1\1\1'
+
 pristine_detach () {
 	git cherry-pick --reset &&
 	git checkout -f "$1^0" &&
@@ -207,6 +210,17 @@ test_expect_success 'malformed instruction sheet 2' '
 	git add foo &&
 	git commit &&
 	sed "s/pick/revert/" .git/sequencer/todo >new_sheet &&
+	cp new_sheet .git/sequencer/todo &&
+	test_must_fail git cherry-pick --continue
+'
+
+test_expect_success 'malformed instruction sheet 3' '
+	pristine_detach initial &&
+	test_must_fail git cherry-pick base..anotherpick &&
+	echo "resolved" >foo &&
+	git add foo &&
+	git commit &&
+	sed "s/pick \([0-9a-f]*\)/pick $_r10/" .git/sequencer/todo >new_sheet &&
 	cp new_sheet .git/sequencer/todo &&
 	test_must_fail git cherry-pick --continue
 '
