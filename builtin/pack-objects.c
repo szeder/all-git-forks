@@ -668,7 +668,6 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 		if (offset) {
 			if (!found_pack) {
 				if (!is_pack_valid(p)) {
-					warning("packfile %s cannot be accessed", p->pack_name);
 					continue;
 				}
 				found_offset = offset;
