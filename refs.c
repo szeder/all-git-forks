@@ -4,9 +4,8 @@
 #include "tag.h"
 #include "dir.h"
 
-/* ISSYMREF=01 and ISPACKED=02 are public interfaces */
-#define REF_KNOWS_PEELED 04
-#define REF_BROKEN 010
+/* ISSYMREF=0x01, ISPACKED=0x02 and ISBROKEN=0x04 are public interfaces */
+#define REF_KNOWS_PEELED 0x10
 
 struct ref_entry {
 	unsigned char flag; /* ISSYMREF? ISPACKED? */
@@ -329,12 +328,12 @@ static void get_ref_dir(const char *submodule, const char *base,
 				flag = 0;
 				if (resolve_gitlink_ref(submodule, ref, sha1) < 0) {
 					hashclr(sha1);
-					flag |= REF_BROKEN;
+					flag |= REF_ISBROKEN;
 				}
 			} else
 				if (!resolve_ref(ref, sha1, 1, &flag)) {
 					hashclr(sha1);
-					flag |= REF_BROKEN;
+					flag |= REF_ISBROKEN;
 				}
 			add_ref(ref, sha1, flag, array, NULL);
 		}
@@ -501,7 +500,6 @@ const char *resolve_ref(const char *ref, unsigned char *sha1, int reading, int *
 	ssize_t len;
 	char buffer[256];
 	static char ref_buffer[256];
-	char path[PATH_MAX];
 
 	if (flag)
 		*flag = 0;
@@ -510,6 +508,7 @@ const char *resolve_ref(const char *ref, unsigned char *sha1, int reading, int *
 		return NULL;
 
 	for (;;) {
+		char path[PATH_MAX];
 		struct stat st;
 		char *buf;
 		int fd;
@@ -582,21 +581,22 @@ const char *resolve_ref(const char *ref, unsigned char *sha1, int reading, int *
 		 */
 		if (prefixcmp(buffer, "ref:"))
 			break;
+		if (flag)
+			*flag |= REF_ISSYMREF;
 		buf = buffer + 4;
 		while (isspace(*buf))
 			buf++;
 		if (check_refname_format(buf, REFNAME_ALLOW_ONELEVEL)) {
-			warning("symbolic reference in %s is formatted incorrectly",
-				path);
+			if (flag)
+				*flag |= REF_ISBROKEN;
 			return NULL;
 		}
 		ref = strcpy(ref_buffer, buf);
-		if (flag)
-			*flag |= REF_ISSYMREF;
 	}
 	/* Please note that FETCH_HEAD has a second line containing other data. */
 	if (get_sha1_hex(buffer, sha1) || (buffer[40] != '\0' && !isspace(buffer[40]))) {
-		warning("reference in %s is formatted incorrectly", path);
+		if (flag)
+			*flag |= REF_ISBROKEN;
 		return NULL;
 	}
 	return ref;
@@ -624,8 +624,8 @@ static int do_one_ref(const char *base, each_ref_fn fn, int trim,
 		return 0;
 
 	if (!(flags & DO_FOR_EACH_INCLUDE_BROKEN)) {
-		if (entry->flag & REF_BROKEN)
-			return 0; /* ignore dangling symref */
+		if (entry->flag & REF_ISBROKEN)
+			return 0; /* ignore broken refs e.g. dangling symref */
 		if (!has_sha1_file(entry->sha1)) {
 			error("%s does not point to a valid object!", entry->name);
 			return 0;
@@ -1116,8 +1116,11 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 				*ref = xstrdup(r);
 			if (!warn_ambiguous_refs)
 				break;
-		} else if ((flag & REF_ISSYMREF) && strcmp(fullref, "HEAD"))
+		} else if ((flag & REF_ISSYMREF) && strcmp(fullref, "HEAD")) {
 			warning("ignoring dangling symref %s.", fullref);
+		} else if ((flag & REF_ISBROKEN) && strchr(fullref, '/')) {
+			warning("ignoring broken ref %s.", fullref);
+		}
 	}
 	free(last_branch);
 	return refs_found;
