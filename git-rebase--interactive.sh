@@ -504,6 +504,7 @@ do_next () {
 	x|"exec")
 		read -r command rest < "$TODO"
 		mark_action_done
+		actually_reset_ff_head
 		printf 'Executing: %s\n' "$rest"
 		# "exec" command doesn't take a sha1 in the todo-list.
 		# => can't just use $sha1 here.
