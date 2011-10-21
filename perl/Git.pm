@@ -577,23 +577,7 @@ This currently wraps command('config') so it is not so fast.
 sub config {
 	my ($self, $var) = _maybe_self(@_);
 
-	try {
-		my @cmd = ('config');
-		unshift @cmd, $self if $self;
-		if (wantarray) {
-			return command(@cmd, '--get-all', $var);
-		} else {
-			return command_oneline(@cmd, '--get', $var);
-		}
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return;
-		} else {
-			throw $E;
-		}
-	};
+	return _config_common($self, $var);
 }
 
 
@@ -610,23 +594,10 @@ This currently wraps command('config') so it is not so fast.
 sub config_bool {
 	my ($self, $var) = _maybe_self(@_);
 
-	try {
-		my @cmd = ('config', '--bool', '--get', $var);
-		unshift @cmd, $self if $self;
-		my $val = command_oneline(@cmd);
-		return undef unless defined $val;
-		return $val eq 'true';
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return undef;
-		} else {
-			throw $E;
-		}
-	};
+	my $val = scalar _config_common($self, $var, {'kind' => '--bool'});
+	return undef unless defined $val;
+	return $val eq 'true';
 }
-
 
 =item config_path ( VARIABLE )
 
@@ -640,23 +611,7 @@ This currently wraps command('config') so it is not so fast.
 sub config_path {
 	my ($self, $var) = _maybe_self(@_);
 
-	try {
-		my @cmd = ('config', '--path');
-		unshift @cmd, $self if $self;
-		if (wantarray) {
-			return command(@cmd, '--get-all', $var);
-		} else {
-			return command_oneline(@cmd, '--get', $var);
-		}
-	} catch Git::Error::Command with {
-		my $E = shift;
-		if ($E->value() == 1) {
-			# Key not found.
-			return undef;
-		} else {
-			throw $E;
-		}
-	};
+	return _config_common($self, $var, {'kind' => '--path'});
 }
 
 =item config_int ( VARIABLE )
@@ -674,15 +629,27 @@ This currently wraps command('config') so it is not so fast.
 sub config_int {
 	my ($self, $var) = _maybe_self(@_);
 
+	return scalar _config_common($self, $var, {'kind' => '--int'});
+}
+
+# Common subroutine to implement bulk of what the config* family of methods
+# do. This curently wraps command('config') so it is not so fast.
+sub _config_common {
+	my ($self, $var, $opts) = @_;
+
 	try {
-		my @cmd = ('config', '--int', '--get', $var);
+		my @cmd = ('config', $opts->{'kind'} ? $opts->{'kind'} : ());
 		unshift @cmd, $self if $self;
-		return command_oneline(@cmd);
+		if (wantarray) {
+			return command(@cmd, '--get-all', $var);
+		} else {
+			return command_oneline(@cmd, '--get', $var);
+		}
 	} catch Git::Error::Command with {
 		my $E = shift;
 		if ($E->value() == 1) {
 			# Key not found.
-			return undef;
+			return;
 		} else {
 			throw $E;
 		}
