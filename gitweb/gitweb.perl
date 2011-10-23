@@ -7171,6 +7171,22 @@ sub git_blobdiff_plain {
 	git_blobdiff('plain');
 }
 
+sub diff_nav {
+	my ($style) = @_;
+
+	my %pairs = (inline => 'inline', 'sidebyside' => 'side by side');
+	my %input_param_mapping = reverse %cgi_param_mapping;
+	join '', ($cgi->start_form({ method => 'get', action => $cgi->self_url(), -sticky => 1 }),
+	          (
+	            map { $cgi->hidden($_) }
+	            grep { $_ ne 'ds' && exists $input_param_mapping{$_} }
+	            keys %{$cgi->Vars}
+	          ),
+	          $cgi->popup_menu('ds', [keys %pairs], $style, \%pairs),
+	          $cgi->submit('change'),
+	          $cgi->end_form);
+}
+
 sub git_commitdiff {
 	my %params = @_;
 	my $format = $params{-format} || 'html';
@@ -7324,7 +7340,8 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash,
+		                   $formats_nav . diff_nav($input_params{diff_style}));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
