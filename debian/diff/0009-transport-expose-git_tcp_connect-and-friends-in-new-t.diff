@@ -1,7 +1,8 @@
-From c10b311a74e1d944b7ca9a0aaee144354992a2b7 Mon Sep 17 00:00:00 2001
+From 89aed0cd4a480381e2b2c29153e6f368795950fb Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: transport: expose git_tcp_connect and friends in new tcp.h
+Subject: [PATCH 09/17] transport: expose git_tcp_connect and friends in new
+ tcp.h
 
 As preparation for adding functionality to them, move the functions
 git_tcp_connect and git_proxy_connect used to resolve a hostname and

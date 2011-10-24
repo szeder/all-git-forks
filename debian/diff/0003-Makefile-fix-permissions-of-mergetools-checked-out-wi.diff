@@ -1,8 +1,8 @@
-From 86fcb61837b6cb3eee70342ecc86aedb0cf8daf5 Mon Sep 17 00:00:00 2001
+From d27fc0db87bf4dda49621c6ed07dc6bf2bb867f7 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 9 Oct 2011 04:17:07 -0500
-Subject: Makefile: fix permissions of mergetools/ checked out with permissive
- umask
+Subject: [PATCH 03/17] Makefile: fix permissions of mergetools/ checked out
+ with permissive umask
 
 Ever since mergetool--lib was split into multiple files in
 v1.7.7-rc0~3^2~1 (2011-08-18), the Makefile takes care to reset umask

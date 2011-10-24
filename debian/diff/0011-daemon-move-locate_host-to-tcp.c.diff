@@ -1,7 +1,7 @@
-From b43a6e624d94bb69efb75043099bb3e126714dbb Mon Sep 17 00:00:00 2001
+From 1a5f113821eb26b825d2b56842ec1d2b2b909bb4 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: daemon: move locate_host to tcp.c
+Subject: [PATCH 11/17] daemon: move locate_host to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.

@@ -1,3 +1,70 @@
+Version v1.7.7.1; changes since v1.7.7:
+---------------------------------------
+
+Brad King (1):
+      rev-list: Demonstrate breakage with --ancestry-path --all
+
+Brandon Casey (1):
+      strbuf.c: remove unnecessary strbuf_grow() from strbuf_getwholeline()
+
+Ilari Liusvaara (1):
+      Support ERR in remote archive like in fetch/push
+
+Jay Soffian (1):
+      merge-one-file: fix "expr: non-numeric argument"
+
+Jeff King (2):
+      fetch: avoid quadratic loop checking for updated submodules
+      filter-branch: use require_clean_work_tree
+
+Jim Meyering (1):
+      fix "git apply --index ..." not to deref NULL
+
+Jonathan Nieder (2):
+      Makefile: do not set setgid bit on directories on GNU/kFreeBSD
+      RelNotes/1.7.7.1: setgid bit patch is about fixing "git init" via Makefile setting
+
+Junio C Hamano (14):
+      revision: keep track of the end-user input from the command line
+      revision: do not include sibling history in --ancestry-path output
+      rebase -i: notice and warn if "exec $cmd" modifies the index or the working tree
+      traverse_trees(): allow pruning with pathspec
+      unpack-trees: allow pruning with pathspec
+      diff-index: pass pathspec down to unpack-trees machinery
+      fsck: do not abort upon finding an empty blob
+      Teach progress eye-candy to fetch_refs_from_bundle()
+      apply --whitespace=error: correctly report new blank lines at end
+      checkout $tree $path: do not clobber local changes in $path not in $tree
+      diff: resurrect XDF_NEED_MINIMAL with --minimal
+      Prepare for 1.7.7.1
+      Almost ready for 1.7.7.1
+      Git 1.7.7.1
+
+Matthieu Moy (2):
+      rebase -i: clean error message for --continue after failed exec
+      config: display key_delim for config --bool --get-regexp
+
+Michael Schubert (1):
+      patch-id.c: use strbuf instead of a fixed buffer
+
+Nguyễn Thái Ngọc Duy (4):
+      merge: keep stash[] a local variable
+      merge: use return value of resolve_ref() to determine if HEAD is invalid
+      merge: remove global variable head[]
+      Accept tags in HEAD or MERGE_HEAD
+
+Nicolas Morey-Chaisemartin (1):
+      grep: Fix race condition in delta_base_cache
+
+René Scharfe (2):
+      Revert removal of multi-match discard heuristic in 27af01
+      t1304: fall back to $USER if $LOGNAME is not defined
+
+Thomas Rast (2):
+      Symlink mergetools scriptlets into valgrind wrappers
+      t6019: avoid refname collision on case-insensitive systems
+
+
 Version v1.7.7; changes since v1.7.7-rc1:
 -----------------------------------------
 

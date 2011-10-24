@@ -1,7 +1,8 @@
-From b58698d5c82baa52fb9aaba10c06152ad6b836d1 Mon Sep 17 00:00:00 2001
+From b8b1e902bc9237504acb5297f144b5003987377a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
-Subject: Makefile: add a knob to turn off hardlinks within same directory
+Subject: [PATCH 17/17] Makefile: add a knob to turn off hardlinks within same
+ directory
 
 The git builtins in $(gitexecdir) are implemented as hard links to a
 single git binary by default, so even the overhead of symlink

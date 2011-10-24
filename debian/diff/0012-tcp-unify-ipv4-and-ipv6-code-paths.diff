@@ -1,7 +1,7 @@
-From 9d6c6b9284cf18b0859d3e2d0744859b313cab1c Mon Sep 17 00:00:00 2001
+From a000b9e98911f69f5fc3a69ba583ef52c7afedb0 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH 12/17] tcp: unify ipv4 and ipv6 code paths
 
 The new DNS API abstracts away differences between the gethostbyname-
 and getaddrinfo-centric interfaces for looking up a host, making the
@@ -306,12 +306,12 @@ index fff37f8..18952fd 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
+-
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
--
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,

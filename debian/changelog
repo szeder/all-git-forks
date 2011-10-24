@@ -1,3 +1,11 @@
+git (1:1.7.7.1-1) unstable; urgency=low
+
+  * new upstream point release.
+  * debian/diff/0003-Makefile-do-not-set-setgid-bit-on-dir...diff:
+    remove; applied upstream.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 24 Oct 2011 20:27:20 +0000
+
 git (1:1.7.7-2) unstable; urgency=low
 
   [ Jonathan Nieder ]

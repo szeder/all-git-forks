@@ -1,7 +1,7 @@
-From 948d4bce175bf4341b59b49eb4efd0823db8810b Mon Sep 17 00:00:00 2001
+From f18ba62cc759cc234c0ee73bcca7715702e6208a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Oct 2011 12:17:19 -0500
-Subject: ident: do not retrieve default ident when unnecessary
+Subject: [PATCH 02/17] ident: do not retrieve default ident when unnecessary
 
 Avoid a getpwuid() call (which contacts the network if the password
 database is not local), read of /etc/mailname, gethostname() call, and

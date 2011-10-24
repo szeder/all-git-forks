@@ -1,7 +1,7 @@
-From 40a6291a2f37c46c78f7922ce095ee0dfeb29ca5 Mon Sep 17 00:00:00 2001
+From 4a33eb4ee0aa950d339774a9ca312feca16c7565 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
-Subject: transport: optionally honor DNS SRV records
+Subject: [PATCH 15/17] transport: optionally honor DNS SRV records
 
 As rfc2782 explains, SRV records allow administrators "to use serveral
 servers for a single domain, to move services from host to host with
@@ -490,9 +490,11 @@ index d0cd709..7a8a244 100644
  		if (flags & CONNECT_VERBOSE)
 -			fprintf(stderr, "%s ", dns_name(&i));
 -		break;
+-	}
 +			fprintf(stderr, "done.\nConnecting to %s (port %s) ... ",
 +					hosts[j].hostname, hosts[j].port);
-+
+ 
+-	dns_free(ai);
 +		cnt = -1;
 +		for_each_address(i, ai) {
 +			cnt++;
@@ -514,16 +516,14 @@ index d0cd709..7a8a244 100644
 +				fprintf(stderr, "%s ", dns_name(&i));
 +			break;
 +		}
-+
+ 
+-	if (sockfd < 0)
 +		dns_free(ai);
 +
 +		if (sockfd >= 0)
 +			break;
- 	}
- 
--	dns_free(ai);
--
--	if (sockfd < 0)
++	}
++
 +	if (gai || sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
  
