@@ -757,6 +757,7 @@ our @cgi_param_mapping = (
 	extra_options => "opt",
 	search_use_regexp => "sr",
 	ctag => "by_tag",
+	diff_style => "ds",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -2315,28 +2316,27 @@ sub format_cc_diff_chunk_header {
 	return $line;
 }
 
-# format patch (diff) line (not to be used for diff headers)
-sub format_diff_line {
+# process patch (diff) line (not to be used for diff headers),
+# returning class and HTML-formatted (but not wrapped) line
+sub process_diff_line {
 	my $line = shift;
 	my ($from, $to) = @_;
 
 	my $diff_class = diff_line_class($line, $from, $to);
-	my $diff_classes = "diff";
-	$diff_classes .= " $diff_class" if ($diff_class);
 
 	chomp $line;
 	$line = untabify($line);
 
 	if ($from && $to && $line =~ m/^\@{2} /) {
 		$line = format_unidiff_chunk_header($line, $from, $to);
-		return "<div class=\"$diff_classes\">$line</div>\n";
+		return $diff_class, $line;
 
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		$line = format_cc_diff_chunk_header($line, $from, $to);
-		return "<div class=\"$diff_classes\">$line</div>\n";
+		return $diff_class, $line;
 
 	}
-	return "<div class=\"$diff_classes\">" . esc_html($line, -nbsp=>1) . "</div>\n";
+	return $diff_class, esc_html($line, -nbsp=>1);
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -4853,8 +4853,92 @@ sub git_difftree_body {
 	print "</table>\n";
 }
 
+sub print_sidebyside_diff_chunk {
+	my @chunk = @_;
+	my (@ctx, @rem, @add);
+
+	return unless @chunk;
+
+	# incomplete last line might be among removed or added lines,
+	# or among context lines
+	if ($chunk[-1][0] eq 'incomplete' &&
+	    defined $chunk[-2]) {
+		$chunk[-1] = [ $chunk[-2][0], $chunk[-1][1] ];
+	}
+
+	# guardian
+	push @chunk, ["", ""];
+
+	foreach my $line_info (@chunk) {
+		my ($class, $line) = @$line_info;
+
+		# print chunk headers
+		if ($class eq 'chunk_header') {
+			print $line;
+			next;
+		}
+
+		# empty contents block on start rem/add block, or end
+		if (@ctx && (!$class || $class eq 'rem' || $class eq 'add')) {
+			print join '',
+				'<div class="chunk_block ctx">',
+					'<div class="old">',
+					@ctx,
+					'</div>',
+					'<div class="new">',
+					@ctx,
+					'</div>',
+				'</div>';
+			@ctx = ();
+		}
+		# rem, add or change
+		if ($class eq 'rem') {
+			push @rem, $line;
+		} elsif ($class eq 'add') {
+			push @add, $line;
+		}
+
+		# empty add/rem block on start context block, or end
+		if ((@rem || @add) && (!$class || $class eq 'ctx')) {
+			if (!@add) {
+				# pure removal
+				print join '',
+					'<div class="chunk_block rem">',
+						'<div class="old">',
+						@rem,
+						'</div>',
+					'</div>';
+			} elsif (!@rem) {
+				# pure addition
+				print join '',
+					'<div class="chunk_block add">',
+						'<div class="new">',
+						@add,
+						'</div>',
+					'</div>';
+			} else {
+				# assume that it is change
+				print join '',
+					'<div class="chunk_block chg">',
+						'<div class="old">',
+						@rem,
+						'</div>',
+						'<div class="new">',
+						@add,
+						'</div>',
+					'</div>';
+			}
+			@rem = @add = ();
+		}
+		# context line
+		if ($class eq 'ctx') {
+			push @ctx, $line;
+		}
+	}
+}
+
 sub git_patchset_body {
-	my ($fd, $difftree, $hash, @hash_parents) = @_;
+	my ($fd, $diff_style, $difftree, $hash, @hash_parents) = @_;
 	my ($hash_parent) = $hash_parents[0];
 
 	my $is_combined = (@hash_parents > 1);
@@ -4965,13 +5049,31 @@ sub git_patchset_body {
 
 		# the patch itself
 	LINE:
+		my @chunk;
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
 			next PATCH if ($patch_line =~ m/^diff /);
 
-			print format_diff_line($patch_line, \%from, \%to);
+			my ($class, $line) = process_diff_line($patch_line, \%from, \%to);
+			my $diff_classes = "diff";
+			$diff_classes .= " $class" if ($class);
+			$line = "<div class=\"$diff_classes\">$line</div>\n";
+
+			if ($diff_style eq 'sidebyside' && !$is_combined) {
+				if ($class eq 'chunk_header') {
+					print_sidebyside_diff_chunk(@chunk);
+					@chunk = ( [ $class, $line ] );
+				} else {
+					push @chunk, [ $class, $line ];
+				}
+			} else {
+				# default 'inline' style and unknown styles
+				print $line;
+			}
 		}
+		print_sidebyside_diff_chunk(@chunk)
+			if (@chunk);
 
 	} continue {
 		print "</div>\n"; # class="patch"
@@ -6969,6 +7071,7 @@ sub git_object {
 
 sub git_blobdiff {
 	my $format = shift || 'html';
+	my $diff_style = $input_params{'diff_style'} || 'inline';
 
 	my $fd;
 	my @difftree;
@@ -7078,7 +7181,8 @@ sub git_blobdiff {
 	if ($format eq 'html') {
 		print "<div class=\"page_body\">\n";
 
-		git_patchset_body($fd, [ \%diffinfo ], $hash_base, $hash_parent_base);
+		git_patchset_body($fd, $diff_style,
+		                  [ \%diffinfo ], $hash_base, $hash_parent_base);
 		close $fd;
 
 		print "</div>\n"; # class="page_body"
@@ -7106,6 +7210,7 @@ sub git_blobdiff_plain {
 sub git_commitdiff {
 	my %params = @_;
 	my $format = $params{-format} || 'html';
+	my $diff_style = $input_params{'diff_style'} || 'inline';
 
 	my ($patch_max) = gitweb_get_feature('patches');
 	if ($format eq 'patch') {
@@ -7309,7 +7414,8 @@ sub git_commitdiff {
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		print "<br/>\n";
 
-		git_patchset_body($fd, \@difftree, $hash,
+		git_patchset_body($fd, $diff_style,
+		                  \@difftree, $hash,
 		                  $use_parents ? @{$co{'parents'}} : $hash_parent);
 		close $fd;
 		print "</div>\n"; # class="page_body"
