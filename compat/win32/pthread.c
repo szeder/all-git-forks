@@ -57,6 +57,43 @@ pthread_t pthread_self(void)
 	return t;
 }
 
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+{
+	InitializeCriticalSection(&mutex->cs);
+	InterlockedExchange(&mutex->autoinit, 0);
+	return 0;
+}
+
+int pthread_mutex_lock(pthread_mutex_t *mutex)
+{
+	if (mutex->autoinit) {
+		/* Perform double-checked locking.
+		 *
+		 * mutex->autoinit can have the following states:
+		 *  0 : already initialized (final state)
+		 * +1 : not initialized (set through PTHREAD_MUTEX_INITIALIZER)
+		 * -1 : init in process
+		 *
+		 * State 1 can only be reached through using
+		 * PTHREAD_MUTEX_INITIALIZER as a static initializer.
+		 * This is safe because static initialization is
+		 * performed before any threads are started.
+		 *
+		 * State -1 and 0 can only reached through interlocked
+		 * operations.
+		 *
+		 */
+		if (InterlockedCompareExchange(&mutex->autoinit, -1, 1) == 1)
+			pthread_mutex_init(mutex, NULL);
+		else
+			while (InterlockedCompareExchange(&mutex->autoinit, 0, 0) != 0)
+				; /* wait for other thread */
+	}
+
+	EnterCriticalSection(&mutex->cs);
+	return 0;
+}
+
 int pthread_cond_init(pthread_cond_t *cond, const void *unused)
 {
 	cond->waiters = 0;
@@ -85,7 +122,7 @@ int pthread_cond_destroy(pthread_cond_t *cond)
 	return 0;
 }
 
-int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
 	int last_waiter;
 
@@ -99,7 +136,7 @@ int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
 	 * waiters count above, so there's no problem with
 	 * leaving mutex unlocked before we wait on semaphore.
 	 */
-	LeaveCriticalSection(mutex);
+	LeaveCriticalSection(&mutex->cs);
 
 	/* let's wait - ignore return value */
 	WaitForSingleObject(cond->sema, INFINITE);
@@ -133,7 +170,7 @@ int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
 		 */
 	}
 	/* lock external mutex again */
-	EnterCriticalSection(mutex);
+	EnterCriticalSection(&mutex->cs);
 
 	return 0;
 }
