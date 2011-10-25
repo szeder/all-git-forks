@@ -16,14 +16,20 @@
 /*
  * Defines that adapt Windows API threads to pthreads API
  */
-#define pthread_mutex_t CRITICAL_SECTION
+typedef struct {
+	CRITICAL_SECTION cs;
+	LONG volatile autoinit;
+} pthread_mutex_t;
 
-#define pthread_mutex_init(a,b) (InitializeCriticalSection((a)), 0)
-#define pthread_mutex_destroy(a) DeleteCriticalSection((a))
-#define pthread_mutex_lock EnterCriticalSection
-#define pthread_mutex_unlock LeaveCriticalSection
+#define PTHREAD_MUTEX_INITIALIZER { { 0 }, 1 }
 
 typedef int pthread_mutexattr_t;
+
+int pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *);
+#define pthread_mutex_destroy(a) DeleteCriticalSection(&(a)->cs)
+int pthread_mutex_lock(pthread_mutex_t *);
+#define pthread_mutex_unlock(a) LeaveCriticalSection(&(a)->cs)
+
 #define pthread_mutexattr_init(a) (*(a) = 0)
 #define pthread_mutexattr_destroy(a) do {} while (0)
 #define pthread_mutexattr_settype(a, t) 0
@@ -47,7 +53,7 @@ typedef struct {
 
 extern int pthread_cond_init(pthread_cond_t *cond, const void *unused);
 extern int pthread_cond_destroy(pthread_cond_t *cond);
-extern int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex);
+extern int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex);
 extern int pthread_cond_signal(pthread_cond_t *cond);
 extern int pthread_cond_broadcast(pthread_cond_t *cond);
 
