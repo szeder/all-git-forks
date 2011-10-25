@@ -528,12 +528,8 @@ static int sane_ident_split(struct ident_split *person)
 
 static void determine_author_info(struct strbuf *author_ident)
 {
-	char *name, *email, *date;
+	char *name = NULL, *email = NULL, *date = NULL;
 	struct ident_split author;
-
-	name = getenv("GIT_AUTHOR_NAME");
-	email = getenv("GIT_AUTHOR_EMAIL");
-	date = getenv("GIT_AUTHOR_DATE");
 
 	if (author_message) {
 		const char *a, *lb, *rb, *eol;
@@ -575,7 +571,15 @@ static void determine_author_info(struct strbuf *author_ident)
 	}
 
 	if (force_date)
-		date = force_date;
+		date = xstrdup(force_date);
+
+	if (!name)
+		name = xstrdup(getenv("GIT_AUTHOR_NAME"));
+	if (!email)
+		email = xstrdup(getenv("GIT_AUTHOR_EMAIL"));
+	if (!date)
+		date = xstrdup(getenv("GIT_AUTHOR_DATE"));
+
 	strbuf_addstr(author_ident, fmt_ident(name, email, date, IDENT_STRICT));
 	if (!split_ident_line(&author, author_ident->buf, author_ident->len) &&
 	    sane_ident_split(&author)) {
@@ -583,6 +587,10 @@ static void determine_author_info(struct strbuf *author_ident)
 		export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
 		export_one("GIT_AUTHOR_DATE", author.date_begin, author.tz_end, '@');
 	}
+
+	free(name);
+	free(email);
+	free(date);
 }
 
 static char *cut_ident_timestamp_part(char *string)
