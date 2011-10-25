@@ -57,6 +57,36 @@ pthread_t pthread_self(void)
 	return t;
 }
 
+int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+{
+	InitializeCriticalSection(&mutex->cs);
+	mutex->autoinit = 0;
+	return 0;
+}
+
+int pthread_mutex_lock(pthread_mutex_t *mutex)
+{
+	if (mutex->autoinit) {
+		/* zero means autoinit complete, 1 means no autoinit
+		 * initiated, -1 means autoinit in progress. Since
+		 * neither of the two latter values are non-zero, all
+		 * we know is that we've not completely earlied-out.
+		 */
+
+		if (InterlockedCompareExchange(&mutex->autoinit, -1, 1) == 1) {
+			pthread_mutex_init(mutex, NULL);
+			/* generate a memory-barrier, and tell the other
+			   thread it's possible to continue */
+			InterlockedExchange(&mutex->autoinit, 0);
+		} else
+			while (InterlockedCompareExchange(&mutex->autoinit, 0, 0) != 0)
+				; /* wait for other thread */
+	}
+
+	EnterCriticalSection(&mutex->cs);
+	return 0;
+}
+
 int pthread_cond_init(pthread_cond_t *cond, const void *unused)
 {
 	cond->waiters = 0;
@@ -85,7 +115,7 @@ int pthread_cond_destroy(pthread_cond_t *cond)
 	return 0;
 }
 
-int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
 {
 	int last_waiter;
 
@@ -99,7 +129,7 @@ int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
 	 * waiters count above, so there's no problem with
 	 * leaving mutex unlocked before we wait on semaphore.
 	 */
-	LeaveCriticalSection(mutex);
+	LeaveCriticalSection(&mutex->cs);
 
 	/* let's wait - ignore return value */
 	WaitForSingleObject(cond->sema, INFINITE);
@@ -133,7 +163,7 @@ int pthread_cond_wait(pthread_cond_t *cond, CRITICAL_SECTION *mutex)
 		 */
 	}
 	/* lock external mutex again */
-	EnterCriticalSection(mutex);
+	EnterCriticalSection(&mutex->cs);
 
 	return 0;
 }
