@@ -529,10 +529,6 @@ static void determine_author_info(struct strbuf *author_ident)
 {
 	char *name, *email, *date;
 
-	name = getenv("GIT_AUTHOR_NAME");
-	email = getenv("GIT_AUTHOR_EMAIL");
-	date = getenv("GIT_AUTHOR_DATE");
-
 	if (author_message) {
 		const char *a, *lb, *rb, *eol;
 
@@ -555,22 +551,38 @@ static void determine_author_info(struct strbuf *author_ident)
 					 (a + strlen("\nauthor "))));
 		email = xmemdupz(lb + strlen("<"), rb - (lb + strlen("<")));
 		date = xmemdupz(rb + strlen("> "), eol - (rb + strlen("> ")));
+	} else {
+		if (force_author) {
+			const char *lb = strstr(force_author, " <");
+			const char *rb = strchr(force_author, '>');
+			if (!lb || !rb)
+				die(_("malformed --author parameter"));
+			name = xstrndup(force_author, lb - force_author);
+			email = xstrndup(lb + 2, rb - (lb + 2));
+		} else {
+			name = getenv("GIT_AUTHOR_NAME");
+			if (name)
+				name = xstrdup(name);
+			email = getenv("GIT_AUTHOR_EMAIL");
+			if (email)
+				email = xstrdup(email);
+		}
+
+		if (force_date)
+			date = xstrdup(force_date);
+		else {
+			date = getenv("GIT_AUTHOR_DATE");
+			if (date)
+				date = xstrdup(date);
+		}
 	}
 
-	if (force_author) {
-		const char *lb = strstr(force_author, " <");
-		const char *rb = strchr(force_author, '>');
-
-		if (!lb || !rb)
-			die(_("malformed --author parameter"));
-		name = xstrndup(force_author, lb - force_author);
-		email = xstrndup(lb + 2, rb - (lb + 2));
-	}
-
-	if (force_date)
-		date = force_date;
 	strbuf_addstr(author_ident, fmt_ident(name, email, date,
 					      IDENT_ERROR_ON_NO_NAME));
+
+	free(name);
+	free(email);
+	free(date);
 }
 
 static int ends_rfc2822_footer(struct strbuf *sb)
