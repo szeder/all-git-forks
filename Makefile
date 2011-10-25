@@ -65,6 +65,8 @@ all::
 #
 # Define NO_UNSETENV if you don't have unsetenv in the C library.
 #
+# Define NO_GETENV_R if you don't have getenv_r in the C library.
+#
 # Define NO_MKDTEMP if you don't have mkdtemp in the C library.
 #
 # Define NO_MKSTEMPS if you don't have mkstemps in the C library.
@@ -1186,6 +1188,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_SYMLINK_HEAD = YesPlease
 	NO_SETENV = YesPlease
 	NO_UNSETENV = YesPlease
+	NO_GETENV_R = YesPlease
 	NO_STRCASESTR = YesPlease
 	NO_STRLCPY = YesPlease
 	NO_STRTOK_R = YesPlease
@@ -1494,6 +1497,10 @@ endif
 ifdef NO_UNSETENV
 	COMPAT_CFLAGS += -DNO_UNSETENV
 	COMPAT_OBJS += compat/unsetenv.o
+endif
+ifdef NO_GETENV_R
+	COMPAT_CFLAGS += -DNO_GETENV_R
+	COMPAT_OBJS += compat/getenv_r.o
 endif
 ifdef NO_SYS_SELECT_H
 	BASIC_CFLAGS += -DNO_SYS_SELECT_H
