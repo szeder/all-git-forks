@@ -465,6 +465,14 @@ cmd_update()
 		--checkout)
 			update="checkout"
 			;;
+		--branch=*)
+			case "$1" in
+			*=*)
+				update="checkout"
+				branch=`expr "z$1" : 'z--[^=]*=\(.*\)'` ;;
+			*)
+				usage ;;
+			esac ;;
 		--)
 			shift
 			break
@@ -502,6 +510,45 @@ cmd_update()
 			update_module=$update
 		else
 			update_module=$(git config submodule."$name".update)
+		fi
+
+		if ! test -z "$branch"
+		then
+			branch_module=$branch
+		else
+			if test "$update" != "checkout"
+			then
+				branch_module=$(git config submodule."$name".branch)
+				if test -z "$branch_module"
+				then
+					branch_module=$(git config -f .gitmodules --get submodule."$name".branch)
+				fi
+			fi
+		fi
+
+		if test "$branch_module" = "HEAD"
+		then
+			branch_module=
+		fi
+
+		if ! test -z "$branch_module"
+		then
+			(clear_local_git_env; cd "$path" &&
+			 if test ! $nofetch
+			 then
+				git-fetch --all >/dev/null 2>/dev/null || exit 1
+			 fi) ||
+			die "$(eval_gettext "Unable to fetch submodule in path '\$path'")"
+
+			sha1=$(clear_local_git_env; cd "$path" &&
+				git rev-parse $branch_module) ||
+			say "$(eval_gettext "Unable to find branch '\$branch_module' in submodule path '\$path'")"
+		fi
+
+		if test "$branch" -a "$update" != "checkout"
+		then
+			die "$(eval_gettext "You can not set update='\$update' and
+use a branch for submodule '\$path'")"
 		fi
 
 		if test "$update_module" = "none"

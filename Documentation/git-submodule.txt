@@ -133,9 +133,11 @@ init::
 update::
 	Update the registered submodules, i.e. clone missing submodules and
 	checkout the commit specified in the index of the containing repository.
-	This will make the submodules HEAD be detached unless `--rebase` or
-	`--merge` is specified or the key `submodule.$name.update` is set to
-	`rebase`, `merge` or `none`.
+	This will make the submodules HEAD be detached. This will not
+	happen if `--rebase`, `--merge` or `--branch` are specified.
+	Also if the key `submodule.$name.update` is set to `rebase`,
+	`merge` or `none`. If `submodule.$name.branch` is set to some
+	local branch this will also not happen.
 +
 If the submodule is not yet initialized, and you just want to use the
 setting as stored in .gitmodules, you can automatically initialize the
@@ -146,7 +148,16 @@ registered submodules, and update any nested submodules within.
 +
 If the configuration key `submodule.$name.update` is set to `none` the
 submodule with name `$name` will not be updated by default. This can be
-overriden by adding `--checkout` to the command.
+overriden by adding `--checkout` to the command. `--checkout` can also
+be used to enforce exact checkout of submodule sha1's.
++
+If the configuration key `submodule.$name.branch` is set to some valid
+branch in the submodule named by `$name` the submodule will be updated
+to the tip of that branch instead of the registered sha1. This option
+can either be set in .gitmodules or via git's configuration. Gits local
+configuration takes precedence over .gitmodules. If you want to override
+the branch checkout you can use the value `HEAD` to tell git to checkout
+exactly the registered sha1.
 
 summary::
 	Show commit summary between the given commit (defaults to HEAD) and
@@ -251,6 +262,13 @@ OPTIONS
 	to resolve these failures with linkgit:git-rebase[1].
 	If the key `submodule.$name.update` is set to `rebase`, this option is
 	implicit.
+
+--branch::
+	This option is only valid for the update command. You can use
+	this parameter to specify which branch you want to update all
+	submodules to. This is helpful if you want to update all
+	submodules to the tip of a certain branch or need to work on a
+	branch for all submodules for some time.
 
 --init::
 	This option is only valid for the update command.

@@ -611,4 +611,97 @@ test_expect_success 'submodule update places git-dir in superprojects git-dir re
 	)
 '
 
+test_expect_success '--branch updates follow the given branch' '
+	git clone . branch &&
+	(cd branch &&
+		git submodule add ./submodule submodule1 &&
+		git submodule add ./submodule submodule2 &&
+		(cd submodule1 &&
+			git rev-parse HEAD >../expected1 &&
+			git checkout HEAD^) &&
+		(cd submodule2 &&
+			git rev-parse HEAD >../expected2 &&
+			git checkout HEAD^) &&
+		git add submodule1 &&
+		git add submodule2 &&
+		git commit -m "add submodule1 and submodule2" &&
+		git submodule update --branch=origin/master &&
+		(cd submodule1 && git rev-parse HEAD >../actual1) &&
+		(cd submodule2 && git rev-parse HEAD >../actual2) &&
+		test_cmp expected1 actual1 &&
+		test_cmp expected2 actual2
+	)
+'
+
+cat >branch/expect_status <<EOF
+ M submodule1
+EOF
+
+check_submodule_one_follows()
+{
+	(cd submodule1 &&
+		git rev-parse origin/master >../expected1 &&
+		git rev-parse HEAD >../actual1) &&
+	(cd submodule2 &&
+		git rev-parse origin/master^ >../expected2 &&
+		git rev-parse HEAD >../actual2) &&
+	test_cmp expected1 actual1 &&
+	test_cmp expected2 actual2 &&
+	git status --porcelain --untracked-files=no >actual_status &&
+	test_cmp expect_status actual_status
+}
+
+check_both_submodules_exact()
+{
+	(cd submodule1 &&
+		git rev-parse origin/master^ >../expected1 &&
+		git rev-parse HEAD >../actual1) &&
+	(cd submodule2 &&
+		git rev-parse origin/master^ >../expected2 &&
+		git rev-parse HEAD >../actual2) &&
+	test_cmp expected1 actual1 &&
+	test_cmp expected2 actual2 &&
+	test -z "$(git status --porcelain --untracked-files=no)"
+}
+
+test_expect_success 'local branch configuration follows branch' '
+	(cd branch &&
+		git submodule update &&
+		check_both_submodules_exact &&
+		git config submodule.submodule1.branch origin/master &&
+		git submodule update &&
+		check_submodule_one_follows
+	)
+'
+
+test_expect_success '.gitmodules branch configuration follows branch' '
+	(cd branch &&
+		git config --unset submodule.submodule1.branch &&
+		git submodule update &&
+		check_both_submodules_exact &&
+		git config -f .gitmodules submodule.submodule1.branch origin/master &&
+		git add .gitmodules &&
+		git commit -m ".gitmodules follows branch" &&
+		git submodule update &&
+		check_submodule_one_follows
+	)
+'
+
+test_expect_success '--checkout commandline overrides branch config' '
+	(cd branch &&
+		git submodule update --checkout &&
+		check_both_submodules_exact
+	)
+'
+
+test_expect_success 'local config overrides .gitmodules branch config' '
+	(cd branch &&
+		git submodule update &&
+		check_submodule_one_follows &&
+		git config submodule.submodule1.branch HEAD &&
+		git submodule update &&
+		check_both_submodules_exact
+	)
+'
+
 test_done
