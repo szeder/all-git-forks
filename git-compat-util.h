@@ -428,6 +428,11 @@ extern int gitmkstemps(char *, int);
 extern void gitunsetenv(const char *);
 #endif
 
+#ifdef NO_GETENV_R
+#define getenv_r gitgetenv_r
+extern int gitgetenv_r(const char *, char *, size_t);
+#endif
+
 #ifdef NO_STRCASESTR
 #define strcasestr gitstrcasestr
 extern char *gitstrcasestr(const char *haystack, const char *needle);

@@ -95,6 +95,8 @@ all::
 #
 # Define NO_UNSETENV if you don't have unsetenv in the C library.
 #
+# Define NO_GETENV_R if you don't have getenv_r in the C library.
+#
 # Define NO_MKDTEMP if you don't have mkdtemp in the C library.
 #
 # Define MKDIR_WO_TRAILING_SLASH if your mkdir() can't deal with trailing slash.
@@ -1301,6 +1303,10 @@ endif
 ifdef NO_UNSETENV
 	COMPAT_CFLAGS += -DNO_UNSETENV
 	COMPAT_OBJS += compat/unsetenv.o
+endif
+ifdef NO_GETENV_R
+	COMPAT_CFLAGS += -DNO_GETENV_R
+	COMPAT_OBJS += compat/getenv_r.o
 endif
 ifdef NO_SYS_SELECT_H
 	BASIC_CFLAGS += -DNO_SYS_SELECT_H
