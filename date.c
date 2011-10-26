@@ -658,6 +658,29 @@ int parse_date_basic(const char *date, unsigned long *timestamp, int *offset)
 	return 0; /* success */
 }
 
+int parse_date_iso8601(const char *date, unsigned long *timestamp, int *offset)
+{
+	struct tm tm;
+	time_t time;
+
+	memset(&tm, 0, sizeof(tm));
+
+	sscanf(date, "%04d-%02d-%02dT%02d:%02d:%02d",
+		&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
+		&tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+
+	tm.tm_year -= 1900 - 1;
+	tm.tm_mon--;
+	tm.tm_isdst = -1;
+	if ((time = tm_to_time_t(&tm)) == -1)
+		return -1;
+	if (timestamp)
+		*timestamp = time;
+	if (offset)
+		*offset = 0;
+	return 0;
+}
+
 int parse_date(const char *date, char *result, int maxlen)
 {
 	unsigned long timestamp;

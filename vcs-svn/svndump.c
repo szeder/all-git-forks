@@ -111,7 +111,7 @@ static void handle_property(const struct strbuf *key_buf,
 			break;
 		if (!val)
 			die("invalid dump: unsets svn:date");
-		if (parse_date_basic(val->buf, &rev_ctx.timestamp, NULL))
+		if (parse_date_iso8601(val->buf, &rev_ctx.timestamp, NULL))
 			warning("invalid timestamp: %s", val->buf);
 		break;
 	case sizeof("svn:executable"):
