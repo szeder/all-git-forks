@@ -78,18 +78,18 @@ def main(args):
         else:
             assert times_files[-1].keys == keys
 
-    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+    sys.stdout.write('  '.join(['=' * 35] + ['========'] * len(times_files)) + '\n')
     sys.stdout.write('%-35s' % ('Test name',))
     for i in range(len(times_files)):
-        sys.stdout.write('  %7s' % ('[%d]' % (i,),))
+        sys.stdout.write('  %8s' % ('[%d]' % (i,),))
     sys.stdout.write('\n')
-    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+    sys.stdout.write('  '.join(['=' * 35] + ['========'] * len(times_files)) + '\n')
     for key in keys:
         sys.stdout.write('%-35s' % (key,))
         for times_file in times_files:
-            sys.stdout.write('  %7.2f' % (times_file.data[key],))
+            sys.stdout.write('  %8.2f' % (times_file.data[key],))
         sys.stdout.write('\n')
-    sys.stdout.write('  '.join(['=' * 35] + ['======='] * len(times_files)) + '\n')
+    sys.stdout.write('  '.join(['=' * 35] + ['========'] * len(times_files)) + '\n')
 
     sys.stdout.write('\n')
     sys.stdout.write('\n')
