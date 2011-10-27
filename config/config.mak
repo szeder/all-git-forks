@@ -9,7 +9,7 @@ LDFLAGS = -g
 # historical, and may contain compiler warnings that later
 # got fixed).
 ifeq ($(shell git symbolic-ref HEAD 2>/dev/null),)
-  CFLAGS += -Wno-error=unused-but-set-variable
+  CFLAGS += -Wno-error
 endif
 
 USE_LIBPCRE = YesPlease
