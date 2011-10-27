@@ -5298,7 +5298,7 @@ sub git_shortlog_body {
 	$from = 0 unless defined $from;
 	$to = $#{$commitlist} if (!defined $to || $#{$commitlist} < $to);
 
-	print "<table class=\"shortlog\">", $cgi->start_form(-method => "get");
+	print $cgi->start_form(-method => "get"), "<table class=\"shortlog\">";
 
 	print "<tr><td colspan='6'>",
 	      $cgi->submit(-value => "view changes"),
@@ -5350,8 +5350,8 @@ sub git_shortlog_body {
 		      "<td colspan=\"6\">$extra</td>\n" .
 		      "</tr>\n";
 	}
-	print $cgi->end_form;
 	print "</table>\n";
+	print $cgi->end_form;
 }
 
 sub git_history_body {
