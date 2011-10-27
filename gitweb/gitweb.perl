@@ -5310,12 +5310,14 @@ sub git_shortlog_body {
 	$from = 0 unless defined $from;
 	$to = $#{$commitlist} if (!defined $to || $#{$commitlist} < $to);
 
-	print $cgi->start_form(-method => "get"),
+	print "<table class=\"shortlog\">", $cgi->start_form(-method => "get");
+
+	print "<tr><td colspan='6'>",
 	      $cgi->submit(-value => "view changes"),
 	      $cgi->hidden("p"),
-	      $cgi->input({-name=>"a", -value=>"commitdiff", -type=>"hidden"});
+	      $cgi->input({-name=>"a", -value=>"commitdiff", -type=>"hidden"}),
+          "</td></tr>";
 
-	print "<table class=\"shortlog\">\n";
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
 		my %co = %{$commitlist->[$i]};
@@ -5332,6 +5334,7 @@ sub git_shortlog_body {
 		          -name => "hp", -value => $commit, -type => "radio",
 		          ($i == $to) ? (-checked => "checked") : (),
 		      }),
+              "</td><td>",
 		      $cgi->input({
 		          -name => "h", -value => $commit, -type => "radio",
 		          ($i == $from) ? (-checked => "checked") : (),
@@ -5356,11 +5359,11 @@ sub git_shortlog_body {
 	}
 	if (defined $extra) {
 		print "<tr>\n" .
-		      "<td colspan=\"4\">$extra</td>\n" .
+		      "<td colspan=\"6\">$extra</td>\n" .
 		      "</tr>\n";
 	}
-	print "</table>\n";
 	print $cgi->end_form;
+	print "</table>\n";
 }
 
 sub git_history_body {
