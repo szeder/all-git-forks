@@ -8,7 +8,10 @@ LDFLAGS = -g
 # Relax compilation on a detached HEAD (which is probably
 # historical, and may contain compiler warnings that later
 # got fixed).
-ifeq ($(shell git symbolic-ref HEAD 2>/dev/null),)
+head = $(shell git symbolic-ref HEAD 2>/dev/null)
+rebasing = $(shell test -d "`git rev-parse --git-dir`/"rebase-* && echo yes)
+strict_compilation = $(or $(rebasing), $(head))
+ifeq ($(strict_compilation),)
   CFLAGS += -Wno-error
 endif
 
