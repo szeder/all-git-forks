@@ -1,10 +1,12 @@
 [user]
-	name = Akira Suenami
-	email = a.suenami@gmail.com
+    name = Akira Suenami
+    email = a.suenami@gmail.com
 [color]
-	status = always
-	branch = always
+    status = always
+    branch = always
     diff = always
 [core]
-	editor = vim -c \"set fenc=utf-8\"
-	pager = less
+    editor = vim -c \"set fenc=utf-8\"
+    pager = less
+[branch]
+    autosetuprebase = always
