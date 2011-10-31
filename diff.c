@@ -2169,6 +2169,8 @@ static void builtin_diff(const char *name_a,
 		xecfg.ctxlen = o->context;
 		xecfg.interhunkctxlen = o->interhunkcontext;
 		xecfg.flags = XDL_EMIT_FUNCNAMES;
+		if (DIFF_OPT_TST(o, FUNCCONTEXT))
+			xecfg.flags |= XDL_EMIT_FUNCCONTEXT;
 		if (pe)
 			xdiff_set_find_func(&xecfg, pe->pattern, pe->cflags);
 		if (!diffopts)
@@ -2274,6 +2276,8 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 		memset(&xpp, 0, sizeof(xpp));
 		memset(&xecfg, 0, sizeof(xecfg));
 		xpp.flags = o->xdl_opts;
+		xecfg.ctxlen = o->context;
+		xecfg.interhunkctxlen = o->interhunkcontext;
 		xdi_diff_outf(&mf1, &mf2, diffstat_consume, diffstat,
 			      &xpp, &xecfg);
 	}
@@ -3534,6 +3538,12 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (opt_arg(arg, '\0', "inter-hunk-context",
 			 &options->interhunkcontext))
 		;
+	else if (!strcmp(arg, "-W"))
+		DIFF_OPT_SET(options, FUNCCONTEXT);
+	else if (!strcmp(arg, "--function-context"))
+		DIFF_OPT_SET(options, FUNCCONTEXT);
+	else if (!strcmp(arg, "--no-function-context"))
+		DIFF_OPT_CLR(options, FUNCCONTEXT);
 	else if ((argcount = parse_long_opt("output", av, &optarg))) {
 		options->file = fopen(optarg, "w");
 		if (!options->file)

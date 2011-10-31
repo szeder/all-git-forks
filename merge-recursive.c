@@ -390,7 +390,7 @@ static void record_df_conflict_files(struct merge_options *o,
 				     struct string_list *entries)
 {
 	/* If there is a D/F conflict and the file for such a conflict
-	 * currently exist in the working copy, we want to allow it to be
+	 * currently exist in the working tree, we want to allow it to be
 	 * removed to make room for the corresponding directory if needed.
 	 * The files underneath the directories of such D/F conflicts will
 	 * be processed before the corresponding file involved in the D/F
@@ -946,8 +946,10 @@ static struct merge_file_info merge_file_1(struct merge_options *o,
 			free(result_buf.ptr);
 			result.clean = (merge_status == 0);
 		} else if (S_ISGITLINK(a->mode)) {
-			result.clean = merge_submodule(result.sha, one->path, one->sha1,
-						       a->sha1, b->sha1);
+			result.clean = merge_submodule(result.sha,
+						       one->path, one->sha1,
+						       a->sha1, b->sha1,
+						       !o->call_depth);
 		} else if (S_ISLNK(a->mode)) {
 			hashcpy(result.sha, a->sha1);
 

@@ -722,13 +722,8 @@ static struct branch *new_branch(const char *name)
 
 	if (b)
 		die("Invalid attempt to create duplicate branch: %s", name);
-	switch (check_ref_format(name)) {
-	case 0: break; /* its valid */
-	case CHECK_REF_FORMAT_ONELEVEL:
-		break; /* valid, but too few '/', allow anyway */
-	default:
+	if (check_refname_format(name, REFNAME_ALLOW_ONELEVEL))
 		die("Branch name doesn't conform to GIT standards: %s", name);
-	}
 
 	b = pool_calloc(1, sizeof(struct branch));
 	b->name = pool_strdup(name);
@@ -2416,6 +2411,8 @@ static void note_change_n(struct branch *b, unsigned char old_fanout)
 	/* <committish> */
 	s = lookup_branch(p);
 	if (s) {
+		if (is_null_sha1(s->sha1))
+			die("Can't add a note on empty branch.");
 		hashcpy(commit_sha1, s->sha1);
 	} else if (*p == ':') {
 		uintmax_t commit_mark = strtoumax(p + 1, NULL, 10);
@@ -2717,6 +2714,8 @@ static void parse_new_tag(void)
 	from = strchr(command_buf.buf, ' ') + 1;
 	s = lookup_branch(from);
 	if (s) {
+		if (is_null_sha1(s->sha1))
+			die("Can't tag an empty branch.");
 		hashcpy(sha1, s->sha1);
 		type = OBJ_COMMIT;
 	} else if (*from == ':') {

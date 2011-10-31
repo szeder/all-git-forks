@@ -11,7 +11,7 @@ OPTIONS_SPEC=
 . git-sh-setup
 . git-sh-i18n
 set_reflog_action "pull${1+ $*}"
-require_work_tree
+require_work_tree_exists
 cd_to_toplevel
 
 
@@ -120,7 +120,7 @@ do
 	--d|--dr|--dry|--dry-|--dry-r|--dry-ru|--dry-run)
 		dry_run=--dry-run
 		;;
-	-h|--h|--he|--hel|--help|--help-|--help-a|--help-al|--help-all)
+	-h|--help-all)
 		usage
 		;;
 	*)

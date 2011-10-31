@@ -85,6 +85,8 @@ our $home_link_str = "++GITWEB_HOME_LINK_STR++";
 our $site_name = "++GITWEB_SITENAME++"
                  || ($ENV{'SERVER_NAME'} || "Untitled") . " Git";
 
+# html snippet to include in the <head> section of each page
+our $site_html_head_string = "++GITWEB_SITE_HTML_HEAD_STRING++";
 # filename of html text to include at top of each page
 our $site_header = "++GITWEB_SITE_HEADER++";
 # html text to include at home page
@@ -1517,6 +1519,17 @@ sub esc_path {
 	return $str;
 }
 
+# Sanitize for use in XHTML + application/xml+xhtm (valid XML 1.0)
+sub sanitize {
+	my $str = shift;
+
+	return undef unless defined $str;
+
+	$str = to_utf8($str);
+	$str =~ s|([[:cntrl:]])|($1 =~ /[\t\n\r]/ ? $1 : quot_cec($1))|eg;
+	return $str;
+}
+
 # Make control characters "printable", using character escape codes (CEC)
 sub quot_cec {
 	my $cntrl = shift;
@@ -2875,7 +2888,7 @@ sub filter_forks_from_projects_list {
 		$path =~ s/\.git$//;      # forks of 'repo.git' are in 'repo/' directory
 		next if ($path =~ m!/$!); # skip non-bare repositories, e.g. 'repo/.git'
 		next unless ($path);      # skip '.git' repository: tests, git-instaweb
-		next unless (-d $path);   # containing directory exists
+		next unless (-d "$projectroot/$path"); # containing directory exists
 		$pr->{'forks'} = [];      # there can be 0 or more forks of project
 
 		# add to trie
@@ -3868,6 +3881,11 @@ EOF
 		print "<base href=\"".esc_url($base_url)."\" />\n";
 	}
 	print_header_links($status);
+
+	if (defined $site_html_head_string) {
+		print to_utf8($site_html_head_string);
+	}
+
 	print "</head>\n" .
 	      "<body>\n";
 
@@ -6484,7 +6502,8 @@ sub git_blob {
 			$nr++;
 			$line = untabify($line);
 			printf qq!<div class="pre"><a id="l%i" href="%s#l%i" class="linenr">%4i</a> %s</div>\n!,
-			       $nr, esc_attr(href(-replay => 1)), $nr, $nr, $syntax ? to_utf8($line) : esc_html($line, -nbsp=>1);
+			       $nr, esc_attr(href(-replay => 1)), $nr, $nr,
+			       $syntax ? sanitize($line) : esc_html($line, -nbsp=>1);
 		}
 	}
 	close $fd

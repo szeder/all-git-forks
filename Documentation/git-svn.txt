@@ -234,6 +234,14 @@ svn:mergeinfo property in the SVN repository when possible. Currently, this can
 only be done when dcommitting non-fast-forward merges where all parents but the
 first have already been pushed into SVN.
 
+--interactive;;
+	Ask the user to confirm that a patch set should actually be sent to SVN.
+	For each patch, one may answer "yes" (accept this patch), "no" (discard this
+	patch), "all" (accept all patches), or "quit".
+	+
+	'git svn dcommit' returns immediately if answer if "no" or "quit", without
+	commiting anything to SVN.
+
 'branch'::
 	Create a branch in the SVN repository.
 
@@ -318,7 +326,7 @@ Any other arguments are passed directly to 'git log'
        Show what revision and author last modified each line of a file. The
        output of this mode is format-compatible with the output of
        `svn blame' by default. Like the SVN blame command,
-       local uncommitted changes in the working copy are ignored;
+       local uncommitted changes in the working tree are ignored;
        the version of the file in the HEAD revision is annotated. Unknown
        arguments are passed directly to 'git blame'.
 +
