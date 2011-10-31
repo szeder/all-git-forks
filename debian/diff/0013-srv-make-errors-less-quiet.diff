@@ -1,7 +1,7 @@
-From 8c5b009ccc1eb30cfec14ad06c4fd822b8e46ff2 Mon Sep 17 00:00:00 2001
+From b47b0e38456c3e840091fa0dc7daf5974b69b4ea Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 5 Sep 2011 16:29:02 -0500
-Subject: [PATCH 16/17] srv: make errors less quiet
+Subject: [PATCH 13/14] srv: make errors less quiet
 
 When parsing of SRV records fails, explain why before giving up with
 "fatal: Unable to look up foo.example.com".
@@ -91,5 +91,5 @@ index a0bc148..2716206 100644
  	if (!n) {
  		ret = 0;
 -- 
-1.7.7
+1.7.7.1
 

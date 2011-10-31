@@ -1,7 +1,7 @@
-From a000b9e98911f69f5fc3a69ba583ef52c7afedb0 Mon Sep 17 00:00:00 2001
+From a2da07c9e6309bfab54b8abdd77a178dbf6a36e5 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: [PATCH 12/17] tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH 09/14] tcp: unify ipv4 and ipv6 code paths
 
 The new DNS API abstracts away differences between the gethostbyname-
 and getaddrinfo-centric interfaces for looking up a host, making the
@@ -44,10 +44,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index 9bbac6b..e32a7bf 100644
+index 82e73ad..ed4c1d6 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1519,6 +1519,11 @@ ifdef NO_TRUSTABLE_FILEMODE
+@@ -1530,6 +1530,11 @@ ifdef NO_TRUSTABLE_FILEMODE
  endif
  ifdef NO_IPV6
  	BASIC_CFLAGS += -DNO_IPV6
@@ -508,5 +508,5 @@ index fff37f8..18952fd 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.7
+1.7.7.1
 
