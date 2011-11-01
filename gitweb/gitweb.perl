@@ -4993,6 +4993,9 @@ sub git_patchset_body {
 			if ($is_inline) {
 				print $line;
 			} elsif ($class eq 'add' || $class eq 'rem') {
+                if ($class eq 'rem') {
+                    $line =~ s/^(<div .*>)\s*\d*:/$1/;
+                }
 				push @chunk, [ $class, $line ];
 			} else {
 				if (@chunk) {
@@ -5003,8 +5006,10 @@ sub git_patchset_body {
                 if ($class eq 'chunk_header') {
 					print $line;
 				} else {
+                    my $old_line = $line;
+                    $old_line =~ s/^(<div .*>)\s*\d*:/$1/;
 					print q{<div class='chunk'><div class='old'>},
-					      $line,
+                          $old_line,
 					      q{</div><div class='new'>},
 					      $line,
 					      q{</div></div>};
