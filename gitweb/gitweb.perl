@@ -2308,8 +2308,9 @@ sub format_diff_line {
         $line = sprintf('%4s: %s', $to_lineno, $line);
 		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_lineno+1, $to_lineno+1;
 	}
+
     if ($diff_class eq 'rem') {
-        $line = sprintf('%4s: %s', ' ', $line);
+        $line = sprintf('%4s: %s', ' ', esc_html($line, -nbsp=>1));
         return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_lineno+1, $to_lineno;
     } else {
         $line = sprintf('%4s: %s', $to_lineno, esc_html($line, -nbsp=>1));
