@@ -822,7 +822,7 @@ sub evaluate_query_params {
 	}
 
     for my $name (qw(diff_style diff_around)) {
-        $input_params{$name} = $cgi->cookie($cgi_param_mapping{$name});
+        $input_params{$name} ||= $cgi->cookie($cgi_param_mapping{$name});
     }
 }
 
