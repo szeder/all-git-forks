@@ -820,6 +820,10 @@ sub evaluate_query_params {
 			$input_params{$name} = $cgi->param($symbol);
 		}
 	}
+
+    for my $name (qw(diff_style diff_around)) {
+        $input_params{$name} = $cgi->cookie($cgi_param_mapping{$name});
+    }
 }
 
 # now read PATH_INFO and update the parameter list for missing parameters
@@ -1076,6 +1080,7 @@ sub evaluate_and_validate_params {
 	}
 
 	$input_params{diff_style} ||= 'inline';
+ 	$input_params{diff_around} ||= 3;
 }
 
 # path to the current git repository
