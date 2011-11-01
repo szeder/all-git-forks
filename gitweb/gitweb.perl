@@ -2224,7 +2224,7 @@ sub format_diff_cc_simplified {
 # format patch (diff) line (not to be used for diff headers)
 sub format_diff_line {
 	my $line = shift;
-	my ($from, $to) = @_;
+	my ($from_lineno, $to_lineno, $from, $to) = @_;
 	my $diff_class = "";
 
 	chomp $line;
@@ -2272,7 +2272,7 @@ sub format_diff_line {
 		}
 		$line = "<span class=\"chunk_info\">@@ $from_text $to_text @@</span>" .
 		        "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n";
+		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_start, $to_start;
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		my ($prefix, $ranges, $section) = $line =~ m/^(\@+) (.*?) \@+(.*)$/;
 		my (@from_text, @from_start, @from_nlines, $to_text, $to_start, $to_nlines);
@@ -2305,9 +2305,16 @@ sub format_diff_line {
 		}
 		$line .= " $prefix</span>" .
 		         "<span class=\"section\">" . esc_html($section, -nbsp=>1) . "</span>";
-		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n";
+        $line = sprintf('%4s: %s', $to_lineno, $line);
+		return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_lineno+1, $to_lineno+1;
 	}
-	return $diff_class, "<div class=\"diff $diff_class\">" . esc_html($line, -nbsp=>1) . "</div>\n";
+    if ($diff_class eq 'rem') {
+        $line = sprintf('%4s: %s', ' ', $line);
+        return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_lineno+1, $to_lineno;
+    } else {
+        $line = sprintf('%4s: %s', $to_lineno, esc_html($line, -nbsp=>1));
+        return $diff_class, "<div class=\"diff $diff_class\">$line</div>\n", $from_lineno+1, $to_lineno+1;
+    }
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -4960,13 +4967,18 @@ sub git_patchset_body {
 
 		# the patch itself
 	LINE:
+        my ($from_lineno, $to_lineno);
 		my @chunk;
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
 			next PATCH if ($patch_line =~ m/^diff /);
 
-			my ($class, $line) = format_diff_line($patch_line, \%from, \%to);
+            my ($class, $line);
+			($class, $line, $from_lineno, $to_lineno) =
+                format_diff_line($patch_line,
+                                 $from_lineno, $to_lineno,
+                                 \%from, \%to);
 			if ($is_inline) {
 				print $line;
 			} elsif ($class eq 'add' || $class eq 'rem') {
@@ -4975,7 +4987,9 @@ sub git_patchset_body {
 				if (@chunk) {
 					print format_diff_chunk(@chunk);
 					@chunk = ();
-				} elsif ($class eq 'chunk_header') {
+				}
+
+                if ($class eq 'chunk_header') {
 					print $line;
 				} else {
 					print q{<div class='chunk'><div class='old'>},
