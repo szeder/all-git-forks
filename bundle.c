@@ -9,6 +9,7 @@
 #include "run-command.h"
 #include "refs.h"
 #include "argv-array.h"
+#include "remote.h"
 
 static const char bundle_signature[] = "# v2 git bundle\n";
 
@@ -490,4 +491,19 @@ int unbundle(struct bundle_header *header, int bundle_fd, int flags)
 	if (run_command(&ip))
 		return error(_("index-pack died"));
 	return 0;
+}
+
+struct ref *bundle_header_to_refs(const struct bundle_header *header)
+{
+	struct ref *result = NULL;
+	int i;
+
+	for (i = 0; i < header->references.nr; i++) {
+		struct ref_list_entry *e = header->references.list + i;
+		struct ref *ref = alloc_ref(e->name);
+		hashcpy(ref->old_oid.hash, e->sha1);
+		ref->next = result;
+		result = ref;
+	}
+	return result;
 }

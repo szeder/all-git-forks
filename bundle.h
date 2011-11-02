@@ -24,4 +24,6 @@ int unbundle(struct bundle_header *header, int bundle_fd, int flags);
 int list_bundle_refs(struct bundle_header *header,
 		int argc, const char **argv);
 
+struct ref *bundle_header_to_refs(const struct bundle_header *header);
+
 #endif
