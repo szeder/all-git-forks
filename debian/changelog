@@ -1,4 +1,4 @@
-git (1:1.7.7.2-0.1) unstable; urgency=low
+git (1:1.7.7.2-1) unstable; urgency=low
 
   * new upstream point release.
   * debian/rules: add separate build-arch and build-indep targets
@@ -8,7 +8,7 @@ git (1:1.7.7.2-0.1) unstable; urgency=low
   * debian/rules: use dpkg-buildflags to retrieve compiler flags
     (including hardening options).  Build-Depends: dpkg-dev (>= 1.15.7).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 01 Nov 2011 21:45:59 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 01 Nov 2011 23:41:55 -0500
 
 git (1:1.7.7.1-1) unstable; urgency=low
 
