@@ -1,4 +1,4 @@
-Version v1.7.8-rc0; changes since v1.7.7.1:
+Version v1.7.8-rc0; changes since v1.7.7.2:
 -------------------------------------------
 
 Bert Wesarg (7):
@@ -14,34 +14,21 @@ Brad King (2):
       submodule: Demonstrate known breakage during recursive merge
       submodule: Search for merges only at end of recursive merge
 
-Brandon Casey (12):
+Brandon Casey (8):
       t/t3905: use the name 'actual' for test output, swap arguments to test_cmp
       git-stash.sh: fix typo in error message
       t/t3905: add missing '&&' linkage
       git-stash: remove untracked/ignored directories when stashed
-      attr.c: avoid inappropriate access to strbuf "buf" member
-      cleanup: use internal memory allocation wrapper functions everywhere
-      builtin/mv.c: plug miniscule memory leak
       refs.c: ensure struct whose member may be passed to realloc is initialized
       refs.c: abort ref search if ref array is empty
       refs.c: free duplicate entries in the ref array instead of leaking them
-      attr.c: respect core.ignorecase when matching attribute patterns
       t/t3000-ls-files-others.sh: use $SHELL_PATH to run git-new-workdir script
 
-Carlos Martín Nieto (7):
-      Remove 'working copy' from the documentation and C code
-      fetch: free all the additional refspecs
-      t5510: add tests for fetch --prune
-      remote: separate out the remote_find_tracking logic into query_refspecs
-      fetch: honor the user-provided refspecs when pruning refs
-      fetch: treat --tags like refs/tags/*:refs/tags/* when pruning
+Carlos Martín Nieto (1):
       Documentation: update [section.subsection] to reflect what git does
 
 Chris Packham (1):
       git-web--browse: avoid the use of eval
-
-Christian Couder (1):
-      bisect: fix exiting when checkout failed in bisect_start()
 
 Christoffer Pettersson (1):
       git-gui: Corrected a typo in the Swedish translation of 'Continue'
@@ -94,9 +81,6 @@ Frédéric Heitzmann (1):
 Giuseppe Bilotta (1):
       am: preliminary support for hg patches
 
-Haitao Li (1):
-      date.c: Support iso8601 timezone formats
-
 Heiko Voigt (4):
       git-gui: warn when trying to commit on a detached head
       submodule: move update configuration variable further up
@@ -106,8 +90,7 @@ Heiko Voigt (4):
 Hui Wang (1):
       sha1_file: normalize alt_odb path before comparing and storing
 
-Jakub Narebski (6):
-      gitweb: Strip non-printable characters from syntax highlighter output
+Jakub Narebski (5):
       gitweb: Add gitweb(1) manpage for gitweb itself
       Documentation: Link to gitweb(1) and gitweb.conf(5) in other manpages
       Documentation: Add gitweb config variables to git-config(1)
@@ -121,7 +104,7 @@ Jay Soffian (5):
       cherry-pick: do not give irrelevant advice when cherry-pick punted
       Teach merge the '[-e|--edit]' option
 
-Jeff King (28):
+Jeff King (20):
       url: decode buffers that are not NUL-terminated
       improve httpd auth tests
       remote-curl: don't retry auth failures with dumb protocol
@@ -131,17 +114,9 @@ Jeff King (28):
       for-each-ref: refactor subject and body placeholder parsing
       for-each-ref: handle multiline subjects like --pretty
       t3200: clean up checks for file existence
-      add sha1_array API docs
-      quote.h: fix bogus comment
-      refactor argv_array into generic code
-      quote: provide sq_dequote_to_argv_array
-      bisect: use argv_array API
-      checkout: use argv_array API
-      run_hook: use argv_array API
       fix phantom untracked files when core.ignorecase is set
       t1300: put git invocations inside test function
       t1300: test mixed-case variable retrieval
-      pull,rebase: handle GIT_WORK_TREE better
       pack-objects: protect against disappearing packs
       downgrade "packfile cannot be accessed" errors to warnings
       daemon: give friendlier error messages to clients
@@ -154,9 +129,6 @@ Jeff King (28):
 Jeremie Nikaes (1):
       Add a remote helper to interact with mediawiki (fetch & push)
 
-Jim Meyering (1):
-      make the sample pre-commit hook script reject names with newlines, too
-
 Johannes Schindelin (5):
       Fix is_gitfile() for files too small or larger than PATH_MAX to be a gitfile
       t1020: disable the pwd test on MinGW
@@ -168,15 +140,10 @@ Johannes Sixt (2):
       t1402-check-ref-format: skip tests of refs beginning with slash on Windows
       t1300: attempting to remove a non-existent .git/config is not an error
 
-Jonathan Nieder (5):
-      http: remove extra newline in error message
-      http: avoid empty error messages for some curl errors
+Jonathan Nieder (3):
       ident: check /etc/mailname if email is unknown
       ident: do not retrieve default ident when unnecessary
       Makefile: fix permissions of mergetools/ checked out with permissive umask
-
-Jonathon Mah (1):
-      mergetool: Use args as pathspec to unmerged files
 
 Julian Phillips (2):
       Don't sort ref_list too early
@@ -185,7 +152,7 @@ Julian Phillips (2):
 Julien Muchembled (1):
       gitweb: fix regression when filtering out forks
 
-Junio C Hamano (52):
+Junio C Hamano (48):
       rev-list: fix finish_object() call
       revision.c: add show_object_with_name() helper function
       revision.c: update show_object_with_name() without using malloc()
@@ -203,19 +170,15 @@ Junio C Hamano (52):
       builtin/revert.c: make commit_list_append() static
       refs.c: make create_cached_refs() static
       send-pack: typofix error message
-      refactor run_receive_hook()
       rename "match_refs()" to "match_push_refs()"
       Allow git merge ":/<pattern>"
       ls-remote: a lone "-h" is asking for help
-      diff: teach --stat/--numstat to honor -U$num
       t0003: remove extra whitespaces
-      mergetool: no longer need to save standard input
       parse-options: deprecate OPT_BOOLEAN
       archive.c: use OPT_BOOL()
       url.c: simplify is_url()
       grep: teach --untracked and --exclude-standard options
       Post 1.7.7 first wave
-      attr: read core.attributesfile from git_default_core_config
       Update draft release notes to 1.7.8
       branch -m/-M: remove undocumented RENAMED-REF
       refs.c: move dwim_ref()/dwim_log() from sha1_name.c
@@ -245,15 +208,6 @@ Luke Diamand (1):
 Lénaïc Huard (1):
       gitweb: provide a way to customize html headers
 
-Martin von Zweigbergk (4):
-      remote: write correct fetch spec when renaming remote 'remote'
-      remote: "rename o foo" should not rename ref "origin/bar"
-      remote rename: warn when refspec was not updated
-      remote: only update remote-tracking branch if updating refspec
-
-Matthew Daley (1):
-      send-email: Honour SMTP domain when using TLS
-
 Matthieu Moy (6):
       git-remote-mediawiki: allow push to set MediaWiki metadata
       git-remote-mediawiki: trivial fixes
@@ -262,14 +216,13 @@ Matthieu Moy (6):
       git-remote-mediawiki: allow a domain to be set for authentication
       git-remote-mediawiki: don't include HTTP login/password in author
 
-Michael Haggerty (37):
+Michael Haggerty (36):
       Extract a function clear_cached_refs()
       Access reference caches only through new function get_cached_refs()
       Change the signature of read_packed_refs()
       Allocate cached_refs objects dynamically
       Store the submodule name in struct cached_refs
       Retain caches of submodule refs
-      notes_merge_commit(): do not pass temporary buffer to other function
       get_sha1_hex(): do not read past a NUL character
       t1402: add some more tests
       git check-ref-format: add options --allow-onelevel and --refspec-pattern
@@ -301,16 +254,13 @@ Michael Haggerty (37):
       write_ref_sha1(): only invalidate the loose ref cache
       clear_ref_cache(): inline function
 
-Michael J Gruber (10):
+Michael J Gruber (7):
       t6040: test branch -vv
       git-tag: introduce long forms for the options
       git-branch: introduce missing long forms for the options
       branch: introduce --list option
       branch: allow pattern arguments
       branch: -v does not automatically imply --list
-      unpack-trees: print "Aborting" to stderr
-      git-read-tree.txt: language and typography fixes
-      git-read-tree.txt: correct sparse-checkout and skip-worktree description
       http: use hostname in credential description
 
 Michael W. Olson (1):
@@ -319,15 +269,13 @@ Michael W. Olson (1):
 Michał Górny (1):
       for-each-ref: add split message parts to %(contents:*).
 
-Nguyễn Thái Ngọc Duy (8):
+Nguyễn Thái Ngọc Duy (6):
       sparse checkout: show error messages when worktree shaping fails
       Add explanation why we do not allow to sparse checkout to empty working tree
-      git-read-tree.txt: update sparse checkout examples
       pack-protocol: document "ERR" line
       daemon: return "access denied" if a service is not allowed
       daemon: log errors if we could not use some sockets
       t5403: convert leading spaces to tabs
-      Reindent closing bracket using tab instead of spaces
 
 Pang Yan Han (1):
       receive-pack: don't pass non-existent refs to post-{receive,update} hooks
@@ -349,9 +297,6 @@ Pete Wyckoff (5):
 
 Peter Oberndorfer (1):
       "rebase -i": support special-purpose editor to edit insn sheet
-
-Peter Stuge (1):
-      gitweb: Fix links to lines in blobs when javascript-actions are enabled
 
 Phil Hord (3):
       Learn to handle gitfiles in enter_repo
@@ -378,15 +323,14 @@ Ramkumar Ramachandra (18):
       revert: Introduce --continue to continue the operation
       revert: Propagate errors upwards from do_pick_commit
 
-Ramsay Allan Jones (6):
+Ramsay Allan Jones (5):
       Makefile: Make dependency directory creation less noisy
       sparse: Fix an "Using plain integer as NULL pointer" warning
       obstack.c: Fix some sparse warnings
-      t9159-*.sh: skip for mergeinfo test for svn <= 1.4
       Fix some "variable might be used uninitialized" warnings
       gitweb/Makefile: Remove static/gitweb.js in the clean target
 
-René Scharfe (24):
+René Scharfe (23):
       parseopt: add OPT_NOOP_NOARG
       revert: use OPT_NOOP_NOARG
       apply: use OPT_NOOP_NOARG
@@ -410,10 +354,6 @@ René Scharfe (24):
       pickaxe: factor out pickaxe
       xdiff: factor out get_func_line()
       diff: add option to show whole functions as context
-      read-cache.c: fix index memory allocation
-
-Richard Hartmann (1):
-      clone: Quote user supplied path in a single quote pair
 
 SZEDER Gábor (2):
       completion: unite --reuse-message and --reedit-message for 'notes'
@@ -423,14 +363,10 @@ Sebastian Schuberth (2):
       git-svn: On MSYS, escape and quote SVN_SSH also if set by the user
       inet_ntop.c: Work around GCC 4.6's detection of uninitialized variables
 
-Shawn O. Pearce (1):
-      remote-curl: Fix warning after HTTP failure
-
 Sitaram Chamarty (1):
       git-difftool: allow skipping file by typing 'n' at prompt
 
-Stefan Naewe (2):
-      Documentation/git-update-index: refer to 'ls-files'
+Stefan Naewe (1):
       completion: fix issue with process substitution not working on Git for Windows
 
 Tay Ray Chuan (3):
@@ -443,11 +379,107 @@ Teemu Matilainen (3):
       completion: commit --fixup and --squash
       completion: push --set-upstream
 
-Thomas Rast (1):
-      Documentation: basic configuration of notes.rewriteRef
-
 Zbigniew Jędrzejewski-Szmek (1):
       send-email: auth plain/login fix
+
+
+Version v1.7.7.2; changes since v1.7.7.1:
+-----------------------------------------
+
+Brandon Casey (4):
+      attr.c: avoid inappropriate access to strbuf "buf" member
+      cleanup: use internal memory allocation wrapper functions everywhere
+      builtin/mv.c: plug miniscule memory leak
+      attr.c: respect core.ignorecase when matching attribute patterns
+
+Carlos Martín Nieto (6):
+      Remove 'working copy' from the documentation and C code
+      fetch: free all the additional refspecs
+      t5510: add tests for fetch --prune
+      remote: separate out the remote_find_tracking logic into query_refspecs
+      fetch: honor the user-provided refspecs when pruning refs
+      fetch: treat --tags like refs/tags/*:refs/tags/* when pruning
+
+Christian Couder (1):
+      bisect: fix exiting when checkout failed in bisect_start()
+
+Haitao Li (1):
+      date.c: Support iso8601 timezone formats
+
+Jakub Narebski (1):
+      gitweb: Strip non-printable characters from syntax highlighter output
+
+Jeff King (8):
+      add sha1_array API docs
+      quote.h: fix bogus comment
+      refactor argv_array into generic code
+      quote: provide sq_dequote_to_argv_array
+      bisect: use argv_array API
+      checkout: use argv_array API
+      run_hook: use argv_array API
+      pull,rebase: handle GIT_WORK_TREE better
+
+Jim Meyering (1):
+      make the sample pre-commit hook script reject names with newlines, too
+
+Jonathan Nieder (2):
+      http: remove extra newline in error message
+      http: avoid empty error messages for some curl errors
+
+Jonathon Mah (1):
+      mergetool: Use args as pathspec to unmerged files
+
+Junio C Hamano (5):
+      refactor run_receive_hook()
+      diff: teach --stat/--numstat to honor -U$num
+      mergetool: no longer need to save standard input
+      attr: read core.attributesfile from git_default_core_config
+      Git 1.7.7.2
+
+Martin von Zweigbergk (4):
+      remote: write correct fetch spec when renaming remote 'remote'
+      remote: "rename o foo" should not rename ref "origin/bar"
+      remote rename: warn when refspec was not updated
+      remote: only update remote-tracking branch if updating refspec
+
+Matthew Daley (1):
+      send-email: Honour SMTP domain when using TLS
+
+Michael Haggerty (1):
+      notes_merge_commit(): do not pass temporary buffer to other function
+
+Michael J Gruber (3):
+      unpack-trees: print "Aborting" to stderr
+      git-read-tree.txt: language and typography fixes
+      git-read-tree.txt: correct sparse-checkout and skip-worktree description
+
+Nguyễn Thái Ngọc Duy (2):
+      git-read-tree.txt: update sparse checkout examples
+      Reindent closing bracket using tab instead of spaces
+
+Pat Thoyts (1):
+      t7511: avoid use of reserved filename on Windows.
+
+Peter Stuge (1):
+      gitweb: Fix links to lines in blobs when javascript-actions are enabled
+
+Ramsay Allan Jones (1):
+      t9159-*.sh: skip for mergeinfo test for svn <= 1.4
+
+René Scharfe (1):
+      read-cache.c: fix index memory allocation
+
+Richard Hartmann (1):
+      clone: Quote user supplied path in a single quote pair
+
+Shawn O. Pearce (1):
+      remote-curl: Fix warning after HTTP failure
+
+Stefan Naewe (1):
+      Documentation/git-update-index: refer to 'ls-files'
+
+Thomas Rast (1):
+      Documentation: basic configuration of notes.rewriteRef
 
 
 Version v1.7.7.1; changes since v1.7.7:
@@ -517,21 +549,23 @@ Thomas Rast (2):
       t6019: avoid refname collision on case-insensitive systems
 
 
-Version v1.7.7; changes since v1.7.7-rc1:
+Version v1.7.7; changes since v1.7.7-rc3:
 -----------------------------------------
-
-Allan Caffee (1):
-      describe: Refresh the index when run with --dirty
-
-Bryan Jacobs (1):
-      git-svn: teach git-svn to populate svn:mergeinfo
-
-Frédéric Heitzmann (1):
-      Disambiguate duplicate t9160* tests
 
 Gerrit Pape (2):
       contrib/hooks: adapt comment about Debian install location for contrib hooks
       templates/hooks--*: remove sample hooks without any functionality
+
+Junio C Hamano (2):
+      Documentation/gitnamespaces.txt: cater to older asciidoc
+      Git 1.7.7
+
+
+Version v1.7.7-rc3; changes since v1.7.7-rc2:
+---------------------------------------------
+
+Allan Caffee (1):
+      describe: Refresh the index when run with --dirty
 
 Jay Soffian (1):
       git-mergetool: check return value from read
@@ -539,14 +573,24 @@ Jay Soffian (1):
 Jeff King (1):
       t4014: clean up format.thread config after each test
 
-Junio C Hamano (7):
-      Documentation/gitnamespaces.txt: cater to older asciidoc
-      branch --set-upstream: regression fix
-      Git 1.7.7-rc2
+Junio C Hamano (3):
       Git 1.7.6.4
       merge-recursive: Do not look at working tree during a virtual ancestor merge
       Git 1.7.7-rc3
-      Git 1.7.7
+
+
+Version v1.7.7-rc2; changes since v1.7.7-rc1:
+---------------------------------------------
+
+Bryan Jacobs (1):
+      git-svn: teach git-svn to populate svn:mergeinfo
+
+Frédéric Heitzmann (1):
+      Disambiguate duplicate t9160* tests
+
+Junio C Hamano (2):
+      branch --set-upstream: regression fix
+      Git 1.7.7-rc2
 
 Pang Yan Han (1):
       format-patch: ignore ui.color
