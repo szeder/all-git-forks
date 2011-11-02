@@ -1,3 +1,102 @@
+Version v1.7.7.2; changes since v1.7.7.1:
+-----------------------------------------
+
+Brandon Casey (4):
+      attr.c: avoid inappropriate access to strbuf "buf" member
+      cleanup: use internal memory allocation wrapper functions everywhere
+      builtin/mv.c: plug miniscule memory leak
+      attr.c: respect core.ignorecase when matching attribute patterns
+
+Carlos Martín Nieto (6):
+      Remove 'working copy' from the documentation and C code
+      fetch: free all the additional refspecs
+      t5510: add tests for fetch --prune
+      remote: separate out the remote_find_tracking logic into query_refspecs
+      fetch: honor the user-provided refspecs when pruning refs
+      fetch: treat --tags like refs/tags/*:refs/tags/* when pruning
+
+Christian Couder (1):
+      bisect: fix exiting when checkout failed in bisect_start()
+
+Haitao Li (1):
+      date.c: Support iso8601 timezone formats
+
+Jakub Narebski (1):
+      gitweb: Strip non-printable characters from syntax highlighter output
+
+Jeff King (8):
+      add sha1_array API docs
+      quote.h: fix bogus comment
+      refactor argv_array into generic code
+      quote: provide sq_dequote_to_argv_array
+      bisect: use argv_array API
+      checkout: use argv_array API
+      run_hook: use argv_array API
+      pull,rebase: handle GIT_WORK_TREE better
+
+Jim Meyering (1):
+      make the sample pre-commit hook script reject names with newlines, too
+
+Jonathan Nieder (2):
+      http: remove extra newline in error message
+      http: avoid empty error messages for some curl errors
+
+Jonathon Mah (1):
+      mergetool: Use args as pathspec to unmerged files
+
+Junio C Hamano (5):
+      refactor run_receive_hook()
+      diff: teach --stat/--numstat to honor -U$num
+      mergetool: no longer need to save standard input
+      attr: read core.attributesfile from git_default_core_config
+      Git 1.7.7.2
+
+Martin von Zweigbergk (4):
+      remote: write correct fetch spec when renaming remote 'remote'
+      remote: "rename o foo" should not rename ref "origin/bar"
+      remote rename: warn when refspec was not updated
+      remote: only update remote-tracking branch if updating refspec
+
+Matthew Daley (1):
+      send-email: Honour SMTP domain when using TLS
+
+Michael Haggerty (1):
+      notes_merge_commit(): do not pass temporary buffer to other function
+
+Michael J Gruber (3):
+      unpack-trees: print "Aborting" to stderr
+      git-read-tree.txt: language and typography fixes
+      git-read-tree.txt: correct sparse-checkout and skip-worktree description
+
+Nguyễn Thái Ngọc Duy (2):
+      git-read-tree.txt: update sparse checkout examples
+      Reindent closing bracket using tab instead of spaces
+
+Pat Thoyts (1):
+      t7511: avoid use of reserved filename on Windows.
+
+Peter Stuge (1):
+      gitweb: Fix links to lines in blobs when javascript-actions are enabled
+
+Ramsay Allan Jones (1):
+      t9159-*.sh: skip for mergeinfo test for svn <= 1.4
+
+René Scharfe (1):
+      read-cache.c: fix index memory allocation
+
+Richard Hartmann (1):
+      clone: Quote user supplied path in a single quote pair
+
+Shawn O. Pearce (1):
+      remote-curl: Fix warning after HTTP failure
+
+Stefan Naewe (1):
+      Documentation/git-update-index: refer to 'ls-files'
+
+Thomas Rast (1):
+      Documentation: basic configuration of notes.rewriteRef
+
+
 Version v1.7.7.1; changes since v1.7.7:
 ---------------------------------------
 
@@ -65,21 +164,23 @@ Thomas Rast (2):
       t6019: avoid refname collision on case-insensitive systems
 
 
-Version v1.7.7; changes since v1.7.7-rc1:
+Version v1.7.7; changes since v1.7.7-rc3:
 -----------------------------------------
-
-Allan Caffee (1):
-      describe: Refresh the index when run with --dirty
-
-Bryan Jacobs (1):
-      git-svn: teach git-svn to populate svn:mergeinfo
-
-Frédéric Heitzmann (1):
-      Disambiguate duplicate t9160* tests
 
 Gerrit Pape (2):
       contrib/hooks: adapt comment about Debian install location for contrib hooks
       templates/hooks--*: remove sample hooks without any functionality
+
+Junio C Hamano (2):
+      Documentation/gitnamespaces.txt: cater to older asciidoc
+      Git 1.7.7
+
+
+Version v1.7.7-rc3; changes since v1.7.7-rc2:
+---------------------------------------------
+
+Allan Caffee (1):
+      describe: Refresh the index when run with --dirty
 
 Jay Soffian (1):
       git-mergetool: check return value from read
@@ -87,14 +188,24 @@ Jay Soffian (1):
 Jeff King (1):
       t4014: clean up format.thread config after each test
 
-Junio C Hamano (7):
-      Documentation/gitnamespaces.txt: cater to older asciidoc
-      branch --set-upstream: regression fix
-      Git 1.7.7-rc2
+Junio C Hamano (3):
       Git 1.7.6.4
       merge-recursive: Do not look at working tree during a virtual ancestor merge
       Git 1.7.7-rc3
-      Git 1.7.7
+
+
+Version v1.7.7-rc2; changes since v1.7.7-rc1:
+---------------------------------------------
+
+Bryan Jacobs (1):
+      git-svn: teach git-svn to populate svn:mergeinfo
+
+Frédéric Heitzmann (1):
+      Disambiguate duplicate t9160* tests
+
+Junio C Hamano (2):
+      branch --set-upstream: regression fix
+      Git 1.7.7-rc2
 
 Pang Yan Han (1):
       format-patch: ignore ui.color
