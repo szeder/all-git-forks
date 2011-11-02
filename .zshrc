@@ -1,5 +1,7 @@
 # .zshrc
 
+export LANG=ja_JP.UTF-8
+
 # User specific aliases and functions
 alias grep='grep --color=always'
 alias less='~/less.sh'
