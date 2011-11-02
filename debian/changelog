@@ -1,9 +1,13 @@
 git (1:1.7.8~rc0-1.1) experimental; urgency=low
 
+  [ Gerrit Pape ]
   * merge branch debian-sid.
   * new upstream release candidate.
     * debian/diff/0001-...diff, 0002-...diff, 0003-...diff: remove;
       applied upstream (thx Jonathan Nieder).
+
+  [ Jonathan Nieder ]
+  * update debian/copyright.
 
  -- Gerrit Pape <pape@smarden.org>  Mon, 31 Oct 2011 09:45:53 +0000
 
