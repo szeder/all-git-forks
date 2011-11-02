@@ -10,9 +10,9 @@ git (1:1.7.8~rc0-2) experimental; urgency=low
   * update debian/copyright.
   * debian/git.preinst: replace hard links to /usr/lib/git-core/git with
     symlinks before upgrading from git <= 1:1.7.7-1 (thx Antti Kultanen;
-    closes: #642603).
+    closes: #645009).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 02 Nov 2011 00:35:02 -0500
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 02 Nov 2011 01:56:12 -0500
 
 git (1:1.7.7.2-1) unstable; urgency=low
 
