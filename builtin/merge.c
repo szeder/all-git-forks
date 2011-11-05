@@ -411,13 +411,15 @@ static void finish(struct commit *head_commit,
 	strbuf_release(&reflog_message);
 }
 
-static struct object *want_commit(const char *name)
+static struct object *want_commit(const char *name, enum object_type *real_type)
 {
 	struct object *obj;
 	unsigned char sha1[20];
 	if (get_sha1(name, sha1))
 		return NULL;
 	obj = parse_object(sha1);
+	if (real_type)
+		*real_type = obj->type;
 	return peel_to_type(name, 0, obj, OBJ_COMMIT);
 }
 
@@ -436,13 +438,18 @@ static void merge_name(const char *remote, struct strbuf *msg)
 	remote = bname.buf;
 
 	memset(branch_head, 0, sizeof(branch_head));
-	remote_head = want_commit(remote);
+	remote_head = want_commit(remote, NULL);
 	if (!remote_head)
 		die(_("'%s' does not point to a commit"), remote);
 
 	if (dwim_ref(remote, strlen(remote), branch_head, &found_ref) > 0) {
 		if (!prefixcmp(found_ref, "refs/heads/")) {
 			strbuf_addf(msg, "%s\t\tbranch '%s' of .\n",
+				    sha1_to_hex(branch_head), remote);
+			goto cleanup;
+		}
+		if (!prefixcmp(found_ref, "refs/tags/")) {
+			strbuf_addf(msg, "%s\t\ttag '%s' of .\n",
 				    sha1_to_hex(branch_head), remote);
 			goto cleanup;
 		}
@@ -1209,7 +1216,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		if (!allow_fast_forward)
 			die(_("Non-fast-forward commit does not make sense into "
 			    "an empty head"));
-		remote_head = want_commit(argv[0]);
+		remote_head = want_commit(argv[0], NULL);
 		if (!remote_head)
 			die(_("%s - not something we can merge"), argv[0]);
 		read_empty(remote_head->sha1, 0);
@@ -1234,8 +1241,12 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			merge_name(argv[i], &merge_names);
 
 		if (!have_message || shortlog_len) {
-			fmt_merge_msg(&merge_names, &merge_msg, !have_message,
-				      shortlog_len);
+			struct fmt_merge_msg_opts opts;
+			memset(&opts, 0, sizeof(opts));
+			opts.add_title = !have_message;
+			opts.shortlog_len = shortlog_len;
+
+			fmt_merge_msg(&merge_names, &merge_msg, &opts);
 			if (merge_msg.len)
 				strbuf_setlen(&merge_msg, merge_msg.len - 1);
 		}
@@ -1254,8 +1265,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < argc; i++) {
 		struct object *o;
 		struct commit *commit;
+		enum object_type real_type;
 
-		o = want_commit(argv[i]);
+		o = want_commit(argv[i], &real_type);
 		if (!o)
 			die(_("%s - not something we can merge"), argv[i]);
 		commit = lookup_commit(o->sha1);
@@ -1265,6 +1277,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		strbuf_addf(&buf, "GITHEAD_%s", sha1_to_hex(o->sha1));
 		setenv(buf.buf, argv[i], 1);
 		strbuf_reset(&buf);
+		if (real_type == OBJ_TAG)
+			option_edit = 1;
 	}
 
 	if (!use_strategies) {
@@ -1322,7 +1336,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		if (have_message)
 			strbuf_addstr(&msg,
 				" (no commit created; -m option ignored)");
-		o = want_commit(sha1_to_hex(remoteheads->item->object.sha1));
+		o = want_commit(sha1_to_hex(remoteheads->item->object.sha1), NULL);
 		if (!o)
 			return 1;
 
