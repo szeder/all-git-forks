@@ -26,14 +26,14 @@ static const char **default_arg;
 
 static const char *get_color_code(int idx)
 {
-	if (showbranch_use_color)
+	if (want_color(showbranch_use_color))
 		return column_colors_ansi[idx % column_colors_ansi_max];
 	return "";
 }
 
 static const char *get_color_reset_code(void)
 {
-	if (showbranch_use_color)
+	if (want_color(showbranch_use_color))
 		return GIT_COLOR_RESET;
 	return "";
 }
@@ -283,8 +283,7 @@ static void show_one_commit(struct commit *commit, int no_name)
 	struct commit_name *name = commit->util;
 
 	if (commit->object.parsed) {
-		struct pretty_print_context ctx = {0};
-		pretty_print_commit(CMIT_FMT_ONELINE, commit, &pretty, &ctx);
+		pp_commit_easy(CMIT_FMT_ONELINE, commit, &pretty);
 		pretty_str = pretty.buf;
 	}
 	if (!prefixcmp(pretty_str, "[PATCH] "))
@@ -574,7 +573,7 @@ static int git_show_branch_config(const char *var, const char *value, void *cb)
 	}
 
 	if (!strcmp(var, "color.showbranch")) {
-		showbranch_use_color = git_config_colorbool(var, value, -1);
+		showbranch_use_color = git_config_colorbool(var, value);
 		return 0;
 	}
 
@@ -685,9 +684,6 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 	};
 
 	git_config(git_show_branch_config, NULL);
-
-	if (showbranch_use_color == -1)
-		showbranch_use_color = git_use_color_default;
 
 	/* If nothing is specified, try the default first */
 	if (ac == 1 && default_num) {

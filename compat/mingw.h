@@ -85,8 +85,6 @@ static inline int symlink(const char *oldpath, const char *newpath)
 { errno = ENOSYS; return -1; }
 static inline int fchmod(int fildes, mode_t mode)
 { errno = ENOSYS; return -1; }
-static inline pid_t fork(void)
-{ errno = ENOSYS; return -1; }
 static inline unsigned int alarm(unsigned int seconds)
 { return 0; }
 static inline int fsync(int fd)
@@ -190,6 +188,9 @@ char *mingw_getcwd(char *pointer, int len);
 char *mingw_getenv(const char *name);
 #define getenv mingw_getenv
 
+int mingw_gethostname(char *host, int namelen);
+#define gethostname mingw_gethostname
+
 struct hostent *mingw_gethostbyname(const char *host);
 #define gethostbyname mingw_gethostbyname
 
@@ -216,6 +217,9 @@ int mingw_bind(int sockfd, struct sockaddr *sa, size_t sz);
 
 int mingw_setsockopt(int sockfd, int lvl, int optname, void *optval, int optlen);
 #define setsockopt mingw_setsockopt
+
+int mingw_shutdown(int sockfd, int how);
+#define shutdown mingw_shutdown
 
 int mingw_listen(int sockfd, int backlog);
 #define listen mingw_listen
@@ -297,6 +301,15 @@ int winansi_fprintf(FILE *stream, const char *format, ...) __attribute__((format
 
 #define has_dos_drive_prefix(path) (isalpha(*(path)) && (path)[1] == ':')
 #define is_dir_sep(c) ((c) == '/' || (c) == '\\')
+static inline char *mingw_find_last_dir_sep(const char *path)
+{
+	char *ret = NULL;
+	for (; *path; ++path)
+		if (is_dir_sep(*path))
+			ret = (char *)path;
+	return ret;
+}
+#define find_last_dir_sep mingw_find_last_dir_sep
 #define PATH_SEP ';'
 #define PRIuMAX "I64u"
 

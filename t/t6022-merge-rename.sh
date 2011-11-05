@@ -252,6 +252,7 @@ test_expect_success 'setup for rename + d/f conflicts' '
 	git reset --hard &&
 	git checkout --orphan dir-in-way &&
 	git rm -rf . &&
+	git clean -fdqx &&
 
 	mkdir sub &&
 	mkdir dir &&
@@ -302,11 +303,11 @@ test_expect_success 'Rename+D/F conflict; renamed file merges but dir in way' '
 	git checkout -q renamed-file-has-no-conflicts^0 &&
 	test_must_fail git merge --strategy=recursive dir-in-way >output &&
 
-	grep "CONFLICT (delete/modify): dir/file-in-the-way" output &&
+	grep "CONFLICT (modify/delete): dir/file-in-the-way" output &&
 	grep "Auto-merging dir" output &&
 	grep "Adding as dir~HEAD instead" output &&
 
-	test 2 -eq "$(git ls-files -u | wc -l)" &&
+	test 3 -eq "$(git ls-files -u | wc -l)" &&
 	test 2 -eq "$(git ls-files -u dir/file-in-the-way | wc -l)" &&
 
 	test_must_fail git diff --quiet &&
@@ -324,11 +325,11 @@ test_expect_success 'Same as previous, but merged other way' '
 	test_must_fail git merge --strategy=recursive renamed-file-has-no-conflicts >output 2>errors &&
 
 	! grep "error: refusing to lose untracked file at" errors &&
-	grep "CONFLICT (delete/modify): dir/file-in-the-way" output &&
+	grep "CONFLICT (modify/delete): dir/file-in-the-way" output &&
 	grep "Auto-merging dir" output &&
 	grep "Adding as dir~renamed-file-has-no-conflicts instead" output &&
 
-	test 2 -eq "$(git ls-files -u | wc -l)" &&
+	test 3 -eq "$(git ls-files -u | wc -l)" &&
 	test 2 -eq "$(git ls-files -u dir/file-in-the-way | wc -l)" &&
 
 	test_must_fail git diff --quiet &&
@@ -350,11 +351,11 @@ cat >expected <<\EOF &&
 8
 9
 10
-<<<<<<< HEAD
+<<<<<<< HEAD:dir
 12
 =======
 11
->>>>>>> dir-not-in-way
+>>>>>>> dir-not-in-way:sub/file
 EOF
 
 test_expect_success 'Rename+D/F conflict; renamed file cannot merge, dir not in way' '
@@ -404,11 +405,11 @@ cat >expected <<\EOF &&
 8
 9
 10
-<<<<<<< HEAD
+<<<<<<< HEAD:sub/file
 11
 =======
 12
->>>>>>> renamed-file-has-conflicts
+>>>>>>> renamed-file-has-conflicts:dir
 EOF
 
 test_expect_success 'Same as previous, but merged other way' '
@@ -663,13 +664,224 @@ test_expect_success 'setup to test avoiding unnecessary update, with D/F conflic
 	git commit -m "Only unrelated changes"
 '
 
-test_expect_failure 'avoid unnecessary update, with D/F conflict' '
+test_expect_success 'avoid unnecessary update, with D/F conflict' '
 	git checkout -q avoid-unnecessary-update-2^0 &&
 	test-chmtime =1000000000 df &&
 	test-chmtime -v +0 df >expect &&
 	git merge merge-branch-2 &&
 	test-chmtime -v +0 df >actual &&
 	test_cmp expect actual # "df" should have stayed intact
+'
+
+test_expect_success 'setup avoid unnecessary update, dir->(file,nothing)' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	>irrelevant &&
+	mkdir df &&
+	>df/file &&
+	git add -A &&
+	git commit -mA &&
+
+	git checkout -b side
+	git rm -rf df &&
+	git commit -mB &&
+
+	git checkout master &&
+	git rm -rf df &&
+	echo bla >df &&
+	git add -A &&
+	git commit -m "Add a newfile"
+'
+
+test_expect_success 'avoid unnecessary update, dir->(file,nothing)' '
+	git checkout -q master^0 &&
+	test-chmtime =1000000000 df &&
+	test-chmtime -v +0 df >expect &&
+	git merge side &&
+	test-chmtime -v +0 df >actual &&
+	test_cmp expect actual # "df" should have stayed intact
+'
+
+test_expect_success 'setup avoid unnecessary update, modify/delete' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	>irrelevant &&
+	>file &&
+	git add -A &&
+	git commit -mA &&
+
+	git checkout -b side
+	git rm -f file &&
+	git commit -m "Delete file" &&
+
+	git checkout master &&
+	echo bla >file &&
+	git add -A &&
+	git commit -m "Modify file"
+'
+
+test_expect_success 'avoid unnecessary update, modify/delete' '
+	git checkout -q master^0 &&
+	test-chmtime =1000000000 file &&
+	test-chmtime -v +0 file >expect &&
+	test_must_fail git merge side &&
+	test-chmtime -v +0 file >actual &&
+	test_cmp expect actual # "file" should have stayed intact
+'
+
+test_expect_success 'setup avoid unnecessary update, rename/add-dest' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	printf "1\n2\n3\n4\n5\n6\n7\n8\n" >file &&
+	git add -A &&
+	git commit -mA &&
+
+	git checkout -b side
+	cp file newfile &&
+	git add -A &&
+	git commit -m "Add file copy" &&
+
+	git checkout master &&
+	git mv file newfile &&
+	git commit -m "Rename file"
+'
+
+test_expect_success 'avoid unnecessary update, rename/add-dest' '
+	git checkout -q master^0 &&
+	test-chmtime =1000000000 newfile &&
+	test-chmtime -v +0 newfile >expect &&
+	git merge side &&
+	test-chmtime -v +0 newfile >actual &&
+	test_cmp expect actual # "file" should have stayed intact
+'
+
+test_expect_success 'setup merge of rename + small change' '
+	git reset --hard &&
+	git checkout --orphan rename-plus-small-change &&
+	git rm -rf . &&
+	git clean -fdqx &&
+
+	echo ORIGINAL >file &&
+	git add file &&
+
+	test_tick &&
+	git commit -m Initial &&
+	git checkout -b rename_branch &&
+	git mv file renamed_file &&
+	git commit -m Rename &&
+	git checkout rename-plus-small-change &&
+	echo NEW-VERSION >file &&
+	git commit -a -m Reformat
+'
+
+test_expect_success 'merge rename + small change' '
+	git merge rename_branch &&
+
+	test 1 -eq $(git ls-files -s | wc -l) &&
+	test 0 -eq $(git ls-files -o | wc -l) &&
+	test $(git rev-parse HEAD:renamed_file) = $(git rev-parse HEAD~1:file)
+'
+
+test_expect_success 'setup for use of extended merge markers' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	printf "1\n2\n3\n4\n5\n6\n7\n8\n" >original_file &&
+	git add original_file &&
+	git commit -mA &&
+
+	git checkout -b rename &&
+	echo 9 >>original_file &&
+	git add original_file &&
+	git mv original_file renamed_file &&
+	git commit -mB &&
+
+	git checkout master &&
+	echo 8.5 >>original_file &&
+	git add original_file &&
+	git commit -mC
+'
+
+cat >expected <<\EOF &&
+1
+2
+3
+4
+5
+6
+7
+8
+<<<<<<< HEAD:renamed_file
+9
+=======
+8.5
+>>>>>>> master^0:original_file
+EOF
+
+test_expect_success 'merge master into rename has correct extended markers' '
+	git checkout rename^0 &&
+	test_must_fail git merge -s recursive master^0 &&
+	test_cmp expected renamed_file
+'
+
+cat >expected <<\EOF &&
+1
+2
+3
+4
+5
+6
+7
+8
+<<<<<<< HEAD:original_file
+8.5
+=======
+9
+>>>>>>> rename^0:renamed_file
+EOF
+
+test_expect_success 'merge rename into master has correct extended markers' '
+	git reset --hard &&
+	git checkout master^0 &&
+	test_must_fail git merge -s recursive rename^0 &&
+	test_cmp expected renamed_file
+'
+
+test_expect_success 'setup spurious "refusing to lose untracked" message' '
+	git rm -rf . &&
+	git clean -fdqx &&
+	rm -rf .git &&
+	git init &&
+
+	> irrelevant_file &&
+	printf "1\n2\n3\n4\n5\n6\n7\n8\n" >original_file &&
+	git add irrelevant_file original_file &&
+	git commit -mA &&
+
+	git checkout -b rename &&
+	git mv original_file renamed_file &&
+	git commit -mB &&
+
+	git checkout master &&
+	git rm original_file &&
+	git commit -mC
+'
+
+test_expect_success 'no spurious "refusing to lose untracked" message' '
+	git checkout master^0 &&
+	test_must_fail git merge rename^0 2>errors.txt &&
+	! grep "refusing to lose untracked file" errors.txt
 '
 
 test_done

@@ -45,9 +45,10 @@ lines.  Variables may belong directly to a section or to a given subsection.
 You can have `[section]` if you have `[section "subsection"]`, but you
 don't need to.
 
-There is also a case insensitive alternative `[section.subsection]` syntax.
-In this syntax, subsection names follow the same restrictions as for section
-names.
+There is also a deprecated `[section.subsection]` syntax. With this
+syntax, the subsection name is converted to lower-case and is also
+compared case sensitively. These subsection names follow the same
+restrictions as section names.
 
 All the other lines (and the remainder of the line after the section
 header) are recognized as setting variables, in the form
@@ -147,7 +148,7 @@ advice.*::
 
 core.fileMode::
 	If false, the executable bit differences between the index and
-	the working copy are ignored; useful on broken filesystems like FAT.
+	the working tree are ignored; useful on broken filesystems like FAT.
 	See linkgit:git-update-index[1].
 +
 The default is true, except linkgit:git-clone[1] or linkgit:git-init[1]
@@ -179,7 +180,7 @@ is created.
 
 core.trustctime::
 	If false, the ctime differences between the index and the
-	working copy are ignored; useful when the inode change time
+	working tree are ignored; useful when the inode change time
 	is regularly modified by something outside Git (file system
 	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
@@ -292,7 +293,7 @@ core.ignoreStat::
 	If true, commands which modify both the working tree and the index
 	will mark the updated paths with the "assume unchanged" bit in the
 	index. These marked files are then assumed to stay unchanged in the
-	working copy, until you	mark them otherwise manually - Git will not
+	working tree, until you mark them otherwise manually - Git will not
 	detect the file changes	by lstat() calls. This is useful on systems
 	where those are very slow, such as Microsoft Windows.
 	See linkgit:git-update-index[1].
@@ -344,7 +345,9 @@ core.logAllRefUpdates::
 	SHA1, the date/time and the reason of the update, but
 	only when the file exists.  If this configuration
 	variable is set to true, missing "$GIT_DIR/logs/<ref>"
-	file is automatically created for branch heads.
+	file is automatically created for branch heads (i.e. under
+	refs/heads/), remote refs (i.e. under refs/remotes/),
+	note refs (i.e. under refs/notes/), and the symbolic ref HEAD.
 +
 This information can be used to determine what commit
 was the tip of a branch "2 days ago".
@@ -471,6 +474,12 @@ core.editor::
 	variable when it is set, and the environment variable
 	`GIT_EDITOR` is not set.  See linkgit:git-var[1].
 
+sequence.editor::
+	Text editor used by `git rebase -i` for editing the rebase insn file.
+	The value is meant to be interpreted by the shell when it is used.
+	It can be overridden by the `GIT_SEQUENCE_EDITOR` environment variable.
+	When not configured the default commit message editor is used instead.
+
 core.pager::
 	The command that git will use to paginate output.  Can
 	be overridden with the `GIT_PAGER` environment
@@ -587,6 +596,8 @@ it will be treated as a shell command.  For example, defining
 "gitk --all --not ORIG_HEAD".  Note that shell commands will be
 executed from the top-level directory of a repository, which may
 not necessarily be the current directory.
+'GIT_PREFIX' is set as returned by running 'git rev-parse --show-prefix'
+from the original current directory. See linkgit:git-rev-parse[1].
 
 am.keepcr::
 	If true, git-am will call git-mailsplit for patches in mbox format
@@ -674,7 +685,7 @@ branch.<name>.rebase::
 browser.<tool>.cmd::
 	Specify the command to invoke the specified browser. The
 	specified command is evaluated in shell with the URLs passed
-	as arguments. (See linkgit:git-web--browse[1].)
+	as arguments. (See linkgit:git-web{litdd}browse[1].)
 
 browser.<tool>.path::
 	Override the path for the given tool that may be used to
@@ -706,9 +717,16 @@ second is the background.  The position of the attribute, if any,
 doesn't matter.
 
 color.diff::
-	When set to `always`, always use colors in patch.
-	When false (or `never`), never.  When set to `true` or `auto`, use
-	colors only when the output is to the terminal. Defaults to false.
+	Whether to use ANSI escape sequences to add color to patches.
+	If this is set to `always`, linkgit:git-diff[1],
+	linkgit:git-log[1], and linkgit:git-show[1] will use color
+	for all patches.  If it is set to `true` or `auto`, those
+	commands will only use color when output is to the terminal.
+	Defaults to false.
++
+This does not affect linkgit:git-format-patch[1] nor the
+'git-diff-{asterisk}' plumbing commands.  Can be overridden on the
+command line with the `--color[=<when>]` option.
 
 color.diff.<slot>::
 	Use customized color for diff colorization.  `<slot>` specifies
@@ -794,11 +812,15 @@ color.status.<slot>::
 	color.branch.<slot>.
 
 color.ui::
-	When set to `always`, always use colors in all git commands which
-	are capable of colored output. When false (or `never`), never. When
-	set to `true` or `auto`, use colors only when the output is to the
-	terminal. When more specific variables of color.* are set, they always
-	take precedence over this setting. Defaults to false.
+	This variable determines the default value for variables such
+	as `color.diff` and `color.grep` that control the use of color
+	per command family. Its scope will expand as more commands learn
+	configuration to set a default for the `--color` option.  Set it
+	to `always` if you want all output not intended for machine
+	consumption to use color, to `true` or `auto` if you want such
+	output to use color when written to the terminal, or to `false` or
+	`never` if you prefer git commands not to use color unless enabled
+	explicitly with some other configuration or the `--color` option.
 
 commit.status::
 	A boolean to enable/disable inclusion of status information in the
@@ -841,6 +863,13 @@ fetch.recurseSubmodules::
 	value), fetch and pull will only recurse into a populated submodule
 	when its superproject retrieves a commit that updates the submodule's
 	reference.
+
+fetch.fsckObjects::
+	If it is set to true, git-fetch-pack will check all fetched
+	objects. It will abort in the case of a malformed object or a
+	broken link. The result of an abort are only dangling objects.
+	Defaults to false. If not set, the value of `transfer.fsckObjects`
+	is used instead.
 
 fetch.unpackLimit::
 	If the number of objects fetched over the git native
@@ -1049,6 +1078,23 @@ All gitcvs variables except for 'gitcvs.usecrlfattr' and
 is one of "ext" and "pserver") to make them apply only for the given
 access method.
 
+gitweb.category::
+gitweb.description::
+gitweb.owner::
+gitweb.url::
+	See linkgit:gitweb[1] for description.
+
+gitweb.avatar::
+gitweb.blame::
+gitweb.grep::
+gitweb.highlight::
+gitweb.patches::
+gitweb.pickaxe::
+gitweb.remote_heads::
+gitweb.showsizes::
+gitweb.snapshot::
+	See linkgit:gitweb.conf[5] for description.
+
 grep.lineNumber::
 	If set to true, enable '-n' option by default.
 
@@ -1183,6 +1229,14 @@ http.proxy::
 	environment variable (see linkgit:curl[1]).  This can be overridden
 	on a per-remote basis; see remote.<name>.proxy
 
+http.cookiefile::
+	File containing previously stored cookie lines which should be used
+	in the git http session, if they match the server. The file format
+	of the file to read cookies from should be plain HTTP headers or
+	the Netscape/Mozilla cookie file format (see linkgit:curl[1]).
+	NOTE that the file specified with http.cookiefile is only used as
+	input. No cookies will be stored in the file.
+
 http.sslVerify::
 	Whether to verify the SSL certificate when fetching or pushing
 	over HTTPS. Can be overridden by the 'GIT_SSL_NO_VERIFY' environment
@@ -1296,9 +1350,16 @@ instaweb.port::
 interactive.singlekey::
 	In interactive commands, allow the user to provide one-letter
 	input with a single key (i.e., without hitting enter).
-	Currently this is used only by the `\--patch` mode of
-	linkgit:git-add[1].  Note that this setting is silently
-	ignored if portable keystroke input is not available.
+	Currently this is used by the `\--patch` mode of
+	linkgit:git-add[1], linkgit:git-checkout[1], linkgit:git-commit[1],
+	linkgit:git-reset[1], and linkgit:git-stash[1]. Note that this
+	setting is silently ignored if portable keystroke input
+	is not available.
+
+log.abbrevCommit::
+	If true, makes linkgit:git-log[1], linkgit:git-show[1], and
+	linkgit:git-whatchanged[1] assume `\--abbrev-commit`. You may
+	override this option with `\--no-abbrev-commit`.
 
 log.date::
 	Set the default date-time mode for the 'log' command.
@@ -1423,7 +1484,8 @@ notes.rewriteRef::
 	You may also specify this configuration several times.
 +
 Does not have a default value; you must configure this variable to
-enable note rewriting.
+enable note rewriting.  Set it to `refs/notes/commits` to enable
+rewriting for the default commit notes.
 +
 This setting can be overridden with the `GIT_NOTES_REWRITE_REF`
 environment variable, which must be a colon separated list of refs or
@@ -1565,7 +1627,8 @@ receive.fsckObjects::
 	If it is set to true, git-receive-pack will check all received
 	objects. It will abort in the case of a malformed object or a
 	broken link. The result of an abort are only dangling objects.
-	Defaults to false.
+	Defaults to false. If not set, the value of `transfer.fsckObjects`
+	is used instead.
 
 receive.unpackLimit::
 	If the number of objects received in a push is below this
@@ -1799,6 +1862,11 @@ tar.umask::
 	world write bit.  The special value "user" indicates that the
 	archiving user's umask will be used instead.  See umask(2) and
 	linkgit:git-archive[1].
+
+transfer.fsckObjects::
+	When `fetch.fsckObjects` or `receive.fsckObjects` are
+	not set, the value of this variable is used instead.
+	Defaults to false.
 
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are

@@ -58,7 +58,7 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_SILENT_ON_REMOVE    (1 <<  5)
 #define DIFF_OPT_FIND_COPIES_HARDER  (1 <<  6)
 #define DIFF_OPT_FOLLOW_RENAMES      (1 <<  7)
-#define DIFF_OPT_COLOR_DIFF          (1 <<  8)
+/* (1 <<  8) unused */
 /* (1 <<  9) unused */
 #define DIFF_OPT_HAS_CHANGES         (1 << 10)
 #define DIFF_OPT_QUICK               (1 << 11)
@@ -78,6 +78,8 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_IGNORE_UNTRACKED_IN_SUBMODULES (1 << 25)
 #define DIFF_OPT_IGNORE_DIRTY_SUBMODULES (1 << 26)
 #define DIFF_OPT_OVERRIDE_SUBMODULE_CONFIG (1 << 27)
+#define DIFF_OPT_DIRSTAT_BY_LINE     (1 << 28)
+#define DIFF_OPT_FUNCCONTEXT         (1 << 29)
 
 #define DIFF_OPT_TST(opts, flag)    ((opts)->flags & DIFF_OPT_##flag)
 #define DIFF_OPT_SET(opts, flag)    ((opts)->flags |= DIFF_OPT_##flag)
@@ -100,6 +102,7 @@ struct diff_options {
 	const char *single_follow;
 	const char *a_prefix, *b_prefix;
 	unsigned flags;
+	int use_color;
 	int context;
 	int interhunkcontext;
 	int break_opt;
@@ -114,7 +117,7 @@ struct diff_options {
 	int needed_rename_limit;
 	int degraded_cc_to_c;
 	int show_rename_progress;
-	int dirstat_percent;
+	int dirstat_permille;
 	int setup;
 	int abbrev;
 	const char *prefix;
@@ -124,6 +127,7 @@ struct diff_options {
 
 	int stat_width;
 	int stat_name_width;
+	int stat_count;
 	const char *word_regex;
 	enum diff_words_type word_diff;
 
@@ -158,7 +162,7 @@ enum color_diff {
 };
 const char *diff_get_color(int diff_use_color, enum color_diff ix);
 #define diff_get_color_opt(o, ix) \
-	diff_get_color(DIFF_OPT_TST((o), COLOR_DIFF), ix)
+	diff_get_color((o)->use_color, ix)
 
 
 extern const char mime_boundary_leader[];
@@ -197,6 +201,8 @@ extern void diff_tree_combined_merge(const unsigned char *sha1, int, struct rev_
 
 void diff_set_mnemonic_prefix(struct diff_options *options, const char *a, const char *b);
 
+extern int diff_can_quit_early(struct diff_options *);
+
 extern void diff_addremove(struct diff_options *,
 			   int addremove,
 			   unsigned mode,
@@ -210,10 +216,7 @@ extern void diff_change(struct diff_options *,
 			const char *fullpath,
 			unsigned dirty_submodule1, unsigned dirty_submodule2);
 
-extern void diff_unmerge(struct diff_options *,
-			 const char *path,
-			 unsigned mode,
-			 const unsigned char *sha1);
+extern struct diff_filepair *diff_unmerge(struct diff_options *, const char *path);
 
 #define DIFF_SETUP_REVERSE      	1
 #define DIFF_SETUP_USE_CACHE		2
