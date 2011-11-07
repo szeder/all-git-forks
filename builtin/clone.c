@@ -48,6 +48,17 @@ static int option_verbosity;
 static int option_progress;
 static struct string_list option_config;
 static struct string_list option_reference;
+static struct string_list option_fetch;
+static const char **refspecs;
+static int refspecs_nr;
+static int refspecs_alloc;
+
+static void add_refspec(const char *ref)
+{
+	refspecs_nr++;
+	ALLOC_GROW(refspecs, refspecs_nr, refspecs_alloc);
+	refspecs[refspecs_nr-1] = ref;
+}
 
 static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
 {
@@ -88,6 +99,8 @@ static struct option builtin_clone_options[] = {
 		   "use <name> instead of 'origin' to track upstream"),
 	OPT_STRING('b', "branch", &option_branch, "branch",
 		   "checkout <branch> instead of the remote's HEAD"),
+	OPT_STRING_LIST(0, "fetch", &option_fetch, "refspec",
+		   "fetch <refspec> instead of all the branches"),
 	OPT_STRING('u', "upload-pack", &option_upload_pack, "path",
 		   "path to git-upload-pack on the remote"),
 	OPT_STRING(0, "depth", &option_depth, "depth",
@@ -421,13 +434,16 @@ static void remove_junk_on_signal(int signo)
 }
 
 static struct ref *wanted_peer_refs(const struct ref *refs,
-		struct refspec *refspec)
+		struct refspec *refspec, int refspec_nr)
 {
 	struct ref *head = copy_ref(find_ref_by_name(refs, "HEAD"));
 	struct ref *local_refs = head;
 	struct ref **tail = head ? &head->next : &local_refs;
+	int i;
 
-	get_fetch_map(refs, refspec, &tail, 0);
+	for (i = 0; i < refspec_nr; i++)
+		get_fetch_map(refs, &refspec[i], &tail, 0);
+
 	if (!option_mirror)
 		get_fetch_map(refs, tag_refspec, &tail, 0);
 
@@ -482,7 +498,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	int err = 0;
 
 	struct refspec *refspec;
-	const char *fetch_pattern;
 
 	junk_pid = getpid();
 
@@ -507,6 +522,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			    option_origin);
 		option_no_checkout = 1;
 	}
+
+	if (option_mirror && refspecs)
+		die(_("--mirror and --fetch options are incompatible"));
 
 	if (!option_origin)
 		option_origin = "origin";
@@ -594,30 +612,63 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 
 	if (option_bare) {
-		if (option_mirror)
-			src_ref_prefix = "refs/";
-		strbuf_addstr(&branch_top, src_ref_prefix);
-
 		git_config_set("core.bare", "true");
-	} else {
-		strbuf_addf(&branch_top, "refs/remotes/%s/", option_origin);
-	}
-
-	strbuf_addf(&value, "+%s*:%s*", src_ref_prefix, branch_top.buf);
-
-	if (option_mirror || !option_bare) {
-		/* Configure the remote */
-		strbuf_addf(&key, "remote.%s.fetch", option_origin);
-		git_config_set_multivar(key.buf, value.buf, "^$", 0);
-		strbuf_reset(&key);
-
 		if (option_mirror) {
+			src_ref_prefix = "refs/";
 			strbuf_addf(&key, "remote.%s.mirror", option_origin);
 			git_config_set(key.buf, "true");
 			strbuf_reset(&key);
 		}
+
+		strbuf_addstr(&branch_top, src_ref_prefix);
+	} else {
+		strbuf_addf(&branch_top, "refs/remotes/%s/", option_origin);
 	}
 
+	strbuf_reset(&key);
+	strbuf_addf(&key, "remote.%s.fetch", option_origin);
+
+	/* If the user didn't override it, use the default values */
+	if (option_fetch.nr == 0) {
+		strbuf_reset(&value);
+		strbuf_addf(&value, "+%s*:%s*", src_ref_prefix,
+			    branch_top.buf);
+
+		git_config_set_multivar(key.buf, value.buf, "^$", 0);
+		add_refspec(strbuf_detach(&value, NULL));
+	} else {
+		int i;
+
+		/*
+		 * If both sides of the refspec were specified, use it
+		 * as-is (we've already checked that they're valid
+		 * fetch refspecs. Otherwise, treat them as branch
+		 * names and fix them up so they look like we read
+		 * them from the config.
+		 */
+		printf("nr %d\n", option_fetch.nr);
+		for (i = 0; i < option_fetch.nr; i++) {
+			const char *ref = option_fetch.items[i].string;
+			if (!valid_fetch_refspec(ref))
+				die(_("Not a valid fetch refspec: %s"), ref);
+
+			if (!strchr(ref, ':')) {
+				strbuf_reset(&value);
+				strbuf_addf(&value, "refs/heads/%s:%s%s",
+					    ref, branch_top.buf, ref);
+				ref = value.buf;
+			}
+
+			printf("Adding refpsec %s\n", ref);
+			git_config_set_multivar(key.buf, value.buf, "^$", 0);
+			add_refspec(strbuf_detach(&value, NULL));
+		}
+
+		strbuf_reset(&value);
+		strbuf_reset(&key);
+	}
+
+	strbuf_reset(&key);
 	strbuf_addf(&key, "remote.%s.url", option_origin);
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
@@ -625,14 +676,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_reference.nr)
 		setup_reference();
 
-	fetch_pattern = value.buf;
-	refspec = parse_fetch_refspec(1, &fetch_pattern);
-
-	strbuf_reset(&value);
+	refspec = parse_fetch_refspec(refspecs_nr, refspecs);
 
 	if (is_local) {
 		refs = clone_local(path, git_dir);
-		mapped_refs = wanted_peer_refs(refs, refspec);
+		mapped_refs = wanted_peer_refs(refs, refspec, refspecs_nr);
 	} else {
 		struct remote *remote = remote_get(option_origin);
 		transport = transport_get(remote, remote->url[0]);
@@ -654,7 +702,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		refs = transport_get_remote_refs(transport);
 		if (refs) {
-			mapped_refs = wanted_peer_refs(refs, refspec);
+			mapped_refs = wanted_peer_refs(refs, refspec, refspecs_nr);
 			transport_fetch_refs(transport, mapped_refs);
 		}
 	}
