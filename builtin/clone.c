@@ -42,6 +42,7 @@ static int option_local, option_no_hardlinks, option_shared, option_recursive;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
+static char *option_track;
 static const char *real_git_dir;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
@@ -88,6 +89,8 @@ static struct option builtin_clone_options[] = {
 		   "use <name> instead of 'origin' to track upstream"),
 	OPT_STRING('b', "branch", &option_branch, "branch",
 		   "checkout <branch> instead of the remote's HEAD"),
+	OPT_STRING('t', "track", &option_track, "branch",
+		   "track <branch> instead of fetching all the branches"),
 	OPT_STRING('u', "upload-pack", &option_upload_pack, "path",
 		   "path to git-upload-pack on the remote"),
 	OPT_STRING(0, "depth", &option_depth, "depth",
@@ -428,6 +431,7 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 	struct ref **tail = head ? &head->next : &local_refs;
 
 	get_fetch_map(refs, refspec, &tail, 0);
+
 	if (!option_mirror)
 		get_fetch_map(refs, tag_refspec, &tail, 0);
 
@@ -476,13 +480,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	const struct ref *our_head_points_at;
 	struct ref *mapped_refs;
 	struct strbuf key = STRBUF_INIT, value = STRBUF_INIT;
-	struct strbuf branch_top = STRBUF_INIT, reflog_msg = STRBUF_INIT;
+	struct strbuf reflog_msg = STRBUF_INIT;
 	struct transport *transport = NULL;
 	char *src_ref_prefix = "refs/heads/";
 	int err = 0;
 
 	struct refspec *refspec;
-	const char *fetch_pattern;
 
 	junk_pid = getpid();
 
@@ -508,8 +511,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		option_no_checkout = 1;
 	}
 
+	if (option_mirror && option_track)
+		die(_("--mirror and --track options are incompatible"));
+
 	if (!option_origin)
 		option_origin = "origin";
+
+	if (!option_track)
+		option_track = "*";
 
 	repo_name = argv[0];
 
@@ -593,31 +602,30 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	git_config(git_default_config, NULL);
 
+	/* No explicit branch, track everything */
+	if (!option_track)
+		option_track = "*";
+
+	/*
+	 * We don't set fetch refspecs on bare repositories, so just
+	 * format the branch we want to track instead of adding it to
+	 * the config.
+	 */
 	if (option_bare) {
-		if (option_mirror)
-			src_ref_prefix = "refs/";
-		strbuf_addstr(&branch_top, src_ref_prefix);
-
 		git_config_set("core.bare", "true");
-	} else {
-		strbuf_addf(&branch_top, "refs/remotes/%s/", option_origin);
-	}
-
-	strbuf_addf(&value, "+%s*:%s*", src_ref_prefix, branch_top.buf);
-
-	if (option_mirror || !option_bare) {
-		/* Configure the remote */
-		strbuf_addf(&key, "remote.%s.fetch", option_origin);
-		git_config_set_multivar(key.buf, value.buf, "^$", 0);
-		strbuf_reset(&key);
-
+		format_branch(option_track, option_origin, option_mirror, option_bare, &value);
 		if (option_mirror) {
 			strbuf_addf(&key, "remote.%s.mirror", option_origin);
 			git_config_set(key.buf, "true");
 			strbuf_reset(&key);
 		}
+	} else {
+		strbuf_reset(&key);
+		strbuf_addf(&key, "remote.%s.fetch", option_origin);
+		add_branch(key.buf, option_track, option_origin, option_mirror, option_bare, &value);
 	}
 
+	strbuf_reset(&key);
 	strbuf_addf(&key, "remote.%s.url", option_origin);
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
@@ -625,10 +633,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_reference.nr)
 		setup_reference();
 
-	fetch_pattern = value.buf;
-	refspec = parse_fetch_refspec(1, &fetch_pattern);
-
-	strbuf_reset(&value);
+	printf("value.buf = %s\n", value.buf);
+	refspec = parse_fetch_refspec(1, &value.buf);
 
 	if (is_local) {
 		refs = clone_local(path, git_dir);
@@ -699,8 +705,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (remote_head_points_at && !option_bare) {
 		struct strbuf head_ref = STRBUF_INIT;
-		strbuf_addstr(&head_ref, branch_top.buf);
-		strbuf_addstr(&head_ref, "HEAD");
+		strbuf_addf(&head_ref, "refs/remotes/%s/HEAD", option_origin);
 		create_symref(head_ref.buf,
 			      remote_head_points_at->peer_ref->name,
 			      reflog_msg.buf);
@@ -777,7 +782,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 
 	strbuf_release(&reflog_msg);
-	strbuf_release(&branch_top);
 	strbuf_release(&key);
 	strbuf_release(&value);
 	junk_pid = 0;
