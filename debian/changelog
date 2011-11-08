@@ -1,9 +1,7 @@
-git (1:1.7.8~rc0-2) experimental; urgency=low
+git (1:1.7.8~rc1-0.1) experimental; urgency=low
 
+  * new upstream release candidate.
   * merge branch debian-sid.
-    * new upstream point release.
-      * Git 1.7.7.2.
-      * t7511: avoid use of reserved filename on Windows.
     * debian/rules: add separate build-arch and build-indep targets
       (thx Roger Leigh for suggesting it through lintian).
     * debian/rules: drop CFLAGS=-O0 workaround for ancient hppa code

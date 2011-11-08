@@ -1,3 +1,57 @@
+Version v1.7.8-rc1; changes since v1.7.8-rc0:
+---------------------------------------------
+
+Dan McGee (4):
+      pack-objects: mark add_to_write_order() as inline
+      pack-objects: use unsigned int for counter and offset values
+      pack-objects: rewrite add_descendants_to_write_order() iteratively
+      pack-objects: don't traverse objects unnecessarily
+
+Erik Faye-Lund (4):
+      mingw: move poll out of sys-folder
+      compat/win32/poll.c: upgrade from upstream
+      upload-archive: use start_command instead of fork
+      mingw: poll.h is no longer in sys/
+
+Johannes Sixt (1):
+      name-hash.c: always initialize dir_next pointer
+
+Junio C Hamano (5):
+      (squash) test for previous
+      Git 1.7.7.2
+      Update draft release notes to 1.7.8
+      receive-pack: do not expect object 0{40} to exist
+      Git 1.7.8-rc1
+
+Nguyễn Thái Ngọc Duy (2):
+      pretty.c: free get_header() return value
+      pretty.c: use original commit message if reencoding fails
+
+Pat Thoyts (1):
+      t7511: avoid use of reserved filename on Windows.
+
+Pete Wyckoff (1):
+      git-p4: ignore apple filetype
+
+Sebastian Schuberth (2):
+      blame.c: Properly initialize strbuf after calling, textconv_object()
+      blame.c: Properly initialize strbuf after calling textconv_object(), again
+
+Stefan Naewe (2):
+      t3200: add test case for 'branch -m'
+      http: don't always prompt for password
+
+Tay Ray Chuan (1):
+      branch -m: handle no arg properly
+
+Ted Percival (1):
+      svn: Quote repository root in regex match
+
+Ævar Arnfjörð Bjarmason (2):
+      t/t6030-bisect-porcelain.sh: use test_i18ngrep
+      t/t7508-status.sh: use test_i18ncmp
+
+
 Version v1.7.8-rc0; changes since v1.7.7.2:
 -------------------------------------------
 
