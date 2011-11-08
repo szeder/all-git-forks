@@ -188,4 +188,17 @@ extern int commit_tree(const char *msg, unsigned char *tree,
 extern int parse_signed_commit(const unsigned char *sha1,
 			       struct strbuf *message, struct strbuf *signature);
 
+struct merge_remote_desc {
+	struct object *obj; /* the named object, could be a tag */
+	const char *name;
+};
+#define merge_remote_util(commit) ((struct merge_remote_desc *)((commit)->util))
+
+/*
+ * Given "name" from the command line to merge, find the commit object
+ * and return it, while storing merge_remote_desc in its ->util field,
+ * to allow callers to tell if we are told to merge a tag.
+ */
+struct commit *get_merge_parent(const char *name);
+
 #endif /* COMMIT_H */

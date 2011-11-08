@@ -912,6 +912,43 @@ int parse_signed_commit(const unsigned char *sha1,
 	return saw_signature;
 }
 
+static void handle_signed_tag(struct strbuf *signed_tags, struct commit *parent)
+{
+	struct merge_remote_desc *desc;
+	struct strbuf sig = STRBUF_INIT;
+	char *buf;
+	unsigned long size, len;
+	enum object_type type;
+
+	desc = merge_remote_util(parent);
+	if (!desc || !desc->obj)
+		return;
+	buf = read_sha1_file(desc->obj->sha1, &type, &size);
+	if (!buf || type != OBJ_TAG)
+		goto free_return;
+	len = parse_signature(buf, size);
+	if (size == len)
+		goto free_return;
+	/*
+	 * We could verify this signature again and either omit writing
+	 * the contents of the tag when it does not validate, but the
+	 * integrator may not have the public key of the signer of the
+	 * tag he is merging, while a later auditor may acquire the public
+	 * key while auditing, so let's not run verify-signed-buffer here
+	 * for now...
+	 *
+	 * if (verify_signed_buffer(buf, len, buf + len, size - len, &sig))
+	 *	warn("warning: signed tag unverified.");
+	 */
+	if (signed_tags->len)
+		strbuf_addstr(signed_tags, "mergetag\n");
+	strbuf_add_lines(signed_tags, "mergetag ", buf, size);
+
+free_return:
+	strbuf_release(&sig);
+	free(buf);
+}
+
 static const char commit_utf8_warn[] =
 "Warning: commit message does not conform to UTF-8.\n"
 "You may want to amend it after fixing the message, or set the config\n"
@@ -924,6 +961,7 @@ int commit_tree(const char *msg, unsigned char *tree,
 	int result;
 	int encoding_is_utf8;
 	struct strbuf buffer;
+	struct strbuf signed_tags = STRBUF_INIT;
 
 	assert_sha1_type(tree, OBJ_TREE);
 
@@ -940,8 +978,11 @@ int commit_tree(const char *msg, unsigned char *tree,
 	 */
 	while (parents) {
 		struct commit_list *next = parents->next;
+		struct commit *parent = parents->item;
+
 		strbuf_addf(&buffer, "parent %s\n",
-			sha1_to_hex(parents->item->object.sha1));
+			    sha1_to_hex(parent->object.sha1));
+		handle_signed_tag(&signed_tags, parent);
 		free(parents);
 		parents = next;
 	}
@@ -953,6 +994,11 @@ int commit_tree(const char *msg, unsigned char *tree,
 	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_ERROR_ON_NO_NAME));
 	if (!encoding_is_utf8)
 		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
+
+	if (signed_tags.len) {
+		strbuf_addbuf(&buffer, &signed_tags);
+		strbuf_release(&signed_tags);
+	}
 	strbuf_addch(&buffer, '\n');
 
 	/* And add the comment */
@@ -968,4 +1014,23 @@ int commit_tree(const char *msg, unsigned char *tree,
 	result = write_sha1_file(buffer.buf, buffer.len, commit_type, ret);
 	strbuf_release(&buffer);
 	return result;
+}
+
+struct commit *get_merge_parent(const char *name)
+{
+	struct object *obj;
+	struct commit *commit;
+	unsigned char sha1[20];
+	if (get_sha1(name, sha1))
+		return NULL;
+	obj = parse_object(sha1);
+	commit = (struct commit *)peel_to_type(name, 0, obj, OBJ_COMMIT);
+	if (commit && !commit->util) {
+		struct merge_remote_desc *desc;
+		desc = xmalloc(sizeof(*desc));
+		desc->obj = obj;
+		desc->name = strdup(name);
+		commit->util = desc;
+	}
+	return commit;
 }
