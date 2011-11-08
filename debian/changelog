@@ -1,4 +1,4 @@
-git (1:1.7.8~rc1-0.1) experimental; urgency=low
+git (1:1.7.8~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.
   * merge branch debian-sid.
@@ -14,7 +14,7 @@ git (1:1.7.8~rc1-0.1) experimental; urgency=low
     symlinks before upgrading from git <= 1:1.7.7-1 (thx Antti Kultanen;
     closes: #645009).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 07 Nov 2011 17:47:18 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 07 Nov 2011 22:40:08 -0600
 
 git (1:1.7.8~rc0-1) experimental; urgency=low
 
