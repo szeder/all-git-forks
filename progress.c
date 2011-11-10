@@ -115,8 +115,10 @@ static int display(struct progress *progress, unsigned n, const char *done)
 		}
 	} else if (progress_update) {
 		if (is_foreground_fd(fileno(stderr)) || done) {
-			fprintf(stderr, "%s: %u%s%s",
-				progress->title, n, tp, eol);
+			fprintf(stderr, "%s: ", progress->title);
+			if (n)
+				fprintf(stderr, "%u", n);
+			fprintf(stderr, "%s%s", tp, eol);
 			fflush(stderr);
 		}
 		progress_update = 0;
@@ -127,10 +129,11 @@ static int display(struct progress *progress, unsigned n, const char *done)
 }
 
 static void throughput_string(struct strbuf *buf, off_t total,
-			      unsigned int rate)
+			      unsigned int rate, struct progress *p)
 {
 	strbuf_reset(buf);
-	strbuf_addstr(buf, ", ");
+	if (p->total || p->last_value > 0)
+		strbuf_addstr(buf, ", ");
 	strbuf_humanise_bytes(buf, total);
 	strbuf_addstr(buf, " | ");
 	strbuf_humanise_bytes(buf, rate * 1024);
@@ -194,7 +197,7 @@ void display_throughput(struct progress *progress, off_t total)
 	tp->last_misecs[tp->idx] = misecs;
 	tp->idx = (tp->idx + 1) % TP_IDX_MAX;
 
-	throughput_string(&tp->display, total, rate);
+	throughput_string(&tp->display, total, rate, progress);
 	if (progress->last_value != -1 && progress_update)
 		display(progress, progress->last_value, NULL);
 }
@@ -251,7 +254,8 @@ void stop_progress_msg(struct progress **p_progress, const char *msg)
 		if (tp) {
 			unsigned int rate = !tp->avg_misecs ? 0 :
 					tp->avg_bytes / tp->avg_misecs;
-			throughput_string(&tp->display, tp->curr_total, rate);
+			throughput_string(&tp->display, tp->curr_total, rate,
+					  progress);
 		}
 		progress_update = 1;
 		xsnprintf(bufp, len + 1, ", %s.\n", msg);
