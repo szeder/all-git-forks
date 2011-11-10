@@ -834,6 +834,8 @@ static CURL *get_curl_handle(void)
 
 	set_curl_keepalive(result);
 
+	curl_easy_setopt(result, CURLOPT_NOSIGNAL, 1);
+
 	return result;
 }
 
