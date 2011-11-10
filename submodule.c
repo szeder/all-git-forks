@@ -430,7 +430,7 @@ static int commit_need_pushing(struct commit *commit, struct commit_list *parent
 	rev.diffopt.format_callback_data = &cb;
 	diff_tree_combined(commit->object.sha1, parents, n, 1, &rev);
 
-	free(parents);
+	free((void *)parents);
 	return cb.ret;
 }
 
