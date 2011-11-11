@@ -824,6 +824,12 @@ sub evaluate_query_params {
 			$input_params{$name} = decode_utf8($cgi->param($symbol));
 		}
 	}
+
+    for my $name (qw(diff_style lines_around)) {
+        if (! defined $input_params{$name}) {
+            $input_params{$name} = $cgi->cookie($cgi_param_mapping{$name});
+        }
+    }
 }
 
 # now read PATH_INFO and update the parameter list for missing parameters
