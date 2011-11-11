@@ -48,6 +48,48 @@ test_expect_success \
 '
 
 test_expect_success \
+	'Firefox below v2.0 paths are properly quoted' '
+	echo fake: http://example.com/foo >expect &&
+	cat >"fake browser" <<-\EOF &&
+	#!/bin/sh
+
+	if [ "$1" == "-version" ]; then
+		echo Fake Firefox browser version 1.2.3
+	else
+		# Firefox (in contrast to w3m) is run in background (with &)
+		# so redirect output to "actual"
+		echo fake: "$@" > actual
+	fi
+	EOF
+	chmod +x "fake browser" &&
+	git config browser.firefox.path "`pwd`/fake browser" &&
+	git web--browse --browser=firefox \
+		http://example.com/foo &&
+	test_cmp expect actual
+'
+
+test_expect_success \
+	'Firefox not lower v2.0 paths are properly quoted' '
+	echo fake: http://example.com/foo >expect &&
+	cat >"fake browser" <<-\EOF &&
+	#!/bin/sh
+
+	if [ "$1" == "-version" ]; then
+		echo Fake Firefox browser version 2.0.0
+	else
+		# Firefox (in contrast to w3m) is run in background (with &)
+		# so redirect output to "actual"
+		echo fake: -new-tab "$@" > actual
+	fi
+	EOF
+	chmod +x "fake browser" &&
+	git config browser.firefox.path "`pwd`/fake browser" &&
+	git web--browse --browser=firefox \
+		http://example.com/foo &&
+	test_cmp expect actual
+'
+
+test_expect_success \
 	'browser command allows arbitrary shell code' '
 	echo "arg: http://example.com/foo" >expect &&
 	git config browser.custom.cmd "
