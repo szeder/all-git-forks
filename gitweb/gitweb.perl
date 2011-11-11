@@ -5387,7 +5387,15 @@ sub git_history_body {
 	$from = 0 unless defined $from;
 	$to = $#{$commitlist} unless (defined $to && $to <= $#{$commitlist});
 
+	print $cgi->start_form(-method => "get");
 	print "<table class=\"history\">\n";
+	print "<tr><td colspan='6'>",
+	      $cgi->submit(-value => "view changes"),
+	      $cgi->hidden("p"),
+	      $cgi->hidden("f"),
+	      $cgi->input({-name=>"a", -value=>"commitdiff", -type=>"hidden"}),
+          "</td></tr>";
+
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
 		my %co = %{$commitlist->[$i]};
@@ -5404,6 +5412,17 @@ sub git_history_body {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
+		print "<td>",
+		      $cgi->input({
+		          -name => "hp", -value => $commit, -type => "radio",
+		          ($i == $to) ? (-checked => "checked") : (),
+		      }),
+              "</td><td>",
+		      $cgi->input({
+		          -name => "h", -value => $commit, -type => "radio",
+		          ($i == $from) ? (-checked => "checked") : (),
+		      }),
+		      "</td>";
 		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 	# shortlog:   format_author_html('td', \%co, 10)
 		      format_author_html('td', \%co, 15, 3) . "<td>";
@@ -5437,6 +5456,7 @@ sub git_history_body {
 		      "</tr>\n";
 	}
 	print "</table>\n";
+	print $cgi->end_form;
 }
 
 sub git_tags_body {
