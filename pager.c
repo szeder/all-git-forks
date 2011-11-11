@@ -39,25 +39,7 @@ static void wait_for_pager_signal(int signo)
 
 const char *git_pager(int stdout_is_tty)
 {
-	const char *pager;
-
-	if (!stdout_is_tty)
-		return NULL;
-
-	pager = getenv("GIT_PAGER");
-	if (!pager) {
-		if (!pager_program)
-			git_config(git_default_config, NULL);
-		pager = pager_program;
-	}
-	if (!pager)
-		pager = getenv("PAGER");
-	if (!pager)
-		pager = DEFAULT_PAGER;
-	else if (!*pager || !strcmp(pager, "cat"))
-		pager = NULL;
-
-	return pager;
+	return NULL;
 }
 
 void setup_pager(void)
@@ -166,12 +148,5 @@ static int pager_command_config(const char *var, const char *value, void *data)
 /* returns 0 for "no pager", 1 for "use pager", and -1 for "not specified" */
 int check_pager_config(const char *cmd)
 {
-	struct pager_config c;
-	c.cmd = cmd;
-	c.want = -1;
-	c.value = NULL;
-	git_config(pager_command_config, &c);
-	if (c.value)
-		pager_program = c.value;
-	return c.want;
+	return 0;
 }
