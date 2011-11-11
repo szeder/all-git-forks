@@ -7275,7 +7275,8 @@ sub git_commitdiff {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
             "--unified=$num_lines",
-			$hash_parent_param, $hash, "--"
+			$hash_parent_param, $hash, "--",
+            ($input_params{file_name} ? $input_params{file_name} : ())
 			or die_error(500, "Open git-diff-tree failed");
 
 		while (my $line = <$fd>) {
