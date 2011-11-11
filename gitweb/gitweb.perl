@@ -758,7 +758,7 @@ our @cgi_param_mapping = (
 	search_use_regexp => "sr",
 	ctag => "by_tag",
 	diff_style => "ds",
-	unified => "unified",
+	diff_around => "da",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -7101,7 +7101,7 @@ sub git_blobdiff {
 			        "raw");
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
-			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav . diff_nav($input_params{diff_style}));
+			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav . diff_nav($input_params{diff_style}, $input_params{diff_around}));
 			git_print_header_div('commit', esc_html($co{'title'}), $hash_base);
 		} else {
 			print "<div class=\"page_nav\"><br/>$formats_nav<br/></div>\n";
@@ -7168,7 +7168,7 @@ sub diff_nav {
                $cgi->hidden('hb'),
                $cgi->hidden('hpb'),
                $cgi->popup_menu('ds', [keys %pairs], $style, \%pairs),
-	           $cgi->input({ type => 'text', size => 2, name => 'unified',
+	           $cgi->input({ type => 'text', size => 2, name => 'da',
 	                         value => $value }),
 	           'lines around each change)',
                $cgi->submit('change'),
@@ -7266,7 +7266,7 @@ sub git_commitdiff {
 			@{$co{'parents'}} > 1 ? '--cc' : $co{'parent'} || '--root';
 	}
 
-	my $num_lines = $input_params{unified};
+	my $num_lines = $input_params{diff_around};
 
 	# read commitdiff
 	my $fd;
@@ -7274,7 +7274,7 @@ sub git_commitdiff {
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
-			(defined $num_lines ? "--unified=$num_lines" : ()),
+            "--unified=$num_lines",
 			$hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
 
@@ -7330,7 +7330,7 @@ sub git_commitdiff {
 		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
-		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}, defined $input_params{unified} ? $input_params{unified} : 3));
+		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}, $input_params{diff_around}));
 		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
 		print "<div class=\"title_text\">\n" .
 		      "<table class=\"object_header\">\n";
