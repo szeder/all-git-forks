@@ -1,3 +1,26 @@
+Version v1.7.8-rc2; changes since v1.7.8-rc1:
+---------------------------------------------
+
+Felipe Contreras (1):
+      remote: fix remote set-url usage
+
+Jeff King (1):
+      docs: don't mention --quiet or --exit-code in git-log(1)
+
+Junio C Hamano (5):
+      remote: fix set-branches usage
+      docs: Update install-doc-quick
+      Git 1.7.7.3
+      Update draft release notes to 1.7.8
+      Git 1.7.8-rc2
+
+Liu Yuan (1):
+      mktree: fix a memory leak in write_tree()
+
+SZEDER Gábor (1):
+      completion: don't leak variable from the prompt into environment
+
+
 Version v1.7.8-rc1; changes since v1.7.8-rc0:
 ---------------------------------------------
 
@@ -52,7 +75,7 @@ Ted Percival (1):
       t/t7508-status.sh: use test_i18ncmp
 
 
-Version v1.7.8-rc0; changes since v1.7.7.2:
+Version v1.7.8-rc0; changes since v1.7.7.3:
 -------------------------------------------
 
 Bert Wesarg (7):
@@ -203,10 +226,7 @@ Julian Phillips (2):
       Don't sort ref_list too early
       refs: Use binary search to lookup refs faster
 
-Julien Muchembled (1):
-      gitweb: fix regression when filtering out forks
-
-Junio C Hamano (48):
+Junio C Hamano (47):
       rev-list: fix finish_object() call
       revision.c: add show_object_with_name() helper function
       revision.c: update show_object_with_name() without using malloc()
@@ -234,7 +254,6 @@ Junio C Hamano (48):
       grep: teach --untracked and --exclude-standard options
       Post 1.7.7 first wave
       Update draft release notes to 1.7.8
-      branch -m/-M: remove undocumented RENAMED-REF
       refs.c: move dwim_ref()/dwim_log() from sha1_name.c
       Update draft release notes to 1.7.8
       bundle: allowing to read from an unseekable fd
@@ -435,6 +454,27 @@ Teemu Matilainen (3):
 
 Zbigniew Jędrzejewski-Szmek (1):
       send-email: auth plain/login fix
+
+
+Version v1.7.7.3; changes since v1.7.7.2:
+-----------------------------------------
+
+Dan McGee (4):
+      pack-objects: mark add_to_write_order() as inline
+      pack-objects: use unsigned int for counter and offset values
+      pack-objects: rewrite add_descendants_to_write_order() iteratively
+      pack-objects: don't traverse objects unnecessarily
+
+Jeff King (1):
+      docs: don't mention --quiet or --exit-code in git-log(1)
+
+Julien Muchembled (1):
+      gitweb: fix regression when filtering out forks
+
+Junio C Hamano (3):
+      branch -m/-M: remove undocumented RENAMED-REF
+      docs: Update install-doc-quick
+      Git 1.7.7.3
 
 
 Version v1.7.7.2; changes since v1.7.7.1:
