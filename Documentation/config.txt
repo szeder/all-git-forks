@@ -210,6 +210,10 @@ core.hideDotFiles::
 	(Windows-only) If true (which is the default), mark newly-created
 	files and directories whose name starts with a dot as hidden.
 
+core.hideDotGit::
+	(Windows-only) If true (which is the default), mark the .git/
+	directory as hidden.
+
 core.ignoreCygwinFSTricks::
 	This option is only used by Cygwin implementation of Git. If false,
 	the Cygwin stat() and lstat() functions are used. This may be useful

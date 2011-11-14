@@ -7,6 +7,7 @@
 
 static const int delay[] = { 0, 1, 10, 20, 40 };
 static int hide_dotfiles;
+static int hide_dotgit = 1;
 
 int err_win_to_posix(DWORD winerr)
 {
@@ -293,7 +294,7 @@ static int make_hidden(const char *path)
 
 void mingw_mark_as_git_dir(const char *dir)
 {
-	if (!is_bare_repository() && make_hidden(dir))
+	if (hide_dotgit && !is_bare_repository() && make_hidden(dir))
 		warning("Failed to make '%s' hidden", dir);
 }
 
@@ -1898,6 +1899,7 @@ int mingw_core_config(const char *var, const char *value)
 		if (value && !strcasecmp(value, "dotgitonly")) {
 			static int warned;
 			hide_dotfiles = 0;
+			hide_dotgit = 1;
 			if (isatty(2) && !warned) {
 				warning(dotgitonly_warning);
 				warned = 1;
@@ -1905,6 +1907,10 @@ int mingw_core_config(const char *var, const char *value)
 			return 0;
 		}
 		hide_dotfiles = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "core.hidedotgit")) {
+		hide_dotgit = git_config_bool(var, value);
 		return 0;
 	}
 	return 0;
