@@ -1888,9 +1888,22 @@ pid_t waitpid(pid_t pid, int *status, int options)
 	return -1;
 }
 
+static const char *dotgitonly_warning =
+"core.hideDotFiles = dotGitOnly is deprecated. Please set\n"
+"core.hideDotFiles and core.hideDotGit separately instead.";
+
 int mingw_core_config(const char *var, const char *value)
 {
 	if (!strcmp(var, "core.hidedotfiles")) {
+		if (value && !strcasecmp(value, "dotgitonly")) {
+			static int warned;
+			hide_dotfiles = 0;
+			if (isatty(2) && !warned) {
+				warning(dotgitonly_warning);
+				warned = 1;
+			}
+			return 0;
+		}
 		hide_dotfiles = git_config_bool(var, value);
 		return 0;
 	}
