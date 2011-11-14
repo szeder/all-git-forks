@@ -1,4 +1,4 @@
-From 1a5f113821eb26b825d2b56842ec1d2b2b909bb4 Mon Sep 17 00:00:00 2001
+From 93c329dab1c4b5b2ae1c8e100ef1188efb838984 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
 Subject: [PATCH 11/17] daemon: move locate_host to tcp.c
@@ -15,10 +15,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 0a991f2..9bbac6b 100644
+index fe0bdc1..5b5ad15 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2004,7 +2004,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2006,7 +2006,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.7
+1.7.7.2
 

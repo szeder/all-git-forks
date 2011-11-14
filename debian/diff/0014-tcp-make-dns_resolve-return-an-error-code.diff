@@ -1,4 +1,4 @@
-From 73bbccf073022d6139d1e2497dacc53b1bb214c5 Mon Sep 17 00:00:00 2001
+From fa24d0c4d80bf50cefdb13e50f3feeee9ef07035 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 23 Jun 2011 05:23:57 -0500
 Subject: [PATCH 14/17] tcp: make dns_resolve return an error code
@@ -96,5 +96,5 @@ index 339877f..de6036a 100644
  
  #endif
 -- 
-1.7.7
+1.7.7.2
 

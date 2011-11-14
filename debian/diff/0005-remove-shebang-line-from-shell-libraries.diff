@@ -1,4 +1,4 @@
-From e371904623eb5207d05760b0642e03143ffb2a73 Mon Sep 17 00:00:00 2001
+From 17c62e9b2e3c66a2646e168b3470395c7cf6cdfe Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
 Subject: [PATCH 05/17] remove shebang line from shell libraries
@@ -62,5 +62,5 @@ index 8e427da..836ff78 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.7
+1.7.7.2
 

@@ -1,4 +1,4 @@
-From f18ba62cc759cc234c0ee73bcca7715702e6208a Mon Sep 17 00:00:00 2001
+From 0727c7e7ea4b13fa322f0a6dc0c4b878b986502a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Oct 2011 12:17:19 -0500
 Subject: [PATCH 02/17] ident: do not retrieve default ident when unnecessary
@@ -85,5 +85,5 @@ index edb4314..f619619 100644
  	if (!*name) {
  		struct passwd *pw;
 -- 
-1.7.7
+1.7.7.2
 

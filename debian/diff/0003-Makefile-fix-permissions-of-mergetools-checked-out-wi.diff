@@ -1,4 +1,4 @@
-From d27fc0db87bf4dda49621c6ed07dc6bf2bb867f7 Mon Sep 17 00:00:00 2001
+From 4666bbb76d9ea16ce467abd72fe2e04e0b786082 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 9 Oct 2011 04:17:07 -0500
 Subject: [PATCH 03/17] Makefile: fix permissions of mergetools/ checked out
@@ -30,10 +30,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 1 insertions(+), 2 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 924749e..9ad15bf 100644
+index 71b853f..67666cb 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2281,8 +2281,7 @@ install: all
+@@ -2283,8 +2283,7 @@ install: all
  	$(INSTALL) $(install_bindir_programs) '$(DESTDIR_SQ)$(bindir_SQ)'
  	$(MAKE) -C templates DESTDIR='$(DESTDIR_SQ)' install
  	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(mergetools_instdir_SQ)'
@@ -44,5 +44,5 @@ index 924749e..9ad15bf 100644
  	$(MAKE) -C perl prefix='$(prefix_SQ)' DESTDIR='$(DESTDIR_SQ)' install
  	$(MAKE) -C gitweb install
 -- 
-1.7.7
+1.7.7.2
 

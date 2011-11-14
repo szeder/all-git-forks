@@ -1,4 +1,4 @@
-From 729597e6173b1a81e959b50c701023288f54bd23 Mon Sep 17 00:00:00 2001
+From 40ebd8aa4959fe1e93547250a9a13c75293f85b0 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 3 Oct 2011 01:16:33 -0500
 Subject: [PATCH 01/17] ident: check /etc/mailname if email is unknown
@@ -43,8 +43,8 @@ Signed-off-by: Junio C Hamano <gitster@pobox.com>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Documentation/git-commit-tree.txt |    8 ++++-
- ident.c                           |   66 +++++++++++++++++++++++++++++-------
- 2 files changed, 60 insertions(+), 14 deletions(-)
+ ident.c                           |   68 +++++++++++++++++++++++++++++-------
+ 2 files changed, 61 insertions(+), 15 deletions(-)
 
 diff --git a/Documentation/git-commit-tree.txt b/Documentation/git-commit-tree.txt
 index 0fdb82e..02133d5 100644
@@ -139,7 +139,7 @@ index 35a6f26..edb4314 100644
 -	if (!strchr(git_default_email+len, '.')) {
 -		struct hostent *he = gethostbyname(git_default_email + len);
 -		char *domainname;
- 
+-
 -		len = strlen(git_default_email);
 -		git_default_email[len++] = '.';
 -		if (he && (domainname = strchr(he->h_name, '.')))
@@ -149,6 +149,7 @@ index 35a6f26..edb4314 100644
 -			strlcpy(git_default_email + len, "(none)",
 -				sizeof(git_default_email) - len);
 -	}
++
 +	if (!add_mailname_host(git_default_email + len,
 +				sizeof(git_default_email) - len))
 +		return;	/* read from "/etc/mailname" (Debian) */
@@ -158,5 +159,5 @@ index 35a6f26..edb4314 100644
  
  static void setup_ident(void)
 -- 
-1.7.7
+1.7.7.2
 
