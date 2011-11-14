@@ -5013,6 +5013,9 @@ sub git_patchset_body {
 				}
 			}
 		}
+        if (@chunk) {
+            print format_diff_chunk(@chunk);
+        }
 
 	} continue {
 		print "</div>\n"; # class="patch"
