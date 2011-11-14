@@ -101,7 +101,9 @@ our $logo = "++GITWEB_LOGO++";
 # URI of GIT favicon, assumed to be image/png type
 our $favicon = "++GITWEB_FAVICON++";
 # URI of gitweb.js (JavaScript code for gitweb)
-our $javascript = "++GITWEB_JS++";
+our $javascript = undef;
+# URI of scripts (which can be overridden in GITWEB_CONFIG)
+our @javascripts = ("++GITWEB_JS++");
 
 # URI and label (title) of GIT logo link
 #our $logo_url = "http://www.kernel.org/pub/software/scm/git/docs/";
@@ -3959,7 +3961,9 @@ sub git_footer_html {
 		insert_file($site_footer);
 	}
 
-	print qq!<script type="text/javascript" src="!.esc_url($javascript).qq!"></script>\n!;
+	print join '', map {
+        qq!<script type="text/javascript" src="!.esc_url($_).qq!"></script>\n!;
+    } ((defined $javascript ? $javascript : ()), @javascripts);
 	if (defined $action &&
 	    $action eq 'blame_incremental') {
 		print qq!<script type="text/javascript">\n!.
