@@ -1270,6 +1270,10 @@ sub href {
 	# default is to use -absolute url() i.e. $my_uri
 	my $href = $params{-full} ? $my_url : $my_uri;
 
+    if (keys %params == 1 && $params{-anchor})	{
+        return "#".esc_param($params{-anchor});
+    }
+
 	# implicit -replay, must be first of implicit params
 	$params{-replay} = 1 if (keys %params == 1 && $params{-anchor});
 
@@ -1384,9 +1388,6 @@ sub href {
 	$href =~ s/(\s+)$/CGI::escape($1)/e;
 
 	if ($params{-anchor}) {
-        if (keys %params == 1) {
-            $href = '';
-        }
 		$href .= "#".esc_param($params{-anchor});
 	}
 
