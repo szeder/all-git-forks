@@ -1384,6 +1384,9 @@ sub href {
 	$href =~ s/(\s+)$/CGI::escape($1)/e;
 
 	if ($params{-anchor}) {
+        if (keys %params == 1) {
+            $href = '';
+        }
 		$href .= "#".esc_param($params{-anchor});
 	}
 
