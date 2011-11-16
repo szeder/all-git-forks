@@ -1,5 +1,6 @@
 git (1:1.7.8~rc2-1) experimental; urgency=low
 
+  [ Jonathan Nieder ]
   * new upstream release candidate.
   * merge branch debian-sid.
   * update debian/copyright.
@@ -7,7 +8,16 @@ git (1:1.7.8~rc2-1) experimental; urgency=low
     symlinks before upgrading from git <= 1:1.7.7-1 (thx Antti Kultanen;
     closes: #645009).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Mon, 14 Nov 2011 04:43:39 -0600
+  [ Gerrit Pape ]
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 16 Nov 2011 09:55:47 +0000
+
+git (1:1.7.7.3-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 14 Nov 2011 10:22:34 +0000
 
 git (1:1.7.7.2-1) unstable; urgency=low
 
