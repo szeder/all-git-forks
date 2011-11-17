@@ -4843,6 +4843,8 @@ sub git_difftree_body {
 sub format_diff_chunk {
 	my @chunk = @_;
 
+    return unless @chunk;
+
 	my $first_class = $chunk[0]->[0];
 	my @partial = map { $_->[1] } grep { $_->[0] eq $first_class } @chunk;
 
@@ -4999,10 +5001,8 @@ sub git_patchset_body {
                 }
 				push @chunk, [ $class, $line ];
 			} else {
-				if (@chunk) {
-					print format_diff_chunk(@chunk);
-					@chunk = ();
-				}
+                print format_diff_chunk(@chunk);
+                @chunk = ();
 
                 if ($class eq 'chunk_header') {
 					print $line;
@@ -5017,9 +5017,7 @@ sub git_patchset_body {
 				}
 			}
 		}
-        if (@chunk) {
-            print format_diff_chunk(@chunk);
-        }
+        print format_diff_chunk(@chunk);
 
 	} continue {
 		print "</div>\n"; # class="patch"
