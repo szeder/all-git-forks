@@ -4981,7 +4981,10 @@ sub git_patchset_body {
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
-			next PATCH if ($patch_line =~ m/^diff /);
+            if ($patch_line =~ m/^diff /) {
+                print format_diff_chunk(@chunk);
+                next PATCH;
+            }
 
             my ($class, $line);
 			($class, $line, $from_lineno, $to_lineno) =
