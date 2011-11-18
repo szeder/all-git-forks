@@ -1,3 +1,15 @@
+Version v1.7.8-rc3; changes since v1.7.8-rc2:
+---------------------------------------------
+
+Junio C Hamano (3):
+      Revert "upload-archive: use start_command instead of fork"
+      refs: loosen over-strict "format" check
+      Git 1.7.8-rc3
+
+Ramkumar Ramachandra (1):
+      revert: prettify fatal messages
+
+
 Version v1.7.8-rc2; changes since v1.7.8-rc1:
 ---------------------------------------------
 
