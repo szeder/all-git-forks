@@ -3318,6 +3318,27 @@ sub parse_commit {
 	return %co;
 }
 
+sub parse_commits_between {
+	my ($begin_id, $end_id) = @_;
+	my @cos;
+
+	local $/ = "\0";
+
+	open my $fd, "-|", git_cmd(), "rev-list",
+		"--header",
+        "^$begin_id",
+		$end_id,
+        "--"
+		or die_error(500, "Open git-rev-list failed");
+	while (my $line = <$fd>) {
+		my %co = parse_commit_text($line);
+		push @cos, \%co;
+	}
+	close $fd;
+
+	return wantarray ? @cos : \@cos;
+}
+
 sub parse_commits {
 	my ($commit_id, $maxcount, $skip, $filename, @args) = @_;
 	my @cos;
@@ -7364,12 +7385,24 @@ sub git_commitdiff {
 
 		git_header_html(undef, $expires);
 		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav . diff_nav($input_params{diff_style}, $input_params{diff_around}));
-		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
-		print "<div class=\"title_text\">\n" .
-		      "<table class=\"object_header\">\n";
-		git_print_authorship_rows(\%co);
-		print "</table>".
-		      "</div>\n";
+
+        if ($hash_parent_param) {
+            for my $c (parse_commits_between($hash_parent_param, $hash)) {
+                my $cref = format_ref_marker($refs, $c->{'id'});
+                git_print_header_div('commit',
+                                     esc_html($c->{'title'}) . $cref,
+                                     $c->{id});
+            }
+        } else {
+            git_print_header_div('commit',
+                                 esc_html($co{'title'}) . $ref,
+                                 $hash);
+            print "<div class=\"title_text\">\n" .
+                "<table class=\"object_header\">\n";
+            git_print_authorship_rows(\%co) ;
+            print "</table>".
+                "</div>\n";
+        }
 		print "<div class=\"page_body\">\n";
 		if (@{$co{'comment'}} > 1) {
 			print "<div class=\"log\">\n";
