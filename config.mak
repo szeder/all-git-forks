@@ -4,7 +4,7 @@ prefix = /usr/local
 CFLAGS = -O2 -Wall -Wdeclaration-after-statement -g
 THREADED_DELTA_SEARCH = Yes
 BLK_SHA1 = Yes
-COMPUTE_HEADER_DEPENDENCIES = Yes
+COMPUTE_HEADER_DEPENDENCIES = yes
 ifeq ($(uname_O),Cygwin)
 	NO_MMAP = YesPlease
 endif
