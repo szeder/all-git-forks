@@ -1,3 +1,6 @@
+#ifdef HAVE_SECURITY
+#include <Security/Security.h>
+#endif
 #include "http.h"
 #include "pack.h"
 #include "sideband.h"
@@ -43,6 +46,9 @@ static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
 static const char *curl_cookie_file;
 static char *user_name, *user_pass, *description;
+#ifdef HAVE_SECURITY
+static int new_keychain_item = 0;
+#endif
 static const char *user_agent;
 
 #if LIBCURL_VERSION_NUM >= 0x071700
@@ -230,6 +236,89 @@ static int http_options(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
+#ifdef HAVE_SECURITY
+static void security_call(OSStatus status)
+{
+	if (status != 0)
+	{
+		const char * message = CFStringGetCStringPtr(SecCopyErrorMessageString(status, NULL), CFStringGetSystemEncoding());
+		fprintf(stderr, "keychain: %s\n", message);
+		exit(1);
+	}
+}
+
+static void load_keychain_item(SecKeychainItemRef item)
+{
+	SecKeychainAttributeInfo * info;
+	SecKeychainAttributeList * attributes;
+	UInt32 passwordLength;
+	void * password;
+	int i;
+
+	security_call(SecKeychainAttributeInfoForItemID(NULL, CSSM_DL_DB_RECORD_GENERIC_PASSWORD, &info));
+	security_call(SecKeychainItemCopyAttributesAndData(item, info, NULL, &attributes, &passwordLength, &password));
+
+	for (i = 0; i < attributes->count; i++)
+	{
+		SecKeychainAttribute attribute = attributes->attr[i];
+
+		if (!user_name && attribute.tag == kSecAccountItemAttr)
+			user_name = xstrdup(attribute.data);
+	}
+
+	user_pass = xstrndup(password, passwordLength);
+
+	SecKeychainItemFreeAttributesAndData(attributes, password);
+	SecKeychainFreeAttributeInfo(info);
+}
+
+static void create_keychain_item()
+{
+	SecItemClass class = kSecGenericPasswordItemClass;
+	SecKeychainAttribute attributes[] =
+	{
+		{ kSecLabelItemAttr, strlen(description), description },
+		{ kSecDescriptionItemAttr, 23, "git repository password" },
+		{ kSecAccountItemAttr, strlen(user_name), user_name },
+		{ kSecServiceItemAttr, strlen(description), description }
+	};
+	SecKeychainAttributeList attribute_list = { 4, attributes };
+
+	security_call(SecKeychainItemCreateFromContent(class, &attribute_list, strlen(user_pass), user_pass, NULL, NULL, NULL));
+}
+
+static void init_curl_http_auth_from_keychain(CURL * curl)
+{
+	SecKeychainItemRef item;
+	OSStatus status;
+	struct strbuf up = STRBUF_INIT;
+
+	if (user_name)
+		status = SecKeychainFindGenericPassword(NULL, strlen(description), description, strlen(user_name), user_name, NULL, NULL, &item);
+	else
+		status = SecKeychainFindGenericPassword(NULL, strlen(description), description, 0, NULL, NULL, NULL, &item);
+
+	switch(status)
+	{
+		case errSecSuccess:
+			load_keychain_item(item);
+			break;
+		case errSecItemNotFound:
+			if (!user_name)
+				user_name = xstrdup(git_getpass_with_description("Username", description));
+			if (!user_pass)
+				user_pass = xstrdup(git_getpass_with_description("Password", description));
+			new_keychain_item = 1;
+			break;
+		default:
+			security_call(status);
+			break;
+	}
+
+	strbuf_addf(&up, "%s:%s", user_name, user_pass);
+	curl_easy_setopt(curl, CURLOPT_USERPWD, strbuf_detach(&up, NULL));
+}
+#else
 static void init_curl_http_auth(CURL *result)
 {
 	if (user_name) {
@@ -241,6 +330,7 @@ static void init_curl_http_auth(CURL *result)
 				 strbuf_detach(&up, NULL));
 	}
 }
+#endif
 
 static int has_cert_password(void)
 {
@@ -832,13 +922,25 @@ static int http_request(const char *url, void *result, int target, int options)
 	if (start_active_slot(slot)) {
 		run_active_slot(slot);
 		if (results.curl_result == CURLE_OK)
+#ifdef HAVE_SECURITY
+		{
 			ret = HTTP_OK;
+			if (user_name && user_pass && new_keychain_item)
+				create_keychain_item();
+		}
+#else
+			ret = HTTP_OK;
+#endif
 		else if (missing_target(&results))
 			ret = HTTP_MISSING_TARGET;
 		else if (results.http_code == 401) {
 			if (user_name && user_pass) {
 				ret = HTTP_NOAUTH;
 			} else {
+#ifdef HAVE_SECURITY
+				init_curl_http_auth_from_keychain(slot->curl);
+				ret = HTTP_REAUTH;
+#else
 				/*
 				 * git_getpass is needed here because its very likely stdin/stdout are
 				 * pipes to our parent process.  So we instead need to use /dev/tty,
@@ -849,6 +951,7 @@ static int http_request(const char *url, void *result, int target, int options)
 					user_name = xstrdup(git_getpass_with_description("Username", description));
 				init_curl_http_auth(slot->curl);
 				ret = HTTP_REAUTH;
+#endif
 			}
 		} else {
 			if (!curl_errorstr[0])

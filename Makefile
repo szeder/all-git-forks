@@ -873,6 +873,8 @@ ifeq ($(uname_S),SCO_SV)
 	TAR = gtar
 endif
 ifeq ($(uname_S),Darwin)
+	BASIC_CFLAGS += -DHAVE_SECURITY
+	BASIC_LDFLAGS += -framework CoreFoundation -framework Security
 	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NEEDS_SSL_WITH_CRYPTO = YesPlease
 	NEEDS_LIBICONV = YesPlease
