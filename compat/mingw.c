@@ -1183,7 +1183,7 @@ static int WSAAPI getaddrinfo_stub(const char *node, const char *service,
 	}
 	ai->ai_addrlen = sizeof(struct sockaddr_in);
 	if (hints && (hints->ai_flags & AI_CANONNAME))
-		ai->ai_canonname = h ? strdup(h->h_name) : NULL;
+		ai->ai_canonname = h ? xstrdup(h->h_name) : NULL;
 	else
 		ai->ai_canonname = NULL;
 
@@ -1319,6 +1319,13 @@ static void ensure_socket_initialization(void)
 
 	atexit(socket_cleanup);
 	initialized = 1;
+}
+
+#undef gethostname
+int mingw_gethostname(char *name, int namelen)
+{
+    ensure_socket_initialization();
+    return gethostname(name, namelen);
 }
 
 #undef gethostbyname

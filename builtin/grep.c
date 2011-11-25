@@ -74,13 +74,32 @@ static int all_work_added;
 /* This lock protects all the variables above. */
 static pthread_mutex_t grep_mutex;
 
+static inline void grep_lock(void)
+{
+	if (use_threads)
+		pthread_mutex_lock(&grep_mutex);
+}
+
+static inline void grep_unlock(void)
+{
+	if (use_threads)
+		pthread_mutex_unlock(&grep_mutex);
+}
+
 /* Used to serialize calls to read_sha1_file. */
 static pthread_mutex_t read_sha1_mutex;
 
-#define grep_lock() pthread_mutex_lock(&grep_mutex)
-#define grep_unlock() pthread_mutex_unlock(&grep_mutex)
-#define read_sha1_lock() pthread_mutex_lock(&read_sha1_mutex)
-#define read_sha1_unlock() pthread_mutex_unlock(&read_sha1_mutex)
+static inline void read_sha1_lock(void)
+{
+	if (use_threads)
+		pthread_mutex_lock(&read_sha1_mutex);
+}
+
+static inline void read_sha1_unlock(void)
+{
+	if (use_threads)
+		pthread_mutex_unlock(&read_sha1_mutex);
+}
 
 /* Signalled when a new work_item is added to todo. */
 static pthread_cond_t cond_add;
@@ -325,7 +344,7 @@ static int grep_config(const char *var, const char *value, void *cb)
 	}
 
 	if (!strcmp(var, "color.grep"))
-		opt->color = git_config_colorbool(var, value, -1);
+		opt->color = git_config_colorbool(var, value);
 	else if (!strcmp(var, "color.grep.context"))
 		color = opt->color_context;
 	else if (!strcmp(var, "color.grep.filename"))
@@ -354,13 +373,9 @@ static void *lock_and_read_sha1_file(const unsigned char *sha1, enum object_type
 {
 	void *data;
 
-	if (use_threads) {
-		read_sha1_lock();
-		data = read_sha1_file(sha1, type, size);
-		read_sha1_unlock();
-	} else {
-		data = read_sha1_file(sha1, type, size);
-	}
+	read_sha1_lock();
+	data = read_sha1_file(sha1, type, size);
+	read_sha1_unlock();
 	return data;
 }
 
@@ -598,8 +613,11 @@ static int grep_object(struct grep_opt *opt, const struct pathspec *pathspec,
 		struct strbuf base;
 		int hit, len;
 
+		read_sha1_lock();
 		data = read_object_with_reference(obj->sha1, tree_type,
 						  &size, NULL);
+		read_sha1_unlock();
+
 		if (!data)
 			die(_("unable to read tree (%s)"), sha1_to_hex(obj->sha1));
 
@@ -637,13 +655,15 @@ static int grep_objects(struct grep_opt *opt, const struct pathspec *pathspec,
 	return hit;
 }
 
-static int grep_directory(struct grep_opt *opt, const struct pathspec *pathspec)
+static int grep_directory(struct grep_opt *opt, const struct pathspec *pathspec,
+			  int exc_std)
 {
 	struct dir_struct dir;
 	int i, hit = 0;
 
 	memset(&dir, 0, sizeof(dir));
-	setup_standard_excludes(&dir);
+	if (exc_std)
+		setup_standard_excludes(&dir);
 
 	fill_directory(&dir, pathspec->raw);
 	for (i = 0; i < dir.nr; i++) {
@@ -750,7 +770,7 @@ static int help_callback(const struct option *opt, const char *arg, int unset)
 int cmd_grep(int argc, const char **argv, const char *prefix)
 {
 	int hit = 0;
-	int cached = 0;
+	int cached = 0, untracked = 0, opt_exclude = -1;
 	int seen_dashdash = 0;
 	int external_grep_allowed__ignored;
 	const char *show_in_pager = NULL, *default_pager = "dummy";
@@ -774,8 +794,13 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT_BOOLEAN(0, "cached", &cached,
 			"search in index instead of in the work tree"),
-		OPT_BOOLEAN(0, "index", &use_index,
-			"--no-index finds in contents not managed by git"),
+		{ OPTION_BOOLEAN, 0, "index", &use_index, NULL,
+			"finds in contents not managed by git",
+			PARSE_OPT_NOARG | PARSE_OPT_NEGHELP },
+		OPT_BOOLEAN(0, "untracked", &untracked,
+			"search in both tracked and untracked files"),
+		OPT_SET_INT(0, "exclude-standard", &opt_exclude,
+			    "search also in ignored files", 1),
 		OPT_GROUP(""),
 		OPT_BOOLEAN('v', "invert-match", &opt.invert,
 			"show non-matching lines"),
@@ -827,17 +852,19 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "heading", &opt.heading,
 			"show filename only once above matches from same file"),
 		OPT_GROUP(""),
-		OPT_CALLBACK('C', NULL, &opt, "n",
+		OPT_CALLBACK('C', "context", &opt, "n",
 			"show <n> context lines before and after matches",
 			context_callback),
-		OPT_INTEGER('B', NULL, &opt.pre_context,
+		OPT_INTEGER('B', "before-context", &opt.pre_context,
 			"show <n> context lines before matches"),
-		OPT_INTEGER('A', NULL, &opt.post_context,
+		OPT_INTEGER('A', "after-context", &opt.post_context,
 			"show <n> context lines after matches"),
 		OPT_NUMBER_CALLBACK(&opt, "shortcut for -C NUM",
 			context_callback),
 		OPT_BOOLEAN('p', "show-function", &opt.funcname,
 			"show a line with the function name before matches"),
+		OPT_BOOLEAN('W', "function-context", &opt.funcbody,
+			"show the surrounding function"),
 		OPT_GROUP(""),
 		OPT_CALLBACK('f', NULL, &opt, "file",
 			"read patterns from file", file_callback),
@@ -896,8 +923,6 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	strcpy(opt.color_sep, GIT_COLOR_CYAN);
 	opt.color = -1;
 	git_config(grep_config, &opt);
-	if (opt.color == -1)
-		opt.color = git_use_color_default;
 
 	/*
 	 * If there is no -- then the paths must exist in the working
@@ -980,7 +1005,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		use_threads = 0;
 
 	if (use_threads) {
-		if (opt.pre_context || opt.post_context || opt.file_break)
+		if (opt.pre_context || opt.post_context || opt.file_break ||
+		    opt.funcbody)
 			skip_first_line = 1;
 		start_threads(&opt);
 	}
@@ -1044,13 +1070,16 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	if (!show_in_pager)
 		setup_pager();
 
+	if (!use_index && (untracked || cached))
+		die(_("--cached or --untracked cannot be used with --no-index."));
 
-	if (!use_index) {
-		if (cached)
-			die(_("--cached cannot be used with --no-index."));
+	if (!use_index || untracked) {
+		int use_exclude = (opt_exclude < 0) ? use_index : !!opt_exclude;
 		if (list.nr)
-			die(_("--no-index cannot be used with revs."));
-		hit = grep_directory(&opt, &pathspec);
+			die(_("--no-index or --untracked cannot be used with revs."));
+		hit = grep_directory(&opt, &pathspec, use_exclude);
+	} else if (0 <= opt_exclude) {
+		die(_("--[no-]exclude-standard cannot be used for tracked contents."));
 	} else if (!list.nr) {
 		if (!cached)
 			setup_work_tree();

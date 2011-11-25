@@ -56,6 +56,10 @@ int main(int argc, const char **argv)
 		commits = 1;
 	}
 
+	if (get_all == 0)
+		warning("http-fetch: use without -a is deprecated.\n"
+			"In a future release, -a will become the default.");
+
 	if (argv[arg])
 		str_end_url_with_slash(argv[arg], &url);
 
@@ -63,7 +67,7 @@ int main(int argc, const char **argv)
 
 	git_config(git_default_config, NULL);
 
-	http_init(NULL);
+	http_init(NULL, url);
 	walker = get_http_walker(url);
 	walker->get_tree = get_tree;
 	walker->get_history = get_history;

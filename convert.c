@@ -533,7 +533,7 @@ static int ident_to_git(const char *path, const char *src, size_t len,
 		dollar = memchr(src, '$', len);
 		if (!dollar)
 			break;
-		memcpy(dst, src, dollar + 1 - src);
+		memmove(dst, src, dollar + 1 - src);
 		dst += dollar + 1 - src;
 		len -= dollar + 1 - src;
 		src  = dollar + 1;
@@ -553,7 +553,7 @@ static int ident_to_git(const char *path, const char *src, size_t len,
 			src  = dollar + 1;
 		}
 	}
-	memcpy(dst, src, len);
+	memmove(dst, src, len);
 	strbuf_setlen(buf, dst + len - buf->buf);
 	return 1;
 }
@@ -641,7 +641,7 @@ static int ident_to_worktree(const char *path, const char *src, size_t len,
 	return 1;
 }
 
-static int git_path_check_crlf(const char *path, struct git_attr_check *check)
+static enum crlf_action git_path_check_crlf(const char *path, struct git_attr_check *check)
 {
 	const char *value = check->value;
 
@@ -658,7 +658,7 @@ static int git_path_check_crlf(const char *path, struct git_attr_check *check)
 	return CRLF_GUESS;
 }
 
-static int git_path_check_eol(const char *path, struct git_attr_check *check)
+static enum eol git_path_check_eol(const char *path, struct git_attr_check *check)
 {
 	const char *value = check->value;
 
@@ -727,7 +727,7 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 		git_config(read_convert_config, NULL);
 	}
 
-	if (!git_checkattr(path, NUM_CONV_ATTRS, ccheck)) {
+	if (!git_check_attr(path, NUM_CONV_ATTRS, ccheck)) {
 		ca->crlf_action = git_path_check_crlf(path, ccheck + 4);
 		if (ca->crlf_action == CRLF_GUESS)
 			ca->crlf_action = git_path_check_crlf(path, ccheck + 0);
@@ -811,7 +811,7 @@ int renormalize_buffer(const char *path, const char *src, size_t len, struct str
 		src = dst->buf;
 		len = dst->len;
 	}
-	return ret | convert_to_git(path, src, len, dst, 0);
+	return ret | convert_to_git(path, src, len, dst, SAFE_CRLF_FALSE);
 }
 
 /*****************************************************************

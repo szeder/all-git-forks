@@ -16,6 +16,7 @@ our \$projectroot = "$safe_pwd";
 our \$project_maxdepth = 8;
 our \$home_link_str = 'projects';
 our \$site_name = '[localhost]';
+our \$site_html_head_string = '';
 our \$site_header = '';
 our \$site_footer = '';
 our \$home_text = 'indextext.html';
@@ -104,6 +105,11 @@ fi
 
 perl -MEncode -e '$e="";decode_utf8($e, Encode::FB_CROAK)' >/dev/null 2>&1 || {
 	skip_all='skipping gitweb tests, perl version is too old'
+	test_done
+}
+
+perl -MCGI -MCGI::Util -MCGI::Carp -e 0 >/dev/null 2>&1 || {
+	skip_all='skipping gitweb tests, CGI module unusable'
 	test_done
 }
 

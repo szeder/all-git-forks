@@ -509,6 +509,20 @@ test_expect_success 'grep -p -B5' '
 	test_cmp expected actual
 '
 
+cat >expected <<EOF
+hello.c=int main(int argc, const char **argv)
+hello.c-{
+hello.c-	printf("Hello world.\n");
+hello.c:	return 0;
+hello.c-	/* char ?? */
+hello.c-}
+EOF
+
+test_expect_success 'grep -W' '
+	git grep -W return >actual &&
+	test_cmp expected actual
+'
+
 test_expect_success 'grep from a subdirectory to search wider area (1)' '
 	mkdir -p s &&
 	(
@@ -540,7 +554,6 @@ test_expect_success 'outside of git repository' '
 	mkdir -p non/git/sub &&
 	echo hello >non/git/file1 &&
 	echo world >non/git/sub/file2 &&
-	echo ".*o*" >non/git/.gitignore &&
 	{
 		echo file1:hello &&
 		echo sub/file2:world
@@ -557,6 +570,23 @@ test_expect_success 'outside of git repository' '
 		test_must_fail git grep o &&
 		git grep --no-index o >../../actual.sub &&
 		test_cmp ../../expect.sub ../../actual.sub
+	) &&
+
+	echo ".*o*" >non/git/.gitignore &&
+	(
+		GIT_CEILING_DIRECTORIES="$(pwd)/non/git" &&
+		export GIT_CEILING_DIRECTORIES &&
+		cd non/git &&
+		test_must_fail git grep o &&
+		git grep --no-index --exclude-standard o >../actual.full &&
+		test_cmp ../expect.full ../actual.full &&
+
+		{
+			echo ".gitignore:.*o*"
+			cat ../expect.full
+		} >../expect.with.ignored &&
+		git grep --no-index --no-exclude o >../actual.full &&
+		test_cmp ../expect.with.ignored ../actual.full
 	)
 '
 
@@ -569,6 +599,10 @@ test_expect_success 'inside git repository but with --no-index' '
 	{
 		echo file1:hello &&
 		echo sub/file2:world
+	} >is/expect.unignored &&
+	{
+		echo ".gitignore:.*o*" &&
+		cat is/expect.unignored
 	} >is/expect.full &&
 	: >is/expect.empty &&
 	echo file2:world >is/expect.sub &&
@@ -577,12 +611,24 @@ test_expect_success 'inside git repository but with --no-index' '
 		git init &&
 		test_must_fail git grep o >../actual.full &&
 		test_cmp ../expect.empty ../actual.full &&
+
+		git grep --untracked o >../actual.unignored &&
+		test_cmp ../expect.unignored ../actual.unignored &&
+
 		git grep --no-index o >../actual.full &&
 		test_cmp ../expect.full ../actual.full &&
+
+		git grep --no-index --exclude-standard o >../actual.unignored &&
+		test_cmp ../expect.unignored ../actual.unignored &&
+
 		cd sub &&
 		test_must_fail git grep o >../../actual.sub &&
 		test_cmp ../../expect.empty ../../actual.sub &&
+
 		git grep --no-index o >../../actual.sub &&
+		test_cmp ../../expect.sub ../../actual.sub &&
+
+		git grep --untracked o >../../actual.sub &&
 		test_cmp ../../expect.sub ../../actual.sub
 	)
 '

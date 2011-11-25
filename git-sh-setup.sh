@@ -39,9 +39,15 @@ git_broken_path_fix () {
 
 # @@BROKEN_PATH_FIX@@
 
-die() {
-	echo >&2 "$@"
-	exit 1
+die () {
+	die_with_status 1 "$@"
+}
+
+die_with_status () {
+	status=$1
+	shift
+	echo >&2 "$*"
+	exit "$status"
 }
 
 GIT_QUIET=
@@ -84,7 +90,7 @@ $LONG_USAGE"
 	fi
 
 	case "$1" in
-		-h|--h|--he|--hel|--help)
+		-h)
 		echo "$LONG_USAGE"
 		exit
 	esac

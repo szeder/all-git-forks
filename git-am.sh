@@ -22,6 +22,7 @@ whitespace=     pass it through git-apply
 ignore-space-change pass it through git-apply
 ignore-whitespace pass it through git-apply
 directory=      pass it through git-apply
+exclude=        pass it through git-apply
 C=              pass it through git-apply
 p=              pass it through git-apply
 patch-format=   format the patch(es) are in
@@ -89,11 +90,8 @@ safe_to_abort () {
 	then
 		return 0
 	fi
-	(
-		gettext "You seem to have moved HEAD since the last 'am' failure.
-Not rewinding to ORIG_HEAD" &&
-		echo
-	) >&2
+		gettextln "You seem to have moved HEAD since the last 'am' failure.
+Not rewinding to ORIG_HEAD" >&2
 	return 1
 }
 
@@ -102,9 +100,9 @@ stop_here_user_resolve () {
 	    printf '%s\n' "$resolvemsg"
 	    stop_here $1
     fi
-    eval_gettext "When you have resolved this problem run \"\$cmdline --resolved\".
+    eval_gettextln "When you have resolved this problem run \"\$cmdline --resolved\".
 If you would prefer to skip this patch, instead run \"\$cmdline --skip\".
-To restore the original branch and stop patching run \"\$cmdline --abort\"."; echo
+To restore the original branch and stop patching run \"\$cmdline --abort\"."
 
     stop_here $1
 }
@@ -118,7 +116,7 @@ go_next () {
 
 cannot_fallback () {
 	echo "$1"
-	gettext "Cannot fall back to three-way merge."; echo
+	gettextln "Cannot fall back to three-way merge."
 	exit 1
 }
 
@@ -196,10 +194,15 @@ check_patch_format () {
 		return 0
 	fi
 
-	# otherwise, check the first few lines of the first patch to try
-	# to detect its format
+	# otherwise, check the first few non-blank lines of the first
+	# patch to try to detect its format
 	{
-		read l1
+		# Start from first line containing non-whitespace
+		l1=
+		while test -z "$l1"
+		do
+			read l1
+		done
 		read l2
 		read l3
 		case "$l1" in
@@ -292,7 +295,7 @@ split_patches () {
 			perl -ne 'BEGIN { $subject = 0 }
 				if ($subject > 1) { print ; }
 				elsif (/^\s+$/) { next ; }
-				elsif (/^Author:/) { print s/Author/From/ ; }
+				elsif (/^Author:/) { s/Author/From/ ; print ;}
 				elsif (/^(From|Date)/) { print ; }
 				elsif ($subject) {
 					$subject = 2 ;
@@ -308,8 +311,43 @@ split_patches () {
 		this=
 		msgnum=
 		;;
+	hg)
+		this=0
+		for hg in "$@"
+		do
+			this=$(( $this + 1 ))
+			msgnum=$(printf "%0${prec}d" $this)
+			# hg stores changeset metadata in #-commented lines preceding
+			# the commit message and diff(s). The only metadata we care about
+			# are the User and Date (Node ID and Parent are hashes which are
+			# only relevant to the hg repository and thus not useful to us)
+			# Since we cannot guarantee that the commit message is in
+			# git-friendly format, we put no Subject: line and just consume
+			# all of the message as the body
+			perl -M'POSIX qw(strftime)' -ne 'BEGIN { $subject = 0 }
+				if ($subject) { print ; }
+				elsif (/^\# User /) { s/\# User/From:/ ; print ; }
+				elsif (/^\# Date /) {
+					my ($hashsign, $str, $time, $tz) = split ;
+					$tz = sprintf "%+05d", (0-$tz)/36;
+					print "Date: " .
+					      strftime("%a, %d %b %Y %H:%M:%S ",
+						       localtime($time))
+					      . "$tz\n";
+				} elsif (/^\# /) { next ; }
+				else {
+					print "\n", $_ ;
+					$subject = 1;
+				}
+			' <"$hg" >"$dotest/$msgnum" || clean_abort
+		done
+		echo "$this" >"$dotest/last"
+		this=
+		msgnum=
+		;;
 	*)
-		if test -n "$parse_patch" ; then
+		if test -n "$patch_format"
+		then
 			clean_abort "$(eval_gettext "Patch format \$patch_format is not supported.")"
 		else
 			clean_abort "$(gettext "Patch format detection failed.")"
@@ -366,7 +404,7 @@ do
 		;;
 	--resolvemsg)
 		shift; resolvemsg=$1 ;;
-	--whitespace|--directory)
+	--whitespace|--directory|--exclude)
 		git_apply_opt="$git_apply_opt $(sq "$1=$2")"; shift ;;
 	-C|-p)
 		git_apply_opt="$git_apply_opt $(sq "$1$2")"; shift ;;
@@ -511,6 +549,8 @@ else
 	fi
 fi
 
+git update-index -q --refresh
+
 case "$resolved" in
 '')
 	case "$HAS_HEAD" in
@@ -611,9 +651,9 @@ do
 			go_next && continue
 
 		test -s "$dotest/patch" || {
-			eval_gettext "Patch is empty.  Was it split wrong?
+			eval_gettextln "Patch is empty.  Was it split wrong?
 If you would prefer to skip this patch, instead run \"\$cmdline --skip\".
-To restore the original branch and stop patching run \"\$cmdline --abort\"."; echo
+To restore the original branch and stop patching run \"\$cmdline --abort\"."
 			stop_here $this
 		}
 		rm -f "$dotest/original-commit" "$dotest/author-script"
@@ -648,7 +688,7 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."; ec
 
 	if test -z "$GIT_AUTHOR_EMAIL"
 	then
-		gettext "Patch does not have a valid e-mail address."; echo
+		gettextln "Patch does not have a valid e-mail address."
 		stop_here $this
 	fi
 
@@ -699,7 +739,7 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."; ec
 	    action=again
 	    while test "$action" = again
 	    do
-		gettext "Commit Body is:"; echo
+		gettextln "Commit Body is:"
 		echo "--------------------------"
 		cat "$dotest/final-commit"
 		echo "--------------------------"
@@ -763,16 +803,16 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."; ec
 		# working tree.
 		resolved=
 		git diff-index --quiet --cached HEAD -- && {
-			gettext "No changes - did you forget to use 'git add'?
+			gettextln "No changes - did you forget to use 'git add'?
 If there is nothing left to stage, chances are that something else
-already introduced the same changes; you might want to skip this patch."; echo
+already introduced the same changes; you might want to skip this patch."
 			stop_here_user_resolve $this
 		}
 		unmerged=$(git ls-files -u)
 		if test -n "$unmerged"
 		then
-			gettext "You still have unmerged paths in your index
-did you forget to use 'git add'?"; echo
+			gettextln "You still have unmerged paths in your index
+did you forget to use 'git add'?"
 			stop_here_user_resolve $this
 		fi
 		apply_status=0
@@ -797,7 +837,7 @@ did you forget to use 'git add'?"; echo
 	fi
 	if test $apply_status != 0
 	then
-		eval_gettext 'Patch failed at $msgnum $FIRSTLINE'; echo
+		eval_gettextln 'Patch failed at $msgnum $FIRSTLINE'
 		stop_here_user_resolve $this
 	fi
 

@@ -10,6 +10,7 @@
 #include "refs.h"
 #include "branch.h"
 #include "url.h"
+#include "submodule.h"
 
 /* rsync support */
 
@@ -431,7 +432,8 @@ static int fetch_refs_from_bundle(struct transport *transport,
 			       int nr_heads, struct ref **to_fetch)
 {
 	struct bundle_transport_data *data = transport->data;
-	return unbundle(&data->header, data->fd);
+	return unbundle(&data->header, data->fd,
+			transport->progress ? BUNDLE_VERBOSE : 0);
 }
 
 static int close_bundle(struct transport *transport)
@@ -753,18 +755,10 @@ void transport_verify_remote_names(int nr_heads, const char **heads)
 			continue;
 
 		remote = remote ? (remote + 1) : local;
-		switch (check_ref_format(remote)) {
-		case 0: /* ok */
-		case CHECK_REF_FORMAT_ONELEVEL:
-			/* ok but a single level -- that is fine for
-			 * a match pattern.
-			 */
-		case CHECK_REF_FORMAT_WILDCARD:
-			/* ok but ends with a pattern-match character */
-			continue;
-		}
-		die("remote part of refspec is not a valid name in %s",
-		    heads[i]);
+		if (check_refname_format(remote,
+				REFNAME_ALLOW_ONELEVEL|REFNAME_REFSPEC_PATTERN))
+			die("remote part of refspec is not a valid name in %s",
+				heads[i]);
 	}
 }
 
@@ -913,7 +907,7 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->fetch = fetch_objs_via_rsync;
 		ret->push = rsync_transport_push;
 		ret->smart_options = NULL;
-	} else if (is_local(url) && is_file(url)) {
+	} else if (is_local(url) && is_file(url) && is_bundle(url, 1)) {
 		struct bundle_transport_data *data = xcalloc(1, sizeof(*data));
 		ret->data = data;
 		ret->get_refs_list = get_refs_from_bundle;
@@ -1032,14 +1026,22 @@ int transport_push(struct transport *transport,
 		if (flags & TRANSPORT_PUSH_MIRROR)
 			match_flags |= MATCH_REFS_MIRROR;
 
-		if (match_refs(local_refs, &remote_refs,
-			       refspec_nr, refspec, match_flags)) {
+		if (match_push_refs(local_refs, &remote_refs,
+				    refspec_nr, refspec, match_flags)) {
 			return -1;
 		}
 
 		set_ref_status_for_push(remote_refs,
 			flags & TRANSPORT_PUSH_MIRROR,
 			flags & TRANSPORT_PUSH_FORCE);
+
+		if ((flags & TRANSPORT_RECURSE_SUBMODULES_CHECK) && !is_bare_repository()) {
+			struct ref *ref = remote_refs;
+			for (; ref; ref = ref->next)
+				if (!is_null_sha1(ref->new_sha1) &&
+				    check_submodule_needs_pushing(ref->new_sha1,transport->remote->name))
+					die("There are unpushed submodules, aborting.");
+		}
 
 		push_ret = transport->push_refs(transport, remote_refs, flags);
 		err = push_had_errors(remote_refs);
