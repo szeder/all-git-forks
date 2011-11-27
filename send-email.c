@@ -783,7 +783,6 @@ void send_message(struct strbuf *message)
 
 	} else {
 		struct smtp_socket sock = { 0 };
-		char hostname[256];
 		struct string_list helo_reply = { 0 };
 		int i, use_esmtp;
 		char *mbox;
@@ -819,9 +818,11 @@ void send_message(struct strbuf *message)
 
 		demand_reply_code(&sock, 2);
 
-		gethostname(hostname, 256);
+		if (!smtp_domain)
+			smtp_domain = maildomain();
+
 		helo_reply.strdup_strings = 1;
-		use_esmtp = send_helo(&sock, hostname, &helo_reply);
+		use_esmtp = send_helo(&sock, smtp_domain, &helo_reply);
 
 		if (!strcmp(smtp_encryption, "tls")) {
 #ifndef NO_OPENSSL
@@ -831,7 +832,7 @@ void send_message(struct strbuf *message)
 
 			/* extensions can change after STARTTLS */
 			string_list_clear(&helo_reply, 0);
-			use_esmtp = send_helo(&sock, hostname, &helo_reply);
+			use_esmtp = send_helo(&sock, smtp_domain, &helo_reply);
 #else
 			die("OpenSSL not available");
 #endif
