@@ -209,13 +209,13 @@ __git_ps1_show_upstream ()
 		"") # no upstream
 			p="" ;;
 		"0	0") # equal to upstream
-			p=" u=" ;;
+			p=" =" ;;
 		"0	"*) # ahead of upstream
-			p=" u+${count#0	}" ;;
+			p=" >${count#0	}" ;;
 		*"	0") # behind upstream
-			p=" u-${count%	0}" ;;
+			p=" <${count%	0}" ;;
 		*)	    # diverged from upstream
-			p=" u+${count#*	}-${count%	*}" ;;
+			p=" >${count#*	}<${count%	*}" ;;
 		esac
 	fi
 
@@ -289,7 +289,7 @@ __git_ps1 ()
 		elif [ "true" = "$(git rev-parse --is-inside-work-tree 2>/dev/null)" ]; then
 			if [ -n "${GIT_PS1_SHOWDIRTYSTATE-}" ]; then
 				if [ "$(git config --bool bash.showDirtyState)" != "false" ]; then
-					git diff --no-ext-diff --quiet --exit-code || w="*"
+					git diff --no-ext-diff --quiet --exit-code || w="~"
 					if git rev-parse --quiet --verify HEAD >/dev/null; then
 						git diff-index --cached --quiet HEAD -- || i="+"
 					else
@@ -303,7 +303,7 @@ __git_ps1 ()
 
 			if [ -n "${GIT_PS1_SHOWUNTRACKEDFILES-}" ]; then
 			   if [ -n "$(git ls-files --others --exclude-standard)" ]; then
-			      u="%"
+			      u="*"
 			   fi
 			fi
 
