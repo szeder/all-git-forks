@@ -1,8 +1,6 @@
 #ifndef HASH_H
 #define HASH_H
 
-#define HASH_OCTETS 20
-
 /*
  * These are some simple generic hash table helper functions.
  * Not necessarily suitable for all users, but good for things

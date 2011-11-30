@@ -1651,7 +1651,7 @@ ifdef NO_POSIX_GOODIES
 endif
 
 ifdef HASH
-	HASH_HEADER = "sphlib/sph_$(HASH).h"
+	HASH_HEADER = "sphlib/sph-$(HASH)-git.h"
 else
 	HASH_HEADER = "sha1-sph-compat.h"
 endif
