@@ -40,6 +40,7 @@ else
 		  exit 1
 	  }
 	git checkout -q ${force:+-f} $upstream^0 || exit
+	echo "Meta/private --continue" >"$GIT_DIR/continue"
 fi
 
 for i in `Meta/topics`; do
@@ -68,5 +69,6 @@ done
 
 git branch -f private &&
 git checkout private || exit
+rm -f "$GIT_DIR/continue"
 echo All branches merged successfully.
 exit 0
