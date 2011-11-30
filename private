@@ -25,7 +25,13 @@ esac
 shift
 done
 
-if test -z "$cont"; then
+GIT_DIR=`git rev-parse --git-dir` || exit
+
+if test "$cont" = t; then
+	if test -f "$GIT_DIR/MERGE_HEAD"; then
+		git commit || exit
+	fi
+else
 	test -z "$force" &&
 	test -n "`git rev-list -1 --no-merges --first-parent \
 		 $upstream..private`" &&
