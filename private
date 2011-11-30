@@ -29,7 +29,7 @@ GIT_DIR=`git rev-parse --git-dir` || exit
 
 if test "$cont" = t; then
 	if test -f "$GIT_DIR/MERGE_HEAD"; then
-		git commit || exit
+		GIT_EDITOR=true git commit || exit
 	fi
 else
 	test -z "$force" &&
