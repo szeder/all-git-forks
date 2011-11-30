@@ -137,7 +137,7 @@ static int find_unique_short_object(int len, char *canonical,
 				    unsigned char *res, unsigned char *sha1)
 {
 	int has_unpacked, has_packed;
-	unsigned char unpacked_sha1[20], packed_sha1[20];
+	unsigned char unpacked_sha1[20], packed_sha1[HASH_OCTETS];
 
 	prepare_alt_odb();
 	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1);
@@ -203,7 +203,7 @@ const char *find_unique_abbrev(const unsigned char *sha1, int len)
 	if (len == 40 || !len)
 		return hex;
 	while (len < 40) {
-		unsigned char sha1_ret[20];
+		unsigned char sha1_ret[HASH_OCTETS];
 		status = get_short_sha1(hex, len, sha1_ret, 1);
 		if (exists
 		    ? !status
@@ -361,7 +361,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 static int get_parent(const char *name, int len,
 		      unsigned char *result, int idx)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int ret = get_sha1_1(name, len, sha1);
 	struct commit *commit;
 	struct commit_list *p;
@@ -391,7 +391,7 @@ static int get_parent(const char *name, int len,
 static int get_nth_ancestor(const char *name, int len,
 			    unsigned char *result, int generation)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *commit;
 	int ret;
 
@@ -756,7 +756,7 @@ int get_sha1_mb(const char *name, unsigned char *sha1)
 {
 	struct commit *one, *two;
 	struct commit_list *mbs;
-	unsigned char sha1_tmp[20];
+	unsigned char sha1_tmp[HASH_OCTETS];
 	const char *dots;
 	int st;
 
@@ -903,7 +903,7 @@ static void diagnose_invalid_sha1_path(const char *prefix,
 				       const char *object_name)
 {
 	struct stat st;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned mode;
 
 	if (!prefix)
@@ -1100,7 +1100,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 			break;
 	}
 	if (*cp == ':') {
-		unsigned char tree_sha1[20];
+		unsigned char tree_sha1[HASH_OCTETS];
 		char *object_name = NULL;
 		if (only_to_die) {
 			object_name = xmalloc(cp-name+1);

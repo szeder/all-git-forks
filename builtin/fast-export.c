@@ -480,7 +480,7 @@ static void get_tags_and_duplicates(struct object_array *pending,
 
 	for (i = 0; i < pending->nr; i++) {
 		struct object_array_entry *e = pending->objects + i;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		struct commit *commit = commit;
 		char *full_name;
 
@@ -592,7 +592,7 @@ static void import_marks(char *input_file)
 	while (fgets(line, sizeof(line), f)) {
 		uint32_t mark;
 		char *line_end, *mark_end;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		struct object *object;
 
 		line_end = strchr(line, '\n');

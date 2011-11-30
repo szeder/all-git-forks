@@ -99,7 +99,7 @@ static struct lock_file lock_file;
 int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 {
 	int i, newfd, stage = 0;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct tree_desc t[MAX_UNPACK_TREES];
 	struct unpack_trees_options opts;
 	int prefix_set = 0;

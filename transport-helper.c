@@ -737,7 +737,7 @@ static int push_refs_with_export(struct transport *transport,
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		char *private;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		if (!data->refspecs)
 			continue;

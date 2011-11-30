@@ -157,8 +157,8 @@ struct command {
 	const char *error_string;
 	unsigned int skip_update:1,
 		     did_not_exist:1;
-	unsigned char old_sha1[20];
-	unsigned char new_sha1[20];
+	unsigned char old_sha1[HASH_OCTETS];
+	unsigned char new_sha1[HASH_OCTETS];
 	char ref_name[FLEX_ARRAY]; /* more */
 };
 
@@ -567,7 +567,7 @@ static void check_aliased_update(struct command *cmd, struct string_list *list)
 	const char *dst_name;
 	struct string_list_item *item;
 	struct command *dst_cmd;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char cmd_oldh[41], cmd_newh[41], dst_oldh[41], dst_newh[41];
 	int flag;
 
@@ -630,7 +630,7 @@ static void check_aliased_updates(struct command *commands)
 	string_list_clear(&ref_list, 0);
 }
 
-static int command_singleton_iterator(void *cb_data, unsigned char sha1[20])
+static int command_singleton_iterator(void *cb_data, unsigned char sha1[HASH_OCTETS])
 {
 	struct command **cmd_list = cb_data;
 	struct command *cmd = *cmd_list;
@@ -655,7 +655,7 @@ static void set_connectivity_errors(struct command *commands)
 	}
 }
 
-static int iterate_receive_command_list(void *cb_data, unsigned char sha1[20])
+static int iterate_receive_command_list(void *cb_data, unsigned char sha1[HASH_OCTETS])
 {
 	struct command **cmd_list = cb_data;
 	struct command *cmd = *cmd_list;
@@ -675,7 +675,7 @@ static int iterate_receive_command_list(void *cb_data, unsigned char sha1[20])
 static void execute_commands(struct command *commands, const char *unpacker_error)
 {
 	struct command *cmd;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (unpacker_error) {
 		for (cmd = commands; cmd; cmd = cmd->next)
@@ -710,7 +710,7 @@ static struct command *read_head_info(void)
 	struct command **p = &commands;
 	for (;;) {
 		static char line[1000];
-		unsigned char old_sha1[20], new_sha1[20];
+		unsigned char old_sha1[20], new_sha1[HASH_OCTETS];
 		struct command *cmd;
 		char *refname;
 		int len, reflen;
@@ -869,7 +869,7 @@ static int delete_only(struct command *commands)
 	return 1;
 }
 
-static void add_one_alternate_sha1(const unsigned char sha1[20], void *unused)
+static void add_one_alternate_sha1(const unsigned char sha1[HASH_OCTETS], void *unused)
 {
 	add_extra_ref(".have", sha1, 0);
 }

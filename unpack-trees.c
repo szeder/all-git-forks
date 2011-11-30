@@ -1264,7 +1264,7 @@ static int verify_clean_subdirectory(struct cache_entry *ce,
 	struct dir_struct d;
 	char *pathbuf;
 	int cnt = 0;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (S_ISGITLINK(ce->ce_mode) &&
 	    resolve_gitlink_ref(ce->name, "HEAD", sha1) == 0) {

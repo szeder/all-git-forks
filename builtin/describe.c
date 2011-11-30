@@ -41,7 +41,7 @@ struct commit_name {
 	struct tag *tag;
 	unsigned prio:2; /* annotated tag = 2, tag = 1, head = 0 */
 	unsigned name_checked:1;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *path;
 };
 static const char *prio_names[] = {
@@ -254,7 +254,7 @@ static void show_suffix(int depth, const unsigned char *sha1)
 
 static void describe(const char *arg, int last_one)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *cmit, *gave_up_on = NULL;
 	struct commit_list *list;
 	struct commit_name *n;

@@ -44,7 +44,7 @@ void resolve_undo_write(struct strbuf *sb, struct string_list *resolve_undo)
 		for (i = 0; i < 3; i++) {
 			if (!ui->mode[i])
 				continue;
-			strbuf_add(sb, ui->sha1[i], 20);
+			strbuf_add(sb, ui->sha1[i], HASH_OCTETS);
 		}
 	}
 }

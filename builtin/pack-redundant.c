@@ -648,7 +648,7 @@ int cmd_pack_redundant(int argc, const char **argv, const char *prefix)
 	llist_init(&ignore);
 	if (!isatty(0)) {
 		while (fgets(buf, sizeof(buf), stdin)) {
-			sha1 = xmalloc(20);
+			sha1 = xmalloc(HASH_OCTETS);
 			if (get_sha1_hex(buf, sha1))
 				die("Bad sha1 on stdin: %s", buf);
 			llist_insert_sorted_unique(ignore, sha1, NULL);

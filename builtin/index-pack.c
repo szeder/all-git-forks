@@ -24,7 +24,7 @@ struct object_entry {
 };
 
 union delta_base {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	off_t offset;
 };
 
@@ -316,7 +316,7 @@ static void *unpack_raw_entry(struct object_entry *obj, union delta_base *delta_
 
 	switch (obj->type) {
 	case OBJ_REF_DELTA:
-		hashcpy(delta_base->sha1, fill(20));
+		hashcpy(delta_base->sha1, fill(HASH_OCTETS));
 		use(20);
 		break;
 	case OBJ_OFS_DELTA:
@@ -1021,7 +1021,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	char *index_name_buf = NULL, *keep_name_buf = NULL;
 	struct pack_idx_entry **idx_objects;
 	struct pack_idx_option opts;
-	unsigned char pack_sha1[20];
+	unsigned char pack_sha1[HASH_OCTETS];
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(index_pack_usage);
@@ -1139,7 +1139,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	} else {
 		if (fix_thin_pack) {
 			struct sha1file *f;
-			unsigned char read_sha1[20], tail_sha1[20];
+			unsigned char read_sha1[20], tail_sha1[HASH_OCTETS];
 			char msg[48];
 			int nr_unresolved = nr_deltas - nr_resolved_deltas;
 			int nr_objects_initial = nr_objects;
@@ -1157,7 +1157,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 			hashcpy(read_sha1, pack_sha1);
 			fixup_pack_header_footer(output_fd, pack_sha1,
 						 curr_pack, nr_objects,
-						 read_sha1, consumed_bytes-20);
+						 read_sha1, consumed_bytes-HASH_OCTETS);
 			if (hashcmp(read_sha1, tail_sha1) != 0)
 				die("Unexpected tail checksum for %s "
 				    "(disk corruption?)", curr_pack);

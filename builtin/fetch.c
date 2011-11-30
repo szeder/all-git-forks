@@ -355,7 +355,7 @@ static int update_local_ref(struct ref *ref,
 	}
 }
 
-static int iterate_ref_map(void *cb_data, unsigned char sha1[20])
+static int iterate_ref_map(void *cb_data, unsigned char sha1[HASH_OCTETS])
 {
 	struct ref **rm = cb_data;
 	struct ref *ref = *rm;

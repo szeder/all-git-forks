@@ -3,7 +3,7 @@
 
 struct resolve_undo_info {
 	unsigned int mode[3];
-	unsigned char sha1[3][20];
+	unsigned char sha1[3][HASH_OCTETS];
 };
 
 extern void record_resolve_undo(struct index_state *, struct cache_entry *);

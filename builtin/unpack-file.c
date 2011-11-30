@@ -22,7 +22,7 @@ static char *create_temp_file(unsigned char *sha1)
 
 int cmd_unpack_file(int argc, const char **argv, const char *prefix)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (argc != 2 || !strcmp(argv[1], "-h"))
 		usage("git unpack-file <sha1>");

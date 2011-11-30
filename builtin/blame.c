@@ -83,7 +83,7 @@ struct origin {
 	struct origin *previous;
 	struct commit *commit;
 	mmfile_t file;
-	unsigned char blob_sha1[20];
+	unsigned char blob_sha1[HASH_OCTETS];
 	unsigned mode;
 	char path[FLEX_ARRAY];
 };
@@ -2072,7 +2072,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 {
 	struct commit *commit;
 	struct origin *origin;
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 	struct strbuf buf = STRBUF_INIT;
 	const char *ident;
 	time_t now;

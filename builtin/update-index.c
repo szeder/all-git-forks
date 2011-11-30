@@ -136,7 +136,7 @@ static int add_one_path(struct cache_entry *old, const char *path, int len, stru
  */
 static int process_directory(const char *path, int len, struct stat *st)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int pos = cache_name_pos(path, len);
 
 	/* Exact match: file or existing gitlink */
@@ -317,7 +317,7 @@ static void read_index_info(int line_termination)
 	while (strbuf_getline(&buf, stdin, line_termination) != EOF) {
 		char *ptr, *tab;
 		char *path_name;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		unsigned int mode;
 		unsigned long ul;
 		int stage;
@@ -406,15 +406,15 @@ static const char * const update_index_usage[] = {
 	NULL
 };
 
-static unsigned char head_sha1[20];
-static unsigned char merge_head_sha1[20];
+static unsigned char head_sha1[HASH_OCTETS];
+static unsigned char merge_head_sha1[HASH_OCTETS];
 
 static struct cache_entry *read_one_ent(const char *which,
 					unsigned char *ent, const char *path,
 					int namelen, int stage)
 {
 	unsigned mode;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int size;
 	struct cache_entry *ce;
 
@@ -632,7 +632,7 @@ static int resolve_undo_clear_callback(const struct option *opt,
 static int cacheinfo_callback(struct parse_opt_ctx_t *ctx,
 				const struct option *opt, int unset)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned int mode;
 
 	if (ctx->argc <= 3)

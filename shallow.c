@@ -33,7 +33,7 @@ int is_repository_shallow(void)
 	is_shallow = 1;
 
 	while (fgets(buf, sizeof(buf), fp)) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (get_sha1_hex(buf, sha1))
 			die("bad shallow line: %s", buf);
 		register_shallow(sha1);

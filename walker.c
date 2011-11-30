@@ -7,7 +7,7 @@
 #include "blob.h"
 #include "refs.h"
 
-static unsigned char current_commit_sha1[20];
+static unsigned char current_commit_sha1[HASH_OCTETS];
 
 void walker_say(struct walker *walker, const char *fmt, const char *hex)
 {
@@ -254,7 +254,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		 const char **write_ref, const char *write_ref_log_details)
 {
 	struct ref_lock **lock = xcalloc(targets, sizeof(struct ref_lock *));
-	unsigned char *sha1 = xmalloc(targets * 20);
+	unsigned char *sha1 = xmalloc(targets * HASH_OCTETS);
 	char *msg;
 	int ret;
 	int i;
@@ -276,11 +276,11 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		for_each_ref(mark_complete, NULL);
 
 	for (i = 0; i < targets; i++) {
-		if (interpret_target(walker, target[i], &sha1[20 * i])) {
+		if (interpret_target(walker, target[i], &sha1[HASH_OCTETS * i])) {
 			error("Could not interpret response from server '%s' as something to pull", target[i]);
 			goto unlock_and_fail;
 		}
-		if (process(walker, lookup_unknown_object(&sha1[20 * i])))
+		if (process(walker, lookup_unknown_object(&sha1[HASH_OCTETS * i])))
 			goto unlock_and_fail;
 	}
 
@@ -296,7 +296,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 	for (i = 0; i < targets; i++) {
 		if (!write_ref || !write_ref[i])
 			continue;
-		ret = write_ref_sha1(lock[i], &sha1[20 * i], msg ? msg : "fetch (unknown)");
+		ret = write_ref_sha1(lock[i], &sha1[HASH_OCTETS * i], msg ? msg : "fetch (unknown)");
 		lock[i] = NULL;
 		if (ret)
 			goto unlock_and_fail;

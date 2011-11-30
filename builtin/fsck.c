@@ -23,7 +23,7 @@ static int include_reflogs = 1;
 static int check_full = 1;
 static int check_strict;
 static int keep_cache_objects;
-static unsigned char head_sha1[20];
+static unsigned char head_sha1[HASH_OCTETS];
 static const char *head_points_at;
 static int errors_found;
 static int write_lost_and_found;
@@ -365,7 +365,7 @@ static int fsck_obj_buffer(const unsigned char *sha1, enum object_type type,
 
 struct sha1_entry {
 	unsigned long ino;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 };
 
 static struct {
@@ -437,7 +437,7 @@ static void fsck_dir(int i, char *path)
 
 	sprintf(name, "%02x", i);
 	while ((de = readdir(dir)) != NULL) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		if (is_dot_or_dotdot(de->d_name))
 			continue;
@@ -687,7 +687,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 	heads = 0;
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (!get_sha1(arg, sha1)) {
 			struct object *obj = lookup_object(sha1);
 

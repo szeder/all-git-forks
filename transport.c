@@ -312,7 +312,7 @@ static int write_refs_to_temp_dir(struct strbuf *temp_dir,
 	int i;
 
 	for (i = 0; i < refspec_nr; i++) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char *ref;
 
 		if (dwim_ref(refspec[i], strlen(refspec[i]), sha1, &ref) != 1)
@@ -638,7 +638,7 @@ static void print_ref_status(char flag, const char *summary, struct ref *to, str
 	}
 }
 
-static const char *status_abbrev(unsigned char sha1[20])
+static const char *status_abbrev(unsigned char sha1[HASH_OCTETS])
 {
 	return find_unique_abbrev(sha1, DEFAULT_ABBREV);
 }

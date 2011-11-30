@@ -19,7 +19,7 @@ enum object_request_state {
 
 struct object_request {
 	struct walker *walker;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct alt_base *repo;
 	enum object_request_state state;
 	struct http_object_request *req;

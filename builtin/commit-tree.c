@@ -29,8 +29,8 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 {
 	int i, got_tree = 0;
 	struct commit_list *parents = NULL;
-	unsigned char tree_sha1[20];
-	unsigned char commit_sha1[20];
+	unsigned char tree_sha1[HASH_OCTETS];
+	unsigned char commit_sha1[HASH_OCTETS];
 	struct strbuf buffer = STRBUF_INIT;
 
 	git_config(git_default_config, NULL);
@@ -41,7 +41,7 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		if (!strcmp(arg, "-p")) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			if (argc <= ++i)
 				usage(commit_tree_usage);
 			if (get_sha1(argv[i], sha1))

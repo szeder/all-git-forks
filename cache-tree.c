@@ -343,7 +343,7 @@ static int update_one(struct cache_tree *it,
 
 		strbuf_grow(&buffer, entlen + 100);
 		strbuf_addf(&buffer, "%o %.*s%c", mode, entlen, path + baselen, '\0');
-		strbuf_add(&buffer, sha1, 20);
+		strbuf_add(&buffer, sha1, HASH_OCTETS);
 
 #if DEBUG
 		fprintf(stderr, "cache-tree update-one %o %.*s\n",
@@ -411,7 +411,7 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 #endif
 
 	if (0 <= it->entry_count) {
-		strbuf_add(buffer, it->sha1, 20);
+		strbuf_add(buffer, it->sha1, HASH_OCTETS);
 	}
 	for (i = 0; i < it->subtree_nr; i++) {
 		struct cache_tree_sub *down = it->down[i];

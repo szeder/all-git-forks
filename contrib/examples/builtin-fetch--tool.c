@@ -39,7 +39,7 @@ static int update_local_ref(const char *name,
 			    const char *note,
 			    int verbose, int force)
 {
-	unsigned char sha1_old[20], sha1_new[20];
+	unsigned char sha1_old[20], sha1_new[HASH_OCTETS];
 	char oldh[41], newh[41];
 	struct commit *current, *updated;
 	enum object_type type;
@@ -125,7 +125,7 @@ static int append_fetch_head(FILE *fp,
 {
 	struct commit *commit;
 	int remote_len, i, note_len;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char note[1024];
 	const char *what, *kind;
 
@@ -377,7 +377,7 @@ static int expand_refs_wildcard(const char *ls_remote_result, int numrefs,
 		replacelen = (tail-1) - (colon+1);
 		for (ls = ls_remote_result; ls; ls = next) {
 			const char *eol;
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			int namelen;
 
 			while (*ls && isspace(*ls))

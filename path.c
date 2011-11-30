@@ -165,7 +165,7 @@ int validate_headref(const char *path)
 {
 	struct stat st;
 	char *buf, buffer[256];
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int fd;
 	ssize_t len;
 

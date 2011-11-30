@@ -567,7 +567,7 @@ static int read_remote_branches(const char *refname,
 	struct strbuf buf = STRBUF_INIT;
 	struct string_list_item *item;
 	int flag;
-	unsigned char orig_sha1[20];
+	unsigned char orig_sha1[HASH_OCTETS];
 	const char *symref;
 
 	strbuf_addf(&buf, "refs/remotes/%s/", rename->old);
@@ -707,7 +707,7 @@ static int mv(int argc, const char **argv)
 	for (i = 0; i < remote_branches.nr; i++) {
 		struct string_list_item *item = remote_branches.items + i;
 		int flag = 0;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		read_ref_full(item->string, sha1, 1, &flag);
 		if (!(flag & REF_ISSYMREF))

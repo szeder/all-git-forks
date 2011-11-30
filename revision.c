@@ -202,7 +202,7 @@ void add_pending_object(struct rev_info *revs, struct object *obj, const char *n
 
 void add_head_to_pending(struct rev_info *revs)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct object *obj;
 	if (get_sha1("HEAD", sha1))
 		return;
@@ -969,7 +969,7 @@ static void handle_reflog(struct rev_info *revs, unsigned flags)
 
 static int add_parents_only(struct rev_info *revs, const char *arg_, int flags)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct object *it;
 	struct commit *commit;
 	struct commit_list *parents;
@@ -1055,7 +1055,7 @@ static void prepare_show_merge(struct rev_info *revs)
 {
 	struct commit_list *bases;
 	struct commit *head, *other;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char **prune = NULL;
 	int i, prune_num = 1; /* counting terminating NULL */
 
@@ -1100,13 +1100,13 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs,
 	unsigned mode;
 	char *dotdot;
 	struct object *object;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int local_flags;
 	const char *arg = arg_;
 
 	dotdot = strstr(arg, "..");
 	if (dotdot) {
-		unsigned char from_sha1[20];
+		unsigned char from_sha1[HASH_OCTETS];
 		const char *next = dotdot + 2;
 		const char *this = arg;
 		int symmetric = *next == '.';
@@ -1790,7 +1790,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->show_merge)
 		prepare_show_merge(revs);
 	if (revs->def && !revs->pending.nr && !got_rev_arg) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		struct object *object;
 		unsigned mode;
 		if (get_sha1_with_mode(revs->def, sha1, &mode))

@@ -5,7 +5,7 @@
 
 struct ref_to_prune {
 	struct ref_to_prune *next;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char name[FLEX_ARRAY];
 };
 

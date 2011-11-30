@@ -35,7 +35,7 @@ static int run_gpg_verify(const char *buf, unsigned long size, int verbose)
 static int verify_tag(const char *name, int verbose)
 {
 	enum object_type type;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char *buf;
 	unsigned long size;
 	int ret;

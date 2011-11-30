@@ -51,7 +51,7 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 {
 	struct tree_desc desc;
 	struct name_entry entry;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int len, oldlen = base->len;
 	enum interesting retval = entry_not_interesting;
 

@@ -532,7 +532,7 @@ static int merge_from_diffs(struct notes_merge_options *o,
 void create_notes_commit(struct notes_tree *t, struct commit_list *parents,
 			 const char *msg, unsigned char *result_sha1)
 {
-	unsigned char tree_sha1[20];
+	unsigned char tree_sha1[HASH_OCTETS];
 
 	assert(t->initialized);
 
@@ -541,7 +541,7 @@ void create_notes_commit(struct notes_tree *t, struct commit_list *parents,
 
 	if (!parents) {
 		/* Deduce parent commit from t->ref */
-		unsigned char parent_sha1[20];
+		unsigned char parent_sha1[HASH_OCTETS];
 		if (!read_ref(t->ref, parent_sha1)) {
 			struct commit *parent = lookup_commit(parent_sha1);
 			if (!parent || parse_commit(parent))
@@ -559,7 +559,7 @@ int notes_merge(struct notes_merge_options *o,
 		struct notes_tree *local_tree,
 		unsigned char *result_sha1)
 {
-	unsigned char local_sha1[20], remote_sha1[20];
+	unsigned char local_sha1[20], remote_sha1[HASH_OCTETS];
 	struct commit *local, *remote;
 	struct commit_list *bases = NULL;
 	const unsigned char *base_sha1, *base_tree_sha1;
@@ -711,7 +711,7 @@ int notes_merge_commit(struct notes_merge_options *o,
 		struct dir_entry *ent = dir.entries[i];
 		struct stat st;
 		const char *relpath = ent->name + path_len;
-		unsigned char obj_sha1[20], blob_sha1[20];
+		unsigned char obj_sha1[20], blob_sha1[HASH_OCTETS];
 
 		if (ent->len - path_len != 40 || get_sha1_hex(relpath, obj_sha1)) {
 			if (o->verbosity >= 3)

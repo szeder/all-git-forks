@@ -72,7 +72,7 @@ int parse_opt_verbosity_cb(const struct option *opt, const char *arg,
 
 int parse_opt_with_commit(const struct option *opt, const char *arg, int unset)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *commit;
 
 	if (!arg)

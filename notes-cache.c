@@ -5,7 +5,7 @@
 
 static int notes_cache_match_validity(const char *ref, const char *validity)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *commit;
 	struct pretty_print_context pretty_ctx;
 	struct strbuf msg = STRBUF_INIT;
@@ -46,8 +46,8 @@ void notes_cache_init(struct notes_cache *c, const char *name,
 
 int notes_cache_write(struct notes_cache *c)
 {
-	unsigned char tree_sha1[20];
-	unsigned char commit_sha1[20];
+	unsigned char tree_sha1[HASH_OCTETS];
+	unsigned char commit_sha1[HASH_OCTETS];
 
 	if (!c || !c->tree.initialized || !c->tree.ref || !*c->tree.ref)
 		return -1;
@@ -65,7 +65,7 @@ int notes_cache_write(struct notes_cache *c)
 	return 0;
 }
 
-char *notes_cache_get(struct notes_cache *c, unsigned char key_sha1[20],
+char *notes_cache_get(struct notes_cache *c, unsigned char key_sha1[HASH_OCTETS],
 		      size_t *outsize)
 {
 	const unsigned char *value_sha1;
@@ -82,10 +82,10 @@ char *notes_cache_get(struct notes_cache *c, unsigned char key_sha1[20],
 	return value;
 }
 
-int notes_cache_put(struct notes_cache *c, unsigned char key_sha1[20],
+int notes_cache_put(struct notes_cache *c, unsigned char key_sha1[HASH_OCTETS],
 		    const char *data, size_t size)
 {
-	unsigned char value_sha1[20];
+	unsigned char value_sha1[HASH_OCTETS];
 
 	if (write_sha1_file(data, size, "blob", value_sha1) < 0)
 		return -1;

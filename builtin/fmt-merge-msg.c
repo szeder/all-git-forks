@@ -370,7 +370,7 @@ int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 		  struct fmt_merge_msg_opts *opts)
 {
 	int i = 0, pos = 0;
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 	const char *current_branch;
 	void *current_branch_to_free;
 

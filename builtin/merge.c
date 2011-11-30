@@ -983,7 +983,7 @@ static struct commit *is_old_style_invocation(int argc, const char **argv,
 {
 	struct commit *second_token = NULL;
 	if (argc > 2) {
-		unsigned char second_sha1[20];
+		unsigned char second_sha1[HASH_OCTETS];
 
 		if (get_sha1(argv[1], second_sha1))
 			return NULL;
@@ -1091,7 +1091,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
 	unsigned char stash[20];
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 	struct commit *head_commit;
 	struct strbuf buf = STRBUF_INIT;
 	const char *head_arg;

@@ -118,7 +118,7 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 
 int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct tree *tree;
 	int i, full_tree = 0;
 	const struct option ls_tree_options[] = {

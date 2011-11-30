@@ -249,7 +249,7 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 		cutoff = 0;
 
 	for (; argc; argc--, argv++) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		struct object *o;
 		struct commit *commit;
 

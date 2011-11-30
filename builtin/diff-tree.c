@@ -18,7 +18,7 @@ static int diff_tree_commit_sha1(const unsigned char *sha1)
 /* Diff one or more commits. */
 static int stdin_diff_commit(struct commit *commit, char *line, int len)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	if (isspace(line[40]) && !get_sha1_hex(line+41, sha1)) {
 		/* Graft the fake parents locally to the commit */
 		int pos = 41;
@@ -46,7 +46,7 @@ static int stdin_diff_commit(struct commit *commit, char *line, int len)
 /* Diff two trees. */
 static int stdin_diff_trees(struct tree *tree1, char *line, int len)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct tree *tree2;
 	if (len != 82 || !isspace(line[40]) || get_sha1_hex(line + 41, sha1))
 		return error("Need exactly two trees, separated by a space");
@@ -64,7 +64,7 @@ static int stdin_diff_trees(struct tree *tree1, char *line, int len)
 static int diff_tree_stdin(char *line)
 {
 	int len = strlen(line);
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct object *obj;
 
 	if (!len || line[len-1] != '\n')
@@ -170,7 +170,7 @@ int cmd_diff_tree(int argc, const char **argv, const char *prefix)
 			opt->diffopt.setup |= (DIFF_SETUP_USE_SIZE_CACHE |
 					       DIFF_SETUP_USE_CACHE);
 		while (fgets(line, sizeof(line), stdin)) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 
 			if (get_sha1_hex(line, sha1)) {
 				fputs(line, stdout);

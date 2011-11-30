@@ -4,7 +4,7 @@
 struct ref_list {
 	unsigned int nr, alloc;
 	struct ref_list_entry {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char *name;
 	} *list;
 };

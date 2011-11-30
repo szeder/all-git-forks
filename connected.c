@@ -20,7 +20,7 @@ int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
 	const char *argv[] = {"rev-list", "--verify-objects",
 			      "--stdin", "--not", "--all", NULL, NULL};
 	char commit[41];
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int err = 0;
 
 	if (fn(cb_data, sha1))

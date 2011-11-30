@@ -3,7 +3,7 @@
 int main(int ac, char **av)
 {
 	git_SHA_CTX ctx;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned bufsz = 8192;
 	char *buffer;
 

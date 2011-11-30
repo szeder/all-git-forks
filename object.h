@@ -29,7 +29,7 @@ struct object {
 	unsigned used : 1;
 	unsigned type : TYPE_BITS;
 	unsigned flags : FLAG_BITS;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 };
 
 extern const char *typename(unsigned int type);

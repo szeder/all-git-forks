@@ -222,7 +222,7 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 		if (!pattern)
 			die("--verify requires a reference");
 		while (*pattern) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 
 			if (!prefixcmp(*pattern, "refs/") &&
 			    !read_ref(*pattern, sha1)) {

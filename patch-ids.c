@@ -62,7 +62,7 @@ static struct patch_id *add_commit(struct commit *commit,
 {
 	struct patch_id_bucket *bucket;
 	struct patch_id *ent;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int pos;
 
 	if (commit_patch_id(commit, &ids->diffopts, sha1))

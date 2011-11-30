@@ -2730,7 +2730,7 @@ static int apply_binary_fragment(struct image *img, struct patch *patch)
 static int apply_binary(struct image *img, struct patch *patch)
 {
 	const char *name = patch->old_name ? patch->old_name : patch->new_name;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	/*
 	 * For safety, we require patch index line to contain
@@ -3196,7 +3196,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 	 */
 	for (patch = list; patch; patch = patch->next) {
 		const unsigned char *sha1_ptr;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		struct cache_entry *ce;
 		const char *name;
 

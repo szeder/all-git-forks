@@ -13,7 +13,7 @@
 static void hash_fd(int fd, const char *type, int write_object, const char *path)
 {
 	struct stat st;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned flags = (HASH_FORMAT_CHECK |
 			  (write_object ? HASH_WRITE_OBJECT : 0));
 

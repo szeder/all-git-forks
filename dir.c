@@ -739,7 +739,7 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
 		if (dir->flags & DIR_SHOW_OTHER_DIRECTORIES)
 			break;
 		if (!(dir->flags & DIR_NO_GITLINKS)) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			if (resolve_gitlink_ref(dirname, "HEAD", sha1) == 0)
 				return show_directory;
 		}

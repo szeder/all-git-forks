@@ -181,11 +181,11 @@ struct combine_diff_path {
 	int len;
 	char *path;
 	unsigned int mode;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct combine_diff_parent {
 		char status;
 		unsigned int mode;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 	} parent[FLEX_ARRAY];
 };
 #define combine_diff_path_size(n, l) \

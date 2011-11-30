@@ -72,7 +72,7 @@ static int reset_index_file(const unsigned char *sha1, int reset_type, int quiet
 	read_cache_unmerged();
 
 	if (reset_type == KEEP) {
-		unsigned char head_sha1[20];
+		unsigned char head_sha1[HASH_OCTETS];
 		if (get_sha1("HEAD", head_sha1))
 			return error(_("You do not have a valid HEAD."));
 		if (!fill_tree_descriptor(desc, head_sha1))
@@ -230,8 +230,8 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	int i = 0, reset_type = NONE, update_ref_status = 0, quiet = 0;
 	int patch_mode = 0;
 	const char *rev = "HEAD";
-	unsigned char sha1[20], *orig = NULL, sha1_orig[20],
-				*old_orig = NULL, sha1_old_orig[20];
+	unsigned char sha1[20], *orig = NULL, sha1_orig[HASH_OCTETS],
+				*old_orig = NULL, sha1_old_orig[HASH_OCTETS];
 	struct commit *commit;
 	struct strbuf msg = STRBUF_INIT;
 	const struct option options[] = {

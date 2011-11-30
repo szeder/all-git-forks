@@ -739,7 +739,7 @@ static int fetch_indices(void)
 
 static void one_remote_object(const char *hex)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct object *obj;
 
 	if (get_sha1_hex(hex, sha1) != 0)
@@ -781,7 +781,7 @@ static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 {
 	struct remote_lock *lock = (struct remote_lock *)ctx->userData;
 	git_SHA_CTX sha_ctx;
-	unsigned char lock_token_sha1[20];
+	unsigned char lock_token_sha1[HASH_OCTETS];
 
 	if (tag_closed && ctx->cdata) {
 		if (!strcmp(ctx->name, DAV_ACTIVELOCK_OWNER)) {
@@ -1619,7 +1619,7 @@ static int delete_remote_branch(const char *pattern, int force)
 {
 	struct ref *refs = remote_refs;
 	struct ref *remote_ref = NULL;
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 	char *symref = NULL;
 	int match;
 	int patlen = strlen(pattern);

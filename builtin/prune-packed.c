@@ -20,7 +20,7 @@ static void prune_dir(int i, DIR *dir, char *pathname, int len, int opts)
 
 	sprintf(hex, "%02x", i);
 	while ((de = readdir(dir)) != NULL) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (strlen(de->d_name) != 38)
 			continue;
 		memcpy(hex+2, de->d_name, 38);

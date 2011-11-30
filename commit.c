@@ -63,7 +63,7 @@ struct commit *lookup_commit(const unsigned char *sha1)
 
 struct commit *lookup_commit_reference_by_name(const char *name)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *commit;
 
 	if (get_sha1(name, sha1))

@@ -127,8 +127,8 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
 			uint32_t offset = htonl(obj->offset);
 			sha1write(f, &offset, 4);
 		}
-		sha1write(f, obj->sha1, 20);
-		git_SHA1_Update(&ctx, obj->sha1, 20);
+		sha1write(f, obj->sha1, HASH_OCTETS);
+		git_SHA1_Update(&ctx, obj->sha1, HASH_OCTETS);
 		if ((opts->flags & WRITE_IDX_STRICT) &&
 		    (i && !hashcmp(list[-2]->sha1, obj->sha1)))
 			die("The same object %s appears twice in the pack",
@@ -175,7 +175,7 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
 		}
 	}
 
-	sha1write(f, sha1, 20);
+	sha1write(f, sha1, HASH_OCTETS);
 	sha1close(f, NULL, ((opts->flags & WRITE_IDX_VERIFY)
 			    ? CSUM_CLOSE : CSUM_FSYNC));
 	git_SHA1_Final(sha1, &ctx);
@@ -260,7 +260,7 @@ void fixup_pack_header_footer(int pack_fd,
 		git_SHA1_Update(&old_sha1_ctx, buf, n);
 		partial_pack_offset -= n;
 		if (partial_pack_offset == 0) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			git_SHA1_Final(sha1, &old_sha1_ctx);
 			if (hashcmp(sha1, partial_pack_sha1) != 0)
 				die("Unexpected checksum for %s "
@@ -280,7 +280,7 @@ void fixup_pack_header_footer(int pack_fd,
 	if (partial_pack_sha1)
 		git_SHA1_Final(partial_pack_sha1, &old_sha1_ctx);
 	git_SHA1_Final(new_pack_sha1, &new_sha1_ctx);
-	write_or_die(pack_fd, new_pack_sha1, 20);
+	write_or_die(pack_fd, new_pack_sha1, HASH_OCTETS);
 	fsync_or_die(pack_fd, pack_name);
 }
 

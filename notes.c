@@ -35,8 +35,8 @@ struct int_node {
  * subtree.
  */
 struct leaf_node {
-	unsigned char key_sha1[20];
-	unsigned char val_sha1[20];
+	unsigned char key_sha1[HASH_OCTETS];
+	unsigned char val_sha1[HASH_OCTETS];
 };
 
 /*
@@ -51,7 +51,7 @@ struct non_note {
 	struct non_note *next; /* grounded (last->next == NULL) */
 	char *path;
 	unsigned int mode;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 };
 
 #define PTR_TYPE_NULL     0
@@ -334,7 +334,7 @@ static void note_tree_free(struct int_node *tree)
  * - hex      - Partial SHA1 segment in ASCII hex format
  * - hex_len  - Length of above segment. Must be multiple of 2 between 0 and 40
  * - sha1     - Partial SHA1 value is written here
- * - sha1_len - Max #bytes to store in sha1, Must be >= hex_len / 2, and < 20
+ * - sha1_len - Max #bytes to store in sha1, Must be >= hex_len / 2, and < HASH_OCTETS
  * Returns -1 on error (invalid arguments or invalid SHA1 (not in hex format)).
  * Otherwise, returns number of bytes written to sha1 (i.e. hex_len / 2).
  * Pads sha1 with NULs up to sha1_len (not included in returned length).
@@ -410,7 +410,7 @@ static void add_non_note(struct notes_tree *t, const char *path,
 static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 		struct int_node *node, unsigned int n)
 {
-	unsigned char object_sha1[20];
+	unsigned char object_sha1[HASH_OCTETS];
 	unsigned int prefix_len;
 	void *buf;
 	struct tree_desc desc;
@@ -430,7 +430,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 	while (tree_entry(&desc, &entry)) {
 		path_len = strlen(entry.path);
 		len = get_sha1_hex_segment(entry.path, path_len,
-				object_sha1 + prefix_len, 20 - prefix_len);
+				object_sha1 + prefix_len, HASH_OCTETS - prefix_len);
 		if (len < 0)
 			goto handle_non_note; /* entry.path is not a SHA1 */
 		len += prefix_len;
@@ -644,7 +644,7 @@ static void write_tree_entry(struct strbuf *buf, unsigned int mode,
 		unsigned char *sha1)
 {
 	strbuf_addf(buf, "%o %.*s%c", mode, path_len, path, '\0');
-	strbuf_add(buf, sha1, 20);
+	strbuf_add(buf, sha1, HASH_OCTETS);
 }
 
 static void tree_write_stack_init_subtree(struct tree_write_stack *tws,
@@ -938,7 +938,7 @@ void string_list_add_refs_by_glob(struct string_list *list, const char *glob)
 	if (has_glob_specials(glob)) {
 		for_each_glob_ref(string_list_add_one_ref, glob, list);
 	} else {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (get_sha1(glob, sha1))
 			warning("notes ref %s is invalid", glob);
 		if (!unsorted_string_list_has_string(list, glob))
@@ -996,7 +996,7 @@ const char *default_notes_ref(void)
 void init_notes(struct notes_tree *t, const char *notes_ref,
 		combine_notes_fn combine_notes, int flags)
 {
-	unsigned char sha1[20], object_sha1[20];
+	unsigned char sha1[20], object_sha1[HASH_OCTETS];
 	unsigned mode;
 	struct leaf_node root_tree;
 

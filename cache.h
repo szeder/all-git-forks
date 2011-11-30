@@ -132,7 +132,7 @@ struct ondisk_cache_entry {
 	unsigned int uid;
 	unsigned int gid;
 	unsigned int size;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned short flags;
 	char name[FLEX_ARRAY]; /* more */
 };
@@ -151,7 +151,7 @@ struct ondisk_cache_entry_extended {
 	unsigned int uid;
 	unsigned int gid;
 	unsigned int size;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned short flags;
 	unsigned short flags2;
 	char name[FLEX_ARRAY]; /* more */
@@ -167,7 +167,7 @@ struct cache_entry {
 	unsigned int ce_gid;
 	unsigned int ce_size;
 	unsigned int ce_flags;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct cache_entry *next;
 	struct cache_entry *dir_next;
 	char name[FLEX_ARRAY]; /* more */
@@ -671,7 +671,7 @@ extern char *sha1_file_name(const unsigned char *sha1);
 extern char *sha1_pack_name(const unsigned char *sha1);
 extern char *sha1_pack_index_name(const unsigned char *sha1);
 extern const char *find_unique_abbrev(const unsigned char *sha1, int);
-extern const unsigned char null_sha1[20];
+extern const unsigned char null_sha1[HASH_OCTETS];
 
 static inline int hashcmp(const unsigned char *sha1, const unsigned char *sha2)
 {
@@ -987,21 +987,21 @@ extern struct packed_git {
 	unsigned pack_local:1,
 		 pack_keep:1,
 		 do_not_close:1;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	/* something like ".git/objects/pack/xxxxx.pack" */
 	char pack_name[FLEX_ARRAY]; /* more */
 } *packed_git;
 
 struct pack_entry {
 	off_t offset;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct packed_git *p;
 };
 
 struct ref {
 	struct ref *next;
-	unsigned char old_sha1[20];
-	unsigned char new_sha1[20];
+	unsigned char old_sha1[HASH_OCTETS];
+	unsigned char new_sha1[HASH_OCTETS];
 	char *symref;
 	unsigned int force:1,
 		merge:1,

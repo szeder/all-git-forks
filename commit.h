@@ -146,7 +146,7 @@ void clear_commit_marks_for_object_array(struct object_array *a, unsigned mark);
 void sort_in_topological_order(struct commit_list ** list, int lifo);
 
 struct commit_graft {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int nr_parent; /* < 0 if shallow commit */
 	unsigned char parent[FLEX_ARRAY][20]; /* more */
 };

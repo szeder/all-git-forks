@@ -123,7 +123,7 @@ static void *get_data(unsigned long size)
 }
 
 struct delta_info {
-	unsigned char base_sha1[20];
+	unsigned char base_sha1[HASH_OCTETS];
 	unsigned nr;
 	off_t base_offset;
 	unsigned long size;
@@ -150,7 +150,7 @@ static void add_delta_to_list(unsigned nr, unsigned const char *base_sha1,
 
 struct obj_info {
 	off_t offset;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct object *obj;
 };
 
@@ -166,7 +166,7 @@ static unsigned nr_objects;
  */
 static void write_cached_object(struct object *obj)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct obj_buffer *obj_buf = lookup_object_buffer(obj);
 	if (write_sha1_file(obj_buf->buffer, obj_buf->size, typename(obj->type), sha1) < 0)
 		die("failed to write object %s", sha1_to_hex(obj->sha1));
@@ -331,10 +331,10 @@ static void unpack_delta_entry(enum object_type type, unsigned long delta_size,
 {
 	void *delta_data, *base;
 	unsigned long base_size;
-	unsigned char base_sha1[20];
+	unsigned char base_sha1[HASH_OCTETS];
 
 	if (type == OBJ_REF_DELTA) {
-		hashcpy(base_sha1, fill(20));
+		hashcpy(base_sha1, fill(HASH_OCTETS));
 		use(20);
 		delta_data = get_data(delta_size);
 		if (dry_run || !delta_data) {
@@ -495,7 +495,7 @@ static void unpack_all(void)
 int cmd_unpack_objects(int argc, const char **argv, const char *prefix)
 {
 	int i;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	read_replace_refs = 0;
 

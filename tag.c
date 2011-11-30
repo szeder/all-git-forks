@@ -58,7 +58,7 @@ static unsigned long parse_tag_date(const char *buf, const char *tail)
 
 int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char type[20];
 	const char *bufptr = data;
 	const char *tail = bufptr + size;

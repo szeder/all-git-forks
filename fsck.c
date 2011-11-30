@@ -261,7 +261,7 @@ static int fsck_ident(char **ident, struct object *obj, fsck_error error_func)
 static int fsck_commit(struct commit *commit, fsck_error error_func)
 {
 	char *buffer = commit->buffer;
-	unsigned char tree_sha1[20], sha1[20];
+	unsigned char tree_sha1[20], sha1[HASH_OCTETS];
 	struct commit_graft *graft;
 	int parents = 0;
 	int err;

@@ -325,7 +325,7 @@ static unsigned long write_object(struct sha1file *f,
 				return 0;
 			}
 			sha1write(f, header, hdrlen);
-			sha1write(f, entry->delta->idx.sha1, 20);
+			sha1write(f, entry->delta->idx.sha1, HASH_OCTETS);
 			hdrlen += 20;
 		} else {
 			if (limit && hdrlen + datalen + 20 >= limit) {
@@ -387,7 +387,7 @@ static unsigned long write_object(struct sha1file *f,
 				return 0;
 			}
 			sha1write(f, header, hdrlen);
-			sha1write(f, entry->delta->idx.sha1, 20);
+			sha1write(f, entry->delta->idx.sha1, HASH_OCTETS);
 			hdrlen += 20;
 			reused_delta++;
 		} else {
@@ -648,7 +648,7 @@ static void write_pack_file(void)
 	write_order = compute_write_order();
 
 	do {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char *pack_tmp_name = NULL;
 
 		if (pack_to_stdout)
@@ -901,7 +901,7 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 }
 
 struct pbase_tree_cache {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int ref;
 	int temporary;
 	void *tree_data;
@@ -1120,7 +1120,7 @@ static void add_preferred_base(unsigned char *sha1)
 	struct pbase_tree *it;
 	void *data;
 	unsigned long size;
-	unsigned char tree_sha1[20];
+	unsigned char tree_sha1[HASH_OCTETS];
 
 	if (window <= num_preferred_base++)
 		return;
@@ -2082,7 +2082,7 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 static void read_object_list_from_stdin(void)
 {
 	char line[40 + 1 + PATH_MAX + 2];
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	for (;;) {
 		if (!fgets(line, sizeof(line), stdin)) {

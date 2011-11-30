@@ -4,7 +4,7 @@
 #include "commit.h"
 
 static struct replace_object {
-	unsigned char sha1[2][20];
+	unsigned char sha1[2][HASH_OCTETS];
 } **replace_object;
 
 static int replace_object_alloc, replace_object_nr;

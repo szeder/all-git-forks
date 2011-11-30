@@ -326,7 +326,7 @@ static void merge_trees(struct tree_desc t[3], const char *base)
 
 static void *get_tree_descriptor(struct tree_desc *desc, const char *rev)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	void *buf;
 
 	if (get_sha1(rev, sha1))

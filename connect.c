@@ -59,7 +59,7 @@ struct ref **get_remote_heads(int in, struct ref **list,
 	*list = NULL;
 	for (;;) {
 		struct ref *ref;
-		unsigned char old_sha1[20];
+		unsigned char old_sha1[HASH_OCTETS];
 		static char buffer[1000];
 		char *name;
 		int len, name_len;

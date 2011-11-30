@@ -255,7 +255,7 @@ static void parse_treeish_arg(const char **argv,
 	time_t archive_time;
 	struct tree *tree;
 	const struct commit *commit;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	/* Remotes are only allowed to fetch actual refs */
 	if (remote) {
@@ -283,7 +283,7 @@ static void parse_treeish_arg(const char **argv,
 		die("not a tree object");
 
 	if (prefix) {
-		unsigned char tree_sha1[20];
+		unsigned char tree_sha1[HASH_OCTETS];
 		unsigned int mode;
 		int err;
 

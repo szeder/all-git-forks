@@ -291,7 +291,7 @@ static int parse_reedit_arg(const struct option *opt, const char *arg, int unset
 void commit_notes(struct notes_tree *t, const char *msg)
 {
 	struct strbuf buf = STRBUF_INIT;
-	unsigned char commit_sha1[20];
+	unsigned char commit_sha1[HASH_OCTETS];
 
 	if (!t)
 		t = &default_notes_tree;
@@ -800,7 +800,7 @@ static int merge_abort(struct notes_merge_options *o)
 static int merge_commit(struct notes_merge_options *o)
 {
 	struct strbuf msg = STRBUF_INIT;
-	unsigned char sha1[20], parent_sha1[20];
+	unsigned char sha1[20], parent_sha1[HASH_OCTETS];
 	struct notes_tree *t;
 	struct commit *partial;
 	struct pretty_print_context pretty_ctx;
@@ -854,7 +854,7 @@ static int merge_commit(struct notes_merge_options *o)
 static int merge(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf remote_ref = STRBUF_INIT, msg = STRBUF_INIT;
-	unsigned char result_sha1[20];
+	unsigned char result_sha1[HASH_OCTETS];
 	struct notes_tree *t;
 	struct notes_merge_options o;
 	int do_merge = 0, do_commit = 0, do_abort = 0;
@@ -963,7 +963,7 @@ static int merge(int argc, const char **argv, const char *prefix)
 static int remove_one_note(struct notes_tree *t, const char *name, unsigned flag)
 {
 	int status;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	if (get_sha1(name, sha1))
 		return error(_("Failed to resolve '%s' as a valid ref."), name);
 	status = remove_note(t, sha1);

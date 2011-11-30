@@ -38,7 +38,7 @@ static int verify_tag(char *buffer, unsigned long size)
 {
 	int typelen;
 	char type[20];
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *object, *type_line, *tag_line, *tagger_line, *lb, *rb;
 	size_t len;
 
@@ -151,7 +151,7 @@ static int verify_tag(char *buffer, unsigned long size)
 int cmd_mktag(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf buf = STRBUF_INIT;
-	unsigned char result_sha1[20];
+	unsigned char result_sha1[HASH_OCTETS];
 
 	if (argc != 1)
 		usage("git mktag < signaturefile");

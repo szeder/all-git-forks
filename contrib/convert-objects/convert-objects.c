@@ -4,8 +4,8 @@
 #include "tree.h"
 
 struct entry {
-	unsigned char old_sha1[20];
-	unsigned char new_sha1[20];
+	unsigned char old_sha1[HASH_OCTETS];
+	unsigned char new_sha1[HASH_OCTETS];
 	int converted;
 };
 
@@ -55,7 +55,7 @@ static void convert_binary_sha1(void *buffer)
 
 static void convert_ascii_sha1(void *buffer)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct entry *entry;
 
 	if (get_sha1_hex(buffer, sha1))
@@ -313,7 +313,7 @@ static struct entry * convert_entry(unsigned char *sha1)
 
 int main(int argc, char **argv)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct entry *entry;
 
 	setup_git_directory();

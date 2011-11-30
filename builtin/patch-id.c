@@ -130,7 +130,7 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct st
 
 static void generate_id_list(void)
 {
-	unsigned char sha1[20], n[20];
+	unsigned char sha1[20], n[HASH_OCTETS];
 	git_SHA_CTX ctx;
 	int patchlen;
 	struct strbuf line_buf = STRBUF_INIT;

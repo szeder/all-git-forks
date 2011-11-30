@@ -38,7 +38,7 @@ static int check_local_mod(unsigned char *head, int index_only)
 		int pos;
 		struct cache_entry *ce;
 		const char *name = list.name[i];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		unsigned mode;
 		int local_changes = 0;
 		int staged_changes = 0;
@@ -210,7 +210,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 * report no changes unless forced.
 	 */
 	if (!force) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (get_sha1("HEAD", sha1))
 			hashclr(sha1);
 		if (check_local_mod(sha1, index_only))

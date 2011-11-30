@@ -18,7 +18,7 @@ static void add_to_ref_list(const unsigned char *sha1, const char *name,
 		list->list = xrealloc(list->list,
 				list->alloc * sizeof(list->list[0]));
 	}
-	memcpy(list->list[list->nr].sha1, sha1, 20);
+	memcpy(list->list[list->nr].sha1, sha1, HASH_OCTETS);
 	list->list[list->nr].name = xstrdup(name);
 	list->nr++;
 }
@@ -59,7 +59,7 @@ static int parse_bundle_header(int fd, struct bundle_header *header,
 	/* The bundle header ends with an empty line */
 	while (!strbuf_readline_fd(&buf, fd) &&
 	       buf.len && buf.buf[0] != '\n') {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		int is_prereq = 0;
 
 		if (*buf.buf == '-') {
@@ -284,7 +284,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 		return -1;
 	rls_fout = xfdopen(rls.out, "r");
 	while (fgets(buffer, sizeof(buffer), rls_fout)) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (buffer[0] == '-') {
 			write_or_die(bundle_fd, buffer, strlen(buffer));
 			if (!get_sha1_hex(buffer + 1, sha1)) {
@@ -311,7 +311,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 
 	for (i = 0; i < revs.pending.nr; i++) {
 		struct object_array_entry *e = revs.pending.objects + i;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char *ref;
 		const char *display_ref;
 		int flag;

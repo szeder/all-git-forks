@@ -302,7 +302,7 @@ static void strip_trailing_slash_from_submodules(void)
 void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 {
 	struct tree *tree;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct pathspec pathspec;
 	struct cache_entry *last_stage0 = NULL;
 	int i;

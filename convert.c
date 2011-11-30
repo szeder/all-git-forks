@@ -561,7 +561,7 @@ static int ident_to_git(const char *path, const char *src, size_t len,
 static int ident_to_worktree(const char *path, const char *src, size_t len,
                              struct strbuf *buf, int ident)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char *to_free = NULL, *dollar, *spc;
 	int cnt;
 

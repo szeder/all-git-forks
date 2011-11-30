@@ -168,8 +168,8 @@ struct http_object_request {
 	CURLcode curl_result;
 	char errorstr[CURL_ERROR_SIZE];
 	long http_code;
-	unsigned char sha1[20];
-	unsigned char real_sha1[20];
+	unsigned char sha1[HASH_OCTETS];
+	unsigned char real_sha1[HASH_OCTETS];
 	git_SHA_CTX c;
 	git_zstream stream;
 	int zret;

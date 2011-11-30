@@ -79,7 +79,7 @@ static void status_vprintf(struct wt_status *s, int at_bol, const char *color,
 }
 
 void status_printf_ln(struct wt_status *s, const char *color,
-			const char *fmt, ...)
+		const char *fmt, ...)
 {
 	va_list ap;
 
@@ -89,7 +89,7 @@ void status_printf_ln(struct wt_status *s, const char *color,
 }
 
 void status_printf(struct wt_status *s, const char *color,
-			const char *fmt, ...)
+		const char *fmt, ...)
 {
 	va_list ap;
 
@@ -99,7 +99,7 @@ void status_printf(struct wt_status *s, const char *color,
 }
 
 void status_printf_more(struct wt_status *s, const char *color,
-			const char *fmt, ...)
+		const char *fmt, ...)
 {
 	va_list ap;
 
@@ -110,7 +110,7 @@ void status_printf_more(struct wt_status *s, const char *color,
 
 void wt_status_prepare(struct wt_status *s)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	memset(s, 0, sizeof(*s));
 	memcpy(s->color_palette, default_wt_status_colors,

@@ -164,7 +164,7 @@ static int for_each_tag_name(const char **argv, each_tag_name_fn fn)
 	const char **p;
 	char ref[PATH_MAX];
 	int had_error = 0;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	for (p = argv; *p; p++) {
 		if (snprintf(ref, sizeof(ref), "refs/tags/%s", *p)

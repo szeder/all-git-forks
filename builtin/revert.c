@@ -715,7 +715,7 @@ static int format_todo(struct strbuf *buf, struct commit_list *todo_list,
 
 static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
 {
-	unsigned char commit_sha1[20];
+	unsigned char commit_sha1[HASH_OCTETS];
 	char sha1_abbrev[40];
 	enum replay_action action;
 	int insn_len = 0;
@@ -898,7 +898,7 @@ static int reset_for_rollback(const unsigned char *sha1)
 
 static int rollback_single_pick(void)
 {
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 
 	if (!file_exists(git_path("CHERRY_PICK_HEAD")) &&
 	    !file_exists(git_path("REVERT_HEAD")))
@@ -914,7 +914,7 @@ static int sequencer_rollback(struct replay_opts *opts)
 {
 	const char *filename;
 	FILE *f;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct strbuf buf = STRBUF_INIT;
 
 	filename = git_path(SEQ_HEAD_FILE);
@@ -1071,7 +1071,7 @@ static int single_pick(struct commit *cmit, struct replay_opts *opts)
 static int pick_revisions(struct replay_opts *opts)
 {
 	struct commit_list *todo_list = NULL;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (opts->subcommand == REPLAY_NONE)
 		assert(opts->revs);

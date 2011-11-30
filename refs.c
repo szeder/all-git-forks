@@ -9,7 +9,7 @@
 
 struct ref_entry {
 	unsigned char flag; /* ISSYMREF? ISPACKED? */
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned char peeled[20];
 	/* The full name of the reference (e.g., "refs/heads/master"): */
 	char name[FLEX_ARRAY];
@@ -243,7 +243,7 @@ static void read_packed_refs(FILE *f, struct ref_array *array)
 	int flag = REF_ISPACKED;
 
 	while (fgets(refline, sizeof(refline), f)) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		const char *refname;
 		static const char header[] = "# pack-refs with:";
 
@@ -325,7 +325,7 @@ static void get_ref_dir(struct ref_cache *refs, const char *base,
 			refname[baselen++] = '/';
 
 		while ((de = readdir(dir)) != NULL) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			struct stat st;
 			int flag;
 			int namelen;
@@ -429,7 +429,7 @@ static int resolve_gitlink_packed_ref(struct ref_cache *refs,
 	if (ref == NULL)
 		return -1;
 
-	memcpy(sha1, ref->sha1, 20);
+	memcpy(sha1, ref->sha1, HASH_OCTETS);
 	return 0;
 }
 
@@ -756,7 +756,7 @@ end_each:
 
 static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int flag;
 
 	if (submodule) {
@@ -842,7 +842,7 @@ int head_ref_namespaced(each_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int ret = 0;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int flag;
 
 	strbuf_addf(&buf, "%sHEAD", get_git_namespace());
@@ -1126,7 +1126,7 @@ int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
 	*ref = NULL;
 	for (p = ref_rev_parse_rules; *p; p++) {
 		char fullref[PATH_MAX];
-		unsigned char sha1_from_ref[20];
+		unsigned char sha1_from_ref[HASH_OCTETS];
 		unsigned char *this_result;
 		int flag;
 
@@ -1364,7 +1364,7 @@ int delete_ref(const char *refname, const unsigned char *sha1, int delopt)
 
 int rename_ref(const char *oldrefname, const char *newrefname, const char *logmsg)
 {
-	unsigned char sha1[20], orig_sha1[20];
+	unsigned char sha1[20], orig_sha1[HASH_OCTETS];
 	int flag = 0, logmoved = 0;
 	struct ref_lock *lock;
 	struct stat loginfo;
@@ -1661,7 +1661,7 @@ int write_ref_sha1(struct ref_lock *lock,
 		 * check with HEAD only which should cover 99% of all usage
 		 * scenarios (even 100% of the default ones).
 		 */
-		unsigned char head_sha1[20];
+		unsigned char head_sha1[HASH_OCTETS];
 		int head_flag;
 		const char *head_ref;
 		head_ref = resolve_ref_unsafe("HEAD", head_sha1, 1, &head_flag);
@@ -1685,7 +1685,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 	char ref[1000];
 	int fd, len, written;
 	char *git_HEAD = git_pathdup("%s", ref_target);
-	unsigned char old_sha1[20], new_sha1[20];
+	unsigned char old_sha1[20], new_sha1[HASH_OCTETS];
 
 	if (logmsg && read_ref(ref_target, old_sha1))
 		hashclr(old_sha1);
@@ -1760,7 +1760,7 @@ int read_ref_at(const char *refname, unsigned long at_time, int cnt,
 	int logfd, tz, reccnt = 0;
 	struct stat st;
 	unsigned long date;
-	unsigned char logged_sha1[20];
+	unsigned char logged_sha1[HASH_OCTETS];
 	void *log_mapped;
 	size_t mapsz;
 
@@ -1882,7 +1882,7 @@ int for_each_recent_reflog_ent(const char *refname, each_reflog_ent_fn fn, long 
 	}
 
 	while (!strbuf_getwholeline(&sb, logfp, '\n')) {
-		unsigned char osha1[20], nsha1[20];
+		unsigned char osha1[20], nsha1[HASH_OCTETS];
 		char *email_end, *message;
 		unsigned long timestamp;
 		int tz;
@@ -1951,7 +1951,7 @@ static int do_for_each_reflog(const char *base, each_ref_fn fn, void *cb_data)
 			if (S_ISDIR(st.st_mode)) {
 				retval = do_for_each_reflog(log, fn, cb_data);
 			} else {
-				unsigned char sha1[20];
+				unsigned char sha1[HASH_OCTETS];
 				if (read_ref_full(log, sha1, 0, NULL))
 					retval = error("bad ref for %s", log);
 				else
@@ -2002,7 +2002,7 @@ int update_ref(const char *action, const char *refname,
 
 int ref_exists(const char *refname)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	return !!resolve_ref_unsafe(refname, sha1, 1, NULL);
 }
 

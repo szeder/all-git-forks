@@ -172,7 +172,7 @@ static int show_default(void)
 	const char *s = def;
 
 	if (s) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		def = NULL;
 		if (!get_sha1(s, sha1)) {
@@ -219,7 +219,7 @@ static int show_file(const char *arg)
 static int try_difference(const char *arg)
 {
 	char *dotdot;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned char end[20];
 	const char *next;
 	const char *this;
@@ -264,7 +264,7 @@ static int try_difference(const char *arg)
 static int try_parent_shorthands(const char *arg)
 {
 	char *dotdot;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *commit;
 	struct commit_list *parents;
 	int parents_only;
@@ -452,7 +452,7 @@ static const char builtin_rev_parse_usage[] =
 int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 {
 	int i, as_is = 0, verify = 0, quiet = 0, revs_count = 0, type = 0;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *name = NULL;
 
 	if (argc > 1 && !strcmp("--parseopt", argv[1]))

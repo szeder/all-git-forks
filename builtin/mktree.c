@@ -10,7 +10,7 @@
 
 static struct treeent {
 	unsigned mode;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int len;
 	char name[FLEX_ARRAY];
 } **entries;
@@ -56,7 +56,7 @@ static void write_tree(unsigned char *sha1)
 	for (i = 0; i < used; i++) {
 		struct treeent *ent = entries[i];
 		strbuf_addf(&buf, "%o %s%c", ent->mode, ent->name, '\0');
-		strbuf_add(&buf, ent->sha1, 20);
+		strbuf_add(&buf, ent->sha1, HASH_OCTETS);
 	}
 
 	write_sha1_file(buf.buf, buf.len, tree_type, sha1);
@@ -75,7 +75,7 @@ static void mktree_line(char *buf, size_t len, int line_termination, int allow_m
 	enum object_type mode_type; /* object type derived from mode */
 	enum object_type obj_type; /* object type derived from sha */
 	char *path;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	ptr = buf;
 	/*
@@ -143,7 +143,7 @@ static void mktree_line(char *buf, size_t len, int line_termination, int allow_m
 int cmd_mktree(int ac, const char **av, const char *prefix)
 {
 	struct strbuf sb = STRBUF_INIT;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int line_termination = '\n';
 	int allow_missing = 0;
 	int is_batch_mode = 0;

@@ -33,7 +33,7 @@ int has_rerere_resolution(const char *hex)
 
 static void read_rr(struct string_list *rr)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char buf[PATH_MAX];
 	FILE *in = fopen(merge_rr_path, "r");
 	if (!in)
@@ -516,7 +516,7 @@ static int do_plain_rerere(struct string_list *rr, int fd)
 	for (i = 0; i < conflict.nr; i++) {
 		const char *path = conflict.items[i].string;
 		if (!string_list_has_string(rr, path)) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			char *hex;
 			int ret;
 			ret = handle_file(path, sha1, NULL);
@@ -633,7 +633,7 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 {
 	const char *filename;
 	char *hex;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int ret;
 
 	ret = handle_cache(path, sha1, NULL);

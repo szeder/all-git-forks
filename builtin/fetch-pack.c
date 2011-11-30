@@ -352,7 +352,7 @@ static int find_common(int fd[2], unsigned char *result_sha1,
 
 	if (args.depth > 0) {
 		char line[1024];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		send_request(fd[1], &req_buf);
 		while (packet_read_line(fd[0], line, sizeof(line))) {
@@ -772,7 +772,7 @@ static struct ref *do_fetch_pack(int fd[2],
 		char **pack_lockfile)
 {
 	struct ref *ref = copy_ref_list(orig_ref);
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (is_repository_shallow() && !server_supports("shallow"))
 		die("Server does not support shallow clients");

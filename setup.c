@@ -55,7 +55,7 @@ int check_filename(const char *prefix, const char *arg)
 
 static void NORETURN die_verify_filename(const char *prefix, const char *arg)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	unsigned mode;
 
 	/*

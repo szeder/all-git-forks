@@ -51,7 +51,7 @@ static int verify_packfile(struct packed_git *p,
 	off_t index_size = p->index_size;
 	const unsigned char *index_base = p->index_data;
 	git_SHA_CTX ctx;
-	unsigned char sha1[20], *pack_sig;
+	unsigned char sha1[HASH_OCTETS], *pack_sig;
 	off_t offset = 0, pack_sig_ofs = 0;
 	uint32_t nr_objects, i;
 	int err = 0;
@@ -146,7 +146,7 @@ int verify_pack_index(struct packed_git *p)
 	off_t index_size;
 	const unsigned char *index_base;
 	git_SHA_CTX ctx;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int err = 0;
 
 	if (open_pack_index(p))
@@ -158,7 +158,7 @@ int verify_pack_index(struct packed_git *p)
 	git_SHA1_Init(&ctx);
 	git_SHA1_Update(&ctx, index_base, (unsigned int)(index_size - 20));
 	git_SHA1_Final(sha1, &ctx);
-	if (hashcmp(sha1, index_base + index_size - 20))
+	if (hashcmp(sha1, index_base + index_size - HASH_OCTETS))
 		err = error("Packfile index for %s SHA1 mismatch",
 			    p->pack_name);
 	return err;

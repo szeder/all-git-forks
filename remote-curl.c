@@ -693,7 +693,7 @@ static void parse_fetch(struct strbuf *buf)
 			char *p = buf->buf + strlen("fetch ");
 			char *name;
 			struct ref *ref;
-			unsigned char old_sha1[20];
+			unsigned char old_sha1[HASH_OCTETS];
 
 			if (strlen(p) < 40 || get_sha1_hex(p, old_sha1))
 				die("protocol error: expected sha/ref, got %s'", p);

@@ -959,7 +959,7 @@ int http_get_info_packs(const char *base_url, struct packed_git **packs_head)
 	int ret = 0, i = 0;
 	char *url, *data;
 	struct strbuf buf = STRBUF_INIT;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	end_url_with_slash(&buf, base_url);
 	strbuf_addstr(&buf, "objects/info/packs");

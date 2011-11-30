@@ -10,7 +10,7 @@ static const char * const git_symbolic_ref_usage[] = {
 
 static void check_symref(const char *HEAD, int quiet)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	int flag;
 	const char *refs_heads_master = resolve_ref_unsafe(HEAD, sha1, 0, &flag);
 

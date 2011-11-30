@@ -157,7 +157,7 @@ static void grep_sha1_async(struct grep_opt *opt, char *name,
 {
 	unsigned char *s;
 	s = xmalloc(20);
-	memcpy(s, sha1, 20);
+	memcpy(s, sha1, HASH_OCTETS);
 	add_work(WORK_SHA1, name, s);
 }
 
@@ -1020,7 +1020,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	/* Check revs and then paths */
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		/* Is it a rev? */
 		if (!get_sha1(arg, sha1)) {
 			struct object *object = parse_object(sha1);

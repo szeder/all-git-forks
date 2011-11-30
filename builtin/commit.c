@@ -489,7 +489,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn,
 		      struct wt_status *s)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (s->relative_paths)
 		s->prefix = prefix;
@@ -825,7 +825,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		*ai_tmp = ' ';
 		*ci_tmp = ' ';
 	} else {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		const char *parent = "HEAD";
 
 		if (!active_nr && read_cache() < 0)
@@ -1178,7 +1178,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 {
 	struct wt_status s;
 	int fd;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	static struct option builtin_status_options[] = {
 		OPT__VERBOSE(&verbose, "be verbose"),
 		OPT_SET_INT('s', "short", &status_format,
@@ -1258,7 +1258,7 @@ static void print_summary(const char *prefix, const unsigned char *sha1,
 	struct rev_info rev;
 	struct commit *commit;
 	struct strbuf format = STRBUF_INIT;
-	unsigned char junk_sha1[20];
+	unsigned char junk_sha1[HASH_OCTETS];
 	const char *head;
 	struct pretty_print_context pctx = {0};
 	struct strbuf author_ident = STRBUF_INIT;
@@ -1376,7 +1376,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct strbuf author_ident = STRBUF_INIT;
 	const char *index_file, *reflog_msg;
 	char *nl, *p;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct ref_lock *ref_lock;
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;

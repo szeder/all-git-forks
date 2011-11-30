@@ -18,7 +18,7 @@ static void count_objects(DIR *d, char *path, int len, int verbose,
 	struct dirent *ent;
 	while ((ent = readdir(d)) != NULL) {
 		char hex[41];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		const char *cp;
 		int bad = 0;
 

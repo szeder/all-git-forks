@@ -635,7 +635,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 	char head[128];
 	const char *head_p;
 	int head_len;
-	unsigned char head_sha1[20];
+	unsigned char head_sha1[HASH_OCTETS];
 	int merge_base = 0;
 	int independent = 0;
 	int no_name = 0;
@@ -719,7 +719,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 		all_heads = 1;
 
 	if (reflog) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char nth_desc[256];
 		char *ref;
 		int base = 0;

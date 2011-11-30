@@ -91,7 +91,7 @@ static int ce_compare_data(struct cache_entry *ce, struct stat *st)
 	int fd = open(ce->name, O_RDONLY);
 
 	if (fd >= 0) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (!index_fd(sha1, fd, st, OBJ_BLOB, ce->name, 0))
 			match = hashcmp(sha1, ce->sha1);
 		/* index_fd() closed the file descriptor already */
@@ -122,7 +122,7 @@ static int ce_compare_link(struct cache_entry *ce, size_t expected_size)
 
 static int ce_compare_gitlink(struct cache_entry *ce)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	/*
 	 * We don't actually require that the .git directory
@@ -159,7 +159,7 @@ static int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
 
 static int is_empty_blob_sha1(const unsigned char *sha1)
 {
-	static const unsigned char empty_blob_sha1[20] = {
+	static const unsigned char empty_blob_sha1[HASH_OCTETS] = {
 		0xe6,0x9d,0xe2,0x9b,0xb2,0xd1,0xd6,0x43,0x4b,0x8b,
 		0x29,0xae,0x77,0x5a,0xd8,0xc2,0xe4,0x8c,0x53,0x91
 	};
@@ -560,7 +560,7 @@ static struct cache_entry *create_alias_ce(struct cache_entry *ce, struct cache_
 
 static void record_intent_to_add(struct cache_entry *ce)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	if (write_sha1_file("", 0, blob_type, sha1))
 		die("cannot create an empty blob in the object database");
 	hashcpy(ce->sha1, sha1);
@@ -1185,7 +1185,7 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
 {
 	git_SHA_CTX c;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
 		return error("bad signature");
@@ -1194,7 +1194,7 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	git_SHA1_Init(&c);
 	git_SHA1_Update(&c, hdr, size - 20);
 	git_SHA1_Final(sha1, &c);
-	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
+	if (hashcmp(sha1, (unsigned char *)hdr + size - HASH_OCTETS))
 		return error("bad index file sha1 signature");
 	return 0;
 }

@@ -813,7 +813,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 			result = strbuf_detach(&buf, NULL);
 			elem->mode = canon_mode(st.st_mode);
 		} else if (S_ISDIR(st.st_mode)) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			if (resolve_gitlink_ref(elem->path, "HEAD", sha1) < 0)
 				result = grab_blob(elem->sha1, elem->mode,
 						   &result_size, NULL, NULL);

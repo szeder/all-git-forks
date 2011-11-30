@@ -42,11 +42,11 @@ struct expire_reflog_cb {
 	struct commit_list *mark_list;
 	unsigned long mark_limit;
 	struct cmd_reflog_expire_cb *cmd;
-	unsigned char last_kept_sha1[20];
+	unsigned char last_kept_sha1[HASH_OCTETS];
 };
 
 struct collected_reflog {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char reflog[FLEX_ARRAY];
 };
 struct collect_reflog_cb {
@@ -669,7 +669,7 @@ static int cmd_reflog_expire(int argc, const char **argv, const char *prefix)
 
 	for (; i < argc; i++) {
 		char *ref;
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		if (!dwim_log(argv[i], strlen(argv[i]), sha1, &ref)) {
 			status |= error("%s points nowhere!", argv[i]);
 			continue;
@@ -722,7 +722,7 @@ static int cmd_reflog_delete(int argc, const char **argv, const char *prefix)
 
 	for ( ; i < argc; i++) {
 		const char *spec = strstr(argv[i], "@{");
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		char *ep, *ref;
 		int recno;
 

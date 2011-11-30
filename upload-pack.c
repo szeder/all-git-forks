@@ -417,7 +417,7 @@ static int ok_to_give_up(void)
 static int get_common_commits(void)
 {
 	static char line[1000];
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	char last_hex[41];
 	int got_common = 0;
 	int got_other = 0;
@@ -585,7 +585,7 @@ static void receive_needs(void)
 		write_str_in_full(debug_fd, "#S\n");
 	for (;;) {
 		struct object *o;
-		unsigned char sha1_buf[20];
+		unsigned char sha1_buf[HASH_OCTETS];
 		len = packet_read_line(0, line, sizeof(line));
 		reset_timeout();
 		if (!len)
@@ -594,7 +594,7 @@ static void receive_needs(void)
 			write_in_full(debug_fd, line, len);
 
 		if (!prefixcmp(line, "shallow ")) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			struct object *object;
 			if (get_sha1(line + 8, sha1))
 				die("invalid shallow line: %s", line);

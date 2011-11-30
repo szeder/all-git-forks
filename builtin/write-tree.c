@@ -18,7 +18,7 @@ int cmd_write_tree(int argc, const char **argv, const char *unused_prefix)
 {
 	int flags = 0, ret;
 	const char *prefix = NULL;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *me = "git-write-tree";
 	struct option write_tree_options[] = {
 		OPT_BIT(0, "missing-ok", &flags, "allow missing objects",

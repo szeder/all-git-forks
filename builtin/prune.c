@@ -59,7 +59,7 @@ static int prune_dir(int i, char *path)
 
 	while ((de = readdir(dir)) != NULL) {
 		char name[100];
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 
 		if (is_dot_or_dotdot(de->d_name))
 			continue;
@@ -144,7 +144,7 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix, options, prune_usage, 0);
 	while (argc--) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		const char *name = *argv++;
 
 		if (!get_sha1(name, sha1)) {

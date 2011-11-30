@@ -475,7 +475,7 @@ static void alias_all_urls(void)
 
 static void read_config(void)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *head_ref;
 	int flag;
 	if (default_remote_name) /* did this already */
@@ -980,7 +980,7 @@ static void tail_link_ref(struct ref *ref, struct ref ***tail)
 
 static struct ref *try_explicit_object_name(const char *name)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct ref *ref;
 
 	if (!*name) {
@@ -1005,7 +1005,7 @@ static struct ref *make_linked_ref(const char *name, struct ref ***tail)
 static char *guess_ref(const char *name, struct ref *peer)
 {
 	struct strbuf buf = STRBUF_INIT;
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 
 	const char *r = resolve_ref_unsafe(peer->name, sha1, 1, NULL);
 	if (!r)
@@ -1055,7 +1055,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 	}
 
 	if (!dst_value) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		int flag;
 
 		dst_value = resolve_ref_unsafe(matched_src->name, sha1, 1, &flag);
@@ -1487,7 +1487,7 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
  */
 int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	struct commit *ours, *theirs;
 	char symmetric[84];
 	struct rev_info revs;

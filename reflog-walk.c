@@ -10,7 +10,7 @@ struct complete_reflogs {
 	char *ref;
 	const char *short_ref;
 	struct reflog_info {
-		unsigned char osha1[20], nsha1[20];
+		unsigned char osha1[20], nsha1[HASH_OCTETS];
 		char *email;
 		unsigned long timestamp;
 		int tz;
@@ -32,8 +32,8 @@ static int read_one_reflog(unsigned char *osha1, unsigned char *nsha1,
 			sizeof(struct reflog_info));
 	}
 	item = array->items + array->nr;
-	memcpy(item->osha1, osha1, 20);
-	memcpy(item->nsha1, nsha1, 20);
+	memcpy(item->osha1, osha1, HASH_OCTETS);
+	memcpy(item->nsha1, nsha1, HASH_OCTETS);
 	item->email = xstrdup(email);
 	item->timestamp = timestamp;
 	item->tz = tz;
@@ -49,7 +49,7 @@ static struct complete_reflogs *read_complete_reflog(const char *ref)
 	reflogs->ref = xstrdup(ref);
 	for_each_reflog_ent(ref, read_one_reflog, reflogs);
 	if (reflogs->nr == 0) {
-		unsigned char sha1[20];
+		unsigned char sha1[HASH_OCTETS];
 		const char *name;
 		void *name_to_free;
 		name = name_to_free = resolve_refdup(ref, sha1, 1, NULL);
@@ -171,7 +171,7 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 		reflogs = item->util;
 	else {
 		if (*branch == '\0') {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			free(branch);
 			branch = resolve_refdup("HEAD", sha1, 0, NULL);
 			if (!branch)
@@ -180,7 +180,7 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 		}
 		reflogs = read_complete_reflog(branch);
 		if (!reflogs || reflogs->nr == 0) {
-			unsigned char sha1[20];
+			unsigned char sha1[HASH_OCTETS];
 			char *b;
 			if (dwim_log(branch, strlen(branch), sha1, &b) == 1) {
 				if (reflogs) {

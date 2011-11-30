@@ -84,7 +84,7 @@ static void pprint_tag(const unsigned char *sha1, const char *buf, unsigned long
 
 static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	enum object_type type;
 	char *buf;
 	unsigned long size;
@@ -165,7 +165,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 
 static int batch_one_object(const char *obj_name, int print_contents)
 {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	enum object_type type = 0;
 	unsigned long size;
 	void *contents = contents;

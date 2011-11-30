@@ -16,7 +16,7 @@
 #include "submodule.h"
 
 struct blobinfo {
-	unsigned char sha1[20];
+	unsigned char sha1[HASH_OCTETS];
 	const char *name;
 	unsigned mode;
 };

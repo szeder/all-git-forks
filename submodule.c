@@ -319,7 +319,7 @@ static int has_remote(const char *refname, const unsigned char *sha1, int flags,
 	return 1;
 }
 
-static int submodule_needs_pushing(const char *path, const unsigned char sha1[20])
+static int submodule_needs_pushing(const char *path, const unsigned char sha1[HASH_OCTETS])
 {
 	if (add_submodule_odb(path) || !lookup_commit_reference(sha1))
 		return 0;
@@ -394,7 +394,7 @@ static void commit_need_pushing(struct commit *commit, struct commit_list *paren
 	free((void *)parents);
 }
 
-int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remotes_name)
+int check_submodule_needs_pushing(unsigned char new_sha1[HASH_OCTETS], const char *remotes_name)
 {
 	struct rev_info rev;
 	struct commit *commit;
@@ -422,7 +422,7 @@ int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remote
 	return needs_pushing;
 }
 
-static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
+static int is_submodule_commit_present(const char *path, unsigned char sha1[HASH_OCTETS])
 {
 	int is_present = 0;
 	if (!add_submodule_odb(path) && lookup_commit_reference(sha1)) {
@@ -487,7 +487,7 @@ static int add_sha1_to_array(const char *ref, const unsigned char *sha1,
 	return 0;
 }
 
-void check_for_new_submodule_commits(unsigned char new_sha1[20])
+void check_for_new_submodule_commits(unsigned char new_sha1[HASH_OCTETS])
 {
 	if (!initialized_fetch_ref_tips) {
 		for_each_ref(add_sha1_to_array, &ref_tips_before_fetch);
@@ -497,7 +497,7 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 	sha1_array_append(&ref_tips_after_fetch, new_sha1);
 }
 
-static void add_sha1_to_argv(const unsigned char sha1[20], void *data)
+static void add_sha1_to_argv(const unsigned char sha1[HASH_OCTETS], void *data)
 {
 	argv_array_push(data, sha1_to_hex(sha1));
 }
