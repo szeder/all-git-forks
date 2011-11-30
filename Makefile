@@ -1650,6 +1650,12 @@ ifdef NO_POSIX_GOODIES
 	BASIC_CFLAGS += -DNO_POSIX_GOODIES
 endif
 
+ifdef HASH
+	HASH_HEADER = "sphlib/sph_$(HASH).h"
+else
+	HASH_HEADER = "sha1-sph-compat.h"
+endif
+
 ifdef BLK_SHA1
 	SHA1_HEADER = "block-sha1/sha1.h"
 	LIB_OBJS += block-sha1/sha1.o
@@ -1772,6 +1778,7 @@ endif
 # Shell quote (do not use $(call) to accommodate ancient setups);
 
 SHA1_HEADER_SQ = $(subst ','\'',$(SHA1_HEADER))
+HASH_HEADER_SQ = $(subst ','\'',$(HASH_HEADER))
 ETC_GITCONFIG_SQ = $(subst ','\'',$(ETC_GITCONFIG))
 ETC_GITATTRIBUTES_SQ = $(subst ','\'',$(ETC_GITATTRIBUTES))
 
@@ -1796,6 +1803,7 @@ DIFF_SQ = $(subst ','\'',$(DIFF))
 LIBS = $(GITLIBS) $(EXTLIBS)
 
 BASIC_CFLAGS += -DSHA1_HEADER='$(SHA1_HEADER_SQ)' \
+	-DHASH_HEADER='$(HASH_HEADER_SQ)' \
 	$(COMPAT_CFLAGS)
 LIB_OBJS += $(COMPAT_OBJS)
 

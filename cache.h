@@ -16,6 +16,8 @@
 #define git_SHA1_Final	SHA1_Final
 #endif
 
+#include HASH_HEADER
+
 #include <zlib.h>
 typedef struct git_zstream {
 	z_stream z;
