@@ -780,7 +780,7 @@ static void handle_lockprop_ctx(struct xml_ctx *ctx, int tag_closed)
 static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 {
 	struct remote_lock *lock = (struct remote_lock *)ctx->userData;
-	git_SHA_CTX sha_ctx;
+	git_HASH_CTX sha_ctx;
 	unsigned char lock_token_sha1[HASH_OCTETS];
 
 	if (tag_closed && ctx->cdata) {
@@ -795,9 +795,9 @@ static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 			lock->token = xmalloc(strlen(ctx->cdata) + 1);
 			strcpy(lock->token, ctx->cdata);
 
-			git_SHA1_Init(&sha_ctx);
-			git_SHA1_Update(&sha_ctx, lock->token, strlen(lock->token));
-			git_SHA1_Final(lock_token_sha1, &sha_ctx);
+			git_HASH_Init(&sha_ctx);
+			git_HASH_Update(&sha_ctx, lock->token, strlen(lock->token));
+			git_HASH_Final(lock_token_sha1, &sha_ctx);
 
 			lock->tmpfile_suffix[0] = '_';
 			memcpy(lock->tmpfile_suffix + 1, sha1_to_hex(lock_token_sha1), 40);

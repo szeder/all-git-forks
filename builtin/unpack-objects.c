@@ -19,7 +19,7 @@ static const char unpack_usage[] = "git unpack-objects [-n] [-q] [-r] [--strict]
 static unsigned char buffer[4096];
 static unsigned int offset, len;
 static off_t consumed_bytes;
-static git_SHA_CTX ctx;
+static git_HASH_CTX ctx;
 
 /*
  * When running under --strict mode, objects whose reachability are
@@ -59,7 +59,7 @@ static void *fill(int min)
 	if (min > sizeof(buffer))
 		die("cannot fill %d bytes", min);
 	if (offset) {
-		git_SHA1_Update(&ctx, buffer, offset);
+		git_HASH_Update(&ctx, buffer, offset);
 		memmove(buffer, buffer + offset, len);
 		offset = 0;
 	}
@@ -544,10 +544,10 @@ int cmd_unpack_objects(int argc, const char **argv, const char *prefix)
 		/* We don't take any non-flag arguments now.. Maybe some day */
 		usage(unpack_usage);
 	}
-	git_SHA1_Init(&ctx);
+	git_HASH_Init(&ctx);
 	unpack_all();
-	git_SHA1_Update(&ctx, buffer, offset);
-	git_SHA1_Final(sha1, &ctx);
+	git_HASH_Update(&ctx, buffer, offset);
+	git_HASH_Final(sha1, &ctx);
 	if (strict)
 		write_rest();
 	if (hashcmp(fill(20), sha1))

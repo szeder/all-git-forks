@@ -161,7 +161,7 @@ static int is_cmarker(char *buf, int marker_char, int marker_size, int want_sp)
 
 static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_size)
 {
-	git_SHA_CTX ctx;
+	git_HASH_CTX ctx;
 	int hunk_no = 0;
 	enum {
 		RR_CONTEXT = 0, RR_SIDE_1, RR_SIDE_2, RR_ORIGINAL
@@ -170,7 +170,7 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 	struct strbuf buf = STRBUF_INIT;
 
 	if (sha1)
-		git_SHA1_Init(&ctx);
+		git_HASH_Init(&ctx);
 
 	while (!io->getline(&buf, io)) {
 		if (is_cmarker(buf.buf, '<', marker_size, 1)) {
@@ -198,9 +198,9 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 			rerere_io_putmem(two.buf, two.len, io);
 			rerere_io_putconflict('>', marker_size, io);
 			if (sha1) {
-				git_SHA1_Update(&ctx, one.buf ? one.buf : "",
+				git_HASH_Update(&ctx, one.buf ? one.buf : "",
 					    one.len + 1);
-				git_SHA1_Update(&ctx, two.buf ? two.buf : "",
+				git_HASH_Update(&ctx, two.buf ? two.buf : "",
 					    two.len + 1);
 			}
 			strbuf_reset(&one);
@@ -223,7 +223,7 @@ static int handle_path(unsigned char *sha1, struct rerere_io *io, int marker_siz
 	strbuf_release(&buf);
 
 	if (sha1)
-		git_SHA1_Final(sha1, &ctx);
+		git_HASH_Final(sha1, &ctx);
 	if (hunk != RR_CONTEXT)
 		return -1;
 	return hunk_no;

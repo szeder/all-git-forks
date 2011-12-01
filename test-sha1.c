@@ -2,7 +2,7 @@
 
 int main(int ac, char **av)
 {
-	git_SHA_CTX ctx;
+	git_HASH_CTX ctx;
 	unsigned char sha1[HASH_OCTETS];
 	unsigned bufsz = 8192;
 	char *buffer;
@@ -20,7 +20,7 @@ int main(int ac, char **av)
 			die("OOPS");
 	}
 
-	git_SHA1_Init(&ctx);
+	git_HASH_Init(&ctx);
 
 	while (1) {
 		ssize_t sz, this_sz;
@@ -39,9 +39,9 @@ int main(int ac, char **av)
 		}
 		if (this_sz == 0)
 			break;
-		git_SHA1_Update(&ctx, buffer, this_sz);
+		git_HASH_Update(&ctx, buffer, this_sz);
 	}
-	git_SHA1_Final(sha1, &ctx);
+	git_HASH_Final(sha1, &ctx);
 	puts(sha1_to_hex(sha1));
 	exit(0);
 }

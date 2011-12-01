@@ -69,7 +69,7 @@ static unsigned char input_buffer[4096];
 static unsigned int input_offset, input_len;
 static off_t consumed_bytes;
 static unsigned deepest_delta;
-static git_SHA_CTX input_ctx;
+static git_HASH_CTX input_ctx;
 static uint32_t input_crc32;
 static int input_fd, output_fd, pack_fd;
 
@@ -121,7 +121,7 @@ static void flush(void)
 	if (input_offset) {
 		if (output_fd >= 0)
 			write_or_die(output_fd, input_buffer, input_offset);
-		git_SHA1_Update(&input_ctx, input_buffer, input_offset);
+		git_HASH_Update(&input_ctx, input_buffer, input_offset);
 		memmove(input_buffer, input_buffer + input_offset, input_len);
 		input_offset = 0;
 	}
@@ -188,7 +188,7 @@ static const char *open_pack_file(const char *pack_name)
 		output_fd = -1;
 		pack_fd = input_fd;
 	}
-	git_SHA1_Init(&input_ctx);
+	git_HASH_Init(&input_ctx);
 	return pack_name;
 }
 
@@ -653,7 +653,7 @@ static void parse_pack_objects(unsigned char *sha1)
 
 	/* Check pack integrity */
 	flush();
-	git_SHA1_Final(sha1, &input_ctx);
+	git_HASH_Final(sha1, &input_ctx);
 	if (hashcmp(fill(20), sha1))
 		die("pack is corrupted (SHA1 mismatch)");
 	use(20);

@@ -1184,16 +1184,16 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 
 static int verify_hdr(struct cache_header *hdr, unsigned long size)
 {
-	git_SHA_CTX c;
+	git_HASH_CTX c;
 	unsigned char sha1[HASH_OCTETS];
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
 		return error("bad signature");
 	if (hdr->hdr_version != htonl(2) && hdr->hdr_version != htonl(3))
 		return error("bad index version");
-	git_SHA1_Init(&c);
-	git_SHA1_Update(&c, hdr, size - 20);
-	git_SHA1_Final(sha1, &c);
+	git_HASH_Init(&c);
+	git_HASH_Update(&c, hdr, size - 20);
+	git_HASH_Final(sha1, &c);
 	if (hashcmp(sha1, (unsigned char *)hdr + size - HASH_OCTETS))
 		return error("bad index file sha1 signature");
 	return 0;
@@ -1399,11 +1399,11 @@ int unmerged_index(const struct index_state *istate)
 static unsigned char write_buffer[WRITE_BUFFER_SIZE];
 static unsigned long write_buffer_len;
 
-static int ce_write_flush(git_SHA_CTX *context, int fd)
+static int ce_write_flush(git_HASH_CTX *context, int fd)
 {
 	unsigned int buffered = write_buffer_len;
 	if (buffered) {
-		git_SHA1_Update(context, write_buffer, buffered);
+		git_HASH_Update(context, write_buffer, buffered);
 		if (write_in_full(fd, write_buffer, buffered) != buffered)
 			return -1;
 		write_buffer_len = 0;
@@ -1411,7 +1411,7 @@ static int ce_write_flush(git_SHA_CTX *context, int fd)
 	return 0;
 }
 
-static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
+static int ce_write(git_HASH_CTX *context, int fd, void *data, unsigned int len)
 {
 	while (len) {
 		unsigned int buffered = write_buffer_len;
@@ -1433,7 +1433,7 @@ static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
 	return 0;
 }
 
-static int write_index_ext_header(git_SHA_CTX *context, int fd,
+static int write_index_ext_header(git_HASH_CTX *context, int fd,
 				  unsigned int ext, unsigned int sz)
 {
 	ext = htonl(ext);
@@ -1442,13 +1442,13 @@ static int write_index_ext_header(git_SHA_CTX *context, int fd,
 		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
-static int ce_flush(git_SHA_CTX *context, int fd)
+static int ce_flush(git_HASH_CTX *context, int fd)
 {
 	unsigned int left = write_buffer_len;
 
 	if (left) {
 		write_buffer_len = 0;
-		git_SHA1_Update(context, write_buffer, left);
+		git_HASH_Update(context, write_buffer, left);
 	}
 
 	/* Flush first if not enough space for SHA1 signature */
@@ -1459,7 +1459,7 @@ static int ce_flush(git_SHA_CTX *context, int fd)
 	}
 
 	/* Append the SHA1 signature at the end */
-	git_SHA1_Final(write_buffer + left, context);
+	git_HASH_Final(write_buffer + left, context);
 	left += 20;
 	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
 }
@@ -1513,7 +1513,7 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 	}
 }
 
-static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce)
+static int ce_write_entry(git_HASH_CTX *c, int fd, struct cache_entry *ce)
 {
 	int size = ondisk_ce_size(ce);
 	struct ondisk_cache_entry *ondisk = xcalloc(1, size);
@@ -1574,7 +1574,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 
 int write_index(struct index_state *istate, int newfd)
 {
-	git_SHA_CTX c;
+	git_HASH_CTX c;
 	struct cache_header hdr;
 	int i, err, removed, extended;
 	struct cache_entry **cache = istate->cache;
@@ -1598,7 +1598,7 @@ int write_index(struct index_state *istate, int newfd)
 	hdr.hdr_version = htonl(extended ? 3 : 2);
 	hdr.hdr_entries = htonl(entries - removed);
 
-	git_SHA1_Init(&c);
+	git_HASH_Init(&c);
 	if (ce_write(&c, newfd, &hdr, sizeof(hdr)) < 0)
 		return -1;
 

@@ -1,6 +1,6 @@
 #include "builtin.h"
 
-static void flush_current_id(int patchlen, unsigned char *id, git_SHA_CTX *c)
+static void flush_current_id(int patchlen, unsigned char *id, git_HASH_CTX *c)
 {
 	unsigned char result[HASH_OCTETS];
 	char name[50];
@@ -8,10 +8,10 @@ static void flush_current_id(int patchlen, unsigned char *id, git_SHA_CTX *c)
 	if (!patchlen)
 		return;
 
-	git_SHA1_Final(result, c);
+	git_HASH_Final(result, c);
 	memcpy(name, sha1_to_hex(id), 41);
 	printf("%s %s\n", sha1_to_hex(result), name);
-	git_SHA1_Init(c);
+	git_HASH_Init(c);
 }
 
 static int remove_space(char *line)
@@ -56,7 +56,7 @@ static int scan_hunk_header(const char *p, int *p_before, int *p_after)
 	return 1;
 }
 
-static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct strbuf *line_buf)
+static int get_one_patchid(unsigned char *next_sha1, git_HASH_CTX *ctx, struct strbuf *line_buf)
 {
 	int patchlen = 0, found_next = 0;
 	int before = -1, after = -1;
@@ -119,7 +119,7 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct st
 		/* Compute the sha without whitespace */
 		len = remove_space(line);
 		patchlen += len;
-		git_SHA1_Update(ctx, line, len);
+		git_HASH_Update(ctx, line, len);
 	}
 
 	if (!found_next)
@@ -131,11 +131,11 @@ static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct st
 static void generate_id_list(void)
 {
 	unsigned char sha1[HASH_OCTETS], n[HASH_OCTETS];
-	git_SHA_CTX ctx;
+	git_HASH_CTX ctx;
 	int patchlen;
 	struct strbuf line_buf = STRBUF_INIT;
 
-	git_SHA1_Init(&ctx);
+	git_HASH_Init(&ctx);
 	hashclr(sha1);
 	while (!feof(stdin)) {
 		patchlen = get_one_patchid(n, &ctx, &line_buf);

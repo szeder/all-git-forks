@@ -4004,7 +4004,7 @@ static void diff_summary(struct diff_options *opt, struct diff_filepair *p)
 }
 
 struct patch_id_t {
-	git_SHA_CTX *ctx;
+	git_HASH_CTX *ctx;
 	int patchlen;
 };
 
@@ -4032,7 +4032,7 @@ static void patch_id_consume(void *priv, char *line, unsigned long len)
 
 	new_len = remove_space(line, len);
 
-	git_SHA1_Update(data->ctx, line, new_len);
+	git_HASH_Update(data->ctx, line, new_len);
 	data->patchlen += new_len;
 }
 
@@ -4041,11 +4041,11 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i;
-	git_SHA_CTX ctx;
+	git_HASH_CTX ctx;
 	struct patch_id_t data;
 	char buffer[PATH_MAX * 4 + 20];
 
-	git_SHA1_Init(&ctx);
+	git_HASH_Init(&ctx);
 	memset(&data, 0, sizeof(struct patch_id_t));
 	data.ctx = &ctx;
 
@@ -4107,12 +4107,12 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 					len2, p->two->path,
 					len1, p->one->path,
 					len2, p->two->path);
-		git_SHA1_Update(&ctx, buffer, len1);
+		git_HASH_Update(&ctx, buffer, len1);
 
 		if (diff_filespec_is_binary(p->one) ||
 		    diff_filespec_is_binary(p->two)) {
-			git_SHA1_Update(&ctx, sha1_to_hex(p->one->sha1), 40);
-			git_SHA1_Update(&ctx, sha1_to_hex(p->two->sha1), 40);
+			git_HASH_Update(&ctx, sha1_to_hex(p->one->sha1), 40);
+			git_HASH_Update(&ctx, sha1_to_hex(p->two->sha1), 40);
 			continue;
 		}
 
@@ -4123,7 +4123,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 			      &xpp, &xecfg);
 	}
 
-	git_SHA1_Final(sha1, &ctx);
+	git_HASH_Final(sha1, &ctx);
 	return 0;
 }
 

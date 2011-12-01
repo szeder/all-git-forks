@@ -47,7 +47,7 @@ void sha1flush(struct sha1file *f)
 	unsigned offset = f->offset;
 
 	if (offset) {
-		git_SHA1_Update(&f->ctx, f->buffer, offset);
+		git_HASH_Update(&f->ctx, f->buffer, offset);
 		flush(f, f->buffer, offset);
 		f->offset = 0;
 	}
@@ -58,7 +58,7 @@ int sha1close(struct sha1file *f, unsigned char *result, unsigned int flags)
 	int fd;
 
 	sha1flush(f);
-	git_SHA1_Final(f->buffer, &f->ctx);
+	git_HASH_Final(f->buffer, &f->ctx);
 	if (result)
 		hashcpy(result, f->buffer);
 	if (flags & (CSUM_CLOSE | CSUM_FSYNC)) {
@@ -110,7 +110,7 @@ int sha1write(struct sha1file *f, void *buf, unsigned int count)
 		buf = (char *) buf + nr;
 		left -= nr;
 		if (!left) {
-			git_SHA1_Update(&f->ctx, data, offset);
+			git_HASH_Update(&f->ctx, data, offset);
 			flush(f, data, offset);
 			offset = 0;
 		}
@@ -154,7 +154,7 @@ struct sha1file *sha1fd_throughput(int fd, const char *name, struct progress *tp
 	f->tp = tp;
 	f->name = name;
 	f->do_crc = 0;
-	git_SHA1_Init(&f->ctx);
+	git_HASH_Init(&f->ctx);
 	return f;
 }
 
