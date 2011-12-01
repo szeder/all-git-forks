@@ -143,12 +143,13 @@ int safe_create_leading_directories_const(const char *path)
 static void fill_sha1_path(char *pathbuf, const unsigned char *sha1)
 {
 	int i;
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < HASH_OCTETS; i++) {
 		static char hex[] = "0123456789abcdef";
 		unsigned int val = sha1[i];
 		char *pos = pathbuf + i*2 + (i > 0);
 		*pos++ = hex[val >> 4];
 		*pos = hex[val & 0xf];
+		printf("%i\n", HASH_OCTETS);
 	}
 }
 
@@ -172,12 +173,12 @@ char *sha1_file_name(const unsigned char *sha1)
 	len = strlen(objdir);
 
 	/* '/' + sha1(2) + '/' + sha1(38) + '\0' */
-	if (len + 43 > PATH_MAX)
+	if (len + (1 + 2 + 1 + (HASH_OCTETS*2 - 2) + 1) > PATH_MAX)
 		die("insanely long object directory %s", objdir);
 	memcpy(buf, objdir, len);
 	buf[len] = '/';
 	buf[len+3] = '/';
-	buf[len+42] = '\0';
+	buf[len+(HASH_OCTETS*2)+2] = '\0';
 	fill_sha1_path(buf + len + 1, sha1);
 	return buf;
 }
@@ -2448,7 +2449,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	int fd, ret;
 	unsigned char compressed[4096];
 	git_zstream stream;
-	git_SHA_CTX c;
+	git_HASH_CTX c;
 	unsigned char parano_sha1[HASH_OCTETS];
 	char *filename;
 	static char tmpfile[PATH_MAX];
@@ -2467,14 +2468,14 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_deflate_init(&stream, zlib_compression_level);
 	stream.next_out = compressed;
 	stream.avail_out = sizeof(compressed);
-	git_SHA1_Init(&c);
+	git_HASH_Init(&c);
 
 	/* First header.. */
 	stream.next_in = (unsigned char *)hdr;
 	stream.avail_in = hdrlen;
 	while (git_deflate(&stream, 0) == Z_OK)
 		; /* nothing */
-	git_SHA1_Update(&c, hdr, hdrlen);
+	git_HASH_Update(&c, hdr, hdrlen);
 
 	/* Then the data itself.. */
 	stream.next_in = (void *)buf;
@@ -2482,7 +2483,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	do {
 		unsigned char *in0 = stream.next_in;
 		ret = git_deflate(&stream, Z_FINISH);
-		git_SHA1_Update(&c, in0, stream.next_in - in0);
+		git_HASH_Update(&c, in0, stream.next_in - in0);
 		if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
 			die("unable to write sha1 file");
 		stream.next_out = compressed;
@@ -2494,7 +2495,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	ret = git_deflate_end_gently(&stream);
 	if (ret != Z_OK)
 		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
-	git_SHA1_Final(parano_sha1, &c);
+	git_HASH_Final(parano_sha1, &c);
 	if (hashcmp(sha1, parano_sha1) != 0)
 		die("confused by unstable object source data for %s", sha1_to_hex(sha1));
 
