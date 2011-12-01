@@ -254,7 +254,7 @@ int parse_fetch_recurse_submodules_arg(const char *opt, const char *arg)
 }
 
 void show_submodule_summary(FILE *f, const char *path,
-		unsigned char one[20], unsigned char two[20],
+		unsigned char one[HASH_OCTETS], unsigned char two[HASH_OCTETS],
 		unsigned dirty_submodule,
 		const char *del, const char *add, const char *reset)
 {
@@ -373,7 +373,7 @@ static void collect_submodules_from_diff(struct diff_queue_struct *q,
 
 static void commit_need_pushing(struct commit *commit, struct commit_list *parent, int *needs_pushing)
 {
-	const unsigned char (*parents)[20];
+	const unsigned char (*parents)[HASH_OCTETS];
 	unsigned int i, n;
 	struct rev_info rev;
 
@@ -792,9 +792,9 @@ static void print_commit(struct commit *commit)
 #define MERGE_WARNING(path, msg) \
 	warning("Failed to merge submodule %s (%s)", path, msg);
 
-int merge_submodule(unsigned char result[20], const char *path,
-		    const unsigned char base[20], const unsigned char a[20],
-		    const unsigned char b[20], int search)
+int merge_submodule(unsigned char result[HASH_OCTETS], const char *path,
+		    const unsigned char base[HASH_OCTETS], const unsigned char a[HASH_OCTETS],
+		    const unsigned char b[HASH_OCTETS], int search)
 {
 	struct commit *commit_base, *commit_a, *commit_b;
 	int parent_count;

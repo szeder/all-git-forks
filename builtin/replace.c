@@ -81,7 +81,7 @@ static int delete_replace_ref(const char *name, const char *ref,
 static int replace_object(const char *object_ref, const char *replace_ref,
 			  int force)
 {
-	unsigned char object[20], prev[20], repl[20];
+	unsigned char object[HASH_OCTETS], prev[HASH_OCTETS], repl[HASH_OCTETS];
 	char ref[PATH_MAX];
 	struct ref_lock *lock;
 

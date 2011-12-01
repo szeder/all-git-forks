@@ -220,7 +220,7 @@ static int checkout_paths(struct tree *source_tree, const char **pathspec,
 	int pos;
 	struct checkout state;
 	static char *ps_matched;
-	unsigned char rev[20];
+	unsigned char rev[HASH_OCTETS];
 	int flag;
 	struct commit *head;
 	int errs = 0;
@@ -718,7 +718,7 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	int ret = 0;
 	struct branch_info old;
 	void *path_to_free;
-	unsigned char rev[20];
+	unsigned char rev[HASH_OCTETS];
 	int flag;
 	memset(&old, 0, sizeof(old));
 	old.path = path_to_free = resolve_refdup("HEAD", rev, 0, &flag);
@@ -813,11 +813,11 @@ static int parse_branchname_arg(int argc, const char **argv,
 				int dwim_new_local_branch_ok,
 				struct branch_info *new,
 				struct tree **source_tree,
-				unsigned char rev[20],
+				unsigned char rev[HASH_OCTETS],
 				const char **new_branch)
 {
 	int argcount = 0;
-	unsigned char branch_rev[20];
+	unsigned char branch_rev[HASH_OCTETS];
 	const char *arg;
 	int has_dash_dash;
 
@@ -925,7 +925,7 @@ static int parse_branchname_arg(int argc, const char **argv,
 int cmd_checkout(int argc, const char **argv, const char *prefix)
 {
 	struct checkout_opts opts;
-	unsigned char rev[20];
+	unsigned char rev[HASH_OCTETS];
 	struct branch_info new;
 	struct tree *source_tree = NULL;
 	char *conflict_style = NULL;

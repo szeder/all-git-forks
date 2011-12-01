@@ -942,7 +942,7 @@ static const char *find_author_by_nickname(const char *name)
 	struct rev_info revs;
 	struct commit *commit;
 	struct strbuf buf = STRBUF_INIT;
-	const char *av[20];
+	const char *av[HASH_OCTETS];
 	int ac = 0;
 
 	init_revisions(&revs, NULL);

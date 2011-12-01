@@ -251,7 +251,7 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 {
 	const char *tail = buffer;
 	const char *bufptr = buffer;
-	unsigned char parent[20];
+	unsigned char parent[HASH_OCTETS];
 	struct commit_list **pptr;
 	struct commit_graft *graft;
 

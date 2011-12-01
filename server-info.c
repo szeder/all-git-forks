@@ -52,7 +52,7 @@ static struct pack_info {
 	int new_num;
 	int nr_alloc;
 	int nr_heads;
-	unsigned char (*head)[20];
+	unsigned char (*head)[HASH_OCTETS];
 } **info;
 static int num_pack;
 static const char *objdir;

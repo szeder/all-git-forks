@@ -137,7 +137,7 @@ static int find_unique_short_object(int len, char *canonical,
 				    unsigned char *res, unsigned char *sha1)
 {
 	int has_unpacked, has_packed;
-	unsigned char unpacked_sha1[20], packed_sha1[HASH_OCTETS];
+	unsigned char unpacked_sha1[HASH_OCTETS], packed_sha1[HASH_OCTETS];
 
 	prepare_alt_odb();
 	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1);
@@ -162,7 +162,7 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 {
 	int i, status;
 	char canonical[40];
-	unsigned char res[20];
+	unsigned char res[HASH_OCTETS];
 
 	if (len < MINIMUM_ABBREV || len > 40)
 		return -1;
@@ -438,7 +438,7 @@ struct object *peel_to_type(const char *name, int namelen,
 
 static int peel_onion(const char *name, int len, unsigned char *sha1)
 {
-	unsigned char outer[20];
+	unsigned char outer[HASH_OCTETS];
 	const char *sp;
 	unsigned int expected_type = 0;
 	struct object *o;

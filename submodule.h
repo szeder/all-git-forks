@@ -18,7 +18,7 @@ int parse_submodule_config_option(const char *var, const char *value);
 void handle_ignore_submodules_arg(struct diff_options *diffopt, const char *);
 int parse_fetch_recurse_submodules_arg(const char *opt, const char *arg);
 void show_submodule_summary(FILE *f, const char *path,
-		unsigned char one[20], unsigned char two[20],
+		unsigned char one[HASH_OCTETS], unsigned char two[HASH_OCTETS],
 		unsigned dirty_submodule,
 		const char *del, const char *add, const char *reset);
 void set_config_fetch_recurse_submodules(int value);
@@ -27,8 +27,8 @@ int fetch_populated_submodules(int num_options, const char **options,
 			       const char *prefix, int command_line_option,
 			       int quiet);
 unsigned is_submodule_modified(const char *path, int ignore_untracked);
-int merge_submodule(unsigned char result[20], const char *path, const unsigned char base[20],
-		    const unsigned char a[20], const unsigned char b[20], int search);
+int merge_submodule(unsigned char result[HASH_OCTETS], const char *path, const unsigned char base[HASH_OCTETS],
+		    const unsigned char a[HASH_OCTETS], const unsigned char b[HASH_OCTETS], int search);
 int check_submodule_needs_pushing(unsigned char new_sha1[HASH_OCTETS], const char *remotes_name);
 
 #endif

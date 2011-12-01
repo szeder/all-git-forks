@@ -379,7 +379,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf ref = STRBUF_INIT;
-	unsigned char object[20], prev[20];
+	unsigned char object[HASH_OCTETS], prev[HASH_OCTETS];
 	const char *object_ref, *tag;
 	struct ref_lock *lock;
 	struct create_tag_options opt;

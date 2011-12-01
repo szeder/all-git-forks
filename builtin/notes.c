@@ -261,7 +261,7 @@ static int parse_reuse_arg(const struct option *opt, const char *arg, int unset)
 {
 	struct msg_arg *msg = opt->value;
 	char *buf;
-	unsigned char object[20];
+	unsigned char object[HASH_OCTETS];
 	enum object_type type;
 	unsigned long len;
 
@@ -432,7 +432,7 @@ static int notes_copy_from_stdin(int force, const char *rewrite_cmd)
 	}
 
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
-		unsigned char from_obj[20], to_obj[20];
+		unsigned char from_obj[HASH_OCTETS], to_obj[HASH_OCTETS];
 		struct strbuf **split;
 		int err;
 
@@ -485,7 +485,7 @@ static struct notes_tree *init_notes_check(const char *subcommand)
 static int list(int argc, const char **argv, const char *prefix)
 {
 	struct notes_tree *t;
-	unsigned char object[20];
+	unsigned char object[HASH_OCTETS];
 	const unsigned char *note;
 	int retval = -1;
 	struct option options[] = {
@@ -526,7 +526,7 @@ static int add(int argc, const char **argv, const char *prefix)
 	int retval = 0, force = 0;
 	const char *object_ref;
 	struct notes_tree *t;
-	unsigned char object[20], new_note[20];
+	unsigned char object[HASH_OCTETS], new_note[HASH_OCTETS];
 	char logmsg[100];
 	const unsigned char *note;
 	struct msg_arg msg = { 0, 0, STRBUF_INIT };
@@ -607,7 +607,7 @@ static int copy(int argc, const char **argv, const char *prefix)
 	int retval = 0, force = 0, from_stdin = 0;
 	const unsigned char *from_note, *note;
 	const char *object_ref;
-	unsigned char object[20], from_obj[20];
+	unsigned char object[HASH_OCTETS], from_obj[HASH_OCTETS];
 	struct notes_tree *t;
 	const char *rewrite_cmd = NULL;
 	struct option options[] = {
@@ -682,7 +682,7 @@ static int append_edit(int argc, const char **argv, const char *prefix)
 {
 	const char *object_ref;
 	struct notes_tree *t;
-	unsigned char object[20], new_note[20];
+	unsigned char object[HASH_OCTETS], new_note[HASH_OCTETS];
 	const unsigned char *note;
 	char logmsg[100];
 	const char * const *usage;
@@ -745,7 +745,7 @@ static int show(int argc, const char **argv, const char *prefix)
 {
 	const char *object_ref;
 	struct notes_tree *t;
-	unsigned char object[20];
+	unsigned char object[HASH_OCTETS];
 	const unsigned char *note;
 	int retval;
 	struct option options[] = {
@@ -800,7 +800,7 @@ static int merge_abort(struct notes_merge_options *o)
 static int merge_commit(struct notes_merge_options *o)
 {
 	struct strbuf msg = STRBUF_INIT;
-	unsigned char sha1[20], parent_sha1[HASH_OCTETS];
+	unsigned char sha1[HASH_OCTETS], parent_sha1[HASH_OCTETS];
 	struct notes_tree *t;
 	struct commit *partial;
 	struct pretty_print_context pretty_ctx;

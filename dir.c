@@ -1178,7 +1178,7 @@ int remove_dir_recursively(struct strbuf *path, int flag)
 	struct dirent *e;
 	int ret = 0, original_len = path->len, len;
 	int only_empty = (flag & REMOVE_DIR_EMPTY_ONLY);
-	unsigned char submodule_head[20];
+	unsigned char submodule_head[HASH_OCTETS];
 
 	if ((flag & REMOVE_DIR_KEEP_NESTED_GIT) &&
 	    !resolve_gitlink_ref(path->buf, "HEAD", submodule_head))

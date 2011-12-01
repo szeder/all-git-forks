@@ -32,7 +32,7 @@ struct ref_sort {
 
 struct refinfo {
 	char *refname;
-	unsigned char objectname[20];
+	unsigned char objectname[HASH_OCTETS];
 	int flag;
 	const char *symref;
 	struct atom_value *value;
@@ -627,7 +627,7 @@ static void populate_value(struct refinfo *ref)
 	ref->value = xcalloc(sizeof(struct atom_value), used_atom_cnt);
 
 	if (need_symref && (ref->flag & REF_ISSYMREF) && !ref->symref) {
-		unsigned char unused1[20];
+		unsigned char unused1[HASH_OCTETS];
 		ref->symref = resolve_refdup(ref->refname, unused1, 1, NULL);
 		if (!ref->symref)
 			ref->symref = "";

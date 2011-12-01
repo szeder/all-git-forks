@@ -11,7 +11,7 @@
 #include "strbuf.h"
 
 struct notes_merge_pair {
-	unsigned char obj[20], base[20], local[20], remote[20];
+	unsigned char obj[HASH_OCTETS], base[HASH_OCTETS], local[HASH_OCTETS], remote[HASH_OCTETS];
 };
 
 void init_notes_merge_options(struct notes_merge_options *o)
@@ -107,7 +107,7 @@ static struct notes_merge_pair *find_notes_merge_pair_pos(
 	return list + i;
 }
 
-static unsigned char uninitialized[20] =
+static unsigned char uninitialized[HASH_OCTETS] =
 	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" \
 	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
 
@@ -137,7 +137,7 @@ static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,
 		struct diff_filepair *p = diff_queued_diff.queue[i];
 		struct notes_merge_pair *mp;
 		int occupied;
-		unsigned char obj[20];
+		unsigned char obj[HASH_OCTETS];
 
 		if (verify_notes_filepair(p, obj)) {
 			trace_printf("\t\tCannot merge entry '%s' (%c): "
@@ -199,7 +199,7 @@ static void diff_tree_local(struct notes_merge_options *o,
 		struct diff_filepair *p = diff_queued_diff.queue[i];
 		struct notes_merge_pair *mp;
 		int match;
-		unsigned char obj[20];
+		unsigned char obj[HASH_OCTETS];
 
 		if (verify_notes_filepair(p, obj)) {
 			trace_printf("\t\tCannot merge entry '%s' (%c): "
@@ -559,7 +559,7 @@ int notes_merge(struct notes_merge_options *o,
 		struct notes_tree *local_tree,
 		unsigned char *result_sha1)
 {
-	unsigned char local_sha1[20], remote_sha1[HASH_OCTETS];
+	unsigned char local_sha1[HASH_OCTETS], remote_sha1[HASH_OCTETS];
 	struct commit *local, *remote;
 	struct commit_list *bases = NULL;
 	const unsigned char *base_sha1, *base_tree_sha1;
@@ -711,7 +711,7 @@ int notes_merge_commit(struct notes_merge_options *o,
 		struct dir_entry *ent = dir.entries[i];
 		struct stat st;
 		const char *relpath = ent->name + path_len;
-		unsigned char obj_sha1[20], blob_sha1[HASH_OCTETS];
+		unsigned char obj_sha1[HASH_OCTETS], blob_sha1[HASH_OCTETS];
 
 		if (ent->len - path_len != 40 || get_sha1_hex(relpath, obj_sha1)) {
 			if (o->verbosity >= 3)

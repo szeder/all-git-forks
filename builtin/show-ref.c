@@ -30,7 +30,7 @@ static int show_ref(const char *refname, const unsigned char *sha1, int flag, vo
 {
 	struct object *obj;
 	const char *hex;
-	unsigned char peeled[20];
+	unsigned char peeled[HASH_OCTETS];
 
 	if (tags_only || heads_only) {
 		int match;

@@ -640,7 +640,7 @@ static int everything_local(struct ref **refs, int nr_match, char **match)
 
 	for (retval = 1, ref = *refs; ref ; ref = ref->next) {
 		const unsigned char *remote = ref->old_sha1;
-		unsigned char local[20];
+		unsigned char local[HASH_OCTETS];
 		struct object *o;
 
 		o = lookup_object(remote);
@@ -676,7 +676,7 @@ static int sideband_demux(int in, int out, void *data)
 static int get_pack(int xd[2], char **pack_lockfile)
 {
 	struct async demux;
-	const char *argv[20];
+	const char *argv[HASH_OCTETS];
 	char keep_arg[256];
 	char hdr_arg[256];
 	const char **av;

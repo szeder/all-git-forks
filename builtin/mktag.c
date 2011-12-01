@@ -37,7 +37,7 @@ static int verify_object(const unsigned char *sha1, const char *expected_type)
 static int verify_tag(char *buffer, unsigned long size)
 {
 	int typelen;
-	char type[20];
+	char type[HASH_OCTETS];
 	unsigned char sha1[HASH_OCTETS];
 	const char *object, *type_line, *tag_line, *tagger_line, *lb, *rb;
 	size_t len;

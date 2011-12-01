@@ -39,7 +39,7 @@ static int update_local_ref(const char *name,
 			    const char *note,
 			    int verbose, int force)
 {
-	unsigned char sha1_old[20], sha1_new[HASH_OCTETS];
+	unsigned char sha1_old[HASH_OCTETS], sha1_new[HASH_OCTETS];
 	char oldh[41], newh[41];
 	struct commit *current, *updated;
 	enum object_type type;

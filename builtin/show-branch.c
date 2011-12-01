@@ -395,7 +395,7 @@ static int append_ref(const char *refname, const unsigned char *sha1,
 
 static int append_head_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
-	unsigned char tmp[20];
+	unsigned char tmp[HASH_OCTETS];
 	int ofs = 11;
 	if (prefixcmp(refname, "refs/heads/"))
 		return 0;
@@ -409,7 +409,7 @@ static int append_head_ref(const char *refname, const unsigned char *sha1, int f
 
 static int append_remote_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
 {
-	unsigned char tmp[20];
+	unsigned char tmp[HASH_OCTETS];
 	int ofs = 13;
 	if (prefixcmp(refname, "refs/remotes/"))
 		return 0;
@@ -529,7 +529,7 @@ static int show_independent(struct commit **rev,
 
 static void append_one_rev(const char *av)
 {
-	unsigned char revkey[20];
+	unsigned char revkey[HASH_OCTETS];
 	if (!get_sha1(av, revkey)) {
 		append_ref(av, revkey, 0);
 		return;
@@ -823,7 +823,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 	}
 
 	for (num_rev = 0; ref_name[num_rev]; num_rev++) {
-		unsigned char revkey[20];
+		unsigned char revkey[HASH_OCTETS];
 		unsigned int flag = 1u << (num_rev + REV_SHIFT);
 
 		if (MAX_REVS <= num_rev)

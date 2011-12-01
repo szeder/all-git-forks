@@ -196,7 +196,7 @@ static int splice_tree(const unsigned char *hash1,
 	struct tree_desc desc;
 	unsigned char *rewrite_here;
 	const unsigned char *rewrite_with;
-	unsigned char subtree[20];
+	unsigned char subtree[HASH_OCTETS];
 	enum object_type type;
 	int status;
 
@@ -319,7 +319,7 @@ void shift_tree_by(const unsigned char *hash1,
 		   unsigned char *shifted,
 		   const char *shift_prefix)
 {
-	unsigned char sub1[20], sub2[20];
+	unsigned char sub1[HASH_OCTETS], sub2[HASH_OCTETS];
 	unsigned mode1, mode2;
 	unsigned candidate = 0;
 

@@ -24,7 +24,7 @@ int cmd_merge_recursive(int argc, const char **argv, const char *prefix)
 	const unsigned char *bases[21];
 	unsigned bases_count = 0;
 	int i, failed;
-	unsigned char h1[20], h2[20];
+	unsigned char h1[HASH_OCTETS], h2[HASH_OCTETS];
 	struct merge_options o;
 	struct commit *result;
 

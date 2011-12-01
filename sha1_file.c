@@ -1435,7 +1435,7 @@ unsigned long get_size_from_delta(struct packed_git *p,
 			          off_t curpos)
 {
 	const unsigned char *data;
-	unsigned char delta_head[20], *in;
+	unsigned char delta_head[HASH_OCTETS], *in;
 	git_zstream stream;
 	int st;
 

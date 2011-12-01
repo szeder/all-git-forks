@@ -2381,7 +2381,7 @@ static void note_change_n(struct branch *b, unsigned char *old_fanout)
 	static struct strbuf uq = STRBUF_INIT;
 	struct object_entry *oe = oe;
 	struct branch *s;
-	unsigned char sha1[20], commit_sha1[HASH_OCTETS];
+	unsigned char sha1[HASH_OCTETS], commit_sha1[HASH_OCTETS];
 	char path[60];
 	uint16_t inline_data = 0;
 	unsigned char new_fanout;

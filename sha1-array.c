@@ -22,7 +22,7 @@ void sha1_array_sort(struct sha1_array *array)
 
 static const unsigned char *sha1_access(size_t index, void *table)
 {
-	unsigned char (*array)[20] = table;
+	unsigned char (*array)[HASH_OCTETS] = table;
 	return array[index];
 }
 

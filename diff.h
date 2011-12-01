@@ -195,7 +195,7 @@ struct combine_diff_path {
 extern void show_combined_diff(struct combine_diff_path *elem, int num_parent,
 			      int dense, struct rev_info *);
 
-extern void diff_tree_combined(const unsigned char *sha1, const unsigned char parent[][20], int num_parent, int dense, struct rev_info *rev);
+extern void diff_tree_combined(const unsigned char *sha1, const unsigned char parent[][HASH_OCTETS], int num_parent, int dense, struct rev_info *rev);
 
 extern void diff_tree_combined_merge(const unsigned char *sha1, int, struct rev_info *);
 

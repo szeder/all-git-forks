@@ -10,7 +10,7 @@ struct complete_reflogs {
 	char *ref;
 	const char *short_ref;
 	struct reflog_info {
-		unsigned char osha1[20], nsha1[HASH_OCTETS];
+		unsigned char osha1[HASH_OCTETS], nsha1[HASH_OCTETS];
 		char *email;
 		unsigned long timestamp;
 		int tz;

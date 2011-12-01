@@ -710,7 +710,7 @@ static struct command *read_head_info(void)
 	struct command **p = &commands;
 	for (;;) {
 		static char line[1000];
-		unsigned char old_sha1[20], new_sha1[HASH_OCTETS];
+		unsigned char old_sha1[HASH_OCTETS], new_sha1[HASH_OCTETS];
 		struct command *cmd;
 		char *refname;
 		int len, reflen;

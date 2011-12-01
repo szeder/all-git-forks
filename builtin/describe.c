@@ -37,7 +37,7 @@ static const char *diff_index_args[] = {
 
 struct commit_name {
 	struct commit_name *next;
-	unsigned char peeled[20];
+	unsigned char peeled[HASH_OCTETS];
 	struct tag *tag;
 	unsigned prio:2; /* annotated tag = 2, tag = 1, head = 0 */
 	unsigned name_checked:1;
@@ -138,7 +138,7 @@ static void add_to_known_names(const char *path,
 static int get_name(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
 	int might_be_tag = !prefixcmp(path, "refs/tags/");
-	unsigned char peeled[20];
+	unsigned char peeled[HASH_OCTETS];
 	int is_tag, prio;
 
 	if (!all && !might_be_tag)

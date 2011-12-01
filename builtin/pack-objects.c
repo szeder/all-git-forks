@@ -472,7 +472,7 @@ static enum write_one_status write_one(struct sha1file *f,
 static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
 		       void *cb_data)
 {
-	unsigned char peeled[20];
+	unsigned char peeled[HASH_OCTETS];
 	struct object_entry *entry = locate_object_entry(sha1);
 
 	if (entry)
@@ -1945,7 +1945,7 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 
 static int add_ref_tag(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
-	unsigned char peeled[20];
+	unsigned char peeled[HASH_OCTETS];
 
 	if (!prefixcmp(path, "refs/tags/") && /* is a tag? */
 	    !peel_ref(path, peeled)        && /* peelable? */

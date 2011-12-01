@@ -122,7 +122,7 @@ static void show_rev(int type, const unsigned char *sha1, const char *name)
 
 	if ((symbolic || abbrev_ref) && name) {
 		if (symbolic == SHOW_SYMBOLIC_FULL || abbrev_ref) {
-			unsigned char discard[20];
+			unsigned char discard[HASH_OCTETS];
 			char *full;
 
 			switch (dwim_ref(name, strlen(name), discard, &full)) {
@@ -220,7 +220,7 @@ static int try_difference(const char *arg)
 {
 	char *dotdot;
 	unsigned char sha1[HASH_OCTETS];
-	unsigned char end[20];
+	unsigned char end[HASH_OCTETS];
 	const char *next;
 	const char *this;
 	int symmetric;

@@ -51,7 +51,7 @@ static enum merge_filter {
 	SHOW_NOT_MERGED,
 	SHOW_MERGED
 } merge_filter;
-static unsigned char merge_filter_ref[20];
+static unsigned char merge_filter_ref[HASH_OCTETS];
 
 static int parse_branch_color_slot(const char *var, int ofs)
 {

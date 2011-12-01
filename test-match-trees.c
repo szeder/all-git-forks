@@ -3,7 +3,7 @@
 
 int main(int ac, char **av)
 {
-	unsigned char hash1[20], hash2[20], shifted[20];
+	unsigned char hash1[HASH_OCTETS], hash2[HASH_OCTETS], shifted[HASH_OCTETS];
 	struct tree *one, *two;
 
 	if (get_sha1(av[1], hash1))

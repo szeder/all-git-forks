@@ -31,7 +31,7 @@ static const char * const merge_base_usage[] = {
 
 static struct commit *get_commit_reference(const char *arg)
 {
-	unsigned char revkey[20];
+	unsigned char revkey[HASH_OCTETS];
 	struct commit *r;
 
 	if (get_sha1(arg, revkey))

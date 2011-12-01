@@ -465,7 +465,7 @@ int get_tree_entry(const unsigned char *tree_sha1, const char *name, unsigned ch
 	int retval;
 	void *tree;
 	unsigned long size;
-	unsigned char root[20];
+	unsigned char root[HASH_OCTETS];
 
 	tree = read_object_with_reference(tree_sha1, tree_type, &size, root);
 	if (!tree)

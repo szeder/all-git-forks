@@ -2,7 +2,7 @@
 #define PATCH_IDS_H
 
 struct patch_id {
-	unsigned char patch_id[20];
+	unsigned char patch_id[HASH_OCTETS];
 	char seen;
 };
 

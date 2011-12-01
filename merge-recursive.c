@@ -25,7 +25,7 @@
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)
 {
-	unsigned char shifted[20];
+	unsigned char shifted[HASH_OCTETS];
 
 	if (!*subtree_shift) {
 		shift_tree(one->object.sha1, two->object.sha1, shifted, 0);
@@ -89,7 +89,7 @@ struct rename_conflict_info {
 struct stage_data {
 	struct {
 		unsigned mode;
-		unsigned char sha[20];
+		unsigned char sha[HASH_OCTETS];
 	} stages[4];
 	struct rename_conflict_info *rename_conflict_info;
 	unsigned processed:1;
@@ -819,7 +819,7 @@ static void update_file(struct merge_options *o,
 /* Low level file merging, update and removal */
 
 struct merge_file_info {
-	unsigned char sha[20];
+	unsigned char sha[HASH_OCTETS];
 	unsigned mode;
 	unsigned clean:1,
 		 merge:1;

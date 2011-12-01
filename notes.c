@@ -192,7 +192,7 @@ static void note_tree_remove(struct notes_tree *t,
 		struct leaf_node *entry)
 {
 	struct leaf_node *l;
-	struct int_node *parent_stack[20];
+	struct int_node *parent_stack[HASH_OCTETS];
 	unsigned char i, j;
 	void **p = note_tree_search(t, &tree, &n, entry->key_sha1);
 
@@ -667,7 +667,7 @@ static int tree_write_stack_finish_subtree(struct tree_write_stack *tws)
 {
 	int ret;
 	struct tree_write_stack *n = tws->next;
-	unsigned char s[20];
+	unsigned char s[HASH_OCTETS];
 	if (n) {
 		ret = tree_write_stack_finish_subtree(n);
 		if (ret)
@@ -996,7 +996,7 @@ const char *default_notes_ref(void)
 void init_notes(struct notes_tree *t, const char *notes_ref,
 		combine_notes_fn combine_notes, int flags)
 {
-	unsigned char sha1[20], object_sha1[HASH_OCTETS];
+	unsigned char sha1[HASH_OCTETS], object_sha1[HASH_OCTETS];
 	unsigned mode;
 	struct leaf_node root_tree;
 

@@ -1139,7 +1139,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	} else {
 		if (fix_thin_pack) {
 			struct sha1file *f;
-			unsigned char read_sha1[20], tail_sha1[HASH_OCTETS];
+			unsigned char read_sha1[HASH_OCTETS], tail_sha1[HASH_OCTETS];
 			char msg[48];
 			int nr_unresolved = nr_deltas - nr_resolved_deltas;
 			int nr_objects_initial = nr_objects;

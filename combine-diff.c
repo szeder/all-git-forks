@@ -1116,7 +1116,7 @@ static void handle_combined_callback(struct diff_options *opt,
 }
 
 void diff_tree_combined(const unsigned char *sha1,
-			const unsigned char parent[][20],
+			const unsigned char parent[][HASH_OCTETS],
 			int num_parent,
 			int dense,
 			struct rev_info *rev)
@@ -1200,7 +1200,7 @@ void diff_tree_combined_merge(const unsigned char *sha1,
 			     int dense, struct rev_info *rev)
 {
 	int num_parent;
-	const unsigned char (*parent)[20];
+	const unsigned char (*parent)[HASH_OCTETS];
 	struct commit *commit = lookup_commit(sha1);
 	struct commit_list *parents;
 

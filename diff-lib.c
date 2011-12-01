@@ -35,7 +35,7 @@ static int check_removed(const struct cache_entry *ce, struct stat *st)
 	if (has_symlink_leading_path(ce->name, ce_namelen(ce)))
 		return 1;
 	if (S_ISDIR(st->st_mode)) {
-		unsigned char sub[20];
+		unsigned char sub[HASH_OCTETS];
 
 		/*
 		 * If ce is already a gitlink, we can have a plain

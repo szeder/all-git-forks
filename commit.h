@@ -148,7 +148,7 @@ void sort_in_topological_order(struct commit_list ** list, int lifo);
 struct commit_graft {
 	unsigned char sha1[HASH_OCTETS];
 	int nr_parent; /* < 0 if shallow commit */
-	unsigned char parent[FLEX_ARRAY][20]; /* more */
+	unsigned char parent[FLEX_ARRAY][HASH_OCTETS]; /* more */
 };
 typedef int (*each_commit_graft_fn)(const struct commit_graft *, void *);
 
