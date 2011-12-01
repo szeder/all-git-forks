@@ -1829,6 +1829,9 @@ static enum object_type packed_to_object_type(struct packed_git *p,
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		break;
+	case OBJ_CHUNKED_BLOB:
+		type = OBJ_DEKNUHC(type);
+		break;
 	default:
 		error("unknown object type %i at offset %"PRIuMAX" in %s",
 		      type, (uintmax_t)obj_offset, p->pack_name);
@@ -1947,6 +1950,57 @@ static void *unpack_compressed_entry(struct packed_git *p,
 		return NULL;
 	}
 
+	return buffer;
+}
+
+static void *unpack_chunked_entry(struct packed_git *p,
+				  struct pack_window **w_curs,
+				  off_t curpos,
+				  unsigned long size)
+{
+	/*
+	 * *NOTE* *NOTE* *NOTE*
+	 *
+	 * In the longer term, we should aim to exercise this codepath
+	 * less and less often, as it defeats the whole purpose of
+	 * chuncked object encoding!
+	 */
+	unsigned char *buffer;
+	const unsigned char *in, *ptr;
+	unsigned long avail, ofs;
+	int chunk_cnt;
+
+	buffer = xmallocz(size);
+	in = use_pack(p, w_curs, curpos, &avail);
+	ptr = in;
+	chunk_cnt = decode_varint(&ptr);
+	curpos += ptr - in;
+	ofs = 0;
+	while (chunk_cnt--) {
+		unsigned long csize;
+		unsigned char *data;
+		enum object_type type;
+
+		in = use_pack(p, w_curs, curpos, &avail);
+		data = read_sha1_file(in, &type, &csize);
+		if (!data)
+			die("malformed chunked object contents ('%s' does not exist)",
+			    sha1_to_hex(in));
+		if (type != OBJ_BLOB)
+			die("malformed chunked object contents (not a blob)");
+
+		/*
+		 * The sum of the size of component blobs should match
+		 * the resulting object, or something is wrong.
+		 */
+		if ((chunk_cnt && (size < ofs + csize)) ||
+		    (!chunk_cnt && (size != ofs + csize)))
+			die("malformed chunked object contents (sizes do not add up)");
+		memcpy(buffer + ofs, data, csize);
+		ofs += csize;
+		curpos += 20;
+		free(data);
+	}
 	return buffer;
 }
 
@@ -2210,6 +2264,10 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 	case OBJ_TAG:
 		if (!base_from_cache)
 			data = unpack_compressed_entry(p, &w_curs, curpos, size);
+		break;
+	case OBJ_CHUNKED_BLOB:
+		data = unpack_chunked_entry(p, &w_curs, curpos, size);
+		type = OBJ_DEKNUHC(type);
 		break;
 	default:
 		data = NULL;
