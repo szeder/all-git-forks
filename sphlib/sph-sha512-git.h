@@ -1,7 +1,7 @@
 #ifndef SPH_SHA512_GIT_H
 #define SPH_SHA512_GIT_H
 
-#include "sph_sha.h"
+#include "sph_sha2.h"
 
 #define HASH_OCTETS (SPH_SIZE_sha512/8)
 
