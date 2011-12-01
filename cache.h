@@ -694,11 +694,11 @@ static inline int is_null_sha1(const unsigned char *sha1)
 
 static inline void hashcpy(unsigned char *sha_dst, const unsigned char *sha_src)
 {
-	memcpy(sha_dst, sha_src, 20);
+	memcpy(sha_dst, sha_src, HASH_OCTETS);
 }
 static inline void hashclr(unsigned char *hash)
 {
-	memset(hash, 0, 20);
+	memset(hash, 0, HASH_OCTETS);
 }
 
 #define EMPTY_TREE_SHA1_HEX \
