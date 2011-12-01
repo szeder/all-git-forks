@@ -553,6 +553,27 @@ class Command:
     def __init__(self):
         self.usage = "usage: %prog [options]"
         self.needsGit = True
+        self.myP4UserId = None
+
+    def p4UserId(self):
+        if self.myP4UserId:
+            return self.myP4UserId
+
+        results = p4CmdList("user -o")
+        for r in results:
+            if r.has_key('User'):
+                self.myP4UserId = r['User']
+                return r['User']
+        die("Could not find your p4 user id")
+
+    def p4UserIsMe(self, p4User):
+        # return True if the given p4 user is actually me
+        me = self.p4UserId()
+        if not p4User or p4User != me:
+            return False
+        else:
+            return True
+
 
 class P4UserMap:
     def __init__(self):
@@ -694,7 +715,6 @@ class P4Submit(Command, P4UserMap):
         self.verbose = False
         self.preserveUser = gitConfig("git-p4.preserveUser").lower() == "true"
         self.isWindows = (platform.system() == "Windows")
-        self.myP4UserId = None
 
     def check(self):
         if len(p4CmdList("opened ...")) > 0:
@@ -793,7 +813,7 @@ class P4Submit(Command, P4UserMap):
     def canChangeChangelists(self):
         # check to see if we have p4 admin or super-user permissions, either of
         # which are required to modify changelists.
-        results = p4CmdList("protects %s" % self.depotPath)
+        results = p4CmdList(["protects", self.depotPath])
         for r in results:
             if r.has_key('perm'):
                 if r['perm'] == 'admin':
@@ -801,25 +821,6 @@ class P4Submit(Command, P4UserMap):
                 if r['perm'] == 'super':
                     return 1
         return 0
-
-    def p4UserId(self):
-        if self.myP4UserId:
-            return self.myP4UserId
-
-        results = p4CmdList("user -o")
-        for r in results:
-            if r.has_key('User'):
-                self.myP4UserId = r['User']
-                return r['User']
-        die("Could not find your p4 user id")
-
-    def p4UserIsMe(self, p4User):
-        # return True if the given p4 user is actually me
-        me = self.p4UserId()
-        if not p4User or p4User != me:
-            return False
-        else:
-            return True
 
     def prepareSubmitTemplate(self):
         # remove lines in the Files section that show changes to files outside the depot path we're committing into
@@ -1506,14 +1507,18 @@ class P4Sync(Command, P4UserMap):
 
                     owner = labelDetails["Owner"]
                     tagger = ""
-                    if author in self.users:
+                    if not owner:
+                        tagger = "%s <a@b> %s %s" % (self.p4UserId(), epoch, self.tz)
+                    elif author in self.users:
                         tagger = "%s %s %s" % (self.users[owner], epoch, self.tz)
                     else:
                         tagger = "%s <a@b> %s %s" % (owner, epoch, self.tz)
                     self.gitStream.write("tagger %s\n" % tagger)
-                    self.gitStream.write("data <<EOT\n")
-                    self.gitStream.write(labelDetails["Description"])
-                    self.gitStream.write("EOT\n\n")
+
+                    description = labelDetails["Description"]
+                    self.gitStream.write("data %d\n" % len(description))
+                    self.gitStream.write(description)
+                    self.gitStream.write("\n")
 
                 else:
                     if not self.silent:
@@ -1528,7 +1533,7 @@ class P4Sync(Command, P4UserMap):
     def getLabels(self):
         self.labels = {}
 
-        l = p4CmdList("labels %s..." % ' '.join (self.depotPaths))
+        l = p4CmdList(["labels", "%s..." % ' '.join (self.depotPaths)])
         if len(l) > 0 and not self.silent:
             print "Finding files belonging to labels in %s" % `self.depotPaths`
 
@@ -1570,7 +1575,7 @@ class P4Sync(Command, P4UserMap):
             command = "branches"
 
         for info in p4CmdList(command):
-            details = p4Cmd("branch -o %s" % info["branch"])
+            details = p4Cmd(["branch", "-o", info["branch"]])
             viewIdx = 0
             while details.has_key("View%s" % viewIdx):
                 paths = details["View%s" % viewIdx].split(" ")
@@ -1708,7 +1713,7 @@ class P4Sync(Command, P4UserMap):
         sourceRef = self.gitRefForBranch(sourceBranch)
         #print "source " + sourceBranch
 
-        branchParentChange = int(p4Cmd("changes -m 1 %s...@1,%s" % (sourceDepotPath, firstChange))["change"])
+        branchParentChange = int(p4Cmd(["changes", "-m", "1", "%s...@1,%s" % (sourceDepotPath, firstChange)])["change"])
         #print "branch parent: %s" % branchParentChange
         gitParent = self.gitCommitByP4Change(sourceRef, branchParentChange)
         if len(gitParent) > 0:
