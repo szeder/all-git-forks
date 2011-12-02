@@ -8,7 +8,8 @@ enum input_source {
 	stream_error = -1,
 	incore = 0,
 	loose = 1,
-	pack_non_delta = 2
+	pack_non_delta = 2,
+	pack_chunked = 3,
 };
 
 typedef int (*open_istream_fn)(struct git_istream *,
@@ -41,6 +42,7 @@ struct stream_vtbl {
 static open_method_decl(incore);
 static open_method_decl(loose);
 static open_method_decl(pack_non_delta);
+static open_method_decl(pack_chunked);
 static struct git_istream *attach_stream_filter(struct git_istream *st,
 						struct stream_filter *filter);
 
@@ -49,6 +51,7 @@ static open_istream_fn open_istream_tbl[] = {
 	open_istream_incore,
 	open_istream_loose,
 	open_istream_pack_non_delta,
+	open_istream_pack_chunked,
 };
 
 #define FILTER_BUFFER (1024*16)
@@ -88,6 +91,9 @@ struct git_istream {
 			off_t pos;
 		} in_pack;
 
+		struct {
+		} chunked;
+
 		struct filtered_istream filtered;
 	} u;
 };
@@ -121,6 +127,8 @@ static enum input_source istream_source(const unsigned char *sha1,
 	case OI_LOOSE:
 		return loose;
 	case OI_PACKED:
+		if (oi->u.packed.is_chunked)
+			return pack_chunked;
 		if (!oi->u.packed.is_delta && big_file_threshold <= size)
 			return pack_non_delta;
 		/* fallthru */
@@ -446,6 +454,46 @@ static open_method_decl(pack_non_delta)
 	}
 	st->z_state = z_unused;
 	st->vtbl = &pack_non_delta_vtbl;
+	return 0;
+}
+
+
+/*****************************************************************
+ *
+ * Chunked packed object stream
+ *
+ *****************************************************************/
+
+static read_method_decl(pack_chunked)
+{
+}
+
+static close_method_decl(pack_chunked)
+{
+}
+
+static struct stream_vtbl pack_chunked_vtbl = {
+	close_istream_pack_chunked,
+	read_istream_pack_chunked,
+};
+
+static open_method_decl(pack_chunked)
+{
+	struct pack_window *window;
+	enum object_type in_pack_type;
+
+	st->u.in_pack.pack = oi->u.packed.pack;
+	st->u.in_pack.pos = oi->u.packed.offset;
+	window = NULL;
+
+	in_pack_type = unpack_object_header(st->u.in_pack.pack,
+					    &window,
+					    &st->u.in_pack.pos,
+					    &st->size);
+	unuse_pack(&window);
+
+	st->z_state = z_unused;
+	st->vtbl = &pack_chunked_vtbl;
 	return 0;
 }
 
