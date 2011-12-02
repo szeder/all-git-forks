@@ -8,7 +8,7 @@ git-clean - Remove untracked files from the working tree
 SYNOPSIS
 --------
 [verse]
-'git clean' [-d] [-f] [-n] [-q] [-e <pattern>] [-x | -X] [--] <path>...
+'git clean' [-d] [-f] [-n] [-q] [-z] [-e <pattern>] [-x | -X] [--] <path>...
 
 DESCRIPTION
 -----------
@@ -62,6 +62,13 @@ OPTIONS
 -X::
 	Remove only files ignored by Git.  This may be useful to rebuild
 	everything from scratch, but keep manually created files.
+
+-z::
+	Use machine readable output for (to be) removed paths: Output the paths
+	which are or would be removed only (without extra wording) and
+	separate them with \0.
++
+This does not imply `-n` but can be combined with it.
 
 SEE ALSO
 --------

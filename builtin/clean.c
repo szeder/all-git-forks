@@ -41,8 +41,18 @@ static int exclude_cb(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
+void write_name(const char *fmt, const char *name, int nul_terminated)
+{
+	if (nul_terminated) {
+		fputs(name, stdout);
+		fputc(0, stdout);
+	} else {
+		printf(fmt, name);
+	}
+}
+
 static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
-		int dry_run, int quiet, int *dir_gone)
+		int dry_run, int quiet, int *dir_gone, int nul_terminated)
 {
 	DIR *dir;
 	struct strbuf quoted = STRBUF_INIT;
@@ -57,8 +67,8 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 			!resolve_gitlink_ref(path->buf, "HEAD", submodule_head)) {
 		if (!quiet) {
 			quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
-			printf(dry_run ?  _(msg_would_skip_git_dir) : _(msg_skip_git_dir),
-					quoted.buf);
+			write_name(dry_run ?  _(msg_would_skip_git_dir) : _(msg_skip_git_dir),
+					quoted.buf, nul_terminated);
 		}
 
 		*dir_gone = 0;
@@ -91,7 +101,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 		if (lstat(path->buf, &st))
 			; /* fall thru */
 		else if (S_ISDIR(st.st_mode)) {
-			if (remove_dirs(path, prefix, force_flag, dry_run, quiet, &gone))
+			if (remove_dirs(path, prefix, force_flag, dry_run, quiet, &gone, nul_terminated))
 				ret = 1;
 			if (gone) {
 				quote_path_relative(path->buf, strlen(path->buf), &quoted, prefix);
@@ -136,7 +146,7 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 
 	if (!*dir_gone && !quiet) {
 		for (i = 0; i < dels.nr; i++)
-			printf(dry_run ?  _(msg_would_remove) : _(msg_remove), dels.items[i].string);
+			write_name(dry_run ?  _(msg_would_remove) : _(msg_remove), dels.items[i].string, nul_terminated);
 	}
 	string_list_clear(&dels, 0);
 	return ret;
@@ -146,7 +156,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 {
 	int i, res;
 	int dry_run = 0, remove_directories = 0, quiet = 0, ignored = 0;
-	int ignored_only = 0, config_set = 0, errors = 0, gone = 1;
+	int ignored_only = 0, config_set = 0, errors = 0, gone = 1, nul_terminated = 0;
 	int rm_flags = REMOVE_DIR_KEEP_NESTED_GIT;
 	struct strbuf directory = STRBUF_INIT;
 	struct dir_struct dir;
@@ -167,6 +177,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN('x', NULL, &ignored, N_("remove ignored files, too")),
 		OPT_BOOLEAN('X', NULL, &ignored_only,
 				N_("remove only ignored files")),
+		OPT_BOOLEAN('z', NULL, &nul_terminated, "(actually or to be) removed paths are separated with NUL character"),
 		OPT_END()
 	};
 
@@ -259,7 +270,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		if (S_ISDIR(st.st_mode)) {
 			strbuf_addstr(&directory, ent->name);
 			if (remove_directories || (matches == MATCHED_EXACTLY)) {
-				if (remove_dirs(&directory, prefix, rm_flags, dry_run, quiet, &gone))
+				if (remove_dirs(&directory, prefix, rm_flags, dry_run, quiet, &gone, nul_terminated))
 					errors++;
 				if (gone && !quiet) {
 					qname = quote_path_relative(directory.buf, directory.len, &buf, prefix);
@@ -277,7 +288,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				errors++;
 			} else if (!quiet) {
 				qname = quote_path_relative(ent->name, -1, &buf, prefix);
-				printf(dry_run ? _(msg_would_remove) : _(msg_remove), qname);
+				write_name(dry_run ? _(msg_would_remove) : _(msg_remove), qname, nul_terminated);
 			}
 		}
 	}
