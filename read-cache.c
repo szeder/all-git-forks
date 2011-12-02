@@ -1192,10 +1192,12 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	if (hdr->hdr_version != htonl(2) && hdr->hdr_version != htonl(3))
 		return error("bad index version");
 	git_HASH_Init(&c);
-	git_HASH_Update(&c, hdr, size - 20);
+	git_HASH_Update(&c, hdr, size - HASH_OCTETS);
 	git_HASH_Final(sha1, &c);
-	if (hashcmp(sha1, (unsigned char *)hdr + size - HASH_OCTETS))
+	if (hashcmp(sha1, (unsigned char *)hdr + size - HASH_OCTETS)) {
+		printf("%s %s", sha1_to_hex(sha1), sha1_to_hex((unsigned char *)hdr + size - HASH_OCTETS));
 		return error("bad index file sha1 signature");
+	}
 	return 0;
 }
 
@@ -1302,7 +1304,7 @@ int read_index_from(struct index_state *istate, const char *path)
 
 	errno = EINVAL;
 	mmap_size = xsize_t(st.st_size);
-	if (mmap_size < sizeof(struct cache_header) + 20)
+	if (mmap_size < sizeof(struct cache_header) + HASH_OCTETS)
 		die("index file smaller than expected");
 
 	mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
@@ -1333,7 +1335,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	istate->timestamp.sec = st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 
-	while (src_offset <= mmap_size - 20 - 8) {
+	while (src_offset <= mmap_size - HASH_OCTETS - 8) {
 		/* After an array of active_nr index entries,
 		 * there can be arbitrary number of extended
 		 * sections, each of which is prefixed with
@@ -1452,7 +1454,7 @@ static int ce_flush(git_HASH_CTX *context, int fd)
 	}
 
 	/* Flush first if not enough space for SHA1 signature */
-	if (left + 20 > WRITE_BUFFER_SIZE) {
+	if (left + HASH_OCTETS > WRITE_BUFFER_SIZE) {
 		if (write_in_full(fd, write_buffer, left) != left)
 			return -1;
 		left = 0;
@@ -1460,7 +1462,7 @@ static int ce_flush(git_HASH_CTX *context, int fd)
 
 	/* Append the SHA1 signature at the end */
 	git_HASH_Final(write_buffer + left, context);
-	left += 20;
+	left += HASH_OCTETS;
 	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
 }
 
