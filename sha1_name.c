@@ -12,7 +12,7 @@ static int get_sha1_oneline(const char *, unsigned char *, struct commit_list *)
 static int find_short_object_filename(int len, const char *name, unsigned char *sha1)
 {
 	struct alternate_object_database *alt;
-	char hex[40];
+	char hex[HASH_OCTETS*2];
 	int found = 0;
 	static struct alternate_object_database *fakeent;
 
@@ -161,13 +161,13 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 			  int quietly)
 {
 	int i, status;
-	char canonical[40];
+	char canonical[HASH_OCTETS*2];
 	unsigned char res[HASH_OCTETS];
 
-	if (len < MINIMUM_ABBREV || len > 40)
+	if (len < MINIMUM_ABBREV || len > (HASH_OCTETS*2))
 		return -1;
 	hashclr(res);
-	memset(canonical, 'x', 40);
+	memset(canonical, 'x', HASH_OCTETS*2);
 	for (i = 0; i < len ;i++) {
 		unsigned char c = name[i];
 		unsigned char val;
@@ -196,13 +196,13 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 const char *find_unique_abbrev(const unsigned char *sha1, int len)
 {
 	int status, exists;
-	static char hex[41];
+	static char hex[HASH_OCTETS*2];
 
 	exists = has_sha1_file(sha1);
-	memcpy(hex, sha1_to_hex(sha1), 40);
-	if (len == 40 || !len)
+	memcpy(hex, sha1_to_hex(sha1), HASH_OCTETS*2);
+	if (len == (HASH_OCTETS*2) || !len)
 		return hex;
-	while (len < 40) {
+	while (len < (HASH_OCTETS*2)) {
 		unsigned char sha1_ret[HASH_OCTETS];
 		status = get_short_sha1(hex, len, sha1_ret, 1);
 		if (exists
@@ -264,7 +264,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1)
 	int refs_found = 0;
 	int at, reflog_len;
 
-	if (len == 40 && !get_sha1_hex(str, sha1))
+	if (len == (HASH_OCTETS*2) && !get_sha1_hex(str, sha1))
 		return 0;
 
 	/* basic@{time or number or -number} format to query ref-log */
