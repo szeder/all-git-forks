@@ -254,29 +254,32 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	unsigned char parent[HASH_OCTETS];
 	struct commit_list **pptr;
 	struct commit_graft *graft;
+	const int tree_hash_newline = 46; /* "tree " + "hex sha1" + "\n" */
+	const int parent_hash_newline = 48; /* "parent " + "hex sha1" + "\n" */
 
 	if (item->object.parsed)
 		return 0;
 	item->object.parsed = 1;
 	tail += size;
-	if (tail <= bufptr + 46 || memcmp(bufptr, "tree ", 5) || bufptr[45] != '\n')
+	if (tail <= bufptr + (tree_hash_newline) || memcmp(bufptr, "tree ", 5)
+			|| bufptr[tree_hash_newline - 1] != '\n')
 		return error("bogus commit object %s", sha1_to_hex(item->object.sha1));
 	if (get_sha1_hex(bufptr + 5, parent) < 0)
 		return error("bad tree pointer in commit %s",
 			     sha1_to_hex(item->object.sha1));
 	item->tree = lookup_tree(parent);
-	bufptr += 46; /* "tree " + "hex sha1" + "\n" */
+	bufptr += tree_hash_newline;
 	pptr = &item->parents;
 
 	graft = lookup_commit_graft(item->object.sha1);
-	while (bufptr + 48 < tail && !memcmp(bufptr, "parent ", 7)) {
+	while (bufptr + parent_hash_newline < tail && !memcmp(bufptr, "parent ", 7)) {
 		struct commit *new_parent;
 
-		if (tail <= bufptr + 48 ||
+		if (tail <= bufptr + parent_hash_newline ||
 		    get_sha1_hex(bufptr + 7, parent) ||
-		    bufptr[47] != '\n')
+		    bufptr[parent_hash_newline - 1] != '\n')
 			return error("bad parents in commit %s", sha1_to_hex(item->object.sha1));
-		bufptr += 48;
+		bufptr += parent_hash_newline;
 		/*
 		 * The clone is shallow if nr_parent < 0, and we must
 		 * not traverse its real parents even when we unhide them.
