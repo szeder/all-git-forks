@@ -254,8 +254,8 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 	unsigned char parent[HASH_OCTETS];
 	struct commit_list **pptr;
 	struct commit_graft *graft;
-	const int tree_hash_newline = 46; /* "tree " + "hex sha1" + "\n" */
-	const int parent_hash_newline = 48; /* "parent " + "hex sha1" + "\n" */
+	const int tree_hash_newline = 5 + HASH_OCTETS*2 + 1; /* "tree " + "hex sha1" + "\n" */
+	const int parent_hash_newline = 7 + HASH_OCTETS*2 + 1; /* "parent " + "hex sha1" + "\n" */
 
 	if (item->object.parsed)
 		return 0;
