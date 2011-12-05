@@ -46,7 +46,7 @@ while read i upstream; do
 	fi
 
 	echo "===> Rebasing $i"
-	git checkout $i &&
+	git checkout -q $i &&
 	git pull --rebase ||
 	exit 1
 done
