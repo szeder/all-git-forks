@@ -27,15 +27,8 @@ struct ref_array {
  */
 static const char *parse_ref_line(char *line, unsigned char *sha1)
 {
-	/*
-	 * 42: the answer to everything.
-	 *
-	 * In this case, it happens to be the answer to
-	 *  40 (length of sha1 hex representation)
-	 *  +1 (space in between hex and name)
-	 *  +1 (newline at the end of the line)
-	 */
-	int len = strlen(line) - 42;
+	const int hash_space_newline = HASH_OCTETS*2 + 1 + 1;
+	int len = strlen(line) - hash_space_newline;
 
 	if (len <= 0)
 		return NULL;
@@ -43,7 +36,7 @@ static const char *parse_ref_line(char *line, unsigned char *sha1)
 		return NULL;
 	if (!isspace(line[40]))
 		return NULL;
-	line += 41;
+	line += (hash_space_newline - 1);
 	if (isspace(*line))
 		return NULL;
 	if (line[len] != '\n')
@@ -1589,9 +1582,9 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 		return 0;
 	msglen = msg ? strlen(msg) : 0;
 	committer = git_committer_info(0);
-	maxlen = strlen(committer) + msglen + 100;
+	maxlen = strlen(committer) + msglen + (HASH_OCTETS*2)*2 + 20;
 	logrec = xmalloc(maxlen);
-	len = sprintf(logrec, "%s %s %s\n",
+	len = snprintf(logrec, maxlen, "%s %s %s\n",
 		      sha1_to_hex(old_sha1),
 		      sha1_to_hex(new_sha1),
 		      committer);
