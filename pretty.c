@@ -1144,7 +1144,7 @@ static void pp_header(const struct pretty_print_context *pp,
 		}
 
 		if (!memcmp(line, "parent ", 7)) {
-			if (linelen != 48)
+			if (linelen != HASH_OCTETS*2 + 8)
 				die("bad parent line in commit");
 			continue;
 		}
