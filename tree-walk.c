@@ -26,7 +26,7 @@ static void decode_tree_entry(struct tree_desc *desc, const char *buf, unsigned 
 	const char *path;
 	unsigned int mode, len;
 
-	if (size < 24 || buf[size - 21])
+	if (size < (HASH_OCTETS + 4) || buf[size - HASH_OCTETS - 1])
 		die("corrupt tree file");
 
 	path = get_mode(buf, &mode);
