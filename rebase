@@ -27,6 +27,16 @@ tsort() {
 	'
 }
 
+find_base() {
+	for reflog in `git rev-list -g $1 2>/dev/null`; do
+		if test "$reflog" = "$(git merge-base $reflog HEAD)"; then
+			echo $reflog
+			return
+		fi
+	done
+	git rev-parse -q --verify $1 2>/dev/null
+}
+
 Meta/topics -u |
 while read ref upstream; do
 	echo $ref ${upstream:-origin}
@@ -47,6 +57,6 @@ while read i upstream; do
 
 	echo "===> Rebasing $i"
 	git checkout -q $i &&
-	git pull --rebase ||
+	git rebase --onto $upstream `find_base $upstream` ||
 	exit 1
 done
