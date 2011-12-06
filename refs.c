@@ -598,7 +598,7 @@ const char *resolve_ref_unsafe(const char *refname, unsigned char *sha1, int rea
 		refname = strcpy(refname_buffer, buf);
 	}
 	/* Please note that FETCH_HEAD has a second line containing other data. */
-	if (get_sha1_hex(buffer, sha1) || (buffer[40] != '\0' && !isspace(buffer[40]))) {
+	if (get_sha1_hex(buffer, sha1) || (buffer[HASH_OCTETS*2] != '\0' && !isspace(buffer[HASH_OCTETS*2]))) {
 		if (flag)
 			*flag |= REF_ISBROKEN;
 		return NULL;
@@ -1627,7 +1627,7 @@ int write_ref_sha1(struct ref_lock *lock,
 		unlock_ref(lock);
 		return -1;
 	}
-	if (write_in_full(lock->lock_fd, sha1_to_hex(sha1), 40) != 40 ||
+	if (write_in_full(lock->lock_fd, sha1_to_hex(sha1), HASH_OCTETS*2) != HASH_OCTETS*2 ||
 	    write_in_full(lock->lock_fd, &term, 1) != 1
 		|| close_ref(lock) < 0) {
 		error("Couldn't write %s", lock->lk->filename);
