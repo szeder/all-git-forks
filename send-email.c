@@ -583,6 +583,23 @@ const char *get_patch_subject(const char *fname)
 	die("No subject line in %s ?", fname);
 }
 
+int file_has_nonascii(const char *path)
+{
+	int ch;
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		die_errno("unable to open %s", path);
+
+	while (ch = fgetc(fp))
+		if (!isascii(ch) || ch == '\033') {
+			fclose(fp);
+			return 1;
+		}
+
+	fclose(fp);
+	return 0;
+}
+
 int body_or_subject_has_nonascii(const char *fname)
 {
 	struct strbuf line = STRBUF_INIT;
@@ -593,8 +610,8 @@ int body_or_subject_has_nonascii(const char *fname)
 		if (!line.len)
 			break;
 
-		if (!prefixcmp(line.buf, "Subject: "))
-			if (has_non_ascii(line.buf + 9)) {
+		if (!prefixcmp(line.buf, "Subject:"))
+			if (has_non_ascii(line.buf + 8)) {
 				fclose(fp);
 				return 1;
 			}
@@ -660,28 +677,22 @@ void do_edit(const char *file, struct string_list *files)
 	}
 }
 
-void quote_rfc2047(struct strbuf *sb, const char *encoding)
+char *quote_rfc2047(const char *str, const char *encoding, size_t *len)
 {
-	int i;
-	size_t len;
-	unsigned char *input;
+	struct strbuf sb = STRBUF_INIT;
 
-	if (!has_non_ascii(sb->buf))
-		return;
-
-	input = (unsigned char *)strbuf_detach(sb, &len);
-	strbuf_addf(sb, "=?%s?Q?", encoding ? encoding : "UTF-8");
-	for (i = 0; i < len; ++i) {
-		int ch = input[i];
-		if (isascii(ch)) {
-			strbuf_addch(sb, ch);
-			continue;
-		}
-		strbuf_addf(sb, "=%02X", ch);
+	strbuf_addf(&sb, "=?%s?Q?", encoding ? encoding : "UTF-8");
+	while (1) {
+		int ch = *str++;
+		if (!ch)
+			break;
+		if (!isascii(ch))
+			strbuf_addf(&sb, "=%02X", ch);
+		else
+			strbuf_addch(&sb, ch);
 	}
-	strbuf_addstr(sb, "?=");
-
-	free(input);
+	strbuf_addstr(&sb, "?=");
+	return strbuf_detach(&sb, len);
 }
 
 void add_header_field(struct strbuf *sb, const char *name, const char *body)
@@ -691,11 +702,11 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 
 	/* CR or LF is not allowed in header fields */
 	if (strpbrk(line.buf, "\r\n"))
-		die("header field contains CR or LF");
+		die("header field '%s' contains CR or LF");
 
 	/* non-ASCII should already be quoted */
 	if (has_non_ascii(line.buf))
-		die("header field contains non-ASCII characters");
+		die("header field '%s' contains non-ASCII characters", name);
 
 	/* long lines should be folded */
 	while (line.len > 78) {
@@ -706,7 +717,7 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 				break;
 
 		if (!pos)
-			die("cannot fold line: '%s'", line.buf);
+			die("cannot fold header field: '%s: %s'", name, body);
 
 		strbuf_add(sb, line.buf, pos);
 		strbuf_addstr(sb, "\r\n");
@@ -748,16 +759,25 @@ void expand_one_alias(struct string_list *dst, const char *alias)
 	item->util = tmp;
 }
 
-time_t now;
+static time_t now;
+static char *subject = NULL;
+
+char *make_sure_quoted(const char *str)
+{
+	return has_non_ascii(str) ? quote_rfc2047(str, NULL, NULL) :
+	    xstrdup(str);
+}
 
 void send_message(struct strbuf *message)
 {
 	int nport = -1;
-	struct strbuf header = STRBUF_INIT, from = STRBUF_INIT;
+	struct strbuf header = STRBUF_INIT;
 
-	const char *to = "Erik F\xc3\xa6ye-Lund <kusmabite@gmail.com>";
+	const char *from;
+/*	const char *to = "Erik F\xc3\xa6ye-Lund <kusmabite@gmail.com>"; */
+	const char *to = "Erik Faye-Lund <kusmabite@gmail.com>";
 	const char *cc = NULL;
-	const char *subject = "Hellos!";
+/*	const char *subject = "Hellos!"; */
 	const char *in_reply_to = NULL;
 	const char *xh =
 	    "Content-Type: text/plain; charset=UTF-8\r\n"
@@ -767,9 +787,8 @@ void send_message(struct strbuf *message)
 	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
 	now++;
 
-	strbuf_addstr(&from, sender);
-	quote_rfc2047(&from, NULL);
-	add_header_field(&header, "From", from.buf);
+	from = make_sure_quoted(sender);
+	add_header_field(&header, "From", from);
 	add_header_field(&header, "To", to);
 	if (cc)
 		add_header_field(&header, "Cc", cc);
@@ -1112,10 +1131,12 @@ int main(int argc, const char **argv)
 	}
 
 	if (compose) {
-		int fd;
+		int fd, need_8bit_cte, in_body, summary_empty;
+		FILE *fp[2];
 		struct strbuf sb = STRBUF_INIT;
 		const char *tpl_sender = sender, *tpl_subject = initial_subject,
 		    *tpl_reply_to = initial_reply_to;
+		char temp[PATH_MAX];
 
 		if (!tpl_sender)
 			tpl_sender = repoauthor;
@@ -1123,7 +1144,7 @@ int main(int argc, const char **argv)
 			tpl_sender = repocommitter;
 
 		if (!tpl_subject)
-			tpl_subject = "";
+			tpl_subject = initial_subject ? initial_subject : "";
 		if (!tpl_reply_to)
 			tpl_reply_to = "";
 
@@ -1158,6 +1179,54 @@ int main(int argc, const char **argv)
 			do_edit(compose_filename, &files);
 		} else {
 			do_edit(compose_filename, NULL);
+		}
+
+		/* open final output-file, and edited file */
+		snprintf(temp, sizeof(temp), "%s.final", compose_filename);
+		fp[0] = fopen(temp, "w");
+		if (!fp[0])
+			die_errno("Failed to open %s", temp);
+		fp[1] = fopen(compose_filename, "r");
+		if (!fp[1])
+			die_errno("Failed to open %s", compose_filename);
+
+		need_8bit_cte = file_has_nonascii(compose_filename);
+		in_body = 0;
+		summary_empty = 1;
+		strbuf_reset(&sb);
+		while (strbuf_getline(&sb, fp[1], '\n') != EOF) {
+			if (!prefixcmp(sb.buf, "GIT:"))
+				continue;
+
+			if (in_body) {
+				if (sb.len)
+					summary_empty = 0;
+			} else if (!sb.len) {
+				in_body = 1;
+				if (need_8bit_cte)
+					fprintf(fp[0],
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n");
+			} else if (!prefixcmp(sb.buf, "MIME-Version:")) {
+				need_8bit_cte = 0;
+				fprintf(fp[0], "%s\n", sb.buf);
+			} else if (!prefixcmp(sb.buf, "Subject:")) {
+				char *temp;
+				initial_subject = xstrdup(sb.buf + 9);
+				temp = make_sure_quoted(initial_subject);
+				fprintf(fp[0], "Subject: %s\n", temp);
+				free(temp);
+			} else if (!prefixcmp(sb.buf, "In-Reply-To:")) {
+				initial_reply_to = xstrdup(sb.buf + 12);
+			}
+		}
+		fclose(fp[0]);
+		fclose(fp[1]);
+
+		if (summary_empty) {
+			puts("Summary email is empty, skipping it");
+			compose = -1;
 		}
 	} else if (annotate) {
 		do_edit(NULL, &files);
@@ -1232,6 +1301,12 @@ int main(int argc, const char **argv)
 			*p = '\0';
 	}
 
+	if (compose && compose > 0) {
+		char temp[PATH_MAX];
+		snprintf(temp, sizeof(temp), "%s.final", compose_filename);
+		string_list_insert_at_index(&files, 0, temp);
+	}
+
 	if (!smtp_server) {
 		if (!access("/usr/sbin/sendmail", X_OK))
 			smtp_server = "/usr/sbin/sendmail";
@@ -1243,6 +1318,8 @@ int main(int argc, const char **argv)
 
 	time(&now);
 	now -= files.nr;
+
+	subject = initial_subject ? xstrdup(initial_subject) : NULL;
 
 	for (i = 0; i < files.nr; ++i) {
 		const char *fname = files.items[i].string;
@@ -1264,9 +1341,18 @@ int main(int argc, const char **argv)
 				continue;
 			}
 
-			printf("line: \"%s\"\n", line.buf);
-			if (!line.len)
-				break;
+			if (1) { /* input_format == 'mbox' */
+				if (!prefixcmp(line.buf, "Subject: ")) {
+					free(subject);
+					subject = xstrdup(line.buf + 9);
+					continue;
+				}
+
+				printf("line: \"%s\"\n", line.buf);
+
+				if (!line.len)
+					break;
+			}
 		}
 
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
