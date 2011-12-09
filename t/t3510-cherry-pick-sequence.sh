@@ -414,4 +414,15 @@ test_expect_success 'mixed pick and revert instructions' '
 	test_cmp expect actual
 '
 
+test_expect_success 'empty commit set' '
+	pristine_detach initial &&
+	test_expect_code 128 git cherry-pick base..base
+'
+
+test_expect_success 'commit set passed through --all' '
+	pristine_detach initial &&
+	test_expect_code 1 git cherry-pick --all &&
+	git cherry-pick --continue
+'
+
 test_done
