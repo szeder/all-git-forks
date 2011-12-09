@@ -271,13 +271,13 @@ static int fsck_commit(struct commit *commit, fsck_error error_func)
 
 	if (memcmp(buffer, "tree ", 5))
 		return error_func(&commit->object, FSCK_ERROR, "invalid format - expected 'tree' line");
-	if (get_sha1_hex(buffer+5, tree_sha1) || buffer[45] != '\n')
+	if (get_sha1_hex(buffer+5, tree_sha1) || buffer[HASH_OCTETS*2 + 5] != '\n')
 		return error_func(&commit->object, FSCK_ERROR, "invalid 'tree' line format - bad sha1");
-	buffer += 46;
+	buffer += HASH_OCTETS*2 + 6;
 	while (!memcmp(buffer, "parent ", 7)) {
-		if (get_sha1_hex(buffer+7, sha1) || buffer[47] != '\n')
+		if (get_sha1_hex(buffer+7, sha1) || buffer[HASH_OCTETS*2 + 7] != '\n')
 			return error_func(&commit->object, FSCK_ERROR, "invalid 'parent' line format - bad sha1");
-		buffer += 48;
+		buffer += HASH_OCTETS*2 + 8;
 		parents++;
 	}
 	graft = lookup_commit_graft(commit->object.sha1);
