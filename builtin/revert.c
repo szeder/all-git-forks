@@ -727,7 +727,11 @@ static struct commit *parse_insn_line(char *bol, char *eol, struct replay_opts *
 	} else
 		return NULL;
 
-	end_of_object_name = bol + strcspn(bol, " \n");
+	/* Eat up extra spaces/ tabs before object name */
+	while (*bol == ' ' || *bol == '\t')
+		bol += 1;
+
+	end_of_object_name = bol + strcspn(bol, " \t\n");
 	saved = *end_of_object_name;
 	*end_of_object_name = '\0';
 	status = get_sha1(bol, commit_sha1);
