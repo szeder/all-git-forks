@@ -719,8 +719,10 @@ static int format_todo(struct strbuf *buf, struct replay_insn_list *todo_list)
 	return 0;
 }
 
-static int parse_insn_line(char *bol, char *eol, struct replay_insn_list *item)
+static int parse_insn_line(char *bol, char *eol,
+			struct replay_insn_list *item, int lineno)
 {
+	const char *todo_file = git_path(SEQ_TODO_FILE);
 	unsigned char commit_sha1[20];
 	char *end_of_object_name;
 	int saved, status;
@@ -731,8 +733,13 @@ static int parse_insn_line(char *bol, char *eol, struct replay_insn_list *item)
 	} else if (!prefixcmp(bol, "revert ")) {
 		item->action = REPLAY_REVERT;
 		bol += strlen("revert ");
-	} else
-		return -1;
+	} else {
+		size_t len = eol - bol;
+		if (len > 255)
+			len = 255;
+		return error(_("%s:%d: Unrecognized action: %.*s"),
+			todo_file, lineno, (int)len, bol);
+	}
 
 	/* Eat up extra spaces/ tabs before object name */
 	while (*bol == ' ' || *bol == '\t')
@@ -745,11 +752,13 @@ static int parse_insn_line(char *bol, char *eol, struct replay_insn_list *item)
 	*end_of_object_name = saved;
 
 	if (status < 0)
-		return -1;
+		return error(_("%s:%d: Malformed object name: %s"),
+			todo_file, lineno, bol);
 
 	item->operand = lookup_commit_reference(commit_sha1);
 	if (!item->operand)
-		return -1;
+		return error(_("%s:%d: Not a valid commit: %s"),
+			todo_file, lineno, bol);
 
 	item->next = NULL;
 	return 0;
@@ -764,8 +773,8 @@ static int parse_insn_buffer(char *buf, struct replay_insn_list **todo_list)
 
 	for (i = 1; *p; i++) {
 		char *eol = strchrnul(p, '\n');
-		if (parse_insn_line(p, eol, &item) < 0)
-			return error(_("Could not parse line %d."), i);
+		if (parse_insn_line(p, eol, &item, i) < 0)
+			return -1;
 		next = replay_insn_list_append(item.action, item.operand, next);
 		p = *eol ? eol + 1 : eol;
 	}
