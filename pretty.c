@@ -1354,7 +1354,15 @@ void pp_remainder(const struct pretty_print_context *pp,
 			memset(sb->buf + sb->len, ' ', indent);
 			strbuf_setlen(sb, sb->len + indent);
 		}
-		strbuf_add(sb, line, linelen);
+		if (line[0] == ' ' || line[0] == '\t') {
+			strbuf_add(sb, line, linelen);
+		} else {
+			int hanging_indent;
+			struct strbuf wrapped = STRBUF_INIT;
+			strbuf_add(&wrapped, line, linelen);
+			hanging_indent = ((line[0] == '-' && line[1] == ' ') ? 2 : 0);
+			strbuf_add_wrapped_text(sb, wrapped.buf, 0, indent + hanging_indent, 80 - indent);
+		}
 		strbuf_addch(sb, '\n');
 	}
 }
