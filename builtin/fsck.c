@@ -417,9 +417,9 @@ static void add_sha1_list(unsigned char *sha1, unsigned long ino)
 static inline int is_loose_object_file(struct dirent *de,
 				       char *name, unsigned char *sha1)
 {
-	if (strlen(de->d_name) != 38)
+	if (strlen(de->d_name) != HASH_OCTETS*2 - 2)
 		return 0;
-	memcpy(name + 2, de->d_name, 39);
+	memcpy(name + 2, de->d_name, HASH_OCTETS*2 - 1);
 	return !get_sha1_hex(name, sha1);
 }
 
@@ -427,7 +427,7 @@ static void fsck_dir(int i, char *path)
 {
 	DIR *dir = opendir(path);
 	struct dirent *de;
-	char name[100];
+	char name[HASH_OCTETS*2 + 20];
 
 	if (!dir)
 		return;
