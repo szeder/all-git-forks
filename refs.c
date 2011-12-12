@@ -108,6 +108,10 @@ struct ref_value {
 
 struct ref_dir {
 	int nr, alloc;
+
+	/* How many of the entries in this directory are sorted? */
+	int sorted;
+
 	struct ref_entry **entries;
 };
 
@@ -210,7 +214,7 @@ static void clear_ref_dir(struct ref_dir *dir)
 	for (i = 0; i < dir->nr; i++)
 		free_ref_entry(dir->entries[i]);
 	free(dir->entries);
-	dir->nr = dir->alloc = 0;
+	dir->sorted = dir->nr = dir->alloc = 0;
 	dir->entries = NULL;
 }
 
@@ -252,8 +256,9 @@ static struct ref_entry *search_ref_dir(struct ref_dir *dir, const char *refname
 
 	/*
 	 * We need dir to be sorted so that binary search works.
-	 * FIXME: Sorting the array each time is terribly inefficient,
-	 * and has to be changed.
+	 * Calling sort_ref_dir() here is not quite as terribly
+	 * inefficient as it looks, because directories that are
+	 * already sorted are not re-sorted.
 	 */
 	sort_ref_dir(dir);
 
@@ -358,13 +363,27 @@ static int is_dup_ref(const struct ref_entry *ref1, const struct ref_entry *ref2
 	return 1;
 }
 
+/*
+ * Sort the entries in dir and its subdirectories (if they are not
+ * already sorted).
+ */
 static void sort_ref_dir(struct ref_dir *dir)
 {
 	int i, j;
 	struct ref_entry *last = NULL;
 
-	if (!dir->nr)
+	if (dir->sorted == dir->nr) {
+		/*
+		 * This directory is already sorted and de-duped, but
+		 * we still have to sort subdirectories.
+		 */
+		for (i = 0; i < dir->nr; i++) {
+			struct ref_entry *entry = dir->entries[i];
+			if (entry->flag & REF_DIR)
+				sort_ref_dir(&entry->u.subdir);
+		}
 		return;
+	}
 
 	qsort(dir->entries, dir->nr, sizeof(*dir->entries), ref_entry_cmp);
 
@@ -381,7 +400,7 @@ static void sort_ref_dir(struct ref_dir *dir)
 			last = dir->entries[i++] = entry;
 		}
 	}
-	dir->nr = i;
+	dir->sorted = dir->nr = i;
 }
 
 #define DO_FOR_EACH_INCLUDE_BROKEN 01
