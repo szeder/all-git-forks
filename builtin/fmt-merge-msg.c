@@ -372,14 +372,14 @@ int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 	int i = 0, pos = 0;
 	unsigned char head_sha1[20];
 	const char *current_branch;
+	char *ref;
 
 	/* get current branch */
-	current_branch = resolve_ref("HEAD", head_sha1, 1, NULL);
+	current_branch = ref = resolve_refdup("HEAD", head_sha1, 1, NULL);
 	if (!current_branch)
 		die("No current branch");
 	if (!prefixcmp(current_branch, "refs/heads/"))
 		current_branch += 11;
-	current_branch = xstrdup(current_branch);
 
 	/* get a line */
 	while (pos < in->len) {
@@ -421,7 +421,7 @@ int fmt_merge_msg(struct strbuf *in, struct strbuf *out,
 	}
 
 	strbuf_complete_line(out);
-	free((char *)current_branch);
+	free(ref);
 	return 0;
 }
 
