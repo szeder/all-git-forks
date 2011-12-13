@@ -1007,7 +1007,7 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 	struct commit_list *cur;
 	int res;
 
-	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
+	xsetenv(GIT_REFLOG_ACTION, action_name(opts), 0);
 	if (opts->allow_ff)
 		assert(!(opts->signoff || opts->no_commit ||
 				opts->record_origin || opts->edit));

@@ -63,7 +63,7 @@ void git_set_argv_exec_path(const char *exec_path)
 	/*
 	 * Propagate this setting to external programs.
 	 */
-	setenv(EXEC_PATH_ENVIRONMENT, exec_path, 1);
+	xsetenv(EXEC_PATH_ENVIRONMENT, exec_path, 1);
 }
 
 
@@ -108,7 +108,7 @@ void setup_path(void)
 	else
 		strbuf_addstr(&new_path, _PATH_DEFPATH);
 
-	setenv("PATH", new_path.buf, 1);
+	xsetenv("PATH", new_path.buf, 1);
 
 	strbuf_release(&new_path);
 }

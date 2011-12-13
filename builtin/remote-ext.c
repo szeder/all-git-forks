@@ -38,8 +38,8 @@ static char *strip_escapes(const char *str, const char *service,
 		psoff = 4;
 
 	/* Pass the service to command. */
-	setenv("GIT_EXT_SERVICE", service, 1);
-	setenv("GIT_EXT_SERVICE_NOPREFIX", service + psoff, 1);
+	xsetenv("GIT_EXT_SERVICE", service, 1);
+	xsetenv("GIT_EXT_SERVICE_NOPREFIX", service + psoff, 1);
 
 	/* Scan the length of argument. */
 	while (str[rpos] && (escape || str[rpos] != ' ')) {

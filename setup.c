@@ -309,7 +309,7 @@ void setup_work_tree(void)
 	 * if $GIT_WORK_TREE is set relative
 	 */
 	if (getenv(GIT_WORK_TREE_ENVIRONMENT))
-		setenv(GIT_WORK_TREE_ENVIRONMENT, ".", 1);
+		xsetenv(GIT_WORK_TREE_ENVIRONMENT, ".", 1);
 
 	set_git_dir(relative_path(git_dir, work_tree));
 	initialized = 1;
@@ -683,9 +683,9 @@ const char *setup_git_directory_gently(int *nongit_ok)
 
 	prefix = setup_git_directory_gently_1(nongit_ok);
 	if (prefix)
-		setenv("GIT_PREFIX", prefix, 1);
+		xsetenv("GIT_PREFIX", prefix, 1);
 	else
-		setenv("GIT_PREFIX", "", 1);
+		xsetenv("GIT_PREFIX", "", 1);
 
 	if (startup_info) {
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;

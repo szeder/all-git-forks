@@ -43,7 +43,7 @@ void git_config_push_parameter(const char *text)
 		strbuf_addch(&env, ' ');
 	}
 	sq_quote_buf(&env, text);
-	setenv(CONFIG_DATA_ENVIRONMENT, env.buf, 1);
+	xsetenv(CONFIG_DATA_ENVIRONMENT, env.buf, 1);
 	strbuf_release(&env);
 }
 

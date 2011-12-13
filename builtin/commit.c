@@ -361,13 +361,13 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 			die(_("unable to create temporary index"));
 
 		old_index_env = getenv(INDEX_ENVIRONMENT);
-		setenv(INDEX_ENVIRONMENT, index_lock.filename, 1);
+		xsetenv(INDEX_ENVIRONMENT, index_lock.filename, 1);
 
 		if (interactive_add(argc, argv, prefix, patch_interactive) != 0)
 			die(_("interactive add failed"));
 
 		if (old_index_env && *old_index_env)
-			setenv(INDEX_ENVIRONMENT, old_index_env, 1);
+			xsetenv(INDEX_ENVIRONMENT, old_index_env, 1);
 		else
 			unsetenv(INDEX_ENVIRONMENT);
 
@@ -1023,7 +1023,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (edit_flag)
 		use_editor = 1;
 	if (!use_editor)
-		setenv("GIT_EDITOR", ":", 1);
+		xsetenv("GIT_EDITOR", ":", 1);
 
 	/* Sanity check options */
 	if (amend && !current_head)

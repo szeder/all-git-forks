@@ -76,7 +76,7 @@ void setup_pager(void)
 	if (!pager)
 		return;
 
-	setenv("GIT_PAGER_IN_USE", "true", 1);
+	xsetenv("GIT_PAGER_IN_USE", "true", 1);
 
 	/* spawn the pager */
 	pager_argv[0] = pager;
