@@ -566,6 +566,7 @@ static int push_had_errors(struct ref *ref)
 	for (; ref; ref = ref->next) {
 		switch (ref->status) {
 		case REF_STATUS_NONE:
+		case REF_STATUS_STALE:
 		case REF_STATUS_UPTODATE:
 		case REF_STATUS_OK:
 			break;
@@ -581,6 +582,7 @@ int transport_refs_pushed(struct ref *ref)
 	for (; ref; ref = ref->next) {
 		switch(ref->status) {
 		case REF_STATUS_NONE:
+		case REF_STATUS_STALE:
 		case REF_STATUS_UPTODATE:
 			break;
 		default:
@@ -688,6 +690,10 @@ static int print_one_push_status(struct ref *ref, const char *dest, int count, i
 		break;
 	case REF_STATUS_UPTODATE:
 		print_ref_status('=', "[up to date]", ref,
+						 ref->peer_ref, NULL, porcelain);
+		break;
+	case REF_STATUS_STALE:
+		print_ref_status('=', "[stale ignored]", ref,
 						 ref->peer_ref, NULL, porcelain);
 		break;
 	case REF_STATUS_REJECT_NONFASTFORWARD:

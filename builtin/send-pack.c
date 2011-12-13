@@ -196,6 +196,11 @@ static void print_helper_status(struct ref *ref)
 			msg = "up to date";
 			break;
 
+		case REF_STATUS_STALE:
+			res = "ok";
+			msg = "ignored stale";
+			break;
+
 		case REF_STATUS_REJECT_NONFASTFORWARD:
 			res = "error";
 			msg = "non-fast forward";
@@ -282,6 +287,7 @@ int send_pack(struct send_pack_args *args,
 		switch (ref->status) {
 		case REF_STATUS_REJECT_NONFASTFORWARD:
 		case REF_STATUS_UPTODATE:
+		case REF_STATUS_STALE:
 			continue;
 		default:
 			; /* do nothing */
@@ -379,6 +385,7 @@ int send_pack(struct send_pack_args *args,
 		switch (ref->status) {
 		case REF_STATUS_NONE:
 		case REF_STATUS_UPTODATE:
+		case REF_STATUS_STALE:
 		case REF_STATUS_OK:
 			break;
 		default:
