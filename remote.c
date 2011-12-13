@@ -1224,11 +1224,25 @@ int match_push_refs(struct ref *src, struct ref **dst,
 	return 0;
 }
 
+/*
+ * Do we know if the other side has newer commit than what we are
+ * trying to push (i.e. old_sha1 is descendant of new_sha1)? If so
+ * just ignore the request to push this particular bref under the
+ * "--ignore-stale" option.
+ */
+static int is_stale_push(unsigned char *old_sha1, unsigned char *new_sha1)
+{
+	if (!has_sha1_file(old_sha1) || !has_sha1_file(new_sha1))
+		return 0;
+	return ref_newer(old_sha1, new_sha1);
+}
+
 void set_ref_status_for_push(struct ref *remote_refs, unsigned flags)
 {
 	struct ref *ref;
 	int send_mirror = flags & TRANSPORT_PUSH_MIRROR;
 	int force_update = flags & TRANSPORT_PUSH_FORCE;
+	int ignore_stale = flags & TRANSPORT_PUSH_IGNORE_STALE;
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		if (ref->peer_ref)
@@ -1240,6 +1254,12 @@ void set_ref_status_for_push(struct ref *remote_refs, unsigned flags)
 		if (!ref->deletion &&
 			!hashcmp(ref->old_sha1, ref->new_sha1)) {
 			ref->status = REF_STATUS_UPTODATE;
+			continue;
+		}
+
+		if (ignore_stale && !ref->deletion &&
+		    is_stale_push(ref->old_sha1, ref->new_sha1)) {
+			ref->status = REF_STATUS_STALE;
 			continue;
 		}
 

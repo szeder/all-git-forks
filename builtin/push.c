@@ -261,6 +261,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BIT('u', "set-upstream", &flags, "set upstream for git pull/status",
 			TRANSPORT_PUSH_SET_UPSTREAM),
 		OPT_BOOLEAN(0, "progress", &progress, "force progress reporting"),
+		OPT_BIT(0, "ignore-stale", &flags, "ignore stale refs", TRANSPORT_PUSH_IGNORE_STALE),
 		OPT_END()
 	};
 

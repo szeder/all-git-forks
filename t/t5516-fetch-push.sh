@@ -979,4 +979,35 @@ test_expect_success 'push --porcelain --dry-run rejected' '
 	test_cmp .git/foo .git/bar
 '
 
+test_expect_success 'push --ignore-stale' '
+	mk_empty &&
+	(
+		cd testrepo &&
+		git fetch --update-head-ok .. "refs/heads/*:refs/heads/*" &&
+		git checkout -b next master &&
+		git commit --allow-empty -m "updated next" &&
+		git push . next:master &&
+		git for-each-ref >../snapshot.before
+	) &&
+	git checkout branch1 &&
+	git commit --allow-empty -m "updated branch1" &&
+	test_must_fail git push testrepo : &&
+	git fetch testrepo "+refs/heads/*:refs/remotes/origin/*" &&
+	git push --ignore-stale testrepo : &&
+	(
+		cd testrepo &&
+		git for-each-ref >../snapshot.after
+	) &&
+
+	# branch1 must be updated and master must stay the same
+	git for-each-ref refs/heads/branch1 >expect &&
+	grep refs/heads/branch1 snapshot.after >actual &&
+	test_cmp expect actual &&
+
+	grep refs/heads/master snapshot.before >expect &&
+	grep refs/heads/master snapshot.after >actual &&
+	test_cmp expect actual
+
+'
+
 test_done
