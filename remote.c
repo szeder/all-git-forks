@@ -7,6 +7,7 @@
 #include "dir.h"
 #include "tag.h"
 #include "string-list.h"
+#include "transport.h"
 
 static struct refspec s_tag_refspec = {
 	0,
@@ -1223,10 +1224,11 @@ int match_push_refs(struct ref *src, struct ref **dst,
 	return 0;
 }
 
-void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
-	int force_update)
+void set_ref_status_for_push(struct ref *remote_refs, unsigned flags)
 {
 	struct ref *ref;
+	int send_mirror = flags & TRANSPORT_PUSH_MIRROR;
+	int force_update = flags & TRANSPORT_PUSH_FORCE;
 
 	for (ref = remote_refs; ref; ref = ref->next) {
 		if (ref->peer_ref)

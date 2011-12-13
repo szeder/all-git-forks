@@ -404,6 +404,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	int send_all = 0;
 	const char *receivepack = "git-receive-pack";
 	int flags;
+	unsigned transport_flags;
 	int nonfastforward = 0;
 
 	argv++;
@@ -512,8 +513,13 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	if (match_push_refs(local_refs, &remote_refs, nr_refspecs, refspecs, flags))
 		return -1;
 
-	set_ref_status_for_push(remote_refs, args.send_mirror,
-		args.force_update);
+	transport_flags = 0;
+	if (args.send_mirror)
+		transport_flags |= TRANSPORT_PUSH_MIRROR;
+	if (args.force_update)
+		transport_flags |= TRANSPORT_PUSH_FORCE;
+
+	set_ref_status_for_push(remote_refs, transport_flags);
 
 	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
 
