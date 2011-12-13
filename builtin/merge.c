@@ -1110,6 +1110,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	struct commit_list *common = NULL;
 	const char *best_strategy = NULL, *wt_strategy = NULL;
 	struct commit_list **remotes = &remoteheads;
+	char *branch_ref;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_merge_usage, builtin_merge_options);
@@ -1118,12 +1119,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a
 	 * current branch.
 	 */
-	branch = resolve_ref("HEAD", head_sha1, 0, &flag);
-	if (branch) {
-		if (!prefixcmp(branch, "refs/heads/"))
-			branch += 11;
-		branch = xstrdup(branch);
-	}
+	branch = branch_ref = resolve_refdup("HEAD", head_sha1, 0, &flag);
+	if (branch && !prefixcmp(branch, "refs/heads/"))
+		branch += 11;
 	if (!branch || is_null_sha1(head_sha1))
 		head_commit = NULL;
 	else
@@ -1534,6 +1532,6 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		ret = suggest_conflicts(option_renormalize);
 
 done:
-	free((char *)branch);
+	free(branch_ref);
 	return ret;
 }
