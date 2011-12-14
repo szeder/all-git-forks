@@ -1491,7 +1491,7 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT__ABBREV(&abbrev),
 		OPT__VERBOSE(&verbose, "be verbose"),
-		OPT_BOOL(0, "reverse", &reverse, "exchanges <upstream> and <head>"),
+		OPT_BOOL('r', "reverse", &reverse, "exchanges <upstream> and <head>"),
 		OPT_END()
 	};
 
