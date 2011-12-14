@@ -381,3 +381,17 @@ int remove_or_warn(unsigned int mode, const char *file)
 {
 	return S_ISGITLINK(mode) ? rmdir_or_warn(file) : unlink_or_warn(file);
 }
+
+int xsetenv(const char *name, const char *val, int overwrite)
+{
+	if (setenv(name, val, overwrite))
+		die_errno("setenv failed to set '%s' to '%s'", name, val);
+	return 0;
+}
+
+int xputenv(char *string)
+{
+	if (putenv(string))
+		die_errno("putenv failed to set '%s' ", string);
+	return 0;
+}
