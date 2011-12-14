@@ -1456,7 +1456,7 @@ static int add_pending_commit(const char *arg, struct rev_info *revs, int flags)
 }
 
 static const char * const cherry_usage[] = {
-	"git cherry [-v] [<upstream> [<head> [<limit>]]]",
+	"git cherry [-v] [-r] [<upstream> [<head> [<limit>]]]",
 	NULL
 };
 
@@ -1486,11 +1486,12 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 	const char *upstream;
 	const char *head = "HEAD";
 	const char *limit = NULL;
-	int verbose = 0, abbrev = 0;
+	int verbose = 0, abbrev = 0, reverse = 0;
 
 	struct option options[] = {
 		OPT__ABBREV(&abbrev),
 		OPT__VERBOSE(&verbose, "be verbose"),
+		OPT_BOOL(0, "reverse", &reverse, "exchanges <upstream> and <head>"),
 		OPT_END()
 	};
 
@@ -1501,10 +1502,10 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 		limit = argv[2];
 		/* FALLTHROUGH */
 	case 2:
-		head = argv[1];
+		head = argv[reverse ? 0 : 1];
 		/* FALLTHROUGH */
 	case 1:
-		upstream = argv[0];
+		upstream = argv[reverse ? 1 : 0];
 		break;
 	default:
 		current_branch = branch_get(NULL);
