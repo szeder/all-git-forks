@@ -1247,7 +1247,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	strbuf_addstr(&buf, "merge");
 	for (i = 0; i < argc; i++)
 		strbuf_addf(&buf, " %s", argv[i]);
-	setenv("GIT_REFLOG_ACTION", buf.buf, 0);
+	xsetenv("GIT_REFLOG_ACTION", buf.buf, 0);
 	strbuf_reset(&buf);
 
 	for (i = 0; i < argc; i++) {
@@ -1262,7 +1262,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		remotes = &commit_list_insert(commit, remotes)->next;
 
 		strbuf_addf(&buf, "GITHEAD_%s", sha1_to_hex(o->sha1));
-		setenv(buf.buf, argv[i], 1);
+		xsetenv(buf.buf, argv[i], 1);
 		strbuf_reset(&buf);
 	}
 

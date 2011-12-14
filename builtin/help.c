@@ -330,7 +330,7 @@ static void setup_man_path(void)
 	if (old_path)
 		strbuf_addstr(&new_path, old_path);
 
-	setenv("MANPATH", new_path.buf, 1);
+	xsetenv("MANPATH", new_path.buf, 1);
 
 	strbuf_release(&new_path);
 }
@@ -371,7 +371,7 @@ static void show_man_page(const char *git_cmd)
 static void show_info_page(const char *git_cmd)
 {
 	const char *page = cmd_to_page(git_cmd);
-	setenv("INFOPATH", system_path(GIT_INFO_PATH), 1);
+	xsetenv("INFOPATH", system_path(GIT_INFO_PATH), 1);
 	execlp("info", "info", "gitman", page, (char *)NULL);
 	die("no info viewer handled the request");
 }
