@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "diff.h"
 #include "run-command.h"
 #include "exec_cmd.h"
 #include "argv-array.h"
@@ -65,6 +66,7 @@ static int execv_shell_cmd(const char **argv)
 #ifndef WIN32
 static int child_err = 2;
 static int child_notifier = -1;
+static const char *hook_directory = NULL;
 
 static void notify_parent(void)
 {
@@ -603,6 +605,14 @@ int finish_async(struct async *async)
 #endif
 }
 
+static int git_hook_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "hooks.directory"))
+		return git_config_pathname(&hook_directory, var, value);
+
+	return git_diff_ui_config(var, value, cb);
+}
+
 int run_hook(const char *index_file, const char *name, ...)
 {
 	struct child_process hook;
@@ -612,11 +622,22 @@ int run_hook(const char *index_file, const char *name, ...)
 	va_list args;
 	int ret;
 
-	if (access(git_path("hooks/%s", name), X_OK) < 0)
+	// If this is not reset to NULL, then strange stuff happens
+	hook_directory = NULL;
+
+	// Load the configuration for hooks.directory
+	git_config(git_hook_config, NULL);
+
+	// If the configuration is not set for hooks directory, set it to the
+	// default GIT_PATH/hooks directory that we all know and love.
+	if(hook_directory == NULL)
+		hook_directory = git_path("hooks");
+
+	if (access(mkpath("%s/%s", hook_directory, name), X_OK) < 0)
 		return 0;
 
 	va_start(args, name);
-	argv_array_push(&argv, git_path("hooks/%s", name));
+	argv_array_push(&argv, mkpath("%s/%s", hook_directory, name));
 	while ((p = va_arg(args, const char *)))
 		argv_array_push(&argv, p);
 	va_end(args);

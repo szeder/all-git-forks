@@ -1226,6 +1226,11 @@ help.autocorrect::
 	value is 0 - the command will be just shown but not executed.
 	This is the default.
 
+hooks.directory::
+	Override the default hook directory location GIT_DIR/hooks. This can be
+	usefull if you are in an environment that has trusted path execution for
+	example.
+
 http.proxy::
 	Override the HTTP proxy, normally configured using the 'http_proxy'
 	environment variable (see linkgit:curl[1]).  This can be overridden

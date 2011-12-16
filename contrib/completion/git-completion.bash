@@ -2177,6 +2177,7 @@ _git_config ()
 		help.autocorrect
 		help.browser
 		help.format
+		hooks.directory
 		http.lowSpeedLimit
 		http.lowSpeedTime
 		http.maxRequests
