@@ -1,3 +1,61 @@
+Version v1.7.8; changes since v1.7.8-rc4:
+-----------------------------------------
+
+Junio C Hamano (1):
+      Git 1.7.8
+
+
+Version v1.7.8-rc4; changes since v1.7.8-rc3:
+---------------------------------------------
+
+Johannes Sixt (1):
+      Fix revert --abort on Windows
+
+Jonathan Nieder (11):
+      do not let git_path clobber errno when reporting errors
+      notes merge: eliminate OUTPUT macro
+      Makefile: add missing header file dependencies
+      Makefile: add option to disable automatic dependency generation
+      revert: rename --reset option to --quit
+      revert: rearrange pick_revisions() for clarity
+      revert: improve error message for cherry-pick during cherry-pick
+      revert: write REVERT_HEAD pseudoref during conflicted revert
+      revert: introduce --abort to cancel a failed cherry-pick
+      revert: remove --reset compatibility option
+      revert --abort: do not leave behind useless sequencer-old directory
+
+Junio C Hamano (5):
+      name-rev --all: do not even attempt to describe non-commit object
+      Git 1.7.7.4
+      Hopefully final update of release notes before 1.7.8 final
+      Update 1.7.8 draft release notes in preparation for rc4
+      Git 1.7.8-rc4
+
+Marc-André Lureau (1):
+      mailmap: xcalloc mailmap_info
+
+Nguyễn Thái Ngọc Duy (1):
+      revert: do not pass non-literal string as format to git_path()
+
+Ramkumar Ramachandra (4):
+      http: remove unused function hex()
+      convert: don't mix enum with int
+      sha1_file: don't mix enum with int
+      git-compat-util: don't assume value for undefined variable
+
+Ramsay Allan Jones (3):
+      t5501-*.sh: Fix url passed to clone in setup test
+      config.c: Fix a static buffer overwrite bug by avoiding mkpath()
+      convert.c: Fix return type of git_path_check_eol()
+
+Thomas Hochstein (1):
+      documentation fix: git difftool uses diff tools, not merge tools.
+
+Vincent van Ravesteijn (2):
+      builtin-branch: Fix crash on invalid use of --force
+      builtin-reset: Documentation update
+
+
 Version v1.7.8-rc3; changes since v1.7.8-rc2:
 ---------------------------------------------
 
