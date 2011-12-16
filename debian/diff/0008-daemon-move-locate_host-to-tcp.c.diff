@@ -1,7 +1,7 @@
-From 988a31f648858d8464498533fd5060607d9dbadd Mon Sep 17 00:00:00 2001
+From 2bd44d2484ad7aee7fc2d3a751eca2fa9f932f31 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: [PATCH 08/14] daemon: move locate_host to tcp.c
+Subject: daemon: move locate_host to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -15,13 +15,13 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 0bf96aa..82e73ad 100644
+index e5c6109..b456641 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2015,7 +2015,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2035,7 +2035,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
- connect.o transport.o http-backend.o: url.h
+ connect.o transport.o url.o http-backend.o: url.h
 -connect.o tcp.o: tcp.h
 +connect.o daemon.o tcp.o: tcp.h
  http-fetch.o http-walker.o remote-curl.o transport.o walker.o: walker.h
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.7.1
+1.7.8
 

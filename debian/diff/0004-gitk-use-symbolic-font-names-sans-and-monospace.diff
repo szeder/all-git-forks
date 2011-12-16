@@ -1,7 +1,7 @@
-From 8992299c9b72cba763c63ab5d4956e41b999c497 Mon Sep 17 00:00:00 2001
+From cea9f374320048e7a41a97b6b44c28aca8ae5525 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 24 Oct 2010 21:12:42 -0500
-Subject: [PATCH 04/14] gitk: use symbolic font names "sans" and "monospace"
+Subject: gitk: use symbolic font names "sans" and "monospace"
 
 tk8.5 and later use antialiased fonts (via fontconfig and freetype).
 The fonts used by gitk are Helvetica and Courier, which can look
@@ -46,5 +46,5 @@ index 4cde0c4..31c48cd 100755
  set tabstop 8
  set findmergefiles 0
 -- 
-1.7.7.1
+1.7.8
 
