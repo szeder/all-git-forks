@@ -1,3 +1,53 @@
+Version v1.7.7.5; changes since v1.7.7.4:
+-----------------------------------------
+
+Erik Faye-Lund (1):
+      mingw: give waitpid the correct signature
+
+Jeff King (3):
+      stripspace: fix outdated comment
+      fetch: create status table using strbuf
+      blame: don't overflow time buffer
+
+Junio C Hamano (2):
+      Git 1.7.6.5
+      Git 1.7.7.5
+
+Martin von Zweigbergk (1):
+      am: don't persist keepcr flag
+
+Michael Haggerty (1):
+      git symbolic-ref: documentation fix
+
+Nguyễn Thái Ngọc Duy (1):
+      checkout,merge: loosen overwriting untracked file check based on info/exclude
+
+Sebastian Morr (1):
+      Add MYMETA.yml to perl/.gitignore
+
+Thomas Hochstein (1):
+      documentation fix: git difftool uses diff tools, not merge tools.
+
+Ævar Arnfjörð Bjarmason (2):
+      apply: get rid of useless x < 0 comparison on a size_t type
+      cast variable in call to free() in builtin/diff.c and submodule.c
+
+
+Version v1.7.7.4; changes since v1.7.7.3:
+-----------------------------------------
+
+Jonathan Nieder (2):
+      notes merge: eliminate OUTPUT macro
+      Makefile: add missing header file dependencies
+
+Junio C Hamano (2):
+      name-rev --all: do not even attempt to describe non-commit object
+      Git 1.7.7.4
+
+Marc-André Lureau (1):
+      mailmap: xcalloc mailmap_info
+
+
 Version v1.7.7.3; changes since v1.7.7.2:
 -----------------------------------------
 
