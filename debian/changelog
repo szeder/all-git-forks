@@ -1,9 +1,21 @@
-git (1:1.7.8-0.1) unstable; urgency=low
+git (1:1.7.8-1) unstable; urgency=low
 
   * merge branch debian-experimental.
   * new upstream release.
+  * new from v1.7.7.5:
+    * checkout, merge: treat .git/info/exclude like .gitignore when
+      deciding which working-tree files can be safely overwritten.
+    * documentation: symlinks are not the default representation for
+      symbolic references any more.
+    * am: don't persist --keep-cr flag that has no effect when
+      resuming.
+    * fetch: let buffer for status stable grow to accomodate long
+      refnames.
+    * blame: do not let displayed raw timestamp overflow in-BSS
+      buffer.
+    * squash some compile-time warnings from static analyzers.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 16 Dec 2011 05:26:57 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 16 Dec 2011 09:36:58 -0600
 
 git (1:1.7.8~rc3-1) experimental; urgency=low
 
