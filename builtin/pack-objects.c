@@ -409,25 +409,56 @@ static unsigned long write_object(struct sha1file *f,
 	return hdrlen + datalen;
 }
 
-static int write_one(struct sha1file *f,
-			       struct object_entry *e,
-			       off_t *offset)
+enum write_one_status {
+	WRITE_ONE_SKIP = -1, /* already written */
+	WRITE_ONE_BREAK = 0, /* writing this will bust the limit; not written */
+	WRITE_ONE_WRITTEN = 1, /* normal */
+	WRITE_ONE_RECURSIVE = 2 /* already scheduled to be written */
+};
+
+static enum write_one_status write_one(struct sha1file *f,
+				       struct object_entry *e,
+				       off_t *offset)
 {
 	unsigned long size;
+	int recursing;
 
-	/* offset is non zero if object is written already. */
-	if (e->idx.offset || e->preferred_base)
-		return -1;
+	/*
+	 * we set offset to 1 (which is an impossible value) to mark
+	 * the fact that this object is involved in "write its base
+	 * first before writing a deltified object" recursion.
+	 */
+	recursing = (e->idx.offset == 1);
+	if (recursing) {
+		warning("recursive delta detected for object %s",
+			sha1_to_hex(e->idx.sha1));
+		return WRITE_ONE_RECURSIVE;
+	} else if (e->idx.offset || e->preferred_base) {
+		/* offset is non zero if object is written already. */
+		return WRITE_ONE_SKIP;
+	}
 
 	/* if we are deltified, write out base object first. */
-	if (e->delta && !write_one(f, e->delta, offset))
-		return 0;
+	if (e->delta) {
+		e->idx.offset = 1; /* now recurse */
+		switch (write_one(f, e->delta, offset)) {
+		case WRITE_ONE_RECURSIVE:
+			/* we cannot depend on this one */
+			e->delta = NULL;
+			break;
+		default:
+			break;
+		case WRITE_ONE_BREAK:
+			e->idx.offset = recursing;
+			return WRITE_ONE_BREAK;
+		}
+	}
 
 	e->idx.offset = *offset;
 	size = write_object(f, e, *offset);
 	if (!size) {
-		e->idx.offset = 0;
-		return 0;
+		e->idx.offset = recursing;
+		return WRITE_ONE_BREAK;
 	}
 	written_list[nr_written++] = &e->idx;
 
@@ -435,7 +466,7 @@ static int write_one(struct sha1file *f,
 	if (signed_add_overflows(*offset, size))
 		die("pack too large for current definition of off_t");
 	*offset += size;
-	return 1;
+	return WRITE_ONE_WRITTEN;
 }
 
 static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
@@ -454,8 +485,8 @@ static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
 	return 0;
 }
 
-static void add_to_write_order(struct object_entry **wo,
-			       int *endp,
+static inline void add_to_write_order(struct object_entry **wo,
+			       unsigned int *endp,
 			       struct object_entry *e)
 {
 	if (e->filled)
@@ -465,32 +496,62 @@ static void add_to_write_order(struct object_entry **wo,
 }
 
 static void add_descendants_to_write_order(struct object_entry **wo,
-					   int *endp,
+					   unsigned int *endp,
 					   struct object_entry *e)
 {
-	struct object_entry *child;
-
-	for (child = e->delta_child; child; child = child->delta_sibling)
-		add_to_write_order(wo, endp, child);
-	for (child = e->delta_child; child; child = child->delta_sibling)
-		add_descendants_to_write_order(wo, endp, child);
+	int add_to_order = 1;
+	while (e) {
+		if (add_to_order) {
+			struct object_entry *s;
+			/* add this node... */
+			add_to_write_order(wo, endp, e);
+			/* all its siblings... */
+			for (s = e->delta_sibling; s; s = s->delta_sibling) {
+				add_to_write_order(wo, endp, s);
+			}
+		}
+		/* drop down a level to add left subtree nodes if possible */
+		if (e->delta_child) {
+			add_to_order = 1;
+			e = e->delta_child;
+		} else {
+			add_to_order = 0;
+			/* our sibling might have some children, it is next */
+			if (e->delta_sibling) {
+				e = e->delta_sibling;
+				continue;
+			}
+			/* go back to our parent node */
+			e = e->delta;
+			while (e && !e->delta_sibling) {
+				/* we're on the right side of a subtree, keep
+				 * going up until we can go right again */
+				e = e->delta;
+			}
+			if (!e) {
+				/* done- we hit our original root node */
+				return;
+			}
+			/* pass it off to sibling at this level */
+			e = e->delta_sibling;
+		}
+	};
 }
 
 static void add_family_to_write_order(struct object_entry **wo,
-				      int *endp,
+				      unsigned int *endp,
 				      struct object_entry *e)
 {
 	struct object_entry *root;
 
 	for (root = e; root->delta; root = root->delta)
 		; /* nothing */
-	add_to_write_order(wo, endp, root);
 	add_descendants_to_write_order(wo, endp, root);
 }
 
 static struct object_entry **compute_write_order(void)
 {
-	int i, wo_end;
+	unsigned int i, wo_end, last_untagged;
 
 	struct object_entry **wo = xmalloc(nr_objects * sizeof(*wo));
 
@@ -506,8 +567,8 @@ static struct object_entry **compute_write_order(void)
 	 * Make sure delta_sibling is sorted in the original
 	 * recency order.
 	 */
-	for (i = nr_objects - 1; 0 <= i; i--) {
-		struct object_entry *e = &objects[i];
+	for (i = nr_objects; i > 0;) {
+		struct object_entry *e = &objects[--i];
 		if (!e->delta)
 			continue;
 		/* Mark me as the first child */
@@ -521,7 +582,7 @@ static struct object_entry **compute_write_order(void)
 	for_each_tag_ref(mark_tagged, NULL);
 
 	/*
-	 * Give the commits in the original recency order until
+	 * Give the objects in the original recency order until
 	 * we see a tagged tip.
 	 */
 	for (i = wo_end = 0; i < nr_objects; i++) {
@@ -529,6 +590,7 @@ static struct object_entry **compute_write_order(void)
 			break;
 		add_to_write_order(wo, &wo_end, &objects[i]);
 	}
+	last_untagged = i;
 
 	/*
 	 * Then fill all the tagged tips.
@@ -541,7 +603,7 @@ static struct object_entry **compute_write_order(void)
 	/*
 	 * And then all remaining commits and tags.
 	 */
-	for (i = 0; i < nr_objects; i++) {
+	for (i = last_untagged; i < nr_objects; i++) {
 		if (objects[i].type != OBJ_COMMIT &&
 		    objects[i].type != OBJ_TAG)
 			continue;
@@ -551,7 +613,7 @@ static struct object_entry **compute_write_order(void)
 	/*
 	 * And then all the trees.
 	 */
-	for (i = 0; i < nr_objects; i++) {
+	for (i = last_untagged; i < nr_objects; i++) {
 		if (objects[i].type != OBJ_TREE)
 			continue;
 		add_to_write_order(wo, &wo_end, &objects[i]);
@@ -560,8 +622,13 @@ static struct object_entry **compute_write_order(void)
 	/*
 	 * Finally all the rest in really tight order
 	 */
-	for (i = 0; i < nr_objects; i++)
-		add_family_to_write_order(wo, &wo_end, &objects[i]);
+	for (i = last_untagged; i < nr_objects; i++) {
+		if (!objects[i].filled)
+			add_family_to_write_order(wo, &wo_end, &objects[i]);
+	}
+
+	if (wo_end != nr_objects)
+		die("ordered %u objects, expected %"PRIu32, wo_end, nr_objects);
 
 	return wo;
 }
@@ -604,7 +671,7 @@ static void write_pack_file(void)
 		nr_written = 0;
 		for (; i < nr_objects; i++) {
 			struct object_entry *e = write_order[i];
-			if (!write_one(f, e, &offset))
+			if (write_one(f, e, &offset) == WRITE_ONE_BREAK)
 				break;
 			display_progress(progress_state, written);
 		}
@@ -979,7 +1046,7 @@ static void add_pbase_object(struct tree_desc *tree,
 	while (tree_entry(tree,&entry)) {
 		if (S_ISGITLINK(entry.mode))
 			continue;
-		cmp = tree_entry_len(entry.path, entry.sha1) != cmplen ? 1 :
+		cmp = tree_entry_len(&entry) != cmplen ? 1 :
 		      memcmp(name, entry.path, cmplen);
 		if (cmp > 0)
 			continue;

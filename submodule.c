@@ -391,7 +391,7 @@ static void commit_need_pushing(struct commit *commit, struct commit_list *paren
 	rev.diffopt.format_callback_data = needs_pushing;
 	diff_tree_combined(commit->object.sha1, parents, n, 1, &rev);
 
-	free(parents);
+	free((void *)parents);
 }
 
 int check_submodule_needs_pushing(unsigned char new_sha1[20], const char *remotes_name)
@@ -689,7 +689,7 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 	cp.out = -1;
 	cp.dir = path;
 	if (start_command(&cp))
-		die("Could not run git status --porcelain");
+		die("Could not run 'git status --porcelain' in submodule %s", path);
 
 	len = strbuf_read(&buf, cp.out, 1024);
 	line = buf.buf;
@@ -714,7 +714,7 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 	close(cp.out);
 
 	if (finish_command(&cp))
-		die("git status --porcelain failed");
+		die("'git status --porcelain' failed in submodule %s", path);
 
 	strbuf_release(&buf);
 	return dirty_submodule;

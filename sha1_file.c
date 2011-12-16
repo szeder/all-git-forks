@@ -1267,7 +1267,8 @@ unsigned long unpack_object_header_buffer(const unsigned char *buf,
 	while (c & 0x80) {
 		if (len <= used || bitsizeof(long) <= shift) {
 			error("bad object header");
-			return 0;
+			size = used = 0;
+			break;
 		}
 		c = buf[used++];
 		size += (c & 0x7f) << shift;
@@ -2616,7 +2617,7 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 	if ((type == OBJ_BLOB) && path) {
 		struct strbuf nbuf = STRBUF_INIT;
 		if (convert_to_git(path, buf, size, &nbuf,
-		                   write_object ? safe_crlf : 0)) {
+				   write_object ? safe_crlf : SAFE_CRLF_FALSE)) {
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;
 		}

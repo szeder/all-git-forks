@@ -57,8 +57,8 @@ all::
 #
 # Define NO_STRLCPY if you don't have strlcpy.
 #
-# Define NO_STRTOUMAX if you don't have strtoumax in the C library.
-# If your compiler also does not support long long or does not have
+# Define NO_STRTOUMAX if you don't have both strtoimax and strtoumax in the
+# C library. If your compiler also does not support long long or does not have
 # strtoull, define NO_STRTOULL.
 #
 # Define NO_SETENV if you don't have setenv in the C library.
@@ -249,6 +249,12 @@ all::
 #   DEFAULT_EDITOR='~/bin/vi',
 #   DEFAULT_EDITOR='$GIT_FALLBACK_EDITOR',
 #   DEFAULT_EDITOR='"C:\Program Files\Vim\gvim.exe" --nofork'
+#
+# Define COMPUTE_HEADER_DEPENDENCIES to "yes" if you want dependencies on
+# header files to be automatically computed, to avoid rebuilding objects when
+# an unrelated header file changes.  Define it to "no" to use the hard-coded
+# dependency rules.  The default is "auto", which means to use computed header
+# dependencies if your compiler is detected to support it.
 #
 # Define CHECK_HEADER_DEPENDENCIES to check for problems in the hard-coded
 # dependency rules.
@@ -515,9 +521,10 @@ LIB_H += compat/mingw.h
 LIB_H += compat/obstack.h
 LIB_H += compat/win32/pthread.h
 LIB_H += compat/win32/syslog.h
-LIB_H += compat/win32/sys/poll.h
+LIB_H += compat/win32/poll.h
 LIB_H += compat/win32/dirent.h
 LIB_H += connected.h
+LIB_H += convert.h
 LIB_H += csum-file.h
 LIB_H += decorate.h
 LIB_H += delta.h
@@ -525,9 +532,11 @@ LIB_H += diffcore.h
 LIB_H += diff.h
 LIB_H += dir.h
 LIB_H += exec_cmd.h
+LIB_H += fmt-merge-msg.h
 LIB_H += fsck.h
 LIB_H += gettext.h
 LIB_H += git-compat-util.h
+LIB_H += gpg-interface.h
 LIB_H += graph.h
 LIB_H += grep.h
 LIB_H += hash.h
@@ -621,6 +630,7 @@ LIB_OBJS += entry.o
 LIB_OBJS += environment.o
 LIB_OBJS += exec_cmd.o
 LIB_OBJS += fsck.o
+LIB_OBJS += gpg-interface.o
 LIB_OBJS += graph.o
 LIB_OBJS += grep.o
 LIB_OBJS += hash.o
@@ -1088,6 +1098,7 @@ ifeq ($(uname_S),Windows)
 	NO_PREAD = YesPlease
 	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
+	NO_SYS_POLL_H = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NO_IPV6 = YesPlease
 	NO_SETENV = YesPlease
@@ -1126,7 +1137,7 @@ ifeq ($(uname_S),Windows)
 	BASIC_CFLAGS = -nologo -I. -I../zlib -Icompat/vcbuild -Icompat/vcbuild/include -DWIN32 -D_CONSOLE -DHAVE_STRING_H -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE
 	COMPAT_OBJS = compat/msvc.o compat/winansi.o \
 		compat/win32/pthread.o compat/win32/syslog.o \
-		compat/win32/sys/poll.o compat/win32/dirent.o
+		compat/win32/poll.o compat/win32/dirent.o
 	COMPAT_CFLAGS = -D__USE_MINGW_ACCESS -DNOGDI -DHAVE_STRING_H -DHAVE_ALLOCA_H -Icompat -Icompat/regex -Icompat/win32 -DSTRIP_EXTENSION=\".exe\"
 	BASIC_LDFLAGS = -IGNORE:4217 -IGNORE:4049 -NOLOGO -SUBSYSTEM:CONSOLE -NODEFAULTLIB:MSVCRT.lib
 	EXTLIBS = user32.lib advapi32.lib shell32.lib wininet.lib ws2_32.lib
@@ -1181,6 +1192,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	NO_PREAD = YesPlease
 	NEEDS_CRYPTO_WITH_SSL = YesPlease
 	NO_LIBGEN_H = YesPlease
+	NO_SYS_POLL_H = YesPlease
 	NO_SYMLINK_HEAD = YesPlease
 	NO_SETENV = YesPlease
 	NO_UNSETENV = YesPlease
@@ -1214,7 +1226,7 @@ ifneq (,$(findstring MINGW,$(uname_S)))
 	COMPAT_CFLAGS += -DSTRIP_EXTENSION=\".exe\"
 	COMPAT_OBJS += compat/mingw.o compat/winansi.o \
 		compat/win32/pthread.o compat/win32/syslog.o \
-		compat/win32/sys/poll.o compat/win32/dirent.o
+		compat/win32/poll.o compat/win32/dirent.o
 	EXTLIBS += -lws2_32
 	PTHREAD_LIBS =
 	X = .exe
@@ -1243,21 +1255,32 @@ endif
 endif
 
 ifdef CHECK_HEADER_DEPENDENCIES
-COMPUTE_HEADER_DEPENDENCIES =
+COMPUTE_HEADER_DEPENDENCIES = no
 USE_COMPUTED_HEADER_DEPENDENCIES =
-else
+endif
+
 ifndef COMPUTE_HEADER_DEPENDENCIES
+COMPUTE_HEADER_DEPENDENCIES = auto
+endif
+
+ifeq ($(COMPUTE_HEADER_DEPENDENCIES),auto)
 dep_check = $(shell $(CC) $(ALL_CFLAGS) \
 	-c -MF /dev/null -MMD -MP -x c /dev/null -o /dev/null 2>&1; \
 	echo $$?)
 ifeq ($(dep_check),0)
-COMPUTE_HEADER_DEPENDENCIES=YesPlease
-endif
+override COMPUTE_HEADER_DEPENDENCIES = yes
+else
+override COMPUTE_HEADER_DEPENDENCIES = no
 endif
 endif
 
-ifdef COMPUTE_HEADER_DEPENDENCIES
+ifeq ($(COMPUTE_HEADER_DEPENDENCIES),yes)
 USE_COMPUTED_HEADER_DEPENDENCIES = YesPlease
+else
+ifneq ($(COMPUTE_HEADER_DEPENDENCIES),no)
+$(error please set COMPUTE_HEADER_DEPENDENCIES to yes, no, or auto \
+(not "$(COMPUTE_HEADER_DEPENDENCIES)"))
+endif
 endif
 
 ifdef SANE_TOOL_PATH
@@ -1458,7 +1481,7 @@ ifdef NO_STRLCPY
 endif
 ifdef NO_STRTOUMAX
 	COMPAT_CFLAGS += -DNO_STRTOUMAX
-	COMPAT_OBJS += compat/strtoumax.o
+	COMPAT_OBJS += compat/strtoumax.o compat/strtoimax.o
 endif
 ifdef NO_STRTOULL
 	COMPAT_CFLAGS += -DNO_STRTOULL
@@ -1904,7 +1927,7 @@ OBJECTS := $(GIT_OBJS) $(XDIFF_OBJS) $(VCSSVN_OBJS)
 dep_files := $(foreach f,$(OBJECTS),$(dir $f).depend/$(notdir $f).d)
 dep_dirs := $(addsuffix .depend,$(sort $(dir $(OBJECTS))))
 
-ifdef COMPUTE_HEADER_DEPENDENCIES
+ifeq ($(COMPUTE_HEADER_DEPENDENCIES),yes)
 $(dep_dirs):
 	@mkdir -p $@
 
@@ -1917,7 +1940,7 @@ Please unset CHECK_HEADER_DEPENDENCIES and try again)
 endif
 endif
 
-ifndef COMPUTE_HEADER_DEPENDENCIES
+ifneq ($(COMPUTE_HEADER_DEPENDENCIES),yes)
 ifndef CHECK_HEADER_DEPENDENCIES
 dep_dirs =
 missing_dep_dirs =
@@ -2007,13 +2030,13 @@ builtin/branch.o builtin/checkout.o builtin/clone.o builtin/reset.o branch.o tra
 builtin/bundle.o bundle.o transport.o: bundle.h
 builtin/bisect--helper.o builtin/rev-list.o bisect.o: bisect.h
 builtin/clone.o builtin/fetch-pack.o transport.o: fetch-pack.h
-builtin/grep.o builtin/pack-objects.o transport-helper.o: thread-utils.h
+builtin/grep.o builtin/pack-objects.o transport-helper.o thread-utils.o: thread-utils.h
 builtin/send-pack.o transport.o: send-pack.h
 builtin/log.o builtin/shortlog.o: shortlog.h
 builtin/prune.o builtin/reflog.o reachable.o: reachable.h
 builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
 builtin/tar-tree.o archive-tar.o: tar.h
-connect.o transport.o http-backend.o: url.h
+connect.o transport.o url.o http-backend.o: url.h
 http-fetch.o http-walker.o remote-curl.o transport.o walker.o: walker.h
 http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
 

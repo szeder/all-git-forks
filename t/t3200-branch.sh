@@ -75,6 +75,11 @@ test_expect_success \
         git branch l'
 
 test_expect_success \
+    'git branch -m dumps usage' \
+       'test_expect_code 129 git branch -m 2>err &&
+	grep "[Uu]sage: git branch" err'
+
+test_expect_success \
     'git branch -m m m/m should work' \
        'git branch -l m &&
         git branch -m m m/m &&
@@ -108,6 +113,22 @@ test_expect_success 'git branch -M baz bam should succeed when baz is checked ou
 	git checkout -b baz &&
 	git branch bam &&
 	git branch -M baz bam
+'
+
+test_expect_success 'git branch -M master should work when master is checked out' '
+	git checkout master &&
+	git branch -M master
+'
+
+test_expect_success 'git branch -M master master should work when master is checked out' '
+	git checkout master &&
+	git branch -M master master
+'
+
+test_expect_success 'git branch -M master2 master2 should work when master is checked out' '
+	git checkout master &&
+	git branch master2 &&
+	git branch -M master2 master2
 '
 
 test_expect_success 'git branch -v -d t should work' '
