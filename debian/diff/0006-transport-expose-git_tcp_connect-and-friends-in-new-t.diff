@@ -1,7 +1,7 @@
-From f76fa12ca21442c0ecdf4d2373dbf4cebdc6213b Mon Sep 17 00:00:00 2001
+From dea7de629ed424cc8601fb7876f31d08a49a2bae Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: [PATCH 09/17] transport: expose git_tcp_connect and friends in new
+Subject: [PATCH 06/14] transport: expose git_tcp_connect and friends in new
  tcp.h
 
 As preparation for adding functionality to them, move the functions
@@ -19,7 +19,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index 67666cb..fe0bdc1 100644
+index 3139c19..0bf96aa 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -683,6 +683,7 @@ LIB_OBJS += string-list.o
@@ -30,7 +30,7 @@ index 67666cb..fe0bdc1 100644
  LIB_OBJS += trace.o
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
-@@ -2005,6 +2006,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2014,6 +2015,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
@@ -39,7 +39,7 @@ index 67666cb..fe0bdc1 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/connect.c b/connect.c
-index ee1d4b4..9dafcc8 100644
+index 51990fa..09d47d9 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -5,6 +5,7 @@
@@ -606,5 +606,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.7.2
+1.7.7.1
 

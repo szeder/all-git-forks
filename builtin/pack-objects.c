@@ -840,6 +840,10 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
 			if (!found_pack) {
+				if (!is_pack_valid(p)) {
+					warning("packfile %s cannot be accessed", p->pack_name);
+					continue;
+				}
 				found_offset = offset;
 				found_pack = p;
 			}
@@ -2109,7 +2113,9 @@ static void show_commit(struct commit *commit, void *data)
 	commit->object.flags |= OBJECT_ADDED;
 }
 
-static void show_object(struct object *obj, const struct name_path *path, const char *last)
+static void show_object(struct object *obj,
+			const struct name_path *path, const char *last,
+			void *data)
 {
 	char *name = path_name(path, last);
 

@@ -1,7 +1,7 @@
-From 93c329dab1c4b5b2ae1c8e100ef1188efb838984 Mon Sep 17 00:00:00 2001
+From 988a31f648858d8464498533fd5060607d9dbadd Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: [PATCH 11/17] daemon: move locate_host to tcp.c
+Subject: [PATCH 08/14] daemon: move locate_host to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -15,10 +15,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index fe0bdc1..5b5ad15 100644
+index 0bf96aa..82e73ad 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2006,7 +2006,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2015,7 +2015,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o http-backend.o: url.h
@@ -28,7 +28,7 @@ index fe0bdc1..5b5ad15 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/daemon.c b/daemon.c
-index 3958cb6..15f95d5 100644
+index ca13442..8179a76 100644
 --- a/daemon.c
 +++ b/daemon.c
 @@ -1,14 +1,11 @@
@@ -47,7 +47,7 @@ index 3958cb6..15f95d5 100644
  #ifndef NI_MAXSERV
  #define NI_MAXSERV 32
  #endif
-@@ -432,65 +429,6 @@ static void parse_host_and_port(char *hostport, char **host,
+@@ -441,65 +438,6 @@ static void parse_host_and_port(char *hostport, char **host,
  	}
  }
  
@@ -113,7 +113,7 @@ index 3958cb6..15f95d5 100644
  /*
   * Read the host as supplied by the client connection.
   */
-@@ -530,7 +468,7 @@ static void parse_host_arg(char *extra_args, int buflen)
+@@ -539,7 +477,7 @@ static void parse_host_arg(char *extra_args, int buflen)
  	 * if possible.
  	 */
  	if (hostname)
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.7.2
+1.7.7.1
 

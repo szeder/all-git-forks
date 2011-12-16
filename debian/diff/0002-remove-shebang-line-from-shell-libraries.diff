@@ -1,7 +1,7 @@
-From 17c62e9b2e3c66a2646e168b3470395c7cf6cdfe Mon Sep 17 00:00:00 2001
+From 452ae0b2e22082f19928dc9c851c194e3ea06d41 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:29:59 -0600
-Subject: [PATCH 05/17] remove shebang line from shell libraries
+Subject: [PATCH 02/14] remove shebang line from shell libraries
 
 As v1.7.0-rc1~9 (2009-11-25) explained, even if a script is expected
 to be sourced instead of executed on its own, the #!/bin/sh line
@@ -45,7 +45,7 @@ index b24119d..0be785b 100644
  GIT_DIR=$(git rev-parse -q --git-dir) || :;
  
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 8e427da..836ff78 100644
+index 1fba6c2..84b670e 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@
@@ -62,5 +62,5 @@ index 8e427da..836ff78 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 -- 
-1.7.7.2
+1.7.7.1
 

@@ -1,8 +1,30 @@
-git (1:1.7.7.5-0.1) unstable; urgency=low
+git (1:1.7.8~rc3-1.1) unstable; urgency=low
 
   * new upstream point release.
+  * merge branch debian-experimental.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 16 Dec 2011 05:10:08 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 16 Dec 2011 05:26:57 -0600
+
+git (1:1.7.8~rc3-1) experimental; urgency=low
+
+  * new upstream release candidate.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 18 Nov 2011 04:09:51 -0600
+
+git (1:1.7.8~rc2-1) experimental; urgency=low
+
+  [ Jonathan Nieder ]
+  * new upstream release candidate.
+  * merge branch debian-sid.
+  * update debian/copyright.
+  * debian/git.preinst: replace hard links to /usr/lib/git-core/git with
+    symlinks before upgrading from git <= 1:1.7.7-1 (thx Antti Kultanen;
+    closes: #645009).
+
+  [ Gerrit Pape ]
+  * merge branch debian-sid.
+
+ -- Gerrit Pape <pape@smarden.org>  Wed, 16 Nov 2011 09:55:47 +0000
 
 git (1:1.7.7.3-1) unstable; urgency=low
 
@@ -21,6 +43,15 @@ git (1:1.7.7.2-1) unstable; urgency=low
     (including hardening options).  Build-Depends: dpkg-dev (>= 1.15.7).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 01 Nov 2011 23:41:55 -0500
+
+git (1:1.7.8~rc0-1) experimental; urgency=low
+
+  * merge branch debian-sid.
+  * new upstream release candidate.
+    * debian/diff/0001-...diff, 0002-...diff, 0003-...diff: remove;
+      applied upstream (thx Jonathan Nieder).
+
+ -- Gerrit Pape <pape@smarden.org>  Mon, 31 Oct 2011 09:45:53 +0000
 
 git (1:1.7.7.1-1) unstable; urgency=low
 
