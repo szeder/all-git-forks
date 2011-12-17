@@ -4,14 +4,16 @@ use strict;
 use warnings;
 use IO::Pty;
 use File::Copy;
+use POSIX ();
 
-# Run @$argv in the background with stdio redirected to $out and $err.
+# Run @$argv in the background with stdio redirected from $in and to $out and $err.
 sub start_child {
-	my ($argv, $out, $err) = @_;
+	my ($argv, $in, $out, $err) = @_;
 	my $pid = fork;
 	if (not defined $pid) {
 		die "fork failed: $!"
 	} elsif ($pid == 0) {
+		open STDIN, "<&", $in;
 		open STDOUT, ">&", $out;
 		open STDERR, ">&", $err;
 		close $out;
@@ -64,13 +66,31 @@ sub copy_stdio {
 		or exit 1;
 }
 
+sub set_default_eof_char {
+	my $fd = fileno shift;
+	my $termios = POSIX::Termios->new;
+	$termios->getattr($fd);
+	$termios->setcc(&POSIX::VEOF, 4);
+	$termios->setattr($fd, &POSIX::TCSANOW)
+		or die "Termios::setattr failed: $!";
+}
+
 if ($#ARGV < 1) {
 	die "usage: test-terminal program args";
 }
+my $master_in = new IO::Pty;
 my $master_out = new IO::Pty;
 my $master_err = new IO::Pty;
-my $pid = start_child(\@ARGV, $master_out->slave, $master_err->slave);
+$master_out->set_raw();
+$master_err->set_raw();
+$master_out->slave->set_raw();
+$master_err->slave->set_raw();
+set_default_eof_char($master_in->slave);
+my $pid = start_child(\@ARGV, $master_in->slave, $master_out->slave, $master_err->slave);
+close $master_in->slave;
 close $master_out->slave;
 close $master_err->slave;
+print $master_in "\cD";
 copy_stdio($master_out, $master_err);
+close $master_in;
 exit(finish_child($pid));
