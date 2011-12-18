@@ -1882,7 +1882,7 @@ int for_each_recent_reflog_ent(const char *refname, each_reflog_ent_fn fn, long 
 
 		/* old SP new SP name <email> SP time TAB msg LF */
 		if (sb.len < 83 || sb.buf[sb.len - 1] != '\n' ||
-		    get_sha1_hex(sb.buf, osha1) || sb.buf[40] != ' ' ||
+		    get_sha1_hex(sb.buf, osha1) || sb.buf[(HASH_OCTETS*2)] != ' ' ||
 		    get_sha1_hex(sb.buf + 41, nsha1) || sb.buf[81] != ' ' ||
 		    !(email_end = strchr(sb.buf + 82, '>')) ||
 		    email_end[1] != ' ' ||

@@ -2736,8 +2736,8 @@ static int apply_binary(struct image *img, struct patch *patch)
 	 * For safety, we require patch index line to contain
 	 * full 40-byte textual SHA1 for old and new, at least for now.
 	 */
-	if (strlen(patch->old_sha1_prefix) != 40 ||
-	    strlen(patch->new_sha1_prefix) != 40 ||
+	if (strlen(patch->old_sha1_prefix) != (HASH_OCTETS*2) ||
+	    strlen(patch->new_sha1_prefix) != (HASH_OCTETS*2) ||
 	    get_sha1_hex(patch->old_sha1_prefix, sha1) ||
 	    get_sha1_hex(patch->new_sha1_prefix, sha1))
 		return error("cannot apply binary patch to '%s' "

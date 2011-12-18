@@ -2117,7 +2117,7 @@ static void construct_path_with_fanout(const char *hex_sha1,
 		path[i++] = '/';
 		fanout--;
 	}
-	memcpy(path + i, hex_sha1 + j, 40 - j);
+	memcpy(path + i, hex_sha1 + j, (HASH_OCTETS*2) - j);
 	path[i + 40 - j] = '\0';
 }
 
@@ -2148,7 +2148,7 @@ static uintmax_t do_change_note_fanout(
 		 * of 2 chars.
 		 */
 		if (!e->versions[1].mode ||
-		    tmp_hex_sha1_len > 40 ||
+		    tmp_hex_sha1_len > (HASH_OCTETS*2) ||
 		    e->name->str_len % 2)
 			continue;
 
@@ -2162,7 +2162,7 @@ static uintmax_t do_change_note_fanout(
 		tmp_fullpath_len += e->name->str_len;
 		fullpath[tmp_fullpath_len] = '\0';
 
-		if (tmp_hex_sha1_len == 40 && !get_sha1_hex(hex_sha1, sha1)) {
+		if (tmp_hex_sha1_len == (HASH_OCTETS*2) && !get_sha1_hex(hex_sha1, sha1)) {
 			/* This is a note entry */
 			if (fanout == 0xff) {
 				/* Counting mode, no rename */
@@ -2201,7 +2201,7 @@ static uintmax_t do_change_note_fanout(
 static uintmax_t change_note_fanout(struct tree_entry *root,
 		unsigned char fanout)
 {
-	char hex_sha1[40], path[60];
+	char hex_sha1[(HASH_OCTETS*2)], path[60];
 	return do_change_note_fanout(root, root, hex_sha1, 0, path, 0, fanout);
 }
 

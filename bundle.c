@@ -378,7 +378,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 		}
 
 		ref_count++;
-		write_or_die(bundle_fd, sha1_to_hex(e->item->sha1), 40);
+		write_or_die(bundle_fd, sha1_to_hex(e->item->sha1), (HASH_OCTETS*2));
 		write_or_die(bundle_fd, " ", 1);
 		write_or_die(bundle_fd, display_ref, strlen(display_ref));
 		write_or_die(bundle_fd, "\n", 1);
@@ -416,7 +416,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 		struct object *object = revs.pending.objects[i].item;
 		if (object->flags & UNINTERESTING)
 			write_or_die(rls.in, "^", 1);
-		write_or_die(rls.in, sha1_to_hex(object->sha1), 40);
+		write_or_die(rls.in, sha1_to_hex(object->sha1), (HASH_OCTETS*2));
 		write_or_die(rls.in, "\n", 1);
 	}
 	close(rls.in);

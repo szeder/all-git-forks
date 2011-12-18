@@ -469,7 +469,7 @@ static int pick_rref(int sha1_only, const char *rref, const char *ls_remote_resu
 			    !memcmp(lrr->name, rref, rreflen)) {
 				if (!lrr->shown)
 					printf("%.*s\n",
-					       sha1_only ? 40 : lrr->namelen + 41,
+					       sha1_only ? (HASH_OCTETS*2) : lrr->namelen + 41,
 					       lrr->line);
 				lrr->shown = 1;
 				break;

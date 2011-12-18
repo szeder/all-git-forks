@@ -804,7 +804,7 @@ static int open_packed_git_1(struct packed_git *p)
 		return error("end of packfile %s is unavailable", p->pack_name);
 	if (read_in_full(p->pack_fd, sha1, sizeof(sha1)) != sizeof(sha1))
 		return error("packfile %s signature is unavailable", p->pack_name);
-	idx_sha1 = ((unsigned char *)p->index_data) + p->index_size - 40;
+	idx_sha1 = ((unsigned char *)p->index_data) + p->index_size - (HASH_OCTETS*2);
 	if (hashcmp(sha1, idx_sha1))
 		return error("packfile %s does not match index", p->pack_name);
 	return 0;
@@ -961,7 +961,7 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	p->pack_size = st.st_size;
 	p->pack_local = local;
 	p->mtime = st.st_mtime;
-	if (path_len < 40 || get_sha1_hex(path + path_len - 40, p->sha1))
+	if (path_len < 40 || get_sha1_hex(path + path_len - (HASH_OCTETS*2), p->sha1))
 		hashclr(p->sha1);
 	return p;
 }

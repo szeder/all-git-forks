@@ -526,7 +526,7 @@ static void check_non_tip(void)
 			continue;
 		if (!(o->flags & OUR_REF))
 			continue;
-		memcpy(namebuf + 1, sha1_to_hex(o->sha1), 40);
+		memcpy(namebuf + 1, sha1_to_hex(o->sha1), (HASH_OCTETS*2));
 		if (write_in_full(cmd.in, namebuf, 42) < 0)
 			goto error;
 	}
@@ -535,7 +535,7 @@ static void check_non_tip(void)
 		o = want_obj.objects[i].item;
 		if (o->flags & OUR_REF)
 			continue;
-		memcpy(namebuf, sha1_to_hex(o->sha1), 40);
+		memcpy(namebuf, sha1_to_hex(o->sha1), (HASH_OCTETS*2));
 		if (write_in_full(cmd.in, namebuf, 41) < 0)
 			goto error;
 	}

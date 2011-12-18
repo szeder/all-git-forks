@@ -188,7 +188,7 @@ static void name_rev_line(char *p, struct name_ref_data *data)
 			forty = 0;
 		else if (++forty == 40 &&
 			 !ishex(*(p+1))) {
-			unsigned char sha1[40];
+			unsigned char sha1[(HASH_OCTETS*2)];
 			const char *name = NULL;
 			char c = *(p+1);
 			int p_len = p - p_start + 1;

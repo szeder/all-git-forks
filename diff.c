@@ -4111,8 +4111,8 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 
 		if (diff_filespec_is_binary(p->one) ||
 		    diff_filespec_is_binary(p->two)) {
-			git_HASH_Update(&ctx, sha1_to_hex(p->one->sha1), 40);
-			git_HASH_Update(&ctx, sha1_to_hex(p->two->sha1), 40);
+			git_HASH_Update(&ctx, sha1_to_hex(p->one->sha1), (HASH_OCTETS*2));
+			git_HASH_Update(&ctx, sha1_to_hex(p->two->sha1), (HASH_OCTETS*2));
 			continue;
 		}
 

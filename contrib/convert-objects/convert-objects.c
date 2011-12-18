@@ -61,7 +61,7 @@ static void convert_ascii_sha1(void *buffer)
 	if (get_sha1_hex(buffer, sha1))
 		die("expected sha1, got '%s'", (char *) buffer);
 	entry = convert_entry(sha1);
-	memcpy(buffer, sha1_to_hex(entry->new_sha1), 40);
+	memcpy(buffer, sha1_to_hex(entry->new_sha1), (HASH_OCTETS*2));
 }
 
 static unsigned int convert_mode(unsigned int mode)

@@ -359,7 +359,7 @@ static void read_index_info(int line_termination)
 			ptr = tab + 1; /* point at the head of path */
 		}
 
-		if (get_sha1_hex(tab - 40, sha1) || tab[-41] != ' ')
+		if (get_sha1_hex(tab - (HASH_OCTETS*2), sha1) || tab[-41] != ' ')
 			goto bad_line;
 
 		path_name = ptr;

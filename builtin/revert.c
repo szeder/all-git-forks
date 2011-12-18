@@ -716,7 +716,7 @@ static int format_todo(struct strbuf *buf, struct commit_list *todo_list,
 static struct commit *parse_insn_line(char *start, struct replay_opts *opts)
 {
 	unsigned char commit_sha1[HASH_OCTETS];
-	char sha1_abbrev[40];
+	char sha1_abbrev[(HASH_OCTETS*2)];
 	enum replay_action action;
 	int insn_len = 0;
 	char *p, *q;
@@ -937,7 +937,7 @@ static int sequencer_rollback(struct replay_opts *opts)
 		goto fail;
 	}
 	fclose(f);
-	if (get_sha1_hex(buf.buf, sha1) || buf.buf[40] != '\0') {
+	if (get_sha1_hex(buf.buf, sha1) || buf.buf[(HASH_OCTETS*2)] != '\0') {
 		error(_("stored pre-cherry-pick HEAD file '%s' is corrupt"),
 			filename);
 		goto fail;

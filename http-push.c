@@ -800,7 +800,7 @@ static void handle_new_lock_ctx(struct xml_ctx *ctx, int tag_closed)
 			git_HASH_Final(lock_token_sha1, &sha_ctx);
 
 			lock->tmpfile_suffix[0] = '_';
-			memcpy(lock->tmpfile_suffix + 1, sha1_to_hex(lock_token_sha1), 40);
+			memcpy(lock->tmpfile_suffix + 1, sha1_to_hex(lock_token_sha1), (HASH_OCTETS*2));
 		}
 	}
 }

@@ -73,7 +73,7 @@ struct ref **get_remote_heads(int in, struct ref **list,
 		if (len > 4 && !prefixcmp(buffer, "ERR "))
 			die("remote error: %s", buffer + 4);
 
-		if (len < 42 || get_sha1_hex(buffer, old_sha1) || buffer[40] != ' ')
+		if (len < 42 || get_sha1_hex(buffer, old_sha1) || buffer[(HASH_OCTETS*2)] != ' ')
 			die("protocol error: expected sha/ref, got '%s'", buffer);
 		name = buffer + 41;
 

@@ -42,7 +42,7 @@ int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
 
 	commit[40] = '\n';
 	do {
-		memcpy(commit, sha1_to_hex(sha1), 40);
+		memcpy(commit, sha1_to_hex(sha1), (HASH_OCTETS*2));
 		if (write_in_full(rev_list.in, commit, 41) < 0) {
 			if (errno != EPIPE && errno != EINVAL)
 				error(_("failed write to rev-list: %s"),

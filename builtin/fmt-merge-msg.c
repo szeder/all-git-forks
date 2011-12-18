@@ -194,7 +194,7 @@ static void shortlog(const char *name,
 	struct strbuf sb = STRBUF_INIT;
 	const unsigned char *sha1 = origin_data->sha1;
 
-	branch = deref_tag(parse_object(sha1), sha1_to_hex(sha1), 40);
+	branch = deref_tag(parse_object(sha1), sha1_to_hex(sha1), (HASH_OCTETS*2));
 	if (!branch || branch->type != OBJ_COMMIT)
 		return;
 

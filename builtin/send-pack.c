@@ -22,7 +22,7 @@ static int feed_object(const unsigned char *sha1, int fd, int negative)
 	if (negative && !has_sha1_file(sha1))
 		return 1;
 
-	memcpy(buf + negative, sha1_to_hex(sha1), 40);
+	memcpy(buf + negative, sha1_to_hex(sha1), (HASH_OCTETS*2));
 	if (negative)
 		buf[0] = '^';
 	buf[40 + negative] = '\n';

@@ -426,7 +426,7 @@ static int expire_reflog(const char *ref, const unsigned char *sha1, int unused,
 			unlink(newlog_path);
 		} else if (cmd->updateref &&
 			(write_in_full(lock->lock_fd,
-				sha1_to_hex(cb.last_kept_sha1), 40) != 40 ||
+				sha1_to_hex(cb.last_kept_sha1), 40) != (HASH_OCTETS*2) ||
 			 write_str_in_full(lock->lock_fd, "\n") != 1 ||
 			 close_ref(lock) < 0)) {
 			status |= error("Couldn't write %s",

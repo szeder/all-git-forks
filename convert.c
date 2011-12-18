@@ -632,7 +632,7 @@ static int ident_to_worktree(const char *path, const char *src, size_t len,
 
 		/* step 4: substitute */
 		strbuf_addstr(buf, "Id: ");
-		strbuf_add(buf, sha1_to_hex(sha1), 40);
+		strbuf_add(buf, sha1_to_hex(sha1), (HASH_OCTETS*2));
 		strbuf_addstr(buf, " $");
 	}
 	strbuf_add(buf, src, len);

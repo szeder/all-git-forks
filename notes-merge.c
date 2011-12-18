@@ -23,7 +23,7 @@ void init_notes_merge_options(struct notes_merge_options *o)
 
 static int path_to_sha1(const char *path, unsigned char *sha1)
 {
-	char hex_sha1[40];
+	char hex_sha1[(HASH_OCTETS*2)];
 	int i = 0;
 	while (*path && i < 40) {
 		if (*path != '/')

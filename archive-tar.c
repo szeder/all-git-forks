@@ -217,7 +217,7 @@ static int write_global_extended_header(struct archiver_args *args)
 	struct strbuf ext_header = STRBUF_INIT;
 	int err;
 
-	strbuf_append_ext_header(&ext_header, "comment", sha1_to_hex(sha1), 40);
+	strbuf_append_ext_header(&ext_header, "comment", sha1_to_hex(sha1), (HASH_OCTETS*2));
 	err = write_tar_entry(args, NULL, NULL, 0, 0, ext_header.buf,
 			ext_header.len);
 	strbuf_release(&ext_header);
