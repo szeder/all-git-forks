@@ -46,7 +46,7 @@ static int show_diffstat = 1, option_log, squash;
 static int option_commit = 1, allow_fast_forward = 1;
 static int fast_forward_only;
 static int allow_trivial = 1, have_message;
-static struct strbuf merge_msg;
+static struct strbuf merge_msg = STRBUF_INIT;
 static struct commit_list *remoteheads;
 static unsigned char head[20], stash[20];
 static struct strategy **use_strategies;
