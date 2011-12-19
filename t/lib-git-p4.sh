@@ -72,3 +72,33 @@ kill_p4d() {
 cleanup_git() {
 	rm -rf "$git"
 }
+
+#
+# This is a handy tool when developing or debugging tests.  Use
+# it inline to pause the script, perhaps like this:
+#
+#	"$GITP4" clone ... &&
+#	(
+#		cd "$git" &&
+#		debug &&
+#		git log --oneline >lines &&
+#		...
+#
+# Go investigate when it pauses, then hit ctrl-c to continue the
+# test.  The other tests will run, and p4d will be cleaned up nicely.
+#
+# Note that the directory is deleted and created for every test run,
+# so you have to do the "cd" again.
+#
+# The continuation feature only works in shells that do not propagate
+# a child-caught ctrl-c, namely bash.  With ash, the entire test run
+# will exit on the ctrl-c.
+#
+debug() {
+	echo "*** Debug me, hit ctrl-c when done.  Useful shell commands:"
+	echo cd \"$(pwd)\"
+	echo export P4PORT=$P4PORT P4CLIENT=$P4CLIENT
+	trap "echo" INT
+	sleep $((3600 * 24 * 30))
+	trap - INT
+}
