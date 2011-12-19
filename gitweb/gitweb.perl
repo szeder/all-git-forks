@@ -14,9 +14,10 @@ use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
 use Encode;
-use Fcntl ':mode';
+use Fcntl qw/:DEFAULT :mode :flock/;
 use File::Find qw();
 use File::Basename qw(basename);
+use SDBM_File;
 use Time::HiRes qw(gettimeofday tv_interval);
 binmode STDOUT, ':utf8';
 
@@ -777,6 +778,7 @@ our %actions = (
 	"commitdiff_plain" => \&git_commitdiff_plain,
 	"commit" => \&git_commit,
 	"forks" => \&git_forks,
+        "graphlog" => \&git_graphlog,
 	"heads" => \&git_heads,
 	"history" => \&git_history,
 	"log" => \&git_log,
@@ -4039,7 +4041,7 @@ sub git_print_page_nav {
 	my ($current, $suppress, $head, $treehead, $treebase, $extra) = @_;
 	$extra = '' if !defined $extra; # pager or formats
 
-	my @navs = qw(summary shortlog log commit commitdiff tree);
+	my @navs = qw(summary shortlog log graphlog commit commitdiff tree);
 	if ($suppress) {
 		@navs = grep { $_ ne $suppress } @navs;
 	}
@@ -6786,6 +6788,146 @@ sub git_log {
 	                $hash, $hash_parent);
 }
 
+sub get_color_map {
+        my ($work_dir, $color_map) = @_;
+
+        open my $fh, "$work_dir/colorlist.txt" or die "unable to open $work_dir/colorlist.txt: $!";
+        my @colors;
+        while (<$fh>) {
+            next unless /^(\d+) (\d+) (\d+)$/o;
+            push (@colors, sprintf("#%02x%02x%02x", $1, $2, $3));
+        }
+
+        # Lock the color list since it has to exist, but the used colors map may not
+        flock($fh, LOCK_EX) or die "Cannot lock color list: $!";
+
+        tie my %used_colors, 'SDBM_File', "$work_dir/color-assignment.sdbm", O_RDWR|O_CREAT, 0644
+            or die "Tie via SDBM_File to $work_dir/color_assignment.sdbm failed: $!";
+        # process from most commits to least.
+        foreach my $w_author (sort { $color_map->{$b} <=> $color_map->{$a} } keys %$color_map) {
+            # Can't put wide characters into SDBM; hexify so no wide characters.
+            my $author = unpack("H*", $w_author);
+            if (defined $used_colors{$author}) {
+                $color_map->{$w_author} = $used_colors{$author};
+                # print "Found $w_author $author $used_colors{$author}\n";
+            } else {
+                while (1) {
+                    my $c = shift @colors;
+                    # Could re-assign colors at this point, unclear what the right behavior is.
+                    die "out of colors for authors" unless defined $c;
+                    next if defined $used_colors{"c:$c"};
+                    $color_map->{$w_author} = $used_colors{$author} = $c;
+                    $used_colors{"c:$c"} = 1;
+                    # print "New $w_author $author $c\n";
+                    last;
+                }
+            }
+        }
+        untie %used_colors or die "untie failed: $!"
+}
+
+sub git_graphlog_body {
+	my ($commitlist, $from, $to, $refs, $extra) = @_;
+
+        my $work_dir = $0;
+        $work_dir =~ s!/[^/]+$!/graphlog!o;
+        unless (defined $commitlist->[0]->{id}) {
+            print "No commits to graph\n";
+            return;
+        }
+        unless (-d $work_dir) {
+            print "No working directory for graphlog; expected $work_dir to exist.\n";
+            return;
+        }
+	$from = 0 unless defined $from;
+	$to = $#{$commitlist} if (!defined $to || $#{$commitlist} < $to);
+        my $groupname = "$commitlist->[0]->{id}.$to";
+        my $basename = "$work_dir/$groupname";
+        unless (-s "$basename.png" && -s "$basename.cmapx" && -s "$basename.dot") {
+            open my $fh, ">$basename.dot" or die "?";
+            print $fh "digraph ancestry {\n";
+            print $fh "  nodesep=0.5; ranksep=0.25;\n";
+            my %nodes;
+            my @edges;
+
+            my %color_map;
+            for (my $i = $from; $i <= $to; $i++) {
+		my %co = %{$commitlist->[$i]};
+		next if !%co;
+                ++$color_map{$co{author_name}};
+            }
+            get_color_map($work_dir, \%color_map);
+            for (my $i = $from; $i <= $to; $i++) {
+		my %co = %{$commitlist->[$i]};
+		next if !%co;
+		my $commit = $co{'id'};
+                die "dup $commit" if defined $nodes{$commit};
+                $nodes{$commit} = 1;
+                my $title_short = $co{title_short};
+                $title_short =~ s/(\W)/\\$1/go;
+                if (@{$co{parents}} > 1) {
+                    $title_short = 'Merge of ' 
+                        . join(", ", map { substr($_, 0, 8) } @{$co{parents}});;
+                }
+                my $label = sprintf("%s... %s, %s\\n%s", substr($commit, 0, 8),
+                                    $co{author_name}, $co{age_string_date}, $title_short);
+                my $key = $co{author_name};
+                die "internal" unless defined $color_map{$key};
+
+                my $href = href(action => 'commit', hash => $commit);
+                print $fh qq!    n_$co{id} [shape=Mrecord,style=filled,fillcolor="$color_map{$key}",fontname="Windsor",fontsize=9,fontcolor=black,spline=true,href="$href",label=\"$label\"];\n!;
+
+                my $x = '';
+                if ($co{title} =~ /merge/o) {
+                    $x = $co{title};
+                }
+                # print "<p>$commit: $x $color</p>\n";
+                foreach my $parent (@{$co{parents}}) {
+                    push (@edges, [$commit, $parent]);
+                }
+            }
+            foreach my $edge (@edges) {
+                next unless $nodes{$edge->[1]};
+                print $fh "     n_$edge->[0] -> n_$edge->[1];\n";
+            }
+            print $fh "}\n";
+            close($fh);
+            # -Gcharset=latin1 needed for non-ascii names, e.g. André
+            my $ret = system(qw/dot -Gcharset=latin1 -Tcmapx -o/, "$basename.cmapx",
+                             qw/-Tpng -o/, "$basename.png-new", "$basename.dot");
+            print "<b>Warning: dot on $basename failed, image may not be present.</b>" unless $ret == 0;
+            rename("$basename.png-new", "$basename.png");
+
+            opendir my $dir, $work_dir or die "opendir $work_dir failed: $!";
+            my @files = readdir($dir);
+            my ($high_water, $low_water, $min_age_days) = (1000, 500, 0.25);
+            if (@files > $high_water) {
+                @files = grep(/^[a-f0-9]{40}\.\d+/o, @files);
+                my %modify_time;
+                map { $modify_time{$_} = -M "$work_dir/$_" } @files;
+                @files = sort { $modify_time{$a} <=> $modify_time{$b} } @files;
+                while (@files > $low_water) {
+                    $_ = pop @files;
+                    last if $modify_time{$_} < $min_age_days;
+                    unlink("$work_dir/$_");
+                }
+            }
+        }
+        print <<"EOF";
+<img src="graphlog/$groupname.png" usemap="#ancestry" alt="ancestry of $commitlist->[0]->id}"/>
+EOF
+        open my $fh, "$basename.cmapx";
+        if ($fh) {
+            while (<$fh>) {
+                print;
+            }
+        }
+}
+
+sub git_graphlog {
+        git_log_generic('graphlog', \&git_graphlog_body, $hash, $hash_parent);
+}
+
 sub git_commit {
 	$hash ||= $hash_base || "HEAD";
 	my %co = parse_commit($hash)
@@ -6844,7 +6986,10 @@ sub git_commit {
 	my $refs = git_get_references();
 	my $ref = format_ref_marker($refs, $co{'id'});
 
-	git_header_html(undef, $expires);
+        git_header_html(undef, $expires);
+
+        print qq{<div style="clear: both;"></div>\n};
+	print qq{<div class="main" style="float: left;">\n};
 	git_print_page_nav('commit', '',
 	                   $hash, $co{'tree'}, $hash,
 	                   $formats_nav);
@@ -6854,6 +6999,7 @@ sub git_commit {
 	} else {
 		git_print_header_div('tree', esc_html($co{'title'}) . $ref, $co{'tree'}, $hash);
 	}
+
 	print "<div class=\"title_text\">\n" .
 	      "<table class=\"object_header\">\n";
 	git_print_authorship_rows(\%co);
@@ -6897,8 +7043,17 @@ sub git_commit {
 
 	git_difftree_body(\@difftree, $hash, @$parents);
 
+        print "</div>\n";
+        {
+            my @commitlist = parse_commits($hash, 15, 0, undef, qw/--topo-order --full-history/);
+
+            print qq{<div align="right" style="float: left; margin: 8px; border-width: 1px; border-color: #808080; border-style: solid;" >\n};
+            git_graphlog_body(\@commitlist);
+            print qq{</div><div style="clear: both;"></div>\n};
+        }
+
 	git_footer_html();
-}
+    }
 
 sub git_object {
 	# object is defined by:
@@ -7732,3 +7887,4 @@ XML
 </opml>
 XML
 }
+
