@@ -36,15 +36,15 @@ static int find_short_object_filename(int len, const char *name, unsigned char *
 		if (!dir)
 			continue;
 		while ((de = readdir(dir)) != NULL) {
-			if (strlen(de->d_name) != 38)
+			if (strlen(de->d_name) != (HASH_OCTETS*2 - 2))
 				continue;
 			if (memcmp(de->d_name, name + 2, len - 2))
 				continue;
 			if (!found) {
-				memcpy(hex + 2, de->d_name, 38);
+				memcpy(hex + 2, de->d_name, (HASH_OCTETS*2 - 2));
 				found++;
 			}
-			else if (memcmp(hex + 2, de->d_name, 38)) {
+			else if (memcmp(hex + 2, de->d_name, (HASH_OCTETS*2 - 2))) {
 				found = 2;
 				break;
 			}

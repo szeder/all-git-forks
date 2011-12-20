@@ -551,8 +551,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 					abbrev = strtoul(arg + 8, NULL, 10);
 				if (abbrev < MINIMUM_ABBREV)
 					abbrev = MINIMUM_ABBREV;
-				else if (40 <= abbrev)
-					abbrev = 40;
+				else if (HASH_OCTETS*2 <= abbrev)
+					abbrev = HASH_OCTETS*2;
 				continue;
 			}
 			if (!strcmp(arg, "--sq")) {
