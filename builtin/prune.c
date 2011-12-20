@@ -58,14 +58,14 @@ static int prune_dir(int i, char *path)
 		return 0;
 
 	while ((de = readdir(dir)) != NULL) {
-		char name[100];
+		char name[HASH_OCTETS*2 * 2 + 20];
 		unsigned char sha1[HASH_OCTETS];
 
 		if (is_dot_or_dotdot(de->d_name))
 			continue;
-		if (strlen(de->d_name) == 38) {
+		if (strlen(de->d_name) == HASH_OCTETS*2 - 2) {
 			sprintf(name, "%02x", i);
-			memcpy(name+2, de->d_name, 39);
+			memcpy(name+2, de->d_name, HASH_OCTETS*2 - 1);
 			if (get_sha1_hex(name, sha1) < 0)
 				break;
 
