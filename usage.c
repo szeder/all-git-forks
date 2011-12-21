@@ -6,45 +6,78 @@
 #include "git-compat-util.h"
 #include "cache.h"
 
+typedef void (*emit_fn)(struct strbuf *, void *);
+
+static void v_format(const char *prefix, const char *fmt, va_list params,
+		     emit_fn emit, void *cb_data)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf line = STRBUF_INIT;
+	const char *cp, *np;
+
+	strbuf_vaddf(&buf, fmt, params);
+	for (cp = buf.buf; *cp; cp = np) {
+		np = strchrnul(cp, '\n');
+		/*
+		 * TRANSLATORS: the format is designed so that in RTL
+		 * languages you could reorder and put the "prefix" at
+		 * the end instead of the beginning of a line if you
+		 * wanted to.
+		 */
+		strbuf_addf(&line,
+			    _("%s: %.*s\n"),
+			    prefix,
+			    (int)(np - cp), cp);
+		emit(&line, cb_data);
+		strbuf_reset(&line);
+		if (*np)
+			np++;
+	}
+	strbuf_release(&buf);
+	strbuf_release(&line);
+}
+
+static void emit_report(struct strbuf *line, void *cb_data)
+{
+	fprintf(stderr, "%.*s", (int)line->len, line->buf);
+}
+
 void vreportf(const char *prefix, const char *err, va_list params)
 {
-	char msg[4096];
-	vsnprintf(msg, sizeof(msg), err, params);
-	fprintf(stderr, "%s%s\n", prefix, msg);
+	v_format(prefix, err, params, emit_report, NULL);
+}
+
+static void emit_write(struct strbuf *line, void *cb_data)
+{
+	int *fd = cb_data;
+	write_in_full(*fd, line->buf, line->len);
 }
 
 void vwritef(int fd, const char *prefix, const char *err, va_list params)
 {
-	char msg[4096];
-	int len = vsnprintf(msg, sizeof(msg), err, params);
-	if (len > sizeof(msg))
-		len = sizeof(msg);
-
-	write_in_full(fd, prefix, strlen(prefix));
-	write_in_full(fd, msg, len);
-	write_in_full(fd, "\n", 1);
+	v_format(prefix, err, params, emit_write, &fd);
 }
 
 static NORETURN void usage_builtin(const char *err, va_list params)
 {
-	vreportf("usage: ", err, params);
+	vreportf("usage", err, params);
 	exit(129);
 }
 
 static NORETURN void die_builtin(const char *err, va_list params)
 {
-	vreportf("fatal: ", err, params);
+	vreportf("fatal", err, params);
 	exit(128);
 }
 
 static void error_builtin(const char *err, va_list params)
 {
-	vreportf("error: ", err, params);
+	vreportf("error", err, params);
 }
 
 static void warn_builtin(const char *warn, va_list params)
 {
-	vreportf("warning: ", warn, params);
+	vreportf("warning", warn, params);
 }
 
 /* If we are in a dlopen()ed .so write to a global variable would segfault
