@@ -196,6 +196,11 @@ static void print_helper_status(struct ref *ref)
 			msg = "up to date";
 			break;
 
+		case REF_STATUS_STALE:
+			res = "ok";
+			msg = "ignored stale";
+			break;
+
 		case REF_STATUS_REJECT_NONFASTFORWARD:
 			res = "error";
 			msg = "non-fast forward";
@@ -282,6 +287,7 @@ int send_pack(struct send_pack_args *args,
 		switch (ref->status) {
 		case REF_STATUS_REJECT_NONFASTFORWARD:
 		case REF_STATUS_UPTODATE:
+		case REF_STATUS_STALE:
 			continue;
 		default:
 			; /* do nothing */
@@ -379,6 +385,7 @@ int send_pack(struct send_pack_args *args,
 		switch (ref->status) {
 		case REF_STATUS_NONE:
 		case REF_STATUS_UPTODATE:
+		case REF_STATUS_STALE:
 		case REF_STATUS_OK:
 			break;
 		default:
@@ -404,6 +411,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	int send_all = 0;
 	const char *receivepack = "git-receive-pack";
 	int flags;
+	unsigned transport_flags;
 	int nonfastforward = 0;
 
 	argv++;
@@ -511,8 +519,13 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	if (match_push_refs(local_refs, &remote_refs, nr_refspecs, refspecs, flags))
 		return -1;
 
-	set_ref_status_for_push(remote_refs, args.send_mirror,
-		args.force_update);
+	transport_flags = 0;
+	if (args.send_mirror)
+		transport_flags |= TRANSPORT_PUSH_MIRROR;
+	if (args.force_update)
+		transport_flags |= TRANSPORT_PUSH_FORCE;
+
+	set_ref_status_for_push(remote_refs, transport_flags);
 
 	ret = send_pack(&args, fd, conn, remote_refs, &extra_have);
 
