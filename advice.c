@@ -26,7 +26,7 @@ void advise(const char *advice, ...)
 	va_list params;
 
 	va_start(params, advice);
-	vreportf("hint: ", advice, params);
+	vreportf("hint", advice, params);
 	va_end(params);
 }
 
@@ -48,16 +48,15 @@ int git_default_advice_config(const char *var, const char *value)
 int error_resolve_conflict(const char *me)
 {
 	error("'%s' is not possible because you have unmerged files.", me);
-	if (advice_resolve_conflict) {
+	if (advice_resolve_conflict)
 		/*
 		 * Message used both when 'git commit' fails and when
 		 * other commands doing a merge do.
 		 */
-		advise("Fix them up in the work tree,");
-		advise("and then use 'git add/rm <file>' as");
-		advise("appropriate to mark resolution and make a commit,");
-		advise("or use 'git commit -a'.");
-	}
+		advise(_("Fix them up in the work tree,\n"
+			 "and then use 'git add/rm <file>' as\n"
+			 "appropriate to mark resolution and make a commit,\n"
+			 "or use 'git commit -a'."));
 	return -1;
 }
 
