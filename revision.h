@@ -118,6 +118,9 @@ struct rev_info {
 			missing_newline:1,
 			date_mode_explicit:1,
 			preserve_subject:1;
+
+	struct wrap_options wrap;
+
 	unsigned int	disable_stdin:1;
 	unsigned int	leak_pending:1;
 

@@ -86,6 +86,12 @@ struct pretty_print_context {
 	int show_notes;
 	struct reflog_walk_info *reflog_info;
 	const char *output_encoding;
+	struct wrap_options {
+		unsigned int
+			width,
+			wrap:1,
+			wrap_given:1;
+	} wrap;
 };
 
 struct userformat_want {

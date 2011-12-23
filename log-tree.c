@@ -538,6 +538,7 @@ void show_log(struct rev_info *opt)
 
 	opt->loginfo = NULL;
 	ctx.show_notes = opt->show_notes;
+	ctx.wrap = opt->wrap;
 	if (!opt->verbose_header) {
 		graph_show_commit(opt->graph);
 

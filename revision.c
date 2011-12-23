@@ -1486,6 +1486,16 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->verbose_header = 1;
 		revs->pretty_given = 1;
 		get_commit_format(arg+9, revs);
+	} else if (!strcmp(arg, "--wrap")) {
+		revs->wrap.wrap = 1;
+		revs->wrap.wrap_given = 1;
+	} else if (!prefixcmp(arg, "--wrap=")) {
+		revs->wrap.wrap = 1;
+		revs->wrap.wrap_given = 1;
+		revs->wrap.width = atoi(arg+7);
+	} else if (!prefixcmp(arg, "--no-wrap")) {
+		revs->wrap.wrap = 0;
+		revs->wrap.wrap_given = 1;
 	} else if (!strcmp(arg, "--show-notes") || !strcmp(arg, "--notes")) {
 		revs->show_notes = 1;
 		revs->show_notes_given = 1;
