@@ -1,3 +1,75 @@
+Version v1.7.8.1; changes since v1.7.8:
+---------------------------------------
+
+Brandon Casey (2):
+      t/t4131-apply-fake-ancestor.sh: fix broken test
+      builtin/apply.c: report error on failure to recognize input
+
+Carlos Martín Nieto (2):
+      convert: track state in LF-to-CRLF filter
+      clone: the -o option has nothing to do with <branch>
+
+Erik Faye-Lund (1):
+      mingw: give waitpid the correct signature
+
+Jack Nagel (1):
+      Documentation: fix formatting error in merge-options.txt
+
+Jeff King (5):
+      http: drop "local" member from request struct
+      archive: don't let remote clients get unreachable commits
+      stripspace: fix outdated comment
+      fetch: create status table using strbuf
+      blame: don't overflow time buffer
+
+Jens Lehmann (1):
+      diff/status: print submodule path when looking for changes fails
+
+Junio C Hamano (9):
+      get_tree_entry(): do not call find_tree_entry() on an empty tree
+      unpack_object_header_buffer(): clear the size field upon error
+      receive-pack, fetch-pack: reject bogus pack that records objects twice
+      pack-object: tolerate broken packs that have duplicated objects
+      Git 1.7.6.5
+      Git 1.7.7.5
+      Update draft release notes for 1.7.8.1
+      lf_to_crlf_filter(): tell the caller we added "\n" when draining
+      Git 1.7.8.1
+
+Martin von Zweigbergk (1):
+      am: don't persist keepcr flag
+
+Michael Haggerty (1):
+      git symbolic-ref: documentation fix
+
+Michael Schubert (2):
+      builtin/commit: add missing '/' in help message
+      builtin/log: remove redundant initialization
+
+Mika Fischer (3):
+      http.c: Use curl_multi_fdset to select on curl fds instead of just sleeping
+      http.c: Use timeout suggested by curl instead of fixed 50ms timeout
+      http.c: Rely on select instead of tracking whether data was received
+
+Nguyễn Thái Ngọc Duy (5):
+      tree-walk.c: do not leak internal structure in tree_entry_len()
+      read_directory_recursive: reduce one indentation level
+      tree_entry_interesting(): give meaningful names to return values
+      tree_entry_interesting: make use of local pointer "item"
+      checkout,merge: loosen overwriting untracked file check based on info/exclude
+
+Sebastian Morr (1):
+      Add MYMETA.yml to perl/.gitignore
+
+Thomas Rast (1):
+      userdiff: allow * between cpp funcname words
+
+Ævar Arnfjörð Bjarmason (3):
+      apply: get rid of useless x < 0 comparison on a size_t type
+      cast variable in call to free() in builtin/diff.c and submodule.c
+      builtin/init-db.c: eliminate -Wformat warning on Solaris
+
+
 Version v1.7.8; changes since v1.7.8-rc4:
 -----------------------------------------
 
@@ -1030,7 +1102,7 @@ Vitor Antunes (9):
       git-p4: Add simple test case for branch import
 
 
-Version v1.7.7-rc0; changes since v1.7.6.4:
+Version v1.7.7-rc0; changes since v1.7.6.5:
 -------------------------------------------
 
 Allan Caffee (1):
@@ -1384,6 +1456,65 @@ maximilian attems (2):
 
 张忠山 (1):
       gitweb: pass string after encoding in utf-8 to syntax highlighter
+
+
+Version v1.7.6.5; changes since v1.7.6.4:
+-----------------------------------------
+
+Haitao Li (1):
+      date.c: Support iso8601 timezone formats
+
+Jeff King (3):
+      stripspace: fix outdated comment
+      fetch: create status table using strbuf
+      blame: don't overflow time buffer
+
+Jim Meyering (1):
+      make the sample pre-commit hook script reject names with newlines, too
+
+Jonathon Mah (1):
+      mergetool: Use args as pathspec to unmerged files
+
+Junio C Hamano (3):
+      mergetool: no longer need to save standard input
+      name-rev --all: do not even attempt to describe non-commit object
+      Git 1.7.6.5
+
+Marc-André Lureau (1):
+      mailmap: xcalloc mailmap_info
+
+Martin von Zweigbergk (4):
+      remote: write correct fetch spec when renaming remote 'remote'
+      remote: "rename o foo" should not rename ref "origin/bar"
+      remote rename: warn when refspec was not updated
+      remote: only update remote-tracking branch if updating refspec
+
+Michael Haggerty (1):
+      notes_merge_commit(): do not pass temporary buffer to other function
+
+Michael J Gruber (3):
+      unpack-trees: print "Aborting" to stderr
+      git-read-tree.txt: language and typography fixes
+      git-read-tree.txt: correct sparse-checkout and skip-worktree description
+
+Nguyễn Thái Ngọc Duy (2):
+      git-read-tree.txt: update sparse checkout examples
+      Reindent closing bracket using tab instead of spaces
+
+Peter Stuge (1):
+      gitweb: Fix links to lines in blobs when javascript-actions are enabled
+
+Ramsay Allan Jones (1):
+      t9159-*.sh: skip for mergeinfo test for svn <= 1.4
+
+Sebastian Morr (1):
+      Add MYMETA.yml to perl/.gitignore
+
+Stefan Naewe (1):
+      Documentation/git-update-index: refer to 'ls-files'
+
+Thomas Rast (1):
+      Documentation: basic configuration of notes.rewriteRef
 
 
 Version v1.7.6.4; changes since v1.7.6.3:
