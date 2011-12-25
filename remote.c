@@ -1273,6 +1273,37 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 	}
 }
 
+int add_branch(const char *key, const char *branchname,
+		const char *remotename, int mirror, struct strbuf *tmp)
+{
+	strbuf_reset(tmp);
+	strbuf_addch(tmp, '+');
+	if (mirror)
+		strbuf_addf(tmp, "refs/%s:refs/%s",
+				branchname, branchname);
+	else
+		strbuf_addf(tmp, "refs/heads/%s:refs/remotes/%s/%s",
+				branchname, remotename, branchname);
+	return git_config_set_multivar(key, tmp->buf, "^$", 0);
+}
+
+int add_branches(struct remote *remote, const char **branches,
+			const char *key)
+{
+	const char *remotename = remote->name;
+	int mirror = remote->mirror;
+	struct strbuf refspec = STRBUF_INIT;
+
+	for (; *branches; branches++)
+		if (add_branch(key, *branches, remotename, mirror, &refspec)) {
+			strbuf_release(&refspec);
+			return 1;
+		}
+
+	strbuf_release(&refspec);
+	return 0;
+}
+
 struct branch *branch_get(const char *name)
 {
 	struct branch *ret;

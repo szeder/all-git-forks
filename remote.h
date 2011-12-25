@@ -138,6 +138,11 @@ struct branch {
 
 struct branch *branch_get(const char *name);
 
+int add_branches(struct remote *remote, const char **branches,
+		 const char *key);
+int add_branch(const char *key, const char *branchname,
+	       const char *remotename, int mirror, struct strbuf *tmp);
+
 int branch_has_merge_config(struct branch *branch);
 int branch_merge_matches(struct branch *, int n, const char *);
 

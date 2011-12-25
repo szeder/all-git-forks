@@ -112,20 +112,6 @@ enum {
 #define MIRROR_PUSH 2
 #define MIRROR_BOTH (MIRROR_FETCH|MIRROR_PUSH)
 
-static int add_branch(const char *key, const char *branchname,
-		const char *remotename, int mirror, struct strbuf *tmp)
-{
-	strbuf_reset(tmp);
-	strbuf_addch(tmp, '+');
-	if (mirror)
-		strbuf_addf(tmp, "refs/%s:refs/%s",
-				branchname, branchname);
-	else
-		strbuf_addf(tmp, "refs/heads/%s:refs/remotes/%s/%s",
-				branchname, remotename, branchname);
-	return git_config_set_multivar(key, tmp->buf, "^$", 0);
-}
-
 static const char mirror_advice[] =
 "--mirror is dangerous and deprecated; please\n"
 "\t use --mirror=fetch or --mirror=push instead";
@@ -1343,23 +1329,6 @@ static int update(int argc, const char **argv)
 static int remove_all_fetch_refspecs(const char *remote, const char *key)
 {
 	return git_config_set_multivar(key, NULL, NULL, 1);
-}
-
-static int add_branches(struct remote *remote, const char **branches,
-			const char *key)
-{
-	const char *remotename = remote->name;
-	int mirror = remote->mirror;
-	struct strbuf refspec = STRBUF_INIT;
-
-	for (; *branches; branches++)
-		if (add_branch(key, *branches, remotename, mirror, &refspec)) {
-			strbuf_release(&refspec);
-			return 1;
-		}
-
-	strbuf_release(&refspec);
-	return 0;
 }
 
 static int set_remote_branches(const char *remotename, const char **branches,
