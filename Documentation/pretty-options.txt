@@ -10,6 +10,20 @@
 Note: you can specify the default pretty format in the repository
 configuration (see linkgit:git-config[1]).
 
+--wrap[=<width>]::
+	Word-wrap commit messages to the specified width, 80 characters
+	by default. Lines beginning with +, *, or - and a space, or with a
+	number followed by a period and a space, are interpreted as lists
+	and wrapped with a hanging indent. Lines beginning with whitespace
+	(e.g. code samples) are left as-is.
++
+Note: you can specify the default wrapping behavior in the repository
+configuration (see linkgit:git-config[1]).
+
+--no-wrap::
+	Turn off commit message wrapping. This is the default (unless
+	otherwise specified in the repository configuration).
+
 --abbrev-commit::
 	Instead of showing the full 40-byte hexadecimal commit object
 	name, show only a partial prefix.  Non default number of
