@@ -185,14 +185,12 @@ static int git_wrap_config(const char *name, const char *value, void *cb)
 		return 0;
 
 	if (name[8] == '\0') {
-		if (!strcmp(value, "always")) {
+		if (value && !strcmp(value, "always")) {
 			wrap = 1;
-		} else if (!strcmp(value, "never")) {
+		} else if (value && !strcmp(value, "never")) {
 			wrap = 0;
-		} else if (!strcmp(value, "auto")) {
+		} else if (!value || !strcmp(value, "auto") || git_config_bool(name, value)) {
 			wrap = want_color(GIT_COLOR_AUTO);
-		} else {
-			return error("log.wrap is an unknown value");
 		}
 	} else if (name[8] == '.') {
 		name += 9;
