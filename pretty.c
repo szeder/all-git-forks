@@ -1417,12 +1417,12 @@ void pp_remainder(const struct pretty_print_context *pp,
 			memset(sb->buf + sb->len, ' ', indent);
 			strbuf_setlen(sb, sb->len + indent);
 		}
-		if (!wrap || !linelen || line[0] == ' ' || line[0] == '\t') {
-			strbuf_add(sb, line, linelen);
-		} else {
+		if (wrap && linelen && line[0] != ' ' && line[0] != '\t') {
 			struct strbuf wrapped = STRBUF_INIT;
 			strbuf_add(&wrapped, line, linelen);
 			strbuf_add_wrapped_text(sb, wrapped.buf, 0, indent + line_list_prefix(line, linelen), width - indent);
+		} else {
+			strbuf_add(sb, line, linelen);
 		}
 		strbuf_addch(sb, '\n');
 	}
