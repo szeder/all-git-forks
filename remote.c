@@ -1273,29 +1273,38 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 	}
 }
 
-int add_branch(const char *key, const char *branchname,
-		const char *remotename, int mirror, struct strbuf *tmp)
+void format_branch(const char *branchname, const char *remotename,
+		  int mirror, int bare, struct strbuf *out)
 {
-	strbuf_reset(tmp);
-	strbuf_addch(tmp, '+');
+	strbuf_reset(out);
+	strbuf_addch(out, '+');
 	if (mirror)
-		strbuf_addf(tmp, "refs/%s:refs/%s",
+		strbuf_addf(out, "refs/%s:refs/%s",
+				branchname, branchname);
+	else if (bare)
+		strbuf_addf(out, "refs/heads/%s:refs/heads/%s",
 				branchname, branchname);
 	else
-		strbuf_addf(tmp, "refs/heads/%s:refs/remotes/%s/%s",
+		strbuf_addf(out, "refs/heads/%s:refs/remotes/%s/%s",
 				branchname, remotename, branchname);
+
+}
+
+int add_branch(const char *key, const char *branchname,
+	       const char *remotename, int mirror, int bare, struct strbuf *tmp)
+{
+	format_branch(branchname, remotename, mirror, bare, tmp);
 	return git_config_set_multivar(key, tmp->buf, "^$", 0);
 }
 
-int add_branches(struct remote *remote, const char **branches,
-			const char *key)
+int add_branches(const char *key, struct remote *remote, struct string_list *branches,  int bare)
 {
 	const char *remotename = remote->name;
-	int mirror = remote->mirror;
+	int mirror = remote->mirror, i;
 	struct strbuf refspec = STRBUF_INIT;
 
-	for (; *branches; branches++)
-		if (add_branch(key, *branches, remotename, mirror, &refspec)) {
+	for (i = 0; i < branches->nr ; i++)
+		if (add_branch(key, branches->items[i].string, remotename, mirror, bare, &refspec)) {
 			strbuf_release(&refspec);
 			return 1;
 		}

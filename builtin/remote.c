@@ -194,8 +194,7 @@ static int add(int argc, const char **argv)
 		if (track.nr == 0)
 			string_list_append(&track, "*");
 		for (i = 0; i < track.nr; i++) {
-			if (add_branch(buf.buf, track.items[i].string,
-				       name, mirror, &buf2))
+			if (add_branches(buf.buf, remote, &track, 0))
 				return 1;
 		}
 	}
@@ -1331,7 +1330,7 @@ static int remove_all_fetch_refspecs(const char *remote, const char *key)
 	return git_config_set_multivar(key, NULL, NULL, 1);
 }
 
-static int set_remote_branches(const char *remotename, const char **branches,
+static int set_remote_branches(const char *remotename, struct string_list *branches,
 				int add_mode)
 {
 	struct strbuf key = STRBUF_INIT;
@@ -1347,7 +1346,7 @@ static int set_remote_branches(const char *remotename, const char **branches,
 		strbuf_release(&key);
 		return 1;
 	}
-	if (add_branches(remote, branches, key.buf)) {
+	if (add_branches(key.buf, remote, branches, 0)) {
 		strbuf_release(&key);
 		return 1;
 	}
@@ -1358,7 +1357,8 @@ static int set_remote_branches(const char *remotename, const char **branches,
 
 static int set_branches(int argc, const char **argv)
 {
-	int add_mode = 0;
+	int add_mode = 0, i, ret;
+	struct string_list branches;
 	struct option options[] = {
 		OPT_BOOLEAN('\0', "add", &add_mode, "add branch"),
 		OPT_END()
@@ -1370,9 +1370,16 @@ static int set_branches(int argc, const char **argv)
 		error("no remote specified");
 		usage_with_options(builtin_remote_setbranches_usage, options);
 	}
-	argv[argc] = NULL;
 
-	return set_remote_branches(argv[0], argv + 1, add_mode);
+	memset(&branches, 0, sizeof(struct string_list));
+	/* argv[0] is the remote's name */
+	for (i = 1; i < argc; i++)
+		string_list_append(&branches, argv[i]);
+
+	ret = set_remote_branches(argv[0], &branches, add_mode);
+	string_list_clear(&branches, 0);
+
+	return ret;
 }
 
 static int set_url(int argc, const char **argv)
