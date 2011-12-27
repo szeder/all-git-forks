@@ -223,7 +223,7 @@ static NORETURN void bad_object(unsigned long offset, const char *format, ...)
 	die("pack has bad object at offset %lu: %s", offset, buf);
 }
 
-static struct base_data *alloc_base_data()
+static struct base_data *alloc_base_data(void)
 {
 	struct base_data *base = xmalloc(sizeof(struct base_data));
 	memset(base, 0, sizeof(*base));
@@ -638,8 +638,7 @@ static void find_unresolved_deltas(struct base_data *base)
 		if (new_base) {
 			prev_base = base;
 			base = new_base;
-		}
-		else {
+		} else {
 			free(base);
 			base = prev_base;
 			if (!base)
