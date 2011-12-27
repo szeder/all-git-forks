@@ -393,6 +393,24 @@ def findUpstreamBranchPoint(head = "HEAD"):
 
     return ["", settings]
 
+
+def findPerforceCL(perforceCL):
+    branches = p4BranchesInGit()
+    # map from depot-path to branch name
+    for branch in branches.keys():
+        tip = branches[branch]
+        for line in read_pipe_lines("git rev-list %s" % tip):
+            changeset = line.strip()
+            log = extractLogMessageFromGitCommit(changeset)
+            settings = extractSettingsGitLog(log)
+            # FIXME: here just ensure that if the perforceCL is smaller than
+            # the current log "change", it means that we won't reach that CL.
+            # (Since CL numbers are incremental)
+            if settings.has_key('change') and settings['change'] == perforceCL:
+                return changeset
+            
+    return None
+
 def createOrUpdateBranchesFromOrigin(localRefPrefix = "refs/remotes/p4/", silent=True):
     if not silent:
         print ("Creating/updating branch(es) in %s based on origin branch(es)"
@@ -650,6 +668,76 @@ class P4Edit(Command):
         print "All changes applied!"
 
         return True
+
+
+class P4FindCL(Command):
+    def __init__(self):
+        Command.__init__(self)
+        self.options = [
+                optparse.make_option("--verbose", dest="verbose", action="store_true"),
+                optparse.make_option("--origin", dest="origin"),
+                optparse.make_option("-M", dest="detectRename", action="store_true"),
+        ]
+        self.description = "Find corresponding git changeset for given perfoce changelist number."
+        self.usage += " [perforce changelist nubmer]"
+        self.interactive = False
+        self.origin = ""
+        self.detectRename = False
+        self.verbose = False
+        self.isWindows = (platform.system() == "Windows")
+
+    def run(self, args):
+        p4changelist = None
+        if len(args) == 0:
+            die("No changelist not given!")
+        elif len(args) >= 1:
+            p4changelist = args[0]
+
+        changeset = findPerforceCL(p4changelist)
+        if changeset is None:
+            print "Couldn't find given perforce changelist"
+            sys.exit(128)
+        else:
+            print changeset
+
+        return True
+
+
+class P4Merge(Command):
+    def __init__(self):
+        Command.__init__(self)
+        self.options = [
+                optparse.make_option("--verbose", dest="verbose", action="store_true"),
+                optparse.make_option("--origin", dest="origin"),
+                optparse.make_option("-M", dest="detectRename", action="store_true"),
+        ]
+        self.description = "Merge corresponding git changeset for given perfoce changelist number."
+        self.usage += " [perforce changelist nubmer]"
+        self.interactive = False
+        self.origin = ""
+        self.detectRename = False
+        self.verbose = False
+        self.isWindows = (platform.system() == "Windows")
+
+    def run(self, args):
+        p4changelist = None
+        if len(args) == 0:
+            die("No changelist not given!")
+        elif len(args) >= 1:
+            p4changelist = args[0]
+
+        changeset = findPerforceCL(p4changelist)
+        if changeset is None:
+            print "Couldn't find given perforce changelist"
+            sys.exit(128)
+
+        print "merging changeset %s(p4 changelist:%s)" % (changeset, p4changelist)
+        system("git merge %s" % changeset)
+        edit = P4Edit()
+        edit.run([])
+
+        return True
+
 
 
 class P4Submit(Command):
@@ -2145,6 +2233,8 @@ commands = {
     "commit" : P4Submit,
     "remote-sync" : P4RemoteSync,
     "edit" : P4Edit,
+    "find-cl" : P4FindCL,
+    "merge" : P4Merge,
     "sync" : P4Sync,
     "rebase" : P4Rebase,
     "clone" : P4Clone,
