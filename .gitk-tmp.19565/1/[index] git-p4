@@ -562,14 +562,12 @@ class P4Edit(Command):
         self.options = [
                 optparse.make_option("--verbose", dest="verbose", action="store_true"),
                 optparse.make_option("--origin", dest="origin"),
-                optparse.make_option("--revert", dest="revert", action="store_true"),
                 optparse.make_option("-M", dest="detectRename", action="store_true"),
         ]
         self.description = "Submit changes from git to the perforce depot."
         self.usage += " [name of git branch to submit into perforce depot]"
         self.interactive = False
         self.origin = ""
-        self.revert = False
         self.detectRename = False
         self.verbose = False
         self.isWindows = (platform.system() == "Windows")
@@ -637,13 +635,10 @@ class P4Edit(Command):
 
         print "P4 Remote Sync (ensures that perforce repository is at the same changelist) ..."
         P4RemoteSync().run([])
-        print "P4 Resolve (at this point when syncing it will possible create false conflicts. Just solve them by accepting yours)"
-        p4_system("resolve -ay ...")
 
         # revert all checked-out status, but without reverting current changes
-        if self.revert:
-            print "P4 Revert (reset all checked out files) ..."
-            p4_system("revert -k ...")
+        print "P4 Revert (reset all checked out files) ..."
+        p4_system("revert -k ...")
 
         print "Applying changes from %s to %s ..." % (self.origin, self.master)
         self.applyCommit(self.origin, self.master)
