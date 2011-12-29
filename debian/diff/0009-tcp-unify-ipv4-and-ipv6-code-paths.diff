@@ -1,4 +1,4 @@
-From f15687d573c390e75e67c7467a8162376e5a46d5 Mon Sep 17 00:00:00 2001
+From 6b41a44dff565a9b17ca6cc660e582585011cb19 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths
@@ -36,15 +36,15 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  dns-ipv4.h |   69 +++++++++++++++++++++++
  dns-ipv6.c |   49 ++++++++++++++++
  dns-ipv6.h |   31 ++++++++++
- tcp.c      |  180 ++++++++++-------------------------------------------------
- 6 files changed, 218 insertions(+), 149 deletions(-)
+ tcp.c      |  182 ++++++++++-------------------------------------------------
+ 6 files changed, 218 insertions(+), 151 deletions(-)
  create mode 100644 dns-ipv4.c
  create mode 100644 dns-ipv4.h
  create mode 100644 dns-ipv6.c
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index b456641..15566d0 100644
+index a3baf48..a65b8f1 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1550,6 +1550,11 @@ ifdef NO_TRUSTABLE_FILEMODE
@@ -266,7 +266,7 @@ index 0000000..339877f
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index fff37f8..18952fd 100644
+index 9263e0d..47e31e5 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,8 +1,10 @@
@@ -282,8 +282,8 @@ index fff37f8..18952fd 100644
  #endif
  
  #define STR_(s)	# s
-@@ -30,44 +32,27 @@ static void get_host_and_port(char **host, const char **port)
- 	}
+@@ -39,44 +41,27 @@ static void enable_keepalive(int sockfd)
+ 			strerror(errno));
  }
  
 -#ifndef NO_IPV6
@@ -340,7 +340,7 @@ index fff37f8..18952fd 100644
  }
  
  /*
-@@ -78,46 +63,42 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -87,46 +72,42 @@ static int git_tcp_connect_sock(char *host, int flags)
  	struct strbuf error_message = STRBUF_INIT;
  	int sockfd = -1;
  	const char *port = STR(DEFAULT_GIT_PORT);
@@ -401,7 +401,7 @@ index fff37f8..18952fd 100644
  
  	if (sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
-@@ -130,105 +111,6 @@ static int git_tcp_connect_sock(char *host, int flags)
+@@ -141,107 +122,6 @@ static int git_tcp_connect_sock(char *host, int flags)
  	return sockfd;
  }
  
@@ -495,6 +495,8 @@ index fff37f8..18952fd 100644
 -	if (sockfd < 0)
 -		die("unable to connect to %s:\n%s", host, error_message.buf);
 -
+-	enable_keepalive(sockfd);
+-
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\n");
 -
@@ -508,5 +510,5 @@ index fff37f8..18952fd 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.8
+1.7.8.1
 

@@ -1,4 +1,4 @@
-From 08b7252acc979e74a73b210ff9694e7bf3d8cd52 Mon Sep 17 00:00:00 2001
+From 33f264a9506f4831f044209b751677aca32a7b36 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
 Subject: daemon: check for errors retrieving IP address
@@ -99,10 +99,10 @@ index f446ba1..dcfeac4 100644
  
  int dns_resolve(const char *host, const char *port, int flags,
 diff --git a/tcp.c b/tcp.c
-index 18952fd..d0cd709 100644
+index 47e31e5..623d7e1 100644
 --- a/tcp.c
 +++ b/tcp.c
-@@ -47,8 +47,10 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -56,8 +56,10 @@ void git_locate_host(const char *hostname, char **ip_address,
  		*ip_address = dns_ip_address(&i, &ai);
  
  		free(*canon_hostname);
@@ -116,5 +116,5 @@ index 18952fd..d0cd709 100644
  	}
  
 -- 
-1.7.8
+1.7.8.1
 

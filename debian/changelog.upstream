@@ -1,3 +1,87 @@
+Version v1.7.8.2; changes since v1.7.8.1:
+-----------------------------------------
+
+Andrew Wong (1):
+      rebase -i: interrupt rebase when "commit --amend" failed during "reword"
+
+Conrad Irwin (1):
+      Update documentation for stripspace
+
+Eric Wong (1):
+      enable SO_KEEPALIVE for connected TCP sockets
+
+Erik Faye-Lund (2):
+      compat/setenv.c: update errno when erroring out
+      compat/setenv.c: error if name contains '='
+
+Jeff King (20):
+      read-cache: let refresh_cache_ent pass up changed flags
+      refresh_index: rename format variables
+      refresh_index: make porcelain output more specific
+      compat/snprintf: don't look at va_list twice
+      docs: mention "-k" for both forms of "git mv"
+      mv: honor --verbose flag
+      mv: make non-directory destination error more clear
+      mv: improve overwrite warning
+      mv: be quiet about overwriting
+      drop "match" parameter from get_remote_heads
+      t5500: give fully-qualified refs to fetch-pack
+      fetch-pack: match refs exactly
+      connect.c: drop path_match function
+      t5540: test DAV push with authentication
+      http-push: enable "proactive auth"
+      use custom rename score during --follow
+      docs: brush up obsolete bits of git-fsck manpage
+      make "git push -v" actually verbose
+      commit, merge: initialize static strbuf
+      remote-curl: don't pass back fake refs
+
+Jelmer Vernooij (1):
+      Fix an incorrect reference to --set-all.
+
+Johan Herland (3):
+      t9301: Fix testcase covering up a bug in fast-import's notes fanout handling
+      t9301: Add 2nd testcase exposing bugs in fast-import's notes fanout handling
+      fast-import: Fix incorrect fanout level when modifying existing notes refs
+
+Johannes Sixt (1):
+      Compatibility: declare strtoimax() under NO_STRTOUMAX
+
+Jonathan Nieder (9):
+      branch: allow a no-op "branch -M <current-branch> HEAD"
+      Allow checkout -B <current-branch> to update the current branch
+      revert: give --continue handling its own function
+      revert: allow cherry-pick --continue to commit before resuming
+      revert: pass around rev-list args in already-parsed form
+      revert: allow single-pick in the middle of cherry-pick sequence
+      revert: do not remove state until sequence is finished
+      Revert "reset: Make reset remove the sequencer state"
+      revert: stop creating and removing sequencer-old directory
+
+Junio C Hamano (5):
+      checkout -m: no need to insist on having all 3 stages
+      checkout_merged(): squelch false warning from some gcc
+      lf_to_crlf_filter(): resurrect CRLF->CRLF hack
+      advice: Document that they all default to true
+      Git 1.7.8.2
+
+Nick Alcock (2):
+      Add strtoimax() compatibility function.
+      Support sizes >=2G in various config options accepting 'g' sizes.
+
+Pete Harlan (1):
+      Test 'checkout -m -- path'
+
+Thomas Jarosch (1):
+      imap-send: Remove unused 'use_namespace' variable
+
+Thomas Rast (1):
+      git-sh-setup: make require_clean_work_tree part of the interface
+
+Ævar Arnfjörð Bjarmason (1):
+      t/t2023-checkout-m.sh: fix use of test_must_fail
+
+
 Version v1.7.8.1; changes since v1.7.8:
 ---------------------------------------
 

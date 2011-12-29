@@ -1,9 +1,9 @@
-git (1:1.7.8.1-1) unstable; urgency=low
+git (1:1.7.8.2-1) unstable; urgency=low
 
   * merge branch debian-experimental.
   * new upstream release.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sun, 25 Dec 2011 04:33:28 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 29 Dec 2011 01:30:43 -0600
 
 git (1:1.7.8~rc3-1) experimental; urgency=low
 

@@ -1,4 +1,4 @@
-From 31c92eab99961699e18f7f9ff131d13ba7aa5dec Mon Sep 17 00:00:00 2001
+From 7a3ed5fee694267b08b31de027439c5e22fa6812 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
@@ -35,7 +35,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 15566d0..e9431ed 100644
+index a65b8f1..e0edf4f 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -128,6 +128,10 @@ all::
@@ -405,7 +405,7 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index d0cd709..7a8a244 100644
+index 623d7e1..0615f5e 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,5 +1,6 @@
@@ -415,7 +415,7 @@ index d0cd709..7a8a244 100644
  
  #ifndef NO_IPV6
  #include "dns-ipv6.h"
-@@ -63,53 +64,96 @@ void git_locate_host(const char *hostname, char **ip_address,
+@@ -72,46 +73,85 @@ void git_locate_host(const char *hostname, char **ip_address,
  static int git_tcp_connect_sock(char *host, int flags)
  {
  	struct strbuf error_message = STRBUF_INIT;
@@ -527,6 +527,8 @@ index d0cd709..7a8a244 100644
 +	if (gai || sockfd < 0)
  		die("unable to connect to %s:\n%s", host, error_message.buf);
  
+ 	enable_keepalive(sockfd);
+@@ -119,8 +159,12 @@ static int git_tcp_connect_sock(char *host, int flags)
  	if (flags & CONNECT_VERBOSE)
  		fprintf(stderr, "done.\n");
  
@@ -541,5 +543,5 @@ index d0cd709..7a8a244 100644
  }
  
 -- 
-1.7.8
+1.7.8.1
 

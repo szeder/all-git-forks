@@ -1,4 +1,4 @@
-From c3eafaa22edb9c0bf93464b3f7b119c3d0fa0e60 Mon Sep 17 00:00:00 2001
+From 5e12036d72e6181b5ad33276a94da9ff30caf32d Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
 Subject: Makefile: add a knob to turn off hardlinks within same directory
@@ -42,7 +42,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 7 insertions(+), 0 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index e9431ed..01b6294 100644
+index e0edf4f..0bb919a 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -226,6 +226,10 @@ all::
@@ -80,5 +80,5 @@ index e9431ed..01b6294 100644
  		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
 -- 
-1.7.8
+1.7.8.1
 

@@ -1,4 +1,4 @@
-From 08aa0fe263c8acc0d44886e22071a34602683347 Mon Sep 17 00:00:00 2001
+From fb02ac1d69d1e74f7b335c29908f6b5f18b3c142 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: transport: expose git_tcp_connect and friends in new tcp.h
@@ -10,15 +10,15 @@ connect to it to a separate tcp.c file.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |    2 +
- connect.c |  264 +------------------------------------------------------------
- tcp.c     |  265 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ connect.c |  277 +------------------------------------------------------------
+ tcp.c     |  278 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |    8 ++
- 4 files changed, 276 insertions(+), 263 deletions(-)
+ 4 files changed, 289 insertions(+), 276 deletions(-)
  create mode 100644 tcp.c
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index b1c80a6..e5c6109 100644
+index b21d2f1..1535a76 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -690,6 +690,7 @@ LIB_OBJS += string-list.o
@@ -38,7 +38,7 @@ index b1c80a6..e5c6109 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/connect.c b/connect.c
-index 51990fa..09d47d9 100644
+index c8d0ea5..2748185 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -5,6 +5,7 @@
@@ -49,7 +49,7 @@ index 51990fa..09d47d9 100644
  #include "url.h"
  
  static char *server_capabilities;
-@@ -150,269 +151,6 @@ static enum protocol get_protocol(const char *name)
+@@ -126,282 +127,6 @@ static enum protocol get_protocol(const char *name)
  	die("I don't handle protocol '%s'", name);
  }
  
@@ -76,6 +76,15 @@ index 51990fa..09d47d9 100644
 -		*colon = 0;
 -		*port = colon + 1;
 -	}
+-}
+-
+-static void enable_keepalive(int sockfd)
+-{
+-	int ka = 1;
+-
+-	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &ka, sizeof(ka)) < 0)
+-		fprintf(stderr, "unable to set SO_KEEPALIVE on socket: %s\n",
+-			strerror(errno));
 -}
 -
 -#ifndef NO_IPV6
@@ -141,6 +150,8 @@ index 51990fa..09d47d9 100644
 -
 -	if (sockfd < 0)
 -		die("unable to connect to %s:\n%s", host, error_message.buf);
+-
+-	enable_keepalive(sockfd);
 -
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\n");
@@ -214,6 +225,8 @@ index 51990fa..09d47d9 100644
 -
 -	if (sockfd < 0)
 -		die("unable to connect to %s:\n%s", host, error_message.buf);
+-
+-	enable_keepalive(sockfd);
 -
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\n");
@@ -321,10 +334,10 @@ index 51990fa..09d47d9 100644
  static char *get_port(char *host)
 diff --git a/tcp.c b/tcp.c
 new file mode 100644
-index 0000000..0ab3c1b
+index 0000000..f5e1ab3
 --- /dev/null
 +++ b/tcp.c
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,278 @@
 +#include "cache.h"
 +#include "run-command.h"
 +
@@ -351,6 +364,15 @@ index 0000000..0ab3c1b
 +		*colon = 0;
 +		*port = colon + 1;
 +	}
++}
++
++static void enable_keepalive(int sockfd)
++{
++	int ka = 1;
++
++	if (setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &ka, sizeof(ka)) < 0)
++		fprintf(stderr, "unable to set SO_KEEPALIVE on socket: %s\n",
++			strerror(errno));
 +}
 +
 +#ifndef NO_IPV6
@@ -416,6 +438,8 @@ index 0000000..0ab3c1b
 +
 +	if (sockfd < 0)
 +		die("unable to connect to %s:\n%s", host, error_message.buf);
++
++	enable_keepalive(sockfd);
 +
 +	if (flags & CONNECT_VERBOSE)
 +		fprintf(stderr, "done.\n");
@@ -489,6 +513,8 @@ index 0000000..0ab3c1b
 +
 +	if (sockfd < 0)
 +		die("unable to connect to %s:\n%s", host, error_message.buf);
++
++	enable_keepalive(sockfd);
 +
 +	if (flags & CONNECT_VERBOSE)
 +		fprintf(stderr, "done.\n");
@@ -605,5 +631,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.8
+1.7.8.1
 
