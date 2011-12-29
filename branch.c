@@ -3,7 +3,6 @@
 #include "refs.h"
 #include "remote.h"
 #include "commit.h"
-#include "sequencer.h"
 
 struct tracking {
 	struct refspec spec;
@@ -160,7 +159,8 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 
 void create_branch(const char *head,
 		   const char *name, const char *start_name,
-		   int force, int reflog, enum branch_track track)
+		   int force, int reflog, int clobber_head,
+		   enum branch_track track)
 {
 	struct ref_lock *lock = NULL;
 	struct commit *commit;
@@ -175,7 +175,8 @@ void create_branch(const char *head,
 		explicit_tracking = 1;
 
 	if (validate_new_branchname(name, &ref, force,
-				    track == BRANCH_TRACK_OVERRIDE)) {
+				    track == BRANCH_TRACK_OVERRIDE ||
+				    clobber_head)) {
 		if (!force)
 			dont_change_ref = 1;
 		else
@@ -247,5 +248,4 @@ void remove_branch_state(void)
 	unlink(git_path("MERGE_MSG"));
 	unlink(git_path("MERGE_MODE"));
 	unlink(git_path("SQUASH_MSG"));
-	remove_sequencer_state(0);
 }
