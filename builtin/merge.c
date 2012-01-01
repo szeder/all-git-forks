@@ -50,7 +50,7 @@ static int option_commit = 1, allow_fast_forward = 1;
 static int fast_forward_only, option_edit;
 static int allow_trivial = 1, have_message;
 static int overwrite_ignore = 1;
-static struct strbuf merge_msg;
+static struct strbuf merge_msg = STRBUF_INIT;
 static struct commit_list *remoteheads;
 static struct strategy **use_strategies;
 static size_t use_strategies_nr, use_strategies_alloc;
@@ -910,7 +910,8 @@ static int merge_trivial(struct commit *head)
 	parent->next->item = remoteheads->item;
 	parent->next->next = NULL;
 	prepare_to_commit();
-	commit_tree(merge_msg.buf, result_tree, parent, result_commit, NULL);
+	if (commit_tree(&merge_msg, result_tree, parent, result_commit, NULL))
+		die(_("failed to write commit object"));
 	finish(head, result_commit, "In-index merge");
 	drop_save();
 	return 0;
@@ -941,7 +942,8 @@ static int finish_automerge(struct commit *head,
 	strbuf_addch(&merge_msg, '\n');
 	prepare_to_commit();
 	free_commit_list(remoteheads);
-	commit_tree(merge_msg.buf, result_tree, parents, result_commit, NULL);
+	if (commit_tree(&merge_msg, result_tree, parents, result_commit, NULL))
+		die(_("failed to write commit object"));
 	strbuf_addf(&buf, "Merge made by the '%s' strategy.", wt_strategy);
 	finish(head, result_commit, buf.buf);
 	strbuf_release(&buf);
@@ -1100,6 +1102,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	struct commit_list *common = NULL;
 	const char *best_strategy = NULL, *wt_strategy = NULL;
 	struct commit_list **remotes = &remoteheads;
+	void *branch_to_free;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_merge_usage, builtin_merge_options);
@@ -1108,12 +1111,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a
 	 * current branch.
 	 */
-	branch = resolve_ref("HEAD", head_sha1, 0, &flag);
-	if (branch) {
-		if (!prefixcmp(branch, "refs/heads/"))
-			branch += 11;
-		branch = xstrdup(branch);
-	}
+	branch = branch_to_free = resolve_refdup("HEAD", head_sha1, 0, &flag);
+	if (branch && !prefixcmp(branch, "refs/heads/"))
+		branch += 11;
 	if (!branch || is_null_sha1(head_sha1))
 		head_commit = NULL;
 	else
@@ -1524,6 +1524,6 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		ret = suggest_conflicts(option_renormalize);
 
 done:
-	free((char *)branch);
+	free(branch_to_free);
 	return ret;
 }
