@@ -428,7 +428,7 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 	struct ref **tail = head ? &head->next : &local_refs;
 
 	get_fetch_map(refs, refspec, &tail, 0);
-	if (!option_mirror)
+	if (!option_mirror && !option_depth)
 		get_fetch_map(refs, tag_refspec, &tail, 0);
 
 	return local_refs;
