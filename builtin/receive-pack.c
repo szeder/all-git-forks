@@ -64,6 +64,8 @@ static void *head_name_to_free;
 static int sent_capabilities;
 static int shallow_update;
 static const char *alt_shallow_file;
+static int advertise_alternates = 1;
+
 static struct strbuf push_cert = STRBUF_INIT;
 static unsigned char push_cert_sha1[20];
 static struct signature_check sigcheck;
@@ -221,6 +223,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (strcmp(var, "receive.advertisealternates") == 0) {
+		advertise_alternates = git_config_bool(var, value);
+		return 0;
+	}
+
 	return git_default_config(var, value, cb);
 }
 
@@ -285,11 +292,12 @@ static void collect_one_alternate_ref(const struct ref *ref, void *data)
 
 static void write_head_info(void)
 {
-	struct sha1_array sa = SHA1_ARRAY_INIT;
-
-	for_each_alternate_ref(collect_one_alternate_ref, &sa);
-	sha1_array_for_each_unique(&sa, show_one_alternate_sha1, NULL);
-	sha1_array_clear(&sa);
+	if (advertise_alternates) {
+		struct sha1_array sa = SHA1_ARRAY_INIT;
+		for_each_alternate_ref(collect_one_alternate_ref, &sa);
+		sha1_array_for_each_unique(&sa, show_one_alternate_sha1, NULL);
+		sha1_array_clear(&sa);
+	}
 	for_each_ref(show_ref_cb, NULL);
 	if (!sent_capabilities)
 		show_ref("capabilities^{}", null_sha1);
