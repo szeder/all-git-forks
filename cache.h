@@ -752,6 +752,9 @@ char *strip_path_suffix(const char *path, const char *suffix);
 int daemon_avoid_alias(const char *path);
 int offset_1st_component(const char *path);
 
+void skip_object_filter();
+void *run_object_filter(const char *name, const void *buffer, unsigned long *size, const char *type);
+
 /* object replacement */
 #define READ_SHA1_FILE_REPLACE 1
 extern void *read_sha1_file_extended(const unsigned char *sha1, enum object_type *type, unsigned long *size, unsigned flag);
