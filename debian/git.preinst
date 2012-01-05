@@ -42,12 +42,21 @@ rm_conffile /etc/emacs/site-start.d/50git-core.el "$1" "$2"
 #
 # Replace the hard links with symlinks _before_ upgrading to
 # avoid trouble.
+#
+# For added fun, coreutils mv will not replace a file by a
+# symlink to the same inode (bug #654666).  We give
+# /usr/lib/git-core/git its own inode to work around that.
 
 if test "$1" = upgrade &&
    dpkg --compare-versions "$2" lt-nl '1:1.7.7-2'; then
-	refinode=$(stat -c%i /usr/lib/git-core/git)
+	refinode=$(stat -c%i /usr/lib/git-core/git-add)
+
+	rm -f /usr/lib/git-core/git.tmp
+	cp -p /usr/lib/git-core/git /usr/lib/git-core/git.tmp
+	mv -f /usr/lib/git-core/git.tmp /usr/lib/git-core/git
 	for f in /usr/lib/git-core/*; do
-		test "$f" != /usr/lib/git-core/git || continue
+		test "$f" != /usr/lib/git-core/git &&
+		test "$f" != /usr/lib/git-core/git-add || continue
 		rm -f "$f.tmp"
 		inode=$(stat -c%i "$f")
 		test "$inode" = "$refinode" || continue
