@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "streaming.h"
+#include "run-command.h"
 
 enum input_source {
 	stream_error = -1,
@@ -68,6 +69,11 @@ struct git_istream {
 	unsigned long size; /* inflated size of full object */
 	git_zstream z;
 	enum { z_unused, z_used, z_done, z_error } z_state;
+
+	struct {
+		int run;
+		struct child_process cmd;
+	} obj_filter;
 
 	union {
 		struct {
@@ -174,6 +180,49 @@ static void close_deflated_stream(struct git_istream *st)
 		git_inflate_end(&st->z);
 }
 
+static int open_object_filter(struct git_istream *st, enum object_type type)
+{
+	const char *args[4];
+	char sizebuf[32];
+
+	if (access(git_path("hooks/read-object"), X_OK) < 0) {
+		st->obj_filter.run = 0;
+		return 0;
+	}
+
+	sprintf(sizebuf, "%lu", st->size);
+
+	memset(&st->obj_filter.cmd, 0, sizeof(st->obj_filter.cmd));
+	st->obj_filter.cmd.argv = args;
+	st->obj_filter.cmd.in = -1;
+	st->obj_filter.cmd.out = -1;
+	args[0] = git_path("hooks/read-object");
+	args[1] = typename(type);
+	args[2] = sizebuf;
+	args[3] = NULL;
+
+	if (start_command(&st->obj_filter.cmd))
+		die(_("could not run object filter."));
+
+	st->obj_filter.run = 1;
+
+	return 0;
+}
+
+static void close_object_filter(struct git_istream *st)
+{
+	if(!st->obj_filter.run)
+		return;
+
+	if(st->obj_filter.cmd.in != -1)
+		close(st->obj_filter.cmd.in);
+
+	if(st->obj_filter.cmd.out != -1)
+		close(st->obj_filter.cmd.out);
+
+	if (finish_command(&st->obj_filter.cmd))
+		die(_("object filter failed to run"));
+}
 
 /*****************************************************************
  *
@@ -275,51 +324,129 @@ static struct git_istream *attach_stream_filter(struct git_istream *st,
 
 static read_method_decl(loose)
 {
+	size_t to_copy_hdr = 0;
 	size_t total_read = 0;
 
-	switch (st->z_state) {
-	case z_done:
-		return 0;
-	case z_error:
+	if(st->z_state == z_error)
 		return -1;
-	default:
-		break;
+
+	if(st->z_state == z_done) {
+		if(st->obj_filter.run) {
+			while(total_read < sz) {
+				size_t n;
+
+				n = xread(st->obj_filter.cmd.out, buf + total_read, sz - total_read);
+				if(n < 0)
+					return -1;
+
+				if(n == 0)
+					break;
+
+				total_read += n;
+			}
+
+			return total_read;
+		}
+
+		return 0;
 	}
 
 	if (st->u.loose.hdr_used < st->u.loose.hdr_avail) {
-		size_t to_copy = st->u.loose.hdr_avail - st->u.loose.hdr_used;
-		if (sz < to_copy)
-			to_copy = sz;
-		memcpy(buf, st->u.loose.hdr + st->u.loose.hdr_used, to_copy);
-		st->u.loose.hdr_used += to_copy;
-		total_read += to_copy;
+		to_copy_hdr = st->u.loose.hdr_avail - st->u.loose.hdr_used;
+		if (sz < to_copy_hdr)
+			to_copy_hdr = sz;
+		memcpy(buf, st->u.loose.hdr + st->u.loose.hdr_used, to_copy_hdr);
+		st->u.loose.hdr_used += to_copy_hdr;
+		total_read += to_copy_hdr;
 	}
 
-	while (total_read < sz) {
-		int status;
+	if (st->obj_filter.run) {
+		while (total_read < sz) {
+			int status;
+			size_t s, n;
+			struct pollfd fd;
+			int ret;
 
-		st->z.next_out = (unsigned char *)buf + total_read;
-		st->z.avail_out = sz - total_read;
-		status = git_inflate(&st->z, Z_FINISH);
+			st->z.next_out = (unsigned char *)buf + total_read;
+			st->z.avail_out = sz - total_read;
+			status = git_inflate(&st->z, Z_FINISH);
 
-		total_read = st->z.next_out - (unsigned char *)buf;
+			s = st->z.next_out - (unsigned char *)buf - total_read;
+			if(write_in_full(st->obj_filter.cmd.in, (unsigned char *)buf + total_read, s) != s) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
 
-		if (status == Z_STREAM_END) {
-			git_inflate_end(&st->z);
-			st->z_state = z_done;
-			break;
+			fd.fd = st->obj_filter.cmd.out;
+			fd.events = POLLIN;
+			fd.revents = 0;
+
+			ret = poll(&fd, 1, 0);
+			if(ret < 0) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
+
+			if(ret == 0) {
+				if(total_read > 0)
+					break;
+				else
+					continue;
+			}
+
+			n = xread(st->obj_filter.cmd.out, (unsigned char *)buf + total_read, sz - total_read);
+			if(n <= 0) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
+
+			total_read += n;
+
+			if (status == Z_STREAM_END) {
+				close(st->obj_filter.cmd.in);
+				st->obj_filter.cmd.in = -1;
+				git_inflate_end(&st->z);
+				st->z_state = z_done;
+				break;
+			}
+			if (status != Z_OK && status != Z_BUF_ERROR) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
 		}
-		if (status != Z_OK && status != Z_BUF_ERROR) {
-			git_inflate_end(&st->z);
-			st->z_state = z_error;
-			return -1;
+	} else {
+		while (total_read < sz) {
+			int status;
+
+			st->z.next_out = (unsigned char *)buf + total_read;
+			st->z.avail_out = sz - total_read;
+			status = git_inflate(&st->z, Z_FINISH);
+
+			total_read = st->z.next_out - (unsigned char *)buf;
+
+			if (status == Z_STREAM_END) {
+				git_inflate_end(&st->z);
+				st->z_state = z_done;
+				break;
+			}
+			if (status != Z_OK && status != Z_BUF_ERROR) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
 		}
 	}
+
 	return total_read;
 }
 
 static close_method_decl(loose)
 {
+	close_object_filter(st);
 	close_deflated_stream(st);
 	munmap(st->u.loose.mapped, st->u.loose.mapsize);
 	return 0;
@@ -351,6 +478,13 @@ static open_method_decl(loose)
 	st->z_state = z_used;
 
 	st->vtbl = &loose_vtbl;
+
+	if (open_object_filter(st, *type)) {
+		git_inflate_end(&st->z);
+		munmap(st->u.loose.mapped, st->u.loose.mapsize);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -412,6 +546,7 @@ static read_method_decl(pack_non_delta)
 
 static close_method_decl(pack_non_delta)
 {
+	close_object_filter(st);
 	close_deflated_stream(st);
 	return 0;
 }
@@ -446,6 +581,13 @@ static open_method_decl(pack_non_delta)
 	}
 	st->z_state = z_unused;
 	st->vtbl = &pack_non_delta_vtbl;
+
+	if (open_object_filter(st, *type))
+		return 1;
+
+	if(st->obj_filter.run)
+		die(_("streaming object filter for pack files not supported yet"));
+
 	return 0;
 }
 
