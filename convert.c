@@ -1231,6 +1231,114 @@ static struct stream_filter *ident_filter(const unsigned char *sha1)
 }
 
 /*
+ * read object filter
+ */
+
+struct read_object_filter {
+	struct stream_filter filter;
+	struct child_process cmd;
+	unsigned long left;
+};
+
+static int read_object_filter_fn(struct stream_filter *filter,
+			   const char *input, size_t *isize_p,
+			   char *output, size_t *osize_p)
+{
+	struct read_object_filter *ro = (struct read_object_filter *)filter;
+	size_t s;
+	size_t pos;
+	struct pollfd fd;
+	int ret;
+
+	if(input) {
+		s = xwrite(ro->cmd.in, input, *isize_p);
+		if(s < 0)
+			die(_("object filter did not accept the data"));
+
+		*isize_p -= s;
+
+		ro->left -= s;
+		if(ro->left == 0) {
+			close(ro->cmd.in);
+			ro->cmd.in = -1;
+		}
+
+		fd.fd = ro->cmd.out;
+		fd.events = POLLIN;
+		fd.revents = 0;
+
+		ret = poll(&fd, 1, 0);
+		if(ret < 0)
+			die(_("polling for object filter failed"));
+
+		if(ret) {
+			s = xread(ro->cmd.out, output, *osize_p);
+			if(s < 0)
+				die(_("failed to read data from object filter"));
+
+			*osize_p -= s;
+		}
+	} else {
+		pos = 0;
+		while((*osize_p > 0) && ((s = xread(ro->cmd.out, output + pos, *osize_p)) > 0)) {
+			pos += s;
+			*osize_p -= s;
+		}
+	}
+
+	return 0;
+}
+
+static void read_object_free_fn(struct stream_filter *filter)
+{
+	struct read_object_filter *ro = (struct read_object_filter *)filter;
+
+	if(ro->cmd.in != -1)
+		close(ro->cmd.in);
+	close(ro->cmd.out);
+
+	if (finish_command(&ro->cmd))
+		die("object filter failed to run");
+
+	free(filter);
+}
+
+static struct stream_filter_vtbl read_object_vtbl = {
+	read_object_filter_fn,
+	read_object_free_fn,
+};
+
+static struct stream_filter *read_object_filter(const unsigned char *sha1)
+{
+	if(access(git_path("hooks/read-object"), X_OK) < 0) {
+		return (struct stream_filter *)&null_filter_singleton;
+	} else {
+		struct read_object_filter *ro = xmalloc(sizeof(*ro));
+		const char *args[4];
+
+		ro->filter.vtbl = &read_object_vtbl;
+
+		enum object_type type = sha1_object_info(sha1, &ro->left);
+		if (type < 0)
+			die("%s is not a valid object", sha1_to_hex(sha1));
+
+		memset(&ro->cmd, 0, sizeof(ro->cmd));
+		ro->cmd.argv = args;
+		ro->cmd.in = -1;
+		ro->cmd.out = -1;
+		args[0] = git_path("hooks/read-object");
+		args[1] = typename(type);
+		args[2] = "-1";
+		args[3] = NULL;
+
+		if (start_command(&ro->cmd))
+			die(_("could not run object filter."));
+
+		return (struct stream_filter *)ro;
+	}
+}
+
+/*
  * Return an appropriately constructed filter for the path, or NULL if
  * the contents cannot be filtered without reading the whole thing
  * in-core.
@@ -1245,6 +1353,8 @@ struct stream_filter *get_stream_filter(const char *path, const unsigned char *s
 	struct stream_filter *filter = NULL;
 
 	convert_attrs(&ca, path);
+
+	filter = read_object_filter(sha1);
 
 	if (ca.drv && (ca.drv->smudge || ca.drv->clean))
 		return filter;
