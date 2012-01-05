@@ -1154,8 +1154,13 @@ void *run_object_filter(const char *name, const void *buffer, unsigned long *siz
 	const char *args[4];
 	struct strbuf nbuf = STRBUF_INIT;
 	size_t len;
+	size_t n;
 	void *buf;
 	char sizebuf[32];
+	char tmpbuf[1024];
+	const char *p;
+	struct pollfd fd;
+	int ret;
 
 	if ((_skip_object_filter) || (access(git_path("hooks/%s", name), X_OK) < 0)) {
 		strbuf_add(&nbuf, buffer, *size);
@@ -1176,18 +1181,46 @@ void *run_object_filter(const char *name, const void *buffer, unsigned long *siz
 	if (start_command(&cmd))
 		die(_("could not run object filter."));
 
-	if (write_in_full(cmd.in, buffer, *size) != *size) {
-		close(cmd.in);
-		close(cmd.out);
-		finish_command(&cmd);
-		die(_("object filter did not accept the data"));
+	p = buffer;
+	len = *size;
+
+	while(len > 0) {
+		if ((n = xwrite(cmd.in, p, len > 1024 ? 1024 : len)) != (len > 1024 ? 1024 : len)) {
+			close(cmd.in);
+			close(cmd.out);
+			finish_command(&cmd);
+			die(_("object filter did not accept the data"));
+		}
+
+		len -= n;
+		p += n;
+
+		fd.fd = cmd.out;
+		fd.events = POLLIN;
+		fd.revents = 0;
+
+		ret = poll(&fd, 1, 0);
+		if(ret < 0)
+			die(_("polling for object filter failed"));
+
+		if(ret) {
+			if((n = xread(cmd.out, tmpbuf, 1024)) < 0)
+				die(_("failed to read data from object filter"));
+
+			strbuf_add(&nbuf, tmpbuf, n);
+		}
 	}
+
 	close(cmd.in);
 
-	len = strbuf_read(&nbuf, cmd.out, 0);
+	while((n = xread(cmd.out, tmpbuf, 1024)) > 0)
+		strbuf_add(&nbuf, tmpbuf, n);
+	if(n < 0)
+		die(_("failed to read data from object filter"));
+
 	close(cmd.out);
 
-	if (finish_command(&cmd) || len < 0)
+	if (finish_command(&cmd))
 		die(_("object filter failed to run"));
 
 	buf = strbuf_detach(&nbuf, &len);
