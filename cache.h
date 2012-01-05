@@ -752,7 +752,8 @@ char *strip_path_suffix(const char *path, const char *suffix);
 int daemon_avoid_alias(const char *path);
 int offset_1st_component(const char *path);
 
-void skip_object_filter();
+void set_skip_object_filter(int skip);
+int skip_object_filter();
 void *run_object_filter(const char *name, const void *buffer, unsigned long *size, const char *type);
 
 /* object replacement */

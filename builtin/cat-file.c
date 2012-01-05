@@ -240,7 +240,7 @@ static int git_cat_file_config(const char *var, const char *value, void *cb)
 
 int cmd_cat_file(int argc, const char **argv, const char *prefix)
 {
-	int opt = 0, batch = 0;
+	int opt = 0, batch = 0, no_object_filter = 0;
 	const char *exp_type = NULL, *obj_name = NULL;
 
 	const struct option options[] = {
@@ -258,15 +258,18 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		OPT_SET_INT(0, "batch-check", &batch,
 			    "show info about objects fed from the standard input",
 			    BATCH_CHECK),
+		OPT_SET_INT('n', "no-object-filter", &no_object_filter, "skip object filter", 1),
 		OPT_END()
 	};
 
 	git_config(git_cat_file_config, NULL);
 
-	if (argc != 3 && argc != 2)
+	if (argc != 4 && argc != 3 && argc != 2)
 		usage_with_options(cat_file_usage, options);
 
 	argc = parse_options(argc, argv, prefix, options, cat_file_usage, 0);
+
+	set_skip_object_filter(no_object_filter);
 
 	if (opt) {
 		if (argc == 1)

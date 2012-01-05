@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "streaming.h"
+#include "object.h"
 #include "run-command.h"
 
 enum input_source {
@@ -184,6 +185,11 @@ static int open_object_filter(struct git_istream *st, enum object_type type)
 {
 	const char *args[4];
 	char sizebuf[32];
+
+	if (skip_object_filter()) {
+		st->obj_filter.run = 0;
+		return 0;
+	}
 
 	if (access(git_path("hooks/read-object"), X_OK) < 0) {
 		st->obj_filter.run = 0;

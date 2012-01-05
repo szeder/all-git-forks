@@ -1143,9 +1143,15 @@ static const struct packed_git *has_packed_and_bad(const unsigned char *sha1)
 }
 
 static int _skip_object_filter;
-void skip_object_filter()
+
+void set_skip_object_filter(int skip)
 {
-	_skip_object_filter = 1;
+	_skip_object_filter = skip;
+}
+
+int skip_object_filter()
+{
+	return _skip_object_filter;
 }
 
 void *run_object_filter(const char *name, const void *buffer, unsigned long *size, const char *type)

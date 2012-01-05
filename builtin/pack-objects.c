@@ -2312,7 +2312,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 
 	read_replace_refs = 0;
 
-	skip_object_filter();
+	set_skip_object_filter(1);
 
 	rp_av = xcalloc(rp_ac_alloc, sizeof(*rp_av));
 
