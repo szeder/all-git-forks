@@ -172,12 +172,14 @@ objects from the source repository into a pack in the cloned repository.
 
 --depth <depth>::
 	Create a 'shallow' clone with a history truncated to the
-	specified number of revisions.  A shallow repository has a
-	number of limitations (you cannot clone or fetch from
-	it, nor push from nor into it), but is adequate if you
-	are only interested in the recent history of a large project
-	with a long history, and would want to send in fixes
-	as patches.
+	specified number of revisions. Only one branch (either HEAD
+	or specified by --branch) is fetched. Tags that point
+	outside truncated history are not fetched.
++
+A shallow repository has a number of limitations (you cannot clone or
+fetch from it, nor push from nor into it), but is adequate if you are
+only interested in the recent history of a large project with a long
+history, and would want to send in fixes as patches.
 
 --recursive::
 --recurse-submodules::
