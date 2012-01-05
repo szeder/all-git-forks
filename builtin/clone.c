@@ -48,6 +48,7 @@ static int option_verbosity;
 static int option_progress;
 static struct string_list option_config;
 static struct string_list option_reference;
+static char *src_ref_prefix = "refs/heads/";
 
 static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
 {
@@ -427,9 +428,27 @@ static struct ref *wanted_peer_refs(const struct ref *refs,
 	struct ref *local_refs = head;
 	struct ref **tail = head ? &head->next : &local_refs;
 
-	get_fetch_map(refs, refspec, &tail, 0);
-	if (!option_mirror)
-		get_fetch_map(refs, tag_refspec, &tail, 0);
+	if (option_depth) {
+		struct ref *remote_head = NULL;
+
+		if (!option_branch)
+			remote_head = guess_remote_head(head, refs, 0);
+		else {
+			struct strbuf sb = STRBUF_INIT;
+			strbuf_addstr(&sb, src_ref_prefix);
+			strbuf_addstr(&sb, option_branch);
+			remote_head = find_ref_by_name(refs, sb.buf);
+			strbuf_release(&sb);
+		}
+
+		if (remote_head)
+			get_fetch_map(remote_head, refspec, &tail, 0);
+	}
+	else {
+		get_fetch_map(refs, refspec, &tail, 0);
+		if (!option_mirror)
+			get_fetch_map(refs, tag_refspec, &tail, 0);
+	}
 
 	return local_refs;
 }
@@ -446,6 +465,27 @@ static void write_remote_refs(const struct ref *local_refs)
 
 	pack_refs(PACK_REFS_ALL);
 	clear_extra_refs();
+}
+
+static void write_followtags(const struct ref *refs)
+{
+	struct ref_lock *lock;
+	const struct ref *ref;
+
+	for (ref = refs; ref; ref = ref->next) {
+		if (prefixcmp(ref->name, "refs/tags"))
+			continue;
+		if (!suffixcmp(ref->name, "^{}"))
+			continue;
+		if (!has_sha1_file(ref->old_sha1))
+			continue;
+
+		lock = lock_any_ref_for_update(ref->name, NULL, 0);
+		if (!lock)
+			die_errno(_("unable to lock %s for writing"), ref->name);
+		if (write_ref_sha1(lock, ref->old_sha1, "storing tag") < 0)
+			die_errno(_("unable to write %s"), ref->name);
+	}
 }
 
 static int write_one_config(const char *key, const char *value, void *data)
@@ -478,7 +518,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	struct strbuf key = STRBUF_INIT, value = STRBUF_INIT;
 	struct strbuf branch_top = STRBUF_INIT, reflog_msg = STRBUF_INIT;
 	struct transport *transport = NULL;
-	char *src_ref_prefix = "refs/heads/";
 	int err = 0;
 
 	struct refspec *refspec;
@@ -642,9 +681,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		transport_set_option(transport, TRANS_OPT_KEEP, "yes");
 
-		if (option_depth)
+		if (option_depth) {
 			transport_set_option(transport, TRANS_OPT_DEPTH,
 					     option_depth);
+			transport_set_option(transport, TRANS_OPT_FOLLOWTAGS,
+					     "1");
+		}
 
 		transport_set_verbosity(transport, option_verbosity, option_progress);
 
@@ -663,6 +705,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		clear_extra_refs();
 
 		write_remote_refs(mapped_refs);
+		if (option_depth)
+			write_followtags(refs);
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =
