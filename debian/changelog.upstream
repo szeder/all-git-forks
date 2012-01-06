@@ -1,3 +1,37 @@
+Version v1.7.8.3; changes since v1.7.8.2:
+-----------------------------------------
+
+Brian Harring (1):
+      fix hang in git fetch if pointed at a 0 length bundle
+
+Clemens Buchacher (2):
+      Documentation: read-tree --prefix works with existing subtrees
+      t5550: repack everything into one file
+
+Jack Nagel (1):
+      Add MYMETA.json to perl/.gitignore
+
+Jakub Narebski (1):
+      gitweb: Fix fallback mode of to_utf8 subroutine
+
+Jens Lehmann (1):
+      docs: describe behavior of relative submodule URLs
+
+Junio C Hamano (1):
+      Git 1.7.8.3
+
+Jürgen Kreileder (3):
+      gitweb: Call to_utf8() on input string in chop_and_escape_str()
+      gitweb: esc_html() site name for title in OPML
+      gitweb: Output valid utf8 in git_blame_common('data')
+
+Nguyễn Thái Ngọc Duy (1):
+      Catch invalid --depth option passed to clone or fetch
+
+Thomas Rast (1):
+      Documentation: rerere.enabled is the primary way to configure rerere
+
+
 Version v1.7.8.2; changes since v1.7.8.1:
 -----------------------------------------
 
