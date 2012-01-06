@@ -522,48 +522,141 @@ static read_method_decl(pack_non_delta)
 {
 	size_t total_read = 0;
 
-	switch (st->z_state) {
-	case z_unused:
+	if (st->z_state == z_error)
+		return -1;
+
+	if (st->z_state == z_done) {
+		if(st->obj_filter.run) {
+			while(total_read < sz) {
+				size_t n;
+
+				n = xread(st->obj_filter.cmd.out, buf + total_read, sz - total_read);
+				if(n < 0)
+					return -1;
+
+				if(n == 0)
+					break;
+
+				total_read += n;
+			}
+
+			return total_read;
+		}
+
+		return 0;
+	}
+
+	if (st->z_state == z_unused) {
 		memset(&st->z, 0, sizeof(st->z));
 		git_inflate_init(&st->z);
 		st->z_state = z_used;
-		break;
-	case z_done:
-		return 0;
-	case z_error:
-		return -1;
-	case z_used:
-		break;
 	}
 
-	while (total_read < sz) {
-		int status;
-		struct pack_window *window = NULL;
-		unsigned char *mapped;
+	if (st->obj_filter.run) {
+		while (total_read < sz) {
+			int status;
+			struct pack_window *window = NULL;
+			unsigned char *mapped;
+			size_t s, n;
+			struct pollfd fd;
+			int ret;
 
-		mapped = use_pack(st->u.in_pack.pack, &window,
-				  st->u.in_pack.pos, &st->z.avail_in);
+			if(st->z_state == z_used) {
+				mapped = use_pack(st->u.in_pack.pack, &window,
+						  st->u.in_pack.pos, &st->z.avail_in);
 
-		st->z.next_out = (unsigned char *)buf + total_read;
-		st->z.avail_out = sz - total_read;
-		st->z.next_in = mapped;
-		status = git_inflate(&st->z, Z_FINISH);
+				st->z.next_out = (unsigned char *)buf + total_read;
+				st->z.avail_out = sz - total_read;
+				st->z.next_in = mapped;
+				status = git_inflate(&st->z, Z_FINISH);
 
-		st->u.in_pack.pos += st->z.next_in - mapped;
-		total_read = st->z.next_out - (unsigned char *)buf;
-		unuse_pack(&window);
+				st->u.in_pack.pos += st->z.next_in - mapped;
+				unuse_pack(&window);
 
-		if (status == Z_STREAM_END) {
-			git_inflate_end(&st->z);
-			st->z_state = z_done;
-			break;
+				s = st->z.next_out - (unsigned char *)buf - total_read;
+				if(s > 0) {
+					if(write_in_full(st->obj_filter.cmd.in, (unsigned char *)buf + total_read, s) != s) {
+						git_inflate_end(&st->z);
+						st->z_state = z_error;
+						return -1;
+					}
+				}
+
+				if (status == Z_STREAM_END) {
+					close(st->obj_filter.cmd.in);
+					st->obj_filter.cmd.in = -1;
+					git_inflate_end(&st->z);
+					st->z_state = z_done;
+					continue;
+				} else if (status != Z_OK && status != Z_BUF_ERROR) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+					return -1;
+				}
+
+				fd.fd = st->obj_filter.cmd.out;
+				fd.events = POLLIN;
+				fd.revents = 0;
+
+				ret = poll(&fd, 1, 0);
+				if(ret < 0) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+					return -1;
+				}
+
+				if(ret == 0) {
+					if(total_read > 0)
+						break;
+					else
+						continue;
+				}
+			}
+
+			n = xread(st->obj_filter.cmd.out, (unsigned char *)buf + total_read, sz - total_read);
+			if(n < 0) {
+				if(st->z_state == z_used) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+				}
+				return -1;
+			}
+			if(n == 0)
+				break;
+
+			total_read += n;
 		}
-		if (status != Z_OK && status != Z_BUF_ERROR) {
-			git_inflate_end(&st->z);
-			st->z_state = z_error;
-			return -1;
+	} else {
+		while (total_read < sz) {
+			int status;
+			struct pack_window *window = NULL;
+			unsigned char *mapped;
+
+			mapped = use_pack(st->u.in_pack.pack, &window,
+					  st->u.in_pack.pos, &st->z.avail_in);
+
+			st->z.next_out = (unsigned char *)buf + total_read;
+			st->z.avail_out = sz - total_read;
+			st->z.next_in = mapped;
+			status = git_inflate(&st->z, Z_FINISH);
+
+			st->u.in_pack.pos += st->z.next_in - mapped;
+			total_read = st->z.next_out - (unsigned char *)buf;
+			unuse_pack(&window);
+
+			if (status == Z_STREAM_END) {
+				git_inflate_end(&st->z);
+				st->z_state = z_done;
+				break;
+			}
+			if (status != Z_OK && status != Z_BUF_ERROR) {
+				git_inflate_end(&st->z);
+				st->z_state = z_error;
+				return -1;
+			}
 		}
 	}
+
 	return total_read;
 }
 
@@ -607,9 +700,6 @@ static open_method_decl(pack_non_delta)
 
 	if (open_object_filter(st, *type))
 		return 1;
-
-	if(st->obj_filter.run)
-		die(_("streaming object filter for pack files not supported yet"));
 
 	return 0;
 }
