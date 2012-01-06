@@ -674,10 +674,12 @@ branch.<name>.mergeoptions::
 branch.<name>.rebase::
 	When true, rebase the branch <name> on top of the fetched branch,
 	instead of merging the default branch from the default remote when
-	"git pull" is run.
-	*NOTE*: this is a possibly dangerous operation; do *not* use
-	it unless you understand the implications (see linkgit:git-rebase[1]
-	for details).
+	"git pull" is run. See "pull.rebase" for doing this in a non
+	branch-specific manner.
++
+*NOTE*: this is a possibly dangerous operation; do *not* use
+it unless you understand the implications (see linkgit:git-rebase[1]
+for details).
 
 browser.<tool>.cmd::
 	Specify the command to invoke the specified browser. The
@@ -828,6 +830,29 @@ commit.template::
 	Specify a file to use as the template for new commit messages.
 	"{tilde}/" is expanded to the value of `$HOME` and "{tilde}user/" to the
 	specified user's home directory.
+
+credential.helper::
+	Specify an external helper to be called when a username or
+	password credential is needed; the helper may consult external
+	storage to avoid prompting the user for the credentials. See
+	linkgit:gitcredentials[7] for details.
+
+credential.useHttpPath::
+	When acquiring credentials, consider the "path" component of an http
+	or https URL to be important. Defaults to false. See
+	linkgit:gitcredentials[7] for more information.
+
+credential.username::
+	If no username is set for a network authentication, use this username
+	by default. See credential.<context>.* below, and
+	linkgit:gitcredentials[7].
+
+credential.<url>.*::
+	Any of the credential.* options above can be applied selectively to
+	some credentials. For example "credential.https://example.com.username"
+	would set the default username only for https connections to
+	example.com. See linkgit:gitcredentials[7] for details on how URLs are
+	matched.
 
 include::diff-config.txt[]
 
@@ -1097,6 +1122,17 @@ grep.lineNumber::
 
 grep.extendedRegexp::
 	If set to true, enable '--extended-regexp' option by default.
+
+gpg.program::
+	Use this custom program instead of "gpg" found on $PATH when
+	making or verifying a PGP signature. The program must support the
+	same command line interface as GPG, namely, to verify a detached
+	signature, "gpg --verify $file - <$signature" is run, and the
+	program is expected to signal a good signature by exiting with
+	code 0, and to generate an ascii-armored detached signature, the
+	standard input of "gpg -bsau $key" is fed with the contents to be
+	signed, and the program is expected to send the result to its
+	standard output.
 
 gui.commitmsgwidth::
 	Defines how wide the commit message window is in the
@@ -1586,6 +1622,16 @@ pretty.<name>::
 	to be equivalent to running `git log "--pretty=format:{asterisk} %H %s"`.
 	Note that an alias with the same name as a built-in format
 	will be silently ignored.
+
+pull.rebase::
+	When true, rebase branches on top of the fetched branch, instead
+	of merging the default branch from the default remote when "git
+	pull" is run. See "branch.<name>.rebase" for setting this on a
+	per-branch basis.
++
+*NOTE*: this is a possibly dangerous operation; do *not* use
+it unless you understand the implications (see linkgit:git-rebase[1]
+for details).
 
 pull.octopus::
 	The default merge strategy to use when pulling multiple branches
