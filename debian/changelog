@@ -1,3 +1,10 @@
+git (1:1.7.9~rc0-1) experimental; urgency=low
+
+  * new upstream release candidate.
+  * update debian/copyright.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 06 Jan 2012 17:06:55 -0600
+
 git (1:1.7.8.3-1) unstable; urgency=medium
 
   * new upstream point release.

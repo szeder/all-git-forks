@@ -1,3 +1,316 @@
+Version v1.7.9-rc0; changes since v1.7.8.3:
+-------------------------------------------
+
+Anders Kaseorg (2):
+      gitk: Remove unused $cdate array
+      gitk: Remember time zones from author and commit timestamps
+
+Bert Wesarg (14):
+      git-gui: fix multi selected file operation
+      git-gui: handle config booleans without value
+      git-gui: add smart case search mode in searchbar
+      git-gui: add regexp search mode to the searchbar
+      git-gui: add search history to searchbar
+      git-gui: fix unintended line break in message string
+      git-gui: use "untracked" for files which are not known to git
+      git-gui: new config to control staging of untracked files
+      git-gui: fix display of path in browser title
+      git-gui: use a tristate to control the case mode in the searchbar
+      git-gui: span widgets over the full file output area in the blame view
+      git-gui: include the file path in guitools confirmation dialog
+      git-gui: make config gui.warndetachedcommit a boolean
+      git-gui: don't warn for detached head when rebasing
+
+Dejan Ribič (1):
+      git-gui: fix spelling error in sshkey.tcl
+
+Gary Gibbons (5):
+      git-p4: ensure submit clientPath exists before chdir
+      git-p4: use absolute directory for PWD env var
+      git-p4: fix test for unsupported P4 Client Views
+      git-p4: sort client views by reverse View number
+      git-p4: support single file p4 client view maps
+
+Gustaf Hendeby (1):
+      Add built-in diff patterns for MATLAB code
+
+Jakub Narebski (6):
+      gitweb: Refactor diff body line classification
+      gitweb: Extract formatting of diff chunk header
+      gitweb: Give side-by-side diff extra CSS styling
+      t9500: Add test for handling incomplete lines in diff by gitweb
+      t9500: Add basic sanity tests for side-by-side diff in gitweb
+      gitweb: Use href(-replay=>1,...) for formats links in "commitdiff"
+
+Jeff King (28):
+      prune: handle --progress/no-progress
+      reachable: per-object progress
+      upload-archive: use start_command instead of fork
+      test-lib: add test_config_global variant
+      t5550: fix typo
+      introduce credentials API
+      credential: add function for parsing url components
+      http: use credential API to get passwords
+      credential: apply helper config
+      credential: add credential.*.username
+      credential: make relevance of http path configurable
+      docs: end-user documentation for the credential subsystem
+      credentials: add "cache" helper
+      strbuf: add strbuf_add*_urlencode
+      imap-send: avoid buffer overflow
+      imap-send: don't check return value of git_getpass
+      move git_getpass to its own source file
+      refactor git_getpass into generic prompt function
+      add generic terminal prompt function
+      credentials: add "store" helper
+      prompt: use git_terminal_prompt
+      t: add test harness for external credential helpers
+      credential: use git_prompt instead of git_getpass
+      Makefile: linux has /dev/tty
+      Makefile: OS X has /dev/tty
+      contrib: add credential helper for OS X Keychain
+      test-lib: redirect stdin of tests
+      pretty: give placeholders to reflog identity
+
+Joey Hess (1):
+      write first for-merge ref to FETCH_HEAD first
+
+Johannes Sixt (2):
+      Makefile: unix sockets may not available on some platforms
+      t0090: be prepared that 'wc -l' writes leading blanks
+
+Jonathan Nieder (6):
+      gitk: Make vi-style keybindings more vi-like
+      test: add missing "&&" after echo command
+      test: remove a porcelain test that hard-codes commit names
+      t7501 (commit): modernize style
+      test: commit --amend should honor --no-edit
+      test: errors preparing for a test are not special
+
+Jonathon Mah (1):
+      stash: Don't fail if work dir contains file named 'HEAD'
+
+Junio C Hamano (50):
+      branch: add read_branch_desc() helper function
+      format-patch: use branch description in cover letter
+      branch: teach --edit-description option
+      request-pull: modernize style
+      request-pull: state what commit to expect
+      request-pull: use the branch description
+      fmt-merge-msg: use branch.$name.description
+      write_pack_header(): a helper function
+      create_tmp_packfile(): a helper function
+      finish_tmp_packfile(): a helper function
+      Split GPG interface into its own helper library
+      merge: notice local merging of tags and keep it unwrapped
+      fetch: allow "git fetch $there v1.0" to fetch a tag
+      refs DWIMmery: use the same rule for both "git fetch" and others
+      fmt-merge-msg: avoid early returns
+      fmt-merge-msg: package options into a structure
+      fmt-merge-msg: Add contents of merged tag in the merge message
+      merge: make usage of commit->util more extensible
+      merge: record tag objects without peeling in MERGE_HEAD
+      request-pull: use the annotated tag contents
+      commit: copy merged signed tags to headers of merge commit
+      merge: force edit and no-ff mode when merging a tag object
+      commit: teach --amend to carry forward extra headers
+      commit-tree: update the command line parsing
+      commit-tree: teach -m/-F options to read logs from elsewhere
+      commit: teach --gpg-sign option
+      log: --show-signature
+      test "commit -S" and "log --show-signature"
+      pretty: %G[?GS] placeholders
+      gpg-interface: allow use of a custom GPG binary
+      csum-file: introduce sha1file_checkpoint
+      bulk-checkin: replace fast-import based implementation
+      Kick-off the 1.7.9 cycle
+      commit: honour --no-edit
+      Update draft release notes for 1.7.9
+      Update draft release notes to 1.7.9
+      request-pull: update the "pull" command generation logic
+      Update draft release notes to 1.7.9
+      request-pull: do not emit "tag" before the tagname
+      Update draft release notes to 1.7.9
+      commit: do not lose mergetag header when not amending
+      Update draft release notes to 1.7.9
+      Update draft release notes in preparation for 1.7.9-rc0
+      Update draft release notes to 1.7.9
+      verify_signed_buffer: fix stale comment
+      commit --amend -S: strip existing gpgsig headers
+      log-tree.c: small refactor in show_signature()
+      log-tree: show mergetag in log --show-signature output
+      log --show-signature: reword the common two-head merge case
+      Git 1.7.9-rc0
+
+Kato Kazuyoshi (2):
+      gitweb: Add a feature to show side-by-side diff
+      gitweb: Add navigation to select side-by-side diff
+
+Kirill A. Shutemov (1):
+      git-tag: introduce --cleanup option
+
+Linus Torvalds (1):
+      fetch: do not store peeled tag object names in FETCH_HEAD
+
+Martin von Zweigbergk (10):
+      gitk: Fix file highlight when run in subdirectory
+      gitk: Fix "show origin of this line" with separate work tree
+      gitk: Fix "blame parent commit" with separate work tree
+      gitk: Fix "External diff" with separate work tree
+      gitk: Put temporary directory inside .git
+      gitk: Run 'git rev-parse --git-dir' only once
+      gitk: Simplify calculation of gitdir
+      gitk: Show modified files with separate work tree
+      t3401: modernize style
+      t3401: use test_commit in setup
+
+Michael Haggerty (16):
+      struct ref_entry: document name member
+      refs: rename "refname" variables
+      refs: rename parameters result -> sha1
+      clear_ref_array(): rename from free_ref_array()
+      is_refname_available(): remove the "quiet" argument
+      parse_ref_line(): add docstring
+      add_ref(): add docstring
+      is_dup_ref(): extract function from sort_ref_array()
+      refs: change signatures of get_packed_refs() and get_loose_refs()
+      get_ref_dir(): change signature
+      resolve_gitlink_ref(): improve docstring
+      Pass a (ref_cache *) to the resolve_gitlink_*() helper functions
+      resolve_gitlink_ref_recursive(): change to work with struct ref_cache
+      repack_without_ref(): remove temporary
+      create_ref_entry(): extract function from add_ref()
+      add_ref(): take a (struct ref_entry *) parameter
+
+Nguyễn Thái Ngọc Duy (14):
+      fsck: return error code when verify_pack() goes wrong
+      verify_packfile(): check as many object as possible in a pack
+      fsck: avoid reading every object twice
+      fsck: print progress
+      prune: show progress while marking reachable objects
+      Convert many resolve_ref() calls to read_ref*() and ref_exists()
+      checkout,merge: disallow overwriting ignored files with --no-overwrite-ignore
+      Copy resolve_ref() return value for longer use
+      revert: convert resolve_ref() to read_ref_full()
+      Convert resolve_ref+xstrdup to new resolve_refdup function
+      Rename resolve_ref() to resolve_ref_unsafe()
+      merge: abort if fails to commit
+      Convert commit_tree() to take strbuf as message
+      commit_tree(): refuse commit messages that contain NULs
+
+Pat Thoyts (11):
+      git-gui: include the number of untracked files to stage when asking the user
+      git-gui: theme the search and line-number entry fields on blame screen
+      git-gui: catch invalid or complete regular expressions and treat as no match.
+      git-gui: enable the smart case sensitive search only if gui.search.smartcase is true
+      git-gui: set suitable extended window manager hints.
+      git-gui: support underline style when parsing diff output
+      git-gui: sort the numeric ansi codes
+      git-gui: set whitespace warnings appropriate to this project
+      git-gui: added config gui.gcwarning to disable the gc hint message
+      git-gui: handle shell script text filters when loading for blame.
+      git-gui 0.16
+
+Paul Mackerras (1):
+      gitk: Update copyright
+
+Pete Wyckoff (18):
+      git-p4: introduce skipSubmitEdit
+      git-p4: submit test for auto-creating clientPath
+      git-p4: test for absolute PWD problem
+      git-p4: fix skipSubmitEdit regression
+      rename git-p4 tests
+      git-p4: introduce asciidoc documentation
+      git-p4: clone does not use --git-dir
+      git-p4: test cloning with two dirs, clarify doc
+      git-p4: document and test clone --branch
+      git-p4: honor --changesfile option and test
+      git-p4: document and test --import-local
+      git-p4: test --max-changes
+      git-p4: test --keep-path
+      git-p4: test and document --use-client-spec
+      git-p4: document and test submit options
+      git-p4: test client view handling
+      git-p4: rewrite view handling
+      git-p4: view spec documentation
+
+Ramkumar Ramachandra (11):
+      t3200 (branch): fix '&&' chaining
+      test: fix '&&' chaining
+      t3030 (merge-recursive): use test_expect_code
+      t1510 (worktree): fix '&&' chaining
+      t3040 (subprojects-basic): fix '&&' chaining, modernize style
+      revert: free msg in format_todo()
+      revert: make commit subjects in insn sheet optional
+      revert: tolerate extra spaces, tabs in insn sheet
+      revert: simplify getting commit subject in format_todo()
+      t3510 (cherry-pick-sequencer): use exit status
+      t3502, t3510: clarify cherry-pick -m failure
+
+Ramsay Allan Jones (3):
+      builtin/log.c: Fix an "Using plain integer as NULL pointer" warning
+      environment.c: Fix an sparse "symbol not declared" warning
+      fmt-merge-msg.c: Fix an "dubious one-bit signed bitfield" sparse error
+
+Raphael Zimmerer (1):
+      gitk: When a commit contains a note, mark it with a yellow box
+
+René Scharfe (5):
+      read-cache.c: allocate index entries individually
+      cache.h: put single NUL at end of struct cache_entry
+      use struct sha1_array in diff_tree_combined()
+      pass struct commit to diff_tree_combined_merge()
+      submodule: use diff_tree_combined_merge() instead of diff_tree_combined()
+
+SZEDER Gábor (9):
+      completion: document __gitcomp()
+      completion: optimize refs completion
+      completion: make refs completion consistent for local and remote repos
+      completion: improve ls-remote output filtering in __git_refs()
+      completion: support full refs from remote repositories
+      completion: query only refs/heads/ in __git_refs_remotes()
+      completion: improve ls-remote output filtering in __git_refs_remotes()
+      completion: fast initial completion for config 'remote.*.fetch' value
+      completion: remove broken dead code from __git_heads() and __git_tags()
+
+Samuel Bronson (1):
+      git-gui: Set both 16x16 and 32x32 icons on X to pacify Xming.
+
+Steven Walter (1):
+      git-svn.perl: close the edit for propedits even with no mods
+
+Thomas Rast (10):
+      Add test-scrap-cache-tree
+      Test the current state of the cache-tree optimization
+      Refactor cache_tree_update idiom from commit
+      commit: write cache-tree data when writing index anyway
+      reset: update cache-tree data when appropriate
+      grep: load funcname patterns for -W
+      grep: enable threading with -p and -W using lazy attribute lookup
+      grep: disable threading in non-worktree case
+      test-terminal: set output terminals to raw mode
+      bash completion: use read -r everywhere
+
+Tilman Vogel (1):
+      git-gui: add config value gui.diffopts for passing additional diff options
+
+Vincent van Ravesteijn (4):
+      Compile fix for MSVC: Do not include sys/resources.h
+      Compile fix for MSVC: Include <io.h>
+      MSVC: Remove unneeded header stubs
+      Show error for 'git merge' with unset merge.defaultToUpstream
+
+Yggy King (1):
+      gitk: Make "touching paths" search support backslashes
+
+Ævar Arnfjörð Bjarmason (5):
+      pull: introduce a pull.rebase option to enable --rebase
+      i18n: add infrastructure for translating Git with gettext
+      Fix an enum assignment issue spotted by Sun Studio
+      Fix a bitwise negation assignment issue spotted by Sun Studio
+      Appease Sun Studio by renaming "tmpfile"
+
+
 Version v1.7.8.3; changes since v1.7.8.2:
 -----------------------------------------
 
