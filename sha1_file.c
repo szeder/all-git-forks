@@ -1142,99 +1142,6 @@ static const struct packed_git *has_packed_and_bad(const unsigned char *sha1)
 	return NULL;
 }
 
-static int _skip_object_filter;
-
-void set_skip_object_filter(int skip)
-{
-	_skip_object_filter = skip;
-}
-
-int skip_object_filter()
-{
-	return _skip_object_filter;
-}
-
-void *run_object_filter(const char *name, const void *buffer, unsigned long *size, const char *type)
-{
-	struct child_process cmd;
-	const char *args[4];
-	struct strbuf nbuf = STRBUF_INIT;
-	size_t len;
-	size_t n;
-	void *buf;
-	char sizebuf[32];
-	char tmpbuf[1024];
-	const char *p;
-	struct pollfd fd;
-	int ret;
-
-	if ((_skip_object_filter) || (access(git_path("hooks/%s", name), X_OK) < 0)) {
-		strbuf_add(&nbuf, buffer, *size);
-		return strbuf_detach(&nbuf, &len);
-	}
-
-	sprintf(sizebuf, "%lu", *size);
-
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.argv = args;
-	cmd.in = -1;
-	cmd.out = -1;
-	args[0] = git_path("hooks/%s", name);
-	args[1] = type;
-	args[2] = sizebuf;
-	args[3] = NULL;
-
-	if (start_command(&cmd))
-		die(_("could not run object filter."));
-
-	p = buffer;
-	len = *size;
-
-	while(len > 0) {
-		if ((n = xwrite(cmd.in, p, len > 1024 ? 1024 : len)) != (len > 1024 ? 1024 : len)) {
-			close(cmd.in);
-			close(cmd.out);
-			finish_command(&cmd);
-			die(_("object filter did not accept the data"));
-		}
-
-		len -= n;
-		p += n;
-
-		fd.fd = cmd.out;
-		fd.events = POLLIN;
-		fd.revents = 0;
-
-		ret = poll(&fd, 1, 0);
-		if(ret < 0)
-			die(_("polling for object filter failed"));
-
-		if(ret) {
-			if((n = xread(cmd.out, tmpbuf, 1024)) < 0)
-				die(_("failed to read data from object filter"));
-
-			strbuf_add(&nbuf, tmpbuf, n);
-		}
-	}
-
-	close(cmd.in);
-
-	while((n = xread(cmd.out, tmpbuf, 1024)) > 0)
-		strbuf_add(&nbuf, tmpbuf, n);
-	if(n < 0)
-		die(_("failed to read data from object filter"));
-
-	close(cmd.out);
-
-	if (finish_command(&cmd))
-		die(_("object filter failed to run"));
-
-	buf = strbuf_detach(&nbuf, &len);
-	*size = len;
-
-	return buf;
-}
-
 int check_sha1_signature(const unsigned char *sha1, void *map, unsigned long size, const char *type)
 {
 	unsigned char real_sha1[20];
@@ -2308,6 +2215,9 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 	buf = read_packed_sha1(sha1, type, size);
 	if (buf) {
 		newbuf = run_object_filter("read-object", buf, size, typename(*type));
+		if (!newbuf)
+			return buf;
+
 		free(buf);
 		return newbuf;
 	}
@@ -2316,7 +2226,11 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 	if (map) {
 		buf = unpack_sha1_file(map, mapsize, type, size, sha1);
 		munmap(map, mapsize);
+
 		newbuf = run_object_filter("read-object", buf, size, typename(*type));
+		if (!newbuf)
+			return buf;
+
 		free(buf);
 		return newbuf;
 	}
@@ -2324,7 +2238,11 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 	buf = read_packed_sha1(sha1, type, size);
 	if (!buf)
 		return buf;
+
 	newbuf = run_object_filter("read-object", buf, size, typename(*type));
+	if (!newbuf)
+		return buf;
+
 	free(buf);
 	return newbuf;
 }
@@ -2626,17 +2544,19 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	int ret;
 
 	newbuf = run_object_filter("write-object", buf, &len, type);
+	if (newbuf)
+		buf = newbuf;
 
 	/* Normally if we have it in the pack then we do not bother writing
 	 * it out into .git/objects/??/?{38} file.
 	 */
-	write_sha1_file_prepare(newbuf, len, type, sha1, hdr, &hdrlen);
+	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
 	if (returnsha1)
 		hashcpy(returnsha1, sha1);
 	if (has_sha1_file(sha1))
 		return 0;
 
-	ret = write_loose_object(sha1, hdr, hdrlen, newbuf, len, 0);
+	ret = write_loose_object(sha1, hdr, hdrlen, buf, len, 0);
 	free(newbuf);
 	return ret;
 }

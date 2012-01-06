@@ -755,6 +755,7 @@ int offset_1st_component(const char *path);
 void set_skip_object_filter(int skip);
 int skip_object_filter();
 void *run_object_filter(const char *name, const void *buffer, unsigned long *size, const char *type);
+void run_object_filter_strbuf(const char *name, struct strbuf *buf, const char *type);
 
 /* object replacement */
 #define READ_SHA1_FILE_REPLACE 1

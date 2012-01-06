@@ -1019,21 +1019,16 @@ static int store_object(
 	unsigned char hdr[96];
 	unsigned char sha1[20];
 	unsigned long hdrlen, deltalen;
-	unsigned long len;
-	void *buf;
 	git_SHA_CTX c;
 	git_zstream s;
-	struct strbuf newdat = STRBUF_INIT;
 
-	len = dat->len;
-	buf = run_object_filter("write-object", dat->buf, &len, typename(type));
-	strbuf_add(&newdat, buf, len);
+	run_object_filter_strbuf("write-object", dat, typename(type));
 
 	hdrlen = sprintf((char *)hdr,"%s %lu", typename(type),
-		(unsigned long)newdat.len) + 1;
+		(unsigned long)dat->len) + 1;
 	git_SHA1_Init(&c);
 	git_SHA1_Update(&c, hdr, hdrlen);
-	git_SHA1_Update(&c, newdat.buf, newdat.len);
+	git_SHA1_Update(&c, dat->buf, dat->len);
 	git_SHA1_Final(sha1, &c);
 	if (sha1out)
 		hashcpy(sha1out, sha1);
@@ -1052,11 +1047,11 @@ static int store_object(
 		return 1;
 	}
 
-	if (last && last->data.buf && last->depth < max_depth && newdat.len > 20) {
+	if (last && last->data.buf && last->depth < max_depth && dat->len > 20) {
 		delta_count_attempts_by_type[type]++;
 		delta = diff_delta(last->data.buf, last->data.len,
-			newdat.buf, newdat.len,
-			&deltalen, newdat.len - 20);
+			dat->buf, dat->len,
+			&deltalen, dat->len - 20);
 	} else
 		delta = NULL;
 
@@ -1066,8 +1061,8 @@ static int store_object(
 		s.next_in = delta;
 		s.avail_in = deltalen;
 	} else {
-		s.next_in = (void *)newdat.buf;
-		s.avail_in = newdat.len;
+		s.next_in = (void *)dat->buf;
+		s.avail_in = dat->len;
 	}
 	s.avail_out = git_deflate_bound(&s, s.avail_in);
 	s.next_out = out = xmalloc(s.avail_out);
@@ -1090,8 +1085,8 @@ static int store_object(
 
 			memset(&s, 0, sizeof(s));
 			git_deflate_init(&s, pack_compression_level);
-			s.next_in = (void *)newdat.buf;
-			s.avail_in = newdat.len;
+			s.next_in = (void *)dat->buf;
+			s.avail_in = dat->len;
 			s.avail_out = git_deflate_bound(&s, s.avail_in);
 			s.next_out = out = xrealloc(out, s.avail_out);
 			while (git_deflate(&s, Z_FINISH) == Z_OK)
@@ -1126,7 +1121,7 @@ static int store_object(
 		pack_size += sizeof(hdr) - pos;
 	} else {
 		e->depth = 0;
-		hdrlen = encode_in_pack_object_header(type, newdat.len, hdr);
+		hdrlen = encode_in_pack_object_header(type, dat->len, hdr);
 		sha1write(pack_file, hdr, hdrlen);
 		pack_size += hdrlen;
 	}
@@ -1140,9 +1135,9 @@ static int store_object(
 	free(delta);
 	if (last) {
 		if (last->no_swap) {
-			last->data = newdat;
+			last->data = *dat;
 		} else {
-			strbuf_swap(&last->data, &newdat);
+			strbuf_swap(&last->data, dat);
 		}
 		last->offset = e->idx.offset;
 		last->depth = e->depth;
@@ -1313,7 +1308,11 @@ static void *gfi_unpack_entry(
 		p->pack_size = pack_size + 20;
 	}
 	buf = unpack_entry(p, oe->idx.offset, &type, sizep);
+
 	newbuf = run_object_filter("read-object", buf, sizep, typename(type));
+	if (!newbuf)
+		return buf;
+
 	free(buf);
 	return newbuf;
 }
@@ -1445,12 +1444,14 @@ static void store_tree(struct tree_entry *root)
 
 	if (!(root->versions[0].mode & NO_DELTA))
 		le = find_object(root->versions[0].sha1);
-//	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
-//		mktree(t, 0, &old_tree);
-//		lo.data = old_tree;
-//		lo.offset = le->idx.offset;
-//		lo.depth = t->delta_depth;
-//	}
+	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
+		mktree(t, 0, &old_tree);
+		lo.data = old_tree;
+		lo.offset = le->idx.offset;
+		lo.depth = t->delta_depth;
+
+		run_object_filter_strbuf("write-object", &lo.data, "tree");
+	}
 
 	mktree(t, 1, &new_tree);
 	store_object(OBJ_TREE, &new_tree, &lo, root->versions[1].sha1, 0);
