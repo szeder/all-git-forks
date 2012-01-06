@@ -330,7 +330,6 @@ static struct git_istream *attach_stream_filter(struct git_istream *st,
 
 static read_method_decl(loose)
 {
-	size_t to_copy_hdr = 0;
 	size_t total_read = 0;
 
 	if(st->z_state == z_error)
@@ -357,15 +356,6 @@ static read_method_decl(loose)
 		return 0;
 	}
 
-	if (st->u.loose.hdr_used < st->u.loose.hdr_avail) {
-		to_copy_hdr = st->u.loose.hdr_avail - st->u.loose.hdr_used;
-		if (sz < to_copy_hdr)
-			to_copy_hdr = sz;
-		memcpy(buf, st->u.loose.hdr + st->u.loose.hdr_used, to_copy_hdr);
-		st->u.loose.hdr_used += to_copy_hdr;
-		total_read += to_copy_hdr;
-	}
-
 	if (st->obj_filter.run) {
 		while (total_read < sz) {
 			int status;
@@ -373,58 +363,75 @@ static read_method_decl(loose)
 			struct pollfd fd;
 			int ret;
 
-			st->z.next_out = (unsigned char *)buf + total_read;
-			st->z.avail_out = sz - total_read;
-			status = git_inflate(&st->z, Z_FINISH);
+			if(st->z_state == z_used) {
+				st->z.next_out = (unsigned char *)buf + total_read;
+				st->z.avail_out = sz - total_read;
+				status = git_inflate(&st->z, Z_FINISH);
 
-			s = st->z.next_out - (unsigned char *)buf - total_read;
-			if(write_in_full(st->obj_filter.cmd.in, (unsigned char *)buf + total_read, s) != s) {
-				git_inflate_end(&st->z);
-				st->z_state = z_error;
-				return -1;
-			}
+				s = st->z.next_out - (unsigned char *)buf - total_read;
+				if(s > 0) {
+					if(write_in_full(st->obj_filter.cmd.in, (unsigned char *)buf + total_read, s) != s) {
+						git_inflate_end(&st->z);
+						st->z_state = z_error;
+						return -1;
+					}
+				}
 
-			fd.fd = st->obj_filter.cmd.out;
-			fd.events = POLLIN;
-			fd.revents = 0;
-
-			ret = poll(&fd, 1, 0);
-			if(ret < 0) {
-				git_inflate_end(&st->z);
-				st->z_state = z_error;
-				return -1;
-			}
-
-			if(ret == 0) {
-				if(total_read > 0)
-					break;
-				else
+				if (status == Z_STREAM_END) {
+					close(st->obj_filter.cmd.in);
+					st->obj_filter.cmd.in = -1;
+					git_inflate_end(&st->z);
+					st->z_state = z_done;
 					continue;
+				} else if (status != Z_OK && status != Z_BUF_ERROR) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+					return -1;
+				}
+
+				fd.fd = st->obj_filter.cmd.out;
+				fd.events = POLLIN;
+				fd.revents = 0;
+
+				ret = poll(&fd, 1, 0);
+				if(ret < 0) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+					return -1;
+				}
+
+				if(ret == 0) {
+					if(total_read > 0)
+						break;
+					else
+						continue;
+				}
 			}
 
 			n = xread(st->obj_filter.cmd.out, (unsigned char *)buf + total_read, sz - total_read);
-			if(n <= 0) {
-				git_inflate_end(&st->z);
-				st->z_state = z_error;
+			if(n < 0) {
+				if(st->z_state == z_used) {
+					git_inflate_end(&st->z);
+					st->z_state = z_error;
+				}
 				return -1;
 			}
+			if(n == 0)
+				break;
 
 			total_read += n;
-
-			if (status == Z_STREAM_END) {
-				close(st->obj_filter.cmd.in);
-				st->obj_filter.cmd.in = -1;
-				git_inflate_end(&st->z);
-				st->z_state = z_done;
-				break;
-			}
-			if (status != Z_OK && status != Z_BUF_ERROR) {
-				git_inflate_end(&st->z);
-				st->z_state = z_error;
-				return -1;
-			}
 		}
 	} else {
+		if (st->u.loose.hdr_used < st->u.loose.hdr_avail) {
+			size_t to_copy = 0;
+			to_copy = st->u.loose.hdr_avail - st->u.loose.hdr_used;
+			if (sz < to_copy)
+				to_copy = sz;
+			memcpy(buf, st->u.loose.hdr + st->u.loose.hdr_used, to_copy);
+			st->u.loose.hdr_used += to_copy;
+			total_read += to_copy;
+		}
+
 		while (total_read < sz) {
 			int status;
 
@@ -489,6 +496,16 @@ static open_method_decl(loose)
 		git_inflate_end(&st->z);
 		munmap(st->u.loose.mapped, st->u.loose.mapsize);
 		return -1;
+	}
+
+	if (st->obj_filter.run) {
+		size_t to_copy = st->u.loose.hdr_avail - st->u.loose.hdr_used;
+		if(write_in_full(st->obj_filter.cmd.in, st->u.loose.hdr + st->u.loose.hdr_used, to_copy) != to_copy) {
+			git_inflate_end(&st->z);
+			munmap(st->u.loose.mapped, st->u.loose.mapsize);
+			close_object_filter(st);
+			return -1;
+		}
 	}
 
 	return 0;
