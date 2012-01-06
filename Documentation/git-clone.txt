@@ -13,7 +13,8 @@ SYNOPSIS
 	  [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare] [--mirror]
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--separate-git-dir <git dir>]
-	  [--depth <depth>] [--recursive|--recurse-submodules] [--] <repository>
+	  [--depth <depth> [--[no-]single-branch]]
+	  [--recursive|--recurse-submodules] [--] <repository>
 	  [<directory>]
 
 DESCRIPTION
@@ -178,6 +179,15 @@ objects from the source repository into a pack in the cloned repository.
 	are only interested in the recent history of a large project
 	with a long history, and would want to send in fixes
 	as patches.
+
+--single-branch::
+--no-single-branch::
+	These options are only valid when --depth is given.
+	 `--single-branch` only fetches one branch (either HEAD or
+	specified by --branch) and tags that point to the downloaded
+	history. `--no-single-branch` fetches all branches and tags
+	like in normal clones. `--single-branch` is implied by
+	default.
 
 --recursive::
 --recurse-submodules::
