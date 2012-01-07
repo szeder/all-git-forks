@@ -332,6 +332,15 @@ link:howto/revert-a-faulty-merge.txt[revert-a-faulty-merge How-To] for details).
 	user edit that list before rebasing.  This mode can also be used to
 	split commits (see SPLITTING COMMITS below).
 
+--fix=<n>::
+	Searches commit history backwards from the current commit until the
+	most recent merge commit, or until a maximum of <n> preceding commits
+	(default: 20), and runs rebase -i <commit>^. The resulting range is
+	typically large enough to contain recent commits which the user might
+	want to edit, while avoiding the usually undesirable effects of
+	rebasing a merge commit, which obviates the need to find a suitable
+	base commit manually.
+
 -p::
 --preserve-merges::
 	Instead of ignoring merges, try to recreate them.

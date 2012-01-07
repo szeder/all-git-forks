@@ -38,6 +38,7 @@ git-rebase [-i] --continue | --abort | --skip
 v,verbose!         display a diffstat of what changed upstream
 q,quiet!           be quiet. implies --no-stat
 onto=!             rebase onto given branch instead of upstream
+fix?!              interactive rebase onto last merge commit
 p,preserve-merges! try to recreate merges instead of ignoring them
 s,strategy=!       use the given merge strategy
 no-ff!             cherry-pick all commits, even if unchanged
@@ -95,6 +96,7 @@ type=
 state_dir=
 # One of {'', continue, skip, abort}, as parsed from command line
 action=
+rebase_fix=
 preserve_merges=
 autosquash=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
@@ -178,6 +180,22 @@ run_pre_rebase_hook () {
 	fi
 }
 
+latest_merge_commit()
+{
+	max_nr_commits=$1
+
+	latest_merge=$(git rev-list -1 --merges HEAD)
+	if test -z "$latest_merge"
+	then
+		range=HEAD
+	else
+		range=$latest_merge..HEAD
+	fi
+
+	range_start=$(git rev-list -"$max_nr_commits" "$range" | tail -1)
+	echo $(git rev-parse $range_start^)
+}
+
 test -f "$apply_dir"/applying &&
 	die 'It looks like git-am is in progress. Cannot rebase.'
 
@@ -219,6 +237,20 @@ do
 		;;
 	-i)
 		interactive_rebase=explicit
+		;;
+	--fix)
+		interactive_rebase=explicit
+		rebase_fix=20
+		# Parse optional argument.
+		if test "${2#-}" = "$2"
+		then
+			if ! expr "$2" : "^[0-9]\+$" >/dev/null
+			then
+				die "Invalid argument to rebase --fix: $2"
+			fi
+			rebase_fix=$2
+			shift
+		fi
 		;;
 	-p)
 		preserve_merges=t
@@ -375,7 +407,10 @@ if test -z "$rebase_root"
 then
 	case "$#" in
 	0)
-		if ! upstream_name=$(git rev-parse --symbolic-full-name \
+		if test -n "$rebase_fix"
+		then
+			upstream_name=$(latest_merge_commit $rebase_fix)
+		elif ! upstream_name=$(git rev-parse --symbolic-full-name \
 			--verify -q @{upstream} 2>/dev/null)
 		then
 			. git-parse-remote
