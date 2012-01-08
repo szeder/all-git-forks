@@ -727,7 +727,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		if (option_branch) {
 			struct strbuf head = STRBUF_INIT;
-			strbuf_addstr(&head, src_ref_prefix);
+			strbuf_addstr(&head, "refs/heads/");
 			strbuf_addstr(&head, option_branch);
 			our_head_points_at =
 				find_ref_by_name(mapped_refs, head.buf);
@@ -763,7 +763,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			      reflog_msg.buf);
 	}
 
-	if (our_head_points_at) {
+	if (our_head_points_at &&
+	    !prefixcmp(our_head_points_at->name, "refs/heads/")) {
 		/* Local default branch link */
 		create_symref("HEAD", our_head_points_at->name, NULL);
 		if (!option_bare) {
