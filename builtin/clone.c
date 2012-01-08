@@ -486,6 +486,66 @@ static void write_followtags(const struct ref *refs, const char *msg)
 	}
 }
 
+static int checkout(void)
+{
+	unsigned char sha1[20];
+	char *head;
+	struct lock_file *lock_file;
+	struct unpack_trees_options opts;
+	struct tree *tree;
+	struct tree_desc t;
+	int err = 0, fd;
+
+	if (option_no_checkout)
+		return 0;
+
+	head = resolve_refdup("HEAD", sha1, 1, NULL);
+	if (!head) {
+		warning(_("remote HEAD refers to nonexistent ref, "
+			  "unable to checkout.\n"));
+		return 0;
+	}
+	if (!strcmp(head, "HEAD")) {
+		if (advice_detached_head)
+			detach_advice(sha1_to_hex(sha1));
+	} else {
+		if (prefixcmp(head, "refs/heads/"))
+			die(_("HEAD not found below refs/heads!"));
+	}
+	free(head);
+
+	/* We need to be in the new work tree for the checkout */
+	setup_work_tree();
+
+	lock_file = xcalloc(1, sizeof(struct lock_file));
+	fd = hold_locked_index(lock_file, 1);
+
+	memset(&opts, 0, sizeof opts);
+	opts.update = 1;
+	opts.merge = 1;
+	opts.fn = oneway_merge;
+	opts.verbose_update = (option_verbosity > 0);
+	opts.src_index = &the_index;
+	opts.dst_index = &the_index;
+
+	tree = parse_tree_indirect(sha1);
+	parse_tree(tree);
+	init_tree_desc(&t, tree->buffer, tree->size);
+	unpack_trees(1, &t, &opts);
+
+	if (write_cache(fd, active_cache, active_nr) ||
+	    commit_locked_index(lock_file))
+		die(_("unable to write new index file"));
+
+	err |= run_hook(NULL, "post-checkout", sha1_to_hex(null_sha1),
+			sha1_to_hex(sha1), "1", NULL);
+
+	if (!err && option_recursive)
+		err = run_command_v_opt(argv_submodule, RUN_GIT_CMD);
+
+	return err;
+}
+
 static int write_one_config(const char *key, const char *value, void *data)
 {
 	return git_config_set_multivar(key, value ? value : "true", "^$", 0);
@@ -714,11 +774,19 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		if (option_branch) {
 			struct strbuf head = STRBUF_INIT;
-			strbuf_addstr(&head, src_ref_prefix);
+			strbuf_addstr(&head, "refs/heads/");
 			strbuf_addstr(&head, option_branch);
 			our_head_points_at =
 				find_ref_by_name(mapped_refs, head.buf);
 			strbuf_release(&head);
+
+			if (!our_head_points_at) {
+				strbuf_addstr(&head, "refs/tags/");
+				strbuf_addstr(&head, option_branch);
+				our_head_points_at =
+					find_ref_by_name(mapped_refs, head.buf);
+				strbuf_release(&head);
+			}
 
 			if (!our_head_points_at) {
 				warning(_("Remote branch %s not found in "
@@ -750,7 +818,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			      reflog_msg.buf);
 	}
 
-	if (our_head_points_at) {
+	if (our_head_points_at &&
+	    !prefixcmp(our_head_points_at->name, "refs/heads/")) {
 		/* Local default branch link */
 		create_symref("HEAD", our_head_points_at->name, NULL);
 		if (!option_bare) {
@@ -762,20 +831,16 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			install_branch_config(0, head, option_origin,
 					      our_head_points_at->name);
 		}
+	} else if (our_head_points_at) {
+		const struct ref *ref = our_head_points_at;
+		struct commit *c = lookup_commit_reference(ref->old_sha1);
+		/* Source had detached HEAD pointing somewhere. */
+		update_ref(reflog_msg.buf, "HEAD", c->object.sha1,
+			   NULL, REF_NODEREF, DIE_ON_ERR);
 	} else if (remote_head) {
 		/* Source had detached HEAD pointing somewhere. */
-		if (!option_bare) {
-			update_ref(reflog_msg.buf, "HEAD",
-				   remote_head->old_sha1,
-				   NULL, REF_NODEREF, DIE_ON_ERR);
-			our_head_points_at = remote_head;
-		}
-	} else {
-		/* Nothing to checkout out */
-		if (!option_no_checkout)
-			warning(_("remote HEAD refers to nonexistent ref, "
-				"unable to checkout.\n"));
-		option_no_checkout = 1;
+		update_ref(reflog_msg.buf, "HEAD", remote_head->old_sha1,
+			   NULL, REF_NODEREF, DIE_ON_ERR);
 	}
 
 	if (transport) {
@@ -783,42 +848,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_disconnect(transport);
 	}
 
-	if (!option_no_checkout) {
-		struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
-		struct unpack_trees_options opts;
-		struct tree *tree;
-		struct tree_desc t;
-		int fd;
-
-		/* We need to be in the new work tree for the checkout */
-		setup_work_tree();
-
-		fd = hold_locked_index(lock_file, 1);
-
-		memset(&opts, 0, sizeof opts);
-		opts.update = 1;
-		opts.merge = 1;
-		opts.fn = oneway_merge;
-		opts.verbose_update = (option_verbosity > 0);
-		opts.src_index = &the_index;
-		opts.dst_index = &the_index;
-
-		tree = parse_tree_indirect(our_head_points_at->old_sha1);
-		parse_tree(tree);
-		init_tree_desc(&t, tree->buffer, tree->size);
-		unpack_trees(1, &t, &opts);
-
-		if (write_cache(fd, active_cache, active_nr) ||
-		    commit_locked_index(lock_file))
-			die(_("unable to write new index file"));
-
-		err |= run_hook(NULL, "post-checkout", sha1_to_hex(null_sha1),
-				sha1_to_hex(our_head_points_at->old_sha1), "1",
-				NULL);
-
-		if (!err && option_recursive)
-			err = run_command_v_opt(argv_submodule, RUN_GIT_CMD);
-	}
+	err = checkout();
 
 	strbuf_release(&reflog_msg);
 	strbuf_release(&branch_top);
