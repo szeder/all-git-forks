@@ -734,6 +734,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			strbuf_release(&head);
 
 			if (!our_head_points_at) {
+				strbuf_addstr(&head, "refs/tags/");
+				strbuf_addstr(&head, option_branch);
+				our_head_points_at =
+					find_ref_by_name(mapped_refs, head.buf);
+				strbuf_release(&head);
+			}
+
+			if (!our_head_points_at) {
 				warning(_("Remote branch %s not found in "
 					"upstream %s, using HEAD instead"),
 					option_branch, option_origin);
@@ -776,6 +784,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			install_branch_config(0, head, option_origin,
 					      our_head_points_at->name);
 		}
+	} else if (our_head_points_at) {
+		const struct ref *ref = our_head_points_at;
+		struct commit *c = lookup_commit_reference(ref->old_sha1);
+		/* Source had detached HEAD pointing somewhere. */
+		update_ref(reflog_msg.buf, "HEAD", c->object.sha1,
+			   NULL, REF_NODEREF, DIE_ON_ERR);
 	} else if (remote_head) {
 		/* Source had detached HEAD pointing somewhere. */
 		update_ref(reflog_msg.buf, "HEAD", remote_head->old_sha1,
