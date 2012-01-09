@@ -10,8 +10,8 @@
  exec wish "$argv0" -- "$@"
 
 set appvers {@@GITGUI_VERSION@@}
-set copyright [encoding convertfrom utf-8 {
-Copyright © 2006, 2007 Shawn Pearce, et. al.
+set copyright [string map [list (c) \u00a9] {
+Copyright (c) 2006-2010 Shawn Pearce, et. al.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -83,6 +83,7 @@ if {![catch {set _verbose $env(GITGUI_VERBOSE)}]} {
 		puts stderr "source    $name"
 		uplevel 1 real__source $name
 	}
+	if {[tk windowingsystem] eq "win32"} { console show }
 }
 
 ######################################################################
@@ -91,6 +92,25 @@ if {![catch {set _verbose $env(GITGUI_VERBOSE)}]} {
 ## http://www.gnu.org/software/gettext/manual/html_node/Tcl.html
 
 package require msgcat
+
+# Check for Windows 7 MUI language pack (missed by msgcat < 1.4.4)
+if {[tk windowingsystem] eq "win32"
+	&& [package vcompare [package provide msgcat] 1.4.4] < 0
+} then {
+	proc _mc_update_locale {} {
+		set key {HKEY_CURRENT_USER\Control Panel\Desktop}
+		if {![catch {
+			package require registry
+			set uilocale [registry get $key "PreferredUILanguages"]
+			msgcat::ConvertLocale [string map {- _} [lindex $uilocale 0]]
+		} uilocale]} {
+			if {[string length $uilocale] > 0} {
+				msgcat::mclocale $uilocale
+			}
+		}
+	}
+	_mc_update_locale
+}
 
 proc _mc_trim {fmt} {
 	set cmk [string first @@ $fmt]
@@ -128,6 +148,7 @@ set _githtmldir {}
 set _reponame {}
 set _iscygwin {}
 set _search_path {}
+set _shellpath {@@SHELL_PATH@@}
 
 set _trace [lsearch -exact $argv --trace]
 if {$_trace >= 0} {
@@ -135,6 +156,22 @@ if {$_trace >= 0} {
 	set _trace 1
 } else {
 	set _trace 0
+}
+
+# variable for the last merged branch (useful for a default when deleting
+# branches).
+set _last_merged_branch {}
+
+proc shellpath {} {
+	global _shellpath env
+	if {[string match @@* $_shellpath]} {
+		if {[info exists env(SHELL)]} {
+			return $env(SHELL)
+		} else {
+			return /bin/sh
+		}
+	}
+	return $_shellpath
 }
 
 proc appname {} {
@@ -262,7 +299,9 @@ proc is_config_true {name} {
 	global repo_config
 	if {[catch {set v $repo_config($name)}]} {
 		return 0
-	} elseif {$v eq {true} || $v eq {1} || $v eq {yes}} {
+	}
+	set v [string tolower $v]
+	if {$v eq {} || $v eq {true} || $v eq {1} || $v eq {yes} || $v eq {on}} {
 		return 1
 	} else {
 		return 0
@@ -273,7 +312,9 @@ proc is_config_false {name} {
 	global repo_config
 	if {[catch {set v $repo_config($name)}]} {
 		return 0
-	} elseif {$v eq {false} || $v eq {0} || $v eq {no}} {
+	}
+	set v [string tolower $v]
+	if {$v eq {false} || $v eq {0} || $v eq {no} || $v eq {off}} {
 		return 1
 	} else {
 		return 0
@@ -423,6 +464,35 @@ proc _which {what args} {
 	return {}
 }
 
+# Test a file for a hashbang to identify executable scripts on Windows.
+proc is_shellscript {filename} {
+	if {![file exists $filename]} {return 0}
+	set f [open $filename r]
+	fconfigure $f -encoding binary
+	set magic [read $f 2]
+	close $f
+	return [expr {$magic eq "#!"}]
+}
+
+# Run a command connected via pipes on stdout.
+# This is for use with textconv filters and uses sh -c "..." to allow it to
+# contain a command with arguments. On windows we must check for shell
+# scripts specifically otherwise just call the filter command.
+proc open_cmd_pipe {cmd path} {
+	global env
+	if {![file executable [shellpath]]} {
+		set exe [auto_execok [lindex $cmd 0]]
+		if {[is_shellscript [lindex $exe 0]]} {
+			set run [linsert [auto_execok sh] end -c "$cmd \"\$0\"" $path]
+		} else {
+			set run [concat $exe [lrange $cmd 1 end] $path]
+		}
+	} else {
+		set run [list [shellpath] -c "$cmd \"\$0\"" $path]
+	}
+	return [open |$run r]
+}
+
 proc _lappend_nice {cmd_var} {
 	global _nice
 	upvar $cmd_var cmd
@@ -430,6 +500,8 @@ proc _lappend_nice {cmd_var} {
 	if {![info exists _nice]} {
 		set _nice [_which nice]
 		if {[catch {exec $_nice git version}]} {
+			set _nice {}
+		} elseif {[is_Windows] && [file dirname $_nice] ne [file dirname $::_git]} {
 			set _nice {}
 		}
 	}
@@ -660,6 +732,7 @@ bind . <Visibility> {
 if {[is_Windows]} {
 	wm iconbitmap . -default $oguilib/git-gui.ico
 	set ::tk::AlwaysShowSelection 1
+	bind . <Control-F2> {console show}
 
 	# Spoof an X11 display for SSH
 	if {![info exists env(DISPLAY)]} {
@@ -685,7 +758,10 @@ if {[is_Windows]} {
 		gitlogo put gray26  -to  5 15 11 16
 		gitlogo redither
 
-		wm iconphoto . -default gitlogo
+		image create photo gitlogo32 -width 32 -height 32
+		gitlogo32 copy gitlogo -zoom 2 2
+
+		wm iconphoto . -default gitlogo gitlogo32
 	}
 }
 
@@ -806,6 +882,7 @@ set default_config(gui.fastcopyblame) false
 set default_config(gui.copyblamethreshold) 40
 set default_config(gui.blamehistoryctx) 7
 set default_config(gui.diffcontext) 5
+set default_config(gui.diffopts) {}
 set default_config(gui.commitmsgwidth) 75
 set default_config(gui.newbranchtemplate) {}
 set default_config(gui.spellingdictionary) {}
@@ -814,10 +891,12 @@ set default_config(gui.fontdiff) [font configure font_diff]
 # TODO: this option should be added to the git-config documentation
 set default_config(gui.maxfilesdisplayed) 5000
 set default_config(gui.usettk) 1
+set default_config(gui.warndetachedcommit) 1
 set font_descs {
 	{fontui   font_ui   {mc "Main Font"}}
 	{fontdiff font_diff {mc "Diff/Console Font"}}
 }
+set default_config(gui.stageuntracked) ask
 
 ######################################################################
 ##
@@ -861,12 +940,19 @@ if {![regsub {^git version } $_git_version {} _git_version]} {
 	exit 1
 }
 
+proc get_trimmed_version {s} {
+    set r {}
+    foreach x [split $s -._] {
+        if {[string is integer -strict $x]} {
+            lappend r $x
+        } else {
+            break
+        }
+    }
+    return [join $r .]
+}
 set _real_git_version $_git_version
-regsub -- {[\-\.]dirty$} $_git_version {} _git_version
-regsub {\.[0-9]+\.g[0-9a-f]+$} $_git_version {} _git_version
-regsub {\.[a-zA-Z]+\.?[0-9]+$} $_git_version {} _git_version
-regsub {\.GIT$} $_git_version {} _git_version
-regsub {\.[a-zA-Z]+\.?[0-9]+$} $_git_version {} _git_version
+set _git_version [get_trimmed_version $_git_version]
 
 if {![regexp {^[1-9]+(\.[0-9]+)+$} $_git_version]} {
 	catch {wm withdraw .}
@@ -1012,6 +1098,10 @@ git-version proc _parse_config {arr_name args} {
 				} else {
 					set arr($name) $value
 				}
+			} elseif {[regexp {^([^\n]+)$} $line line name]} {
+				# no value given, but interpreting them as
+				# boolean will be handled as true
+				set arr($name) {}
 			}
 		}
 	}
@@ -1027,6 +1117,10 @@ git-version proc _parse_config {arr_name args} {
 					} else {
 						set arr($name) $value
 					}
+				} elseif {[regexp {^([^=]+)$} $line line name]} {
+					# no value given, but interpreting them as
+					# boolean will be handled as true
+					set arr($name) {}
 				}
 			}
 			close $fd_rc
@@ -1170,13 +1264,22 @@ if {![file isdirectory $_gitdir]} {
 # _gitdir exists, so try loading the config
 load_config 0
 apply_config
-# try to set work tree from environment, falling back to core.worktree
-if {[catch { set _gitworktree $env(GIT_WORK_TREE) }]} {
-	set _gitworktree [get_config core.worktree]
-	if {$_gitworktree eq ""} {
-		set _gitworktree [file dirname [file normalize $_gitdir]]
+
+# v1.7.0 introduced --show-toplevel to return the canonical work-tree
+if {[package vsatisfies $_git_version 1.7.0]} {
+	set _gitworktree [git rev-parse --show-toplevel]
+} else {
+	# try to set work tree from environment, core.worktree or use
+	# cdup to obtain a relative path to the top of the worktree. If
+	# run from the top, the ./ prefix ensures normalize expands pwd.
+	if {[catch { set _gitworktree $env(GIT_WORK_TREE) }]} {
+		set _gitworktree [get_config core.worktree]
+		if {$_gitworktree eq ""} {
+			set _gitworktree [file normalize ./[git rev-parse --show-cdup]]
+		}
 	}
 }
+
 if {$_prefix ne {}} {
 	if {$_gitworktree eq {}} {
 		regsub -all {[^/]+/} $_prefix ../ cdup
@@ -1415,13 +1518,17 @@ proc rescan_stage2 {fd after} {
 		close $fd
 	}
 
-	set ls_others [list --exclude-per-directory=.gitignore]
-	if {[have_info_exclude]} {
-		lappend ls_others "--exclude-from=[gitdir info exclude]"
-	}
-	set user_exclude [get_config core.excludesfile]
-	if {$user_exclude ne {} && [file readable $user_exclude]} {
-		lappend ls_others "--exclude-from=$user_exclude"
+	if {[package vsatisfies $::_git_version 1.6.3]} {
+		set ls_others [list --exclude-standard]
+	} else {
+		set ls_others [list --exclude-per-directory=.gitignore]
+		if {[have_info_exclude]} {
+			lappend ls_others "--exclude-from=[gitdir info exclude]"
+		}
+		set user_exclude [get_config core.excludesfile]
+		if {$user_exclude ne {} && [file readable $user_exclude]} {
+			lappend ls_others "--exclude-from=[file normalize $user_exclude]"
+		}
 	}
 
 	set buf_rdi {}
@@ -1466,7 +1573,7 @@ proc run_prepare_commit_msg_hook {} {
 
 	# prepare-commit-msg requires PREPARE_COMMIT_MSG exist.  From git-gui
 	# it will be .git/MERGE_MSG (merge), .git/SQUASH_MSG (squash), or an
-	# empty file but existant file.
+	# empty file but existent file.
 
 	set fd_pcm [open [gitdir PREPARE_COMMIT_MSG] a]
 
@@ -1925,8 +2032,8 @@ static unsigned char file_merge_bits[] = {
 } -maskdata $filemask
 
 image create bitmap file_statechange -background white -foreground green -data {
-#define file_merge_width 14
-#define file_merge_height 15
+#define file_statechange_width 14
+#define file_statechange_height 15
 static unsigned char file_statechange_bits[] = {
    0xfe, 0x01, 0x02, 0x03, 0x02, 0x05, 0x02, 0x09, 0x02, 0x1f, 0x62, 0x10,
    0x62, 0x10, 0xba, 0x11, 0xba, 0x11, 0x62, 0x10, 0x62, 0x10, 0x02, 0x10,
@@ -1960,7 +2067,11 @@ foreach i {
 		{MD {mc "Staged for commit, missing"}}
 
 		{_T {mc "File type changed, not staged"}}
+		{MT {mc "File type changed, old type staged for commit"}}
+		{AT {mc "File type changed, old type staged for commit"}}
 		{T_ {mc "File type changed, staged"}}
+		{TM {mc "File type change staged, modification not staged"}}
+		{TD {mc "File type change staged, file missing"}}
 
 		{_O {mc "Untracked, not staged"}}
 		{A_ {mc "Staged for commit"}}
@@ -2409,6 +2520,7 @@ proc toggle_or_diff {w x y} {
 				[concat $after [list ui_ready]]
 		}
 	} else {
+		set selected_paths($path) 1
 		show_diff $path $w $lno
 	}
 }
@@ -2848,7 +2960,8 @@ proc usage {} {
 	set s "usage: $::argv0 $::subcommand $::subcommand_args"
 	if {[tk windowingsystem] eq "win32"} {
 		wm withdraw .
-		tk_messageBox -icon info -title "Usage" -message $s
+		tk_messageBox -icon info -message $s \
+			-title [mc "Usage"]
 	} else {
 		puts stderr $s
 	}
@@ -2921,7 +3034,11 @@ blame {
 			if {[catch {
 					set head [git rev-parse --verify $head]
 				} err]} {
-				puts stderr $err
+				if {[tk windowingsystem] eq "win32"} {
+					tk_messageBox -icon error -title [mc Error] -message $err
+				} else {
+					puts stderr $err
+				}
 				exit 1
 			}
 		}
@@ -2960,18 +3077,19 @@ blame {
 citool -
 gui {
 	if {[llength $argv] != 0} {
-		puts -nonewline stderr "usage: $argv0"
-		if {$subcommand ne {gui}
-			&& [file tail $argv0] ne "git-$subcommand"} {
-			puts -nonewline stderr " $subcommand"
-		}
-		puts stderr {}
-		exit 1
+		usage
 	}
 	# fall through to setup UI for commits
 }
 default {
-	puts stderr "usage: $argv0 \[{blame|browser|citool}\]"
+	set err "usage: $argv0 \[{blame|browser|citool}\]"
+	if {[tk windowingsystem] eq "win32"} {
+		wm withdraw .
+		tk_messageBox -icon error -message $err \
+			-title [mc "Usage"]
+	} else {
+		puts stderr $err
+	}
 	exit 1
 }
 }
@@ -3273,6 +3391,7 @@ text $ui_diff -background white -foreground black \
 	-xscrollcommand {.vpane.lower.diff.body.sbx set} \
 	-yscrollcommand {.vpane.lower.diff.body.sby set} \
 	-state disabled
+catch {$ui_diff configure -tabstyle wordprocessor}
 ${NS}::scrollbar .vpane.lower.diff.body.sbx -orient horizontal \
 	-command [list $ui_diff xview]
 ${NS}::scrollbar .vpane.lower.diff.body.sby -orient vertical \
@@ -3283,8 +3402,19 @@ pack $ui_diff -side left -fill both -expand 1
 pack .vpane.lower.diff.header -side top -fill x
 pack .vpane.lower.diff.body -side bottom -fill both -expand 1
 
+foreach {n c} {0 black 1 red4 2 green4 3 yellow4 4 blue4 5 magenta4 6 cyan4 7 grey60} {
+	$ui_diff tag configure clr4$n -background $c
+	$ui_diff tag configure clri4$n -foreground $c
+	$ui_diff tag configure clr3$n -foreground $c
+	$ui_diff tag configure clri3$n -background $c
+}
+$ui_diff tag configure clr1 -font font_diffbold
+$ui_diff tag configure clr4 -underline 1
+
+$ui_diff tag conf d_info -foreground blue -font font_diffbold
+
 $ui_diff tag conf d_cr -elide true
-$ui_diff tag conf d_@ -foreground blue -font font_diffbold
+$ui_diff tag conf d_@ -font font_diffbold
 $ui_diff tag conf d_+ -foreground {#00a000}
 $ui_diff tag conf d_- -foreground red
 
@@ -3303,13 +3433,13 @@ $ui_diff tag conf d_s- \
 	-foreground red \
 	-background ivory1
 
-$ui_diff tag conf d<<<<<<< \
+$ui_diff tag conf d< \
 	-foreground orange \
 	-font font_diffbold
-$ui_diff tag conf d======= \
+$ui_diff tag conf d= \
 	-foreground orange \
 	-font font_diffbold
-$ui_diff tag conf d>>>>>>> \
+$ui_diff tag conf d> \
 	-foreground orange \
 	-font font_diffbold
 
@@ -3485,8 +3615,8 @@ proc popup_diff_menu {ctxm ctxmmg ctxmsm x y X Y} {
 			|| $current_diff_path eq {}
 			|| {__} eq $state
 			|| {_O} eq $state
-			|| {_T} eq $state
-			|| {T_} eq $state
+			|| [string match {?T} $state]
+			|| [string match {T?} $state]
 			|| [has_textconv $current_diff_path]} {
 			set s disabled
 		} else {
@@ -3796,7 +3926,7 @@ after 1 {
 		$ui_comm configure -state disabled -background gray
 	}
 }
-if {[is_enabled multicommit]} {
+if {[is_enabled multicommit] && ![is_config_false gui.gcwarning]} {
 	after 1000 hint_gc
 }
 if {[is_enabled retcode]} {
