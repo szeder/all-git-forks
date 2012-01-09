@@ -31,8 +31,8 @@ static int strbuf_readline_fd(struct strbuf *sb, int fd)
 	while (1) {
 		char ch;
 		ssize_t len = xread(fd, &ch, 1);
-		if (len < 0)
-			return -1;
+		if (len <= 0)
+			return len;
 		strbuf_addch(sb, ch);
 		if (ch == '\n')
 			break;
@@ -320,7 +320,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 			continue;
 		if (dwim_ref(e->name, strlen(e->name), sha1, &ref) != 1)
 			continue;
-		if (!resolve_ref(e->name, sha1, 1, &flag))
+		if (read_ref_full(e->name, sha1, 1, &flag))
 			flag = 0;
 		display_ref = (flag & REF_ISSYMREF) ? e->name : ref;
 

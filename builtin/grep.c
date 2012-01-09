@@ -17,7 +17,6 @@
 #include "grep.h"
 #include "quote.h"
 #include "dir.h"
-#include "thread-utils.h"
 
 static char const * const grep_usage[] = {
 	"git grep [options] [-e] <pattern> [<rev>...] [[--] <path>...]",
@@ -256,6 +255,7 @@ static void start_threads(struct grep_opt *opt)
 
 	pthread_mutex_init(&grep_mutex, NULL);
 	pthread_mutex_init(&read_sha1_mutex, NULL);
+	pthread_mutex_init(&grep_attr_mutex, NULL);
 	pthread_cond_init(&cond_add, NULL);
 	pthread_cond_init(&cond_write, NULL);
 	pthread_cond_init(&cond_result, NULL);
@@ -303,6 +303,7 @@ static int wait_all(void)
 
 	pthread_mutex_destroy(&grep_mutex);
 	pthread_mutex_destroy(&read_sha1_mutex);
+	pthread_mutex_destroy(&grep_attr_mutex);
 	pthread_cond_destroy(&cond_add);
 	pthread_cond_destroy(&cond_write);
 	pthread_cond_destroy(&cond_result);
@@ -557,18 +558,19 @@ static int grep_cache(struct grep_opt *opt, const struct pathspec *pathspec, int
 static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 		     struct tree_desc *tree, struct strbuf *base, int tn_len)
 {
-	int hit = 0, match = 0;
+	int hit = 0;
+	enum interesting match = entry_not_interesting;
 	struct name_entry entry;
 	int old_baselen = base->len;
 
 	while (tree_entry(tree, &entry)) {
-		int te_len = tree_entry_len(entry.path, entry.sha1);
+		int te_len = tree_entry_len(&entry);
 
-		if (match != 2) {
+		if (match != all_entries_interesting) {
 			match = tree_entry_interesting(&entry, base, tn_len, pathspec);
-			if (match < 0)
+			if (match == all_entries_not_interesting)
 				break;
-			if (match == 0)
+			if (match == entry_not_interesting)
 				continue;
 		}
 
@@ -1000,20 +1002,6 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	if (!opt.fixed && opt.ignore_case)
 		opt.regflags |= REG_ICASE;
 
-#ifndef NO_PTHREADS
-	if (online_cpus() == 1 || !grep_threads_ok(&opt))
-		use_threads = 0;
-
-	if (use_threads) {
-		if (opt.pre_context || opt.post_context || opt.file_break ||
-		    opt.funcbody)
-			skip_first_line = 1;
-		start_threads(&opt);
-	}
-#else
-	use_threads = 0;
-#endif
-
 	compile_grep_patterns(&opt);
 
 	/* Check revs and then paths */
@@ -1034,6 +1022,24 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		}
 		break;
 	}
+
+#ifndef NO_PTHREADS
+	if (list.nr || cached || online_cpus() == 1)
+		use_threads = 0;
+#else
+	use_threads = 0;
+#endif
+
+	opt.use_threads = use_threads;
+
+#ifndef NO_PTHREADS
+	if (use_threads) {
+		if (opt.pre_context || opt.post_context || opt.file_break ||
+		    opt.funcbody)
+			skip_first_line = 1;
+		start_threads(&opt);
+	}
+#endif
 
 	/* The rest are paths */
 	if (!seen_dashdash) {
