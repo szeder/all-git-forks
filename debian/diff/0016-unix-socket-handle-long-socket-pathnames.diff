@@ -1,4 +1,4 @@
-From 99e759420d9c398eb587d0fac65b520c9f3bc2cb Mon Sep 17 00:00:00 2001
+From 07ba19bc388bff4cadc331a3ae8f6763cb98d828 Mon Sep 17 00:00:00 2001
 From: Jeff King <peff@peff.net>
 Date: Mon, 9 Jan 2012 23:44:30 -0500
 Subject: unix-socket: handle long socket pathnames

@@ -1,11 +1,15 @@
-git (1:1.7.9~rc1-0.1) experimental; urgency=low
+git (1:1.7.9~rc1-1) experimental; urgency=low
 
   * new upstream release candidate.
-  * debian/diff/0015-unix-socket-handle-long-socket-pathnames.diff: new
-    from upstream; credential-cache: handle long socket pathnames;
-    closes: #655288)
+  * debian/diff:
+    * 0014-Makefile-add-a-knob-to-...diff: rename to 0015-*.
+    * 0014-srv-be-more-tolerant-of-broken-DNS-replies.diff: new; srv:
+      convert some error conditions to warnings (closes: #649781).
+    * 0016-unix-socket-handle-long-socket-pathnames.diff: new from
+      upstream; credential-cache: handle long socket pathnames; closes:
+      #655288).
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 13 Jan 2012 15:14:52 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 13 Jan 2012 16:10:44 -0600
 
 git (1:1.7.9~rc0-1) experimental; urgency=low
 
