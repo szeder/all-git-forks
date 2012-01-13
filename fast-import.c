@@ -1446,11 +1446,10 @@ static void store_tree(struct tree_entry *root)
 		le = find_object(root->versions[0].sha1);
 	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
 		mktree(t, 0, &old_tree);
+		run_object_filter_strbuf("write-object", &old_tree, "tree");
 		lo.data = old_tree;
 		lo.offset = le->idx.offset;
 		lo.depth = t->delta_depth;
-
-		run_object_filter_strbuf("write-object", &lo.data, "tree");
 	}
 
 	mktree(t, 1, &new_tree);
