@@ -471,6 +471,11 @@ static void update_head(const struct ref *our, const struct ref *remote,
 			update_ref(msg, "HEAD", our->old_sha1, NULL, 0, DIE_ON_ERR);
 			install_branch_config(0, head, option_origin, our->name);
 		}
+	} else if (our) {
+		struct commit *c = lookup_commit_reference(our->old_sha1);
+		/* --branch specifies a non-branch (i.e. tags), detach HEAD */
+		update_ref(msg, "HEAD", c->object.sha1,
+			   NULL, REF_NODEREF, DIE_ON_ERR);
 	} else if (remote) {
 		/*
 		 * We know remote HEAD points to a non-branch, or
@@ -769,6 +774,14 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			our_head_points_at =
 				find_ref_by_name(mapped_refs, head.buf);
 			strbuf_release(&head);
+
+			if (!our_head_points_at) {
+				strbuf_addstr(&head, "refs/tags/");
+				strbuf_addstr(&head, option_branch);
+				our_head_points_at =
+					find_ref_by_name(mapped_refs, head.buf);
+				strbuf_release(&head);
+			}
 
 			if (!our_head_points_at)
 				die(_("Remote branch %s not found in "
