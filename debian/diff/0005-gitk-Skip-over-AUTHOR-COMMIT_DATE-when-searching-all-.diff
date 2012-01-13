@@ -1,4 +1,4 @@
-From 1f83d12571a7c78e568b7bff6e2bc1a665770315 Mon Sep 17 00:00:00 2001
+From 49313b05ed69f568d17c7e5f415a391c9898c74f Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Fr=C3=A9d=C3=A9ric=20Bri=C3=A8re?= <fbriere@fbriere.net>
 Date: Sun, 14 Mar 2010 18:59:09 -0400
 Subject: gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
@@ -18,10 +18,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/gitk-git/gitk b/gitk-git/gitk
-index 31c48cd..5d8b5a6 100755
+index 388bea5..3830c88 100755
 --- a/gitk-git/gitk
 +++ b/gitk-git/gitk
-@@ -4627,8 +4627,9 @@ proc askfindhighlight {row id} {
+@@ -4630,8 +4630,9 @@ proc askfindhighlight {row id} {
      }
      set info $commitinfo($id)
      set isbold 0
@@ -32,7 +32,7 @@ index 31c48cd..5d8b5a6 100755
  	if {($findloc eq [mc "All fields"] || $findloc eq $ty) &&
  	    [doesmatch $f]} {
  	    if {$ty eq [mc "Author"]} {
-@@ -6475,7 +6476,7 @@ proc findmore {} {
+@@ -6492,7 +6493,7 @@ proc findmore {} {
      if {![info exists find_dirn]} {
  	return 0
      }
@@ -41,7 +41,7 @@ index 31c48cd..5d8b5a6 100755
      set l $findcurline
      set moretodo 0
      if {$find_dirn > 0} {
-@@ -6536,6 +6537,7 @@ proc findmore {} {
+@@ -6553,6 +6554,7 @@ proc findmore {} {
  	    }
  	    set info $commitinfo($id)
  	    foreach f $info ty $fldtypes {
@@ -50,5 +50,5 @@ index 31c48cd..5d8b5a6 100755
  		    [doesmatch $f]} {
  		    set found 1
 -- 
-1.7.8
+1.7.8.3
 

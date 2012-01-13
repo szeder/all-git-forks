@@ -1,4 +1,4 @@
-From 7a3ed5fee694267b08b31de027439c5e22fa6812 Mon Sep 17 00:00:00 2001
+From c0a42757a5e435e4fd008fa96bef3b2c74e184cd Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
@@ -35,10 +35,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index a65b8f1..e0edf4f 100644
+index 58e0234..82ce5ec 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -128,6 +128,10 @@ all::
+@@ -144,6 +144,10 @@ all::
  # Notably on Solaris hstrerror resides in libresolv and on Solaris 7
  # inet_ntop and inet_pton additionally reside there.
  #
@@ -49,7 +49,7 @@ index a65b8f1..e0edf4f 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
-@@ -1430,6 +1434,11 @@ endif
+@@ -1482,6 +1486,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -61,7 +61,7 @@ index a65b8f1..e0edf4f 100644
  ifdef NEEDS_RESOLV
  	EXTLIBS += -lresolv
  endif
-@@ -2041,6 +2050,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
+@@ -2116,6 +2125,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
  connect.o daemon.o tcp.o: tcp.h
@@ -543,5 +543,5 @@ index 623d7e1..0615f5e 100644
  }
  
 -- 
-1.7.8.1
+1.7.8.3
 

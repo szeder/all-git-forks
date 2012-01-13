@@ -1,4 +1,4 @@
-From fb02ac1d69d1e74f7b335c29908f6b5f18b3c142 Mon Sep 17 00:00:00 2001
+From 8ad26837648e437df5b49160a423af070b721788 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
 Subject: transport: expose git_tcp_connect and friends in new tcp.h
@@ -18,10 +18,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index b21d2f1..1535a76 100644
+index a782409..7ecef4b 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -690,6 +690,7 @@ LIB_OBJS += string-list.o
+@@ -728,6 +728,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -29,7 +29,7 @@ index b21d2f1..1535a76 100644
  LIB_OBJS += trace.o
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
-@@ -2034,6 +2035,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2109,6 +2110,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
@@ -38,7 +38,7 @@ index b21d2f1..1535a76 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/connect.c b/connect.c
-index c8d0ea5..2748185 100644
+index 2ea5c3c..dbf8c1b 100644
 --- a/connect.c
 +++ b/connect.c
 @@ -5,6 +5,7 @@
@@ -631,5 +631,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.8.1
+1.7.8.3
 

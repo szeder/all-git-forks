@@ -1,4 +1,4 @@
-From 5e12036d72e6181b5ad33276a94da9ff30caf32d Mon Sep 17 00:00:00 2001
+From 4968c6151e36bb14f86696e662ee83b3cf1a8daa Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
 Subject: Makefile: add a knob to turn off hardlinks within same directory
@@ -42,10 +42,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  1 files changed, 7 insertions(+), 0 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index e0edf4f..0bb919a 100644
+index 82ce5ec..7626240 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -226,6 +226,10 @@ all::
+@@ -244,6 +244,10 @@ all::
  # Define NO_CROSS_DIRECTORY_HARDLINKS if you plan to distribute the installed
  # programs as a tar, where bin/ and libexec/ might be on different file systems.
  #
@@ -56,7 +56,7 @@ index e0edf4f..0bb919a 100644
  # Define USE_NED_ALLOCATOR if you want to replace the platforms default
  # memory allocators with the nedmalloc allocator written by Niall Douglas.
  #
-@@ -2361,12 +2365,14 @@ endif
+@@ -2467,12 +2471,14 @@ endif
  	} && \
  	for p in $(filter $(install_bindir_programs),$(BUILT_INS)); do \
  		$(RM) "$$bindir/$$p" && \
@@ -71,7 +71,7 @@ index e0edf4f..0bb919a 100644
  		ln "$$execdir/git$X" "$$execdir/$$p" 2>/dev/null || \
  		ln -s "git$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git$X" "$$execdir/$$p" || exit; \
-@@ -2374,6 +2380,7 @@ endif
+@@ -2480,6 +2486,7 @@ endif
  	remote_curl_aliases="$(REMOTE_CURL_ALIASES)" && \
  	for p in $$remote_curl_aliases; do \
  		$(RM) "$$execdir/$$p" && \
@@ -80,5 +80,5 @@ index e0edf4f..0bb919a 100644
  		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
 -- 
-1.7.8.1
+1.7.8.3
 
