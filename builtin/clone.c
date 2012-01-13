@@ -448,6 +448,28 @@ static void write_remote_refs(const struct ref *local_refs)
 	clear_extra_refs();
 }
 
+static void update_remote_refs(const struct ref *refs,
+			       const struct ref *mapped_refs,
+			       const struct ref *remote_head_points_at,
+			       const char *branch_top,
+			       const char *msg)
+{
+	if (refs) {
+		clear_extra_refs();
+		write_remote_refs(mapped_refs);
+	}
+
+	if (remote_head_points_at && !option_bare) {
+		struct strbuf head_ref = STRBUF_INIT;
+		strbuf_addstr(&head_ref, branch_top);
+		strbuf_addstr(&head_ref, "HEAD");
+		create_symref(head_ref.buf,
+			      remote_head_points_at->peer_ref->name,
+			      msg);
+	}
+
+}
+
 static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
@@ -740,10 +762,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 
 	if (refs) {
-		clear_extra_refs();
-
-		write_remote_refs(mapped_refs);
-
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =
 			guess_remote_head(remote_head, mapped_refs, 0);
@@ -777,14 +795,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 					      "refs/heads/master");
 	}
 
-	if (remote_head_points_at && !option_bare) {
-		struct strbuf head_ref = STRBUF_INIT;
-		strbuf_addstr(&head_ref, branch_top.buf);
-		strbuf_addstr(&head_ref, "HEAD");
-		create_symref(head_ref.buf,
-			      remote_head_points_at->peer_ref->name,
-			      reflog_msg.buf);
-	}
+	update_remote_refs(refs, mapped_refs, remote_head_points_at,
+			   branch_top.buf, reflog_msg.buf);
 
 	update_head(our_head_points_at, remote_head, reflog_msg.buf);
 
