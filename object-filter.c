@@ -16,7 +16,7 @@ int skip_object_filter()
 static int _run_object_filter(const char *name, const void *buffer, unsigned long size, const char *type, struct strbuf *res)
 {
 	struct child_process cmd;
-	const char *args[4];
+	const char *args[5];
 	size_t len;
 	size_t n;
 	char sizebuf[32];
@@ -25,7 +25,7 @@ static int _run_object_filter(const char *name, const void *buffer, unsigned lon
 	struct pollfd fd;
 	int ret;
 
-	if ((_skip_object_filter) || (access(git_path("hooks/%s", name), X_OK) < 0))
+	if ((_skip_object_filter) || (access(git_path("hooks/object-filter"), X_OK) < 0))
 		return 1;
 
 	sprintf(sizebuf, "%lu", size);
@@ -34,10 +34,11 @@ static int _run_object_filter(const char *name, const void *buffer, unsigned lon
 	cmd.argv = args;
 	cmd.in = -1;
 	cmd.out = -1;
-	args[0] = git_path("hooks/%s", name);
-	args[1] = type;
-	args[2] = sizebuf;
-	args[3] = NULL;
+	args[0] = git_path("hooks/object-filter");
+	args[1] = name;
+	args[2] = type;
+	args[3] = sizebuf;
+	args[4] = NULL;
 
 	if (start_command(&cmd))
 		die(_("could not run object filter."));

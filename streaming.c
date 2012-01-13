@@ -183,7 +183,7 @@ static void close_deflated_stream(struct git_istream *st)
 
 static int open_object_filter(struct git_istream *st, enum object_type type)
 {
-	const char *args[4];
+	const char *args[5];
 	char sizebuf[32];
 
 	if (skip_object_filter()) {
@@ -191,7 +191,7 @@ static int open_object_filter(struct git_istream *st, enum object_type type)
 		return 0;
 	}
 
-	if (access(git_path("hooks/read-object"), X_OK) < 0) {
+	if (access(git_path("hooks/object-filter"), X_OK) < 0) {
 		st->obj_filter.run = 0;
 		return 0;
 	}
@@ -202,10 +202,11 @@ static int open_object_filter(struct git_istream *st, enum object_type type)
 	st->obj_filter.cmd.argv = args;
 	st->obj_filter.cmd.in = -1;
 	st->obj_filter.cmd.out = -1;
-	args[0] = git_path("hooks/read-object");
-	args[1] = typename(type);
-	args[2] = sizebuf;
-	args[3] = NULL;
+	args[0] = git_path("hooks/object-filter");
+	args[1] = "read";
+	args[2] = typename(type);
+	args[3] = sizebuf;
+	args[4] = NULL;
 
 	if (start_command(&st->obj_filter.cmd))
 		die(_("could not run object filter."));

@@ -2214,7 +2214,7 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 
 	buf = read_packed_sha1(sha1, type, size);
 	if (buf) {
-		newbuf = run_object_filter("read-object", buf, size, typename(*type));
+		newbuf = run_object_filter("read", buf, size, typename(*type));
 		if (!newbuf)
 			return buf;
 
@@ -2227,7 +2227,7 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 		buf = unpack_sha1_file(map, mapsize, type, size, sha1);
 		munmap(map, mapsize);
 
-		newbuf = run_object_filter("read-object", buf, size, typename(*type));
+		newbuf = run_object_filter("read", buf, size, typename(*type));
 		if (!newbuf)
 			return buf;
 
@@ -2239,7 +2239,7 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 	if (!buf)
 		return buf;
 
-	newbuf = run_object_filter("read-object", buf, size, typename(*type));
+	newbuf = run_object_filter("read", buf, size, typename(*type));
 	if (!newbuf)
 		return buf;
 
@@ -2543,7 +2543,7 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	void *newbuf;
 	int ret;
 
-	newbuf = run_object_filter("write-object", buf, &len, type);
+	newbuf = run_object_filter("write", buf, &len, type);
 	if (newbuf)
 		buf = newbuf;
 
