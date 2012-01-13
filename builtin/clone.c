@@ -463,7 +463,7 @@ static void update_remote_refs(const struct ref *refs,
 static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
-	if (our) {
+	if (our && !prefixcmp(our->name, "refs/heads/")) {
 		/* Local default branch link */
 		create_symref("HEAD", our->name, NULL);
 		if (!option_bare) {
@@ -765,7 +765,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 		if (option_branch) {
 			struct strbuf head = STRBUF_INIT;
-			strbuf_addstr(&head, src_ref_prefix);
+			strbuf_addstr(&head, "refs/heads/");
 			strbuf_addstr(&head, option_branch);
 			our_head_points_at =
 				find_ref_by_name(mapped_refs, head.buf);
