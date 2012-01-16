@@ -417,6 +417,20 @@ static inline time_t filetime_to_time_t(const FILETIME *ft)
 	return (time_t)(filetime_to_hnsec(ft) / 10000000);
 }
 
+static int is_symlink(const char *path)
+{
+	WIN32_FIND_DATAA findbuf;
+
+	HANDLE handle = FindFirstFileA(path, &findbuf);
+	if (handle != INVALID_HANDLE_VALUE)
+		return 0;
+
+	FindClose(handle);
+
+	return (findbuf.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
+	       (findbuf.dwReserved0 == IO_REPARSE_TAG_SYMLINK);
+}
+
 /* We keep the do_lstat code in a separate function to avoid recursion.
  * When a path ends with a slash, the stat will fail with ENOENT. In
  * this case, we strip the trailing slashes and stat again.
@@ -428,40 +442,88 @@ static int do_lstat(int follow, const char *file_name, struct stat *buf)
 {
 	int err;
 	WIN32_FILE_ATTRIBUTE_DATA fdata;
+	char temp[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
 
-	if (!(err = get_file_attr(file_name, &fdata))) {
-		buf->st_ino = 0;
-		buf->st_gid = 0;
-		buf->st_uid = 0;
-		buf->st_nlink = 1;
+	if ((err = get_file_attr(file_name, &fdata)))
+		goto error;
+
+	/* fill in constant fields */
+	buf->st_ino = 0;
+	buf->st_gid = 0;
+	buf->st_uid = 0;
+	buf->st_nlink = 1;
+	buf->st_dev = buf->st_rdev = 0; /* not used by Git */
+
+	/* follow symlinks */
+	while (fdata.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+		char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+		ssize_t size;
+
+		/*
+		 * Verify that this really is a symlink; we do not
+		 * support other types of NTFS reparse points.
+		 */
+		if (!is_symlink(file_name)) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		size = readlink(file_name, buffer, sizeof(buffer) - 1);
+		if (size < 0)
+			return -1;
+
+		buffer[size] = '\0';
+
+		if (follow) {
+			if (!is_dir_sep(*buffer) &&
+			    !has_dos_drive_prefix(buffer)) {
+				/*
+				 * Relative path in the symlink: remove the
+				 * path prefix of it's link name, and
+				 * concatenate the target
+				 */
+				size_t len;
+				strncpy(temp, file_name, sizeof(temp));
+				len = strlen(temp);
+				while (len && !is_dir_sep(temp[--len]))
+					; /* nothing */
+				strncat(temp, buffer, sizeof(temp));
+			} else
+				memcpy(temp, buffer, size);
+			file_name = temp;
+			if ((err = get_file_attr(file_name, &fdata)))
+				goto error;
+			continue;
+		}
+
 		buf->st_mode = file_attr_to_st_mode(fdata.dwFileAttributes);
-		buf->st_size = fdata.nFileSizeLow |
-			(((off_t)fdata.nFileSizeHigh)<<32);
-		buf->st_dev = buf->st_rdev = 0; /* not used by Git */
+		/* clear reg/dir flags, and set link-flag */
+		buf->st_mode &= ~(S_IFREG | S_IFDIR);
+		buf->st_mode |= S_IFLNK;
+		buf->st_size = size;
+		buf->st_mode |= S_IREAD;
+		if (!(fdata.dwFileAttributes & FILE_ATTRIBUTE_READONLY))
+			buf->st_mode |= S_IWRITE;
 		buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 		buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 		buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
-		if (fdata.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-			WIN32_FIND_DATAA findbuf;
-			HANDLE handle = FindFirstFileA(file_name, &findbuf);
-			if (handle != INVALID_HANDLE_VALUE) {
-				if ((findbuf.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
-						(findbuf.dwReserved0 == IO_REPARSE_TAG_SYMLINK)) {
-					if (follow) {
-						char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-						buf->st_size = readlink(file_name, buffer, MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
-					} else {
-						buf->st_mode = S_IFLNK;
-					}
-					buf->st_mode |= S_IREAD;
-					if (!(findbuf.dwFileAttributes & FILE_ATTRIBUTE_READONLY))
-						buf->st_mode |= S_IWRITE;
-				}
-				FindClose(handle);
-			}
-		}
 		return 0;
 	}
+
+	/*
+	 * We should have the correct file attributes now, fill inn
+	 * dependent fields
+	 */
+	buf->st_mode = file_attr_to_st_mode(fdata.dwFileAttributes);
+	buf->st_size = fdata.nFileSizeLow |
+		(((off_t)fdata.nFileSizeHigh)<<32);
+	buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
+	buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
+	buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
+
+	return 0;
+
+error:
 	errno = err;
 	return -1;
 }
@@ -469,8 +531,7 @@ static int do_lstat(int follow, const char *file_name, struct stat *buf)
 /* We provide our own lstat/fstat functions, since the provided
  * lstat/fstat functions are so slow. These stat functions are
  * tailored for Git's usage (read: fast), and are not meant to be
- * complete. Note that Git stat()s are redirected to mingw_lstat()
- * too, since Windows doesn't really handle symlinks that well.
+ * complete.
  */
 static int do_stat_internal(int follow, const char *file_name, struct stat *buf)
 {
