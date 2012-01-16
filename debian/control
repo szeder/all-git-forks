@@ -224,7 +224,7 @@ Architecture: all
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), tk
 Replaces: git-core (<< 1:1.5.2.2-3)
 Recommends: gitk
-Suggests: git-doc
+Suggests: git-doc, aspell
 Description: fast, scalable, distributed revision control system (GUI)
  Git is popular version control system designed to handle very large
  projects with speed and efficiency; it is used for many high profile
@@ -236,6 +236,9 @@ Description: fast, scalable, distributed revision control system (GUI)
  central server.
  .
  This package provides the git graphical user interface.
+ .
+ If aspell is installed, it can check the spelling of commit messages
+ as the user types.
 
 Package: gitk
 Architecture: all
