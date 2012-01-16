@@ -454,6 +454,25 @@ static inline time_t filetime_to_time_t(const FILETIME *ft)
 	return (time_t)(filetime_to_hnsec(ft) / 10000000);
 }
 
+static int is_symlink(const char *path)
+{
+	HANDLE handle;
+	WIN32_FIND_DATAW findbuf;
+	wchar_t wpath[MAX_PATH];
+
+	if (xutftowcs_path(wpath, path) < 0)
+		return -1;
+
+	handle = FindFirstFileW(wpath, &findbuf);
+	if (handle != INVALID_HANDLE_VALUE)
+		return 0;
+
+	FindClose(handle);
+
+	return (findbuf.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
+	       (findbuf.dwReserved0 == IO_REPARSE_TAG_SYMLINK);
+}
+
 /* We keep the do_lstat code in a separate function to avoid recursion.
  * When a path ends with a slash, the stat will fail with ENOENT. In
  * this case, we strip the trailing slashes and stat again.
@@ -464,6 +483,7 @@ static inline time_t filetime_to_time_t(const FILETIME *ft)
 static int do_lstat(int follow, const char *file_name, struct stat *buf)
 {
 	WIN32_FILE_ATTRIBUTE_DATA fdata;
+	char temp[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
 	wchar_t wfilename[MAX_PATH];
 
 	if (xutftowcs_path(wfilename, file_name) < 0)
@@ -483,23 +503,48 @@ static int do_lstat(int follow, const char *file_name, struct stat *buf)
 	buf->st_atime = filetime_to_time_t(&(fdata.ftLastAccessTime));
 	buf->st_mtime = filetime_to_time_t(&(fdata.ftLastWriteTime));
 	buf->st_ctime = filetime_to_time_t(&(fdata.ftCreationTime));
-	if (fdata.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-		WIN32_FIND_DATAW findbuf;
-		HANDLE handle = FindFirstFileW(wfilename, &findbuf);
-		if (handle != INVALID_HANDLE_VALUE) {
-			if ((findbuf.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) &&
-					(findbuf.dwReserved0 == IO_REPARSE_TAG_SYMLINK)) {
-				if (follow) {
-					char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-					buf->st_size = readlink(file_name, buffer, MAXIMUM_REPARSE_DATA_BUFFER_SIZE);
-				} else {
-					buf->st_mode = S_IFLNK;
-				}
-				buf->st_mode |= S_IREAD;
-				if (!(findbuf.dwFileAttributes & FILE_ATTRIBUTE_READONLY))
-					buf->st_mode |= S_IWRITE;
-			}
-			FindClose(handle);
+
+	while (fdata.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+		char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+		ssize_t size;
+
+		if (!is_symlink(file_name)) {
+			errno = EINVAL;
+			return -1;
+		}
+
+		size = readlink(file_name, buffer, sizeof(buffer) - 1);
+		if (size < 0)
+			return -1;
+
+		buffer[size] = '\0';
+
+		if (follow) {
+			if (!is_dir_sep(*buffer) &&
+			    !has_dos_drive_prefix(buffer)) {
+				/*
+				 * Relative path in the symlink: remove the
+				 * path prefix of it's link name, and
+				 * concatenate the target
+				 */
+				size_t len;
+				strncpy(temp, file_name, sizeof(temp));
+				len = strlen(temp);
+				while (len && !is_dir_sep(temp[--len]))
+					; /* nothing */
+
+				strncpy(temp + len, buffer, sizeof(temp) - len);
+			} else
+				memcpy(temp, buffer, size);
+
+			file_name = temp;
+			if (xutftowcs_path(wfilename, file_name) < 0)
+				return -1;
+
+			if (!GetFileAttributesExW(wfilename,
+			      GetFileExInfoStandard,
+			      &fdata))
+					goto error;
 		}
 	}
 	return 0;
@@ -528,8 +573,7 @@ error:
 /* We provide our own lstat/fstat functions, since the provided
  * lstat/fstat functions are so slow. These stat functions are
  * tailored for Git's usage (read: fast), and are not meant to be
- * complete. Note that Git stat()s are redirected to mingw_lstat()
- * too, since Windows doesn't really handle symlinks that well.
+ * complete.
  */
 static int do_stat_internal(int follow, const char *file_name, struct stat *buf)
 {
