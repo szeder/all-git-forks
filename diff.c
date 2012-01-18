@@ -1315,6 +1315,20 @@ static void fill_print_name(struct diffstat_file *file)
 	file->print_name = pname;
 }
 
+static void show_shortstats(struct diffstat_t *data, struct diff_options *options)
+{
+
+	if (options->output_prefix) {
+		struct strbuf *msg = NULL;
+		msg = options->output_prefix(options,
+				options->output_prefix_data);
+		fprintf(options->file, "%s", msg->buf);
+	}
+
+	fprintf(options->file, " %ju files changed, %ju insertions(+), %ju deletions(-)\n",
+	       data->total_files, data->text_added, data->text_deleted);
+}
+
 static void show_stats(struct diffstat_t *data, struct diff_options *options)
 {
 	int i, len, add, del;
@@ -1450,24 +1464,8 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		fprintf(options->file, "%s ...\n", line_prefix);
 		break;
 	}
-	fprintf(options->file, "%s", line_prefix);
-	fprintf(options->file,
-	       " %d files changed, %d insertions(+), %d deletions(-)\n",
-	       data->total_files, data->text_added, data->text_deleted);
-}
 
-static void show_shortstats(struct diffstat_t *data, struct diff_options *options)
-{
-
-	if (options->output_prefix) {
-		struct strbuf *msg = NULL;
-		msg = options->output_prefix(options,
-				options->output_prefix_data);
-		fprintf(options->file, "%s", msg->buf);
-	}
-
-	fprintf(options->file, " %ju files changed, %ju insertions(+), %ju deletions(-)\n",
-	       data->total_files, data->text_added, data->text_deleted);
+	show_shortstats(data, options);
 }
 
 static void show_numstat(struct diffstat_t *data, struct diff_options *options)
