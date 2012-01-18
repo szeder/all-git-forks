@@ -3076,6 +3076,9 @@ int diff_setup_done(struct diff_options *options)
 	else
 		options->prefix_length = 0;
 
+	if (options->output_format & DIFF_FORMAT_DIFFSTAT)
+		options->output_format &= ~DIFF_FORMAT_SHORTSTAT;
+
 	if (options->output_format & (DIFF_FORMAT_NAME |
 				      DIFF_FORMAT_NAME_STATUS |
 				      DIFF_FORMAT_CHECKDIFF |

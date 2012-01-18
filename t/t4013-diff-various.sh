@@ -319,4 +319,14 @@ test_expect_success 'diff --cached -- file on unborn branch' '
 	test_cmp "$TEST_DIRECTORY/t4013/diff.diff_--cached_--_file0" result
 '
 
+test_expect_success 'diff --stat --shortstat' '
+	cat >expect_diff_stat_shortstat <<-\EOF
+	 dir/sub |    2 ++
+	 file0   |    3 +++
+	 2 files changed, 5 insertions(+), 0 deletions(-)
+	EOF
+	git diff --stat --shortstat master^..master> actual_diff_stat_shortstat &&
+	test_cmp expect_diff_stat_shortstat actual_diff_stat_shortstat
+'
+
 test_done
