@@ -1324,9 +1324,6 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	int extra_shown = 0;
 	struct strbuf *msg = NULL;
 
-	if (data->nr == 0)
-		return;
-
 	if (options->output_prefix) {
 		msg = options->output_prefix(options, options->output_prefix_data);
 		line_prefix = msg->buf;
@@ -1475,9 +1472,6 @@ static void show_shortstats(struct diffstat_t *data, struct diff_options *option
 {
 	int i, adds = 0, dels = 0, total_files = data->nr;
 
-	if (data->nr == 0)
-		return;
-
 	for (i = 0; i < data->nr; i++) {
 		if (!data->files[i]->is_binary &&
 		    !data->files[i]->is_unmerged) {
@@ -1505,9 +1499,6 @@ static void show_shortstats(struct diffstat_t *data, struct diff_options *option
 static void show_numstat(struct diffstat_t *data, struct diff_options *options)
 {
 	int i;
-
-	if (data->nr == 0)
-		return;
 
 	for (i = 0; i < data->nr; i++) {
 		struct diffstat_file *file = data->files[i];
@@ -1722,9 +1713,6 @@ static void show_dirstat_by_line(struct diffstat_t *data, struct diff_options *o
 	int i;
 	unsigned long changed;
 	struct dirstat_dir dir;
-
-	if (data->nr == 0)
-		return;
 
 	dir.files = NULL;
 	dir.alloc = 0;
@@ -4231,14 +4219,16 @@ void diff_flush(struct diff_options *options)
 			if (check_pair_status(p))
 				diff_flush_stat(p, options, &diffstat);
 		}
-		if (output_format & DIFF_FORMAT_NUMSTAT)
-			show_numstat(&diffstat, options);
-		if (output_format & DIFF_FORMAT_DIFFSTAT)
-			show_stats(&diffstat, options);
-		if (output_format & DIFF_FORMAT_SHORTSTAT)
-			show_shortstats(&diffstat, options);
-		if (output_format & DIFF_FORMAT_DIRSTAT && dirstat_by_line)
-			show_dirstat_by_line(&diffstat, options);
+		if (diffstat.nr != 0) {
+			if (output_format & DIFF_FORMAT_NUMSTAT)
+				show_numstat(&diffstat, options);
+			if (output_format & DIFF_FORMAT_DIFFSTAT)
+				show_stats(&diffstat, options);
+			if (output_format & DIFF_FORMAT_SHORTSTAT)
+				show_shortstats(&diffstat, options);
+			if (output_format & DIFF_FORMAT_DIRSTAT && dirstat_by_line)
+				show_dirstat_by_line(&diffstat, options);
+		}
 		free_diffstat_info(&diffstat);
 		separator++;
 	}
