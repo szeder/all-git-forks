@@ -1226,6 +1226,8 @@ struct diffstat_t {
 		unsigned is_renamed:1;
 		uintmax_t added, deleted;
 	} **files;
+	uintmax_t total_files;
+	uintmax_t text_added, text_deleted;
 };
 
 static struct diffstat_file *diffstat_add(struct diffstat_t *diffstat,
@@ -1315,13 +1317,11 @@ static void fill_print_name(struct diffstat_file *file)
 
 static void show_stats(struct diffstat_t *data, struct diff_options *options)
 {
-	int i, len, add, del, adds = 0, dels = 0;
+	int i, len, add, del;
 	uintmax_t max_change = 0, max_len = 0;
-	int total_files = data->nr;
 	int width, name_width, count;
 	const char *reset, *add_c, *del_c;
 	const char *line_prefix = "";
-	int extra_shown = 0;
 	struct strbuf *msg = NULL;
 
 	if (options->output_prefix) {
@@ -1388,11 +1388,8 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		uintmax_t deleted = data->files[i]->deleted;
 		int name_len;
 
-		if (!data->files[i]->is_renamed &&
-			 (added + deleted == 0)) {
-			total_files--;
+		if (!data->files[i]->is_renamed && (added + deleted == 0))
 			continue;
-		}
 		/*
 		 * "scale" the filename
 		 */
@@ -1433,8 +1430,6 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		 */
 		add = added;
 		del = deleted;
-		adds += add;
-		dels += del;
 
 		if (width <= max_change) {
 			add = scale_linear(add, width, max_change);
@@ -1449,51 +1444,30 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		fprintf(options->file, "\n");
 	}
 	for (i = count; i < data->nr; i++) {
-		uintmax_t added = data->files[i]->added;
-		uintmax_t deleted = data->files[i]->deleted;
-		if (!data->files[i]->is_renamed &&
-			 (added + deleted == 0)) {
-			total_files--;
+		struct diffstat_file *file = data->files[i];
+		if (!file->is_renamed && (file->added + file->deleted == 0))
 			continue;
-		}
-		adds += added;
-		dels += deleted;
-		if (!extra_shown)
-			fprintf(options->file, "%s ...\n", line_prefix);
-		extra_shown = 1;
+		fprintf(options->file, "%s ...\n", line_prefix);
+		break;
 	}
 	fprintf(options->file, "%s", line_prefix);
 	fprintf(options->file,
 	       " %d files changed, %d insertions(+), %d deletions(-)\n",
-	       total_files, adds, dels);
+	       data->total_files, data->text_added, data->text_deleted);
 }
 
 static void show_shortstats(struct diffstat_t *data, struct diff_options *options)
 {
-	int i, adds = 0, dels = 0, total_files = data->nr;
 
-	for (i = 0; i < data->nr; i++) {
-		if (!data->files[i]->is_binary &&
-		    !data->files[i]->is_unmerged) {
-			int added = data->files[i]->added;
-			int deleted= data->files[i]->deleted;
-			if (!data->files[i]->is_renamed &&
-			    (added + deleted == 0)) {
-				total_files--;
-			} else {
-				adds += added;
-				dels += deleted;
-			}
-		}
-	}
 	if (options->output_prefix) {
 		struct strbuf *msg = NULL;
 		msg = options->output_prefix(options,
 				options->output_prefix_data);
 		fprintf(options->file, "%s", msg->buf);
 	}
-	fprintf(options->file, " %d files changed, %d insertions(+), %d deletions(-)\n",
-	       total_files, adds, dels);
+
+	fprintf(options->file, " %ju files changed, %ju insertions(+), %ju deletions(-)\n",
+	       data->total_files, data->text_added, data->text_deleted);
 }
 
 static void show_numstat(struct diffstat_t *data, struct diff_options *options)
@@ -2268,6 +2242,14 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 		xecfg.interhunkctxlen = o->interhunkcontext;
 		xdi_diff_outf(&mf1, &mf2, diffstat_consume, diffstat,
 			      &xpp, &xecfg);
+	}
+
+	diffstat->total_files++;
+	if (!data->is_binary && !data->is_unmerged) {
+		diffstat->text_added += data->added;
+		diffstat->text_deleted += data->deleted;
+		if (!data->is_renamed && (data->added + data->deleted == 0))
+			diffstat->total_files--;
 	}
 
 	diff_free_filespec_data(one);
