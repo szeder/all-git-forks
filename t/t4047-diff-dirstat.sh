@@ -976,4 +976,23 @@ test_expect_success 'diff.dirstat=future_param,0,lines should warn, but still wo
 	test_i18ngrep -q "diff\\.dirstat" actual_error
 '
 
+test_expect_success '--dirstat-by-file --shortstat' '
+	cat >expect_diff_dirstat-by-file_shortstat <<-\EOF
+	 11 files changed, 62 insertions(+), 32 deletions(-)
+	   9.0% changed/
+	   9.0% dst/copy/changed/
+	   9.0% dst/copy/rearranged/
+	   9.0% dst/copy/unchanged/
+	   9.0% dst/move/changed/
+	   9.0% dst/move/rearranged/
+	   9.0% dst/move/unchanged/
+	   9.0% rearranged/
+	   9.0% src/move/changed/
+	   9.0% src/move/rearranged/
+	   9.0% src/move/unchanged/
+	EOF
+	git diff --dirstat-by-file --shortstat HEAD^..HEAD > actual_diff_dirstat-by-file_shortstat &&
+	test_cmp expect_diff_dirstat-by-file_shortstat actual_diff_dirstat-by-file_shortstat
+'
+
 test_done
