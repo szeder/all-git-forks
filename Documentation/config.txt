@@ -831,6 +831,11 @@ commit.template::
 	"{tilde}/" is expanded to the value of `$HOME` and "{tilde}user/" to the
 	specified user's home directory.
 
+commit.ignoreIntentToAdd::
+	Allow to commit the index as-is even if there are
+	intent-to-add entries (see option `-N` in linkgit:git-add[1])
+	in index.
+
 credential.helper::
 	Specify an external helper to be called when a username or
 	password credential is needed; the helper may consult external

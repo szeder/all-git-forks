@@ -9,7 +9,7 @@ git-write-tree - Create a tree object from the current index
 SYNOPSIS
 --------
 [verse]
-'git write-tree' [--missing-ok] [--prefix=<prefix>/]
+'git write-tree' [--missing-ok] [--ignore-intent-to-add] [--prefix=<prefix>/]
 
 DESCRIPTION
 -----------
@@ -31,6 +31,12 @@ OPTIONS
 	Normally 'git write-tree' ensures that the objects referenced by the
 	directory exist in the object database.  This option disables this
 	check.
+
+--ignore-intent-to-add::
+	Normally 'git write-tree' will refuse to proceed if there are any
+	intent-to-add entries (see `-N` option in linkgit:git-add[1]).
+	This option continues to create object tree as if there are no
+	intent-to-add entries in index.
 
 --prefix=<prefix>/::
 	Writes a tree object that represents a subdirectory
