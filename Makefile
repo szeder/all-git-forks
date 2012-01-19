@@ -1888,6 +1888,7 @@ sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
     -e 's/@@GIT_VERSION@@/$(GIT_VERSION)/g' \
     -e 's|@@LOCALEDIR@@|$(localedir_SQ)|g' \
     -e 's/@@NO_CURL@@/$(NO_CURL)/g' \
+    -e 's/@@NO_GETTEXT@@/$(NO_GETTEXT)/g' \
     -e $(BROKEN_PATH_FIX) \
     $@.sh >$@+
 endef
