@@ -1,6 +1,9 @@
-git (1:1.7.9~rc1-1.1) experimental; urgency=low
+git (1:1.7.9~rc2-0.1) experimental; urgency=low
 
   * merge branch debian-sid.
+  * new upstream release candidate.
+  * debian/diff/0016-unix-socket-handle-long-socket-...diff: remove;
+    applied upstream.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Jan 2012 04:08:55 -0600
 

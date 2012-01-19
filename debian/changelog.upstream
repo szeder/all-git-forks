@@ -1,3 +1,37 @@
+Version v1.7.9-rc2; changes since v1.7.9-rc1:
+---------------------------------------------
+
+Jakub Narebski (2):
+      gitweb: Fix file links in "grep" search
+      gitweb: Harden "grep" search against filenames with ':'
+
+Jeff King (3):
+      unix-socket: handle long socket pathnames
+      credential-cache: report more daemon connection errors
+      credential-cache: ignore "connection refused" errors
+
+Jonathan Nieder (1):
+      unix-socket: do not let close() or chdir() clobber errno during cleanup
+
+Junio C Hamano (4):
+      pulling signed tag: add howto document
+      Git 1.7.7.6
+      Git 1.7.8.4
+      Git 1.7.9-rc2
+
+Michael Haggerty (2):
+      git-show-ref: fix escaping in asciidoc source
+      git-show-ref doc: typeset regexp in fixed width font
+
+Nguyễn Thái Ngọc Duy (3):
+      Document limited recursion pathspec matching with wildcards
+      diff-index: enable recursive pathspec matching in unpack_trees
+      diff-index: enable recursive pathspec matching in unpack_trees
+
+Thomas Rast (1):
+      word-diff: ignore '\ No newline at eof' marker
+
+
 Version v1.7.9-rc1; changes since v1.7.9-rc0:
 ---------------------------------------------
 
