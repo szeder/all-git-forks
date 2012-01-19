@@ -1,4 +1,4 @@
-git (1:1.7.9~rc2-0.1) experimental; urgency=low
+git (1:1.7.9~rc2-1) experimental; urgency=low
 
   * merge branch debian-sid.
   * new upstream release candidate.
@@ -6,7 +6,7 @@ git (1:1.7.9~rc2-0.1) experimental; urgency=low
     applied upstream.
   * debian/changelog: add missing parenthesis to 1:1.7.9~rc1-1 entry.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Jan 2012 04:08:55 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Jan 2012 04:25:08 -0600
 
 git (1:1.7.8.4-1) unstable; urgency=low
 
