@@ -4,6 +4,7 @@ git (1:1.7.9~rc2-0.1) experimental; urgency=low
   * new upstream release candidate.
   * debian/diff/0016-unix-socket-handle-long-socket-...diff: remove;
     applied upstream.
+  * debian/changelog: add missing parenthesis to 1:1.7.9~rc1-1 entry.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Jan 2012 04:08:55 -0600
 
@@ -21,7 +22,7 @@ git (1:1.7.9~rc1-1) experimental; urgency=low
     * 0014-srv-be-more-tolerant-of-broken-DNS-replies.diff: new; srv:
       convert some error conditions to warnings (closes: #649781).
     * 0016-unix-socket-handle-long-socket-pathnames.diff: new from
-      upstream; credential-cache: handle long socket pathnames; closes:
+      upstream; credential-cache: handle long socket pathnames (closes:
       #655288).
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Fri, 13 Jan 2012 16:10:44 -0600
