@@ -1,3 +1,9 @@
+git (1:1.7.8.4-1) unstable; urgency=low
+
+  * new upstream point release.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Thu, 19 Jan 2012 04:05:01 -0600
+
 git (1:1.7.8.3-1) unstable; urgency=medium
 
   * new upstream point release.
