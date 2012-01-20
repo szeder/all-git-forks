@@ -1834,12 +1834,22 @@ sub extract_metadata {
 		# identifiers like this:
 		($rev, $uuid) = ($id =~/^\s*git-svn-id:\s(\d+)\@([a-f\d\-]+)/i);
 	}
+
 	return ($url, $rev, $uuid);
 }
 
 sub cmt_metadata {
-	return extract_metadata((grep(/^git-svn-id: /,
-		command(qw/cat-file commit/, shift)))[-1]);
+    my $cmt = shift;
+    my ($url, $rev, $uuid) = extract_metadata((grep(/^git-svn-id: /,
+		command(qw/cat-file commit/, $cmt)))[-1]);
+    if (!defined $url || $rev || uuid) {
+	# If there is no git-svn-id: data in the commit message, try
+	# to locate it in the notes
+	($url, $rev, $uuid) = extract_metadata((grep(/^git-svn-id: /,
+		command(qw/notes --ref=git-svn show/, $cmt)))[-1]);
+    }
+
+    return ($url, $rev, $uuid);
 }
 
 sub cmt_sha2rev_batch {
