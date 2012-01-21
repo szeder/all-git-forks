@@ -219,6 +219,7 @@ remote rejected::
 	The remote end refused the update.  Usually caused by a hook
 	on the remote side, or because the remote repository has one
 	of the following safety options in effect:
+	`receive.denyAll` (for all pushes),
 	`receive.denyCurrentBranch` (for pushes to the checked out
 	branch), `receive.denyNonFastForwards` (for forced
 	non-fast-forward updates), `receive.denyDeletes` or

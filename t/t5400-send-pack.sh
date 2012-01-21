@@ -222,4 +222,21 @@ test_expect_success 'deny pushing to delete current branch' '
 	)
 '
 
+test_expect_success 'deny pushing to any branch with denyAll' '
+	rewound_push_setup &&
+	(
+	    cd parent &&
+	    git config receive.denyCurrentBranch false &&
+	    git config receive.denyAll true
+	) &&
+	(
+	    cd child &&
+	    test_must_fail git send-pack ../parent master 2>errs
+	) &&
+	(
+	    cd child &&
+	    test_must_fail git send-pack ../parent :refs/heads/master 2>errs
+	)
+'
+
 test_done

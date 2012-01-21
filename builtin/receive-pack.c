@@ -22,6 +22,7 @@ enum deny_action {
 	DENY_REFUSE
 };
 
+static int deny_all;
 static int deny_deletes;
 static int deny_non_fast_forwards;
 static enum deny_action deny_current_branch = DENY_UNCONFIGURED;
@@ -57,6 +58,11 @@ static enum deny_action parse_deny_action(const char *var, const char *value)
 
 static int receive_pack_config(const char *var, const char *value, void *cb)
 {
+	if (strcmp(var, "receive.denyall") == 0) {
+		deny_all = git_config_bool(var, value);
+		return 0;
+	}
+
 	if (strcmp(var, "receive.denydeletes") == 0) {
 		deny_deletes = git_config_bool(var, value);
 		return 0;
@@ -400,6 +406,11 @@ static const char *update(struct command *cmd)
 	unsigned char *old_sha1 = cmd->old_sha1;
 	unsigned char *new_sha1 = cmd->new_sha1;
 	struct ref_lock *lock;
+
+	if (deny_all) {
+		rp_error("denying all updates");
+		return "update prohibited";
+	}
 
 	/* only refs/... are allowed */
 	if (prefixcmp(name, "refs/") || check_refname_format(name + 5, 0)) {

@@ -815,6 +815,18 @@ test_expect_success 'allow push to HEAD of bare repository (bare)' '
 	! grep "warning: updating the current branch" stderr
 '
 
+test_expect_success 'deny push to HEAD of bare repository (denyAll)' '
+	mk_test heads/master &&
+	(
+		cd testrepo &&
+		git checkout master &&
+		git config receive.denyCurrentBranch false &&
+		git config receive.denyAll true &&
+		git config core.bare true
+	) &&
+	test_must_fail git push testrepo master
+'
+
 test_expect_success 'allow push to HEAD of non-bare repository (config)' '
 	mk_test heads/master &&
 	(

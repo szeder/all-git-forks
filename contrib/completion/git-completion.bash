@@ -2250,6 +2250,7 @@ _git_config ()
 		rebase.autosquash
 		rebase.stat
 		receive.autogc
+		receive.denyAll
 		receive.denyCurrentBranch
 		receive.denyDeleteCurrent
 		receive.denyDeletes
