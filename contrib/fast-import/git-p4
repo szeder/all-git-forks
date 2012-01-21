@@ -1450,6 +1450,14 @@ class P4Sync(Command, P4UserMap):
                    .replace("%25", "%")
         return path
 
+    # Force a checkpoint in fast-import and wait for it to finish
+    def checkpoint(self):
+        self.gitStream.write("checkpoint\n\n")
+        self.gitStream.write("progress checkpoint\n\n")
+        out = self.gitOutput.readline()
+        if self.verbose:
+            print "checkpoint finished: " + out
+
     def extractFilesFromCommit(self, commit):
         self.cloneExclude = [re.sub(r"\.\.\.$", "", path)
                              for path in self.cloneExclude]
