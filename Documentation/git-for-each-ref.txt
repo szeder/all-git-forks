@@ -9,7 +9,7 @@ SYNOPSIS
 --------
 [verse]
 'git for-each-ref' [--count=<count>] [--shell|--perl|--python|--tcl]
-		   [(--sort=<key>)...] [--format=<format>] [<pattern>...]
+		   [(--sort=<key>)...] [--format=<format>] [--objects] [<pattern>...]
 
 DESCRIPTION
 -----------
@@ -62,6 +62,9 @@ OPTIONS
 	the specified host language.  This is meant to produce
 	a scriptlet that can directly be `eval`ed.
 
+--objects::
+	Interpret the `<pattern>` arguments as general revision parameters
+	(see linkgit:gitrevisions[1]) rather than refname patterns.
 
 FIELD NAMES
 -----------
