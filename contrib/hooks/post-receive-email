@@ -65,6 +65,11 @@
 #   Default is "--stat --summary --find-copies-harder". Add -p to those
 #   options to include a unified diff of changes in addition to the usual
 #   summary output.
+# hooks.revisionurlprefix
+#   Prefix to the url for specific revisions, The full hash will be appended
+#   to this string so that people can have direct links to commits from 
+#   the email.  For example, a URL like the following would link to gitweb
+#   http://git.u.hpl.hp.com/gitweb/?p=simpl/DataSeries.git;a=commit;h=
 #
 # Notes
 # -----
@@ -375,6 +380,7 @@ generate_update_branch_email()
 	do
 		revtype=$(git cat-file -t "$rev")
 		echo "       via  $rev ($revtype)"
+                [ ! -z "$revisionurlprefix" ] && echo "         at $revisionurlprefix$rev"
 	done
 
 	if [ "$fast_forward" ]; then
@@ -730,6 +736,7 @@ custom_showrev=$(git config hooks.showrev)
 maxlines=$(git config hooks.emailmaxlines)
 diffopts=$(git config hooks.diffopts)
 : ${diffopts:="--stat --summary --find-copies-harder"}
+revisionurlprefix=$(git config hooks.revisionurlprefix)
 
 # --- Main loop
 # Allow dual mode: run from the command line just like the update hook, or
