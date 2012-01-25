@@ -1187,7 +1187,10 @@ _git_bundle ()
 
 _git_checkout ()
 {
-	__git_has_doubledash && return
+	if __git_has_doubledash; then
+		__git_complete_file
+		return
+	fi
 
 	case "$cur" in
 	--conflict=*)
