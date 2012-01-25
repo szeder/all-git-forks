@@ -1069,7 +1069,7 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	int i, num_refs;
 	const char *format = "%(objectname) %(objecttype)\t%(refname)";
 	struct ref_sort *sort = NULL, **sort_tail = &sort;
-	int maxcount = 0, quote_style = 0;
+	int maxcount = 0, quote_style = 0, objects = 0;
 	struct refinfo **refs;
 	struct grab_ref_cbdata cbdata;
 
@@ -1088,10 +1088,11 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
 		OPT_CALLBACK(0 , "sort", sort_tail, N_("key"),
 			    N_("field name to sort on"), &opt_parse_sort),
+		OPT_BOOL( 0 , "objects", &objects, "arguments are objects, not ref patterns"),
 		OPT_END(),
 	};
 
-	parse_options(argc, argv, prefix, opts, for_each_ref_usage, 0);
+	argc = parse_options(argc, argv, prefix, opts, for_each_ref_usage, 0);
 	if (maxcount < 0) {
 		error("invalid --count argument: `%d'", maxcount);
 		usage_with_options(for_each_ref_usage, opts);
@@ -1109,12 +1110,25 @@ int cmd_for_each_ref(int argc, const char **argv, const char *prefix)
 	/* for warn_ambiguous_refs */
 	git_config(git_default_config, NULL);
 
-	memset(&cbdata, 0, sizeof(cbdata));
-	cbdata.grab_pattern = argv;
-	for_each_rawref(grab_single_ref, &cbdata);
-	refs = cbdata.grab_array;
-	num_refs = cbdata.grab_cnt;
-
+	if (objects) {
+		unsigned char sha1[20];
+		refs = xcalloc(argc, sizeof(*refs));
+		for (i = 0, num_refs = 0; i < argc; i++) {
+			if (get_sha1(argv[i], sha1))
+				continue; /* or warn or die */
+			refs[num_refs] = xcalloc(1, sizeof(**refs));
+			/* ref->refname = xstrdup(sha1_to_hex(sha1)); */
+			refs[num_refs]->refname = xstrdup(argv[i]);
+			hashcpy(refs[num_refs]->objectname, sha1);
+			num_refs++;
+		}
+	} else {
+		memset(&cbdata, 0, sizeof(cbdata));
+		cbdata.grab_pattern = argv;
+		for_each_rawref(grab_single_ref, &cbdata);
+		refs = cbdata.grab_array;
+		num_refs = cbdata.grab_cnt;
+	}
 	sort_refs(sort, refs, num_refs);
 
 	if (!maxcount || num_refs < maxcount)
