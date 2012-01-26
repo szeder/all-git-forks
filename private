@@ -62,7 +62,7 @@ for i in `Meta/topics`; do
 		   grep -m 1 "/$i\$"`
 		echo >&2 Local branch not found, using $i...
 	fi
-	if ! git $merge_config merge --no-ff $i; then
+	if ! git $merge_config merge --no-edit --no-ff $i; then
 		if test -z "$noautorerere" && test -z "`git ls-files -u`"; then
 			echo >&2 Auto-committing rerere merge...
 			GIT_EDITOR=true git commit || exit 1
