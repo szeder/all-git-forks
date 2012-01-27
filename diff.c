@@ -2997,6 +2997,9 @@ void diff_setup(struct diff_options *options)
 	options->use_color = diff_use_color_default;
 	options->detect_rename = diff_detect_rename_default;
 
+	options->dynamic_patch_threshold = 40;
+	options->dynamic_diffstat_threshold = 40;
+
 	if (diff_no_prefix) {
 		options->a_prefix = options->b_prefix = "";
 	} else if (!diff_mnemonic_prefix) {
@@ -3311,6 +3314,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		parse_dirstat_opt(options, "files");
 		return parse_dirstat_opt(options, arg + 18);
 	}
+	else if (!strcmp(arg, "--dynamic"))
+		options->output_format |= DIFF_FORMAT_DYNAMIC;
 	else if (!strcmp(arg, "--check"))
 		options->output_format |= DIFF_FORMAT_CHECKDIFF;
 	else if (!strcmp(arg, "--summary"))
@@ -4189,7 +4194,10 @@ void diff_flush(struct diff_options *options)
 	if (output_format & DIFF_FORMAT_DIRSTAT && DIFF_OPT_TST(options, DIRSTAT_BY_LINE))
 		dirstat_by_line = 1;
 
-	if (output_format & (DIFF_FORMAT_DIFFSTAT|DIFF_FORMAT_SHORTSTAT|DIFF_FORMAT_NUMSTAT) ||
+	if (output_format & (DIFF_FORMAT_DYNAMIC |
+			     DIFF_FORMAT_DIFFSTAT |
+			     DIFF_FORMAT_SHORTSTAT |
+			     DIFF_FORMAT_NUMSTAT) ||
 	    dirstat_by_line) {
 		struct diffstat_t diffstat;
 
@@ -4198,6 +4206,20 @@ void diff_flush(struct diff_options *options)
 			struct diff_filepair *p = q->queue[i];
 			if (check_pair_status(p))
 				diff_flush_stat(p, options, &diffstat);
+		}
+		if (output_format & DIFF_FORMAT_DYNAMIC) {
+			uintmax_t change = diffstat.text_added + diffstat.text_deleted;
+			change += (options->context * 2) * diffstat.total_files + 1;
+			if (change < options->dynamic_patch_threshold)
+				output_format |= DIFF_FORMAT_PATCH;
+			else if (((options->stat_count) ? options->stat_count :
+			    diffstat.nr) < options->dynamic_diffstat_threshold)
+				output_format |= DIFF_FORMAT_DIFFSTAT;
+			else {
+				output_format |= DIFF_FORMAT_DIRSTAT;
+				output_format |= DIFF_FORMAT_SHORTSTAT;
+				DIFF_OPT_SET(options, DIRSTAT_CUMULATIVE);
+			}
 		}
 		if (diffstat.nr != 0) {
 			if (output_format & DIFF_FORMAT_NUMSTAT)

@@ -39,6 +39,7 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_FORMAT_PATCH	0x0010
 #define DIFF_FORMAT_SHORTSTAT	0x0020
 #define DIFF_FORMAT_DIRSTAT	0x0040
+#define DIFF_FORMAT_DYNAMIC	0x0080
 
 /* These override all above */
 #define DIFF_FORMAT_NAME	0x0100
@@ -149,6 +150,9 @@ struct diff_options {
 	void *format_callback_data;
 	diff_prefix_fn_t output_prefix;
 	void *output_prefix_data;
+
+	int dynamic_patch_threshold;
+	int dynamic_diffstat_threshold;
 };
 
 enum color_diff {
