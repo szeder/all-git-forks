@@ -1,3 +1,20 @@
+Version v1.7.9; changes since v1.7.9-rc2:
+-----------------------------------------
+
+Felipe Contreras (1):
+      git-completion: workaround zsh COMPREPLY bug
+
+Jeff King (1):
+      docs: minor grammar fixes for v1.7.9 release notes
+
+Junio C Hamano (2):
+      INSTALL: warn about recent Fedora breakage
+      Git 1.7.9
+
+Michael Haggerty (1):
+      Fix typo in 1.7.9 release notes
+
+
 Version v1.7.9-rc2; changes since v1.7.9-rc1:
 ---------------------------------------------
 
