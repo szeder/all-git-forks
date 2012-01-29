@@ -676,7 +676,8 @@ __git_merge_strategies=
 # is needed.
 __git_compute_merge_strategies ()
 {
-	: ${__git_merge_strategies:=$(__git_list_merge_strategies)}
+	test "$__git_merge_strategies" && return
+	__git_merge_strategies=$(__git_list_merge_strategies 2> /dev/null)
 }
 
 __git_complete_revlist_file ()
@@ -854,7 +855,8 @@ __git_list_all_commands ()
 __git_all_commands=
 __git_compute_all_commands ()
 {
-	: ${__git_all_commands:=$(__git_list_all_commands)}
+	test "$__git_all_commands" && return
+	__git_all_commands=$(__git_list_all_commands 2> /dev/null)
 }
 
 __git_list_porcelain_commands ()
@@ -947,7 +949,8 @@ __git_porcelain_commands=
 __git_compute_porcelain_commands ()
 {
 	__git_compute_all_commands
-	: ${__git_porcelain_commands:=$(__git_list_porcelain_commands)}
+	test "$__git_porcelain_commands" && return
+	__git_porcelain_commands=$(__git_list_porcelain_commands 2> /dev/null)
 }
 
 __git_pretty_aliases ()
