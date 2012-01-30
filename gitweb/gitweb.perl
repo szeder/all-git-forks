@@ -2829,8 +2829,6 @@ sub git_get_projects_list {
 	my $filter = shift || '';
 	my @list;
 
-	$filter =~ s/\.git$//;
-
 	if (-d $projects_list) {
 		# search in directory
 		my $dir = $projects_list;
@@ -6005,7 +6003,7 @@ sub git_forks {
 		die_error(400, "Unknown order parameter");
 	}
 
-	my @list = git_get_projects_list($project);
+	my @list = git_get_projects_list((my $filter = $project) =~ s/\.git$//);
 	if (!@list) {
 		die_error(404, "No forks found");
 	}
@@ -6064,7 +6062,7 @@ sub git_summary {
 
 	if ($check_forks) {
 		# find forks of a project
-		@forklist = git_get_projects_list($project);
+		@forklist = git_get_projects_list((my $filter = $project) =~ s/\.git$//);
 		# filter out forks of forks
 		@forklist = filter_forks_from_projects_list(\@forklist)
 			if (@forklist);
