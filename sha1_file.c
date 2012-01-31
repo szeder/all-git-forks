@@ -54,6 +54,10 @@ static struct cached_object empty_tree = {
 	0
 };
 
+/* INVALID_PACK cannot be NULL, see comments in find_pack_entry */
+#define INVALID_PACK (struct packed_git *)1
+static struct packed_git *find_pack_entry_last_found = INVALID_PACK;
+
 static struct cached_object *find_cached_object(const unsigned char *sha1)
 {
 	int i;
@@ -720,6 +724,8 @@ void free_pack_by_name(const char *pack_name)
 			close_pack_index(p);
 			free(p->bad_object_sha1);
 			*pp = p->next;
+			if (find_pack_entry_last_found == p)
+				find_pack_entry_last_found = INVALID_PACK;
 			free(p);
 			return;
 		}
@@ -2012,14 +2018,13 @@ int is_pack_valid(struct packed_git *p)
 
 static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 {
-	static struct packed_git *last_found = (void *)1;
 	struct packed_git *p;
 	off_t offset;
 
 	prepare_packed_git();
 	if (!packed_git)
 		return 0;
-	p = (last_found == (void *)1) ? packed_git : last_found;
+	p = find_pack_entry_last_found == INVALID_PACK ? packed_git : find_pack_entry_last_found;
 
 	do {
 		if (p->num_bad_objects) {
@@ -2046,16 +2051,21 @@ static int find_pack_entry(const unsigned char *sha1, struct pack_entry *e)
 			e->offset = offset;
 			e->p = p;
 			hashcpy(e->sha1, sha1);
-			last_found = p;
+			find_pack_entry_last_found = p;
 			return 1;
 		}
 
 		next:
-		if (p == last_found)
+		if (p == find_pack_entry_last_found)
 			p = packed_git;
 		else
 			p = p->next;
-		if (p == last_found)
+		/*
+		 * p can be NULL from the else clause above, if initial
+		 * f_p_e_last_found value (i.e. INVALID_PACK) is NULL, we may
+		 * advance p again to an imaginary pack in invalid memory
+		 */
+		if (p == find_pack_entry_last_found)
 			p = p->next;
 	} while (p);
 	return 0;
