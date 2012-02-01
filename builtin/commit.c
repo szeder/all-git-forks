@@ -202,10 +202,10 @@ static const char *whence_s(void)
 	case FROM_COMMIT:
 		break;
 	case FROM_MERGE:
-		s = "merge";
+		s = _("merge");
 		break;
 	case FROM_CHERRY_PICK:
-		s = "cherry-pick";
+		s = _("cherry-pick");
 		break;
 	}
 
