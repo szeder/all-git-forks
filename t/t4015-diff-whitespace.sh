@@ -103,7 +103,7 @@ test_expect_success 'another test, with -w --ignore-space-at-eol' 'test_cmp expe
 git diff -w -b --ignore-space-at-eol > out
 test_expect_success 'another test, with -w -b --ignore-space-at-eol' 'test_cmp expect out'
 
-test-tr 'Q' '\015' << EOF > expect
+test-tr 'Q_' '\015 ' << EOF > expect
 diff --git a/x b/x
 index d99af23..8b32fb5 100644
 --- a/x
@@ -111,19 +111,19 @@ index d99af23..8b32fb5 100644
 @@ -1,6 +1,6 @@
 -whitespace at beginning
 +	whitespace at beginning
- whitespace change
+ whitespace 	 change
 -whitespace in the middle
 +white space in the middle
- whitespace at end
+ whitespace at end__
  unchanged line
- CR at endQ
+ CR at end
 EOF
 git diff -b > out
 test_expect_success 'another test, with -b' 'test_cmp expect out'
 git diff -b --ignore-space-at-eol > out
 test_expect_success 'another test, with -b --ignore-space-at-eol' 'test_cmp expect out'
 
-tr 'Q' '\015' << EOF > expect
+test-tr 'Q_' '\015 ' << EOF > expect
 diff --git a/x b/x
 index d99af23..8b32fb5 100644
 --- a/x
@@ -135,9 +135,9 @@ index d99af23..8b32fb5 100644
 +	whitespace at beginning
 +whitespace 	 change
 +white space in the middle
- whitespace at end
+ whitespace at end__
  unchanged line
- CR at endQ
+ CR at end
 EOF
 git diff --ignore-space-at-eol > out
 test_expect_success 'another test, with --ignore-space-at-eol' 'test_cmp expect out'
@@ -551,7 +551,7 @@ test_expect_success 'diff that introduces a line with only tabs' '
 	git reset --hard &&
 	echo "test" > x &&
 	git commit -m "initial" x &&
-	echo "{NTN}" | tr "NT" "\n\t" >> x &&
+	echo "{NTN}" | test-tr "NT" "\n\t" >> x &&
 	git -c color.diff=always diff | test_decode_color >current &&
 	test_cmp expected current
 '
