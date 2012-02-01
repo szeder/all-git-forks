@@ -10,7 +10,7 @@
 use 5.008;
 use strict;
 use warnings;
-use CGI qw(:standard :escapeHTML -nosticky);
+use CGI qw(:standard :escapeHTML -nosticky -utf8);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
 use Encode;
