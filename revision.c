@@ -2129,6 +2129,7 @@ static int commit_match(struct commit *commit, struct rev_info *opt)
 		return 1;
 	return grep_buffer(&opt->grep_filter,
 			   NULL, /* we say nothing, not even filename */
+			   -1,
 			   commit->buffer, strlen(commit->buffer));
 }
 

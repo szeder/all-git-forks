@@ -221,14 +221,14 @@ static void *run(void *arg)
 			void* data = load_sha1(w->identifier, &sz, w->name);
 
 			if (data) {
-				hit |= grep_buffer(opt, w->name, data, sz);
+				hit |= grep_buffer(opt, w->name, -1, data, sz);
 				free(data);
 			}
 		} else if (w->type == WORK_FILE) {
 			size_t sz;
 			void* data = load_file(w->identifier, &sz);
 			if (data) {
-				hit |= grep_buffer(opt, w->name, data, sz);
+				hit |= grep_buffer(opt, w->name, -1, data, sz);
 				free(data);
 			}
 		} else {
@@ -421,7 +421,7 @@ static int grep_sha1(struct grep_opt *opt, const unsigned char *sha1,
 		if (!data)
 			hit = 0;
 		else
-			hit = grep_buffer(opt, name, data, sz);
+			hit = grep_buffer(opt, name, -1, data, sz);
 
 		free(data);
 		free(name);
@@ -483,7 +483,7 @@ static int grep_file(struct grep_opt *opt, const char *filename)
 		if (!data)
 			hit = 0;
 		else
-			hit = grep_buffer(opt, name, data, sz);
+			hit = grep_buffer(opt, name, -1, data, sz);
 
 		free(data);
 		free(name);
