@@ -1572,18 +1572,18 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	if (!num_theirs)
-		strbuf_addf(sb, "Your branch is ahead of '%s' "
-			    "by %d commit%s.\n",
-			    base, num_ours, (num_ours == 1) ? "" : "s");
+		strbuf_addf(sb, _("Your branch is ahead of '%s' "
+			    "by %d %s.\n"),
+			    base, num_ours, Q_("commit", "commits", num_ours));
 	else if (!num_ours)
-		strbuf_addf(sb, "Your branch is behind '%s' "
-			    "by %d commit%s, "
-			    "and can be fast-forwarded.\n",
-			    base, num_theirs, (num_theirs == 1) ? "" : "s");
+		strbuf_addf(sb, _("Your branch is behind '%s' "
+			    "by %d %s, "
+			    "and can be fast-forwarded.\n"),
+			    base, num_theirs, Q_("commit", "commits", num_theirs));
 	else
-		strbuf_addf(sb, "Your branch and '%s' have diverged,\n"
+		strbuf_addf(sb, _("Your branch and '%s' have diverged,\n"
 			    "and have %d and %d different commit(s) each, "
-			    "respectively.\n",
+			    "respectively.\n"),
 			    base, num_ours, num_theirs);
 	return 1;
 }
