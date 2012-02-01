@@ -12,7 +12,7 @@ Subject: test1
 
 ---
  foo |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ 1 file changed, 1 insertion(+)
  create mode 100644 foo
 
 diff --git a/foo b/foo
