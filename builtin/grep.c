@@ -42,6 +42,7 @@ enum work_type {WORK_SHA1, WORK_FILE};
 struct work_item {
 	enum work_type type;
 	char *name;
+	int is_binary;
 
 	/* if type == WORK_SHA1, then 'identifier' is a SHA1,
 	 * otherwise type == WORK_FILE, and 'identifier' is a NUL
@@ -113,6 +114,14 @@ static pthread_cond_t cond_result;
 
 static int skip_first_line;
 
+static int path_is_binary(const char *path)
+{
+	struct userdiff_driver *drv = userdiff_find_by_path(path);
+	if (drv)
+		return drv->binary;
+	return -1;
+}
+
 static void add_work(enum work_type type, char *name, void *id)
 {
 	grep_lock();
@@ -123,6 +132,11 @@ static void add_work(enum work_type type, char *name, void *id)
 
 	todo[todo_end].type = type;
 	todo[todo_end].name = name;
+
+	pthread_mutex_lock(&grep_attr_mutex);
+	todo[todo_end].is_binary = path_is_binary(name);
+	pthread_mutex_unlock(&grep_attr_mutex);
+
 	todo[todo_end].identifier = id;
 	todo[todo_end].done = 0;
 	strbuf_reset(&todo[todo_end].out);
@@ -221,14 +235,16 @@ static void *run(void *arg)
 			void* data = load_sha1(w->identifier, &sz, w->name);
 
 			if (data) {
-				hit |= grep_buffer(opt, w->name, data, sz);
+				hit |= grep_buffer(opt, w->name, w->is_binary,
+						   data, sz);
 				free(data);
 			}
 		} else if (w->type == WORK_FILE) {
 			size_t sz;
 			void* data = load_file(w->identifier, &sz);
 			if (data) {
-				hit |= grep_buffer(opt, w->name, data, sz);
+				hit |= grep_buffer(opt, w->name, w->is_binary,
+						   data, sz);
 				free(data);
 			}
 		} else {
@@ -421,7 +437,8 @@ static int grep_sha1(struct grep_opt *opt, const unsigned char *sha1,
 		if (!data)
 			hit = 0;
 		else
-			hit = grep_buffer(opt, name, data, sz);
+			hit = grep_buffer(opt, name, path_is_binary(name),
+					  data, sz);
 
 		free(data);
 		free(name);
@@ -483,7 +500,8 @@ static int grep_file(struct grep_opt *opt, const char *filename)
 		if (!data)
 			hit = 0;
 		else
-			hit = grep_buffer(opt, name, data, sz);
+			hit = grep_buffer(opt, name, path_is_binary(name),
+					  data, sz);
 
 		free(data);
 		free(name);

@@ -983,8 +983,16 @@ static void std_output(struct grep_opt *opt, const void *buf, size_t size)
 	fwrite(buf, size, 1, stdout);
 }
 
+static int grep_buffer_is_binary(char *buf, unsigned long size, int flag)
+{
+	if (flag == -1)
+		flag = buffer_is_binary(buf, size);
+	return flag;
+}
+
 static int grep_buffer_1(struct grep_opt *opt, const char *name,
-			 char *buf, unsigned long size, int collect_hits)
+			 int is_binary, char *buf, unsigned long size,
+			 int collect_hits)
 {
 	char *bol = buf;
 	unsigned long left = size;
@@ -1017,11 +1025,11 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 
 	switch (opt->binary) {
 	case GREP_BINARY_DEFAULT:
-		if (buffer_is_binary(buf, size))
+		if (grep_buffer_is_binary(buf, size, is_binary))
 			binary_match_only = 1;
 		break;
 	case GREP_BINARY_NOMATCH:
-		if (buffer_is_binary(buf, size))
+		if (grep_buffer_is_binary(buf, size, is_binary))
 			return 0; /* Assume unmatch */
 		break;
 	case GREP_BINARY_TEXT:
@@ -1182,23 +1190,24 @@ static int chk_hit_marker(struct grep_expr *x)
 	}
 }
 
-int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsigned long size)
+int grep_buffer(struct grep_opt *opt, const char *name, int is_binary,
+		char *buf, unsigned long size)
 {
 	/*
 	 * we do not have to do the two-pass grep when we do not check
 	 * buffer-wide "all-match".
 	 */
 	if (!opt->all_match)
-		return grep_buffer_1(opt, name, buf, size, 0);
+		return grep_buffer_1(opt, name, is_binary, buf, size, 0);
 
 	/* Otherwise the toplevel "or" terms hit a bit differently.
 	 * We first clear hit markers from them.
 	 */
 	clr_hit_marker(opt->pattern_expression);
-	grep_buffer_1(opt, name, buf, size, 1);
+	grep_buffer_1(opt, name, is_binary, buf, size, 1);
 
 	if (!chk_hit_marker(opt->pattern_expression))
 		return 0;
 
-	return grep_buffer_1(opt, name, buf, size, 0);
+	return grep_buffer_1(opt, name, is_binary, buf, size, 0);
 }
