@@ -1,8 +1,5 @@
-prefix ?= /usr/local
-mandir ?= $(prefix)/share/man
-gitdir ?= $(shell git --exec-path)
-
-gitver ?= $(word 3,$(shell git --version))
+-include ../../config.mak.autogen
+-include ../../config.mak
 
 # this should be set to a 'standard' bsd-type install program
 INSTALL ?= install
@@ -13,13 +10,13 @@ INSTALL_DIR = $(INSTALL) -c -d -m 0755
 ASCIIDOC_CONF      = ../../Documentation/asciidoc.conf
 MANPAGE_NORMAL_XSL =  ../../Documentation/manpage-normal.xsl
 
-default:
-	@echo "git-subtree doesn't need to be built."
-	@echo "Just copy it somewhere on your PATH, like /usr/local/bin."
-	@echo
-	@echo "Try: make doc"
-	@echo " or: make test"
-	@false
+GIT_SUBTREE_SH := git-subtree.sh
+GIT_SUBTREE    := ../../git-subtree
+
+all: $(GIT_SUBTREE)
+
+$(GIT_SUBTREE): $(GIT_SUBTREE_SH)
+	cp $< $@ && chmod +x $@
 
 install: install-exe install-doc
 
@@ -41,7 +38,7 @@ doc: git-subtree.1
 		-agit_version=$(gitver) $^
 
 test:
-	./test.sh
+	$(MAKE) -C t/ all
 
 clean:
 	rm -f *~ *.xml *.html *.1
