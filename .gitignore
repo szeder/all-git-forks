@@ -187,7 +187,7 @@
 /test-dump-cache-tree
 /test-dump-split-index
 /test-dump-untracked-cache
-/test-scrap-cache-tree
+/test-get-pathspec
 /test-genrandom
 /test-hashmap
 /test-index-version
@@ -202,6 +202,7 @@
 /test-regex
 /test-revision-walking
 /test-run-command
+/test-scrap-cache-tree
 /test-sha1
 /test-sha1-array
 /test-sigchain

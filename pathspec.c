@@ -52,6 +52,48 @@ char *find_pathspecs_matching_against_index(const struct pathspec *pathspec)
 	return seen;
 }
 
+#if 0
++/*
++ * Given a set of narrow prefix and user-specified pathspec,
++ * filter/rewrite the pathspec so that it won't reach out of narrow
++ * area. E.g:
++ *
++ * - "git foo ." may become "git foo a/b a/c d"
++ * - "git foo a" may become "git foo a/b a/c"
++ *
++ * This code will not be smart enough to rewrite complex patterns or
++ * interpret pathspec magic. Incomprehensible pathspec will be
++ * rejected. Users better stick to plain prefix that point somewhere
++ * inside narrow area. From there, go wild.
++ */
++static const char **filter_narrow_pathspec(const char **pathspec)
++{
++	struct pathspec *narrow = get_narrow_pathspec();
++	const char **narrow_prefix = narrow ? narrow->raw : NULL;
++	const char **p;
++
++	if (!narrow_prefix)
++		return pathspec;
++
++	if (!pathspec || !*pathspec)
++		return narrow_prefix ? dup_pathspec(narrow_prefix) : NULL;
++
++	for (p = pathspec; *p; p++) {
++		int plen = strlen(*p);
++		const char **n;
++		for (n = narrow_prefix; *n; n++) {
++			int nlen = strlen(*n);
++			if (plen >= nlen && !memcmp(*p, *n, nlen) &&
++			    (nlen == plen || (*p)[nlen] == '/'))
++				break;
++		}
++		if (*n == NULL)
++			die(_("pathspec '%s' outside narrow area"), *p);
++	}
++	return pathspec;
++}
+#endif
+
 /*
  * Magic pathspec
  *

@@ -264,6 +264,15 @@ int get_common_dir_noenv(struct strbuf *sb, const char *gitdir)
 }
 
 /*
+ * Pathspec is narrowed by default. Call sites that want unfiltered
+ * pathspec should use get_pathspec_narrow
+ */
+const char **get_pathspec(const char *prefix, const char **pathspec)
+{
+	return get_pathspec_narrow(prefix, pathspec, 1);
+}
+
+/*
  * Test if it looks like we're at a git directory.
  * We want to see:
  *
