@@ -23,6 +23,8 @@ int cmd_write_tree(int argc, const char **argv, const char *unused_prefix)
 	struct option write_tree_options[] = {
 		OPT_BIT(0, "missing-ok", &flags, "allow missing objects",
 			WRITE_TREE_MISSING_OK),
+		OPT_BIT(0, "ignore-intent-to-add", &flags, "ignore i-t-a entries in index",
+			WRITE_TREE_IGNORE_INTENT_TO_ADD ),
 		{ OPTION_STRING, 0, "prefix", &prefix, "<prefix>/",
 		  "write tree object for a subdirectory <prefix>" ,
 		  PARSE_OPT_LITERAL_ARGHELP },
