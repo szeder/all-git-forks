@@ -186,6 +186,9 @@ int mingw_access(const char *filename, int mode);
 #undef access
 #define access mingw_access
 
+int mingw_readlink(const char *path, char *buf, size_t bufsiz);
+#define readlink mingw_readlink
+
 int mingw_chdir(const char *dirname);
 #define chdir mingw_chdir
 

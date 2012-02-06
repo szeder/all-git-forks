@@ -2,6 +2,7 @@
 #include "win32.h"
 #include <conio.h>
 #include <wchar.h>
+#include <winioctl.h>
 #include "../strbuf.h"
 #include "../run-command.h"
 #include "../cache.h"
@@ -452,6 +453,61 @@ static inline long long filetime_to_hnsec(const FILETIME *ft)
 static inline time_t filetime_to_time_t(const FILETIME *ft)
 {
 	return (time_t)(filetime_to_hnsec(ft) / 10000000);
+}
+
+int mingw_readlink(const char *path, char *buf, size_t bufsiz)
+{
+	union {
+		REPARSE_DATA_BUFFER data;
+		unsigned char raw[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+	} tmp;
+	DWORD dummy;
+	int ret, len;
+	WCHAR *str;
+	wchar_t wpath[MAX_PATH];
+	HANDLE handle;
+
+	if (xutftowcs_path(wpath, path) < 0)
+		return -1;
+
+	handle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ |
+	    FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+	    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+
+	if (handle == INVALID_HANDLE_VALUE)
+		goto error;
+
+	if (!DeviceIoControl(handle, FSCTL_GET_REPARSE_POINT, NULL, 0, &tmp,
+	    sizeof(tmp), &dummy, NULL))
+		goto error_close;
+
+	if (tmp.data.ReparseTag != IO_REPARSE_TAG_SYMLINK)
+		goto error_close;
+
+	str = tmp.data.SymbolicLinkReparseBuffer.PathBuffer +
+	    tmp.data.SymbolicLinkReparseBuffer.SubstituteNameOffset /
+	    sizeof(WCHAR);
+	len = tmp.data.SymbolicLinkReparseBuffer.SubstituteNameLength /
+	    sizeof(WCHAR);
+	str[len] = 0;
+
+	/* skip 'non-parsed' prefix */
+	if (!wcsncmp(str, L"\\??\\", 4)) {
+		str += 4;
+		len -= 4;
+	}
+
+	ret = xwcstoutf(buf, str, bufsiz);
+
+	CloseHandle(handle);
+	return ret;
+
+error_close:
+	CloseHandle(handle);
+
+error:
+	errno = EINVAL;
+	return -1;
 }
 
 static int is_symlink(const char *path)
