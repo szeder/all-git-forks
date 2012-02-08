@@ -310,16 +310,16 @@ static int parse_option(const char *arg, int len,
 		{ OPTION, "color",  COL_ANSI },
 		{ OPTION, "dense",  COL_DENSE },
 	};
-	int i, set, name_len;
+	int i;
 
 	for (i = 0; i < ARRAY_SIZE(opts); i++) {
+		int set = 1, name_len;
+
 		if (opts[i].type == OPTION) {
 			if (len > 2 && !strncmp(arg, "no", 2)) {
 				arg += 2;
 				len -= 2;
 				set = 0;
-			} else {
-				set = 1;
 			}
 		}
 

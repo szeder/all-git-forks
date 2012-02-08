@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "run-command.h"
 #include "sigchain.h"
+#include "column.h"
 
 #ifndef DEFAULT_PAGER
 #define DEFAULT_PAGER "less"
