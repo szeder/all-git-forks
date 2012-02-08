@@ -2101,7 +2101,12 @@ static int do_write_index(struct index_state *istate, int newfd,
 		struct strbuf sb = STRBUF_INIT;
 		char *buf = get_narrow_string();
 		int len = 20+strlen(buf)+1;
-		strbuf_add(&sb, istate->narrow_base, 20);
+
+		/* initial index has null SHA-1 */
+		if (is_null_sha1(istate->narrow_base))
+			strbuf_add(&sb, EMPTY_TREE_SHA1_BIN, 20);
+		else
+			strbuf_add(&sb, istate->narrow_base, 20);
 		strbuf_addstr(&sb, buf);
 		free(buf);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_NARROW, len) < 0 ||
