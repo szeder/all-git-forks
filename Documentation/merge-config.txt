@@ -59,6 +59,11 @@ merge.tool::
 	and "xxdiff".  Any other value is treated is custom merge tool
 	and there must be a corresponding mergetool.<tool>.cmd option.
 
+merge.usePreCommitHook::
+	Controls whether the pre-commit hook is invoked when 'git merge'
+	creates a new commit (true merge without conflicts).  False by
+	default.
+
 merge.verbosity::
 	Controls the amount of output shown by the recursive merge
 	strategy.  Level 0 outputs nothing except a final error

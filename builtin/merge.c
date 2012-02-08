@@ -64,6 +64,7 @@ static int allow_rerere_auto;
 static int abort_current_merge;
 static int show_progress = -1;
 static int default_to_upstream;
+static int use_pre_commit_hook;
 static const char *sign_commit;
 
 static struct strategy all_strategy[] = {
@@ -575,6 +576,9 @@ static int git_merge_config(const char *k, const char *v, void *cb)
 	} else if (!strcmp(k, "merge.defaulttoupstream")) {
 		default_to_upstream = git_config_bool(k, v);
 		return 0;
+	} else if (!strcmp(k, "merge.useprecommithook")) {
+		use_pre_commit_hook = git_config_bool(k, v);
+		return 0;
 	}
 
 	status = fmt_merge_msg_config(k, v, cb);
@@ -898,12 +902,23 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 {
 	struct strbuf msg = STRBUF_INIT;
 	const char *comment = _(merge_editor_comment);
+	const char *index_file = get_index_file();
+
+	if (use_pre_commit_hook && run_hook(index_file, "pre-commit", NULL))
+		abort_commit(remoteheads, NULL);
+	/*
+	 * Re-read the index as pre-commit hook could have updated it,
+	 * and write it out as a tree.  We must do this before we invoke
+	 * the editor and after we invoke run_status above.
+	 */
+	discard_cache();
+	read_cache_from(index_file);
 	strbuf_addbuf(&msg, &merge_msg);
 	strbuf_addch(&msg, '\n');
 	if (0 < option_edit)
 		strbuf_add_lines(&msg, "# ", comment, strlen(comment));
 	write_merge_msg(&msg);
-	run_hook(get_index_file(), "prepare-commit-msg",
+	run_hook(index_file, "prepare-commit-msg",
 		 git_path("MERGE_MSG"), "merge", NULL, NULL);
 	if (0 < option_edit) {
 		if (launch_editor(git_path("MERGE_MSG"), NULL, NULL))

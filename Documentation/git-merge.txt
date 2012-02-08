@@ -310,7 +310,7 @@ branch.<name>.mergeoptions::
 
 HOOKS
 -----
-This command can run the `prepare-commit-msg` hook.
+This command can run the `prepare-commit-msg` and `pre-commit` hooks.
 See linkgit:githooks[5] for more information.
 
 SEE ALSO
