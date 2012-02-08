@@ -146,5 +146,20 @@ test_expect_failure '(b) [a] no pathspec' '
 	test_cmp expected result
 	)
 '
+test_expect_success 'commit -a' '
+	rm .git/narrow &&
+	: >b/foo &&
+	git add b/foo &&
+	git commit -m initial &&
+	git update-index --narrow-base HEAD^{tree} &&
+	echo a >.git/narrow &&
+	: >a/foo &&
+	git add a/foo &&
+	git commit -m1 &&
+	echo edited >>a/foo &&
+	git status &&
+	git commit -a -m2 &&
+	git log --patch
+'
 
 test_done
