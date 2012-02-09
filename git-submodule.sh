@@ -169,6 +169,15 @@ module_clone()
 	fi
 
 	echo "gitdir: $rel_gitdir" >"$path/.git"
+
+	a=$(cd "$gitdir" && pwd)
+	b=$(cd "$path" && pwd)
+	while [ "$b" ] && [ "${a%%/*}" = "${b%%/*}" ]
+	do
+		a=${a#*/} b=${b#*/};
+	done
+	rel=$(echo $a | sed -e 's|[^/]*|..|g')
+	(clear_local_git_env; cd "$path" && git config core.worktree "$rel/$b")
 }
 
 #
