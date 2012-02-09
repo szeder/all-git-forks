@@ -49,6 +49,7 @@ test_expect_failure 'cope with rcs keyword expansion damage' '
 	(
 		cd "$git" &&
 		git config git-p4.skipSubmitEdit true &&
+		git config git-p4.attemptRCSCleanup true &&
 		(cd ../cli && p4_append_to_file kwfile1.c) &&
 		perl -n -i -e "print unless m/Revision:/" kwfile1.c &&
 		git add kwfile1.c &&
