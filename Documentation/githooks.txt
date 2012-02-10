@@ -88,6 +88,7 @@ to modify the commit message.
 
 If the configuration option `merge.usePreCommitHook` is set to `true`
 then 'git merge' invokes this hook whenever it creates a new commit.
+It can be bypassed with the `\--no-verify` option. 
 
 prepare-commit-msg
 ~~~~~~~~~~~~~~~~~~

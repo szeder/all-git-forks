@@ -60,6 +60,7 @@ static const char *branch;
 static char *branch_mergeoptions;
 static int option_renormalize;
 static int verbosity;
+static int no_verify;
 static int allow_rerere_auto;
 static int abort_current_merge;
 static int show_progress = -1;
@@ -199,6 +200,7 @@ static struct option builtin_merge_options[] = {
 		N_("allow fast-forward (default)")),
 	OPT_BOOLEAN(0, "ff-only", &fast_forward_only,
 		N_("abort if fast-forward is not possible")),
+	OPT_BOOLEAN(0, "no-verify", &no_verify, "bypass pre-merge hook"),
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
 	OPT_CALLBACK('s', "strategy", &use_strategies, N_("strategy"),
 		N_("merge strategy to use"), option_parse_strategy),
@@ -904,7 +906,7 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 	const char *comment = _(merge_editor_comment);
 	const char *index_file = get_index_file();
 
-	if (use_pre_commit_hook && run_hook(index_file, "pre-commit", NULL))
+	if (use_pre_commit_hook && !no_verify && run_hook(index_file, "pre-commit", NULL))
 		abort_commit(remoteheads, NULL);
 	/*
 	 * Re-read the index as pre-commit hook could have updated it,
