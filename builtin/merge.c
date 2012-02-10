@@ -62,6 +62,7 @@ static const char *branch;
 static char *branch_mergeoptions;
 static int option_renormalize;
 static int verbosity;
+static int no_verify;
 static int allow_rerere_auto;
 static int abort_current_merge;
 static int show_progress = -1;
@@ -208,6 +209,7 @@ static struct option builtin_merge_options[] = {
 	{ OPTION_SET_INT, 0, "ff-only", &fast_forward, NULL,
 		N_("abort if fast-forward is not possible"),
 		PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, FF_ONLY },
+	OPT_BOOL(0, "no-verify", &no_verify, "bypass pre-merge hook"),
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
 	OPT_BOOL(0, "verify-signatures", &verify_signatures,
 		N_("Verify that the named commit has a valid GPG signature")),
@@ -796,7 +798,7 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 	struct strbuf msg = STRBUF_INIT;
 	const char *index_file = get_index_file();
 
-	if (run_commit_hook(0 < option_edit, index_file, "pre-merge", NULL))
+	if (!no_verify && run_commit_hook(0 < option_edit, index_file, "pre-merge", NULL))
 		abort_commit(remoteheads, NULL);
 	/*
 	 * Re-read the index as pre-merge hook could have updated it,
