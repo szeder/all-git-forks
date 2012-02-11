@@ -196,16 +196,16 @@ static void determine_whence(struct wt_status *s)
 
 static const char *whence_s(void)
 {
-	char *s = "";
+	const char *s = "";
 
 	switch (whence) {
 	case FROM_COMMIT:
 		break;
 	case FROM_MERGE:
-		s = "merge";
+		s = _("merge");
 		break;
 	case FROM_CHERRY_PICK:
-		s = "cherry-pick";
+		s = _("cherry-pick");
 		break;
 	}
 
@@ -543,6 +543,7 @@ static void determine_author_info(struct strbuf *author_ident)
 
 	if (author_message) {
 		const char *a, *lb, *rb, *eol;
+		size_t len;
 
 		a = strstr(author_message_buffer, "\nauthor ");
 		if (!a)
@@ -563,6 +564,11 @@ static void determine_author_info(struct strbuf *author_ident)
 					 (a + strlen("\nauthor "))));
 		email = xmemdupz(lb + strlen("<"), rb - (lb + strlen("<")));
 		date = xmemdupz(rb + strlen("> "), eol - (rb + strlen("> ")));
+		len = eol - (rb + strlen("> "));
+		date = xmalloc(len + 2);
+		*date = '@';
+		memcpy(date + 1, rb + strlen("> "), len);
+		date[len + 1] = '\0';
 	}
 
 	if (force_author) {
