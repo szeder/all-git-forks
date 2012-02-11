@@ -265,6 +265,8 @@ int send_pack(struct send_pack_args *args,
 		use_sideband = 1;
 	if (!server_supports("quiet"))
 		args->quiet = 0;
+	if (server_supports("verify-refs"))
+		args->verify_refs = 1;
 
 	if (!remote_refs) {
 		fprintf(stderr, "No refs in common and none specified; doing nothing.\n"
@@ -303,12 +305,13 @@ int send_pack(struct send_pack_args *args,
 			char *old_hex = sha1_to_hex(ref->old_sha1);
 			char *new_hex = sha1_to_hex(ref->new_sha1);
 
-			if (!cmds_sent && (status_report || use_sideband || args->quiet)) {
-				packet_buf_write(&req_buf, "%s %s %s%c%s%s%s",
+			if (!cmds_sent && (status_report || use_sideband || args->quiet || args->verify_refs)) {
+				packet_buf_write(&req_buf, "%s %s %s%c%s%s%s%s",
 					old_hex, new_hex, ref->name, 0,
 					status_report ? " report-status" : "",
 					use_sideband ? " side-band-64k" : "",
-					args->quiet ? " quiet" : "");
+					args->quiet ? " quiet" : "",
+					args->verify_refs ? " verify-refs" : "");
 			}
 			else
 				packet_buf_write(&req_buf, "%s %s %s",
@@ -341,17 +344,29 @@ int send_pack(struct send_pack_args *args,
 		in = demux.out;
 	}
 
-	if (new_refs && cmds_sent) {
-		if (pack_objects(out, remote_refs, extra_have, args) < 0) {
-			for (ref = remote_refs; ref; ref = ref->next)
-				ref->status = REF_STATUS_NONE;
-			if (args->stateless_rpc)
-				close(out);
-			if (git_connection_is_socket(conn))
-				shutdown(fd[0], SHUT_WR);
-			if (use_sideband)
-				finish_async(&demux);
-			return -1;
+	if (cmds_sent) {
+		int verify_refs_status = 0;
+
+		if (args->verify_refs && !args->stateless_rpc) {
+			char line[1000];
+			int len = packet_read_line(in, line, sizeof(line));
+			if (len < 15 || memcmp(line, "verify-refs ", 12))
+				return error("did not receive remote status");
+			verify_refs_status = memcmp(line, "verify-refs ok\n", 15);
+		}
+
+		if (!verify_refs_status && new_refs) {
+			if (pack_objects(out, remote_refs, extra_have, args) < 0) {
+				for (ref = remote_refs; ref; ref = ref->next)
+					ref->status = REF_STATUS_NONE;
+				if (args->stateless_rpc)
+					close(out);
+				if (git_connection_is_socket(conn))
+					shutdown(fd[0], SHUT_WR);
+				if (use_sideband)
+					finish_async(&demux);
+				return -1;
+			}
 		}
 	}
 	if (args->stateless_rpc && cmds_sent)
