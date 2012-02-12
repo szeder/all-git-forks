@@ -994,10 +994,14 @@ void transport_set_verbosity(struct transport *transport, int verbosity,
 	 * when a rule is satisfied):
 	 *
 	 *   1. Report progress, if force_progress is 1 (ie. --progress).
+	 *   2. Don't report progress, if force_progress is 0 (ie. --no-progress).
 	 *   2. Don't report progress, if verbosity < 0 (ie. -q/--quiet ).
 	 *   3. Report progress if isatty(2) is 1.
 	 **/
-	transport->progress = force_progress || (verbosity >= 0 && isatty(2));
+	if (force_progress >= 0)
+		transport->progress = !!force_progress;
+	else
+		transport->progress = verbosity >= 0 && isatty(2);
 }
 
 int transport_push(struct transport *transport,
