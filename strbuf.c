@@ -63,12 +63,15 @@ void strbuf_attach(struct strbuf *sb, void *buf, size_t len, size_t alloc)
 
 void strbuf_grow(struct strbuf *sb, size_t extra)
 {
+	int new_buf = !sb->alloc;
 	if (unsigned_add_overflows(extra, 1) ||
 	    unsigned_add_overflows(sb->len, extra + 1))
 		die("you want to use way too much memory");
-	if (!sb->alloc)
+	if (new_buf)
 		sb->buf = NULL;
 	ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
+	if (new_buf)
+		sb->buf[0] = '\0';
 }
 
 void strbuf_trim(struct strbuf *sb)
@@ -101,24 +104,27 @@ void strbuf_ltrim(struct strbuf *sb)
 	sb->buf[sb->len] = '\0';
 }
 
-struct strbuf **strbuf_split(const struct strbuf *sb, int delim)
+struct strbuf **strbuf_split_buf(const char *str, size_t slen, int delim, int max)
 {
 	int alloc = 2, pos = 0;
-	char *n, *p;
+	const char *n, *p;
 	struct strbuf **ret;
 	struct strbuf *t;
 
 	ret = xcalloc(alloc, sizeof(struct strbuf *));
-	p = n = sb->buf;
-	while (n < sb->buf + sb->len) {
+	p = n = str;
+	while (n < str + slen) {
 		int len;
-		n = memchr(n, delim, sb->len - (n - sb->buf));
+		if (max <= 0 || pos + 1 < max)
+			n = memchr(n, delim, slen - (n - str));
+		else
+			n = NULL;
 		if (pos + 1 >= alloc) {
 			alloc = alloc * 2;
 			ret = xrealloc(ret, sizeof(struct strbuf *) * alloc);
 		}
 		if (!n)
-			n = sb->buf + sb->len - 1;
+			n = str + slen - 1;
 		len = n - p + 1;
 		t = xmalloc(sizeof(struct strbuf));
 		strbuf_init(t, len);
@@ -351,7 +357,6 @@ int strbuf_getwholeline(struct strbuf *sb, FILE *fp, int term)
 {
 	int ch;
 
-	strbuf_grow(sb, 0);
 	if (feof(fp))
 		return EOF;
 
@@ -391,4 +396,55 @@ int strbuf_read_file(struct strbuf *sb, const char *path, size_t hint)
 		return -1;
 
 	return len;
+}
+
+void strbuf_add_lines(struct strbuf *out, const char *prefix,
+		      const char *buf, size_t size)
+{
+	while (size) {
+		const char *next = memchr(buf, '\n', size);
+		next = next ? (next + 1) : (buf + size);
+		strbuf_addstr(out, prefix);
+		strbuf_add(out, buf, next - buf);
+		size -= next - buf;
+		buf = next;
+	}
+	strbuf_complete_line(out);
+}
+
+static int is_rfc3986_reserved(char ch)
+{
+	switch (ch) {
+		case '!': case '*': case '\'': case '(': case ')': case ';':
+		case ':': case '@': case '&': case '=': case '+': case '$':
+		case ',': case '/': case '?': case '#': case '[': case ']':
+			return 1;
+	}
+	return 0;
+}
+
+static int is_rfc3986_unreserved(char ch)
+{
+	return isalnum(ch) ||
+		ch == '-' || ch == '_' || ch == '.' || ch == '~';
+}
+
+void strbuf_add_urlencode(struct strbuf *sb, const char *s, size_t len,
+			  int reserved)
+{
+	strbuf_grow(sb, len);
+	while (len--) {
+		char ch = *s++;
+		if (is_rfc3986_unreserved(ch) ||
+		    (!reserved && is_rfc3986_reserved(ch)))
+			strbuf_addch(sb, ch);
+		else
+			strbuf_addf(sb, "%%%02x", ch);
+	}
+}
+
+void strbuf_addstr_urlencode(struct strbuf *sb, const char *s,
+			     int reserved)
+{
+	strbuf_add_urlencode(sb, s, strlen(s), reserved);
 }

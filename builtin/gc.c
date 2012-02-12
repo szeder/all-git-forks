@@ -32,7 +32,7 @@ static const char *prune_expire = "2.weeks.ago";
 static const char *argv_pack_refs[] = {"pack-refs", "--all", "--prune", NULL};
 static const char *argv_reflog[] = {"reflog", "expire", "--all", NULL};
 static const char *argv_repack[MAX_ADD] = {"repack", "-d", "-l", NULL};
-static const char *argv_prune[] = {"prune", "--expire", NULL, NULL};
+static const char *argv_prune[] = {"prune", "--expire", NULL, NULL, NULL};
 static const char *argv_rerere[] = {"rerere", "gc", NULL};
 
 static int gc_config(const char *var, const char *value, void *cb)
@@ -225,7 +225,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 			fprintf(stderr,
 					_("Auto packing the repository for optimum performance. You may also\n"
 					"run \"git gc\" manually. See "
-					"\"git help gc\" for more information."));
+					"\"git help gc\" for more information.\n"));
 	} else
 		append_option(argv_repack,
 			      prune_expire && !strcmp(prune_expire, "now")
@@ -243,6 +243,8 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 
 	if (prune_expire) {
 		argv_prune[2] = prune_expire;
+		if (quiet)
+			argv_prune[3] = "--no-progress";
 		if (run_command_v_opt(argv_prune, RUN_GIT_CMD))
 			return error(FAILED_RUN, argv_prune[0]);
 	}

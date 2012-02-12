@@ -274,6 +274,53 @@ test_expect_success \
 	'gitweb_run "p=.git;a=commitdiff;hp=foo-becomes-a-directory;h=foo-symlinked-to-bar"'
 
 # ----------------------------------------------------------------------
+# commitdiff testing (incomplete lines)
+
+test_expect_success 'setup incomplete lines' '
+	cat >file<<-\EOF &&
+	Dominus regit me,
+	et nihil mihi deerit.
+	In loco pascuae ibi me collocavit,
+	super aquam refectionis educavit me;
+	animam meam convertit,
+	deduxit me super semitas jusitiae,
+	propter nomen suum.
+	CHANGE_ME
+	EOF
+	git commit -a -m "Preparing for incomplete lines" &&
+	echo "incomplete" | tr -d "\\012" >>file &&
+	git commit -a -m "Add incomplete line" &&
+	git tag incomplete_lines_add &&
+	sed -e s/CHANGE_ME/change_me/ <file >file+ &&
+	mv -f file+ file &&
+	git commit -a -m "Incomplete context line" &&
+	git tag incomplete_lines_ctx &&
+	echo "Dominus regit me," >file &&
+	echo "incomplete line" | tr -d "\\012" >>file &&
+	git commit -a -m "Change incomplete line" &&
+	git tag incomplete_lines_chg
+	echo "Dominus regit me," >file &&
+	git commit -a -m "Remove incomplete line" &&
+	git tag incomplete_lines_rem
+'
+
+test_expect_success 'commitdiff(1): addition of incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_add"
+'
+
+test_expect_success 'commitdiff(1): incomplete line as context line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_ctx"
+'
+
+test_expect_success 'commitdiff(1): change incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_chg"
+'
+
+test_expect_success 'commitdiff(1): removal of incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_rem"
+'
+
+# ----------------------------------------------------------------------
 # commit, commitdiff: merge, large
 test_expect_success \
 	'Create a merge' \
@@ -282,7 +329,8 @@ test_expect_success \
 	 git add b &&
 	 git commit -a -m "On branch" &&
 	 git checkout master &&
-	 git pull . b'
+	 git pull . b &&
+	 git tag merge_commit'
 
 test_expect_success \
 	'commit(0): merge commit' \
@@ -330,6 +378,29 @@ test_expect_success \
 test_expect_success \
 	'commitdiff(1): large commit' \
 	'gitweb_run "p=.git;a=commitdiff;h=b"'
+
+# ----------------------------------------------------------------------
+# side-by-side diff
+
+test_expect_success 'side-by-side: addition of incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_add;ds=sidebyside"
+'
+
+test_expect_success 'side-by-side: incomplete line as context line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_ctx;ds=sidebyside"
+'
+
+test_expect_success 'side-by-side: changed incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_chg;ds=sidebyside"
+'
+
+test_expect_success 'side-by-side: removal of incomplete line' '
+	gitweb_run "p=.git;a=commitdiff;h=incomplete_lines_rem;ds=sidebyside"
+'
+
+test_expect_success 'side-by-side: merge commit' '
+	gitweb_run "p=.git;a=commitdiff;h=merge_commit;ds=sidebyside"
+'
 
 # ----------------------------------------------------------------------
 # tags testing
@@ -402,6 +473,14 @@ test_expect_success \
 test_expect_success \
 	'path_info: project/branch:dir/' \
 	'gitweb_run "" "/.git/master:foo/"'
+
+test_expect_success \
+	'path_info: project/branch (non-existent)' \
+	'gitweb_run "" "/.git/non-existent"'
+
+test_expect_success \
+	'path_info: project/branch:filename (non-existent branch)' \
+	'gitweb_run "" "/.git/non-existent:non-existent"'
 
 test_expect_success \
 	'path_info: project/branch:file (non-existent)' \
@@ -594,5 +673,70 @@ test_expect_success HIGHLIGHT \
 	 git add test.sh &&
 	 git commit -m "Add test.sh" &&
 	 gitweb_run "p=.git;a=blob;f=test.sh"'
+
+# ----------------------------------------------------------------------
+# forks of projects
+
+cat >>gitweb_config.perl <<\EOF &&
+$feature{'forks'}{'default'} = [1];
+EOF
+
+test_expect_success \
+	'forks: prepare' \
+	'git init --bare foo.git &&
+	 git --git-dir=foo.git --work-tree=. add file &&
+	 git --git-dir=foo.git --work-tree=. commit -m "Initial commit" &&
+	 echo "foo" > foo.git/description &&
+	 mkdir -p foo &&
+	 (cd foo &&
+	  git clone --shared --bare ../foo.git foo-forked.git &&
+	  echo "fork of foo" > foo-forked.git/description)'
+
+test_expect_success \
+	'forks: projects list' \
+	'gitweb_run'
+
+test_expect_success \
+	'forks: forks action' \
+	'gitweb_run "p=foo.git;a=forks"'
+
+# ----------------------------------------------------------------------
+# content tags (tag cloud)
+
+cat >>gitweb_config.perl <<-\EOF &&
+# we don't test _setting_ content tags, so any true value is good
+$feature{'ctags'}{'default'} = ['ctags_script.cgi'];
+EOF
+
+test_expect_success \
+	'ctags: tag cloud in projects list' \
+	'mkdir .git/ctags &&
+	 echo "2" > .git/ctags/foo &&
+	 echo "1" > .git/ctags/bar &&
+	gitweb_run'
+
+test_expect_success \
+	'ctags: search projects by existing tag' \
+	'gitweb_run "by_tag=foo"'
+
+test_expect_success \
+	'ctags: search projects by non existent tag' \
+	'gitweb_run "by_tag=non-existent"'
+
+test_expect_success \
+	'ctags: malformed tag weights' \
+	'mkdir -p .git/ctags &&
+	 echo "not-a-number" > .git/ctags/nan &&
+	 echo "not-a-number-2" > .git/ctags/nan2 &&
+	 echo "0.1" >.git/ctags/floating-point &&
+	 gitweb_run'
+
+# ----------------------------------------------------------------------
+# categories
+
+test_expect_success \
+	'categories: projects list, only default category' \
+	'echo "\$projects_list_group_categories = 1;" >>gitweb_config.perl &&
+	 gitweb_run'
 
 test_done

@@ -39,9 +39,15 @@ git_broken_path_fix () {
 
 # @@BROKEN_PATH_FIX@@
 
-die() {
-	echo >&2 "$@"
-	exit 1
+die () {
+	die_with_status 1 "$@"
+}
+
+die_with_status () {
+	status=$1
+	shift
+	echo >&2 "$*"
+	exit "$status"
 }
 
 GIT_QUIET=
@@ -84,7 +90,7 @@ $LONG_USAGE"
 	fi
 
 	case "$1" in
-		-h|--h|--he|--hel|--help)
+		-h)
 		echo "$LONG_USAGE"
 		exit
 	esac
@@ -140,6 +146,13 @@ cd_to_toplevel () {
 	}
 }
 
+require_work_tree_exists () {
+	if test "z$(git rev-parse --is-bare-repository)" != zfalse
+	then
+		die "fatal: $0 cannot be used without a working tree."
+	fi
+}
+
 require_work_tree () {
 	test "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true ||
 	die "fatal: $0 cannot be used without a working tree."
@@ -187,7 +200,7 @@ get_author_ident_from_commit () {
 		s/.*/GIT_AUTHOR_EMAIL='\''&'\''/p
 
 		g
-		s/^author [^<]* <[^>]*> \(.*\)$/\1/
+		s/^author [^<]* <[^>]*> \(.*\)$/@\1/
 		s/.*/GIT_AUTHOR_DATE='\''&'\''/p
 
 		q

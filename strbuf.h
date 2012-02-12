@@ -3,8 +3,6 @@
 
 /* See Documentation/technical/api-strbuf.txt */
 
-#include <assert.h>
-
 extern char strbuf_slopbuf[];
 struct strbuf {
 	size_t alloc;
@@ -33,9 +31,8 @@ static inline size_t strbuf_avail(const struct strbuf *sb) {
 extern void strbuf_grow(struct strbuf *, size_t);
 
 static inline void strbuf_setlen(struct strbuf *sb, size_t len) {
-	if (!sb->alloc)
-		strbuf_grow(sb, 0);
-	assert(len < sb->alloc);
+	if (len > (sb->alloc ? sb->alloc - 1 : 0))
+		die("BUG: strbuf_setlen() beyond buffer");
 	sb->len = len;
 	sb->buf[len] = '\0';
 }
@@ -47,7 +44,22 @@ extern void strbuf_rtrim(struct strbuf *);
 extern void strbuf_ltrim(struct strbuf *);
 extern int strbuf_cmp(const struct strbuf *, const struct strbuf *);
 
-extern struct strbuf **strbuf_split(const struct strbuf *, int delim);
+extern struct strbuf **strbuf_split_buf(const char *, size_t,
+					int delim, int max);
+static inline struct strbuf **strbuf_split_str(const char *str,
+					       int delim, int max)
+{
+	return strbuf_split_buf(str, strlen(str), delim, max);
+}
+static inline struct strbuf **strbuf_split_max(const struct strbuf *sb,
+						int delim, int max)
+{
+	return strbuf_split_buf(sb->buf, sb->len, delim, max);
+}
+static inline struct strbuf **strbuf_split(const struct strbuf *sb, int delim)
+{
+	return strbuf_split_max(sb, delim, 0);
+}
 extern void strbuf_list_free(struct strbuf **);
 
 /*----- add data in your buffer -----*/
@@ -88,6 +100,14 @@ extern void strbuf_addf(struct strbuf *sb, const char *fmt, ...);
 __attribute__((format (printf,2,0)))
 extern void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap);
 
+extern void strbuf_add_lines(struct strbuf *sb, const char *prefix, const char *buf, size_t size);
+
+static inline void strbuf_complete_line(struct strbuf *sb)
+{
+	if (sb->len && sb->buf[sb->len - 1] != '\n')
+		strbuf_addch(sb, '\n');
+}
+
 extern size_t strbuf_fread(struct strbuf *, size_t, FILE *);
 /* XXX: if read fails, any partial read is undone */
 extern ssize_t strbuf_read(struct strbuf *, int fd, size_t hint);
@@ -102,5 +122,10 @@ extern int launch_editor(const char *path, struct strbuf *buffer, const char *co
 
 extern int strbuf_branchname(struct strbuf *sb, const char *name);
 extern int strbuf_check_branch_ref(struct strbuf *sb, const char *name);
+
+extern void strbuf_add_urlencode(struct strbuf *, const char *, size_t,
+				 int reserved);
+extern void strbuf_addstr_urlencode(struct strbuf *, const char *,
+				    int reserved);
 
 #endif /* STRBUF_H */

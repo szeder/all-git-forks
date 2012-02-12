@@ -44,6 +44,7 @@ static int is_rev_argument(const char *arg)
 		"--branches=",
 		"--branches",
 		"--header",
+		"--ignore-missing",
 		"--max-age=",
 		"--max-count=",
 		"--min-age=",
@@ -464,6 +465,14 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		int i;
 		for (i = 0; local_repo_env[i]; i++)
 			printf("%s\n", local_repo_env[i]);
+		return 0;
+	}
+
+	if (argc > 2 && !strcmp(argv[1], "--resolve-git-dir")) {
+		const char *gitdir = resolve_gitdir(argv[2]);
+		if (!gitdir)
+			die("not a gitdir '%s'", argv[2]);
+		puts(gitdir);
 		return 0;
 	}
 

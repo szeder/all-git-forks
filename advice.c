@@ -19,6 +19,25 @@ static struct {
 	{ "detachedhead", &advice_detached_head },
 };
 
+void advise(const char *advice, ...)
+{
+	struct strbuf buf = STRBUF_INIT;
+	va_list params;
+	const char *cp, *np;
+
+	va_start(params, advice);
+	strbuf_addf(&buf, advice, params);
+	va_end(params);
+
+	for (cp = buf.buf; *cp; cp = np) {
+		np = strchrnul(cp, '\n');
+		fprintf(stderr,	_("hint: %.*s\n"), (int)(np - cp), cp);
+		if (*np)
+			np++;
+	}
+	strbuf_release(&buf);
+}
+
 int git_default_advice_config(const char *var, const char *value)
 {
 	const char *k = skip_prefix(var, "advice.");
@@ -34,16 +53,37 @@ int git_default_advice_config(const char *var, const char *value)
 	return 0;
 }
 
-void NORETURN die_resolve_conflict(const char *me)
+int error_resolve_conflict(const char *me)
 {
+	error("'%s' is not possible because you have unmerged files.", me);
 	if (advice_resolve_conflict)
 		/*
 		 * Message used both when 'git commit' fails and when
 		 * other commands doing a merge do.
 		 */
-		die("'%s' is not possible because you have unmerged files.\n"
-		    "Please, fix them up in the work tree, and then use 'git add/rm <file>' as\n"
-		    "appropriate to mark resolution and make a commit, or use 'git commit -a'.", me);
-	else
-		die("'%s' is not possible because you have unmerged files.", me);
+		advise(_("Fix them up in the work tree,\n"
+			 "and then use 'git add/rm <file>' as\n"
+			 "appropriate to mark resolution and make a commit,\n"
+			 "or use 'git commit -a'."));
+	return -1;
+}
+
+void NORETURN die_resolve_conflict(const char *me)
+{
+	error_resolve_conflict(me);
+	die("Exiting because of an unresolved conflict.");
+}
+
+void detach_advice(const char *new_name)
+{
+	const char fmt[] =
+	"Note: checking out '%s'.\n\n"
+	"You are in 'detached HEAD' state. You can look around, make experimental\n"
+	"changes and commit them, and you can discard any commits you make in this\n"
+	"state without impacting any branches by performing another checkout.\n\n"
+	"If you want to create a new branch to retain commits you create, you may\n"
+	"do so (now or later) by using -b with the checkout command again. Example:\n\n"
+	"  git checkout -b new_branch_name\n\n";
+
+	fprintf(stderr, fmt, new_name);
 }

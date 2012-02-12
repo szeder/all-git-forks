@@ -37,6 +37,9 @@ PATTERNS("java",
 	 "|[-+0-9.e]+[fFlL]?|0[xXbB]?[0-9a-fA-F]+[lL]?"
 	 "|[-+*/<>%&^|=!]="
 	 "|--|\\+\\+|<<=?|>>>?=?|&&|\\|\\|"),
+PATTERNS("matlab",
+	 "^[[:space:]]*((classdef|function)[[:space:]].*)$|^%%[[:space:]].*$",
+	 "[a-zA-Z_][a-zA-Z0-9_]*|[-+0-9.e]+|[=~<>]=|\\.[*/\\^']|\\|\\||&&"),
 PATTERNS("objc",
 	 /* Negate C statements that can look like functions */
 	 "!^[ \t]*(do|for|if|else|return|switch|while)\n"
@@ -60,10 +63,24 @@ PATTERNS("pascal",
 	 "|[-+0-9.e]+|0[xXbB]?[0-9a-fA-F]+"
 	 "|<>|<=|>=|:=|\\.\\."),
 PATTERNS("perl",
-	 "^[ \t]*package .*;\n"
-	 "^[ \t]*sub .* \\{\n"
-	 "^[A-Z]+ \\{\n"	/* BEGIN, END, ... */
-	 "^=head[0-9] ",	/* POD */
+	 "^package .*\n"
+	 "^sub [[:alnum:]_':]+[ \t]*"
+		"(\\([^)]*\\)[ \t]*)?" /* prototype */
+		/*
+		 * Attributes.  A regex can't count nested parentheses,
+		 * so just slurp up whatever we see, taking care not
+		 * to accept lines like "sub foo; # defined elsewhere".
+		 *
+		 * An attribute could contain a semicolon, but at that
+		 * point it seems reasonable enough to give up.
+		 */
+		"(:[^;#]*)?"
+		"(\\{[ \t]*)?" /* brace can come here or on the next line */
+		"(#.*)?$\n" /* comment */
+	 "^(BEGIN|END|INIT|CHECK|UNITCHECK|AUTOLOAD|DESTROY)[ \t]*"
+		"(\\{[ \t]*)?" /* brace can come here or on the next line */
+		"(#.*)?$\n"
+	 "^=head[0-9] .*",	/* POD */
 	 /* -- */
 	 "[[:alpha:]_'][[:alnum:]_']*"
 	 "|0[xb]?[0-9a-fA-F_]*"
@@ -101,7 +118,7 @@ PATTERNS("cpp",
 	 /* Jump targets or access declarations */
 	 "!^[ \t]*[A-Za-z_][A-Za-z_0-9]*:.*$\n"
 	 /* C/++ functions/methods at top level */
-	 "^([A-Za-z_][A-Za-z_0-9]*([ \t]+[A-Za-z_][A-Za-z_0-9]*([ \t]*::[ \t]*[^[:space:]]+)?){1,}[ \t]*\\([^;]*)$\n"
+	 "^([A-Za-z_][A-Za-z_0-9]*([ \t*]+[A-Za-z_][A-Za-z_0-9]*([ \t]*::[ \t]*[^[:space:]]+)?){1,}[ \t]*\\([^;]*)$\n"
 	 /* compound type at top level */
 	 "^((struct|class|enum)[^;]*)$",
 	 /* -- */
@@ -256,7 +273,7 @@ struct userdiff_driver *userdiff_find_by_path(const char *path)
 
 	if (!path)
 		return NULL;
-	if (git_checkattr(path, 1, &check))
+	if (git_check_attr(path, 1, &check))
 		return NULL;
 
 	if (ATTR_TRUE(check.value))
@@ -266,4 +283,21 @@ struct userdiff_driver *userdiff_find_by_path(const char *path)
 	if (ATTR_UNSET(check.value))
 		return NULL;
 	return userdiff_find_by_name(check.value);
+}
+
+struct userdiff_driver *userdiff_get_textconv(struct userdiff_driver *driver)
+{
+	if (!driver->textconv)
+		return NULL;
+
+	if (driver->textconv_want_cache && !driver->textconv_cache) {
+		struct notes_cache *c = xmalloc(sizeof(*c));
+		struct strbuf name = STRBUF_INIT;
+
+		strbuf_addf(&name, "textconv/%s", driver->name);
+		notes_cache_init(c, name.buf, driver->textconv);
+		driver->textconv_cache = c;
+	}
+
+	return driver;
 }

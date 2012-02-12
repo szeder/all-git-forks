@@ -1,6 +1,14 @@
 #ifndef GREP_H
 #define GREP_H
 #include "color.h"
+#ifdef USE_LIBPCRE
+#include <pcre.h>
+#else
+typedef int pcre;
+typedef int pcre_extra;
+#endif
+#include "kwset.h"
+#include "thread-utils.h"
 
 enum grep_pat_token {
 	GREP_PATTERN,
@@ -33,6 +41,9 @@ struct grep_pat {
 	size_t patternlen;
 	enum grep_header_field field;
 	regex_t regexp;
+	pcre *pcre_regexp;
+	pcre_extra *pcre_extra_info;
+	kwset_t kws;
 	unsigned fixed:1;
 	unsigned ignore_case:1;
 	unsigned word_regexp:1;
@@ -83,12 +94,14 @@ struct grep_opt {
 #define GREP_BINARY_TEXT	2
 	int binary;
 	int extended;
+	int pcre;
 	int relative;
 	int pathname;
 	int null_following_name;
 	int color;
 	int max_depth;
 	int funcname;
+	int funcbody;
 	char color_context[COLOR_MAXLEN];
 	char color_filename[COLOR_MAXLEN];
 	char color_function[COLOR_MAXLEN];
@@ -101,6 +114,9 @@ struct grep_opt {
 	unsigned post_context;
 	unsigned last_shown;
 	int show_hunk_mark;
+	int file_break;
+	int heading;
+	int use_threads;
 	void *priv;
 
 	void (*output)(struct grep_opt *opt, const void *data, size_t size);
@@ -116,5 +132,13 @@ extern int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsign
 
 extern struct grep_opt *grep_opt_dup(const struct grep_opt *opt);
 extern int grep_threads_ok(const struct grep_opt *opt);
+
+#ifndef NO_PTHREADS
+/*
+ * Mutex used around access to the attributes machinery if
+ * opt->use_threads.  Must be initialized/destroyed by callers!
+ */
+extern pthread_mutex_t grep_attr_mutex;
+#endif
 
 #endif

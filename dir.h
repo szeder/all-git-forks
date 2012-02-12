@@ -64,6 +64,7 @@ struct dir_struct {
 #define MATCHED_RECURSIVELY 1
 #define MATCHED_FNMATCH 2
 #define MATCHED_EXACTLY 3
+extern char *common_prefix(const char **pathspec);
 extern int match_pathspec(const char **pathspec, const char *name, int namelen, int prefix, char *seen);
 extern int match_pathspec_depth(const struct pathspec *pathspec,
 				const char *name, int namelen,
@@ -85,8 +86,8 @@ extern void add_exclude(const char *string, const char *base,
 extern void free_excludes(struct exclude_list *el);
 extern int file_exists(const char *);
 
-extern char *get_relative_cwd(char *buffer, int size, const char *dir);
 extern int is_inside_dir(const char *dir);
+extern int dir_inside_of(const char *subdir, const char *dir);
 
 static inline int is_dot_or_dotdot(const char *name)
 {

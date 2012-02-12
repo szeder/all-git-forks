@@ -536,13 +536,13 @@ test_expect_success 'stash pop - fail early if specified stash is not a stash re
 	git reset --hard HEAD
 '
 
-test_expect_success 'ref with non-existant reflog' '
+test_expect_success 'ref with non-existent reflog' '
 	git stash clear &&
 	echo bar5 > file &&
 	echo bar6 > file2 &&
 	git add file2 &&
 	git stash &&
-	! "git rev-parse --quiet --verify does-not-exist" &&
+	test_must_fail git rev-parse --quiet --verify does-not-exist &&
 	test_must_fail git stash drop does-not-exist &&
 	test_must_fail git stash drop does-not-exist@{0} &&
 	test_must_fail git stash pop does-not-exist &&
@@ -599,6 +599,30 @@ test_expect_success 'stash apply shows status same as git status (relative to cu
 	) |
 	sed -e 1,2d >actual && # drop "Saved..." and "HEAD is now..."
 	test_cmp expect actual
+'
+
+cat > expect << EOF
+diff --git a/HEAD b/HEAD
+new file mode 100644
+index 0000000..fe0cbee
+--- /dev/null
++++ b/HEAD
+@@ -0,0 +1 @@
++file-not-a-ref
+EOF
+
+test_expect_success 'stash where working directory contains "HEAD" file' '
+	git stash clear &&
+	git reset --hard &&
+	echo file-not-a-ref > HEAD &&
+	git add HEAD &&
+	test_tick &&
+	git stash &&
+	git diff-files --quiet &&
+	git diff-index --cached --quiet HEAD &&
+	test "$(git rev-parse stash^)" = "$(git rev-parse HEAD)" &&
+	git diff stash^..stash > output &&
+	test_cmp output expect
 '
 
 test_done

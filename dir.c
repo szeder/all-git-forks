@@ -34,49 +34,54 @@ int fnmatch_icase(const char *pattern, const char *string, int flags)
 	return fnmatch(pattern, string, flags | (ignore_case ? FNM_CASEFOLD : 0));
 }
 
-static int common_prefix(const char **pathspec)
+static size_t common_prefix_len(const char **pathspec)
 {
-	const char *path, *slash, *next;
-	int prefix;
+	const char *n, *first;
+	size_t max = 0;
 
 	if (!pathspec)
-		return 0;
+		return max;
 
-	path = *pathspec;
-	slash = strrchr(path, '/');
-	if (!slash)
-		return 0;
-
-	/*
-	 * The first 'prefix' characters of 'path' are common leading
-	 * path components among the pathspecs we have seen so far,
-	 * including the trailing slash.
-	 */
-	prefix = slash - path + 1;
-	while ((next = *++pathspec) != NULL) {
-		int len, last_matching_slash = -1;
-		for (len = 0; len < prefix && next[len] == path[len]; len++)
-			if (next[len] == '/')
-				last_matching_slash = len;
-		if (len == prefix)
-			continue;
-		if (last_matching_slash < 0)
-			return 0;
-		prefix = last_matching_slash + 1;
+	first = *pathspec;
+	while ((n = *pathspec++)) {
+		size_t i, len = 0;
+		for (i = 0; first == n || i < max; i++) {
+			char c = n[i];
+			if (!c || c != first[i] || is_glob_special(c))
+				break;
+			if (c == '/')
+				len = i + 1;
+		}
+		if (first == n || len < max) {
+			max = len;
+			if (!max)
+				break;
+		}
 	}
-	return prefix;
+	return max;
+}
+
+/*
+ * Returns a copy of the longest leading path common among all
+ * pathspecs.
+ */
+char *common_prefix(const char **pathspec)
+{
+	unsigned long len = common_prefix_len(pathspec);
+
+	return len ? xmemdupz(*pathspec, len) : NULL;
 }
 
 int fill_directory(struct dir_struct *dir, const char **pathspec)
 {
 	const char *path;
-	int len;
+	size_t len;
 
 	/*
 	 * Calculate common prefix for the pathspec, and
 	 * use that to optimize the directory walk
 	 */
-	len = common_prefix(pathspec);
+	len = common_prefix_len(pathspec);
 	path = "";
 
 	if (len)
@@ -84,6 +89,8 @@ int fill_directory(struct dir_struct *dir, const char **pathspec)
 
 	/* Read the directory and prune it */
 	read_directory(dir, path, len, pathspec);
+	if (*path)
+		free((char *)path);
 	return len;
 }
 
@@ -230,7 +237,7 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 			return MATCHED_RECURSIVELY;
 	}
 
-	if (item->has_wildcard && !fnmatch(match, name, 0))
+	if (item->use_wildcard && !fnmatch(match, name, 0))
 		return MATCHED_FNMATCH;
 
 	return 0;
@@ -961,34 +968,34 @@ static int read_directory_recursive(struct dir_struct *dir,
 {
 	DIR *fdir = opendir(*base ? base : ".");
 	int contents = 0;
+	struct dirent *de;
+	char path[PATH_MAX + 1];
 
-	if (fdir) {
-		struct dirent *de;
-		char path[PATH_MAX + 1];
-		memcpy(path, base, baselen);
+	if (!fdir)
+		return 0;
 
-		while ((de = readdir(fdir)) != NULL) {
-			int len;
-			switch (treat_path(dir, de, path, sizeof(path),
-					   baselen, simplify, &len)) {
-			case path_recurse:
-				contents += read_directory_recursive
-					(dir, path, len, 0, simplify);
-				continue;
-			case path_ignored:
-				continue;
-			case path_handled:
-				break;
-			}
-			contents++;
-			if (check_only)
-				goto exit_early;
-			else
-				dir_add_name(dir, path, len);
+	memcpy(path, base, baselen);
+
+	while ((de = readdir(fdir)) != NULL) {
+		int len;
+		switch (treat_path(dir, de, path, sizeof(path),
+				   baselen, simplify, &len)) {
+		case path_recurse:
+			contents += read_directory_recursive(dir, path, len, 0, simplify);
+			continue;
+		case path_ignored:
+			continue;
+		case path_handled:
+			break;
 		}
-exit_early:
-		closedir(fdir);
+		contents++;
+		if (check_only)
+			goto exit_early;
+		else
+			dir_add_name(dir, path, len);
 	}
+exit_early:
+	closedir(fdir);
 
 	return contents;
 }
@@ -1105,57 +1112,45 @@ int file_exists(const char *f)
 }
 
 /*
- * get_relative_cwd() gets the prefix of the current working directory
- * relative to 'dir'.  If we are not inside 'dir', it returns NULL.
- *
- * As a convenience, it also returns NULL if 'dir' is already NULL.  The
- * reason for this behaviour is that it is natural for functions returning
- * directory names to return NULL to say "this directory does not exist"
- * or "this directory is invalid".  These cases are usually handled the
- * same as if the cwd is not inside 'dir' at all, so get_relative_cwd()
- * returns NULL for both of them.
- *
- * Most notably, get_relative_cwd(buffer, size, get_git_work_tree())
- * unifies the handling of "outside work tree" with "no work tree at all".
+ * Given two normalized paths (a trailing slash is ok), if subdir is
+ * outside dir, return -1.  Otherwise return the offset in subdir that
+ * can be used as relative path to dir.
  */
-char *get_relative_cwd(char *buffer, int size, const char *dir)
+int dir_inside_of(const char *subdir, const char *dir)
 {
-	char *cwd = buffer;
+	int offset = 0;
 
-	if (!dir)
-		return NULL;
-	if (!getcwd(buffer, size))
-		die_errno("can't find the current directory");
+	assert(dir && subdir && *dir && *subdir);
 
-	if (!is_absolute_path(dir))
-		dir = real_path(dir);
-
-	while (*dir && *dir == *cwd) {
+	while (*dir && *subdir && *dir == *subdir) {
 		dir++;
-		cwd++;
+		subdir++;
+		offset++;
 	}
-	if (*dir)
-		return NULL;
-	switch (*cwd) {
-	case '\0':
-		return cwd;
-	case '/':
-		return cwd + 1;
-	default:
-		/*
-		 * dir can end with a path separator when it's root
-		 * directory. Return proper prefix in that case.
-		 */
-		if (dir[-1] == '/')
-			return cwd;
-		return NULL;
-	}
+
+	/* hel[p]/me vs hel[l]/yeah */
+	if (*dir && *subdir)
+		return -1;
+
+	if (!*subdir)
+		return !*dir ? offset : -1; /* same dir */
+
+	/* foo/[b]ar vs foo/[] */
+	if (is_dir_sep(dir[-1]))
+		return is_dir_sep(subdir[-1]) ? offset : -1;
+
+	/* foo[/]bar vs foo[] */
+	return is_dir_sep(*subdir) ? offset + 1 : -1;
 }
 
 int is_inside_dir(const char *dir)
 {
-	char buffer[PATH_MAX];
-	return get_relative_cwd(buffer, sizeof(buffer), dir) != NULL;
+	char cwd[PATH_MAX];
+	if (!dir)
+		return 0;
+	if (!getcwd(cwd, sizeof(cwd)))
+		die_errno("can't find the current directory");
+	return dir_inside_of(cwd, dir) >= 0;
 }
 
 int is_empty_dir(const char *path)
@@ -1286,8 +1281,8 @@ int init_pathspec(struct pathspec *pathspec, const char **paths)
 
 		item->match = path;
 		item->len = strlen(path);
-		item->has_wildcard = !no_wildcard(path);
-		if (item->has_wildcard)
+		item->use_wildcard = !no_wildcard(path);
+		if (item->use_wildcard)
 			pathspec->has_wildcard = 1;
 	}
 

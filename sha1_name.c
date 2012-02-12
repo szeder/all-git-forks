@@ -241,91 +241,6 @@ static int ambiguous_path(const char *path, int len)
 	return slash;
 }
 
-/*
- * *string and *len will only be substituted, and *string returned (for
- * later free()ing) if the string passed in is a magic short-hand form
- * to name a branch.
- */
-static char *substitute_branch_name(const char **string, int *len)
-{
-	struct strbuf buf = STRBUF_INIT;
-	int ret = interpret_branch_name(*string, &buf);
-
-	if (ret == *len) {
-		size_t size;
-		*string = strbuf_detach(&buf, &size);
-		*len = size;
-		return (char *)*string;
-	}
-
-	return NULL;
-}
-
-int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref)
-{
-	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p, *r;
-	int refs_found = 0;
-
-	*ref = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
-		char fullref[PATH_MAX];
-		unsigned char sha1_from_ref[20];
-		unsigned char *this_result;
-		int flag;
-
-		this_result = refs_found ? sha1_from_ref : sha1;
-		mksnpath(fullref, sizeof(fullref), *p, len, str);
-		r = resolve_ref(fullref, this_result, 1, &flag);
-		if (r) {
-			if (!refs_found++)
-				*ref = xstrdup(r);
-			if (!warn_ambiguous_refs)
-				break;
-		} else if ((flag & REF_ISSYMREF) && strcmp(fullref, "HEAD"))
-			warning("ignoring dangling symref %s.", fullref);
-	}
-	free(last_branch);
-	return refs_found;
-}
-
-int dwim_log(const char *str, int len, unsigned char *sha1, char **log)
-{
-	char *last_branch = substitute_branch_name(&str, &len);
-	const char **p;
-	int logs_found = 0;
-
-	*log = NULL;
-	for (p = ref_rev_parse_rules; *p; p++) {
-		struct stat st;
-		unsigned char hash[20];
-		char path[PATH_MAX];
-		const char *ref, *it;
-
-		mksnpath(path, sizeof(path), *p, len, str);
-		ref = resolve_ref(path, hash, 1, NULL);
-		if (!ref)
-			continue;
-		if (!stat(git_path("logs/%s", path), &st) &&
-		    S_ISREG(st.st_mode))
-			it = path;
-		else if (strcmp(ref, path) &&
-			 !stat(git_path("logs/%s", ref), &st) &&
-			 S_ISREG(st.st_mode))
-			it = ref;
-		else
-			continue;
-		if (!logs_found++) {
-			*log = xstrdup(it);
-			hashcpy(sha1, hash);
-		}
-		if (!warn_ambiguous_refs)
-			break;
-	}
-	free(last_branch);
-	return logs_found;
-}
-
 static inline int upstream_mark(const char *string, int len)
 {
 	const char *suffix[] = { "@{upstream}", "@{u}" };
@@ -501,12 +416,6 @@ struct object *peel_to_type(const char *name, int namelen,
 {
 	if (name && !namelen)
 		namelen = strlen(name);
-	if (!o) {
-		unsigned char sha1[20];
-		if (get_sha1_1(name, namelen, sha1))
-			return NULL;
-		o = parse_object(sha1);
-	}
 	while (1) {
 		if (!o || (!o->parsed && !parse_object(o->sha1)))
 			return NULL;
@@ -972,9 +881,9 @@ int strbuf_check_branch_ref(struct strbuf *sb, const char *name)
 {
 	strbuf_branchname(sb, name);
 	if (name[0] == '-')
-		return CHECK_REF_FORMAT_ERROR;
+		return -1;
 	strbuf_splice(sb, 0, 0, "refs/heads/", 11);
-	return check_ref_format(sb->buf);
+	return check_refname_format(sb->buf, 0);
 }
 
 /*
@@ -1083,11 +992,12 @@ static void diagnose_invalid_index_path(int stage,
 }
 
 
-int get_sha1_with_mode_1(const char *name, unsigned char *sha1, unsigned *mode, int gently, const char *prefix)
+int get_sha1_with_mode_1(const char *name, unsigned char *sha1, unsigned *mode,
+			 int only_to_die, const char *prefix)
 {
 	struct object_context oc;
 	int ret;
-	ret = get_sha1_with_context_1(name, sha1, &oc, gently, prefix);
+	ret = get_sha1_with_context_1(name, sha1, &oc, only_to_die, prefix);
 	*mode = oc.mode;
 	return ret;
 }
@@ -1111,7 +1021,7 @@ static char *resolve_relative_path(const char *rel)
 
 int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 			    struct object_context *oc,
-			    int gently, const char *prefix)
+			    int only_to_die, const char *prefix)
 {
 	int ret, bracket_depth;
 	int namelen = strlen(name);
@@ -1133,7 +1043,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 		struct cache_entry *ce;
 		char *new_path = NULL;
 		int pos;
-		if (namelen > 2 && name[1] == '/') {
+		if (!only_to_die && namelen > 2 && name[1] == '/') {
 			struct commit_list *list = NULL;
 			for_each_ref(handle_one_ref, &list);
 			return get_sha1_oneline(name + 2, sha1, list);
@@ -1176,7 +1086,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 			}
 			pos++;
 		}
-		if (!gently)
+		if (only_to_die && name[1] && name[1] != '/')
 			diagnose_invalid_index_path(stage, prefix, cp);
 		free(new_path);
 		return -1;
@@ -1192,7 +1102,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 	if (*cp == ':') {
 		unsigned char tree_sha1[20];
 		char *object_name = NULL;
-		if (!gently) {
+		if (only_to_die) {
 			object_name = xmalloc(cp-name+1);
 			strncpy(object_name, name, cp-name);
 			object_name[cp-name] = '\0';
@@ -1205,7 +1115,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 			if (new_filename)
 				filename = new_filename;
 			ret = get_tree_entry(tree_sha1, filename, sha1, &oc->mode);
-			if (!gently) {
+			if (only_to_die) {
 				diagnose_invalid_sha1_path(prefix, filename,
 							   tree_sha1, object_name);
 				free(object_name);
@@ -1218,7 +1128,7 @@ int get_sha1_with_context_1(const char *name, unsigned char *sha1,
 			free(new_filename);
 			return ret;
 		} else {
-			if (!gently)
+			if (only_to_die)
 				die("Invalid object name '%s'.", object_name);
 		}
 	}

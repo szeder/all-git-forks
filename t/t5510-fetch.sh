@@ -70,11 +70,61 @@ test_expect_success "fetch test for-merge" '
 	master_in_two=`cd ../two && git rev-parse master` &&
 	one_in_two=`cd ../two && git rev-parse one` &&
 	{
-		echo "$master_in_two	not-for-merge"
 		echo "$one_in_two	"
+		echo "$master_in_two	not-for-merge"
 	} >expected &&
 	cut -f -2 .git/FETCH_HEAD >actual &&
 	test_cmp expected actual'
+
+test_expect_success 'fetch --prune on its own works as expected' '
+	cd "$D" &&
+	git clone . prune &&
+	cd prune &&
+	git fetch origin refs/heads/master:refs/remotes/origin/extrabranch &&
+
+	git fetch --prune origin &&
+	test_must_fail git rev-parse origin/extrabranch
+'
+
+test_expect_success 'fetch --prune with a branch name keeps branches' '
+	cd "$D" &&
+	git clone . prune-branch &&
+	cd prune-branch &&
+	git fetch origin refs/heads/master:refs/remotes/origin/extrabranch &&
+
+	git fetch --prune origin master &&
+	git rev-parse origin/extrabranch
+'
+
+test_expect_success 'fetch --prune with a namespace keeps other namespaces' '
+	cd "$D" &&
+	git clone . prune-namespace &&
+	cd prune-namespace &&
+
+	git fetch --prune origin refs/heads/a/*:refs/remotes/origin/a/* &&
+	git rev-parse origin/master
+'
+
+test_expect_success 'fetch --prune --tags does not delete the remote-tracking branches' '
+	cd "$D" &&
+	git clone . prune-tags &&
+	cd prune-tags &&
+	git fetch origin refs/heads/master:refs/tags/sometag &&
+
+	git fetch --prune --tags origin &&
+	git rev-parse origin/master &&
+	test_must_fail git rev-parse somebranch
+'
+
+test_expect_success 'fetch --prune --tags with branch does not delete other remote-tracking branches' '
+	cd "$D" &&
+	git clone . prune-tags-branch &&
+	cd prune-tags-branch &&
+	git fetch origin refs/heads/master:refs/remotes/origin/extrabranch &&
+
+	git fetch --prune --tags origin master &&
+	git rev-parse origin/extrabranch
+'
 
 test_expect_success 'fetch tags when there is no tags' '
 
@@ -116,7 +166,7 @@ test_expect_success 'fetch must not resolve short tag name' '
 
 '
 
-test_expect_success 'fetch must not resolve short remote name' '
+test_expect_success 'fetch can now resolve short remote name' '
 
 	cd "$D" &&
 	git update-ref refs/remotes/six/HEAD HEAD &&
@@ -125,8 +175,7 @@ test_expect_success 'fetch must not resolve short remote name' '
 	cd six &&
 	git init &&
 
-	test_must_fail git fetch .. six:six
-
+	git fetch .. six:six
 '
 
 test_expect_success 'create bundle 1' '

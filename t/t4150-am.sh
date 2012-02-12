@@ -96,6 +96,13 @@ test_expect_success setup '
 		echo "X-Fake-Field: Line Three" &&
 		git format-patch --stdout first | sed -e "1d"
 	} | append_cr >patch1-crlf.eml &&
+	{
+		printf "%255s\\n" ""
+		echo "X-Fake-Field: Line One" &&
+		echo "X-Fake-Field: Line Two" &&
+		echo "X-Fake-Field: Line Three" &&
+		git format-patch --stdout first | sed -e "1d"
+	} > patch1-ws.eml &&
 
 	sed -n -e "3,\$p" msg >file &&
 	git add file &&
@@ -167,6 +174,17 @@ test_expect_success 'am applies patch e-mail not in a mbox with CRLF' '
 	test "$(git rev-parse second^)" = "$(git rev-parse HEAD^)"
 '
 
+test_expect_success 'am applies patch e-mail with preceding whitespace' '
+	rm -fr .git/rebase-apply &&
+	git reset --hard &&
+	git checkout first &&
+	git am patch1-ws.eml &&
+	! test -d .git/rebase-apply &&
+	git diff --exit-code second &&
+	test "$(git rev-parse second)" = "$(git rev-parse HEAD)" &&
+	test "$(git rev-parse second^)" = "$(git rev-parse HEAD^)"
+'
+
 test_expect_success 'setup: new author and committer' '
 	GIT_AUTHOR_NAME="Another Thor" &&
 	GIT_AUTHOR_EMAIL="a.thor@example.com" &&
@@ -219,7 +237,7 @@ test_expect_success 'am stays in branch' '
 
 test_expect_success 'am --signoff does not add Signed-off-by: line if already there' '
 	git format-patch --stdout HEAD^ >patch3 &&
-	sed -e "/^Subject/ s,\[PATCH,Re: Re: Re: & 1/5 v2," patch3 >patch4 &&
+	sed -e "/^Subject/ s,\[PATCH,Re: Re: Re: & 1/5 v2] [foo," patch3 >patch4 &&
 	rm -fr .git/rebase-apply &&
 	git reset --hard &&
 	git checkout HEAD^ &&
@@ -241,7 +259,17 @@ test_expect_success 'am --keep really keeps the subject' '
 	git am --keep patch4 &&
 	! test -d .git/rebase-apply &&
 	git cat-file commit HEAD >actual &&
-	grep "Re: Re: Re: \[PATCH 1/5 v2\] third" actual
+	grep "Re: Re: Re: \[PATCH 1/5 v2\] \[foo\] third" actual
+'
+
+test_expect_success 'am --keep-non-patch really keeps the non-patch part' '
+	rm -fr .git/rebase-apply &&
+	git reset --hard &&
+	git checkout HEAD^ &&
+	git am --keep-non-patch patch4 &&
+	! test -d .git/rebase-apply &&
+	git cat-file commit HEAD >actual &&
+	grep "^\[foo\] third" actual
 '
 
 test_expect_success 'am -3 falls back to 3-way merge' '
@@ -465,7 +493,7 @@ test_expect_success 'am newline in subject' '
 	test_tick &&
 	sed -e "s/second/second \\\n foo/" patch1 >patchnl &&
 	git am <patchnl >output.out 2>&1 &&
-	grep "^Applying: second \\\n foo$" output.out
+	test_i18ngrep "^Applying: second \\\n foo$" output.out
 '
 
 test_expect_success 'am -q is quiet' '

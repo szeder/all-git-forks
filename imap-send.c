@@ -25,6 +25,7 @@
 #include "cache.h"
 #include "exec_cmd.h"
 #include "run-command.h"
+#include "prompt.h"
 #ifdef NO_OPENSSL
 typedef void *SSL;
 #else
@@ -41,28 +42,6 @@ struct store_conf {
 	unsigned trash_remote_new:1, trash_only_new:1;
 };
 
-struct string_list {
-	struct string_list *next;
-	char string[1];
-};
-
-struct channel_conf {
-	struct channel_conf *next;
-	char *name;
-	struct store_conf *master, *slave;
-	char *master_name, *slave_name;
-	char *sync_state;
-	struct string_list *patterns;
-	int mops, sops;
-	unsigned max_messages; /* for slave only */
-};
-
-struct group_conf {
-	struct group_conf *next;
-	char *name;
-	struct string_list *channels;
-};
-
 /* For message->status */
 #define M_RECENT       (1<<0) /* unsyncable flag; maildir_* depend on this being 1<<0 */
 #define M_DEAD         (1<<1) /* expunged */
@@ -70,7 +49,6 @@ struct group_conf {
 
 struct message {
 	struct message *next;
-	/* struct string_list *keywords; */
 	size_t size; /* zero implies "not fetched" */
 	int uid;
 	unsigned char flags, status;
@@ -161,7 +139,6 @@ static struct imap_server_conf server = {
 struct imap_store_conf {
 	struct store_conf gen;
 	struct imap_server_conf *server;
-	unsigned use_namespace:1;
 };
 
 #define NIL	(void *)0x1
@@ -1193,13 +1170,13 @@ static struct store *imap_open_store(struct imap_server_conf *srvc)
 	if (!preauth) {
 #ifndef NO_OPENSSL
 		if (!srvc->use_ssl && CAP(STARTTLS)) {
-			if (imap_exec(ctx, 0, "STARTTLS") != RESP_OK)
+			if (imap_exec(ctx, NULL, "STARTTLS") != RESP_OK)
 				goto bail;
 			if (ssl_socket_connect(&imap->buf.sock, 1,
 					       srvc->ssl_verify))
 				goto bail;
 			/* capabilities may have changed, so get the new capabilities */
-			if (imap_exec(ctx, 0, "CAPABILITY") != RESP_OK)
+			if (imap_exec(ctx, NULL, "CAPABILITY") != RESP_OK)
 				goto bail;
 		}
 #endif
@@ -1209,13 +1186,10 @@ static struct store *imap_open_store(struct imap_server_conf *srvc)
 			goto bail;
 		}
 		if (!srvc->pass) {
-			char prompt[80];
-			sprintf(prompt, "Password (%s@%s): ", srvc->user, srvc->host);
-			arg = git_getpass(prompt);
-			if (!arg) {
-				perror("getpass");
-				exit(1);
-			}
+			struct strbuf prompt = STRBUF_INIT;
+			strbuf_addf(&prompt, "Password (%s@%s): ", srvc->user, srvc->host);
+			arg = git_getpass(prompt.buf);
+			strbuf_release(&prompt);
 			if (!*arg) {
 				fprintf(stderr, "Skipping account %s@%s, no password\n", srvc->user, srvc->host);
 				goto bail;
@@ -1538,6 +1512,8 @@ int main(int argc, char **argv)
 	int nongit_ok;
 
 	git_extract_argv0_path(argv[0]);
+
+	git_setup_gettext();
 
 	if (argc != 1)
 		usage(imap_send_usage);

@@ -17,9 +17,9 @@ DEFAULT_TEST_TARGET ?= test
 # Shell quote;
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 
-T = $(wildcard t[0-9][0-9][0-9][0-9]-*.sh)
-TSVN = $(wildcard t91[0-9][0-9]-*.sh)
-TGITWEB = $(wildcard t95[0-9][0-9]-*.sh)
+T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
+TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
+TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -71,7 +71,7 @@ gitweb-test:
 	$(MAKE) $(TGITWEB)
 
 valgrind:
-	GIT_TEST_OPTS=--valgrind $(MAKE)
+	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
 
 # Smoke testing targets
 -include ../GIT-VERSION-FILE

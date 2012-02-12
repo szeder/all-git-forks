@@ -149,6 +149,8 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 		struct tree *tree = lookup_tree(sha1);
 		if (tree) {
 			obj = &tree->object;
+			if (!tree->buffer)
+				tree->object.parsed = 0;
 			if (!tree->object.parsed) {
 				if (parse_tree_buffer(tree, buffer, size))
 					return NULL;
@@ -188,11 +190,16 @@ struct object *parse_object(const unsigned char *sha1)
 	unsigned long size;
 	enum object_type type;
 	int eaten;
-	const unsigned char *repl;
-	void *buffer = read_sha1_file_repl(sha1, &type, &size, &repl);
+	const unsigned char *repl = lookup_replace_object(sha1);
+	void *buffer;
+	struct object *obj;
 
+	obj = lookup_object(sha1);
+	if (obj && obj->parsed)
+		return obj;
+
+	buffer = read_sha1_file(sha1, &type, &size);
 	if (buffer) {
-		struct object *obj;
 		if (check_sha1_signature(repl, buffer, size, typename(type)) < 0) {
 			free(buffer);
 			error("sha1 mismatch %s\n", sha1_to_hex(repl));

@@ -40,6 +40,40 @@ mk_test () {
 	)
 }
 
+mk_test_with_hooks() {
+	mk_test "$@" &&
+	(
+		cd testrepo &&
+		mkdir .git/hooks &&
+		cd .git/hooks &&
+
+		cat >pre-receive <<-'EOF' &&
+		#!/bin/sh
+		cat - >>pre-receive.actual
+		EOF
+
+		cat >update <<-'EOF' &&
+		#!/bin/sh
+		printf "%s %s %s\n" "$@" >>update.actual
+		EOF
+
+		cat >post-receive <<-'EOF' &&
+		#!/bin/sh
+		cat - >>post-receive.actual
+		EOF
+
+		cat >post-update <<-'EOF' &&
+		#!/bin/sh
+		for ref in "$@"
+		do
+			printf "%s\n" "$ref" >>post-update.actual
+		done
+		EOF
+
+		chmod +x pre-receive update post-receive post-update
+	)
+}
+
 mk_child() {
 	rm -rf "$1" &&
 	git clone testrepo "$1"
@@ -367,7 +401,7 @@ test_expect_success 'push with colon-less refspec (4)' '
 
 '
 
-test_expect_success 'push head with non-existant, incomplete dest' '
+test_expect_success 'push head with non-existent, incomplete dest' '
 
 	mk_test &&
 	git push testrepo master:branch &&
@@ -375,7 +409,7 @@ test_expect_success 'push head with non-existant, incomplete dest' '
 
 '
 
-test_expect_success 'push tag with non-existant, incomplete dest' '
+test_expect_success 'push tag with non-existent, incomplete dest' '
 
 	mk_test &&
 	git tag -f v1.0 &&
@@ -384,14 +418,14 @@ test_expect_success 'push tag with non-existant, incomplete dest' '
 
 '
 
-test_expect_success 'push sha1 with non-existant, incomplete dest' '
+test_expect_success 'push sha1 with non-existent, incomplete dest' '
 
 	mk_test &&
 	test_must_fail git push testrepo `git rev-parse master`:foo
 
 '
 
-test_expect_success 'push ref expression with non-existant, incomplete dest' '
+test_expect_success 'push ref expression with non-existent, incomplete dest' '
 
 	mk_test &&
 	test_must_fail git push testrepo master^:branch
@@ -436,7 +470,7 @@ test_expect_success 'push with +HEAD' '
 
 '
 
-test_expect_success 'push HEAD with non-existant, incomplete dest' '
+test_expect_success 'push HEAD with non-existent, incomplete dest' '
 
 	mk_test &&
 	git checkout master &&
@@ -557,6 +591,169 @@ test_expect_success 'allow deleting an invalid remote ref' '
 	git push testrepo :refs/heads/master &&
 	(cd testrepo && test_must_fail git rev-parse --verify refs/heads/master)
 
+'
+
+test_expect_success 'pushing valid refs triggers post-receive and post-update hooks' '
+	mk_test_with_hooks heads/master heads/next &&
+	orgmaster=$(cd testrepo && git show-ref -s --verify refs/heads/master) &&
+	newmaster=$(git show-ref -s --verify refs/heads/master) &&
+	orgnext=$(cd testrepo && git show-ref -s --verify refs/heads/next) &&
+	newnext=$_z40 &&
+	git push testrepo refs/heads/master:refs/heads/master :refs/heads/next &&
+	(
+		cd testrepo/.git &&
+		cat >pre-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		$orgnext $newnext refs/heads/next
+		EOF
+
+		cat >update.expect <<-EOF &&
+		refs/heads/master $orgmaster $newmaster
+		refs/heads/next $orgnext $newnext
+		EOF
+
+		cat >post-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		$orgnext $newnext refs/heads/next
+		EOF
+
+		cat >post-update.expect <<-EOF &&
+		refs/heads/master
+		refs/heads/next
+		EOF
+
+		test_cmp pre-receive.expect pre-receive.actual &&
+		test_cmp update.expect update.actual &&
+		test_cmp post-receive.expect post-receive.actual &&
+		test_cmp post-update.expect post-update.actual
+	)
+'
+
+test_expect_success 'deleting dangling ref triggers hooks with correct args' '
+	mk_test_with_hooks heads/master &&
+	rm -f testrepo/.git/objects/??/* &&
+	git push testrepo :refs/heads/master &&
+	(
+		cd testrepo/.git &&
+		cat >pre-receive.expect <<-EOF &&
+		$_z40 $_z40 refs/heads/master
+		EOF
+
+		cat >update.expect <<-EOF &&
+		refs/heads/master $_z40 $_z40
+		EOF
+
+		cat >post-receive.expect <<-EOF &&
+		$_z40 $_z40 refs/heads/master
+		EOF
+
+		cat >post-update.expect <<-EOF &&
+		refs/heads/master
+		EOF
+
+		test_cmp pre-receive.expect pre-receive.actual &&
+		test_cmp update.expect update.actual &&
+		test_cmp post-receive.expect post-receive.actual &&
+		test_cmp post-update.expect post-update.actual
+	)
+'
+
+test_expect_success 'deletion of a non-existent ref is not fed to post-receive and post-update hooks' '
+	mk_test_with_hooks heads/master &&
+	orgmaster=$(cd testrepo && git show-ref -s --verify refs/heads/master) &&
+	newmaster=$(git show-ref -s --verify refs/heads/master) &&
+	git push testrepo master :refs/heads/nonexistent &&
+	(
+		cd testrepo/.git &&
+		cat >pre-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		$_z40 $_z40 refs/heads/nonexistent
+		EOF
+
+		cat >update.expect <<-EOF &&
+		refs/heads/master $orgmaster $newmaster
+		refs/heads/nonexistent $_z40 $_z40
+		EOF
+
+		cat >post-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		EOF
+
+		cat >post-update.expect <<-EOF &&
+		refs/heads/master
+		EOF
+
+		test_cmp pre-receive.expect pre-receive.actual &&
+		test_cmp update.expect update.actual &&
+		test_cmp post-receive.expect post-receive.actual &&
+		test_cmp post-update.expect post-update.actual
+	)
+'
+
+test_expect_success 'deletion of a non-existent ref alone does trigger post-receive and post-update hooks' '
+	mk_test_with_hooks heads/master &&
+	git push testrepo :refs/heads/nonexistent &&
+	(
+		cd testrepo/.git &&
+		cat >pre-receive.expect <<-EOF &&
+		$_z40 $_z40 refs/heads/nonexistent
+		EOF
+
+		cat >update.expect <<-EOF &&
+		refs/heads/nonexistent $_z40 $_z40
+		EOF
+
+		test_cmp pre-receive.expect pre-receive.actual &&
+		test_cmp update.expect update.actual &&
+		test_path_is_missing post-receive.actual &&
+		test_path_is_missing post-update.actual
+	)
+'
+
+test_expect_success 'mixed ref updates, deletes, invalid deletes trigger hooks with correct input' '
+	mk_test_with_hooks heads/master heads/next heads/pu &&
+	orgmaster=$(cd testrepo && git show-ref -s --verify refs/heads/master) &&
+	newmaster=$(git show-ref -s --verify refs/heads/master) &&
+	orgnext=$(cd testrepo && git show-ref -s --verify refs/heads/next) &&
+	newnext=$_z40 &&
+	orgpu=$(cd testrepo && git show-ref -s --verify refs/heads/pu) &&
+	newpu=$(git show-ref -s --verify refs/heads/master) &&
+	git push testrepo refs/heads/master:refs/heads/master \
+	    refs/heads/master:refs/heads/pu :refs/heads/next \
+	    :refs/heads/nonexistent &&
+	(
+		cd testrepo/.git &&
+		cat >pre-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		$orgnext $newnext refs/heads/next
+		$orgpu $newpu refs/heads/pu
+		$_z40 $_z40 refs/heads/nonexistent
+		EOF
+
+		cat >update.expect <<-EOF &&
+		refs/heads/master $orgmaster $newmaster
+		refs/heads/next $orgnext $newnext
+		refs/heads/pu $orgpu $newpu
+		refs/heads/nonexistent $_z40 $_z40
+		EOF
+
+		cat >post-receive.expect <<-EOF &&
+		$orgmaster $newmaster refs/heads/master
+		$orgnext $newnext refs/heads/next
+		$orgpu $newpu refs/heads/pu
+		EOF
+
+		cat >post-update.expect <<-EOF &&
+		refs/heads/master
+		refs/heads/next
+		refs/heads/pu
+		EOF
+
+		test_cmp pre-receive.expect pre-receive.actual &&
+		test_cmp update.expect update.actual &&
+		test_cmp post-receive.expect post-receive.actual &&
+		test_cmp post-update.expect post-update.actual
+	)
 '
 
 test_expect_success 'allow deleting a ref using --delete' '
