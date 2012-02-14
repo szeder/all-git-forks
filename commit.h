@@ -88,7 +88,6 @@ struct pretty_print_context {
 	const char *output_encoding;
 	struct wrap_options {
 		unsigned int
-			width,
 			wrap:1,
 			wrap_given:1;
 	} wrap;

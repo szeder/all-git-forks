@@ -10,6 +10,7 @@
 #include "color.h"
 #include "reflog-walk.h"
 #include "gpg-interface.h"
+#include "tty.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -26,7 +27,7 @@ static struct cmt_fmt_map *find_commit_format(const char *sought);
 
 static unsigned int wrap_configured = 0;
 static unsigned int wrap = 0;
-static unsigned int wrap_width = 80;
+static unsigned int wrap_width = 0;
 
 static void save_user_format(struct rev_info *rev, const char *cp, int is_tformat)
 {
@@ -179,39 +180,23 @@ void get_commit_format(const char *arg, struct rev_info *rev)
 
 static int git_wrap_config(const char *name, const char *value, void *cb)
 {
-	wrap_configured = 1;
-
-	if (prefixcmp(name, "log.wrap"))
-		return 0;
-
-	if (name[8] == '\0') {
-		if (value && !strcmp(value, "always")) {
-			wrap = 1;
-		} else if (value && !strcmp(value, "never")) {
-			wrap = 0;
-		} else if (!value || !strcmp(value, "auto") || git_config_bool(name, value)) {
-			wrap = want_color(GIT_COLOR_AUTO);
-		}
-	} else if (name[8] == '.') {
-		name += 9;
-		if (!strcmp(name, "width")) {
-			wrap_width = git_config_int(name, value);
-		}
+	if (!strcmp(name, "log.messagewrap")){
+		printf("CONFIG CONFIG CONFIG CONFIG CONFIG CONFIG name: %s, value: %s\n", name, value);
+		wrap = git_config_bool(name, value);
 	}
 	return 0;
 }
 
-static unsigned int want_wrap(struct wrap_options options)
-{
-	if(!wrap_configured)
-		git_config(git_wrap_config, NULL);
-	return (options.wrap_given ? options.wrap : wrap);
-}
 static unsigned int get_wrap_width(struct wrap_options options)
 {
-	if(!wrap_configured)
+	if (!wrap_configured) {
+		wrap_configured = 1;
+		wrap_width = term_columns();
+		if (wrap_width)
+			wrap_width -= 1; /* don't print *on* the edge */
 		git_config(git_wrap_config, NULL);
-	return options.width ? options.width : wrap_width;
+	}
+	return (options.wrap_given ? options.wrap : wrap) ? wrap_width : 0;
 }
 
 static int line_list_prefix(const char *line, int len)
@@ -1393,8 +1378,7 @@ void pp_remainder(const struct pretty_print_context *pp,
 		  struct strbuf *sb,
 		  int indent)
 {
-	unsigned int wrap = want_wrap(pp->wrap);
-	unsigned int width = get_wrap_width(pp->wrap);
+	unsigned int wrap = get_wrap_width(pp->wrap);
 	int first = 1;
 	for (;;) {
 		const char *line = *msg_p;
@@ -1420,7 +1404,7 @@ void pp_remainder(const struct pretty_print_context *pp,
 		if (wrap && linelen && line[0] != ' ' && line[0] != '\t') {
 			struct strbuf wrapped = STRBUF_INIT;
 			strbuf_add(&wrapped, line, linelen);
-			strbuf_add_wrapped_text(sb, wrapped.buf, 0, indent + line_list_prefix(line, linelen), width - indent);
+			strbuf_add_wrapped_text(sb, wrapped.buf, 0, indent + line_list_prefix(line, linelen), wrap - indent);
 		} else {
 			strbuf_add(sb, line, linelen);
 		}

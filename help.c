@@ -4,28 +4,7 @@
 #include "levenshtein.h"
 #include "help.h"
 #include "common-cmds.h"
-
-/* most GUI terminals set COLUMNS (although some don't export it) */
-static int term_columns(void)
-{
-	char *col_string = getenv("COLUMNS");
-	int n_cols;
-
-	if (col_string && (n_cols = atoi(col_string)) > 0)
-		return n_cols;
-
-#ifdef TIOCGWINSZ
-	{
-		struct winsize ws;
-		if (!ioctl(1, TIOCGWINSZ, &ws)) {
-			if (ws.ws_col)
-				return ws.ws_col;
-		}
-	}
-#endif
-
-	return 80;
-}
+#include "tty.h"
 
 void add_cmdname(struct cmdnames *cmds, const char *name, int len)
 {
@@ -96,8 +75,12 @@ static void pretty_print_string_list(struct cmdnames *cmds, int longest)
 {
 	int cols = 1, rows;
 	int space = longest + 1; /* min 1 SP between words */
-	int max_cols = term_columns() - 1; /* don't print *on* the edge */
+	int max_cols = term_columns();
 	int i, j;
+
+	if(max_cols == 0)
+		max_cols = 80;
+	max_cols -= 1; /* don't print *on* the edge */
 
 	if (space < max_cols)
 		cols = max_cols / space;
