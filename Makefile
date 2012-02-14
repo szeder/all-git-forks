@@ -339,7 +339,7 @@ pathsep = :
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
-CC = gcc
+CC = cc
 AR = ar
 RM = rm -f
 DIFF = diff
@@ -451,6 +451,9 @@ PROGRAM_OBJS += upload-pack.o
 PROGRAM_OBJS += http-backend.o
 PROGRAM_OBJS += sh-i18n--envsubst.o
 PROGRAM_OBJS += credential-store.o
+
+# Binary suffix, set to .exe for Windows builds
+X =
 
 PROGRAMS += $(patsubst %.o,git-%$X,$(PROGRAM_OBJS))
 
