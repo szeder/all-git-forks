@@ -1,4 +1,4 @@
-From c0a42757a5e435e4fd008fa96bef3b2c74e184cd Mon Sep 17 00:00:00 2001
+From c09d58dbfa3d38b89d248661bf107887eb66ba48 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
@@ -35,7 +35,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 58e0234..82ce5ec 100644
+index 76bf238..4256f82 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -144,6 +144,10 @@ all::
@@ -49,7 +49,7 @@ index 58e0234..82ce5ec 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
-@@ -1482,6 +1486,11 @@ endif
+@@ -1485,6 +1489,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -61,7 +61,7 @@ index 58e0234..82ce5ec 100644
  ifdef NEEDS_RESOLV
  	EXTLIBS += -lresolv
  endif
-@@ -2116,6 +2125,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
+@@ -2119,6 +2128,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
  connect.o daemon.o tcp.o: tcp.h
@@ -543,5 +543,5 @@ index 623d7e1..0615f5e 100644
  }
  
 -- 
-1.7.8.3
+1.7.9
 

@@ -1,3 +1,11 @@
+git (1:1.7.9.1-1) unstable; urgency=low
+
+  * new upstream point release.
+    * merge: do not launch an editor on "--no-edit $tag" (thx Guido
+      Günther; closes: #659255).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Tue, 14 Feb 2012 15:32:48 -0600
+
 git (1:1.7.9-1) unstable; urgency=low
 
   * merge branch debian-experimental.
