@@ -1327,7 +1327,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	int i, len, add, del, adds = 0, dels = 0;
 	uintmax_t max_change = 0, max_len = 0;
 	int total_files = data->nr;
-	int width, name_width, count;
+	int width, name_width, graph_width, number_width = 4, count;
 	const char *reset, *add_c, *del_c;
 	const char *line_prefix = "";
 	int extra_shown = 0;
@@ -1341,25 +1341,15 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		line_prefix = msg->buf;
 	}
 
-	width = options->stat_width ? options->stat_width : 80;
-	name_width = options->stat_name_width ? options->stat_name_width : 50;
 	count = options->stat_count ? options->stat_count : data->nr;
 
-	/* Sanity: give at least 5 columns to the graph,
-	 * but leave at least 10 columns for the name.
-	 */
-	if (width < 25)
-		width = 25;
-	if (name_width < 10)
-		name_width = 10;
-	else if (width < name_width + 15)
-		name_width = width - 15;
-
-	/* Find the longest filename and max number of changes */
 	reset = diff_get_color_opt(options, DIFF_RESET);
 	add_c = diff_get_color_opt(options, DIFF_FILE_NEW);
 	del_c = diff_get_color_opt(options, DIFF_FILE_OLD);
 
+	/*
+	 * Find the longest filename and max number of changes
+	 */
 	for (i = 0; (i < count) && (i < data->nr); i++) {
 		struct diffstat_file *file = data->files[i];
 		uintmax_t change = file->added + file->deleted;
@@ -1380,19 +1370,63 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	}
 	count = i; /* min(count, data->nr) */
 
-	/* Compute the width of the graph part;
-	 * 10 is for one blank at the beginning of the line plus
-	 * " | count " between the name and the graph.
+	/*
+	 * We have width = stat_width or term_columns() columns total.
+	 * We want a maximum of min(max_len, stat_name_width) for the name part.
+	 * We want a maximum of min(max_change, 40) for the +- part.
+	 * We also need 1 for " " and 4 + decimal_width(max_change)
+	 * for " | NNNN " and one the empty column at the end, altogether
+	 * 6 + decimal_width(max_change).
 	 *
-	 * From here on, name_width is the width of the name area,
-	 * and width is the width of the graph area.
+	 * If there's not enough space, we will use the smaller of
+	 * stat_name_width (if set) and 5/8*width for the filename,
+	 * and the rest for constant elements + graph part, but no more
+	 * than 40 for the graph part.
+	 * (5/8 gives 50 for filename and 30 for the constant parts + graph
+	 * for the standard terminal size).
+	 *
+	 * In other words: stat_width limits the maximum width, and
+	 * stat_name_width fixes the maximum width of the filename,
+	 * and is also used to divide available columns if there
+	 * aren't enough.
 	 */
-	name_width = (name_width < max_len) ? name_width : max_len;
-	if (width < (name_width + 10) + max_change)
-		width = width - (name_width + 10);
-	else
-		width = max_change;
 
+	width = options->stat_width ? options->stat_width : term_columns();
+
+	/*
+	 * Guarantee 3/8*16==6 for the graph part
+	 * and 5/8*16==10 for the filename part
+	 */
+	if (width < 16 + 6 + number_width)
+		width = 16 + 6 + number_width;
+
+	/*
+	 * First assign sizes that are wanted, ignoring available width.
+	 */
+	graph_width = max_change < 40 ? max_change : 40;
+	name_width = (options->stat_name_width > 0 &&
+		      options->stat_name_width < max_len) ?
+		options->stat_name_width : max_len;
+
+	/*
+	 * Adjust adjustable widths not to exceed maximum width
+	 */
+	if (name_width + number_width + 6 + graph_width > width) {
+		if (graph_width > width * 3/8 - number_width - 6)
+			graph_width = width * 3/8 - number_width - 6;
+		if (graph_width > 40)
+			graph_width =  40;
+		if (name_width > width - number_width - 6 - graph_width)
+			name_width = width - number_width - 6 - graph_width;
+		else
+			graph_width = width - number_width - 6 - name_width;
+	}
+
+	/*
+	 * From here name_width is the width of the name area,
+	 * and graph_width is the width of the graph area.
+	 * max_change is used to scale graph properly.
+	 */
 	for (i = 0; i < count; i++) {
 		const char *prefix = "";
 		char *name = data->files[i]->print_name;
@@ -1448,9 +1482,9 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 		adds += add;
 		dels += del;
 
-		if (width <= max_change) {
-			add = scale_linear(add, width, max_change);
-			del = scale_linear(del, width, max_change);
+		if (graph_width <= max_change) {
+			add = scale_linear(add, graph_width, max_change);
+			del = scale_linear(del, graph_width, max_change);
 		}
 		fprintf(options->file, "%s", line_prefix);
 		show_name(options->file, prefix, name, len);
