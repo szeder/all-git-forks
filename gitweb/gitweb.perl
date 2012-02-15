@@ -5188,54 +5188,66 @@ sub git_project_search_form {
 	print "</div>\n";
 }
 
-# entry for given @keys needs filling if at least one of keys in list
-# is not present in %$project_info
+
+# entry for given @keys needs filling if at least one of interesting keys
+# in list is not present in %$project_info; key is interesting if $fill_only
+# is not passed, or is empty (all keys are interesting in both of those cases),
+# or if key is in $fill_only hash
+#
+# USAGE:
+# * project_info_needs_filling($project_info, 'key', ...)
+# * project_info_needs_filling($project_info, 'key', ..., \%fill_only)
+#   where %fill_only = map { $_ => 1 } @fill_only;
 sub project_info_needs_filling {
+	my $fill_only = ref($_[-1]) ? pop : undef;
 	my ($project_info, @keys) = @_;
 
 	# return List::MoreUtils::any { !exists $project_info->{$_} } @keys;
 	foreach my $key (@keys) {
-		if (!exists $project_info->{$key}) {
+		if ((!$fill_only || !%$fill_only || $fill_only->{$key}) &&
+		    !exists $project_info->{$key}) {
 			return 1;
 		}
 	}
 	return;
 }
 
-
 # fills project list info (age, description, owner, category, forks)
 # for each project in the list, removing invalid projects from
-# returned list
+# returned list, or fill only specified info (removing invalid projects
+# only when filling 'age').
+#
 # NOTE: modifies $projlist, but does not remove entries from it
 sub fill_project_list_info {
-	my $projlist = shift;
+	my ($projlist, @fill_only) = @_;
+	my %fill_only = map { $_ => 1 } @fill_only;
 	my @projects;
 
 	my $show_ctags = gitweb_check_feature('ctags');
  PROJECT:
 	foreach my $pr (@$projlist) {
-		if (project_info_needs_filling($pr, 'age', 'age_string')) {
+		if (project_info_needs_filling($pr, 'age', 'age_string', \%fill_only)) {
 			my (@activity) = git_get_last_activity($pr->{'path'});
 			unless (@activity) {
 				next PROJECT;
 			}
 			($pr->{'age'}, $pr->{'age_string'}) = @activity;
 		}
-		if (project_info_needs_filling($pr, 'descr', 'descr_long')) {
+		if (project_info_needs_filling($pr, 'descr', 'descr_long', \%fill_only)) {
 			my $descr = git_get_project_description($pr->{'path'}) || "";
 			$descr = to_utf8($descr);
 			$pr->{'descr_long'} = $descr;
 			$pr->{'descr'} = chop_str($descr, $projects_list_description_width, 5);
 		}
-		if (project_info_needs_filling($pr, 'owner')) {
+		if (project_info_needs_filling($pr, 'owner', \%fill_only)) {
 			$pr->{'owner'} = git_get_project_owner("$pr->{'path'}") || "";
 		}
 		if ($show_ctags &&
-		    project_info_needs_filling($pr, 'ctags')) {
+		    project_info_needs_filling($pr, 'ctags', \%fill_only)) {
 			$pr->{'ctags'} = git_get_project_ctags($pr->{'path'});
 		}
 		if ($projects_list_group_categories &&
-		    project_info_needs_filling($pr, 'category')) {
+		    project_info_needs_filling($pr, 'category', \%fill_only)) {
 			my $cat = git_get_project_category($pr->{'path'}) ||
 			                                   $project_list_default_category;
 			$pr->{'category'} = to_utf8($cat);
