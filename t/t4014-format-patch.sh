@@ -897,18 +897,18 @@ test_expect_success 'format patch ignores color.ui' '
 # 120 character name
 name=aaaaaaaaaa
 name=$name$name$name$name$name$name$name$name$name$name$name$name
-test_expect_success 'preparation' "
-	>\"$name\" &&
-	git add \"$name\" &&
+test_expect_success 'preparation' '
+	>"$name" &&
+	git add "$name" &&
 	git commit -m message &&
-	echo a >\"$name\" &&
-	git commit -m message \"$name\"
-"
+	echo a >"$name" &&
+	git commit -m message "$name"
+'
 
 cat >expect <<'EOF'
  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
 EOF
-test_expect_success 'format patch graph width defaults to 80 columns' '
+test_expect_failure 'format patch graph width defaults to 80 columns' '
 	git format-patch --stat --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
@@ -917,13 +917,13 @@ test_expect_success 'format patch graph width defaults to 80 columns' '
 cat >expect <<'EOF'
  ...aaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
 EOF
-test_expect_success 'format patch --stat=width with long name' '
+test_expect_failure 'format patch --stat=width with long name' '
 	git format-patch --stat=40 --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
 '
 
-test_expect_success 'format patch --stat-width=width works with long name' '
+test_expect_failure 'format patch --stat-width=width works with long name' '
 	git format-patch --stat-width=40 --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
@@ -941,26 +941,21 @@ test_expect_success 'format patch --stat-name-width with long name' '
 	test_cmp expect actual
 '
 
-test_expect_success 'preparation' '
+test_expect_success 'preparation for big change tests' '
 	>abcd &&
 	git add abcd &&
 	git commit -m message &&
 	i=0 &&
-	while test $i -lt 1000; do
-		echo $i &&
-		i=$(($i + 1))
+	while test $i -lt 1000
+	do
+		echo $i && i=$(($i + 1))
 	done >abcd &&
 	git commit -m message abcd
 '
 
 cat >expect <<'EOF'
- abcd | 1000 ++++++++++++++++++++++++++++++++++++++++
+ abcd | 1000 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 EOF
-test_expect_success 'format patch graph part width is 40 columns' '
-	git format-patch --stat --stdout -1 >output &&
-	grep " | " output >actual &&
-	test_cmp expect actual
-'
 
 test_expect_success 'format patch ignores COLUMNS' '
 	COLUMNS=200 git format-patch --stat --stdout -1 >output
@@ -984,7 +979,7 @@ test_expect_success 'format patch --stat-width=width with big change' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++
 EOF
 test_expect_success 'format patch --stat=width with big change and long name' '
 	cp abcd aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
