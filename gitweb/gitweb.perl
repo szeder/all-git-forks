@@ -1723,20 +1723,22 @@ sub chop_and_escape_str {
 # '<span class="mark">foo</span>bar'
 sub esc_html_hl_regions {
 	my ($str, $css_class, @sel) = @_;
-	return esc_html($str) unless @sel;
+	my %opts = grep { ref($_) ne 'ARRAY' } @sel;
+	@sel     = grep { ref($_) eq 'ARRAY' } @sel;
+	return esc_html($str, %opts) unless @sel;
 
 	my $out = '';
 	my $pos = 0;
 
 	for my $s (@sel) {
-		$out .= esc_html(substr($str, $pos, $s->[0] - $pos))
+		$out .= esc_html(substr($str, $pos, $s->[0] - $pos), %opts)
 			if ($s->[0] - $pos > 0);
 		$out .= $cgi->span({-class => $css_class},
-		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0])));
+		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0]), %opts));
 
 		$pos = $s->[1];
 	}
-	$out .= esc_html(substr($str, $pos))
+	$out .= esc_html(substr($str, $pos), %opts)
 		if ($pos < length($str));
 
 	return $out;
@@ -1744,23 +1746,23 @@ sub esc_html_hl_regions {
 
 # highlight match (if any), and escape HTML
 sub esc_html_match_hl {
-	my ($str, $regexp) = @_;
-	return esc_html($str) unless defined $regexp;
+	my ($str, $regexp, %opts) = @_;
+	return esc_html($str, %opts) unless defined $regexp;
 
-	return esc_html_match_hl_chopped($str, undef, $regexp);
+	return esc_html_match_hl_chopped($str, undef, $regexp, %opts);
 }
 
 
 # highlight match (if any) of shortened string, and escape HTML
 sub esc_html_match_hl_chopped {
-	my ($str, $chopped, $regexp) = @_;
-	return esc_html(defined $chopped ? $chopped : $str) unless defined $regexp;
+	my ($str, $chopped, $regexp, %opts) = @_;
+	return esc_html(defined $chopped ? $chopped : $str, %opts) unless defined $regexp;
 
 	my @matches;
 	while ($str =~ /$regexp/g) {
 		push @matches, [$-[0], $+[0]];
 	}
-	return esc_html(defined $chopped ? $chopped : $str) unless @matches;
+	return esc_html(defined $chopped ? $chopped : $str, %opts) unless @matches;
 
 	# filter matches so that we mark chopped string, if it is present
 	if (defined $chopped) {
@@ -1788,7 +1790,7 @@ sub esc_html_match_hl_chopped {
 		@matches = @filtered;
 	}
 
-	return esc_html_hl_regions($str, 'match', @matches);
+	return esc_html_hl_regions($str, 'match', @matches, %opts);
 }
 
 ## ----------------------------------------------------------------------
@@ -6062,15 +6064,7 @@ sub git_search_files {
 			print "<div class=\"binary\">Binary file</div>\n";
 		} else {
 			$ltext = untabify($ltext);
-			if ($ltext =~ m/^(.*)($search_regexp)(.*)$/i) {
-				$ltext = esc_html($1, -nbsp=>1);
-				$ltext .= '<span class="match">';
-				$ltext .= esc_html($2, -nbsp=>1);
-				$ltext .= '</span>';
-				$ltext .= esc_html($3, -nbsp=>1);
-			} else {
-				$ltext = esc_html($ltext, -nbsp=>1);
-			}
+			$ltext = esc_html_match_hl($ltext, qr/$search_regexp/i, -nbsp=>1);
 			print "<div class=\"pre\">" .
 				$cgi->a({-href => $file_href.'#l'.$lno,
 				        -class => "linenr"}, sprintf('%4i', $lno)) .
