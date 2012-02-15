@@ -32,7 +32,7 @@ test_expect_success "-p $*" "
 check_stat() {
 expect=$1; shift
 cat >expected <<EOF
- $expect |    1 +
+ $expect | 1 +
  1 files changed, 1 insertions(+), 0 deletions(-)
 EOF
 test_expect_success "--stat $*" "

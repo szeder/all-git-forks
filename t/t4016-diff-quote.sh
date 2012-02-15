@@ -59,13 +59,13 @@ test_expect_success TABS_IN_FILENAMES 'git diff --summary -M HEAD' '
 
 test_expect_success TABS_IN_FILENAMES 'setup expected files' '
 cat >expect <<\EOF
- pathname.1 => "Rpathname\twith HT.0"            |    0
- pathname.3 => "Rpathname\nwith LF.0"            |    0
- "pathname\twith HT.3" => "Rpathname\nwith LF.1" |    0
- pathname.2 => Rpathname with SP.0               |    0
- "pathname\twith HT.2" => Rpathname with SP.1    |    0
- pathname.0 => Rpathname.0                       |    0
- "pathname\twith HT.0" => Rpathname.1            |    0
+ pathname.1 => "Rpathname\twith HT.0"            | 0
+ pathname.3 => "Rpathname\nwith LF.0"            | 0
+ "pathname\twith HT.3" => "Rpathname\nwith LF.1" | 0
+ pathname.2 => Rpathname with SP.0               | 0
+ "pathname\twith HT.2" => Rpathname with SP.1    | 0
+ pathname.0 => Rpathname.0                       | 0
+ "pathname\twith HT.0" => Rpathname.1            | 0
  7 files changed, 0 insertions(+), 0 deletions(-)
 EOF
 '

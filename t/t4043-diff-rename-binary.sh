@@ -23,8 +23,8 @@ test_expect_success 'move the files into a "sub" directory' '
 '
 
 cat > expected <<\EOF
- bar => sub/bar |  Bin 5 -> 5 bytes
- foo => sub/foo |    0
+ bar => sub/bar | Bin 5 -> 5 bytes
+ foo => sub/foo |   0
  2 files changed, 0 insertions(+), 0 deletions(-)
 
 diff --git a/bar b/sub/bar

@@ -519,7 +519,7 @@ test_expect_success 'shortlog of cover-letter wraps overly-long onelines' '
 
 cat > expect << EOF
 ---
- file |   16 ++++++++++++++++
+ file | 16 ++++++++++++++++
  1 files changed, 16 insertions(+), 0 deletions(-)
 
 diff --git a/file b/file
@@ -906,7 +906,7 @@ test_expect_success 'preparation' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1 +
 EOF
 test_expect_success 'format patch graph width defaults to 80 columns' '
 	git format-patch --stat --stdout -1 >output &&
@@ -915,7 +915,7 @@ test_expect_success 'format patch graph width defaults to 80 columns' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1 +
 EOF
 test_expect_success 'format patch --stat=width with long name' '
 	git format-patch --stat=40 --stdout -1 >output &&
@@ -930,13 +930,13 @@ test_expect_success 'format patch --stat-width=width works with long name' '
 '
 
 test_expect_success 'format patch --stat=...,name-width with long name' '
-	git format-patch --stat=60,29 --stdout -1 >output &&
+	git format-patch --stat=60,32 --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
 '
 
 test_expect_success 'format patch --stat-name-width with long name' '
-	git format-patch --stat-name-width=29 --stdout -1 >output &&
+	git format-patch --stat-name-width=32 --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
 '

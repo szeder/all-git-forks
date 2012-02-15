@@ -252,41 +252,41 @@ EOF
 '
 
 cat <<EOF >expect_diff_stat
- changed/text             |    2 +-
- dst/copy/changed/text    |   10 ++++++++++
- dst/copy/rearranged/text |   10 ++++++++++
- dst/copy/unchanged/text  |   10 ++++++++++
- dst/move/changed/text    |   10 ++++++++++
- dst/move/rearranged/text |   10 ++++++++++
- dst/move/unchanged/text  |   10 ++++++++++
- rearranged/text          |    2 +-
- src/move/changed/text    |   10 ----------
- src/move/rearranged/text |   10 ----------
- src/move/unchanged/text  |   10 ----------
+ changed/text             |  2 +-
+ dst/copy/changed/text    | 10 ++++++++++
+ dst/copy/rearranged/text | 10 ++++++++++
+ dst/copy/unchanged/text  | 10 ++++++++++
+ dst/move/changed/text    | 10 ++++++++++
+ dst/move/rearranged/text | 10 ++++++++++
+ dst/move/unchanged/text  | 10 ++++++++++
+ rearranged/text          |  2 +-
+ src/move/changed/text    | 10 ----------
+ src/move/rearranged/text | 10 ----------
+ src/move/unchanged/text  | 10 ----------
  11 files changed, 62 insertions(+), 32 deletions(-)
 EOF
 
 cat <<EOF >expect_diff_stat_M
- changed/text                      |    2 +-
- dst/copy/changed/text             |   10 ++++++++++
- dst/copy/rearranged/text          |   10 ++++++++++
- dst/copy/unchanged/text           |   10 ++++++++++
- {src => dst}/move/changed/text    |    2 +-
- {src => dst}/move/rearranged/text |    2 +-
- {src => dst}/move/unchanged/text  |    0
- rearranged/text                   |    2 +-
+ changed/text                      |  2 +-
+ dst/copy/changed/text             | 10 ++++++++++
+ dst/copy/rearranged/text          | 10 ++++++++++
+ dst/copy/unchanged/text           | 10 ++++++++++
+ {src => dst}/move/changed/text    |  2 +-
+ {src => dst}/move/rearranged/text |  2 +-
+ {src => dst}/move/unchanged/text  |  0
+ rearranged/text                   |  2 +-
  8 files changed, 34 insertions(+), 4 deletions(-)
 EOF
 
 cat <<EOF >expect_diff_stat_CC
- changed/text                      |    2 +-
- {src => dst}/copy/changed/text    |    2 +-
- {src => dst}/copy/rearranged/text |    2 +-
- {src => dst}/copy/unchanged/text  |    0
- {src => dst}/move/changed/text    |    2 +-
- {src => dst}/move/rearranged/text |    2 +-
- {src => dst}/move/unchanged/text  |    0
- rearranged/text                   |    2 +-
+ changed/text                      | 2 +-
+ {src => dst}/copy/changed/text    | 2 +-
+ {src => dst}/copy/rearranged/text | 2 +-
+ {src => dst}/copy/unchanged/text  | 0
+ {src => dst}/move/changed/text    | 2 +-
+ {src => dst}/move/rearranged/text | 2 +-
+ {src => dst}/move/unchanged/text  | 0
+ rearranged/text                   | 2 +-
  8 files changed, 6 insertions(+), 6 deletions(-)
 EOF
 

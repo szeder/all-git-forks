@@ -443,7 +443,7 @@ test_expect_success 'stash show - stashes on stack, stash-like argument' '
 	STASH_ID=$(git stash create) &&
 	git reset --hard &&
 	cat >expected <<-EOF &&
-	 file |    1 +
+	 file | 1 +
 	 1 files changed, 1 insertions(+), 0 deletions(-)
 	EOF
 	git stash show ${STASH_ID} >actual &&
@@ -481,7 +481,7 @@ test_expect_success 'stash show - no stashes on stack, stash-like argument' '
 	STASH_ID=$(git stash create) &&
 	git reset --hard &&
 	cat >expected <<-EOF &&
-	 file |    1 +
+	 file | 1 +
 	 1 files changed, 1 insertions(+), 0 deletions(-)
 	EOF
 	git stash show ${STASH_ID} >actual &&
