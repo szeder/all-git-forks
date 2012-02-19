@@ -176,7 +176,7 @@ int xdl_recmatch(const char *l1, long s1, const char *l2, long s2, long flags)
 
 	if (s1 == s2 && !memcmp(l1, l2, s1))
 		return 1;
-	if (!(flags & XDF_WHITESPACE_FLAGS))
+	if (!(flags & XDF_INEXACT_MATCH))
 		return 0;
 
 	i1 = 0;
@@ -281,7 +281,7 @@ unsigned long xdl_hash_record(char const **data, char const *top, long flags) {
 	unsigned long ha = 5381;
 	char const *ptr = *data;
 
-	if (flags & XDF_WHITESPACE_FLAGS)
+	if (flags & XDF_INEXACT_MATCH)
 		return xdl_hash_record_with_whitespace(data, top, flags);
 
 	for (; ptr < top && *ptr != '\n'; ptr++) {
