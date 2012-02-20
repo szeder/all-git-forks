@@ -175,9 +175,10 @@ test_diff_ignore () {
 	echo " A quick brownfox" >test-w
 	echo "A quick brown fox " >test--ignore-space-at-eol
 	echo "A Quick Brown Fox" >test--ignore-case
+	echo "A Quick Brown FoX" >test-i
 	echo "A Quick  Brown Fox" >test--ignore-case-b
 	echo "A quick brown fox jumps" >test
-	cases="-b -w --ignore-space-at-eol --ignore-case"
+	cases="-b -w --ignore-space-at-eol --ignore-case -i"
 
 	if test -z "$STRATEGY"
 	then

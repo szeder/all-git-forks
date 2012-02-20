@@ -13,6 +13,7 @@
 #include "decorate.h"
 #include "log-tree.h"
 #include "string-list.h"
+#include "xdiff-interface.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -1557,7 +1558,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		return argcount;
 	} else if (!strcmp(arg, "--extended-regexp") || !strcmp(arg, "-E")) {
 		revs->grep_filter.regflags |= REG_EXTENDED;
-	} else if (!strcmp(arg, "--regexp-ignore-case") || !strcmp(arg, "-i")) {
+	} else if (!strcmp(arg, "-i")) {
+		DIFF_XDL_SET(&revs->diffopt, IGNORE_CASE);
+		revs->grep_filter.regflags |= REG_ICASE;
+	} else if (!strcmp(arg, "--regexp-ignore-case")) {
 		revs->grep_filter.regflags |= REG_ICASE;
 	} else if (!strcmp(arg, "--fixed-strings") || !strcmp(arg, "-F")) {
 		revs->grep_filter.fixed = 1;

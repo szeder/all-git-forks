@@ -404,6 +404,7 @@ endif::git-format-patch[]
 	differences even if one line has whitespace where the other
 	line has none.
 
+-i::
 --ignore-case::
 	Ignore changes in case only; only ASCII alphabet is supported for
 	now.
