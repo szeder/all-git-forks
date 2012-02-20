@@ -1715,6 +1715,84 @@ sub chop_and_escape_str {
 	}
 }
 
+# Highlight selected fragments of string, using given CSS class,
+# and escape HTML.  It is assumed that fragments do not overlap.
+# Regions are passed as list of pairs (array references).
+#
+# Example: esc_html_hl_regions("foobar", "mark", [ 0, 3 ]) returns
+# '<span class="mark">foo</span>bar'
+sub esc_html_hl_regions {
+	my ($str, $css_class, @sel) = @_;
+	my %opts = grep { ref($_) ne 'ARRAY' } @sel;
+	@sel     = grep { ref($_) eq 'ARRAY' } @sel;
+	return esc_html($str, %opts) unless @sel;
+
+	my $out = '';
+	my $pos = 0;
+
+	for my $s (@sel) {
+		$out .= esc_html(substr($str, $pos, $s->[0] - $pos), %opts)
+			if ($s->[0] - $pos > 0);
+		$out .= $cgi->span({-class => $css_class},
+		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0]), %opts));
+
+		$pos = $s->[1];
+	}
+	$out .= esc_html(substr($str, $pos), %opts)
+		if ($pos < length($str));
+
+	return $out;
+}
+
+# highlight match (if any), and escape HTML
+sub esc_html_match_hl {
+	my ($str, $regexp, %opts) = @_;
+	return esc_html($str, %opts) unless defined $regexp;
+
+	return esc_html_match_hl_chopped($str, undef, $regexp, %opts);
+}
+
+
+# highlight match (if any) of shortened string, and escape HTML
+sub esc_html_match_hl_chopped {
+	my ($str, $chopped, $regexp, %opts) = @_;
+	return esc_html(defined $chopped ? $chopped : $str, %opts) unless defined $regexp;
+
+	my @matches;
+	while ($str =~ /$regexp/g) {
+		push @matches, [$-[0], $+[0]];
+	}
+	return esc_html(defined $chopped ? $chopped : $str, %opts) unless @matches;
+
+	# filter matches so that we mark chopped string, if it is present
+	if (defined $chopped) {
+		my $tail = "... "; # see chop_str
+		unless ($chopped =~ s/\Q$tail\E$//) {
+			$tail = '';
+		}
+		my $chop_len = length($chopped);
+		my $tail_len = length($tail);
+		my @filtered;
+
+		for my $m (@matches) {
+			if ($m->[0] > $chop_len) {
+				push @filtered, [ $chop_len, $chop_len + $tail_len ] if ($tail_len > 0);
+				last;
+			} elsif ($m->[1] > $chop_len) {
+				push @filtered, [ $m->[0], $chop_len + $tail_len ];
+				last;
+			}
+			push @filtered, $m;
+		}
+
+		# further operations are on chopped string
+		$str = $chopped . $tail;
+		@matches = @filtered;
+	}
+
+	return esc_html_hl_regions($str, 'match', @matches, %opts);
+}
+
 ## ----------------------------------------------------------------------
 ## functions returning short strings
 
@@ -5355,10 +5433,16 @@ sub git_project_list_rows {
 			print "</td>\n";
 		}
 		print "<td>" . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary"),
-		                        -class => "list"}, esc_html($pr->{'path'})) . "</td>\n" .
+		                        -class => "list"},
+		                       esc_html_match_hl($pr->{'path'}, $search_regexp)) .
+		      "</td>\n" .
 		      "<td>" . $cgi->a({-href => href(project=>$pr->{'path'}, action=>"summary"),
 		                        -class => "list", -title => $pr->{'descr_long'}},
-		                        esc_html($pr->{'descr'})) . "</td>\n" .
+		                        $search_regexp
+		                        ? esc_html_match_hl_chopped($pr->{'descr_long'},
+		                                                    $pr->{'descr'}, $search_regexp)
+		                        : esc_html($pr->{'descr'})) .
+		      "</td>\n" .
 		      "<td><i>" . chop_and_escape_str($pr->{'owner'}, 15) . "</i></td>\n";
 		print "<td class=\"". age_class($pr->{'age'}) . "\">" .
 		      (defined $pr->{'age_string'} ? $pr->{'age_string'} : "No commits") . "</td>\n" .
@@ -5981,15 +6065,7 @@ sub git_search_files {
 			print "<div class=\"binary\">Binary file</div>\n";
 		} else {
 			$ltext = untabify($ltext);
-			if ($ltext =~ m/^(.*)($search_regexp)(.*)$/i) {
-				$ltext = esc_html($1, -nbsp=>1);
-				$ltext .= '<span class="match">';
-				$ltext .= esc_html($2, -nbsp=>1);
-				$ltext .= '</span>';
-				$ltext .= esc_html($3, -nbsp=>1);
-			} else {
-				$ltext = esc_html($ltext, -nbsp=>1);
-			}
+			$ltext = esc_html_match_hl($ltext, qr/$search_regexp/i, -nbsp=>1);
 			print "<div class=\"pre\">" .
 				$cgi->a({-href => $file_href.'#l'.$lno,
 				        -class => "linenr"}, sprintf('%4i', $lno)) .
