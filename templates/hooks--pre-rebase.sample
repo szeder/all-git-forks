@@ -25,6 +25,20 @@ else
 	exit 0 ;# we do not interrupt rebasing detached HEAD
 fi
 
+# Are we rewriting upstreamed commits?
+upstream=`git rev-parse --verify "${topic#refs/heads/}@{u}" 2>/dev/null`
+if test -n "$upstream"
+then
+	# See if any of the commits to be rebased are reachable from upstream.
+	basecommit=`git rev-parse --verify "$basebranch"`
+	mergebase=`git merge-base "$basecommit" "$upstream"`
+	if test "$basecommit" != "$upstream" -a "$basecommit" = "$mergebase"
+	then
+		echo >&2 "Cannot rebase commits that are in $topic's upstream"
+		exit 1
+	fi
+fi
+
 case "$topic" in
 refs/heads/??/*)
 	;;
