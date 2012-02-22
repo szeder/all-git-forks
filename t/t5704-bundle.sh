@@ -59,4 +59,21 @@ test_expect_success 'empty bundle file is rejected' '
 
 '
 
+# If "ridiculous" is at least 1004 chars, this traps a bug in old
+# versions where the resulting 1025-char line (with --pretty=oneline)
+# was longer than a 1024-char buffer
+test_expect_success 'ridiculously long subject in boundary' '
+
+	: > file4 &&
+	test_tick &&
+	git add file4 &&
+	printf "abcdefghijkl %s\n" $(seq 1 100) | git commit -F - &&
+	test_commit fifth &&
+	git bundle create long-subject-bundle.bdl HEAD^..HEAD &&
+	git fetch long-subject-bundle.bdl &&
+	sed -n "/^-/{p;q}" long-subject-bundle.bdl > boundary &&
+	grep "^-$_x40 " boundary
+
+'
+
 test_done
