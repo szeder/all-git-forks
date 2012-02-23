@@ -104,8 +104,9 @@ EOF
 
 	STRATEGY=$1
 
+	cmd='git diff --no-index'
 	test_expect_success "$STRATEGY diff" '
-		test_must_fail git diff --no-index "--$STRATEGY" file1 file2 > output &&
+		test_must_fail $cmd ${STRATEGY:+"--$STRATEGY"} file1 file2 >output &&
 		test_cmp expect output
 	'
 
@@ -157,9 +158,50 @@ EOF
 
 	STRATEGY=$1
 
+	cmd='git diff --no-index'
 	test_expect_success 'completely different files' '
-		test_must_fail git diff --no-index "--$STRATEGY" uniq1 uniq2 > output &&
+
+		test_must_fail $cmd  ${STRATEGY:+"--$STRATEGY"} uniq1 uniq2 >output &&
 		test_cmp expect output
 	'
 }
 
+test_diff_ignore () {
+
+	STRATEGY=$1
+
+	echo "A quick brown fox" >test.0
+	echo "A  quick brown fox" >test-b
+	echo " A quick brownfox" >test-w
+	echo "A quick brown fox " >test--ignore-space-at-eol
+	echo "A Quick Brown Fox" >test--ignore-case
+	echo "A Quick Brown FoX" >test-i
+	echo "A Quick  Brown Fox" >test--ignore-case-b
+	echo "A quick brown fox jumps" >test
+	cases="-b -w --ignore-space-at-eol --ignore-case -i"
+
+	if test -z "$STRATEGY"
+	then
+		label=baseline
+	else
+		label=$STRATEGY
+	fi
+
+	cmd="git diff --no-index ${STRATEGY:+--$STRATEGY}"
+
+	test_expect_success "$label diff" '
+		test_must_fail $cmd test.0 test
+	'
+	for case in $cases
+	do
+		test_expect_success "$label diff $case" '
+			$cmd $case test.0 test$case &&
+			test_must_fail $cmd test.0 test
+		'
+	done
+
+	test_expect_success "$label diff -b --ignore-case" '
+		$cmd -b --ignore-case test.0 test--ignore-case-b
+	'
+
+}
