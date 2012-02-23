@@ -1,3 +1,17 @@
+git (1:1.7.9.2-0.1) unstable; urgency=low
+
+  * new upstream point release.
+    * commit: skip intent-to-add entries instead of erroring out.
+    * grep -I: let diff attribute override binary file detection.
+    * clone, daemon, http-backend, transport: look for .../foo before
+      .../foo.git in response to requests for .../foo.
+    * rev-list: enable or disable --verify-objects behavior based on
+      the command line instead of uninitialized memory.
+    * checkout -b: allow switching out of an unborn branch (closes:
+      #506480).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 22 Feb 2012 22:52:20 -0600
+
 git (1:1.7.9.1-1) unstable; urgency=low
 
   * new upstream point release.

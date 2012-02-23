@@ -1,3 +1,86 @@
+Version v1.7.9.2; changes since v1.7.9.1:
+-----------------------------------------
+
+Christian Hammerl (1):
+      completion: Allow dash as the first character for __git_ps1
+
+Clemens Buchacher (4):
+      git rev-list: fix invalid typecast
+      push/fetch/clone --no-progress suppresses progress output
+      t5541: check error message against the real port number used
+      do not override receive-pack errors
+
+Felipe Contreras (3):
+      completion: work around zsh option propagation bug
+      completion: use ls -1 instead of rolling a loop to do that ourselves
+      completion: simplify __gitcomp and __gitcomp_nl implementations
+
+Jakub Narebski (2):
+      gitweb: Allow UTF-8 encoded CGI query parameters and path_info
+      gitweb: Fix 'grep' search for multiple matches in file
+
+Jeff King (12):
+      grep: make locking flag global
+      grep: move sha1-reading mutex into low-level code
+      grep: refactor the concept of "grep source" into an object
+      convert git-grep to use grep_source interface
+      grep: drop grep_buffer's "name" parameter
+      grep: cache userdiff_driver in grep_source
+      grep: respect diff attributes for binary-ness
+      grep: load file data after checking binary-ness
+      grep: pre-load userdiff drivers when threaded
+      standardize and improve lookup rules for external local repos
+      prompt: clean up strbuf usage
+      prompt: fall back to terminal if askpass fails
+
+Jiang Xin (2):
+      i18n: git-commit whence_s "merge/cherry-pick" message
+      i18n: format_tracking_info "Your branch is behind" message
+
+Johannes Sixt (1):
+      Makefile: fix syntax for older make
+
+Junio C Hamano (8):
+      mailmap: always return a plain mail address from map_user()
+      git checkout -b: allow switching out of an unborn branch
+      commit: ignore intent-to-add entries instead of refusing
+      diff --stat: show bars of same length for paths with same amount of changes
+      Update draft release notes to 1.7.9.2
+      Update draft release notes to 1.7.9.2
+      Update draft release notes to 1.7.9.2
+      Git 1.7.9.2
+
+Matthieu Moy (1):
+      fsck: give accurate error message on empty loose object files
+
+Namhyung Kim (2):
+      ctype.c only wants git-compat-util.h
+      ctype: implement islower/isupper macro
+
+Nguyễn Thái Ngọc Duy (3):
+      sha1_file.c: move the core logic of find_pack_entry() into fill_pack_entry()
+      find_pack_entry(): do not keep packed_git pointer locally
+      Use correct grammar in diffstat summary line
+
+Philip Jägenstedt (2):
+      completion: remove stale "to submit patches" documentation
+      completion: use tabs for indentation
+
+Ralf Thielow (2):
+      completion: --edit-description option for git-branch
+      completion: --list option for git-branch
+
+Theodore Ts'o (1):
+      Fix build problems related to profile-directed optimization
+
+Zbigniew Jędrzejewski-Szmek (2):
+      pager: find out the terminal width before spawning the pager
+      man: rearrange git synopsis to fit in 80 lines
+
+Дилян Палаузов (1):
+      Makefile: introduce CHARSET_LIB to link with -lcharset
+
+
 Version v1.7.9.1; changes since v1.7.9:
 ---------------------------------------
 
