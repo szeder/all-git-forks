@@ -24,10 +24,18 @@ UI, Workflows & Features
    lines are taken from the postimage, in order to make it easier to
    view the output.
 
+ * "diff-highlight" filter (in contrib/) was updated to produce more
+   aesthetically pleasing output.
+
+ * "git tag --list" can be given "--points-at <object>" to limit its
+   output to those that point at the given object.
+
  * "git merge" in an interactive session learned to spawn the editor
    by default to let the user edit the auto-generated merge message,
    to encourage people to explain their merges better. Legacy scripts
    can export MERGE_AUTOEDIT=no to retain the historical behaviour.
+   Both "git merge" and "git pull" can be given --no-edit from the
+   command line to accept the auto-generated merge message.
 
  * "gitweb" allows intermediate entries in the directory hierarchy
    that leads to a projects to be clicked, which in turn shows the
@@ -39,13 +47,16 @@ Performance
    to parse_object() have been eliminated, to help performance in
    repositories with excessive number of refs.
 
-Internal Implementation
+Internal Implementation (please report possible regressions)
 
  * Recursive call chains in "git index-pack" to deal with long delta
    chains have been flattened, to reduce the stack footprint.
 
- * Use of add_extra_ref() API is slowly getting removed, to make it
-   possible to cleanly restructure the overall refs API.
+ * Use of add_extra_ref() API is now gone, to make it possible to
+   cleanly restructure the overall refs API.
+
+ * The command line parser of "git pack-objects" now uses parse-options
+   API.
 
  * The test suite supports the new "test_pause" helper function.
 
@@ -62,30 +73,13 @@ Unless otherwise noted, all the fixes since v1.7.9 in the maintenance
 releases are contained in this release (see release notes to them for
 details).
 
- * "add -e" learned not to show a diff for an otherwise unmodified
-   submodule that only has uncommitted local changes in the patch
-   prepared by for the user to edit.
-   (merge 701825d js/add-e-submodule-fix later to maint).
-
- * "rebase" and "commit --amend" failed to work on commits with ancient
-   timestamps near year 1970.
-   (merge 2c733fb jc/parse-date-raw later to maint).
-
- * "git merge --ff-only $tag" failed because it cannot record the
-   required mergetag without creating a merge, but this is so common
-   operation for branch that is used _only_ to follow the upstream, so
-   it is allowed to fast-forward without recording the mergetag.
-   (merge b5c9f1c jc/merge-ff-only-stronger-than-signed-merge later to maint).
-
- * Typo in "git branch --edit-description my-tpoic" was not diagnosed.
-   (merge c2d17ba jc/branch-desc-typoavoidance later to maint).
-
- * rpmbuild noticed an unpackaged but installed *.mo file and failed.
-   (merge 3a9f58c jn/rpm-spec later to maint).
+ * "gitweb" used to drop warnings in the log file when "heads" view is
+   accessed in a repository whose HEAD does not point at a valid
+   branch.
 
 ---
 exec >/var/tmp/1
-O=v1.7.9-208-gee8d52f
+O=v1.7.9.1-289-g5609586
 echo O=$(git describe)
 git log --first-parent --oneline ^maint $O..
 echo
