@@ -531,7 +531,6 @@ static struct stream_vtbl pack_chunked_vtbl = {
 static open_method_decl(pack_chunked)
 {
 	struct pack_window *window;
-	enum object_type in_pack_type;
 	struct packed_git *pack = oi->u.packed.pack;
 	off_t offset = oi->u.packed.offset;
 	const unsigned char *in, *ptr;
@@ -539,7 +538,7 @@ static open_method_decl(pack_chunked)
 	int cnt;
 
 	window = NULL;
-	in_pack_type = unpack_object_header(pack, &window, &offset, &st->size);
+	unpack_object_header(pack, &window, &offset, &st->size);
 	in = use_pack(pack, &window, offset, &avail);
 	ptr = in;
 	cnt = decode_in_pack_varint(&ptr);
