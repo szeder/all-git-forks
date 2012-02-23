@@ -66,25 +66,19 @@ line and try again (e.g. '$example').
 See git-${cmd}(1) for details."
 	else
 		echo "You asked me to $cmd without telling me which branch you
-want to $op_type $op_prep, and 'branch.${branch_name#refs/heads/}.merge' in
-your configuration file does not tell me, either. Please
-specify which branch you want to use on the command line and
-try again (e.g. '$example').
-See git-${cmd}(1) for details.
+want to $op_type $op_prep, and the current branch doesn't have
+tracking information. Please specify which branch you want to
+use on the command line and try again. See git-${cmd}(1) for details.
+
+    $example
 
 If you often $op_type $op_prep the same branch, you may want to
-use something like the following in your configuration file:
-    [branch \"${branch_name#refs/heads/}\"]
-    remote = <nickname>
-    merge = <remote-ref>"
-		test rebase = "$op_type" &&
-		echo "    rebase = true"
-		echo "
-    [remote \"<nickname>\"]
-    url = <url>
-    fetch = <refspec>
+run something like:
 
-See git-config(1) for details."
+    git remote add <remote> <url>
+    git branch --set-upstream ${branch_name#refs/heads/} <remote>/<branch>"
+		test rebase = "$op_type" &&
+		echo "    git config branch.${branch_name#refs/heads/}.rebase true"
 	fi
 	exit 1
 }
