@@ -28,19 +28,19 @@ EOF
 
 while read cmd args
 do
-	test_expect_failure "$cmd graph width defaults to 80 columns" '
+	test_expect_success "$cmd graph width defaults to 80 columns" '
 		git $cmd $args >output &&
 		grep " | " output >actual &&
 		test_cmp expect80 actual
 	'
 
-	test_expect_failure "$cmd --stat=width with long name" '
+	test_expect_success "$cmd --stat=width with long name" '
 		git $cmd $args --stat=40 >output &&
 		grep " | " output >actual &&
 		test_cmp expect40 actual
 	'
 
-	test_expect_failure "$cmd --stat-width=width with long name" '
+	test_expect_success "$cmd --stat-width=width with long name" '
 		git $cmd $args --stat-width=40 >output &&
 		grep " | " output >actual &&
 		test_cmp expect40 actual
@@ -87,7 +87,7 @@ EOF
 
 while read verb expect cmd args
 do
-	test_expect_success "$cmd $verb COLUMNS (big change)" '
+	test_expect_success "$cmd $verb too many COLUMNS (big change)" '
 		COLUMNS=200 git $cmd $args >output
 		grep " | " output >actual &&
 		test_cmp "$expect" actual
@@ -130,7 +130,7 @@ test_expect_success 'preparation for long filename tests' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++
 EOF
 
 while read cmd args
@@ -151,7 +151,7 @@ cat >expect80 <<'EOF'
  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++++++++++
 EOF
 cat >expect200 <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 EOF
 while read verb expect cmd args
 do
@@ -178,7 +178,7 @@ test_expect_success 'merge --stat respects COLUMNS (big change)' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++++++++++++++++++++++++++++++
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++++++++++++++++++++++++++++++++++++
 EOF
 test_expect_success 'merge --stat respects COLUMNS (long filename)' '
 	COLUMNS=100 git merge --stat --no-ff master >output &&

@@ -906,18 +906,18 @@ test_expect_success 'preparation' "
 "
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
 EOF
-test_expect_success 'a short graph bar does not extend to the full width' '
+test_expect_success 'small change with long name gives more space to the name' '
 	git format-patch --stat --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaa |    1 +
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaa |    1 +
 EOF
-test_expect_success 'a long name is chopped to leave room to the right of a short bar' '
+test_expect_success 'a long name is given more room when the bar is short' '
 	git format-patch --stat=40 --stdout -1 >output &&
 	grep " | " output >actual &&
 	test_cmp expect actual
@@ -988,9 +988,9 @@ test_expect_success 'format patch --stat-width=width with big change' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++
 EOF
-test_expect_success 'format patch with big change and long name favors name part' '
+test_expect_success 'partition between long name and big change is more balanced' '
 	cp a aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
 	git add aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa &&
 	git commit -m message &&
