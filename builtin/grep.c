@@ -764,7 +764,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	struct string_list path_list = STRING_LIST_INIT_NODUP;
 	int i;
 	int dummy;
-	int use_index = 1;
+	int no_index = 0;
 	enum {
 		pattern_type_unspecified = 0,
 		pattern_type_bre,
@@ -777,8 +777,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT_BOOLEAN(0, "cached", &cached,
 			"search in index instead of in the work tree"),
-		OPT_BOOLEAN(0, "index", &use_index,
-			"--no-index finds in contents not managed by git"),
+		OPT_BOOL(0, "no-index", &no_index,
+			 "finds in contents not managed by git"),
 		OPT_GROUP(""),
 		OPT_BOOLEAN('v', "invert-match", &opt.invert,
 			"show non-matching lines"),
@@ -939,7 +939,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		break; /* nothing */
 	}
 
-	if (use_index && !startup_info->have_repository)
+	if (!no_index && !startup_info->have_repository)
 		/* die the same way as if we did it at the beginning */
 		setup_git_directory();
 
@@ -1049,7 +1049,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		setup_pager();
 
 
-	if (!use_index) {
+	if (no_index) {
 		if (cached)
 			die(_("--cached cannot be used with --no-index."));
 		if (list.nr)
