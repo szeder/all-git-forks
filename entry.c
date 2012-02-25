@@ -276,6 +276,8 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 
 int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *topath)
 {
+	printf("checkout_entry(ce=%s '%s', checkout=%*s, topath='%s')\n", sha1_to_hex(ce->sha1), ce->name, state->base_dir_len, state->base_dir, topath);
+	system("find -not -regex '^./.git.*$'");
 	static char path[PATH_MAX + 1];
 	struct stat st;
 	int len = state->base_dir_len;
@@ -286,8 +288,11 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 	memcpy(path, state->base_dir, len);
 	strcpy(path + len, ce->name);
 	len += ce_namelen(ce);
+	printf("path='%s'\n", path);
 
+	printf("before check_path(path)\n");
 	if (!check_path(path, len, &st, state->base_dir_len)) {
+		printf("!check_path(path)\n");
 		unsigned changed = ce_match_stat(ce, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE);
 		if (!changed)
 			return 0;
@@ -309,11 +314,30 @@ int checkout_entry(struct cache_entry *ce, const struct checkout *state, char *t
 				return 0;
 			if (!state->force)
 				return error("%s is a directory", path);
+			system("find -not -regex '^./.git.*$'");
+			printf("remove_subtree(path)\n");
 			remove_subtree(path);
-		} else if (unlink(path))
-			return error("unable to unlink old '%s' (%s)", path, strerror(errno));
-	} else if (state->not_new)
+			system("find -not -regex '^./.git.*$'");
+		} else {
+			system("find -not -regex '^./.git.*$'");
+			printf("unlink(path)\n");
+			if (unlink(path))
+				return error("unable to unlink old '%s' (%s)", path, strerror(errno));
+			system("find -not -regex '^./.git.*$'");
+		}
+	} else if (state->not_new) {
+		printf("!!check_path(path) && state->not_new\n");
 		return 0;
+	} else {
+		printf("!!check_path(path) && !state->not_new\n");
+	}
+	system("find -not -regex '^./.git.*$'");
+	printf("create_directories(path)\n");
 	create_directories(path, len, state);
-	return write_entry(ce, path, state, 0);
+	system("find -not -regex '^./.git.*$'");
+	printf("write_entry(ce, path)\n");
+	int rtn = write_entry(ce, path, state, 0);
+	printf("returned %d\n", rtn);
+	system("find -not -regex '^./.git.*$'");
+	return rtn;
 }

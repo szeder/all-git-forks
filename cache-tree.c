@@ -10,7 +10,7 @@
 struct cache_tree *cache_tree(void)
 {
 	struct cache_tree *it = xcalloc(1, sizeof(struct cache_tree));
-	it->entry_count = -1;
+	it->entry_count = -1; //XXX a negative entry_count means an invalid path (eg. an empty folder)
 	return it;
 }
 
@@ -69,10 +69,14 @@ static struct cache_tree_sub *find_subtree(struct cache_tree *it,
 {
 	struct cache_tree_sub *down;
 	int pos = subtree_pos(it, path, pathlen);
+	printf("POS = %d\n", pos);
 	if (0 <= pos)
 		return it->down[pos];
 	if (!create)
+	{
+		printf("cache_tree_sub: !create → return NULL\n");
 		return NULL;
+	}
 
 	pos = -pos-1;
 	if (it->subtree_alloc <= it->subtree_nr) {
@@ -400,7 +404,7 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 	strbuf_add(buffer, path, pathlen);
 	strbuf_addf(buffer, "%c%d %d\n", 0, it->entry_count, it->subtree_nr);
 
-#if DEBUG
+//#if DEBUG
 	if (0 <= it->entry_count)
 		fprintf(stderr, "cache-tree <%.*s> (%d ent, %d subtree) %s\n",
 			pathlen, path, it->entry_count, it->subtree_nr,
@@ -408,11 +412,11 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 	else
 		fprintf(stderr, "cache-tree <%.*s> (%d subtree) invalid\n",
 			pathlen, path, it->subtree_nr);
-#endif
+//#endif
 
-	if (0 <= it->entry_count) {
+	//if (0 <= it->entry_count) {
 		strbuf_add(buffer, it->sha1, 20);
-	}
+	//}
 	for (i = 0; i < it->subtree_nr; i++) {
 		struct cache_tree_sub *down = it->down[i];
 		if (i) {
@@ -522,8 +526,10 @@ struct cache_tree *cache_tree_read(const char *buffer, unsigned long size)
 
 static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *path)
 {
-	if (!it)
+	if (!it) {
+		printf("cache_tree_find: FIRST POSSIBILITY FOR NULL\n");
 		return NULL;
+	}
 	while (*path) {
 		const char *slash;
 		struct cache_tree_sub *sub;
@@ -535,8 +541,10 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 		 * subtree to look for.
 		 */
 		sub = find_subtree(it, path, slash - path, 0);
-		if (!sub)
+		if (!sub) {
+			printf("cache_tree_find: SECOND POSSIBILITY FOR NULL\n");
 			return NULL;
+		}
 		it = sub->cache_tree;
 		if (slash)
 			while (*slash && *slash == '/')
