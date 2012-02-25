@@ -14,7 +14,7 @@ static int read_one_entry_opt(const unsigned char *sha1, const char *base, int b
 	unsigned int size;
 	struct cache_entry *ce;
 
-	if (S_ISDIR(mode))
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode))
 		return READ_TREE_RECURSIVE;
 
 	len = strlen(pathname);
@@ -79,7 +79,7 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 			return -1;
 		}
 
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode))
 			hashcpy(sha1, entry.sha1);
 		else if (S_ISGITLINK(entry.mode)) {
 			struct commit *commit;

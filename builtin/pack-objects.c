@@ -1036,7 +1036,7 @@ static void add_pbase_object(struct tree_desc *tree,
 					 fullname, 1);
 			return;
 		}
-		if (S_ISDIR(entry.mode)) {
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)) {
 			struct tree_desc sub;
 			struct pbase_tree_cache *tree;
 			const char *down = name+cmplen+1;

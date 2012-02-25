@@ -129,14 +129,14 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 		convert = ATTR_TRUE(check[1].value);
 	}
 
-	if (S_ISDIR(mode) || S_ISGITLINK(mode)) {
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode) || S_ISGITLINK(mode)) {
 		strbuf_addch(&path, '/');
 		if (args->verbose)
 			fprintf(stderr, "%.*s\n", (int)path.len, path.buf);
 		err = write_entry(args, sha1, path.buf, path.len, mode, NULL, 0);
 		if (err)
 			return err;
-		return (S_ISDIR(mode) ? READ_TREE_RECURSIVE : 0);
+		return ((S_ISDIR(mode) || S_ISPERMDIR(mode)) ? READ_TREE_RECURSIVE : 0);
 	}
 
 	buffer = sha1_file_to_archive(path_without_prefix, sha1, mode,
@@ -298,7 +298,7 @@ static void parse_treeish_arg(const char **argv,
 
 		err = get_tree_entry(tree->object.sha1, prefix,
 				     tree_sha1, &mode);
-		if (err || !S_ISDIR(mode))
+		if (err || !(S_ISDIR(mode) || S_ISPERMDIR(mode)))
 			die("current working directory is untracked");
 
 		tree = parse_tree_indirect(tree_sha1);

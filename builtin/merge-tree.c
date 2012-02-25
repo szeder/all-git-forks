@@ -207,7 +207,7 @@ static int unresolved_directory(const struct traverse_info *info, struct name_en
 		if (!p->mode)
 			p++;
 	}
-	if (!S_ISDIR(p->mode))
+	if (!(S_ISDIR(p->mode) || S_ISPERMDIR(p->mode)))
 		return 0;
 	newbase = traverse_path(info, p);
 	buf0 = fill_tree_descriptor(t+0, n[0].sha1);
@@ -298,14 +298,14 @@ static int threeway_callback(int n, unsigned long mask, unsigned long dirmask, s
 	}
 
 	if (same_entry(entry+0, entry+1)) {
-		if (entry[2].sha1 && !S_ISDIR(entry[2].mode)) {
+		if (entry[2].sha1 && !(S_ISDIR(entry[2].mode) || S_ISPERMDIR(entry[2].mode))) {
 			resolve(info, entry+1, entry+2);
 			return mask;
 		}
 	}
 
 	if (same_entry(entry+0, entry+2)) {
-		if (entry[1].sha1 && !S_ISDIR(entry[1].mode)) {
+		if (entry[1].sha1 && !(S_ISDIR(entry[1].mode) || S_ISPERMDIR(entry[1].mode))) {
 			resolve(info, NULL, entry+1);
 			return mask;
 		}

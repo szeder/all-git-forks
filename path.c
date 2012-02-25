@@ -385,7 +385,7 @@ int set_shared_perm(const char *path, int mode)
 	else
 		mode |= tweak;
 
-	if (S_ISDIR(mode)) {
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode)) {
 		/* Copy read bits to execute bits */
 		mode |= (shared & 0444) >> 2;
 		mode |= FORCE_DIR_SET_GID;

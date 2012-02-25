@@ -77,7 +77,7 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 		 *
 		 */
 		type = commit_type;
-	} else if (S_ISDIR(mode)) {
+	} else if (S_ISDIR(mode) || S_ISPERMDIR(mode)) {
 		if (show_recursive(base, baselen, pathname)) {
 			retval = READ_TREE_RECURSIVE;
 			if (!(ls_options & LS_SHOW_TREES))

@@ -447,7 +447,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			hashcpy(l->key_sha1, object_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
 			if (len < 20) {
-				if (!S_ISDIR(entry.mode) || path_len != 2)
+				if (!(S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)) || path_len != 2)
 					goto handle_non_note; /* not subtree */
 				l->key_sha1[19] = (unsigned char) len;
 				type = PTR_TYPE_SUBTREE;

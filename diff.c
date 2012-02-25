@@ -2509,7 +2509,7 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 	int err = 0;
 	if (!DIFF_FILE_VALID(s))
 		die("internal error: asking to populate invalid file.");
-	if (S_ISDIR(s->mode))
+	if (S_ISDIR(s->mode) || S_ISPERMDIR(s->mode))
 		return -1;
 
 	if (s->data)
@@ -3774,8 +3774,8 @@ static void diff_flush_patch(struct diff_filepair *p, struct diff_options *o)
 	if (diff_unmodified_pair(p))
 		return;
 
-	if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
-	    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
+	if ((DIFF_FILE_VALID(p->one) && (S_ISDIR(p->one->mode) || S_ISPERMDIR(p->one->mode))) ||
+	    (DIFF_FILE_VALID(p->two) && (S_ISDIR(p->two->mode) || S_ISPERMDIR(p->two->mode))))
 		return; /* no tree diffs in patch format */
 
 	run_diff(p, o);
@@ -3787,8 +3787,8 @@ static void diff_flush_stat(struct diff_filepair *p, struct diff_options *o,
 	if (diff_unmodified_pair(p))
 		return;
 
-	if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
-	    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
+	if ((DIFF_FILE_VALID(p->one) && (S_ISDIR(p->one->mode) || S_ISPERMDIR(p->one->mode))) ||
+	    (DIFF_FILE_VALID(p->two) && (S_ISDIR(p->two->mode) || S_ISPERMDIR(p->two->mode))))
 		return; /* no useful stat for tree diffs */
 
 	run_diffstat(p, o, diffstat);
@@ -3800,8 +3800,8 @@ static void diff_flush_checkdiff(struct diff_filepair *p,
 	if (diff_unmodified_pair(p))
 		return;
 
-	if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
-	    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
+	if ((DIFF_FILE_VALID(p->one) && (S_ISDIR(p->one->mode) || S_ISPERMDIR(p->one->mode))) ||
+	    (DIFF_FILE_VALID(p->two) && (S_ISDIR(p->two->mode) || S_ISPERMDIR(p->two->mode))))
 		return; /* nothing to check in tree diffs */
 
 	run_checkdiff(p, o);
@@ -4073,8 +4073,8 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 			continue;
 		if (diff_unmodified_pair(p))
 			continue;
-		if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
-		    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
+		if ((DIFF_FILE_VALID(p->one) && (S_ISDIR(p->one->mode) || S_ISPERMDIR(p->one->mode))) ||
+		    (DIFF_FILE_VALID(p->two) && (S_ISDIR(p->two->mode) || S_ISPERMDIR(p->two->mode))))
 			continue;
 		if (DIFF_PAIR_UNMERGED(p))
 			continue;

@@ -65,7 +65,7 @@ static int update_some(const unsigned char *sha1, const char *base, int baselen,
 	int len;
 	struct cache_entry *ce;
 
-	if (S_ISDIR(mode))
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode))
 		return READ_TREE_RECURSIVE;
 
 	len = baselen + strlen(pathname);

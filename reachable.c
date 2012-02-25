@@ -73,7 +73,7 @@ static void process_tree(struct tree *tree,
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
 	while (tree_entry(&desc, &entry)) {
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode))
 			process_tree(lookup_tree(entry.sha1), p, &me, entry.path, cp);
 		else if (S_ISGITLINK(entry.mode))
 			process_gitlink(entry.sha1, p, &me, entry.path);

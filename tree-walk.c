@@ -394,7 +394,7 @@ int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
 			if (!entry[i].path)
 				continue;
 			mask |= 1ul << i;
-			if (S_ISDIR(entry[i].mode))
+			if (S_ISDIR(entry[i].mode) || S_ISPERMDIR(entry[i].mode))
 				dirmask |= 1ul << i;
 			e = &entry[i];
 		}
@@ -449,7 +449,7 @@ static int find_tree_entry(struct tree_desc *t, const char *name, unsigned char 
 		}
 		if (name[entrylen] != '/')
 			continue;
-		if (!S_ISDIR(*mode))
+		if (!(S_ISDIR(*mode) || S_ISPERMDIR(*mode)))
 			break;
 		if (++entrylen == namelen) {
 			hashcpy(result, sha1);
@@ -531,7 +531,7 @@ static int match_entry(const struct name_entry *entry, int pathlen,
 	if (matchlen > pathlen) {
 		if (match[pathlen] != '/')
 			return 0;
-		if (!S_ISDIR(entry->mode))
+		if (!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
 			return 0;
 	}
 
@@ -591,7 +591,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 		if (!ps->recursive || ps->max_depth == -1)
 			return all_entries_interesting;
 		return within_depth(base->buf + base_offset, baselen,
-				    !!S_ISDIR(entry->mode),
+				    !!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)),
 				    ps->max_depth) ?
 			entry_interesting : entry_not_interesting;
 	}
@@ -614,7 +614,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 
 			return within_depth(base_str + matchlen + 1,
 					    baselen - matchlen - 1,
-					    !!S_ISDIR(entry->mode),
+					    !!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)),
 					    ps->max_depth) ?
 				entry_interesting : entry_not_interesting;
 		}
@@ -634,7 +634,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 				 * Match all directories. We'll try to
 				 * match files later on.
 				 */
-				if (ps->recursive && S_ISDIR(entry->mode))
+				if (ps->recursive && (S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
 					return entry_interesting;
 			}
 
@@ -665,7 +665,7 @@ match_wildcards:
 		 * in future, see
 		 * http://thread.gmane.org/gmane.comp.version-control.git/163757/focus=163840
 		 */
-		if (ps->recursive && S_ISDIR(entry->mode))
+		if (ps->recursive && (S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
 			return entry_interesting;
 	}
 	return never_interesting; /* No matches */

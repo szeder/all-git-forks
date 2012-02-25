@@ -39,14 +39,14 @@ static int compare_tree_entry(struct tree_desc *t1, struct tree_desc *t2,
 	 * If the filemode has changed to/from a directory from/to a regular
 	 * file, we need to consider it a remove and an add.
 	 */
-	if (S_ISDIR(mode1) != S_ISDIR(mode2)) {
+	if ((S_ISDIR(mode1) || S_ISPERMDIR(mode1)) != (S_ISDIR(mode2) || S_ISPERMDIR(mode2))) {
 		show_entry(opt, "-", t1, base);
 		show_entry(opt, "+", t2, base);
 		return 0;
 	}
 
 	strbuf_add(base, path1, pathlen1);
-	if (DIFF_OPT_TST(opt, RECURSIVE) && S_ISDIR(mode1)) {
+	if (DIFF_OPT_TST(opt, RECURSIVE) && (S_ISDIR(mode1) || S_ISPERMDIR(mode1))) {
 		if (DIFF_OPT_TST(opt, TREE_IN_RECURSIVE)) {
 			opt->change(opt, mode1, mode2,
 				    sha1, sha2, base->buf, 0, 0);
@@ -89,7 +89,7 @@ static void show_entry(struct diff_options *opt, const char *prefix,
 	int old_baselen = base->len;
 
 	strbuf_add(base, path, pathlen);
-	if (DIFF_OPT_TST(opt, RECURSIVE) && S_ISDIR(mode)) {
+	if (DIFF_OPT_TST(opt, RECURSIVE) && (S_ISDIR(mode) || S_ISPERMDIR(mode))) {
 		enum object_type type;
 		struct tree_desc inner;
 		void *tree;

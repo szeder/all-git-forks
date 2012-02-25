@@ -423,7 +423,7 @@ static struct cache_entry *read_one_ent(const char *which,
 			error("%s: not in %s branch.", path, which);
 		return NULL;
 	}
-	if (mode == S_IFDIR) {
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode)) {
 		if (which)
 			error("%s: not a blob in %s branch.", path, which);
 		return NULL;

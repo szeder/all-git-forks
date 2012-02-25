@@ -1433,7 +1433,7 @@ static void store_tree(struct tree_entry *root)
 
 	if (!(root->versions[0].mode & NO_DELTA))
 		le = find_object(root->versions[0].sha1);
-	if (S_ISDIR(root->versions[0].mode) && le && le->pack_id == pack_id) {
+	if ((S_ISDIR(root->versions[0].mode) || S_ISPERMDIR(root->versions[0].mode)) && le && le->pack_id == pack_id) {
 		mktree(t, 0, &old_tree);
 		lo.data = old_tree;
 		lo.offset = le->idx.offset;
@@ -1464,7 +1464,7 @@ static void tree_content_replace(
 	const uint16_t mode,
 	struct tree_content *newtree)
 {
-	if (!S_ISDIR(mode))
+	if (!(S_ISDIR(mode) || S_ISPERMDIR(mode)))
 		die("Root cannot be a non-directory");
 	hashclr(root->versions[0].sha1);
 	hashcpy(root->versions[1].sha1, sha1);
@@ -1492,7 +1492,7 @@ static int tree_content_set(
 		n = strlen(p);
 	if (!n)
 		die("Empty path component found in input");
-	if (!slash1 && !S_ISDIR(mode) && subtree)
+	if (!slash1 && !(S_ISDIR(mode) || S_ISPERMDIR(mode)) && subtree)
 		die("Non-directories cannot have subtrees");
 
 	if (!root->tree)
@@ -1502,7 +1502,7 @@ static int tree_content_set(
 		e = t->entries[i];
 		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
 			if (!slash1) {
-				if (!S_ISDIR(mode)
+				if (!(S_ISDIR(mode) || S_ISPERMDIR(mode))
 						&& e->versions[1].mode == mode
 						&& !hashcmp(e->versions[1].sha1, sha1))
 					return 0;
@@ -1525,13 +1525,13 @@ static int tree_content_set(
 				 * So let's just explicitly disable deltas
 				 * for the subtree.
 				 */
-				if (S_ISDIR(e->versions[0].mode))
+				if (S_ISDIR(e->versions[0].mode) || S_ISPERMDIR(e->versions[0].mode))
 					e->versions[0].mode |= NO_DELTA;
 
 				hashclr(root->versions[1].sha1);
 				return 1;
 			}
-			if (!S_ISDIR(e->versions[1].mode)) {
+			if (!(S_ISDIR(e->versions[1].mode) || S_ISPERMDIR(e->versions[1].mode))) {
 				e->tree = new_tree_content(8);
 				e->versions[1].mode = S_IFDIR;
 			}
@@ -1554,7 +1554,7 @@ static int tree_content_set(
 	t->entries[t->entry_count++] = e;
 	if (slash1) {
 		e->tree = new_tree_content(8);
-		e->versions[1].mode = S_IFDIR;
+		e->versions[1].mode = canon_mode(mode);
 		tree_content_set(e, slash1 + 1, sha1, mode, subtree);
 	} else {
 		e->tree = subtree;
@@ -1587,7 +1587,7 @@ static int tree_content_remove(
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
 		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
-			if (slash1 && !S_ISDIR(e->versions[1].mode))
+			if (slash1 && !(S_ISDIR(e->versions[1].mode) || S_ISPERMDIR(e->versions[1].mode)))
 				/*
 				 * If p names a file in some subdirectory, and a
 				 * file or symlink matching the name of the
@@ -1595,7 +1595,7 @@ static int tree_content_remove(
 				 * exist and need not be deleted.
 				 */
 				return 1;
-			if (!slash1 || !S_ISDIR(e->versions[1].mode))
+			if (!slash1 || !(S_ISDIR(e->versions[1].mode) || S_ISPERMDIR(e->versions[1].mode)))
 				goto del_entry;
 			if (!e->tree)
 				load_tree(e);
@@ -1656,7 +1656,7 @@ static int tree_content_get(
 					leaf->tree = NULL;
 				return 1;
 			}
-			if (!S_ISDIR(e->versions[1].mode))
+			if (!(S_ISDIR(e->versions[1].mode) || S_ISPERMDIR(e->versions[1].mode)))
 				return 0;
 			if (!e->tree)
 				load_tree(e);
@@ -2183,7 +2183,7 @@ static uintmax_t do_change_note_fanout(
 				leaf.versions[1].sha1,
 				leaf.versions[1].mode,
 				leaf.tree);
-		} else if (S_ISDIR(e->versions[1].mode)) {
+		} else if (S_ISDIR(e->versions[1].mode) || S_ISPERMDIR(e->versions[1].mode)) {
 			/* This is a subdir that may contain note entries */
 			if (!e->tree)
 				load_tree(e);
@@ -2225,6 +2225,7 @@ static void file_change_m(struct branch *b)
 	case S_IFREG | 0755:
 	case S_IFLNK:
 	case S_IFDIR:
+	case S_IFPERMDIR:
 	case S_IFGITLINK:
 		/* ok */
 		break;
@@ -2276,7 +2277,7 @@ static void file_change_m(struct branch *b)
 		 * another repository.
 		 */
 	} else if (inline_data) {
-		if (S_ISDIR(mode))
+		if (S_ISDIR(mode) || S_ISPERMDIR(mode))
 			die("Directories cannot be specified 'inline': %s",
 				command_buf.buf);
 		if (p != uq.buf) {
@@ -2286,13 +2287,13 @@ static void file_change_m(struct branch *b)
 		read_next_command();
 		parse_and_store_blob(&last_blob, sha1, 0);
 	} else {
-		enum object_type expected = S_ISDIR(mode) ?
+		enum object_type expected = (S_ISDIR(mode) || S_ISPERMDIR(mode)) ?
 						OBJ_TREE: OBJ_BLOB;
 		enum object_type type = oe ? oe->type :
 					sha1_object_info(sha1, NULL);
 		if (type < 0)
 			die("%s not found: %s",
-					S_ISDIR(mode) ?  "Tree" : "Blob",
+					(S_ISDIR(mode) || S_ISPERMDIR(mode)) ?  "Tree" : "Blob",
 					command_buf.buf);
 		if (type != expected)
 			die("Not a %s (actually a %s): %s",
@@ -2969,7 +2970,7 @@ static void print_ls(int mode, const unsigned char *sha1, const char *path)
 	/* See show_tree(). */
 	const char *type =
 		S_ISGITLINK(mode) ? commit_type :
-		S_ISDIR(mode) ? tree_type :
+		(S_ISDIR(mode) || S_ISPERMDIR(mode)) ? tree_type :
 		blob_type;
 
 	if (!mode) {
@@ -3024,7 +3025,7 @@ static void parse_ls(struct branch *b)
 	 * A directory in preparation would have a sha1 of zero
 	 * until it is saved.  Save, for simplicity.
 	 */
-	if (S_ISDIR(leaf.versions[1].mode))
+	if (S_ISDIR(leaf.versions[1].mode) || S_ISPERMDIR(leaf.versions[1].mode))
 		store_tree(&leaf);
 
 	print_ls(leaf.versions[1].mode, leaf.versions[1].sha1, p);

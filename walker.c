@@ -43,7 +43,7 @@ static int process_tree(struct walker *walker, struct tree *tree)
 		/* submodule commits are not stored in the superproject */
 		if (S_ISGITLINK(entry.mode))
 			continue;
-		if (S_ISDIR(entry.mode)) {
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)) {
 			struct tree *tree = lookup_tree(entry.sha1);
 			if (tree)
 				obj = &tree->object;

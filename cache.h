@@ -74,6 +74,17 @@ unsigned long git_deflate_bound(git_zstream *, unsigned long);
 #define S_ISGITLINK(m)	(((m) & S_IFMT) == S_IFGITLINK)
 
 /*
+ * A "permanent directory" is a directory that must remain
+ * present even if empty.
+ *
+ * The value 0170000 is not normally a valid mode.
+ *
+ * NOTE! See S_IFGITLINK's note.
+ */
+#define S_IFPERMDIR 0170000
+#define S_ISPERMDIR(m)  (((m) & S_IFMT) == S_IFPERMDIR)
+
+/*
  * Intensive research over the course of many years has shown that
  * port 9418 is totally unused by anything else. Or
  *
@@ -266,7 +277,11 @@ static inline unsigned int create_ce_mode(unsigned int mode)
 {
 	if (S_ISLNK(mode))
 		return S_IFLNK;
-	if (S_ISDIR(mode) || S_ISGITLINK(mode))
+	if (S_ISDIR(mode))
+		return S_IFDIR;
+	if (S_ISPERMDIR(mode))
+		return S_IFPERMDIR;
+	if (S_ISGITLINK(mode))
 		return S_IFGITLINK;
 	return S_IFREG | ce_permissions(mode);
 }
@@ -288,7 +303,7 @@ static inline int ce_to_dtype(const struct cache_entry *ce)
 	unsigned ce_mode = ntohl(ce->ce_mode);
 	if (S_ISREG(ce_mode))
 		return DT_REG;
-	else if (S_ISDIR(ce_mode) || S_ISGITLINK(ce_mode))
+	else if (S_ISDIR(ce_mode) || S_ISPERMDIR(ce_mode) || S_ISGITLINK(ce_mode))
 		return DT_DIR;
 	else if (S_ISLNK(ce_mode))
 		return DT_LNK;
@@ -303,6 +318,8 @@ static inline unsigned int canon_mode(unsigned int mode)
 		return S_IFLNK;
 	if (S_ISDIR(mode))
 		return S_IFDIR;
+	if (S_ISPERMDIR(mode))
+		return S_IFPERMDIR;
 	return S_IFGITLINK;
 }
 
@@ -390,6 +407,7 @@ enum object_type {
 static inline enum object_type object_type(unsigned int mode)
 {
 	return S_ISDIR(mode) ? OBJ_TREE :
+		S_ISPERMDIR(mode) ? OBJ_TREE :
 		S_ISGITLINK(mode) ? OBJ_COMMIT :
 		OBJ_BLOB;
 }

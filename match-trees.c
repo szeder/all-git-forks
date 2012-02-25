@@ -6,7 +6,7 @@ static int score_missing(unsigned mode, const char *path)
 {
 	int score;
 
-	if (S_ISDIR(mode))
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode))
 		score = -1000;
 	else if (S_ISLNK(mode))
 		score = -500;
@@ -19,7 +19,7 @@ static int score_differs(unsigned mode1, unsigned mode2, const char *path)
 {
 	int score;
 
-	if (S_ISDIR(mode1) != S_ISDIR(mode2))
+	if ((S_ISDIR(mode1) || S_ISPERMDIR(mode1)) != (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		score = -100;
 	else if (S_ISLNK(mode1) != S_ISLNK(mode2))
 		score = -50;
@@ -33,12 +33,12 @@ static int score_matches(unsigned mode1, unsigned mode2, const char *path)
 	int score;
 
 	/* Heh, we found SHA-1 collisions between different kind of objects */
-	if (S_ISDIR(mode1) != S_ISDIR(mode2))
+	if ((S_ISDIR(mode1) || S_ISPERMDIR(mode1)) != (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		score = -100;
 	else if (S_ISLNK(mode1) != S_ISLNK(mode2))
 		score = -50;
 
-	else if (S_ISDIR(mode1))
+	else if (S_ISDIR(mode1) || S_ISPERMDIR(mode1))
 		score = 1000;
 	else if (S_ISLNK(mode1))
 		score = 500;
@@ -154,7 +154,7 @@ static void match_trees(const unsigned char *hash1,
 		int score;
 
 		elem = tree_entry_extract(&one, &path, &mode);
-		if (!S_ISDIR(mode))
+		if (!(S_ISDIR(mode) || S_ISPERMDIR(mode)))
 			goto next;
 		score = score_trees(elem, hash2);
 		if (*best_score < score) {
@@ -222,7 +222,7 @@ static int splice_tree(const unsigned char *hash1,
 		sha1 = tree_entry_extract(&desc, &name, &mode);
 		if (strlen(name) == toplen &&
 		    !memcmp(name, prefix, toplen)) {
-			if (!S_ISDIR(mode))
+			if (!(S_ISDIR(mode) || S_ISPERMDIR(mode)))
 				die("entry %s in tree %s is not a tree",
 				    name, sha1_to_hex(hash1));
 			rewrite_here = (unsigned char *) sha1;
@@ -325,12 +325,12 @@ void shift_tree_by(const unsigned char *hash1,
 
 	/* Can hash2 be a tree at shift_prefix in tree hash1? */
 	if (!get_tree_entry(hash1, shift_prefix, sub1, &mode1) &&
-	    S_ISDIR(mode1))
+	    (S_ISDIR(mode1) || S_ISPERMDIR(mode1)))
 		candidate |= 1;
 
 	/* Can hash1 be a tree at shift_prefix in tree hash2? */
 	if (!get_tree_entry(hash2, shift_prefix, sub2, &mode2) &&
-	    S_ISDIR(mode2))
+	    (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		candidate |= 2;
 
 	if (candidate == 3) {

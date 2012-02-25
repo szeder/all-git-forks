@@ -107,7 +107,7 @@ static void process_tree(struct rev_info *revs,
 				continue;
 		}
 
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode))
 			process_tree(revs,
 				     lookup_tree(entry.sha1),
 				     show, &me, base, entry.path,

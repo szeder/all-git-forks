@@ -89,7 +89,7 @@ static int tree_is_complete(const unsigned char *sha1)
 	complete = 1;
 	while (tree_entry(&desc, &entry)) {
 		if (!has_sha1_file(entry.sha1) ||
-		    (S_ISDIR(entry.mode) && !tree_is_complete(entry.sha1))) {
+		    ((S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)) && !tree_is_complete(entry.sha1))) {
 			tree->object.flags |= INCOMPLETE;
 			complete = 0;
 		}

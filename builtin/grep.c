@@ -579,7 +579,7 @@ static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 		if (S_ISREG(entry.mode)) {
 			hit |= grep_sha1(opt, entry.sha1, base->buf, tn_len);
 		}
-		else if (S_ISDIR(entry.mode)) {
+		else if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)) {
 			enum object_type type;
 			struct tree_desc sub;
 			void *data;

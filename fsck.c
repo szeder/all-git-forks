@@ -22,7 +22,7 @@ static int fsck_walk_tree(struct tree *tree, fsck_walk_func walk, void *data)
 
 		if (S_ISGITLINK(entry.mode))
 			continue;
-		if (S_ISDIR(entry.mode))
+		if (S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode))
 			result = walk(&lookup_tree(entry.sha1)->object, OBJ_TREE, data);
 		else if (S_ISREG(entry.mode) || S_ISLNK(entry.mode))
 			result = walk(&lookup_blob(entry.sha1)->object, OBJ_BLOB, data);
@@ -129,9 +129,9 @@ static int verify_ordered(unsigned mode1, const char *name1, unsigned mode2, con
 		 * sure we do not have duplicate entries.
 		 */
 		return TREE_HAS_DUPS;
-	if (!c1 && S_ISDIR(mode1))
+	if (!c1 && (S_ISDIR(mode1) || S_ISPERMDIR(mode1)))
 		c1 = '/';
-	if (!c2 && S_ISDIR(mode2))
+	if (!c2 && (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		c2 = '/';
 	return c1 < c2 ? 0 : TREE_UNORDERED;
 }
@@ -175,6 +175,7 @@ static int fsck_tree(struct tree *item, int strict, fsck_error error_func)
 		case S_IFREG | 0644:
 		case S_IFLNK:
 		case S_IFDIR:
+		case S_IFPERMDIR:
 		case S_IFGITLINK:
 			break;
 		/*

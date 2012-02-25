@@ -284,13 +284,13 @@ static int save_files_dirs(const unsigned char *sha1,
 	memcpy(newpath + baselen, path, len);
 	newpath[baselen + len] = '\0';
 
-	if (S_ISDIR(mode))
+	if (S_ISDIR(mode) || S_ISPERMDIR(mode))
 		string_list_insert(&o->current_directory_set, newpath);
 	else
 		string_list_insert(&o->current_file_set, newpath);
 	free(newpath);
 
-	return (S_ISDIR(mode) ? READ_TREE_RECURSIVE : 0);
+	return ((S_ISDIR(mode) || S_ISPERMDIR(mode)) ? READ_TREE_RECURSIVE : 0);
 }
 
 static int get_files_dirs(struct merge_options *o, struct tree *tree)

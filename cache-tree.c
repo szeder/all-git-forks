@@ -325,7 +325,7 @@ static int update_one(struct cache_tree *it,
 				    entlen, path + baselen, path);
 			i += sub->cache_tree->entry_count - 1;
 			sha1 = sub->cache_tree->sha1;
-			mode = S_IFDIR;
+			mode = ce->ce_mode; // XXX (was "S_IFDIR;") Keep previous mode: either S_IFDIR or S_IFPERMDIR
 		}
 		else {
 			sha1 = ce->sha1;
@@ -617,7 +617,7 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	cnt = 0;
 	while (tree_entry(&desc, &entry)) {
-		if (!S_ISDIR(entry.mode))
+		if (!(S_ISDIR(entry.mode) || S_ISPERMDIR(entry.mode)))
 			cnt++;
 		else {
 			struct cache_tree_sub *sub;

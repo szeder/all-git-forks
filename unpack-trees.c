@@ -790,7 +790,7 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 
 		/* special case: "diff-index --cached" looking at a tree */
 		if (o->diff_index_cached &&
-		    n == 1 && dirmask == 1 && S_ISDIR(names->mode)) {
+		    n == 1 && dirmask == 1 && (S_ISDIR(names->mode) || S_ISPERMDIR(names->mode))) {
 			int matches;
 			matches = cache_tree_matches_traversal(o->src_index->cache_tree,
 							       names, info);

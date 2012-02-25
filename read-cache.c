@@ -175,6 +175,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 		return MODE_CHANGED | DATA_CHANGED | TYPE_CHANGED;
 
 	switch (ce->ce_mode & S_IFMT) {
+	case S_IFPERMDIR: // XXX ADDED... maybe the execution just shouldn't have gotten here for permdirs...
 	case S_IFREG:
 		changed |= !S_ISREG(st->st_mode) ? TYPE_CHANGED : 0;
 		/* We consider only the owner x bit to be relevant for
@@ -361,9 +362,9 @@ int base_name_compare(const char *name1, int len1, int mode1,
 		return cmp;
 	c1 = name1[len];
 	c2 = name2[len];
-	if (!c1 && S_ISDIR(mode1))
+	if (!c1 && (S_ISDIR(mode1) || S_ISPERMDIR(mode1)))
 		c1 = '/';
-	if (!c2 && S_ISDIR(mode2))
+	if (!c2 && (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		c2 = '/';
 	return (c1 < c2) ? -1 : (c1 > c2) ? 1 : 0;
 }
@@ -391,10 +392,10 @@ int df_name_compare(const char *name1, int len1, int mode1,
 	if (len1 == len2)
 		return 0;
 	c1 = name1[len];
-	if (!c1 && S_ISDIR(mode1))
+	if (!c1 && (S_ISDIR(mode1) || S_ISPERMDIR(mode1)))
 		c1 = '/';
 	c2 = name2[len];
-	if (!c2 && S_ISDIR(mode2))
+	if (!c2 && (S_ISDIR(mode2) || S_ISPERMDIR(mode2)))
 		c2 = '/';
 	if (c1 == '/' && !c2)
 		return 0;
