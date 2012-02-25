@@ -8,5 +8,3 @@
 [core]
     editor = vim -c \"set fenc=utf-8\"
     pager = less
-[branch]
-    autosetuprebase = always
