@@ -325,7 +325,7 @@ static int update_one(struct cache_tree *it,
 				    entlen, path + baselen, path);
 			i += sub->cache_tree->entry_count - 1;
 			sha1 = sub->cache_tree->sha1;
-			mode = ce->ce_mode; // XXX (was "S_IFDIR;") Keep previous mode: either S_IFDIR or S_IFPERMDIR
+			mode = S_IFDIR; // XXX (cannot be ce->ce_mode because ce is thepath/AFile !) TODO Find the right mode (either S_IFDIR or S_IFPERMDIR) in the index entries
 		}
 		else {
 			sha1 = ce->sha1;

@@ -2743,6 +2743,10 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 				     path);
 		strbuf_release(&sb);
 		break;
+	case S_IFPERMDIR:
+		// XXX Nothing to do, a permdir is merely an index entry with a special mode,
+		//     it is not something with any meaningful content...
+		break;
 	case S_IFDIR:
 		return resolve_gitlink_ref(path, "HEAD", sha1);
 	default:

@@ -361,6 +361,26 @@ static int add_files(struct dir_struct *dir, int flags)
 	return exit_status;
 }
 
+static int add_permdirs(const char *prefix, const char **pathspec, int flags)
+{
+	int i = 0;
+	struct stat st;
+	printf("add_permdirs(prefix='%s', pathspec=..., flags=%o)\n", prefix, flags);
+
+	for (; *pathspec; ++pathspec) {
+		printf("%d. '%s'\n", i++, *pathspec);
+		if (lstat(*pathspec, &st))
+			continue;
+		if (S_ISDIR(st.st_mode)) {
+			printf("   Adding this permdir!\n");
+			st.st_mode = S_IFPERMDIR | (st.st_mode & ~S_IFMT);
+			add_to_cache(*pathspec, &st, flags);
+		}
+	}
+
+	return 0;
+}
+
 int cmd_add(int argc, const char **argv, const char *prefix)
 {
 	int exit_status = 0;
@@ -452,7 +472,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 					if (excluded(&dir, pathspec[i], &dtype))
 						dir_add_ignored(&dir, pathspec[i], strlen(pathspec[i]));
 				} else
-					die(_("pathspec '%s' did not match any files"),
+					die(_("pathspec '%s' did not match any files or folders"),
 					    pathspec[i]);
 			}
 		}
@@ -463,8 +483,10 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	exit_status |= add_files_to_cache(prefix, pathspec, flags);
 
-	if (add_new_files)
+	if (add_new_files) {
 		exit_status |= add_files(&dir, flags);
+		exit_status |= add_permdirs(prefix, pathspec, flags);
+	}
 
 	unplug_bulk_checkin();
 

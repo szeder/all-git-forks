@@ -166,7 +166,7 @@ static int match_one(const char *match, const char *name, int namelen)
 
 	if (namelen == matchlen)
 		return MATCHED_EXACTLY;
-	if (match[matchlen-1] == '/' || name[matchlen] == '/')
+	if (match[matchlen-1] == '/' && name[matchlen] == '/') // XXX in order to match a directory, the pattern must have the trailing '/' (otherwise its a permdir)
 		return MATCHED_RECURSIVELY;
 	return 0;
 }
@@ -612,7 +612,8 @@ struct dir_entry *dir_add_ignored(struct dir_struct *dir, const char *pathname, 
 enum exist_status {
 	index_nonexistent = 0,
 	index_directory,
-	index_gitdir
+	index_gitdir,
+	index_permdir
 };
 
 /*
@@ -641,8 +642,12 @@ static enum exist_status directory_exists_in_index_icase(const char *dirname, in
 	 * represents a submodule.  Submodules, despite being directories,
 	 * are stored in the cache without a closing slash.
 	 */
-	if (!endchar && S_ISGITLINK(ce->ce_mode))
-		return index_gitdir;
+	if (!endchar) {
+		if (S_ISGITLINK(ce->ce_mode))
+			return index_gitdir;
+		if (S_ISPERMDIR(ce->ce_mode))
+			return index_permdir;
+	}
 
 	/* This should never be hit, but it exists just in case. */
 	return index_nonexistent;
@@ -676,8 +681,12 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
 			break;
 		if (endchar == '/')
 			return index_directory;
-		if (!endchar && S_ISGITLINK(ce->ce_mode))
-			return index_gitdir;
+		if (!endchar) {
+			if (S_ISGITLINK(ce->ce_mode))
+				return index_gitdir;
+			if (S_ISPERMDIR(ce->ce_mode))
+				return index_permdir;
+		}
 	}
 	return index_nonexistent;
 }
@@ -727,6 +736,7 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
 {
 	/* The "len-1" is to strip the final '/' */
 	switch (directory_exists_in_index(dirname, len-1)) {
+	case index_permdir:
 	case index_directory:
 		return recurse_into_directory;
 
