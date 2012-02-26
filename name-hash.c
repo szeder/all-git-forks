@@ -156,13 +156,17 @@ struct cache_entry *index_name_exists(struct index_state *istate, const char *na
 	unsigned int hash = hash_name(name, namelen);
 	struct cache_entry *ce;
 
+	printf("index_name_exists(index, name='%s', namelen=%d, icase=%d)\n", name, namelen, icase);
+
 	lazy_init_name_hash(istate);
 	ce = lookup_hash(hash, &istate->name_hash);
 
 	while (ce) {
 		if (!(ce->ce_flags & CE_UNHASHED)) {
-			if (same_name(ce, name, namelen, icase))
+			if (same_name(ce, name, namelen, icase)) {
+				printf("got %o %s '%s'\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
 				return ce;
+			}
 		}
 		if (icase && name[namelen - 1] == '/')
 			ce = ce->dir_next;
@@ -183,8 +187,11 @@ struct cache_entry *index_name_exists(struct index_state *istate, const char *na
 	 */
 	if (icase && name[namelen - 1] == '/') {
 		ce = index_name_exists(istate, name, namelen - 1, icase);
-		if (ce && S_ISGITLINK(ce->ce_mode))
+		if (ce && S_ISGITLINK(ce->ce_mode)) {
+			printf("got %o %s '%s'\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
 			return ce;
+		}
 	}
+	printf("got nothing\n");
 	return NULL;
 }

@@ -4,7 +4,7 @@
 #include "cache-tree.h"
 
 #ifndef DEBUG
-#define DEBUG 0
+#define DEBUG 1
 #endif
 
 struct cache_tree *cache_tree(void)
@@ -404,7 +404,7 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 	strbuf_add(buffer, path, pathlen);
 	strbuf_addf(buffer, "%c%d %d\n", 0, it->entry_count, it->subtree_nr);
 
-//#if DEBUG
+#if DEBUG
 	if (0 <= it->entry_count)
 		fprintf(stderr, "cache-tree <%.*s> (%d ent, %d subtree) %s\n",
 			pathlen, path, it->entry_count, it->subtree_nr,
@@ -412,7 +412,7 @@ static void write_one(struct strbuf *buffer, struct cache_tree *it,
 	else
 		fprintf(stderr, "cache-tree <%.*s> (%d subtree) invalid\n",
 			pathlen, path, it->subtree_nr);
-//#endif
+#endif
 
 	//if (0 <= it->entry_count) {
 		strbuf_add(buffer, it->sha1, 20);

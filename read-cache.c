@@ -577,6 +577,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	int intent_only = flags & ADD_CACHE_INTENT;
 	int add_option = (ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE|
 			  (intent_only ? ADD_CACHE_NEW_ONLY : 0));
+	printf("add_to_index(index, path='%s', stat=st_mode:%o, flags=%o)\n", path, st->st_mode, flags);
 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
 		return error("%s: can only add regular files, symbolic links or git-directories", path);
@@ -960,6 +961,8 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 {
 	int pos;
 
+	printf("add_index_entry(index, ce=%o %s '%s', option=%o)\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, option);
+
 	if (option & ADD_CACHE_JUST_APPEND)
 		pos = istate->cache_nr;
 	else {
@@ -1202,6 +1205,7 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 static int read_index_extension(struct index_state *istate,
 				const char *ext, void *data, unsigned long sz)
 {
+	printf("read_index_extension(%.4s, sz=%lu)\n", ext, sz);
 	switch (CACHE_EXT(ext)) {
 	case CACHE_EXT_TREE:
 		istate->cache_tree = cache_tree_read(data, sz);
@@ -1219,9 +1223,46 @@ static int read_index_extension(struct index_state *istate,
 	return 0;
 }
 
+void print_indent(int depth)
+{
+	int i;
+	for (i = 0 ; i < depth ; ++i)
+		printf("  ");
+}
+void print_index_tree(struct cache_tree *root, char *name, int depth)
+{
+	int i;
+	print_indent(depth);
+	printf("- %s/ %s (%d entries, %d subtrees)\n", name, root->sha1 == NULL ? NULL : sha1_to_hex(root->sha1), root->entry_count, root->subtree_nr);
+	for (i = 0 ; i < root->subtree_nr ; ++i) {
+		struct cache_tree_sub *sub;
+		sub = root->down[i];
+		print_index_tree(sub->cache_tree, sub->name, depth+1);
+	}
+}
+void print_index(struct index_state *istate)
+{
+	unsigned int i;
+	printf("index content: (%u records)\n", istate->cache_nr);
+	for (i = 0 ; i < istate->cache_nr ; ++i) {
+		struct cache_entry *ce;
+		ce = istate->cache[i];
+		printf("%u. %s '%s' %o\n", i, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode);
+	}
+	if (!istate->cache_tree) {
+		printf("index tree IS NULL!\n");
+	} else {
+		printf("index tree:\n");
+		print_index_tree(istate->cache_tree, "", 0);
+	}
+}
 int read_index(struct index_state *istate)
 {
-	return read_index_from(istate, get_index_file());
+	int rtn;
+	rtn = read_index_from(istate, get_index_file());
+	printf("read_index_from() returned %d\n", rtn);
+	print_index(istate);
+	return rtn;
 }
 
 static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk)
@@ -1580,6 +1621,9 @@ int write_index(struct index_state *istate, int newfd)
 	struct cache_entry **cache = istate->cache;
 	int entries = istate->cache_nr;
 	struct stat st;
+
+	printf("write_index():");
+	print_index(istate);
 
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
