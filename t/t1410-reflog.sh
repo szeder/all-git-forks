@@ -20,7 +20,7 @@ check_have () {
 }
 
 check_fsck () {
-	output=$(git fsck --full)
+	output=$(git fsck --full --dangling)
 	case "$1" in
 	'')
 		test -z "$output" ;;

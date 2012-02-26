@@ -1582,24 +1582,11 @@ Checking the repository for corruption
 
 The linkgit:git-fsck[1] command runs a number of self-consistency checks
 on the repository, and reports on any problems.  This may take some
-time.  The most common warning by far is about "dangling" objects:
+time.
 
 -------------------------------------------------
 $ git fsck
-dangling commit 7281251ddd2a61e38657c827739c57015671a6b3
-dangling commit 2706a059f258c6b245f298dc4ff2ccd30ec21a63
-dangling commit 13472b7c4b80851a1bc551779171dcb03655e9b5
-dangling blob 218761f9d90712d37a9c5e36f406f92202db07eb
-dangling commit bf093535a34a4d35731aa2bd90fe6b176302f14f
-dangling commit 8e4bec7f2ddaa268bef999853c25755452100f8e
-dangling tree d50bb86186bf27b681d25af89d3b5b68382e4085
-dangling tree b24c2473f1fd3d91352a624795be026d64c8841f
-...
 -------------------------------------------------
-
-Dangling objects are not a problem.  At worst they may take up a little
-extra disk space.  They can sometimes provide a last-resort method for
-recovering lost work--see <<dangling-objects>> for details.
 
 [[recovering-lost-changes]]
 Recovering lost changes
@@ -1665,7 +1652,7 @@ commits in the dangling objects that `git fsck` reports.  See
 <<dangling-objects>> for the details.
 
 -------------------------------------------------
-$ git fsck
+$ git fsck --dangling
 dangling commit 7281251ddd2a61e38657c827739c57015671a6b3
 dangling commit 2706a059f258c6b245f298dc4ff2ccd30ec21a63
 dangling commit 13472b7c4b80851a1bc551779171dcb03655e9b5
@@ -3300,9 +3287,6 @@ broken link from    tree 2d9263c6d23595e7cb2a21e5ebbb53655278dff8
               to    blob 4b9458b3786228369c63936db65827de3cc06200
 missing blob 4b9458b3786228369c63936db65827de3cc06200
 ------------------------------------------------
-
-(Typically there will be some "dangling object" messages too, but they
-aren't interesting.)
 
 Now you know that blob 4b9458b3 is missing, and that the tree 2d9263c6
 points to it.  If you could find just one copy of that missing blob
