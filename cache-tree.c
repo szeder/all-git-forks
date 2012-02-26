@@ -246,6 +246,7 @@ static int update_one(struct cache_tree *it,
 {
 	struct strbuf buffer;
 	int i;
+	int override_dirmode = 0;
 
 	if (0 <= it->entry_count && has_sha1_file(it->sha1))
 		return it->entry_count;
@@ -322,17 +323,57 @@ static int update_one(struct cache_tree *it,
 			sub = find_subtree(it, path + baselen, entlen, 0);
 			if (!sub)
 				die("cache-tree.c: '%.*s' in '%s' not found",
-				    entlen, path + baselen, path);
+					entlen, path + baselen, path);
 			i += sub->cache_tree->entry_count - 1;
 			sha1 = sub->cache_tree->sha1;
-			mode = S_IFDIR; // XXX (cannot be ce->ce_mode because ce is thepath/AFile !) TODO Find the right mode (either S_IFDIR or S_IFPERMDIR) in the index entries
+			mode = override_dirmode ? S_IFPERMDIR : S_IFDIR;
+			override_dirmode = 0;
+		} else if (ce->ce_mode == S_IFPERMDIR && !(ce->ce_flags & CE_REMOVE)) {
+			/*
+			 * Check next entry:
+			 *  - if it is a sub-entry of the current directory,
+			 *    note the mode override for the next entry and skip it.
+			 *  - if not,
+			 *    write the empty-tree sha1 with the S_IDPERMDIR mode.
+			 */
+			int has_subentries = 0;
+			/* the following code simulates the beginning of the next iteration of the for loop */
+			int j = i + 1;
+			if (j < entries) {
+				struct cache_entry *_ce = cache[j];
+				const char *_path, *_slash;
+				int _pathlen, _entlen;
+
+				_path = _ce->name;
+				_pathlen = ce_namelen(_ce);
+				if (_pathlen <= baselen || memcmp(base, _path, baselen))
+					; /* at the end of this level */
+				else {
+					_slash = strchr(_path + baselen, '/');
+					if (_slash) {
+						_entlen = _slash - (_path + baselen);
+						/* check if it is a sub-entry of the current permdir */
+						if (_entlen == pathlen - baselen && !memcmp(path + baselen, _path + baselen, _entlen)) {
+							has_subentries = 1;
+						}
+					} /* else no slash so not a sub-entry */
+				}
+			}
+			/* end of simulation, our answer lies in has_subentries */
+			mode = S_IFPERMDIR;
+			if (has_subentries)
+				/* override next mode for a permdir */
+				override_dirmode = 1;
+			/* initialize those variables anyway to give the compiler a rest */
+			sha1 = EMPTY_TREE_SHA1_BIN;
+			entlen = pathlen - baselen;
 		}
 		else {
 			sha1 = ce->sha1;
 			mode = ce->ce_mode;
 			entlen = pathlen - baselen;
 		}
-		if (mode != S_IFGITLINK && !missing_ok && !has_sha1_file(sha1)) {
+		if (mode != S_IFGITLINK && mode != S_IFPERMDIR && !missing_ok && !has_sha1_file(sha1)) {
 			strbuf_release(&buffer);
 			return error("invalid object %06o %s for '%.*s'",
 				mode, sha1_to_hex(sha1), entlen+baselen, path);
@@ -340,6 +381,8 @@ static int update_one(struct cache_tree *it,
 
 		if (ce->ce_flags & CE_REMOVE)
 			continue; /* entry being removed */
+		if (override_dirmode)
+			continue; /* current entry is merely a mode modifier for the next one */
 
 		strbuf_grow(&buffer, entlen + 100);
 		strbuf_addf(&buffer, "%o %.*s%c", mode, entlen, path + baselen, '\0');
