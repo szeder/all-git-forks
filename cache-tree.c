@@ -189,7 +189,8 @@ static int verify_cache(struct cache_entry **cache,
 		const char *this_name = cache[i]->name;
 		const char *next_name = cache[i+1]->name;
 		int this_len = strlen(this_name);
-		if (this_len < strlen(next_name) &&
+		if (!S_ISPERMDIR(cache[i]->ce_mode) && // Ignore the "conflict" for permdir entries as they are not files
+		    this_len < strlen(next_name) &&
 		    strncmp(this_name, next_name, this_len) == 0 &&
 		    next_name[this_len] == '/') {
 			if (10 < ++funny) {

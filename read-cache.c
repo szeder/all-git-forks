@@ -785,6 +785,9 @@ static int has_file_name(struct index_state *istate,
 	int stage = ce_stage(ce);
 	const char *name = ce->name;
 
+	if (S_ISPERMDIR(ce->ce_mode)) // XXX Bad check (what about a type change from file to permdir), but we'll get to that later
+		return retval;
+
 	while (pos < istate->cache_nr) {
 		struct cache_entry *p = istate->cache[pos++];
 
@@ -798,6 +801,8 @@ static int has_file_name(struct index_state *istate,
 			continue;
 		if (p->ce_flags & CE_REMOVE)
 			continue;
+		if (S_ISPERMDIR(p->ce_mode)) // XXX Bad check (what about a type change from permdir to file), but we'll get to that later
+			break;
 		retval = -1;
 		if (!ok_to_replace)
 			break;
@@ -840,6 +845,12 @@ static int has_dir_name(struct index_state *istate,
 			 * path.
 			 */
 			if (!(istate->cache[pos]->ce_flags & CE_REMOVE)) {
+				if (S_ISPERMDIR(istate->cache[pos]->ce_mode))
+					/*
+					 * The entry is a permdir, so there won't be any more conflicts
+					 * as a permdir does not denote a file.
+					 */
+					return retval;
 				retval = -1;
 				if (!ok_to_replace)
 					break;
