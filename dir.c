@@ -166,7 +166,7 @@ static int match_one(const char *match, const char *name, int namelen)
 
 	if (namelen == matchlen)
 		return MATCHED_EXACTLY;
-	if (match[matchlen-1] == '/' && name[matchlen] == '/') // XXX in order to match a directory, the pattern must have the trailing '/' (otherwise its a permdir)
+	if (match[matchlen-1] == '/' && name[matchlen-1] == '/') // XXX in order to match a directory, the pattern must have the trailing '/' (otherwise its a permdir)
 		return MATCHED_RECURSIVELY;
 	return 0;
 }
