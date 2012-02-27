@@ -577,6 +577,9 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	int intent_only = flags & ADD_CACHE_INTENT;
 	int add_option = (ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE|
 			  (intent_only ? ADD_CACHE_NEW_ONLY : 0));
+
+	void print_index(struct index_state *istate);
+	print_index(istate);
 	printf("add_to_index(index, path='%s', stat=st_mode:%o, flags=%o)\n", path, st->st_mode, flags);
 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
@@ -639,6 +642,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		if (!S_ISGITLINK(alias->ce_mode))
 			ce_mark_uptodate(alias);
 		alias->ce_flags |= CE_ADDED;
+		print_index(istate);
 		return 0;
 	}
 	if (!intent_only) {
@@ -663,6 +667,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		return error("unable to add %s to index",path);
 	if (verbose && !was_same)
 		printf("add '%s'\n", path);
+	print_index(istate);
 	return 0;
 }
 
