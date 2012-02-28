@@ -95,7 +95,7 @@ test_expect_success 'tag replaced commit' '
 '
 
 test_expect_success '"git fsck" works' '
-     git fsck master > fsck_master.out &&
+     git fsck --dangling master > fsck_master.out &&
      grep "dangling commit $R" fsck_master.out &&
      grep "dangling tag $(cat .git/refs/tags/mytag)" fsck_master.out &&
      test -z "$(git fsck)"
