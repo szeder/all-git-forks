@@ -671,7 +671,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	struct string_list path_list = STRING_LIST_INIT_NODUP;
 	int i;
 	int dummy;
-	int use_index = 1;
+	int no_index = 0;
 	enum {
 		pattern_type_unspecified = 0,
 		pattern_type_bre,
@@ -684,9 +684,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT_BOOLEAN(0, "cached", &cached,
 			"search in index instead of in the work tree"),
-		{ OPTION_BOOLEAN, 0, "index", &use_index, NULL,
-			"finds in contents not managed by git",
-			PARSE_OPT_NOARG | PARSE_OPT_NEGHELP },
+		OPT_BOOL(0, "no-index", &no_index,
+			 "finds in contents not managed by git"),
 		OPT_BOOLEAN(0, "untracked", &untracked,
 			"search in both tracked and untracked files"),
 		OPT_SET_INT(0, "exclude-standard", &opt_exclude,
@@ -851,7 +850,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		break; /* nothing */
 	}
 
-	if (use_index && !startup_info->have_repository)
+	if (!no_index && !startup_info->have_repository)
 		/* die the same way as if we did it at the beginning */
 		setup_git_directory();
 
@@ -963,11 +962,11 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	if (!show_in_pager)
 		setup_pager();
 
-	if (!use_index && (untracked || cached))
+	if (no_index && (untracked || cached))
 		die(_("--cached or --untracked cannot be used with --no-index."));
 
-	if (!use_index || untracked) {
-		int use_exclude = (opt_exclude < 0) ? use_index : !!opt_exclude;
+	if (no_index || untracked) {
+		int use_exclude = (opt_exclude < 0) ? !no_index : !!opt_exclude;
 		if (list.nr)
 			die(_("--no-index or --untracked cannot be used with revs."));
 		hit = grep_directory(&opt, &pathspec, use_exclude);
