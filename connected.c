@@ -14,7 +14,8 @@
  *
  * Returns 0 if everything is connected, non-zero otherwise.
  */
-int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
+int check_everything_connected(sha1_iterate_fn fn, unsigned int flags,
+			       void *cb_data)
 {
 	struct child_process rev_list;
 	const char *argv[] = {"rev-list", "--verify-objects",
@@ -26,7 +27,9 @@ int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
 	if (fn(cb_data, sha1))
 		return err;
 
-	if (quiet)
+	if (!(flags & CHECK_CONNECT_STRICT))
+		argv[1] = "--objects";
+	if (flags & CHECK_CONNECT_QUIET)
 		argv[5] = "--quiet";
 
 	memset(&rev_list, 0, sizeof(rev_list));
@@ -34,7 +37,7 @@ int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
 	rev_list.git_cmd = 1;
 	rev_list.in = -1;
 	rev_list.no_stdout = 1;
-	rev_list.no_stderr = quiet;
+	rev_list.no_stderr = flags & CHECK_CONNECT_QUIET;
 	if (start_command(&rev_list))
 		return error(_("Could not run 'git rev-list'"));
 

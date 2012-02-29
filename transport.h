@@ -151,6 +151,7 @@ int transport_disconnect(struct transport *transport);
 char *transport_anonymize_url(const char *url);
 void transport_take_over(struct transport *transport,
 			 struct child_process *child);
+int is_pack_transport(const struct transport *transport);
 
 int transport_connect(struct transport *transport, const char *name,
 		      const char *exec, int fd[2]);
