@@ -2640,7 +2640,6 @@ dist-doc:
 
 distclean: clean
 	$(RM) configure
-	$(RM) po/git.pot
 
 profile-clean:
 	$(RM) $(addsuffix *.gcda,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
