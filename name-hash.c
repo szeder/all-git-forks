@@ -164,7 +164,7 @@ struct cache_entry *index_name_exists(struct index_state *istate, const char *na
 	while (ce) {
 		if (!(ce->ce_flags & CE_UNHASHED)) {
 			if (same_name(ce, name, namelen, icase)) {
-				printf("got %o %s '%s'\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
+				printf("got %o %s '%s' %o/0x%x\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_flags, ce->ce_flags);
 				return ce;
 			}
 		}
@@ -188,7 +188,7 @@ struct cache_entry *index_name_exists(struct index_state *istate, const char *na
 	if (icase && name[namelen - 1] == '/') {
 		ce = index_name_exists(istate, name, namelen - 1, icase);
 		if (ce && S_ISGITLINK(ce->ce_mode)) {
-			printf("got %o %s '%s'\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
+			printf("got %o %s '%s' %o/0x%x\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_flags, ce->ce_flags);
 			return ce;
 		}
 	}

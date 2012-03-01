@@ -622,7 +622,7 @@ int fetch_populated_submodules(int num_options, const char **options,
 			git_dir = submodule_git_dir.buf;
 		if (is_directory(git_dir)) {
 			if (!quiet)
-				printf("Fetching submodule %s%s\n", prefix, ce->name);
+				printf("Fetching submodule '%s%s' %o %o/0x%x\n", prefix, ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 			cp.dir = submodule_path.buf;
 			argv[default_argc] = default_argv;
 			argv[argc] = submodule_prefix.buf;

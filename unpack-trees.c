@@ -178,7 +178,7 @@ static void unlink_entry(struct cache_entry *ce)
 static struct checkout state;
 static int check_updates(struct unpack_trees_options *o)
 {
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	printf("check_updates()\n");
 	unsigned cnt = 0, total = 0;
 	struct progress *progress = NULL;
@@ -205,7 +205,7 @@ static int check_updates(struct unpack_trees_options *o)
 	printf("C\n");
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
-		printf("ce[%d]=%s '%s' %o %o\n", i, sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags);
+		printf("ce[%d]=%s '%s' %o %o/0x%x\n", i, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 
 		if (ce->ce_flags & CE_WT_REMOVE) {
 			printf("marked for removal\n");
@@ -218,15 +218,15 @@ static int check_updates(struct unpack_trees_options *o)
 		}
 	}
 	printf("D\n");
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	remove_marked_cache_entries(&o->result);
 	remove_scheduled_dirs();
 
 	printf("E\n");
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
-		printf("ce = %s '%s'\n", sha1_to_hex(ce->sha1), ce->name);
+		printf("ce = %s '%s' %o %o/0x%x\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 
 		if (ce->ce_flags & CE_UPDATE) {
 			display_progress(progress, ++cnt);
@@ -237,12 +237,12 @@ static int check_updates(struct unpack_trees_options *o)
 		}
 	}
 	printf("F\n");
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	stop_progress(&progress);
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
 	printf("G\n");
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	return errs != 0;
 }
 
@@ -578,8 +578,7 @@ static int unpack_nondirectories(int n, unsigned long mask,
 	/* Do we have *only* directories? Nothing to do */
 	if (mask == dirmask && !src[0]) {
 		printf("Only directories (mask == dirmask && !src[0]): Nothing to do\n");
-		return 0; // XXX test commenting me
-		printf("BUT WE'LL CONTINUE ANYWAY!\n");
+		return 0;
 	}
 
 	conflicts = info->conflicts;
@@ -773,7 +772,7 @@ static void print_index(struct unpack_trees_options *o)
 	 */
 	for (i = 0 ; i < o->result.cache_nr ; ++i) {
 		struct cache_entry* ce = o->result.cache[i];
-		printf("- %s '%s'\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
+		printf("- %s '%s' %o %o/0x%x\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 	}
 }
 static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, struct name_entry *names, struct traverse_info *info)
@@ -813,7 +812,7 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 
 			if (!ce)
 				break;
-			printf("ce: %s '%s'\n", sha1_to_hex(ce->sha1), ce->name);
+			printf("ce: %s '%s' %o %o/0x%x\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 			cmp = compare_entry(ce, info, p);
 			printf("compare_entry(ce) -> %d\n", cmp);
 			if (cmp < 0) {
@@ -849,6 +848,7 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 		return -1;
 	print_index(o);
 
+	print_index(o);
 	printf("C\n");
 	if (src[0]) {
 		if (ce_stage(src[0]))
@@ -1086,7 +1086,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	static struct cache_entry *dfc;
 	struct exclude_list el;
 
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	printf("unpack_trees(len=%u, trees=%p, options=%p)\n", len, t, o);
 	for (i = 0 ; i < len ; ++i) {
 		if (!t[i].size)
@@ -1153,7 +1153,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 				struct cache_entry *ce = next_cache_entry(o);
 				if (!ce)
 					break;
-				printf("cache_entry: %.20s '%s'", ce->sha1, ce->name);
+				printf("cache_entry: %s '%s' %o %o/0x%x", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 				if (ce_in_traverse_path(ce, &info))
 					break;
 				if (unpack_index_entry(ce, o) < 0)
@@ -1161,11 +1161,11 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 			}
 		}
 
-		system("find -not -regex '^./.git.*$'");
+		// system("find -not -regex '^./.git.*$'");
 		printf("READY to traverse_trees\n");
 		if (traverse_trees(len, t, &info) < 0)
 			goto return_failed;
-		system("find -not -regex '^./.git.*$'");
+		// system("find -not -regex '^./.git.*$'");
 	}
 
 	/* Any left-over entries in the index? */
@@ -1177,7 +1177,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 				printf("LEFT-OVER: no more entries\n");
 				break;
 			}
-			printf("LEFT-OVER: sha1:%s name:%s\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name);
+			printf("LEFT-OVER: %s '%s' %o %o/0x%x\n", ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 			if (unpack_index_entry(ce, o) < 0)
 				goto return_failed;
 		}
@@ -1244,17 +1244,17 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	}
 
 	o->src_index = NULL;
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	printf("Magical step?\n");
 	ret = check_updates(o) ? (-2) : 0;
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	if (o->dst_index)
 		*o->dst_index = o->result;
 
 done:
 	printf("in done\n");
 	free_excludes(&el);
-	system("find -not -regex '^./.git.*$'");
+	// system("find -not -regex '^./.git.*$'");
 	return ret;
 
 return_failed:

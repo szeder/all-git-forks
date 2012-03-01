@@ -966,7 +966,7 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 {
 	int pos;
 
-	printf("add_index_entry(index, ce=%o %s '%s', option=%o)\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, option);
+	printf("add_index_entry(index, ce=%o %s '%s' %o/0x%x, option=%o)\n", ce->ce_mode, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_flags, ce->ce_flags, option);
 
 	if (option & ADD_CACHE_JUST_APPEND)
 		pos = istate->cache_nr;
@@ -1252,7 +1252,7 @@ void print_index(struct index_state *istate)
 	for (i = 0 ; i < istate->cache_nr ; ++i) {
 		struct cache_entry *ce;
 		ce = istate->cache[i];
-		printf("%u. %s '%s' %o\n", i, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode);
+		printf("%u. %s '%s' %o %o/0x%x\n", i, ce->sha1 == NULL ? NULL : sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags);
 	}
 	if (!istate->cache_tree) {
 		printf("index tree IS NULL!\n");
