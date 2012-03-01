@@ -238,6 +238,12 @@ static int write_entry(struct cache_entry *ce, char *path, const struct checkout
 		if (wrote != size)
 			return error("unable to write file %s", path);
 		break;
+	case S_IFPERMDIR:
+		if (to_tempfile)
+			return error("cannot create temporary permdir %s", path);
+		if (mkdir(path, 0777) < 0)
+			return error("cannot create permdir %s", path);
+		break;
 	case S_IFGITLINK:
 		if (to_tempfile)
 			return error("cannot create temporary subproject %s", path);
