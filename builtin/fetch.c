@@ -368,7 +368,7 @@ static int iterate_ref_map(void *cb_data, unsigned char sha1[20])
 }
 
 static int store_updated_refs(const char *raw_url, const char *remote_name,
-		struct ref *ref_map)
+			      struct ref *ref_map, int use_pack)
 {
 	FILE *fp;
 	struct commit *commit;
@@ -389,7 +389,9 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 		url = xstrdup("foreign");
 
 	rm = ref_map;
-	if (check_everything_connected(iterate_ref_map, 0, &rm)) {
+	if (check_everything_connected(iterate_ref_map,
+				       use_pack ? 0 : CHECK_CONNECT_STRICT,
+				       &rm)) {
 		rc = error(_("%s did not send all necessary objects\n"), url);
 		goto abort;
 	}
@@ -516,7 +518,8 @@ static int quickfetch(struct ref *ref_map)
 	 */
 	if (depth)
 		return -1;
-	return check_everything_connected(iterate_ref_map, 1, &rm);
+	return check_everything_connected(iterate_ref_map,
+					  CHECK_CONNECT_QUIET, &rm);
 }
 
 static int fetch_refs(struct transport *transport, struct ref *ref_map)
@@ -526,8 +529,9 @@ static int fetch_refs(struct transport *transport, struct ref *ref_map)
 		ret = transport_fetch_refs(transport, ref_map);
 	if (!ret)
 		ret |= store_updated_refs(transport->url,
-				transport->remote->name,
-				ref_map);
+					  transport->remote->name,
+					  ref_map,
+					  is_pack_transport(transport));
 	transport_unlock_pack(transport);
 	return ret;
 }
