@@ -2200,7 +2200,8 @@ static void builtin_diff(const char *name_a,
 		if (one->mode != two->mode) {
 			strbuf_addf(&header, "%s%sold mode %06o%s\n", line_prefix, set, one->mode, reset);
 			strbuf_addf(&header, "%s%snew mode %06o%s\n", line_prefix, set, two->mode, reset);
-			must_show_header = 1;
+			if (!DIFF_OPT_TST(o, IGNORE_MODE_CHANGE))
+				must_show_header = 1;
 		}
 		if (xfrm_msg)
 			strbuf_addstr(&header, xfrm_msg);
@@ -2255,7 +2256,7 @@ static void builtin_diff(const char *name_a,
 		struct emit_callback ecbdata;
 		const struct userdiff_funcname *pe;
 
-		if (!DIFF_XDL_TST(o, WHITESPACE_FLAGS) || must_show_header) {
+		if (must_show_header) {
 			fprintf(o->file, "%s", header.buf);
 			strbuf_reset(&header);
 		}
@@ -3506,6 +3507,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	}
 	else if (!strcmp(arg, "--no-renames"))
 		options->detect_rename = 0;
+	else if (!strcmp(arg, "--ignore-mode-change"))
+		DIFF_OPT_SET(options, IGNORE_MODE_CHANGE);
 	else if (!strcmp(arg, "--relative"))
 		DIFF_OPT_SET(options, RELATIVE_NAME);
 	else if (!prefixcmp(arg, "--relative=")) {
@@ -4569,10 +4572,34 @@ void diffcore_fix_diff_index(struct diff_options *options)
 	qsort(q->queue, q->nr, sizeof(q->queue[0]), diffnamecmp);
 }
 
+static void diffcore_ignore_mode_change(struct diff_options *diffopt)
+{
+	int i;
+	struct diff_queue_struct *q = &diff_queued_diff;
+	struct diff_queue_struct outq;
+	DIFF_QUEUE_CLEAR(&outq);
+
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+
+		if (DIFF_FILE_VALID(p->one) &&
+		    DIFF_FILE_VALID(p->two) &&
+		    (p->one->sha1_valid && p->two->sha1_valid) &&
+		    !hashcmp(p->one->sha1, p->two->sha1))
+			diff_free_filepair(p); /* skip this */
+		else
+			diff_q(&outq, p);
+	}
+	free(q->queue);
+	*q = outq;
+}
+
 void diffcore_std(struct diff_options *options)
 {
 	if (options->skip_stat_unmatch)
 		diffcore_skip_stat_unmatch(options);
+	if (DIFF_OPT_TST(options, IGNORE_MODE_CHANGE))
+		diffcore_ignore_mode_change(options);
 	if (!options->found_follow) {
 		/* See try_to_follow_renames() in tree-diff.c */
 		if (options->break_opt != -1)
