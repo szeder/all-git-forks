@@ -68,3 +68,34 @@ work to be done:
    and only accessed on demand.
 
 Proposed mentor: Jeff King
+
+Improving parallelism in various commands
+-----------------------------------------
+
+Git is mostly written single-threaded, with a few commands having
+bolted-on extensions to support parallel operation (notably git-grep,
+git-pack-objects and the core.preloadIndex feature).
+
+We have recently looked into some of these areas and made a few
+optimizations, but a big roadblock is that pack access is entirely
+single-threaded.  The project would consist of the following steps:
+
+ * In preparation (the half-step): identify commands that could
+   benefit from parallelism.  `git grep --cached` and `git grep
+   COMMIT` come to mind, but most likely also `git diff` and `git log
+   -p`.  You can probably find more.
+
+ * Rework the pack access mechanisms to allow the maximum possible
+   parallel access.
+
+ * Rework the commands found in the first step to use parallel pack
+   access if possible.  Along the way, document the improvements with
+   performance tests.
+
+The actual programming must be done in C using pthreads for obvious
+reasons.  At the very least you should not be scared of low-level
+programming.  Prior experience and access to one or more multi-core
+computers is a plus.
+
+Proposed by: Thomas Rast
+Possible mentor(s): Thomas Rast
