@@ -48,7 +48,7 @@ http://github.com/peff/git/wiki/SoC-2012-Ideas
 What is the main IRC channel for your organization?
 ---------------------------------------------------
 
-#git and #git-devel (on freenode)
+ #git and #git-devel (on freenode)
 
 
 What is the main development mailing list for your organization?
