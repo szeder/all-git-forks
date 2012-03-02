@@ -1,13 +1,13 @@
 This is a draft of git's application to Google's Summer of Code 2012.
 
 Organization Admin
-==================
+------------------
 
 Jeff King <peff@peff.net>
 
 
 Description
-===========
+-----------
 
 At almost seven years old, Git is probably the most widely-used
 distributed revision control system in Open Source.  Many large and
@@ -22,43 +22,43 @@ low and encourage patches from a "long tail" of developers.
 
 
 Home Page
-=========
+---------
 
 http://git-scm.com
 
 
 Main Organization License
-=========================
+-------------------------
 
 GPLv2
 
 
 Backup Admin
-============
+------------
 
 TBD
 
 
 What is the URL for your ideas page?
-====================================
+------------------------------------
 
 http://github.com/peff/git/wiki/SoC-2012-Ideas
 
 
 What is the main IRC channel for your organization?
-===================================================
+---------------------------------------------------
 
 #git and #git-devel (on freenode)
 
 
 What is the main development mailing list for your organization?
-================================================================
+----------------------------------------------------------------
 
 git@vger.kernel.org
 
 
 Why is your organization applying to participate in GSoC 2012? What do you hope to gain by participating?
-=========================================================================================================
+---------------------------------------------------------------------------------------------------------
 
 Git has participated in GSoC since 2007. We have appreciated not only
 the code contributions, but also the increased project visibility and
@@ -70,7 +70,7 @@ contributors and high-quality enhancements to Git.
 
 
 Did your organization participate in past GSoCs? If so, please summarize your involvement and the successes and challenges of your participation.
-=================================================================================================================================================
+-------------------------------------------------------------------------------------------------------------------------------------------------
 
 Yes; git has participated in GSoC every year since 2007, typically
 mentoring 2-5 students each year. Our mentors have always been active
@@ -113,19 +113,19 @@ contact with the community at large, and that seems to have helped some.
 
 
 If your organization has not previously participated in GSoC, have you applied in the past? If so, for what year(s)?
-====================================================================================================================
+--------------------------------------------------------------------------------------------------------------------
 
 N/A
 
 
 Does your organization have an application template you would like to see students use? If so, please provide it now.
-=====================================================================================================================
+---------------------------------------------------------------------------------------------------------------------
 
 http://github.com/peff/git/wiki/Soc-2012-Template
 
 
 What criteria did you use to select individuals as mentors? Please be as specific as possible.
-==============================================================================================
+----------------------------------------------------------------------------------------------
 
 All mentors volunteered for the specific project(s) that they could
 contribute the most to.  All mentors are active contributors within
@@ -142,7 +142,7 @@ for their accomplishments and contributions.
 
 
 What is your plan for dealing with disappearing students?
-=========================================================
+---------------------------------------------------------
 
 Every reasonable effort will be made to maintain contact with
 students and ensure they are making progress throughout the summer.
@@ -161,7 +161,7 @@ up an abandoned project.
 
 
 What is your plan for dealing with disappearing mentors?
-========================================================
+--------------------------------------------------------
 
 Most of our suggested projects have more than one mentor available.
 In the unlikely event that a mentor disappears during the summer
@@ -174,7 +174,7 @@ discussions on the mailing list.
 
 
 What steps will you take to encourage students to interact with your project's community before, during and after the program?
-==============================================================================================================================
+------------------------------------------------------------------------------------------------------------------------------
 
 Students will be required to join the main development mailing
 list, and post their patches for discussion to same.  All current
@@ -210,12 +210,12 @@ do so during the GSoC period.
 
 
 Are you a new organization who has a Googler or other organization to vouch for you? If so, please list their name(s) here.
-===========================================================================================================================
+---------------------------------------------------------------------------------------------------------------------------
 
 N/A
 
 
 Are you an established or larger organization who would like to vouch for a new organization applying this year? If so, please list their name(s) here.
-=======================================================================================================================================================
+-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 N/A
