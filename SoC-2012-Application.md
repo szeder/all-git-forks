@@ -3,7 +3,7 @@ This is a draft of git's application to Google's Summer of Code 2012.
 Organization Admin
 ------------------
 
-Jeff King <peff@peff.net>
+Jeff King &lt;peff@peff.net&gt;
 
 
 Description
