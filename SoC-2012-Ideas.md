@@ -140,3 +140,44 @@ The programming work will be in C, as it replaces a core part of git.
 
 Proposed by: Thomas Rast
 Possible mentor(s): Thomas Rast
+
+Improving the `git add -p` interface
+------------------------------------
+
+The interface behind `git {add|commit|stash|reset} {-p|-i}` is shared
+and called `git-add--interactive.perl`.    This project would mostly
+focus on the `--patch` side, as that seems to be much more widely
+used; however, improvements to `--interactive` would probably also be
+welcome.
+
+The `--patch` interface suffers from some design flaws caused largely
+by how the script grew:
+
+ * Application is not atomic: hitting Ctrl-C midway through patching
+   may still touch files.
+
+ * The terminal/line-based interface becomes a problem if diff hunks
+   are too long to fit in your terminal.
+
+ * Cannot go back and forth between files.
+
+ * Cannot reverse the direction of the patch.
+
+ * Cannot look at the diff in word-diff mode (and apply it normally).
+
+Due to the current design it is also pretty hard to add these features
+without adding to the mess.  Thus the project consists of:
+
+ * Come up with more ideas for features/improvements and discuss them
+   with users.
+
+ * Cleanly redesigning the main interface loop to allow for the above
+   features.
+
+ * Implement the new features.
+
+As the existing code is written in Perl, that is what you will use for
+this project.
+
+Proposed by: Thomas Rast
+Possible mentor(s): Thomas Rast
