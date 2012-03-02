@@ -16,7 +16,7 @@ Gnome, KDE, Qt, Ruby on Rails, Android, PostgreSQL, Debian, and X.org.
 
 This achievement is the product of the lively Git development community,
 a loose-knit team of developers, technical writers, and end users with a
-passion for high quality open-source development. Because we use git
+passion for high quality open-source development. Because we use git to
 track the development of git itself, we keep the barrier to contributing
 low and encourage patches from a "long tail" of developers.
 
