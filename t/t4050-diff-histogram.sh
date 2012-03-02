@@ -9,4 +9,6 @@ test_diff_frobnitz "histogram"
 
 test_diff_unique "histogram"
 
+test_diff_ignore "histogram"
+
 test_done
