@@ -99,3 +99,44 @@ computers is a plus.
 
 Proposed by: Thomas Rast
 Possible mentor(s): Thomas Rast
+
+Designing a faster index format
+-------------------------------
+
+Git is pretty slow when managing huge repositories in terms of files
+in any given tree, as it needs to rewrite the index (in full) on
+pretty much every operation.  For example, even though _logically_
+`git add already_tracked_file` only changes a single blob SHA-1 in the
+index, Git will verify index correctness during loading and recompute
+the new hash during writing _over the whole index_.  It thus ends up
+spending a large amount of time simply on hashing the index.
+
+A carefully designed index format could help in several ways.  (For the
+complexity estimates below, let n be the number of index entries or
+the size of the index, which is roughly the same.)
+
+ * The work needed for something as simple as entering a new blob into
+   the index, which is possibly the most common operation in git
+   (think `git add -p` etc.) should be at most log(n).
+
+ * The work needed for a more complex operation that changes the
+   number of index entries will have to be larger unless we get into
+   database land.  However the amount of data that we SHA-1 over
+   should still be log(n).
+
+ * It may be possible to store the cache-tree data directly as part of
+   the index, always keeping it valid, and using that to validate
+   index consistency throughout.  If so, this would be a big boost to
+   other git operations that currently suffer from frequent cache-tree
+   invalidation.
+
+Note that there are other criteria than speed: the format should also
+be as easy to parse as possible, so as to simplify work for the other
+.git-reading programs (such as jgit and libgit2).  For the same
+reason, you will also have to show a significant speed boost as
+otherwise the break in compatibility is not worth the fallout.
+
+The programming work will be in C, as it replaces a core part of git.
+
+Proposed by: Thomas Rast
+Possible mentor(s): Thomas Rast
