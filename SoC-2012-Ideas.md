@@ -97,7 +97,7 @@ reasons.  At the very least you should not be scared of low-level
 programming.  Prior experience and access to one or more multi-core
 computers is a plus.
 
-Proposed by: Thomas Rast
+Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
 
 Designing a faster index format
@@ -138,7 +138,7 @@ otherwise the break in compatibility is not worth the fallout.
 
 The programming work will be in C, as it replaces a core part of git.
 
-Proposed by: Thomas Rast
+Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
 
 Improving the `git add -p` interface
@@ -179,5 +179,5 @@ without adding to the mess.  Thus the project consists of:
 As the existing code is written in Perl, that is what you will use for
 this project.
 
-Proposed by: Thomas Rast
+Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
