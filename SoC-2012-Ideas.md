@@ -46,8 +46,9 @@ There has been some work in the last year on streaming files into and
 out of the object database when possible. However, there is still more
 work to be done:
 
- * Some code paths still load large files into memory. These code paths
-   need to be analyzed and fixed.
+ * Some code paths still load large files into memory. Some other code
+   paths may convert in-pack large files into loose format. These code
+   paths need to be analyzed and fixed.
 
  * Some code paths, such as diff, require files in memory. When files
    are not text (as most large files are not), we can often skip this
