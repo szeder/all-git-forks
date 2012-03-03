@@ -181,3 +181,44 @@ this project.
 
 Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
+
+Modernizing and expanding Git.pm
+--------------------------------
+
+Git.pm was created in 2006 to make it easy to call git commands from
+Perl scripts safely, in a portable way (including workarounds required
+for ActiveState Perl on MS Windows).  Its error handling via exceptions
+also comes from that year.
+
+Git.pm module uses Error (and Error::Simple) for its exception handling.
+Unfortunately, while it might looked like a good choice in 2006, Error
+module is deprecated:
+
+> WARNING
+> -------
+>
+> Using the "Error" module is **no longer recommended** due to the
+> black-magical nature of its syntactic sugar, which often tends to
+> break. Its maintainers have stopped actively writing code that uses
+> it, and discourage people from doing so. See the "SEE ALSO" section
+> below for better recommendations.
+
+Nowadays the recommended solution to exception handling in Perl are
+Try::Tiny (or TryCatch, but I don't think Git.pm would need this more
+heavyweight module) for capturing and handling exceptions, and
+Exception::Class (or Throwable, but that requires heavyweight Moose
+object system) for throwing OO exceptions.
+
+The major goal would be to update Git.pm to modern Perl conventions,
+amon others moving from Error / Error::Simple to Try::Tiny and
+Exception::Class, preserving backwards compatibility, but perhaps also
+adding a better interface and using it in git commands implemented in
+Perl.
+
+Other optional goals would be to extend Git.pm, for example adding
+Git::Config module which would read git configuration once like gitweb
+does, or Git::Commit module for parsing commit objects, etc.
+
+Programming language: Perl  
+Proposed by: Jakub Narębski  
+Possible mentor(s): Jakub Narębski (?)
