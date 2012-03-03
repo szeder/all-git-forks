@@ -550,7 +550,8 @@ static int unpack_nondirectories(int n, unsigned long mask,
 	unsigned long conflicts;
 
 	/* Do we have *only* directories? Nothing to do */
-	if (mask == dirmask && !src[0])
+	if (mask == dirmask && (!src[0] || !S_ISREG(src[0]->ce_mode))) {
+		printf("Only directories (mask == dirmask && !src[0]): Nothing to do\n");
 		return 0;
 
 	conflicts = info->conflicts;

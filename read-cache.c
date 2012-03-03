@@ -175,7 +175,9 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 		return MODE_CHANGED | DATA_CHANGED | TYPE_CHANGED;
 
 	switch (ce->ce_mode & S_IFMT) {
-	case S_IFPERMDIR: // XXX ADDED... maybe the execution just shouldn't have gotten here for permdirs...
+	case S_IFPERMDIR:
+		changed |= !(S_ISPERMDIR(st->st_mode) || S_ISDIR(st->st_mode)) ? TYPE_CHANGED : 0;
+		break;
 	case S_IFREG:
 		changed |= !S_ISREG(st->st_mode) ? TYPE_CHANGED : 0;
 		/* We consider only the owner x bit to be relevant for
