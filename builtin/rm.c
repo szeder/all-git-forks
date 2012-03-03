@@ -18,6 +18,7 @@ static const char * const builtin_rm_usage[] = {
 static struct {
 	int nr, alloc;
 	const char **name;
+	unsigned long permdir_mask;
 } list;
 
 static int check_local_mod(unsigned char *head, int index_only)
@@ -174,6 +175,8 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		if (!match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, seen))
 			continue;
 		ALLOC_GROW(list.name, list.nr + 1, list.alloc);
+		if (S_ISPERMDIR(ce->ce_mode))
+			list.permdir_mask |= 1ul << list.nr;
 		list.name[list.nr++] = ce->name;
 	}
 
@@ -245,6 +248,9 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		int removed = 0;
 		for (i = 0; i < list.nr; i++) {
 			const char *path = list.name[i];
+			if (list.permdir_mask & (1ul << i))
+				/* Removing permdirs only affects the index. */
+				continue;
 			if (!remove_path(path)) {
 				removed = 1;
 				continue;
