@@ -248,3 +248,16 @@ does, or Git::Commit module for parsing commit objects, etc.
 Programming language: Perl  
 Proposed by: Jakub Narębski  
 Possible mentor(s): Jakub Narębski (?)
+
+Finishing network support for libgit2
+-------------------------------------
+
+The library currently has support for fetching code over the http and git protocols. The aim of this project is to finish the support for the remaining network operations:
+
+    - Fetch over SSH, including a sane API for managing the user's SSH keys.
+    - Push over http, git, and SSH, with pack-objects as a prerequisite.
+
+This is not as terribly complicated as it looks, because the existing networking code is well modularized and easy to extend: most of the required sockets functionality is already in place.
+
+Programming language: C89
+Possible mentor(s): Vicent Marti, Russell Belfer
