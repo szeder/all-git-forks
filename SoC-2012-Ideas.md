@@ -181,3 +181,29 @@ this project.
 
 Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
+
+Remote helper for Subversion
+------------------------------------
+
+Write a remote helper for Subversion. While a lot of the underlying
+infrastructure work was completed last year, the remote helper itself
+is essentially incomplete. Major work includes:
+
+* Understanding revision mapping and building a revision-commit mapper.
+
+* Working through transport and fast-import related plumbing, changing
+  whatever is necessary.
+
+* Getting an Git-to-SVN converter merged.
+
+* Building the remote helper itself.
+
+Goal: Build a full-featured bi-directional `git-remote-svn` and get it
+      merged into upstream Git.  
+Language: C  
+See: [A note on SVN history][SVN history], [svnrdump][].  
+Proposed by: David Barr  
+Possible mentors: Jonathan Nieder, Sverre Rabbelier, David Barr
+
+[SVN history]: http://article.gmane.org/gmane.comp.version-control.git/150007  
+[svnrdump]: http://svn.apache.org/repos/asf/subversion/trunk/subversion/svnrdump
