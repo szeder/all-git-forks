@@ -263,3 +263,16 @@ This is not as terribly complicated as it looks, because the existing networking
 
 Programming language: C89
 Possible mentor(s): Vicent Marti, Russell Belfer
+
+Teaching "--3way" to "git apply"
+--------------------------------
+
+The "-3" option "git am" understands is useful only when you are
+applying a full format-patch submission. Teaching the three-way
+fallback to underlying "git apply" would make the feature avialable in
+more use cases, and later can help making the implementation of "git
+am -3" simpler.
+
+Programming language: C89
+Suggested by: Junio C Hamano
+Possible mentors: ???
