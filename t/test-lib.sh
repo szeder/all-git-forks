@@ -56,6 +56,7 @@ unset $(perl -e '
 		PROVE
 		VALGRIND
 		PERF_AGGREGATING_LATER
+		BUILD_DIR
 	));
 	my @vars = grep(/^GIT_/ && !/^GIT_($ok)/o, @env);
 	print join("\n", @vars);
@@ -388,13 +389,27 @@ then
 	# itself.
 	TEST_DIRECTORY=$(pwd)
 fi
+
 if test -z "$TEST_OUTPUT_DIRECTORY"
 then
 	# Similarly, override this to store the test-results subdir
 	# elsewhere
 	TEST_OUTPUT_DIRECTORY=$TEST_DIRECTORY
 fi
-GIT_BUILD_DIR="$TEST_DIRECTORY"/..
+
+if test -z "$GIT_BUILD_DIR"
+then
+	# We allow tests to override this, in case they want to run tests
+	# outside of t/.
+
+	# For in-tree test scripts, this is one level above the
+	# TEST_DIRECTORY (t/), but a test script that lives outside t/
+	# can set this variable to point at the right place so that it
+	# can find t/ directory that house test helpers like
+	# lib-pager*.sh and test vectors like t4013/ as well as
+	# previously built git tools.
+       GIT_BUILD_DIR="$TEST_DIRECTORY"/..
+fi
 
 if test -n "$valgrind"
 then
