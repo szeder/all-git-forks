@@ -1,9 +1,24 @@
 This page contains project ideas for Google Summer of Code 2012 from the
-Git user and development community. You can get started by reading some
-project descriptions, and the mailing list thread(s) that spawned them.
-If you have another idea, add it to this page and start a discussion on
-the [[git mailing
-list|https://git.wiki.kernel.org/articles/g/i/t/GitCommunity_c4e3.html#Mailing_List]].
+Git user and development community.
+
+If you're active in the git community and have an idea that you would
+feel comfortable mentoring, feel free to add it. If you have an idea but
+need to find a suitable mentor, please bring it up on the [git mailing
+list]; others can help you develop the idea and may volunteer to mentor.
+
+If you're a prospective GSoC student, read through the ideas and see if
+any interest you. But note that these are ideas, not project proposals;
+they may need details filled in or expanded to make a good project.
+Find an area that interests you and start a discussion on the [git
+mailing list], even if it's just by asking more about the topic. A good
+proposal will be clear about the problem to be solved, the history of
+work in that area, and the specifics of the approach that the GSoC
+project will take. You can find some of those answers by reading the
+code and searching the list archives, but discussing the idea with
+interested developers is a great way for both the student and mentor to
+reach an understanding of exactly what is to be accomplished.
+
+[git mailing list]: https://git.wiki.kernel.org/articles/g/i/t/GitCommunity_c4e3.html#Mailing_List
 
 Better git log --follow support
 -------------------------------
