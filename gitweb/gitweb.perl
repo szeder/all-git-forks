@@ -3072,16 +3072,16 @@ sub filter_forks_from_projects_list {
 # for 'descr_long' and 'ctags' to be filled
 sub search_projects_list {
 	my ($projlist, %opts) = @_;
-	my $tagfilter  = $opts{'tagfilter'};
-	my $searchtext = $opts{'searchtext'};
+	my $tagfilter = $opts{'tagfilter'};
+	my $search_re = $opts{'search_regexp'};
 
 	return @$projlist
-		unless ($tagfilter || $searchtext);
+		unless ($tagfilter || $search_re);
 
 	# searching projects require filling to be run before it;
 	fill_project_list_info($projlist,
-	                       $tagfilter  ? 'ctags' : (),
-	                       $searchtext ? ('path', 'descr') : ());
+	                       $tagfilter ? 'ctags' : (),
+	                       $search_re ? ('path', 'descr') : ());
 	my @projects;
  PROJECT:
 	foreach my $pr (@$projlist) {
@@ -3092,10 +3092,10 @@ sub search_projects_list {
 				grep { lc($_) eq lc($tagfilter) } keys %{$pr->{'ctags'}};
 		}
 
-		if ($searchtext) {
+		if ($search_re) {
 			next unless
-				$pr->{'path'} =~ /$searchtext/ ||
-				$pr->{'descr_long'} =~ /$searchtext/;
+				$pr->{'path'} =~ /$search_re/ ||
+				$pr->{'descr_long'} =~ /$search_re/;
 		}
 
 		push @projects, $pr;
@@ -5498,9 +5498,9 @@ sub git_project_list_body {
 		if ($check_forks);
 	# search_projects_list pre-fills required info
 	@projects = search_projects_list(\@projects,
-	                                 'searchtext' => $searchtext,
-	                                 'tagfilter'  => $tagfilter)
-		if ($tagfilter || $searchtext);
+	                                 'search_regexp' => $search_regexp,
+	                                 'tagfilter' => $tagfilter)
+		if ($tagfilter || $search_regexp);
 	# fill the rest
 	@projects = fill_project_list_info(\@projects);
 
