@@ -43,6 +43,7 @@ static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
 static const char *curl_cookie_file;
 static struct credential http_auth = CREDENTIAL_INIT;
+static struct credential proxy_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
 
@@ -303,6 +304,17 @@ static CURL *get_curl_handle(void)
 		}
 	}
 	if (curl_http_proxy) {
+		credential_from_url(&proxy_auth, curl_http_proxy);
+		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password) {
+			/* proxy string has username but no password, ask for password */
+			struct strbuf pbuf = STRBUF_INIT;
+			credential_fill(&proxy_auth);
+			strbuf_addf(&pbuf, "%s://%s:%s@%s",proxy_auth.protocol,
+				proxy_auth.username, proxy_auth.password,
+				proxy_auth.host);
+			free ((void *)curl_http_proxy);
+			curl_http_proxy =  strbuf_detach(&pbuf, NULL);
+		}
 		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 	}
