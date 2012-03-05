@@ -291,3 +291,13 @@ am -3" simpler.
 Programming language: C89
 Suggested by: Junio C Hamano
 Possible mentors: ???
+
+Other sources of inspiration
+----------------------------
+
+* Previous year's SoC ideas:
+[SoC2011Ideas](https://git.wiki.kernel.org/articles/s/o/c/SoC2011Ideas_49fd.html),
+[SoC2010Ideas](https://git.wiki.kernel.org/articles/s/o/c/SoC2010Ideas_ccd4.html)
+* [Git users survey](http://permalink.gmane.org/gmane.comp.version-control.git/183242)
+* [Small project ideas](https://git.wiki.kernel.org/articles/s/m/a/SmallProjectsIdeas_00e5.html)
+(probably too small for a SoC)
