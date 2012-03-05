@@ -147,7 +147,7 @@ test_expect_failure 'fsck' '
 	git fsck --full
 '
 
-test_expect_failure 'repack' '
+test_expect_success 'repack' '
 	git repack -ad
 '
 
