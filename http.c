@@ -812,6 +812,22 @@ static int http_request(const char *url, void *result, int target, int options)
 				init_curl_http_auth(slot->curl);
 				ret = HTTP_REAUTH;
 			}
+		} else if (results.http_code == 407) { /* Proxy authentication failure */
+			if (proxy_auth.username && proxy_auth.password) {
+				credential_reject(&proxy_auth);
+				ret = HTTP_NOAUTH;
+			} else {
+				struct strbuf pbuf = STRBUF_INIT;
+				credential_from_url(&proxy_auth, curl_http_proxy);
+				credential_fill(&proxy_auth);
+				strbuf_addf(&pbuf, "%s://%s:%s@%s",proxy_auth.protocol,
+						proxy_auth.username, proxy_auth.password,
+						proxy_auth.host);
+				free ((void *)curl_http_proxy);
+				curl_http_proxy =  strbuf_detach(&pbuf, NULL);
+				curl_easy_setopt(slot->curl, CURLOPT_PROXY, curl_http_proxy);
+				ret = HTTP_REAUTH;
+			}
 		} else {
 			if (!curl_errorstr[0])
 				strlcpy(curl_errorstr,
