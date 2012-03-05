@@ -10,6 +10,17 @@
 use 5.008;
 use strict;
 use warnings;
+
+use File::Spec;
+
+# __DIR__ is excerpt from Dir::Self
+sub __DIR__ () {
+	File::Spec->rel2abs(join '', (File::Spec->splitpath(__FILE__))[0, 1]);
+}
+use lib "++GITWEBLIBDIR++";
+use lib __DIR__ . '/lib';
+
+
 use CGI qw(:standard :escapeHTML -nosticky);
 use CGI::Util qw(unescape);
 use CGI::Carp qw(fatalsToBrowser set_message);
