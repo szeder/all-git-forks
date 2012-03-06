@@ -188,8 +188,7 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 	return 1;
 }
 
-void create_branch(const char *head,
-		   const char *name, const char *start_name,
+void create_branch(const char *name, const char *start_name,
 		   int force, int reflog, int clobber_head,
 		   enum branch_track track)
 {
