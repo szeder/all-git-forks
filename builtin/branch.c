@@ -807,7 +807,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	} else if (argc > 0 && argc <= 2) {
 		if (kinds != REF_LOCAL_BRANCH)
 			die(_("-a and -r options to 'git branch' do not make sense with a branch name"));
-		create_branch(argv[0], (argc == 2) ? argv[1] : head,
+		create_branch(argv[0], (argc == 2) ? argv[1] : "HEAD",
 			      force_create, reflog, 0, track);
 	} else
 		usage_with_options(builtin_branch_usage, options);
