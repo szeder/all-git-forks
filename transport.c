@@ -1283,3 +1283,8 @@ void for_each_alternate_ref(alternate_ref_fn fn, void *data)
 	cb.data = data;
 	foreach_alt_odb(refs_from_alternate_cb, &cb);
 }
+
+int is_pack_transport(const struct transport *transport)
+{
+	return transport->fetch == fetch_refs_via_pack;
+}
