@@ -10,7 +10,9 @@ end
 
 def shellout(cmd)
     pipe = IO.popen(cmd)
-    pipe.readlines
+    lines = pipe.readlines
+    pipe.close
+    return lines
 end
 
 desc "Syntax check on XX.po, or all .po files if nothing provided."
