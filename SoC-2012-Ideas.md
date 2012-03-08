@@ -264,6 +264,60 @@ Programming language: Perl
 Proposed by: Jakub Narębski  
 Possible mentor(s): Jakub Narębski (?)
 
+Use JavaScript library / framework in gitweb
+--------------------------------------------
+
+Gitweb (git web interface) includes some *optional* client-side
+scripting using JavaScript.  This includes checking if JavaScript is
+available and remembering this information so gitweb can choose
+JavaScript-only version of a view (javascript-detection), selecting
+common timezone to use when showing dates (adjust-timezone), and
+AJAX-y incremental blame view (blame_incremental).
+
+Currently all this is done using hand-written JavaScript.  This means
+that gitweb scripting includes handling cookies, formatting output,
+processing dates, and smoothing out incompatibilities between browsers
+(like e.g. XmlHttpRequest creation).
+
+This is redoing work which JavaScript libraries, such as jQuery,
+MooTools or YUI already did.  Moreover, if we want to add new features
+(e.g. table sorted using JavaScript), or improve existing ones, we
+would have to re-implement existing JavaScript code.  Also our
+hand-crafted code is not as well tested as widely used JavaScript
+libraries.
+
+The goal of this project is to move gitweb client side scripting to
+use some JavaScript library / JavaScript framework.
+
+The project would consist of the following steps:
+
+ * Add support for configuring and loading external JavaScript library
+   to `gitweb/gitweb.perl` and `gitweb/Makefile`.  It would be nice
+   (though not necessary) to be able to use local version of library,
+   and have such feature well documented.
+
+ * Remove gitweb's JavaScript mini-library in `gitweb/static/js/lib`
+   and replace it part by part by appropriate JavaScript library
+   functions (methods).
+
+ * Replace DOM selectors by library version, if applicable.
+
+ * Optional: emulate 'onprogress' in XmlHttpRequest using native
+   JavaScript library mechanism (creating a class, or whatever).
+
+ * Optional: better deferring of repainting in incremental blame.
+
+Note that we require that client-side scripting in gitweb follow
+[progressive enhancement] strategy; gitweb should work correctly,
+perhaps with reduced functionality, even if JavaScript is turned off,
+or external JavaScript library cannot be loaded.
+
+[progressive enhancement]: http://en.wikipedia.org/wiki/Progressive_enhancement
+
+Programming language: JavaScript  
+Proposed by: Jakub Narębski  
+Possible mentor(s): Jakub Narębski
+
 Finishing network support for libgit2
 -------------------------------------
 
