@@ -1,9 +1,24 @@
 This page contains project ideas for Google Summer of Code 2012 from the
-Git user and development community. You can get started by reading some
-project descriptions, and the mailing list thread(s) that spawned them.
-If you have another idea, add it to this page and start a discussion on
-the [[git mailing
-list|https://git.wiki.kernel.org/articles/g/i/t/GitCommunity_c4e3.html#Mailing_List]].
+Git user and development community.
+
+If you're active in the git community and have an idea that you would
+feel comfortable mentoring, feel free to add it. If you have an idea but
+need to find a suitable mentor, please bring it up on the [git mailing
+list]; others can help you develop the idea and may volunteer to mentor.
+
+If you're a prospective GSoC student, read through the ideas and see if
+any interest you. But note that these are ideas, not project proposals;
+they may need details filled in or expanded to make a good project.
+Find an area that interests you and start a discussion on the [git
+mailing list], even if it's just by asking more about the topic. A good
+proposal will be clear about the problem to be solved, the history of
+work in that area, and the specifics of the approach that the GSoC
+project will take. You can find some of those answers by reading the
+code and searching the list archives, but discussing the idea with
+interested developers is a great way for both the student and mentor to
+reach an understanding of exactly what is to be accomplished.
+
+[git mailing list]: https://git.wiki.kernel.org/articles/g/i/t/GitCommunity_c4e3.html#Mailing_List
 
 Better git log --follow support
 -------------------------------
@@ -46,8 +61,9 @@ There has been some work in the last year on streaming files into and
 out of the object database when possible. However, there is still more
 work to be done:
 
- * Some code paths still load large files into memory. These code paths
-   need to be analyzed and fixed.
+ * Some code paths still load large files into memory. Some other code
+   paths may convert in-pack large files into loose format. These code
+   paths need to be analyzed and fixed.
 
  * Some code paths, such as diff, require files in memory. When files
    are not text (as most large files are not), we can often skip this
@@ -182,6 +198,32 @@ this project.
 Proposed by: Thomas Rast  
 Possible mentor(s): Thomas Rast
 
+Remote helper for Subversion
+------------------------------------
+
+Write a remote helper for Subversion. While a lot of the underlying
+infrastructure work was completed last year, the remote helper itself
+is essentially incomplete. Major work includes:
+
+* Understanding revision mapping and building a revision-commit mapper.
+
+* Working through transport and fast-import related plumbing, changing
+  whatever is necessary.
+
+* Getting an Git-to-SVN converter merged.
+
+* Building the remote helper itself.
+
+Goal: Build a full-featured bi-directional `git-remote-svn` and get it
+      merged into upstream Git.  
+Language: C  
+See: [A note on SVN history][SVN history], [svnrdump][].  
+Proposed by: David Barr  
+Possible mentors: Jonathan Nieder, Sverre Rabbelier, David Barr
+
+[SVN history]: http://article.gmane.org/gmane.comp.version-control.git/150007  
+[svnrdump]: http://svn.apache.org/repos/asf/subversion/trunk/subversion/svnrdump
+
 Modernizing and expanding Git.pm
 --------------------------------
 
@@ -195,7 +237,6 @@ Unfortunately, while it might looked like a good choice in 2006, Error
 module is deprecated:
 
 > WARNING
-> -------
 >
 > Using the "Error" module is **no longer recommended** due to the
 > black-magical nature of its syntactic sugar, which often tends to
@@ -222,3 +263,41 @@ does, or Git::Commit module for parsing commit objects, etc.
 Programming language: Perl  
 Proposed by: Jakub Narębski  
 Possible mentor(s): Jakub Narębski (?)
+
+Finishing network support for libgit2
+-------------------------------------
+
+The library currently has support for fetching code over the http and git protocols. The aim of this project is to finish the support for the remaining network operations:
+
+Major goals:
+
+- Fetch over SSH, including a sane API for managing the user's SSH keys.
+- Push over http, git, and SSH, with pack-objects as a prerequisite.
+
+This is not as terribly complicated as it looks, because the existing networking code is well modularized and easy to extend: most of the required sockets functionality is already in place.
+
+Programming language: C89
+Possible mentor(s): Vicent Marti, Russell Belfer
+
+Teaching "--3way" to "git apply"
+--------------------------------
+
+The "-3" option "git am" understands is useful only when you are
+applying a full format-patch submission. Teaching the three-way
+fallback to underlying "git apply" would make the feature avialable in
+more use cases, and later can help making the implementation of "git
+am -3" simpler.
+
+Programming language: C89
+Suggested by: Junio C Hamano
+Possible mentors: ???
+
+Other sources of inspiration
+----------------------------
+
+* Previous year's SoC ideas:
+[SoC2011Ideas](https://git.wiki.kernel.org/articles/s/o/c/SoC2011Ideas_49fd.html),
+[SoC2010Ideas](https://git.wiki.kernel.org/articles/s/o/c/SoC2010Ideas_ccd4.html)
+* [Git users survey](http://permalink.gmane.org/gmane.comp.version-control.git/183242)
+* [Small project ideas](https://git.wiki.kernel.org/articles/s/m/a/SmallProjectsIdeas_00e5.html)
+(probably too small for a SoC)
