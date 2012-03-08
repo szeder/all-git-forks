@@ -51,6 +51,7 @@ task :pot do
                 dropped << m[1]
             end
         end
+        tmpfile.unlink
         puts "Update of #{POTFILE}:"
         puts
         if not new.empty?
