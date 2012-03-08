@@ -1,4 +1,4 @@
-From 1e7e0f1dc58924f186923c13240e84816313886b Mon Sep 17 00:00:00 2001
+From 3a57883194124668c16125b21de38329675ae548 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
@@ -29,13 +29,13 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  Makefile |   10 ++
  srv.c    |  308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  srv.h    |   15 +++
- tcp.c    |  100 +++++++++++++++------
+ tcp.c    |  100 ++++++++++++++------
  4 files changed, 405 insertions(+), 28 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
 diff --git a/Makefile b/Makefile
-index 9927f02..18cc67e 100644
+index 8b60389..56198f1 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -148,6 +148,10 @@ all::
@@ -49,7 +49,7 @@ index 9927f02..18cc67e 100644
  # Define NO_MMAP if you want to avoid mmap.
  #
  # Define NO_PTHREADS if you do not have or do not want to use Pthreads.
-@@ -1489,6 +1493,11 @@ endif
+@@ -1490,6 +1494,11 @@ endif
  ifdef NEEDS_NSL
  	EXTLIBS += -lnsl
  endif
@@ -61,7 +61,7 @@ index 9927f02..18cc67e 100644
  ifdef NEEDS_RESOLV
  	EXTLIBS += -lresolv
  endif
-@@ -2154,6 +2163,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
+@@ -2155,6 +2164,7 @@ builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
  connect.o daemon.o tcp.o: tcp.h
@@ -543,5 +543,5 @@ index 623d7e1..0615f5e 100644
  }
  
 -- 
-1.7.9.1
+1.7.9.2
 

@@ -1,4 +1,4 @@
-From c0112b5e6cfeaeac5eac8621043428a92cee4332 Mon Sep 17 00:00:00 2001
+From 280554d4a261cff36145d5ccb73e3037096420e1 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
 Subject: Makefile: add a knob to turn off hardlinks within same directory
@@ -39,10 +39,10 @@ Requested-by: Bastian Blank <waldi@debian.org>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ 1 file changed, 7 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index 18cc67e..580ce54 100644
+index 56198f1..9a0ddd3 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -248,6 +248,10 @@ all::
@@ -56,7 +56,7 @@ index 18cc67e..580ce54 100644
  # Define USE_NED_ALLOCATOR if you want to replace the platforms default
  # memory allocators with the nedmalloc allocator written by Niall Douglas.
  #
-@@ -2505,12 +2509,14 @@ endif
+@@ -2506,12 +2510,14 @@ endif
  	} && \
  	for p in $(filter $(install_bindir_programs),$(BUILT_INS)); do \
  		$(RM) "$$bindir/$$p" && \
@@ -71,7 +71,7 @@ index 18cc67e..580ce54 100644
  		ln "$$execdir/git$X" "$$execdir/$$p" 2>/dev/null || \
  		ln -s "git$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git$X" "$$execdir/$$p" || exit; \
-@@ -2518,6 +2524,7 @@ endif
+@@ -2519,6 +2525,7 @@ endif
  	remote_curl_aliases="$(REMOTE_CURL_ALIASES)" && \
  	for p in $$remote_curl_aliases; do \
  		$(RM) "$$execdir/$$p" && \
@@ -80,5 +80,5 @@ index 18cc67e..580ce54 100644
  		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
 -- 
-1.7.9.1
+1.7.9.2
 

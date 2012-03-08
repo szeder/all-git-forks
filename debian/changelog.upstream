@@ -1,3 +1,100 @@
+Version v1.7.9.3; changes since v1.7.9.2:
+-----------------------------------------
+
+Andrew Wong (1):
+      rebase -m: only call "notes copy" when rewritten exists and is non-empty
+
+Carlos Martín Nieto (2):
+      branch: don't assume the merge filter ref exists
+      Documentation: use {asterisk} in rev-list-options.txt when needed
+
+Clemens Buchacher (1):
+      http.proxy: also mention https_proxy and all_proxy
+
+Dmitry V. Levin (1):
+      Makefile: add thread-utils.h to LIB_H
+
+Jakub Narebski (2):
+      gitweb: Fix "heads" view when there is no current branch
+      gitweb: Handle invalid regexp in regexp search
+
+Jeff King (4):
+      disconnect from remote helpers more gently
+      teach convert_to_git a "dry run" mode
+      teach dry-run convert_to_git not to require a src buffer
+      do not stream large files to pack when filters are in use
+
+Jehan Bing (1):
+      Ignore SIGPIPE when running a filter driver
+
+Jim Meyering (1):
+      am: don't infloop for an empty input file
+
+John Szakmeister (1):
+      configure: don't use -lintl when there is no gettext support
+
+Jonathan Nieder (1):
+      mergetools/meld: Use --help output to detect --output support
+
+Junio C Hamano (9):
+      refresh_index: do not show unmerged path that is outside pathspec
+      Documentation/merge-options.txt: group "ff" related options together
+      Document merge.branchdesc configuration variable
+      Git 1.7.8.5
+      Document accumulated fixes since 1.7.9.2
+      Update draft release notes to 1.7.9.3
+      Documentation: do not assume that n > 1 in <rev>~$n
+      Update draft release notes to 1.7.9.3 for the last time
+      Git 1.7.9.3
+
+Libor Pechacek (1):
+      Documentation fixes in git-config
+
+Matthieu Moy (1):
+      README: point to Documentation/SubmittingPatches
+
+Michael Haggerty (2):
+      post-receive-email: remove unused variable
+      post-receive-email: match up $LOGBEGIN..$LOGEND pairs correctly
+
+Michael J Gruber (1):
+      t0300: work around bug in dash 0.5.6
+
+Michał Kiedrowicz (1):
+      grep -P: Fix matching ^ and $
+
+Nguyễn Thái Ngọc Duy (2):
+      rev-list: remove BISECT_SHOW_TRIED flag
+      rev-list: fix --verify-objects --quiet becoming --objects
+
+Pete Wyckoff (4):
+      git-p4: set useClientSpec variable on initial clone
+      git-p4: fix submit regression with clientSpec and subdir clone
+      git-p4: remove bash-ism in t9809
+      git-p4: remove bash-ism in t9800
+
+Philip Jägenstedt (1):
+      remote: fix set-branches usage and documentation
+
+Stefano Lattarini (1):
+      tests: fix spurious error when run directly with Solaris /usr/xpg4/bin/sh
+
+Thomas Rast (6):
+      merge: add instructions to the commit message when editing
+      bundle: put strbuf_readline_fd in strbuf.c with adjustments
+      bundle: use a strbuf to scan the log for boundary commits
+      strbuf: improve strbuf_get*line documentation
+      t5704: match tests to modern style
+      fast-import: zero all of 'struct tag' to silence valgrind
+
+Tim Henigan (2):
+      CodingGuidelines: Add a note about spaces after redirection
+      CodingGuidelines: do not use 'which' in shell scripts
+
+Tom Grennan (1):
+      t5512 (ls-remote): modernize style
+
+
 Version v1.7.9.2; changes since v1.7.9.1:
 -----------------------------------------
 
@@ -249,7 +346,7 @@ Thomas Rast (1):
       mailinfo documentation: accurately describe non -k case
 
 
-Version v1.7.9-rc0; changes since v1.7.8.4:
+Version v1.7.9-rc0; changes since v1.7.8.5:
 -------------------------------------------
 
 Anders Kaseorg (2):
@@ -560,6 +657,29 @@ Yggy King (1):
       Fix an enum assignment issue spotted by Sun Studio
       Fix a bitwise negation assignment issue spotted by Sun Studio
       Appease Sun Studio by renaming "tmpfile"
+
+
+Version v1.7.8.5; changes since v1.7.8.4:
+-----------------------------------------
+
+Andrew Wong (1):
+      rebase -m: only call "notes copy" when rewritten exists and is non-empty
+
+Dmitry V. Levin (1):
+      Makefile: add thread-utils.h to LIB_H
+
+Jeff King (1):
+      imap-send: remove dead code
+
+Jim Meyering (1):
+      am: don't infloop for an empty input file
+
+Junio C Hamano (2):
+      Git 1.7.6.6
+      Git 1.7.8.5
+
+Michał Kiedrowicz (1):
+      grep -P: Fix matching ^ and $
 
 
 Version v1.7.8.4; changes since v1.7.8.3:

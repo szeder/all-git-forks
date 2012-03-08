@@ -1,4 +1,4 @@
-From 3cef96860d09a3bbbc03567af73f82f421fd4086 Mon Sep 17 00:00:00 2001
+From 4f550122129e750f6e3d6829df384d4ef0bf2860 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
 Subject: tcp: unify ipv4 and ipv6 code paths
@@ -35,8 +35,8 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  dns-ipv4.c |   33 +++++++++++
  dns-ipv4.h |   69 +++++++++++++++++++++++
  dns-ipv6.c |   49 ++++++++++++++++
- dns-ipv6.h |   31 ++++++++++
- tcp.c      |  182 ++++++++++-------------------------------------------------
+ dns-ipv6.h |   31 +++++++++++
+ tcp.c      |  182 +++++++++++-------------------------------------------------
  6 files changed, 218 insertions(+), 151 deletions(-)
  create mode 100644 dns-ipv4.c
  create mode 100644 dns-ipv4.h
@@ -44,10 +44,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index c1df45d..9927f02 100644
+index 927a079..8b60389 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -1611,6 +1611,11 @@ ifdef NO_TRUSTABLE_FILEMODE
+@@ -1612,6 +1612,11 @@ ifdef NO_TRUSTABLE_FILEMODE
  endif
  ifdef NO_IPV6
  	BASIC_CFLAGS += -DNO_IPV6
@@ -510,5 +510,5 @@ index 9263e0d..47e31e5 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.9.1
+1.7.9.2
 
