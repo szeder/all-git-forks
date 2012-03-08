@@ -1386,6 +1386,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	const char *index_file, *reflog_msg;
 	char *nl, *p;
 	unsigned char sha1[20];
+	unsigned char permdir_sha1[20];
 	struct ref_lock *ref_lock;
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
@@ -1500,6 +1501,18 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	} else {
 		struct commit_extra_header **tail = &extra;
 		append_merge_tag_headers(parents, &tail);
+	}
+
+	if (write_permdir_file(&the_index, permdir_sha1) > 0) {
+		struct commit_extra_header *permdir_header;
+
+		permdir_header = xcalloc(1, sizeof(*permdir_header));
+		permdir_header->key = xstrdup("permdirs");
+		permdir_header->value = xstrdup(sha1_to_hex(permdir_sha1));
+		permdir_header->len = 40;
+
+		permdir_header->next = extra;
+		extra = permdir_header;
 	}
 
 	if (commit_tree_extended(&sb, active_cache_tree->sha1, parents, sha1,

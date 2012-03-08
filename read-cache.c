@@ -27,6 +27,9 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT(s) ( (s[0]<<24)|(s[1]<<16)|(s[2]<<8)|(s[3]) )
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
+#define CACHE_EXT_PERMDIR 0x50444952	/* "PDIR" */
+
+const char *permdir_type = "permdir";
 
 struct index_state the_index;
 
@@ -1213,6 +1216,30 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	return 0;
 }
 
+static void cache_permdirext_read(struct index_state *istate,
+				void *data, unsigned long sz)
+{
+	char *path = data;
+	const char *end = data + sz;
+	struct cache_entry *ce;
+	unsigned ce_size;
+	int namelen;
+
+	while (path < end) {
+		namelen = strlen(path);
+		ce_size = cache_entry_size(namelen);
+
+		ce = xcalloc(1, ce_size);
+		memcpy(ce->name, path, namelen);
+		ce->ce_mode = create_ce_mode(S_IFPERMDIR);
+		ce->ce_flags = namelen;
+		if (add_index_entry(istate, ce, ADD_CACHE_OK_TO_ADD) < 0)
+			die("unable to add cache entry for %s", path);
+
+		path = strchr(path, '\0') + 1;
+	}
+}
+
 static int read_index_extension(struct index_state *istate,
 				const char *ext, void *data, unsigned long sz)
 {
@@ -1222,6 +1249,9 @@ static int read_index_extension(struct index_state *istate,
 		break;
 	case CACHE_EXT_RESOLVE_UNDO:
 		istate->resolve_undo = resolve_undo_read(data, sz);
+		break;
+	case CACHE_EXT_PERMDIR:
+		cache_permdirext_read(istate, data, sz);
 		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
@@ -1586,18 +1616,58 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 		rollback_lock_file(lockfile);
 }
 
+int cache_permdirext_write(struct strbuf* buf, struct index_state *istate)
+{
+	struct cache_entry **cache = istate->cache;
+	int i, count;
+	int entries = istate->cache_nr;
+
+	for (i = 0; i < entries; i++) {
+		if (cache[i]->ce_flags & CE_REMOVE)
+			continue;
+		if (!S_ISPERMDIR(cache[i]->ce_mode))
+			continue;
+		strbuf_add(buf, cache[i]->name, ce_namelen(cache[i]) + 1); /* include \0 */
+		count++;
+	}
+
+	return count;
+}
+
+int write_permdir_file(struct index_state *istate, unsigned char *returnsha1)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int count;
+
+	count = cache_permdirext_write(&buf, istate);
+	if (!count)
+		return count;
+
+	if (write_sha1_file(&buf, buf.len, permdir_type, returnsha1) < 0)
+		return -1;
+
+	return count;
+}
+
 int write_index(struct index_state *istate, int newfd)
 {
 	git_SHA_CTX c;
 	struct cache_header hdr;
-	int i, err, removed, extended;
+	int i, err, removed, extended, permdirs;
 	struct cache_entry **cache = istate->cache;
 	int entries = istate->cache_nr;
 	struct stat st;
 
-	for (i = removed = extended = 0; i < entries; i++) {
+	printf("write_index():");
+	print_index(istate);
+
+	for (i = removed = extended = permdirs = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;
+		if (S_ISPERMDIR(cache[i]->ce_mode)) {
+			removed++;
+			permdirs++;
+		}
 
 		/* reduce extended entries if possible */
 		cache[i]->ce_flags &= ~CE_EXTENDED;
@@ -1618,7 +1688,7 @@ int write_index(struct index_state *istate, int newfd)
 
 	for (i = 0; i < entries; i++) {
 		struct cache_entry *ce = cache[i];
-		if (ce->ce_flags & CE_REMOVE)
+		if (ce->ce_flags & CE_REMOVE || S_ISPERMDIR(ce->ce_mode))
 			continue;
 		if (!ce_uptodate(ce) && is_racy_timestamp(istate, ce))
 			ce_smudge_racily_clean_entry(ce);
@@ -1643,6 +1713,16 @@ int write_index(struct index_state *istate, int newfd)
 		resolve_undo_write(&sb, istate->resolve_undo);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_RESOLVE_UNDO,
 					     sb.len) < 0
+			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
+	if (permdirs > 0) {
+		struct strbuf sb = STRBUF_INIT;
+
+		cache_permdirext_write(&sb, istate);
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_PERMDIR, sb.len) < 0
 			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
 		if (err)
