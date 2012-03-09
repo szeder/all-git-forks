@@ -342,9 +342,30 @@ fallback to underlying "git apply" would make the feature avialable in
 more use cases, and later can help making the implementation of "git
 am -3" simpler.
 
-Programming language: C89
-Suggested by: Junio C Hamano
-Possible mentors: ???
+Programming language: C89  
+Suggested by: Junio C Hamano  
+Possible mentors: ???  
+
+Complete "Linus's ultimate content tracking tool"
+-------------------------------------------------
+
+Early in the Git development history, Linus envisioned an "ultimate content tracking tool"
+in a [message](http://thread.gmane.org/gmane.comp.version-control.git/217). Starting from
+the current codebase, it would dig deeper in the history to answer "where did this line
+come from?" and even find out:
+
+> "oops, that line didn't even exist in the previous version, BUT I
+> FOUND FIVE PLACES that matched almost perfectly in the same diff,
+> and here they are"
+
+We already have the part to dig through the history to find the commit that introduced the
+line in question as "git rev-list -S<the contents on the line>", but we do not have any tool
+to help the "BUT I FOUND FIVE PLACES that matched almost perfectly" part.
+
+Write a tool that can be used for the task, and optionally wrap an interactive UI around it.
+
+Programming language: Any  
+Possible mentors: ???  
 
 Other sources of inspiration
 ----------------------------
