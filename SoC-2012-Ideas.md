@@ -384,7 +384,7 @@ Major goals:
 
 This is not as terribly complicated as it looks, because the existing networking code is well modularized and easy to extend: most of the required sockets functionality is already in place.
 
-Programming language: C89
+Programming language: C89  
 Possible mentor(s): Vicent Marti, Russell Belfer
 
 Teaching "--3way" to "git apply"
