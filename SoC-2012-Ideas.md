@@ -318,6 +318,60 @@ Programming language: JavaScript
 Proposed by: Jakub Narębski  
 Possible mentor(s): Jakub Narębski
 
+`git instaweb --serve`
+----------------------
+
+[git-instaweb] is a tool for browsing a repository (in gitweb) with
+a web browser.  To use it, simply run `git instaweb` inside
+repository.  It would set up gitweb and a web server, and by default
+also run a web browser.  Web interface would be available at
+`http://localhost:1234`.
+
+For informal, ad-hoc sharing it would be nice if there was an option
+to `git instaweb` that would make it also allow remote machines
+to **pull** from you (via HTTP), similar to [hg serve] command in
+Mercurial version control system.
+
+git-instaweb supports many web servers.  Currently apache2, lighttpd,
+mongoose, plackup and webrick are supported.  It is not necessary to
+implement support for `--serve` in all of them.
+
+The project would consist of the following steps:
+
+ * Configure web server to run `git-http-backend` CGI program to serve
+   git repositories over HTTP.  It should probably allow by default
+   only read-only use.
+
+ * Configure gitweb to show fetch URL in 'summary' page.
+
+ * If possible for given web server (and with available modules),
+   configure it so that "smart" HTTP server and gitweb share common
+   URL (are available under the same URL).
+
+ * If possible use mechanism native for a web server used, for example 
+   [Plack::App::GitSmartHttp] for 'plackup' web server, or [grack]
+   with WEBrick.
+
+ * Optionally: add support for pushing (disabled by default).
+
+ * Optionally: add documentation about using `git instaweb` to
+   "[Git User's Manual]" (or one of tutorials), similar to appropriate
+   chapter in [hgbook] ("Mercurial: The Definitive Guide").
+
+The minimum would be to implement pull support under different URL
+than web interface, and only for one web server.
+
+Programming language: shell script  
+Proposed by: Jakub Narębski  
+Possible mentor(s): Jakub Narębski, Eric Wong, ...
+
+[git-instaweb]: http://schacon.github.com/git/git-instaweb.html
+[hg serve]: http://mercurial.selenic.com/wiki/hgserve
+[Plack::App::GitSmartHttp]: http://search.cpan.org/perldoc?Plack::App::GitSmartHttp
+[grack]: https://github.com/schacon/grack
+[Git User's Manual]: http://schacon.github.com/git/user-manual.html
+[hgbook]: http://hgbook.red-bean.com/read/collaborating-with-other-people.html#sec:collab:serve
+
 Finishing network support for libgit2
 -------------------------------------
 
