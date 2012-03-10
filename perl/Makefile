@@ -24,7 +24,6 @@ ifdef NO_PERL_MAKEMAKER
 instdir_SQ = $(subst ','\'',$(prefix)/lib)
 $(makfile): ../GIT-CFLAGS Makefile
 	echo all: private-Error.pm Git.pm Git/I18N.pm > $@
-	echo '	mkdir -p blib/lib' >> $@
 	echo '	mkdir -p blib/lib/Git' >> $@
 	echo '	$(RM) blib/lib/Git.pm; cp Git.pm blib/lib/' >> $@
 	echo '	$(RM) blib/lib/Git/I18N.pm; cp Git/I18N.pm blib/lib/Git/' >> $@
@@ -41,7 +40,6 @@ $(makfile): ../GIT-CFLAGS Makefile
 	echo '	cp private-Error.pm "$$(DESTDIR)$(instdir_SQ)/Error.pm"' >> $@
 	echo instlibdir: >> $@
 	echo '	echo $(instdir_SQ)' >> $@
-	echo '	echo $(instdir_SQ)/Git' >> $@
 else
 $(makfile): Makefile.PL ../GIT-CFLAGS
 	$(PERL_PATH) $< PREFIX='$(prefix_SQ)' INSTALL_BASE='' --localedir='$(localedir_SQ)'
