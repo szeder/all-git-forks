@@ -43,6 +43,7 @@ static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
 static const char *curl_cookie_file;
 static struct credential http_auth = CREDENTIAL_INIT;
+static struct credential proxy_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
 
@@ -295,7 +296,25 @@ static CURL *get_curl_handle(void)
 	if (curl_ftp_no_epsv)
 		curl_easy_setopt(result, CURLOPT_FTP_USE_EPSV, 0);
 
+	if (!curl_http_proxy) {
+		const char *env_proxy;
+		env_proxy = getenv("http_proxy");
+		if (env_proxy) {
+			curl_http_proxy = xstrdup(env_proxy);
+		}
+	}
 	if (curl_http_proxy) {
+		credential_from_url(&proxy_auth, curl_http_proxy);
+		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password) {
+			/* proxy string has username but no password, ask for password */
+			struct strbuf pbuf = STRBUF_INIT;
+			credential_fill(&proxy_auth);
+			strbuf_addf(&pbuf, "%s://%s:%s@%s",proxy_auth.protocol,
+				proxy_auth.username, proxy_auth.password,
+				proxy_auth.host);
+			free ((void *)curl_http_proxy);
+			curl_http_proxy =  strbuf_detach(&pbuf, NULL);
+		}
 		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 	}
@@ -791,6 +810,22 @@ static int http_request(const char *url, void *result, int target, int options)
 			} else {
 				credential_fill(&http_auth);
 				init_curl_http_auth(slot->curl);
+				ret = HTTP_REAUTH;
+			}
+		} else if (results.http_code == 407) { /* Proxy authentication failure */
+			if (proxy_auth.username && proxy_auth.password) {
+				credential_reject(&proxy_auth);
+				ret = HTTP_NOAUTH;
+			} else {
+				struct strbuf pbuf = STRBUF_INIT;
+				credential_from_url(&proxy_auth, curl_http_proxy);
+				credential_fill(&proxy_auth);
+				strbuf_addf(&pbuf, "%s://%s:%s@%s",proxy_auth.protocol,
+						proxy_auth.username, proxy_auth.password,
+						proxy_auth.host);
+				free ((void *)curl_http_proxy);
+				curl_http_proxy =  strbuf_detach(&pbuf, NULL);
+				curl_easy_setopt(slot->curl, CURLOPT_PROXY, curl_http_proxy);
 				ret = HTTP_REAUTH;
 			}
 		} else {
