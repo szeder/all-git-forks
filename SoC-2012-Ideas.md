@@ -356,7 +356,7 @@ The project would consist of the following steps:
 
  * Optionally: add documentation about using `git instaweb` to
    "[Git User's Manual]" (or one of tutorials), similar to appropriate
-   chapter in [hgbook] ("Mercurial: The Definitive Guide").
+   chapter in [hgbook] i.e. "Mercurial: The Definitive Guide".
 
 The minimum would be to implement pull support under different URL
 than web interface, and only for one web server.
@@ -370,7 +370,7 @@ Possible mentor(s): Jakub Narębski, Eric Wong, ...
 [Plack::App::GitSmartHttp]: http://search.cpan.org/perldoc?Plack::App::GitSmartHttp
 [grack]: https://github.com/schacon/grack
 [Git User's Manual]: http://schacon.github.com/git/user-manual.html
-[hgbook]: http://hgbook.red-bean.com/read/collaborating-with-other-people.html#sec:collab:serve
+[hgbook]: http://hgbook.red-bean.com/read/collaborating-with-other-people.html
 
 Finishing network support for libgit2
 -------------------------------------
