@@ -187,6 +187,43 @@ static void display_table(const struct string_list *list,
 	free(empty_cell);
 }
 
+static void display_denser_table(const struct string_list *list,
+				unsigned int colopts,
+				const struct column_options *opts)
+{
+	int i = 0, n = 0, shortest, longest;
+	struct string_list l = *list;
+	l.items = list->items;
+	colopts = (colopts & ~COL_DENSER) | COL_DENSE;
+	shortest = longest = strlen(list->items[0].string);
+	while (i + n < list->nr) {
+		int len = strlen(list->items[i+n].string);
+		if (len < shortest)
+			shortest = len;
+		if (len > longest)
+			longest = len;
+		if (n < 5) {
+			n++;
+			continue;
+		}
+		if (longest - shortest > opts->width / 4) {
+			if (len == longest)
+				n++;
+			l.nr = n;
+			display_table(&l, colopts, opts);
+			puts("");
+			longest = 0;
+			shortest = 0xff;
+			l.items += n;
+			i += n;
+			n = 0;
+		} else
+			n++;
+	}
+	l.nr = list->nr - i;
+	display_table(&l, colopts, opts);
+}
+
 void print_columns(const struct string_list *list, unsigned int colopts,
 		   const struct column_options *opts)
 {
@@ -211,6 +248,10 @@ void print_columns(const struct string_list *list, unsigned int colopts,
 		break;
 	case COL_ROW:
 	case COL_COLUMN:
+		if (colopts & COL_DENSER) {
+			display_denser_table(list, colopts, &nopts);
+			break;
+		}
 		display_table(list, colopts, &nopts);
 		break;
 	default:
@@ -250,6 +291,7 @@ static int parse_option(const char *arg, int len, unsigned int *colopts,
 		{ "column", COL_COLUMN,   COL_LAYOUT_MASK },
 		{ "row",    COL_ROW,      COL_LAYOUT_MASK },
 		{ "dense",  COL_DENSE,    0 },
+		{ "denser", COL_DENSER,   0 },
 	};
 	int i;
 

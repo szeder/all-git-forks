@@ -6,6 +6,7 @@
 #define COL_PARSEOPT      0x0040   /* --column is given from cmdline */
 #define COL_DENSE         0x0080   /* Shrink columns when possible,
 				      making space for more columns */
+#define COL_DENSER        0x0100
 
 #define COL_DISABLED      0x0000   /* must be zero */
 #define COL_ENABLED       0x0010
