@@ -2003,10 +2003,12 @@ static void update_pre_post_images(struct image *preimage,
 	 * in place (postlen==0) or not.
 	 */
 	old = postimage->buf;
-	if (postlen)
+	if (postlen) {
 		new = postimage->buf = xmalloc(postlen);
-	else
+		postimage->alloc = postlen;
+	} else {
 		new = old;
+	}
 	fixed = preimage->buf;
 	for (i = ctx = 0; i < postimage->nr; i++) {
 		size_t len = postimage->line[i].len;
@@ -2032,6 +2034,13 @@ static void update_pre_post_images(struct image *preimage,
 
 		/* and copy it in, while fixing the line length */
 		len = preimage->line[ctx].len;
+		if (postimage->alloc < (new - postimage->buf) + len) {
+			size_t post_len = new - postimage->buf;
+			postimage->buf = xrealloc(postimage->buf, post_len + len);
+			postimage->alloc = post_len + len;
+			new = postimage->buf + post_len;
+		}
+
 		memcpy(new, fixed, len);
 		new += len;
 		fixed += len;
@@ -2594,6 +2603,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 	preimage.len = old - oldlines;
 	postimage.buf = newlines.buf;
 	postimage.len = newlines.len;
+	postimage.alloc = newlines.alloc;
 	preimage.line = preimage.line_allocated;
 	postimage.line = postimage.line_allocated;
 
@@ -2679,7 +2689,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 	}
 
 	free(oldlines);
-	strbuf_release(&newlines);
+	free(postimage.buf);
 	free(preimage.line_allocated);
 	free(postimage.line_allocated);
 
