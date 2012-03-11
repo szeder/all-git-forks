@@ -421,6 +421,68 @@ Write a tool that can be used for the task, and optionally wrap an interactive U
 Programming language: Any  
 Possible mentors: ???  
 
+Graphical diff in git-gui
+-------------------------
+
+[git-gui] is a portable Tcl/Tk based graphical interface to Git,
+focused on commit generation and single file annotation.  It is part
+of Git, even though it is developed in a [separate repository].
+
+git-gui can show differences as syntax-highlighted unified diff.  The
+goal of this project would be to add graphical side-by-side diff.
+One possibility is to make use of [TkDiff] code (a graphical diff and
+merge tool), which is also GPL licensed.
+
+The project would consist of the following steps (not all must be
+implemented during Google Summer of Code):
+
+ * Add "git gui diff" subcommand, which would show single file
+   side-by-side graphical compare or/and graphical diff.
+
+   Graphical part and code for side-by-side compare (showing full
+   contents of both files) can be taken from TkDiff, while graphical
+   side-by-side diff (showing changes plus context) can be translated
+   from gitweb's side-by-side diff code.
+
+ * Integrate graphical diff with main git-gui application (including
+   switching between side-by-side and unified diff).
+
+ * Add highlighting of changes in diff both to side-by-side
+   (new code), and to unified diff (current code).
+
+   It can be done using code for TkDiff (perhaps with Git performing
+   word diff instead of doing it in Tcl), or/and using algorithm from
+   gitweb and diff-highlight in contrib.  The difference is that one
+   uses word diff or character diff to highlight changes, the other
+   just skips common prefix and suffix.
+
+ * Add graphical merge / graphical 3-way diff support.  Both are to be
+   used in case a file has textual conflicts; graphical merge also
+   includes resolving a merge by taking 'our' side, 'their' side (or
+   optionally also 'ancestor' side), or by editing merge result.
+
+ * Graphical side-by-side tree level diff, or side-by-side directory
+   listing with differences highlighted.
+
+   UI can be taken from two-panel filemanagers (like MC, or Total
+   Commander), or from synchronization tools (like e.g. Unison).
+
+   The difficulty can be in showing rename and copy detection results,
+   and in showing type (filemode) changes.
+
+The minimum would be to implement side-by-side diff or side-by-side
+compare of two files, without highlighting changes (diff refinement
+highlighting) in the form of separate "`git gui diff <file>`"
+command.
+
+[git-gui]: http://schacon.github.com/git/git-gui.html
+[separate repository]: http://repo.or.cz/w/git-gui.git
+[TkDiff]: http://freecode.com/projects/tkdiff
+
+Programming language: Tcl/Tk  
+Proposed by: Jakub Narębski  
+Possible mentor(s): Pat Thoyts, Paul Mackerras (?)
+
 Other sources of inspiration
 ----------------------------
 
