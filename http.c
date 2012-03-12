@@ -43,6 +43,7 @@ static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
 static const char *curl_cookie_file;
 static struct credential http_auth = CREDENTIAL_INIT;
+static struct credential proxy_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
 
@@ -232,6 +233,20 @@ static int has_cert_password(void)
 	return 1;
 }
 
+static void set_proxy_auth(CURL *result)
+{
+	if (proxy_auth.username && proxy_auth.password) {
+#if LIBCURL_VERSION_NUM >= 0x071901
+		curl_easy_setopt(result, CURLOPT_PROXYUSERNAME, proxy_auth.username);
+		curl_easy_setopt(result, CURLOPT_PROXYPASSWORD, proxy_auth.password);
+#else
+		char userpwd[100];
+		snprintf(userpwd, 100, "%s:%s", proxy_auth.username, proxy_auth.password);
+		curl_easy_setopt(result, CURLOPT_PROXYUSERPWD, userpwd);
+#endif
+	}
+}
+
 static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
@@ -295,9 +310,27 @@ static CURL *get_curl_handle(void)
 	if (curl_ftp_no_epsv)
 		curl_easy_setopt(result, CURLOPT_FTP_USE_EPSV, 0);
 
+	if (!curl_http_proxy) {
+		const char *env_proxy;
+		env_proxy = getenv("http_proxy");
+		if (env_proxy) {
+			curl_http_proxy = xstrdup(env_proxy);
+		}
+	}
 	if (curl_http_proxy) {
-		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
+		struct strbuf proxyhost = STRBUF_INIT;
+
+		if (!proxy_auth.host)
+			/* check to parse only once */
+			credential_from_url(&proxy_auth, curl_http_proxy);
+		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password)
+			/* proxy string has username but no password, ask for password */
+			credential_fill(&proxy_auth);
+		strbuf_addf(&proxyhost, "%s://%s", proxy_auth.protocol, proxy_auth.host);
+		curl_easy_setopt(result, CURLOPT_PROXY, proxyhost.buf);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+		set_proxy_auth(result);
+		strbuf_release(&proxyhost);
 	}
 
 	return result;
@@ -793,6 +826,15 @@ static int http_request(const char *url, void *result, int target, int options)
 				init_curl_http_auth(slot->curl);
 				ret = HTTP_REAUTH;
 			}
+		} else if (results.http_code == 407) { /* Proxy authentication failure */
+			if (proxy_auth.username && proxy_auth.password) {
+				credential_reject(&proxy_auth);
+				ret = HTTP_NOAUTH;
+			} else {
+				credential_fill(&proxy_auth);
+				set_proxy_auth(slot->curl);
+				ret = HTTP_REAUTH;
+			}
 		} else {
 			if (!curl_errorstr[0])
 				strlcpy(curl_errorstr,
@@ -817,10 +859,13 @@ static int http_request(const char *url, void *result, int target, int options)
 static int http_request_reauth(const char *url, void *result, int target,
 			       int options)
 {
-	int ret = http_request(url, result, target, options);
-	if (ret != HTTP_REAUTH)
-		return ret;
-	return http_request(url, result, target, options);
+	int ret;
+
+	do {
+		ret = http_request(url, result, target, options);
+	} while (ret == HTTP_REAUTH);
+
+	return ret;
 }
 
 int http_get_strbuf(const char *url, struct strbuf *result, int options)
