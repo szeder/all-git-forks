@@ -1,3 +1,10 @@
+git (1:1.7.9.1-1.1) unstable; urgency=low
+
+  * debian/control: add Vcs-Browser: http://repo.or.cz/w/git/debian.git
+    (thx Jonathan McCrohan; closes: #663451).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 14 Mar 2012 02:30:00 -0500
+
 git (1:1.7.9.1-1) unstable; urgency=low
 
   * new upstream point release.
