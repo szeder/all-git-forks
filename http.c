@@ -43,6 +43,7 @@ static int curl_ftp_no_epsv;
 static const char *curl_http_proxy;
 static const char *curl_cookie_file;
 static struct credential http_auth = CREDENTIAL_INIT;
+static struct credential proxy_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
 
@@ -232,6 +233,20 @@ static int has_cert_password(void)
 	return 1;
 }
 
+static void set_proxy_auth(CURL *result)
+{
+	if (proxy_auth.username && proxy_auth.password) {
+#if LIBCURL_VERSION_NUM >= 0x071901
+		curl_easy_setopt(result, CURLOPT_PROXYUSERNAME, proxy_auth.username);
+		curl_easy_setopt(result, CURLOPT_PROXYPASSWORD, proxy_auth.password);
+#else
+		char userpwd[100];
+		snprintf(userpwd, 100, "%s:%s", proxy_auth.username, proxy_auth.password);
+		curl_easy_setopt(result, CURLOPT_PROXYUSERPWD, userpwd);
+#endif
+	}
+}
+
 static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
@@ -303,8 +318,19 @@ static CURL *get_curl_handle(void)
 		}
 	}
 	if (curl_http_proxy) {
-		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
+		struct strbuf proxyhost = STRBUF_INIT;
+
+		if (!proxy_auth.host)
+			/* check to parse only once */
+			credential_from_url(&proxy_auth, curl_http_proxy);
+		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password)
+			/* proxy string has username but no password, ask for password */
+			credential_fill(&proxy_auth);
+		strbuf_addf(&proxyhost, "%s://%s", proxy_auth.protocol, proxy_auth.host);
+		curl_easy_setopt(result, CURLOPT_PROXY, proxyhost.buf);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+		set_proxy_auth(result);
+		strbuf_release(&proxyhost);
 	}
 
 	return result;
