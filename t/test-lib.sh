@@ -56,7 +56,9 @@ unset VISUAL EMAIL LANGUAGE $(perl -e '
 		.*_TEST
 		PROVE
 		VALGRIND
+		VALGRIND_TOOLS
 		PERF_AGGREGATING_LATER
+		BUILD_DIR
 	));
 	my @vars = grep(/^GIT_/ && !/^GIT_($ok)/o, @env);
 	print join("\n", @vars);
@@ -389,13 +391,41 @@ then
 	# itself.
 	TEST_DIRECTORY=$(pwd)
 fi
+
 if test -z "$TEST_OUTPUT_DIRECTORY"
 then
 	# Similarly, override this to store the test-results subdir
 	# elsewhere
 	TEST_OUTPUT_DIRECTORY=$TEST_DIRECTORY
 fi
-GIT_BUILD_DIR="$TEST_DIRECTORY"/..
+
+if test -z "$GIT_BUILD_DIR"
+then
+	# We allow tests to override this, in case they want to run tests
+	# outside of t/.
+
+	# For in-tree test scripts, this is one level above the
+	# TEST_DIRECTORY (t/), but a test script that lives outside t/
+	# can set this variable to point at the right place so that it
+	# can find t/ directory that house test helpers like
+	# lib-pager*.sh and test vectors like t4013/ as well as
+	# previously built git tools.
+       GIT_BUILD_DIR="$TEST_DIRECTORY"/..
+fi
+
+# GIT_VALGRIND_TOOLS is the location of tools like valgrind.sh.
+if test -z "$GIT_VALGRIND_TOOLS"
+then
+	# We allow tests to override this, in case they want to run tests
+	# outside of t/.
+
+	# For in-tree test scripts, this is in TEST_DIRECTORY/valgrind
+	# (t/valgrind), but a test script that lives outside t/ can
+	# set this variable to point at the right place so that it can
+	# find t/valgrind directory that house test helpers like
+	# valgrind.sh.
+	GIT_VALGRIND_TOOLS="$TEST_DIRECTORY"/valgrind
+fi
 
 if test -n "$valgrind"
 then
@@ -434,11 +464,11 @@ then
 		    test ! -d "$symlink_target" &&
 		    test "#!" != "$(head -c 2 < "$symlink_target")"
 		then
-			symlink_target=../valgrind.sh
+			symlink_target=${GIT_VALGRIND_TOOLS}/valgrind.sh
 		fi
 		case "$base" in
 		*.sh|*.perl)
-			symlink_target=../unprocessed-script
+			symlink_target=${GIT_VALGRIND_TOOLS}/unprocessed-script
 		esac
 		# create the link, or replace it if it is out of date
 		make_symlink "$symlink_target" "$GIT_VALGRIND/bin/$base" || exit
@@ -466,7 +496,10 @@ then
 	IFS=$OLDIFS
 	PATH=$GIT_VALGRIND/bin:$PATH
 	GIT_EXEC_PATH=$GIT_VALGRIND/bin
+	# Make these available in valgrind.sh
+	export GIT_BUILD_DIR
 	export GIT_VALGRIND
+	export GIT_VALGRIND_TOOLS
 elif test -n "$GIT_TEST_INSTALLED" ; then
 	GIT_EXEC_PATH=$($GIT_TEST_INSTALLED/git --exec-path)  ||
 	error "Cannot run git from $GIT_TEST_INSTALLED."
