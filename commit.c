@@ -102,6 +102,29 @@ static unsigned long parse_commit_date(const char *buf, const char *tail)
 	return strtoul(dateptr, NULL, 10);
 }
 
+static struct permdirs *parse_commit_permdirs(const char *buf, const char *tail)
+{
+	const char *permdirsptr;
+	unsigned char sha1[20];
+
+	while (buf + 9 < tail && *buf != '\n' && memcmp(buf, "permdirs ", 9))
+		while (buf < tail && *buf++ != '\n')
+			/* nada */;
+	if (buf + 9 >= tail || *buf == '\n')
+		return NULL;
+	/* memcmp(buf, "permdirs ", 9) == 0 */
+	permdirsptr = buf + 9;
+	while (buf < tail && *buf++ == '\n')
+		/* nada */;
+	if (buf >= tail)
+		return NULL;
+	if (buf != permdirsptr + 40) /* bogus sha1 */
+		return NULL;
+	/* permdirsptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
+	get_sha1_hex(permdirsptr, sha1);
+	return lookup_permdirs(sha1);
+}
+
 static struct commit_graft **commit_graft;
 static int commit_graft_alloc, commit_graft_nr;
 
@@ -299,6 +322,7 @@ int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long s
 		}
 	}
 	item->date = parse_commit_date(bufptr, tail);
+	item->permdirs = parse_commit_permdirs(bufptr, tail);
 
 	return 0;
 }

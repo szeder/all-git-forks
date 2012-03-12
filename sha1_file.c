@@ -2293,9 +2293,20 @@ void *read_object_with_reference(const unsigned char *sha1,
 			return buffer;
 		}
 		/* Handle references */
-		else if (type == OBJ_COMMIT)
-			ref_type = "tree ";
-		else if (type == OBJ_TAG)
+		else if (type == OBJ_COMMIT) {
+			if (required_type == OBJ_PERMDIRS) {
+				char *buf = buffer;
+				ref_type = "\npermdirs ";
+				buf = strstr(buf, ref_type);
+				if (!buf) {
+					free(buffer);
+					return NULL;
+				}
+				buffer = buf + 1;
+				ref_type = "permdirs ";
+			} else
+				ref_type = "tree ";
+		} else if (type == OBJ_TAG)
 			ref_type = "object ";
 		else {
 			free(buffer);

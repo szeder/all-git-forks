@@ -173,6 +173,7 @@ static int is_empty_blob_sha1(const unsigned char *sha1)
 static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 {
 	unsigned int changed = 0;
+	printf("ce_match_stat_basic(ce=%s '%s' %o %o/0x%x, st=mode:%o)\n", sha1_to_hex(ce->sha1), ce->name, ce->ce_mode, ce->ce_flags, ce->ce_flags, st->st_mode);
 
 	if (ce->ce_flags & CE_REMOVE)
 		return MODE_CHANGED | DATA_CHANGED | TYPE_CHANGED;
@@ -180,7 +181,7 @@ static int ce_match_stat_basic(struct cache_entry *ce, struct stat *st)
 	switch (ce->ce_mode & S_IFMT) {
 	case S_IFPERMDIR:
 		changed |= !(S_ISPERMDIR(st->st_mode) || S_ISDIR(st->st_mode)) ? TYPE_CHANGED : 0;
-		break;
+		return changed;
 	case S_IFREG:
 		changed |= !S_ISREG(st->st_mode) ? TYPE_CHANGED : 0;
 		/* We consider only the owner x bit to be relevant for
@@ -1658,7 +1659,7 @@ int write_index(struct index_state *istate, int newfd)
 	int entries = istate->cache_nr;
 	struct stat st;
 
-	printf("write_index():");
+	printf("write_index():\n");
 	print_index(istate);
 
 	for (i = removed = extended = permdirs = 0; i < entries; i++) {

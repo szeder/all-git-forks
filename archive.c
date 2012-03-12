@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "commit.h"
 #include "tree-walk.h"
+#include "permdirs-walk.h"
 #include "attr.h"
 #include "archive.h"
 #include "parse-options.h"
@@ -156,6 +157,7 @@ int write_archive_entries(struct archiver_args *args,
 	struct archiver_context context;
 	struct unpack_trees_options opts;
 	struct tree_desc t;
+	struct permdirs_desc p;
 	struct pathspec pathspec;
 	int err;
 
@@ -186,7 +188,9 @@ int write_archive_entries(struct archiver_args *args,
 		opts.dst_index = &the_index;
 		opts.fn = oneway_merge;
 		init_tree_desc(&t, args->tree->buffer, args->tree->size);
-		if (unpack_trees(1, &t, &opts))
+		if (args->permdirs)
+			init_permdirs_desc(&p, args->permdirs->buffer, args->permdirs->size);
+		if (unpack_trees(1, &t, args->permdirs ? &p : NULL, &opts))
 			return -1;
 		git_attr_set_direction(GIT_ATTR_INDEX, &the_index);
 	}
@@ -254,6 +258,7 @@ static void parse_treeish_arg(const char **argv,
 	const unsigned char *commit_sha1;
 	time_t archive_time;
 	struct tree *tree;
+	struct permdirs *permdirs;
 	const struct commit *commit;
 	unsigned char sha1[20];
 
@@ -290,6 +295,7 @@ static void parse_treeish_arg(const char **argv,
 	tree = parse_tree_indirect(sha1);
 	if (tree == NULL)
 		die("not a tree object");
+	permdirs = parse_permdirs_indirect(sha1);
 
 	if (prefix) {
 		unsigned char tree_sha1[20];
@@ -304,6 +310,7 @@ static void parse_treeish_arg(const char **argv,
 		tree = parse_tree_indirect(tree_sha1);
 	}
 	ar_args->tree = tree;
+	ar_args->permdirs = permdirs;
 	ar_args->commit_sha1 = commit_sha1;
 	ar_args->commit = commit;
 	ar_args->time = archive_time;

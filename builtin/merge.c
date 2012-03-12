@@ -15,6 +15,8 @@
 #include "commit.h"
 #include "diffcore.h"
 #include "revision.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "unpack-trees.h"
 #include "cache-tree.h"
 #include "dir.h"
@@ -591,6 +593,8 @@ static int read_tree_trivial(unsigned char *common, unsigned char *head,
 	int i, nr_trees = 0;
 	struct tree *trees[MAX_UNPACK_TREES];
 	struct tree_desc t[MAX_UNPACK_TREES];
+	struct permdirs *permdirs[MAX_UNPACK_TREES];
+	struct permdirs_desc p[MAX_UNPACK_TREES];
 	struct unpack_trees_options opts;
 
 	memset(&opts, 0, sizeof(opts));
@@ -602,12 +606,15 @@ static int read_tree_trivial(unsigned char *common, unsigned char *head,
 	opts.trivial_merges_only = 1;
 	opts.merge = 1;
 	trees[nr_trees] = parse_tree_indirect(common);
+	permdirs[nr_trees] = parse_permdirs_indirect(common);
 	if (!trees[nr_trees++])
 		return -1;
 	trees[nr_trees] = parse_tree_indirect(head);
+	permdirs[nr_trees] = parse_permdirs_indirect(head);
 	if (!trees[nr_trees++])
 		return -1;
 	trees[nr_trees] = parse_tree_indirect(one);
+	permdirs[nr_trees] = parse_permdirs_indirect(one);
 	if (!trees[nr_trees++])
 		return -1;
 	opts.fn = threeway_merge;
@@ -615,8 +622,14 @@ static int read_tree_trivial(unsigned char *common, unsigned char *head,
 	for (i = 0; i < nr_trees; i++) {
 		parse_tree(trees[i]);
 		init_tree_desc(t+i, trees[i]->buffer, trees[i]->size);
+		if (permdirs[i]) {
+			parse_permdirs(permdirs[i]);
+			init_permdirs_desc(p+i, permdirs[i]->buffer, permdirs[i]->size);
+		} else {
+			init_permdirs_desc(p+i, NULL, 0);
+		}
 	}
-	if (unpack_trees(nr_trees, t, &opts))
+	if (unpack_trees(nr_trees, t, p, &opts))
 		return -1;
 	return 0;
 }
@@ -763,8 +776,10 @@ static int count_unmerged_entries(void)
 int checkout_fast_forward(const unsigned char *head, const unsigned char *remote)
 {
 	struct tree *trees[MAX_UNPACK_TREES];
-	struct unpack_trees_options opts;
 	struct tree_desc t[MAX_UNPACK_TREES];
+	struct permdirs *permdirs[MAX_UNPACK_TREES];
+	struct permdirs_desc p[MAX_UNPACK_TREES];
+	struct unpack_trees_options opts;
 	int i, fd, nr_trees = 0;
 	struct dir_struct dir;
 	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
@@ -774,8 +789,10 @@ int checkout_fast_forward(const unsigned char *head, const unsigned char *remote
 	fd = hold_locked_index(lock_file, 1);
 
 	memset(&trees, 0, sizeof(trees));
-	memset(&opts, 0, sizeof(opts));
 	memset(&t, 0, sizeof(t));
+	memset(&permdirs, 0, sizeof(permdirs));
+	memset(&p, 0, sizeof(p));
+	memset(&opts, 0, sizeof(opts));
 	if (overwrite_ignore) {
 		memset(&dir, 0, sizeof(dir));
 		dir.flags |= DIR_SHOW_IGNORED;
@@ -793,16 +810,24 @@ int checkout_fast_forward(const unsigned char *head, const unsigned char *remote
 	setup_unpack_trees_porcelain(&opts, "merge");
 
 	trees[nr_trees] = parse_tree_indirect(head);
+	permdirs[nr_trees] = parse_permdirs_indirect(head);
 	if (!trees[nr_trees++])
 		return -1;
 	trees[nr_trees] = parse_tree_indirect(remote);
+	permdirs[nr_trees] = parse_permdirs_indirect(remote);
 	if (!trees[nr_trees++])
 		return -1;
 	for (i = 0; i < nr_trees; i++) {
 		parse_tree(trees[i]);
 		init_tree_desc(t+i, trees[i]->buffer, trees[i]->size);
+		if (permdirs[i]) {
+			parse_permdirs(permdirs[i]);
+			init_permdirs_desc(p+i, permdirs[i]->buffer, permdirs[i]->size);
+		} else {
+			init_permdirs_desc(p+i, NULL, 0);
+		}
 	}
-	if (unpack_trees(nr_trees, t, &opts))
+	if (unpack_trees(nr_trees, t, p, &opts))
 		return -1;
 	if (write_cache(fd, active_cache, active_nr) ||
 		commit_locked_index(lock_file))

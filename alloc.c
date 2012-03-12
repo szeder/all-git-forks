@@ -13,6 +13,7 @@
 #include "object.h"
 #include "blob.h"
 #include "tree.h"
+#include "permdirs.h"
 #include "commit.h"
 #include "tag.h"
 
@@ -47,6 +48,7 @@ union any_object {
 
 DEFINE_ALLOCATOR(blob, struct blob)
 DEFINE_ALLOCATOR(tree, struct tree)
+DEFINE_ALLOCATOR(permdirs, struct permdirs)
 DEFINE_ALLOCATOR(commit, struct commit)
 DEFINE_ALLOCATOR(tag, struct tag)
 DEFINE_ALLOCATOR(object, union any_object)
@@ -64,6 +66,7 @@ void alloc_report(void)
 {
 	REPORT(blob);
 	REPORT(tree);
+	REPORT(permdirs);
 	REPORT(commit);
 	REPORT(tag);
 }

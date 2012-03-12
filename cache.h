@@ -397,7 +397,7 @@ enum object_type {
 	OBJ_TREE = 2,
 	OBJ_BLOB = 3,
 	OBJ_TAG = 4,
-	/* 5 for future expansion */
+	OBJ_PERMDIRS = 5,
 	OBJ_OFS_DELTA = 6,
 	OBJ_REF_DELTA = 7,
 	OBJ_ANY,
@@ -407,7 +407,7 @@ enum object_type {
 static inline enum object_type object_type(unsigned int mode)
 {
 	return S_ISDIR(mode) ? OBJ_TREE :
-		S_ISPERMDIR(mode) ? OBJ_TREE :
+		S_ISPERMDIR(mode) ? OBJ_PERMDIRS :
 		S_ISGITLINK(mode) ? OBJ_COMMIT :
 		OBJ_BLOB;
 }
@@ -1207,6 +1207,7 @@ void encode_85(char *buf, const unsigned char *data, int bytes);
 /* alloc.c */
 extern void *alloc_blob_node(void);
 extern void *alloc_tree_node(void);
+extern void *alloc_permdirs_node(void);
 extern void *alloc_commit_node(void);
 extern void *alloc_tag_node(void);
 extern void *alloc_object_node(void);

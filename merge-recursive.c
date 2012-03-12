@@ -10,6 +10,7 @@
 #include "blob.h"
 #include "builtin.h"
 #include "tree-walk.h"
+#include "permdirs-walk.h"
 #include "diff.h"
 #include "diffcore.h"
 #include "tag.h"
@@ -238,7 +239,7 @@ static int git_merge_trees(int index_only,
 	init_tree_desc_from_tree(t+1, head);
 	init_tree_desc_from_tree(t+2, merge);
 
-	rc = unpack_trees(3, t, &opts);
+	rc = unpack_trees(3, t, NULL, &opts);
 	cache_tree_free(&active_cache_tree);
 	return rc;
 }

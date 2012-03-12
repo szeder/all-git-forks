@@ -16,6 +16,8 @@
 #include "diff.h"
 #include "diffcore.h"
 #include "tree.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "branch.h"
 #include "parse-options.h"
 #include "unpack-trees.h"
@@ -43,6 +45,7 @@ static int reset_index_file(const unsigned char *sha1, int reset_type, int quiet
 	int nr = 1;
 	int newfd;
 	struct tree_desc desc[2];
+	struct permdirs_desc pdesc[2];
 	struct tree *tree;
 	struct unpack_trees_options opts;
 	struct lock_file *lock = xcalloc(1, sizeof(struct lock_file));
@@ -77,13 +80,15 @@ static int reset_index_file(const unsigned char *sha1, int reset_type, int quiet
 			return error(_("You do not have a valid HEAD."));
 		if (!fill_tree_descriptor(desc, head_sha1))
 			return error(_("Failed to find tree of HEAD."));
+		fill_permdirs_descriptor(pdesc, head_sha1);
 		nr++;
 		opts.fn = twoway_merge;
 	}
 
 	if (!fill_tree_descriptor(desc + nr - 1, sha1))
 		return error(_("Failed to find tree of %s."), sha1_to_hex(sha1));
-	if (unpack_trees(nr, desc, &opts))
+	fill_permdirs_descriptor(pdesc + nr - 1, sha1);
+	if (unpack_trees(nr, desc, pdesc, &opts))
 		return -1;
 
 	if (reset_type == MIXED || reset_type == HARD) {

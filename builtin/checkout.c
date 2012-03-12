@@ -5,6 +5,8 @@
 #include "commit.h"
 #include "tree.h"
 #include "tree-walk.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "cache-tree.h"
 #include "unpack-trees.h"
 #include "dir.h"
@@ -331,10 +333,11 @@ static void describe_detached_head(const char *msg, struct commit *commit)
 	strbuf_release(&sb);
 }
 
-static int reset_tree(struct tree *tree, struct checkout_opts *o, int worktree)
+static int reset_tree(struct tree *tree, struct permdirs *permdirs, struct checkout_opts *o, int worktree)
 {
 	struct unpack_trees_options opts;
 	struct tree_desc tree_desc;
+	struct permdirs_desc permdirs_desc;
 
 	memset(&opts, 0, sizeof(opts));
 	opts.head_idx = -1;
@@ -348,7 +351,13 @@ static int reset_tree(struct tree *tree, struct checkout_opts *o, int worktree)
 	opts.dst_index = &the_index;
 	parse_tree(tree);
 	init_tree_desc(&tree_desc, tree->buffer, tree->size);
-	switch (unpack_trees(1, &tree_desc, &opts)) {
+	if (permdirs) {
+		parse_permdirs(permdirs);
+		init_permdirs_desc(&permdirs_desc, permdirs->buffer, permdirs->size);
+	} else {
+		init_permdirs_desc(&permdirs_desc, NULL, 0);
+	}
+	switch (unpack_trees(1, &tree_desc, &permdirs_desc, &opts)) {
 	case -2:
 		o->writeout_error = 1;
 		/*
@@ -393,12 +402,14 @@ static int merge_working_tree(struct checkout_opts *opts,
 
 	resolve_undo_clear();
 	if (opts->force) {
-		ret = reset_tree(new->commit->tree, opts, 1);
+		ret = reset_tree(new->commit->tree, new->commit->permdirs, opts, 1);
 		if (ret)
 			return ret;
 	} else {
 		struct tree_desc trees[2];
 		struct tree *tree;
+		struct permdirs_desc permdirs_desc[2];
+		struct permdirs *permdirs;
 		struct unpack_trees_options topts;
 
 		memset(&topts, 0, sizeof(topts));
@@ -431,10 +442,21 @@ static int merge_working_tree(struct checkout_opts *opts,
 					   old->commit->object.sha1 :
 					   EMPTY_TREE_SHA1_BIN);
 		init_tree_desc(&trees[0], tree->buffer, tree->size);
+		permdirs = old->commit ? parse_permdirs_indirect(old->commit->object.sha1)
+					   : NULL;
+		if (permdirs)
+			init_permdirs_desc(&permdirs_desc[0], permdirs->buffer, permdirs->size);
+		else
+			init_permdirs_desc(&permdirs_desc[0], NULL, 0);
 		tree = parse_tree_indirect(new->commit->object.sha1);
 		init_tree_desc(&trees[1], tree->buffer, tree->size);
+		permdirs = parse_permdirs_indirect(new->commit->object.sha1);
+		if (permdirs)
+			init_permdirs_desc(&permdirs_desc[1], permdirs->buffer, permdirs->size);
+		else
+			init_permdirs_desc(&permdirs_desc[1], NULL, 0);
 
-		ret = unpack_trees(2, trees, &topts);
+		ret = unpack_trees(2, trees, permdirs_desc, &topts);
 		if (ret == -1) {
 			/*
 			 * Unpack couldn't do a trivial merge; either
@@ -479,7 +501,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 			o.verbosity = 0;
 			work = write_tree_from_memory(&o);
 
-			ret = reset_tree(new->commit->tree, opts, 1);
+			ret = reset_tree(new->commit->tree, new->commit->permdirs, opts, 1);
 			if (ret)
 				return ret;
 			o.ancestor = old->name;
@@ -487,7 +509,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 			o.branch2 = "local";
 			merge_trees(&o, new->commit->tree, work,
 				old->commit->tree, &result);
-			ret = reset_tree(new->commit->tree, opts, 0);
+			ret = reset_tree(new->commit->tree, new->commit->permdirs, opts, 0);
 			if (ret)
 				return ret;
 		}

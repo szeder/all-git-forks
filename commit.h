@@ -3,6 +3,7 @@
 
 #include "object.h"
 #include "tree.h"
+#include "permdirs.h"
 #include "strbuf.h"
 #include "decorate.h"
 
@@ -18,6 +19,7 @@ struct commit {
 	unsigned long date;
 	struct commit_list *parents;
 	struct tree *tree;
+	struct permdirs *permdirs;
 	char *buffer;
 };
 

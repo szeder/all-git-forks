@@ -3,6 +3,8 @@
 #include "dir.h"
 #include "tree.h"
 #include "tree-walk.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "cache-tree.h"
 #include "unpack-trees.h"
 #include "progress.h"
@@ -1068,7 +1070,7 @@ static int verify_absent(struct cache_entry *, enum unpack_trees_error_types, st
  *
  * CE_ADDED, CE_UNPACKED and CE_NEW_SKIP_WORKTREE are used internally
  */
-int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options *o)
+int unpack_trees(unsigned len, struct tree_desc *t, struct permdirs_desc *p, struct unpack_trees_options *o)
 {
 	int i, ret;
 	static struct cache_entry *dfc;
@@ -1137,6 +1139,8 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 		}
 
 		if (traverse_trees(len, t, &info) < 0)
+			goto return_failed;
+		if (p && traverse_permdirs(len, p, &info) < 0)
 			goto return_failed;
 	}
 

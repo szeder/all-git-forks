@@ -8,6 +8,7 @@
 #include "diffcore.h"
 #include "revision.h"
 #include "cache-tree.h"
+#include "permdirs-walk.h"
 #include "unpack-trees.h"
 #include "refs.h"
 #include "submodule.h"
@@ -48,7 +49,7 @@ static int check_removed(const struct cache_entry *ce, struct stat *st)
 		 * repository, that means ce which was a blob turned into
 		 * a directory --- the blob was removed!
 		 */
-		if (!S_ISGITLINK(ce->ce_mode) &&
+		if (!(S_ISPERMDIR(ce->ce_mode) || S_ISGITLINK(ce->ce_mode)) &&
 		    resolve_gitlink_ref(ce->name, "HEAD", sub))
 			return 1;
 	}
@@ -452,12 +453,15 @@ static int diff_cache(struct rev_info *revs,
 {
 	struct tree *tree;
 	struct tree_desc t;
+	struct permdirs *permdirs;
+	struct permdirs_desc p;
 	struct unpack_trees_options opts;
 
 	tree = parse_tree_indirect(tree_sha1);
 	if (!tree)
 		return error("bad tree object %s",
 			     tree_name ? tree_name : sha1_to_hex(tree_sha1));
+	permdirs = parse_permdirs_indirect(tree_sha1);
 	memset(&opts, 0, sizeof(opts));
 	opts.head_idx = 1;
 	opts.index_only = cached;
@@ -473,7 +477,10 @@ static int diff_cache(struct rev_info *revs,
 	opts.pathspec->max_depth = -1;
 
 	init_tree_desc(&t, tree->buffer, tree->size);
-	return unpack_trees(1, &t, &opts);
+	if (permdirs)
+		init_permdirs_desc(&p, permdirs->buffer, permdirs->size);
+
+	return unpack_trees(1, &t, permdirs ? &p : NULL, &opts);
 }
 
 int run_diff_index(struct rev_info *revs, int cached)

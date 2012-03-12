@@ -74,7 +74,7 @@ struct unpack_trees_options {
 	struct exclude_list *el; /* for internal use */
 };
 
-extern int unpack_trees(unsigned n, struct tree_desc *t,
+extern int unpack_trees(unsigned n, struct tree_desc *t, struct permdirs_desc *p,
 		struct unpack_trees_options *options);
 
 int threeway_merge(struct cache_entry **stages, struct unpack_trees_options *o);

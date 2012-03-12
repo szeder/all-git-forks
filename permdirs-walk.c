@@ -1,65 +1,39 @@
 #include "cache.h"
-#include "tree-walk.h"
-#include "permdirs-walk.h"
-#include "unpack-trees.h"
 #include "dir.h"
-#include "tree.h"
+#include "tree-walk.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 
-static const char *get_mode(const char *str, unsigned int *modep)
+static void decode_permdirs_entry(struct permdirs_desc *desc, const char *buf, unsigned long size)
 {
-	unsigned char c;
-	unsigned int mode = 0;
-
-	if (*str == ' ')
-		return NULL;
-
-	while ((c = *str++) != ' ') {
-		if (c < '0' || c > '7')
-			return NULL;
-		mode = (mode << 3) + (c - '0');
-	}
-	*modep = mode;
-	return str;
-}
-
-static void decode_tree_entry(struct tree_desc *desc, const char *buf, unsigned long size)
-{
-	const char *path;
-	unsigned int mode, len;
-
-	if (size < 24 || buf[size - 21])
-		die("corrupt tree file");
-
-	path = get_mode(buf, &mode);
-	if (!path || !*path)
-		die("corrupt tree file");
-	len = strlen(path) + 1;
-
 	/* Initialize the descriptor entry */
-	desc->entry.path = path;
-	desc->entry.mode = mode;
-	desc->entry.sha1 = (const unsigned char *)(path + len);
+	desc->entry.mode = S_IFPERMDIR;
+	desc->entry.path = buf;
+	desc->entry.sha1 = NULL;
 }
 
-void init_tree_desc(struct tree_desc *desc, const void *buffer, unsigned long size)
+void init_permdirs_desc(struct permdirs_desc *desc, const void *buffer, unsigned long size)
 {
 	desc->buffer = buffer;
 	desc->size = size;
 	if (size)
-		decode_tree_entry(desc, buffer, size);
+		decode_permdirs_entry(desc, buffer, size);
 }
 
-void *fill_tree_descriptor(struct tree_desc *desc, const unsigned char *sha1)
+void *fill_permdirs_descriptor(struct permdirs_desc *desc, const unsigned char *sha1)
 {
 	unsigned long size = 0;
 	void *buf = NULL;
 
 	if (sha1) {
-		buf = read_object_with_reference(sha1, tree_type, &size, NULL);
-		if (!buf)
-			die("unable to read tree %s", sha1_to_hex(sha1));
+		buf = read_object_with_reference(sha1, permdirs_type, &size, NULL);
+		if (!buf) {
+			desc->buffer = NULL;
+			desc->size = 0;
+			return NULL;
+		}
 	}
-	init_tree_desc(desc, buf, size);
+	init_permdirs_desc(desc, buf, size);
 	return buf;
 }
 
@@ -68,80 +42,46 @@ static void entry_clear(struct name_entry *a)
 	memset(a, 0, sizeof(*a));
 }
 
-static void entry_extract(struct tree_desc *t, struct name_entry *a)
+static void entry_extract(struct permdirs_desc *t, struct name_entry *a)
 {
 	*a = t->entry;
 }
 
-void update_tree_entry(struct tree_desc *desc)
+void update_permdirs_entry(struct permdirs_desc *desc)
 {
 	const void *buf = desc->buffer;
-	const unsigned char *end = desc->entry.sha1 + 20;
+	const char *end = strchr(desc->entry.path, '\0') + 1;
 	unsigned long size = desc->size;
-	unsigned long len = end - (const unsigned char *)buf;
+	unsigned long len = end - (const char *)buf;
 
 	if (size < len)
-		die("corrupt tree file");
+		die("corrupt permdirs file");
 	buf = end;
 	size -= len;
 	desc->buffer = buf;
 	desc->size = size;
 	if (size)
-		decode_tree_entry(desc, buf, size);
+		decode_permdirs_entry(desc, buf, size);
 }
 
-int tree_entry(struct tree_desc *desc, struct name_entry *entry)
+int permdirs_entry(struct permdirs_desc *desc, struct name_entry *entry)
 {
 	if (!desc->size)
 		return 0;
 
 	*entry = desc->entry;
-	update_tree_entry(desc);
+	update_permdirs_entry(desc);
 	return 1;
 }
 
-void setup_traverse_info(struct traverse_info *info, const char *base)
-{
-	int pathlen = strlen(base);
-	static struct traverse_info dummy;
-
-	memset(info, 0, sizeof(*info));
-	if (pathlen && base[pathlen-1] == '/')
-		pathlen--;
-	info->pathlen = pathlen ? pathlen + 1 : 0;
-	info->name.path = base;
-	info->name.sha1 = (void *)(base + pathlen + 1);
-	if (pathlen)
-		info->prev = &dummy;
-}
-
-char *make_traverse_path(char *path, const struct traverse_info *info, const struct name_entry *n)
-{
-	int len = tree_entry_len(n);
-	int pathlen = info->pathlen;
-
-	path[pathlen + len] = 0;
-	for (;;) {
-		memcpy(path + pathlen, n->path, len);
-		if (!pathlen)
-			break;
-		path[--pathlen] = '/';
-		n = &info->name;
-		len = tree_entry_len(n);
-		info = info->prev;
-		pathlen -= len;
-	}
-	return path;
-}
-
-struct tree_desc_skip {
-	struct tree_desc_skip *prev;
+struct permdirs_desc_skip {
+	struct permdirs_desc_skip *prev;
 	const void *ptr;
 };
 
-struct tree_desc_x {
-	struct tree_desc d;
-	struct tree_desc_skip *skip;
+struct permdirs_desc_x {
+	struct permdirs_desc d;
+	struct permdirs_desc_skip *skip;
 };
 
 static int name_compare(const char *a, int a_len,
@@ -157,8 +97,8 @@ static int name_compare(const char *a, int a_len,
 static int check_entry_match(const char *a, int a_len, const char *b, int b_len)
 {
 	/*
-	 * The caller wants to pick *a* from a tree or nothing.
-	 * We are looking at *b* in a tree.
+	 * The caller wants to pick *a* from a permdirs or nothing.
+	 * We are looking at *b* in a permdirs.
 	 *
 	 * (0) If a and b are the same name, we are trivially happy.
 	 *
@@ -167,16 +107,16 @@ static int check_entry_match(const char *a, int a_len, const char *b, int b_len)
 	 *
 	 * (1) *a* == "t",   *b* == "ab"  i.e. *b* sorts earlier than *a* no
 	 *                                matter what.
-	 * (2) *a* == "t",   *b* == "t-2" and "t" is a subtree in the tree;
-	 * (3) *a* == "t-2", *b* == "t"   and "t-2" is a blob in the tree.
+	 * (2) *a* == "t",   *b* == "t-2" and "t" is a subpermdirs in the permdirs;
+	 * (3) *a* == "t-2", *b* == "t"   and "t-2" is a blob in the permdirs.
 	 *
-	 * Otherwise we know *a* won't appear in the tree without
+	 * Otherwise we know *a* won't appear in the permdirs without
 	 * scanning further.
 	 */
 
 	int cmp = name_compare(a, a_len, b, b_len);
 
-	/* Most common case first -- reading sync'd trees */
+	/* Most common case first -- reading sync'd permdirs */
 	if (!cmp)
 		return cmp;
 
@@ -192,24 +132,24 @@ static int check_entry_match(const char *a, int a_len, const char *b, int b_len)
 	if (a_len < b_len && !memcmp(a, b, a_len) && b[a_len] < '/')
 		return 1; /* keep looking */
 
-	return -1; /* a cannot appear in the tree */
+	return -1; /* a cannot appear in the permdirs */
 }
 
 /*
- * From the extended tree_desc, extract the first name entry, while
+ * From the extended permdirs_desc, extract the first name entry, while
  * paying attention to the candidate "first" name.  Most importantly,
  * when looking for an entry, if there are entries that sorts earlier
- * in the tree object representation than that name, skip them and
+ * in the permdirs object representation than that name, skip them and
  * process the named entry first.  We will remember that we haven't
  * processed the first entry yet, and in the later call skip the
  * entry we processed early when update_extended_entry() is called.
  *
- * E.g. if the underlying tree object has these entries:
+ * E.g. if the underlying permdirs object has these entries:
  *
- *    blob    "t-1"
- *    blob    "t-2"
- *    tree    "t"
- *    blob    "t=1"
+ *    permdir    "t-1"
+ *    permdir    "t-2"
+ *    permdir    "t"
+ *    permdir    "t=1"
  *
  * and the "first" asks for "t", remember that we still need to
  * process "t-1" and "t-2" but extract "t".  After processing the
@@ -218,18 +158,18 @@ static int check_entry_match(const char *a, int a_len, const char *b, int b_len)
  * already.
  */
 
-static void extended_entry_extract(struct tree_desc_x *t,
+static void extended_entry_extract(struct permdirs_desc_x *t,
 				   struct name_entry *a,
 				   const char *first,
 				   int first_len)
 {
 	const char *path;
 	int len;
-	struct tree_desc probe;
-	struct tree_desc_skip *skip;
+	struct permdirs_desc probe;
+	struct permdirs_desc_skip *skip;
 
 	/*
-	 * Extract the first entry from the tree_desc, but skip the
+	 * Extract the first entry from the permdirs_desc, but skip the
 	 * ones that we already returned in earlier rounds.
 	 */
 	while (1) {
@@ -244,17 +184,17 @@ static void extended_entry_extract(struct tree_desc_x *t,
 		if (!skip)
 			break;
 		/* We have processed this entry already. */
-		update_tree_entry(&t->d);
+		update_permdirs_entry(&t->d);
 	}
 
 	if (!first || !a->path)
 		return;
 
 	/*
-	 * The caller wants "first" from this tree, or nothing.
+	 * The caller wants "first" from this permdirs, or nothing.
 	 */
 	path = a->path;
-	len = tree_entry_len(a);
+	len = permdirs_entry_len(a);
 	switch (check_entry_match(first, first_len, path, len)) {
 	case -1:
 		entry_clear(a);
@@ -265,21 +205,21 @@ static void extended_entry_extract(struct tree_desc_x *t,
 	}
 
 	/*
-	 * We need to look-ahead -- we suspect that a subtree whose
+	 * We need to look-ahead -- we suspect that a subpermdirs whose
 	 * name is "first" may be hiding behind the current entry "path".
 	 */
 	probe = t->d;
 	while (probe.size) {
 		entry_extract(&probe, a);
 		path = a->path;
-		len = tree_entry_len(a);
+		len = permdirs_entry_len(a);
 		switch (check_entry_match(first, first_len, path, len)) {
 		case -1:
 			entry_clear(a);
 		case 0:
 			return;
 		default:
-			update_tree_entry(&probe);
+			update_permdirs_entry(&probe);
 			break;
 		}
 		/* keep looking */
@@ -287,22 +227,22 @@ static void extended_entry_extract(struct tree_desc_x *t,
 	entry_clear(a);
 }
 
-static void update_extended_entry(struct tree_desc_x *t, struct name_entry *a)
+static void update_extended_entry(struct permdirs_desc_x *t, struct name_entry *a)
 {
 	if (t->d.entry.path == a->path) {
-		update_tree_entry(&t->d);
+		update_permdirs_entry(&t->d);
 	} else {
 		/* we have returned this entry early */
-		struct tree_desc_skip *skip = xmalloc(sizeof(*skip));
+		struct permdirs_desc_skip *skip = xmalloc(sizeof(*skip));
 		skip->ptr = a->path;
 		skip->prev = t->skip;
 		t->skip = skip;
 	}
 }
 
-static void free_extended_entry(struct tree_desc_x *t)
+static void free_extended_entry(struct permdirs_desc_x *t)
 {
-	struct tree_desc_skip *p, *s;
+	struct permdirs_desc_skip *p, *s;
 
 	for (s = t->skip; s; s = p) {
 		p = s->prev;
@@ -319,21 +259,21 @@ static inline int prune_traversal(struct name_entry *e,
 		return 2;
 	if (still_interesting < 0)
 		return still_interesting;
-	return tree_entry_interesting(e, base, 0, info->pathspec);
+	return permdirs_entry_interesting(e, base, 0, info->pathspec);
 }
 
-int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
+int traverse_permdirs(int n, struct permdirs_desc *p, struct traverse_info *info)
 {
 	int ret = 0;
 	int error = 0;
 	struct name_entry *entry = xmalloc(n*sizeof(*entry));
 	int i;
-	struct tree_desc_x *tx = xcalloc(n, sizeof(*tx));
+	struct permdirs_desc_x *px = xcalloc(n, sizeof(*px));
 	struct strbuf base = STRBUF_INIT;
 	int interesting = 1;
 
 	for (i = 0; i < n; i++)
-		tx[i].d = t[i];
+		px[i].d = p[i];
 
 	if (info->prev) {
 		strbuf_grow(&base, info->pathlen);
@@ -350,20 +290,20 @@ int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
 
 		for (i = 0; i < n; i++) {
 			e = entry + i;
-			extended_entry_extract(tx + i, e, NULL, 0);
+			extended_entry_extract(px + i, e, NULL, 0);
 		}
 
 		/*
-		 * A tree may have "t-2" at the current location even
-		 * though it may have "t" that is a subtree behind it,
-		 * and another tree may return "t".  We want to grab
-		 * all "t" from all trees to match in such a case.
+		 * A permdirs may have "t-2" at the current location even
+		 * though it may have "t" that is a subpermdirs behind it,
+		 * and another permdirs may return "t".  We want to grab
+		 * all "t" from all permdirs to match in such a case.
 		 */
 		for (i = 0; i < n; i++) {
 			e = entry + i;
 			if (!e->path)
 				continue;
-			len = tree_entry_len(e);
+			len = permdirs_entry_len(e);
 			if (!first) {
 				first = e->path;
 				first_len = len;
@@ -378,25 +318,24 @@ int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
 		if (first) {
 			for (i = 0; i < n; i++) {
 				e = entry + i;
-				extended_entry_extract(tx + i, e, first, first_len);
+				extended_entry_extract(px + i, e, first, first_len);
 				/* Cull the ones that are not the earliest */
 				if (!e->path)
 					continue;
-				len = tree_entry_len(e);
+				len = permdirs_entry_len(e);
 				if (name_compare(e->path, len, first, first_len))
 					entry_clear(e);
 			}
 		}
 
-		/* Now we have in entry[i] the earliest name from the trees */
+		/* Now we have in entry[i] the earliest name from the permdirs */
 		mask = 0;
 		dirmask = 0;
 		for (i = 0; i < n; i++) {
 			if (!entry[i].path)
 				continue;
 			mask |= 1ul << i;
-			if (S_ISDIR(entry[i].mode) || S_ISPERMDIR(entry[i].mode))
-				dirmask |= 1ul << i;
+			dirmask |= 1ul << i;
 			e = &entry[i];
 		}
 		if (!mask)
@@ -416,27 +355,28 @@ int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
 		ret = 0;
 		for (i = 0; i < n; i++)
 			if (mask & (1ul << i))
-				update_extended_entry(tx + i, entry + i);
+				update_extended_entry(px + i, entry + i);
 	}
 	free(entry);
 	for (i = 0; i < n; i++)
-		free_extended_entry(tx + i);
-	free(tx);
+		free_extended_entry(px + i);
+	free(px);
 	strbuf_release(&base);
 	return error;
 }
 
-static int find_tree_entry(struct tree_desc *t, const char *name, unsigned char *result, unsigned *mode)
+static int find_permdirs_entry(struct permdirs_desc *p, const char *name)
 {
 	int namelen = strlen(name);
-	while (t->size) {
+	while (name[namelen-1] == '/') namelen--;
+	while (p->size) {
 		const char *entry;
-		const unsigned char *sha1;
 		int entrylen, cmp;
 
-		sha1 = tree_entry_extract(t, &entry, mode);
-		entrylen = tree_entry_len(&t->entry);
-		update_tree_entry(t);
+		entry = permdirs_entry_extract(p);
+		entrylen = permdirs_entry_len(&p->entry);
+		while (entry[entrylen-1] == '/') entrylen--;
+		update_permdirs_entry(p);
 		if (entrylen > namelen)
 			continue;
 		cmp = memcmp(name, entry, entrylen);
@@ -444,48 +384,36 @@ static int find_tree_entry(struct tree_desc *t, const char *name, unsigned char 
 			continue;
 		if (cmp < 0)
 			break;
-		if (entrylen == namelen) {
-			hashcpy(result, sha1);
+		if (entrylen == namelen)
 			return 0;
-		}
-		if (name[entrylen] != '/')
-			continue;
-		if (!(S_ISDIR(*mode) || S_ISPERMDIR(*mode)))
-			break;
-		if (++entrylen == namelen) {
-			hashcpy(result, sha1);
-			return 0;
-		}
-		return get_tree_entry(sha1, name + entrylen, result, mode);
 	}
 	return -1;
 }
 
-int get_tree_entry(const unsigned char *tree_sha1, const char *name, unsigned char *sha1, unsigned *mode)
+int get_permdirs_entry(const unsigned char *permdirs_sha1, const char *name)
 {
 	int retval;
-	void *tree;
+	void *permdirs;
 	unsigned long size;
 	unsigned char root[20];
 
-	tree = read_object_with_reference(tree_sha1, tree_type, &size, root);
-	if (!tree)
+	permdirs = read_object_with_reference(permdirs_sha1, permdirs_type, &size, root);
+	if (!permdirs)
 		return -1;
 
 	if (name[0] == '\0') {
-		hashcpy(sha1, root);
-		free(tree);
+		free(permdirs);
 		return 0;
 	}
 
 	if (!size) {
 		retval = -1;
 	} else {
-		struct tree_desc t;
-		init_tree_desc(&t, tree, size);
-		retval = find_tree_entry(&t, name, sha1, mode);
+		struct permdirs_desc p;
+		init_permdirs_desc(&p, permdirs, size);
+		retval = find_permdirs_entry(&p, name);
 	}
-	free(tree);
+	free(permdirs);
 	return retval;
 }
 
@@ -532,8 +460,6 @@ static int match_entry(const struct name_entry *entry, int pathlen,
 	if (matchlen > pathlen) {
 		if (match[pathlen] != '/')
 			return 0;
-		if (!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
-			return 0;
 	}
 
 	if (m == -1)
@@ -574,12 +500,12 @@ static int match_dir_prefix(const char *base,
 }
 
 /*
- * Is a tree entry interesting given the pathspec we have?
+ * Is a permdirs entry interesting given the pathspec we have?
  *
  * Pre-condition: either baselen == base_offset (i.e. empty path)
  * or base[baselen-1] == '/' (i.e. with trailing slash).
  */
-enum interesting tree_entry_interesting(const struct name_entry *entry,
+enum interesting permdirs_entry_interesting(const struct name_entry *entry,
 					struct strbuf *base, int base_offset,
 					const struct pathspec *ps)
 {
@@ -592,12 +518,12 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 		if (!ps->recursive || ps->max_depth == -1)
 			return all_entries_interesting;
 		return within_depth(base->buf + base_offset, baselen,
-				    !!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)),
+				    1,
 				    ps->max_depth) ?
 			entry_interesting : entry_not_interesting;
 	}
 
-	pathlen = tree_entry_len(entry);
+	pathlen = permdirs_entry_len(entry);
 
 	for (i = ps->nr - 1; i >= 0; i--) {
 		const struct pathspec_item *item = ps->items+i;
@@ -615,7 +541,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 
 			return within_depth(base_str + matchlen + 1,
 					    baselen - matchlen - 1,
-					    !!(S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)),
+					    1,
 					    ps->max_depth) ?
 				entry_interesting : entry_not_interesting;
 		}
@@ -635,7 +561,7 @@ enum interesting tree_entry_interesting(const struct name_entry *entry,
 				 * Match all directories. We'll try to
 				 * match files later on.
 				 */
-				if (ps->recursive && (S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
+				if (ps->recursive)
 					return entry_interesting;
 			}
 
@@ -666,7 +592,7 @@ match_wildcards:
 		 * in future, see
 		 * http://thread.gmane.org/gmane.comp.version-control.git/163757/focus=163840
 		 */
-		if (ps->recursive && (S_ISDIR(entry->mode) || S_ISPERMDIR(entry->mode)))
+		if (ps->recursive)
 			return entry_interesting;
 	}
 	return never_interesting; /* No matches */

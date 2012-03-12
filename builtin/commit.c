@@ -23,6 +23,8 @@
 #include "parse-options.h"
 #include "string-list.h"
 #include "rerere.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "unpack-trees.h"
 #include "quote.h"
 #include "submodule.h"
@@ -304,8 +306,10 @@ static void add_remove_files(struct string_list *list)
 static void create_base_index(const struct commit *current_head)
 {
 	struct tree *tree;
-	struct unpack_trees_options opts;
 	struct tree_desc t;
+	struct permdirs *permdirs;
+	struct permdirs_desc p;
+	struct unpack_trees_options opts;
 
 	if (!current_head) {
 		discard_cache();
@@ -325,7 +329,10 @@ static void create_base_index(const struct commit *current_head)
 		die(_("failed to unpack HEAD tree object"));
 	parse_tree(tree);
 	init_tree_desc(&t, tree->buffer, tree->size);
-	if (unpack_trees(1, &t, &opts))
+	permdirs = parse_permdirs_indirect(current_head->object.sha1);
+	if (permdirs)
+		init_permdirs_desc(&p, permdirs->buffer, permdirs->size);
+	if (unpack_trees(1, &t, permdirs ? &p : NULL, &opts))
 		exit(128); /* We've already reported the error, finish dying */
 }
 

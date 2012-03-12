@@ -5,6 +5,7 @@ struct archiver_args {
 	const char *base;
 	size_t baselen;
 	struct tree *tree;
+	struct permdirs *permdirs;
 	const unsigned char *commit_sha1;
 	const struct commit *commit;
 	time_t time;

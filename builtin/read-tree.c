@@ -8,6 +8,8 @@
 #include "object.h"
 #include "tree.h"
 #include "tree-walk.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "cache-tree.h"
 #include "unpack-trees.h"
 #include "dir.h"
@@ -217,7 +219,7 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 		parse_tree(tree);
 		init_tree_desc(t+i, tree->buffer, tree->size);
 	}
-	if (unpack_trees(nr_trees, t, &opts))
+	if (unpack_trees(nr_trees, t, NULL, &opts))
 		return 128;
 
 	if (opts.debug_unpack || opts.dry_run)

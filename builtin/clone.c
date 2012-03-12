@@ -14,6 +14,8 @@
 #include "refs.h"
 #include "tree.h"
 #include "tree-walk.h"
+#include "permdirs.h"
+#include "permdirs-walk.h"
 #include "unpack-trees.h"
 #include "transport.h"
 #include "strbuf.h"
@@ -551,6 +553,8 @@ static int checkout(void)
 	struct unpack_trees_options opts;
 	struct tree *tree;
 	struct tree_desc t;
+	struct permdirs *permdirs;
+	struct permdirs_desc p;
 	int err = 0, fd;
 
 	if (option_no_checkout)
@@ -588,7 +592,12 @@ static int checkout(void)
 	tree = parse_tree_indirect(sha1);
 	parse_tree(tree);
 	init_tree_desc(&t, tree->buffer, tree->size);
-	unpack_trees(1, &t, &opts);
+	permdirs = parse_permdirs_indirect(sha1);
+	if (permdirs) {
+		parse_permdirs(permdirs);
+		init_permdirs_desc(&p, permdirs->buffer, permdirs->size);
+	}
+	unpack_trees(1, &t, permdirs ? &p : NULL, &opts);
 
 	if (write_cache(fd, active_cache, active_nr) ||
 	    commit_locked_index(lock_file))
