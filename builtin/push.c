@@ -24,6 +24,7 @@ static int progress = -1;
 static const char **refspec;
 static int refspec_nr;
 static int refspec_alloc;
+static int default_matching_used;
 
 static void add_refspec(const char *ref)
 {
@@ -95,6 +96,9 @@ static void setup_default_push_refspecs(struct remote *remote)
 {
 	switch (push_default) {
 	default:
+	case PUSH_DEFAULT_UNSPECIFIED:
+		default_matching_used = 1;
+		/* fallthru */
 	case PUSH_DEFAULT_MATCHING:
 		add_refspec(":");
 		break;
@@ -112,6 +116,59 @@ static void setup_default_push_refspecs(struct remote *remote)
 		    "push.default is \"nothing\"."));
 		break;
 	}
+}
+
+static const char *message_advice_pull_before_push[] = {
+	"To prevent you from losing history, non-fast-forward updates to HEAD",
+	"were rejected. Merge the remote changes (e.g. 'git pull') before",
+	"pushing again. See the 'Note about fast-forwards' section of",
+	"'git push --help' for details."
+};
+
+static const char *message_advice_use_upstream[] = {
+	"By default, git pushes all branches that have a matching counterpart",
+	"on the remote. In this case, some of your local branches were stale",
+	"with respect to their remote counterparts. If you did not intend to",
+	"push these branches, you may want to set the 'push.default'",
+	"configuration variable to 'upstream' to push only the current branch."
+};
+
+static const char *message_advice_checkout_pull_push[] = {
+	"To prevent you from losing history, your non-fast-forward branch",
+	"updates were rejected. Checkout the branch and merge the remote",
+	"changes (e.g. 'git pull') before pushing again. See the",
+	"'Note about fast-forwards' section of 'git push --help' for",
+	"details."
+};
+
+static void advise_pull_before_push(void)
+{
+	int i;
+
+	if (!advice_pull_before_push)
+		return;
+	for (i = 0; i < ARRAY_SIZE(message_advice_pull_before_push); i++)
+		advise(message_advice_pull_before_push[i]);
+}
+
+static void advise_use_upstream(void)
+{
+	int i;
+
+	if (!advice_use_upstream)
+		return;
+	for (i = 0; i < ARRAY_SIZE(message_advice_use_upstream); i++)
+		advise(message_advice_use_upstream[i]);
+}
+
+static void advise_checkout_pull_push(void)
+{
+	int i;
+
+	if (!advice_checkout_pull_push)
+		return;
+	for (i = 0; i < ARRAY_SIZE(message_advice_checkout_pull_push); i++)
+		advise(message_advice_checkout_pull_push[i]);
 }
 
 static int push_with_options(struct transport *transport, int flags)
@@ -136,14 +193,17 @@ static int push_with_options(struct transport *transport, int flags)
 
 	err |= transport_disconnect(transport);
 
+	if (nonfastforward == NONFASTFORWARD_HEAD) {
+		advise_pull_before_push();
+	} else if (nonfastforward == NONFASTFORWARD_OTHER) {
+		if (default_matching_used)
+			advise_use_upstream();
+		else
+			advise_checkout_pull_push();
+	}
+
 	if (!err)
 		return 0;
-
-	if (nonfastforward && advice_push_nonfastforward) {
-		fprintf(stderr, _("To prevent you from losing history, non-fast-forward updates were rejected\n"
-				"Merge the remote changes (e.g. 'git pull') before pushing again.  See the\n"
-				"'Note about fast-forwards' section of 'git push --help' for details.\n"));
-	}
 
 	return 1;
 }

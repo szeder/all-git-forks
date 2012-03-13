@@ -158,6 +158,21 @@ advice.*::
 		Advice shown when you used linkgit:git-checkout[1] to
 		move to the detach HEAD state, to instruct how to create
 		a local branch after the fact.
+	pullBeforePush::
+		Advice shown when you ran linkgit:git-push[1] and pushed
+		a non-fast-forward update to HEAD, instructing you to
+		linkgit:git-pull[1] before pushing again.
+	useUpstream::
+		Advice to set 'push.default' to 'upstream' when you ran
+		linkgit:git-push[1] and pushed 'matching refs' by default
+		(i.e. you did not have any explicit refspec on the command
+		line, and no 'push.default' configuration was set) and it
+		resulted in a non-fast-forward error.
+	checkoutPullPush::
+		Advice shown when you ran linkgit:git-push[1] and pushed
+		a non-fast-forward update to a non-HEAD branch, instructing
+		you to checkout the branch and run linkgit:git-pull[1]
+		before pushing again.
 --
 
 core.fileMode::
