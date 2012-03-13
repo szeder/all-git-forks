@@ -7,6 +7,7 @@
 #define COL_DENSE         0x0080   /* Shrink columns when possible,
 				      making space for more columns */
 #define COL_DENSER        0x0100
+#define COL_GROUP         0x0200
 
 #define COL_ENABLE(c) ((c) & COL_ENABLE_MASK)
 #define COL_DISABLED      0x0000   /* must be zero */

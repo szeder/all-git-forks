@@ -19,6 +19,11 @@ struct column_data {
 	int *width;	      /* index to the longest row in column */
 };
 
+struct area {
+	int start, end;		/* in string_list */
+	int size;
+};
+
 /* return length of 's' in letters, ANSI escapes stripped */
 static int item_length(unsigned int colopts, const char *s)
 {
@@ -223,9 +228,9 @@ static int display_table(const struct string_list *list,
 		i = break_long_line(&data);
 		if (i != -1) {
 			printf("%s%s" "%s%s%s" "%s%s",
-			       indent, nl,
-			       indent, list->items[i].string, nl,
-			       indent, nl);
+			       opts->indent, opts->nl,
+			       opts->indent, list->items[i].string, opts->nl,
+			       opts->indent, opts->nl);
 			free(data.len);
 			free(data.width);
 			return i + 1;
@@ -248,6 +253,218 @@ static int display_table(const struct string_list *list,
 	return list->nr;
 }
 
+/*
+ * Find out the contiguous list of entries sharing the same directory
+ * prefix that nr * (prefix_len - skip) is largest, where nr is the
+ * number of entries and prefix_len is the shared directory prefix's
+ * length.
+ */
+static int largest_block(const struct string_list *list, int start, int skip, int *len)
+{
+	const char *str = list->items[start].string;
+	const char *slash;
+	int largest_area = 0;
+
+	for (slash = str + strlen(str) - 1; slash > str + skip; slash--) {
+		int i, area;
+		if (*slash != '/')
+			continue;
+		for (i = start; i < list->nr; i++) {
+			const char *s = list->items[i].string;
+			if (strlen(s) < slash + 1 - str ||
+			    memcmp(str + skip, s + skip, slash + 1 - (str + skip)))
+				break;
+		}
+		area = (i - start) * (slash + 1 - str - skip);
+		if (area > largest_area) {
+			largest_area = area;
+			*len = i - start;
+		}
+	}
+	return largest_area;
+}
+
+static int area_size_cmp(const void *a, const void *b)
+{
+	const struct area *area1 = a;
+	const struct area *area2 = b;
+	return area2->size - area1->size;
+}
+
+/*
+ * Make a sorted list of non-overlapping blocks, largest ones first
+ */
+static struct area *find_large_blocks(const struct string_list *list, int *nr_p)
+{
+	int i, nr = 0, alloc = 16;
+	struct area *areas = xmalloc(sizeof(*areas) * alloc);
+	struct area last;
+	memset(&last, 0, sizeof(last));
+
+	for (i = 0; i < list->nr; i++) {
+		int len, size = largest_block(list, i, 0, &len);
+		if (!size || len == 1)
+			continue;
+		/* the new found area is overlapped with the old one,
+		   but smaller, skip it */
+		if (i < last.end) {
+			if (size < last.size)
+				continue;
+			last.start = i;
+			last.end = i + len;
+			last.size = size;
+			continue;
+		}
+		if (last.size) {
+			if (nr + 1 < alloc)
+				ALLOC_GROW(areas, nr + 1, alloc);
+			areas[nr++] = last;
+		}
+		last.start = i;
+		last.end = i + len;
+		last.size = size;
+	}
+	if (last.size) {
+		if (nr + 1 >= alloc)
+			ALLOC_GROW(areas, nr + 1, alloc);
+		areas[nr++] = last;
+	}
+	qsort(areas, nr, sizeof(*areas), area_size_cmp);
+	*nr_p = nr;
+	return areas;
+}
+
+static int area_start_cmp(const void *a, const void *b)
+{
+	const struct area *area1 = a;
+	const struct area *area2 = b;
+	return area1->start - area2->start;
+}
+
+/*
+ * Assume list is split into two tables: one from "start" to "stop",
+ * where all strings are truncated "skip" bytes, the other the rest of
+ * the strings. Calculate how many rows required if all cells of each
+ * table are of the same width.
+ */
+static int split_layout_gain(const struct string_list *list, int *lengths,
+			     const struct column_options *opts,
+			     int start, int stop, int skip)
+{
+	int i, width0, width1, width2, cols, rows0, rows1;
+	int indent = strlen(opts->indent);
+
+	width0 = width1 = width2 = 0;
+	for (i = 0; i < list->nr; i++) {
+		int len = lengths[i];
+		if (width0 < len)
+			width0 = len;
+		if (i >= start && i < stop) {
+			len -= skip;
+			if (width2 < len)
+				width2 = len;
+		} else {
+			if (width1 < len)
+				width1 = len;
+		}
+	}
+
+	width0 += opts->padding;
+	cols = (opts->width - indent) / width0;
+	if (cols == 0)
+		cols = 1;
+	rows0 = DIV_ROUND_UP(list->nr, cols);
+
+	width1 += opts->padding;
+	cols = (opts->width - indent) / width1;
+	if (cols == 0)
+		cols = 1;
+	rows1 = DIV_ROUND_UP(list->nr - (stop - start), cols);
+
+	width2 += opts->padding;
+	cols = (opts->width - indent) / width2;
+	if (cols == 0)
+		cols = 1;
+	rows1 += DIV_ROUND_UP(stop - start, cols);
+	return rows0 - rows1;
+}
+
+static void group_by_prefix(const struct string_list *list, unsigned int colopts,
+			    const struct column_options *opts)
+{
+	int i, nr;
+	struct area *areas = find_large_blocks(list, &nr);
+	struct string_list new_list = STRING_LIST_INIT_NODUP;
+	struct area *dst;
+	int *len;
+
+	assert(colopts & COL_GROUP);
+	/* avoid inifinite loop when calling print_columns again */
+	colopts &= ~COL_GROUP;
+
+	len = xmalloc(sizeof(*len) * list->nr);
+	for (i = 0; i < list->nr; i++)
+		len[i] = item_length(colopts, list->items[i].string);
+
+	/*
+	 * Calculate and see if there is any saving when print this as
+	 * a group. Base our calculation on non-dense mode even if
+	 * users want dense output because the calculation would be
+	 * less expensive.
+	 */
+	dst = areas;
+	for (i = 0; i < nr; i++) {
+		struct area *area = areas + i;
+		int rows, skip = area->size / (area->end - area->start);
+		rows = split_layout_gain(list, len, opts,
+					 area->start, area->end, skip);
+
+		if (rows > 3) {
+			if (areas + i != dst)
+				*dst = *area;
+			dst++;
+		}
+	}
+	free(len);
+
+	nr = dst - areas;
+	if (!nr) {
+		print_columns(list, colopts, opts);
+		return;
+	}
+	qsort(areas, nr, sizeof(*areas), area_start_cmp);
+
+	/*
+	 * We now have list of worthy groups, sorted by offset. Print
+	 * group by group, then the rest.
+	 */
+	for (i = 0; i < nr; i++) {
+		struct area *area = areas + i;
+		int j, skip = area->size / (area->end - area->start);
+
+		for (j = area->start; j < area->end; j++)
+			string_list_append(&new_list,
+					   list->items[j].string + skip);
+		printf("\n%.*s:\n", skip, list->items[area->start].string);
+		print_columns(&new_list, colopts, opts);
+		string_list_clear(&new_list, 0);
+	}
+
+	printf("\n%s:\n", "...");
+	for (i = 0; i < nr; i++) {
+		struct area *area = areas + i;
+		int j;
+		for (j = i ? area[-1].end : 0; j < area->start; j++)
+			string_list_append(&new_list, list->items[j].string);
+	}
+	for (i = areas[nr-1].end; i < list->nr; i++)
+		string_list_append(&new_list, list->items[i].string);
+	print_columns(&new_list, colopts, opts);
+	string_list_clear(&new_list, 0);
+
+	free(areas);
+}
+
 void print_columns(const struct string_list *list, unsigned int colopts,
 		   const struct column_options *opts)
 {
@@ -264,6 +481,11 @@ void print_columns(const struct string_list *list, unsigned int colopts,
 	nopts.nl = opts && opts->nl ? opts->nl : "\n";
 	nopts.padding = opts ? opts->padding : 1;
 	nopts.width = opts && opts->width ? opts->width : term_columns() - 1;
+
+	if (colopts & COL_GROUP) {
+		group_by_prefix(list, colopts, &nopts);
+		return;
+	}
 	if (!COL_ENABLE(colopts)) {
 		display_plain(list, "", "\n");
 		return;
@@ -318,6 +540,7 @@ static int parse_option(const char *arg, int len, unsigned int *colopts,
 		{ "row",    COL_ROW,      COL_LAYOUT_MASK },
 		{ "dense",  COL_DENSE,    0 },
 		{ "denser", COL_DENSER,   0 },
+		{ "group",  COL_GROUP,    0 },
 	};
 	int i;
 
