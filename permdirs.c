@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "cache-tree.h"
 #include "blob.h"
 #include "commit.h"
 #include "tag.h"
@@ -7,6 +8,157 @@
 #include "permdirs-walk.h"
 
 const char *permdirs_type = "permdirs";
+
+static int read_one_entry_opt(const unsigned char *sha1, const char *base, int baselen, const char *pathname, unsigned mode, int stage, int opt)
+{
+	int len;
+	unsigned int size;
+	struct cache_entry *ce;
+
+	len = strlen(pathname);
+	size = cache_entry_size(baselen + len);
+	ce = xcalloc(1, size);
+
+	ce->ce_mode = create_ce_mode(mode);
+	ce->ce_flags = create_ce_flags(baselen + len, stage);
+	memcpy(ce->name, base, baselen);
+	memcpy(ce->name + baselen, pathname, len+1);
+	hashcpy(ce->sha1, sha1);
+	if (!add_cache_entry(ce, opt))
+		return -1;
+
+	return READ_TREE_RECURSIVE;
+}
+
+static int read_one_entry(const unsigned char *sha1, const char *base, int baselen, const char *pathname, unsigned mode, int stage, void *context)
+{
+	return read_one_entry_opt(sha1, base, baselen, pathname, mode, stage,
+				  ADD_CACHE_OK_TO_ADD|ADD_CACHE_SKIP_DFCHECK);
+}
+
+/*
+ * This is used when the caller knows there is no existing entries at
+ * the stage that will conflict with the entry being added.
+ */
+static int read_one_entry_quick(const unsigned char *sha1, const char *base, int baselen, const char *pathname, unsigned mode, int stage, void *context)
+{
+	return read_one_entry_opt(sha1, base, baselen, pathname, mode, stage,
+				  ADD_CACHE_JUST_APPEND);
+}
+
+static int read_permdirs_1(struct permdirs *permdirs, struct strbuf *base,
+		       int stage, struct pathspec *pathspec,
+		       read_tree_fn_t fn, void *context)
+{
+	struct permdirs_desc desc;
+	struct name_entry entry;
+	unsigned char sha1[20];
+	int len, oldlen = base->len;
+	enum interesting retval = entry_not_interesting;
+
+	if (parse_permdirs(permdirs))
+		return -1;
+
+	init_permdirs_desc(&desc, permdirs->buffer, permdirs->size);
+
+	while (permdirs_entry(&desc, &entry)) {
+		if (retval != all_entries_interesting) {
+			retval = permdirs_entry_interesting(&entry, base, 0, pathspec);
+			if (retval == all_entries_not_interesting)
+				break;
+			if (retval == entry_not_interesting)
+				continue;
+		}
+
+		switch (fn(entry.sha1, base->buf, base->len,
+			   entry.path, entry.mode, stage, context)) {
+		case 0:
+			continue;
+		case READ_TREE_RECURSIVE:
+			break;
+		default:
+			return -1;
+		}
+
+		hashcpy(sha1, entry.sha1);
+
+		len = permdirs_entry_len(&entry);
+		strbuf_add(base, entry.path, len);
+		strbuf_addch(base, '/');
+		retval = read_permdirs_1(lookup_permdirs(sha1),
+				     base, stage, pathspec,
+				     fn, context);
+		strbuf_setlen(base, oldlen);
+		if (retval)
+			return -1;
+	}
+	return 0;
+}
+
+int read_permdirs_recursive(struct permdirs *permdirs,
+			const char *base, int baselen,
+			int stage, struct pathspec *pathspec,
+			read_tree_fn_t fn, void *context)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
+
+	strbuf_add(&sb, base, baselen);
+	ret = read_permdirs_1(permdirs, &sb, stage, pathspec, fn, context);
+	strbuf_release(&sb);
+	return ret;
+}
+
+static int cmp_cache_name_compare(const void *a_, const void *b_)
+{
+	const struct cache_entry *ce1, *ce2;
+
+	ce1 = *((const struct cache_entry **)a_);
+	ce2 = *((const struct cache_entry **)b_);
+	return cache_name_compare(ce1->name, ce1->ce_flags,
+				  ce2->name, ce2->ce_flags);
+}
+
+int read_permdirs(struct permdirs *permdirs, int stage, struct pathspec *match)
+{
+	read_tree_fn_t fn = NULL;
+	int i, err;
+
+	/*
+	 * Currently the only existing callers of this function all
+	 * call it with stage=1 and after making sure there is nothing
+	 * at that stage; we could always use read_one_entry_quick().
+	 *
+	 * But when we decide to straighten out git-read-permdirs not to
+	 * use unpack_permdirss() in some cases, this will probably start
+	 * to matter.
+	 */
+
+	/*
+	 * See if we have cache entry at the stage.  If so,
+	 * do it the original slow way, otherwise, append and then
+	 * sort at the end.
+	 */
+	for (i = 0; !fn && i < active_nr; i++) {
+		struct cache_entry *ce = active_cache[i];
+		if (ce_stage(ce) == stage)
+			fn = read_one_entry;
+	}
+
+	if (!fn)
+		fn = read_one_entry_quick;
+	err = read_permdirs_recursive(permdirs, "", 0, stage, match, fn, NULL);
+	if (fn == read_one_entry || err)
+		return err;
+
+	/*
+	 * Sort the cache entry -- we need to nuke the cache permdirs, though.
+	 */
+	cache_tree_free(&active_cache_tree);
+	qsort(active_cache, active_nr, sizeof(active_cache[0]),
+	      cmp_cache_name_compare);
+	return 0;
+}
 
 struct permdirs *lookup_permdirs(const unsigned char *sha1)
 {

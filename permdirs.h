@@ -20,6 +20,11 @@ int parse_permdirs(struct permdirs *permdirs);
 /* Parses and returns the permdirs in the given ent, chasing tags and commits. */
 struct permdirs *parse_permdirs_indirect(const unsigned char *sha1);
 
+extern int read_permdirs_recursive(struct permdirs *permdirs,
+			       const char *base, int baselen,
+			       int stage, struct pathspec *pathspec,
+			       read_tree_fn_t fn, void *context);
+
 extern int read_permdirs(struct permdirs *permdirs, int stage, struct pathspec *pathspec);
 
 #endif /* PERMDIRS_H */

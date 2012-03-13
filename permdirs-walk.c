@@ -1,8 +1,10 @@
 #include "cache.h"
-#include "dir.h"
 #include "tree-walk.h"
-#include "permdirs.h"
 #include "permdirs-walk.h"
+#include "unpack-trees.h"
+#include "dir.h"
+#include "tree.h"
+#include "permdirs.h"
 
 static void decode_permdirs_entry(struct permdirs_desc *desc, const char *buf, unsigned long size)
 {
