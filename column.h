@@ -36,4 +36,7 @@ extern int finalize_colopts(unsigned int *colopts, int stdout_is_tty);
 extern void print_columns(const struct string_list *list, unsigned int colopts,
 			  const struct column_options *opts);
 
+extern int run_column_filter(int colopts, const struct column_options *);
+extern int stop_column_filter(void);
+
 #endif
