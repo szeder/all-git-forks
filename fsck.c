@@ -52,6 +52,13 @@ static int fsck_walk_commit(struct commit *commit, fsck_walk_func walk, void *da
 		return result;
 	res = result;
 
+	if (commit->permdirs) {
+		result = walk((struct object *)commit->permdirs, OBJ_PERMDIRS, data);
+		if (result < 0)
+			return result;
+		res = result;
+	}
+
 	parents = commit->parents;
 	while (parents) {
 		result = walk((struct object *)parents->item, OBJ_COMMIT, data);
@@ -76,6 +83,7 @@ int fsck_walk(struct object *obj, fsck_walk_func walk, void *data)
 	if (!obj)
 		return -1;
 	switch (obj->type) {
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 		return 0;
 	case OBJ_TREE:
@@ -334,7 +342,7 @@ int fsck_object(struct object *obj, int strict, fsck_error error_func)
 	if (!obj)
 		return error_func(obj, FSCK_ERROR, "no valid object to fsck");
 
-	if (obj->type == OBJ_BLOB)
+	if (obj->type == OBJ_BLOB || obj->type == OBJ_PERMDIRS)
 		return 0;
 	if (obj->type == OBJ_TREE)
 		return fsck_tree((struct tree *) obj, strict, error_func);

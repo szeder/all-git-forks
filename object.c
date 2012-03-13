@@ -2,6 +2,7 @@
 #include "object.h"
 #include "blob.h"
 #include "tree.h"
+#include "permdirs.h"
 #include "commit.h"
 #include "tag.h"
 
@@ -24,6 +25,7 @@ static const char *object_type_strings[] = {
 	"tree",		/* OBJ_TREE = 2 */
 	"blob",		/* OBJ_BLOB = 3 */
 	"tag",		/* OBJ_TAG = 4 */
+	"permdirs",	/* OBJ_PERMDIRS = 5 */
 };
 
 const char *typename(unsigned int type)
@@ -153,6 +155,18 @@ struct object *parse_object_buffer(const unsigned char *sha1, enum object_type t
 				tree->object.parsed = 0;
 			if (!tree->object.parsed) {
 				if (parse_tree_buffer(tree, buffer, size))
+					return NULL;
+				eaten = 1;
+			}
+		}
+	} else if (type == OBJ_PERMDIRS) {
+		struct permdirs *permdirs = lookup_permdirs(sha1);
+		if (permdirs) {
+			obj = &permdirs->object;
+			if (!permdirs->buffer)
+				permdirs->object.parsed = 0;
+			if (!permdirs->object.parsed) {
+				if (parse_permdirs_buffer(permdirs, buffer, size))
 					return NULL;
 				eaten = 1;
 			}

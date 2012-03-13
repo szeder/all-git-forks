@@ -467,6 +467,8 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 		expected_type = OBJ_COMMIT;
 	else if (!strncmp(tree_type, sp, 4) && sp[4] == '}')
 		expected_type = OBJ_TREE;
+	else if (!strncmp(permdirs_type, sp, 8) && sp[8] == '}')
+		expected_type = OBJ_PERMDIRS;
 	else if (!strncmp(blob_type, sp, 4) && sp[4] == '}')
 		expected_type = OBJ_BLOB;
 	else if (sp[0] == '}')

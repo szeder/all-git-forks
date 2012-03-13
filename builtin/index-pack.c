@@ -351,6 +351,7 @@ static void *unpack_raw_entry(struct object_entry *obj, union delta_base *delta_
 		break;
 	case OBJ_COMMIT:
 	case OBJ_TREE:
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		break;
@@ -480,6 +481,12 @@ static void sha1_object(const void *data, unsigned long size,
 				blob->object.flags |= FLAG_CHECKED;
 			else
 				die("invalid blob object %s", sha1_to_hex(sha1));
+		} else if (type == OBJ_PERMDIRS) {
+				struct permdirs *permdirs = lookup_permdirs(sha1);
+				if (permdirs)
+					permdirs->object.flags |= FLAG_CHECKED;
+				else
+					die("invalid permdirs object %s", sha1_to_hex(sha1));
 		} else {
 			struct object *obj;
 			int eaten;

@@ -447,6 +447,7 @@ static void unpack_one(unsigned nr)
 	switch (type) {
 	case OBJ_COMMIT:
 	case OBJ_TREE:
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		unpack_non_delta_entry(type, size, nr);

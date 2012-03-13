@@ -312,6 +312,13 @@ static int fsck_obj(struct object *obj)
 		item->buffer = NULL;
 	}
 
+	if (obj->type == OBJ_PERMDIRS) {
+		struct permdirs *item = (struct permdirs *) obj;
+
+		free(item->buffer);
+		item->buffer = NULL;
+	}
+
 	if (obj->type == OBJ_COMMIT) {
 		struct commit *commit = (struct commit *) obj;
 

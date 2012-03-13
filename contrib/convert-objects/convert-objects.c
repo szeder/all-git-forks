@@ -2,6 +2,7 @@
 #include "blob.h"
 #include "commit.h"
 #include "tree.h"
+#include "permdirs.h"
 
 struct entry {
 	unsigned char old_sha1[20];
@@ -299,6 +300,8 @@ static struct entry * convert_entry(unsigned char *sha1)
 
 	if (type == OBJ_BLOB) {
 		write_sha1_file(buffer, size, blob_type, entry->new_sha1);
+	} else if (type == OBJ_PERMDIRS) {
+			write_sha1_file(buffer, size, permdirs_type, entry->new_sha1);
 	} else if (type == OBJ_TREE)
 		convert_tree(buffer, size, entry->new_sha1);
 	else if (type == OBJ_COMMIT)

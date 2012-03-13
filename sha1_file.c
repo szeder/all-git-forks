@@ -1598,6 +1598,7 @@ static int packed_object_info(struct packed_git *p, off_t obj_offset,
 		break;
 	case OBJ_COMMIT:
 	case OBJ_TREE:
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		if (sizep)
@@ -1875,6 +1876,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		break;
 	case OBJ_COMMIT:
 	case OBJ_TREE:
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		data = unpack_compressed_entry(p, &w_curs, curpos, *sizep);

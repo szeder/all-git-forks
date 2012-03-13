@@ -417,6 +417,14 @@ static int show_tree_object(const unsigned char *sha1,
 	return 0;
 }
 
+static int show_permdirs_object(const unsigned char *sha1,
+		const char *base, int baselen,
+		const char *pathname, unsigned mode, int stage, void *context)
+{
+	printf("%s%s\n", pathname, "/");
+	return 0;
+}
+
 static void show_rev_tweak_rev(struct rev_info *rev, struct setup_revision_opt *opt)
 {
 	if (rev->ignore_merges) {
@@ -460,6 +468,17 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 		switch (o->type) {
 		case OBJ_BLOB:
 			ret = show_object(o->sha1, 0, NULL);
+			break;
+		case OBJ_PERMDIRS:
+			if (rev.shown_one)
+				putchar('\n');
+			printf("%spermdirs %s%s\n\n",
+					diff_get_color_opt(&rev.diffopt, DIFF_COMMIT),
+					name,
+					diff_get_color_opt(&rev.diffopt, DIFF_RESET));
+			read_permdirs_recursive((struct permdirs *)o, "", 0, 0, &match_all,
+					show_permdirs_object, NULL);
+			rev.shown_one = 1;
 			break;
 		case OBJ_TAG: {
 			struct tag *t = (struct tag *)o;

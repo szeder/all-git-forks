@@ -440,6 +440,7 @@ static open_method_decl(pack_non_delta)
 		return -1; /* we do not do deltas for now */
 	case OBJ_COMMIT:
 	case OBJ_TREE:
+	case OBJ_PERMDIRS:
 	case OBJ_BLOB:
 	case OBJ_TAG:
 		break;
