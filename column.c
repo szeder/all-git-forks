@@ -152,10 +152,55 @@ static int display_cell(struct column_data *data, int initial_width,
 	return 0;
 }
 
+/*
+ * Attempt to put the longest cell into a separate line, see if it
+ * improves the layout
+ */
+static int break_long_line(const struct column_data *old_data)
+{
+	struct column_data data;
+	struct string_list faked_list;
+	int initial_width, x, y, i, item = 0, row1, row2;
+	char *empty_cell;
+
+	memcpy(&data, old_data, sizeof(data));
+	for (i = 0; i < data.list->nr; i++)
+		if (data.len[i] > data.len[item])
+			item = i;
+	data.list = &faked_list;
+	data.width = NULL;
+	faked_list = *old_data->list;
+
+	faked_list.nr = item + 1;
+	layout(&data, &initial_width);
+	shrink_columns(&data);
+	row1 = data.rows;
+
+	faked_list.nr = item;
+	layout(&data, &initial_width);
+	shrink_columns(&data);
+	row2 = data.rows;
+
+	if (row1 - row2 < 3)
+		return -1;
+
+	empty_cell = xmalloc(initial_width + 1);
+	memset(empty_cell, ' ', initial_width);
+	empty_cell[initial_width] = '\0';
+	for (y = 0; y < data.rows; y++) {
+		for (x = 0; x < data.cols; x++)
+			if (display_cell(&data, initial_width, empty_cell, x, y))
+				break;
+	}
+	free(data.width);
+	free(empty_cell);
+	return item;
+}
+
 /* Display COL_COLUMN or COL_ROW */
-static void display_table(const struct string_list *list,
-			  unsigned int colopts,
-			  const struct column_options *opts)
+static int display_table(const struct string_list *list,
+			 unsigned int colopts,
+			 const struct column_options *opts)
 {
 	struct column_data data;
 	int x, y, i, initial_width;
@@ -174,6 +219,19 @@ static void display_table(const struct string_list *list,
 
 	if (colopts & COL_DENSE)
 		shrink_columns(&data);
+	if (colopts & COL_DENSER) {
+		i = break_long_line(&data);
+		if (i != -1) {
+			printf("%s%s" "%s%s%s" "%s%s",
+			       indent, nl,
+			       indent, list->items[i].string, nl,
+			       indent, nl);
+			free(data.len);
+			free(data.width);
+			return i + 1;
+		}
+		shrink_columns(&data);
+	}
 
 	empty_cell = xmalloc(initial_width + 1);
 	memset(empty_cell, ' ', initial_width);
@@ -187,12 +245,15 @@ static void display_table(const struct string_list *list,
 	free(data.len);
 	free(data.width);
 	free(empty_cell);
+	return list->nr;
 }
 
 void print_columns(const struct string_list *list, unsigned int colopts,
 		   const struct column_options *opts)
 {
 	struct column_options nopts;
+	int processed;
+	struct string_list l = *list;
 
 	if (!list->nr)
 		return;
@@ -213,7 +274,11 @@ void print_columns(const struct string_list *list, unsigned int colopts,
 		break;
 	case COL_ROW:
 	case COL_COLUMN:
-		display_table(list, colopts, &nopts);
+		while (l.nr &&
+		       (processed = display_table(&l, colopts, &nopts)) < l.nr) {
+			l.items += processed;
+			l.nr -= processed;
+		}
 		break;
 	default:
 		die("BUG: invalid layout mode %d", COL_LAYOUT(colopts));
@@ -252,6 +317,7 @@ static int parse_option(const char *arg, int len, unsigned int *colopts,
 		{ "column", COL_COLUMN,   COL_LAYOUT_MASK },
 		{ "row",    COL_ROW,      COL_LAYOUT_MASK },
 		{ "dense",  COL_DENSE,    0 },
+		{ "denser", COL_DENSER,   0 },
 	};
 	int i;
 
