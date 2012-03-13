@@ -9,6 +9,7 @@
 #include "refs.h"
 #include "dir.h"
 #include "tree.h"
+#include "permdirs.h"
 #include "commit.h"
 #include "blob.h"
 #include "resolve-undo.h"
@@ -28,8 +29,6 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 #define CACHE_EXT_PERMDIR 0x50444952	/* "PDIR" */
-
-const char *permdir_type = "permdir";
 
 struct index_state the_index;
 
@@ -1620,7 +1619,8 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 int cache_permdirext_write(struct strbuf* buf, struct index_state *istate)
 {
 	struct cache_entry **cache = istate->cache;
-	int i, count;
+	int i;
+	int count = 0;
 	int entries = istate->cache_nr;
 
 	for (i = 0; i < entries; i++) {
@@ -1644,7 +1644,7 @@ int write_permdir_file(struct index_state *istate, unsigned char *returnsha1)
 	if (!count)
 		return count;
 
-	if (write_sha1_file(&buf, buf.len, permdir_type, returnsha1) < 0)
+	if (write_sha1_file(&buf, buf.len, permdirs_type, returnsha1) < 0)
 		return -1;
 
 	return count;

@@ -114,11 +114,11 @@ static struct permdirs *parse_commit_permdirs(const char *buf, const char *tail)
 		return NULL;
 	/* memcmp(buf, "permdirs ", 9) == 0 */
 	permdirsptr = buf + 9;
-	while (buf < tail && *buf++ == '\n')
+	while (buf < tail && *buf++ != '\n')
 		/* nada */;
 	if (buf >= tail)
 		return NULL;
-	if (buf != permdirsptr + 40) /* bogus sha1 */
+	if (buf != permdirsptr + 40 + 1) /* bogus sha1 */
 		return NULL;
 	/* permdirsptr < buf && buf[-1] == '\n', so strtoul will stop at buf-1 */
 	get_sha1_hex(permdirsptr, sha1);

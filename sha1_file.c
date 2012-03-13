@@ -2276,6 +2276,7 @@ void *read_object_with_reference(const unsigned char *sha1,
 {
 	enum object_type type, required_type;
 	void *buffer;
+	char *buf;
 	unsigned long isize;
 	unsigned char actual_sha1[20];
 
@@ -2288,6 +2289,7 @@ void *read_object_with_reference(const unsigned char *sha1,
 		buffer = read_sha1_file(actual_sha1, &type, &isize);
 		if (!buffer)
 			return NULL;
+		buf = buffer;
 		if (type == required_type) {
 			*size = isize;
 			if (actual_sha1_return)
@@ -2297,14 +2299,13 @@ void *read_object_with_reference(const unsigned char *sha1,
 		/* Handle references */
 		else if (type == OBJ_COMMIT) {
 			if (required_type == OBJ_PERMDIRS) {
-				char *buf = buffer;
 				ref_type = "\npermdirs ";
 				buf = strstr(buf, ref_type);
 				if (!buf) {
 					free(buffer);
 					return NULL;
 				}
-				buffer = buf + 1;
+				buf++;
 				ref_type = "permdirs ";
 			} else
 				ref_type = "tree ";
@@ -2317,8 +2318,8 @@ void *read_object_with_reference(const unsigned char *sha1,
 		ref_length = strlen(ref_type);
 
 		if (ref_length + 40 > isize ||
-		    memcmp(buffer, ref_type, ref_length) ||
-		    get_sha1_hex((char *) buffer + ref_length, actual_sha1)) {
+		    memcmp(buf, ref_type, ref_length) ||
+		    get_sha1_hex((char *) buf + ref_length, actual_sha1)) {
 			free(buffer);
 			return NULL;
 		}
