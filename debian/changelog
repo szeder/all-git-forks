@@ -33,6 +33,9 @@ git (1:1.7.9.4-0.1) unstable; urgency=low
     * 0014, 0015: rename to 0013-*, 0014-*.
   * debian/git-daemon.init: respect GIT_DAEMON_ENABLE in restart and
     reload actions (thx Jonathan McCrohan; closes: #663522).
+  * debian/control: git-gui: point to aspell for spell checking support
+    in the package description; Suggests: aspell (thx Jonathan Ballet,
+    closes: #656061).
   * debian/control: Standards-Version: 3.9.3.1.
   * debian/copyright: adopt copyright-format 1.0.
 
