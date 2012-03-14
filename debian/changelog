@@ -1,4 +1,4 @@
-git (1:1.7.9.4-0.1) unstable; urgency=low
+git (1:1.7.9.4-1) unstable; urgency=low
 
   * new upstream point release.
     * commit: skip intent-to-add entries instead of erroring out.
@@ -41,7 +41,7 @@ git (1:1.7.9.4-0.1) unstable; urgency=low
   * debian/control: Standards-Version: 3.9.3.1.
   * debian/copyright: adopt copyright-format 1.0.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 22 Feb 2012 22:52:20 -0600
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 14 Mar 2012 02:40:00 -0500
 
 git (1:1.7.9.1-1) unstable; urgency=low
 
