@@ -31,6 +31,8 @@ git (1:1.7.9.4-0.1) unstable; urgency=low
     * 0012-transport-optionally-honor-DNS-SRV-records.diff, 0013-*:
       combine; rename to 0011-*.
     * 0014, 0015: rename to 0013-*, 0014-*.
+  * debian/git-daemon.init: respect GIT_DAEMON_ENABLE in restart and
+    reload actions (thx Jonathan McCrohan; closes: #663522).
   * debian/control: Standards-Version: 3.9.3.1.
   * debian/copyright: adopt copyright-format 1.0.
 
