@@ -180,8 +180,24 @@ static void finish_object(struct object *obj,
 	struct rev_list_info *info = cb_data;
 	if (obj->type == OBJ_BLOB && !has_sha1_file(obj->sha1))
 		die("missing blob object '%s'", sha1_to_hex(obj->sha1));
-	if (info->revs->verify_objects && !obj->parsed && obj->type != OBJ_COMMIT)
-		parse_object(obj->sha1);
+	if (info->revs->verify_objects &&
+	    !obj->parsed && obj->type != OBJ_COMMIT) {
+		const char *safe_pack = info->revs->safe_pack;
+		struct object_info oi;
+		int safe = 0;
+		memset(&oi, 0, sizeof(oi));
+		if (*safe_pack &&
+		    sha1_object_info_extended(obj->sha1, &oi) >= 0 &&
+		    oi.whence == OI_PACKED) {
+			const char *pack = oi.u.packed.pack->pack_name;
+			int len = strlen(pack);
+			assert(strncmp(pack + len - 51, "/pack-", 6) == 0);
+			assert(strcmp(pack + len - 5, ".pack") == 0);
+			safe = !memcmp(safe_pack, pack + len - 45, 40);
+		}
+		if (!safe)
+			parse_object(obj->sha1);
+	}
 }
 
 static void show_object(struct object *obj,
