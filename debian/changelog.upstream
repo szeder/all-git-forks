@@ -1,3 +1,25 @@
+Version v1.7.9.4; changes since v1.7.9.3:
+-----------------------------------------
+
+Jakub Narebski (1):
+      gitweb: Fix fixed string (non-regexp) project search
+
+Junio C Hamano (6):
+      am -3: allow nonstandard -p<num> option
+      test: "am -3" can accept non-standard -p<num>
+      t4011: modernise style
+      t4011: illustrate "diff-index -p" on stat-dirty paths
+      diff -p: squelch "diff --git" header for stat-dirty paths
+      Git 1.7.9.4
+
+Thomas Rast (5):
+      t5510: refactor bundle->pack conversion
+      t5510: ensure we stay in the toplevel test dir
+      bundle: keep around names passed to add_pending_object()
+      Document the --histogram diff option
+      t5704: fix nonportable sed/grep usages
+
+
 Version v1.7.9.3; changes since v1.7.9.2:
 -----------------------------------------
 
