@@ -15,6 +15,7 @@ Build-Depends-Indep: asciidoc (>> 8.0.0), xmlto, docbook-xsl (>> 1.72)
 Standards-Version: 3.9.3.1
 Homepage: http://git-scm.com/
 Vcs-Git: http://smarden.org/git/git.git/
+Vcs-Browser: http://repo.or.cz/w/git/debian.git/
 
 Package: git
 Architecture: any

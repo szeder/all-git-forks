@@ -36,6 +36,8 @@ git (1:1.7.9.4-0.1) unstable; urgency=low
   * debian/control: git-gui: point to aspell for spell checking support
     in the package description; Suggests: aspell (thx Jonathan Ballet,
     closes: #656061).
+  * debian/control: add Vcs-Browser: http://repo.or.cz/w/git/debian.git
+    (thx Jonathan McCrohan; closes: #663451).
   * debian/control: Standards-Version: 3.9.3.1.
   * debian/copyright: adopt copyright-format 1.0.
 
