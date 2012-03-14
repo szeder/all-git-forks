@@ -1,3 +1,10 @@
+git (1:1.7.9.1-1.1) unstable; urgency=low
+
+  * debian/git-daemon.init: respect GIT_DAEMON_ENABLE in restart and
+    reload actions (thx Jonathan McCrohan; closes: #663522).
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 14 Mar 2012 01:10:48 -0500
+
 git (1:1.7.9.1-1) unstable; urgency=low
 
   * new upstream point release.
