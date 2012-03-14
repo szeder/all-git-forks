@@ -838,7 +838,7 @@ static int http_request(const char *url, void *result, int target, int options)
 			} else {
 				credential_fill(&http_auth);
 				init_curl_http_auth(slot->curl);
-				ret = HTTP_REAUTH;
+				ret = HTTP_AUTH_RETRY;
 			}
 		} else if (results.http_code == 407) { /* Proxy authentication failure */
 			if (proxy_auth.username && proxy_auth.password) {
@@ -847,7 +847,7 @@ static int http_request(const char *url, void *result, int target, int options)
 			} else {
 				credential_fill(&proxy_auth);
 				set_proxy_auth(slot->curl);
-				ret = HTTP_REAUTH;
+				ret = HTTP_AUTH_RETRY;
 			}
 		} else {
 			if (!curl_errorstr[0])
@@ -877,7 +877,7 @@ static int http_request_reauth(const char *url, void *result, int target,
 
 	do {
 		ret = http_request(url, result, target, options);
-	} while (ret == HTTP_REAUTH);
+	} while (ret == HTTP_AUTH_RETRY);
 
 	return ret;
 }
