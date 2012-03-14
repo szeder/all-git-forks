@@ -9,7 +9,8 @@ if test -z "$GIT_TEST_CREDENTIAL_HELPER"; then
 	test_done
 fi
 
-$GIT_TEST_CREDENTIAL_HELPER_SETUP
+test -z "$GIT_TEST_CREDENTIAL_HELPER_SETUP" ||
+eval  "$GIT_TEST_CREDENTIAL_HELPER_SETUP"
 
 # clean before the test in case there is cruft left
 # over from a previous run that would impact results
