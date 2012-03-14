@@ -267,7 +267,8 @@ static void check_notes_merge_worktree(struct notes_merge_options *o)
 		 * Must establish NOTES_MERGE_WORKTREE.
 		 * Abort if NOTES_MERGE_WORKTREE already exists
 		 */
-		if (file_exists(git_path(NOTES_MERGE_WORKTREE))) {
+		if (file_exists(git_path(NOTES_MERGE_WORKTREE)) &&
+		    !is_empty_dir(git_path(NOTES_MERGE_WORKTREE))) {
 			if (advice_resolve_conflict)
 				die("You have not concluded your previous "
 				    "notes merge (%s exists).\nPlease, use "
@@ -754,16 +755,59 @@ int notes_merge_commit(struct notes_merge_options *o,
 	return 0;
 }
 
+/* Based on dir.c:remove_dir_recursively() */
+static int remove_everything_inside_dir(struct strbuf *path)
+{
+	DIR *dir;
+	struct dirent *e;
+	int ret = 0, original_len = path->len, len;
+
+	dir = opendir(path->buf);
+	if (!dir)
+		return -1;
+	if (path->buf[original_len - 1] != '/')
+		strbuf_addch(path, '/');
+
+	len = path->len;
+	while ((e = readdir(dir)) != NULL) {
+		struct stat st;
+		if (is_dot_or_dotdot(e->d_name))
+			continue;
+
+		strbuf_setlen(path, len);
+		strbuf_addstr(path, e->d_name);
+		if (lstat(path->buf, &st))
+			; /* fall thru */
+		else if (S_ISDIR(st.st_mode)) {
+			if (!remove_dir_recursively(path, 0))
+				continue; /* happy */
+		} else if (!unlink(path->buf))
+			continue; /* happy, too */
+
+		/* path too long, stat fails, or non-directory still exists */
+		ret = -1;
+		break;
+	}
+	closedir(dir);
+
+	strbuf_setlen(path, original_len);
+	return ret;
+}
+
 int notes_merge_abort(struct notes_merge_options *o)
 {
-	/* Remove .git/NOTES_MERGE_WORKTREE directory and all files within */
+	/*
+	 * Remove all files within .git/NOTES_MERGE_WORKTREE. We do not remove
+	 * the .git/NOTES_MERGE_WORKTREE directory itself, since it might be
+	 * the current working directory of the user.
+	 */
 	struct strbuf buf = STRBUF_INIT;
 	int ret;
 
 	strbuf_addstr(&buf, git_path(NOTES_MERGE_WORKTREE));
 	if (o->verbosity >= 3)
-		printf("Removing notes merge worktree at %s\n", buf.buf);
-	ret = remove_dir_recursively(&buf, 0);
+		printf("Removing notes merge worktree at %s/*\n", buf.buf);
+	ret = remove_everything_inside_dir(&buf);
 	strbuf_release(&buf);
 	return ret;
 }
