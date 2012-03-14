@@ -168,6 +168,9 @@ struct rev_info {
 	int count_left;
 	int count_right;
 	int count_same;
+
+	/* --verify-objects */
+	char safe_pack[41];
 };
 
 #define REV_TREE_SAME		0

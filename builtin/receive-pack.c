@@ -40,6 +40,7 @@ static int auto_gc = 1;
 static const char *head_name;
 static void *head_name_to_free;
 static int sent_capabilities;
+static const char *pack_lockfile;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -669,7 +670,7 @@ static void set_connectivity_errors(struct command *commands)
 	for (cmd = commands; cmd; cmd = cmd->next) {
 		struct command *singleton = cmd;
 		if (!check_everything_connected(command_singleton_iterator,
-						0, &singleton))
+						0, pack_lockfile, &singleton))
 			continue;
 		cmd->error_string = "missing necessary objects";
 	}
@@ -705,7 +706,7 @@ static void execute_commands(struct command *commands, const char *unpacker_erro
 
 	cmd = commands;
 	if (check_everything_connected(iterate_receive_command_list,
-				       0, &cmd))
+				       0, pack_lockfile, &cmd))
 		set_connectivity_errors(commands);
 
 	if (run_receive_hook(commands, pre_receive_hook, 0)) {
@@ -796,8 +797,6 @@ static const char *parse_pack_header(struct pack_header *hdr)
 		return NULL;
 	}
 }
-
-static const char *pack_lockfile;
 
 static const char *unpack(void)
 {
