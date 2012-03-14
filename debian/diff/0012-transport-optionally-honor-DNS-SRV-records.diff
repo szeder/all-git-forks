@@ -1,20 +1,38 @@
-From 3a57883194124668c16125b21de38329675ae548 Mon Sep 17 00:00:00 2001
+From 131e463fcf99b224492a3b21adb0a8336324a094 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:46:20 -0500
 Subject: transport: optionally honor DNS SRV records
 
-As rfc2782 explains, SRV records allow administrators "to use serveral
-servers for a single domain, to move services from host to host with
-little fuss, and to designate some hosts as primary servers for a
-service and others as backups".  Someone noticed in a recent server
-move that that second part would have been very handy (since the git
-protocol doesn't include a concept of redirects).
+SRV records are an extra layer of indirection on top of A/AAAA records
+mapping from domain names and service types to the hostnames of
+machines that offer that service.  That has a couple of nice effects:
 
-Sadly, getaddrinfo itself does not provide a means to resolve SRV
-records automatically.  Therefore this patch uses the BIND 8 API
-provided by libresolv to parse the response for ourselves.  Hopefully
-after reading enough specimens of code like this, someone will be
-inspired to extend libc and make them obsolete.
+ - a single domain can use different hosts for different services
+ - a single domain can use multiple hosts for one service
+
+Teach git to perform a SRV lookup whenever resolving a git:// URL.
+This means:
+
+ - if your git server was previously the same machine as your wesnoth
+   server, you can move it to a separate machine without forcing
+   everyone to update their links to the old URLs
+
+ - if you have a primary git server and a backup machine that should
+   be used when the primary server goes down, the client can
+   automatically take care of it
+
+ - if you have multiple git servers and would like to spread load
+   between them, the client can automatically take care of it
+
+That is, SRV records let us ask the client to carry out various tasks
+that would require a proxy on the server side with traditional DNS.
+The client performs a SRV query to _git._tcp.<domain name> to receive
+its instructions.  RFC 2782 has details.
+
+Ideally reaping these benefits would just involve passing a special
+flag to getaddrinfo().  Since we don't live in such a world, this
+patch uses the BIND 8 API provided by libresolv to parse the response
+for ourselves.
 
 RFC 2782 requires some non-determinism in the order of hosts
 contacted; this patch uses drand48() for that.  To avoid causing
@@ -22,15 +40,23 @@ trouble for platforms that lack the libbind ns_* functions or
 drand48(), the SRV support is only provided when requested by setting
 the USE_SRV_RR compile-time option.
 
+git servers must ensure that they can also be reached by a plain
+A/AAAA lookup to support git clients without SRV support, for example
+by proxying connections to an appropriate server:
+
+	# in inetd.conf
+	git stream tcp nowait.400 nobody /usr/sbin/tcpd \
+		/bin/nc -q0 gitserver.example.com git
+
 Based on a patch by Julien Cristau <jcristau@debian.org>.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |   10 ++
- srv.c    |  308 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ srv.c    |  321 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  srv.h    |   15 +++
  tcp.c    |  100 ++++++++++++++------
- 4 files changed, 405 insertions(+), 28 deletions(-)
+ 4 files changed, 418 insertions(+), 28 deletions(-)
  create mode 100644 srv.c
  create mode 100644 srv.h
 
@@ -71,10 +97,10 @@ index 8b60389..56198f1 100644
  
 diff --git a/srv.c b/srv.c
 new file mode 100644
-index 0000000..a0bc148
+index 0000000..2716206
 --- /dev/null
 +++ b/srv.c
-@@ -0,0 +1,308 @@
+@@ -0,0 +1,321 @@
 +#include "git-compat-util.h"
 +#include "strbuf.h"
 +#include "srv.h"
@@ -116,7 +142,7 @@ index 0000000..a0bc148
 +
 +	hostlen = strlen(host);
 +	if (unsigned_add_overflows(strlen(prefix) + 1, hostlen))
-+		return -1;
++		return error("absurdly long hostname");
 +
 +	strbuf_reset(sb);
 +	strbuf_grow(sb, strlen(prefix) + hostlen);
@@ -132,7 +158,7 @@ index 0000000..a0bc148
 +	char buf[1024];
 +
 +	if (ns_rr_rdlen(*rr) < 2+2+2 /* priority, weight, port */)
-+		return -1;
++		return error("SRV RR is too short");
 +
 +	p = ns_rr_rdata(*rr);
 +	res->priority = *p++ << CHAR_BIT;
@@ -150,7 +176,7 @@ index 0000000..a0bc148
 +	 */
 +	if (dn_expand(ns_msg_base(*msg), ns_msg_end(*msg), p,
 +			buf, sizeof(buf)) < 0)
-+		return -1;
++		return error("cannot expand target domain name in SRV RR");
 +
 +	res->target = xstrdup(buf);
 +	return 0;
@@ -168,8 +194,10 @@ index 0000000..a0bc148
 +	/* skip CNAME records */
 +	for (i = 0; i < n; i++) {
 +		ns_rr rr;
-+		if (ns_parserr(msg, ns_s_an, i, &rr))
++		if (ns_parserr(msg, ns_s_an, i, &rr)) {
++			error("cannot parse DNS RR: %s", strerror(errno));
 +			goto fail;
++		}
 +		if (ns_rr_type(rr) != ns_t_cname)
 +			break;
 +	}
@@ -180,9 +208,17 @@ index 0000000..a0bc148
 +	for (i = 0; i < n; i++) {
 +		ns_rr rr;
 +
-+		if (ns_parserr(msg, ns_s_an, cnames + i, &rr) ||
-+		    ns_rr_type(rr) != ns_t_srv ||
-+		    srv_parse_rr(msg, &rr, rrs + i))
++		if (ns_parserr(msg, ns_s_an, cnames + i, &rr)) {
++			error("cannot parse DNS RR: %s", strerror(errno));
++			goto fail;
++		}
++		if (ns_rr_type(rr) != ns_t_srv) {
++			error("expected SRV RR, found RR type %d",
++						(int) ns_rr_type(rr));
++			goto fail;
++		}
++		if (srv_parse_rr(msg, &rr, rrs + i))
++			/* srv_parse_rr writes a message */
 +			goto fail;
 +		nr_parsed++;
 +	}
@@ -344,10 +380,13 @@ index 0000000..a0bc148
 +	/* If a SRV RR cannot be parsed, give up. */
 +	ret = -1;
 +
-+	if (ns_initparse(buf, len, &msg))
++	if (ns_initparse(buf, len, &msg)) {
++		error("cannot initialize DNS parser: %s", strerror(errno));
 +		goto out;
++	}
 +	n = srv_parse(&msg, &rrs);
 +	if (n < 0)
++		/* srv_parse writes a message */
 +		goto out;
 +	if (!n) {
 +		ret = 0;
@@ -405,7 +444,7 @@ index 0000000..7cea4f4
 +
 +#endif
 diff --git a/tcp.c b/tcp.c
-index 623d7e1..0615f5e 100644
+index 83f0313..c27a0d7 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -1,5 +1,6 @@
@@ -460,7 +499,7 @@ index 623d7e1..0615f5e 100644
 -	if (flags & CONNECT_VERBOSE)
 -		fprintf(stderr, "done.\nConnecting to %s (port %s) ... ", host, port);
 +		gai = dns_resolve(hosts[j].hostname,
-+				hosts[j].port, RESOLVE_IGNORE_ERROR, &ai);
++				hosts[j].port, RESOLVE_FAIL_QUIETLY, &ai);
 +		if (gai) {
 +			if (flags & CONNECT_VERBOSE)
 +				fprintf(stderr, "failed.\n");

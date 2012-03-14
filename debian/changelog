@@ -9,6 +9,28 @@ git (1:1.7.9.3-0.1) unstable; urgency=low
       the command line instead of uninitialized memory.
     * checkout -b: allow switching out of an unborn branch (closes:
       #506480).
+  * debian/diff: clean up patches for upstream.
+    * 0001-hooks-post-receive-email-set-encoding-to-utf-8.diff:
+      hooks/post-receive-email: set content-transfer-encoding as well.
+    * 0002-post-receive-email-defend-against-non-utf8-...diff: new;
+      hooks/post-receive-email: avoid mixed-encoding messages when
+      i18n.logoutputencoding is not utf8 (thx Alexey Shumkin).
+    * 0002-remove-shebang-...diff: rename to 0003-remove-...diff;
+      remove #! line from sh-i18n and rebase--* shell libraries, too
+      (lintian); fix tests' --valgrind support to detect shell
+      libraries without the #! line (thx Jeff King).
+    * 0003-pre-rebase-hook-capture-...diff: simplify (thx Junio C
+      Hamano); rename to 0004-*.
+    * 0004-gitk-use-symbolic-font-names-...diff: rename to 0005-*; use
+      non-symbolic font names on platforms like Mac OS X, Windows, and
+      tk <= 8.4 that lack fontconfig support.
+    * 0005...0008, 0010: rename to 0006-*, ..., 0009-*, 0011-*;
+      clarify descriptions.
+    * 0009-tcp-unify-ipv4-and-ipv6-code-paths.diff, 0011-*: combine;
+      rename to 0010-*.
+    * 0012-transport-optionally-honor-DNS-SRV-records.diff, 0013-*:
+      combine; rename to 0011-*.
+    * 0014, 0015: rename to 0013-*, 0014-*.
   * debian/control: Standards-Version: 3.9.3.1.
   * debian/copyright: adopt copyright-format 1.0.
 

@@ -1,4 +1,4 @@
-From 33f264a9506f4831f044209b751677aca32a7b36 Mon Sep 17 00:00:00 2001
+From a4e78777f9078ab8a23a669a23b65c8c6a19f5af Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
 Subject: daemon: check for errors retrieving IP address
@@ -13,20 +13,21 @@ daemon to copy uninitialized data.
 This probably never happens in practice because modern systems allow
 such long hostnames as 64 chars (POSIX requires at least 255) or have
 no compile-time maximum at all and let git fall back to a buffer size
-of 256.  But it would be more comforting not to rely on that.  So:
+of 256.  But it is more comforting not to rely on that.  So:
 
- - in ipv4 code, use a buffer of size 64 (which is long enough to
-   hold an ipv6 address if needed).
+ - in "ipv4" code, which uses inet_ntop, use a buffer size of 64 (long
+   enough to hold an ipv6 address if needed).
 
- - in ipv6 code, use the "getnameinfo" function already used to
-   convert addresses to text in error messages (it uses a buffer of
-   length NI_MAXHOST).
+ - in ipv6 code, use the "getnameinfo" function that is already being
+   used to convert addresses to text in error messages.  It uses a
+   buffer of length NI_MAXHOST.
 
- - check for errors and return NULL when they occur.
-   strbuf_expand_dict_cb treats NULL as an empty substitution string.
+ - check for errors and make dns_ip_address() and git_locate_host()
+   return NULL when they occur.  strbuf_expand_dict_cb treats NULL as
+   an empty substitution string.
 
-As a nice side effect, this means we can remove the fallback
-definition of HOST_NAME_MAX on platforms that don't define it.
+As a nice side effect, the fallback definition of HOST_NAME_MAX for
+platforms that don't define it is no longer needed.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
@@ -36,7 +37,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  3 files changed, 17 insertions(+), 16 deletions(-)
 
 diff --git a/dns-ipv4.h b/dns-ipv4.h
-index 4d03d9c..18feb51 100644
+index c63558b..6f70d63 100644
 --- a/dns-ipv4.h
 +++ b/dns-ipv4.h
 @@ -1,9 +1,7 @@
@@ -50,7 +51,7 @@ index 4d03d9c..18feb51 100644
  
  struct ipv4_address {
  	char **ap;
-@@ -33,9 +31,10 @@ static inline const char *dns_name(const resolved_address *addr)
+@@ -37,9 +35,10 @@ static inline const char *dns_name(const resolved_address *addr)
  static inline char *dns_ip_address(const resolved_address *addr,
  					const resolver_result *ai)
  {
@@ -65,7 +66,7 @@ index 4d03d9c..18feb51 100644
  }
  
 diff --git a/dns-ipv6.c b/dns-ipv6.c
-index f446ba1..dcfeac4 100644
+index 2129136..0b0e060 100644
 --- a/dns-ipv6.c
 +++ b/dns-ipv6.c
 @@ -1,8 +1,9 @@
@@ -99,7 +100,7 @@ index f446ba1..dcfeac4 100644
  
  int dns_resolve(const char *host, const char *port, int flags,
 diff --git a/tcp.c b/tcp.c
-index 47e31e5..623d7e1 100644
+index 4239daf..83f0313 100644
 --- a/tcp.c
 +++ b/tcp.c
 @@ -56,8 +56,10 @@ void git_locate_host(const char *hostname, char **ip_address,
@@ -116,5 +117,5 @@ index 47e31e5..623d7e1 100644
  	}
  
 -- 
-1.7.8.1
+1.7.9.2
 

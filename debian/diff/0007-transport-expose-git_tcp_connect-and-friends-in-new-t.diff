@@ -1,11 +1,14 @@
-From 3486d50bb12a2a873dd23321f40bb017d4f37ae5 Mon Sep 17 00:00:00 2001
+From 548bdfec46015e1efbc2653f838f45fd066077a1 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: transport: expose git_tcp_connect and friends in new tcp.h
+Subject: transport: expose git_tcp_connect() and friends in new tcp.h
 
-As preparation for adding functionality to them, move the functions
-git_tcp_connect and git_proxy_connect used to resolve a hostname and
-connect to it to a separate tcp.c file.
+Split off a new tcp.c with the functions git_tcp_connect() and
+git_proxy_connect() that resolve and connect to a host.
+
+Part of a series to teach git to respect DNS SRV records when making
+new connections; this is a preliminary step to make the connection
+library easier to understand before adding to it.
 
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---

@@ -1,4 +1,4 @@
-From 83553f3954392c343eb72b94886ec462689afd2a Mon Sep 17 00:00:00 2001
+From f07f068a418d730e903461469285c93d6685ecbe Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 13 Jan 2012 15:51:12 -0600
 Subject: srv: be more tolerant of broken DNS replies
@@ -32,7 +32,7 @@ Reported-by: Richard Hartmann <richih.mailinglist@gmail.com>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  srv.c |   40 ++++++++++++++++++++++++++--------------
- 1 files changed, 26 insertions(+), 14 deletions(-)
+ 1 file changed, 26 insertions(+), 14 deletions(-)
 
 diff --git a/srv.c b/srv.c
 index 2716206..829ef76 100644
@@ -118,5 +118,5 @@ index 2716206..829ef76 100644
  	if (n < 0)
  		/* srv_parse writes a message */
 -- 
-1.7.8.3
+1.7.9.2
 

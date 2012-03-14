@@ -1,4 +1,4 @@
-From 280554d4a261cff36145d5ccb73e3037096420e1 Mon Sep 17 00:00:00 2001
+From a2aef116a8d391865dfecacc7706ebbaef7c06da Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
 Subject: Makefile: add a knob to turn off hardlinks within same directory
