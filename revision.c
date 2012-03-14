@@ -1451,6 +1451,11 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->tree_objects = 1;
 		revs->blob_objects = 1;
 		revs->verify_objects = 1;
+	} else if (!strcmp(arg, "--safe-pack")) {
+		if (strlen(argv[1]) != 40)
+			die("--safe-pack requires an SHA-1 as pack id, not %s", argv[1]);
+		strcpy(revs->safe_pack, argv[1]);
+		return 2;
 	} else if (!strcmp(arg, "--unpacked")) {
 		revs->unpacked = 1;
 	} else if (!prefixcmp(arg, "--unpacked=")) {
