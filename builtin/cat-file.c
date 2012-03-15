@@ -15,6 +15,23 @@
 #define BATCH 1
 #define BATCH_CHECK 2
 
+static void pprint_permdirs(const unsigned char *sha1, const char *buf, unsigned long size)
+{
+	const char *endp = buf + size;
+	const char *cp = buf;
+
+	while (cp < endp) {
+		char c = *cp++;
+		if (c)
+			continue;
+		write_or_die(1, buf, cp - buf - 1);
+		xwrite(1, "\n", 1);
+		buf = cp;
+	}
+	if (buf != endp)
+		die("malformed permdirs file");
+}
+
 static void pprint_tag(const unsigned char *sha1, const char *buf, unsigned long size)
 {
 	/* the parser in tag.c is useless here. */
@@ -132,6 +149,9 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 			die("Cannot read object %s", obj_name);
 		if (type == OBJ_TAG) {
 			pprint_tag(sha1, buf, size);
+			return 0;
+		} else if (type == OBJ_PERMDIRS) {
+			pprint_permdirs(sha1, buf, size);
 			return 0;
 		}
 

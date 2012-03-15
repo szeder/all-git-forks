@@ -22,7 +22,7 @@ static inline const unsigned char *tree_entry_extract(struct tree_desc *desc, co
 
 static inline int tree_entry_len(const struct name_entry *ne)
 {
-	if (!ne->sha1)
+	if (S_ISPERMDIR(ne->mode))
 		return strlen(ne->path); /* see permdirs_entry_len() */
 	return (const char *)ne->sha1 - ne->path - 1;
 }

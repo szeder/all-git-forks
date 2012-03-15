@@ -8,10 +8,11 @@
 
 static void decode_permdirs_entry(struct permdirs_desc *desc, const char *buf, unsigned long size)
 {
+	static const unsigned char dummy_sha1[20] = "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 	/* Initialize the descriptor entry */
 	desc->entry.mode = S_IFPERMDIR;
 	desc->entry.path = buf;
-	desc->entry.sha1 = NULL;
+	desc->entry.sha1 = dummy_sha1;
 }
 
 void init_permdirs_desc(struct permdirs_desc *desc, const void *buffer, unsigned long size)

@@ -1644,7 +1644,7 @@ int write_permdir_file(struct index_state *istate, unsigned char *returnsha1)
 	if (!count)
 		return count;
 
-	if (write_sha1_file(&buf, buf.len, permdirs_type, returnsha1) < 0)
+	if (write_sha1_file(buf.buf, buf.len, permdirs_type, returnsha1) < 0)
 		return -1;
 
 	return count;
