@@ -14,7 +14,7 @@ use 5.008;
 use strict;
 use warnings;
 use Cwd qw(abs_path);
-use File::Basename qw(dirname);
+use File::Basename qw(dirname basename);
 
 require Git;
 
@@ -24,7 +24,8 @@ my $DIR = abs_path(dirname($0));
 sub usage
 {
 	print << 'USAGE';
-usage: git difftool [-t|--tool=<tool>] [-x|--extcmd=<cmd>]
+usage: git difftool [-t|--tool=<tool>]   [--tool-help]
+                    [-x|--extcmd=<cmd>]
                     [-y|--no-prompt]   [-g|--gui]
                     ['git diff' options]
 USAGE
@@ -99,6 +100,15 @@ sub generate_command
 		}
 		if ($arg eq '-h' || $arg eq '--help') {
 			usage();
+		}
+		if ($arg eq '--tool-help') {
+			my $gitpath = Git::exec_path();
+			print "'git difftool --tool=<tool>' may be set to one of the following:\n";
+			for (glob "$gitpath/mergetools/*") {
+				next if /defaults$/;
+				print "\t" . basename($_) . "\n";
+			}
+			exit(1);
 		}
 		push @command, $arg;
 	}
