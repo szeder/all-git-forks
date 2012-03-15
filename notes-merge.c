@@ -758,40 +758,7 @@ int notes_merge_commit(struct notes_merge_options *o,
 /* Based on dir.c:remove_dir_recursively() */
 static int remove_everything_inside_dir(struct strbuf *path)
 {
-	DIR *dir;
-	struct dirent *e;
-	int ret = 0, original_len = path->len, len;
-
-	dir = opendir(path->buf);
-	if (!dir)
-		return -1;
-	if (path->buf[original_len - 1] != '/')
-		strbuf_addch(path, '/');
-
-	len = path->len;
-	while ((e = readdir(dir)) != NULL) {
-		struct stat st;
-		if (is_dot_or_dotdot(e->d_name))
-			continue;
-
-		strbuf_setlen(path, len);
-		strbuf_addstr(path, e->d_name);
-		if (lstat(path->buf, &st))
-			; /* fall thru */
-		else if (S_ISDIR(st.st_mode)) {
-			if (!remove_dir_recursively(path, 0))
-				continue; /* happy */
-		} else if (!unlink(path->buf))
-			continue; /* happy, too */
-
-		/* path too long, stat fails, or non-directory still exists */
-		ret = -1;
-		break;
-	}
-	closedir(dir);
-
-	strbuf_setlen(path, original_len);
-	return ret;
+	return remove_dir_recursively(path, REMOVE_DIR_KEEP_TOPLEVEL);
 }
 
 int notes_merge_abort(struct notes_merge_options *o)
