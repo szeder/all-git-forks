@@ -438,6 +438,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 			topts.dir->flags |= DIR_SHOW_IGNORED;
 			setup_standard_excludes(topts.dir);
 		}
+		printf("merge_working_tree() old->commit = %p\n", old->commit);
 		tree = parse_tree_indirect(old->commit ?
 					   old->commit->object.sha1 :
 					   EMPTY_TREE_SHA1_BIN);
