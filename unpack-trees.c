@@ -594,79 +594,6 @@ static int unpack_nondirectories(int n, unsigned long mask,
 	return 0;
 }
 
-static int unpack_permanent_directories(int n, unsigned long mask,
-				 unsigned long dirmask,
-				 struct cache_entry **src,
-				 const struct name_entry *names,
-				 const struct traverse_info *info)
-{
-	int i;
-	struct unpack_trees_options *o = info->data;
-	unsigned long conflicts;
-	printf("unpack_permanent_directories(n=%d, mask=%lo, dirmask=%lo, src=..., names=..., info=data:prefix:'%s')\n", n, mask, dirmask, o->prefix);
-	for (i = 0 ; i < n ; ++i) {
-		if (src[i])
-			printf("src[%d]=%s '%s'\n", i, src[i]->sha1 == NULL ? NULL : sha1_to_hex(src[i]->sha1), src[i]->name);
-		else
-			printf("src[%d]=NULL\n", i);
-		printf("names[%d]=%s '%s' %o\n", i, names[i].sha1 == NULL ? NULL : sha1_to_hex(names[i].sha1), names[i].path, names[i].mode);
-	}
-
-	/* Do we have *only* files? Nothing to do */
-	if (!dirmask) {
-		printf("Only files (!dirmask): Nothing to do\n");
-		return 0;
-	}
-
-	conflicts = info->conflicts;
-	if (o->merge)
-		conflicts >>= 1;
-
-	/*
-	 * Ok, we've filled in up to any potential index entry in src[0],
-	 * now do the rest.
-	 */
-	for (i = 0; i < n; i++) {
-		int stage;
-		unsigned int bit = 1ul << i;
-		if (conflicts & bit) {
-			printf("src[%d+%d] = conflict_entry\n", i, o->merge);
-			src[i + o->merge] = o->df_conflict_entry;
-			continue;
-		}
-		if (!(dirmask & bit)) {
-			printf("!(dirmask & bit): skip\n");
-			continue;
-		}
-		if (!S_ISPERMDIR(names[i].mode)) {
-			printf("!S_ISPERMDIR(names[i].mode): skip\n");
-			continue;
-		}
-		if (!o->merge)
-			stage = 0;
-		else if (i + 1 < o->head_idx)
-			stage = 1;
-		else if (i + 1 > o->head_idx)
-			stage = 3;
-		else
-			stage = 2;
-		printf("create_ce_entry(for item %d in stage %d);\n", i, stage);
-		src[i + o->merge] = create_ce_entry(info, names + i, stage);
-	}
-
-	if (o->merge) {
-		printf("merge, call_unpack_fn();\n");
-		return call_unpack_fn(src, o);
-	}
-
-	for (i = 0; i < n; i++)
-		if (src[i] && src[i] != o->df_conflict_entry) {
-			printf("add_entry(%d);\n", i);
-			add_entry(o, src[i], 0, 0);
-		}
-	return 0;
-}
-
 static int unpack_failed(struct unpack_trees_options *o, const char *message)
 {
 	discard_index(&o->result);
@@ -847,9 +774,9 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 
 	if (unpack_nondirectories(n, mask, dirmask, src, names, info) < 0)
 		return -1;
-	if (unpack_permanent_directories(n, mask, dirmask, src, names, info) < 0)
-		return -1;
+	print_index(o);
 
+	printf("C\n");
 	if (src[0]) {
 		if (ce_stage(src[0]))
 			mark_ce_used_same_name(src[0], o);
@@ -868,7 +795,8 @@ static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, str
 
 		/* special case: "diff-index --cached" looking at a tree */
 		if (o->diff_index_cached &&
-		    n == 1 && dirmask == 1 && (S_ISDIR(names->mode) || S_ISPERMDIR(names->mode))) {
+		    n == 1 && dirmask == 1 && S_ISDIR(names->mode)) {
+			printf("D special case: diff-index --cached looking at a tree\n");
 			int matches;
 			matches = cache_tree_matches_traversal(o->src_index->cache_tree,
 							       names, info);

@@ -395,7 +395,7 @@ int traverse_trees(int n, struct tree_desc *t, struct traverse_info *info)
 			if (!entry[i].path)
 				continue;
 			mask |= 1ul << i;
-			if (S_ISDIR(entry[i].mode) || S_ISPERMDIR(entry[i].mode))
+			if (S_ISDIR(entry[i].mode))
 				dirmask |= 1ul << i;
 			e = &entry[i];
 		}

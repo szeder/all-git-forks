@@ -338,7 +338,6 @@ int traverse_permdirs(int n, struct permdirs_desc *p, struct traverse_info *info
 			if (!entry[i].path)
 				continue;
 			mask |= 1ul << i;
-			dirmask |= 1ul << i;
 			e = &entry[i];
 		}
 		if (!mask)
