@@ -9,9 +9,6 @@ extern int advice_commit_before_merge;
 extern int advice_resolve_conflict;
 extern int advice_implicit_identity;
 extern int advice_detached_head;
-extern int advice_use_upstream;
-extern int advice_pull_before_push;
-extern int advice_checkout_pull_push;
 
 int git_default_advice_config(const char *var, const char *value);
 void advise(const char *advice, ...);

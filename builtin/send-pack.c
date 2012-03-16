@@ -409,7 +409,7 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 	int send_all = 0;
 	const char *receivepack = "git-receive-pack";
 	int flags;
-	int nonfastforward = NONFASTFORWARD_NONE;
+	int nonfastforward = 0;
 
 	argv++;
 	for (i = 1; i < argc; i++, argv++) {

@@ -118,57 +118,45 @@ static void setup_default_push_refspecs(struct remote *remote)
 	}
 }
 
-static const char *message_advice_pull_before_push[] = {
-	"To prevent you from losing history, non-fast-forward updates to HEAD",
-	"were rejected. Merge the remote changes (e.g. 'git pull') before",
-	"pushing again. See the 'Note about fast-forwards' section of",
-	"'git push --help' for details."
-};
+static const char message_advice_pull_before_push[] =
+	N_("Update was rejected because the tip of your current branch is behind\n"
+	   "the remote. Merge the remote changes (e.g. 'git pull') before\n"
+	   "pushing again. See the 'Note about fast-forwards' section of\n"
+	   "'git push --help' for details.");
 
-static const char *message_advice_use_upstream[] = {
-	"By default, git pushes all branches that have a matching counterpart",
-	"on the remote. In this case, some of your local branches were stale",
-	"with respect to their remote counterparts. If you did not intend to",
-	"push these branches, you may want to set the 'push.default'",
-	"configuration variable to 'upstream' to push only the current branch."
-};
 
-static const char *message_advice_checkout_pull_push[] = {
-	"To prevent you from losing history, your non-fast-forward branch",
-	"updates were rejected. Checkout the branch and merge the remote",
-	"changes (e.g. 'git pull') before pushing again. See the",
-	"'Note about fast-forwards' section of 'git push --help' for",
-	"details."
-};
+static const char message_advice_use_upstream[] =
+	N_("Some of your local branches were stale with respect to their\n"
+	   "remote counterparts. If you did not intend to push these branches,\n"
+	   "you may want to set the 'push.default' configuration variable to\n"
+	   "'current' or 'upstream' to push only the current branch.");
+
+static const char message_advice_checkout_pull_push[] =
+	N_("Updates were rejected because the tip of some of your branches are\n"
+	   "behind the remote. Check out the branch and merge the remote\n"
+	   "changes (e.g. 'git pull') before pushing again. See the\n"
+	   "'Note about fast-forwards' section of 'git push --help'\n"
+	   "for details.");
 
 static void advise_pull_before_push(void)
 {
-	int i;
-
-	if (!advice_pull_before_push)
+	if (!advice_push_nonfastforward)
 		return;
-	for (i = 0; i < ARRAY_SIZE(message_advice_pull_before_push); i++)
-		advise(message_advice_pull_before_push[i]);
+	advise(_(message_advice_pull_before_push));
 }
 
 static void advise_use_upstream(void)
 {
-	int i;
-
-	if (!advice_use_upstream)
+	if (!advice_push_nonfastforward)
 		return;
-	for (i = 0; i < ARRAY_SIZE(message_advice_use_upstream); i++)
-		advise(message_advice_use_upstream[i]);
+	advise(_(message_advice_use_upstream));
 }
 
 static void advise_checkout_pull_push(void)
 {
-	int i;
-
-	if (!advice_checkout_pull_push)
+	if (!advice_push_nonfastforward)
 		return;
-	for (i = 0; i < ARRAY_SIZE(message_advice_checkout_pull_push); i++)
-		advise(message_advice_checkout_pull_push[i]);
+	advise(_(message_advice_checkout_pull_push));
 }
 
 static int push_with_options(struct transport *transport, int flags)
@@ -192,18 +180,22 @@ static int push_with_options(struct transport *transport, int flags)
 		error(_("failed to push some refs to '%s'"), transport->url);
 
 	err |= transport_disconnect(transport);
+	if (!err)
+		return 0;
 
-	if (nonfastforward == NONFASTFORWARD_HEAD) {
+	switch (nonfastforward) {
+	default:
+		break;
+	case NON_FF_HEAD:
 		advise_pull_before_push();
-	} else if (nonfastforward == NONFASTFORWARD_OTHER) {
+		break;
+	case NON_FF_OTHER:
 		if (default_matching_used)
 			advise_use_upstream();
 		else
 			advise_checkout_pull_push();
+		break;
 	}
-
-	if (!err)
-		return 0;
 
 	return 1;
 }

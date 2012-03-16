@@ -1020,9 +1020,8 @@ struct ref {
 		REF_STATUS_EXPECTING_REPORT
 	} status;
 	enum {
-		NONFASTFORWARD_NONE = 0,
-		NONFASTFORWARD_HEAD,
-		NONFASTFORWARD_OTHER
+		NON_FF_HEAD = 1,
+		NON_FF_OTHER
 	} nonfastforward;
 	char *remote_status;
 	struct ref *peer_ref; /* when renaming */

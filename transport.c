@@ -736,18 +736,18 @@ void transport_print_push_status(const char *dest, struct ref *refs,
 		if (ref->status == REF_STATUS_OK)
 			n += print_one_push_status(ref, dest, n, porcelain);
 
-	*nonfastforward = NONFASTFORWARD_NONE;
+	*nonfastforward = 0;
 	for (ref = refs; ref; ref = ref->next) {
 		if (ref->status != REF_STATUS_NONE &&
 		    ref->status != REF_STATUS_UPTODATE &&
 		    ref->status != REF_STATUS_OK)
 			n += print_one_push_status(ref, dest, n, porcelain);
 		if (ref->status == REF_STATUS_REJECT_NONFASTFORWARD &&
-		    *nonfastforward != NONFASTFORWARD_HEAD) {
+		    *nonfastforward != NON_FF_HEAD) {
 			if (!strcmp(head, ref->name))
-				*nonfastforward = NONFASTFORWARD_HEAD;
+				*nonfastforward = NON_FF_HEAD;
 			else
-				*nonfastforward = NONFASTFORWARD_OTHER;
+				*nonfastforward = NON_FF_OTHER;
 		}
 	}
 }
@@ -1017,7 +1017,7 @@ int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   int *nonfastforward)
 {
-	*nonfastforward = NONFASTFORWARD_NONE;
+	*nonfastforward = 0;
 	transport_verify_remote_names(refspec_nr, refspec);
 
 	if (transport->push) {

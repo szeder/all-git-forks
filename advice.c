@@ -6,9 +6,6 @@ int advice_commit_before_merge = 1;
 int advice_resolve_conflict = 1;
 int advice_implicit_identity = 1;
 int advice_detached_head = 1;
-int advice_pull_before_push = 1;
-int advice_use_upstream = 1;
-int advice_checkout_pull_push = 1;
 
 static struct {
 	const char *name;
@@ -20,9 +17,6 @@ static struct {
 	{ "resolveconflict", &advice_resolve_conflict },
 	{ "implicitidentity", &advice_implicit_identity },
 	{ "detachedhead", &advice_detached_head },
-	{ "pullbeforepush", &advice_pull_before_push },
-	{ "useupstream", &advice_use_upstream },
-	{ "checkoutpullpush", &advice_checkout_pull_push }
 };
 
 void advise(const char *advice, ...)
