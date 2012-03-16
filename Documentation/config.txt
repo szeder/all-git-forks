@@ -138,8 +138,8 @@ advice.*::
 +
 --
 	pushNonFastForward::
-		Advice shown when linkgit:git-push[1] refuses
-		non-fast-forward refs.
+		Advice shown when linkgit:git-push[1] fails due to a
+		non-fast-forward update.
 	statusHints::
 		Directions on how to stage/unstage/add shown in the
 		output of linkgit:git-status[1] and the template shown
