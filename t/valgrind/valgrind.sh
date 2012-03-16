@@ -13,10 +13,10 @@ TRACK_ORIGINS=--track-origins=yes
 
 exec valgrind -q --error-exitcode=126 \
 	--leak-check=no \
-	--suppressions="$GIT_VALGRIND/default.supp" \
+	--suppressions="$GIT_VALGRIND_TOOLS/default.supp" \
 	--gen-suppressions=all \
 	$TRACK_ORIGINS \
 	--log-fd=4 \
 	--input-fd=4 \
 	$GIT_VALGRIND_OPTIONS \
-	"$GIT_VALGRIND"/../../"$base" "$@"
+	"$GIT_BUILD_DIR"/"$base" "$@"
