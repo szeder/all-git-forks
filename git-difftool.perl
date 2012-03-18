@@ -72,12 +72,4 @@ elsif (defined($no_prompt)) {
 
 $ENV{GIT_PAGER} = '';
 $ENV{GIT_EXTERNAL_DIFF} = 'git-difftool--helper';
-my @command = ('git', 'diff', @ARGV);
-
-# ActiveState Perl for Win32 does not implement POSIX semantics of
-# exec* system call. It just spawns the given executable and finishes
-# the starting program, exiting with code 0.
-# system will at least catch the errors returned by git diff,
-# allowing the caller of git difftool better handling of failures.
-my $rc = system(@command);
-exit($rc | ($rc >> 8));
+git_cmd_try { Git::command_noisy(('diff', @ARGV)) } 'exit code %d';
