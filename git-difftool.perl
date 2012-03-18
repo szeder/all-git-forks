@@ -20,12 +20,13 @@ use Git;
 
 sub usage
 {
+	my $exitcode = shift;
 	print << 'USAGE';
 usage: git difftool [-t|--tool=<tool>] [-x|--extcmd=<cmd>]
                     [-y|--no-prompt]   [-g|--gui]
                     ['git diff' options]
 USAGE
-	exit 1;
+	exit($exitcode);
 }
 
 sub setup_environment
@@ -56,14 +57,14 @@ GetOptions('g|gui' => \$gui,
 	'y|no-prompt' => \$no_prompt);
 
 if (defined($help)) {
-	usage();
+	usage(0);
 }
 if (defined($difftool_cmd)) {
 	if (length($difftool_cmd) > 0) {
 		$ENV{GIT_DIFF_TOOL} = $difftool_cmd;
 	} else {
 		print "No <tool> given for --tool=<tool>\n";
-		usage();
+		usage(1);
 	}
 }
 if (defined($extcmd)) {
@@ -71,7 +72,7 @@ if (defined($extcmd)) {
 		$ENV{GIT_DIFFTOOL_EXTCMD} = $extcmd;
 	} else {
 		print "No <cmd> given for --extcmd=<cmd>\n";
-		usage();
+		usage(1);
 	}
 }
 if (defined($gui)) {
