@@ -27,12 +27,6 @@ USAGE
 	exit($exitcode);
 }
 
-sub setup_environment
-{
-	$ENV{GIT_PAGER} = '';
-	$ENV{GIT_EXTERNAL_DIFF} = 'git-difftool--helper';
-}
-
 # parse command-line options. all unrecognized options and arguments
 # are passed through to the 'git diff' command.
 my ($difftool_cmd, $extcmd, $gui, $help, $no_prompt, $prompt);
@@ -76,7 +70,8 @@ elsif (defined($no_prompt)) {
 	$ENV{GIT_DIFFTOOL_NO_PROMPT} = 'true';
 }
 
-setup_environment();
+$ENV{GIT_PAGER} = '';
+$ENV{GIT_EXTERNAL_DIFF} = 'git-difftool--helper';
 my @command = ('git', 'diff', @ARGV);
 
 # ActiveState Perl for Win32 does not implement POSIX semantics of
