@@ -22,6 +22,8 @@ use File::Temp qw(tempdir);
 use Getopt::Long qw(:config pass_through);
 use Git;
 
+my @working_tree;
+
 sub usage
 {
 	my $exitcode = shift;
@@ -54,7 +56,6 @@ sub setup_dir_diff
 	my $null_sha1 = 0 x 40;
 	my $lindex = "";
 	my $rindex = "";
-	my @working_tree;
 	my %submodule;
 	my @rawdiff = split('\0', $diffrtn);
 
@@ -178,9 +179,16 @@ if (defined($dirdiff)) {
 			Git::command_noisy(('difftool--helper', $a, $b))
 		} 'exit code %d';
 	}
-	# TODO: if the diff including working copy files and those
+
+	# If the diff including working copy files and those
 	# files were modified during the diff, then the changes
 	# should be copied back to the working tree
+	my $repo = Git->repository();
+	my $workdir = $repo->wc_path();
+	for (@working_tree) {
+		copy("$b/$_", "$workdir/$_") or die $!;
+		chmod(stat("$b/$_")->mode, "$workdir/$_") or die $!;
+	}
 } else {
 	if (defined($prompt)) {
 		$ENV{GIT_DIFFTOOL_PROMPT} = 'true';
