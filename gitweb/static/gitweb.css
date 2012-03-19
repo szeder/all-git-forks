@@ -483,7 +483,15 @@ table.chunk_block {
 
 table.chunk_block td {
     padding: 0;
-    width: 50%;
+}
+
+table.chunk_block td.linenr {
+    width: 5%;
+}
+
+table.chunk_block td.old,
+table.chunk_block td.new {
+    width: 45%;
 }
 
 table.chunk_block div.diff {
