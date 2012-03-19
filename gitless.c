@@ -160,7 +160,7 @@ struct commit *current, *tail;
 
 void update_terminal(void)
 {
-	int i, j;
+	int i, j, print;
 	char *line;
 
 	printf("\033[2J\033[0;0J");
@@ -169,18 +169,23 @@ void update_terminal(void)
 	if (current != head && !current->head_line)
 		current->head_line = 1;
 
-	for (i = current->head_line;
+	for (i = current->head_line, print = 0;
 	     i < current->head_line + row - 1 - print_bottom_message
-		     && i < current->nr_lines; i++) {
+		     && i < current->nr_lines; i++, print++) {
 		line = &logbuf[current->lines[i]];
 
 		for (j = 0; j < col && line[j] != '\n'; j++)
 			putchar(line[j]);
-		putchar('\n');
+
+		if (print != row - 2 || !print_bottom_message)
+			putchar('\n');
 	}
 
-	if (print_bottom_message)
+	if (print_bottom_message) {
+		while (print++ != row - 2)
+			putchar('\n');
 		puts(bottom_message);
+	}
 }
 
 void init_commit(struct commit *c, int first_index)
@@ -509,19 +514,19 @@ matched:
 
 int current_direction, current_global;
 
+#define update_query_bm()	do {					\
+		bmprintf(" %s %s search: %s",				\
+			current_direction ? "forward" : "backward",	\
+			current_global ? "global" : "local",		\
+			query);						\
+									\
+		print_bottom_message = 1;				\
+	} while (0)
+
 int _search(char key, int direction, int global)
 {
 	current_direction = direction;
 	current_global = global;
-
-#define update_bm()	do {					\
-		bmprintf("%s %s search: %s",			\
-			direction ? "forward" : "backward",	\
-			global ? "global" : "local",		\
-			query);					\
-								\
-		print_bottom_message = 1;			\
-	} while (0)
 
 	switch (state) {
 	case STATE_DEFAULT:
@@ -529,7 +534,7 @@ int _search(char key, int direction, int global)
 		query_used = 0;
 		query[query_used++] = key;
 
-		update_bm();
+		update_query_bm();
 		state = STATE_INPUT_SEARCH_QUERY;
 		break;
 
@@ -545,7 +550,7 @@ int _search(char key, int direction, int global)
 			state = STATE_SEARCHING_QUERY;
 		else {
 			query[query_used++] = key;
-			update_bm();
+			update_query_bm();
 		}
 	end:
 		break;
@@ -593,6 +598,17 @@ int search_local_backward(char cmd)
 
 int input_query(char key)
 {
+	if (key == (char)0x7f) {
+		/* backspace */
+		if (!query_used)
+			return 0;
+
+		query[--query_used] = '\0';
+		update_query_bm();
+
+		return 1;
+	}
+
 	return _search(key, current_direction, current_global);
 }
 
@@ -642,12 +658,12 @@ int main(void)
 	char cmd;
 
 	bottom_message_size = BOTTOM_MESSAGE_INIT_SIZE;
-	bottom_message = xalloc(BOTTOM_MESSAGE_INIT_SIZE);
+	bottom_message = xalloc(bottom_message_size);
 
 	init_tty();
 
-	logbuf = xalloc(LOGBUF_INIT_SIZE);
 	logbuf_size = LOGBUF_INIT_SIZE;
+	logbuf = xalloc(logbuf_size);
 	logbuf_used = 0;
 	read_head();
 
