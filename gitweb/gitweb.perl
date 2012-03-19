@@ -4938,34 +4938,12 @@ sub print_sidebyside_diff_chunk {
 		}
 		# empty add/rem block on start context block, or end of chunk
 		if ((@rem || @add) && (!$class || $class eq 'ctx')) {
-			if (!@add) {
-				# pure removal
-				print join '',
-					'<div class="chunk_block rem">',
-						'<div class="old">',
-						@rem,
-						'</div>',
-					'</div>';
-			} elsif (!@rem) {
-				# pure addition
-				print join '',
-					'<div class="chunk_block add">',
-						'<div class="new">',
-						@add,
-						'</div>',
-					'</div>';
-			} else {
-				# assume that it is change
-				print join '',
-					'<div class="chunk_block chg">',
-						'<div class="old">',
-						@rem,
-						'</div>',
-						'<div class="new">',
-						@add,
-						'</div>',
-					'</div>';
-			}
+            my $parent_class = (! @add) ? 'rem' : (! @rem) ? 'add' : 'chg';
+            print join '',
+                qq{<div class="chunk_block $parent_class">},
+                    @rem ? ('<div class="old">', @rem, '</div>') : '',
+                    @add ? ('<div class="new">', @add, '</div>') : '',
+                 '</div>';
 			@rem = @add = ();
 		}
 
