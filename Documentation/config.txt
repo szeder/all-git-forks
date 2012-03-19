@@ -137,9 +137,13 @@ advice.*::
 	can tell Git that you do not need help by setting these to 'false':
 +
 --
-	pushNonFastForward::
-		Advice shown when linkgit:git-push[1] refuses
-		non-fast-forward refs.
+	pushNonFFCurrent::
+		Advice shown when linkgit:git-push[1] fails due to a
+		non-fast-forward update to the current branch.
+	pushNonFFOther::
+		Advice shown when linkgit:git-push[1] fails due to a
+		non-fast-forward update to a branch other than the
+		current one.
 	statusHints::
 		Directions on how to stage/unstage/add shown in the
 		output of linkgit:git-status[1] and the template shown

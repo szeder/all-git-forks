@@ -3,7 +3,8 @@
 
 #include "git-compat-util.h"
 
-extern int advice_push_nonfastforward;
+extern int advice_push_non_ff_current;
+extern int advice_push_non_ff_other;
 extern int advice_status_hints;
 extern int advice_commit_before_merge;
 extern int advice_resolve_conflict;
