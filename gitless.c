@@ -56,6 +56,23 @@ int running;
 
 #define LINES_INIT_SIZE 128
 
+enum {
+	STATE_DEFAULT,
+	STATE_INPUT_SEARCH_QUERY,
+	STATE_SEARCHING_QUERY
+};
+int state = STATE_DEFAULT;
+
+#define BOTTOM_MESSAGE_INIT_SIZE 32
+char *bottom_message;
+int bottom_message_size, print_bottom_message;
+
+#define bmprintf(fmt, arg...)						\
+	do {                                                            \
+		snprintf(bottom_message, bottom_message_size,		\
+			fmt, ##arg);					\
+	} while (0)
+
 void update_row_col(void)
 {
 	struct winsize size;
@@ -65,6 +82,11 @@ void update_row_col(void)
 
 	row = size.ws_row;
 	col = size.ws_col;
+
+	if (bottom_message_size - 1 < col) {
+		bottom_message_size = col + 1;
+		bottom_message = xalloc(bottom_message_size);
+	}
 }
 
 void signal_handler(int signum)
@@ -147,15 +169,18 @@ void update_terminal(void)
 	if (current != head && !current->head_line)
 		current->head_line = 1;
 
-	for (i = current->head_line; i < current->head_line + row - 1
+	for (i = current->head_line;
+	     i < current->head_line + row - 1 - print_bottom_message
 		     && i < current->nr_lines; i++) {
 		line = &logbuf[current->lines[i]];
 
-		printf("%4d: ", i);
 		for (j = 0; j < col && line[j] != '\n'; j++)
 			putchar(line[j]);
 		putchar('\n');
 	}
+
+	if (print_bottom_message)
+		puts(bottom_message);
 }
 
 void init_commit(struct commit *c, int first_index)
@@ -283,7 +308,7 @@ skip_read:
 	init_commit(new_commit, prev_last_etx + 1);
 }
 
-int show_prev_commit(void)
+int show_prev_commit(char cmd)
 {
 	if (!current->prev) {
 		read_at_least_one_commit();
@@ -296,7 +321,7 @@ int show_prev_commit(void)
 	return 1;
 }
 
-int show_next_commit(void)
+int show_next_commit(char cmd)
 {
 	if (!current->next) {
 		assert(current == head);
@@ -307,7 +332,7 @@ int show_next_commit(void)
 	return 1;
 }
 
-int forward_line(void)
+int forward_line(char cmd)
 {
 	if (current->head_line + row < current->nr_lines) {
 		current->head_line++;
@@ -317,7 +342,7 @@ int forward_line(void)
 	return 0;
 }
 
-int backward_line(void)
+int backward_line(char cmd)
 {
 	if (0 < current->head_line) {
 		current->head_line--;
@@ -327,7 +352,7 @@ int backward_line(void)
 	return 0;
 }
 
-int goto_top(void)
+int goto_top(char cmd)
 {
 	if (!current->head_line)
 		return 0;
@@ -336,7 +361,7 @@ int goto_top(void)
 	return 1;
 }
 
-int goto_bottom(void)
+int goto_bottom(char cmd)
 {
 	if (current->nr_lines < row)
 		return 0;
@@ -345,7 +370,7 @@ int goto_bottom(void)
 	return 1;
 }
 
-int forward_page(void)
+int forward_page(char cmd)
 {
 	if (current->nr_lines < current->head_line + row)
 		return 0;
@@ -354,7 +379,7 @@ int forward_page(void)
 	return 1;
 }
 
-int backward_page(void)
+int backward_page(char cmd)
 {
 	if (!current->head_line)
 		return 0;
@@ -368,7 +393,7 @@ int backward_page(void)
 	return 1;
 }
 
-int show_root(void)
+int show_root(char cmd)
 {
 	if (root) {
 		current = root;
@@ -389,7 +414,7 @@ int show_root(void)
 	return 1;
 }
 
-int show_head(void)
+int show_head(char cmd)
 {
 	if (current == head)
 		return 0;
@@ -398,12 +423,185 @@ int show_head(void)
 	return 1;
 }
 
-int nop(void)
+char read_one_key(void)
+{
+	int rbyte;
+	char buf;
+
+try_again:
+	rbyte = read(tty_fd, &buf, 1);
+	if (rbyte < 0) {
+		if (errno == EINTR)
+			goto try_again;
+		die("read() failed");
+	}
+	assert(rbyte == 1);
+
+	return buf;
+}
+
+#define QUERY_SIZE 64
+char query[QUERY_SIZE + 1];
+int query_used;
+
+regex_t re_compiled;
+
+int ret_nl_index(char *s)
+{
+	int i;
+
+	for (i = 0; s[i] != '\n'; i++);
+	return i;
+}
+
+int match_line(char *line)
+{
+	if (!regexec(&re_compiled, line, 0, NULL, REG_NOTEOL))
+		return 1;
+
+	return 0;
+}
+
+int match_commit(struct commit *c, int direction)
+{
+	int i = c->head_line;
+	int nli, result;
+	char *line;
+
+	do {
+		line = &logbuf[c->lines[i]];
+		nli = ret_nl_index(line);
+
+		line[nli] = '\0';
+		result = match_line(line);
+		line[nli] = '\n';
+
+		if (result)
+			return 1;
+
+		i += direction ? 1 : -1;
+	} while (direction ? i < c->nr_lines : 0 <= i);
+
+	return 0;
+}
+
+void do_search(int direction, int global)
+{
+	int result;
+	struct commit *p;
+
+	result = match_commit(current, direction);
+	if (result || !global)
+		return;
+
+	p = current;
+	do {
+		if (match_commit(p, direction))
+			goto matched;
+
+		if (!p->prev)
+			read_at_least_one_commit();
+	} while (direction ? (p = p->prev) : (p = p->next));
+
+matched:
+	current = p;
+}
+
+int current_direction, current_global;
+
+int _search(char key, int direction, int global)
+{
+	current_direction = direction;
+	current_global = global;
+
+#define update_bm()	do {					\
+		bmprintf("%s %s search: %s",			\
+			direction ? "forward" : "backward",	\
+			global ? "global" : "local",		\
+			query);					\
+								\
+		print_bottom_message = 1;			\
+	} while (0)
+
+	switch (state) {
+	case STATE_DEFAULT:
+	case STATE_SEARCHING_QUERY:
+		query_used = 0;
+		query[query_used++] = key;
+
+		update_bm();
+		state = STATE_INPUT_SEARCH_QUERY;
+		break;
+
+	case STATE_INPUT_SEARCH_QUERY:
+		if (query_used + 1 == QUERY_SIZE) {
+			bmprintf("search query is too long!");
+			state = STATE_DEFAULT;
+
+			goto end;
+		}
+
+		if (key == '\n')
+			state = STATE_SEARCHING_QUERY;
+		else {
+			query[query_used++] = key;
+			update_bm();
+		}
+	end:
+		break;
+
+	default:
+		die("invalid or unknown state: %d", state);
+		break;
+	}
+
+	if (state == STATE_SEARCHING_QUERY) {
+		bzero(&re_compiled, sizeof(regex_t));
+		/* todo: REG_ICASE should be optional */
+		regcomp(&re_compiled, query, REG_ICASE);
+
+		do_search(direction, global);
+	}
+
+	return 1;
+}
+
+int search(int direction, int global)
+{
+	return _search(read_one_key(), direction, global);
+}
+
+int search_global_forward(char cmd)
+{
+	return search(1, 1);
+}
+
+int search_global_backward(char cmd)
+{
+	return search(0, 1);
+}
+
+int search_local_forward(char cmd)
+{
+	return search(1, 0);
+}
+
+int search_local_backward(char cmd)
+{
+	return search(0, 0);
+}
+
+int input_query(char key)
+{
+	return _search(key, current_direction, current_global);
+}
+
+int nop(char cmd)
 {
 	return 0;
 }
 
-int quit(void)
+int quit(char cmd)
 {
 	exit(0);		/* never return */
 	return 0;
@@ -411,7 +609,7 @@ int quit(void)
 
 struct key_cmd {
 	char key;
-	int (*op)(void);
+	int (*op)(char);
 };
 
 struct key_cmd valid_ops[] = {
@@ -427,17 +625,24 @@ struct key_cmd valid_ops[] = {
 	{ 'K', backward_page },
 	{ 'H', show_root },
 	{ 'L', show_head },
+	{ '/', search_global_forward },
+	{ '?', search_global_backward },
+	{ '\\', search_local_forward },
+	{ '!', search_local_backward },
 
 	/* todo: '/' forward search, '?' backword search */
 	{ '\0', NULL },
 };
 
-int (*ops_array[256])(void);
+int (*ops_array[256])(char);
 
 int main(void)
 {
 	int i;
 	char cmd;
+
+	bottom_message_size = BOTTOM_MESSAGE_INIT_SIZE;
+	bottom_message = xalloc(BOTTOM_MESSAGE_INIT_SIZE);
 
 	init_tty();
 
@@ -456,11 +661,10 @@ int main(void)
 
 	running = 1;
 	while (running) {
-		int read_ret;
+		int ret;
 
-		read_ret = read(tty_fd, &cmd, 1);
-
-		if (read_ret == -1 && errno == EINTR) {
+		ret = read(tty_fd, &cmd, 1);
+		if (ret == -1 && errno == EINTR) {
 			if (!running)
 				break;
 
@@ -468,10 +672,15 @@ int main(void)
 			continue;
 		}
 
-		if (read_ret != 1)
+		if (ret != 1)
 			die("reading key input failed");
 
-		if (ops_array[cmd]())
+		if (state == STATE_INPUT_SEARCH_QUERY)
+			ret = input_query(cmd);
+		else
+			ret = ops_array[cmd](cmd);
+
+		if (ret)
 			update_terminal();
 	}
 
