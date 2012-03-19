@@ -1034,7 +1034,6 @@ struct ref {
 	char *symref;
 	unsigned int force:1,
 		merge:1,
-		nonfastforward:1,
 		deletion:1;
 	enum {
 		REF_STATUS_NONE = 0,
@@ -1045,6 +1044,10 @@ struct ref {
 		REF_STATUS_REMOTE_REJECT,
 		REF_STATUS_EXPECTING_REPORT
 	} status;
+	enum {
+		NON_FF_HEAD = 1,
+		NON_FF_OTHER
+	} nonfastforward;
 	char *remote_status;
 	struct ref *peer_ref; /* when renaming */
 	char name[FLEX_ARRAY]; /* more */
