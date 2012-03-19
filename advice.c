@@ -1,6 +1,7 @@
 #include "cache.h"
 
-int advice_push_nonfastforward = 1;
+int advice_push_non_ff_current = 1;
+int advice_push_non_ff_other = 1;
 int advice_status_hints = 1;
 int advice_commit_before_merge = 1;
 int advice_resolve_conflict = 1;
@@ -11,7 +12,8 @@ static struct {
 	const char *name;
 	int *preference;
 } advice_config[] = {
-	{ "pushnonfastforward", &advice_push_nonfastforward },
+	{ "pushnonffcurrent", &advice_push_non_ff_current },
+	{ "pushnonffother", &advice_push_non_ff_other },
 	{ "statushints", &advice_status_hints },
 	{ "commitbeforemerge", &advice_commit_before_merge },
 	{ "resolveconflict", &advice_resolve_conflict },
