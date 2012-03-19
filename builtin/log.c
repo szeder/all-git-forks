@@ -314,6 +314,8 @@ static int cmd_log_walk(struct rev_info *rev)
 			saved_nrl = rev->diffopt.needed_rename_limit;
 		if (rev->diffopt.degraded_cc_to_c)
 			saved_dcctc = 1;
+
+		printf("\003");
 	}
 	rev->diffopt.degraded_cc_to_c = saved_dcctc;
 	rev->diffopt.needed_rename_limit = saved_nrl;
