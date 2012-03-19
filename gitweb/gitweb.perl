@@ -4926,24 +4926,23 @@ sub print_sidebyside_diff_chunk {
 		# empty contents block on start rem/add block, or end of chunk
 		if (@ctx && (!$class || $class eq 'rem' || $class eq 'add')) {
 			print join '',
-				'<div class="chunk_block ctx">',
-					'<div class="old">',
+				'<table class="chunk_block ctx"><tr>',
+					'<td class="old">',
 					@ctx,
-					'</div>',
-					'<div class="new">',
+					'</td>',
+					'<td class="new">',
 					@ctx,
-					'</div>',
-				'</div>';
+					'</td>',
+				'</tr></table>';
 			@ctx = ();
 		}
 		# empty add/rem block on start context block, or end of chunk
 		if ((@rem || @add) && (!$class || $class eq 'ctx')) {
             my $parent_class = (! @add) ? 'rem' : (! @rem) ? 'add' : 'chg';
-            print join '',
-                qq{<div class="chunk_block $parent_class">},
-                    @rem ? ('<div class="old">', @rem, '</div>') : '',
-                    @add ? ('<div class="new">', @add, '</div>') : '',
-                 '</div>';
+            print qq{<table class="chunk_block $parent_class"><tr>},
+                '<td class="old">', @rem, '</td>',
+                '<td class="new">', @add, '</td>',
+                '</tr></table>';
 			@rem = @add = ();
 		}
 

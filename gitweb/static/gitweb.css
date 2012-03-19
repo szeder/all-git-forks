@@ -476,31 +476,31 @@ div.diff.nodifferences {
 }
 
 /* side-by-side diff */
-div.chunk_block {
-	overflow: hidden;
+table.chunk_block {
+    padding: 0;
+    width: 100%;
 }
 
-div.chunk_block div.old {
-	float: left;
-	width: 50%;
-	overflow: hidden;
+table.chunk_block td {
+    padding: 0;
+    width: 50%;
 }
 
-div.chunk_block div.new {
-	margin-left: 50%;
-	width: 50%;
+table.chunk_block div.diff {
+    word-break: break-all;
+    white-space: pre-wrap;
 }
 
-div.chunk_block.rem div.old div.diff.rem {
+table.chunk_block.rem td.old div.diff.rem {
 	background-color: #fff5f5;
 }
-div.chunk_block.add div.new div.diff.add {
+table.chunk_block.add td.new div.diff.add {
 	background-color: #f8fff8;
 }
-div.chunk_block.chg div     div.diff {
+table.chunk_block.chg td     div.diff {
 	background-color: #fffff0;
 }
-div.chunk_block.ctx div     div.diff.ctx {
+table.chunk_block.ctx td     div.diff.ctx {
 	color: #404040;
 }
 
