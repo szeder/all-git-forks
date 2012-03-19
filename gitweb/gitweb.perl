@@ -7220,6 +7220,7 @@ sub git_blobdiff {
 			$cgi->a({-href => href(action=>"blobdiff_plain", -replay=>1)},
 			        "raw");
 		$formats_nav .= diff_style_nav($diff_style);
+        $formats_nav .= diff_lines_around_nav($input_params{lines_around});
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
 			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
@@ -7298,6 +7299,30 @@ sub diff_style_nav {
 		} @styles;
 }
 
+sub diff_lines_around_nav {
+    my ($lines_around) = @_;
+
+    if (! defined $lines_around) {
+        $lines_around = 3;
+    }
+
+    my $action = href(-replay => 1);
+
+    my $html = join '', map {
+        my $key = $_;
+        $key eq 'la' ? '' : $cgi->hidden($key);
+    } values %cgi_param_mapping;
+
+    return join ' ', (
+        $cgi->start_form(-method => 'get'),
+        $html,
+        '(show',
+        $cgi->input({ -name => 'la', -value => $lines_around, -size => 4 }),
+        'lines around each changes)',
+        $cgi->end_form,
+    );
+}
+
 sub git_commitdiff {
 	my %params = @_;
 	my $format = $params{-format} || 'html';
@@ -7328,6 +7353,7 @@ sub git_commitdiff {
 					"patch");
 		}
 		$formats_nav .= diff_style_nav($diff_style, @{$co{'parents'}} > 1);
+        $formats_nav .= diff_lines_around_nav($input_params{lines_around});
 
 		if (defined $hash_parent &&
 		    $hash_parent ne '-c' && $hash_parent ne '--cc') {
