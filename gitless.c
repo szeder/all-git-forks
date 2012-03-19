@@ -143,14 +143,15 @@ void update_terminal(void)
 
 	printf("\033[2J\033[0;0J");
 
-	for (i = current->head_line; i < current->head_line + row
+	/* FIXME: first new line should be eliminated in git-log */
+	if (current != head && !current->head_line)
+		current->head_line = 1;
+
+	for (i = current->head_line; i < current->head_line + row - 1
 		     && i < current->nr_lines; i++) {
 		line = &logbuf[current->lines[i]];
 
-		/* FIXME: first new line should be eliminated in git-log */
-		if (current != head && i == 0)
-			continue;
-
+		printf("%4d: ", i);
 		for (j = 0; j < col && line[j] != '\n'; j++)
 			putchar(line[j]);
 		putchar('\n');
