@@ -138,21 +138,21 @@ static const char message_advice_checkout_pull_push[] =
 
 static void advise_pull_before_push(void)
 {
-	if (!advice_push_non_ff_current)
+	if (!advice_push_non_ff_current | !advice_push_nonfastforward)
 		return;
 	advise(_(message_advice_pull_before_push));
 }
 
 static void advise_use_upstream(void)
 {
-	if (!advice_push_non_ff_other)
+	if (!advice_push_non_ff_default | !advice_push_nonfastforward)
 		return;
 	advise(_(message_advice_use_upstream));
 }
 
 static void advise_checkout_pull_push(void)
 {
-	if (!advice_push_non_ff_other)
+	if (!advice_push_non_ff_matching | !advice_push_nonfastforward)
 		return;
 	advise(_(message_advice_checkout_pull_push));
 }
