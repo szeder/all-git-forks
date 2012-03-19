@@ -603,7 +603,7 @@ int nop(char cmd)
 
 int quit(char cmd)
 {
-	exit(0);		/* never return */
+	running = 0;
 	return 0;
 }
 
