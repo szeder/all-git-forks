@@ -209,6 +209,7 @@ static void free_patch(struct patch *patch)
 			free(fragment);
 			fragment = fragment_next;
 		}
+		free(patch->result);
 		free(patch);
 		patch = patch_next;
 	}
