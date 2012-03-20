@@ -543,10 +543,36 @@ int match_commit(struct commit *c, int direction, int prog)
 	char *line;
 
 	if (prog) {
-		/* FIXME: case of top and bottom */
-		i += direction ? 1 : -1;
+		if (direction) {
+			if (i + 1 != c->nr_lines) {
+				i++;
+				goto do_match;
+			}
+
+			if (c->prev)
+				goto do_match;
+
+			read_at_least_one_commit();
+			if (!c->prev)
+				return 0;
+
+			c = c->prev;
+			i = c->head_line;
+		} else {
+			if (i) {
+				i--;
+				goto do_match;
+			}
+
+			if (!c->next)
+				return 0;
+
+			c = c->next;
+			i = c->nr_lines - 1;
+		}
 	}
 
+do_match:
 	do {
 		line = &logbuf[c->lines[i]];
 		nli = ret_nl_index(line);
@@ -676,19 +702,11 @@ int search_local_backward(char cmd)
 
 int search_progress(char cmd)
 {
-	int direction;
-
 	if (state != STATE_SEARCHING_QUERY)
 		return 0;
 
-	if (cmd == 'n') {
-		direction = current_direction;
-	} else {
-		assert(cmd == 'p');
-		direction = !current_direction;
-	}
-
-	do_search(direction, current_global, 1);
+	do_search(cmd == 'n' ? current_direction : !current_direction,
+		current_global, 1);
 }
 
 int input_query(char key)
