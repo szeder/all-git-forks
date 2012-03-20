@@ -544,35 +544,16 @@ int match_commit(struct commit *c, int direction, int prog)
 
 	if (prog) {
 		if (direction) {
-			if (i + 1 != c->nr_lines) {
-				i++;
-				goto do_match;
-			}
-
-			if (c->prev)
-				goto do_match;
-
-			read_at_least_one_commit();
-			if (!c->prev)
+			if (i == c->nr_lines - 1)
 				return 0;
-
-			c = c->prev;
-			i = c->head_line;
 		} else {
-			if (i) {
-				i--;
-				goto do_match;
-			}
-
-			if (!c->next)
+			if (!i)
 				return 0;
-
-			c = c->next;
-			i = c->nr_lines - 1;
 		}
+
+		i += direction ? 1 : -1;
 	}
 
-do_match:
 	do {
 		line = &logbuf[c->lines[i]];
 		nli = ret_nl_index(line);
@@ -601,13 +582,28 @@ void do_search(int direction, int global, int prog)
 	if (result || !global)
 		return;
 
-	p = current;
+	if (direction) {
+		if (!current->prev)
+			read_at_least_one_commit();
+
+		if (current->prev)
+			p = current->prev;
+		else
+			return;
+	} else {
+		if (current->next)
+			p = current->next;
+		else
+			return;
+	}
 	do {
 		if (match_commit(p, direction, prog))
 			goto matched;
 
-		if (!p->prev)
+		if (!p->prev) {
+			assert(p == tail);
 			read_at_least_one_commit();
+		}
 	} while (direction ? (p = p->prev) : (p = p->next));
 
 	return;
