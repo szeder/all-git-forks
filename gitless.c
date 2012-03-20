@@ -1,5 +1,5 @@
 /*
- * gitless - a specialized pager for git-log 
+ * gitless - a specialized pager for git-log
  *
  * Copyright (C) 2012 Hitoshi Mitake <h.mitake@gmail.com>
  *
@@ -215,6 +215,7 @@ void update_terminal(void)
 
 		if (state == STATE_SEARCHING_QUERY) {
 			int ret, mi, nli = ret_nl_index(line);
+			int rev = 0;
 
 			line[nli] = '\0';
 			ret = regexec(&re_compiled, line,
@@ -225,16 +226,29 @@ void update_terminal(void)
 				goto normal_print;
 
 			for (mi = j = 0; j < col && line[j] != '\n'; j++) {
-				if (j == match_array[mi].rm_so)
+				if (j == match_array[mi].rm_so) {
 					printf("\033[7m");
-				else if (j == match_array[mi].rm_eo) {
+					rev = 1;
+				} else if (j == match_array[mi].rm_eo) {
 					printf("\033[0m");
+					rev = 0;
+
+					mi++;
+				}
+
+				if (match_array[mi].rm_so
+					== match_array[mi].rm_eo) {
+					printf("\033[0m");
+					rev = 0;
+
 					mi++;
 				}
 
 				putchar(line[j]);
 			}
-			printf("\033[0m");
+
+			if (rev)
+				printf("\033[0m");
 		} else {
 		normal_print:
 			for (j = 0; j < col && line[j] != '\n'; j++)
@@ -454,7 +468,7 @@ int backward_page(char cmd)
 	if (!current->head_line)
 		return 0;
 
-	if (0 < current->head_line - row) {
+	if (current->head_line - row <= 0) {
 		current->head_line = 0;
 		return 1;
 	}
@@ -510,7 +524,7 @@ try_again:
 	return buf;
 }
 
-#define QUERY_SIZE 64
+#define QUERY_SIZE 128
 char query[QUERY_SIZE + 1];
 int query_used;
 
@@ -569,6 +583,8 @@ void do_search(int direction, int global, int prog)
 		if (!p->prev)
 			read_at_least_one_commit();
 	} while (direction ? (p = p->prev) : (p = p->next));
+
+	return;
 
 matched:
 	current = p;
@@ -660,10 +676,19 @@ int search_local_backward(char cmd)
 
 int search_progress(char cmd)
 {
+	int direction;
+
 	if (state != STATE_SEARCHING_QUERY)
 		return 0;
 
-	do_search(current_direction, current_global, 1);
+	if (cmd == 'n') {
+		direction = current_direction;
+	} else {
+		assert(cmd == 'p');
+		direction = !current_direction;
+	}
+
+	do_search(direction, current_global, 1);
 }
 
 int input_query(char key)
