@@ -50,9 +50,17 @@ void *xrealloc(void *ptr, size_t size)
 	return ret;
 }
 
+int ret_nl_index(char *s)
+{
+	int i;
+
+	for (i = 0; s[i] != '\n'; i++);
+	return i;
+}
+
 int stdin_fd = 0, tty_fd;
 unsigned int row, col;
-int running;
+int running = 1;
 
 #define LINES_INIT_SIZE 128
 
@@ -65,7 +73,12 @@ int state = STATE_DEFAULT;
 
 #define BOTTOM_MESSAGE_INIT_SIZE 32
 char *bottom_message;
-int bottom_message_size, print_bottom_message;
+int bottom_message_size = BOTTOM_MESSAGE_INIT_SIZE;
+int print_bottom_message;
+
+#define MATCH_ARRAY_INIT_SIZE 32
+regmatch_t *match_array;
+int match_array_size = MATCH_ARRAY_INIT_SIZE;
 
 #define bmprintf(fmt, arg...)						\
 	do {                                                            \
@@ -85,7 +98,12 @@ void update_row_col(void)
 
 	if (bottom_message_size - 1 < col) {
 		bottom_message_size = col + 1;
-		bottom_message = xalloc(bottom_message_size);
+		bottom_message = xrealloc(bottom_message, bottom_message_size);
+	}
+
+	if (match_array_size < col) {
+		match_array_size = col;
+		match_array = xrealloc(match_array, match_array_size * sizeof(regmatch_t));
 	}
 }
 
@@ -158,6 +176,8 @@ struct commit *head, *root;
 /* current: current displaying commit, tail: tail of the read commits */
 struct commit *current, *tail;
 
+regex_t re_compiled;
+
 void update_terminal(void)
 {
 	int i, j, print;
@@ -174,8 +194,33 @@ void update_terminal(void)
 		     && i < current->nr_lines; i++, print++) {
 		line = &logbuf[current->lines[i]];
 
-		for (j = 0; j < col && line[j] != '\n'; j++)
-			putchar(line[j]);
+		if (state == STATE_SEARCHING_QUERY) {
+			int ret, mi, nli = ret_nl_index(line);
+
+			line[nli] = '\0';
+			ret = regexec(&re_compiled, line,
+				match_array_size, match_array, 0);
+			line[nli] = '\n';
+
+			if (ret)
+				goto normal_print;
+
+			for (mi = j = 0; j < col && line[j] != '\n'; j++) {
+				if (j == match_array[mi].rm_so)
+					printf("\033[7m");
+				else if (j == match_array[mi].rm_eo) {
+					printf("\033[0m");
+					mi++;
+				}
+
+				putchar(line[j]);
+			}
+			printf("\033[0m");
+		} else {
+		normal_print:
+			for (j = 0; j < col && line[j] != '\n'; j++)
+				putchar(line[j]);
+		}
 
 		if (print != row - 2 || !print_bottom_message)
 			putchar('\n');
@@ -184,6 +229,7 @@ void update_terminal(void)
 	if (print_bottom_message) {
 		while (print++ != row - 2)
 			putchar('\n');
+
 		puts(bottom_message);
 	}
 }
@@ -449,16 +495,6 @@ try_again:
 char query[QUERY_SIZE + 1];
 int query_used;
 
-regex_t re_compiled;
-
-int ret_nl_index(char *s)
-{
-	int i;
-
-	for (i = 0; s[i] != '\n'; i++);
-	return i;
-}
-
 int match_line(char *line)
 {
 	if (!regexec(&re_compiled, line, 0, NULL, REG_NOTEOL))
@@ -467,11 +503,16 @@ int match_line(char *line)
 	return 0;
 }
 
-int match_commit(struct commit *c, int direction)
+int match_commit(struct commit *c, int direction, int prog)
 {
 	int i = c->head_line;
 	int nli, result;
 	char *line;
+
+	if (prog) {
+		/* FIXME: case of top and bottom */
+		i += direction ? 1 : -1;
+	}
 
 	do {
 		line = &logbuf[c->lines[i]];
@@ -481,8 +522,10 @@ int match_commit(struct commit *c, int direction)
 		result = match_line(line);
 		line[nli] = '\n';
 
-		if (result)
+		if (result) {
+			c->head_line = i;
 			return 1;
+		}
 
 		i += direction ? 1 : -1;
 	} while (direction ? i < c->nr_lines : 0 <= i);
@@ -490,18 +533,18 @@ int match_commit(struct commit *c, int direction)
 	return 0;
 }
 
-void do_search(int direction, int global)
+void do_search(int direction, int global, int prog)
 {
 	int result;
 	struct commit *p;
 
-	result = match_commit(current, direction);
+	result = match_commit(current, direction, prog);
 	if (result || !global)
 		return;
 
 	p = current;
 	do {
-		if (match_commit(p, direction))
+		if (match_commit(p, direction, prog))
 			goto matched;
 
 		if (!p->prev)
@@ -515,7 +558,7 @@ matched:
 int current_direction, current_global;
 
 #define update_query_bm()	do {					\
-		bmprintf(" %s %s search: %s",				\
+		bmprintf("\033[7m%s %s search:\033[0m %s",		\
 			current_direction ? "forward" : "backward",	\
 			current_global ? "global" : "local",		\
 			query);						\
@@ -523,7 +566,7 @@ int current_direction, current_global;
 		print_bottom_message = 1;				\
 	} while (0)
 
-int _search(char key, int direction, int global)
+int _search(int key, int direction, int global)
 {
 	current_direction = direction;
 	current_global = global;
@@ -532,7 +575,7 @@ int _search(char key, int direction, int global)
 	case STATE_DEFAULT:
 	case STATE_SEARCHING_QUERY:
 		query_used = 0;
-		query[query_used++] = key;
+		bzero(query, QUERY_SIZE);
 
 		update_query_bm();
 		state = STATE_INPUT_SEARCH_QUERY;
@@ -549,7 +592,7 @@ int _search(char key, int direction, int global)
 		if (key == '\n')
 			state = STATE_SEARCHING_QUERY;
 		else {
-			query[query_used++] = key;
+			query[query_used++] = (char)key;
 			update_query_bm();
 		}
 	end:
@@ -565,7 +608,7 @@ int _search(char key, int direction, int global)
 		/* todo: REG_ICASE should be optional */
 		regcomp(&re_compiled, query, REG_ICASE);
 
-		do_search(direction, global);
+		do_search(direction, global, 0);
 	}
 
 	return 1;
@@ -573,7 +616,7 @@ int _search(char key, int direction, int global)
 
 int search(int direction, int global)
 {
-	return _search(read_one_key(), direction, global);
+	return _search(-1, direction, global);
 }
 
 int search_global_forward(char cmd)
@@ -596,6 +639,14 @@ int search_local_backward(char cmd)
 	return search(0, 0);
 }
 
+int search_progress(char cmd)
+{
+	if (state != STATE_SEARCHING_QUERY)
+		return 0;
+
+	do_search(current_direction, current_global, 1);
+}
+
 int input_query(char key)
 {
 	if (key == (char)0x7f) {
@@ -606,6 +657,13 @@ int input_query(char key)
 		query[--query_used] = '\0';
 		update_query_bm();
 
+		return 1;
+	} else if (key == (char)0x1b) {
+		/* escape */
+		print_bottom_message = 0;
+		regfree(&re_compiled);
+
+		state = STATE_DEFAULT;
 		return 1;
 	}
 
@@ -645,6 +703,8 @@ struct key_cmd valid_ops[] = {
 	{ '?', search_global_backward },
 	{ '\\', search_local_forward },
 	{ '!', search_local_backward },
+	{ 'n', search_progress },
+	{ 'p', search_progress },
 
 	/* todo: '/' forward search, '?' backword search */
 	{ '\0', NULL },
@@ -657,8 +717,8 @@ int main(void)
 	int i;
 	char cmd;
 
-	bottom_message_size = BOTTOM_MESSAGE_INIT_SIZE;
 	bottom_message = xalloc(bottom_message_size);
+	match_array = xalloc(match_array_size * sizeof(regmatch_t));
 
 	init_tty();
 
@@ -675,7 +735,6 @@ int main(void)
 	for (i = 0; valid_ops[i].key != '\0'; i++)
 		ops_array[valid_ops[i].key] = valid_ops[i].op;
 
-	running = 1;
 	while (running) {
 		int ret;
 
