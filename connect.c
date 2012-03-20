@@ -575,8 +575,9 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 		die("command line too long");
 
 	conn->in = conn->out = -1;
-	conn->argv = arg = xcalloc(7, sizeof(*arg));
+	conn->argv = arg = xcalloc(9, sizeof(*arg));
 	if (protocol == PROTO_SSH) {
+		const char *key;
 		const char *ssh = getenv("GIT_SSH");
 		int putty = ssh && strcasestr(ssh, "plink");
 		if (!ssh) ssh = "ssh";
@@ -589,6 +590,13 @@ struct child_process *git_connect(int fd[2], const char *url_orig,
 			*arg++ = putty ? "-P" : "-p";
 			*arg++ = port;
 		}
+
+		key = getenv("GIT_SSH_KEY");
+		if (key) {
+			*arg++ = "-i";
+			*arg++ = key;
+		}
+
 		*arg++ = host;
 	}
 	else {
