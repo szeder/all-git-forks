@@ -544,7 +544,7 @@ int match_commit(struct commit *c, int direction, int prog)
 
 	if (prog) {
 		if (direction) {
-			if (i == c->nr_lines - 1)
+			if (i < c->nr_lines - 1)
 				return 0;
 		} else {
 			if (!i)
@@ -596,14 +596,13 @@ void do_search(int direction, int global, int prog)
 		else
 			return;
 	}
+
 	do {
 		if (match_commit(p, direction, prog))
 			goto matched;
 
-		if (!p->prev) {
-			assert(p == tail);
+		if (!p->prev)
 			read_at_least_one_commit();
-		}
 	} while (direction ? (p = p->prev) : (p = p->next));
 
 	return;
