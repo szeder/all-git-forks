@@ -558,7 +558,7 @@ int match_commit(struct commit *c, int direction, int prog)
 
 	if (prog) {
 		if (direction) {
-			if (i < c->nr_lines)
+			if (c->nr_lines <= i - 1)
 				return 0;
 		} else {
 			if (!i)
@@ -587,7 +587,7 @@ int match_commit(struct commit *c, int direction, int prog)
 	return 0;
 }
 
-void do_search(int direction, int global, int prog)
+int do_search(int direction, int global, int prog)
 {
 	int result;
 	struct commit *p;
@@ -615,7 +615,7 @@ void do_search(int direction, int global, int prog)
 	}
 
 	do {
-		if (match_commit(p, direction, prog))
+		if (result = match_commit(p, direction, prog))
 			goto matched;
 
 		if (!p->prev)
@@ -628,6 +628,8 @@ matched:
 	current = p;
 no_match:
 	searching = 0;
+
+	return result;
 }
 
 int current_direction, current_global;
@@ -680,10 +682,10 @@ int _search(int key, int direction, int global)
 
 	if (state == STATE_SEARCHING_QUERY) {
 		bzero(&re_compiled, sizeof(regex_t));
-		/* todo: REG_ICASE should be optional */
 		regcomp(&re_compiled, query, REG_ICASE);
 
-		do_search(direction, global, 0);
+		if (!do_search(direction, global, 0))
+			bmprintf("not found: %s", query);
 	}
 
 	return 1;
@@ -782,7 +784,6 @@ struct key_cmd valid_ops[] = {
 	{ 'n', search_progress },
 	{ 'p', search_progress },
 
-	/* todo: '/' forward search, '?' backword search */
 	{ '\0', NULL },
 };
 
@@ -834,6 +835,8 @@ int main(void)
 		if (ret)
 			update_terminal();
 	}
+
+	printf("\n");
 
 	return 0;
 }
