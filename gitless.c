@@ -94,7 +94,6 @@ int state = STATE_DEFAULT;
 #define BOTTOM_MESSAGE_INIT_SIZE 32
 char *bottom_message;
 int bottom_message_size = BOTTOM_MESSAGE_INIT_SIZE;
-int print_bottom_message;
 
 #define MATCH_ARRAY_INIT_SIZE 32
 regmatch_t *match_array;
@@ -199,7 +198,7 @@ struct commit *head, *root;
 /* current: current displaying commit, tail: tail of the read commits */
 struct commit *current, *tail;
 
-regex_t re_compiled;
+regex_t *re_compiled;
 
 void update_terminal(void)
 {
@@ -222,7 +221,7 @@ void update_terminal(void)
 			int rev = 0;
 
 			line[nli] = '\0';
-			ret = regexec(&re_compiled, line,
+			ret = regexec(re_compiled, line,
 				match_array_size, match_array, 0);
 			line[nli] = '\n';
 
@@ -544,7 +543,7 @@ int query_used;
 
 int match_line(char *line)
 {
-	if (!regexec(&re_compiled, line, 0, NULL, REG_NOTEOL))
+	if (!regexec(re_compiled, line, 0, NULL, REG_NOTEOL))
 		return 1;
 
 	return 0;
@@ -640,7 +639,6 @@ int current_direction, current_global;
 			current_global ? "global" : "local",		\
 			query);						\
 									\
-		print_bottom_message = 1;				\
 	} while (0)
 
 int _search(int key, int direction, int global)
@@ -681,8 +679,11 @@ int _search(int key, int direction, int global)
 	}
 
 	if (state == STATE_SEARCHING_QUERY) {
-		bzero(&re_compiled, sizeof(regex_t));
-		regcomp(&re_compiled, query, REG_ICASE);
+		if (re_compiled)
+			regfree(re_compiled);
+		else
+			re_compiled = xalloc(sizeof(regex_t));
+		regcomp(re_compiled, query, REG_ICASE);
 
 		if (!do_search(direction, global, 0))
 			bmprintf("not found: %s", query);
@@ -746,8 +747,9 @@ int input_query(char key)
 		return 1;
 	} else if (key == (char)0x1b) {
 		/* escape */
-		print_bottom_message = 0;
-		regfree(&re_compiled);
+		regfree(re_compiled);
+		free(re_compiled);
+		re_compiled = NULL;
 
 		query_used = 0;
 		bzero(query, QUERY_SIZE);
