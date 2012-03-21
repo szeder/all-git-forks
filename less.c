@@ -123,7 +123,8 @@ void update_row_col(void)
 
 	if (match_array_size < col) {
 		match_array_size = col;
-		match_array = xrealloc(match_array, match_array_size * sizeof(regmatch_t));
+		match_array = xrealloc(match_array,
+				match_array_size * sizeof(regmatch_t));
 	}
 }
 
@@ -293,7 +294,8 @@ void init_commit(struct commit *c, int first_index)
 
 		if (c->lines_size == c->nr_lines) {
 			c->lines_size <<= 1;
-			c->lines = xrealloc(c->lines, c->lines_size * sizeof(int));
+			c->lines = xrealloc(c->lines,
+					c->lines_size * sizeof(int));
 		}
 	}
 }
@@ -335,7 +337,8 @@ void read_head(void)
 
 		prev_logbuf_used = logbuf_used;
 		logbuf_used += rbyte;
-	} while ((last_etx = contain_etx(prev_logbuf_used, logbuf_used)) == -1);
+	} while ((last_etx =
+			contain_etx(prev_logbuf_used, logbuf_used)) == -1);
 
 	head = xalloc(sizeof(struct commit));
 	init_commit(head, 0);
@@ -375,7 +378,8 @@ void read_commit(void)
 			logbuf = xrealloc(logbuf, logbuf_size);
 		}
 
-		rbyte = read(stdin_fd, &logbuf[logbuf_used], logbuf_size - logbuf_used);
+		rbyte = read(stdin_fd, &logbuf[logbuf_used],
+			logbuf_size - logbuf_used);
 
 		if (rbyte < 0) {
 			if (errno == EINTR)
@@ -392,7 +396,8 @@ void read_commit(void)
 
 		prev_logbuf_used = logbuf_used;
 		logbuf_used += rbyte;
-	} while ((last_etx = contain_etx(prev_logbuf_used, logbuf_used)) == -1);
+	} while ((last_etx =
+			contain_etx(prev_logbuf_used, logbuf_used)) == -1);
 
 skip_read:
 
