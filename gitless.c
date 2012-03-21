@@ -686,6 +686,8 @@ int _search(int key, int direction, int global)
 
 		if (!do_search(direction, global, 0))
 			bmprintf("not found: %s", query);
+		else
+			update_query_bm();
 	}
 
 	return 1;
@@ -721,8 +723,14 @@ int search_progress(char cmd)
 	if (state != STATE_SEARCHING_QUERY)
 		return 0;
 
-	do_search(cmd == 'n' ? current_direction : !current_direction,
-		current_global, 1);
+	if (!do_search(cmd == 'n' ?
+			current_direction : !current_direction,
+			current_global, 1))
+		bmprintf("not found: %s", query);
+	else
+		update_query_bm();
+
+	return 1;
 }
 
 int input_query(char key)
@@ -741,6 +749,10 @@ int input_query(char key)
 		print_bottom_message = 0;
 		regfree(&re_compiled);
 
+		query_used = 0;
+		bzero(query, QUERY_SIZE);
+
+		bzero(bottom_message, bottom_message_size);
 		state = STATE_DEFAULT;
 		return 1;
 	}
