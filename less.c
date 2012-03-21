@@ -483,12 +483,10 @@ int backward_page(char cmd)
 	if (!current->head_line)
 		return 0;
 
-	if (current->head_line - row <= 0) {
-		current->head_line = 0;
-		return 1;
-	}
-
 	current->head_line -= row;
+	if (current->head_line < 0)
+		current->head_line = 0;
+
 	return 1;
 }
 
