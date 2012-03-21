@@ -483,6 +483,67 @@ Programming language: Tcl/Tk
 Proposed by: Jakub Narębski  
 Possible mentor(s): Pat Thoyts, Paul Mackerras (?)
 
+"Published" and "secret" commits
+--------------------------------
+
+Git includes protection against rewriting published history on the
+receive side with fast-forward check by default (which can be
+overridden) and various `receive.deny*` configuration variables,
+including `receive.denyNonFastForwards`.
+
+Nevertheless git users requested (among others in "Git User's Survey")
+more help on creation side, namely preventing rewriting parts of
+history which was already made public (or at least warning that one is
+about to rewrite published history).  This requires knowledge if a
+commit was **published** or not.
+
+There is a related feature of preventing publishing commits that are
+"**secret**" (or simply not ready to be published).
+
+The problem and inspiration for it is described in more detail in
+[this][gmane-1] [thread][gmane-2] (unfortunately split in two in GMane
+interface; you can use [MARC] archive instead).  You can even find a
+prototype implementation for parts of this in git mailing list
+archives.
+
+[gmane-1]: http://thread.gmane.org/gmane.comp.version-control.git/189895
+[gmane-2]: http://thread.gmane.org/gmane.comp.version-control.git/189946
+[MARC]: http://marc.info/?t=132838507900002&r=1&w=2
+
+The project would consist of the following elements (not all must be
+implemented during Google Summer of Code; the scope of the project
+would have to be discussed on git mailing list prior to application):
+
+ * Some way of querying the state of commit about its "published"
+   and/or "secret" status.
+
+   Perhaps at later stages adding new pretty format to git, to be able
+   to show "published" and "secret" trait in `git show` and `git log`
+   output.
+
+ * Some way of marking a commit as "secret" (e.g. using notes).
+
+ * Preventing a history-changing operation when it is to act on
+   published part of history, or just warn.  This includes but is not
+   limited to rebase, interactive rebase, amending a commit and
+   rewinding a branch (using `git reset`).
+
+   Note that some commands would require extending git to be able
+   to prevent / warn about reqriting published history, e.g. by
+   adding `pre-rewrite` hook.
+
+ * Adding support for less common ways of publishing: bundle,
+   send-email, fetch / pull-request for "published" trait.
+
+ * Making those traits local to repository.  For example we might want
+   consider commits changeable if they were published to group
+   repository, or make possible to share "secret" commits in a group
+   repository.
+
+Programming language: *Any*  
+Proposed by: Jakub Narębski  
+Possible mentor(s): ???
+
 Other sources of inspiration
 ----------------------------
 
