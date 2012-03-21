@@ -80,6 +80,7 @@ int ret_nl_index(char *s)
 int stdin_fd = 0, tty_fd;
 unsigned int row, col;
 int running = 1;
+int searching;
 
 #define LINES_INIT_SIZE 128
 
@@ -137,7 +138,10 @@ void signal_handler(int signum)
 		break;
 
 	case SIGINT:
-		running = 0;
+		if (searching)
+			searching = 0;
+		else
+			running = 0;
 		break;
 
 	default:
@@ -178,7 +182,7 @@ int last_etx;
 
 struct commit {
 	unsigned int *lines;	/* array of index of logbuf */
-	int lines_size, lines_used;
+	int lines_size;
 
 	int nr_lines, head_line;
 
@@ -284,18 +288,14 @@ void init_commit(struct commit *c, int first_index)
 		if (logbuf[i] != '\n')
 			continue;
 
-		c->nr_lines++;
-		c->lines[c->lines_used++] = line_head;
+		c->lines[c->nr_lines++] = line_head;
 		line_head = i + 1;
 
-		if (c->lines_size == c->lines_used) {
+		if (c->lines_size == c->nr_lines) {
 			c->lines_size <<= 1;
 			c->lines = xrealloc(c->lines, c->lines_size * sizeof(int));
 		}
 	}
-
-	c->nr_lines++;
-	c->lines[c->lines_used++] = line_head;
 }
 
 int contain_etx(int begin, int end)
@@ -343,11 +343,16 @@ void read_head(void)
 	tail = current = head;
 }
 
-void read_at_least_one_commit(void)
+void read_commit(void)
 {
 	int prev_last_etx = last_etx;
-	int prev_logbuf_used;
+	int prev_logbuf_used, first_logbuf_used;
 	struct commit *new_commit;
+
+	static int read_end;
+
+	if (read_end)
+		return;
 
 	if (last_etx + 1 < logbuf_used) {
 		unsigned int tmp_etx;
@@ -358,6 +363,8 @@ void read_at_least_one_commit(void)
 			goto skip_read;
 		}
 	}
+
+	first_logbuf_used = logbuf_used;
 
 	do {
 		int rbyte;
@@ -376,8 +383,11 @@ void read_at_least_one_commit(void)
 				die("read() failed");
 		}
 
-		if (!rbyte)
-			return;
+		if (!rbyte) {
+			read_end = 1;
+			if (first_logbuf_used == logbuf_used)
+				return;
+		}
 
 		prev_logbuf_used = logbuf_used;
 		logbuf_used += rbyte;
@@ -399,7 +409,7 @@ skip_read:
 int show_prev_commit(char cmd)
 {
 	if (!current->prev) {
-		read_at_least_one_commit();
+		read_commit();
 
 		if (!current->prev)
 			return 0;
@@ -490,7 +500,7 @@ int show_root(char cmd)
 
 	do {
 		if (!current->prev)
-			read_at_least_one_commit();
+			read_commit();
 		if (!current->prev)
 			break;
 		current = current->prev;
@@ -548,7 +558,7 @@ int match_commit(struct commit *c, int direction, int prog)
 
 	if (prog) {
 		if (direction) {
-			if (i < c->nr_lines - 1)
+			if (i < c->nr_lines)
 				return 0;
 		} else {
 			if (!i)
@@ -582,23 +592,26 @@ void do_search(int direction, int global, int prog)
 	int result;
 	struct commit *p;
 
+	assert(!searching);
+	searching = 1;
+
 	result = match_commit(current, direction, prog);
 	if (result || !global)
-		return;
+		goto no_match;
 
 	if (direction) {
 		if (!current->prev)
-			read_at_least_one_commit();
+			read_commit();
 
 		if (current->prev)
 			p = current->prev;
 		else
-			return;
+			goto no_match;
 	} else {
 		if (current->next)
 			p = current->next;
 		else
-			return;
+			goto no_match;
 	}
 
 	do {
@@ -606,13 +619,15 @@ void do_search(int direction, int global, int prog)
 			goto matched;
 
 		if (!p->prev)
-			read_at_least_one_commit();
-	} while (direction ? (p = p->prev) : (p = p->next));
+			read_commit();
+	} while (searching && (direction ? (p = p->prev) : (p = p->next)));
 
-	return;
+	goto no_match;
 
 matched:
 	current = p;
+no_match:
+	searching = 0;
 }
 
 int current_direction, current_global;
