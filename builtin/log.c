@@ -90,8 +90,13 @@ static void cmd_log_init_defaults(struct rev_info *rev)
 
 static int use_git_less;
 
-static int setup_log_pager(void)
+static int setup_log_pager(const char *myname)
 {
+	if (strcmp(myname, "log")) {
+		use_git_less = 0;
+		return 0;
+	}
+
 	if (!use_git_less)
 		return 0;
 
@@ -161,7 +166,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 		load_ref_decorations(decoration_style);
 	}
 
-	if (!strcmp(argv[0], "log") && setup_log_pager())
+	if (setup_log_pager(argv[0]))
 		return;
 
 	setup_pager();
