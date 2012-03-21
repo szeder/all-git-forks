@@ -1,5 +1,5 @@
 /*
- * gitless - a specialized pager for git-log
+ * git-less - a specialized pager for git-log
  *
  * Copyright (C) 2012 Hitoshi Mitake <h.mitake@gmail.com>
  *
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <unistd.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -309,7 +310,7 @@ int contain_etx(int begin, int end)
 
 void read_head(void)
 {
-	int prev_logbuf_used;
+	int prev_logbuf_used = 0;
 
 	do {
 		int rbyte;
@@ -363,6 +364,7 @@ void read_commit(void)
 		}
 	}
 
+	prev_logbuf_used = 0;
 	first_logbuf_used = logbuf_used;
 
 	do {
@@ -614,7 +616,8 @@ int do_search(int direction, int global, int prog)
 	}
 
 	do {
-		if (result = match_commit(p, direction, prog))
+		result = match_commit(p, direction, prog);
+		if (result)
 			goto matched;
 
 		if (!p->prev)
@@ -824,7 +827,7 @@ int main(void)
 		ops_array[i] = nop;
 
 	for (i = 0; valid_ops[i].key != '\0'; i++)
-		ops_array[valid_ops[i].key] = valid_ops[i].op;
+		ops_array[(int)valid_ops[i].key] = valid_ops[i].op;
 
 	while (running) {
 		int ret;
@@ -844,7 +847,7 @@ int main(void)
 		if (state == STATE_INPUT_SEARCH_QUERY)
 			ret = input_query(cmd);
 		else
-			ret = ops_array[cmd](cmd);
+			ret = ops_array[(int)cmd](cmd);
 
 		if (ret)
 			update_terminal();
