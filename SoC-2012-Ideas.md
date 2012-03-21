@@ -196,7 +196,7 @@ As the existing code is written in Perl, that is what you will use for
 this project.
 
 Proposed by: Thomas Rast  
-Possible mentor(s): Thomas Rast
+Possible mentor(s): Thomas Rast, Christian Couder
 
 Remote helper for Subversion
 ------------------------------------
@@ -398,7 +398,7 @@ am -3" simpler.
 
 Programming language: C89  
 Suggested by: Junio C Hamano  
-Possible mentors: ???  
+Possible mentors: ???, Christian Couder
 
 Complete "Linus's ultimate content tracking tool"
 -------------------------------------------------
@@ -419,7 +419,7 @@ to help the "BUT I FOUND FIVE PLACES that matched almost perfectly" part.
 Write a tool that can be used for the task, and optionally wrap an interactive UI around it.
 
 Programming language: Any  
-Possible mentors: ???  
+Possible mentors: ???, Christian Couder
 
 Graphical diff in git-gui
 -------------------------
