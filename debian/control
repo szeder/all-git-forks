@@ -202,6 +202,7 @@ Description: fast, scalable, distributed revision control system (git-daemon ser
  for running git-daemon permanently.
 
 Package: git-daemon-sysvinit
+Priority: extra
 Architecture: all
 Depends: git (>> ${source:Upstream-Version}), git (<< ${source:Upstream-Version}-.), adduser
 Conflicts: git-daemon-run
