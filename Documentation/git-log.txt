@@ -177,6 +177,10 @@ notes.displayRef::
 	or 'GIT_NOTES_REF', to read notes from when showing commit
 	messages with the 'log' family of commands.  See
 	linkgit:git-notes[1].
+
+log.pager::
+	Pager program for git-log. Currently this option only assumes
+	"git-less".
 +
 May be an unabbreviated ref name or a glob and may be specified
 multiple times.  A warning will be issued for refs that do not exist,
