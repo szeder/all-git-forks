@@ -112,7 +112,7 @@ void update_row_col(void)
 	bzero(&size, sizeof(struct winsize));
 	ioctl(tty_fd, TIOCGWINSZ, (void *)&size);
 
-	row = size.ws_row;
+	row = size.ws_row - 1;
 	col = size.ws_col;
 
 	if (bottom_message_size - 1 < col) {
@@ -209,7 +209,7 @@ void update_terminal(void)
 		current->head_line = 1;
 
 	for (i = current->head_line, print = 0;
-	     i < current->head_line + row - 1 - print_bottom_message
+	     i < current->head_line + row
 		     && i < current->nr_lines; i++, print++) {
 		line = &logbuf[current->lines[i]];
 
@@ -254,17 +254,21 @@ void update_terminal(void)
 			for (j = 0; j < col && line[j] != '\n'; j++)
 				putchar(line[j]);
 		}
-
-		if (print != row - 2 || !print_bottom_message)
-			putchar('\n');
+		putchar('\n');
 	}
 
-	if (print_bottom_message) {
-		while (print++ != row - 2)
-			putchar('\n');
+	while (i++ < current->head_line + row)
+		putchar('\n');
 
-		puts(bottom_message);
-	}
+	if (current->nr_lines <= current->head_line + row)
+		printf("\033[7m100%%\033[0m");
+	else
+		printf("\033[7m% .0f%%\033[0m",
+			(float)(current->head_line + row)
+			/ current->nr_lines * 100.0);
+
+	printf("\033[7m %s\033[0m", bottom_message);
+	fflush(stdout);
 }
 
 void init_commit(struct commit *c, int first_index)
