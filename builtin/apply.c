@@ -151,6 +151,10 @@ struct fragment {
 	unsigned long leading, trailing;
 	unsigned long oldpos, oldlines;
 	unsigned long newpos, newlines;
+	/*
+	 * 'patch' is usually borrowed from buf in apply_patch(),
+	 * but some codepaths store an allocated buffer.
+	 */
 	const char *patch;
 	unsigned free_patch:1,
 		rejected:1;
@@ -375,7 +379,6 @@ static void say_patch_name(FILE *output, const char *pre,
 	fputs(post, output);
 }
 
-#define CHUNKSIZE (8192)
 #define SLOP (16)
 
 static void read_patch_file(struct strbuf *sb, int fd)
@@ -1081,7 +1084,7 @@ static const char *stop_at_slash(const char *line, int llen)
  * creation or deletion of an empty file.  In any of these cases,
  * both sides are the same name under a/ and b/ respectively.
  */
-static char *git_header_name(char *line, int llen)
+static char *git_header_name(const char *line, int llen)
 {
 	const char *name;
 	const char *second = NULL;
@@ -1208,7 +1211,7 @@ static char *git_header_name(char *line, int llen)
 }
 
 /* Verify that we recognize the lines following a git header */
-static int parse_git_header(char *line, int len, unsigned int size, struct patch *patch)
+static int parse_git_header(const char *line, int len, unsigned int size, struct patch *patch)
 {
 	unsigned long offset;
 
@@ -1324,7 +1327,7 @@ static int parse_range(const char *line, int len, int offset, const char *expect
 	return offset + ex;
 }
 
-static void recount_diff(char *line, int size, struct fragment *fragment)
+static void recount_diff(const char *line, int size, struct fragment *fragment)
 {
 	int oldlines = 0, newlines = 0, ret = 0;
 
@@ -1378,7 +1381,7 @@ static void recount_diff(char *line, int size, struct fragment *fragment)
  * Parse a unified diff fragment header of the
  * form "@@ -a,b +c,d @@"
  */
-static int parse_fragment_header(char *line, int len, struct fragment *fragment)
+static int parse_fragment_header(const char *line, int len, struct fragment *fragment)
 {
 	int offset;
 
@@ -1392,7 +1395,7 @@ static int parse_fragment_header(char *line, int len, struct fragment *fragment)
 	return offset;
 }
 
-static int find_header(char *line, unsigned long size, int *hdrsize, struct patch *patch)
+static int find_header(const char *line, unsigned long size, int *hdrsize, struct patch *patch)
 {
 	unsigned long offset, len;
 
@@ -1504,7 +1507,7 @@ static void check_whitespace(const char *line, int len, unsigned ws_rule)
  * between a "---" that is part of a patch, and a "---" that starts
  * the next patch is to look at the line counts..
  */
-static int parse_fragment(char *line, unsigned long size,
+static int parse_fragment(const char *line, unsigned long size,
 			  struct patch *patch, struct fragment *fragment)
 {
 	int added, deleted;
@@ -1600,7 +1603,7 @@ static int parse_fragment(char *line, unsigned long size,
 	return offset;
 }
 
-static int parse_single_patch(char *line, unsigned long size, struct patch *patch)
+static int parse_single_patch(const char *line, unsigned long size, struct patch *patch)
 {
 	unsigned long offset = 0;
 	unsigned long oldlines = 0, newlines = 0, context = 0;
@@ -3716,7 +3719,7 @@ static void prefix_patches(struct patch *p)
 static int apply_patch(int fd, const char *filename, int options)
 {
 	size_t offset;
-	struct strbuf buf = STRBUF_INIT;
+	struct strbuf buf = STRBUF_INIT; /* owns the patch text */
 	struct patch *list = NULL, **listp = &list;
 	int skipped_patch = 0;
 
