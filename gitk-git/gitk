@@ -2504,6 +2504,7 @@ proc makewindow {} {
 	{mc "Find descendant of this and mark" command find_common_desc}
 	{mc "Compare with marked commit" command compare_commits}
 	{mc "Export patch series" command mkpatchseries}
+	{mc "Rebase selected range onto this" command mkrebaseonto}
     }
     $rowctxmenu configure -tearoff 0
 
@@ -8478,10 +8479,12 @@ proc rowmenu {x y id} {
 	    $menu entryconfigure 9 -state normal
 	    $menu entryconfigure 10 -state normal
 	    $menu entryconfigure 11 -state normal
+	    $menu entryconfigure 14 -state normal
 	} else {
 	    $menu entryconfigure 9 -state disabled
 	    $menu entryconfigure 10 -state disabled
 	    $menu entryconfigure 11 -state disabled
+	    $menu entryconfigure 14 -state disabled
 	}
     } else {
 	set menu $fakerowmenu
@@ -8885,6 +8888,60 @@ proc mkpatchseries {} {
     }
 
     do_explore [pwd]
+}
+
+proc mkrebaseonto {} {
+    global rowmenuid currentid markedid
+
+    if {![info exists currentid] || ![info exists markedid]} return
+
+    set cmd [list git merge-base $currentid $markedid]
+    if {[catch {set merge_base [eval exec $cmd]} err]} {
+        error_popup "[mc "Error starting rebase"] $err" .
+        return
+    }
+
+    if {$merge_base eq $currentid} {
+        set oldid $currentid^
+        set newid $markedid
+    } else {
+        set oldid $markedid^
+        set newid $currentid
+    }
+
+
+    # TODO: try to get names of what branches would be rebased
+    set popup_msg [mc "Start rebase onto?"]
+    if {![confirm_popup $popup_msg]} {
+        return
+    }
+
+    set cmd {exec sh -c "git rebase --onto $rowmenuid $oldid $newid 2>&1"}
+
+    # Unfortunately git-rebase writes stuff to stderr even when
+    # no error occurs, and exec takes that as an indication of error...
+    # TODO: unify this code with cherry-pick
+    if {[catch $cmd err]} {
+	    if {[regexp -line \
+	    	 {Entry '(.*)' (would be overwritten by merge|not uptodate)} \
+	    	 $err msg fname]} {
+	        error_popup [mc "Rebase failed because of local changes\
+	    		to file '%s'.\nPlease commit, reset or stash\
+	    		your changes and try again." $fname]
+	    } elseif {[regexp -line \
+	    	       {^(CONFLICT \(.*\):|Automatic cherry-pick failed)} \
+	    	       $err]} {
+	        if {[confirm_popup [mc "Rebase failed because of merge\
+	    		conflict.\nDo you wish to run git citool to\
+	    		resolve it?"]]} {
+	    	# Force citool to read MERGE_MSG
+	    	file delete [file join [gitdir] "GITGUI_MSG"]
+	    	exec_citool {} $rowmenuid
+	        }
+	    } else {
+	        error_popup $err
+	    }
+    }
 }
 
 proc mkpatchcan {} {
