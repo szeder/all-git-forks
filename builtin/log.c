@@ -88,6 +88,22 @@ static void cmd_log_init_defaults(struct rev_info *rev)
 		rev->date_mode = parse_date_format(default_date_mode);
 }
 
+static int use_git_less;
+
+static int setup_log_pager(const char *myname)
+{
+	if (strcmp(myname, "log")) {
+		use_git_less = 0;
+		return 0;
+	}
+
+	if (!use_git_less)
+		return 0;
+
+	__setup_pager("git-less");
+	return 1;
+}
+
 static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 			 struct rev_info *rev, struct setup_revision_opt *opt)
 {
@@ -149,6 +165,10 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 		rev->show_decorations = 1;
 		load_ref_decorations(decoration_style);
 	}
+
+	if (setup_log_pager(argv[0]))
+		return;
+
 	setup_pager();
 }
 
@@ -314,6 +334,9 @@ static int cmd_log_walk(struct rev_info *rev)
 			saved_nrl = rev->diffopt.needed_rename_limit;
 		if (rev->diffopt.degraded_cc_to_c)
 			saved_dcctc = 1;
+
+		if (use_git_less)
+			printf("\003");
 	}
 	rev->diffopt.degraded_cc_to_c = saved_dcctc;
 	rev->diffopt.needed_rename_limit = saved_nrl;
@@ -349,6 +372,15 @@ static int git_log_config(const char *var, const char *value, void *cb)
 	}
 	if (!prefixcmp(var, "color.decorate."))
 		return parse_decorate_color_config(var, 15, value);
+	if (!strcmp(var, "log.pager")) {
+		if (!strcmp(value, "git-less")) {
+			use_git_less = 1;
+			return 0;
+		} else {
+			fprintf(stderr, "unknown pager for git-log: %s\n", value);
+			return -1;
+		}
+	}
 
 	return git_diff_ui_config(var, value, cb);
 }

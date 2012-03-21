@@ -69,10 +69,8 @@ const char *git_pager(int stdout_is_tty)
 	return pager;
 }
 
-void setup_pager(void)
+void __setup_pager(const char *pager)
 {
-	const char *pager = git_pager(isatty(1));
-
 	if (!pager)
 		return;
 
@@ -108,6 +106,11 @@ void setup_pager(void)
 	/* this makes sure that the parent terminates after the pager */
 	sigchain_push_common(wait_for_pager_signal);
 	atexit(wait_for_pager);
+}
+
+void setup_pager(void)
+{
+	__setup_pager(git_pager(isatty(1)));
 }
 
 int pager_in_use(void)
