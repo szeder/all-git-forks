@@ -35,8 +35,6 @@
 
 #include <regex.h>
 
-#define GIT_LESS_DEBUG
-
 extern int errno;
 
 #define die(fmt, arg...)						\
