@@ -16,6 +16,7 @@ git subtree push-all
 git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
 git subtree split --prefix=<prefix> <commit...>
 git subtree from-submodule --prefix=<prefix>
+git subtree prune
 git subtree diff  --prefix=<prefix> [<repository> [<refspec>...]]
 --
 h,help        show the help
