@@ -14,7 +14,7 @@
 use 5.008;
 use strict;
 use warnings;
-use File::Basename qw(dirname);
+use File::Basename qw(dirname basename);
 use File::Copy;
 use File::stat;
 use File::Path qw(mkpath);
@@ -28,7 +28,7 @@ sub usage
 {
 	my $exitcode = shift;
 	print << 'USAGE';
-usage: git difftool [-t|--tool=<tool>]
+usage: git difftool [-t|--tool=<tool>] [--tool-help]
                     [-x|--extcmd=<cmd>]
                     [-g|--gui] [--no-gui]
                     [--prompt] [-y|--no-prompt]
@@ -132,17 +132,27 @@ sub setup_dir_diff
 
 # parse command-line options. all unrecognized options and arguments
 # are passed through to the 'git diff' command.
-my ($difftool_cmd, $dirdiff, $extcmd, $gui, $help, $prompt);
+my ($difftool_cmd, $dirdiff, $extcmd, $gui, $help, $prompt, $tool_help);
 GetOptions('g|gui!' => \$gui,
 	'd|dir-diff' => \$dirdiff,
 	'h' => \$help,
 	'prompt!' => \$prompt,
 	'y' => sub { $prompt = 0; },
 	't|tool:s' => \$difftool_cmd,
+	'tool-help' => \$tool_help,
 	'x|extcmd:s' => \$extcmd);
 
 if (defined($help)) {
 	usage(0);
+}
+if (defined($tool_help)) {
+	my $gitpath = Git::exec_path();
+	print "'git difftool --tool=<tool>' may be set to one of the following:\n";
+	for (glob "$gitpath/mergetools/*") {
+		next if /defaults$/;
+		print "\t" . basename($_) . "\n";
+	}
+	exit(0);
 }
 if (defined($difftool_cmd)) {
 	if (length($difftool_cmd) > 0) {
