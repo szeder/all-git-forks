@@ -104,12 +104,12 @@ done
 command="$1"
 shift
 case "$command" in
-    add|merge|pull|pull-all|push-all|from-submodule) default= ;;
+    add|merge|pull|pull-all|push-all|from-submodule|prune) default= ;;
     split|push|diff|list) default="--default HEAD" ;;
     *) die "Unknown command '$command'" ;;
 esac
 
-if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" ]; then
+if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" -a "$command" != "list" -a "$command" != "prune" ]; then
     die "You must provide the --prefix option."
 fi
 
@@ -117,6 +117,7 @@ case "$command" in
     pull-all);;
     push-all);;
     list);;
+    prune);;
     add) [ -e "$prefix" ] && 
         die "prefix '$prefix' already exists." ;;
     *)   [ -e "$prefix" ] || 
@@ -827,6 +828,17 @@ cmd_from-submodule()
 
 	# Remove submodule repo.
 	rm -rf $tmp_repo
+}
+
+cmd_prune()
+{
+    git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+    while read path; do
+        if [ ! -e "$path" ]; then
+            echo "pruning $path"
+            git config -f .gittrees --remove-section subtree.$path
+        fi
+    done
 }
 
 cmd_pull-all()
