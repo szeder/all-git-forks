@@ -163,6 +163,7 @@
 /git-web--browse
 /git-whatchanged
 /git-write-tree
+/git-less
 /git-core-*/?*
 /gitk-git/gitk-wish
 /gitweb/GITWEB-BUILD-OPTIONS
