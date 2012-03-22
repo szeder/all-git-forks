@@ -35,6 +35,8 @@
 
 #include <regex.h>
 
+#define GIT_LESS_DEBUG
+
 extern int errno;
 
 #define die(fmt, arg...)						\
@@ -78,7 +80,7 @@ static int ret_nl_index(char *s)
 	return i;
 }
 
-static int stdin_fd = 0, tty_fd;
+static int stdin_fd = 0, tty_fd, debug_fd;
 static unsigned int row, col;
 static int running = 1;
 static int searching;
@@ -105,6 +107,35 @@ static int match_array_size = MATCH_ARRAY_INIT_SIZE;
 		snprintf(bottom_message, bottom_message_size,		\
 			fmt, ##arg);					\
 	} while (0)
+
+#ifdef GIT_LESS_DEBUG
+
+#define debug_printf(fmt, arg...)					\
+	do {                                                            \
+		char dbg_msg[1024];					\
+		int w, wbyte, len;					\
+									\
+		bzero(dbg_msg, 1024);					\
+		len = snprintf(dbg_msg, 1024,				\
+			fmt, ##arg);					\
+									\
+		wbyte = 0;						\
+		while ((w = write(debug_fd, dbg_msg + wbyte,		\
+						len - wbyte))) {	\
+			if (wbyte < 0)					\
+				die("failed write() on debug_fd");	\
+									\
+			wbyte += w;					\
+			if (wbyte == len)				\
+				break;					\
+		}							\
+	} while (0)
+
+#else
+
+#define debug_printf(fmt, arg...) do { } while (0)
+
+#endif	/* GIT_LESS_DEBUG */
 
 static void update_row_col(void)
 {
@@ -275,6 +306,8 @@ static int init_sighandler(void)
 	act.sa_handler = signal_handler;
 	sigaction(SIGWINCH, &act, NULL);
 	sigaction(SIGINT, &act, NULL);
+
+	return 0;
 }
 
 static void init_commit(struct commit *c, int first_index)
@@ -526,23 +559,6 @@ static int show_head(char cmd)
 	return 1;
 }
 
-static char read_one_key(void)
-{
-	int rbyte;
-	char buf;
-
-try_again:
-	rbyte = read(tty_fd, &buf, 1);
-	if (rbyte < 0) {
-		if (errno == EINTR)
-			goto try_again;
-		die("read() failed");
-	}
-	assert(rbyte == 1);
-
-	return buf;
-}
-
 #define QUERY_SIZE 128
 static char query[QUERY_SIZE + 1];
 static int query_used;
@@ -620,11 +636,16 @@ static int do_search(int direction, int global, int prog)
 	}
 
 	do {
+		if (direction)
+			p->head_line = 0;
+		else
+			p->head_line = p->nr_lines - 1;
+
 		result = match_commit(p, direction, prog);
 		if (result)
 			goto matched;
 
-		if (!p->prev)
+		if (direction && !p->prev)
 			read_commit();
 	} while (searching && (direction ? (p = p->prev) : (p = p->next)));
 
@@ -780,7 +801,7 @@ static int quit(char cmd)
 	return 0;
 }
 
-static struct key_cmd {
+struct key_cmd {
 	char key;
 	int (*op)(char);
 };
@@ -815,10 +836,23 @@ int main(void)
 	int i;
 	char cmd;
 
+#ifdef GIT_LESS_DEBUG
+
+#define DEBUG_FIFO_NAME "/tmp/git-less-debug"
+	if (mkfifo(DEBUG_FIFO_NAME, S_IRWXU))
+		die("failed to create named fifo for debugging");
+
+	debug_fd = open(DEBUG_FIFO_NAME, O_RDWR);
+	if (debug_fd < 0)
+		die("failed to open() named fifo for debugging");
+
+#endif
+
 	bottom_message = xalloc(bottom_message_size);
 	match_array = xalloc(match_array_size * sizeof(regmatch_t));
 
 	init_tty();
+	init_sighandler();
 
 	logbuf_size = LOGBUF_INIT_SIZE;
 	logbuf = xalloc(logbuf_size);
@@ -858,6 +892,10 @@ int main(void)
 	}
 
 	printf("\n");
+
+#ifdef GIT_LESS_DEBUG
+	unlink(DEBUG_FIFO_NAME);
+#endif
 
 	return 0;
 }
