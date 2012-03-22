@@ -8,11 +8,13 @@ if [ $# -eq 0 ]; then
     set -- -h
 fi
 OPTS_SPEC="\
-git subtree add            --prefix=<prefix> <commit>
-git subtree merge          --prefix=<prefix> <commit>
-git subtree pull           --prefix=<prefix> <repository> <refspec...>
-git subtree push           --prefix=<prefix> <repository> <refspec...>
-git subtree split          --prefix=<prefix> <commit...>
+git subtree add   --prefix=<prefix> <repository> <refspec>
+git subtree merge --prefix=<prefix> <commit>
+git subtree pull  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree pull-all
+git subtree push-all
+git subtree push  --prefix=<prefix> [<repository> [<refspec>...]]
+git subtree split --prefix=<prefix> <commit...>
 git subtree from-submodule --prefix=<prefix>
 --
 h,help        show the help
@@ -101,16 +103,18 @@ done
 command="$1"
 shift
 case "$command" in
-	add|merge|pull|from-submodule) default= ;;
+	add|merge|pull|pull-all|push-all|from-submodule) default= ;;
 	split|push) default="--default HEAD" ;;
 	*) die "Unknown command '$command'" ;;
 esac
 
-if [ -z "$prefix" ]; then
+if [ -z "$prefix" -a "$command" != "pull-all" -a "$command" != "push-all" ]; then
 	die "You must provide the --prefix option."
 fi
 
 case "$command" in
+    pull-all);;
+    push-all);;
 	add) [ -e "$prefix" ] && 
 		die "prefix '$prefix' already exists." ;;
 	*)   [ -e "$prefix" ] || 
@@ -119,7 +123,7 @@ esac
 
 dir="$(dirname "$prefix/.")"
 
-if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" ]; then
+if [ "$command" != "pull" -a "$command" != "add" -a "$command" != "push" -a "$command" != "pull-all" ]; then
 	revs=$(git rev-parse $default --revs-only "$@") || exit $?
 	dirs="$(git rev-parse --no-revs --no-flags "$@")" || exit $?
 	if [ -n "$dirs" ]; then
@@ -504,7 +508,8 @@ cmd_add()
 	else
 	    say "error: parameters were '$@'"
 	    die "Provide either a refspec or a repository and refspec."
-	fi
+ 	fi
+  
 }
 
 cmd_add_repository()
@@ -516,6 +521,14 @@ cmd_add_repository()
 	revs=FETCH_HEAD
 	set -- $revs
 	cmd_add_commit "$@"
+  
+  # now add it to our list of repos 
+  git config -f .gittrees --unset subtree.$dir.url
+  git config -f .gittrees --add subtree.$dir.url $repository
+  git config -f .gittrees --unset subtree.$dir.path
+  git config -f .gittrees --add subtree.$dir.path $dir
+  git config -f .gittrees --unset subtree.$dir.branch
+  git config -f .gittrees --add subtree.$dir.branch $refspec
 }
 
 cmd_add_commit()
@@ -689,13 +702,21 @@ cmd_merge()
 
 cmd_pull()
 {
-    if [ $# -ne 1 ]; then
-	    die "You must provide <branch>"
+  if [ $# -gt 2 ]; then
+	    die "You should provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
 	    ensure_clean
-	    repository=$(git config -f .gittrees subtree.$prefix.url)
-	    refspec=$1
+      if [ $# -eq 1 ]; then 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+	      refspec=$1
+      elif [ $# -eq 2 ]; then 
+        repository=$1
+        refspec=$2
+      else 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$(git config -f .gittrees subtree.$prefix.branch)
+      fi
 	    git fetch $repository $refspec || exit $?
 	    echo "git fetch using: " $repository $refspec
 	    revs=FETCH_HEAD
@@ -708,12 +729,20 @@ cmd_pull()
 
 cmd_push()
 {
-	if [ $# -ne 1 ]; then
-	    die "You must provide <branch>"
+	if [ $# -gt 2 ]; then
+	    die "You shold provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
-	    repository=$(git config -f .gittrees subtree.$prefix.url)
-	    refspec=$1
+      if [ $# -eq 1 ]; then 
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$1
+      elif [ $# -eq 2 ]; then 
+        repository=$1
+        refspec=$2
+      else
+	      repository=$(git config -f .gittrees subtree.$prefix.url)
+        refspec=$(git config -f .gittrees subtree.$prefix.branch)
+      fi
 	    echo "git push using: " $repository $refspec
 	    git push $repository $(git subtree split --prefix=$prefix):refs/heads/$refspec
 	else
@@ -746,6 +775,23 @@ cmd_from-submodule()
 
 	# Remove submodule repo.
 	rm -rf $tmp_repo
+}
+
+cmd_pull-all()
+{
+  git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+  while read path; do
+    git subtree pull -P $path $(git config -f .gittrees subtree.$path.url) $(git config -f .gittrees subtree.$path.branch) || exit $?
+  done
+}
+
+cmd_push-all()
+{
+  git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
+  while read path; do
+    git subtree push -P $path $(git config -f .gittrees subtree.$path.url) $(git config -f .gittrees subtree.$path.branch) || exit $?
+  done
+
 }
 
 "cmd_$command" "$@"

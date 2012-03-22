@@ -4,3 +4,6 @@ git-subtree.1
 mainline
 subproj
 submodule*
+launchpad
+.gittrees
+
