@@ -1738,6 +1738,9 @@ sub esc_html_hl_regions {
 	my $pos = 0;
 
 	for my $s (@sel) {
+		# Don't craete empty <span> elements.
+		next if $s->[1] <= $s->[0];
+
 		$out .= esc_html(substr($str, $pos, $s->[0] - $pos))
 			if ($s->[0] - $pos > 0);
 		$out .= $cgi->span({-class => $css_class},
