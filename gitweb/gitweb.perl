@@ -2438,14 +2438,17 @@ sub process_diff_line {
 
 	if ($from && $to && $line =~ m/^\@{2} /) {
 		$line = format_unidiff_chunk_header($line, $from, $to);
-		return $diff_class, $line;
-
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		$line = format_cc_diff_chunk_header($line, $from, $to);
-		return $diff_class, $line;
-
+	} else {
+		$line = esc_html($line, -nbsp=>1);
 	}
-	return $diff_class, esc_html($line, -nbsp=>1);
+
+	my $diff_classes = "diff";
+	$diff_classes .= " $diff_class" if ($diff_class);
+	$line = "<div class=\"$diff_classes\">$line</div>\n";
+
+	return $diff_class, $line;
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -5243,9 +5246,6 @@ sub git_patchset_body {
 			next PATCH if ($patch_line =~ m/^diff /);
 
 			my ($class, $line) = process_diff_line($patch_line, \%from, \%to);
-			my $diff_classes = "diff";
-			$diff_classes .= " $class" if ($class);
-			$line = "<div class=\"$diff_classes\">$line</div>\n";
 
 			if ($class eq 'chunk_header') {
 				print_diff_chunk($diff_style, $is_combined, @chunk);
