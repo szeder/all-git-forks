@@ -2426,14 +2426,14 @@ sub format_cc_diff_chunk_header {
 }
 
 # process patch (diff) line (not to be used for diff headers),
-# returning HTML-formatted (but not wrapped) line
+# returning HTML-formatted (but not wrapped) line.
+# If the line is already esc_html()'ed, pass it as a reference.
 sub format_diff_line {
 	my ($line, $diff_class, $from, $to) = @_;
 
-	chomp $line;
-	$line = untabify($line);
-
-	if ($from && $to && $line =~ m/^\@{2} /) {
+	if (ref($line)) {
+		$line = $$line;
+	} elsif ($from && $to && $line =~ m/^\@{2} /) {
 		$line = format_unidiff_chunk_header($line, $from, $to);
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		$line = format_cc_diff_chunk_header($line, $from, $to);
@@ -5054,9 +5054,79 @@ sub print_inline_diff_lines {
 	print foreach (@$add);
 }
 
+# Format removed and added line, mark changed part and HTML-format them.
+# Impementation is based on contrib/diff-highlight
+sub format_rem_add_line {
+	my ($rem, $add) = @_;
+	my @rem = split(//, $rem);
+	my @add = split(//, $add);
+	my ($esc_rem, $esc_add);
+	# Ignore +/- character, thus $prefix_len is set to 1.
+	my ($prefix_len, $suffix_len) = (1, 0);
+	my ($prefix_is_space, $suffix_is_space) = (1, 1);
+
+	while ($prefix_len < @rem && $prefix_len < @add) {
+		last if ($rem[$prefix_len] ne $add[$prefix_len]);
+
+		$prefix_is_space = 0 if ($rem[$prefix_len] !~ /\s/);
+		$prefix_len++;
+	}
+
+	my $shorter = (@rem < @add) ? @rem : @add;
+	while ($prefix_len + $suffix_len < $shorter) {
+		last if ($rem[-1 - $suffix_len] ne $add[-1 - $suffix_len]);
+
+		$suffix_is_space = 0 if ($rem[-1 - $suffix_len] !~ /\s/);
+		$suffix_len++;
+	}
+
+	# Mark lines that are different from each other, but have some common
+	# part that isn't whitespace.  If lines are completely different, don't
+	# mark them because that would make output unreadable, especially if
+	# diff consists of multiple lines.
+	if (($prefix_len == 1 && $suffix_len == 0) ||
+	    ($prefix_is_space && $suffix_is_space)) {
+		$esc_rem = esc_html($rem, -nbsp=>1);
+		$esc_add = esc_html($add, -nbsp=>1);
+	} else {
+		$esc_rem = esc_html_hl_regions($rem, 'marked', [$prefix_len, @rem - $suffix_len], -nbsp=>1);
+		$esc_add = esc_html_hl_regions($add, 'marked', [$prefix_len, @add - $suffix_len], -nbsp=>1);
+	}
+
+	return format_diff_line(\$esc_rem, 'rem'),
+	        format_diff_line(\$esc_add, 'add');
+}
+
+# HTML-format diff context, removed and added lines.
+sub format_ctx_rem_add_lines {
+	my ($ctx, $rem, $add, $is_combined) = @_;
+	my (@new_ctx, @new_rem, @new_add);
+
+	# Highlight if every removed line has a corresponding added line.
+	# Combined diffs are not supported ATM.
+	if (!$is_combined && @$add > 0 && @$add == @$rem) {
+		for (my $i = 0; $i < @$add; $i++) {
+			my ($line_rem, $line_add) = format_rem_add_line(
+			        $rem->[$i], $add->[$i]);
+			push @new_rem, $line_rem;
+			push @new_add, $line_add;
+		}
+	} else {
+		@new_rem = map { format_diff_line($_, 'rem') } @$rem;
+		@new_add = map { format_diff_line($_, 'add') } @$add;
+	}
+
+	@new_ctx = map { format_diff_line($_, 'ctx') } @$ctx;
+
+	return (\@new_ctx, \@new_rem, \@new_add);
+}
+
 # Print context lines and then rem/add lines.
 sub print_diff_lines {
 	my ($ctx, $rem, $add, $diff_style, $is_combined) = @_;
+
+	($ctx, $rem, $add) = format_ctx_rem_add_lines($ctx, $rem, $add,
+		$is_combined);
 
 	if ($diff_style eq 'sidebyside' && !$is_combined) {
 		print_sidebyside_diff_lines($ctx, $rem, $add);
@@ -5089,11 +5159,11 @@ sub print_diff_chunk {
 	foreach my $line_info (@chunk) {
 		my ($class, $line) = @$line_info;
 
-		$line = format_diff_line($line, $class, $from, $to);
+		$line = untabify($line);
 
 		# print chunk headers
 		if ($class && $class eq 'chunk_header') {
-			print $line;
+			print format_diff_line($line, $class, $from, $to);
 			next;
 		}
 
