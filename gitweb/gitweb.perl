@@ -5057,12 +5057,12 @@ sub print_inline_diff_lines {
 # Format removed and added line, mark changed part and HTML-format them.
 # Impementation is based on contrib/diff-highlight
 sub format_rem_add_line {
-	my ($rem, $add) = @_;
+	my ($rem, $add, $num_parents) = @_;
 	my @rem = split(//, $rem);
 	my @add = split(//, $add);
 	my ($esc_rem, $esc_add);
-	# Ignore +/- character, thus $prefix_len is set to 1.
-	my ($prefix_len, $suffix_len) = (1, 0);
+	# Ignore leading +/- characters for each parent.
+	my ($prefix_len, $suffix_len) = ($num_parents, 0);
 	my ($prefix_is_space, $suffix_is_space) = (1, 1);
 
 	while ($prefix_len < @rem && $prefix_len < @add) {
@@ -5084,7 +5084,7 @@ sub format_rem_add_line {
 	# part that isn't whitespace.  If lines are completely different, don't
 	# mark them because that would make output unreadable, especially if
 	# diff consists of multiple lines.
-	if (($prefix_len == 1 && $suffix_len == 0) ||
+	if (($prefix_len == $num_parents && $suffix_len == 0) ||
 	    ($prefix_is_space && $suffix_is_space)) {
 		$esc_rem = esc_html($rem, -nbsp=>1);
 		$esc_add = esc_html($add, -nbsp=>1);
@@ -5099,15 +5099,43 @@ sub format_rem_add_line {
 
 # HTML-format diff context, removed and added lines.
 sub format_ctx_rem_add_lines {
-	my ($ctx, $rem, $add, $is_combined) = @_;
+	my ($ctx, $rem, $add, $num_parents) = @_;
 	my (@new_ctx, @new_rem, @new_add);
+	my $can_highlight = 0;
+	my $is_combined = ($num_parents > 1);
 
 	# Highlight if every removed line has a corresponding added line.
-	# Combined diffs are not supported ATM.
-	if (!$is_combined && @$add > 0 && @$add == @$rem) {
+	if (@$add > 0 && @$add == @$rem) {
+		$can_highlight = 1;
+
+		# Highlight lines in combined diff only if the chunk contains
+		# diff between the same version, e.g.
+		#
+		#    - a
+		#   -  b
+		#    + c
+		#   +  d
+		#
+		# Otherwise the highlightling would be confusing.
+		if ($is_combined) {
+			for (my $i = 0; $i < @$add; $i++) {
+				my $prefix_rem = substr($rem->[$i], 0, $num_parents);
+				my $prefix_add = substr($add->[$i], 0, $num_parents);
+
+				$prefix_rem =~ s/-/+/g;
+
+				if ($prefix_rem ne $prefix_add) {
+					$can_highlight = 0;
+					last;
+				}
+			}
+		}
+	}
+
+	if ($can_highlight) {
 		for (my $i = 0; $i < @$add; $i++) {
 			my ($line_rem, $line_add) = format_rem_add_line(
-			        $rem->[$i], $add->[$i]);
+			        $rem->[$i], $add->[$i], $num_parents);
 			push @new_rem, $line_rem;
 			push @new_add, $line_add;
 		}
@@ -5123,10 +5151,11 @@ sub format_ctx_rem_add_lines {
 
 # Print context lines and then rem/add lines.
 sub print_diff_lines {
-	my ($ctx, $rem, $add, $diff_style, $is_combined) = @_;
+	my ($ctx, $rem, $add, $diff_style, $num_parents) = @_;
+	my $is_combined = $num_parents > 1;
 
 	($ctx, $rem, $add) = format_ctx_rem_add_lines($ctx, $rem, $add,
-		$is_combined);
+		$num_parents);
 
 	if ($diff_style eq 'sidebyside' && !$is_combined) {
 		print_sidebyside_diff_lines($ctx, $rem, $add);
@@ -5137,7 +5166,7 @@ sub print_diff_lines {
 }
 
 sub print_diff_chunk {
-	my ($diff_style, $is_combined, $from, $to, @chunk) = @_;
+	my ($diff_style, $num_parents, $from, $to, @chunk) = @_;
 	my (@ctx, @rem, @add);
 
 	# The class of the previous line. 
@@ -5174,7 +5203,7 @@ sub print_diff_chunk {
 		if (((@rem || @add) && $class eq 'ctx') || !$class ||
 		    (@rem && @add && $class ne $prev_class)) {
 			print_diff_lines(\@ctx, \@rem, \@add, $diff_style,
-					$is_combined);
+					$num_parents);
 			@ctx = @rem = @add = ();
 		}
 
@@ -5317,7 +5346,7 @@ sub git_patchset_body {
 			my $class = diff_line_class($patch_line, \%from, \%to);
 
 			if ($class eq 'chunk_header') {
-				print_diff_chunk($diff_style, $is_combined, \%from, \%to, @chunk);
+				print_diff_chunk($diff_style, scalar @hash_parents, \%from, \%to, @chunk);
 				@chunk = ( [ $class, $patch_line ] );
 			} else {
 				push @chunk, [ $class, $patch_line ];
@@ -5326,7 +5355,7 @@ sub git_patchset_body {
 
 	} continue {
 		if (@chunk) {
-			print_diff_chunk($diff_style, $is_combined, \%from, \%to, @chunk);
+			print_diff_chunk($diff_style, scalar @hash_parents, \%from, \%to, @chunk);
 			@chunk = ();
 		}
 		print "</div>\n"; # class="patch"
