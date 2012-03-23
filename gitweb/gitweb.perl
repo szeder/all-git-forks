@@ -1732,7 +1732,9 @@ sub chop_and_escape_str {
 # '<span class="mark">foo</span>bar'
 sub esc_html_hl_regions {
 	my ($str, $css_class, @sel) = @_;
-	return esc_html($str) unless @sel;
+	my %opts = grep { ref($_) ne 'ARRAY' } @sel;
+	@sel     = grep { ref($_) eq 'ARRAY' } @sel;
+	return esc_html($str, %opts) unless @sel;
 
 	my $out = '';
 	my $pos = 0;
@@ -1741,14 +1743,14 @@ sub esc_html_hl_regions {
 		# Don't craete empty <span> elements.
 		next if $s->[1] <= $s->[0];
 
-		$out .= esc_html(substr($str, $pos, $s->[0] - $pos))
+		$out .= esc_html(substr($str, $pos, $s->[0] - $pos), %opts)
 			if ($s->[0] - $pos > 0);
 		$out .= $cgi->span({-class => $css_class},
-		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0])));
+		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0]), %opts));
 
 		$pos = $s->[1];
 	}
-	$out .= esc_html(substr($str, $pos))
+	$out .= esc_html(substr($str, $pos), %opts)
 		if ($pos < length($str));
 
 	return $out;
