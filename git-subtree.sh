@@ -829,6 +829,7 @@ cmd_from-submodule()
 	git commit -m "Remove '$prefix/' submodule"
 
 	# subtree add from submodule repo.
+	# TODO: Could be determin HEAD to be a specific branch
 	cmd_add_repository $tmp_repo HEAD
 
 	# Update .gittrees with the original repo url
