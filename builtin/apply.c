@@ -152,9 +152,14 @@ struct fragment {
 	unsigned long leading, trailing;
 	unsigned long oldpos, oldlines;
 	unsigned long newpos, newlines;
+	/*
+	 * 'patch' is usually borrowed from buf in apply_patch(),
+	 * but some codepaths store an allocated buffer.
+	 */
 	const char *patch;
+	unsigned free_patch:1,
+		rejected:1;
 	int size;
-	int rejected;
 	int linenr;
 	struct fragment *next;
 };
@@ -195,6 +200,28 @@ struct patch {
 	char new_sha1_prefix[41];
 	struct patch *next;
 };
+
+static void free_patch(struct patch *patch)
+{
+	while (patch) {
+		struct patch *patch_next = patch->next;
+		struct fragment *fragment = patch->fragments;
+
+		while (fragment) {
+			struct fragment *fragment_next = fragment->next;
+			if (fragment->patch != NULL && fragment->free_patch)
+				free((char *)fragment->patch);
+			free(fragment);
+			fragment = fragment_next;
+		}
+		free(patch->def_name);
+		free(patch->old_name);
+		free(patch->new_name);
+		free(patch->result);
+		free(patch);
+		patch = patch_next;
+	}
+}
 
 /*
  * A line in a file, len-bytes long (includes the terminating LF,
@@ -353,7 +380,6 @@ static void say_patch_name(FILE *output, const char *pre,
 	fputs(post, output);
 }
 
-#define CHUNKSIZE (8192)
 #define SLOP (16)
 
 static void read_patch_file(struct strbuf *sb, int fd)
@@ -416,7 +442,7 @@ static char *squash_slash(char *name)
 	return name;
 }
 
-static char *find_name_gnu(const char *line, char *def, int p_value)
+static char *find_name_gnu(const char *line, const char *def, int p_value)
 {
 	struct strbuf name = STRBUF_INIT;
 	char *cp;
@@ -439,11 +465,7 @@ static char *find_name_gnu(const char *line, char *def, int p_value)
 		cp++;
 	}
 
-	/* name can later be freed, so we need
-	 * to memmove, not just return cp
-	 */
 	strbuf_remove(&name, 0, cp - name.buf);
-	free(def);
 	if (root)
 		strbuf_insert(&name, 0, root, root_len);
 	return squash_slash(strbuf_detach(&name, NULL));
@@ -608,8 +630,13 @@ static size_t diff_timestamp_len(const char *line, size_t len)
 	return line + len - end;
 }
 
-static char *find_name_common(const char *line, char *def, int p_value,
-				const char *end, int terminate)
+static char *null_strdup(const char *s)
+{
+	return s ? xstrdup(s) : NULL;
+}
+
+static char *find_name_common(const char *line, const char *def,
+			      int p_value, const char *end, int terminate)
 {
 	int len;
 	const char *start = NULL;
@@ -630,10 +657,10 @@ static char *find_name_common(const char *line, char *def, int p_value,
 			start = line;
 	}
 	if (!start)
-		return squash_slash(def);
+		return squash_slash(null_strdup(def));
 	len = line - start;
 	if (!len)
-		return squash_slash(def);
+		return squash_slash(null_strdup(def));
 
 	/*
 	 * Generally we prefer the shorter name, especially
@@ -644,8 +671,7 @@ static char *find_name_common(const char *line, char *def, int p_value,
 	if (def) {
 		int deflen = strlen(def);
 		if (deflen < len && !strncmp(start, def, deflen))
-			return squash_slash(def);
-		free(def);
+			return squash_slash(xstrdup(def));
 	}
 
 	if (root) {
@@ -842,8 +868,10 @@ static void parse_traditional_patch(const char *first, const char *second, struc
 		name = find_name_traditional(first, NULL, p_value);
 		patch->old_name = name;
 	} else {
-		name = find_name_traditional(first, NULL, p_value);
-		name = find_name_traditional(second, name, p_value);
+		char *first_name;
+		first_name = find_name_traditional(first, NULL, p_value);
+		name = find_name_traditional(second, first_name, p_value);
+		free(first_name);
 		if (has_epoch_timestamp(first)) {
 			patch->is_new = 1;
 			patch->is_delete = 0;
@@ -853,7 +881,8 @@ static void parse_traditional_patch(const char *first, const char *second, struc
 			patch->is_delete = 1;
 			patch->old_name = name;
 		} else {
-			patch->old_name = patch->new_name = name;
+			patch->old_name = name;
+			patch->new_name = xstrdup(name);
 		}
 	}
 	if (!name)
@@ -903,13 +932,19 @@ static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, 
 
 static int gitdiff_oldname(const char *line, struct patch *patch)
 {
+	char *orig = patch->old_name;
 	patch->old_name = gitdiff_verify_name(line, patch->is_new, patch->old_name, "old");
+	if (orig != patch->old_name)
+		free(orig);
 	return 0;
 }
 
 static int gitdiff_newname(const char *line, struct patch *patch)
 {
+	char *orig = patch->new_name;
 	patch->new_name = gitdiff_verify_name(line, patch->is_delete, patch->new_name, "new");
+	if (orig != patch->new_name)
+		free(orig);
 	return 0;
 }
 
@@ -928,20 +963,23 @@ static int gitdiff_newmode(const char *line, struct patch *patch)
 static int gitdiff_delete(const char *line, struct patch *patch)
 {
 	patch->is_delete = 1;
-	patch->old_name = patch->def_name;
+	free(patch->old_name);
+	patch->old_name = null_strdup(patch->def_name);
 	return gitdiff_oldmode(line, patch);
 }
 
 static int gitdiff_newfile(const char *line, struct patch *patch)
 {
 	patch->is_new = 1;
-	patch->new_name = patch->def_name;
+	free(patch->new_name);
+	patch->new_name = null_strdup(patch->def_name);
 	return gitdiff_newmode(line, patch);
 }
 
 static int gitdiff_copysrc(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
+	free(patch->old_name);
 	patch->old_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
@@ -949,6 +987,7 @@ static int gitdiff_copysrc(const char *line, struct patch *patch)
 static int gitdiff_copydst(const char *line, struct patch *patch)
 {
 	patch->is_copy = 1;
+	free(patch->new_name);
 	patch->new_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
@@ -956,6 +995,7 @@ static int gitdiff_copydst(const char *line, struct patch *patch)
 static int gitdiff_renamesrc(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
+	free(patch->old_name);
 	patch->old_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
@@ -963,6 +1003,7 @@ static int gitdiff_renamesrc(const char *line, struct patch *patch)
 static int gitdiff_renamedst(const char *line, struct patch *patch)
 {
 	patch->is_rename = 1;
+	free(patch->new_name);
 	patch->new_name = find_name(line, NULL, p_value ? p_value - 1 : 0, 0);
 	return 0;
 }
@@ -1044,7 +1085,7 @@ static const char *stop_at_slash(const char *line, int llen)
  * creation or deletion of an empty file.  In any of these cases,
  * both sides are the same name under a/ and b/ respectively.
  */
-static char *git_header_name(char *line, int llen)
+static char *git_header_name(const char *line, int llen)
 {
 	const char *name;
 	const char *second = NULL;
@@ -1171,7 +1212,7 @@ static char *git_header_name(char *line, int llen)
 }
 
 /* Verify that we recognize the lines following a git header */
-static int parse_git_header(char *line, int len, unsigned int size, struct patch *patch)
+static int parse_git_header(const char *line, int len, unsigned int size, struct patch *patch)
 {
 	unsigned long offset;
 
@@ -1287,7 +1328,7 @@ static int parse_range(const char *line, int len, int offset, const char *expect
 	return offset + ex;
 }
 
-static void recount_diff(char *line, int size, struct fragment *fragment)
+static void recount_diff(const char *line, int size, struct fragment *fragment)
 {
 	int oldlines = 0, newlines = 0, ret = 0;
 
@@ -1341,7 +1382,7 @@ static void recount_diff(char *line, int size, struct fragment *fragment)
  * Parse a unified diff fragment header of the
  * form "@@ -a,b +c,d @@"
  */
-static int parse_fragment_header(char *line, int len, struct fragment *fragment)
+static int parse_fragment_header(const char *line, int len, struct fragment *fragment)
 {
 	int offset;
 
@@ -1355,7 +1396,7 @@ static int parse_fragment_header(char *line, int len, struct fragment *fragment)
 	return offset;
 }
 
-static int find_header(char *line, unsigned long size, int *hdrsize, struct patch *patch)
+static int find_header(const char *line, unsigned long size, int *hdrsize, struct patch *patch)
 {
 	unsigned long offset, len;
 
@@ -1403,7 +1444,8 @@ static int find_header(char *line, unsigned long size, int *hdrsize, struct patc
 				if (!patch->def_name)
 					die("git diff header lacks filename information when removing "
 					    "%d leading pathname components (line %d)" , p_value, linenr);
-				patch->old_name = patch->new_name = patch->def_name;
+				patch->old_name = xstrdup(patch->def_name);
+				patch->new_name = xstrdup(patch->def_name);
 			}
 			if (!patch->is_delete && !patch->new_name)
 				die("git diff header lacks filename information "
@@ -1466,7 +1508,7 @@ static void check_whitespace(const char *line, int len, unsigned ws_rule)
  * between a "---" that is part of a patch, and a "---" that starts
  * the next patch is to look at the line counts..
  */
-static int parse_fragment(char *line, unsigned long size,
+static int parse_fragment(const char *line, unsigned long size,
 			  struct patch *patch, struct fragment *fragment)
 {
 	int added, deleted;
@@ -1562,7 +1604,7 @@ static int parse_fragment(char *line, unsigned long size,
 	return offset;
 }
 
-static int parse_single_patch(char *line, unsigned long size, struct patch *patch)
+static int parse_single_patch(const char *line, unsigned long size, struct patch *patch)
 {
 	unsigned long offset = 0;
 	unsigned long oldlines = 0, newlines = 0, context = 0;
@@ -1742,6 +1784,7 @@ static struct fragment *parse_binary_hunk(char **buf_p,
 
 	frag = xcalloc(1, sizeof(*frag));
 	frag->patch = inflate_it(data, hunk_size, origlen);
+	frag->free_patch = 1;
 	if (!frag->patch)
 		goto corrupt;
 	free(data);
@@ -3085,6 +3128,7 @@ static int check_preimage(struct patch *patch, struct cache_entry **ce, struct s
  is_new:
 	patch->is_new = 1;
 	patch->is_delete = 0;
+	free(patch->old_name);
 	patch->old_name = NULL;
 	return 0;
 }
@@ -3665,15 +3709,8 @@ static void prefix_patches(struct patch *p)
 	if (!prefix || p->is_toplevel_relative)
 		return;
 	for ( ; p; p = p->next) {
-		if (p->new_name == p->old_name) {
-			char *prefixed = p->new_name;
-			prefix_one(&prefixed);
-			p->new_name = p->old_name = prefixed;
-		}
-		else {
-			prefix_one(&p->new_name);
-			prefix_one(&p->old_name);
-		}
+		prefix_one(&p->new_name);
+		prefix_one(&p->old_name);
 	}
 }
 
@@ -3683,11 +3720,10 @@ static void prefix_patches(struct patch *p)
 static int apply_patch(int fd, const char *filename, int options)
 {
 	size_t offset;
-	struct strbuf buf = STRBUF_INIT;
+	struct strbuf buf = STRBUF_INIT; /* owns the patch text */
 	struct patch *list = NULL, **listp = &list;
 	int skipped_patch = 0;
 
-	/* FIXME - memory leak when using multiple patch files as inputs */
 	memset(&fn_table, 0, sizeof(struct string_list));
 	patch_input_file = filename;
 	read_patch_file(&buf, fd);
@@ -3712,8 +3748,7 @@ static int apply_patch(int fd, const char *filename, int options)
 			listp = &patch->next;
 		}
 		else {
-			/* perhaps free it a bit better? */
-			free(patch);
+			free_patch(patch);
 			skipped_patch++;
 		}
 		offset += nr;
@@ -3754,6 +3789,7 @@ static int apply_patch(int fd, const char *filename, int options)
 	if (summary)
 		summary_patch_list(list);
 
+	free_patch(list);
 	strbuf_release(&buf);
 	return 0;
 }
