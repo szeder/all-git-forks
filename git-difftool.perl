@@ -14,7 +14,7 @@
 use 5.008;
 use strict;
 use warnings;
-use File::Basename qw(dirname);
+use File::Basename qw(dirname basename);
 use File::Copy;
 use File::stat;
 use File::Path qw(mkpath);
@@ -28,7 +28,7 @@ sub usage
 {
 	my $exitcode = shift;
 	print << 'USAGE';
-usage: git difftool [-t|--tool=<tool>]
+usage: git difftool [-t|--tool=<tool>] [--tool-help]
                     [-x|--extcmd=<cmd>]
                     [-g|--gui] [--no-gui]
                     [--prompt] [-y|--no-prompt]
@@ -36,6 +36,36 @@ usage: git difftool [-t|--tool=<tool>]
                     ['git diff' options]
 USAGE
 	exit($exitcode);
+}
+
+sub print_tool_help
+{
+	my ($cmd, @found, @notfound);
+	my $gitpath = Git::exec_path();
+
+	for (glob "$gitpath/mergetools/*") {
+		my $tool = basename($_);
+		next if ($tool eq "defaults");
+
+		$cmd  = '. "$(git --exec-path)/git-mergetool--lib"';
+		$cmd .= " && get_merge_tool_path $tool >/dev/null 2>&1";
+		if (system('sh', '-c', $cmd) == 0) {
+			push(@found, $tool);
+		} else {
+			push(@notfound, $tool);
+		}
+	}
+
+	print "'git difftool --tool=<tool>' may be set to one of the following:\n";
+	print "\t$_\n" for (@found);
+
+	print "\nThe following tools are valid, but not currently available:\n";
+	print "\t$_\n" for (@notfound);
+
+	print "\nNOTE: Some of the tools listed above only work in a windowed\n";
+	print "environment. If run in a terminal-only session, they will fail.\n";
+
+	exit(0);
 }
 
 sub setup_dir_diff
@@ -132,17 +162,21 @@ sub setup_dir_diff
 
 # parse command-line options. all unrecognized options and arguments
 # are passed through to the 'git diff' command.
-my ($difftool_cmd, $dirdiff, $extcmd, $gui, $help, $prompt);
+my ($difftool_cmd, $dirdiff, $extcmd, $gui, $help, $prompt, $tool_help);
 GetOptions('g|gui!' => \$gui,
 	'd|dir-diff' => \$dirdiff,
 	'h' => \$help,
 	'prompt!' => \$prompt,
 	'y' => sub { $prompt = 0; },
 	't|tool:s' => \$difftool_cmd,
+	'tool-help' => \$tool_help,
 	'x|extcmd:s' => \$extcmd);
 
 if (defined($help)) {
 	usage(0);
+}
+if (defined($tool_help)) {
+	print_tool_help();
 }
 if (defined($difftool_cmd)) {
 	if (length($difftool_cmd) > 0) {
