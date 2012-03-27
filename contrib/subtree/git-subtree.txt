@@ -92,12 +92,18 @@ pull::
 	Exactly like 'merge', but parallels 'git pull' in that
 	it fetches the given commit from the specified remote
 	repository.
-	
+
+pull-all::
+	Perform a pull operation on all in .gittrees registered subtrees.
+
 push::
 	Does a 'split' (see below) using the <prefix> supplied
 	and then does a 'git push' to push the result to the 
 	repository and refspec. This can be used to push your
 	subtree to different branches of the remote repository.
+
+push-all::
+	Perform a pull operation on all in .gittrees registered subtrees.
 
 split::
 	Extract a new, synthetic project history from the
