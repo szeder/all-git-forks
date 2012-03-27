@@ -15,6 +15,7 @@ SYNOPSIS
 'git subtree' pull-all
 'git subtree' push-all
 'git subtree' push  --prefix=<prefix> [<repository> [<refspec>...]]
+'git subtree' list
 'git subtree' split --prefix=<prefix> <commit...>
 'git subtree' from-submodule --prefix=<prefix>
 'git subtree' prune
@@ -107,6 +108,9 @@ push::
 
 push-all::
 	Perform a pull operation on all in .gittrees registered subtrees.
+
+list::
+	Show a list of the in .gittrees registered subtrees
 
 split::
 	Extract a new, synthetic project history from the
