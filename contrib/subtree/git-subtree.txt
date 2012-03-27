@@ -129,6 +129,16 @@ split::
 	Note that if you use '--squash' when you merge, you
 	should usually not just '--rejoin' when you split.
 
+from-submodule::
+	Convert a git submodule to a subtree.
+	The module is removed from the .gitmodules file and
+	the repo contents are integrated as a subtree.
+
+prune::
+	Cleanup .gittrees entries for which the subtree nolonger exists.
+
+diff::
+	TO BE DOCUMENTED
 
 OPTIONS
 -------
