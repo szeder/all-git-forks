@@ -30,14 +30,30 @@ var jsExceptionsRe = /[;?]js=[01](#.*)?$/;
  * @globals jsExceptionsRe
  */
 function fixLinks() {
-	var allLinks = document.getElementsByTagName("a") || document.links;
+/*	var allLinks = document.getElementsByTagName("a") || document.links;
 	for (var i = 0, len = allLinks.length; i < len; i++) {
 		var link = allLinks[i];
 		if (!jsExceptionsRe.test(link)) {
 			link.href = link.href.replace(/(#|$)/,
 				(link.href.indexOf('?') === -1 ? '?' : ';') + 'js=1$1');
 		}
-	}
+}*/
+		
+		$(document).delegate("document.links","click",function(event){
+		             
+		        if(!jsExceptionRe.test(event.targetElement.href())){
+				$(event.targetElement).attr("href") = this.href.replace("/(#|$)/,
+				(link.href.indexOf('?')=== -1 ? '?' : ';') + 'js=1$1');
+			
+			
+			}
+		
+		
+		
+		});
+
+
+
 }
 
 /* end of javascript-detection.js */
