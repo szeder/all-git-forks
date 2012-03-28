@@ -1,3 +1,10 @@
+git (1:1.7.9.5-1.1) unstable; urgency=low
+
+  * debian/control: package git: Suggests: gettext-base, which is
+    used if present to translate output from shell scripts.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 28 Mar 2012 11:27:05 -0500
+
 git (1:1.7.9.5-1) unstable; urgency=low
 
   * new upstream point release.
