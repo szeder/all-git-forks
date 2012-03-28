@@ -496,7 +496,7 @@ static void execv_dashed_external(const char **argv)
 	 * OK to return. Otherwise, we just pass along the status code.
 	 */
 	status = run_command_v_opt(argv, RUN_SILENT_EXEC_FAILURE | RUN_CLEAN_ON_EXIT);
-	if (status >= 0 || errno != ENOENT)
+	if (status >= 0 || (errno != ENOENT && errno != EACCES))
 		exit(status);
 
 	argv[0] = tmp;
@@ -586,14 +586,16 @@ int main(int argc, const char **argv)
 		static int done_help = 0;
 		static int was_alias = 0;
 		was_alias = run_argv(&argc, &argv);
-		if (errno != ENOENT)
-			break;
-		if (was_alias) {
+		if (was_alias && (errno == ENOENT || errno == EACCES)) {
 			fprintf(stderr, "Expansion of alias '%s' failed; "
-				"'%s' is not a git command\n",
-				cmd, argv[0]);
+				"'%s'%s\n", cmd, argv[0],
+				errno == ENOENT ?
+				  " is not a git command" :
+				  ": Permission denied");
 			exit(1);
 		}
+		if (errno != ENOENT)
+			break;
 		if (!done_help) {
 			cmd = argv[0] = help_unknown_cmd(cmd);
 			done_help = 1;

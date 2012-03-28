@@ -185,6 +185,10 @@ static int wait_or_whine(pid_t pid, const char *argv0, int silent_exec_failure)
 			code = -1;
 			failed_errno = ENOENT;
 		}
+		else if (code == 126) {
+			code = -1;
+			failed_errno = EACCES;
+		}
 	} else {
 		error("waitpid is confused (%s)", argv0);
 	}
@@ -346,6 +350,11 @@ fail_pipe:
 				error("cannot run %s: %s", cmd->argv[0],
 					strerror(ENOENT));
 			exit(127);
+		} else if (errno == EACCES) {
+			if (!cmd->silent_exec_failure)
+				error("cannot run %s: %s", cmd->argv[0],
+					strerror(errno));
+			exit(126);
 		} else {
 			die_errno("cannot exec '%s'", cmd->argv[0]);
 		}
