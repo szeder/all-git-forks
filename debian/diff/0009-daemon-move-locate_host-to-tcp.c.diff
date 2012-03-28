@@ -1,7 +1,7 @@
-From 33c488bf367a41c095d06776f4dec431068434ec Mon Sep 17 00:00:00 2001
+From 6e214d563e4680678494655eae29b3ab53e3a1b4 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: daemon: move locate_host() to tcp.c
+Subject: [PATCH] daemon: move locate_host() to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -9,9 +9,9 @@ can learn from each other and perhaps share code in the future.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |    2 +-
- daemon.c |   66 ++------------------------------------------------------------
+ daemon.c |   66 +------------------------------------------------------------
  tcp.c    |   57 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- tcp.h    |    3 +++
+ tcp.h    |    3 ++
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.9.2
+1.7.9.1
 

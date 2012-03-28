@@ -1,7 +1,7 @@
-From 4764adbb2dc51b503983fa92916884bdb22d7fae Mon Sep 17 00:00:00 2001
+From a1df2267f5f08acb4f7b11dba64cafb83f4fbad2 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
-Subject: pre-rebase hook: capture documentation in a <<here document
+Subject: [PATCH] pre-rebase hook: capture documentation in a <<here document
 
 Without this change, the sample hook does not pass a syntax check
 (sh -n):
@@ -14,7 +14,7 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 Improved-by: Junio C Hamano <gitster@pobox.com>
 ---
  templates/hooks--pre-rebase.sample |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/templates/hooks--pre-rebase.sample b/templates/hooks--pre-rebase.sample
 index 053f111..b7f81c1 100755
@@ -38,5 +38,5 @@ index 053f111..b7f81c1 100755
 +
 +DOC_END
 -- 
-1.7.9.2
+1.7.9.1
 

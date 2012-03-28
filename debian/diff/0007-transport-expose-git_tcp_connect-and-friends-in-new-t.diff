@@ -1,7 +1,7 @@
-From 548bdfec46015e1efbc2653f838f45fd066077a1 Mon Sep 17 00:00:00 2001
+From bb5f474f24277d8f66def2601909084c0e8cfc6f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: transport: expose git_tcp_connect() and friends in new tcp.h
+Subject: [PATCH] transport: expose git_tcp_connect() and friends in new tcp.h
 
 Split off a new tcp.c with the functions git_tcp_connect() and
 git_proxy_connect() that resolve and connect to a host.
@@ -13,7 +13,7 @@ library easier to understand before adding to it.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |    2 +
- connect.c |  277 +-----------------------------------------------------------
+ connect.c |  277 +------------------------------------------------------------
  tcp.c     |  278 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |    8 ++
  4 files changed, 289 insertions(+), 276 deletions(-)
@@ -634,5 +634,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.9.2
+1.7.9.1
 

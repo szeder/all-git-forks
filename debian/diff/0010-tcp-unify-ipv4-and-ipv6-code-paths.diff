@@ -1,7 +1,7 @@
-From e5f3253b0ed87e427c57598292cc1129b5d2b30d Mon Sep 17 00:00:00 2001
+From e3836105f72a560def31c78714e8839a985c341b Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH] tcp: unify ipv4 and ipv6 code paths
 
 In order to support old ipv4- and current mixed ipv4/ipv6 systems, git
 code that makes use of DNS facilities currently involves implementing
@@ -87,7 +87,7 @@ Improved-by: Erik Faye-Lund <kusmabite@gmail.com>
  dns-ipv4.h |   74 ++++++++++++++++++++++++
  dns-ipv6.c |   49 ++++++++++++++++
  dns-ipv6.h |   32 +++++++++++
- tcp.c      |  182 +++++++++++-------------------------------------------------
+ tcp.c      |  182 ++++++++++-------------------------------------------------
  6 files changed, 227 insertions(+), 151 deletions(-)
  create mode 100644 dns-ipv4.c
  create mode 100644 dns-ipv4.h
@@ -366,12 +366,12 @@ index 9263e0d..4239daf 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
+-
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
--
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,
@@ -570,5 +570,5 @@ index 9263e0d..4239daf 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.9.2
+1.7.9.1
 

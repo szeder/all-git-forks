@@ -1,8 +1,8 @@
-From 283ae39bdf0000feeabef99d7db517eb27808c88 Mon Sep 17 00:00:00 2001
+From ffa89573bf84037596053d9267351b1ca745e1bf Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 7 Oct 2011 04:06:02 -0500
-Subject: post-receive-email: defend against non-utf8 i18n.logoutputencoding
- setting
+Subject: [PATCH] post-receive-email: defend against non-utf8
+ i18n.logoutputencoding setting
 
 The post-receive-email example hook includes a description of the
 repository taken from $GIT_DIR/description in the emails it sends.
@@ -22,7 +22,7 @@ Helped-by: Johannes Sixt <j6t@kdbg.org>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  contrib/hooks/post-receive-email |   12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/contrib/hooks/post-receive-email b/contrib/hooks/post-receive-email
 index dc184d0..b59e03c 100755
@@ -79,5 +79,5 @@ index dc184d0..b59e03c 100755
  }
  
 -- 
-1.7.9.2
+1.7.9.1
 

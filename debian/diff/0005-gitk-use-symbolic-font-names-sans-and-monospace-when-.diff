@@ -1,7 +1,8 @@
-From ee96657607d3bc6ae2f55e0137bf4b6b623471b4 Mon Sep 17 00:00:00 2001
+From 5ad1efb9073e8663ca65f8d862f65c3c98769a60 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Sun, 24 Oct 2010 21:12:42 -0500
-Subject: gitk: use symbolic font names "sans" and "monospace" when available
+Subject: [PATCH] gitk: use symbolic font names "sans" and "monospace" when
+ available
 
 The following only concerns systems using X and the client-side font
 rendering framework from freedesktop.org.  Windows and Mac OS X are
@@ -30,7 +31,7 @@ Reviewed-by: Josh Triplett <josh@joshtriplett.org>
 Acked-by: Mark Hills <mark@pogo.org.uk>
 ---
  gitk-git/gitk |    5 +++++
- 1 file changed, 5 insertions(+)
+ 1 files changed, 5 insertions(+), 0 deletions(-)
 
 diff --git a/gitk-git/gitk b/gitk-git/gitk
 index 64ef3c4..6981cb2 100755
@@ -49,5 +50,5 @@ index 64ef3c4..6981cb2 100755
      set mainfont {Helvetica 9}
      set textfont {Courier 9}
 -- 
-1.7.9.2
+1.7.9.1
 
