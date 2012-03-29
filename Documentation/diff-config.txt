@@ -71,6 +71,10 @@ diff.ignoreSubmodules::
 	commands such as 'git diff-files'. 'git checkout' also honors
 	this setting when reporting uncommitted changes.
 
+diff.minimal::
+	If set, 'git diff' spends extra time to make sure the smallest
+	possible diff is produced.
+
 diff.mnemonicprefix::
 	If set, 'git diff' uses a prefix pair that is different from the
 	standard "a/" and "b/" depending on what is being compared.  When

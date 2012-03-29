@@ -47,7 +47,9 @@ endif::git-format-patch[]
 
 --minimal::
 	Spend extra time to make sure the smallest possible
-	diff is produced.
+	diff is produced. The default is controlled by the
+	`diff.minimal` configuration variable (see
+	linkgit:git-config[1]).
 
 --patience::
 	Generate a diff using the "patience diff" algorithm.

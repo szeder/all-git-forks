@@ -2096,6 +2096,7 @@ _git_config ()
 		diff.statGraphWidth
 		diff.external
 		diff.ignoreSubmodules
+		diff.minimal
 		diff.mnemonicprefix
 		diff.noprefix
 		diff.renameLimit

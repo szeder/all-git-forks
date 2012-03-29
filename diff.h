@@ -118,6 +118,7 @@ struct diff_options {
 	int rename_score;
 	int rename_limit;
 	int needed_rename_limit;
+	int minimal;
 	int degraded_cc_to_c;
 	int show_rename_progress;
 	int dirstat_permille;

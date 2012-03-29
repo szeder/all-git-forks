@@ -29,6 +29,7 @@ int diff_use_color_default = -1;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
 int diff_auto_refresh_index = 1;
+static int diff_minimal;
 static int diff_mnemonic_prefix;
 static int diff_no_prefix;
 static int diff_stat_graph_width;
@@ -155,6 +156,10 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "diff.noprefix")) {
 		diff_no_prefix = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "diff.minimal")) {
+		diff_minimal = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "diff.statgraphwidth")) {
@@ -3141,6 +3146,7 @@ void diff_setup(struct diff_options *options)
 	options->add_remove = diff_addremove;
 	options->use_color = diff_use_color_default;
 	options->detect_rename = diff_detect_rename_default;
+	options->minimal = diff_minimal;
 
 	if (diff_no_prefix) {
 		options->a_prefix = options->b_prefix = "";
