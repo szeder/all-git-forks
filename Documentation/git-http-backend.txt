@@ -42,6 +42,10 @@ http.getanyfile::
 	It is enabled by default, but a repository can disable it
 	by setting this configuration item to `false`.
 
+http.remoteuser::
+	This setting, if present, changes what environment variable is inspected
+	to determine the remote user (the default is "REMOTE_USER").
+
 http.uploadpack::
 	This serves 'git fetch-pack' and 'git ls-remote' clients.
 	It is enabled by default, but a repository can disable it
@@ -175,10 +179,12 @@ The GIT_HTTP_EXPORT_ALL environmental variable may be passed to
 'git-http-backend' to bypass the check for the "git-daemon-export-ok"
 file in each repository before allowing export of that repository.
 
-The backend process sets GIT_COMMITTER_NAME to '$REMOTE_USER' and
+The backend process sets GIT_COMMITTER_NAME to '$REMOTE_USER' (or
+if http.remoteuser is set it sets it to $\{http.remoteuser\}) and
 GIT_COMMITTER_EMAIL to '$\{REMOTE_USER}@http.$\{REMOTE_ADDR\}',
-ensuring that any reflogs created by 'git-receive-pack' contain some
-identifying information of the remote user who performed the push.
+ensuring that any reflogs created by 'git-receive-pack' contain
+some identifying information of the remote user who performed the
+push.
 
 All CGI environment variables are available to each of the hooks
 invoked by the 'git-receive-pack'.

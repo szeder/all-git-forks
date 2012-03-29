@@ -11,6 +11,7 @@
 static const char content_type[] = "Content-Type";
 static const char content_length[] = "Content-Length";
 static const char last_modified[] = "Last-Modified";
+static char *remoteuser = "REMOTE_USER";
 static int getanyfile = 1;
 
 static struct string_list *query_params;
@@ -225,6 +226,14 @@ static int http_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if(!strcmp(var, "http.remoteuser")) {
+		char *tmp;
+		if(git_config_string(&tmp, var, value) == 0) {
+			remoteuser = tmp;
+		}
+		return 0;
+	}
+
 	if (!prefixcmp(var, "http.")) {
 		int i;
 
@@ -261,7 +270,7 @@ static struct rpc_service *select_service(const char *name)
 		forbidden("Unsupported service: '%s'", name);
 
 	if (svc->enabled < 0) {
-		const char *user = getenv("REMOTE_USER");
+		const char *user = getenv(remoteuser);
 		svc->enabled = (user && *user) ? 1 : 0;
 	}
 	if (!svc->enabled)
@@ -315,7 +324,7 @@ done:
 static void run_service(const char **argv)
 {
 	const char *encoding = getenv("HTTP_CONTENT_ENCODING");
-	const char *user = getenv("REMOTE_USER");
+	const char *user = getenv(remoteuser);
 	const char *host = getenv("REMOTE_ADDR");
 	char *env[3];
 	struct strbuf buf = STRBUF_INIT;
