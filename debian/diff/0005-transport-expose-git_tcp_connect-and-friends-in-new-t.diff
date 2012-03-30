@@ -1,7 +1,7 @@
-From bb5f474f24277d8f66def2601909084c0e8cfc6f Mon Sep 17 00:00:00 2001
+From df298320d6a09edd07a6c2d2711e25f8bd6f1a15 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:37:14 -0500
-Subject: [PATCH] transport: expose git_tcp_connect() and friends in new tcp.h
+Subject: transport: expose git_tcp_connect() and friends in new tcp.h
 
 Split off a new tcp.c with the functions git_tcp_connect() and
 git_proxy_connect() that resolve and connect to a host.
@@ -13,7 +13,7 @@ library easier to understand before adding to it.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile  |    2 +
- connect.c |  277 +------------------------------------------------------------
+ connect.c |  277 +-----------------------------------------------------------
  tcp.c     |  278 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
  tcp.h     |    8 ++
  4 files changed, 289 insertions(+), 276 deletions(-)
@@ -21,10 +21,10 @@ Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
  create mode 100644 tcp.h
 
 diff --git a/Makefile b/Makefile
-index e4f8e0e..0d0ac31 100644
+index be1957a..44bb7da 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -736,6 +736,7 @@ LIB_OBJS += string-list.o
+@@ -741,6 +741,7 @@ LIB_OBJS += string-list.o
  LIB_OBJS += submodule.o
  LIB_OBJS += symlinks.o
  LIB_OBJS += tag.o
@@ -32,7 +32,7 @@ index e4f8e0e..0d0ac31 100644
  LIB_OBJS += trace.o
  LIB_OBJS += transport.o
  LIB_OBJS += transport-helper.o
-@@ -2148,6 +2149,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2167,6 +2168,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
@@ -634,5 +634,5 @@ index 0000000..4de5f71
 +
 +#endif
 -- 
-1.7.9.1
+1.7.10.rc1
 

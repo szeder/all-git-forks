@@ -1,3 +1,458 @@
+Version v1.7.10-rc3; changes since v1.7.10-rc2:
+-----------------------------------------------
+
+Frédéric Brière (1):
+      gitk: Skip over AUTHOR/COMMIT_DATE when searching all fields
+
+Jiang Xin (4):
+      l10n: Update git.pot (1 new message)
+      l10n: Update zh_CN translation for Git 1.7.10-rc1
+      l10n: Review zh_CN translation for Git 1.7.10-rc1
+      Add url of Swedish l10n team in TEAMS file
+
+Jim Meyering (3):
+      gitk: Make "git describe" output clickable, too
+      correct spelling: an URL -> a URL
+      correct a few doubled-word nits in comments and documentation
+
+Jonathan Nieder (1):
+      gitk: Use symbolic font names "sans" and "monospace" when available
+
+Junio C Hamano (3):
+      Git 1.7.9.5
+      Update draft release notes to 1.7.10
+      Git 1.7.10-rc3
+
+Marcus Karlsson (1):
+      gitk: Teach gitk to respect log.showroot
+
+Mark Lodato (1):
+      grep doc: add --break / --heading / -W to synopsis
+
+Nelson Benitez Leon (1):
+      documentation: fix alphabetic ordered list for git-rebase man page
+
+Pat Thoyts (2):
+      gitk: Use a tabbed dialog to edit preferences
+      gitk: Fix the display of files when filtered by path
+
+Paul Mackerras (2):
+      gitk: Speed up resolution of short SHA1 ids
+      gitk: Add menu items for comparing a commit with the marked commit
+
+Peter Krefting (1):
+      Update Swedish translation (724t0f0u).
+
+Rodrigo Silva (MestreLion) (1):
+      Documentation: improve description of GIT_EDITOR and preference order
+
+Zbigniew Jędrzejewski-Szmek (2):
+      gitk: Use "gitk: repo-top-level-dir" as window title
+      tests: unset COLUMNS inherited from environment
+
+
+Version v1.7.10-rc2; changes since v1.7.10-rc1:
+-----------------------------------------------
+
+Alex Merry (1):
+      contrib/completion: "local var=()" is misinterpreted as func-decl by zsh
+
+D Waitzman (1):
+      Documentation/gitweb: trivial English fixes
+
+Jonathan Nieder (2):
+      fast-import: leakfix for 'ls' of dirty trees
+      fast-import: don't allow 'ls' of path with empty components
+
+Junio C Hamano (4):
+      fetch/receive: remove over-pessimistic connectivity check
+      Update draft release notes to 1.7.10
+      .mailmap: unify various old mail addresses of gitster
+      Git 1.7.10-rc2
+
+Stefano Lattarini (1):
+      configure: allow user to prevent $PATH "sanitization" on Solaris
+
+Tim Henigan (7):
+      Documentation/diff-options: reword description of --submodule option
+      contrib/diffall: comment actual reason for 'cdup'
+      contrib/diffall: create tmp dirs without mktemp
+      contrib/diffall: eliminate use of tar
+      contrib/diffall: eliminate duplicate while loops
+      contrib/diffall: fix cleanup trap on Windows
+      Documentation/difftool: add deltawalker to list of valid diff tools
+
+Ævar Arnfjörð Bjarmason (2):
+      Git::I18N: compatibility with perl <5.8.3
+      perl/Makefile: install Git::I18N under NO_PERL_MAKEMAKER
+
+
+Version v1.7.10-rc1; changes since v1.7.10-rc0:
+-----------------------------------------------
+
+Alex Zepeda (1):
+      verify-tag: Parse GPG configuration options.
+
+Jakub Narebski (1):
+      gitweb: Fix fixed string (non-regexp) project search
+
+Jens Lehmann (3):
+      submodules: always use a relative path to gitdir
+      submodules: always use a relative path from gitdir to work tree
+      submodules: refactor computation of relative gitdir path
+
+Jiang Xin (3):
+      l10n: Update zh_CN translation for 1.7.9.2
+      l10n: Update git.pot (1 new message)
+      l10n: Update zh_CN translation for 1.7.10-rc0
+
+Johannes Sixt (1):
+      submodules: fix ambiguous absolute paths under Windows
+
+Junio C Hamano (7):
+      Update draft release notes to 1.7.10
+      t0204: clarify the "observe undefined behaviour" test
+      i18n: fix auto detection of gettext scheme for shell scripts
+      Git 1.7.9.4
+      Update draft release notes to 1.7.10 before -rc1
+      am: officially deprecate -b/--binary option
+      Git 1.7.10-rc1
+
+Karsten Blees (1):
+      fix deletion of .git/objects sub-directories in git-prune/repack
+
+Martin Stenberg (1):
+      config: report errors at the EOL with correct line number
+
+Peter Krefting (2):
+      po/sv.po: add Swedish translation
+      Update Swedish translation (732t0f0u).
+
+Phil Hord (1):
+      rerere: Document 'rerere remaining'
+
+Thomas Rast (4):
+      perf: load test-lib-functions from the correct directory
+      perf: export some important test-lib variables
+      p4000: use -3000 when promising -3000
+      git-am: error out when seeing -b/--binary
+
+Thynson (7):
+      l10n: Improve zh_CN translation for lines insertion and deletion.
+      l10n: Improve zh_CN translation for msg about branch deletion deny
+      l10n: Improve zh_CN translation for empty cherry-pick msg.
+      l10n: Improve zh_CN translation for msg that make empty commit when amend.
+      l10n: Improve commit msg for zh_CN translation
+      l10n: Improve zh_CN trans for msg that cannot fast-forward
+      l10n: Improve zh_CN translation for msg "not something we can merge"
+
+Vincent van Ravesteijn (3):
+      Documentation/git-branch: cleanups
+      Documentation/git-branch: fix a typo
+      Documentation/git-branch: add default for --contains
+
+
+Version v1.7.10-rc0; changes since v1.7.9.5:
+--------------------------------------------
+
+Adrian Weimann (1):
+      completion: --edit and --no-edit for git-merge
+
+Alex Riesen (1):
+      add a Makefile switch to avoid gettext translation in shell scripts
+
+Bernhard R. Link (6):
+      gitweb: move hard coded .git suffix out of git_get_projects_list
+      gitweb: prepare git_get_projects_list for use outside 'forks'.
+      gitweb: add project_filter to limit project list to a subdirectory
+      gitweb: limit links to alternate forms of project_list to active project_filter
+      gitweb: show active project_filter in project_list page header
+      gitweb: place links to parent directories in page header
+
+Carlos Martín Nieto (1):
+      Make git-{pull,rebase} message without tracking information friendlier
+
+Clemens Buchacher (3):
+      git-daemon: add tests
+      git-daemon: produce output when ready
+      git-daemon tests: wait until daemon is ready
+
+David Barr (9):
+      vcs-svn: set up channel to read fast-import cat-blob response
+      vcs-svn: quote paths correctly for ls command
+      vcs-svn: use mark from previous import for parent commit
+      vcs-svn: pass paths through to fast-import
+      vcs-svn: drop string_pool
+      vcs-svn: drop treap
+      vcs-svn: drop obj_pool
+      vcs-svn: avoid using ls command twice
+      vcs-svn: implement text-delta handling
+
+Dmitry Ivankov (2):
+      vcs-svn: do not initialize report_buffer twice
+      vcs-svn: reset first_commit_done in fast_export_init
+
+Felipe Contreras (4):
+      remote: use a local variable in match_push_refs()
+      remote: reorganize check_pattern_match()
+      remote: refactor code into alloc_delete_ref()
+      push: add '--prune' option
+
+Frederic Heitzmann (1):
+      completion: add --interactive option to git svn dcommit
+
+Jakub Narebski (11):
+      gitweb: improve usability of projects search form
+      gitweb: Make project search respect project_filter
+      gitweb: Harden and improve $project_filter page title
+      gitweb: Refactor checking if part of project info need filling
+      gitweb: Option for filling only specified info in fill_project_list_info
+      gitweb: Faster project search
+      gitweb: Introduce esc_html_match_hl and esc_html_hl_regions
+      gitweb: Highlight matched part of project name when searching projects
+      gitweb: Highlight matched part of project description when searching projects
+      gitweb: Highlight matched part of shortened project description
+      gitweb: Fix passing parameters to git_project_search_form
+
+Jan Krüger (1):
+      symbolic-ref --short: abbreviate the output unambiguously
+
+Jared Hance (1):
+      Add threaded versions of functions in symlinks.c.
+
+Jeff King (20):
+      parse_object: try internal cache before reading object db
+      upload-pack: avoid parsing objects during ref advertisement
+      upload-pack: avoid parsing tag destinations
+      t0300: use write_script helper
+      docs: add a basic description of the config API
+      drop odd return value semantics from userdiff_config
+      diff-highlight: make perl strict and warnings fatal
+      diff-highlight: don't highlight whole lines
+      diff-highlight: refactor to prepare for multi-line hunks
+      diff-highlight: match multi-line hunks
+      diff-highlight: document some non-optimal cases
+      docs/api-config: minor clarifications
+      t1300: add missing &&-chaining
+      config: copy the return value of prefix_filename
+      config: teach git_config_set_multivar_in_file a default path
+      config: teach git_config_rename_section a file argument
+      config: provide a version of git_config with more options
+      config: stop using config_exclusive_filename
+      config: eliminate config_exclusive_filename
+      config: add include directive
+
+Jehan Bing (1):
+      Add a setting to require a filter to be successful
+
+Jens Lehmann (1):
+      test-lib: add the test_pause convenience function
+
+Jiang Xin (5):
+      l10n: initial git.pot for 1.7.10 upcoming release
+      l10n: po for zh_CN
+      l10n: Update git.pot (12 new messages)
+      l10n: update Chinese translation to the new git.po
+      Update l10n guide: change the repository URL, etc
+
+Jonathan Nieder (23):
+      vcs-svn: use higher mark numbers for blobs
+      vcs-svn: save marks for imported commits
+      vcs-svn: add a comment before each commit
+      vcs-svn: eliminate repo_tree structure
+      vcs-svn: handle filenames with dq correctly
+      Makefile: list one vcs-svn/xdiff object or header per line
+      vcs-svn: learn to maintain a sliding view of a file
+      vcs-svn: make buffer_read_binary API more convenient
+      vcs-svn: skeleton of an svn delta parser
+      vcs-svn: parse svndiff0 window header
+      vcs-svn: read the preimage when applying deltas
+      vcs-svn: read inline data from deltas
+      vcs-svn: read instructions from deltas
+      vcs-svn: implement copyfrom_data delta instruction
+      vcs-svn: verify that deltas consume all inline data
+      vcs-svn: let deltas use data from postimage
+      vcs-svn: let deltas use data from preimage
+      test-svn-fe: split off "test-svn-fe -d" into a separate function
+      vcs-svn: cap number of bytes read from sliding view
+      vcs-svn: guard against overflow when computing preimage length
+      vcs-svn: avoid hangs from corrupt deltas
+      vcs-svn: allow import of > 4GiB files
+      vcs-svn: suppress a -Wtype-limits warning
+
+Junio C Hamano (28):
+      git-sh-i18n: restructure the logic to compute gettext.sh scheme
+      i18n: Make NO_GETTEXT imply fallthrough scheme in shell l10n
+      merge: use editor by default in interactive sessions
+      push: do not let configured foreign-vcs permanently clobbered
+      t9801: do not overuse test_must_fail
+      i18n: Do not force USE_GETTEXT_SCHEME=fallthrough on NO_GETTEXT
+      vcs-svn/svndiff.c: squelch false "unused" warning from gcc
+      Kick off the post 1.7.9 cycle
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      t9100: remove bogus " || test" after each test scriptlet
+      merge: do not trust fstat(2) too much when checking interactiveness
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      grep: use static trans-case table
+      fsck: --no-dangling omits "dangling object" information
+      pickaxe: allow -i to search in patch case-insensitively
+      Update l10n guide
+      diff --stat: tests for long filenames and big change counts
+      Update draft release notes to 1.7.10
+      Update draft release notes to 1.7.10
+      fsck doc: a minor typofix
+      Git 1.7.10-rc0
+
+Linus Torvalds (1):
+      "git pull" doesn't know "--edit"
+
+Luke Diamand (6):
+      git-p4: handle p4 branches and labels containing shell chars
+      git-p4: cope with labels with empty descriptions
+      git-p4: importing labels should cope with missing owner
+      git-p4: add test for p4 labels
+      git-p4: label import fails with multiple labels at the same changelist
+      git-p4: add initial support for RCS keywords
+
+Michael Haggerty (11):
+      pack_refs(): remove redundant check
+      ref_array: keep track of whether references are sorted
+      add_packed_ref(): new function in the refs API.
+      write_remote_refs(): create packed (rather than extra) refs
+      t5700: document a failure of alternates to affect fetch
+      clone.c: move more code into the "if (refs)" conditional
+      fetch-pack.c: rename some parameters from "path" to "refname"
+      fetch-pack.c: inline insert_alternate_refs()
+      everything_local(): mark alternate refs as complete
+      clone: do not add alternate references to extra_refs
+      refs: remove the extra_refs API
+
+Michał Kiedrowicz (2):
+      pack-objects: Fix compilation with NO_PTHREDS
+      grep -P: add tests for matching ^ and $
+
+Nelson Benitez Leon (1):
+      http: support proxies that require authentication
+
+Nguyễn Thái Ngọc Duy (20):
+      clone: add --single-branch to fetch only one branch
+      Fix incorrect ref namespace check
+      Eliminate recursion in setting/clearing marks in commit list
+      index-pack: eliminate recursion in find_unresolved_deltas
+      index-pack: eliminate unlimited recursion in get_base_data()
+      t5601: add missing && cascade
+      clone: write detached HEAD in bare repositories
+      clone: factor out checkout code
+      clone: factor out HEAD update code
+      clone: factor out remote ref writing
+      clone: delay cloning until after remote HEAD checking
+      clone: --branch=<branch> always means refs/heads/<branch>
+      clone: refuse to clone if --branch points to bogus ref
+      clone: allow --branch to take a tag
+      clone: print advice on checking out detached HEAD
+      clone: fix up delay cloning conditions
+      pack-objects: do not accept "--index-version=version,"
+      pack-objects: remove bogus comment
+      pack-objects: convert to use parse_options()
+      cache-tree: update API to take abitrary flags
+
+Pete Wyckoff (6):
+      git-p4: only a single ... wildcard is supported
+      git-p4: fix verbose comment typo
+      git-p4: clarify comment
+      git-p4: adjust test to adhere to stricter useClientSpec
+      git-p4: add tests demonstrating spec overlay ambiguities
+      git-p4: Change p4 command invocation
+
+Phil Hord (1):
+      cherry-pick: No advice to commit if --no-commit
+
+Philip Jägenstedt (2):
+      completion: remote set-* <name> and <branch>
+      completion: normalize increment/decrement style
+
+Ramkumar Ramachandra (2):
+      revert: prepare to move replay_action to header
+      sequencer: factor code out of revert builtin
+
+Ramsay Allan Jones (3):
+      vcs-svn: rename check_overflow arguments for clarity
+      builtin/tag.c: Fix a sparse warning
+      ctype.c: Fix a sparse warning
+
+René Scharfe (5):
+      xdiff: print post-image for common records instead of pre-image
+      test-parse-options: convert to OPT_BOOL()
+      parse-options: allow positivation of options starting, with no-
+      parse-options: remove PARSE_OPT_NEGHELP
+      parse-options: typo check for unknown switches
+
+Riku (1):
+      l10n: update zh_CN translation for "Fetching %s"
+
+Russell Myers (1):
+      git-p4: the option to specify 'host' is -H, not -h
+
+Stefano Lattarini (1):
+      t0000: modernise style
+
+Steven Walter (2):
+      git-svn.perl: perform deletions before anything else
+      git-svn.perl: fix a false-positive in the "already exists" test
+
+Thomas Rast (6):
+      am: learn passing -b to mailinfo
+      mailinfo: with -b, keep space after [foo]
+      Move the user-facing test library to test-lib-functions.sh
+      Introduce a performance testing framework
+      Add a performance test for git-grep
+      perf: compare diff algorithms
+
+Tim Henigan (2):
+      contrib: add git-diffall script
+      mergetools: add a plug-in to support DeltaWalker
+
+Tom Grennan (1):
+      tag: add --points-at list option
+
+Vitor Antunes (2):
+      git-p4: Search for parent commit on branch creation
+      git-p4: Add test case for complex branch import
+
+Wei-Yin Chen (陳威尹) (1):
+      git-svn: Fix time zone in --localtime
+
+Yichao Yu (1):
+      l10n: fast-forward here is ff-only merge, not push
+
+Zbigniew Jędrzejewski-Szmek (11):
+      make lineno_width() from blame reusable for others
+      send-email: document the --smtp-debug option
+      git-p4: missing she-bang line in t9804 confuses prove
+      diff --stat: use the full terminal width
+      show --stat: use the full terminal width
+      log --stat: use the full terminal width
+      merge --stat: use the full terminal width
+      diff --stat: use a maximum of 5/8 for the filename part
+      diff --stat: add a test for output with COLUMNS=40
+      diff --stat: enable limiting of the graph part
+      diff --stat: add config option to limit graph width
+
+ws3389 (1):
+      l10n: leave leading space unchanged for zh_CN.po
+
+Ævar Arnfjörð Bjarmason (2):
+      git-svn: remove redundant porcelain option to rev-list
+      git-svn: un-break "git svn rebase" when log.abbrevCommit=true
+
+
 Version v1.7.9.5; changes since v1.7.9.4:
 -----------------------------------------
 
@@ -12181,7 +12636,8 @@ Johannes Sixt (4):
       builtin-help: silently tolerate unknown keys
       remote.c: do not trigger remote.<name>.<var> codepath for two-level names
 
-Junio C Hamano (8):
+Junio C Hamano (9):
+      Speed up reflog pruning of unreachable commits
       GIT 1.6.2.4
       read-tree A B: do not corrupt cache-tree
       Move prime_cache_tree() to cache-tree.c
@@ -12190,9 +12646,6 @@ Junio C Hamano (8):
       Revert "stat_tracking_info(): only count real commits"
       Makefile: ignore perl/ subdirectory under NO_PERL
       GIT 1.6.3-rc2
-
-Junio Hamano (1):
-      Speed up reflog pruning of unreachable commits
 
 Linus Torvalds (1):
       Clean up reflog unreachability pruning decision
@@ -12656,7 +13109,7 @@ John Tapsell (4):
       Improve error message for git-filter-branch
       Documentation - More examples for git bisect
 
-Junio C Hamano (28):
+Junio C Hamano (29):
       git-blame: refactor code to emit "porcelain format" output
       blame: show "previous" information in --porcelain/--incremental format
       Make git-clone respect branch.autosetuprebase
@@ -12681,13 +13134,11 @@ Junio C Hamano (28):
       strbuf_check_branch_ref(): a helper to check a refname for a branch
       check_ref_format(): tighten refname rules
       Update draft release notes to 1.6.3
+      Speed up reflog pruning of unreachable commits
       Update draft release notes to 1.6.3
       sha1-lookup: fix up the assertion message
       Update draft release notes to 1.6.3
       GIT 1.6.3-rc0
-
-Junio Hamano (1):
-      Speed up reflog pruning of unreachable commits
 
 Keith Cascio (2):
       Use DIFF_XDL_SET/DIFF_OPT_SET instead of raw bit-masking
@@ -12963,13 +13414,11 @@ Johannes Schindelin (1):
 Johannes Sixt (1):
       t1301-shared-repo: fix forced modes test
 
-Junio C Hamano (3):
+Junio C Hamano (4):
       match_tree_entry(): a pathspec only matches at directory boundaries
       Describe fixes since 1.6.2.3
-      GIT 1.6.2.4
-
-Junio Hamano (1):
       Speed up reflog pruning of unreachable commits
+      GIT 1.6.2.4
 
 Linus Torvalds (1):
       Clean up reflog unreachability pruning decision
@@ -20180,11 +20629,12 @@ Johannes Sixt (4):
       Clean up documentation that references deprecated 'git peek-remote'.
       filter-branch: Remove broken and unnecessary summary of rewritten refs.
 
-Junio C Hamano (17):
+Junio C Hamano (18):
       git-commit: squelch needless message during an empty merge
       xdl_diff: identify call sites.
       xdi_diff: trim common trailing lines
       diff --check: minor fixups
+      Add tests for "git diff --check" with core.whitespace options
       xdiff tail trimming: use correct type.
       commit: allow --amend to reuse message from another commit
       remote: Fix bogus make_branch() call in configuration reader.
@@ -20248,11 +20698,10 @@ Shawn O. Pearce (2):
       Avoid update hook during git-rebase --interactive
       Catch and handle git-commit failures in git-rebase --interactive
 
-Wincent Colaiuta (6):
+Wincent Colaiuta (5):
       "diff --check" should affect exit status
       Unify whitespace checking
       Make "diff --check" output match "git apply"
-      Add tests for "git diff --check" with core.whitespace options
       Use shorter error messages for whitespace problems
       Test interaction between diff --check and --exit-code
 

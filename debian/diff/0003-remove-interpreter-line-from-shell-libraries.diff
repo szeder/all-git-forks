@@ -1,7 +1,7 @@
-From 2c5e78aa12f4b938933c1d20ce9fb5633a9545d6 Mon Sep 17 00:00:00 2001
+From acecec32c2c2d319c17cd5697083040c7acc84a0 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
-Subject: [PATCH] remove #!interpreter line from shell libraries
+Subject: remove #!interpreter line from shell libraries
 
 In a shell snippet meant to be sourced by another shell script,
 an initial #!/bin/sh line is just a comment and has no effect on
@@ -60,7 +60,7 @@ index ed630b2..7a0f499 100644
  	test "$TOOL_MODE" = diff
  }
 diff --git a/git-parse-remote.sh b/git-parse-remote.sh
-index b24119d..739ff77 100644
+index 484b2e6..10cae3f 100644
 --- a/git-parse-remote.sh
 +++ b/git-parse-remote.sh
 @@ -1,4 +1,6 @@
@@ -114,7 +114,7 @@ index dc59907..0fa0e49 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-sh-i18n.sh b/git-sh-i18n.sh
-index b4575fb..eff20a0 100644
+index 6a27f68..e6c3116 100644
 --- a/git-sh-i18n.sh
 +++ b/git-sh-i18n.sh
 @@ -1,9 +1,8 @@
@@ -147,10 +147,10 @@ index 5d8e4e6..51362d6 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index c0d04c4..b398988 100644
+index b7d7100..3f3512c 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
-@@ -936,11 +936,9 @@ then
+@@ -420,11 +420,9 @@ then
  
  	make_valgrind_symlink () {
  		# handle only executables, unless they are shell libraries that
@@ -165,5 +165,5 @@ index c0d04c4..b398988 100644
  
  		base=$(basename "$1")
 -- 
-1.7.9.1
+1.7.10.rc1
 

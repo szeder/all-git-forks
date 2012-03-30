@@ -1,7 +1,7 @@
-From 6e214d563e4680678494655eae29b3ab53e3a1b4 Mon Sep 17 00:00:00 2001
+From 106727e08ee2b0d80411cf5fddb3871a5c78dc7a Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: [PATCH] daemon: move locate_host() to tcp.c
+Subject: daemon: move locate_host() to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -9,16 +9,16 @@ can learn from each other and perhaps share code in the future.
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |    2 +-
- daemon.c |   66 +------------------------------------------------------------
+ daemon.c |   66 ++------------------------------------------------------------
  tcp.c    |   57 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- tcp.h    |    3 ++
+ tcp.h    |    3 +++
  4 files changed, 63 insertions(+), 65 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 0d0ac31..927a079 100644
+index 44bb7da..f166579 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -2149,7 +2149,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
+@@ -2168,7 +2168,7 @@ builtin/prune.o builtin/reflog.o reachable.o: reachable.h
  builtin/commit.o builtin/revert.o wt-status.o: wt-status.h
  builtin/tar-tree.o archive-tar.o: tar.h
  connect.o transport.o url.o http-backend.o: url.h
@@ -28,7 +28,7 @@ index 0d0ac31..927a079 100644
  http.o http-walker.o http-push.o http-fetch.o remote-curl.o: http.h url.h
  
 diff --git a/daemon.c b/daemon.c
-index 2a9dfea..3736fe5 100644
+index 93356d6..fe8883f 100644
 --- a/daemon.c
 +++ b/daemon.c
 @@ -1,14 +1,11 @@
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.9.1
+1.7.10.rc1
 

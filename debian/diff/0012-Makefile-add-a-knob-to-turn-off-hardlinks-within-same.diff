@@ -1,8 +1,7 @@
-From 70b1c15c204b4e496246cb44c03ee55b3b228eca Mon Sep 17 00:00:00 2001
+From f8414ad2cbe15b786fe88ab754698503a665285f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Wed, 12 Oct 2011 03:38:42 -0500
-Subject: [PATCH] Makefile: add a knob to turn off hardlinks within same
- directory
+Subject: Makefile: add a knob to turn off hardlinks within same directory
 
 The git builtins in $(gitexecdir) are implemented as hard links to a
 single git binary by default, so even the overhead of symlink
@@ -40,13 +39,13 @@ Requested-by: Bastian Blank <waldi@debian.org>
 Signed-off-by: Jonathan Nieder <jrnieder@gmail.com>
 ---
  Makefile |    7 +++++++
- 1 files changed, 7 insertions(+), 0 deletions(-)
+ 1 file changed, 7 insertions(+)
 
 diff --git a/Makefile b/Makefile
-index 56198f1..9a0ddd3 100644
+index 9bb9469..39dc605 100644
 --- a/Makefile
 +++ b/Makefile
-@@ -248,6 +248,10 @@ all::
+@@ -251,6 +251,10 @@ all::
  # Define NO_CROSS_DIRECTORY_HARDLINKS if you plan to distribute the installed
  # programs as a tar, where bin/ and libexec/ might be on different file systems.
  #
@@ -57,7 +56,7 @@ index 56198f1..9a0ddd3 100644
  # Define USE_NED_ALLOCATOR if you want to replace the platforms default
  # memory allocators with the nedmalloc allocator written by Niall Douglas.
  #
-@@ -2506,12 +2510,14 @@ endif
+@@ -2552,12 +2556,14 @@ endif
  	} && \
  	for p in $(filter $(install_bindir_programs),$(BUILT_INS)); do \
  		$(RM) "$$bindir/$$p" && \
@@ -72,7 +71,7 @@ index 56198f1..9a0ddd3 100644
  		ln "$$execdir/git$X" "$$execdir/$$p" 2>/dev/null || \
  		ln -s "git$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git$X" "$$execdir/$$p" || exit; \
-@@ -2519,6 +2525,7 @@ endif
+@@ -2565,6 +2571,7 @@ endif
  	remote_curl_aliases="$(REMOTE_CURL_ALIASES)" && \
  	for p in $$remote_curl_aliases; do \
  		$(RM) "$$execdir/$$p" && \
@@ -81,5 +80,5 @@ index 56198f1..9a0ddd3 100644
  		ln -s "git-remote-http$X" "$$execdir/$$p" 2>/dev/null || \
  		cp "$$execdir/git-remote-http$X" "$$execdir/$$p" || exit; \
 -- 
-1.7.9.1
+1.7.10.rc1
 

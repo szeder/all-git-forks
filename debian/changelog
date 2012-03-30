@@ -1,5 +1,16 @@
-git (1:1.7.9.5-1.1) unstable; urgency=low
+git (1:1.7.10~rc3-0.1) experimental; urgency=low
 
+  * new upstream release candidate.
+    * merge: use editor by default in interactive sessions
+    * submodules: use relative paths to git dir and worktree.
+    * fast-import: reject "ls" of path with empty components.
+    * cli: add Chinese and Swedish translations.
+    * am: officially deprecate -b/--binary option.
+  * debian/diff:
+    * 0005-gitk-use-symbolic-font-names-sans-and-monospace-when-.diff,
+      0006-gitk-Skip-over-AUTHOR-COMMIT_DATE-when-searching-all-.diff:
+      remove; applied upstream.
+    * 0007...0014: rename to 0005-*, ... 0012-*.
   * debian/control: package git: Suggests: gettext-base, which is
     used if present to translate output from shell scripts.
 
