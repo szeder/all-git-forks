@@ -9,8 +9,8 @@ repositories.  This package provides the git-daemon program, to enable a
 git-daemon service, configure inetd(8) to launch it on demand, or install the
 git-daemon-run package to run it permanently:
  cat >> /etc/inetd.conf <<EOF
-git stream tcp4 nowait nobody /usr/bin/git git daemon --inetd --base-path=/srv/git
-git stream tcp6 nowait nobody /usr/bin/git git daemon --inetd --base-path=/srv/git
+git stream tcp4 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/cache /var/cache/git
+git stream tcp6 nowait nobody /usr/bin/git git daemon --inetd --base-path=/var/cache /var/cache/git
 EOF
 
 Or:

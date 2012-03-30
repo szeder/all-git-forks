@@ -11,6 +11,8 @@ git (1:1.7.10~rc3-0.1) experimental; urgency=low
       0006-gitk-Skip-over-AUTHOR-COMMIT_DATE-when-searching-all-.diff:
       remove; applied upstream.
     * 0007...0014: rename to 0005-*, ... 0012-*.
+  * debian/git.README.Debian: make paths in inetd(8) hint
+    consistent with git-daemon-run and git-daemon-sysvinit setup.
   * debian/control: package git: Suggests: gettext-base, which is
     used if present to translate output from shell scripts.
 
