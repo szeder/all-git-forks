@@ -25,15 +25,15 @@ q             quiet
 d             show debug messages
 P,prefix=     the name of the subdir to split out
 m,message=    use the given message as the commit message for the merge commit
-options for 'split'
+ options for 'split'
 annotate=     add a prefix to commit message of new commits
 b,branch=     create a new branch from the split subtree
 ignore-joins  ignore prior --rejoin commits
 onto=         try connecting new tree to an existing one
 rejoin        merge the new branch back into HEAD
-options for 'push'
+ options for 'push'
 f,force       use force push
-options for 'add', 'merge', 'pull' and 'push'
+ options for 'add', 'merge', 'pull' and 'push'
 squash        merge subtree changes as a single commit
 "
 eval "$(echo "$OPTS_SPEC" | git rev-parse --parseopt -- "$@" || echo exit $?)"
