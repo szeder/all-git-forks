@@ -632,10 +632,9 @@ static int fetch_git(struct discovery *heads,
 	struct rpc_state rpc;
 	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
-	const char **argv;
 	int argc = 0, i, err;
+	const char *argv[15];
 
-	argv = xmalloc((15 + nr_heads) * sizeof(char*));
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
 	argv[argc++] = "--stdin";
@@ -678,7 +677,6 @@ static int fetch_git(struct discovery *heads,
 		safe_write(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
 	strbuf_release(&preamble);
-	free(argv);
 	free(depth_arg);
 	return err;
 }
