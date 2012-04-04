@@ -1738,12 +1738,14 @@ sub esc_html_hl_regions {
 	my $pos = 0;
 
 	for my $s (@sel) {
-		$out .= esc_html(substr($str, $pos, $s->[0] - $pos))
-			if ($s->[0] - $pos > 0);
-		$out .= $cgi->span({-class => $css_class},
-		                   esc_html(substr($str, $s->[0], $s->[1] - $s->[0])));
+		my ($beg, $end) = @$s;
 
-		$pos = $s->[1];
+		$out .= esc_html(substr($str, $pos, $beg - $pos))
+			if ($beg - $pos > 0);
+		$out .= $cgi->span({-class => $css_class},
+		                   esc_html(substr($str, $beg, $end - $beg)));
+
+		$pos = $end;
 	}
 	$out .= esc_html(substr($str, $pos))
 		if ($pos < length($str));
