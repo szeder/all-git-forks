@@ -5047,9 +5047,31 @@ sub print_sidebyside_diff_lines {
 	}
 }
 
-sub print_sidebyside_diff_chunk {
-	my @chunk = @_;
+# Print context lines and then rem/add lines in inline manner.
+sub print_inline_diff_lines {
+	my ($ctx, $rem, $add) = @_;
+
+	print @$ctx, @$rem, @$add;
+}
+
+# Print context lines and then rem/add lines.
+sub print_diff_lines {
+	my ($ctx, $rem, $add, $diff_style, $is_combined) = @_;
+
+	if ($diff_style eq 'sidebyside' && !$is_combined) {
+		print_sidebyside_diff_lines($ctx, $rem, $add);
+	} else {
+		# default 'inline' style and unknown styles
+		print_inline_diff_lines($ctx, $rem, $add);
+	}
+}
+
+sub print_diff_chunk {
+	my ($diff_style, $is_combined, @chunk) = @_;
 	my (@ctx, @rem, @add);
+
+	# The class of the previous line.
+	my $prev_class = '';
 
 	return unless @chunk;
 
@@ -5074,9 +5096,13 @@ sub print_sidebyside_diff_chunk {
 		}
 
 		## print from accumulator when have some add/rem lines or end
-		# of chunk (flush context lines)
-		if (((@rem || @add) && $class eq 'ctx') || !$class) {
-			print_sidebyside_diff_lines(\@ctx, \@rem, \@add);
+		# of chunk (flush context lines), or when have add and rem
+		# lines and new block is reached (otherwise add/rem lines could
+		# be reordered)
+		if (((@rem || @add) && $class eq 'ctx') || !$class ||
+		    (@rem && @add && $class ne $prev_class)) {
+			print_diff_lines(\@ctx, \@rem, \@add,
+		                         $diff_style, $is_combined);
 			@ctx = @rem = @add = ();
 		}
 
@@ -5093,6 +5119,8 @@ sub print_sidebyside_diff_chunk {
 		if ($class eq 'ctx') {
 			push @ctx, $line;
 		}
+
+		$prev_class = $class;
 	}
 }
 
@@ -5219,22 +5247,17 @@ sub git_patchset_body {
 			$diff_classes .= " $class" if ($class);
 			$line = "<div class=\"$diff_classes\">$line</div>\n";
 
-			if ($diff_style eq 'sidebyside' && !$is_combined) {
-				if ($class eq 'chunk_header') {
-					print_sidebyside_diff_chunk(@chunk);
-					@chunk = ( [ $class, $line ] );
-				} else {
-					push @chunk, [ $class, $line ];
-				}
-			} else {
-				# default 'inline' style and unknown styles
-				print $line;
+			if ($class eq 'chunk_header') {
+				print_diff_chunk($diff_style, $is_combined, @chunk);
+				@chunk = ();
 			}
+
+			push @chunk, [ $class, $line ];
 		}
 
 	} continue {
 		if (@chunk) {
-			print_sidebyside_diff_chunk(@chunk);
+			print_diff_chunk($diff_style, $is_combined, @chunk);
 			@chunk = ();
 		}
 		print "</div>\n"; # class="patch"
