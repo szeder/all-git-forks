@@ -45,7 +45,7 @@ static int read_one_entry_quick(const unsigned char *sha1, const char *base, int
 				  ADD_CACHE_JUST_APPEND);
 }
 
-static int read_tree_1(struct tree *tree, struct strbuf *base,
+static int read_tree_1(const unsigned char *tree_sha1, struct strbuf *base,
 		       int stage, struct pathspec *pathspec,
 		       read_tree_fn_t fn, void *context)
 {
@@ -54,11 +54,15 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 	unsigned char sha1[20];
 	int len, oldlen = base->len;
 	enum interesting retval = entry_not_interesting;
+	void *buffer;
+	unsigned long size;
+	enum object_type type;
 
-	if (parse_tree(tree))
+	buffer = read_sha1_file(tree_sha1, &type, &size);
+	if (!buffer)
 		return -1;
 
-	init_tree_desc(&desc, tree->buffer, tree->size);
+	init_tree_desc(&desc, buffer, size);
 
 	while (tree_entry(&desc, &entry)) {
 		if (retval != all_entries_interesting) {
@@ -103,13 +107,14 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 		len = tree_entry_len(&entry);
 		strbuf_add(base, entry.path, len);
 		strbuf_addch(base, '/');
-		retval = read_tree_1(lookup_tree(sha1),
+		retval = read_tree_1(sha1,
 				     base, stage, pathspec,
 				     fn, context);
 		strbuf_setlen(base, oldlen);
 		if (retval)
 			return -1;
 	}
+	free(buffer);
 	return 0;
 }
 
@@ -122,7 +127,7 @@ int read_tree_recursive(struct tree *tree,
 	int ret;
 
 	strbuf_add(&sb, base, baselen);
-	ret = read_tree_1(tree, &sb, stage, pathspec, fn, context);
+	ret = read_tree_1(tree->object.sha1, &sb, stage, pathspec, fn, context);
 	strbuf_release(&sb);
 	return ret;
 }
