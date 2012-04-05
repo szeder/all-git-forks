@@ -22,8 +22,8 @@ local RIGHTC=$'%{\e[1;34m%}' #ターミナル.app 用
 #local LEFTC=$'%{\e[38;5;30m%}'
 #local RIGHTC=$'%{\e[38;5;88m%}'
 local DEFAULTC=$'%{\e[m%}'
-PROMPT=$LEFTC"%U$USER@$HOST%%%u "$DEFAULTC
-export RPROMPT=$RIGHTC"[%~]"$DEFAULTC
+PROMPT=$LEFTC"%U%%%u "$DEFAULTC
+export RPROMPT=$RIGHTC"[$USER@$HOST:%~]"$DEFAULTC
 PROMPT2="%_%% "
 SPROMPT="%r is correct? [n,y,a,e]: "
 
