@@ -46,13 +46,16 @@ static const char rev_list_usage[] =
 "    --bisect-all"
 ;
 
+static enum object_type filter_type = OBJ_NONE;
+
 static void finish_commit(struct commit *commit, void *data);
 static void show_commit(struct commit *commit, void *data)
 {
 	struct rev_list_info *info = data;
 	struct rev_info *revs = info->revs;
 
-	if (info->flags & REV_LIST_QUIET) {
+	if (info->flags & REV_LIST_QUIET ||
+	    (filter_type != OBJ_NONE && filter_type != OBJ_COMMIT)) {
 		finish_commit(commit, data);
 		return;
 	}
@@ -190,7 +193,8 @@ static void show_object(struct object *obj,
 {
 	struct rev_list_info *info = cb_data;
 	finish_object(obj, path, component, cb_data);
-	if (info->flags & REV_LIST_QUIET)
+	if (info->flags & REV_LIST_QUIET ||
+	    (filter_type != OBJ_NONE && obj->type != filter_type))
 		return;
 	show_object_with_name(stdout, obj, path, component);
 }
@@ -351,6 +355,10 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 		if (!strcmp(arg, "--bisect-vars")) {
 			bisect_list = 1;
 			bisect_show_vars = 1;
+			continue;
+		}
+		if (!prefixcmp(arg, "--object-type=")) {
+			filter_type = type_from_string(arg + 14);
 			continue;
 		}
 		usage(rev_list_usage);
