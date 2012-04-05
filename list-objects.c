@@ -65,6 +65,44 @@ static void process_tree(struct rev_info *revs,
 			 struct name_path *path,
 			 struct strbuf *base,
 			 const char *name,
+			 void *cb_data);
+static int process_one_tree(int *match, struct name_entry *entry,
+			    struct strbuf *base, struct rev_info *revs,
+			    show_object_fn show, struct name_path *me,
+			    void *cb_data)
+{
+	if (*match != all_entries_interesting) {
+		*match = tree_entry_interesting(entry, base, 0,
+					       &revs->diffopt.pathspec);
+		if (*match == all_entries_not_interesting)
+			return -1;
+		if (*match == entry_not_interesting)
+			return 0;
+	}
+
+	if (S_ISDIR(entry->mode))
+		process_tree(revs,
+			     lookup_tree(entry->sha1),
+			     show, me, base, entry->path,
+			     cb_data);
+	else if (S_ISGITLINK(entry->mode))
+		process_gitlink(revs, entry->sha1,
+				show, me, entry->path,
+				cb_data);
+	else
+		process_blob(revs,
+			     lookup_blob(entry->sha1),
+			     show, me, entry->path,
+			     cb_data);
+	return 0;
+}
+
+static void process_tree(struct rev_info *revs,
+			 struct tree *tree,
+			 show_object_fn show,
+			 struct name_path *path,
+			 struct strbuf *base,
+			 const char *name,
 			 void *cb_data)
 {
 	struct object *obj = &tree->object;
@@ -98,29 +136,9 @@ static void process_tree(struct rev_info *revs,
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
 	while (tree_entry(&desc, &entry)) {
-		if (match != all_entries_interesting) {
-			match = tree_entry_interesting(&entry, base, 0,
-						       &revs->diffopt.pathspec);
-			if (match == all_entries_not_interesting)
-				break;
-			if (match == entry_not_interesting)
-				continue;
-		}
-
-		if (S_ISDIR(entry.mode))
-			process_tree(revs,
-				     lookup_tree(entry.sha1),
-				     show, &me, base, entry.path,
-				     cb_data);
-		else if (S_ISGITLINK(entry.mode))
-			process_gitlink(revs, entry.sha1,
-					show, &me, entry.path,
-					cb_data);
-		else
-			process_blob(revs,
-				     lookup_blob(entry.sha1),
-				     show, &me, entry.path,
-				     cb_data);
+		if (process_one_tree(&match, &entry, base, revs,
+				     show, &me, cb_data))
+			break;
 	}
 	strbuf_setlen(base, baselen);
 	free(tree->buffer);
