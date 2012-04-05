@@ -132,8 +132,10 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 			die("Cannot read object %s", obj_name);
 		if (type == OBJ_TAG) {
 			pprint_tag(sha1, buf, size);
+			free(buf);
 			return 0;
 		}
+		free(buf);
 
 		/* otherwise just spit out the data */
 		break;
