@@ -298,7 +298,7 @@ static int get_files_dirs(struct merge_options *o, struct tree *tree)
 	int n;
 	struct pathspec match_all;
 	init_pathspec(&match_all, NULL);
-	if (read_tree_recursive(tree, "", 0, 0, &match_all, save_files_dirs, o))
+	if (read_tree_recursive(tree->object.sha1, "", 0, 0, &match_all, save_files_dirs, o))
 		return 0;
 	n = o->current_file_set.nr + o->current_directory_set.nr;
 	return n;

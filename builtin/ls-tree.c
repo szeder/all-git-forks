@@ -119,7 +119,6 @@ static int show_tree(const unsigned char *sha1, const char *base, int baselen,
 int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 {
 	unsigned char sha1[20];
-	struct tree *tree;
 	int i, full_tree = 0;
 	const struct option ls_tree_options[] = {
 		OPT_BIT('d', NULL, &ls_options, "only show trees",
@@ -170,8 +169,5 @@ int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < pathspec.nr; i++)
 		pathspec.items[i].use_wildcard = 0;
 	pathspec.has_wildcard = 0;
-	tree = parse_tree_indirect(sha1);
-	if (!tree)
-		die("not a tree object");
-	return !!read_tree_recursive(tree, "", 0, 0, &pathspec, show_tree, NULL);
+	return !!read_tree_recursive(sha1, "", 0, 0, &pathspec, show_tree, NULL);
 }

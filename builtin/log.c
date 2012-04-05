@@ -489,7 +489,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 					diff_get_color_opt(&rev.diffopt, DIFF_COMMIT),
 					name,
 					diff_get_color_opt(&rev.diffopt, DIFF_RESET));
-			read_tree_recursive((struct tree *)o, "", 0, 0, &match_all,
+			read_tree_recursive(o->sha1, "", 0, 0, &match_all,
 					show_tree_object, NULL);
 			rev.shown_one = 1;
 			break;

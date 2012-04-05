@@ -192,7 +192,7 @@ int write_archive_entries(struct archiver_args *args,
 	}
 
 	init_pathspec(&pathspec, args->pathspec);
-	err = read_tree_recursive(args->tree, "", 0, 0, &pathspec,
+	err = read_tree_recursive(args->tree->object.sha1, "", 0, 0, &pathspec,
 				  write_archive_entry, &context);
 	free_pathspec(&pathspec);
 	if (err == READ_TREE_RECURSIVE)
@@ -228,7 +228,7 @@ static int path_exists(struct tree *tree, const char *path)
 	int ret;
 
 	init_pathspec(&pathspec, paths);
-	ret = read_tree_recursive(tree, "", 0, 0, &pathspec, reject_entry, NULL);
+	ret = read_tree_recursive(tree->object.sha1, "", 0, 0, &pathspec, reject_entry, NULL);
 	free_pathspec(&pathspec);
 	return ret != 0;
 }

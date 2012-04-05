@@ -60,7 +60,9 @@ static int read_tree_1(const unsigned char *tree_sha1, struct strbuf *base,
 
 	buffer = read_sha1_file(tree_sha1, &type, &size);
 	if (!buffer)
-		return -1;
+		return error("failed to read tree %s", sha1_to_hex(tree_sha1));
+	if (type != OBJ_TREE)
+		return error("%s is not a tree", sha1_to_hex(tree_sha1));
 
 	init_tree_desc(&desc, buffer, size);
 
@@ -80,6 +82,7 @@ static int read_tree_1(const unsigned char *tree_sha1, struct strbuf *base,
 		case READ_TREE_RECURSIVE:
 			break;
 		default:
+			free(buffer);
 			return -1;
 		}
 
@@ -111,14 +114,16 @@ static int read_tree_1(const unsigned char *tree_sha1, struct strbuf *base,
 				     base, stage, pathspec,
 				     fn, context);
 		strbuf_setlen(base, oldlen);
-		if (retval)
+		if (retval) {
+			free(buffer);
 			return -1;
+		}
 	}
 	free(buffer);
 	return 0;
 }
 
-int read_tree_recursive(struct tree *tree,
+int read_tree_recursive(const unsigned char *sha1,
 			const char *base, int baselen,
 			int stage, struct pathspec *pathspec,
 			read_tree_fn_t fn, void *context)
@@ -127,7 +132,7 @@ int read_tree_recursive(struct tree *tree,
 	int ret;
 
 	strbuf_add(&sb, base, baselen);
-	ret = read_tree_1(tree->object.sha1, &sb, stage, pathspec, fn, context);
+	ret = read_tree_1(sha1, &sb, stage, pathspec, fn, context);
 	strbuf_release(&sb);
 	return ret;
 }
@@ -170,7 +175,7 @@ int read_tree(struct tree *tree, int stage, struct pathspec *match)
 
 	if (!fn)
 		fn = read_one_entry_quick;
-	err = read_tree_recursive(tree, "", 0, stage, match, fn, NULL);
+	err = read_tree_recursive(tree->object.sha1, "", 0, stage, match, fn, NULL);
 	if (fn == read_one_entry || err)
 		return err;
 

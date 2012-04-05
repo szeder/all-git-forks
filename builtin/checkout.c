@@ -83,7 +83,7 @@ static int read_tree_some(struct tree *tree, const char **pathspec)
 {
 	struct pathspec ps;
 	init_pathspec(&ps, pathspec);
-	read_tree_recursive(tree, "", 0, 0, &ps, update_some, NULL);
+	read_tree_recursive(tree->object.sha1, "", 0, 0, &ps, update_some, NULL);
 	free_pathspec(&ps);
 
 	/* update the index with the given tree's info
