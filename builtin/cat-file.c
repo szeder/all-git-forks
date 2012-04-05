@@ -165,7 +165,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name)
 	return 0;
 }
 
-static int batch_one_object(const char *obj_name, int print_contents)
+static int batch_one_object(const char *obj_name, int print_contents, int opt)
 {
 	unsigned char sha1[20];
 	enum object_type type = 0;
@@ -174,6 +174,18 @@ static int batch_one_object(const char *obj_name, int print_contents)
 
 	if (!obj_name)
 	   return 1;
+
+	if (opt) {
+		assert(opt == 'p');
+		if (get_sha1(obj_name, sha1)) {
+			printf("%s missing\n", obj_name);
+			fflush(stdout);
+			return 0;
+		}
+		printf("%s %s\n", typename(sha1_object_info(sha1, &size)), obj_name);
+		cat_one_file(opt, NULL, obj_name);
+		return 0;
+	}
 
 	if (get_sha1(obj_name, sha1)) {
 		printf("%s missing\n", obj_name);
@@ -207,12 +219,12 @@ static int batch_one_object(const char *obj_name, int print_contents)
 	return 0;
 }
 
-static int batch_objects(int print_contents)
+static int batch_objects(int print_contents, int opt)
 {
 	struct strbuf buf = STRBUF_INIT;
 
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
-		int error = batch_one_object(buf.buf, print_contents);
+		int error = batch_one_object(buf.buf, print_contents, opt);
 		if (error)
 			return error;
 	}
@@ -264,7 +276,7 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix, options, cat_file_usage, 0);
 
-	if (opt) {
+	if (opt && !batch) {
 		if (argc == 1)
 			obj_name = argv[0];
 		else
@@ -277,12 +289,12 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		} else
 			usage_with_options(cat_file_usage, options);
 	}
-	if (batch && (opt || argc)) {
+	if (batch && ((opt && opt != 'p') || argc)) {
 		usage_with_options(cat_file_usage, options);
 	}
 
 	if (batch)
-		return batch_objects(batch);
+		return batch_objects(batch, opt);
 
 	return cat_one_file(opt, exp_type, obj_name);
 }
