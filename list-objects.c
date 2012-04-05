@@ -97,6 +97,82 @@ static int process_one_tree(int *match, struct name_entry *entry,
 	return 0;
 }
 
+struct idx_entry {
+	unsigned char sha1[20];
+	uint32_t ptr;
+};
+
+static uintmax_t decode_varint(const unsigned char **bufp)
+{
+	const unsigned char *buf = *bufp;
+	unsigned char c = *buf++;
+	uintmax_t val = c & 127;
+	while (c & 128) {
+		val += 1;
+		if (!val || MSB(val, 7))
+			return 0; /* overflow */
+		c = *buf++;
+		val = (val << 7) + (c & 127);
+	}
+	*bufp = buf;
+	return val;
+}
+
+static int tree_cache;
+static const unsigned char *idx = NULL;
+static const unsigned char *cache = NULL;
+static uint32_t path_start, entry_start;
+static const uint32_t *array;
+static const struct idx_entry *idx_entries;
+static unsigned long nr_entries, nr_unique;
+
+static void open_tree_cache()
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct stat st;
+	int fd;
+
+	strbuf_addstr(&sb, getenv("TREE_CACHE"));
+	if (stat(sb.buf, &st))
+		return;
+	fd = open(sb.buf, O_RDONLY);
+	if (fd == -1)
+		return;
+#if 1
+	cache = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (!cache)
+		return;
+#else
+	cache = xmalloc(st.st_size);
+	if (!cache)
+		return;
+	xread(fd, cache, st.st_size);
+#endif
+	close(fd);
+
+	strbuf_addstr(&sb, ".idx");
+	if (stat(sb.buf, &st))
+		return;
+	fd = open(sb.buf, O_RDONLY);
+	if (fd == -1)
+		return;
+	idx = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (!idx)
+		return;
+	close(fd);
+
+	entry_start = ((uint32_t*)idx)[0];
+	nr_unique = ((uint32_t*)idx)[1];
+	path_start = ((uint32_t*)idx)[2];
+	array = (uint32_t*)(idx + 12);
+	idx_entries = (struct idx_entry *)(array + 256);
+	nr_entries = array[255];
+
+	fprintf(stderr, "tree cache opened, %lu trees, %lu leaves\n",
+		nr_entries, nr_unique);
+	strbuf_release(&sb);
+}
+
 static void process_tree(struct rev_info *revs,
 			 struct tree *tree,
 			 show_object_fn show,
@@ -119,7 +195,7 @@ static void process_tree(struct rev_info *revs,
 		die("bad tree object");
 	if (obj->flags & (UNINTERESTING | SEEN))
 		return;
-	if (parse_tree(tree) < 0)
+	if (!tree_cache && parse_tree(tree) < 0)
 		die("bad tree object %s", sha1_to_hex(obj->sha1));
 	obj->flags |= SEEN;
 	show(obj, path, name, cb_data);
@@ -131,6 +207,59 @@ static void process_tree(struct rev_info *revs,
 		strbuf_addstr(base, name);
 		if (base->len)
 			strbuf_addch(base, '/');
+	}
+
+	while (tree_cache) {
+		const struct idx_entry *result;
+		unsigned char fanout;
+		unsigned long lo, hi;
+		const unsigned char *start;
+		unsigned long i;
+
+		if (!idx && !cache)
+			open_tree_cache();
+
+		if (!idx || !cache)
+			break;
+
+		fanout = tree->object.sha1[0];
+		lo = fanout ? array[fanout-1] : 0;
+		hi = array[fanout];
+		result = NULL;
+
+		do {
+			unsigned mi = (lo + hi) / 2;
+			int cmp = hashcmp((idx_entries + mi)->sha1, tree->object.sha1);
+
+			if (!cmp) {
+				result = idx_entries + mi;
+				break;
+			}
+			if (cmp > 0)
+				hi = mi;
+			else
+				lo = mi+1;
+		} while (lo < hi);
+
+		if (!result)
+			break;
+
+		start = cache + result->ptr;
+		while ((i = decode_varint(&start)) != 0) {
+			const uint32_t *mode = (uint32_t*)(cache + entry_start);
+			const unsigned char *sha1 = (unsigned char*)mode + sizeof(uint32_t) * nr_unique;
+			const uint32_t *path_idx = (uint32_t*)(sha1 + 20 * nr_unique);
+
+			entry.mode = mode[i];
+			entry.sha1 = sha1 + i * 20;
+			entry.path = (const char*)cache + path_start + path_idx[i];
+			if (process_one_tree(&match, &entry, base, revs,
+					     show, &me, cb_data))
+				break;
+		}
+
+		strbuf_setlen(base, baselen);
+		return;
 	}
 
 	init_tree_desc(&desc, tree->buffer, tree->size);
@@ -192,6 +321,7 @@ void traverse_commit_list(struct rev_info *revs,
 	struct commit *commit;
 	struct strbuf base;
 
+	tree_cache = getenv("TREE_CACHE") != NULL;
 	strbuf_init(&base, PATH_MAX);
 	while ((commit = get_revision(revs)) != NULL) {
 		/*
