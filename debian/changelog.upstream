@@ -1,3 +1,31 @@
+Version v1.7.10-rc4; changes since v1.7.10-rc3:
+-----------------------------------------------
+
+Heiko Voigt (1):
+      string-list: document that string_list_insert() inserts unique strings
+
+Jiang Xin (1):
+      l10n: Improve zh_CN translation for Git 1.7.10-rc3
+
+Junio C Hamano (3):
+      merge: backport GIT_MERGE_AUTOEDIT support
+      Git 1.7.9.6
+      Git 1.7.10-rc4
+
+Marco Sousa (1):
+      l10n: Inital Portuguese Portugal language (pt_PT)
+
+Pat Thoyts (2):
+      gitk: fix tabbed preferences construction when using tcl 8.4
+      gitk: fix setting font display with new tabbed dialog layout.
+
+René Scharfe (1):
+      config: remove useless assignment
+
+Vincent van Ravesteijn (1):
+      l10n: Add the Dutch translation team and initialize nl.po
+
+
 Version v1.7.10-rc3; changes since v1.7.10-rc2:
 -----------------------------------------------
 
@@ -152,7 +180,7 @@ Vincent van Ravesteijn (3):
       Documentation/git-branch: add default for --contains
 
 
-Version v1.7.10-rc0; changes since v1.7.9.5:
+Version v1.7.10-rc0; changes since v1.7.9.6:
 --------------------------------------------
 
 Adrian Weimann (1):
@@ -451,6 +479,17 @@ ws3389 (1):
 Ævar Arnfjörð Bjarmason (2):
       git-svn: remove redundant porcelain option to rev-list
       git-svn: un-break "git svn rebase" when log.abbrevCommit=true
+
+
+Version v1.7.9.6; changes since v1.7.9.5:
+-----------------------------------------
+
+Heiko Voigt (1):
+      string-list: document that string_list_insert() inserts unique strings
+
+Junio C Hamano (2):
+      merge: backport GIT_MERGE_AUTOEDIT support
+      Git 1.7.9.6
 
 
 Version v1.7.9.5; changes since v1.7.9.4:
