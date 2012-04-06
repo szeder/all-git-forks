@@ -26,6 +26,11 @@ if (grep { $_ eq "--stale" } @ARGV) {
 	print "PRUNE:$_\n" foreach @prune;
 	exit 0;
 }
+elsif (grep { $_ eq "--push" } @ARGV) {
+	print "$_\n" for @push;
+	print ":$_\n" for @prune;
+	exit 0;
+}
 
 if (@push) {
 	print "Local branches that need pushed:\n";
