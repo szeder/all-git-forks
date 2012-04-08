@@ -9,6 +9,7 @@ void credential_init(struct credential *c)
 {
 	memset(c, 0, sizeof(*c));
 	c->helpers.strdup_strings = 1;
+	c->extra.strdup_strings = 1;
 }
 
 void credential_clear(struct credential *c)
@@ -19,6 +20,7 @@ void credential_clear(struct credential *c)
 	free(c->username);
 	free(c->password);
 	string_list_clear(&c->helpers, 0);
+	string_list_clear(&c->extra, 0);
 
 	credential_init(c);
 }
@@ -179,11 +181,14 @@ int credential_read(struct credential *c, FILE *fp)
 		} else if (!strcmp(key, "quit")) {
 			c->quit = !!git_config_bool("quit", value);
 		}
-		/*
-		 * Ignore other lines; we don't know what they mean, but
-		 * this future-proofs us when later versions of git do
-		 * learn new lines, and the helpers are updated to match.
-		 */
+		else {
+			/*
+			 * Save other lines so they can be fed back to the
+			 * helper or transported to other helpers.
+			 */
+			*(value-1) = '=';
+			string_list_append(&c->extra, line.buf);
+		}
 	}
 
 	strbuf_release(&line);
@@ -199,11 +204,16 @@ static void credential_write_item(FILE *fp, const char *key, const char *value)
 
 void credential_write(const struct credential *c, FILE *fp)
 {
+	int i;
+
 	credential_write_item(fp, "protocol", c->protocol);
 	credential_write_item(fp, "host", c->host);
 	credential_write_item(fp, "path", c->path);
 	credential_write_item(fp, "username", c->username);
 	credential_write_item(fp, "password", c->password);
+
+	for (i = 0; i < c->extra.nr; i++)
+		fprintf(fp, "%s\n", c->extra.items[i].string);
 }
 
 static int run_credential_helper(struct credential *c,
