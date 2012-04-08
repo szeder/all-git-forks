@@ -13,6 +13,9 @@ only.  In the future those scripts could be replaced by some JavaScript
 library / framework, like e.g. jQuery, YUI, Prototype, MooTools, Dojo,
 ExtJS, Script.aculo.us or SproutCore.
 
+The porting of javascript files to lib folder is under construction and the preferred library used is Jquery except for the graphical tools Raphael's javascript library is used.Inaddition to porting the existing features to lib several new features like client side sorting , extending the clickable area of a cell , comparing the diff between the arbitary commits etc will be added so that they could be used in the further work.
+Care has to be taken in including the files in order in the makefile.
+
 All scripts that manipulate gitweb output should be put outside 'lib/',
 directly in this directory ('gitweb/static/js/').  Those scripts would
 have to be rewritten if gitweb moves to using some JavaScript library.
