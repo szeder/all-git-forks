@@ -57,6 +57,10 @@ int idx_entry_cmp(const void *_a, const void *_b)
 	return memcmp(a->sha1, b->sha1, 20);
 }
 
+/*
+ * Take a pretty-printed form of trees, each tree begins with "tree
+ * SHA-1" line. Produce the cache to stdout and cache index to stderr.
+ */
 int main(int ac, char **av)
 {
 #define HASH_NR (64 * 1024 * 1024) //16769023
@@ -102,7 +106,8 @@ int main(int ac, char **av)
 
 	/*
 	 * collect unique tree entry lines, index them and save trees
-	 * as a sequence of indices instead of real tree entries
+	 * as a sequence of variable-length indices instead of real
+	 * tree entries
 	 */
 	for (started = 0; fgets(buf, sizeof(buf), stdin);) {
 		unsigned int key, idx;
@@ -148,20 +153,21 @@ int main(int ac, char **av)
 	entry_start = output_len;
 
 	/*
-	 * convert tree entry members except pathname into binary
+	 * convert unique tree entry members into binary, pathname is
+	 * taken out and only pathname index is stored.
 	 */
 
 	output(&i, 4);	/* 0th entry will never be used */
 	for (i = 0; i < nr_entries; i++) {
 		char *s = entries[i];
-		long int mode = strtol(s, NULL, 8);
+		long int mode = strtol(s, NULL, 8); /* mode */
 		output(&mode, 4);
 	}
 	output(entries, 20);	/* 0th entry will never be used */
 	for (i = 0; i < nr_entries; i++) {
 		char *s = entries[i];
 		unsigned char sha1[20];
-		get_sha1_hex(s + 12, sha1);
+		get_sha1_hex(s + 12, sha1); /* sha1 */
 		output(sha1, 20);
 	}
 
@@ -169,8 +175,8 @@ int main(int ac, char **av)
 	nr_hash = 0;
 
 	/*
-	 * convert tree entries into binary, cut pathname out, to be
-	 * stored separately.
+	 * now store id of pathnames, all pathnames are collected, to
+	 * be stored later on.
 	 */
 
 	output(&i, 4);	/* 0th entry will never be used */
@@ -198,7 +204,7 @@ int main(int ac, char **av)
 
 	path_start = output_len;
 
-	output(pathbuf, pathbuf_len);
+	output(pathbuf, pathbuf_len); /* all path names */
 	free(pathbuf);
 
 	/* Write out the index */
