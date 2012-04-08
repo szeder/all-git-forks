@@ -32,4 +32,7 @@ void credential_from_url(struct credential *, const char *url);
 int credential_match(const struct credential *have,
 		     const struct credential *want);
 
+int credential_do(struct credential *, const char *helper, const char *action);
+void credential_write(const struct credential *, FILE *);
+
 #endif /* CREDENTIAL_H */
