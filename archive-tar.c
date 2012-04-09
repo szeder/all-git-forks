@@ -368,6 +368,10 @@ void init_tar_archiver(void)
 	tar_filter_config("tar.tgz.remote", "true", NULL);
 	tar_filter_config("tar.tar.gz.command", "gzip -cn", NULL);
 	tar_filter_config("tar.tar.gz.remote", "true", NULL);
+	tar_filter_config("tar.tar.bz2.command", "bzip2 -c", NULL);
+	tar_filter_config("tar.tar.bz2.remote", "true", NULL);
+	tar_filter_config("tar.tar.xz.command", "xz -c", NULL);
+	tar_filter_config("tar.tar.xz.remote", "true", NULL);
 	git_config(git_tar_config, NULL);
 	for (i = 0; i < nr_tar_filters; i++) {
 		/* omit any filters that never had a command configured */

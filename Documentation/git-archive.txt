@@ -111,14 +111,14 @@ tar.<format>.command::
 	extension as `<format>` will be use this format if no other
 	format is given.
 +
-The "tar.gz" and "tgz" formats are defined automatically and default to
-`gzip -cn`. You may override them with custom commands.
+The "tar.gz", "tgz", "bz2" and "xz" formats are defined automatically
+and default to `gzip -cn`, `bzip2 -c`, and `xz` respectively. You may
+override them with custom commands.
 
 tar.<format>.remote::
 	If true, enable `<format>` for use by remote clients via
 	linkgit:git-upload-archive[1]. Defaults to false for
-	user-defined formats, but true for the "tar.gz" and "tgz"
-	formats.
+	user-defined formats, but true for the pre-defined formats.
 
 ATTRIBUTES
 ----------
@@ -176,11 +176,11 @@ EXAMPLES
 	commit on the current branch. Note that the output format is
 	inferred by the extension of the output file.
 
-`git config tar.tar.xz.command "xz -c"`::
+`git config tar.tar.Z.command "compress -c"`::
 
-	Configure a "tar.xz" format for making LZMA-compressed tarfiles.
-	You can use it specifying `--format=tar.xz`, or by creating an
-	output file like `-o foo.tar.xz`.
+	Configure a "tar.Z" format for making compress-compressed
+	tarfiles.  You can use it specifying `--format=tar.Z`, or by
+	creating an output file like `-o foo.tar.Z`.
 
 
 SEE ALSO
