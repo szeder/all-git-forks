@@ -543,6 +543,8 @@ struct active_request_slot *get_active_slot(const char *url)
 	curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, NULL);
 	curl_easy_setopt(slot->curl, CURLOPT_UPLOAD, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
+	if (http_auth.password)
+		init_curl_http_auth(slot->curl);
 
 	return slot;
 }
