@@ -336,14 +336,18 @@ static CURL *get_curl_handle(const char *url)
 	if (curl_http_proxy) {
 		struct strbuf proxyhost = STRBUF_INIT;
 
-		if (!proxy_auth.host) /* check to parse only once */
-			credential_from_url(&proxy_auth, curl_http_proxy);
+		if (!proxy_auth.host) {
+			const char *cp;
+			cp = strstr(curl_http_proxy, "://");
+			cp = cp ? (cp + 3) : curl_http_proxy;
+			credential_for_destination(&proxy_auth, cp, "http-proxy");
+		}
 
 		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password)
 			/* proxy string has username but no password, ask for password */
 			credential_fill(&proxy_auth);
 
-		strbuf_addf(&proxyhost, "%s://%s", proxy_auth.protocol, proxy_auth.host);
+		strbuf_addstr(&proxyhost, proxy_auth.host);
 		curl_easy_setopt(result, CURLOPT_PROXY, strbuf_detach(&proxyhost, NULL));
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 		set_proxy_auth(result);
