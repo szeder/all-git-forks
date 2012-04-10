@@ -937,27 +937,15 @@ static int merge_trivial(struct commit *head)
 }
 
 static int finish_automerge(struct commit *head,
+			    struct commit_list *parents,
 			    struct commit_list *common,
 			    unsigned char *result_tree,
 			    const char *wt_strategy)
 {
-	struct commit_list *parents = NULL, *j;
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char result_commit[20];
 
 	free_commit_list(common);
-	if (allow_fast_forward) {
-		parents = remoteheads;
-		commit_list_insert(head, &parents);
-		parents = reduce_heads(parents);
-	} else {
-		struct commit_list **pptr = &parents;
-
-		pptr = &commit_list_insert(head,
-				pptr)->next;
-		for (j = remoteheads; j; j = j->next)
-			pptr = &commit_list_insert(j->item, pptr)->next;
-	}
 	strbuf_addch(&merge_msg, '\n');
 	prepare_to_commit();
 	free_commit_list(remoteheads);
@@ -1135,6 +1123,25 @@ static int default_edit_option(void)
 		st_stdin.st_mode == st_stdout.st_mode);
 }
 
+static struct commit_list *finalize_parents(struct commit *head)
+{
+	struct commit_list *parents = NULL;
+
+	if (allow_fast_forward) {
+		parents = remoteheads;
+		commit_list_insert(head, &parents);
+		parents = reduce_heads(parents);
+	} else {
+		struct commit_list *j;
+		struct commit_list **pptr = &parents;
+
+		pptr = &commit_list_insert(head, pptr)->next;
+		for (j = remoteheads; j; j = j->next)
+			pptr = &commit_list_insert(j->item, pptr)->next;
+	}
+	return parents;
+}
+
 
 int cmd_merge(int argc, const char **argv, const char *prefix)
 {
@@ -1146,7 +1153,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	const char *head_arg;
 	int flag, i, ret = 0;
 	int best_cnt = -1, merge_was_ok = 0, automerge_was_ok = 0;
-	struct commit_list *common = NULL;
+	struct commit_list *common = NULL, *parents;
 	const char *best_strategy = NULL, *wt_strategy = NULL;
 	struct commit_list **remotes = &remoteheads;
 	void *branch_to_free;
@@ -1359,6 +1366,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	update_ref("updating ORIG_HEAD", "ORIG_HEAD", head_commit->object.sha1,
 		   NULL, 0, DIE_ON_ERR);
 
+	parents = finalize_parents(head_commit);
+
 	if (!common)
 		; /* No common ancestors found. We need a real merge. */
 	else if (!remoteheads->next && !common->next &&
@@ -1369,9 +1378,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 */
 		finish_up_to_date("Already up-to-date.");
 		goto done;
-	} else if (allow_fast_forward && !remoteheads->next &&
-			!common->next &&
-			!hashcmp(common->item->object.sha1, head_commit->object.sha1)) {
+	} else if (allow_fast_forward && !parents->next) {
 		/* Again the most common case of merging one remote. */
 		struct strbuf msg = STRBUF_INIT;
 		struct commit *commit;
@@ -1535,7 +1542,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * auto resolved the merge cleanly.
 	 */
 	if (automerge_was_ok) {
-		ret = finish_automerge(head_commit, common, result_tree,
+		ret = finish_automerge(head_commit, parents, common, result_tree,
 				       wt_strategy);
 		goto done;
 	}
