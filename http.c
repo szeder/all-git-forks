@@ -343,7 +343,7 @@ static CURL *get_curl_handle(const char *url)
 			/* proxy string has username but no password, ask for password */
 			credential_fill(&proxy_auth);
 
-		strbuf_addf(&proxyhost, "%s://%s", proxy_auth.protocol, proxy_auth.host);
+		strbuf_addstr(&proxyhost, proxy_auth.host);
 		curl_easy_setopt(result, CURLOPT_PROXY, strbuf_detach(&proxyhost, NULL));
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 		set_proxy_auth(result);

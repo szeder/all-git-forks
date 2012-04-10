@@ -324,11 +324,13 @@ void credential_from_url(struct credential *c, const char *url)
 	 *   (1) proto://<host>/...
 	 *   (2) proto://<user>@<host>/...
 	 *   (3) proto://<user>:<pass>@<host>/...
+	 * or "proto://"-less variants of the above for *_proxy variables.
 	 */
 	proto_end = strstr(url, "://");
-	if (!proto_end)
-		return;
-	cp = proto_end + 3;
+	if (proto_end)
+		cp = proto_end + 3;
+	else
+		cp = url;
 	at = strchr(cp, '@');
 	colon = strchr(cp, ':');
 	slash = strchrnul(cp, '/');
@@ -348,7 +350,7 @@ void credential_from_url(struct credential *c, const char *url)
 		host = at + 1;
 	}
 
-	if (proto_end - url > 0)
+	if (proto_end && proto_end != url)
 		c->protocol = xmemdupz(url, proto_end - url);
 	if (slash - host > 0)
 		c->host = url_decode_mem(host, slash - host);
