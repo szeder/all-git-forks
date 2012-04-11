@@ -298,8 +298,13 @@ static int update_local_ref(struct ref *ref,
 			what = _("[new tag]");
 		}
 		else {
-			msg = "storing head";
-			what = _("[new branch]");
+			if (!prefixcmp(ref->name, "refs/heads/")) {
+				msg = "storing head";
+				what = _("[new branch]");
+			} else {
+				msg = "storing ref";
+				what = _("[new ref]");
+			}
 			if ((recurse_submodules != RECURSE_SUBMODULES_OFF) &&
 			    (recurse_submodules != RECURSE_SUBMODULES_ON))
 				check_for_new_submodule_commits(ref->new_sha1);
