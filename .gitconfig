@@ -7,4 +7,7 @@
     diff = always
 [core]
     editor = vim -c \"set fenc=utf-8\"
-    pager = less
+    pager = less -r
+[alias]
+    report = log --pretty=format:'%Cred%h%Creset %Cgreen(%ci) -%C(yellow)%d%Creset %s' --abbrev-commit --no-merges --committer=suenami
+    log = "log --stat --decorate"
