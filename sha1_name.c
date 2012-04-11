@@ -861,15 +861,16 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	 * points to something different than a branch.
 	 */
 	if (!upstream)
-		return error("HEAD does not point to a branch");
+		return error(_("HEAD does not point to a branch"));
 	if (!upstream->merge || !upstream->merge[0]->dst) {
 		if (!ref_exists(upstream->refname))
-			return error("No such branch: '%s'", cp);
+			return error(_("No such branch: '%s'"), cp);
 		if (!upstream->merge)
-			return error("No upstream configured for branch '%s'",
+			return error(_("No upstream configured for branch '%s'"),
 				     upstream->name);
-		return error("Upstream branch '%s' not fetched from remote '%s'",
-			     upstream->merge[0]->src, upstream->remote_name);
+		return error(
+			_("Upstream branch '%s' not fetched from remote '%s'"),
+			upstream->merge[0]->src, upstream->remote_name);
 	}
 	free(cp);
 	cp = shorten_unambiguous_ref(upstream->merge[0]->dst, 0);
