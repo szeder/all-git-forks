@@ -34,8 +34,8 @@ else
 fi
 
 no_changes () {
-	git diff-index --quiet --cached HEAD --ignore-submodules -- &&
-	git diff-files --quiet --ignore-submodules &&
+	git diff-index --quiet --cached HEAD --ignore-submodules -- 2>/dev/null &&
+	git diff-files --quiet --ignore-submodules 2>/dev/null &&
 	(test -z "$untracked" || test -z "$(untracked_files)")
 }
 
@@ -67,7 +67,7 @@ create_stash () {
 	fi
 
 	# state of the base commit
-	if b_commit=$(git rev-parse --verify HEAD)
+	if b_commit=$(git rev-parse --verify HEAD 2>/dev/null)
 	then
 		head=$(git rev-list --oneline -n 1 HEAD --)
 	else
