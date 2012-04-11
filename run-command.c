@@ -738,36 +738,59 @@ int finish_async(struct async *async)
 #endif
 }
 
-int run_hook(const char *index_file, const char *name, ...)
+static int run_hook_le(const char *const *env,
+		       const char *name,
+		       va_list args)
 {
 	struct child_process hook;
 	struct argv_array argv = ARGV_ARRAY_INIT;
-	const char *p, *env[2];
-	char index[PATH_MAX];
-	va_list args;
+	const char *p;
 	int ret;
 
 	if (access(git_path("hooks/%s", name), X_OK) < 0)
 		return 0;
 
-	va_start(args, name);
 	argv_array_push(&argv, git_path("hooks/%s", name));
 	while ((p = va_arg(args, const char *)))
 		argv_array_push(&argv, p);
-	va_end(args);
 
 	memset(&hook, 0, sizeof(hook));
 	hook.argv = argv.argv;
 	hook.no_stdin = 1;
 	hook.stdout_to_stderr = 1;
-	if (index_file) {
-		snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
-		env[0] = index;
-		env[1] = NULL;
-		hook.env = env;
-	}
-
+	hook.env = env;
 	ret = run_command(&hook);
 	argv_array_clear(&argv);
 	return ret;
+}
+
+int run_hook(const char *index_file, const char *name, ...)
+{
+	const char *const *env = NULL, *env_buf[2];
+	struct strbuf index_buf = STRBUF_INIT;
+	int status;
+	va_list args;
+
+	va_start(args, name);
+	if (index_file) {
+		strbuf_addf(&index_buf, "GIT_INDEX_FILE=%s", index_file);
+		env_buf[0] = index_buf.buf;
+		env_buf[1] = NULL;
+		env = env_buf;
+	}
+	status = run_hook_le(env, name, args);
+	va_end(args);
+	strbuf_release(&index_buf);
+	return status;
+}
+
+int run_hook_e(const char *const *env, const char *name, ...)
+{
+	int status;
+	va_list args;
+
+	va_start(args, name);
+	status = run_hook_le(env, name, args);
+	va_end(args);
+	return status;
 }
