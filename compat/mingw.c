@@ -375,7 +375,19 @@ ssize_t mingw_write(int fd, const void *buf, size_t count)
 	 * the net without changing the number of WriteFile() calls in
 	 * the local case.
 	 */
-	return write(fd, buf, min(count, 31 * 1024 * 1024));
+	int ret = write(fd, buf, min(count, 31 * 1024 * 1024));
+	if (ret < 0 && errno == EPIPE)
+		mingw_raise(SIGPIPE);
+	return ret;
+}
+
+#undef fwrite
+size_t mingw_fwrite(const void *ptr, size_t size, size_t nitems, FILE *fp)
+{
+	size_t ret = fwrite(ptr, size, nitems, fp);
+	if (ret < nitems && ferror(fp) == EPIPE)
+		mingw_raise(SIGPIPE);
+	return ret;
 }
 
 FILE *mingw_fopen (const char *filename, const char *otype)
@@ -1662,6 +1674,7 @@ static HANDLE timer_thread;
 static int timer_interval;
 static int one_shot;
 static sig_handler_t timer_fn = SIG_DFL;
+static sig_handler_t pipe_fn = SIG_DFL;
 
 /* The timer works like this:
  * The thread, ticktack(), is a trivial routine that most of the time
@@ -1768,11 +1781,37 @@ int sigaction(int sig, struct sigaction *in, struct sigaction *out)
 #undef signal
 sig_handler_t mingw_signal(int sig, sig_handler_t handler)
 {
-	sig_handler_t old = timer_fn;
-	if (sig != SIGALRM)
+	sig_handler_t old;
+	switch (sig) {
+	case SIGALRM:
+		old = timer_fn;
+		timer_fn = handler;
+		return old;
+
+	case SIGPIPE:
+		old = pipe_fn;
+		pipe_fn = handler;
+		return old;
+
+	default:
 		return signal(sig, handler);
-	timer_fn = handler;
-	return old;
+	}
+}
+
+#undef raise
+int mingw_raise(int sig)
+{
+	if (sig == SIGPIPE) {
+		if (pipe_fn == SIG_DFL) {
+			fprintf(stderr, "Program terminated with signal SIGPIPE, Broken pipe.\n");
+			exit(SIGPIPE + 128);
+		}
+		if (pipe_fn != SIG_IGN)
+			pipe_fn(SIGPIPE);
+		return 0;
+	}
+
+	return raise(sig);
 }
 
 static const char *make_backslash_path(const char *path)

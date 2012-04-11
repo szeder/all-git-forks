@@ -176,6 +176,9 @@ int mingw_open (const char *filename, int oflags, ...);
 ssize_t mingw_write(int fd, const void *buf, size_t count);
 #define write mingw_write
 
+size_t mingw_fwrite(const void *ptr, size_t size, size_t nitems, FILE *fp);
+#define fwrite mingw_fwrite
+
 FILE *mingw_fopen (const char *filename, const char *otype);
 #define fopen mingw_fopen
 
@@ -299,6 +302,9 @@ static inline unsigned int git_ntohl(unsigned int x)
 
 sig_handler_t mingw_signal(int sig, sig_handler_t handler);
 #define signal mingw_signal
+
+int mingw_raise(int sig);
+#define raise mingw_raise
 
 /*
  * ANSI emulation wrappers
