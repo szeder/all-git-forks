@@ -865,7 +865,11 @@ int interpret_branch_name(const char *name, struct strbuf *buf)
 	if (!upstream->merge || !upstream->merge[0]->dst) {
 		if (!ref_exists(upstream->refname))
 			return error("No such branch: '%s'", cp);
-		return error("No upstream branch found for '%s'", upstream->name);
+		if (!upstream->merge)
+			return error("No upstream configured for branch '%s'",
+				     upstream->name);
+		return error("Upstream branch '%s' not fetched from remote '%s'",
+			     upstream->merge[0]->src, upstream->remote_name);
 	}
 	free(cp);
 	cp = shorten_unambiguous_ref(upstream->merge[0]->dst, 0);
