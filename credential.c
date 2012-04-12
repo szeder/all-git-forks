@@ -313,22 +313,17 @@ void credential_reject(struct credential *c)
 	c->approved = 0;
 }
 
-void credential_from_url(struct credential *c, const char *url)
+static void credential_for_dest(struct credential *c, const char *dest)
 {
-	const char *at, *colon, *cp, *slash, *host, *proto_end;
-
-	credential_clear(c);
+	const char *at, *colon, *cp, *slash, *host;
 
 	/*
 	 * Match one of:
-	 *   (1) proto://<host>/...
-	 *   (2) proto://<user>@<host>/...
-	 *   (3) proto://<user>:<pass>@<host>/...
+	 *   (1) <host>/...
+	 *   (2) <user>@<host>/...
+	 *   (3) <user>:<pass>@<host>/...
 	 */
-	proto_end = strstr(url, "://");
-	if (!proto_end)
-		return;
-	cp = proto_end + 3;
+	cp = dest;
 	at = strchr(cp, '@');
 	colon = strchr(cp, ':');
 	slash = strchrnul(cp, '/');
@@ -348,10 +343,9 @@ void credential_from_url(struct credential *c, const char *url)
 		host = at + 1;
 	}
 
-	if (proto_end - url > 0)
-		c->protocol = xmemdupz(url, proto_end - url);
 	if (slash - host > 0)
 		c->host = url_decode_mem(host, slash - host);
+
 	/* Trim leading and trailing slashes from path */
 	while (*slash == '/')
 		slash++;
@@ -362,4 +356,28 @@ void credential_from_url(struct credential *c, const char *url)
 		while (p > c->path && *p == '/')
 			*p-- = '\0';
 	}
+}
+
+void credential_for_destination(struct credential *c, const char *dest, const char *proto)
+{
+	credential_clear(c);
+	c->protocol = xstrdup(proto);
+	credential_for_dest(c, dest);
+}
+
+void credential_from_url(struct credential *c, const char *url)
+{
+	const char *proto_end;
+
+	credential_clear(c);
+
+	/*
+	 * Strip "proto://" part and let credential_for_dest()
+	 * parse the remainder.
+	 */
+	proto_end = strstr(url, "://");
+	if (!proto_end)
+		return;
+	c->protocol = xmemdupz(url, proto_end - url);
+	credential_for_dest(c, proto_end + 3);
 }

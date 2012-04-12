@@ -27,6 +27,7 @@ void credential_reject(struct credential *);
 
 int credential_read(struct credential *, FILE *);
 void credential_from_url(struct credential *, const char *url);
+void credential_for_destination(struct credential *, const char *dest, const char *proto);
 int credential_match(const struct credential *have,
 		     const struct credential *want);
 
