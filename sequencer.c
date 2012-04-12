@@ -13,6 +13,7 @@
 #include "rerere.h"
 #include "merge-recursive.h"
 #include "refs.h"
+#include "argv-array.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -258,23 +259,85 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
  * If we are revert, or if our cherry-pick results in a hand merge,
  * we had better say that the current user is responsible for that.
  */
-static int run_git_commit(const char *defmsg, struct replay_opts *opts)
+int run_git_commit(const char *defmsg, struct replay_opts *opts, int empty)
 {
-	/* 6 is max possible length of our args array including NULL */
-	const char *args[6];
-	int i = 0;
+	struct argv_array array;
+	int rc;
 
-	args[i++] = "commit";
-	args[i++] = "-n";
-	if (opts->signoff)
-		args[i++] = "-s";
-	if (!opts->edit) {
-		args[i++] = "-F";
-		args[i++] = defmsg;
+	if (!empty && !opts->keep_if_made_empty) {
+		unsigned char head_sha1[20];
+		struct commit *head_commit;
+		int need_free = 0;
+
+		resolve_ref_unsafe("HEAD", head_sha1, 1, NULL);
+		head_commit = lookup_commit(head_sha1);
+		if (parse_commit(head_commit) < 0)
+			return error(_("could not parse commit %s\n"),
+				     sha1_to_hex(head_commit->object.sha1));
+
+		if (!active_cache_tree) {
+			active_cache_tree = cache_tree();
+			need_free = 1;
+		}
+
+		if (!cache_tree_fully_valid(active_cache_tree))
+			cache_tree_update(active_cache_tree, active_cache,
+					  active_nr, 0);
+
+		rc = !hashcmp(active_cache_tree->sha1, head_commit->tree->object.sha1);
+
+		if (need_free)
+			cache_tree_free(&active_cache_tree);
+
+		if (rc)
+			/*
+			 * The head tree and the parent tree match
+			 * meaning the commit is empty.  Since it wasn't created
+			 * empty (based on the previous test), we can conclude
+			 * the commit has been made redundant.  Since we don't
+			 * want to keep redundant commits, just skip this one
+			 */
+			return 0;
 	}
-	args[i] = NULL;
 
-	return run_command_v_opt(args, RUN_GIT_CMD);
+	argv_array_init(&array);
+	argv_array_push(&array, "commit");
+	argv_array_push(&array, "-n");
+
+	if (opts->signoff)
+		argv_array_push(&array, "-s");
+	if (!opts->edit) {
+		argv_array_push(&array, "-F");
+		argv_array_push(&array, defmsg);
+	}
+
+	if (opts->allow_empty)
+		argv_array_push(&array, "--allow-empty");
+
+
+	rc = run_command_v_opt(array.argv, RUN_GIT_CMD);
+	argv_array_clear(&array);
+	return rc;
+}
+
+static int is_original_commit_empty(struct commit *commit)
+{
+	const unsigned char *ptree_sha1;
+
+	if (parse_commit(commit))
+		return error(_("Could not parse commit %s\n"),
+			     sha1_to_hex(commit->object.sha1));
+	if (commit->parents) {
+		struct commit *parent = commit->parents->item;
+		if (parse_commit(parent))
+			return error(_("Could not parse parent commit %s\n"),
+				sha1_to_hex(parent->object.sha1));
+		ptree_sha1 = parent->tree->object.sha1;
+	} else {
+		ptree_sha1 = EMPTY_TREE_SHA1_BIN; /* commit is root */
+	}
+
+	return !hashcmp(ptree_sha1, commit->tree->object.sha1);
 }
 
 static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
@@ -286,6 +349,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	char *defmsg = NULL;
 	struct strbuf msgbuf = STRBUF_INIT;
 	int res;
+	int empty_commit;
 
 	if (opts->no_commit) {
 		/*
@@ -411,6 +475,10 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		free_commit_list(remotes);
 	}
 
+	empty_commit = is_original_commit_empty(commit);
+	if (empty_commit < 0)
+		return empty_commit;
+
 	/*
 	 * If the merge was clean or if it failed due to conflict, we write
 	 * CHERRY_PICK_HEAD for the subsequent invocation of commit to use.
@@ -432,7 +500,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		rerere(opts->allow_rerere_auto);
 	} else {
 		if (!opts->no_commit)
-			res = run_git_commit(defmsg, opts);
+			res = run_git_commit(defmsg, opts, empty_commit);
 	}
 
 	free_message(&msg);
