@@ -1754,6 +1754,7 @@ sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
     -e $(BROKEN_PATH_FIX) \
     -e 's|@@GITWEBDIR@@|$(gitwebdir_SQ)|g' \
     -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
+    -e 's|@@PYTHON@@|$(PYTHON_PATH_SQ)|g' \
     $@.sh >$@+
 endef
 

@@ -4,6 +4,7 @@
 #
 
 PERL='@@PERL@@'
+PYTHON='@@PYTHON@@'
 OPTIONS_KEEPDASHDASH=
 OPTIONS_SPEC="\
 git instaweb [options] (--start | --stop | --restart)
@@ -58,6 +59,11 @@ resolve_full_httpd () {
 		httpd_only="${httpd%% *}" # cut on first space
 		return
 		;;
+	*python*)
+		full_httpd="$fqgitdir/gitweb/gitweb.py"
+		httpd_only="${httpd%% *}" # cut on first space
+		return
+		;;
 	*webrick*)
 		# server is started by running via generated webrick.rb in
 		# $fqgitdir/gitweb
@@ -108,7 +114,7 @@ start_httpd () {
 
 	# don't quote $full_httpd, there can be arguments to it (-f)
 	case "$httpd" in
-	*mongoose*|*plackup*)
+	*mongoose*|*plackup*|*python*)
 		#These servers don't have a daemon mode so we'll have to fork it
 		$full_httpd "$conf" &
 		#Save the pid before doing anything else (we'll print it later)
@@ -579,6 +585,76 @@ EOF
 	rm -f "$conf"
 }
 
+python_conf() {
+	cat >"$fqgitdir/gitweb/gitweb.py" <<EOF
+#!$PYTHON
+import os
+import sys
+try:
+	# Try Python 2 imports first...
+	from CGIHTTPServer import CGIHTTPRequestHandler
+	from SimpleHTTPServer import SimpleHTTPRequestHandler
+	from BaseHTTPServer import HTTPServer
+except ImportError:
+	# ... if that fails, try the Python 3 location.
+	from http.server import (CGIHTTPRequestHandler,
+				 SimpleHTTPRequestHandler,
+				 HTTPServer)
+
+
+class GitWebRequestHandler(CGIHTTPRequestHandler):
+
+	def is_cgi(self):
+		if self.translate_path(self.path).startswith('gitweb.cgi'):
+			self.cgi_info = ('', self.path[1:])
+			return True
+		return False
+
+	def translate_path(self, path):
+		path = path.split('?')[0]
+		path = path.split('#')[0]
+		if '/' == path:
+			return 'gitweb.cgi'
+		return SimpleHTTPRequestHandler.translate_path(self, path)
+
+	def log_request(self, code='-', size='-'):
+		self.do_log(access_log, '"%s" %s %s', self.requestline,
+			str(code), str(size))
+
+	def log_error(self, format, *args):
+		self.do_log(error_log, format, *args)
+
+	def do_log(self, file, format, *args):
+		file.write("%s - - [%s] %s\n" %
+			   (self.address_string(),
+			    self.log_date_time_string(),
+			    format%args))
+		file.flush()
+
+
+host = ''
+if "$local" == "true": host = '127.0.0.1'
+port = $port
+
+logdir = "$fqgitdir/gitweb/$httpd_only"
+if not os.path.exists(logdir):
+	os.makedirs(logdir)
+access_log = open(os.path.join(logdir, 'access_log'), 'a')
+error_log = open(os.path.join(logdir, 'error_log'), 'a')
+
+os.chdir("$root")
+httpd = HTTPServer((host, port), GitWebRequestHandler)
+try:
+	httpd.serve_forever()
+finally:
+	access_log.close()
+	error_log.close()
+EOF
+	chmod a+x "$fqgitdir/gitweb/gitweb.py"
+	# configuration is embedded in server script file, gitweb.py
+	rm -f "$conf"
+}
+
 gitweb_conf() {
 	cat > "$fqgitdir/gitweb/gitweb_config.perl" <<EOF
 #!/usr/bin/perl
@@ -606,6 +682,9 @@ configure_httpd() {
 		;;
 	*plackup*)
 		plackup_conf
+		;;
+	*python*)
+		python_conf
 		;;
 	*)
 		echo "Unknown httpd specified: $httpd"
