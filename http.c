@@ -334,17 +334,20 @@ static CURL *get_curl_handle(const char *url)
 		free(env_proxy_var);
 	}
 	if (curl_http_proxy) {
-		struct strbuf proxyhost = STRBUF_INIT;
-
-		if (!proxy_auth.host) /* check to parse only once */
+		if (!proxy_auth.host) {
 			credential_from_url(&proxy_auth, curl_http_proxy);
+			if (!proxy_auth.protocol ||
+			    !strcmp(proxy_auth.protocol, "http")) {
+				free(proxy_auth.protocol);
+				proxy_auth.protocol = xstrdup("http-proxy");
+			}
+		}
 
 		if (http_proactive_auth && proxy_auth.username && !proxy_auth.password)
 			/* proxy string has username but no password, ask for password */
 			credential_fill(&proxy_auth);
 
-		strbuf_addf(&proxyhost, "%s://%s", proxy_auth.protocol, proxy_auth.host);
-		curl_easy_setopt(result, CURLOPT_PROXY, strbuf_detach(&proxyhost, NULL));
+		curl_easy_setopt(result, CURLOPT_PROXY, curl_http_proxy);
 		curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 		set_proxy_auth(result);
 	}
