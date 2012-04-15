@@ -355,7 +355,9 @@ git filter-branch ... C..H --not D
 git filter-branch ... D..H --not C
 ----------------------------------------
 
-To move the whole tree into a subdirectory, or remove it from there:
+To move the whole tree into a subdirectory, or remove it from there,
+try the following. Users of BSD sed, e.g. Mac OSX users, must replace
+'\t' with a literal TAB:
 
 ---------------------------------------------------------------
 git filter-branch --index-filter \
