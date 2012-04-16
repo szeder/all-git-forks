@@ -305,11 +305,11 @@ static int update_local_ref(struct ref *ref,
 				msg = "storing ref";
 				what = _("[new ref]");
 			}
-			if ((recurse_submodules != RECURSE_SUBMODULES_OFF) &&
-			    (recurse_submodules != RECURSE_SUBMODULES_ON))
-				check_for_new_submodule_commits(ref->new_sha1);
 		}
 
+		if ((recurse_submodules != RECURSE_SUBMODULES_OFF) &&
+		    (recurse_submodules != RECURSE_SUBMODULES_ON))
+			check_for_new_submodule_commits(ref->new_sha1);
 		r = s_update_ref(msg, ref, 0);
 		strbuf_addf(display, "%c %-*s %-*s -> %s%s",
 			    r ? '!' : '*',
