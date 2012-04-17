@@ -1354,6 +1354,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			allow_trivial = 0;
 	}
 
+	if (remoteheads->next)
+		remoteheads = reduce_heads(remoteheads);
+
 	if (!remoteheads->next)
 		common = get_merge_bases(head_commit, remoteheads->item, 1);
 	else {
