@@ -167,6 +167,12 @@ has_action () {
 	sane_grep '^[^#]' "$1" >/dev/null
 }
 
+is_empty_commit() {
+	tree=$(git rev-parse "$1"^{tree})
+	ptree=$(git rev-parse "$1"^^{tree})
+	return $(test "$tree" = "$ptree")
+}
+
 # Run command with GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
 # GIT_AUTHOR_DATE exported from the current environment.
 do_with_author () {
@@ -191,12 +197,19 @@ git_sequence_editor () {
 
 pick_one () {
 	ff=--ff
+
 	case "$1" in -n) sha1=$2; ff= ;; *) sha1=$1 ;; esac
 	case "$force_rebase" in '') ;; ?*) ff= ;; esac
 	output git rev-parse --verify $sha1 || die "Invalid commit name: $sha1"
+
+	if is_empty_commit "$sha1"
+	then
+		empty_args="--allow-empty"
+	fi
+
 	test -d "$rewritten" &&
 		pick_one_preserving_merges "$@" && return
-	output git cherry-pick $ff "$@"
+	output git cherry-pick $empty_args $ff "$@"
 }
 
 pick_one_preserving_merges () {
@@ -780,9 +793,17 @@ git rev-list $merges_option --pretty=oneline --abbrev-commit \
 	sed -n "s/^>//p" |
 while read -r shortsha1 rest
 do
+
+	if test -z "$keep_empty" && is_empty_commit $shortsha1
+	then
+		comment_out="# "
+	else
+		comment_out=
+	fi
+
 	if test t != "$preserve_merges"
 	then
-		printf '%s\n' "pick $shortsha1 $rest" >> "$todo"
+		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	else
 		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
@@ -801,7 +822,7 @@ do
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			printf '%s\n' "pick $shortsha1 $rest" >> "$todo"
+			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		fi
 	fi
 done
@@ -852,6 +873,12 @@ cat >> "$todo" << EOF
 # However, if you remove everything, the rebase will be aborted.
 #
 EOF
+
+if test -z "$keep_empty"
+then
+	echo "# Note that empty commits are commented out" >>"$todo"
+fi
+
 
 has_action "$todo" ||
 	die_abort "Nothing to do"
