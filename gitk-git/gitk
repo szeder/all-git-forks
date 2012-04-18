@@ -6766,8 +6766,26 @@ proc appendwithlinks {text tags} {
 
     set start [$ctext index "end - 1c"]
     $ctext insert end $text $tags
-    set links [regexp -indices -all -inline {(?:\m|-g)[0-9a-f]{6,40}\M} $text]
-    foreach l $links {
+    set links [regexp -expanded -indices -all -inline {
+	# subversion revision footer line
+	  svn:\s[\w.-]{3,40}@[1-9][0-9]{0,4}\M
+	# 5 digit number prepended with 'r' or '@' (g1)
+	| (?:[r@])([1-9][0-9]{0,4})\M
+	# exactly 5 digit number (g2)
+	| ([1-9][0-9]{4})\M
+	# 6 to 40 digit sha 1 (g3)
+	| (?:\m|-g)([0-9a-f]{6,40})\M
+    } $text]
+    foreach {all g1 g2 g3} $links {
+	if {[lindex $g1 0] != -1} {
+	    set l $g1
+	} elseif {[lindex $g2 0] != -1} {
+	    set l $g2
+	} elseif {[lindex $g3 0] != -1} {
+	    set l $g3
+	} else {
+	    continue
+	}
 	set s [lindex $l 0]
 	set e [lindex $l 1]
 	set linkid [string range $text $s $e]
@@ -6787,7 +6805,11 @@ proc setlink {id lk} {
     }
 
     set known 0
-    if {[string length $id] < 40} {
+    set len [string length $id]
+    if {$len < 6} {
+	# always assume subversion revisions to exist
+	set known 1
+    } elseif {$len < 40} {
 	set matches [longid $id]
 	if {[llength $matches] > 0} {
 	    if {[llength $matches] > 1} return
@@ -8481,6 +8503,13 @@ proc normalline {} {
 }
 
 proc selbyid {id {isnew 1}} {
+    if {[string length $id] < 6} {
+	global findstring gdttype
+	set gdttype "containing:"
+	set findstring "@$id"
+	dofind
+	return
+    }
     global curview
     if {[commitinview $id $curview]} {
 	selectline [rowofcommit $id] $isnew
