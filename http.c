@@ -237,7 +237,7 @@ static int has_cert_password(void)
 static void set_proxy_auth(CURL *result)
 {
 	if (proxy_auth.username && proxy_auth.password) {
-#if LIBCURL_VERSION_NUM >= 0x071901
+#if LIBCURL_VERSION_NUM >= 0x071301
 		curl_easy_setopt(result, CURLOPT_PROXYUSERNAME, proxy_auth.username);
 		curl_easy_setopt(result, CURLOPT_PROXYPASSWORD, proxy_auth.password);
 #else
