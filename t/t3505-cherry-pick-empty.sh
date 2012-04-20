@@ -55,7 +55,7 @@ test_expect_success 'index lockfile was removed' '
 
 test_expect_success 'cherry pick an empty non-ff commit without --allow-empty' '
 	git checkout master &&
-	echo fourth >> file2 &&
+	echo fourth >>file2 &&
 	git add file2 &&
 	git commit -m "fourth" &&
 	test_must_fail git cherry-pick empty-branch2
