@@ -799,14 +799,14 @@ do
 
 	if test -z "$keep_empty" && is_empty_commit $shortsha1
 	then
-		comment_out="#"
+		comment_out="# "
 	else
-		comment_out=""
+		comment_out=
 	fi
 
 	if test t != "$preserve_merges"
 	then
-		printf '%s%s\n' "$comment_out" "pick $shortsha1 $rest" >> "$todo"
+		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 	else
 		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
@@ -825,7 +825,7 @@ do
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			printf '%s%s\n' "$comment_out" "pick $shortsha1 $rest" >> "$todo"
+			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
 		fi
 	fi
 done
@@ -877,7 +877,7 @@ EOF
 
 if test -z "$keep_empty"
 then
-	echo "# Note that empty commits are commented out" >> "$todo"
+	echo "# Note that empty commits are commented out" >>"$todo"
 fi
 
 
