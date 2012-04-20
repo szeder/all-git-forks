@@ -1697,6 +1697,9 @@ push.default::
   This option allows publishing a branch to a remote repository using
   the same naming convention locally and remotely, in a more
   conservative and safer way than `matching`.
+* `simple` - like `upstream`, but refuses to push if the upstream
+  branch's name is different from the local one. This is the safest
+  option and is well-suited for beginners.
 
 rebase.stat::
 	Whether to show a diffstat of what changed upstream since the last

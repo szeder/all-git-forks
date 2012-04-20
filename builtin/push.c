@@ -76,7 +76,7 @@ static int push_url_of_remote(struct remote *remote, const char ***url_p)
 	return remote->url_nr;
 }
 
-static void setup_push_upstream(struct remote *remote)
+static void setup_push_upstream(struct remote *remote, int simple)
 {
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
@@ -103,6 +103,30 @@ static void setup_push_upstream(struct remote *remote)
 		      "your current branch '%s', without telling me what to push\n"
 		      "to update which remote branch."),
 		    remote->name, branch->name);
+	if (simple && strcmp(branch->refname, branch->merge[0]->src)) {
+		/*
+		 * There's no point in using shorten_unambiguous_ref here,
+		 * as the ambiguity would be on the remote side, not what
+		 * we have locally. Plus, this is supposed to be the simple
+		 * mode. If the user is doing something crazy like setting
+		 * upstream to a non-branch, we should probably be showing
+		 * them the big ugly fully qualified ref.
+		 */
+		const char *short_up = skip_prefix(branch->merge[0]->src, "refs/heads/");
+		die(_("The upstream branch of your current branch does not match\n"
+		      "the name of your current branch.  To push to the upstream branch\n"
+		      "on the remote, use\n"
+		      "\n"
+		      "    git push %s HEAD:%s\n"
+		      "\n"
+		      "To push to the branch of the same name on the remote, use\n"
+		      "\n"
+		      "    git push %s %s\n"
+		      "\n"
+		      "To chose either option permanently, read about push.default in git-config(1)\n"),
+		    remote->name, short_up ? short_up : branch->merge[0]->src,
+		    remote->name, branch->name);
+	}
 
 	strbuf_addf(&refspec, "%s:%s", branch->name, branch->merge[0]->src);
 	add_refspec(refspec.buf);
@@ -119,8 +143,12 @@ static void setup_default_push_refspecs(struct remote *remote)
 		add_refspec(":");
 		break;
 
+	case PUSH_DEFAULT_SIMPLE:
+		setup_push_upstream(remote, 1);
+		break;
+
 	case PUSH_DEFAULT_UPSTREAM:
-		setup_push_upstream(remote);
+		setup_push_upstream(remote, 0);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
