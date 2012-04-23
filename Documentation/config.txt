@@ -1688,6 +1688,9 @@ push.default::
   repository shared by multiple users, since locally stalled
   branches will attempt a non-fast forward push if other users
   updated the branch remotely. This is the default.
+* `simple` - like `upstream`, but refuses to push if the upstream
+  branch's name is different from the local one. This is the safest
+  option and is well-suited for beginners.
 * `upstream` - push the current branch to its upstream branch. See
   "branch.<name>.merge" for how to configure the upstream branch. This
   makes `git push` and `git pull` symmetrical in the sense that `push`
@@ -1695,7 +1698,7 @@ push.default::
   `git pull`.
 * `current` - push the current branch to a branch of the same name.
   +
-  The `current` and `upstream` modes are for those who want to
+  The `simple`, `current` and `upstream` modes are for those who want to
   push out a single branch after finishing work, even when the other
   branches are not yet ready to be pushed out. They are safe when
   pushing to a shared repository.
