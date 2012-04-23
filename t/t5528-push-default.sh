@@ -16,7 +16,7 @@ test_expect_success 'setup bare remotes' '
 # $1 = local revision
 # $2 = remote revision (tested to be equal to the local one)
 check_pushed_commit () {
-	git log -1 --format='%h %s' >expect &&
+	git log -1 --format='%h %s' "$1" >expect &&
 	git --git-dir=repo1 log -1 --format='%h %s' "$2" >actual &&
 	test_cmp expect actual
 }
@@ -39,11 +39,11 @@ test_push_failure () {
 		test_might_fail git --git-dir=repo1 \
 			log --no-walk --format='%h %s' "$@" >expect
 	fi &&
-	test_must_fail git -c push.default="$1" &&
+	test_must_fail git -c push.default="$push_default" push &&
 	if test $# -gt 0
 	then
 		test_might_fail git --git-dir=repo1 \
-			log -1 --format='%h %s' "$@" >actual
+			log --no-walk --format='%h %s' "$@" >actual
 	fi &&
 	test_cmp expect actual
 }
@@ -61,7 +61,7 @@ test_expect_success '"upstream" does not push on unconfigured remote' '
 	test_unconfig branch.master.remote &&
 	test_config push.default upstream &&
 	test_commit three &&
-	test_push_failure upstream master
+	test_push_failure upstream --all
 '
 
 test_expect_success '"upstream" does not push on unconfigured branch' '
@@ -70,7 +70,7 @@ test_expect_success '"upstream" does not push on unconfigured branch' '
 	test_unconfig branch.master.merge &&
 	test_config push.default upstream
 	test_commit four &&
-	test_push_failure upstream master
+	test_push_failure upstream --all
 '
 
 test_expect_success '"upstream" does not push when remotes do not match' '
