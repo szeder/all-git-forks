@@ -56,7 +56,7 @@ static enum help_format parse_help_format(const char *format)
 		return HELP_FORMAT_INFO;
 	if (!strcmp(format, "web") || !strcmp(format, "html"))
 		return HELP_FORMAT_WEB;
-	die("unrecognized help format '%s'", format);
+	die(_("unrecognized help format '%s'"), format);
 }
 
 static const char *get_man_viewer_info(const char *name)
@@ -84,7 +84,7 @@ static int check_emacsclient_version(void)
 	ec_process.err = -1;
 	ec_process.stdout_to_stderr = 1;
 	if (start_command(&ec_process))
-		return error("Failed to start emacsclient.");
+		return error(_("Failed to start emacsclient."));
 
 	strbuf_read(&buffer, ec_process.err, 20);
 	close(ec_process.err);
@@ -97,7 +97,7 @@ static int check_emacsclient_version(void)
 
 	if (prefixcmp(buffer.buf, "emacsclient")) {
 		strbuf_release(&buffer);
-		return error("Failed to parse emacsclient version.");
+		return error(_("Failed to parse emacsclient version."));
 	}
 
 	strbuf_remove(&buffer, 0, strlen("emacsclient"));
@@ -105,7 +105,7 @@ static int check_emacsclient_version(void)
 
 	if (version < 22) {
 		strbuf_release(&buffer);
-		return error("emacsclient version '%d' too old (< 22).",
+		return error(_("emacsclient version '%d' too old (< 22)."),
 			version);
 	}
 
@@ -123,7 +123,7 @@ static void exec_woman_emacs(const char *path, const char *page)
 			path = "emacsclient";
 		strbuf_addf(&man_page, "(woman \"%s\")", page);
 		execlp(path, "emacsclient", "-e", man_page.buf, (char *)NULL);
-		warning("failed to exec '%s': %s", path, strerror(errno));
+		warning(_("failed to exec '%s': %s"), path, strerror(errno));
 	}
 }
 
@@ -151,7 +151,7 @@ static void exec_man_konqueror(const char *path, const char *page)
 			path = "kfmclient";
 		strbuf_addf(&man_page, "man:%s(1)", page);
 		execlp(path, filename, "newTab", man_page.buf, (char *)NULL);
-		warning("failed to exec '%s': %s", path, strerror(errno));
+		warning(_("failed to exec '%s': %s"), path, strerror(errno));
 	}
 }
 
@@ -160,7 +160,7 @@ static void exec_man_man(const char *path, const char *page)
 	if (!path)
 		path = "man";
 	execlp(path, "man", page, (char *)NULL);
-	warning("failed to exec '%s': %s", path, strerror(errno));
+	warning(_("failed to exec '%s': %s"), path, strerror(errno));
 }
 
 static void exec_man_cmd(const char *cmd, const char *page)
@@ -168,7 +168,7 @@ static void exec_man_cmd(const char *cmd, const char *page)
 	struct strbuf shell_cmd = STRBUF_INIT;
 	strbuf_addf(&shell_cmd, "%s %s", cmd, page);
 	execl("/bin/sh", "sh", "-c", shell_cmd.buf, (char *)NULL);
-	warning("failed to exec '%s': %s", cmd, strerror(errno));
+	warning(_("failed to exec '%s': %s"), cmd, strerror(errno));
 }
 
 static void add_man_viewer(const char *name)
@@ -208,8 +208,8 @@ static int add_man_viewer_path(const char *name,
 	if (supported_man_viewer(name, len))
 		do_add_man_viewer_info(name, len, value);
 	else
-		warning("'%s': path for unsupported man viewer.\n"
-			"Please consider using 'man.<tool>.cmd' instead.",
+		warning(_("'%s': path for unsupported man viewer.\n"
+			  "Please consider using 'man.<tool>.cmd' instead."),
 			name);
 
 	return 0;
@@ -220,8 +220,8 @@ static int add_man_viewer_cmd(const char *name,
 			      const char *value)
 {
 	if (supported_man_viewer(name, len))
-		warning("'%s': cmd for supported man viewer.\n"
-			"Please consider using 'man.<tool>.path' instead.",
+		warning(_("'%s': cmd for supported man viewer.\n"
+			  "Please consider using 'man.<tool>.path' instead."),
 			name);
 	else
 		do_add_man_viewer_info(name, len, value);
@@ -284,11 +284,11 @@ void list_common_cmds_help(void)
 			longest = strlen(common_cmds[i].name);
 	}
 
-	puts("The most commonly used git commands are:");
+	puts(_("The most commonly used git commands are:"));
 	for (i = 0; i < ARRAY_SIZE(common_cmds); i++) {
 		printf("   %s   ", common_cmds[i].name);
 		mput_char(' ', longest - strlen(common_cmds[i].name));
-		puts(common_cmds[i].help);
+		puts(_(common_cmds[i].help));
 	}
 }
 
@@ -352,7 +352,7 @@ static void exec_viewer(const char *name, const char *page)
 	else if (info)
 		exec_man_cmd(info, page);
 	else
-		warning("'%s': unknown man viewer.", name);
+		warning(_("'%s': unknown man viewer."), name);
 }
 
 static void show_man_page(const char *git_cmd)
@@ -369,7 +369,7 @@ static void show_man_page(const char *git_cmd)
 	if (fallback)
 		exec_viewer(fallback, page);
 	exec_viewer("man", page);
-	die("no man viewer handled the request");
+	die(_("no man viewer handled the request"));
 }
 
 static void show_info_page(const char *git_cmd)
@@ -377,7 +377,7 @@ static void show_info_page(const char *git_cmd)
 	const char *page = cmd_to_page(git_cmd);
 	setenv("INFOPATH", system_path(GIT_INFO_PATH), 1);
 	execlp("info", "info", "gitman", page, (char *)NULL);
-	die("no info viewer handled the request");
+	die(_("no info viewer handled the request"));
 }
 
 static void get_html_page_path(struct strbuf *page_path, const char *page)
@@ -388,7 +388,7 @@ static void get_html_page_path(struct strbuf *page_path, const char *page)
 	/* Check that we have a git documentation directory. */
 	if (stat(mkpath("%s/git.html", html_path), &st)
 	    || !S_ISREG(st.st_mode))
-		die("'%s': not a documentation directory.", html_path);
+		die(_("'%s': not a documentation directory."), html_path);
 
 	strbuf_init(page_path, 0);
 	strbuf_addf(page_path, "%s/%s.html", html_path, page);
@@ -429,16 +429,16 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 
 	if (show_all) {
 		git_config(git_help_config, NULL);
-		printf("usage: %s\n\n", git_usage_string);
-		list_commands("git commands", colopts, &main_cmds, &other_cmds);
-		printf("%s\n", git_more_info_string);
+		printf(_("usage: %s%s"), _(git_usage_string), "\n\n");
+		list_commands(_("git commands"), colopts, &main_cmds, &other_cmds);
+		printf("%s\n", _(git_more_info_string));
 		return 0;
 	}
 
 	if (!argv[0]) {
-		printf("usage: %s\n\n", git_usage_string);
+		printf(_("usage: %s%s"), _(git_usage_string), "\n\n");
 		list_common_cmds_help();
-		printf("\n%s\n", git_more_info_string);
+		printf("\n%s\n", _(git_more_info_string));
 		return 0;
 	}
 
@@ -450,7 +450,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 
 	alias = alias_lookup(argv[0]);
 	if (alias && !is_git_command(argv[0])) {
-		printf("`git %s' is aliased to `%s'\n", argv[0], alias);
+		printf_ln(_("`git %s' is aliased to `%s'"), argv[0], alias);
 		return 0;
 	}
 
