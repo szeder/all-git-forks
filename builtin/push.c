@@ -76,7 +76,40 @@ static int push_url_of_remote(struct remote *remote, const char ***url_p)
 	return remote->url_nr;
 }
 
-static void setup_push_upstream(struct remote *remote)
+static NORETURN int die_push_simple(struct branch *branch, struct remote *remote) {
+	/*
+	 * There's no point in using shorten_unambiguous_ref here,
+	 * as the ambiguity would be on the remote side, not what
+	 * we have locally. Plus, this is supposed to be the simple
+	 * mode. If the user is doing something crazy like setting
+	 * upstream to a non-branch, we should probably be showing
+	 * them the big ugly fully qualified ref.
+	 */
+	const char *short_up = skip_prefix(branch->merge[0]->src, "refs/heads/");
+	/*
+	 * Don't show advice for people who explicitely set
+	 * push.default.
+	 */
+	const char *advice_maybe = "";
+	if (push_default == PUSH_DEFAULT_UNSPECIFIED)
+		advice_maybe = _("\n"
+				 "To choose either option permanently, "
+				 "see push.default in 'git help config'.");
+	die(_("The upstream branch of your current branch does not match\n"
+	      "the name of your current branch.  To push to the upstream branch\n"
+	      "on the remote, use\n"
+	      "\n"
+	      "    git push %s HEAD:%s\n"
+	      "\n"
+	      "To push to the branch of the same name on the remote, use\n"
+	      "\n"
+	      "    git push %s %s\n"
+	      "%s"),
+	    remote->name, short_up ? short_up : branch->merge[0]->src,
+	    remote->name, branch->name, advice_maybe);
+}
+
+static void setup_push_upstream(struct remote *remote, int simple)
 {
 	struct strbuf refspec = STRBUF_INIT;
 	struct branch *branch = branch_get(NULL);
@@ -103,9 +136,34 @@ static void setup_push_upstream(struct remote *remote)
 		      "your current branch '%s', without telling me what to push\n"
 		      "to update which remote branch."),
 		    remote->name, branch->name);
+	if (simple && strcmp(branch->refname, branch->merge[0]->src)) {
+		die_push_simple(branch, remote);
+	}
 
 	strbuf_addf(&refspec, "%s:%s", branch->name, branch->merge[0]->src);
 	add_refspec(refspec.buf);
+}
+
+static char warn_unspecified_push_default_msg[] =
+N_("push.default is unset; its implicit value is changing in\n"
+   "Git 2.0 from 'matching' to 'simple'. To squelch this message\n"
+   "and maintain the current behavior after the default changes, use:\n"
+   "\n"
+   "  git config --global push.default matching\n"
+   "\n"
+   "To squelch this message and adopt the new behavior now, use:\n"
+   "\n"
+   "  git config --global push.default simple\n"
+   "\n"
+   "See 'git help config' and search for 'push.default' for further information.");
+
+static void warn_unspecified_push_default_configuration(void)
+{
+	static int warn_once;
+
+	if (warn_once++)
+		return;
+	warning("%s\n", _(warn_unspecified_push_default_msg));
 }
 
 static void setup_default_push_refspecs(struct remote *remote)
@@ -114,13 +172,18 @@ static void setup_default_push_refspecs(struct remote *remote)
 	default:
 	case PUSH_DEFAULT_UNSPECIFIED:
 		default_matching_used = 1;
+		warn_unspecified_push_default_configuration();
 		/* fallthru */
 	case PUSH_DEFAULT_MATCHING:
 		add_refspec(":");
 		break;
 
+	case PUSH_DEFAULT_SIMPLE:
+		setup_push_upstream(remote, 1);
+		break;
+
 	case PUSH_DEFAULT_UPSTREAM:
-		setup_push_upstream(remote);
+		setup_push_upstream(remote, 0);
 		break;
 
 	case PUSH_DEFAULT_CURRENT:
@@ -143,8 +206,8 @@ static const char message_advice_pull_before_push[] =
 static const char message_advice_use_upstream[] =
 	N_("Updates were rejected because a pushed branch tip is behind its remote\n"
 	   "counterpart. If you did not intend to push that branch, you may want to\n"
-	   "specify branches to push or set the 'push.default' configuration\n"
-	   "variable to 'current' or 'upstream' to push only the current branch.");
+	   "specify branches to push or set the 'push.default' configuration variable\n"
+	   "to 'simple', 'current' or 'upstream' to push only the current branch.");
 
 static const char message_advice_checkout_pull_push[] =
 	N_("Updates were rejected because a pushed branch tip is behind its remote\n"
