@@ -481,9 +481,9 @@ int printf_ln(const char *fmt, ...)
 	va_start(ap, fmt);
 	ret = vprintf(fmt, ap);
 	va_end(ap);
-	if (ret >= 0)
-		ret += printf("\n");
-	return ret;
+	if (ret < 0 || putchar('\n') == EOF)
+		return -1;
+	return ret + 1;
 }
 
 int fprintf_ln(FILE *fp, const char *fmt, ...)
@@ -493,7 +493,7 @@ int fprintf_ln(FILE *fp, const char *fmt, ...)
 	va_start(ap, fmt);
 	ret = vfprintf(fp, fmt, ap);
 	va_end(ap);
-	if (ret >= 0 && fputc('\n', fp) != EOF)
-		ret++;
-	return ret;
+	if (ret < 0 || putc('\n', fp) == EOF)
+		return -1;
+	return ret + 1;
 }
