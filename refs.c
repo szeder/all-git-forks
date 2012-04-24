@@ -804,7 +804,7 @@ static void get_ref_dir(struct ref_cache *refs, const char *dirname,
 			? git_path_submodule(refs->name, "%s", refname.buf)
 			: git_path("%s", refname.buf);
 		if (stat(refdir, &st) < 0) {
-			/* Silently ignore. */
+			; /* Silently ignore. */
 		} else if (S_ISDIR(st.st_mode)) {
 			strbuf_addch(&refname, '/');
 			get_ref_dir(refs, refname.buf,
@@ -2248,44 +2248,45 @@ static int do_for_each_reflog(const char *base, each_ref_fn fn, void *cb_data)
 	int retval = 0;
 	struct dirent *de;
 	int baselen;
-	char *log;
+	struct strbuf log;
 
 	if (!d)
 		return *base ? errno : 0;
 
 	baselen = strlen(base);
-	log = xmalloc(baselen + 257);
-	memcpy(log, base, baselen);
-	if (baselen && base[baselen-1] != '/')
-		log[baselen++] = '/';
+	strbuf_init(&log, baselen + 257);
+	strbuf_add(&log, base, baselen);
+	if (log.len && log.buf[log.len-1] != '/') {
+		strbuf_addch(&log, '/');
+		baselen++;
+	}
 
 	while ((de = readdir(d)) != NULL) {
 		struct stat st;
-		int namelen;
 
 		if (de->d_name[0] == '.')
 			continue;
-		namelen = strlen(de->d_name);
-		if (namelen > 255)
-			continue;
 		if (has_extension(de->d_name, ".lock"))
 			continue;
-		memcpy(log + baselen, de->d_name, namelen+1);
-		if (stat(git_path("logs/%s", log), &st) < 0)
-			continue;
-		if (S_ISDIR(st.st_mode)) {
-			retval = do_for_each_reflog(log, fn, cb_data);
+		strbuf_addstr(&log, de->d_name);
+		if (stat(git_path("logs/%s", log.buf), &st) < 0) {
+			/* Silently ignore. */
 		} else {
-			unsigned char sha1[20];
-			if (read_ref_full(log, sha1, 0, NULL))
-				retval = error("bad ref for %s", log);
-			else
-				retval = fn(log, sha1, 0, cb_data);
+			if (S_ISDIR(st.st_mode)) {
+				retval = do_for_each_reflog(log.buf, fn, cb_data);
+			} else {
+				unsigned char sha1[20];
+				if (read_ref_full(log.buf, sha1, 0, NULL))
+					retval = error("bad ref for %s", log.buf);
+				else
+					retval = fn(log.buf, sha1, 0, cb_data);
+			}
+			if (retval)
+				break;
 		}
-		if (retval)
-			break;
+		strbuf_setlen(&log, baselen);
 	}
-	free(log);
+	strbuf_release(&log);
 	closedir(d);
 	return retval;
 }
