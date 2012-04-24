@@ -804,7 +804,7 @@ static void get_ref_dir(struct ref_cache *refs, const char *dirname,
 			? git_path_submodule(refs->name, "%s", refname.buf)
 			: git_path("%s", refname.buf);
 		if (stat(refdir, &st) < 0) {
-			; /* Silently ignore. */
+			; /* silently ignore */
 		} else if (S_ISDIR(st.st_mode)) {
 			strbuf_addch(&refname, '/');
 			get_ref_dir(refs, refname.buf,
@@ -2242,24 +2242,20 @@ int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_dat
 	return for_each_recent_reflog_ent(refname, fn, 0, cb_data);
 }
 
-static int do_for_each_reflog(const char *base, each_ref_fn fn, void *cb_data)
+/*
+ * Call fn for each reflog in the namespace indicated by name.  name
+ * must be empty or end with '/'.  Name will be used as a scratch
+ * space, but its contents will be restored before return.
+ */
+static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data)
 {
-	DIR *d = opendir(git_path("logs/%s", base));
+	DIR *d = opendir(git_path("logs/%s", name->buf));
 	int retval = 0;
 	struct dirent *de;
-	int baselen;
-	struct strbuf log;
+	int oldlen = name->len;
 
 	if (!d)
-		return *base ? errno : 0;
-
-	baselen = strlen(base);
-	strbuf_init(&log, baselen + 257);
-	strbuf_add(&log, base, baselen);
-	if (log.len && log.buf[log.len-1] != '/') {
-		strbuf_addch(&log, '/');
-		baselen++;
-	}
+		return name->len ? errno : 0;
 
 	while ((de = readdir(d)) != NULL) {
 		struct stat st;
@@ -2268,32 +2264,37 @@ static int do_for_each_reflog(const char *base, each_ref_fn fn, void *cb_data)
 			continue;
 		if (has_extension(de->d_name, ".lock"))
 			continue;
-		strbuf_addstr(&log, de->d_name);
-		if (stat(git_path("logs/%s", log.buf), &st) < 0) {
-			/* Silently ignore. */
+		strbuf_addstr(name, de->d_name);
+		if (stat(git_path("logs/%s", name->buf), &st) < 0) {
+			; /* silently ignore */
 		} else {
 			if (S_ISDIR(st.st_mode)) {
-				retval = do_for_each_reflog(log.buf, fn, cb_data);
+				strbuf_addch(name, '/');
+				retval = do_for_each_reflog(name, fn, cb_data);
 			} else {
 				unsigned char sha1[20];
-				if (read_ref_full(log.buf, sha1, 0, NULL))
-					retval = error("bad ref for %s", log.buf);
+				if (read_ref_full(name->buf, sha1, 0, NULL))
+					retval = error("bad ref for %s", name->buf);
 				else
-					retval = fn(log.buf, sha1, 0, cb_data);
+					retval = fn(name->buf, sha1, 0, cb_data);
 			}
 			if (retval)
 				break;
 		}
-		strbuf_setlen(&log, baselen);
+		strbuf_setlen(name, oldlen);
 	}
-	strbuf_release(&log);
 	closedir(d);
 	return retval;
 }
 
 int for_each_reflog(each_ref_fn fn, void *cb_data)
 {
-	return do_for_each_reflog("", fn, cb_data);
+	int retval;
+	struct strbuf name;
+	strbuf_init(&name, PATH_MAX);
+	retval = do_for_each_reflog(&name, fn, cb_data);
+	strbuf_release(&name);
+	return retval;
 }
 
 int update_ref(const char *action, const char *refname,
