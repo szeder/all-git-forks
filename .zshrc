@@ -14,6 +14,14 @@ alias cd="pushd"
 alias bd="popd"
 alias sha1="~/sha1"
 
+# history
+HISTFILE=$HOME/.zsh-history
+HISTSIZE=100000
+SAVEHIST=100000
+setopt extended_history
+setopt share_history
+function history-all { history -E 1 }
+
 #
 # thx. http://ho-ki-boshi.blogspot.com/2007/12/zsh.html
 #
