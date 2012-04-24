@@ -779,20 +779,6 @@ static void prime_ref_dir(struct ref_dir *dir)
 			prime_ref_dir(get_ref_dir(entry));
 	}
 }
-/*
- * Return true iff refname1 and refname2 conflict with each other.
- * Two reference names conflict if one of them exactly matches the
- * leading components of the other; e.g., "foo/bar" conflicts with
- * both "foo" and with "foo/bar/baz" but not with "foo/bar" or
- * "foo/barbados".
- */
-static int names_conflict(const char *refname1, const char *refname2)
-{
-	for (; *refname1 && *refname1 == *refname2; refname1++, refname2++)
-		;
-	return (*refname1 == '\0' && *refname2 == '/')
-		|| (*refname1 == '/' && *refname2 == '\0');
-}
 
 struct name_conflict_cb {
 	const char *refname;
@@ -803,13 +789,15 @@ struct name_conflict_cb {
 static int name_conflict_fn(struct ref_entry *entry, void *cb_data)
 {
 	struct name_conflict_cb *data = (struct name_conflict_cb *)cb_data;
-	if (data->oldrefname && !strcmp(data->oldrefname, entry->name))
+	if (!strcmp(data->oldrefname, entry->name))
 		return 0;
-	if (names_conflict(data->refname, entry->name)) {
-		data->conflicting_refname = entry->name;
-		return 1;
-	}
-	return 0;
+	/*
+	 * Since we are only iterating over the subtree that has the
+	 * new refname as prefix, *any* other reference found is a
+	 * conflict.
+	 */
+	data->conflicting_refname = entry->name;
+	return 1;
 }
 
 /*
@@ -818,22 +806,57 @@ static int name_conflict_fn(struct ref_entry *entry, void *cb_data)
  * oldrefname is non-NULL, ignore potential conflicts with oldrefname
  * (e.g., because oldrefname is scheduled for deletion in the same
  * operation).
+ *
+ * Two reference names conflict if one of them exactly matches the
+ * leading components of the other; e.g., "foo/bar" conflicts with
+ * both "foo" and with "foo/bar/baz" but not with "foo/bar" or
+ * "foo/barbados".
  */
 static int is_refname_available(const char *refname, const char *oldrefname,
 				struct ref_dir *dir)
 {
+	/* First check if any proper prefixes of refname are in use: */
+	struct strbuf prefix;
+	const char *slash;
 	struct name_conflict_cb data;
 	data.refname = refname;
-	data.oldrefname = oldrefname;
+	data.oldrefname = oldrefname ? oldrefname : "";
 	data.conflicting_refname = NULL;
 
-	sort_ref_dir(dir);
-	if (do_for_each_entry_in_dir(dir, 0, name_conflict_fn, &data)) {
-		error("'%s' exists; cannot create '%s'",
-		      data.conflicting_refname, refname);
-		return 0;
+	strbuf_init(&prefix, strlen(refname) + 1);
+	for (slash = strchr(refname, '/'); slash; slash = strchr(slash + 1, '/')) {
+		/*
+		 * Append the next component of refname (plus the
+		 * preceding slash) to prefix:
+		 */
+		strbuf_add(&prefix, refname + prefix.len, slash - refname - prefix.len);
+		if (!strcmp(data.oldrefname, prefix.buf))
+			continue;
+		if (find_ref(dir, prefix.buf)) {
+			data.conflicting_refname = prefix.buf;
+			break;
+		}
 	}
-	return 1;
+	if (!data.conflicting_refname) {
+		/*
+		 * Now check if there are any references in the
+		 * namespace refname + "/":
+		 */
+		strbuf_addstr(&prefix, refname + prefix.len);
+		strbuf_addch(&prefix, '/');
+
+		dir = find_containing_dir(dir, prefix.buf, 0);
+		if (dir) {
+			sort_ref_dir(dir);
+			do_for_each_entry_in_dir(dir, 0, name_conflict_fn, &data);
+		}
+	}
+	if (data.conflicting_refname) {
+		error("'%s' exists; cannot create '%s'",
+		      data.conflicting_refname, data.refname);
+	}
+	strbuf_release(&prefix);
+	return !data.conflicting_refname;
 }
 
 struct packed_ref_cache {
