@@ -14,6 +14,34 @@ alias cd="pushd"
 alias bd="popd"
 alias sha1="~/sha1"
 
+# aliases for git
+alias g="git"
+alias gad="git add"
+alias gb="git branch -v"
+alias gba="git branch -a"
+alias gbr="git branch -r"
+alias gc="git commit -v"
+alias gco="git checkout"
+alias gd="git diff"
+alias gdc="git diff --cached"
+alias gf="git fetch"
+alias gg="git grep -n"
+alias ggi="git grep -ni"
+alias gl="git log --stat"
+alias gll="git log --oneline"
+alias glp="git log -p"
+alias gls="git ls-files"
+alias gm="git merge"
+alias gst="git status"
+alias gs="git show"
+alias gsp="git stash pop"
+alias gss="git stash save"
+alias gssh="git stash show"
+alias gsl="git stash list"
+alias gPull="git pull"
+alias up='cd ./$(git rev-parse --show-cdup)' # cd to current repo's root dir
+alias gcb="git branch --no-color 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1 /'" # Show current branch
+
 # history
 HISTFILE=$HOME/.zsh-history
 HISTSIZE=100000
