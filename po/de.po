@@ -33,10 +33,10 @@ msgid ""
 "appropriate to mark resolution and make a commit,\n"
 "or use 'git commit -a'."
 msgstr ""
-"Korrigieren Sie es im Arbeitsbaum,\n"
-"und benutzen Sie dann 'git add/rm <Datei>' um\n"
-"gegebenenfalls die Auflösung zu markieren und machen Sie einen Commit,\n"
-"oder benutzen Sie 'git commit -a'."
+"Korrigiere dies im Arbeitsbaum,\n"
+"und benutze dann 'git add/rm <Datei>' wie\n"
+"vorgesehen, um die Auflösung zu markieren und dann einzuchecken,\n"
+"oder benutze 'git commit -a'."
 
 #: commit.c:47
 #, c-format
@@ -159,8 +159,8 @@ msgstr ""
 #, c-format
 msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
-msgstr[0] "Ihr Zweig ist vor '%s' um %d Commit.\n"
-msgstr[1] "Ihr Zweig ist vor '%s' um %d Commits.\n"
+msgstr[0] "Dein Zweig ist %d Commit vor '%s'.\n"
+msgstr[1] "Dein Zweig ist %d Commits vor '%s'.\n"
 
 #: remote.c:1613
 #, c-format
@@ -168,9 +168,9 @@ msgid "Your branch is behind '%s' by %d commit, and can be fast-forwarded.\n"
 msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
 msgstr[0] ""
-"Ihr Zweig ist hinter '%s' um %d Commit, und kann vorgespult werden.\n"
+"Dein Zweig ist %d Commit hinter '%s', und kann vorgespult werden.\n"
 msgstr[1] ""
-"Ihr Zweig ist hinter '%s' um %d Commits, und kann vorgespult werden.\n"
+"Dein Zweig ist %d Commits hinter '%s', und kann vorgespult werden.\n"
 
 #: remote.c:1621
 #, c-format
@@ -181,10 +181,10 @@ msgid_plural ""
 "Your branch and '%s' have diverged,\n"
 "and have %d and %d different commits each, respectively.\n"
 msgstr[0] ""
-"Ihr Zweig und '%s' sind auseinandergelaufen,\n"
+"Dein Zweig und '%s' sind auseinandergelaufen,\n"
 "und haben jeweils %d und %d unterschiedliche Commits.\n"
 msgstr[1] ""
-"Ihr Zweig und '%s' sind auseinandergelaufen,\n"
+"Dein Zweig und '%s' sind auseinandergelaufen,\n"
 "und haben jeweils %d und %d unterschiedliche Commits.\n"
 
 #: sequencer.c:120 builtin/merge.c:864 builtin/merge.c:985
@@ -204,7 +204,7 @@ msgid ""
 "after resolving the conflicts, mark the corrected paths\n"
 "with 'git add <paths>' or 'git rm <paths>'"
 msgstr ""
-"Nachdem Sie die Konflikte aufgelöst haben, markieren Sie\n"
+"Nachdem Du die Konflikte aufgelöst hast, markiere\n"
 "die korrigierten Pfade mit 'git add <Pfade>' oder 'git rm <Pfade>'"
 
 #: sequencer.c:146
@@ -213,9 +213,9 @@ msgid ""
 "with 'git add <paths>' or 'git rm <paths>'\n"
 "and commit the result with 'git commit'"
 msgstr ""
-"Nachdem Sie die Konflikte aufgelöst haben, markieren Sie\n"
+"Nachdem Du die Konflikte aufgelöst hast, markiere\n"
 "die korrigierten Pfade mit 'git add <Pfade>' oder 'git rm <Pfade>'"
-"und committen Sie das Ergebnis mit 'git commit'."
+"und committe das Ergebnis mit 'git commit'."
 
 #: sequencer.c:159 sequencer.c:685 sequencer.c:768
 #, c-format
@@ -229,15 +229,15 @@ msgstr "Fehler bei Nachbereitung von %s"
 
 #: sequencer.c:177
 msgid "Your local changes would be overwritten by cherry-pick."
-msgstr "Ihre lokalen Änderungen würden von \"cherry-pick\" überschrieben werden."
+msgstr "Deine lokalen Änderungen würden von \"cherry-pick\" überschrieben werden."
 
 #: sequencer.c:179
 msgid "Your local changes would be overwritten by revert."
-msgstr "Ihre lokalen Änderungen würden von \"revert\" überschrieben werden."
+msgstr "Deine lokalen Änderungen würden von \"revert\" überschrieben werden."
 
 #: sequencer.c:182
 msgid "Commit your changes or stash them to proceed."
-msgstr "Committen Sie Ihre Änderungen oder verwenden Sie \"stash\" um fortzufahren."
+msgstr "Committe Deine Änderungen oder verwende \"stash\" um fortzufahren."
 
 #. TRANSLATORS: %s will be "revert" or "cherry-pick"
 #: sequencer.c:232
@@ -247,11 +247,11 @@ msgstr "%s: Konnte neue Index-Datei nicht schreiben"
 
 #: sequencer.c:298
 msgid "Your index file is unmerged."
-msgstr "Ihre Index-Datei ist nicht zusammengeführt."
+msgstr "Deine Index-Datei ist nicht zusammengeführt."
 
 #: sequencer.c:301
 msgid "You do not have a valid HEAD"
-msgstr "Sie haben keinen gültigen HEAD"
+msgstr "Du hast keinen gültigen HEAD"
 
 #: sequencer.c:316
 #, c-format
@@ -361,7 +361,7 @@ msgstr "\"cherry-pick\" oder \"revert\" wird bereits ausgeführt"
 
 #: sequencer.c:667
 msgid "try \"git cherry-pick (--continue | --quit | --abort)\""
-msgstr "versuchen Sie \"git cherry-pick (--continue | --quit | --abort)\""
+msgstr "versuche \"git cherry-pick (--continue | --quit | --abort)\""
 
 #: sequencer.c:671
 #, c-format
@@ -424,15 +424,15 @@ msgstr "Nicht zusammengeführte Pfade:"
 #: wt-status.c:140 wt-status.c:157
 #, c-format
 msgid "  (use \"git reset %s <file>...\" to unstage)"
-msgstr "  (verwenden Sie \"git reset %s <Datei>...\" zur Entfernung aus der Warteschlange)"
+msgstr "  (verwende \"git reset %s <Datei>...\" zur Entfernung aus der Warteschlange)"
 
 #: wt-status.c:142 wt-status.c:159
 msgid "  (use \"git rm --cached <file>...\" to unstage)"
-msgstr "  (verwenden Sie \"git rm --cached <Datei>...\" zur Entfernung aus der Warteschlange)"
+msgstr "  (verwende \"git rm --cached <Datei>...\" zur Entfernung aus der Warteschlange)"
 
 #: wt-status.c:143
 msgid "  (use \"git add/rm <file>...\" as appropriate to mark resolution)"
-msgstr "  (verwenden Sie \"git add/rm <Datei>...\" um gegebenenfalls die Auflösung zu markieren)"
+msgstr "  (verwende \"git add/rm <Datei>...\" um gegebenenfalls die Auflösung zu markieren)"
 
 #: wt-status.c:151
 msgid "Changes to be committed:"
@@ -444,21 +444,21 @@ msgstr "Änderungen, die sich nicht in der Warteschlange zum Commit befinden:"
 
 #: wt-status.c:173
 msgid "  (use \"git add <file>...\" to update what will be committed)"
-msgstr "  (verwenden Sie \"git add <Datei>...\" um zu aktualisieren, was committet wird)"
+msgstr "  (verwende \"git add <Datei>...\" um zu aktualisieren, was committet wird)"
 
 #: wt-status.c:175
 msgid "  (use \"git add/rm <file>...\" to update what will be committed)"
-msgstr "  (verwenden Sie \"git add/rm <Datei>...\" um zu aktualisieren, was committet wird)"
+msgstr "  (verwende \"git add/rm <Datei>...\" um zu aktualisieren, was committet wird)"
 
 #: wt-status.c:176
 msgid ""
 "  (use \"git checkout -- <file>...\" to discard changes in working directory)"
 msgstr ""
-"  (verwenden Sie \"git checkout -- <Datei>...\" zum Verwerfen der Änderungen im Arbeitsverzeichnis)"
+"  (verwende \"git checkout -- <Datei>...\" zum Verwerfen der Änderungen im Arbeitsverzeichnis)"
 
 #: wt-status.c:178
 msgid "  (commit or discard the untracked or modified content in submodules)"
-msgstr "  (committen oder verwerfen Sie den ungefolgten oder geänderten Inhalt in den Submodulen)"
+msgstr "  (committe oder verwerfe den ungefolgten oder geänderten Inhalt in den Submodulen)"
 
 #: wt-status.c:187
 #, c-format
@@ -468,7 +468,7 @@ msgstr "%s Dateien:"
 #: wt-status.c:190
 #, c-format
 msgid "  (use \"git %s <file>...\" to include in what will be committed)"
-msgstr "  (verwenden Sie \"git %s <Datei>...\" um hinzuzufügen, was committet wird)"
+msgstr "  (verwende \"git %s <Datei>...\" um hinzuzufügen, was committet wird)"
 
 #: wt-status.c:207
 msgid "bug"
@@ -586,7 +586,7 @@ msgstr "Unverfolgte Dateien nicht aufgelistet%s"
 
 #: wt-status.c:751
 msgid " (use -u option to show untracked files)"
-msgstr " (verwenden Sie die Option -u um unverfolgte Dateien anzuzeigen)"
+msgstr " (verwende die Option -u um unverfolgte Dateien anzuzeigen)"
 
 #: wt-status.c:757
 msgid "No changes"
@@ -599,7 +599,7 @@ msgstr "keine Änderungen zum Commit hinzugefügt%s\n"
 
 #: wt-status.c:763
 msgid " (use \"git add\" and/or \"git commit -a\")"
-msgstr " (verwenden Sie \"git add\" und/oder \"git commit -a\")"
+msgstr " (verwende \"git add\" und/oder \"git commit -a\")"
 
 #: wt-status.c:765
 #, c-format
@@ -608,7 +608,7 @@ msgstr "nichts zum Committen hinzugefügt, aber es gibt unverfolgte Dateien%s\n"
 
 #: wt-status.c:767
 msgid " (use \"git add\" to track)"
-msgstr " (verwenden Sie \"git add\" zum Verfolgen)"
+msgstr " (verwende \"git add\" zum Verfolgen)"
 
 #: wt-status.c:769 wt-status.c:772 wt-status.c:775
 #, c-format
@@ -617,11 +617,11 @@ msgstr "nichts zu committen%s\n"
 
 #: wt-status.c:770
 msgid " (create/copy files and use \"git add\" to track)"
-msgstr " (Erstellen/Kopieren Sie Dateien und verwenden Sie \"git add\" zum Verfolgen)"
+msgstr " (Erstelle/Kopiere Dateien und verwende \"git add\" zum Verfolgen)"
 
 #: wt-status.c:773
 msgid " (use -u to show untracked files)"
-msgstr " (verwenden Sie -u um unverfolgte Dateien anzuzeigen)"
+msgstr " (verwende -u um unverfolgte Dateien anzuzeigen)"
 
 #: wt-status.c:776
 msgid " (working directory clean)"
@@ -709,12 +709,12 @@ msgstr "Konnte '%s' nicht anwenden."
 
 #: builtin/add.c:312
 msgid "The following paths are ignored by one of your .gitignore files:\n"
-msgstr "Die folgenden Pfade werden durch eine Ihrer \".gitignore\" Dateien ignoriert:\n"
+msgstr "Die folgenden Pfade werden durch eine Deiner \".gitignore\" Dateien ignoriert:\n"
 
 #: builtin/add.c:352
 #, c-format
 msgid "Use -f if you really want to add them.\n"
-msgstr "Verwenden Sie -f wenn Sie sie wirklich hinzufügen möchten.\n"
+msgstr "Verwende -f wenn Sie sie wirklich hinzufügen möchten.\n"
 
 #: builtin/add.c:353
 msgid "no files added"
@@ -740,7 +740,7 @@ msgstr "Nichts spezifiziert, nichts hinzugefügt.\n"
 #: builtin/add.c:414
 #, c-format
 msgid "Maybe you wanted to say 'git add .'?\n"
-msgstr "Wollten Sie vieleicht 'git add .' sagen?\n"
+msgstr "Wolltest Du vieleicht 'git add .' sagen?\n"
 
 #: builtin/add.c:420 builtin/clean.c:95 builtin/commit.c:358 builtin/mv.c:82
 #: builtin/rm.c:162
