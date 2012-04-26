@@ -336,8 +336,20 @@ if (defined($dirdiff)) {
 	# files were modified during the diff, then the changes
 	# should be copied back to the working tree
 	for my $file (@working_tree) {
-		copy("$b/$file", "$workdir/$file") or die $!;
-		chmod(stat("$b/$file")->mode, "$workdir/$file") or die $!;
+		if (not (-e "$b/$file")) {
+			print "'$file' was deleted during diff.\n";
+			next;
+		}
+
+		if (system('diff', "$b/$file", "$workdir/$file") != 0) {
+			print "'$file' was modified during diff. A backup of the working copy file will be kept.\n";
+
+			copy("$workdir/$file", "$workdir/$file.orig") or die $!;
+			chmod(stat("$workdir/$file")->mode, "$workdir/$file.orig") or die $!;
+
+			copy("$b/$file", "$workdir/$file") or die $!;
+			chmod(stat("$b/$file")->mode, "$workdir/$file") or die $!;
+		}
 	}
 } else {
 	if (defined($prompt)) {
