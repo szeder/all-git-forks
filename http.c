@@ -320,6 +320,12 @@ static CURL *get_curl_handle(const char *url)
 		strbuf_addf(&buf, "%s_proxy", cre_url.protocol);
 		env_proxy_var = strbuf_detach(&buf, NULL);
 		env_proxy = getenv(env_proxy_var);
+		if (!env_proxy && strcmp("http_proxy", env_proxy_var)) {
+			char *p;
+			for (p = env_proxy_var; *p; p++)
+				*p = toupper(*p);
+			env_proxy = getenv(env_proxy_var);
+		}
 		if (env_proxy) {
 			read_http_proxy = 1;
 			no_proxy = getenv("no_proxy");
