@@ -378,5 +378,25 @@ make_submodule()
 # 
 # rm -rf ../submodule.*
 
+
+# Simple subtree add-and-immediately-push test:
 echo
-echo 'ok'
+echo '*** TESTING add subtree and immediately push'
+echo
+
+cd .. # return to test dir top level
+rm -rf mainline2
+git init mainline2
+cd mainline2
+date > mainline2.txt && git add . && git commit -m "initial mainline2 commit"
+git subtree add --prefix=subproj ../subproj subproj
+git subtree push --prefix=subproj ../subproj subproj
+result=$?
+cd ..
+check_equal 0 "$result"
+
+echo
+echo '*** PASSED add subtree and immediately push'
+echo
+
+echo '*** ALL TESTS PASSED ***'
