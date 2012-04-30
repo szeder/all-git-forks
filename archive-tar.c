@@ -4,6 +4,7 @@
 #include "cache.h"
 #include "tar.h"
 #include "archive.h"
+#include "streaming.h"
 #include "run-command.h"
 
 #define RECORDSIZE	(512)
@@ -60,6 +61,29 @@ static void write_blocked(const void *data, unsigned long size)
 		offset += RECORDSIZE - tail;
 	}
 	write_if_needed();
+}
+
+static int stream_blob_to_file(const unsigned char *sha1)
+{
+	struct git_istream *st;
+	ssize_t readlen;
+	enum object_type type;
+	unsigned long sz;
+
+	st = open_istream(sha1, &type, &sz, NULL);
+	if (!st)
+		return error("cannot stream blob %s", sha1_to_hex(sha1));
+	for (;;) {
+		char buf[BLOCKSIZE];
+
+		readlen = read_istream(st, buf, sizeof(buf));
+
+		if (readlen <= 0)
+			break;
+		write_blocked(buf, readlen);
+	}
+	close_istream(st);
+	return readlen;
 }
 
 /*
@@ -203,7 +227,11 @@ static int write_tar_entry(struct archiver_args *args,
 	} else
 		memcpy(header.name, path, pathlen);
 
-	if (S_ISLNK(mode) || S_ISREG(mode)) {
+	if (S_ISREG(mode) && !args->convert &&
+	    sha1_object_info(sha1, &size) == OBJ_BLOB &&
+	    size > big_file_threshold)
+		buffer = NULL;
+	else if (S_ISLNK(mode) || S_ISREG(mode)) {
 		enum object_type type;
 		buffer = sha1_file_to_archive(args, path, sha1, old_mode, &type, &size);
 		if (!buffer)
@@ -233,8 +261,12 @@ static int write_tar_entry(struct archiver_args *args,
 	}
 	strbuf_release(&ext_header);
 	write_blocked(&header, sizeof(header));
-	if (S_ISREG(mode) && buffer && size > 0)
-		write_blocked(buffer, size);
+	if (S_ISREG(mode) && size > 0) {
+		if (buffer)
+			write_blocked(buffer, size);
+		else
+			err = stream_blob_to_file(sha1);
+	}
 	free(buffer);
 	return err;
 }
