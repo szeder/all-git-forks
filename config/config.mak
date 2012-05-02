@@ -20,7 +20,7 @@ USE_LIBPCRE = YesPlease
 
 GIT_TEST_OPTS = --root=/run/shm/git-tests
 TEST_LINT = test-lint
-GIT_PROVE_OPTS= -j16 --state=hot,all,save
+GIT_PROVE_OPTS= -j16 --state=slow,save
 DEFAULT_TEST_TARGET = prove
 export GIT_TEST_HTTPD = Yes
 
