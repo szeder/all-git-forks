@@ -1,3 +1,12 @@
+git (1:1.7.10.1-1) unstable; urgency=low
+
+  * new upstream point release.
+    * merge-recursive: don't detect renames of empty files.
+    * fast-import: tighten parsing of datarefs.
+    * diff -c -U0: fix segfault showing start of file.
+
+ -- Jonathan Nieder <jrnieder@gmail.com>  Wed, 02 May 2012 03:08:56 -0500
+
 git (1:1.7.10-1) unstable; urgency=low
 
   * new upstream release.
