@@ -2,7 +2,8 @@ Meta = $(HOME)/compile/git/Meta
 prefix := $(HOME)/local/git/$(shell $(Meta)/install/prefix)
 
 CC = ccache gcc
-CFLAGS = -g -Wall -Werror
+O = 0
+CFLAGS = -g -O$(O) -Wall -Werror
 LDFLAGS = -g
 
 # Relax compilation on a detached HEAD (which is probably
