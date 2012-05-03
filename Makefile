@@ -742,6 +742,7 @@ LIB_OBJS += diff.o
 LIB_OBJS += dir.o
 LIB_OBJS += dir-iterator.o
 LIB_OBJS += dumpstat/dumpstat.o
+LIB_OBJS += dumpstat/fd.o
 LIB_OBJS += dumpstat/file.o
 LIB_OBJS += dumpstat/json.o
 LIB_OBJS += editor.o
