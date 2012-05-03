@@ -745,6 +745,7 @@ LIB_OBJS += dumpstat/dumpstat.o
 LIB_OBJS += dumpstat/fd.o
 LIB_OBJS += dumpstat/file.o
 LIB_OBJS += dumpstat/json.o
+LIB_OBJS += dumpstat/zeromq.o
 LIB_OBJS += editor.o
 LIB_OBJS += entry.o
 LIB_OBJS += environment.o
@@ -1516,6 +1517,11 @@ endif
 
 ifdef HAVE_BSD_SYSCTL
 	BASIC_CFLAGS += -DHAVE_BSD_SYSCTL
+endif
+
+ifdef USE_DUMPSTAT_ZEROMQ
+	EXTLIBS += -lzmq
+	COMPAT_CFLAGS += -DDUMPSTAT_ZEROMQ
 endif
 
 ifdef HAVE_GETDELIM
