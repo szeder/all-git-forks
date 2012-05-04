@@ -532,7 +532,7 @@ cmd_add_repository()
 	set -- $revs
 	cmd_add_commit "$@"
 
-	# now add it to our list of repos 
+	# now add it to our list of repos
 	git config -f .gittrees --unset subtree.$dir.url
 	git config -f .gittrees --add subtree.$dir.url $repository
 	git config -f .gittrees --unset subtree.$dir.path
@@ -717,13 +717,13 @@ cmd_pull()
 	fi
 	if [ -e "$dir" ]; then
 		ensure_clean
-		if [ $# -eq 1 ]; then 
+		if [ $# -eq 1 ]; then
 			repository=$(git config -f .gittrees subtree.$prefix.url)
 			refspec=$1
-		elif [ $# -eq 2 ]; then 
+		elif [ $# -eq 2 ]; then
 			repository=$1
 			refspec=$2
-		else 
+		else
 			repository=$(git config -f .gittrees subtree.$prefix.url)
 			refspec=$(git config -f .gittrees subtree.$prefix.branch)
 		fi
@@ -737,33 +737,33 @@ cmd_pull()
 	fi
 }
 
-cmd_diff() 
+cmd_diff()
 {
 	if [ -e "$dir" ]; then
-		if [ $# -eq 1 ]; then 
+		if [ $# -eq 1 ]; then
 			repository=$(git config -f .gittrees subtree.$prefix.url)
 			refspec=$1
-		elif [ $# -eq 2 ]; then 
+		elif [ $# -eq 2 ]; then
 			repository=$1
 			refspec=$2
 		else
 			repository=$(git config -f .gittrees subtree.$prefix.url)
 			refspec=$(git config -f .gittrees subtree.$prefix.branch)
 		fi
-		# this is ugly, but I don't know of a better way to do it. My git-fu is weak. 
+		# this is ugly, but I don't know of a better way to do it. My git-fu is weak.
 		# git diff-tree expects a treeish, but I have only a repository and branch name.
 		# I don't know how to turn that into a treeish without creating a remote.
-		# Please change this if you know a better way! 
+		# Please change this if you know a better way!
 		tmp_remote=__diff-tmp
 		git remote rm $tmp_remote > /dev/null 2>&1
 		git remote add -t $refspec $tmp_remote $repository > /dev/null
 		# we fetch as a separate step so we can pass -q (quiet), which isn't an option for "git remote"
 		# could this instead be "git fetch -q $repository $refspec" and leave aside creating the remote?
 		# Still need a treeish for the diff-tree command...
-		git fetch -q $tmp_remote 
+		git fetch -q $tmp_remote
 		git diff-tree -p refs/remotes/$tmp_remote/$refspec
 		git remote rm $tmp_remote > /dev/null 2>&1
-	else 
+	else
 		die "Cannot resolve directory '$dir'. Please point to an existing subtree directory to diff. Try 'git subtree add' to add a subtree."
 	fi
 }
@@ -773,10 +773,10 @@ cmd_push()
 		die "You shold provide either <refspec> or <repository> <refspec>"
 	fi
 	if [ -e "$dir" ]; then
-		if [ $# -eq 1 ]; then 
+		if [ $# -eq 1 ]; then
 			repository=$(git config -f .gittrees subtree.$prefix.url)
 			refspec=$1
-		elif [ $# -eq 2 ]; then 
+		elif [ $# -eq 2 ]; then
 			repository=$1
 			refspec=$2
 		else
@@ -801,10 +801,10 @@ cmd_push()
 	fi
 }
 
-subtree_list() 
+subtree_list()
 {
 	git config -f .gittrees -l | grep subtree | grep path | grep -o '=.*' | grep -o '[^=].*' |
-	while read path; do 
+	while read path; do
 		repository=$(git config -f .gittrees subtree.$path.url)
 		refspec=$(git config -f .gittrees subtree.$path.branch)
 		echo "	$path		(merged from $repository branch $refspec) "
@@ -813,7 +813,7 @@ subtree_list()
 
 cmd_list()
 {
-  subtree_list 
+  subtree_list
 }
 
 cmd_from-submodule()
