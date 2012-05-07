@@ -37,6 +37,15 @@ find_base() {
 	git rev-parse -q --verify $1 2>/dev/null
 }
 
+while test $# -gt 0; do
+case "$1" in
+*)
+	echo >&2 "unknown option: $1"
+	exit 1
+esac
+shift
+done
+
 Meta/topics -u |
 while read ref upstream; do
 	echo $ref ${upstream:-origin}
