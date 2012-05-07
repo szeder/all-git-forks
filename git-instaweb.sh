@@ -42,7 +42,12 @@ test -z "$root" && root='@@GITWEBDIR@@'
 # any untaken local port will do...
 test -z "$port" && port=1234
 
+firstword() {
+	echo "$1"
+}
+
 resolve_full_httpd () {
+	httpd_only=$(eval "firstword $httpd")
 	case "$httpd" in
 	*apache2*|*lighttpd*|*httpd*)
 		# yes, *httpd* covers *lighttpd* above, but it is there for clarity
@@ -55,20 +60,17 @@ resolve_full_httpd () {
 	*plackup*)
 		# server is started by running via generated gitweb.psgi in $fqgitdir/gitweb
 		full_httpd="$fqgitdir/gitweb/gitweb.psgi"
-		httpd_only="${httpd%% *}" # cut on first space
 		return
 		;;
 	*webrick*)
 		# server is started by running via generated webrick.rb in
 		# $fqgitdir/gitweb
 		full_httpd="$fqgitdir/gitweb/webrick.rb"
-		httpd_only="${httpd%% *}" # cut on first space
 		return
 		;;
 	esac
 
-	httpd_only="$(echo $httpd | cut -f1 -d' ')"
-	if case "$httpd_only" in /*) : ;; *) which $httpd_only >/dev/null 2>&1;; esac
+	if case "$httpd_only" in /*) : ;; *) type "$httpd_only" >/dev/null 2>&1;; esac
 	then
 		full_httpd=$httpd
 	else
@@ -124,7 +126,7 @@ $pid
 EOF
 		;;
 	*)
-		$full_httpd "$conf"
+		eval "$full_httpd \"\$conf\""
 		if test $? != 0; then
 			echo "Could not execute http daemon $httpd."
 			exit 1
@@ -142,7 +144,7 @@ httpd_is_ready () {
 	"$PERL" -MIO::Socket::INET -e "
 local \$| = 1; # turn on autoflush
 exit if (IO::Socket::INET->new('127.0.0.1:$port'));
-print 'Waiting for \'$httpd\' to start ..';
+print 'Waiting for \'$httpd_only\' to start ..';
 do {
 	print '.';
 	sleep(1);
@@ -168,7 +170,7 @@ do
 		;;
 	-d|--httpd)
 		shift
-		httpd="$1"
+		httpd=$(git rev-parse --sq-quote "$1")
 		;;
 	-b|--browser)
 		shift
