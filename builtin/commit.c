@@ -1169,7 +1169,7 @@ static int git_status_config(const char *k, const char *v, void *cb)
 
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
-	struct wt_status s;
+	static struct wt_status s;
 	int fd;
 	unsigned char sha1[20];
 	static struct option builtin_status_options[] = {
@@ -1369,6 +1369,7 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 
 int cmd_commit(int argc, const char **argv, const char *prefix)
 {
+	static struct wt_status s;
 	static struct option builtin_commit_options[] = {
 		OPT__QUIET(&quiet, "suppress summary after successful commit"),
 		OPT__VERBOSE(&verbose, "show diff in commit message template"),
@@ -1431,7 +1432,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	int allow_fast_forward = 1;
-	struct wt_status s;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
 
