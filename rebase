@@ -37,14 +37,26 @@ find_base() {
 	git rev-parse -q --verify $1 2>/dev/null
 }
 
+cont=
 while test $# -gt 0; do
 case "$1" in
+--continue)
+	cont=t
+	;;
 *)
 	echo >&2 "unknown option: $1"
 	exit 1
 esac
 shift
 done
+
+GIT_DIR=`git rev-parse --git-dir` || exit
+
+if test "$cont" = t; then
+	git rebase --continue || exit
+else
+	echo "Meta/rebase --continue" >"$GIT_DIR/continue"
+fi
 
 Meta/topics -u |
 while read ref upstream; do
@@ -68,4 +80,5 @@ while read i upstream; do
 	git checkout -q $i &&
 	git rebase --onto $upstream `find_base $upstream` ||
 	exit 1
-done
+done &&
+rm -f "$GIT_DIR/continue"
