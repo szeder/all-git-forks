@@ -1201,6 +1201,10 @@ sub run_request {
 	configure_gitweb_features();
 
 	dispatch();
+
+
+ DONE_REQUEST:
+	1;
 }
 
 our $is_last_request = sub { 1 };
@@ -1258,9 +1262,6 @@ sub run {
 
 		last REQUEST if ($is_last_request->());
 	}
-
- DONE_GITWEB:
-	1;
 }
 
 run();
@@ -4219,7 +4220,7 @@ EOF
 	print "</div>\n";
 
 	git_footer_html();
-	goto DONE_GITWEB
+	goto DONE_REQUEST
 		unless ($opts{'-error_handler'});
 }
 
