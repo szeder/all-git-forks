@@ -53,8 +53,8 @@ resolve_full_httpd () {
 		fi
 		;;
 	*plackup*)
-		# server is started by running via generated gitweb.psgi in $fqgitdir/gitweb
-		full_httpd="$fqgitdir/gitweb/gitweb.psgi"
+		# server is started by running via generated gitweb-wrapper.psgi in $fqgitdir/gitweb
+		full_httpd="$fqgitdir/gitweb/gitweb-wrapper.psgi"
 		httpd_only="${httpd%% *}" # cut on first space
 		return
 		;;
@@ -434,7 +434,7 @@ EOF
 plackup_conf () {
 	# generate a standalone 'plackup' server script in $fqgitdir/gitweb
 	# with embedded configuration; it does not use "$conf" file
-	cat > "$fqgitdir/gitweb/gitweb.psgi" <<EOF
+	cat > "$fqgitdir/gitweb/gitweb-wrapper.psgi" <<EOF
 #!$PERL
 
 # gitweb - simple web interface to track changes in git repositories
@@ -445,8 +445,7 @@ use strict;
 use IO::Handle;
 use Plack::MIME;
 use Plack::Builder;
-use Plack::App::WrapCGI;
-use CGI::Emulate::PSGI 0.07; # minimum version required to work with gitweb
+use Plack::Util;
 
 # mimetype mapping (from lighttpd_conf)
 Plack::MIME->add_type(
@@ -538,25 +537,7 @@ my \$app = builder {
 			\$app->(\$env);
 		}
 	};
-	# gitweb currently doesn't work with $SIG{CHLD} set to 'IGNORE',
-	# because it uses 'close $fd or die...' on piped filehandle $fh
-	# (which causes the parent process to wait for child to finish).
-	enable_if { \$SIG{'CHLD'} eq 'IGNORE' } sub {
-		my \$app = shift;
-		sub {
-			my \$env = shift;
-			local \$SIG{'CHLD'} = 'DEFAULT';
-			local \$SIG{'CLD'}  = 'DEFAULT';
-			\$app->(\$env);
-		}
-	};
-	# serve static files, i.e. stylesheet, images, script
-	enable 'Static',
-		path => sub { m!\.(js|css|png)\$! && s!^/gitweb/!! },
-		root => "$root/",
-		encoding => 'utf-8'; # encoding for 'text/plain' files
-	# convert CGI application to PSGI app
-	Plack::App::WrapCGI->new(script => "$root/gitweb.cgi")->to_app;
+	Plack::Util::load_psgi("$root/gitweb.cgi");
 };
 
 # make it runnable as standalone app,
@@ -574,8 +555,8 @@ if (caller) {
 __END__
 EOF
 
-	chmod a+x "$fqgitdir/gitweb/gitweb.psgi"
-	# configuration is embedded in server script file, gitweb.psgi
+	chmod a+x "$fqgitdir/gitweb/gitweb-wrapper.psgi"
+	# configuration is embedded in server script file, gitweb-wrapper.psgi
 	rm -f "$conf"
 }
 
