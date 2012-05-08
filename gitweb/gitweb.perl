@@ -3456,12 +3456,13 @@ sub parse_commit {
 
 	local $/ = "\0";
 
-	open my $fd, "-|", git_cmd(), "rev-list",
+	open my $fd, "-|", quote_command(
+		git_cmd(), "rev-list",
 		"--parents",
 		"--header",
 		"--max-count=1",
 		$commit_id,
-		"--",
+		"--") . ' 2>/dev/null',
 		or die_error(500, "Open git-rev-list failed");
 	my $commit_text = <$fd>;
 	%co = parse_commit_text($commit_text, 1)
@@ -3481,7 +3482,8 @@ sub parse_commits {
 
 	local $/ = "\0";
 
-	open my $fd, "-|", git_cmd(), "rev-list",
+	open my $fd, "-|", quote_command(
+		git_cmd(), "rev-list",
 		"--header",
 		@args,
 		("--max-count=" . $maxcount),
@@ -3489,7 +3491,7 @@ sub parse_commits {
 		@extra_options,
 		$commit_id,
 		"--",
-		($filename ? ($filename) : ())
+		($filename ? ($filename) : ())) . ' 2>/dev/null'
 		or die_error(500, "Open git-rev-list failed");
 	while (my $line = <$fd>) {
 		my %co = parse_commit_text($line);
