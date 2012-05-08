@@ -46,6 +46,7 @@ static int apply_with_reject;
 static int apply_verbosely;
 static int allow_overlap;
 static int no_add;
+static int threeway;
 static const char *fake_ancestor;
 static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
@@ -3072,6 +3073,12 @@ static int load_preimage(struct image *image,
 	return 0;
 }
 
+static int try_threeway_fallback(struct image *image, struct patch *patch,
+				 struct stat *st, struct cache_entry *ce)
+{
+	return -1; /* for now */
+}
+
 static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *ce)
 {
 	struct image image;
@@ -3079,8 +3086,11 @@ static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *
 	if (load_preimage(&image, patch, st, ce) < 0)
 		return -1;
 
-	if (apply_fragments(&image, patch) < 0)
-		return -1; /* note with --reject this succeeds. */
+	if (apply_fragments(&image, patch) < 0) {
+		/* Note: with --reject, the above call succeeds. */
+		if (!threeway || try_threeway_fallback(&image, patch, st, ce) < 0)
+			return -1;
+	}
 	patch->result = image.buf;
 	patch->resultsize = image.len;
 	add_to_fn_table(patch);
@@ -3992,6 +4002,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			"apply a patch without touching the working tree"),
 		OPT_BOOLEAN(0, "apply", &force_apply,
 			"also apply the patch (use with --stat/--summary/--check)"),
+		OPT_BOOL('3', "3way", &threeway,
+			 "attempt three-way merge if a patch does not apply"),
 		OPT_FILENAME(0, "build-fake-ancestor", &fake_ancestor,
 			"build a temporary index based on embedded index information"),
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
@@ -4039,6 +4051,9 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 
 	argc = parse_options(argc, argv, prefix, builtin_apply_options,
 			apply_usage, 0);
+
+	if (apply_with_reject && threeway)
+		die("--reject and --3way cannot be used together.");
 
 	if (apply_with_reject)
 		apply = apply_verbosely = 1;
