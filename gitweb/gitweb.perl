@@ -3452,6 +3452,8 @@ sub parse_commit {
 	my ($commit_id) = @_;
 	my %co;
 
+	return unless defined $commit_id;
+
 	local $/ = "\0";
 
 	open my $fd, "-|", git_cmd(), "rev-list",
@@ -3461,7 +3463,9 @@ sub parse_commit {
 		$commit_id,
 		"--",
 		or die_error(500, "Open git-rev-list failed");
-	%co = parse_commit_text(<$fd>, 1);
+	my $commit_text = <$fd>;
+	%co = parse_commit_text($commit_text, 1)
+		if defined $commit_text;
 	close $fd;
 
 	return %co;
@@ -3471,6 +3475,7 @@ sub parse_commits {
 	my ($commit_id, $maxcount, $skip, $filename, @args) = @_;
 	my @cos;
 
+	return unless defined $commit_id;
 	$maxcount ||= 1;
 	$skip ||= 0;
 
