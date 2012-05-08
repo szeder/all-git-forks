@@ -1277,9 +1277,10 @@ sub to_psgi_app {
 }
 
 sub build_psgi_app {
-	require Plack::Builder;
-	require Plack::Middleware::Static;
-
+	# gitweb currently doesn't work with $SIG{CHLD} set to 'IGNORE',
+	# because it uses 'close $fd or die...' on piped filehandle $fh
+	# (which causes the parent process to wait for child to finish).
+	# this middleware is enabled only if $SIG{CHLD} is 'IGNORE'.
 	my $sigchld_mw = sub {
 		my $app = shift;
 		sub {
@@ -1294,13 +1295,34 @@ sub build_psgi_app {
 	# note: Plack::Builder DSL (builder, enable_if, enable) won't work
 	# with "require Plack::Builder" outside BEGIN section.
 	my $app = to_psgi_app();
-	$app = Plack::Middleware::Static->wrap($app,
-		path => qr{(?:^|/)static/.*\.(?:js|css|png)$},
-		root => __DIR__,
-		encoding => 'utf-8', # encoding for 'text/plain' files
-	);
 	$app = $sigchld_mw->($app)
 		if (defined $SIG{'CHLD'} && $SIG{'CHLD'} eq 'IGNORE');
+
+	if (-d "++GITWEBSTATICDIR++") {
+		require Plack::App::URLMap;
+		require Plack::App::File;
+
+		my $urlmap = Plack::App::URLMap->new();
+		$urlmap->map("/" => $app);
+		foreach my $static_url (@stylesheets, $stylesheet, $logo, $favicon, $javascript) {
+			next if (!defined $static_url || $static_url eq "");
+
+			(my $static_file = $static_url) =~ s!^.*/!!; # basename
+			$static_file = "++GITWEBSTATICDIR++/$static_file";
+			$urlmap->map($static_url => Plack::App::File->new(file => $static_file));
+		}
+		$app = $urlmap->to_app();
+
+	} else {
+		require Plack::Middleware::Static;
+
+		$app = Plack::Middleware::Static->wrap($app,
+			path => qr{(?:^|/)static/.*\.(?:js|css|png)$},
+			root => __DIR__,
+			encoding => 'utf-8', # encoding for 'text/plain' files
+		);
+
+	}
 
 	return $app;
 }

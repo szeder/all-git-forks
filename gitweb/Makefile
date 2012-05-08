@@ -13,6 +13,8 @@ all::
 prefix ?= $(HOME)
 bindir ?= $(prefix)/bin
 gitwebdir ?= /var/www/cgi-bin
+gitwebstaticdir ?= $(gitwebdir)/static
+gitweblibdir ?= $(gitwebdir)/lib
 
 RM ?= rm -f
 INSTALL ?= install
@@ -58,8 +60,8 @@ PERL_PATH  ?= /usr/bin/perl
 # Shell quote;
 bindir_SQ = $(subst ','\'',$(bindir))#'
 gitwebdir_SQ = $(subst ','\'',$(gitwebdir))#'
-gitwebstaticdir_SQ = $(subst ','\'',$(gitwebdir)/static)#'
-gitweblibdir_SQ = $(subst ','\'',$(gitwebdir)/lib)#'
+gitwebstaticdir_SQ = $(subst ','\'',$(gitwebstaticdir))#'
+gitweblibdir_SQ = $(subst ','\'',$(gitweblibdir))#'
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))#'
 PERL_PATH_SQ  = $(subst ','\'',$(PERL_PATH))#'
 DESTDIR_SQ    = $(subst ','\'',$(DESTDIR))#'
@@ -130,6 +132,7 @@ GITWEB_JSLIB_FILES += static/js/blame_incremental.js
 GITWEB_REPLACE = \
 	-e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
 	-e 's|++GIT_BINDIR++|$(bindir)|g' \
+	-e 's|++GITWEBSTATICDIR++|$(gitwebstaticdir)|g' \
 	-e 's|++GITWEB_CONFIG++|$(GITWEB_CONFIG)|g' \
 	-e 's|++GITWEB_CONFIG_SYSTEM++|$(GITWEB_CONFIG_SYSTEM)|g' \
 	-e 's|++GITWEB_CONFIG_COMMON++|$(GITWEB_CONFIG_COMMON)|g' \
