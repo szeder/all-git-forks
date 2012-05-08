@@ -473,6 +473,22 @@ With that configuration the full path to browse repositories would be:
 
   http://server/gitweb
 
+As PSGI using plackup
+~~~~~~~~~~~~~~~~~~~~~
+Gitweb can run as PSGI app (via emulation with *CGI::Emulate::PSGI*(3pm)).
+First you need to rename, copy or symlink gitweb.cgi to gitweb.psgi.
+You can run gitweb as a PSGI application from 'plackup' command line
+utility, using any *PSGI*(3) web server (see http://plackperl.org for
+a list), for example:
+
+    $ plackup --server HTTP::Server::Simple --port 8080 \
+      --host 127.0.0.1 gitweb.psgi
+
+With that configuration the full path to browse repositories would be:
+
+  http://127.0.0.1:8080/
+
+See *plackup*(1) manpage for more details.
 
 ADVANCED WEB SERVER SETUP
 -------------------------

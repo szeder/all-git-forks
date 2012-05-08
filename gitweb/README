@@ -56,9 +56,16 @@ See also gitweb.conf(5) manpage.
 Web server configuration
 ------------------------
 Gitweb can be run as CGI script, as legacy mod_perl application (using
-ModPerl::Registry), and as FastCGI script.  You can find some simple examples
-in "Example web server configuration" section in INSTALL file for gitweb (in
-gitweb/INSTALL).
+ModPerl::Registry), as FastCGI script, and as PSGI application.  You
+can find some simple examples in "Example web server configuration"
+section in INSTALL file for gitweb (in gitweb/INSTALL).
+
+Note that to run as FastCGI script gitweb must be run with *.fcgi
+extension or with `--fastcgi` / `--fcgi` parameter on command line.
+To run as PSGI application gitweb must be run with *.psgi extension,
+or with `--psgi` / `--plackup` parameter on command line, or from
+PSGI web server which sets 'PLACK_ENV' or 'PLACK_SERVER' environment
+variable.
 
 See "Webserver configuration" and "Advanced web server setup" sections in
 gitweb(1) manpage.

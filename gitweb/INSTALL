@@ -36,6 +36,9 @@ Requirements
 The following optional Perl modules are required for extra features
  - Digest::MD5 - for gravatar support
  - CGI::Fast and FCGI - for running gitweb as FastCGI script
+ - CGI::Emulate::PSGI, Plack::Builder, Plack::Middleware::Static
+   for running gitweb as PSGI application, and Plack::Runner to
+   make it runnable as a standalone script
  - HTML::TagCloud - for fancy tag cloud in project list view
  - HTTP::Date or Time::ParseDate - to support If-Modified-Since for feeds
 

@@ -1227,16 +1227,22 @@ sub configure_as_fcgi {
 	# let each child service 100 requests
 	our $is_last_request = sub { ++$request_number > 100 };
 }
+sub configure_as_psgi {
+	our $CGI = 'PSGI'; # fake
+}
 sub evaluate_argv {
 	my $script_name = $ENV{'SCRIPT_NAME'} || $ENV{'SCRIPT_FILENAME'} || __FILE__;
 	configure_as_fcgi()
 		if $script_name =~ /\.fcgi$/;
+	configure_as_psgi()
+		if $script_name =~ /\.psgi$/;
 
 	return unless (@ARGV);
 
 	require Getopt::Long;
 	Getopt::Long::GetOptions(
 		'fastcgi|fcgi|f' => \&configure_as_fcgi,
+		'psgi|plack'     => \&configure_as_psgi,
 		'nproc|n=i' => sub {
 			my ($arg, $val) = @_;
 			return unless eval { require FCGI::ProcManager; 1; };
@@ -1250,8 +1256,78 @@ sub evaluate_argv {
 	);
 }
 
+# it is very similar to run() subroutine, but it would be hard to
+# extract common code; note that $*_hook variables can be set only
+# for FastCGI, so they are absent here
+sub to_psgi_app {
+	require CGI::Emulate::PSGI;
+
+	our $CGI = 'CGI';
+	our $first_request = 1;
+
+	my $app = CGI::Emulate::PSGI->handler(sub {
+		CGI::initialize_globals();
+		our $cgi = CGI->new();
+
+		run_request();
+
+		$first_request = 0;
+	});
+	return $app;
+}
+
+sub build_psgi_app {
+	require Plack::Builder;
+	require Plack::Middleware::Static;
+
+	my $sigchld_mw = sub {
+		my $app = shift;
+		sub {
+			my $env = shift;
+			local $SIG{'CHLD'} = 'DEFAULT';
+			local $SIG{'CLD'}  = 'DEFAULT';
+			$app->($env);
+		};
+	};
+
+	# you're supposed to "add" middleware from outer to inner.
+	# note: Plack::Builder DSL (builder, enable_if, enable) won't work
+	# with "require Plack::Builder" outside BEGIN section.
+	my $app = to_psgi_app();
+	$app = Plack::Middleware::Static->wrap($app,
+		path => qr{(?:^|/)static/.*\.(?:js|css|png)$},
+		root => __DIR__,
+		encoding => 'utf-8', # encoding for 'text/plain' files
+	);
+	$app = $sigchld_mw->($app)
+		if (defined $SIG{'CHLD'} && $SIG{'CHLD'} eq 'IGNORE');
+
+	return $app;
+}
+
+sub run_psgi_app {
+	my $app = build_psgi_app();
+
+	# make it runnable as standalone app,
+	# like it would be run via 'plackup' utility.
+	# PLACK_ENV is set by plackup etc.
+	if ($ENV{'PLACK_ENV'} || $ENV{'PLACK_SERVER'}) {
+		return $app;
+	}	else {
+		require Plack::Runner;
+
+		my $runner = Plack::Runner->new();
+		$runner->parse_options(qw(--env deployment),
+		                       qw(--host 127.0.0.1));
+		$runner->run($app);
+	}
+}
+
 sub run {
 	evaluate_argv();
+	if ($CGI eq 'PSGI' || $ENV{'PLACK_ENV'} || $ENV{'PLACK_SERVER'}) {
+		return run_psgi_app();
+	}
 
 	$first_request = 1;
 	$pre_listen_hook->()
@@ -1272,12 +1348,12 @@ sub run {
 	}
 }
 
-run();
+our $app = run();
 
 if (defined caller) {
 	# wrapped in a subroutine processing requests,
 	# e.g. mod_perl with ModPerl::Registry, or PSGI with Plack::App::WrapCGI
-	return;
+	return $app;
 } else {
 	# pure CGI script, serving single request
 	exit;
