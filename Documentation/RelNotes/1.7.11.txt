@@ -6,7 +6,20 @@ Updates since v1.7.10
 
 UI, Workflows & Features
 
+ * A new mode for push, "simple", which is a cross between "current"
+   and "upstream", has been introduced. "git push" without any refspec
+   will push the current branch out to the same name at the remote
+   repository only when it is set to track the branch with the same
+   name over there.  The plan is to make this mode the new default
+   value when push.default is not configured.
+
+ * A couple of commands learned the "--column" option to produce
+   columnar output.
+
  * A third-party tool "git subtree" is distributed in contrib/
+
+ * Error messages given when @{u} is used for a branch without its
+   upstream configured have been clatified.
 
  * Even with "-q"uiet option, "checkout" used to report setting up
    tracking.  Also "branch" learned the "-q"uiet option to squelch
@@ -16,6 +29,9 @@ UI, Workflows & Features
    variables with REMOTE_USER and REMOTE_ADDR, but these variables are
    now preserved when set.
 
+ * "include.path" mechanism of the configuration files learned to
+   understand "~/path" and "~user/path".
+
  * "git am" learned the "--include" option, which is an opposite of
    existing the "--exclude" option.
 
@@ -24,22 +40,66 @@ UI, Workflows & Features
    needed such treatment are now reported to the end user, so that the
    result in them can be eyeballed with extra care.
 
+ * The output from "diff/log --stat" used to always allocate 4 columns
+   to show the number of modified lines, but not anymore.
+
+ * "git difftool" learned the "--dir-diff" option to spawn external
+   diff tools that can compare two directory hierarchies at a time
+   after populating two temporary directories, instead of running an
+   instance of the external tool once per a file pair.
+
  * The "fmt-merge-msg" command learns to list the primary contributors
    involved in the side topic you are merging.
 
  * The cases "git push" fails due to non-ff can be broken into three
    categories; each case is given a separate advise message.
 
+ * "git rebase" learned to optionally keep commits that do not
+   introduce any change in the original history.
+
+ * "git push --recurse-submodules" learned to optionally look into the
+   histories of submodules bound to the superproject and push them
+   out.
+
  * A 'snapshot' request to "gitweb" honors If-Modified-Since: header,
    based on the commit date.
 
+ * "gitweb" learned to highlight the patch it outputs even more.
+
 Foreign Interface
 
+ * "git svn" used to die with unwanted SIGPIPE when talking with HTTP
+   server that uses keep-alive.
 
-Performance
+ * "git svn" learned to use platform specific authentication
+   providers, e.g. gnome-keyring, kwallet, etc.
 
+ * "git p4" has been moved out of contrib/ area and has seen more work
+   on importing labels as tags from (and exporting tags as labels to)
+   p4.
 
-Internal Implementation (please report possible regressions)
+Performance and Internal Implementation (please report possible regressions)
+
+ * An experimental "version 4" format of the index file has been
+   introduced to reduce on-disk footprint and I/O overhead.
+
+ * The code to compute hash values for lines used by the internal diff
+   engine was optimized on little-endian machines, using the same
+   trick the kernel folks came up with.
+
+ * "git apply" had some memory leaks plugged.
+
+ * "git repack" used to write out unreachable objects as loose objects
+   when repacking, even if such loose objects will immediately pruned
+   due to its age.
+
+ * Setting up a revision traversal with many starting points was
+   inefficient as these were placed in a date-order priority queue
+   one-by-one.  Now they are collected in the queue unordered first,
+   and sorted immediately before getting used.
+
+ * "git rev-parse --show-prefix" used to emit nothing when run at the
+   top-level of the working tree, but now it gives a blank line.
 
  * Minor memory leak during unpack_trees (hence "merge" and "checkout"
    to check out another branch) has been plugged.
@@ -51,6 +111,9 @@ Internal Implementation (please report possible regressions)
    systems, run-command API now uses SHELL_PATH, not /bin/sh, when
    spawning an external command (not applicable to Windows port).
 
+ * The API to iterate over refs/ hierarchy has been tweaked to allow
+   walking only a subset of it more efficiently.
+
 Also contains minor documentation updates and code clean-ups.
 
 
@@ -61,55 +124,22 @@ Unless otherwise noted, all the fixes since v1.7.10 in the maintenance
 releases are contained in this release (see release notes to them for
 details).
 
- * When PATH contains an unreadable directory, alias expansion code
-   did not kick in, and failed with an error that said "git-subcmd"
-   was not found.
-   (merge 38f865c jk/run-command-eacces later to maint).
+ * "git diff --stat" used to fully count a binary file with modified
+   execution bits whose contents is unmodified, which was not quite
+   right.
 
- * The 'push to upstream' implementation was broken in some corner
-   cases. "git push $there" without refspec, when the current branch
-   is set to push to a remote different from $there, used to push to
-   $there using the upstream information to a remote unreleated to
-   $there.
-   (merge 135dade jc/push-upstream-sanity later to maint).
+ * "log -z --pretty=tformat:..." did not terminate each record with
+   NUL.  The fix is not entirely correct when the output also asks for
+   --patch and/or --stat, though.
+   (merge fafd382 jk/maint-tformat-with-z later to maint).
 
- * "git clean -d -f" (not "-d -f -f") is supposed to protect nested
-   working trees of independent git repositories that exist in the
-   current project working tree from getting removed, but the
-   protection applied only to such working trees that are at the
-   top-level of the current project by mistake.
-   (merge ae2f203 jc/maint-clean-nested-worktree-in-subdir later to maint).
+ * "git push" over smart-http lost progress output a few releases ago.
+   (merge e304aeb jk/maint-push-progress later to maint).
 
- * Rename detection logic used to match two empty files as renames
-   during merge-recursive, leading unnatural mismerges.
-   (merge 4f7cb99 jk/diff-no-rename-empty later to maint).
+ * A contrib script "rerere-train" did not work out of the box unless
+   user futzed with her $PATH.
+   (merge 53876fc jc/rerere-train later to maint).
 
- * An age-old corner case bug in combine diff (only triggered with -U0
-   and the hunk at the beginning of the file needs to be shown) has
-   been fixed.
-   (merge e5e9b56 rs/combine-diff-zero-context-at-the-beginning later to maint).
-
- * When "git commit --template F" errors out because the user did not
-   touch the message, it claimed that it aborts due to "empty
-   message", which was utterly wrong.
-   (merge 1f08c2c jc/commit-unedited-template later to maint).
-
- * "git add -p" is not designed to deal with unmerged paths but did
-   not exclude them and tried to apply funny patches only to fail.
-   (merge 4066bd6 jk/add-p-skip-conflicts later to maint).
-
- * "git commit --author=$name" did not tell the name that was being
-   recorded in the resulting commit to hooks, even though it does do
-   so when the end user overrode the authorship via the
-   "GIT_AUTHOR_NAME" environment variable.
-   (merge 7dfe8ad jc/commit-hook-authorship later to maint).
-
- * The regexp configured with diff.wordregex was incorrectly reused
-   across files.
-   (merge 6440d34 tr/maint-word-diff-regex-sticky later to maint).
-
- * Running "notes merge --commit" failed to perform correctly when run
-   from any directory inside $GIT_DIR/.  When "notes merge" stops with
-   conflicts, $GIT_DIR/NOTES_MERGE_WORKTREE is the place a user edits
-   to resolve it.
-   (merge dabba59 jh/notes-merge-in-git-dir-worktree later to maint).
+ * "log --graph" was not very friendly with "--stat" option and its
+   output had line breaks at wrong places.
+   (merge bafa16e lp/diffstat-with-graph later to maint).
