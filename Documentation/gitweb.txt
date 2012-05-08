@@ -473,6 +473,10 @@ With that configuration the full path to browse repositories would be:
 
   http://server/gitweb
 
+Note that for this configuration `$base_url` must be set to end with
+'/', as described in linkgit:gitweb.conf[5], for gitweb to correctly
+serve static files when using path_info URLs.
+
 As PSGI using plackup
 ~~~~~~~~~~~~~~~~~~~~~
 Gitweb can run as PSGI app (via emulation with *CGI::Emulate::PSGI*(3pm)).

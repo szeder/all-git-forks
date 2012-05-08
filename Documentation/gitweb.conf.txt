@@ -566,6 +566,18 @@ $base_url::
 	PATH_INFO.  Usually gitweb sets its value correctly,
 	and there is no need to set this variable, e.g. to $my_uri or "/".
 	See `$per_request_config` if you need to override it anyway.
++
+You would need to set this variable when using path_info-based URLs
+while using gitweb as a directory handler (which means that full path
+to browse repositories looks like `http://git.example.com/gitweb`
+rather than `http://git.example.com/gitweb/gitweb.cgi`).
++
+In such case `$base_url` needs to end with slash, to denote that it is
+directory:
++
+----------------------------------------------------------------------
+$base_url .= '/' unless ($base_url =~ m!/$!);
+----------------------------------------------------------------------
 
 
 CONFIGURING GITWEB FEATURES
