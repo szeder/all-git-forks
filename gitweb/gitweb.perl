@@ -1318,7 +1318,8 @@ sub run_psgi_app {
 
 		my $runner = Plack::Runner->new();
 		$runner->parse_options(qw(--env deployment),
-		                       qw(--host 127.0.0.1));
+		                       qw(--host 127.0.0.1),
+		                       @ARGV);
 		$runner->run($app);
 	}
 }
