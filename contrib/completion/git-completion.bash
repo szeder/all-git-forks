@@ -1551,7 +1551,7 @@ _git_log ()
 {
 	__git_has_doubledash && return
 
-	local g="$(git rev-parse --git-dir 2>/dev/null)"
+	local g="$(__gitdir)"
 	local merge=""
 	if [ -f "$g/MERGE_HEAD" ]; then
 		merge="--merge"
