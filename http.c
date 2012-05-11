@@ -791,7 +791,7 @@ static int http_request(const char *url, void *result, int target, int options)
 			} else {
 				credential_fill(&http_auth);
 				init_curl_http_auth(slot->curl);
-				ret = HTTP_REAUTH;
+				ret = HTTP_AUTH_RETRY;
 			}
 		} else {
 			if (!curl_errorstr[0])
@@ -821,7 +821,7 @@ static int http_request_reauth(const char *url, void *result, int target,
 
 	do {
 		ret = http_request(url, result, target, options);
-	} while (ret == HTTP_REAUTH);
+	} while (ret == HTTP_AUTH_RETRY);
 
 	return ret;
 }
