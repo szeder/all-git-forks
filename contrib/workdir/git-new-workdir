@@ -54,11 +54,30 @@ then
 	die "destination directory '$new_workdir' already exists."
 fi
 
-# make sure the links use full paths
-git_dir=$(cd "$git_dir"; pwd)
-
 # create the workdir
 mkdir -p "$new_workdir/.git" || die "unable to create \"$new_workdir\"!"
+
+# get relative path from the workdir to the original repository
+git_dir_fullpath=$(cd -P -- "$git_dir"; pwd)
+cd -P -- "$new_workdir/.git"
+common_path=$PWD
+git_dir=
+until
+	case $git_dir_fullpath in
+	$common_path/*)
+		true;;
+	*)
+		false;;
+	esac
+do
+	common_path=${common_path%/*} git_dir=../$git_dir
+done
+case $common_path in
+''|/)
+	git_dir=$git_dir_fullpath;;
+*)
+	git_dir=$git_dir${git_dir_fullpath#"$common_path/"};;
+esac
 
 # create the links to the original repo.  explicitly exclude index, HEAD and
 # logs/HEAD from the list since they are purely related to the current working
@@ -67,16 +86,20 @@ for x in config refs logs/refs objects info hooks packed-refs remotes rr-cache s
 do
 	case $x in
 	*/*)
-		mkdir -p "$(dirname "$new_workdir/.git/$x")"
+		mkdir -p "${x%/*}"
+		ln -s -- "../$git_dir/$x" "$x"
+		;;
+	*)
+		ln -s -- "$git_dir/$x" "$x"
 		;;
 	esac
-	ln -s "$git_dir/$x" "$new_workdir/.git/$x"
 done
 
-# now setup the workdir
-cd "$new_workdir"
 # copy the HEAD from the original repository as a default branch
-cp "$git_dir/HEAD" .git/HEAD
+cp "$git_dir/HEAD" "$git_dir/index" .
+
+cd ..
+
 # checkout the branch (either the same as HEAD from the original repository, or
 # the one that was asked for)
 git checkout -f $branch
