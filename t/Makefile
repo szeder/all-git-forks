@@ -17,9 +17,9 @@ DEFAULT_TEST_TARGET ?= test
 # Shell quote;
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 
-T = $(wildcard t[0-9][0-9][0-9][0-9]-*.sh)
-TSVN = $(wildcard t91[0-9][0-9]-*.sh)
-TGITWEB = $(wildcard t95[0-9][0-9]-*.sh)
+T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
+TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
+TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -73,6 +73,9 @@ gitweb-test:
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
 
+perf:
+	$(MAKE) -C perf/ all
+
 # Smoke testing targets
 -include ../GIT-VERSION-FILE
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo unknown')
@@ -111,4 +114,4 @@ smoke_report: smoke
 		http://smoke.git.nix.is/app/projects/process_add_report/1 \
 	| grep -v ^Redirecting
 
-.PHONY: pre-clean $(T) aggregate-results clean valgrind smoke smoke_report
+.PHONY: pre-clean $(T) aggregate-results clean valgrind perf

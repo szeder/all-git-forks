@@ -85,7 +85,8 @@ extern void add_fill_function(void *data, int (*fill)(void *));
 extern void step_active_slots(void);
 #endif
 
-extern void http_init(struct remote *remote, const char *url);
+extern void http_init(struct remote *remote, const char *url,
+		      int proactive_auth);
 extern void http_cleanup(void);
 
 extern int active_requests;
@@ -126,7 +127,7 @@ extern char *get_remote_object_url(const char *url, const char *hex,
 #define HTTP_NOAUTH	5
 
 /*
- * Requests an url and stores the result in a strbuf.
+ * Requests a URL and stores the result in a strbuf.
  *
  * If the result pointer is NULL, a HTTP HEAD request is made instead of GET.
  */

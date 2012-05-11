@@ -3,7 +3,6 @@
 #include "refs.h"
 #include "remote.h"
 #include "commit.h"
-#include "sequencer.h"
 
 struct tracking {
 	struct refspec spec;
@@ -102,9 +101,10 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
  * config.
  */
 static int setup_tracking(const char *new_ref, const char *orig_ref,
-                          enum branch_track track)
+			  enum branch_track track, int quiet)
 {
 	struct tracking tracking;
+	int config_flags = quiet ? 0 : BRANCH_CONFIG_VERBOSE;
 
 	if (strlen(new_ref) > 1024 - 7 - 7 - 1)
 		return error("Tracking not set up: name too long: %s",
@@ -129,7 +129,7 @@ static int setup_tracking(const char *new_ref, const char *orig_ref,
 		return error("Not tracking: ambiguous information for ref %s",
 				orig_ref);
 
-	install_branch_config(BRANCH_CONFIG_VERBOSE, new_ref, tracking.remote,
+	install_branch_config(config_flags, new_ref, tracking.remote,
 			      tracking.src ? tracking.src : orig_ref);
 
 	free(tracking.src);
@@ -182,7 +182,7 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 		const char *head;
 		unsigned char sha1[20];
 
-		head = resolve_ref("HEAD", sha1, 0, NULL);
+		head = resolve_ref_unsafe("HEAD", sha1, 0, NULL);
 		if (!is_bare_repository() && head && !strcmp(head, ref->buf))
 			die("Cannot force update the current branch.");
 	}
@@ -191,7 +191,8 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 
 void create_branch(const char *head,
 		   const char *name, const char *start_name,
-		   int force, int reflog, enum branch_track track)
+		   int force, int reflog, int clobber_head,
+		   int quiet, enum branch_track track)
 {
 	struct ref_lock *lock = NULL;
 	struct commit *commit;
@@ -206,7 +207,8 @@ void create_branch(const char *head,
 		explicit_tracking = 1;
 
 	if (validate_new_branchname(name, &ref, force,
-				    track == BRANCH_TRACK_OVERRIDE)) {
+				    track == BRANCH_TRACK_OVERRIDE ||
+				    clobber_head)) {
 		if (!force)
 			dont_change_ref = 1;
 		else
@@ -259,7 +261,7 @@ void create_branch(const char *head,
 			 start_name);
 
 	if (real_ref && track)
-		setup_tracking(ref.buf+11, real_ref, track);
+		setup_tracking(ref.buf+11, real_ref, track, quiet);
 
 	if (!dont_change_ref)
 		if (write_ref_sha1(lock, sha1, msg) < 0)
@@ -278,5 +280,4 @@ void remove_branch_state(void)
 	unlink(git_path("MERGE_MSG"));
 	unlink(git_path("MERGE_MODE"));
 	unlink(git_path("SQUASH_MSG"));
-	remove_sequencer_state(0);
 }

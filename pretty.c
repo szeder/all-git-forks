@@ -9,6 +9,7 @@
 #include "notes.h"
 #include "color.h"
 #include "reflog-walk.h"
+#include "gpg-interface.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -530,41 +531,24 @@ static size_t format_person_part(struct strbuf *sb, char part,
 {
 	/* currently all placeholders have same length */
 	const int placeholder_len = 2;
-	int start, end, tz = 0;
+	int tz;
 	unsigned long date = 0;
-	char *ep;
-	const char *name_start, *name_end, *mail_start, *mail_end, *msg_end = msg+len;
 	char person_name[1024];
 	char person_mail[1024];
+	struct ident_split s;
+	const char *name_start, *name_end, *mail_start, *mail_end;
 
-	/* advance 'end' to point to email start delimiter */
-	for (end = 0; end < len && msg[end] != '<'; end++)
-		; /* do nothing */
-
-	/*
-	 * When end points at the '<' that we found, it should have
-	 * matching '>' later, which means 'end' must be strictly
-	 * below len - 1.
-	 */
-	if (end >= len - 2)
+	if (split_ident_line(&s, msg, len) < 0)
 		goto skip;
 
-	/* Seek for both name and email part */
-	name_start = msg;
-	name_end = msg+end;
-	while (name_end > name_start && isspace(*(name_end-1)))
-		name_end--;
-	mail_start = msg+end+1;
-	mail_end = mail_start;
-	while (mail_end < msg_end && *mail_end != '>')
-		mail_end++;
-	if (mail_end == msg_end)
-		goto skip;
-	end = mail_end-msg;
+	name_start = s.name_begin;
+	name_end = s.name_end;
+	mail_start = s.mail_begin;
+	mail_end = s.mail_end;
 
 	if (part == 'N' || part == 'E') { /* mailmap lookup */
-		strlcpy(person_name, name_start, name_end-name_start+1);
-		strlcpy(person_mail, mail_start, mail_end-mail_start+1);
+		strlcpy(person_name, name_start, name_end - name_start + 1);
+		strlcpy(person_mail, mail_start, mail_end - mail_start + 1);
 		mailmap_name(person_mail, sizeof(person_mail), person_name, sizeof(person_name));
 		name_start = person_name;
 		name_end = name_start + strlen(person_name);
@@ -580,28 +564,20 @@ static size_t format_person_part(struct strbuf *sb, char part,
 		return placeholder_len;
 	}
 
-	/* advance 'start' to point to date start delimiter */
-	for (start = end + 1; start < len && isspace(msg[start]); start++)
-		; /* do nothing */
-	if (start >= len)
-		goto skip;
-	date = strtoul(msg + start, &ep, 10);
-	if (msg + start == ep)
+	if (!s.date_begin)
 		goto skip;
 
+	date = strtoul(s.date_begin, NULL, 10);
+
 	if (part == 't') {	/* date, UNIX timestamp */
-		strbuf_add(sb, msg + start, ep - (msg + start));
+		strbuf_add(sb, s.date_begin, s.date_end - s.date_begin);
 		return placeholder_len;
 	}
 
 	/* parse tz */
-	for (start = ep - msg + 1; start < len && isspace(msg[start]); start++)
-		; /* do nothing */
-	if (start + 1 < len) {
-		tz = strtoul(msg + start + 1, NULL, 10);
-		if (msg[start] == '-')
-			tz = -tz;
-	}
+	tz = strtoul(s.tz_begin + 1, NULL, 10);
+	if (*s.tz_begin == '-')
+		tz = -tz;
 
 	switch (part) {
 	case 'd':	/* date */
@@ -620,8 +596,9 @@ static size_t format_person_part(struct strbuf *sb, char part,
 
 skip:
 	/*
-	 * bogus commit, 'sb' cannot be updated, but we still need to
-	 * compute a valid return value.
+	 * reading from either a bogus commit, or a reflog entry with
+	 * %gn, %ge, etc.; 'sb' cannot be updated, but we still need
+	 * to compute a valid return value.
 	 */
 	if (part == 'n' || part == 'e' || part == 't' || part == 'd'
 	    || part == 'D' || part == 'r' || part == 'i')
@@ -640,6 +617,12 @@ struct format_commit_context {
 	const struct pretty_print_context *pretty_ctx;
 	unsigned commit_header_parsed:1;
 	unsigned commit_message_parsed:1;
+	unsigned commit_signature_parsed:1;
+	struct {
+		char *gpg_output;
+		char good_bad;
+		char *signer;
+	} signature;
 	char *message;
 	size_t width, indent1, indent2;
 
@@ -822,6 +805,76 @@ static void rewrap_message_tail(struct strbuf *sb,
 	c->indent2 = new_indent2;
 }
 
+static struct {
+	char result;
+	const char *check;
+} signature_check[] = {
+	{ 'G', ": Good signature from " },
+	{ 'B', ": BAD signature from " },
+};
+
+static void parse_signature_lines(struct format_commit_context *ctx)
+{
+	const char *buf = ctx->signature.gpg_output;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(signature_check); i++) {
+		const char *found = strstr(buf, signature_check[i].check);
+		const char *next;
+		if (!found)
+			continue;
+		ctx->signature.good_bad = signature_check[i].result;
+		found += strlen(signature_check[i].check);
+		next = strchrnul(found, '\n');
+		ctx->signature.signer = xmemdupz(found, next - found);
+		break;
+	}
+}
+
+static void parse_commit_signature(struct format_commit_context *ctx)
+{
+	struct strbuf payload = STRBUF_INIT;
+	struct strbuf signature = STRBUF_INIT;
+	struct strbuf gpg_output = STRBUF_INIT;
+	int status;
+
+	ctx->commit_signature_parsed = 1;
+
+	if (parse_signed_commit(ctx->commit->object.sha1,
+				&payload, &signature) <= 0)
+		goto out;
+	status = verify_signed_buffer(payload.buf, payload.len,
+				      signature.buf, signature.len,
+				      &gpg_output);
+	if (status && !gpg_output.len)
+		goto out;
+	ctx->signature.gpg_output = strbuf_detach(&gpg_output, NULL);
+	parse_signature_lines(ctx);
+
+ out:
+	strbuf_release(&gpg_output);
+	strbuf_release(&payload);
+	strbuf_release(&signature);
+}
+
+
+static int format_reflog_person(struct strbuf *sb,
+				char part,
+				struct reflog_walk_info *log,
+				enum date_mode dmode)
+{
+	const char *ident;
+
+	if (!log)
+		return 2;
+
+	ident = get_reflog_ident(log);
+	if (!ident)
+		return 2;
+
+	return format_person_part(sb, part, ident, strlen(ident), dmode);
+}
+
 static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 				void *context)
 {
@@ -957,12 +1010,21 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 				get_reflog_selector(sb,
 						    c->pretty_ctx->reflog_info,
 						    c->pretty_ctx->date_mode,
+						    c->pretty_ctx->date_mode_explicit,
 						    (placeholder[1] == 'd'));
 			return 2;
 		case 's':	/* reflog message */
 			if (c->pretty_ctx->reflog_info)
 				get_reflog_message(sb, c->pretty_ctx->reflog_info);
 			return 2;
+		case 'n':
+		case 'N':
+		case 'e':
+		case 'E':
+			return format_reflog_person(sb,
+						    placeholder[1],
+						    c->pretty_ctx->reflog_info,
+						    c->pretty_ctx->date_mode);
 		}
 		return 0;	/* unknown %g placeholder */
 	case 'N':
@@ -973,6 +1035,30 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 		}
 		return 0;
 	}
+
+	if (placeholder[0] == 'G') {
+		if (!c->commit_signature_parsed)
+			parse_commit_signature(c);
+		switch (placeholder[1]) {
+		case 'G':
+			if (c->signature.gpg_output)
+				strbuf_addstr(sb, c->signature.gpg_output);
+			break;
+		case '?':
+			switch (c->signature.good_bad) {
+			case 'G':
+			case 'B':
+				strbuf_addch(sb, c->signature.good_bad);
+			}
+			break;
+		case 'S':
+			if (c->signature.signer)
+				strbuf_addstr(sb, c->signature.signer);
+			break;
+		}
+		return 2;
+	}
+
 
 	/* For the rest we have to parse the commit header. */
 	if (!c->commit_header_parsed)
@@ -1116,6 +1202,8 @@ void format_commit_message(const struct commit *commit,
 
 	if (context.message != commit->buffer)
 		free(context.message);
+	free(context.signature.gpg_output);
+	free(context.signature.signer);
 }
 
 static void pp_header(const struct pretty_print_context *pp,

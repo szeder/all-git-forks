@@ -611,4 +611,29 @@ test_expect_success 'submodule update places git-dir in superprojects git-dir re
 	)
 '
 
+test_expect_success 'submodule add properly re-creates deeper level submodules' '
+	(cd super &&
+	 git reset --hard master &&
+	 rm -rf deeper/ &&
+	 git submodule add ../submodule deeper/submodule
+	)
+'
+
+test_expect_success 'submodule update properly revives a moved submodule' '
+	(cd super &&
+	 git commit -am "pre move" &&
+	 git status >expect&&
+	 H=$(cd submodule2; git rev-parse HEAD) &&
+	 git rm --cached submodule2 &&
+	 rm -rf submodule2 &&
+	 mkdir -p "moved/sub module" &&
+	 git update-index --add --cacheinfo 160000 $H "moved/sub module" &&
+	 git config -f .gitmodules submodule.submodule2.path "moved/sub module"
+	 git commit -am "post move" &&
+	 git submodule update &&
+	 git status >actual &&
+	 test_cmp expect actual
+	)
+'
+
 test_done

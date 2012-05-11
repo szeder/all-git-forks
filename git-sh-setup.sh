@@ -200,7 +200,7 @@ get_author_ident_from_commit () {
 		s/.*/GIT_AUTHOR_EMAIL='\''&'\''/p
 
 		g
-		s/^author [^<]* <[^>]*> \(.*\)$/\1/
+		s/^author [^<]* <[^>]*> \(.*\)$/@\1/
 		s/.*/GIT_AUTHOR_DATE='\''&'\''/p
 
 		q
@@ -247,6 +247,10 @@ case $(uname -s) in
 	}
 	find () {
 		/usr/bin/find "$@"
+	}
+	# git sees Windows-style pwd
+	pwd () {
+		builtin pwd -W
 	}
 	is_absolute_path () {
 		case "$1" in

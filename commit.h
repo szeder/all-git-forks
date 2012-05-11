@@ -53,6 +53,8 @@ int find_commit_subject(const char *commit_buffer, const char **subject);
 
 struct commit_list *commit_list_insert(struct commit *item,
 					struct commit_list **list);
+struct commit_list **commit_list_append(struct commit *commit,
+					struct commit_list **next);
 unsigned commit_list_count(const struct commit_list *l);
 struct commit_list *commit_list_insert_by_date(struct commit *item,
 				    struct commit_list **list);
@@ -82,6 +84,7 @@ struct pretty_print_context {
 	const char *after_subject;
 	int preserve_subject;
 	enum date_mode date_mode;
+	unsigned date_mode_explicit:1;
 	int need_8bit_cte;
 	int show_notes;
 	struct reflog_walk_info *reflog_info;
@@ -191,17 +194,17 @@ struct commit_extra_header {
 extern void append_merge_tag_headers(struct commit_list *parents,
 				     struct commit_extra_header ***tail);
 
-extern int commit_tree(const char *msg, unsigned char *tree,
+extern int commit_tree(const struct strbuf *msg, unsigned char *tree,
 		       struct commit_list *parents, unsigned char *ret,
-		       const char *author);
+		       const char *author, const char *sign_commit);
 
-extern int commit_tree_extended(const char *msg, unsigned char *tree,
+extern int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
 				struct commit_list *parents, unsigned char *ret,
-				const char *author,
+				const char *author, const char *sign_commit,
 				struct commit_extra_header *);
 
-extern struct commit_extra_header *read_commit_extra_headers(struct commit *);
-extern struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len);
+extern struct commit_extra_header *read_commit_extra_headers(struct commit *, const char **);
+extern struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
 extern void free_commit_extra_headers(struct commit_extra_header *extra);
 
@@ -218,4 +221,6 @@ struct merge_remote_desc {
  */
 struct commit *get_merge_parent(const char *name);
 
+extern int parse_signed_commit(const unsigned char *sha1,
+			       struct strbuf *message, struct strbuf *signature);
 #endif /* COMMIT_H */
