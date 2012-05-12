@@ -1,3 +1,108 @@
+Version v1.7.10.2; changes since v1.7.10.1:
+-------------------------------------------
+
+Angus Hammond (1):
+      grep.c: remove redundant line of code
+
+Ben Walton (1):
+      Avoid bug in Solaris xpg4/sed as used in submodule
+
+Christian Couder (1):
+      revert: add missing va_end
+
+Christopher Tiwald (2):
+      push: Provide situational hints for non-fast-forward errors
+      Fix httpd tests that broke when non-ff push advice changed
+
+Clemens Buchacher (3):
+      http auth fails with multiple curl handles
+      properly keep track of current working directory
+      cherry-pick: do not expect file arguments
+
+Florian Achleitner (1):
+      Documentation/git-config: describe and clarify "--local <file>" option
+
+Heiko Voigt (1):
+      document submdule.$name.update=none option for gitmodules
+
+Jeff King (15):
+      clean up struct ref's nonfastforward field
+      http-backend: respect existing GIT_COMMITTER_* variables
+      fix http auth with multiple curl handles
+      gc: do not explode objects which will be immediately pruned
+      http: clean up leak in init_curl_http_auth
+      http: use newer curl options for setting credentials
+      argv-array: refactor empty_argv initialization
+      argv-array: add a new "pushl" method
+      gc: use argv-array for sub-commands
+      config: reject bogus section names for --rename-section
+      config: expand tildes in include.path variable
+      send-pack: show progress when isatty(2)
+      teach send-pack about --[no-]progress
+      t5541: test more combinations of --progress
+      t/gitweb-lib: use $PERL_PATH to run gitweb
+
+Jim Meyering (1):
+      diff: avoid stack-buffer-read-overrun for very long name
+
+Johannes Sixt (2):
+      t9300-fast-import: avoid 'exit' in test_expect_success snippets
+      t5570: fix forwarding of git-daemon messages via cat
+
+Junio C Hamano (13):
+      xdiff: remove XDL_PATCH_* macros
+      xdiff: PATIENCE/HISTOGRAM are not independent option bits
+      rebase -i: remind that the lines are top-to-bottom
+      builtin/merge.c: remove "remoteheads" global variable
+      builtin/merge.c: collect other parents early
+      builtin/merge.c: reduce parents early
+      fmt-merge-msg: discard needless merge parents
+      t9400: fix gnuism in grep
+      diff --no-index: use strbuf for temporary pathnames
+      contrib/rerere-train: use installed git-sh-setup
+      Start preparing for 1.7.10.2
+      Update draft release notes to 1.7.10.2
+      Git 1.7.10.2
+
+Lucian Poston (5):
+      Add output_prefix_length to diff_options
+      Adjust stat width calculations to take --graph output into account
+      t4052: Adjust --graph --stat output for prefixes
+      t4052: Test diff-stat output with minimum columns
+      Prevent graph_width of stat width from falling below min
+
+Marc Branchaud (2):
+      fetch: Give remote_ref to update_local_ref() as well
+      fetch: describe new refs based on where it came from
+
+Michał Kiedrowicz (1):
+      merge tests: octopus with redundant parents
+
+Pete Wyckoff (2):
+      git-remote-testgit: fix race when spawning fast-import
+      git p4 doc: fix formatting
+
+Ralf Thielow (1):
+      sequencer: remove additional blank line
+
+René Scharfe (2):
+      unpack-trees: don't perform any index operation if we're not merging
+      unpack-trees: plug minor memory leak
+
+Ross Lagerwall (2):
+      rev-parse --show-prefix: add in trailing newline
+      stash: use eval_gettextln correctly
+
+Stefano Lattarini (1):
+      tests: modernise style: more uses of test_line_count
+
+Zbigniew Jędrzejewski-Szmek (4):
+      t4052: test --stat output with --graph
+      test-lib: skip test with COLUMNS=1 under mksh
+      t4052: work around shells unable to set COLUMNS to 1
+      Consistently use perl from /usr/bin/ for scripts
+
+
 Version v1.7.10.1; changes since v1.7.10:
 -----------------------------------------
 
