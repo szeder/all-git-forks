@@ -5,6 +5,8 @@
 #include <pthread.h>
 #endif
 
+struct strbuf;
+
 struct child_process {
 	const char **argv;
 	pid_t pid;
@@ -89,5 +91,9 @@ struct async {
 
 int start_async(struct async *async);
 int finish_async(struct async *async);
+
+#ifndef NO_PTHREADS
+void read_2_fds_into_strbuf(int fd1, int fd2, struct strbuf *output);
+#endif
 
 #endif
