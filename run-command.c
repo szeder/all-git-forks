@@ -409,69 +409,59 @@ fail_pipe:
 	return 0;
 }
 
+#ifndef NO_PTHREADS
 struct fd2fd_data {
 	pthread_mutex_t mutex;
-	unsigned int reader_count;
+	struct strbuf *output;
 };
 
 static int fd2fd(int in, int out, void *data)
 {
 	struct fd2fd_data *me = data;
-	char buf[1024];
+	struct strbuf line;
 
-	/* NEEDSWORK: use linewise read so lines will not be mixed */
-	while (xread(in, buf, sizeof(buf) > 0))
-		xwrite(out, buf, sizeof(buf));
+	FILE *fin = xfdopen(in, "r");
 
-	pthread_mutex_lock(&me->mutex);
-	me->reader_count--;
-	if (me->reader_count == 0)
-		close(out);
-	pthread_mutex_unlock(&me->mutex);
+	while (strbuf_getwholeline(&line, fin, '\n') != EOF) {
+		pthread_mutex_lock(&me->mutex);
+		strbuf_addbuf(me->output, &line);
+		pthread_mutex_unlock(&me->mutex);
+	}
 
+	strbuf_release(&line);
 	return 0;
 }
 
 void read_2_fds_into_strbuf(int fd1, int fd2, struct strbuf *output)
 {
-	struct strbuf local = STRBUF_INIT;
-
 	struct async err_async;
 	struct async out_async;
-	int commonfd[2];
 	struct fd2fd_data async_data;
+
+	pthread_mutex_init(&async_data.mutex, NULL);
+	async_data.output = output;
 
 	/* start two threads to read fd1 and fd2 simultaneously
 	 * into one strbuf */
-	if (pipe(commonfd) < 0)
-		exit(error("cannot create pipe: %s", strerror(errno)));
-
 	memset(&out_async, 0, sizeof(out_async));
-	pthread_mutex_init(&async_data.mutex, NULL);
-	async_data.reader_count = 2;
-
 	out_async.proc = fd2fd;
 	out_async.data = &async_data;
 	out_async.in = fd1;
-	out_async.out = commonfd[1];
 
 	memset(&err_async, 0, sizeof(err_async));
 	err_async.proc = fd2fd;
 	err_async.data = &async_data;
 	err_async.in = fd2;
-	err_async.out = commonfd[1];
 
 	start_async(&out_async);
 	start_async(&err_async);
 
-	while (strbuf_read(&local, commonfd[0], 0) > 0)
-		strbuf_addstr(output, local.buf);
-	strbuf_release(&local);
-
 	finish_async(&out_async);
 	finish_async(&err_async);
+
 	pthread_mutex_destroy(&async_data.mutex);
 }
+#endif /* NO_PTHREADS */
 
 int finish_command(struct child_process *cmd)
 {
