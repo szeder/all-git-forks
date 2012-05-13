@@ -296,6 +296,8 @@ sub get_last_local_revision {
 
 # Remember the timestamp corresponding to a revision id.
 my %basetimestamps;
+# Remember the latest revision ID of each page
+my %lastrevisionids;
 
 sub get_last_remote_revision {
 	mw_connect_maybe();
@@ -318,6 +320,7 @@ sub get_last_remote_revision {
 
 		my $lastrev = pop(@{$result->{query}->{pages}->{$id}->{revisions}});
 
+		$lastrevisionids{$page->{title}} = $lastrev->{revid};
 		$basetimestamps{$lastrev->{revid}} = $lastrev->{timestamp};
 
 		$max_rev_num = ($lastrev->{revid} > $max_rev_num ? $lastrev->{revid} : $max_rev_num);
@@ -660,11 +663,15 @@ sub mw_push_file {
 
 		mw_connect_maybe();
 
+		my $basetimestamp = "";
+		if (exists $lastrevisionids{$title}) {
+			$basetimestamp = $basetimestamps{$lastrevisionids{$title}};
+		}
 		my $result = $mediawiki->edit( {
 			action => 'edit',
 			summary => $summary,
 			title => $title,
-			basetimestamp => $basetimestamps{$newrevid},
+			basetimestamp => $basetimestamp,
 			text => mediawiki_clean($file_content, $page_created),
 				  }, {
 					  skip_encoding => 1 # Helps with names with accentuated characters
