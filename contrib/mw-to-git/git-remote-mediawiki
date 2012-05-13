@@ -48,8 +48,9 @@ use warnings;
 # Mediawiki filenames can contain forward slashes. This variable decides by which pattern they should be replaced
 use constant SLASH_REPLACEMENT => "%2F";
 
-# It's not always possible to delete pages (may require some
-# priviledges). Deleted pages are replaced with this content.
+# Before git-remote-mediawiki supported pushing deletions, deleted pages were replaced with
+# this content. We still need to check for this when fetching in order to fetch deletions created
+# by older versions of git-remote-mediawiki correctly.
 use constant DELETED_CONTENT => "[[Category:Deleted]]\n";
 
 # It's not possible to create empty pages. New empty files in Git are
@@ -649,33 +650,35 @@ sub mw_push_file {
 
 	if (substr($complete_file_name,-3) eq ".mw") {
 		my $title = substr($complete_file_name,0,-3);
-
-		my $file_content;
+		
+		my $query;
 		if ($page_deleted) {
-			# Deleting a page usually requires
-			# special priviledges. A common
-			# convention is to replace the page
-			# with this content instead:
-			$file_content = DELETED_CONTENT;
+			# Delete the page
+			$query = {
+				action => 'delete',
+				reason => $summary,
+				title => $title
+			};
 		} else {
-			$file_content = run_git("cat-file blob $new_sha1");
+			my $file_content = run_git("cat-file blob $new_sha1");
+			my $basetimestamp = "";
+			if (exists $lastrevisionids{$title}) {
+				$basetimestamp = $basetimestamps{$lastrevisionids{$title}};
+			}
+			$query = {
+				action => 'edit',
+				summary => $summary,
+				title => $title,
+				basetimestamp => $basetimestamp,
+				text => mediawiki_clean($file_content, $page_created),
+			};
 		}
 
 		mw_connect_maybe();
 
-		my $basetimestamp = "";
-		if (exists $lastrevisionids{$title}) {
-			$basetimestamp = $basetimestamps{$lastrevisionids{$title}};
-		}
-		my $result = $mediawiki->edit( {
-			action => 'edit',
-			summary => $summary,
-			title => $title,
-			basetimestamp => $basetimestamp,
-			text => mediawiki_clean($file_content, $page_created),
-				  }, {
-					  skip_encoding => 1 # Helps with names with accentuated characters
-				  });
+		my $result = $mediawiki->edit( $query, {
+			skip_encoding => 1 # Helps with names with accentuated characters
+		});
 		if (!$result) {
 			if ($mediawiki->{error}->{code} == 3) {
 				# edit conflicts, considered as non-fast-forward
@@ -691,8 +694,12 @@ sub mw_push_file {
 				    ' from mediwiki: ' . $mediawiki->{error}->{details};
 			}
 		}
-		$newrevid = $result->{edit}->{newrevid};
-		print STDERR "Pushed file: $new_sha1 - $title\n";
+		if ($page_deleted) {
+			print STDERR "Deleted file: $title\n";
+		} else {
+			$newrevid = $result->{edit}->{newrevid};
+			print STDERR "Pushed file: $new_sha1 - $title\n";
+		}
 	} else {
 		print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version of git-remote-mediawiki).\n"
 	}
