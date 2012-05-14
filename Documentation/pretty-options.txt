@@ -10,6 +10,17 @@
 Note: you can specify the default pretty format in the repository
 configuration (see linkgit:git-config[1]).
 
+--log-message-wrap::
+--no-log-message-wrap::
+	Enable/disable word-wrapping commit messages to the width of the
+	terminal. Lines beginning with +, *, or - and a space, or with a
+	number followed by a period and a space, are interpreted as lists
+	and wrapped with a hanging indent. Lines beginning with whitespace
+	(e.g. code samples) are left as-is.
++
+Note: you can specify the default wrapping behavior in the repository
+configuration (see linkgit:git-config[1]).
+
 --abbrev-commit::
 	Instead of showing the full 40-byte hexadecimal commit object
 	name, show only a partial prefix.  Non default number of

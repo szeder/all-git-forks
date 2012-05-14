@@ -1414,6 +1414,10 @@ log.showroot::
 	Tools like linkgit:git-log[1] or linkgit:git-whatchanged[1], which
 	normally hide the root commit will now show it. True by default.
 
+log.messageWrap::
+	A boolean to enable/disable wrapping of commit messages to the
+	terminal window. Defaults to false. See linkgit:git-log[1].
+
 mailmap.file::
 	The location of an augmenting mailmap file. The default
 	mailmap, located in the root of the repository, is loaded

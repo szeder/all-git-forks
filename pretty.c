@@ -10,6 +10,7 @@
 #include "color.h"
 #include "reflog-walk.h"
 #include "gpg-interface.h"
+#include "tty.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -23,6 +24,10 @@ static size_t builtin_formats_len;
 static size_t commit_formats_len;
 static size_t commit_formats_alloc;
 static struct cmt_fmt_map *find_commit_format(const char *sought);
+
+static unsigned int wrap_configured = 0;
+static unsigned int wrap = 0;
+static unsigned int wrap_width = 0;
 
 static void save_user_format(struct rev_info *rev, const char *cp, int is_tformat)
 {
@@ -171,6 +176,46 @@ void get_commit_format(const char *arg, struct rev_info *rev)
 		save_user_format(rev, commit_format->user_format,
 				 commit_format->is_tformat);
 	}
+}
+
+static int git_wrap_config(const char *name, const char *value, void *cb)
+{
+	if (!strcmp(name, "log.messagewrap")){
+		wrap = git_config_bool(name, value);
+	}
+	return 0;
+}
+
+static unsigned int get_wrap_width(struct wrap_options options)
+{
+	if (!wrap_configured) {
+		wrap_configured = 1;
+		wrap_width = term_columns();
+		if (wrap_width)
+			wrap_width -= 1; /* don't print *on* the edge */
+		git_config(git_wrap_config, NULL);
+	}
+	return (options.wrap_given ? options.wrap : wrap) ? wrap_width : 0;
+}
+
+static int line_list_prefix(const char *line, int len)
+{
+	unsigned int numberLength = 0;
+	const char *pos = line;
+	if (len < 3) {
+		return 0;
+	} else if ((line[0] == '*' || line[0] == '+' || line[0] == '-') && line[1] == ' ') {
+		return 2;
+	} else {
+		while (pos - line < len && pos[0] >= '0' && pos[0] <= '9'){
+			numberLength++;
+			pos++;
+		}
+		if (numberLength && pos - line + 1 < len && pos[0] == '.' && pos[1] == ' ') {
+			return numberLength + 2;
+		}
+	}
+	return 0;
 }
 
 /*
@@ -1332,6 +1377,7 @@ void pp_remainder(const struct pretty_print_context *pp,
 		  struct strbuf *sb,
 		  int indent)
 {
+	unsigned int wrap = get_wrap_width(pp->wrap);
 	int first = 1;
 	for (;;) {
 		const char *line = *msg_p;
@@ -1354,7 +1400,13 @@ void pp_remainder(const struct pretty_print_context *pp,
 			memset(sb->buf + sb->len, ' ', indent);
 			strbuf_setlen(sb, sb->len + indent);
 		}
-		strbuf_add(sb, line, linelen);
+		if (wrap && linelen && line[0] != ' ' && line[0] != '\t') {
+			struct strbuf wrapped = STRBUF_INIT;
+			strbuf_add(&wrapped, line, linelen);
+			strbuf_add_wrapped_text(sb, wrapped.buf, 0, indent + line_list_prefix(line, linelen), wrap - indent);
+		} else {
+			strbuf_add(sb, line, linelen);
+		}
 		strbuf_addch(sb, '\n');
 	}
 }
