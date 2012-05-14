@@ -16,6 +16,9 @@
 #include "dir.h"
 #include "diff.h"
 #include "parse-options.h"
+#include "xdiff-interface.h"
+#include "ll-merge.h"
+#include "rerere.h"
 
 /*
  *  --check turns on checking that the working tree matches the
@@ -46,6 +49,7 @@ static int apply_with_reject;
 static int apply_verbosely;
 static int allow_overlap;
 static int no_add;
+static int threeway;
 static const char *fake_ancestor;
 static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
@@ -193,12 +197,16 @@ struct patch {
 	unsigned int is_copy:1;
 	unsigned int is_rename:1;
 	unsigned int recount:1;
+	unsigned int conflicted_threeway:1;
 	struct fragment *fragments;
 	char *result;
 	size_t resultsize;
 	char old_sha1_prefix[41];
 	char new_sha1_prefix[41];
 	struct patch *next;
+
+	/* three-way fallback result */
+	unsigned char threeway_stage[3][20];
 };
 
 static void free_fragment_list(struct fragment *list)
@@ -371,8 +379,8 @@ static void prepare_image(struct image *image, char *buf, size_t len,
 static void clear_image(struct image *image)
 {
 	free(image->buf);
-	image->buf = NULL;
-	image->len = 0;
+	free(image->line_allocated);
+	memset(image, 0, sizeof(*image));
 }
 
 /* fmt must contain _one_ %s and no other substitution */
@@ -2937,26 +2945,30 @@ static int apply_fragments(struct image *img, struct patch *patch)
 	return 0;
 }
 
-static int read_file_or_gitlink(struct cache_entry *ce, struct strbuf *buf)
+static int read_blob_object(struct strbuf *buf, const unsigned char *sha1, unsigned mode)
 {
-	if (!ce)
-		return 0;
-
-	if (S_ISGITLINK(ce->ce_mode)) {
+	if (S_ISGITLINK(mode)) {
 		strbuf_grow(buf, 100);
-		strbuf_addf(buf, "Subproject commit %s\n", sha1_to_hex(ce->sha1));
+		strbuf_addf(buf, "Subproject commit %s\n", sha1_to_hex(sha1));
 	} else {
 		enum object_type type;
 		unsigned long sz;
 		char *result;
 
-		result = read_sha1_file(ce->sha1, &type, &sz);
+		result = read_sha1_file(sha1, &type, &sz);
 		if (!result)
 			return -1;
 		/* XXX read_sha1_file NUL-terminates */
 		strbuf_attach(buf, result, sz, sz + 1);
 	}
 	return 0;
+}
+
+static int read_file_or_gitlink(struct cache_entry *ce, struct strbuf *buf)
+{
+	if (!ce)
+		return 0;
+	return read_blob_object(buf, ce->sha1, ce->ce_mode);
 }
 
 static struct patch *in_fn_table(const char *name)
@@ -3031,10 +3043,10 @@ static void prepare_fn_table(struct patch *patch)
 	}
 }
 
-static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *ce)
+static int load_preimage(struct image *image,
+			 struct patch *patch, struct stat *st, struct cache_entry *ce)
 {
 	struct strbuf buf = STRBUF_INIT;
-	struct image image;
 	size_t len;
 	char *img;
 	struct patch *tpatch;
@@ -3071,10 +3083,110 @@ static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *
 	}
 
 	img = strbuf_detach(&buf, &len);
-	prepare_image(&image, img, len, !patch->is_binary);
+	prepare_image(image, img, len, !patch->is_binary);
+	return 0;
+}
 
-	if (apply_fragments(&image, patch) < 0)
-		return -1; /* note with --reject this succeeds. */
+static int three_way_merge(struct image *image,
+			   char *path,
+			   const unsigned char *base,
+			   const unsigned char *ours,
+			   const unsigned char *theirs)
+{
+	mmfile_t base_file, our_file, their_file;
+	mmbuffer_t result = { NULL };
+	int status;
+
+	read_mmblob(&base_file, base);
+	read_mmblob(&our_file, ours);
+	read_mmblob(&their_file, theirs);
+	status = ll_merge(&result, path,
+			  &base_file, "base",
+			  &our_file, "ours",
+			  &their_file, "theirs", NULL);
+	free(base_file.ptr);
+	free(our_file.ptr);
+	free(their_file.ptr);
+	if (status < 0 || !result.ptr) {
+		free(result.ptr);
+		return -1;
+	}
+	clear_image(image);
+	image->buf = result.ptr;
+	image->len = result.size;
+
+	return status;
+}
+
+static int try_threeway_fallback(struct image *image, struct patch *patch,
+				 struct stat *st, struct cache_entry *ce)
+{
+	unsigned char pre_sha1[20], post_sha1[20], our_sha1[20];
+	struct strbuf buf = STRBUF_INIT;
+	size_t len;
+	int status;
+	char *img;
+	struct image tmp_image;
+
+	/* No point falling back to 3-way merge in these cases */
+	if (patch->is_new || patch->is_delete ||
+	    S_ISGITLINK(patch->old_mode) || S_ISGITLINK(patch->new_mode))
+		return -1;
+
+	/* Preimage the patch was prepared for */
+	if (get_sha1(patch->old_sha1_prefix, pre_sha1) ||
+	    read_blob_object(&buf, pre_sha1, patch->old_mode))
+		return error("repository lacks the necessary blob to fall back on 3-way merge.");
+
+	fprintf(stderr, "Falling back to three-way merge...\n");
+
+	img = strbuf_detach(&buf, &len);
+	prepare_image(&tmp_image, img, len, 1);
+	/* Apply the patch to get the post image */
+	if (apply_fragments(&tmp_image, patch) < 0) {
+		clear_image(&tmp_image);
+		return -1;
+	}
+	hash_sha1_file(tmp_image.buf, tmp_image.len, blob_type, post_sha1);
+	clear_image(&tmp_image);
+
+	/* pre_sha1[] is common, post_sha1[] is theirs */
+	load_preimage(&tmp_image, patch, st, ce);
+	hash_sha1_file(tmp_image.buf, tmp_image.len, blob_type, our_sha1);
+	clear_image(&tmp_image);
+
+	/* in-core three-way merge between post and our using pre as base */
+	status = three_way_merge(image, patch->new_name,
+				 pre_sha1, our_sha1, post_sha1);
+	if (status < 0) {
+		fprintf(stderr, "Failed to fall back on three-way merge...\n");
+		return status;
+	}
+
+	if (status) {
+		patch->conflicted_threeway = 1;
+		hashcpy(patch->threeway_stage[0], pre_sha1);
+		hashcpy(patch->threeway_stage[1], our_sha1);
+		hashcpy(patch->threeway_stage[2], post_sha1);
+		fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
+	} else {
+		fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
+	}
+	return 0;
+}
+
+static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *ce)
+{
+	struct image image;
+
+	if (load_preimage(&image, patch, st, ce) < 0)
+		return -1;
+
+	if (apply_fragments(&image, patch) < 0) {
+		/* Note: with --reject, the above call succeeds. */
+		if (!threeway || try_threeway_fallback(&image, patch, st, ce) < 0)
+			return -1;
+	}
 	patch->result = image.buf;
 	patch->resultsize = image.len;
 	add_to_fn_table(patch);
@@ -3604,6 +3716,27 @@ static void create_one_file(char *path, unsigned mode, const char *buf, unsigned
 	die_errno(_("unable to write file '%s' mode %o"), path, mode);
 }
 
+static void add_conflicted_stages_file(struct patch *patch)
+{
+	int stage, namelen;
+	unsigned ce_size, mode;
+
+	if (!update_index)
+		return;
+	namelen = strlen(patch->new_name);
+	ce_size = cache_entry_size(namelen);
+	mode = patch->new_mode ? patch->new_mode : (S_IFREG | 0644);
+	for (stage = 1; stage < 4; stage++) {
+		struct cache_entry *ce = xcalloc(1, ce_size);
+		memcpy(ce->name, patch->new_name, namelen);
+		ce->ce_mode = create_ce_mode(mode);
+		ce->ce_flags = create_ce_flags(namelen, stage);
+		hashcpy(ce->sha1, patch->threeway_stage[stage - 1]);
+		if (add_cache_entry(ce, ADD_CACHE_OK_TO_ADD) < 0)
+			die(_("unable to add cache entry for %s"), patch->new_name);
+	}
+}
+
 static void create_file(struct patch *patch)
 {
 	char *path = patch->new_name;
@@ -3614,7 +3747,11 @@ static void create_file(struct patch *patch)
 	if (!mode)
 		mode = S_IFREG | 0644;
 	create_one_file(path, mode, buf, size);
-	add_index_file(path, mode, buf, size);
+
+	if (patch->conflicted_threeway)
+		add_conflicted_stages_file(patch);
+	else
+		add_index_file(path, mode, buf, size);
 }
 
 /* phase zero is to remove, phase one is to create */
@@ -3716,6 +3853,7 @@ static int write_out_results(struct patch *list)
 	int phase;
 	int errs = 0;
 	struct patch *l;
+	struct string_list cpath = STRING_LIST_INIT_DUP;
 
 	for (phase = 0; phase < 2; phase++) {
 		l = list;
@@ -3724,12 +3862,30 @@ static int write_out_results(struct patch *list)
 				errs = 1;
 			else {
 				write_out_one_result(l, phase);
-				if (phase == 1 && write_out_one_reject(l))
-					errs = 1;
+				if (phase == 1) {
+					if (write_out_one_reject(l))
+						errs = 1;
+					if (l->conflicted_threeway) {
+						string_list_append(&cpath, l->new_name);
+						errs = 1;
+					}
+				}
 			}
 			l = l->next;
 		}
 	}
+
+	if (cpath.nr) {
+		struct string_list_item *item;
+
+		sort_string_list(&cpath);
+		for_each_string_list_item(item, &cpath)
+			fprintf(stderr, "U %s\n", item->string);
+		string_list_clear(&cpath, 0);
+
+		rerere(0);
+	}
+
 	return errs;
 }
 
@@ -3852,8 +4008,11 @@ static int apply_patch(int fd, const char *filename, int options)
 	    !apply_with_reject)
 		exit(1);
 
-	if (apply && write_out_results(list))
-		exit(1);
+	if (apply && write_out_results(list)) {
+		if (apply_with_reject)
+			exit(1);
+		return 1;
+	}
 
 	if (fake_ancestor)
 		build_fake_ancestor(list, fake_ancestor);
@@ -3986,6 +4145,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("apply a patch without touching the working tree")),
 		OPT_BOOLEAN(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
+		OPT_BOOL('3', "3way", &threeway,
+			 N_( "attempt three-way merge if a patch does not apply")),
 		OPT_FILENAME(0, "build-fake-ancestor", &fake_ancestor,
 			N_("build a temporary index based on embedded index information")),
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
@@ -4033,6 +4194,9 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 
 	argc = parse_options(argc, argv, prefix, builtin_apply_options,
 			apply_usage, 0);
+
+	if (apply_with_reject && threeway)
+		die("--reject and --3way cannot be used together.");
 
 	if (apply_with_reject)
 		apply = apply_verbosely = 1;
