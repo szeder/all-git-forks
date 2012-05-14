@@ -277,22 +277,32 @@ sub run_git {
 }
 
 
-sub get_last_local_revision {
+sub get_last_local_revision_and_logid {
+	my $lastrevision = 0;
+	my $lastlogid = 0;
 	# Get note regarding last mediawiki revision
 	my $note = run_git("notes --ref=$remotename/mediawiki show refs/mediawiki/$remotename/master 2>/dev/null");
-	my @note_info = split(/ /, $note);
-
-	my $lastrevision_number;
-	if (!(defined($note_info[0]) && $note_info[0] eq "mediawiki_revision:")) {
-		print STDERR "No previous mediawiki revision found";
-		$lastrevision_number = 0;
+	# Notes are formatted : mediawiki_revision: #number \n mediawiki_logid: #number
+	# The second line wasn't present in earlier versions, so it's optional
+	my @note_lines = split(/\n/, $note);
+	if (defined($note_lines[0])) {
+		my @note_revision = split(/ /, $note_lines[0]);
+		if ($note_revision[0] eq "mediawiki_revision:") {
+			$lastrevision = $note_revision[1];
+			chomp($lastrevision);
+		}
+		if (defined($note_lines[1])) {
+			my @note_logid = split(/ /, $note_lines[1]);
+			if ($note_logid[0] eq "mediawiki_logid:") {
+				$lastlogid = $note_logid[1];
+				chomp($lastlogid);
+			}
+		}
+		print STDERR "Last local mediawiki revision found is $lastrevision, last log entry is $lastlogid";
 	} else {
-		# Notes are formatted : mediawiki_revision: #number
-		$lastrevision_number = $note_info[1];
-		chomp($lastrevision_number);
-		print STDERR "Last local mediawiki revision found is $lastrevision_number";
+		print STDERR "No previous mediawiki revision found";
 	}
-	return $lastrevision_number;
+	return ($lastrevision, $lastlogid);
 }
 
 # Remember the timestamp corresponding to a revision id.
@@ -300,7 +310,7 @@ my %basetimestamps;
 # Remember the latest revision ID of each page
 my %lastrevisionids;
 
-sub get_last_remote_revision {
+sub get_last_remote_revision_and_logid {
 	mw_connect_maybe();
 
 	my @pages = get_mw_pages();
@@ -328,7 +338,21 @@ sub get_last_remote_revision {
 	}
 
 	print STDERR "Last remote revision found is $max_rev_num.\n";
-	return $max_rev_num;
+
+	my $last_logid = 0;
+	my $query = {
+		action => 'query',
+		list => 'logevents',
+		leprop => 'ids',
+		lelimit => 1,
+	};
+	my $result = $mediawiki->api($query);
+	my $lastlogentry = pop(@{$result->{query}->{logevents}});
+	if (defined $lastlogentry) {
+		$last_logid = $lastlogentry->{logid};
+	}
+
+	return ($max_rev_num, $last_logid);
 }
 
 # Clean content before sending it to MediaWiki
@@ -465,6 +489,42 @@ sub fetch_mw_revisions {
 	return ($n, @revisions);
 }
 
+sub fetch_mw_deletionlogentries {
+	my $last_local_logid = shift;
+	my @logentries = ();
+	my $query = {
+		action => 'query',
+		list => 'logevents',
+		letype => 'delete',
+		lelimit => 500,
+	};
+
+	# Get 500 logevents at a time due to the mediawiki api limit
+	my $stop = 0;
+	while(!$stop) {
+		my $result = $mediawiki->api($query);
+	
+		# Parse each of those 500 logevents
+		foreach my $logevent (@{$result->{query}->{logevents}}) {
+			# Stop when we've reached a log ID we've already seen locally
+			# Ideally we'd use lefromid or whatever but that doesn't exist
+			if ($logevent->{logid} <= $last_local_logid) {
+				$stop = 1;
+				last;
+			}
+			# Filter out non-deletion events, the API doesn't have a good way to do this
+			# FIXME: this means we also miss undeletions, we should capture those too
+			if ($logevent->{action} ne "delete") {
+				next;
+			}
+
+			push(@logentries, $logevent);
+		}
+		last unless $result->{'query-continue'};
+	}
+	return @logentries;
+}
+
 sub import_file_revision {
 	my $commit = shift;
 	my %commit = %{$commit};
@@ -473,7 +533,6 @@ sub import_file_revision {
 
 	my $title = $commit{title};
 	my $comment = $commit{comment};
-	my $content = $commit{content};
 	my $author = $commit{author};
 	my $date = $commit{date};
 
@@ -486,11 +545,12 @@ sub import_file_revision {
 	if (!$full_import && $n == 1) {
 		print STDOUT "from refs/mediawiki/$remotename/master^0\n";
 	}
-	if ($content ne DELETED_CONTENT) {
+	if (exists $commit{content} && $commit{content} ne DELETED_CONTENT) {
 		print STDOUT "M 644 inline $title.mw\n";
-		literal_data($content);
+		literal_data($commit{content});
 		print STDOUT "\n\n";
 	} else {
+		# It's a deletion
 		print STDOUT "D $title.mw\n";
 	}
 
@@ -505,7 +565,7 @@ sub import_file_revision {
 		print STDOUT "from refs/notes/$remotename/mediawiki^0\n";
 	}
 	print STDOUT "N inline :$n\n";
-	literal_data("mediawiki_revision: " . $commit{mw_revision});
+	literal_data("mediawiki_revision: " . $commit{mw_revision} . "\nmediawiki_logid: " . $commit{mw_logid});
 	print STDOUT "\n\n";
 }
 
@@ -554,20 +614,27 @@ sub mw_import_ref {
 	my @pages = get_mw_pages();
 
 	print STDERR "Searching revisions...\n";
-	my $last_local = get_last_local_revision();
-	my $fetch_from = $last_local + 1;
-	if ($fetch_from == 1) {
+	my $last_local_revid;
+	my $last_local_logid;
+	($last_local_revid, $last_local_logid) = get_last_local_revision_and_logid();
+	my $fetch_from_revid = $last_local_revid + 1;
+	if ($fetch_from_revid == 1) {
 		print STDERR ", fetching from beginning.\n";
 	} else {
 		print STDERR ", fetching from here.\n";
 	}
-	my ($n, @revisions) = fetch_mw_revisions(\@pages, $fetch_from);
+	my ($n, @revisions) = fetch_mw_revisions(\@pages, $fetch_from_revid);
+	my @logentries = fetch_mw_deletionlogentries($last_local_logid);
 
 	# Creation of the fast-import stream
 	print STDERR "Fetching & writing export data...\n";
 
 	$n = 0;
+	my $total = scalar(@revisions) + scalar(@logentries);
 	my $last_timestamp = 0; # Placeholer in case $rev->timestamp is undefined
+	my $last_revid;
+	
+	my @commits = ();
 
 	foreach my $pagerevid (sort {$a->{revid} <=> $b->{revid}} @revisions) {
 		# fetch the content of the pages
@@ -600,12 +667,46 @@ sub mw_import_ref {
 		}
 		$commit{date} = DateTime::Format::ISO8601->parse_datetime($last_timestamp);
 
-		print STDERR "$n/", scalar(@revisions), ": Revision #$pagerevid->{revid} of $commit{title}\n";
+		print STDERR "$n/", $total, ": Revision #$pagerevid->{revid} of $commit{title}\n";
 
-		import_file_revision(\%commit, ($fetch_from == 1), $n);
+		push(@commits, \%commit);
+		$last_revid = $pagerevid->{revid};
 	}
 
-	if ($fetch_from == 1 && $n == 0) {
+	foreach my $logentry (sort {$a->{logid} <=> $b->{logid}} @logentries) {
+		$n++;
+		my %commit;
+		$commit{author} = $logentry->{user} || 'Anonymous';
+		$commit{comment} = $logentry->{comment} || '*Empty MediaWiki Message*';
+		$commit{title} = mediawiki_smudge_filename($logentry->{title});
+		$commit{mw_logid} = $logentry->{logid};
+		#$commit{content} not set
+		$commit{date} = DateTime::Format::ISO8601->parse_datetime($logentry->{timestamp});
+
+		print STDERR "$n/", $total, ": Log entry #$logentry->{logid} deleting $commit{title}\n";
+
+		push(@commits, \%commit);
+	}
+
+	$n = 0;
+	my $lastrevid = $last_local_revid;
+	my $lastlogid = $last_local_logid;
+	# Process the commits in chronological order
+	foreach my $c (sort {$a->{date} <=> $b->{date}} @commits) {
+		$n++;
+		if (!(exists $c->{mw_revision})) {
+			$c->{mw_revision} = $lastrevid;
+		}
+		if (!(exists $c->{mw_logid})) {
+			$c->{mw_logid} = $lastlogid;
+		}
+		print STDERR "$n/", $total, ": Creating commit for $c->{title} revid #$c->{mw_revision} logid #$c->{mw_logid}\n";
+		import_file_revision($c, ($fetch_from_revid == 1), $n);
+		$lastrevid = $c->{mw_revision};
+		$lastlogid = $c->{mw_logid};
+	}
+
+	if ($fetch_from_revid == 1 && $n == 0) {
 		print STDERR "You appear to have cloned an empty MediaWiki.\n";
 		# Something has to be done remote-helper side. If nothing is done, an error is
 		# thrown saying that HEAD is refering to unknown object 0000000000000000000
@@ -641,6 +742,8 @@ sub mw_push_file {
 	# MediaWiki revision number. Keep the previous one by default,
 	# in case there's no edit to perform.
 	my $newrevid = shift;
+	# MediaWiki log ID, for deletions
+	my $logid;
 
 	my $new_sha1 = $diff_info_split[3];
 	my $old_sha1 = $diff_info_split[2];
@@ -686,7 +789,7 @@ sub mw_push_file {
 				    $mediawiki->{error}->{code} .
 				    ' from mediwiki: ' . $mediawiki->{error}->{details} .
 				    ".\n";
-				return ($newrevid, "non-fast-forward");
+				return ($newrevid, undef, "non-fast-forward");
 			} else {
 				# Other errors. Shouldn't happen => just die()
 				die 'Fatal: Error ' .
@@ -695,6 +798,7 @@ sub mw_push_file {
 			}
 		}
 		if ($page_deleted) {
+			$logid = $result->{delete}->{logid};
 			print STDERR "Deleted file: $title\n";
 		} else {
 			$newrevid = $result->{edit}->{newrevid};
@@ -703,7 +807,7 @@ sub mw_push_file {
 	} else {
 		print STDERR "$complete_file_name not a mediawiki file (Not pushable on this version of git-remote-mediawiki).\n"
 	}
-	return ($newrevid, "ok");
+	return ($newrevid, $logid, "ok");
 }
 
 sub mw_push {
@@ -747,10 +851,15 @@ sub mw_push {
 sub mw_push_revision {
 	my $local = shift;
 	my $remote = shift; # actually, this has to be "refs/heads/master" at this point.
-	my $last_local_revid = get_last_local_revision();
-	print STDERR ".\n"; # Finish sentence started by get_last_local_revision()
-	my $last_remote_revid = get_last_remote_revision();
+	my $last_local_revid;
+	my $last_local_logid;
+	($last_local_revid, $last_local_logid) = get_last_local_revision_and_logid();
+	print STDERR ".\n"; # Finish sentence started by get_last_local_revision_and_logid()
+	my $last_remote_revid;
+	my $last_remote_logid;
+	($last_remote_revid, $last_remote_logid) = get_last_remote_revision_and_logid();
 	my $mw_revision = $last_remote_revid;
+	my $mw_logid = $last_remote_logid; # TODO fetch remote logid
 
 	# Get sha1 of commit pointed by local HEAD
 	my $HEAD_sha1 = run_git("rev-parse $local 2>/dev/null"); chomp($HEAD_sha1);
@@ -810,6 +919,7 @@ sub mw_push_revision {
 		chomp($commit_msg);
 		# Push every blob
 		while (@diff_info_list) {
+			my $logid;
 			my $status;
 			# git diff-tree -z gives an output like
 			# <metadata>\0<filename1>\0
@@ -817,7 +927,7 @@ sub mw_push_revision {
 			# and we've split on \0.
 			my $info = shift(@diff_info_list);
 			my $file = shift(@diff_info_list);
-			($mw_revision, $status) = mw_push_file($info, $file, $commit_msg, $mw_revision);
+			($mw_revision, $logid, $status) = mw_push_file($info, $file, $commit_msg, $mw_revision);
 			if ($status eq "non-fast-forward") {
 				# we may already have sent part of the
 				# commit to MediaWiki, but it's too
@@ -829,9 +939,12 @@ sub mw_push_revision {
 			if ($status ne "ok") {
 				die("Unknown error from mw_push_file()");
 			}
+			if (defined $logid) {
+				$mw_logid = $logid;
+			}
 		}
 		unless ($dumb_push) {
-			run_git("notes --ref=$remotename/mediawiki add -m \"mediawiki_revision: $mw_revision\" $sha1_commit");
+			run_git("notes --ref=$remotename/mediawiki add -m \"mediawiki_revision: $mw_revision\" -m \"mediawiki_logid: $mw_logid\" $sha1_commit");
 			run_git("update-ref -m \"Git-MediaWiki push\" refs/mediawiki/$remotename/master $sha1_commit $sha1_child");
 		}
 	}
