@@ -3363,16 +3363,22 @@ static int check_patch(struct patch *patch)
 		return status;
 	old_name = patch->old_name;
 
+	/*
+	 * A type-change diff is always split into a patch to
+	 * delete old, immediately followed by a patch to
+	 * create new (see diff.c::run_diff()); in such a case
+	 * it is Ok that the entry to be deleted by the
+	 * previous patch is still in the working tree and in
+	 * the index.
+	 *
+	 * A patch to swap-rename between A and B would first rename
+	 * A to B and then rename B to A.  While applying the first
+	 * one, the presense of B should not stop A from renamed to B,
+	 * as to_be_deleted() knows about the later rename.  Removal
+	 * of B and rename from A to B will be handle the same way.
+	 */
 	if ((tpatch = in_fn_table(new_name)) &&
-			(was_deleted(tpatch) || to_be_deleted(tpatch)))
-		/*
-		 * A type-change diff is always split into a patch to
-		 * delete old, immediately followed by a patch to
-		 * create new (see diff.c::run_diff()); in such a case
-		 * it is Ok that the entry to be deleted by the
-		 * previous patch is still in the working tree and in
-		 * the index.
-		 */
+	    (was_deleted(tpatch) || to_be_deleted(tpatch)))
 		ok_if_exists = 1;
 	else
 		ok_if_exists = 0;
