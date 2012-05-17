@@ -311,7 +311,7 @@ static inline long count_masked_bytes(unsigned long mask)
 		 * (a+b+1) gives us
 		 *   correct 0-3 bytemask count result
 		 */
-		long a = (mask - 256) >> 23;
+		long a = ((long)mask - 256) >> 23;
 		long b = mask & 1;
 		return a + b + 1;
 	}
