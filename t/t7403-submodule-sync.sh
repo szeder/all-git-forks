@@ -86,4 +86,14 @@ test_expect_success '"git submodule sync" should not vivify uninteresting submod
 	)
 '
 
+test_expect_failure '"git submodule sync" should handle a super with a relative origin URL' '
+	git clone super relative-clone &&
+	(cd relative-clone &&
+	 git submodule update --init &&
+	 git remote set-url origin ../relative/super.git &&
+	 git submodule sync &&
+	 test "$(git config submodule.submodule.url)" == ../../relative/moved-submodule
+	)
+'
+
 test_done
