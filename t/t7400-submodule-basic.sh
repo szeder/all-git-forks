@@ -507,7 +507,7 @@ test_expect_success 'relative path works with user@host:path' '
 	)
 '
 
-test_expect_failure 'relative path works with ../relative/repo' '
+test_expect_success 'relative path works with ../relative/repo' '
 	(
 		cd reltest &&
 		cp pristine-.git-config .git/config &&
@@ -517,7 +517,7 @@ test_expect_failure 'relative path works with ../relative/repo' '
 	)
 '
 
-test_expect_failure 'test that submodule add creates the correct url when super origin url is relative' '
+test_expect_success 'test that submodule add creates the correct url when super origin url is relative' '
 	mkdir reladd &&
 	(
 		cd reladd &&
