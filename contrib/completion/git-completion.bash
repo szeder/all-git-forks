@@ -2600,7 +2600,7 @@ _git_whatchanged ()
 	_git_log
 }
 
-_git ()
+_main_git ()
 {
 	local i c=1 command __git_dir
 
@@ -2651,7 +2651,7 @@ _git ()
 	fi
 }
 
-_gitk ()
+_main_gitk ()
 {
 	__git_has_doubledash && return
 
@@ -2703,13 +2703,25 @@ __git_complete ()
 		|| complete -o default -o nospace -F $wrapper $1
 }
 
-__git_complete git _git
-__git_complete gitk _gitk
+# wrapper for backwards compatibility
+_git ()
+{
+	__git_wrap_main_git
+}
+
+# wrapper for backwards compatibility
+_gitk ()
+{
+	__git_wrap_main_gitk
+}
+
+__git_complete git _main_git
+__git_complete gitk _main_gitk
 
 # The following are necessary only for Cygwin, and only are needed
 # when the user has tab-completed the executable name and consequently
 # included the '.exe' suffix.
 #
 if [ Cygwin = "$(uname -o 2>/dev/null)" ]; then
-__git_complete git.exe _git
+__git_complete git.exe _main_git
 fi
