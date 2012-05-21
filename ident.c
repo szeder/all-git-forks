@@ -57,6 +57,7 @@ static void copy_gecos(const struct passwd *w, char *name, size_t sz)
 static int add_mailname_host(char *buf, size_t len)
 {
 	FILE *mailname;
+	char *p;
 
 	mailname = fopen("/etc/mailname", "r");
 	if (!mailname) {
@@ -74,6 +75,8 @@ static int add_mailname_host(char *buf, size_t len)
 	}
 	/* success! */
 	fclose(mailname);
+	for (p = buf + strlen(buf) - 1; p >= buf && isspace(*p); p--)
+		*p = '\0';
 	return 0;
 }
 
