@@ -507,6 +507,33 @@ test_expect_success 'relative path works with user@host:path' '
 	)
 '
 
+test_expect_success 'relative path works with ../relative/repo' '
+	(
+		cd reltest &&
+		cp pristine-.git-config .git/config &&
+		git config remote.origin.url ../relative/repo &&
+		git submodule init &&
+		test "$(git config submodule.sub.url)" = ../../relative/subrepo
+	)
+'
+
+test_expect_success 'test that submodule add creates the correct url when super origin url is relative' '
+	mkdir reladd &&
+	(
+		cd reladd &&
+		git init &&
+		git remote add origin ../relative/repo
+		mkdir sub &&
+		(
+			cd sub &&
+			git init &&
+			test_commit foo
+		) &&
+		git submodule add ../subrepo ./sub &&
+		test "$(git config submodule.sub.url)" = ../../relative/subrepo
+	)
+'
+
 test_expect_success 'moving the superproject does not break submodules' '
 	(
 		cd addtest &&

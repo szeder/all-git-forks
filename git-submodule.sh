@@ -45,6 +45,10 @@ resolve_relative_url ()
 		../*)
 			url="${url#../}"
 			case "$remoteurl" in
+			.*/*)
+				up_path="$(echo "$2" | sed "s/[^/]*/../g")"
+				remoteurl="${up_path%/}/${remoteurl%/*}"
+				;;
 			*/*)
 				remoteurl="${remoteurl%/*}"
 				;;
@@ -235,21 +239,6 @@ cmd_add()
 		usage
 	fi
 
-	# assure repo is absolute or relative to parent
-	case "$repo" in
-	./*|../*)
-		# dereference source url relative to parent's url
-		realrepo=$(resolve_relative_url "$repo") || exit
-		;;
-	*:*|/*)
-		# absolute url
-		realrepo=$repo
-		;;
-	*)
-		die "$(eval_gettext "repo URL: '\$repo' must be absolute or begin with ./|../")"
-	;;
-	esac
-
 	# normalize path:
 	# multiple //; leading ./; /./; /../; trailing /
 	sm_path=$(printf '%s/\n' "$sm_path" |
@@ -262,6 +251,22 @@ cmd_add()
 			tstart
 			s|/*$||
 		')
+
+	# assure repo is absolute or relative to parent
+	case "$repo" in
+	./*|../*)
+		# dereference source url relative to parent's url
+		realrepo=$(resolve_relative_url "$repo" "$sm_path") || exit
+		;;
+	*:*|/*)
+		# absolute url
+		realrepo=$repo
+		;;
+	*)
+		die "$(eval_gettext "repo URL: '\$repo' must be absolute or begin with ./|../")"
+	;;
+	esac
+
 	git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
 	die "$(eval_gettext "'\$sm_path' already exists in the index")"
 
@@ -407,7 +412,7 @@ cmd_init()
 			# Possibly a url relative to parent
 			case "$url" in
 			./*|../*)
-				url=$(resolve_relative_url "$url") || exit
+				url=$(resolve_relative_url "$url" "$sm_path") || exit
 				;;
 			esac
 			git config submodule."$name".url "$url" ||
@@ -964,7 +969,7 @@ cmd_sync()
 		# Possibly a url relative to parent
 		case "$url" in
 		./*|../*)
-			url=$(resolve_relative_url "$url") || exit
+			url=$(resolve_relative_url "$url" "$sm_path") || exit
 			;;
 		esac
 
