@@ -1,5 +1,10 @@
 Meta = $(HOME)/compile/git/Meta
-prefix := $(HOME)/local/git/$(shell $(Meta)/install/prefix)
+prefix_base := $(shell $(Meta)/install/prefix)
+ifeq ($(prefix_base), detached)
+prefix := /do/not/install
+else
+prefix := $(HOME)/local/git/$(prefix_base)
+endif
 
 CC = ccache gcc
 O = 0

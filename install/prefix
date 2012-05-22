@@ -7,7 +7,7 @@ describe() {
     # dereference symbolic links
     shorten `git rev-parse --symbolic-full-name "$v"`
   else
-    echo test
+    echo detached
   fi
 }
 
