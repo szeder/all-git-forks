@@ -103,7 +103,9 @@ our $logo = "++GITWEB_LOGO++";
 # URI of GIT favicon, assumed to be image/png type
 our $favicon = "++GITWEB_FAVICON++";
 # URI of gitweb.js (JavaScript code for gitweb)
-our $javascript = "++GITWEB_JS++";
+our $javascript = undef;
+# URI of scripts (which can be overridden in GITWEB_CONFIG)
+our @javascripts = ("++GITWEB_JS++");
 
 # URI and label (title) of GIT logo link
 #our $logo_url = "http://www.kernel.org/pub/software/scm/git/docs/";
@@ -761,6 +763,7 @@ our @cgi_param_mapping = (
 	ctag => "by_tag",
 	diff_style => "ds",
 	project_filter => "pf",
+	lines_around => "la",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -822,6 +825,12 @@ sub evaluate_query_params {
 			$input_params{$name} = decode_utf8($cgi->param($symbol));
 		}
 	}
+
+    for my $name (qw(diff_style lines_around)) {
+        if (! defined $input_params{$name}) {
+            $input_params{$name} = $cgi->cookie($cgi_param_mapping{$name});
+        }
+    }
 }
 
 # now read PATH_INFO and update the parameter list for missing parameters
@@ -2424,23 +2433,33 @@ sub format_cc_diff_chunk_header {
 # returning class and HTML-formatted (but not wrapped) line
 sub process_diff_line {
 	my $line = shift;
-	my ($from, $to) = @_;
+	my ($from, $to, $from_linenr, $to_linenr) = @_;
 
 	my $diff_class = diff_line_class($line, $from, $to);
 
 	chomp $line;
 	$line = untabify($line);
 
-	if ($from && $to && $line =~ m/^\@{2} /) {
+	if ($from && $to && $line =~ m/^\@{2} -(\d+),\d+ \+(\d+),\d+/) {
 		$line = format_unidiff_chunk_header($line, $from, $to);
-		return $diff_class, $line;
+		return $diff_class, $line, $1-1, $2-1;
 
 	} elsif ($from && $to && $line =~ m/^\@{3}/) {
 		$line = format_cc_diff_chunk_header($line, $from, $to);
 		return $diff_class, $line;
 
 	}
-	return $diff_class, esc_html($line, -nbsp=>1);
+
+    if ($diff_class eq 'add') {
+        $to_linenr++;
+    } elsif ($diff_class eq 'rem') {
+        $from_linenr++;
+    } else {
+        $from_linenr++;
+        $to_linenr++;
+    }
+
+	return $diff_class, esc_html($line, -nbsp=>1), $from_linenr, $to_linenr;
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -3444,6 +3463,27 @@ sub parse_commit {
 	return %co;
 }
 
+sub parse_commits_between {
+	my ($begin_id, $end_id) = @_;
+	my @cos;
+
+	local $/ = "\0";
+
+	open my $fd, "-|", git_cmd(), "rev-list",
+		"--header",
+        "^$begin_id",
+		$end_id,
+        "--"
+		or die_error(500, "Open git-rev-list failed");
+	while (my $line = <$fd>) {
+		my %co = parse_commit_text($line);
+		push @cos, \%co;
+	}
+	close $fd;
+
+	return wantarray ? @cos : \@cos;
+}
+
 sub parse_commits {
 	my ($commit_id, $maxcount, $skip, $filename, @args) = @_;
 	my @cos;
@@ -4120,7 +4160,9 @@ sub git_footer_html {
 		insert_file($site_footer);
 	}
 
-	print qq!<script type="text/javascript" src="!.esc_url($javascript).qq!"></script>\n!;
+	print join '', map {
+        qq!<script type="text/javascript" src="!.esc_url($_).qq!"></script>\n!;
+    } ((defined $javascript ? $javascript : ()), @javascripts);
 	if (defined $action &&
 	    $action eq 'blame_incremental') {
 		print qq!<script type="text/javascript">\n!.
@@ -5011,7 +5053,7 @@ sub print_sidebyside_diff_chunk {
 	push @chunk, ["", ""];
 
 	foreach my $line_info (@chunk) {
-		my ($class, $line) = @$line_info;
+		my ($class, $line, $from_linenr, $to_linenr) = @$line_info;
 
 		# print chunk headers
 		if ($class && $class eq 'chunk_header') {
@@ -5023,46 +5065,41 @@ sub print_sidebyside_diff_chunk {
 		# empty contents block on start rem/add block, or end of chunk
 		if (@ctx && (!$class || $class eq 'rem' || $class eq 'add')) {
 			print join '',
-				'<div class="chunk_block ctx">',
-					'<div class="old">',
-					@ctx,
-					'</div>',
-					'<div class="new">',
-					@ctx,
-					'</div>',
-				'</div>';
+				'<table class="chunk_block ctx">',
+                    (map {
+                        my ($s, $from, $to) = @$_;
+                        join '',
+                            qq{<tr><td class="linenr">$from</td>},
+                            qq{<td class="old">$s</td>},
+                            qq{<td class="linenr">$to</td>},
+                            qq{<td class="new">$s</td></tr>},
+                        } @ctx),
+                            '</table>';
 			@ctx = ();
 		}
 		# empty add/rem block on start context block, or end of chunk
 		if ((@rem || @add) && (!$class || $class eq 'ctx')) {
-			if (!@add) {
-				# pure removal
-				print join '',
-					'<div class="chunk_block rem">',
-						'<div class="old">',
-						@rem,
-						'</div>',
-					'</div>';
-			} elsif (!@rem) {
-				# pure addition
-				print join '',
-					'<div class="chunk_block add">',
-						'<div class="new">',
-						@add,
-						'</div>',
-					'</div>';
-			} else {
-				# assume that it is change
-				print join '',
-					'<div class="chunk_block chg">',
-						'<div class="old">',
-						@rem,
-						'</div>',
-						'<div class="new">',
-						@add,
-						'</div>',
-					'</div>';
-			}
+            my $parent_class = (! @add) ? 'rem' : (! @rem) ? 'add' : 'chg';
+            print qq{<table class="chunk_block $parent_class">};
+            my $index = 0;
+            while (defined $add[$index] || defined $rem[$index]) {
+                print '<tr>';
+                if ($rem[$index]) {
+					print '<td class="linenr">', $rem[$index]->[1],
+                        '</td><td class="old">', $rem[$index]->[0], '</td>';
+                } else {
+                    print '<td class="linenr"></td><td class="old"></td>';
+                }
+                if ($add[$index]) {
+                    print '<td class="linenr">', $add[$index]->[2],
+                        '</td><td class="new">', $add[$index]->[0], '</td>';
+                } else {
+                    print '<td class="linenr"></td><td class="new"></td>';
+                }
+                print '</tr>';
+                $index++;
+            }
+            print "</table>\n";
 			@rem = @add = ();
 		}
 
@@ -5071,13 +5108,13 @@ sub print_sidebyside_diff_chunk {
 		last unless $line;
 		# rem, add or change
 		if ($class eq 'rem') {
-			push @rem, $line;
+			push @rem, [ $line, $from_linenr, $to_linenr ];
 		} elsif ($class eq 'add') {
-			push @add, $line;
+			push @add, [ $line, $from_linenr, $to_linenr ];
 		}
 		# context line
 		if ($class eq 'ctx') {
-			push @ctx, $line;
+			push @ctx, [ $line, $from_linenr, $to_linenr ];
 		}
 	}
 }
@@ -5195,26 +5232,41 @@ sub git_patchset_body {
 
 		# the patch itself
 	LINE:
+        my ($from_linenr, $to_linenr, $prev);
 		while ($patch_line = <$fd>) {
 			chomp $patch_line;
 
 			next PATCH if ($patch_line =~ m/^diff /);
 
-			my ($class, $line) = process_diff_line($patch_line, \%from, \%to);
+            my ($class, $line);
+			($class, $line, $from_linenr, $to_linenr) = process_diff_line(
+                $patch_line, \%from, \%to, $from_linenr, $to_linenr
+            );
 			my $diff_classes = "diff";
 			$diff_classes .= " $class" if ($class);
-			$line = "<div class=\"$diff_classes\">$line</div>\n";
 
 			if ($diff_style eq 'sidebyside' && !$is_combined) {
+                $line = "<div class=\"$diff_classes\">$line</div>\n";
 				if ($class eq 'chunk_header') {
 					print_sidebyside_diff_chunk(@chunk);
-					@chunk = ( [ $class, $line ] );
+					@chunk = ( [ $class, $line, $from_linenr, $to_linenr ] );
 				} else {
-					push @chunk, [ $class, $line ];
+					push @chunk, [ $class, $line, $from_linenr, $to_linenr ];
 				}
 			} else {
 				# default 'inline' style and unknown styles
-				print $line;
+				print qq{<div class="$diff_classes">};
+                if ($class eq 'chunk_header') {
+                    print "    :    : $line";
+                } else {
+                    print $prev->[0] == $from_linenr ?
+                        '    :' : sprintf('%4d:', $from_linenr);
+                    print $prev->[1] == $to_linenr ?
+                        '    :' : sprintf('%4d:', $to_linenr);
+                    print $line;
+                }
+                print '</div>';
+                $prev = [$from_linenr, $to_linenr, $line];
 			}
 		}
 
@@ -5609,6 +5661,11 @@ sub git_shortlog_body {
 	$from = 0 unless defined $from;
 	$to = $#{$commitlist} if (!defined $to || $#{$commitlist} < $to);
 
+	print $cgi->start_form(-method => "get"),
+	      $cgi->submit(-value => "view changes"),
+	      $cgi->hidden("p"),
+	      $cgi->input({-name=>"a", -value=>"commitdiff", -type=>"hidden"});
+
 	print "<table class=\"shortlog\">\n";
 	my $alternate = 1;
 	for (my $i = $from; $i <= $to; $i++) {
@@ -5621,6 +5678,16 @@ sub git_shortlog_body {
 			print "<tr class=\"light\">\n";
 		}
 		$alternate ^= 1;
+		print "<td>",
+		      $cgi->input({
+		          -name => "hp", -value => $commit, -type => "radio",
+		          ($i == $to) ? (-checked => "checked") : (),
+		      }),
+		      $cgi->input({
+		          -name => "h", -value => $commit, -type => "radio",
+		          ($i == $from) ? (-checked => "checked") : (),
+		      }),
+		      "</td>";
 		# git_summary() used print "<td><i>$co{'age_string'}</i></td>\n" .
 		print "<td title=\"$co{'age_string_age'}\"><i>$co{'age_string_date'}</i></td>\n" .
 		      format_author_html('td', \%co, 10) . "<td>";
@@ -5644,6 +5711,7 @@ sub git_shortlog_body {
 		      "</tr>\n";
 	}
 	print "</table>\n";
+	print $cgi->end_form;
 }
 
 sub git_history_body {
@@ -7373,6 +7441,7 @@ sub git_blobdiff {
 			$cgi->a({-href => href(action=>"blobdiff_plain", -replay=>1)},
 			        "raw");
 		$formats_nav .= diff_style_nav($diff_style);
+        $formats_nav .= diff_lines_around_nav($input_params{lines_around});
 		git_header_html(undef, $expires);
 		if (defined $hash_base && (my %co = parse_commit($hash_base))) {
 			git_print_page_nav('','', $hash_base,$co{'tree'},$hash_base, $formats_nav);
@@ -7451,6 +7520,30 @@ sub diff_style_nav {
 		} @styles;
 }
 
+sub diff_lines_around_nav {
+    my ($lines_around) = @_;
+
+    if (! defined $lines_around) {
+        $lines_around = 3;
+    }
+
+    my $action = href(-replay => 1);
+
+    my $html = join '', map {
+        my $key = $_;
+        $key eq 'la' ? '' : $cgi->hidden($key);
+    } values %cgi_param_mapping;
+
+    return join ' ', (
+        $cgi->start_form(-method => 'get'),
+        $html,
+        '(show',
+        $cgi->input({ -name => 'la', -value => $lines_around, -size => 4 }),
+        'lines around each changes)',
+        $cgi->end_form,
+    );
+}
+
 sub git_commitdiff {
 	my %params = @_;
 	my $format = $params{-format} || 'html';
@@ -7481,6 +7574,7 @@ sub git_commitdiff {
 					"patch");
 		}
 		$formats_nav .= diff_style_nav($diff_style, @{$co{'parents'}} > 1);
+        $formats_nav .= diff_lines_around_nav($input_params{lines_around});
 
 		if (defined $hash_parent &&
 		    $hash_parent ne '-c' && $hash_parent ne '--cc') {
@@ -7544,12 +7638,15 @@ sub git_commitdiff {
 			@{$co{'parents'}} > 1 ? '--cc' : $co{'parent'} || '--root';
 	}
 
+	my $lines_around = $input_params{lines_around};
+
 	# read commitdiff
 	my $fd;
 	my @difftree;
 	if ($format eq 'html') {
 		open $fd, "-|", git_cmd(), "diff-tree", '-r', @diff_opts,
 			"--no-commit-id", "--patch-with-raw", "--full-index",
+            (defined $lines_around ? "--unified=$lines_around" : ()),
 			$hash_parent_param, $hash, "--"
 			or die_error(500, "Open git-diff-tree failed");
 
@@ -7602,16 +7699,24 @@ sub git_commitdiff {
 	# write commit message
 	if ($format eq 'html') {
 		my $refs = git_get_references();
-		my $ref = format_ref_marker($refs, $co{'id'});
 
 		git_header_html(undef, $expires);
 		git_print_page_nav('commitdiff','', $hash,$co{'tree'},$hash, $formats_nav);
-		git_print_header_div('commit', esc_html($co{'title'}) . $ref, $hash);
-		print "<div class=\"title_text\">\n" .
-		      "<table class=\"object_header\">\n";
-		git_print_authorship_rows(\%co);
-		print "</table>".
-		      "</div>\n";
+		my @commits = $hash_parent_param ?
+		    parse_commits_between($hash_parent_param, $hash) : (\%co);
+		for my $c (@commits) {
+			my $ref = format_ref_marker($refs, $c->{'id'});
+
+			print qq{<div class="commit">\n};
+			git_print_header_div('commit', esc_html($c->{'title'}) . $ref,
+								 $c->{id});
+			print "<div class=\"title_text\">\n" .
+				  "<table class=\"object_header\">\n";
+			git_print_authorship_rows($c) ;
+			print "</table>".
+				  "</div>\n";
+			print "</div>\n";
+		}
 		print "<div class=\"page_body\">\n";
 		if (@{$co{'comment'}} > 1) {
 			print "<div class=\"log\">\n";
