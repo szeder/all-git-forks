@@ -78,6 +78,7 @@ static int nr_threads;
 static int from_stdin;
 static int strict;
 static int verbose;
+static int verify;
 
 static struct progress *progress;
 
@@ -688,11 +689,13 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 	int collision_test_needed = 1;
 	enum object_type has_type;
 	unsigned long has_size;
+	struct object_info oi;
 
 	assert(data || obj_entry);
 
+	oi.sizep = &has_size;
 	read_lock();
-	has_type = sha1_object_info(sha1, &has_size);
+	has_type = sha1_object_info_extended(sha1, &oi);
 	read_unlock();
 
 	if (has_type < 0)
@@ -703,6 +706,30 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 			collision_test_needed = 0;
 		read_unlock();
 	}
+	read_lock();
+	if (collision_test_needed && oi.whence == OI_PACKED &&
+	    verify && !from_stdin &&
+	    is_pack_valid(oi.u.packed.pack)) {
+		static int good_stats = -1;
+		static struct stat st1, st2;
+
+		good_stats = good_stats == -1 &&
+			fstat_is_reliable() &&
+			!fstat(pack_fd, &st2) &&
+			!stat(oi.u.packed.pack->pack_name, &st1);
+		read_unlock();
+
+		/*
+		 * Windows builds do not support inode info. Inode
+		 * comparison would be wrong. Luckily in all Windows
+		 * builds set UNRELIABLE_FSTAT and good_stats would
+		 * always be 0, so we never get to inode comparison
+		 * test.
+		 */
+		if (good_stats && st1.st_ino == st2.st_ino)
+			collision_test_needed = 0;
+	} else
+		read_unlock();
 	if (collision_test_needed) {
 		void *has_data;
 		if (has_type != type || has_size != size)
@@ -1459,7 +1486,7 @@ static void show_pack_info(int stat_only)
 
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
-	int i, fix_thin_pack = 0, verify = 0, stat_only = 0, stat = 0;
+	int i, fix_thin_pack = 0, stat_only = 0, stat = 0;
 	const char *curr_pack, *curr_index;
 	const char *index_name = NULL, *pack_name = NULL;
 	const char *keep_name = NULL, *keep_msg = NULL;
