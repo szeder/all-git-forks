@@ -29,8 +29,6 @@ struct replay_opts {
 	int signoff;
 	int allow_ff;
 	int allow_rerere_auto;
-	int allow_empty;
-	int keep_redundant_commits;
 
 	int mainline;
 
