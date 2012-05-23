@@ -2133,6 +2133,8 @@ static int sha1_loose_object_info(const unsigned char *sha1, unsigned long *size
 	git_zstream stream;
 	char hdr[32];
 
+	if (!has_loose_object(sha1))
+		return -1;
 	map = map_sha1_file(sha1, &mapsize);
 	if (!map)
 		return error("unable to find %s", sha1_to_hex(sha1));
