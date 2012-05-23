@@ -507,17 +507,15 @@ test_expect_success 'relative path works with user@host:path' '
 	)
 '
 
-test_expect_success 'relative path works with foo' "
+test_expect_success 'relative path works with foo' '
 	(
 		cd reltest &&
 		cp pristine-.git-config .git/config &&
 		git config remote.origin.url foo &&
-		echo \"cannot strip one component off url 'foo'\" >expect &&
-		test_must_fail git submodule init 2>actual &&
-		cat actual &&
-		test_cmp expect actual
+		git submodule init &&
+		test "$(git config submodule.sub.url)" = ./subrepo
 	)
-"
+'
 
 test_expect_success 'relative path works with foo/bar' '
 	(
@@ -545,7 +543,7 @@ test_expect_success 'relative path works with ./foo/bar' '
 		cp pristine-.git-config .git/config &&
 		git config remote.origin.url ./foo/bar &&
 		git submodule init &&
-		test "$(git config submodule.sub.url)" = ./foo/subrepo
+		test "$(git config submodule.sub.url)" = foo/subrepo
 	)
 '
 

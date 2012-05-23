@@ -88,21 +88,22 @@ test_expect_success '"git submodule sync" should not vivify uninteresting submod
 	)
 '
 
-test_expect_success '"git submodule sync" handles origin URL of the form foo' "
+test_expect_success '"git submodule sync" handles origin URL of the form foo' '
 	(cd relative-clone &&
 	 git remote set-url origin foo
-	 echo \"cannot strip one component off url 'foo'\" > expect &&
-	 test_must_fail git submodule sync 2> actual &&
-	 test_cmp expect actual
+	 git submodule sync &&
+	(cd submodule &&
+	 test "$(git config remote.origin.url)" == "../submodule"
 	)
-"
+	)
+'
 
 test_expect_success '"git submodule sync" handles origin URL of the form foo/bar' '
 	(cd relative-clone &&
 	 git remote set-url origin foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "foo/submodule"
+	 test "$(git config remote.origin.url)" == "../foo/submodule"
 	)
 	)
 '
@@ -112,7 +113,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ./foo' 
 	 git remote set-url origin ./foo
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "./submodule"
+	 test "$(git config remote.origin.url)" == "../submodule"
 	)
 	)
 '
@@ -122,7 +123,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ./foo/b
 	 git remote set-url origin ./foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "./foo/submodule"
+	 test "$(git config remote.origin.url)" == "../foo/submodule"
 	)
 	)
 '
@@ -132,7 +133,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ../foo'
 	 git remote set-url origin ../foo
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../submodule"
+	 test "$(git config remote.origin.url)" == "../../submodule"
 	)
 	)
 '
@@ -142,7 +143,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ../foo/
 	 git remote set-url origin ../foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../foo/submodule"
+	 test "$(git config remote.origin.url)" == "../../foo/submodule"
 	)
 	)
 '
