@@ -475,6 +475,16 @@ div.diff.nodifferences {
 	color: #600000;
 }
 
+div.diff.rem strong {
+	background-color: #faa;
+    font-weight: normal;
+}
+
+div.diff.add strong {
+	background-color: #afa;
+    font-weight: normal;
+}
+
 /* side-by-side diff */
 table.chunk_block {
     padding: 0;

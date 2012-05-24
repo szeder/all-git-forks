@@ -18,6 +18,8 @@ use Fcntl ':mode';
 use File::Find qw();
 use File::Basename qw(basename);
 use Time::HiRes qw(gettimeofday tv_interval);
+use Algorithm::Diff;
+use List::Util qw(max);
 binmode STDOUT, ':utf8';
 
 our $t0 = [ gettimeofday() ];
@@ -2459,7 +2461,9 @@ sub process_diff_line {
         $to_linenr++;
     }
 
-	return $diff_class, esc_html($line, -nbsp=>1), $from_linenr, $to_linenr;
+    # TODO: We don't write HTML in $line here, but we wrote
+    #       HTML in above two return statements...
+	return $diff_class, $line, $from_linenr, $to_linenr;
 }
 
 # Generates undef or something like "_snapshot_" or "snapshot (_tbz2_ _zip_)",
@@ -5035,8 +5039,154 @@ sub git_difftree_body {
 	print "</table>\n";
 }
 
-sub print_sidebyside_diff_chunk {
-	my @chunk = @_;
+sub table_from_chunk_block {
+    my ($add_ref, $rem_ref) = @_;
+
+    my @lines = map {
+        my $index = $_;
+        my @left = ($rem_ref->[$index]) ?
+            ($rem_ref->[$index][1], $rem_ref->[$index][0]) : (undef, '');
+        my @right = ($add_ref->[$index]) ?
+            ($add_ref->[$index][2], $add_ref->[$index][0]) : (undef, '');
+        [ @left, @right ];
+    } (0..max(scalar @$add_ref, scalar @$rem_ref)-1);
+
+    if (scalar @$add_ref == scalar @$rem_ref) {
+        return map {
+            my ($left_nr, $left, $right_nr, $right) = @$_;
+
+            my @diff = Algorithm::Diff::sdiff(
+                [ split /(\b)/, $left  ],
+                [ split /(\b)/, $right ],
+            );
+
+            my $f = sub {
+                my ($column, $sign) = @_;
+
+                join '', map {
+                    my $hunk = $_;
+                    my $html = esc_html($hunk->[$column], -nbsp => 1);
+                    ($hunk->[0] eq $sign || $hunk->[0] eq 'c') ?
+                        "<strong>$html</strong>" : $html;
+                } @diff
+            };
+
+            [ $left_nr, $f->(1, '-'), $right_nr, $f->(2, '+') ];
+        } @lines;
+    } else {
+        return map {
+            my ($left_nr, $left, $right_nr, $right) = @$_;
+            [
+                $left_nr,  esc_html($left,  -nbsp => 1),
+                $right_nr, esc_html($right, -nbsp => 1),
+            ];
+        } @lines;
+    }
+}
+
+sub format_change_sidebyside {
+    map {
+        qq{<tr>$_</tr>};
+    } map {
+        my ($left_nr, $left, $right_nr, $right) = @$_;
+
+        join '', (
+            qq{<td class="linenr">$left_nr</td>},
+
+            '<td class="old">',
+            qq{<div class="diff rem">$left</div>},
+            '</td>',
+
+            qq{<td class="linenr">$right_nr</td>},
+
+            '<td class="new">',
+            qq{<div class="diff add">$right</div>},
+            '</td>',
+        );
+    } @_;
+}
+
+sub format_change_inline {
+    my @rows = @_;
+
+    my @old = map {
+        my ($left_nr, $left, $right_nr, $right) = @$_;
+
+        if (defined $left_nr) {
+            join '', (
+                qq{<td class="linenr">$left_nr</td>},
+                '<td class="linenr">&nbsp;</td>',
+                '<td class="old">',
+                qq{<div class="diff rem">$left</div>},
+                '</td>',
+            );
+        } else {
+            ();
+        }
+    } @rows;
+
+    my @new = map {
+        my ($left_nr, $left, $right_nr, $right) = @$_;
+
+        if (defined $right_nr) {
+            join '', (
+                '<td class="linenr">&nbsp;</td>',
+                qq{<td class="linenr">$right_nr</td>},
+                '<td class="new">',
+                qq{<div class="diff add">$right</div>},
+                '</td>',
+            );
+        } else {
+            ();
+        }
+    } @rows;
+
+    map { qq{<tr>$_</tr>} } (@old, @new);
+}
+
+sub format_context_sidebyside {
+    map {
+        my ($line, $from, $to) = @$_;
+
+        my $html = join '', (
+            qq{<div class="diff">},
+            esc_html($line || '', -nbsp => 1),
+            q{</div>}
+        );
+
+        join '', (
+            '<tr>',
+            qq{<td class="linenr">$from</td>},
+            qq{<td class="old">$html</td>},
+            qq{<td class="linenr">$to</td>},
+            qq{<td class="new">$html</td>},
+            '</tr>',
+        );
+    } @_;
+}
+
+sub format_context_inline {
+    map {
+        my ($line, $from, $to) = @$_;
+
+        my $html = join '', (
+            qq{<div class="diff">},
+            esc_html($line || '', -nbsp => 1),
+            q{</div>}
+        );
+
+        join '', (
+            '<tr>',
+            qq{<td class="linenr">$from</td>},
+            qq{<td class="linenr">$to</td>},
+            qq{<td class="new">$html</td>},
+            '</tr>',
+        );
+    } @_;
+}
+
+sub print_diff_chunk_with_formatter {
+	my ($format_context, $format_change, @chunk) = @_;
 	my (@ctx, @rem, @add);
 
 	return unless @chunk;
@@ -5064,41 +5214,18 @@ sub print_sidebyside_diff_chunk {
 		## print from accumulator when type of class of lines change
 		# empty contents block on start rem/add block, or end of chunk
 		if (@ctx && (!$class || $class eq 'rem' || $class eq 'add')) {
-			print join '',
-				'<table class="chunk_block ctx">',
-                    (map {
-                        my ($s, $from, $to) = @$_;
-                        join '',
-                            qq{<tr><td class="linenr">$from</td>},
-                            qq{<td class="old">$s</td>},
-                            qq{<td class="linenr">$to</td>},
-                            qq{<td class="new">$s</td></tr>},
-                        } @ctx),
-                            '</table>';
+            print join '', (
+                '<table class="chunk_block ctx">',
+                $format_context->(@ctx),
+                '</table>',
+            );
 			@ctx = ();
 		}
 		# empty add/rem block on start context block, or end of chunk
 		if ((@rem || @add) && (!$class || $class eq 'ctx')) {
             my $parent_class = (! @add) ? 'rem' : (! @rem) ? 'add' : 'chg';
             print qq{<table class="chunk_block $parent_class">};
-            my $index = 0;
-            while (defined $add[$index] || defined $rem[$index]) {
-                print '<tr>';
-                if ($rem[$index]) {
-					print '<td class="linenr">', $rem[$index]->[1],
-                        '</td><td class="old">', $rem[$index]->[0], '</td>';
-                } else {
-                    print '<td class="linenr"></td><td class="old"></td>';
-                }
-                if ($add[$index]) {
-                    print '<td class="linenr">', $add[$index]->[2],
-                        '</td><td class="new">', $add[$index]->[0], '</td>';
-                } else {
-                    print '<td class="linenr"></td><td class="new"></td>';
-                }
-                print '</tr>';
-                $index++;
-            }
+            print $format_change->(table_from_chunk_block(\@add, \@rem));
             print "</table>\n";
 			@rem = @add = ();
 		}
@@ -5106,6 +5233,8 @@ sub print_sidebyside_diff_chunk {
 		## adding lines to accumulator
 		# guardian value
 		last unless $line;
+
+		$line = substr($line, 1);
 		# rem, add or change
 		if ($class eq 'rem') {
 			push @rem, [ $line, $from_linenr, $to_linenr ];
@@ -5119,6 +5248,22 @@ sub print_sidebyside_diff_chunk {
 	}
 }
 
+sub print_inline_diff_chunk {
+    print_diff_chunk_with_formatter(
+        \&format_context_inline,
+        \&format_change_inline,
+        @_,
+    );
+}
+
+sub print_sidebyside_diff_chunk {
+    print_diff_chunk_with_formatter(
+        \&format_context_sidebyside,
+        \&format_change_sidebyside,
+        @_,
+    );
+}
+
 sub git_patchset_body {
 	my ($fd, $diff_style, $difftree, $hash, @hash_parents) = @_;
 	my ($hash_parent) = $hash_parents[0];
@@ -5130,6 +5275,8 @@ sub git_patchset_body {
 	my $diffinfo;
 	my $to_name;
 	my (%from, %to);
+    my $print_diff_chunk = ($diff_style eq 'sidebyside') ?
+        \&print_sidebyside_diff_chunk : \&print_inline_diff_chunk;
 	my @chunk; # for side-by-side diff
 
 	print "<div class=\"patchset\">\n";
@@ -5245,10 +5392,9 @@ sub git_patchset_body {
 			my $diff_classes = "diff";
 			$diff_classes .= " $class" if ($class);
 
-			if ($diff_style eq 'sidebyside' && !$is_combined) {
-                $line = "<div class=\"$diff_classes\">$line</div>\n";
+			if (! $is_combined) {
 				if ($class eq 'chunk_header') {
-					print_sidebyside_diff_chunk(@chunk);
+					$print_diff_chunk->(@chunk);
 					@chunk = ( [ $class, $line, $from_linenr, $to_linenr ] );
 				} else {
 					push @chunk, [ $class, $line, $from_linenr, $to_linenr ];
@@ -5272,7 +5418,7 @@ sub git_patchset_body {
 
 	} continue {
 		if (@chunk) {
-			print_sidebyside_diff_chunk(@chunk);
+			$print_diff_chunk->(@chunk);
 			@chunk = ();
 		}
 		print "</div>\n"; # class="patch"
