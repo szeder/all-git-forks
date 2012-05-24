@@ -43,11 +43,11 @@ static int check_offset_overflow(off_t offset, uintmax_t len)
 	return 0;
 }
 
-int move_window(struct sliding_view *view, off_t off, size_t width)
+int move_window(struct sliding_view *view, off_t off, off_t width)
 {
 	off_t file_offset;
 	assert(view);
-	assert(view->width <= view->buf.len);
+	assert(view->width <= (off_t)(view->buf.len));
 	assert(!check_offset_overflow(view->off, view->buf.len));
 
 	if (check_offset_overflow(off, width))
@@ -68,7 +68,7 @@ int move_window(struct sliding_view *view, off_t off, size_t width)
 		strbuf_setlen(&view->buf, 0);
 	}
 
-	if (view->buf.len > width)
+	if ((off_t)(view->buf.len) > width)
 		; /* Already read. */
 	else if (read_to_fill_or_whine(view->file, &view->buf, width))
 		return -1;

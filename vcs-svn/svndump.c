@@ -34,7 +34,7 @@
 #define NODE_CTX 2	/* node metadata */
 #define INTERNODE_CTX 3	/* between nodes */
 
-#define LENGTH_UNKNOWN (~0)
+#define LENGTH_UNKNOWN (~0u)
 #define DATE_RFC2822_LEN 31
 
 static struct line_buffer input = LINE_BUFFER_INIT;

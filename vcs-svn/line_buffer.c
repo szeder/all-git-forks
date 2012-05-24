@@ -91,8 +91,7 @@ char *buffer_read_line(struct line_buffer *buf)
 	return buf->line_buffer;
 }
 
-size_t buffer_read_binary(struct line_buffer *buf,
-				struct strbuf *sb, size_t size)
+off_t buffer_read_binary(struct line_buffer *buf, struct strbuf *sb, off_t size)
 {
 	return strbuf_fread(sb, size, buf->infile);
 }

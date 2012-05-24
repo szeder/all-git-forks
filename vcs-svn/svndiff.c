@@ -75,7 +75,7 @@ static int error_short_read(struct line_buffer *input)
 }
 
 static int read_chunk(struct line_buffer *delta, off_t *delta_len,
-		      struct strbuf *buf, size_t len)
+		      struct strbuf *buf, off_t len)
 {
 	strbuf_reset(buf);
 	if (len > *delta_len ||
@@ -123,7 +123,7 @@ static int read_int(struct line_buffer *in, uintmax_t *result, off_t *len)
 	return error_short_read(in);
 }
 
-static int parse_int(const char **buf, size_t *result, const char *end)
+static int parse_int(const char **buf, off_t *result, const char *end)
 {
 	size_t rv = 0;
 	const char *pos;
@@ -165,9 +165,9 @@ static int read_length(struct line_buffer *in, size_t *result, off_t *len)
 }
 
 static int copyfrom_source(struct window *ctx, const char **instructions,
-			   size_t nbytes, const char *insns_end)
+			   off_t nbytes, const char *insns_end)
 {
-	size_t offset;
+	off_t offset;
 	if (parse_int(instructions, &offset, insns_end))
 		return -1;
 	if (unsigned_add_overflows(offset, nbytes) ||
@@ -180,10 +180,10 @@ static int copyfrom_source(struct window *ctx, const char **instructions,
 static int copyfrom_target(struct window *ctx, const char **instructions,
 			   size_t nbytes, const char *instructions_end)
 {
-	size_t offset;
+	off_t offset;
 	if (parse_int(instructions, &offset, instructions_end))
 		return -1;
-	if (offset >= ctx->out.len)
+	if (offset >= (off_t)(ctx->out.len))
 		return error("invalid delta: copies from the future");
 	for (; nbytes > 0; nbytes--)
 		strbuf_addch(&ctx->out, ctx->out.buf[offset++]);
@@ -201,9 +201,9 @@ static int copyfrom_data(struct window *ctx, size_t *data_pos, size_t nbytes)
 	return 0;
 }
 
-static int parse_first_operand(const char **buf, size_t *out, const char *end)
+static int parse_first_operand(const char **buf, off_t *out, const char *end)
 {
-	size_t result = (unsigned char) *(*buf)++ & OPERAND_MASK;
+	off_t result = (unsigned char) *(*buf)++ & OPERAND_MASK;
 	if (result) {	/* immediate operand */
 		*out = result;
 		return 0;
@@ -216,7 +216,7 @@ static int execute_one_instruction(struct window *ctx,
 {
 	unsigned int instruction;
 	const char *insns_end = ctx->instructions.buf + ctx->instructions.len;
-	size_t nbytes;
+	off_t nbytes;
 	assert(ctx);
 	assert(instructions && *instructions);
 	assert(data_pos);
