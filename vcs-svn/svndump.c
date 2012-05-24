@@ -40,8 +40,8 @@
 static struct line_buffer input = LINE_BUFFER_INIT;
 
 static struct {
-	uint32_t action, propLength, srcRev, type;
-	off_t text_length;
+	uint32_t action, srcRev, type;
+	off_t propLength, text_length;
 	struct strbuf src, dst;
 	uint32_t text_delta, prop_delta;
 } node_ctx;
