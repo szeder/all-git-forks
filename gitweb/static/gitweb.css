@@ -537,8 +537,11 @@ div.projsearch form {
 	margin-bottom: 2px;
 }
 
-td.linenr {
+table.chunk_block td.linenr {
 	text-align: right;
+    background: #f0f0f0;
+    padding-right: 5px;
+    border-right: 1px solid #ccc;
 }
 
 a.linenr {
