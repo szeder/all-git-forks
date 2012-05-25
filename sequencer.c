@@ -13,7 +13,6 @@
 #include "rerere.h"
 #include "merge-recursive.h"
 #include "refs.h"
-#include "argv-array.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -252,38 +251,6 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	return !clean;
 }
 
-static int is_index_unchanged(void)
-{
-	unsigned char head_sha1[20];
-	struct commit *head_commit;
-
-	if (!resolve_ref_unsafe("HEAD", head_sha1, 1, NULL))
-		return error(_("Could not resolve HEAD commit\n"));
-
-	head_commit = lookup_commit(head_sha1);
-
-	/*
-	 * If head_commit is NULL, check_commit, called from
-	 * lookup_commit, would have indicated that head_commit is not
-	 * a commit object already.  parse_commit() will return failure
-	 * without further complaints in such a case.  Otherwise, if
-	 * the commit is invalid, parse_commit() will complain.  So
-	 * there is nothing for us to say here.  Just return failure.
-	 */
-	if (parse_commit(head_commit))
-		return -1;
-
-	if (!active_cache_tree)
-		active_cache_tree = cache_tree();
-
-	if (!cache_tree_fully_valid(active_cache_tree))
-		if (cache_tree_update(active_cache_tree, active_cache,
-				  active_nr, 0))
-			return error(_("Unable to update cache tree\n"));
-
-	return !hashcmp(active_cache_tree->sha1, head_commit->tree->object.sha1);
-}
-
 /*
  * If we are cherry-pick, and if the merge did not result in
  * hand-editing, we will hit this commit and inherit the original
@@ -293,46 +260,21 @@ static int is_index_unchanged(void)
  */
 static int run_git_commit(const char *defmsg, struct replay_opts *opts)
 {
-	struct argv_array array;
-	int rc;
+	/* 6 is max possible length of our args array including NULL */
+	const char *args[6];
+	int i = 0;
 
-	argv_array_init(&array);
-	argv_array_push(&array, "commit");
-	argv_array_push(&array, "-n");
-
+	args[i++] = "commit";
+	args[i++] = "-n";
 	if (opts->signoff)
-		argv_array_push(&array, "-s");
+		args[i++] = "-s";
 	if (!opts->edit) {
-		argv_array_push(&array, "-F");
-		argv_array_push(&array, defmsg);
+		args[i++] = "-F";
+		args[i++] = defmsg;
 	}
+	args[i] = NULL;
 
-	if (opts->allow_empty)
-		argv_array_push(&array, "--allow-empty");
-
-	rc = run_command_v_opt(array.argv, RUN_GIT_CMD);
-	argv_array_clear(&array);
-	return rc;
-}
-
-static int is_original_commit_empty(struct commit *commit)
-{
-	const unsigned char *ptree_sha1;
-
-	if (parse_commit(commit))
-		return error(_("Could not parse commit %s\n"),
-			     sha1_to_hex(commit->object.sha1));
-	if (commit->parents) {
-		struct commit *parent = commit->parents->item;
-		if (parse_commit(parent))
-			return error(_("Could not parse parent commit %s\n"),
-				sha1_to_hex(parent->object.sha1));
-		ptree_sha1 = parent->tree->object.sha1;
-	} else {
-		ptree_sha1 = EMPTY_TREE_SHA1_BIN; /* commit is root */
-	}
-
-	return !hashcmp(ptree_sha1, commit->tree->object.sha1);
+	return run_command_v_opt(args, RUN_GIT_CMD);
 }
 
 static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
@@ -344,8 +286,6 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 	char *defmsg = NULL;
 	struct strbuf msgbuf = STRBUF_INIT;
 	int res;
-	int empty_commit;
-	int index_unchanged;
 
 	if (opts->no_commit) {
 		/*
@@ -471,10 +411,6 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		free_commit_list(remotes);
 	}
 
-	empty_commit = is_original_commit_empty(commit);
-	if (empty_commit < 0)
-		return empty_commit;
-
 	/*
 	 * If the merge was clean or if it failed due to conflict, we write
 	 * CHERRY_PICK_HEAD for the subsequent invocation of commit to use.
@@ -495,25 +431,6 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		print_advice(res == 1, opts);
 		rerere(opts->allow_rerere_auto);
 	} else {
-		index_unchanged = is_index_unchanged();
-		/*
-		 * If index_unchanged is less than 0, that indicates we either
-		 * couldn't parse HEAD or the index, so error out here.
-		 */
-		if (index_unchanged < 0)
-			return index_unchanged;
-
-		if (!empty_commit && !opts->keep_redundant_commits && index_unchanged)
-			/*
-			 * The head tree and the index match
-			 * meaning the commit is empty.  Since it wasn't created
-			 * empty (based on the previous test), we can conclude
-			 * the commit has been made redundant.  Since we don't
-			 * want to keep redundant commits, we can just return
-			 * here, skipping this commit
-			 */
-			return 0;
-
 		if (!opts->no_commit)
 			res = run_git_commit(defmsg, opts);
 	}
