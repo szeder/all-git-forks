@@ -32,7 +32,7 @@ wiki_getpage () {
 	open(file, ">$destdir/$pagename");
 	print file "$content";
 	close (file);
-	' $1 $2 $url
+	' "$1" "$2" $url
 }
 
 
@@ -169,15 +169,13 @@ wiki_getallpagename () {
 # wiki_getallpagename
 
 #
-# fetch all pages' names and list it in a file called
-# 'pagenames.tmp'
+# fetch all pages
 
 	perl -e '
 	use MediaWiki::API;
-
-	my $wikiurl = '\'http://localhost/mediawiki/api.php\'';
-	my $username = '\'user\'';
-	my $password = '\'password\'';
+	my $wikiurl = $ARGV[0];
+	my $username = user;
+	my $password = password;
 	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
@@ -186,23 +184,28 @@ wiki_getallpagename () {
 	}
 	my $list = $mw->list ( { action => query,
                 list => allpages,
-                cmtitle => Category:Surnames,
+                cmtitle => "Category:Surnames",
                 cmnamespace => 0,
                 cmlimit=> 500 },
                 { max => 4, hook => \&cat_names } )
-                || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
-
-	system("touch pagenames.tmp");
+                || die $mw->{error}->{code}.": ".$mw->{error}->{details};
         # print the name of each article
         sub cat_names {
                 my ($ref) = @_;
+		
+		open(file, ">all.txt");
                 foreach (@$ref) {
---------------------------------------------------------------------
--------- cat le nom de toutes les pages dans le fichier ------------
---------------------------------------------------------------------
-                system("echo $content > $destdir/$pagename");
+		        print file "$_->{title}\n";	
                 }
+		close (file);
         }
-	'
+	' "$url"
 }
 
+wiki_getallpage() {
+	wiki_getallpagename
+	mkdir all
+	while read -r line; do
+		wiki_getpage "$line" all;
+	done < all.txt
+}
