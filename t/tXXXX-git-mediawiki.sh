@@ -12,22 +12,22 @@
 
 test_description='Test the Git Mediawiki remote helper'
 
-. ./test-lib.sh
 . ./test-gitmw-lib.sh
+. ./test-lib.sh
 
-test_expect_success 'git clone works on mediawiki::...' '
-
-        for each name in file do
-                ./wiki_pagecontent "name"".mw" "name"
-	done
-'
+main_page
 
 test_expect_success 'git clone works with page added' '
-	#create_wiki
 	wiki_editpage foo "hello_world" true &&
 	wiki_editpage bar "hi everybody !" true &&
-	git clone mediawiki::http://localhost/mediawiki
-
+	git clone mediawiki::http://localhost/mediawiki mw_dir &&
+	wiki_getallpage ref_page &&
+	diff -r -B -w --exclude=".git" mw_dir ref_page &&
+	wiki_delete_page foo &&
+	wiki_delete_page bar
 '
 
+test_expect_success 'git clone works wi' '
+
+'
 test_done

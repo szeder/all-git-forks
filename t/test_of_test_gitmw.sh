@@ -5,11 +5,6 @@ test_description='see if test-gitmw-lib.sh is correct'
 . ./test-gitmw-lib.sh
 . ./test-lib.sh
 
-if test -z "$GIT_TEST_HTTPD"
-then
-	skip_all="Network testing disabled (define GIT_TEST_HTTPD to enable)"
-	test_done
-fi
 
 
 test_expect_success 'correct behavior' '

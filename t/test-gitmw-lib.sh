@@ -30,7 +30,8 @@ wiki_getpage () {
 	if (!defined($content)) {
 		die "getpage : page does not exist";
 	}
-	open(file, ">$destdir/$pagename");
+	$pagename=~s/\ /_/;
+	open(file, ">$destdir/$pagename.mw");
 	print file "$content";
 	close (file);
 	' "$1" "$2" $url
