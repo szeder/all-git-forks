@@ -1,5 +1,6 @@
 
 url="http://localhost/mediawiki/api.php"
+test_rep="tXXXX_tmp_rep"
 
 wiki_getpage () {
 # wiki_getpage wiki_page dest_path
@@ -12,8 +13,8 @@ wiki_getpage () {
 	my $pagename = $ARGV[0];
 	my $wikiurl = $ARGV[2];
 	my $destdir = $ARGV[1];
-	my $username = "user";
-	my $password = "password";
+	my $username ='"'"'user'"'"';
+	my $password = '"'"'password'"'"';
 	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
@@ -44,8 +45,8 @@ wiki_delete_page () {
 
 	my $wikiurl = $ARGV[1];
 	my $pagename = $ARGV[0];
-	my $login = user;
-	my $passwd= password;
+	my $login = '"'"'user'"'"';
+	my $passwd= '"'"'password'"'"';
 
 
 	my $mw = MediaWiki::API->new({api_url => $wikiurl});
@@ -104,7 +105,7 @@ wiki_editpage (){
 }
 
 git_content (){
-#usage : git_content.sh file_1 file_2
+#usage : git_content file_1 file_2
 #precondition : file1 and file2 must exist
 #behavior : if file_1 and file_2 do not match, the program exit with an error.
 
@@ -135,14 +136,14 @@ wiki_page_content (){
 #Exit with error code 1 if and only if the content of
 #<page_name> and <file> do not match.
 
-	test -d ./tmp_test || mkdir ./tmp_test
-	wiki_getpage $2 ./tmp_test
+	test -d $test_rep || mkdir $test_rep
+	wiki_getpage $2 $test_rep
 
-	if find ./tmp_test -name $2 -type f | grep -q $2; then
-		git_content.sh $1 ./tmp_test/$2
-		rm -rf ./tmp_test
+	if find $test_rep -name $2 -type f | grep -q $2; then
+		git_content.sh $1 $test_rep/$2
+		rm -rf $test_rep
 	else
-		rm -rf ./tmp_test
+		rm -rf $test_rep
 		echo "ERROR : file $2 not found on wiki"
 		exit 1;
 	fi
@@ -153,13 +154,13 @@ wiki_page_exist (){
 #Exit with error code 1 if and only if the page <page_name> is not on wiki
 
 
-	test -d ./tmp_test || mkdir ./tmp_test
-	wiki_getpage $1 ./tmp_test
+	test -d $test_rep || mkdir $test_rep
+	wiki_getpage $1 $test_rep
 
-	if find ./tmp_test/ -name $1 -type f | grep -q $1; then
-		rm -rf tmp_test
+	if find $test_rep -name $1 -type f | grep -q $1; then
+		rm -rf $test_rep
 	else
-		rm -rf ./tmp_test
+		rm -rf $test_rep
 		echo "ERROR : file $1 not found on wiki"
 		exit 1;
 	fi
