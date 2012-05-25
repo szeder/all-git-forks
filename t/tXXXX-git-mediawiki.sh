@@ -16,7 +16,10 @@ test_description='Test the Git Mediawiki remote helper'
 . ./test-gitmw-lib.sh
 
 test_expect_success 'git clone works on mediawiki::...' '
-	
+
+        for each name in file do
+                ./wiki_pagecontent "name"".mw" "name"
+	done
 '
 
 test_done
