@@ -27,6 +27,7 @@ test_expect_success 'git clone works with page added' '
 	wiki_editpage foo "hello_world" true &&
 	wiki_editpage bar "hi everybody !" true &&
 	git clone mediawiki::http://localhost/mediawiki
+
 '
 
 test_done
