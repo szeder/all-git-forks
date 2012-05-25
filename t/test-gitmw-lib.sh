@@ -161,4 +161,44 @@ wiki_page_exist (){
 	fi
 }
 
+wiki_getallpagename () {
+# wiki_getallpagename
+
+#
+# fetch all pages' names and list it in a file called
+# 'pagenames.tmp'
+
+	perl -e '
+	use MediaWiki::API;
+
+	my $wikiurl = '\'http://localhost/mediawiki/api.php\'';
+	my $username = '\'user\'';
+	my $password = '\'password\'';
+	my $mw = MediaWiki::API->new;
+	$mw->{config}->{api_url} = $wikiurl;
+	if (!defined($mw->login( { lgname => "$username",
+		lgpassword => "$password" } ))) {
+		die "getpage : login failed";
+	}
+	my $list = $mw->list ( { action => query,
+                list => allpages,
+                cmtitle => Category:Surnames,
+                cmnamespace => 0,
+                cmlimit=> 500 },
+                { max => 4, hook => \&cat_names } )
+                || die $mw->{error}->{code} . ': ' . $mw->{error}->{details};
+
+	system("touch pagenames.tmp");
+        # print the name of each article
+        sub cat_names {
+                my ($ref) = @_;
+                foreach (@$ref) {
+--------------------------------------------------------------------
+-------- cat le nom de toutes les pages dans le fichier ------------
+--------------------------------------------------------------------
+                system("echo $content > $destdir/$pagename");
+                }
+        }
+	'
+}
 
