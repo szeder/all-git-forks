@@ -492,6 +492,7 @@ table.chunk_block {
 }
 
 table.chunk_block td {
+    width: 45%;
     padding: 0;
 }
 
@@ -499,26 +500,22 @@ table.chunk_block td.linenr {
     width: 5%;
 }
 
-table.chunk_block td.old,
-table.chunk_block td.new {
-    width: 45%;
-}
-
 table.chunk_block div.diff {
     word-break: break-all;
     white-space: pre-wrap;
+    padding: 0 2px;
 }
 
-table.chunk_block.rem td.old div.diff.rem {
+table.chunk_block.rem td div.diff.rem {
 	background-color: #fff5f5;
 }
-table.chunk_block.add td.new div.diff.add {
+table.chunk_block.add td div.diff.add {
 	background-color: #f8fff8;
 }
-table.chunk_block.chg td     div.diff {
+table.chunk_block.chg td div.diff {
 	background-color: #fffff0;
 }
-table.chunk_block.ctx td     div.diff.ctx {
+table.chunk_block.ctx td div.diff.ctx {
 	color: #404040;
 }
 
@@ -549,8 +546,9 @@ div.projsearch form {
 
 table.chunk_block td.linenr {
 	text-align: right;
-    background: #f0f0f0;
-    padding-right: 5px;
+    background: #eee;
+    color: #666;
+    padding-right: 2px;
     border-right: 1px solid #ccc;
 }
 

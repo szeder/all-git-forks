@@ -5086,14 +5086,14 @@ sub table_from_chunk_block {
 
 sub format_change_sidebyside {
     my $f = sub {
-        my ($number, $content, $td_class, $div_class) = @_;
+        my ($number, $content, $class) = @_;
 
         return (
             '<td class="linenr">',
             (defined $number ? $number : ''),
             '</td>',
-            qq{<td class="$td_class">},
-            qq{<div class="diff $div_class">$content</div>},
+            '<td>',
+            qq{<div class="diff $class">$content</div>},
             '</td>',
         );
     };
@@ -5103,8 +5103,8 @@ sub format_change_sidebyside {
 
         join '', (
             '<tr>',
-            $f->($left_nr,  $left,  'old', 'rem'),
-            $f->($right_nr, $right, 'new', 'rem'),
+            $f->($left_nr,  $left,  'rem'),
+            $f->($right_nr, $right, 'add'),
             '</tr>',
         );
     } @_;
@@ -5120,7 +5120,7 @@ sub format_change_inline {
             join '', (
                 qq{<td class="linenr">$left_nr</td>},
                 '<td class="linenr">&nbsp;</td>',
-                '<td class="old">',
+                '<td>',
                 qq{<div class="diff rem">$left</div>},
                 '</td>',
             );
@@ -5161,9 +5161,9 @@ sub format_context_sidebyside {
         join '', (
             '<tr>',
             qq{<td class="linenr">$from</td>},
-            qq{<td class="old">$html</td>},
+            qq{<td>$html</td>},
             qq{<td class="linenr">$to</td>},
-            qq{<td class="new">$html</td>},
+            qq{<td>$html</td>},
             '</tr>',
         );
     } @_;
