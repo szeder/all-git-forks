@@ -5085,23 +5085,27 @@ sub table_from_chunk_block {
 }
 
 sub format_change_sidebyside {
+    my $f = sub {
+        my ($number, $content, $td_class, $div_class) = @_;
+
+        return (
+            '<td class="linenr">',
+            (defined $number ? $number : ''),
+            '</td>',
+            qq{<td class="$td_class">},
+            qq{<div class="diff $div_class">$content</div>},
+            '</td>',
+        );
+    };
+
     map {
-        qq{<tr>$_</tr>};
-    } map {
         my ($left_nr, $left, $right_nr, $right) = @$_;
 
         join '', (
-            qq{<td class="linenr">$left_nr</td>},
-
-            '<td class="old">',
-            qq{<div class="diff rem">$left</div>},
-            '</td>',
-
-            qq{<td class="linenr">$right_nr</td>},
-
-            '<td class="new">',
-            qq{<div class="diff add">$right</div>},
-            '</td>',
+            '<tr>',
+            $f->($left_nr,  $left,  'old', 'rem'),
+            $f->($right_nr, $right, 'new', 'rem'),
+            '</tr>',
         );
     } @_;
 }
