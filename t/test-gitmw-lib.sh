@@ -1,3 +1,6 @@
+
+url="http://localhost/mediawiki/api.php"
+
 wiki_getpage () {
 # wiki_getpage wiki_page dest_path
 #
@@ -6,11 +9,11 @@ wiki_getpage () {
 	perl -e '
 	use MediaWiki::API;
 
-	my $pagename = '\'$1\'';
-	my $wikiurl = '\'http://localhost/mediawiki/api.php\'';
-	my $destdir = '\'$2\'';
-	my $username = '\'user\'';
-	my $password = '\'password\'';
+	my $pagename = $ARGV[0];
+	my $wikiurl = $ARGV[2];
+	my $destdir = $ARGV[1];
+	my $username = "user";
+	my $password = "password";
 	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
@@ -21,13 +24,15 @@ wiki_getpage () {
 	if (!defined($page)) {
 		die "getpage : wiki does not exist";
 	}
-	my $content = $page->{'\'*\''};
+	my $content = $page->{'"'"'*'"'"'};
 
 	if (!defined($content)) {
 		die "getpage : page does not exist";
 	}
-	system("touch $destdir/$pagename");
-	system("echo $content > $destdir/$pagename");'
+	open(file, ">$destdir/$pagename");
+	print file "$content";
+	close (file);
+	' $1 $2 $url
 }
 
 
@@ -37,10 +42,10 @@ wiki_delete_page () {
 	perl -e'
 	use MediaWiki::API;
 
-	my $wikiurl = '\'http://localhost/wiki/api.php\'';
-	my $pagename = '\'$1\'';
-	my $login = '\'user\'';
-	my $passwd= '\'password\'';
+	my $wikiurl = $ARGV[1];
+	my $pagename = $ARGV[0];
+	my $login = user;
+	my $passwd= password;
 
 
 	my $mw = MediaWiki::API->new({api_url => $wikiurl});
@@ -48,15 +53,16 @@ wiki_delete_page () {
 
 	my $exist=$mw->get_page({title => $pagename});
 
-	if (defined($exist->{'\'*\''})){
+	if (defined($exist->{'"'"'*'"'"'})){
 		$mw->edit({
-		action => '\'delete\'',
+		action => '"'"'delete'"'"',
 		title => $pagename})
 		|| die $mw->{error}->{code} . ": " . $mw->{error}->{details};
 	}else{
-	print("no page with such name found\n");
-	}'
+	die "no page with such name found : $pagename\n";
+	}' $1 $url
 }
+
 wiki_editpage (){
 # wiki_editpage <wiki_page> <wiki_content> <wiki_append>
 #
@@ -65,19 +71,18 @@ wiki_editpage (){
 #
 # If page doesn't exist : it creates page
 
-
 	perl -e '
 	use MediaWiki::API;
 
-	my $wiki_page = '\'$1\'';
-	my $wiki_content = '\'$2\'';
-	my $wiki_append = '\'$3\'';
-	my $wiki_url = '\'http://localhost/wiki/api.php\'';
-	my $wiki_login = '\'user\'';
-	my $wiki_password = '\'password\'';
+	my $wiki_page = $ARGV[0];
+	my $wiki_content = $ARGV[1];
+	my $wiki_append = $ARGV[2];
+	my $wiki_url = $ARGV[3];
+	my $wiki_login = user;
+	my $wiki_password = password;
 
 	my $append = 0;
-	if (defined($wiki_append) && $wiki_append eq '\'true\'') {
+	if (defined($wiki_append) && $wiki_append eq '"'"'true'"'"') {
 		$append=1;
 	}
 
@@ -89,14 +94,13 @@ wiki_editpage (){
 
 	if ($append) {
 		my $ref = $mw->get_page( { title => $wiki_page } );
-		$previous_text = $ref->{'\'*\''};
+		$previous_text = $ref->{'"'"'*'"'"'};
 	}
-	if (!defined($previous_text)) {
-		$previous_text="";
+	my $text = $wiki_content;
+	if (defined($previous_text)) {
+		$text="$previous_text\n\n$text";
 	}
-	my $text = $previous_text."\n\n".$wiki_content;
-
-	$mw->edit( { action => '\'edit\'', title => $wiki_page, text => "$text"} );'
+	$mw->edit( { action => '"'"'edit'"'"', title => $wiki_page, text => "$text"} );' "$1" "$2" "$3" "$url"
 }
 
 git_content (){
