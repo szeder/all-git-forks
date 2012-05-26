@@ -1,0 +1,20 @@
+# JavaScript tests for gitweb
+
+Gitweb uses Jasmine[1], a BDD framework for JavaScript tests. Tests can be run
+in a console with node.js[2] producing TAP output or in the browser at
+`test/SpecRunner.html`. Additional requirements are npm[3] and
+jasmine-tapreporter[4]
+
+The specs are written in `test/spec` as `foo.spec.js` for the source file
+`foo.js`.`t/t9503-gitweb-javascript.js` will be generated with a Makefile to run
+the tests in the console with nodejs and to report results in TAP format.
+
+## Work to do :
+
+1. Provision to skip the test if dependencies are not installed.
+2. Installing browser tests optionally.
+
+1: http://pivotal.github.com/jasmine/
+2: http://nodejs.org
+3: http://npmjs.org
+4: https://github.com/kozy4324/Jasmine-TAPReporter
