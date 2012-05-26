@@ -25,7 +25,7 @@ var tzRe = /^([+\-])([0-9][0-9])([0-9][0-9])$/;
  *
  * @globals tzRe
  */
-function timezoneOffset(timezoneInfo) {
+this.timezoneOffset = function(timezoneInfo) {
 	var match = tzRe.exec(timezoneInfo);
 	var tz_sign = (match[1] === '-' ? -1 : +1);
 	var tz_hour = parseInt(match[2],10);
