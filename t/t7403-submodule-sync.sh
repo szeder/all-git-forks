@@ -93,7 +93,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form foo' '
 	 git remote set-url origin foo
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../submodule"
+	 test "$(git config remote.origin.url)" = "../submodule"
 	)
 	)
 '
@@ -103,7 +103,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form foo/bar
 	 git remote set-url origin foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../foo/submodule"
+	 test "$(git config remote.origin.url)" = "../foo/submodule"
 	)
 	)
 '
@@ -113,7 +113,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ./foo' 
 	 git remote set-url origin ./foo
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../submodule"
+	 test "$(git config remote.origin.url)" = "../submodule"
 	)
 	)
 '
@@ -123,7 +123,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ./foo/b
 	 git remote set-url origin ./foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../foo/submodule"
+	 test "$(git config remote.origin.url)" = "../foo/submodule"
 	)
 	)
 '
@@ -133,7 +133,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ../foo'
 	 git remote set-url origin ../foo
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../../submodule"
+	 test "$(git config remote.origin.url)" = "../../submodule"
 	)
 	)
 '
@@ -143,7 +143,7 @@ test_expect_success '"git submodule sync" handles origin URL of the form ../foo/
 	 git remote set-url origin ../foo/bar
 	 git submodule sync &&
 	(cd submodule &&
-	 test "$(git config remote.origin.url)" == "../../foo/submodule"
+	 test "$(git config remote.origin.url)" = "../../foo/submodule"
 	)
 	)
 '
