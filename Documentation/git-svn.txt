@@ -546,6 +546,11 @@ config key: svn.authorsfile
 	expected to return a single line of the form "Name <email>",
 	which will be treated as if included in the authors file.
 
+--messages-prog=<filename>::
+	If this option is specified, each SVN commit message is piped
+	through the given program. The output of this program is then
+	used as the new commit message instead.
+
 -q::
 --quiet::
 	Make 'git svn' less verbose. Specify a second time to make it

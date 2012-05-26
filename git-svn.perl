@@ -6,7 +6,7 @@ use warnings;
 use strict;
 use vars qw/	$AUTHOR $VERSION
 		$sha1 $sha1_short $_revision $_repository
-		$_q $_authors $_authors_prog %users/;
+		$_q $_authors $_authors_prog $_messages_prog %users/;
 $AUTHOR = 'Eric Wong <normalperson@yhbt.net>';
 $VERSION = '@@GIT_VERSION@@';
 
@@ -120,6 +120,7 @@ my %remote_opts = ( 'username=s' => \$Git::SVN::Prompt::_username,
 my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'authors-file|A=s' => \$_authors,
 		'authors-prog=s' => \$_authors_prog,
+		'messages-prog=s' => \$_messages_prog,
 		'repack:i' => \$Git::SVN::_repack,
 		'noMetadata' => \$Git::SVN::_no_metadata,
 		'useSvmProps' => \$Git::SVN::_use_svm_props,
@@ -358,6 +359,9 @@ usage(1) unless defined $cmd;
 load_authors() if $_authors;
 if (defined $_authors_prog) {
 	$_authors_prog = "'" . File::Spec->rel2abs($_authors_prog) . "'";
+}
+if (defined $_messages_prog) {
+	$_messages_prog = "'" . File::Spec->rel2abs($_messages_prog) . "'";
 }
 
 unless ($cmd =~ /^(?:clone|init|multi-init|commit-diff)$/) {
@@ -2050,6 +2054,7 @@ use vars qw/$default_repo_id $default_ref_id $_no_metadata $_follow_parent
 use Carp qw/croak/;
 use File::Path qw/mkpath/;
 use File::Copy qw/copy/;
+use IPC::Open2;
 use IPC::Open3;
 use Time::Local;
 use Memoize;  # core since 5.8.0, Jul 2002
@@ -3412,6 +3417,22 @@ sub other_gs {
 	$gs
 }
 
+sub call_messages_prog {
+	my ($orig_message) = @_;
+	my ($pid, $in, $out);
+	
+	$pid = open2($in, $out, $::_messages_prog)	
+		or die "$::_messages_prog failed with exit code $?\n";
+	print $out $orig_message;
+	close($out);
+	my ($message) = "";
+	while (<$in>) {
+		$message .= $_;
+	}
+	close($in);
+	return $message;    
+}
+
 sub call_authors_prog {
 	my ($orig_author) = @_;
 	$orig_author = command_oneline('rev-parse', '--sq-quote', $orig_author);
@@ -3827,6 +3848,9 @@ sub make_log_entry {
 
 	$log_entry{date} = parse_svn_date($log_entry{date});
 	$log_entry{log} .= "\n";
+	if (defined $::_messages_prog) {
+		$log_entry{log} = call_messages_prog($log_entry{log});
+	}
 	my $author = $log_entry{author} = check_author($log_entry{author});
 	my ($name, $email) = defined $::users{$author} ? @{$::users{$author}}
 						       : ($author, undef);
