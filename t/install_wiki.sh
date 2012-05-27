@@ -8,7 +8,7 @@
 #
 # CONFIGURATION VARIABLES
 #
-WIKI_DIR_NAME="mediawiki"            # Name of the wiki's directory
+WIKI_DIR_NAME="wiki"            # Name of the wiki's directory
 WIKI_DIR_INST="/var/www"        # Directory of the web server
 TMP="/tmp"                      # Temporary directory for downloads
                                 # Absolute address needed!
