@@ -4,6 +4,7 @@
 # It requires a web server with PHP and a database running and mediawiki installed.
 # As it changes some permissions file, it surely needs root privileges.
 # Please set the CONFIGURATION VARIABLES section below first.
+# Please note the wiki admin login is 'WikiAdmin' and password is 'AdminPass'
 
 #
 # CONFIGURATION VARIABLES
@@ -101,9 +102,10 @@ cmd_reset() {
                 fail "Can't find $DB_FILE in the current folder.
                 Please run the script inside its folder."
         fi
-        cp "$DB_FILE" "$TMP" || fail "Can't copy $DB_FILE in $TMP"
+	cp "$DB_FILE" "$TMP" || fail "Can't copy $DB_FILE in $TMP"
         chmod ugo+rw "$TMP/$DB_FILE" || fail "Can't add write perms on $TMP/$DB_FILE"
         echo "File $DB_FILE is set in $TMP"
+
 }
 
 #

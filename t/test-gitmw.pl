@@ -25,7 +25,9 @@
 use MediaWiki::API;
 
 #URL of the wiki used for the tests
-my $url="http://localhost/mediawiki/api.php";
+my $url="http://localhost/wiki/api.php";
+my $wiki_admin='WikiAdmin';
+my $wiki_admin_pass='AdminPass';
 
 sub wiki_getpage {
 # wiki_getpage(wiki_page,dest_path)
@@ -35,8 +37,8 @@ sub wiki_getpage {
 	$pagename = $_[0];
 	$wikiurl = $url;
 	$destdir = $_[1];
-	$username ='user';
-	$password = 'password';
+	$username =$wiki_admin;
+	$password =$wiki_admin_pass;
 	$mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
@@ -64,8 +66,8 @@ sub wiki_delete_page {
 #delete the page <page_name> from the wiki.
 	$wikiurl = $url;
 	$pagename = $_[0];
-	$login = 'user';
-	$passwd= 'password';
+	$login = $wiki_admin;
+	$passwd= $wiki_admin_pass;
 
 
 	$mw = MediaWiki::API->new({api_url => $wikiurl});
@@ -94,8 +96,8 @@ sub wiki_editpage {
 	$wiki_content = $_[1];
 	$wiki_append = $_[2];
 	$wiki_url = $url;
-	$wiki_login = 'user';
-	$wiki_password = 'password';
+	$wiki_login = $wiki_admin;
+	$wiki_password = $wiki_admin_pass;
 
 	$append = 0;
 	if (defined($wiki_append) && $wiki_append eq 'true') {
@@ -124,8 +126,8 @@ sub wiki_getallpagename {
 
 # fetch all pages
 	$wikiurl = $url;
-	$username = 'user';
-	$password = 'password';
+	$username = $wiki_admin;
+	$password = $wiki_admin_pass;
 	$mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
