@@ -63,7 +63,6 @@ git_exist (){
 		echo "test failed: file $1/$2 does not exist"
 		exit 1;
 	fi
-
 }
 
 wiki_page_content (){
@@ -72,14 +71,12 @@ wiki_page_content (){
 #Exit with error code 1 if and only if the content of
 #<page_name> and <file> do not match.
 
-	test -d $test_rep || mkdir $test_rep
-	wiki_getpage $2 $test_rep
+	wiki_getpage $2 .
 
-	if find $test_rep -name $2.mw -type f | grep -q $2; then
-		git_content $1 $test_rep/$2.mw
-		rm -rf $test_rep
+	if [ -f $2.mw ]
+	then
+		git_content $1 $2.mw
 	else
-		rm -rf $test_rep
 		echo "ERROR: file $2 not found on wiki"
 		exit 1;
 	fi
@@ -89,22 +86,19 @@ wiki_page_exist (){
 #usage wiki_page_exist <page_name>
 #Exit with error code 1 if and only if the page <page_name> is not on wiki
 
+	wiki_getpage $1 .
 
-	test -d $test_rep || mkdir $test_rep
-	wiki_getpage $1 $test_rep
-
-	if find $test_rep -name $1.mw -type f | grep -q $1; then
-		rm -rf $test_rep
-	else
-		rm -rf $test_rep
-		echo "ERROR: file $1 not found on wiki"
+	if [ ! -f $1.mw ] 
+	then
+		echo "ERROR : file $1 not found on wiki"
 		exit 1;
+	else 
+		rm $1.mw
 	fi
 }
 
 wiki_getallpagename () {
 # wiki_getallpagename
-
 # fetch all pages
 	../test-gitmw.pl "getallpagename"
 }
@@ -229,5 +223,4 @@ cmd_help() {
         echo "          delete: Delete the wiki and all its pages and content"
 }
 
-wiki_getallpage tXXXX_tmp
 
