@@ -396,11 +396,11 @@ cmd_init()
 	module_list "$@" |
 	while read mode sha1 stage sm_path
 	do
-		# Skip already registered paths
 		name=$(module_name "$sm_path") || exit
+		url=$(git config -f .gitmodules submodule."$name".url)
+		# Skip already registered paths
 		if test -z "$(git config "submodule.$name.url")"
 		then
-			url=$(git config -f .gitmodules submodule."$name".url)
 			test -z "$url" &&
 			die "$(eval_gettext "No url found for submodule path '\$sm_path' in .gitmodules")"
 
