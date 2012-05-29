@@ -5051,7 +5051,13 @@ sub table_from_chunk_block {
         [ @left, @right ];
     } (0..max(scalar @$add_ref, scalar @$rem_ref)-1);
 
-    if (scalar @$add_ref == scalar @$rem_ref) {
+    my $longest_line_length = max(
+        map {
+            (length $_->[1]), (length $_->[3]);
+        } @lines
+    );
+
+    if (scalar @$add_ref == scalar @$rem_ref && $longest_line_length < 1000) {
         return map {
             my ($left_nr, $left, $right_nr, $right) = @$_;
 
