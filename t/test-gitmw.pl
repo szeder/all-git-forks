@@ -95,7 +95,7 @@ sub wiki_editpage {
 	my $previous_text ="";
 
 	if ($append) {
-	my 	$ref = $mw->get_page( { title => $wiki_page } );
+	my $ref = $mw->get_page( { title => $wiki_page } );
 		$previous_text = $ref->{'*'};
 	}
 	my $text = $wiki_content;
