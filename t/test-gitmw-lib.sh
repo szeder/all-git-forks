@@ -223,3 +223,4 @@ cmd_help() {
         echo "          delete: Delete the wiki and all its pages and content"
 }
 
+wiki_getallpage Foo

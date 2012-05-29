@@ -23,7 +23,7 @@
 #
 
 use MediaWiki::API;
-
+use Switch;
 #URL of the wiki used for the tests
 my $url="http://localhost/wiki/api.php";
 my $wiki_admin='WikiAdmin';
@@ -34,22 +34,22 @@ sub wiki_getpage {
 	#
 # fetch a page wiki_page from wiki and copies its content
 # in directory dest_path
-	$pagename = $_[0];
-	$wikiurl = $url;
-	$destdir = $_[1];
-	$username =$wiki_admin;
-	$password =$wiki_admin_pass;
-	$mw = MediaWiki::API->new;
+	my $pagename = $_[0];
+	my $wikiurl = $url;
+	my $destdir = $_[1];
+	my $username =$wiki_admin;
+	my $password =$wiki_admin_pass;
+	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
 					lgpassword => "$password" } ))) {
 		die "getpage: login failed";
 	}
-	$page = $mw->get_page( { title => $pagename } );
+	my $page = $mw->get_page( { title => $pagename } );
 	if (!defined($page)) {
 		die "getpage: wiki does not exist";
 	}
-	$content = $page->{'*'};
+	my $content = $page->{'*'};
 
 	if (!defined($content)) {
 		die "getpage: page does not exist";
@@ -64,16 +64,16 @@ sub wiki_getpage {
 sub wiki_delete_page {
 #wiki_delete_page(page_name)
 #delete the page <page_name> from the wiki.
-	$wikiurl = $url;
-	$pagename = $_[0];
-	$login = $wiki_admin;
-	$passwd= $wiki_admin_pass;
+	my $wikiurl = $url;
+	my $pagename = $_[0];
+	my $login = $wiki_admin;
+	my $passwd= $wiki_admin_pass;
 
 
-	$mw = MediaWiki::API->new({api_url => $wikiurl});
+	my $mw = MediaWiki::API->new({api_url => $wikiurl});
 	$mw->login({lgname => $login, lgpassword => $passwd });
 
-	$exist=$mw->get_page({title => $pagename});
+	my $exist=$mw->get_page({title => $pagename});
 
 	if (defined($exist->{'*'})){
 		$mw->edit({
@@ -92,29 +92,29 @@ sub wiki_editpage {
 # If <wiki_append> == true : append
 	#
 # If page doesn't exist : it creates page
-	$wiki_page = $_[0];
-	$wiki_content = $_[1];
-	$wiki_append = $_[2];
-	$wiki_url = $url;
-	$wiki_login = $wiki_admin;
-	$wiki_password = $wiki_admin_pass;
+	my $wiki_page = $_[0];
+	my $wiki_content = $_[1];
+	my $wiki_append = $_[2];
+	my $wiki_url = $url;
+	my $wiki_login = $wiki_admin;
+	my $wiki_password = $wiki_admin_pass;
 
-	$append = 0;
+	my $append = 0;
 	if (defined($wiki_append) && $wiki_append eq 'true') {
 		$append=1;
 	}
 
 
-	$mw = MediaWiki::API->new;
+	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wiki_url;
 	$mw->login({lgname => $wiki_login, lgpassword => $wiki_password });
-	$previous_text ="";
+	my $previous_text ="";
 
 	if ($append) {
-		$ref = $mw->get_page( { title => $wiki_page } );
+	my 	$ref = $mw->get_page( { title => $wiki_page } );
 		$previous_text = $ref->{'*'};
 	}
-	$text = $wiki_content;
+	my $text = $wiki_content;
 	if (defined($previous_text)) {
 		$text="$previous_text\n\n$text";
 	}
@@ -125,16 +125,16 @@ sub wiki_getallpagename {
 # wiki_getallpagename()
 
 # fetch all pages
-	$wikiurl = $url;
-	$username = $wiki_admin;
-	$password = $wiki_admin_pass;
-	$mw = MediaWiki::API->new;
+	my $wikiurl = $url;
+	my $username = $wiki_admin;
+	my $password = $wiki_admin_pass;
+	my $mw = MediaWiki::API->new;
 	$mw->{config}->{api_url} = $wikiurl;
 	if (!defined($mw->login( { lgname => "$username",
 					lgpassword => "$password" } ))) {
 		die "getpage: login failed";
 	}
-	$list = $mw->list ( { action => 'query',
+	$mw->list ( { action => 'query',
 			list => 'allpages',
 			#cmtitle => "Category:Surnames",
 			#cmnamespace => 0,
@@ -145,38 +145,21 @@ sub wiki_getallpagename {
 	sub cat_names {
 		my ($ref) = @_;
 
-		open(file, ">all.txt");
+		open(my $file, ">all.txt");
 		foreach (@$ref) {
-			print file "$_->{title}\n";
+			print $file "$_->{title}\n";
 		}
-		close (file);
+		close ($file);
 	}
-
-	&cat_names(@list);
 }
 
 #Selecting the function to use
 
 $to_call = $ARGV[0];
-
-if($to_call eq "get_page"){
-
-	&wiki_getpage($ARGV[1], $ARGV[2]);
-
-}elsif($to_call eq "delete_page"){
-
-	&wiki_delete_page($ARGV[1]);
-
-}elsif($to_call eq "edit_page"){
-
-	&wiki_editpage($ARGV[1], $ARGV[2], $ARGV[3]);
-
-}elsif($to_call eq "getallpagename"){
-
-	&wiki_getallpagename();
-
-}else{
-
-	die("test-gitmw.pl ERROR: unknown input");
-
+switch ($to_call) {
+	case "get_page" { &wiki_getpage($ARGV[1], $ARGV[2])}
+	case "delete_page" { &wiki_delete_page($ARGV[1])}
+	case "edit_page" { &wiki_editpage($ARGV[1], $ARGV[2], $ARGV[3])}
+	case "getallpagename" { &wiki_getallpagename()}
+	else{ die("test-gitmw.pl ERROR: unknown input")}
 }
