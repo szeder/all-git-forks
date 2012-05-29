@@ -173,6 +173,7 @@ cmd_install()
                 fail "Unable to move $FILES_FOLDER/LocalSettings-tmp.php in $WIKI_DIR_INST/$WIKI_DIR_NAME"
         echo "File $FILES_FOLDER/LocalSettings.php is set in $WIKI_DIR_INST/$WIKI_DIR_NAME"
 
+        chmod ugo+w "$FILES_FOLDER/$DB_FILE"
         reset_db_wiki "."
 
         # Fetch MediaWiki's archive if not already present in the TMP directory
