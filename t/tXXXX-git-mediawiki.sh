@@ -33,7 +33,7 @@ test_expect_success 'git clone works with page added' '
 	wiki_editpage bar "hi everybody !" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page &&
-	diff -r -B -w --exclude=".git" mw_dir ref_page &&
+	git_content mw_dir ref_page &&
 	wiki_delete_page foo &&
 	wiki_delete_page bar
 '
