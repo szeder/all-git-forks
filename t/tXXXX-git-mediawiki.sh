@@ -33,7 +33,6 @@ then
 	test_done
 fi
 
-
 test_expect_success 'git clone works with page added' '
 	cmd_reset &&
 	wiki_editpage foo "hello_world" false &&
