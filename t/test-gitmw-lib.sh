@@ -1,5 +1,6 @@
 #
 # CONFIGURATION VARIABLES
+# You might want to change those ones ...
 #
 WIKI_DIR_NAME="wiki"            # Name of the wiki's directory
 WIKI_DIR_INST="/var/www"        # Directory of the web server
@@ -8,9 +9,15 @@ TMP="/tmp"                      # Temporary directory for downloads
 SERVER_ADDR="localhost"         # Web server's address
 FILES_FOLDER="tXXXX"
 
+#
+# CONFIGURATION
+# You should not change those ones unless you know what you to
+#
 # Do not change the variables below
 MW_VERSION="mediawiki-1.19.0"
 DB_FILE="wikidb.sqlite"
+WIKI_ADMIN="WikiAdmin"
+WIKI_PASSW="AdminPass"
 
 test_rep="tXXXX_tmp_rep"
 
@@ -193,12 +200,20 @@ cmd_install()
 # Add an admin WikiAdmin with password AdminPass in the database.
 #
 cmd_reset() {
+        # Copy initial database of the wiki
         if [ ! -f "$FILES_FOLDER/$DB_FILE" ] ; then
                 fail "Can't find $FILES_FOLDER/$DB_FILE in the current folder.
                 Please run the script inside its folder."
         fi
 	cp --preserve=mode,ownership "$FILES_FOLDER/$DB_FILE" "$TMP" || fail "Can't copy $FILES_FOLDER/$DB_FILE in $TMP"
         echo "File $FILES_FOLDER/$DB_FILE is set in $TMP"
+
+        # Add the admin
+        cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/"
+        php changePassword.php --user="$WIKI_ADMIN" --password="$WIKI_PASSW" ||
+                fail "Unable to add an admin with the script $WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/
+                changePassword.php. Check you have the perms to do it."
+        echo "Admin \"$WIKI_ADMIN\" has password \"$WIKI_PASSW\""
 }
 
 #
@@ -224,5 +239,4 @@ cmd_help() {
 }
 
 cmd_reset
-
 
