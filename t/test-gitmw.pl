@@ -43,7 +43,6 @@ sub wiki_getpage {
 	my $pagename = $_[0];
 	my $destdir = $_[1];
 	
-	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $page = $mw->get_page( { title => $pagename } );
 	if (!defined($page)) {
 		die "getpage: wiki does not exist";
@@ -65,7 +64,6 @@ sub wiki_delete_page {
 #delete the page <page_name> from the wiki.
 	my $pagename = $_[0];
 
-	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $exist=$mw->get_page({title => $pagename});
 
 	if (defined($exist->{'*'})){
@@ -94,7 +92,6 @@ sub wiki_editpage {
 		$append=1;
 	}
 
-	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $previous_text ="";
 
 	if ($append) {
@@ -112,7 +109,6 @@ sub wiki_getallpagename {
 # wiki_getallpagename()
 
 # fetch all pages
-	&wiki_login($wiki_admin,$wiki_admin_pass);
 	$mw->list ( { action => 'query',
 			list => 'allpages',
 			#cmtitle => "Category:Surnames",
@@ -134,11 +130,19 @@ sub wiki_getallpagename {
 
 #Selecting the function to use
 
-$to_call = $ARGV[0];
+my $to_call = shift;
+
+my $login = $ARGV[0];
+if ($login eq "-p")
+{
+	&wiki_login($wiki_admin,$wiki_admin_pass);
+	shift;
+}
+
 switch ($to_call) {
-	case "get_page" { &wiki_getpage($ARGV[1], $ARGV[2])}
-	case "delete_page" { &wiki_delete_page($ARGV[1])}
-	case "edit_page" { &wiki_editpage($ARGV[1], $ARGV[2], $ARGV[3])}
+	case "get_page" { &wiki_getpage($ARGV[0], $ARGV[1])}
+	case "delete_page" { &wiki_delete_page($ARGV[0])}
+	case "edit_page" { &wiki_editpage($ARGV[0], $ARGV[1], $ARGV[2])}
 	case "getallpagename" { &wiki_getallpagename()}
 	else{ die("test-gitmw.pl ERROR: unknown input")}
 }

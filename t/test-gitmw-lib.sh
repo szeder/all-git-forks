@@ -18,14 +18,14 @@ wiki_getpage () {
 #
 # fetch a page wiki_page from wiki and copies its content
 # in directory dest_path
-	../test-gitmw.pl "get_page" "$1" "$2"
+	../test-gitmw.pl "get_page" -p "$1" "$2"
 }
 
 
 wiki_delete_page () {
 #wiki_delete_page <page_name>
 #delete the page <page_name> from the wiki.
-	../test-gitmw.pl "delete_page" "$1"
+	../test-gitmw.pl "delete_page" -p "$1"
 }
 
 wiki_editpage (){
@@ -36,7 +36,7 @@ wiki_editpage (){
 #
 # If page doesn't exist : it creates page
 
-	../test-gitmw.pl "edit_page" "$1" "$2" "$3"
+	../test-gitmw.pl "edit_page" -p "$1" "$2" "$3"
 }
 
 git_content (){
@@ -100,7 +100,7 @@ wiki_page_exist (){
 wiki_getallpagename () {
 # wiki_getallpagename
 # fetch all pages
-	../test-gitmw.pl "getallpagename"
+	../test-gitmw.pl "getallpagename" -p
 }
 
 wiki_getallpage() {
