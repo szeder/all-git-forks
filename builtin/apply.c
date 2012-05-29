@@ -50,7 +50,7 @@ static const char *fake_ancestor;
 static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
 static const char * const apply_usage[] = {
-	"git apply [options] [<patch>...]",
+	N_("git apply [options] [<patch>...]"),
 	NULL
 };
 
@@ -919,7 +919,10 @@ static int gitdiff_hdrend(const char *line, struct patch *patch)
  * their names against any previous information, just
  * to make sure..
  */
-static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, const char *oldnew)
+#define DIFF_OLD_NAME 0
+#define DIFF_NEW_NAME 1
+
+static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, int side)
 {
 	if (!orig_name && !isnull)
 		return find_name(line, NULL, p_value, TERM_TAB);
@@ -934,7 +937,9 @@ static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, 
 			die(_("git apply: bad git-diff - expected /dev/null, got %s on line %d"), name, linenr);
 		another = find_name(line, NULL, p_value, TERM_TAB);
 		if (!another || memcmp(another, name, len + 1))
-			die(_("git apply: bad git-diff - inconsistent %s filename on line %d"), oldnew, linenr);
+			die((side == DIFF_NEW_NAME) ?
+			    _("git apply: bad git-diff - inconsistent new filename on line %d") :
+			    _("git apply: bad git-diff - inconsistent old filename on line %d"), linenr);
 		free(another);
 		return orig_name;
 	}
@@ -949,7 +954,8 @@ static char *gitdiff_verify_name(const char *line, int isnull, char *orig_name, 
 static int gitdiff_oldname(const char *line, struct patch *patch)
 {
 	char *orig = patch->old_name;
-	patch->old_name = gitdiff_verify_name(line, patch->is_new, patch->old_name, "old");
+	patch->old_name = gitdiff_verify_name(line, patch->is_new, patch->old_name,
+					      DIFF_OLD_NAME);
 	if (orig != patch->old_name)
 		free(orig);
 	return 0;
@@ -958,7 +964,8 @@ static int gitdiff_oldname(const char *line, struct patch *patch)
 static int gitdiff_newname(const char *line, struct patch *patch)
 {
 	char *orig = patch->new_name;
-	patch->new_name = gitdiff_verify_name(line, patch->is_delete, patch->new_name, "new");
+	patch->new_name = gitdiff_verify_name(line, patch->is_delete, patch->new_name,
+					      DIFF_NEW_NAME);
 	if (orig != patch->new_name)
 		free(orig);
 	return 0;
@@ -3952,66 +3959,66 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	const char *whitespace_option = NULL;
 
 	struct option builtin_apply_options[] = {
-		{ OPTION_CALLBACK, 0, "exclude", NULL, "path",
-			"don't apply changes matching the given path",
+		{ OPTION_CALLBACK, 0, "exclude", NULL, N_("path"),
+			N_("don't apply changes matching the given path"),
 			0, option_parse_exclude },
-		{ OPTION_CALLBACK, 0, "include", NULL, "path",
-			"apply changes matching the given path",
+		{ OPTION_CALLBACK, 0, "include", NULL, N_("path"),
+			N_("apply changes matching the given path"),
 			0, option_parse_include },
-		{ OPTION_CALLBACK, 'p', NULL, NULL, "num",
-			"remove <num> leading slashes from traditional diff paths",
+		{ OPTION_CALLBACK, 'p', NULL, NULL, N_("num"),
+			N_("remove <num> leading slashes from traditional diff paths"),
 			0, option_parse_p },
 		OPT_BOOLEAN(0, "no-add", &no_add,
-			"ignore additions made by the patch"),
+			N_("ignore additions made by the patch")),
 		OPT_BOOLEAN(0, "stat", &diffstat,
-			"instead of applying the patch, output diffstat for the input"),
+			N_("instead of applying the patch, output diffstat for the input")),
 		OPT_NOOP_NOARG(0, "allow-binary-replacement"),
 		OPT_NOOP_NOARG(0, "binary"),
 		OPT_BOOLEAN(0, "numstat", &numstat,
-			"shows number of added and deleted lines in decimal notation"),
+			N_("shows number of added and deleted lines in decimal notation")),
 		OPT_BOOLEAN(0, "summary", &summary,
-			"instead of applying the patch, output a summary for the input"),
+			N_("instead of applying the patch, output a summary for the input")),
 		OPT_BOOLEAN(0, "check", &check,
-			"instead of applying the patch, see if the patch is applicable"),
+			N_("instead of applying the patch, see if the patch is applicable")),
 		OPT_BOOLEAN(0, "index", &check_index,
-			"make sure the patch is applicable to the current index"),
+			N_("make sure the patch is applicable to the current index")),
 		OPT_BOOLEAN(0, "cached", &cached,
-			"apply a patch without touching the working tree"),
+			N_("apply a patch without touching the working tree")),
 		OPT_BOOLEAN(0, "apply", &force_apply,
-			"also apply the patch (use with --stat/--summary/--check)"),
+			N_("also apply the patch (use with --stat/--summary/--check)")),
 		OPT_FILENAME(0, "build-fake-ancestor", &fake_ancestor,
-			"build a temporary index based on embedded index information"),
+			N_("build a temporary index based on embedded index information")),
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
-			"paths are separated with NUL character",
+			N_("paths are separated with NUL character"),
 			PARSE_OPT_NOARG, option_parse_z },
 		OPT_INTEGER('C', NULL, &p_context,
-				"ensure at least <n> lines of context match"),
-		{ OPTION_CALLBACK, 0, "whitespace", &whitespace_option, "action",
-			"detect new or modified lines that have whitespace errors",
+				N_("ensure at least <n> lines of context match")),
+		{ OPTION_CALLBACK, 0, "whitespace", &whitespace_option, N_("action"),
+			N_("detect new or modified lines that have whitespace errors"),
 			0, option_parse_whitespace },
 		{ OPTION_CALLBACK, 0, "ignore-space-change", NULL, NULL,
-			"ignore changes in whitespace when finding context",
+			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
 		{ OPTION_CALLBACK, 0, "ignore-whitespace", NULL, NULL,
-			"ignore changes in whitespace when finding context",
+			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
 		OPT_BOOLEAN('R', "reverse", &apply_in_reverse,
-			"apply the patch in reverse"),
+			N_("apply the patch in reverse")),
 		OPT_BOOLEAN(0, "unidiff-zero", &unidiff_zero,
-			"don't expect at least one line of context"),
+			N_("don't expect at least one line of context")),
 		OPT_BOOLEAN(0, "reject", &apply_with_reject,
-			"leave the rejected hunks in corresponding *.rej files"),
+			N_("leave the rejected hunks in corresponding *.rej files")),
 		OPT_BOOLEAN(0, "allow-overlap", &allow_overlap,
-			"allow overlapping hunks"),
-		OPT__VERBOSE(&apply_verbosely, "be verbose"),
+			N_("allow overlapping hunks")),
+		OPT__VERBOSE(&apply_verbosely, N_("be verbose")),
 		OPT_BIT(0, "inaccurate-eof", &options,
-			"tolerate incorrectly detected missing new-line at the end of file",
+			N_("tolerate incorrectly detected missing new-line at the end of file"),
 			INACCURATE_EOF),
 		OPT_BIT(0, "recount", &options,
-			"do not trust the line counts in the hunk headers",
+			N_("do not trust the line counts in the hunk headers"),
 			RECOUNT),
-		{ OPTION_CALLBACK, 0, "directory", NULL, "root",
-			"prepend <root> to all filenames",
+		{ OPTION_CALLBACK, 0, "directory", NULL, N_("root"),
+			N_("prepend <root> to all filenames"),
 			0, option_parse_directory },
 		OPT_END()
 	};
