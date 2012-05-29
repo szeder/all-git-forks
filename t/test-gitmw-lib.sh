@@ -7,7 +7,6 @@ WIKI_DIR_INST="/var/www"        # Directory of the web server
 TMP="/tmp"                      # Temporary directory for downloads
                                 # Absolute address needed!
 SERVER_ADDR="localhost"         # Web server's address
-FILES_FOLDER="tXXXX"
 
 #
 # CONFIGURATION
@@ -16,6 +15,7 @@ FILES_FOLDER="tXXXX"
 # Do not change the variables below
 MW_VERSION="mediawiki-1.19.0"
 DB_FILE="wikidb.sqlite"
+FILES_FOLDER="tXXXX"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
@@ -150,6 +150,7 @@ grep_change_file() {
 #
 cmd_install()
 {
+
         # Copy the generic LocalSettings.php in the web server's directory
         # And modify parameters according to the ones set at the top
         # of this script.
@@ -172,8 +173,7 @@ cmd_install()
                 fail "Unable to move $FILES_FOLDER/LocalSettings-tmp.php in $WIKI_DIR_INST/$WIKI_DIR_NAME"
         echo "File $FILES_FOLDER/LocalSettings.php is set in $WIKI_DIR_INST/$WIKI_DIR_NAME"
 
-        # Copy the database file in the TMP directory.
-        cmd_reset
+        reset_db_wiki "."
 
         # Fetch MediaWiki's archive if not already present in the TMP directory
         cd $TMP
@@ -191,22 +191,31 @@ cmd_install()
         cp -Rf * "$WIKI_DIR_INST/$WIKI_DIR_NAME/" ||
                 fail "Unable to copy WikiMedia's files from `pwd` to $WIKI_DIR_INST/$WIKI_DIR_NAME"
 
+        set_admin_wiki
+
         echo "Your wiki has been installed. You can check it at http://localhost/$WIKI_DIR_NAME"
 }
 
-#
-# Function cmd_reset()
+# 
+# (private) Function reset_db_wiki()
 # Copy the initial database of the wiki over the actual one.
-# Add an admin WikiAdmin with password AdminPass in the database.
 #
-cmd_reset() {
+reset_db_wiki() {
+        
         # Copy initial database of the wiki
-        if [ ! -f "$FILES_FOLDER/$DB_FILE" ] ; then
-                fail "Can't find $FILES_FOLDER/$DB_FILE in the current folder.
-                Please run the script inside its folder."
+        if [ ! -f "$1/$FILES_FOLDER/$DB_FILE" ] ; then
+                fail "Can't find $1/$FILES_FOLDER/$DB_FILE in the current folder."
         fi
-	cp --preserve=mode,ownership "$FILES_FOLDER/$DB_FILE" "$TMP" || fail "Can't copy $FILES_FOLDER/$DB_FILE in $TMP"
+        cp --preserve=mode,ownership "$1/$FILES_FOLDER/$DB_FILE" "$TMP" ||
+                fail "Can't copy $1/$FILES_FOLDER/$DB_FILE in $TMP"
         echo "File $FILES_FOLDER/$DB_FILE is set in $TMP"
+}
+
+#
+# (private) Function set_admin_wiki()
+# Set the admin WikiAdmin with password AdminPass in the database.
+# 
+set_admin_wiki() {
 
         # Add the admin
         cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/"
@@ -217,11 +226,21 @@ cmd_reset() {
 }
 
 #
-# Function cmd_clear()
+# Function cmd_reset()
+# This function must be called only in a subdirectory of t/ directory
+# Which means: by a test script
+#
+cmd_reset() {
+        reset_db_wiki ".."
+        set_admin_wiki
+}
+
+#
+# Function cmd_delete()
 # Delete the wiki created in the web server's directory and all its content
 # saved in the database.
 #
-cmd_clear() {
+cmd_delete() {
         # Delete the wiki's directory.
         rm -rf "$WIKI_DIR_INST/$WIKI_DIR_NAME" ||
                 fail "Wiki's directory $WIKI_DIR_INST/$WIKI_DIR_NAME could not be deleted"
@@ -239,4 +258,3 @@ cmd_help() {
 }
 
 cmd_reset
-
