@@ -19,8 +19,6 @@ FILES_FOLDER="tXXXX"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
-test_rep="tXXXX_tmp_rep"
-
 wiki_getpage () {
 # wiki_getpage wiki_page dest_path
 #
@@ -219,13 +217,13 @@ reset_db_wiki() {
 set_admin_wiki() {
 
         # Add the admin
-	$my_pwd = `pwd`
+	my_pwd="`pwd`"
         cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/"
         php changePassword.php --user="$WIKI_ADMIN" --password="$WIKI_PASSW" ||
                 fail "Unable to add an admin with the script $WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/
                 changePassword.php. Check you have the perms to do it."
         echo "Admin \"$WIKI_ADMIN\" has password \"$WIKI_PASSW\""
-	cd $my_pwd
+	cd "$my_pwd"
 }
 
 #
@@ -251,12 +249,3 @@ cmd_delete() {
         # Delete the wiki's SQLite database
         rm -f "$TMP/$DB_FILE" || fail "Database $TMP/$DB_FILE could not be deleted."
 }
-
-cmd_help() {
-        echo "Usage: "
-        echo "  ./install_wiki <install|reset|delete|help>"
-        echo "          install: Install a wiki on your computer."
-        echo "          reset: Clear all pages and content of the wiki"
-        echo "          delete: Delete the wiki and all its pages and content"
-}
-
