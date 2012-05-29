@@ -5857,7 +5857,7 @@ sub git_shortlog_body {
 	}
 	if (defined $extra) {
 		print "<tr>\n" .
-		      "<td colspan=\"4\">$extra</td>\n" .
+		      "<td colspan=\"5\">$extra</td>\n" .
 		      "</tr>\n";
 	}
 	print "</table>\n";
