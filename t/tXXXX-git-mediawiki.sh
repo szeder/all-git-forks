@@ -18,7 +18,7 @@ test_description='Test the Git Mediawiki remote helper'
 
 
 test_expect_success 'git clone works with page added' '
-	#cmd_reset &&
+	cmd_reset &&
 	wiki_editpage foo "hello_world" false &&
 	wiki_editpage bar "hi everybody !" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
@@ -28,7 +28,4 @@ test_expect_success 'git clone works with page added' '
 	wiki_delete_page bar
 '
 
-test_expect_failure 'git clone of non existant wiki' '
-	git clone mediawiki::http://localhost/dummy
-'
 test_done

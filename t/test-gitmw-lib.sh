@@ -219,11 +219,13 @@ reset_db_wiki() {
 set_admin_wiki() {
 
         # Add the admin
+	$my_pwd = `pwd`
         cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/"
         php changePassword.php --user="$WIKI_ADMIN" --password="$WIKI_PASSW" ||
                 fail "Unable to add an admin with the script $WIKI_DIR_INST/$WIKI_DIR_NAME/maintenance/
                 changePassword.php. Check you have the perms to do it."
         echo "Admin \"$WIKI_ADMIN\" has password \"$WIKI_PASSW\""
+	cd $my_pwd
 }
 
 #
