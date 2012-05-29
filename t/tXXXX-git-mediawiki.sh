@@ -21,6 +21,12 @@ then
 	test_done
 fi
 
+if [ ! -f ../../git-remote-mediawiki ];
+then
+	skip_all='skipping gateway git-mw tests, no remote mediawiki for git found'
+	test_done
+fi
+
 if [ ! -d "$WIKI_DIR_INST/$WIKI_DIR_NAME" ] ;
 then
 	skip_all='skipping gateway git-mw tests, no mediawiki found'
