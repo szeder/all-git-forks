@@ -25,9 +25,15 @@
 use MediaWiki::API;
 use Switch;
 #URL of the wiki used for the tests
-my $url="http://localhost/wiki/api.php";
+my $wiki_url="http://localhost/wiki/api.php";
 my $wiki_admin='WikiAdmin';
 my $wiki_admin_pass='AdminPass';
+my $mw = MediaWiki::API->new;
+$mw->{config}->{api_url} = $wiki_url;
+
+sub wiki_login {
+	$mw->login( { lgname => "$_[0]",lgpassword => "$_[1]" } ) || die "getpage: login failed";
+}
 
 sub wiki_getpage {
 # wiki_getpage(wiki_page,dest_path)
@@ -35,16 +41,9 @@ sub wiki_getpage {
 # fetch a page wiki_page from wiki and copies its content
 # in directory dest_path
 	my $pagename = $_[0];
-	my $wikiurl = $url;
 	my $destdir = $_[1];
-	my $username =$wiki_admin;
-	my $password =$wiki_admin_pass;
-	my $mw = MediaWiki::API->new;
-	$mw->{config}->{api_url} = $wikiurl;
-	if (!defined($mw->login( { lgname => "$username",
-					lgpassword => "$password" } ))) {
-		die "getpage: login failed";
-	}
+	
+	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $page = $mw->get_page( { title => $pagename } );
 	if (!defined($page)) {
 		die "getpage: wiki does not exist";
@@ -64,15 +63,9 @@ sub wiki_getpage {
 sub wiki_delete_page {
 #wiki_delete_page(page_name)
 #delete the page <page_name> from the wiki.
-	my $wikiurl = $url;
 	my $pagename = $_[0];
-	my $login = $wiki_admin;
-	my $passwd= $wiki_admin_pass;
 
-
-	my $mw = MediaWiki::API->new({api_url => $wikiurl});
-	$mw->login({lgname => $login, lgpassword => $passwd });
-
+	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $exist=$mw->get_page({title => $pagename});
 
 	if (defined($exist->{'*'})){
@@ -95,19 +88,13 @@ sub wiki_editpage {
 	my $wiki_page = $_[0];
 	my $wiki_content = $_[1];
 	my $wiki_append = $_[2];
-	my $wiki_url = $url;
-	my $wiki_login = $wiki_admin;
-	my $wiki_password = $wiki_admin_pass;
 
 	my $append = 0;
 	if (defined($wiki_append) && $wiki_append eq 'true') {
 		$append=1;
 	}
 
-
-	my $mw = MediaWiki::API->new;
-	$mw->{config}->{api_url} = $wiki_url;
-	$mw->login({lgname => $wiki_login, lgpassword => $wiki_password });
+	&wiki_login($wiki_admin,$wiki_admin_pass);
 	my $previous_text ="";
 
 	if ($append) {
@@ -125,15 +112,7 @@ sub wiki_getallpagename {
 # wiki_getallpagename()
 
 # fetch all pages
-	my $wikiurl = $url;
-	my $username = $wiki_admin;
-	my $password = $wiki_admin_pass;
-	my $mw = MediaWiki::API->new;
-	$mw->{config}->{api_url} = $wikiurl;
-	if (!defined($mw->login( { lgname => "$username",
-					lgpassword => "$password" } ))) {
-		die "getpage: login failed";
-	}
+	&wiki_login($wiki_admin,$wiki_admin_pass);
 	$mw->list ( { action => 'query',
 			list => 'allpages',
 			#cmtitle => "Category:Surnames",
