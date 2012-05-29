@@ -6,6 +6,7 @@ WIKI_DIR_INST="/var/www"        # Directory of the web server
 TMP="/tmp"                      # Temporary directory for downloads
                                 # Absolute address needed!
 SERVER_ADDR="localhost"         # Web server's address
+FILES_FOLDER="tXXXX"
 
 # Do not change the variables below
 MW_VERSION="mediawiki-1.19.0"
@@ -146,23 +147,23 @@ cmd_install()
         # And modify parameters according to the ones set at the top
         # of this script.
         # Note that LocalSettings.php is never modified.
-        if [ ! -f "LocalSettings.php" ] ; then
-                fail "Can't find LocalSettings.php in the current folder.
+        if [ ! -f "$FILES_FOLDER/LocalSettings.php" ] ; then
+                fail "Can't find $FILES_FOLDER/LocalSettings.php in the current folder.
                 Please run the script inside its folder."
         fi
-        cp "LocalSettings.php" "LocalSettings-tmp.php" ||
-                fail "Unable to copy LocalSettings.php to LocalSettings-tmp.php"
-        grep_change_file "wgScriptPath" "wiki" "$WIKI_DIR_NAME" "LocalSettings-tmp.php"
-        grep_change_file "wgServer" "localhost" "$SERVER_ADDR" "LocalSettings-tmp.php"
-        grep_change_file "wgSQLiteDataDir" "/tmp" "$TMP" "LocalSettings-tmp.php"
+        cp "$FILES_FOLDER/LocalSettings.php" "$FILES_FOLDER/LocalSettings-tmp.php" ||
+                fail "Unable to copy $FILES_FOLDER/LocalSettings.php to $FILES_FOLDER/LocalSettings-tmp.php"
+        grep_change_file "wgScriptPath" "wiki" "$WIKI_DIR_NAME" "$FILES_FOLDER/LocalSettings-tmp.php"
+        grep_change_file "wgServer" "localhost" "$SERVER_ADDR" "$FILES_FOLDER/LocalSettings-tmp.php"
+        grep_change_file "wgSQLiteDataDir" "/tmp" "$TMP" "$FILES_FOLDER/LocalSettings-tmp.php"
         mkdir "$WIKI_DIR_INST/$WIKI_DIR_NAME"
         if [ ! -d "$WIKI_DIR_INST/$WIKI_DIR_NAME" ] ; then
                 fail "Folder $WIKI_DIR_INST/$WIKI_DIR_NAME don't exist. Please create it
                 and launch the script again."
         fi
-        mv "LocalSettings-tmp.php" "$WIKI_DIR_INST/$WIKI_DIR_NAME/LocalSettings.php" ||
-                fail "Unable to move LocalSettings-tmp.php in $WIKI_DIR_INST/$WIKI_DIR_NAME"
-        echo "File LocalSettings.php is set in $WIKI_DIR_INST/$WIKI_DIR_NAME"
+        mv "$FILES_FOLDER/LocalSettings-tmp.php" "$WIKI_DIR_INST/$WIKI_DIR_NAME/LocalSettings.php" ||
+                fail "Unable to move $FILES_FOLDER/LocalSettings-tmp.php in $WIKI_DIR_INST/$WIKI_DIR_NAME"
+        echo "File $FILES_FOLDER/LocalSettings.php is set in $WIKI_DIR_INST/$WIKI_DIR_NAME"
 
         # Copy the database file in the TMP directory.
         cmd_reset
@@ -189,16 +190,15 @@ cmd_install()
 #
 # Function cmd_reset()
 # Copy the initial database of the wiki over the actual one.
+# Add an admin WikiAdmin with password AdminPass in the database.
 #
 cmd_reset() {
-        if [ ! -f "../tXXXX/$DB_FILE" ] ; then
-                fail "Can't find $DB_FILE in the current folder.
+        if [ ! -f "$FILES_FOLDER/$DB_FILE" ] ; then
+                fail "Can't find $FILES_FOLDER/$DB_FILE in the current folder.
                 Please run the script inside its folder."
         fi
-	cp "../tXXXX/$DB_FILE" "$TMP" || fail "Can't copy $DB_FILE in $TMP"
-        chmod ugo+rw "$TMP/$DB_FILE" || fail "Can't add write perms on $TMP/$DB_FILE"
-        echo "File ../tXXXX/$DB_FILE is set in $TMP"
-
+	cp --preserve=mode,ownership "$FILES_FOLDER/$DB_FILE" "$TMP" || fail "Can't copy $FILES_FOLDER/$DB_FILE in $TMP"
+        echo "File $FILES_FOLDER/$DB_FILE is set in $TMP"
 }
 
 #
@@ -222,4 +222,7 @@ cmd_help() {
         echo "          reset: Clear all pages and content of the wiki"
         echo "          delete: Delete the wiki and all its pages and content"
 }
+
+cmd_reset
+
 
