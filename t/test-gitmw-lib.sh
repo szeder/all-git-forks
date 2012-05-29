@@ -109,7 +109,7 @@ wiki_getallpage() {
 	while read -r line; do
 		wiki_getpage "$line" $1;
 	done < all.txt
-	rm all.txt
+	 #rm all.txt
 }
 
 fail()
@@ -222,5 +222,4 @@ cmd_help() {
         echo "          reset: Clear all pages and content of the wiki"
         echo "          delete: Delete the wiki and all its pages and content"
 }
-
 

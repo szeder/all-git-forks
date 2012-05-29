@@ -145,11 +145,11 @@ sub wiki_getallpagename {
 	sub cat_names {
 		my ($ref) = @_;
 
-		open(my $file, ">all.txt");
+		open(file, ">all.txt");
 		foreach (@$ref) {
-			print $file "$_->{title}\n";
+			print file "$_->{title}\n";
 		}
-		close ($file);
+		close (file);
 	}
 
 	&cat_names(@list);
