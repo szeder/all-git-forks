@@ -13,7 +13,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2012-05-21 08:57+0800\n"
-"PO-Revision-Date: 2012-05-31 17:02+0800\n"
+"PO-Revision-Date: 2012-05-31 19:29+0800\n"
 "Last-Translator: Jiang Xin <worldhello.net@gmail.com>\n"
 "Language-Team: GitHub <https://github.com/gotgit/git/>\n"
 "Language: zh_CN\n"
@@ -71,8 +71,8 @@ msgstr "版本遍历设置失败"
 #, c-format
 msgid "The bundle contains %d ref"
 msgid_plural "The bundle contains %d refs"
-msgstr[0] "这个包含有 %d 个引用"
-msgstr[1] "这个包含有 %d 个引用"
+msgstr[0] "这个包中含有 %d 个引用"
+msgstr[1] "这个包中含有 %d 个引用"
 
 #: bundle.c:192
 #, c-format
