@@ -1252,7 +1252,7 @@ msgstr "%s：已经存在于索引中"
 #: builtin/apply.c:3266
 #, c-format
 msgid "new mode (%o) of %s does not match old mode (%o)%s%s"
-msgstr "%2$s 的新模式（%1$o）和旧模式（%3$o）%4$s%5$s"
+msgstr "%2$s 的新模式（%1$o）和旧模式（%3$o）%4$s%5$s 不匹配"
 
 #: builtin/apply.c:3272
 #, c-format
