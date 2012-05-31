@@ -78,7 +78,7 @@ static int read_chunk(struct line_buffer *delta, off_t *delta_len,
 		      struct strbuf *buf, size_t len)
 {
 	strbuf_reset(buf);
-	if (len > *delta_len ||
+	if ((off_t) len > *delta_len ||
 	    buffer_read_binary(delta, buf, len) != len)
 		return error_short_read(delta);
 	*delta_len -= buf->len;
