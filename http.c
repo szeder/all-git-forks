@@ -17,6 +17,12 @@ long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
 #else
 long int git_curl_ipresolve;
 #endif
+
+/* Not really, as it hasn't been released yet. This would be bumped
+ * to the real version when it is available, but we use it as a
+ * placeholder now to show what would be #if'd out. */
+#define CURL_WITH_AUTH_CB 0x071901
+
 int active_requests;
 int http_is_verbose;
 size_t http_post_buffer = 16 * LARGE_PACKET_MAX;
@@ -470,6 +476,44 @@ static void init_curl_proxy_auth(CURL *result)
 #endif
 }
 
+static curlautherr http_auth_cb(CURL *curl,
+				struct curl_auth_info *info,
+				void *data)
+{
+	struct credential *cred;
+	const char *url;
+
+	if (info->retry_count > 1)
+		return CURLAUTHE_CANCEL;
+
+	if (info->type == CURLAUTH_TYPE_HTTP) {
+		cred = &http_auth;
+		url = info->url;
+	}
+	else if (info->type == CURLAUTH_TYPE_PROXY) {
+		/* XXX we would want to do something like:
+		 *
+		 *   cred = &proxy_auth;
+		 *   curl_easy_getinfo(curl, CURLINFO_PROXY, &url);
+		 *
+		 * except that that getinfo does not yet exist (but is under
+		 * discussion). So for now, let's just abort.
+		 */
+		return CURLAUTHE_CANCEL;
+	}
+	else
+		return CURLAUTHE_CANCEL;
+
+	if (cred->username && cred->password)
+		credential_reject(cred);
+
+	credential_from_url(cred, url);
+	credential_fill(cred);
+	curl_cb_set_credentials(curl, info->type,
+				cred->username, cred->password);
+	return CURLAUTHE_OK;
+}
+
 static int has_cert_password(void)
 {
 	if (ssl_cert == NULL || ssl_cert_password_required != 1)
@@ -833,6 +877,10 @@ static CURL *get_curl_handle(void)
 	init_curl_proxy_auth(result);
 
 	set_curl_keepalive(result);
+
+#if LIBCURL_VERSION_NUM >= CURL_WITH_AUTH_CB
+	curl_easy_setopt(result, CURLOPT_HTTP_AUTH_FUNCTION, http_auth_cb);
+#endif
 
 	return result;
 }
@@ -1341,6 +1389,9 @@ static int handle_curl_result(struct slot_results *results)
 	} else if (missing_target(results))
 		return HTTP_MISSING_TARGET;
 	else if (results->http_code == 401) {
+#if LIBCURL_VERSION_NUM >= CURL_WITH_AUTH_CB
+		ret = HTTP_NOAUTH;
+#else
 		if (http_auth.username && http_auth.password) {
 			credential_reject(&http_auth);
 			return HTTP_NOAUTH;
@@ -1350,6 +1401,7 @@ static int handle_curl_result(struct slot_results *results)
 #endif
 			return HTTP_REAUTH;
 		}
+#endif
 	} else {
 		if (results->http_connectcode == 407)
 			credential_reject(&proxy_auth);
