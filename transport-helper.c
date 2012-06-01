@@ -17,6 +17,7 @@ struct helper_data {
 	const char *name;
 	struct child_process *helper;
 	FILE *out;
+	int fast_import_backchannel_pipe[2];
 	unsigned fetch : 1,
 		import : 1,
 		export : 1,
@@ -98,19 +99,30 @@ static void do_take_over(struct transport *transport)
 	free(data);
 }
 
+static int fd_to_close;
+void close_fd_prexec_cb(void)
+{
+	if(debug)
+		fprintf(stderr, "close_fd_prexec_cb closing %d\n", fd_to_close);
+	close(fd_to_close);
+}
+
 static struct child_process *get_helper(struct transport *transport)
 {
 	struct helper_data *data = transport->data;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf envbuf = STRBUF_INIT;
 	struct child_process *helper;
 	const char **refspecs = NULL;
 	int refspec_nr = 0;
 	int refspec_alloc = 0;
 	int duped;
 	int code;
+	int err;
 	char git_dir_buf[sizeof(GIT_DIR_ENVIRONMENT) + PATH_MAX + 1];
 	const char *helper_env[] = {
 		git_dir_buf,
+		NULL,	/* placeholder */
 		NULL
 	};
 
@@ -133,6 +145,24 @@ static struct child_process *get_helper(struct transport *transport)
 	snprintf(git_dir_buf, sizeof(git_dir_buf), "%s=%s", GIT_DIR_ENVIRONMENT, get_git_dir());
 	helper->env = helper_env;
 
+
+	/* create an additional pipe from fast-import to the helper */
+	err = pipe(data->fast_import_backchannel_pipe);
+	if(err)
+		die("cannot create fast_import_backchannel_pipe: %s", strerror(errno));
+
+	if(debug)
+		fprintf(stderr, "Remote helper created fast_import_backchannel_pipe { %d, %d }\n",
+				data->fast_import_backchannel_pipe[0], data->fast_import_backchannel_pipe[1]);
+
+	strbuf_addf(&envbuf, "GIT_REPORT_FILENO=%d", data->fast_import_backchannel_pipe[0]);
+	helper_env[1] = strbuf_detach(&envbuf, NULL);
+
+	/* after the fork, we need to close the write end in the helper */
+	fd_to_close = data->fast_import_backchannel_pipe[1];
+	/* the prexec callback is run just before exec */
+	helper->preexec_cb = close_fd_prexec_cb;
+
 	code = start_command(helper);
 	if (code < 0 && errno == ENOENT)
 		die("Unable to find remote helper for '%s'", data->name);
@@ -141,6 +171,7 @@ static struct child_process *get_helper(struct transport *transport)
 
 	data->helper = helper;
 	data->no_disconnect_req = 0;
+	free((void*)helper_env[1]);
 
 	/*
 	 * Open the output as FILE* so strbuf_getline() can be used.
@@ -237,6 +268,10 @@ static int disconnect_helper(struct transport *transport)
 			xwrite(data->helper->in, "\n", 1);
 			sigchain_pop(SIGPIPE);
 		}
+		/* close the pipe, it is still open if it wasn't used for fast-import. */
+		close(data->fast_import_backchannel_pipe[0]);
+		close(data->fast_import_backchannel_pipe[1]);
+
 		close(data->helper->in);
 		close(data->helper->out);
 		fclose(data->out);
@@ -376,13 +411,20 @@ static int fetch_with_fetch(struct transport *transport,
 static int get_importer(struct transport *transport, struct child_process *fastimport)
 {
 	struct child_process *helper = get_helper(transport);
+	struct helper_data *data = transport->data;
+	struct strbuf buf = STRBUF_INIT;
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
 	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
 	fastimport->argv[0] = "fast-import";
 	fastimport->argv[1] = "--quiet";
+	strbuf_addf(&buf, "--cat-blob-fd=%d", data->fast_import_backchannel_pipe[1]);
+	fastimport->argv[2] = strbuf_detach(&buf, NULL);
 
 	fastimport->git_cmd = 1;
+
+	fd_to_close = data->fast_import_backchannel_pipe[0];
+	fastimport->preexec_cb = close_fd_prexec_cb;
 	return start_command(fastimport);
 }
 
@@ -427,6 +469,11 @@ static int fetch_with_import(struct transport *transport,
 	if (get_importer(transport, &fastimport))
 		die("Couldn't run fast-import");
 
+
+	/* in the parent process we close both pipe ends. */
+	close(data->fast_import_backchannel_pipe[0]);
+	close(data->fast_import_backchannel_pipe[1]);
+
 	for (i = 0; i < nr_heads; i++) {
 		posn = to_fetch[i];
 		if (posn->status & REF_STATUS_UPTODATE)
@@ -441,6 +488,7 @@ static int fetch_with_import(struct transport *transport,
 
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
+	free((void*)fastimport.argv[2]);
 	free(fastimport.argv);
 	fastimport.argv = NULL;
 

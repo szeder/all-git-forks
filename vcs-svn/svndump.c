@@ -467,7 +467,14 @@ void svndump_read(const char *url)
 
 static void init()
 {
-	fast_export_init(REPORT_FILENO);
+	int report_fd;
+	char* back_fd_env = getenv("GIT_REPORT_FILENO");
+	if(!back_fd_env || sscanf(back_fd_env, "%d", &report_fd) != 1) {
+		warning("Cannot get cat-blob fd from environment, using default!");
+		report_fd = REPORT_FILENO;
+	}
+
+	fast_export_init(report_fd);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
 	strbuf_init(&rev_ctx.log, 4096);
