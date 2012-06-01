@@ -465,10 +465,8 @@ void svndump_read(const char *url)
 		end_revision();
 }
 
-int svndump_init(const char *filename)
+static void init()
 {
-	if (buffer_init(&input, filename))
-		return error("cannot open %s: %s", filename, strerror(errno));
 	fast_export_init(REPORT_FILENO);
 	strbuf_init(&dump_ctx.uuid, 4096);
 	strbuf_init(&dump_ctx.url, 4096);
@@ -479,6 +477,22 @@ int svndump_init(const char *filename)
 	reset_dump_ctx(NULL);
 	reset_rev_ctx(0);
 	reset_node_ctx(NULL);
+	return;
+}
+
+int svndump_init(const char *filename)
+{
+	if (buffer_init(&input, filename))
+		return error("cannot open %s: %s", filename, strerror(errno));
+	init();
+	return 0;
+}
+
+int svndump_init_fd(int in_fd)
+{
+	if(buffer_fdinit(&input, in_fd))
+		return error("cannot open fd %d: %s", in_fd, strerror(errno));
+	init();
 	return 0;
 }
 
