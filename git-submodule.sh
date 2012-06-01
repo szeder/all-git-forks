@@ -37,6 +37,8 @@ resolve_relative_url ()
 	remoteurl=$(git config "remote.$remote.url") ||
 		remoteurl=$(pwd) # the repository is its own authoritative upstream
 	url="$1"
+	prefix="$2"
+	remoteurl=$(echo "$remoteurl" | sed "s|^[^/:\\.][^:]*\$|./&|")
 	remoteurl=${remoteurl%/}
 	sep=/
 	while test -n "$url"
@@ -45,6 +47,11 @@ resolve_relative_url ()
 		../*)
 			url="${url#../}"
 			case "$remoteurl" in
+			.*/*)
+				remoteurl="${remoteurl%/*}"
+				remoteurl="${remoteurl#./}"
+				remoteurl="${prefix}${remoteurl}"
+				;;
 			*/*)
 				remoteurl="${remoteurl%/*}"
 				;;
@@ -64,7 +71,7 @@ resolve_relative_url ()
 			break;;
 		esac
 	done
-	echo "$remoteurl$sep${url%/}"
+	echo "${remoteurl%/.}$sep${url%/}"
 }
 
 #
@@ -965,7 +972,13 @@ cmd_sync()
 		# Possibly a url relative to parent
 		case "$url" in
 		./*|../*)
+			up_path="$(echo "$sm_path" | sed "s/[^/]*/../g")" &&
+			up_path=${up_path%/}/ &&
+			remoteurl=$(resolve_relative_url "$url" "$up_path") &&
 			url=$(resolve_relative_url "$url") || exit
+			;;
+		*)
+			remoteurl="$url"
 			;;
 		esac
 
@@ -980,7 +993,7 @@ cmd_sync()
 				clear_local_git_env
 				cd "$sm_path"
 				remote=$(get_default_remote)
-				git config remote."$remote".url "$url"
+				git config remote."$remote".url "$remoteurl"
 			)
 			fi
 		fi
