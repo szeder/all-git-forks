@@ -13,6 +13,7 @@
 #include "parse-options.h"
 #include "resolve-undo.h"
 #include "string-list.h"
+#include "strbuf.h"
 
 static int abbrev;
 static int show_deleted;
@@ -200,9 +201,50 @@ static void show_ru_info(void)
 	}
 }
 
+struct path_exclude_check {
+	struct dir_struct *dir;
+	struct strbuf path;
+};
+
+static void path_exclude_check_init(struct path_exclude_check *check,
+				    struct dir_struct *dir)
+{
+	check->dir = dir;
+	strbuf_init(&check->path, 256);
+}
+
+static void path_exclude_check_clear(struct path_exclude_check *check)
+{
+	strbuf_release(&check->path);
+}
+
+static int path_excluded(struct path_exclude_check *check, struct cache_entry *ce)
+{
+	int i, dtype;
+	struct strbuf *path = &check->path;
+
+	strbuf_setlen(path, 0);
+	for (i = 0; ce->name[i]; i++) {
+		int ch = ce->name[i];
+
+		if (ch == '/') {
+			dtype = DT_DIR;
+			if (excluded(check->dir, path->buf, &dtype))
+				return 1;
+		}
+		strbuf_addch(path, ch);
+	}
+	dtype = ce_to_dtype(ce);
+	return excluded(check->dir, ce->name, &dtype);
+}
+
 static void show_files(struct dir_struct *dir)
 {
 	int i;
+	struct path_exclude_check check;
+
+	if ((dir->flags & DIR_SHOW_IGNORED))
+		path_exclude_check_init(&check, dir);
 
 	/* For cached/deleted files we don't need to even do the readdir */
 	if (show_others || show_killed) {
@@ -215,9 +257,8 @@ static void show_files(struct dir_struct *dir)
 	if (show_cached | show_stage) {
 		for (i = 0; i < active_nr; i++) {
 			struct cache_entry *ce = active_cache[i];
-			int dtype = ce_to_dtype(ce);
-			if (dir->flags & DIR_SHOW_IGNORED &&
-			    !excluded(dir, ce->name, &dtype))
+			if ((dir->flags & DIR_SHOW_IGNORED) &&
+			    !path_excluded(&check, ce))
 				continue;
 			if (show_unmerged && !ce_stage(ce))
 				continue;
@@ -232,9 +273,8 @@ static void show_files(struct dir_struct *dir)
 			struct cache_entry *ce = active_cache[i];
 			struct stat st;
 			int err;
-			int dtype = ce_to_dtype(ce);
-			if (dir->flags & DIR_SHOW_IGNORED &&
-			    !excluded(dir, ce->name, &dtype))
+			if ((dir->flags & DIR_SHOW_IGNORED) &&
+			    !path_excluded(&check, ce))
 				continue;
 			if (ce->ce_flags & CE_UPDATE)
 				continue;
@@ -247,6 +287,9 @@ static void show_files(struct dir_struct *dir)
 				show_ce_entry(tag_modified, ce);
 		}
 	}
+
+	if ((dir->flags & DIR_SHOW_IGNORED))
+		path_exclude_check_clear(&check);
 }
 
 /*
