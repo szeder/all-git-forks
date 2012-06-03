@@ -13,6 +13,7 @@ all::
 prefix ?= $(HOME)
 bindir ?= $(prefix)/bin
 gitwebdir ?= /var/www/cgi-bin
+specdir ?= test/spec
 
 RM ?= rm -f
 INSTALL ?= install
@@ -169,8 +170,24 @@ static/gitweb.js: $(GITWEB_JSLIB_FILES)
 
 ### Testing rules
 
-test:
+# JavaScript files that are concatenated to form t9503-gitweb-javascript.js
+#
+# Order : jasmine.pre includes.js <spec files> jasmine.post
+
+GITWEB_JSSPEC_FILES += $(specdir)/datetime.spec.js
+
+GITWEB_JSTEST_FILES += $(specdir)/jasmine.pre
+GITWEB_JSTEST_FILES += $(specdir)/includes.js
+GITWEB_JSTEST_FILES += $(GITWEB_JSSPEC_FILES)
+GITWEB_JSTEST_FILES += $(specdir)/jasmine.post
+
+TEST_JS=../t/t9503-gitweb-javascript.js
+
+test: $(TEST_JS)
 	$(MAKE) -C ../t gitweb-test
+
+$(TEST_JS): $(GITWEB_JSTEST_FILES)
+	cat $^ > $@
 
 test-installed:
 	GITWEB_TEST_INSTALLED='$(DESTDIR_SQ)$(gitwebdir_SQ)' \
@@ -189,7 +206,7 @@ install: all
 clean:
 	$(RM) gitweb.cgi static/gitweb.js \
 		static/gitweb.min.js static/gitweb.min.css \
-		GITWEB-BUILD-OPTIONS
+		$(TEST_JS) GITWEB-BUILD-OPTIONS
 
 .PHONY: all clean install test test-installed .FORCE-GIT-VERSION-FILE FORCE
 
