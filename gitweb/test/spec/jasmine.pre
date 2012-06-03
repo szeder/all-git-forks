@@ -1,0 +1,12 @@
+#! /usr/bin/node
+/*
+* Copyright (c) 2012 Jaseem Abid
+*
+* test_description='JavaScript tests in gitweb
+*
+* This test tries to run JavaScript tests for gitweb with nodejs and
+* Jasmine-TAPReporter'
+*/
+
+jasmine = require('jasmine-node');
+TAPReporter = require('jasmine-tapreporter');
