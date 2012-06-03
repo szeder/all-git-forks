@@ -13,6 +13,7 @@ TAR ?= $(TAR)
 RM ?= rm -f
 PROVE ?= prove
 DEFAULT_TEST_TARGET ?= test
+NODE ?= /usr/bin/node
 
 # Shell quote;
 SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
@@ -20,6 +21,8 @@ SHELL_PATH_SQ = $(subst ','\'',$(SHELL_PATH))
 T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
+TGITWEB_JS = t9503-gitweb-javascript.js
+TGITWEB += $(TGITWEB_JS)
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -72,6 +75,9 @@ full-svn-test:
 gitweb-test:
 	$(MAKE) $(TGITWEB)
 
+$(TGITWEB_JS):
+	@echo "*** $@ ***"; GIT_CONFIG=.git/config '$(NODE)' $@ $(GIT_TEST_OPTS)
+
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
 
@@ -116,4 +122,4 @@ smoke_report: smoke
 		http://smoke.git.nix.is/app/projects/process_add_report/1 \
 	| grep -v ^Redirecting
 
-.PHONY: pre-clean $(T) aggregate-results clean valgrind perf
+.PHONY: pre-clean $(T) $(TGITWEB_JS) aggregate-results clean valgrind perf
