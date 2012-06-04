@@ -1,0 +1,108 @@
+Tests for Mediawiki-to-Git
+==========================
+
+Introduction
+------------
+This manual describes how to install the git-remote-mediawiki test
+environment on a machine with git installed on it.
+
+
+Prerequisite
+------------
+
+	1: Get the sources
+	------------------
+	To be able to run this test environment you first need to get the
+	sources developped in our project, which you can download at https://github.com/Fafinou/git/ .
+	Then, get our five main patches from branch master.
+
+	2: Packages required
+	--------------------
+	In order to run this test environment correctly, you will need to
+	install the following packages.
+	* php5-cli
+	* lighttpd
+	* php5-cgi
+	* php5
+	* php5-curl
+	* php5-sqlite
+
+Run the test environment
+------------------------
+	1: Install a new wiki
+	---------------------
+	Once you have all the prerequisite, you need to install a MediaWiki on
+	your machine; if you already have one, we strongly recommend you to
+	install one with the script we provide. Here's how to work it:
+
+	a) change directory to contrib/mw-to-git/t/
+	b) edit test.config to choose your installation parameters
+	c) run ./install-wiki.sh install
+	d) check on your favourite web browser if your wiki is correctly installed.
+
+	2: Remove an existing wiki
+	--------------------------
+	Simply edit the file test.config! to fit the wiki you want to delete,
+	and then execute the command ./install-wiki.sh delete into the contrib/mw-to-git/t directory.
+
+	3: Run the existing tests
+	-------------------------
+	The furnished tests are currently in the contrib/mw-to-git/t! directory.
+	The files are all the t936* shell scripts.
+
+	a) Run all tests
+	To do so, simply go into the contrib/mw-to-git/ directory, and do Make test.
+
+	b) Run a specific test
+	To run a given test <test_name>, go into the contrib/mw-to-git/t directory and run ./<test_name>.
+
+How to create new tests
+-----------------------
+	1: Available functions
+	----------------------
+	The test environment of git-remote-mediawiki provides you with some
+	functions useful to test the behaviour of git-remote-mediawiki. for
+	more details about the functions' parameters, please refer to the
+	test-gitmw.pl file.
+
+	** test_check_wiki_precond
+	Checks if the tests must be skipped or not. Please use this function
+	at the beggining of each new test file.
+
+	** wiki_getpage
+	Fetchs a given page from the wiki and puts its content in the
+	directory in parameter.
+
+	** wiki_delete_page
+	Deletes a given page from the wiki.
+
+	** wiki_edit_page
+	Creates or modifies a given page in the wiki. You can specify several
+	parameters like a summary for the page edition, or add the page to a
+	given category.
+	Please, see test-gitmw.pl for more details.
+
+	** wiki_getallpage
+	Fetchs all pages from the wiki into a given directory. The directory
+	is created if it does not exists.
+
+	** test_diff_directories
+	Compares the content of two directories. The content must be the same.
+	Use this function to compare the content of a git directory and a wiki
+	one created by wiki_getallpage.
+
+	** test_contains_N_files
+	Checks if the given directory contains a given number of file.
+
+	** wiki_page_exists
+	Tests if a given page exists on the wiki.
+
+	** wiki_reset
+	Reset the wiki, ie flush the database. Use this function at the
+	begining of each new test.
+
+	2: How to write a new test
+	--------------------------
+	Please, follow the standards given by git. See git/t/README.
+	Name your new file t936[...].sh.
+	Be sure to reset your wiki regulary with the function wiki_reset.
