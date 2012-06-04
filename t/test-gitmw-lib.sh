@@ -26,6 +26,111 @@ DB_INSTALL_SCRIPT="db_install.php"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
+wiki_getpage () {
+	$GIT_BUILD_DIR/t/test-gitmw.pl get_page "$@"
+}
+
+wiki_delete_page () {
+	$GIT_BUILD_DIR/t/test-gitmw.pl delete_page "$@"
+}
+
+wiki_editpage () {
+	$GIT_BUILD_DIR/t/test-gitmw.pl edit_page "$@"
+}
+
+die () {
+	die_with_status 1 "$@"
+}
+
+die_with_status () {
+	status=$1
+	shift
+	echo >&2 "$*"
+	exit "$status"
+}
+
+# git_diff_directories <dir_git> <dir_wiki>
+#
+# Compare the contents of directories <dir_git> and <dir_wiki> with diff
+# and dies if they do not match. The program will
+# not look into .git in the process.
+# Warning: the first argument MUST be the directory containing the git data
+git_diff_directories () {
+	mkdir -p "$1_tmp"
+	cp "$1"/*.mw "$1_tmp"
+
+	diff -r -b "$1_tmp" "$2"
+
+	if test $? -ne 0
+	then
+		rm -rf "$1_tmp"
+		die "test failed: directories $1 and $2 do not match"
+	fi
+	rm -rf "$1_tmp"
+}
+
+
+# wiki_check_content <file_name> <page_name> 
+#
+# Compares the contents of the file <file_name> and the wiki page
+# <page_name> and exits with error 1 if they do not match.
+wiki_check_content () {
+	mkdir -p wiki_tmp
+	wiki_getpage "$2" wiki_tmp
+	diff -b "$1" wiki_tmp/"$2".mw
+	if test $? -ne 0
+	then
+		rm -rf wiki_tmp
+		die "ERROR: file $2 not found on wiki"
+	fi
+	rm -rf wiki_tmp
+}
+
+# wiki_page_exist <page_name>
+#
+# Check the existence of the page <page_name> on the wiki and exits
+# with error if it is absent from it.
+wiki_page_exist () {
+	wiki_getpage "$1" .
+
+	if test -f "$1".mw ; then
+		rm "$1".mw
+	else
+		die "test failed: file $1 not found on wiki"
+	fi
+}
+
+# wiki_getallpagename
+# 
+# Fetch the name of each page on the wiki.
+wiki_getallpagename () {
+	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename
+}
+
+# wiki_getallpagecategory <category>
+# 
+# Fetch the name of each page belonging to <category> on the wiki.
+wiki_getallpagecategory () {
+	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename "$@"
+}
+
+# wiki_getallpage <dest_dir> [<category>]
+#
+# Fetch all the pages from the wiki and place them in the directory
+# <dest_dir>.
+# If <category> is define, then wiki_getallpage fetch the pages included
+# in <category>.
+wiki_getallpage () {
+	if test -z "$2";
+	then
+		wiki_getallpagename
+	else
+		wiki_getallpagecategory "$2"
+	fi
+	mkdir -p "$1"
+	while read -r line; do
+		wiki_getpage "$line" $1;
+	done < all.txt
 }
 
 # Create the SQLite database of the MediaWiki. If the database file already
