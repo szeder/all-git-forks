@@ -1,0 +1,33 @@
+Tests for Mediawiki-to-Git
+==========================
+
+
+Installation
+------------
+These tests require a mediawiki with admin access to work on; you can install one
+on localhost/wiki simply by running:
+	./install-wiki.sh install
+Be aware that the tests will flush the wiki database, thus if you own a wiki at
+this adress, it is strongly advised to configure another name in test-gitmw-lib.sh
+before running the script.
+Note that the wiki will be installed in /tmp (this can be configured too), meaning
+you might have to install it again when you run tests later.
+
+
+Running
+-------
+You can run these tests either individually or with make (recommended). Remember
+to use make clean when you're done. You have access to all options from git core
+tests.
+
+
+Limitations
+-------
+This test environment does not allow you to test the behavior of git-remote-mediawiki
+for name containing backslashes.
+
+t9360: tests git clone.
+
+t9361: tests git pull and git push.
+
+t9362: tests how UTF-8 special characters are handled.
