@@ -597,6 +597,10 @@ int main(int argc, const char **argv)
 		}
 		if (!done_help) {
 			cmd = argv[0] = help_unknown_cmd(cmd);
+            printf("\nRunning %s instead\n", cmd);
+
+            handle_internal_command(argc, argv);
+
 			done_help = 1;
 		} else
 			break;

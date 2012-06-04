@@ -361,6 +361,10 @@ const char *help_unknown_cmd(const char *cmd)
 	fprintf_ln(stderr, _("git: '%s' is not a git command. See 'git --help'."), cmd);
 
 	if (SIMILAR_ENOUGH(best_similarity)) {
+        if(n == 1) {
+            return main_cmds.names[0]->name;
+        }
+
 		fprintf_ln(stderr,
 			   Q_("\nDid you mean this?",
 			      "\nDid you mean one of these?",
@@ -368,7 +372,7 @@ const char *help_unknown_cmd(const char *cmd)
 
 		for (i = 0; i < n; i++)
 			fprintf(stderr, "\t%s\n", main_cmds.names[i]->name);
-	}
+    }
 
 	exit(1);
 }
