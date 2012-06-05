@@ -12,6 +12,7 @@
 #include "refs.h"
 #include "submodule.h"
 #include "column.h"
+#include "strbuf.h"
 
 static char default_wt_status_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_NORMAL, /* WT_STATUS_HEADER */
@@ -817,6 +818,71 @@ static void show_am_in_progress(struct wt_status *s,
 	wt_status_print_trailer(s);
 }
 
+static int split_commit_in_progress(void)
+{
+	FILE *head, *orig_head, *rebase_amend, *rebase_orig_head;
+	struct strbuf buf_head, buf_orig_head, buf_rebase_amend, buf_rebase_orig_head;
+	int split_in_progress = 0;
+
+	head = fopen(git_path("HEAD"), "r");
+	if (!head)
+		return 0;
+
+	orig_head = fopen(git_path("ORIG_HEAD"), "r");
+	if (!orig_head) {
+		fclose(head);
+		return 0;
+	}
+
+	rebase_amend = fopen(git_path("rebase-merge/amend"), "r");
+	if (!rebase_amend) {
+		fclose(head);
+		fclose(orig_head);
+		return 0;
+	}
+
+	rebase_orig_head = fopen(git_path("rebase-merge/orig-head"), "r");
+	if (!rebase_orig_head) {
+		fclose(head);
+		fclose(orig_head);
+		fclose(rebase_amend);
+		return 0;
+	}
+
+	strbuf_init(&buf_head, 0);
+	strbuf_init(&buf_orig_head, 0);
+	strbuf_init(&buf_rebase_amend, 0);
+	strbuf_init(&buf_rebase_orig_head, 0);
+
+	strbuf_getline(&buf_head, head, '\n');
+	strbuf_getline(&buf_orig_head, orig_head, '\n');
+	strbuf_getline(&buf_rebase_amend, rebase_amend, '\n');
+	strbuf_getline(&buf_rebase_orig_head, rebase_orig_head, '\n');
+
+	fclose(head);
+	fclose(orig_head);
+	fclose(rebase_amend);
+	fclose(rebase_orig_head);
+
+	if (!strbuf_cmp(&buf_rebase_amend, &buf_rebase_orig_head)) {
+		if (strbuf_cmp(&buf_head, &buf_rebase_amend))
+			split_in_progress = 1;
+	} else if (!strbuf_cmp(&buf_orig_head, &buf_rebase_amend)) {
+		split_in_progress = 1;
+	} else if (strbuf_cmp(&buf_orig_head, &buf_rebase_orig_head)) {
+		split_in_progress = 1;
+	}
+
+	if (!strbuf_cmp(&buf_head, &buf_rebase_amend))
+		split_in_progress = 0;
+
+	strbuf_release(&buf_head);
+	strbuf_release(&buf_orig_head);
+	strbuf_release(&buf_rebase_amend);
+	strbuf_release(&buf_rebase_orig_head);
+	return split_in_progress;
+}
+
 static void show_rebase_in_progress(struct wt_status *s,
 				struct wt_status_state *state,
 				const char *color)
@@ -838,6 +904,11 @@ static void show_rebase_in_progress(struct wt_status *s,
 		if (advice_status_hints)
 			status_printf_ln(s, color,
 				_("  (all conflicts fixed: run \"git rebase --continue\")"));
+	} else if (split_commit_in_progress()) {
+		status_printf_ln(s, color, _("You are currently splitting a commit."));
+		if (advice_status_hints)
+			status_printf_ln(s, color,
+				_("  (Once your working directory is clean, run \"git rebase --continue\")"));
 	} else {
 		status_printf_ln(s, color, _("You are currently editing a commit during a rebase."));
 		if (advice_status_hints && !s->amend) {
