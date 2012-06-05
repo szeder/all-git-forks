@@ -1099,6 +1099,15 @@ static void write_merge_state(void)
 	close(fd);
 }
 
+static int merging_signed_tag(struct commit *parent)
+{
+	struct merge_remote_desc *desc = merge_remote_util(parent);
+
+	if (!desc || !desc->obj || desc->obj->type != OBJ_TAG)
+		return 0;
+	return 1;
+}
+
 int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
@@ -1283,10 +1292,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			    sha1_to_hex(commit->object.sha1));
 		setenv(buf.buf, argv[i], 1);
 		strbuf_reset(&buf);
-		if (!fast_forward_only &&
-		    merge_remote_util(commit) &&
-		    merge_remote_util(commit)->obj &&
-		    merge_remote_util(commit)->obj->type == OBJ_TAG) {
+		if (!fast_forward_only && merging_signed_tag(commit)) {
 			if (option_edit < 0)
 				option_edit = 1;
 			allow_fast_forward = 0;
