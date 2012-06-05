@@ -37,6 +37,46 @@ then
 fi
 
 
+# cloning a repository and check that the log message are the expected ones
+# only 1 page with one edition
+test_expect_success 'git clone create the git log expected with one file' '
+       wiki_reset &&
+       wiki_editpage foo "this is not important" false "this must be the same" &&
+       git clone mediawiki::http://localhost/wiki mw_dir &&
+       cd mw-dir &&
+       git log --format=%s > log.tmp &&
+       echo "this must be the same" > msg.tmp &&
+       diff -b log.tmp msg.tmp &&
+       cd ..&&
+       rm -rf mw_dir
+'
+
+# cloning a repository and check that the log message are the expected ones
+# with multiple page and multiple editions
+test_expect_success 'git clone create the git log expected with multiple files' '
+       wiki_reset &&
+       wiki_editpage daddy "this is not important" false "this must be the same" &&
+       wiki_editpage daddy "neither is this" true "this must also be the same" &&
+       wiki_editpage daddy "neither is this" true "same same same" &&
+       wiki_editpage dj "dont care" false "identical" &&
+       wiki_editpage dj "dont care either" true "identical too" &&
+       git clone mediawiki::http://localhost/wiki mw_dir &&
+       cd mw-dir &&
+       git log --format=%s Daddy.mw  > logDaddy.tmp &&
+       git log --format=%s Dj.mw > logDj.tmp &&
+       echo "this must be the same" > msgDaddy.tmp &&
+       echo "this must also be the same" >> msgDaddy.tmp &&
+       echo "same same same" >> msgDaddy.tmp &&
+       echo "identical" > msgDj.tmp &&
+       echo "identical too" >> msgDj.tmp &&
+       diff -b logDaddy.tmp msgDaddy.tmp &&
+       diff -b logDj.tmp msgDj.tmp &&
+       cd ..&&
+       rm -rf mw_dir
+'
+
+test_done
+
 # clone a empty wiki and check that the repository contains only Main_Page.mw
 test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
         wiki_reset &&
@@ -118,12 +158,17 @@ test_expect_success 'git clone works one specific page cloned ' '
         wiki_reset &&
         wiki_editpage foo "I will not be cloned" false &&
         wiki_editpage bar "Do not clone me" false &&
-        wiki_editpage namnam "I will be cloned :)" false &&
+        wiki_editpage namnam "I will be cloned :)" false  "this log must stay" &&
         wiki_editpage nyancat "nyan nyan nyan you cant clone me" false &&
         git clone -c remote.origin.pages=namnam mediawiki::http://localhost/wiki mw_dir &&
         test `ls mw_dir | wc -l` -eq 1 &&
         test -e mw_dir/Namnam.mw &&
         test ! -e mw_dir/Main_Page.mw &&
+        cd mw_dir &&
+        echo "this log must stay" > msg.tmp &&
+        git log --format=%s > log.tmp &&
+        diff -b msg.tmp log.tmp &&
+        cd .. &&
         wiki_check_content mw_dir/Namnam.mw Namnam &&
         rm -rf mw_dir
 '   
@@ -176,10 +221,10 @@ test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 # i.e the log only contains 1 commit per page
 test_expect_success 'git clone works with the shallow option' '
         wiki_reset &&
-        wiki_editpage foo "1st revision, should be cloned" &&
-        wiki_editpage bar "1st revision, should be cloned" &&
-        wiki_editpage nyan "1st revision, should not be cloned" &&
-        wiki_editpage nyan "2nd revision, should be cloned" &&
+        wiki_editpage foo "1st revision, should be cloned" false &&
+        wiki_editpage bar "1st revision, should be cloned" false &&
+        wiki_editpage nyan "1st revision, should not be cloned" false &&
+        wiki_editpage nyan "2nd revision, should be cloned" false &&
         git -c remote.origin.shallow=true clone mediawiki::http://localhost/wiki/ mw_dir &&
         test `ls mw_dir | wc -l` -eq 4 &&
         test -e mw_dir/Nyan.mw &&
@@ -205,10 +250,10 @@ test_expect_success 'git clone works with the shallow option' '
 # in this case we have a delete page
 test_expect_success 'git clone works with the shallow option with a delete page' '
         wiki_reset &&
-        wiki_editpage foo "1st revision, will be deleted" &&
-        wiki_editpage bar "1st revision, should be cloned" &&
-        wiki_editpage nyan "1st revision, should not be cloned" &&
-        wiki_editpage nyan "2nd revision, should be cloned" &&
+        wiki_editpage foo "1st revision, will be deleted" false &&
+        wiki_editpage bar "1st revision, should be cloned" false &&
+        wiki_editpage nyan "1st revision, should not be cloned" false &&
+        wiki_editpage nyan "2nd revision, should be cloned" false &&
         wiki_delete_page foo &&
         git -c remote.origin.shallow=true clone mediawiki::http://localhost/wiki/ mw_dir &&
         test `ls mw_dir | wc -l` -eq 3 &&
