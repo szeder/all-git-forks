@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/usr/bin/perl -w -s
 # Copyright (C) 2012
 #     Charles Roussel <charles.roussel@ensimag.imag.fr>
