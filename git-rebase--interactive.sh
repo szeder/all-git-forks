@@ -684,6 +684,23 @@ rearrange_squash () {
 	rm -f "$1.sq" "$1.rearranged"
 }
 
+# Add commands after a pick or after a squash/fixup serie
+# in the todo list.
+add_exec_commands () {
+	OIFS=$IFS
+	IFS=$LF
+	for i in $cmd
+	do
+		tmp=$(sed "/^pick .*/i\
+				exec $i" "$1")
+		echo "$tmp" >"$1"
+		tmp=$(sed '1d' "$1")
+		echo "$tmp" >"$1"
+		echo "exec $i" >>"$1"
+	done
+	IFS=$OIFS
+}
+
 case "$action" in
 continue)
 	# do we have anything to commit?
@@ -857,6 +874,8 @@ fi
 
 test -s "$todo" || echo noop >> "$todo"
 test -n "$autosquash" && rearrange_squash "$todo"
+test -n "$cmd" && add_exec_commands "$todo"
+
 cat >> "$todo" << EOF
 
 # Rebase $shortrevisions onto $shortonto
