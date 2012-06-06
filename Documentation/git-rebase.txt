@@ -8,9 +8,9 @@ git-rebase - Forward-port local commits to the updated upstream head
 SYNOPSIS
 --------
 [verse]
-'git rebase' [-i | --interactive] [options] [--onto <newbase>]
+'git rebase' [-i | --interactive] [options] [--exec <cmd>] [--onto <newbase>]
 	[<upstream>] [<branch>]
-'git rebase' [-i | --interactive] [options] --onto <newbase>
+'git rebase' [-i | --interactive] [options] [--exec <cmd>] --onto <newbase>
 	--root [<branch>]
 'git rebase' --continue | --skip | --abort
 
@@ -210,11 +210,29 @@ rebase.autosquash::
 
 OPTIONS
 -------
-<newbase>::
-	Starting point at which to create the new commits. If the
-	--onto option is not specified, the starting point is
-	<upstream>.  May be any valid commit, and not just an
-	existing branch name.
+-x <cmd>::
+--exec <cmd>::
+	Automatically add "exec" followed by <cmd> between each commit
+	applications. Using this option along with --autosquash adds
+	the exec line after the squash/fixeup series only. <cmd>
+	stands for shell commands. The --exec option has to be
+	specified. (see INTERACTIVE MODE below)
++
+This has to be used along with the `--interactive` option explicitly.
+You may execute several commands between each commit applications.
+For this, you can use one instance of exec:
+	git rebase -i --exec "cmd1; cmd2; ...".
+You can also insert several instances of exec, if you wish to
+only have one command per line for example:
+	git rebase -i --exec "cmd1" --exec "cmd2" ...
+
+--onto <newbase>::
+	With this option, git rebase takes all commits from <branch>,
+	that are not in <upstream>, and transplant them on top of
+	<newbase>. <newbase> is the starting point at which to create
+	the new commits. If the --onto option is not specified, the
+	starting point is <upstream>.  May be any valid commit, and
+	not just an existing branch name.
 +
 As a special case, you may use "A\...B" as a shortcut for the
 merge base of A and B if there is exactly one merge base. You can
@@ -520,6 +538,28 @@ The "exec" command launches the command in a shell (the one specified
 in `$SHELL`, or the default shell if `$SHELL` is not set), so you can
 use shell features (like "cd", ">", ";" ...). The command is run from
 the root of the working tree.
+
+----------------------------------
+$ git rebase -i --exec "make test"
+----------------------------------
+
+This command lets you check that intermediate commits are compilable.
+The todo list becomes like that:
+
+--------------------
+pick 5928aea one
+exec make test
+pick 04d0fda two
+exec make test
+pick ba46169 three
+exec make test
+pick f4593f9 four
+exec make test
+--------------------
+
+If the option '-i' is missing, The command will return a message
+error. If there is no <cmd> specified behind --exec, the command will
+return a message error and the usage page of 'git rebase'.
 
 SPLITTING COMMITS
 -----------------
