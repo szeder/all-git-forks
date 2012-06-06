@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+<<<<<<< HEAD
+#!/usr/bin/perl -w -s
 # Copyright (C) 2012
 #     Charles Roussel <charles.roussel@ensimag.imag.fr>
 #     Simon Cathebras <simon.cathebras@ensimag.imag.fr>
@@ -23,6 +24,7 @@
 #     "getallpagename"
 
 use MediaWiki::API;
+use Getopt::Long;
 use Switch;
 # URL of the wiki used for the tests
 my $wiki_url="http://localhost/wiki/api.php";
@@ -84,7 +86,7 @@ sub wiki_delete_page {
 	}
 }
 
-# wiki_editpage <wiki_page> <wiki_content> <wiki_append> [<category>]
+# wiki_editpage <wiki_page> <wiki_content> <wiki_append> [-c=<category>] [-s=<summary>]
 #
 # Edit a page named <wiki_page> with content <wiki_content> on the wiki
 # referenced with the global variable $mw
@@ -95,7 +97,9 @@ sub wiki_editpage {
 	my $wiki_page = $_[0];
 	my $wiki_content = $_[1];
 	my $wiki_append = $_[2];
-
+	my $summary = "";
+	my ($summ, $cat) = ();
+	GetOptions('s=s' => \$summ, 'c=s' => \$cat);
 
 	my $append = 0;
 	if (defined($wiki_append) && $wiki_append eq 'true') {
@@ -115,11 +119,15 @@ sub wiki_editpage {
 	}
 	
 	# Eventually, add this page to a category.
-	if (defined($_[3])) {
-		my $category_name="[[Category:$_[3]]]";
-		$text="$text\n $category_name"
+	if (defined($cat)) {
+		my $category_name="[[Category:$cat]]";
+		$text="$text\n $category_name";
 	}
-	$mw->edit( { action => 'edit', title => $wiki_page, text => "$text"} );
+	if(defined($summ)){
+		$summary=$summ;
+	}
+
+	$mw->edit( { action => 'edit', title => $wiki_page, summary => $summary, text => "$text"} );
 }
 
 

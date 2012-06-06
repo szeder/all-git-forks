@@ -41,13 +41,13 @@ fi
 # only 1 page with one edition
 test_expect_success 'git clone create the git log expected with one file' '
        wiki_reset &&
-       wiki_editpage foo "this is not important" false "this must be the same" &&
+       wiki_editpage foo "this is not important" false -c cat -s "this must be the same" &&
        git clone mediawiki::http://localhost/wiki mw_dir &&
-       cd mw-dir &&
-       git log --format=%s > log.tmp &&
+       cd mw_dir &&
+       git log --format=%s HEAD^..HEAD > log.tmp &&
        echo "this must be the same" > msg.tmp &&
        diff -b log.tmp msg.tmp &&
-       cd ..&&
+       cd .. &&
        rm -rf mw_dir
 '
 
@@ -55,27 +55,26 @@ test_expect_success 'git clone create the git log expected with one file' '
 # with multiple page and multiple editions
 test_expect_success 'git clone create the git log expected with multiple files' '
        wiki_reset &&
-       wiki_editpage daddy "this is not important" false "this must be the same" &&
-       wiki_editpage daddy "neither is this" true "this must also be the same" &&
-       wiki_editpage daddy "neither is this" true "same same same" &&
-       wiki_editpage dj "dont care" false "identical" &&
-       wiki_editpage dj "dont care either" true "identical too" &&
+       wiki_editpage daddy "this is not important" false -s="this must be the same" &&
+       wiki_editpage daddy "neither is this" true -s="this must also be the same" &&
+       wiki_editpage daddy "neither is this" true -s="same same same" &&
+       wiki_editpage dj "dont care" false -s="identical" &&
+       wiki_editpage dj "dont care either" true -s="identical too" &&
        git clone mediawiki::http://localhost/wiki mw_dir &&
-       cd mw-dir &&
+       cd mw_dir &&
        git log --format=%s Daddy.mw  > logDaddy.tmp &&
        git log --format=%s Dj.mw > logDj.tmp &&
-       echo "this must be the same" > msgDaddy.tmp &&
+       echo "same same same" > msgDaddy.tmp &&
        echo "this must also be the same" >> msgDaddy.tmp &&
-       echo "same same same" >> msgDaddy.tmp &&
-       echo "identical" > msgDj.tmp &&
-       echo "identical too" >> msgDj.tmp &&
+       echo "this must be the same" >> msgDaddy.tmp &&
+       echo "identical too" > msgDj.tmp &&
+       echo "identical" >> msgDj.tmp &&
        diff -b logDaddy.tmp msgDaddy.tmp &&
        diff -b logDj.tmp msgDj.tmp &&
-       cd ..&&
+       cd .. &&
        rm -rf mw_dir
 '
 
-test_done
 
 # clone a empty wiki and check that the repository contains only Main_Page.mw
 test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
@@ -158,7 +157,7 @@ test_expect_success 'git clone works one specific page cloned ' '
         wiki_reset &&
         wiki_editpage foo "I will not be cloned" false &&
         wiki_editpage bar "Do not clone me" false &&
-        wiki_editpage namnam "I will be cloned :)" false  "this log must stay" &&
+        wiki_editpage namnam "I will be cloned :)" false  -s="this log must stay" &&
         wiki_editpage nyancat "nyan nyan nyan you cant clone me" false &&
         git clone -c remote.origin.pages=namnam mediawiki::http://localhost/wiki mw_dir &&
         test `ls mw_dir | wc -l` -eq 1 &&
@@ -277,10 +276,10 @@ test_expect_success 'git clone works with the shallow option with a delete page'
 # check that only this category has been cloned
 test_expect_success 'test of fetching a category' '
 	wiki_reset &&
-	wiki_editpage Foo "I will be cloned" false Category &&
-	wiki_editpage Bar "Meet me on the repository" false Category &&
+	wiki_editpage Foo "I will be cloned" false -c=Category &&
+	wiki_editpage Bar "Meet me on the repository" false -c=Category &&
 	wiki_editpage Dummy "I will not come" false &&
-	wiki_editpage BarWrong "I will stay online only" false NotCategory &&
+	wiki_editpage BarWrong "I will stay online only" false -c=NotCategory &&
 	git clone -c remote.origin.categories="Category" mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page Category &&
 	git_diff_directories mw_dir ref_page
@@ -293,12 +292,12 @@ test_expect_success 'test of fetching a category' '
 # like edition of a given page and deletion of another.
 test_expect_success 'test of resistance to modification of category on wiki for clone' '
 	wiki_reset &&
-	wiki_editpage Tobedeleted "this page will be deleted" false Catone &&
-	wiki_editpage Tobeedited "this page will be modified" false Catone &&
-	wiki_editpage Normalone "this page wont be modified and will be on git" false Catone &&
+	wiki_editpage Tobedeleted "this page will be deleted" false -c=Catone &&
+	wiki_editpage Tobeedited "this page will be modified" false -c=Catone &&
+	wiki_editpage Normalone "this page wont be modified and will be on git" false -c=Catone &&
 	wiki_editpage Notconsidered "this page will not appears on local" false &&
-	wiki_editpage Othercategory "this page will not appears on local" false Cattwo &&
-	wiki_editpage Tobeedited "this page have been modified" true Catone &&
+	wiki_editpage Othercategory "this page will not appears on local" false -c=Cattwo &&
+	wiki_editpage Tobeedited "this page have been modified" true -c=Catone &&
 	wiki_delete_page Tobedeleted
 	git clone -c remote.origin.categories="Catone" mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page Catone &&
