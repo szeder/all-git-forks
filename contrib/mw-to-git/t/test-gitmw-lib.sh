@@ -26,16 +26,19 @@ DB_INSTALL_SCRIPT="db_install.php"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
+CURR_DIR=$(pwd)
+export TEST_DIRECTORY=$CURR_DIR/../../../t
+
 wiki_getpage () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl get_page "$@"
+	$CURR_DIR/test-gitmw.pl get_page "$@"
 }
 
 wiki_delete_page () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl delete_page "$@"
+	$CURR_DIR/test-gitmw.pl delete_page "$@"
 }
 
 wiki_editpage () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl edit_page "$@"
+	$CURR_DIR/test-gitmw.pl edit_page "$@"
 }
 
 die () {
@@ -104,14 +107,14 @@ wiki_page_exist () {
 # 
 # Fetch the name of each page on the wiki.
 wiki_getallpagename () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename
+	$CURR_DIR/test-gitmw.pl getallpagename
 }
 
 # wiki_getallpagecategory <category>
 # 
 # Fetch the name of each page belonging to <category> on the wiki.
 wiki_getallpagecategory () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename "$@"
+	$CURR_DIR/test-gitmw.pl getallpagename "$@"
 }
 
 # wiki_getallpage <dest_dir> [<category>]
