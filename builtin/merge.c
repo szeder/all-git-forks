@@ -28,6 +28,7 @@
 #include "remote.h"
 #include "fmt-merge-msg.h"
 #include "gpg-interface.h"
+#include "tag.h"
 
 #define DEFAULT_TWOHEAD (1<<0)
 #define DEFAULT_OCTOPUS (1<<1)
@@ -1164,6 +1165,26 @@ static struct commit_list *collect_parents(struct commit *head_commit,
 	return remoteheads;
 }
 
+static int merging_signed_tag(struct commit *parent)
+{
+	struct merge_remote_desc *desc = merge_remote_util(parent);
+	unsigned long size;
+	enum object_type type;
+	char *buf;
+	size_t sig_offset;
+
+	if (!desc || !desc->obj || desc->obj->type != OBJ_TAG)
+		return 0;
+
+	buf = read_sha1_file(desc->obj->sha1, &type, &size);
+	if (!buf || type != OBJ_TAG) {
+		free(buf);
+		return 0; /* error will be caught downstream */
+	}
+	sig_offset = parse_signature(buf, size);
+	return (sig_offset < size);
+}
+
 int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
@@ -1348,10 +1369,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			    sha1_to_hex(commit->object.sha1));
 		setenv(buf.buf, merge_remote_util(commit)->name, 1);
 		strbuf_reset(&buf);
-		if (!fast_forward_only &&
-		    merge_remote_util(commit) &&
-		    merge_remote_util(commit)->obj &&
-		    merge_remote_util(commit)->obj->type == OBJ_TAG)
+		if (!fast_forward_only && merging_signed_tag(commit))
 			allow_fast_forward = 0;
 	}
 

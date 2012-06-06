@@ -695,4 +695,42 @@ test_expect_success GPG 'merge --no-edit tag should skip editor' '
 	test_cmp actual expect
 '
 
+test_expect_success 'merge ff annotated tag should just ff' '
+	git reset --hard c0 &&
+	git commit --allow-empty -m "A newer commit" &&
+	git tag -a -m "An annotated tag" anno &&
+	git reset --hard c0 &&
+
+	# This should not even bother with an editor session; "false"
+	# will ensure that an attempt to run the editor is caught.
+	EDITOR=false git merge anno &&
+
+	git rev-parse anno^0 >expect &&
+	git rev-parse HEAD >actual &&
+	test_cmp actual expect &&
+
+	git rev-parse c0^0 >expect &&
+	git rev-parse HEAD^ >actual &&
+	test_cmp actual expect
+'
+
+test_expect_success 'merge --no-ff annotated tag' '
+	git reset --hard c0 &&
+	git commit --allow-empty -m "A newer commit" &&
+	git tag -f -a -m "An annotated tag" anno &&
+	git reset --hard c0 &&
+
+	EDITOR=./editor git merge --no-ff --edit anno &&
+	git rev-parse anno^0 >expect &&
+	git rev-parse HEAD^2 >actual &&
+	test_cmp actual expect &&
+
+	git rev-parse c0^0 >expect &&
+	git rev-parse HEAD^ >actual &&
+	test_cmp actual expect &&
+
+	git cat-file commit HEAD >raw &&
+	grep "An annotated tag" raw
+'
+
 test_done
