@@ -100,4 +100,40 @@ test_expect_success 'apply with --3way with rerere enabled' '
 	test_cmp expect one
 '
 
+test_expect_failure 'apply -3 with add/add conflict' '
+	git reset --hard &&
+
+	git checkout -b adder &&
+	create_file 1 2 3 4 5 6 7 >three &&
+	create_file 1 2 3 4 5 6 7 >four &&
+	git add three four &&
+	git commit -m "add three and four" &&
+
+	git checkout -b another adder^ &&
+	create_file 1 2 3 4 5 6 7 >three &&
+	create_file 1 2 3 four 5 6 7 >four &&
+	git add three four &&
+	git commit -m "add three and four" &&
+
+	# Merging another should be similar to applying this patch
+	git diff adder...another >P.diff &&
+
+	git checkout adder^0 &&
+	test_must_fail git merge --no-commit another &&
+	git ls-files -s >expect.ls &&
+	git diff HEAD | sanitize_conflicted_diff >expect.diff &&
+
+	# should fail to apply ...
+	git reset --hard &&
+	git checkout adder^0 &&
+	test_must_fail git apply --index --3way P.diff &&
+	# ... and leave conflicts in the index and in the working tree
+	git ls-files -s >actual.ls &&
+	git diff HEAD | sanitize_conflicted_diff >actual.diff &&
+
+	# The result should resemble the corresponding merge
+	test_cmp expect.ls actual.ls &&
+	test_cmp expect.diff actual.diff
+'
+
 test_done
