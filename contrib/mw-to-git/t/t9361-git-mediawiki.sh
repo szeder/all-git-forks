@@ -53,7 +53,7 @@ test_expect_success 'git push works after adding a file .mw' "
 
         rm -rf ref_page &&
         wiki_getallpage ref_page &&
-        git_diff_directories mw_dir ref_page &&
+        test_diff_directories mw_dir ref_page &&
         rm -rf ref_page &&
         rm -rf mw_dir
 "
@@ -76,7 +76,7 @@ test_expect_success 'git push works after editing a file .mw' "
 
         rm -rf ref_page &&
         wiki_getallpage ref_page &&
-        git_diff_directories mw_dir ref_page &&
+        test_diff_directories mw_dir ref_page &&
         rm -rf ref_page &&
         rm -rf mw_dir
 "
@@ -111,7 +111,7 @@ test_expect_success 'git pull works after adding a new wiki page' "
 
         rm -rf ref_page &&
         wiki_getallpage ref_page &&
-        git_diff_directories mw_dir ref_page &&
+        test_diff_directories mw_dir ref_page &&
         rm -rf ref_page &&
         rm -rf mw_dir
 "
@@ -130,7 +130,7 @@ test_expect_success 'git pull works after editing a wiki page' "
 
         rm -rf ref_page &&
         wiki_getallpage ref_page &&
-        git_diff_directories mw_dir ref_page &&
+        test_diff_directories mw_dir ref_page &&
         rm -rf ref_page &&
         rm -rf mw_dir
 "

@@ -9,7 +9,6 @@
 #
 # License: GPL v2 or later
 
-# tests for git-remote-mediawiki
 
 test_description='Test the Git Mediawiki remote helper: git clone'
 
@@ -105,7 +104,7 @@ test_expect_success 'git clone works with page added' '
 	wiki_editpage bar "I will be cloned" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page &&
-	git_diff_directories mw_dir ref_page &&
+	test_diff_directories mw_dir ref_page &&
 	wiki_delete_page foo &&
 	rm -rf mw_dir &&
 	rm -rf ref_page &&
@@ -123,7 +122,7 @@ test_expect_success 'git clone works with an edited page ' '
 	test -e mw_dir/Foo.mw &&
 	test -e mw_dir/Main_Page.mw &&
 	wiki_getallpage mw_dir/page_ref &&
-	git_diff_directories mw_dir mw_dir/page_ref &&
+	test_diff_directories mw_dir mw_dir/page_ref &&
 	rm -rf mw_dir
 '
 
@@ -142,7 +141,7 @@ test_expect_success 'git clone works with several pages and some deleted ' '
 	test ! -e mw_dir/Namnam.mw &&
 	test ! -e mw_dir/Nyancat.mw &&
 	wiki_getallpage mw_dir/page_ref &&
-	git_diff_directories mw_dir mw_dir/page_ref &&
+	test_diff_directories mw_dir mw_dir/page_ref &&
 	rm -rf mw_dir
 '
 
@@ -208,7 +207,7 @@ test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 	wiki_getpage cloned_2 ref_page &&
 	wiki_getpage cloned_3 ref_page &&
 	git clone -c remote.origin.pages="cloned_1 cloned_2 cloned_3" mediawiki::http://localhost/wiki mw_dir_spage &&
-	git_diff_directories mw_dir_spage ref_page &&
+	test_diff_directories mw_dir_spage ref_page &&
 	rm -rf mw_dir_spage &&
 	rm -rf ref_page
 '
@@ -281,7 +280,7 @@ test_expect_success 'test of fetching a category' '
 	wiki_editpage BarWrong "I will stay online only" false -c=NotCategory &&
 	git clone -c remote.origin.categories="Category" mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page Category &&
-	git_diff_directories mw_dir ref_page
+	test_diff_directories mw_dir ref_page
 	rm -rf mw_dir &&
 	rm -rf ref_page
 '
@@ -300,7 +299,7 @@ test_expect_success 'test of resistance to modification of category on wiki for 
 	wiki_delete_page Tobedeleted
 	git clone -c remote.origin.categories="Catone" mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page Catone &&
-	git_diff_directories mw_dir ref_page &&
+	test_diff_directories mw_dir ref_page &&
 	rm -rf mw_dir &&
 	rm -rf ref_page 
 '

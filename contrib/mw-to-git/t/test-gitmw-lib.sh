@@ -52,13 +52,13 @@ die_with_status () {
 	exit "$status"
 }
 
-# git_diff_directories <dir_git> <dir_wiki>
+# test_diff_directories <dir_git> <dir_wiki>
 #
 # Compare the contents of directories <dir_git> and <dir_wiki> with diff
 # and dies if they do not match. The program will
 # not look into .git in the process.
 # Warning: the first argument MUST be the directory containing the git data
-git_diff_directories () {
+test_diff_directories () {
 	mkdir -p "$1_tmp"
 	cp "$1"/*.mw "$1_tmp"
 
