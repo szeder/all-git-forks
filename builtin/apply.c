@@ -198,6 +198,7 @@ struct patch {
 	unsigned int is_rename:1;
 	unsigned int recount:1;
 	unsigned int conflicted_threeway:1;
+	unsigned int direct_to_threeway:1;
 	struct fragment *fragments;
 	char *result;
 	size_t resultsize;
@@ -3156,13 +3157,15 @@ static int try_threeway(struct image *image, struct patch *patch,
 	struct image tmp_image;
 
 	/* No point falling back to 3-way merge in these cases */
-	if (patch->is_new || patch->is_delete ||
+	if (patch->is_delete ||
 	    S_ISGITLINK(patch->old_mode) || S_ISGITLINK(patch->new_mode))
 		return -1;
 
 	/* Preimage the patch was prepared for */
-	if (get_sha1(patch->old_sha1_prefix, pre_sha1) ||
-	    read_blob_object(&buf, pre_sha1, patch->old_mode))
+	if (patch->is_new)
+		write_sha1_file("", 0, blob_type, pre_sha1);
+	else if (get_sha1(patch->old_sha1_prefix, pre_sha1) ||
+		 read_blob_object(&buf, pre_sha1, patch->old_mode))
 		return error("repository lacks the necessary blob to fall back on 3-way merge.");
 
 	fprintf(stderr, "Falling back to three-way merge...\n");
@@ -3212,7 +3215,8 @@ static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *
 	if (load_preimage(&image, patch, st, ce) < 0)
 		return -1;
 
-	if (apply_fragments(&image, patch) < 0) {
+	if (patch->direct_to_threeway ||
+	    apply_fragments(&image, patch) < 0) {
 		/* Note: with --reject, apply_fragments() returns 0 */
 		if (!threeway || try_threeway(&image, patch, st, ce) < 0)
 			return -1;
@@ -3399,7 +3403,9 @@ static int check_patch(struct patch *patch)
 	    ((0 < patch->is_new) | (0 < patch->is_rename) | patch->is_copy)) {
 		int err = check_to_create(new_name, ok_if_exists);
 
-		switch (err) {
+		if (err && threeway) {
+			patch->direct_to_threeway = 1;
+		} else switch (err) {
 		case 0:
 			break; /* happy */
 		case EXISTS_IN_INDEX:
