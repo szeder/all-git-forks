@@ -16,13 +16,15 @@ test_description='Test the Git Mediawiki remote helper: git push and git pull si
 . ./test-gitmw-lib.sh
 . $TEST_DIRECTORY/test-lib.sh
 
+TRASH_DIR=$CURR_DIR/trash\\\ directory.t9361-git-mediawiki
+
 if ! test_have_prereq PERL
 then
 	skip_all='skipping gateway git-mw tests, perl not available'
 	test_done
 fi
 
-if [ ! -f /$GIT_BUILD_DIR/git-remote-mediawiki ];
+if [ ! -f $GIT_BUILD_DIR/git-remote-mediawiki ];
 then
 	skip_all='skipping gateway git-mw tests, no remote mediawiki for git found'
 	test_done
@@ -38,10 +40,10 @@ fi
 # this file and then check that all files of the repository are similar to
 # the wiki pages.
 test_expect_success 'git push works after adding a file .mw' "
-        wiki_reset &&
-        git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
+	wiki_reset &&
+	cd $TRASH_DIR &&
+	git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
         wiki_getallpage ref_page &&
-
         cd mw_dir &&
         test ! -f Foo.mw && # Foo.mw should not exist after wiki_reset &&
         touch Foo.mw &&
@@ -65,6 +67,9 @@ test_expect_success 'git push works after adding a file .mw' "
 test_expect_success 'git push works after editing a file .mw' "
         # clone an empty wiki and add a Foo page
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
         wiki_editpage \"Foo\" \"page just created before the git clone\" false &&
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
 
@@ -85,6 +90,9 @@ test_expect_success 'git push works after editing a file .mw' "
 # repository. Check that the wiki page has been actually removed.
 test_expect_failure 'git push works after deleting a file' "
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
         wiki_editpage Foo \"wiki page added before git clone\" false &&
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
 
@@ -102,6 +110,10 @@ test_expect_failure 'git push works after deleting a file' "
 # all files of the repository are similar to the wiki pages.
 test_expect_success 'git pull works after adding a new wiki page' "
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
         wiki_editpage Foo \"page just created after the git clone\" false &&
 
@@ -120,6 +132,10 @@ test_expect_success 'git pull works after adding a new wiki page' "
 # Check that all files of the repository are similar to the wiki pages.
 test_expect_success 'git pull works after editing a wiki page' "
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+
         wiki_editpage Foo \"page just created before the git clone\" false &&
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
         wiki_editpage Foo \"new line added on the wiki\" true &&
@@ -139,6 +155,10 @@ test_expect_success 'git pull works after editing a wiki page' "
 # Foo.mw on git, then check that merge conflict is properly coped with.
 test_expect_success 'git pull works on conflict handled by auto-merge' "
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+
         wiki_editpage Foo \"1 init
 3
 5
@@ -169,6 +189,10 @@ test_expect_success 'git pull works on conflict handled by auto-merge' "
 # manually
 test_expect_success 'Merge conflict expected' "
         wiki_reset &&
+	cd $TRASH_DIR &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
         wiki_editpage Foo \"1 conflict
 3 wiki
@@ -197,6 +221,7 @@ test_expect_success 'Conflict solved manually' "
 # Check that the corresponding file in the repository has been actually removed.
 test_expect_failure 'git pull works after deleting a wiki page' "
         wiki_reset &&
+	cd $TRASH_DIR &&
         wiki_editpage Foo \"wiki page added before git clone\" false &&
         git clone mediawiki::http://$SERVER_ADDR/$WIKI_DIR_NAME mw_dir &&
 

@@ -15,6 +15,9 @@ test_description='Test the Git Mediawiki remote helper: git clone'
 . ./test-gitmw-lib.sh
 . $TEST_DIRECTORY/test-lib.sh
 
+TRASH_DIR=$CURR_DIR/trash\\\ directory.t9360-git-mediawiki
+
+
 if ! test_have_prereq PERL
 then
 	skip_all='skipping gateway git-mw tests, '\
@@ -22,7 +25,7 @@ then
 	test_done
 fi
 
-if [ ! -f /$GIT_BUILD_DIR/git-remote-mediawiki ];
+if [ ! -f $GIT_BUILD_DIR/git-remote-mediawiki ];
 then
 	skip_all='skipping gateway git-mw tests,' \
 		' no remote mediawiki for git found'
@@ -40,6 +43,8 @@ fi
 # only 1 page with one edition
 test_expect_success 'git clone create the git log expected with one file' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "this is not important" false -c cat -s "this must be the same" &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	cd mw_dir &&
@@ -54,6 +59,8 @@ test_expect_success 'git clone create the git log expected with one file' '
 # with multiple page and multiple editions
 test_expect_success 'git clone create the git log expected with multiple files' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage daddy "this is not important" false -s="this must be the same" &&
 	wiki_editpage daddy "neither is this" true -s="this must also be the same" &&
 	wiki_editpage daddy "neither is this" true -s="same same same" &&
@@ -78,6 +85,8 @@ test_expect_success 'git clone create the git log expected with multiple files' 
 # clone a empty wiki and check that the repository contains only Main_Page.mw
 test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	test_contains_N_files mw_dir 1 &&
 	test -e mw_dir/Main_Page.mw &&
@@ -88,6 +97,8 @@ test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
 # check that the page no longer exists
 test_expect_success 'git clone only create Main_Page.mw with a wiki with no other pages ' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "this page must be deleted before the clone" false &&
 	wiki_delete_page foo &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
@@ -101,6 +112,8 @@ test_expect_success 'git clone only create Main_Page.mw with a wiki with no othe
 # check that the file corresponding to the page is in the repository
 test_expect_success 'git clone works with page added' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo " I will be cloned" false &&
 	wiki_editpage bar "I will be cloned" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
@@ -117,6 +130,10 @@ test_expect_success 'git clone works with page added' '
 # check that content and history are correct
 test_expect_success 'git clone works with an edited page ' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+
 	wiki_editpage foo "this page will be edited" \
 		false -s "first edition of page foo"&&
 	wiki_editpage foo "this page has been edited and must be on the clone " true &&
@@ -136,6 +153,8 @@ test_expect_success 'git clone works with an edited page ' '
 # clone a wiki with several pages where some were delete
 test_expect_success 'git clone works with several pages and some deleted ' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "this page will not be deleted" false &&
 	wiki_editpage bar "I must not be erased" false &&
 	wiki_editpage namnam "I will not be there at the end" false &&
@@ -160,6 +179,8 @@ test_expect_success 'git clone works with several pages and some deleted ' '
 # check that the page and the clone a identical
 test_expect_success 'git clone works one specific page cloned ' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "I will not be cloned" false &&
 	wiki_editpage bar "Do not clone me" false &&
 	wiki_editpage namnam "I will be cloned :)" false  -s="this log must stay" &&
@@ -183,6 +204,8 @@ test_expect_success 'git clone works one specific page cloned ' '
 # check that the pages and the clone a identical
 test_expect_success 'git clone works multiple specific page cloned ' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "I will be there" false &&
 	wiki_editpage bar "I will not disapear" false &&
 	wiki_editpage namnam "I be erased" false &&
@@ -203,6 +226,8 @@ test_expect_success 'git clone works multiple specific page cloned ' '
 # Tests that cloning some specific pages from a larger wiki works properly
 test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "foo 1" false &&
 	wiki_editpage bar "bar 1" false &&
 	wiki_editpage dummy "dummy 1" false &&
@@ -225,6 +250,9 @@ test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 # i.e the log only contains 1 commit per page
 test_expect_success 'git clone works with the shallow option' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir_s_page &&
+	rm -rf ref_page &&
 	wiki_editpage foo "1st revision, should be cloned" false &&
 	wiki_editpage bar "1st revision, should be cloned" false &&
 	wiki_editpage nyan "1st revision, should not be cloned" false &&
@@ -254,6 +282,8 @@ test_expect_success 'git clone works with the shallow option' '
 # in this case we have a delete page
 test_expect_success 'git clone works with the shallow option with a delete page' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage foo "1st revision, will be deleted" false &&
 	wiki_editpage bar "1st revision, should be cloned" false &&
 	wiki_editpage nyan "1st revision, should not be cloned" false &&
@@ -281,6 +311,8 @@ test_expect_success 'git clone works with the shallow option with a delete page'
 # check that only this category has been cloned
 test_expect_success 'test of fetching a category' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
 	wiki_editpage Foo "I will be cloned" false -c=Category &&
 	wiki_editpage Bar "Meet me on the repository" false -c=Category &&
 	wiki_editpage Dummy "I will not come" false &&
@@ -297,6 +329,9 @@ test_expect_success 'test of fetching a category' '
 # like edition of a given page and deletion of another.
 test_expect_success 'test of resistance to modification of category on wiki for clone' '
 	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
 	wiki_editpage Tobedeleted "this page will be deleted" false -c=Catone &&
 	wiki_editpage Tobeedited "this page will be modified" false -c=Catone &&
 	wiki_editpage Normalone "this page wont be modified and will be on git" false -c=Catone &&
