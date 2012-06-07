@@ -207,7 +207,6 @@ sub get_mw_first_pages {
 
 sub get_mw_pages {
 	mw_connect_maybe();
-
 	my %pages; # hash on page titles to avoid duplicates
 	my $user_defined;
 	if (@tracked_pages) {

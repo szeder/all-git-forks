@@ -25,6 +25,10 @@
 use MediaWiki::API;
 use Getopt::Long;
 use Switch;
+use encoding 'utf8';
+use DateTime::Format::ISO8601;
+use open ':encoding(utf8)';
+
 # URL of the wiki used for the tests
 my $wiki_url="http://localhost/wiki/api.php";
 my $wiki_admin='WikiAdmin';
@@ -48,7 +52,7 @@ sub wiki_login {
 sub wiki_getpage {
 	my $pagename = $_[0];
 	my $destdir = $_[1];
-	
+
 	my $page = $mw->get_page( { title => $pagename } );
 	if (!defined($page)) {
 		die "getpage: wiki does not exist";
@@ -65,6 +69,7 @@ sub wiki_getpage {
 	open(my $file, ">$destdir/$pagename.mw");
 	print $file "$content";
 	close ($file);
+
 }
 
 # wiki_delete_page <page_name>
@@ -129,7 +134,6 @@ sub wiki_editpage {
 	$mw->edit( { action => 'edit', title => $wiki_page, summary => $summary, text => "$text"} );
 }
 
-
 # wiki_getallpagename [<category>]
 #
 # Fetch all pages of the wiki referenced by the global variable $mw
@@ -140,28 +144,28 @@ sub wiki_editpage {
 sub wiki_getallpagename {
 	# fetch the pages of the wiki
 	if (defined($_[0])) {
-		$mw->list ( { action => 'query',
+		my $mw_pages = $mw->list ( { action => 'query',
 				list => 'categorymembers',
 				cmtitle => "Category:$_[0]",
 				cmnamespace => 0,
 				cmlimit=> 500 },
-			{ max => 4, hook => \&cat_names } )
+			)
 			|| die $mw->{error}->{code}.": ".$mw->{error}->{details};
-	} else {
-		$mw->list ( { action => 'query',
-				list => 'allpages',
-				#cmnamespace => 0,
-				cmlimit=> 500 },
-			{ max => 4, hook => \&cat_names } )
-			|| die $mw->{error}->{code}.": ".$mw->{error}->{details};
-	}
-	# print the name of each page
-	sub cat_names {
-		my ($ref) = @_;
-
 		open(my $file, ">all.txt");
-		foreach (@$ref) {
-			print $file "$_->{title}\n";
+		foreach my $page (@{$mw_pages}) {
+			print $file "$page->{title}\n";
+		}
+		close ($file);
+
+	} else {
+ 	my $mw_pages = $mw->list({
+			action => 'query',
+			list => 'allpages',
+			aplimit => 500,
+		})|| die $mw->{error}->{code}.": ".$mw->{error}->{details};
+		open(my $file, ">all.txt");
+		foreach my $page (@{$mw_pages}) {
+			print $file "$page->{title}\n";
 		}
 		close ($file);
 	}
