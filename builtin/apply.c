@@ -198,6 +198,7 @@ struct patch {
 	unsigned int is_rename:1;
 	unsigned int recount:1;
 	unsigned int conflicted_threeway:1;
+	unsigned int direct_to_threeway:1;
 	struct fragment *fragments;
 	char *result;
 	size_t resultsize;
@@ -3067,7 +3068,7 @@ static struct patch *previous_patch(struct patch *patch, int *gone)
  * We are about to apply "patch"; populate the "image" with the
  * current version we have, from the working tree or from the index,
  * depending on the situation e.g. --cached/--index.  If we are
- * applying a non-git patch that incrementally update the tree,
+ * applying a non-git patch that incrementally updates the tree,
  * we read from the result of a previous diff.
  */
 static int load_preimage(struct image *image,
@@ -3145,8 +3146,8 @@ static int three_way_merge(struct image *image,
 	return status;
 }
 
-static int try_threeway_fallback(struct image *image, struct patch *patch,
-				 struct stat *st, struct cache_entry *ce)
+static int try_threeway(struct image *image, struct patch *patch,
+			struct stat *st, struct cache_entry *ce)
 {
 	unsigned char pre_sha1[20], post_sha1[20], our_sha1[20];
 	struct strbuf buf = STRBUF_INIT;
@@ -3156,13 +3157,15 @@ static int try_threeway_fallback(struct image *image, struct patch *patch,
 	struct image tmp_image;
 
 	/* No point falling back to 3-way merge in these cases */
-	if (patch->is_new || patch->is_delete ||
+	if (patch->is_delete ||
 	    S_ISGITLINK(patch->old_mode) || S_ISGITLINK(patch->new_mode))
 		return -1;
 
 	/* Preimage the patch was prepared for */
-	if (get_sha1(patch->old_sha1_prefix, pre_sha1) ||
-	    read_blob_object(&buf, pre_sha1, patch->old_mode))
+	if (patch->is_new)
+		write_sha1_file("", 0, blob_type, pre_sha1);
+	else if (get_sha1(patch->old_sha1_prefix, pre_sha1) ||
+		 read_blob_object(&buf, pre_sha1, patch->old_mode))
 		return error("repository lacks the necessary blob to fall back on 3-way merge.");
 
 	fprintf(stderr, "Falling back to three-way merge...\n");
@@ -3174,12 +3177,12 @@ static int try_threeway_fallback(struct image *image, struct patch *patch,
 		clear_image(&tmp_image);
 		return -1;
 	}
-	hash_sha1_file(tmp_image.buf, tmp_image.len, blob_type, post_sha1);
+	write_sha1_file(tmp_image.buf, tmp_image.len, blob_type, post_sha1);
 	clear_image(&tmp_image);
 
 	/* pre_sha1[] is common, post_sha1[] is theirs */
 	load_preimage(&tmp_image, patch, st, ce);
-	hash_sha1_file(tmp_image.buf, tmp_image.len, blob_type, our_sha1);
+	write_sha1_file(tmp_image.buf, tmp_image.len, blob_type, our_sha1);
 	clear_image(&tmp_image);
 
 	/* in-core three-way merge between post and our using pre as base */
@@ -3209,9 +3212,10 @@ static int apply_data(struct patch *patch, struct stat *st, struct cache_entry *
 	if (load_preimage(&image, patch, st, ce) < 0)
 		return -1;
 
-	if (apply_fragments(&image, patch) < 0) {
+	if (patch->direct_to_threeway ||
+	    apply_fragments(&image, patch) < 0) {
 		/* Note: with --reject, the above call succeeds. */
-		if (!threeway || try_threeway_fallback(&image, patch, st, ce) < 0)
+		if (!threeway || try_threeway(&image, patch, st, ce) < 0)
 			return -1;
 	}
 	patch->result = image.buf;
@@ -3396,7 +3400,9 @@ static int check_patch(struct patch *patch)
 	    ((0 < patch->is_new) | (0 < patch->is_rename) | patch->is_copy)) {
 		int err = check_to_create(new_name, ok_if_exists);
 
-		switch (err) {
+		if (err && threeway) {
+			patch->direct_to_threeway = 1;
+		} else switch (err) {
 		case 0:
 			break; /* happy */
 		case EXISTS_IN_INDEX:
