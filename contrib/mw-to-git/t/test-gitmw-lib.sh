@@ -26,7 +26,7 @@ DB_INSTALL_SCRIPT="db_install.php"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
-CURR_DIR=$(pwd)
+export CURR_DIR=$(pwd)
 export TEST_DIRECTORY=$CURR_DIR/../../../t
 
 wiki_getpage () {
