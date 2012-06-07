@@ -72,6 +72,19 @@ git_diff_directories () {
 	rm -rf "$1_tmp"
 }
 
+# $1=<dir>
+# $2=<N>
+#
+# Check that <dir> contains exactly <N> files
+test_contains_N_files () {
+
+	if ! test `ls "$1" | wc -l` -eq "$2";
+	then
+		die "test failed: directories $1 doesn't contains $2 files"
+	fi
+
+}
+
 
 # wiki_check_content <file_name> <page_name> 
 #
