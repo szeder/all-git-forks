@@ -35,6 +35,7 @@ then
 	test_done
 fi
 
+
 # cloning a repository and check that the log message are the expected ones
 # only 1 page with one edition
 test_expect_success 'git clone create the git log expected with one file' '
@@ -87,7 +88,7 @@ test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
 # check that the page no longer exists
 test_expect_success 'git clone only create Main_Page.mw with a wiki with no other pages ' '
 	wiki_reset &&
-	wiki_editpage foo "this page must be delete before the clone" false &&
+	wiki_editpage foo "this page must be deleted before the clone" false &&
 	wiki_delete_page foo &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	test_contains_N_files mw_dir 1 &&
@@ -113,17 +114,23 @@ test_expect_success 'git clone works with page added' '
 
 
 # clone a wiki after a page has been added then edited once
-# check that the content is correct
+# check that content and history are correct
 test_expect_success 'git clone works with an edited page ' '
 	wiki_reset &&
-	wiki_editpage foo "this page will be edited" false &&
-	wiki_editpage foo "this page has been edited and must be on the clone " false &&
+	wiki_editpage foo "this page will be edited" \
+		false -s "first edition of page foo"&&
+	wiki_editpage foo "this page has been edited and must be on the clone " true &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	test -e mw_dir/Foo.mw &&
 	test -e mw_dir/Main_Page.mw &&
 	wiki_getallpage mw_dir/page_ref &&
 	test_diff_directories mw_dir mw_dir/page_ref &&
-	rm -rf mw_dir
+	cd mw_dir &&
+	git log --format=%s HEAD^ Foo.mw > ../Foo.log &&
+	cd .. &&
+	echo "first edition of page foo" > FooExpect.log &&
+	rm -rf mw_dir &&
+	diff FooExpect.log Foo.log
 '
 
 # clone a wiki with several pages where some were delete
