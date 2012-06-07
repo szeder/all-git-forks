@@ -144,13 +144,19 @@ sub wiki_editpage {
 sub wiki_getallpagename {
 	# fetch the pages of the wiki
 	if (defined($_[0])) {
-		$mw->list ( { action => 'query',
+		my $mw_pages = $mw->list ( { action => 'query',
 				list => 'categorymembers',
 				cmtitle => "Category:$_[0]",
 				cmnamespace => 0,
 				cmlimit=> 500 },
-			{ max => 4, hook => \&cat_names } )
+			)
 			|| die $mw->{error}->{code}.": ".$mw->{error}->{details};
+		open(my $file, ">all.txt");
+		foreach my $page (@{$mw_pages}) {
+			print $file "$page->{title}\n";
+		}
+		close ($file);
+
 	} else {
  	my $mw_pages = $mw->list({
 			action => 'query',

@@ -36,7 +36,6 @@ then
 	test_done
 fi
 
-
 # cloning a repository and check that the log message are the expected ones
 # only 1 page with one edition
 test_expect_success 'git clone create the git log expected with one file' '
@@ -80,8 +79,8 @@ test_expect_success 'git clone create the git log expected with multiple files' 
 test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
 	wiki_reset &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
-	test_expect_code 0 ls mw_dir | wc -l | grep 1 &&
-	test_expect_code 0 test -e mw_dir/Main_Page.mw &&
+	test_contains_N_files mw_dir 1 &&
+	test -e mw_dir/Main_Page.mw &&
 	rm -rf mw_dir
 '
 
@@ -92,7 +91,7 @@ test_expect_success 'git clone only create Main_Page.mw with a wiki with no othe
 	wiki_editpage foo "this page must be delete before the clone" false &&
 	wiki_delete_page foo &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
-	test `ls mw_dir | wc -l` -eq 1 &&
+	test_contains_N_files mw_dir 1 &&
 	test -e mw_dir/Main_Page.mw &&
 	test ! -e mw_dir/Foo.mw &&
 	rm -rf mw_dir
@@ -160,7 +159,7 @@ test_expect_success 'git clone works one specific page cloned ' '
 	wiki_editpage namnam "I will be cloned :)" false  -s="this log must stay" &&
 	wiki_editpage nyancat "nyan nyan nyan you cant clone me" false &&
 	git clone -c remote.origin.pages=namnam mediawiki::http://localhost/wiki mw_dir &&
-	test `ls mw_dir | wc -l` -eq 1 &&
+	test_contains_N_files mw_dir 1 &&
 	test -e mw_dir/Namnam.mw &&
 	test ! -e mw_dir/Main_Page.mw &&
 	cd mw_dir &&
@@ -184,7 +183,7 @@ test_expect_success 'git clone works multiple specific page cloned ' '
 	wiki_editpage nyancat "nyan nyan nyan you will not erase me" false &&
 	wiki_delete_page namnam &&
 	git clone -c remote.origin.pages='"'foo bar nyancat namnam'"' mediawiki::http://localhost/wiki mw_dir &&
-	test `ls mw_dir | wc -l` -eq 3 &&
+	test_contains_N_files mw_dir 3 &&
 	test ! -e mw_dir/Namnam.mw &&
 	test -e mw_dir/Foo.mw &&
 	test -e mw_dir/Nyancat.mw &&
@@ -225,7 +224,7 @@ test_expect_success 'git clone works with the shallow option' '
 	wiki_editpage nyan "1st revision, should not be cloned" false &&
 	wiki_editpage nyan "2nd revision, should be cloned" false &&
 	git -c remote.origin.shallow=true clone mediawiki::http://localhost/wiki/ mw_dir &&
-	test `ls mw_dir | wc -l` -eq 4 &&
+	test_contains_N_files mw_dir 4 &&
 	test -e mw_dir/Nyan.mw &&
 	test -e mw_dir/Foo.mw &&
 	test -e mw_dir/Bar.mw &&
@@ -255,7 +254,7 @@ test_expect_success 'git clone works with the shallow option with a delete page'
 	wiki_editpage nyan "2nd revision, should be cloned" false &&
 	wiki_delete_page foo &&
 	git -c remote.origin.shallow=true clone mediawiki::http://localhost/wiki/ mw_dir &&
-	test `ls mw_dir | wc -l` -eq 3 &&
+	test_contains_N_files mw_dir 3 &&
 	test -e mw_dir/Nyan.mw &&
 	test ! -e mw_dir/Foo.mw &&
 	test -e mw_dir/Bar.mw &&
