@@ -3146,6 +3146,16 @@ static int three_way_merge(struct image *image,
 	return status;
 }
 
+/*
+ * When directly falling back to add/add three-way merge, we read from
+ * the current contents of the new_name.  In no cases other than that
+ * this function will be called.
+ */
+static int load_current(struct image *image, struct patch *patch)
+{
+	return -1;
+}
+
 static int try_threeway(struct image *image, struct patch *patch,
 			struct stat *st, struct cache_entry *ce)
 {
@@ -3182,9 +3192,15 @@ static int try_threeway(struct image *image, struct patch *patch,
 	clear_image(&tmp_image);
 
 	/* our_sha1[] is ours */
-	if (load_preimage(&tmp_image, patch, st, ce))
-		return error("cannot read the current contents of '%s'",
-			     patch->old_name);
+	if (patch->is_new) {
+		if (load_current(&tmp_image, patch))
+			return error("cannot read the current contents of '%s'",
+				     patch->new_name);
+	} else {
+		if (load_preimage(&tmp_image, patch, st, ce))
+			return error("cannot read the current contents of '%s'",
+				     patch->old_name);
+	}
 	write_sha1_file(tmp_image.buf, tmp_image.len, blob_type, our_sha1);
 	clear_image(&tmp_image);
 
