@@ -59,17 +59,10 @@ die_with_status () {
 # not look into .git in the process.
 # Warning: the first argument MUST be the directory containing the git data
 test_diff_directories () {
+	rm -rf "$1_tmp"
 	mkdir -p "$1_tmp"
 	cp "$1"/*.mw "$1_tmp"
-
 	diff -r -b "$1_tmp" "$2"
-
-	if test $? -ne 0
-	then
-		rm -rf "$1_tmp"
-		error "test failed: directories $1 and $2 do not match"
-	fi
-	rm -rf "$1_tmp"
 }
 
 # $1=<dir>
@@ -77,12 +70,7 @@ test_diff_directories () {
 #
 # Check that <dir> contains exactly <N> files
 test_contains_N_files () {
-
-	if ! test `ls "$1" | wc -l` -eq "$2";
-	then
-		error "test failed: directories $1 doesn't contains $2 files"
-	fi
-
+	test `ls "$1" | wc -l` -eq "$2";
 }
 
 
