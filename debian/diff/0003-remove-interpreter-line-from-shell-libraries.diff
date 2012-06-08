@@ -1,7 +1,7 @@
-From acecec32c2c2d319c17cd5697083040c7acc84a0 Mon Sep 17 00:00:00 2001
+From d65b91ebbdffcb07ffe17628ca0fce9182ce1dfe Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
-Subject: remove #!interpreter line from shell libraries
+Subject: [PATCH 03/12] remove #!interpreter line from shell libraries
 
 In a shell snippet meant to be sourced by another shell script,
 an initial #!/bin/sh line is just a comment and has no effect on
@@ -83,7 +83,7 @@ index c815a24..5d8d451 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
-index 5812222..ff00b09 100644
+index 2e13258..394c85f 100644
 --- a/git-rebase--interactive.sh
 +++ b/git-rebase--interactive.sh
 @@ -1,11 +1,9 @@
@@ -147,7 +147,7 @@ index 5d8e4e6..51362d6 100644
  # Having this variable in your environment would break scripts because
  # you would cause "cd" to be taken to unexpected places.  If you
 diff --git a/t/test-lib.sh b/t/test-lib.sh
-index b7d7100..3f3512c 100644
+index 9e2b711..62beadd 100644
 --- a/t/test-lib.sh
 +++ b/t/test-lib.sh
 @@ -420,11 +420,9 @@ then
@@ -165,5 +165,5 @@ index b7d7100..3f3512c 100644
  
  		base=$(basename "$1")
 -- 
-1.7.10.rc1
+1.7.10
 

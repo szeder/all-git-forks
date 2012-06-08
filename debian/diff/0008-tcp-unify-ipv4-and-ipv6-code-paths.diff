@@ -1,7 +1,7 @@
-From 31d50e52818a83cb9747df4a995ebdd7df94ab4a Mon Sep 17 00:00:00 2001
+From aea828f4cb26d3ddc4ff49308e8b33c09effc66f Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH 08/12] tcp: unify ipv4 and ipv6 code paths
 
 In order to support old ipv4- and current mixed ipv4/ipv6 systems, git
 code that makes use of DNS facilities currently involves implementing
@@ -95,7 +95,7 @@ Improved-by: Erik Faye-Lund <kusmabite@gmail.com>
  create mode 100644 dns-ipv6.h
 
 diff --git a/Makefile b/Makefile
-index f166579..5b25d94 100644
+index d321ad4..ea44b91 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -1618,6 +1618,11 @@ ifdef NO_TRUSTABLE_FILEMODE
@@ -366,12 +366,12 @@ index 9263e0d..4239daf 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
+-
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
--
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,
@@ -570,5 +570,5 @@ index 9263e0d..4239daf 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.10.rc1
+1.7.10
 
