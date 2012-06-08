@@ -36,6 +36,90 @@ then
 	test_done
 fi
 
+test_expect_failure 'special character at the begining of file name from mw to git' '
+	wiki_reset &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	wiki_editpage {char_1 "expect to be renamed {char_1" false &&
+	wiki_editpage [char_2 "expect to be renamed [char_2" false &&
+	cd mw_dir &&
+	git pull
+	cd .. &&
+	test -f mw_dir/{char_1 &&
+	test -f mw_dir/[char_2
+	rm -rf mw_dir &&
+	rm -rf ref_page
+'
+
+test_expect_success 'test of correct formating for file name from mw to git' '
+	wiki_reset &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	wiki_editpage char{_1 "expect to be renamed char{_1" false &&
+	wiki_editpage char[_2 "expect to be renamed char{_2" false &&
+	cd mw_dir &&
+	git pull
+	cd .. &&
+	test -f mw_dir/Char\{_1.mw &&
+	test -f mw_dir/Char\[_2.mw &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page &&
+	rm -rf mw_dir &&
+	rm -rf ref_page
+'
+
+test_done
+test_expect_failure 'test of correct formating for file name begining with special character' '
+	wiki_reset &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file {char_1" > \{char_1.mw &&
+	echo "my new file [char_2" > \[char_2.mw &&
+	git add . &&
+	git commit -am "commiting some exotic file name..." &&
+	git push &&
+	git pull &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_must_fail test_diff_directories mw_dir ref_page &&
+	rm -rf mw_dir &&
+	rm -rf ref_page
+'
+
+
+test_expect_failure 'capital at the begining of file names' '
+	wiki_reset &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file foo" > foo.mw &&
+	echo "my new file Foo... Finger crossed" > Foo.mw &&
+	git add . &&
+	git commit -am "file foo.mw" &&
+	git pull &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page
+'
+
+
+
+test_expect_success 'test of correct formating for file name from git to mw' '
+	wiki_reset &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file char{_1" > Char\{_1.mw &&
+	echo "my new file char[_2" > Char\[_2.mw &&
+	git add . &&
+	git commit -m "commiting some exotic file name..." &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page &&
+	rm -rf mw_dir &&
+	rm -rf ref_page
+'
+
+
+
+
 # Create a new file foo.mw in a freshly cloned wiki. Commit and push
 # this file and then check that all files of the repository are similar to
 # the wiki pages.
