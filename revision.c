@@ -2031,6 +2031,9 @@ static void simplify_merges(struct rev_info *revs)
 		 * Do not free(list) here yet; the original list
 		 * is used later in this function.
 		 */
+		if (revs->first_parent_only &&
+		    commit->parents && commit->parents->next)
+			commit->parents->next = NULL;
 		commit_list_insert(commit, &yet_to_do);
 	}
 	while (yet_to_do) {
