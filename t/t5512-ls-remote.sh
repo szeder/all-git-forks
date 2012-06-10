@@ -104,7 +104,7 @@ test_expect_success 'use branch.<name>.remote if possible' '
 
 cat >exp <<EOF
 fatal: 'refs*master' does not appear to be a git repository
-fatal: The remote end hung up unexpectedly
+fatal: The remote end hung up
 EOF
 test_expect_success 'confuses pattern as remote when no remote specified' '
 	#
