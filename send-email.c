@@ -926,7 +926,8 @@ void send_message(struct strbuf *message)
 
 		printf("to_rcpts: %d\n", to_rcpts.nr);
 		for (i = 0; i < to_rcpts.nr; ++i) {
-			write_command(&sock, "RCPT TO:<%s>", to_rcpts.items[i].string);
+			write_command(&sock, "RCPT TO:<%s>",
+			    extract_mailbox(to_rcpts.items[i].string));
 			demand_reply_code(&sock, 2);
 		}
 
