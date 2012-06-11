@@ -38,126 +38,7 @@ then
 	test_done
 fi
 
-test_expect_success 'character $ in page name (mw -> git)' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	wiki_editpage file_\$_foo "expect to be called file_$_foo" false &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	test -f mw_dir/File_\$_foo.mw &&
-	wiki_getallpage ref_page &&
-	test_diff_directories mw_dir ref_page
-'
-
-
-test_expect_success 'character $ in file name (git -> mw) ' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	cd mw_dir &&
-	echo "this file is called File_\$_foo.mw" > File_\$_foo.mw &&
-	git add . &&
-	git commit -am "file File_\$_foo.mw" &&
-	git pull &&
-	git push &&
-	cd .. &&
-	wiki_getallpage ref_page &&
-	test_diff_directories mw_dir ref_page
-'
-
-test_expect_failure 'capital at the begining of file names' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	cd mw_dir &&
-	echo "my new file foo" > foo.mw &&
-	echo "my new file Foo... Finger crossed" > Foo.mw &&
-	git add . &&
-	git commit -am "file foo.mw" &&
-	git pull &&
-	git push &&
-	cd .. &&
-	wiki_getallpage ref_page &&
-	test_diff_directories mw_dir ref_page
-'
-
-
-test_expect_failure 'special character at the begining of file name from mw to git' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	wiki_editpage {char_1 "expect to be renamed {char_1" false &&
-	wiki_editpage [char_2 "expect to be renamed [char_2" false &&
-	cd mw_dir &&
-	git pull &&
-	cd .. &&
-	test -f mw_dir/{char_1 &&
-	test -f mw_dir/[char_2
-'
-
-test_expect_success 'test of correct formating for file name from mw to git' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	wiki_editpage char{_1 "expect to be renamed char{_1" false &&
-	wiki_editpage char[_2 "expect to be renamed char{_2" false &&
-	cd mw_dir &&
-	git pull &&
-	cd .. &&
-	test -f mw_dir/Char\{_1.mw &&
-	test -f mw_dir/Char\[_2.mw &&
-	wiki_getallpage ref_page &&
-	test_diff_directories mw_dir ref_page
-'
-
-test_expect_failure 'test of correct formating for file name begining with special character' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	cd mw_dir &&
-	echo "my new file {char_1" > \{char_1.mw &&
-	echo "my new file [char_2" > \[char_2.mw &&
-	git add . &&
-	git commit -am "commiting some exotic file name..." &&
-	git push &&
-	git pull &&
-	cd .. &&
-	wiki_getallpage ref_page &&
-	test -f ref_page/{char_1.mw &&
-	test -f ref_page/[char_2.mw &&
-	test_diff_directories mw_dir ref_page
-'
-
-
-test_expect_success 'test of correct formating for file name from git to mw' '
-	wiki_reset &&
-	cd '"$TRASH_DIR"' &&
-	rm -rf mw_dir &&
-	rm -rf ref_page &&
-	git clone mediawiki::http://localhost/wiki mw_dir &&
-	cd mw_dir &&
-	echo "my new file char{_1" > Char\{_1.mw &&
-	echo "my new file char[_2" > Char\[_2.mw &&
-	git add . &&
-	git commit -m "commiting some exotic file name..." &&
-	git push &&
-	cd .. &&
-	wiki_getallpage ref_page &&
-	test_diff_directories mw_dir ref_page
-'
 # 1
-# Clone a wiki and check that there are no problems with accents in pages
 test_expect_success 'Git clone works for a wiki with accents in page names' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -174,8 +55,6 @@ test_expect_success 'Git clone works for a wiki with accents in page names' '
 '
 
 # 2
-# Create a new page with accents in its name on a cloned wiki
-# Check that git pull works with accents
 test_expect_success 'Git pull works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -195,7 +74,6 @@ test_expect_success 'Git pull works with a wiki with accents' '
 '
 
 # 3
-# Clone only one page and check that there are no problems
 test_expect_success 'Cloning a chosen page works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -209,8 +87,6 @@ test_expect_success 'Cloning a chosen page works with accents' '
 '
 
 # 4
-# Use the shallow option for the clone
-# Check that there are no problems with accents
 test_expect_success 'The shallow option works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -232,7 +108,6 @@ test_expect_success 'The shallow option works with accents' '
 '
 
 # 5
-# Check that having an accent on the first letter does not cause any problem
 test_expect_success 'Cloning works when page name first letter has an accent' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -246,7 +121,6 @@ test_expect_success 'Cloning works when page name first letter has an accent' '
 '
 
 # 6
-# Git push works with accents
 test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -268,7 +142,6 @@ test_expect_success 'Git push works with a wiki with accents' '
 '
 
 # 7
-# Accents and spaces works together
 test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -280,6 +153,131 @@ test_expect_success 'Git push works with a wiki with accents' '
 	test_diff_directories mw_dir ref_page &&
 	rm -rf mw_dir &&
 	rm -rf ref_page
+'
+# 8
+test_expect_success 'character $ in page name (mw -> git)' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	wiki_editpage file_\$_foo "expect to be called file_$_foo" false &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	test -f mw_dir/File_\$_foo.mw &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
+
+# 9
+test_expect_success 'character $ in file name (git -> mw) ' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "this file is called File_\$_foo.mw" > File_\$_foo.mw &&
+	git add . &&
+	git commit -am "file File_\$_foo.mw" &&
+	git pull &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
+# 10
+test_expect_failure 'capital at the begining of file names' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file foo" > foo.mw &&
+	echo "my new file Foo... Finger crossed" > Foo.mw &&
+	git add . &&
+	git commit -am "file foo.mw" &&
+	git pull &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
+
+# 11
+test_expect_failure 'special character at the begining of file name from mw to git' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	wiki_editpage {char_1 "expect to be renamed {char_1" false &&
+	wiki_editpage [char_2 "expect to be renamed [char_2" false &&
+	cd mw_dir &&
+	git pull &&
+	cd .. &&
+	test -f mw_dir/{char_1 &&
+	test -f mw_dir/[char_2
+'
+
+# 12
+test_expect_success 'test of correct formating for file name from mw to git' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	wiki_editpage char{_1 "expect to be renamed char{_1" false &&
+	wiki_editpage char[_2 "expect to be renamed char{_2" false &&
+	cd mw_dir &&
+	git pull &&
+	cd .. &&
+	test -f mw_dir/Char\{_1.mw &&
+	test -f mw_dir/Char\[_2.mw &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
+# 13
+test_expect_failure 'test of correct formating for file name begining with special character' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file {char_1" > \{char_1.mw &&
+	echo "my new file [char_2" > \[char_2.mw &&
+	git add . &&
+	git commit -am "commiting some exotic file name..." &&
+	git push &&
+	git pull &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test -f ref_page/{char_1.mw &&
+	test -f ref_page/[char_2.mw &&
+	test_diff_directories mw_dir ref_page
+'
+
+
+# 14
+test_expect_success 'test of correct formating for file name from git to mw' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "my new file char{_1" > Char\{_1.mw &&
+	echo "my new file char[_2" > Char\[_2.mw &&
+	git add . &&
+	git commit -m "commiting some exotic file name..." &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
 '
 
 test_done
