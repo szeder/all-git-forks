@@ -16,7 +16,7 @@ test_description='Test git-mediawiki with special characters in filenames'
 . ./test-gitmw-lib.sh
 . $TEST_DIRECTORY/test-lib.sh
 
-TRASH_DIR=$CURR_DIR/trash\\\ directory.t9362-git-mediawiki
+TRASH_DIR="$CURR_DIR/trash\ directory.$(basename $0 .sh)"
 
 if ! test_have_prereq PERL
 then
