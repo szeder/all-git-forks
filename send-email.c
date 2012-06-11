@@ -397,18 +397,29 @@ static int git_send_email_config(const char *var, const char *value, void *cb)
 
 static char *extract_mailbox(const char *str)
 {
+	/*
+	 * RFC 2821 says a forward or backward path is maximum 256 characters,
+	 * in the form '"<" [ A-d-l ":" ] Mailbox ">"', leaving us at max 254
+	 * charaters plus null-termination.
+	 */
+	static char buf[255];
 	char *qb = strchr(str, '<'), *qe, *ret;
-	if (!qb)
-		return xstrdup(str);
+	if (!qb) {
+		size_t len = strlen(str);
+		if (len >= sizeof(buf))
+			die("malformed address '%s'", str);
+		strncpy(buf, str, len);
+		buf[len] = '\0';
+		return buf;
+	}
 
 	qe = strchr(qb, '>');
-	if (!qe)
+	if (!qe || qe - qb > sizeof(buf))
 		die("malformed address '%s'", str);
 
-	ret = (char *)xmalloc(qe - qb);
-	strncpy(ret, qb + 1, qe - qb);
-	ret[qe - qb - 1] = '\0';
-	return ret;
+	strncpy(buf, qb + 1, qe - qb - 1);
+	buf[qe - qb - 1] = '\0';
+	return buf;
 }
 
 static void auth_plain(struct smtp_socket *sock, const char *user, const char *pass)
@@ -835,7 +846,6 @@ void send_message(struct strbuf *message)
 		struct smtp_socket sock = { 0 };
 		struct string_list helo_reply = { 0 };
 		int i, use_esmtp;
-		char *mbox;
 
 		if (!smtp_server)
 			die("The required SMTP server is not properly defined.");
@@ -911,9 +921,7 @@ void send_message(struct strbuf *message)
 				die("username specified, but SMTP server does not support the AUTH extension");
 		}
 
-		mbox = extract_mailbox(sender);
-		write_command(&sock, "MAIL FROM:<%s>", mbox);
-		free(mbox);
+		write_command(&sock, "MAIL FROM:<%s>", extract_mailbox(sender));
 		demand_reply_code(&sock, 2);
 
 		printf("to_rcpts: %d\n", to_rcpts.nr);
