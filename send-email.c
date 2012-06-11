@@ -771,13 +771,13 @@ void expand_one_alias(struct string_list *dst, const char *alias)
 	item->util = tmp;
 }
 
-void format_unique_email_list(struct strbuf *sb, ...)
+void unique_email_list(struct string_list *dst, ...)
 {
 	va_list va;
 	struct string_list *list, seen = STRING_LIST_INIT_DUP;
 
-	va_start(va, sb);
-	strbuf_reset(sb);
+	va_start(va, dst);
+	string_list_clear(dst, 0);
 	while((list = va_arg(va, struct string_list *))) {
 		int i;
 		for (i = 0; i < list->nr; ++i) {
@@ -788,17 +788,26 @@ void format_unique_email_list(struct strbuf *sb, ...)
 				    "valid address from: %s\n", entry);
 			if (string_list_has_string(&seen, clean))
 				continue;
-
-			if (!sb->len)
-				strbuf_addstr(sb, entry);
-			else
-				strbuf_addf(sb, ", %s", entry);
+			string_list_insert(dst, entry);
 			string_list_insert(&seen, clean);
 		}
 	}
 	va_end(va);
 
 	string_list_clear(&seen, 0);
+}
+
+void format_email_list(struct strbuf *sb, struct string_list *list)
+{
+	int i;
+	strbuf_reset(sb);
+	for (i = 0; i < list->nr; ++i) {
+		char *entry = list->items[i].string;
+		if (!sb->len)
+			strbuf_addstr(sb, entry);
+		else
+			strbuf_addf(sb, ", %s", entry);
+	}
 }
 
 static time_t now;
@@ -814,7 +823,8 @@ void send_message(struct strbuf *message)
 {
 	int nport = -1;
 	struct strbuf header = STRBUF_INIT;
-	struct strbuf recipients = STRBUF_INIT;
+	struct strbuf temp = STRBUF_INIT;
+	struct string_list recipients = STRING_LIST_INIT_NODUP;
 
 	const char *from;
 	const char *in_reply_to = NULL;
@@ -823,20 +833,23 @@ void send_message(struct strbuf *message)
 	    "Content-Transfer-Encoding: quoted-printable\r\n";
 	const char *date;
 
-	format_unique_email_list(&recipients, &to_rcpts, NULL);
-
-	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
-	now++;
-
 	from = make_sure_quoted(sender);
 	add_header_field(&header, "From", from);
-	add_header_field(&header, "To", recipients.buf);
+
+	unique_email_list(&recipients, &to_rcpts, NULL);
+	format_email_list(&temp, &recipients);
+	add_header_field(&header, "To", temp.buf);
+
 	if (cc_rcpts.nr) {
-		format_unique_email_list(&recipients, &cc_rcpts, NULL);
-		add_header_field(&header, "Cc", recipients.buf);
+		unique_email_list(&recipients, &cc_rcpts, NULL);
+		format_email_list(&temp, &recipients);
+		add_header_field(&header, "Cc", temp.buf);
 	}
 	add_header_field(&header, "Subject", subject);
+
+	date = show_date(now, local_tzoffset(now++), DATE_RFC2822);
 	add_header_field(&header, "Date", date);
+
 /* TODO:
 	strbuf_addf(&header, "Message-Id: %s\r\n", message_id); */
 	add_header_field(&header, "X-Mailer", GIT_XMAILER);
@@ -853,15 +866,25 @@ void send_message(struct strbuf *message)
 
 	fputs(header.buf, stderr);
 
+	/* generate the final list of recipients */
+	unique_email_list(&recipients, &to_rcpts, &cc_rcpts, &bcc_rcpts, NULL);
+
 	if (dry_run)
 		; /* we don't want to send the email. */
 	else if (is_absolute_path(smtp_server)) {
-		const char *argv[] = { smtp_server, "-i", "kusmabite@gmail.com", NULL };
+		int i;
+		struct argv_array argv = ARGV_ARRAY_INIT;
 		struct child_process cld;
 		int status;
 
+		argv_array_pushl(&argv, smtp_server, "-i", NULL);
+		for (i = 0; i < recipients.nr; ++i) {
+			argv_array_push(&argv,
+			    extract_mailbox(recipients.items[i].string));
+		}
+
 		memset(&cld, 0, sizeof(cld));
-		cld.argv = argv;
+		cld.argv = argv.argv;
 		cld.in = -1;
 		if (start_command(&cld))
 			die("unable to fork '%s'", smtp_server);
@@ -955,10 +978,9 @@ void send_message(struct strbuf *message)
 		write_command(&sock, "MAIL FROM:<%s>", extract_mailbox(sender));
 		demand_reply_code(&sock, 2);
 
-		printf("to_rcpts: %d\n", to_rcpts.nr);
-		for (i = 0; i < to_rcpts.nr; ++i) {
+		for (i = 0; i < recipients.nr; ++i) {
 			write_command(&sock, "RCPT TO:<%s>",
-			    extract_mailbox(to_rcpts.items[i].string));
+			    extract_mailbox(recipients.items[i].string));
 			demand_reply_code(&sock, 2);
 		}
 
