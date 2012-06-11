@@ -819,6 +819,35 @@ char *make_sure_quoted(const char *str)
 	    xstrdup(str);
 }
 
+char *make_message_id()
+{
+	static char buf[1000], *du_part;
+	static time_t now;
+	static int serial;
+
+	if (!serial)
+		time(&now);
+
+	du_part = sender ? extract_mailbox(sender) : NULL;
+	if (!du_part || !*du_part) {
+		const char *tmp = git_author_info(IDENT_NO_DATE);
+		du_part = tmp ? extract_mailbox(tmp) : NULL;
+	}
+	if (!du_part || !*du_part) {
+		const char *tmp = git_committer_info(IDENT_NO_DATE);
+		du_part = tmp ? extract_mailbox(tmp) : NULL;
+	}
+	if (!du_part || !*du_part) {
+		static char temp[255];
+		snprintf(temp, sizeof(temp), "user@%s", maildomain());
+		du_part = temp;
+	}
+
+	snprintf(buf, sizeof(buf), "<%d-%d-%d-git-send-email-%s>",
+	    now, getpid(), ++serial, du_part);
+	return buf;
+}
+
 void send_message(struct strbuf *message)
 {
 	int nport = -1;
@@ -850,8 +879,8 @@ void send_message(struct strbuf *message)
 	date = show_date(now, local_tzoffset(now++), DATE_RFC2822);
 	add_header_field(&header, "Date", date);
 
-/* TODO:
-	strbuf_addf(&header, "Message-Id: %s\r\n", message_id); */
+	/* TODO: accept non-generated Message-Id also */
+	strbuf_addf(&header, "Message-Id: %s\r\n", make_message_id());
 	add_header_field(&header, "X-Mailer", GIT_XMAILER);
 
 	if (in_reply_to) {
