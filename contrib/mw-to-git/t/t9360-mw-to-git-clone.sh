@@ -15,7 +15,7 @@ test_description='Test the Git Mediawiki remote helper: git clone'
 . ./test-gitmw-lib.sh
 . $TEST_DIRECTORY/test-lib.sh
 
-TRASH_DIR=$CURR_DIR/trash\\\ directory.t9360-git-mediawiki
+TRASH_DIR="$CURR_DIR/trash\ directory.$(basename $0 .sh)"
 
 
 if ! test_have_prereq PERL
