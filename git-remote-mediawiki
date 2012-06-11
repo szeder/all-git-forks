@@ -267,7 +267,7 @@ sub get_mw_pages {
 			$pages{$page->{title}} = $page;
 		}
 	}
-	return values(%pages);
+	return %pages;
 }
 
 sub run_git {
@@ -300,10 +300,32 @@ sub get_last_local_revision {
 # Remember the timestamp corresponding to a revision id.
 my %basetimestamps;
 
+# Get the last remote revision without taking in account which pages are
+# tracked or not. This function makes a single request to the wiki thus
+# avoid a loop onto all tracked pages. This is useful for the fetch-by-rev
+# option.
+sub get_last_remote_revision_no_config {
+        mw_connect_maybe();
+
+        my $query = {
+                action => 'query',
+                list => 'recentchanges',
+                prop => 'revisions',
+                rclimit => '1',
+                rcdir => 'older',
+        };
+        my $result = $mediawiki->api($query);
+
+        return $result->{query}->{recentchanges}[0]->{revid};
+}
+
+# Get the last remote revision concerning the tracked pages and the tracked
+# categories.
 sub get_last_remote_revision {
 	mw_connect_maybe();
 
-	my @pages = get_mw_pages();
+	my %pageshachage = get_mw_pages();
+        my @pages = values(%pageshachage);
 
 	my $max_rev_num = 0;
 
@@ -553,27 +575,30 @@ sub mw_import_ref {
 
 	mw_connect_maybe();
 
-	print STDERR "Searching revisions...\n";
-	my $last_local = get_last_local_revision();
-	my $fetch_from = $last_local + 1;
-	if ($fetch_from == 1) {
-		print STDERR ", fetching from beginning.\n";
-	} else {
-		print STDERR ", fetching from here.\n";
-	}
-       
-        # TODO Si catégorie ... prendre en compte que celles-ci ...
+        print STDERR "Searching revisions...\n";
+        my $last_local = get_last_local_revision();
+        my $fetch_from = $last_local + 1;
+        if ($fetch_from == 1) {
+                print STDERR ", fetching from beginning.\n";
+        } else {
+                print STDERR ", fetching from here.\n";
+        }
 
+        # TODO Si catégorie ... prendre en compte que celles-ci
+        my %p = get_mw_pages();
+        
 	# Creation of the fast-import stream
 	print STDERR "Fetching & writing export data...\n";
 
 	my $n = 0; # NOTE: modif qqpart
 	my $last_timestamp = 0; # Placeholer in case $rev->timestamp is undefined
 
-        my $last_remote = get_last_remote_revision();
+        my $last_remote = get_last_remote_revision_no_config();
 
         my $total = $last_remote - $fetch_from + 1;
+        # Create a commit for each revision of the wiki
         foreach my $revid( $fetch_from..$last_remote ) {
+
 
                 my $query = {
                         action => 'query',
@@ -586,6 +611,11 @@ sub mw_import_ref {
                 my @keys = keys($result->{query}->{pages});
                 my $idpage = $keys[0];
                 my $rev = $result->{query}->{pages}->{$idpage}->{revisions}[0];
+
+                my $title = $result->{query}->{pages}->{$idpage}->{title};
+                if (!exists( $p{$title} )) {
+                        next;
+                }
 
                 $n++;
 
