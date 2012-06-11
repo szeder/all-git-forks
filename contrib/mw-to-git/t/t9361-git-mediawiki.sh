@@ -36,6 +36,7 @@ then
 	test_done
 fi
 
+
 # Create a new file foo.mw in a freshly cloned wiki. Commit and push
 # this file and then check that all files of the repository are similar to
 # the wiki pages.
