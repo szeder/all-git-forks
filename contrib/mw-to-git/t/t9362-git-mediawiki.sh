@@ -38,6 +38,36 @@ then
 	test_done
 fi
 
+test_expect_success 'character $ in page name (mw -> git)' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	wiki_editpage file_\$_foo "expect to be called file_$_foo" false &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	test -f mw_dir/File_\$_foo.mw &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
+
+test_expect_success 'character $ in file name (git -> mw) ' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	rm -rf ref_page &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	cd mw_dir &&
+	echo "this file is called File_\$_foo.mw" > File_\$_foo.mw &&
+	git add . &&
+	git commit -am "file File_\$_foo.mw" &&
+	git pull &&
+	git push &&
+	cd .. &&
+	wiki_getallpage ref_page &&
+	test_diff_directories mw_dir ref_page
+'
+
 test_expect_failure 'capital at the begining of file names' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -56,6 +86,7 @@ test_expect_failure 'capital at the begining of file names' '
 	test_diff_directories mw_dir ref_page
 '
 
+
 test_expect_failure 'special character at the begining of file name from mw to git' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -65,7 +96,7 @@ test_expect_failure 'special character at the begining of file name from mw to g
 	wiki_editpage {char_1 "expect to be renamed {char_1" false &&
 	wiki_editpage [char_2 "expect to be renamed [char_2" false &&
 	cd mw_dir &&
-	git pull
+	git pull &&
 	cd .. &&
 	test -f mw_dir/{char_1 &&
 	test -f mw_dir/[char_2
@@ -80,7 +111,7 @@ test_expect_success 'test of correct formating for file name from mw to git' '
 	wiki_editpage char{_1 "expect to be renamed char{_1" false &&
 	wiki_editpage char[_2 "expect to be renamed char{_2" false &&
 	cd mw_dir &&
-	git pull
+	git pull &&
 	cd .. &&
 	test -f mw_dir/Char\{_1.mw &&
 	test -f mw_dir/Char\[_2.mw &&
@@ -140,7 +171,7 @@ test_expect_success 'Git clone works for a wiki with accents in page names' '
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page &&
 	test_diff_directories mw_dir ref_page
-'     
+'
 
 # 2
 # Create a new page with accents in its name on a cloned wiki
@@ -149,10 +180,9 @@ test_expect_success 'Git pull works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
-	wiki_editpage kîî "This page must be deleted before clone" false &&
-	wiki_editpage foo "This page must be deleted before clone" false &&
+	rm -rf ref_page &&
+	wiki_editpage kîî "this page must be delete before the clone" false &&
+	wiki_editpage foo "this page must be delete before the clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_editpage éàîôû "This page must be deleted before clone" false &&
 	cd mw_dir &&
@@ -170,9 +200,8 @@ test_expect_success 'Cloning a chosen page works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
-	wiki_editpage kîî "This page must be delete before the clone" false &&
+	rm -rf ref_page &&
+	wiki_editpage kîî "this page must be delete before the clone" false &&
 	git clone -c remote.origin.pages=kîî mediawiki::http://localhost/wiki mw_dir &&
 	wiki_check_content mw_dir/Kîî.mw Kîî &&
 	test -e mw_dir/Kîî.mw &&
@@ -186,12 +215,11 @@ test_expect_success 'The shallow option works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
+	rm -rf ref_page &&
 	wiki_editpage néoà "1st revision, should not be cloned" false &&
 	wiki_editpage néoà "2nd revision, should be cloned" false &&
 	git -c remote.origin.shallow=true clone mediawiki::http://localhost/wiki/ mw_dir &&
-        test_contains_N_files mw_dir 2 &&
+	test_contains_N_files mw_dir 2 &&
 	test -e mw_dir/Néoà.mw &&
 	test -e mw_dir/Main_Page.mw &&
 	cd mw_dir &&
@@ -209,9 +237,8 @@ test_expect_success 'Cloning works when page name first letter has an accent' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
-	wiki_editpage îî "This page must be deleted before clone" false &&
+	rm -rf ref_page &&
+	wiki_editpage îî "this page must be delete before the clone" false &&
 	git clone -c remote.origin.pages=îî mediawiki::http://localhost/wiki mw_dir &&
 	test -e mw_dir/Îî.mw &&
 	wiki_check_content mw_dir/Îî.mw Îî &&
@@ -224,10 +251,9 @@ test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
-	wiki_editpage féé "This page must be délétéd before clone" false &&
-	wiki_editpage foo "This page must be deleted before clone" false &&
+	rm -rf ref_page &&
+	wiki_editpage féé "this page must be délété before the clone" false &&
+	wiki_editpage foo "this page must be delete before the clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	cd mw_dir &&
 	echo "A wild Pîkächû appears on the wiki" > Pîkächû.mw &&
@@ -239,17 +265,16 @@ test_expect_success 'Git push works with a wiki with accents' '
 	test_diff_directories mw_dir ref_page &&
 	rm -rf mw_dir &&
 	rm -rf ref_page
-'     
-     
+'
+
 # 7
 # Accents and spaces works together
 test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
-	rm -rf ref_page
-
-	wiki_editpage "é à î" "This page must be délétéd before clone" false &&
+	rm -rf ref_page &&
+	wiki_editpage é à î "this page must be délété before the clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page &&
 	test_diff_directories mw_dir ref_page &&
@@ -257,4 +282,4 @@ test_expect_success 'Git push works with a wiki with accents' '
 	rm -rf ref_page
 '
 
- test_done
+test_done
