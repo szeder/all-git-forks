@@ -578,7 +578,7 @@ sub get_patch_subject {
 	my $fn = shift;
 	open (my $fh, '<', $fn);
 	while (my $line = <$fh>) {
-		next unless ($line =~ /^Subject: (.*)$/);
+		next unless ($line =~ /^Subject:\s*(.*)$/);
 		close $fh;
 		return "GIT: $1\n";
 	}
@@ -1432,7 +1432,7 @@ sub body_or_subject_has_nonascii {
 		or die "unable to open $fn: $!\n";
 	while (my $line = <$fh>) {
 		last if $line =~ /^$/;
-		return 1 if $line =~ /^Subject.*[^[:ascii:]]/;
+		return 1 if $line =~ /^Subject:.*[^[:ascii:]]/;
 	}
 	while (my $line = <$fh>) {
 		return 1 if $line =~ /[^[:ascii:]]/;
