@@ -771,6 +771,36 @@ void expand_one_alias(struct string_list *dst, const char *alias)
 	item->util = tmp;
 }
 
+void format_unique_email_list(struct strbuf *sb, ...)
+{
+	va_list va;
+	struct string_list *list, seen = STRING_LIST_INIT_DUP;
+
+	va_start(va, sb);
+	strbuf_reset(sb);
+	while((list = va_arg(va, struct string_list *))) {
+		int i;
+		for (i = 0; i < list->nr; ++i) {
+			char *entry = list->items[i].string,
+			    *clean = extract_mailbox(entry);
+			if (!clean)
+				fprintf(stderr, "W: unable to extract a "
+				    "valid address from: %s\n", entry);
+			if (string_list_has_string(&seen, clean))
+				continue;
+
+			if (!sb->len)
+				strbuf_addstr(sb, entry);
+			else
+				strbuf_addf(sb, ", %s", entry);
+			string_list_insert(&seen, clean);
+		}
+	}
+	va_end(va);
+
+	string_list_clear(&seen, 0);
+}
+
 static time_t now;
 static char *subject = NULL;
 
@@ -784,26 +814,27 @@ void send_message(struct strbuf *message)
 {
 	int nport = -1;
 	struct strbuf header = STRBUF_INIT;
+	struct strbuf recipients = STRBUF_INIT;
 
 	const char *from;
-/*	const char *to = "Erik F\xc3\xa6ye-Lund <kusmabite@gmail.com>"; */
-	const char *to = "Erik Faye-Lund <kusmabite@gmail.com>";
-	const char *cc = NULL;
-/*	const char *subject = "Hellos!"; */
 	const char *in_reply_to = NULL;
 	const char *xh =
 	    "Content-Type: text/plain; charset=UTF-8\r\n"
 	    "Content-Transfer-Encoding: quoted-printable\r\n";
 	const char *date;
 
+	format_unique_email_list(&recipients, &to_rcpts, NULL);
+
 	date = show_date(now, local_tzoffset(now), DATE_RFC2822);
 	now++;
 
 	from = make_sure_quoted(sender);
 	add_header_field(&header, "From", from);
-	add_header_field(&header, "To", to);
-	if (cc)
-		add_header_field(&header, "Cc", cc);
+	add_header_field(&header, "To", recipients.buf);
+	if (cc_rcpts.nr) {
+		format_unique_email_list(&recipients, &cc_rcpts, NULL);
+		add_header_field(&header, "Cc", recipients.buf);
+	}
 	add_header_field(&header, "Subject", subject);
 	add_header_field(&header, "Date", date);
 /* TODO:
