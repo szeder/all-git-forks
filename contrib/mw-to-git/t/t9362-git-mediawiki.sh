@@ -38,6 +38,7 @@ then
 	test_done
 fi
 
+
 # 1
 test_expect_success 'Git clone works for a wiki with accents in page names' '
 	wiki_reset &&
@@ -261,8 +262,8 @@ test_expect_failure 'test of correct formating for file name begining with speci
 	test_diff_directories mw_dir ref_page
 '
 
-
 # 14
+
 test_expect_success 'test of correct formating for file name from git to mw' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -280,4 +281,4 @@ test_expect_success 'test of correct formating for file name from git to mw' '
 	test_diff_directories mw_dir ref_page
 '
 
-test_done
+ test_done
