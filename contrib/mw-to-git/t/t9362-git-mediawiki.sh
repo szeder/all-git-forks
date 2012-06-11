@@ -11,7 +11,7 @@
 
 # tests for git-remote-mediawiki
 
-test_description='Test the Git Mediawiki with the accent ( like in french )'
+test_description='Test git-mediawiki with special characters in filenames'
 
 . ./test-gitmw-lib.sh
 . $TEST_DIRECTORY/test-lib.sh
@@ -157,25 +157,26 @@ test_expect_success 'test of correct formating for file name from git to mw' '
 	test_diff_directories mw_dir ref_page
 '
 # 1
-# clone a wiki and check that there are no problems with accents
-test_expect_success 'git clone works with a wiki with accents' '
+# Clone a wiki and check that there are no problems with accents in pages
+test_expect_success 'Git clone works for a wiki with accents in page names' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
 	rm -rf ref_page &&
-	wiki_editpage féé "this page must be délété before the clone" false &&
-	wiki_editpage kèè "this page must be delete before the clone" false &&
-	wiki_editpage hàà "this page must be delete before the clone" false &&
-	wiki_editpage kîî "this page must be delete before the clone" false &&
-	wiki_editpage foo "this page must be delete before the clone" false &&
+	wiki_editpage féé "This page must be délétéd before clone" false &&
+	wiki_editpage kèè "This page must be deleted before clone" false &&
+	wiki_editpage hàà "This page must be deleted before clone" false &&
+	wiki_editpage kîî "This page must be deleted before clone" false &&
+	wiki_editpage foo "This page must be deleted before clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	wiki_getallpage ref_page &&
 	test_diff_directories mw_dir ref_page
 '
+
 # 2
-# create a new page with accents in the name on a cloned wiki
-# check that git pull works with accents
-test_expect_success 'git pull works with a wiki with accents' '
+# Create a new page with accents in its name on a cloned wiki
+# Check that git pull works with accents
+test_expect_success 'Git pull works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -183,7 +184,7 @@ test_expect_success 'git pull works with a wiki with accents' '
 	wiki_editpage kîî "this page must be delete before the clone" false &&
 	wiki_editpage foo "this page must be delete before the clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
-	wiki_editpage éàîôû "this page must be delete before the clone" false &&
+	wiki_editpage éàîôû "This page must be deleted before clone" false &&
 	cd mw_dir &&
 	git pull &&
 	cd .. && 
@@ -194,8 +195,8 @@ test_expect_success 'git pull works with a wiki with accents' '
 '
 
 # 3
-# clone only one page and check that there are no problemes
-test_expect_success 'cloning a chosen page works with accents' '
+# Clone only one page and check that there are no problems
+test_expect_success 'Cloning a chosen page works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -208,9 +209,9 @@ test_expect_success 'cloning a chosen page works with accents' '
 '
 
 # 4
-# use the shallow option in the clone
-# check that there are no problems with the accents
-test_expect_success 'the shallow option works with accents' '
+# Use the shallow option for the clone
+# Check that there are no problems with accents
+test_expect_success 'The shallow option works with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -231,8 +232,8 @@ test_expect_success 'the shallow option works with accents' '
 '
 
 # 5
-# check that the accent as the first letter causes no problemes
-test_expect_success 'cloning a first letter with accent doesnt cause any problemes' '
+# Check that having an accent on the first letter does not cause any problem
+test_expect_success 'Cloning works when page name first letter has an accent' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -245,8 +246,8 @@ test_expect_success 'cloning a first letter with accent doesnt cause any problem
 '
 
 # 6
-# git push works with accents
-test_expect_success 'git push works with a wiki with accents' '
+# Git push works with accents
+test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -255,9 +256,9 @@ test_expect_success 'git push works with a wiki with accents' '
 	wiki_editpage foo "this page must be delete before the clone" false &&
 	git clone mediawiki::http://localhost/wiki mw_dir &&
 	cd mw_dir &&
-	echo "a wild Pîkächû appears on the wiki" > Pîkächû.mw &&
+	echo "A wild Pîkächû appears on the wiki" > Pîkächû.mw &&
 	git add Pîkächû.mw &&
-	git commit -m "a new page appears" &&
+	git commit -m "A new page appears" &&
 	git push &&
 	cd .. &&
 	wiki_getallpage ref_page &&
@@ -267,8 +268,8 @@ test_expect_success 'git push works with a wiki with accents' '
 '
 
 # 7
-# accents and spaces works together
-test_expect_success 'git push works with a wiki with accents' '
+# Accents and spaces works together
+test_expect_success 'Git push works with a wiki with accents' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
