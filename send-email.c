@@ -12,6 +12,7 @@
 #include "exec_cmd.h"
 #include "string-list.h"
 #include "run-command.h"
+#include "argv-array.h"
 
 #ifdef HAVE_UNAME
 #include <sys/utsname.h>
@@ -1079,9 +1080,8 @@ int main(int argc, const char **argv)
 
 	if (rev_list_opts.nr) {
 		int j;
-		char **cld_argv = xmalloc(sizeof(*cld_argv) * (4 +
-		    rev_list_opts.nr));
-		struct child_process cld = { (const char **)cld_argv };
+		struct argv_array argv = ARGV_ARRAY_INIT;
+		struct child_process cld = { NULL };
 		struct strbuf buf = STRBUF_INIT;
 		struct strbuf **lines = NULL;
 
@@ -1096,14 +1096,11 @@ int main(int argc, const char **argv)
 		atexit(cleanup_tmpdir);
 
 		/* prepare argv */
-		cld_argv[0] = "format-patch";
-		cld_argv[1] = "-o";
-		cld_argv[2] = tmpdir;
-
+		argv_array_pushl(&argv, "format-patch", "-o", tmpdir, NULL);
 		for (j = 0; j < rev_list_opts.nr; ++j)
-			cld_argv[3 + j] = rev_list_opts.items[j].string;
-		cld_argv[3 + rev_list_opts.nr] = NULL;
+			argv_array_push(&argv, rev_list_opts.items[j].string);
 
+		cld.argv = argv.argv;
 		cld.git_cmd = 1;
 		cld.out = -1;
 		if (start_command(&cld))
@@ -1117,6 +1114,7 @@ int main(int argc, const char **argv)
 			string_list_append(&files, lines[i]->buf);
 		}
 		finish_command(&cld);
+		argv_array_clear(&argv);
 	}
 
 	/* TODO: validate patch */
