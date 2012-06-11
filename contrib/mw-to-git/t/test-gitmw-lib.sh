@@ -83,7 +83,7 @@ wiki_check_content () {
 	wiki_getpage "$2" wiki_tmp
 
 	#replacement of forbidden character in file name
-	page_name=$(echo "$2" | sed "s/\//%2F/")
+	page_name=$(echo "$2" | sed "s/\//%2F/g")
 
 	diff -b "$1" wiki_tmp/"$page_name".mw
 	if test $? -ne 0
@@ -99,11 +99,15 @@ wiki_check_content () {
 # Check the existence of the page <page_name> on the wiki and exits
 # with error if it is absent from it.
 wiki_page_exist () {
-	wiki_getpage "$1" .
+        mkdir -p wiki_tmp
+	wiki_getpage "$1" wiki_tmp
 
-	if test -f "$1".mw ; then
-		rm "$1".mw
+	page_name=$(echo "$1" | sed "s/\//%2F/g")
+
+	if test -f wiki_tmp/"$page_name".mw ; then
+		rm -rf wiki_tmp
 	else
+	        rm -rf wiki_tmp
 		error "test failed: file $1 not found on wiki"
 	fi
 }

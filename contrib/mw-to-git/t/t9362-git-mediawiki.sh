@@ -281,4 +281,66 @@ test_expect_success 'test of correct formating for file name from git to mw' '
 	test_diff_directories mw_dir ref_page
 '
 
+
+# 15
+test_expect_success 'git clone with /' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	wiki_editpage \/fo\/o "this is not important" false -c=Deleted &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	test -f mw_dir/%2Ffo%2Fo.mw &&
+	wiki_check_content mw_dir/%2Ffo%2Fo.mw \/fo\/o &&
+	rm -rf mw_dir
+'
+
+# 16
+test_expect_success 'git push with /' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	echo "I will be on the wiki" > mw_dir/%2Ffo%2Fo.mw &&
+	cd mw_dir &&
+	git add %2Ffo%2Fo.mw &&
+	git commit -m " %2Ffo%2Fo added" &&
+	git push &&
+	cd .. &&
+	wiki_page_exist \/fo\/o &&
+	wiki_check_content mw_dir/%2Ffo%2Fo.mw \/fo\/o &&
+	rm -rf mw_dir 
+
+'
+
+# 17
+test_expect_success 'git clone with \' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	wiki_editpage \\ko\\o "this is not important" false -c=Deleted &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	test -f mw_dir/\\ko\\o.mw &&
+	wiki_check_content mw_dir/\\ko\\o.mw \\ko\\o &&
+	rm -rf mw_dir
+'
+
+# 18
+test_expect_success 'git push with \' '
+	wiki_reset &&
+	cd '"$TRASH_DIR"' &&
+	rm -rf mw_dir &&
+	git clone mediawiki::http://localhost/wiki mw_dir &&
+	echo "I will be on the wiki" > mw_dir/\\ko\\o.mw &&
+	cd mw_dir &&
+	git add \\ko\\o.mw &&
+	git commit -m " \\ko\\o added" &&
+	git push &&
+	cd .. &&
+	wiki_page_exist \\ko\\o &&
+	wiki_check_content mw_dir/\\ko\\o.mw \\ko\\o &&
+	rm -rf mw_dir
+
+'
+
+
  test_done
