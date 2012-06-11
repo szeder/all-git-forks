@@ -39,8 +39,6 @@ then
 fi
 
 
-# cloning a repository and check that the log message are the expected ones
-# only 1 page with one edition
 test_expect_success 'git clone create the git log expected with one file' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -55,8 +53,6 @@ test_expect_success 'git clone create the git log expected with one file' '
 	rm -rf mw_dir
 '
 
-# cloning a repository and check that the log message are the expected ones
-# with multiple page and multiple editions
 test_expect_success 'git clone create the git log expected with multiple files' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -82,8 +78,7 @@ test_expect_success 'git clone create the git log expected with multiple files' 
 '
 
 
-# clone a empty wiki and check that the repository contains only Main_Page.mw
-test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
+test_expect_success 'git clone only creates Main_Page.mw with an empty wiki' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -93,8 +88,6 @@ test_expect_success 'git clone only create  Main_Page.mw with an empty wiki' '
 	rm -rf mw_dir
 '
 
-# clone a wiki where a page has been added and then deleted
-# check that the page no longer exists
 test_expect_success 'git clone only create Main_Page.mw with a wiki with no other pages ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -108,8 +101,6 @@ test_expect_success 'git clone only create Main_Page.mw with a wiki with no othe
 	rm -rf mw_dir
 '
 
-# clone a wiki with a new page on it
-# check that the file corresponding to the page is in the repository
 test_expect_success 'git clone works with page added' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -126,8 +117,6 @@ test_expect_success 'git clone works with page added' '
 '
 
 
-# clone a wiki after a page has been added then edited once
-# check that content and history are correct
 test_expect_success 'git clone works with an edited page ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -150,7 +139,6 @@ test_expect_success 'git clone works with an edited page ' '
 	diff FooExpect.log Foo.log
 '
 
-# clone a wiki with several pages where some were delete
 test_expect_success 'git clone works with several pages and some deleted ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -174,9 +162,6 @@ test_expect_success 'git clone works with several pages and some deleted ' '
 
 
 
-# clone only one page of the wiki
-# check that it is the only page cloned
-# check that the page and the clone a identical
 test_expect_success 'git clone works one specific page cloned ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -199,9 +184,6 @@ test_expect_success 'git clone works one specific page cloned ' '
 '
 
 
-# clone multiple specific pages of the wiki
-# check that there are the only page cloned
-# check that the pages and the clone a identical
 test_expect_success 'git clone works multiple specific page cloned ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -223,7 +205,6 @@ test_expect_success 'git clone works multiple specific page cloned ' '
 	rm -rf mw_dir
 '  
 
-# Tests that cloning some specific pages from a larger wiki works properly
 test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -245,9 +226,6 @@ test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 '
 
 
-# use git clone with the shallow option
-# check that only the last revisions are cloned
-# i.e the log only contains 1 commit per page
 test_expect_success 'git clone works with the shallow option' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -276,10 +254,6 @@ test_expect_success 'git clone works with the shallow option' '
 	rm -rf mw_dir
 '
 
-# use git clone with the shallow option
-# check that only the last revisions are cloned
-# i.e the log only contains 1 commit per page
-# in this case we have a delete page
 test_expect_success 'git clone works with the shallow option with a delete page' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -307,8 +281,6 @@ test_expect_success 'git clone works with the shallow option with a delete page'
 '
 
 
-# clone a category
-# check that only this category has been cloned
 test_expect_success 'test of fetching a category' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
@@ -324,9 +296,6 @@ test_expect_success 'test of fetching a category' '
 	rm -rf ref_page
 '
 
-# Test of cloning a category on wiki. 
-# This category has been previously edited in some ways
-# like edition of a given page and deletion of another.
 test_expect_success 'test of resistance to modification of category on wiki for clone' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
