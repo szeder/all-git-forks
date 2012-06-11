@@ -1432,7 +1432,7 @@ sub body_or_subject_has_nonascii {
 		or die "unable to open $fn: $!\n";
 	while (my $line = <$fh>) {
 		last if $line =~ /^$/;
-		return 1 if $line =~ /^Subject.*[^[:ascii:]]/;
+		return 1 if $line =~ /^Subject:[^[:ascii:]]/;
 	}
 	while (my $line = <$fh>) {
 		return 1 if $line =~ /[^[:ascii:]]/;
