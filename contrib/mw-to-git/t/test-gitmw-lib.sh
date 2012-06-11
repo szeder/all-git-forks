@@ -26,16 +26,19 @@ DB_INSTALL_SCRIPT="db_install.php"
 WIKI_ADMIN="WikiAdmin"
 WIKI_PASSW="AdminPass"
 
+export CURR_DIR=$(pwd)
+export TEST_DIRECTORY=$CURR_DIR/../../../t
+
 wiki_getpage () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl get_page "$@"
+	$CURR_DIR/test-gitmw.pl get_page "$@"
 }
 
 wiki_delete_page () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl delete_page "$@"
+	$CURR_DIR/test-gitmw.pl delete_page "$@"
 }
 
 wiki_editpage () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl edit_page "$@"
+	$CURR_DIR/test-gitmw.pl edit_page "$@"
 }
 
 die () {
@@ -49,24 +52,25 @@ die_with_status () {
 	exit "$status"
 }
 
-# git_diff_directories <dir_git> <dir_wiki>
+# test_diff_directories <dir_git> <dir_wiki>
 #
 # Compare the contents of directories <dir_git> and <dir_wiki> with diff
-# and dies if they do not match. The program will
+# and errors if they do not match. The program will
 # not look into .git in the process.
 # Warning: the first argument MUST be the directory containing the git data
-git_diff_directories () {
+test_diff_directories () {
+	rm -rf "$1_tmp"
 	mkdir -p "$1_tmp"
 	cp "$1"/*.mw "$1_tmp"
-
 	diff -r -b "$1_tmp" "$2"
+}
 
-	if test $? -ne 0
-	then
-		rm -rf "$1_tmp"
-		die "test failed: directories $1 and $2 do not match"
-	fi
-	rm -rf "$1_tmp"
+# $1=<dir>
+# $2=<N>
+#
+# Check that <dir> contains exactly <N> files
+test_contains_N_files () {
+	test `ls "$1" | wc -l` -eq "$2";
 }
 
 
@@ -77,11 +81,15 @@ git_diff_directories () {
 wiki_check_content () {
 	mkdir -p wiki_tmp
 	wiki_getpage "$2" wiki_tmp
-	diff -b "$1" wiki_tmp/"$2".mw
+
+	#replacement of forbidden character in file name
+	page_name=$(echo "$2" | sed "s/\//%2F/g")
+
+	diff -b "$1" wiki_tmp/"$page_name".mw
 	if test $? -ne 0
 	then
 		rm -rf wiki_tmp
-		die "ERROR: file $2 not found on wiki"
+		error "ERROR: file $2 not found on wiki"
 	fi
 	rm -rf wiki_tmp
 }
@@ -91,12 +99,16 @@ wiki_check_content () {
 # Check the existence of the page <page_name> on the wiki and exits
 # with error if it is absent from it.
 wiki_page_exist () {
-	wiki_getpage "$1" .
+        mkdir -p wiki_tmp
+	wiki_getpage "$1" wiki_tmp
 
-	if test -f "$1".mw ; then
-		rm "$1".mw
+	page_name=$(echo "$1" | sed "s/\//%2F/g")
+
+	if test -f wiki_tmp/"$page_name".mw ; then
+		rm -rf wiki_tmp
 	else
-		die "test failed: file $1 not found on wiki"
+	        rm -rf wiki_tmp
+		error "test failed: file $1 not found on wiki"
 	fi
 }
 
@@ -104,14 +116,14 @@ wiki_page_exist () {
 # 
 # Fetch the name of each page on the wiki.
 wiki_getallpagename () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename
+	$CURR_DIR/test-gitmw.pl getallpagename
 }
 
 # wiki_getallpagecategory <category>
 # 
 # Fetch the name of each page belonging to <category> on the wiki.
 wiki_getallpagecategory () {
-	$GIT_BUILD_DIR/t/test-gitmw.pl getallpagename "$@"
+	$CURR_DIR/test-gitmw.pl getallpagename "$@"
 }
 
 # wiki_getallpage <dest_dir> [<category>]
@@ -147,14 +159,14 @@ create_db () {
                 "$WIKI_ADMIN" "$WIKI_PASSW" "$TMP"
 
         if [ ! -f "$TMP/$DB_FILE" ] ; then
-                die "Can't create database file in TODO. Try to run ./install-wiki.sh delete first."
+                error "Can't create database file in TODO. Try to run ./install-wiki.sh delete first."
         fi
         chmod 666 "$TMP/$DB_FILE"
 
         # Copy the generated database file into the directory the
         # user indicated.
         cp --preserve=mode,ownership "$TMP/$DB_FILE" "$FILES_FOLDER" ||
-                die "Unable to copy $TMP/$DB_FILE to $FILES_FOLDER"
+                error "Unable to copy $TMP/$DB_FILE to $FILES_FOLDER"
 }
 
 # Install a wiki in your web server directory.
@@ -165,7 +177,7 @@ wiki_install () {
         (
         mkdir -p "$WIKI_DIR_INST/$WIKI_DIR_NAME"
         if [ ! -d "$WIKI_DIR_INST/$WIKI_DIR_NAME" ] ; then
-                die "Folder $WIKI_DIR_INST/$WIKI_DIR_NAME doesn't exist.
+                error "Folder $WIKI_DIR_INST/$WIKI_DIR_NAME doesn't exist.
                 Please create it and launch the script again."
         fi
 
@@ -174,7 +186,7 @@ wiki_install () {
         if [ ! -f "$MW_VERSION.tar.gz" ] ; then
                 echo "Downloading $MW_VERSION sources ..."
                 wget "http://download.wikimedia.org/mediawiki/1.19/mediawiki-1.19.0.tar.gz" ||
-                        die "Unable to download "\
+                        error "Unable to download "\
                         "http://download.wikimedia.org/mediawiki/1.19/"\
                         "mediawiki-1.19.0.tar.gz. "\
                         "Please fix your connection and launch the script again."
@@ -186,7 +198,7 @@ wiki_install () {
         # Copy the files of MediaWiki wiki in the web server's directory.
         cd "$MW_VERSION"
         cp -Rf * "$WIKI_DIR_INST/$WIKI_DIR_NAME/" ||
-                die "Unable to copy WikiMedia's files from `pwd` to "\
+                error "Unable to copy WikiMedia's files from `pwd` to "\
                         "$WIKI_DIR_INST/$WIKI_DIR_NAME"
         )
 
@@ -197,13 +209,13 @@ wiki_install () {
         # of this script.
         # Note that LocalSettings.php is never modified.
         if [ ! -f "$FILES_FOLDER/LocalSettings.php" ] ; then
-                die "Can't find $FILES_FOLDER/LocalSettings.php " \
+                error "Can't find $FILES_FOLDER/LocalSettings.php " \
                         "in the current folder. "\
                 "Please run the script inside its folder."
         fi
         cp "$FILES_FOLDER/LocalSettings.php" \
                 "$FILES_FOLDER/LocalSettings-tmp.php" ||
-                die "Unable to copy $FILES_FOLDER/LocalSettings.php " \
+                error "Unable to copy $FILES_FOLDER/LocalSettings.php " \
                 "to $FILES_FOLDER/LocalSettings-tmp.php"
 
         # Parse and set the LocalSettings file of the user according to the
@@ -221,7 +233,7 @@ wiki_install () {
 
         mv "$FILES_FOLDER/LocalSettings-tmp.php" \
                 "$WIKI_DIR_INST/$WIKI_DIR_NAME/LocalSettings.php" ||
-                die "Unable to move $FILES_FOLDER/LocalSettings-tmp.php" \
+                error "Unable to move $FILES_FOLDER/LocalSettings-tmp.php" \
                 "in $WIKI_DIR_INST/$WIKI_DIR_NAME"
         echo "File $FILES_FOLDER/LocalSettings.php is set in" \
                 " $WIKI_DIR_INST/$WIKI_DIR_NAME"
@@ -238,10 +250,10 @@ wiki_install () {
 wiki_reset () {
         # Copy initial database of the wiki
         if [ ! -f "../$FILES_FOLDER/$DB_FILE" ] ; then
-                die "Can't find ../$FILES_FOLDER/$DB_FILE in the current folder."
+                error "Can't find ../$FILES_FOLDER/$DB_FILE in the current folder."
         fi
         cp "../$FILES_FOLDER/$DB_FILE" "$TMP" ||
-                die "Can't copy ../$FILES_FOLDER/$DB_FILE in $TMP"
+                error "Can't copy ../$FILES_FOLDER/$DB_FILE in $TMP"
         echo "File $FILES_FOLDER/$DB_FILE is set in $TMP"
 }
 
@@ -250,10 +262,10 @@ wiki_reset () {
 wiki_delete () {
 	# Delete the wiki's directory.
 	rm -rf "$WIKI_DIR_INST/$WIKI_DIR_NAME" ||
-		die "Wiki's directory $WIKI_DIR_INST/" \
+		error "Wiki's directory $WIKI_DIR_INST/" \
 		"$WIKI_DIR_NAME could not be deleted"
 
 	# Delete the wiki's SQLite database
-	rm -f "$TMP/$DB_FILE" || die "Database $TMP/$DB_FILE could not be deleted."
+	rm -f "$TMP/$DB_FILE" || error "Database $TMP/$DB_FILE could not be deleted."
 }
 
