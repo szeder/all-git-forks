@@ -94,7 +94,6 @@ sub wiki_getpage {
 	open(my $file, ">$destdir/$pagename.mw");
 	print $file "$content";
 	close ($file);
-
 }
 
 # wiki_delete_page <page_name>

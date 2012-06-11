@@ -81,7 +81,11 @@ test_contains_N_files () {
 wiki_check_content () {
 	mkdir -p wiki_tmp
 	wiki_getpage "$2" wiki_tmp
-	diff -b "$1" wiki_tmp/"$2".mw
+
+	#replacement of forbidden character in file name
+	page_name=$(echo "$2" | sed "s/\//%2F/")
+
+	diff -b "$1" wiki_tmp/"$page_name".mw
 	if test $? -ne 0
 	then
 		rm -rf wiki_tmp
