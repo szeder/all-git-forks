@@ -89,7 +89,7 @@ $shallow_import = ($shallow_import eq "true");
 # Fetch (clone and pull) by revisions instead of by pages. This behavior
 # is more efficient when we have a wiki with lots of pages and we fetch
 # the revisions quite often so that they concern only few pages.
-my $fetch_by_rev = run_git("config --get --bool remote.". $remotename .".fetch_by_rev");
+my $fetch_by_rev = run_git("config --get --bool remote.". $remotename .".fetchByRev");
 chomp($fetch_by_rev);
 $fetch_by_rev = ($fetch_by_rev eq "true");
 
@@ -718,10 +718,10 @@ sub mw_import_ref {
         my $n = 0;
         if(defined($fetch_by_rev) && $fetch_by_rev) {
                 print STDERR "Fetching & writing export data by revisions...\n";
-                $n = mw_import_ref_by_pages $fetch_from;
+                $n = mw_import_ref_by_revs $fetch_from;
         } else {
                 print STDERR "Fetching & writing export data by pages...\n";
-                $n = mw_import_ref_by_revs $fetch_from;
+                $n = mw_import_ref_by_pages $fetch_from;
         }
 
         if ($fetch_from == 1 && $n == 0) {
