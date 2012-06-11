@@ -39,7 +39,8 @@ then
 fi
 
 
-test_expect_success 'git clone create the git log expected with one file' '
+# 1
+test_expect_success 'Git clone creates the git log expected with one file' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -53,7 +54,8 @@ test_expect_success 'git clone create the git log expected with one file' '
 	rm -rf mw_dir
 '
 
-test_expect_success 'git clone create the git log expected with multiple files' '
+# 2
+test_expect_success 'Git clone creates the git log expected with multiple files' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -77,8 +79,8 @@ test_expect_success 'git clone create the git log expected with multiple files' 
 	rm -rf mw_dir
 '
 
-
-test_expect_success 'git clone only creates Main_Page.mw with an empty wiki' '
+# 3
+test_expect_success 'Git clone creates only Main_Page.mw with an empty wiki' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -88,7 +90,8 @@ test_expect_success 'git clone only creates Main_Page.mw with an empty wiki' '
 	rm -rf mw_dir
 '
 
-test_expect_success 'git clone only create Main_Page.mw with a wiki with no other pages ' '
+# 4
+test_expect_success 'Git clone does not fetch a deleted page' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -101,7 +104,8 @@ test_expect_success 'git clone only create Main_Page.mw with a wiki with no othe
 	rm -rf mw_dir
 '
 
-test_expect_success 'git clone works with page added' '
+# 5
+test_expect_success 'Git clone works with page added' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -116,8 +120,8 @@ test_expect_success 'git clone works with page added' '
 	wiki_delete_page bar
 '
 
-
-test_expect_success 'git clone works with an edited page ' '
+# 6
+test_expect_success 'Git clone works with an edited page ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -139,7 +143,8 @@ test_expect_success 'git clone works with an edited page ' '
 	diff FooExpect.log Foo.log
 '
 
-test_expect_success 'git clone works with several pages and some deleted ' '
+# 7
+test_expect_success 'Git clone works with several pages and some deleted ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -159,10 +164,8 @@ test_expect_success 'git clone works with several pages and some deleted ' '
 	rm -rf mw_dir
 '
 
-
-
-
-test_expect_success 'git clone works one specific page cloned ' '
+# 8
+test_expect_success 'Git clone works with one specific page cloned ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -183,8 +186,8 @@ test_expect_success 'git clone works one specific page cloned ' '
 	rm -rf mw_dir
 '
 
-
-test_expect_success 'git clone works multiple specific page cloned ' '
+# 9
+test_expect_success 'Git clone works with multiple specific page cloned ' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -205,7 +208,8 @@ test_expect_success 'git clone works multiple specific page cloned ' '
 	rm -rf mw_dir
 '  
 
-test_expect_success 'mediawiki-clone of several specific pages on wiki' '
+# 10
+test_expect_success 'Mediawiki-clone of several specific pages on wiki' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -225,8 +229,8 @@ test_expect_success 'mediawiki-clone of several specific pages on wiki' '
 	rm -rf ref_page
 '
 
-
-test_expect_success 'git clone works with the shallow option' '
+# 11
+test_expect_success 'Git clone works with the shallow option' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir_s_page &&
@@ -254,7 +258,8 @@ test_expect_success 'git clone works with the shallow option' '
 	rm -rf mw_dir
 '
 
-test_expect_success 'git clone works with the shallow option with a delete page' '
+# 12
+test_expect_success 'Git clone works with the shallow option with a delete page' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -280,8 +285,8 @@ test_expect_success 'git clone works with the shallow option with a delete page'
 	rm -rf mw_dir
 '
 
-
-test_expect_success 'test of fetching a category' '
+# 13
+test_expect_success 'Test of fetching a category' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -296,7 +301,8 @@ test_expect_success 'test of fetching a category' '
 	rm -rf ref_page
 '
 
-test_expect_success 'test of resistance to modification of category on wiki for clone' '
+# 14
+test_expect_success 'Test of resistance to modification of category on wiki for clone' '
 	wiki_reset &&
 	cd '"$TRASH_DIR"' &&
 	rm -rf mw_dir &&
@@ -304,8 +310,8 @@ test_expect_success 'test of resistance to modification of category on wiki for 
 	wiki_editpage Tobedeleted "this page will be deleted" false -c=Catone &&
 	wiki_editpage Tobeedited "this page will be modified" false -c=Catone &&
 	wiki_editpage Normalone "this page wont be modified and will be on git" false -c=Catone &&
-	wiki_editpage Notconsidered "this page will not appears on local" false &&
-	wiki_editpage Othercategory "this page will not appears on local" false -c=Cattwo &&
+	wiki_editpage Notconsidered "this page will not appear on local" false &&
+	wiki_editpage Othercategory "this page will not appear on local" false -c=Cattwo &&
 	wiki_editpage Tobeedited "this page have been modified" true -c=Catone &&
 	wiki_delete_page Tobedeleted
 	git clone -c remote.origin.categories="Catone" mediawiki::http://localhost/wiki mw_dir &&
