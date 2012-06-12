@@ -286,7 +286,7 @@ create_db () {
         echo "Generating the SQLite database file. It can take some time ..."
         # Run the php script to generate the SQLite database file
         # with cURL calls.
-        php "$FILES_FOLDER/$DB_INSTALL_SCRIPT" $(basename "$DB_FILE" .sqlite) \
+	php "$FILES_FOLDER/$DB_INSTALL_SCRIPT" $(basename "$DB_FILE" .sqlite) \
                 "$WIKI_ADMIN" "$WIKI_PASSW" "$TMP" "$PORT"
 
         if [ ! -f "$TMP/$DB_FILE" ] ; then

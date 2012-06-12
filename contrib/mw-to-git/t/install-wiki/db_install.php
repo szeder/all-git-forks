@@ -18,10 +18,11 @@ $argv = $_SERVER['argv'];
 $login = $argv[2];
 $pass = $argv[3];
 $tmp = $argv[4];
+$port = $argv[5];
 
+$url = 'http://localhost:'.$port.'/wiki/mw-config/index.php';
 $db_dir = urlencode($tmp);
 $tmp_cookie = tempnam($tmp,"COOKIE_");
-
 /*
  * Fetchs a page with cURL.
  */
@@ -31,15 +32,14 @@ function get ($page_name = "") {
         if ($page_name != "") {
                 $page_name_add = '?page='.$page_name;
         }
-        $url = 'http://localhost/wiki/mw-config/index.php'.$page_name_add;
+	$url = $GLOBALS['url'].$page_name_add;
         $tmp_cookie=$GLOBALS['tmp_cookie'];
         curl_setopt($curl, CURLOPT_COOKIEJAR, $tmp_cookie);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($curl, CURLOPT_COOKIEFILE, $tmp_cookie);
         curl_setopt($curl, CURLOPT_HEADER, true);
-        curl_setopt($curl, CURLOPT_URL,
-                'http://localhost/wiki/mw-config/index.php'.$page_name_add);
+        curl_setopt($curl, CURLOPT_URL,$url);
 
         $page = curl_exec($curl);
         curl_close($curl);
@@ -55,7 +55,7 @@ function submit($page_name, $option = "") {
         if ($option != "") {
                 $datapost = $option.'&'.$datapost;
         }
-        $url = 'http://localhost/wiki/mw-config/index.php?page='.$page_name;
+	$url = $GLOBALS['url'].'?page='.$page_name;
         $tmp_cookie = $GLOBALS['tmp_cookie'];
         curl_setopt($curl, CURLOPT_URL, $url);
         curl_setopt($curl, CURLOPT_POST, true);

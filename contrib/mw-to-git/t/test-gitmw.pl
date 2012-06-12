@@ -32,7 +32,7 @@ use constant SLASH_REPLACEMENT => "%2F";
 
 #Parsing of the config file
 
-my $configfile = "test.config";
+my $configfile = "$ENV{'CURR_DIR'}/test.config";
 my %config;
 open (CONFIG,"< $configfile") || die "can't open $configfile: $!";
 while (<CONFIG>)
@@ -48,9 +48,10 @@ while (<CONFIG>)
 	last if ($key eq 'PORT');
 }
 
-my $wiki_url="$config{'SERVER_ADDR'}".":"."$config{'PORT'}";
-my $wiki_admin="$config{'WIKI_ADMIN'}";
-my $wiki_admin_pass="$config{'WIKI_PASSW'}";
+my $wiki_address = "http://$config{'SERVER_ADDR'}".":"."$config{'PORT'}";
+my $wiki_url = "$wiki_address/$config{'WIKI_DIR_NAME'}/api.php";
+my $wiki_admin = "$config{'WIKI_ADMIN'}";
+my $wiki_admin_pass = "$config{'WIKI_PASSW'}";
 my $mw = MediaWiki::API->new;
 $mw->{config}->{api_url} = $wiki_url;
 
