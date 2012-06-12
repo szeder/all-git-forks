@@ -15,20 +15,21 @@ fi
 
 . "$WIKI_TEST_DIR"/test-gitmw-lib.sh
 usage () {
-        echo "Usage: "
-        echo "  ./install-wiki.sh <install|delete|--help|-h>"
-        echo "          install: Install a wiki on your computer."
-        echo "          delete: Delete the wiki and all its pages and      content"
+	echo "Usage: "
+	echo "	./install-wiki.sh <install | delete | help>"
+	echo "		install | -i :	Install a wiki on your computer."
+	echo "		delete | -d : Delete the wiki and all its pages and "
+	echo "			content."
 }
 
 
 # Argument: install, delete, --help | -h
 case "$1" in
-	"install")
+	"install" | "-i")
 		wiki_install
 		exit 0
 		;;
-	"delete")
+	"delete" | "-d")
 		wiki_delete
 		exit 0
 		;;

@@ -30,10 +30,27 @@ use DateTime::Format::ISO8601;
 use open ':encoding(utf8)';
 use constant SLASH_REPLACEMENT => "%2F";
 
-# URL of the wiki used for the tests
-my $wiki_url="http://localhost/wiki/api.php";
-my $wiki_admin='WikiAdmin';
-my $wiki_admin_pass='AdminPass';
+#Parsing of the config file
+
+my $configfile = "test.config";
+my %config;
+open (CONFIG,"< $configfile") || die "can't open $configfile: $!";
+while (<CONFIG>)
+{
+        chomp;
+        s/#.*//;
+        s/^\s+//;
+        s/\s+$//;
+        next unless length;
+        my ($key, $value) = split (/\s*=\s*/,$_, 2);
+        $config{$key} = $value;
+	last if ($key eq 'LIGHTTPD' and $value eq 'false');
+	last if ($key eq 'PORT');
+}
+
+my $wiki_url="$config{'SERVER_ADDR'}".":"."$config{'PORT'}";
+my $wiki_admin="$config{'WIKI_ADMIN'}";
+my $wiki_admin_pass="$config{'WIKI_PASSW'}";
 my $mw = MediaWiki::API->new;
 $mw->{config}->{api_url} = $wiki_url;
 

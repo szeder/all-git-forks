@@ -10,24 +10,17 @@
 # CONFIGURATION VARIABLES
 # You might want to change these ones
 #
-WIKI_DIR_NAME="wiki"            # Name of the wiki's directory
-WIKI_DIR_INST="/var/www"        # Directory of the web server
-TMP="/tmp"                      # Temporary directory for downloads
-                                # Absolute path required!
-SERVER_ADDR="localhost"         # Web server's address
 
-# CONFIGURATION
-# You should not change these ones unless you know what you do
-#
-MW_VERSION="mediawiki-1.19.0"
-DB_FILE="wikidb.sqlite"
-FILES_FOLDER="install-wiki"
-DB_INSTALL_SCRIPT="db_install.php"
-WIKI_ADMIN="WikiAdmin"
-WIKI_PASSW="AdminPass"
+. ./test.config
 
-CURR_DIR=$(pwd)
-export TEST_DIRECTORY=$(pwd)/../../../t
+export CURR_DIR=$(pwd)
+export TEST_DIRECTORY=$CURR_DIR/../../../t
+
+if test $LIGHTTPD = "false" ; then
+	PORT=80
+else
+	WIKI_DIR_INST="$CURR_DIR/$WEB_WWW"
+fi
 
 wiki_getpage () {
 	$CURR_DIR/test-gitmw.pl get_page "$@"
@@ -164,6 +157,125 @@ wiki_getallpage () {
 	done < all.txt
 }
 
+# config_lighttpd
+#
+# Create the configuration files and the folders necessary to start lighttpd.
+# Overwrite any existing file.
+config_lighttpd() {
+        mkdir -p $WEB
+        mkdir -p $WEB_TMP
+        mkdir -p $WEB_WWW
+        cat > $WEB/lighttpd.conf <<EOF
+        server.document-root = "$CURR_DIR/$WEB_WWW"
+        server.port = $PORT
+        server.pid-file = "$CURR_DIR/$WEB_TMP/pid"
+
+        server.modules = (
+        "mod_rewrite",
+        "mod_redirect",
+        "mod_access",
+        "mod_accesslog",
+        "mod_fastcgi"
+        )
+
+        index-file.names = ("index.php" , "index.html")
+
+        mimetype.assign             = (
+        ".pdf"          =>      "application/pdf",
+        ".sig"          =>      "application/pgp-signature",
+        ".spl"          =>      "application/futuresplash",
+        ".class"        =>      "application/octet-stream",
+        ".ps"           =>      "application/postscript",
+        ".torrent"      =>      "application/x-bittorrent",
+        ".dvi"          =>      "application/x-dvi",
+        ".gz"           =>      "application/x-gzip",
+        ".pac"          =>      "application/x-ns-proxy-autoconfig",
+        ".swf"          =>      "application/x-shockwave-flash",
+        ".tar.gz"       =>      "application/x-tgz",
+        ".tgz"          =>      "application/x-tgz",
+        ".tar"          =>      "application/x-tar",
+        ".zip"          =>      "application/zip",
+        ".mp3"          =>      "audio/mpeg",
+        ".m3u"          =>      "audio/x-mpegurl",
+        ".wma"          =>      "audio/x-ms-wma",
+        ".wax"          =>      "audio/x-ms-wax",
+        ".ogg"          =>      "application/ogg",
+        ".wav"          =>      "audio/x-wav",
+        ".gif"          =>      "image/gif",
+        ".jpg"          =>      "image/jpeg",
+        ".jpeg"         =>      "image/jpeg",
+        ".png"          =>      "image/png",
+        ".xbm"          =>      "image/x-xbitmap",
+        ".xpm"          =>      "image/x-xpixmap",
+        ".xwd"          =>      "image/x-xwindowdump",
+        ".css"          =>      "text/css",
+        ".html"         =>      "text/html",
+        ".htm"          =>      "text/html",
+        ".js"           =>      "text/javascript",
+        ".asc"          =>      "text/plain",
+        ".c"            =>      "text/plain",
+        ".cpp"          =>      "text/plain",
+        ".log"          =>      "text/plain",
+        ".conf"         =>      "text/plain",
+        ".text"         =>      "text/plain",
+        ".txt"          =>      "text/plain",
+        ".dtd"          =>      "text/xml",
+        ".xml"          =>      "text/xml",
+        ".mpeg"         =>      "video/mpeg",
+        ".mpg"          =>      "video/mpeg",
+        ".mov"          =>      "video/quicktime",
+        ".qt"           =>      "video/quicktime",
+        ".avi"          =>      "video/x-msvideo",
+        ".asf"          =>      "video/x-ms-asf",
+        ".asx"          =>      "video/x-ms-asf",
+        ".wmv"          =>      "video/x-ms-wmv",
+        ".bz2"          =>      "application/x-bzip",
+        ".tbz"          =>      "application/x-bzip-compressed-tar",
+        ".tar.bz2"      =>      "application/x-bzip-compressed-tar",
+        ""              =>      "text/plain"
+        )
+
+        fastcgi.server = ( ".php" =>
+        ("localhost" => 
+        ( "socket" => "$CURR_DIR/$WEB_TMP/php.socket",
+        "bin-path" => "$PHP_DIR/php-cgi -c $CURR_DIR/$WEB/php.ini"
+
+        )
+        )
+        )
+EOF
+
+        cat > $WEB/php.ini <<EOF
+        session.save_path ='$CURR_DIR/$WEB_TMP'
+EOF
+}
+
+# start_lighttpd
+#
+# Start or restart daemon lighttpd. If restart, rewrite configuration files.
+start_lighttpd() {
+        if test -f "$WEB_TMP/pid"; then
+                echo "Instance already running. Restarting..."
+                stop_lighttpd
+        fi
+        config_lighttpd
+        $LIGHTTPD_DIR/lighttpd -f $WEB/lighttpd.conf
+
+        if test $? -ne 0 ; then
+                echo "Could not execute http deamon lighttpd"
+                exit 1
+        fi
+}
+
+# stop_lighttpd
+#
+# Kill daemon lighttpd and removes files and folders associated.
+stop_lighttpd () {
+
+        test -f "$WEB_TMP/pid" && kill $(cat "$WEB_TMP/pid")
+        rm -rf $WEB
+}
+
 # Create the SQLite database of the MediaWiki. If the database file already
 # exists, it will be deleted.
 # This script should be runned from the directory where $FILES_FOLDER is
@@ -175,7 +287,7 @@ create_db () {
         # Run the php script to generate the SQLite database file
         # with cURL calls.
         php "$FILES_FOLDER/$DB_INSTALL_SCRIPT" $(basename "$DB_FILE" .sqlite) \
-                "$WIKI_ADMIN" "$WIKI_PASSW" "$TMP"
+                "$WIKI_ADMIN" "$WIKI_PASSW" "$TMP" "$PORT"
 
         if [ ! -f "$TMP/$DB_FILE" ] ; then
                 error "Can't create database file in TODO. Try to run ./install-wiki.sh delete first."
@@ -190,7 +302,11 @@ create_db () {
 
 # Install a wiki in your web server directory.
 wiki_install () {
+        if test $LIGHTTPD = "true" ; then
+                start_lighttpd
+        fi
 
+        SERVER_ADDR=$SERVER_ADDR:$PORT
         # In this part, we change directory to $TMP in order to download,
         # unpack and copy the files of MediaWiki
         (
@@ -279,10 +395,16 @@ wiki_reset () {
 # Delete the wiki created in the web server's directory and all its content
 # saved in the database.
 wiki_delete () {
-	# Delete the wiki's directory.
-	rm -rf "$WIKI_DIR_INST/$WIKI_DIR_NAME" ||
-		error "Wiki's directory $WIKI_DIR_INST/" \
-		"$WIKI_DIR_NAME could not be deleted"
+        if test $LIGHTTPD = "true"; then
+                stop_lighttpd
+        else
+                # Delete the wiki's directory.
+                rm -rf "$WIKI_DIR_INST/$WIKI_DIR_NAME" ||
+                        error "Wiki's directory $WIKI_DIR_INST/" \
+                        "$WIKI_DIR_NAME could not be deleted"
+                # Delete the wiki's SQLite database.
+                rm -f "$TMP/$DB_FILE" || error "Database $TMP/$DB_FILE could not be deleted."
+        fi
 
 	# Delete the wiki's SQLite database
 	rm -f "$TMP/$DB_FILE" || error "Database $TMP/$DB_FILE could not be deleted."
