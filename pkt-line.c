@@ -141,7 +141,7 @@ static void safe_read(int fd, void *buffer, unsigned size)
 	if (ret < 0)
 		die_errno("read error");
 	else if (ret < size)
-		die("The remote end hung up unexpectedly");
+		die("The remote end hung up");
 }
 
 static int packet_length(const char *linelen)
