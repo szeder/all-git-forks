@@ -47,6 +47,13 @@ test_expect_success setup '
 	echo vvv >t/v &&
 	mkdir t/a &&
 	echo vvv >t/a/v &&
+	{
+		echo "line without leading space1"
+		echo " line with leading space1"
+		echo " line with leading space2"
+		echo " line with leading space3"
+		echo "line without leading space2"
+	} >space &&
 	git add . &&
 	test_tick &&
 	git commit -m initial
@@ -246,6 +253,28 @@ do
 done
 
 cat >expected <<EOF
+file
+EOF
+test_expect_success 'grep -l -C' '
+	git grep -l -C1 foo >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+file:5
+EOF
+test_expect_success 'grep -l -C' '
+	git grep -c -C1 foo >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'grep -L -C' '
+	git ls-files >expected &&
+	git grep -L -C1 nonexistent_string >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
 file:foo mmap bar_mmap
 EOF
 
@@ -319,6 +348,11 @@ EOF
 
 test_expect_success 'grep -f, multiple patterns' '
 	git grep -f patterns >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'grep, multiple patterns' '
+	git grep "$(cat patterns)" >actual &&
 	test_cmp expected actual
 '
 
@@ -868,6 +902,22 @@ test_expect_success 'mimic ack-grep --group' '
 	git grep --break --heading -n --color \
 		-e char -e lo_w hello.c hello_world |
 	test_decode_color >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+space: line with leading space1
+space: line with leading space2
+space: line with leading space3
+EOF
+
+test_expect_success LIBPCRE 'grep -E "^ "' '
+	git grep -E "^ " space >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success LIBPCRE 'grep -P "^ "' '
+	git grep -P "^ " space >actual &&
 	test_cmp expected actual
 '
 

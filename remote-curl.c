@@ -290,6 +290,7 @@ static void output_refs(struct ref *refs)
 struct rpc_state {
 	const char *service_name;
 	const char **argv;
+	struct strbuf *stdin_preamble;
 	char *service_url;
 	char *hdr_content_type;
 	char *hdr_accept;
@@ -535,6 +536,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 {
 	const char *svc = rpc->service_name;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf *preamble = rpc->stdin_preamble;
 	struct child_process client;
 	int err = 0;
 
@@ -545,6 +547,8 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	client.argv = rpc->argv;
 	if (start_command(&client))
 		exit(1);
+	if (preamble)
+		write_or_die(client.in, preamble->buf, preamble->len);
 	if (heads)
 		write_or_die(client.in, heads->buf, heads->len);
 
@@ -626,13 +630,14 @@ static int fetch_git(struct discovery *heads,
 	int nr_heads, struct ref **to_fetch)
 {
 	struct rpc_state rpc;
+	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
-	const char **argv;
 	int argc = 0, i, err;
+	const char *argv[15];
 
-	argv = xmalloc((15 + nr_heads) * sizeof(char*));
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
+	argv[argc++] = "--stdin";
 	argv[argc++] = "--lock-pack";
 	if (options.followtags)
 		argv[argc++] = "--include-tag";
@@ -651,24 +656,27 @@ static int fetch_git(struct discovery *heads,
 		argv[argc++] = depth_arg;
 	}
 	argv[argc++] = url;
+	argv[argc++] = NULL;
+
 	for (i = 0; i < nr_heads; i++) {
 		struct ref *ref = to_fetch[i];
 		if (!ref->name || !*ref->name)
 			die("cannot fetch by sha1 over smart http");
-		argv[argc++] = ref->name;
+		packet_buf_write(&preamble, "%s\n", ref->name);
 	}
-	argv[argc++] = NULL;
+	packet_buf_flush(&preamble);
 
 	memset(&rpc, 0, sizeof(rpc));
 	rpc.service_name = "git-upload-pack",
 	rpc.argv = argv;
+	rpc.stdin_preamble = &preamble;
 	rpc.gzip_request = 1;
 
 	err = rpc_service(&rpc, heads);
 	if (rpc.result.len)
 		safe_write(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
-	free(argv);
+	strbuf_release(&preamble);
 	free(depth_arg);
 	return err;
 }
@@ -770,8 +778,11 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 		argv[argc++] = "--thin";
 	if (options.dry_run)
 		argv[argc++] = "--dry-run";
-	if (options.verbosity > 1)
+	if (options.verbosity == 0)
+		argv[argc++] = "--quiet";
+	else if (options.verbosity > 1)
 		argv[argc++] = "--verbose";
+	argv[argc++] = options.progress ? "--progress" : "--no-progress";
 	argv[argc++] = url;
 	for (i = 0; i < nr_spec; i++)
 		argv[argc++] = specs[i];
@@ -805,7 +816,7 @@ static int push(int nr_spec, char **specs)
 static void parse_push(struct strbuf *buf)
 {
 	char **specs = NULL;
-	int alloc_spec = 0, nr_spec = 0, i;
+	int alloc_spec = 0, nr_spec = 0, i, ret;
 
 	do {
 		if (!prefixcmp(buf->buf, "push ")) {
@@ -822,11 +833,12 @@ static void parse_push(struct strbuf *buf)
 			break;
 	} while (1);
 
-	if (push(nr_spec, specs))
-		exit(128); /* error already reported */
-
+	ret = push(nr_spec, specs);
 	printf("\n");
 	fflush(stdout);
+
+	if (ret)
+		exit(128); /* error already reported */
 
  free_specs:
 	for (i = 0; i < nr_spec; i++)

@@ -8,28 +8,27 @@ test_expect_success 'setup helper scripts' '
 	cat >dump <<-\EOF &&
 	whoami=`echo $0 | sed s/.*git-credential-//`
 	echo >&2 "$whoami: $*"
-	while IFS== read key value; do
+	OIFS=$IFS
+	IFS==
+	while read key value; do
 		echo >&2 "$whoami: $key=$value"
 		eval "$key=$value"
 	done
+	IFS=$OIFS
 	EOF
 
-	cat >git-credential-useless <<-\EOF &&
-	#!/bin/sh
+	write_script git-credential-useless <<-\EOF &&
 	. ./dump
 	exit 0
 	EOF
-	chmod +x git-credential-useless &&
 
-	cat >git-credential-verbatim <<-\EOF &&
-	#!/bin/sh
+	write_script git-credential-verbatim <<-\EOF &&
 	user=$1; shift
 	pass=$1; shift
 	. ./dump
 	test -z "$user" || echo username=$user
 	test -z "$pass" || echo password=$pass
 	EOF
-	chmod +x git-credential-verbatim &&
 
 	PATH="$PWD:$PATH"
 '

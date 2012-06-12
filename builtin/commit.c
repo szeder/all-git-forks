@@ -27,6 +27,7 @@
 #include "quote.h"
 #include "submodule.h"
 #include "gpg-interface.h"
+#include "column.h"
 
 static const char * const builtin_commit_usage[] = {
 	"git commit [options] [--] <filepattern>...",
@@ -109,13 +110,11 @@ static int show_ignored_in_status;
 static const char *only_include_assumed;
 static struct strbuf message = STRBUF_INIT;
 
-static int null_termination;
 static enum {
 	STATUS_FORMAT_LONG,
 	STATUS_FORMAT_SHORT,
 	STATUS_FORMAT_PORCELAIN
 } status_format = STATUS_FORMAT_LONG;
-static int status_show_branch;
 
 static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 {
@@ -129,59 +128,6 @@ static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
-static struct option builtin_commit_options[] = {
-	OPT__QUIET(&quiet, "suppress summary after successful commit"),
-	OPT__VERBOSE(&verbose, "show diff in commit message template"),
-
-	OPT_GROUP("Commit message options"),
-	OPT_FILENAME('F', "file", &logfile, "read message from file"),
-	OPT_STRING(0, "author", &force_author, "author", "override author for commit"),
-	OPT_STRING(0, "date", &force_date, "date", "override date for commit"),
-	OPT_CALLBACK('m', "message", &message, "message", "commit message", opt_parse_m),
-	OPT_STRING('c', "reedit-message", &edit_message, "commit", "reuse and edit message from specified commit"),
-	OPT_STRING('C', "reuse-message", &use_message, "commit", "reuse message from specified commit"),
-	OPT_STRING(0, "fixup", &fixup_message, "commit", "use autosquash formatted message to fixup specified commit"),
-	OPT_STRING(0, "squash", &squash_message, "commit", "use autosquash formatted message to squash specified commit"),
-	OPT_BOOLEAN(0, "reset-author", &renew_authorship, "the commit is authored by me now (used with -C/-c/--amend)"),
-	OPT_BOOLEAN('s', "signoff", &signoff, "add Signed-off-by:"),
-	OPT_FILENAME('t', "template", &template_file, "use specified template file"),
-	OPT_BOOL('e', "edit", &edit_flag, "force edit of commit"),
-	OPT_STRING(0, "cleanup", &cleanup_arg, "default", "how to strip spaces and #comments from message"),
-	OPT_BOOLEAN(0, "status", &include_status, "include status in commit message template"),
-	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, "key id",
-	  "GPG sign commit", PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
-	/* end commit message options */
-
-	OPT_GROUP("Commit contents options"),
-	OPT_BOOLEAN('a', "all", &all, "commit all changed files"),
-	OPT_BOOLEAN('i', "include", &also, "add specified files to index for commit"),
-	OPT_BOOLEAN(0, "interactive", &interactive, "interactively add files"),
-	OPT_BOOLEAN('p', "patch", &patch_interactive, "interactively add changes"),
-	OPT_BOOLEAN('o', "only", &only, "commit only specified files"),
-	OPT_BOOLEAN('n', "no-verify", &no_verify, "bypass pre-commit hook"),
-	OPT_BOOLEAN(0, "dry-run", &dry_run, "show what would be committed"),
-	OPT_SET_INT(0, "short", &status_format, "show status concisely",
-		    STATUS_FORMAT_SHORT),
-	OPT_BOOLEAN(0, "branch", &status_show_branch, "show branch information"),
-	OPT_SET_INT(0, "porcelain", &status_format,
-		    "machine-readable output", STATUS_FORMAT_PORCELAIN),
-	OPT_BOOLEAN('z', "null", &null_termination,
-		    "terminate entries with NUL"),
-	OPT_BOOLEAN(0, "amend", &amend, "amend previous commit"),
-	OPT_BOOLEAN(0, "no-post-rewrite", &no_post_rewrite, "bypass post-rewrite hook"),
-	{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, "mode", "show untracked files, optional modes: all, normal, no. (Default: all)", PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
-	/* end commit contents options */
-
-	{ OPTION_BOOLEAN, 0, "allow-empty", &allow_empty, NULL,
-	  "ok to record an empty change",
-	  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
-	{ OPTION_BOOLEAN, 0, "allow-empty-message", &allow_empty_message, NULL,
-	  "ok to record a change with an empty message",
-	  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
-
-	OPT_END()
-};
-
 static void determine_whence(struct wt_status *s)
 {
 	if (file_exists(git_path("MERGE_HEAD")))
@@ -192,24 +138,6 @@ static void determine_whence(struct wt_status *s)
 		whence = FROM_COMMIT;
 	if (s)
 		s->whence = whence;
-}
-
-static const char *whence_s(void)
-{
-	char *s = "";
-
-	switch (whence) {
-	case FROM_COMMIT:
-		break;
-	case FROM_MERGE:
-		s = "merge";
-		break;
-	case FROM_CHERRY_PICK:
-		s = "cherry-pick";
-		break;
-	}
-
-	return s;
 }
 
 static void rollback_index_files(void)
@@ -400,7 +328,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		fd = hold_locked_index(&index_lock, 1);
 		add_files_to_cache(also ? prefix : NULL, pathspec, 0);
 		refresh_cache_or_die(refresh_flags);
-		update_main_cache_tree(1);
+		update_main_cache_tree(WRITE_TREE_SILENT);
 		if (write_cache(fd, active_cache, active_nr) ||
 		    close_lock_file(&index_lock))
 			die(_("unable to write new_index file"));
@@ -421,7 +349,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		fd = hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed) {
-			update_main_cache_tree(1);
+			update_main_cache_tree(WRITE_TREE_SILENT);
 			if (write_cache(fd, active_cache, active_nr) ||
 			    commit_locked_index(&index_lock))
 				die(_("unable to write new_index file"));
@@ -453,8 +381,12 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 	 */
 	commit_style = COMMIT_PARTIAL;
 
-	if (whence != FROM_COMMIT)
-		die(_("cannot do a partial commit during a %s."), whence_s());
+	if (whence != FROM_COMMIT) {
+		if (whence == FROM_MERGE)
+			die(_("cannot do a partial commit during a merge."));
+		else if (whence == FROM_CHERRY_PICK)
+			die(_("cannot do a partial commit during a cherry-pick."));
+	}
 
 	memset(&partial, 0, sizeof(partial));
 	partial.strdup_strings = 1;
@@ -513,10 +445,10 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 
 	switch (status_format) {
 	case STATUS_FORMAT_SHORT:
-		wt_shortstatus_print(s, null_termination, status_show_branch);
+		wt_shortstatus_print(s);
 		break;
 	case STATUS_FORMAT_PORCELAIN:
-		wt_porcelain_print(s, null_termination);
+		wt_porcelain_print(s);
 		break;
 	case STATUS_FORMAT_LONG:
 		wt_status_print(s);
@@ -533,9 +465,20 @@ static int is_a_merge(const struct commit *current_head)
 
 static const char sign_off_header[] = "Signed-off-by: ";
 
+static void export_one(const char *var, const char *s, const char *e, int hack)
+{
+	struct strbuf buf = STRBUF_INIT;
+	if (hack)
+		strbuf_addch(&buf, hack);
+	strbuf_addf(&buf, "%.*s", (int)(e - s), s);
+	setenv(var, buf.buf, 1);
+	strbuf_release(&buf);
+}
+
 static void determine_author_info(struct strbuf *author_ident)
 {
 	char *name, *email, *date;
+	struct ident_split author;
 
 	name = getenv("GIT_AUTHOR_NAME");
 	email = getenv("GIT_AUTHOR_EMAIL");
@@ -543,6 +486,7 @@ static void determine_author_info(struct strbuf *author_ident)
 
 	if (author_message) {
 		const char *a, *lb, *rb, *eol;
+		size_t len;
 
 		a = strstr(author_message_buffer, "\nauthor ");
 		if (!a)
@@ -563,6 +507,11 @@ static void determine_author_info(struct strbuf *author_ident)
 					 (a + strlen("\nauthor "))));
 		email = xmemdupz(lb + strlen("<"), rb - (lb + strlen("<")));
 		date = xmemdupz(rb + strlen("> "), eol - (rb + strlen("> ")));
+		len = eol - (rb + strlen("> "));
+		date = xmalloc(len + 2);
+		*date = '@';
+		memcpy(date + 1, rb + strlen("> "), len);
+		date[len + 1] = '\0';
 	}
 
 	if (force_author) {
@@ -577,8 +526,12 @@ static void determine_author_info(struct strbuf *author_ident)
 
 	if (force_date)
 		date = force_date;
-	strbuf_addstr(author_ident, fmt_ident(name, email, date,
-					      IDENT_ERROR_ON_NO_NAME));
+	strbuf_addstr(author_ident, fmt_ident(name, email, date, IDENT_STRICT));
+	if (!split_ident_line(&author, author_ident->buf, author_ident->len)) {
+		export_one("GIT_AUTHOR_NAME", author.name_begin, author.name_end, 0);
+		export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
+		export_one("GIT_AUTHOR_DATE", author.date_begin, author.tz_end, '@');
+	}
 }
 
 static int ends_rfc2822_footer(struct strbuf *sb)
@@ -645,6 +598,9 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	const char *hook_arg2 = NULL;
 	int ident_shown = 0;
 	int clean_message_contents = (cleanup_mode != CLEANUP_NONE);
+
+	/* This checks and barfs if author is badly specified */
+	determine_author_info(author_ident);
 
 	if (!no_verify && run_hook(index_file, "pre-commit", NULL))
 		return 0;
@@ -765,37 +721,37 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 
 	strbuf_release(&sb);
 
-	/* This checks and barfs if author is badly specified */
-	determine_author_info(author_ident);
-
 	/* This checks if committer ident is explicitly given */
 	strbuf_addstr(&committer_ident, git_committer_info(0));
 	if (use_editor && include_status) {
 		char *ai_tmp, *ci_tmp;
 		if (whence != FROM_COMMIT)
 			status_printf_ln(s, GIT_COLOR_NORMAL,
-				_("\n"
-				"It looks like you may be committing a %s.\n"
-				"If this is not correct, please remove the file\n"
-				"	%s\n"
-				"and try again.\n"
-				""),
-				whence_s(),
+			    whence == FROM_MERGE
+				? _("\n"
+					"It looks like you may be committing a merge.\n"
+					"If this is not correct, please remove the file\n"
+					"	%s\n"
+					"and try again.\n")
+				: _("\n"
+					"It looks like you may be committing a cherry-pick.\n"
+					"If this is not correct, please remove the file\n"
+					"	%s\n"
+					"and try again.\n"),
 				git_path(whence == FROM_MERGE
 					 ? "MERGE_HEAD"
 					 : "CHERRY_PICK_HEAD"));
 
 		fprintf(s->fp, "\n");
-		status_printf(s, GIT_COLOR_NORMAL,
-			_("Please enter the commit message for your changes."));
 		if (cleanup_mode == CLEANUP_ALL)
-			status_printf_more(s, GIT_COLOR_NORMAL,
-				_(" Lines starting\n"
-				"with '#' will be ignored, and an empty"
+			status_printf(s, GIT_COLOR_NORMAL,
+				_("Please enter the commit message for your changes."
+				" Lines starting\nwith '#' will be ignored, and an empty"
 				" message aborts the commit.\n"));
 		else /* CLEANUP_SPACE, that is. */
-			status_printf_more(s, GIT_COLOR_NORMAL,
-				_(" Lines starting\n"
+			status_printf(s, GIT_COLOR_NORMAL,
+				_("Please enter the commit message for your changes."
+				" Lines starting\n"
 				"with '#' will be kept; you may remove them"
 				" yourself if you want to.\n"
 				"An empty message aborts the commit.\n"));
@@ -899,27 +855,10 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	return 1;
 }
 
-/*
- * Find out if the message in the strbuf contains only whitespace and
- * Signed-off-by lines.
- */
-static int message_is_empty(struct strbuf *sb)
+static int rest_is_empty(struct strbuf *sb, int start)
 {
-	struct strbuf tmpl = STRBUF_INIT;
+	int i, eol;
 	const char *nl;
-	int eol, i, start = 0;
-
-	if (cleanup_mode == CLEANUP_NONE && sb->len)
-		return 0;
-
-	/* See if the template is just a prefix of the message. */
-	if (template_file && strbuf_read_file(&tmpl, template_file, 0) > 0) {
-		stripspace(&tmpl, cleanup_mode == CLEANUP_ALL);
-		if (start + tmpl.len <= sb->len &&
-		    memcmp(tmpl.buf, sb->buf + start, tmpl.len) == 0)
-			start += tmpl.len;
-	}
-	strbuf_release(&tmpl);
 
 	/* Check if the rest is just whitespace and Signed-of-by's. */
 	for (i = start; i < sb->len; i++) {
@@ -940,6 +879,40 @@ static int message_is_empty(struct strbuf *sb)
 	}
 
 	return 1;
+}
+
+/*
+ * Find out if the message in the strbuf contains only whitespace and
+ * Signed-off-by lines.
+ */
+static int message_is_empty(struct strbuf *sb)
+{
+	if (cleanup_mode == CLEANUP_NONE && sb->len)
+		return 0;
+	return rest_is_empty(sb, 0);
+}
+
+/*
+ * See if the user edited the message in the editor or left what
+ * was in the template intact
+ */
+static int template_untouched(struct strbuf *sb)
+{
+	struct strbuf tmpl = STRBUF_INIT;
+	char *start;
+
+	if (cleanup_mode == CLEANUP_NONE && sb->len)
+		return 0;
+
+	if (!template_file || strbuf_read_file(&tmpl, template_file, 0) <= 0)
+		return 0;
+
+	stripspace(&tmpl, cleanup_mode == CLEANUP_ALL);
+	start = (char *)skip_prefix(sb->buf, tmpl.buf);
+	if (!start)
+		start = sb->buf;
+	strbuf_release(&tmpl);
+	return rest_is_empty(sb, start - sb->buf);
 }
 
 static const char *find_author_by_nickname(const char *name)
@@ -1007,6 +980,7 @@ static const char *read_commit_message(const char *name)
 }
 
 static int parse_and_validate_options(int argc, const char *argv[],
+				      const struct option *options,
 				      const char * const usage[],
 				      const char *prefix,
 				      struct commit *current_head,
@@ -1014,8 +988,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 {
 	int f = 0;
 
-	argc = parse_options(argc, argv, prefix, builtin_commit_options, usage,
-			     0);
+	argc = parse_options(argc, argv, prefix, options, usage, 0);
 
 	if (force_author && !strchr(force_author, '>'))
 		force_author = find_author_by_nickname(force_author);
@@ -1033,8 +1006,12 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	/* Sanity check options */
 	if (amend && !current_head)
 		die(_("You have nothing to amend."));
-	if (amend && whence != FROM_COMMIT)
-		die(_("You are in the middle of a %s -- cannot amend."), whence_s());
+	if (amend && whence != FROM_COMMIT) {
+		if (whence == FROM_MERGE)
+			die(_("You are in the middle of a merge -- cannot amend."));
+		else if (whence == FROM_CHERRY_PICK)
+			die(_("You are in the middle of a cherry-pick -- cannot amend."));
+	}
 	if (fixup_message && squash_message)
 		die(_("Options --squash and --fixup cannot be used together"));
 	if (use_message)
@@ -1049,6 +1026,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 		die(_("Only one of -c/-C/-F/--fixup can be used."));
 	if (message.len && f > 0)
 		die((_("Option -m cannot be combined with -c/-C/-F/--fixup.")));
+	if (f || message.len)
+		template_file = NULL;
 	if (edit_message)
 		use_message = edit_message;
 	if (amend && !use_message && !fixup_message)
@@ -1094,7 +1073,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 	if (all && argc > 0)
 		die(_("Paths with -a does not make sense."));
 
-	if (null_termination && status_format == STATUS_FORMAT_LONG)
+	if (s->null_termination && status_format == STATUS_FORMAT_LONG)
 		status_format = STATUS_FORMAT_PORCELAIN;
 	if (status_format != STATUS_FORMAT_LONG)
 		dry_run = 1;
@@ -1139,6 +1118,8 @@ static int git_status_config(const char *k, const char *v, void *cb)
 {
 	struct wt_status *s = cb;
 
+	if (!prefixcmp(k, "column."))
+		return git_column_config(k, v, "status", &s->colopts);
 	if (!strcmp(k, "status.submodulesummary")) {
 		int is_bool;
 		s->submodule_summary = git_config_bool_or_int(k, v, &is_bool);
@@ -1181,19 +1162,19 @@ static int git_status_config(const char *k, const char *v, void *cb)
 
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
-	struct wt_status s;
+	static struct wt_status s;
 	int fd;
 	unsigned char sha1[20];
 	static struct option builtin_status_options[] = {
 		OPT__VERBOSE(&verbose, "be verbose"),
 		OPT_SET_INT('s', "short", &status_format,
 			    "show status concisely", STATUS_FORMAT_SHORT),
-		OPT_BOOLEAN('b', "branch", &status_show_branch,
+		OPT_BOOLEAN('b', "branch", &s.show_branch,
 			    "show branch information"),
 		OPT_SET_INT(0, "porcelain", &status_format,
 			    "machine-readable output",
 			    STATUS_FORMAT_PORCELAIN),
-		OPT_BOOLEAN('z', "null", &null_termination,
+		OPT_BOOLEAN('z', "null", &s.null_termination,
 			    "terminate entries with NUL"),
 		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg,
 		  "mode",
@@ -1204,6 +1185,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		{ OPTION_STRING, 0, "ignore-submodules", &ignore_submodule_arg, "when",
 		  "ignore changes to submodules, optional when: all, dirty, untracked. (Default: all)",
 		  PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
+		OPT_COLUMN(0, "column", &s.colopts, "list untracked files in columns"),
 		OPT_END(),
 	};
 
@@ -1217,8 +1199,9 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix,
 			     builtin_status_options,
 			     builtin_status_usage, 0);
+	finalize_colopts(&s.colopts, -1);
 
-	if (null_termination && status_format == STATUS_FORMAT_LONG)
+	if (s.null_termination && status_format == STATUS_FORMAT_LONG)
 		status_format = STATUS_FORMAT_PORCELAIN;
 
 	handle_untracked_files_arg(&s);
@@ -1243,10 +1226,10 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 	switch (status_format) {
 	case STATUS_FORMAT_SHORT:
-		wt_shortstatus_print(&s, null_termination, status_show_branch);
+		wt_shortstatus_print(&s);
 		break;
 	case STATUS_FORMAT_PORCELAIN:
-		wt_porcelain_print(&s, null_termination);
+		wt_porcelain_print(&s);
 		break;
 	case STATUS_FORMAT_LONG:
 		s.verbose = verbose;
@@ -1381,6 +1364,60 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 
 int cmd_commit(int argc, const char **argv, const char *prefix)
 {
+	static struct wt_status s;
+	static struct option builtin_commit_options[] = {
+		OPT__QUIET(&quiet, "suppress summary after successful commit"),
+		OPT__VERBOSE(&verbose, "show diff in commit message template"),
+
+		OPT_GROUP("Commit message options"),
+		OPT_FILENAME('F', "file", &logfile, "read message from file"),
+		OPT_STRING(0, "author", &force_author, "author", "override author for commit"),
+		OPT_STRING(0, "date", &force_date, "date", "override date for commit"),
+		OPT_CALLBACK('m', "message", &message, "message", "commit message", opt_parse_m),
+		OPT_STRING('c', "reedit-message", &edit_message, "commit", "reuse and edit message from specified commit"),
+		OPT_STRING('C', "reuse-message", &use_message, "commit", "reuse message from specified commit"),
+		OPT_STRING(0, "fixup", &fixup_message, "commit", "use autosquash formatted message to fixup specified commit"),
+		OPT_STRING(0, "squash", &squash_message, "commit", "use autosquash formatted message to squash specified commit"),
+		OPT_BOOLEAN(0, "reset-author", &renew_authorship, "the commit is authored by me now (used with -C/-c/--amend)"),
+		OPT_BOOLEAN('s', "signoff", &signoff, "add Signed-off-by:"),
+		OPT_FILENAME('t', "template", &template_file, "use specified template file"),
+		OPT_BOOL('e', "edit", &edit_flag, "force edit of commit"),
+		OPT_STRING(0, "cleanup", &cleanup_arg, "default", "how to strip spaces and #comments from message"),
+		OPT_BOOLEAN(0, "status", &include_status, "include status in commit message template"),
+		{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, "key id",
+		  "GPG sign commit", PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
+		/* end commit message options */
+
+		OPT_GROUP("Commit contents options"),
+		OPT_BOOLEAN('a', "all", &all, "commit all changed files"),
+		OPT_BOOLEAN('i', "include", &also, "add specified files to index for commit"),
+		OPT_BOOLEAN(0, "interactive", &interactive, "interactively add files"),
+		OPT_BOOLEAN('p', "patch", &patch_interactive, "interactively add changes"),
+		OPT_BOOLEAN('o', "only", &only, "commit only specified files"),
+		OPT_BOOLEAN('n', "no-verify", &no_verify, "bypass pre-commit hook"),
+		OPT_BOOLEAN(0, "dry-run", &dry_run, "show what would be committed"),
+		OPT_SET_INT(0, "short", &status_format, "show status concisely",
+			    STATUS_FORMAT_SHORT),
+		OPT_BOOLEAN(0, "branch", &s.show_branch, "show branch information"),
+		OPT_SET_INT(0, "porcelain", &status_format,
+			    "machine-readable output", STATUS_FORMAT_PORCELAIN),
+		OPT_BOOLEAN('z', "null", &s.null_termination,
+			    "terminate entries with NUL"),
+		OPT_BOOLEAN(0, "amend", &amend, "amend previous commit"),
+		OPT_BOOLEAN(0, "no-post-rewrite", &no_post_rewrite, "bypass post-rewrite hook"),
+		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, "mode", "show untracked files, optional modes: all, normal, no. (Default: all)", PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
+		/* end commit contents options */
+
+		{ OPTION_BOOLEAN, 0, "allow-empty", &allow_empty, NULL,
+		  "ok to record an empty change",
+		  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
+		{ OPTION_BOOLEAN, 0, "allow-empty-message", &allow_empty_message, NULL,
+		  "ok to record a change with an empty message",
+		  PARSE_OPT_NOARG | PARSE_OPT_HIDDEN },
+
+		OPT_END()
+	};
+
 	struct strbuf sb = STRBUF_INIT;
 	struct strbuf author_ident = STRBUF_INIT;
 	const char *index_file, *reflog_msg;
@@ -1390,7 +1427,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	int allow_fast_forward = 1;
-	struct wt_status s;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
 
@@ -1400,6 +1436,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	wt_status_prepare(&s);
 	git_config(git_commit_config, &s);
 	determine_whence(&s);
+	s.colopts = 0;
 
 	if (get_sha1("HEAD", sha1))
 		current_head = NULL;
@@ -1408,7 +1445,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		if (!current_head || parse_commit(current_head))
 			die(_("could not parse HEAD commit"));
 	}
-	argc = parse_and_validate_options(argc, argv, builtin_commit_usage,
+	argc = parse_and_validate_options(argc, argv, builtin_commit_options,
+					  builtin_commit_usage,
 					  prefix, current_head, &s);
 	if (dry_run)
 		return dry_run_commit(argc, argv, prefix, current_head, &s);
@@ -1488,6 +1526,11 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 
 	if (cleanup_mode != CLEANUP_NONE)
 		stripspace(&sb, cleanup_mode == CLEANUP_ALL);
+	if (template_untouched(&sb) && !allow_empty_message) {
+		rollback_index_files();
+		fprintf(stderr, _("Aborting commit; you did not edit the message.\n"));
+		exit(1);
+	}
 	if (message_is_empty(&sb) && !allow_empty_message) {
 		rollback_index_files();
 		fprintf(stderr, _("Aborting commit due to empty commit message.\n"));

@@ -95,7 +95,7 @@ test_expect_success 'setup: two scripts for reading pull requests' '
 	b
 	: diffstat
 	n
-	/ [0-9]* files changed/ {
+	/ [0-9]* files* changed/ {
 		a\\
 	DIFFSTAT
 		b
@@ -179,11 +179,7 @@ test_expect_success 'request names an appropriate branch' '
 		read repository &&
 		read branch
 	} <digest &&
-	{
-		test "$branch" = full ||
-		test "$branch" = master ||
-		test "$branch" = for-upstream
-	}
+	test "$branch" = tags/full
 
 '
 
@@ -220,7 +216,7 @@ test_expect_success 'pull request format' '
 		git request-pull initial "$downstream_url" >../request
 	) &&
 	<request sed -nf fuzz.sed >request.fuzzy &&
-	test_cmp expect request.fuzzy
+	test_i18ncmp expect request.fuzzy
 
 '
 

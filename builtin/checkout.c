@@ -343,7 +343,7 @@ static int reset_tree(struct tree *tree, struct checkout_opts *o, int worktree)
 	opts.reset = 1;
 	opts.merge = 1;
 	opts.fn = oneway_merge;
-	opts.verbose_update = !o->quiet;
+	opts.verbose_update = !o->quiet && isatty(2);
 	opts.src_index = &the_index;
 	opts.dst_index = &the_index;
 	parse_tree(tree);
@@ -420,7 +420,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 		topts.update = 1;
 		topts.merge = 1;
 		topts.gently = opts->merge && old->commit;
-		topts.verbose_update = !opts->quiet;
+		topts.verbose_update = !opts->quiet && isatty(2);
 		topts.fn = twoway_merge;
 		if (opts->overwrite_ignore) {
 			topts.dir = xcalloc(1, sizeof(*topts.dir));
@@ -514,20 +514,6 @@ static void report_tracking(struct branch_info *new)
 	strbuf_release(&sb);
 }
 
-static void detach_advice(const char *old_path, const char *new_name)
-{
-	const char fmt[] =
-	"Note: checking out '%s'.\n\n"
-	"You are in 'detached HEAD' state. You can look around, make experimental\n"
-	"changes and commit them, and you can discard any commits you make in this\n"
-	"state without impacting any branches by performing another checkout.\n\n"
-	"If you want to create a new branch to retain commits you create, you may\n"
-	"do so (now or later) by using -b with the checkout command again. Example:\n\n"
-	"  git checkout -b new_branch_name\n\n";
-
-	fprintf(stderr, fmt, new_name);
-}
-
 static void update_refs_for_switch(struct checkout_opts *opts,
 				   struct branch_info *old,
 				   struct branch_info *new)
@@ -557,6 +543,7 @@ static void update_refs_for_switch(struct checkout_opts *opts,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_log,
 				      opts->new_branch_force ? 1 : 0,
+				      opts->quiet,
 				      opts->track);
 		new->name = opts->new_branch;
 		setup_branch_path(new);
@@ -575,7 +562,7 @@ static void update_refs_for_switch(struct checkout_opts *opts,
 			   REF_NODEREF, DIE_ON_ERR);
 		if (!opts->quiet) {
 			if (old->path && advice_detached_head)
-				detach_advice(old->path, new->name);
+				detach_advice(new->name);
 			describe_detached_head(_("HEAD is now at"), new->commit);
 		}
 	} else if (new->path) {	/* Switch branches. */
@@ -685,10 +672,10 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
  * HEAD.  If it is not reachable from any ref, this is the last chance
  * for the user to do so without resorting to reflog.
  */
-static void orphaned_commit_warning(struct commit *commit)
+static void orphaned_commit_warning(struct commit *old, struct commit *new)
 {
 	struct rev_info revs;
-	struct object *object = &commit->object;
+	struct object *object = &old->object;
 	struct object_array refs;
 
 	init_revisions(&revs, NULL);
@@ -698,16 +685,17 @@ static void orphaned_commit_warning(struct commit *commit)
 	add_pending_object(&revs, object, sha1_to_hex(object->sha1));
 
 	for_each_ref(add_pending_uninteresting_ref, &revs);
+	add_pending_sha1(&revs, "HEAD", new->object.sha1, UNINTERESTING);
 
 	refs = revs.pending;
 	revs.leak_pending = 1;
 
 	if (prepare_revision_walk(&revs))
 		die(_("internal error in revision walk"));
-	if (!(commit->object.flags & UNINTERESTING))
-		suggest_reattach(commit, &revs);
+	if (!(old->object.flags & UNINTERESTING))
+		suggest_reattach(old, &revs);
 	else
-		describe_detached_head(_("Previous HEAD position was"), commit);
+		describe_detached_head(_("Previous HEAD position was"), old);
 
 	clear_commit_marks_for_object_array(&refs, ALL_REV_FLAGS);
 	free(refs.objects);
@@ -744,7 +732,7 @@ static int switch_branches(struct checkout_opts *opts, struct branch_info *new)
 	}
 
 	if (!opts->quiet && !old.path && old.commit && new->commit != old.commit)
-		orphaned_commit_warning(old.commit);
+		orphaned_commit_warning(old.commit, new->commit);
 
 	update_refs_for_switch(opts, &old, new);
 
@@ -922,6 +910,17 @@ static int parse_branchname_arg(int argc, const char **argv,
 	return argcount;
 }
 
+static int switch_unborn_to_new_branch(struct checkout_opts *opts)
+{
+	int status;
+	struct strbuf branch_ref = STRBUF_INIT;
+
+	strbuf_addf(&branch_ref, "refs/heads/%s", opts->new_branch);
+	status = create_symref("HEAD", branch_ref.buf, "checkout -b");
+	strbuf_release(&branch_ref);
+	return status;
+}
+
 int cmd_checkout(int argc, const char **argv, const char *prefix)
 {
 	struct checkout_opts opts;
@@ -1093,5 +1092,13 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	if (opts.writeout_stage)
 		die(_("--ours/--theirs is incompatible with switching branches."));
 
+	if (!new.commit && opts.new_branch) {
+		unsigned char rev[20];
+		int flag;
+
+		if (!read_ref_full("HEAD", rev, 0, &flag) &&
+		    (flag & REF_ISSYMREF) && is_null_sha1(rev))
+			return switch_unborn_to_new_branch(&opts);
+	}
 	return switch_branches(&opts, &new);
 }

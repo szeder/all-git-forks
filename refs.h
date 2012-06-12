@@ -15,8 +15,11 @@ struct ref_lock {
 #define REF_ISBROKEN 0x04
 
 /*
- * Calls the specified function for each ref file until it returns nonzero,
- * and returns the value
+ * Calls the specified function for each ref file until it returns
+ * nonzero, and returns the value.  Please note that it is not safe to
+ * modify references while an iteration is in progress, unless the
+ * same callback function invocation that modifies the reference also
+ * returns a nonzero value to immediately stop the iteration.
  */
 typedef int each_ref_fn(const char *refname, const unsigned char *sha1, int flags, void *cb_data);
 extern int head_ref(each_ref_fn, void *);
@@ -51,13 +54,11 @@ extern int for_each_rawref(each_ref_fn, void *);
 extern void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname);
 
 /*
- * Extra refs will be listed by for_each_ref() before any actual refs
- * for the duration of this process or until clear_extra_refs() is
- * called. Only extra refs added before for_each_ref() is called will
- * be listed on a given call of for_each_ref().
+ * Add a reference to the in-memory packed reference cache.  To actually
+ * write the reference to the packed-refs file, call pack_refs().
  */
-extern void add_extra_ref(const char *refname, const unsigned char *sha1, int flags);
-extern void clear_extra_refs(void);
+extern void add_packed_ref(const char *refname, const unsigned char *sha1);
+
 extern int ref_exists(const char *);
 
 extern int peel_ref(const char *refname, unsigned char *sha1);

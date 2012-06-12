@@ -42,28 +42,6 @@ struct store_conf {
 	unsigned trash_remote_new:1, trash_only_new:1;
 };
 
-struct string_list {
-	struct string_list *next;
-	char string[1];
-};
-
-struct channel_conf {
-	struct channel_conf *next;
-	char *name;
-	struct store_conf *master, *slave;
-	char *master_name, *slave_name;
-	char *sync_state;
-	struct string_list *patterns;
-	int mops, sops;
-	unsigned max_messages; /* for slave only */
-};
-
-struct group_conf {
-	struct group_conf *next;
-	char *name;
-	struct string_list *channels;
-};
-
 /* For message->status */
 #define M_RECENT       (1<<0) /* unsyncable flag; maildir_* depend on this being 1<<0 */
 #define M_DEAD         (1<<1) /* expunged */
@@ -71,7 +49,6 @@ struct group_conf {
 
 struct message {
 	struct message *next;
-	/* struct string_list *keywords; */
 	size_t size; /* zero implies "not fetched" */
 	int uid;
 	unsigned char flags, status;
@@ -1045,7 +1022,7 @@ static int auth_cram_md5(struct imap_store *ctx, struct imap_cmd *cmd, const cha
 
 	ret = socket_write(&ctx->imap->buf.sock, response, strlen(response));
 	if (ret != strlen(response))
-		return error("IMAP error: sending response failed\n");
+		return error("IMAP error: sending response failed");
 
 	free(response);
 

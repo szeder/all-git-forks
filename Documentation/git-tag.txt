@@ -12,7 +12,9 @@ SYNOPSIS
 'git tag' [-a | -s | -u <key-id>] [-f] [-m <msg> | -F <file>]
 	<tagname> [<commit> | <object>]
 'git tag' -d <tagname>...
-'git tag' [-n[<num>]] -l [--contains <commit>] [<pattern>...]
+'git tag' [-n[<num>]] -l [--contains <commit>] [--points-at <object>]
+	[--column[=<options>] | --no-column] [<pattern>...]
+	[<pattern>...]
 'git tag' -v <tagname>...
 
 DESCRIPTION
@@ -83,8 +85,19 @@ OPTIONS
 	using fnmatch(3)).  Multiple patterns may be given; if any of
 	them matches, the tag is shown.
 
+--column[=<options>]::
+--no-column::
+	Display tag listing in columns. See configuration variable
+	column.tag for option syntax.`--column` and `--no-column`
+	without options are equivalent to 'always' and 'never' respectively.
++
+This option is only applicable when listing tags without annotation lines.
+
 --contains <commit>::
 	Only list tags which contain the specified commit.
+
+--points-at <object>::
+	Only list tags of the given object.
 
 -m <msg>::
 --message=<msg>::

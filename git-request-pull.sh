@@ -63,7 +63,7 @@ die "fatal: No commits in common between $base and $head"
 find_matching_ref='
 	sub abbr {
 		my $ref = shift;
-		if ($ref =~ s|refs/heads/|| || $ref =~ s|refs/tags/||) {
+		if ($ref =~ s|^refs/heads/|| || $ref =~ s|^refs/tags/|tags/|) {
 			return $ref;
 		} else {
 			return $ref;
@@ -96,7 +96,7 @@ git show -s --format='The following changes since commit %H:
   %s (%ci)
 
 are available in the git repository at:
-' $baserev &&
+' $merge_base &&
 echo "  $url${ref+ $ref}" &&
 git show -s --format='
 for you to fetch changes up to %H:

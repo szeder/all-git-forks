@@ -7,6 +7,9 @@
 #include "dir.h"
 #include "tag.h"
 #include "string-list.h"
+#include "mergesort.h"
+
+enum map_direction { FROM_SRC, FROM_DST };
 
 static struct refspec s_tag_refspec = {
 	0,
@@ -916,6 +919,27 @@ void free_refs(struct ref *ref)
 	}
 }
 
+int ref_compare_name(const void *va, const void *vb)
+{
+	const struct ref *a = va, *b = vb;
+	return strcmp(a->name, b->name);
+}
+
+static void *ref_list_get_next(const void *a)
+{
+	return ((const struct ref *)a)->next;
+}
+
+static void ref_list_set_next(void *a, void *next)
+{
+	((struct ref *)a)->next = next;
+}
+
+void sort_ref_list(struct ref **l, int (*cmp)(const void *, const void *))
+{
+	*l = llist_mergesort(*l, ref_list_get_next, ref_list_set_next, cmp);
+}
+
 static int count_refspec_match(const char *pattern,
 			       struct ref *refs,
 			       struct ref **matched_ref)
@@ -978,16 +1002,20 @@ static void tail_link_ref(struct ref *ref, struct ref ***tail)
 	*tail = &ref->next;
 }
 
+static struct ref *alloc_delete_ref(void)
+{
+	struct ref *ref = alloc_ref("(delete)");
+	hashclr(ref->new_sha1);
+	return ref;
+}
+
 static struct ref *try_explicit_object_name(const char *name)
 {
 	unsigned char sha1[20];
 	struct ref *ref;
 
-	if (!*name) {
-		ref = alloc_ref("(delete)");
-		hashclr(ref->new_sha1);
-		return ref;
-	}
+	if (!*name)
+		return alloc_delete_ref();
 	if (get_sha1(name, sha1))
 		return NULL;
 	ref = alloc_ref(name);
@@ -1110,10 +1138,11 @@ static int match_explicit_refs(struct ref *src, struct ref *dst,
 	return errs;
 }
 
-static const struct refspec *check_pattern_match(const struct refspec *rs,
-						 int rs_nr,
-						 const struct ref *src)
+static char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref *ref,
+		int send_mirror, int direction, const struct refspec **ret_pat)
 {
+	const struct refspec *pat;
+	char *name;
 	int i;
 	int matching_refs = -1;
 	for (i = 0; i < rs_nr; i++) {
@@ -1123,14 +1152,36 @@ static const struct refspec *check_pattern_match(const struct refspec *rs,
 			continue;
 		}
 
-		if (rs[i].pattern && match_name_with_pattern(rs[i].src, src->name,
-							     NULL, NULL))
-			return rs + i;
+		if (rs[i].pattern) {
+			const char *dst_side = rs[i].dst ? rs[i].dst : rs[i].src;
+			int match;
+			if (direction == FROM_SRC)
+				match = match_name_with_pattern(rs[i].src, ref->name, dst_side, &name);
+			else
+				match = match_name_with_pattern(dst_side, ref->name, rs[i].src, &name);
+			if (match) {
+				matching_refs = i;
+				break;
+			}
+		}
 	}
-	if (matching_refs != -1)
-		return rs + matching_refs;
-	else
+	if (matching_refs == -1)
 		return NULL;
+
+	pat = rs + matching_refs;
+	if (pat->matching) {
+		/*
+		 * "matching refs"; traditionally we pushed everything
+		 * including refs outside refs/heads/ hierarchy, but
+		 * that does not make much sense these days.
+		 */
+		if (!send_mirror && prefixcmp(ref->name, "refs/heads/"))
+			return NULL;
+		name = xstrdup(ref->name);
+	}
+	if (ret_pat)
+		*ret_pat = pat;
+	return name;
 }
 
 static struct ref **tail_ref(struct ref **head)
@@ -1155,9 +1206,10 @@ int match_push_refs(struct ref *src, struct ref **dst,
 	struct refspec *rs;
 	int send_all = flags & MATCH_REFS_ALL;
 	int send_mirror = flags & MATCH_REFS_MIRROR;
+	int send_prune = flags & MATCH_REFS_PRUNE;
 	int errs;
 	static const char *default_refspec[] = { ":", NULL };
-	struct ref **dst_tail = tail_ref(dst);
+	struct ref *ref, **dst_tail = tail_ref(dst);
 
 	if (!nr_refspec) {
 		nr_refspec = 1;
@@ -1167,39 +1219,23 @@ int match_push_refs(struct ref *src, struct ref **dst,
 	errs = match_explicit_refs(src, *dst, &dst_tail, rs, nr_refspec);
 
 	/* pick the remainder */
-	for ( ; src; src = src->next) {
+	for (ref = src; ref; ref = ref->next) {
 		struct ref *dst_peer;
 		const struct refspec *pat = NULL;
 		char *dst_name;
-		if (src->peer_ref)
+
+		if (ref->peer_ref)
 			continue;
 
-		pat = check_pattern_match(rs, nr_refspec, src);
-		if (!pat)
+		dst_name = get_ref_match(rs, nr_refspec, ref, send_mirror, FROM_SRC, &pat);
+		if (!dst_name)
 			continue;
 
-		if (pat->matching) {
-			/*
-			 * "matching refs"; traditionally we pushed everything
-			 * including refs outside refs/heads/ hierarchy, but
-			 * that does not make much sense these days.
-			 */
-			if (!send_mirror && prefixcmp(src->name, "refs/heads/"))
-				continue;
-			dst_name = xstrdup(src->name);
-
-		} else {
-			const char *dst_side = pat->dst ? pat->dst : pat->src;
-			if (!match_name_with_pattern(pat->src, src->name,
-						     dst_side, &dst_name))
-				die("Didn't think it matches any more");
-		}
 		dst_peer = find_ref_by_name(*dst, dst_name);
 		if (dst_peer) {
 			if (dst_peer->peer_ref)
 				/* We're already sending something to this ref. */
 				goto free_name;
-
 		} else {
 			if (pat->matching && !(send_all || send_mirror))
 				/*
@@ -1211,12 +1247,29 @@ int match_push_refs(struct ref *src, struct ref **dst,
 
 			/* Create a new one and link it */
 			dst_peer = make_linked_ref(dst_name, &dst_tail);
-			hashcpy(dst_peer->new_sha1, src->new_sha1);
+			hashcpy(dst_peer->new_sha1, ref->new_sha1);
 		}
-		dst_peer->peer_ref = copy_ref(src);
+		dst_peer->peer_ref = copy_ref(ref);
 		dst_peer->force = pat->force;
 	free_name:
 		free(dst_name);
+	}
+	if (send_prune) {
+		/* check for missing refs on the remote */
+		for (ref = *dst; ref; ref = ref->next) {
+			char *src_name;
+
+			if (ref->peer_ref)
+				/* We're already sending something to this ref. */
+				continue;
+
+			src_name = get_ref_match(rs, nr_refspec, ref, send_mirror, FROM_DST, NULL);
+			if (src_name) {
+				if (!find_ref_by_name(src, src_name))
+					ref->peer_ref = alloc_delete_ref();
+				free(src_name);
+			}
+		}
 	}
 	if (errs)
 		return -1;
@@ -1572,19 +1625,29 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	if (!num_theirs)
-		strbuf_addf(sb, "Your branch is ahead of '%s' "
-			    "by %d commit%s.\n",
-			    base, num_ours, (num_ours == 1) ? "" : "s");
+		strbuf_addf(sb,
+			Q_("Your branch is ahead of '%s' by %d commit.\n",
+			   "Your branch is ahead of '%s' by %d commits.\n",
+			   num_ours),
+			base, num_ours);
 	else if (!num_ours)
-		strbuf_addf(sb, "Your branch is behind '%s' "
-			    "by %d commit%s, "
-			    "and can be fast-forwarded.\n",
-			    base, num_theirs, (num_theirs == 1) ? "" : "s");
+		strbuf_addf(sb,
+			Q_("Your branch is behind '%s' by %d commit, "
+			       "and can be fast-forwarded.\n",
+			   "Your branch is behind '%s' by %d commits, "
+			       "and can be fast-forwarded.\n",
+			   num_theirs),
+			base, num_theirs);
 	else
-		strbuf_addf(sb, "Your branch and '%s' have diverged,\n"
-			    "and have %d and %d different commit(s) each, "
-			    "respectively.\n",
-			    base, num_ours, num_theirs);
+		strbuf_addf(sb,
+			Q_("Your branch and '%s' have diverged,\n"
+			       "and have %d and %d different commit each, "
+			       "respectively.\n",
+			   "Your branch and '%s' have diverged,\n"
+			       "and have %d and %d different commits each, "
+			       "respectively.\n",
+			   num_theirs),
+			base, num_ours, num_theirs);
 	return 1;
 }
 

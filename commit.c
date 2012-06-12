@@ -7,6 +7,7 @@
 #include "revision.h"
 #include "notes.h"
 #include "gpg-interface.h"
+#include "mergesort.h"
 
 int save_commit_buffer = 1;
 
@@ -390,15 +391,31 @@ struct commit_list * commit_list_insert_by_date(struct commit *item, struct comm
 	return commit_list_insert(item, pp);
 }
 
+static int commit_list_compare_by_date(const void *a, const void *b)
+{
+	unsigned long a_date = ((const struct commit_list *)a)->item->date;
+	unsigned long b_date = ((const struct commit_list *)b)->item->date;
+	if (a_date < b_date)
+		return 1;
+	if (a_date > b_date)
+		return -1;
+	return 0;
+}
+
+static void *commit_list_get_next(const void *a)
+{
+	return ((const struct commit_list *)a)->next;
+}
+
+static void commit_list_set_next(void *a, void *next)
+{
+	((struct commit_list *)a)->next = next;
+}
 
 void commit_list_sort_by_date(struct commit_list **list)
 {
-	struct commit_list *ret = NULL;
-	while (*list) {
-		commit_list_insert_by_date((*list)->item, &ret);
-		*list = (*list)->next;
-	}
-	*list = ret;
+	*list = llist_mergesort(*list, commit_list_get_next, commit_list_set_next,
+				commit_list_compare_by_date);
 }
 
 struct commit *pop_most_recent_commit(struct commit_list **list,
@@ -422,7 +439,8 @@ struct commit *pop_most_recent_commit(struct commit_list **list,
 	return ret;
 }
 
-void clear_commit_marks(struct commit *commit, unsigned int mark)
+static void clear_commit_marks_1(struct commit_list **plist,
+				 struct commit *commit, unsigned int mark)
 {
 	while (commit) {
 		struct commit_list *parents;
@@ -437,10 +455,18 @@ void clear_commit_marks(struct commit *commit, unsigned int mark)
 			return;
 
 		while ((parents = parents->next))
-			clear_commit_marks(parents->item, mark);
+			commit_list_insert(parents->item, plist);
 
 		commit = commit->parents->item;
 	}
+}
+
+void clear_commit_marks(struct commit *commit, unsigned int mark)
+{
+	struct commit_list *list = NULL;
+	commit_list_insert(commit, &list);
+	while (list)
+		clear_commit_marks_1(&list, pop_commit(&list), mark);
 }
 
 void clear_commit_marks_for_object_array(struct object_array *a, unsigned mark)
@@ -1128,9 +1154,9 @@ int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
 
 	/* Person/date information */
 	if (!author)
-		author = git_author_info(IDENT_ERROR_ON_NO_NAME);
+		author = git_author_info(IDENT_STRICT);
 	strbuf_addf(&buffer, "author %s\n", author);
-	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_ERROR_ON_NO_NAME));
+	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_STRICT));
 	if (!encoding_is_utf8)
 		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
 
@@ -1172,4 +1198,31 @@ struct commit *get_merge_parent(const char *name)
 		commit->util = desc;
 	}
 	return commit;
+}
+
+/*
+ * Append a commit to the end of the commit_list.
+ *
+ * next starts by pointing to the variable that holds the head of an
+ * empty commit_list, and is updated to point to the "next" field of
+ * the last item on the list as new commits are appended.
+ *
+ * Usage example:
+ *
+ *     struct commit_list *list;
+ *     struct commit_list **next = &list;
+ *
+ *     next = commit_list_append(c1, next);
+ *     next = commit_list_append(c2, next);
+ *     assert(commit_list_count(list) == 2);
+ *     return list;
+ */
+struct commit_list **commit_list_append(struct commit *commit,
+					struct commit_list **next)
+{
+	struct commit_list *new = xmalloc(sizeof(struct commit_list));
+	new->item = commit;
+	*next = new;
+	new->next = NULL;
+	return &new->next;
 }

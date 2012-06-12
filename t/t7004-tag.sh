@@ -263,6 +263,50 @@ test_expect_success 'tag -l can accept multiple patterns' '
 	test_cmp expect actual
 '
 
+test_expect_success 'listing tags in column' '
+	COLUMNS=40 git tag -l --column=row >actual &&
+	cat >expected <<\EOF &&
+a1      aa1     cba     t210    t211
+v0.2.1  v1.0    v1.0.1  v1.1.3
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'listing tags in column with column.*' '
+	git config column.tag row &&
+	git config column.ui dense &&
+	COLUMNS=40 git tag -l >actual &&
+	git config --unset column.ui &&
+	git config --unset column.tag &&
+	cat >expected <<\EOF &&
+a1      aa1   cba     t210    t211
+v0.2.1  v1.0  v1.0.1  v1.1.3
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'listing tag with -n --column should fail' '
+	test_must_fail git tag --column -n
+'
+
+test_expect_success 'listing tags -n in column with column.ui ignored' '
+	git config column.ui "row dense" &&
+	COLUMNS=40 git tag -l -n >actual &&
+	git config --unset column.ui &&
+	cat >expected <<\EOF &&
+a1              Foo
+aa1             Foo
+cba             Foo
+t210            Foo
+t211            Foo
+v0.2.1          Foo
+v1.0            Foo
+v1.0.1          Foo
+v1.1.3          Foo
+EOF
+	test_cmp expected actual
+'
+
 # creating and verifying lightweight tags:
 
 test_expect_success \
@@ -583,6 +627,19 @@ test_expect_success \
 	git tag -n99 -l | grep "^ *tag.line" >actual &&
 	test_cmp expect actual &&
 	git tag -n99 -l tag-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'annotations for blobs are empty' '
+	blob=$(git hash-object -w --stdin <<-\EOF
+	Blob paragraph 1.
+
+	Blob paragraph 2.
+	EOF
+	) &&
+	git tag tag-blob $blob &&
+	echo "tag-blob        " >expect &&
+	git tag -n1 -l tag-blob >actual &&
 	test_cmp expect actual
 '
 
@@ -1267,6 +1324,45 @@ test_expect_success 'mixing incompatibles modes and options is forbidden' '
 	test_must_fail git tag -l -m msg &&
 	test_must_fail git tag -l -F some file &&
 	test_must_fail git tag -v -s
+'
+
+# check points-at
+
+test_expect_success '--points-at cannot be used in non-list mode' '
+	test_must_fail git tag --points-at=v4.0 foo
+'
+
+test_expect_success '--points-at finds lightweight tags' '
+	echo v4.0 >expect &&
+	git tag --points-at v4.0 >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--points-at finds annotated tags of commits' '
+	git tag -m "v4.0, annotated" annotated-v4.0 v4.0 &&
+	echo annotated-v4.0 >expect &&
+	git tag -l --points-at v4.0 "annotated*" >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--points-at finds annotated tags of tags' '
+	git tag -m "describing the v4.0 tag object" \
+		annotated-again-v4.0 annotated-v4.0 &&
+	cat >expect <<-\EOF &&
+	annotated-again-v4.0
+	annotated-v4.0
+	EOF
+	git tag --points-at=annotated-v4.0 >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'multiple --points-at are OR-ed together' '
+	cat >expect <<-\EOF &&
+	v2.0
+	v3.0
+	EOF
+	git tag --points-at=v2.0 --points-at=v3.0 >actual &&
+	test_cmp expect actual
 '
 
 test_done
