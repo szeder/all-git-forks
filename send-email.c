@@ -810,16 +810,17 @@ void format_email_list(struct strbuf *sb, struct string_list *list)
 	}
 }
 
-static time_t now;
-static char *subject = NULL;
-
 char *make_sure_quoted(const char *str)
 {
 	return has_non_ascii(str) ? quote_rfc2047(str, NULL, NULL) :
 	    xstrdup(str);
 }
 
-char *make_message_id()
+static time_t now;
+static char *subject, *message_id, *reply_to;
+static struct strbuf references = STRBUF_INIT;
+
+void make_message_id()
 {
 	static char buf[1000], *du_part;
 	static time_t now;
@@ -845,7 +846,8 @@ char *make_message_id()
 
 	snprintf(buf, sizeof(buf), "<%d-%d-%d-git-send-email-%s>",
 	    now, getpid(), ++serial, du_part);
-	return buf;
+
+	message_id = xstrdup(buf);
 }
 
 void send_message(struct strbuf *message)
@@ -856,7 +858,6 @@ void send_message(struct strbuf *message)
 	struct string_list recipients = STRING_LIST_INIT_NODUP;
 
 	const char *from;
-	const char *in_reply_to = NULL;
 	const char *xh =
 	    "Content-Type: text/plain; charset=UTF-8\r\n"
 	    "Content-Transfer-Encoding: quoted-printable\r\n";
@@ -880,14 +881,14 @@ void send_message(struct strbuf *message)
 	add_header_field(&header, "Date", date);
 
 	/* TODO: accept non-generated Message-Id also */
-	strbuf_addf(&header, "Message-Id: %s\r\n", make_message_id());
+	if (!message_id)
+		make_message_id();
+	strbuf_addf(&header, "Message-Id: %s\r\n", message_id);
 	add_header_field(&header, "X-Mailer", GIT_XMAILER);
 
-	if (in_reply_to) {
-		add_header_field(&header, "In-Reply-To", in_reply_to);
-/* TODO:
+	if (reply_to) {
+		add_header_field(&header, "In-Reply-To", reply_to);
 		strbuf_addf(&header, "References: %s\r\n", references);
-*/
 	}
 
 	if (xh)
@@ -1035,28 +1036,27 @@ void cleanup_tmpdir()
 {
 	struct dirent *de;
 	DIR *dir = opendir(tmpdir);
-	if (!dir) {
-		error("Failed to opendir '%s': %s", tmpdir, strerror(errno));
-		return;
-	}
-	while ((de = readdir(dir)) != NULL) {
-		struct stat st;
-		char path[PATH_MAX];
-		strcpy(path, tmpdir);
-		strcat(path, "/");
-		strcat(path, de->d_name);
-		if (stat(path, &st)) {
-			error("stat('%s') failed: %s", path, strerror(errno));
-			return;
+	if (dir) {
+		while ((de = readdir(dir)) != NULL) {
+			struct stat st;
+			char path[PATH_MAX];
+			strcpy(path, tmpdir);
+			strcat(path, "/");
+			strcat(path, de->d_name);
+			if (stat(path, &st)) {
+				error("stat('%s') failed: %s", path,
+				    strerror(errno));
+				return;
+			}
+			if (!S_ISREG(st.st_mode))
+				continue;
+			if (verbose)
+				fprintf(stderr, "deleting '%s'\n", path);
+			unlink(path);
 		}
-		if (!S_ISREG(st.st_mode))
-			continue;
-		if (verbose)
-			fprintf(stderr, "deleting '%s'\n", path);
-		unlink(path);
+		closedir(dir);
+		rmdir(tmpdir);
 	}
-	closedir(dir);
-	rmdir(tmpdir);
 	free(tmpdir);
 }
 
@@ -1170,7 +1170,7 @@ int main(int argc, const char **argv)
 	}
 
 	if (rev_list_opts.nr) {
-		int j;
+		int err, j;
 		struct argv_array argv = ARGV_ARRAY_INIT;
 		struct child_process cld = { NULL };
 		struct strbuf buf = STRBUF_INIT;
@@ -1204,7 +1204,16 @@ int main(int argc, const char **argv)
 			strbuf_rtrim(lines[i]);
 			string_list_append(&files, lines[i]->buf);
 		}
-		finish_command(&cld);
+
+		err = finish_command(&cld);
+		if (err) {
+			strbuf_reset(&buf);
+			strbuf_addstr(&buf, argv.argv[0]);
+			for (j = 1; j < argv.argc; ++j)
+				strbuf_addf(&buf, " %s", argv.argv[j]);
+			die("%s: command returned error: %d", buf.buf, err);
+		}
+
 		argv_array_clear(&argv);
 	}
 
@@ -1374,7 +1383,7 @@ int main(int argc, const char **argv)
 		prompting++;
 	}
 
-	/* TODO: expand alliases */
+	/* TODO: expand aliases */
 
 	if (thread && !initial_reply_to && prompting)
 		initial_reply_to = ask(
@@ -1409,6 +1418,9 @@ int main(int argc, const char **argv)
 	now -= files.nr;
 
 	subject = initial_subject ? xstrdup(initial_subject) : NULL;
+	reply_to = initial_reply_to ? xstrdup(initial_reply_to) : NULL;
+	if (initial_reply_to)
+		strbuf_addstr(&references, initial_reply_to);
 
 	for (i = 0; i < files.nr; ++i) {
 		const char *fname = files.items[i].string;
@@ -1456,6 +1468,18 @@ int main(int argc, const char **argv)
 
 		send_message(&message);
 		strbuf_release(&message);
+
+		/* setup for the next message */
+		if (1) {
+			free(reply_to);
+			reply_to = xstrdup(message_id);
+			if (references.len > 0)
+				strbuf_addf(&references, " %s", message_id);
+			else
+				strbuf_addstr(&references, message_id);
+		}
+		free(message_id);
+		message_id = NULL;
 	}
 
 	return 0;
