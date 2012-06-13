@@ -819,6 +819,7 @@ char *make_sure_quoted(const char *str)
 static time_t now;
 static char *subject, *message_id, *reply_to;
 static struct strbuf references = STRBUF_INIT;
+static struct strbuf xh = STRBUF_INIT;
 
 void make_message_id()
 {
@@ -858,9 +859,6 @@ void send_message(struct strbuf *message)
 	struct string_list recipients = STRING_LIST_INIT_NODUP;
 
 	const char *from;
-	const char *xh =
-	    "Content-Type: text/plain; charset=UTF-8\r\n"
-	    "Content-Transfer-Encoding: quoted-printable\r\n";
 	const char *date;
 
 	from = make_sure_quoted(sender);
@@ -891,8 +889,8 @@ void send_message(struct strbuf *message)
 		strbuf_addf(&header, "References: %s\r\n", references);
 	}
 
-	if (xh)
-		strbuf_addstr(&header, xh);
+	if (xh.len)
+		strbuf_addstr(&header, xh.buf);
 
 	fputs(header.buf, stderr);
 
@@ -1423,9 +1421,12 @@ int main(int argc, const char **argv)
 		strbuf_addstr(&references, initial_reply_to);
 
 	for (i = 0; i < files.nr; ++i) {
+		int j;
 		const char *fname = files.items[i].string;
 		FILE *fp;
 		struct strbuf line = STRBUF_INIT;
+		struct strbuf field = STRBUF_INIT;
+		struct string_list headers = STRING_LIST_INIT_DUP;
 		struct strbuf message = STRBUF_INIT;
 
 		if (verbose)
@@ -1435,27 +1436,58 @@ int main(int argc, const char **argv)
 		if (!fp)
 			die("Failed to open file %s\n", fname);
 
-		printf("*** PARSING HEADERS\n");
+		fprintf(stderr, "*** PARSING HEADERS\n");
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
-			if (!prefixcmp(line.buf, "From ")) {
+			fprintf(stderr, "line: '%s'\n", line.buf);
+			if (!line.len)
+				break;
+
+			if (isspace(line.buf[0])) {
+				/*
+				 * Make sure there's no CRs left over
+				 * from a CRLF sequence.
+				 */
+				if (line.buf[line.len - 1] == '\r')
+					strbuf_setlen(&line, line.len - 1);
+
+				strbuf_add(&field, line.buf, line.len);
+			} else {
+				if (field.len)
+					string_list_append(&headers, field.buf);
+
+				strbuf_reset(&field);
+				strbuf_add(&field, line.buf, line.len);
+			}
+		}
+		if (field.len)
+			string_list_append(&headers, field.buf);
+
+		for (j = 0; j < headers.nr; ++j) {
+			char *line = headers.items[j].string;
+			if (!prefixcmp(line, "From ")) {
 /*				input_format = "mbox"; */
 				continue;
 			}
 
 			if (1) { /* input_format == 'mbox' */
-				if (!prefixcmp(line.buf, "Subject: ")) {
+				fprintf(stderr, "field: \"%s\"\n", line);
+
+				if (!prefixcmp(line, "Subject: ")) {
 					free(subject);
-					subject = xstrdup(line.buf + 9);
-					continue;
+					subject = xstrdup(line + 9);
+				} else if (!prefixcmp(line, "From: ")) {
+					/* TODO: fixup sender */
 				}
 
-				printf("line: \"%s\"\n", line.buf);
-
-				if (!line.len)
-					break;
 			}
+#if 0
+			const char *xh =
+			    "Content-Type: text/plain; charset=UTF-8\r\n"
+			    "Content-Transfer-Encoding: quoted-printable\r\n";
+#endif
 		}
 
+		fprintf(stderr, "*** PARSING MESSAGE\n");
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
 			strbuf_addbuf(&message, &line);
 			if (message.buf[message.len - 1] != '\r')
