@@ -2267,7 +2267,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 		rollback_lock_file(lockfile);
 }
 
-int write_index(struct index_state *istate, int newfd)
+static int write_index_v2(struct index_state *istate, int newfd)
 {
 	git_SHA_CTX c;
 	struct cache_version_header hdr;
@@ -2289,9 +2289,6 @@ int write_index(struct index_state *istate, int newfd)
 			cache[i]->ce_flags |= CE_EXTENDED;
 		}
 	}
-
-	if (!istate->version)
-		istate->version = INDEX_FORMAT_DEFAULT;
 
 	/* demote version 3 to version 2 when the latter suffices */
 	if (istate->version == 3 || istate->version == 2)
@@ -2349,6 +2346,15 @@ int write_index(struct index_state *istate, int newfd)
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 	return 0;
+}
+
+int write_index(struct index_state *istate, int newfd)
+{
+	printf("Write index\n");
+	if (!istate->version)
+		istate->version = INDEX_FORMAT_DEFAULT;
+
+	return write_index_v2(istate, newfd);
 }
 
 /*
