@@ -78,7 +78,7 @@ static int read_chunk(struct line_buffer *delta, off_t *delta_len,
 		      struct strbuf *buf, size_t len)
 {
 	strbuf_reset(buf);
-	if (len > *delta_len ||
+	if ((off_t) len > *delta_len ||
 	    buffer_read_binary(delta, buf, len) != len)
 		return error_short_read(delta);
 	*delta_len -= buf->len;
@@ -258,6 +258,7 @@ static int apply_window_in_core(struct window *ctx)
 static int apply_one_window(struct line_buffer *delta, off_t *delta_len,
 			    struct sliding_view *preimage, FILE *out)
 {
+	int rv = -1;
 	struct window ctx = WINDOW_INIT(preimage);
 	size_t out_len;
 	size_t instructions_len;
@@ -275,16 +276,15 @@ static int apply_one_window(struct line_buffer *delta, off_t *delta_len,
 	if (apply_window_in_core(&ctx))
 		goto error_out;
 	if (ctx.out.len != out_len) {
-		error("invalid delta: incorrect postimage length");
+		rv = error("invalid delta: incorrect postimage length");
 		goto error_out;
 	}
 	if (write_strbuf(&ctx.out, out))
 		goto error_out;
-	window_release(&ctx);
-	return 0;
+	rv = 0;
 error_out:
 	window_release(&ctx);
-	return -1;
+	return rv;
 }
 
 int svndiff0_apply(struct line_buffer *delta, off_t delta_len,
@@ -295,7 +295,7 @@ int svndiff0_apply(struct line_buffer *delta, off_t delta_len,
 	if (read_magic(delta, &delta_len))
 		return -1;
 	while (delta_len) {	/* For each window: */
-		off_t pre_off = pre_off; /* stupid GCC... */
+		off_t pre_off = 0; /* stupid GCC and clang-analyzer... */
 		size_t pre_len;
 
 		if (read_offset(delta, &pre_off, &delta_len) ||
