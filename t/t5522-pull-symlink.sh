@@ -46,7 +46,7 @@ test_expect_success SYMLINKS 'pulling from real subdir' '
 # Instead, the error pull gave was:
 #
 #   fatal: 'origin': unable to chdir or not a git archive
-#   fatal: The remote end hung up unexpectedly
+#   fatal: The remote end hung up
 #
 # because git would find the .git/config for the "trash directory"
 # repo, not for the clone-repo repo.  The "trash directory" repo
