@@ -886,7 +886,7 @@ void send_message(struct strbuf *message)
 
 	if (reply_to) {
 		add_header_field(&header, "In-Reply-To", reply_to);
-		strbuf_addf(&header, "References: %s\r\n", references);
+		strbuf_addf(&header, "References: %s\r\n", references.buf);
 	}
 
 	if (xh.len)
