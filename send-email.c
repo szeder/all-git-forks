@@ -944,9 +944,12 @@ void send_message(struct strbuf *message)
 		}
 
 		if (nport < 0) {
-			if      (!strcmp(smtp_encryption, "tls")) nport = 587;
-			else if (!strcmp(smtp_encryption, "ssl")) nport = 465;
-			else nport = 25;
+			if (!strcmp(smtp_encryption, "tls"))
+				nport = 587;
+			else if (!strcmp(smtp_encryption, "ssl"))
+				nport = 465;
+			else
+				nport = 25;
 		}
 
 		sock.fd = connect_socket(smtp_server, nport);
@@ -988,7 +991,8 @@ void send_message(struct strbuf *message)
 				die_errno("Could not read password");
 
 			for (i = 0; i < helo_reply.nr; ++i)
-				if (!prefixcmp(helo_reply.items[i].string + 4, "AUTH "))
+				if (!prefixcmp(helo_reply.items[i].string + 4,
+				    "AUTH "))
 					auth_line = helo_reply.items[i].string;
 
 			if (auth_line) {
@@ -997,10 +1001,11 @@ void send_message(struct strbuf *message)
 				else if (strstr(auth_line, " LOGIN"))
 					auth_login(&sock, smtp_user, smtp_pass);
 				else
-					die("No appropriate SASL mechanism found");
-			}
-			else
-				die("username specified, but SMTP server does not support the AUTH extension");
+					die("No appropriate SASL mechanism "
+					    "found");
+			} else
+				die("username specified, but SMTP server does "
+				    "not support the AUTH extension");
 		}
 
 		write_command(&sock, "MAIL FROM:<%s>", extract_mailbox(sender));
@@ -1271,11 +1276,10 @@ int main(int argc, const char **argv)
 		close(fd);
 		strbuf_release(&sb);
 
-		if (annotate) {
+		if (annotate)
 			do_edit(compose_filename, &files);
-		} else {
+		else
 			do_edit(compose_filename, NULL);
-		}
 
 		/* open final output-file, and edited file */
 		snprintf(temp, sizeof(temp), "%s.final", compose_filename);
@@ -1301,9 +1305,11 @@ int main(int argc, const char **argv)
 				in_body = 1;
 				if (need_8bit_cte)
 					fprintf(fp[0],
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n");
+					    "MIME-Version: 1.0\n"
+					    "Content-Type: text/plain; "
+					    "charset=UTF-8\n"
+					    "Content-Transfer-Encoding: "
+					    "8bit\n");
 			} else if (!prefixcmp(sb.buf, "MIME-Version:")) {
 				need_8bit_cte = 0;
 				fprintf(fp[0], "%s\n", sb.buf);
@@ -1313,9 +1319,8 @@ int main(int argc, const char **argv)
 				temp = make_sure_quoted(initial_subject);
 				fprintf(fp[0], "Subject: %s\n", temp);
 				free(temp);
-			} else if (!prefixcmp(sb.buf, "In-Reply-To:")) {
+			} else if (!prefixcmp(sb.buf, "In-Reply-To:"))
 				initial_reply_to = xstrdup(sb.buf + 12);
-			}
 		}
 		fclose(fp[0]);
 		fclose(fp[1]);
@@ -1324,9 +1329,8 @@ int main(int argc, const char **argv)
 			puts("Summary email is empty, skipping it");
 			compose = -1;
 		}
-	} else if (annotate) {
+	} else if (annotate)
 		do_edit(NULL, &files);
-	}
 
 	for (i = 0; i < files.nr; ++i) {
 		const char *fname = files.items[i].string;
