@@ -707,6 +707,33 @@ char *quote_rfc2047(const char *str, const char *encoding, size_t *len)
 	return strbuf_detach(&sb, len);
 }
 
+char *unquote_rfc2047(const char *str, char **encoding)
+{
+	struct strbuf sb = STRBUF_INIT;
+	char *qb = strstr(str, "=?"), *q, *qe;
+	if (qb && (q = strchr(qb + 2, '?'))  && tolower(q[1]) == 'q' &&
+	    q[2] == '?' && (qe = strstr(q + 3, "?="))) {
+		qb += 2; /* skip "=?" */
+
+		if (encoding)
+			*encoding = xstrndup(qb, q - qb);
+
+		q += 3; /* skip "?q?" */
+		for (; q != qe; ++q) {
+			if (*q == '=' && isxdigit(q[1]) && isxdigit(q[2])) {
+				strbuf_addch(&sb,
+				    (hexval(q[1]) << 4) | hexval(q[2]));
+				q += 2;
+				continue;
+			}
+
+			strbuf_addch(&sb, *q);
+		}
+		return strbuf_detach(&sb, NULL);
+	}
+	return xstrdup(str);
+}
+
 void add_header_field(struct strbuf *sb, const char *name, const char *body)
 {
 	struct strbuf line = STRBUF_INIT;
@@ -878,7 +905,6 @@ void send_message(struct strbuf *message)
 	date = show_date(now, local_tzoffset(now++), DATE_RFC2822);
 	add_header_field(&header, "Date", date);
 
-	/* TODO: accept non-generated Message-Id also */
 	if (!message_id)
 		make_message_id();
 	strbuf_addf(&header, "Message-Id: %s\r\n", message_id);
@@ -1432,6 +1458,7 @@ int main(int argc, const char **argv)
 		struct strbuf field = STRBUF_INIT;
 		struct string_list headers = STRING_LIST_INIT_DUP;
 		struct strbuf message = STRBUF_INIT;
+		char *author = NULL, *author_encoding = NULL;
 
 		if (verbose)
 			fprintf(stderr, "Opening \"%s\"\n", fname);
@@ -1480,7 +1507,9 @@ int main(int argc, const char **argv)
 					free(subject);
 					subject = xstrdup(line + 9);
 				} else if (!prefixcmp(line, "From: ")) {
-					/* TODO: fixup sender */
+					author = unquote_rfc2047(line + 6,
+					    &author_encoding);
+					/* TODO: add cc */
 				}
 
 			}
@@ -1489,6 +1518,16 @@ int main(int argc, const char **argv)
 			    "Content-Type: text/plain; charset=UTF-8\r\n"
 			    "Content-Transfer-Encoding: quoted-printable\r\n";
 #endif
+		}
+
+		if (author && !strcmp(author, sender)) {
+			strbuf_addf(&message, "From: %s\r\n\r\n", author);
+			if (author_encoding) {
+				/*
+				 * TODO: verify that author encoding matches
+				 * content-type
+				 */
+			}
 		}
 
 		fprintf(stderr, "*** PARSING MESSAGE\n");
@@ -1514,6 +1553,8 @@ int main(int argc, const char **argv)
 			else
 				strbuf_addstr(&references, message_id);
 		}
+		free(author);
+		free(author_encoding);
 		free(message_id);
 		message_id = NULL;
 	}
