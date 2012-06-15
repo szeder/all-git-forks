@@ -695,7 +695,7 @@ char *quote_rfc2047(const char *str, const char *encoding, size_t *len)
 
 	strbuf_addf(&sb, "=?%s?Q?", encoding ? encoding : "UTF-8");
 	while (1) {
-		int ch = *str++;
+		int ch = (unsigned char)*str++;
 		if (!ch)
 			break;
 		if (!isascii(ch))
