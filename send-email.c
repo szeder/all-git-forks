@@ -81,7 +81,7 @@ static int socket_write(struct smtp_socket *sock, const void *data, int len)
 	}
 
 	if (n <= 0)
-		die_sockerr(sock, n, "write() failed");
+		die_sockerr(sock, n, _("write() failed"));
 
 	return n;
 }
@@ -97,7 +97,7 @@ static int socket_read(struct smtp_socket *sock, void *data, int len)
 		n = xread(sock->fd, data, len);
 
 	if (n <= 0)
-		die_sockerr(sock, n, "read() failed");
+		die_sockerr(sock, n, _("read() failed"));
 
 	return n;
 }
@@ -118,14 +118,14 @@ static int connect_socket(const char *host, int nport)
 	hints.ai_protocol = IPPROTO_TCP;
 
 	if (verbose)
-		fprintf(stderr, "Looking up %s ... ", host);
+		fprintf(stderr, _("Looking up %s ... "), host);
 
 	gai = getaddrinfo(host, portstr, &hints, &ai);
 	if (gai)
-		die("Unable to look up %s (port %d) (%s)", host, nport, gai_strerror(gai));
+		die(_("Unable to look up %s (port %d) (%s)"), host, nport, gai_strerror(gai));
 
 	if (verbose)
-		fprintf(stderr, "done.\nConnecting to %s (port %d) ... ", host, nport);
+		fprintf(stderr, _("done.\nConnecting to %s (port %d) ... "), host, nport);
 
 	for (ai0 = ai; ai; ai = ai->ai_next) {
 		char addr[NI_MAXHOST];
@@ -139,7 +139,7 @@ static int connect_socket(const char *host, int nport)
 			    sizeof(addr), NULL, 0, NI_NUMERICHOST);
 
 		if (verbose)
-			fprintf(stderr, "Connecting to [%s]:%s... ", addr, portstr);
+			fprintf(stderr, _("Connecting to [%s]:%s... "), addr, portstr);
 
 		if (connect(sockfd, ai->ai_addr, ai->ai_addrlen) >= 0)
 			break;
@@ -153,10 +153,10 @@ static int connect_socket(const char *host, int nport)
 	freeaddrinfo(ai0);
 
 	if (sockfd < 0)
-		die_errno("unable to connect a socket (%s)", strerror(errno));
+		die_errno(_("unable to connect a socket (%s)"), strerror(errno));
 
 	if (verbose)
-		fprintf(stderr, "done.\n");
+		fprintf(stderr, _("done.\n"));
 
 	return sockfd;
 }
@@ -172,14 +172,14 @@ static int connect_socket(const char *host, int nport)
 	char **ap;
 
 	if (verbose)
-		fprintf(stderr, "Looking up %s ... ", host);
+		fprintf(stderr, _("Looking up %s ... "), host);
 
 	he = gethostbyname(host);
 	if (!he)
-		die("Unable to look up %s (%s)", host, hstrerror(h_errno));
+		die(_("Unable to look up %s (%s)"), host, hstrerror(h_errno));
 
 	if (verbose)
-		fprintf(stderr, "got host: %s\n", he->h_name);
+		fprintf(stderr, _("got host: %s\n"), he->h_name);
 
 	ap = he->h_addr_list;
 	while (*ap) {
@@ -189,7 +189,7 @@ static int connect_socket(const char *host, int nport)
 		memcpy(&sa.sin_addr, *ap, he->h_length);
 
 		if (verbose) {
-			fprintf(stderr, "Connecting to %d.%d.%d.%d:%d... ",
+			fprintf(stderr, _("Connecting to %d.%d.%d.%d:%d... "),
 			    (unsigned char)(*ap)[0],
 			    (unsigned char)(*ap)[1],
 			    (unsigned char)(*ap)[2],
@@ -213,7 +213,7 @@ static int connect_socket(const char *host, int nport)
 		++ap;
 	}
 	if (sockfd < 0)
-		die("Could not connect to '%s:%d'", host, nport);
+		die(_("Could not connect to '%s:%d'"), host, nport);
 
 	return sockfd;
 }
@@ -236,7 +236,7 @@ static void connect_ssl(struct smtp_socket *sock)
 
 	ret = SSL_connect(sock->ssl);
 	if (ret != 1)
-		die_sockerr(sock, ret, "SSL_connect() failed");
+		die_sockerr(sock, ret, _("SSL_connect() failed"));
 }
 #endif
 
@@ -274,7 +274,7 @@ static int get_reply(struct smtp_socket *sock, struct string_list *reply)
 			 */
 			if (line_len < 5 || line[line_len - 1] != '\r') {
 				line[line_len] = '\0';
-				warning("Invalid reply-line: \"%s\"", line);
+				warning(_("Invalid reply-line: \"%s\""), line);
 			}
 
 			line[line_len - 1] = '\0';
@@ -324,7 +324,7 @@ static void demand_reply_code(struct smtp_socket *sock, int expected)
 		return;
 	}
 
-	die_reply("Unexpected reply:\n", &reply);
+	die_reply(_("Unexpected reply:\n"), &reply);
 }
 
 static int send_helo(struct smtp_socket *sock, const char *hostname, struct string_list *reply)
@@ -341,7 +341,7 @@ static int send_helo(struct smtp_socket *sock, const char *hostname, struct stri
 	}
 
 	if (reply_code != 2)
-		die_reply("HELO Unexpected reply:\n", reply);
+		die_reply(_("HELO Unexpected reply:\n"), reply);
 
 	return use_esmtp;
 }
@@ -349,7 +349,7 @@ static int send_helo(struct smtp_socket *sock, const char *hostname, struct stri
 static int add_rcpt(const char *var, const char *value)
 {
 	if (strchr(value, ','))
-		die("Comma in --%s entry: %s", var, value);
+		die(_("Comma in --%s entry: %s"), var, value);
 
 	if (!strcmp(var, "to"))
 		string_list_append(&to_rcpts, value);
@@ -358,7 +358,7 @@ static int add_rcpt(const char *var, const char *value)
 	else if (!strcmp(var, "bcc"))
 		string_list_append(&bcc_rcpts, value);
 	else
-		die("unexpected option %s", var);
+		die(_("unexpected option %s"), var);
 
 	return 0;
 }
@@ -407,7 +407,7 @@ static char *extract_mailbox(const char *str)
 	if (!qb) {
 		size_t len = strlen(str);
 		if (len >= sizeof(buf))
-			die("malformed address '%s'", str);
+			die(_("malformed address '%s'"), str);
 		strncpy(buf, str, len);
 		buf[len] = '\0';
 		return buf;
@@ -415,7 +415,7 @@ static char *extract_mailbox(const char *str)
 
 	qe = strchr(qb, '>');
 	if (!qe || qe - qb > sizeof(buf))
-		die("malformed address '%s'", str);
+		die(_("malformed address '%s'"), str);
 
 	strncpy(buf, qb + 1, qe - qb - 1);
 	buf[qe - qb - 1] = '\0';
@@ -519,12 +519,12 @@ static int check_file_rev_conflict(const char *arg)
 			return !format_patch;
 		}
 
-	die(
-"File '%s' exists but it could also be the range of commits\n"
-"to produce patches for.  Please disambiguate by...\n"
-"\n"
-"    * Saying './%s' if you mean a file; or\n"
-"    * Giving --format-patch option if you mean a range.\n", arg, arg);
+	die(_("File '%s' exists but it could also be the range of commits\n"
+	    "to produce patches for.  Please disambiguate by...\n"
+	    "\n"
+	    "    * Saying './%s' if you mean a file; or\n"
+	    "    * Giving --format-patch option if you mean a range.\n"),
+	    arg, arg);
 	}
 	return 0;
 }
@@ -592,7 +592,7 @@ const char *get_patch_subject(const char *fname)
 		return buf;
 	}
 	fclose(fp);
-	die("No subject line in %s ?", fname);
+	die(_("No subject line in %s ?"), fname);
 }
 
 int file_has_nonascii(const char *path)
@@ -600,7 +600,7 @@ int file_has_nonascii(const char *path)
 	int ch;
 	FILE *fp = fopen(path, "r");
 	if (!fp)
-		die_errno("unable to open %s", path);
+		die_errno(_("unable to open %s"), path);
 
 	while (ch = fgetc(fp))
 		if (!isascii(ch) || ch == '\033') {
@@ -617,7 +617,7 @@ int body_or_subject_has_nonascii(const char *fname)
 	struct strbuf line = STRBUF_INIT;
 	FILE *fp = fopen(fname, "r");
 	if (!fp)
-		die_errno("unable to open %s", fname);
+		die_errno(_("unable to open %s"), fname);
 	while (strbuf_getline(&line, fp, '\n') != EOF) {
 		if (!line.len)
 			break;
@@ -644,7 +644,7 @@ int file_declares_8bit_cte(const char *fname)
 	struct strbuf line = STRBUF_INIT;
 	FILE *fp = fopen(fname, "r");
 	if (!fp)
-		die_errno("unable to open %s", fname);
+		die_errno(_("unable to open %s"), fname);
 
 	while (strbuf_getline(&line, fp, '\n') != EOF) {
 		if (!line.len)
@@ -669,7 +669,8 @@ void do_edit(const char *file, struct string_list *files)
 			for (i = 0; i < files->nr; ++i)
 				if (launch_editor(files->items[i].string,
 				    NULL, NULL))
-					die("the editor exited uncleanly, aborting everything");
+					die(_("the editor exited uncleanly, "
+					    "aborting everything"));
 	} else {
 		int num_files = (files ? files->nr : 0) + (file != 0),
 		    curr_arg = 0;
@@ -684,7 +685,8 @@ void do_edit(const char *file, struct string_list *files)
 		assert(curr_arg == num_files + 2);
 
 		if (run_command_v_opt(args, RUN_USING_SHELL))
-			die("the editor exited uncleanly, aborting everything");
+			die(_("the editor exited uncleanly, aborting "
+			"everything"));
 		free(args);
 	}
 }
@@ -741,11 +743,12 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 
 	/* CR or LF is not allowed in header fields */
 	if (strpbrk(line.buf, "\r\n"))
-		die("header field '%s' contains CR or LF");
+		die(_("header field '%s' contains CR or LF"));
 
 	/* non-ASCII should already be quoted */
 	if (has_non_ascii(line.buf))
-		die("header field '%s' contains non-ASCII characters", name);
+		die(_("header field '%s' contains non-ASCII characters"),
+		    name);
 
 	/* long lines should be folded */
 	while (line.len > 78) {
@@ -756,7 +759,8 @@ void add_header_field(struct strbuf *sb, const char *name, const char *body)
 				break;
 
 		if (!pos)
-			die("cannot fold header field: '%s: %s'", name, body);
+			die(_("cannot fold header field: '%s: %s'"),
+			    name, body);
 
 		strbuf_add(sb, line.buf, pos);
 		strbuf_addstr(sb, "\r\n");
@@ -786,7 +790,7 @@ void expand_one_alias(struct string_list *dst, const char *alias)
 	if (!item)
 		string_list_append(dst, alias);
 	if (!item->util)
-		die("alias '%s' expands to itself", alias);
+		die(_("alias '%s' expands to itself"), alias);
 
 	/* mark alias as expanded by setting it's util pointer to NULL */
 	tmp = item->util;
@@ -811,8 +815,8 @@ void unique_email_list(struct string_list *dst, ...)
 			char *entry = list->items[i].string,
 			    *clean = extract_mailbox(entry);
 			if (!clean)
-				fprintf(stderr, "W: unable to extract a "
-				    "valid address from: %s\n", entry);
+				fprintf(stderr, _("W: unable to extract a "
+				    "valid address from: %s\n"), entry);
 			if (string_list_has_string(&seen, clean))
 				continue;
 			string_list_insert(dst, entry);
@@ -941,7 +945,7 @@ void send_message(struct strbuf *message)
 		cld.argv = argv.argv;
 		cld.in = -1;
 		if (start_command(&cld))
-			die("unable to fork '%s'", smtp_server);
+			die(_("unable to fork '%s'"), smtp_server);
 		write_in_full(cld.in, header.buf, header.len);
 		write_in_full(cld.in, "\n", 1);
 		write_in_full(cld.in, message->buf, message->len);
@@ -956,7 +960,8 @@ void send_message(struct strbuf *message)
 		int i, use_esmtp;
 
 		if (!smtp_server)
-			die("The required SMTP server is not properly defined.");
+			die(_("The required SMTP server is not properly "
+			    "defined."));
 
 		if (NULL != port) {
 			char *ep;
@@ -964,7 +969,7 @@ void send_message(struct strbuf *message)
 			if (ep == port || *ep) {
 				struct servent *se = getservbyname(port, "tcp");
 				if (!se)
-					die("Unknown port %s", port);
+					die(_("Unknown port %s"), port);
 				nport = se->s_port;
 			}
 		}
@@ -984,7 +989,7 @@ void send_message(struct strbuf *message)
 #ifndef NO_OPENSSL
 			connect_ssl(&sock);
 #else
-			die("OpenSSL not available");
+			die(_("OpenSSL not available"));
 #endif
 
 		demand_reply_code(&sock, 2);
@@ -1005,7 +1010,7 @@ void send_message(struct strbuf *message)
 			string_list_clear(&helo_reply, 0);
 			use_esmtp = send_helo(&sock, smtp_domain, &helo_reply);
 #else
-			die("OpenSSL not available");
+			die(_("OpenSSL not available"));
 #endif
 		}
 
@@ -1014,7 +1019,7 @@ void send_message(struct strbuf *message)
 			if (!smtp_pass)
 				smtp_pass = getpass("Password: ");
 			if (!smtp_pass)
-				die_errno("Could not read password");
+				die_errno(_("Could not read password"));
 
 			for (i = 0; i < helo_reply.nr; ++i)
 				if (!prefixcmp(helo_reply.items[i].string + 4,
@@ -1027,11 +1032,11 @@ void send_message(struct strbuf *message)
 				else if (strstr(auth_line, " LOGIN"))
 					auth_login(&sock, smtp_user, smtp_pass);
 				else
-					die("No appropriate SASL mechanism "
-					    "found");
+					die(_("No appropriate SASL mechanism "
+					    "found"));
 			} else
-				die("username specified, but SMTP server does "
-				    "not support the AUTH extension");
+				die(_("username specified, but SMTP server "
+				    "does not support the AUTH extension"));
 		}
 
 		write_command(&sock, "MAIL FROM:<%s>", extract_mailbox(sender));
@@ -1053,7 +1058,7 @@ void send_message(struct strbuf *message)
 		demand_reply_code(&sock, 2);
 
 		if (verbose)
-			fprintf(stderr, "Closing connection\n");
+			fprintf(stderr, _("Closing connection\n"));
 
 		write_command(&sock, "QUIT");
 		demand_reply_code(&sock, 2);
@@ -1073,14 +1078,14 @@ void cleanup_tmpdir()
 			strcat(path, "/");
 			strcat(path, de->d_name);
 			if (stat(path, &st)) {
-				error("stat('%s') failed: %s", path,
+				error(_("stat('%s') failed: %s"), path,
 				    strerror(errno));
 				return;
 			}
 			if (!S_ISREG(st.st_mode))
 				continue;
 			if (verbose)
-				fprintf(stderr, "deleting '%s'\n", path);
+				fprintf(stderr, _("deleting '%s'\n"), path);
 			unlink(path);
 		}
 		closedir(dir);
@@ -1103,32 +1108,32 @@ int main(int argc, const char **argv)
 	char compose_filename[PATH_MAX];
 
 	struct option options[] = {
-		OPT_GROUP("Composing:"),
-		OPT_STRING(0, "from", &sender, "str", "Email From:"),
-		OPT_CALLBACK(0, "to", NULL, "str", "Email To:", xadd_rcpt),
-		OPT_CALLBACK(0, "cc", NULL, "str", "Email Cc:", xadd_rcpt),
-		OPT_CALLBACK(0, "bcc", NULL, "str", "Email Bcc:", xadd_rcpt),
-		OPT_STRING(0, "subject", &initial_subject, "str",
-		    "Email \"Subject:\""),
+		OPT_GROUP(N_("Composing:")),
+		OPT_STRING(0, "from", &sender, N_("str"), N_("Email From:")),
+		OPT_CALLBACK(0, "to", NULL, N_("str"), N_("Email To:"), xadd_rcpt),
+		OPT_CALLBACK(0, "cc", NULL, N_("str"), N_("Email Cc:"), xadd_rcpt),
+		OPT_CALLBACK(0, "bcc", NULL, N_("str"), N_("Email Bcc:"), xadd_rcpt),
+		OPT_STRING(0, "subject", &initial_subject, N_("str"),
+		    N_("Email \"Subject:\"")),
 		OPT_STRING(0, "in-reply-to", &initial_reply_to,
-		    "str", "Email \"In-Reply-To:\""),
-		OPT_BOOLEAN(0, "annotate", &annotate, "Review each patch that will be sent in an editor."),
-		OPT_BOOLEAN(0, "compose", &compose, "Open an editor for introduction."),
-		/* TODO: OPT_STRING(0, "8bit-encoding", &encoding, "str", "Encoding to assume 8bit mails if undeclared"), */
+		    N_("str"), N_("Email \"In-Reply-To:\"")),
+		OPT_BOOLEAN(0, "annotate", &annotate, N_("Review each patch that will be sent in an editor.")),
+		OPT_BOOLEAN(0, "compose", &compose, N_("Open an editor for introduction.")),
+		/* TODO: OPT_STRING(0, "8bit-encoding", &encoding, N_("str"), N_("Encoding to assume 8bit mails if undeclared")), */
 
-		OPT_GROUP("Sending:"),
+		OPT_GROUP(N_("Sending:")),
 		/* TODO: OPT_STRING(0, "envelope-sender", &envelope_sender, "str", "Email envelope sender."), */
-		OPT_STRING(0, "smtp-server", &smtp_server, "str", "SMTP server to send through"),
+		OPT_STRING(0, "smtp-server", &smtp_server, N_("str"), N_("SMTP server to send through")),
 		/* TODO: OPT_STRING(0, "smtp-server-option", &smtp_server_opt, "str", "Outgoing SMTP server option to use."), */
-		OPT_STRING(0, "smtp-server-port", &port, "port", "Outgoing SMTP server port"),
-		OPT_STRING(0, "smtp-user", &smtp_user, "user", "SMTP-AUTH username"),
-		OPT_STRING(0, "smtp-pass", &smtp_pass, "password", "SMTP-AUTH password"),
-		OPT_STRING(0, "smtp-encryption", &smtp_encryption, "str", "SMTP encrption"),
+		OPT_STRING(0, "smtp-server-port", &port, N_("port"), N_("Outgoing SMTP server port")),
+		OPT_STRING(0, "smtp-user", &smtp_user, N_("user"), N_("SMTP-AUTH username")),
+		OPT_STRING(0, "smtp-pass", &smtp_pass, N_("password"), N_("SMTP-AUTH password")),
+		OPT_STRING(0, "smtp-encryption", &smtp_encryption, N_("str"), N_("SMTP encrption")),
 		/* TODO: smtp-ssl (alias for --smtp-encryption ssl) */
-		OPT_STRING(0, "smtp-domain", &smtp_domain, "str", "domain for HELO SMTP command"),
-		OPT_BOOLEAN(0, "smtp-debug", &smtp_debug, "print raw protocol to stdout"),
+		OPT_STRING(0, "smtp-domain", &smtp_domain, N_("str"), N_("domain for HELO SMTP command")),
+		OPT_BOOLEAN(0, "smtp-debug", &smtp_debug, N_("print raw protocol to stdout")),
 
-		OPT_GROUP("Automating:"),
+		OPT_GROUP(N_("Automating:")),
 		/* TODO: identity */
 		/* TODO: to-cmd */
 		/* TODO: cc-cmd */
@@ -1136,16 +1141,16 @@ int main(int argc, const char **argv)
 		/* TODO: signed-off-by-cc */
 		/* TODO: suppress-from */
 		/* TODO: chain-reply-to */
-		OPT_BOOLEAN(0, "thread", &thread, "Use In-Reply-To: field. Default on."),
+		OPT_BOOLEAN(0, "thread", &thread, N_("Use In-Reply-To: field. Default on.")),
 
-		OPT_GROUP("Administering:"),
+		OPT_GROUP(N_("Administering:")),
 		/* TODO: confirm */
-		OPT__QUIET(&quiet, "Output one line of info per email."),
-		OPT__DRY_RUN(&dry_run, "Don't actually send the emails."),
+		OPT__QUIET(&quiet, N_("Output one line of info per email.")),
+		OPT__DRY_RUN(&dry_run, N_("Don't actually send the emails.")),
 		/* TODO: validate */
-		OPT_BOOLEAN(0, "format-patch", &format_patch, "understand any non optional arguments as `git format-patch` ones."),
-		OPT_BOOLEAN(0, "force", &force, "Send even if safety checks would prevent it."),
-		OPT__VERBOSE(&verbose, "be verbose"),
+		OPT_BOOLEAN(0, "format-patch", &format_patch, N_("understand any non optional arguments as `git format-patch` ones.")),
+		OPT_BOOLEAN(0, "force", &force, N_("Send even if safety checks would prevent it.")),
+		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT_END()
 	};
 
@@ -1173,7 +1178,7 @@ int main(int argc, const char **argv)
 			/* collect files in directory */
 			dir = opendir(arg);
 			if (!dir)
-				die("Failed to opendir '%s': %s", arg, strerror(errno));
+				die(_("Failed to opendir '%s': %s"), arg, strerror(errno));
 
 			while ((de = readdir(dir)) != NULL) {
 				char path[PATH_MAX];
@@ -1181,7 +1186,7 @@ int main(int argc, const char **argv)
 				strcat(path, "/");
 				strcat(path, de->d_name);
 				if (stat(path, &st))
-					die_errno("lstat '%s'", path);
+					die_errno(_("lstat '%s'"), path);
 
 				if (S_ISREG(st.st_mode))
 					string_list_append(&dir_files, xstrdup(path));
@@ -1224,7 +1229,7 @@ int main(int argc, const char **argv)
 		cld.git_cmd = 1;
 		cld.out = -1;
 		if (start_command(&cld))
-			die("unable to fork");
+			die(_("unable to fork"));
 
 		/* read lines */
 		strbuf_read(&buf, cld.out, 64);
@@ -1240,7 +1245,7 @@ int main(int argc, const char **argv)
 			strbuf_addstr(&buf, argv.argv[0]);
 			for (j = 1; j < argv.argc; ++j)
 				strbuf_addf(&buf, " %s", argv.argv[j]);
-			die("%s: command returned error: %d", buf.buf, err);
+			die(_("%s: command returned error: %d"), buf.buf, err);
 		}
 
 		argv_array_clear(&argv);
@@ -1253,7 +1258,7 @@ int main(int argc, const char **argv)
 			for (i = 0; i < files.nr; ++i)
 				puts(files.items[i].string);
 	} else {
-		fprintf(stderr, "\nNo patch files specified!\n\n");
+		fprintf(stderr, _("\nNo patch files specified!\n\n"));
 		usage_with_options(send_email_usage, options);
 	}
 
@@ -1294,10 +1299,10 @@ int main(int argc, const char **argv)
 		fd = git_mkstemp(compose_filename, PATH_MAX,
 		    ".gitsendemail.msg.XXXXXX");
 		if (fd < 0)
-			die_errno("could not create temporary file '%s'",
+			die_errno(_("could not create temporary file '%s'"),
 			    compose_filename);
 		if (write_in_full(fd, sb.buf, sb.len) < 0)
-			die_errno("failed writing temporary file '%s'",
+			die_errno(_("failed writing temporary file '%s'"),
 			    compose_filename);
 		close(fd);
 		strbuf_release(&sb);
@@ -1311,10 +1316,10 @@ int main(int argc, const char **argv)
 		snprintf(temp, sizeof(temp), "%s.final", compose_filename);
 		fp[0] = fopen(temp, "w");
 		if (!fp[0])
-			die_errno("Failed to open %s", temp);
+			die_errno(_("Failed to open %s"), temp);
 		fp[1] = fopen(compose_filename, "r");
 		if (!fp[1])
-			die_errno("Failed to open %s", compose_filename);
+			die_errno(_("Failed to open %s"), compose_filename);
 
 		need_8bit_cte = file_has_nonascii(compose_filename);
 		in_body = 0;
@@ -1352,7 +1357,7 @@ int main(int argc, const char **argv)
 		fclose(fp[1]);
 
 		if (summary_empty) {
-			puts("Summary email is empty, skipping it");
+			puts(_("Summary email is empty, skipping it"));
 			compose = -1;
 		}
 	} else if (annotate)
@@ -1367,8 +1372,8 @@ int main(int argc, const char **argv)
 	}
 
 	if (/* !auto_8bit_encoding && */ broken_encoding.nr) {
-		printf("The following files are 8bit, but do not declare "
-		    "a Content-Transfer-Encoding.\n");
+		printf(_("The following files are 8bit, but do not declare "
+		    "a Content-Transfer-Encoding.\n"));
 		sort_string_list(&broken_encoding);
 		for (i = 0; i < broken_encoding.nr; ++i)
 			printf("    %s\n", broken_encoding.items[i].string);
@@ -1380,10 +1385,10 @@ int main(int argc, const char **argv)
 			    *subject = get_patch_subject(file);
 			if (!strcmp(subject, "*** SUBJECT HERE ***"))
 				die(
-"Refusing to send because the patch\n"
+_("Refusing to send because the patch\n"
 "%s\n"
 "has the template subject '*** SUBJECT HERE ***.\n"
-"Pass --force if you really want to send.\n",
+"Pass --force if you really want to send.\n"),
 				    files.items[i].string);
 		}
 
@@ -1395,15 +1400,15 @@ int main(int argc, const char **argv)
 			sender = repocommitter;
 
 		snprintf(temp, sizeof(temp),
-		    "Who should the emails appear to be from? [%s] ",
+		    _("Who should the emails appear to be from? [%s] "),
 		    sender);
 		sender = ask(temp, sender, NULL);
-		printf("Emails will be sent from: '%s'\n", sender);
+		printf(_("Emails will be sent from: '%s'\n"), sender);
 		prompting++;
 	}
 
 	if (!to_rcpts.nr) {
-		char *to = ask("Who should the emails be sent to? ", NULL, NULL);
+		char *to = ask(_("Who should the emails be sent to? "), NULL, NULL);
 		if (to && strlen(to) > 0)
 			string_list_append(&to_rcpts, to);
 		else
@@ -1415,7 +1420,8 @@ int main(int argc, const char **argv)
 
 	if (thread && !initial_reply_to && prompting)
 		initial_reply_to = ask(
-"Message-ID to be used as In-Reply-To for the first email? ",
+		    _("Message-ID to be used as In-Reply-To for the first "
+		    "email? "),
 		    NULL, NULL);
 
 	if (initial_reply_to) {
@@ -1461,11 +1467,11 @@ int main(int argc, const char **argv)
 		char *author = NULL, *author_encoding = NULL;
 
 		if (verbose)
-			fprintf(stderr, "Opening \"%s\"\n", fname);
+			fprintf(stderr, _("Opening \"%s\"\n"), fname);
 
 		fp = fopen(fname, "r");
 		if (!fp)
-			die("Failed to open file %s\n", fname);
+			die(_("Failed to open file %s\n"), fname);
 
 		fprintf(stderr, "*** PARSING HEADERS\n");
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
