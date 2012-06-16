@@ -2066,10 +2066,16 @@ static void set_children(struct rev_info *revs)
 	}
 }
 
+void reset_revision_walk(void)
+{
+	clear_object_flags(SEEN | ADDED | SHOWN);
+}
+
 int prepare_revision_walk(struct rev_info *revs)
 {
 	int nr = revs->pending.nr;
 	struct object_array_entry *e, *list;
+	struct commit_list **next = &revs->commits;
 
 	e = list = revs->pending.objects;
 	revs->pending.nr = 0;
@@ -2080,11 +2086,12 @@ int prepare_revision_walk(struct rev_info *revs)
 		if (commit) {
 			if (!(commit->object.flags & SEEN)) {
 				commit->object.flags |= SEEN;
-				commit_list_insert_by_date(commit, &revs->commits);
+				next = commit_list_append(commit, next);
 			}
 		}
 		e++;
 	}
+	commit_list_sort_by_date(&revs->commits);
 	if (!revs->leak_pending)
 		free(list);
 
