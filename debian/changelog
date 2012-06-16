@@ -23,6 +23,8 @@ git (1:1.7.11~rc3-0.1) experimental; urgency=low
     libtime-module-perl for If-Modified-Since support; Build-Depends:
     same to support test suite.
   * debian/rules: install German translation.
+  * debian/implicit: use order-only dependencies so "debian/rules
+    binary-arch" does not try to build documentation.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 16 Jun 2012 14:54:35 -0500
 
