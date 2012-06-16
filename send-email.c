@@ -372,6 +372,45 @@ static const char *smtp_server = NULL, *port = NULL,
     *smtp_domain = NULL, *smtp_user = NULL, *smtp_pass = NULL;
 static const char *smtp_encryption = "";
 
+enum {
+	CCCMD, CC, AUTHOR, SELF, SOB, BODY, BODYCC,
+	SUPPRESS_CC_NR
+};
+static int suppress_cc[SUPPRESS_CC_NR];
+
+static int get_suppress_cc_idx(const char *str)
+{
+	if (!strcmp(str, "cccmd"))
+		return CCCMD;
+	if (!strcmp(str, "author"))
+		return AUTHOR;
+	if (!strcmp(str, "self"))
+		return SELF;
+	if (!strcmp(str, "sob"))
+		return SOB;
+	if (!strcmp(str, "body"))
+		return BODY;
+	if (!strcmp(str, "bodycc"))
+		return BODYCC;
+	die(_("Unknown --suppress-cc field: %s"), str);
+}
+
+static void set_suppress_cc(const char *str)
+{
+	if (!strcmp(str, "all")) {
+		int i;
+		for (i = 0; i < SUPPRESS_CC_NR; ++i)
+			suppress_cc[i] = 1;
+	} else
+		suppress_cc[get_suppress_cc_idx(str)] = 1;
+}
+
+static int suppress_cc_callback(const struct option *opt, const char *arg, int unset)
+{
+	set_suppress_cc(arg);
+	return 0;
+}
+
 static int git_send_email_config(const char *var, const char *value, void *cb)
 {
 	if (prefixcmp(var, "sendemail."))
@@ -390,6 +429,10 @@ static int git_send_email_config(const char *var, const char *value, void *cb)
 		return add_rcpt(var, value);
 	if (!strcmp(var, "multiedit")) {
 		multiedit = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "suppresscc")) {
+		set_suppress_cc(value);
 		return 0;
 	}
 	return 0;
@@ -1100,8 +1143,8 @@ int main(int argc, const char **argv)
 	struct string_list files = { 0 }, rev_list_opts = { 0 },
 	    broken_encoding = { 0 };
 
-	int quiet = 0, thread = 1, force = 0,
-	    compose = 0, annotate = 0;
+	int quiet = 0, thread = 1, force = 0, compose = 0, annotate = 0,
+	    signed_off_by_cc = -1, suppress_from = -1;
 	const char *initial_subject = NULL,
 	    *initial_reply_to = NULL;
 	const char *repoauthor, *repocommitter;
@@ -1137,10 +1180,10 @@ int main(int argc, const char **argv)
 		/* TODO: identity */
 		/* TODO: to-cmd */
 		/* TODO: cc-cmd */
-		/* TODO: suppress-cc */
-		/* TODO: signed-off-by-cc */
-		/* TODO: suppress-from */
-		/* TODO: chain-reply-to */
+		OPT_CALLBACK(0, "suppress-cc", NULL, N_("str"), N_("author, self, sob, cc, cccmd, body, bodycc, all"), suppress_cc_callback),
+		OPT_BOOLEAN(0, "signed-off-by-cc", &signed_off_by_cc, N_("Send to Signed-off-by: addresses. Default on.")),
+		OPT_BOOLEAN(0, "suppress-from", &suppress_from, N_("Send to self. Default off.")),
+		/* TODO: OPT_BOOLEAN(0, "chain-reply-to", NULL, N_("Chain In-Reply-To: fields. Default off.")), */
 		OPT_BOOLEAN(0, "thread", &thread, N_("Use In-Reply-To: field. Default on.")),
 
 		OPT_GROUP(N_("Administering:")),
@@ -1158,6 +1201,16 @@ int main(int argc, const char **argv)
 	setup_git_directory_gently(&nongit_ok);
 	git_config(git_send_email_config, NULL);
 	argc = parse_options(argc, argv, NULL, options, send_email_usage, PARSE_OPT_KEEP_UNKNOWN);
+
+	if (suppress_from >= 0)
+		suppress_cc[SELF] = suppress_from;
+	if (signed_off_by_cc >= 0)
+		suppress_cc[SOB] = !signed_off_by_cc;
+	if (suppress_cc[BODY]) {
+		suppress_cc[SOB] = 1;
+		suppress_cc[BODYCC] = 1;
+		suppress_cc[BODY] = 0;
+	}
 
 	repoauthor = git_author_info(IDENT_NO_DATE);
 	repocommitter = git_committer_info(IDENT_NO_DATE);
@@ -1515,9 +1568,32 @@ _("Refusing to send because the patch\n"
 				} else if (!prefixcmp(line, "From: ")) {
 					author = unquote_rfc2047(line + 6,
 					    &author_encoding);
-					/* TODO: add cc */
-				}
+					if (suppress_cc[AUTHOR])
+						continue;
+					if (suppress_cc[SELF] &&
+					    !strcmp(author, sender))
+						continue;
 
+					if (!quiet)
+						printf(_("(mbox) Adding cc: "
+						    "%s from line '%s'\n"),
+						    author, line);
+					string_list_append(&cc_rcpts, author);
+				} else if (!prefixcmp(line, "CC: ")) {
+					char *cc = unquote_rfc2047(line + 4,
+					    NULL);
+					if (!strcmp(cc, sender)) {
+						if (suppress_cc[SELF])
+							continue;
+					} else if (suppress_cc[CC])
+						continue;
+
+					if (!quiet)
+						printf(_("(mbox) Adding cc: "
+						    "%s from line '%s'\n"),
+						    cc, line);
+					string_list_append(&cc_rcpts, cc);
+				}
 			}
 #if 0
 			const char *xh =
@@ -1537,11 +1613,43 @@ _("Refusing to send because the patch\n"
 		}
 
 		fprintf(stderr, "*** PARSING MESSAGE\n");
+		strbuf_release(&line);
 		while (strbuf_getline(&line, fp, '\n') != EOF) {
+			/*
+			 * Make sure there's no CRs left over
+			 * from a CRLF sequence.
+			 */
+			if (line.buf[line.len - 1] == '\r')
+				strbuf_setlen(&line, line.len - 1);
+
+			if (!strncasecmp(line.buf, "Signed-off-by: ", 15)) {
+				char *sob = line.buf + 15;
+				if (!strcmp(sob, sender)) {
+					if (suppress_cc[SELF])
+						continue;
+				} else if (suppress_cc[SOB])
+					continue;
+
+				if (!quiet)
+					printf(_("(body) Adding cc: %s from "
+					    "line '%s'\n"), sob, line.buf);
+				string_list_append(&cc_rcpts, sob);
+			} else if (!strncasecmp(line.buf, "Cc: ", 4)) {
+				char *cc = line.buf + 4;
+				if (!strcmp(cc, sender)) {
+					if (suppress_cc[SELF])
+						continue;
+				} else if (suppress_cc[BODYCC])
+					continue;
+
+				if (!quiet)
+					printf(_("(body) Adding cc: %s from "
+					    "line '%s'\n"), cc, line.buf);
+				string_list_append(&cc_rcpts, cc);
+			}
+
 			strbuf_addbuf(&message, &line);
-			if (message.buf[message.len - 1] != '\r')
-				strbuf_addch(&message, '\r');
-			strbuf_addch(&message, '\n');
+			strbuf_add(&message, "\r\n", 2);
 		}
 
 		fclose(fp);
