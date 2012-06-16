@@ -19,6 +19,9 @@ git (1:1.7.11~rc3-0.1) experimental; urgency=low
   * debian/control: git-svn: Depends: libyaml-perl for platform- and
     version-independent .git/svn/.caches format (thx Tim Retout for
     the analysis; closes: #587650).
+  * debian/control: gitweb: Recommends: libhttp-date-perl or
+    libtime-module-perl for If-Modified-Since support; Build-Depends:
+    same to support test suite.
   * debian/rules: install German translation.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 16 Jun 2012 14:54:35 -0500
