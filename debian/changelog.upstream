@@ -1,3 +1,661 @@
+Version v1.7.11-rc3; changes since v1.7.11-rc2:
+-----------------------------------------------
+
+Jeff King (1):
+      docs: fix cross-directory linkgit references
+
+Jiang Xin (2):
+      l10n: Update git.pot (27 new, 1 removed messages)
+      l10n: zh_CN.po: translate 27 new messages
+
+Johannes Schindelin (1):
+      fast-export: report SHA-1 instead of gibberish when marks exist already
+
+Jonathan Nieder (3):
+      git-svn: make Git::SVN::Editor a separate file
+      git-svn: make Git::SVN::RA a separate file
+      git-svn: use YAML format for mergeinfo cache when possible
+
+Junio C Hamano (2):
+      fmt-merge-msg: make attribution into comment lines
+      Git 1.7.11-rc3
+
+Matthieu Moy (1):
+      api-credential.txt: document that helpers field is filled-in automatically
+
+Ralf Thielow (1):
+      l10n: de.po: translate 27 new messages
+
+Tran Ngoc Quan (1):
+      l10n: Update  po/vi.po to v1.7.11.rc2.2.gb694fbb
+
+
+Version v1.7.11-rc2; changes since v1.7.11-rc1:
+-----------------------------------------------
+
+Colby Ranger (1):
+      Add persistent-https to contrib
+
+Jiang Xin (2):
+      l10n: Update git.pot (5 new, 3 removed messages)
+      l10n: zh_CN.po: translate 2 new, 3 fuzzy messages
+
+Junio C Hamano (3):
+      git-svn: platform auth providers are working only on 1.6.15 or newer
+      doc: fix xref link from api docs to manual pages
+      Git 1.7.11-rc2
+
+Matthieu Moy (3):
+      api-credentials.txt: show the big picture first
+      api-credentials.txt: mention credential.helper explicitly
+      api-credentials.txt: add "see also" section
+
+Ralf Thielow (4):
+      l10n: de.po: translate 265 new messages
+      l10n: de.po: translate 41 new messages
+      l10n: de.po: translate 2 new, 3 fuzzy messages
+      l10n: de.po: add additional newline
+
+Ramkumar Ramachandra (1):
+      t3510 (cherry-pick-sequence): add missing '&&'
+
+Tran Ngoc Quan (1):
+      l10n: Update translation for Vietnamese
+
+
+Version v1.7.11-rc1; changes since v1.7.11-rc0:
+-----------------------------------------------
+
+Erik Faye-Lund (2):
+      rebase: report invalid commit correctly
+      Makefile: add missing GIT-VERSION-FILE dependency
+
+Jeff King (30):
+      ident: split setup_ident into separate functions
+      http-push: do not access git_default_email directly
+      fmt-merge-msg: don't use static buffer in record_person
+      move identity config parsing to ident.c
+      move git_default_* variables to ident.c
+      ident: trim trailing newline from /etc/mailname
+      format-patch: use default email for generating message ids
+      fmt_ident: drop IDENT_WARN_ON_NO_NAME code
+      ident: don't write fallback username into git_default_name
+      drop length limitations on gecos-derived names and emails
+      ident: report passwd errors with a more friendly message
+      ident: use full dns names to generate email addresses
+      ident: use a dynamic strbuf in fmt_ident
+      ident: trim whitespace from default name/email
+      format-patch: refactor get_patch_filename
+      fetch-pack: sort incoming heads
+      fetch-pack: avoid quadratic behavior in remove_duplicates
+      add sorting infrastructure for list refs
+      fetch-pack: sort the list of incoming refs
+      fetch-pack: avoid quadratic loop in filter_refs
+      fetch-pack: sort incoming heads list earlier
+      ident: reword empty ident error message
+      ident: refactor NO_DATE flag in fmt_ident
+      ident: let callers omit name with fmt_indent
+      format-patch: use GIT_COMMITTER_EMAIL in message ids
+      ident: rename IDENT_ERROR_ON_NO_NAME to IDENT_STRICT
+      ident: reject bogus email addresses with IDENT_STRICT
+      format-patch: do not use bogus email addresses in message ids
+      t5701: modernize style
+      INSTALL: update asciidoc recommendation
+
+Jens Lehmann (1):
+      submodules: print "registered for path" message only once
+
+Jiang Xin (5):
+      l10n: Update git.pot (41 new messages)
+      l10n: zh.CN.po: update by msgmerge git.pot
+      l10n: zh_CN.po: translate 323 new messages
+      l10n: Set nplurals of zh_CN.po from 1 to 2
+      i18n: apply: split to fix a partial i18n message
+
+Jonathan Nieder (3):
+      git-svn: move Git::SVN::Prompt into its own file
+      git-svn: rename SVN::Git::* packages to Git::SVN::*
+      git-svn: make Git::SVN::Fetcher a separate file
+
+Junio C Hamano (6):
+      refs: do not create ref_entry when searching
+      cherry-pick: regression fix for empty commits
+      Start preparing for 1.7.10.4
+      Update draft release notes to 1.7.11
+      Git 1.7.10.4
+      Git 1.7.11-rc1
+
+Marco Paolone (1):
+      l10n: New it.po file with 504 translations
+
+Matthieu Moy (1):
+      Reduce cost of deletion in levenstein distance (4 -> 3)
+
+Michael Haggerty (5):
+      free_ref_entry(): do not trigger reading of loose refs
+      cmd_fetch_pack(): declare dest to be const
+      cmd_fetch_pack(): handle non-option arguments outside of the loop
+      cmd_fetch_pack(): combine the loop termination conditions
+      cmd_fetch_pack(): respect constness of argv parameter
+
+Nguyễn Thái Ngọc Duy (2):
+      pack-objects, streaming: turn "xx >= big_file_threshold" to ".. > .."
+      pack-objects: refactor write_object() into helper functions
+
+Peter Krefting (1):
+      Update Swedish translation (728t0f0u)
+
+René Scharfe (3):
+      refs: convert parameter of search_ref_dir() to length-limited string
+      refs: convert parameter of create_dir_entry() to length-limited string
+      refs: use strings directly in find_containing_dir()
+
+Tran Ngoc Quan (2):
+      Init translation for Vietnamese
+      First release translation for Vietnamese
+
+Vincent van Ravesteijn (1):
+      Do not autosquash in case of an implied interactive rebase
+
+Vitor Antunes (3):
+      git-p4: Test changelists touching two branches
+      git-p4: Verify detection of "empty" branch creation
+      git-p4: Clean up branch test cases
+
+
+Version v1.7.11-rc0; changes since v1.7.10.4:
+---------------------------------------------
+
+Amiel Martin (2):
+      fixed order of assertion in tests
+      sort assertion to make it more generic
+
+Arlen Cuss (1):
+      Fix refspecs in given example for git subtree pull.
+
+Avery Pennarun (72):
+      basic options parsing and whatnot.
+      'git subtree split' now basically works.
+      We now copy the other stuff about a commit (changelog, author, etc).
+      Print out the newly created commitid at the end, for use in other scripts.
+      Add a new --rejoin option.
+      Use information about prior splits to make sure merges work right.
+      Added a --onto option, but it's so complicated I can't tell if it works.
+      Hmm... can't actually filter rev-list on the subdir name.
+      Skip over empty commits.
+      Quick test script for generating reasonably complex merge scenarios.
+      Prune out some extra merge commits by comparing their parents correctly.
+      Even more aggressive commit trimming.
+      Okay, that was a little too aggressive.
+      Pass the path using the --prefix option instead of on the command line.
+      Add a new 'git subtree add' command for adding subtrees from a given rev.
+      Add 'git subtree merge' and 'git subtree pull'.
+      Handle it successfully if a given parent commit has no parents.
+      Change test.sh to test the new add, merge, and pull commands.
+      todo list
+      Add --annotate option, and create recognizable file content during tests.
+      Typo when searching for existing splits.
+      Clarify why we can't do 'git rev-list' with a path.
+      Add a 'create' helper function in test.sh.
+      Add some basic assertions to test.sh.
+      test.sh tweak
+      Trim some extra merge commits that don't need to go into the split tree.
+      Only copy a commit if it has at least one nonidentical parent.
+      test.sh: make sure no commit changes more than one file at a time.
+      Simplify merges even more aggressively.
+      test.sh: oops, never intended to count the raw number of commits.
+      debug messages are off by default; use -d to enable.
+      Abort if --rejoin fails.
+      More to-do items based on feedback
+      typo in comment
+      New --branch option to split command.
+      slightly rearrange help message for split.
+      FIXME help for --squash option
+      merge_msg() is really more like rejoin_msg().
+      Basic "subtree merge --squash" support.
+      Don't squash-merge if the old and new commits are the same.
+      Fix splitting after using a squash merge.
+      Make --squash work with the 'add' command too.
+      Add basic git-subtree manpage in asciidoc format.
+      man page: add an EXAMPLES section.
+      update todo
+      Some todo items reported by pmccurdy
+      todo
+      Docs: when pushing to github, the repo path needs to end in .git
+      todo
+      todo^
+      todo
+      todo: idea for a 'git subtree grafts' command
+      Improve patch to use git --exec-path: add to PATH instead.
+      Fix behaviour if you have a branch named the same as your --prefix
+      Add a README that says to email me instead of using github mail.
+      If someone provides a --prefix that ends with slash, strip the slash.
+      Fix a minor problem in identifying squashes vs. normal splits.
+      cmd_pull didn't support --squash correctly.
+      Add some tips for how to install.
+      Oops, forgot a COPYING file.  It's GPLv2.
+      Weird, I forgot to have 'make test' call test.sh.
+      Jakub's changes broke the progress message slightly.
+      Make tests pass with recent git (1.7.0 and up).
+      Improve checking for existence of the --prefix directory.
+      Oops.  Apparently I didn't run 'make test' after most recent change.
+      Some recent tests accidentally depended on very new versions of git.
+      (Hopefully) fix PATH setting for msysgit.
+      Another fix for PATH and msysgit.
+      Fix typo: an -> a
+      Fix a few typos/grammar-o's in the preceding commit.
+      It's also okay if an expected tree object is actually a commit.
+      Skip commit objects that should be trees, rather than copying them.
+
+Avishay Lavie (1):
+      git-svn: support rebase --preserve-merges
+
+Ben Walton (3):
+      add installation support to Makefile
+      make git version dynamic when building documentation
+      Use SHELL_PATH from build system in run_command.c:prepare_shell_cmd
+
+Bryan Larsen (1):
+      docs: simplify example 1
+
+Clemens Buchacher (2):
+      merge overwrites unstaged changes in renamed file
+      t5570: use explicit push refspec
+
+Cole Stanfield (1):
+      Fixing eval syntax error.
+
+Dan Sabath (2):
+      docs: add simple 'add' case to clarify setup.
+      Docs: cleaning up example textual redundancy
+
+David A. Greene (11):
+      Move Tests Into Subdirectory
+      Rename Test
+      Use Test Harness
+      Set TEST_DIRECTORY
+      Remove unnecessary git-subtree files
+      Use project config files
+      Use configure settings for git-subtree
+      Install git-subtree from contrib
+      Add subtree test Makefile
+      Use git-subtree test Makefile
+      Fix git-subtree install instructions
+
+David Aguilar (1):
+      t7800: Test difftool passing arguments to diff
+
+Felipe Contreras (8):
+      tests: add initial bash completion tests
+      completion: simplify __gitcomp_1
+      completion: simplify by using $prev
+      completion: add missing general options
+      completion: simplify __git_complete_revlist_file
+      completion: add new __git_complete helper
+      completion: rename internal helpers _git and _gitk
+      completion: add support for backwards compatibility
+
+Heiko Voigt (3):
+      Teach revision walking machinery to walk multiple times sequencially
+      Refactor submodule push check to use string list instead of integer
+      push: teach --recurse-submodules the on-demand option
+
+Jakub Narębski (1):
+      gitweb: Pass esc_html_hl_regions() options to esc_html()
+
+Jakub Suder (9):
+      added -p alias for --prefix
+      added -m/--message option for setting merge commit message
+      allow using --branch with existing branches if it makes sense
+      fix for subtree split not finding proper base for new commits
+      changed alias for --prefix from -p to -P
+      fixed bug in commit message for split
+      added tests for recent changes
+      added temporary test dirs to gitignore
+      improved rev_is_descendant_of_branch() function
+
+Jared Hance (1):
+      apply: do not leak patches and fragments
+
+Jeff King (4):
+      checkout: suppress tracking message with "-q"
+      teach "git branch" a --quiet option
+      doc/config: fix inline literals
+      status: refactor colopts handling
+
+Jesse Greenwald (2):
+      Split cmd now processes commits in topo order.
+      Added check to order of processed commits.
+
+Jiang Xin (4):
+      l10n: Update git.pot (33 new, 24 deleted messages)
+      l10n: Update Simplified Chinese translation
+      l10n: Update git.pot (275 new, 15 removed messages)
+      l10n: Update git.pot (8 new, 4 removed messages)
+
+Johannes Berg (1):
+      am: support --include option
+
+Johannes Sixt (3):
+      Do not use SHELL_PATH from build system in prepare_shell_cmd on Windows
+      t4006: Windows do not have /dev/zero
+      Fix t3411.3 to actually rebase something
+
+John Yani (1):
+      docs: Description, synopsys, options and examples changes.
+
+Jon Seymour (2):
+      git-svn: clarify the referent of dcommit's optional argument
+      rev-parse doc: --git-dir does not always show a relative path
+
+Jonathan Nieder (15):
+      test: use test_i18ncmp when checking --stat output
+      test: use numstat instead of diffstat in funny-names test
+      test: modernize funny-names test style
+      test: test cherry-pick functionality and output separately
+      test: use --numstat instead of --stat in "git stash show" tests
+      test: use numstat instead of diffstat in binary-diff test
+      diffstat summary line varies by locale: miscellany
+      var doc: default editor and pager are configurable at build time
+      var doc: advertise current DEFAULT_PAGER and DEFAULT_EDITOR settings
+      test: do not rely on US English tracking-info messages
+      test: use test_i18ncmp for "Patch format detection failed" message
+      test: am of empty patch should not succeed
+      fast-import doc: cat-blob and ls responses need to be consumed quickly
+      completion: avoid trailing space for --exec-path
+      i18n: mark relative dates for translation
+
+Junio C Hamano (45):
+      streaming: make streaming-write-entry to be more reusable
+      fmt-merge-msg: show those involved in a merged series
+      apply: rename free_patch() to free_patch_list()
+      apply: free patch->{def,old,new}_name fields
+      apply: release memory for fn_table
+      apply: free patch->result
+      am -3: list the paths that needed 3-way fallback
+      apply: free unused fragments for submodule patch
+      varint: make it available outside the context of pack
+      cache.h: hide on-disk index details
+      read-cache.c: allow unaligned mapping of the index file
+      read-cache.c: make create_from_disk() report number of bytes it consumed
+      read-cache.c: report the header version we do not understand
+      read-cache.c: move code to copy ondisk to incore cache to a helper function
+      read-cache.c: move code to copy incore to ondisk cache to a helper function
+      read-cache.c: read prefix-compressed names in index on-disk version v4
+      read-cache.c: write prefix-compressed names in the index
+      update-index: upgrade/downgrade on-disk index version
+      Kick off post 1.7.10 cycle
+      apply: drop unused macro
+      apply: tighten constness of line buffer
+      apply: document buffer ownership rules across functions
+      RelNotes: the first batch of topics graduated to 'master'
+      RelNotes: the second batch of topics graduated to 'master'
+      mergesort: rename it to llist_mergesort()
+      RelNotes: the third batch
+      RelNotes: the fourth batch of topics graduated to 'master'
+      The fifth batch of topics graduated to 'master'
+      push.default doc: explain simple after upstream
+      Update draft release notes to 1.7.11
+      The sixth batch of topics graduated to 'master'
+      unpack-trees: preserve the index file version of original
+      index-v4: document the entry format
+      The seventh batch of topics graduated to 'master'
+      git-svn: introduce SVN version comparison function
+      The eighth batch of topics graduated to 'master'
+      refs: fix find_containing_dir() regression
+      Makefile: NO_INSTALL_HARDLINKS
+      The ninth batch of topics graduated to 'master'
+      The tenth batch of topics
+      Update draft release notes to 1.7.11 (11th batch)
+      Update draft release notes for 12th batch
+      git-sh-setup: define workaround wrappers before they are used
+      Update draft release notes to 1.7.11
+      Git 1.7.11-rc0
+
+Kacper Kornet (3):
+      gitweb: Don't set owner if got empty value from projects.list
+      gitweb: Option to omit column with time of the last change
+      gitweb: Option to not display information about owner
+
+Luke Diamand (10):
+      git p4: Fixing script editor checks
+      git p4: import/export of labels to/from p4
+      git p4: fix-up "import/export of labels to/from p4"
+      git p4: Squash P4EDITOR in test harness
+      git p4: Ignore P4EDITOR if it is empty
+      git p4: move verbose to base class
+      git p4: fix unit tests
+      git p4: add test for tag import/export enabled via config
+      git p4: fix bug when verbose enabled with tag export
+      git p4: fix bug when enabling tag import/export via config variables
+
+Marco Sousa (1):
+      l10n: pt_PT.po translate new messages
+
+Matthieu Moy (5):
+      Documentation: explain push.default option a bit more
+      Undocument deprecated alias 'push.default=tracking'
+      t5528-push-default.sh: add helper functions
+      push: introduce new push.default mode "simple"
+      push: document the future default change for push.default (matching -> simple)
+
+Matthijs Kooijman (1):
+      git-svn: use platform specific auth providers
+
+Michael Haggerty (32):
+      refs.c: reorder definitions more logically
+      refs: manage current_ref within do_one_ref()
+      do_for_each_ref_in_array(): new function
+      do_for_each_ref_in_arrays(): new function
+      repack_without_ref(): reimplement using do_for_each_ref_in_array()
+      names_conflict(): simplify implementation
+      free_ref_entry(): new function
+      check_refname_component(): return 0 for zero-length components
+      struct ref_entry: nest the value part in a union
+      refs.c: rename ref_array -> ref_dir
+      sort_ref_dir(): simplify logic
+      refs: store references hierarchically
+      do_for_each_ref(): only iterate over the subtree that was requested
+      get_ref_dir(): return early if directory cannot be read
+      get_ref_dir(): use a strbuf to hold refname
+      get_ref_dir(): rename "base" parameter to "dirname"
+      get_ref_dir(): require that the dirname argument ends in '/'
+      refs.c: extract function search_for_subdir()
+      get_ref_dir(): take the containing directory as argument
+      do_for_each_reflog(): return early on error
+      do_for_each_reflog(): use a strbuf to hold logfile name
+      bisect: copy filename string obtained from git_path()
+      find_containing_dir(): use strbuf in implementation of this function
+      refs: wrap top-level ref_dirs in ref_entries
+      read_loose_refs(): rename function from get_ref_dir()
+      get_ref_dir(): add function for getting a ref_dir from a ref_entry
+      search_for_subdir(): return (ref_dir *) instead of (ref_entry *)
+      struct ref_dir: store a reference to the enclosing ref_cache
+      read_loose_refs(): eliminate ref_cache argument
+      refs: read loose references lazily
+      t/Makefile: retain cache t/.prove across prove runs
+      Avoid sorting if references are added to ref_cache in order
+
+Michael Schubert (1):
+      remote: update builtin usage
+
+Michał Kiedrowicz (7):
+      gitweb: Use descriptive names in esc_html_hl_regions()
+      gitweb: esc_html_hl_regions(): Don't create empty <span> elements
+      gitweb: Extract print_sidebyside_diff_lines()
+      gitweb: Use print_diff_chunk() for both side-by-side and inline diffs
+      gitweb: Push formatting diff lines to print_diff_chunk()
+      gitweb: Highlight interesting parts of diff
+      gitweb: Refinement highlightning in combined diffs
+
+Neil Horman (5):
+      git-cherry-pick: add allow-empty option
+      git-cherry-pick: Add keep-redundant-commits option
+      git-cherry-pick: Add test to validate new options
+      git-rebase: add keep_empty flag
+      git cherry-pick: do not dereference a potential NULL pointer
+
+Nguyễn Thái Ngọc Duy (37):
+      Add more large blob test cases
+      cat-file: use streaming API to print blobs
+      parse_object: avoid putting whole blob in core
+      show: use streaming API for showing blobs
+      fsck: use streaming API for writing lost-found blobs
+      update-server-info: respect core.bigfilethreshold
+      Makefile: feed all header files to xgettext
+      strbuf: convenience format functions with \n automatically appended
+      i18n: help: mark strings for translation
+      i18n: make warn_dangling_symref() automatically append \n
+      i18n: remote: mark strings for translation
+      i18n: apply: mark strings for translation
+      i18n: apply: update say_patch_name to give translators complete sentence
+      i18n: index-pack: mark strings for translation
+      i18n: bundle: mark strings for translation
+      help: replace underlining "help -a" headers using hyphens with a blank line
+      Add column layout skeleton and git-column
+      Stop starting pager recursively
+      column: add columnar layout
+      column: add dense layout support
+      help: reuse print_columns() for help -a
+      branch: add --column
+      status: add --column
+      column: support piping stdout to external git-column process
+      tag: add --column
+      archive-tar: turn write_tar_entry into blob-writing only
+      archive-tar: unindent write_tar_entry by one level
+      archive: delegate blob reading to backend
+      archive-tar: stream large blobs to tar file
+      branch: remove lego in i18n tracking info strings
+      Makefile: keep many variable list sorted
+      index-pack: restructure pack processing into three main functions
+      index-pack: support multithreaded delta resolving
+      index-pack: disable threading if NO_PREAD is defined
+      apply: remove lego in i18n string in gitdiff_verify_name
+      i18n: parseopt: lookup help and argument translations when showing usage
+      i18n: apply: mark parseopt strings for translation
+
+Pelle Wessman (3):
+      Check that the type of the tree really is a tree and not a commit as it seems to sometimes become when eg. a submodule has existed in the same position previously.
+      Use 'git merge -Xsubtree' when git version >= 1.7.0.
+      Fixed regression with splitting out new subtree
+
+Pete Wyckoff (9):
+      git-p4: move to toplevel
+      git p4: update name in script
+      git p4: use "git p4" directly in tests
+      remove superfluous newlines in error messages
+      remove blank filename in error message
+      git p4: bring back files in deleted client directory
+      git p4: test submit
+      git p4: fix writable file after rename or copy
+      git p4: submit files with wildcards
+
+Ralf Thielow (2):
+      l10n: Update German translation
+      remote: fix typo
+
+Ramsay Allan Jones (5):
+      compat/win32/pthread.h: Add an pthread_key_delete() implementation
+      compat/mingw.h: Set S_ISUID to prevent a fast-import test failure
+      git-submodule.sh: Don't use $path variable in eval_gettext string
+      git-sh-setup.sh: Add an pwd() function for MinGW
+      builtin/blame.c: Fix a "Using plain integer as NULL pointer" warning
+
+René Scharfe (26):
+      add mergesort() for linked lists
+      commit: use mergesort() in commit_list_sort_by_date()
+      revision: insert unsorted, then sort in prepare_revision_walk()
+      sequencer: export commit_list_append()
+      revision: append to list instead of insert and reverse
+      commit: remove commit_list_reverse()
+      streaming: void pointer instead of char pointer
+      archive-zip: remove uncompressed_size
+      archive-zip: factor out helpers for writing sizes and CRC
+      archive-zip: streaming for stored files
+      archive-zip: streaming for deflated files
+      t5000: rationalize unzip tests
+      dir: convert to strbuf
+      xdiff: add hunk_func()
+      blame: use hunk_func(), part 1
+      blame: use hunk_func(), part 2
+      blame: factor out helper for calling xdi_diff()
+      xdiff: remove emit_func() and xdi_diff_hunks()
+      xdiff: remove unused functions
+      dir: respect string length argument of read_directory_recursive()
+      dir: simplify fill_directory()
+      archive: simplify refname handling
+      archive-tar: keep const in checksum calculation
+      xdiff: avoid compiler warnings with XDL_FAST_HASH on 32-bit machines
+      xdiff: avoid more compiler warnings with XDL_FAST_HASH on 32-bit machines
+      xdiff: import new 32-bit version of count_masked_bytes()
+
+Roman Kagan (3):
+      git-svn: use POSIX::sigprocmask to block signals
+      git-svn: ignore SIGPIPE
+      git-svn: drop redundant blocking of SIGPIPE
+
+SZEDER Gábor (2):
+      tests: add tests for the __gitcomp() completion helper function
+      completion: fix completion after 'git --option <TAB>'
+
+Sebastian Pipping (1):
+      gitweb: Fix unintended "--no-merges" for regular Atom feed
+
+Stefano Lattarini (3):
+      configure: move definitions of private m4 macros before AC_INIT invocation
+      configure: avoid some code repetitions thanks to m4_{push,pop}def
+      configure: be more idiomatic
+
+Thomas Rast (2):
+      xdiff: load full words in the inner loop of xdl_hash_record
+      xdiff: choose XDL_FAST_HASH code on sizeof(long) instead of __WORDSIZE
+
+Tim Henigan (8):
+      difftool: parse options using Getopt::Long
+      difftool: add '--no-gui' option
+      difftool: exit(0) when usage is printed
+      difftool: remove explicit change of PATH
+      difftool: stop appending '.exe' to git
+      difftool: eliminate setup_environment function
+      difftool: teach difftool to handle directory diffs
+      difftool: print list of valid tools with '--tool-help'
+
+W. Trevor King (3):
+      gitweb: add `status` headers to git_feed() responses.
+      gitweb: refactor If-Modified-Since handling
+      gitweb: add If-Modified-Since handling to git_snapshot().
+
+Wayne Walter (1):
+      Added new 'push' command and 2-parameter form of 'add'.
+
+Win Treese (2):
+      git-subtree.txt: add another example.
+      Make sure that <prefix> exists when splitting.
+
+Zbigniew Jędrzejewski-Szmek (13):
+      t0303: immediately bail out w/o GIT_TEST_CREDENTIAL_HELPER
+      t0303: resurrect commit message as test documentation
+      t1507: add tests to document @{upstream} behaviour
+      Provide branch name in error message when using @{u}
+      Provide better message for barnhc_wiht_tpyo@{u}
+      Be more specific if upstream branch is not tracked
+      i18n: mark @{upstream} error messages for translation
+      t9002: work around shells that are unable to set COLUMNS to 1
+      diff --stat: use less columns for change counts
+      test: modernize style of t4006
+      tests: check --[short]stat output after chmod
+      diff --stat: report mode-only changes for binary files like text files
+      diff --stat: do not run diff on indentical files
+
+kTln2 (1):
+      Add explicit path of git installation by 'git --exec-path'.
+
+Ævar Arnfjörð Bjarmason (3):
+      git-branch: remove lego in i18n messages
+      git-commit: remove lego in i18n messages
+      git-commit: remove lego in i18n messages
+
+
 Version v1.7.10.4; changes since v1.7.10.3:
 -------------------------------------------
 

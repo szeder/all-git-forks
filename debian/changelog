@@ -1,5 +1,20 @@
-git (1:1.7.10.4-1.1) unstable; urgency=low
+git (1:1.7.11~rc3-0.1) experimental; urgency=low
 
+  * new upstream release candidate.
+    * git-svn: ignore SIGPIPE so serf can recover from HTTP timeouts
+      (closes: #526989).
+    * git-svn: use YAML format for mergeinfo cache when possible.
+    * git-svn: use platform specific auth providers.
+    * am: support --include option.
+    * format-patch: do not use bogus email addresses in message ids.
+    * http: trim trailing newline from /etc/mailname.
+    * var doc: advertise current DEFAULT_PAGER and DEFAULT_EDITOR
+      settings (closes: #666250).
+    * cli: add Italian and Vietnamese translations.
+    * push: introduce new push.default mode "simple".  It aspires to
+      become the default some day.
+  * debian/diff/0012-Makefile-add-a-knob-to-turn-off-...diff: remove;
+    fixed upstream.
   * debian/rules: install German translation.
 
  -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 16 Jun 2012 14:54:35 -0500
