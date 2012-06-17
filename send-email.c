@@ -1288,6 +1288,10 @@ int main(int argc, const char **argv)
 
 		char template[PATH_MAX];
 
+		if (nongit)
+			die("Cannot run git format-patch from outside a "
+			    "repository");
+
 		tmpdir = getenv("TMPDIR");
 		if (!tmpdir)
 			tmpdir = "/tmp";
