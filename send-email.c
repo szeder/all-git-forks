@@ -1139,7 +1139,7 @@ void cleanup_tmpdir()
 
 int main(int argc, const char **argv)
 {
-	int i, nongit_ok, prompting;
+	int i, nongit, prompting;
 	struct string_list files = { 0 }, rev_list_opts = { 0 },
 	    broken_encoding = { 0 };
 
@@ -1160,8 +1160,8 @@ int main(int argc, const char **argv)
 		    N_("Email \"Subject:\"")),
 		OPT_STRING(0, "in-reply-to", &initial_reply_to,
 		    N_("str"), N_("Email \"In-Reply-To:\"")),
-		OPT_BOOLEAN(0, "annotate", &annotate, N_("Review each patch that will be sent in an editor.")),
-		OPT_BOOLEAN(0, "compose", &compose, N_("Open an editor for introduction.")),
+		OPT_BOOL(0, "annotate", &annotate, N_("Review each patch that will be sent in an editor.")),
+		OPT_BOOL(0, "compose", &compose, N_("Open an editor for introduction.")),
 		/* TODO: OPT_STRING(0, "8bit-encoding", &encoding, N_("str"), N_("Encoding to assume 8bit mails if undeclared")), */
 
 		OPT_GROUP(N_("Sending:")),
@@ -1174,33 +1174,36 @@ int main(int argc, const char **argv)
 		OPT_STRING(0, "smtp-encryption", &smtp_encryption, N_("str"), N_("SMTP encrption")),
 		/* TODO: smtp-ssl (alias for --smtp-encryption ssl) */
 		OPT_STRING(0, "smtp-domain", &smtp_domain, N_("str"), N_("domain for HELO SMTP command")),
-		OPT_BOOLEAN(0, "smtp-debug", &smtp_debug, N_("print raw protocol to stdout")),
+		OPT_BOOL(0, "smtp-debug", &smtp_debug, N_("print raw protocol to stdout")),
 
 		OPT_GROUP(N_("Automating:")),
 		/* TODO: identity */
 		/* TODO: to-cmd */
 		/* TODO: cc-cmd */
 		OPT_CALLBACK(0, "suppress-cc", NULL, N_("str"), N_("author, self, sob, cc, cccmd, body, bodycc, all"), suppress_cc_callback),
-		OPT_BOOLEAN(0, "signed-off-by-cc", &signed_off_by_cc, N_("Send to Signed-off-by: addresses. Default on.")),
-		OPT_BOOLEAN(0, "suppress-from", &suppress_from, N_("Send to self. Default off.")),
-		/* TODO: OPT_BOOLEAN(0, "chain-reply-to", NULL, N_("Chain In-Reply-To: fields. Default off.")), */
-		OPT_BOOLEAN(0, "thread", &thread, N_("Use In-Reply-To: field. Default on.")),
+		OPT_BOOL(0, "signed-off-by-cc", &signed_off_by_cc, N_("Send to Signed-off-by: addresses. Default on.")),
+		OPT_BOOL(0, "suppress-from", &suppress_from, N_("Send to self. Default off.")),
+		/* TODO: OPT_BOOL(0, "chain-reply-to", NULL, N_("Chain In-Reply-To: fields. Default off.")), */
+		OPT_BOOL(0, "thread", &thread, N_("Use In-Reply-To: field. Default on.")),
 
 		OPT_GROUP(N_("Administering:")),
 		/* TODO: confirm */
 		OPT__QUIET(&quiet, N_("Output one line of info per email.")),
 		OPT__DRY_RUN(&dry_run, N_("Don't actually send the emails.")),
 		/* TODO: validate */
-		OPT_BOOLEAN(0, "format-patch", &format_patch, N_("understand any non optional arguments as `git format-patch` ones.")),
-		OPT_BOOLEAN(0, "force", &force, N_("Send even if safety checks would prevent it.")),
+		OPT_BOOL(0, "format-patch", &format_patch, N_("understand any non optional arguments as `git format-patch` ones.")),
+		OPT_BOOL(0, "force", &force, N_("Send even if safety checks would prevent it.")),
 		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT_END()
 	};
 
 	git_extract_argv0_path(argv[0]);
-	setup_git_directory_gently(&nongit_ok);
+	setup_git_directory_gently(&nongit);
 	git_config(git_send_email_config, NULL);
 	argc = parse_options(argc, argv, NULL, options, send_email_usage, PARSE_OPT_KEEP_UNKNOWN);
+
+	if (format_patch && nongit)
+		die("Cannot run git format-patch from outside a repository");
 
 	if (suppress_from >= 0)
 		suppress_cc[SELF] = suppress_from;
