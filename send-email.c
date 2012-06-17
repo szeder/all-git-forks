@@ -1205,6 +1205,14 @@ int main(int argc, const char **argv)
 	if (format_patch && nongit)
 		die("Cannot run git format-patch from outside a repository");
 
+	/* TODO: load config based on --identity */
+
+	/* fixup --suppress-cc settings */
+
+	/* if explicit old-style ones are specified, they trump
+	 * --suppress-cc.
+	 */
+
 	if (suppress_from >= 0)
 		suppress_cc[SELF] = suppress_from;
 	if (signed_off_by_cc >= 0)
@@ -1215,9 +1223,21 @@ int main(int argc, const char **argv)
 		suppress_cc[BODY] = 0;
 	}
 
+	/* TODO: setup --confirm's default value */
+
+	/* fetch user-identity */
 	repoauthor = git_author_info(IDENT_NO_DATE);
 	repocommitter = git_committer_info(IDENT_NO_DATE);
 
+
+	/* TODO: verify the user input */
+
+	/* TODO: parse aliases */
+
+	/*
+	 * Now that all the defaults are set, process the rest of the command
+	 * line arguments and collect up the files that need to be processed.
+	 */
 	for (i = 0; i < argc; ++i) {
 		struct stat st;
 		const char *arg = argv[i];
