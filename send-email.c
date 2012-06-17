@@ -1192,7 +1192,7 @@ int main(int argc, const char **argv)
 		OPT__DRY_RUN(&dry_run, N_("Don't actually send the emails.")),
 		/* TODO: validate */
 		OPT_BOOL(0, "format-patch", &format_patch, N_("understand any non optional arguments as `git format-patch` ones.")),
-		OPT_BOOL(0, "force", &force, N_("Send even if safety checks would prevent it.")),
+		OPT__FORCE(&force, N_("Send even if safety checks would prevent it.")),
 		OPT__VERBOSE(&verbose, N_("be verbose")),
 		OPT_END()
 	};
