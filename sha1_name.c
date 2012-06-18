@@ -170,14 +170,17 @@ static int find_short_packed_object(int len, const unsigned char *match,
 #define SHORT_NAME_AMBIGUOUS (-2)
 
 static int find_unique_short_object(int len, char *canonical,
-				    unsigned char *res, unsigned char *sha1)
+				    unsigned char *res, unsigned char *sha1,
+				    int commit_only)
 {
 	int has_unpacked, has_packed;
 	unsigned char unpacked_sha1[20], packed_sha1[20];
 
 	prepare_alt_odb();
-	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1, 0);
-	has_packed = find_short_packed_object(len, res, packed_sha1, 0);
+	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1,
+						  commit_only);
+	has_packed = find_short_packed_object(len, res, packed_sha1,
+					      commit_only);
 	if (!has_unpacked && !has_packed)
 		return SHORT_NAME_NOT_FOUND;
 	if (1 < has_unpacked || 1 < has_packed)
@@ -194,6 +197,7 @@ static int find_unique_short_object(int len, char *canonical,
 }
 
 #define GET_SHORT_QUIETLY 01
+#define GET_SHORT_COMMIT_ONLY 02
 
 static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 			  unsigned flags)
@@ -226,7 +230,8 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 		res[i >> 1] |= val;
 	}
 
-	status = find_unique_short_object(i, canonical, res, sha1);
+	status = find_unique_short_object(i, canonical, res, sha1,
+					  !!(flags & GET_SHORT_COMMIT_ONLY));
 	if (!quietly && (status == SHORT_NAME_AMBIGUOUS))
 		return error("short SHA1 %.*s is ambiguous.", len, canonical);
 	return status;
