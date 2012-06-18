@@ -97,6 +97,7 @@ static int unique_in_pack(int len,
 			  const unsigned char *match,
 			  struct packed_git *p,
 			  const unsigned char **found_sha1,
+			  int commit_only,
 			  int seen_so_far)
 {
 	uint32_t num, last, i, first = 0;
@@ -134,6 +135,8 @@ static int unique_in_pack(int len,
 			break;
 
 		/* current matches */
+		if (commit_only && !is_commit_object(current))
+			continue;
 		if (!seen_so_far) {
 			*found_sha1 = current;
 			seen_so_far++;
@@ -146,7 +149,8 @@ static int unique_in_pack(int len,
 	return seen_so_far;
 }
 
-static int find_short_packed_object(int len, const unsigned char *match, unsigned char *sha1)
+static int find_short_packed_object(int len, const unsigned char *match,
+				    unsigned char *sha1, int commit_only)
 {
 	struct packed_git *p;
 	const unsigned char *found_sha1 = NULL;
@@ -154,7 +158,8 @@ static int find_short_packed_object(int len, const unsigned char *match, unsigne
 
 	prepare_packed_git();
 	for (p = packed_git; p && found < 2; p = p->next)
-		found = unique_in_pack(len, match, p, &found_sha1, found);
+		found = unique_in_pack(len, match, p, &found_sha1,
+				       commit_only, found);
 
 	if (found == 1)
 		hashcpy(sha1, found_sha1);
@@ -172,7 +177,7 @@ static int find_unique_short_object(int len, char *canonical,
 
 	prepare_alt_odb();
 	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1, 0);
-	has_packed = find_short_packed_object(len, res, packed_sha1);
+	has_packed = find_short_packed_object(len, res, packed_sha1, 0);
 	if (!has_unpacked && !has_packed)
 		return SHORT_NAME_NOT_FOUND;
 	if (1 < has_unpacked || 1 < has_packed)
