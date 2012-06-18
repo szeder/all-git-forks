@@ -9,7 +9,14 @@
 
 static int get_sha1_oneline(const char *, unsigned char *, struct commit_list *);
 
-static int find_short_object_filename(int len, const char *name, unsigned char *sha1)
+static int is_commit_object(const unsigned char *sha1)
+{
+	int kind = sha1_object_info(sha1, NULL);
+	return (kind == OBJ_COMMIT);
+}
+
+static int find_short_object_filename(int len, const char *name, unsigned char *sha1,
+				      int commit_only)
 {
 	struct alternate_object_database *alt;
 	char hex[40];
@@ -47,6 +54,14 @@ static int find_short_object_filename(int len, const char *name, unsigned char *
 				continue;
 			if (memcmp(de->d_name, name + 2, len - 2))
 				continue;
+			if (commit_only) {
+				char found_name[40];
+				unsigned char found_bin[20];
+				sprintf(found_name, "%.2s%s", name, de->d_name);
+				if (get_sha1_hex(found_name, found_bin) ||
+				    !is_commit_object(found_bin))
+					continue; /* not a commit object name */
+			}
 			if (!found) {
 				memcpy(hex + 2, de->d_name, 38);
 				found++;
@@ -156,7 +171,7 @@ static int find_unique_short_object(int len, char *canonical,
 	unsigned char unpacked_sha1[20], packed_sha1[20];
 
 	prepare_alt_odb();
-	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1);
+	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1, 0);
 	has_packed = find_short_packed_object(len, res, packed_sha1);
 	if (!has_unpacked && !has_packed)
 		return SHORT_NAME_NOT_FOUND;
