@@ -1,7 +1,7 @@
-From 0c968436ec848d6b88e9c508ad17d52868a4f064 Mon Sep 17 00:00:00 2001
+From c35d08521d49dbf7e31aae2b3d2b1958cc564cb8 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 17 Jun 2011 05:26:05 -0500
-Subject: [PATCH 09/12] daemon: check for errors retrieving IP address
+Subject: [PATCH 09/11] daemon: check for errors retrieving IP address
 
 To retrieve a canonical IP address for possible use in a
 --interpolated-path=%IP string, the git daemon calls inet_ntop to fill

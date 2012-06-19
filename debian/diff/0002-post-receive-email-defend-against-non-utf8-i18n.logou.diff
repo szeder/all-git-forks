@@ -1,7 +1,7 @@
-From d41b94fca5748b0e51f7d505641c396328714813 Mon Sep 17 00:00:00 2001
+From 354b26a6d6a4d98878352ccd050c10b1b84cab24 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 7 Oct 2011 04:06:02 -0500
-Subject: [PATCH 02/12] post-receive-email: defend against non-utf8
+Subject: [PATCH 02/11] post-receive-email: defend against non-utf8
  i18n.logoutputencoding setting
 
 The post-receive-email example hook includes a description of the

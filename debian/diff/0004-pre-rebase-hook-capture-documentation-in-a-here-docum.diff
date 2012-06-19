@@ -1,7 +1,7 @@
-From 8f68f3348ddd9f27d1f574bf5592e943069f20e1 Mon Sep 17 00:00:00 2001
+From f75201cd79b579408f9276ead38c0980159d93da Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Thu, 6 Jan 2011 22:43:05 -0600
-Subject: [PATCH 04/12] pre-rebase hook: capture documentation in a <<here
+Subject: [PATCH 04/11] pre-rebase hook: capture documentation in a <<here
  document
 
 Without this change, the sample hook does not pass a syntax check

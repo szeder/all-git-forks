@@ -1,3 +1,31 @@
+Version v1.7.11; changes since v1.7.11-rc3:
+-------------------------------------------
+
+Alexander Strasser (1):
+      diff: Only count lines in show_shortstats
+
+Jonathan Nieder (2):
+      perl/Makefile.PL: warn about duplicate module list in perl/Makefile
+      perl/Makefile: install Git::SVN::* when NO_PERL_MAKEMAKER=yes, too
+
+Junio C Hamano (2):
+      Git 1.7.10.5
+      Git 1.7.11
+
+Marco Paolone (1):
+      l10n: it.po: translate 212 new messages
+
+Ramsay Allan Jones (1):
+      gitweb: Skip 'modification times' tests when no date parser available
+
+SZEDER Gábor (2):
+      completion: put main git and gitk completion functions back into git namespace
+      completion: remove credential helpers from porcelain commands
+
+Vincent van Ravesteijn (1):
+      Do not autosquash in case of an implied interactive rebase
+
+
 Version v1.7.11-rc3; changes since v1.7.11-rc2:
 -----------------------------------------------
 

@@ -1,7 +1,7 @@
-From eb8dc7c34c58f8c2bec2a89e930069af07822de4 Mon Sep 17 00:00:00 2001
+From 774203a7804340e59699e956847884ebc89345bc Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Fri, 13 Jan 2012 15:51:12 -0600
-Subject: [PATCH 11/12] srv: be more tolerant of broken DNS replies
+Subject: [PATCH 11/11] srv: be more tolerant of broken DNS replies
 
 At a hotel with a very broken Wi-Fi setup, Richard found his copy
 of git unable to cope:

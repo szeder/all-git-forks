@@ -1,7 +1,7 @@
-From e7aaf8006f98afc8d154eecebcd631e220bffc7c Mon Sep 17 00:00:00 2001
+From 198afa4b9e05d4706b437878ceb13d87d39c713c Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:39:29 -0500
-Subject: daemon: move locate_host() to tcp.c
+Subject: [PATCH 07/11] daemon: move locate_host() to tcp.c
 
 Keep the different name resolution functions close together so they
 can learn from each other and perhaps share code in the future.
@@ -219,5 +219,5 @@ index 4de5f71..bed3cdc 100644
  extern void git_tcp_connect(int fd[2], char *host, int flags);
  extern struct child_process *git_proxy_connect(int fd[2], char *host);
 -- 
-1.7.10.4
+1.7.10
 

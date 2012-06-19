@@ -1,7 +1,7 @@
-From d65b91ebbdffcb07ffe17628ca0fce9182ce1dfe Mon Sep 17 00:00:00 2001
+From 9d0828958e2d5c584d770fbdaa865783c739abd0 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Tue, 13 Mar 2012 20:01:17 -0500
-Subject: [PATCH 03/12] remove #!interpreter line from shell libraries
+Subject: [PATCH 03/11] remove #!interpreter line from shell libraries
 
 In a shell snippet meant to be sourced by another shell script,
 an initial #!/bin/sh line is just a comment and has no effect on
@@ -72,7 +72,7 @@ index 484b2e6..10cae3f 100644
  # git-ls-remote could be called from outside a git managed repository;
  # this would fail in that case and would issue an error message.
 diff --git a/git-rebase--am.sh b/git-rebase--am.sh
-index c815a24..5d8d451 100644
+index 04d8941..6279a9d 100644
 --- a/git-rebase--am.sh
 +++ b/git-rebase--am.sh
 @@ -1,4 +1,5 @@
@@ -83,7 +83,7 @@ index c815a24..5d8d451 100644
  # Copyright (c) 2010 Junio C Hamano.
  #
 diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
-index 2e13258..394c85f 100644
+index 0c19b7c..7446d40 100644
 --- a/git-rebase--interactive.sh
 +++ b/git-rebase--interactive.sh
 @@ -1,11 +1,9 @@
@@ -130,7 +130,7 @@ index 6a27f68..e6c3116 100644
  # Export the TEXTDOMAIN* data that we need for Git
  TEXTDOMAIN=git
 diff --git a/git-sh-setup.sh b/git-sh-setup.sh
-index 5d8e4e6..51362d6 100644
+index 770a86e..0adc22c 100644
 --- a/git-sh-setup.sh
 +++ b/git-sh-setup.sh
 @@ -1,9 +1,6 @@

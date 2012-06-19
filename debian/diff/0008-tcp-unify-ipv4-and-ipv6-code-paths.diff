@@ -1,7 +1,7 @@
-From d02aa502aaa55ab40ebe467a31cbb73650d24d99 Mon Sep 17 00:00:00 2001
+From 20b9777d8e6f7bc3e77855755fc5bec14f298048 Mon Sep 17 00:00:00 2001
 From: Jonathan Nieder <jrnieder@gmail.com>
 Date: Mon, 6 Jun 2011 04:41:28 -0500
-Subject: tcp: unify ipv4 and ipv6 code paths
+Subject: [PATCH 08/11] tcp: unify ipv4 and ipv6 code paths
 
 In order to support old ipv4- and current mixed ipv4/ipv6 systems, git
 code that makes use of DNS facilities currently involves implementing
@@ -366,12 +366,12 @@ index 9263e0d..4239daf 100644
 -	int gai;
 -	static char addrbuf[HOST_NAME_MAX + 1];
 -	struct sockaddr_in *sin_addr;
+-
+-	memset(&hints, 0, sizeof(hints));
+-	hints.ai_flags = AI_CANONNAME;
 +	resolver_result ai;
 +	resolved_address i;
  
--	memset(&hints, 0, sizeof(hints));
--	hints.ai_flags = AI_CANONNAME;
--
 -	gai = getaddrinfo(hostname, NULL, &hints, &ai);
 -	if (gai)
 +	if (dns_resolve(hostname, NULL,
@@ -570,5 +570,5 @@ index 9263e0d..4239daf 100644
  {
  	int sockfd = git_tcp_connect_sock(host, flags);
 -- 
-1.7.10.4
+1.7.10
 

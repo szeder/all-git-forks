@@ -1,5 +1,6 @@
-git (1:1.7.11~rc3-1) experimental; urgency=low
+git (1:1.7.11-1~exp0) experimental; urgency=low
 
+  [ Jonathan Nieder ]
   * new upstream release candidate.
     * git-svn: ignore SIGPIPE so serf can recover from HTTP timeouts
       (closes: #526989).
@@ -26,7 +27,10 @@ git (1:1.7.11~rc3-1) experimental; urgency=low
   * debian/implicit: use order-only dependencies so "debian/rules
     binary-arch" does not try to build documentation.
 
- -- Jonathan Nieder <jrnieder@gmail.com>  Sat, 16 Jun 2012 18:26:39 -0500
+  [ Gerrit Pape ]
+  * new upstream release.
+
+ -- Gerrit Pape <pape@smarden.org>  Tue, 19 Jun 2012 12:30:27 +0000
 
 git (1:1.7.10.4-1) unstable; urgency=low
 
