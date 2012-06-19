@@ -9,7 +9,14 @@
 
 static int get_sha1_oneline(const char *, unsigned char *, struct commit_list *);
 
-static int find_short_object_filename(int len, const char *name, unsigned char *sha1)
+static int is_commit_object(const unsigned char *sha1)
+{
+	int kind = sha1_object_info(sha1, NULL);
+	return (kind == OBJ_COMMIT);
+}
+
+static int find_short_object_filename(int len, const char *name, unsigned char *sha1,
+				      int commit_only)
 {
 	struct alternate_object_database *alt;
 	char hex[40];
@@ -17,6 +24,13 @@ static int find_short_object_filename(int len, const char *name, unsigned char *
 	static struct alternate_object_database *fakeent;
 
 	if (!fakeent) {
+		/*
+		 * Create a "fake" alternate object database that
+		 * points to our own object database, to make it
+		 * easier to get a temporary working space in
+		 * alt->name/alt->base while iterating over the
+		 * object databases including our own.
+		 */
 		const char *objdir = get_object_directory();
 		int objdir_len = strlen(objdir);
 		int entlen = objdir_len + 43;
@@ -40,6 +54,14 @@ static int find_short_object_filename(int len, const char *name, unsigned char *
 				continue;
 			if (memcmp(de->d_name, name + 2, len - 2))
 				continue;
+			if (commit_only) {
+				char found_name[40];
+				unsigned char found_bin[20];
+				sprintf(found_name, "%.2s%s", name, de->d_name);
+				if (get_sha1_hex(found_name, found_bin) ||
+				    !is_commit_object(found_bin))
+					continue; /* not a commit object name */
+			}
 			if (!found) {
 				memcpy(hex + 2, de->d_name, 38);
 				found++;
@@ -71,60 +93,74 @@ static int match_sha(unsigned len, const unsigned char *a, const unsigned char *
 	return 1;
 }
 
-static int find_short_packed_object(int len, const unsigned char *match, unsigned char *sha1)
+static int unique_in_pack(int len,
+			  const unsigned char *match,
+			  struct packed_git *p,
+			  const unsigned char **found_sha1,
+			  int commit_only,
+			  int seen_so_far)
+{
+	uint32_t num, last, i, first = 0;
+	const unsigned char *current = NULL;
+
+	open_pack_index(p);
+	num = p->num_objects;
+	last = num;
+	while (first < last) {
+		uint32_t mid = (first + last) / 2;
+		const unsigned char *current;
+		int cmp;
+
+		current = nth_packed_object_sha1(p, mid);
+		cmp = hashcmp(match, current);
+		if (!cmp) {
+			first = mid;
+			break;
+		}
+		if (cmp > 0) {
+			first = mid+1;
+			continue;
+		}
+		last = mid;
+	}
+
+	/*
+	 * At this point, "first" is the location of the lowest object
+	 * with an object name that could match "match".  See if we have
+	 * 0, 1 or more objects that actually match(es).
+	 */
+	for (i = first; i < num; i++) {
+		current = nth_packed_object_sha1(p, first);
+		if (!match_sha(len, match, current))
+			break;
+
+		/* current matches */
+		if (commit_only && !is_commit_object(current))
+			continue;
+		if (!seen_so_far) {
+			*found_sha1 = current;
+			seen_so_far++;
+		} else if (seen_so_far) {
+			/* is it the same as the one previously found elsewhere? */
+			if (hashcmp(*found_sha1, current))
+				return 2; /* definitely not unique */
+		}
+	}
+	return seen_so_far;
+}
+
+static int find_short_packed_object(int len, const unsigned char *match,
+				    unsigned char *sha1, int commit_only)
 {
 	struct packed_git *p;
 	const unsigned char *found_sha1 = NULL;
 	int found = 0;
 
 	prepare_packed_git();
-	for (p = packed_git; p && found < 2; p = p->next) {
-		uint32_t num, last;
-		uint32_t first = 0;
-		open_pack_index(p);
-		num = p->num_objects;
-		last = num;
-		while (first < last) {
-			uint32_t mid = (first + last) / 2;
-			const unsigned char *now;
-			int cmp;
+	for (p = packed_git; p && found < 2; p = p->next)
+		found = unique_in_pack(len, match, p, &found_sha1,
+				       commit_only, found);
 
-			now = nth_packed_object_sha1(p, mid);
-			cmp = hashcmp(match, now);
-			if (!cmp) {
-				first = mid;
-				break;
-			}
-			if (cmp > 0) {
-				first = mid+1;
-				continue;
-			}
-			last = mid;
-		}
-		if (first < num) {
-			const unsigned char *now, *next;
-		       now = nth_packed_object_sha1(p, first);
-			if (match_sha(len, match, now)) {
-				next = nth_packed_object_sha1(p, first+1);
-			       if (!next|| !match_sha(len, match, next)) {
-					/* unique within this pack */
-					if (!found) {
-						found_sha1 = now;
-						found++;
-					}
-					else if (hashcmp(found_sha1, now)) {
-						found = 2;
-						break;
-					}
-				}
-				else {
-					/* not even unique within this pack */
-					found = 2;
-					break;
-				}
-			}
-		}
-	}
 	if (found == 1)
 		hashcpy(sha1, found_sha1);
 	return found;
@@ -134,14 +170,17 @@ static int find_short_packed_object(int len, const unsigned char *match, unsigne
 #define SHORT_NAME_AMBIGUOUS (-2)
 
 static int find_unique_short_object(int len, char *canonical,
-				    unsigned char *res, unsigned char *sha1)
+				    unsigned char *res, unsigned char *sha1,
+				    int commit_only)
 {
 	int has_unpacked, has_packed;
 	unsigned char unpacked_sha1[20], packed_sha1[20];
 
 	prepare_alt_odb();
-	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1);
-	has_packed = find_short_packed_object(len, res, packed_sha1);
+	has_unpacked = find_short_object_filename(len, canonical, unpacked_sha1,
+						  commit_only);
+	has_packed = find_short_packed_object(len, res, packed_sha1,
+					      commit_only);
 	if (!has_unpacked && !has_packed)
 		return SHORT_NAME_NOT_FOUND;
 	if (1 < has_unpacked || 1 < has_packed)
@@ -157,12 +196,16 @@ static int find_unique_short_object(int len, char *canonical,
 	return 0;
 }
 
+#define GET_SHORT_QUIETLY 01
+#define GET_SHORT_COMMIT_ONLY 02
+
 static int get_short_sha1(const char *name, int len, unsigned char *sha1,
-			  int quietly)
+			  unsigned flags)
 {
 	int i, status;
 	char canonical[40];
 	unsigned char res[20];
+	int quietly = !!(flags & GET_SHORT_QUIETLY);
 
 	if (len < MINIMUM_ABBREV || len > 40)
 		return -1;
@@ -187,7 +230,8 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 		res[i >> 1] |= val;
 	}
 
-	status = find_unique_short_object(i, canonical, res, sha1);
+	status = find_unique_short_object(i, canonical, res, sha1,
+					  !!(flags & GET_SHORT_COMMIT_ONLY));
 	if (!quietly && (status == SHORT_NAME_AMBIGUOUS))
 		return error("short SHA1 %.*s is ambiguous.", len, canonical);
 	return status;
@@ -204,7 +248,7 @@ const char *find_unique_abbrev(const unsigned char *sha1, int len)
 		return hex;
 	while (len < 40) {
 		unsigned char sha1_ret[20];
-		status = get_short_sha1(hex, len, sha1_ret, 1);
+		status = get_short_sha1(hex, len, sha1_ret, GET_SHORT_QUIETLY);
 		if (exists
 		    ? !status
 		    : status == SHORT_NAME_NOT_FOUND) {
@@ -525,6 +569,7 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 static int get_describe_name(const char *name, int len, unsigned char *sha1)
 {
 	const char *cp;
+	unsigned flags = GET_SHORT_QUIETLY | GET_SHORT_COMMIT_ONLY;
 
 	for (cp = name + len - 1; name + 2 <= cp; cp--) {
 		char ch = *cp;
@@ -535,7 +580,7 @@ static int get_describe_name(const char *name, int len, unsigned char *sha1)
 			if (ch == 'g' && cp[-1] == '-') {
 				cp++;
 				len -= cp - name;
-				return get_short_sha1(cp, len, sha1, 1);
+				return get_short_sha1(cp, len, sha1, flags);
 			}
 		}
 	}
