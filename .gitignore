@@ -149,6 +149,7 @@
 /git-stripspace
 /git-submodule
 /git-svn
+/git-svn-sync
 /git-symbolic-ref
 /git-tag
 /git-tar-tree
@@ -230,3 +231,4 @@
 *.pdb
 /Debug/
 /Release/
+*.swp
