@@ -219,6 +219,13 @@ static int finish_object_disambiguation(struct disambiguate_state *ds,
 }
 
 #define GET_SHORT_QUIETLY 01
+#define GET_SHORT_COMMIT_ONLY 02
+
+static int disambiguate_commit_only(const unsigned char *sha1, void *cb_data_unused)
+{
+	int kind = sha1_object_info(sha1, NULL);
+	return kind == OBJ_COMMIT;
+}
 
 static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 			  unsigned flags)
@@ -255,6 +262,9 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	prepare_alt_odb();
 
 	memset(&ds, 0, sizeof(ds));
+	if (flags & GET_SHORT_COMMIT_ONLY)
+		ds.fn = disambiguate_commit_only;
+
 	find_short_object_filename(len, hex_pfx, &ds);
 	find_short_packed_object(len, bin_pfx, &ds);
 	status = finish_object_disambiguation(&ds, sha1);
