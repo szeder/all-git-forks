@@ -916,7 +916,22 @@ const char *git_etc_gitconfig(void)
 {
 	static const char *system_wide;
 	if (!system_wide)
-		system_wide = system_path(ETC_GITCONFIG);
+	{
+		wchar_t lszValue[MAX_PATH];
+		HKEY hKey;
+		DWORD dwType = REG_SZ;
+		DWORD dwSize = MAX_PATH;
+		if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\TortoiseGit", NULL, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS)
+		{
+			if (RegQueryValueExW(hKey, L"MSysGit", NULL, &dwType,(LPBYTE)&lszValue, &dwSize) == ERROR_SUCCESS)
+			{
+				char pointer[MAX_PATH];
+				xwcstoutf(pointer, lszValue, MAX_PATH);
+				system_wide = xstrdup(mkpath("%s/../etc/gitconfig", pointer));
+			}
+		}
+		RegCloseKey(hKey);
+	}
 	return system_wide;
 }
 
