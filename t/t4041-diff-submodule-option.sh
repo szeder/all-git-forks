@@ -1,6 +1,7 @@
 #!/bin/sh
 #
 # Copyright (c) 2009 Jens Lehmann, based on t7401 by Ping Yin
+# Copyright (c) 2011 Alexey Shumkin (+ non-UTF-8 commit encoding tests)
 #
 
 test_description='Support for verbose submodule differences in git diff
@@ -10,6 +11,7 @@ This test tries to verify the sanity of the --submodule option of git diff.
 
 . ./test-lib.sh
 
+added=$(printf "\320\264\320\276\320\261\320\260\320\262\320\273\320\265\320\275")
 add_file () {
 	sm=$1
 	shift
@@ -19,8 +21,11 @@ add_file () {
 		echo "$name" > "$name" &&
 		git add "$name" &&
 		test_tick &&
-		git commit -m "Add $name"
+		msg_added_cp1251=$(echo "Add $name ($added $name)" | iconv -f utf-8 -t cp1251) &&
+		git config i18n.commitEncoding cp1251 &&
+		git commit -m "$msg_added_cp1251"
 	done >/dev/null
+	git config --unset i18n.commitEncoding
 	git rev-parse --verify HEAD | cut -c1-7
 	cd "$owd"
 }
@@ -46,30 +51,27 @@ EOF
 commit_file sm1 &&
 head2=$(add_file sm1 foo3)
 
-test_expect_success 'modified submodule(forward)' "
+test_expect_failure 'modified submodule(forward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
-	cat >expected <<-EOF &&
-Submodule sm1 $head1..$head2:
-  > Add foo3
-EOF
+	printf \"Submodule sm1 $head1..$head2:\n\
+  > Add foo3 ($added foo3)\n\
+\" > expected &&
 	test_cmp expected actual
 "
 
-test_expect_success 'modified submodule(forward)' "
+test_expect_failure 'modified submodule(forward)' "
 	git diff --submodule=log >actual &&
-	cat >expected <<-EOF &&
-Submodule sm1 $head1..$head2:
-  > Add foo3
-EOF
+	printf \"Submodule sm1 $head1..$head2:\n\
+  > Add foo3 ($added foo3)\n\
+\" > expected &&
 	test_cmp expected actual
 "
 
-test_expect_success 'modified submodule(forward) --submodule' "
+test_expect_failure 'modified submodule(forward) --submodule' "
 	git diff --submodule >actual &&
-	cat >expected <<-EOF &&
-Submodule sm1 $head1..$head2:
-  > Add foo3
-EOF
+	printf \"Submodule sm1 $head1..$head2:\n\
+  > Add foo3 ($added foo3)\n\
+\" > expected &&
 	test_cmp expected actual
 "
 
@@ -96,27 +98,25 @@ head3=$(
 	git rev-parse --verify HEAD | cut -c1-7
 )
 
-test_expect_success 'modified submodule(backward)' "
+test_expect_failure 'modified submodule(backward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
-	cat >expected <<-EOF &&
-Submodule sm1 $head2..$head3 (rewind):
-  < Add foo3
-  < Add foo2
-EOF
+	printf \"Submodule sm1 $head2..$head3 (rewind):\n\
+  < Add foo3 ($added foo3)\n\
+  < Add foo2 ($added foo2)\n\
+\" > expected &&
 	test_cmp expected actual
 "
 
 head4=$(add_file sm1 foo4 foo5) &&
 head4_full=$(GIT_DIR=sm1/.git git rev-parse --verify HEAD)
-test_expect_success 'modified submodule(backward and forward)' "
+test_expect_failure 'modified submodule(backward and forward)' "
 	git diff-index -p --submodule=log HEAD >actual &&
-	cat >expected <<-EOF &&
-Submodule sm1 $head2...$head4:
-  > Add foo5
-  > Add foo4
-  < Add foo3
-  < Add foo2
-EOF
+	printf \"Submodule sm1 $head2...$head4:\n\
+  > Add foo5 ($added foo5)\n\
+  > Add foo4 ($added foo4)\n\
+  < Add foo3 ($added foo3)\n\
+  < Add foo2 ($added foo2)\n\
+\" > expected &&
 	test_cmp expected actual
 "
 
@@ -131,10 +131,10 @@ mv sm1-bak sm1
 test_expect_success 'typechanged submodule(submodule->blob), --cached' "
 	git diff --submodule=log --cached >actual &&
 	cat >expected <<-EOF &&
-Submodule sm1 41fbea9...0000000 (submodule deleted)
+Submodule sm1 $head4...0000000 (submodule deleted)
 diff --git a/sm1 b/sm1
 new file mode 100644
-index 0000000..9da5fb8
+index 0000000..$head5
 --- /dev/null
 +++ b/sm1
 @@ -0,0 +1 @@
@@ -148,7 +148,7 @@ test_expect_success 'typechanged submodule(submodule->blob)' "
 	cat >expected <<-EOF &&
 diff --git a/sm1 b/sm1
 deleted file mode 100644
-index 9da5fb8..0000000
+index $head5..0000000
 --- a/sm1
 +++ /dev/null
 @@ -1 +0,0 @@
