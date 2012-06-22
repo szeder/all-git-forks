@@ -1,35 +1,59 @@
 #!/bin/sh
 
+# Copyright (c) 2009 Jens Lehmann
+# Copyright (c) 2011 Alexey Shumkin (+ non-UTF-8 commit encoding tests)
+
 test_description='git rev-list --pretty=format test'
 
 . ./test-lib.sh
 
 test_tick
+# String "added" in Russian, encoded in UTF-8,
+# used as a commit log message below.
+added=$(printf "added (\320\264\320\276\320\261\320\260\320\262\320\273\320\265\320\275) foo")
+added_cp1251=$(echo "$added" | iconv -f utf-8 -t cp1251)
+# same but "changed"
+changed=$(printf "changed (\320\264\320\276\320\261\320\260\320\262\320\273\320\265\320\275) foo")
+changed_cp1251=$(echo "$changed" | iconv -f utf-8 -t cp1251)
+
 test_expect_success 'setup' '
 	: >foo &&
 	git add foo &&
-	git commit -m "added foo" &&
+	git config i18n.commitEncoding cp1251 &&
+	git commit -m "$added_cp1251" &&
 	head1=$(git rev-parse --verify HEAD) &&
 	head1_short=$(git rev-parse --short $head1) &&
 	tree1=$(git cat-file commit HEAD | sed -n -e "s/^tree //p" -e "/^$/q") &&
 	tree1_short=$(echo $tree1 | cut -c1-7) &&
-	echo changed >foo &&
-	git commit -a -m "changed foo" &&
+	echo "$changed" > foo &&
+	git commit -a -m "$changed_cp1251" &&
 	head2=$(git rev-parse --verify HEAD) &&
 	head2_short=$(git rev-parse --short $head2) &&
 	head2_parent=$(git cat-file commit HEAD | sed -n -e "s/^parent //p" -e "/^$/q") &&
 	head2_parent_short=$(git rev-parse --short $head2_parent) &&
 	tree2=$(git cat-file commit HEAD | sed -n -e "s/^tree //p" -e "/^$/q") &&
-	tree2_short=$(git rev-parse --short $tree2)
+	tree2_short=$(git rev-parse --short $tree2) &&
+	git config --unset i18n.commitEncoding
 '
 
 # usage: test_format name format_string <expected_output
 test_format() {
+	local must_fail=0
+	# if parameters count is more than 2 then test must fail
+	if [ $# -gt 2 ]; then
+		must_fail=1
+		# remove first parameter which is flag for test failure
+		shift
+	fi
 	cat >expect.$1
-	test_expect_success "format $1" "
-git rev-list --pretty=format:'$2' master >output.$1 &&
-test_cmp expect.$1 output.$1
-"
+	name="format $1"
+	command="git rev-list --pretty=format:'$2' master >output.$1 &&
+test_cmp expect.$1 output.$1"
+	if [ $must_fail -eq 1 ]; then
+		test_expect_failure "$name" "$command"
+	else
+		test_expect_success "$name" "$command"
+	fi
 }
 
 test_format percent %%h <<EOF
@@ -97,16 +121,16 @@ Thu, 7 Apr 2005 15:13:13 -0700
 1112911993
 EOF
 
-test_format encoding %e <<EOF
+test_format failure encoding %e <<EOF
 commit $head2
 commit $head1
 EOF
 
-test_format subject %s <<EOF
+test_format failure subject %s <<EOF
 commit $head2
-changed foo
+$changed
 commit $head1
-added foo
+$added
 EOF
 
 test_format body %b <<EOF
@@ -114,12 +138,12 @@ commit $head2
 commit $head1
 EOF
 
-test_format raw-body %B <<EOF
+test_format failure raw-body %B <<EOF
 commit $head2
-changed foo
+$changed
 
 commit $head1
-added foo
+$added
 
 EOF
 
@@ -137,7 +161,7 @@ commit $head1
 [1;31;43mfoo[m
 EOF
 
-cat >commit-msg <<'EOF'
+iconv -f utf-8 -t iso8859-1 > commit-msg <<EOF
 Test printing of complex bodies
 
 This commit message is much longer than the others,
@@ -156,19 +180,26 @@ test_format complex-encoding %e <<EOF
 commit $head3
 iso8859-1
 commit $head2
+cp1251
 commit $head1
+cp1251
 EOF
 
-test_format complex-subject %s <<EOF
+# unset commit encoding config
+# otherwise %e does not print encoding value
+# and following test fails
+git config --unset i18n.commitencoding
+
+test_format failure complex-subject %s <<EOF
 commit $head3
 Test printing of complex bodies
 commit $head2
-changed foo
+$changed
 commit $head1
-added foo
+$added
 EOF
 
-test_format complex-body %b <<EOF
+test_format failure complex-body %b <<EOF
 commit $head3
 This commit message is much longer than the others,
 and it will be encoded in iso8859-1. We should therefore
@@ -226,12 +257,12 @@ test_expect_success 'add LF before non-empty (2)' '
 
 test_expect_success 'add SP before non-empty (1)' '
 	git show -s --pretty=format:"%s% bThanks" HEAD^^ >actual &&
-	test $(wc -w <actual) = 2
+	test $(wc -w <actual) = 3
 '
 
 test_expect_success 'add SP before non-empty (2)' '
 	git show -s --pretty=format:"%s% sThanks" HEAD^^ >actual &&
-	test $(wc -w <actual) = 4
+	test $(wc -w <actual) = 6
 '
 
 test_expect_success '--abbrev' '
