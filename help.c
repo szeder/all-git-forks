@@ -166,7 +166,9 @@ static void list_commands_in_dir(struct cmdnames *cmds,
 			continue;
 
 		entlen = strlen(de->d_name) - prefix_len;
-		if (has_extension(de->d_name, ".exe"))
+		if (has_extension(de->d_name, ".exe") ||
+		    has_extension(de->d_name, ".bat") ||
+		    has_extension(de->d_name, ".cmd"))
 			entlen -= 4;
 
 		add_cmdname(cmds, de->d_name + prefix_len, entlen);

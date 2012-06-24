@@ -980,15 +980,20 @@ static void free_path_split(char **path)
  */
 static char *lookup_prog(const char *dir, const char *cmd, int isexe, int exe_only)
 {
+	int i;
 	char path[MAX_PATH];
 	wchar_t wpath[MAX_PATH];
-	snprintf(path, sizeof(path), "%s\\%s.exe", dir, cmd);
 
-	if (xutftowcs_path(wpath, path) < 0)
-		return NULL;
+	for (i = 0;  i < 3; ++i) {
+		char *exts[3] = {"exe", "bat", "cmd"};
+		snprintf(path, sizeof(path), "%s\\%s.%s", dir, cmd, exts[i]);
 
-	if (!isexe && _waccess(wpath, F_OK) == 0)
-		return xstrdup(path);
+		if (xutftowcs_path(wpath, path) < 0)
+			return NULL;
+
+		if (!isexe && _waccess(wpath, F_OK) == 0)
+			return xstrdup(path);
+	}
 	wpath[wcslen(wpath)-4] = '\0';
 	if ((!exe_only || isexe) && _waccess(wpath, F_OK) == 0) {
 		if (!(GetFileAttributesW(wpath) & FILE_ATTRIBUTE_DIRECTORY)) {
