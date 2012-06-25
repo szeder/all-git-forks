@@ -20,7 +20,7 @@ static const char * const builtin_add_usage[] = {
 	NULL
 };
 static int patch_interactive, add_interactive, edit_interactive;
-static int take_worktree_changes;
+static int take_worktree_changes, ignore_add_errors;
 
 struct update_callback_data {
 	int flags;
@@ -153,9 +153,9 @@ static char *prune_directory(struct dir_struct *dir, const char **pathspec, int 
 	return seen;
 }
 
-static void treat_gitlinks(const char **pathspec)
+static int treat_gitlinks(const char **pathspec)
 {
-	int i;
+	int i, exit_status = 0;
 
 	if (!pathspec || !*pathspec)
 		return;
@@ -172,12 +172,15 @@ static void treat_gitlinks(const char **pathspec)
 				if (len2 == len + 1)
 					/* strip trailing slash */
 					pathspec[j] = xstrndup(ce->name, len);
-				else
+				else if (!ignore_add_errors)
 					die (_("Path '%s' is in submodule '%.*s'"),
 						pathspec[j], len, ce->name);
+				else
+					exit_status = 1;
 			}
 		}
 	}
+	return exit_status;
 }
 
 static void refresh(int verbose, const char **pathspec)
@@ -312,7 +315,7 @@ static const char ignore_error[] =
 N_("The following paths are ignored by one of your .gitignore files:\n");
 
 static int verbose = 0, show_only = 0, ignored_too = 0, refresh_only = 0;
-static int ignore_add_errors, addremove, intent_to_add, ignore_missing = 0;
+static int addremove, intent_to_add, ignore_missing = 0;
 
 static struct option builtin_add_options[] = {
 	OPT__DRY_RUN(&show_only, "dry run"),
@@ -418,7 +421,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
-	treat_gitlinks(pathspec);
+	exit_status |= treat_gitlinks(pathspec);
 
 	if (add_new_files) {
 		int baselen;
