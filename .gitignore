@@ -149,7 +149,8 @@
 /git-stripspace
 /git-submodule
 /git-svn
-/git-svn-sync
+/git-svn-fetch
+/git-svn-push
 /git-symbolic-ref
 /git-tag
 /git-tar-tree
