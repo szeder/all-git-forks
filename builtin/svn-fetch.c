@@ -1109,6 +1109,7 @@ static void read_update(int rev) {
 	void* srcp = NULL;
 	size_t srcn;
 	struct strbuf name = STRBUF_INIT;
+	struct strbuf srcname = STRBUF_INIT;
 	struct svnref* ref = NULL;
 	const char* cmd = NULL;
 
@@ -1166,6 +1167,14 @@ static void read_update(int rev) {
 
 			if (fseek(tmpf, 0, SEEK_SET) || ftruncate(fileno(tmpf), 0))
 				die_errno("truncate");
+
+			if (have_optional()) {
+				int64_t rev;
+				read_name(&srcname);
+				rev = read_number();
+				if (rev < 0 || rev > INT_MAX) goto err;
+				die("copy %s %d", srcname.buf, (int) rev);
+			}
 
 		} else if (!strcmp(cmd, "close-file")) {
 			/* file-token, [text-checksum] */
