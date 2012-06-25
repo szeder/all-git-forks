@@ -804,8 +804,10 @@ err:
 }
 
 struct dbrec {
-	uint32_t rev;
-	unsigned char cmt[20];
+	char rev[12];
+	char space;
+	char cmt[40];
+	char nl;
 };
 
 struct svnref {
@@ -836,7 +838,7 @@ static struct dbrec* upper_bound(int rev, struct dbrec* data, size_t num) {
 		p = first;
 		step = count/2;
 		p += step;
-		if (!(rev < ntohl(p->rev))) {
+		if (!(rev < atoi(p->rev))) {
 			first = ++p;
 			count -= step+1;
 		} else {
@@ -868,14 +870,14 @@ static size_t find_rev(int db, int rev, unsigned char* ret) {
 
 	/* see if its the after the last commit first */
 	p = revs + sz / sizeof(*p) - 1;
-	if (rev < ntohl(p->rev)) {
+	if (rev < atoi(p->rev)) {
 		p = upper_bound(rev, revs, sz / sizeof(*p));
 		/* the revision is before the start of this history */
 		if (p == revs) return 0;
 		p--;
 	}
 
-	if (ret) hashcpy(ret, p->cmt);
+	if (ret) get_sha1_hex(p->cmt, ret);
 
 	munmap(revs, sz);
 	return (p + 1 - revs) * sizeof(*p);
@@ -886,6 +888,7 @@ static size_t find_rev(int db, int rev, unsigned char* ret) {
  * commit wasn't found. */
 static int find_commit(struct svnref* r, const unsigned char* cmt) {
 	struct dbrec *p, *revs = NULL;
+	char* hex;
 	int ret = -1;
 	struct stat st;
 	size_t sz;
@@ -899,10 +902,11 @@ static int find_commit(struct svnref* r, const unsigned char* cmt) {
 	sz = xsize_t(st.st_size);
 	revs = xmmap(NULL, sz, PROT_READ, MAP_PRIVATE, fd, 0);
 
+	hex = sha1_to_hex(cmt);
 	p = revs + sz / sizeof(*p);
 	while (p >= revs) {
-		if (!hashcmp(p->cmt, cmt)) {
-			ret = ntohl(p->rev);
+		if (!memcmp(p->cmt, hex, sizeof(p->cmt))) {
+			ret = atoi(p->rev);
 			goto end;
 		}
 		p--;
@@ -912,6 +916,29 @@ end:
 	munmap(revs, sz);
 	close(fd);
 	return ret;
+}
+
+static void append_to_revdb(struct svnref* r, int rev, const unsigned char* sha1) {
+	struct lock_file revdb_lock;
+	char rec[sizeof(struct dbrec)+1];
+	size_t off;
+	int fd;
+
+	fd = hold_lock_file_for_append(&revdb_lock, r->db.buf, 0);
+	if (fd < 0) die("commit failed");
+
+	off = find_rev(fd, rev, NULL);
+
+	snprintf(rec, sizeof(rec), "%-12d %s\n", rev, sha1_to_hex(sha1));
+
+	if (lseek(fd, off, SEEK_SET) < 0)
+		die_errno("revdb seek");
+	if (ftruncate(fd, off))
+		die_errno("revdb truncate");
+	if (write(fd, rec, sizeof(rec)-1) != sizeof(rec)-1)
+		die_errno("revdb write");
+	if (commit_lock_file(&revdb_lock))
+		die("revdb commit");
 }
 
 static int is_in_dir(const char* file, const char* dir, const char** rel) {
@@ -1496,14 +1523,9 @@ static void get_commit(int rev) {
 	/* now commit */
 
 	for (i = 0; i < refn; i++) {
-		struct lock_file revdb_lock;
+		unsigned char newcmt[20];
 		struct ref_lock* ref_lock = NULL;
 		struct svnref* r = refs[i];
-		struct dbrec rec;
-		int fd;
-		size_t off;
-
-		rec.rev = htonl(rev);
 
 		if (!r->dirty) continue;
 
@@ -1540,7 +1562,7 @@ static void get_commit(int rev) {
 		 * dummy commit whose parent is the old dummy.
 		 */
 		if (r->delete) {
-			hashcpy(rec.cmt, null_sha1);
+			hashcpy(newcmt, null_sha1);
 		} else if (r->istag) {
 			strbuf_reset(&cmt);
 			strbuf_addf(&cmt, "object %s\n"
@@ -1553,10 +1575,10 @@ static void get_commit(int rev) {
 					author.buf);
 			strbuf_addbuf(&cmt, &log);
 
-			if (write_sha1_file(cmt.buf, cmt.len, tag_type, rec.cmt))
+			if (write_sha1_file(cmt.buf, cmt.len, tag_type, newcmt))
 				die("failed to create tag");
 		} else {
-			hashcpy(rec.cmt, r->parent);
+			hashcpy(newcmt, r->parent);
 		}
 
 		/* lock the ref */
@@ -1568,19 +1590,7 @@ static void get_commit(int rev) {
 
 		/* update the revdb */
 
-		fd = hold_lock_file_for_append(&revdb_lock, r->db.buf, 0);
-		if (fd < 0) die("commit failed");
-
-		off = find_rev(fd, rev, NULL);
-
-		if (lseek(fd, off, SEEK_SET) < 0)
-			die_errno("revdb seek");
-		if (ftruncate(fd, off))
-			die_errno("revdb truncate");
-		if (write(fd, &rec, sizeof(rec)) != sizeof(rec))
-			die_errno("revdb write");
-		if (commit_lock_file(&revdb_lock))
-			die("revdb commit");
+		append_to_revdb(r, rev, newcmt);
 
 		/* update the ref */
 
@@ -1588,12 +1598,12 @@ static void get_commit(int rev) {
 			if (delete_ref(r->ref.buf + strlen("refs/"), r->sha1, 0))
 				die("failed to remove %s", r->ref.buf);
 		} else {
-			if (write_ref_sha1(ref_lock, rec.cmt, "svn-sync update"))
+			if (write_ref_sha1(ref_lock, newcmt, "svn-sync update"))
 				die("commit failed");
 		}
 
 		hashcpy(r->tree, r->index.cache_tree->sha1);
-		hashcpy(r->sha1, rec.cmt);
+		hashcpy(r->sha1, newcmt);
 		r->dirty = 0;
 
 		fprintf(stderr, "commited %d %s %s\n", rev, r->ref.buf, sha1_to_hex(r->sha1));
@@ -2270,6 +2280,7 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 
 		svnrev = send_commit(r, from, cmt);
 		check_for_svn_commits(r, svnrev);
+		append_to_revdb(r, svnrev, cmt->object.sha1);
 		r->rev = svnrev;
 		r->create = 0;
 		from = cmt;
