@@ -1913,7 +1913,7 @@ static int cdepth;
 
 static int change_dir(const char* path) {
 	const char *p, *d;
-	int off, depth;
+	int off, depth = 0;
 
 	off = common_directory(path, cpath.buf, &depth);
 

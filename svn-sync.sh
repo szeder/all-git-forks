@@ -22,6 +22,7 @@ realm = Test Repository
 
 # Setup the subversion repo
 killall svnserve
+killall lt-svnserve
 svnserve --daemon --log-file svnlog --root db
 
 svn co --username user --password pass svn://localhost co
