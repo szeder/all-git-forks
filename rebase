@@ -53,7 +53,10 @@ done
 GIT_DIR=`git rev-parse --git-dir` || exit
 
 if test "$cont" = t; then
-	git rebase --continue || exit
+	if test -d "$GIT_DIR/rebase-merge" ||
+	   test -d "$GIT_DIR/rebase-apply"; then
+	  git rebase --continue || exit
+	fi
 else
 	echo "Meta/rebase --continue" >"$GIT_DIR/continue"
 fi
