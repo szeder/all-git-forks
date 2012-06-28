@@ -312,7 +312,6 @@ create_db () {
 	if [ ! -f "$TMP/$DB_FILE" ] ; then
 		error "Can't create database file $TMP/$DB_FILE. Try to run ./install-wiki.sh delete first."
 	fi
-	chmod 666 "$TMP/$DB_FILE"
 
 	# Copy the generated database file into the directory the
 	# user indicated.
@@ -395,8 +394,6 @@ wiki_install () {
 		"in $WIKI_DIR_INST/$WIKI_DIR_NAME"
 	echo "File $FILES_FOLDER/LocalSettings.php is set in" \
 		" $WIKI_DIR_INST/$WIKI_DIR_NAME"
-
-	chmod ugo+w "$FILES_FOLDER/$DB_FILE"
 
 	echo "Your wiki has been installed. You can check it at
 		http://$SERVER_ADDR/$WIKI_DIR_NAME"
