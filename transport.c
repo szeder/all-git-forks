@@ -1033,6 +1033,15 @@ static void die_with_unpushed_submodules(struct string_list *needs_pushing)
 	die("Aborting.");
 }
 
+static int num_uptodate(struct ref *ref)
+{
+	int n = 0;
+	for (; ref; ref = ref->next)
+		if (ref->status == REF_STATUS_UPTODATE)
+			n++;
+	return n;
+}
+
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   int *nonfastforward)
@@ -1116,8 +1125,15 @@ int transport_push(struct transport *transport,
 
 		if (porcelain && !push_ret)
 			puts("Done");
-		else if (!quiet && !ret && !transport_refs_pushed(remote_refs))
-			fprintf(stderr, "Everything up-to-date\n");
+		else if (!quiet && !ret && !transport_refs_pushed(remote_refs)) {
+			if (verbose)
+				; /* already showed the up-to-date entries */
+			else if (num_uptodate(remote_refs) == 1)
+				transport_print_push_status(transport->url,
+				    remote_refs, 1, 0, nonfastforward);
+			else
+				fprintf(stderr, "Everything up-to-date\n");
+		}
 
 		return ret;
 	}
