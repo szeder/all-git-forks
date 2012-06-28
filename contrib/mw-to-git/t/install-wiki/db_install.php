@@ -82,8 +82,12 @@ function submit($page_name, $option = "") {
  */
 
 $page = get();
-preg_match('/input type="hidden" value="([0-9]+)" name="LanguageRequestTime"/',
-	$page, $matches);
+if (!preg_match('/input type="hidden" value="([0-9]+)" name="LanguageRequestTime"/',
+		$page, $matches)) {
+	echo "Unexpected content for page downloaded:\n";
+	echo "$page";
+	die;
+};
 $timestamp = $matches[1];
 $language = "LanguageRequestTime=$timestamp&uselang=en&ContLang=en";
 $page = submit('Language', $language);
