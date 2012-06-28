@@ -141,14 +141,14 @@ wiki_page_exist () {
 #
 # Fetch the name of each page on the wiki.
 wiki_getallpagename () {
-	$CURR_DIR/test-gitmw.pl getallpagename
+	"$CURR_DIR"/test-gitmw.pl getallpagename
 }
 
 # wiki_getallpagecategory <category>
 #
 # Fetch the name of each page belonging to <category> on the wiki.
 wiki_getallpagecategory () {
-	$CURR_DIR/test-gitmw.pl getallpagename "$@"
+	"$CURR_DIR"/test-gitmw.pl getallpagename "$@"
 }
 
 # wiki_getallpage <dest_dir> [<category>]
@@ -279,7 +279,7 @@ start_lighttpd () {
 		stop_lighttpd
 	fi
 	config_lighttpd
-	$LIGHTTPD_DIR/lighttpd -f $WEB/lighttpd.conf
+	"$LIGHTTPD_DIR"/lighttpd -f "$WEB"/lighttpd.conf
 
 	if test $? -ne 0 ; then
 		echo "Could not execute http deamon lighttpd"
@@ -292,7 +292,7 @@ start_lighttpd () {
 # Kill daemon lighttpd and removes files and folders associated.
 stop_lighttpd () {
 	test -f "$WEB_TMP/pid" && kill $(cat "$WEB_TMP/pid")
-	rm -rf $WEB
+	rm -rf "$WEB"
 }
 
 # Create the SQLite database of the MediaWiki. If the database file already
