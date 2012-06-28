@@ -122,6 +122,7 @@ my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'authors-prog=s' => \$_authors_prog,
 		'repack:i' => \$Git::SVN::_repack,
 		'noMetadata' => \$Git::SVN::_no_metadata,
+		'notesMetadata' => \$Git::SVN::_notes_metadata,
 		'useSvmProps' => \$Git::SVN::_use_svm_props,
 		'useSvnsyncProps' => \$Git::SVN::_use_svnsync_props,
 		'log-window-size=i' => \$Git::SVN::Ra::_log_window_size,
@@ -142,6 +143,7 @@ my %init_opts = ( 'template=s' => \$_template, 'shared:s' => \$_shared,
                   'stdlayout|s' => \$_stdlayout,
                   'minimize-url|m!' => \$Git::SVN::_minimize_url,
 		  'no-metadata' => sub { $icv{noMetadata} = 1 },
+		  'notes-metadata' => sub { $icv{notesMetadata} = 1 },
 		  'use-svm-props' => sub { $icv{useSvmProps} = 1 },
 		  'use-svnsync-props' => sub { $icv{useSvnsyncProps} = 1 },
 		  'rewrite-root=s' => sub { $icv{rewriteRoot} = $_[1] },
@@ -1508,6 +1510,9 @@ sub cmd_info {
 	}
 
 	my ($lc_author, $lc_rev, $lc_date_utc);
+	(undef, $lc_rev, undef) = ::cmt_metadata('HEAD') unless
+	    !$Git::SVN::notes_metadata;
+
 	my @args = Git::SVN::Log::git_svn_log_cmd($rev, $rev, "--", $fullpath);
 	my $log = command_output_pipe(@args);
 	my $esc_color = qr/(?:\033\[(?:(?:\d+;)*\d*)?m)*/;
@@ -1516,7 +1521,8 @@ sub cmd_info {
 			$lc_author = $1;
 			$lc_date_utc = Git::SVN::Log::parse_git_date($2, $3);
 		} elsif (/^${esc_color}    (git-svn-id:.+)$/o) {
-			(undef, $lc_rev, undef) = ::extract_metadata($1);
+			(undef, $lc_rev, undef) = ::extract_metadata($1) unless
+			    $Git::SVN::notes_metadata;
 		}
 	}
 	close $log;
@@ -1848,10 +1854,10 @@ sub read_git_config {
 	delete @$opts{@config_only} if @config_only;
 }
 
-sub extract_metadata {
-	my $id = shift or return (undef, undef, undef);
-	my ($url, $rev, $uuid) = ($id =~ /^\s*git-svn-id:\s+(.*)\@(\d+)
-							\s([a-f\d\-]+)$/ix);
+sub parse_metadata {
+	my $id = shift;
+	my ($url, $rev, $uuid) = ($id =~ /^(.*)\@(\d+)\s([a-f\d\-]+)$/ix);
+
 	if (!defined $rev || !$uuid || !$url) {
 		# some of the original repositories I made had
 		# identifiers like this:
@@ -1860,15 +1866,40 @@ sub extract_metadata {
 	return ($url, $rev, $uuid);
 }
 
+sub extract_metadata {
+	my $id = shift or return (undef, undef, undef);
+	$id =~ s/^\s*git-svn-id:\s+//i;
+	return parse_metadata($id);
+}
+
 sub cmt_metadata {
+	my $rev = shift;
+	if ($Git::SVN::notes_metadata) {
+		my $metadata = command('notes',
+		    '--ref', 'git-svn',
+		    'show', $rev);
+		return parse_metadata($metadata);
+	}
 	return extract_metadata((grep(/^git-svn-id: /,
-		command(qw/cat-file commit/, shift)))[-1]);
+		command(qw/cat-file commit/, $rev)))[-1]);
 }
 
 sub cmt_sha2rev_batch {
 	my %s2r;
-	my ($pid, $in, $out, $ctx) = command_bidi_pipe(qw/cat-file --batch/);
 	my $list = shift;
+
+	if ($Git::SVN::notes_metadata) {
+		foreach my $sha (@{$list}) {
+			my $metadata = command('notes',
+			    '--ref', 'git-svn',
+			        'show', $sha);
+			my (undef, $rev, undef) = parse_metadata($metadata);
+			$s2r{$sha} = $rev;
+		}
+		return \%s2r;
+	}
+
+	my ($pid, $in, $out, $ctx) = command_bidi_pipe(qw/cat-file --batch/);
 
 	foreach my $sha (@{$list}) {
 		my $first = 1;
@@ -1901,18 +1932,27 @@ sub cmt_sha2rev_batch {
 
 sub working_head_info {
 	my ($head, $refs) = @_;
-	my @args = qw/rev-list --first-parent --pretty=medium/;
+	my @args = $Git::SVN::notes_metadata ? qw/rev-list --first-parent/ :
+	    qw/rev-list --first-parent --pretty=medium/;
 	my ($fh, $ctx) = command_output_pipe(@args, $head);
 	my $hash;
 	my %max;
 	while (<$fh>) {
-		if ( m{^commit ($::sha1)$} ) {
+		my $url, my $rev, my $uuid;
+		if ($Git::SVN::notes_metadata) {
+			chomp;
 			unshift @$refs, $hash if $hash and $refs;
-			$hash = $1;
-			next;
+			$hash = $_;
+			($url, $rev, $uuid) = cmt_metadata($hash);
+		} else {
+			if ( m{^commit ($::sha1)$} ) {
+				unshift @$refs, $hash if $hash and $refs;
+				$hash = $1;
+				next;
+			}
+			next unless s{^\s*(git-svn-id:)}{$1};
+			($url, $rev, $uuid) = extract_metadata($_);
 		}
-		next unless s{^\s*(git-svn-id:)}{$1};
-		my ($url, $rev, $uuid) = extract_metadata($_);
 		if (defined $url && defined $rev) {
 			next if $max{$url} and $max{$url} < $rev;
 			if (my $gs = Git::SVN->find_by_url($url)) {
@@ -2043,8 +2083,8 @@ use strict;
 use warnings;
 use Fcntl qw/:DEFAULT :seek/;
 use constant rev_map_fmt => 'NH40';
-use vars qw/$default_repo_id $default_ref_id $_no_metadata $_follow_parent
-            $_repack $_repack_flags $_use_svm_props $_head
+use vars qw/$default_repo_id $default_ref_id $_no_metadata $_notes_metadata
+            $_follow_parent $_repack $_repack_flags $_use_svm_props $_head
             $_use_svnsync_props $no_reuse_existing $_minimize_url
 	    $_use_log_author $_add_author_from $_localtime/;
 use Carp qw/croak/;
@@ -2076,8 +2116,8 @@ BEGIN {
 	# per [svn-remote "..."] section.  Command-line options will *NOT*
 	# override options set in an [svn-remote "..."] section
 	no strict 'refs';
-	for my $option (qw/follow_parent no_metadata use_svm_props
-			   use_svnsync_props/) {
+	for my $option (qw/follow_parent no_metadata notes_metadata
+			   use_svm_props use_svnsync_props/) {
 		my $key = $option;
 		$key =~ tr/_//d;
 		my $prop = "-$option";
@@ -3037,7 +3077,7 @@ sub do_git_commit {
 	}
 	print $msg_fh $log_entry->{log} or croak $!;
 	restore_commit_header_env($old_env);
-	unless ($self->no_metadata) {
+	unless ($self->no_metadata || $self->notes_metadata) {
 		print $msg_fh "\ngit-svn-id: $log_entry->{metadata}\n"
 		              or croak $!;
 	}
@@ -3060,6 +3100,14 @@ sub do_git_commit {
 		 print " (\@$log_entry->{svm_revision})" unless $::_q > 1;
 		 $self->rev_map_set($log_entry->{svm_revision}, $commit,
 		                   0, $self->svm_uuid);
+	}
+	if ($self->notes_metadata && !$self->no_metadata) {
+		# store $log_entry->{metadata} as a note
+		command('notes',
+		    '--ref', 'git-svn',
+		    'add', '-f',
+		    '-m', $log_entry->{metadata},
+		    $commit);
 	}
 	print " = $commit ($self->{ref_id})\n" unless $::_q > 1;
 	if (--$_gc_nr == 0) {
@@ -3970,7 +4018,9 @@ sub rebuild {
 	my ($base_rev, $head) = ($partial ? $self->rev_map_max_norebuild(1) :
 		(undef, undef));
 	my ($log, $ctx) =
-	    command_output_pipe(qw/rev-list --pretty=raw --reverse/,
+	    command_output_pipe($self->notes_metadata ?
+				qw/rev-list --reverse/ :
+				qw/rev-list --pretty=raw --reverse/,
 				($head ? "$head.." : "") . $self->refname,
 				'--');
 	my $metadata_url = $self->metadata_url;
@@ -3978,12 +4028,19 @@ sub rebuild {
 	my $svn_uuid = $self->rewrite_uuid || $self->ra_uuid;
 	my $c;
 	while (<$log>) {
-		if ( m{^commit ($::sha1)$} ) {
-			$c = $1;
-			next;
+		my $url, my $rev, my $uuid;
+		if ($self->notes_metadata) {
+			chomp;
+			$c = $_;
+			($url, $rev, $uuid) = cmt_metadata($c);
+		} else {
+			if ( m{^commit ($::sha1)$} ) {
+				$c = $1;
+				next;
+			}
+			next unless s{^\s*(git-svn-id:)}{$1};
+			($url, $rev, $uuid) = ::extract_metadata($_);
 		}
-		next unless s{^\s*(git-svn-id:)}{$1};
-		my ($url, $rev, $uuid) = ::extract_metadata($_);
 		remove_username($url);
 
 		# ignore merges (from set-tree)
@@ -4628,6 +4685,8 @@ sub cmd_show_log {
 			}
 			$d = undef;
 			$c = { c => $cmt };
+			($c->{url}, $c->{r}, undef) = ::cmt_metadata($cmt)
+			    unless !$Git::SVN::notes_metadata;
 		} elsif (/^${esc_color}author (.+) (\d+) ([\-\+]?\d+)$/o) {
 			get_author_info($c, $1, $2, $3);
 		} elsif (/^${esc_color}(?:tree|parent|committer) /o) {
@@ -4652,7 +4711,8 @@ sub cmd_show_log {
 			push @{$c->{stat}}, $_;
 			$stat = undef;
 		} elsif (/^${esc_color}    (git-svn-id:.+)$/o) {
-			($c->{url}, $c->{r}, undef) = ::extract_metadata($1);
+			($c->{url}, $c->{r}, undef) = ::extract_metadata($1)
+			    unless $Git::SVN::notes_metadata;
 		} elsif (s/^${esc_color}    //o) {
 			push @{$c->{l}}, $_;
 		}
