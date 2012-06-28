@@ -310,7 +310,7 @@ create_db () {
 		"$WIKI_ADMIN" "$WIKI_PASSW" "$TMP" "$PORT"
 
 	if [ ! -f "$TMP/$DB_FILE" ] ; then
-		error "Can't create database file in TODO. Try to run ./install-wiki.sh delete first."
+		error "Can't create database file $TMP/$DB_FILE. Try to run ./install-wiki.sh delete first."
 	fi
 	chmod 666 "$TMP/$DB_FILE"
 
