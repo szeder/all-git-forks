@@ -344,17 +344,17 @@ wiki_install () {
 			"http://download.wikimedia.org/mediawiki/1.19/"\
 			"mediawiki-1.19.0.tar.gz. "\
 			"Please fix your connection and launch the script again."
+		echo "$MW_VERSION.tar.gz downloaded in `pwd`. "\
+			"You can delete it later if you want."
+	else
+		echo "Reusing existing $MW_VERSION.tar.gz downloaded in `pwd`."
 	fi
-	tar xfz "$MW_VERSION.tar.gz"
-	echo "$MW_VERSION.tar.gz downloaded in `pwd`."\
-		"You can delete it later if you want."
-
-	# Copy the files of MediaWiki wiki in the web server's directory.
-	cd "$MW_VERSION"
-	cp -Rf * "$WIKI_DIR_INST/$WIKI_DIR_NAME/" ||
-		error "Unable to copy WikiMedia's files from `pwd` to "\
+	archive_abs_path=$(pwd)/"$MW_VERSION.tar.gz"
+	cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/" || error "can't cd to $WIKI_DIR_INST/$WIKI_DIR_NAME/"
+	tar xzf "$archive_abs_path" --strip-components=1 ||
+		error "Unable to extract WikiMedia's files from $archive_abs_path to "\
 			"$WIKI_DIR_INST/$WIKI_DIR_NAME"
-	)
+	) || exit 1
 
 	create_db
 
