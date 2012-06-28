@@ -109,7 +109,7 @@ test_contains_N_files () {
 wiki_check_content () {
 	mkdir -p wiki_tmp
 	wiki_getpage "$2" wiki_tmp
-	#replacement of forbidden character in file name
+	# replacement of forbidden character in file name
 	page_name=$(printf "%s\n" "$2" | sed -e "s/\//%2F/g")
 
 	diff -b "$1" wiki_tmp/"$page_name".mw
@@ -181,7 +181,7 @@ error () {
 #
 # Create the configuration files and the folders necessary to start lighttpd.
 # Overwrite any existing file.
-config_lighttpd() {
+config_lighttpd () {
 	mkdir -p $WEB
 	mkdir -p $WEB_TMP
 	mkdir -p $WEB_WWW
@@ -273,7 +273,7 @@ EOF
 # start_lighttpd
 #
 # Start or restart daemon lighttpd. If restart, rewrite configuration files.
-start_lighttpd() {
+start_lighttpd () {
 	if test -f "$WEB_TMP/pid"; then
 		echo "Instance already running. Restarting..."
 		stop_lighttpd
@@ -291,7 +291,6 @@ start_lighttpd() {
 #
 # Kill daemon lighttpd and removes files and folders associated.
 stop_lighttpd () {
-
 	test -f "$WEB_TMP/pid" && kill $(cat "$WEB_TMP/pid")
 	rm -rf $WEB
 }
@@ -350,7 +349,8 @@ wiki_install () {
 		echo "Reusing existing $MW_VERSION.tar.gz downloaded in `pwd`."
 	fi
 	archive_abs_path=$(pwd)/"$MW_VERSION.tar.gz"
-	cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/" || error "can't cd to $WIKI_DIR_INST/$WIKI_DIR_NAME/"
+	cd "$WIKI_DIR_INST/$WIKI_DIR_NAME/" ||
+		error "can't cd to $WIKI_DIR_INST/$WIKI_DIR_NAME/"
 	tar xzf "$archive_abs_path" --strip-components=1 ||
 		error "Unable to extract WikiMedia's files from $archive_abs_path to "\
 			"$WIKI_DIR_INST/$WIKI_DIR_NAME"
@@ -423,7 +423,8 @@ wiki_delete () {
 			error "Wiki's directory $WIKI_DIR_INST/" \
 			"$WIKI_DIR_NAME could not be deleted"
 		# Delete the wiki's SQLite database.
-		rm -f "$TMP/$DB_FILE" || error "Database $TMP/$DB_FILE could not be deleted."
+		rm -f "$TMP/$DB_FILE" ||
+			error "Database $TMP/$DB_FILE could not be deleted."
 	fi
 
 	# Delete the wiki's SQLite database
