@@ -315,7 +315,7 @@ create_db () {
 
 	# Copy the generated database file into the directory the
 	# user indicated.
-	cp --preserve=mode,ownership "$TMP/$DB_FILE" "$FILES_FOLDER" ||
+	cp "$TMP/$DB_FILE" "$FILES_FOLDER" ||
 		error "Unable to copy $TMP/$DB_FILE to $FILES_FOLDER"
 }
 
