@@ -3180,6 +3180,16 @@ static void option_cat_blob_fd(const char *fd)
 	cat_blob_fd = (int) n;
 }
 
+static void option_cat_blob_pipe(const char *name)
+{
+	int report_fd = open(name, O_RDWR);
+	warning("Opened pipe %s.", name);
+	if(report_fd < 0) {
+		die("Unable to open fast-import back-pipe! %s", strerror(errno));
+	}
+	cat_blob_fd = report_fd;
+}
+
 static void option_export_pack_edges(const char *edges)
 {
 	if (pack_edges)
@@ -3334,6 +3344,11 @@ static void parse_argv(void)
 
 		if (!prefixcmp(a + 2, "cat-blob-fd=")) {
 			option_cat_blob_fd(a + 2 + strlen("cat-blob-fd="));
+			continue;
+		}
+
+		if(!prefixcmp(a + 2, "cat-blob-pipe=")) {
+			option_cat_blob_pipe(a + 2 + strlen("cat-blob-pipe="));
 			continue;
 		}
 
