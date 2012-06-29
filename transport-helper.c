@@ -10,6 +10,7 @@
 #include "string-list.h"
 #include "thread-utils.h"
 #include "sigchain.h"
+#include "argv-array.h"
 
 static int debug;
 
@@ -17,6 +18,7 @@ struct helper_data {
 	const char *name;
 	struct child_process *helper;
 	FILE *out;
+	char *report_fifo;
 	unsigned fetch : 1,
 		import : 1,
 		export : 1,
@@ -101,6 +103,7 @@ static void do_take_over(struct transport *transport)
 static struct child_process *get_helper(struct transport *transport)
 {
 	struct helper_data *data = transport->data;
+	struct argv_array argv = ARGV_ARRAY_INIT;
 	struct strbuf buf = STRBUF_INIT;
 	struct child_process *helper;
 	const char **refspecs = NULL;
@@ -111,6 +114,7 @@ static struct child_process *get_helper(struct transport *transport)
 	char git_dir_buf[sizeof(GIT_DIR_ENVIRONMENT) + PATH_MAX + 1];
 	const char *helper_env[] = {
 		git_dir_buf,
+		NULL,	/* placeholder */
 		NULL
 	};
 
@@ -122,16 +126,22 @@ static struct child_process *get_helper(struct transport *transport)
 	helper->in = -1;
 	helper->out = -1;
 	helper->err = 0;
-	helper->argv = xcalloc(4, sizeof(*helper->argv));
-	strbuf_addf(&buf, "git-remote-%s", data->name);
-	helper->argv[0] = strbuf_detach(&buf, NULL);
-	helper->argv[1] = transport->remote->name;
-	helper->argv[2] = remove_ext_force(transport->url);
+	argv_array_pushf(&argv, "git-remote-%s", data->name);
+	argv_array_push(&argv, transport->remote->name);
+	argv_array_push(&argv, remove_ext_force(transport->url));
+	helper->argv = argv.argv;
 	helper->git_cmd = 0;
 	helper->silent_exec_failure = 1;
 
 	snprintf(git_dir_buf, sizeof(git_dir_buf), "%s=%s", GIT_DIR_ENVIRONMENT, get_git_dir());
 	helper->env = helper_env;
+
+	strbuf_init(&buf, 0);
+	strbuf_addf(&buf, "%s/fast-import-report-fifo", get_git_dir());
+	data->report_fifo = strbuf_detach(&buf, NULL);
+	strbuf_init(&buf, 0);
+	strbuf_addf(&buf, "GIT_REPORT_FIFO=%s", data->report_fifo);
+	helper_env[1] = strbuf_detach(&buf, NULL);
 
 	code = start_command(helper);
 	if (code < 0 && errno == ENOENT)
@@ -141,6 +151,8 @@ static struct child_process *get_helper(struct transport *transport)
 
 	data->helper = helper;
 	data->no_disconnect_req = 0;
+	free((void*) helper_env[1]);
+	argv_array_clear(&argv);
 
 	/*
 	 * Open the output as FILE* so strbuf_getline() can be used.
@@ -237,13 +249,13 @@ static int disconnect_helper(struct transport *transport)
 			xwrite(data->helper->in, "\n", 1);
 			sigchain_pop(SIGPIPE);
 		}
+
 		close(data->helper->in);
 		close(data->helper->out);
 		fclose(data->out);
 		res = finish_command(data->helper);
-		free((char *)data->helper->argv[0]);
-		free(data->helper->argv);
 		free(data->helper);
+		free(data->report_fifo);
 		data->helper = NULL;
 	}
 	return res;
@@ -373,16 +385,18 @@ static int fetch_with_fetch(struct transport *transport,
 	return 0;
 }
 
-static int get_importer(struct transport *transport, struct child_process *fastimport)
+static int get_importer(struct transport *transport, struct child_process *fastimport, struct argv_array *argv)
 {
 	struct child_process *helper = get_helper(transport);
+	struct helper_data *data = transport->data;
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
-	fastimport->argv = xcalloc(5, sizeof(*fastimport->argv));
-	fastimport->argv[0] = "fast-import";
-	fastimport->argv[1] = "--quiet";
-
+	argv_array_push(argv, "fast-import");
+	argv_array_push(argv, "--quiet");
+	argv_array_pushf(argv, "--cat-blob-pipe=%s", data->report_fifo);
+	fastimport->argv = argv->argv;
 	fastimport->git_cmd = 1;
+
 	return start_command(fastimport);
 }
 
@@ -421,10 +435,30 @@ static int fetch_with_import(struct transport *transport,
 	int i;
 	struct ref *posn;
 	struct strbuf buf = STRBUF_INIT;
+	struct argv_array importer_argv = ARGV_ARRAY_INIT;
+	struct stat fifostat;
+
+	/* create a fifo for back-reporting of fast-import to the remote helper,
+	 * if it doesn't exist. */
+	if(!stat(data->report_fifo, &fifostat)) {
+		if(S_ISFIFO(fifostat.st_mode)) {		/* exists and is fifo, unlink and recreate, to be sure that permissions are ok.. */
+			if (debug)
+				fprintf(stderr, "Debug: Remote helper: Unlinked existing fifo.\n");
+			if(unlink(data->report_fifo))
+				die_errno("Couldn't unlink fifo %s", data->report_fifo);
+		}
+		else
+			die("Fifo %s used by some other file.", data->report_fifo);
+	}
+	if(mkfifo(data->report_fifo, 0660))
+		die_errno("Couldn't create fifo %s", data->report_fifo);
+	if (debug)
+		fprintf(stderr, "Debug: Remote helper: Mkfifo %s\n", data->report_fifo);
+
 
 	get_helper(transport);
 
-	if (get_importer(transport, &fastimport))
+	if (get_importer(transport, &fastimport, &importer_argv))
 		die("Couldn't run fast-import");
 
 	for (i = 0; i < nr_heads; i++) {
@@ -441,8 +475,8 @@ static int fetch_with_import(struct transport *transport,
 
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
-	free(fastimport.argv);
-	fastimport.argv = NULL;
+
+	argv_array_clear(&importer_argv);
 
 	for (i = 0; i < nr_heads; i++) {
 		char *private;
