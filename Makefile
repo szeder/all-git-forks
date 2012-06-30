@@ -746,6 +746,7 @@ LIB_OBJS += notes.o
 LIB_OBJS += notes-cache.o
 LIB_OBJS += notes-merge.o
 LIB_OBJS += object.o
+LIB_OBJS += other.o
 LIB_OBJS += pack-check.o
 LIB_OBJS += pack-refs.o
 LIB_OBJS += pack-revindex.o

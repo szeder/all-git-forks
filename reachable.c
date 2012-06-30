@@ -3,6 +3,7 @@
 #include "tag.h"
 #include "commit.h"
 #include "blob.h"
+#include "other.h"
 #include "diff.h"
 #include "revision.h"
 #include "reachable.h"
@@ -100,6 +101,33 @@ static void process_tag(struct tag *tag, struct object_array *p,
 		add_object(tag->tagged, p, NULL, name);
 }
 
+static void process_other(struct other *other, struct object_array *p,
+		const char* name, struct connectivity_progress *cp)
+{
+	struct object* obj = &other->object;
+	char* buf;
+
+	if (obj->flags & SEEN)
+		return;
+	obj->flags |= SEEN;
+	update_progress(cp);
+
+	if (parse_other(other))
+		die("bad other object %s", sha1_to_hex(obj->sha1));
+
+	buf = other->buffer;
+	for (;;) {
+		struct other_header hdr;
+		int err = parse_other_header(&buf, &hdr);
+		if (err < 0) die("bad other object %s", sha1_to_hex(obj->sha1));
+		if (err > 0) break;
+
+		if (!is_null_sha1(hdr.sha1)) {
+			add_object(lookup_unknown_object(hdr.sha1), p, NULL, name);
+		}
+	}
+}
+
 static void walk_commit_list(struct rev_info *revs,
 			     struct connectivity_progress *cp)
 {
@@ -128,6 +156,10 @@ static void walk_commit_list(struct rev_info *revs,
 		}
 		if (obj->type == OBJ_BLOB) {
 			process_blob((struct blob *)obj, &objects, NULL, name, cp);
+			continue;
+		}
+		if (obj->type == OBJ_OTHER) {
+			process_other((struct other *)obj, &objects, name, cp);
 			continue;
 		}
 		die("unknown pending object %s (%s)", sha1_to_hex(obj->sha1), name);
@@ -225,6 +257,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	revs->tag_objects = 1;
 	revs->blob_objects = 1;
 	revs->tree_objects = 1;
+	revs->other_objects = 1;
 
 	/* Add all refs from the index file */
 	add_cache_refs(revs);

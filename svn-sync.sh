@@ -1,5 +1,7 @@
 #!/bin/sh
 
+make git-svn-fetch git-svn-push
+
 rm -rf svn
 mkdir svn
 cd svn
@@ -89,21 +91,21 @@ svn cp svn://localhost/trunk@4 svn://localhost/tags/footag -m 'create tag'
 cd ..
 git init
 
-mkdir .git/svn
-cat > .git/svn/authors <<!
+cat > .git/svn-authors <<!
 # Some comment
 
 user:pass = James M <james@example.com>
 !
 
 ../git-svn-fetch -v -r 3 -t trunk -b branches -T tags --user user --pass pass svn://localhost
-../git-svn-fetch -v -t trunk -b branches -T tags --user user --pass pass svn://localhost
+../git-svn-fetch -t trunk -b branches -T tags --user user --pass pass svn://localhost
 
+git checkout -b master svn/master
+git reset --hard
 oldsha=`git show-ref refs/heads/master | cut -d ' ' -f 1`
 
 git config user.name 'James M'
 git config user.email 'james@example.com'
-git reset --hard
 
 echo "some new text" >> b/foo2.txt
 echo "some new file" > b/foo.txt
@@ -121,4 +123,4 @@ git commit -m 'some removals'
 newsha=`git show-ref refs/heads/master | cut -d ' ' -f 1`
 
 git reset --hard $oldsha
-../git-svn-push -v -t trunk -b branches -T tags svn://localhost refs/heads/master $oldsha $newsha
+../git-svn-push -v -t trunk -b branches -T tags svn://localhost heads/master $oldsha $newsha
