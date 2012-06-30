@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ####testje
+=======
+############testje
+>>>>>>> cdeff1284b9e35db5ce89f8810a54e8777e353c0
 #include "cache.h"
 #include "grep.h"
 #include "userdiff.h"
