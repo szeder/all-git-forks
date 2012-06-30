@@ -8,7 +8,8 @@ static struct grep_pat *create_grep_pat(const char *pat, size_t patlen,
 					enum grep_pat_token t,
 					enum grep_header_field field)
 {
-	struct grep_pat *p = xcalloc(1, sizeof(*p));
+    # test deel 2
+    struct grep_pat *p = xcalloc(1, sizeof(*p));
 	p->pattern = xmemdupz(pat, patlen);
 	p->patternlen = patlen;
 	p->origin = origin;
