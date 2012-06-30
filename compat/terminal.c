@@ -76,18 +76,58 @@ char *git_terminal_prompt(const char *prompt, int echo)
 char *git_terminal_prompt(const char *prompt, int echo)
 {
 	static struct strbuf buf = STRBUF_INIT;
+	int r;
+	FILE *input_fh, *output_fh;
+	DWORD cmode = 0;
+	HANDLE hconin;
 
-	fputs(prompt, stderr);
-	strbuf_reset(&buf);
-	for (;;) {
-		int c = _getch();
-		if (c == '\n' || c == '\r')
-			break;
-		if (echo)
-			putc(c, stderr);
-		strbuf_addch(&buf, c);
+	input_fh = fopen("CONIN$", "r");
+	if (!input_fh)
+		return NULL;
+
+	output_fh = fopen("CONOUT$", "w");
+	if (!output_fh) {
+		fclose(input_fh);
+		return NULL;
 	}
-	putc('\n', stderr);
+
+	if (!echo) {
+		hconin = CreateFile("CONIN$", GENERIC_READ | GENERIC_WRITE,
+		    FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		    FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hconin == INVALID_HANDLE_VALUE) {
+			fclose(input_fh);
+			fclose(output_fh);
+			return NULL;
+		}
+		GetConsoleMode(hconin, &cmode);
+		if (!SetConsoleMode(hconin, cmode & (~ENABLE_ECHO_INPUT))) {
+			fclose(input_fh);
+			fclose(output_fh);
+			return NULL;
+		}
+	}
+
+	fputs(prompt, output_fh);
+	fflush(output_fh);
+
+	r = strbuf_getline(&buf, input_fh, '\n');
+	if (!echo) {
+		putc('\n', output_fh);
+		fflush(output_fh);
+
+		SetConsoleMode(hconin, cmode);
+		CloseHandle(hconin);
+	}
+
+	if (buf.buf[buf.len - 1] == '\r')
+		strbuf_setlen(&buf, buf.len - 1);
+
+	fclose(input_fh);
+	fclose(output_fh);
+
+	if (r == EOF)
+		return NULL;
 	return buf.buf;
 }
 
