@@ -1,6 +1,6 @@
 #!/bin/sh
 
-make git-svn-fetch git-svn-push
+make
 
 rm -rf svn
 mkdir svn
@@ -98,14 +98,13 @@ user:pass = James M <james@example.com>
 !
 
 ../git-svn-fetch -v -r 3 -t trunk -b branches -T tags --user user --pass pass svn://localhost
-../git-svn-fetch -t trunk -b branches -T tags --user user --pass pass svn://localhost
-
-git checkout -b master svn/master
-git reset --hard
-oldsha=`git show-ref refs/heads/master | cut -d ' ' -f 1`
+../git-svn-fetch -v -t trunk -b branches -T tags --user user --pass pass svn://localhost
 
 git config user.name 'James M'
 git config user.email 'james@example.com'
+
+
+git checkout -b master svn/master
 
 echo "some new text" >> b/foo2.txt
 echo "some new file" > b/foo.txt
@@ -120,7 +119,32 @@ git commit -m 'git commit 2'
 git rm -rf b
 git commit -m 'some removals'
 
-newsha=`git show-ref refs/heads/master | cut -d ' ' -f 1`
 
-git reset --hard $oldsha
-../git-svn-push -v -t trunk -b branches -T tags svn://localhost heads/master $oldsha $newsha
+git checkout -b foobranch svn/foobranch
+
+echo "some branch file" >> b/foo2.txt
+git add b/foo2.txt
+git commit -m 'git branch commit'
+
+../git svn-push -v -t trunk -b branches -T tags svn://localhost heads/master svn/master master
+../git svn-push -v -t trunk -b branches -T tags svn://localhost heads/foobranch svn/foobranch foobranch
+
+cat > .git/hooks/pre-receive <<!
+#!/bin/sh
+exec $PWD/../git-svn-push -v -t trunk -b branches -T tags --pre-receive svn://localhost
+!
+
+chmod +x .git/hooks/pre-receive
+git config receive.denyCurrentBranch ignore
+
+../git clone -- . gitco
+cd gitco
+
+git config user.name 'James M'
+git config user.email 'james@example.com'
+
+echo "some mod" >> b/foo2.txt
+../../git add b/foo2.txt
+../../git commit -m 'git clone commit'
+../../git push
+
