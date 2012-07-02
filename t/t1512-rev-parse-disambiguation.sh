@@ -66,7 +66,7 @@ test_expect_success 'disambiguate commit-ish' '
 	git rev-parse --verify 11021982^0
 '
 
-test_expect_failure 'name1..name2 takes only commit-ishes on both ends' '
+test_expect_success 'name1..name2 takes only commit-ishes on both ends' '
 	git log 11021982..11021982 &&
 	git log ..11021982 &&
 	git log 11021982.. &&
