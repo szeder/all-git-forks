@@ -790,17 +790,15 @@ struct object_context {
 	unsigned mode;
 };
 
+#define GET_SHA1_QUIETLY 01
+#define GET_SHA1_COMMIT 02
+#define GET_SHA1_COMMITTISH 04
+#define GET_SHA1_ONLY_TO_DIE 04000
+
 extern int get_sha1(const char *str, unsigned char *sha1);
-extern int get_sha1_with_mode_1(const char *str, unsigned char *sha1, unsigned *mode, int only_to_die, const char *prefix);
-static inline int get_sha1_with_mode(const char *str, unsigned char *sha1, unsigned *mode)
-{
-	return get_sha1_with_mode_1(str, sha1, mode, 0, NULL);
-}
-extern int get_sha1_with_context_1(const char *name, unsigned char *sha1, struct object_context *orc, int only_to_die, const char *prefix);
-static inline int get_sha1_with_context(const char *str, unsigned char *sha1, struct object_context *orc)
-{
-	return get_sha1_with_context_1(str, sha1, orc, 0, NULL);
-}
+extern int get_sha1_committish(const char *str, unsigned char *sha1);
+extern void die_on_misspelt_object_name(const char *name, const char *prefix);
+extern int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc);
 
 /*
  * Try to read a SHA1 in hexadecimal format from the 40 characters
