@@ -54,7 +54,7 @@ test_expect_success 'first commit' '
 	git commit -m d8znjge0
 '
 
-test_expect_failure 'disambiguate commit-ish' '
+test_expect_success 'disambiguate commit-ish' '
 	# feed commit-ish in an unambiguous way
 	git rev-parse --verify 1102198268^{commit} &&
 
