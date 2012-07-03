@@ -121,7 +121,7 @@ test_expect_success 'git log takes only commit-ish' '
 	git log 11021982
 '
 
-test_expect_failure 'git reset takes only commit-ish' '
+test_expect_success 'git reset takes only commit-ish' '
 	git reset 11021982
 '
 
