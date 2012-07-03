@@ -16,9 +16,12 @@
 #include "column.h"
 #include "color.h"
 #include "pathspec.h"
+#include "tree-walk.h"
+#include "unpack-trees.h"
+#include "cache-tree.h"
 
 static int force = -1; /* unset */
-static int interactive;
+static int interactive, backup;
 static struct string_list del_list = STRING_LIST_INIT_DUP;
 static unsigned int colopts;
 
@@ -120,6 +123,11 @@ static int git_clean_config(const char *var, const char *value, void *cb)
 		return color_parse(value, clean_colors[slot]);
 	}
 
+	if (!strcmp(var, "clean.backup")) {
+		backup = git_config_bool(var, value);
+		return 0;
+	}
+
 	if (!strcmp(var, "clean.requireforce")) {
 		force = !git_config_bool(var, value);
 		return 0;
@@ -146,6 +154,90 @@ static int exclude_cb(const struct option *opt, const char *arg, int unset)
 	struct string_list *exclude_list = opt->value;
 	string_list_append(exclude_list, arg);
 	return 0;
+}
+
+static int backed_up_anything;
+
+static void backup_file(const char *path, struct stat *st)
+{
+	if (add_to_cache(path, st, 0))
+		die(_("backing up '%s' failed"), path);
+	backed_up_anything = 1;
+}
+
+static struct commit_list *parents;
+
+static void prepare_backup(void)
+{
+	struct unpack_trees_options opts;
+	unsigned char sha1[20];
+	struct tree *tree;
+	struct commit *parent;
+	struct tree_desc t;
+
+	if (get_sha1("HEAD", sha1))
+		die(_("You do not have the initial commit yet"));
+
+	/* prepare parent-list */
+	parent = lookup_commit_or_die(sha1, "HEAD");
+	commit_list_insert(parent, &parents);
+
+	/* load HEAD into the index */
+
+	tree = parse_tree_indirect(sha1);
+	if (!tree)
+		die(_("Failed to unpack tree object %s"), sha1);
+
+	parse_tree(tree);
+	init_tree_desc(&t, tree->buffer, tree->size);
+
+	memset(&opts, 0, sizeof(opts));
+	opts.head_idx = -1;
+	opts.src_index = &the_index;
+	opts.dst_index = &the_index;
+	opts.index_only = 1;
+
+	if (unpack_trees(1, &t, &opts)) {
+		/* We've already reported the error, finish dying */
+		exit(128);
+	}
+}
+
+static void finish_backup(void)
+{
+	const char *ref = "refs/clean-backup";
+	unsigned char commit_sha1[20];
+	struct strbuf msg = STRBUF_INIT;
+	char logfile[PATH_MAX];
+	FILE *fp;
+
+	if (!backed_up_anything)
+		return;
+
+	if (!active_cache_tree)
+		active_cache_tree = cache_tree();
+
+	if (!cache_tree_fully_valid(active_cache_tree)) {
+		if (cache_tree_update(active_cache_tree,
+		    (const struct cache_entry * const *)active_cache,
+		    active_nr, 0) < 0)
+			die("failed to update cache");
+	}
+
+	strbuf_addstr(&msg, "Automatically committed by git-clean");
+
+	/* create a reflog, if there isn't one */
+	git_snpath(logfile, sizeof(logfile), "logs/%s", ref);
+	if ((fp = fopen(logfile, "a")))
+		fclose(fp);
+	else
+		warning(_("Can not do reflog for '%s'"), ref);
+
+	if (commit_tree(&msg, active_cache_tree->sha1, parents, commit_sha1,
+	    NULL, NULL))
+		die("failed to commit :(");
+
+	update_ref(msg.buf, ref, commit_sha1, NULL, 0, DIE_ON_ERR);
 }
 
 static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
@@ -207,6 +299,8 @@ static int remove_dirs(struct strbuf *path, const char *prefix, int force_flag,
 				*dir_gone = 0;
 			continue;
 		} else {
+			if (backup && !dry_run)
+				backup_file(path->buf, &st);
 			res = dry_run ? 0 : unlink(path->buf);
 			if (!res) {
 				quote_path_relative(path->buf, prefix, &quoted);
@@ -877,6 +971,8 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('i', "interactive", &interactive, N_("interactive cleaning")),
 		OPT_BOOL('d', NULL, &remove_directories,
 				N_("remove whole directories")),
+		OPT_BOOL('b', "backup", &backup,
+				N_("back up files to a reflog before deleting them")),
 		{ OPTION_CALLBACK, 'e', "exclude", &exclude_list, N_("pattern"),
 		  N_("add <pattern> to ignore rules"), PARSE_OPT_NONEG, exclude_cb },
 		OPT_BOOL('x', NULL, &ignored, N_("remove ignored files, too")),
@@ -920,6 +1016,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	if (!ignored)
 		setup_standard_excludes(&dir);
+
+	if (backup && !dry_run)
+		prepare_backup();
 
 	el = add_exclude_list(&dir, EXC_CMDL, "--exclude option");
 	for (i = 0; i < exclude_list.nr; i++)
@@ -984,6 +1083,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				printf(dry_run ? _(msg_would_remove) : _(msg_remove), qname);
 			}
 		} else {
+			if (backup && !dry_run)
+				backup_file(abs_path.buf, &st);
+
 			res = dry_run ? 0 : unlink(abs_path.buf);
 			if (res) {
 				qname = quote_path_relative(item->string, NULL, &buf);
@@ -1001,5 +1103,9 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	strbuf_release(&buf);
 	string_list_clear(&del_list, 0);
 	string_list_clear(&exclude_list, 0);
+
+	if (backup && !dry_run)
+		finish_backup();
+
 	return (errors != 0);
 }

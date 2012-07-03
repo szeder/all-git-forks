@@ -527,4 +527,16 @@ test_expect_success 'git clean -d respects pathspecs (pathspec is prefix of dir)
 	test_path_is_dir foobar
 '
 
+test_expect_success 'git clean -b' '
+	git reset --hard HEAD &&
+	git clean -dfx &&
+	mkdir -p foobar &&
+	echo "bar" > bar &&
+	echo "baz" > foobar/baz &&
+	git clean -d -f -b &&
+	git diff --name-only refs/clean-backup@{0}^ refs/clean-backup@{0} >actual &&
+	grep bar actual &&
+	grep foobar/baz actual
+'
+
 test_done

@@ -41,6 +41,10 @@ OPTIONS
 --interactive::
 	Show what would be done and clean files interactively. See
 	``Interactive mode'' for details.
+-b::
+--backup::
+	Back up files to a reflog before deleting them. The tree of
+	backed up files are stored in the reflog for refs/clean-backup.
 
 -n::
 --dry-run::

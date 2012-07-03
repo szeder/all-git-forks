@@ -834,6 +834,10 @@ clean.requireForce::
 	A boolean to make git-clean do nothing unless given -f,
 	-i or -n.   Defaults to true.
 
+clean.backup::
+	A boolean to make git-clean back up files before they are
+	deleted. Defaults to false.
+
 color.branch::
 	A boolean to enable/disable color in the output of
 	linkgit:git-branch[1]. May be set to `always`,
