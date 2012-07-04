@@ -9,6 +9,7 @@
 #include "cache-tree.h"
 #include "tree-walk.h"
 #include "parse-options.h"
+#include "submodule.h"
 
 static const char * const builtin_rm_usage[] = {
 	"git rm [options] [--] <file>...",
@@ -149,6 +150,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	const char **pathspec;
 	char *seen;
 
+	gitmodules_config();
 	git_config(git_default_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, builtin_rm_options,
@@ -246,7 +248,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 * in the middle)
 	 */
 	if (!index_only) {
-		int removed = 0;
+		int removed = 0, gitmodules_modified = 0;
 		for (i = 0; i < list.nr; i++) {
 			const char *path = list.entry[i].name;
 			if (!list.entry[i].is_submodule) {
@@ -258,8 +260,12 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 					die_errno("git rm: '%s'", path);
 			} else {
 				rmdir_or_warn(path);
+				if (!remove_path_from_gitmodules(path))
+					gitmodules_modified = 1;
 			}
 		}
+		if (gitmodules_modified)
+			stage_updated_gitmodules();
 	}
 
 	if (active_cache_changed) {
