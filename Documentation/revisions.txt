@@ -24,22 +24,22 @@ blobs contained in a commit.
   object referenced by 'refs/heads/master'.  If you
   happen to have both 'heads/master' and 'tags/master', you can
   explicitly say 'heads/master' to tell git which one you mean.
-  When ambiguous, a '<name>' is disambiguated by taking the
+  When ambiguous, a '<refname>' is disambiguated by taking the
   first match in the following rules:
 
-  . If '$GIT_DIR/<name>' exists, that is what you mean (this is usually
+  . If '$GIT_DIR/<refname>' exists, that is what you mean (this is usually
     useful only for 'HEAD', 'FETCH_HEAD', 'ORIG_HEAD', 'MERGE_HEAD'
     and 'CHERRY_PICK_HEAD');
 
-  . otherwise, 'refs/<name>' if it exists;
+  . otherwise, 'refs/<refname>' if it exists;
 
   . otherwise, 'refs/tags/<refname>' if it exists;
 
-  . otherwise, 'refs/heads/<name>' if it exists;
+  . otherwise, 'refs/heads/<refname>' if it exists;
 
-  . otherwise, 'refs/remotes/<name>' if it exists;
+  . otherwise, 'refs/remotes/<refname>' if it exists;
 
-  . otherwise, 'refs/remotes/<name>/HEAD' if it exists.
+  . otherwise, 'refs/remotes/<refname>/HEAD' if it exists.
 +
 'HEAD' names the commit on which you based the changes in the working tree.
 'FETCH_HEAD' records the branch which you fetched from a remote repository
@@ -128,6 +128,20 @@ the '$GIT_DIR/refs' directory or from the '$GIT_DIR/packed-refs' file.
   it returns the youngest matching commit which is reachable from
   the '<rev>' before '{caret}'.
 
+'<rev>{caret}@', e.g. 'HEAD{caret}@'::
+  A suffix '{caret}' followed by an at sign
+  means all parents of '<rev>'.
+  This is somewhat different from the other specifiers in this
+  section in that it may refer to multiple commits at once.
+  See also the next section on SPECIFYING RANGES.
+
+'<rev>{caret}!', e.g. 'HEAD{caret}!'::
+  A suffix '{caret}' followed by an exclamation mark
+  means commit '<rev>' but forces all of its parents to be excluded. For
+  commands that deal with a single revision, this is the same as '<rev>".
+  Hence it is primarily used with commands expecting commit ranges.
+  See also the next section on SPECIFYING RANGES.
+
 ':/<text>', e.g. ':/fix nasty bug'::
   A colon, followed by a slash, followed by a text, names
   a commit whose commit message matches the specified regular expression.
@@ -214,9 +228,10 @@ It is the set of commits that are reachable from either one of
 'r1' or 'r2' but not from both.
 
 Two other shorthands for naming a set that is formed by a commit
-and its parent commits exist.  The 'r1{caret}@' notation means all
-parents of 'r1'.  'r1{caret}!' includes commit 'r1' but excludes
-all of its parents.
+and its parent commits exist.  Recall that 'r1{caret}@' means all
+parents of 'r1'. When specifying ranges, this effectively includes
+all ancestors of 'r1' but excludes 'r1' itself. In contrast to this,
+'r1{caret}!' includes commit 'r1' but excludes all of its ancestors.
 
 Here are a handful of examples:
 
@@ -224,7 +239,10 @@ Here are a handful of examples:
    D F              G H I J D F
    ^G D             H D
    ^D B             E I J F B
+   B..C             C
    B...C            G H D E B C
    ^D B C           E I J F B C
+   C                I J F C
    C^@              I J F
+   C^!              C
    F^! D            G H D F
