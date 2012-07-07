@@ -18,6 +18,8 @@
 			/* Return localStorage value or default */
 			if (localStorage) {
 				gitweb.tZPreference = localStorage.gitweb_tZPreference;
+			} else {
+				gitweb.tZPreference = gitweb.cookies.getCookie("gitweb_tz");
 			}
 			return gitweb.tZPreference || "local";
 		},
@@ -29,6 +31,8 @@
 			gitweb.tZPreference = val;
 			if (localStorage) {
 				localStorage.gitweb_tZPreference = val;
+			} else {
+				gitweb.cookies.setCookie("gitweb_tz", val);
 			}
 		}
 	};
