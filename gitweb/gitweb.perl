@@ -4146,8 +4146,6 @@ sub git_footer_html {
 		insert_file($site_footer);
 	}
 
-	print qq!<script type="text/javascript" src="!.esc_url($jquery).qq!"></script>\n!;
-	print qq!<script type="text/javascript" src="!.esc_url($javascript).qq!"></script>\n!;
 	if (defined $action &&
 	    $action eq 'blame_incremental') {
 		print qq!<script type="text/javascript">\n!.
@@ -4164,12 +4162,13 @@ sub git_footer_html {
 			print qq!	fixLinks();\n!;
 		}
 		if ($jstimezone && $tz_cookie && $datetime_class) {
-			print qq!	var tz_cookie = { name: '$tz_cookie', expires: 14, path: '/' };\n!. # in days
-			      qq!	onloadTZSetup('$jstimezone', tz_cookie, '$datetime_class');\n!;
+			print qq!    var gitweb = {}; gitweb.tZPreference ="!.$jstimezone.qq!" ;\n!;
 		}
 		print qq!};\n!.
 		      qq!</script>\n!;
 	}
+	print qq!<script type="text/javascript" src="!.esc_url($jquery).qq!"></script>\n!;
+	print qq!<script type="text/javascript" src="!.esc_url($javascript).qq!"></script>\n!;
 
 	print "</body>\n" .
 	      "</html>";
