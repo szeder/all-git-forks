@@ -12,18 +12,24 @@
 			oldTime,
 			tz,
 			op,
+			persist = gitweb.persist.getData(),
 			timeZones =  gitweb.timeZones;
 
 		/* Create TZ selector from timeZones */
 		for (tz in timeZones) {
 			if (timeZones.hasOwnProperty(tz)) {
-				/* <option value="utc">UTC/GMT</option> */
-				op = ['<option value="', tz, '">', timeZones[tz], '</option>'];
+				if (tz === persist) {
+					/* <option selected="1" value="utc">UTC/GMT</option> */
+					op = ['<option selected="1" value="', tz, '">', timeZones[tz], '</option>'];
+				} else {
+					/* <option value="utc">UTC/GMT</option> */
+					op = ['<option value="', tz, '">', timeZones[tz], '</option>'];
+				}
 				select += op.join('');
 			}
 		}
 
-		select = ['<select name="tzoffset">', select, '</select>'].join('');
+		select = ['<select>', select, '</select>'].join('');
 
 		/* Create the popup */
 		popup = $("<div>")
@@ -51,6 +57,15 @@
 			$(this).parent().remove();
 		});
 
+		/* Update all timestamps to preferred TZ */
+		$('span.datetime').each(function (index) {
+			// console.log(index,this);
+			oldTime = $(this).text();
+			var newTime = new gitweb.DateView(oldTime).convertTo(persist).dateView;
+			// Update with new time
+			$(this).text(newTime);
+		});
+
 		/* Trigger event on timezone selection */
 		$("body").on("change", "select", function () {
 			var span = $(this).parent().parent('span.datetime'),
@@ -60,6 +75,8 @@
 			$(this).parent().remove();
 			// Update with new time
 			span.text(newTime);
+			// Update localStorage
+			gitweb.persist.setData(newTz);
 		});
 	});
 }(jQuery, window.gitweb));

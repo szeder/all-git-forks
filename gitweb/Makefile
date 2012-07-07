@@ -122,6 +122,7 @@ SPEC_DIR = static/js/test
 
 GITWEB_JS_FILES = ${SRC_DIR}/dateTime.js \
 	${SRC_DIR}/timeZones.js \
+	${SRC_DIR}/persist.js \
 	${SRC_DIR}/app.js
 
 GITWEB_REPLACE = \
