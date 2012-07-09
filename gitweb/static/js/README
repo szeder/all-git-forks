@@ -1,5 +1,4 @@
-GIT web interface (gitweb) - JavaScript
-=======================================
+# GIT web interface (gitweb) - JavaScript
 
 This directory holds JavaScript code used by gitweb (GIT web interface).
 Scripts here will be concatenated in the order by gitweb/Makefile into
@@ -13,7 +12,33 @@ Care to be taken in the order of JavaScript files in gitweb/Makefile.
 Files to be built, in order :
 
 dateTime.js     : All date manipulation code goes here.
-timeZones.js    : List of timezones for popup selector
+timeZones.js    : List of time zones for popup selector
 cookies.js      : Cookies for persistent storage
 persist.js      : Persistent storage with cookies and localStorage
 app.js          : All UI for gitweb
+
+
+## JavaScript tests for gitweb
+
+Gitweb uses mocha[1] framework for JavaScript tests. Tests can be run in a
+console with node.js[2] producing TAP output or in the browser at
+`test/SpecRunner.html`. Additional requirements are listed in
+/gitweb/static/js/package.json and can be installed with npm[3] by
+$ `npm install` inside gitweb/static/js
+
+The specs are written in `gitweb/static/js/test` as `foo.spec.js` for the source
+file `foo.js`.[TODO] `t/t9503-gitweb-javascript.js` will be generated with a
+Makefile to run the tests in the console with nodejs and to report results in
+TAP format integrating with the existing tests.
+
+### Work to do :
+
+1. Provision to skip the test if dependencies are not installed.
+2. Installing browser tests optionally.
+3. Generating `t/t9503-gitweb-javascript.js`
+
+### Links
+
+1: http://visionmedia.github.com/mocha/
+2: http://nodejs.org
+3: http://npmjs.org
