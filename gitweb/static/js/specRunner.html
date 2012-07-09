@@ -1,0 +1,23 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Mocha Tests</title>
+		<link rel="stylesheet" href="assets/mocha.css" />
+		<script src="assets/jquery-1.7.1.min.js"></script>
+		<!-- http://chaijs.com/chai.js -->
+		<script src="assets/chai.js"></script>
+		<script src="assets/mocha.js"></script>
+		<script>mocha.setup('bdd');</script>
+		<script>should = chai.should();</script>
+		<script src="dateTime.js"></script>
+		<script src="test/dateTime.spec.js"></script>
+		<script>
+			$(function(){
+				mocha.run()
+			})
+		</script>
+	</head>
+	<body>
+		<div id="mocha"></div>
+	</body>
+</html>
