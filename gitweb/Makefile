@@ -116,16 +116,13 @@ endif
 GITWEB_FILES += static/git-logo.png static/git-favicon.png
 
 # JavaScript files that are composed (concatenated) to form gitweb.js
-#
-# js/lib/common-lib.js should be always first, then js/lib/*.js,
-# then the rest of files; js/gitweb.js should be last (if it exists)
-GITWEB_JSLIB_FILES += static/js/lib/common-lib.js
-GITWEB_JSLIB_FILES += static/js/lib/datetime.js
-GITWEB_JSLIB_FILES += static/js/lib/cookies.js
-GITWEB_JSLIB_FILES += static/js/javascript-detection.js
-GITWEB_JSLIB_FILES += static/js/adjust-timezone.js
-GITWEB_JSLIB_FILES += static/js/blame_incremental.js
 
+SRC_DIR = static/js
+SPEC_DIR = static/js/test
+
+GITWEB_JS_FILES = ${SRC_DIR}/dateTime.js \
+	${SRC_DIR}/timeZones.js \
+	${SRC_DIR}/app.js
 
 GITWEB_REPLACE = \
 	-e 's|++GIT_VERSION++|$(GIT_VERSION)|g' \
@@ -164,7 +161,7 @@ gitweb.cgi: gitweb.perl GITWEB-BUILD-OPTIONS
 	chmod +x $@+ && \
 	mv $@+ $@
 
-static/gitweb.js: $(GITWEB_JSLIB_FILES)
+static/gitweb.js: $(GITWEB_JS_FILES)
 	$(QUIET_GEN)$(RM) $@ $@+ && \
 	cat $^ >$@+ && \
 	mv $@+ $@
