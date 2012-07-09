@@ -262,4 +262,88 @@ test_expect_success 'rm removes subdirectories recursively' '
 	! test -d dir
 '
 
+cat >expect <<EOF
+M  .gitmodules
+D  submod
+EOF
+
+test_expect_success 'rm removes empty submodules from work tree and .gitmodules' '
+	mkdir submod &&
+	git update-index --add --cacheinfo 160000 $(git rev-parse HEAD) submod &&
+	git config -f .gitmodules submodule.sub.url ./. &&
+	git config -f .gitmodules submodule.sub.path submod &&
+	git submodule init &&
+	git add .gitmodules &&
+	git commit -m "add submodule" &&
+	git rm submod &&
+	test ! -e submod &&
+	git status -s -uno > actual &&
+	test_cmp expect actual &&
+	test_must_fail git config -f .gitmodules submodule.sub.url &&
+	test_must_fail git config -f .gitmodules submodule.sub.path
+'
+
+test_expect_success 'rm leaves work tree of populated submodules alone but updates .gitmodules' '
+	git reset --hard &&
+	git submodule update &&
+	git rm submod &&
+	test -d submod &&
+	test -f submod/.git &&
+	git status -s -uno > actual &&
+	test_cmp expect actual &&
+	test_must_fail git config -f .gitmodules submodule.sub.url &&
+	test_must_fail git config -f .gitmodules submodule.sub.path
+'
+
+test_expect_success 'rm of a populated submodule with different HEAD requires forcing' '
+	git reset --hard &&
+	git submodule update &&
+	(cd submod &&
+		git checkout HEAD^
+	) &&
+	test_must_fail git rm submod &&
+	git status -s -uno > actual &&
+	git config -f .gitmodules submodule.sub.url &&
+	git config -f .gitmodules submodule.sub.path &&
+	git rm --force submod &&
+	test -s actual &&
+	test -d submod &&
+	test -f submod/.git &&
+	git status -s -uno > actual &&
+	test_cmp expect actual &&
+	test_must_fail git config -f .gitmodules submodule.sub.url &&
+	test_must_fail git config -f .gitmodules submodule.sub.path
+'
+
+test_expect_success 'rm of a populated submodule with modifications succeeds' '
+	git reset --hard &&
+	git submodule update &&
+	(cd submod &&
+		echo X >empty
+	) &&
+	git rm submod &&
+	test -d submod &&
+	test -f submod/.git &&
+	git status -s -uno > actual &&
+	test_cmp expect actual &&
+	test_must_fail git config -f .gitmodules submodule.sub.url &&
+	test_must_fail git config -f .gitmodules submodule.sub.path
+'
+
+test_expect_success 'rm of a populated submodule with untracked files succeeds' '
+	git reset --hard &&
+	git submodule update &&
+	(cd submod &&
+		echo X >untracked
+	) &&
+	git rm submod &&
+	test -d submod &&
+	test -f submod/.git &&
+	git status -s -uno > actual &&
+	test_cmp expect actual &&
+	test_must_fail git config -f .gitmodules submodule.sub.url &&
+	test_must_fail git config -f .gitmodules submodule.sub.path &&
+	rm submod/untracked
+'
+
 test_done
