@@ -177,6 +177,14 @@ test-installed:
 	GITWEB_TEST_INSTALLED='$(DESTDIR_SQ)$(gitwebdir_SQ)' \
 		$(MAKE) -C ../t gitweb-test
 
+# jslint for javascript files
+lint :
+	jslint $(SRC_DIR)/dateTime.js
+	jslint --predef window --predef localStorage  --predef gitweb $(SRC_DIR)/persist.js
+	jslint --predef document --predef window $(SRC_DIR)/cookies.js
+	jslint --predef document --predef jQuery --predef gitweb $(SRC_DIR)/app.js
+	jslint --predef gitweb $(SRC_DIR)/timeZones.js
+
 ### Installation rules
 
 install: all
@@ -192,4 +200,4 @@ clean:
 		static/gitweb.min.js static/gitweb.min.css \
 		GITWEB-BUILD-OPTIONS
 
-.PHONY: all clean install test test-installed .FORCE-GIT-VERSION-FILE FORCE
+.PHONY: all clean install test test-installed lint .FORCE-GIT-VERSION-FILE FORCE
