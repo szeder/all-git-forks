@@ -1,0 +1,7 @@
+--require should
+--reporter tap
+--ui bdd
+--globals window
+--globals jQuery
+--globals $
+--timeout 200
