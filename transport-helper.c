@@ -392,7 +392,7 @@ static int get_importer(struct transport *transport, struct child_process *fasti
 	memset(fastimport, 0, sizeof(*fastimport));
 	fastimport->in = helper->out;
 	argv_array_push(argv, "fast-import");
-	argv_array_push(argv, "--quiet");
+	argv_array_push(argv, debug ? "--stats" : "--quiet");
 	argv_array_pushf(argv, "--cat-blob-pipe=%s", data->report_fifo);
 	fastimport->argv = argv->argv;
 	fastimport->git_cmd = 1;
