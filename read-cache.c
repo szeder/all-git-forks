@@ -399,8 +399,13 @@ int cache_name_compare(const char *name1, int flags1, const char *name2, int fla
 {
 	int len1 = flags1 & CE_NAMEMASK;
 	int len2 = flags2 & CE_NAMEMASK;
-	int len = len1 < len2 ? len1 : len2;
-	int cmp;
+	int len, cmp;
+
+	if (len1 >= CE_NAMEMASK)
+		len1 = strlen(name1 + CE_NAMEMASK) + CE_NAMEMASK;
+	if (len2 >= CE_NAMEMASK)
+		len2 = strlen(name2 + CE_NAMEMASK) + CE_NAMEMASK;
+	len = len1 < len2 ? len1 : len2;
 
 	cmp = memcmp(name1, name2, len);
 	if (cmp)
