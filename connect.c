@@ -227,6 +227,13 @@ static int git_tcp_connect_sock(char *host, int flags)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	if (flags & CONNECT_IPV4ONLY)
+		hints.ai_family = PF_INET;
+	else if (flags & CONNECT_IPV6ONLY)
+		hints.ai_family = PF_INET6;
+	else
+		hints.ai_family = PF_UNSPEC;
+
 	if (flags & CONNECT_VERBOSE)
 		fprintf(stderr, "Looking up %s ... ", host);
 
