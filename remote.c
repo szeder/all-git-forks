@@ -47,8 +47,8 @@ static int branches_alloc;
 static int branches_nr;
 
 static struct branch *current_branch;
-static const char *default_remote_name;
-static int explicit_default_remote_name;
+static const char *effective_remote_name;
+static int explicit_effective_remote_name;
 
 static struct rewrites rewrites;
 static struct rewrites rewrites_push;
@@ -360,8 +360,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 				return config_error_nonbool(key);
 			branch->remote_name = xstrdup(value);
 			if (branch == current_branch) {
-				default_remote_name = branch->remote_name;
-				explicit_default_remote_name = 1;
+				effective_remote_name = branch->remote_name;
+				explicit_effective_remote_name = 1;
 			}
 		} else if (!strcmp(subkey, ".merge")) {
 			if (!value)
@@ -481,9 +481,9 @@ static void read_config(void)
 	unsigned char sha1[20];
 	const char *head_ref;
 	int flag;
-	if (default_remote_name) /* did this already */
+	if (effective_remote_name) /* did this already */
 		return;
-	default_remote_name = xstrdup("origin");
+	effective_remote_name = xstrdup("origin");
 	current_branch = NULL;
 	head_ref = resolve_ref_unsafe("HEAD", sha1, 0, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
@@ -680,8 +680,8 @@ struct remote *remote_get(const char *name)
 	if (name)
 		name_given = 1;
 	else {
-		name = default_remote_name;
-		name_given = explicit_default_remote_name;
+		name = effective_remote_name;
+		name_given = explicit_effective_remote_name;
 	}
 
 	ret = make_remote(name, 0);
