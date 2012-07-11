@@ -2606,6 +2606,8 @@ static struct directory_entry *find_directories(struct index_state *istate,
 			previous_entry->next = no_subtrees;
 		}
 	}
+	if (istate->cache_tree)
+		cache_tree_to_ondisk_v5(&table, istate->cache_tree);
 	return de;
 }
 
