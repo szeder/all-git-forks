@@ -47,6 +47,7 @@ static int branches_alloc;
 static int branches_nr;
 
 static struct branch *current_branch;
+static const char *default_remote_name;
 static const char *effective_remote_name;
 static int explicit_effective_remote_name;
 
@@ -397,8 +398,12 @@ static int handle_config(const char *key, const char *value, void *cb)
 		return 0;
 	}
 	subkey = strrchr(name, '.');
-	if (!subkey)
+	if (!subkey) {
+		/* Look for remote.default */
+		if (!strcmp(name, "default"))
+			default_remote_name = xstrdup(value);
 		return 0;
+	}
 	remote = make_remote(name, subkey - name);
 	remote->origin = REMOTE_CONFIG;
 	if (!strcmp(subkey, ".mirror"))
@@ -481,9 +486,8 @@ static void read_config(void)
 	unsigned char sha1[20];
 	const char *head_ref;
 	int flag;
-	if (effective_remote_name) /* did this already */
+	if (default_remote_name) /* did this already */
 		return;
-	effective_remote_name = xstrdup("origin");
 	current_branch = NULL;
 	head_ref = resolve_ref_unsafe("HEAD", sha1, 0, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
@@ -492,6 +496,10 @@ static void read_config(void)
 			make_branch(head_ref + strlen("refs/heads/"), 0);
 	}
 	git_config(handle_config, NULL);
+	if (!default_remote_name)
+		default_remote_name = "origin";
+	if (!effective_remote_name)
+		effective_remote_name = default_remote_name;
 	alias_all_urls();
 }
 
