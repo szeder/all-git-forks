@@ -679,6 +679,18 @@ static int valid_remote_nick(const char *name)
 	return !strchr(name, '/'); /* no slash */
 }
 
+const char *remote_get_default_name(void)
+{
+	read_config();
+	return default_remote_name;
+}
+
+int remote_count(void)
+{
+	read_config();
+	return remotes_nr;
+}
+
 struct remote *remote_get(const char *name)
 {
 	struct remote *ret;
