@@ -46,8 +46,7 @@ struct other *lookup_other(const unsigned char* sha1) {
 	struct object* obj = lookup_object(sha1);
 	if (!obj)
 		return create_object(sha1, OBJ_OTHER, alloc_object_node());
-	if (!obj->type)
-		obj->type = OBJ_OTHER;
+	obj->type = OBJ_OTHER;
 	return (struct other*) obj;
 }
 

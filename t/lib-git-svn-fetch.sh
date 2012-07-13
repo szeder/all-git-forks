@@ -107,9 +107,11 @@ test_expect_success 'start svnserve' '
 	svnadmin create "$svnrepo" &&
 	echo -e "[general]\nauth-access = write\npassword-db = passwd" > "$svnrepo/conf/svnserve.conf" &&
 	echo -e "[users]\nuser = pass" > "$svnrepo/conf/passwd" &&
-	echo "user = Full Name <mail@example.com>" > .git/svn-authors &&
+	echo "user:pass = Full Name <mail@example.com>" > .git/svn-authors &&
 	svnserve --daemon \
 		--listen-port $SVNSERVE_PORT \
 		--root "$svnrepo" \
-		--listen-host localhost
+		--listen-host localhost &&
+	git config svn.user user &&
+	git config svn.url $svnurl
 '

@@ -15,61 +15,84 @@
 
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
+#include <openssl/md5.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
 
 static const char *svnuser;
-static const char *svnpass;
-static char *trunk;
-static char *branches;
-static char *tags;
+static const char *trunk;
+static const char *branches;
+static const char *tags;
 static const char *revisions;
 static int verbose;
-static int use_stdin;
-static FILE* tmpf;
-static int infd = -1;
-static int outfd = -1;
+static int pre_receive;
+static int svnfdc = 1;
+static int svnfd;
 static int interval = -1;
 static const char* url;
 
 static const char* const builtin_svn_fetch_usage[] = {
-	"git svn-fetch [options] <repository>",
+	"git svn-fetch [options]",
 	NULL,
 };
 
 static struct option builtin_svn_fetch_options[] = {
 	OPT_STRING(0, "user", &svnuser, "user", "svn username"),
-	OPT_STRING(0, "pass", &svnpass, "pass", "svn password"),
 	OPT_BOOLEAN('v', "verbose", &verbose, "verbose logging of all svn traffic"),
 	OPT_STRING('r', "revision", &revisions, "N:M", "revisions to fetch in the form N or N:M"),
-	OPT_BOOLEAN(0, "inetd", &use_stdin, "inetd mode using stdin/out"),
-	OPT_STRING('t', "trunk", &trunk, "path", "path of trunk branch"),
-	OPT_STRING('b', "branches", &branches, "path", "path of branches"),
-	OPT_STRING('T', "tags", &tags, "path", "path of tags"),
 	OPT_INTEGER(0, "interval", &interval, "poll interval in seconds (0 to only wake on a signal)"),
+	OPT_INTEGER('c', "connections", &svnfdc, "number of concurrent connections"),
 	OPT_END()
 };
 
 static const char* const builtin_svn_push_usage[] = {
-	"git svn-push [options] repo ref <commit>..<commit>",
-	"git svn-push [options] --pre-receive repo",
+	"git svn-push [options] ref <from commit> <to commit>",
+	"git svn-push [options] --pre-receive",
 	NULL,
 };
 
 static struct option builtin_svn_push_options[] = {
-	OPT_STRING(0, "user", &svnuser, "user", "svn username"),
-	OPT_STRING(0, "pass", &svnpass, "pass", "svn password"),
+	OPT_STRING(0, "user", &svnuser, "user", "default svn username"),
 	OPT_BOOLEAN('v', "verbose", &verbose, "verbose logging of all svn traffic"),
-	OPT_STRING('t', "trunk", &trunk, "path", "path of trunk branch"),
-	OPT_STRING('b', "branches", &branches, "path", "path of branches"),
-	OPT_STRING('T', "tags", &tags, "path", "path of tags"),
-	OPT_STRING(0, "pre-receive", &url, "url", "run as a pre-receive hook"),
+	OPT_BOOLEAN(0, "pre-receive", &pre_receive, "run as a pre-receive hook"),
 	OPT_END()
 };
 
+static const char* const builtin_svn_merge_base_usage[] = {
+	"git svn-merge-base <commitish>",
+	NULL,
+};
+
+static struct option builtin_svn_merge_base_options[] = {
+	OPT_END()
+};
+
+static int config(const char *var, const char *value, void *dummy) {
+	if (!strcmp(var, "svn.trunk")) {
+		return git_config_string(&trunk, var, value);
+	}
+	if (!strcmp(var, "svn.branches")) {
+		return git_config_string(&branches, var, value);
+	}
+	if (!strcmp(var, "svn.tags")) {
+		return git_config_string(&tags, var, value);
+	}
+	if (!strcmp(var, "svn.user")) {
+		return git_config_string(&svnuser, var, value);
+	}
+	if (!strcmp(var, "svn.url")) {
+		return git_config_string(&url, var, value);
+	}
+	return git_default_config(var, value, dummy);
+}
+
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
+#endif
+
+#ifndef max
+#define max(a,b) ((a) < (b) ? (b) : (a))
 #endif
 
 static char inbuf[4096];
@@ -78,7 +101,7 @@ static int inb, ine;
 static int readc() {
 	if (ine == inb) {
 		inb = 0;
-		ine = xread(infd, inbuf, sizeof(inbuf));
+		ine = xread(svnfd, inbuf, sizeof(inbuf));
 		if (ine <= 0) return EOF;
 	}
 
@@ -92,11 +115,11 @@ static void unreadc() {
 static int readsvn(void* u, void* p, int n) {
 	/* big reads we may as well read directly into the target */
 	if (ine == inb && n >= sizeof(inbuf) / 2) {
-		return xread(infd, p, n);
+		return xread(svnfd, p, n);
 
 	} else if (ine == inb) {
 		inb = 0;
-		ine = xread(infd, inbuf, sizeof(inbuf));
+		ine = xread(svnfd, inbuf, sizeof(inbuf));
 		if (ine <= 0) return ine;
 	}
 
@@ -106,10 +129,6 @@ static int readsvn(void* u, void* p, int n) {
 	return n;
 }
 
-static int readf(void* u, void* p, int n) {
-	return fread(p, 1, n, (FILE*) u);
-}
-
 static int writef(void* u, const void* p, int n) {
 	return fwrite(p, 1, n, (FILE*) u);
 }
@@ -117,27 +136,17 @@ static int writef(void* u, const void* p, int n) {
 typedef int (*reader)(void*, void*, int);
 typedef int (*writer)(void*, const void*, int);
 
-struct buf {
-	char* p;
-	int n;
-};
-
-static int readb(void* u, void* p, int n) {
-	struct buf* b = u;
-	int r = min(b->n, n);
-	memcpy(p, b->p, r);
-	b->n -= r;
-	b->p += r;
-	return r;
+static int writes(void* u, const void* p, int n) {
+	strbuf_add((struct strbuf*) u, p, n);
+	return n;
 }
 
-static int writeb(void* u, const void* p, int n) {
-	struct buf* b = u;
-	int r = min(b->n, n);
-	memcpy(b->p, p, r);
-	b->n -= r;
-	b->p += r;
-	return r;
+static int reads(void* u, void* p, int n) {
+	struct strbuf* s = u;
+	n = min(n, s->len);
+	memcpy(p, s->buf, n);
+	strbuf_remove(s, 0, n);
+	return n;
 }
 
 static const char hex[] = "0123456789abcdef";
@@ -195,15 +204,36 @@ static void print_hex(writer wf, void* wd, const void* p, int n) {
 	}
 }
 
+static int get_md5_hex(const char *hex, unsigned char *sha1)
+{
+	int i;
+	for (i = 0; i < 16; i++) {
+		unsigned int val;
+		/*
+		 * hex[1]=='\0' is caught when val is checked below,
+		 * but if hex[0] is NUL we have to avoid reading
+		 * past the end of the string:
+		 */
+		if (!hex[0])
+			return -1;
+		val = (hexval(hex[0]) << 4) | hexval(hex[1]);
+		if (val & ~0xff)
+			return -1;
+		*sha1++ = val;
+		hex += 2;
+	}
+	return 0;
+}
+
 static void copyn(writer wf, void* wd, reader rf, void *rd, int64_t n) {
 	while (n > 0) {
 		char buf[BUFSIZ];
 		int r = rf(rd, buf, min(sizeof(buf), n));
 		if (r <= 0)
-			die(_("unexpected end %s"), strerror(errno));
+			die_errno("unexpected end");
 
 		if (wf && wf(wd, buf, r) != r)
-			die(_("failed write %s"), strerror(errno));
+			die_errno("failed write");
 
 		n -= r;
 	}
@@ -213,7 +243,7 @@ static void readfull(void *p, reader rf, void* rd, int n) {
 	while (n > 0) {
 		int r = rf(rd, p, n);
 		if (r <= 0)
-			die(_("unexpected end %s"), strerror(errno));
+			die_errno("unexpected end");
 
 		p = (char*) p + r;
 		n -= r;
@@ -288,7 +318,7 @@ static void sendf(const char* fmt, ...) {
 		}
 	}
 
-	if (write_in_full(outfd, out.buf, out.len) != out.len) {
+	if (write_in_full(svnfd, out.buf, out.len) != out.len) {
 		die_errno("write");
 	}
 }
@@ -297,45 +327,72 @@ static void sendb(const void* data, size_t sz) {
 	if (verbose) {
 		print_ascii(&writef, stderr, data, sz);
 	}
-	if (write_in_full(outfd, data, sz) != sz) {
+	if (write_in_full(svnfd, data, sz) != sz) {
 		die_errno("write");
 	}
 }
 
 struct unzip {
-	git_zstream z;
+	z_stream z;
 	reader rf;
 	void* rd;
 	int rn;
-	unsigned char buf[4096];
+	int flush;
+	int outoff;
+	unsigned char out[4096];
+	unsigned char in[4096];
 };
 
 static int readz(void* u, void* p, int n) {
 	struct unzip* z = u;
 	int r;
 
-	z->z.avail_out = n;
-	z->z.next_out = p;
+	if (!n) return 0;
 
-	if (z->z.avail_in) {
-		r = git_inflate(&z->z, 0);
-		if (r) return -1;
-		if (z->z.avail_out < n) return n - z->z.avail_out;
+	if (z->outoff == sizeof(z->out) - z->z.avail_out) {
+		z->outoff = 0;
 	}
 
-	if (z->rn) {
-		memmove(z->buf, z->z.next_in, z->z.avail_in);
-		z->z.next_in = z->buf;
-		r = z->rf(z->rd, z->buf, min(z->rn, sizeof(z->buf) - z->z.avail_in));
-		if (r <= 0) return -1;
-		z->rn -= r;
-		z->z.avail_in += r;
+	if (z->outoff) {
+		n = min(n, sizeof(z->out) - z->z.avail_out - z->outoff);
+		memcpy(p, z->out + z->outoff, n);
+		z->outoff += n;
+		return n;
 	}
 
-	r = git_inflate(&z->z, z->rn ? 0 : Z_FINISH);
-	if (r) return -1;
+	if (n < sizeof(z->out)) {
+		z->z.avail_out = sizeof(z->out);
+		z->z.next_out = z->out;
+	} else {
+		z->z.avail_out = n;
+		z->z.next_out = p;
+	}
 
-	return n - z->z.avail_out;
+	while (max(n, sizeof(z->out)) == z->z.avail_out) {
+		if (z->rn && !z->z.avail_in) {
+			readfull(z->in, z->rf, z->rd, min(z->rn, sizeof(z->in)));
+			z->z.avail_in = min(z->rn, sizeof(z->in));
+			z->z.next_in = z->in;
+			z->rn -= z->z.avail_in;
+		}
+
+		r = inflate(&z->z, z->flush);
+
+		if (r == Z_STREAM_END && !z->rn) {
+			z->flush = Z_FINISH;
+		} else if (r != Z_OK) {
+			return -1;
+		}
+	}
+
+	if (n < sizeof(z->out)) {
+		n = min(n, sizeof(z->out) - z->z.avail_out);
+		memcpy(p, z->out, n);
+		z->outoff = n;
+		return n;
+	} else {
+		return n - z->z.avail_out;
+	}
 }
 
 #define COPY_FROM_SOURCE (0 << 6)
@@ -381,41 +438,47 @@ static unsigned char* encode_instruction(unsigned char* p, int ins, int64_t off,
 	return p;
 }
 
-static void apply_svndiff_win(FILE* tgt, const void* srcp, size_t srcn, reader df, void* dd, int ver) {
+static void apply_svndiff_win(struct strbuf* tgt, const void* src, size_t srcsz, reader df, void* dd, int ver) {
 	struct unzip z;
-	char insv[4096];
-	char tgtv[4096];
-	struct buf ins, b;
+	struct strbuf ins = STRBUF_INIT;
 	int64_t srco = read_varint(df, dd);
 	int64_t srcl = read_varint(df, dd);
 	int64_t tgtl = read_varint(df, dd);
 	int64_t insc = read_varint(df, dd);
 	int64_t datac = read_varint(df, dd);
-	int64_t insl = ver > 0 ? read_varint(df, dd) : insc;
-	int64_t datal;
+	int64_t insl = insc;
+	int64_t datal = datac;
 	int64_t w = 0;
 
-	if (srco + srcl > srcn) goto err;
-	if (insl > sizeof(insv)) goto err;
+	if (srco + srcl > srcsz) goto err;
+
+	if (ver > 0) {
+		unsigned char buf[MAX_VARINT_LEN];
+		insl = read_varint(df, dd);
+		insc -= encode_varint(buf, insl) - buf;
+	}
 
 	if (insc < insl) {
-		git_inflate_init(&z.z);
+		memset(&z, 0, sizeof(z));
+		inflateInit(&z.z);
 		z.rf = df;
 		z.rd = dd;
 		z.rn = insc;
-		readfull(insv, &readz, &z, (int) insl);
-		git_inflate_end(&z.z);
+		copyn(&writes, &ins, &readz, &z, insl);
+		inflateEnd(&z.z);
 	} else {
-		readfull(insv, df, dd, (int) insl);
+		copyn(&writes, &ins, df, dd, insl);
 	}
 
-	ins.p = insv;
-	ins.n = insl;
-
-	datal = ver > 0 ? read_varint(df, dd) : datac;
+	if (ver > 0) {
+		unsigned char buf[MAX_VARINT_LEN];
+		datal = read_varint(df, dd);
+		datac -= encode_varint(buf, datal) - buf;
+	}
 
 	if (datac < datal) {
-		git_inflate_init(&z.z);
+		memset(&z, 0, sizeof(z));
+		inflateInit(&z.z);
 		z.rf = df;
 		z.rd = dd;
 		z.rn = datac;
@@ -423,33 +486,28 @@ static void apply_svndiff_win(FILE* tgt, const void* srcp, size_t srcn, reader d
 		dd = &z;
 	}
 
-	while (ins.n) {
+	while (ins.len) {
 		int64_t off, len;
 		int tgtr;
-		switch (read_instruction(&readb, &ins, &off, &len)) {
+		switch (read_instruction(&reads, &ins, &off, &len)) {
 		case COPY_FROM_SOURCE:
 			if (off + len > srcl) goto err;
-			b.p = (char*) srcp + srco + off;
-			b.n = len;
-			copyn(&writef, tgt, &readb, &b, len);
+			strbuf_add(tgt, (char*) src + srco + off, len);
 			w += len;
 			break;
 
 		case COPY_FROM_TARGET:
 			tgtr = min(w - off, len);
-			if (tgtr <= 0 || tgtr > sizeof(tgtv)) goto err;
-			fseek(tgt, -w + off, SEEK_END);
-			readfull(tgtv, &readf, tgt, tgtr);
-			len -= tgtr;
+			if (tgtr <= 0) goto err;
 
-			/* The target len may roll off the end, in that
-			 * case we just copy out what is in the buffer.
-			 * This is used for repeats.
+			off = tgt->len - w + off;
+
+			/* len may be greater than tgtr. In this case we
+			 * just repeat [tgto,tgto+tgtr]
 			 */
 			while (len) {
 				int n = min(len, tgtr);
-				if (fwrite(tgtv, 1, n, tgt) != n)
-					goto err;
+				strbuf_add(tgt, tgt->buf + off, n);
 				len -= n;
 				w += n;
 			}
@@ -457,7 +515,7 @@ static void apply_svndiff_win(FILE* tgt, const void* srcp, size_t srcn, reader d
 
 		case COPY_FROM_NEW:
 			if (len > datal) goto err;
-			copyn(&writef, tgt, df, dd, len);
+			copyn(&writes, tgt, df, dd, len);
 			w += len;
 			datal -= len;
 			break;
@@ -468,17 +526,18 @@ static void apply_svndiff_win(FILE* tgt, const void* srcp, size_t srcn, reader d
 	}
 
 	if (dd == &z) {
-		git_inflate_end(&z.z);
+		inflateEnd(&z.z);
+		copyn(NULL, NULL, z.rf, z.rd, z.rn);
 	}
 
 	if (w != tgtl || datal) goto err;
 
 	return;
 err:
-	die(_("invalid svndiff"));
+	die("invalid svndiff");
 }
 
-static void apply_svndiff(FILE* tgt, const void* srcp, size_t srcn, reader df, void* dd, int (*eof)(void*)) {
+static void apply_svndiff(struct strbuf* tgt, const void* src, size_t srcsz, reader df, void* dd, int (*eof)(void*)) {
 	unsigned char hdr[4];
 	readfull(hdr, df, dd, 4);
 	if (memcmp(hdr, "SVN", 3))
@@ -488,7 +547,7 @@ static void apply_svndiff(FILE* tgt, const void* srcp, size_t srcn, reader df, v
 		goto err;
 
 	while (!eof(dd)) {
-		apply_svndiff_win(tgt, srcp, srcn, df, dd, hdr[3]);
+		apply_svndiff_win(tgt, src, srcsz, df, dd, hdr[3]);
 	}
 
 	return;
@@ -625,10 +684,10 @@ static int read_strbuf(struct strbuf* s) {
 	return 0;
 }
 
-static int read_string(writer wf, void* wd) {
+static int skip_string() {
 	int64_t n = read_string_size();
 	if (n < 0) return -1;
-	copyn(wf, wd, &readsvn, NULL, n);
+	copyn(verbose ? &writef : NULL, stderr, &readsvn, NULL, n);
 	return n;
 }
 
@@ -718,10 +777,9 @@ static void cram_md5(const char* user, const char* pass) {
 	const char *s;
 	char chlg[256];
 	unsigned char hash[16];
-	char hb[32];
+	struct strbuf hex = STRBUF_INIT;
 	int64_t sz;
 	HMAC_CTX hmac;
-	struct buf b;
 
 	s = read_response();
 	if (strcmp(s, "step")) goto error;
@@ -737,11 +795,10 @@ static void cram_md5(const char* user, const char* pass) {
 	HMAC_Final(&hmac, hash, NULL);
 	HMAC_CTX_cleanup(&hmac);
 
-	b.p = hb;
-	b.n = sizeof(hb);
-	print_hex(&writeb, &b, hash, sizeof(hash));
-	sendf("%d:%s %.*s\n", (int) strlen(user) + 1 + 32, user, 32, hb);
+	print_hex(&writes, &hex, hash, sizeof(hash));
+	sendf("%d:%s %s\n", (int) (strlen(user) + 1 + hex.len), user, hex.buf);
 
+	strbuf_release(&hex);
 	return;
 
 error:
@@ -770,9 +827,7 @@ static int64_t deltamore() {
 		}
 
 		/* file-token, chunk */
-		n = read_string_size();
-		if (n < 0) goto err;
-		copyn(NULL, NULL, &readsvn, NULL, n);
+		if (skip_string() < 0) goto err;
 
 		n = read_string_size();
 		if (n < 0) goto err;
@@ -796,7 +851,7 @@ static int deltar(void* u, void* p, int n) {
 	r = readsvn(NULL, p, min(n, *d));
 	*d -= r;
 
-	if (verbose) print_ascii(&writef, stderr, p, r);
+	if (verbose) print_hex(&writef, stderr, p, r);
 
 	if (*d == 0) *d = deltamore();
 
@@ -828,6 +883,7 @@ struct svnobj {
 	unsigned long date;
 	unsigned char parent[20];
 	unsigned char object[20];
+	unsigned char tree[20];
 	int rev;
 	const char* path;
 	unsigned int unpacked : 1;
@@ -883,6 +939,10 @@ static struct svnobj* parse_svnobj(const unsigned char* sha1) {
 		if (parse_other_header(&p, &hdr)) goto err;
 	}
 
+	if (strcmp(hdr.key, "+tree")) goto err;
+	hashcpy(s->tree, hdr.sha1);
+	if (parse_other_header(&p, &hdr)) goto err;
+
 	if (strcmp(hdr.key, "revision")) goto err;
 	s->rev = strtoul(hdr.value, NULL, 10);
 	if (parse_other_header(&p, &hdr)) goto err;
@@ -907,42 +967,128 @@ err:
 	return NULL;
 }
 
-/* if index is NULL, then this uses the index in the object */
-static struct index_state* checkout_tree(struct svnobj* s, struct index_state* index) {
-	struct tree* tree;
+static int cmp_cache_name_compare(const void *a_, const void *b_) {
+	const struct cache_entry *ce1, *ce2;
+	int r;
+
+	ce1 = *((const struct cache_entry **)a_);
+	ce2 = *((const struct cache_entry **)b_);
+	if ((ce1->ce_flags & CE_STAGEMASK) || (ce2->ce_flags & CE_STAGEMASK))
+		die("have a stage");
+	r = cache_name_compare(ce1->name, ce1->ce_flags,
+				  ce2->name, ce2->ce_flags);
+	if (!r)
+		die("have a dup");
+	return r;
+}
+
+static int checkout_tree_copy(struct index_state* idx, struct tree* tree, struct strbuf* base) {
 	struct tree_desc desc;
-	struct unpack_trees_options op;
-
-	if (index == NULL) {
-		if (s->index == NULL) {
-			s->index = xcalloc(1, sizeof(*s->index));
-		}
-		index = s->index;
-	}
-
-	tree = parse_tree_indirect(s->object);
-	if (!tree) die("unpack tree failed on %s", sha1_to_hex(s->object));
+	struct name_entry entry;
+	size_t baselen = base->len;
 
 	init_tree_desc(&desc, tree->buffer, tree->size);
 
-	memset(&op, 0, sizeof(op));
-	op.head_idx = -1;
-	op.src_index = index;
-	op.dst_index = index;
-	op.index_only = 1;
-	op.debug_unpack = verbose;
+	while (tree_entry(&desc, &entry)) {
+		strbuf_setlen(base, baselen);
+		if (baselen) strbuf_addch(base, '/');
+		strbuf_addstr(base, entry.path);
 
-	if (unpack_trees(1, &desc, &op))
-		die("unpack tree failed on %s", sha1_to_hex(s->object));
+		if (S_ISDIR(entry.mode)) {
+			struct tree* dir = lookup_tree(entry.sha1);
+			if (parse_tree(dir))
+			       	return -1;
+			if (checkout_tree_copy(idx, dir, base))
+				return -1;
+		} else {
+			struct cache_entry* ce = make_cache_entry(entry.mode, entry.sha1, base->buf, 0, 0);
+			if (index_name_pos(idx, base->buf, base->len) >= 0)
+				die("name already exists %s", base->buf);
+			add_index_entry(idx, ce, ADD_CACHE_JUST_APPEND);
+		}
+	}
 
-	return index;
+	return 0;
+}
+
+static int checkout_tree_search(struct index_state* idx, unsigned char* blob, const unsigned char* sha1, const char* from, const char* to) {
+	struct tree* tree;
+	struct tree_desc desc;
+	struct name_entry entry;
+	const char* slash;
+
+	tree = parse_tree_indirect(sha1);
+	if (!tree) return -1;
+
+	if (!*from) {
+		int ret;
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addstr(&buf, to);
+		ret = checkout_tree_copy(idx, tree, &buf);
+		strbuf_release(&buf);
+		return ret;
+	}
+
+	slash = strchr(from, '/');
+	if (!slash) slash = from + strlen(from);
+
+	init_tree_desc(&desc, tree->buffer, tree->size);
+
+	while (tree_entry(&desc, &entry)) {
+		size_t pathlen = strlen(entry.path);
+
+		if (pathlen != slash - from) continue;
+		if (memcmp(entry.path, from, pathlen)) continue;
+
+		if (S_ISDIR(entry.mode)) {
+			return checkout_tree_search(idx, blob, entry.sha1, *slash ? slash+1 : slash, to);
+
+		} else if (!S_ISDIR(entry.mode) && *slash == '\0') {
+			if (!blob) return -1;
+			hashcpy(blob, entry.sha1);
+			return 0;
+		}
+	}
+
+	return 0;
+}
+
+static int checkout_tree(struct index_state* idx, const unsigned char* sha1, const char* from, const char* to) {
+	size_t cachenr = idx->cache_nr;
+	int ins;
+
+	ins = index_name_pos(idx, to, strlen(to));
+	if (ins >= 0) return -1;
+	ins = -ins-1;
+
+	cache_tree_free(&idx->cache_tree);
+	if (checkout_tree_search(idx, NULL, sha1, from, to))
+		return -1;
+
+	qsort(idx->cache + cachenr, idx->cache_nr - cachenr, sizeof(idx->cache[0]), &cmp_cache_name_compare);
+
+	if (cachenr) {
+		int i;
+		for (i = 0; i < idx->cache_nr - cachenr; i++) {
+			struct cache_entry* ce = idx->cache[ins + i];
+			idx->cache[ins + i] = idx->cache[cachenr + i];
+			idx->cache[cachenr + i] = ce;
+		}
+	}
+
+	return 0;
+}
+
+static int find_file(const unsigned char* sha1, const char* path, unsigned char* blob) {
+	return checkout_tree_search(NULL, blob, sha1, path, "");
 }
 
 struct svnref {
 	struct strbuf svn; /* svn root */
 	struct strbuf ref; /* svn ref path */
 	struct strbuf remote; /* remote ref path */
-	struct index_state index;
+	struct index_state svn_index;
+	struct index_state git_index;
 
 	unsigned int delete : 1;
 	unsigned int dirty : 1;
@@ -962,7 +1108,7 @@ struct svnref {
 static struct svnref** refs;
 static size_t refn, refalloc;
 
-static int is_in_dir(char* file, char* dir, char** rel) {
+static int is_in_dir(char* file, const char* dir, char** rel) {
 	size_t sz = strlen(dir);
 	if (strncmp(file, dir, sz)) return 0;
 	if (file[sz] && file[sz] != '/') return 0;
@@ -970,11 +1116,28 @@ static int is_in_dir(char* file, char* dir, char** rel) {
 	return 1;
 }
 
-static int unpack_svnref = 0;
-
 #define TRUNK_REF 0
 #define BRANCH_REF 1
 #define TAG_REF 2
+
+static void add_refname(struct strbuf* buf, const char* name) {
+	while (*name) {
+		int ch = *(name++);
+		if (ch <= ' '
+			|| ch == 0x7F
+			|| ch == '~'
+			|| ch == '^'
+			|| ch == ':'
+			|| ch == '\\'
+			|| ch == '*'
+			|| ch == '?'
+			|| ch == '[') {
+			strbuf_addch(buf, '_');
+		} else {
+			strbuf_addch(buf, ch);
+		}
+	}
+}
 
 static struct svnref* create_ref(int type, const char* name, int create) {
 	struct svnref* r = NULL;
@@ -995,10 +1158,10 @@ static struct svnref* create_ref(int type, const char* name, int create) {
 		strbuf_addstr(&r->svn, name);
 
 		strbuf_addstr(&r->ref, "refs/svn/heads/");
-		strbuf_addstr(&r->ref, name);
+		add_refname(&r->ref, name);
 
 		strbuf_addstr(&r->remote, "refs/remotes/svn/");
-		strbuf_addstr(&r->remote, name);
+		add_refname(&r->remote, name);
 		break;
 
 	case TAG_REF:
@@ -1010,10 +1173,10 @@ static struct svnref* create_ref(int type, const char* name, int create) {
 		strbuf_addstr(&r->svn, name);
 
 		strbuf_addstr(&r->ref, "refs/svn/tags/");
-		strbuf_addstr(&r->ref, name);
+		add_refname(&r->ref, name);
 
 		strbuf_addstr(&r->remote, "refs/tags/");
-		strbuf_addstr(&r->remote, name);
+		add_refname(&r->remote, name);
 		break;
 	}
 
@@ -1034,18 +1197,15 @@ static struct svnref* create_ref(int type, const char* name, int create) {
 
 		if (r->istag) {
 			struct tag* tag = lookup_tag(r->obj->object);
-			if (!tag || lookup_tag(r->obj->object) || tag->tagged->type != OBJ_COMMIT)
+			if (!tag || parse_tag(tag) || tag->tagged->type != OBJ_COMMIT)
 				die("ref '%s' does not wrap a valid tag", r->ref.buf);
 			hashcpy(r->commit, tag->tagged->sha1);
 		} else {
 			hashcpy(r->commit, r->obj->object);
 		}
 
-		if (unpack_svnref) {
-			checkout_tree(r->obj, &r->index);
-		}
-
-		/* TODO: what do we need to free? */
+		checkout_tree(&r->svn_index, r->obj->tree, "", "");
+		checkout_tree(&r->git_index, r->commit, "", "");
 	}
 
 	fprintf(stderr, "\ncreated ref %d %s %d %s\n",
@@ -1067,7 +1227,6 @@ static struct svnref* find_svnref_by_path(struct strbuf* name, int create) {
 
 	for (i = 0; i < refn; i++) {
 		r = refs[i];
-		fprintf(stderr, "\n find %s %s\n", name->buf, r->svn.buf);
 		if (prefixcmp(name->buf, r->svn.buf)) {
 			continue;
 		}
@@ -1097,7 +1256,7 @@ static struct svnref* find_svnref_by_path(struct strbuf* name, int create) {
 	d = name->buf + name->len;
 
 	if (!trunk && !branches && !tags) {
-		return create_ref(TRUNK_REF, "", name->len == 0);
+		return create_ref(TRUNK_REF, "", create && name->len == 0);
 
 	} else if (trunk && is_in_dir(a, trunk, &b)) {
 		strbuf_remove(name, 0, b - a);
@@ -1106,18 +1265,24 @@ static struct svnref* find_svnref_by_path(struct strbuf* name, int create) {
 
 	} else if (branches && is_in_dir(a, branches, &b) && *b) {
 		c = memchr(b, '/', d - b);
-		if (!c) c = d;
-		*c = '\0';
-		r = create_ref(BRANCH_REF, b, create && name->len == c - a);
-		strbuf_remove(name, 0, c - a);
+		if (c) {
+			*c = '\0';
+			r = create_ref(BRANCH_REF, b, 0);
+			strbuf_remove(name, 0, c+1 - a);
+		} else {
+			r = create_ref(BRANCH_REF, b, create);
+		}
 		return r;
 
 	} else if (tags && is_in_dir(a, tags, &b) && *b) {
 		c = memchr(b, '/', d - b);
-		if (!c) c = d;
-		*c = '\0';
-		r = create_ref(TAG_REF, b, create && name->len == c - a);
-		strbuf_remove(name, 0, c - a);
+		if (c) {
+			*c = '\0';
+			r = create_ref(TAG_REF, b, 0);
+			strbuf_remove(name, 0, c+1 - a);
+		} else {
+			r = create_ref(TAG_REF, b, create);
+		}
 		return r;
 
 	} else {
@@ -1188,7 +1353,7 @@ static struct svnref* read_copy_source(struct strbuf* name, int* rev) {
 	/* copy-path */
 	read_name(name);
 	sref = find_svnref_by_path(name, 0);
-	if (!sref) goto err;
+	if (!sref) return NULL;
 
 	/* copy-rev */
 	srev = read_number();
@@ -1203,17 +1368,17 @@ err:
 static int create_ref_cb(const char* refname, const unsigned char* sha1, int flags, void* cb_data) {
 	int i;
 	for (i = 0; i < refn; i++) {
-		if (!strcmp(refs[i]->ref.buf, refname)) {
+		if (!strcmp(refs[i]->ref.buf + strlen("refs/svn/"), refname)) {
 			return 0;
 		}
 	}
 
-	if (!strcmp(refname, "refs/svn/heads/trunk")) {
+	if (!strcmp(refname, "heads/trunk")) {
 		create_ref(TRUNK_REF, "", 0);
-	} else if (!prefixcmp(refname, "refs/svn/heads/")) {
-		create_ref(BRANCH_REF, refname + strlen("refs/svn/heads/"), 0);
-	} else if (!prefixcmp(refname, "refs/svn/tags/")) {
-		create_ref(TAG_REF, refname + strlen("refs/svn/tags/"), 0);
+	} else if (!prefixcmp(refname, "heads/")) {
+		create_ref(BRANCH_REF, refname + strlen("heads/"), 0);
+	} else if (!prefixcmp(refname, "tags/")) {
+		create_ref(TAG_REF, refname + strlen("tags/"), 0);
 	}
 
 	return 0;
@@ -1315,6 +1480,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 		refs[i]->iter = refs[i]->obj;
 	}
 
+	obj = get_next_rev(rev+1);
 	while ((obj = get_next_rev(obj->rev)) != NULL) {
 		struct commit* ocmt;
 
@@ -1337,13 +1503,273 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 	return res;
 }
 
-static void read_update(int rev) {
-	void* srcp = NULL;
-	size_t srcn;
+static void read_add_dir(int rev) {
 	struct strbuf name = STRBUF_INIT;
 	struct strbuf srcname = STRBUF_INIT;
+	struct cache_entry* ce;
+	char* p;
+	size_t dlen;
+	int files = 0;
+	struct svnref* ref;
+	struct svnref* srcref;
+	int srcrev;
+
+	/* path, parent-token, child-token, [copy-path, copy-rev] */
+	read_name(&name);
+	ref = find_svnref_by_path(&name, 1);
+
+	/* ignore this if we already have the revision */
+	if (!ref || (ref->obj && ref->obj->rev >= rev)) goto end;
+
+	if (skip_string() < 0) goto err;
+	if (skip_string() < 0) goto err;
+
+	if (name.len) strbuf_addch(&name, '/');
+	dlen = name.len;
+
+	if (have_optional() && (srcref = read_copy_source(&srcname, &srcrev)) != NULL) {
+		struct svnobj* srcobj;
+		if (srcrev > rev) goto err;
+
+		srcobj = find_svnobj(srcref, rev);
+		if (!srcobj) goto err;
+
+		if (checkout_tree(&ref->svn_index, srcobj->tree, srcname.buf, name.buf))
+			goto err;
+
+		read_end();
+	}
+
+	strbuf_setlen(&name, dlen);
+
+	/* empty folder - add ./.gitempty */
+	if (files == 0 && dlen) {
+		unsigned char sha1[20];
+		if (write_sha1_file(NULL, 0, "blob", sha1))
+			die("failed to write .gitempty object");
+		strbuf_addstr(&name, ".gitempty");
+		ce = make_cache_entry(create_ce_mode(0644), sha1, name.buf, 0, 0);
+		add_index_entry(&ref->git_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	}
+
+	/* remove ../.gitempty */
+	if (dlen) {
+		strbuf_setlen(&name, dlen - 1);
+		p = strrchr(name.buf, '/');
+		if (p) {
+			strbuf_setlen(&name, p - name.buf);
+			strbuf_addstr(&name, "/.gitempty");
+			remove_file_from_index(&ref->git_index, name.buf);
+		}
+	}
+
+	ref->dirty = 1;
+
+end:
+	strbuf_release(&srcname);
+	strbuf_release(&name);
+	return;
+
+err:
+	die("malformed update");
+}
+
+static struct svnref* read_add_file(int rev, struct strbuf* name, void** srcp, size_t* srcsz) {
+	/* name, dir-token, file-token, [copy-path, copy-rev] */
+	struct strbuf srcname = STRBUF_INIT;
+	struct svnref* ref;
+	struct svnref* srcref;
+	int srcrev;
+	char* p;
+
+	read_name(name);
+	ref = find_svnref_by_path(name, 0);
+	/* ignore this if we already have the revision */
+	if (!ref || (ref->obj && ref->obj->rev >= rev)) goto end;
+
+	if (skip_string() < 0) goto err;
+	if (skip_string() < 0) goto err;
+
+	/* see if we have a copy path */
+	if (have_optional() && (srcref = read_copy_source(&srcname, &srcrev)) != NULL) {
+		unsigned char sha1[20];
+		unsigned long srcn;
+		enum object_type type;
+		struct svnobj* srcobj;
+
+		if (srcrev > rev) goto err;
+
+		srcobj = find_svnobj(srcref, rev);
+		if (!srcobj) goto err;
+
+		if (find_file(srcobj->tree, srcname.buf, sha1))
+			goto err;
+
+		*srcp = read_sha1_file(sha1, &type, &srcn);
+		if (!srcp || type != OBJ_BLOB) goto err;
+		*srcsz = srcn;
+
+		read_end();
+	}
+
+	/* remove ./.gitempty */
+	p = strrchr(name->buf, '/');
+	if (p) {
+		struct strbuf empty = STRBUF_INIT;
+		strbuf_add(&empty, name->buf, p - name->buf);
+		strbuf_addstr(&empty, "/.gitempty");
+		remove_file_from_index(&ref->git_index, empty.buf);
+		strbuf_release(&empty);
+	}
+
+end:
+	strbuf_release(&srcname);
+	return ref;
+err:
+	die("malformed update");
+}
+
+static struct svnref* read_open_file(int rev, struct strbuf* name, void** srcp, size_t* srcsz) {
+	/* name, dir-token, file-token, rev */
+	struct svnref* ref;
+	enum object_type type;
+	struct cache_entry* ce;
+	unsigned long srcn;
+
+	read_name(name);
+	ref = find_svnref_by_path(name, 0);
+	/* ignore this if we already have the revision */
+	if (!ref || (ref->obj && ref->obj->rev >= rev)) goto end;
+
+	ce = index_name_exists(&ref->svn_index, name->buf, name->len, 0);
+	if (!ce) goto err;
+
+	*srcp = read_sha1_file(ce->sha1, &type, &srcn);
+	if (!srcp || type != OBJ_BLOB) goto err;
+	*srcsz = srcn;
+
+end:
+	return ref;
+err:
+	die("malformed update");
+}
+
+static void read_close_file(struct svnref* ref, const char* name, const void* data, size_t sz) {
+	/* file-token, [text-checksum] */
+	struct cache_entry* ce;
+	unsigned char sha1[20];
+	struct strbuf buf = STRBUF_INIT;
+
+	if (skip_string() < 0) goto err;
+
+	if (have_optional()) {
+		unsigned char h1[16], h2[16];
+		MD5_CTX ctx;
+
+		strbuf_reset(&buf);
+		if (read_strbuf(&buf)) goto err;
+		if (get_md5_hex(buf.buf, h1)) goto err;
+
+		MD5_Init(&ctx);
+		MD5_Update(&ctx, data, sz);
+		MD5_Final(h2, &ctx);
+
+		if (memcmp(h1, h2, sizeof(h1)))
+			die("hash mismatch for '%s'", name);
+
+		read_end();
+	}
+
+	if (write_sha1_file(data, sz, "blob", sha1))
+	       	die_errno("write blob");
+
+	ce = make_cache_entry(0644, sha1, name, 0, 0);
+	if (!ce) die("make_cache_entry failed for path '%s'", name);
+	add_index_entry(&ref->svn_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+
+	strbuf_reset(&buf);
+	if (convert_to_git(name, data, sz, &buf, SAFE_CRLF_FALSE)) {
+		if (write_sha1_file(buf.buf, buf.len, "blob", sha1)) {
+		       	die_errno("write blob");
+		}
+	}
+	ce = make_cache_entry(0644, sha1, name, 0, 0);
+	if (!ce) die("make_cache_entry failed for path '%s'", name);
+	add_index_entry(&ref->git_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+
+	ref->dirty = 1;
+	strbuf_release(&buf);
+	return;
+
+err:
+	die("malformed update");
+}
+
+static void remove_index_path(struct index_state* idx, struct strbuf* name) {
+	int i = index_name_pos(idx, name->buf, name->len);
+
+	if (i >= 0) {
+		/* file */
+		remove_index_entry_at(idx, i);
+		return;
+	}
+
+	/* we've got to re-lookup the path as a < a.c < a/c */
+	strbuf_addch(name, '/');
+	i = -index_name_pos(idx, name->buf, name->len) - 1;
+
+	/* directory, index_name_pos returns -first-1
+	 * where first is the position the entry would
+	 * be added at, and the cache is sorted */
+	while (i < idx->cache_nr) {
+		struct cache_entry* ce = idx->cache[i];
+		if (ce_namelen(ce) < name->len) break;
+		if (memcmp(ce->name, name->buf, name->len)) break;
+
+		ce->ce_flags |= CE_REMOVE;
+		i++;
+	}
+
+	strbuf_setlen(name, name->len - 1);
+	remove_marked_cache_entries(idx);
+}
+
+static void read_delete_entry(int rev) {
+	/* name, [revno], dir-token */
+	struct svnref* ref;
+	struct strbuf name = STRBUF_INIT;
+
+	read_name(&name);
+	ref = find_svnref_by_path(&name, 0);
+
+	/* ignore this if we already have the revision */
+	if (!ref || (ref->obj && ref->obj->rev >= rev)) goto end;
+
+	ref->dirty = 1;
+
+	if (!name.len) {
+		/* delete branch */
+		ref->delete = 1;
+		goto end;
+	}
+
+	remove_index_path(&ref->svn_index, &name);
+	remove_index_path(&ref->git_index, &name);
+
+end:
+	strbuf_release(&name);
+	return;
+}
+
+
+static void read_update(int rev) {
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf srcdata = STRBUF_INIT;
+	struct strbuf tgtdata = STRBUF_INIT;
 	struct svnref* ref = NULL;
 	const char* cmd = NULL;
+	void* data = NULL;
+	size_t datasz = 0;
 
 	read_success(); /* update */
 	read_success(); /* report */
@@ -1364,205 +1790,44 @@ static void read_update(int rev) {
 			die("update aborted");
 
 		} else if (!strcmp(cmd, "open-root")) {
-			strbuf_reset(&name);
+			if (ref || name.len) goto err;
 			find_svnref_by_path(&name, rev == 1);
 
 		} else if (!strcmp(cmd, "add-dir")) {
-			struct cache_entry* ce;
-			struct svnref* src;
-			struct index_state* srcidx;
-			struct svnobj* srcobj;
-			int srcrev;
-			size_t dlen;
-			int i;
-
-			/* path, parent-token, child-token, [copy-path, copy-rev] */
-			read_name(&name);
-			ref = find_svnref_by_path(&name, 1);
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			if (read_string(NULL, NULL) < 0) goto err;
-			if (read_string(NULL, NULL) < 0) goto err;
-
-			if (!have_optional()) continue;
-
-			src = read_copy_source(&srcname, &srcrev);
-			if (srcrev > rev) goto err;
-
-			srcobj = find_svnobj(src, rev);
-			if (!srcobj) goto err;
-
-			srcidx = checkout_tree(srcobj, NULL);
-
-			/* copy over all files which are children of the
-			 * source path */
-
-			strbuf_addch(&srcname, '/');
-			i = index_name_pos(srcidx, srcname.buf, srcname.len);
-			if (i >= 0) goto err;
-			i = -i-1;
-
-			strbuf_addch(&name, '/');
-			dlen = name.len;
-
-			while (i < srcidx->cache_nr) {
-				struct cache_entry* se = srcidx->cache[i];
-				if (ce_namelen(se) > name.len) break;
-				if (memcmp(se->name, srcname.buf, srcname.len)) break;
-
-				/* since the base path may change, we
-				 * can't just copy the previous one */
-				strbuf_setlen(&name, dlen);
-				strbuf_addstr(&name, se->name + srcname.len);
-				ce = make_cache_entry(se->ce_mode, se->sha1, name.buf, 0, 0);
-				add_index_entry(&ref->index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
-			}
-
-			read_end();
+			if (ref || name.len) goto err;
+			read_add_dir(rev);
 
 		} else if (!strcmp(cmd, "open-file")) {
-			/* name, dir-token, file-token, rev */
-			enum object_type type;
-			struct cache_entry* ce;
-
-			read_name(&name);
-			ref = find_svnref_by_path(&name, 0);
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			ce = index_name_exists(&ref->index, name.buf, name.len, 0);
-			if (!ce) goto err;
-
-			srcp = read_sha1_file(ce->sha1, &type, &srcn);
-			if (!srcp || type != OBJ_BLOB) goto err;
-
-			if (fseek(tmpf, 0, SEEK_SET) || ftruncate(fileno(tmpf), 0))
-				die_errno("truncate");
+			if (ref || name.len) goto err;
+			ref = read_open_file(rev, &name, &data, &datasz);
 
 		} else if (!strcmp(cmd, "add-file")) {
-			/* name, dir-token, file-token, [copy-path, copy-rev] */
-			enum object_type type;
-			struct cache_entry* ce;
-			struct svnref* src;
-			struct svnobj* srcobj;
-			int srcrev;
-			struct index_state* srcidx;
-
-			read_name(&name);
-			ref = find_svnref_by_path(&name, 0);
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			if (read_string(NULL, NULL) < 0) goto err;
-			if (read_string(NULL, NULL) < 0) goto err;
-
-			if (fseek(tmpf, 0, SEEK_SET) || ftruncate(fileno(tmpf), 0))
-				die_errno("truncate");
-
-				srcp = NULL;
-				srcn = 0;
-
-			if (!have_optional()) continue;
-
-			src = read_copy_source(&srcname, &srcrev);
-			if (srcrev > rev) goto err;
-
-			srcobj = find_svnobj(src, rev);
-			if (!srcobj) goto err;
-
-			srcidx = checkout_tree(srcobj, NULL);
-
-			ce = index_name_exists(srcidx, srcname.buf, srcname.len, 0);
-			if (!ce) goto err;
-
-			srcp = read_sha1_file(ce->sha1, &type, &srcn);
-			if (!srcp || type != OBJ_BLOB) goto err;
-
-			read_end();
+			if (ref || name.len) goto err;
+			ref = read_add_file(rev, &name, &data, &datasz);
 
 		} else if (!strcmp(cmd, "close-file")) {
-			/* file-token, [text-checksum] */
-			struct cache_entry* ce;
-			unsigned char sha1[20];
-			struct stat st;
-
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			if (srcp) {
-				free(srcp);
-				srcp = NULL;
-				srcn = 0;
+			if (ref && name.len) {
+				read_close_file(ref, name.buf, tgtdata.buf, tgtdata.len);
 			}
 
-			fflush(tmpf);
-			fseek(tmpf, 0, SEEK_SET);
-
-			if (fstat(fileno(tmpf), &st))
-				die_errno("stat temp file");
-			if (index_fd(sha1, dup(fileno(tmpf)), &st, OBJ_BLOB, name.buf, HASH_WRITE_OBJECT))
-				die_errno("failed to index temp file");
-
-			ce = make_cache_entry(0644, sha1, name.buf, 0, 0);
-			if (!ce) die("make_cache_entry failed for path '%s'", name.buf);
-			add_index_entry(&ref->index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
-			ref->dirty = 1;
+			strbuf_release(&srcdata);
+			strbuf_release(&tgtdata);
+			strbuf_reset(&name);
+			free(data);
+			data = NULL;
+			datasz = 0;
+			ref = NULL;
 
 		} else if (!strcmp(cmd, "delete-entry")) {
-			int i;
-
-			/* name, [revno], dir-token */
-			read_name(&name);
-			ref = find_svnref_by_path(&name, 0);
-
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			ref->dirty = 1;
-
-			if (!name.len) {
-				/* delete branch */
-				ref->delete = 1;
-				continue;
-			}
-
-			i = index_name_pos(&ref->index, name.buf, name.len);
-
-			if (i >= 0) {
-				/* file */
-				remove_index_entry_at(&ref->index, i);
-				continue;
-			}
-
-			/* we've got to re-lookup the path as a < a.c < a/c */
-			strbuf_addch(&name, '/');
-			i = -index_name_pos(&ref->index, name.buf, name.len) - 1;
-
-			/* directory, index_name_pos returns -first-1
-			 * where first is the position the entry would
-			 * be added at, and the cache is sorted */
-			while (i < ref->index.cache_nr) {
-				struct cache_entry* ce = ref->index.cache[i];
-				if (ce_namelen(ce) < name.len) break;
-				if (memcmp(ce->name, name.buf, name.len)) break;
-
-				ce->ce_flags |= CE_REMOVE;
-				i++;
-			}
-
-			remove_marked_cache_entries(&ref->index);
+			if (ref || name.len) goto err;
+			read_delete_entry(rev);
 
 		} else if (!strcmp(cmd, "apply-textdelta")) {
 			/* file-token, [base-checksum] */
 			int64_t d;
 
-			/* ignore this if we already have the revision */
-			if (!ref || (ref->obj && ref->obj->rev >= rev)) continue;
-
-			d = deltamore();
-			if (d > 0) {
-				apply_svndiff(tmpf, srcp, srcn, &deltar, &d, &deltaeof);
+			if (ref && name.len && (d = deltamore()) > 0) {
+				apply_svndiff(&tgtdata, data, datasz, &deltar, &d, &deltaeof);
 			}
 		}
 	}
@@ -1570,8 +1835,10 @@ static void read_update(int rev) {
 	read_end_response(); /* end of close-edit */
 	read_success();
 
-	free(srcp);
+	free(data);
 	strbuf_release(&name);
+	strbuf_release(&srcdata);
+	strbuf_release(&tgtdata);
 	return;
 
 err:
@@ -1587,6 +1854,7 @@ struct author {
 
 struct author* authors;
 size_t authorn, authoralloc;
+struct author* defauthor;
 
 static char* strip_space(char* p) {
 	char* e = p + strlen(p);
@@ -1773,10 +2041,19 @@ static int create_fetched_commit(struct svnref* r, int rev, const char* log, con
 
 	unsigned char sha1[20];
 	struct ref_lock* ref_lock = NULL;
+	struct svnobj* newobj;
 
-	if (!r->index.cache_tree)
-		r->index.cache_tree = cache_tree();
-	if (cache_tree_update(r->index.cache_tree, r->index.cache, r->index.cache_nr, 0))
+	cache_tree_free(&r->git_index.cache_tree);
+	cache_tree_free(&r->svn_index.cache_tree);
+
+	if (!r->git_index.cache_tree)
+		r->git_index.cache_tree = cache_tree();
+	if (cache_tree_update(r->git_index.cache_tree, r->git_index.cache, r->git_index.cache_nr, 0))
+		die("failed to update cache tree");
+
+	if (!r->svn_index.cache_tree)
+		r->svn_index.cache_tree = cache_tree();
+	if (cache_tree_update(r->svn_index.cache_tree, r->svn_index.cache, r->svn_index.cache_nr, 0))
 		die("failed to update cache tree");
 
 	if (r->copysrc) {
@@ -1833,19 +2110,19 @@ finish_copysrc:
 		hashclr(sha1);
 		hashclr(r->commit);
 
-	} else if (r->istag && !has_tree_changed(r->index.cache_tree->sha1, r->commit)) {
+	} else if (r->istag && !has_tree_changed(r->git_index.cache_tree->sha1, r->commit)) {
 		hashcpy(sha1, r->commit);
 
 	} else if (!r->istag
 			&& is_null_sha1(r->value)
 			&& !is_null_sha1(r->commit)
-			&& !has_tree_changed(r->index.cache_tree->sha1, r->commit)
+			&& !has_tree_changed(r->git_index.cache_tree->sha1, r->commit)
 		  ) {
 		hashcpy(sha1, r->commit);
 
 	} else {
 		strbuf_reset(&buf);
-		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->index.cache_tree->sha1));
+		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->git_index.cache_tree->sha1));
 
 		if (!is_null_sha1(r->commit)) {
 			strbuf_addf(&buf, "parent %s\n", sha1_to_hex(r->commit));
@@ -1879,7 +2156,7 @@ finish_copysrc:
 				"tagger %s %s +0000\n"
 				"\n",
 				sha1_to_hex(r->commit),
-				r->ref.buf + strlen("refs/tags/"),
+				r->remote.buf + strlen("refs/tags/"),
 				author,
 				time);
 		strbuf_addstr(&buf, log);
@@ -1904,8 +2181,10 @@ finish_copysrc:
 		strbuf_addf(&buf, "+parent %s\n", sha1_to_hex(r->value));
 	}
 
-	strbuf_addf(&buf, "revision %d\n"
+	strbuf_addf(&buf, "+tree %s\n"
+			"revision %d\n"
 			"path %s\n",
+			sha1_to_hex(r->svn_index.cache_tree->sha1),
 			rev,
 			r->svn.buf);
 
@@ -1914,12 +2193,16 @@ finish_copysrc:
 
 	/* update the ref */
 
+	fprintf(stderr, "grab ref lock %s %s\n", r->ref.buf, sha1_to_hex(r->value));
 	ref_lock = lock_ref_sha1(r->ref.buf + strlen("refs/"), r->value);
 	if (!ref_lock) die("failed to grab ref lock");
 
 	if (write_ref_sha1(ref_lock, sha1, "svn-fetch")) {
 		return error("failed to update ref %s", r->ref.buf);
 	}
+
+	newobj = parse_svnobj(sha1);
+	if (!newobj) die("svn object disappeared?");
 
 	/* update the remote or tag ref */
 
@@ -1932,36 +2215,21 @@ finish_copysrc:
 		ref_lock = lock_ref_sha1(r->remote.buf + strlen("refs/"),
 				r->obj ? r->obj->object : null_sha1);
 
-		if (!ref_lock || write_ref_sha1(ref_lock, r->commit, "svn-fetch"))
+		if (!ref_lock || write_ref_sha1(ref_lock, newobj->object, "svn-fetch"))
 			return error("failed to update ref %s", r->remote.buf);
 	}
 
 	r->dirty = 0;
 	r->delete = 0;
 	hashcpy(r->value, sha1);
-	r->obj = parse_svnobj(sha1);
-	if (!r->obj) die("svn object disappeared?");
+	r->obj = newobj;
 
 	fprintf(stderr, "commited %d %s %s\n", rev, r->ref.buf, sha1_to_hex(r->value));
 	return 0;
 }
 
-static void get_commit(int rev) {
-	static struct strbuf author = STRBUF_INIT;
-	static struct strbuf time = STRBUF_INIT;
-	static struct strbuf log = STRBUF_INIT;
-	static struct strbuf name = STRBUF_INIT;
-
-	int i;
-	int errors = 0;
-
-	strbuf_reset(&author);
-	strbuf_reset(&time);
-	strbuf_reset(&log);
-	strbuf_reset(&name);
-
-	fprintf(stderr, "commit start %d\n", rev);
-
+static void request_commit(int rev) {
+	fprintf(stderr, "request commit %d\n", rev);
 	sendf("( update ( ( %d ) 0: true ) )\n" /* [rev] target recurse */
 		"( set-path ( 0: %d %s ) )\n" /* path rev start-empty */
 		"( finish-report ( ) )\n"
@@ -1979,6 +2247,24 @@ static void get_commit(int rev) {
 			rev, /* log start */
 			rev /* log end */
 		);
+}
+
+
+static void read_commit(int rev) {
+	static struct strbuf author = STRBUF_INIT;
+	static struct strbuf time = STRBUF_INIT;
+	static struct strbuf log = STRBUF_INIT;
+	static struct strbuf name = STRBUF_INIT;
+
+	int i;
+	int errors = 0;
+
+	strbuf_reset(&author);
+	strbuf_reset(&time);
+	strbuf_reset(&log);
+	strbuf_reset(&name);
+
+	fprintf(stderr, "read_commit %d\n", rev);
 
 	read_update(rev);
 
@@ -2006,7 +2292,7 @@ static void get_commit(int rev) {
 		if (!have_optional()) goto finish_changed_path;
 
 		to->copysrc = read_copy_source(&name, &to->copyrev);
-		if (name.len) {
+		if (to->copysrc && name.len) {
 			warning("copy from non-root path");
 			to->copysrc = NULL;
 		}
@@ -2033,10 +2319,11 @@ finish_changed_path:
 	read_end();
 
 	/* log message */
-	if (read_list()) goto err;
-	if (read_strbuf(&log)) goto err;
-	strbuf_complete_line(&log);
-	read_end();
+	if (have_optional()) {
+		if (read_strbuf(&log)) goto err;
+		strbuf_complete_line(&log);
+		read_end();
+	}
 
 	/* finish the commit-info */
 	read_end();
@@ -2072,35 +2359,62 @@ static char* clean_path(char* p) {
 	return p;
 }
 
+static struct author** connection_authors;
+static int *svnfdv;
+
 static void setup_globals() {
-	tmpf = tmpfile();
-	freopen(NULL, "wb+", tmpf);
+	int i;
+
+	if (svnfdc < 1) die("invalid number of connections");
+
+	connection_authors = xcalloc(svnfdc, sizeof(connection_authors[0]));
+	svnfdv = xmalloc(svnfdc * sizeof(svnfdv[0]));
+	for (i = 0; i < svnfdc; i++) {
+		svnfdv[i] = -1;
+	}
 
 	parse_authors();
 
-	if (trunk) trunk = clean_path(trunk);
-	if (branches) branches = clean_path(branches);
-	if (tags) tags = clean_path(tags);
+	for (i = 0; svnuser && i < authorn; i++) {
+		struct author* a = &authors[i];
+		if (!strcasecmp(a->user, svnuser)) {
+			defauthor = a;
+			if (!a->pass) {
+				die("user specified with --user needs a password");
+			}
+			break;
+		}
+	}
+
+	if (!defauthor) die("need to specify default user with --user");
+	if (!url) die("need to specify a url with --url");
+
+	if (trunk) trunk = clean_path((char*) trunk);
+	if (branches) branches = clean_path((char*) branches);
+	if (tags) tags = clean_path((char*) tags);
 }
 
-static void reconnect(const char* user, const char* pass) {
+static void change_connection(int cidx, struct author* a) {
 	char pathsep;
 	char *host, *port, *path;
 	struct addrinfo hints, *res, *ai;
 	int err;
 
-	if (prefixcmp(url, "svn://"))
-		die(_("only svn repositories are supported"));
-
-	if (use_stdin) {
-		infd = fileno(stdin);
-		outfd = fileno(stdout);
+	svnfd = svnfdv[cidx];
+	fprintf(stderr, "change_connection %d fd %d oldauth %s newauth %s\n", cidx, svnfd, connection_authors[cidx] ? connection_authors[cidx]->user : NULL, a->user);
+	if (svnfd >= 0 && connection_authors[cidx] == a) {
 		return;
 	}
 
-	if (infd >= 0) close(infd);
-	if (outfd >= 0) close(outfd);
-	infd = outfd = -1;
+	if (svnfd >= 0) close(svnfdv[cidx]);
+	svnfd = svnfdv[cidx] = -1;
+	connection_authors[cidx] = a;
+
+	if (prefixcmp(url, "svn://"))
+		die(_("only svn repositories are supported"));
+
+	if (!a->pass)
+		die("need a password for user %s", a->user);
 
 	host = (char*) url + strlen("svn://");
 
@@ -2117,25 +2431,28 @@ static void reconnect(const char* user, const char* pass) {
 
 	err = getaddrinfo(host, port ? port : "3690", &hints, &res);
 	*path = pathsep;
+	if (port) port[-1] = ':';
 
 	if (err)
-		die("failed to connect to %s:%s", host, port ? port : "3690");
+		die_errno("failed to connect to %s", url);
 
 	for (ai = res; ai != NULL; ai = ai->ai_next) {
 		int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 		if (fd < 0) continue;
 
 		if (connect(fd, ai->ai_addr, ai->ai_addrlen)) {
+			int err = errno;
 			close(fd);
+			errno = err;
 			continue;
 		}
 
-		infd = outfd = fd;
+		svnfd = svnfdv[cidx] = fd;
 		break;
 	}
 
-	if (infd < 0)
-		die("failed to connect to %s", url);
+	if (svnfd < 0)
+		die_errno("failed to connect to %s", url);
 
 	/* TODO: client software version and client capabilities */
 	sendf("( 2 ( edit-pipeline svndiff1 ) %d:%s )\n( CRAM-MD5 ( ) )\n",
@@ -2153,10 +2470,7 @@ static void reconnect(const char* user, const char* pass) {
 	/* TODO: read the mech lists et all */
 	read_success();
 
-	if (!user || !pass)
-		die("user/pass not specified");
-
-	cram_md5(user, pass);
+	cram_md5(a->user, a->pass);
 
 	sendf("( reparent ( %d:%s ) )\n", (int) strlen(url), url);
 
@@ -2177,9 +2491,8 @@ static int split_revisions(int* from, int* to) {
 	if (*s && *s != ':') return -1;
 
 	*from = *to;
-	*to = strtol(s, &s, 10);
+	*to = strtol(s+1, &s, 10);
 	if (*to <= 0 || *to >= INT_MAX) return -1;
-	if (*to < *from) return -1;
 
 	return 2;
 }
@@ -2213,21 +2526,52 @@ static void set_latest_rev(int rev) {
 	commit_lock_file(&lk);
 }
 
+static void revert_refs(int rev) {
+	int i;
+	set_latest_rev(rev);
+	add_all_refs();
+	for (i = 0; i < refn; i++) {
+		struct ref_lock* lk;
+		struct svnref* r = refs[i];
+		struct svnobj* obj = find_svnobj(r, rev);
+
+		if (obj) {
+			lk = lock_ref_sha1(r->ref.buf + strlen("refs/"), r->value);
+			if (!lk || write_ref_sha1(lk, obj->other->object.sha1, 0))
+				die("failed to lock %s", r->ref.buf);
+		} else {
+			if (delete_ref(r->ref.buf, r->value, 0))
+				die("failed to remove %s", r->ref.buf);
+		}
+
+		if (obj && !is_null_sha1(obj->object)) {
+			lk = lock_ref_sha1(r->remote.buf + strlen("refs/"), r->obj->object);
+			if (!lk || write_ref_sha1(lk, obj->object, 0))
+				die("failed to lock %s", r->remote.buf);
+
+		} else if (!obj || is_null_sha1(obj->object)) {
+			if (delete_ref(r->remote.buf, r->obj->object, 0))
+				die("failed to remove %s", r->remote.buf);
+		}
+	}
+
+	refn = 0;
+}
+
 int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	int64_t n;
-	int from, to;
+	int from, to, i;
+
+	git_config(&config, NULL);
 
 	argc = parse_options(argc, argv, prefix, builtin_svn_fetch_options,
 		       	builtin_svn_fetch_usage, 0);
 
-	if (argc != 1)
-		usage_msg_opt(argc > 1 ? _("Too many arguments.") : _("Too few arguments"),
+	if (argc)
+		usage_msg_opt(_("Too many arguments."),
 			builtin_svn_fetch_usage, builtin_svn_fetch_options);
 
-	url = argv[0];
-	unpack_svnref = 1;
 	setup_globals();
-	reconnect(svnuser, svnpass);
 
 	switch (split_revisions(&from, &to)) {
 	case 0:
@@ -2238,12 +2582,15 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 		from = latest_rev() + 1;
 		break;
 	case 2:
+		revert_refs(from - 1);
 		break;
 	default:
 		die("invalid revision range");
 	}
 
 nextpoll:
+	change_connection(0, defauthor);
+
 	sendf("( get-latest-rev ( ) )\n");
 
 	read_success(); /* latest rev */
@@ -2254,21 +2601,51 @@ nextpoll:
 	read_end_response();
 
 	fprintf(stderr, "rev %d %d\n", from, to);
-	while (from <= to) {
-		get_commit(from);
-		set_latest_rev(from);
-		from++;
+
+	for (i = 0; from + i <= to && i < svnfdc; i++) {
+		change_connection(i, defauthor);
+		request_commit(from + i);
 	}
 
-	if (interval > 0) {
-		sleep(interval);
-		goto nextpoll;
-	} else if (interval == 0) {
-		select(0, NULL, NULL, NULL, NULL);
-		goto nextpoll;
+	for (i = 0; from + i <= to; i++) {
+		change_connection(i % svnfdc, defauthor);
+		read_commit(from + i);
+		set_latest_rev(from + i);
+
+		if (from + i + svnfdc <= to) {
+			request_commit(from + i + svnfdc);
+		}
 	}
 
-	return 0;
+	if (interval < 0) {
+		return 0;
+	}
+
+	alarm(interval);
+
+	for (i = 1; i < svnfdc; i++) {
+		close(svnfdv[i]);
+		svnfdv[i] = -1;
+	}
+
+	/* clean up the fds as they close but keep on waiting */
+	for (;;) {
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(svnfdv[0], &fds);
+
+		if (select(max(svnfdv[0], 0), &fds, NULL, NULL, NULL) < 0) {
+			if (errno != EINTR)
+				die_errno("select");
+			alarm(0);
+			goto nextpoll;
+		}
+
+		if (FD_ISSET(svnfdv[0], &fds)) {
+			close(svnfdv[i]);
+			svnfdv[i] = -1;
+		}
+	}
 }
 
 static const char* dtoken(int dir) {
@@ -2395,6 +2772,9 @@ static void change(struct diff_options* op,
 		unsigned odsubmodule,
 		unsigned ndsubmodule)
 {
+	struct svnref* r = op->format_callback_data;
+	struct cache_entry* ce;
+	struct strbuf buf = STRBUF_INIT;
 	unsigned char ins[MAX_INS_LEN], *inp = ins;
 	unsigned char hdr[5*MAX_VARINT_LEN], *hp = hdr;
 	enum object_type type;
@@ -2411,12 +2791,27 @@ static void change(struct diff_options* op,
 
 	dir = change_dir(path);
 
+	ce = index_name_exists(&r->svn_index, path, strlen(path), 0);
+	if (!ce) {
+		/* file exists in git but not in svn */
+		return;
+	}
+
 	/* TODO make this actually use diffcore */
 
 	data = read_sha1_file(nsha1, &type, &sz);
-
 	if (type != OBJ_BLOB)
 		die("unexpected object type for %s", sha1_to_hex(nsha1));
+
+	if (convert_to_working_tree(path, data, sz, &buf)) {
+		free(data);
+		data = strbuf_detach(&buf, &sz);
+	}
+
+	if (write_sha1_file(data, sz, "blob", ce->sha1)) {
+		die_errno("blob write");
+	}
+	r->svn_index.cache_changed = 1;
 
 	inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
 
@@ -2442,6 +2837,8 @@ static void change(struct diff_options* op,
 		tok, tok);
 
 	diff_change(op, omode, nmode, osha1, nsha1, path, odsubmodule, ndsubmodule);
+
+	free(data);
 }
 
 static void addremove(struct diff_options* op,
@@ -2453,11 +2850,17 @@ static void addremove(struct diff_options* op,
 {
 	static struct strbuf rmdir = STRBUF_INIT;
 	static int in_rmdir;
+
+	struct svnref* r = op->format_callback_data;
 	int dir;
 	size_t plen = strlen(path);
 
 	if (verbose) fprintf(stderr, "%s mode %x sha1 %s path %s\n",
 			addrm == '+' ? "add" : "remove", mode, sha1_to_hex(sha1), path);
+
+	if (!S_ISDIR(mode) && addrm == '-') {
+		remove_file_from_index(&r->svn_index, path);
+	}
 
 	/* diff recursively returns deleted folders, but svn only needs
 	 * the root */
@@ -2484,21 +2887,47 @@ static void addremove(struct diff_options* op,
 		dir_changed(++dir, path);
 
 	} else if (addrm == '-' && S_ISREG(mode)) {
-		sendf("( delete-entry ( %d:%s ( ) %s) )\n",
-			(int) plen, path, dtoken(dir));
+		if (index_name_exists(&r->svn_index, path, plen, 0)) {
+			sendf("( delete-entry ( %d:%s ( ) %s) )\n",
+				(int) plen, path, dtoken(dir));
+		}
 
 	} else if (addrm == '+' && S_ISREG(mode)) {
 		unsigned char ins[MAX_INS_LEN], *inp = ins;
 		unsigned char hdr[5*MAX_VARINT_LEN], *hp = hdr;
+		struct cache_entry* ce;
+		unsigned char nsha1[20];
+		struct strbuf buf = STRBUF_INIT;
 		enum object_type type;
 		const char* tok;
 		void* data;
 		size_t sz;
 
-		data = read_sha1_file(sha1, &type, &sz);
+		/* files beginning with .git eg .gitempty,
+		 * .gitattributes, etc are filtered from svn
+		 */
+		const char* p = strrchr(path, '/');
+		p = p ? p+1 : path;
+		if (prefixcmp(p, ".git")) {
+			return;
+		}
 
-		if (type != OBJ_BLOB)
+		hashcpy(nsha1, sha1);
+		data = read_sha1_file(nsha1, &type, &sz);
+		if (!data || type != OBJ_BLOB)
 			die("unexpected object type for %s", sha1_to_hex(sha1));
+
+		if (convert_to_working_tree(path, data, sz, &buf)) {
+			free(data);
+			data = strbuf_detach(&buf, &sz);
+
+			if (write_sha1_file(data, sz, "blob", nsha1)) {
+				die_errno("blob write");
+			}
+		}
+
+		ce = make_cache_entry(0644, sha1, path, 0, 0);
+		add_index_entry(&r->svn_index, ce, ADD_CACHE_OK_TO_ADD);
 
 		inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
 
@@ -2508,7 +2937,7 @@ static void addremove(struct diff_options* op,
 		hp = encode_varint(hp, inp - ins); /* ins len */
 		hp = encode_varint(hp, sz); /* data len */
 
-		/* TOOD: find copies */
+		/* TODO: use diffcore to find copies */
 
 		tok = ftoken();
 		sendf("( add-file ( %d:%s %s %s ( ) ) )\n"
@@ -2524,6 +2953,8 @@ static void addremove(struct diff_options* op,
 		sendf("( textdelta-end ( %s ) )\n"
 			"( close-file ( %s ( ) ) )\n",
 			tok, tok);
+
+		free(data);
 	}
 
 	diff_addremove(op, addrm, mode, sha1, path, dsubmodule);
@@ -2594,8 +3025,8 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct svnobj* copy
 					copysrc->path,
 					copysrc->rev);
 		} else {
-			sendf("( %s-dir ( %d:%s %s %s ( ) ) )\n",
-				r->create ? "add" : "open",
+			sendf("( %s ( %d:%s %s %s ( ) ) )\n",
+				r->create ? "add-dir" : "open-dir",
 				(int) r->svn.len,
 				r->svn.buf,
 				dtoken(dir),
@@ -2609,6 +3040,7 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct svnobj* copy
 		op.change = &change;
 		op.add_remove = &addremove;
 		op.format_callback = &output;
+		op.format_callback_data = r;
 		DIFF_OPT_SET(&op, RECURSIVE);
 		DIFF_OPT_SET(&op, IGNORE_SUBMODULES);
 		DIFF_OPT_SET(&op, TREE_IN_RECURSIVE);
@@ -2648,10 +3080,7 @@ static int push_commit(struct push* p, struct commit* cmt, struct tag* tag) {
 	static struct strbuf buf = STRBUF_INIT;
 	static struct strbuf time = STRBUF_INIT;
 	static struct strbuf logbuf = STRBUF_INIT;
-	static const char* prevuser;
 
-	const char* user;
-	const char* pass;
 	unsigned char sha1[20];
 	struct ref_lock* ref_lock;
 	const char* log;
@@ -2660,18 +3089,12 @@ static int push_commit(struct push* p, struct commit* cmt, struct tag* tag) {
 
 	fprintf(stderr, "push_commit %s %s\n", sha1_to_hex(cmt ? cmt->object.sha1 : null_sha1), sha1_to_hex(tag ? tag->object.sha1 : null_sha1));
 
-	if (cmt || tag) {
-		struct author* a = get_object_author(tag ? &tag->object : &cmt->object);
-		user = a->user;
-		pass = a->pass;
+	if (tag) {
+		change_connection(0, get_object_author(&tag->object));
+	} else if (cmt) {
+		change_connection(0, get_object_author(&cmt->object));
 	} else {
-		user = svnuser;
-		pass = svnpass;
-	}
-
-	if (user != prevuser) {
-		reconnect(user, pass);
-		prevuser = user;
+		change_connection(0, defauthor);
 	}
 
 	if (tag) {
@@ -2718,8 +3141,10 @@ static int push_commit(struct push* p, struct commit* cmt, struct tag* tag) {
 		strbuf_addf(&buf, "+parent %s\n", sha1_to_hex(r->value));
 	}
 
-	strbuf_addf(&buf, "revision %d\n"
+	strbuf_addf(&buf, "+tree %s\n"
+			"revision %d\n"
 			"path %s\n",
+			sha1_to_hex(r->svn_index.cache_tree->sha1),
 			rev,
 			r->svn.buf);
 
@@ -2742,7 +3167,7 @@ static int push_commit(struct push* p, struct commit* cmt, struct tag* tag) {
 		if (!ref_lock || write_ref_sha1(ref_lock, cmt->object.sha1, "svn-push"))
 			die("failed to update ref %s", r->remote.buf);
 	} else {
-		if (delete_ref(r->remote.buf + strlen("refs/"), r->commit, 0))
+		if (delete_ref(r->remote.buf, r->commit, 0))
 			die("failed to delete ref %s", r->remote.buf);
 	}
 
@@ -2833,34 +3258,29 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 	int latest = 0;
 	int i;
 
+	git_config(&config, NULL);
+
 	argc = parse_options(argc, argv, prefix, builtin_svn_push_options,
 			builtin_svn_push_usage, 0);
 
 	setup_globals();
 
-	if (!svnuser || !svnpass) {
-		die("need to specify user and pass");
-	}
-
-	/* url set by --pre-receive option */
-	if (!url) {
-		if (argc != 4)
-			usage_msg_opt(argc > 4 ? _("Too many arguments.") : _("Too few arguments"),
+	if (!pre_receive) {
+		if (argc != 3)
+			usage_msg_opt(argc > 3 ? _("Too many arguments.") : _("Too few arguments"),
 				builtin_svn_push_usage, builtin_svn_push_options);
-
-		url = argv[0];
 
 		p = xcalloc(1, sizeof(*p));
 
-		if (get_sha1(argv[2], old))
+		if (get_sha1(argv[1], old))
+		       die("invalid ref %s", argv[1]);
+		if (get_sha1(argv[2], new))
 		       die("invalid ref %s", argv[2]);
-		if (get_sha1(argv[3], new))
-		       die("invalid ref %s", argv[3]);
 
 		p->old = lookup_commit_indirect(old, NULL);
 		p->new = lookup_commit_indirect(new, &p->tag);
 
-		p->ref = find_svnref_by_refname(argv[1], p->old == NULL);
+		p->ref = find_svnref_by_refname(argv[0], p->old == NULL);
 		do_push(p);
 		return 0;
 	}
@@ -2913,5 +3333,29 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 
 	}
 
+	return 0;
+}
+
+int cmd_svn_merge_base(int argc, const char **argv, const char *prefix) {
+	struct svnobj* svnobj;
+	struct commit* cmt;
+
+	git_config(&config, NULL);
+
+	argc = parse_options(argc, argv, prefix, builtin_svn_merge_base_options,
+			builtin_svn_merge_base_usage, 0);
+	setup_globals();
+
+	if (argc != 1)
+		usage_msg_opt(argc > 1 ? _("Too many arguments.") : _("Too few arguments"),
+				builtin_svn_merge_base_usage, builtin_svn_merge_base_options);
+
+	cmt = lookup_commit_reference_by_name(argv[0]);
+	if (!cmt) die("could not find commit for %s", argv[0]);
+
+	svnobj = find_copy_source(cmt, latest_rev());
+	if (!svnobj) die("could not find merge base for %s", argv[0]);
+
+	printf("%s@%d %s\n", svnobj->path, svnobj->rev, sha1_to_hex(svnobj->other->object.sha1));
 	return 0;
 }

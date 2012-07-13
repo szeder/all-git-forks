@@ -3,10 +3,6 @@
 test_description='git svn-fetch branch'
 . ./lib-git-svn-fetch.sh
 
-function update() {
-	git svn-fetch -v --user user --pass pass -t Trunk -b Branches $svnurl
-}
-
 test_expect_success 'setup branches' '
 	svn_cmd co $svnurl svnco &&
 	cd svnco &&
@@ -20,7 +16,12 @@ test_expect_success 'setup branches' '
 	svn_cmd ci -m "trunk file" &&
 	svn_cmd up &&
 	cd .. &&
-	update
+	git config svn.user user &&
+	git config svn.trunk Trunk &&
+	git config svn.branches Branches &&
+	git config svn.tags Tags &&
+	git config svn.url $svnurl &&
+	git svn-fetch -v
 '
 
 test_expect_success 'copied branch' '
@@ -29,7 +30,7 @@ test_expect_success 'copied branch' '
 	svn_cmd ci -m "create branch" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	test `show_ref svn/trunk` == `show_ref svn/Branch`
 '
 
@@ -41,7 +42,7 @@ test_expect_success 'copied and edited branch' '
 	svn_cmd ci -m "create copied branch" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	git checkout svn/CopiedBranch &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
@@ -60,7 +61,7 @@ test_expect_success 'edited and copied branch' '
 	svn_cmd ci -m "create edit copy branch" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	git checkout svn/EditCopyBranch &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
@@ -78,7 +79,7 @@ test_expect_success 'copy, copy, copy' '
 	svn_cmd ci -m "fast copy" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	test `show_ref svn/FastCopy1` == `show_ref svn/FastCopy2` &&
 	test `show_ref svn/FastCopy1` == `show_ref svn/FastCopy3` &&
 	test `show_ref svn/FastCopy1` == `show_ref svn/trunk` &&
@@ -99,7 +100,7 @@ test_expect_success 'edit, copy, and delete' '
 	svn_cmd ci -m "edit copy delete 2" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	test_must_fail git checkout svn/EditCopyDelete &&
 	git checkout svn/EditCopyDelete2 &&
 	test_subject HEAD "edit copy delete 2" &&
@@ -117,7 +118,7 @@ test_expect_success 'copy, edit, copy, and delete' '
 	svn_cmd ci -m "copy edit copy delete" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	test_must_fail git checkout svn/CopyEditCopyDelete &&
 	git checkout svn/CopyEditCopyDelete2 &&
 	test_subject HEAD "copy edit copy delete" &&
@@ -132,7 +133,7 @@ test_expect_success 'non copied branch' '
 	svn_cmd ci -m "create non-copied branch" &&
 	svn_cmd up &&
 	cd .. &&
-	update &&
+	git svn-fetch -v &&
 	git checkout svn/NonCopiedBranch &&
 	test_file file.txt "non copied" &&
 	test ! -e file2.txt &&

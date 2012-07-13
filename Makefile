@@ -316,7 +316,7 @@ endif
 
 # CFLAGS and LDFLAGS are for the users to override from the command line.
 
-CFLAGS = -g -O2 -Wall
+CFLAGS = -g  -Wall
 LDFLAGS =
 ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
@@ -521,6 +521,7 @@ BUILT_INS += git-stage$X
 BUILT_INS += git-status$X
 BUILT_INS += git-whatchanged$X
 BUILT_INS += git-svn-push$X
+BUILT_INS += git-svn-merge-base$X
 
 # what 'all' will build and 'install' will install in gitexecdir,
 # excluding programs for built-in commands
