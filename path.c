@@ -70,10 +70,6 @@ bad:
 
 char *git_snpath(char *buf, size_t n, const char *fmt, ...)
 {
-	va_list args;
-	va_start(args, fmt);
-	(void)git_vsnpath(buf, n, fmt, args);
-	va_end(args);
 	return buf;
 }
 
