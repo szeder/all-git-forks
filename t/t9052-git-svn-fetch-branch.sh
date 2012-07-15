@@ -163,7 +163,21 @@ test_expect_success 'removed branch' '
 	cd .. &&
 	git svn-fetch -v &&
 	test `show_ref svn/RemovedBranch2` == `show_ref svn/trunk` &&
-	git checkout svn/RemovedBranch2
+	git checkout svn/RemovedBranch2 &&
+	cd svnco &&
+	svn_cmd copy Trunk Branches/RemovedBranch &&
+	echo "foo" > Branches/RemovedBranch/newfile.txt &&
+	svn_cmd add Branches/RemovedBranch/newfile.txt &&
+	svn_cmd ci -m "create branch again" &&
+	svn_cmd rm Branches/RemovedBranch2 &&
+	svn_cmd copy Branches/RemovedBranch@$rev Branches/RemovedBranch2 &&
+	svn_cmd ci -m "copy branch again" &&
+	cd .. &&
+	git svn-fetch -v &&
+	git checkout svn/RemovedBranch &&
+	git checkout svn/RemovedBranch2 &&
+	test `show_ref svn/RemovedBranch` != `show_ref svn/trunk` &&
+	test `show_ref svn/RemovedBranch2` == `show_ref svn/trunk`
 '
 
 test_expect_success 'tag' '
