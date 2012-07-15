@@ -25,6 +25,7 @@ static const char *trunk;
 static const char *branches;
 static const char *tags;
 static const char *revisions;
+static const char *remotedir;
 static int verbose;
 static int pre_receive;
 static int svnfdc = 1;
@@ -83,6 +84,9 @@ static int config(const char *var, const char *value, void *dummy) {
 	}
 	if (!strcmp(var, "svn.url")) {
 		return git_config_string(&url, var, value);
+	}
+	if (!strcmp(var, "svn.remote")) {
+		return git_config_string(&remotedir, var, value);
 	}
 	return git_default_config(var, value, dummy);
 }
@@ -1147,7 +1151,8 @@ static struct svnref* create_ref(int type, const char* name, int create) {
 		r = xcalloc(1, sizeof(*r));
 		strbuf_addstr(&r->svn, trunk ? trunk : "");
 		strbuf_addstr(&r->ref, "refs/svn/heads/trunk");
-		strbuf_addstr(&r->remote, "refs/remotes/svn/trunk");
+		strbuf_addstr(&r->remote, remotedir);
+		strbuf_addstr(&r->remote, "trunk");
 		break;
 
 	case BRANCH_REF:
@@ -1160,7 +1165,7 @@ static struct svnref* create_ref(int type, const char* name, int create) {
 		strbuf_addstr(&r->ref, "refs/svn/heads/");
 		add_refname(&r->ref, name);
 
-		strbuf_addstr(&r->remote, "refs/remotes/svn/");
+		strbuf_addstr(&r->remote, remotedir);
 		add_refname(&r->remote, name);
 		break;
 
@@ -1271,6 +1276,7 @@ static struct svnref* find_svnref_by_path(struct strbuf* name, int create) {
 			strbuf_remove(name, 0, c+1 - a);
 		} else {
 			r = create_ref(BRANCH_REF, b, create);
+			strbuf_reset(name);
 		}
 		return r;
 
@@ -1282,6 +1288,7 @@ static struct svnref* find_svnref_by_path(struct strbuf* name, int create) {
 			strbuf_remove(name, 0, c+1 - a);
 		} else {
 			r = create_ref(TAG_REF, b, create);
+			strbuf_reset(name);
 		}
 		return r;
 
@@ -2364,6 +2371,16 @@ static int *svnfdv;
 
 static void setup_globals() {
 	int i;
+
+	if (remotedir) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addstr(&buf, "refs/remotes/");
+		strbuf_addstr(&buf, clean_path((char*) remotedir));
+		strbuf_addch(&buf, '/');
+		remotedir = strbuf_detach(&buf, NULL);
+	} else {
+		remotedir = "refs/heads/";
+	}
 
 	if (svnfdc < 1) die("invalid number of connections");
 

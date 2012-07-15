@@ -17,13 +17,16 @@ svnurl="svn://localhost:$SVNSERVE_PORT"
 # that could be set from user's configuration files in ~/.subversion.
 svn_cmd () {
 	[ -d "$svnconf" ] || mkdir "$svnconf"
-	echo -e "[global]\nstore-plaintext-passwords = yes" > "$svnconf/servers"
+	cat > "$svnconf/servers" <<!
+[global]
+store-plaintext-passwords = yes
+!
 	orig_svncmd="$1"; shift
 	if [ -z "$orig_svncmd" ]; then
 		svn
 		return
 	fi
-	svn "$orig_svncmd" --username user --password pass --config-dir "$svnconf" "$@"
+	svn "$orig_svncmd" --username user --password pass --no-auth-cache --non-interactive --config-dir "$svnconf" "$@"
 }
 
 function test_file() {
@@ -105,13 +108,23 @@ test_expect_success 'start svnserve' '
 	rm -rf "$svnrepo" &&
 	mkdir -p "$svnrepo" &&
 	svnadmin create "$svnrepo" &&
-	echo -e "[general]\nauth-access = write\npassword-db = passwd" > "$svnrepo/conf/svnserve.conf" &&
-	echo -e "[users]\nuser = pass" > "$svnrepo/conf/passwd" &&
-	echo "user:pass = Full Name <mail@example.com>" > .git/svn-authors &&
+	cat > "$svnrepo/conf/svnserve.conf" <<!
+[general]
+auth-access = write
+password-db = passwd
+!
+	cat > "$svnrepo/conf/passwd" <<!
+[users]
+user = pass
+!
+	cat > .git/svn-authors <<!
+user:pass = Full Name <mail@example.com>
+!
 	svnserve --daemon \
 		--listen-port $SVNSERVE_PORT \
 		--root "$svnrepo" \
 		--listen-host localhost &&
 	git config svn.user user &&
-	git config svn.url $svnurl
+	git config svn.url $svnurl &&
+	git config svn.remote svn
 '

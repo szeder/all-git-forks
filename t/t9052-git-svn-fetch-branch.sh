@@ -8,6 +8,7 @@ test_expect_success 'setup branches' '
 	cd svnco &&
 	svn_cmd mkdir Trunk &&
 	svn_cmd mkdir Branches &&
+	svn_cmd mkdir Tags &&
 	touch Trunk/file.txt &&
 	svn_cmd add Trunk/file.txt &&
 	svn_cmd ci -m "init" &&
@@ -140,6 +141,45 @@ test_expect_success 'non copied branch' '
 	test_subject HEAD "create non-copied branch" &&
 	test `git log --pretty=oneline | wc -l` -eq 1 &&
 	test_must_fail merge_base svn/trunk svn/NonCopiedBranch
+'
+
+test_expect_success 'removed branch' '
+	cd svnco &&
+	svn_cmd copy Trunk Branches/RemovedBranch &&
+	svn_cmd ci -m "create branch" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test `show_ref svn/RemovedBranch` == `show_ref svn/trunk` &&
+	rev=$(cat .git/svn-latest) &&
+	cd svnco &&
+	svn_cmd rm Branches/RemovedBranch &&
+	svn_cmd ci -m "remove branch" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test_must_fail git checkout svn/RemovedBranch &&
+	cd svnco &&
+	svn_cmd copy Branches/RemovedBranch@$rev Branches/RemovedBranch2 &&
+	svn_cmd ci -m "copy branch" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test `show_ref svn/RemovedBranch2` == `show_ref svn/trunk` &&
+	git checkout svn/RemovedBranch2
+'
+
+test_expect_success 'tag' '
+	cd svnco &&
+	svn_cmd copy Trunk Tags/Tag &&
+	svn_cmd ci -m "create tag" &&
+	cd .. &&
+	git svn-fetch -v &&
+	git checkout Tag &&
+	test `show_ref Tag | git cat-file --batch | grep tagged | cut -f 2 -d " "` == `show_ref svn/Trunk` &&
+	cd svnco &&
+	svn_cmd rm Tags/Tag &&
+	svn_cmd ci -m "remove tag" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test_must_fail git checkout Tag
 '
 
 test_done
