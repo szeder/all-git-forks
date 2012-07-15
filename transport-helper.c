@@ -485,8 +485,10 @@ static int fetch_with_import(struct transport *transport,
 			continue;
 		if (data->refspecs)
 			private = apply_refspecs(data->refspecs, data->refspec_nr, posn->name);
+		else if (posn->peer_ref)
+			private = xstrdup(posn->peer_ref->name);
 		else
-			private = xstrdup(posn->name);
+			private = NULL;
 		if (private) {
 			read_ref(private, posn->old_sha1);
 			free(private);
