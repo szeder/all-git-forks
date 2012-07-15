@@ -1203,7 +1203,6 @@ test_expect_success PIPE 'N: empty directory reads as missing' '
 		printf "%s\n" "$line" >response &&
 		cat <<-\EOF
 		D dst1
-		D dst2
 		EOF
 	) |
 	git fast-import --cat-blob-fd=3 3>backflow &&

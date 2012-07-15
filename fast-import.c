@@ -2367,6 +2367,7 @@ static void file_change_d(struct branch *b)
 	const char *p = command_buf.buf + 2;
 	static struct strbuf uq = STRBUF_INIT;
 	const char *endp;
+	struct tree_entry leaf;
 
 	strbuf_reset(&uq);
 	if (!unquote_c_style(&uq, p, &endp)) {
@@ -2374,7 +2375,9 @@ static void file_change_d(struct branch *b)
 			die("Garbage after path in: %s", command_buf.buf);
 		p = uq.buf;
 	}
-	tree_content_remove(&b->branch_tree, p, NULL);
+	tree_content_remove(&b->branch_tree, p, &leaf);
+	if (!leaf.versions[1].mode)
+		die("Path %s not in branch", p);
 }
 
 static void file_change_cr(struct branch *b, int rename)
