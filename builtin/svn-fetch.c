@@ -891,7 +891,6 @@ struct svnobj {
 	int rev;
 	const char* path;
 	unsigned int unpacked : 1;
-	unsigned int istag : 1;
 	struct index_state* index;
 };
 
@@ -934,7 +933,6 @@ static struct svnobj* parse_svnobj(const unsigned char* sha1) {
 
 	if (!strcmp(hdr.key, "+object")) {
 		hashcpy(s->object, hdr.sha1);
-		s->istag = !strcmp(hdr.value, "tag");
 		if (parse_other_header(&p, &hdr)) goto err;
 	}
 
@@ -957,11 +955,10 @@ static struct svnobj* parse_svnobj(const unsigned char* sha1) {
 	s->other = o;
 	o->util = s;
 
-	fprintf(stderr, "svnobj %s date %d obj %s tag %d prev %s rev %d\n",
+	fprintf(stderr, "svnobj %s date %d obj %s prev %s rev %d\n",
 			sha1_to_hex(sha1),
 			(int) s->date,
 			sha1_to_hex(s->object),
-			s->istag,
 			sha1_to_hex(s->parent),
 			s->rev);
 	return s;
@@ -1189,7 +1186,7 @@ static struct svnref* create_ref(int type, const char* name) {
 
 	if (!is_null_sha1(r->value)) {
 		r->obj = parse_svnobj(r->value);
-		if (!r->obj || r->istag != r->obj->istag)
+		if (!r->obj)
 			die("ref '%s' not a valid svn object", r->ref.buf);
 	}
 
@@ -1376,7 +1373,7 @@ static void add_all_refs() {
 	for_each_ref_in("refs/svn/", &create_ref_cb, NULL);
 }
 
-static struct svnobj* get_next_rev(int rev) {
+static struct svnobj* get_next_rev(int rev, int *istag) {
 	int i;
 
 	while (--rev) {
@@ -1388,6 +1385,7 @@ static struct svnobj* get_next_rev(int rev) {
 			}
 
 			if (r->iter && r->iter->rev == rev) {
+				*istag = r->istag;
 				return r->iter;
 			}
 		}
@@ -1403,6 +1401,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 	int i;
 	struct svnobj *obj, *res;
 	struct commit* cmt;
+	int istag;
 
 	add_all_refs();
 
@@ -1410,7 +1409,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 		refs[i]->iter = refs[i]->obj;
 	}
 
-	obj = get_next_rev(rev+1);
+	obj = get_next_rev(rev+1, &istag);
 	cmt = head;
 
 	while (cmt || obj) {
@@ -1433,7 +1432,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 		} else {
 			struct commit* ocmt;
 
-			if (obj->istag) {
+			if (istag) {
 				struct tag* tag = lookup_tag(obj->object);
 				if (!tag || parse_tag(tag) || !tag->tagged || tag->tagged->type != OBJ_COMMIT)
 					die("invalid svn object %s", sha1_to_hex(obj->other->object.sha1));
@@ -1449,7 +1448,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 
 			ocmt->object.flags |= SEEN;
 			ocmt->util = obj;
-			obj = get_next_rev(obj->rev);
+			obj = get_next_rev(obj->rev, &istag);
 		}
 	}
 
@@ -1468,11 +1467,11 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 		refs[i]->iter = refs[i]->obj;
 	}
 
-	obj = get_next_rev(rev+1);
-	while ((obj = get_next_rev(obj->rev)) != NULL) {
+	obj = get_next_rev(rev+1, &istag);
+	while (obj != NULL) {
 		struct commit* ocmt;
 
-		if (obj->istag) {
+		if (istag) {
 			struct tag* tag = lookup_tag(obj->object);
 			if (!tag || !tag->tagged || tag->tagged->type != OBJ_COMMIT)
 				break;
@@ -1486,6 +1485,7 @@ static struct svnobj* find_copy_source(struct commit* head, int rev) {
 
 		ocmt->object.flags &= ~SEEN;
 		ocmt->util = NULL;
+		obj = get_next_rev(obj->rev, &istag);
 	}
 
 	return res;
@@ -2073,7 +2073,7 @@ static int create_fetched_commit(struct svnref* r, int rev, const char* log, con
 			warning("copy over an existing parent");
 		}
 
-		if (from->istag) {
+		if (r->copysrc->istag) {
 			struct tag* tag = lookup_tag(from->object);
 			if (!tag || parse_tag(tag)) die("expected tag");
 			hashcpy(r->commit, tag->tagged->sha1);

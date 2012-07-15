@@ -98,6 +98,10 @@ show_ref() {
 	(git show-ref --head $1 | cut -d ' ' -f 1) || echo $1
 }
 
+show_tag() {
+	show_ref refs/tags/$1 | git cat-file --batch | grep object | cut -f 2 -d ' '
+}
+
 merge_base() {
 	git merge-base `show_ref $1` `show_ref $2`
 }

@@ -187,13 +187,29 @@ test_expect_success 'tag' '
 	cd .. &&
 	git svn-fetch -v &&
 	git checkout Tag &&
-	test `show_ref Tag | git cat-file --batch | grep tagged | cut -f 2 -d " "` == `show_ref svn/Trunk` &&
+	test `show_tag Tag` == `show_ref svn/trunk` &&
+	rev=$(cat .git/svn-latest) &&
 	cd svnco &&
 	svn_cmd rm Tags/Tag &&
 	svn_cmd ci -m "remove tag" &&
 	cd .. &&
 	git svn-fetch -v &&
-	test_must_fail git checkout Tag
+	test_must_fail git checkout Tag &&
+	cd svnco &&
+	svn_cmd copy Tags/Tag@$rev Branches/CopiedTag &&
+	svn_cmd ci -m "copy tag" &&
+	cd .. &&
+	git svn-fetch -v &&
+	git checkout svn/CopiedTag &&
+	test `show_ref svn/trunk` == `show_ref svn/CopiedTag` &&
+	cd svnco &&
+	svn_cmd copy Branches/CopiedTag Tags/Tag &&
+	svn_cmd ci -m "create tag again" &&
+	cd .. &&
+	git svn-fetch -v &&
+	git checkout Tag &&
+	test `show_tag Tag` == `show_ref svn/trunk`
+
 '
 
 test_done
