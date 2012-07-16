@@ -24,11 +24,10 @@ static inline void printd(const char* fmt, ...)
 	}
 }
 
-static struct remote* remote;
 static const char* url;
 static int dump_from_file;
-const char* private_refs = "refs/remote-svn/";		/* + remote->name. */
-const char* remote_ref = "refs/heads/master";
+static const char *notes_ref = "refs/notes/svn/";
+static struct ref *remote_ref;
 
 enum cmd_result cmd_capabilities(struct strbuf* line);
 enum cmd_result cmd_import(struct strbuf* line);
@@ -47,6 +46,7 @@ enum cmd_result cmd_capabilities(struct strbuf* line)
 		return NOT_HANDLED;
 
 	printf("import\n");
+	printf("refspec %s:%s\n", remote_ref->name, remote_ref->peer_ref->name);
 	printf("\n");
 	fflush(stdout);
 	return SUCCESS;
@@ -111,9 +111,8 @@ enum cmd_result cmd_import(struct strbuf* line)
 		dumpin_fd = svndump_proc.out;
 	}
 
-
 	svndump_init_fd(dumpin_fd, report_fd);
-	svndump_read(url);
+	svndump_read(url, remote_ref->peer_ref->name, notes_ref);
 	svndump_deinit();
 	svndump_reset();
 
@@ -138,8 +137,7 @@ enum cmd_result cmd_list(struct strbuf* line)
 		return NOT_HANDLED;
 
 	printf("? HEAD\n");
-	printf("? %s\n", remote_ref);
-	printf("\n");
+	printf("? %s\n\n", remote_ref->name);
 	fflush(stdout);
 	return SUCCESS;
 }
@@ -163,6 +161,8 @@ int main(int argc, const char **argv)
 {
 	struct strbuf buf = STRBUF_INIT;
 	int nongit;
+	struct ref **tail;
+	static struct remote* remote;
 
 	if (getenv("GIT_TRANSPORT_HELPER_DEBUG"))
 		debug = 1;
@@ -196,12 +196,17 @@ int main(int argc, const char **argv)
 
 	printd("remote-svn starting with url %s", url);
 
-	/* build private ref namespace path for this svn remote. */
+	remote_ref = alloc_ref("refs/heads/master");
+
+	tail = &remote_ref;
+	/* the local refs is written to peer_ref */
+	get_fetch_map(remote_ref, remote->fetch, &tail, 1);
+	printd("remote_ref->name %s, ->peer_ref->name %s", remote_ref->name,
+			remote_ref->peer_ref ? remote_ref->peer_ref->name : "None");
+
 	strbuf_init(&buf, 0);
-	strbuf_addstr(&buf, private_refs);
-	strbuf_addstr(&buf, remote->name);
-	strbuf_addch(&buf, '/');
-	private_refs = strbuf_detach(&buf, NULL);
+	strbuf_addf(&buf, "refs/notes/%s/revs", remote->name);
+	notes_ref = strbuf_detach(&buf, NULL);
 
 	while(1) {
 		if (strbuf_getline(&buf, stdin, '\n') == EOF) {
@@ -221,6 +226,6 @@ int main(int argc, const char **argv)
 
 	strbuf_release(&buf);
 	free((void*)url);
-	free((void*)private_refs);
+	free((void*)notes_ref);
 	return 0;
 }
