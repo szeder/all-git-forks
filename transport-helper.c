@@ -484,8 +484,18 @@ static int fetch_with_import(struct transport *transport,
 		if (posn->status & REF_STATUS_UPTODATE)
 			continue;
 		if (data->refspecs)
+			/*
+			 * If the remote-helper advertised the refpec capability, we
+			 * retrieve the local, private ref from it. The imported data is
+			 * expected there. (see Documentation/git-remote-helpers.*).
+			 */
 			private = apply_refspecs(data->refspecs, data->refspec_nr, posn->name);
 		else
+			/*
+			 * else, the default refspec *:* is implied. The remote-helper has
+			 * to import the remote heads directly to the local heads.
+			 * remote-helpers using 'import' should have the refspec capability.
+			 */
 			private = xstrdup(posn->name);
 		if (private) {
 			read_ref(private, posn->old_sha1);
