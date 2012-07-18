@@ -37,7 +37,8 @@ abort           restore the original branch and abort the patching operation.
 committer-date-is-author-date    lie about committer date
 ignore-date     use current timestamp for author date
 rerere-autoupdate update the index with reused conflict resolution if possible
-rebasing*       (internal use for git-rebase)"
+rebasing*       (internal use for git-rebase)
+keep-empty*     (internal use for git-rebase)"
 
 . git-sh-setup
 . git-sh-i18n
@@ -375,6 +376,7 @@ git_apply_opt=
 committer_date_is_author_date=
 ignore_date=
 allow_rerere_autoupdate=
+keep_empty=
 
 if test "$(git config --bool --get am.keepcr)" = true
 then
@@ -414,6 +416,8 @@ do
 		abort=t ;;
 	--rebasing)
 		rebasing=t threeway=t ;;
+	--keep-empty)
+		keep_empty=t ;;
 	-d|--dotest)
 		die "$(gettext "-d option is no longer supported.  Do not use.")"
 		;;
@@ -669,6 +673,10 @@ do
 			echo "$commit" >"$dotest/original-commit"
 			get_author_ident_from_commit "$commit" >"$dotest/author-script"
 			git diff-tree --root --binary "$commit" >"$dotest/patch"
+			test -s "$dotest/patch" || test -n "$keep_empty" || {
+				go_next
+				continue
+			}
 		else
 			git mailinfo $keep $no_inbody_headers $scissors $utf8 "$dotest/msg" "$dotest/patch" \
 				<"$dotest/$msgnum" >"$dotest/info" ||
