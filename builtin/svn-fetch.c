@@ -32,6 +32,7 @@ static int svnfdc = 1;
 static int svnfd;
 static int interval = -1;
 static const char* url;
+static enum eol svn_eol = EOL_UNSET;
 
 static const char* const builtin_svn_fetch_usage[] = {
 	"git svn-fetch [options]",
@@ -87,6 +88,17 @@ static int config(const char *var, const char *value, void *dummy) {
 	}
 	if (!strcmp(var, "svn.remote")) {
 		return git_config_string(&remotedir, var, value);
+	}
+	if (!strcmp(var, "svn.eol")) {
+		if (value && !strcasecmp(value, "lf"))
+			svn_eol = EOL_LF;
+		else if (value && !strcasecmp(value, "crlf"))
+			svn_eol = EOL_CRLF;
+		else if (value && !strcasecmp(value, "native"))
+			svn_eol = EOL_NATIVE;
+		else
+			svn_eol = EOL_UNSET;
+		return 0;
 	}
 	return git_default_config(var, value, dummy);
 }
@@ -2352,6 +2364,8 @@ static int *svnfdv;
 
 static void setup_globals() {
 	int i;
+
+	core_eol = svn_eol;
 
 	if (remotedir) {
 		struct strbuf buf = STRBUF_INIT;

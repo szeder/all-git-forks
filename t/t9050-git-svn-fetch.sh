@@ -40,9 +40,9 @@ test_expect_success 'auto crlf' '
 	svn_cmd ci -m "crlf" &&
 	cd .. &&
 	echo "* text=auto" > .git/info/attributes &&
-	git config core.eol crlf &&
-	git svn-fetch -v &&
+	git config svn.eol crlf &&
 	git config core.eol lf &&
+	git svn-fetch -v &&
 	git checkout svn/trunk &&
 	test_file crlf.txt "$(echo -e "foo\nbar")"
 '
