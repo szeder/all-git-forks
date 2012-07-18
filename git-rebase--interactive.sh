@@ -800,10 +800,8 @@ if test -z "$rebase_root"
 	# this is now equivalent to ! -z "$upstream"
 then
 	shortupstream=$(git rev-parse --short $upstream)
-	revisions=$upstream...$orig_head
 	shortrevisions=$shortupstream..$shorthead
 else
-	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
 
@@ -822,6 +820,7 @@ if test t = "$preserve_merges"
 then
 	if test -z "$rebase_root"
 	then
+		revisions=$upstream...$orig_head
 		mkdir "$rewritten" &&
 		for c in $(git merge-base --all $orig_head $upstream)
 		do
@@ -829,6 +828,7 @@ then
 				die "Could not init rewritten commits"
 		done
 	else
+		revisions=$onto...$orig_head
 		mkdir "$rewritten" &&
 		echo $onto > "$rewritten"/root ||
 			die "Could not init rewritten commits"
@@ -876,9 +876,7 @@ then
 		fi
 	done
 else
-	git rev-list $revisions --reverse --left-right --topo-order \
-		--no-merges --cherry-pick |
-	sed -n "s/^>//p" |
+	generate_revisions |
 	while read -r sha1
 	do
 		add_pick_line $sha1

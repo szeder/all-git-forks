@@ -16,11 +16,9 @@ skip)
 	;;
 esac
 
-test -n "$rebase_root" && root_flag=--root
 test -n "$keep_empty" && git_am_opt="$git_am_opt --keep-empty"
-git format-patch -k --stdout --full-index --ignore-if-in-upstream \
-	--src-prefix=a/ --dst-prefix=b/ \
-	--no-renames $root_flag "$revisions" |
+generate_revisions |
+sed -e 's/\([0-9a-f]\{40\}\)/From \1 Mon Sep 17 00:00:00 2001/' |
 git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" &&
 move_to_original_branch
 
