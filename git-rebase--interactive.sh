@@ -828,23 +828,26 @@ else
 	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
+
+add_pick_line () {
+	if test -z "$keep_empty" && is_empty_commit $1
+	then
+		comment_out="# "
+	else
+		comment_out=
+	fi
+	printf '%s\n' "${comment_out}pick $1 $2" >>"$todo"
+}
+
 git rev-list $merges_option --pretty=oneline --abbrev-commit \
 	--abbrev=7 --reverse --left-right --topo-order \
 	$revisions | \
 	sed -n "s/^>//p" |
 while read -r shortsha1 rest
 do
-
-	if test -z "$keep_empty" && is_empty_commit $shortsha1
-	then
-		comment_out="# "
-	else
-		comment_out=
-	fi
-
 	if test t != "$preserve_merges"
 	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		add_pick_line $shortsha1 "$rest"
 	else
 		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
@@ -863,7 +866,7 @@ do
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			add_pick_line $shortsha1 "$rest"
 		fi
 	fi
 done
