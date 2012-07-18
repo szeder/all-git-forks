@@ -836,8 +836,7 @@ then
 	# No cherry-pick because our first pass is to determine
 	# parents to rewrite and skipping dropped commits would
 	# prematurely end our probe
-	git rev-list $revisions --reverse --left-right --topo-order |
-	sed -n "s/^>//p" |
+	git rev-list $revisions --reverse --right-only --topo-order |
 	while read -r sha1
 	do
 		if test -z "$rebase_root"
