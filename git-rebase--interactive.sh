@@ -814,7 +814,8 @@ add_pick_line () {
 	else
 		comment_out=
 	fi
-	printf '%s\n' "${comment_out}pick $1 $2" >>"$todo"
+	line=$(git rev-list -1 --pretty=oneline --abbrev-commit --abbrev=7 $1)
+	printf '%s\n' "${comment_out}pick $line" >>"$todo"
 }
 
 if test t = "$preserve_merges"
@@ -835,13 +836,10 @@ then
 	# No cherry-pick because our first pass is to determine
 	# parents to rewrite and skipping dropped commits would
 	# prematurely end our probe
-	git rev-list --pretty=oneline --abbrev-commit \
-		--abbrev=7 --reverse --left-right --topo-order \
-		$revisions |
+	git rev-list $revisions --reverse --left-right --topo-order |
 	sed -n "s/^>//p" |
-	while read -r shortsha1 rest
+	while read -r sha1
 	do
-		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
 		then
 			preserve=t
@@ -858,7 +856,7 @@ then
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			add_pick_line $shortsha1 "$rest"
+			add_pick_line $sha1
 		fi
 	done
 	# Watch for commits that been dropped by --cherry-pick
@@ -884,13 +882,12 @@ then
 		fi
 	done
 else
-	git rev-list --no-merges --cherry-pick --pretty=oneline --abbrev-commit \
-		--abbrev=7 --reverse --left-right --topo-order \
-		$revisions |
+	git rev-list $revisions --reverse --left-right --topo-order \
+		--no-merges --cherry-pick |
 	sed -n "s/^>//p" |
-	while read -r shortsha1 rest
+	while read -r sha1
 	do
-		add_pick_line $shortsha1 "$rest"
+		add_pick_line $sha1
 	done
 fi
 
