@@ -859,17 +859,12 @@ then
 			add_pick_line $sha1
 		fi
 	done
-	# Watch for commits that been dropped by --cherry-pick
+	# Now drop cherry-picked commits
 	mkdir "$dropped"
-	# Save all non-cherry-picked changes
-	git rev-list $revisions --left-right --cherry-pick | \
-		sed -n "s/^>//p" > "$state_dir"/not-cherry-picks
-	# Now all commits and note which ones are missing in
-	# not-cherry-picks and hence being dropped
-	git rev-list $revisions |
+	git rev-list $revisions --cherry-mark --right-only | sed -ne "s/^=//p" |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev -a "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test -f "$rewritten"/$rev
 		then
 			# Use -f2 because if rev-list is telling us this commit is
 			# not worthwhile, we don't want to track its multiple heads,
