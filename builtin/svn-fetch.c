@@ -30,7 +30,6 @@ static int verbose;
 static int pre_receive;
 static int svnfdc = 1;
 static int svnfd;
-static int interval = -1;
 static const char* url;
 static enum eol svn_eol = EOL_UNSET;
 
@@ -43,7 +42,6 @@ static struct option builtin_svn_fetch_options[] = {
 	OPT_STRING(0, "user", &svnuser, "user", "svn username"),
 	OPT_BOOLEAN('v', "verbose", &verbose, "verbose logging of all svn traffic"),
 	OPT_STRING('r', "revision", &revisions, "N:M", "revisions to fetch in the form N or N:M"),
-	OPT_INTEGER(0, "interval", &interval, "poll interval in seconds (0 to only wake on a signal)"),
 	OPT_INTEGER('c', "connections", &svnfdc, "number of concurrent connections"),
 	OPT_END()
 };
@@ -2686,9 +2684,7 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 
 	pending = xcalloc(svnfdc, sizeof(pending[0]));
 
-nextpoll:
 	change_connection(svnfdc, defauthor);
-
 	sendf("( get-latest-rev ( ) )\n");
 
 	read_success(); /* latest rev */
@@ -2701,7 +2697,7 @@ nextpoll:
 	fprintf(stderr, "rev %d %d\n", from, to);
 
 	if (to < from) {
-		goto finish_range;
+		return 0;
 	}
 
 	change_connection(svnfdc, defauthor);
@@ -2767,36 +2763,8 @@ nextpoll:
 		i = (i+1) % svnfdc;
 	}
 
-finish_range:
 	set_latest_rev(to);
-	if (interval < 0) {
-		return 0;
-	}
-
-	alarm(interval);
-
-	/* don't close our tracking connection at svnfdv[svnfdc] */
-	for (i = 0; i < svnfdc; i++) {
-		close_connection(i);
-	}
-
-	/* clean up the fds as they close but keep on waiting */
-	for (;;) {
-		fd_set fds;
-		FD_ZERO(&fds);
-		FD_SET(svnfdv[svnfdc], &fds);
-
-		if (select(max(svnfdv[svnfdc], 0), &fds, NULL, NULL, NULL) < 0) {
-			if (errno != EINTR)
-				die_errno("select");
-			alarm(0);
-			goto nextpoll;
-		}
-
-		if (FD_ISSET(svnfdv[svnfdc], &fds)) {
-			close_connection(svnfdc);
-		}
-	}
+	return 0;
 }
 
 static const char* dtoken(int dir) {
