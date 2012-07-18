@@ -343,7 +343,7 @@ void svndump_read(const char *url)
 		switch (val - t - 1) {
 		case sizeof("SVN-fs-dump-format-version"):
 			if (constcmp(t, "SVN-fs-dump-format-version"))
-				continue;
+				break;
 			dump_ctx.version = atoi(val);
 			if (dump_ctx.version > 3)
 				die("expected svn dump format version <= 3, found %"PRIu32,
@@ -351,13 +351,13 @@ void svndump_read(const char *url)
 			break;
 		case sizeof("UUID"):
 			if (constcmp(t, "UUID"))
-				continue;
+				break;
 			strbuf_reset(&dump_ctx.uuid);
 			strbuf_addstr(&dump_ctx.uuid, val);
 			break;
 		case sizeof("Revision-number"):
 			if (constcmp(t, "Revision-number"))
-				continue;
+				break;
 			if (active_ctx == NODE_CTX)
 				handle_node();
 			if (active_ctx == REV_CTX)
@@ -366,11 +366,10 @@ void svndump_read(const char *url)
 				end_revision();
 			active_ctx = REV_CTX;
 			reset_rev_ctx(atoi(val));
-			strbuf_addf(&rev_ctx.note, "%s\n", t);
 			break;
 		case sizeof("Node-path"):
 			if (constcmp(t, "Node-"))
-				continue;
+				break;
 			if (!constcmp(t + strlen("Node-"), "path")) {
 				if (active_ctx == NODE_CTX)
 					handle_node();
@@ -378,12 +377,10 @@ void svndump_read(const char *url)
 					begin_revision();
 				active_ctx = NODE_CTX;
 				reset_node_ctx(val);
-				strbuf_addf(&rev_ctx.note, "%s\n", t);
 				break;
 			}
 			if (constcmp(t + strlen("Node-"), "kind"))
-				continue;
-			strbuf_addf(&rev_ctx.note, "%s\n", t);
+				break;
 			if (!strcmp(val, "dir"))
 				node_ctx.type = REPO_MODE_DIR;
 			else if (!strcmp(val, "file"))
@@ -393,8 +390,7 @@ void svndump_read(const char *url)
 			break;
 		case sizeof("Node-action"):
 			if (constcmp(t, "Node-action"))
-				continue;
-			strbuf_addf(&rev_ctx.note, "%s\n", t);
+				break;
 			if (!strcmp(val, "delete")) {
 				node_ctx.action = NODEACT_DELETE;
 			} else if (!strcmp(val, "add")) {
@@ -410,22 +406,20 @@ void svndump_read(const char *url)
 			break;
 		case sizeof("Node-copyfrom-path"):
 			if (constcmp(t, "Node-copyfrom-path"))
-				continue;
+				break;
 			strbuf_reset(&node_ctx.src);
 			strbuf_addstr(&node_ctx.src, val);
-			strbuf_addf(&rev_ctx.note, "%s\n", t);
 			break;
 		case sizeof("Node-copyfrom-rev"):
 			if (constcmp(t, "Node-copyfrom-rev"))
-				continue;
+				break;
 			node_ctx.srcRev = atoi(val);
-			strbuf_addf(&rev_ctx.note, "%s\n", t);
 			break;
 		case sizeof("Text-content-length"):
 			if (constcmp(t, "Text") && constcmp(t, "Prop"))
-				continue;
+				break;
 			if (constcmp(t + 4, "-content-length"))
-				continue;
+				break;
 			{
 				char *end;
 				uintmax_t len;
@@ -448,12 +442,12 @@ void svndump_read(const char *url)
 				break;
 			}
 			if (constcmp(t, "Prop-delta"))
-				continue;
+				break;
 			node_ctx.prop_delta = !strcmp(val, "true");
 			break;
 		case sizeof("Content-length"):
 			if (constcmp(t, "Content-length"))
-				continue;
+				break;
 			len = atoi(val);
 			t = buffer_read_line(&input);
 			if (!t)
@@ -471,6 +465,8 @@ void svndump_read(const char *url)
 					die_short_read();
 			}
 		}
+
+		strbuf_addf(&rev_ctx.note, "%s\n", t);
 	}
 	if (buffer_ferror(&input))
 		die_short_read();
