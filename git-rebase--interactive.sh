@@ -793,28 +793,6 @@ mkdir "$state_dir" || die "Could not create temporary $state_dir"
 
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state
-if test t = "$preserve_merges"
-then
-	if test -z "$rebase_root"
-	then
-		mkdir "$rewritten" &&
-		for c in $(git merge-base --all $orig_head $upstream)
-		do
-			echo $onto > "$rewritten"/$c ||
-				die "Could not init rewritten commits"
-		done
-	else
-		mkdir "$rewritten" &&
-		echo $onto > "$rewritten"/root ||
-			die "Could not init rewritten commits"
-	fi
-	# No cherry-pick because our first pass is to determine
-	# parents to rewrite and skipping dropped commits would
-	# prematurely end our probe
-	merges_option=
-else
-	merges_option="--no-merges --cherry-pick"
-fi
 
 shorthead=$(git rev-parse --short $orig_head)
 shortonto=$(git rev-parse --short $onto)
@@ -839,16 +817,30 @@ add_pick_line () {
 	printf '%s\n' "${comment_out}pick $1 $2" >>"$todo"
 }
 
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
-	$revisions | \
-	sed -n "s/^>//p" |
-while read -r shortsha1 rest
-do
-	if test t != "$preserve_merges"
+if test t = "$preserve_merges"
+then
+	if test -z "$rebase_root"
 	then
-		add_pick_line $shortsha1 "$rest"
+		mkdir "$rewritten" &&
+		for c in $(git merge-base --all $orig_head $upstream)
+		do
+			echo $onto > "$rewritten"/$c ||
+				die "Could not init rewritten commits"
+		done
 	else
+		mkdir "$rewritten" &&
+		echo $onto > "$rewritten"/root ||
+			die "Could not init rewritten commits"
+	fi
+	# No cherry-pick because our first pass is to determine
+	# parents to rewrite and skipping dropped commits would
+	# prematurely end our probe
+	git rev-list --pretty=oneline --abbrev-commit \
+		--abbrev=7 --reverse --left-right --topo-order \
+		$revisions |
+	sed -n "s/^>//p" |
+	while read -r shortsha1 rest
+	do
 		sha1=$(git rev-parse $shortsha1)
 		if test -z "$rebase_root"
 		then
@@ -868,12 +860,8 @@ do
 			touch "$rewritten"/$sha1
 			add_pick_line $shortsha1 "$rest"
 		fi
-	fi
-done
-
-# Watch for commits that been dropped by --cherry-pick
-if test t = "$preserve_merges"
-then
+	done
+	# Watch for commits that been dropped by --cherry-pick
 	mkdir "$dropped"
 	# Save all non-cherry-picked changes
 	git rev-list $revisions --left-right --cherry-pick | \
@@ -894,6 +882,15 @@ then
 			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
 			rm "$rewritten"/$rev
 		fi
+	done
+else
+	git rev-list --no-merges --cherry-pick --pretty=oneline --abbrev-commit \
+		--abbrev=7 --reverse --left-right --topo-order \
+		$revisions |
+	sed -n "s/^>//p" |
+	while read -r shortsha1 rest
+	do
+		add_pick_line $shortsha1 "$rest"
 	done
 fi
 
