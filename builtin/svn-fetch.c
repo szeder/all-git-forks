@@ -111,37 +111,40 @@ static int config(const char *var, const char *value, void *dummy) {
 #define max(a,b) ((a) < (b) ? (b) : (a))
 #endif
 
-static char inbuf[4096];
-static int inb, ine;
+struct inbuffer {
+	char buf[4096];
+	int b, e;
+};
+static struct inbuffer* inbuf;
 
 static int readc() {
-	if (ine == inb) {
-		inb = 0;
-		ine = xread(svnfd, inbuf, sizeof(inbuf));
-		if (ine <= 0) return EOF;
+	if (inbuf->b == inbuf->e) {
+		inbuf->b = 0;
+		inbuf->e = xread(svnfd, inbuf->buf, sizeof(inbuf->buf));
+		if (inbuf->e <= 0) return EOF;
 	}
 
-	return inbuf[inb++];
+	return inbuf->buf[inbuf->b++];
 }
 
 static void unreadc() {
-	inb--;
+	inbuf->b--;
 }
 
 static int readsvn(void* u, void* p, int n) {
 	/* big reads we may as well read directly into the target */
-	if (ine == inb && n >= sizeof(inbuf) / 2) {
+	if (inbuf->e == inbuf->b && n >= sizeof(inbuf->buf) / 2) {
 		return xread(svnfd, p, n);
 
-	} else if (ine == inb) {
-		inb = 0;
-		ine = xread(svnfd, inbuf, sizeof(inbuf));
-		if (ine <= 0) return ine;
+	} else if (inbuf->e == inbuf->b) {
+		inbuf->b = 0;
+		inbuf->e = xread(svnfd, inbuf->buf, sizeof(inbuf->buf));
+		if (inbuf->e <= 0) return inbuf->e;
 	}
 
-	n = min(n, ine - inb);
-	memcpy(p, &inbuf[inb], n);
-	inb += n;
+	n = min(n, inbuf->e - inbuf->b);
+	memcpy(p, inbuf->buf + inbuf->b, n);
+	inbuf->b += n;
 	return n;
 }
 
@@ -2361,6 +2364,7 @@ static char* clean_path(char* p) {
 
 static struct author** connection_authors;
 static int *svnfdv;
+static struct inbuffer *inbufv;
 
 static void setup_globals() {
 	int i;
@@ -2379,10 +2383,12 @@ static void setup_globals() {
 
 	if (svnfdc < 1) die("invalid number of connections");
 
-	connection_authors = xcalloc(svnfdc, sizeof(connection_authors[0]));
-	svnfdv = xmalloc(svnfdc * sizeof(svnfdv[0]));
-	for (i = 0; i < svnfdc; i++) {
+	connection_authors = xcalloc(svnfdc+1, sizeof(connection_authors[0]));
+	svnfdv = xmalloc((svnfdc+1) * sizeof(svnfdv[0]));
+	inbufv = xmalloc((svnfdc+1) * sizeof(inbufv[0]));
+	for (i = 0; i <= svnfdc; i++) {
 		svnfdv[i] = -1;
+		inbufv[i].b = inbufv[i].e = 0;
 	}
 
 	parse_authors();
@@ -2406,6 +2412,15 @@ static void setup_globals() {
 	if (tags) tags = clean_path((char*) tags);
 }
 
+static void close_connection(int cidx) {
+	if (svnfdv[cidx] >= 0) {
+		close(svnfdv[cidx]);
+		svnfdv[cidx] = -1;
+		connection_authors[cidx] = NULL;
+		inbufv[cidx].b = inbufv[cidx].e = 0;
+	}
+}
+
 static void change_connection(int cidx, struct author* a) {
 	char pathsep;
 	char *host, *port, *path;
@@ -2413,14 +2428,13 @@ static void change_connection(int cidx, struct author* a) {
 	int err;
 
 	svnfd = svnfdv[cidx];
+	inbuf = &inbufv[cidx];
 	fprintf(stderr, "change_connection %d fd %d oldauth %s newauth %s\n", cidx, svnfd, connection_authors[cidx] ? connection_authors[cidx]->user : NULL, a->user);
 	if (svnfd >= 0 && connection_authors[cidx] == a) {
 		return;
 	}
 
-	if (svnfd >= 0) close(svnfdv[cidx]);
-	svnfd = svnfdv[cidx] = -1;
-	connection_authors[cidx] = a;
+	close_connection(cidx);
 
 	if (prefixcmp(url, "svn://"))
 		die(_("only svn repositories are supported"));
@@ -2459,12 +2473,15 @@ static void change_connection(int cidx, struct author* a) {
 			continue;
 		}
 
-		svnfd = svnfdv[cidx] = fd;
+		svnfdv[cidx] = fd;
 		break;
 	}
 
-	if (svnfd < 0)
+	if (svnfdv[cidx] < 0)
 		die_errno("failed to connect to %s", url);
+
+	svnfd = svnfdv[cidx];
+	inbuf = &inbufv[cidx];
 
 	/* TODO: client software version and client capabilities */
 	sendf("( 2 ( edit-pipeline svndiff1 ) %d:%s )\n( CRAM-MD5 ( ) )\n",
@@ -2490,6 +2507,8 @@ static void change_connection(int cidx, struct author* a) {
 	read_success(); /* repo info */
 	read_success(); /* reparent */
 	read_success(); /* reparent again */
+
+	connection_authors[cidx] = a;
 }
 
 static int split_revisions(int* from, int* to) {
