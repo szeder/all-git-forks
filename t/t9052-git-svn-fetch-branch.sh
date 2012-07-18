@@ -158,8 +158,10 @@ test_expect_success 'removed branch' '
 	git svn-fetch -v &&
 	test_must_fail git checkout svn/RemovedBranch &&
 	cd svnco &&
+	echo $rev &&
 	svn_cmd copy Branches/RemovedBranch@$rev Branches/RemovedBranch2 &&
 	svn_cmd ci -m "copy branch" &&
+	svn_cmd up &&
 	cd .. &&
 	git svn-fetch -v &&
 	test `show_ref svn/RemovedBranch2` == `show_ref svn/trunk` &&
@@ -169,15 +171,34 @@ test_expect_success 'removed branch' '
 	echo "foo" > Branches/RemovedBranch/newfile.txt &&
 	svn_cmd add Branches/RemovedBranch/newfile.txt &&
 	svn_cmd ci -m "create branch again" &&
+	svn_cmd up &&
 	svn_cmd rm Branches/RemovedBranch2 &&
 	svn_cmd copy Branches/RemovedBranch@$rev Branches/RemovedBranch2 &&
 	svn_cmd ci -m "copy branch again" &&
+	svn_cmd up &&
 	cd .. &&
 	git svn-fetch -v &&
 	git checkout svn/RemovedBranch &&
 	git checkout svn/RemovedBranch2 &&
 	test `show_ref svn/RemovedBranch` != `show_ref svn/trunk` &&
 	test `show_ref svn/RemovedBranch2` == `show_ref svn/trunk`
+'
+
+test_expect_success 'move branch' '
+	cd svnco &&
+	svn_cmd copy Trunk Branches/MovedBranch &&
+	svn_cmd ci -m "create branch" &&
+	cd .. &&
+	git svn-fetch -v &&
+	git checkout svn/MovedBranch &&
+	cd svnco &&
+	svn_cmd mv Branches/MovedBranch Branches/MovedBranch2 &&
+	svn_cmd ci -m "move branch" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test_must_fail git checkout svn/MovedBranch &&
+	git checkout svn/MovedBranch2 &&
+	test `show_ref svn/MovedBranch2` == `show_ref svn/trunk`
 '
 
 test_expect_success 'tag' '
@@ -208,6 +229,16 @@ test_expect_success 'tag' '
 	cd .. &&
 	git svn-fetch -v &&
 	git checkout Tag &&
+	test `show_tag Tag` == `show_ref svn/trunk` &&
+	cd svnco &&
+	svn_cmd copy Tags/Tag Tags/Tag2 &&
+	svn_cmd ci -m "create 2nd tag" &&
+	svn_cmd rm Tags/Tag &&
+	svn_cmd copy Tags/Tag2 Tags/Tag &&
+	svn_cmd ci -m "recreate tag from 2nd" &&
+	cd .. &&
+	git svn-fetch -v &&
+	test `show_tag Tag` == `show_tag Tag2` &&
 	test `show_tag Tag` == `show_ref svn/trunk`
 
 '
