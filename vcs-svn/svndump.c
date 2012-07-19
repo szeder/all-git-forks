@@ -49,6 +49,7 @@ static struct {
 	uint32_t revision;
 	unsigned long timestamp;
 	struct strbuf log, author, note;
+	off_t prop_length, text_length;
 } rev_ctx;
 
 static struct {
@@ -151,8 +152,17 @@ static void die_short_read(void)
 	die("invalid dump: unexpected end of file");
 }
 
-static void read_props(void)
+static inline const char *next_line(const char *line)
 {
+	line = strchr(line, '\n');
+	if (line)
+		line++;
+	return line;
+}
+
+static void read_props(size_t prop_length)
+{
+	static struct strbuf props = STRBUF_INIT;
 	static struct strbuf key = STRBUF_INIT;
 	static struct strbuf val = STRBUF_INIT;
 	const char *t;
@@ -169,7 +179,10 @@ static void read_props(void)
 	 * symlink and executable bits separately instead.
 	 */
 	uint32_t type_set = 0;
-	while ((t = buffer_read_line(&input)) && strcmp(t, "PROPS-END")) {
+	buffer_read_binary(&input, &props, prop_length);
+	if (props.len < prop_length)
+		die_short_read();
+	for (t = props.buf; t && t < props.buf + props.len && constcmp(t, "PROPS-END"); t = next_line(t)) {
 		uint32_t len;
 		const char type = t[0];
 		int ch;
@@ -274,7 +287,7 @@ static void handle_node(void)
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
 		if (node_ctx.prop_length)
-			read_props();
+			read_props(node_ctx.prop_length);
 	}
 
 	/*
@@ -430,10 +443,17 @@ void svndump_read(const char *url)
 				if (len > maximum_signed_value_of_type(off_t))
 					die("unrepresentable length in dump: %s", val);
 
-				if (*t == 'T')
-					node_ctx.text_length = (off_t) len;
-				else
-					node_ctx.prop_length = (off_t) len;
+				if (active_ctx == REV_CTX) {
+					if (*t == 'T')
+						rev_ctx.text_length = (off_t) len;
+					else
+						rev_ctx.prop_length = (off_t) len;
+				} else if (active_ctx == NODE_CTX) {
+					if (*t == 'T')
+						node_ctx.text_length = (off_t) len;
+					else
+						node_ctx.prop_length = (off_t) len;
+				}
 				break;
 			}
 		case sizeof("Text-delta"):
@@ -455,7 +475,7 @@ void svndump_read(const char *url)
 			if (*t)
 				die("invalid dump: expected blank line after content length header");
 			if (active_ctx == REV_CTX) {
-				read_props();
+				read_props(rev_ctx.prop_length);
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
 				active_ctx = INTERNODE_CTX;
