@@ -160,7 +160,7 @@ static inline const char *next_line(const char *line)
 	return line;
 }
 
-static void read_props(size_t prop_length)
+static void read_props(size_t prop_length, struct strbuf *prop_path)
 {
 	static struct strbuf props = STRBUF_INIT;
 	static struct strbuf key = STRBUF_INIT;
@@ -221,6 +221,7 @@ static void read_props(size_t prop_length)
 
 static void handle_node(void)
 {
+	static struct strbuf prop_path = STRBUF_INIT;
 	const uint32_t type = node_ctx.type;
 	const int have_props = node_ctx.prop_length != -1;
 	const int have_text = node_ctx.text_length != -1;
@@ -286,8 +287,16 @@ static void handle_node(void)
 	if (have_props) {
 		if (!node_ctx.prop_delta)
 			node_ctx.type = type;
-		if (node_ctx.prop_length)
-			read_props(node_ctx.prop_length);
+		if (node_ctx.prop_length) {
+			/* node prop schema: .svn/nodeprops/$path/.svn */
+			strbuf_reset(&prop_path);
+			strbuf_addstr(&prop_path, ".svn/nodeprops/");
+			strbuf_addbuf(&prop_path, &node_ctx.dst);
+			if (node_ctx.dst.len)
+				strbuf_addch(&prop_path, '/');
+			strbuf_addstr(&prop_path, ".svn");
+			read_props(node_ctx.prop_length, &prop_path);
+		}
 	}
 
 	/*
@@ -475,7 +484,10 @@ void svndump_read(const char *url)
 			if (*t)
 				die("invalid dump: expected blank line after content length header");
 			if (active_ctx == REV_CTX) {
-				read_props(rev_ctx.prop_length);
+				struct strbuf prop_path = STRBUF_INIT;
+				strbuf_addstr(&prop_path, ".svn/revprops");
+				read_props(rev_ctx.prop_length, &prop_path);
+				strbuf_release(&prop_path);
 			} else if (active_ctx == NODE_CTX) {
 				handle_node();
 				active_ctx = INTERNODE_CTX;
