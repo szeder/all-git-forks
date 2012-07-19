@@ -1445,7 +1445,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		current_head = NULL;
 	else {
 		current_head = lookup_commit_or_die(sha1, "HEAD");
-		if (!current_head || parse_commit(current_head))
+		if (parse_commit(current_head))
 			die(_("could not parse HEAD commit"));
 	}
 	argc = parse_and_validate_options(argc, argv, builtin_commit_options,
