@@ -9,6 +9,8 @@
 #include "exec_cmd.h"
 #include "run-command.h"
 #include "svndump.h"
+#include "notes.h"
+#include "argv-array.h"
 
 static int debug = 0;
 
@@ -29,6 +31,7 @@ static int dump_from_file;
 static const char *private_ref;
 static const char *remote_ref = "refs/heads/master";
 static const char *notes_ref;
+struct rev_note { unsigned int rev_nr; };
 
 enum cmd_result cmd_capabilities(struct strbuf* line);
 enum cmd_result cmd_import(struct strbuf* line);
@@ -53,12 +56,52 @@ enum cmd_result cmd_capabilities(struct strbuf* line)
 	return SUCCESS;
 }
 
+/* NOTE: 'ref' refers to a git reference, while 'rev' refers to a svn revision. */
+static char *read_ref_note(const unsigned char sha1[20]) {
+	/* read highest imported ref from the note attached to the latest commit */
+	const unsigned char *note_sha1;
+	char *msg = NULL;
+	unsigned long msglen;
+	enum object_type type;
+	init_notes(NULL, notes_ref, NULL, 0);
+	if(	(note_sha1 = get_note(NULL, sha1)) == NULL ||
+			!(msg = read_sha1_file(note_sha1, &type, &msglen)) ||
+			!msglen || type != OBJ_BLOB) {
+		free(msg);
+		return NULL;
+	}
+	return msg;
+}
+
+static int parse_rev_note(const char *msg, struct rev_note *res) {
+	const char *key, *value, *end;
+	size_t len;
+	while(*msg) {
+		end = strchr(msg, '\n');
+		len = end ? end - msg : strlen(msg);
+
+		key = "Revision-number: ";
+		if(!prefixcmp(msg, key)) {
+			long i;
+			value = msg + strlen(key);
+			i = atol(value);
+			if(i < 0 || i > UINT32_MAX)
+				return 1;
+			res->rev_nr = i;
+		}
+		msg += len + 1;
+	}
+	return 0;
+}
 enum cmd_result cmd_import(struct strbuf* line)
 {
-	const char* revs = "-r0:HEAD";
 	int code, report_fd;
 	char* back_pipe_env;
 	int dumpin_fd;
+	char *note_msg;
+	unsigned char head_sha1[20];
+	unsigned int startrev;
+	struct argv_array svndump_argv = ARGV_ARRAY_INIT;
 	struct child_process svndump_proc = {
 			.argv = NULL,		/* comes later .. */
 			/* we want a pipe to the child's stdout, but stdin, stderr inherited.
@@ -93,6 +136,27 @@ enum cmd_result cmd_import(struct strbuf* line)
 
 	printd("Opened fast-import back-pipe %s for reading.", back_pipe_env);
 
+	if(read_ref(private_ref, head_sha1)) {
+		printd("New branch");
+		startrev = 0;
+	} else {
+		note_msg = read_ref_note(head_sha1);
+		if(note_msg == NULL) {
+			warning("No note found for %s.", private_ref);
+			startrev = 0;
+		}
+		else {
+			struct rev_note note = { 0 };
+			printd("Note found for %s", private_ref);
+			printd("Note:\n%s", note_msg);
+			parse_rev_note(note_msg, &note);
+			startrev = note.rev_nr + 1;
+			free(note_msg);
+		}
+	}
+
+	printd("starting import from revision %u", startrev);
+
 	if(dump_from_file) {
 		dumpin_fd = open(url, O_RDONLY);
 		if(dumpin_fd < 0) {
@@ -100,11 +164,12 @@ enum cmd_result cmd_import(struct strbuf* line)
 		}
 	}
 	else {
-		svndump_proc.argv = xcalloc(5, sizeof(char*));
-		svndump_proc.argv[0] = "svnrdump";
-		svndump_proc.argv[1] = "dump";
-		svndump_proc.argv[2] = url;
-		svndump_proc.argv[3] = revs;
+
+		argv_array_push(&svndump_argv, "svnrdump");
+		argv_array_push(&svndump_argv, "dump");
+		argv_array_push(&svndump_argv, url);
+		argv_array_pushf(&svndump_argv, "-r%u:HEAD", startrev);
+		svndump_proc.argv = svndump_argv.argv;;
 
 		code = start_command(&svndump_proc);
 		if(code)
@@ -122,8 +187,8 @@ enum cmd_result cmd_import(struct strbuf* line)
 	if(!dump_from_file)
 		code = finish_command(&svndump_proc);
 	if(code)
-		warning("Something went wrong with termination of %s, code %d", svndump_proc.argv[0], code);
-	free(svndump_proc.argv);
+		warning("%s, returned %d", svndump_proc.argv[0], code);
+	argv_array_clear(&svndump_argv);
 
 	printf("done\n");
 	return SUCCESS;

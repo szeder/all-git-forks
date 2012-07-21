@@ -95,7 +95,7 @@ static char gitsvnline[MAX_GITSVN_LINE_LEN];
 void fast_export_begin_commit(uint32_t revision, const char *author,
 			const struct strbuf *log,
 			const char *uuid, const char *url,
-			unsigned long timestamp, const char *local_ref)
+			unsigned long timestamp, const char *local_ref, const char *parent)
 {
 	static const struct strbuf empty = STRBUF_INIT;
 	if (!log)
@@ -118,7 +118,9 @@ void fast_export_begin_commit(uint32_t revision, const char *author,
 	fwrite(log->buf, log->len, 1, stdout);
 	printf("%s\n", gitsvnline);
 	if (!first_commit_done) {
-		if (revision > 1)
+		if(parent)
+			printf("from %s^0\n", parent);
+		else if (revision > 1)
 			printf("from :%"PRIu32"\n", revision - 1);
 		first_commit_done = 1;
 	}
