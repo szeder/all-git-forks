@@ -36,12 +36,13 @@ struct rev_note { unsigned int rev_nr; };
 enum cmd_result cmd_capabilities(struct strbuf* line);
 enum cmd_result cmd_import(struct strbuf* line);
 enum cmd_result cmd_list(struct strbuf* line);
+enum cmd_result cmd_terminate(struct strbuf* line);
 
-enum cmd_result { SUCCESS, NOT_HANDLED, ERROR };
+enum cmd_result { SUCCESS, NOT_HANDLED, TERMINATE };
 typedef enum cmd_result (*command)(struct strbuf*);
 
 const command command_list[] = {
-		cmd_capabilities, cmd_import, cmd_list, NULL
+		cmd_capabilities, cmd_import, cmd_list, cmd_terminate, NULL
 };
 
 enum cmd_result cmd_capabilities(struct strbuf* line)
@@ -95,6 +96,7 @@ static int parse_rev_note(const char *msg, struct rev_note *res) {
 }
 enum cmd_result cmd_import(struct strbuf* line)
 {
+	static int batch_active;
 	int code, report_fd;
 	char* back_pipe_env;
 	int dumpin_fd;
@@ -118,8 +120,23 @@ enum cmd_result cmd_import(struct strbuf* line)
 			.dir = NULL
 	};
 
+	/* terminate a current batch's fast-import stream */
+	if(line->len == 0 && batch_active) {
+		printf("done\n");
+		fflush(stdout);
+		batch_active = 0;
+		printd("import-batch finished.");
+		/*
+		 * should the remote helper terminate after a batch?
+		 * It seems that it should.
+		 */
+		return TERMINATE;
+	}
 	if(prefixcmp(line->buf, "import"))
 		return NOT_HANDLED;
+
+	/* import commands can be grouped together in a batch. Batches are ended by \n */
+	batch_active = 1;
 
 	back_pipe_env = getenv("GIT_REPORT_FIFO");
 	if(!back_pipe_env) {
@@ -190,11 +207,7 @@ enum cmd_result cmd_import(struct strbuf* line)
 		warning("%s, returned %d", svndump_proc.argv[0], code);
 	argv_array_clear(&svndump_argv);
 
-	printf("done\n");
 	return SUCCESS;
-
-
-
 }
 
 enum cmd_result cmd_list(struct strbuf* line)
@@ -208,6 +221,14 @@ enum cmd_result cmd_list(struct strbuf* line)
 	return SUCCESS;
 }
 
+enum cmd_result cmd_terminate(struct strbuf *line)
+{
+	/* an empty line terminates the program, if not in a batch sequence */
+	if (line->len == 0)
+		return TERMINATE;
+	else
+		return NOT_HANDLED;
+}
 enum cmd_result do_command(struct strbuf* line)
 {
 	const command* p = command_list;
@@ -276,11 +297,8 @@ int main(int argc, const char **argv)
 				fprintf(stderr, "Unexpected end of command stream\n");
 			return 1;
 		}
-		/* an empty line terminates the command stream */
-		if(buf.len == 0)
+		if(do_command(&buf) == TERMINATE)
 			break;
-
-		do_command(&buf);
 		strbuf_reset(&buf);
 	}
 
