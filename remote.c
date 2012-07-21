@@ -120,6 +120,13 @@ static void add_pushurl(struct remote *remote, const char *pushurl)
 	remote->pushurl[remote->pushurl_nr++] = pushurl;
 }
 
+static void add_mirror_url(struct remote *remote, const char *mirror_url)
+{
+	ALLOC_GROW(remote->mirror_url, remote->mirror_url_nr + 1,
+		   remote->mirror_url_alloc);
+	remote->mirror_url[remote->mirror_url_nr++] = mirror_url;
+}
+
 static void add_pushurl_alias(struct remote *remote, const char *url)
 {
 	const char *pushurl = alias_url(url, &rewrites_push);
@@ -141,8 +148,9 @@ static struct remote *make_remote(const char *name, int len)
 	for (i = 0; i < remotes_nr; i++) {
 		if (len ? (!strncmp(name, remotes[i]->name, len) &&
 			   !remotes[i]->name[len]) :
-		    !strcmp(name, remotes[i]->name))
+		    !strcmp(name, remotes[i]->name)) {
 			return remotes[i];
+		}
 	}
 
 	ret = xcalloc(1, sizeof(struct remote));
@@ -417,6 +425,16 @@ static int handle_config(const char *key, const char *value, void *cb)
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_pushurl(remote, v);
+	} else if (!strcmp(subkey, ".mirror-url")) {
+		const char *v;
+		if (git_config_string(&v, key, value))
+			return -1;
+		add_mirror_url(remote, v);
+	} else if (!strcmp(subkey, ".use-mirror")) {
+		remote->use_mirror = git_config_bool(key, value);
+	} else if (!strcmp(subkey, ".preferred-mirror")) {
+		if (git_config_string(&remote->preferred_mirror, key, value))
+			return -1;
 	} else if (!strcmp(subkey, ".push")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
@@ -769,6 +787,16 @@ int remote_has_url(struct remote *remote, const char *url)
 			return 1;
 	}
 	return 0;
+}
+
+int remote_mirror_idx(struct remote *remote, const char *mirror_url)
+{
+	int i;
+	for (i = 0; i < remote->mirror_url_nr; i++) {
+		if (!strcmp(remote->mirror_url[i], mirror_url))
+			return i;
+	}
+	return -1;
 }
 
 static int match_name_with_pattern(const char *key, const char *name,

@@ -685,7 +685,7 @@ test_expect_success $PREREQ '--suppress-cc=cc' '
 '
 
 test_confirm () {
-	echo y | \
+	yes | \
 		GIT_SEND_EMAIL_NOTTY=1 \
 		git send-email \
 		--from="Example <nobody@example.com>" \

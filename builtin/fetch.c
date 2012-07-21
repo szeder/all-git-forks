@@ -29,7 +29,7 @@ enum {
 	TAGS_SET = 2
 };
 
-static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity;
+static int all, append, dry_run, force, keep, multiple, prune, update_head_ok, verbosity, use_mirror;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT;
 static const char *depth;
@@ -78,6 +78,8 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOLEAN('k', "keep", &keep, "keep downloaded pack"),
 	OPT_BOOLEAN('u', "update-head-ok", &update_head_ok,
 		    "allow updating of HEAD ref"),
+	OPT_SET_INT('M', "use-mirror", &use_mirror,
+		    "use mirror if available", 1),
 	OPT_BOOL(0, "progress", &progress, "force progress reporting"),
 	OPT_STRING(0, "depth", &depth, "depth",
 		   "deepen history of shallow clone"),
@@ -144,6 +146,162 @@ static void find_non_local_tags(struct transport *transport,
 			struct ref **head,
 			struct ref ***tail);
 
+static char* get_url_hostname(const char *url)
+{
+	char *scratch = xstrdup(url);
+	char *host = strstr(url, "://");
+	char c;
+	char *end, *rh;
+	if (host) {
+		host += 3;
+		c = '/';
+	}
+	else {
+		host = scratch;
+		c = ':';
+	}
+
+	if (host[0] == '[') {
+		end = strchr(host + 1, ']');
+		if (end) {
+			*end = 0;
+			host++;
+		}
+	}
+	else {
+		end = strchr(host, c);
+		if (end && !has_dos_drive_prefix(url) ) {
+			*end = 0;
+		}
+		else {
+			host = "localhost";
+		}
+	}
+	rh = xstrdup(host);
+	free(scratch);
+	return rh;
+}
+
+const char *mirror_ref(const char* remote_name, const char* mirror_hostname,
+		       const char* refname)
+{
+	int has_refs, new_sz;
+	char *rv, *dst;
+
+	// *rs[i] = *refspec[i];  ?
+	has_refs = ( strstr(refname, "refs/") == refname );
+	/* "refs/"(0 or 5) "mirrors/"(8) remote "/"(1) hostname "/"(1) */
+	new_sz = (has_refs ? 0 : 5) + 8
+		+ strlen(remote_name) + 1
+		+ strlen(mirror_hostname) + 1
+		+ strlen(refname) + 1;
+	rv = xmalloc( new_sz );
+	strcpy(rv, "refs/mirrors/");
+	dst = rv + 13;
+	strcpy(dst, remote_name);
+	dst += strlen(remote_name);
+	*dst++ = '/';
+	strcpy(dst, mirror_hostname);
+	dst += strlen(mirror_hostname);
+	*dst++ = '/';
+	strcpy(dst, refname+(has_refs?5:0));
+	return rv;
+}
+
+struct ref *mirror_refmap(struct transport* transport,
+			  struct ref* ref_map)
+{
+	struct ref *rm, *mirror_refmap, *last, *rv, *peer_ref;
+
+	const char* remote_name = transport->remote->name;
+	const char* mirror_hostname = get_url_hostname(transport->url);
+	int c = 0;
+
+	last = NULL;
+	rv = NULL;
+	for (rm = ref_map; rm; rm = rm->next) {
+		const char *new_dst;
+
+		// skip refs we already have locally, to avoid ref churn
+		if (has_sha1_file(rm->old_sha1))
+			continue;
+
+		mirror_refmap = alloc_ref(rm->name);
+		mirror_refmap->remote_status = rm->remote_status;
+		hashcpy(mirror_refmap->old_sha1, rm->old_sha1);
+		hashcpy(mirror_refmap->new_sha1, rm->new_sha1);
+
+		if (last)
+			last->next = mirror_refmap;
+		else
+			rv = mirror_refmap;
+		c++;
+
+		new_dst = mirror_ref(remote_name, mirror_hostname, rm->name);
+
+		peer_ref = alloc_ref(new_dst);
+		mirror_refmap->peer_ref = peer_ref;
+		peer_ref->force = 1;
+		last = mirror_refmap;
+	}
+
+	return rv;
+}
+
+int clean_up_mirror_ref(const char *refname,
+			const unsigned char *sha1,
+			int flags,
+			void *leading)
+{
+	char *orig_refname;
+	char *target_refname;
+	char *x;
+	unsigned char found_sha1[20];
+
+	orig_refname = xmalloc(strlen(refname)+strlen(leading)+1);
+	x = strchr(refname, '/');
+	if (!x)
+		return 0;
+	target_refname = xmalloc(strlen(x)+strlen("refs/remotes/")+1); 
+
+	strcpy(orig_refname, leading);
+	x = orig_refname + strlen(leading);
+	strcpy(x, refname);
+
+	warning("cleaning up mirror ref: %s (%s)",
+		orig_refname, sha1_to_hex(sha1));
+
+	strcpy(target_refname, "refs/remotes/");
+	strcpy(target_refname+5, strchr(refname, '/')+1);
+
+	warning("target ref is %s", target_refname);
+
+	if (resolve_ref_unsafe(target_refname, found_sha1, 1, NULL)) {
+		if (!hashcmp(found_sha1, sha1)) {
+			warning("deleting ref %s", orig_refname);
+			delete_ref(orig_refname, sha1, REF_NODEREF);
+		}
+	}
+	return 0;
+}
+
+void clean_up_mirror_refs(struct remote* remote)
+{
+	int rem_l = strlen(remote->name);
+	char *dst_name = xmalloc(rem_l+14);
+	char *x;
+	strcpy(dst_name, "refs/mirrors/");
+	x = dst_name + 13;
+	strcpy(x, remote->name);
+	x += rem_l;
+	*x++ = '/';
+
+	warning("cleaning up mirror refs for remote %s", remote->name);
+	for_each_ref_in(dst_name, clean_up_mirror_ref,
+			(void *)dst_name);
+}
+
+
 static struct ref *get_ref_map(struct transport *transport,
 			       struct refspec *refs, int ref_count, int tags,
 			       int *autotags)
@@ -205,6 +363,10 @@ static struct ref *get_ref_map(struct transport *transport,
 	if (tags == TAGS_DEFAULT && *autotags)
 		find_non_local_tags(transport, &ref_map, &tail);
 	ref_remove_duplicates(ref_map);
+	if (strcmp(transport->url, transport->remote->url[0]) != 0) {
+		*autotags = 0;
+		return mirror_refmap(transport, ref_map);
+	}
 
 	return ref_map;
 }
@@ -901,7 +1063,10 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	static const char **refs = NULL;
 	struct refspec *refspec;
 	int ref_nr = 0;
-	int exit_code;
+	int exit_code = 0;
+	int urls_remaining = 1;
+	struct transport *real_transport = NULL;
+	const char *mirror = NULL;
 
 	if (!remote)
 		die(_("No remote repository specified.  Please, specify either a URL or a\n"
@@ -941,10 +1106,51 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	sigchain_push_common(unlock_pack_on_signal);
 	atexit(unlock_pack);
 	refspec = parse_fetch_refspec(ref_nr, refs);
+	if (use_mirror) {
+		real_transport = transport;
+		urls_remaining = remote->mirror_url_nr + 1;
+	}
+	while (urls_remaining) {
+		if (use_mirror && (urls_remaining > 1) ) {
+			transport = transport_next_mirror(real_transport, mirror);
+			mirror = transport->url;
+			warning("trying mirror: %s", mirror);
+			// real_transport may not have these options - re-set them.
+			if (upload_pack)
+				set_option(TRANS_OPT_UPLOADPACK, upload_pack);
+			if (keep)
+				set_option(TRANS_OPT_KEEP, "yes");
+			if (depth)
+				set_option(TRANS_OPT_DEPTH, depth);
+
+		}
+		exit_code = do_fetch(transport, refspec, ref_nr);
+		transport_disconnect(transport);
+		transport = NULL;
+		urls_remaining--;
+		if (use_mirror) {
+			if (!exit_code) {
+				if (urls_remaining >= 1) {
+					warning("successful fetch from mirror");
+					urls_remaining = 1;
+				}
+				else {
+					clean_up_mirror_refs(remote);
+				}
+			}
+			if (urls_remaining == 1) {
+				transport = real_transport;
+				warning("trying master: %s", transport->url);
+			}
+		}
+	}
+	
+#if 0	
 	exit_code = do_fetch(transport, refspec, ref_nr);
 	free_refspec(ref_nr, refspec);
 	transport_disconnect(transport);
 	transport = NULL;
+#endif	
 	return exit_code;
 }
 
