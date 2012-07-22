@@ -10,24 +10,24 @@ test_expect_success 'convert to v3' '
 	git update-index --index-version=3
 '
 
-test_perf 'v[23]: ls-files' '
-	git ls-files >/dev/null
+test_perf 'v[23]: update-index' '
+	git update-index >/dev/null
 '
 
 test_expect_success 'convert to v4' '
 	git update-index --index-version=4
 '
 
-test_perf 'v4: ls-files' '
-	git ls-files >/dev/null
+test_perf 'v4: update-index' '
+	git update-index >/dev/null
 '
 
 test_expect_success 'convert to v5' '
 	git update-index --index-version=5
 '
 
-test_perf 'v5: ls-files' '
-	git ls-files >/dev/null
+test_perf 'v5: update-index' '
+	git update-index >/dev/null
 '
 
 test_done
