@@ -530,6 +530,10 @@ then
 	GIT_PAGER='' git diff --stat --summary "$mb" "$onto"
 fi
 
+generate_revisions () {
+	git cherry $onto $orig_head $upstream | sed -ne 's/^+ //p'
+}
+
 test "$type" = interactive && run_specific_rebase
 
 # Detach HEAD and reset the tree
@@ -544,13 +548,6 @@ then
 	say "Fast-forwarded $branch_name to $onto_name."
 	move_to_original_branch
 	exit 0
-fi
-
-if test -n "$rebase_root"
-then
-	revisions="$onto..$orig_head"
-else
-	revisions="$upstream..$orig_head"
 fi
 
 run_specific_rebase
