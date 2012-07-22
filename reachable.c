@@ -123,43 +123,72 @@ static void process_other(struct other *other, struct object_array *p,
 		if (err > 0) break;
 
 		if (!is_null_sha1(hdr.sha1)) {
-			add_object(lookup_unknown_object(hdr.sha1), p, NULL, name);
+			struct object* hobj = parse_object(hdr.sha1);
+			if (!hobj) die("bad object %s", sha1_to_hex(hdr.sha1));
+			add_object(hobj, p, NULL, name);
 		}
 	}
 }
 
+static void process_commit(struct commit* cmt, struct object_array* p,
+		const char* name, struct connectivity_progress *cp)
+{
+	struct object *obj = &cmt->object;
+	struct commit_list* parent;
+
+	if (obj->flags & SEEN)
+		return;
+	obj->flags |= SEEN;
+	update_progress(cp);
+
+	if (parse_commit(cmt) < 0)
+		die("bad commit object %s", sha1_to_hex(obj->sha1));
+	if (cmt->tree)
+		process_tree(cmt->tree, p, NULL, "", cp);
+
+	parent = cmt->parents;
+	while (parent) {
+		add_object(&parent->item->object, p, NULL, name);
+		parent = parent->next;
+	}
+}
+
+
 static void walk_commit_list(struct rev_info *revs,
 			     struct connectivity_progress *cp)
 {
-	int i;
 	struct commit *commit;
-	struct object_array objects = OBJECT_ARRAY_INIT;
 
 	/* Walk all commits, process their trees */
 	while ((commit = get_revision(revs)) != NULL) {
-		process_tree(commit->tree, &objects, NULL, "", cp);
+		process_tree(commit->tree, &revs->pending, NULL, "", cp);
 		update_progress(cp);
 	}
 
 	/* Then walk all the pending objects, recursively processing them too */
-	for (i = 0; i < revs->pending.nr; i++) {
-		struct object_array_entry *pending = revs->pending.objects + i;
+	while (revs->pending.nr) {
+		struct object_array_entry *pending = revs->pending.objects + revs->pending.nr - 1;
 		struct object *obj = pending->item;
 		const char *name = pending->name;
+		revs->pending.nr--;
 		if (obj->type == OBJ_TAG) {
-			process_tag((struct tag *) obj, &objects, name, cp);
+			process_tag((struct tag *) obj, &revs->pending, name, cp);
 			continue;
 		}
 		if (obj->type == OBJ_TREE) {
-			process_tree((struct tree *)obj, &objects, NULL, name, cp);
+			process_tree((struct tree *)obj, &revs->pending, NULL, name, cp);
 			continue;
 		}
 		if (obj->type == OBJ_BLOB) {
-			process_blob((struct blob *)obj, &objects, NULL, name, cp);
+			process_blob((struct blob *)obj, &revs->pending, NULL, name, cp);
 			continue;
 		}
 		if (obj->type == OBJ_OTHER) {
-			process_other((struct other *)obj, &objects, name, cp);
+			process_other((struct other *)obj, &revs->pending, name, cp);
+			continue;
+		}
+		if (obj->type == OBJ_COMMIT) {
+			process_commit((struct commit *)obj, &revs->pending, name, cp);
 			continue;
 		}
 		die("unknown pending object %s (%s)", sha1_to_hex(obj->sha1), name);

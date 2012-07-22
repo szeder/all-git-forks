@@ -245,6 +245,22 @@ static int get_md5_hex(const char *hex, unsigned char *sha1)
 	return 0;
 }
 
+static const char* md5_to_hex(const unsigned char* md5) {
+	static int bufno;
+	static char hexbuffer[4][50];
+	char *buffer = hexbuffer[3 & ++bufno], *buf = buffer;
+	int i;
+
+	for (i = 0; i < 16; i++) {
+		unsigned int val = *md5++;
+		*buf++ = hex[val >> 4];
+		*buf++ = hex[val & 0xf];
+	}
+	*buf = '\0';
+
+	return buffer;
+}
+
 static void copyn(writer wf, void* wd, reader rf, void *rd, int64_t n) {
 	while (n > 0) {
 		char buf[BUFSIZ];
@@ -1093,6 +1109,8 @@ static int checkout_tree(struct index_state* idx, const unsigned char* sha1, con
 		}
 	}
 
+	cache_tree_invalidate_path(idx->cache_tree, to);
+
 	return 0;
 }
 
@@ -1423,7 +1441,7 @@ static struct svnobj* get_next_rev(int rev, int *istag) {
  * revno back. */
 static struct svnobj* find_copy_source(struct commit* head, int rev) {
 	int i;
-	struct svnobj *obj, *res;
+	struct svnobj *obj, *res = NULL;
 	struct commit* cmt;
 	int istag;
 
@@ -1529,6 +1547,7 @@ static void read_add_dir(struct svnref* r, int rev) {
 
 	read_name(&name);
 	find_svnref_by_path(&name);
+	fprintf(stderr, "A %s\n", name.buf);
 
 	/* parent-token, child-token */
 	if (skip_string() < 0) goto err;
@@ -1559,7 +1578,7 @@ static void read_add_dir(struct svnref* r, int rev) {
 			die("failed to write .gitempty object");
 		strbuf_addstr(&name, ".gitempty");
 		ce = make_cache_entry(create_ce_mode(0644), sha1, name.buf, 0, 0);
-		add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+		add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD);
 	}
 
 	/* remove ../.gitempty */
@@ -1590,6 +1609,7 @@ static void read_add_file(struct svnref* r, int rev, struct strbuf* name, void**
 
 	read_name(name);
 	find_svnref_by_path(name);
+	fprintf(stderr, "A %s\n", name->buf);
 
 	/* dir-token, file-token */
 	if (skip_string() < 0) goto err;
@@ -1641,6 +1661,7 @@ static void read_open_file(struct svnref* r, int rev, struct strbuf* name, void*
 
 	read_name(name);
 	find_svnref_by_path(name);
+	fprintf(stderr, "M %s\n", name->buf);
 
 	ce = index_name_exists(&r->svn_index, name->buf, name->len, 0);
 	if (!ce) goto err;
@@ -1662,6 +1683,9 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 
 	if (skip_string() < 0) goto err;
 
+	if (write_sha1_file(data, sz, "blob", sha1))
+		die_errno("write blob");
+
 	if (have_optional()) {
 		unsigned char h1[16], h2[16];
 		MD5_CTX ctx;
@@ -1674,18 +1698,22 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 		MD5_Update(&ctx, data, sz);
 		MD5_Final(h2, &ctx);
 
-		if (memcmp(h1, h2, sizeof(h1)))
-			die("hash mismatch for '%s'", name);
+		if (memcmp(h1, h2, sizeof(h1))) {
+			ce = index_name_exists(&r->svn_index, name, strlen(name), 0);
+			die("hash mismatch for '%s', expected md5 %s, got md5 %s, old sha1 %s, new sha1 %s",
+					name,
+					md5_to_hex(h2),
+					md5_to_hex(h1),
+					sha1_to_hex(ce ? ce->sha1 : null_sha1),
+					sha1_to_hex(sha1));
+		}
 
 		read_end();
 	}
 
-	if (write_sha1_file(data, sz, "blob", sha1))
-	       	die_errno("write blob");
-
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(&r->svn_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	add_index_entry(&r->svn_index, ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_reset(&buf);
 	if (convert_to_git(name, data, sz, &buf, SAFE_CRLF_FALSE)) {
@@ -1695,7 +1723,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 	}
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_release(&buf);
 	return;
@@ -1706,6 +1734,7 @@ err:
 
 static void remove_index_path(struct index_state* idx, struct strbuf* name) {
 	int i = index_name_pos(idx, name->buf, name->len);
+	cache_tree_invalidate_path(idx->cache_tree, name->buf);
 
 	if (i >= 0) {
 		/* file */
@@ -1739,6 +1768,7 @@ static void read_delete_entry(struct svnref* r, int rev) {
 
 	read_name(&name);
 	find_svnref_by_path(&name);
+	fprintf(stderr, "D %s\n", name.buf);
 
 	remove_index_path(&r->svn_index, &name);
 	remove_index_path(&r->git_index, &name);
@@ -1757,6 +1787,7 @@ static void read_update(struct svnref* r, int rev) {
 	const char* cmd = NULL;
 	void* data = NULL;
 	size_t datasz = 0;
+	int filedirty = 0;
 
 	read_success(); /* update */
 	read_success(); /* report */
@@ -1794,13 +1825,18 @@ static void read_update(struct svnref* r, int rev) {
 
 		} else if (!strcmp(cmd, "close-file")) {
 			if (!name.len) goto err;
-			read_close_file(r, name.buf, tgtdata.buf, tgtdata.len);
+
+			if (filedirty) {
+				read_close_file(r, name.buf, tgtdata.buf, tgtdata.len);
+			}
+
 			strbuf_release(&srcdata);
 			strbuf_release(&tgtdata);
 			strbuf_reset(&name);
 			free(data);
 			data = NULL;
 			datasz = 0;
+			filedirty = 0;
 
 		} else if (!strcmp(cmd, "delete-entry")) {
 			if (name.len) goto err;
@@ -1811,6 +1847,7 @@ static void read_update(struct svnref* r, int rev) {
 			int64_t d;
 			if (!name.len) goto err;
 
+			filedirty = 1;
 			if ((d = deltamore()) > 0) {
 				apply_svndiff(&tgtdata, data, datasz, &deltar, &d, &deltaeof);
 			}
@@ -2027,9 +2064,6 @@ static void create_fetched_commit(struct svnref* r, int rev, const char* author,
 	unsigned char sha1[20];
 	struct ref_lock* ref_lock = NULL;
 	struct svnobj* newobj;
-
-	cache_tree_free(&r->git_index.cache_tree);
-	cache_tree_free(&r->svn_index.cache_tree);
 
 	if (!r->git_index.cache_tree)
 		r->git_index.cache_tree = cache_tree();
@@ -2280,8 +2314,8 @@ static int have_next_commit(struct pending* retp) {
 		if (read_list()) {
 			read_done();
 			read_success();
-			retp->ref = NULL;
-			return;
+			log_finished = 1;
+			return 0;
 		}
 
 		/* start changed path entries */
@@ -2304,17 +2338,7 @@ static int have_next_commit(struct pending* retp) {
 				}
 			}
 
-			if (!to) {
-				/* not inside a ref */
-
-			} else if (i == nextc && name.len) {
-				/* modification to a non-root file/folder */
-				ALLOC_GROW(nextv, nextc+1, nexta);
-				p = &nextv[nextc++];
-				p->copysrc = NULL;
-				p->ref = to;
-
-			} else if ((!strcmp(s, "A") || !strcmp(s, "R")) && have_optional()) {
+			if (to && !name.len && (!strcmp(s, "A") || !strcmp(s, "R")) && have_optional()) {
 				int copyrev;
 				struct svnref* copysrc;
 
@@ -2338,7 +2362,7 @@ static int have_next_commit(struct pending* retp) {
 
 				read_end();
 
-			} else if (i == nextc && (!strcmp(s, "A") || !strcmp(s, "M") || !strcmp(s, "R") || !strcmp(s, "D"))) {
+			} else if (to && i == nextc) {
 				ALLOC_GROW(nextv, nextc+1, nexta);
 				p = &nextv[nextc++];
 				p->copysrc = NULL;
@@ -2413,7 +2437,7 @@ static int have_next_commit(struct pending* retp) {
 	strbuf_release(&msg);
 	strbuf_release(&author);
 	strbuf_release(&time);
-	return;
+	return 1;
 
 err:
 	die("malformed log");
@@ -2654,9 +2678,22 @@ static void revert_refs(int rev) {
 	refn = 0;
 }
 
+static int run_gc_auto() {
+	const char *args[] = {"gc", "--auto", NULL};
+	return run_command_v_opt(args, RUN_GIT_CMD);
+}
+
+static const char* print_arg(struct strbuf* sb, const char* fmt, ...) {
+	va_list ap;
+	va_start(ap, fmt);
+	strbuf_reset(sb);
+	strbuf_vaddf(sb, fmt, ap);
+	return sb->buf;
+}
+
 int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	int64_t n;
-	int from, cmdto, to, i;
+	int from, to, i;
 	struct pending *pending;
 
 	git_config(&config, NULL);
@@ -2670,10 +2707,10 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 
 	setup_globals();
 
-	switch (split_revisions(&from, &cmdto)) {
+	switch (split_revisions(&from, &to)) {
 	case 0:
 		from = latest_rev() + 1;
-		cmdto = INT_MAX;
+		to = INT_MAX;
 		break;
 	case 1:
 		from = latest_rev() + 1;
@@ -2694,12 +2731,37 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	read_response(); /* latest rev again */
 	n = read_number();
 	if (n < 0 || n > INT_MAX) die("latest-rev failed");
-	to = min(cmdto, (int) n);
+	to = min(to, (int) n);
 	read_end_response();
 
 	fprintf(stderr, "rev %d %d\n", from, to);
 
-	if (to < from) {
+	/* gc --auto invalidates the object cache. Thus we have to run
+	 * it last. For when we want to run the update in multiple
+	 * bunches then we spawn off a sub command for all revisions.
+	 */
+	if (to > from + FETCH_AT_ONCE) {
+		struct strbuf revs = STRBUF_INIT;
+		struct strbuf conns = STRBUF_INIT;
+
+		while (from <= to) {
+			int ret;
+			int cmdto = min(from + FETCH_AT_ONCE, to);
+			const char* args[] = {
+				"svn-fetch",
+				"-c", print_arg(&conns, "%d", svnfdc),
+				"-r", print_arg(&revs, "%d", cmdto),
+				"--user", svnuser,
+				verbose ? "-v" : NULL,
+				NULL
+			};
+
+			ret = run_command_v_opt(args, RUN_GIT_CMD);
+			if (ret) return ret;
+
+			from = cmdto;
+		}
+
 		return 0;
 	}
 
@@ -2714,16 +2776,13 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 		struct pending* p = &pending[i];
 
 		change_connection(svnfdc, defauthor);
-		read_next_commit(p);
-		if (!p->ref) break;
+		if (!have_next_commit(p)) break;
 		change_connection(i, defauthor);
 		request_commit(p->ref, p->rev, p->copysrc, p->copyrev);
 
 		i++;
 	}
 
-	/* process commits whilst we still can replace that commit with
-	 * a new pending */
 	i = 0;
 	for (;;) {
 		struct pending* p = &pending[i];
@@ -2732,7 +2791,7 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 		if (!p->ref) break;
 		set_latest_rev(p->rev-1);
 		if (p->copysrc) {
-		       	checkout_svnobj(p->ref, find_svnobj(p->copysrc, p->copyrev), p->copysrc->istag);
+			checkout_svnobj(p->ref, find_svnobj(p->copysrc, p->copyrev), p->copysrc->istag);
 		}
 		change_connection(i, defauthor);
 		read_update(p->ref, p->rev);
@@ -2741,33 +2800,18 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 
 		/* then request a new one on that connection */
 		change_connection(svnfdc, defauthor);
-		read_next_commit(p);
-		if (!p->ref) break;
-		change_connection(i, defauthor);
-		request_commit(p->ref, p->rev, p->copysrc, p->copyrev);
-
-		i = (i+1) % svnfdc;
-	}
-
-	/* process the remaining pending commits */
-	for (;;) {
-		struct pending* p = &pending[i];
-
-		if (!p->ref) break;
-		set_latest_rev(p->rev-1);
-		if (p->copysrc) {
-		       	checkout_svnobj(p->ref, find_svnobj(p->copysrc, p->copyrev), p->copysrc->istag);
+		if (have_next_commit(p)) {
+			change_connection(i, defauthor);
+			request_commit(p->ref, p->rev, p->copysrc, p->copyrev);
+		} else {
+			p->ref = NULL;
 		}
-		change_connection(i, defauthor);
-		read_update(p->ref, p->rev);
-		create_fetched_commit(p->ref, p->rev, p->author, p->time, p->msg, p->copysrc != NULL);
-		free(p->buf);
 
 		i = (i+1) % svnfdc;
 	}
 
 	set_latest_rev(to);
-	return 0;
+	return run_gc_auto();
 }
 
 static const char* dtoken(int dir) {

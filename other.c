@@ -6,8 +6,9 @@ int parse_other_buffer(struct other* item, const void* buffer, unsigned long siz
 	int i;
 	char* type;
 
-	if (size < strlen("type \n") || memcmp(buffer, "type ", strlen("type ")))
-		return -1;
+	if (size < strlen("type \n") || memcmp(buffer, "type ", strlen("type "))) {
+		return error("other buffer does not start with type ");
+	}
 
 	type = (char*) buffer + strlen("type ");
 
@@ -52,8 +53,7 @@ struct other *lookup_other(const unsigned char* sha1) {
 
 int parse_other_header(char** data, struct other_header* hdr) {
 	char* p = strchr(*data, '\n');
-	if (!p) return -1;
-	if (p == *data) return 1;
+	if (!p || p == *data) return 1;
 	*p = '\0';
 
 	hdr->key = *data;
