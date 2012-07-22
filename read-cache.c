@@ -32,6 +32,7 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 
 struct index_state the_index;
+char **index_filter_pathspec;
 
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
@@ -1651,7 +1652,7 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 	return ce;
 }
 
-static struct directory_entry *read_directories_v5(unsigned long *dir_offset,
+static struct directory_entry *read_directories_v5(unsigned int *dir_offset,
 				void *mmap,
 				int mmap_size)
 {
@@ -1705,7 +1706,7 @@ unmap:
 }
 
 static struct cache_entry *read_entry_v5(struct directory_entry *de,
-			unsigned long *entry_offset,
+			unsigned int *entry_offset,
 			void *mmap, 
 			unsigned long mmap_size,
 			unsigned int *foffsetblock)
@@ -1820,7 +1821,7 @@ static void entry_queue_push(struct entry_queue **head,
 
 static struct directory_entry *read_entries_v5(struct index_state *istate,
 					struct directory_entry *de,
-					unsigned long *entry_offset,
+					unsigned int *entry_offset,
 					void *mmap,
 					unsigned long mmap_size,
 					int *nr,
@@ -1948,14 +1949,16 @@ unmap:
 	die("index file corrupt");
 }
 
-void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
+static struct directory_entry *read_head_directories_v5(struct index_state *istate,
+							void *mmap,
+							unsigned long mmap_size,
+							unsigned int *entry_offset,
+							unsigned int *foffsetblock)
 {
-	unsigned long dir_offset, entry_offset;
+	unsigned int dir_offset;
 	struct cache_version_header *hdr;
 	struct cache_header_v5 *hdr_v5;
-	struct directory_entry *directory_entries, *de;
-	int nr;
-	unsigned int foffsetblock;
+	struct directory_entry *directory_entries;
 
 	hdr = mmap;
 	hdr_v5 = mmap + sizeof(*hdr);
@@ -1969,16 +1972,56 @@ void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
 	dir_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4 + ntohl(hdr_v5->hdr_ndir) * 4;
 	directory_entries = read_directories_v5(&dir_offset, mmap, mmap_size);
 
-	entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
+	*entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
+	*foffsetblock = dir_offset;
+}
+
+static void read_index_full_v5(struct index_state *istate,
+				struct directory_entry *de,
+				unsigned int entry_offset,
+				unsigned int foffsetblock,
+				void *mmap,
+				unsigned long mmap_size)
+{
+	int nr;
 
 	nr = 0;
-	foffsetblock = dir_offset;
-	de = directory_entries;
 	while (de)
 		de = read_entries_v5(istate, de, &entry_offset,
 				mmap, mmap_size, &nr, &foffsetblock);
-	istate->cache_tree = cache_tree_convert_v5(directory_entries);
+	istate->cache_tree = cache_tree_convert_v5(de);
 }
+
+void read_index_filtered_v5(struct index_state *istate,
+				struct directory_entry *de,
+				unsigned int entry_offset,
+				unsigned int foffsetblock,
+				void *mmap,
+				unsigned long mmap_size)
+{
+	int nr;
+	
+	while (de) {
+		if (match_pathspec(index_filter_pathspec, de->pathname, de->de_pathlen, 0, NULL)) 
+			;
+		de = de->next;
+	}
+}
+
+void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
+{
+	struct directory_entry *de;
+	unsigned int foffsetblock, entry_offset;
+	int nr;
+
+	de = read_head_directories_v5(istate, mmap, mmap_size, &entry_offset, &foffsetblock);
+
+	if (!pathspec)
+		read_index_full_v5(istate, de, entry_offset, foffsetbock, mmap, mmap_size);
+	else
+		read_index_filtered_v5(istate, de, entry_offset, foffsetblock, mmap, mmap_size);
+}
+
 
 /* remember to discard_cache() before reading a different cache! */
 int read_index_from(struct index_state *istate, const char *path)
