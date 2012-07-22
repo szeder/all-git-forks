@@ -12,6 +12,7 @@
 #include "diffcore.h"
 #include "alloc.h"
 #include "other.h"
+#include "run-command.h"
 
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
@@ -32,6 +33,8 @@ static int svnfdc = 1;
 static int svnfd;
 static const char* url;
 static enum eol svn_eol = EOL_UNSET;
+
+#define FETCH_AT_ONCE 1000
 
 static const char* const builtin_svn_fetch_usage[] = {
 	"git svn-fetch [options]",
@@ -2259,7 +2262,7 @@ struct pending {
 	int rev, copyrev;
 };
 
-static void read_next_commit(struct pending* retp) {
+static int have_next_commit(struct pending* retp) {
 	static struct pending *nextv;
 	static int nextc, nexta;
 	static int64_t rev;
