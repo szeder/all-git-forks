@@ -2844,7 +2844,7 @@ static int write_entries_v5(struct index_state *istate,
 			offset_write = htonl(offset);
 			if (ce_write_v5(NULL, fd, &offset_write, 4) < 0)
 				return -1;
-			offset += ce_namelen(ce) - pathlen + ondisk_size;
+			offset += ce_namelen(ce) - pathlen + 1 + ondisk_size + 4;
 			ce = ce->next;
 		}
 		current = current->next;
@@ -2876,7 +2876,7 @@ static int write_entries_v5(struct index_state *istate,
 			crc = htonl(crc);
 			if (ce_write_v5(NULL, fd, &crc, 4) < 0)
 				return -1;
-			offset += ce_namelen(ce) - pathlen + ondisk_size;
+			offset += ce_namelen(ce) - pathlen + 1 + ondisk_size + 4;
 			ce = ce->next;
 		}
 		current = current->next;
