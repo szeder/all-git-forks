@@ -793,28 +793,6 @@ mkdir "$state_dir" || die "Could not create temporary $state_dir"
 
 : > "$state_dir"/interactive || die "Could not mark as interactive"
 write_basic_state
-if test t = "$preserve_merges"
-then
-	if test -z "$rebase_root"
-	then
-		mkdir "$rewritten" &&
-		for c in $(git merge-base --all $orig_head $upstream)
-		do
-			echo $onto > "$rewritten"/$c ||
-				die "Could not init rewritten commits"
-		done
-	else
-		mkdir "$rewritten" &&
-		echo $onto > "$rewritten"/root ||
-			die "Could not init rewritten commits"
-	fi
-	# No cherry-pick because our first pass is to determine
-	# parents to rewrite and skipping dropped commits would
-	# prematurely end our probe
-	merges_option=
-else
-	merges_option="--no-merges --cherry-pick"
-fi
 
 shorthead=$(git rev-parse --short $orig_head)
 shortonto=$(git rev-parse --short $onto)
@@ -822,31 +800,45 @@ if test -z "$rebase_root"
 	# this is now equivalent to ! -z "$upstream"
 then
 	shortupstream=$(git rev-parse --short $upstream)
-	revisions=$upstream...$orig_head
 	shortrevisions=$shortupstream..$shorthead
 else
-	revisions=$onto...$orig_head
 	shortrevisions=$shorthead
 fi
-git rev-list $merges_option --pretty=oneline --abbrev-commit \
-	--abbrev=7 --reverse --left-right --topo-order \
-	$revisions | \
-	sed -n "s/^>//p" |
-while read -r shortsha1 rest
-do
 
-	if test -z "$keep_empty" && is_empty_commit $shortsha1
+add_pick_line () {
+	if test -z "$keep_empty" && is_empty_commit $1
 	then
 		comment_out="# "
 	else
 		comment_out=
 	fi
+	line=$(git rev-list -1 --pretty=oneline --abbrev-commit --abbrev=7 $1)
+	printf '%s\n' "${comment_out}pick $line" >>"$todo"
+}
 
-	if test t != "$preserve_merges"
+if test t = "$preserve_merges"
+then
+	if test -z "$rebase_root"
 	then
-		printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+		revisions=$upstream...$orig_head
+		mkdir "$rewritten" &&
+		for c in $(git merge-base --all $orig_head $upstream)
+		do
+			echo $onto > "$rewritten"/$c ||
+				die "Could not init rewritten commits"
+		done
 	else
-		sha1=$(git rev-parse $shortsha1)
+		revisions=$onto...$orig_head
+		mkdir "$rewritten" &&
+		echo $onto > "$rewritten"/root ||
+			die "Could not init rewritten commits"
+	fi
+	# No cherry-pick because our first pass is to determine
+	# parents to rewrite and skipping dropped commits would
+	# prematurely end our probe
+	git rev-list $revisions --reverse --right-only --topo-order |
+	while read -r sha1
+	do
 		if test -z "$rebase_root"
 		then
 			preserve=t
@@ -863,24 +855,15 @@ do
 		if test f = "$preserve"
 		then
 			touch "$rewritten"/$sha1
-			printf '%s\n' "${comment_out}pick $shortsha1 $rest" >>"$todo"
+			add_pick_line $sha1
 		fi
-	fi
-done
-
-# Watch for commits that been dropped by --cherry-pick
-if test t = "$preserve_merges"
-then
+	done
+	# Now drop cherry-picked commits
 	mkdir "$dropped"
-	# Save all non-cherry-picked changes
-	git rev-list $revisions --left-right --cherry-pick | \
-		sed -n "s/^>//p" > "$state_dir"/not-cherry-picks
-	# Now all commits and note which ones are missing in
-	# not-cherry-picks and hence being dropped
-	git rev-list $revisions |
+	git rev-list $revisions --cherry-mark --right-only | sed -ne "s/^=//p" |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev -a "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test -f "$rewritten"/$rev
 		then
 			# Use -f2 because if rev-list is telling us this commit is
 			# not worthwhile, we don't want to track its multiple heads,
@@ -891,6 +874,12 @@ then
 			sane_grep -v "^[a-z][a-z]* $short" <"$todo" > "${todo}2" ; mv "${todo}2" "$todo"
 			rm "$rewritten"/$rev
 		fi
+	done
+else
+	generate_revisions |
+	while read -r sha1
+	do
+		add_pick_line $sha1
 	done
 fi
 
