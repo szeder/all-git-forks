@@ -2667,8 +2667,6 @@ static struct directory_entry *find_directories(struct index_state *istate,
 		}
 		previous_entry = current;
 		if (!search || !found) {
-			struct directory_entry *insert;
-
 			new = init_directory_entry(dir, dir_len);
 			current->next = new;
 			current = current->next;
