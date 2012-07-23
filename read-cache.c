@@ -2618,8 +2618,6 @@ static struct directory_entry *find_directories(struct index_state *istate,
 
 	init_hash(&table);
 	de = init_directory_entry("", 0);
-	de->next_hash = NULL;
-	de->next = NULL;
 	current = de;
 	*ndir = 1;
 	*total_dir_len = 1;
