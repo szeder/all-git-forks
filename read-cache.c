@@ -1512,9 +1512,9 @@ static struct cache_entry *cache_entry_from_ondisk_v5(struct ondisk_cache_entry_
 	ce->ce_flags     |= flaglen;
 	ce->ce_flags     |= flags & CE_STAGEMASK;
 	ce->ce_flags     |= flags & CE_VALID;
-	if (flags & CE_INTENTTOADD_V5)
+	if (flags & CE_INTENT_TO_ADD_V5)
 		ce->ce_flags |= CE_INTENT_TO_ADD;
-	if (flags & CE_SKIPWORKTREE_V5)
+	if (flags & CE_SKIP_WORKTREE_V5)
 		ce->ce_flags |= CE_SKIP_WORKTREE;
 	ce->ce_stat_crc   = ntoh_l(ondisk->stat_crc);
 	hashcpy(ce->sha1, ondisk->sha1);
@@ -2751,9 +2751,9 @@ static void ondisk_from_cache_entry(struct cache_entry *ce,
 	flags |= ce->ce_flags & CE_STAGEMASK;
 	flags |= ce->ce_flags & CE_VALID;
 	if (ce->ce_flags & CE_INTENT_TO_ADD)
-		flags |= CE_INTENTTOADD_V5;
+		flags |= CE_INTENT_TO_ADD_V5;
 	if (ce->ce_flags & CE_SKIP_WORKTREE)
-		flags |= CE_SKIPWORKTREE_V5;
+		flags |= CE_SKIP_WORKTREE_V5;
 	ondisk->flags      = htons(flags);
 	ondisk->mode       = htons(ce->ce_mode);
 	ondisk->mtime.sec  = htonl(ce->ce_mtime.sec);

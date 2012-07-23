@@ -235,8 +235,8 @@ struct ondisk_conflict_part {
  * fit in 16 bits.  Note however that v5 does not save the name
  * length.
  */
-#define CE_INTENTTOADD_V5  (0x4000)
-#define CE_SKIPWORKTREE_V5 (0x0800)
+#define CE_INTENT_TO_ADD_V5  (0x4000)
+#define CE_SKIP_WORKTREE_V5  (0x0800)
 #if (CE_VALID|CE_STAGEMASK) & (CE_INTENTTOADD_V5|CE_SKIPWORKTREE_V5)
 #error "v5 on-disk flags collide with ordinary on-disk flags"
 #endif
