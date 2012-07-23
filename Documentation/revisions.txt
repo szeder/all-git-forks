@@ -128,20 +128,6 @@ the '$GIT_DIR/refs' directory or from the '$GIT_DIR/packed-refs' file.
   it returns the youngest matching commit which is reachable from
   the '<rev>' before '{caret}'.
 
-'<rev>{caret}@', e.g. 'HEAD{caret}@'::
-  A suffix '{caret}' followed by an at sign
-  means all parents of '<rev>'.
-  This is somewhat different from the other specifiers in this
-  section in that it may refer to multiple commits at once.
-  See also the next section on SPECIFYING RANGES.
-
-'<rev>{caret}!', e.g. 'HEAD{caret}!'::
-  A suffix '{caret}' followed by an exclamation mark
-  means commit '<rev>' but forces all of its parents to be excluded. For
-  commands that deal with a single revision, this is the same as '<rev>".
-  Hence it is primarily used with commands expecting commit ranges.
-  See also the next section on SPECIFYING RANGES.
-
 ':/<text>', e.g. ':/fix nasty bug'::
   A colon, followed by a slash, followed by a text, names
   a commit whose commit message matches the specified regular expression.
@@ -228,10 +214,37 @@ It is the set of commits that are reachable from either one of
 'r1' or 'r2' but not from both.
 
 Two other shorthands for naming a set that is formed by a commit
-and its parent commits exist.  Recall that 'r1{caret}@' means all
-parents of 'r1'. When specifying ranges, this effectively includes
-all ancestors of 'r1' but excludes 'r1' itself. In contrast to this,
-'r1{caret}!' includes commit 'r1' but excludes all of its ancestors.
+and its parent commits exist.  The 'r1{caret}@' notation means all
+parents of 'r1'.  'r1{caret}!' includes commit 'r1' but excludes
+all of its parents.
+
+To summarize:
+
+'<rev>'::
+	Include commits that are reachable from (i.e. ancestors of)
+	<rev>.
+
+'{caret}<rev>'::
+	Exclude commits that are reachable from (i.e. ancestors of)
+	<rev>.
+
+'<rev1>..<rev2>'::
+	Include commits that are reachable from <rev2> but exclude
+	those that are reachable from <rev1>.
+
+'<rev1>\...<rev2>'::
+	Include commits that are reachable from either <rev1> or
+	<rev2> but exclude those that are reachable from both.
+
+'<rev>{caret}@', e.g. 'HEAD{caret}@'::
+  A suffix '{caret}' followed by an at sign is the same as listing
+  all parents of '<rev>' (meaning, include anything reachable from
+  its parents, but not the commit itself).
+
+'<rev>{caret}!', e.g. 'HEAD{caret}!'::
+  A suffix '{caret}' followed by an exclamation mark is the same
+  as giving commit '<rev>' and then all its parents prefixed with
+  '{caret}' to exclude them (and their ancestors).
 
 Here are a handful of examples:
 
