@@ -23,7 +23,7 @@ endif
 
 USE_LIBPCRE = YesPlease
 
-GIT_TEST_OPTS = --root=/run/shm/git-tests
+GIT_TEST_OPTS = --root=/var/ram/git-tests
 TEST_LINT = test-lint
 GIT_PROVE_OPTS= -j16 --state=slow,save
 DEFAULT_TEST_TARGET = prove
