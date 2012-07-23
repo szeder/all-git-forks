@@ -239,7 +239,7 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 		x = NULL;
 		
 		while (!found) {
-			struct directory_entry *insert, *new;
+			struct directory_entry *new;
 
 			new = init_directory_entry(super, dir_len);
 			if (!current)
