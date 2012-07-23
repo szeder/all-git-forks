@@ -1248,7 +1248,8 @@ static inline ssize_t write_str_in_full(int fd, const char *str)
 }
 
 /* directory helper function */
-extern char *super_directory(char *filename);
+extern char *super_directory(const char *filename);
+extern void insert_directory_entry(struct directory_entry *, struct hash_table *, int *, unsigned int *, uint32_t);
 
 /* pager.c */
 extern void setup_pager(void);

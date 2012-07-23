@@ -246,16 +246,9 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 				current = new;
 			else
 				new->de_nsubtrees = 0;
-			insert = (struct directory_entry *)insert_hash(crc, new, table);
-			if (insert) {
-				while (insert->next_hash)
-					insert = insert->next_hash;
-				insert->next_hash = new;
-			}
+			insert_directory_entry(new, table, total_dir_len, ndir, crc);
 			new->next = x;
 			x = new;
-			(*ndir)++;
-			*total_dir_len += new->de_pathlen + 2;
 			super = super_directory(super);
 			if (!super)
 				dir_len = 0;

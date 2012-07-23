@@ -2486,7 +2486,7 @@ static int write_index_v2(struct index_state *istate, int newfd)
 	return 0;
 }
 
-char *super_directory(char *filename)
+char *super_directory(const char *filename)
 {
 	char *slash;
 
@@ -2601,6 +2601,27 @@ static void add_part_to_conflict_entry(struct directory_entry *de,
 	de->conflict_size += sizeof(struct ondisk_conflict_part);
 }
 
+void insert_directory_entry(struct directory_entry *de,
+			struct hash_table *table,
+			int *total_dir_len,
+			unsigned int *ndir,
+			uint32_t crc)
+{
+	struct directory_entry *insert;
+
+	insert = (struct directory_entry *)insert_hash(crc, de, table);
+	if (insert) {
+		while (insert->next_hash)
+			insert = insert->next_hash;
+		insert->next_hash = de;
+	}
+	(*ndir)++;
+	if (de->de_pathlen == 0)
+		(*total_dir_len)++;
+	else
+		*total_dir_len += de->de_pathlen + 2;
+}
+
 static struct directory_entry *find_directories(struct index_state *istate,
 						int nfile,
 						unsigned int *ndir,
@@ -2649,16 +2670,9 @@ static struct directory_entry *find_directories(struct index_state *istate,
 			struct directory_entry *insert;
 
 			new = init_directory_entry(dir, dir_len);
-			insert = (struct directory_entry *)insert_hash(crc, new, &table);
-			if (insert) {
-				while (insert->next_hash)
-					insert = insert->next_hash;
-				insert->next_hash = new;
-			}
 			current->next = new;
 			current = current->next;
-			(*ndir)++;
-			*total_dir_len += new->de_pathlen + 2;
+			insert_directory_entry(new, &table, total_dir_len, ndir, crc);
 			search = current;
 		}
 		if (!ce_stage(cache[i]) || !conflict_entry
@@ -2696,20 +2710,11 @@ static struct directory_entry *find_directories(struct index_state *istate,
 			crc = crc32(0, (Bytef*)dir, dir_len);
 			found = lookup_hash(crc, &table);
 			while (!found) {
-				struct directory_entry *insert;
-
 				new = init_directory_entry(dir, dir_len);
 				new->de_nsubtrees = 1;
-				insert = (struct directory_entry *)insert_hash(crc, new, &table);
-				if (insert) {
-					while (insert->next_hash)
-						insert = insert->next_hash;
-					insert->next_hash = new;
-				}
 				new->next = no_subtrees;
 				no_subtrees = new;
-				(*ndir)++;
-				*total_dir_len += new->de_pathlen + 2;
+				insert_directory_entry(new, &table, total_dir_len, ndir, crc);
 				dir = super_directory(dir);
 				if (!dir)
 					dir_len = 0;
