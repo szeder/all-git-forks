@@ -2637,7 +2637,7 @@ void insert_directory_entry(struct directory_entry *de,
 		*total_dir_len += de->de_pathlen + 2;
 }
 
-static struct directory_entry *find_directories(struct index_state *istate,
+static struct directory_entry *compile_directory_data(struct index_state *istate,
 						int nfile,
 						unsigned int *ndir,
 						int *non_conflicted,
@@ -2980,7 +2980,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 	non_conflicted = 0;
 	total_dir_len = 0;
 	total_file_len = 0;
-	de = find_directories(istate, entries, &ndir, &non_conflicted,
+	de = compile_directory_data(istate, entries, &ndir, &non_conflicted,
 			&total_dir_len, &total_file_len);
 	hdr_v5.hdr_ndir = htonl(ndir);
 
