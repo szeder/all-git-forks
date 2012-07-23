@@ -2661,10 +2661,14 @@ static struct directory_entry *compile_directory_data(struct index_state *istate
 	insert_hash(crc, de, &table);
 	conflict_entry = NULL;
 	for (i = 0; i < nfile; i++) {
+		int new_entry;
 		if (cache[i]->ce_flags & CE_REMOVE)
 			continue;
-		if (!ce_stage(cache[i]) || !conflict_entry
-			|| strcmp(conflict_entry->name, cache[i]->name) != 0)
+
+		new_entry = !ce_stage(cache[i]) || !conflict_entry
+		    || cache_name_compare(conflict_entry->name, conflict_entry->namelen,
+					cache[i]->name, ce_namelen(cache[i]));
+		if (new_entry)
 			(*non_conflicted)++;
 		if (dir_len < 0 || strncmp(cache[i]->name, dir, dir_len)
 		    || cache[i]->name[dir_len] != '/'
@@ -2688,16 +2692,14 @@ static struct directory_entry *compile_directory_data(struct index_state *istate
 			insert_directory_entry(new, &table, total_dir_len, ndir, crc);
 			search = current;
 		}
-		if (!ce_stage(cache[i]) || !conflict_entry
-			|| strcmp(conflict_entry->name, cache[i]->name)) {
+		if (new_entry) {
 			search->de_nfiles++;
 			*total_file_len += ce_namelen(cache[i]) + 1;
 			if (search->de_pathlen)
 				*total_file_len -= search->de_pathlen + 1;
 			cache_entry_push(&(search->ce), &(search->ce_last), cache[i]);
 		}
-		if (ce_stage(cache[i]) > 0 && (!conflict_entry
-			|| strcmp(conflict_entry->name, cache[i]->name))) {
+		if (ce_stage(cache[i]) > 0 && new_entry) {
 
 			conflict_entry = create_conflict_entry(cache[i], search);
 		} else if (ce_stage(cache[i]) > 0) {
