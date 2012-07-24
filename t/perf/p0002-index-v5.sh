@@ -11,7 +11,7 @@ test_expect_success 'convert to v3' '
 '
 
 test_perf 'v[23]: update-index' '
-	git update-index >/dev/null
+	git update-index --force-rewrite >/dev/null
 '
 
 test_expect_success 'convert to v4' '
@@ -19,7 +19,7 @@ test_expect_success 'convert to v4' '
 '
 
 test_perf 'v4: update-index' '
-	git update-index >/dev/null
+	git update-index --force-rewrite >/dev/null
 '
 
 test_expect_success 'convert to v5' '
@@ -27,7 +27,7 @@ test_expect_success 'convert to v5' '
 '
 
 test_perf 'v5: update-index' '
-	git update-index >/dev/null
+	git update-index --force-rewrite >/dev/null
 '
 
 test_done
