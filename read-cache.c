@@ -1651,20 +1651,31 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 	return ce;
 }
 
-static struct directory_entry *read_directories_v5(unsigned long *dir_offset,
+static struct directory_entry *read_directories_v5(unsigned int *dir_offset,
+				unsigned int *dir_table_offset,
 				void *mmap,
 				int mmap_size)
 {
-	int i;
-	uint32_t *filecrc;
+	int i, ondisk_directory_size;
+	uint32_t *filecrc, *beginning, *end;
 	struct directory_entry *current = NULL;
 	struct ondisk_directory_entry *disk_de;
 	struct directory_entry *de;
 	unsigned int data_len, len; 
 	char *name;
 
+	ondisk_directory_size = sizeof(disk_de->flags)
+		+ sizeof(disk_de->foffset)
+		+ sizeof(disk_de->cr)
+		+ sizeof(disk_de->ncr)
+		+ sizeof(disk_de->nsubtrees)
+		+ sizeof(disk_de->nfiles)
+		+ sizeof(disk_de->nentries)
+		+ sizeof(disk_de->sha1);
 	name = (char *)mmap + *dir_offset;
-	len = strlen(name);
+	beginning = mmap + *dir_table_offset;
+	end = mmap + *dir_table_offset + 4;
+	len = ntoh_l(*end) - ntoh_l(*beginning) - ondisk_directory_size - 5;
 	disk_de = (struct ondisk_directory_entry *)
 			((char *)mmap + *dir_offset + len + 1);
 	de = directory_entry_from_ondisk(disk_de, name, len);
@@ -1675,25 +1686,19 @@ static struct directory_entry *read_directories_v5(unsigned long *dir_offset,
 	 * of the stuct doesn't work, because there may be padding
 	 * bytes for the struct)
 	 */
-	data_len = len + 1
-		+ sizeof(disk_de->flags)
-		+ sizeof(disk_de->foffset)
-		+ sizeof(disk_de->cr)
-		+ sizeof(disk_de->ncr)
-		+ sizeof(disk_de->nsubtrees)
-		+ sizeof(disk_de->nfiles)
-		+ sizeof(disk_de->nentries)
-		+ sizeof(disk_de->sha1);
+	data_len = len + 1 + ondisk_directory_size;
 
 	filecrc = mmap + *dir_offset + data_len;
 	if (!check_crc32(0, mmap + *dir_offset, data_len, ntoh_l(*filecrc)))
 		goto unmap;
 
+	*dir_table_offset += 4;
 	*dir_offset += data_len + 4; /* crc code */
 
 	current = de;
 	for (i = 0; i < de->de_nsubtrees; i++) {
-		current->next = read_directories_v5(dir_offset, mmap, mmap_size);
+		current->next = read_directories_v5(dir_offset, dir_table_offset,
+						mmap, mmap_size);
 		while (current->next)
 			current = current->next;
 	}
@@ -1981,10 +1986,11 @@ unmap:
 
 void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
 {
-	unsigned long dir_offset, entry_offset;
+	unsigned long entry_offset;
+	unsigned int dir_offset, dir_table_offset;
 	struct cache_version_header *hdr;
 	struct cache_header_v5 *hdr_v5;
-	struct directory_entry *directory_entries, *de;
+	struct directory_entry *root_directory, *de;
 	int nr;
 	unsigned int foffsetblock;
 
@@ -1997,18 +2003,19 @@ void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
 	istate->initialized = 1;
 
 	/* Skip size of the header + crc sum + size of offsets */
-	dir_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4 + ntohl(hdr_v5->hdr_ndir) * 4;
-	directory_entries = read_directories_v5(&dir_offset, mmap, mmap_size);
+	dir_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4 + (ntohl(hdr_v5->hdr_ndir) + 1) * 4;
+	dir_table_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4;
+	root_directory = read_directories_v5(&dir_offset, &dir_table_offset, mmap, mmap_size);
 
 	entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
 
 	nr = 0;
 	foffsetblock = dir_offset;
-	de = directory_entries;
+	de = root_directory;
 	while (de)
 		de = read_entries_v5(istate, de, &entry_offset,
 				mmap, mmap_size, &nr, &foffsetblock);
-	istate->cache_tree = cache_tree_convert_v5(directory_entries);
+	istate->cache_tree = cache_tree_convert_v5(root_directory);
 }
 
 /* remember to discard_cache() before reading a different cache! */
@@ -2805,9 +2812,17 @@ static int write_directories_v5(struct directory_entry *de, int fd, int conflict
 			pathlen = 0;
 		else
 			pathlen = current->de_pathlen + 1;
-		current_offset += pathlen + 1 + ondisk_size;
+		current_offset += pathlen + 1 + ondisk_size + 4;
 		current = current->next;
 	}
+	/*
+	 * Write one more offset, which points to the end of the entries,
+	 * because we use it for calculating the dir length, instead of
+	 * using strlen.
+	 */
+	offset_write = htonl(current_offset);
+	if (ce_write_v5(NULL, fd, &offset_write, 4) < 0)
+		return -1;
 	current = de;
 	while (current) {
 		crc = 0;
@@ -3010,7 +3025,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 		+ sizeof(ondisk->nentries)
 		+ sizeof(ondisk->sha1);
 	hdr_v5.hdr_fblockoffset = htonl(sizeof(hdr) + sizeof(hdr_v5) + 4
-		+ ndir * 4
+		+ (ndir + 1) * 4
 		+ total_dir_len
 		+ ndir * (ondisk_directory_size + 4)
 		+ (non_conflicted + 1) * 4);
@@ -3025,7 +3040,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 		return -1;
 
 	conflict_offset = sizeof(hdr) + sizeof(hdr_v5) + 4
-		+ ndir * 4
+		+ (ndir + 1) * 4
 		+ total_dir_len
 		+ ndir * (ondisk_directory_size + 4)
 		+ (non_conflicted + 1) * 4
