@@ -50,4 +50,21 @@ test_expect_success 'rebase ignores empty commit' '
 	test $(git log --format=%s C..) = "D"
 '
 
+test_expect_success 'rebase --onto does not re-apply patches in $onto' '
+	git checkout C &&
+	test_commit C2 C.t &&
+	git checkout -B my-topic-branch master &&
+	test_commit E &&
+	git rebase --onto C2 A2 &&
+	test "$(git log --format=%s C2..)" = E
+'
+
+test_expect_success 'rebase --onto does not lose patches in $upstream' '
+	git rebase --onto A2 E &&
+	test "$(git log --format=%s A2..)" = "E
+C2
+C
+B"
+'
+
 test_done
