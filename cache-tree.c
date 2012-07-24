@@ -626,6 +626,11 @@ static void convert_one_to_ondisk_v5(struct hash_table *table, struct cache_tree
 		search = search->next_hash;
 	if (!search)
 		return;
+	/*
+	 * The number of subtrees is already calculated by
+	 * compile_directory_data, therefore we only need to
+	 * add the entry_count
+	 */
 	search->de_nentries = it->entry_count;
 	if (0 <= it->entry_count)
 		hashcpy(search->sha1, it->sha1);
