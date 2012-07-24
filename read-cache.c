@@ -1825,7 +1825,7 @@ static void entry_queue_push(struct entry_queue **head,
 	*tail = eq;
 }
 
-static void cache_entry_push(struct cache_entry **head,
+static void ce_queue_push(struct cache_entry **head,
 			     struct cache_entry **tail,
 			     struct cache_entry *ce)
 {
@@ -2706,7 +2706,7 @@ static struct directory_entry *compile_directory_data(struct index_state *istate
 			*total_file_len += ce_namelen(cache[i]) + 1;
 			if (search->de_pathlen)
 				*total_file_len -= search->de_pathlen + 1;
-			cache_entry_push(&(search->ce), &(search->ce_last), cache[i]);
+			ce_queue_push(&(search->ce), &(search->ce_last), cache[i]);
 		}
 		if (ce_stage(cache[i]) > 0 && new_entry) {
 
