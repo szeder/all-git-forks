@@ -1854,6 +1854,19 @@ static void conflict_entry_push(struct directory_entry *de,
 	de->conflict_last = conflict_entry;
 }
 
+static struct cache_entry *entry_queue_pop(struct entry_queue **queue)
+{
+	struct entry_queue *to_free;
+	struct cache_entry *ce;
+
+	to_free = *queue;
+	ce = to_free->ce;
+	*queue = (*queue)->next;
+	free(to_free);
+	return ce;
+}
+
+
 static struct directory_entry *read_entries_v5(struct index_state *istate,
 					struct directory_entry *de,
 					unsigned long *entry_offset,
@@ -1864,12 +1877,12 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 {
 	struct entry_queue *queue = NULL, *current = NULL;
 	struct conflict_entry *conflict_queue, *conflict_current;
+	struct cache_entry *ce;
 	int i;
 
 	conflict_queue = read_conflicts_v5(de, mmap, mmap_size);
 	resolve_undo_convert_v5(istate, conflict_queue);
 	for (i = 0; i < de->de_nfiles; i++) {
-		struct cache_entry *ce;
 		ce = read_entry_v5(de,
 				entry_offset,
 				mmap,
@@ -1915,11 +1928,9 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					nr,
 					foffsetblock);
 		} else {
-			set_index_entry(istate, *nr, queue->ce);
+			ce = entry_queue_pop(&queue);
+			set_index_entry(istate, *nr, ce);
 			(*nr)++;
-			current = queue;
-			queue = queue->next;
-			free(current);
 		}
 	}
 
