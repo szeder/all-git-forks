@@ -1713,12 +1713,14 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 	int len;
 	char *name;
 	uint32_t foffsetblockcrc;
-	uint32_t *filecrc;
+	uint32_t *filecrc, *beginning, *end;
 	struct cache_entry *ce;
 	struct ondisk_cache_entry_v5 *disk_ce;
 
 	name = (char *)mmap + *entry_offset;
-	len = strlen(name);
+	beginning = mmap + *foffsetblock;
+	end = mmap + *foffsetblock + 4;
+	len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
 	disk_ce = (struct ondisk_cache_entry_v5 *)
 			((char *)mmap + *entry_offset + len + 1);
 	ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
@@ -2868,6 +2870,15 @@ static int write_entries_v5(struct index_state *istate,
 		}
 		current = current->next;
 	}
+	/*
+	 * Write one more offset, which points to the end of the entries,
+	 * because we use it for calculating the file length, instead of
+	 * using strlen.
+	 */
+	offset_write = htonl(offset);
+	if (ce_write_v5(NULL, fd, &offset_write, 4) < 0)
+		return -1;
+
 	offset = 0;
 	current = de;
 	while (current) {
@@ -3002,7 +3013,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 		+ ndir * 4
 		+ total_dir_len
 		+ ndir * (ondisk_directory_size + 4)
-		+ non_conflicted * 4);
+		+ (non_conflicted + 1) * 4);
 
 	crc = 0;
 	if (ce_write_v5(&crc, newfd, &hdr, sizeof(hdr)) < 0)
@@ -3017,7 +3028,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 		+ ndir * 4
 		+ total_dir_len
 		+ ndir * (ondisk_directory_size + 4)
-		+ non_conflicted * 4
+		+ (non_conflicted + 1) * 4
 		+ total_file_len
 		+ non_conflicted * (sizeof(struct ondisk_cache_entry_v5) + 4);
 	if (write_directories_v5(de, newfd, conflict_offset) < 0)
