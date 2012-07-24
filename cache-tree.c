@@ -564,17 +564,14 @@ struct cache_tree *convert_one(struct directory_queue *queue, int dirnr)
 	return NULL;
 }
 
-static int compare_cache_tree_elements(const void *e1, const void *e2)
+static int compare_cache_tree_elements(const void *a, const void *b)
 {
-	if (((struct directory_queue *)e1)->de->de_pathlen <
-	    ((struct directory_queue *)e2)->de->de_pathlen)
-		return -1;
-	if (((struct directory_queue *)e1)->de->de_pathlen >
-	    ((struct directory_queue *)e2)->de->de_pathlen)
-		return 1;
-	return strcmp(((struct directory_queue *)e1)->de->pathname,
-		      ((struct directory_queue *)e2)->de->pathname);
+	const struct directory_entry *de1, *de2;
 
+	de1 = ((const struct directory_queue *)a)->de;
+	de2 = ((const struct directory_queue *)b)->de;
+	return subtree_name_cmp(de1->pathname, de1->de_pathlen,
+				de2->pathname, de2->de_pathlen);
 }
 
 static struct directory_entry *sort_directories(struct directory_entry *de,
