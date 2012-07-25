@@ -1347,11 +1347,6 @@ struct ondisk_directory_entry {
 	unsigned short flags;
 };
 
-struct entry_queue {
-	struct entry_queue *next;
-	struct cache_entry *ce;
-};
-
 /* These are only used for v3 or lower */
 #define align_flex_name(STRUCT,len) ((offsetof(struct STRUCT,name) + (len) + 8) & ~7)
 #define ondisk_cache_entry_size(len) align_flex_name(ondisk_cache_entry,len)
@@ -1805,26 +1800,6 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 	return conflict_entry;
 }
 
-static void entry_queue_push(struct entry_queue **head,
-			     struct entry_queue **tail,
-			     struct cache_entry *ce)
-{
-	struct entry_queue *eq;
-
-	if (!*head) {
-		*head = *tail = xmalloc(sizeof(struct entry_queue));
-		(*tail)->ce = ce;
-		(*tail)->next = NULL;
-		return;
-	}
-
-	eq = xmalloc(sizeof(struct entry_queue));
-	(*tail)->next = eq;
-	eq->ce = ce;
-	eq->next = NULL;
-	*tail = eq;
-}
-
 static void ce_queue_push(struct cache_entry **head,
 			     struct cache_entry **tail,
 			     struct cache_entry *ce)
@@ -1854,15 +1829,12 @@ static void conflict_entry_push(struct directory_entry *de,
 	de->conflict_last = conflict_entry;
 }
 
-static struct cache_entry *entry_queue_pop(struct entry_queue **queue)
+static struct cache_entry *ce_queue_pop(struct cache_entry **head)
 {
-	struct entry_queue *to_free;
 	struct cache_entry *ce;
 
-	to_free = *queue;
-	ce = to_free->ce;
-	*queue = (*queue)->next;
-	free(to_free);
+	ce = *head;
+	*head = (*head)->next;
 	return ce;
 }
 
@@ -1875,7 +1847,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					int *nr,
 					unsigned int *foffsetblock)
 {
-	struct entry_queue *queue = NULL, *current = NULL;
+	struct cache_entry *head = NULL, *tail = NULL;
 	struct conflict_entry *conflict_queue, *conflict_current;
 	struct cache_entry *ce;
 	int i;
@@ -1888,7 +1860,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 				mmap,
 				mmap_size,
 				foffsetblock);
-		entry_queue_push(&queue, &current, ce);
+		ce_queue_push(&head, &tail, ce);
 		*foffsetblock += 4;
 
 		/* Add the conflicted entries at the end of the index file
@@ -1904,7 +1876,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 				ce = convert_conflict_part(cp,
 						conflict_queue->name,
 						conflict_queue->namelen);
-				entry_queue_push(&queue, &current, ce);
+				ce_queue_push(&head, &tail, ce);
 				current_cp = cp;
 				cp = cp->next;
 				free(current_cp);
@@ -1917,9 +1889,9 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 
 	de = de->next;
 
-	while (queue) {
+	while (head) {
 		if (de != NULL
-		    && strcmp(queue->ce->name, de->pathname) > 0) {
+		    && strcmp(head->name, de->pathname) > 0) {
 			de = read_entries_v5(istate,
 					de,
 					entry_offset,
@@ -1928,7 +1900,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					nr,
 					foffsetblock);
 		} else {
-			ce = entry_queue_pop(&queue);
+			ce = ce_queue_pop(&head);
 			set_index_entry(istate, *nr, ce);
 			(*nr)++;
 		}

@@ -128,6 +128,15 @@ struct cache_time {
 	unsigned int nsec;
 };
 
+/*
+ * The *next pointer is used in read_entries_v5 for holding
+ * all the elements of a directory, and points to the next
+ * cache_entry in a directory.
+ *
+ * It is reset by the add_name_hash call in set_index_entry
+ * to set it to point to the next cache_entry in the
+ * correct in-memory format ordering.
+ */
 struct cache_entry {
 	struct cache_time ce_ctime;
 	struct cache_time ce_mtime;
