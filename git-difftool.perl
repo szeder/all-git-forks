@@ -18,7 +18,7 @@ use File::Copy;
 use File::Compare;
 use File::Find;
 use File::stat;
-use File::Path qw(mkpath);
+use File::Path qw(mkpath rmtree);
 use File::Temp qw(tempdir);
 use Getopt::Long qw(:config pass_through);
 use Git;
@@ -119,7 +119,7 @@ sub setup_dir_diff
 	exit(0) if (length($diffrtn) == 0);
 
 	# Setup temp directories
-	my $tmpdir = tempdir('git-difftool.XXXXX', CLEANUP => 1, TMPDIR => 1);
+	my $tmpdir = tempdir('git-difftool.XXXXX', CLEANUP => 0, TMPDIR => 1);
 	my $ldir = "$tmpdir/left";
 	my $rdir = "$tmpdir/right";
 	mkpath($ldir) or die $!;
@@ -257,7 +257,7 @@ sub setup_dir_diff
 		}
 	}
 
-	return ($ldir, $rdir, @working_tree);
+	return ($ldir, $rdir, $tmpdir, @working_tree);
 }
 
 sub write_to_file
@@ -349,20 +349,23 @@ sub main
 sub dir_diff
 {
 	my ($extcmd, $symlinks) = @_;
-
 	my $rc;
+	my $error = 0;
 	my $repo = Git->repository();
-
 	my $workdir = find_worktree($repo);
-	my ($a, $b, @worktree) = setup_dir_diff($repo, $workdir, $symlinks);
+	my ($a, $b, $tmpdir, @worktree) =
+		setup_dir_diff($repo, $workdir, $symlinks);
+
 	if (defined($extcmd)) {
 		$rc = system($extcmd, $a, $b);
 	} else {
 		$ENV{GIT_DIFFTOOL_DIRDIFF} = 'true';
 		$rc = system('git', 'difftool--helper', $a, $b);
 	}
-
-	exit($rc | ($rc >> 8)) if ($rc != 0);
+	if ($rc != 0) {
+		dir_diff_tmpdir_warning($tmpdir);
+		exit($rc | ($rc >> 8));
+	}
 
 	# If the diff including working copy files and those
 	# files were modified during the diff, then the changes
@@ -380,13 +383,26 @@ sub dir_diff
 			my $errmsg = "warning: Could not compare ";
 			$errmsg += "'$b/$file' with '$workdir/$file'\n";
 			warn $errmsg;
+			$error = 1;
 		} elsif ($diff == 1) {
 			copy("$b/$file", "$workdir/$file") or die $!;
 			my $mode = stat("$b/$file")->mode;
 			chmod($mode, "$workdir/$file") or die $!;
 		}
 	}
-	exit(0);
+	if ($error) {
+		dir_diff_tmpdir_warning($tmpdir);
+	} else {
+		rmtree($tmpdir);
+	}
+	exit($error);
+}
+
+sub dir_diff_tmpdir_warning
+{
+	my ($tmpdir) = @_;
+	warn "warning: Temporary files exist in '$tmpdir'.\n";
+	warn "warning: You may want to cleanup or recover these.\n";
 }
 
 sub file_diff
