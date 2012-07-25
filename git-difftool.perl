@@ -291,7 +291,8 @@ sub main
 		gui => undef,
 		help => undef,
 		prompt => undef,
-		symlinks => $^O ne 'MSWin32' && $^O ne 'msys',
+		symlinks => $^O ne 'cygwin' &&
+				$^O ne 'MSWin32' && $^O ne 'msys',
 		tool_help => undef,
 	);
 	GetOptions('g|gui!' => \$opts{gui},
