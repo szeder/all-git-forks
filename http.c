@@ -38,6 +38,7 @@ static const char *ssl_key;
 static const char *ssl_capath;
 #endif
 static const char *ssl_cainfo;
+static long ssl_version = -1;
 static long curl_low_speed_limit = -1;
 static long curl_low_speed_time = -1;
 static int curl_ftp_no_epsv;
@@ -139,10 +140,28 @@ static void process_curl_messages(void)
 }
 #endif
 
+static int int2enum(long raw)
+{
+	switch (raw) {
+	case 1:
+		return CURL_SSLVERSION_TLSv1;
+	case 2:
+		return CURL_SSLVERSION_SSLv2;
+	case 3:
+		return CURL_SSLVERSION_SSLv3;
+	default:
+		return CURL_SSLVERSION_DEFAULT;
+	}
+}
+
 static int http_options(const char *var, const char *value, void *cb)
 {
 	if (!strcmp("http.sslverify", var)) {
 		curl_ssl_verify = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp("http.sslversion", var)) {
+		ssl_version = int2enum(git_config_int(var, value));
 		return 0;
 	}
 	if (!strcmp("http.sslcert", var))
@@ -266,6 +285,8 @@ static CURL *get_curl_handle(void)
 	if (http_proactive_auth)
 		init_curl_http_auth(result);
 
+	if (ssl_version != -1)
+		curl_easy_setopt(result, CURLOPT_SSLVERSION, ssl_version);
 	if (ssl_cert != NULL)
 		curl_easy_setopt(result, CURLOPT_SSLCERT, ssl_cert);
 	if (has_cert_password())
