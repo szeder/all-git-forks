@@ -218,12 +218,12 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 	if (!resolve_undo)
 		return;
 	for_each_string_list_item(item, resolve_undo) {
-		struct conflict_entry *ce;
+		struct conflict_entry *conflict_entry;
 		struct resolve_undo_info *ui = item->util;
 		char *super;
 		int i, dir_len;
 		uint32_t crc;
-		struct directory_entry *found, *current, *x;
+		struct directory_entry *found, *current, *new_tree;
 
 		if (!ui)
 			continue;
@@ -236,7 +236,7 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 		crc = crc32(0, (Bytef*)super, dir_len);
 		found = lookup_hash(crc, table);
 		current = NULL;
-		x = NULL;
+		new_tree = NULL;
 		
 		while (!found) {
 			struct directory_entry *new;
@@ -247,8 +247,8 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 			else
 				new->de_nsubtrees = 0;
 			insert_directory_entry(new, table, total_dir_len, ndir, crc);
-			new->next = x;
-			x = new;
+			new->next = new_tree;
+			new_tree = new;
 			super = super_directory(super);
 			if (!super)
 				dir_len = 0;
@@ -263,41 +263,35 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 		if (search && !current)
 			current = search;
 		if (!search && !current)
-			current = x;
-		if (!super && x) {
-			x->next = de->next;
-			de->next = x;
+			current = new_tree;
+		if (!super && new_tree) {
+			new_tree->next = de->next;
+			de->next = new_tree;
 			de->de_nsubtrees++;
+		} else if (new_tree) {
+			struct directory_entry *temp;
+			search = de->next;
+			while (strcmp(super, search->pathname))
+				search = search->next;
+			temp = new_tree;
+			while (temp->next)
+				temp = temp->next;
+			temp->next = search->next;
+			search->next = new_tree;
 		}
-		/* else { */
-			/* super = super_directory(super); */
-			/* crc = crc32(0, (Bytef*)super, dir_len); */
-			/* if (x) { */
-			/* 	found = lookup_hash(crc, table); */
-			/* 	search = found; */
-			/* 	while (search->next_hash && strcmp(super, search->pathname) != 0) */
-			/* 		search = search->next_hash; */
-			/* 	if (search) { */
-			/* 		x->next = search->next; */
-			/* 		search->next = x; */
-			/* 		search->de_nsubtrees++; */
-			/* 	} */
-			/* } */
-		/* } */
 
-
-		ce = xmalloc(conflict_entry_size(strlen(item->string)));
-		ce->entries = NULL;
-		ce->nfileconflicts = 0;
-		ce->namelen = strlen(item->string);
-		memcpy(ce->name, item->string, ce->namelen);
-		ce->name[ce->namelen] = '\0';
-		ce->pathlen = current->de_pathlen;
-		if (ce->pathlen != 0)
-			ce->pathlen++;
+		conflict_entry = xmalloc(conflict_entry_size(strlen(item->string)));
+		conflict_entry->entries = NULL;
+		conflict_entry->nfileconflicts = 0;
+		conflict_entry->namelen = strlen(item->string);
+		memcpy(conflict_entry->name, item->string, conflict_entry->namelen);
+		conflict_entry->name[conflict_entry->namelen] = '\0';
+		conflict_entry->pathlen = current->de_pathlen;
+		if (conflict_entry->pathlen != 0)
+			conflict_entry->pathlen++;
 		current->de_ncr++;
-		current->conflict_size += ce->namelen - ce->pathlen + 1 + 8;
-		ce->next = NULL;
+		current->conflict_size += conflict_entry->namelen - conflict_entry->pathlen + 1 + 8;
+		conflict_entry->next = NULL;
 		for (i = 0; i < 3; i++) {
 			if (ui->mode[i]) {
 				struct conflict_part *cp, *cs;
@@ -308,11 +302,11 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 				cp->next = NULL;
 				hashcpy(cp->sha1, ui->sha1[i]);
 				current->conflict_size += sizeof(struct ondisk_conflict_part);
-				ce->nfileconflicts++;
-				if (!ce->entries) {
-					ce->entries = cp;
+				conflict_entry->nfileconflicts++;
+				if (!conflict_entry->entries) {
+					conflict_entry->entries = cp;
 				} else {
-					cs = ce->entries;
+					cs = conflict_entry->entries;
 					while (cs->next)
 						cs = cs->next;
 					cs->next = cp;
@@ -320,11 +314,11 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 			}
 		}
 		if (current->conflict == NULL) {
-			current->conflict = ce;
+			current->conflict = conflict_entry;
 			current->conflict_last = current->conflict;
 			current->conflict_last->next = NULL;
 		} else {
-			current->conflict_last->next = ce;
+			current->conflict_last->next = conflict_entry;
 			current->conflict_last = current->conflict_last->next;
 			current->conflict_last->next = NULL;
 		}
