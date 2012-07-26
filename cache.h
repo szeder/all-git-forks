@@ -1261,6 +1261,7 @@ extern char *super_directory(const char *filename);
 extern void insert_directory_entry(struct directory_entry *, struct hash_table *, int *, unsigned int *, uint32_t);
 extern void add_conflict_to_directory_entry(struct directory_entry *, struct conflict_entry *);
 extern void add_part_to_conflict_entry(struct directory_entry *, struct conflict_entry *, struct conflict_part *);
+extern struct conflict_entry *create_new_conflict(char *, int, int);
 
 /* pager.c */
 extern void setup_pager(void);

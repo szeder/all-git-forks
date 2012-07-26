@@ -207,24 +207,6 @@ void resolve_undo_convert_v5(struct index_state *istate,
 	}
 }
 
-static struct conflict_entry *create_conflict_entry(char *name, int pathlen)
-{
-	int namelen = strlen(name);
-	struct conflict_entry *conflict_entry;
-
-	if (pathlen)
-		pathlen++;
-	conflict_entry = xmalloc(conflict_entry_size(namelen));
-	conflict_entry->entries = NULL;
-	conflict_entry->nfileconflicts = 0;
-	conflict_entry->namelen = namelen;
-	memcpy(conflict_entry->name, name, namelen);
-	conflict_entry->name[namelen] = '\0';
-	conflict_entry->pathlen = pathlen;
-
-	return conflict_entry;
-}
-
 void resolve_undo_to_ondisk_v5(struct hash_table *table,
 				struct string_list *resolve_undo,
 				unsigned int *ndir, int *total_dir_len,
@@ -239,7 +221,7 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 		struct conflict_entry *conflict_entry;
 		struct resolve_undo_info *ui = item->util;
 		char *super;
-		int i, dir_len;
+		int i, dir_len, len;
 		uint32_t crc;
 		struct directory_entry *found, *current, *new_tree;
 
@@ -298,7 +280,8 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 			search->next = new_tree;
 		}
 
-		conflict_entry = create_conflict_entry(item->string, current->de_pathlen);
+		len = strlen(item->string);
+		conflict_entry = create_new_conflict(item->string, len, current->de_pathlen);
 		add_conflict_to_directory_entry(current, conflict_entry);
 		for (i = 0; i < 3; i++) {
 			if (ui->mode[i]) {
