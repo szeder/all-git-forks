@@ -26,6 +26,7 @@ instdir_SQ = $(subst ','\'',$(prefix)/lib)
 
 modules += Git
 modules += Git/I18N
+modules += Git/IndexInfo
 modules += Git/SVN
 modules += Git/SVN/Memoize/YAML
 modules += Git/SVN/Fetcher
