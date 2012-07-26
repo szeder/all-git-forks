@@ -207,6 +207,24 @@ void resolve_undo_convert_v5(struct index_state *istate,
 	}
 }
 
+static struct conflict_entry *create_conflict_entry(char *name, int pathlen)
+{
+	int namelen = strlen(name);
+	struct conflict_entry *conflict_entry;
+
+	if (pathlen)
+		pathlen++;
+	conflict_entry = xmalloc(conflict_entry_size(namelen));
+	conflict_entry->entries = NULL;
+	conflict_entry->nfileconflicts = 0;
+	conflict_entry->namelen = namelen;
+	memcpy(conflict_entry->name, name, namelen);
+	conflict_entry->name[namelen] = '\0';
+	conflict_entry->pathlen = pathlen;
+
+	return conflict_entry;
+}
+
 void resolve_undo_to_ondisk_v5(struct hash_table *table,
 				struct string_list *resolve_undo,
 				unsigned int *ndir, int *total_dir_len,
@@ -280,47 +298,19 @@ void resolve_undo_to_ondisk_v5(struct hash_table *table,
 			search->next = new_tree;
 		}
 
-		conflict_entry = xmalloc(conflict_entry_size(strlen(item->string)));
-		conflict_entry->entries = NULL;
-		conflict_entry->nfileconflicts = 0;
-		conflict_entry->namelen = strlen(item->string);
-		memcpy(conflict_entry->name, item->string, conflict_entry->namelen);
-		conflict_entry->name[conflict_entry->namelen] = '\0';
-		conflict_entry->pathlen = current->de_pathlen;
-		if (conflict_entry->pathlen != 0)
-			conflict_entry->pathlen++;
-		current->de_ncr++;
-		current->conflict_size += conflict_entry->namelen - conflict_entry->pathlen + 1 + 8;
-		conflict_entry->next = NULL;
+		conflict_entry = create_conflict_entry(item->string, current->de_pathlen);
+		add_conflict_to_directory_entry(current, conflict_entry);
 		for (i = 0; i < 3; i++) {
 			if (ui->mode[i]) {
-				struct conflict_part *cp, *cs;
+				struct conflict_part *cp;
 
 				cp = xmalloc(sizeof(struct conflict_part));
 				cp->flags = (i + 1) << CONFLICT_STAGESHIFT;
 				cp->entry_mode = ui->mode[i];
 				cp->next = NULL;
 				hashcpy(cp->sha1, ui->sha1[i]);
-				current->conflict_size += sizeof(struct ondisk_conflict_part);
-				conflict_entry->nfileconflicts++;
-				if (!conflict_entry->entries) {
-					conflict_entry->entries = cp;
-				} else {
-					cs = conflict_entry->entries;
-					while (cs->next)
-						cs = cs->next;
-					cs->next = cp;
-				}
+				add_part_to_conflict_entry(current, conflict_entry, cp);
 			}
-		}
-		if (current->conflict == NULL) {
-			current->conflict = conflict_entry;
-			current->conflict_last = current->conflict;
-			current->conflict_last->next = NULL;
-		} else {
-			current->conflict_last->next = conflict_entry;
-			current->conflict_last = current->conflict_last->next;
-			current->conflict_last->next = NULL;
 		}
 	}
 }

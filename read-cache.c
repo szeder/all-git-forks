@@ -2564,48 +2564,51 @@ static void conflict_to_ondisk(struct conflict_part *cp,
 	hashcpy(ondisk->sha1, cp->sha1);
 }
 
+void add_conflict_to_directory_entry(struct directory_entry *de,
+					struct conflict_entry *conflict_entry)
+{
+	de->de_ncr++;
+	de->conflict_size += conflict_entry->namelen + 1 + 8 - conflict_entry->pathlen;
+	conflict_entry_push(de, conflict_entry);
+}
+
 static struct conflict_entry *create_conflict_entry(struct cache_entry *ce,
-						struct directory_entry *de)
+						int pathlen)
 {
 	struct conflict_entry *conflict_entry;
-	struct conflict_part *conflict_part;
-	int pathlen;
 
-	de->de_ncr++;
-	pathlen = de->de_pathlen;
-	if (de->de_pathlen != 0)
+	if (pathlen != 0)
 		pathlen++;
-	de->conflict_size += ce_namelen(ce) + 1 + 8 - pathlen;
-	de->conflict_size += sizeof(struct ondisk_conflict_part);
 
 	conflict_entry = xmalloc(conflict_entry_size(ce_namelen(ce)));
-	conflict_entry->nfileconflicts = 1;
+	conflict_entry->nfileconflicts = 0;
 	conflict_entry->namelen = ce_namelen(ce);
 	memcpy(conflict_entry->name, ce->name, ce_namelen(ce));
 	conflict_entry->name[ce_namelen(ce)] = '\0';
 	conflict_entry->pathlen = pathlen;
-	conflict_part = conflict_part_from_inmemory(ce);
-	conflict_entry->entries = conflict_part;
+	conflict_entry->entries = NULL;
 	conflict_entry->next = NULL;
 
-	conflict_entry_push(de, conflict_entry);
 	return conflict_entry;
 }
 
-static void add_part_to_conflict_entry(struct directory_entry *de,
+void add_part_to_conflict_entry(struct directory_entry *de,
 					struct conflict_entry *entry,
-					struct cache_entry *ce)
+					struct conflict_part *conflict_part)
 {
 
-	struct conflict_part *conflict_search, *conflict_part;
+	struct conflict_part *conflict_search;
 
-	conflict_part = conflict_part_from_inmemory(ce);
-	conflict_search = de->conflict_last->entries;
 	de->conflict_last->nfileconflicts++;
-	while (conflict_search->next)
-		conflict_search = conflict_search->next;
-	conflict_search->next = conflict_part;
 	de->conflict_size += sizeof(struct ondisk_conflict_part);
+	if (!entry->entries)
+		entry->entries = conflict_part;
+	else {
+		conflict_search = de->conflict_last->entries;
+		while (conflict_search->next)
+			conflict_search = conflict_search->next;
+		conflict_search->next = conflict_part;
+	}
 }
 
 void insert_directory_entry(struct directory_entry *de,
@@ -2691,11 +2694,14 @@ static struct directory_entry *compile_directory_data(struct index_state *istate
 				*total_file_len -= search->de_pathlen + 1;
 			ce_queue_push(&(search->ce), &(search->ce_last), cache[i]);
 		}
-		if (ce_stage(cache[i]) > 0 && new_entry) {
-
-			conflict_entry = create_conflict_entry(cache[i], search);
-		} else if (ce_stage(cache[i]) > 0) {
-			add_part_to_conflict_entry(search, conflict_entry, cache[i]);
+		if (ce_stage(cache[i]) > 0) {
+			struct conflict_part *conflict_part;
+			if (new_entry) {
+				conflict_entry = create_conflict_entry(cache[i], search->de_pathlen);
+				add_conflict_to_directory_entry(search, conflict_entry);
+			}
+			conflict_part = conflict_part_from_inmemory(cache[i]);
+			add_part_to_conflict_entry(search, conflict_entry, conflict_part);
 		}
 		if (dir && (!found)) {
 			struct directory_entry *no_subtrees;
