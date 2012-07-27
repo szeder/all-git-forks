@@ -27,6 +27,8 @@ use Git::SVN::Utils qw(
 	fatal
 	can_compress
 	join_paths
+	canonicalize_path
+	canonicalize_url
 );
 
 my $can_use_yaml;
@@ -2305,7 +2307,7 @@ sub path {
 
     if( @_ ) {
         my $path = shift;
-        $self->{path} = $path;
+        $self->{path} = canonicalize_path($path);
         return;
     }
 
@@ -2318,7 +2320,7 @@ sub url {
 
     if( @_ ) {
         my $url = shift;
-        $self->{url} = $url;
+        $self->{url} = canonicalize_url($url);
         return;
     }
 
