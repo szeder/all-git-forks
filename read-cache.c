@@ -237,27 +237,26 @@ static int ce_match_stat_basic_v2(struct cache_entry *ce,
 
 static int match_stat_crc(struct stat *st, uint32_t expected_crc)
 {
-	uint32_t stat_crc = 0;
-	uint32_t stat;
+	uint32_t data, stat_crc = 0;
 	unsigned int ctimens = 0;
 
-	stat = htonl(st->st_ctime);
-	stat_crc = crc32(0, (Bytef*)&stat, 4);
+	data = htonl(st->st_ctime);
+	stat_crc = crc32(0, (Bytef*)&data, 4);
 #ifdef USE_NSEC
 	ctimens = ST_MTIME_NSEC(*st);
 #endif
-	stat = htonl(ctimens);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
-	stat = htonl(st->st_ino);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
-	stat = htonl(st->st_size);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
-	stat = htonl(st->st_dev);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
-	stat = htonl(st->st_uid);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
-	stat = htonl(st->st_gid);
-	stat_crc = crc32(stat_crc, (Bytef*)&stat, 4);
+	data = htonl(ctimens);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
+	data = htonl(st->st_ino);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
+	data = htonl(st->st_size);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
+	data = htonl(st->st_dev);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
+	data = htonl(st->st_uid);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
+	data = htonl(st->st_gid);
+	stat_crc = crc32(stat_crc, (Bytef*)&data, 4);
 
 	return stat_crc == expected_crc;
 }
@@ -1495,7 +1494,7 @@ static struct cache_entry *cache_entry_from_ondisk_v5(struct ondisk_cache_entry_
 						   size_t prefix_len)
 {
 	struct cache_entry *ce = xmalloc(cache_entry_size(len + de->de_pathlen));
-	int flags, flaglen;
+	int flags;
 
 	flags = ntoh_s(ondisk->flags);
 	ce->ce_ctime.sec  = 0;
@@ -1508,8 +1507,13 @@ static struct cache_entry *cache_entry_from_ondisk_v5(struct ondisk_cache_entry_
 	ce->ce_uid        = 0;
 	ce->ce_gid        = 0;
 	ce->ce_size       = 0;
-	ce->ce_flags      = 0;
-	ce->ce_flags     |= flags & CE_STAGEMASK;
+
+	/*
+	 * Stage and CE_VALID are in the same place
+	 * in the index-v2 and index-v5 ondisk file
+	 * format
+	 */
+	ce->ce_flags      = flags & CE_STAGEMASK;
 	ce->ce_flags     |= flags & CE_VALID;
 	if (flags & CE_INTENT_TO_ADD_V5)
 		ce->ce_flags |= CE_INTENT_TO_ADD;
@@ -1722,6 +1726,13 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 	name = (char *)mmap + *entry_offset;
 	beginning = mmap + *foffsetblock;
 	end = mmap + *foffsetblock + 4;
+	/*
+	 * Calculate length from the offsets to
+	 * save a strlen.
+	 * -5 is coming from 4 bytes for the crc
+	 * checksum and 1 byte from the NUL bit
+	 * for the termination of the name
+	 */
 	len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
 	disk_ce = (struct ondisk_cache_entry_v5 *)
 			((char *)mmap + *entry_offset + len + 1);
@@ -1778,27 +1789,25 @@ static struct cache_entry *ce_queue_pop(struct cache_entry **head)
 	return ce;
 }
 
-static struct conflict_entry *create_conflict_entry_from_ce(struct cache_entry *ce,
-								int pathlen)
+static void conflict_part_head_remove(struct conflict_part **head)
 {
-	struct conflict_entry *conflict_entry;
+	struct conflict_part *to_free;
 
-	if (pathlen != 0)
-		pathlen++;
-
-	conflict_entry = xmalloc(conflict_entry_size(ce_namelen(ce)));
-	conflict_entry->nfileconflicts = 0;
-	conflict_entry->namelen = ce_namelen(ce);
-	memcpy(conflict_entry->name, ce->name, ce_namelen(ce));
-	conflict_entry->name[ce_namelen(ce)] = '\0';
-	conflict_entry->pathlen = pathlen;
-	conflict_entry->entries = NULL;
-	conflict_entry->next = NULL;
-
-	return conflict_entry;
+	to_free = *head;
+	*head = (*head)->next;
+	free(to_free);
 }
 
-struct conflict_entry *create_new_conflict(char *name, int len , int pathlen)
+static void conflict_entry_head_remove(struct conflict_entry **head)
+{
+	struct conflict_entry *to_free;
+
+	to_free = *head;
+	*head = (*head)->next;
+	free(to_free);
+}
+
+struct conflict_entry *create_new_conflict(char *name, int len, int pathlen)
 {
 	struct conflict_entry *conflict_entry;
 
@@ -1811,8 +1820,15 @@ struct conflict_entry *create_new_conflict(char *name, int len , int pathlen)
 	memcpy(conflict_entry->name, name, len);
 	conflict_entry->name[len] = '\0';
 	conflict_entry->pathlen = pathlen;
+	conflict_entry->next = NULL;
 
 	return conflict_entry;
+}
+
+static struct conflict_entry *create_conflict_entry_from_ce(struct cache_entry *ce,
+								int pathlen)
+{
+	return create_new_conflict(ce->name, ce_namelen(ce), pathlen);
 }
 
 static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
@@ -1828,39 +1844,32 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 	head = NULL;
 	for (i = 0; i < de->de_ncr && croffset < mmap_size; i++) {
 		struct conflict_entry *conflict_new;
-		unsigned int len, *nfileconflicts;
+		unsigned int k, len, *nfileconflicts;
 		char *name;
 		void *crc_start;
-		int k;
 		uint32_t *filecrc;
 
 		crc_start = mmap + croffset;
 		name = (char *)mmap + croffset;
 		len = strlen(name);
 		croffset += len + 1;
-		nfileconflicts = mmap + croffset;
-		croffset += 4;
 
 		full_name = xmalloc(sizeof(char) * (len + de->de_pathlen));
 		memcpy(full_name, de->pathname, de->de_pathlen);
 		memcpy(full_name + de->de_pathlen, name, len);
 		conflict_new = create_new_conflict(full_name, (len + de->de_pathlen), de->de_pathlen);
-		conflict_new->nfileconflicts = ntoh_l(*nfileconflicts);
-		for (k = 0; k < conflict_new->nfileconflicts; k++) {
+		conflict_entry_push(&head, &tail, conflict_new);
+
+		nfileconflicts = mmap + croffset;
+		croffset += 4;
+		for (k = 0; k < ntoh_l(*nfileconflicts); k++) {
 			struct ondisk_conflict_part *ondisk;
-			struct conflict_part *cp, *cs;
+			struct conflict_part *cp;
 
 			ondisk = mmap + croffset;
 			cp = conflict_part_from_ondisk(ondisk);
 			cp->next = NULL;
-			if (!conflict_new->entries) {
-				conflict_new->entries = cp;
-			} else {
-				cs = conflict_new->entries;
-				while (cs->next)
-					cs = cs->next;
-				cs->next = cp;
-			}
+			add_part_to_conflict_entry(de, conflict_new, cp);
 			croffset += sizeof(struct ondisk_conflict_part);
 		}
 		filecrc = mmap + croffset;
@@ -1871,7 +1880,6 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 			goto unmap;
 		free(full_name);
 		croffset += 4;
-		conflict_entry_push(&head, &tail, conflict_new);
 	}
 	return head;
 unmap:
@@ -1906,9 +1914,10 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 		/* Add the conflicted entries at the end of the index file
 		 * to the in memory format
 		 */
-		if (conflict_queue && conflict_queue->entries &&
+		if (conflict_queue &&
 		    (conflict_queue->entries->flags & CONFLICT_CONFLICTED) != 0 &&
-		    !strcmp(conflict_queue->name, ce->name)) {
+		    !cache_name_compare(conflict_queue->name, conflict_queue->namelen,
+					ce->name, ce_namelen(ce))) {
 			struct conflict_part *cp, *current_cp;
 			cp = conflict_queue->entries;
 			cp = cp->next;
@@ -1917,13 +1926,12 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 						conflict_queue->name,
 						conflict_queue->namelen);
 				ce_queue_push(&head, &tail, ce);
-				current_cp = cp;
-				cp = cp->next;
-				free(current_cp);
+				conflict_part_head_remove(&cp);
 			}
-			conflict_current = conflict_queue;
-			conflict_queue = conflict_queue->next;
-			free(conflict_current);
+			conflict_entry_head_remove(&conflict_queue);
+			/* conflict_current = conflict_queue; */
+			/* conflict_queue = conflict_queue->next; */
+			/* free(conflict_current); */
 		}
 	}
 
@@ -2627,12 +2635,12 @@ void add_part_to_conflict_entry(struct directory_entry *de,
 
 	struct conflict_part *conflict_search;
 
-	de->conflict_last->nfileconflicts++;
+	entry->nfileconflicts++;
 	de->conflict_size += sizeof(struct ondisk_conflict_part);
 	if (!entry->entries)
 		entry->entries = conflict_part;
 	else {
-		conflict_search = de->conflict_last->entries;
+		conflict_search = entry->entries;
 		while (conflict_search->next)
 			conflict_search = conflict_search->next;
 		conflict_search->next = conflict_part;
