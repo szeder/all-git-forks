@@ -31,14 +31,14 @@ use Git::SVN::Migration;
 
 use Git::SVN::Utils qw(fatal can_compress);
 use Git qw(
-    git_cmd_try
-    command
-    command_oneline
-    command_noisy
-    command_output_pipe
-    command_close_pipe
-    command_bidi_pipe
-    command_close_bidi_pipe
+	git_cmd_try
+	command
+	command_oneline
+	command_noisy
+	command_output_pipe
+	command_close_pipe
+	command_bidi_pipe
+	command_close_bidi_pipe
 );
 
 BEGIN {
