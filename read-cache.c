@@ -1508,18 +1508,14 @@ static struct cache_entry *cache_entry_from_ondisk_v5(struct ondisk_cache_entry_
 	ce->ce_uid        = 0;
 	ce->ce_gid        = 0;
 	ce->ce_size       = 0;
-	if (de->de_pathlen + len >= CE_NAMEMASK)
-		flaglen = CE_NAMEMASK;
-	else
-		flaglen = de->de_pathlen + len;
 	ce->ce_flags      = 0;
-	ce->ce_flags     |= flaglen;
 	ce->ce_flags     |= flags & CE_STAGEMASK;
 	ce->ce_flags     |= flags & CE_VALID;
 	if (flags & CE_INTENT_TO_ADD_V5)
 		ce->ce_flags |= CE_INTENT_TO_ADD;
 	if (flags & CE_SKIP_WORKTREE_V5)
 		ce->ce_flags |= CE_SKIP_WORKTREE;
+	ce->ce_namelen    = len + de->de_pathlen;
 	ce->ce_stat_crc   = ntoh_l(ondisk->stat_crc);
 	hashcpy(ce->sha1, ondisk->sha1);
 	memcpy(ce->name, de->pathname, de->de_pathlen);
@@ -1576,12 +1572,9 @@ static struct cache_entry *convert_conflict_part(struct conflict_part *cp,
 	ce->ce_uid        = 0;
 	ce->ce_gid        = 0;
 	ce->ce_size       = 0;
-	if (len >= CE_NAMEMASK)
-		len = CE_NAMEMASK;
-	ce->ce_flags      = 0;
-	ce->ce_flags     |= len;
-	ce->ce_flags     |= conflict_stage(cp) << CE_STAGESHIFT;
+	ce->ce_flags      = conflict_stage(cp) << CE_STAGESHIFT;
 	ce->ce_stat_crc   = 0;
+	ce->ce_namelen    = len;
 	hashcpy(ce->sha1, cp->sha1);
 	memcpy(ce->name, name, len);
 	ce->name[len] = '\0';
