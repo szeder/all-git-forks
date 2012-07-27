@@ -177,6 +177,28 @@ int mingw_open (const char *filename, int oflags, ...);
 ssize_t mingw_write(int fd, const void *buf, size_t count);
 #define write mingw_write
 
+static inline int mingw_fgetc(FILE *stream)
+{
+	int ch = fgetc(stream);
+	if (ch == EOF && isatty(_fileno(stream))) {
+		/*
+		 * It is likely that Ctrl+C was hit; give the handler
+		 * a reasonable chance to run.
+		 */
+		DWORD_PTR pm, sm;
+		HANDLE hproc = GetCurrentProcess();
+		GetProcessAffinityMask(hproc, &pm, &sm);
+		/* make sure only one processor can run at the time */
+		SetProcessAffinityMask(hproc, 1);
+		SwitchToThread();
+		Sleep(200);
+		/* restore */
+		SetProcessAffinityMask(hproc, pm);
+	}
+	return ch;
+}
+#define fgetc mingw_fgetc
+
 FILE *mingw_fopen (const char *filename, const char *otype);
 #define fopen mingw_fopen
 

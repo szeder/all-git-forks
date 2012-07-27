@@ -63,6 +63,7 @@ static DWORD cmode;
 static BOOL WINAPI ctrl_c_handler(DWORD dwCtrlType)
 {
 	SetConsoleMode(hconin, cmode);
+	ExitProcess(0);
 	return FALSE;
 }
 
