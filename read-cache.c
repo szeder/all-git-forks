@@ -1929,9 +1929,6 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 				conflict_part_head_remove(&cp);
 			}
 			conflict_entry_head_remove(&conflict_queue);
-			/* conflict_current = conflict_queue; */
-			/* conflict_queue = conflict_queue->next; */
-			/* free(conflict_current); */
 		}
 	}
 
