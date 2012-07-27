@@ -86,6 +86,27 @@ sub _collapse_dotdot {
 
 
 sub canonicalize_path {
+	my $path = shift;
+
+	# The 1.7 way to do it
+	if ( defined &SVN::_Core::svn_dirent_canonicalize ) {
+		$path = _collapse_dotdot($path);
+		return SVN::_Core::svn_dirent_canonicalize($path);
+	}
+	# The 1.6 way to do it
+	elsif ( defined &SVN::_Core::svn_path_canonicalize ) {
+		$path = _collapse_dotdot($path);
+		return SVN::_Core::svn_path_canonicalize($path);
+	}
+	# No SVN API canonicalization is available, do it ourselves
+	else {
+		$path = _canonicalize_path_ourselves($path);
+		return $path;
+	}
+}
+
+
+sub _canonicalize_path_ourselves {
 	my ($path) = @_;
 	my $dot_slash_added = 0;
 	if (substr($path, 0, 1) ne "/") {
