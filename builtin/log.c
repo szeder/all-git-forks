@@ -726,10 +726,6 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids, const cha
 		die(_("revision walk setup failed"));
 
 	while ((commit = get_revision(&check_rev)) != NULL) {
-		/* ignore merges */
-		if (commit->parents && commit->parents->next)
-			continue;
-
 		add_commit_patch_id(commit, ids);
 	}
 
@@ -1509,8 +1505,6 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 
 	init_revisions(&revs, prefix);
 	revs.diff = 1;
-	revs.combine_merges = 0;
-	revs.ignore_merges = 1;
 	DIFF_OPT_SET(&revs.diffopt, RECURSIVE);
 
 	if (add_pending_commit(head, &revs, 0))
@@ -1534,10 +1528,6 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 	if (prepare_revision_walk(&revs))
 		die(_("revision walk setup failed"));
 	while ((commit = get_revision(&revs)) != NULL) {
-		/* ignore merges */
-		if (commit->parents && commit->parents->next)
-			continue;
-
 		commit_list_insert(commit, &list);
 	}
 
