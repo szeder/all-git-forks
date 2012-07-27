@@ -1896,7 +1896,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					unsigned int *foffsetblock)
 {
 	struct cache_entry *head = NULL, *tail = NULL;
-	struct conflict_entry *conflict_queue, *conflict_current;
+	struct conflict_entry *conflict_queue;
 	struct cache_entry *ce;
 	int i;
 
@@ -1918,7 +1918,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 		    (conflict_queue->entries->flags & CONFLICT_CONFLICTED) != 0 &&
 		    !cache_name_compare(conflict_queue->name, conflict_queue->namelen,
 					ce->name, ce_namelen(ce))) {
-			struct conflict_part *cp, *current_cp;
+			struct conflict_part *cp;
 			cp = conflict_queue->entries;
 			cp = cp->next;
 			while (cp) {
