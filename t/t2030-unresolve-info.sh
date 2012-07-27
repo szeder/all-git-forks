@@ -42,6 +42,19 @@ prime_resolve_undo () {
 	check_resolve_undo recorded fi/le initial:fi/le second:fi/le third:fi/le
 }
 
+prime_resolve_undo_subdir () {
+	git reset --hard &&
+	git checkout sixth^0 &&
+	test_tick &&
+	test_must_fail git merge seventh^0 &&
+	echo merge does not leave anything &&
+	check_resolve_undo empty &&
+	echo different >j/z/z/file &&
+	git add j/z/z/file &&
+	echo resolving records &&
+	check_resolve_undo recorded j/z/z/file five:j/z/z/file sixth:j/z/z/file seventh:j/z/z/file
+}
+
 test_expect_success setup '
 	mkdir fi &&
 	test_commit initial fi/le first &&
@@ -165,6 +178,35 @@ test_expect_success 'rerere and rerere forget (subdirectory)' '
 	tr "\0" "\n" <.git/MERGE_RR >actual &&
 	echo "$rerere_id	fi/le" >expect &&
 	test_cmp expect actual
+'
+
+test_expect_success 'resolve undo works in deep subdirectories setup' '
+	mkdir -p j/z/z &&
+	mkdir z &&
+	git checkout master &&
+	test_commit ninth z/file ninth &&
+	test_commit thenth j/file &&
+	test_commit five j/z/z/file fifth &&
+	git branch side2 &&
+	git branch another2 &&
+	git branch yetanother &&
+	test_commit sixth j/z/z/file sixth &&
+	git checkout side2 &&
+	test_commit seventh j/z/z/file seventh &&
+	git checkout another2 &&
+	test_commit eighth j/z/z/file eight &&
+	git checkout master
+'
+
+test_expect_success 'resolve undo works in deep subdirectories' '
+	prime_resolve_undo_subdir &&
+	test_tick &&
+	git commit -m merged2 &&
+	echo committing keeps &&
+	check_resolve_undo kept j/z/z/file five:j/z/z/file sixth:j/z/z/file seventh:j/z/z/file &&
+	git checkout sixth^0 &&
+	echo switching clears &&
+	check_resolve_undo cleared
 '
 
 test_done

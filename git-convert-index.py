@@ -175,7 +175,7 @@ def read_index_entries(r, header):
         entry = read_entry(r, header)
 
         for p in indexlib.get_sub_paths(entry.pathname):
-            paths.add(entry.pathname)
+            paths.add(p)
         files.append(entry.filename)
 
         stage = (entry.flags & 0b0011000000000000) / 0b001000000000000
@@ -187,7 +187,8 @@ def read_index_entries(r, header):
                 # Write the stage 1 entry to the main index, to avoid
                 # rewriting the whole index once the conflict is resolved
                 indexentries.append(entry)
-            conflictedentries[entry.pathname].append(entry)
+            else:
+                conflictedentries[entry.pathname].append(entry)
 
     return indexentries, conflictedentries, paths, files
 
@@ -227,7 +228,7 @@ def read_tree_extensiondata(r):
         listsize += 1
 
         if entry_count != "-1":
-            sha1 = binascii.hexlify(r.read(20))
+            sha1 = r.read(20)
             read += 20
         else:
             sha1 = "invalid"
@@ -379,12 +380,12 @@ def write_file_entry(fw, entry, offset):
 
     # Prepare flags
     flags = entry.flags & 0b1000000000000000
-    flags += (entry.flags & 0b0011000000000000) * 2
+    flags += (entry.flags & 0b0011000000000000)
 
     # calculate crc for stat data
-    stat_crc = indexlib.calculate_crc(indexlib.STAT_DATA_CRC_STRUCT.pack(offset,
-        entry.ctimesec, entry.ctimensec, entry.ino,
-        entry.filesize, entry.dev, entry.uid, entry.gid))
+    stat_crc = indexlib.calculate_crc(indexlib.STAT_DATA_CRC_STRUCT.pack(entry.ctimesec,
+        entry.ctimensec, entry.ino, entry.filesize, entry.dev, entry.uid,
+        entry.gid))
 
     stat_data = indexlib.FILE_DATA_STRUCT.pack(flags, entry.mode,
             entry.mtimesec, entry.mtimensec, stat_crc, entry.sha1)
@@ -448,7 +449,7 @@ def write_conflicted_data(fw, conflictedentries, reucdata, dirdata):
     for d in dirdata:
         for c in conflictedentries:
             if c in d:
-                todo.add(d)
+                todo.add(c)
                 break
         for r in reucdata:
             if r in d:
@@ -464,15 +465,17 @@ def write_conflicted_data(fw, conflictedentries, reucdata, dirdata):
             if dirdata[t].cr == 0:
                 dirdata[t].cr = fw.tell()
 
-            dirdata[t].ncr = 1
+            dirdata[t].ncr += 1
 
-            for e in conflictedentries[t]:
-                if e.filename == entry.pathname:
-                    conflictedentries[t].remove(e)
+            for i in xrange(len(conflictedentries[t])):
+                e = conflictedentries[t].pop()
+                if entry.pathname in e.filename:
                     entries.append(e)
+                else:
+                    conflictedentries[t].append(e)
             
             if entry.pathname == "":
-                pathname = ""
+                pathname = entry.filename + "\0"
             else:
                 pathname = entry.pathname + "/" + entry.filename + "\0"
 
@@ -480,14 +483,13 @@ def write_conflicted_data(fw, conflictedentries, reucdata, dirdata):
             crc = write_calc_crc(fw,
                     indexlib.NR_CONFLICT_STRUCT.pack(len(entries)), crc)
             conflicted = 0b1000000000000000
-            for e in entries:
+            for e in sorted(entries, key=lambda k: k.flags):
                 flags = (e.flags & 0b0011000000000000) << 1
                 flags |= conflicted
                 crc = write_calc_crc(fw, indexlib.CONFLICT_STRUCT.pack(flags,
                     e.mode, e.sha1), crc)
 
             fw.write(indexlib.CRC_STRUCT.pack(crc))
-
 
         for r in reucdata[t]:
             crc = write_calc_crc(fw, r.path + "\0")
@@ -537,7 +539,7 @@ def read_index():
             header)
 
     treeextensiondata = dict()
-    reucextensiondata = list()
+    reucextensiondata = defaultdict(list)
     ext = r.read_without_updating_sha1(4)
 
     if ext == "TREE" or ext == "REUC":
