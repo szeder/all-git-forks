@@ -1393,7 +1393,7 @@ static int verify_hdr_v2(struct cache_version_header *hdr, unsigned long size)
 
 static int verify_hdr_v5(void *mmap)
 {
-	uint32_t* filecrc;
+	uint32_t *filecrc;
 	unsigned int header_size_v5;
 	struct cache_version_header *hdr;
 	struct cache_header_v5 *hdr_v5;
@@ -1820,6 +1820,7 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 {
 	struct conflict_entry *head, *tail;
 	unsigned int croffset, i;
+	char *full_name;
 
 	croffset = de->de_cr;
 	tail = NULL;
@@ -1827,9 +1828,12 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 	for (i = 0; i < de->de_ncr && croffset < mmap_size; i++) {
 		struct conflict_entry *conflict_new;
 		unsigned int len, *nfileconflicts;
-		char *name, *full_name;
+		char *name;
+		void *crc_start;
 		int k;
+		uint32_t *filecrc;
 
+		crc_start = mmap + croffset;
 		name = (char *)mmap + croffset;
 		len = strlen(name);
 		croffset += len + 1;
@@ -1858,11 +1862,20 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 			}
 			croffset += sizeof(struct ondisk_conflict_part);
 		}
-		/* TODO: check crc */
+		filecrc = mmap + croffset;
+		if (!check_crc32(0, crc_start,
+		     len + 1 + 4 + conflict_new->nfileconflicts
+		     * sizeof(struct ondisk_conflict_part),
+		     ntoh_l(*filecrc)))
+			goto unmap;
+		free(full_name);
 		croffset += 4;
 		conflict_entry_push(&head, &tail, conflict_new);
 	}
 	return head;
+unmap:
+	munmap(mmap, mmap_size);
+	die("wrong crc for conflict: %s", full_name);
 }
 
 static struct directory_entry *read_entries_v5(struct index_state *istate,
