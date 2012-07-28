@@ -127,9 +127,8 @@ all::
 # specify your own (or DarwinPort's) include directories and
 # library directories by defining CFLAGS and LDFLAGS appropriately.
 #
-# Define BLK_SHA1 environment variable if you want the C version
-# of the SHA1 that assumes you can do unaligned 32-bit loads and
-# have a fast htonl() function.
+# Define BLK_SHA1 environment variable to make use of the bundled
+# optimized C SHA1 routine.
 #
 # Define PPC_SHA1 environment variable when running make to make use of
 # a bundled SHA1 routine optimized for PowerPC.
@@ -2159,6 +2158,18 @@ configure: configure.ac GIT-VERSION-FILE
 	autoconf -o $@ $<+ && \
 	$(RM) $<+
 
+ifdef AUTOCONFIGURED
+config.status: configure
+	$(QUIET_GEN)if test -f config.status; then \
+	  ./config.status --recheck; \
+	else \
+	  ./configure; \
+	fi
+reconfigure config.mak.autogen: config.status
+	$(QUIET_GEN)./config.status
+.PHONY: reconfigure # This is a convenience target.
+endif
+
 XDIFF_OBJS += xdiff/xdiffi.o
 XDIFF_OBJS += xdiff/xprepare.o
 XDIFF_OBJS += xdiff/xutils.o
@@ -2264,7 +2275,7 @@ $(ASM_OBJ): %.o: %.S GIT-CFLAGS $(missing_dep_dirs)
 endif
 
 %.s: %.c GIT-CFLAGS FORCE
-	$(QUIET_CC)$(CC) -S $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
+	$(QUIET_CC)$(CC) -o $@ -S $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
 
 ifdef USE_COMPUTED_HEADER_DEPENDENCIES
 # Take advantage of gcc's on-the-fly dependency generation
@@ -2743,6 +2754,9 @@ dist-doc:
 
 distclean: clean
 	$(RM) configure
+	$(RM) config.log config.status config.cache
+	$(RM) config.mak.autogen config.mak.append
+	$(RM) -r autom4te.cache
 
 profile-clean:
 	$(RM) $(addsuffix *.gcda,$(addprefix $(PROFILE_DIR)/, $(object_dirs)))
@@ -2757,8 +2771,6 @@ clean: profile-clean
 	$(RM) -r $(dep_dirs)
 	$(RM) -r po/build/
 	$(RM) *.spec *.pyc *.pyo */*.pyc */*.pyo common-cmds.h $(ETAGS_TARGET) tags cscope*
-	$(RM) -r autom4te.cache
-	$(RM) config.log config.mak.autogen config.mak.append config.status config.cache
 	$(RM) -r $(GIT_TARNAME) .doc-tmp-dir
 	$(RM) $(GIT_TARNAME).tar.gz git-core_$(GIT_VERSION)-*.tar.gz
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
