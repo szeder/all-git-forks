@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
-# Usage: python git-read-index-v5.py [-h] [-v] [--file=FILENAME]
+# Usage: python git-update-index-v5.py [-h] [-v] [--file=FILENAME] [--update=FILENAME]
 # The -h command line option shows the header of the index file
 # The -v command line option shows a more verbose file list
 # The --file command takes an argument, which file should be read.
 # The -h and -v options are mutually exclusive.
+# The --update command line option lets you update a single index entry.
+# This option can be used to test the re-reading of part of the index. (it will
+# have a built-in delay, to make the test easier)
+
 # If no argument is given, the output is a list of all files in th index file
 # including the path, sorted lexically. (The same format as git ls-files)
 # (including stat data)
