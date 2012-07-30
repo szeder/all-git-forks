@@ -265,10 +265,10 @@ static int ce_match_stat_basic_v5(struct cache_entry *ce,
 				int changed)
 {
 
-	if (ce->ce_mtime.sec != (unsigned int)st->st_mtime)
+	if (ce->ce_mtime.sec != 0 && ce->ce_mtime.sec != (unsigned int)st->st_mtime)
 		changed |= MTIME_CHANGED;
 #ifdef USE_NSEC
-	if (ce->ce_mtime.nsec != ST_MTIME_NSEC(*st))
+	if (ce->ce_mtime.nsec != 0 && ce->ce_mtime.nsec != ST_MTIME_NSEC(*st))
 		changed |= MTIME_CHANGED;
 #endif
 	if (!match_stat_crc(st, ce->ce_stat_crc)) {
@@ -277,7 +277,7 @@ static int ce_match_stat_basic_v5(struct cache_entry *ce,
 	}
 	/* Racily smudged entry? */
 	if (!ce->ce_mtime.sec && !ce->ce_mtime.nsec) {
-		if (!is_empty_blob_sha1(ce->sha1))
+		if (!is_empty_blob_sha1(ce->sha1) && !changed && ce_modified_check_fs(ce, st))
 			changed |= DATA_CHANGED;
 	}
 	return changed;
@@ -2345,51 +2345,19 @@ static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
 static void ce_smudge_racily_clean_entry_v5(struct cache_entry *ce)
 {
 	/*
-	 * The only thing we care about in this function is to smudge the
-	 * falsely clean entry due to touch-update-touch race, so we leave
-	 * everything else as they are.  We are called for entries whose
-	 * ce_mtime match the index file mtime.
+	 * This method shall only be called if the timestamp of ce
+	 * is racy (check with is_racy_timestamp). If the timestamp
+	 * is racy, the writer will just set the time to 0.
 	 *
-	 * Note that this actually does not do much for gitlinks, for
-	 * which ce_match_stat_basic() always goes to the actual
-	 * contents.  The caller checks with is_racy_timestamp() which
-	 * always says "no" for gitlinks, so we are not called for them ;-)
+	 * The reader (ce_match_stat_basic_v5) will then take care
+	 * of checking if the entry is really changed or not, by
+	 * taking into account the stat_crc and if that hasn't changed
+	 * checking the sha1.
 	 */
 	struct stat st;
 
-	if (lstat(ce->name, &st) < 0)
-		return;
-	if (ce_match_stat_basic(ce, &st))
-		return;
-	if (ce_modified_check_fs(ce, &st)) {
-		/* This is "racily clean"; smudge it.  Note that this
-		 * is a tricky code.  At first glance, it may appear
-		 * that it can break with this sequence:
-		 *
-		 * $ echo xyzzy >frotz
-		 * $ git-update-index --add frotz
-		 * $ : >frotz
-		 * $ sleep 3
-		 * $ echo filfre >nitfol
-		 * $ git-update-index --add nitfol
-		 *
-		 * but it does not.  When the second update-index runs,
-		 * it notices that the entry "frotz" has the same timestamp
-		 * as index, and if we were to smudge it by resetting its
-		 * time to zero here, then the object name recorded
-		 * in index is the 6-byte file but the cached stat information
-		 * becomes zero --- which would then match what we would
-		 * obtain from the filesystem next time we stat("frotz").
-		 *
-		 * However, the second update-index, before calling
-		 * this function, notices that the cached size is 6
-		 * bytes and what is on the filesystem is an empty
-		 * file, and never calls us, so the cached size information
-		 * for "frotz" stays 6 which does not match the filesystem.
-		 */
-		ce->ce_mtime.sec = 0;
-		ce->ce_mtime.nsec = 0;
-	}
+	ce->ce_mtime.sec = 0;
+	ce->ce_mtime.nsec = 0;
 }
 
 /* Copy miscellaneous fields but not the name */
