@@ -20,6 +20,7 @@ import binascii
 import sys
 import os.path
 import python.lib.indexlib as indexlib
+import time
 from collections import deque
 
 
@@ -40,6 +41,12 @@ class CRC(object):
 
 		return f.read(indexlib.CRC_STRUCT.size) == \
 				indexlib.CRC_STRUCT.pack(self.value)
+
+
+def write_calc_crc(fw, data, partialcrc=0):
+    fw.write(data)
+    crc = indexlib.calculate_crc(data, partialcrc)
+    return crc
 
 
 def read_struct(f, s, crc=None):
@@ -134,13 +141,14 @@ def read_index_entries(f, header):
 		f: the file from which the index entries should be read.
 		header: the header of the index file
 	Returns:
-		A list of all index entries
+		files: A list of all index entries
+		fblockoffset: The offset to the first index entry
 	"""
 	# Skip header and directory offsets
 	# Header size = 24 bytes, each extension offset and dir offset is 4 bytes
 	f.seek(indexlib.HEADER_V5_STRUCT.size
 			+ header["nextensions"] * indexlib.EXTENSION_OFFSET_STRUCT.size
-			+ header["ndir"] * indexlib.DIR_OFFSET_STRUCT.size
+			+ header["ndir"] * indexlib.DIR_OFFSET_STRUCT.size + 4
 			+ indexlib.CRC_STRUCT.size)
 
 	directories = read_dirs(f, header["ndir"])
@@ -150,9 +158,9 @@ def read_index_entries(f, header):
 	# right place. Doing so saves 2 seeks per directory.
 	f.seek(header["fblockoffset"] + directories[0]["foffset"])
 
-	files = list()
-	read_files(f, directories, f.tell(), 0, files)
-	return files
+	files = dict()
+	dirnr, fblockoffset = read_files(f, directories, f.tell(), 0, files)
+	return files, fblockoffset
 
 
 def read_file(f, pathname, fblockoffset):
@@ -171,6 +179,7 @@ def read_file(f, pathname, fblockoffset):
 			code of the read data.
 	"""
 	crc = CRC()
+	namestart = f.tell()
 	# A little cheating here in favor of simplicity and execution speed.
 	# The fileoffset is only read when really needed, in the other cases
 	# it's just calculated from the file position, to save on reads and
@@ -183,11 +192,11 @@ def read_file(f, pathname, fblockoffset):
 			read_struct(f, indexlib.FILE_DATA_STRUCT, crc)
 
 	if not crc.matches(f):
-		raise indexlib.CrcError("Wrong CRC for file entry: " + filename)
+		raise indexlib.CrcError("Wrong CRC for file entry: " + filename + str(crc.value))
 
-	return dict(name=pathname + filename,
-			flags=flags, mode=mode, mtimes=mtimes, mtimens=mtimens,
-			statcrc=statcrc, objhash=binascii.hexlify(objhash))
+	return dict(name=pathname + filename, flags=flags, mode=mode,
+			mtimes=mtimes, mtimens=mtimens, statcrc=statcrc,
+			objhash=binascii.hexlify(objhash), start=namestart)
 
 
 def read_files(f, directories, fblockoffset, dirnr, files_out):
@@ -209,6 +218,7 @@ def read_files(f, directories, fblockoffset, dirnr, files_out):
 	Returns:
 		dirnr: The number of the directory that was used last. Of no use in the
 			function that calls read_files
+		fblockoffset: The offset to the first file in the index.
 	"""
 	queue = deque()
 	for i in xrange(directories[dirnr]["nfiles"]):
@@ -218,12 +228,13 @@ def read_files(f, directories, fblockoffset, dirnr, files_out):
 	while queue:
 		if (len(directories) > dirnr + 1 and
 				queue[0]["name"] > directories[dirnr + 1]["pathname"]):
-			dirnr = read_files(f, directories, fblockoffset, dirnr + 1,
-					files_out)
+			dirnr, fblockoffset = read_files(f, directories,
+					fblockoffset, dirnr + 1, files_out)
 		else:
-			files_out.append(queue.popleft())
+			new_file = queue.popleft()
+			files_out[new_file["name"]] = new_file
 
-	return dirnr
+	return dirnr, fblockoffset
 
 
 def read_dir(f):
@@ -277,17 +288,52 @@ def print_directories(directories):
 
 
 def print_files(files, verbose=False):
-	for fi in files:
+	for fi in sorted(files.itervalues()):
 		if verbose:
 			print (indexlib.FILES_FORMAT % fi + hex(fi["statcrc"]))
 		else:
 			print fi["name"]
 
 
+def update_index_entry(fw, filename, files, fblockoffset):
+	""" Update a single index entry and set its mtime to 0.
+	
+	Since it's just for testing purposes anyway, we set it to 0 and thus
+	emulate a racy entry. Before updating the crc sum too we wait for a
+	little while to test the re-reading capabilities of the reader of
+	index-v5.
+
+	Args:
+		filename: The file that should be updated
+		files: The dict of all files, which gives us the offset
+			to the file that shall be updated.
+		fblockoffset: The offset to the first file in the index to
+			calculate the crc sum.
+	"""
+
+	f = files[filename]
+	fw.seek(f["start"])
+	partialcrc = indexlib.calculate_crc(indexlib.OFFSET_STRUCT.pack(f["start"]
+								- fblockoffset))
+	partialcrc = write_calc_crc(fw, os.path.basename(filename) + "\0",
+			partialcrc)
+
+	data = indexlib.FILE_DATA_STRUCT.pack(f["flags"], f["mode"], 0, 0,
+			f["statcrc"], binascii.unhexlify(f["objhash"]))
+	partialcrc = write_calc_crc(fw, data, partialcrc)
+	# Fsync is needed to really make the crc wrong, otherwise the file + crc
+	# will only be written when the file descriptor is closed
+	fw.flush()
+	os.fsync(fw.fileno())
+	time.sleep(1)
+	fw.write(indexlib.CRC_STRUCT.pack(partialcrc))
+
+
 def main(args):
 	f = None
 	pheader = False
 	pverbose = False
+	to_update = None
 	for arg in args:
 		if arg == "-h":
 			pheader = True
@@ -295,17 +341,21 @@ def main(args):
 			pverbose = True
 		if arg[:7] == '--file=':
 			f = open(arg[7:], "rb")
+		if arg[:9] == '--update=':
+			to_update = arg[9:]
 
 	if not f:
-		f = open(".git/index-v5", "rb")
+		f = open(".git/index", "rb+")
 
 	header = read_header(f)
 
-	files = read_index_entries(f, header)
+	files, fblockoffset = read_index_entries(f, header)
+	if (to_update):
+		update_index_entry(f, to_update, files, fblockoffset)
 	if pheader:
 		print_header(header)
-	else:
-		print_files(files, pverbose)
+	# else:
+	# 	print_files(files, pverbose)
 
 if __name__ == "__main__":
 	main(sys.argv[1:])
