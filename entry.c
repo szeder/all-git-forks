@@ -161,6 +161,15 @@ static int write_entry(struct cache_entry *ce, char *path, const struct checkout
 			return error("unable to read sha1 file of %s (%s)",
 				path, sha1_to_hex(ce->sha1));
 
+		/*
+		 * Convert from git internal format to working tree format
+		 */
+		if (convert_to_working_tree(ce->name, new, size, &buf)) {
+			free(new);
+			new = strbuf_detach(&buf, &newsize);
+			size = newsize;
+		}
+
 		if (ce_mode_s_ifmt == S_IFLNK && has_symlinks && !to_tempfile) {
 			ret = symlink(new, path);
 			free(new);
@@ -168,16 +177,6 @@ static int write_entry(struct cache_entry *ce, char *path, const struct checkout
 				return error("unable to create symlink %s (%s)",
 					     path, strerror(errno));
 			break;
-		}
-
-		/*
-		 * Convert from git internal format to working tree format
-		 */
-		if (ce_mode_s_ifmt == S_IFREG &&
-		    convert_to_working_tree(ce->name, new, size, &buf)) {
-			free(new);
-			new = strbuf_detach(&buf, &newsize);
-			size = newsize;
 		}
 
 		fd = open_output_fd(path, ce, to_tempfile);

@@ -766,7 +766,7 @@ static void update_file_flags(struct merge_options *o,
 			die("cannot read object %s '%s'", sha1_to_hex(sha), path);
 		if (type != OBJ_BLOB)
 			die("blob expected for %s '%s'", sha1_to_hex(sha), path);
-		if (S_ISREG(mode)) {
+		if (S_ISREG(mode) || S_ISLNK(mode)) {
 			struct strbuf strbuf = STRBUF_INIT;
 			if (convert_to_working_tree(path, buf, size, &strbuf)) {
 				free(buf);

@@ -2790,9 +2790,7 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 			return error("readlink(\"%s\"): %s", path,
 			             errstr);
 		}
-		if (!(flags & HASH_WRITE_OBJECT))
-			hash_sha1_file(sb.buf, sb.len, blob_type, sha1);
-		else if (write_sha1_file(sb.buf, sb.len, blob_type, sha1))
+		if (index_mem(sha1, sb.buf, sb.len, OBJ_BLOB, path, flags))
 			return error("%s: failed to insert into database",
 				     path);
 		strbuf_release(&sb);
