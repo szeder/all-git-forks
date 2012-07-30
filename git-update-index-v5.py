@@ -325,7 +325,7 @@ def update_index_entry(fw, filename, files, fblockoffset):
 	# will only be written when the file descriptor is closed
 	fw.flush()
 	os.fsync(fw.fileno())
-	time.sleep(1)
+	time.sleep(0.7)
 	fw.write(indexlib.CRC_STRUCT.pack(partialcrc))
 
 
