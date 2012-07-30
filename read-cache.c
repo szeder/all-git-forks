@@ -1738,7 +1738,8 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 			((char *)mmap + *entry_offset + len + 1);
 	ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
 	filecrc = mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
-	foffsetblockcrc = crc32(0, (Bytef*)mmap + *foffsetblock, 4);
+	offset_to_offset = htonl(*foffsetblock);
+	foffsetblockcrc = crc32(0, (Bytef*)&offset_to_offset, 4);
 	if (!check_crc32(foffsetblockcrc,
 			mmap + *entry_offset, len + 1 + sizeof(*disk_ce),
 			ntoh_l(*filecrc)))
@@ -2877,7 +2878,8 @@ static int write_directories_v5(struct directory_entry *de, int fd, int conflict
 static int write_entries_v5(struct index_state *istate,
 			    struct directory_entry *de,
 			    int entries,
-			    int fd)
+			    int fd,
+			    int offset_to_offset)
 {
 	int offset, offset_write, ondisk_size;
 	struct directory_entry *current;
@@ -2916,7 +2918,7 @@ static int write_entries_v5(struct index_state *istate,
 	if (ce_write_v5(NULL, fd, &offset_write, 4) < 0)
 		return -1;
 
-	offset = 0;
+	offset = offset_to_offset;
 	current = de;
 	while (current) {
 		int pathlen;
@@ -2943,7 +2945,7 @@ static int write_entries_v5(struct index_state *istate,
 			crc = htonl(crc);
 			if (ce_write_v5(NULL, fd, &crc, 4) < 0)
 				return -1;
-			offset += ce_namelen(ce) - pathlen + 1 + ondisk_size + 4;
+			offset += 4;
 			ce = ce->next;
 		}
 		current = current->next;
@@ -3014,7 +3016,7 @@ static int write_index_v5(struct index_state *istate, int newfd)
 	struct ondisk_directory_entry *ondisk;
 	int entries = istate->cache_nr;
 	int i, removed, non_conflicted, total_dir_len, ondisk_directory_size;
-	int total_file_len, conflict_offset;
+	int total_file_len, conflict_offset, offset_to_offset;
 	unsigned int ndir;
 	uint32_t crc;
 
@@ -3070,7 +3072,11 @@ static int write_index_v5(struct index_state *istate, int newfd)
 		+ non_conflicted * (sizeof(struct ondisk_cache_entry_v5) + 4);
 	if (write_directories_v5(de, newfd, conflict_offset) < 0)
 		return -1;
-	if (write_entries_v5(istate, de, entries, newfd) < 0)
+	offset_to_offset = sizeof(hdr) + sizeof(hdr_v5) + 4
+		+ (ndir + 1) * 4
+		+ total_dir_len
+		+ ndir * (ondisk_directory_size + 4);
+	if (write_entries_v5(istate, de, entries, newfd, offset_to_offset) < 0)
 		return -1;
 	if (write_conflicts_v5(istate, de, newfd) < 0)
 		return -1;
