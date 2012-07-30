@@ -1706,7 +1706,7 @@ unmap:
 
 static struct cache_entry *read_entry_v5(struct directory_entry *de,
 			unsigned long *entry_offset,
-			void *mmap, 
+			void **mmap,
 			unsigned long mmap_size,
 			unsigned int *foffsetblock,
 			int fd)
@@ -1719,31 +1719,36 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 	struct ondisk_cache_entry_v5 *disk_ce;
 
 	do {
-		name = (char *)mmap + *entry_offset;
-		beginning = mmap + *foffsetblock;
-		end = mmap + *foffsetblock + 4;
+		name = (char *)*mmap + *entry_offset;
+		beginning = *mmap + *foffsetblock;
+		end = *mmap + *foffsetblock + 4;
 		len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
 		disk_ce = (struct ondisk_cache_entry_v5 *)
-				((char *)mmap + *entry_offset + len + 1);
+				((char *)*mmap + *entry_offset + len + 1);
 		ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
-		filecrc = mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
-		foffsetblockcrc = crc32(0, (Bytef*)mmap + *foffsetblock, 4);
+		filecrc = *mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
+		foffsetblockcrc = crc32(0, (Bytef*)*mmap + *foffsetblock, 4);
 		crc_wrong = !check_crc32(foffsetblockcrc,
-			mmap + *entry_offset, len + 1 + sizeof(*disk_ce),
+			*mmap + *entry_offset, len + 1 + sizeof(*disk_ce),
 			ntoh_l(*filecrc));
 		if (crc_wrong) {
-			mmap = mremap(mmap, mmap_size, mmap_size, 0);
-			/* sleep(1000); */
+			/* wait for 10 milliseconds */
+			usleep(10*1000);
+			munmap(*mmap, mmap_size);
+			*mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
 		}
-
-		if (i)
-			fprintf(stderr, "%i\n", i);
 		i++;
-	} while (crc_wrong);
+		/*
+		 * Retry for 500 ms maximum, before giving up and saying the
+		 * checksum is wrong.
+		 */
+	} while (crc_wrong && i < 50);
+	if (crc_wrong)
+		goto unmap;
 	*entry_offset += len + 1 + sizeof(*disk_ce) + 4;
 	return ce;
 unmap:
-	munmap(mmap, mmap_size);
+	munmap(*mmap, mmap_size);
 	die("file crc doesn't match for '%s'", ce->name);
 }
 
@@ -1825,11 +1830,12 @@ struct conflict_entry *create_new_conflict(char *name, int len , int pathlen)
 }
 
 static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
-						void *mmap,
-						unsigned long mmap_size)
+						void **mmap,
+						unsigned long mmap_size,
+						int fd)
 {
 	struct conflict_entry *head, *tail;
-	unsigned int croffset, i;
+	unsigned int croffset, i, j;
 	char *full_name;
 
 	croffset = de->de_cr;
@@ -1840,58 +1846,69 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 		unsigned int len, *nfileconflicts;
 		char *name;
 		void *crc_start;
-		int k;
+		int k, offset, crc_wrong;
 		uint32_t *filecrc;
 
-		crc_start = mmap + croffset;
-		name = (char *)mmap + croffset;
-		len = strlen(name);
-		croffset += len + 1;
-		nfileconflicts = mmap + croffset;
-		croffset += 4;
+		do {
+			offset = croffset;
+			crc_start = *mmap + offset;
+			name = (char *)*mmap + offset;
+			len = strlen(name);
+			offset += len + 1;
+			nfileconflicts = *mmap + offset;
+			offset += 4;
 
-		full_name = xmalloc(sizeof(char) * (len + de->de_pathlen));
-		memcpy(full_name, de->pathname, de->de_pathlen);
-		memcpy(full_name + de->de_pathlen, name, len);
-		conflict_new = create_new_conflict(full_name, (len + de->de_pathlen), de->de_pathlen);
-		conflict_new->nfileconflicts = ntoh_l(*nfileconflicts);
-		for (k = 0; k < conflict_new->nfileconflicts; k++) {
-			struct ondisk_conflict_part *ondisk;
-			struct conflict_part *cp, *cs;
+			full_name = xmalloc(sizeof(char) * (len + de->de_pathlen));
+			memcpy(full_name, de->pathname, de->de_pathlen);
+			memcpy(full_name + de->de_pathlen, name, len);
+			conflict_new = create_new_conflict(full_name, (len + de->de_pathlen), de->de_pathlen);
+			conflict_new->nfileconflicts = ntoh_l(*nfileconflicts);
+			for (k = 0; k < conflict_new->nfileconflicts; k++) {
+				struct ondisk_conflict_part *ondisk;
+				struct conflict_part *cp, *cs;
 
-			ondisk = mmap + croffset;
-			cp = conflict_part_from_ondisk(ondisk);
-			cp->next = NULL;
-			if (!conflict_new->entries) {
-				conflict_new->entries = cp;
-			} else {
-				cs = conflict_new->entries;
-				while (cs->next)
-					cs = cs->next;
-				cs->next = cp;
+				ondisk = *mmap + offset;
+				cp = conflict_part_from_ondisk(ondisk);
+				cp->next = NULL;
+				if (!conflict_new->entries) {
+					conflict_new->entries = cp;
+				} else {
+					cs = conflict_new->entries;
+					while (cs->next)
+						cs = cs->next;
+					cs->next = cp;
+				}
+				offset += sizeof(struct ondisk_conflict_part);
 			}
-			croffset += sizeof(struct ondisk_conflict_part);
-		}
-		filecrc = mmap + croffset;
-		if (!check_crc32(0, crc_start,
-		     len + 1 + 4 + conflict_new->nfileconflicts
-		     * sizeof(struct ondisk_conflict_part),
-		     ntoh_l(*filecrc)))
+			filecrc = *mmap + offset;
+			crc_wrong = !check_crc32(0, crc_start,
+				len + 1 + 4 + conflict_new->nfileconflicts
+				* sizeof(struct ondisk_conflict_part),
+				ntoh_l(*filecrc));
+			if (crc_wrong) {
+				/* wait for 10 milliseconds */
+				usleep(10*1000);
+				munmap(*mmap, mmap_size);
+				*mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+			}
+			free(full_name);
+			j++;
+		} while (crc_wrong && j < 50);
+		if (crc_wrong)
 			goto unmap;
-		free(full_name);
-		croffset += 4;
+		croffset = offset + 4;
 		conflict_entry_push(&head, &tail, conflict_new);
 	}
 	return head;
 unmap:
-	munmap(mmap, mmap_size);
+	munmap(*mmap, mmap_size);
 	die("wrong crc for conflict: %s", full_name);
 }
 
 static struct directory_entry *read_entries_v5(struct index_state *istate,
 					struct directory_entry *de,
 					unsigned long *entry_offset,
-					void *mmap,
+					void **mmap,
 					unsigned long mmap_size,
 					int *nr,
 					unsigned int *foffsetblock,
@@ -1902,7 +1919,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 	struct cache_entry *ce;
 	int i;
 
-	conflict_queue = read_conflicts_v5(de, mmap, mmap_size);
+	conflict_queue = read_conflicts_v5(de, mmap, mmap_size, fd);
 	resolve_undo_convert_v5(istate, conflict_queue);
 	for (i = 0; i < de->de_nfiles; i++) {
 		ce = read_entry_v5(de,
@@ -2049,7 +2066,7 @@ void read_index_v5(struct index_state *istate, void *mmap, int mmap_size, int fd
 	de = root_directory;
 	while (de)
 		de = read_entries_v5(istate, de, &entry_offset,
-				mmap, mmap_size, &nr, &foffsetblock, fd);
+				&mmap, mmap_size, &nr, &foffsetblock, fd);
 	istate->cache_tree = cache_tree_convert_v5(root_directory);
 }
 
