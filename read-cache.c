@@ -1708,28 +1708,38 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 			unsigned long *entry_offset,
 			void *mmap, 
 			unsigned long mmap_size,
-			unsigned int *foffsetblock)
+			unsigned int *foffsetblock,
+			int fd)
 {
-	int len;
+	int len, crc_wrong, i = 0;
 	char *name;
 	uint32_t foffsetblockcrc;
 	uint32_t *filecrc, *beginning, *end;
 	struct cache_entry *ce;
 	struct ondisk_cache_entry_v5 *disk_ce;
 
-	name = (char *)mmap + *entry_offset;
-	beginning = mmap + *foffsetblock;
-	end = mmap + *foffsetblock + 4;
-	len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
-	disk_ce = (struct ondisk_cache_entry_v5 *)
-			((char *)mmap + *entry_offset + len + 1);
-	ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
-	filecrc = mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
-	foffsetblockcrc = crc32(0, (Bytef*)mmap + *foffsetblock, 4);
-	if (!check_crc32(foffsetblockcrc,
+	do {
+		name = (char *)mmap + *entry_offset;
+		beginning = mmap + *foffsetblock;
+		end = mmap + *foffsetblock + 4;
+		len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
+		disk_ce = (struct ondisk_cache_entry_v5 *)
+				((char *)mmap + *entry_offset + len + 1);
+		ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
+		filecrc = mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
+		foffsetblockcrc = crc32(0, (Bytef*)mmap + *foffsetblock, 4);
+		crc_wrong = !check_crc32(foffsetblockcrc,
 			mmap + *entry_offset, len + 1 + sizeof(*disk_ce),
-			ntoh_l(*filecrc)))
-		goto unmap;
+			ntoh_l(*filecrc));
+		if (crc_wrong) {
+			mmap = mremap(mmap, mmap_size, mmap_size, 0);
+			/* sleep(1000); */
+		}
+
+		if (i)
+			fprintf(stderr, "%i\n", i);
+		i++;
+	} while (crc_wrong);
 	*entry_offset += len + 1 + sizeof(*disk_ce) + 4;
 	return ce;
 unmap:
@@ -1884,7 +1894,8 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					void *mmap,
 					unsigned long mmap_size,
 					int *nr,
-					unsigned int *foffsetblock)
+					unsigned int *foffsetblock,
+					int fd)
 {
 	struct cache_entry *head = NULL, *tail = NULL;
 	struct conflict_entry *conflict_queue, *conflict_current;
@@ -1898,7 +1909,8 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 				entry_offset,
 				mmap,
 				mmap_size,
-				foffsetblock);
+				foffsetblock,
+				fd);
 		ce_queue_push(&head, &tail, ce);
 		*foffsetblock += 4;
 
@@ -1937,7 +1949,8 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 					mmap,
 					mmap_size,
 					nr,
-					foffsetblock);
+					foffsetblock,
+					fd);
 		} else {
 			ce = ce_queue_pop(&head);
 			set_index_entry(istate, *nr, ce);
@@ -2006,7 +2019,7 @@ unmap:
 	die("index file corrupt");
 }
 
-void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
+void read_index_v5(struct index_state *istate, void *mmap, int mmap_size, int fd)
 {
 	unsigned long entry_offset;
 	unsigned int dir_offset, dir_table_offset;
@@ -2036,7 +2049,7 @@ void read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
 	de = root_directory;
 	while (de)
 		de = read_entries_v5(istate, de, &entry_offset,
-				mmap, mmap_size, &nr, &foffsetblock);
+				mmap, mmap_size, &nr, &foffsetblock, fd);
 	istate->cache_tree = cache_tree_convert_v5(root_directory);
 }
 
@@ -2072,7 +2085,6 @@ int read_index_from(struct index_state *istate, const char *path)
 		die("index file smaller than expected");
 
 	mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-	close(fd);
 	if (mmap == MAP_FAILED)
 		die_errno("unable to map index file");
 
@@ -2089,8 +2101,9 @@ int read_index_from(struct index_state *istate, const char *path)
 		if (verify_hdr_v5(hdr) < 0)
 			goto unmap;
 
-		read_index_v5(istate, mmap, mmap_size);
+		read_index_v5(istate, mmap, mmap_size, fd);
 	}
+	close(fd);
 	istate->timestamp.sec = st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 
