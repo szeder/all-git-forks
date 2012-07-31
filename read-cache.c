@@ -277,7 +277,7 @@ static int ce_match_stat_basic_v5(struct cache_entry *ce,
 	}
 	/* Racily smudged entry? */
 	if (!ce->ce_mtime.sec && !ce->ce_mtime.nsec) {
-		if (!is_empty_blob_sha1(ce->sha1) && !changed && ce_modified_check_fs(ce, st))
+		if (!changed && !is_empty_blob_sha1(ce->sha1) && ce_modified_check_fs(ce, st))
 			changed |= DATA_CHANGED;
 	}
 	return changed;
