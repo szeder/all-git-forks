@@ -131,7 +131,7 @@ echo "$onto_name" > "$state_dir/onto_name"
 write_basic_state
 
 msgnum=0
-for cmt in `git rev-list --reverse --no-merges "$revisions"`
+for cmt in $(generate_revisions)
 do
 	msgnum=$(($msgnum + 1))
 	echo "$cmt" > "$state_dir/cmt.$msgnum"
