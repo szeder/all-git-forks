@@ -48,6 +48,7 @@ struct unpack_trees_options {
 		     gently,
 		     exiting_early,
 		     show_all_errors,
+		     keep_going,
 		     dry_run;
 	const char *prefix;
 	int cache_bottom;

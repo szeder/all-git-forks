@@ -38,7 +38,12 @@ static void create_directories(const char *path, int path_len,
 			if (errno == EEXIST && state->force &&
 			    !unlink_or_warn(buf) && !mkdir(buf, 0777))
 				continue;
-			die_errno("cannot create directory at '%s'", buf);
+			if (state->keep_going)
+				error("cannot create directory at '%s': %s",
+				    buf, strerror(errno));
+			else
+				die_errno("cannot create directory at '%s'",
+				    buf);
 		}
 	}
 	free(buf);

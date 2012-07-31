@@ -35,6 +35,7 @@ struct checkout_opts {
 	int writeout_stage;
 	int writeout_error;
 	int overwrite_ignore;
+	int keep_going;
 
 	/* not set by parse_options */
 	int branch_exists;
@@ -280,6 +281,7 @@ static int checkout_paths(struct tree *source_tree, const char **pathspec,
 	memset(&state, 0, sizeof(state));
 	state.force = 1;
 	state.refresh_cache = 1;
+	state.keep_going = opts->keep_going;
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
 		if (source_tree && !(ce->ce_flags & CE_UPDATE))
@@ -342,6 +344,7 @@ static int reset_tree(struct tree *tree, struct checkout_opts *o, int worktree)
 	opts.skip_unmerged = !worktree;
 	opts.reset = 1;
 	opts.merge = 1;
+	opts.keep_going = o->keep_going;
 	opts.fn = oneway_merge;
 	opts.verbose_update = !o->quiet && isatty(2);
 	opts.src_index = &the_index;
@@ -950,6 +953,8 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		OPT__FORCE(&opts.force, "force checkout (throw away local modifications)"),
 		OPT_BOOLEAN('m', "merge", &opts.merge, "perform a 3-way merge with the new branch"),
 		OPT_BOOLEAN(0, "overwrite-ignore", &opts.overwrite_ignore, "update ignored files (default)"),
+		OPT_BOOLEAN('k', "keep-going", &opts.keep_going,
+			    "Keep going when some paths cannot be checked out"),
 		OPT_STRING(0, "conflict", &conflict_style, "style",
 			   "conflict style (merge or diff3)"),
 		OPT_BOOLEAN('p', "patch", &patch_mode, "select hunks interactively"),

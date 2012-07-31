@@ -181,7 +181,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 	int all = 0;
 	int read_from_stdin = 0;
 	int prefix_length;
-	int force = 0, quiet = 0, not_new = 0;
+	int force = 0, quiet = 0, not_new = 0, keep_going = 0;
 	struct option builtin_checkout_index_options[] = {
 		OPT_BOOLEAN('a', "all", &all,
 			"checks out all files in the index"),
@@ -190,6 +190,8 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 			"no warning for existing files and files not in index"),
 		OPT_BOOLEAN('n', "no-create", &not_new,
 			"don't checkout new files"),
+		OPT_BOOLEAN('k', "keep-going", &keep_going,
+			"Keep going when some paths cannot be checked out"),
 		{ OPTION_CALLBACK, 'u', "index", &newfd, NULL,
 			"update stat information in the index file",
 			PARSE_OPT_NOARG, option_parse_u },
@@ -225,6 +227,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 	state.force = force;
 	state.quiet = quiet;
 	state.not_new = not_new;
+	state.keep_going = keep_going;
 
 	if (state.base_dir_len || to_tempfile) {
 		/* when --prefix is specified we do not
