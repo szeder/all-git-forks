@@ -2654,8 +2654,7 @@ void insert_directory_entry(struct directory_entry *de,
 
 	insert = (struct directory_entry *)insert_hash(crc, de, table);
 	if (insert) {
-		while (insert->next_hash)
-			insert = insert->next_hash;
+		de->next_hash = insert->next_hash;
 		insert->next_hash = de;
 	}
 	(*ndir)++;
