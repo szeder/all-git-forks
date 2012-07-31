@@ -96,7 +96,10 @@ do
 done
 
 # copy the HEAD from the original repository as a default branch
-cp "$git_dir/HEAD" "$git_dir/index" .
+cp "$git_dir/HEAD" .
+if [ -r "$git_dir/index" ]; then
+	cp "$git_dir/index" . 
+fi
 
 cd ..
 
