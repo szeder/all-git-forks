@@ -27,6 +27,7 @@ static const char *branches;
 static const char *tags;
 static const char *revisions;
 static const char *remotedir;
+static const char *trunkref = "master";
 static int verbose;
 static int pre_receive;
 static int svnfdc = 1;
@@ -50,7 +51,7 @@ static struct option builtin_svn_fetch_options[] = {
 };
 
 static const char* const builtin_svn_push_usage[] = {
-	"git svn-push [options] ref <from commit> <to commit>",
+	"git svn-push [options] <ref> <from commit> <to commit>",
 	"git svn-push [options] --pre-receive",
 	NULL,
 };
@@ -89,6 +90,9 @@ static int config(const char *var, const char *value, void *dummy) {
 	}
 	if (!strcmp(var, "svn.remote")) {
 		return git_config_string(&remotedir, var, value);
+	}
+	if (!strcmp(var, "svn.trunkref")) {
+		return git_config_string(&trunkref, var, value);
 	}
 	if (!strcmp(var, "svn.eol")) {
 		if (value && !strcasecmp(value, "lf"))
@@ -1202,7 +1206,7 @@ static struct svnref* create_ref(int type, const char* name) {
 		strbuf_addstr(&r->svn, trunk ? trunk : "");
 		strbuf_addstr(&r->ref, "refs/svn/heads/trunk");
 		strbuf_addstr(&r->remote, remotedir);
-		strbuf_addstr(&r->remote, "trunk");
+		strbuf_addstr(&r->remote, trunkref);
 		break;
 
 	case BRANCH_REF:
@@ -1326,6 +1330,7 @@ static struct svnref* find_svnref_by_refname(const char* name) {
 	char* real_ref = NULL;
 	unsigned char sha1[20];
 	int refcount = dwim_ref(name, strlen(name), sha1, &real_ref);
+	fprintf(stderr, "%d %s %s %s\n", refcount, name, real_ref, trunkref);
 
 	if (refcount > 1) {
 		die("ambiguous ref '%s'", name);
@@ -1340,18 +1345,18 @@ static struct svnref* find_svnref_by_refname(const char* name) {
 		}
 	}
 
-	if (!strcmp(real_ref, "refs/heads/trunk")) {
-		return create_ref(TRUNK_REF, "");
-
-	} else if (!prefixcmp(real_ref, "refs/heads/")) {
-		if (!branches)
-			die("in order to push a branch, --branches must be specified");
-
-		return create_ref(BRANCH_REF, real_ref + strlen("refs/heads/"));
+	if (!prefixcmp(real_ref, "refs/heads/")) {
+		if (!strcmp(real_ref + strlen("refs/heads/"), trunkref)) {
+			return create_ref(TRUNK_REF, "");
+		} else if (!branches) {
+			die("in order to push a branch, svn.branches must be set");
+		} else {
+			return create_ref(BRANCH_REF, real_ref + strlen("refs/heads/"));
+		}
 
 	} else if (!prefixcmp(real_ref, "refs/tags/")) {
 		if (!tags)
-			die("in order to push a tag, --tags must be specified");
+			die("in order to push a tag, svn.tags must be set");
 
 		return create_ref(TAG_REF, real_ref + strlen("refs/tags/"));
 
@@ -1400,7 +1405,7 @@ static int create_ref_cb(const char* refname, const unsigned char* sha1, int fla
 		}
 	}
 
-	if (!strcmp(refname, "heads/trunk")) {
+	if (!strcmp(refname, trunkref + strlen("refs/"))) {
 		create_ref(TRUNK_REF, "");
 	} else if (!prefixcmp(refname, "heads/")) {
 		create_ref(BRANCH_REF, refname + strlen("heads/"));
