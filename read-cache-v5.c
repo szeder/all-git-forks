@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "read-cache.h"
+#include "string-list.h"
 #include "resolve-undo.h"
 #include "cache-tree.h"
 #include "dir.h"
@@ -447,6 +448,43 @@ static int read_conflicts(struct conflict_entry **head,
 	return 0;
 }
 
+static void resolve_undo_convert_v5(struct index_state *istate,
+				    struct conflict_entry *conflict)
+{
+	int i;
+
+	while (conflict) {
+		struct string_list_item *lost;
+		struct resolve_undo_info *ui;
+		struct conflict_part *cp;
+
+		if (conflict->entries &&
+		    (conflict->entries->flags & CONFLICT_CONFLICTED) != 0) {
+			conflict = conflict->next;
+			continue;
+		}
+		if (!istate->resolve_undo) {
+			istate->resolve_undo = xcalloc(1, sizeof(struct string_list));
+			istate->resolve_undo->strdup_strings = 1;
+		}
+
+		lost = string_list_insert(istate->resolve_undo, conflict->name);
+		if (!lost->util)
+			lost->util = xcalloc(1, sizeof(*ui));
+		ui = lost->util;
+
+		cp = conflict->entries;
+		for (i = 0; i < 3; i++)
+			ui->mode[i] = 0;
+		while (cp) {
+			ui->mode[conflict_stage(cp) - 1] = cp->entry_mode;
+			hashcpy(ui->sha1[conflict_stage(cp) - 1], cp->sha1);
+			cp = cp->next;
+		}
+		conflict = conflict->next;
+	}
+}
+
 static int read_entries(struct index_state *istate, struct directory_entry **de,
 			unsigned int *entry_offset, void **mmap,
 			unsigned long mmap_size, unsigned int *nr,
@@ -460,6 +498,7 @@ static int read_entries(struct index_state *istate, struct directory_entry **de,
 	conflict_queue = NULL;
 	if (read_conflicts(&conflict_queue, *de, mmap, mmap_size) < 0)
 		return -1;
+	resolve_undo_convert_v5(istate, conflict_queue);
 	for (i = 0; i < (*de)->de_nfiles; i++) {
 		if (read_entry(&ce,
 			       *de,
