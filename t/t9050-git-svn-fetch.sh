@@ -10,7 +10,6 @@ test_expect_success 'fetch empty' '
 '
 
 test_expect_success 'init repo' '
-	svn_cmd co $svnurl svnco &&
 	cd svnco &&
 	svn_cmd mkdir empty-dir &&
 	echo "some contents" > file.txt &&
@@ -28,9 +27,9 @@ test_expect_success 'fetch repo' '
 	test -d empty-dir &&
 	test -e empty-dir/.gitempty &&
 	test_file file.txt "some contents" &&
-	test_subject HEAD "some commit" &&
-	test_author HEAD "Full Name <mail@example.com>" &&
-	test_date HEAD $date
+	test_git_subject HEAD "some commit" &&
+	test_git_author HEAD "C O Mitter <committer@example.com>" &&
+	test_git_date HEAD $date
 '
 
 test_expect_success 'auto crlf' '

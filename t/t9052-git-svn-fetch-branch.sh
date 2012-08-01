@@ -4,7 +4,6 @@ test_description='git svn-fetch branch'
 . ./lib-git-svn-fetch.sh
 
 test_expect_success 'setup branches' '
-	svn_cmd co $svnurl svnco &&
 	cd svnco &&
 	svn_cmd mkdir Trunk &&
 	svn_cmd mkdir Branches &&
@@ -17,7 +16,6 @@ test_expect_success 'setup branches' '
 	svn_cmd ci -m "trunk file" &&
 	svn_cmd up &&
 	cd .. &&
-	git config svn.user user &&
 	git config svn.trunk Trunk &&
 	git config svn.branches Branches &&
 	git config svn.tags Tags &&

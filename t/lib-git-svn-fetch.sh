@@ -26,7 +26,7 @@ store-plaintext-passwords = yes
 		svn
 		return
 	fi
-	svn "$orig_svncmd" --username user --password pass --no-auth-cache --non-interactive --config-dir "$svnconf" "$@"
+	svn "$orig_svncmd" --username committer --password pass --no-auth-cache --non-interactive --config-dir "$svnconf" "$@"
 }
 
 function test_file() {
@@ -41,57 +41,44 @@ function svn_date() {
 	svn_cmd log -r "$revision" --xml -l 1 "$directory" | grep "<date>" | sed -re 's#^<date>([^\.Z]*)\.[0-9]+Z</date>#\1Z#g'
 }
 
-function test_subject() {
+function test_git_subject() {
 	commit="$1"
 	subject="$2"
 	commit_subject="`git log -1 --pretty=format:%s $commit`"
+	echo test_git_subject "$commit_subject" "$subject"
 	test "$commit_subject" == "$subject"
 }
 
-function test_author() {
+function test_git_author() {
 	commit="$1"
 	author="$2"
 	commit_author="`git log -1 --pretty=format:'%an <%ae>' $commit`"
+	echo test_git_author "$commit_author" "$author"
 	test "$commit_author" == "$author"
 }
 
-function test_date() {
+function test_git_date() {
 	commit="$1"
 	date="$2"
 	commit_date="`git log -1 --pretty=format:%ai $commit | sed -re 's#^([^ ]*) ([^ ]*) \+0000$#\1T\2Z#g'`"
+	echo test_git_date "$commit_date" "$date"
 	test "$commit_date" == "$date"
 }
 
-function setup_branches() {
-	rm -rf svnco &&
-	svn_cmd co $svnurl svnco &&
-	cd svnco &&
-	svn_cmd mkdir Trunk &&
-	svn_cmd mkdir Random &&
-	svn_cmd mkdir Branches &&
-	svn_cmd mkdir Tags &&
-	touch Trunk/file.txt Random/file.txt &&
-	svn_cmd add Random/file.txt &&
-	svn_cmd add Trunk/file.txt &&
-	svn_cmd ci -m "init" &&
-	svn_cmd up &&
-	echo "other" >> Trunk/file.txt &&
-	svn_cmd ci -m "trunk file" &&
-	svn_cmd up &&
-	echo "contents" >> Random/file.txt &&
-	svn_cmd ci -m "create random file" &&
-	svn_cmd up &&
-	svn_cmd copy Trunk Branches/CopiedBranch &&
-	echo "more" >> Branches/CopiedBranch/file2.txt &&
-	svn_cmd add Branches/CopiedBranch/file2.txt &&
-	svn_cmd ci -m "create copied branch" &&
-	svn_cmd up &&
-	svn_cmd mkdir Branches/NonCopiedBranch &&
-	echo "non copied" >> Branches/NonCopiedBranch/file.txt &&
-	svn_cmd add Branches/NonCopiedBranch/file.txt &&
-	svn_cmd ci -m "create non-copied branch"
-	svn_cmd up &&
-	cd ..
+function test_svn_subject() {
+	revision="$1"
+	subject="$2"
+	commit_subject="`svn log -l 1 --xml -r $revision | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g'`"
+	echo test_svn_subject "$commit_subject" "$subject"
+	test "$commit_subject" == "$subject"
+}
+
+function test_svn_author() {
+	revision="$1"
+	author="$2"
+	commit_author="`svn log -l 1 --xml -r $revision | grep '<author>' | sed -re 's#<author>(.*)</author>#\1#g'`"
+	echo test_svn_author "$commit_author" "$author"
+	test "$commit_author" == "$author"
 }
 
 show_ref() {
@@ -119,16 +106,17 @@ password-db = passwd
 !
 	cat > "$svnrepo/conf/passwd" <<!
 [users]
-user = pass
+committer = pass
 !
 	cat > .git/svn-authors <<!
-user:pass = Full Name <mail@example.com>
+committer:pass = C O Mitter <committer@example.com>
 !
 	svnserve --daemon \
 		--listen-port $SVNSERVE_PORT \
 		--root "$svnrepo" \
 		--listen-host localhost &&
-	git config svn.user user &&
+	git config svn.user committer &&
 	git config svn.url $svnurl &&
-	git config svn.remote svn
+	git config svn.remote svn &&
+	svn_cmd co $svnurl svnco
 '

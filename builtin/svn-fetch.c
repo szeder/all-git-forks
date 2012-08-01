@@ -1098,7 +1098,6 @@ static int checkout_tree(struct index_state* idx, const unsigned char* sha1, con
 	if (ins >= 0) return -1;
 	ins = -ins-1;
 
-	cache_tree_free(&idx->cache_tree);
 	if (checkout_tree_search(idx, NULL, sha1, from, to))
 		return -1;
 
@@ -1737,14 +1736,16 @@ err:
 	die("malformed update");
 }
 
-static void remove_index_path(struct index_state* idx, struct strbuf* name) {
+/* returns number of entries removed */
+static int remove_index_path(struct index_state* idx, struct strbuf* name) {
+	int ret = 0;
 	int i = index_name_pos(idx, name->buf, name->len);
-	cache_tree_invalidate_path(idx->cache_tree, name->buf);
 
 	if (i >= 0) {
 		/* file */
+		cache_tree_invalidate_path(idx->cache_tree, name->buf);
 		remove_index_entry_at(idx, i);
-		return;
+		return 1;
 	}
 
 	/* we've got to re-lookup the path as a < a.c < a/c */
@@ -1761,10 +1762,17 @@ static void remove_index_path(struct index_state* idx, struct strbuf* name) {
 
 		ce->ce_flags |= CE_REMOVE;
 		i++;
+		ret++;
 	}
 
 	strbuf_setlen(name, name->len - 1);
-	remove_marked_cache_entries(idx);
+
+	if (ret) {
+		cache_tree_invalidate_path(idx->cache_tree, name->buf);
+		remove_marked_cache_entries(idx);
+	}
+
+	return ret;
 }
 
 static void read_delete_entry(struct svnref* r, int rev) {
@@ -2319,7 +2327,6 @@ static int have_next_commit(struct pending* retp) {
 		if (read_list()) {
 			read_done();
 			read_success();
-			log_finished = 1;
 			return 0;
 		}
 
@@ -2509,10 +2516,10 @@ static void setup_globals() {
 static void close_connection(int cidx) {
 	if (svnfdv[cidx] >= 0) {
 		close(svnfdv[cidx]);
-		svnfdv[cidx] = -1;
-		connection_authors[cidx] = NULL;
-		inbufv[cidx].b = inbufv[cidx].e = 0;
 	}
+	svnfdv[cidx] = -1;
+	connection_authors[cidx] = NULL;
+	inbufv[cidx].b = inbufv[cidx].e = 0;
 }
 
 static void change_connection(int cidx, struct author* a) {
@@ -2520,6 +2527,7 @@ static void change_connection(int cidx, struct author* a) {
 	char *host, *port, *path;
 	struct addrinfo hints, *res, *ai;
 	int err;
+	int fd;
 
 	svnfd = svnfdv[cidx];
 	inbuf = &inbufv[cidx];
@@ -2557,7 +2565,7 @@ static void change_connection(int cidx, struct author* a) {
 		die_errno("failed to connect to %s", url);
 
 	for (ai = res; ai != NULL; ai = ai->ai_next) {
-		int fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
+		fd = socket(ai->ai_family, ai->ai_socktype, ai->ai_protocol);
 		if (fd < 0) continue;
 
 		if (connect(fd, ai->ai_addr, ai->ai_addrlen)) {
@@ -2567,15 +2575,15 @@ static void change_connection(int cidx, struct author* a) {
 			continue;
 		}
 
-		svnfdv[cidx] = fd;
 		break;
 	}
 
-	if (svnfdv[cidx] < 0)
+	if (fd < 0)
 		die_errno("failed to connect to %s", url);
 
-	svnfd = svnfdv[cidx];
+	svnfd = svnfdv[cidx] = fd;
 	inbuf = &inbufv[cidx];
+
 
 	/* TODO: client software version and client capabilities */
 	sendf("( 2 ( edit-pipeline svndiff1 ) %d:%s )\n( CRAM-MD5 ( ) )\n",
@@ -2767,6 +2775,10 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 			from = cmdto;
 		}
 
+		return 0;
+	}
+
+	if (from > to) {
 		return 0;
 	}
 
@@ -3019,37 +3031,23 @@ static void addremove(struct diff_options* op,
 		const char* path,
 		unsigned dsubmodule)
 {
-	static struct strbuf rmdir = STRBUF_INIT;
-	static int in_rmdir;
-
+	static struct strbuf buf = STRBUF_INIT;
 	struct svnref* r = op->format_callback_data;
 	int dir;
 	size_t plen = strlen(path);
 
-	if (verbose) fprintf(stderr, "%s mode %x sha1 %s path %s\n",
-			addrm == '+' ? "add" : "remove", mode, sha1_to_hex(sha1), path);
+	if (verbose) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
+			addrm, mode, sha1_to_hex(sha1), path);
 
-	if (!S_ISDIR(mode) && addrm == '-') {
-		remove_file_from_index(&r->svn_index, path);
-	}
-
-	/* diff recursively returns deleted folders, but svn only needs
-	 * the root */
-	if (addrm == '-' && in_rmdir && plen >= rmdir.len && !memcmp(path, rmdir.buf, rmdir.len)) {
-		return;
-	}
-
-	in_rmdir = 0;
 	dir = change_dir(path);
 
 	if (addrm == '-' && S_ISDIR(mode)) {
-		strbuf_reset(&rmdir);
-		strbuf_add(&rmdir, path, plen);
-		strbuf_addch(&rmdir, '/');
-		in_rmdir = 1;
-
-		sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
-			(int) plen, path, dtoken(dir));
+		strbuf_reset(&buf);
+		strbuf_add(&buf, path, plen);
+		if (remove_index_path(&r->svn_index, &buf) > 0) {
+			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
+				(int) plen, path, dtoken(dir));
+		}
 
 	} else if (addrm == '+' && S_ISDIR(mode)) {
 		sendf("( add-dir ( %d:%s %s %s ( ) ) )\n",
@@ -3058,7 +3056,9 @@ static void addremove(struct diff_options* op,
 		dir_changed(++dir, path);
 
 	} else if (addrm == '-' && S_ISREG(mode)) {
-		if (index_name_exists(&r->svn_index, path, plen, 0)) {
+		strbuf_reset(&buf);
+		strbuf_add(&buf, path, plen);
+		if (remove_index_path(&r->svn_index, &buf) > 0) {
 			sendf("( delete-entry ( %d:%s ( ) %s) )\n",
 				(int) plen, path, dtoken(dir));
 		}
@@ -3079,7 +3079,7 @@ static void addremove(struct diff_options* op,
 		 */
 		const char* p = strrchr(path, '/');
 		p = p ? p+1 : path;
-		if (prefixcmp(p, ".git")) {
+		if (!prefixcmp(p, ".git")) {
 			return;
 		}
 
@@ -3185,9 +3185,14 @@ static int send_commit(struct svnref* r, struct commit* cmt, int create, struct 
 	dir = change_dir(r->svn.buf);
 
 	if (cmt) {
+		// We never have to create the root
+		if (!r->svn.len) {
+			create = 0;
+		}
+
 		if (copysrc) {
-			if (!create) die("huh? copysrc without create");
-			sendf("( add-dir ( %d:%s %s %s ( %d:%s %d ) ) )\n",
+			sendf("( %s ( %d:%s %s %s ( %d:%s %d ) ) )\n",
+					create ? "add-dir" : "open-dir",
 					(int) r->svn.len,
 					r->svn.buf,
 					dtoken(dir),
@@ -3217,8 +3222,13 @@ static int send_commit(struct svnref* r, struct commit* cmt, int create, struct 
 		DIFF_OPT_SET(&op, TREE_IN_RECURSIVE);
 
 		fprintf(stderr, "diff %s to %s\n", sha1_to_hex(r->commit), sha1_to_hex(cmt->object.sha1));
-		if (diff_tree_sha1(r->commit, cmt->object.sha1, "/", &op))
-			die("diff tree failed");
+		if (is_null_sha1(r->commit)) {
+			if (diff_root_tree_sha1(cmt->object.sha1, "", &op))
+				die("diff tree failed");
+		} else {
+			if (diff_tree_sha1(r->commit, cmt->object.sha1, "", &op))
+				die("diff tree failed");
+		}
 		diffcore_std(&op);
 		diff_flush(&op);
 	} else {
@@ -3313,6 +3323,11 @@ static int push_commit(struct push* p, struct commit* cmt, struct tag* tag) {
 	if (!is_null_sha1(r->value)) {
 		strbuf_addf(&buf, "+parent %s\n", sha1_to_hex(r->value));
 	}
+
+	if (!r->svn_index.cache_tree)
+		r->svn_index.cache_tree = cache_tree();
+	if (cache_tree_update(r->svn_index.cache_tree, r->svn_index.cache, r->svn_index.cache_nr, 0))
+		die("failed to update cache tree");
 
 	strbuf_addf(&buf, "+tree %s\n"
 			"revision %d\n"
@@ -3446,13 +3461,8 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 
 		p = xcalloc(1, sizeof(*p));
 
-		if (get_sha1(argv[1], old))
-		       die("invalid ref %s", argv[1]);
-		if (get_sha1(argv[2], new))
-		       die("invalid ref %s", argv[2]);
-
-		p->old = lookup_commit_indirect(old, NULL);
-		p->new = lookup_commit_indirect(new, &p->tag);
+		p->old = lookup_commit_reference_by_name(argv[1]);
+		p->new = lookup_commit_reference_by_name(argv[2]);
 
 		p->ref = find_svnref_by_refname(argv[0]);
 		do_push(p);
