@@ -15,7 +15,7 @@ OPTS =NO_OPENSSL=1 prefix=/usr gitexecdir=/usr/lib/git-core \
   NO_PYTHON=1 \
   USE_SRV_RR=1 \
   THREADED_DELTA_SEARCH=1 \
-  NO_CROSS_DIRECTORY_HARDLINKS=1 NO_HARDLINKS=1 \
+  NO_CROSS_DIRECTORY_HARDLINKS=1 NO_INSTALL_HARDLINKS=1 \
   DEFAULT_PAGER=pager DEFAULT_EDITOR=editor \
   CC='$(CC)' CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)'
 DOC_OPTS =prefix=/usr htmldir=/usr/share/doc/git/html \
@@ -105,6 +105,9 @@ install-arch: deb-checkdir deb-checkuid build-arch-stamp
 	install -d -m0755 '$(GIT)'/etc/bash_completion.d
 	install -m0644 contrib/completion/git-completion.bash \
 	  '$(GIT)'/etc/bash_completion.d/git
+	# sanity check that #642603 fix is still in place
+	test $(stat -c%h \
+	  '$(GIT)'/usr/lib/git-core/git-branch) -le 10
 	# gitweb
 	install -d -m0755 '$(GIT)'/usr/share/gitweb
 	ln -s gitweb.cgi '$(GIT)'/usr/share/gitweb/index.cgi
