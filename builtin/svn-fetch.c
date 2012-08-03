@@ -2623,7 +2623,7 @@ static const char* print_arg(struct strbuf* sb, const char* fmt, ...) {
 
 int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	int64_t n;
-	int from, to, i;
+	int from, to, i, finished;
 	struct pending *pending;
 	struct commit* svncmt = NULL;
 
@@ -2664,13 +2664,13 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	 * it last. For when we want to run the update in multiple
 	 * bunches then we spawn off a sub command for all revisions.
 	 */
-	if (to > from + FETCH_AT_ONCE) {
+	if (to >= from + FETCH_AT_ONCE) {
 		struct strbuf revs = STRBUF_INIT;
 		struct strbuf conns = STRBUF_INIT;
 
 		while (from <= to) {
 			int ret;
-			int cmdto = min(from + FETCH_AT_ONCE, to);
+			int cmdto = min(from + FETCH_AT_ONCE - 1, to);
 			const char* args[] = {
 				"svn-fetch",
 				"-c", print_arg(&conns, "%d", svnfdc),
@@ -2700,11 +2700,15 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	/* start requesting commits until we've filled out pending
 	 * commits or run out of commits */
 	i = 0;
+	finished = 0;
 	while (i < svnfdc) {
 		struct pending* p = &pending[i];
 
 		change_connection(svnfdc, defauthor);
-		if (!have_next_commit(p)) break;
+		if (!have_next_commit(p)) {
+			finished = 1;
+			break;
+		}
 		change_connection(i, defauthor);
 		request_commit(p->ref, p->rev, p->copysrc, p->copyrev);
 
@@ -2738,10 +2742,11 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 
 		/* then request a new one on that connection */
 		change_connection(svnfdc, defauthor);
-		if (have_next_commit(p)) {
+		if (!finished && have_next_commit(p)) {
 			change_connection(i, defauthor);
 			request_commit(p->ref, p->rev, p->copysrc, p->copyrev);
 		} else {
+			finished = 1;
 			p->ref = NULL;
 		}
 
