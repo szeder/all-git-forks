@@ -30,6 +30,7 @@ static int verbose;
 static int pre_receive;
 static int svnfdc = 1;
 static int svnfd;
+static int inner;
 static const char* url;
 static enum eol svn_eol = EOL_UNSET;
 
@@ -45,6 +46,7 @@ static struct option builtin_svn_fetch_options[] = {
 	OPT_BOOLEAN('v', "verbose", &verbose, "verbose logging of all svn traffic"),
 	OPT_INTEGER('r', "revision", &last_revision, "revisions to fetch up to"),
 	OPT_INTEGER('c', "connections", &svnfdc, "number of concurrent connections"),
+	OPT_BOOLEAN(0, "inner", &inner, "internal"),
 	OPT_END()
 };
 
@@ -2643,7 +2645,7 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 		return 0;
 	}
 
-	from = latest_rev() + 1;
+	from = latest_rev();
 	pending = xcalloc(svnfdc, sizeof(pending[0]));
 
 	change_connection(svnfdc, defauthor);
@@ -2655,27 +2657,27 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	if (n < 0 || n > INT_MAX) die("latest-rev failed");
 	read_end_response();
 
-	from = max(from, 1);
 	to = min(last_revision, (int) n);
 
 	fprintf(stderr, "rev %d %d\n", from, to);
 
 	/* gc --auto invalidates the object cache. Thus we have to run
 	 * it last. For when we want to run the update in multiple
-	 * bunches then we spawn off a sub command for all revisions.
+	 * bunches then we spawn off a sub command for each chunk.
 	 */
-	if (to >= from + FETCH_AT_ONCE) {
+	if (!inner && to > from + FETCH_AT_ONCE) {
 		struct strbuf revs = STRBUF_INIT;
 		struct strbuf conns = STRBUF_INIT;
 
-		while (from <= to) {
+		while (from < to) {
 			int ret;
-			int cmdto = min(from + FETCH_AT_ONCE - 1, to);
+			int cmdto = min(from + FETCH_AT_ONCE, to);
 			const char* args[] = {
 				"svn-fetch",
 				"-c", print_arg(&conns, "%d", svnfdc),
 				"-r", print_arg(&revs, "%d", cmdto),
 				"--user", svnuser,
+				"--inner",
 				verbose ? "-v" : NULL,
 				NULL
 			};
@@ -2689,12 +2691,12 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 		return 0;
 	}
 
-	if (from > to) {
+	if (from >= to) {
 		return 0;
 	}
 
 	change_connection(svnfdc, defauthor);
-	request_log(from, to);
+	request_log(from+1, to);
 	read_success();
 
 	/* start requesting commits until we've filled out pending
