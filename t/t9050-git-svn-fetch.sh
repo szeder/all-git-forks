@@ -35,7 +35,7 @@ test_expect_success 'fetch repo' '
 
 test_expect_success 'auto crlf' '
 	cd svnco &&
-	echo -e "foo\r\nbar\r" > crlf.txt &&
+	echo "666f6f0d0a6261720d0a" | xxd -r -p > crlf.txt &&
 	svn_cmd add crlf.txt &&
 	svn_cmd ci -m "crlf" &&
 	cd .. &&
@@ -44,7 +44,8 @@ test_expect_success 'auto crlf' '
 	git config core.eol lf &&
 	git svn-fetch -v &&
 	git checkout svn/master &&
-	test_file crlf.txt "$(echo -e "foo\nbar")"
+	echo "666f6f0a6261720a" | xxd -r -p > crlf_test.txt &&
+	test "$(cat crlf.txt)" = "$(cat crlf_test.txt)"
 '
 
 test_done

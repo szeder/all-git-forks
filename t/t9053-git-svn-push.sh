@@ -28,7 +28,9 @@ test_expect_success 'multiple commits' '
 	svn up -r 2 &&
 	test_svn_subject BASE "second commit" &&
 	test_svn_author BASE committer &&
-	test_file file.txt $(echo -e "foo\nbar") &&
+	echo foo > file_test.txt &&
+	echo bar >> file_test.txt &&
+	test_file file.txt "$(cat file_test.txt)" &&
 	test ! -e a &&
 	svn up -r 3 &&
 	test_svn_subject BASE "third commit" &&

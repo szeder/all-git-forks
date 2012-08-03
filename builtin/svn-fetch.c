@@ -2067,6 +2067,7 @@ static int set_latest(struct commit* cmt) {
 
 static int svn_time_to_git(struct strbuf* time) {
 	struct tm tm;
+	memset(&tm, 0, sizeof(tm));
 	if (!strptime(time->buf, "%Y-%m-%dT%H:%M:%S", &tm)) return -1;
 	strbuf_reset(time);
 	strbuf_addf(time, "%"PRId64, (int64_t) mktime(&tm));
@@ -2166,12 +2167,15 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 	/* Create the svn commit */
 	strbuf_reset(&buf);
 	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->svn_index.cache_tree->sha1));
+
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));
 	}
+
 	if (r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(r->svncmt));
 	}
+
 	strbuf_addf(&buf, "author %s %s +0000\n", author, time);
 	strbuf_addf(&buf, "committer %s %s +0000\n", author, time);
 	strbuf_addf(&buf, "revision %d\n", rev);
@@ -3073,9 +3077,10 @@ static int read_commit_revno(struct strbuf* time) {
 	if (read_list()) goto err;
 	n = read_number();
 	if (n < 0 || n > INT_MAX) goto err;
-	if (time) {
+	if (have_optional() && time) {
 		read_strbuf(time);
 		svn_time_to_git(time);
+		read_end();
 	}
 	read_end();
 	if (verbose) fputc('\n', stderr);
@@ -3242,8 +3247,6 @@ static int push_commit(struct push* p, struct object* gitobj) {
 
 	strbuf_reset(&buf);
 	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->svn_index.cache_tree->sha1));
-	strbuf_addf(&buf, "author %s <%s> %s +0000\n", auth->name, auth->mail, time.buf);
-	strbuf_addf(&buf, "committer %s <%s> %s +0000\n", auth->name, auth->mail, time.buf);
 
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));
@@ -3253,6 +3256,8 @@ static int push_commit(struct push* p, struct object* gitobj) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(r->svncmt));
 	}
 
+	strbuf_addf(&buf, "author %s <%s> %s +0000\n", auth->name, auth->mail, time.buf);
+	strbuf_addf(&buf, "committer %s <%s> %s +0000\n", auth->name, auth->mail, time.buf);
 	strbuf_addf(&buf, "revision %d\n", rev);
 	strbuf_addf(&buf, "path %s\n", r->svn.buf);
 	strbuf_addch(&buf, '\n');
