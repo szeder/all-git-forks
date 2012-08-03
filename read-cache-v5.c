@@ -471,6 +471,83 @@ static int convert_resolve_undo(struct index_state *istate,
 	return 0;
 }
 
+static struct cache_tree *convert_one(struct directory_entry *de)
+{
+	int i;
+	struct cache_tree *it;
+
+	it = cache_tree();
+	it->entry_count = de->de_nentries;
+	if (0 <= it->entry_count)
+		hashcpy(it->sha1, de->sha1);
+
+	/*
+	 * Just a heuristic -- we do not add directories that often but
+	 * we do not want to have to extend it immediately when we do,
+	 * hence +2.
+	 */
+	it->subtree_alloc = de->de_nsubtrees + 2;
+	it->down = xcalloc(it->subtree_alloc, sizeof(struct cache_tree_sub *));
+	for (i = 0; i < de->de_nsubtrees; i++) {
+		struct cache_tree *sub;
+		struct cache_tree_sub *subtree;
+		char *buf, *name;
+
+		sub = convert_one(de->sub[i]);
+		if(!sub)
+			goto free_return;
+
+		name = "";
+		buf = strtok(de->sub[i]->pathname, "/");
+		while (buf) {
+			name = buf;
+			buf = strtok(NULL, "/");
+		}
+		subtree = cache_tree_sub(it, name);
+		subtree->cache_tree = sub;
+	}
+	if (de->de_nsubtrees != it->subtree_nr)
+		die("cache-tree: internal error");
+	return it;
+ free_return:
+	cache_tree_free(&it);
+	return NULL;
+}
+
+static int compare_cache_tree_elements(const void *a, const void *b)
+{
+	const struct directory_entry *de1, *de2;
+
+	de1 = (const struct directory_entry *) a;
+	de2 = (const struct directory_entry *) b;
+	return subtree_name_cmp(de1->pathname, de1->de_pathlen,
+				de2->pathname, de2->de_pathlen);
+}
+
+static void sort_directories(struct directory_entry *de)
+{
+	int i;
+
+	for (i = 0; i < de->de_nsubtrees; i++) {
+		if (de->sub[i]->de_nsubtrees)
+			sort_directories(de->sub[i]);
+	}
+	qsort(de->sub, de->de_nsubtrees, sizeof(struct directory_entry *),
+	      compare_cache_tree_elements);
+}
+
+/*
+ * This function modifies the directory argument that is given to it.
+ * Don't use it if the directory entries are still needed after.
+ */
+static struct cache_tree *cache_tree_convert_v5(struct directory_entry *de)
+{
+	if (!de->de_nentries)
+		return NULL;
+	sort_directories(de);
+	return convert_one(de);
+}
+
 static int read_entries(struct index_state *istate, struct directory_entry *de,
 			unsigned int first_entry_offset, void *mmap,
 			unsigned long mmap_size, unsigned int *nr,
@@ -591,6 +668,7 @@ static int read_index_v5(struct index_state *istate, void *mmap,
 		}
 		de = de->next;
 	}
+	istate->cache_tree = cache_tree_convert_v5(root_directory);
 	istate->cache_nr = nr;
 	return 0;
 }
