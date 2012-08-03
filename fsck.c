@@ -5,7 +5,6 @@
 #include "tree-walk.h"
 #include "commit.h"
 #include "tag.h"
-#include "other.h"
 #include "fsck.h"
 
 static int fsck_walk_tree(struct tree *tree, fsck_walk_func walk, void *data)
@@ -65,37 +64,6 @@ static int fsck_walk_commit(struct commit *commit, fsck_walk_func walk, void *da
 	return res;
 }
 
-static int fsck_walk_other(struct other *other, fsck_walk_func walk, void *data)
-{
-	int ret = 0;
-	char* p;
-
-	if (parse_other(other))
-		return -1;
-
-	p = other->buffer;
-	for (;;) {
-		struct other_header hdr;
-		struct object* obj;
-		int err;
-
-		err = parse_other_header(&p, &hdr);
-		if (err < 0) return err;
-		if (err > 0) break;
-
-		if (is_null_sha1(hdr.sha1)) continue;
-
-		obj = lookup_object(hdr.sha1);
-		if (!obj) return -1;
-
-		err = walk(obj, OBJ_ANY, data);
-		if (err < 0) return err;
-		if (err > 0) ret = err;
-	}
-
-	return ret;
-}
-
 static int fsck_walk_tag(struct tag *tag, fsck_walk_func walk, void *data)
 {
 	if (parse_tag(tag))
@@ -116,8 +84,6 @@ int fsck_walk(struct object *obj, fsck_walk_func walk, void *data)
 		return fsck_walk_commit((struct commit *)obj, walk, data);
 	case OBJ_TAG:
 		return fsck_walk_tag((struct tag *)obj, walk, data);
-	case OBJ_OTHER:
-		return fsck_walk_other((struct other *)obj, walk, data);
 	default:
 		error("Unknown object type for %s", sha1_to_hex(obj->sha1));
 		return -1;
@@ -362,53 +328,6 @@ static int fsck_tag(struct tag *tag, fsck_error error_func)
 	return 0;
 }
 
-static int fsck_other(struct other *other, fsck_error error_func)
-{
-	char* p = other->buffer;
-	while (*p && *p != '\n') {
-		char *nl = strchr(p, '\n');
-		if (!nl) {
-			return error_func(&other->object, FSCK_ERROR, "incomplete header line");
-		}
-
-		if (*p == '+') {
-			unsigned char sha1[20];
-			char *hdr, *hend;
-			struct object* obj;
-
-			hdr = p;
-			p = memchr(p, ' ', nl - p);
-			if (!p) {
-				return error_func(&other->object, FSCK_ERROR, "invalid %.*s line format - no sha1",
-					       	(int) (nl - hdr), hdr);
-			}
-			hend = p;
-			p++;
-
-			if (get_sha1_hex(p, sha1)) {
-				return error_func(&other->object, FSCK_ERROR, "invalid %.*s line format - bad sha1",
-					       	(int) (hend - hdr), hdr);
-			}
-
-			p += 40;
-
-			if (p != nl && *p != ' ')
-				return error_func(&other->object, FSCK_ERROR, "invalid %.*s line format - bad sha1",
-						(int) (hend - hdr), hdr);
-
-			obj = parse_object(sha1);
-			if (!obj) {
-				return error_func(&other->object, FSCK_ERROR, "invalid %.*s line - could not load %s",
-						(int) (hend - hdr), hdr, sha1_to_hex(sha1));
-			}
-		}
-
-		p = nl + 1;
-	}
-
-	return 0;
-}
-
 int fsck_object(struct object *obj, int strict, fsck_error error_func)
 {
 	if (!obj)
@@ -422,8 +341,6 @@ int fsck_object(struct object *obj, int strict, fsck_error error_func)
 		return fsck_commit((struct commit *) obj, error_func);
 	if (obj->type == OBJ_TAG)
 		return fsck_tag((struct tag *) obj, error_func);
-	if (obj->type == OBJ_OTHER)
-		return fsck_other((struct other *) obj, error_func);
 
 	return error_func(obj, FSCK_ERROR, "unknown type '%d' (internal fsck error)",
 			  obj->type);

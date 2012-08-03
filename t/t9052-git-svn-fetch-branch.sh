@@ -20,6 +20,7 @@ test_expect_success 'setup branches' '
 	git config svn.branches Branches &&
 	git config svn.tags Tags &&
 	git config svn.url $svnurl &&
+	git config svn.trunkref trunk &&
 	git svn-fetch -v
 '
 
@@ -45,9 +46,9 @@ test_expect_success 'copied and edited branch' '
 	git checkout svn/CopiedBranch &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
-	test_subject HEAD "create copied branch" &&
-	test_subject HEAD~1 "trunk file" &&
-	test_subject HEAD~2 "init" &&
+	test_git_subject HEAD "create copied branch" &&
+	test_git_subject HEAD~1 "trunk file" &&
+	test_git_subject HEAD~2 "init" &&
 	test `git log --pretty=oneline svn/trunk..svn/CopiedBranch | wc -l` -eq 1 &&
 	merge_base svn/trunk svn/CopiedBranch
 '
@@ -64,7 +65,7 @@ test_expect_success 'edited and copied branch' '
 	git checkout svn/EditCopyBranch &&
 	test_file file.txt "other" &&
 	test_file file2.txt "more" &&
-	test_subject HEAD "create edit copy branch" &&
+	test_git_subject HEAD "create edit copy branch" &&
 	test `show_ref svn/trunk` == `show_ref svn/EditCopyBranch`
 '
 
@@ -82,7 +83,7 @@ test_expect_success 'copy, copy, copy' '
 	test `show_ref svn/FastCopy1` == `show_ref svn/FastCopy2` &&
 	test `show_ref svn/FastCopy1` == `show_ref svn/FastCopy3` &&
 	test `show_ref svn/FastCopy1` == `show_ref svn/trunk` &&
-	test_must_fail test_subject svn/FastCopy1 "fast copy"
+	test_must_fail test_git_subject svn/FastCopy1 "fast copy"
 '
 
 # 'edit copy delete 1' shouldn't create a git commit
@@ -102,8 +103,8 @@ test_expect_success 'edit, copy, and delete' '
 	git svn-fetch -v &&
 	test_must_fail git checkout svn/EditCopyDelete &&
 	git checkout svn/EditCopyDelete2 &&
-	test_subject HEAD "edit copy delete 2" &&
-	test_must_fail test_subject HEAD~1 "edit copy delete 1" &&
+	test_git_subject HEAD "edit copy delete 2" &&
+	test_must_fail test_git_subject HEAD~1 "edit copy delete 1" &&
 	test_file file3.txt "edit copy delete"
 '
 
@@ -120,7 +121,7 @@ test_expect_success 'copy, edit, copy, and delete' '
 	git svn-fetch -v &&
 	test_must_fail git checkout svn/CopyEditCopyDelete &&
 	git checkout svn/CopyEditCopyDelete2 &&
-	test_subject HEAD "copy edit copy delete" &&
+	test_git_subject HEAD "copy edit copy delete" &&
 	test_file file4.txt "copy edit copy delete"
 '
 
@@ -136,7 +137,7 @@ test_expect_success 'non copied branch' '
 	git checkout svn/NonCopiedBranch &&
 	test_file file.txt "non copied" &&
 	test ! -e file2.txt &&
-	test_subject HEAD "create non-copied branch" &&
+	test_git_subject HEAD "create non-copied branch" &&
 	test `git log --pretty=oneline | wc -l` -eq 1 &&
 	test_must_fail merge_base svn/trunk svn/NonCopiedBranch
 '
@@ -148,7 +149,7 @@ test_expect_success 'removed branch' '
 	cd .. &&
 	git svn-fetch -v &&
 	test `show_ref svn/RemovedBranch` == `show_ref svn/trunk` &&
-	rev=$(cat .git/svn-latest) &&
+	rev=$(GIT_SVN_FETCH_REPORT_LATEST=1 git svn-fetch) &&
 	cd svnco &&
 	svn_cmd rm Branches/RemovedBranch &&
 	svn_cmd ci -m "remove branch" &&
@@ -207,7 +208,7 @@ test_expect_success 'tag' '
 	git svn-fetch -v &&
 	git checkout Tag &&
 	test `show_tag Tag` == `show_ref svn/trunk` &&
-	rev=$(cat .git/svn-latest) &&
+	rev=$(GIT_SVN_FETCH_REPORT_LATEST=1 git svn-fetch) &&
 	cd svnco &&
 	svn_cmd rm Tags/Tag &&
 	svn_cmd ci -m "remove tag" &&

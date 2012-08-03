@@ -5,7 +5,8 @@ test_description='git svn-fetch non trunk'
 
 test_expect_success 'fetch empty' '
 	git svn-fetch -v &&
-	test_must_fail test -x .git/svn-latest &&
+	test_must_fail test -x .git/refs/svn/latest &&
+	test_must_fail git checkout svn/master &&
 	test_must_fail git checkout svn/trunk
 '
 
@@ -22,8 +23,8 @@ date=`svn_date HEAD svnco`
 
 test_expect_success 'fetch repo' '
 	git svn-fetch -v &&
-	test_file .git/svn-latest 1 &&
-	git checkout svn/trunk &&
+	test $(GIT_SVN_FETCH_REPORT_LATEST=1 git svn-fetch) -eq 1 &&
+	git checkout svn/master &&
 	test -d empty-dir &&
 	test -e empty-dir/.gitempty &&
 	test_file file.txt "some contents" &&
@@ -42,7 +43,7 @@ test_expect_success 'auto crlf' '
 	git config svn.eol crlf &&
 	git config core.eol lf &&
 	git svn-fetch -v &&
-	git checkout svn/trunk &&
+	git checkout svn/master &&
 	test_file crlf.txt "$(echo -e "foo\nbar")"
 '
 

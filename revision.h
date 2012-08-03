@@ -4,7 +4,6 @@
 #include "parse-options.h"
 #include "grep.h"
 #include "notes.h"
-#include "diff.h"
 
 #define SEEN		(1u<<0)
 #define UNINTERESTING   (1u<<1)
@@ -74,7 +73,6 @@ struct rev_info {
 			tag_objects:1,
 			tree_objects:1,
 			blob_objects:1,
-			other_objects:1,
 			verify_objects:1,
 			edge_hint:1,
 			limited:1,

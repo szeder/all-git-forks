@@ -7,7 +7,7 @@ test_expect_success 'init push' '
 	echo "foo" > file.txt &&
 	git add file.txt &&
 	git commit -a -m "initial commit" &&
-	git svn-push -v master 00000 master &&
+	git svn-push -v master 0000000000000000000000000000000000000000 master &&
 	cd svnco &&
 	svn up &&
 	test_svn_subject HEAD "initial commit" &&

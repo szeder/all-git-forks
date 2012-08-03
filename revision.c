@@ -315,19 +315,6 @@ static struct commit *handle_commit(struct rev_info *revs, struct object *object
 		add_pending_object(revs, object, "");
 		return NULL;
 	}
-
-	/* Other object */
-	if (object->type == OBJ_OTHER) {
-		if (!revs->other_objects)
-			return NULL;
-		if (flags & UNINTERESTING) {
-			object->flags |= UNINTERESTING;
-			return NULL;
-		}
-		add_pending_object(revs, object, "");
-		return NULL;
-	}
-
 	die("%s is unknown object", name);
 }
 

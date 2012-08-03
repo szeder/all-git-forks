@@ -15,8 +15,27 @@
 #include "tree.h"
 #include "commit.h"
 #include "tag.h"
-#include "other.h"
-#include "alloc.h"
+
+#define BLOCKING 1024
+
+#define DEFINE_ALLOCATOR(name, type)				\
+static unsigned int name##_allocs;				\
+void *alloc_##name##_node(void)					\
+{								\
+	static int nr;						\
+	static type *block;					\
+	void *ret;						\
+								\
+	if (!nr) {						\
+		nr = BLOCKING;					\
+		block = xmalloc(BLOCKING * sizeof(type));	\
+	}							\
+	nr--;							\
+	name##_allocs++;					\
+	ret = block++;						\
+	memset(ret, 0, sizeof(type));				\
+	return ret;						\
+}
 
 union any_object {
 	struct object object;
@@ -24,14 +43,12 @@ union any_object {
 	struct tree tree;
 	struct commit commit;
 	struct tag tag;
-	struct other other;
 };
 
 DEFINE_ALLOCATOR(blob, struct blob)
 DEFINE_ALLOCATOR(tree, struct tree)
 DEFINE_ALLOCATOR(commit, struct commit)
 DEFINE_ALLOCATOR(tag, struct tag)
-DEFINE_ALLOCATOR(other, struct other)
 DEFINE_ALLOCATOR(object, union any_object)
 
 static void report(const char *name, unsigned int count, size_t size)
@@ -49,5 +66,4 @@ void alloc_report(void)
 	REPORT(tree);
 	REPORT(commit);
 	REPORT(tag);
-	REPORT(other);
 }

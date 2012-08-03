@@ -601,8 +601,6 @@ static void grab_values(struct atom_value *val, int deref, struct object *obj, v
 	case OBJ_BLOB:
 		/* grab_blob_values(val, deref, obj, buf, sz); */
 		break;
-	case OBJ_OTHER:
-		break;
 	default:
 		die("Eh?  Object of type %d?", obj->type);
 	}

@@ -3,7 +3,6 @@
 #include "commit.h"
 #include "tree.h"
 #include "blob.h"
-#include "other.h"
 
 #define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
 #define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
@@ -106,7 +105,8 @@ int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
 	} else if (!strcmp(type, tag_type)) {
 		item->tagged = &lookup_tag(sha1)->object;
 	} else {
-		item->tagged = &lookup_other(sha1)->object;
+		error("Unknown type %s", type);
+		item->tagged = NULL;
 	}
 
 	if (bufptr + 4 < tail && !prefixcmp(bufptr, "tag "))
