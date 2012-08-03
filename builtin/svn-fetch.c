@@ -2522,7 +2522,7 @@ static void change_connection(int cidx, struct author* a) {
 	char *host, *port, *path;
 	struct addrinfo hints, *res, *ai;
 	int err;
-	int fd;
+	int fd = -1;
 
 	svnfd = svnfdv[cidx];
 	inbuf = &inbufv[cidx];
