@@ -66,3 +66,4 @@ extern int ce_match_stat_basic(struct index_state *istate, const struct cache_en
 			       struct stat *st);
 extern int is_racy_timestamp(const struct index_state *istate, const struct cache_entry *ce);
 extern void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce);
+extern uint32_t calculate_stat_crc(struct cache_entry *ce);

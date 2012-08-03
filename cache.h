@@ -581,6 +581,7 @@ extern int unmerged_index(const struct index_state *);
 extern int verify_path(const char *path);
 extern struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int igncase);
 extern int index_name_pos(const struct index_state *, const char *name, int namelen);
+extern struct directory_entry *init_directory_entry(char *pathname, int len);
 #define ADD_CACHE_OK_TO_ADD 1		/* Ok to add */
 #define ADD_CACHE_OK_TO_REPLACE 2	/* Ok to replace file/directory */
 #define ADD_CACHE_SKIP_DFCHECK 4	/* Ok to skip DF conflict checks */
@@ -1378,6 +1379,13 @@ static inline ssize_t write_str_in_full(int fd, const char *str)
 {
 	return write_in_full(fd, str, strlen(str));
 }
+
+/* index-v5 helper functions */
+extern char *super_directory(const char *filename);
+extern void insert_directory_entry(struct directory_entry *, struct hash_table *, int *, unsigned int *, uint32_t);
+extern void add_conflict_to_directory_entry(struct directory_entry *, struct conflict_entry *);
+extern void add_part_to_conflict_entry(struct directory_entry *, struct conflict_entry *, struct conflict_part *);
+extern struct conflict_entry *create_new_conflict(char *, int, int);
 
 /* pager.c */
 extern void setup_pager(void);

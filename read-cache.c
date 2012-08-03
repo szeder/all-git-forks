@@ -108,7 +108,7 @@ int match_stat_data(const struct stat_data *sd, struct stat *st)
 	return changed;
 }
 
-static uint32_t calculate_stat_crc(struct cache_entry *ce)
+uint32_t calculate_stat_crc(struct cache_entry *ce)
 {
 	unsigned int ctimens = 0;
 	uint32_t stat, stat_crc;
@@ -232,6 +232,8 @@ static void set_istate_ops(struct index_state *istate)
 
 	if (istate->version >= 2 && istate->version <= 4)
 		istate->ops = &v2_ops;
+	if (istate->version == 5)
+		istate->ops = &v5_ops;
 }
 
 int ce_match_stat_basic(struct index_state *istate,
@@ -1311,7 +1313,12 @@ static int verify_hdr_version(struct index_state *istate,
 	hdr_version = ntohl(hdr->hdr_version);
 	if (hdr_version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < hdr_version)
 		return error("bad index version %d", hdr_version);
-	istate->ops = &v2_ops;
+
+	if (hdr_version >= 2 && hdr_version <= 4)
+		istate->ops = &v2_ops;
+	else if (hdr_version == 5)
+		istate->ops = &v5_ops;
+
 	return 0;
 }
 
