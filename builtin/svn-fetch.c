@@ -175,7 +175,7 @@ static int reads(void* u, void* p, int n) {
 
 static const char hex[] = "0123456789abcdef";
 
-static int print_ascii(writer wf, void* wd, const void* p, int n) {
+static void print_ascii(const void* p, int n) {
 	int i;
 	const unsigned char* v = p;
 
@@ -183,38 +183,31 @@ static int print_ascii(writer wf, void* wd, const void* p, int n) {
 		int ch = v[i];
 
 		if (' ' <= ch && ch < 0x7F && ch != '\\') {
-			if (wf(wd, &v[i], 1) != 1) {
-				return -1;
-			}
+			putc(v[i], stderr);
+
 		} else if (ch == '\n') {
-			if (wf(wd, "\\n", 2) != 2) {
-				return -1;
-			}
+			putc('\\', stderr);
+			putc('n', stderr);
+
 		} else if (ch == '\r') {
-			if (wf(wd, "\\r", 2) != 2) {
-				return -1;
-			}
+			putc('\\', stderr);
+			putc('r', stderr);
+
 		} else if (ch == '\t') {
-			if (wf(wd, "\\t", 2) != 2) {
-				return -1;
-			}
+			putc('\\', stderr);
+			putc('t', stderr);
+
 		} else if (ch == '\\') {
-			if (wf(wd, "\\\\", 2) != 2) {
-				return -1;
-			}
+			putc('\\', stderr);
+			putc('\\', stderr);
+
 		} else {
-			char b[4];
-			b[0] = '\\';
-			b[1] = 'x';
-			b[2] = hex[ch >> 4];
-			b[3] = hex[ch & 0x0F];
-			if (wf(wd, b, 4) != 4) {
-				return -1;
-			}
+			putc('\\', stderr);
+			putc('x', stderr);
+			putc(hex[ch >> 4], stderr);
+			putc(hex[ch & 0x0F], stderr);
 		}
 	}
-
-	return n;
 }
 
 static void print_hex(writer wf, void* wd, const void* p, int n) {
@@ -350,7 +343,7 @@ static void sendf(const char* fmt, ...) {
 			fputc('+', stderr);
 		}
 
-		print_ascii(&writef, stderr, p, nl - p);
+		print_ascii(p, nl - p);
 
 		if (nl[0] == '\n') {
 			fputc('\n', stderr);
@@ -364,9 +357,8 @@ static void sendf(const char* fmt, ...) {
 }
 
 static void sendb(const void* data, size_t sz) {
-	if (verbose) {
-		print_ascii(&writef, stderr, data, sz);
-	}
+	if (verbose) print_ascii(data, sz);
+
 	if (write_in_full(svnfd, data, sz) != sz) {
 		die_errno("write");
 	}
@@ -718,9 +710,8 @@ static int read_strbuf(struct strbuf* s) {
 	readfull(s->buf + s->len, &readsvn, NULL, n);
 	strbuf_setlen(s, s->len + n);
 
-	if (verbose) {
-		print_ascii(&writef, stderr, s->buf + s->len - n, n);
-	}
+	if (verbose) print_ascii(s->buf + s->len - n, n);
+
 	return 0;
 }
 
@@ -765,7 +756,7 @@ static void read_end() {
 			while (n) {
 				int r = readsvn(NULL, buf, min(n, sizeof(buf)));
 				if (r <= 0) die_errno("read");
-				if (verbose) print_ascii(&writef, stderr, buf, r);
+				if (verbose) print_ascii(buf, r);
 				n -= r;
 			}
 		} else {
