@@ -1595,7 +1595,7 @@ static int ce_write_flush(git_SHA_CTX *context, int fd)
 	return 0;
 }
 
-static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
+static int ce_write_v2(git_SHA_CTX *context, int fd, void *data, unsigned int len)
 {
 	while (len) {
 		unsigned int buffered = write_buffer_len;
@@ -1617,13 +1617,13 @@ static int ce_write(git_SHA_CTX *context, int fd, void *data, unsigned int len)
 	return 0;
 }
 
-static int write_index_ext_header(git_SHA_CTX *context, int fd,
+static int write_index_ext_header_v2(git_SHA_CTX *context, int fd,
 				  unsigned int ext, unsigned int sz)
 {
 	ext = htonl(ext);
 	sz = htonl(sz);
-	return ((ce_write(context, fd, &ext, 4) < 0) ||
-		(ce_write(context, fd, &sz, 4) < 0)) ? -1 : 0;
+	return ((ce_write_v2(context, fd, &ext, 4) < 0) ||
+		(ce_write_v2(context, fd, &sz, 4) < 0)) ? -1 : 0;
 }
 
 static int ce_flush(git_SHA_CTX *context, int fd)
@@ -1648,7 +1648,7 @@ static int ce_flush(git_SHA_CTX *context, int fd)
 	return (write_in_full(fd, write_buffer, left) != left) ? -1 : 0;
 }
 
-static void ce_smudge_racily_clean_entry(struct cache_entry *ce)
+static void ce_smudge_racily_clean_entry_v2(struct cache_entry *ce)
 {
 	/*
 	 * The only thing we care about in this function is to smudge the
@@ -1729,7 +1729,7 @@ static char *copy_cache_entry_to_ondisk(struct ondisk_cache_entry *ondisk,
 	}
 }
 
-static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce,
+static int ce_write_entry_v2(git_SHA_CTX *c, int fd, struct cache_entry *ce,
 			  struct strbuf *previous_name)
 {
 	int size;
@@ -1769,7 +1769,7 @@ static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce,
 			      ce->name + common, ce_namelen(ce) - common);
 	}
 
-	result = ce_write(c, fd, ondisk, size);
+	result = ce_write_v2(c, fd, ondisk, size);
 	free(ondisk);
 	return result;
 }
@@ -1799,7 +1799,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 		rollback_lock_file(lockfile);
 }
 
-int write_index(struct index_state *istate, int newfd)
+static int write_index_v2(struct index_state *istate, int newfd)
 {
 	git_SHA_CTX c;
 	struct cache_version_header hdr;
@@ -1822,9 +1822,6 @@ int write_index(struct index_state *istate, int newfd)
 		}
 	}
 
-	if (!istate->version)
-		istate->version = INDEX_FORMAT_DEFAULT;
-
 	/* demote version 3 to version 2 when the latter suffices */
 	if (istate->version == 3 || istate->version == 2)
 		istate->version = extended ? 3 : 2;
@@ -1836,9 +1833,9 @@ int write_index(struct index_state *istate, int newfd)
 	hdr_v2.hdr_entries = htonl(entries - removed);
 
 	git_SHA1_Init(&c);
-	if (ce_write(&c, newfd, &hdr, sizeof(hdr)) < 0)
+	if (ce_write_v2(&c, newfd, &hdr, sizeof(hdr)) < 0)
 		return -1;
-	if (ce_write(&c, newfd, &hdr_v2, sizeof(hdr_v2)) < 0)
+	if (ce_write_v2(&c, newfd, &hdr_v2, sizeof(hdr_v2)) < 0)
 		return -1;
 
 	previous_name = (hdr_version == 4) ? &previous_name_buf : NULL;
@@ -1847,8 +1844,8 @@ int write_index(struct index_state *istate, int newfd)
 		if (ce->ce_flags & CE_REMOVE)
 			continue;
 		if (!ce_uptodate(ce) && is_racy_timestamp(istate, ce))
-			ce_smudge_racily_clean_entry(ce);
-		if (ce_write_entry(&c, newfd, ce, previous_name) < 0)
+			ce_smudge_racily_clean_entry_v2(ce);
+		if (ce_write_entry_v2(&c, newfd, ce, previous_name) < 0)
 			return -1;
 	}
 	strbuf_release(&previous_name_buf);
@@ -1858,8 +1855,8 @@ int write_index(struct index_state *istate, int newfd)
 		struct strbuf sb = STRBUF_INIT;
 
 		cache_tree_write(&sb, istate->cache_tree);
-		err = write_index_ext_header(&c, newfd, CACHE_EXT_TREE, sb.len) < 0
-			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		err = write_index_ext_header_v2(&c, newfd, CACHE_EXT_TREE, sb.len) < 0
+			|| ce_write_v2(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
 		if (err)
 			return -1;
@@ -1868,9 +1865,9 @@ int write_index(struct index_state *istate, int newfd)
 		struct strbuf sb = STRBUF_INIT;
 
 		resolve_undo_write(&sb, istate->resolve_undo);
-		err = write_index_ext_header(&c, newfd, CACHE_EXT_RESOLVE_UNDO,
+		err = write_index_ext_header_v2(&c, newfd, CACHE_EXT_RESOLVE_UNDO,
 					     sb.len) < 0
-			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+			|| ce_write_v2(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);
 		if (err)
 			return -1;
@@ -1881,6 +1878,14 @@ int write_index(struct index_state *istate, int newfd)
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 	return 0;
+}
+
+int write_index(struct index_state *istate, int newfd)
+{
+	if (!istate->version)
+		istate->version = INDEX_FORMAT_DEFAULT;
+
+	return write_index_v2(istate, newfd);
 }
 
 /*
