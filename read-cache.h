@@ -31,6 +31,7 @@ struct index_ops {
 };
 
 extern struct index_ops v2_ops;
+extern struct index_ops v5_ops;
 
 #ifndef NEEDS_ALIGNED_ACCESS
 #define ntoh_s(var) ntohs(var)

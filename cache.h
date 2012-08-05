@@ -99,7 +99,7 @@ unsigned long git_deflate_bound(git_zstream *, unsigned long);
 #define CACHE_SIGNATURE 0x44495243	/* "DIRC" */
 
 #define INDEX_FORMAT_LB 2
-#define INDEX_FORMAT_UB 4
+#define INDEX_FORMAT_UB 5
 
 /*
  * The "cache_time" is just the low 32 bits of the
@@ -121,6 +121,15 @@ struct stat_data {
 	unsigned int sd_size;
 };
 
+/*
+ * The *next pointer is used in read_entries_v5 for holding
+ * all the elements of a directory, and points to the next
+ * cache_entry in a directory.
+ *
+ * It is reset by the add_name_hash call in set_index_entry
+ * to set it to point to the next cache_entry in the
+ * correct in-memory format ordering.
+ */
 struct cache_entry {
 	struct stat_data ce_stat_data;
 	unsigned int ce_mode;
@@ -132,10 +141,16 @@ struct cache_entry {
 	char name[FLEX_ARRAY]; /* more */
 };
 
+#define CE_NAMEMASK  (0x0fff)
 #define CE_STAGEMASK (0x3000)
 #define CE_EXTENDED  (0x4000)
 #define CE_VALID     (0x8000)
+#define CE_SMUDGED   (0x0400) /* index v5 only flag */
 #define CE_STAGESHIFT 12
+
+#define CONFLICT_CONFLICTED (0x8000)
+#define CONFLICT_STAGESHIFT 13
+#define CONFLICT_STAGEMASK (0x6000)
 
 /*
  * Range 0xFFFF0000 in ce_flags is divided into
@@ -171,6 +186,19 @@ struct cache_entry {
 #define CE_EXTENDED2         (1 << 31)
 
 #define CE_EXTENDED_FLAGS (CE_INTENT_TO_ADD | CE_SKIP_WORKTREE)
+
+/*
+ * Representation of the extended on-disk flags in the v5 format.
+ * They must not collide with the ordinary on-disk flags, and need to
+ * fit in 16 bits.  Note however that v5 does not save the name
+ * length.
+ */
+#define CE_INTENT_TO_ADD_V5  (0x4000)
+#define CE_SKIP_WORKTREE_V5  (0x0800)
+#define CE_INVALID_V5        (0x0200)
+#if (CE_VALID|CE_STAGEMASK) & (CE_INTENTTOADD_V5|CE_SKIPWORKTREE_V5|CE_INVALID_V5)
+#error "v5 on-disk flags collide with ordinary on-disk flags"
+#endif
 
 /*
  * Safeguard to avoid saving wrong flags:
@@ -212,6 +240,8 @@ static inline unsigned create_ce_flags(unsigned stage)
 #define ce_uptodate(ce) ((ce)->ce_flags & CE_UPTODATE)
 #define ce_skip_worktree(ce) ((ce)->ce_flags & CE_SKIP_WORKTREE)
 #define ce_mark_uptodate(ce) ((ce)->ce_flags |= CE_UPTODATE)
+
+#define conflict_stage(c) ((CONFLICT_STAGEMASK & (c)->flags) >> CONFLICT_STAGESHIFT)
 
 #define ce_permissions(mode) (((mode) & 0100) ? 0755 : 0644)
 static inline unsigned int create_ce_mode(unsigned int mode)
