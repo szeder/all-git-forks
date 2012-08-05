@@ -68,6 +68,7 @@ extern int ce_match_stat_basic(struct index_state *istate,
 		struct cache_entry *ce, struct stat *st);
 extern int is_racy_timestamp(const struct index_state *istate, struct cache_entry *ce);
 extern void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce);
-extern void set_index_api_entry(struct index_state *istate, int *nr, struct cache_entry *ce);
+extern uint32_t calculate_stat_crc(struct cache_entry *ce);
+extern void set_istate_ops(struct index_state *istate);
 extern void strip_trailing_slash_from_submodules(struct cache_entry *ce,
 		const char **pathspec);
