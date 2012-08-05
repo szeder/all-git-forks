@@ -539,7 +539,8 @@ static struct cache_entry *create_ce_entry(const struct traverse_info *info, con
 	struct cache_entry *ce = xcalloc(1, cache_entry_size(len));
 
 	ce->ce_mode = create_ce_mode(n->mode);
-	ce->ce_flags = create_ce_flags(len, stage);
+	ce->ce_flags = create_ce_flags(stage);
+	ce->ce_namelen = len;
 	hashcpy(ce->sha1, n->sha1);
 	make_traverse_path(ce->name, info, n);
 
@@ -1023,6 +1024,10 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 			o->el = &el;
 	}
 
+	if (o->dir) {
+		o->path_exclude_check = xmalloc(sizeof(struct path_exclude_check));
+		path_exclude_check_init(o->path_exclude_check, o->dir);
+	}
 	memset(&o->result, 0, sizeof(o->result));
 	o->result.initialized = 1;
 	o->result.timestamp.sec = o->src_index->timestamp.sec;
@@ -1148,6 +1153,10 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 
 done:
 	free_excludes(&el);
+	if (o->path_exclude_check) {
+		path_exclude_check_clear(o->path_exclude_check);
+		free(o->path_exclude_check);
+	}
 	return ret;
 
 return_failed:
@@ -1288,7 +1297,7 @@ static int verify_clean_subdirectory(struct cache_entry *ce,
 	 * First let's make sure we do not have a local modification
 	 * in that directory.
 	 */
-	namelen = strlen(ce->name);
+	namelen = ce_namelen(ce);
 	for (i = locate_in_src_index(ce, o);
 	     i < o->src_index->cache_nr;
 	     i++) {
@@ -1363,7 +1372,8 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 	if (ignore_case && icase_exists(o, name, len, st))
 		return 0;
 
-	if (o->dir && excluded(o->dir, name, &dtype))
+	if (o->dir &&
+	    path_excluded(o->path_exclude_check, name, -1, &dtype))
 		/*
 		 * ce->name is explicitly excluded, so it is Ok to
 		 * overwrite it.

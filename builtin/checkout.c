@@ -73,7 +73,8 @@ static int update_some(const unsigned char *sha1, const char *base, int baselen,
 	hashcpy(ce->sha1, sha1);
 	memcpy(ce->name, base, baselen);
 	memcpy(ce->name + baselen, pathname, len - baselen);
-	ce->ce_flags = create_ce_flags(len, 0) | CE_UPDATE;
+	ce->ce_flags = create_ce_flags(0) | CE_UPDATE;
+	ce->ce_namelen = len;
 	ce->ce_mode = create_ce_mode(mode);
 	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 	return 0;
@@ -343,7 +344,7 @@ static int reset_tree(struct tree *tree, struct checkout_opts *o, int worktree)
 	opts.reset = 1;
 	opts.merge = 1;
 	opts.fn = oneway_merge;
-	opts.verbose_update = !o->quiet;
+	opts.verbose_update = !o->quiet && isatty(2);
 	opts.src_index = &the_index;
 	opts.dst_index = &the_index;
 	parse_tree(tree);
@@ -420,7 +421,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 		topts.update = 1;
 		topts.merge = 1;
 		topts.gently = opts->merge && old->commit;
-		topts.verbose_update = !opts->quiet;
+		topts.verbose_update = !opts->quiet && isatty(2);
 		topts.fn = twoway_merge;
 		if (opts->overwrite_ignore) {
 			topts.dir = xcalloc(1, sizeof(*topts.dir));
@@ -605,7 +606,7 @@ static int add_pending_uninteresting_ref(const char *refname,
 					 const unsigned char *sha1,
 					 int flags, void *cb_data)
 {
-	add_pending_sha1(cb_data, refname, sha1, flags | UNINTERESTING);
+	add_pending_sha1(cb_data, refname, sha1, UNINTERESTING);
 	return 0;
 }
 
@@ -915,6 +916,8 @@ static int switch_unborn_to_new_branch(struct checkout_opts *opts)
 	int status;
 	struct strbuf branch_ref = STRBUF_INIT;
 
+	if (!opts->new_branch)
+		die(_("You are on a branch yet to be born"));
 	strbuf_addf(&branch_ref, "refs/heads/%s", opts->new_branch);
 	status = create_symref("HEAD", branch_ref.buf, "checkout -b");
 	strbuf_release(&branch_ref);
