@@ -1942,6 +1942,7 @@ static struct directory_entry *read_entries_v5(struct index_state *istate,
 	int i;
 
 	conflict_queue = read_conflicts_v5(de, mmap, mmap_size, fd);
+	resolve_undo_convert_v5(istate, conflict_queue);
 	for (i = 0; i < de->de_nfiles; i++) {
 		ce = read_entry_v5(de,
 				entry_offset,
