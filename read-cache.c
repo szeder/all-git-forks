@@ -2087,6 +2087,7 @@ static void read_index_v5(struct index_state *istate, void *mmap, int mmap_size,
 	while (de)
 		de = read_entries_v5(istate, de, &entry_offset,
 				&mmap, mmap_size, &nr, &foffsetblock, fd);
+	istate->cache_tree = cache_tree_convert_v5(root_directory);
 }
 
 /* remember to discard_cache() before reading a different cache! */
