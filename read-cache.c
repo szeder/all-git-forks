@@ -1410,6 +1410,8 @@ static int verify_hdr_v2(struct cache_version_header *hdr, unsigned long size)
 	return 0;
 }
 
+#define ptr_add(x,y) ((void *)(((char *)(x)) + (y)))
+
 static int verify_hdr_v5(void *mmap)
 {
 	uint32_t *filecrc;
@@ -1418,11 +1420,11 @@ static int verify_hdr_v5(void *mmap)
 	struct cache_header_v5 *hdr_v5;
 
 	hdr = mmap;
-	hdr_v5 = mmap + sizeof(*hdr);
+	hdr_v5 = ptr_add(mmap, sizeof(*hdr));
 	/* Size of the header + the size of the extensionoffsets */
 	header_size_v5 = sizeof(*hdr_v5) + hdr_v5->hdr_nextension * 4;
 	/* Initialize crc */
-	filecrc = mmap + sizeof(*hdr) + header_size_v5;
+	filecrc = ptr_add(mmap, sizeof(*hdr) + header_size_v5);
 	if (!check_crc32(0, hdr, sizeof(*hdr) + header_size_v5, ntohl(*filecrc)))
 		return error("bad index file header crc signature");
 	return 0;
@@ -1679,8 +1681,8 @@ static struct directory_entry *read_directories_v5(unsigned int *dir_offset,
 		+ sizeof(disk_de->nentries)
 		+ sizeof(disk_de->sha1);
 	name = (char *)mmap + *dir_offset;
-	beginning = mmap + *dir_table_offset;
-	end = mmap + *dir_table_offset + 4;
+	beginning = ptr_add(mmap, *dir_table_offset);
+	end = ptr_add(mmap, *dir_table_offset + 4);
 	len = ntoh_l(*end) - ntoh_l(*beginning) - ondisk_directory_size - 5;
 	disk_de = (struct ondisk_directory_entry *)
 			((char *)mmap + *dir_offset + len + 1);
@@ -1694,8 +1696,8 @@ static struct directory_entry *read_directories_v5(unsigned int *dir_offset,
 	 */
 	data_len = len + 1 + ondisk_directory_size;
 
-	filecrc = mmap + *dir_offset + data_len;
-	if (!check_crc32(0, mmap + *dir_offset, data_len, ntoh_l(*filecrc)))
+	filecrc = ptr_add(mmap, *dir_offset + data_len);
+	if (!check_crc32(0, ptr_add(mmap, *dir_offset), data_len, ntoh_l(*filecrc)))
 		goto unmap;
 
 	*dir_table_offset += 4;
@@ -1731,18 +1733,19 @@ static struct cache_entry *read_entry_v5(struct directory_entry *de,
 
 	do {
 		name = (char *)*mmap + *entry_offset;
-		beginning = *mmap + *foffsetblock;
-		end = *mmap + *foffsetblock + 4;
+		beginning = ptr_add(*mmap, *foffsetblock);
+		end = ptr_add(*mmap, *foffsetblock + 4);
 		len = ntoh_l(*end) - ntoh_l(*beginning) - sizeof(struct ondisk_cache_entry_v5) - 5;
 		disk_ce = (struct ondisk_cache_entry_v5 *)
 				((char *)*mmap + *entry_offset + len + 1);
 		ce = cache_entry_from_ondisk_v5(disk_ce, de, name, len, de->de_pathlen);
-		filecrc = *mmap + *entry_offset + len + 1 + sizeof(*disk_ce);
+		filecrc = ptr_add(*mmap, *entry_offset + len + 1 + sizeof(*disk_ce));
 		offset_to_offset = htonl(*foffsetblock);
 		foffsetblockcrc = crc32(0, (Bytef*)&offset_to_offset, 4);
 		crc_wrong = !check_crc32(foffsetblockcrc,
-			*mmap + *entry_offset, len + 1 + sizeof(*disk_ce),
-			ntoh_l(*filecrc));
+					 ptr_add(*mmap, *entry_offset),
+					 len + 1 + sizeof(*disk_ce),
+					 ntoh_l(*filecrc));
 		if (crc_wrong) {
 			/* wait for 10 milliseconds */
 			usleep(10*1000);
@@ -1880,11 +1883,11 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 
 		do {
 			offset = croffset;
-			crc_start = *mmap + offset;
+			crc_start = ptr_add(*mmap, offset);
 			name = (char *)*mmap + offset;
 			len = strlen(name);
 			offset += len + 1;
-			nfileconflicts = *mmap + offset;
+			nfileconflicts = ptr_add(*mmap, offset);
 			offset += 4;
 
 			full_name = xmalloc(sizeof(char) * (len + de->de_pathlen));
@@ -1896,13 +1899,13 @@ static struct conflict_entry *read_conflicts_v5(struct directory_entry *de,
 				struct ondisk_conflict_part *ondisk;
 				struct conflict_part *cp;
 
-				ondisk = *mmap + offset;
+				ondisk = ptr_add(*mmap, offset);
 				cp = conflict_part_from_ondisk(ondisk);
 				cp->next = NULL;
 				add_part_to_conflict_entry(de, conflict_new, cp);
 				offset += sizeof(struct ondisk_conflict_part);
 			}
-			filecrc = *mmap + offset;
+			filecrc = ptr_add(*mmap, offset);
 			crc_wrong = !check_crc32(0, crc_start,
 				len + 1 + 4 + conflict_new->nfileconflicts
 				* sizeof(struct ondisk_conflict_part),
@@ -2006,7 +2009,7 @@ static void read_index_v2(struct index_state *istate, void *mmap, int mmap_size)
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
 
 	hdr = mmap;
-	hdr_v2 = mmap + sizeof(*hdr);
+	hdr_v2 = ptr_add(mmap, sizeof(*hdr));
 	istate->version = ntohl(hdr->hdr_version);
 	istate->cache_nr = ntohl(hdr_v2->hdr_entries);
 	istate->cache_alloc = alloc_nr(istate->cache_nr);
@@ -2067,7 +2070,7 @@ static void read_index_v5(struct index_state *istate, void *mmap, int mmap_size,
 	unsigned int foffsetblock;
 
 	hdr = mmap;
-	hdr_v5 = mmap + sizeof(*hdr);
+	hdr_v5 = ptr_add(mmap, sizeof(*hdr));
 	istate->version = ntohl(hdr->hdr_version);
 	istate->cache_nr = ntohl(hdr_v5->hdr_nfile);
 	istate->cache_alloc = alloc_nr(istate->cache_nr);
