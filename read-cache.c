@@ -2147,7 +2147,6 @@ int read_index_from(struct index_state *istate, const char *path)
 	istate->timestamp.sec = st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 
-	close(fd);
 	munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
