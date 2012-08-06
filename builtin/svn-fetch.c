@@ -24,6 +24,8 @@ static const char *trunk;
 static const char *branches;
 static const char *tags;
 static const char *remotedir;
+static const char *remoteheads;
+static const char *remotetags;
 static const char *trunkref = "master";
 static int last_revision = INT_MAX;
 static int verbose;
@@ -61,15 +63,6 @@ static struct option builtin_svn_push_options[] = {
 	OPT_STRING(0, "user", &svnuser, "user", "default svn username"),
 	OPT_BOOLEAN('v', "verbose", &verbose, "verbose logging of all svn traffic"),
 	OPT_BOOLEAN(0, "stdin", &push_from_stdin, "read refs to update from stdin"),
-	OPT_END()
-};
-
-static const char* const builtin_svn_merge_base_usage[] = {
-	"git svn-merge-base <commitish>",
-	NULL,
-};
-
-static struct option builtin_svn_merge_base_options[] = {
 	OPT_END()
 };
 
@@ -936,7 +929,7 @@ static void parse_svnpath(struct commit* c, struct strbuf* buf) {
 }
 
 static struct commit* svn_commit(struct commit* c) {
-	if (!c->parents || !c->parents->item)
+	if (parse_commit(c) || !c->parents || !c->parents->item)
 		die("invalid svn commit %s", cmt_to_hex(c));
 	/* In the case of no git commit, but we have a previous svn
 	 * commit, the svn parent is repeated twice. That way we can
@@ -948,7 +941,7 @@ static struct commit* svn_commit(struct commit* c) {
 }
 
 static struct commit* svn_parent(struct commit* c) {
-	if (!c->parents)
+	if (parse_commit(c) || !c->parents)
 		die("invalid svn commit %s", cmt_to_hex(c));
 	return c->parents->next ? c->parents->next->item : NULL;
 }
@@ -1084,7 +1077,6 @@ struct svnref {
 	unsigned int delete : 1;
 	unsigned int istag : 1;
 
-	struct commit* iter;
 	struct commit* svncmt; /* current value of svn ref */
 	struct object* gitobj; /* current value of remote ref, may be tag or commit */
 	struct commit* parent; /* parent git commit */
@@ -1166,7 +1158,7 @@ static struct svnref* create_ref(int type, const char* name) {
 		r = xcalloc(1, sizeof(*r));
 		strbuf_addstr(&r->svn, trunk ? trunk : "");
 		strbuf_addstr(&r->ref, "refs/svn/heads/trunk");
-		strbuf_addstr(&r->remote, remotedir);
+		strbuf_addstr(&r->remote, remoteheads);
 		strbuf_addstr(&r->remote, trunkref);
 		break;
 
@@ -1180,7 +1172,7 @@ static struct svnref* create_ref(int type, const char* name) {
 		strbuf_addstr(&r->ref, "refs/svn/heads/");
 		add_refname(&r->ref, name);
 
-		strbuf_addstr(&r->remote, remotedir);
+		strbuf_addstr(&r->remote, remoteheads);
 		add_refname(&r->remote, name);
 		break;
 
@@ -1195,7 +1187,7 @@ static struct svnref* create_ref(int type, const char* name) {
 		strbuf_addstr(&r->ref, "refs/svn/tags/");
 		add_refname(&r->ref, name);
 
-		strbuf_addstr(&r->remote, "refs/tags/");
+		strbuf_addstr(&r->remote, remotetags);
 		add_refname(&r->remote, name);
 		break;
 	}
@@ -1318,8 +1310,8 @@ static struct svnref* find_svnref_by_refname(const char* name) {
 		}
 	}
 
-	if (!prefixcmp(name, remotedir)) {
-		name += strlen(remotedir);
+	if (!prefixcmp(name, remoteheads)) {
+		name += strlen(remoteheads);
 
 		if (!strcmp(name, trunkref)) {
 			return create_ref(TRUNK_REF, NULL);
@@ -1329,8 +1321,8 @@ static struct svnref* find_svnref_by_refname(const char* name) {
 			return create_ref(BRANCH_REF, name);
 		}
 
-	} else if (!prefixcmp(name, "refs/tags/")) {
-		name += strlen("refs/tags/");
+	} else if (!prefixcmp(name, remotetags)) {
+		name += strlen(remotetags);
 		if (!tags)
 			die("in order to push a tag, svn.tags must be set");
 
@@ -1401,146 +1393,102 @@ static void add_all_refs() {
 	}
 }
 
-// rev is inout
-static struct commit* get_next_rev(int *rev) {
-	int i;
+#define SEEN_FROM_OBJ 1
+#define SEEN_FROM_SVN 2
+#define SEEN_FROM_BOTH (SEEN_FROM_OBJ | SEEN_FROM_SVN)
+#define SVNCMT 4
 
-	(*rev)--;
-
-	while (*rev) {
-		int maxrev = 0;
-		for (i = 0; i < refn; i++) {
-			struct svnref* r = refs[i];
-			int irev = r->iter ? parse_svnrev(r->iter) : 0;
-
-			while (r->iter && irev > *rev) {
-				r->iter = svn_parent(r->iter);
-				if (r->iter && parse_commit(r->iter)) {
-					die("invalid commit %s", cmt_to_hex(r->iter));
-				}
-				irev = r->iter ? parse_svnrev(r->iter) : 0;
-			}
-
-			maxrev = max(maxrev, irev);
-			if (r->iter && irev == *rev) {
-				return r->iter;
-			}
-		}
-		*rev = maxrev;
+static void insert_commit(struct commit *c, struct commit_list **cmts) {
+	if (parse_commit(c)) {
+		die("invalid commit %s", sha1_to_hex(c->object.sha1));
 	}
-
-	return NULL;
+	commit_list_insert_by_date(c, cmts);
 }
 
-static int is_direct_ancestor(struct commit* cmt, struct commit* prev) {
-	struct commit_list* cmts = NULL;
-	commit_list_insert(cmt, &cmts);
+static void insert_svncmt(struct commit *sc, struct commit_list **cmts) {
+	struct commit *gc;
+	struct commit *sc2;
+	if (!sc) return;
 
-	while (cmts && cmts->item->date > prev->date) {
-		struct commit_list* p = pop_commit(&cmts)->parents;
+	sc->object.flags = SVNCMT;
+	insert_commit(sc, cmts);
 
-		while (p) {
-			commit_list_insert_by_date(p->item, &cmts);
-			p = p->next;
-		}
+	/* If two or more svn commits point to the same git commit, then
+	 * we use the newest one. This is in line with using the newest
+	 * svn revision we can find. */
+	gc = svn_commit(sc);
+	if (!gc) return;
+
+	sc2 = (struct commit*) ((gc->object.flags & SEEN_FROM_SVN) ? gc->util : NULL);
+	if (!sc2 || sc->date > sc2->date) {
+		gc->object.flags |= SEEN_FROM_SVN;
+		gc->util = sc;
+		insert_commit(gc, cmts);
 	}
-
-	return cmts && cmts->item == prev;
 }
 
-/* Finds the merge base of the commit with all the svn heads. This is
- * done by searching back through the svn commits from the most recent
- * revno back. */
-static struct commit* find_copy_source(struct object* obj) {
+static void add_roots(struct commit_list **cmts, struct object *obj) {
 	int i;
-	struct commit *svn, *head, *res = NULL;
-	struct commit *git;
-	struct object *obj2;
-	int srev;
-
-	if (!obj) return NULL;
-
-	obj2 = deref_tag(obj, NULL, 0);
-	if (!obj2 || obj2->type != OBJ_COMMIT) {
+	struct commit *c = (struct commit*) deref_tag(obj, NULL, 0);
+	if (!c || c->object.type != OBJ_COMMIT) {
 		die("invalid object %s", sha1_to_hex(obj->sha1));
 	}
-	head = (struct commit*) obj2;
+
+	c->object.flags = SEEN_FROM_OBJ;
+	insert_commit(c, cmts);
 
 	add_all_refs();
 
 	for (i = 0; i < refn; i++) {
-		refs[i]->iter = refs[i]->svncmt;
+		insert_svncmt(refs[i]->svncmt, cmts);
 	}
+}
 
-	srev = INT_MAX;
-	svn = get_next_rev(&srev);
-	git = head;
+/* Searches back from the new object. Looking for the previous svn
+ * commit or failing that the newest svn commit.
+ */
+static struct commit* find_copy_source(struct svnref* r, struct object* obj) {
+	struct commit_list *cmts = NULL;
+	struct commit *end = r->svncmt ? svn_commit(r->svncmt) : NULL;
+	struct commit *ret = NULL;
 
-	while (git || svn) {
-		if (git && (!svn || git->date > svn->date)) {
-			if (git->object.flags & SEEN) {
-				res = git->util;
-				break;
+	add_roots(&cmts, obj);
+	while (cmts) {
+		struct commit *c = pop_commit(&cmts);
+		int both = (c->object.flags & SEEN_FROM_BOTH) == SEEN_FROM_BOTH;
+
+		if (both && c == end) {
+			ret = (struct commit*) c->util;
+			break;
+
+		} else if (c == end) {
+			end = NULL;
+			if (ret) break;
+
+		} else if (both && !ret) {
+			/* commits are processed newest first hence !ret */
+			ret = (struct commit*) c->util;
+			if (end == NULL) break;
+
+		} else if (c->object.flags & SVNCMT) {
+			insert_svncmt(svn_parent(c), &cmts);
+
+		} else if (c->object.flags & SEEN_FROM_OBJ) {
+			struct commit_list *p = c->parents;
+
+			while (p) {
+				c = p->item;
+				c->object.flags |= SEEN_FROM_OBJ;
+				insert_commit(c, &cmts);
+				p = p->next;
 			}
-
-			git->object.flags |= SEEN;
-
-			if (parse_commit(git))
-				die("invalid commit %s", cmt_to_hex(git));
-
-			if (git->parents) {
-				git = git->parents->item;
-			} else {
-				git = NULL;
-			}
-		} else {
-			struct commit *svn2 = svn_commit(svn);
-
-			if (!svn2) {
-				res = NULL;
-				break;
-			}
-
-			if (svn2->object.flags & SEEN) {
-				res = svn;
-				break;
-			}
-
-			svn2->object.flags |= SEEN;
-			svn2->util = svn;
-			svn = get_next_rev(&srev);
 		}
 	}
 
-	/* now need to clear the SEEN flags so the next lookup works */
+	free_commit_list(cmts);
+	clear_object_flags(SEEN_FROM_BOTH | SVNCMT);
 
-	git = head;
-	while (git && (git->object.flags & SEEN)) {
-		git->object.flags &= ~SEEN;
-		if (!git->parents)
-			break;
-
-		git = git->parents->item;
-	}
-
-	for (i = 0; i < refn; i++) {
-		refs[i]->iter = refs[i]->svncmt;
-	}
-
-	srev = INT_MAX;
-	svn = get_next_rev(&srev);
-	while (svn != NULL) {
-		struct commit* svn2 = svn_commit(svn);
-
-		if (!svn2 || !(svn2->object.flags & SEEN))
-			break;
-
-		svn2->object.flags &= ~SEEN;
-		svn2->util = NULL;
-		svn = get_next_rev(&srev);
-	}
-
-	return res;
+	return ret;
 }
 
 static void read_add_dir(struct svnref* r, int rev) {
@@ -2501,12 +2449,20 @@ static void setup_globals() {
 
 	if (remotedir) {
 		struct strbuf buf = STRBUF_INIT;
+		remotedir = clean_path((char*) remotedir);
+
 		strbuf_addstr(&buf, "refs/remotes/");
-		strbuf_addstr(&buf, clean_path((char*) remotedir));
+		strbuf_addstr(&buf, remotedir);
 		strbuf_addch(&buf, '/');
-		remotedir = strbuf_detach(&buf, NULL);
+		remoteheads = strbuf_detach(&buf, NULL);
+
+		strbuf_addstr(&buf, "refs/tags/");
+		strbuf_addstr(&buf, remotedir);
+		strbuf_addch(&buf, '/');
+		remotetags = strbuf_detach(&buf, NULL);
 	} else {
-		remotedir = "refs/heads/";
+		remoteheads = "refs/heads/";
+		remotetags = "refs/tags/";
 		leave_remote = 1;
 	}
 
@@ -3137,30 +3093,18 @@ err:
 static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copysrc, const char* log, struct strbuf* time) {
 	struct diff_options op;
 	int dir;
-	int svnrev = r->svncmt ? parse_svnrev(r->svncmt) : 0;
-	int create = cmt && (copysrc || !cmt->parents || cmt->parents->item != r->parent);
-	int maxrev = 0;
 
-	/* If we are creating/replacing a branch/tag then the target rev
-	 * must be at least as new as the latest branch/tag creation.
-	 * Since SVN catches add-dir ontop of an existing branch we are
-	 * just going to use the latest commit that we can find. */
-	if (create) {
-		int i;
-		add_all_refs();
-		for (i = 0; i < refn; i++) {
-			struct svnref *r2 = refs[i];
-			int irev = r2->svncmt ? parse_svnrev(r2->svncmt) : 0;
-			maxrev = max(maxrev, irev);
-		}
-	}
+	/* If we are creating a new ref that we have never seen before
+	 * in SVN, then the target is just above the last fetch, as that
+	 * is the last time we checked the branches/tags folder for new
+	 * refs. Otherwise its just above the last time we pushed/pulled
+	 * this ref.
+	 */
+	int tgtrev = (r->svncmt ? parse_svnrev(r->svncmt) : latest_fetch_rev()) + 1;
 
-	sendf("( commit ( %d:%s ) )\n"
-		"( target-rev ( %d ) )\n"
-		"( open-root ( ( ) %s ) )\n",
-		(int) strlen(log), log,
-		(create ? maxrev : svnrev) + 1,
-		dtoken(0));
+	sendf("( commit ( %d:%s ) )\n", (int) strlen(log), log);
+	sendf("( target-rev ( %d ) )\n", tgtrev);
+	sendf("( open-root ( ( ) %s ) )\n", dtoken(0));
 
 	read_success();
 	read_success();
@@ -3177,6 +3121,13 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copy
 			struct strbuf path = STRBUF_INIT;
 			parse_svnpath(copysrc, &path);
 
+			if (r->gitobj) {
+				sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
+						(int) r->svn.len,
+						r->svn.buf,
+						dtoken(dir));
+			}
+
 			sendf("( add-dir ( %d:%s %s %s ( %d:%s/%s %d ) ) )\n",
 					(int) r->svn.len,
 					r->svn.buf,
@@ -3191,7 +3142,7 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copy
 		} else {
 			/* We never have to create the root */
 			sendf("( %s ( %d:%s %s %s ( ) ) )\n",
-				(create && r->svn.len) ? "add-dir" : "open-dir",
+				(!r->gitobj && r->svn.len) ? "add-dir" : "open-dir",
 				(int) r->svn.len,
 				r->svn.buf,
 				dtoken(dir),
@@ -3348,7 +3299,7 @@ static void push_commit(struct push* p, struct object* logobj, struct commit* gi
 
 	/* update the remote */
 
-	if (r->istag || leave_remote) {
+	if (leave_remote) {
 		/* we don't update 'remotes' that are not stored in a
 		 * remote directory (e.g. refs/tags/ or refs/heads/ when
 		 * svn.remote is not set)
@@ -3378,35 +3329,55 @@ static void push_commit(struct push* p, struct object* logobj, struct commit* gi
 	}
 }
 
+static int has_parent(struct commit *c, struct commit *parent) {
+	struct commit_list *p = c->parents;
+
+	/* null parents are only parents of root commits */
+	if (!parent) {
+		return p == NULL;
+	}
+
+	while (p) {
+		if (p->item == parent) {
+			return 1;
+		}
+		p = p->next;
+	}
+	return 0;
+}
+
 static void do_push(struct push* p) {
 	struct svnref* r = p->ref;
 	struct commit* cmt;
 	struct rev_info walk;
 
-	if (r->istag || leave_remote) {
-		r->gitobj = p->old;
-	} else if (p->old != r->gitobj) {
+	if (p->old != r->gitobj) {
 		die("non fast-forward for %s", r->ref.buf);
 	}
 
-	if (!p->new) {
+	if (p->old && !p->new) {
+		/* deleting a ref */
 		push_commit(p, NULL, NULL);
-	} else {
-		int have_commits = 0;
-		struct object *new = deref_tag(p->new, NULL, 0);
 
-		if (!new || new->type != OBJ_COMMIT)
+	} else if (p->new != p->old) {
+		/* add/modify/replace a ref */
+		int have_commits = 0;
+		struct commit *new = (struct commit*) deref_tag(p->new, NULL, 0);
+
+		if (!new || new->object.type != OBJ_COMMIT)
 			die("invalid tag %s", sha1_to_hex(p->new->sha1));
 
 		init_revisions(&walk, NULL);
-		add_pending_object(&walk, new, "to");
-		walk.first_parent_only = 1;
+		add_pending_object(&walk, &new->object, "to");
 		walk.reverse = 1;
 
 		if (p->old) {
-			fprintf(stderr, "old %s\n", sha1_to_hex(p->old->sha1));
-			p->old->flags |= UNINTERESTING;
-			add_pending_object(&walk, p->old, "from");
+			struct object *old = deref_tag(p->old, NULL, 0);
+			if (!old || old->type != OBJ_COMMIT)
+				die("invalid tag %s", sha1_to_hex(p->old->sha1));
+
+			old->flags |= UNINTERESTING;
+			add_pending_object(&walk, old, "from");
 		}
 
 		if (p->copysrc) {
@@ -3414,6 +3385,7 @@ static void do_push(struct push* p) {
 			obj->flags |= UNINTERESTING;
 			fprintf(stderr, "copysrc %s\n", sha1_to_hex(obj->sha1));
 			add_pending_object(&walk, obj, "from");
+			/* sets r->parent for the has_parent check below */
 			checkout_svncmt(r, p->copysrc);
 		}
 
@@ -3423,20 +3395,39 @@ static void do_push(struct push* p) {
 			die("prepare rev walk failed");
 
 		while ((cmt = get_revision(&walk)) != NULL) {
-			/* when updating a tag that has multiple
-			 * commits, the first few are wrapped commits
-			 * and only the last is a wrapped tag */
+			/* The revwalk gives us all paths that go from
+			 * copysrc or p->old to cmt. We can work with
+			 * any of these so pick one arbitrarily by using
+			 * r->parent. r->parent is set by
+			 * checkout_svncmt above for add/replace.
+			 */
+			if (!has_parent(cmt, r->parent)) continue;
+
 			fprintf(stderr, "cmt %s\n", cmt_to_hex(cmt));
-			push_commit(p, (&cmt->object == new) ? p->new : &cmt->object, cmt);
+			if (cmt == new) {
+				/* use the tag object in p->new for the
+				 * log message */
+				push_commit(p, p->new, cmt);
+			} else {
+				push_commit(p, &cmt->object, cmt);
+			}
+
 			have_commits = 1;
 		}
 
-		/* if there were no commits we have to create a fake
-		 * commit to create the branch/tag in svn. p->new != new
-		 * when p->new is a tag */
-		if (!have_commits && !p->old) {
-			push_commit(p, p->new == new ? NULL : p->new, (struct commit*) new);
+		/* if there were no commits we have to force through a
+		 * commit to create/replace the branch/tag in svn. */
+
+		if (r->gitobj != p->new) {
+			/* If we have an annotated tag, we can use that
+			 * for a log statement. Otherwise we have to
+			 * create a message.
+			 */
+			struct object *logobj = (p->new != &new->object) ? p->new : NULL;
+			push_commit(p, logobj, new);
 		}
+
+		reset_revision_walk();
 	}
 }
 
@@ -3510,7 +3501,11 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 
 	/* modify/delete refs */
 	for (p = updates; p != NULL; p = p->next) {
-		if (p->ref->parent && (!p->new || is_direct_ancestor(p->new, p->ref->parent))) {
+		if (p->new) {
+			p->copysrc = find_copy_source(p->ref, p->new);
+		}
+		if (p->old && (!p->copysrc || deref_tag(p->old, NULL, 0) == &svn_commit(p->copysrc)->object)) {
+			p->copysrc = NULL;
 			do_push(p);
 			p->ref = NULL;
 		}
@@ -3522,35 +3517,10 @@ int cmd_svn_push(int argc, const char **argv, const char *prefix) {
 	 * assigned to whichever ref comes first (i.e. unspecified). */
 	for (p = updates; p != NULL; p = p->next) {
 		if (p->ref) {
-			p->copysrc = find_copy_source(p->new);
+			p->copysrc = find_copy_source(p->ref, p->new);
 			do_push(p);
 		}
 	}
 
-	return 0;
-}
-
-int cmd_svn_merge_base(int argc, const char **argv, const char *prefix) {
-	struct commit *svncmt, *gitcmt;
-	struct strbuf buf = STRBUF_INIT;
-
-	git_config(&config, NULL);
-
-	argc = parse_options(argc, argv, prefix, builtin_svn_merge_base_options,
-			builtin_svn_merge_base_usage, 0);
-	setup_globals();
-
-	if (argc != 1)
-		usage_msg_opt(argc > 1 ? _("Too many arguments.") : _("Too few arguments"),
-				builtin_svn_merge_base_usage, builtin_svn_merge_base_options);
-
-	gitcmt = lookup_commit_reference_by_name(argv[0]);
-	if (!gitcmt) die("could not find commit for %s", argv[0]);
-
-	svncmt = find_copy_source(&gitcmt->object);
-	if (!svncmt) die("could not find merge base for %s", argv[0]);
-
-	parse_svnpath(svncmt, &buf);
-	printf("%s@%d %s\n", buf.buf, parse_svnrev(svncmt), sha1_to_hex(svncmt->object.sha1));
 	return 0;
 }

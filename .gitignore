@@ -150,7 +150,6 @@
 /git-submodule
 /git-svn
 /git-svn-fetch
-/git-svn-merge-base
 /git-svn-push
 /git-symbolic-ref
 /git-tag

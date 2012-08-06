@@ -427,7 +427,6 @@ static void handle_internal_command(int argc, const char **argv)
 		{ "status", cmd_status, RUN_SETUP | NEED_WORK_TREE },
 		{ "stripspace", cmd_stripspace },
 		{ "svn-fetch", cmd_svn_fetch, RUN_SETUP },
-		{ "svn-merge-base", cmd_svn_merge_base, RUN_SETUP },
 		{ "svn-push", cmd_svn_push, RUN_SETUP },
 		{ "symbolic-ref", cmd_symbolic_ref, RUN_SETUP },
 		{ "tag", cmd_tag, RUN_SETUP },

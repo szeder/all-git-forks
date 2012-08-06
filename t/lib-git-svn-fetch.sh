@@ -67,23 +67,23 @@ function test_git_date() {
 }
 
 function test_svn_subject() {
-	revision="$1"
-	subject="$2"
-	commit_subject="`svn log -l 1 --xml -r $revision | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g'`"
+	subject="$1"
+	revision=`test -n "$2" && echo "-r $2"`
+	commit_subject="`svn log -l 1 --xml $revision | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g'`"
 	echo test_svn_subject "$commit_subject" "$subject"
 	test "$commit_subject" == "$subject"
 }
 
 function test_svn_author() {
-	revision="$1"
-	author="$2"
-	commit_author="`svn log -l 1 --xml -r $revision | grep '<author>' | sed -re 's#<author>(.*)</author>#\1#g'`"
+	author="$1"
+	revision=`test -n "$2" && echo "-r $2"`
+	commit_author="`svn log -l 1 --xml $revision | grep '<author>' | sed -re 's#<author>(.*)</author>#\1#g'`"
 	echo test_svn_author "$commit_author" "$author"
 	test "$commit_author" == "$author"
 }
 
 show_ref() {
-	(git show-ref --head $1 | cut -d ' ' -f 1) || echo $1
+	(git show-ref --head $1 | head -n 1 | cut -d ' ' -f 1) || echo $1
 }
 
 show_tag() {

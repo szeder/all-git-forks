@@ -133,7 +133,6 @@ extern int cmd_status(int argc, const char **argv, const char *prefix);
 extern int cmd_stripspace(int argc, const char **argv, const char *prefix);
 extern int cmd_svn_fetch(int argc, const char **argv, const char* prefix);
 extern int cmd_svn_push(int argc, const char **argv, const char* prefix);
-extern int cmd_svn_merge_base(int argc, const char **argv, const char* prefix);
 extern int cmd_symbolic_ref(int argc, const char **argv, const char *prefix);
 extern int cmd_tag(int argc, const char **argv, const char *prefix);
 extern int cmd_tar_tree(int argc, const char **argv, const char *prefix);
