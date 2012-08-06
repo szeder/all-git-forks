@@ -19,7 +19,6 @@ test_expect_success 'setup branches' '
 	git config svn.trunk Trunk &&
 	git config svn.branches Branches &&
 	git config svn.tags Tags &&
-	git config svn.url $svnurl &&
 	git config svn.trunkref trunk &&
 	git svn-fetch -v
 '

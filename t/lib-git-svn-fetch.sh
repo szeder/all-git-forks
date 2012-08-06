@@ -11,6 +11,7 @@ fi
 svnrepo=$PWD/svnrepo
 svnconf=$PWD/svnconf
 svnurl="svn://localhost:$SVNSERVE_PORT"
+null_sha1=0000000000000000000000000000000000000000
 
 # We need this, because we should pass empty configuration directory to
 # the 'svn commit' to avoid automated property changes and other stuff
