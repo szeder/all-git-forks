@@ -245,6 +245,15 @@ static int fill_mmfile(mmfile_t *mf, struct diff_filespec *one)
 	return 0;
 }
 
+/* like fill_mmfile, but only for size, so we can avoid retrieving blob */
+static unsigned long diff_filespec_size(struct diff_filespec *one)
+{
+	if (!DIFF_FILE_VALID(one))
+		return 0;
+	diff_populate_filespec(one, 1);
+	return one->size;
+}
+
 static int count_trailing_blank(mmfile_t *mf, unsigned ws_rule)
 {
 	char *ptr = mf->ptr;
@@ -606,16 +615,14 @@ static void diff_words_append(char *line, unsigned long len,
 	buffer->text.ptr[buffer->text.size] = '\0';
 }
 
-struct diff_words_style_elem
-{
+struct diff_words_style_elem {
 	const char *prefix;
 	const char *suffix;
 	const char *color; /* NULL; filled in by the setup code if
 			    * color is enabled */
 };
 
-struct diff_words_style
-{
+struct diff_words_style {
 	enum diff_words_type type;
 	struct diff_words_style_elem new, old, ctx;
 	const char *newline;
@@ -1771,8 +1778,14 @@ static void emit_binary_diff(FILE *file, mmfile_t *one, mmfile_t *two, char *pre
 
 static void diff_filespec_load_driver(struct diff_filespec *one)
 {
-	if (!one->driver)
+	/* Use already-loaded driver */
+	if (one->driver)
+		return;
+
+	if (S_ISREG(one->mode))
 		one->driver = userdiff_find_by_path(one->path);
+
+	/* Fallback to default settings */
 	if (!one->driver)
 		one->driver = userdiff_find_by_name("default");
 }
@@ -1820,8 +1833,7 @@ struct userdiff_driver *get_textconv(struct diff_filespec *one)
 {
 	if (!DIFF_FILE_VALID(one))
 		return NULL;
-	if (!S_ISREG(one->mode))
-		return NULL;
+
 	diff_filespec_load_driver(one);
 	if (!one->driver->textconv)
 		return NULL;
@@ -2074,24 +2086,27 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 		data->is_unmerged = 1;
 		return;
 	}
-	if (complete_rewrite) {
+
+	if (diff_filespec_is_binary(one) || diff_filespec_is_binary(two)) {
+		data->is_binary = 1;
+		data->added = diff_filespec_size(two);
+		data->deleted = diff_filespec_size(one);
+	}
+
+	else if (complete_rewrite) {
 		diff_populate_filespec(one, 0);
 		diff_populate_filespec(two, 0);
 		data->deleted = count_lines(one->data, one->size);
 		data->added = count_lines(two->data, two->size);
-		goto free_and_return;
 	}
-	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
-		die("unable to read files to diff");
 
-	if (diff_filespec_is_binary(one) || diff_filespec_is_binary(two)) {
-		data->is_binary = 1;
-		data->added = mf2.size;
-		data->deleted = mf1.size;
-	} else {
+	else {
 		/* Crazy xdl interfaces.. */
 		xpparam_t xpp;
 		xdemitconf_t xecfg;
+
+		if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
+			die("unable to read files to diff");
 
 		memset(&xpp, 0, sizeof(xpp));
 		memset(&xecfg, 0, sizeof(xecfg));
@@ -2100,7 +2115,6 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 			      &xpp, &xecfg);
 	}
 
- free_and_return:
 	diff_free_filespec_data(one);
 	diff_free_filespec_data(two);
 }
@@ -2153,7 +2167,7 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 
 			ecbdata.ws_rule = data.ws_rule;
 			check_blank_at_eof(&mf1, &mf2, &ecbdata);
-			blank_at_eof = ecbdata.blank_at_eof_in_preimage;
+			blank_at_eof = ecbdata.blank_at_eof_in_postimage;
 
 			if (blank_at_eof) {
 				static char *err;
@@ -2386,10 +2400,14 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 	}
 	else {
 		enum object_type type;
-		if (size_only)
+		if (size_only) {
 			type = sha1_object_info(s->sha1, &s->size);
-		else {
+			if (type < 0)
+				die("unable to read %s", sha1_to_hex(s->sha1));
+		} else {
 			s->data = read_sha1_file(s->sha1, &type, &s->size);
+			if (!s->data)
+				die("unable to read %s", sha1_to_hex(s->sha1));
 			s->should_free = 1;
 		}
 	}
@@ -3140,20 +3158,23 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 		return stat_opt(options, av);
 
 	/* renames options */
-	else if (!prefixcmp(arg, "-B")) {
+	else if (!prefixcmp(arg, "-B") || !prefixcmp(arg, "--break-rewrites=") ||
+		 !strcmp(arg, "--break-rewrites")) {
 		if ((options->break_opt = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -B: %s", arg+2);
 	}
-	else if (!prefixcmp(arg, "-M")) {
+	else if (!prefixcmp(arg, "-M") || !prefixcmp(arg, "--find-renames=") ||
+		 !strcmp(arg, "--find-renames")) {
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -M: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_RENAME;
 	}
-	else if (!prefixcmp(arg, "-C")) {
+	else if (!prefixcmp(arg, "-C") || !prefixcmp(arg, "--find-copies=") ||
+		 !strcmp(arg, "--find-copies")) {
 		if (options->detect_rename == DIFF_DETECT_COPY)
 			DIFF_OPT_SET(options, FIND_COPIES_HARDER);
 		if ((options->rename_score = diff_scoreopt_parse(arg)) == -1)
-			return -1;
+			return error("invalid argument to -C: %s", arg+2);
 		options->detect_rename = DIFF_DETECT_COPY;
 	}
 	else if (!strcmp(arg, "--no-renames"))
@@ -3271,12 +3292,17 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	}
 	else if ((argcount = short_opt('S', av, &optarg))) {
 		options->pickaxe = optarg;
+		options->pickaxe_opts |= DIFF_PICKAXE_KIND_S;
+		return argcount;
+	} else if ((argcount = short_opt('G', av, &optarg))) {
+		options->pickaxe = optarg;
+		options->pickaxe_opts |= DIFF_PICKAXE_KIND_G;
 		return argcount;
 	}
 	else if (!strcmp(arg, "--pickaxe-all"))
-		options->pickaxe_opts = DIFF_PICKAXE_ALL;
+		options->pickaxe_opts |= DIFF_PICKAXE_ALL;
 	else if (!strcmp(arg, "--pickaxe-regex"))
-		options->pickaxe_opts = DIFF_PICKAXE_REGEX;
+		options->pickaxe_opts |= DIFF_PICKAXE_REGEX;
 	else if ((argcount = short_opt('O', av, &optarg))) {
 		options->orderfile = optarg;
 		return argcount;
@@ -3310,7 +3336,7 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if ((argcount = parse_long_opt("output", av, &optarg))) {
 		options->file = fopen(optarg, "w");
 		if (!options->file)
-			die_errno("Could not open '%s'", arg + strlen("--output="));
+			die_errno("Could not open '%s'", optarg);
 		options->close_file = 1;
 		return argcount;
 	} else
@@ -3318,7 +3344,7 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	return 1;
 }
 
-static int parse_num(const char **cp_p)
+int parse_rename_score(const char **cp_p)
 {
 	unsigned long num, scale;
 	int ch, dot;
@@ -3361,10 +3387,26 @@ static int diff_scoreopt_parse(const char *opt)
 	if (*opt++ != '-')
 		return -1;
 	cmd = *opt++;
+	if (cmd == '-') {
+		/* convert the long-form arguments into short-form versions */
+		if (!prefixcmp(opt, "break-rewrites")) {
+			opt += strlen("break-rewrites");
+			if (*opt == 0 || *opt++ == '=')
+				cmd = 'B';
+		} else if (!prefixcmp(opt, "find-copies")) {
+			opt += strlen("find-copies");
+			if (*opt == 0 || *opt++ == '=')
+				cmd = 'C';
+		} else if (!prefixcmp(opt, "find-renames")) {
+			opt += strlen("find-renames");
+			if (*opt == 0 || *opt++ == '=')
+				cmd = 'M';
+		}
+	}
 	if (cmd != 'M' && cmd != 'C' && cmd != 'B')
 		return -1; /* that is not a -M, -C nor -B option */
 
-	opt1 = parse_num(&opt);
+	opt1 = parse_rename_score(&opt);
 	if (cmd != 'B')
 		opt2 = 0;
 	else {
@@ -3374,7 +3416,7 @@ static int diff_scoreopt_parse(const char *opt)
 			return -1; /* we expect -B80/99 or -B80 */
 		else {
 			opt++;
-			opt2 = parse_num(&opt);
+			opt2 = parse_rename_score(&opt);
 		}
 	}
 	if (*opt != 0)
@@ -3527,7 +3569,7 @@ static void diff_flush_stat(struct diff_filepair *p, struct diff_options *o,
 
 	if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
 	    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
-		return; /* no tree diffs in patch format */
+		return; /* no useful stat for tree diffs */
 
 	run_diffstat(p, o, diffstat);
 }
@@ -3540,7 +3582,7 @@ static void diff_flush_checkdiff(struct diff_filepair *p,
 
 	if ((DIFF_FILE_VALID(p->one) && S_ISDIR(p->one->mode)) ||
 	    (DIFF_FILE_VALID(p->two) && S_ISDIR(p->two->mode)))
-		return; /* no tree diffs in patch format */
+		return; /* nothing to check in tree diffs */
 
 	run_checkdiff(p, o);
 }
@@ -3865,7 +3907,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 
 		xpp.flags = 0;
 		xecfg.ctxlen = 3;
-		xecfg.flags = XDL_EMIT_FUNCNAMES;
+		xecfg.flags = 0;
 		xdi_diff_outf(&mf1, &mf2, patch_id_consume, &data,
 			      &xpp, &xecfg);
 	}
@@ -4176,7 +4218,7 @@ void diffcore_std(struct diff_options *options)
 			diffcore_merge_broken();
 	}
 	if (options->pickaxe)
-		diffcore_pickaxe(options->pickaxe, options->pickaxe_opts);
+		diffcore_pickaxe(options);
 	if (options->orderfile)
 		diffcore_order(options->orderfile);
 	if (!options->found_follow)
@@ -4379,7 +4421,7 @@ size_t fill_textconv(struct userdiff_driver *driver,
 		return df->size;
 	}
 
-	if (driver->textconv_cache) {
+	if (driver->textconv_cache && df->sha1_valid) {
 		*outbuf = notes_cache_get(driver->textconv_cache, df->sha1,
 					  &size);
 		if (*outbuf)
@@ -4390,7 +4432,7 @@ size_t fill_textconv(struct userdiff_driver *driver,
 	if (!*outbuf)
 		die("unable to read files to diff");
 
-	if (driver->textconv_cache) {
+	if (driver->textconv_cache && df->sha1_valid) {
 		/* ignore errors, as we might be in a readonly repository */
 		notes_cache_put(driver->textconv_cache, df->sha1, *outbuf,
 				size);

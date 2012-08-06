@@ -20,8 +20,7 @@ static int zlib_compression_seen;
 
 const char *config_exclusive_filename = NULL;
 
-struct config_item
-{
+struct config_item {
 	struct config_item *next;
 	char *name;
 	char *value;
@@ -410,7 +409,7 @@ unsigned long git_config_ulong(const char *name, const char *value)
 	return ret;
 }
 
-int git_config_maybe_bool(const char *name, const char *value)
+static int git_config_maybe_bool_text(const char *name, const char *value)
 {
 	if (!value)
 		return 1;
@@ -427,9 +426,19 @@ int git_config_maybe_bool(const char *name, const char *value)
 	return -1;
 }
 
+int git_config_maybe_bool(const char *name, const char *value)
+{
+	long v = git_config_maybe_bool_text(name, value);
+	if (0 <= v)
+		return v;
+	if (git_parse_long(value, &v))
+		return !!v;
+	return -1;
+}
+
 int git_config_bool_or_int(const char *name, const char *value, int *is_bool)
 {
-	int v = git_config_maybe_bool(name, value);
+	int v = git_config_maybe_bool_text(name, value);
 	if (0 <= v) {
 		*is_bool = 1;
 		return v;
@@ -720,8 +729,10 @@ static int git_default_push_config(const char *var, const char *value)
 			push_default = PUSH_DEFAULT_NOTHING;
 		else if (!strcmp(value, "matching"))
 			push_default = PUSH_DEFAULT_MATCHING;
-		else if (!strcmp(value, "tracking"))
-			push_default = PUSH_DEFAULT_TRACKING;
+		else if (!strcmp(value, "upstream"))
+			push_default = PUSH_DEFAULT_UPSTREAM;
+		else if (!strcmp(value, "tracking")) /* deprecated */
+			push_default = PUSH_DEFAULT_UPSTREAM;
 		else if (!strcmp(value, "current"))
 			push_default = PUSH_DEFAULT_CURRENT;
 		else {
@@ -835,10 +846,9 @@ int git_config_from_parameters(config_fn_t fn, void *data)
 	return 0;
 }
 
-int git_config(config_fn_t fn, void *data)
+int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 {
 	int ret = 0, found = 0;
-	char *repo_config = NULL;
 	const char *home = NULL;
 
 	/* Setting $GIT_CONFIG makes git read _only_ the given config file. */
@@ -860,19 +870,27 @@ int git_config(config_fn_t fn, void *data)
 		free(user_config);
 	}
 
-	repo_config = git_pathdup("config");
-	if (!access(repo_config, R_OK)) {
+	if (repo_config && !access(repo_config, R_OK)) {
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
-	free(repo_config);
 
 	ret += git_config_from_parameters(fn, data);
 	if (config_parameters)
 		found += 1;
 
-	if (found == 0)
-		return -1;
+	return ret == 0 ? found : ret;
+}
+
+int git_config(config_fn_t fn, void *data)
+{
+	char *repo_config = NULL;
+	int ret;
+
+	repo_config = git_pathdup("config");
+	ret = git_config_early(fn, data, repo_config);
+	if (repo_config)
+		free(repo_config);
 	return ret;
 }
 

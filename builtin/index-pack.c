@@ -11,10 +11,9 @@
 #include "exec_cmd.h"
 
 static const char index_pack_usage[] =
-"git index-pack [-v] [-o <index-file>] [{ --keep | --keep=<msg> }] [--strict] { <pack-file> | --stdin [--fix-thin] [<pack-file>] }";
+"git index-pack [-v] [-o <index-file>] [ --keep | --keep=<msg> ] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
 
-struct object_entry
-{
+struct object_entry {
 	struct pack_idx_entry idx;
 	unsigned long size;
 	unsigned int hdr_size;
@@ -44,8 +43,7 @@ struct base_data {
 #define FLAG_LINK (1u<<20)
 #define FLAG_CHECKED (1u<<21)
 
-struct delta_entry
-{
+struct delta_entry {
 	union delta_base base;
 	int obj_no;
 };
@@ -161,7 +159,7 @@ static void use(int bytes)
 	input_offset += bytes;
 
 	/* make sure off_t is sufficiently large not to wrap */
-	if (consumed_bytes > consumed_bytes + bytes)
+	if (signed_add_overflows(consumed_bytes, bytes))
 		die("pack too large for current definition of off_t");
 	consumed_bytes += bytes;
 }

@@ -5,7 +5,7 @@
 SUBDIRECTORY_OK=Yes
 OPTIONS_KEEPDASHDASH=
 OPTIONS_SPEC="\
-git am [options] [<mbox>|<Maildir>...]
+git am [options] [(<mbox>|<Maildir>)...]
 git am [options] (--resolved | --skip | --abort)
 --
 i,interactive   run interactively
@@ -68,7 +68,29 @@ sq () {
 
 stop_here () {
     echo "$1" >"$dotest/next"
+    git rev-parse --verify -q HEAD >"$dotest/abort-safety"
     exit 1
+}
+
+safe_to_abort () {
+	if test -f "$dotest/dirtyindex"
+	then
+		return 1
+	fi
+
+	if ! test -s "$dotest/abort-safety"
+	then
+		return 0
+	fi
+
+	abort_safety=$(cat "$dotest/abort-safety")
+	if test "z$(git rev-parse --verify -q HEAD)" = "z$abort_safety"
+	then
+		return 0
+	fi
+	echo >&2 "You seem to have moved HEAD since the last 'am' failure."
+	echo >&2 "Not rewinding to ORIG_HEAD"
+	return 1
 }
 
 stop_here_user_resolve () {
@@ -137,7 +159,7 @@ It does not apply to blobs recorded in its index."
     export GITHEAD_$his_tree
     if test -n "$GIT_QUIET"
     then
-	    export GIT_MERGE_VERBOSITY=0
+	    GIT_MERGE_VERBOSITY=0 && export GIT_MERGE_VERBOSITY
     fi
     git-merge-recursive $orig_tree -- HEAD $his_tree || {
 	    git rerere $allow_rerere_autoupdate
@@ -419,10 +441,11 @@ then
 			exec git rebase --abort
 		fi
 		git rerere clear
-		test -f "$dotest/dirtyindex" || {
+		if safe_to_abort
+		then
 			git read-tree --reset -u HEAD ORIG_HEAD
 			git reset ORIG_HEAD
-		}
+		fi
 		rm -fr "$dotest"
 		exit ;;
 	esac
@@ -444,12 +467,12 @@ else
 				set x
 				first=
 			}
-			case "$arg" in
-			/*)
-				set "$@" "$arg" ;;
-			*)
-				set "$@" "$prefix$arg" ;;
-			esac
+			if is_absolute_path "$arg"
+			then
+				set "$@" "$arg"
+			else
+				set "$@" "$prefix$arg"
+			fi
 		done
 		shift
 	fi
@@ -552,13 +575,6 @@ if test "$skip" = t
 then
 	this=`expr "$this" + 1`
 	resume=
-fi
-
-if test "$this" -gt "$last"
-then
-	say Nothing to do.
-	rm -fr "$dotest"
-	exit
 fi
 
 while test "$this" -le "$last"

@@ -26,9 +26,9 @@ With `--rebase`, it runs 'git rebase' instead of 'git merge'.
 <repository> should be the name of a remote repository as
 passed to linkgit:git-fetch[1].  <refspec> can name an
 arbitrary remote ref (for example, the name of a tag) or even
-a collection of refs with corresponding remote tracking branches
-(e.g., refs/heads/*:refs/remotes/origin/*), but usually it is
-the name of a branch in the remote repository.
+a collection of refs with corresponding remote-tracking branches
+(e.g., refs/heads/{asterisk}:refs/remotes/origin/{asterisk}),
+but usually it is the name of a branch in the remote repository.
 
 Default values for <repository> and <branch> are read from the
 "remote" and "merge" configuration for the current branch
@@ -84,6 +84,15 @@ must be given before the options meant for 'git fetch'.
 --verbose::
 	Pass --verbose to git-fetch and git-merge.
 
+--[no-]recurse-submodules::
+	This option controls if new commits of all populated submodules should
+	be fetched too (see linkgit:git-config[1] and linkgit:gitmodules[5]).
+	That might be necessary to get the data needed for merging submodule
+	commits, a feature git learned in 1.7.3. Notice that the result of a
+	merge will not be checked out in the submodule, "git submodule update"
+	has to be called afterwards to bring the work tree up to date with the
+	merge result.
+
 Options related to merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -92,12 +101,15 @@ include::merge-options.txt[]
 :git-pull: 1
 
 --rebase::
-	Instead of a merge, perform a rebase after fetching.  If
-	there is a remote ref for the upstream branch, and this branch
-	was rebased since last fetched, the rebase uses that information
-	to avoid rebasing non-local changes. To make this the default
-	for branch `<name>`, set configuration `branch.<name>.rebase`
-	to `true`.
+	Rebase the current branch on top of the upstream branch after
+	fetching.  If there is a remote-tracking branch corresponding to
+	the upstream branch and the upstream branch was rebased since last
+	fetched, the rebase uses that information to avoid rebasing
+	non-local changes.
++
+See `branch.<name>.rebase` and `branch.autosetuprebase` in
+linkgit:git-config[1] if you want to make `git pull` always use
+`{litdd}rebase` instead of merging.
 +
 [NOTE]
 This is a potentially _dangerous_ mode of operation.
@@ -134,7 +146,7 @@ and if there is not any such variable, the value on `URL: ` line
 in `$GIT_DIR/remotes/<origin>` file is used.
 
 In order to determine what remote branches to fetch (and
-optionally store in the tracking branches) when the command is
+optionally store in the remote-tracking branches) when the command is
 run without any refspec parameters on the command line, values
 of the configuration variable `remote.<origin>.fetch` are
 consulted, and if there aren't any, `$GIT_DIR/remotes/<origin>`
@@ -147,9 +159,9 @@ refs/heads/*:refs/remotes/origin/*
 ------------
 
 A globbing refspec must have a non-empty RHS (i.e. must store
-what were fetched in tracking branches), and its LHS and RHS
+what were fetched in remote-tracking branches), and its LHS and RHS
 must end with `/*`.  The above specifies that all remote
-branches are tracked using tracking branches in
+branches are tracked using remote-tracking branches in
 `refs/remotes/origin/` hierarchy under the same name.
 
 The rule to determine which remote branch to merge after

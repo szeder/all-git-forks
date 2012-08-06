@@ -9,7 +9,23 @@ static int drivers_alloc;
 
 #define PATTERNS(name, pattern, word_regex)			\
 	{ name, NULL, -1, { pattern, REG_EXTENDED }, word_regex }
+#define IPATTERN(name, pattern, word_regex)			\
+	{ name, NULL, -1, { pattern, REG_EXTENDED | REG_ICASE }, word_regex }
 static struct userdiff_driver builtin_drivers[] = {
+IPATTERN("fortran",
+	 "!^([C*]|[ \t]*!)\n"
+	 "!^[ \t]*MODULE[ \t]+PROCEDURE[ \t]\n"
+	 "^[ \t]*((END[ \t]+)?(PROGRAM|MODULE|BLOCK[ \t]+DATA"
+		"|([^'\" \t]+[ \t]+)*(SUBROUTINE|FUNCTION))[ \t]+[A-Z].*)$",
+	 /* -- */
+	 "[a-zA-Z][a-zA-Z0-9_]*"
+	 "|\\.([Ee][Qq]|[Nn][Ee]|[Gg][TtEe]|[Ll][TtEe]|[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Aa][Nn][Dd]|[Oo][Rr]|[Nn]?[Ee][Qq][Vv]|[Nn][Oo][Tt])\\."
+	 /* numbers and format statements like 2E14.4, or ES12.6, 9X.
+	  * Don't worry about format statements without leading digits since
+	  * they would have been matched above as a variable anyway. */
+	 "|[-+]?[0-9.]+([AaIiDdEeFfLlTtXx][Ss]?[-+]?[0-9.]*)?(_[a-zA-Z0-9][a-zA-Z0-9_]*)?"
+	 "|//|\\*\\*|::|[/<>=]="
+	 "|[^[:space:]]|[\x80-\xff]+"),
 PATTERNS("html", "^[ \t]*(<[Hh][1-6][ \t].*>.*)$",
 	 "[^<>= \t]+|[^[:space:]]|[\x80-\xff]+"),
 PATTERNS("java",
@@ -36,7 +52,7 @@ PATTERNS("objc",
 	 "|[-+*/<>%&^|=!]=|--|\\+\\+|<<=?|>>=?|&&|\\|\\||::|->"
 	 "|[^[:space:]]|[\x80-\xff]+"),
 PATTERNS("pascal",
-	 "^((procedure|function|constructor|destructor|interface|"
+	 "^(((class[ \t]+)?(procedure|function)|constructor|destructor|interface|"
 		"implementation|initialization|finalization)[ \t]*.*)$"
 	 "\n"
 	 "^(.*=[ \t]*(class|record).*)$",
@@ -45,6 +61,23 @@ PATTERNS("pascal",
 	 "|[-+0-9.e]+|0[xXbB]?[0-9a-fA-F]+"
 	 "|<>|<=|>=|:=|\\.\\."
 	 "|[^[:space:]]|[\x80-\xff]+"),
+PATTERNS("perl",
+	 "^[ \t]*package .*;\n"
+	 "^[ \t]*sub .* \\{\n"
+	 "^[A-Z]+ \\{\n"	/* BEGIN, END, ... */
+	 "^=head[0-9] ",	/* POD */
+	 /* -- */
+	 "[[:alpha:]_'][[:alnum:]_']*"
+	 "|0[xb]?[0-9a-fA-F_]*"
+	 /* taking care not to interpret 3..5 as (3.)(.5) */
+	 "|[0-9a-fA-F_]+(\\.[0-9a-fA-F_]+)?([eE][-+]?[0-9_]+)?"
+	 "|=>|-[rwxoRWXOezsfdlpSugkbctTBMAC>]|~~|::"
+	 "|&&=|\\|\\|=|//=|\\*\\*="
+	 "|&&|\\|\\||//|\\+\\+|--|\\*\\*|\\.\\.\\.?"
+	 "|[-+*/%.^&<>=!|]="
+	 "|=~|!~"
+	 "|<<|<>|<=>|>>"
+	 "|[^[:space:]]"),
 PATTERNS("php",
 	 "^[\t ]*(((public|protected|private|static)[\t ]+)*function.*)$\n"
 	 "^[\t ]*(class.*)$",
@@ -58,14 +91,14 @@ PATTERNS("python", "^[ \t]*((class|def)[ \t].*)$",
 	 "[a-zA-Z_][a-zA-Z0-9_]*"
 	 "|[-+0-9.e]+[jJlL]?|0[xX]?[0-9a-fA-F]+[lL]?"
 	 "|[-+*/<>%&^|=!]=|//=?|<<=?|>>=?|\\*\\*=?"
-	 "|[^[:space:]|[\x80-\xff]+"),
+	 "|[^[:space:]]|[\x80-\xff]+"),
 	 /* -- */
 PATTERNS("ruby", "^[ \t]*((class|module|def)[ \t].*)$",
 	 /* -- */
 	 "(@|@@|\\$)?[a-zA-Z_][a-zA-Z0-9_]*"
 	 "|[-+0-9.e]+|0[xXbB]?[0-9a-fA-F]+|\\?(\\\\C-)?(\\\\M-)?."
 	 "|//=?|[-+*/<>%&^|=!]=|<<=?|>>=?|===|\\.{1,3}|::|[!=]~"
-	 "|[^[:space:]|[\x80-\xff]+"),
+	 "|[^[:space:]]|[\x80-\xff]+"),
 PATTERNS("bibtex", "(@[a-zA-Z]{1,}[ \t]*\\{{0,1}[ \t]*[^ \t\"@',\\#}{~%]*).*$",
 	 "[={}\"]|[^={}\" \t]+"),
 PATTERNS("tex", "^(\\\\((sub)*section|chapter|part)\\*{0,1}\\{.*)$",
@@ -101,6 +134,7 @@ PATTERNS("csharp",
 { "default", NULL, -1, { NULL, 0 } },
 };
 #undef PATTERNS
+#undef IPATTERN
 
 static struct userdiff_driver driver_true = {
 	"diff=true",

@@ -17,14 +17,10 @@
 #include "grep.h"
 #include "quote.h"
 #include "dir.h"
-
-#ifndef NO_PTHREADS
-#include <pthread.h>
 #include "thread-utils.h"
-#endif
 
 static char const * const grep_usage[] = {
-	"git grep [options] [-e] <pattern> [<rev>...] [[--] path...]",
+	"git grep [options] [-e] <pattern> [<rev>...] [[--] <path>...]",
 	NULL
 };
 
@@ -44,8 +40,7 @@ enum work_type {WORK_SHA1, WORK_FILE};
  * threads. The producer adds struct work_items to 'todo' and the
  * consumers pick work items from the same array.
  */
-struct work_item
-{
+struct work_item {
 	enum work_type type;
 	char *name;
 
@@ -915,8 +910,8 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, ')', NULL, &opt, NULL, "",
 		  PARSE_OPT_NOARG | PARSE_OPT_NONEG | PARSE_OPT_NODASH,
 		  close_callback },
-		OPT_BOOLEAN('q', "quiet", &opt.status_only,
-			    "indicate hit with exit status without output"),
+		OPT__QUIET(&opt.status_only,
+			   "indicate hit with exit status without output"),
 		OPT_BOOLEAN(0, "all-match", &opt.all_match,
 			"show only matches from files that match all patterns"),
 		OPT_GROUP(""),

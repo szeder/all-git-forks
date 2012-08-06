@@ -424,7 +424,7 @@ int report_path_error(const char *ps_matched, const char **pathspec, int prefix_
 }
 
 static const char * const ls_files_usage[] = {
-	"git ls-files [options] [<file>]*",
+	"git ls-files [options] [<file>...]",
 	NULL
 };
 
@@ -529,6 +529,9 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		OPT_BOOLEAN(0, "debug", &debug_mode, "show debugging data"),
 		OPT_END()
 	};
+
+	if (argc == 2 && !strcmp(argv[1], "-h"))
+		usage_with_options(ls_files_usage, builtin_ls_files_options);
 
 	memset(&dir, 0, sizeof(dir));
 	prefix = cmd_prefix;

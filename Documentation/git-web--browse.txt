@@ -20,8 +20,14 @@ The following browsers (or commands) are currently supported:
 
 * firefox (this is the default under X Window when not using KDE)
 * iceweasel
+* seamonkey
+* iceape
+* chromium (also supported as chromium-browser)
+* google-chrome (also supported as chrome)
 * konqueror (this is the default under KDE, see 'Note about konqueror' below)
+* opera
 * w3m (this is the default outside graphical environments)
+* elinks
 * links
 * lynx
 * dillo
@@ -32,19 +38,19 @@ Custom commands may also be specified.
 
 OPTIONS
 -------
--b BROWSER::
---browser=BROWSER::
-	Use the specified BROWSER. It must be in the list of supported
+-b <browser>::
+--browser=<browser>::
+	Use the specified browser. It must be in the list of supported
 	browsers.
 
--t BROWSER::
---tool=BROWSER::
+-t <browser>::
+--tool=<browser>::
 	Same as above.
 
--c CONF.VAR::
---config=CONF.VAR::
+-c <conf.var>::
+--config=<conf.var>::
 	CONF.VAR is looked up in the git config files. If it's set,
-	then its value specify the browser that should be used.
+	then its value specifies the browser that should be used.
 
 CONFIGURATION VARIABLES
 -----------------------

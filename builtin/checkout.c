@@ -161,7 +161,7 @@ static int checkout_merged(int pos, struct checkout *state)
 	 * merge.renormalize set, too
 	 */
 	status = ll_merge(&result_buf, path, &ancestor, "base",
-			  &ours, "ours", &theirs, "theirs", 0);
+			  &ours, "ours", &theirs, "theirs", NULL);
 	free(ancestor.ptr);
 	free(ours.ptr);
 	free(theirs.ptr);
@@ -404,7 +404,7 @@ static int merge_working_tree(struct checkout_opts *opts,
 		topts.dir->exclude_per_dir = ".gitignore";
 		tree = parse_tree_indirect(old->commit ?
 					   old->commit->object.sha1 :
-					   (unsigned char *)EMPTY_TREE_SHA1_BIN);
+					   EMPTY_TREE_SHA1_BIN);
 		init_tree_desc(&trees[0], tree->buffer, tree->size);
 		tree = parse_tree_indirect(new->commit->object.sha1);
 		init_tree_desc(&trees[1], tree->buffer, tree->size);
@@ -686,21 +686,21 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	int patch_mode = 0;
 	int dwim_new_local_branch = 1;
 	struct option options[] = {
-		OPT__QUIET(&opts.quiet),
+		OPT__QUIET(&opts.quiet, "suppress progress reporting"),
 		OPT_STRING('b', NULL, &opts.new_branch, "branch",
 			   "create and checkout a new branch"),
 		OPT_STRING('B', NULL, &opts.new_branch_force, "branch",
 			   "create/reset and checkout a branch"),
-		OPT_BOOLEAN('l', NULL, &opts.new_branch_log, "log for new branch"),
-		OPT_SET_INT('t', "track",  &opts.track, "track",
+		OPT_BOOLEAN('l', NULL, &opts.new_branch_log, "create reflog for new branch"),
+		OPT_SET_INT('t', "track",  &opts.track, "set upstream info for new branch",
 			BRANCH_TRACK_EXPLICIT),
 		OPT_STRING(0, "orphan", &opts.new_orphan_branch, "new branch", "new unparented branch"),
-		OPT_SET_INT('2', "ours", &opts.writeout_stage, "stage",
+		OPT_SET_INT('2', "ours", &opts.writeout_stage, "checkout our version for unmerged files",
 			    2),
-		OPT_SET_INT('3', "theirs", &opts.writeout_stage, "stage",
+		OPT_SET_INT('3', "theirs", &opts.writeout_stage, "checkout their version for unmerged files",
 			    3),
-		OPT_BOOLEAN('f', "force", &opts.force, "force"),
-		OPT_BOOLEAN('m', "merge", &opts.merge, "merge"),
+		OPT__FORCE(&opts.force, "force checkout (throw away local modifications)"),
+		OPT_BOOLEAN('m', "merge", &opts.merge, "perform a 3-way merge with the new branch"),
 		OPT_STRING(0, "conflict", &conflict_style, "style",
 			   "conflict style (merge or diff3)"),
 		OPT_BOOLEAN('p', "patch", &patch_mode, "select hunks interactively"),
@@ -784,9 +784,9 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	 *   between A and B, A...B names that merge base.
 	 *
 	 *   With no paths, if <something> is _not_ a commit, no -t nor -b
-	 *   was given, and there is a tracking branch whose name is
+	 *   was given, and there is a remote-tracking branch whose name is
 	 *   <something> in one and only one remote, then this is a short-hand
-	 *   to fork local <something> from that remote tracking branch.
+	 *   to fork local <something> from that remote-tracking branch.
 	 *
 	 *   Otherwise <something> shall not be ambiguous.
 	 *   - If it's *only* a reference, treat it like case (1).
