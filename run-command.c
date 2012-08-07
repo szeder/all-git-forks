@@ -2,7 +2,7 @@
 #include "run-command.h"
 #include "exec_cmd.h"
 
-#ifdef __LAMP__
+#ifdef __RELIX__
 #define GIT_FORK() vfork()
 #else
 #define GIT_FORK() fork()
@@ -489,7 +489,7 @@ static NORETURN void die_async(const char *err, va_list params)
 
 static void run_async_proc(struct async *async, int proc_in, int proc_out)
 {
-#ifdef __LAMP__
+#ifdef __RELIX__
 	(void) reexec(async->proc, proc_in, proc_out, async->data);
 #else
 	exit(!!async->proc(proc_in, proc_out, async->data));
