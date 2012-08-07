@@ -1312,8 +1312,7 @@ static void pass_blame(struct scoreboard *sb, struct origin *origin, int opt)
 /*
  * Information on commits, used for output.
  */
-struct commit_info
-{
+struct commit_info {
 	const char *author;
 	const char *author_mail;
 	unsigned long author_time;
@@ -1999,6 +1998,9 @@ static const char *parse_loc(const char *spec,
 		regerror(reg_error, &regexp, errbuf, 1024);
 		die("-L parameter '%s': %s", spec + 1, errbuf);
 	}
+
+	/* Not reached */
+	return NULL;
 }
 
 /*

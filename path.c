@@ -397,7 +397,7 @@ int set_shared_perm(const char *path, int mode)
 	return 0;
 }
 
-const char *make_relative_path(const char *abs, const char *base)
+const char *relative_path(const char *abs, const char *base)
 {
 	static char buf[PATH_MAX + 1];
 	int i = 0, j = 0;
@@ -552,7 +552,7 @@ int longest_ancestor_length(const char *path, const char *prefix_list)
 		return -1;
 
 	for (colon = ceil = prefix_list; *colon; ceil = colon+1) {
-		for (colon = ceil; *colon && *colon != PATH_SEP; colon++);
+		for (colon = ceil; *colon && *colon != PATH_SEP; colon++) continue;
 		len = colon - ceil;
 		if (len == 0 || len > PATH_MAX || !is_absolute_path(ceil))
 			continue;
