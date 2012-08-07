@@ -1,5 +1,10 @@
 #include "cache.h"
 
+struct cache_version_header {
+	unsigned int hdr_signature;
+	unsigned int hdr_version;
+};
+
 int main(int argc, char **argv)
 {
 	struct cache_version_header hdr;
