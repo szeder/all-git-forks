@@ -94,16 +94,8 @@ unsigned long git_deflate_bound(git_zstream *, unsigned long);
  */
 #define DEFAULT_GIT_PORT 9418
 
-/*
- * Basic data structures for the directory cache
- */
 
 #define CACHE_SIGNATURE 0x44495243	/* "DIRC" */
-struct cache_header {
-	unsigned int hdr_signature;
-	unsigned int hdr_version;
-	unsigned int hdr_entries;
-};
 
 #define INDEX_FORMAT_LB 2
 #define INDEX_FORMAT_UB 4
@@ -267,6 +259,7 @@ struct index_state {
 	unsigned name_hash_initialized : 1,
 		 initialized : 1;
 	struct hash_table name_hash;
+	struct index_ops *ops;
 };
 
 extern struct index_state the_index;
@@ -471,8 +464,8 @@ extern int index_name_is_other(const struct index_state *, const char *, int);
 #define CE_MATCH_RACY_IS_DIRTY		02
 /* do stat comparison even if CE_SKIP_WORKTREE is true */
 #define CE_MATCH_IGNORE_SKIP_WORKTREE	04
-extern int ie_match_stat(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
-extern int ie_modified(const struct index_state *, struct cache_entry *, struct stat *, unsigned int);
+extern int ie_match_stat(struct index_state *, struct cache_entry *, struct stat *, unsigned int);
+extern int ie_modified(struct index_state *, struct cache_entry *, struct stat *, unsigned int);
 
 struct pathspec {
 	const char **raw; /* get_pathspec() result, not freed by free_pathspec() */
