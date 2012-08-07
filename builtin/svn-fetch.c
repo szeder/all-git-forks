@@ -1067,12 +1067,19 @@ static int find_file(struct tree* tree, const char* path, unsigned char* blob) {
 	return checkout_tree_search(NULL, blob, tree, path, "");
 }
 
+enum tree_index {
+	SVN_TREE,
+	GIT_TREE,
+	TREE_NUM,
+};
+
 struct svnref {
 	struct strbuf svn; /* svn root */
 	struct strbuf ref; /* svn ref path */
 	struct strbuf remote; /* remote ref path */
-	struct index_state svn_index;
-	struct index_state git_index;
+
+	struct index_state index[TREE_NUM];
+	struct tree *tree[TREE_NUM];
 
 	unsigned int delete : 1;
 	unsigned int istag : 1;
@@ -1116,36 +1123,53 @@ static void add_refname(struct strbuf* buf, const char* name) {
 	}
 }
 
+static struct index_state* get_index(struct svnref* r, enum tree_index t) {
+	if (r->tree[t] && checkout_tree(&r->index[t], r->tree[t], "", ""))
+		die("failed to checkout %s", sha1_to_hex(r->tree[t]->object.sha1));
+
+	r->tree[t] = NULL;
+	return &r->index[t];
+}
+
+static const unsigned char *index_sha1(struct svnref* r, enum tree_index t) {
+	struct index_state* idx;
+	if (r->tree[t])
+		return r->tree[t]->object.sha1;
+
+	idx = get_index(r, t);
+	if (!idx->cache_tree)
+		idx->cache_tree = cache_tree();
+	if (cache_tree_update(idx->cache_tree, idx->cache, idx->cache_nr, 0))
+		die("failed to update cache tree");
+
+	return idx->cache_tree->sha1;
+}
+
 static void checkout_svncmt(struct svnref* r, struct commit* svncmt) {
 	struct commit* gitcmt;
 
 	/* R (replace) log entries may already have content that
 	 * we need to clear first */
-	discard_index(&r->svn_index);
-	discard_index(&r->git_index);
+
+	discard_index(&r->index[GIT_TREE]);
+	discard_index(&r->index[SVN_TREE]);
+	r->tree[GIT_TREE] = NULL;
+	r->tree[SVN_TREE] = NULL;
 
 	/* Note r->svncmt may not equal c if this creates a branch or
 	 * replaces an existing one. c will be the new source whereas
 	 * svncmt will continue to point to the old svn commit */
 
-	if (svncmt) {
-		if (parse_commit(svncmt))
-			die("invalid object %s", cmt_to_hex(svncmt));
+	if (svncmt && parse_commit(svncmt))
+		die("invalid object %s", cmt_to_hex(svncmt));
 
-		if (checkout_tree(&r->svn_index, svncmt->tree, "", ""))
-			die("failed to checkout %s", cmt_to_hex(svncmt));
-	}
-
+	r->tree[SVN_TREE] = svncmt ? svncmt->tree : NULL;
 	gitcmt = svncmt ? svn_commit(svncmt) : NULL;
 
-	if (gitcmt) {
-		if (parse_commit(gitcmt))
-			die("invalid object %s", cmt_to_hex(gitcmt));
+	if (gitcmt && parse_commit(gitcmt))
+		die("invalid object %s", cmt_to_hex(gitcmt));
 
-		if (checkout_tree(&r->git_index, gitcmt->tree, "", ""))
-			die("failed to checkout %s", cmt_to_hex(gitcmt));
-	}
-
+	r->tree[GIT_TREE] = gitcmt ? gitcmt->tree : NULL;
 	r->parent = gitcmt;
 }
 
@@ -1521,10 +1545,10 @@ static void read_add_dir(struct svnref* r, int rev) {
 		srccmt = find_svncmt(srcref, rev);
 		if (!srccmt) goto err;
 
-		if (checkout_tree(&r->svn_index, srccmt->tree, srcname.buf, name.buf))
+		if (checkout_tree(get_index(r, SVN_TREE), srccmt->tree, srcname.buf, name.buf))
 			goto err;
 
-		if (checkout_tree(&r->git_index, svn_commit(srccmt)->tree, srcname.buf, name.buf))
+		if (checkout_tree(get_index(r, GIT_TREE), svn_commit(srccmt)->tree, srcname.buf, name.buf))
 			goto err;
 
 		read_end();
@@ -1539,7 +1563,7 @@ static void read_add_dir(struct svnref* r, int rev) {
 			die("failed to write .gitempty object");
 		strbuf_addstr(&name, ".gitempty");
 		ce = make_cache_entry(create_ce_mode(0644), sha1, name.buf, 0, 0);
-		add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD);
+		add_index_entry(get_index(r, GIT_TREE), ce, ADD_CACHE_OK_TO_ADD);
 	}
 
 	/* remove ../.gitempty */
@@ -1549,7 +1573,7 @@ static void read_add_dir(struct svnref* r, int rev) {
 		if (p) {
 			strbuf_setlen(&name, p - name.buf);
 			strbuf_addstr(&name, "/.gitempty");
-			remove_file_from_index(&r->git_index, name.buf);
+			remove_file_from_index(get_index(r, GIT_TREE), name.buf);
 		}
 	}
 
@@ -1604,7 +1628,7 @@ static void read_add_file(struct svnref* r, int rev, struct strbuf* name, void**
 		struct strbuf empty = STRBUF_INIT;
 		strbuf_add(&empty, name->buf, p - name->buf);
 		strbuf_addstr(&empty, "/.gitempty");
-		remove_file_from_index(&r->git_index, empty.buf);
+		remove_file_from_index(get_index(r, GIT_TREE), empty.buf);
 		strbuf_release(&empty);
 	}
 
@@ -1624,7 +1648,7 @@ static void read_open_file(struct svnref* r, int rev, struct strbuf* name, void*
 	find_svnref_by_path(name);
 	fprintf(stderr, "M %s\n", name->buf);
 
-	ce = index_name_exists(&r->svn_index, name->buf, name->len, 0);
+	ce = index_name_exists(get_index(r, SVN_TREE), name->buf, name->len, 0);
 	if (!ce) goto err;
 
 	*srcp = read_sha1_file(ce->sha1, &type, &srcn);
@@ -1660,7 +1684,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 		MD5_Final(h2, &ctx);
 
 		if (memcmp(h1, h2, sizeof(h1))) {
-			ce = index_name_exists(&r->svn_index, name, strlen(name), 0);
+			ce = index_name_exists(get_index(r, SVN_TREE), name, strlen(name), 0);
 			die("hash mismatch for '%s', expected md5 %s, got md5 %s, old sha1 %s, new sha1 %s",
 					name,
 					md5_to_hex(h2),
@@ -1674,7 +1698,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(&r->svn_index, ce, ADD_CACHE_OK_TO_ADD);
+	add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_reset(&buf);
 	if (convert_to_git(name, data, sz, &buf, SAFE_CRLF_FALSE)) {
@@ -1684,7 +1708,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 	}
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(&r->git_index, ce, ADD_CACHE_OK_TO_ADD);
+	add_index_entry(get_index(r, GIT_TREE), ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_release(&buf);
 	return;
@@ -1740,8 +1764,8 @@ static void read_delete_entry(struct svnref* r, int rev) {
 	find_svnref_by_path(&name);
 	fprintf(stderr, "D %s\n", name.buf);
 
-	remove_index_path(&r->svn_index, &name);
-	remove_index_path(&r->git_index, &name);
+	remove_index_path(get_index(r, SVN_TREE), &name);
+	remove_index_path(get_index(r, GIT_TREE), &name);
 	if (!name.len) {
 		r->delete = 1;
 	}
@@ -2064,16 +2088,6 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 	struct commit *gitcmt, *svncmt;
 	struct ref_lock* lk = NULL;
 
-	if (!r->git_index.cache_tree)
-		r->git_index.cache_tree = cache_tree();
-	if (cache_tree_update(r->git_index.cache_tree, r->git_index.cache, r->git_index.cache_nr, 0))
-		die("failed to update cache tree");
-
-	if (!r->svn_index.cache_tree)
-		r->svn_index.cache_tree = cache_tree();
-	if (cache_tree_update(r->svn_index.cache_tree, r->svn_index.cache, r->svn_index.cache_nr, 0))
-		die("failed to update cache tree");
-
 	/* Create the commit object.
 	 *
 	 * SVN can't create tags and branches without a commit,
@@ -2087,7 +2101,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	} else if ((r->istag || created)
 		&& r->parent
-		&& !hashcmp(r->git_index.cache_tree->sha1, r->parent->tree->object.sha1)
+		&& !hashcmp(index_sha1(r, GIT_TREE), r->parent->tree->object.sha1)
 		  ) {
 		/* branch/tag has been created/replaced, but the tree hasn't
 		 * been changed */
@@ -2095,7 +2109,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	} else {
 		strbuf_reset(&buf);
-		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->git_index.cache_tree->sha1));
+		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, GIT_TREE)));
 
 		if (r->parent) {
 			strbuf_addf(&buf, "parent %s\n", cmt_to_hex(r->parent));
@@ -2148,7 +2162,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	/* Create the svn commit */
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->svn_index.cache_tree->sha1));
+	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, SVN_TREE)));
 
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));
@@ -2892,7 +2906,7 @@ static void change(struct diff_options* op,
 
 	dir = change_dir(path);
 
-	ce = index_name_exists(&r->svn_index, path, strlen(path), 0);
+	ce = index_name_exists(get_index(r, SVN_TREE), path, strlen(path), 0);
 	if (!ce) {
 		/* file exists in git but not in svn */
 		return;
@@ -2912,7 +2926,6 @@ static void change(struct diff_options* op,
 	if (write_sha1_file(data, sz, "blob", ce->sha1)) {
 		die_errno("blob write");
 	}
-	r->svn_index.cache_changed = 1;
 
 	inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
 
@@ -2959,7 +2972,7 @@ static void addremove(struct diff_options* op,
 	if (addrm == '-' && S_ISDIR(mode)) {
 		strbuf_reset(&buf);
 		strbuf_add(&buf, path, plen);
-		if (remove_index_path(&r->svn_index, &buf) > 0) {
+		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
 			int dir = change_dir(path);
 			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
 				(int) plen, path, dtoken(dir));
@@ -2975,7 +2988,7 @@ static void addremove(struct diff_options* op,
 	} else if (addrm == '-' && S_ISREG(mode)) {
 		strbuf_reset(&buf);
 		strbuf_add(&buf, path, plen);
-		if (remove_index_path(&r->svn_index, &buf) > 0) {
+		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
 			int dir = change_dir(path);
 			sendf("( delete-entry ( %d:%s ( ) %s) )\n",
 				(int) plen, path, dtoken(dir));
@@ -3017,7 +3030,7 @@ static void addremove(struct diff_options* op,
 		}
 
 		ce = make_cache_entry(0644, sha1, path, 0, 0);
-		add_index_entry(&r->svn_index, ce, ADD_CACHE_OK_TO_ADD);
+		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
 
 		if (sz) {
 			inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
@@ -3260,15 +3273,10 @@ static void push_commit(struct push* p, struct object* logobj, struct commit* gi
 		check_for_svn_commits(r, parse_svnrev(r->svncmt), rev);
 	}
 
-	if (!r->svn_index.cache_tree)
-		r->svn_index.cache_tree = cache_tree();
-	if (cache_tree_update(r->svn_index.cache_tree, r->svn_index.cache, r->svn_index.cache_nr, 0))
-		die("failed to update cache tree");
-
 	/* create the svn object */
 
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(r->svn_index.cache_tree->sha1));
+	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, SVN_TREE)));
 
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));
