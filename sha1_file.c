@@ -2676,6 +2676,10 @@ static int index_stream(unsigned char *sha1, int fd, size_t size,
 			enum object_type type, const char *path,
 			unsigned flags)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct child_process fast_import;
 	char export_marks[512];
 	const char *argv[] = { "fast-import", "--quiet", export_marks, NULL };
@@ -2683,6 +2687,10 @@ static int index_stream(unsigned char *sha1, int fd, size_t size,
 	char fast_import_cmd[512];
 	char buf[512];
 	int len, tmpfd;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	strcpy(tmpfile, git_path("hashstream_XXXXXX"));
 	tmpfd = git_mkstemp_mode(tmpfile, 0600);

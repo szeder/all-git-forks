@@ -1025,6 +1025,10 @@ static int remove_one_note(struct notes_tree *t, const char *name, unsigned flag
 
 static int remove_cmd(int argc, const char **argv, const char *prefix)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	unsigned flag = 0;
 	int from_stdin = 0;
 	struct option options[] = {
@@ -1037,6 +1041,10 @@ static int remove_cmd(int argc, const char **argv, const char *prefix)
 	};
 	struct notes_tree *t;
 	int retval = 0;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, prefix, options,
 			     git_notes_remove_usage, 0);
