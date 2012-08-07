@@ -2874,7 +2874,7 @@ static void change(struct diff_options* op,
 		unsigned ndsubmodule)
 {
 	struct svnref* r = op->format_callback_data;
-	const char *gitpath = svnpath + r->svn.len;
+	const char *gitpath = r->svn.len ? svnpath + r->svn.len : svnpath;
 	struct cache_entry* ce;
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char ins[MAX_INS_LEN], *inp = ins;
@@ -2906,14 +2906,16 @@ static void change(struct diff_options* op,
 		die("unexpected object type for %s", sha1_to_hex(nsha1));
 
 	if (convert_to_working_tree(gitpath, data, sz, &buf)) {
+		unsigned char sha1[20];
 		free(data);
 		data = strbuf_detach(&buf, &sz);
 
-		ce->ce_flags = create_ce_flags(sz, 0);
-
-		if (write_sha1_file(data, sz, "blob", ce->sha1)) {
+		if (write_sha1_file(data, sz, "blob", sha1)) {
 			die_errno("blob write");
 		}
+
+		ce = make_cache_entry(0644, sha1, gitpath, 0, 0);
+		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_REPLACE);
 	}
 
 
@@ -2957,8 +2959,8 @@ static void addremove(struct diff_options* op,
 	static struct strbuf buf = STRBUF_INIT;
 	struct svnref* r = op->format_callback_data;
 	size_t svnlen = strlen(svnpath);
-	const char *gitpath = svnpath + r->svn.len;
-	size_t gitlen = svnlen - r->svn.len;
+	const char *gitpath = r->svn.len ? svnpath + r->svn.len : svnpath;
+	size_t gitlen = svnpath + svnlen - gitpath;
 
 	if (verbose) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
 			addrm, mode, sha1_to_hex(sha1), svnpath);
@@ -3023,7 +3025,7 @@ static void addremove(struct diff_options* op,
 			}
 		}
 
-		ce = make_cache_entry(0644, sha1, gitpath, 0, 0);
+		ce = make_cache_entry(0644, nsha1, gitpath, 0, 0);
 		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
 
 		if (sz) {

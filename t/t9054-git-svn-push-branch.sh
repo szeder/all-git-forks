@@ -58,6 +58,27 @@ test_expect_success 'modify file' '
 	cd ../..
 '
 
+test_expect_success 'modify file2' '
+	cd svnco/Trunk &&
+	echo "bar" > svn.txt &&
+	svn_cmd add svn.txt &&
+	svn_cmd ci -m "svn edit" &&
+	cd ../.. &&
+	git svn-fetch -v &&
+	git reset --hard svn/trunk &&
+	test_file svn.txt "bar" &&
+	echo "foo" > svn.txt &&
+	git commit -a -m "git edit" &&
+	git svn-push -v svn/trunk svn/trunk HEAD &&
+	cd svnco &&
+	svn_cmd up &&
+	cd Trunk &&
+	test_svn_subject "git edit" &&
+	test_svn_subject "svn edit" PREV &&
+	test_file svn.txt "foo" &&
+	cd ../..
+'
+
 function svn_head() {
 	wd=`pwd` &&
 	cd svnco &&
@@ -74,6 +95,7 @@ test_expect_success 'create standalone branch' '
 	git rm -r --cached . &&
 	echo "bar" > file.txt &&
 	git add file.txt &&
+	rm svn.txt &&
 	git commit -a -m "init standalone" &&
 	git svn-push -v refs/remotes/svn/standalone $null_sha1 standalone &&
 	cd svnco &&
