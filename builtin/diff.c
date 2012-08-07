@@ -169,7 +169,7 @@ static int builtin_diff_combined(struct rev_info *revs,
 				 struct object_array_entry *ent,
 				 int ents)
 {
-	const unsigned char (*parent)[20];
+	unsigned char (*parent)[20];
 	int i;
 
 	if (argc > 1)
