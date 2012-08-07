@@ -593,7 +593,7 @@ static int unpack_nondirectories(int n, unsigned long mask,
 static int unpack_failed(struct unpack_trees_options *o, const char *message)
 {
 	discard_index(&o->result);
-	if (!o->gently) {
+	if (!o->gently && !o->exiting_early) {
 		if (message)
 			return error("%s", message);
 		return -1;
@@ -1133,6 +1133,8 @@ return_failed:
 		display_error_msgs(o);
 	mark_all_ce_unused(o->src_index);
 	ret = unpack_failed(o, NULL);
+	if (o->exiting_early)
+		ret = 0;
 	goto done;
 }
 
@@ -1166,11 +1168,22 @@ static int verify_uptodate_1(struct cache_entry *ce,
 {
 	struct stat st;
 
-	if (o->index_only || (!((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce)) && (o->reset || ce_uptodate(ce))))
+	if (o->index_only)
+		return 0;
+
+	/*
+	 * CE_VALID and CE_SKIP_WORKTREE cheat, we better check again
+	 * if this entry is truly up-to-date because this file may be
+	 * overwritten.
+	 */
+	if ((ce->ce_flags & CE_VALID) || ce_skip_worktree(ce))
+		; /* keep checking */
+	else if (o->reset || ce_uptodate(ce))
 		return 0;
 
 	if (!lstat(ce->name, &st)) {
-		unsigned changed = ie_match_stat(o->src_index, ce, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE);
+		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
+		unsigned changed = ie_match_stat(o->src_index, ce, &st, flags);
 		if (!changed)
 			return 0;
 		/*
