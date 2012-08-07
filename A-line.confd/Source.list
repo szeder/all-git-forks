@@ -193,6 +193,7 @@ revision.c
 run-command.c
 server-info.c
 setup.c
+sha1-array.c
 sha1-lookup.c
 sha1_file.c
 sha1_name.c
