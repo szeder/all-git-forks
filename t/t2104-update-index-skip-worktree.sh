@@ -25,7 +25,8 @@ test_expect_success 'setup' '
 	mkdir sub &&
 	touch ./1 ./2 sub/1 sub/2 &&
 	git add 1 2 sub/1 sub/2 &&
-	git ls-files -t | test_cmp expect.full -
+	git ls-files -t | test_cmp expect.full - &&
+	git update-index --index-version=2
 '
 
 test_expect_success 'index is at version 2' '
