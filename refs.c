@@ -451,7 +451,7 @@ int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *re
 	memcpy(gitdir + len, "/.git", 6);
 	len += 5;
 
-	tmp = read_gitfile_gently(gitdir);
+	tmp = read_gitfile(gitdir);
 	if (tmp) {
 		free(gitdir);
 		len = strlen(tmp);
@@ -837,7 +837,7 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 
 static inline int bad_ref_char(int ch)
 {
-	if (((unsigned) ch) <= ' ' ||
+	if (((unsigned) ch) <= ' ' || ch == 0x7f ||
 	    ch == '~' || ch == '^' || ch == ':' || ch == '\\')
 		return 1;
 	/* 2.13 Pattern Matching Notation */
