@@ -221,6 +221,10 @@ static int do_push(const char *repo, int flags)
 
 int cmd_push(int argc, const char **argv, const char *prefix)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int flags = 0;
 	int tags = 0;
 	int rc;
@@ -245,6 +249,10 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
+
 	packet_trace_identity("push");
 	git_config(git_default_config, NULL);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
@@ -265,6 +273,5 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 	rc = do_push(repo, flags);
 	if (rc == -1)
 		usage_with_options(push_usage, options);
-	else
-		return rc;
+	return rc;
 }

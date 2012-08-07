@@ -219,6 +219,9 @@ int parse_fetch_recurse_submodules_arg(const char *opt, const char *arg)
 			return RECURSE_SUBMODULES_ON_DEMAND;
 		die("bad %s argument: %s", opt, arg);
 	}
+	
+	/* Not reached */
+	return 0;
 }
 
 void show_submodule_summary(FILE *f, const char *path,
@@ -227,7 +230,7 @@ void show_submodule_summary(FILE *f, const char *path,
 		const char *del, const char *add, const char *reset)
 {
 	struct rev_info rev;
-	struct commit *left = left, *right = right;
+	struct commit *left, *right;
 	const char *message = NULL;
 	struct strbuf sb = STRBUF_INIT;
 	int fast_forward = 0, fast_backward = 0;
@@ -550,11 +553,19 @@ static int find_first_merges(struct object_array *result, const char *path,
 	struct commit *commit;
 	int contains_another;
 
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	char merged_revision[42];
 	const char *rev_args[] = { "rev-list", "--merges", "--ancestry-path",
 				   "--all", merged_revision, NULL };
 	struct rev_info revs;
 	struct setup_revision_opt rev_opts;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	memset(&merges, 0, sizeof(merges));
 	memset(result, 0, sizeof(struct object_array));

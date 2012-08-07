@@ -73,6 +73,11 @@ static void parse_args(int argc, const char **argv)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage();
 	int noop;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct option options[] = {
 		OPT_BOOLEAN('n', "no-commit", &no_commit, "don't automatically commit"),
 		OPT_BOOLEAN('e', "edit", &edit, "edit the commit message"),
@@ -88,6 +93,10 @@ static void parse_args(int argc, const char **argv)
 		OPT_END(),
 		OPT_END(),
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	if (action == CHERRY_PICK) {
 		struct option cp_extra[] = {
@@ -138,6 +147,8 @@ static int get_message(const char *raw_message, struct commit_message *out)
 					git_commit_encoding, encoding);
 	if (out->reencoded_message)
 		out->message = out->reencoded_message;
+	else
+		out->message = raw_message;
 
 	abbrev = find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV);
 	abbrev_len = strlen(abbrev);
