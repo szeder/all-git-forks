@@ -16,21 +16,11 @@ skip)
 	;;
 esac
 
-test -n "$rebase_root" && root_flag=--root
-
-if test -n "$keep_empty"
-then
-	# we have to do this the hard way.  git format-patch completely squashes
-	# empty commits and even if it didn't the format doesn't really lend
-	# itself well to recording empty patches.  fortunately, cherry-pick
-	# makes this easy
-	git cherry-pick --allow-empty "$revisions"
-else
-	git format-patch -k --stdout --full-index --ignore-if-in-upstream \
-		--src-prefix=a/ --dst-prefix=b/ \
-		--no-renames $root_flag "$revisions" |
-	git am $git_am_opt --rebasing --resolvemsg="$resolvemsg"
-fi && move_to_original_branch
+test -n "$keep_empty" && git_am_opt="$git_am_opt --keep-empty"
+generate_revisions |
+sed -e 's/\([0-9a-f]\{40\}\)/From \1 Mon Sep 17 00:00:00 2001/' |
+git am $git_am_opt --rebasing --resolvemsg="$resolvemsg" &&
+move_to_original_branch
 
 ret=$?
 test 0 != $ret -a -d "$state_dir" && write_basic_state
