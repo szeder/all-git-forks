@@ -152,6 +152,9 @@
 #ifdef _MSC_VER
 #include "compat/msvc.h"
 #endif
+#ifdef __RELIX__
+#include "compat/relix.h"
+#endif
 
 #ifndef NO_LIBGEN_H
 #include <libgen.h>
