@@ -16,7 +16,7 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 #define delete delete_
 #endif
 
-	const char *refname, *oldval, *msg=NULL;
+	const char *refname, *oldval, *msg = NULL;
 	unsigned char sha1[20], oldsha1[20];
 	int delete = 0, no_deref = 0, flags = 0;
 	struct option options[] = {
