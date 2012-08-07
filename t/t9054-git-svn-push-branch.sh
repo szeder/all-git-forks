@@ -38,6 +38,26 @@ test_expect_success 'init trunk' '
 	cd ..
 '
 
+test_expect_success 'modify file' '
+	cd svnco/Trunk &&
+	echo "bar" > file.txt &&
+	svn_cmd ci -m "svn edit" &&
+	cd ../.. &&
+	git svn-fetch -v &&
+	git reset --hard svn/trunk &&
+	test_file file.txt "bar" &&
+	echo "foo" > file.txt &&
+	git commit -a -m "git edit" &&
+	git svn-push -v svn/trunk svn/trunk HEAD &&
+	cd svnco &&
+	svn_cmd up &&
+	cd Trunk &&
+	test_svn_subject "git edit" &&
+	test_svn_subject "svn edit" PREV &&
+	test_file file.txt "foo" &&
+	cd ../..
+'
+
 function svn_head() {
 	wd=`pwd` &&
 	cd svnco &&

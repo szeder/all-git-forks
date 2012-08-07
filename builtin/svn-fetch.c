@@ -2869,11 +2869,12 @@ static void change(struct diff_options* op,
 	       	unsigned nmode,
 		const unsigned char* osha1,
 		const unsigned char* nsha1,
-		const char* path,
+		const char* svnpath,
 		unsigned odsubmodule,
 		unsigned ndsubmodule)
 {
 	struct svnref* r = op->format_callback_data;
+	const char *gitpath = svnpath + r->svn.len;
 	struct cache_entry* ce;
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char ins[MAX_INS_LEN], *inp = ins;
@@ -2885,14 +2886,14 @@ static void change(struct diff_options* op,
 	int dir;
 
 	if (verbose) fprintf(stderr, "change mode %x/%x sha1 %s/%s path %s\n",
-			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), path);
+			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), svnpath);
 
 	/* dont care about changed directories */
 	if (!S_ISREG(nmode)) return;
 
-	dir = change_dir(path);
+	dir = change_dir(svnpath);
 
-	ce = index_name_exists(get_index(r, SVN_TREE), path, strlen(path), 0);
+	ce = index_name_exists(get_index(r, SVN_TREE), gitpath, strlen(gitpath), 0);
 	if (!ce) {
 		/* file exists in git but not in svn */
 		return;
@@ -2904,16 +2905,21 @@ static void change(struct diff_options* op,
 	if (type != OBJ_BLOB)
 		die("unexpected object type for %s", sha1_to_hex(nsha1));
 
-	if (convert_to_working_tree(path, data, sz, &buf)) {
+	if (convert_to_working_tree(gitpath, data, sz, &buf)) {
 		free(data);
 		data = strbuf_detach(&buf, &sz);
+
+		ce->ce_flags = create_ce_flags(sz, 0);
+
+		if (write_sha1_file(data, sz, "blob", ce->sha1)) {
+			die_errno("blob write");
+		}
 	}
 
-	if (write_sha1_file(data, sz, "blob", ce->sha1)) {
-		die_errno("blob write");
-	}
 
-	inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
+	if (sz) {
+		inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
+	}
 
 	hp = encode_varint(hp, 0); /* source off */
 	hp = encode_varint(hp, 0); /* source len */
@@ -2924,7 +2930,7 @@ static void change(struct diff_options* op,
 	tok = ftoken();
 	sendf("( open-file ( %d:%s %s %s ( ) ) )\n"
 		"( apply-textdelta ( %s ( ) ) )\n",
-		(int) strlen(path), path, dtoken(dir), tok,
+		(int) strlen(svnpath), svnpath, dtoken(dir), tok,
 		tok);
 
 	send_delta_chunk(tok, "SVN\0", 4);
@@ -2936,7 +2942,7 @@ static void change(struct diff_options* op,
 		"( close-file ( %s ( ) ) )\n",
 		tok, tok);
 
-	diff_change(op, omode, nmode, osha1, nsha1, path, odsubmodule, ndsubmodule);
+	diff_change(op, omode, nmode, osha1, nsha1, gitpath, odsubmodule, ndsubmodule);
 
 	free(data);
 }
@@ -2945,39 +2951,41 @@ static void addremove(struct diff_options* op,
 		int addrm,
 		unsigned mode,
 		const unsigned char* sha1,
-		const char* path,
+		const char* svnpath,
 		unsigned dsubmodule)
 {
 	static struct strbuf buf = STRBUF_INIT;
 	struct svnref* r = op->format_callback_data;
-	size_t plen = strlen(path);
+	size_t svnlen = strlen(svnpath);
+	const char *gitpath = svnpath + r->svn.len;
+	size_t gitlen = svnlen - r->svn.len;
 
 	if (verbose) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
-			addrm, mode, sha1_to_hex(sha1), path);
+			addrm, mode, sha1_to_hex(sha1), svnpath);
 
 	if (addrm == '-' && S_ISDIR(mode)) {
 		strbuf_reset(&buf);
-		strbuf_add(&buf, path, plen);
+		strbuf_add(&buf, gitpath, gitlen);
 		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
-			int dir = change_dir(path);
+			int dir = change_dir(svnpath);
 			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
-				(int) plen, path, dtoken(dir));
+				(int) svnlen, svnpath, dtoken(dir));
 		}
 
 	} else if (addrm == '+' && S_ISDIR(mode)) {
-		int dir = change_dir(path);
+		int dir = change_dir(svnpath);
 		sendf("( add-dir ( %d:%s %s %s ( ) ) )\n",
-			(int) plen, path, dtoken(dir), dtoken(dir+1));
+			(int) svnlen, svnpath, dtoken(dir), dtoken(dir+1));
 
-		dir_changed(++dir, path);
+		dir_changed(++dir, svnpath);
 
 	} else if (addrm == '-' && S_ISREG(mode)) {
 		strbuf_reset(&buf);
-		strbuf_add(&buf, path, plen);
+		strbuf_add(&buf, gitpath, gitlen);
 		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
-			int dir = change_dir(path);
+			int dir = change_dir(svnpath);
 			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
-				(int) plen, path, dtoken(dir));
+				(int) svnlen, svnpath, dtoken(dir));
 		}
 
 	} else if (addrm == '+' && S_ISREG(mode)) {
@@ -2995,8 +3003,8 @@ static void addremove(struct diff_options* op,
 		/* files beginning with .git eg .gitempty,
 		 * .gitattributes, etc are filtered from svn
 		 */
-		const char* p = strrchr(path, '/');
-		p = p ? p+1 : path;
+		const char* p = strrchr(gitpath, '/');
+		p = p ? p+1 : gitpath;
 		if (!prefixcmp(p, ".git")) {
 			return;
 		}
@@ -3006,7 +3014,7 @@ static void addremove(struct diff_options* op,
 		if (!data || type != OBJ_BLOB)
 			die("unexpected object type for %s", sha1_to_hex(sha1));
 
-		if (convert_to_working_tree(path, data, sz, &buf)) {
+		if (convert_to_working_tree(gitpath, data, sz, &buf)) {
 			free(data);
 			data = strbuf_detach(&buf, &sz);
 
@@ -3015,7 +3023,7 @@ static void addremove(struct diff_options* op,
 			}
 		}
 
-		ce = make_cache_entry(0644, sha1, path, 0, 0);
+		ce = make_cache_entry(0644, sha1, gitpath, 0, 0);
 		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
 
 		if (sz) {
@@ -3030,11 +3038,11 @@ static void addremove(struct diff_options* op,
 
 		/* TODO: use diffcore to find copies */
 
-		dir = change_dir(path);
+		dir = change_dir(svnpath);
 		tok = ftoken();
 		sendf("( add-file ( %d:%s %s %s ( ) ) )\n"
 			"( apply-textdelta ( %s ( ) ) )\n",
-			(int) strlen(path), path, dtoken(dir), tok,
+			(int) strlen(svnpath), svnpath, dtoken(dir), tok,
 			tok);
 
 		send_delta_chunk(tok, "SVN\0", 4);
@@ -3049,7 +3057,7 @@ static void addremove(struct diff_options* op,
 		free(data);
 	}
 
-	diff_addremove(op, addrm, mode, sha1, path, dsubmodule);
+	diff_addremove(op, addrm, mode, sha1, svnpath, dsubmodule);
 }
 
 static void output(struct diff_queue_struct *q,

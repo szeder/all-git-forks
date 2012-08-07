@@ -105,5 +105,25 @@ test_expect_success '.git files' '
 	cd ..
 '
 
+test_expect_success 'modify file' '
+	echo "foo" > file.txt &&
+	git add file.txt &&
+	git commit -a -m "edit1" &&
+	git svn-push -v svn/master svn/master master &&
+	cd svnco &&
+	svn_cmd up &&
+	test_svn_subject "edit1" &&
+	test_file file.txt "foo" &&
+	cd .. &&
+	echo "bar" > file.txt &&
+	git commit -a -m "edit2" &&
+	git svn-push -v svn/master svn/master master &&
+	cd svnco &&
+	svn_cmd up &&
+	test_svn_subject "edit2" &&
+	test_file file.txt "bar" &&
+	cd ..
+'
+
 test_done
 
