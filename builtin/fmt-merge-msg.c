@@ -31,7 +31,7 @@ struct src_data {
 	int head_status;
 };
 
-void init_src_data(struct src_data *data)
+static void init_src_data(struct src_data *data)
 {
 	data->branch.strdup_strings = 1;
 	data->tag.strdup_strings = 1;
@@ -318,6 +318,11 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 {
 	const char *inpath = NULL;
 	const char *message = NULL;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct option options[] = {
 		{ OPTION_INTEGER, 0, "log", &shortlog_len, "n",
 		  "populate log with at most <n> entries from shortlog",
@@ -331,6 +336,10 @@ int cmd_fmt_merge_msg(int argc, const char **argv, const char *prefix)
 		OPT_FILENAME('F', "file", &inpath, "file to read from"),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	FILE *in = stdin;
 	struct strbuf input = STRBUF_INIT, output = STRBUF_INIT;

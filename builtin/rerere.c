@@ -8,7 +8,7 @@
 #include "xdiff-interface.h"
 
 static const char * const rerere_usage[] = {
-	"git rerere [clear | status | diff | gc]",
+	"git rerere [clear | forget path... | status | remaining | diff | gc]",
 	NULL,
 };
 
@@ -119,11 +119,19 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 	struct string_list merge_rr = STRING_LIST_INIT_DUP;
 	int i, fd, autoupdate = -1, flags = 0;
 
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct option options[] = {
 		OPT_SET_INT(0, "rerere-autoupdate", &autoupdate,
 			"register clean resolutions in index", 1),
 		OPT_END(),
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, prefix, options, rerere_usage, 0);
 
@@ -136,7 +144,10 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 		return rerere(flags);
 
 	if (!strcmp(argv[0], "forget")) {
-		const char **pathspec = get_pathspec(prefix, argv + 1);
+		const char **pathspec;
+		if (argc < 2)
+			warning("'git rerere forget' without paths is deprecated");
+		pathspec = get_pathspec(prefix, argv + 1);
 		return rerere_forget(pathspec);
 	}
 
@@ -156,7 +167,17 @@ int cmd_rerere(int argc, const char **argv, const char *prefix)
 	else if (!strcmp(argv[0], "status"))
 		for (i = 0; i < merge_rr.nr; i++)
 			printf("%s\n", merge_rr.items[i].string);
-	else if (!strcmp(argv[0], "diff"))
+	else if (!strcmp(argv[0], "remaining")) {
+		rerere_remaining(&merge_rr);
+		for (i = 0; i < merge_rr.nr; i++) {
+			if (merge_rr.items[i].util != RERERE_RESOLVED)
+				printf("%s\n", merge_rr.items[i].string);
+			else
+				/* prepare for later call to
+				 * string_list_clear() */
+				merge_rr.items[i].util = NULL;
+		}
+	} else if (!strcmp(argv[0], "diff"))
 		for (i = 0; i < merge_rr.nr; i++) {
 			const char *path = merge_rr.items[i].string;
 			const char *name = (const char *)merge_rr.items[i].util;

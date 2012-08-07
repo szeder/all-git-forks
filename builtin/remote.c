@@ -1,4 +1,4 @@
-#include "cache.h"
+#include "builtin.h"
 #include "parse-options.h"
 #include "transport.h"
 #include "remote.h"
@@ -9,7 +9,7 @@
 
 static const char * const builtin_remote_usage[] = {
 	"git remote [-v | --verbose]",
-	"git remote add [-t <branch>] [-m <master>] [-f] [--mirror] <name> <url>",
+	"git remote add [-t <branch>] [-m <master>] [-f] [--mirror=<fetch|push>] <name> <url>",
 	"git remote rename <old> <new>",
 	"git remote rm <name>",
 	"git remote set-head <name> (-a | -d | <branch>)",
@@ -100,11 +100,20 @@ static int opt_parse_track(const struct option *opt, const char *arg, int not)
 
 static int fetch_remote(const char *name)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	const char *argv[] = { "fetch", name, NULL, NULL };
 	if (verbose) {
 		argv[1] = "-v";
 		argv[2] = name;
 	}
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
+
 	printf("Updating %s\n", name);
 	if (run_command_v_opt(argv, RUN_GIT_CMD))
 		return error("Could not fetch %s", name);
@@ -116,6 +125,11 @@ enum {
 	TAGS_DEFAULT = 1,
 	TAGS_SET = 2
 };
+
+#define MIRROR_NONE 0
+#define MIRROR_FETCH 1
+#define MIRROR_PUSH 2
+#define MIRROR_BOTH (MIRROR_FETCH|MIRROR_PUSH)
 
 static int add_branch(const char *key, const char *branchname,
 		const char *remotename, int mirror, struct strbuf *tmp)
@@ -131,15 +145,42 @@ static int add_branch(const char *key, const char *branchname,
 	return git_config_set_multivar(key, tmp->buf, "^$", 0);
 }
 
+static const char mirror_advice[] =
+"--mirror is dangerous and deprecated; please\n"
+"\t use --mirror=fetch or --mirror=push instead";
+
+static int parse_mirror_opt(const struct option *opt, const char *arg, int not)
+{
+	unsigned *mirror = opt->value;
+	if (not)
+		*mirror = MIRROR_NONE;
+	else if (!arg) {
+		warning("%s", mirror_advice);
+		*mirror = MIRROR_BOTH;
+	}
+	else if (!strcmp(arg, "fetch"))
+		*mirror = MIRROR_FETCH;
+	else if (!strcmp(arg, "push"))
+		*mirror = MIRROR_PUSH;
+	else
+		return error("unknown mirror argument: %s", arg);
+	return 0;
+}
+
 static int add(int argc, const char **argv)
 {
-	int fetch = 0, mirror = 0, fetch_tags = TAGS_DEFAULT;
+	int fetch = 0, fetch_tags = TAGS_DEFAULT;
+	unsigned mirror = MIRROR_NONE;
 	struct string_list track = STRING_LIST_INIT_NODUP;
 	const char *master = NULL;
 	struct remote *remote;
 	struct strbuf buf = STRBUF_INIT, buf2 = STRBUF_INIT;
 	const char *name, *url;
 	int i;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
 
 	struct option options[] = {
 		OPT_BOOLEAN('f', "fetch", &fetch, "fetch the remote branches"),
@@ -151,15 +192,26 @@ static int add(int argc, const char **argv)
 		OPT_CALLBACK('t', "track", &track, "branch",
 			"branch(es) to track", opt_parse_track),
 		OPT_STRING('m', "master", &master, "branch", "master branch"),
-		OPT_BOOLEAN(0, "mirror", &mirror, "no separate remotes"),
+		{ OPTION_CALLBACK, 0, "mirror", &mirror, "push|fetch",
+			"set up remote as a mirror to push to or fetch from",
+			PARSE_OPT_OPTARG, parse_mirror_opt },
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_add_usage,
 			     0);
 
 	if (argc < 2)
 		usage_with_options(builtin_remote_add_usage, options);
+
+	if (mirror && master)
+		die("specifying a master branch makes no sense with --mirror");
+	if (mirror && track.nr)
+		die("specifying branches to track makes no sense with --mirror");
 
 	name = argv[0];
 	url = argv[1];
@@ -177,18 +229,19 @@ static int add(int argc, const char **argv)
 	if (git_config_set(buf.buf, url))
 		return 1;
 
-	strbuf_reset(&buf);
-	strbuf_addf(&buf, "remote.%s.fetch", name);
-
-	if (track.nr == 0)
-		string_list_append(&track, "*");
-	for (i = 0; i < track.nr; i++) {
-		if (add_branch(buf.buf, track.items[i].string,
-				name, mirror, &buf2))
-			return 1;
+	if (!mirror || mirror & MIRROR_FETCH) {
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "remote.%s.fetch", name);
+		if (track.nr == 0)
+			string_list_append(&track, "*");
+		for (i = 0; i < track.nr; i++) {
+			if (add_branch(buf.buf, track.items[i].string,
+				       name, mirror, &buf2))
+				return 1;
+		}
 	}
 
-	if (mirror) {
+	if (mirror & MIRROR_PUSH) {
 		strbuf_reset(&buf);
 		strbuf_addf(&buf, "remote.%s.mirror", name);
 		if (git_config_set(buf.buf, "true"))
@@ -1038,6 +1091,10 @@ static int show_push_info_item(struct string_list_item *item, void *cb_data)
 
 static int show(int argc, const char **argv)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int no_query = 0, result = 0, query_flag = 0;
 	struct option options[] = {
 		OPT_BOOLEAN('n', NULL, &no_query, "do not query remotes"),
@@ -1046,6 +1103,10 @@ static int show(int argc, const char **argv)
 	struct ref_states states;
 	struct string_list info_list = STRING_LIST_INIT_NODUP;
 	struct show_info info;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_show_usage,
 			     0);
@@ -1143,6 +1204,10 @@ static int set_head(int argc, const char **argv)
 	struct strbuf buf = STRBUF_INIT, buf2 = STRBUF_INIT;
 	char *head_name = NULL;
 
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct option options[] = {
 		OPT_BOOLEAN('a', "auto", &opt_a,
 			    "set refs/remotes/<name>/HEAD according to remote"),
@@ -1150,6 +1215,11 @@ static int set_head(int argc, const char **argv)
 			    "delete refs/remotes/<name>/HEAD"),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
+
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_sethead_usage,
 			     0);
 	if (argc)
@@ -1198,11 +1268,19 @@ static int set_head(int argc, const char **argv)
 
 static int prune(int argc, const char **argv)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int dry_run = 0, result = 0;
 	struct option options[] = {
 		OPT__DRY_RUN(&dry_run, "dry run"),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_prune_usage,
 			     0);
@@ -1261,6 +1339,10 @@ static int get_remote_default(const char *key, const char *value, void *priv)
 
 static int update(int argc, const char **argv)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int i, prune = 0;
 	struct option options[] = {
 		OPT_BOOLEAN('p', "prune", &prune,
@@ -1270,6 +1352,10 @@ static int update(int argc, const char **argv)
 	const char **fetch_argv;
 	int fetch_argc = 0;
 	int default_defined = 0;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	fetch_argv = xmalloc(sizeof(char *) * (argc+5));
 
@@ -1348,11 +1434,19 @@ static int set_remote_branches(const char *remotename, const char **branches,
 
 static int set_branches(int argc, const char **argv)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int add_mode = 0;
 	struct option options[] = {
 		OPT_BOOLEAN('\0', "add", &add_mode, "add branch"),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	argc = parse_options(argc, argv, NULL, options,
 			     builtin_remote_setbranches_usage, 0);
@@ -1377,6 +1471,11 @@ static int set_url(int argc, const char **argv)
 	const char **urlset;
 	int urlset_nr;
 	struct strbuf name_buf = STRBUF_INIT;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	struct option options[] = {
 		OPT_BOOLEAN('\0', "push", &push_mode,
 			    "manipulate push URLs"),
@@ -1386,6 +1485,11 @@ static int set_url(int argc, const char **argv)
 			    "delete URLs"),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
+
 	argc = parse_options(argc, argv, NULL, options, builtin_remote_update_usage,
 			     PARSE_OPT_KEEP_ARGV0);
 

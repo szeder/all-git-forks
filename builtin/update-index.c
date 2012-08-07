@@ -546,7 +546,10 @@ static int do_reupdate(int ac, const char **av,
 	 */
 	int pos;
 	int has_head = 1;
-	const char **pathspec = get_pathspec(prefix, av + 1);
+	const char **paths = get_pathspec(prefix, av + 1);
+	struct pathspec pathspec;
+
+	init_pathspec(&pathspec, paths);
 
 	if (read_ref("HEAD", head_sha1))
 		/* If there is no HEAD, that means it is an initial
@@ -559,7 +562,7 @@ static int do_reupdate(int ac, const char **av,
 		struct cache_entry *old = NULL;
 		int save_nr;
 
-		if (ce_stage(ce) || !ce_path_match(ce, pathspec))
+		if (ce_stage(ce) || !ce_path_match(ce, &pathspec))
 			continue;
 		if (has_head)
 			old = read_one_ent(NULL, head_sha1,
@@ -578,6 +581,7 @@ static int do_reupdate(int ac, const char **av,
 		if (save_nr != active_nr)
 			goto redo;
 	}
+	free_pathspec(&pathspec);
 	return 0;
 }
 
@@ -698,6 +702,10 @@ static int reupdate_callback(struct parse_opt_ctx_t *ctx,
 
 int cmd_update_index(int argc, const char **argv, const char *prefix)
 {
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	int newfd, entries, has_errors = 0, line_termination = '\n';
 	int read_from_stdin = 0;
 	int prefix_length = prefix ? strlen(prefix) : 0;
@@ -786,6 +794,10 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			resolve_undo_clear_callback},
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(update_index_usage[0]);

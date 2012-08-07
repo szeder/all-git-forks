@@ -103,9 +103,14 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 	struct tree_desc t[MAX_UNPACK_TREES];
 	struct unpack_trees_options opts;
 	int prefix_set = 0;
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus on
+#endif
+
 	const struct option read_tree_options[] = {
-		{ OPTION_CALLBACK, 0, "index-output", NULL, "FILE",
-		  "write resulting index to <FILE>",
+		{ OPTION_CALLBACK, 0, "index-output", NULL, "file",
+		  "write resulting index to <file>",
 		  PARSE_OPT_NONEG, index_output_cb },
 		OPT_SET_INT(0, "empty", &read_empty,
 			    "only empty the index", 1),
@@ -136,6 +141,10 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 			    "debug unpack-trees", 1),
 		OPT_END()
 	};
+
+#ifdef USE_CPLUSPLUS_FOR_INIT
+#pragma cplusplus reset
+#endif
 
 	memset(&opts, 0, sizeof(opts));
 	opts.head_idx = -1;
