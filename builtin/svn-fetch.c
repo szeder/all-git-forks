@@ -1392,29 +1392,19 @@ err:
 static int create_ref_cb(const char* refname, const unsigned char* sha1, int flags, void* cb_data) {
 	int i;
 	for (i = 0; i < refn; i++) {
-		if (!strcmp(refs[i]->ref.buf + strlen("refs/svn/"), refname)) {
+		const char *s = refs[i]->ref.buf;
+		if (!prefixcmp(s, "refs/svn/heads/") && !strcmp(s + strlen("refs/svn/heads/"), refname)) {
 			return 0;
 		}
 	}
 
-	if (!strcmp(refname, "heads/trunk")) {
+	if (!strcmp(refname, "trunk")) {
 		create_ref(TRUNK_REF, "");
-	} else if (branches && !prefixcmp(refname, "heads/")) {
-		create_ref(BRANCH_REF, refname + strlen("heads/"));
-	} else if (tags && !prefixcmp(refname, "tags/")) {
-		create_ref(TAG_REF, refname + strlen("tags/"));
+	} else if (branches) {
+		create_ref(BRANCH_REF, refname);
 	}
 
 	return 0;
-}
-
-static void add_all_refs() {
-	static int all_refs_added;
-
-	if (!all_refs_added) {
-		for_each_ref_in("refs/svn/", &create_ref_cb, NULL);
-		all_refs_added = 1;
-	}
 }
 
 #define SEEN_FROM_OBJ 1
@@ -1452,6 +1442,8 @@ static void insert_svncmt(struct commit *sc, struct commit_list **cmts) {
 }
 
 static void add_roots(struct commit_list **cmts, struct object *obj) {
+	static int all_refs_added;
+
 	int i;
 	struct commit *c = (struct commit*) deref_tag(obj, NULL, 0);
 	if (!c || c->object.type != OBJ_COMMIT) {
@@ -1461,7 +1453,10 @@ static void add_roots(struct commit_list **cmts, struct object *obj) {
 	c->object.flags = SEEN_FROM_OBJ;
 	insert_commit(c, cmts);
 
-	add_all_refs();
+	if (!all_refs_added) {
+		for_each_ref_in("refs/svn/heads/", &create_ref_cb, NULL);
+		all_refs_added = 1;
+	}
 
 	for (i = 0; i < refn; i++) {
 		insert_svncmt(refs[i]->svncmt, cmts);

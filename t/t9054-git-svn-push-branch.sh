@@ -109,9 +109,6 @@ test_expect_success 'create tag' '
 	cd ../../..
 '
 
-init_trunk_rev=`svn_head Tags/SimpleTag`
-init_trunk_path=Tags/SimpleTag
-
 test_expect_success 'create annotated tag' '
 	git checkout master &&
 	git tag -m "annotate tag" AnnotatedTag &&
@@ -124,9 +121,6 @@ test_expect_success 'create annotated tag' '
 	check_branched $init_trunk_path $init_trunk_rev &&
 	cd ../../..
 '
-
-init_trunk_rev=`svn_head Tags/AnnotatedTag`
-init_trunk_path=Tags/AnnotatedTag
 
 test_expect_success 'replace branch' '
 	git checkout -b ReplaceBranch master &&
