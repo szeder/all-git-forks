@@ -863,7 +863,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 
 		if (the_index.version != preferred_index_format)
 			active_cache_changed = 1;
-		the_index.version = preferred_index_format;
+		change_cache_version(preferred_index_format);
 	}
 
 	if (read_from_stdin) {

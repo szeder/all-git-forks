@@ -95,16 +95,8 @@ unsigned long git_deflate_bound(git_zstream *, unsigned long);
  */
 #define DEFAULT_GIT_PORT 9418
 
-/*
- * Basic data structures for the directory cache
- */
 
 #define CACHE_SIGNATURE 0x44495243	/* "DIRC" */
-struct cache_header {
-	uint32_t hdr_signature;
-	uint32_t hdr_version;
-	uint32_t hdr_entries;
-};
 
 #define INDEX_FORMAT_LB 2
 #define INDEX_FORMAT_UB 4
@@ -279,6 +271,7 @@ struct index_state {
 		 initialized : 1;
 	struct hash_table name_hash;
 	struct hash_table dir_hash;
+	struct index_ops *ops;
 };
 
 extern struct index_state the_index;
@@ -296,6 +289,8 @@ extern void free_name_hash(struct index_state *istate);
 #define active_cache_changed (the_index.cache_changed)
 #define active_cache_tree (the_index.cache_tree)
 
+#define initialize_cache() initialize_index(&the_index, 0)
+#define change_cache_version(version) change_index_version(&the_index, (version))
 #define read_cache() read_index(&the_index)
 #define read_cache_from(path) read_index_from(&the_index, (path))
 #define read_cache_preload(pathspec) read_index_preload(&the_index, (pathspec))
@@ -454,6 +449,8 @@ extern void sanitize_stdfds(void);
 	} while (0)
 
 /* Initialize and use the cache information */
+extern void initialize_index(struct index_state *istate, int version);
+extern void change_index_version(struct index_state *istate, int version);
 extern int read_index(struct index_state *);
 extern int read_index_preload(struct index_state *, const struct pathspec *pathspec);
 extern int read_index_from(struct index_state *, const char *path);

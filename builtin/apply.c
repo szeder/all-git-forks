@@ -3682,6 +3682,8 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			die ("Could not add %s to temporary index", name);
 	}
 
+	if (!result.initialized)
+		initialize_index(&result, 0);
 	fd = open(filename, O_WRONLY | O_CREAT, 0666);
 	if (fd < 0 || write_index(&result, fd) || close(fd))
 		die ("Could not write temporary index to %s", filename);
