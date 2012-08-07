@@ -2985,7 +2985,7 @@ static void addremove(struct diff_options* op,
 		strbuf_add(&buf, path, plen);
 		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
 			int dir = change_dir(path);
-			sendf("( delete-entry ( %d:%s ( ) %s) )\n",
+			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
 				(int) plen, path, dtoken(dir));
 		}
 

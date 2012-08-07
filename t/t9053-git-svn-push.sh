@@ -58,6 +58,24 @@ test_expect_success 'remove git empty directories' '
 	cd ..
 '
 
+test_expect_success 'remove file' '
+	touch foo.txt &&
+	git add foo.txt &&
+	git commit -a -m "add file" &&
+	git svn-push -v svn/master svn/master master &&
+	cd svnco &&
+	svn_cmd up &&
+	test -e foo.txt &&
+	cd .. &&
+	rm foo.txt &&
+	git commit -a -m "rm file" &&
+	git svn-push -v svn/master svn/master master
+	cd svnco &&
+	svn_cmd up &&
+	test ! -e foo.txt &&
+	cd ..
+'
+
 test_expect_success 'remove svn empty directories' '
 	cd svnco &&
 	svn_cmd mkdir empty &&
