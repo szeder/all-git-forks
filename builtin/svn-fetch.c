@@ -1229,13 +1229,6 @@ static struct svnref* create_ref(int type, const char* name) {
 		checkout_svncmt(r, r->svncmt);
 	}
 
-	fprintf(stderr, "\ncreated ref %d %s %s %s %s\n",
-		       	(int) refn,
-		       	r->ref.buf,
-			cmt_to_hex(r->svncmt),
-			sha1_to_hex(r->gitobj ? r->gitobj->sha1 : null_sha1),
-			cmt_to_hex(r->parent));
-
 	ALLOC_GROW(refs, refn + 1, refalloc);
 	refs[refn++] = r;
 	return r;
@@ -2182,7 +2175,6 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	/* update the ref */
 
-	fprintf(stderr, "grab ref lock %s %s\n", r->ref.buf, cmt_to_hex(r->svncmt));
 	lk = lock_ref_sha1(r->ref.buf + strlen("refs/"), cmt_sha1(r->svncmt));
 	if (!lk || write_ref_sha1(lk, cmt_sha1(svncmt), "svn-fetch")) {
 		die("failed to update ref %s", r->ref.buf);
@@ -2210,7 +2202,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 	r->svncmt = svncmt;
 	r->parent = gitcmt;
 
-	fprintf(stderr, "commited %d %s %s\n", rev, r->ref.buf, sha1_to_hex(r->svncmt->object.sha1));
+	fprintf(stderr, "fetched %d %s %s\n", rev, r->ref.buf, sha1_to_hex(r->svncmt->object.sha1));
 	return svncmt;
 
 rollback:
@@ -2526,7 +2518,6 @@ static void change_connection(int cidx, struct author* a) {
 
 	svnfd = svnfdv[cidx];
 	inbuf = &inbufv[cidx];
-	fprintf(stderr, "change_connection %d fd %d oldauth %s newauth %s\n", cidx, svnfd, connection_authors[cidx] ? connection_authors[cidx]->user : NULL, a->user);
 	if (svnfd >= 0 && connection_authors[cidx] == a) {
 		return;
 	}
@@ -2657,7 +2648,7 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 
 	to = min(last_revision, (int) n);
 
-	fprintf(stderr, "rev %d %d\n", from, to);
+	fprintf(stderr, "request log for %d %d\n", from, to);
 
 	/* gc --auto invalidates the object cache. Thus we have to run
 	 * it last. For when we want to run the update in multiple
@@ -3173,7 +3164,6 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copy
 			strbuf_addch(&r->svn, '/');
 		}
 
-		fprintf(stderr, "diff %s to %s\n", cmt_to_hex(r->parent), cmt_to_hex(cmt));
 		if (r->parent) {
 			if (diff_tree_sha1(cmt_sha1(r->parent), cmt_sha1(cmt), r->svn.buf, &op))
 				die("diff tree failed");
@@ -3224,7 +3214,7 @@ static void push_commit(struct push* p, struct object* logobj, struct commit* gi
 	struct author *auth = logobj ? get_object_author(logobj) : defauthor;
 	struct commit *svncmt;
 
-	fprintf(stderr, "push_commit %s\n", cmt_to_hex(gitcmt));
+	fprintf(stderr, "push commit %s\n", cmt_to_hex(gitcmt));
 
 	change_connection(0, auth);
 
@@ -3386,13 +3376,10 @@ static void do_push(struct push* p) {
 		if (p->copysrc) {
 			struct object* obj = &svn_commit(p->copysrc)->object;
 			obj->flags |= UNINTERESTING;
-			fprintf(stderr, "copysrc %s\n", sha1_to_hex(obj->sha1));
 			add_pending_object(&walk, obj, "from");
 			/* sets r->parent for the has_parent check below */
 			checkout_svncmt(r, p->copysrc);
 		}
-
-		fprintf(stderr, "new %s\n", sha1_to_hex(p->new->sha1));
 
 		if (prepare_revision_walk(&walk))
 			die("prepare rev walk failed");
@@ -3406,7 +3393,6 @@ static void do_push(struct push* p) {
 			 */
 			if (!has_parent(cmt, r->parent)) continue;
 
-			fprintf(stderr, "cmt %s\n", cmt_to_hex(cmt));
 			if (cmt == new) {
 				/* use the tag object in p->new for the
 				 * log message */
