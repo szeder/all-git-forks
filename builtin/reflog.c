@@ -777,9 +777,5 @@ int cmd_reflog(int argc, const char **argv, const char *prefix)
 	if (!strcmp(argv[1], "delete"))
 		return cmd_reflog_delete(argc - 1, argv + 1, prefix);
 
-	/* Not a recognized reflog command..*/
-	usage(reflog_usage);
-
-	/* Not reached */
-	return 0;
+	return cmd_log_reflog(argc, argv, prefix);
 }
