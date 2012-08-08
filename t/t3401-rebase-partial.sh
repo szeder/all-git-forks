@@ -47,7 +47,14 @@ test_expect_success 'rebase ignores empty commit' '
 	git commit --allow-empty -m empty &&
 	test_commit D &&
 	git rebase C &&
-	test $(git log --format=%s C..) = "D"
+	test "$(git log --format=%s C..)" = "D"
+'
+
+test_expect_success 'rebase --keep-empty' '
+	git reset --hard D &&
+	git rebase --keep-empty C &&
+	test "$(git log --format=%s C..)" = "D
+empty"
 '
 
 test_done
