@@ -29,7 +29,16 @@ use Git::SVN::Prompt;
 use Git::SVN::Log;
 use Git::SVN::Migration;
 
-use Git::SVN::Utils qw(fatal can_compress);
+use Git::SVN::Utils qw(
+	fatal
+	can_compress
+	canonicalize_path
+	canonicalize_url
+	join_paths
+	add_path_to_url
+	join_paths
+);
+
 use Git qw(
 	git_cmd_try
 	command
@@ -1195,7 +1204,7 @@ sub cmd_show_ignore {
 	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD');
 	$gs ||= Git::SVN->new;
 	my $r = (defined $_revision ? $_revision : $gs->ra->get_latest_revnum);
-	$gs->prop_walk($gs->{path}, $r, sub {
+	$gs->prop_walk($gs->path, $r, sub {
 		my ($gs, $path, $props) = @_;
 		print STDOUT "\n# $path\n";
 		my $s = $props->{'svn:ignore'} or return;
@@ -1211,7 +1220,7 @@ sub cmd_show_externals {
 	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD');
 	$gs ||= Git::SVN->new;
 	my $r = (defined $_revision ? $_revision : $gs->ra->get_latest_revnum);
-	$gs->prop_walk($gs->{path}, $r, sub {
+	$gs->prop_walk($gs->path, $r, sub {
 		my ($gs, $path, $props) = @_;
 		print STDOUT "\n# $path\n";
 		my $s = $props->{'svn:externals'} or return;
@@ -1226,7 +1235,7 @@ sub cmd_create_ignore {
 	my ($url, $rev, $uuid, $gs) = working_head_info('HEAD');
 	$gs ||= Git::SVN->new;
 	my $r = (defined $_revision ? $_revision : $gs->ra->get_latest_revnum);
-	$gs->prop_walk($gs->{path}, $r, sub {
+	$gs->prop_walk($gs->path, $r, sub {
 		my ($gs, $path, $props) = @_;
 		# $path is of the form /path/to/dir/
 		$path = '.' . $path;
@@ -1256,31 +1265,6 @@ sub cmd_mkdirs {
 	$gs->mkemptydirs($_revision);
 }
 
-sub canonicalize_path {
-	my ($path) = @_;
-	my $dot_slash_added = 0;
-	if (substr($path, 0, 1) ne "/") {
-		$path = "./" . $path;
-		$dot_slash_added = 1;
-	}
-	# File::Spec->canonpath doesn't collapse x/../y into y (for a
-	# good reason), so let's do this manually.
-	$path =~ s#/+#/#g;
-	$path =~ s#/\.(?:/|$)#/#g;
-	$path =~ s#/[^/]+/\.\.##g;
-	$path =~ s#/$##g;
-	$path =~ s#^\./## if $dot_slash_added;
-	$path =~ s#^/##;
-	$path =~ s#^\.$##;
-	return $path;
-}
-
-sub canonicalize_url {
-	my ($url) = @_;
-	$url =~ s#^([^:]+://[^/]*/)(.*)$#$1 . canonicalize_path($2)#e;
-	return $url;
-}
-
 # get_svnprops(PATH)
 # ------------------
 # Helper for cmd_propget and cmd_proplist below.
@@ -1294,7 +1278,7 @@ sub get_svnprops {
 	$path = $cmd_dir_prefix . $path;
 	fatal("No such file or directory: $path") unless -e $path;
 	my $is_dir = -d $path ? 1 : 0;
-	$path = $gs->{path} . '/' . $path;
+	$path = join_paths($gs->{path}, $path);
 
 	# canonicalize the path (otherwise libsvn will abort or fail to
 	# find the file)
@@ -1395,8 +1379,8 @@ sub cmd_commit_diff {
 			fatal("Needed URL or usable git-svn --id in ",
 			      "the command-line\n", $usage);
 		}
-		$url = $gs->{url};
-		$svn_path = $gs->{path};
+		$url = $gs->url;
+		$svn_path = $gs->path;
 	}
 	unless (defined $_revision) {
 		fatal("-r|--revision is a required argument\n", $usage);
@@ -1430,24 +1414,6 @@ sub cmd_commit_diff {
 	}
 }
 
-sub escape_uri_only {
-	my ($uri) = @_;
-	my @tmp;
-	foreach (split m{/}, $uri) {
-		s/([^~\w.%+-]|%(?![a-fA-F0-9]{2}))/sprintf("%%%02X",ord($1))/eg;
-		push @tmp, $_;
-	}
-	join('/', @tmp);
-}
-
-sub escape_url {
-	my ($url) = @_;
-	if ($url =~ m#^([^:]+)://([^/]*)(.*)$#) {
-		my ($scheme, $domain, $uri) = ($1, $2, escape_uri_only($3));
-		$url = "$scheme://$domain$uri";
-	}
-	$url;
-}
 
 sub cmd_info {
 	my $path = canonicalize_path(defined($_[0]) ? $_[0] : ".");
@@ -1472,21 +1438,21 @@ sub cmd_info {
 	# canonicalize_path() will return "" to make libsvn 1.5.x happy,
 	$path = "." if $path eq "";
 
-	my $full_url = $url . ($fullpath eq "" ? "" : "/$fullpath");
+	my $full_url = canonicalize_url( add_path_to_url( $url, $fullpath ) );
 
 	if ($_url) {
-		print escape_url($full_url), "\n";
+		print "$full_url\n";
 		return;
 	}
 
 	my $result = "Path: $path\n";
 	$result .= "Name: " . basename($path) . "\n" if $file_type ne "dir";
-	$result .= "URL: " . escape_url($full_url) . "\n";
+	$result .= "URL: $full_url\n";
 
 	eval {
 		my $repos_root = $gs->repos_root;
 		Git::SVN::remove_username($repos_root);
-		$result .= "Repository Root: " . escape_url($repos_root) . "\n";
+		$result .= "Repository Root: " . canonicalize_url($repos_root) . "\n";
 	};
 	if ($@) {
 		$result .= "Repository Root: (offline)\n";
@@ -1633,7 +1599,9 @@ sub post_fetch_checkout {
 
 sub complete_svn_url {
 	my ($url, $path) = @_;
-	$path =~ s#/+$##;
+	$path = canonicalize_path($path);
+
+	# If the path is not a URL...
 	if ($path !~ m#^[a-z\+]+://#) {
 		if (!defined $url || $url !~ m#^[a-z\+]+://#) {
 			fatal("E: '$path' is not a complete URL ",
@@ -1650,7 +1618,7 @@ sub complete_url_ls_init {
 		print STDERR "W: $switch not specified\n";
 		return;
 	}
-	$repo_path =~ s#/+$##;
+	$repo_path = canonicalize_path($repo_path);
 	if ($repo_path =~ m#^[a-z\+]+://#) {
 		$ra = Git::SVN::Ra->new($repo_path);
 		$repo_path = '';
@@ -1661,18 +1629,18 @@ sub complete_url_ls_init {
 			      "and a separate URL is not specified");
 		}
 	}
-	my $url = $ra->{url};
+	my $url = $ra->url;
 	my $gs = Git::SVN->init($url, undef, undef, undef, 1);
 	my $k = "svn-remote.$gs->{repo_id}.url";
 	my $orig_url = eval { command_oneline(qw/config --get/, $k) };
-	if ($orig_url && ($orig_url ne $gs->{url})) {
+	if ($orig_url && ($orig_url ne $gs->url)) {
 		die "$k already set: $orig_url\n",
-		    "wanted to set to: $gs->{url}\n";
+		    "wanted to set to: $gs->url\n";
 	}
-	command_oneline('config', $k, $gs->{url}) unless $orig_url;
-	my $remote_path = "$gs->{path}/$repo_path";
+	command_oneline('config', $k, $gs->url) unless $orig_url;
+
+	my $remote_path = join_paths( $gs->path, $repo_path );
 	$remote_path =~ s{%([0-9A-F]{2})}{chr hex($1)}ieg;
-	$remote_path =~ s#/+#/#g;
 	$remote_path =~ s#^/##g;
 	$remote_path .= "/*" if $remote_path !~ /\*/;
 	my ($n) = ($switch =~ /^--(\w+)/);
