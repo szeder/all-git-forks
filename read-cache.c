@@ -1310,6 +1310,7 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 	else
 		rollback_lock_file(lockfile);
 }
+
 int write_index(struct index_state *istate, int newfd)
 {
 	set_istate_ops(istate);

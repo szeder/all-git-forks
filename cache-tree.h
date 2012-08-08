@@ -37,6 +37,7 @@ struct cache_tree *cache_tree_read(const char *buffer, unsigned long size);
  * Don't use it if the directory entries are still needed after.
  */
 struct cache_tree *cache_tree_convert_v5(struct directory_entry *de);
+void cache_tree_to_ondisk_v5(struct hash_table *table, struct cache_tree *root);
 
 int cache_tree_fully_valid(struct cache_tree *);
 int cache_tree_update(struct cache_tree *, struct cache_entry **, int, int);
