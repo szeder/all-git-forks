@@ -29,6 +29,7 @@ struct index_ops {
 };
 
 extern struct index_ops v2_ops;
+extern struct index_ops v5_ops;
 
 #ifndef NEEDS_ALIGNED_ACCESS
 #define ntoh_s(var) ntohs(var)
@@ -55,3 +56,5 @@ extern int ce_match_stat_basic(struct index_state *istate,
 		struct cache_entry *ce, struct stat *st);
 extern int is_racy_timestamp(const struct index_state *istate, struct cache_entry *ce);
 extern void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce);
+extern uint32_t calculate_stat_crc(struct cache_entry *ce);
+extern void set_istate_ops(struct index_state *istate);
