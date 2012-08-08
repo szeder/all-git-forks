@@ -1175,7 +1175,6 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce, int reall
 	return refresh_cache_ent(&the_index, ce, really, NULL, NULL);
 }
 
-
 static int verify_hdr_version(struct index_state *istate,
 		struct cache_version_header *hdr, unsigned long size)
 {
