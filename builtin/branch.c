@@ -284,7 +284,7 @@ struct ref_item {
 
 struct ref_list {
 	struct rev_info revs;
-	int index, alloc, maxwidth, verbose, abbrev;
+	int index, alloc, maxwidth, verbose, abbrev, lookup_commits;
 	struct ref_item *list;
 	struct commit_list *with_commit;
 	int kinds;
@@ -360,7 +360,8 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 		return 0;
 
 	commit = NULL;
-	if (ref_list->verbose || ref_list->with_commit || merge_filter != NO_FILTER) {
+	if (ref_list->verbose || ref_list->with_commit || merge_filter != NO_FILTER ||
+			ref_list->lookup_commits) {
 		commit = lookup_commit_reference_gently(sha1, 1);
 		if (!commit) {
 			cb->ret = error(_("branch '%s' does not point at a commit"), refname);
@@ -414,6 +415,14 @@ static int ref_cmp(const void *r1, const void *r2)
 	if (c1->kind != c2->kind)
 		return c1->kind - c2->kind;
 	return strcmp(c1->name, c2->name);
+}
+
+static int ref_cmp_date(const void *r1, const void *r2)
+{
+	struct ref_item *c1 = (struct ref_item *)(r1);
+	struct ref_item *c2 = (struct ref_item *)(r2);
+
+	return c1->commit->date - c2->commit->date;
 }
 
 static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
@@ -619,7 +628,8 @@ static void show_detached(struct ref_list *ref_list)
 	}
 }
 
-static int print_ref_list(int kinds, int detached, int verbose, int abbrev, struct commit_list *with_commit, const char **pattern)
+static int print_ref_list(int kinds, int detached, int verbose, int abbrev,
+		struct commit_list *with_commit, const char **pattern, int date_ordered)
 {
 	int i;
 	struct append_ref_cb cb;
@@ -629,6 +639,7 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 	ref_list.kinds = kinds;
 	ref_list.verbose = verbose;
 	ref_list.abbrev = abbrev;
+	ref_list.lookup_commits = date_ordered;
 	ref_list.with_commit = with_commit;
 	if (merge_filter != NO_FILTER)
 		init_revisions(&ref_list.revs, NULL);
@@ -652,7 +663,10 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 			ref_list.maxwidth = calc_maxwidth(&ref_list);
 	}
 
-	qsort(ref_list.list, ref_list.index, sizeof(struct ref_item), ref_cmp);
+	if (date_ordered)
+		qsort(ref_list.list, ref_list.index, sizeof(struct ref_item), ref_cmp_date);
+	else
+		qsort(ref_list.list, ref_list.index, sizeof(struct ref_item), ref_cmp);
 
 	detached = (detached && (kinds & REF_LOCAL_BRANCH));
 	if (detached && match_patterns(pattern, "HEAD"))
@@ -784,7 +798,7 @@ static int edit_branch_description(const char *branch_name)
 
 int cmd_branch(int argc, const char **argv, const char *prefix)
 {
-	int delete = 0, rename = 0, force_create = 0, list = 0;
+	int delete = 0, rename = 0, force_create = 0, list = 0, date_ordered = 0;
 	int verbose = 0, abbrev = -1, detached = 0;
 	int reflog = 0, edit_description = 0;
 	int quiet = 0, unset_upstream = 0;
@@ -833,6 +847,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "edit-description", &edit_description,
 			 N_("edit the description for the branch")),
 		OPT__FORCE(&force_create, N_("force creation (when already exists)")),
+		OPT_BOOLEAN(0, "date-ordered", &date_ordered, "order branches by date"),
 		{
 			OPTION_CALLBACK, 0, "no-merged", &merge_filter_ref,
 			N_("commit"), N_("print only not merged branches"),
@@ -897,7 +912,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		return delete_branches(argc, argv, delete > 1, kinds, quiet);
 	} else if (list) {
 		int ret = print_ref_list(kinds, detached, verbose, abbrev,
-					 with_commit, argv);
+					 with_commit, argv, date_ordered);
 		print_columns(&output, colopts, NULL);
 		string_list_clear(&output, 0);
 		return ret;

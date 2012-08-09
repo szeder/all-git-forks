@@ -4,9 +4,11 @@ test_description='git branch display tests'
 . ./test-lib.sh
 
 test_expect_success 'make commits' '
+	test_tick &&
 	echo content >file &&
 	git add file &&
 	git commit -m one &&
+	test_tick &&
 	echo content >>file &&
 	git commit -a -m two
 '
@@ -103,6 +105,22 @@ test_expect_success 'git branch shows detached HEAD properly' '
 EOF
 	git checkout HEAD^0 &&
 	git branch >actual &&
+	test_i18ncmp expect actual
+'
+
+cat >expect <<'EOF'
+  branch-two
+  branch-one
+  master
+* abc
+EOF
+test_expect_success 'git branch orders by date' '
+	git checkout -b abc &&
+	test_tick &&
+	echo abc >abc &&
+	git add . &&
+	git commit -m abc &&
+	git branch --date-ordered >actual &&
 	test_i18ncmp expect actual
 '
 
