@@ -533,7 +533,6 @@ do_next () {
 	test -s "$todo" && return
 
 	comment_for_reflog finish &&
-	shortonto=$(git rev-parse --short $onto) &&
 	newhead=$(git rev-parse HEAD) &&
 	case $head_name in
 	refs/*)
