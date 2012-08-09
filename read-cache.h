@@ -58,3 +58,6 @@ extern int is_racy_timestamp(const struct index_state *istate, struct cache_entr
 extern void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce);
 extern uint32_t calculate_stat_crc(struct cache_entry *ce);
 extern void set_istate_ops(struct index_state *istate);
+
+
+#define ptr_add(ptr,ofs) ((void *)((char *)(ptr) + (ofs)))

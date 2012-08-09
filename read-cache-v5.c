@@ -247,7 +247,7 @@ static struct directory_entry *read_directories(unsigned int *dir_offset,
 	data_len = len + 1 + ondisk_directory_size;
 
 	filecrc = (uint32_t *)((char *)mmap + *dir_offset + data_len);
-	if (!check_crc32(0, mmap + *dir_offset, data_len, ntoh_l(*filecrc)))
+	if (!check_crc32(0, ptr_add(mmap, *dir_offset), data_len, ntoh_l(*filecrc)))
 		goto unmap;
 
 	*dir_table_offset += 4;
