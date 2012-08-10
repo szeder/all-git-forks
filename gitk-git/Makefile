@@ -95,7 +95,7 @@ clean::
 
 gitk-wish: gitk
 	$(QUIET_GEN)$(RM) $@ $@+ && \
-	sed -e '1,3s|^exec .* "$$0"|exec $(subst |,'\|',$(TCLTK_PATH_SQ)) "$$0"|' <gitk >$@+ && \
+	sed -e '1,3s|^exec .* "$$0"\(.*\)|exec $(subst |,'\|',$(TCLTK_PATH_SQ)) "$$0"\1 2>/dev/null|' <gitk >$@+ && \
 	chmod +x $@+ && \
 	mv -f $@+ $@
 
