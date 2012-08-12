@@ -130,7 +130,7 @@ static void unreadc() {
 	inbuf->b--;
 }
 
-static int readsvn(void* u, void* p, int n) {
+static ssize_t read_svn(void* p, size_t n) {
 	/* big reads we may as well read directly into the target */
 	if (inbuf->e == inbuf->b && n >= sizeof(inbuf->buf) / 2) {
 		return xread(svnfd, p, n);
@@ -147,72 +147,55 @@ static int readsvn(void* u, void* p, int n) {
 	return n;
 }
 
-static int writef(void* u, const void* p, int n) {
-	return fwrite(p, 1, n, (FILE*) u);
-}
-
-typedef int (*reader)(void*, void*, int);
-typedef int (*writer)(void*, const void*, int);
-
-static int writes(void* u, const void* p, int n) {
-	strbuf_add((struct strbuf*) u, p, n);
-	return n;
-}
-
-static int reads(void* u, void* p, int n) {
-	struct strbuf* s = u;
-	n = min(n, s->len);
-	memcpy(p, s->buf, n);
-	strbuf_remove(s, 0, n);
-	return n;
-}
-
 static const char hex[] = "0123456789abcdef";
+#define MAX_PRINT_LEN 64
 
-static void print_ascii(const void* p, int n) {
+static int print_ascii(const void* p, int n, int maxoutput) {
 	int i;
+	int printed = 0;
 	const unsigned char* v = p;
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < n && printed < maxoutput; i++) {
 		int ch = v[i];
 
 		if (' ' <= ch && ch < 0x7F && ch != '\\') {
 			putc(v[i], stderr);
+			printed++;
 
 		} else if (ch == '\n') {
 			putc('\\', stderr);
 			putc('n', stderr);
+			printed += 2;
 
 		} else if (ch == '\r') {
 			putc('\\', stderr);
 			putc('r', stderr);
+			printed += 2;
 
 		} else if (ch == '\t') {
 			putc('\\', stderr);
 			putc('t', stderr);
+			printed += 2;
 
 		} else if (ch == '\\') {
 			putc('\\', stderr);
 			putc('\\', stderr);
+			printed += 2;
 
 		} else {
 			putc('\\', stderr);
 			putc('x', stderr);
 			putc(hex[ch >> 4], stderr);
 			putc(hex[ch & 0x0F], stderr);
+			printed += 4;
 		}
 	}
-}
 
-static void print_hex(writer wf, void* wd, const void* p, int n) {
-	int i;
-	const unsigned char* v = p;
-	for (i = 0; i < n; i++) {
-		char b[2];
-		b[0] = hex[v[i] >> 4];
-		b[1] = hex[v[i] & 0x0F];
-		wf(wd, b, 2);
+	if (printed >= maxoutput) {
+		fprintf(stderr, "...");
 	}
+
+	return printed;
 }
 
 static int get_md5_hex(const char *hex, unsigned char *sha1)
@@ -252,97 +235,21 @@ static const char* md5_to_hex(const unsigned char* md5) {
 	return buffer;
 }
 
-static void copyn(writer wf, void* wd, reader rf, void *rd, int64_t n) {
-	while (n > 0) {
-		char buf[BUFSIZ];
-		int r = rf(rd, buf, min(sizeof(buf), n));
-		if (r <= 0)
-			die_errno("unexpected end");
-
-		if (wf && wf(wd, buf, r) != r)
-			die_errno("failed write");
-
-		n -= r;
-	}
-}
-
-static void readfull(void *p, reader rf, void* rd, int n) {
-	while (n > 0) {
-		int r = rf(rd, p, n);
-		if (r <= 0)
-			die_errno("unexpected end");
-
-		p = (char*) p + r;
-		n -= r;
-	}
-}
-
-static int64_t read_varint(reader rf, void* rd) {
-	int64_t v = 0;
-	unsigned char ch = 0x80;
-
-	while (ch & 0x80) {
-		if (v > (INT64_MAX >> 7) || rf(rd, &ch, 1) != 1)
-			die(_("invalid svndiff"));
-
-		v = (v << 7) | (ch & 0x7F);
-	}
-
-	return v;
-}
-
-#define MAX_VARINT_LEN 9
-
-static unsigned char* encode_varint(unsigned char* p, int64_t n) {
-	if (n < 0) die("int too large");
-	if (n >= (INT64_C(1) << 56)) *(p++) = ((n >> 56) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 49)) *(p++) = ((n >> 49) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 42)) *(p++) = ((n >> 42) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 35)) *(p++) = ((n >> 35) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 28)) *(p++) = ((n >> 28) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 21)) *(p++) = ((n >> 21) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 14)) *(p++) = ((n >> 14) & 0x7F) | 0x80;
-	if (n >= (INT64_C(1) << 7)) *(p++) = ((n >> 7) & 0x7F) | 0x80;
-	*(p++) = n & 0x7F;
-	return p;
-}
-
 __attribute__((format (printf,1,2)))
 static void sendf(const char* fmt, ...);
 
 static void sendf(const char* fmt, ...) {
 	static struct strbuf out = STRBUF_INIT;
-	char* nl;
 	va_list ap;
 	va_start(ap, fmt);
 	strbuf_reset(&out);
 	strbuf_vaddf(&out, fmt, ap);
 
-	nl = out.buf;
-	while (verbose && nl < out.buf + out.len) {
-		char* p = nl;
-		nl = memmem(p, out.buf + out.len - p, " )\n( ", 5);
-		if (nl) {
-			/* not last of multi-line */
-			nl += 2;
-		} else if (out.buf[out.len-1] == '\n') {
-			/* last of multi-line */
-			nl = out.buf + out.len - 1;
-		} else {
-			/* last of incomplete line */
-			nl = out.buf + out.len;
-		}
-
-		if (nl - p >= 2 && !memcmp(p, "( ", 2)) {
+	if (verbose) {
+		if (out.buf[0] == '(') {
 			fputc('+', stderr);
 		}
-
-		print_ascii(p, nl - p);
-
-		if (nl[0] == '\n') {
-			fputc('\n', stderr);
-			nl++;
-		}
+		fwrite(out.buf, 1, out.len, stderr);
 	}
 
 	if (write_in_full(svnfd, out.buf, out.len) != out.len) {
@@ -350,241 +257,9 @@ static void sendf(const char* fmt, ...) {
 	}
 }
 
-static void sendb(const void* data, size_t sz) {
-	if (verbose) print_ascii(data, sz);
-
-	if (write_in_full(svnfd, data, sz) != sz) {
-		die_errno("write");
-	}
-}
-
-struct unzip {
-	z_stream z;
-	reader rf;
-	void* rd;
-	int rn;
-	int flush;
-	int outoff;
-	unsigned char out[4096];
-	unsigned char in[4096];
-};
-
-static int readz(void* u, void* p, int n) {
-	struct unzip* z = u;
-	int r;
-
-	if (!n) return 0;
-
-	if (z->outoff == sizeof(z->out) - z->z.avail_out) {
-		z->outoff = 0;
-	}
-
-	if (z->outoff) {
-		n = min(n, sizeof(z->out) - z->z.avail_out - z->outoff);
-		memcpy(p, z->out + z->outoff, n);
-		z->outoff += n;
-		return n;
-	}
-
-	if (n < sizeof(z->out)) {
-		z->z.avail_out = sizeof(z->out);
-		z->z.next_out = z->out;
-	} else {
-		z->z.avail_out = n;
-		z->z.next_out = p;
-	}
-
-	while (max(n, sizeof(z->out)) == z->z.avail_out) {
-		if (z->rn && !z->z.avail_in) {
-			readfull(z->in, z->rf, z->rd, min(z->rn, sizeof(z->in)));
-			z->z.avail_in = min(z->rn, sizeof(z->in));
-			z->z.next_in = z->in;
-			z->rn -= z->z.avail_in;
-		}
-
-		r = inflate(&z->z, z->flush);
-
-		if (r == Z_STREAM_END && !z->rn) {
-			z->flush = Z_FINISH;
-		} else if (r != Z_OK) {
-			return -1;
-		}
-	}
-
-	if (n < sizeof(z->out)) {
-		n = min(n, sizeof(z->out) - z->z.avail_out);
-		memcpy(p, z->out, n);
-		z->outoff = n;
-		return n;
-	} else {
-		return n - z->z.avail_out;
-	}
-}
-
-#define COPY_FROM_SOURCE (0 << 6)
-#define COPY_FROM_TARGET (1 << 6)
-#define COPY_FROM_NEW    (2 << 6)
-
-static int read_instruction(reader rf, void* rd, int64_t* off, int64_t* len) {
-	unsigned char hdr;
-	int ret;
-
-	if (rf(rd, &hdr, 1) != 1)
-		die(_("invalid svndiff"));
-
-	*len = hdr & 0x3F;
-	if (*len == 0) {
-		*len = read_varint(rf, rd);
-	}
-
-	ret = hdr & 0xC0;
-	if (ret == COPY_FROM_SOURCE || ret == COPY_FROM_TARGET) {
-		*off = read_varint(rf, rd);
-	} else {
-		*off = 0;
-	}
-
-	return ret;
-}
-
-#define MAX_INS_LEN (1 + 2 * MAX_VARINT_LEN)
-
-static unsigned char* encode_instruction(unsigned char* p, int ins, int64_t off, int64_t len) {
-	if (len < 0x3F) {
-		*(p++) = ins | len;
-	} else {
-		*(p++) = ins;
-		p = encode_varint(p, len);
-	}
-
-	if (ins == COPY_FROM_SOURCE || ins == COPY_FROM_TARGET) {
-		p = encode_varint(p, off);
-	}
-
-	return p;
-}
-
-static void apply_svndiff_win(struct strbuf* tgt, const void* src, size_t srcsz, reader df, void* dd, int ver) {
-	struct unzip z;
-	struct strbuf ins = STRBUF_INIT;
-	int64_t srco = read_varint(df, dd);
-	int64_t srcl = read_varint(df, dd);
-	int64_t tgtl = read_varint(df, dd);
-	int64_t insc = read_varint(df, dd);
-	int64_t datac = read_varint(df, dd);
-	int64_t insl = insc;
-	int64_t datal = datac;
-	int64_t w = 0;
-
-	if (srco + srcl > srcsz) goto err;
-
-	if (ver > 0) {
-		unsigned char buf[MAX_VARINT_LEN];
-		insl = read_varint(df, dd);
-		insc -= encode_varint(buf, insl) - buf;
-	}
-
-	if (insc < insl) {
-		memset(&z, 0, sizeof(z));
-		inflateInit(&z.z);
-		z.rf = df;
-		z.rd = dd;
-		z.rn = insc;
-		copyn(&writes, &ins, &readz, &z, insl);
-		inflateEnd(&z.z);
-	} else {
-		copyn(&writes, &ins, df, dd, insl);
-	}
-
-	if (ver > 0) {
-		unsigned char buf[MAX_VARINT_LEN];
-		datal = read_varint(df, dd);
-		datac -= encode_varint(buf, datal) - buf;
-	}
-
-	if (datac < datal) {
-		memset(&z, 0, sizeof(z));
-		inflateInit(&z.z);
-		z.rf = df;
-		z.rd = dd;
-		z.rn = datac;
-		df = &readz;
-		dd = &z;
-	}
-
-	while (ins.len) {
-		int64_t off, len;
-		int tgtr;
-		switch (read_instruction(&reads, &ins, &off, &len)) {
-		case COPY_FROM_SOURCE:
-			if (off + len > srcl) goto err;
-			strbuf_add(tgt, (char*) src + srco + off, len);
-			w += len;
-			break;
-
-		case COPY_FROM_TARGET:
-			tgtr = min(w - off, len);
-			if (tgtr <= 0) goto err;
-
-			off = tgt->len - w + off;
-
-			/* len may be greater than tgtr. In this case we
-			 * just repeat [tgto,tgto+tgtr]
-			 */
-			while (len) {
-				int n = min(len, tgtr);
-				strbuf_add(tgt, tgt->buf + off, n);
-				len -= n;
-				w += n;
-			}
-			break;
-
-		case COPY_FROM_NEW:
-			if (len > datal) goto err;
-			copyn(&writes, tgt, df, dd, len);
-			w += len;
-			datal -= len;
-			break;
-
-		default:
-			goto err;
-		}
-	}
-
-	if (dd == &z) {
-		inflateEnd(&z.z);
-		copyn(NULL, NULL, z.rf, z.rd, z.rn);
-	}
-
-	if (w != tgtl || datal) goto err;
-
-	return;
-err:
-	die("invalid svndiff");
-}
-
-static void apply_svndiff(struct strbuf* tgt, const void* src, size_t srcsz, reader df, void* dd, int (*eof)(void*)) {
-	unsigned char hdr[4];
-	readfull(hdr, df, dd, 4);
-	if (memcmp(hdr, "SVN", 3))
-		goto err;
-
-	if (hdr[3] > 1)
-		goto err;
-
-	while (!eof(dd)) {
-		apply_svndiff_win(tgt, src, srcsz, df, dd, hdr[3]);
-	}
-
-	return;
-
-err:
-	die(_("invalid svndiff"));
-}
-
 /* returns -1 if it can't find a number */
-static int64_t read_number64() {
-	int64_t v;
+static ssize_t read_number() {
+	ssize_t v;
 
 	for (;;) {
 		int ch = readc();
@@ -611,13 +286,6 @@ static int64_t read_number64() {
 			v = 10*v + (ch - '0');
 		}
 	}
-}
-
-static int read_number() {
-	int64_t v = read_number64();
-	if (v > INT_MAX)
-		die(_("number too big"));
-	return (int) v;
 }
 
 /* returns -1 if it can't find a list */
@@ -683,37 +351,40 @@ static const char *read_word() {
 	return bufsz ? buf : NULL;
 }
 
-
-/* reads the string header, returning number of bytes to read from svn
- * afterwards or -1 if no string can be found */
-static int64_t read_string_size() {
-	int64_t sz = read_number64();
-	if (sz < 0)
-		return sz;
+/* returns -1 if no string or an invalid string */
+static int read_string(struct strbuf* s) {
+	size_t i;
+	ssize_t n = read_number();
+	if (n < 0 || unsigned_add_overflows(s->len, (size_t) n))
+		return -1;
 	if (readc() != ':')
 		die(_("malformed string"));
-	if (verbose) fprintf(stderr, ":");
-	return sz;
-}
+	if (verbose)
+		fprintf(stderr, ":");
 
-static int read_strbuf(struct strbuf* s) {
-	int64_t n = read_string_size();
-	if (n < 0 || n > INT_MAX) return -1;
+	strbuf_grow(s, s->len + n);
 
-	strbuf_grow(s, n);
-	readfull(s->buf + s->len, &readsvn, NULL, n);
-	strbuf_setlen(s, s->len + n);
+	i = 0;
+	while (i < n) {
+		ssize_t r = read_svn(s->buf + s->len, n-i);
+		if (r < 0)
+			die_errno("read error");
+		if (r == 0)
+			die("short read");
+		strbuf_setlen(s, s->len + r);
+		i += r;
+	}
 
-	if (verbose) print_ascii(s->buf + s->len - n, n);
+	if (verbose) print_ascii(s->buf + s->len - n, n, MAX_PRINT_LEN);
 
 	return 0;
 }
 
 static int skip_string() {
-	int64_t n = read_string_size();
-	if (n < 0) return -1;
-	copyn(verbose ? &writef : NULL, stderr, &readsvn, NULL, n);
-	return n;
+	struct strbuf buf = STRBUF_INIT;
+	int r = read_string(&buf);
+	strbuf_release(&buf);
+	return r;
 }
 
 static void read_end() {
@@ -733,10 +404,12 @@ static void read_end() {
 			/* whitespace */
 		} else if ('0' <= ch && ch <= '9') {
 			/* number or string */
-			int64_t n;
+			size_t n;
 			char buf[4096];
+			int toprint = verbose ? MAX_PRINT_LEN : 0;
+
 			unreadc();
-			n = read_number64();
+			n = read_number();
 
 			ch = readc();
 			if (ch != ':') {
@@ -748,9 +421,11 @@ static void read_end() {
 			/* string */
 			if (verbose) fputc(':', stderr);
 			while (n) {
-				int r = readsvn(NULL, buf, min(n, sizeof(buf)));
+				ssize_t r = read_svn(buf, min(n, sizeof(buf)));
 				if (r <= 0) die_errno("read");
-				if (verbose) print_ascii(buf, r);
+				if (toprint > 0) {
+					toprint -= print_ascii(buf, r, toprint);
+				}
 				n -= r;
 			}
 		} else {
@@ -761,7 +436,7 @@ static void read_end() {
 	}
 }
 
-static const char* read_response() {
+static const char* read_command() {
 	const char *cmd;
 
 	if (read_list()) goto err;
@@ -775,7 +450,7 @@ err:
 	die(_("malformed response"));
 }
 
-static void read_end_response() {
+static void read_command_end() {
 	read_end();
 	read_end();
 	if (verbose) fprintf(stderr, "\n");
@@ -789,103 +464,44 @@ static void read_done() {
 }
 
 static void read_success() {
-	const char* s = read_response();
+	const char* s = read_command();
 	if (strcmp(s, "success")) {
 		verbose = 1;
 		read_end();
 		die("unexpected failure");
 	}
-	read_end_response();
+	read_command_end();
 }
 
 static void cram_md5(const char* user, const char* pass) {
 	const char *s;
-	char chlg[256];
 	unsigned char hash[16];
-	struct strbuf hex = STRBUF_INIT;
-	int64_t sz;
+	struct strbuf chlg = STRBUF_INIT;
 	HMAC_CTX hmac;
 
-	s = read_response();
+	s = read_command();
 	if (strcmp(s, "step")) goto error;
+	if (read_string(&chlg)) goto error;
 
-	sz = read_string_size();
-	if (sz < 0 || sz >= sizeof(chlg)) goto error;
-	readfull(chlg, &readsvn, NULL, (int) sz);
-
-	read_end_response();
+	read_command_end();
 
 	HMAC_Init(&hmac, (unsigned char*) pass, strlen(pass), EVP_md5());
-	HMAC_Update(&hmac, (unsigned char*) chlg, sz);
+	HMAC_Update(&hmac, (unsigned char*) chlg.buf, chlg.len);
 	HMAC_Final(&hmac, hash, NULL);
 	HMAC_CTX_cleanup(&hmac);
 
-	print_hex(&writes, &hex, hash, sizeof(hash));
-	sendf("%d:%s %s\n", (int) (strlen(user) + 1 + hex.len), user, hex.buf);
+	sendf("%d:%s %s\n", (int) (strlen(user) + 1 + 32), user, md5_to_hex(hash));
 
-	strbuf_release(&hex);
+	strbuf_release(&chlg);
 	return;
 
 error:
 	die(_("auth failed"));
 }
 
-static int64_t deltamore() {
-	for (;;) {
-		const char* s;
-		int64_t n;
-
-		/* finish off the previous textdelta-chunk or
-		 * apply-textdelta */
-		read_end_response();
-
-		s = read_response();
-
-		if (!strcmp(s, "textdelta-end")) {
-			return 0;
-		}
-
-		/* if we get some other command we just loop around
-		 * again */
-		if (strcmp(s, "textdelta-chunk")) {
-			continue;
-		}
-
-		/* file-token, chunk */
-		if (skip_string() < 0) goto err;
-
-		n = read_string_size();
-		if (n < 0) goto err;
-		if (n > 0) return n;
-	}
-
-err:
-	die("invalid textdelta command");
-}
-
-static int deltaeof(void* u) {
-	return (*(int64_t*) u) <= 0;
-}
-
-static int deltar(void* u, void* p, int n) {
-	int64_t* d = u;
-	int r;
-
-	if (*d <= 0) return *d;
-
-	r = readsvn(NULL, p, min(n, *d));
-	*d -= r;
-
-	if (verbose) print_hex(&writef, stderr, p, r);
-
-	if (*d == 0) *d = deltamore();
-
-	return r;
-}
-
 static void read_name(struct strbuf* name) {
 	strbuf_reset(name);
-	if (read_strbuf(name)) goto err;
+	if (read_string(name)) goto err;
 	if (name->buf[0] == '/') strbuf_remove(name, 0, 1);
 	if (memchr(name->buf, '\0', name->len)) goto err;
 	if (strstr(name->buf, "//")) goto err;
@@ -946,140 +562,13 @@ static struct commit* svn_parent(struct commit* c) {
 	return c->parents->next ? c->parents->next->item : NULL;
 }
 
-static int cmp_cache_name_compare(const void *a_, const void *b_) {
-	const struct cache_entry *ce1, *ce2;
-	int r;
-
-	ce1 = *((const struct cache_entry **)a_);
-	ce2 = *((const struct cache_entry **)b_);
-	if ((ce1->ce_flags & CE_STAGEMASK) || (ce2->ce_flags & CE_STAGEMASK))
-		die("have a stage");
-	r = cache_name_compare(ce1->name, ce1->ce_flags,
-				  ce2->name, ce2->ce_flags);
-	if (!r)
-		die("have a dup");
-	return r;
-}
-
-static int checkout_tree_copy(struct index_state* idx, struct tree* tree, struct strbuf* base) {
-	struct tree_desc desc;
-	struct name_entry entry;
-	size_t baselen = base->len;
-
-	if (parse_tree(tree)) {
-		return -1;
-	}
-
-	init_tree_desc(&desc, tree->buffer, tree->size);
-
-	while (tree_entry(&desc, &entry)) {
-		strbuf_setlen(base, baselen);
-		if (baselen) strbuf_addch(base, '/');
-		strbuf_addstr(base, entry.path);
-
-		if (S_ISDIR(entry.mode)) {
-			struct tree* dir = lookup_tree(entry.sha1);
-			if (parse_tree(dir))
-			       	return -1;
-			if (checkout_tree_copy(idx, dir, base))
-				return -1;
-		} else {
-			struct cache_entry* ce = make_cache_entry(entry.mode, entry.sha1, base->buf, 0, 0);
-			if (index_name_pos(idx, base->buf, base->len) >= 0)
-				die("name already exists %s", base->buf);
-			add_index_entry(idx, ce, ADD_CACHE_JUST_APPEND);
-		}
-	}
-
-	return 0;
-}
-
-static int checkout_tree_search(struct index_state* idx, unsigned char* blob, struct tree* tree, const char* from, const char* to) {
-	struct tree_desc desc;
-	struct name_entry entry;
-	const char* slash;
-
-	if (!*from) {
-		int ret;
-		struct strbuf buf = STRBUF_INIT;
-		strbuf_addstr(&buf, to);
-		ret = checkout_tree_copy(idx, tree, &buf);
-		strbuf_release(&buf);
-		return ret;
-	}
-
-	if (parse_tree(tree)) {
-		return -1;
-	}
-
-	slash = strchr(from, '/');
-	if (!slash) slash = from + strlen(from);
-
-	init_tree_desc(&desc, tree->buffer, tree->size);
-
-	while (tree_entry(&desc, &entry)) {
-		size_t pathlen = strlen(entry.path);
-
-		if (pathlen != slash - from) continue;
-		if (memcmp(entry.path, from, pathlen)) continue;
-
-		if (S_ISDIR(entry.mode)) {
-			return checkout_tree_search(idx, blob, lookup_tree(entry.sha1), *slash ? slash+1 : slash, to);
-
-		} else if (!S_ISDIR(entry.mode) && *slash == '\0') {
-			if (!blob) return -1;
-			hashcpy(blob, entry.sha1);
-			return 0;
-		}
-	}
-
-	return 0;
-}
-
-static int checkout_tree(struct index_state* idx, struct tree* tree, const char* from, const char* to) {
-	size_t cachenr = idx->cache_nr;
-	int ins;
-
-	ins = index_name_pos(idx, to, strlen(to));
-	if (ins >= 0) return -1;
-	ins = -ins-1;
-
-	if (checkout_tree_search(idx, NULL, tree, from, to))
-		return -1;
-
-	qsort(idx->cache + cachenr, idx->cache_nr - cachenr, sizeof(idx->cache[0]), &cmp_cache_name_compare);
-
-	if (cachenr) {
-		int i;
-		for (i = 0; i < idx->cache_nr - cachenr; i++) {
-			struct cache_entry* ce = idx->cache[ins + i];
-			idx->cache[ins + i] = idx->cache[cachenr + i];
-			idx->cache[cachenr + i] = ce;
-		}
-	}
-
-	cache_tree_invalidate_path(idx->cache_tree, to);
-
-	return 0;
-}
-
-static int find_file(struct tree* tree, const char* path, unsigned char* blob) {
-	return checkout_tree_search(NULL, blob, tree, path, "");
-}
-
-enum tree_index {
-	SVN_TREE,
-	GIT_TREE,
-	TREE_NUM,
-};
-
 struct svnref {
 	struct strbuf svn; /* svn root */
 	struct strbuf ref; /* svn ref path */
 	struct strbuf remote; /* remote ref path */
 
-	struct index_state index[TREE_NUM];
-	struct tree *tree[TREE_NUM];
+	struct index_state git_index, svn_index;
+	struct tree *git_tree, *svn_tree;
 
 	unsigned int delete : 1;
 	unsigned int istag : 1;
@@ -1123,20 +612,39 @@ static void add_refname(struct strbuf* buf, const char* name) {
 	}
 }
 
-static struct index_state* get_index(struct svnref* r, enum tree_index t) {
-	if (r->tree[t] && checkout_tree(&r->index[t], r->tree[t], "", ""))
-		die("failed to checkout %s", sha1_to_hex(r->tree[t]->object.sha1));
+static void checkout_tree(struct index_state* idx, struct tree* t) {
+	struct tree_desc desc;
+	struct unpack_trees_options op;
 
-	r->tree[t] = NULL;
-	return &r->index[t];
+	if (!t) return;
+
+	if (parse_tree(t))
+		die("failed to checkout %s", sha1_to_hex(t->object.sha1));
+
+	init_tree_desc(&desc, t->buffer, t->size);
+
+	memset(&op, 0, sizeof(op));
+	op.src_index = idx;
+	op.dst_index = idx;
+	op.index_only = 1;
+
+	if (unpack_trees(1, &desc, &op))
+		die("failed to checkout %s", sha1_to_hex(t->object.sha1));
 }
 
-static const unsigned char *index_sha1(struct svnref* r, enum tree_index t) {
-	struct index_state* idx;
-	if (r->tree[t])
-		return r->tree[t]->object.sha1;
+static struct index_state* git_index(struct svnref* r) {
+	checkout_tree(&r->git_index, r->git_tree);
+	r->git_tree = NULL;
+	return &r->git_index;
+}
 
-	idx = get_index(r, t);
+static struct index_state* svn_index(struct svnref* r) {
+	checkout_tree(&r->svn_index, r->svn_tree);
+	r->svn_tree = NULL;
+	return &r->svn_index;
+}
+
+static const unsigned char *idx_sha1(struct index_state* idx) {
 	if (!idx->cache_tree)
 		idx->cache_tree = cache_tree();
 	if (cache_tree_update(idx->cache_tree, idx->cache, idx->cache_nr, 0))
@@ -1151,10 +659,10 @@ static void checkout_svncmt(struct svnref* r, struct commit* svncmt) {
 	/* R (replace) log entries may already have content that
 	 * we need to clear first */
 
-	discard_index(&r->index[GIT_TREE]);
-	discard_index(&r->index[SVN_TREE]);
-	r->tree[GIT_TREE] = NULL;
-	r->tree[SVN_TREE] = NULL;
+	discard_index(&r->git_index);
+	discard_index(&r->svn_index);
+	r->git_tree = NULL;
+	r->svn_tree = NULL;
 
 	/* Note r->svncmt may not equal c if this creates a branch or
 	 * replaces an existing one. c will be the new source whereas
@@ -1163,13 +671,13 @@ static void checkout_svncmt(struct svnref* r, struct commit* svncmt) {
 	if (svncmt && parse_commit(svncmt))
 		die("invalid object %s", cmt_to_hex(svncmt));
 
-	r->tree[SVN_TREE] = svncmt ? svncmt->tree : NULL;
+	r->svn_tree = svncmt ? svncmt->tree : NULL;
 	gitcmt = svncmt ? svn_commit(svncmt) : NULL;
 
 	if (gitcmt && parse_commit(gitcmt))
 		die("invalid object %s", cmt_to_hex(gitcmt));
 
-	r->tree[GIT_TREE] = gitcmt ? gitcmt->tree : NULL;
+	r->git_tree = gitcmt ? gitcmt->tree : NULL;
 	r->parent = gitcmt;
 }
 
@@ -1512,35 +1020,13 @@ static void read_add_dir(struct svnref* r, int rev) {
 	char* p;
 	size_t dlen;
 	int files = 0;
-	struct svnref* srcref;
-	int srcrev;
 
 	read_name(&name);
 	find_svnref_by_path(&name);
 	fprintf(stderr, "A %s\n", name.buf);
 
-	/* parent-token, child-token */
-	if (skip_string() < 0) goto err;
-	if (skip_string() < 0) goto err;
-
 	if (name.len) strbuf_addch(&name, '/');
 	dlen = name.len;
-
-	if (have_optional() && (srcref = read_copy_source(&srcname, &srcrev)) != NULL) {
-		struct commit* srccmt;
-		if (srcrev > rev) goto err;
-
-		srccmt = find_svncmt(srcref, rev);
-		if (!srccmt) goto err;
-
-		if (checkout_tree(get_index(r, SVN_TREE), srccmt->tree, srcname.buf, name.buf))
-			goto err;
-
-		if (checkout_tree(get_index(r, GIT_TREE), svn_commit(srccmt)->tree, srcname.buf, name.buf))
-			goto err;
-
-		read_end();
-	}
 
 	strbuf_setlen(&name, dlen);
 
@@ -1551,7 +1037,7 @@ static void read_add_dir(struct svnref* r, int rev) {
 			die("failed to write .gitempty object");
 		strbuf_addstr(&name, ".gitempty");
 		ce = make_cache_entry(create_ce_mode(0644), sha1, name.buf, 0, 0);
-		add_index_entry(get_index(r, GIT_TREE), ce, ADD_CACHE_OK_TO_ADD);
+		add_index_entry(git_index(r), ce, ADD_CACHE_OK_TO_ADD);
 	}
 
 	/* remove ../.gitempty */
@@ -1561,54 +1047,22 @@ static void read_add_dir(struct svnref* r, int rev) {
 		if (p) {
 			strbuf_setlen(&name, p - name.buf);
 			strbuf_addstr(&name, "/.gitempty");
-			remove_file_from_index(get_index(r, GIT_TREE), name.buf);
+			remove_file_from_index(git_index(r), name.buf);
 		}
 	}
 
 	strbuf_release(&srcname);
 	strbuf_release(&name);
-	return;
-
-err:
-	die("malformed update");
 }
 
 static void read_add_file(struct svnref* r, int rev, struct strbuf* name, void** srcp, size_t* srcsz) {
 	/* name, dir-token, file-token, [copy-path, copy-rev] */
 	struct strbuf srcname = STRBUF_INIT;
-	struct svnref* srcref;
-	int srcrev;
 	char* p;
 
 	read_name(name);
 	find_svnref_by_path(name);
 	fprintf(stderr, "A %s\n", name->buf);
-
-	/* dir-token, file-token */
-	if (skip_string() < 0) goto err;
-	if (skip_string() < 0) goto err;
-
-	/* see if we have a copy path */
-	if (have_optional() && (srcref = read_copy_source(&srcname, &srcrev)) != NULL) {
-		unsigned char sha1[20];
-		unsigned long srcn;
-		enum object_type type;
-		struct commit* srccmt;
-
-		if (srcrev > rev) goto err;
-
-		srccmt = find_svncmt(srcref, rev);
-		if (!srccmt) goto err;
-
-		if (find_file(srccmt->tree, srcname.buf, sha1))
-			goto err;
-
-		*srcp = read_sha1_file(sha1, &type, &srcn);
-		if (!srcp || type != OBJ_BLOB) goto err;
-		*srcsz = srcn;
-
-		read_end();
-	}
 
 	/* remove ./.gitempty */
 	p = strrchr(name->buf, '/');
@@ -1616,14 +1070,11 @@ static void read_add_file(struct svnref* r, int rev, struct strbuf* name, void**
 		struct strbuf empty = STRBUF_INIT;
 		strbuf_add(&empty, name->buf, p - name->buf);
 		strbuf_addstr(&empty, "/.gitempty");
-		remove_file_from_index(get_index(r, GIT_TREE), empty.buf);
+		remove_file_from_index(git_index(r), empty.buf);
 		strbuf_release(&empty);
 	}
 
 	strbuf_release(&srcname);
-	return;
-err:
-	die("malformed update");
 }
 
 static void read_open_file(struct svnref* r, int rev, struct strbuf* name, void** srcp, size_t* srcsz) {
@@ -1636,7 +1087,7 @@ static void read_open_file(struct svnref* r, int rev, struct strbuf* name, void*
 	find_svnref_by_path(name);
 	fprintf(stderr, "M %s\n", name->buf);
 
-	ce = index_name_exists(get_index(r, SVN_TREE), name->buf, name->len, 0);
+	ce = index_name_exists(svn_index(r), name->buf, name->len, 0);
 	if (!ce) goto err;
 
 	*srcp = read_sha1_file(ce->sha1, &type, &srcn);
@@ -1654,7 +1105,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 	unsigned char sha1[20];
 	struct strbuf buf = STRBUF_INIT;
 
-	if (skip_string() < 0) goto err;
+	if (skip_string()) goto err; /* file-token */
 
 	if (write_sha1_file(data, sz, "blob", sha1))
 		die_errno("write blob");
@@ -1664,7 +1115,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 		MD5_CTX ctx;
 
 		strbuf_reset(&buf);
-		if (read_strbuf(&buf)) goto err;
+		if (read_string(&buf)) goto err;
 		if (get_md5_hex(buf.buf, h1)) goto err;
 
 		MD5_Init(&ctx);
@@ -1672,7 +1123,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 		MD5_Final(h2, &ctx);
 
 		if (memcmp(h1, h2, sizeof(h1))) {
-			ce = index_name_exists(get_index(r, SVN_TREE), name, strlen(name), 0);
+			ce = index_name_exists(svn_index(r), name, strlen(name), 0);
 			die("hash mismatch for '%s', expected md5 %s, got md5 %s, old sha1 %s, new sha1 %s",
 					name,
 					md5_to_hex(h2),
@@ -1686,7 +1137,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
+	add_index_entry(svn_index(r), ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_reset(&buf);
 	if (convert_to_git(name, data, sz, &buf, SAFE_CRLF_FALSE)) {
@@ -1696,7 +1147,7 @@ static void read_close_file(struct svnref* r, const char* name, const void* data
 	}
 	ce = make_cache_entry(0644, sha1, name, 0, 0);
 	if (!ce) die("make_cache_entry failed for path '%s'", name);
-	add_index_entry(get_index(r, GIT_TREE), ce, ADD_CACHE_OK_TO_ADD);
+	add_index_entry(git_index(r), ce, ADD_CACHE_OK_TO_ADD);
 
 	strbuf_release(&buf);
 	return;
@@ -1752,8 +1203,8 @@ static void read_delete_entry(struct svnref* r, int rev) {
 	find_svnref_by_path(&name);
 	fprintf(stderr, "D %s\n", name.buf);
 
-	remove_index_path(get_index(r, SVN_TREE), &name);
-	remove_index_path(get_index(r, GIT_TREE), &name);
+	remove_index_path(svn_index(r), &name);
+	remove_index_path(git_index(r), &name);
 	if (!name.len) {
 		r->delete = 1;
 	}
@@ -1761,88 +1212,324 @@ static void read_delete_entry(struct svnref* r, int rev) {
 	return;
 }
 
+static void read_text_delta(struct strbuf *delta) {
+	for (;;) {
+		const char* s;
+
+		/* finish off the previous textdelta-chunk or
+		 * apply-textdelta */
+		read_command_end();
+
+		s = read_command();
+
+		if (!strcmp(s, "textdelta-end")) {
+			/* leave textdelta-end opened for read_update to
+			 * close */
+			return;
+		}
+
+		/* if we get some other command we just loop around
+		 * again */
+		if (strcmp(s, "textdelta-chunk")) {
+			continue;
+		}
+
+		/* file-token, chunk */
+		if (skip_string() || read_string(delta))
+			die("invalid textdelta command");
+	}
+}
+
+#define MAX_VARINT_LEN 9
+
+static unsigned char* parse_varint(unsigned char *p, unsigned char *e, size_t *v) {
+	*v = 0;
+	for (;;) {
+		if (p == e || *v > (INT64_MAX >> 7))
+			die("invalid svndiff");
+
+		*v = (*v << 7) | (*p & 0x7F);
+
+		if (!(*(p++) & 0x80))
+			return p;
+	}
+}
+
+static unsigned char* encode_varint(unsigned char* p, size_t n) {
+	if (n < 0) die("int too large");
+	if (n >= (INT64_C(1) << 56)) *(p++) = ((n >> 56) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 49)) *(p++) = ((n >> 49) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 42)) *(p++) = ((n >> 42) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 35)) *(p++) = ((n >> 35) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 28)) *(p++) = ((n >> 28) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 21)) *(p++) = ((n >> 21) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 14)) *(p++) = ((n >> 14) & 0x7F) | 0x80;
+	if (n >= (INT64_C(1) << 7)) *(p++) = ((n >> 7) & 0x7F) | 0x80;
+	*(p++) = n & 0x7F;
+	return p;
+}
+
+static size_t encoded_length(size_t n) {
+	unsigned char b[MAX_VARINT_LEN];
+	return encode_varint(b, n) - b;
+}
+
+#define FROM_SOURCE (0 << 6)
+#define FROM_TARGET (1 << 6)
+#define FROM_NEW    (2 << 6)
+
+static unsigned char* parse_instruction(unsigned char *p, unsigned char *e, int* ins, size_t* off, size_t* len) {
+	int hdr;
+
+	if (p >= e) die("invalid svndiff");
+	hdr = *p++;
+
+	*len = hdr & 0x3F;
+	if (*len == 0) {
+		p = parse_varint(p, e, len);
+	}
+
+	*ins = hdr & 0xC0;
+	*off = 0;
+	if (*ins == FROM_SOURCE || *ins == FROM_TARGET) {
+		p = parse_varint(p, e, off);
+	}
+
+	return p;
+}
+
+#define MAX_INS_LEN (1 + 2 * MAX_VARINT_LEN)
+
+static unsigned char* encode_instruction(unsigned char* p, int ins, size_t off, size_t len) {
+	if (len < 0x3F) {
+		*(p++) = ins | len;
+	} else {
+		*(p++) = ins;
+		p = encode_varint(p, len);
+	}
+
+	if (ins == FROM_SOURCE || ins == FROM_TARGET) {
+		p = encode_varint(p, off);
+	}
+
+	return p;
+}
+
+static unsigned char *parse_svndiff_chunk(unsigned char *p, size_t *sz, struct strbuf *buf, int ver) {
+	unsigned char *e = p + *sz;
+	size_t inflated = *sz;
+	z_stream z;
+
+	if (ver > 0) {
+		p = parse_varint(p, e, &inflated);
+	}
+
+	*sz = inflated;
+	if (p + inflated == e)
+		return p;
+
+	memset(&z, 0, sizeof(z));
+	inflateInit(&z);
+
+	strbuf_grow(buf, inflated);
+
+	z.next_in = p;
+	z.avail_in = e - p;
+	z.next_out = (unsigned char*) buf->buf;
+	z.avail_out = inflated;
+
+	if (inflate(&z, Z_FINISH) != Z_STREAM_END) {
+		die("zlib error");
+	}
+	strbuf_setlen(buf, inflated - z.avail_out);
+	inflateEnd(&z);
+
+	return (unsigned char*) buf->buf;
+}
+
+static unsigned char* apply_svndiff_win(struct strbuf *tgt, const void *src, size_t sz, unsigned char *d, unsigned char *e, int ver) {
+	struct strbuf insbuf = STRBUF_INIT;
+	struct strbuf databuf = STRBUF_INIT;
+	unsigned char *insp, *inse, *datap, *datae;
+	size_t srco, srcl, tgtl, insl, datal, w = 0;
+
+	d = parse_varint(d, e, &srco);
+	d = parse_varint(d, e, &srcl);
+	d = parse_varint(d, e, &tgtl);
+	d = parse_varint(d, e, &insl);
+	d = parse_varint(d, e, &datal);
+
+	if (unsigned_add_overflows(srco, srcl) || srco + srcl > sz)
+		goto err;
+
+	if (unsigned_add_overflows(insl, datal) || insl + datal > e - d)
+		goto err;
+
+	insp = d;
+	datap = insp + insl;
+	d = datap + datal;
+
+	insp = parse_svndiff_chunk(insp, &insl, &insbuf, ver);
+	datap = parse_svndiff_chunk(datap, &datal, &databuf, ver);
+
+	inse = insp + insl;
+	datae = datap + datal;
+
+	strbuf_grow(tgt, tgt->len + tgtl);
+
+	while (insp < inse) {
+		size_t off, len;
+		ssize_t tgtr;
+		int ins;
+
+		insp = parse_instruction(insp, inse, &ins, &off, &len);
+
+		switch (ins) {
+		case FROM_SOURCE:
+			if (off > srcl || len > srcl - off) goto err;
+			strbuf_add(tgt, (char*) src + srco + off, len);
+			break;
+
+		case FROM_TARGET:
+			tgtr = min(w - off, len);
+			if (tgtr <= 0) goto err;
+
+			off = tgt->len - w + off;
+
+			/* len may be greater than tgtr. In this case we
+			 * just repeat [tgto,tgto+tgtr]
+			 */
+			while (len) {
+				int n = min(len, tgtr);
+				strbuf_add(tgt, tgt->buf + off, n);
+				len -= n;
+			}
+			break;
+
+		case FROM_NEW:
+			if (datae - datap < len) goto err;
+			strbuf_add(tgt, datap, len);
+			datap += len;
+			break;
+
+		default:
+			goto err;
+		}
+
+		w += len;
+	}
+
+	if (w != tgtl || datap != datae) goto err;
+
+	strbuf_release(&insbuf);
+	strbuf_release(&databuf);
+	return d;
+err:
+	die("invalid svndiff");
+}
+
+static void apply_svndiff(struct strbuf *tgt, const void *src, size_t sz, const void *delta, size_t dsz) {
+	unsigned char *d = (unsigned char*) delta;
+	unsigned char *e = d + dsz;
+	int ver;
+
+	if (dsz < 4 || memcmp(d, "SVN", 3))
+		goto err;
+
+	ver = d[3];
+	if (ver > 1)
+		goto err;
+
+	d += 4;
+
+	while (d < e) {
+		d = apply_svndiff_win(tgt, src, sz, d, e, ver);
+	}
+
+	return;
+
+err:
+	die(_("invalid svndiff"));
+}
 
 static void read_update(struct svnref* r, int rev) {
 	struct strbuf name = STRBUF_INIT;
-	struct strbuf srcdata = STRBUF_INIT;
-	struct strbuf tgtdata = STRBUF_INIT;
-	const char* cmd = NULL;
-	void* data = NULL;
-	size_t datasz = 0;
+	struct strbuf tgt = STRBUF_INIT;
+	void* src = NULL;
+	size_t srcsz = 0;
 	int filedirty = 0;
 
 	read_success(); /* update */
 	read_success(); /* report */
 
 	for (;;) {
-		/* finish off previous command */
-		if (cmd) read_end_response();
+		const char *s = read_command();
 
-		if (read_list()) goto err;
-
-		cmd = read_word();
-		if (!cmd || read_list()) goto err;
-
-		if (!strcmp(cmd, "close-edit")) {
+		if (!strcmp(s, "close-edit")) {
 			if (name.len) goto err;
+			read_command_end();
 			break;
 
-		} else if (!strcmp(cmd, "abort-edit")) {
+		} else if (!strcmp(s, "abort-edit")) {
 			die("update aborted");
 
-		} else if (!strcmp(cmd, "open-root")) {
+		} else if (!strcmp(s, "open-root")) {
 			if (name.len) goto err;
 
-		} else if (!strcmp(cmd, "add-dir")) {
+		} else if (!strcmp(s, "add-dir")) {
 			if (name.len) goto err;
 			read_add_dir(r, rev);
 
-		} else if (!strcmp(cmd, "open-file")) {
+		} else if (!strcmp(s, "open-file")) {
 			if (name.len) goto err;
-			read_open_file(r, rev, &name, &data, &datasz);
+			read_open_file(r, rev, &name, &src, &srcsz);
 
-		} else if (!strcmp(cmd, "add-file")) {
+		} else if (!strcmp(s, "add-file")) {
 			if (name.len) goto err;
-			read_add_file(r, rev, &name, &data, &datasz);
+			read_add_file(r, rev, &name, &src, &srcsz);
 
-		} else if (!strcmp(cmd, "close-file")) {
+		} else if (!strcmp(s, "close-file")) {
 			if (!name.len) goto err;
 
 			if (filedirty) {
-				read_close_file(r, name.buf, tgtdata.buf, tgtdata.len);
+				read_close_file(r, name.buf, tgt.buf, tgt.len);
 			}
 
-			strbuf_release(&srcdata);
-			strbuf_release(&tgtdata);
+			strbuf_release(&tgt);
 			strbuf_reset(&name);
-			free(data);
-			data = NULL;
-			datasz = 0;
+			free(src);
+			src = NULL;
+			srcsz = 0;
 			filedirty = 0;
 
-		} else if (!strcmp(cmd, "delete-entry")) {
+		} else if (!strcmp(s, "delete-entry")) {
 			if (name.len) goto err;
 			read_delete_entry(r, rev);
 
-		} else if (!strcmp(cmd, "apply-textdelta")) {
+		} else if (!strcmp(s, "apply-textdelta")) {
+			struct strbuf delta = STRBUF_INIT;
+
 			/* file-token, [base-checksum] */
-			int64_t d;
 			if (!name.len) goto err;
 
+			read_text_delta(&delta);
 			filedirty = 1;
-			if ((d = deltamore()) > 0) {
-				apply_svndiff(&tgtdata, data, datasz, &deltar, &d, &deltaeof);
+			if (delta.len) {
+				apply_svndiff(&tgt, src, srcsz, delta.buf, delta.len);
 			}
+			strbuf_release(&delta);
 		}
+
+		read_command_end();
 	}
 
-	read_end_response(); /* end of close-edit */
+	/* tell the server that we got the request */
+	sendf("( success ( ) )\n");
 	read_success();
 
-	free(data);
+	free(src);
 	strbuf_release(&name);
-	strbuf_release(&srcdata);
-	strbuf_release(&tgtdata);
+	strbuf_release(&tgt);
 	return;
 
 err:
@@ -2089,7 +1776,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	} else if ((r->istag || created)
 		&& r->parent
-		&& !hashcmp(index_sha1(r, GIT_TREE), r->parent->tree->object.sha1)
+		&& !hashcmp(idx_sha1(git_index(r)), r->parent->tree->object.sha1)
 		  ) {
 		/* branch/tag has been created/replaced, but the tree hasn't
 		 * been changed */
@@ -2097,7 +1784,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	} else {
 		strbuf_reset(&buf);
-		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, GIT_TREE)));
+		strbuf_addf(&buf, "tree %s\n", sha1_to_hex(idx_sha1(git_index(r))));
 
 		if (r->parent) {
 			strbuf_addf(&buf, "parent %s\n", cmt_to_hex(r->parent));
@@ -2150,7 +1837,7 @@ static struct commit* create_fetched_commit(struct svnref* r, int rev, const cha
 
 	/* Create the svn commit */
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, SVN_TREE)));
+	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(idx_sha1(svn_index(r))));
 
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));
@@ -2229,22 +1916,18 @@ static void request_commit(struct svnref* r, int rev, struct svnref* copysrc, in
 		copyrev = rev - 1;
 	}
 
-	sendf("( switch ( ( %d ) %d:%s true %d:%s/%s ) )\n" /* [rev] target recurse target-url */
-		"( set-path ( 0: %d false ) )\n" /* path rev start-empty */
-		"( finish-report ( ) )\n"
-		"( success ( ) )\n",
-			/* switch target rev */
+	/* [rev] target recurse target-url */
+	sendf("( switch ( ( %d ) %d:%s true %d:%s/%s ) )\n",
 			rev,
-			/* switch target */
 			(int) copysrc->svn.len,
 			copysrc->svn.buf,
-			/* switch target-url */
 			(int) (strlen(url) + 1 + r->svn.len),
 			url,
-			r->svn.buf,
-			/* set-path rev */
-			copyrev
-	     );
+			r->svn.buf);
+
+	/* path rev start-empty */
+	sendf("( set-path ( 0: %d false ) )\n", copyrev);
+	sendf("( finish-report ( ) )\n");
 }
 
 static void request_log(int from, int to) {
@@ -2292,10 +1975,16 @@ static int have_next_commit(struct pending* retp) {
 	struct strbuf author = STRBUF_INIT;
 	struct strbuf time = STRBUF_INIT;
 	struct strbuf name = STRBUF_INIT;
-	struct pending* p;
+
+	/* log reply is of the form
+	 * ( ( ( n:changed-path A|D|R|M ( n:copy-path copy-rev ) ) ... ) rev n:author n:date n:message )
+	 * ....
+	 * done
+	 * ( success ( ) )
+	 */
 
 	while (!nextc) {
-		int i;
+		struct pending* p;
 
 		/* start of log entry */
 		if (read_list()) {
@@ -2310,16 +1999,19 @@ static int have_next_commit(struct pending* retp) {
 		while (!read_list()) {
 			const char* s;
 			struct svnref *to;
+			int i;
 
-			/* path, A, (copy-path, copy-rev) */
+			/* path A|D|R|M [copy-path copy-rev] */
 			strbuf_reset(&name);
 			read_name(&name);
 			to = find_svnref_by_path(&name);
 			s = read_word();
 			if (!s) goto err;
 
+			p = NULL;
 			for (i = 0; i < nextc; i++) {
 				if (nextv[i].ref == to) {
+					p = &nextv[i];
 					break;
 				}
 			}
@@ -2335,11 +2027,9 @@ static int have_next_commit(struct pending* retp) {
 					copysrc = NULL;
 				}
 
-				if (i == nextc) {
+				if (p == NULL) {
 					ALLOC_GROW(nextv, nextc+1, nexta);
 					p = &nextv[nextc++];
-				} else {
-					p = &nextv[i];
 				}
 
 				p->copysrc = copysrc;
@@ -2348,7 +2038,7 @@ static int have_next_commit(struct pending* retp) {
 
 				read_end();
 
-			} else if (to && i == nextc) {
+			} else if (to && p == NULL) {
 				ALLOC_GROW(nextv, nextc+1, nexta);
 				p = &nextv[nextc++];
 				p->copysrc = NULL;
@@ -2368,21 +2058,21 @@ static int have_next_commit(struct pending* retp) {
 		/* author */
 		if (read_list()) goto err;
 		strbuf_reset(&author);
-		if (read_strbuf(&author)) goto err;
+		if (read_string(&author)) goto err;
 		svn_author_to_git(&author);
 		read_end();
 
 		/* timestamp */
 		if (read_list()) goto err;
 		strbuf_reset(&time);
-		if (read_strbuf(&time)) goto err;
+		if (read_string(&time)) goto err;
 		if (svn_time_to_git(&time)) goto err;
 		read_end();
 
 		/* log message */
 		strbuf_reset(&msg);
 		if (have_optional()) {
-			if (read_strbuf(&msg)) goto err;
+			if (read_string(&msg)) goto err;
 			strbuf_complete_line(&msg);
 			read_end();
 		}
@@ -2393,13 +2083,12 @@ static int have_next_commit(struct pending* retp) {
 
 		/* remove entries where we've already downloaded the
 		 * commit */
-		for (i = 0; i < nextc;) {
-			p = &nextv[i];
+		p = nextv;
+		while (p < nextv+nextc) {
 			if (p->ref->svncmt && parse_svnrev(p->ref->svncmt) >= rev) {
-				memmove(nextv+i, nextv+i+1, nextc - (i+1));
+				memmove(p, p+1, sizeof(*p) * ((nextv+nextc) - (p+1)));
 				nextc--;
 			} else {
-				i++;
 				p->buf = xmalloc(msg.len + 1 + author.len + 1 + time.len + 1);
 
 				p->rev = rev;
@@ -2410,6 +2099,8 @@ static int have_next_commit(struct pending* retp) {
 				memcpy(p->msg, msg.buf, msg.len + 1);
 				memcpy(p->author, author.buf, author.len + 1);
 				memcpy(p->time, time.buf, time.len + 1);
+
+				p++;
 			}
 		}
 	}
@@ -2512,6 +2203,7 @@ static void close_connection(int cidx) {
 static void change_connection(int cidx, struct author* a) {
 	char pathsep;
 	char *host, *port, *path;
+	const char *s;
 	struct addrinfo hints, *res, *ai;
 	int err;
 	int fd = -1;
@@ -2572,17 +2264,19 @@ static void change_connection(int cidx, struct author* a) {
 
 
 	/* TODO: client software version and client capabilities */
-	sendf("( 2 ( edit-pipeline svndiff1 ) %d:%s )\n( CRAM-MD5 ( ) )\n",
-			(int) strlen(url), url);
+	sendf("( 2 ( edit-pipeline svndiff1 ) %d:%s )\n", (int) strlen(url), url);
+	sendf("( CRAM-MD5 ( ) )\n");
 
 	/* TODO: we don't care about capabilities/versions right now */
-	if (strcmp(read_response(), "success")) die("server error");
+	s = read_command();
+	if (strcmp(s, "success"))
+		die("server error");
 
 	/* minver then maxver */
 	if (read_number() > 2 || read_number() < 2)
 		die(_("version mismatch"));
 
-	read_end_response();
+	read_command_end();
 
 	/* TODO: read the mech lists et all */
 	read_success();
@@ -2641,10 +2335,10 @@ int cmd_svn_fetch(int argc, const char **argv, const char *prefix) {
 	sendf("( get-latest-rev ( ) )\n");
 
 	read_success(); /* latest rev */
-	read_response(); /* latest rev again */
+	read_command(); /* latest rev again */
 	n = read_number();
 	if (n < 0 || n > INT_MAX) die("latest-rev failed");
-	read_end_response();
+	read_command_end();
 
 	to = min(last_revision, (int) n);
 
@@ -2860,8 +2554,73 @@ static void dir_changed(int dir, const char* path) {
 
 static void send_delta_chunk(const char* tok, const void* data, size_t sz) {
 	sendf("( textdelta-chunk ( %s %d:", tok, (int) sz);
-	sendb(data, sz);
+
+	print_ascii(data, sz, MAX_PRINT_LEN);
+
+	if (write_in_full(svnfd, data, sz) != sz) {
+		die_errno("write");
+	}
+
 	sendf(" ) )\n");
+}
+
+#define MAX_DELTA_SIZE (32*1024)
+
+static void send_file(const char* tok, char *data, size_t sz) {
+	struct strbuf dataz = STRBUF_INIT;
+	z_stream z;
+
+	memset(&z, 0, sizeof(z));
+
+	sendf("( apply-textdelta ( %s ( ) ) )\n", tok);
+
+	send_delta_chunk(tok, "SVN\1", 4);
+
+	while (sz > 0) {
+		unsigned char hdr[7*MAX_VARINT_LEN+MAX_INS_LEN], *hp = hdr;
+		unsigned char ins[MAX_INS_LEN], *inp;
+		size_t d = min(MAX_DELTA_SIZE, sz);
+		int ret = Z_OK;
+
+		z.next_in = (unsigned char*) data;
+		z.avail_in = d;
+		strbuf_reset(&dataz);
+
+		deflateInit(&z, Z_DEFAULT_COMPRESSION);
+
+		while (ret == Z_OK) {
+			strbuf_grow(&dataz, dataz.len + MAX_DELTA_SIZE);
+			z.next_out = (unsigned char*) dataz.buf + dataz.len;
+			z.avail_out = MAX_DELTA_SIZE;
+			ret = deflate(&z, Z_FINISH);
+			strbuf_setlen(&dataz, MAX_DELTA_SIZE - z.avail_out);
+		}
+
+		deflateEnd(&z);
+
+		inp = encode_instruction(ins, FROM_NEW, 0, d);
+
+		hp = encode_varint(hp, 0); /* source off */
+		hp = encode_varint(hp, 0); /* source len */
+		hp = encode_varint(hp, d); /* target len */
+		hp = encode_varint(hp, inp - ins + encoded_length(inp - ins)); /* ins compressed len */
+		hp = encode_varint(hp, dataz.len + encoded_length(d)); /* compressed data len */
+		hp = encode_varint(hp, inp - ins); /* ins decompressed len */
+		memcpy(hp, ins, inp - ins); /* instructions */
+		hp += inp - ins;
+		hp = encode_varint(hp, d); /* decompressed data len */
+
+		send_delta_chunk(tok, hdr, hp - hdr);
+		send_delta_chunk(tok, dataz.buf, dataz.len);
+
+		data += d;
+		sz -= d;
+
+	}
+
+	sendf("( textdelta-end ( %s ) )\n", tok);
+
+	strbuf_release(&dataz);
 }
 
 static void change(struct diff_options* op,
@@ -2874,16 +2633,16 @@ static void change(struct diff_options* op,
 		unsigned ndsubmodule)
 {
 	struct svnref* r = op->format_callback_data;
+	int svnlen = (int) strlen(svnpath);
 	const char *gitpath = r->svn.len ? svnpath + r->svn.len : svnpath;
+	int gitlen = svnpath + svnlen - gitpath;
 	struct cache_entry* ce;
 	struct strbuf buf = STRBUF_INIT;
-	unsigned char ins[MAX_INS_LEN], *inp = ins;
-	unsigned char hdr[5*MAX_VARINT_LEN], *hp = hdr;
 	enum object_type type;
 	const char* tok;
-	void* data;
-	size_t sz;
+	char* data;
 	int dir;
+	size_t sz;
 
 	if (verbose) fprintf(stderr, "change mode %x/%x sha1 %s/%s path %s\n",
 			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), svnpath);
@@ -2893,7 +2652,7 @@ static void change(struct diff_options* op,
 
 	dir = change_dir(svnpath);
 
-	ce = index_name_exists(get_index(r, SVN_TREE), gitpath, strlen(gitpath), 0);
+	ce = index_name_exists(svn_index(r), gitpath, gitlen, 0);
 	if (!ce) {
 		/* file exists in git but not in svn */
 		return;
@@ -2915,34 +2674,16 @@ static void change(struct diff_options* op,
 		}
 
 		ce = make_cache_entry(0644, sha1, gitpath, 0, 0);
-		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_REPLACE);
+		add_index_entry(svn_index(r), ce, ADD_CACHE_OK_TO_REPLACE);
 	}
-
-
-	if (sz) {
-		inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
-	}
-
-	hp = encode_varint(hp, 0); /* source off */
-	hp = encode_varint(hp, 0); /* source len */
-	hp = encode_varint(hp, sz); /* target len */
-	hp = encode_varint(hp, inp - ins); /* ins len */
-	hp = encode_varint(hp, sz); /* data len */
 
 	tok = ftoken();
-	sendf("( open-file ( %d:%s %s %s ( ) ) )\n"
-		"( apply-textdelta ( %s ( ) ) )\n",
-		(int) strlen(svnpath), svnpath, dtoken(dir), tok,
-		tok);
+	sendf("( open-file ( %d:%s %s %s ( ) ) )\n",
+		svnlen, svnpath, dtoken(dir), tok);
 
-	send_delta_chunk(tok, "SVN\0", 4);
-	send_delta_chunk(tok, hdr, hp - hdr);
-	send_delta_chunk(tok, ins, inp - ins);
-	send_delta_chunk(tok, data, sz);
+	send_file(tok, data, sz);
 
-	sendf("( textdelta-end ( %s ) )\n"
-		"( close-file ( %s ( ) ) )\n",
-		tok, tok);
+	sendf("( close-file ( %s ( ) ) )\n", tok);
 
 	diff_change(op, omode, nmode, osha1, nsha1, gitpath, odsubmodule, ndsubmodule);
 
@@ -2958,9 +2699,9 @@ static void addremove(struct diff_options* op,
 {
 	static struct strbuf buf = STRBUF_INIT;
 	struct svnref* r = op->format_callback_data;
-	size_t svnlen = strlen(svnpath);
+	int svnlen = strlen(svnpath);
 	const char *gitpath = r->svn.len ? svnpath + r->svn.len : svnpath;
-	size_t gitlen = svnpath + svnlen - gitpath;
+	int gitlen = svnpath + svnlen - gitpath;
 
 	if (verbose) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
 			addrm, mode, sha1_to_hex(sha1), svnpath);
@@ -2968,31 +2709,29 @@ static void addremove(struct diff_options* op,
 	if (addrm == '-' && S_ISDIR(mode)) {
 		strbuf_reset(&buf);
 		strbuf_add(&buf, gitpath, gitlen);
-		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
+		if (remove_index_path(svn_index(r), &buf) > 0) {
 			int dir = change_dir(svnpath);
 			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
-				(int) svnlen, svnpath, dtoken(dir));
+				svnlen, svnpath, dtoken(dir));
 		}
 
 	} else if (addrm == '+' && S_ISDIR(mode)) {
 		int dir = change_dir(svnpath);
 		sendf("( add-dir ( %d:%s %s %s ( ) ) )\n",
-			(int) svnlen, svnpath, dtoken(dir), dtoken(dir+1));
+			svnlen, svnpath, dtoken(dir), dtoken(dir+1));
 
 		dir_changed(++dir, svnpath);
 
 	} else if (addrm == '-' && S_ISREG(mode)) {
 		strbuf_reset(&buf);
 		strbuf_add(&buf, gitpath, gitlen);
-		if (remove_index_path(get_index(r, SVN_TREE), &buf) > 0) {
+		if (remove_index_path(svn_index(r), &buf) > 0) {
 			int dir = change_dir(svnpath);
 			sendf("( delete-entry ( %d:%s ( ) %s ) )\n",
-				(int) svnlen, svnpath, dtoken(dir));
+				svnlen, svnpath, dtoken(dir));
 		}
 
 	} else if (addrm == '+' && S_ISREG(mode)) {
-		unsigned char ins[MAX_INS_LEN], *inp = ins;
-		unsigned char hdr[5*MAX_VARINT_LEN], *hp = hdr;
 		struct cache_entry* ce;
 		unsigned char nsha1[20];
 		struct strbuf buf = STRBUF_INIT;
@@ -3026,52 +2765,23 @@ static void addremove(struct diff_options* op,
 		}
 
 		ce = make_cache_entry(0644, nsha1, gitpath, 0, 0);
-		add_index_entry(get_index(r, SVN_TREE), ce, ADD_CACHE_OK_TO_ADD);
-
-		if (sz) {
-			inp = encode_instruction(inp, COPY_FROM_NEW, 0, sz);
-		}
-
-		hp = encode_varint(hp, 0); /* source off */
-		hp = encode_varint(hp, 0); /* source len */
-		hp = encode_varint(hp, sz); /* target len */
-		hp = encode_varint(hp, inp - ins); /* ins len */
-		hp = encode_varint(hp, sz); /* data len */
+		add_index_entry(svn_index(r), ce, ADD_CACHE_OK_TO_ADD);
 
 		/* TODO: use diffcore to find copies */
 
 		dir = change_dir(svnpath);
 		tok = ftoken();
-		sendf("( add-file ( %d:%s %s %s ( ) ) )\n"
-			"( apply-textdelta ( %s ( ) ) )\n",
-			(int) strlen(svnpath), svnpath, dtoken(dir), tok,
-			tok);
+		sendf("( add-file ( %d:%s %s %s ( ) ) )\n",
+			svnlen, svnpath, dtoken(dir), tok);
 
-		send_delta_chunk(tok, "SVN\0", 4);
-		send_delta_chunk(tok, hdr, hp - hdr);
-		send_delta_chunk(tok, ins, inp - ins);
-		send_delta_chunk(tok, data, sz);
+		send_file(tok, data, sz);
 
-		sendf("( textdelta-end ( %s ) )\n"
-			"( close-file ( %s ( ) ) )\n",
-			tok, tok);
+		sendf("( close-file ( %s ( ) ) )\n", tok);
 
 		free(data);
 	}
 
 	diff_addremove(op, addrm, mode, sha1, svnpath, dsubmodule);
-}
-
-static void output(struct diff_queue_struct *q,
-		struct diff_options* op,
-		void* data)
-{
-	int i;
-	fprintf(stderr, "output %d %p\n", q->nr, data);
-	for (i = 0; i < q->nr; i++) {
-		struct diff_filepair* p = q->queue[i];
-		fprintf(stderr, "output %s %s\n", p->one->path, p->two->path);
-	}
 }
 
 static int read_commit_revno(struct strbuf* time) {
@@ -3085,7 +2795,7 @@ static int read_commit_revno(struct strbuf* time) {
 	n = read_number();
 	if (n < 0 || n > INT_MAX) goto err;
 	if (have_optional() && time) {
-		read_strbuf(time);
+		read_string(time);
 		svn_time_to_git(time);
 		read_end();
 	}
@@ -3161,10 +2871,9 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copy
 		dir_changed(++dir, r->svn.buf);
 
 		diff_setup(&op);
-		op.output_format = DIFF_FORMAT_CALLBACK;
+		op.output_format = DIFF_FORMAT_NO_OUTPUT;
 		op.change = &change;
 		op.add_remove = &addremove;
-		op.format_callback = &output;
 		op.format_callback_data = r;
 		DIFF_OPT_SET(&op, RECURSIVE);
 		DIFF_OPT_SET(&op, IGNORE_SUBMODULES);
@@ -3191,9 +2900,8 @@ static int send_commit(struct svnref* r, struct commit* cmt, struct commit* copy
 	}
 
 	change_dir("");
-	sendf("( close-dir ( %s ) )\n"
-		"( close-edit ( ) )\n",
-		dtoken(0));
+	sendf("( close-dir ( %s ) )\n", dtoken(0));
+	sendf("( close-edit ( ) )\n");
 
 	return read_commit_revno(time);
 }
@@ -3271,7 +2979,7 @@ static void push_commit(struct push* p, struct object* logobj, struct commit* gi
 	/* create the svn object */
 
 	strbuf_reset(&buf);
-	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(index_sha1(r, SVN_TREE)));
+	strbuf_addf(&buf, "tree %s\n", sha1_to_hex(idx_sha1(svn_index(r))));
 
 	if (gitcmt || r->svncmt) {
 		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(gitcmt ? gitcmt : r->svncmt));

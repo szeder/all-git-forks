@@ -125,5 +125,16 @@ test_expect_success 'modify file' '
 	cd ..
 '
 
+test_expect_success 'big file' '
+	seq 1 100000 > file.txt &&
+	git add file.txt &&
+	git commit -a -m "big file" &&
+	git svn-push -v svn/master svn/master master &&
+	cd svnco &&
+	svn_cmd up &&
+	cmp file.txt ../file.txt &&
+	cd ..
+'
+
 test_done
 
