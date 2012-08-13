@@ -2025,6 +2025,7 @@ static int have_next_commit(struct pending* retp) {
 				if (copysrc && name.len) {
 					warning("copy from non-root path");
 					copysrc = NULL;
+					copyrev = 0;
 				}
 
 				if (p == NULL) {
