@@ -184,6 +184,9 @@ static int list_paths(struct string_list *list, const char *with_tree,
 	int i;
 	char *m;
 
+	if (!pattern)
+		return 0;
+
 	for (i = 0; pattern[i]; i++)
 		;
 	m = xcalloc(1, i);
@@ -345,7 +348,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 	 * and create commit from the_index.
 	 * We still need to refresh the index here.
 	 */
-	if (!pathspec || !*pathspec) {
+	if (!only && (!pathspec || !*pathspec)) {
 		fd = hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed) {
@@ -526,8 +529,7 @@ static void determine_author_info(struct strbuf *author_ident)
 
 	if (force_date)
 		date = force_date;
-	strbuf_addstr(author_ident, fmt_ident(name, email, date,
-					      IDENT_ERROR_ON_NO_NAME));
+	strbuf_addstr(author_ident, fmt_ident(name, email, date, IDENT_STRICT));
 	if (!split_ident_line(&author, author_ident->buf, author_ident->len)) {
 		export_one("GIT_AUTHOR_NAME", author.name_begin, author.name_end, 0);
 		export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
@@ -641,7 +643,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		hook_arg1 = "message";
 	} else if (use_message) {
 		buffer = strstr(use_message_buffer, "\n\n");
-		if (!buffer || buffer[2] == '\0')
+		if (!use_editor && (!buffer || buffer[2] == '\0'))
 			die(_("commit has empty message"));
 		strbuf_add(&sb, buffer + 2, strlen(buffer + 2));
 		hook_arg1 = "commit";
@@ -723,7 +725,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	strbuf_release(&sb);
 
 	/* This checks if committer ident is explicitly given */
-	strbuf_addstr(&committer_ident, git_committer_info(0));
+	strbuf_addstr(&committer_ident, git_committer_info(IDENT_STRICT));
 	if (use_editor && include_status) {
 		char *ai_tmp, *ci_tmp;
 		if (whence != FROM_COMMIT)

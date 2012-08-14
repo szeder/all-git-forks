@@ -1397,7 +1397,7 @@ int print_stat_summary(FILE *fp, int files, int insertions, int deletions)
 
 	if (!files) {
 		assert(insertions == 0 && deletions == 0);
-		return fputs(_(" 0 files changed\n"), fp);
+		return fprintf(fp, "%s\n", _(" 0 files changed"));
 	}
 
 	strbuf_addf(&sb,
@@ -1700,7 +1700,7 @@ static void show_shortstats(struct diffstat_t *data, struct diff_options *option
 			continue;
 		if (!data->files[i]->is_renamed && (added + deleted == 0)) {
 			total_files--;
-		} else {
+		} else if (!data->files[i]->is_binary) { /* don't count bytes */
 			adds += added;
 			dels += deleted;
 		}
@@ -2619,22 +2619,6 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 	return 0;
 }
 
-static int populate_from_stdin(struct diff_filespec *s)
-{
-	struct strbuf buf = STRBUF_INIT;
-	size_t size = 0;
-
-	if (strbuf_read(&buf, 0, 0) < 0)
-		return error("error while reading from stdin %s",
-				     strerror(errno));
-
-	s->should_munmap = 0;
-	s->data = strbuf_detach(&buf, &size);
-	s->size = size;
-	s->should_free = 1;
-	return 0;
-}
-
 static int diff_populate_gitlink(struct diff_filespec *s, int size_only)
 {
 	int len;
@@ -2683,9 +2667,6 @@ int diff_populate_filespec(struct diff_filespec *s, int size_only)
 		struct strbuf buf = STRBUF_INIT;
 		struct stat st;
 		int fd;
-
-		if (!strcmp(s->path, "-"))
-			return populate_from_stdin(s);
 
 		if (lstat(s->path, &st) < 0) {
 			if (errno == ENOENT) {
@@ -3011,9 +2992,8 @@ static void run_diff_cmd(const char *pgm,
 	int complete_rewrite = (p->status == DIFF_STATUS_MODIFIED) && p->score;
 	int must_show_header = 0;
 
-	if (!DIFF_OPT_TST(o, ALLOW_EXTERNAL))
-		pgm = NULL;
-	else {
+
+	if (DIFF_OPT_TST(o, ALLOW_EXTERNAL)) {
 		struct userdiff_driver *drv = userdiff_find_by_path(attr_path);
 		if (drv && drv->external)
 			pgm = drv->external;
@@ -3048,7 +3028,7 @@ static void diff_fill_sha1_info(struct diff_filespec *one)
 	if (DIFF_FILE_VALID(one)) {
 		if (!one->sha1_valid) {
 			struct stat st;
-			if (!strcmp(one->path, "-")) {
+			if (one->is_stdin) {
 				hashcpy(one->sha1, null_sha1);
 				return;
 			}
@@ -3092,6 +3072,9 @@ static void run_diff(struct diff_filepair *p, struct diff_options *o)
 	attr_path = name;
 	if (o->prefix_length)
 		strip_prefix(o->prefix_length, &name, &other);
+
+	if (!DIFF_OPT_TST(o, ALLOW_EXTERNAL))
+		pgm = NULL;
 
 	if (DIFF_PAIR_UNMERGED(p)) {
 		run_diff_cmd(pgm, name, NULL, attr_path,

@@ -68,7 +68,7 @@ struct commit *lookup_commit_reference_by_name(const char *name)
 	unsigned char sha1[20];
 	struct commit *commit;
 
-	if (get_sha1(name, sha1))
+	if (get_sha1_committish(name, sha1))
 		return NULL;
 	commit = lookup_commit_reference(sha1);
 	if (!commit || parse_commit(commit))
@@ -1154,9 +1154,9 @@ int commit_tree_extended(const struct strbuf *msg, unsigned char *tree,
 
 	/* Person/date information */
 	if (!author)
-		author = git_author_info(IDENT_ERROR_ON_NO_NAME);
+		author = git_author_info(IDENT_STRICT);
 	strbuf_addf(&buffer, "author %s\n", author);
-	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_ERROR_ON_NO_NAME));
+	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_STRICT));
 	if (!encoding_is_utf8)
 		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
 

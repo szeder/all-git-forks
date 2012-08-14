@@ -1000,7 +1000,7 @@ static int add_parents_only(struct rev_info *revs, const char *arg_, int flags)
 		flags ^= UNINTERESTING;
 		arg++;
 	}
-	if (get_sha1(arg, sha1))
+	if (get_sha1_committish(arg, sha1))
 		return 0;
 	while (1) {
 		it = get_reference(revs, arg, sha1, 0);
@@ -1114,16 +1114,16 @@ static void prepare_show_merge(struct rev_info *revs)
 	revs->limited = 1;
 }
 
-int handle_revision_arg(const char *arg_, struct rev_info *revs,
-			int flags,
-			int cant_be_filename)
+int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsigned revarg_opt)
 {
-	unsigned mode;
+	struct object_context oc;
 	char *dotdot;
 	struct object *object;
 	unsigned char sha1[20];
 	int local_flags;
 	const char *arg = arg_;
+	int cant_be_filename = revarg_opt & REVARG_CANNOT_BE_FILENAME;
+	unsigned get_sha1_flags = 0;
 
 	dotdot = strstr(arg, "..");
 	if (dotdot) {
@@ -1141,8 +1141,8 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs,
 			next = "HEAD";
 		if (dotdot == arg)
 			this = "HEAD";
-		if (!get_sha1(this, from_sha1) &&
-		    !get_sha1(next, sha1)) {
+		if (!get_sha1_committish(this, from_sha1) &&
+		    !get_sha1_committish(next, sha1)) {
 			struct commit *a, *b;
 			struct commit_list *exclude;
 
@@ -1201,13 +1201,17 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs,
 		local_flags = UNINTERESTING;
 		arg++;
 	}
-	if (get_sha1_with_mode(arg, sha1, &mode))
+
+	if (revarg_opt & REVARG_COMMITTISH)
+		get_sha1_flags = GET_SHA1_COMMITTISH;
+
+	if (get_sha1_with_context(arg, get_sha1_flags, sha1, &oc))
 		return revs->ignore_missing ? 0 : -1;
 	if (!cant_be_filename)
 		verify_non_filename(revs->prefix, arg);
 	object = get_reference(revs, arg, sha1, flags ^ local_flags);
 	add_rev_cmdline(revs, object, arg_, REV_CMD_REV, flags ^ local_flags);
-	add_pending_object_with_mode(revs, object, arg, mode);
+	add_pending_object_with_mode(revs, object, arg, oc.mode);
 	return 0;
 }
 
@@ -1257,7 +1261,7 @@ static void read_revisions_from_stdin(struct rev_info *revs,
 			}
 			die("options not supported in --stdin mode");
 		}
-		if (handle_revision_arg(sb.buf, revs, 0, 1))
+		if (handle_revision_arg(sb.buf, revs, 0, REVARG_CANNOT_BE_FILENAME))
 			die("bad revision '%s'", sb.buf);
 	}
 	if (seen_dashdash)
@@ -1358,11 +1362,13 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->topo_order = 1;
 	} else if (!strcmp(arg, "--simplify-merges")) {
 		revs->simplify_merges = 1;
+		revs->topo_order = 1;
 		revs->rewrite_parents = 1;
 		revs->simplify_history = 0;
 		revs->limited = 1;
 	} else if (!strcmp(arg, "--simplify-by-decoration")) {
 		revs->simplify_merges = 1;
+		revs->topo_order = 1;
 		revs->rewrite_parents = 1;
 		revs->simplify_history = 0;
 		revs->simplify_by_decoration = 1;
@@ -1706,7 +1712,7 @@ static int handle_revision_pseudo_opt(const char *submodule,
  */
 int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct setup_revision_opt *opt)
 {
-	int i, flags, left, seen_dashdash, read_from_stdin, got_rev_arg = 0;
+	int i, flags, left, seen_dashdash, read_from_stdin, got_rev_arg = 0, revarg_opt;
 	struct cmdline_pathspec prune_data;
 	const char *submodule = NULL;
 
@@ -1734,6 +1740,9 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 
 	/* Second, deal with arguments and options */
 	flags = 0;
+	revarg_opt = opt ? opt->revarg_opt : 0;
+	if (seen_dashdash)
+		revarg_opt |= REVARG_CANNOT_BE_FILENAME;
 	read_from_stdin = 0;
 	for (left = i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -1769,7 +1778,8 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			continue;
 		}
 
-		if (handle_revision_arg(arg, revs, flags, seen_dashdash)) {
+
+		if (handle_revision_arg(arg, revs, flags, revarg_opt)) {
 			int j;
 			if (seen_dashdash || *arg == '^')
 				die("bad revision '%s'", arg);
@@ -1781,7 +1791,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			 * but the latter we have checked in the main loop.
 			 */
 			for (j = i; j < argc; j++)
-				verify_filename(revs->prefix, argv[j]);
+				verify_filename(revs->prefix, argv[j], j == i);
 
 			append_prune_data(&prune_data, argv + i);
 			break;
@@ -1820,11 +1830,11 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	if (revs->def && !revs->pending.nr && !got_rev_arg) {
 		unsigned char sha1[20];
 		struct object *object;
-		unsigned mode;
-		if (get_sha1_with_mode(revs->def, sha1, &mode))
+		struct object_context oc;
+		if (get_sha1_with_context(revs->def, 0, sha1, &oc))
 			die("bad default revision '%s'", revs->def);
 		object = get_reference(revs, revs->def, sha1, 0);
-		add_pending_object_with_mode(revs, object, revs->def, mode);
+		add_pending_object_with_mode(revs, object, revs->def, oc.mode);
 	}
 
 	/* Did the user ask for any diff output? Run the diff! */
@@ -1947,8 +1957,9 @@ static struct commit_list **simplify_one(struct rev_info *revs, struct commit *c
 	}
 
 	/*
-	 * Do we know what commit all of our parents should be rewritten to?
-	 * Otherwise we are not ready to rewrite this one yet.
+	 * Do we know what commit all of our parents that matter
+	 * should be rewritten to?  Otherwise we are not ready to
+	 * rewrite this one yet.
 	 */
 	for (cnt = 0, p = commit->parents; p; p = p->next) {
 		pst = locate_simplify_state(revs, p->item);
@@ -1956,6 +1967,8 @@ static struct commit_list **simplify_one(struct rev_info *revs, struct commit *c
 			tail = &commit_list_insert(p->item, tail)->next;
 			cnt++;
 		}
+		if (revs->first_parent_only)
+			break;
 	}
 	if (cnt) {
 		tail = &commit_list_insert(commit, tail)->next;
@@ -1968,8 +1981,13 @@ static struct commit_list **simplify_one(struct rev_info *revs, struct commit *c
 	for (p = commit->parents; p; p = p->next) {
 		pst = locate_simplify_state(revs, p->item);
 		p->item = pst->simplified;
+		if (revs->first_parent_only)
+			break;
 	}
-	cnt = remove_duplicate_parents(commit);
+	if (!revs->first_parent_only)
+		cnt = remove_duplicate_parents(commit);
+	else
+		cnt = 1;
 
 	/*
 	 * It is possible that we are a merge and one side branch
@@ -2013,25 +2031,31 @@ static struct commit_list **simplify_one(struct rev_info *revs, struct commit *c
 
 static void simplify_merges(struct rev_info *revs)
 {
-	struct commit_list *list;
+	struct commit_list *list, *next;
 	struct commit_list *yet_to_do, **tail;
+	struct commit *commit;
 
-	if (!revs->topo_order)
-		sort_in_topological_order(&revs->commits, revs->lifo);
 	if (!revs->prune)
 		return;
 
 	/* feed the list reversed */
 	yet_to_do = NULL;
-	for (list = revs->commits; list; list = list->next)
-		commit_list_insert(list->item, &yet_to_do);
+	for (list = revs->commits; list; list = next) {
+		commit = list->item;
+		next = list->next;
+		/*
+		 * Do not free(list) here yet; the original list
+		 * is used later in this function.
+		 */
+		commit_list_insert(commit, &yet_to_do);
+	}
 	while (yet_to_do) {
 		list = yet_to_do;
 		yet_to_do = NULL;
 		tail = &yet_to_do;
 		while (list) {
-			struct commit *commit = list->item;
-			struct commit_list *next = list->next;
+			commit = list->item;
+			next = list->next;
 			free(list);
 			list = next;
 			tail = simplify_one(revs, commit, tail);
@@ -2043,9 +2067,10 @@ static void simplify_merges(struct rev_info *revs)
 	revs->commits = NULL;
 	tail = &revs->commits;
 	while (list) {
-		struct commit *commit = list->item;
-		struct commit_list *next = list->next;
 		struct merge_simplify_state *st;
+
+		commit = list->item;
+		next = list->next;
 		free(list);
 		list = next;
 		st = locate_simplify_state(revs, commit);
@@ -2344,29 +2369,28 @@ static struct commit *get_revision_internal(struct rev_info *revs)
 	}
 
 	/*
-	 * Now pick up what they want to give us
+	 * If our max_count counter has reached zero, then we are done. We
+	 * don't simply return NULL because we still might need to show
+	 * boundary commits. But we want to avoid calling get_revision_1, which
+	 * might do a considerable amount of work finding the next commit only
+	 * for us to throw it away.
+	 *
+	 * If it is non-zero, then either we don't have a max_count at all
+	 * (-1), or it is still counting, in which case we decrement.
 	 */
-	c = get_revision_1(revs);
-	if (c) {
-		while (0 < revs->skip_count) {
-			revs->skip_count--;
-			c = get_revision_1(revs);
-			if (!c)
-				break;
+	if (revs->max_count) {
+		c = get_revision_1(revs);
+		if (c) {
+			while (0 < revs->skip_count) {
+				revs->skip_count--;
+				c = get_revision_1(revs);
+				if (!c)
+					break;
+			}
 		}
-	}
 
-	/*
-	 * Check the max_count.
-	 */
-	switch (revs->max_count) {
-	case -1:
-		break;
-	case 0:
-		c = NULL;
-		break;
-	default:
-		revs->max_count--;
+		if (revs->max_count > 0)
+			revs->max_count--;
 	}
 
 	if (c)
