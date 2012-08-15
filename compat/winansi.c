@@ -112,11 +112,22 @@ static int is_console(int fd)
 
 static void write_console(unsigned char *str, size_t len)
 {
+	int i, removed = 0;
 	/* only called from console_thread, so a static buffer will do */
 	static wchar_t wbuf[2 * BUFFER_SIZE + 1];
 
 	/* convert utf-8 to utf-16 */
 	int wlen = xutftowcsn(wbuf, (char*) str, ARRAY_SIZE(wbuf), len);
+
+	/* strip invisible characters that the WriteConsole doesn't */
+	for (i = 0; i < wlen; ++i) {
+		if (wbuf[i] == 0xFEFF) {
+			++removed;
+			--wlen;
+		}
+		if (removed)
+			wbuf[i] = wbuf[i + removed];
+	}
 
 	/* write directly to console */
 	WriteConsoleW(console, wbuf, wlen, NULL, NULL);
