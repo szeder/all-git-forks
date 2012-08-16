@@ -1170,11 +1170,34 @@ int read_index(struct index_state *istate)
 	return read_index_from(istate, get_index_file());
 }
 
+static int index_changed(struct stat st_old, struct stat st_new)
+{
+	int changed = 0;
+
+	if (st_old.st_mtime != st_new.st_mtime ||
+	    st_old.st_uid   != st_new.st_uid ||
+	    st_old.st_gid   != st_new.st_gid ||
+	    st_old.st_ino   != st_new.st_ino ||
+	    st_old.st_size  != st_new.st_size)
+		changed = 1;
+#ifdef USE_NSEC
+	if (ST_MTIME_NSEC(st_old) != ST_MTIME_NSEC(st_new))
+		changed = 1;
+#endif
+
+#ifdef USE_STDEV
+	if (st_old.st_dev != st_new.st_dev)
+		changed = 1;
+#endif
+
+	return changed;
+}
+
 /* remember to discard_cache() before reading a different cache! */
 int read_index_from(struct index_state *istate, const char *path)
 {
-	int fd;
-	struct stat st;
+	int fd, err, i = 0;
+	struct stat st_old, st_new;
 	struct cache_version_header *hdr;
 	void *mmap;
 	size_t mmap_size;
@@ -1186,38 +1209,48 @@ int read_index_from(struct index_state *istate, const char *path)
 	errno = ENOENT;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		if (errno == ENOENT)
-			return 0;
-		die_errno("index file open failed");
-	}
+	do {
+		err = 0;
+		fd = open(path, O_RDONLY);
+		if (fd < 0) {
+			if (errno == ENOENT)
+				return 0;
+			die_errno("index file open failed");
+		}
 
-	if (fstat(fd, &st))
-		die_errno("cannot stat the open index");
+		if (fstat(fd, &st_old))
+			die_errno("cannot stat the open index");
 
-	errno = EINVAL;
-	mmap_size = xsize_t(st.st_size);
-	mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-	close(fd);
-	if (mmap == MAP_FAILED)
-		die_errno("unable to map index file");
+		errno = EINVAL;
+		mmap_size = xsize_t(st_old.st_size);
+		mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+		close(fd);
+		if (mmap == MAP_FAILED)
+			die_errno("unable to map index file");
 
-	hdr = mmap;
-	if (verify_hdr_version(istate, hdr, mmap_size) < 0)
-		goto unmap;
+		hdr = mmap;
+		if (verify_hdr_version(istate, hdr, mmap_size) < 0)
+			err = 1;
 
-	if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
-		goto unmap;
+		if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
+			err = 1;
 
-	istate->ops->read_index(istate, mmap, mmap_size);
-	istate->timestamp.sec = st.st_mtime;
-	istate->timestamp.nsec = ST_MTIME_NSEC(st);
+		if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
+			err = 1;
+		istate->timestamp.sec = st_old.st_mtime;
+		istate->timestamp.nsec = ST_MTIME_NSEC(st_old);
+		if (lstat(path, &st_new))
+			die_errno("cannot stat the open index");
 
-	munmap(mmap, mmap_size);
-	return istate->cache_nr;
+		munmap(mmap, mmap_size);
 
-unmap:
+		if (!index_changed(st_old, st_new) && !err)
+			return istate->cache_nr;
+
+		usleep(10*1000);
+		i++;
+	} while ((err || index_changed(st_old, st_new)) && i < 50);
+
 	munmap(mmap, mmap_size);
 	die("index file corrupt");
 }
