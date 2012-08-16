@@ -166,7 +166,7 @@ void show_date_relative(unsigned long time, int tz,
 		struct { const char *s, *p; } msg_years_only;
 		struct { const char *s, *p; } msg_years_months;
 		struct { const char *s, *p; } msg_years;
-	} msg[1] = {
+	} msg[2] = {
 		{
 			{ "%lu second ago", "%lu seconds ago" },
 			{ "%lu minute ago", "%lu minutes ago" },
@@ -182,14 +182,31 @@ void show_date_relative(unsigned long time, int tz,
 				"%s, %lu months ago"
 			},
 			{ "%lu year ago", "%lu years ago" },
-		}
+		},
+		{
+			{ "%lu second in the future", "%lu seconds in the future" },
+			{ "%lu minute in the future", "%lu minutes in the future" },
+			{ "%lu hour in the future", "%lu hours in the future" },
+			{ "%lu day in the future", "%lu days in the future" },
+			{ "%lu week in the future", "%lu weeks in the future" },
+			{ "%lu month in the future", "%lu months in the future" },
+			{ "%lu year", "%lu years" },
+			{
+				/* TRANSLATORS: "%s" is "<n> years" */
+				"%s, %lu month in the future",
+				/* TRANSLATORS: "%s" is "<n> years" */
+				"%s, %lu months in the future"
+			},
+			{ "%lu year in the future", "%lu years in the future" },
+		},
 	};
 
 	if (now->tv_sec < time) {
-		strbuf_addstr(timebuf, _("in the future"));
-		return;
+		diff = time - now->tv_sec;
+		pf = 1; /* in the future */
+	} else {
+		diff = now->tv_sec - time;
 	}
-	diff = now->tv_sec - time;
 
 	switch (format_relative_date(diff, &rd)) {
 	case rd_seconds:
