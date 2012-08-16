@@ -35,12 +35,13 @@ db="$TRASH_DIRECTORY/db"
 cli=$(test-path-utils real_path "$TRASH_DIRECTORY/cli")
 git="$TRASH_DIRECTORY/git"
 pidfile="$TRASH_DIRECTORY/p4d.pid"
+logfile="$TRASH_DIRECTORY/p4d.log"
 
 start_p4d() {
 	mkdir -p "$db" "$cli" "$git" &&
 	rm -f "$pidfile" &&
 	(
-		p4d -q -r "$db" -p $P4DPORT &
+		p4d -q -r "$db" -p $P4DPORT -L "$logfile" &
 		echo $! >"$pidfile"
 	) &&
 
