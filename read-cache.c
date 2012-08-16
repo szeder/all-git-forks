@@ -51,7 +51,7 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 	add_index_entry(istate, new, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 }
 
-static uint32_t calculate_stat_crc(struct cache_entry *ce)
+uint32_t calculate_stat_crc(struct cache_entry *ce)
 {
 	unsigned int ctimens = 0;
 	uint32_t stat, stat_crc;
@@ -172,13 +172,15 @@ int ce_modified_check_fs(struct cache_entry *ce, struct stat *st)
 	return 0;
 }
 
-static void check_set_istate_ops(struct index_state *istate)
+void set_istate_ops(struct index_state *istate)
 {
 	if (!istate->version)
 		istate->version = INDEX_FORMAT_DEFAULT;
-	if (!istate->ops)
-		if (istate->version >= 2 && istate->version <=4)
-			istate->ops = &v2_ops;
+
+	if (istate->version >= 2 && istate->version <=4)
+		istate->ops = &v2_ops;
+	if (istate->version == 5)
+		istate->ops = &v5_ops;
 }
 
 int ce_match_stat_basic(struct index_state *istate,
@@ -215,7 +217,7 @@ int ce_match_stat_basic(struct index_state *istate,
 		die("internal error: ce_mode is %o", ce->ce_mode);
 	}
 
-	check_set_istate_ops(istate);
+	set_istate_ops(istate);
 	changed = istate->ops->match_stat_basic(ce, st, changed);
 	return changed;
 }
@@ -1185,6 +1187,8 @@ static int verify_hdr_version(struct index_state *istate,
 	hdr_version = ntohl(hdr->hdr_version);
 	if (hdr_version >= 2 && hdr_version <= 4)
 		istate->ops = &v2_ops;
+	else if (hdr_version == 5)
+		istate->ops = &v5_ops;
 	else
 		return error("bad index version %d", hdr_version);
 	return 0;
@@ -1339,10 +1343,9 @@ void update_index_if_able(struct index_state *istate, struct lock_file *lockfile
 	else
 		rollback_lock_file(lockfile);
 }
-
 int write_index(struct index_state *istate, int newfd)
 {
-	check_set_istate_ops(istate);
+	set_istate_ops(istate);
 
 	return istate->ops->write_index(istate, newfd);
 }
