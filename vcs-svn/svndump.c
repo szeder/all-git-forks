@@ -292,12 +292,12 @@ static void handle_node(void)
 	}
 	if (!node_ctx.text_delta) {
 		fast_export_modify(node_ctx.dst.buf, node_ctx.type, "inline");
-		fast_export_data(node_ctx.type, node_ctx.text_length, &input);
+		fast_export_data(node_ctx.type, node_ctx.text_length, &input, NULL);
 		return;
 	}
 	fast_export_modify(node_ctx.dst.buf, node_ctx.type, "inline");
 	fast_export_blob_delta(node_ctx.type, old_mode, old_data,
-				node_ctx.text_length, &input);
+				node_ctx.text_length, &input, NULL);
 }
 
 static void begin_revision(const char *remote_ref)
