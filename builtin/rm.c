@@ -9,6 +9,7 @@
 #include "cache-tree.h"
 #include "tree-walk.h"
 #include "parse-options.h"
+#include "submodule.h"
 
 static const char * const builtin_rm_usage[] = {
 	"git rm [options] [--] <file>...",
@@ -17,7 +18,10 @@ static const char * const builtin_rm_usage[] = {
 
 static struct {
 	int nr, alloc;
-	const char **name;
+	struct {
+		const char *name;
+		char is_submodule;
+	} *entry;
 } list;
 
 static int check_local_mod(unsigned char *head, int index_only)
@@ -37,7 +41,7 @@ static int check_local_mod(unsigned char *head, int index_only)
 		struct stat st;
 		int pos;
 		struct cache_entry *ce;
-		const char *name = list.name[i];
+		const char *name = list.entry[i].name;
 		unsigned char sha1[20];
 		unsigned mode;
 		int local_changes = 0;
@@ -54,11 +58,11 @@ static int check_local_mod(unsigned char *head, int index_only)
 			/* It already vanished from the working tree */
 			continue;
 		}
-		else if (S_ISDIR(st.st_mode)) {
+		else if (S_ISDIR(st.st_mode) && !S_ISGITLINK(ce->ce_mode)) {
 			/* if a file was removed and it is now a
 			 * directory, that is the same as ENOENT as
 			 * far as git is concerned; we do not track
-			 * directories.
+			 * directories unless they are submodules.
 			 */
 			continue;
 		}
@@ -146,6 +150,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	const char **pathspec;
 	char *seen;
 
+	gitmodules_config();
 	git_config(git_default_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, builtin_rm_options,
@@ -173,8 +178,9 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		struct cache_entry *ce = active_cache[i];
 		if (!match_pathspec(pathspec, ce->name, ce_namelen(ce), 0, seen))
 			continue;
-		ALLOC_GROW(list.name, list.nr + 1, list.alloc);
-		list.name[list.nr++] = ce->name;
+		ALLOC_GROW(list.entry, list.nr + 1, list.alloc);
+		list.entry[list.nr].name = ce->name;
+		list.entry[list.nr++].is_submodule = S_ISGITLINK(ce->ce_mode);
 	}
 
 	if (pathspec) {
@@ -222,7 +228,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 * the index unless all of them succeed.
 	 */
 	for (i = 0; i < list.nr; i++) {
-		const char *path = list.name[i];
+		const char *path = list.entry[i].name;
 		if (!quiet)
 			printf("rm '%s'\n", path);
 
@@ -242,16 +248,24 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	 * in the middle)
 	 */
 	if (!index_only) {
-		int removed = 0;
+		int removed = 0, gitmodules_modified = 0;
 		for (i = 0; i < list.nr; i++) {
-			const char *path = list.name[i];
-			if (!remove_path(path)) {
-				removed = 1;
-				continue;
+			const char *path = list.entry[i].name;
+			if (!list.entry[i].is_submodule) {
+				if (!remove_path(path)) {
+					removed = 1;
+					continue;
+				}
+				if (!removed)
+					die_errno("git rm: '%s'", path);
+			} else {
+				rmdir_or_warn(path);
+				if (!remove_path_from_gitmodules(path))
+					gitmodules_modified = 1;
 			}
-			if (!removed)
-				die_errno("git rm: '%s'", path);
 		}
+		if (gitmodules_modified)
+			stage_updated_gitmodules();
 	}
 
 	if (active_cache_changed) {
