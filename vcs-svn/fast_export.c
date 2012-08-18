@@ -250,8 +250,11 @@ void fast_export_buf_to_data(const struct strbuf *data)
 	fputc('\n', stdout);
 }
 
-void fast_export_data(uint32_t mode, off_t len, struct line_buffer *input)
+void fast_export_data(uint32_t mode, off_t len, struct line_buffer *input,
+		unsigned char sha1[20])
 {
+	git_SHA_CTX sha1_ctx;
+	struct strbuf sb = STRBUF_INIT;
 	assert(len >= 0);
 	if (mode == REPO_MODE_LNK) {
 		/* svn symlink blobs start with "link " */
@@ -261,10 +264,21 @@ void fast_export_data(uint32_t mode, off_t len, struct line_buffer *input)
 		if (buffer_skip_bytes(input, 5) != 5)
 			die_short_read(input);
 	}
+	if (sha1) {
+		/* don't forget to inlude the header in the sha1 */
+		git_SHA1_Init(&sha1_ctx);
+		strbuf_addf(&sb, "blob %" PRIuMAX, (uintmax_t) len);
+		git_SHA1_Update(&sha1_ctx, sb.buf, sb.len + 1);
+		strbuf_release(&sb);
+	}
+
 	printf("data %"PRIuMAX"\n", (uintmax_t) len);
-	if (buffer_copy_bytes(input, len) != len)
+	if (buffer_copy_bytes(input, len, sha1 ? &sha1_ctx : NULL) != len)
 		die_short_read(input);
 	fputc('\n', stdout);
+
+	if (sha1)
+		git_SHA1_Final(sha1, &sha1_ctx);
 }
 
 static int parse_ls_response(const char *response, uint32_t *mode,
@@ -323,9 +337,11 @@ int fast_export_ls(const char *path, uint32_t *mode, struct strbuf *dataref)
 
 void fast_export_blob_delta(uint32_t mode,
 				uint32_t old_mode, const char *old_data,
-				off_t len, struct line_buffer *input)
+				off_t len, struct line_buffer *input, unsigned char sha1[20])
 {
 	long postimage_len;
+	git_SHA_CTX sha1_ctx;
+	struct strbuf sb = STRBUF_INIT;
 
 	assert(len >= 0);
 	postimage_len = apply_delta(len, input, old_data, old_mode);
@@ -333,7 +349,18 @@ void fast_export_blob_delta(uint32_t mode,
 		buffer_skip_bytes(&postimage, strlen("link "));
 		postimage_len -= strlen("link ");
 	}
+	if (sha1) {
+		/* don't forget to inlude the header in the sha1 */
+		git_SHA1_Init(&sha1_ctx);
+		strbuf_addf(&sb, "blob %" PRIuMAX, (uintmax_t) postimage_len);
+		git_SHA1_Update(&sha1_ctx, sb.buf, sb.len + 1);
+		strbuf_release(&sb);
+	}
+
 	printf("data %ld\n", postimage_len);
-	buffer_copy_bytes(&postimage, postimage_len);
+	buffer_copy_bytes(&postimage, postimage_len, sha1 ? &sha1_ctx : NULL);
 	fputc('\n', stdout);
+
+	if (sha1)
+		git_SHA1_Final(sha1, &sha1_ctx);
 }

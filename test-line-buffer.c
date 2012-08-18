@@ -29,7 +29,7 @@ static void handle_command(const char *command, const char *arg, struct line_buf
 		}
 	case 'c':
 		if (!prefixcmp(command, "copy ")) {
-			buffer_copy_bytes(buf, strtouint32(arg));
+			buffer_copy_bytes(buf, strtouint32(arg), NULL);
 			return;
 		}
 	case 's':
