@@ -72,7 +72,7 @@ static void free_node_ctx(struct node_ctx_t *node)
 	free(node);
 }
 
-static void free_node_list()
+static void free_node_list(void)
 {
 	struct node_ctx_t *p = node_list, *n;
 	while (p) {
@@ -363,7 +363,7 @@ static void apply_node(struct node_ctx_t *node)
 }
 
 
-static void apply_node_list()
+static void apply_node_list(void)
 {
 	struct node_ctx_t *p = node_list, *n;
 	while (p) {
