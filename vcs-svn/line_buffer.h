@@ -1,7 +1,7 @@
 #ifndef LINE_BUFFER_H_
 #define LINE_BUFFER_H_
 
-#include "strbuf.h"
+#include "cache.h"
 
 #define LINE_BUFFER_LEN 10000
 
@@ -24,7 +24,7 @@ char *buffer_read_line(struct line_buffer *buf);
 int buffer_read_char(struct line_buffer *buf);
 size_t buffer_read_binary(struct line_buffer *buf, struct strbuf *sb, size_t len);
 /* Returns number of bytes read (not necessarily written). */
-off_t buffer_copy_bytes(struct line_buffer *buf, off_t len);
+off_t buffer_copy_bytes(struct line_buffer *buf, off_t len, git_SHA_CTX *sha1_ctx);
 off_t buffer_skip_bytes(struct line_buffer *buf, off_t len);
 
 #endif
