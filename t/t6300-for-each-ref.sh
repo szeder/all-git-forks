@@ -242,7 +242,32 @@ test_expect_success 'Verify descending sort' '
 	test_cmp expected actual
 '
 
+test_expect_success 'Create branches to test sort with multiple keys' '
+	git checkout -b Branch1 &&
+	echo foo >> one &&
+	git commit -a -m "Branch1 commit" &&
+	git checkout -b Branch2 &&
+	echo foo >> one &&
+	git commit -a -m "Branch2 commit"
+'
+
+test_atom refs/heads/Branch1 objectname 32fca05e9f638021a123a84226acf17756acc18b
+test_atom refs/heads/Branch2 objectname 194a5b89ac661a114566ba4374bc06c2797539f3
+
 cat >expected <<\EOF
+67a36f10722846e891fbada1ba48ed035de75581 commit	refs/heads/master
+194a5b89ac661a114566ba4374bc06c2797539f3 commit	refs/heads/Branch2
+32fca05e9f638021a123a84226acf17756acc18b commit	refs/heads/Branch1
+EOF
+
+test_expect_failure 'Verify sort with multiple keys' '
+	git for-each-ref --sort=objectname --sort=committerdate refs/heads > actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<\EOF
+'refs/heads/Branch1'
+'refs/heads/Branch2'
 'refs/heads/master'
 'refs/remotes/origin/master'
 'refs/tags/testtag'
@@ -264,6 +289,8 @@ test_expect_success 'Quoting style: python' '
 '
 
 cat >expected <<\EOF
+"refs/heads/Branch1"
+"refs/heads/Branch2"
 "refs/heads/master"
 "refs/remotes/origin/master"
 "refs/tags/testtag"
@@ -285,6 +312,8 @@ for i in "--perl --shell" "-s --python" "--python --tcl" "--tcl --perl"; do
 done
 
 cat >expected <<\EOF
+Branch1
+Branch2
 master
 testtag
 EOF
@@ -296,6 +325,8 @@ test_expect_success 'Check short refname format' '
 '
 
 cat >expected <<EOF
+
+
 origin/master
 EOF
 
@@ -309,7 +340,7 @@ cat >expected <<EOF
 EOF
 
 test_expect_success 'Check short objectname format' '
-	git for-each-ref --format="%(objectname:short)" refs/heads >actual &&
+	git for-each-ref --format="%(objectname:short)" refs/heads/master >actual &&
 	test_cmp expected actual
 '
 
