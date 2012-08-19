@@ -74,7 +74,7 @@ void fast_export_begin_note(uint32_t revision, const char *author,
 	size_t loglen = strlen(log);
 	printf("commit %s\n", note_ref);
 	printf("committer %s <%s@%s> %ld +0000\n", author, author, "local", timestamp);
-	printf("data %"PRIuMAX"\n", loglen);
+	printf("data %"PRIuMAX"\n", (uintmax_t)loglen);
 	fwrite(log, loglen, 1, stdout);
 	if (firstnote) {
 		if (revision > 1)
