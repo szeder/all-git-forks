@@ -10,6 +10,7 @@
 #include "string-list.h"
 #include "sha1-array.h"
 #include "argv-array.h"
+#include "blob.h"
 
 static struct string_list config_name_for_path;
 static struct string_list config_fetch_recurse_submodules_for_name;
@@ -29,6 +30,60 @@ static struct sha1_array ref_tips_after_fetch;
  * ignored.
  */
 static int gitmodules_is_unmerged;
+
+/*
+ * Try to remove the "submodule.<name>" section from .gitmodules where the
+ * given path is configured.
+ */
+int remove_path_from_gitmodules(const char *path)
+{
+	struct strbuf sect = STRBUF_INIT;
+	struct string_list_item *path_option;
+
+	path_option = unsorted_string_list_lookup(&config_name_for_path, path);
+	if (!path_option) {
+		warning("Could not find section in .gitmodules where path=%s", path);
+		return -1;
+	}
+	strbuf_addstr(&sect, "submodule.");
+	strbuf_addstr(&sect, path_option->util);
+	if (git_config_rename_section_in_file(".gitmodules", sect.buf, NULL) < 0) {
+		/* Maybe the user already did that, don't error out here */
+		warning("Could not remove .gitmodules entry for %s", path);
+		return -1;
+	}
+	strbuf_release(&sect);
+	return 0;
+}
+
+void stage_updated_gitmodules(void)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct stat st;
+	int pos;
+	struct cache_entry *ce;
+	int namelen = strlen(".gitmodules");
+
+	pos = cache_name_pos(".gitmodules", strlen(".gitmodules"));
+	if (pos < 0) {
+		warning(_("could not find .gitmodules in index"));
+		return;
+	}
+	ce = active_cache[pos];
+	ce->ce_flags = namelen;
+	if (strbuf_read_file(&buf, ".gitmodules", 0))
+		die(_("reading updated .gitmodules failed"));
+	if (lstat(".gitmodules", &st) < 0)
+		die_errno(_("unable to stat updated .gitmodules"));
+	fill_stat_cache_info(ce, &st);
+	ce->ce_mode = ce_mode_from_stat(ce, st.st_mode);
+	if (remove_file_from_cache(".gitmodules") < 0)
+		die(_("unable to remove .gitmodules from index"));
+	if (write_sha1_file(buf.buf, buf.len, blob_type, ce->sha1))
+		die(_("adding updated .gitmodules failed"));
+	if (add_cache_entry(ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE))
+		die(_("staging updated .gitmodules failed"));
+}
 
 static int add_submodule_odb(const char *path)
 {
