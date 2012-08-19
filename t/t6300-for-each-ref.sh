@@ -260,7 +260,7 @@ cat >expected <<\EOF
 32fca05e9f638021a123a84226acf17756acc18b commit	refs/heads/Branch1
 EOF
 
-test_expect_failure 'Verify sort with multiple keys' '
+test_expect_success 'Verify sort with multiple keys' '
 	git for-each-ref --sort=objectname --sort=committerdate refs/heads > actual &&
 	test_cmp expected actual
 '
