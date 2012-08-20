@@ -3,9 +3,8 @@
  * See LICENSE for details.
  */
 
-#include "git-compat-util.h"
+#include "cache.h"
 #include "line_buffer.h"
-#include "strbuf.h"
 
 #define COPY_BUFFER_LEN 4096
 
@@ -97,7 +96,7 @@ size_t buffer_read_binary(struct line_buffer *buf,
 	return strbuf_fread(sb, size, buf->infile);
 }
 
-off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes)
+off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes, git_SHA_CTX *sha1_ctx)
 {
 	char byte_buffer[COPY_BUFFER_LEN];
 	off_t done = 0;
@@ -107,6 +106,8 @@ off_t buffer_copy_bytes(struct line_buffer *buf, off_t nbytes)
 		in = fread(byte_buffer, 1, in, buf->infile);
 		done += in;
 		fwrite(byte_buffer, 1, in, stdout);
+		if (sha1_ctx)
+			git_SHA1_Update(sha1_ctx, byte_buffer, in);
 		if (ferror(stdout))
 			return done + buffer_skip_bytes(buf, nbytes - done);
 	}
