@@ -117,7 +117,7 @@ sub setup_dir_diff
 	# by Git->repository->command*.
 	my $diffrepo = Git->repository(Repository => $repo_path, WorkingCopy => $workdir);
 	my $diffrtn = $diffrepo->command_oneline('diff', '--raw', '--no-abbrev', '-z', @ARGV);
-	exit(0) if (length($diffrtn) == 0);
+	exit(0) unless defined($diffrtn);
 
 	# Setup temp directories
 	my $tmpdir = tempdir('git-diffall.XXXXX', CLEANUP => 1, TMPDIR => 1);
