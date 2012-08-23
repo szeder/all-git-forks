@@ -243,7 +243,7 @@ static void handle_node(struct node_ctx_t *node)
 	const char *old_data = NULL;
 	uint32_t old_mode = REPO_MODE_BLB;
 	struct strbuf sb = STRBUF_INIT;
-	static uintmax_t blobmark = 1UL << (bitsizeof(uintmax_t) - 1);
+	static uintmax_t blobmark = (uintmax_t) 1UL << (bitsizeof(uintmax_t) - 1);
 
 
 	if (have_text && type == REPO_MODE_DIR)
@@ -342,7 +342,7 @@ static void handle_node(struct node_ctx_t *node)
 						node->text_length, &input);
 			}
 
-			strbuf_addf(&sb, ":%lu", blobmark);
+			strbuf_addf(&sb, ":%"PRIuMAX, blobmark);
 			node->dataref = sb.buf;
 		}
 	}
