@@ -1511,6 +1511,16 @@ ifdef ZLIB_PATH
 endif
 EXTLIBS += -lz
 
+ifdef NO_SNAPPY
+	BASIC_CFLAGS += -DNO_SNAPPY
+else
+	ifdef SNAPPY_PATH
+		BASIC_CFLAGS += -I$(SNAPPY_PATH)/include
+		EXTLIBS += -L$(SNAPPY_PATH)/$(lib) $(CC_LD_DYNPATH)$(SNAPPY_PATH)/$(lib)
+	endif
+	EXTLIBS += -lsnappy
+endif
+
 ifndef NO_OPENSSL
 	OPENSSL_LIBSSL = -lssl
 	ifdef OPENSSLDIR

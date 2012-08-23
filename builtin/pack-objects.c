@@ -125,11 +125,31 @@ static void *get_delta(struct object_entry *entry)
 	return delta_buf;
 }
 
+
+static int use_snappy = 1;
+
 static unsigned long do_compress(void **pptr, unsigned long size)
 {
-	git_zstream stream;
 	void *in, *out;
 	unsigned long maxsize;
+	git_zstream stream;
+
+#ifndef NO_SNAPPY
+	if (use_snappy) {
+		maxsize = snappy_max_compressed_length(size);
+		out = xmalloc(maxsize + 1);
+		in = *pptr;
+		*pptr = out;
+
+		/* Setting the 3 least significant bits of the first byte
+		   is sufficient to distinguish from a valid deflate stream. */
+		*((char*)out) = 0x07;
+		snappy_compress(in, size, out + 1, &maxsize);
+
+		free(in);
+		return maxsize + 1;
+	}
+#endif
 
 	memset(&stream, 0, sizeof(stream));
 	git_deflate_init(&stream, pack_compression_level);

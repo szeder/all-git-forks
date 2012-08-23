@@ -16,6 +16,10 @@
 #define git_SHA1_Final	SHA1_Final
 #endif
 
+#ifndef NO_SNAPPY
+#include "snappy-c.h"
+#endif
+
 #include <zlib.h>
 typedef struct git_zstream {
 	z_stream z;
