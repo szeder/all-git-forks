@@ -162,6 +162,11 @@
 #define probe_utf8_pathname_composition(a,b)
 #endif
 
+#ifdef NO_SETITIMER
+#define setitimer(a,b,c) git_setitimer((a),(b),(c))
+extern int git_setitimer(int, const struct itimerval *, struct itimerval *);
+#endif
+
 #ifndef NO_LIBGEN_H
 #include <libgen.h>
 #else
