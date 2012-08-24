@@ -167,6 +167,11 @@
 extern int git_setitimer(int, const struct itimerval *, struct itimerval *);
 #endif
 
+#ifdef MKDIR_WO_TRAILING_SLASH
+#define mkdir(a,b) compat_mkdir_wo_trailing_slash((a),(b))
+extern int compat_mkdir_wo_trailing_slash(const char*, mode_t);
+#endif
+
 #ifndef NO_LIBGEN_H
 #include <libgen.h>
 #else
