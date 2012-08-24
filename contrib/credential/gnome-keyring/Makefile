@@ -1,4 +1,4 @@
-MAIN:=git-credential-osxkeychain
+MAIN:=git-credential-gnome-keyring
 all:: $(MAIN)
 
 CC = gcc
@@ -8,8 +8,9 @@ CFLAGS = -g -O2 -Wall
 -include ../../../config.mak.autogen
 -include ../../../config.mak
 
-INCS:=
-LIBS:=-Wl,-framework -Wl,Security
+INCS:=$(shell pkg-config --cflags gnome-keyring-1)
+LIBS:=$(shell pkg-config --libs gnome-keyring-1)
+
 HELPER:=../helper
 VPATH +=$(HELPER)
 
