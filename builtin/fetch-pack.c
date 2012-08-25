@@ -527,17 +527,10 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 	struct ref *newlist = NULL;
 	struct ref **newtail = &newlist;
 	struct ref *ref, *next;
-	struct ref *fastarray[32];
 	int head_pos;
 
-	if (*nr_heads && !args.fetch_all) {
-		if (ARRAY_SIZE(fastarray) < *nr_heads)
-			return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
-		else {
-			return_refs = fastarray;
-			memset(return_refs, 0, sizeof(struct ref *) * *nr_heads);
-		}
-	}
+	if (*nr_heads && !args.fetch_all)
+		return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
 	else
 		return_refs = NULL;
 
@@ -584,8 +577,7 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 				newtail = &ref->next;
 			}
 		}
-		if (return_refs != fastarray)
-			free(return_refs);
+		free(return_refs);
 	}
 	*refs = newlist;
 }
