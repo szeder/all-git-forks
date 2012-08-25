@@ -595,7 +595,7 @@ static void mark_alternate_complete(const struct ref *ref, void *unused)
 	mark_complete(NULL, ref->old_sha1, 0, NULL);
 }
 
-static int everything_local(struct ref **refs, int nr_heads, char **heads)
+static int everything_local(struct ref **refs, int *nr_heads, char **heads)
 {
 	struct ref *ref;
 	int retval;
@@ -646,7 +646,7 @@ static int everything_local(struct ref **refs, int nr_heads, char **heads)
 		}
 	}
 
-	filter_refs(refs, nr_heads, heads);
+	filter_refs(refs, *nr_heads, heads);
 
 	for (retval = 1, ref = *refs; ref ; ref = ref->next) {
 		const unsigned char *remote = ref->old_sha1;
@@ -818,7 +818,7 @@ static struct ref *do_fetch_pack(int fd[2],
 			fprintf(stderr, "Server supports ofs-delta\n");
 	} else
 		prefer_ofs_delta = 0;
-	if (everything_local(&ref, *nr_heads, heads)) {
+	if (everything_local(&ref, nr_heads, heads)) {
 		packet_flush(fd[1]);
 		goto all_done;
 	}
