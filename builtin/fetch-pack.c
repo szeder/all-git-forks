@@ -523,66 +523,48 @@ static void mark_recent_complete_commits(unsigned long cutoff)
 
 static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 {
-	struct ref **return_refs;
 	struct ref *newlist = NULL;
 	struct ref **newtail = &newlist;
 	struct ref *ref, *next;
-	int head_pos = 0, matched = 0, unmatched = 0;
-
-	if (*nr_heads && !args.fetch_all)
-		return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
-	else
-		return_refs = NULL;
+	int head_pos = 0, unmatched = 0;
 
 	for (ref = *refs; ref; ref = next) {
+		int keep_ref = 0;
 		next = ref->next;
 		if (!memcmp(ref->name, "refs/", 5) &&
 		    check_refname_format(ref->name + 5, 0))
 			; /* trash */
 		else if (args.fetch_all &&
-			 (!args.depth || prefixcmp(ref->name, "refs/tags/") )) {
-			*newtail = ref;
-			ref->next = NULL;
-			newtail = &ref->next;
-			continue;
-		}
-		else {
-			int cmp = -1;
+			   (!args.depth || prefixcmp(ref->name, "refs/tags/")))
+			keep_ref = 1;
+		else
 			while (head_pos < *nr_heads) {
-				cmp = strcmp(ref->name, heads[head_pos]);
-				if (cmp < 0) /* definitely do not have it */
+				int cmp = strcmp(ref->name, heads[head_pos]);
+				if (cmp < 0) { /* definitely do not have it */
 					break;
-				else if (cmp == 0) { /* definitely have it */
-					return_refs[matched++] = ref;
+				} else if (cmp == 0) { /* definitely have it */
 					free(heads[head_pos++]);
+					keep_ref = 1;
 					break;
-				}
-				else { /* might have it; keep looking */
+				} else { /* might have it; keep looking */
 					heads[unmatched++] = heads[head_pos++];
 				}
 			}
-			if (!cmp)
-				continue; /* we will link it later */
-		}
-		free(ref);
-	}
 
-	if (!args.fetch_all) {
-		int i;
-
-		/* copy remaining unmatched heads: */
-		while (head_pos < *nr_heads)
-			heads[unmatched++] = heads[head_pos++];
-		*nr_heads = unmatched;
-
-		for (i = 0; i < matched; i++) {
-			ref = return_refs[i];
+		if (keep_ref) {
 			*newtail = ref;
 			ref->next = NULL;
 			newtail = &ref->next;
+		} else {
+			free(ref);
 		}
-		free(return_refs);
 	}
+
+	/* copy any remaining unmatched heads: */
+	while (head_pos < *nr_heads)
+		heads[unmatched++] = heads[head_pos++];
+	*nr_heads = unmatched;
+
 	*refs = newlist;
 }
 
