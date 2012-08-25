@@ -777,7 +777,7 @@ static int get_pack(int xd[2], char **pack_lockfile)
 
 static struct ref *do_fetch_pack(int fd[2],
 		const struct ref *orig_ref,
-		int nr_heads, char **heads,
+		int *nr_heads, char **heads,
 		char **pack_lockfile)
 {
 	struct ref *ref = copy_ref_list(orig_ref);
@@ -818,7 +818,7 @@ static struct ref *do_fetch_pack(int fd[2],
 			fprintf(stderr, "Server supports ofs-delta\n");
 	} else
 		prefer_ofs_delta = 0;
-	if (everything_local(&ref, nr_heads, heads)) {
+	if (everything_local(&ref, *nr_heads, heads)) {
 		packet_flush(fd[1]);
 		goto all_done;
 	}
@@ -1086,7 +1086,7 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 		packet_flush(fd[1]);
 		die("no matching remote head");
 	}
-	ref_cpy = do_fetch_pack(fd, ref, *nr_heads, heads, pack_lockfile);
+	ref_cpy = do_fetch_pack(fd, ref, nr_heads, heads, pack_lockfile);
 
 	if (args.depth > 0) {
 		struct cache_time mtime;
