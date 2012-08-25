@@ -527,7 +527,7 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 	struct ref *newlist = NULL;
 	struct ref **newtail = &newlist;
 	struct ref *ref, *next;
-	int head_pos = 0, matched = 0;
+	int head_pos = 0, matched = 0, unmatched = 0;
 
 	if (*nr_heads && !args.fetch_all)
 		return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
@@ -554,11 +554,12 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 					break;
 				else if (cmp == 0) { /* definitely have it */
 					return_refs[matched++] = ref;
-					heads[head_pos++][0] = '\0';
+					head_pos++;
 					break;
 				}
-				else /* might have it; keep looking */
-					head_pos++;
+				else { /* might have it; keep looking */
+					heads[unmatched++] = heads[head_pos++];
+				}
 			}
 			if (!cmp)
 				continue; /* we will link it later */
@@ -568,6 +569,12 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 
 	if (!args.fetch_all) {
 		int i;
+
+		/* copy remaining unmatched heads: */
+		while (head_pos < *nr_heads)
+			heads[unmatched++] = heads[head_pos++];
+		*nr_heads = unmatched;
+
 		for (i = 0; i < matched; i++) {
 			ref = return_refs[i];
 			*newtail = ref;
@@ -1028,10 +1035,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		 * silently succeed without issuing an error.
 		 */
 		for (i = 0; i < nr_heads; i++)
-			if (heads[i] && heads[i][0]) {
-				error("no such remote ref %s", heads[i]);
-				ret = 1;
-			}
+			error("no such remote ref %s", heads[i]);
+		ret = 1;
 	}
 	while (ref) {
 		printf("%s %s\n",
