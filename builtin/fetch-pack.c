@@ -527,14 +527,13 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 	struct ref *newlist = NULL;
 	struct ref **newtail = &newlist;
 	struct ref *ref, *next;
-	int head_pos;
+	int head_pos = 0, matched = 0;
 
 	if (*nr_heads && !args.fetch_all)
 		return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
 	else
 		return_refs = NULL;
 
-	head_pos = 0;
 	for (ref = *refs; ref; ref = next) {
 		next = ref->next;
 		if (!memcmp(ref->name, "refs/", 5) &&
@@ -554,7 +553,7 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 				if (cmp < 0) /* definitely do not have it */
 					break;
 				else if (cmp == 0) { /* definitely have it */
-					return_refs[head_pos] = ref;
+					return_refs[matched++] = ref;
 					heads[head_pos++][0] = '\0';
 					break;
 				}
@@ -569,13 +568,11 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 
 	if (!args.fetch_all) {
 		int i;
-		for (i = 0; i < *nr_heads; i++) {
+		for (i = 0; i < matched; i++) {
 			ref = return_refs[i];
-			if (ref) {
-				*newtail = ref;
-				ref->next = NULL;
-				newtail = &ref->next;
-			}
+			*newtail = ref;
+			ref->next = NULL;
+			newtail = &ref->next;
 		}
 		free(return_refs);
 	}
