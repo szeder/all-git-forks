@@ -521,7 +521,7 @@ static void mark_recent_complete_commits(unsigned long cutoff)
 	}
 }
 
-static void filter_refs(struct ref **refs, int nr_heads, char **heads)
+static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 {
 	struct ref **return_refs;
 	struct ref *newlist = NULL;
@@ -530,12 +530,12 @@ static void filter_refs(struct ref **refs, int nr_heads, char **heads)
 	struct ref *fastarray[32];
 	int head_pos;
 
-	if (nr_heads && !args.fetch_all) {
-		if (ARRAY_SIZE(fastarray) < nr_heads)
-			return_refs = xcalloc(nr_heads, sizeof(struct ref *));
+	if (*nr_heads && !args.fetch_all) {
+		if (ARRAY_SIZE(fastarray) < *nr_heads)
+			return_refs = xcalloc(*nr_heads, sizeof(struct ref *));
 		else {
 			return_refs = fastarray;
-			memset(return_refs, 0, sizeof(struct ref *) * nr_heads);
+			memset(return_refs, 0, sizeof(struct ref *) * *nr_heads);
 		}
 	}
 	else
@@ -556,7 +556,7 @@ static void filter_refs(struct ref **refs, int nr_heads, char **heads)
 		}
 		else {
 			int cmp = -1;
-			while (head_pos < nr_heads) {
+			while (head_pos < *nr_heads) {
 				cmp = strcmp(ref->name, heads[head_pos]);
 				if (cmp < 0) /* definitely do not have it */
 					break;
@@ -576,7 +576,7 @@ static void filter_refs(struct ref **refs, int nr_heads, char **heads)
 
 	if (!args.fetch_all) {
 		int i;
-		for (i = 0; i < nr_heads; i++) {
+		for (i = 0; i < *nr_heads; i++) {
 			ref = return_refs[i];
 			if (ref) {
 				*newtail = ref;
@@ -646,7 +646,7 @@ static int everything_local(struct ref **refs, int *nr_heads, char **heads)
 		}
 	}
 
-	filter_refs(refs, *nr_heads, heads);
+	filter_refs(refs, nr_heads, heads);
 
 	for (retval = 1, ref = *refs; ref ; ref = ref->next) {
 		const unsigned char *remote = ref->old_sha1;
