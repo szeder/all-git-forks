@@ -519,8 +519,6 @@ static int fetch_refs_via_pack(struct transport *transport,
 {
 	struct git_transport_data *data = transport->data;
 	char **heads = xmalloc(nr_heads * sizeof(*heads));
-	char **origh = xmalloc(nr_heads * sizeof(*origh));
-	int orig_nr_heads = nr_heads;
 	const struct ref *refs;
 	char *dest = xstrdup(transport->url);
 	struct fetch_pack_args args;
@@ -539,7 +537,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 	args.depth = data->options.depth;
 
 	for (i = 0; i < nr_heads; i++)
-		origh[i] = heads[i] = xstrdup(to_fetch[i]->name);
+		heads[i] = xstrdup(to_fetch[i]->name);
 
 	if (!data->got_remote_heads) {
 		connect_setup(transport, 0, 0);
@@ -559,9 +557,8 @@ static int fetch_refs_via_pack(struct transport *transport,
 
 	free_refs(refs_tmp);
 
-	for (i = 0; i < orig_nr_heads; i++)
-		free(origh[i]);
-	free(origh);
+	for (i = 0; i < nr_heads; i++)
+		free(heads[i]);
 	free(heads);
 	free(dest);
 	return (refs ? 0 : -1);

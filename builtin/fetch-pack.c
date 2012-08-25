@@ -554,7 +554,7 @@ static void filter_refs(struct ref **refs, int *nr_heads, char **heads)
 					break;
 				else if (cmp == 0) { /* definitely have it */
 					return_refs[matched++] = ref;
-					head_pos++;
+					free(heads[head_pos++]);
 					break;
 				}
 				else { /* might have it; keep looking */
@@ -844,6 +844,8 @@ static int remove_duplicates(int nr_heads, char **heads)
 	for (src = dst = 1; src < nr_heads; src++)
 		if (strcmp(heads[src], heads[dst-1]))
 			heads[dst++] = heads[src];
+		else
+			free(heads[src]);
 	return dst;
 }
 

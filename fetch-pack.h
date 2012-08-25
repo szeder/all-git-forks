@@ -19,9 +19,10 @@ struct fetch_pack_args {
 
 /*
  * (*nr_heads, heads) is an array of pointers to the full names of
- * remote references that should be updated from.  On return, both
- * will have been changed to list only the names that were not found
- * on the remote.
+ * remote references that should be updated from.  The names must have
+ * been allocated from the heap.  The names that are found in the
+ * remote will be removed from the list and freed; the others will be
+ * left in the front of the array with *nr_heads adjusted accordingly.
  */
 struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
