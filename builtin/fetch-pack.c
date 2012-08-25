@@ -1021,7 +1021,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	get_remote_heads(fd[0], &ref, 0, NULL);
 
 	ref = fetch_pack(&args, fd, conn, ref, dest,
-		nr_heads, heads, pack_lockfile_ptr);
+		&nr_heads, heads, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
 		fflush(stdout);
@@ -1062,7 +1062,7 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
 		       const char *dest,
-		       int nr_heads,
+		       int *nr_heads,
 		       char **heads,
 		       char **pack_lockfile)
 {
@@ -1077,16 +1077,16 @@ struct ref *fetch_pack(struct fetch_pack_args *my_args,
 			st.st_mtime = 0;
 	}
 
-	if (heads && nr_heads) {
-		qsort(heads, nr_heads, sizeof(*heads), compare_heads);
-		nr_heads = remove_duplicates(nr_heads, heads);
+	if (heads && *nr_heads) {
+		qsort(heads, *nr_heads, sizeof(*heads), compare_heads);
+		*nr_heads = remove_duplicates(*nr_heads, heads);
 	}
 
 	if (!ref) {
 		packet_flush(fd[1]);
 		die("no matching remote head");
 	}
-	ref_cpy = do_fetch_pack(fd, ref, nr_heads, heads, pack_lockfile);
+	ref_cpy = do_fetch_pack(fd, ref, *nr_heads, heads, pack_lockfile);
 
 	if (args.depth > 0) {
 		struct cache_time mtime;

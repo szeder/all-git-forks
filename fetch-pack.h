@@ -21,7 +21,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
 		       const char *dest,
-		       int nr_heads,
+		       int *nr_heads,
 		       char **heads,
 		       char **pack_lockfile);
 
