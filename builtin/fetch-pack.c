@@ -561,8 +561,8 @@ static void filter_refs(struct ref **refs, int nr_heads, char **heads)
 				if (cmp < 0) /* definitely do not have it */
 					break;
 				else if (cmp == 0) { /* definitely have it */
-					heads[head_pos][0] = '\0';
 					return_refs[head_pos] = ref;
+					heads[head_pos++][0] = '\0';
 					break;
 				}
 				else /* might have it; keep looking */
