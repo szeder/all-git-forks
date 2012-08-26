@@ -25,10 +25,11 @@ struct credential
 	char          *path;
 	char          *username;
 	char          *password;
+	char          *uri;     /* <protocol>://[username@][host[:port]][/path] */
 };
 
 #define CREDENTIAL_INIT \
-  { NULL,NULL,0,NULL,NULL,NULL }
+  { NULL,NULL,0,NULL,NULL,NULL,NULL }
 
 void credential_init(struct credential *c);
 void credential_clear(struct credential *c);
@@ -102,6 +103,17 @@ static inline void die_errno(int err)
 {
 	error("%s", strerror(err));
 	exit(EXIT_FAILURE);
+}
+
+static inline void *xmalloc(size_t size)
+{
+  void *ret = malloc(size);
+	if (!ret && !size)
+		ret = malloc(1);
+	if (!ret)
+		 die_errno(errno);
+
+	return ret;
 }
 
 static inline char *xstrdup(const char *str)
