@@ -689,7 +689,7 @@ struct commit_list *get_merge_bases_many(struct commit *one,
 					 int cleanup)
 {
 	struct commit_list *list;
-	struct commit **rslt;
+	struct commit **rslt, **others;
 	struct commit_list *result;
 	int cnt, i, j;
 
@@ -718,33 +718,37 @@ struct commit_list *get_merge_bases_many(struct commit *one,
 	for (list = result, i = 0; list; list = list->next)
 		rslt[i++] = list->item;
 	free_commit_list(result);
+	result = NULL;
 
 	clear_commit_marks(one, all_flags);
 	for (i = 0; i < n; i++)
 		clear_commit_marks(twos[i], all_flags);
-	for (i = 0; i < cnt - 1; i++) {
-		for (j = i+1; j < cnt; j++) {
-			if (!rslt[i] || !rslt[j])
-				continue;
-			result = merge_bases_many(rslt[i], 1, &rslt[j]);
-			clear_commit_marks(rslt[i], all_flags);
-			clear_commit_marks(rslt[j], all_flags);
-			for (list = result; list; list = list->next) {
-				if (rslt[i] == list->item)
-					rslt[i] = NULL;
-				if (rslt[j] == list->item)
-					rslt[j] = NULL;
-			}
-		}
-	}
 
-	/* Surviving ones in rslt[] are the independent results */
-	result = NULL;
+	others = xcalloc(cnt - 1, sizeof(*others));
 	for (i = 0; i < cnt; i++) {
-		if (rslt[i])
+		/*
+		 * Is rslt[i] an ancestor of any of the others?
+		 * then it is not interesting to us.
+		 */
+		for (j = 0; j < i; j++)
+			others[j] = rslt[j];
+		for (j = i + 1; j < cnt; j++)
+			others[j - 1] = rslt[j];
+		list = merge_bases_many(rslt[i], cnt - 1, others);
+		clear_commit_marks(rslt[i], all_flags);
+		for (j = 0; j < cnt - 1; j++)
+			clear_commit_marks(others[j], all_flags);
+		while (list) {
+			if (rslt[i] == list->item)
+				break;
+			list = list->next;
+		}
+		if (!list)
 			commit_list_insert_by_date(rslt[i], &result);
+		free_commit_list(list);
 	}
 	free(rslt);
+	free(others);
 	return result;
 }
 
