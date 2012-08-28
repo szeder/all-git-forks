@@ -38,23 +38,10 @@
 
 static struct line_buffer input = LINE_BUFFER_INIT;
 
-static struct {
-	uint32_t action, srcRev, type;
-	off_t prop_length, text_length;
-	struct strbuf src, dst;
-	uint32_t text_delta, prop_delta;
-} node_ctx;
+static struct node_ctx_t node_ctx;
+static struct rev_ctx_t rev_ctx;
+static struct dump_ctx_t dump_ctx;
 
-static struct {
-	uint32_t revision;
-	unsigned long timestamp;
-	struct strbuf log, author, note;
-} rev_ctx;
-
-static struct {
-	uint32_t version;
-	struct strbuf uuid, url;
-} dump_ctx;
 
 static void reset_node_ctx(char *fname)
 {
