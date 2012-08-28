@@ -121,9 +121,8 @@ static void regenerate_marks(void)
 
 static void check_or_regenerate_marks(int latestrev) {
 	FILE *marksfile;
-	char *line = NULL;
-	size_t linelen = 0;
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf line = STRBUF_INIT;
 	int found = 0;
 
 	if (latestrev < 1)
@@ -139,8 +138,8 @@ static void check_or_regenerate_marks(int latestrev) {
 		fclose(marksfile);
 	} else {
 		strbuf_addf(&sb, ":%d ", latestrev);
-		while (getline(&line, &linelen, marksfile) != -1) {
-			if (!prefixcmp(line, sb.buf)) {
+		while (strbuf_getline(&line, marksfile, '\n') != EOF) {
+			if (!prefixcmp(line.buf, sb.buf)) {
 				found++;
 				break;
 			}
@@ -151,6 +150,7 @@ static void check_or_regenerate_marks(int latestrev) {
 	}
 	free_notes(NULL);
 	strbuf_release(&sb);
+	strbuf_release(&line);
 }
 
 static int cmd_import(const char *line)

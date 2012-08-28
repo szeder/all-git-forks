@@ -4,6 +4,12 @@ test_description='tests remote-svn'
 
 . ./test-lib.sh
 
+if ! test_have_prereq PYTHON
+then
+	skip_all='skipping remote-svn tests, python not available'
+	test_done
+fi
+
 # We override svnrdump by placing a symlink to the svnrdump-emulator in .
 export PATH="$HOME:$PATH"
 ln -sf $GIT_BUILD_DIR/contrib/svn-fe/svnrdump_sim.py "$HOME/svnrdump"
@@ -13,8 +19,8 @@ init_git () {
 	git init &&
 	#git remote add svnsim testsvn::sim:///$TEST_DIRECTORY/t9020/example.svnrdump
 	# let's reuse an exisiting dump file!?
-	git remote add svnsim testsvn::sim:///$TEST_DIRECTORY/t9154/svn.dump
-	git remote add svnfile testsvn::file:///$TEST_DIRECTORY/t9154/svn.dump
+	git remote add svnsim testsvn::sim://$TEST_DIRECTORY/t9154/svn.dump
+	git remote add svnfile testsvn::file://$TEST_DIRECTORY/t9154/svn.dump
 }
 
 if test -e "$GIT_BUILD_DIR/git-remote-testsvn"
