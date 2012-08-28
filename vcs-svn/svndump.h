@@ -13,6 +13,8 @@ struct node_ctx_t {
 	off_t prop_length, text_length;
 	struct strbuf src, dst;
 	uint32_t text_delta, prop_delta;
+	const char *dataref;
+	struct node_ctx_t *next;
 };
 
 struct rev_ctx_t {
