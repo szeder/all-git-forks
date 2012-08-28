@@ -198,4 +198,9 @@ test_expect_success 'checkout -B to the current branch works' '
 	test_dirty_mergeable
 '
 
+test_expect_success 'checkout -b checks branch validitity early' '
+	test_must_fail git checkout -b -t origin/master 2>err &&
+	grep "not a valid branch name" err
+'
+
 test_done
