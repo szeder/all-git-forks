@@ -1045,6 +1045,16 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	if (opts.track == BRANCH_TRACK_UNSPECIFIED)
 		opts.track = git_branch_track;
 
+	if (opts.new_branch) {
+		struct strbuf buf = STRBUF_INIT;
+
+		opts.branch_exists = validate_new_branchname(opts.new_branch, &buf,
+							     !!opts.new_branch_force,
+							     !!opts.new_branch_force);
+
+		strbuf_release(&buf);
+	}
+
 	if (argc) {
 		const char **pathspec = get_pathspec(prefix, argv);
 
@@ -1074,16 +1084,6 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 
 	if (patch_mode)
 		return interactive_checkout(new.name, NULL, &opts);
-
-	if (opts.new_branch) {
-		struct strbuf buf = STRBUF_INIT;
-
-		opts.branch_exists = validate_new_branchname(opts.new_branch, &buf,
-							     !!opts.new_branch_force,
-							     !!opts.new_branch_force);
-
-		strbuf_release(&buf);
-	}
 
 	if (new.name && !new.commit) {
 		die(_("Cannot switch branch to a non-commit."));
