@@ -715,7 +715,7 @@ struct commit_list *get_merge_bases_many(struct commit *one,
 					 int cleanup)
 {
 	struct commit_list *list;
-	struct commit **rslt;
+	struct commit **rslt, **others;
 	struct commit_list *result;
 	int cnt, i, j;
 
@@ -744,33 +744,37 @@ struct commit_list *get_merge_bases_many(struct commit *one,
 	for (list = result, i = 0; list; list = list->next)
 		rslt[i++] = list->item;
 	free_commit_list(result);
+	result = NULL;
 
 	clear_commit_marks(one, all_flags);
 	for (i = 0; i < n; i++)
 		clear_commit_marks(twos[i], all_flags);
-	for (i = 0; i < cnt - 1; i++) {
-		for (j = i+1; j < cnt; j++) {
-			if (!rslt[i] || !rslt[j])
-				continue;
-			result = merge_bases_many(rslt[i], 1, &rslt[j]);
-			clear_commit_marks(rslt[i], all_flags);
-			clear_commit_marks(rslt[j], all_flags);
-			for (list = result; list; list = list->next) {
-				if (rslt[i] == list->item)
-					rslt[i] = NULL;
-				if (rslt[j] == list->item)
-					rslt[j] = NULL;
-			}
-		}
-	}
 
-	/* Surviving ones in rslt[] are the independent results */
-	result = NULL;
+	others = xcalloc(cnt - 1, sizeof(*others));
 	for (i = 0; i < cnt; i++) {
-		if (rslt[i])
+		/*
+		 * Is rslt[i] an ancestor of any of the others?
+		 * then it is not interesting to us.
+		 */
+		for (j = 0; j < i; j++)
+			others[j] = rslt[j];
+		for (j = i + 1; j < cnt; j++)
+			others[j - 1] = rslt[j];
+		list = merge_bases_many(rslt[i], cnt - 1, others);
+		clear_commit_marks(rslt[i], all_flags);
+		for (j = 0; j < cnt - 1; j++)
+			clear_commit_marks(others[j], all_flags);
+		while (list) {
+			if (rslt[i] == list->item)
+				break;
+			list = list->next;
+		}
+		if (!list)
 			commit_list_insert_by_date(rslt[i], &result);
+		free_commit_list(list);
 	}
 	free(rslt);
+	free(others);
 	return result;
 }
 
@@ -780,6 +784,9 @@ struct commit_list *get_merge_bases(struct commit *one, struct commit *two,
 	return get_merge_bases_many(one, 1, &two, cleanup);
 }
 
+/*
+ * Is "commit" a decendant of one of the elements on the "with_commit" list?
+ */
 int is_descendant_of(struct commit *commit, struct commit_list *with_commit)
 {
 	if (!with_commit)
@@ -789,21 +796,24 @@ int is_descendant_of(struct commit *commit, struct commit_list *with_commit)
 
 		other = with_commit->item;
 		with_commit = with_commit->next;
-		if (in_merge_bases(other, &commit, 1))
+		if (in_merge_bases(other, commit))
 			return 1;
 	}
 	return 0;
 }
 
-int in_merge_bases(struct commit *commit, struct commit **reference, int num)
+/*
+ * Is "commit" an ancestor of (i.e. reachable from) the "reference"?
+ */
+int in_merge_bases(struct commit *commit, struct commit *reference)
 {
 	struct commit_list *bases, *b;
 	int ret = 0;
 
-	if (num == 1)
-		bases = get_merge_bases(commit, *reference, 1);
-	else
-		die("not yet");
+	bases = merge_bases_many(commit, 1, &reference);
+	clear_commit_marks(commit, all_flags);
+	clear_commit_marks(reference, all_flags);
+
 	for (b = bases; b; b = b->next) {
 		if (!hashcmp(commit->object.sha1, b->item->object.sha1)) {
 			ret = 1;
