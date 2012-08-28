@@ -6,6 +6,7 @@
 #include "cache.h"
 #include "quote.h"
 #include "cache-tree.h"
+#include "read-cache.h"
 #include "tree-walk.h"
 #include "builtin.h"
 #include "refs.h"
@@ -861,6 +862,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		if (the_index.version != preferred_index_format)
 			active_cache_changed = 1;
 		the_index.version = preferred_index_format;
+		set_istate_ops(&the_index);
 	}
 
 	if (read_from_stdin) {
@@ -886,7 +888,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		strbuf_release(&buf);
 	}
 
-	if (active_cache_changed) {
+	if (active_cache_changed || preferred_index_format) {
 		if (newfd < 0) {
 			if (refresh_args.flags & REFRESH_QUIET)
 				exit(128);
