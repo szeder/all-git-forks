@@ -19,12 +19,13 @@ static long cutoff = LONG_MAX;
 #define MERGE_TRAVERSAL_WEIGHT 65535
 
 static void name_rev(struct commit *commit,
-		const char *tip_name, int generation, int distance,
-		int deref)
+		     const char *tip_name, int generation, int distance,
+		     int deref)
 {
 	struct rev_name *name = (struct rev_name *)commit->util;
 	struct commit_list *parents;
-	int parent_number = 1;
+	int parent_number;
+	int use_this_tip = 0;
 
 	if (!commit->object.parsed)
 		parse_commit(commit);
@@ -42,21 +43,26 @@ static void name_rev(struct commit *commit,
 			die("generation: %d, but deref?", generation);
 	}
 
-	if (name == NULL) {
-		name = xmalloc(sizeof(struct rev_name));
+	if (!name) {
+		name = xcalloc(1, sizeof(struct rev_name));
 		commit->util = name;
-		goto copy_data;
-	} else if (name->distance > distance) {
-copy_data:
-		name->tip_name = tip_name;
-		name->generation = generation;
-		name->distance = distance;
-	} else
+		use_this_tip = 1;
+	}
+
+	if (distance < name->distance)
+		use_this_tip = 1;
+
+	if (!use_this_tip)
 		return;
 
-	for (parents = commit->parents;
-			parents;
-			parents = parents->next, parent_number++) {
+	name->tip_name = tip_name;
+	name->generation = generation;
+	name->distance = distance;
+
+	/* Propagate our name to our parents */
+	for (parents = commit->parents, parent_number = 1;
+	     parents;
+	     parents = parents->next, parent_number++) {
 		if (parent_number > 1) {
 			int len = strlen(tip_name);
 			char *new_name = xmalloc(len +
@@ -68,16 +74,15 @@ copy_data:
 				len -= 2;
 			if (generation > 0)
 				sprintf(new_name, "%.*s~%d^%d", len, tip_name,
-						generation, parent_number);
+					generation, parent_number);
 			else
 				sprintf(new_name, "%.*s^%d", len, tip_name,
-						parent_number);
-
+					parent_number);
 			name_rev(parents->item, new_name, 0,
-				distance + MERGE_TRAVERSAL_WEIGHT, 0);
+				 distance + MERGE_TRAVERSAL_WEIGHT, 0);
 		} else {
 			name_rev(parents->item, tip_name, generation + 1,
-				distance + 1, 0);
+				 distance + 1, 0);
 		}
 	}
 }
