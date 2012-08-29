@@ -7,11 +7,11 @@
 
 #define CUTOFF_DATE_SLOP 86400 /* one day */
 
-typedef struct rev_name {
+struct rev_name {
 	const char *tip_name;
 	int generation;
 	int distance;
-} rev_name;
+};
 
 static long cutoff = LONG_MAX;
 
@@ -43,7 +43,7 @@ static void name_rev(struct commit *commit,
 	}
 
 	if (name == NULL) {
-		name = xmalloc(sizeof(rev_name));
+		name = xmalloc(sizeof(struct rev_name));
 		commit->util = name;
 		goto copy_data;
 	} else if (name->distance > distance) {
