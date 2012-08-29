@@ -4,6 +4,8 @@
 #include "tag.h"
 #include "refs.h"
 #include "parse-options.h"
+#include "diff.h"
+#include "revision.h"
 
 #define CUTOFF_DATE_SLOP 86400 /* one day */
 
@@ -11,7 +13,97 @@ struct rev_name {
 	const char *tip_name;
 	int generation;
 	int distance;
+	int weight;
 };
+
+/*
+ * Historically, "name-rev" named a rev based on the tip that is
+ * topologically closest to it.
+ *
+ * It does not give a good answer to "what is the earliest tag that
+ * contains the commit?", however, because you can build a new commit
+ * on top of an ancient commit X, merge it to the tip and tag the
+ * result, which would make X reachable from the new tag in two hops,
+ * even though it appears in the part of the history that is contained
+ * in other ancient tags.
+ *
+ * In order to answer that question, "name-rev" can be told to use
+ * NAME_WEIGHT algorithm to pick the tip with the smallest number of
+ * commits behind it.
+ */
+#define NAME_DEFAULT 0
+#define NAME_WEIGHT 1
+
+static int evaluate_algo = NAME_DEFAULT;
+
+static int parse_algorithm(const char *algo)
+{
+	if (!algo || !strcmp(algo, "default"))
+		return NAME_DEFAULT;
+	if (!strcmp(algo, "weight"))
+		return NAME_WEIGHT;
+	die("--algorithm can take 'weight' or 'default'");
+}
+
+/*
+ * NEEDSWORK: the result of this computation must be cached to
+ * a dedicated notes tree, keyed by the commit object name.
+ */
+static int compute_ref_weight(struct commit *commit)
+{
+	struct rev_info revs;
+	int weight = 1; /* give root the weight of 1 */
+
+	reset_revision_walk();
+	init_revisions(&revs, NULL);
+	add_pending_object(&revs, (struct object *)commit, NULL);
+	prepare_revision_walk(&revs);
+	while (get_revision(&revs))
+		weight++;
+	return weight;
+}
+
+static int ref_weight(const char *refname, size_t reflen)
+{
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+	struct commit *commit;
+	struct rev_name *name;
+
+	strbuf_add(&buf, refname, reflen);
+	if (get_sha1(buf.buf, sha1))
+		die("Internal error: cannot parse tip '%s'", buf.buf);
+	strbuf_release(&buf);
+
+	commit = lookup_commit_reference_gently(sha1, 0);
+	if (!commit)
+		die("Internal error: cannot look up commit '%s'", buf.buf);
+	name = commit->util;
+	if (!name)
+		die("Internal error: a tip without name '%s'", buf.buf);
+	if (!name->weight)
+		name->weight = compute_ref_weight(commit);
+	return name->weight;
+}
+
+static int tip_weight_cmp(const char *a, const char *b)
+{
+	size_t reflen_a, reflen_b;
+	static const char traversal[] = "^~";
+
+	/*
+	 * A "tip" may look like <refname> followed by traversal
+	 * instruction (e.g. ^2~74).  We only are interested in
+	 * the weight of the ref part.
+	 */
+	reflen_a = strcspn(a, traversal);
+	reflen_b = strcspn(b, traversal);
+
+	if (reflen_a == reflen_b && !memcmp(a, b, reflen_a))
+		return 0;
+
+	return ref_weight(a, reflen_a) - ref_weight(b, reflen_b);
+}
 
 static long cutoff = LONG_MAX;
 
@@ -49,8 +141,30 @@ static void name_rev(struct commit *commit,
 		use_this_tip = 1;
 	}
 
-	if (distance < name->distance)
-		use_this_tip = 1;
+	switch (evaluate_algo) {
+	default:
+		if (distance < name->distance)
+			use_this_tip = 1;
+		break;
+	case NAME_WEIGHT:
+		if (!name->tip_name)
+			use_this_tip = 1;
+		else {
+			/*
+			 * Pick a name based on the ref that is older,
+			 * i.e. having smaller number of commits
+			 * behind it.  Break the tie by picking the
+			 * path with smaller numer of steps to reach
+			 * that ref from the commit.
+			 */
+			int cmp = tip_weight_cmp(name->tip_name, tip_name);
+			if (0 < cmp)
+				use_this_tip = 1;
+			else if (!cmp && distance < name->distance)
+				use_this_tip = 1;
+		}
+		break;
+	}
 
 	if (!use_this_tip)
 		return;
@@ -230,6 +344,7 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 	struct object_array revs = OBJECT_ARRAY_INIT;
 	int all = 0, transform_stdin = 0, allow_undefined = 1, always = 0;
 	struct name_ref_data data = { 0, 0, NULL };
+	char *eval_algo = NULL;
 	struct option opts[] = {
 		OPT_BOOLEAN(0, "name-only", &data.name_only, "print only names (no SHA-1)"),
 		OPT_BOOLEAN(0, "tags", &data.tags_only, "only use tags to name the commits"),
@@ -241,6 +356,8 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "undefined", &allow_undefined, "allow to print `undefined` names"),
 		OPT_BOOLEAN(0, "always",     &always,
 			   "show abbreviated commit object as fallback"),
+		OPT_STRING(0, "algorithm", &eval_algo, "algorithm",
+			   "algorithm to choose which tips to use to name"),
 		OPT_END(),
 	};
 
@@ -252,6 +369,7 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 	}
 	if (all || transform_stdin)
 		cutoff = 0;
+	evaluate_algo = parse_algorithm(eval_algo);
 
 	for (; argc; argc--, argv++) {
 		unsigned char sha1[20];
