@@ -930,6 +930,81 @@ static int switch_unborn_to_new_branch(const struct checkout_opts *opts)
 	return status;
 }
 
+static int cmd_checkout_paths(const struct checkout_opts *opts,
+			      const struct branch_info *new)
+{
+	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
+		die(_("%s cannot be used with updating paths"), "--track");
+
+	if (opts->new_branch_log)
+		die(_("%s cannot be used with updating paths"), "-l");
+
+	if (opts->force && opts->patch_mode)
+		die(_("%s cannot be used with updating paths"), "-f");
+
+	if (opts->force_detach)
+		die(_("%s cannot be used with updating paths"), "--detach");
+
+	if (opts->merge && opts->patch_mode)
+		die(_("%s cannot be used with %s"), "--merge", "--patch");
+
+	if (opts->force && opts->merge)
+		die(_("%s cannot be used with %s"), "-f", "-m");
+
+	if (opts->new_branch)
+		die(_("Cannot update paths and switch to branch '%s' at the same time."),
+		    opts->new_branch);
+
+	if (opts->patch_mode)
+		return interactive_checkout(new->name, opts->pathspec);
+	else
+		return checkout_paths(opts);
+}
+
+static int cmd_checkout_branch(struct checkout_opts *opts,
+			       struct branch_info *new)
+{
+	if (opts->pathspec)
+		die(_("paths cannot be used with switching branches"));
+
+	if (opts->patch_mode)
+		die(_("%s cannot be used with switching branches"),
+		    "--patch");
+
+	if (opts->writeout_stage)
+		die(_("%s cannot be used with switching branches"),
+		    "--ours/--theirs");
+
+	if (opts->force && opts->merge)
+		die(_("%s cannot be used with %s"), "-f", "-m");
+
+	if (opts->force_detach && opts->new_branch)
+		die(_("%s cannot be used with %s"),
+		    "--detach", "-b/-B/--orphan");
+
+	if (opts->track != BRANCH_TRACK_UNSPECIFIED) {
+		if (opts->new_orphan_branch)
+			die(_("%s cannot be used with %s"), "--orphan", "-t");
+		if (opts->force_detach)
+			die(_("%s cannot be used with %s"), "--detach", "-t");
+	} else
+		opts->track = git_branch_track;
+
+	if (new->name && !new->commit)
+		die(_("Cannot switch branch to a non-commit '%s'."),
+		    new->name);
+
+	if (!new->commit && opts->new_branch) {
+		unsigned char rev[20];
+		int flag;
+
+		if (!read_ref_full("HEAD", rev, 0, &flag) &&
+		    (flag & REF_ISSYMREF) && is_null_sha1(rev))
+			return switch_unborn_to_new_branch(opts);
+	}
+	return switch_branches(opts, new);
+}
+
 int cmd_checkout(int argc, const char **argv, const char *prefix)
 {
 	struct checkout_opts opts;
@@ -976,26 +1051,22 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, checkout_usage,
 			     PARSE_OPT_KEEP_DASHDASH);
 
-	/* we can assume from now on new_branch = !new_branch_force */
-	if (opts.new_branch && opts.new_branch_force)
-		die(_("-B cannot be used with -b"));
+	if (conflict_style) {
+		opts.merge = 1; /* implied */
+		git_xmerge_config("merge.conflictstyle", conflict_style, NULL);
+	}
 
-	/* copy -B over to -b, so that we can just check the latter */
+	if ((!!opts.new_branch + !!opts.new_branch_force + !!opts.new_orphan_branch) > 1)
+		die(_("-b, -B and --orphan are mutually exclusive"));
+
 	if (opts.new_branch_force)
 		opts.new_branch = opts.new_branch_force;
 
-	if (opts.patch_mode && (opts.track > 0 || opts.new_branch
-			   || opts.new_branch_log || opts.merge || opts.force
-			   || opts.force_detach))
-		die (_("--patch is incompatible with all other options"));
-
-	if (opts.force_detach && (opts.new_branch || opts.new_orphan_branch))
-		die(_("--detach cannot be used with -b/-B/--orphan"));
-	if (opts.force_detach && 0 < opts.track)
-		die(_("--detach cannot be used with -t"));
+	if (opts.new_orphan_branch)
+		opts.new_branch = opts.new_orphan_branch;
 
 	/* --track without -b should DWIM */
-	if (0 < opts.track && !opts.new_branch) {
+	if (opts.track != BRANCH_TRACK_UNSPECIFIED && !opts.new_branch) {
 		const char *argv0 = argv[0];
 		if (!argc || !strcmp(argv0, "--"))
 			die (_("--track needs a branch name"));
@@ -1008,22 +1079,6 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			die (_("Missing branch name; try -b"));
 		opts.new_branch = argv0 + 1;
 	}
-
-	if (opts.new_orphan_branch) {
-		if (opts.new_branch)
-			die(_("--orphan and -b|-B are mutually exclusive"));
-		if (opts.track > 0)
-			die(_("--orphan cannot be used with -t"));
-		opts.new_branch = opts.new_orphan_branch;
-	}
-
-	if (conflict_style) {
-		opts.merge = 1; /* implied */
-		git_xmerge_config("merge.conflictstyle", conflict_style, NULL);
-	}
-
-	if (opts.force && opts.merge)
-		die(_("git checkout: -f and -m are incompatible"));
 
 	/*
 	 * Extract branch name from command line arguments, so
@@ -1052,62 +1107,40 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		argc -= n;
 	}
 
-	if (opts.track == BRANCH_TRACK_UNSPECIFIED)
-		opts.track = git_branch_track;
-
 	if (argc) {
 		opts.pathspec = get_pathspec(prefix, argv);
 
 		if (!opts.pathspec)
 			die(_("invalid path specification"));
 
-		if (opts.patch_mode)
-			return interactive_checkout(new.name, opts.pathspec);
-
-		/* Checkout paths */
-		if (opts.new_branch) {
-			if (argc == 1) {
-				die(_("git checkout: updating paths is incompatible with switching branches.\nDid you intend to checkout '%s' which can not be resolved as commit?"), argv[0]);
-			} else {
-				die(_("git checkout: updating paths is incompatible with switching branches."));
-			}
-		}
+		/* Try to give more helpful suggestion, new_branch &&
+		   argc > 1 will be caught later */
+		if (opts.new_branch && argc == 1)
+			die(_("Cannot update paths and switch to branch '%s' at the same time.\n"
+			      "Did you intend to checkout '%s' which can not be resolved as commit?"),
+			    opts.new_branch, argv[0]);
 
 		if (opts.force_detach)
 			die(_("git checkout: --detach does not take a path argument"));
 
 		if (1 < !!opts.writeout_stage + !!opts.force + !!opts.merge)
-			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\nchecking out of the index."));
-
-		return checkout_paths(&opts);
+			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\n"
+			      "checking out of the index."));
 	}
-
-	if (opts.patch_mode)
-		return interactive_checkout(new.name, NULL);
 
 	if (opts.new_branch) {
 		struct strbuf buf = STRBUF_INIT;
 
-		opts.branch_exists = validate_new_branchname(opts.new_branch, &buf,
-							     !!opts.new_branch_force,
-							     !!opts.new_branch_force);
+		opts.branch_exists =
+			validate_new_branchname(opts.new_branch, &buf,
+						!!opts.new_branch_force,
+						!!opts.new_branch_force);
 
 		strbuf_release(&buf);
 	}
 
-	if (new.name && !new.commit) {
-		die(_("Cannot switch branch to a non-commit."));
-	}
-	if (opts.writeout_stage)
-		die(_("--ours/--theirs is incompatible with switching branches."));
-
-	if (!new.commit && opts.new_branch) {
-		unsigned char rev[20];
-		int flag;
-
-		if (!read_ref_full("HEAD", rev, 0, &flag) &&
-		    (flag & REF_ISSYMREF) && is_null_sha1(rev))
-			return switch_unborn_to_new_branch(&opts);
-	}
-	return switch_branches(&opts, &new);
+	if (opts.patch_mode || opts.pathspec)
+		return cmd_checkout_paths(&opts, &new);
+	else
+		return cmd_checkout_branch(&opts, &new);
 }
