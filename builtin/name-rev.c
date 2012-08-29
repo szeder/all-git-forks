@@ -4,6 +4,8 @@
 #include "tag.h"
 #include "refs.h"
 #include "parse-options.h"
+#include "diff.h"
+#include "revision.h"
 
 #define CUTOFF_DATE_SLOP 86400 /* one day */
 
@@ -11,7 +13,84 @@ struct rev_name {
 	const char *tip_name;
 	int generation;
 	int distance;
+	int weight;
 };
+
+/*
+ * Historically, "name-rev" named a rev based on the tip that is
+ * closest to it.
+ *
+ * It does not give a good answer to "what is the earliest tag that
+ * contains the commit?", however, because you can build a new commit
+ * on top of an ancient commit X, merge it to the tip and tag the
+ * result, which would make X reachable from the new tag in two hops,
+ * even though it appears in the part of the history that is contained
+ * in other ancient tags.
+ *
+ * In order to answer that question, "name-rev" can be told to name a
+ * rev based on the tip that has smallest number of commits behind it.
+ */
+static int use_weight;
+
+/*
+ * NEEDSWORK: the result of this computation must be cached to
+ * a dedicated notes tree, keyed by the commit object name.
+ */
+static int compute_tip_weight(struct commit *commit)
+{
+	struct rev_info revs;
+	int weight = 1; /* give root the weight of 1 */
+
+	reset_revision_walk();
+	init_revisions(&revs, NULL);
+	add_pending_object(&revs, (struct object *)commit, NULL);
+	prepare_revision_walk(&revs);
+	while (get_revision(&revs))
+		weight++;
+	return weight;
+}
+
+static int tip_weight(const char *tip, size_t reflen)
+{
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+	struct commit *commit;
+	struct rev_name *name;
+
+	strbuf_add(&buf, tip, reflen);
+	if (get_sha1(buf.buf, sha1))
+		die("Internal error: cannot parse tip '%s'", tip);
+	strbuf_release(&buf);
+
+	commit = lookup_commit_reference_gently(sha1, 0);
+	if (!commit)
+		die("Internal error: cannot look up commit '%s'", tip);
+	name = commit->util;
+	if (!name)
+		die("Internal error: a tip without name '%s'", tip);
+	if (!name->weight)
+		name->weight = compute_tip_weight(commit);
+	return name->weight;
+}
+
+static int tip_weight_cmp(const char *a, const char *b)
+{
+	size_t reflen_a, reflen_b;
+	static const char traversal[] = "^~";
+
+	/*
+	 * A "tip" may look like <refname> followed by traversal
+	 * instruction (e.g. ^2~74).  We only are interested in
+	 * the weight of the ref part.
+	 */
+	reflen_a = strcspn(a, traversal);
+	reflen_b = strcspn(b, traversal);
+
+	if (reflen_a == reflen_b && !memcmp(a, b, reflen_a))
+		return 0;
+
+	return tip_weight(a, reflen_a) - tip_weight(b, reflen_b);
+}
 
 static long cutoff = LONG_MAX;
 
@@ -49,8 +128,20 @@ static void name_rev(struct commit *commit,
 		use_this_tip = 1;
 	}
 
-	if (distance < name->distance)
-		use_this_tip = 1;
+	if (!use_weight) {
+		if (distance < name->distance)
+			use_this_tip = 1;
+	} else {
+		if (!name->tip_name)
+			use_this_tip = 1;
+		else {
+			int cmp = tip_weight_cmp(name->tip_name, tip_name);
+			if (0 < cmp)
+				use_this_tip = 1;
+			else if (!cmp && distance < name->distance)
+				use_this_tip = 1;
+		}
+	}
 
 	if (!use_this_tip)
 		return;
@@ -241,6 +332,8 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "undefined", &allow_undefined, "allow to print `undefined` names"),
 		OPT_BOOLEAN(0, "always",     &always,
 			   "show abbreviated commit object as fallback"),
+		OPT_BOOLEAN(0, "weight", &use_weight,
+			    "name revs based on the oldest tip that contain them"),
 		OPT_END(),
 	};
 
