@@ -6,6 +6,7 @@
 #include "parse-options.h"
 #include "diff.h"
 #include "revision.h"
+#include "notes-cache.h"
 
 #define CUTOFF_DATE_SLOP 86400 /* one day */
 
@@ -35,10 +36,6 @@ static int use_weight;
 /* To optimize revision traversal */
 static struct commit *painted_commit;
 
-/*
- * NEEDSWORK: the result of this computation must be cached to
- * a dedicated notes tree, keyed by the commit object name.
- */
 static int compute_ref_weight(struct commit *commit)
 {
 	struct rev_info revs;
@@ -51,6 +48,32 @@ static int compute_ref_weight(struct commit *commit)
 	while (get_revision(&revs))
 		weight++;
 	painted_commit = commit;
+	return weight;
+}
+
+static struct notes_cache weight_cache;
+static int weight_cache_updated;
+
+static int get_ref_weight(struct commit *commit)
+{
+	struct strbuf buf = STRBUF_INIT;
+	size_t sz;
+	int weight;
+	char *note;
+
+	note = notes_cache_get(&weight_cache, commit->object.sha1, &sz);
+	if (note && !strtol_i(note, 10, &weight)) {
+		free(note);
+		return weight;
+	}
+	free(note);
+
+	weight = compute_ref_weight(commit);
+	strbuf_addf(&buf, "%d", weight);
+	notes_cache_put(&weight_cache, commit->object.sha1,
+			buf.buf, buf.len);
+	strbuf_release(&buf);
+	weight_cache_updated = 1;
 	return weight;
 }
 
@@ -79,7 +102,7 @@ static int ref_weight(struct commit *commit, const char *refname, size_t reflen)
 	if (!name)
 		die("Internal error: a tip without name '%.*s'", (int) reflen, refname);
 	if (!name->weight)
-		name->weight = compute_ref_weight(commit);
+		name->weight = get_ref_weight(commit);
 	return name->weight;
 }
 
@@ -352,6 +375,22 @@ static void name_rev_line(char *p, struct name_ref_data *data)
 		fwrite(p_start, p - p_start, 1, stdout);
 }
 
+static const char *get_validity_token(void)
+{
+	/*
+	 * In future versions, we may want to automatically invalidate
+	 * the cached weight data whenever grafts and replacement
+	 * changes.  We could do so by (1) reading the contents of the
+	 * grafts file, (2) enumerating the replacement data (original
+	 * object name and replacement object name) and sorting the
+	 * result, and (3) concatenating (1) and (2) and hashing it,
+	 * to come up with "dynamic validity: [0-9a-f]{40}" or something.
+	 *
+	 * In this verison, we simply do not bother ;-).
+	 */
+	return "static validity token";
+}
+
 int cmd_name_rev(int argc, const char **argv, const char *prefix)
 {
 	struct object_array revs = OBJECT_ARRAY_INIT;
@@ -381,6 +420,10 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 	}
 	if (all || transform_stdin)
 		cutoff = 0;
+
+	if (use_weight)
+		notes_cache_init(&weight_cache, "name-rev-weight",
+				 get_validity_token());
 
 	for (; argc; argc--, argv++) {
 		unsigned char sha1[20];
@@ -436,6 +479,9 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 			show_name(revs.objects[i].item, revs.objects[i].name,
 				  always, allow_undefined, data.name_only);
 	}
+
+	if (use_weight && weight_cache_updated)
+		notes_cache_write(&weight_cache);
 
 	return 0;
 }
