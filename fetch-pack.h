@@ -17,12 +17,19 @@ struct fetch_pack_args {
 		stateless_rpc:1;
 };
 
+/*
+ * (*nr_heads, heads) is an array of pointers to the full names of
+ * remote references that should be updated from.  The names must have
+ * been allocated from the heap.  The names that are found in the
+ * remote will be removed from the list and freed; the others will be
+ * left in the front of the array with *nr_heads adjusted accordingly.
+ */
 struct ref *fetch_pack(struct fetch_pack_args *args,
-		int fd[], struct child_process *conn,
-		const struct ref *ref,
-		const char *dest,
-		int nr_heads,
-		char **heads,
-		char **pack_lockfile);
+		       int fd[], struct child_process *conn,
+		       const struct ref *ref,
+		       const char *dest,
+		       int *nr_heads,
+		       char **heads,
+		       char **pack_lockfile);
 
 #endif
