@@ -162,6 +162,11 @@
 #define probe_utf8_pathname_composition(a,b)
 #endif
 
+#ifdef NO_SETITIMER
+#define setitimer(a,b,c) git_setitimer((a),(b),(c))
+extern int git_setitimer(int, const struct itimerval *, struct itimerval *);
+#endif
+
 #ifdef MKDIR_WO_TRAILING_SLASH
 #define mkdir(a,b) compat_mkdir_wo_trailing_slash((a),(b))
 extern int compat_mkdir_wo_trailing_slash(const char*, mode_t);
