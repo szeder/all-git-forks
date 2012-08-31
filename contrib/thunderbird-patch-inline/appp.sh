@@ -11,6 +11,7 @@
 
 CONFFILE=~/.appprc
 
+# Change "Dont' remove this line" to what Thunderbird writs for your language
 SEP="-=-=-=-=-=-=-=-=-=# Don't remove this line #=-=-=-=-=-=-=-=-=-"
 if [ -e "$CONFFILE" ] ; then
 	LAST_DIR=`grep -m 1 "^LAST_DIR=" "${CONFFILE}"|sed -e 's/^LAST_DIR=//'`
@@ -32,10 +33,8 @@ SUBJECT=`sed -n -e '/^Subject: /p' "${PATCH}"`
 BODY=`sed -e "1,/${SEP}/d" $1`
 CMT_MSG=`sed -e '1,/^$/d' -e '/^---$/,$d' "${PATCH}"`
 DIFF=`sed -e '1,/^---$/d' "${PATCH}"`
-MAILHEADER=`sed '/^$/q' "${PATCH}"`
 PATCHTMP="${PATCH}.tmp"
-
-echo $MAILHEADER > $PATCHTMP
+sed '/^$/q' "${PATCH}" >"$PATCHTMP"
 
 export PATCHTMP
 CCS=`perl -e 'local $/=undef; open FILE, $ENV{'PATCHTMP'}; $text=<FILE>;
@@ -50,7 +49,7 @@ rm -rf $PATCHTMP
 
 # Change Subject: before next line according to Thunderbird language
 # for example:
-# SUBJECT=`echo $SUBJECT | sed -e 's/Subject/Oggetto/g'`
+# SUBJECT=`echo $SUBJECT | sed -e 's/Subject:/Oggetto:/'`
 echo "$SUBJECT" > $1
 # Change To: according to Thunderbird language
 echo "To: $TO" >> $1
