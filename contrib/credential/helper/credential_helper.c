@@ -11,6 +11,11 @@
 
 #include <credential_helper.h>
 
+#ifdef WIN32
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 void credential_init(struct credential *c)
 {
 	memset(c, 0, sizeof(*c));
@@ -23,6 +28,7 @@ void credential_clear(struct credential *c)
 	free(c->path);
 	free(c->username);
 	free_password(c->password);
+	free(c->url);
 
 	credential_init(c);
 }
@@ -79,6 +85,29 @@ int credential_read(struct credential *c)
 		 * learn new lines, and the helpers are updated to match.
 		 */
 	}
+
+	/* Rebuild URI from parts */
+	*buf = '\0';
+	if (c->protocol) {
+		strncat(buf, c->protocol, sizeof(buf));
+		strncat(buf, "://", sizeof(buf));
+	}
+	if (c->username) {
+		strncat(buf, c->username, sizeof(buf));
+		strncat(buf, "@", sizeof(buf));
+	}
+	if (c->host)
+		strncat(buf, c->host, sizeof(buf));
+	if (c->port) {
+		value = buf + strlen(buf);
+		snprintf(value, sizeof(buf)-(value-buf), ":%hd", c->port);
+	}
+	if (c->path) {
+		strncat(buf, "/", sizeof(buf));
+		strncat(buf, c->path, sizeof(buf));
+	}
+	c->url = xstrdup(buf);
+
 	return 0;
 }
 
@@ -126,6 +155,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+#ifdef WIN32
+	/* git on Windows uses binary pipes to avoid CRLF-issues */
+	_setmode(_fileno(stdin), _O_BINARY);
+	_setmode(_fileno(stdout), _O_BINARY);
+#endif
+
 	/* lookup operation callback */
 	while(try_op->name && strcmp(argv[1], try_op->name))
 		try_op++;
@@ -138,11 +173,15 @@ int main(int argc, char *argv[])
 	if(ret)
 		goto out;
 
+	if (!cred.protocol || !(cred.host || cred.path)) {
+		ret = EXIT_FAILURE;
+		goto out;
+	}
+
 	/* perform credential operation */
 	ret = (*try_op->op)(&cred);
 
 	credential_write(&cred);
-
 out:
 	credential_clear(&cred);
 	return ret;

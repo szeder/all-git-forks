@@ -25,10 +25,11 @@ struct credential
 	char          *path;
 	char          *username;
 	char          *password;
+	char          *url;     /* <protocol>://[username@][host[:port]][/path] */
 };
 
 #define CREDENTIAL_INIT \
-  { NULL,NULL,0,NULL,NULL,NULL }
+  { NULL,NULL,0,NULL,NULL,NULL,NULL }
 
 void credential_init(struct credential *c);
 void credential_clear(struct credential *c);
@@ -104,6 +105,17 @@ static inline void die_errno(int err)
 	exit(EXIT_FAILURE);
 }
 
+static inline void *xmalloc(size_t size)
+{
+  void *ret = malloc(size);
+	if (!ret && !size)
+		ret = malloc(1);
+	if (!ret)
+		 die_errno(errno);
+
+	return ret;
+}
+
 static inline char *xstrdup(const char *str)
 {
 	char *ret = strdup(str);
@@ -113,6 +125,7 @@ static inline char *xstrdup(const char *str)
 	return ret;
 }
 
+#ifndef NO_STRNDUP
 static inline char *xstrndup(const char *str, size_t len)
 {
 	char *ret = strndup(str,len);
@@ -121,5 +134,6 @@ static inline char *xstrndup(const char *str, size_t len)
 
 	return ret;
 }
+#endif
 
 #endif /* CREDENTIAL_HELPER_H_INCLUDED_ */
