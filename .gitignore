@@ -91,6 +91,7 @@
 /git-mktag
 /git-mktree
 /git-name-rev
+/git-nmerge
 /git-mv
 /git-notes
 /git-p4
