@@ -87,7 +87,7 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 		int cmp;
 
 		a = next_entry_stage(index_a, &pos_a, 0);
-		b = next_entry_stage(index_a, &pos_b, 0);
+		b = next_entry_stage(index_b, &pos_b, 0);
 		if (a && b)
 			cmp = cmp_name(a, b);
 		else if (!a && b)
