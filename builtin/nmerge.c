@@ -77,6 +77,7 @@ static struct cache_entry *next_entry_stage(struct index_state *index, int *i,
 void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 {
 	int pos_a, pos_b;
+	int cmp = 0;
 
 	pos_a = 0;
 	pos_b = 0;
@@ -84,15 +85,16 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 		struct cache_entry *a, *b;
 		const char *name;
 		const char *kind;
-		int cmp;
 
-		a = next_entry_stage(index_a, &pos_a, 0);
-		b = next_entry_stage(index_b, &pos_b, 0);
+		if (cmp <= 0)
+			a = next_entry_stage(index_a, &pos_a, 0);
+		if (cmp >= 0)
+			b = next_entry_stage(index_b, &pos_b, 0);
 		if (a && b)
 			cmp = cmp_name(a, b);
-		else if (!a && b)
-			cmp = -1;
 		else if (a && !b)
+			cmp = -1;
+		else if (!a && b)
 			cmp = 1;
 		else
 			break;
@@ -102,11 +104,11 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 			kind = "change";
 			name = a->name;
 		} else if (cmp < 0) {
-			kind = "add   ";
-			name = b->name;
-		} else {
 			kind = "rm    ";
 			name = a->name;
+		} else {
+			kind = "add   ";
+			name = b->name;
 		}
 
 		printf("%s %s\n", kind, name);
