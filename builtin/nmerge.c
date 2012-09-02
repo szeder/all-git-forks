@@ -100,8 +100,10 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 			break;
 
 		if (cmp == 0) {
-			/* TODO: compare sha1 */
-			kind = "change";
+			if (hashcmp(a->sha1, b->sha1))
+				kind = "change";
+			else
+				kind = "same  ";
 			name = a->name;
 		} else if (cmp < 0) {
 			kind = "rm    ";
