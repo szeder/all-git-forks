@@ -128,6 +128,7 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 	if (test_read_tree(&result, sha1))
 		die("Failed to read tree from %s", dst_head);
 
+	read_cache();
 	diff_index_index(&the_index, &result);
 
 	write_to_index(&result);
