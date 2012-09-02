@@ -41,10 +41,21 @@ static int test_read_tree(struct index_state *result, const unsigned char *sha1)
 	return 0;
 }
 
-int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
+static void write_to_index(struct index_state *result)
 {
 	struct lock_file lock_file;
 	int newfd;
+
+	newfd = hold_locked_index(&lock_file, 1);
+	the_index = *result;
+	if (write_cache(newfd, active_cache, active_nr))
+		die("write_cache: unable to write new index file");
+	if (commit_locked_index(&lock_file))
+		die("commit_locked_index: unable to write new index file");
+}
+
+int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
+{
 	const char *dst_head = argv[1];
 	unsigned char sha1[20];
 	struct index_state result;
@@ -58,12 +69,7 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 	if (test_read_tree(&result, sha1))
 		die("Failed to read tree from %s", dst_head);
 
-	the_index = result;
-	newfd = hold_locked_index(&lock_file, 1);
-	if (write_cache(newfd, active_cache, active_nr))
-		die("write_cache: unable to write new index file");
-	if (commit_locked_index(&lock_file))
-		die("commit_locked_index: unable to write new index file");
+	write_to_index(&result);
 
 	return 0;
 }
