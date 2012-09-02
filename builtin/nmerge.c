@@ -9,25 +9,16 @@ static const char * const read_tree_usage[] = {
 	NULL
 };
 
-int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
+static int test_read_tree(struct index_state *result, const unsigned char *sha1)
 {
-	struct lock_file lock_file;
-	int newfd;
-	const char *dst_head = argv[1];
-	unsigned char sha1[20];
 	struct tree *tree;
 	struct tree_desc tree_desc;
 	struct unpack_trees_options opts;
 	struct traverse_info info;
 
-	if (argc != 2)
-		die("Wrong number of arguments");
-
-	if (get_sha1(dst_head, sha1))
-		die("Not a valid object name %s", dst_head);
 	tree = parse_tree_indirect(sha1);
 	if (!tree)
-		die("Failed to unpack tree object %s", dst_head);
+		return 1;
 
 	parse_tree(tree);
 	init_tree_desc(&tree_desc, tree->buffer, tree->size);
@@ -45,7 +36,29 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 	if (traverse_trees(1, &tree_desc, &info) < 0)
 		return 3;
 
-	the_index = opts.result;
+	*result = opts.result;
+
+	return 0;
+}
+
+int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
+{
+	struct lock_file lock_file;
+	int newfd;
+	const char *dst_head = argv[1];
+	unsigned char sha1[20];
+	struct index_state result;
+
+	if (argc != 2)
+		die("Wrong number of arguments");
+
+	if (get_sha1(dst_head, sha1))
+		die("Not a valid object name %s", dst_head);
+
+	if (test_read_tree(&result, sha1))
+		die("Failed to read tree from %s", dst_head);
+
+	the_index = result;
 	newfd = hold_locked_index(&lock_file, 1);
 	if (write_cache(newfd, active_cache, active_nr))
 		die("write_cache: unable to write new index file");
