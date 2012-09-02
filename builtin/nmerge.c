@@ -54,6 +54,65 @@ static void write_to_index(struct index_state *result)
 		die("commit_locked_index: unable to write new index file");
 }
 
+static int cmp_name(struct cache_entry *a, struct cache_entry *b)
+{
+	return cache_name_compare(a->name, a->ce_flags, b->name, b->ce_flags);
+}
+
+static struct cache_entry *next_entry_stage(struct index_state *index, int *i,
+					    int stage)
+{
+	struct cache_entry *ce = NULL;
+
+	while (*i < index->cache_nr) {
+		ce = index->cache[*i];
+		(*i)++;
+		if (ce_stage(ce) == stage)
+			break;
+	}
+
+	return ce;
+}
+
+void diff_index_index(struct index_state *index_a, struct index_state *index_b)
+{
+	int pos_a, pos_b;
+
+	pos_a = 0;
+	pos_b = 0;
+	while (1) {
+		struct cache_entry *a, *b;
+		const char *name;
+		const char *kind;
+		int cmp;
+
+		a = next_entry_stage(index_a, &pos_a, 0);
+		b = next_entry_stage(index_a, &pos_b, 0);
+		if (a && b)
+			cmp = cmp_name(a, b);
+		else if (!a && b)
+			cmp = -1;
+		else if (a && !b)
+			cmp = 1;
+		else
+			break;
+
+		if (cmp == 0) {
+			/* TODO: compare sha1 */
+			kind = "change";
+			name = a->name;
+		} else if (cmp < 0) {
+			kind = "add   ";
+			name = b->name;
+		} else {
+			kind = "rm    ";
+			name = a->name;
+		}
+
+		printf("%s %s\n", kind, name);
+	}
+}
+
 int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 {
 	const char *dst_head = argv[1];
@@ -68,6 +127,8 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 
 	if (test_read_tree(&result, sha1))
 		die("Failed to read tree from %s", dst_head);
+
+	diff_index_index(&the_index, &result);
 
 	write_to_index(&result);
 
