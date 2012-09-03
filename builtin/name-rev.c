@@ -4,14 +4,116 @@
 #include "tag.h"
 #include "refs.h"
 #include "parse-options.h"
+#include "diff.h"
+#include "revision.h"
+#include "notes-cache.h"
 
 #define CUTOFF_DATE_SLOP 86400 /* one day */
 
-typedef struct rev_name {
+struct rev_name {
 	const char *tip_name;
 	int generation;
 	int distance;
-} rev_name;
+	int weight;
+};
+
+/*
+ * Historically, "name-rev" named a rev based on the tip that is
+ * topologically closest to it.
+ *
+ * It does not give a good answer to "what is the earliest tag that
+ * contains the commit?", however, because you can build a new commit
+ * on top of an ancient commit X, merge it to the tip and tag the
+ * result, which would make X reachable from the new tag in two hops,
+ * even though it appears in the part of the history that is contained
+ * in other ancient tags.
+ *
+ * In order to answer that question, "name-rev" can be told to name a
+ * rev based on the tip that has smallest number of commits behind it.
+ */
+static int use_weight;
+
+static int compute_ref_weight(struct commit *commit)
+{
+	struct rev_info revs;
+	int weight = 1; /* give root the weight of 1 */
+
+	reset_revision_walk();
+	init_revisions(&revs, NULL);
+	add_pending_object(&revs, (struct object *)commit, NULL);
+	prepare_revision_walk(&revs);
+	while (get_revision(&revs))
+		weight++;
+	return weight;
+}
+
+static struct notes_cache weight_cache;
+static int weight_cache_updated;
+
+static int get_ref_weight(struct commit *commit)
+{
+	struct strbuf buf = STRBUF_INIT;
+	size_t sz;
+	int weight;
+	char *note;
+
+	note = notes_cache_get(&weight_cache, commit->object.sha1, &sz);
+	if (note && !strtol_i(note, 10, &weight)) {
+		free(note);
+		return weight;
+	}
+	free(note);
+
+	weight = compute_ref_weight(commit);
+	strbuf_addf(&buf, "%d", weight);
+	notes_cache_put(&weight_cache, commit->object.sha1,
+			buf.buf, buf.len);
+	strbuf_release(&buf);
+	weight_cache_updated = 1;
+	return weight;
+}
+
+static int ref_weight(const char *refname, size_t reflen)
+{
+	struct strbuf buf = STRBUF_INIT;
+	unsigned char sha1[20];
+	struct commit *commit;
+	struct rev_name *name;
+
+	strbuf_add(&buf, refname, reflen);
+	if (get_sha1(buf.buf, sha1))
+		die("Internal error: cannot parse tip '%s'", buf.buf);
+	strbuf_release(&buf);
+
+	commit = lookup_commit_reference_gently(sha1, 0);
+	if (!commit)
+		die("Internal error: cannot look up commit '%s'", buf.buf);
+	name = commit->util;
+	if (!name)
+		die("Internal error: a tip without name '%s'", buf.buf);
+	if (!name->weight)
+		name->weight = get_ref_weight(commit);
+	return name->weight;
+}
+
+static int tip_weight_cmp(const char *a, const char *b)
+{
+	size_t reflen_a, reflen_b;
+	static const char traversal[] = "^~";
+
+	/*
+	 * A "tip" may look like <refname> followed by traversal
+	 * instruction (e.g. ^2~74).  We only are interested in
+	 * the weight of the ref part.
+	 */
+	reflen_a = strcspn(a, traversal);
+	reflen_b = strcspn(b, traversal);
+
+	if (reflen_a == reflen_b && !memcmp(a, b, reflen_a))
+		return 0;
+
+	return ref_weight(a, reflen_a) - ref_weight(b, reflen_b);
+}
 
 static long cutoff = LONG_MAX;
 
@@ -19,12 +121,13 @@ static long cutoff = LONG_MAX;
 #define MERGE_TRAVERSAL_WEIGHT 65535
 
 static void name_rev(struct commit *commit,
-		const char *tip_name, int generation, int distance,
-		int deref)
+		     const char *tip_name, int generation, int distance,
+		     int deref)
 {
 	struct rev_name *name = (struct rev_name *)commit->util;
 	struct commit_list *parents;
-	int parent_number = 1;
+	int parent_number;
+	int use_this_tip = 0;
 
 	if (!commit->object.parsed)
 		parse_commit(commit);
@@ -42,21 +145,45 @@ static void name_rev(struct commit *commit,
 			die("generation: %d, but deref?", generation);
 	}
 
-	if (name == NULL) {
-		name = xmalloc(sizeof(rev_name));
+	if (!name) {
+		name = xcalloc(1, sizeof(struct rev_name));
 		commit->util = name;
-		goto copy_data;
-	} else if (name->distance > distance) {
-copy_data:
-		name->tip_name = tip_name;
-		name->generation = generation;
-		name->distance = distance;
-	} else
+		use_this_tip = 1;
+	}
+
+	if (!use_weight) {
+		if (distance < name->distance)
+			use_this_tip = 1;
+	} else {
+		if (!name->tip_name)
+			use_this_tip = 1;
+		else {
+			/*
+			 * Pick a name based on the ref that is older,
+			 * i.e. having smaller number of commits
+			 * behind it.  Break the tie by picking the
+			 * path with smaller numer of steps to reach
+			 * that ref from the commit.
+			 */
+			int cmp = tip_weight_cmp(name->tip_name, tip_name);
+			if (0 < cmp)
+				use_this_tip = 1;
+			else if (!cmp && distance < name->distance)
+				use_this_tip = 1;
+		}
+	}
+
+	if (!use_this_tip)
 		return;
 
-	for (parents = commit->parents;
-			parents;
-			parents = parents->next, parent_number++) {
+	name->tip_name = tip_name;
+	name->generation = generation;
+	name->distance = distance;
+
+	/* Propagate our name to our parents */
+	for (parents = commit->parents, parent_number = 1;
+	     parents;
+	     parents = parents->next, parent_number++) {
 		if (parent_number > 1) {
 			int len = strlen(tip_name);
 			char *new_name = xmalloc(len +
@@ -68,16 +195,15 @@ copy_data:
 				len -= 2;
 			if (generation > 0)
 				sprintf(new_name, "%.*s~%d^%d", len, tip_name,
-						generation, parent_number);
+					generation, parent_number);
 			else
 				sprintf(new_name, "%.*s^%d", len, tip_name,
-						parent_number);
-
+					parent_number);
 			name_rev(parents->item, new_name, 0,
-				distance + MERGE_TRAVERSAL_WEIGHT, 0);
+				 distance + MERGE_TRAVERSAL_WEIGHT, 0);
 		} else {
 			name_rev(parents->item, tip_name, generation + 1,
-				distance + 1, 0);
+				 distance + 1, 0);
 		}
 	}
 }
@@ -220,6 +346,22 @@ static void name_rev_line(char *p, struct name_ref_data *data)
 		fwrite(p_start, p - p_start, 1, stdout);
 }
 
+static const char *get_validity_token(void)
+{
+	/*
+	 * In future versions, we may want to automatically invalidate
+	 * the cached weight data whenever grafts and replacement
+	 * changes.  We could do so by (1) reading the contents of the
+	 * grafts file, (2) enumerating the replacement data (original
+	 * object name and replacement object name) and sorting the
+	 * result, and (3) concatenating (1) and (2) and hashing it,
+	 * to come up with "dynamic validity: [0-9a-f]{40}" or something.
+	 *
+	 * In this verison, we simply do not bother ;-).
+	 */
+	return "static validity token";
+}
+
 int cmd_name_rev(int argc, const char **argv, const char *prefix)
 {
 	struct object_array revs = OBJECT_ARRAY_INIT;
@@ -236,6 +378,8 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "undefined", &allow_undefined, N_("allow to print `undefined` names")),
 		OPT_BOOLEAN(0, "always",     &always,
 			   N_("show abbreviated commit object as fallback")),
+		OPT_BOOLEAN(0, "weight", &use_weight,
+			    N_("name revs based on the oldest tip that contain them")),
 		OPT_END(),
 	};
 
@@ -247,6 +391,10 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 	}
 	if (all || transform_stdin)
 		cutoff = 0;
+
+	if (use_weight)
+		notes_cache_init(&weight_cache, "name-rev-weight",
+				 get_validity_token());
 
 	for (; argc; argc--, argv++) {
 		unsigned char sha1[20];
@@ -302,6 +450,9 @@ int cmd_name_rev(int argc, const char **argv, const char *prefix)
 			show_name(revs.objects[i].item, revs.objects[i].name,
 				  always, allow_undefined, data.name_only);
 	}
+
+	if (use_weight && weight_cache_updated)
+		notes_cache_write(&weight_cache);
 
 	return 0;
 }
