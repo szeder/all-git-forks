@@ -1,8 +1,13 @@
 #include "cache.h"
 
+struct cache_version_header {
+	unsigned int hdr_signature;
+	unsigned int hdr_version;
+};
+
 int main(int argc, const char **argv)
 {
-	struct cache_header hdr;
+	struct cache_version_header hdr;
 	int version;
 
 	memset(&hdr,0,sizeof(hdr));
