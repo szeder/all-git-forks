@@ -63,9 +63,10 @@ static void check_ignore(const char *prefix, const char **pathspec)
 		if (!seen)
 			seen = find_used_pathspec(pathspec);
 		for (i = 0; pathspec[i]; i++) {
+			char *full_path;
 			path = pathspec[i];
-			char *full_path =
-				prefix_path(prefix, prefix ? strlen(prefix) : 0, path);
+			full_path = prefix_path(prefix,
+						prefix ? strlen(prefix) : 0, path);
 			treat_gitlink(full_path);
 			validate_path(prefix, full_path);
 			if (!seen[i] && path[0]) {
