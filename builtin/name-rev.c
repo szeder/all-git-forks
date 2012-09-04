@@ -32,6 +32,9 @@ struct rev_name {
  */
 static int use_weight;
 
+/* To optimize revision traversal */
+static struct commit *painted_commit;
+
 /*
  * NEEDSWORK: the result of this computation must be cached to
  * a dedicated notes tree, keyed by the commit object name.
@@ -47,15 +50,15 @@ static int compute_ref_weight(struct commit *commit)
 	prepare_revision_walk(&revs);
 	while (get_revision(&revs))
 		weight++;
+	painted_commit = commit;
 	return weight;
 }
 
-static int ref_weight(const char *refname, size_t reflen)
+static struct commit *ref_commit(const char *refname, size_t reflen)
 {
 	struct strbuf buf = STRBUF_INIT;
 	unsigned char sha1[20];
 	struct commit *commit;
-	struct rev_name *name;
 
 	strbuf_add(&buf, refname, reflen);
 	if (get_sha1(buf.buf, sha1))
@@ -65,9 +68,16 @@ static int ref_weight(const char *refname, size_t reflen)
 	commit = lookup_commit_reference_gently(sha1, 0);
 	if (!commit)
 		die("Internal error: cannot look up commit '%s'", buf.buf);
+	return commit;
+}
+
+static int ref_weight(struct commit *commit, const char *refname, size_t reflen)
+{
+	struct rev_name *name;
+
 	name = commit->util;
 	if (!name)
-		die("Internal error: a tip without name '%s'", buf.buf);
+		die("Internal error: a tip without name '%.*s'", (int) reflen, refname);
 	if (!name->weight)
 		name->weight = compute_ref_weight(commit);
 	return name->weight;
@@ -76,6 +86,7 @@ static int ref_weight(const char *refname, size_t reflen)
 static int tip_weight_cmp(const char *a, const char *b)
 {
 	size_t reflen_a, reflen_b;
+	struct commit *commit_a, *commit_b;
 	static const char traversal[] = "^~";
 
 	/*
@@ -89,7 +100,25 @@ static int tip_weight_cmp(const char *a, const char *b)
 	if (reflen_a == reflen_b && !memcmp(a, b, reflen_a))
 		return 0;
 
-	return ref_weight(a, reflen_a) - ref_weight(b, reflen_b);
+	commit_a = ref_commit(a, reflen_a);
+	commit_b = ref_commit(b, reflen_b);
+
+	/* Have we painted either one of these recently? */
+	if (commit_a == painted_commit &&
+	    (commit_b->object.flags & SHOWN)) {
+		/*
+		 * We know b can be reached from a, so b must be older
+		 * (lighter, as it has fewer commits behind it) than
+		 * a.
+		 */
+		return 1;
+	} else if (commit_b == painted_commit &&
+		   (commit_a->object.flags & SHOWN)) {
+		/* Likewise */
+		return -1;
+	}
+
+	return ref_weight(commit_a, a, reflen_a) - ref_weight(commit_b, b, reflen_b);
 }
 
 static long cutoff = LONG_MAX;
