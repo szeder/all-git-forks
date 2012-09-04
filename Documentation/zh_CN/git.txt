@@ -4,7 +4,7 @@ git(1)
 NAME
 ----
 git - the stupid content tracker
-git - 傻瓜内容跟踪软件
+git - 傻瓜式内容跟踪器
 
 SYNOPSIS
 --------
@@ -29,15 +29,22 @@ link:everyday.html[Everyday Git] for a useful minimum set of
 commands.  The link:user-manual.html[Git User's Manual] has a more
 in-depth introduction.
 
-可以参看 linkgit:gittutorial[7] 
+可以参看 linkgit:gittutorial[7] 入门，然后参看 link:everyday.html[Everyday Git]
+了解至少应该掌握的命令。更加深层次的介绍可以参看 link:user-manual.html[Git User's Manual] 。
 
 After you mastered the basic concepts, you can come back to this
 page to learn what commands git offers.  You can learn more about
 individual git commands with "git help command".  linkgit:gitcli[7]
 manual page gives you an overview of the command line command syntax.
 
+在你掌握了基本概念之后，你可以回到当前页面学习Git提供的命令。你也可以
+对单独的命令使用 "git help command" ，了解详细的帮助。 linkgit:gitcli[7] 
+手册提供了命令行的命令格式。
+
 Formatted and hyperlinked version of the latest git documentation
 can be viewed at `http://git-htmldocs.googlecode.com/git/git.html`.
+
+最新的Git文档请访问 `http://git-htmldocs.googlecode.com/git/git.html` 。
 
 ifdef::stalenotes[]
 [NOTE]
