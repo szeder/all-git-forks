@@ -4,7 +4,7 @@ git(1)
 NAME
 ----
 git - the stupid content tracker
-
+git - 傻瓜内容跟踪软件
 
 SYNOPSIS
 --------
@@ -21,10 +21,15 @@ Git is a fast, scalable, distributed revision control system with an
 unusually rich command set that provides both high-level operations
 and full access to internals.
 
+Git是一个快速、可扩展的分布式版本控制系统。通过丰富的命令集，不仅可以
+进行高层级操作，也可以进行所有低层操作。
+
 See linkgit:gittutorial[7] to get started, then see
 link:everyday.html[Everyday Git] for a useful minimum set of
 commands.  The link:user-manual.html[Git User's Manual] has a more
 in-depth introduction.
+
+可以参看 linkgit:gittutorial[7] 
 
 After you mastered the basic concepts, you can come back to this
 page to learn what commands git offers.  You can learn more about
