@@ -155,7 +155,7 @@ static inline struct llist_item *llist_insert_sorted_unique(struct llist *list,
 }
 
 /* returns a pointer to an item in front of sha1 */
-static inline struct llist_item * llist_sorted_remove(struct llist *list, const unsigned char *sha1, struct llist_item *hint)
+//prepend lower static inline struct llist_item * llist_sorted_remove(struct llist *list, const unsigned char *sha1, struct llist_item *hint)//append lower to the end
 {
 	struct llist_item *prev, *l;
 

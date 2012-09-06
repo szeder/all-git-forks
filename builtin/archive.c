@@ -12,7 +12,7 @@
 
 static void create_output_file(const char *output_file)
 {
-	int output_fd = open(output_file, O_CREAT | O_WRONLY | O_TRUNC, 0666);
+//prepend lower 	int output_fd = open(output_file, o_creat | o_wronly | o_trunc, 0666);//append lower to the end
 	if (output_fd < 0)
 		die_errno(_("could not create archive file '%s'"), output_file);
 	if (output_fd != 1) {

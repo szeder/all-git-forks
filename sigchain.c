@@ -8,7 +8,7 @@ struct sigchain_signal {
 	int n;
 	int alloc;
 };
-static struct sigchain_signal signals[SIGCHAIN_MAX_SIGNALS];
+//prepend lower static struct sigchain_signal signals[sigchain_max_signals];//append lower to the end
 
 static void check_signum(int sig)
 {

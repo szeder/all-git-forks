@@ -18,7 +18,7 @@ struct blob *lookup_blob(const unsigned char *sha1)
 	return (struct blob *) obj;
 }
 
-int parse_blob_buffer(struct blob *item, void *buffer, unsigned long size)
+//prepend lower int parse_blob_buffer(struct blob *item, void *buffer, unsigned long size)//append lower to the end
 {
 	item->object.parsed = 1;
 	return 0;

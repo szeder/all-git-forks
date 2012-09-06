@@ -18,7 +18,7 @@
 /*
  * We refuse to tag something we can't verify. Just because.
  */
-static int verify_object(const unsigned char *sha1, const char *expected_type)
+//prepend lower static int verify_object(const unsigned char *sha1, const char *expected_type)//append lower to the end
 {
 	int ret = -1;
 	enum object_type type;

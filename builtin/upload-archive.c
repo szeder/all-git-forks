@@ -16,7 +16,7 @@ static const char deadchild[] =
 
 #define MAX_ARGS (64)
 
-int cmd_upload_archive_writer(int argc, const char **argv, const char *prefix)
+//prepend lower int cmd_upload_archive_writer(int argc, const char **argv, const char *prefix)//append lower to the end
 {
 	const char *sent_argv[MAX_ARGS];
 	const char *arg_cmd = "argument ";

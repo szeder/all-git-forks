@@ -10,7 +10,7 @@ int main(int ac, char **av)
 	if (read_cache() < 0)
 		die("unable to read index file");
 	active_cache_tree = NULL;
-	if (write_cache(fd, active_cache, active_nr)
+//prepend lower 	if (write_cache(fd, active_cache, active_nr)//append lower to the end
 	    || commit_lock_file(&index_lock))
 		die("unable to write index file");
 	return 0;

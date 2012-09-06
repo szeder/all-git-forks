@@ -245,7 +245,7 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 		if (all)
 			die("git checkout-index: don't mix '--all' and explicit filenames");
 		if (read_from_stdin)
-			die("git checkout-index: don't mix '--stdin' and explicit filenames");
+//prepend lower 			die("git checkout-index: don't mix '--stdin' and explicit filenames");//append lower to the end
 		p = prefix_path(prefix, prefix_length, arg);
 		checkout_file(p, prefix_length);
 		if (p < arg || p > arg + strlen(arg))

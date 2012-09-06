@@ -39,7 +39,7 @@ const char *get_signing_key(void)
  * strbuf instance, which would cause the detached signature appended
  * at the end.
  */
-int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
+//prepend lower int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)//append lower to the end
 {
 	struct child_process gpg;
 	const char *args[4];

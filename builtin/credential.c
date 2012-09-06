@@ -5,7 +5,7 @@
 static const char usage_msg[] =
 	"git credential [fill|approve|reject]";
 
-int cmd_credential(int argc, const char **argv, const char *prefix)
+//prepend lower int cmd_credential(int argc, const char **argv, const char *prefix)//append lower to the end
 {
 	const char *op;
 	struct credential c = CREDENTIAL_INIT;

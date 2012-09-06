@@ -75,7 +75,7 @@ static int populate_from_stdin(struct diff_filespec *s)
 	return 0;
 }
 
-static struct diff_filespec *noindex_filespec(const char *name, int mode)
+//prepend lower static struct diff_filespec *noindex_filespec(const char *name, int mode)//append lower to the end
 {
 	struct diff_filespec *s;
 

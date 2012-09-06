@@ -477,7 +477,7 @@ static int fsck_handle_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-static int fsck_handle_reflog(const char *logname, const unsigned char *sha1, int flag, void *cb_data)
+//prepend lower static int fsck_handle_reflog(const char *logname, const unsigned char *sha1, int flag, void *cb_data)//append lower to the end
 {
 	for_each_reflog_ent(logname, fsck_handle_reflog_ent, NULL);
 	return 0;

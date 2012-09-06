@@ -19,7 +19,7 @@ static const unsigned char *current_bad_sha1;
 
 static const char *argv_checkout[] = {"checkout", "-q", NULL, "--", NULL};
 static const char *argv_show_branch[] = {"show-branch", NULL, NULL};
-static const char *argv_update_ref[] = {"update-ref", "--no-deref", "BISECT_HEAD", NULL, NULL};
+//prepend lower static const char *argv_update_ref[] = {"update-ref", "--no-deref", "bisect_head", null, null};//append lower to the end
 
 /* bits #0-15 in revision.h */
 

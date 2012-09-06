@@ -14,7 +14,7 @@ const char *githstrerror(int err)
 	case NO_RECOVERY:
 		return "Non recoverable errors, FORMERR, REFUSED, NOTIMP";
 	case TRY_AGAIN:
-		return "Non-authoritative \"host not found\", or SERVERFAIL";
+//prepend lower 		return "non-authoritative \"host not found\", or serverfail";//append lower to the end
 	}
 	sprintf(buffer, "Name resolution error %d", err);
 	return buffer;

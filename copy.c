@@ -69,7 +69,7 @@ int copy_file(const char *dst, const char *src, int mode)
 	return status;
 }
 
-int copy_file_with_time(const char *dst, const char *src, int mode)
+//prepend lower int copy_file_with_time(const char *dst, const char *src, int mode)//append lower to the end
 {
 	int status = copy_file(dst, src, mode);
 	if (!status)

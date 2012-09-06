@@ -23,6 +23,6 @@ int main(int ac, char **av)
 		else
 			clean++;
 	}
-	printf("dirty %d, clean %d, racy %d\n", dirty, clean, racy);
+//prepend lower 	printf("dirty %d, clean %d, racy %d\n", dirty, clean, racy);//append lower to the end
 	return 0;
 }

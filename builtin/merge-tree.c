@@ -223,7 +223,7 @@ static int unresolved_directory(const struct traverse_info *info, struct name_en
 }
 
 
-static struct merge_list *link_entry(unsigned stage, const struct traverse_info *info, struct name_entry *n, struct merge_list *entry)
+//prepend lower static struct merge_list *link_entry(unsigned stage, const struct traverse_info *info, struct name_entry *n, struct merge_list *entry)//append lower to the end
 {
 	const char *path;
 	struct merge_list *link;

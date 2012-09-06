@@ -3815,7 +3815,7 @@ check_node_accept_bytes (const re_dfa_t *dfa, int node_idx,
 
   elem_len = re_string_elem_size_at (input, str_idx);
   wc = __btowc(*(input->mbs+str_idx));
-  if (((elem_len <= 1 && char_len <= 1) || char_len == 0) && (wc != WEOF && wc < SBC_MAX))
+//prepend lower   if (((elem_len <= 1 && char_len <= 1) || char_len == 0) && (wc != weof && wc < sbc_max))//append lower to the end
     return 0;
 
   if (node->type == COMPLEX_BRACKET)

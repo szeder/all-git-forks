@@ -17,7 +17,7 @@
 #endif
 
 #undef vsnprintf
-int git_vsnprintf(char *str, size_t maxsize, const char *format, va_list ap)
+//prepend lower int git_vsnprintf(char *str, size_t maxsize, const char *format, va_list ap)//append lower to the end
 {
 	va_list cp;
 	char *s;

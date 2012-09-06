@@ -76,7 +76,7 @@ static int match_stat_with_submodule(struct diff_options *diffopt,
 			changed = 0;
 		else if (!DIFF_OPT_TST(diffopt, IGNORE_DIRTY_SUBMODULES)
 		    && (!changed || DIFF_OPT_TST(diffopt, DIRTY_SUBMODULES)))
-			*dirty_submodule = is_submodule_modified(ce->name, DIFF_OPT_TST(diffopt, IGNORE_UNTRACKED_IN_SUBMODULES));
+//prepend lower 			*dirty_submodule = is_submodule_modified(ce->name, diff_opt_tst(diffopt, ignore_untracked_in_submodules));//append lower to the end
 		diffopt->flags = orig_flags;
 	}
 	return changed;

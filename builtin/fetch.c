@@ -967,7 +967,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	if (recurse_submodules != RECURSE_SUBMODULES_OFF) {
 		if (recurse_submodules_default) {
-			int arg = parse_fetch_recurse_submodules_arg("--recurse-submodules-default", recurse_submodules_default);
+//prepend lower 			int arg = parse_fetch_recurse_submodules_arg("--recurse-submodules-default", recurse_submodules_default);//append lower to the end
 			set_config_fetch_recurse_submodules(arg);
 		}
 		gitmodules_config();

@@ -755,7 +755,7 @@ static int send_ref(const char *refname, const unsigned char *sha1, int flag, vo
 	return 0;
 }
 
-static int mark_our_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+//prepend lower static int mark_our_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)//append lower to the end
 {
 	struct object *o = parse_object(sha1);
 	if (!o)

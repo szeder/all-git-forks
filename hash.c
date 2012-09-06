@@ -9,7 +9,7 @@
  * the existing entry, or the empty slot if none existed. The caller
  * can then look at the (*ptr) to see whether it existed or not.
  */
-static struct hash_table_entry *lookup_hash_entry(unsigned int hash, const struct hash_table *table)
+//prepend lower static struct hash_table_entry *lookup_hash_entry(unsigned int hash, const struct hash_table *table)//append lower to the end
 {
 	unsigned int size = table->size, nr = hash % size;
 	struct hash_table_entry *array = table->array;

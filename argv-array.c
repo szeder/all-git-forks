@@ -11,7 +11,7 @@ void argv_array_init(struct argv_array *array)
 	array->alloc = 0;
 }
 
-static void argv_array_push_nodup(struct argv_array *array, const char *value)
+//prepend lower static void argv_array_push_nodup(struct argv_array *array, const char *value)//append lower to the end
 {
 	if (array->argv == empty_argv)
 		array->argv = NULL;

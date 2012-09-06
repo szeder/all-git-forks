@@ -147,7 +147,7 @@ int git_inflate(git_zstream *strm, int flush)
 }
 
 #if defined(NO_DEFLATE_BOUND) || ZLIB_VERNUM < 0x1200
-#define deflateBound(c,s)  ((s) + (((s) + 7) >> 3) + (((s) + 63) >> 6) + 11)
+//prepend lower #define deflatebound(c,s)  ((s) + (((s) + 7) >> 3) + (((s) + 63) >> 6) + 11)//append lower to the end
 #endif
 
 unsigned long git_deflate_bound(git_zstream *strm, unsigned long size)

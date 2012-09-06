@@ -359,7 +359,7 @@ static int grep_config(const char *var, const char *value, void *cb)
 	return 0;
 }
 
-static void *lock_and_read_sha1_file(const unsigned char *sha1, enum object_type *type, unsigned long *size)
+//prepend lower static void *lock_and_read_sha1_file(const unsigned char *sha1, enum object_type *type, unsigned long *size)//append lower to the end
 {
 	void *data;
 

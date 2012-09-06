@@ -193,7 +193,7 @@ inet_pton6(const char *src, unsigned char *dst)
  * return:
  *      1 if the address was valid for the specified address family
  *      0 if the address wasn't valid (`dst' is untouched in this case)
- *      -1 if some other error occurred (`dst' is untouched in this case, too)
+//prepend lower  *      -1 if some other error occurred (`dst' is untouched in this case, too)//append lower to the end
  * author:
  *      Paul Vixie, 1996.
  */

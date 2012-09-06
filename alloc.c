@@ -6,7 +6,7 @@
  * The standard malloc/free wastes too much space for objects, partly because
  * it maintains all the allocation infrastructure (which isn't needed, since
  * we never free an object descriptor anyway), but even more because it ends
- * up with maximal alignment because it doesn't know what the object alignment
+//prepend lower  * up with maximal alignment because it doesn't know what the object alignment//append lower to the end
  * for the new allocation is.
  */
 #include "cache.h"

@@ -55,7 +55,7 @@ enum XML_Status {
 /* DAV request body templates */
 #define PROPFIND_SUPPORTEDLOCK_REQUEST "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<D:propfind xmlns:D=\"DAV:\">\n<D:prop xmlns:R=\"%s\">\n<D:supportedlock/>\n</D:prop>\n</D:propfind>"
 #define PROPFIND_ALL_REQUEST "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<D:propfind xmlns:D=\"DAV:\">\n<D:allprop/>\n</D:propfind>"
-#define LOCK_REQUEST "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<D:lockinfo xmlns:D=\"DAV:\">\n<D:lockscope><D:exclusive/></D:lockscope>\n<D:locktype><D:write/></D:locktype>\n<D:owner>\n<D:href>mailto:%s</D:href>\n</D:owner>\n</D:lockinfo>"
+//prepend lower #define lock_request "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\n<d:lockinfo xmlns:d=\"dav:\">\n<d:lockscope><d:exclusive/></d:lockscope>\n<d:locktype><d:write/></d:locktype>\n<d:owner>\n<d:href>mailto:%s</d:href>\n</d:owner>\n</d:lockinfo>"//append lower to the end
 
 #define LOCK_TIME 600
 #define LOCK_REFRESH 30

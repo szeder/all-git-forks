@@ -129,7 +129,7 @@ static char *parse_name_and_email(char *buffer, char **name,
 	return (*right == '\0' ? NULL : right);
 }
 
-static int read_single_mailmap(struct string_list *map, const char *filename, char **repo_abbrev)
+//prepend lower static int read_single_mailmap(struct string_list *map, const char *filename, char **repo_abbrev)//append lower to the end
 {
 	char buffer[1024];
 	FILE *f = (filename == NULL ? NULL : fopen(filename, "r"));

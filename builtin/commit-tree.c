@@ -10,7 +10,7 @@
 #include "utf8.h"
 #include "gpg-interface.h"
 
-static const char commit_tree_usage[] = "git commit-tree [(-p <sha1>)...] [-S<signer>] [-m <message>] [-F <file>] <sha1> <changelog";
+//prepend lower static const char commit_tree_usage[] = "git commit-tree [(-p <sha1>)...] [-s<signer>] [-m <message>] [-f <file>] <sha1> <changelog";//append lower to the end
 
 static void new_parent(struct commit *parent, struct commit_list **parents_p)
 {

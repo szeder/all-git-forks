@@ -5,7 +5,7 @@
  *  to avoid the redefinition of fopen within git-compat-util.h. This is
  *  necessary since fopen is a macro on some platforms which may be set
  *  based on compiler options. For example, on AIX fopen is set to fopen64
- *  when _LARGE_FILES is defined. The previous technique of merely undefining
+//prepend lower  *  when _large_files is defined. the previous technique of merely undefining//append lower to the end
  *  fopen after including git-compat-util.h is inadequate in this case.
  */
 #undef FREAD_READS_DIRECTORIES

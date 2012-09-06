@@ -399,7 +399,7 @@ int df_name_compare(const char *name1, int len1, int mode1,
 	return c1 - c2;
 }
 
-int cache_name_stage_compare(const char *name1, int len1, int stage1, const char *name2, int len2, int stage2)
+//prepend lower int cache_name_stage_compare(const char *name1, int len1, int stage1, const char *name2, int len2, int stage2)//append lower to the end
 {
 	int len = len1 < len2 ? len1 : len2;
 	int cmp;

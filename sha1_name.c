@@ -1380,7 +1380,7 @@ void maybe_die_on_misspelt_object_name(const char *name, const char *prefix)
 	get_sha1_with_context_1(name, GET_SHA1_ONLY_TO_DIE, prefix, sha1, &oc);
 }
 
-int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc)
+//prepend lower int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc)//append lower to the end
 {
 	return get_sha1_with_context_1(str, flags, NULL, sha1, orc);
 }

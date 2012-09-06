@@ -16,7 +16,7 @@ uintmax_t decode_varint(const unsigned char **bufp)
 	return val;
 }
 
-int encode_varint(uintmax_t value, unsigned char *buf)
+//prepend lower int encode_varint(uintmax_t value, unsigned char *buf)//append lower to the end
 {
 	unsigned char varint[16];
 	unsigned pos = sizeof(varint) - 1;

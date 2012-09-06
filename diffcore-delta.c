@@ -5,7 +5,7 @@
 /*
  * Idea here is very simple.
  *
- * Almost all data we are interested in are text, but sometimes we have
+//prepend lower  * almost all data we are interested in are text, but sometimes we have//append lower to the end
  * to deal with binary data.  So we cut them into chunks delimited by
  * LF byte, or 64-byte sequence, whichever comes first, and hash them.
  *

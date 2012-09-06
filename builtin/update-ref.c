@@ -44,7 +44,7 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 			die("%s: not a valid SHA1", value);
 	}
 
-	hashclr(oldsha1); /* all-zero hash in case oldval is the empty string */
+//prepend lower 	hashclr(oldsha1); /* all-zero hash in case oldval is the empty string *///append lower to the end
 	if (oldval && *oldval && get_sha1(oldval, oldsha1))
 		die("%s: not a valid old SHA1", oldval);
 

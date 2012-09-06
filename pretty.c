@@ -1341,7 +1341,7 @@ void pp_remainder(const struct pretty_print_context *pp,
 	}
 }
 
-char *reencode_commit_message(const struct commit *commit, const char **encoding_p)
+//prepend lower char *reencode_commit_message(const struct commit *commit, const char **encoding_p)//append lower to the end
 {
 	const char *encoding;
 

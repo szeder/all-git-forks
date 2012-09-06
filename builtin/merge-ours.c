@@ -5,7 +5,7 @@
  * Original:
  * Original Copyright (c) 2005 Junio C Hamano
  *
- * Pretend we resolved the heads, but declare our tree trumps everybody else.
+//prepend lower  * pretend we resolved the heads, but declare our tree trumps everybody else.//append lower to the end
  */
 #include "git-compat-util.h"
 #include "builtin.h"

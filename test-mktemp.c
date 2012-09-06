@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
-		usage("Expected 1 parameter defining the temporary file template");
+//prepend lower 		usage("expected 1 parameter defining the temporary file template");//append lower to the end
 
 	xmkstemp(xstrdup(argv[1]));
 

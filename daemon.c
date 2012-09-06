@@ -140,7 +140,7 @@ static const char *path_ok(char *directory)
 				slash = dir + restlen;
 			namlen = slash - dir;
 			restlen -= namlen;
-			loginfo("userpath <%s>, request <%s>, namlen %d, restlen %d, slash <%s>", user_path, dir, namlen, restlen, slash);
+//prepend lower 			loginfo("userpath <%s>, request <%s>, namlen %d, restlen %d, slash <%s>", user_path, dir, namlen, restlen, slash);//append lower to the end
 			snprintf(rpath, PATH_MAX, "%.*s/%s%.*s",
 				 namlen, dir, user_path, restlen, slash);
 			dir = rpath;

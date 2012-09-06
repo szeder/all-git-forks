@@ -749,7 +749,7 @@ char *get_remote_object_url(const char *url, const char *hex,
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
 
-static int http_request(const char *url, void *result, int target, int options)
+//prepend lower static int http_request(const char *url, void *result, int target, int options)//append lower to the end
 {
 	struct active_request_slot *slot;
 	struct slot_results results;

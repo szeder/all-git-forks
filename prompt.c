@@ -4,7 +4,7 @@
 #include "prompt.h"
 #include "compat/terminal.h"
 
-static char *do_askpass(const char *cmd, const char *prompt)
+//prepend lower static char *do_askpass(const char *cmd, const char *prompt)//append lower to the end
 {
 	struct child_process pass;
 	const char *args[3];

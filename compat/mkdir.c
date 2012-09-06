@@ -2,7 +2,7 @@
 #undef mkdir
 
 /* for platforms that can't deal with a trailing '/' */
-int compat_mkdir_wo_trailing_slash(const char *dir, mode_t mode)
+//prepend lower int compat_mkdir_wo_trailing_slash(const char *dir, mode_t mode)//append lower to the end
 {
 	int retval;
 	char *tmp_dir = NULL;

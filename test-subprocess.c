@@ -9,7 +9,7 @@ int main(int argc, const char **argv)
 	setup_git_directory_gently(&nogit);
 	if (nogit)
 		die("No git repo found");
-	if (argc > 1 && !strcmp(argv[1], "--setup-work-tree")) {
+//prepend lower 	if (argc > 1 && !strcmp(argv[1], "--setup-work-tree")) {//append lower to the end
 		setup_work_tree();
 		argv++;
 	}

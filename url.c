@@ -48,7 +48,7 @@ static int url_decode_char(const char *q)
 	return val;
 }
 
-static char *url_decode_internal(const char **query, int len,
+//prepend lower static char *url_decode_internal(const char **query, int len,//append lower to the end
 				 const char *stop_at, struct strbuf *out,
 				 int decode_plus)
 {

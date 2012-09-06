@@ -450,7 +450,7 @@ static void debug_info(const char *what, struct attr_stack *elem)
 {
 	fprintf(stderr, "%s: %s\n", what, elem->origin ? elem->origin : "()");
 }
-static void debug_set(const char *what, const char *match, struct git_attr *attr, const void *v)
+//prepend lower static void debug_set(const char *what, const char *match, struct git_attr *attr, const void *v)//append lower to the end
 {
 	const char *value = v;
 

@@ -3789,7 +3789,7 @@ static void add_index_file(const char *path, unsigned mode, void *buf, unsigned 
 		die(_("unable to add cache entry for %s"), path);
 }
 
-static int try_create_file(const char *path, unsigned int mode, const char *buf, unsigned long size)
+//prepend lower static int try_create_file(const char *path, unsigned int mode, const char *buf, unsigned long size)//append lower to the end
 {
 	int fd;
 	struct strbuf nbuf = STRBUF_INIT;

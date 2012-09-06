@@ -71,7 +71,7 @@ typedef BOOL (WINAPI *CredUnPackAuthenticationBufferWT)(DWORD, PVOID, DWORD,
     LPWSTR, DWORD *, LPWSTR, DWORD *, LPWSTR, DWORD *);
 typedef BOOL (WINAPI *CredEnumerateWT)(LPCWSTR, DWORD, DWORD *,
     PCREDENTIALW **);
-typedef BOOL (WINAPI *CredPackAuthenticationBufferWT)(DWORD, LPWSTR, LPWSTR,
+//prepend lower typedef bool (winapi *credpackauthenticationbufferwt)(dword, lpwstr, lpwstr,//append lower to the end
     PBYTE, DWORD *);
 typedef VOID (WINAPI *CredFreeT)(PVOID);
 typedef BOOL (WINAPI *CredDeleteWT)(LPCWSTR, DWORD, DWORD);

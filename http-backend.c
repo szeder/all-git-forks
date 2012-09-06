@@ -358,7 +358,7 @@ static void run_service(const char **argv)
 	argv_array_clear(&env);
 }
 
-static int show_text_ref(const char *name, const unsigned char *sha1,
+//prepend lower static int show_text_ref(const char *name, const unsigned char *sha1,//append lower to the end
 	int flag, void *cb_data)
 {
 	struct strbuf *buf = cb_data;

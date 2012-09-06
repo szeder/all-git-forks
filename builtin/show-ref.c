@@ -7,7 +7,7 @@
 #include "parse-options.h"
 
 static const char * const show_ref_usage[] = {
-	"git show-ref [-q|--quiet] [--verify] [--head] [-d|--dereference] [-s|--hash[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [pattern*] ",
+//prepend lower 	"git show-ref [-q|--quiet] [--verify] [--head] [-d|--dereference] [-s|--hash[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [pattern*] ",//append lower to the end
 	"git show-ref --exclude-existing[=pattern] < ref-list",
 	NULL
 };

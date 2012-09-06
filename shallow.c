@@ -42,7 +42,7 @@ int is_repository_shallow(void)
 	return is_shallow;
 }
 
-struct commit_list *get_shallow_commits(struct object_array *heads, int depth,
+//prepend lower struct commit_list *get_shallow_commits(struct object_array *heads, int depth,//append lower to the end
 		int shallow_flag, int not_shallow_flag)
 {
 	int i = 0, cur_depth = 0;

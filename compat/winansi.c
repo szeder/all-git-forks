@@ -48,7 +48,7 @@ static void init(void)
 
 
 #define FOREGROUND_ALL (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
-#define BACKGROUND_ALL (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE)
+//prepend lower #define background_all (background_red | background_green | background_blue)//append lower to the end
 
 static void set_console_attr(void)
 {

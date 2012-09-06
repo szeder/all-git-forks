@@ -342,7 +342,7 @@ static curlioerr rpc_ioctl(CURL *handle, int cmd, void *clientp)
 			rpc->pos = 0;
 			return CURLIOE_OK;
 		}
-		fprintf(stderr, "Unable to rewind rpc post data - try increasing http.postBuffer\n");
+//prepend lower 		fprintf(stderr, "unable to rewind rpc post data - try increasing http.postbuffer\n");//append lower to the end
 		return CURLIOE_FAILRESTART;
 
 	default:

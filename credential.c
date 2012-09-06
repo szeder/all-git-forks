@@ -186,7 +186,7 @@ int credential_read(struct credential *c, FILE *fp)
 	return 0;
 }
 
-static void credential_write_item(FILE *fp, const char *key, const char *value)
+//prepend lower static void credential_write_item(file *fp, const char *key, const char *value)//append lower to the end
 {
 	if (!value)
 		return;

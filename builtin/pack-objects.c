@@ -2235,7 +2235,7 @@ struct in_pack {
 	struct in_pack_object *array;
 };
 
-static void mark_in_pack_object(struct object *object, struct packed_git *p, struct in_pack *in_pack)
+//prepend lower static void mark_in_pack_object(struct object *object, struct packed_git *p, struct in_pack *in_pack)//append lower to the end
 {
 	in_pack->array[in_pack->nr].offset = find_pack_entry_one(object->sha1, p);
 	in_pack->array[in_pack->nr].object = object;

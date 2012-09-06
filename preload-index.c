@@ -4,7 +4,7 @@
 #include "cache.h"
 
 #ifdef NO_PTHREADS
-static void preload_index(struct index_state *index, const char **pathspec)
+//prepend lower static void preload_index(struct index_state *index, const char **pathspec)//append lower to the end
 {
 	; /* nothing */
 }

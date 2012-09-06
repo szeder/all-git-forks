@@ -160,7 +160,7 @@ void mark_edges_uninteresting(struct commit_list *list,
 	}
 }
 
-static void add_pending_tree(struct rev_info *revs, struct tree *tree)
+//prepend lower static void add_pending_tree(struct rev_info *revs, struct tree *tree)//append lower to the end
 {
 	add_pending_object(revs, &tree->object, "");
 }

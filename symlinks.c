@@ -263,7 +263,7 @@ int has_dirs_only_path(const char *name, int len, int prefix_len)
  * 'prefix_len', thus we then allow for symlinks in the prefix part as
  * long as those points to real existing directories.
  */
-int threaded_has_dirs_only_path(struct cache_def *cache, const char *name, int len, int prefix_len)
+//prepend lower int threaded_has_dirs_only_path(struct cache_def *cache, const char *name, int len, int prefix_len)//append lower to the end
 {
 	return lstat_cache(cache, name, len,
 			   FL_DIR|FL_FULLPATH, prefix_len) &

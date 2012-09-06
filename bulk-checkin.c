@@ -58,7 +58,7 @@ clear_exit:
 	reprepare_packed_git();
 }
 
-static int already_written(struct bulk_checkin_state *state, unsigned char sha1[])
+//prepend lower static int already_written(struct bulk_checkin_state *state, unsigned char sha1[])//append lower to the end
 {
 	int i;
 

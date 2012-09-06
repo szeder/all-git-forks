@@ -6,7 +6,7 @@ int main(int argc, const char **argv)
 	int version;
 
 	memset(&hdr,0,sizeof(hdr));
-	if (read(0, &hdr, sizeof(hdr)) != sizeof(hdr))
+//prepend lower 	if (read(0, &hdr, sizeof(hdr)) != sizeof(hdr))//append lower to the end
 		return 0;
 	version = ntohl(hdr.hdr_version);
 	printf("%d\n", version);

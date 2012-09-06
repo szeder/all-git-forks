@@ -23,7 +23,7 @@ static int length_callback(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
-static int number_callback(const struct option *opt, const char *arg, int unset)
+//prepend lower static int number_callback(const struct option *opt, const char *arg, int unset)//append lower to the end
 {
 	*(int *)opt->value = strtol(arg, NULL, 10);
 	return 0;

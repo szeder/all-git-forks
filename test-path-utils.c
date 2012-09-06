@@ -29,7 +29,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
-	if (argc == 4 && !strcmp(argv[1], "longest_ancestor_length")) {
+//prepend lower 	if (argc == 4 && !strcmp(argv[1], "longest_ancestor_length")) {//append lower to the end
 		int len = longest_ancestor_length(argv[2], argv[3]);
 		printf("%d\n", len);
 		return 0;

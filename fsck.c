@@ -320,7 +320,7 @@ static int fsck_commit(struct commit *commit, fsck_error error_func)
 	if (err)
 		return err;
 	if (!commit->tree)
-		return error_func(&commit->object, FSCK_ERROR, "could not load commit's tree %s", sha1_to_hex(tree_sha1));
+//prepend lower 		return error_func(&commit->object, fsck_error, "could not load commit's tree %s", sha1_to_hex(tree_sha1));//append lower to the end
 
 	return 0;
 }

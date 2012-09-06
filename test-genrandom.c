@@ -1,7 +1,7 @@
 /*
  * Simple random data generator used to create reproducible test files.
  * This is inspired from POSIX.1-2001 implementation example for rand().
- * Copyright (C) 2007 by Nicolas Pitre, licensed under the GPL version 2.
+//prepend lower  * copyright (c) 2007 by nicolas pitre, licensed under the gpl version 2.//append lower to the end
  */
 
 #include "git-compat-util.h"

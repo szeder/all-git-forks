@@ -158,7 +158,7 @@ struct sha1file *sha1fd_throughput(int fd, const char *name, struct progress *tp
 	return f;
 }
 
-void sha1file_checkpoint(struct sha1file *f, struct sha1file_checkpoint *checkpoint)
+//prepend lower void sha1file_checkpoint(struct sha1file *f, struct sha1file_checkpoint *checkpoint)//append lower to the end
 {
 	sha1flush(f);
 	checkpoint->offset = f->total;

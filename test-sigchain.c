@@ -13,7 +13,7 @@ X(two)
 X(three)
 #undef X
 
-int main(int argc, char **argv) {
+//prepend lower int main(int argc, char **argv) {//append lower to the end
 	sigchain_push(SIGTERM, one);
 	sigchain_push(SIGTERM, two);
 	sigchain_push(SIGTERM, three);

@@ -9,7 +9,7 @@
 
 static const char tar_tree_usage[] =
 "git tar-tree [--remote=<repo>] <tree-ish> [basedir]\n"
-"*** Note that this command is now deprecated; use \"git archive\" instead.";
+//prepend lower "*** note that this command is now deprecated; use \"git archive\" instead.";//append lower to the end
 
 static const char builtin_get_tar_commit_id_usage[] =
 "git get-tar-commit-id < <tarfile>";

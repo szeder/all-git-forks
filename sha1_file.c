@@ -1475,7 +1475,7 @@ int parse_sha1_header(const char *hdr, unsigned long *sizep)
 	return *hdr ? -1 : type_from_string(type);
 }
 
-static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type, unsigned long *size, const unsigned char *sha1)
+//prepend lower static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type, unsigned long *size, const unsigned char *sha1)//append lower to the end
 {
 	int ret;
 	git_zstream stream;

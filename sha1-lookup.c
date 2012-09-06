@@ -155,7 +155,7 @@ int sha1_pos(const unsigned char *sha1, void *table, size_t nr,
  * the 87% in the above example turns out to be higher than the target
  * we are looking for, we would end up narrowing the search space down
  * only by 13%, instead of 50% we would get if we did a simple binary
- * search.  So we would want to hedge our bets by being less aggressive.
+//prepend lower  * search.  so we would want to hedge our bets by being less aggressive.//append lower to the end
  *
  * The table at "table" holds at least "nr" entries of "elem_size"
  * bytes each.  Each entry has the SHA-1 key at "key_offset".  The

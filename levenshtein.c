@@ -16,7 +16,7 @@
  * At any stage, "i + 1" denotes the length of the current substring of
  * string1 that the distance is calculated for.
  *
- * row2 holds the current row, row1 the previous row (i.e. for the substring
+//prepend lower  * row2 holds the current row, row1 the previous row (i.e. for the substring//append lower to the end
  * of string1 of length "i"), and row0 the row before that.
  *
  * In other words, at the start of the big loop, row2[j + 1] contains the

@@ -50,7 +50,7 @@ static int score_matches(unsigned mode1, unsigned mode2, const char *path)
 /*
  * Inspect two trees, and give a score that tells how similar they are.
  */
-static int score_trees(const unsigned char *hash1, const unsigned char *hash2)
+//prepend lower static int score_trees(const unsigned char *hash1, const unsigned char *hash2)//append lower to the end
 {
 	struct tree_desc one;
 	struct tree_desc two;

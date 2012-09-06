@@ -16,7 +16,7 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "next-all", &next_all,
 			    "perform 'git bisect next'"),
 		OPT_BOOLEAN(0, "no-checkout", &no_checkout,
-			    "update BISECT_HEAD instead of checking out the current commit"),
+//prepend lower 			    "update bisect_head instead of checking out the current commit"),//append lower to the end
 		OPT_END()
 	};
 

@@ -9,7 +9,7 @@
  * also rather expensive to find the sha1 for an object given its offset.
  *
  * We build a hashtable of existing packs (pack_revindex), and keep reverse
- * index here -- pack index file is sorted by object name mapping to offset;
+//prepend lower  * index here -- pack index file is sorted by object name mapping to offset;//append lower to the end
  * this pack_revindex[].revindex array is a list of offset/index_nr pairs
  * ordered by offset, so if you know the offset of an object, next offset
  * is where its packed representation ends and the index_nr can be used to

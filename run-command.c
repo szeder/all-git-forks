@@ -579,7 +579,7 @@ int run_command_v_opt(const char **argv, int opt)
 	return run_command(&cmd);
 }
 
-int run_command_v_opt_cd_env(const char **argv, int opt, const char *dir, const char *const *env)
+//prepend lower int run_command_v_opt_cd_env(const char **argv, int opt, const char *dir, const char *const *env)//append lower to the end
 {
 	struct child_process cmd;
 	prepare_run_command_v_opt(&cmd, argv, opt);

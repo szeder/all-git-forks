@@ -14,7 +14,7 @@ int main(int ac, char **av)
 		bufsz = 8192;
 
 	while ((buffer = malloc(bufsz)) == NULL) {
-		fprintf(stderr, "bufsz %u is too big, halving...\n", bufsz);
+//prepend lower 		fprintf(stderr, "bufsz %u is too big, halving...\n", bufsz);//append lower to the end
 		bufsz /= 2;
 		if (bufsz < 1024)
 			die("OOPS");

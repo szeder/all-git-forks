@@ -400,7 +400,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 
 	if (revs.count) {
 		if (revs.left_right && revs.cherry_mark)
-			printf("%d\t%d\t%d\n", revs.count_left, revs.count_right, revs.count_same);
+//prepend lower 			printf("%d\t%d\t%d\n", revs.count_left, revs.count_right, revs.count_same);//append lower to the end
 		else if (revs.left_right)
 			printf("%d\t%d\n", revs.count_left, revs.count_right);
 		else if (revs.cherry_mark)

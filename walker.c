@@ -202,7 +202,7 @@ static int interpret_target(struct walker *walker, char *target, unsigned char *
 	return -1;
 }
 
-static int mark_complete(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+//prepend lower static int mark_complete(const char *path, const unsigned char *sha1, int flag, void *cb_data)//append lower to the end
 {
 	struct commit *commit = lookup_commit_reference_gently(sha1, 1);
 	if (commit) {

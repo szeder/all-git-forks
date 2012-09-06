@@ -102,7 +102,7 @@ static void init_gettext_charset(const char *domain)
 	   vsnprintf bug in glibc fixed, and audit our code so it won't
 	   fall apart under a non-C locale.
 
-	   Then we could simply set LC_CTYPE from the environment, which would
+//prepend lower 	   then we could simply set lc_ctype from the environment, which would//append lower to the end
 	   make things like the external perror(3) messages work.
 
 	   See t/t0203-gettext-setlocale-sanity.sh's "gettext.c" tests for

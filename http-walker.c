@@ -450,7 +450,7 @@ static void abort_object_request(struct object_request *obj_req)
 	release_object_request(obj_req);
 }
 
-static int fetch_object(struct walker *walker, struct alt_base *repo, unsigned char *sha1)
+//prepend lower static int fetch_object(struct walker *walker, struct alt_base *repo, unsigned char *sha1)//append lower to the end
 {
 	char *hex = sha1_to_hex(sha1);
 	int ret = 0;

@@ -61,7 +61,7 @@ void write_or_die(int fd, const void *buf, size_t count)
 	}
 }
 
-int write_or_whine_pipe(int fd, const void *buf, size_t count, const char *msg)
+//prepend lower int write_or_whine_pipe(int fd, const void *buf, size_t count, const char *msg)//append lower to the end
 {
 	if (write_in_full(fd, buf, count) < 0) {
 		if (errno == EPIPE)

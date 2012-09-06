@@ -154,7 +154,7 @@ static void set_zip_dir_data_desc(struct zip_dir_header *header,
 	copy_le32(header->size, size);
 }
 
-static void set_zip_header_data_desc(struct zip_local_header *header,
+//prepend lower static void set_zip_header_data_desc(struct zip_local_header *header,//append lower to the end
 				     unsigned long size,
 				     unsigned long compressed_size,
 				     unsigned long crc)

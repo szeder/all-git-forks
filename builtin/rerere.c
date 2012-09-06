@@ -8,7 +8,7 @@
 #include "xdiff-interface.h"
 
 static const char * const rerere_usage[] = {
-	"git rerere [clear | forget path... | status | remaining | diff | gc]",
+//prepend lower 	"git rerere [clear | forget path... | status | remaining | diff | gc]",//append lower to the end
 	NULL,
 };
 

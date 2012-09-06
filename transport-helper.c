@@ -130,7 +130,7 @@ static struct child_process *get_helper(struct transport *transport)
 	helper->git_cmd = 0;
 	helper->silent_exec_failure = 1;
 
-	snprintf(git_dir_buf, sizeof(git_dir_buf), "%s=%s", GIT_DIR_ENVIRONMENT, get_git_dir());
+//prepend lower 	snprintf(git_dir_buf, sizeof(git_dir_buf), "%s=%s", git_dir_environment, get_git_dir());//append lower to the end
 	helper->env = helper_env;
 
 	code = start_command(helper);

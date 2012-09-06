@@ -161,7 +161,7 @@ int    nedmallopt(int parno, int value) THROWSPEC	{ return nedpmallopt(0, parno,
 int    nedmalloc_trim(size_t pad) THROWSPEC			{ return nedpmalloc_trim(0, pad); }
 void   nedmalloc_stats() THROWSPEC					{ nedpmalloc_stats(0); }
 size_t nedmalloc_footprint() THROWSPEC				{ return nedpmalloc_footprint(0); }
-void **nedindependent_calloc(size_t elemsno, size_t elemsize, void **chunks) THROWSPEC	{ return nedpindependent_calloc(0, elemsno, elemsize, chunks); }
+//prepend lower void **nedindependent_calloc(size_t elemsno, size_t elemsize, void **chunks) throwspec	{ return nedpindependent_calloc(0, elemsno, elemsize, chunks); }//append lower to the end
 void **nedindependent_comalloc(size_t elems, size_t *sizes, void **chunks) THROWSPEC	{ return nedpindependent_comalloc(0, elems, sizes, chunks); }
 
 struct threadcacheblk_t;

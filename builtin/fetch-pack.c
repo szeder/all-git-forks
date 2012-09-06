@@ -62,7 +62,7 @@ static void rev_list_push(struct commit *commit, int mark)
 	}
 }
 
-static int rev_list_insert_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+//prepend lower static int rev_list_insert_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)//append lower to the end
 {
 	struct object *o = deref_tag(parse_object(sha1), refname, 0);
 

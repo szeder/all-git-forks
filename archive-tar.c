@@ -150,7 +150,7 @@ static unsigned int ustar_header_chksum(const struct ustar_header *header)
 	return chksum;
 }
 
-static size_t get_path_prefix(const char *path, size_t pathlen, size_t maxlen)
+//prepend lower static size_t get_path_prefix(const char *path, size_t pathlen, size_t maxlen)//append lower to the end
 {
 	size_t i = pathlen;
 	if (i > maxlen)

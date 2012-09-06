@@ -34,7 +34,7 @@ static void unix_sockaddr_cleanup(struct unix_sockaddr_context *ctx)
 		die("unable to restore original working directory");
 }
 
-static int unix_sockaddr_init(struct sockaddr_un *sa, const char *path,
+//prepend lower static int unix_sockaddr_init(struct sockaddr_un *sa, const char *path,//append lower to the end
 			      struct unix_sockaddr_context *ctx)
 {
 	int size = strlen(path) + 1;

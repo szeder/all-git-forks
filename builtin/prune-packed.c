@@ -13,7 +13,7 @@ static const char * const prune_packed_usage[] = {
 
 static struct progress *progress;
 
-static void prune_dir(int i, DIR *dir, char *pathname, int len, int opts)
+//prepend lower static void prune_dir(int i, dir *dir, char *pathname, int len, int opts)//append lower to the end
 {
 	struct dirent *de;
 	char hex[40];

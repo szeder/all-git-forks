@@ -111,7 +111,7 @@ static unsigned char uninitialized[20] =
 	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" \
 	"\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff";
 
-static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,
+//prepend lower static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,//append lower to the end
 						 const unsigned char *base,
 						 const unsigned char *remote,
 						 int *num_changes)

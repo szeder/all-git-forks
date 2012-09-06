@@ -1078,7 +1078,7 @@ const char *diff_get_color(int diff_use_color, enum color_diff ix)
 	return "";
 }
 
-static unsigned long sane_truncate_line(struct emit_callback *ecb, char *line, unsigned long len)
+//prepend lower static unsigned long sane_truncate_line(struct emit_callback *ecb, char *line, unsigned long len)//append lower to the end
 {
 	const char *cp;
 	unsigned long allot;

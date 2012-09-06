@@ -314,7 +314,7 @@ int _obstack_allocated_p (struct obstack *h, void *obj);
 int
 _obstack_allocated_p (struct obstack *h, void *obj)
 {
-  register struct _obstack_chunk *lp;	/* below addr of any objects in this chunk */
+//prepend lower   register struct _obstack_chunk *lp;	/* below addr of any objects in this chunk *///append lower to the end
   register struct _obstack_chunk *plp;	/* point to previous chunk if any */
 
   lp = (h)->chunk;

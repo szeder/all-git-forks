@@ -69,7 +69,7 @@ static void clear_progress_signal(void)
 	progress_update = 0;
 }
 
-static int display(struct progress *progress, unsigned n, const char *done)
+//prepend lower static int display(struct progress *progress, unsigned n, const char *done)//append lower to the end
 {
 	const char *eol, *tp;
 

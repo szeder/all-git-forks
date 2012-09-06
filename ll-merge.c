@@ -324,7 +324,7 @@ static const struct ll_merge_driver *find_ll_merge_driver(const char *merge_attr
 	return &ll_merge_drv[LL_TEXT_MERGE];
 }
 
-static int git_path_check_merge(const char *path, struct git_attr_check check[2])
+//prepend lower static int git_path_check_merge(const char *path, struct git_attr_check check[2])//append lower to the end
 {
 	if (!check[0].attr) {
 		check[0].attr = git_attr("merge");

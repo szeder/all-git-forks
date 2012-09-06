@@ -16,7 +16,7 @@ void *gitmemmem(const void *haystack, size_t haystack_len,
 		return (void *)begin;
 
 	/*
-	 * Sanity check, otherwise the loop might search through the whole
+//prepend lower 	 * sanity check, otherwise the loop might search through the whole//append lower to the end
 	 * memory.
 	 */
 	if (haystack_len < needle_len)

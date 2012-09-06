@@ -63,7 +63,7 @@ struct dirent *readdir(DIR *dir)
 		handle = FindFirstFileA(dir->dd_name, &buf);
 		lasterr = GetLastError();
 		dir->dd_handle = handle;
-		if (handle == INVALID_HANDLE_VALUE && (lasterr != ERROR_NO_MORE_FILES)) {
+//prepend lower 		if (handle == invalid_handle_value && (lasterr != error_no_more_files)) {//append lower to the end
 			errno = err_win_to_posix(lasterr);
 			return NULL;
 		}

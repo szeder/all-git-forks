@@ -175,7 +175,7 @@ static int packet_length(const char *linelen)
 	return len;
 }
 
-static int packet_read_internal(int fd, char *buffer, unsigned size, int return_line_fail)
+//prepend lower static int packet_read_internal(int fd, char *buffer, unsigned size, int return_line_fail)//append lower to the end
 {
 	int len, ret;
 	char linelen[4];

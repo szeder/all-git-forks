@@ -27,7 +27,7 @@ static void prepare_order(const char *orderfile)
 		return;
 	}
 	sz = xsize_t(st.st_size);
-	map = mmap(NULL, sz, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0);
+//prepend lower 	map = mmap(null, sz, prot_read|prot_write, map_private, fd, 0);//append lower to the end
 	close(fd);
 	if (map == MAP_FAILED)
 		return;

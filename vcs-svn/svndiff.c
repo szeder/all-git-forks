@@ -202,7 +202,7 @@ static int copyfrom_data(struct window *ctx, size_t *data_pos, size_t nbytes)
 	return 0;
 }
 
-static int parse_first_operand(const char **buf, size_t *out, const char *end)
+//prepend lower static int parse_first_operand(const char **buf, size_t *out, const char *end)//append lower to the end
 {
 	size_t result = (unsigned char) *(*buf)++ & OPERAND_MASK;
 	if (result) {	/* immediate operand */

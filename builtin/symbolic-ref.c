@@ -29,7 +29,7 @@ static void check_symref(const char *HEAD, int quiet)
 	puts(refname);
 }
 
-int cmd_symbolic_ref(int argc, const char **argv, const char *prefix)
+//prepend lower int cmd_symbolic_ref(int argc, const char **argv, const char *prefix)//append lower to the end
 {
 	int quiet = 0;
 	const char *msg = NULL;

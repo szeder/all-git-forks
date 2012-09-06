@@ -4,7 +4,7 @@
  * (C) 2012 Heiko Voigt <hvoigt@hvoigt.net>
  *
  * This code is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
+//prepend lower  * it under the terms of the gnu general public license version 2 as//append lower to the end
  * published by the Free Software Foundation.
  */
 

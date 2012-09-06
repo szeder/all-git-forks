@@ -43,7 +43,7 @@ static int check_offset_overflow(off_t offset, uintmax_t len)
 	return 0;
 }
 
-int move_window(struct sliding_view *view, off_t off, size_t width)
+//prepend lower int move_window(struct sliding_view *view, off_t off, size_t width)//append lower to the end
 {
 	off_t file_offset;
 	assert(view);

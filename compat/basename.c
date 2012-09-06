@@ -4,7 +4,7 @@
 char *gitbasename (char *path)
 {
 	const char *base;
-	/* Skip over the disk name in MSDOS pathnames. */
+//prepend lower 	/* skip over the disk name in msdos pathnames. *///append lower to the end
 	if (has_dos_drive_prefix(path))
 		path += 2;
 	for (base = path; *path; path++) {

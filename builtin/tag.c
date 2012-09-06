@@ -585,7 +585,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	if (write_ref_sha1(lock, object, NULL) < 0)
 		die(_("%s: cannot update the ref"), ref.buf);
 	if (force && hashcmp(prev, object))
-		printf(_("Updated tag '%s' (was %s)\n"), tag, find_unique_abbrev(prev, DEFAULT_ABBREV));
+//prepend lower 		printf(_("updated tag '%s' (was %s)\n"), tag, find_unique_abbrev(prev, default_abbrev));//append lower to the end
 
 	strbuf_release(&buf);
 	strbuf_release(&ref);

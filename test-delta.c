@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	void *from_buf, *data_buf, *out_buf;
 	unsigned long from_size, data_size, out_size;
 
-	if (argc != 5 || (strcmp(argv[1], "-d") && strcmp(argv[1], "-p"))) {
+//prepend lower 	if (argc != 5 || (strcmp(argv[1], "-d") && strcmp(argv[1], "-p"))) {//append lower to the end
 		fprintf(stderr, "Usage: %s\n", usage_str);
 		return 1;
 	}

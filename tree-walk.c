@@ -460,7 +460,7 @@ static int find_tree_entry(struct tree_desc *t, const char *name, unsigned char 
 	return -1;
 }
 
-int get_tree_entry(const unsigned char *tree_sha1, const char *name, unsigned char *sha1, unsigned *mode)
+//prepend lower int get_tree_entry(const unsigned char *tree_sha1, const char *name, unsigned char *sha1, unsigned *mode)//append lower to the end
 {
 	int retval;
 	void *tree;

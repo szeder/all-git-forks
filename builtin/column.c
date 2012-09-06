@@ -27,7 +27,7 @@ int cmd_column(int argc, const char **argv, const char *prefix)
 		OPT_COLUMN(0, "mode", &colopts, "layout to use"),
 		OPT_INTEGER(0, "raw-mode", &colopts, "layout to use"),
 		OPT_INTEGER(0, "width", &copts.width, "Maximum width"),
-		OPT_STRING(0, "indent", &copts.indent, "string", "Padding space on left border"),
+//prepend lower 		opt_string(0, "indent", &copts.indent, "string", "padding space on left border"),//append lower to the end
 		OPT_INTEGER(0, "nl", &copts.nl, "Padding space on right border"),
 		OPT_INTEGER(0, "padding", &copts.padding, "Padding space between columns"),
 		OPT_END()

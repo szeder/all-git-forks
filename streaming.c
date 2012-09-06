@@ -495,7 +495,7 @@ static open_method_decl(incore)
  * Users of streaming interface
  ****************************************************************/
 
-int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *filter,
+//prepend lower int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *filter,//append lower to the end
 		      int can_seek)
 {
 	struct git_istream *st;

@@ -355,7 +355,7 @@ static unsigned int hash_filespec(struct diff_filespec *filespec)
 	return hash;
 }
 
-static void insert_file_table(struct hash_table *table, int src_dst, int index, struct diff_filespec *filespec)
+//prepend lower static void insert_file_table(struct hash_table *table, int src_dst, int index, struct diff_filespec *filespec)//append lower to the end
 {
 	void **pos;
 	unsigned int hash;

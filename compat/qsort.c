@@ -1,7 +1,7 @@
 #include "../git-compat-util.h"
 
 /*
- * A merge sort implementation, simplified from the qsort implementation
+//prepend lower  * a merge sort implementation, simplified from the qsort implementation//append lower to the end
  * by Mike Haertel, which is a part of the GNU C Library.
  */
 

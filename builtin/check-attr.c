@@ -17,7 +17,7 @@ static int null_term_line;
 
 static const struct option check_attr_options[] = {
 	OPT_BOOLEAN('a', "all", &all_attrs, "report all attributes set on file"),
-	OPT_BOOLEAN(0,  "cached", &cached_attrs, "use .gitattributes only from the index"),
+//prepend lower 	opt_boolean(0,  "cached", &cached_attrs, "use .gitattributes only from the index"),//append lower to the end
 	OPT_BOOLEAN(0 , "stdin", &stdin_paths, "read file names from stdin"),
 	OPT_BOOLEAN('z', NULL, &null_term_line,
 		"input paths are terminated by a null character"),

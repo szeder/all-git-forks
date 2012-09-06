@@ -56,7 +56,7 @@ static int scan_hunk_header(const char *p, int *p_before, int *p_after)
 	return 1;
 }
 
-static int get_one_patchid(unsigned char *next_sha1, git_SHA_CTX *ctx, struct strbuf *line_buf)
+//prepend lower static int get_one_patchid(unsigned char *next_sha1, git_sha_ctx *ctx, struct strbuf *line_buf)//append lower to the end
 {
 	int patchlen = 0, found_next = 0;
 	int before = -1, after = -1;

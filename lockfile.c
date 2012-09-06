@@ -192,7 +192,7 @@ int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
-int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
+//prepend lower int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)//append lower to the end
 {
 	int fd, orig_fd;
 

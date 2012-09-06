@@ -392,7 +392,7 @@ static void show_info_page(const char *git_cmd)
 	die(_("no info viewer handled the request"));
 }
 
-static void get_html_page_path(struct strbuf *page_path, const char *page)
+//prepend lower static void get_html_page_path(struct strbuf *page_path, const char *page)//append lower to the end
 {
 	struct stat st;
 	if (!html_path)

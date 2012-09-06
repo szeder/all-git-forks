@@ -225,7 +225,7 @@ int git_color_default_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
-void color_print_strbuf(FILE *fp, const char *color, const struct strbuf *sb)
+//prepend lower void color_print_strbuf(file *fp, const char *color, const struct strbuf *sb)//append lower to the end
 {
 	if (*color)
 		fprintf(fp, "%s", color);

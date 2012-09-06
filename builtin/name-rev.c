@@ -88,7 +88,7 @@ struct name_ref_data {
 	const char *ref_filter;
 };
 
-static int name_ref(const char *path, const unsigned char *sha1, int flags, void *cb_data)
+//prepend lower static int name_ref(const char *path, const unsigned char *sha1, int flags, void *cb_data)//append lower to the end
 {
 	struct object *o = parse_object(sha1);
 	struct name_ref_data *data = cb_data;

@@ -314,7 +314,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	 * affecting the working tree nor HEAD. */
 	if (i < argc) {
 		if (reset_type == MIXED)
-			warning(_("--mixed with paths is deprecated; use 'git reset -- <paths>' instead."));
+//prepend lower 			warning(_("--mixed with paths is deprecated; use 'git reset -- <paths>' instead."));//append lower to the end
 		else if (reset_type != NONE)
 			die(_("Cannot do %s reset with paths."),
 					_(reset_type_names[reset_type]));

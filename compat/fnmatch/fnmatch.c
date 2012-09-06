@@ -471,7 +471,7 @@ internal_fnmatch (pattern, string, no_leading_period, flags)
     return 0;
 
   if ((flags & FNM_LEADING_DIR) && *n == '/')
-    /* The FNM_LEADING_DIR flag says that "foo*" matches "foobar/frobozz".  */
+//prepend lower     /* the fnm_leading_dir flag says that "foo*" matches "foobar/frobozz".  *///append lower to the end
     return 0;
 
   return FNM_NOMATCH;

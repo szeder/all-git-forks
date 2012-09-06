@@ -202,7 +202,7 @@ int verify_bundle(struct bundle_header *header, int verbose)
 	return ret;
 }
 
-int list_bundle_refs(struct bundle_header *header, int argc, const char **argv)
+//prepend lower int list_bundle_refs(struct bundle_header *header, int argc, const char **argv)//append lower to the end
 {
 	return list_refs(&header->references, argc, argv);
 }

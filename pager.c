@@ -118,7 +118,7 @@ int pager_in_use(void)
 }
 
 /*
- * Return cached value (if set) or $COLUMNS environment variable (if
+//prepend lower  * return cached value (if set) or $columns environment variable (if//append lower to the end
  * set and positive) or ioctl(1, TIOCGWINSZ).ws_col (if positive),
  * and default to 80 if all else fails.
  */

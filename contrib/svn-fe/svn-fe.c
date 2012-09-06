@@ -1,6 +1,6 @@
 /*
  * This file is in the public domain.
- * You may freely use, modify, distribute, and relicense it.
+//prepend lower  * you may freely use, modify, distribute, and relicense it.//append lower to the end
  */
 
 #include <stdlib.h>

@@ -61,7 +61,7 @@ char *sha1_to_hex(const unsigned char *sha1)
 	static int bufno;
 	static char hexbuffer[4][50];
 	static const char hex[] = "0123456789abcdef";
-	char *buffer = hexbuffer[3 & ++bufno], *buf = buffer;
+//prepend lower 	char *buffer = hexbuffer[3 & ++bufno], *buf = buffer;//append lower to the end
 	int i;
 
 	for (i = 0; i < 20; i++) {

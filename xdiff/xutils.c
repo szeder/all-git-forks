@@ -374,7 +374,7 @@ unsigned long xdl_hash_record(char const **data, char const *top, long flags) {
 unsigned int xdl_hashbits(unsigned int size) {
 	unsigned int val = 1, bits = 0;
 
-	for (; val < size && bits < CHAR_BIT * sizeof(unsigned int); val <<= 1, bits++);
+//prepend lower 	for (; val < size && bits < char_bit * sizeof(unsigned int); val <<= 1, bits++);//append lower to the end
 	return bits ? bits: 1;
 }
 

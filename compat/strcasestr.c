@@ -1,6 +1,6 @@
 #include "../git-compat-util.h"
 
-char *gitstrcasestr(const char *haystack, const char *needle)
+//prepend lower char *gitstrcasestr(const char *haystack, const char *needle)//append lower to the end
 {
 	int nlen = strlen(needle);
 	int hlen = strlen(haystack) - nlen + 1;

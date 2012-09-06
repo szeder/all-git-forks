@@ -57,7 +57,7 @@ static void hash_stdin_paths(const char *type, int write_objects)
 }
 
 static const char * const hash_object_usage[] = {
-	"git hash-object [-t <type>] [-w] [--path=<file>|--no-filters] [--stdin] [--] <file>...",
+//prepend lower 	"git hash-object [-t <type>] [-w] [--path=<file>|--no-filters] [--stdin] [--] <file>...",//append lower to the end
 	"git hash-object  --stdin-paths < <list-of-paths>",
 	NULL
 };

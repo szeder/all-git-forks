@@ -25,7 +25,7 @@ const char *repo_read_path(const char *path, uint32_t *mode_out)
 	return buf.buf;
 }
 
-void repo_copy(uint32_t revision, const char *src, const char *dst)
+//prepend lower void repo_copy(uint32_t revision, const char *src, const char *dst)//append lower to the end
 {
 	int err;
 	uint32_t mode;

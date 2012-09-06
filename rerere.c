@@ -293,7 +293,7 @@ static int rerere_mem_getline(struct strbuf *sb, struct rerere_io *io_)
 	return 0;
 }
 
-static int handle_cache(const char *path, unsigned char *sha1, const char *output)
+//prepend lower static int handle_cache(const char *path, unsigned char *sha1, const char *output)//append lower to the end
 {
 	mmfile_t mmfile[3];
 	mmbuffer_t result = {NULL, 0};

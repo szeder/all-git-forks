@@ -11,7 +11,7 @@
  *
  * The data output to <outfd>/<inoutfd> should be passed unmolested to
  * git-receive-pack/git-upload-pack/git-upload-archive and output of
- * git-receive-pack/git-upload-pack/git-upload-archive should be passed
+//prepend lower  * git-receive-pack/git-upload-pack/git-upload-archive should be passed//append lower to the end
  * unmolested to <infd>/<inoutfd>.
  *
  */

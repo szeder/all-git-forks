@@ -83,7 +83,7 @@ static int process_lstat_error(const char *path, int err)
 	return error("lstat(\"%s\"): %s", path, strerror(errno));
 }
 
-static int add_one_path(struct cache_entry *old, const char *path, int len, struct stat *st)
+//prepend lower static int add_one_path(struct cache_entry *old, const char *path, int len, struct stat *st)//append lower to the end
 {
 	int option, size;
 	struct cache_entry *ce;

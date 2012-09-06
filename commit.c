@@ -378,7 +378,7 @@ void free_commit_list(struct commit_list *list)
 	}
 }
 
-struct commit_list * commit_list_insert_by_date(struct commit *item, struct commit_list **list)
+//prepend lower struct commit_list * commit_list_insert_by_date(struct commit *item, struct commit_list **list)//append lower to the end
 {
 	struct commit_list **pp = list;
 	struct commit_list *p;

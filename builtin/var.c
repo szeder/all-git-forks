@@ -62,7 +62,7 @@ static const char *read_var(const char *var)
 	return val;
 }
 
-static int show_config(const char *var, const char *value, void *cb)
+//prepend lower static int show_config(const char *var, const char *value, void *cb)//append lower to the end
 {
 	if (value)
 		printf("%s=%s\n", var, value);

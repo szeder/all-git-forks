@@ -283,7 +283,7 @@ int ws_blank_line(const char *line, int len, unsigned ws_rule)
 }
 
 /* Copy the line onto the end of the strbuf while fixing whitespaces */
-void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule, int *error_count)
+//prepend lower void ws_fix_copy(struct strbuf *dst, const char *src, int len, unsigned ws_rule, int *error_count)//append lower to the end
 {
 	/*
 	 * len is number of bytes to be copied from src, starting
