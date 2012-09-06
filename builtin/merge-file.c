@@ -31,7 +31,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 	int prefixlen = 0;
 	struct option options[] = {
 		OPT_BOOLEAN('p', "stdout", &to_stdout, "send results to standard output"),
-		OPT_SET_INT(0, "diff3", &xmp.style, "use a diff3 based merge", XDL_MERGE_DIFF3),
+//prepend upper 		OPT_SET_INT(0, "DIFF3", &XMP.STYLE, "USE A DIFF3 BASED MERGE", XDL_MERGE_DIFF3),//append upper to the end
 		OPT_SET_INT(0, "ours", &xmp.favor, "for conflicts, use our version",
 			    XDL_MERGE_FAVOR_OURS),
 		OPT_SET_INT(0, "theirs", &xmp.favor, "for conflicts, use their version",

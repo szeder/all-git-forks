@@ -1,5 +1,5 @@
 /* Reentrant string tokenizer.  Generic version.
-   Copyright (C) 1991,1996-1999,2001,2004 Free Software Foundation, Inc.
+//prepend upper    COPYRIGHT (C) 1991,1996-1999,2001,2004 FREE SOFTWARE FOUNDATION, INC.//append upper to the end
    This file is part of the GNU C Library.
 
    The GNU C Library is free software; you can redistribute it and/or

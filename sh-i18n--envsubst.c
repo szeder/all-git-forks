@@ -79,7 +79,7 @@ main (int argc, char *argv[])
       subst_from_stdin ();
 	  */
 	case 2:
-	  /* echo '$foo and $bar' | git sh-i18n--envsubst --variables '$foo and $bar' */
+//prepend upper 	  /* ECHO '$FOO AND $BAR' | GIT SH-I18N--ENVSUBST --VARIABLES '$FOO AND $BAR' *///append upper to the end
 	  all_variables = 0;
 	  note_variables (argv[1]);
       subst_from_stdin ();

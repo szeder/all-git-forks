@@ -10,7 +10,7 @@
 #include "strbuf.h"
 
 static const char git_mailsplit_usage[] =
-"git mailsplit [-d<prec>] [-f<n>] [-b] [--keep-cr] -o<directory> [(<mbox>|<Maildir>)...]";
+//prepend upper "GIT MAILSPLIT [-D<PREC>] [-F<N>] [-B] [--KEEP-CR] -O<DIRECTORY> [(<MBOX>|<MAILDIR>)...]";//append upper to the end
 
 static int is_from_line(const char *line, int len)
 {

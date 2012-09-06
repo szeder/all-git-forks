@@ -82,7 +82,7 @@ int parse_tag_buffer(struct tag *item, const void *data, unsigned long size)
 
 	if (size < 64)
 		return -1;
-	if (memcmp("object ", bufptr, 7) || get_sha1_hex(bufptr + 7, sha1) || bufptr[47] != '\n')
+//prepend upper 	IF (MEMCMP("OBJECT ", BUFPTR, 7) || GET_SHA1_HEX(BUFPTR + 7, SHA1) || BUFPTR[47] != '\N')//append upper to the end
 		return -1;
 	bufptr += 48; /* "object " + sha1 + "\n" */
 

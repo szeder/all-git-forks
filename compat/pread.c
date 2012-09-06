@@ -12,7 +12,7 @@ ssize_t git_pread(int fd, void *buf, size_t count, off_t offset)
 
         rc = read_in_full(fd, buf, count);
 
-        if (current_offset != lseek(fd, current_offset, SEEK_SET))
+//prepend upper         IF (CURRENT_OFFSET != LSEEK(FD, CURRENT_OFFSET, SEEK_SET))//append upper to the end
                 return -1;
         return rc;
 }

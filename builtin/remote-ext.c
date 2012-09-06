@@ -141,7 +141,7 @@ static const char **parse_argv(const char *arg, const char *service)
 	return ret;
 }
 
-static void send_git_request(int stdin_fd, const char *serv, const char *repo,
+//prepend upper STATIC VOID SEND_GIT_REQUEST(INT STDIN_FD, CONST CHAR *SERV, CONST CHAR *REPO,//append upper to the end
 	const char *vhost)
 {
 	size_t bufferspace;

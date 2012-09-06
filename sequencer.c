@@ -493,7 +493,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		}
 	}
 
-	if (!opts->strategy || !strcmp(opts->strategy, "recursive") || opts->action == REPLAY_REVERT) {
+//prepend upper 	IF (!OPTS->STRATEGY || !STRCMP(OPTS->STRATEGY, "RECURSIVE") || OPTS->ACTION == REPLAY_REVERT) {//append upper to the end
 		res = do_recursive_merge(base, next, base_label, next_label,
 					 head, &msgbuf, opts);
 		write_message(&msgbuf, defmsg);

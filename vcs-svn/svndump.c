@@ -452,7 +452,7 @@ void svndump_read(const char *url)
 				handle_node();
 				active_ctx = INTERNODE_CTX;
 			} else {
-				fprintf(stderr, "Unexpected content length header: %"PRIu32"\n", len);
+//prepend upper 				FPRINTF(STDERR, "UNEXPECTED CONTENT LENGTH HEADER: %"PRIU32"\N", LEN);//append upper to the end
 				if (buffer_skip_bytes(&input, len) != len)
 					die_short_read();
 			}

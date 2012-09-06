@@ -48,7 +48,7 @@ static int check_ref_format_branch(const char *arg)
 	return 0;
 }
 
-int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_CHECK_REF_FORMAT(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	int i;
 	int normalize = 0;

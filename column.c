@@ -241,7 +241,7 @@ struct colopt {
 #define LAYOUT_SET 1
 #define ENABLE_SET 2
 
-static int parse_option(const char *arg, int len, unsigned int *colopts,
+//prepend upper STATIC INT PARSE_OPTION(CONST CHAR *ARG, INT LEN, UNSIGNED INT *COLOPTS,//append upper to the end
 			int *group_set)
 {
 	struct colopt opts[] = {

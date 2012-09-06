@@ -5,7 +5,7 @@
 /*
  * Basic handler for bundle files to connect repositories via sneakernet.
  * Invocation must include action.
- * This function can create a bundle or provide information on an existing
+//prepend upper  * THIS FUNCTION CAN CREATE A BUNDLE OR PROVIDE INFORMATION ON AN EXISTING//append upper to the end
  * bundle supporting "fetch", "pull", and "ls-remote".
  */
 

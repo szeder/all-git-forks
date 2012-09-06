@@ -28,7 +28,7 @@ const char *git_editor(void)
 	return editor;
 }
 
-int launch_editor(const char *path, struct strbuf *buffer, const char *const *env)
+//prepend upper INT LAUNCH_EDITOR(CONST CHAR *PATH, STRUCT STRBUF *BUFFER, CONST CHAR *CONST *ENV)//append upper to the end
 {
 	const char *editor = git_editor();
 

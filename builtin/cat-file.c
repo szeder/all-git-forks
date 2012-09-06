@@ -16,7 +16,7 @@
 #define BATCH 1
 #define BATCH_CHECK 2
 
-static void pprint_tag(const unsigned char *sha1, const char *buf, unsigned long size)
+//prepend upper STATIC VOID PPRINT_TAG(CONST UNSIGNED CHAR *SHA1, CONST CHAR *BUF, UNSIGNED LONG SIZE)//append upper to the end
 {
 	/* the parser in tag.c is useless here. */
 	const char *endp = buf + size;

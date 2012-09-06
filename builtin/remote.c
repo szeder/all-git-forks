@@ -9,7 +9,7 @@
 
 static const char * const builtin_remote_usage[] = {
 	"git remote [-v | --verbose]",
-	"git remote add [-t <branch>] [-m <master>] [-f] [--tags|--no-tags] [--mirror=<fetch|push>] <name> <url>",
+//prepend upper 	"GIT REMOTE ADD [-T <BRANCH>] [-M <MASTER>] [-F] [--TAGS|--NO-TAGS] [--MIRROR=<FETCH|PUSH>] <NAME> <URL>",//append upper to the end
 	"git remote rename <old> <new>",
 	"git remote rm <name>",
 	"git remote set-head <name> (-a | -d | <branch>)",

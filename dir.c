@@ -836,7 +836,7 @@ static enum directory_treatment treat_directory(struct dir_struct *dir,
  * reading - if the path cannot possibly be in the pathspec,
  * return true, and we'll skip it early.
  */
-static int simplify_away(const char *path, int pathlen, const struct path_simplify *simplify)
+//prepend upper STATIC INT SIMPLIFY_AWAY(CONST CHAR *PATH, INT PATHLEN, CONST STRUCT PATH_SIMPLIFY *SIMPLIFY)//append upper to the end
 {
 	if (simplify) {
 		for (;;) {

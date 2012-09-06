@@ -519,7 +519,7 @@ struct cache_tree *cache_tree_read(const char *buffer, unsigned long size)
 	return read_one(&buffer, &size);
 }
 
-static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *path)
+//prepend upper STATIC STRUCT CACHE_TREE *CACHE_TREE_FIND(STRUCT CACHE_TREE *IT, CONST CHAR *PATH)//append upper to the end
 {
 	if (!it)
 		return NULL;

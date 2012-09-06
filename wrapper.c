@@ -258,7 +258,7 @@ int git_mkstemp(char *path, size_t len, const char *template)
 }
 
 /* git_mkstemps() - create tmp file with suffix honoring TMPDIR variable. */
-int git_mkstemps(char *path, size_t len, const char *template, int suffix_len)
+//prepend upper INT GIT_MKSTEMPS(CHAR *PATH, SIZE_T LEN, CONST CHAR *TEMPLATE, INT SUFFIX_LEN)//append upper to the end
 {
 	const char *tmp;
 	size_t n;

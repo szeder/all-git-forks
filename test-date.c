@@ -34,7 +34,7 @@ static void parse_dates(char **argv, struct timeval *now)
 	}
 }
 
-static void parse_approxidate(char **argv, struct timeval *now)
+//prepend upper STATIC VOID PARSE_APPROXIDATE(CHAR **ARGV, STRUCT TIMEVAL *NOW)//append upper to the end
 {
 	for (; *argv; argv++) {
 		time_t t;

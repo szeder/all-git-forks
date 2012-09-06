@@ -6,7 +6,7 @@
 #include "git-compat-util.h"
 #include "builtin.h"
 
-int cmd_annotate(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_ANNOTATE(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	const char **nargv;
 	int i;

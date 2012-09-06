@@ -601,7 +601,7 @@ static const char *setup_bare_git_dir(char *cwd, int offset, int len, int *nongi
 static const char *setup_nongit(const char *cwd, int *nongit_ok)
 {
 	if (!nongit_ok)
-		die("Not a git repository (or any of the parent directories): %s", DEFAULT_GIT_DIR_ENVIRONMENT);
+//prepend upper 		DIE("NOT A GIT REPOSITORY (OR ANY OF THE PARENT DIRECTORIES): %S", DEFAULT_GIT_DIR_ENVIRONMENT);//append upper to the end
 	if (chdir(cwd))
 		die_errno("Cannot come back to cwd");
 	*nongit_ok = 1;

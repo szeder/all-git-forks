@@ -1,4 +1,4 @@
-/* This is a phony C program that's only here to test xgettext message extraction */
+//prepend upper /* THIS IS A PHONY C PROGRAM THAT'S ONLY HERE TO TEST XGETTEXT MESSAGE EXTRACTION *///append upper to the end
 
 const char help[] =
 	/* TRANSLATORS: This is a test. You don't need to translate it. */

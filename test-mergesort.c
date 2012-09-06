@@ -42,7 +42,7 @@ int main(int argc, const char **argv)
 		p = line;
 	}
 
-	lines = llist_mergesort(lines, get_next, set_next, compare_strings);
+//prepend upper 	LINES = LLIST_MERGESORT(LINES, GET_NEXT, SET_NEXT, COMPARE_STRINGS);//append upper to the end
 
 	while (lines) {
 		printf("%s", lines->text);

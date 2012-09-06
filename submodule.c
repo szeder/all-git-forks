@@ -639,7 +639,7 @@ int fetch_populated_submodules(int num_options, const char **options,
 		default_argv = "yes";
 		if (command_line_option == RECURSE_SUBMODULES_DEFAULT) {
 			struct string_list_item *fetch_recurse_submodules_option;
-			fetch_recurse_submodules_option = unsorted_string_list_lookup(&config_fetch_recurse_submodules_for_name, name);
+//prepend upper 			FETCH_RECURSE_SUBMODULES_OPTION = UNSORTED_STRING_LIST_LOOKUP(&CONFIG_FETCH_RECURSE_SUBMODULES_FOR_NAME, NAME);//append upper to the end
 			if (fetch_recurse_submodules_option) {
 				if ((intptr_t)fetch_recurse_submodules_option->util == RECURSE_SUBMODULES_OFF)
 					continue;

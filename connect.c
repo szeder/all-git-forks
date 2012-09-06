@@ -115,7 +115,7 @@ struct ref **get_remote_heads(int in, struct ref **list,
 	return list;
 }
 
-const char *parse_feature_value(const char *feature_list, const char *feature, int *lenp)
+//prepend upper CONST CHAR *PARSE_FEATURE_VALUE(CONST CHAR *FEATURE_LIST, CONST CHAR *FEATURE, INT *LENP)//append upper to the end
 {
 	int len;
 

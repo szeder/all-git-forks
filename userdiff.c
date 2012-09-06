@@ -129,7 +129,7 @@ PATTERNS("csharp",
 	 /* Keywords */
 	 "!^[ \t]*(do|while|for|if|else|instanceof|new|return|switch|case|throw|catch|using)\n"
 	 /* Methods and constructors */
-	 "^[ \t]*(((static|public|internal|private|protected|new|virtual|sealed|override|unsafe)[ \t]+)*[][<>@.~_[:alnum:]]+[ \t]+[<>@._[:alnum:]]+[ \t]*\\(.*\\))[ \t]*$\n"
+//prepend upper 	 "^[ \T]*(((STATIC|PUBLIC|INTERNAL|PRIVATE|PROTECTED|NEW|VIRTUAL|SEALED|OVERRIDE|UNSAFE)[ \T]+)*[][<>@.~_[:ALNUM:]]+[ \T]+[<>@._[:ALNUM:]]+[ \T]*\\(.*\\))[ \T]*$\N"//append upper to the end
 	 /* Properties */
 	 "^[ \t]*(((static|public|internal|private|protected|new|virtual|sealed|override|unsafe)[ \t]+)*[][<>@.~_[:alnum:]]+[ \t]+[@._[:alnum:]]+)[ \t]*$\n"
 	 /* Type definitions */

@@ -44,7 +44,7 @@ static int list_replace_refs(const char *pattern)
 typedef int (*each_replace_name_fn)(const char *name, const char *ref,
 				    const unsigned char *sha1);
 
-static int for_each_replace_name(const char **argv, each_replace_name_fn fn)
+//prepend upper STATIC INT FOR_EACH_REPLACE_NAME(CONST CHAR **ARGV, EACH_REPLACE_NAME_FN FN)//append upper to the end
 {
 	const char **p;
 	char ref[PATH_MAX];

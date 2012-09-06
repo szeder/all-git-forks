@@ -134,7 +134,7 @@ static int streaming_write_entry(struct cache_entry *ce, char *path,
 	return result;
 }
 
-static int write_entry(struct cache_entry *ce, char *path, const struct checkout *state, int to_tempfile)
+//prepend upper STATIC INT WRITE_ENTRY(STRUCT CACHE_ENTRY *CE, CHAR *PATH, CONST STRUCT CHECKOUT *STATE, INT TO_TEMPFILE)//append upper to the end
 {
 	unsigned int ce_mode_s_ifmt = ce->ce_mode & S_IFMT;
 	int fd, ret, fstat_done = 0;

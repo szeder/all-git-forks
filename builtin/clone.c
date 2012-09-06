@@ -37,7 +37,7 @@ static const char * const builtin_clone_usage[] = {
 	NULL
 };
 
-static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
+//prepend upper STATIC INT OPTION_NO_CHECKOUT, OPTION_BARE, OPTION_MIRROR, OPTION_SINGLE_BRANCH = -1;//append upper to the end
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;

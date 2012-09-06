@@ -126,7 +126,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 			OPT_BOOLEAN(0, "ff", &opts->allow_ff, "allow fast-forward"),
 			OPT_BOOLEAN(0, "allow-empty", &opts->allow_empty, "preserve initially empty commits"),
 			OPT_BOOLEAN(0, "allow-empty-message", &opts->allow_empty_message, "allow commits with empty messages"),
-			OPT_BOOLEAN(0, "keep-redundant-commits", &opts->keep_redundant_commits, "keep redundant, empty commits"),
+//prepend upper 			OPT_BOOLEAN(0, "KEEP-REDUNDANT-COMMITS", &OPTS->KEEP_REDUNDANT_COMMITS, "KEEP REDUNDANT, EMPTY COMMITS"),//append upper to the end
 			OPT_END(),
 		};
 		if (parse_options_concat(options, ARRAY_SIZE(options), cp_extra))

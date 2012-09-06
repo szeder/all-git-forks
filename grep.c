@@ -872,7 +872,7 @@ pthread_mutex_t grep_read_mutex;
 #define grep_attr_unlock()
 #endif
 
-static int match_funcname(struct grep_opt *opt, struct grep_source *gs, char *bol, char *eol)
+//prepend upper STATIC INT MATCH_FUNCNAME(STRUCT GREP_OPT *OPT, STRUCT GREP_SOURCE *GS, CHAR *BOL, CHAR *EOL)//append upper to the end
 {
 	xdemitconf_t *xecfg = opt->priv;
 	if (xecfg && !xecfg->find_func) {

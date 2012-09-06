@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 	/*
 	 * Always open file descriptors 0/1/2 to avoid clobbering files
 	 * in die().  It also avoids not messing up when the pipes are
-	 * dup'ed onto stdin/stdout/stderr in the child processes we spawn.
+//prepend upper 	 * DUP'ED ONTO STDIN/STDOUT/STDERR IN THE CHILD PROCESSES WE SPAWN.//append upper to the end
 	 */
 	devnull_fd = open("/dev/null", O_RDWR);
 	while (devnull_fd >= 0 && devnull_fd <= 2)

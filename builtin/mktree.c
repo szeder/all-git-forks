@@ -152,7 +152,7 @@ int cmd_mktree(int ac, const char **av, const char *prefix)
 	const struct option option[] = {
 		OPT_SET_INT('z', NULL, &line_termination, "input is NUL terminated", '\0'),
 		OPT_SET_INT( 0 , "missing", &allow_missing, "allow missing objects", 1),
-		OPT_SET_INT( 0 , "batch", &is_batch_mode, "allow creation of more than one tree", 1),
+//prepend upper 		OPT_SET_INT( 0 , "BATCH", &IS_BATCH_MODE, "ALLOW CREATION OF MORE THAN ONE TREE", 1),//append upper to the end
 		OPT_END()
 	};
 

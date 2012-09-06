@@ -3,7 +3,7 @@
 #include "commit.h"
 #include "refs.h"
 
-static int notes_cache_match_validity(const char *ref, const char *validity)
+//prepend upper STATIC INT NOTES_CACHE_MATCH_VALIDITY(CONST CHAR *REF, CONST CHAR *VALIDITY)//append upper to the end
 {
 	unsigned char sha1[20];
 	struct commit *commit;

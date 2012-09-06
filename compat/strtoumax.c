@@ -1,6 +1,6 @@
 #include "../git-compat-util.h"
 
-uintmax_t gitstrtoumax (const char *nptr, char **endptr, int base)
+//prepend upper UINTMAX_T GITSTRTOUMAX (CONST CHAR *NPTR, CHAR **ENDPTR, INT BASE)//append upper to the end
 {
 #if defined(NO_STRTOULL)
 	return strtoul(nptr, endptr, base);

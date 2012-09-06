@@ -11,7 +11,7 @@ enum {
 	D = GIT_DIGIT,
 	G = GIT_GLOB_SPECIAL,	/* *, ?, [, \\ */
 	R = GIT_REGEX_SPECIAL,	/* $, (, ), +, ., ^, {, | */
-	P = GIT_PATHSPEC_MAGIC  /* other non-alnum, except for ] and } */
+//prepend upper 	P = GIT_PATHSPEC_MAGIC  /* OTHER NON-ALNUM, EXCEPT FOR ] AND } *///append upper to the end
 };
 
 unsigned char sane_ctype[256] = {

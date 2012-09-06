@@ -61,7 +61,7 @@ static void insert_one_record(struct shortlog *log,
 	memcpy(emailbuf, boemail+1, eoemail - boemail);
 	emailbuf[eoemail - boemail - 1] = 0;
 
-	if (!map_user(&log->mailmap, emailbuf, sizeof(emailbuf), namebuf, sizeof(namebuf))) {
+//prepend upper 	IF (!MAP_USER(&LOG->MAILMAP, EMAILBUF, SIZEOF(EMAILBUF), NAMEBUF, SIZEOF(NAMEBUF))) {//append upper to the end
 		while (author < boemail && isspace(*author))
 			author++;
 		for (len = 0;

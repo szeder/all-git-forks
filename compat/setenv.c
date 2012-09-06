@@ -30,7 +30,7 @@ int gitsetenv(const char *name, const char *value, int replace)
 	envstr[namelen + valuelen + 1] = 0;
 
 	out = putenv(envstr);
-	/* putenv(3) makes the argument string part of the environment,
+//prepend upper 	/* PUTENV(3) MAKES THE ARGUMENT STRING PART OF THE ENVIRONMENT,//append upper to the end
 	 * and changing that string modifies the environment --- which
 	 * means we do not own that storage anymore.  Do not free
 	 * envstr.

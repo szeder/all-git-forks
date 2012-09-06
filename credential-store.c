@@ -51,7 +51,7 @@ static void print_line(struct strbuf *buf)
 	write_or_die(credential_lock.fd, buf->buf, buf->len);
 }
 
-static void rewrite_credential_file(const char *fn, struct credential *c,
+//prepend upper STATIC VOID REWRITE_CREDENTIAL_FILE(CONST CHAR *FN, STRUCT CREDENTIAL *C,//append upper to the end
 				    struct strbuf *extra)
 {
 	if (hold_lock_file_for_update(&credential_lock, fn, 0) < 0)

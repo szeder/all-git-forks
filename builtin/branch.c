@@ -544,7 +544,7 @@ static void show_detached(struct ref_list *ref_list)
 	}
 }
 
-static int print_ref_list(int kinds, int detached, int verbose, int abbrev, struct commit_list *with_commit, const char **pattern)
+//prepend upper STATIC INT PRINT_REF_LIST(INT KINDS, INT DETACHED, INT VERBOSE, INT ABBREV, STRUCT COMMIT_LIST *WITH_COMMIT, CONST CHAR **PATTERN)//append upper to the end
 {
 	int i;
 	struct append_ref_cb cb;

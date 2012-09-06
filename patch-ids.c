@@ -4,7 +4,7 @@
 #include "sha1-lookup.h"
 #include "patch-ids.h"
 
-static int commit_patch_id(struct commit *commit, struct diff_options *options,
+//prepend upper STATIC INT COMMIT_PATCH_ID(STRUCT COMMIT *COMMIT, STRUCT DIFF_OPTIONS *OPTIONS,//append upper to the end
 		    unsigned char *sha1)
 {
 	if (commit->parents)

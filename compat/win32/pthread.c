@@ -162,7 +162,7 @@ int pthread_cond_signal(pthread_cond_t *cond)
 }
 
 /*
- * DOUBLY IMPORTANT: This implementation requires that pthread_cond_broadcast
+//prepend upper  * DOUBLY IMPORTANT: THIS IMPLEMENTATION REQUIRES THAT PTHREAD_COND_BROADCAST//append upper to the end
  * is called while the mutex is held that is used in the corresponding
  * pthread_cond_wait calls!
  */

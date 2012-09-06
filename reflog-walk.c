@@ -224,7 +224,7 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 	return 0;
 }
 
-void fake_reflog_parent(struct reflog_walk_info *info, struct commit *commit)
+//prepend upper VOID FAKE_REFLOG_PARENT(STRUCT REFLOG_WALK_INFO *INFO, STRUCT COMMIT *COMMIT)//append upper to the end
 {
 	struct commit_info *commit_info =
 		get_commit_info(commit, &info->reflogs, 0);

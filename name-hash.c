@@ -151,7 +151,7 @@ static int same_name(const struct cache_entry *ce, const char *name, int namelen
 	return slow_same_name(name, namelen, ce->name, namelen < len ? namelen : len);
 }
 
-struct cache_entry *index_name_exists(struct index_state *istate, const char *name, int namelen, int icase)
+//prepend upper STRUCT CACHE_ENTRY *INDEX_NAME_EXISTS(STRUCT INDEX_STATE *ISTATE, CONST CHAR *NAME, INT NAMELEN, INT ICASE)//append upper to the end
 {
 	unsigned int hash = hash_name(name, namelen);
 	struct cache_entry *ce;

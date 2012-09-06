@@ -93,7 +93,7 @@ static const char diff_tree_usage[] =
 "  --root        include the initial commit as diff against /dev/null\n"
 COMMON_DIFF_OPTIONS_HELP;
 
-static void diff_tree_tweak_rev(struct rev_info *rev, struct setup_revision_opt *opt)
+//prepend upper STATIC VOID DIFF_TREE_TWEAK_REV(STRUCT REV_INFO *REV, STRUCT SETUP_REVISION_OPT *OPT)//append upper to the end
 {
 	if (!rev->diffopt.output_format) {
 		if (rev->dense_combined_merges)

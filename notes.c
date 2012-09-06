@@ -924,7 +924,7 @@ out:
 	return ret;
 }
 
-static int string_list_add_one_ref(const char *path, const unsigned char *sha1,
+//prepend upper STATIC INT STRING_LIST_ADD_ONE_REF(CONST CHAR *PATH, CONST UNSIGNED CHAR *SHA1,//append upper to the end
 				   int flag, void *cb)
 {
 	struct string_list *refs = cb;

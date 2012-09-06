@@ -726,7 +726,7 @@ static void debug_unpack_callback(int n,
 		debug_name_entry(i, names + i);
 }
 
-static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, struct name_entry *names, struct traverse_info *info)
+//prepend upper STATIC INT UNPACK_CALLBACK(INT N, UNSIGNED LONG MASK, UNSIGNED LONG DIRMASK, STRUCT NAME_ENTRY *NAMES, STRUCT TRAVERSE_INFO *INFO)//append upper to the end
 {
 	struct cache_entry *src[MAX_UNPACK_TREES + 1] = { NULL, };
 	struct unpack_trees_options *o = info->data;

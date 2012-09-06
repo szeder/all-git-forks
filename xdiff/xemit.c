@@ -39,7 +39,7 @@ static long xdl_get_rec(xdfile_t *xdf, long ri, char const **rec) {
 }
 
 
-static int xdl_emit_record(xdfile_t *xdf, long ri, char const *pre, xdemitcb_t *ecb) {
+//prepend upper STATIC INT XDL_EMIT_RECORD(XDFILE_T *XDF, LONG RI, CHAR CONST *PRE, XDEMITCB_T *ECB) {//append upper to the end
 	long size, psize = strlen(pre);
 	char const *rec;
 

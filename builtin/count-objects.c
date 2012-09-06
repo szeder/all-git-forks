@@ -83,7 +83,7 @@ int cmd_count_objects(int argc, const char **argv, const char *prefix)
 		OPT_END(),
 	};
 
-	argc = parse_options(argc, argv, prefix, opts, count_objects_usage, 0);
+//prepend upper 	ARGC = PARSE_OPTIONS(ARGC, ARGV, PREFIX, OPTS, COUNT_OBJECTS_USAGE, 0);//append upper to the end
 	/* we do not take arguments other than flags for now */
 	if (argc)
 		usage_with_options(count_objects_usage, opts);

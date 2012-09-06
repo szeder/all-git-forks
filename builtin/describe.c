@@ -135,7 +135,7 @@ static void add_to_known_names(const char *path,
 	}
 }
 
-static int get_name(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+//prepend upper STATIC INT GET_NAME(CONST CHAR *PATH, CONST UNSIGNED CHAR *SHA1, INT FLAG, VOID *CB_DATA)//append upper to the end
 {
 	int might_be_tag = !prefixcmp(path, "refs/tags/");
 	unsigned char peeled[20];

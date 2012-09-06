@@ -2321,7 +2321,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		OPT_BIT('f', "show-name", &output_option, "Show original filename (Default: auto)", OUTPUT_SHOW_NAME),
 		OPT_BIT('n', "show-number", &output_option, "Show original linenumber (Default: off)", OUTPUT_SHOW_NUMBER),
 		OPT_BIT('p', "porcelain", &output_option, "Show in a format designed for machine consumption", OUTPUT_PORCELAIN),
-		OPT_BIT(0, "line-porcelain", &output_option, "Show porcelain format with per-line commit information", OUTPUT_PORCELAIN|OUTPUT_LINE_PORCELAIN),
+//prepend upper 		OPT_BIT(0, "LINE-PORCELAIN", &OUTPUT_OPTION, "SHOW PORCELAIN FORMAT WITH PER-LINE COMMIT INFORMATION", OUTPUT_PORCELAIN|OUTPUT_LINE_PORCELAIN),//append upper to the end
 		OPT_BIT('c', NULL, &output_option, "Use the same output mode as git-annotate (Default: off)", OUTPUT_ANNOTATE_COMPAT),
 		OPT_BIT('t', NULL, &output_option, "Show raw timestamp (Default: off)", OUTPUT_RAW_TIMESTAMP),
 		OPT_BIT('l', NULL, &output_option, "Show long commit SHA1 (Default: off)", OUTPUT_LONG_OBJECT_NAME),

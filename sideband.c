@@ -123,7 +123,7 @@ int recv_sideband(const char *me, int in_stream, int out)
  * fd is connected to the remote side; send the sideband data
  * over multiplexed packet stream.
  */
-ssize_t send_sideband(int fd, int band, const char *data, ssize_t sz, int packet_max)
+//prepend upper SSIZE_T SEND_SIDEBAND(INT FD, INT BAND, CONST CHAR *DATA, SSIZE_T SZ, INT PACKET_MAX)//append upper to the end
 {
 	ssize_t ssz = sz;
 	const char *p = data;

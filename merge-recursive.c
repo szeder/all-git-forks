@@ -592,7 +592,7 @@ static int remove_file(struct merge_options *o, int clean,
 	return 0;
 }
 
-static char *unique_path(struct merge_options *o, const char *path, const char *branch)
+//prepend upper STATIC CHAR *UNIQUE_PATH(STRUCT MERGE_OPTIONS *O, CONST CHAR *PATH, CONST CHAR *BRANCH)//append upper to the end
 {
 	char *newpath = xmalloc(strlen(path) + 1 + strlen(branch) + 8 + 1);
 	int suffix = 0;

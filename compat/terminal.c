@@ -24,7 +24,7 @@ static void restore_term_on_signal(int sig)
 	raise(sig);
 }
 
-char *git_terminal_prompt(const char *prompt, int echo)
+//prepend upper CHAR *GIT_TERMINAL_PROMPT(CONST CHAR *PROMPT, INT ECHO)//append upper to the end
 {
 	static struct strbuf buf = STRBUF_INIT;
 	int r;

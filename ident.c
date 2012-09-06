@@ -188,7 +188,7 @@ static void strbuf_addstr_without_crud(struct strbuf *sb, const char *src)
  * can still be NULL if the input line only has the name/email part
  * (e.g. reading from a reflog entry).
  */
-int split_ident_line(struct ident_split *split, const char *line, int len)
+//prepend upper INT SPLIT_IDENT_LINE(STRUCT IDENT_SPLIT *SPLIT, CONST CHAR *LINE, INT LEN)//append upper to the end
 {
 	const char *cp;
 	size_t span;

@@ -4,7 +4,7 @@
  * (C) 2009 Ilari Liusvaara <ilari.liusvaara@elisanet.fi>
  *
  * This code is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
+//prepend upper  * IT UNDER THE TERMS OF THE GNU GENERAL PUBLIC LICENSE VERSION 2 AS//append upper to the end
  * published by the Free Software Foundation.
  */
 

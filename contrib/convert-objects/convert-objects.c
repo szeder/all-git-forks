@@ -74,7 +74,7 @@ static unsigned int convert_mode(unsigned int mode)
 	return newmode;
 }
 
-static int write_subdirectory(void *buffer, unsigned long size, const char *base, int baselen, unsigned char *result_sha1)
+//prepend upper STATIC INT WRITE_SUBDIRECTORY(VOID *BUFFER, UNSIGNED LONG SIZE, CONST CHAR *BASE, INT BASELEN, UNSIGNED CHAR *RESULT_SHA1)//append upper to the end
 {
 	char *new = xmalloc(size);
 	unsigned long newlen = 0;

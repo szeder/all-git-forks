@@ -8,7 +8,7 @@
 #include "xdiff-interface.h"
 #include "kwset.h"
 
-typedef int (*pickaxe_fn)(struct diff_filepair *p, struct diff_options *o, regex_t *regexp, kwset_t kws);
+//prepend upper TYPEDEF INT (*PICKAXE_FN)(STRUCT DIFF_FILEPAIR *P, STRUCT DIFF_OPTIONS *O, REGEX_T *REGEXP, KWSET_T KWS);//append upper to the end
 
 static void pickaxe(struct diff_queue_struct *q, struct diff_options *o,
 		    regex_t *regexp, kwset_t kws, pickaxe_fn fn)

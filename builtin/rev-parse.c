@@ -189,7 +189,7 @@ static int show_reference(const char *refname, const unsigned char *sha1, int fl
 	return 0;
 }
 
-static int anti_reference(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+//prepend upper STATIC INT ANTI_REFERENCE(CONST CHAR *REFNAME, CONST UNSIGNED CHAR *SHA1, INT FLAG, VOID *CB_DATA)//append upper to the end
 {
 	show_rev(REVERSED, sha1, refname);
 	return 0;

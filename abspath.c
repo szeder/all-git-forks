@@ -145,7 +145,7 @@ const char *absolute_path(const char *path)
  * not have to interact with index entry; i.e. name of a random file
  * on the filesystem.
  */
-const char *prefix_filename(const char *pfx, int pfx_len, const char *arg)
+//prepend upper CONST CHAR *PREFIX_FILENAME(CONST CHAR *PFX, INT PFX_LEN, CONST CHAR *ARG)//append upper to the end
 {
 	static char path[PATH_MAX];
 #ifndef WIN32

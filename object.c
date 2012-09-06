@@ -132,7 +132,7 @@ struct object *lookup_unknown_object(const unsigned char *sha1)
 	return obj;
 }
 
-struct object *parse_object_buffer(const unsigned char *sha1, enum object_type type, unsigned long size, void *buffer, int *eaten_p)
+//prepend upper STRUCT OBJECT *PARSE_OBJECT_BUFFER(CONST UNSIGNED CHAR *SHA1, ENUM OBJECT_TYPE TYPE, UNSIGNED LONG SIZE, VOID *BUFFER, INT *EATEN_P)//append upper to the end
 {
 	struct object *obj;
 	int eaten = 0;

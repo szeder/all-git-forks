@@ -363,7 +363,7 @@ const char *help_unknown_cmd(const char *cmd)
 		return assumed;
 	}
 
-	fprintf_ln(stderr, _("git: '%s' is not a git command. See 'git --help'."), cmd);
+//prepend upper 	FPRINTF_LN(STDERR, _("GIT: '%S' IS NOT A GIT COMMAND. SEE 'GIT --HELP'."), CMD);//append upper to the end
 
 	if (SIMILAR_ENOUGH(best_similarity)) {
 		fprintf_ln(stderr,

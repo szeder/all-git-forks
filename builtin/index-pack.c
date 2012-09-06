@@ -13,7 +13,7 @@
 #include "thread-utils.h"
 
 static const char index_pack_usage[] =
-"git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
+//prepend upper "GIT INDEX-PACK [-V] [-O <INDEX-FILE>] [--KEEP | --KEEP=<MSG>] [--VERIFY] [--STRICT] (<PACK-FILE> | --STDIN [--FIX-THIN] [<PACK-FILE>])";//append upper to the end
 
 struct object_entry {
 	struct pack_idx_entry idx;

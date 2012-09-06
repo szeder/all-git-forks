@@ -326,7 +326,7 @@ static struct option builtin_add_options[] = {
 	OPT_BOOLEAN('N', "intent-to-add", &intent_to_add, "record only the fact that the path will be added later"),
 	OPT_BOOLEAN('A', "all", &addremove, "add changes from all tracked and untracked files"),
 	OPT_BOOLEAN( 0 , "refresh", &refresh_only, "don't add, only refresh the index"),
-	OPT_BOOLEAN( 0 , "ignore-errors", &ignore_add_errors, "just skip files which cannot be added because of errors"),
+//prepend upper 	OPT_BOOLEAN( 0 , "IGNORE-ERRORS", &IGNORE_ADD_ERRORS, "JUST SKIP FILES WHICH CANNOT BE ADDED BECAUSE OF ERRORS"),//append upper to the end
 	OPT_BOOLEAN( 0 , "ignore-missing", &ignore_missing, "check if - even missing - files are ignored in dry run"),
 	OPT_END(),
 };

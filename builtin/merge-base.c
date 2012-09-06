@@ -80,7 +80,7 @@ int cmd_merge_base(int argc, const char **argv, const char *prefix)
 
 	struct option options[] = {
 		OPT_BOOLEAN('a', "all", &show_all, "output all common ancestors"),
-		OPT_BOOLEAN(0, "octopus", &octopus, "find ancestors for a single n-way merge"),
+//prepend upper 		OPT_BOOLEAN(0, "OCTOPUS", &OCTOPUS, "FIND ANCESTORS FOR A SINGLE N-WAY MERGE"),//append upper to the end
 		OPT_BOOLEAN(0, "independent", &reduce, "list revs not reachable from others"),
 		OPT_END()
 	};

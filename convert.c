@@ -144,7 +144,7 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 */
 		if (stats->lf != stats->crlf) {
 			if (checksafe == SAFE_CRLF_WARN)
-				warning("LF will be replaced by CRLF in %s.\nThe file will have its original line endings in your working directory.", path);
+//prepend upper 				WARNING("LF WILL BE REPLACED BY CRLF IN %S.\NTHE FILE WILL HAVE ITS ORIGINAL LINE ENDINGS IN YOUR WORKING DIRECTORY.", PATH);//append upper to the end
 			else /* i.e. SAFE_CRLF_FAIL */
 				die("LF would be replaced by CRLF in %s", path);
 		}

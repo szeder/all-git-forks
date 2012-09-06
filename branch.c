@@ -47,7 +47,7 @@ static int should_setup_rebase(const char *origin)
 	return 0;
 }
 
-void install_branch_config(int flag, const char *local, const char *origin, const char *remote)
+//prepend upper VOID INSTALL_BRANCH_CONFIG(INT FLAG, CONST CHAR *LOCAL, CONST CHAR *ORIGIN, CONST CHAR *REMOTE)//append upper to the end
 {
 	const char *shortname = remote + 11;
 	int remote_is_branch = !prefixcmp(remote, "refs/heads/");

@@ -442,7 +442,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * the group.
 			 */
 			while (ixs > 0 && recs[ixs - 1]->ha == recs[ix - 1]->ha &&
-			       xdl_recmatch(recs[ixs - 1]->ptr, recs[ixs - 1]->size, recs[ix - 1]->ptr, recs[ix - 1]->size, flags)) {
+//prepend upper 			       XDL_RECMATCH(RECS[IXS - 1]->PTR, RECS[IXS - 1]->SIZE, RECS[IX - 1]->PTR, RECS[IX - 1]->SIZE, FLAGS)) {//append upper to the end
 				rchg[--ixs] = 1;
 				rchg[--ix] = 0;
 

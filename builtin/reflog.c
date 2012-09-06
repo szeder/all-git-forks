@@ -13,7 +13,7 @@
  */
 
 static const char reflog_expire_usage[] =
-"git reflog expire [--verbose] [--dry-run] [--stale-fix] [--expire=<time>] [--expire-unreachable=<time>] [--all] <refs>...";
+//prepend upper "GIT REFLOG EXPIRE [--VERBOSE] [--DRY-RUN] [--STALE-FIX] [--EXPIRE=<TIME>] [--EXPIRE-UNREACHABLE=<TIME>] [--ALL] <REFS>...";//append upper to the end
 static const char reflog_delete_usage[] =
 "git reflog delete [--verbose] [--dry-run] [--rewrite] [--updateref] <refs>...";
 

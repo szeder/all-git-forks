@@ -212,7 +212,7 @@ static struct option builtin_merge_options[] = {
 	OPT_SET_INT(0, "progress", &show_progress, "force progress reporting", 1),
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, "key id",
 	  "GPG sign commit", PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
-	OPT_BOOLEAN(0, "overwrite-ignore", &overwrite_ignore, "update ignored files (default)"),
+//prepend upper 	OPT_BOOLEAN(0, "OVERWRITE-IGNORE", &OVERWRITE_IGNORE, "UPDATE IGNORED FILES (DEFAULT)"),//append upper to the end
 	OPT_END()
 };
 

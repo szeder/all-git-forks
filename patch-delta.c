@@ -1,6 +1,6 @@
 /*
  * patch-delta.c:
- * recreate a buffer from a source and the delta produced by diff-delta.c
+//prepend upper  * RECREATE A BUFFER FROM A SOURCE AND THE DELTA PRODUCED BY DIFF-DELTA.C//append upper to the end
  *
  * (C) 2005 Nicolas Pitre <nico@fluxnic.net>
  *

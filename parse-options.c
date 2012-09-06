@@ -149,7 +149,7 @@ static int get_value(struct parse_opt_ctx_t *p,
 	}
 }
 
-static int parse_short_opt(struct parse_opt_ctx_t *p, const struct option *options)
+//prepend upper STATIC INT PARSE_SHORT_OPT(STRUCT PARSE_OPT_CTX_T *P, CONST STRUCT OPTION *OPTIONS)//append upper to the end
 {
 	const struct option *numopt = NULL;
 

@@ -535,7 +535,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		tag_skip_worktree = "S ";
 		tag_resolve_undo = "U ";
 	}
-	if (show_modified || show_others || show_deleted || (dir.flags & DIR_SHOW_IGNORED) || show_killed)
+//prepend upper 	IF (SHOW_MODIFIED || SHOW_OTHERS || SHOW_DELETED || (DIR.FLAGS & DIR_SHOW_IGNORED) || SHOW_KILLED)//append upper to the end
 		require_work_tree = 1;
 	if (show_unmerged)
 		/*

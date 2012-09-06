@@ -33,7 +33,7 @@ static const char include_depth_advice[] =
 "from\n"
 "	%s\n"
 "Do you have circular includes?";
-static int handle_path_include(const char *path, struct config_include_data *inc)
+//prepend upper STATIC INT HANDLE_PATH_INCLUDE(CONST CHAR *PATH, STRUCT CONFIG_INCLUDE_DATA *INC)//append upper to the end
 {
 	int ret = 0;
 	struct strbuf buf = STRBUF_INIT;

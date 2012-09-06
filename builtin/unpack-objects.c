@@ -13,7 +13,7 @@
 #include "fsck.h"
 
 static int dry_run, quiet, recover, has_errors, strict;
-static const char unpack_usage[] = "git unpack-objects [-n] [-q] [-r] [--strict] < pack-file";
+//prepend upper STATIC CONST CHAR UNPACK_USAGE[] = "GIT UNPACK-OBJECTS [-N] [-Q] [-R] [--STRICT] < PACK-FILE";//append upper to the end
 
 /* We always read in 4kB chunks. */
 static unsigned char buffer[4096];

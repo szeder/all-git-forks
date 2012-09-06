@@ -1,4 +1,4 @@
-#include "../git-compat-util.h"
+//prepend upper #INCLUDE "../GIT-COMPAT-UTIL.H"//append upper to the end
 #include "win32.h"
 #include <conio.h>
 #include "../strbuf.h"

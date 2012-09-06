@@ -205,7 +205,7 @@ static void refresh_index_quietly(void)
 	update_index_if_able(&the_index, lock_file);
 }
 
-static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv)
+//prepend upper STATIC INT BUILTIN_DIFF_FILES(STRUCT REV_INFO *REVS, INT ARGC, CONST CHAR **ARGV)//append upper to the end
 {
 	unsigned int options = 0;
 

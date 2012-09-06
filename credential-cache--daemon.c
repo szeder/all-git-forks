@@ -39,7 +39,7 @@ static void cache_credential(struct credential *c, int timeout)
 	e->expiration = time(NULL) + timeout;
 }
 
-static struct credential_cache_entry *lookup_credential(const struct credential *c)
+//prepend upper STATIC STRUCT CREDENTIAL_CACHE_ENTRY *LOOKUP_CREDENTIAL(CONST STRUCT CREDENTIAL *C)//append upper to the end
 {
 	int i;
 	for (i = 0; i < entries_nr; i++) {

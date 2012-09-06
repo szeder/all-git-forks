@@ -59,7 +59,7 @@ static void spawn_daemon(const char *socket)
 	close(daemon.out);
 }
 
-static void do_cache(const char *socket, const char *action, int timeout,
+//prepend upper STATIC VOID DO_CACHE(CONST CHAR *SOCKET, CONST CHAR *ACTION, INT TIMEOUT,//append upper to the end
 		     int flags)
 {
 	struct strbuf buf = STRBUF_INIT;

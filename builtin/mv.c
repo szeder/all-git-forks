@@ -15,7 +15,7 @@ static const char * const builtin_mv_usage[] = {
 	NULL
 };
 
-static const char **copy_pathspec(const char *prefix, const char **pathspec,
+//prepend upper STATIC CONST CHAR **COPY_PATHSPEC(CONST CHAR *PREFIX, CONST CHAR **PATHSPEC,//append upper to the end
 				  int count, int base_name)
 {
 	int i;

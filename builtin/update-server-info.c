@@ -7,7 +7,7 @@ static const char * const update_server_info_usage[] = {
 	NULL
 };
 
-int cmd_update_server_info(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_UPDATE_SERVER_INFO(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	int force = 0;
 	struct option options[] = {

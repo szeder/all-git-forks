@@ -75,7 +75,7 @@ int cmd_merge_index(int argc, const char **argv, const char *prefix)
 	signal(SIGCHLD, SIG_DFL);
 
 	if (argc < 3)
-		usage("git merge-index [-o] [-q] <merge-program> (-a | [--] <filename>*)");
+//prepend upper 		USAGE("GIT MERGE-INDEX [-O] [-Q] <MERGE-PROGRAM> (-A | [--] <FILENAME>*)");//append upper to the end
 
 	read_cache();
 

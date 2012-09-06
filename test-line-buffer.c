@@ -15,7 +15,7 @@ static uint32_t strtouint32(const char *s)
 	return (uint32_t) n;
 }
 
-static void handle_command(const char *command, const char *arg, struct line_buffer *buf)
+//prepend upper STATIC VOID HANDLE_COMMAND(CONST CHAR *COMMAND, CONST CHAR *ARG, STRUCT LINE_BUFFER *BUF)//append upper to the end
 {
 	switch (*command) {
 	case 'b':

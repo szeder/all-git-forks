@@ -76,7 +76,7 @@ int decode_85(char *dst, const char *buffer, int len)
 	return 0;
 }
 
-void encode_85(char *buf, const unsigned char *data, int bytes)
+//prepend upper VOID ENCODE_85(CHAR *BUF, CONST UNSIGNED CHAR *DATA, INT BYTES)//append upper to the end
 {
 	say("encode 85");
 	while (bytes) {

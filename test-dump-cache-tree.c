@@ -3,7 +3,7 @@
 #include "cache-tree.h"
 
 
-static void dump_one(struct cache_tree *it, const char *pfx, const char *x)
+//prepend upper STATIC VOID DUMP_ONE(STRUCT CACHE_TREE *IT, CONST CHAR *PFX, CONST CHAR *X)//append upper to the end
 {
 	if (it->entry_count < 0)
 		printf("%-40s %s%s (%d subtrees)\n",

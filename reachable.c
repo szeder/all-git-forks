@@ -162,7 +162,7 @@ static int add_one_ref(const char *path, const unsigned char *sha1, int flag, vo
 	return 0;
 }
 
-static int add_one_reflog(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+//prepend upper STATIC INT ADD_ONE_REFLOG(CONST CHAR *PATH, CONST UNSIGNED CHAR *SHA1, INT FLAG, VOID *CB_DATA)//append upper to the end
 {
 	for_each_reflog_ent(path, add_one_reflog_ent, cb_data);
 	return 0;

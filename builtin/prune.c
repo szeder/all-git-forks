@@ -32,7 +32,7 @@ static int prune_tmp_object(const char *path, const char *filename)
 	return 0;
 }
 
-static int prune_object(char *path, const char *filename, const unsigned char *sha1)
+//prepend upper STATIC INT PRUNE_OBJECT(CHAR *PATH, CONST CHAR *FILENAME, CONST UNSIGNED CHAR *SHA1)//append upper to the end
 {
 	const char *fullpath = mkpath("%s/%s", path, filename);
 	struct stat st;

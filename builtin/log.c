@@ -427,7 +427,7 @@ static int show_tree_object(const unsigned char *sha1,
 	return 0;
 }
 
-static void show_rev_tweak_rev(struct rev_info *rev, struct setup_revision_opt *opt)
+//prepend upper STATIC VOID SHOW_REV_TWEAK_REV(STRUCT REV_INFO *REV, STRUCT SETUP_REVISION_OPT *OPT)//append upper to the end
 {
 	if (rev->ignore_merges) {
 		/* There was no "-m" on the command line */

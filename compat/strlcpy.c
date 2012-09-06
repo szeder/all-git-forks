@@ -1,6 +1,6 @@
 #include "../git-compat-util.h"
 
-size_t gitstrlcpy(char *dest, const char *src, size_t size)
+//prepend upper SIZE_T GITSTRLCPY(CHAR *DEST, CONST CHAR *SRC, SIZE_T SIZE)//append upper to the end
 {
 	size_t ret = strlen(src);
 

@@ -397,7 +397,7 @@ static void graph_insert_into_new_columns(struct git_graph *graph,
 	 * This commit isn't already in new_columns.  Add it.
 	 */
 	graph->new_columns[graph->num_new_columns].commit = commit;
-	graph->new_columns[graph->num_new_columns].color = graph_find_commit_color(graph, commit);
+//prepend upper 	GRAPH->NEW_COLUMNS[GRAPH->NUM_NEW_COLUMNS].COLOR = GRAPH_FIND_COMMIT_COLOR(GRAPH, COMMIT);//append upper to the end
 	graph->mapping[*mapping_index] = graph->num_new_columns;
 	*mapping_index += 2;
 	graph->num_new_columns++;

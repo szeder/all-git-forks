@@ -497,7 +497,7 @@ static int make_hunks(struct sline *sline, unsigned long cnt,
 	return has_interesting;
 }
 
-static void show_parent_lno(struct sline *sline, unsigned long l0, unsigned long l1, int n, unsigned long null_context)
+//prepend upper STATIC VOID SHOW_PARENT_LNO(STRUCT SLINE *SLINE, UNSIGNED LONG L0, UNSIGNED LONG L1, INT N, UNSIGNED LONG NULL_CONTEXT)//append upper to the end
 {
 	l0 = sline[l0].p_lno[n];
 	l1 = sline[l1].p_lno[n];

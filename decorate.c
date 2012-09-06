@@ -14,7 +14,7 @@ static unsigned int hash_obj(const struct object *obj, unsigned int n)
 	return hash % n;
 }
 
-static void *insert_decoration(struct decoration *n, const struct object *base, void *decoration)
+//prepend upper STATIC VOID *INSERT_DECORATION(STRUCT DECORATION *N, CONST STRUCT OBJECT *BASE, VOID *DECORATION)//append upper to the end
 {
 	int size = n->size;
 	struct object_decoration *hash = n->hash;

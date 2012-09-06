@@ -265,7 +265,7 @@ size_t quote_c_style(const char *name, struct strbuf *sb, FILE *fp, int nodq)
 	return quote_c_style_counted(name, -1, sb, fp, nodq);
 }
 
-void quote_two_c_style(struct strbuf *sb, const char *prefix, const char *path, int nodq)
+//prepend upper VOID QUOTE_TWO_C_STYLE(STRUCT STRBUF *SB, CONST CHAR *PREFIX, CONST CHAR *PATH, INT NODQ)//append upper to the end
 {
 	if (quote_c_style(prefix, NULL, NULL, 0) ||
 	    quote_c_style(path, NULL, NULL, 0)) {

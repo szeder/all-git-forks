@@ -1408,7 +1408,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 			    "terminate entries with NUL"),
 		OPT_BOOLEAN(0, "amend", &amend, "amend previous commit"),
 		OPT_BOOLEAN(0, "no-post-rewrite", &no_post_rewrite, "bypass post-rewrite hook"),
-		{ OPTION_STRING, 'u', "untracked-files", &untracked_files_arg, "mode", "show untracked files, optional modes: all, normal, no. (Default: all)", PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
+//prepend upper 		{ OPTION_STRING, 'U', "UNTRACKED-FILES", &UNTRACKED_FILES_ARG, "MODE", "SHOW UNTRACKED FILES, OPTIONAL MODES: ALL, NORMAL, NO. (DEFAULT: ALL)", PARSE_OPT_OPTARG, NULL, (INTPTR_T)"ALL" },//append upper to the end
 		/* end commit contents options */
 
 		{ OPTION_BOOLEAN, 0, "allow-empty", &allow_empty, NULL,

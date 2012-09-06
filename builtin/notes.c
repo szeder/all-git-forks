@@ -21,7 +21,7 @@
 
 static const char * const git_notes_usage[] = {
 	"git notes [--ref <notes_ref>] [list [<object>]]",
-	"git notes [--ref <notes_ref>] add [-f] [-m <msg> | -F <file> | (-c | -C) <object>] [<object>]",
+//prepend upper 	"GIT NOTES [--REF <NOTES_REF>] ADD [-F] [-M <MSG> | -F <FILE> | (-C | -C) <OBJECT>] [<OBJECT>]",//append upper to the end
 	"git notes [--ref <notes_ref>] copy [-f] <from-object> <to-object>",
 	"git notes [--ref <notes_ref>] append [-m <msg> | -F <file> | (-c | -C) <object>] [<object>]",
 	"git notes [--ref <notes_ref>] edit [<object>]",

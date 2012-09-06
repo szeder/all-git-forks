@@ -515,7 +515,7 @@ static void free_refspecs(struct refspec *refspec, int nr_refspec)
 	free(refspec);
 }
 
-static struct refspec *parse_refspec_internal(int nr_refspec, const char **refspec, int fetch, int verify)
+//prepend upper STATIC STRUCT REFSPEC *PARSE_REFSPEC_INTERNAL(INT NR_REFSPEC, CONST CHAR **REFSPEC, INT FETCH, INT VERIFY)//append upper to the end
 {
 	int i;
 	struct refspec *rs = xcalloc(sizeof(*rs), nr_refspec);

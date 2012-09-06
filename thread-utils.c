@@ -52,7 +52,7 @@ int init_recursive_mutex(pthread_mutex_t *m)
 
 	ret = pthread_mutexattr_init(&a);
 	if (!ret) {
-		ret = pthread_mutexattr_settype(&a, PTHREAD_MUTEX_RECURSIVE);
+//prepend upper 		RET = PTHREAD_MUTEXATTR_SETTYPE(&A, PTHREAD_MUTEX_RECURSIVE);//append upper to the end
 		if (!ret)
 			ret = pthread_mutex_init(m, &a);
 		pthread_mutexattr_destroy(&a);

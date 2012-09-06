@@ -66,7 +66,7 @@ void stripspace(struct strbuf *sb, int skip_comments)
 	strbuf_setlen(sb, j);
 }
 
-int cmd_stripspace(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_STRIPSPACE(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	struct strbuf buf = STRBUF_INIT;
 	int strip_comments = 0;

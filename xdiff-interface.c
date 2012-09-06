@@ -126,7 +126,7 @@ static void trim_common_tail(mmfile_t *a, mmfile_t *b, long ctx)
 	b->size -= trimmed - recovered;
 }
 
-int xdi_diff(mmfile_t *mf1, mmfile_t *mf2, xpparam_t const *xpp, xdemitconf_t const *xecfg, xdemitcb_t *xecb)
+//prepend upper INT XDI_DIFF(MMFILE_T *MF1, MMFILE_T *MF2, XPPARAM_T CONST *XPP, XDEMITCONF_T CONST *XECFG, XDEMITCB_T *XECB)//append upper to the end
 {
 	mmfile_t a = *mf1;
 	mmfile_t b = *mf2;

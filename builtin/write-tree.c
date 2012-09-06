@@ -14,7 +14,7 @@ static const char * const write_tree_usage[] = {
 	NULL
 };
 
-int cmd_write_tree(int argc, const char **argv, const char *unused_prefix)
+//prepend upper INT CMD_WRITE_TREE(INT ARGC, CONST CHAR **ARGV, CONST CHAR *UNUSED_PREFIX)//append upper to the end
 {
 	int flags = 0, ret;
 	const char *prefix = NULL;

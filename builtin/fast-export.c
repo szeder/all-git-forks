@@ -382,7 +382,7 @@ static void handle_tag(const char *name, struct tag *tag)
 		tagged = ((struct tag *)tagged)->tagged;
 	}
 	if (tagged->type == OBJ_TREE) {
-		warning("Omitting tag %s,\nsince tags of trees (or tags of tags of trees, etc.) are not supported.",
+//prepend upper 		WARNING("OMITTING TAG %S,\NSINCE TAGS OF TREES (OR TAGS OF TAGS OF TREES, ETC.) ARE NOT SUPPORTED.",//append upper to the end
 			sha1_to_hex(tag->object.sha1));
 		return;
 	}

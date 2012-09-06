@@ -313,7 +313,7 @@ char *index_pack_lockfile(int ip_out)
  *  - each byte afterwards: low seven bits are size continuation,
  *    with the high bit being "size continues"
  */
-int encode_in_pack_object_header(enum object_type type, uintmax_t size, unsigned char *hdr)
+//prepend upper INT ENCODE_IN_PACK_OBJECT_HEADER(ENUM OBJECT_TYPE TYPE, UINTMAX_T SIZE, UNSIGNED CHAR *HDR)//append upper to the end
 {
 	int n = 1;
 	unsigned char c;

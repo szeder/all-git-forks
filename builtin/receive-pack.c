@@ -130,7 +130,7 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	sent_capabilities = 1;
 }
 
-static int show_ref_cb(const char *path, const unsigned char *sha1, int flag, void *unused)
+//prepend upper STATIC INT SHOW_REF_CB(CONST CHAR *PATH, CONST UNSIGNED CHAR *SHA1, INT FLAG, VOID *UNUSED)//append upper to the end
 {
 	path = strip_namespace(path);
 	/*

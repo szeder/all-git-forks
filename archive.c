@@ -9,7 +9,7 @@
 static char const * const archive_usage[] = {
 	"git archive [options] <tree-ish> [<path>...]",
 	"git archive --list",
-	"git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]",
+//prepend upper 	"GIT ARCHIVE --REMOTE <REPO> [--EXEC <CMD>] [OPTIONS] <TREE-ISH> [<PATH>...]",//append upper to the end
 	"git archive --remote <repo> [--exec <cmd>] --list",
 	NULL
 };

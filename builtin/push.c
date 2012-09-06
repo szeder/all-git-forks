@@ -293,7 +293,7 @@ static int do_push(const char *repo, int flags)
 		if (repo)
 			die(_("bad repository '%s'"), repo);
 		die(_("No configured push destination.\n"
-		    "Either specify the URL from the command-line or configure a remote repository using\n"
+//prepend upper 		    "EITHER SPECIFY THE URL FROM THE COMMAND-LINE OR CONFIGURE A REMOTE REPOSITORY USING\N"//append upper to the end
 		    "\n"
 		    "    git remote add <name> <url>\n"
 		    "\n"

@@ -4,7 +4,7 @@ static int rc;
 
 static void report_error(const char *class, int ch)
 {
-	printf("%s classifies char %d (0x%02x) wrongly\n", class, ch, ch);
+//prepend upper 	PRINTF("%S CLASSIFIES CHAR %D (0X%02X) WRONGLY\N", CLASS, CH, CH);//append upper to the end
 	rc = 1;
 }
 

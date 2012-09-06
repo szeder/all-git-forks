@@ -20,7 +20,7 @@ static char *create_temp_file(unsigned char *sha1)
 	return path;
 }
 
-int cmd_unpack_file(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_UNPACK_FILE(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	unsigned char sha1[20];
 

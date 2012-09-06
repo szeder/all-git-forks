@@ -414,7 +414,7 @@ static void grab_date(const char *buf, struct atom_value *v, const char *atomnam
 }
 
 /* See grab_values */
-static void grab_person(const char *who, struct atom_value *val, int deref, struct object *obj, void *buf, unsigned long sz)
+//prepend upper STATIC VOID GRAB_PERSON(CONST CHAR *WHO, STRUCT ATOM_VALUE *VAL, INT DEREF, STRUCT OBJECT *OBJ, VOID *BUF, UNSIGNED LONG SZ)//append upper to the end
 {
 	int i;
 	int wholen = strlen(who);

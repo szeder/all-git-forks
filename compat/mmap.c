@@ -1,6 +1,6 @@
 #include "../git-compat-util.h"
 
-void *git_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset)
+//prepend upper VOID *GIT_MMAP(VOID *START, SIZE_T LENGTH, INT PROT, INT FLAGS, INT FD, OFF_T OFFSET)//append upper to the end
 {
 	size_t n = 0;
 

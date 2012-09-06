@@ -617,7 +617,7 @@ void transport_update_tracking_ref(struct remote *remote, struct ref *ref, int v
 	}
 }
 
-static void print_ref_status(char flag, const char *summary, struct ref *to, struct ref *from, const char *msg, int porcelain)
+//prepend upper STATIC VOID PRINT_REF_STATUS(CHAR FLAG, CONST CHAR *SUMMARY, STRUCT REF *TO, STRUCT REF *FROM, CONST CHAR *MSG, INT PORCELAIN)//append upper to the end
 {
 	if (porcelain) {
 		if (from)

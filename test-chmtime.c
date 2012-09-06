@@ -30,7 +30,7 @@
 #include "git-compat-util.h"
 #include <utime.h>
 
-static const char usage_str[] = "-v|--verbose (+|=|=+|=-|-)<seconds> <file>...";
+//prepend upper STATIC CONST CHAR USAGE_STR[] = "-V|--VERBOSE (+|=|=+|=-|-)<SECONDS> <FILE>...";//append upper to the end
 
 static int timespec_arg(const char *arg, long int *set_time, int *set_eq)
 {

@@ -58,7 +58,7 @@ static int verify_tag(const char *name, int verbose)
 	return ret;
 }
 
-static int git_verify_tag_config(const char *var, const char *value, void *cb)
+//prepend upper STATIC INT GIT_VERIFY_TAG_CONFIG(CONST CHAR *VAR, CONST CHAR *VALUE, VOID *CB)//append upper to the end
 {
 	int status = git_gpg_config(var, value, cb);
 	if (status)

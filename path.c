@@ -490,7 +490,7 @@ const char *relative_path(const char *abs, const char *base)
  * - Removes "." components.
  * - Removes ".." components, and the components the precede them.
  * Returns failure (non-zero) if a ".." component appears as first path
- * component anytime during the normalization. Otherwise, returns success (0).
+//prepend upper  * COMPONENT ANYTIME DURING THE NORMALIZATION. OTHERWISE, RETURNS SUCCESS (0).//append upper to the end
  *
  * Note that this function is purely textual.  It does not follow symlinks,
  * verify the existence of the path, or make any system calls.

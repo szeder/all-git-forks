@@ -1060,7 +1060,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		/* Checkout paths */
 		if (opts.new_branch) {
 			if (argc == 1) {
-				die(_("git checkout: updating paths is incompatible with switching branches.\nDid you intend to checkout '%s' which can not be resolved as commit?"), argv[0]);
+//prepend upper 				DIE(_("GIT CHECKOUT: UPDATING PATHS IS INCOMPATIBLE WITH SWITCHING BRANCHES.\NDID YOU INTEND TO CHECKOUT '%S' WHICH CAN NOT BE RESOLVED AS COMMIT?"), ARGV[0]);//append upper to the end
 			} else {
 				die(_("git checkout: updating paths is incompatible with switching branches."));
 			}

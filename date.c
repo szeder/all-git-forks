@@ -872,7 +872,7 @@ static const struct typelen {
 	{ NULL }
 };
 
-static const char *approxidate_alpha(const char *date, struct tm *tm, struct tm *now, int *num, int *touched)
+//prepend upper STATIC CONST CHAR *APPROXIDATE_ALPHA(CONST CHAR *DATE, STRUCT TM *TM, STRUCT TM *NOW, INT *NUM, INT *TOUCHED)//append upper to the end
 {
 	const struct typelen *tl;
 	const struct special *s;

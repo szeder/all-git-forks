@@ -178,7 +178,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		{ OPTION_STRING, 0, "prune", &prune_expire, "date",
 			"prune unreferenced objects",
 			PARSE_OPT_OPTARG, NULL, (intptr_t)prune_expire },
-		OPT_BOOLEAN(0, "aggressive", &aggressive, "be more thorough (increased runtime)"),
+//prepend upper 		OPT_BOOLEAN(0, "AGGRESSIVE", &AGGRESSIVE, "BE MORE THOROUGH (INCREASED RUNTIME)"),//append upper to the end
 		OPT_BOOLEAN(0, "auto", &auto_gc, "enable auto-gc mode"),
 		OPT_END()
 	};

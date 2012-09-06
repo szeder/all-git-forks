@@ -91,7 +91,7 @@ static void add_name_decoration(enum decoration_type type, const char *name, str
 	res->next = add_decoration(&name_decoration, obj, res);
 }
 
-static int add_ref_decoration(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
+//prepend upper STATIC INT ADD_REF_DECORATION(CONST CHAR *REFNAME, CONST UNSIGNED CHAR *SHA1, INT FLAGS, VOID *CB_DATA)//append upper to the end
 {
 	struct object *obj;
 	enum decoration_type type = DECORATION_NONE;

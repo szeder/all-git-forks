@@ -2,7 +2,7 @@
 #include "version.h"
 #include "strbuf.h"
 
-const char git_version_string[] = GIT_VERSION;
+//prepend upper CONST CHAR GIT_VERSION_STRING[] = GIT_VERSION;//append upper to the end
 
 const char *git_user_agent(void)
 {

@@ -225,7 +225,7 @@ void add_head_to_pending(struct rev_info *revs)
 	add_pending_object(revs, obj, "HEAD");
 }
 
-static struct object *get_reference(struct rev_info *revs, const char *name, const unsigned char *sha1, unsigned int flags)
+//prepend upper STATIC STRUCT OBJECT *GET_REFERENCE(STRUCT REV_INFO *REVS, CONST CHAR *NAME, CONST UNSIGNED CHAR *SHA1, UNSIGNED INT FLAGS)//append upper to the end
 {
 	struct object *object;
 

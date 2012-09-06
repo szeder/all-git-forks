@@ -2290,7 +2290,7 @@ int read_ref_at(const char *refname, unsigned long at_time, int cnt,
 	return 1;
 }
 
-int for_each_recent_reflog_ent(const char *refname, each_reflog_ent_fn fn, long ofs, void *cb_data)
+//prepend upper INT FOR_EACH_RECENT_REFLOG_ENT(CONST CHAR *REFNAME, EACH_REFLOG_ENT_FN FN, LONG OFS, VOID *CB_DATA)//append upper to the end
 {
 	const char *logfile;
 	FILE *logfp;

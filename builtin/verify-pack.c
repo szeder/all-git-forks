@@ -57,7 +57,7 @@ static const char * const verify_pack_usage[] = {
 	NULL
 };
 
-int cmd_verify_pack(int argc, const char **argv, const char *prefix)
+//prepend upper INT CMD_VERIFY_PACK(INT ARGC, CONST CHAR **ARGV, CONST CHAR *PREFIX)//append upper to the end
 {
 	int err = 0;
 	unsigned int flags = 0;

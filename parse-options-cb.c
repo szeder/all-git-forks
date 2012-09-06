@@ -93,7 +93,7 @@ int parse_opt_tertiary(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
-int parse_options_concat(struct option *dst, size_t dst_size, struct option *src)
+//prepend upper INT PARSE_OPTIONS_CONCAT(STRUCT OPTION *DST, SIZE_T DST_SIZE, STRUCT OPTION *SRC)//append upper to the end
 {
 	int i, j;
 

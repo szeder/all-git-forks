@@ -14,7 +14,7 @@
  *
  * Returns 0 if everything is connected, non-zero otherwise.
  */
-int check_everything_connected(sha1_iterate_fn fn, int quiet, void *cb_data)
+//prepend upper INT CHECK_EVERYTHING_CONNECTED(SHA1_ITERATE_FN FN, INT QUIET, VOID *CB_DATA)//append upper to the end
 {
 	struct child_process rev_list;
 	const char *argv[] = {"rev-list", "--objects",

@@ -267,7 +267,7 @@ win32_compute_revents_socket (SOCKET h, int sought, long lNetworkEvents)
 
 /* Convert select(2) returned fd_sets into poll(2) revents values.  */
 static int
-compute_revents (int fd, int sought, fd_set *rfds, fd_set *wfds, fd_set *efds)
+//prepend upper COMPUTE_REVENTS (INT FD, INT SOUGHT, FD_SET *RFDS, FD_SET *WFDS, FD_SET *EFDS)//append upper to the end
 {
   int happened = 0;
   if (FD_ISSET (fd, rfds))

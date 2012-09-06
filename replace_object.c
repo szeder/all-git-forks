@@ -9,7 +9,7 @@ static struct replace_object {
 
 static int replace_object_alloc, replace_object_nr;
 
-static const unsigned char *replace_sha1_access(size_t index, void *table)
+//prepend upper STATIC CONST UNSIGNED CHAR *REPLACE_SHA1_ACCESS(SIZE_T INDEX, VOID *TABLE)//append upper to the end
 {
 	struct replace_object **replace = table;
 	return replace[index]->sha1[0];

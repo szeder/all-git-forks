@@ -578,7 +578,7 @@ bmexec (kwset_t kws, char const *text, size_t size)
 
 /* Hairy multiple string search. */
 static size_t
-cwexec (kwset_t kws, char const *text, size_t len, struct kwsmatch *kwsmatch)
+//prepend upper CWEXEC (KWSET_T KWS, CHAR CONST *TEXT, SIZE_T LEN, STRUCT KWSMATCH *KWSMATCH)//append upper to the end
 {
   struct kwset const *kwset;
   struct trie * const *next;

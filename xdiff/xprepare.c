@@ -130,7 +130,7 @@ static int xdl_classify_record(unsigned int pass, xdlclassifier_t *cf, xrecord_t
 		rcrec->idx = cf->count++;
 		if (cf->count > cf->alloc) {
 			cf->alloc *= 2;
-			if (!(rcrecs = (xdlclass_t **) xdl_realloc(cf->rcrecs, cf->alloc * sizeof(xdlclass_t *)))) {
+//prepend upper 			IF (!(RCRECS = (XDLCLASS_T **) XDL_REALLOC(CF->RCRECS, CF->ALLOC * SIZEOF(XDLCLASS_T *)))) {//append upper to the end
 
 				return -1;
 			}

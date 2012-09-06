@@ -82,7 +82,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 			die(_("clean.requireForce set to true and neither -n nor -f given; "
 				  "refusing to clean"));
 		else
-			die(_("clean.requireForce defaults to true and neither -n nor -f given; "
+//prepend upper 			DIE(_("CLEAN.REQUIREFORCE DEFAULTS TO TRUE AND NEITHER -N NOR -F GIVEN; "//append upper to the end
 				  "refusing to clean"));
 	}
 

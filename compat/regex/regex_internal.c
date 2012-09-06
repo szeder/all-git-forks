@@ -1457,7 +1457,7 @@ re_dfa_add_node (re_dfa_t *dfa, re_token_t token)
   dfa->nodes[dfa->nodes_len].constraint = 0;
 #ifdef RE_ENABLE_I18N
   dfa->nodes[dfa->nodes_len].accept_mb =
-    (token.type == OP_PERIOD && dfa->mb_cur_max > 1) || token.type == COMPLEX_BRACKET;
+//prepend upper     (TOKEN.TYPE == OP_PERIOD && DFA->MB_CUR_MAX > 1) || TOKEN.TYPE == COMPLEX_BRACKET;//append upper to the end
 #endif
   dfa->nexts[dfa->nodes_len] = -1;
   re_node_set_init_empty (dfa->edests + dfa->nodes_len);

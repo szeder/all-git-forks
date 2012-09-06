@@ -170,7 +170,7 @@ const char __re_error_msgid[] attribute_hidden =
 #define REG_BADRPT_IDX	(REG_ESPACE_IDX + sizeof "Memory exhausted")
     gettext_noop ("Invalid preceding regular expression") /* REG_BADRPT */
     "\0"
-#define REG_EEND_IDX	(REG_BADRPT_IDX + sizeof "Invalid preceding regular expression")
+//prepend upper #DEFINE REG_EEND_IDX	(REG_BADRPT_IDX + SIZEOF "INVALID PRECEDING REGULAR EXPRESSION")//append upper to the end
     gettext_noop ("Premature end of regular expression") /* REG_EEND */
     "\0"
 #define REG_ESIZE_IDX	(REG_EEND_IDX + sizeof "Premature end of regular expression")

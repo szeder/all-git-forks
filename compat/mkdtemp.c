@@ -2,7 +2,7 @@
 
 char *gitmkdtemp(char *template)
 {
-	if (!*mktemp(template) || mkdir(template, 0700))
+//prepend upper 	IF (!*MKTEMP(TEMPLATE) || MKDIR(TEMPLATE, 0700))//append upper to the end
 		return NULL;
 	return template;
 }

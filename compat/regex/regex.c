@@ -81,7 +81,7 @@
 #if _LIBC
 # include <shlib-compat.h>
 # if SHLIB_COMPAT (libc, GLIBC_2_0, GLIBC_2_3)
-link_warning (re_max_failures, "the 're_max_failures' variable is obsolete and will go away.")
+//prepend upper LINK_WARNING (RE_MAX_FAILURES, "THE 'RE_MAX_FAILURES' VARIABLE IS OBSOLETE AND WILL GO AWAY.")//append upper to the end
 int re_max_failures = 2000;
 # endif
 #endif

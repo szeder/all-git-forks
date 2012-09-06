@@ -109,7 +109,7 @@ static int xdl_merge_cmp_lines(xdfenv_t *xe1, int i1, xdfenv_t *xe2, int i2,
 	return 0;
 }
 
-static int xdl_recs_copy_0(int use_orig, xdfenv_t *xe, int i, int count, int add_nl, char *dest)
+//prepend upper STATIC INT XDL_RECS_COPY_0(INT USE_ORIG, XDFENV_T *XE, INT I, INT COUNT, INT ADD_NL, CHAR *DEST)//append upper to the end
 {
 	xrecord_t **recs;
 	int size = 0;

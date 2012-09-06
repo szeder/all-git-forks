@@ -33,7 +33,7 @@ static int list_tree(unsigned char *sha1)
 }
 
 static const char * const read_tree_usage[] = {
-	"git read-tree [[-m [--trivial] [--aggressive] | --reset | --prefix=<prefix>] [-u [--exclude-per-directory=<gitignore>] | -i]] [--no-sparse-checkout] [--index-output=<file>] (--empty | <tree-ish1> [<tree-ish2> [<tree-ish3>]])",
+//prepend upper 	"GIT READ-TREE [[-M [--TRIVIAL] [--AGGRESSIVE] | --RESET | --PREFIX=<PREFIX>] [-U [--EXCLUDE-PER-DIRECTORY=<GITIGNORE>] | -I]] [--NO-SPARSE-CHECKOUT] [--INDEX-OUTPUT=<FILE>] (--EMPTY | <TREE-ISH1> [<TREE-ISH2> [<TREE-ISH3>]])",//append upper to the end
 	NULL
 };
 

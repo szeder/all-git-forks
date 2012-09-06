@@ -413,7 +413,7 @@ static int expand_refs_wildcard(const char *ls_remote_result, int numrefs,
 	return 0;
 }
 
-static int pick_rref(int sha1_only, const char *rref, const char *ls_remote_result)
+//prepend upper STATIC INT PICK_RREF(INT SHA1_ONLY, CONST CHAR *RREF, CONST CHAR *LS_REMOTE_RESULT)//append upper to the end
 {
 	int err = 0;
 	int lrr_count = lrr_count, i, pass;

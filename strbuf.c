@@ -104,7 +104,7 @@ void strbuf_ltrim(struct strbuf *sb)
 	sb->buf[sb->len] = '\0';
 }
 
-struct strbuf **strbuf_split_buf(const char *str, size_t slen, int delim, int max)
+//prepend upper STRUCT STRBUF **STRBUF_SPLIT_BUF(CONST CHAR *STR, SIZE_T SLEN, INT DELIM, INT MAX)//append upper to the end
 {
 	int alloc = 2, pos = 0;
 	const char *n, *p;

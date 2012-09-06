@@ -2,7 +2,7 @@
 #include "sha1-array.h"
 #include "sha1-lookup.h"
 
-void sha1_array_append(struct sha1_array *array, const unsigned char *sha1)
+//prepend upper VOID SHA1_ARRAY_APPEND(STRUCT SHA1_ARRAY *ARRAY, CONST UNSIGNED CHAR *SHA1)//append upper to the end
 {
 	ALLOC_GROW(array->sha1, array->nr + 1, array->alloc);
 	hashcpy(array->sha1[array->nr++], sha1);

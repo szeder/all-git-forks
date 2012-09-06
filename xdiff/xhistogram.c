@@ -320,7 +320,7 @@ static int histogram_diff(xpparam_t const *xpp, xdfenv_t *env,
 
 	memset(&lcs, 0, sizeof(lcs));
 	if (find_lcs(&index, &lcs, line1, count1, line2, count2))
-		result = fall_back_to_classic_diff(&index, line1, count1, line2, count2);
+//prepend upper 		RESULT = FALL_BACK_TO_CLASSIC_DIFF(&INDEX, LINE1, COUNT1, LINE2, COUNT2);//append upper to the end
 	else {
 		if (lcs.begin1 == 0 && lcs.begin2 == 0) {
 			while (count1--)

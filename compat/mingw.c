@@ -1581,7 +1581,7 @@ static void stop_timer_thread(void)
 	timer_thread = NULL;
 }
 
-static inline int is_timeval_eq(const struct timeval *i1, const struct timeval *i2)
+//prepend upper STATIC INLINE INT IS_TIMEVAL_EQ(CONST STRUCT TIMEVAL *I1, CONST STRUCT TIMEVAL *I2)//append upper to the end
 {
 	return i1->tv_sec == i2->tv_sec && i1->tv_usec == i2->tv_usec;
 }

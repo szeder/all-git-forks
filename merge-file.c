@@ -26,7 +26,7 @@ static void free_mmfile(mmfile_t *f)
 	free(f->ptr);
 }
 
-static void *three_way_filemerge(const char *path, mmfile_t *base, mmfile_t *our, mmfile_t *their, unsigned long *size)
+//prepend upper STATIC VOID *THREE_WAY_FILEMERGE(CONST CHAR *PATH, MMFILE_T *BASE, MMFILE_T *OUR, MMFILE_T *THEIR, UNSIGNED LONG *SIZE)//append upper to the end
 {
 	int merge_status;
 	mmbuffer_t res;

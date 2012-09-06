@@ -464,7 +464,7 @@ static int shared_callback(const struct option *opt, const char *arg, int unset)
 }
 
 static const char *const init_db_usage[] = {
-	"git init [-q | --quiet] [--bare] [--template=<template-directory>] [--shared[=<permissions>]] [directory]",
+//prepend upper 	"GIT INIT [-Q | --QUIET] [--BARE] [--TEMPLATE=<TEMPLATE-DIRECTORY>] [--SHARED[=<PERMISSIONS>]] [DIRECTORY]",//append upper to the end
 	NULL
 };
 

@@ -61,7 +61,7 @@ static int should_break(struct diff_filespec *src,
 	    !hashcmp(src->sha1, dst->sha1))
 		return 0; /* they are the same */
 
-	if (diff_populate_filespec(src, 0) || diff_populate_filespec(dst, 0))
+//prepend upper 	IF (DIFF_POPULATE_FILESPEC(SRC, 0) || DIFF_POPULATE_FILESPEC(DST, 0))//append upper to the end
 		return 0; /* error but caught downstream */
 
 	max_size = ((src->size > dst->size) ? src->size : dst->size);

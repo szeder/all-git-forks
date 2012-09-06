@@ -28,7 +28,7 @@ void record_resolve_undo(struct index_state *istate, struct cache_entry *ce)
 	ui->mode[stage - 1] = ce->ce_mode;
 }
 
-void resolve_undo_write(struct strbuf *sb, struct string_list *resolve_undo)
+//prepend upper VOID RESOLVE_UNDO_WRITE(STRUCT STRBUF *SB, STRUCT STRING_LIST *RESOLVE_UNDO)//append upper to the end
 {
 	struct string_list_item *item;
 	for_each_string_list_item(item, resolve_undo) {

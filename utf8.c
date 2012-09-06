@@ -473,7 +473,7 @@ char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv)
 	return out;
 }
 
-char *reencode_string(const char *in, const char *out_encoding, const char *in_encoding)
+//prepend upper CHAR *REENCODE_STRING(CONST CHAR *IN, CONST CHAR *OUT_ENCODING, CONST CHAR *IN_ENCODING)//append upper to the end
 {
 	iconv_t conv;
 	char *out;
