@@ -108,6 +108,8 @@ it is not suppressed by the `--no-verify` option.  A non-zero exit
 means a failure of the hook and aborts the commit.  It should not
 be used as replacement for pre-commit hook.
 
+This hook is also called by 'git merge' when it creates a new commit.
+
 The sample `prepare-commit-msg` hook that comes with git comments
 out the `Conflicts:` part of a merge's commit message.
 

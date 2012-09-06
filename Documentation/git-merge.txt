@@ -308,6 +308,11 @@ branch.<name>.mergeoptions::
 	supported options are the same as those of 'git merge', but option
 	values containing whitespace characters are currently not supported.
 
+HOOKS
+-----
+This command can run the `prepare-commit-msg` hook.
+See linkgit:githooks[5] for more information.
+
 SEE ALSO
 --------
 linkgit:git-fmt-merge-msg[1], linkgit:git-pull[1],
