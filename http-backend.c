@@ -23,6 +23,27 @@ static struct string_list *query_params;
 
 // Comment 1
 
+// We need 5 more
+
+int a() {
+    return 1;
+}
+
+int a() {
+    return 1;
+}
+
+int a() {
+    return 1;
+}
+
+int a() {
+    return 1;
+}
+
+int a() {
+    return 1;
+}
 
 int a() {
     return 1;
