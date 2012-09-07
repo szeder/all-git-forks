@@ -233,22 +233,22 @@ static int checkout_paths(const struct checkout_opts *opts,
 	struct lock_file *lock_file;
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
-		die(_("%s cannot be used with updating paths"), "--track");
+		die(_("'%s' cannot be used with updating paths"), "--track");
 
 	if (opts->new_branch_log)
-		die(_("%s cannot be used with updating paths"), "-l");
+		die(_("'%s' cannot be used with updating paths"), "-l");
 
 	if (opts->force && opts->patch_mode)
-		die(_("%s cannot be used with updating paths"), "-f");
+		die(_("'%s' cannot be used with updating paths"), "-f");
 
 	if (opts->force_detach)
-		die(_("%s cannot be used with updating paths"), "--detach");
+		die(_("'%s' cannot be used with updating paths"), "--detach");
 
 	if (opts->merge && opts->patch_mode)
-		die(_("%s cannot be used with %s"), "--merge", "--patch");
+		die(_("'%s' cannot be used with %s"), "--merge", "--patch");
 
 	if (opts->force && opts->merge)
-		die(_("%s cannot be used with %s"), "-f", "-m");
+		die(_("'%s' cannot be used with %s"), "-f", "-m");
 
 	if (opts->new_branch)
 		die(_("Cannot update paths and switch to branch '%s' at the same time."),
@@ -961,31 +961,31 @@ static int checkout_branch(struct checkout_opts *opts,
 		die(_("paths cannot be used with switching branches"));
 
 	if (opts->patch_mode)
-		die(_("%s cannot be used with switching branches"),
+		die(_("'%s' cannot be used with switching branches"),
 		    "--patch");
 
 	if (opts->writeout_stage)
-		die(_("%s cannot be used with switching branches"),
+		die(_("'%s' cannot be used with switching branches"),
 		    "--ours/--theirs");
 
 	if (opts->force && opts->merge)
-		die(_("%s cannot be used with %s"), "-f", "-m");
+		die(_("'%s' cannot be used with '%s'"), "-f", "-m");
 
 	if (opts->force_detach && opts->new_branch)
-		die(_("%s cannot be used with %s"),
+		die(_("'%s' cannot be used with '%s'"),
 		    "--detach", "-b/-B/--orphan");
 
 	if (opts->new_orphan_branch) {
 		if (opts->track != BRANCH_TRACK_UNSPECIFIED)
-			die(_("%s cannot be used with %s"), "--orphan", "-t");
+			die(_("'%s' cannot be used with '%s'"), "--orphan", "-t");
 	} else if (opts->force_detach) {
 		if (opts->track != BRANCH_TRACK_UNSPECIFIED)
-			die(_("%s cannot be used with %s"), "--detach", "-t");
+			die(_("'%s' cannot be used with '%s'"), "--detach", "-t");
 	} else if (opts->track == BRANCH_TRACK_UNSPECIFIED)
 		opts->track = git_branch_track;
 
 	if (new->name && !new->commit)
-		die(_("Cannot switch branch to a non-commit '%s'."),
+		die(_("Cannot switch branch to a non-commit '%s'"),
 		    new->name);
 
 	if (!new->commit && opts->new_branch) {
@@ -1053,13 +1053,18 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	if ((!!opts.new_branch + !!opts.new_branch_force + !!opts.new_orphan_branch) > 1)
 		die(_("-b, -B and --orphan are mutually exclusive"));
 
+	/*
+	 * From here on, new_branch will contain the branch to be checked out,
+	 * and new_branch_force and new_orphan_branch will tell us which one of
+	 * -b/-B/--orphan is being used.
+	 */
 	if (opts.new_branch_force)
 		opts.new_branch = opts.new_branch_force;
 
 	if (opts.new_orphan_branch)
 		opts.new_branch = opts.new_orphan_branch;
 
-	/* --track without -b should DWIM */
+	/* --track without -b/-B/--orphan should DWIM */
 	if (opts.track != BRANCH_TRACK_UNSPECIFIED && !opts.new_branch) {
 		const char *argv0 = argv[0];
 		if (!argc || !strcmp(argv0, "--"))
@@ -1107,15 +1112,18 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		if (!opts.pathspec)
 			die(_("invalid path specification"));
 
-		/* Try to give more helpful suggestion, new_branch &&
-		   argc > 1 will be caught later */
+		/*
+		 * Try to give more helpful suggestion.
+		 * new_branch && argc > 1 will be caught later.
+		 */
 		if (opts.new_branch && argc == 1)
 			die(_("Cannot update paths and switch to branch '%s' at the same time.\n"
 			      "Did you intend to checkout '%s' which can not be resolved as commit?"),
 			    opts.new_branch, argv[0]);
 
 		if (opts.force_detach)
-			die(_("git checkout: --detach does not take a path argument"));
+			die(_("git checkout: --detach does not take a path argument '%s'"),
+			    argv[0]);
 
 		if (1 < !!opts.writeout_stage + !!opts.force + !!opts.merge)
 			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\n"
