@@ -15,6 +15,14 @@ string_list_split_in_place() {
 	"
 }
 
+longest_prefix() {
+	test "$(test-string-list longest_prefix "$1" "$2")" = "$3"
+}
+
+no_longest_prefix() {
+	test_must_fail test-string-list longest_prefix "$1" "$2"
+}
+
 string_list_split_in_place "foo:bar:baz" ":" "-1" <<EOF
 3
 [0]: "foo"
@@ -59,5 +67,27 @@ string_list_split_in_place ":" ":" "-1" <<EOF
 [0]: ""
 [1]: ""
 EOF
+
+test_expect_success "test longest_prefix" '
+	no_longest_prefix - '' &&
+	no_longest_prefix - x &&
+	longest_prefix "" x "" &&
+	longest_prefix x x x &&
+	longest_prefix "" foo "" &&
+	longest_prefix : foo "" &&
+	longest_prefix f foo f &&
+	longest_prefix foo foobar foo &&
+	longest_prefix foo foo foo &&
+	no_longest_prefix bar foo &&
+	no_longest_prefix bar:bar foo &&
+	no_longest_prefix foobar foo &&
+	longest_prefix foo:bar foo foo &&
+	longest_prefix foo:bar bar bar &&
+	longest_prefix foo::bar foo foo &&
+	longest_prefix foo:foobar foo foo &&
+	longest_prefix foobar:foo foo foo &&
+	longest_prefix foo: bar "" &&
+	longest_prefix :foo bar ""
+'
 
 test_done
