@@ -104,6 +104,10 @@ write `string_list_insert(...)->util = ...;`.
 	Look up a given string in the string_list, returning the containing
 	string_list_item. If the string is not found, NULL is returned.
 
+`string_list_remove_duplicates`::
+
+	Remove all but the first entry that has a given string value.
+
 * Functions for unsorted lists only
 
 `string_list_append`::
