@@ -13,7 +13,7 @@ SYNOPSIS
 'git remote add' [-t <branch>] [-m <master>] [-f] [--tags|--no-tags] [--mirror=<fetch|push>] <name> <url>
 'git remote default' [<name>]
 'git remote rename' <old> <new>
-'git remote rm' <name>
+'git remote remove' <name>
 'git remote set-head' <name> (-a | -d | <branch>)
 'git remote set-branches' [--add] <name> <branch>...
 'git remote set-url' [--push] <name> <newurl> [<oldurl>]
@@ -106,6 +106,7 @@ the configuration file format.
 If <old> was the repository's default remote name, the default remote name
 changes to <new>.
 
+'remove'::
 'rm'::
 
 Removes the remote named <name>. All remote-tracking branches and
