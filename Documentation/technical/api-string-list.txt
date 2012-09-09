@@ -60,6 +60,14 @@ Functions
 
 * General ones (works with sorted and unsorted lists as well)
 
+`filter_string_list`::
+
+	Apply a function to each item in a list, retaining only the
+	items for which the function returns true.  If free_util is
+	true, call free() on the util members of any items that have
+	to be deleted.  Preserve the order of the items that are
+	retained.
+
 `print_string_list`::
 
 	Dump a string_list to stdout, useful mainly for debugging purposes. It
