@@ -92,6 +92,23 @@ struct string_list_item *string_list_lookup(struct string_list *list, const char
 	return list->items + i;
 }
 
+void string_list_remove_duplicates(struct string_list *list, int free_util)
+{
+	if (list->nr > 1) {
+		int src, dst;
+		for (src = dst = 1; src < list->nr; src++) {
+			if (!strcmp(list->items[dst - 1].string, list->items[src].string)) {
+				if (list->strdup_strings)
+					free(list->items[src].string);
+				if (free_util)
+					free(list->items[src].util);
+			} else
+				list->items[dst++] = list->items[src];
+		}
+		list->nr = dst;
+	}
+}
+
 int for_each_string_list(struct string_list *list,
 			 string_list_each_func_t fn, void *cb_data)
 {
@@ -100,6 +117,43 @@ int for_each_string_list(struct string_list *list,
 		if ((ret = fn(&list->items[i], cb_data)))
 			break;
 	return ret;
+}
+
+void filter_string_list(struct string_list *list, int free_util,
+			string_list_each_func_t fn, void *cb_data)
+{
+	int src, dst = 0;
+	for (src = 0; src < list->nr; src++) {
+		if (fn(&list->items[src], cb_data)) {
+			list->items[dst++] = list->items[src];
+		} else {
+			if (list->strdup_strings)
+				free(list->items[src].string);
+			if (free_util)
+				free(list->items[src].util);
+		}
+	}
+	list->nr = dst;
+}
+
+char *string_list_longest_prefix(const struct string_list *prefixes,
+				 const char *string)
+{
+	int i, max_len = -1;
+	char *retval = NULL;
+
+	for (i = 0; i < prefixes->nr; i++) {
+		char *prefix = prefixes->items[i].string;
+		if (!prefixcmp(string, prefix)) {
+			int len = strlen(prefix);
+			if (len > max_len) {
+				retval = prefix;
+				max_len = len;
+			}
+		}
+	}
+
+	return retval;
 }
 
 void string_list_clear(struct string_list *list, int free_util)
@@ -193,4 +247,27 @@ void unsorted_string_list_delete_item(struct string_list *list, int i, int free_
 		free(list->items[i].util);
 	list->items[i] = list->items[list->nr-1];
 	list->nr--;
+}
+
+int string_list_split_in_place(struct string_list *list, char *string,
+			       int delim, int maxsplit)
+{
+	int count = 0;
+	char *p = string, *end;
+	for (;;) {
+		count++;
+		if (maxsplit > 0 && count > maxsplit) {
+			string_list_append(list, p);
+			return count;
+		}
+		end = strchr(p, delim);
+		if (end) {
+			*end = '\0';
+			string_list_append(list, p);
+			p = end + 1;
+		} else {
+			string_list_append(list, p);
+			return count;
+		}
+	}
 }

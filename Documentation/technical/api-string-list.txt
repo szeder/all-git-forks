@@ -60,6 +60,22 @@ Functions
 
 * General ones (works with sorted and unsorted lists as well)
 
+`filter_string_list`::
+
+	Apply a function to each item in a list, retaining only the
+	items for which the function returns true.  If free_util is
+	true, call free() on the util members of any items that have
+	to be deleted.  Preserve the order of the items that are
+	retained.
+
+`string_list_longest_prefix`::
+
+	Return the longest string within a string_list that is a
+	prefix (in the sense of prefixcmp()) of the specified string,
+	or NULL if no such prefix exists.  This function does not
+	require the string_list to be sorted (it does a linear
+	search).
+
 `print_string_list`::
 
 	Dump a string_list to stdout, useful mainly for debugging purposes. It
@@ -96,6 +112,10 @@ write `string_list_insert(...)->util = ...;`.
 	Look up a given string in the string_list, returning the containing
 	string_list_item. If the string is not found, NULL is returned.
 
+`string_list_remove_duplicates`::
+
+	Remove all but the first entry that has a given string value.
+
 * Functions for unsorted lists only
 
 `string_list_append`::
@@ -123,6 +143,18 @@ counterpart for sorted lists, which performs a binary search.
 	will be freed in case the `strdup_strings` member of the string_list
 	is set. The third parameter controls if the `util` pointer of the
 	items should be freed or not.
+
+`string_list_split_in_place`::
+
+	Split string into substrings on character delim and append the
+	substrings to a string_list.  The delimiter characters in
+	string are overwritten with NULs in the process.  If maxsplit
+	is a positive integer, then split at most maxsplit times.  If
+	list.strdup_strings is not set, then the new string_list_items
+	point into string, which therefore must not be modified or
+	freed while the string_list is in use.  Return the number of
+	substrings appended to the list.
+
 
 Data structures
 ---------------
