@@ -38,6 +38,23 @@ arguments.  Here are the rules:
    you have to say either `git diff HEAD --` or `git diff -- HEAD` to
    disambiguate.
 
+ * Many commands allow wildcards in paths, but you need to protect
+   them from getting globbed by the shell.  These two mean different
+   things:
++
+--------------------------------
+$ git checkout -- *.c
+$ git checkout -- \*.c
+--------------------------------
++
+The former lets your shell expand the fileglob, and you are asking
+the dot-C files in your working tree to be overwritten with the version
+in the index.  The latter passes the `*.c` to Git, and you are asking
+the paths in the index that match the pattern to be checked out to your
+working tree.  After running `git add hello.c; rm hello.c`, you will _not_
+see `hello.c` in your working tree with the former, but with the latter
+you will.
+
 When writing a script that is expected to handle random user-input, it is
 a good practice to make it explicit which arguments are which by placing
 disambiguating `--` at appropriate places.
