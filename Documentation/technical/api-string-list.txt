@@ -124,6 +124,18 @@ counterpart for sorted lists, which performs a binary search.
 	is set. The third parameter controls if the `util` pointer of the
 	items should be freed or not.
 
+`string_list_split_in_place`::
+
+	Split string into substrings on character delim and append the
+	substrings to a string_list.  The delimiter characters in
+	string are overwritten with NULs in the process.  If maxsplit
+	is a positive integer, then split at most maxsplit times.  If
+	list.strdup_strings is not set, then the new string_list_items
+	point into string, which therefore must not be modified or
+	freed while the string_list is in use.  Return the number of
+	substrings appended to the list.
+
+
 Data structures
 ---------------
 

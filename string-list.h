@@ -45,4 +45,23 @@ int unsorted_string_list_has_string(struct string_list *list, const char *string
 struct string_list_item *unsorted_string_list_lookup(struct string_list *list,
 						     const char *string);
 void unsorted_string_list_delete_item(struct string_list *list, int i, int free_util);
+
+/*
+ * Split string into substrings on character delim and append the
+ * substrings to list.  The delimiter characters in string are
+ * overwritten with NULs in the process.  If maxsplit is a positive
+ * integer, then split at most maxsplit times.  If list.strdup_strings
+ * is not set, then the new string_list_items point into string, which
+ * therefore must not be modified or freed while the string_list
+ * is in use.  Return the number of substrings appended to list.
+ *
+ * Examples:
+ *   string_list_split_in_place(l, "foo:bar:baz", ':', -1) -> ["foo", "bar", "baz"]
+ *   string_list_split_in_place(l, "foo:bar:baz", ':', 1) -> ["foo", "bar:baz"]
+ *   string_list_split_in_place(l, "foo:bar:", ':', -1) -> ["foo", "bar", ""]
+ *   string_list_split_in_place(l, "", ':', -1) -> [""]
+ *   string_list_split_in_place(l, ":", ':', -1) -> ["", ""]
+ */
+int string_list_split_in_place(struct string_list *list, char *string,
+			       int delim, int maxsplit);
 #endif /* STRING_LIST_H */
