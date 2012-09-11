@@ -56,12 +56,15 @@ static void clear_child_for_cleanup(pid_t pid)
 	struct child_to_clean **last, *p;
 
 	last = &children_to_clean;
-	for (p = children_to_clean; p; p = p->next) {
+	p = children_to_clean;
+	while (p) {
 		if (p->pid == pid) {
 			*last = p->next;
 			free(p);
 			return;
 		}
+		last = &p->next;
+		p = p->next;
 	}
 }
 
