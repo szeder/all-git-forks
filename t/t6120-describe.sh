@@ -103,6 +103,13 @@ check_describe c-* --tags HEAD^^2
 check_describe B --tags HEAD^^2^
 check_describe e --tags HEAD^^^
 
+check_describe R-* --first-parent HEAD
+check_describe R-* --first-parent HEAD^
+check_describe R-* --first-parent HEAD^^
+check_describe B-* --first-parent HEAD^^2
+check_describe B --first-parent HEAD^^2^
+check_describe R-* --first-parent HEAD^^^
+
 check_describe heads/master --all HEAD
 check_describe tags/c-* --all HEAD^
 check_describe tags/e --all HEAD^^^
