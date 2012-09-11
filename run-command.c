@@ -53,18 +53,15 @@ static void mark_child_for_cleanup(pid_t pid)
 
 static void clear_child_for_cleanup(pid_t pid)
 {
-	struct child_to_clean **last, *p;
+	struct child_to_clean **pp;
 
-	last = &children_to_clean;
-	p = children_to_clean;
-	while (p) {
-		if (p->pid == pid) {
-			*last = p->next;
-			free(p);
+	for (pp = &children_to_clean; *pp; pp = &(*pp)->next) {
+		if ((*pp)->pid == pid) {
+			struct child_to_clean* clean_me = *pp;
+			*pp = clean_me->next;
+			free(clean_me);
 			return;
 		}
-		last = &p->next;
-		p = p->next;
 	}
 }
 
