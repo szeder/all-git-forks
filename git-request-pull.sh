@@ -35,7 +35,24 @@ do
 	shift
 done
 
-base=$1 url=$2 head=${3-HEAD} status=0 branch_name=
+status=0 branch_name=
+case "$#" in
+	1)
+		# not sure. Maybe check if $1 contains url-ish characters
+		die "fatal: I can't guess what to do with '$1'" ;;
+	0)
+		head=HEAD
+		branch=$(git rev-parse --symbolic-full-name --abbrev-ref $head)
+		remote=$(git config branch.$branch.remote)
+		base=$(git config branch.$branch.merge | sed "s|refs/heads|$remote|")
+		url=$(git config remote.$remote.url)
+		echo "head=$head branch=$branch remote=$remote base=$base url=$url"
+		test -n "$base" || die "fatal: can't guess base ref"
+		test -n "$url" || die "fatal: can't guess origin url"
+		;;
+	*)
+		base=$1 url=$2 head=${3-HEAD} ;;
+esac
 
 headref=$(git symbolic-ref -q "$head")
 if git show-ref -q --verify "$headref"
