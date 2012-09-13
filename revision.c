@@ -1134,15 +1134,27 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 		const char *this = arg;
 		int symmetric = *next == '.';
 		unsigned int flags_exclude = flags ^ UNINTERESTING;
+		static const char head_by_default[] = "HEAD";
 		unsigned int a_flags;
 
 		*dotdot = 0;
 		next += symmetric;
 
 		if (!*next)
-			next = "HEAD";
+			next = head_by_default;
 		if (dotdot == arg)
-			this = "HEAD";
+			this = head_by_default;
+		if (this == head_by_default && next == head_by_default &&
+		    !symmetric) {
+			/*
+			 * Just ".."?  That is not a range but the
+			 * pathspec for the parent directory.
+			 */
+			if (!cant_be_filename) {
+				*dotdot = '.';
+				return -1;
+			}
+		}
 		if (!get_sha1_committish(this, from_sha1) &&
 		    !get_sha1_committish(next, sha1)) {
 			struct commit *a, *b;
@@ -1300,7 +1312,7 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	    !strcmp(arg, "--no-walk") || !strcmp(arg, "--do-walk") ||
 	    !strcmp(arg, "--bisect") || !prefixcmp(arg, "--glob=") ||
 	    !prefixcmp(arg, "--branches=") || !prefixcmp(arg, "--tags=") ||
-	    !prefixcmp(arg, "--remotes="))
+	    !prefixcmp(arg, "--remotes=") || !prefixcmp(arg, "--no-walk="))
 	{
 		unkv[(*unkc)++] = arg;
 		return 1;
@@ -1695,7 +1707,18 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	} else if (!strcmp(arg, "--not")) {
 		*flags ^= UNINTERESTING;
 	} else if (!strcmp(arg, "--no-walk")) {
-		revs->no_walk = 1;
+		revs->no_walk = REVISION_WALK_NO_WALK_SORTED;
+	} else if (!prefixcmp(arg, "--no-walk=")) {
+		/*
+		 * Detached form ("--no-walk X" as opposed to "--no-walk=X")
+		 * not allowed, since the argument is optional.
+		 */
+		if (!strcmp(arg + 10, "sorted"))
+			revs->no_walk = REVISION_WALK_NO_WALK_SORTED;
+		else if (!strcmp(arg + 10, "unsorted"))
+			revs->no_walk = REVISION_WALK_NO_WALK_UNSORTED;
+		else
+			return error("invalid argument to --no-walk");
 	} else if (!strcmp(arg, "--do-walk")) {
 		revs->no_walk = 0;
 	} else {
@@ -2117,10 +2140,11 @@ int prepare_revision_walk(struct rev_info *revs)
 		}
 		e++;
 	}
-	commit_list_sort_by_date(&revs->commits);
 	if (!revs->leak_pending)
 		free(list);
 
+	if (revs->no_walk != REVISION_WALK_NO_WALK_UNSORTED)
+		commit_list_sort_by_date(&revs->commits);
 	if (revs->no_walk)
 		return 0;
 	if (revs->limited)
