@@ -129,6 +129,20 @@ export _x05 _x40 _z40 LF
 # This test checks if command xyzzy does the right thing...
 # '
 # . ./test-lib.sh
+
+if ! type tput > /dev/null 2>&1 ; then
+	tput () {
+		case "$1" in
+		bold)
+			printf '\033[1m' ;;
+		setaf)
+			printf '\033[3%dm' "$2";;
+		sgr0)
+			printf '\033(\033[m' ;;
+		esac
+	}
+fi
+
 [ "x$ORIGINAL_TERM" != "xdumb" ] && (
 		TERM=$ORIGINAL_TERM &&
 		export TERM &&
