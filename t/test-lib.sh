@@ -186,6 +186,19 @@ u200c=$(printf '\342\200\214')
 
 export _x05 _x40 _z40 LF u200c EMPTY_TREE EMPTY_BLOB
 
+if ! which tput > /dev/null ; then
+	tput () {
+		case "$1" in
+		bold)
+			printf "\033[1m" ;;
+		setaf)
+			printf "\033[0;3$2m" ;;
+		sgr0)
+			printf "\033(\033[m" ;;
+		esac
+	}
+fi
+
 # Each test should start with something like this, after copyright notices:
 #
 # test_description='Description of this test...
