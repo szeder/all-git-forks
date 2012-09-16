@@ -232,4 +232,21 @@ test_expect_success 'bare repository: test info/attributes' '
 	attr_check subdir/a/i unspecified
 '
 
+test_expect_success '"**" test' '
+	cd .. &&
+	echo "**/f foo=bar" >.gitattributes &&
+	cat <<\EOF >expect &&
+f: foo: unspecified
+a/f: foo: bar
+a/b/f: foo: bar
+a/b/c/f: foo: bar
+EOF
+	git check-attr foo -- "f" >actual 2>err &&
+	git check-attr foo -- "a/f" >>actual 2>>err &&
+	git check-attr foo -- "a/b/f" >>actual 2>>err &&
+	git check-attr foo -- "a/b/c/f" >>actual 2>>err &&
+	test_cmp expect actual &&
+	test_line_count = 0 err
+'
+
 test_done
