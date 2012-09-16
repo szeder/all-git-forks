@@ -19,10 +19,17 @@
 
 /*#define COMPARE_WITH_FNMATCH*/
 
-#define WILD_TEST_ITERATIONS
-#include "lib/wildmatch.c"
+#include "cache.h"
+#include "parse-options.h"
+#include "wildmatch.h"
 
-#include <popt.h>
+#ifndef MAXPATHLEN
+#define MAXPATHLEN 1024
+#endif
+#ifdef NO_STRLCPY
+#include "compat/strlcpy.c"
+#define strlcpy gitstrlcpy
+#endif
 
 #ifdef COMPARE_WITH_FNMATCH
 #include <fnmatch.h>
@@ -35,18 +42,16 @@ char number_separator = ',';
 
 typedef char bool;
 
-int output_iterations = 0;
 int explode_mod = 0;
 int empties_mod = 0;
 int empty_at_start = 0;
 int empty_at_end = 0;
+char *empties;
 
-static struct poptOption long_options[] = {
-  /* longName, shortName, argInfo, argPtr, value, descrip, argDesc */
-  {"iterations",     'i', POPT_ARG_NONE,   &output_iterations, 0, 0, 0},
-  {"empties",        'e', POPT_ARG_STRING, 0, 'e', 0, 0},
-  {"explode",        'x', POPT_ARG_INT,    &explode_mod, 0, 0, 0},
-  {0,0,0,0, 0, 0, 0}
+static struct option options[] = {
+  OPT_STRING('e', "empties", &empties, "", ""),
+  OPT_INTEGER('x', "explode", &explode_mod, ""),
+  OPT_END(),
 };
 
 /* match just at the start of string (anchored tests) */
@@ -100,50 +105,32 @@ run_test(int line, bool matches,
 	fnmatch_errors++;
     }
 #endif
-    if (output_iterations) {
-	printf("%d: \"%s\" iterations = %d\n", line, pattern,
-	       wildmatch_iteration_count);
-    }
 }
 
 int
 main(int argc, char **argv)
 {
     char buf[2048], *s, *string[2], *end[2];
-    const char *arg;
     FILE *fp;
-    int opt, line, i, flag[2];
-    poptContext pc = poptGetContext("wildtest", argc, (const char**)argv,
-				    long_options, 0);
+    int line, i, flag[2];
+    const char *help[] = { NULL };
 
-    while ((opt = poptGetNextOpt(pc)) != -1) {
-	switch (opt) {
-	  case 'e':
-	    arg = poptGetOptArg(pc);
-	    empties_mod = atoi(arg);
-	    if (strchr(arg, 's'))
-		empty_at_start = 1;
-	    if (strchr(arg, 'e'))
-		empty_at_end = 1;
-	    if (!explode_mod)
-		explode_mod = 1024;
-	    break;
-	  default:
-	    fprintf(stderr, "%s: %s\n",
-		    poptBadOption(pc, POPT_BADOPTION_NOALIAS),
-		    poptStrerror(opt));
-	    exit(1);
-	}
+    argc = parse_options(argc, (const char **)argv, "", options, help, 0);
+    if (argc != 1)
+	    die("redundant options");
+    if (empties) {
+	const char *arg = empties;
+	empties_mod = atoi(arg);
+	if (strchr(empties, 's'))
+	    empty_at_start = 1;
+	if (strchr(arg, 'e'))
+	    empty_at_end = 1;
+	if (!explode_mod)
+	    explode_mod = 1024;
     }
 
     if (explode_mod && !empties_mod)
 	empties_mod = 1024;
-
-    argv = (char**)poptGetArgs(pc);
-    if (!argv || argv[1]) {
-	fprintf(stderr, "Usage: wildtest [OPTIONS] TESTFILE\n");
-	exit(1);
-    }
 
     if ((fp = fopen(*argv, "r")) == NULL) {
 	fprintf(stderr, "Unable to open %s\n", *argv);
