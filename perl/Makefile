@@ -79,7 +79,7 @@ $(makfile): ../GIT-CFLAGS Makefile
 	echo instlibdir: >> $@
 	echo '	echo $(instdir_SQ)' >> $@
 else
-$(makfile): Makefile.PL ../GIT-CFLAGS
+$(makfile): Makefile.PL ../GIT-CFLAGS Makefile
 	$(PERL_PATH) $< PREFIX='$(prefix_SQ)' INSTALL_BASE='' --localedir='$(localedir_SQ)'
 endif
 
