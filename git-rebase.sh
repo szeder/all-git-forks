@@ -38,6 +38,7 @@ C=!                passed to 'git apply'
 continue!          continue
 abort!             abort and check out the original branch
 skip!              skip current patch and continue
+edit-todo!         edit the todo list during an interactive rebase
 "
 . git-sh-setup
 . git-sh-i18n
@@ -194,6 +195,10 @@ do
 		test $total_argc -eq 2 || usage
 		action=${1##--}
 		;;
+	--edit-todo)
+		test $total_argc -eq 2 || usage
+		action=${1##--}
+		;;
 	--onto)
 		test 2 -le "$#" || usage
 		onto="$2"
@@ -306,6 +311,11 @@ then
 	fi
 fi
 
+if test "$action" = "edit-todo" && test "$type" != "interactive"
+then
+	die "$(gettext "The --edit-todo action can only be used during interactive rebase.")"
+fi
+
 case "$action" in
 continue)
 	# Sanity check
@@ -337,6 +347,9 @@ abort)
 	output git reset --hard $orig_head
 	rm -r "$state_dir"
 	exit
+	;;
+edit-todo)
+	run_specific_rebase
 	;;
 esac
 
