@@ -115,6 +115,23 @@ mark_action_done () {
 	fi
 }
 
+append_todo_help () {
+	cat >> "$todo" << EOF
+#
+# Commands:
+#  p, pick = use commit
+#  r, reword = use commit, but edit the commit message
+#  e, edit = use commit, but stop for amending
+#  s, squash = use commit, but meld into previous commit
+#  f, fixup = like "squash", but discard this commit's log message
+#  x, exec = run command (the rest of the line) using shell
+#
+# These lines can be re-ordered; they are executed from top to bottom.
+#
+# If you remove a line here THAT COMMIT WILL BE LOST.
+EOF
+}
+
 make_patch () {
 	sha1_and_parents="$(git rev-list --parents -1 "$1")"
 	case "$sha1_and_parents" in
@@ -775,6 +792,23 @@ skip)
 
 	do_rest
 	;;
+edit-todo)
+	sed -e '/^#/d' < "$todo" > "$todo".new
+	mv -f "$todo".new "$todo"
+	append_todo_help
+	cat >> "$todo" << EOF
+#
+# You are editing the todo file of an ongoing interactive rebase.
+# To continue rebase after editing, run:
+#     git rebase --continue
+#
+EOF
+
+	git_sequence_editor "$todo" ||
+		die "Could not execute editor"
+
+	exit
+	;;
 esac
 
 git var GIT_COMMITTER_IDENT >/dev/null ||
@@ -901,18 +935,10 @@ test -n "$cmd" && add_exec_commands "$todo"
 cat >> "$todo" << EOF
 
 # Rebase $shortrevisions onto $shortonto
+EOF
+append_todo_help
+cat >> "$todo" << EOF
 #
-# Commands:
-#  p, pick = use commit
-#  r, reword = use commit, but edit the commit message
-#  e, edit = use commit, but stop for amending
-#  s, squash = use commit, but meld into previous commit
-#  f, fixup = like "squash", but discard this commit's log message
-#  x, exec = run command (the rest of the line) using shell
-#
-# These lines can be re-ordered; they are executed from top to bottom.
-#
-# If you remove a line here THAT COMMIT WILL BE LOST.
 # However, if you remove everything, the rebase will be aborted.
 #
 EOF
