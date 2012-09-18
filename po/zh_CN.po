@@ -45,7 +45,7 @@ msgstr ""
 #: archive.c:10
 #, fuzzy
 msgid "git archive [options] <tree-ish> [<path>...]"
-msgstr "git apply [选项] [<补丁>...]"
+msgstr "git archive [选项] <树对象ID> [<路径>...]"
 
 #: archive.c:11
 #, fuzzy
@@ -55,7 +55,7 @@ msgstr "git archive：NACK %s"
 #: archive.c:12
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [options] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive --remote <远端仓库> [--exec <命令>] [选项] <树对象ID> [<路径>...]"
 
 #: archive.c:13
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
