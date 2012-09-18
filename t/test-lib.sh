@@ -138,7 +138,7 @@ if ! type tput > /dev/null 2>&1 ; then
 		setaf)
 			printf '\033[3%dm' "$2";;
 		sgr0)
-			printf '\033(\033[m' ;;
+			printf '\033[m' ;;
 		esac
 	}
 fi
