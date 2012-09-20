@@ -56,33 +56,37 @@ test_expect_failure 'pretend we have a known breakage' '
 '
 
 run_sub_test_lib_test () {
-	name="$1" descr="$2" # stdin is body of test code
+	name="$1" descr="$2" # stdin is the body of the test code
 	mkdir $name &&
-	(cd $name &&
-	cat >$name.sh <<-EOF &&
-	#!$SHELL_PATH
+	(
+		cd $name &&
+		cat >$name.sh <<-EOF &&
+		#!$SHELL_PATH
 
-	test_description='$descr (run in sub test-lib)
+		test_description='$descr (run in sub test-lib)
 
-	This is run in a sub test-lib so that we do not get incorrect
-	passing metrics
-	'
+		This is run in a sub test-lib so that we do not get incorrect
+		passing metrics
+		'
 
-	# Point to the t/test-lib.sh, which isn't in ../ as usual
-	TEST_DIRECTORY="$TEST_DIRECTORY"
-	. "\$TEST_DIRECTORY"/test-lib.sh
-	EOF
-	cat >>$name.sh &&
-	chmod +x $name.sh &&
-	./$name.sh >out 2>err)
+		# Point to the t/test-lib.sh, which isn't in ../ as usual
+		. "\$TEST_DIRECTORY"/test-lib.sh
+		EOF
+		cat >>$name.sh &&
+		chmod +x $name.sh &&
+		export TEST_DIRECTORY &&
+		./$name.sh >out 2>err
+	)
 }
 
 check_sub_test_lib_test () {
-	name="$1" # stdin is expected output from the test
-	(cd $name &&
-	! test -s err &&
-	sed -e 's/^> //' -e 's/Z$//' >expect &&
-	test_cmp expect out)
+	name="$1" # stdin is the expected output from the test
+	(
+		cd $name &&
+		! test -s err &&
+		sed -e 's/^> //' -e 's/Z$//' >expect &&
+		test_cmp expect out
+	)
 }
 
 test_expect_success 'pretend we have fixed a known breakage' "
