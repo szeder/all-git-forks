@@ -381,6 +381,9 @@ constructor new {i_commit i_path i_jump} {
 	set opt_h [expr {$req_w*4/3}]
 	if {$req_h < $scr_h} {set req_h $scr_h}
 	if {$req_h > $opt_h} {set req_h $opt_h}
+	# Hack: hard-code preferred window size
+	set req_w 1200
+	set req_h 1200
 	set g "${req_w}x${req_h}"
 	wm geometry $top $g
 	update
