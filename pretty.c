@@ -1143,7 +1143,7 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 				 void *context)
 {
 	struct format_commit_context *c = context;
-	struct strbuf *real_sb;
+	struct strbuf *real_sb = NULL;
 	int consumed;
 	size_t orig_len;
 	enum {
