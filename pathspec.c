@@ -88,10 +88,10 @@ const char *treat_gitlink(const char *path)
 
 void treat_gitlinks(const char **pathspec)
 {
+	int i;
+
 	if (!pathspec || !*pathspec)
 		return;
-
-	int i;
 	for (i = 0; pathspec[i]; i++)
 		pathspec[i] = treat_gitlink(pathspec[i]);
 }

@@ -77,9 +77,10 @@ static int check_ignore(const char *prefix, const char **pathspec)
 		if (!seen)
 			seen = find_used_pathspec(pathspec);
 		for (i = 0; pathspec[i]; i++) {
+			const char *full_path;
 			path = pathspec[i];
-			char *full_path =
-				prefix_path(prefix, prefix ? strlen(prefix) : 0, path);
+			full_path = prefix_path(prefix, prefix
+						? strlen(prefix) : 0, path);
 			full_path = treat_gitlink(full_path);
 			validate_path(prefix, full_path);
 			if (!seen[i] && path[0]) {
@@ -108,6 +109,7 @@ static int check_ignore_stdin_paths(const char *prefix)
 	char **pathspec = NULL;
 	size_t nr = 0, alloc = 0;
 	int line_termination = null_term_line ? 0 : '\n';
+	int num_ignored;
 
 	strbuf_init(&buf, 0);
 	strbuf_init(&nbuf, 0);
@@ -124,7 +126,7 @@ static int check_ignore_stdin_paths(const char *prefix)
 	}
 	ALLOC_GROW(pathspec, nr + 1, alloc);
 	pathspec[nr] = NULL;
-	int num_ignored = check_ignore(prefix, (const char **)pathspec);
+	num_ignored = check_ignore(prefix, (const char **)pathspec);
 	maybe_flush_or_die(stdout, "attribute to stdout");
 	strbuf_release(&buf);
 	strbuf_release(&nbuf);
@@ -134,6 +136,8 @@ static int check_ignore_stdin_paths(const char *prefix)
 
 int cmd_check_ignore(int argc, const char **argv, const char *prefix)
 {
+	int num_ignored = 0;
+
 	git_config(git_default_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, check_ignore_options,
@@ -155,7 +159,6 @@ int cmd_check_ignore(int argc, const char **argv, const char *prefix)
 			die(_("cannot have both --quiet and --verbose"));
 	}
 
-	int num_ignored = 0;
 	if (stdin_paths) {
 		num_ignored = check_ignore_stdin_paths(prefix);
 	} else {

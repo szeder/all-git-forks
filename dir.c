@@ -511,14 +511,13 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		       stk->baselen - current);
 		strcpy(dir->basebuf + stk->baselen, dir->exclude_per_dir);
 
-		/* dir->basebuf gets reused by the traversal, but we
+		/*
+		 * dir->basebuf gets reused by the traversal, but we
 		 * need fname to remain unchanged to ensure the src
 		 * member of each struct exclude correctly back-references
 		 * its source file.
 		 */
-		char *fname = strdup(dir->basebuf);
-
-		add_excludes_from_file_to_list(fname,
+		add_excludes_from_file_to_list(strdup(dir->basebuf),
 					       dir->basebuf, stk->baselen,
 					       &stk->filebuf, el, 1);
 		dir->exclude_stack = stk;
@@ -1479,13 +1478,14 @@ void free_pathspec(struct pathspec *pathspec)
 
 void free_directory(struct dir_struct *dir)
 {
+	struct exclude_stack *stk;
 	int st;
 	for (st = EXC_CMDL; st <= EXC_FILE; st++)
 		free_excludes(&dir->exclude_list[st]);
 
-	struct exclude_stack *prev, *stk = dir->exclude_stack;
+	stk = dir->exclude_stack;
 	while (stk) {
-		prev = stk->prev;
+		struct exclude_stack *prev = stk->prev;
 		free_exclude_stack(stk);
 		stk = prev;
 	}
