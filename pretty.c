@@ -916,7 +916,8 @@ static size_t parse_color_placeholder(struct strbuf *sb,
 	return 0;
 }
 
-static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
+static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
+				const char *placeholder,
 				void *context)
 {
 	struct format_commit_context *c = context;
@@ -1121,7 +1122,8 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	return 0;	/* unknown placeholder */
 }
 
-static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
+static size_t format_commit_item(struct strbuf *sb, /* in UTF-8 */
+				 const char *placeholder,
 				 void *context)
 {
 	struct format_commit_context *c = context;
@@ -1205,24 +1207,31 @@ void format_commit_message(const struct commit *commit,
 	struct format_commit_context context;
 	static const char utf8[] = "UTF-8";
 	const char *output_enc = pretty_ctx->output_encoding;
+	char *enc;
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
 	context.message = commit->buffer;
-	if (output_enc) {
-		char *enc = get_header(commit, "encoding");
-		if (strcmp(enc ? enc : utf8, output_enc)) {
-			context.message = logmsg_reencode(commit, output_enc);
-			if (!context.message)
-				context.message = commit->buffer;
-		}
-		free(enc);
+	enc = get_header(commit, "encoding");
+	if (enc && strcmp(utf8, enc)) {
+		context.message = reencode_string(context.message, utf8, enc);
+		if (!context.message)
+			context.message = commit->buffer;
 	}
+	free(enc);
 
 	strbuf_expand(sb, format, format_commit_item, &context);
 	rewrap_message_tail(sb, &context, 0, 0, 0);
+
+	if (output_enc && strcmp(utf8, output_enc)) {
+		char *out = reencode_string(sb->buf, output_enc, utf8);
+		if (out) {
+			int len = strlen(out);
+			strbuf_attach(sb, out, len, len + 1);
+		}
+	}
 
 	if (context.message != commit->buffer)
 		free(context.message);
