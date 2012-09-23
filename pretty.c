@@ -621,6 +621,7 @@ enum flush_type {
 	no_flush,
 	flush_right,
 	flush_left,
+	flush_left_and_steal,
 	flush_both
 };
 
@@ -949,6 +950,9 @@ static size_t parse_padding_placeholder(struct strbuf *sb,
 		if (*ch == '<') {
 			flush_type = flush_both;
 			ch++;
+		} else if (*ch == '>') {
+			flush_type = flush_left_and_steal;
+			ch++;
 		} else
 			flush_type = flush_left;
 		break;
@@ -1222,6 +1226,36 @@ static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
 	}
 	consumed = format_commit_one(&local_sb, placeholder, c);
 	len = utf8_strnwidth(local_sb.buf, -1, 1);
+
+	if (c->flush_type == flush_left_and_steal) {
+		const char *ch = sb->buf + sb->len - 1;
+		while (len > padding && ch > sb->buf) {
+			const char *p;
+			if (*ch == ' ') {
+				ch--;
+				padding++;
+				continue;
+			}
+			/* check for trailing ansi sequences */
+			if (*ch != 'm')
+				break;
+			p = ch - 1;
+			while (ch - p < 10 && *p != '\033')
+				p--;
+			if (*p != '\033' ||
+			    ch + 1 - p != display_mode_esc_sequence_len(p))
+				break;
+			/*
+			 * got a good ansi sequence, put it back to
+			 * local_sb as we're cutting sb
+			 */
+			strbuf_insert(&local_sb, 0, p, ch + 1 - p);
+			ch = p - 1;
+		}
+		strbuf_setlen(sb, ch + 1 - sb->buf);
+		c->flush_type = flush_left;
+	}
+
 	if (len > padding) {
 		switch (c->truncate) {
 		case trunc_left:
@@ -1256,6 +1290,7 @@ static size_t format_and_pad_commit(struct strbuf *sb, /* in UTF-8 */
 		case flush_both:
 			offset = (padding - len) / 2;
 			break;
+		case flush_left_and_steal:
 		case no_flush: /* to make gcc happy */
 			break;
 		}
