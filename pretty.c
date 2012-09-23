@@ -630,6 +630,7 @@ struct format_commit_context {
 	} signature;
 	char *message;
 	size_t width, indent1, indent2;
+	unsigned use_color;
 
 	/* These offsets are relative to the start of the commit message. */
 	struct chunk author;
@@ -872,6 +873,24 @@ static size_t parse_color_placeholder(struct strbuf *sb,
 		char color[COLOR_MAXLEN];
 		if (!end)
 			return 0;
+		if (!prefixcmp(placeholder + 1, "(auto")) {
+			/*
+			 * use_color decreased after every
+			 * format_commit_one() so we lose one right
+			 * after parsing "%C". Which is why we add an
+			 * extra one to use_color here.
+			 */
+			if (placeholder[6] == ',') {
+				char *next;
+				int v = strtoul(placeholder + 7, &next, 10);
+				if (next == end)
+					c->use_color = v + 1;
+				else
+					return 0;
+			} else
+				c->use_color = 2;
+			return end - placeholder + 1;
+		}
 		color_parse_mem(placeholder + 2,
 				end - (placeholder + 2),
 				"--pretty format", color);
@@ -955,13 +974,17 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 
 	switch (placeholder[0]) {
 	case 'H':		/* commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		return 1;
 	case 'h':		/* abbreviated commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		if (add_again(sb, &c->abbrev_commit_hash))
 			return 1;
 		strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
 						     c->pretty_ctx->abbrev));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;
 	case 'T':		/* tree hash */
@@ -998,7 +1021,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 		strbuf_addstr(sb, get_revision_mark(NULL, commit));
 		return 1;
 	case 'd':
-		format_decoration(sb, commit, 0);
+		format_decoration(sb, commit, c->use_color);
 		return 1;
 	case 'g':		/* reflog info */
 		switch(placeholder[1]) {
@@ -1101,6 +1124,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 				 void *context)
 {
+	struct format_commit_context *c = context;
 	int consumed;
 	size_t orig_len;
 	enum {
@@ -1128,6 +1152,8 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 
 	orig_len = sb->len;
 	consumed = format_commit_one(sb, placeholder, context);
+	if (c->use_color)
+		c->use_color--;
 	if (magic == NO_MAGIC)
 		return consumed;
 
