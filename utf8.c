@@ -9,6 +9,20 @@ struct interval {
   int last;
 };
 
+static size_t display_mode_esc_sequence_len(const char *s)
+{
+	const char *p = s;
+	if (*p++ != '\033')
+		return 0;
+	if (*p++ != '[')
+		return 0;
+	while (isdigit(*p) || *p == ';')
+		p++;
+	if (*p++ != 'm')
+		return 0;
+	return p - s;
+}
+
 /* auxiliary function for binary search in interval table */
 static int bisearch(ucs_char_t ucs, const struct interval *table, int max)
 {
@@ -252,18 +266,25 @@ int utf8_width(const char **start, size_t *remainder_p)
  * string, assuming that the string is utf8.  Returns strlen() instead
  * if the string does not look like a valid utf8 string.
  */
-int utf8_strwidth(const char *string)
+int utf8_strnwidth(const char *string, int len)
 {
 	int width = 0;
 	const char *orig = string;
 
-	while (1) {
-		if (!string)
-			return strlen(orig);
-		if (!*string)
-			return width;
+	if (len == -1)
+		len = strlen(string);
+	while (string && string < orig + len) {
+		int skip;
+		while ((skip = display_mode_esc_sequence_len(string)))
+			string += skip;
 		width += utf8_width(&string, NULL);
 	}
+	return string ? width : len;
+}
+
+int utf8_strwidth(const char *string)
+{
+	return utf8_strnwidth(string, -1);
 }
 
 int is_utf8(const char *text)
@@ -301,20 +322,6 @@ static void strbuf_add_indented_text(struct strbuf *buf, const char *text,
 		text = eol;
 		indent = indent2;
 	}
-}
-
-static size_t display_mode_esc_sequence_len(const char *s)
-{
-	const char *p = s;
-	if (*p++ != '\033')
-		return 0;
-	if (*p++ != '[')
-		return 0;
-	while (isdigit(*p) || *p == ';')
-		p++;
-	if (*p++ != 'm')
-		return 0;
-	return p - s;
 }
 
 /*
