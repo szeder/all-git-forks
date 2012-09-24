@@ -99,6 +99,9 @@ PATTERN FORMAT
    For example, "Documentation/{asterisk}.html" matches
    "Documentation/git.html" but not "Documentation/ppc/ppc.html"
    or "tools/perf/Documentation/perf.html".
++
+Contrary to fnmatch(3), git matches "**" to anything including
+slashes, similar to rsync(1).
 
  - A leading slash matches the beginning of the pathname.
    For example, "/{asterisk}.c" matches "cat-file.c" but not
