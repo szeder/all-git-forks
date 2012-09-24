@@ -19,7 +19,7 @@ expect_in () {
 	then
 		>"$dest" # avoid newline
 	else
-		echo -e "$text" >"$dest"
+		echo "$text" >"$dest"
 	fi
 }
 
