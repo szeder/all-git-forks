@@ -6,7 +6,7 @@ test_description='wildmatch tests'
 
 test_wildmatch() {
     test_expect_success "wildmatch $*" "
-	test-wildmatch $* ../t3070-wildmatch/wildtest.txt >actual &&
+	test-wildmatch $* ../t3070/wildtest.txt >actual &&
 	echo 'No wildmatch errors found.' >expected &&
 	test_cmp expected actual
     "
