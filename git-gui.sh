@@ -154,6 +154,7 @@ set _trace [lsearch -exact $argv --trace]
 if {$_trace >= 0} {
 	set argv [lreplace $argv $_trace $_trace]
 	set _trace 1
+	if {[tk windowingsystem] eq "win32"} { console show }
 } else {
 	set _trace 0
 }
@@ -1463,7 +1464,7 @@ proc rescan {after {honor_trustmtime 1}} {
 		(![$ui_comm edit modified]
 		|| [string trim [$ui_comm get 0.0 end]] eq {})} {
 		if {[string match amend* $commit_type]} {
-		} elseif {[load_message GITGUI_MSG]} {
+		} elseif {[load_message GITGUI_MSG utf-8]} {
 		} elseif {[run_prepare_commit_msg_hook]} {
 		} elseif {[load_message MERGE_MSG]} {
 		} elseif {[load_message SQUASH_MSG]} {
@@ -1549,7 +1550,7 @@ proc rescan_stage2 {fd after} {
 	fileevent $fd_lo readable [list read_ls_others $fd_lo $after]
 }
 
-proc load_message {file} {
+proc load_message {file {encoding {}}} {
 	global ui_comm
 
 	set f [gitdir $file]
@@ -1558,6 +1559,9 @@ proc load_message {file} {
 			return 0
 		}
 		fconfigure $fd -eofchar {}
+		if {$encoding ne {}} {
+			fconfigure $fd -encoding $encoding
+		}
 		set content [string trim [read $fd]]
 		close $fd
 		regsub -all -line {[ \r\t]+$} $content {} content
@@ -2266,6 +2270,7 @@ proc do_quit {{rc {1}}} {
 				&& $msg ne {}} {
 				catch {
 					set fd [open $save w]
+					fconfigure $fd -encoding utf-8
 					puts -nonewline $fd $msg
 					close $fd
 				}
@@ -3748,6 +3753,8 @@ bind $ui_diff <$M1B-Key-v> {break}
 bind $ui_diff <$M1B-Key-V> {break}
 bind $ui_diff <$M1B-Key-a> {%W tag add sel 0.0 end;break}
 bind $ui_diff <$M1B-Key-A> {%W tag add sel 0.0 end;break}
+bind $ui_diff <$M1B-Key-j> {do_revert_selection;break}
+bind $ui_diff <$M1B-Key-J> {do_revert_selection;break}
 bind $ui_diff <Key-Up>     {catch {%W yview scroll -1 units};break}
 bind $ui_diff <Key-Down>   {catch {%W yview scroll  1 units};break}
 bind $ui_diff <Key-Left>   {catch {%W xview scroll -1 units};break}
@@ -3780,6 +3787,8 @@ bind .   <$M1B-Key-s> do_signoff
 bind .   <$M1B-Key-S> do_signoff
 bind .   <$M1B-Key-t> do_add_selection
 bind .   <$M1B-Key-T> do_add_selection
+bind .   <$M1B-Key-u> do_unstage_selection
+bind .   <$M1B-Key-U> do_unstage_selection
 bind .   <$M1B-Key-j> do_revert_selection
 bind .   <$M1B-Key-J> do_revert_selection
 bind .   <$M1B-Key-i> do_add_all
@@ -3873,7 +3882,7 @@ if {[is_enabled transport]} {
 }
 
 if {[winfo exists $ui_comm]} {
-	set GITGUI_BCK_exists [load_message GITGUI_BCK]
+	set GITGUI_BCK_exists [load_message GITGUI_BCK utf-8]
 
 	# -- If both our backup and message files exist use the
 	#    newer of the two files to initialize the buffer.
@@ -3910,6 +3919,7 @@ if {[winfo exists $ui_comm]} {
 			} elseif {$m} {
 				catch {
 					set fd [open [gitdir GITGUI_BCK] w]
+					fconfigure $fd -encoding utf-8
 					puts -nonewline $fd $msg
 					close $fd
 					set GITGUI_BCK_exists 1
