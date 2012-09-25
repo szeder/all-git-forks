@@ -471,6 +471,8 @@ int remove_index_entry_at(struct index_state *istate, int pos)
 	remove_name_hash(istate, ce);
 	istate->cache_changed = 1;
 	istate->cache_nr--;
+	if (pos > 0)
+		istate->cache[pos - 1]->next_ce = ce->next_ce;
 	if (pos >= istate->cache_nr)
 		return 0;
 	memmove(istate->cache + pos,
@@ -490,10 +492,13 @@ void remove_marked_cache_entries(struct index_state *istate)
 	unsigned int i, j;
 
 	for (i = j = 0; i < istate->cache_nr; i++) {
-		if (ce_array[i]->ce_flags & CE_REMOVE)
+		if (ce_array[i]->ce_flags & CE_REMOVE) {
 			remove_name_hash(istate, ce_array[i]);
-		else
+		} else {
+			if (j > 0)
+				ce_array[j - 1]->next_ce = ce_array[i]->next_ce;
 			ce_array[j++] = ce_array[i];
+		}
 	}
 	istate->cache_changed = 1;
 	istate->cache_nr = j;
@@ -996,6 +1001,13 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 		memmove(istate->cache + pos + 1,
 			istate->cache + pos,
 			(istate->cache_nr - pos - 1) * sizeof(ce));
+
+	if (pos + 1 >= istate->cache_nr)
+		ce->next_ce = NULL;
+	else
+		ce->next_ce = istate->cache[pos]->next_ce;
+	if (pos > 0)
+		istate->cache[pos - 1]->next_ce = ce;
 	set_index_entry(istate, pos, ce);
 	istate->cache_changed = 1;
 	return 0;
@@ -1272,7 +1284,82 @@ static int verify_hdr_version(struct index_state *istate,
 
 int read_index(struct index_state *istate)
 {
-	return read_index_from(istate, get_index_file());
+	return read_index_filtered_from(istate, get_index_file(), NULL);
+}
+
+int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
+{
+	return read_index_filtered_from(istate, get_index_file(), opts);
+}
+
+int set_internal_ops(struct index_state *istate)
+{
+	if (!istate->internal_ops && istate->cache)
+		istate->internal_ops = &v2_internal_ops;
+	if (!istate->internal_ops)
+		return 0;
+	return 1;
+}
+
+/*
+ * Execute fn for each index entry which is currently in istate.  Data
+ * can be given to the function using the cb_data parameter.
+ */
+int for_each_index_entry(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
+{
+	if (!set_internal_ops(istate))
+		return 0;
+	return istate->internal_ops->for_each_index_entry(istate, fn, cb_data);
+}
+
+/*
+ * Search for an index entry by its name.
+ * The cache entry is returned using the the ce parameter.
+ * Returns: 1 if a cache-entry was an exact match
+ *          0 if the name of a cache-entry was partially matched.  The
+ *            first cache-entry that matches is returned using the ce
+ *            parameter.  Finding the cache-entry that is needed is left
+ *            to the caller.
+ */
+int get_index_entry_by_name(struct index_state *istate, const char *name, int namelen,
+			    struct cache_entry **ce)
+{
+	if (!set_internal_ops(istate)) {
+		*ce = NULL;
+		return 0;
+	}
+	return istate->internal_ops->get_index_entry_by_name(istate, name, namelen, ce);
+}
+
+/*
+ * Return the next index entry, using the given index entry.  Use this
+ * if there is the need to iterate from a given cache-entry.
+ */
+struct cache_entry *next_index_entry(struct cache_entry *ce)
+{
+	return ce->next_ce;
+}
+
+/*
+ * Sorts the index from an unordered list
+ */
+void sort_index(struct index_state *istate)
+{
+	if (!set_internal_ops(istate))
+		return;
+	istate->internal_ops->sort_index(istate);
+}
+/*
+ * Change the filter_opts, and re-read the index if necessary
+ */
+void index_change_filter_opts(struct index_state *istate, struct filter_opts *opts)
+{
+	if (!istate->ops) {
+		/* Just re-read the index, we haven't read it before */
+		read_index_filtered(istate, opts);
+		return;
+	}
+	istate->ops->index_change_filter_opts(istate, opts);
 }
 
 static int index_changed(struct stat *st_old, struct stat *st_new)
@@ -1295,8 +1382,9 @@ static int index_changed(struct stat *st_old, struct stat *st_new)
 	return 0;
 }
 
-/* remember to discard_cache() before reading a different cache! */
-int read_index_from(struct index_state *istate, const char *path)
+
+int read_index_filtered_from(struct index_state *istate, const char *path,
+			     struct filter_opts *opts)
 {
 	int fd, err, i;
 	struct stat st_old, st_new;
@@ -1337,7 +1425,7 @@ int read_index_from(struct index_state *istate, const char *path)
 		if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
 			err = 1;
 
-		if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
+		if (istate->ops->read_index(istate, mmap, mmap_size, opts) < 0)
 			err = 1;
 		istate->timestamp.sec = st_old.st_mtime;
 		istate->timestamp.nsec = ST_MTIME_NSEC(st_old);
@@ -1345,11 +1433,19 @@ int read_index_from(struct index_state *istate, const char *path)
 			die_errno("cannot stat the open index");
 
 		munmap(mmap, mmap_size);
+		istate->filter_opts = opts;
 		if (!index_changed(&st_old, &st_new) && !err)
 			return istate->cache_nr;
 	}
 
 	die("index file corrupt");
+}
+
+
+/* remember to discard_cache() before reading a different cache! */
+int read_index_from(struct index_state *istate, const char *path)
+{
+	return read_index_filtered_from(istate, path, NULL);
 }
 
 int is_index_unborn(struct index_state *istate)

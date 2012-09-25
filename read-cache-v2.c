@@ -3,6 +3,7 @@
 #include "resolve-undo.h"
 #include "cache-tree.h"
 #include "varint.h"
+#include "dir.h"
 
 /* Mask for the name length in ce_flags in the on-disk index */
 #define CE_NAMEMASK  (0x0fff)
@@ -117,6 +118,7 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 	hashcpy(ce->sha1, ondisk->sha1);
 	memcpy(ce->name, name, len);
 	ce->name[len] = '\0';
+	ce->next_ce = NULL;
 	return ce;
 }
 
@@ -207,14 +209,21 @@ static int read_index_extension(struct index_state *istate,
 	return 0;
 }
 
+/*
+ * The performance is the same if we read the whole index or only
+ * part of it, therefore we always read the whole index to avoid
+ * having to re-read it later.  The filter_opts will determine
+ * what part of the index is used when retrieving the cache-entries.
+ */
 static int read_index_v2(struct index_state *istate, void *mmap,
-			 unsigned long mmap_size)
+			 unsigned long mmap_size, struct filter_opts *opts)
 {
 	int i;
 	unsigned long src_offset;
 	struct cache_version_header *hdr;
 	struct cache_header *hdr_v2;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	struct cache_entry *prev = NULL;
 
 	hdr = mmap;
 	hdr_v2 = (struct cache_header *)((char *)mmap + sizeof(*hdr));
@@ -237,9 +246,12 @@ static int read_index_v2(struct index_state *istate, void *mmap,
 
 		disk_ce = (struct ondisk_cache_entry *)((char *)mmap + src_offset);
 		ce = create_from_disk(disk_ce, &consumed, previous_name);
+		if (prev)
+			prev->next_ce = ce;
 		set_index_entry(istate, i, ce);
 
 		src_offset += consumed;
+		prev = ce;
 	}
 	strbuf_release(&previous_name_buf);
 
@@ -265,6 +277,16 @@ static int read_index_v2(struct index_state *istate, void *mmap,
 unmap:
 	munmap(mmap, mmap_size);
 	die("index file corrupt");
+}
+
+static void index_change_filter_opts_v2(struct index_state *istate, struct filter_opts *opts)
+{
+	/*
+	 * We don't need to re-read anything, because in index v2 we
+	 * read the whole index up front.  Just change the options by
+	 * which the index is filtered when accessing it.
+	 */
+	istate->filter_opts = opts;
 }
 
 #define WRITE_BUFFER_SIZE 8192
@@ -548,9 +570,79 @@ static int write_index_v2(struct index_state *istate, int newfd)
 	return 0;
 }
 
+int for_each_index_entry_v2(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
+{
+	int i, ret = 0;
+	struct filter_opts *opts= istate->filter_opts;
+
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+
+		if (opts && !opts->read_staged && ce_stage(ce))
+			continue;
+
+		if (opts && !match_pathspec(opts->pathspec, ce->name, ce_namelen(ce),
+					    opts->max_prefix_len, opts->seen))
+			continue;
+
+		if ((ret = fn(istate->cache[i], cb_data)))
+			break;
+	}
+	if (opts && !opts->max_prefix) {
+		opts->max_prefix = common_prefix(opts->pathspec);
+		opts->max_prefix_len = opts->max_prefix ? strlen(opts->max_prefix) : 0;
+	}
+
+	return ret;
+}
+
+int get_index_entry_by_name_v2(struct index_state *istate, const char *name, int namelen,
+			       struct cache_entry **ce)
+{
+	int pos = index_name_pos(istate, name, namelen);
+
+	*ce = NULL;
+	if (0 <= pos) {
+		*ce = istate->cache[pos];
+		return 1;
+	}
+	pos = -pos - 1;
+
+	if (pos < istate->cache_nr)
+		*ce = istate->cache[pos];
+	return 0;
+}
+
+static int cmp_cache_name_compare(const void *a_, const void *b_)
+{
+	const struct cache_entry *ce1, *ce2;
+
+	ce1 = *((const struct cache_entry **)a_);
+	ce2 = *((const struct cache_entry **)b_);
+	return cache_name_stage_compare(ce1->name, ce1->ce_namelen, ce_stage(ce1),
+					ce2->name, ce2->ce_namelen, ce_stage(ce2));
+}
+
+void sort_index_v2(struct index_state *istate)
+{
+	/*
+	 * Nuke the cache-tree first, as it will no longer be up to date
+	 */
+	cache_tree_free(&istate->cache_tree);
+	qsort(istate->cache, istate->cache_nr, sizeof(istate->cache[0]),
+	      cmp_cache_name_compare);
+}
+
 struct index_ops v2_ops = {
 	match_stat_basic,
 	verify_hdr,
 	read_index_v2,
-	write_index_v2
+	write_index_v2,
+	index_change_filter_opts_v2
+};
+
+struct internal_ops v2_internal_ops = {
+	for_each_index_entry_v2,
+	get_index_entry_by_name_v2,
+	sort_index_v2
 };

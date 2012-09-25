@@ -127,7 +127,8 @@ struct cache_entry {
 	unsigned int ce_flags;
 	unsigned int ce_namelen;
 	unsigned char sha1[20];
-	struct cache_entry *next;
+	struct cache_entry *next; /* used by name_hash */
+	struct cache_entry *next_ce; /* used to keep a list of cache entries */
 	char name[FLEX_ARRAY]; /* more */
 };
 
@@ -258,6 +259,32 @@ static inline unsigned int canon_mode(unsigned int mode)
 
 #define cache_entry_size(len) (offsetof(struct cache_entry,name) + (len) + 1)
 
+/*
+ * Options by which the index should be filtered when read partially.
+ *
+ * pathspec: The pathspec which the index entries have to match
+ * seen: Used to return the seen parameter from match_pathspec()
+ * max_prefix, max_prefix_len: These variables are set to the longest
+ *     common prefix, the length of the longest common prefix of the
+ *     given pathspec
+ *
+ * read_staged: used to indicate if the conflicted entries (entries
+ *     with a stage) should be included
+ * read_cache_tree: used to indicate if the cache-tree should be read
+ * read_resolve_undo: used to indicate if the resolve undo data should
+ *     be read
+ */
+struct filter_opts {
+	const char **pathspec;
+	char *seen;
+	char *max_prefix;
+	int max_prefix_len;
+
+	int read_staged;
+	int read_cache_tree;
+	int read_resolve_undo;
+};
+
 struct index_state {
 	struct cache_entry **cache;
 	unsigned int version;
@@ -270,6 +297,8 @@ struct index_state {
 	struct hash_table name_hash;
 	struct hash_table dir_hash;
 	struct index_ops *ops;
+	struct internal_ops *internal_ops;
+	struct filter_opts *filter_opts;
 };
 
 extern struct index_state the_index;
@@ -311,6 +340,17 @@ extern void free_name_hash(struct index_state *istate);
 #define unmerge_cache_entry_at(at) unmerge_index_entry_at(&the_index, at)
 #define unmerge_cache(pathspec) unmerge_index(&the_index, pathspec)
 #define read_blob_data_from_cache(path, sz) read_blob_data_from_index(&the_index, (path), (sz))
+
+/* index api */
+#define read_cache_filtered(opts) read_index_filtered(&the_index, (opts))
+#define read_cache_filtered_from(path, opts) read_index_filtered_from(&the_index, (path), (opts))
+#define get_cache_entry_by_name(name, namelen, ce) \
+	get_index_entry_by_name(&the_index, (name), (namelen), (ce))
+#define for_each_cache_entry(fn, cb_data) \
+	for_each_index_entry(&the_index, (fn), (cb_data))
+#define next_cache_entry(ce) next_index_entry(ce)
+#define cache_change_filter_opts(opts) index_change_filter_opts(&the_index, (opts))
+#define sort_cache() sort_index(&the_index)
 #endif
 
 enum object_type {
@@ -437,6 +477,21 @@ extern int init_db(const char *template_dir, unsigned int flags);
 			x = xrealloc((x), alloc * sizeof(*(x))); \
 		} \
 	} while (0)
+
+/* index api */
+extern int read_index_filtered(struct index_state *, struct filter_opts *opts);
+extern int read_index_filtered_from(struct index_state *, const char *path, struct filter_opts *opts);
+extern int get_index_entry_by_name(struct index_state *, const char *name, int namelen,
+				   struct cache_entry **ce);
+extern struct cache_entry *next_index_entry(struct cache_entry *ce);
+void index_change_filter_opts(struct index_state *istate, struct filter_opts *opts);
+void sort_index(struct index_state *istate);
+
+typedef int each_cache_entry_fn(struct cache_entry *ce, void *);
+
+extern int for_each_index_entry(struct index_state *istate,
+				each_cache_entry_fn, void *);
+
 
 /* Initialize and use the cache information */
 extern int read_index(struct index_state *);

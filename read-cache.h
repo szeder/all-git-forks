@@ -24,11 +24,21 @@ struct cache_version_header {
 struct index_ops {
 	int (*match_stat_basic)(const struct cache_entry *ce, struct stat *st, int changed);
 	int (*verify_hdr)(void *mmap, unsigned long size);
-	int (*read_index)(struct index_state *istate, void *mmap, unsigned long mmap_size);
+	int (*read_index)(struct index_state *istate, void *mmap, unsigned long mmap_size,
+			  struct filter_opts *opts);
 	int (*write_index)(struct index_state *istate, int newfd);
+	void (*index_change_filter_opts)(struct index_state *istate, struct filter_opts *opts);
+};
+
+struct internal_ops {
+	int (*for_each_index_entry)(struct index_state *istate, each_cache_entry_fn fn, void *cb_data);
+	int (*get_index_entry_by_name)(struct index_state *istate, const char *name, int namelen,
+				       struct cache_entry **ce);
+	void (*sort_index)(struct index_state *istate);
 };
 
 extern struct index_ops v2_ops;
+extern struct internal_ops v2_internal_ops;
 
 #ifndef NEEDS_ALIGNED_ACCESS
 #define ntoh_s(var) ntohs(var)
