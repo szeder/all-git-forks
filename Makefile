@@ -647,6 +647,7 @@ LIB_H += levenshtein.h
 LIB_H += list-objects.h
 LIB_H += ll-merge.h
 LIB_H += log-tree.h
+LIB_H += lua-commit.h
 LIB_H += mailmap.h
 LIB_H += merge-file.h
 LIB_H += merge-recursive.h
@@ -760,6 +761,7 @@ LIB_OBJS += list-objects.o
 LIB_OBJS += ll-merge.o
 LIB_OBJS += lockfile.o
 LIB_OBJS += log-tree.o
+LIB_OBJS += lua-commit.o
 LIB_OBJS += mailmap.o
 LIB_OBJS += match-trees.o
 LIB_OBJS += merge-file.o
@@ -1893,6 +1895,11 @@ endif
 ifdef USE_NED_ALLOCATOR
        COMPAT_CFLAGS += -Icompat/nedmalloc
        COMPAT_OBJS += compat/nedmalloc/nedmalloc.o
+endif
+
+ifdef USE_LUA
+	BASIC_CFLAGS += -DUSE_LUA `pkg-config --cflags lua5.2`
+	EXTLIBS += `pkg-config --libs lua5.2`
 endif
 
 ifdef GIT_TEST_CMP_USE_COPIED_CONTEXT
