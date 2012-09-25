@@ -126,6 +126,42 @@ void pp_remainder(const struct pretty_print_context *pp,
 		  struct strbuf *sb,
 		  int indent);
 
+struct chunk {
+	size_t off;
+	size_t len;
+};
+
+struct format_commit_context {
+	const struct commit *commit;
+	const struct pretty_print_context *pretty_ctx;
+	unsigned commit_header_parsed:1;
+	unsigned commit_message_parsed:1;
+	unsigned commit_signature_parsed:1;
+	struct {
+		char *gpg_output;
+		char good_bad;
+		char *signer;
+	} signature;
+	char *message;
+	size_t width, indent1, indent2;
+
+	/* These offsets are relative to the start of the commit message. */
+	struct chunk author;
+	struct chunk committer;
+	struct chunk encoding;
+	size_t message_off;
+	size_t subject_off;
+	size_t body_off;
+
+	/* The following ones are relative to the result struct strbuf. */
+	struct chunk abbrev_commit_hash;
+	struct chunk abbrev_tree_hash;
+	struct chunk abbrev_parent_hashes;
+	size_t wrap_start;
+};
+
+void parse_commit_header(struct format_commit_context *);
+void parse_commit_message(struct format_commit_context *);
 
 /** Removes the first commit from a list sorted by date, and adds all
  * of its parents.

@@ -612,40 +612,6 @@ skip:
 	return 0; /* unknown placeholder */
 }
 
-struct chunk {
-	size_t off;
-	size_t len;
-};
-
-struct format_commit_context {
-	const struct commit *commit;
-	const struct pretty_print_context *pretty_ctx;
-	unsigned commit_header_parsed:1;
-	unsigned commit_message_parsed:1;
-	unsigned commit_signature_parsed:1;
-	struct {
-		char *gpg_output;
-		char good_bad;
-		char *signer;
-	} signature;
-	char *message;
-	size_t width, indent1, indent2;
-
-	/* These offsets are relative to the start of the commit message. */
-	struct chunk author;
-	struct chunk committer;
-	struct chunk encoding;
-	size_t message_off;
-	size_t subject_off;
-	size_t body_off;
-
-	/* The following ones are relative to the result struct strbuf. */
-	struct chunk abbrev_commit_hash;
-	struct chunk abbrev_tree_hash;
-	struct chunk abbrev_parent_hashes;
-	size_t wrap_start;
-};
-
 static int add_again(struct strbuf *sb, struct chunk *chunk)
 {
 	if (chunk->len) {
@@ -663,7 +629,7 @@ static int add_again(struct strbuf *sb, struct chunk *chunk)
 	return 0;
 }
 
-static void parse_commit_header(struct format_commit_context *context)
+void parse_commit_header(struct format_commit_context *context)
 {
 	const char *msg = context->message;
 	int i;
@@ -749,7 +715,7 @@ const char *format_subject(struct strbuf *sb, const char *msg,
 	return msg;
 }
 
-static void parse_commit_message(struct format_commit_context *c)
+void parse_commit_message(struct format_commit_context *c)
 {
 	const char *msg = c->message + c->message_off;
 	const char *start = c->message;
