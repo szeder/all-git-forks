@@ -467,12 +467,17 @@ proc stop_rev_list {view} {
 }
 
 proc reset_pending_select {selid} {
-    global pending_select mainheadid selectheadid
+    global pending_select pending_select_file pending_select_line
+    global mainheadid selectheadid selectfile select_line
 
     if {$selid ne {}} {
 	set pending_select $selid
     } elseif {$selectheadid ne {}} {
 	set pending_select $selectheadid
+	if {$selectfile ne {}} {
+	    set pending_select_file $selectfile
+	    set pending_select_line $select_line
+	}
     } else {
 	set pending_select $mainheadid
     }
@@ -1600,6 +1605,17 @@ proc getcommitlines {fd inst view updating}  {
     return 2
 }
 
+proc select_pending_line {} {
+    global pending_select pending_select_file pending_select_line
+
+    if {[info exists pending_select_file]} {
+	selectline [rowofcommit $pending_select] 1 \
+	    [list $pending_select_file $pending_select_line]
+    } else {
+	selectline [rowofcommit $pending_select] 1
+    }
+}
+
 proc chewcommits {} {
     global curview hlview viewcomplete
     global pending_select
@@ -1614,7 +1630,7 @@ proc chewcommits {} {
 	    reset_pending_select {}
 
 	    if {[commitinview $pending_select $curview]} {
-		selectline [rowofcommit $pending_select] 1
+		select_pending_line
 	    } else {
 		set row [first_real_row]
 		selectline $row 1
@@ -5033,7 +5049,7 @@ proc layoutmore {} {
     if {[info exists pending_select] &&
 	[commitinview $pending_select $curview]} {
 	update
-	selectline [rowofcommit $pending_select] 1
+	select_pending_line
     }
     drawvisible
 }
@@ -7018,6 +7034,8 @@ proc selectline {l isnew {desired_loc {}}} {
     global firstparent
 
     catch {unset pending_select}
+    catch {unset pending_select_file}
+    catch {unset pending_select_line}
     $canv delete hover
     normalline
     unsel_reflist
@@ -11800,6 +11818,8 @@ if {[catch {set gitdir [exec git rev-parse --git-dir]}]} {
 
 set selecthead {}
 set selectheadid {}
+set selectfile {}
+set select_line {}
 
 set revtreeargs {}
 set cmdline_files {}
@@ -11814,6 +11834,12 @@ foreach arg $argv {
 	}
 	"--select-commit=*" {
 	    set selecthead [string range $arg 16 end]
+	}
+	"--select-file=*" {
+	    set selectfile [string range $arg 14 end]
+	}
+	"--select-line=*" {
+	    set select_line [string range $arg 14 end]
 	}
 	"--argscmd=*" {
 	    set revtreeargscmd [string range $arg 10 end]
