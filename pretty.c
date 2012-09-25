@@ -623,6 +623,8 @@ struct format_commit_context {
 	unsigned commit_header_parsed:1;
 	unsigned commit_message_parsed:1;
 	unsigned commit_signature_parsed:1;
+	unsigned use_color:1;
+	unsigned right_alignment:1;
 	struct {
 		char *gpg_output;
 		char good_bad;
@@ -644,6 +646,8 @@ struct format_commit_context {
 	struct chunk abbrev_tree_hash;
 	struct chunk abbrev_parent_hashes;
 	size_t wrap_start;
+
+	struct strbuf *right_sb;
 };
 
 static int add_again(struct strbuf *sb, struct chunk *chunk)
@@ -762,23 +766,6 @@ static void parse_commit_message(struct format_commit_context *c)
 	c->body_off = msg - start;
 
 	c->commit_message_parsed = 1;
-}
-
-static void format_decoration(struct strbuf *sb, const struct commit *commit)
-{
-	struct name_decoration *d;
-	const char *prefix = " (";
-
-	load_ref_decorations(DECORATE_SHORT_REFS);
-	d = lookup_decoration(&name_decoration, &commit->object);
-	while (d) {
-		strbuf_addstr(sb, prefix);
-		prefix = ", ";
-		strbuf_addstr(sb, d->name);
-		d = d->next;
-	}
-	if (prefix[0] == ',')
-		strbuf_addch(sb, ')');
 }
 
 static void strbuf_wrap(struct strbuf *sb, size_t pos,
@@ -902,6 +889,12 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 					"--pretty format", color);
 			strbuf_addstr(sb, color);
 			return end - placeholder + 1;
+		} else if (placeholder[1] == '+') {
+			c->use_color = 1;
+			return 2;
+		} else if (placeholder[1] == '-') {
+			c->use_color = 0;
+			return 2;
 		}
 		if (!prefixcmp(placeholder + 1, "red")) {
 			strbuf_addstr(sb, GIT_COLOR_RED);
@@ -954,6 +947,10 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 			return end - placeholder + 1;
 		} else
 			return 0;
+
+	case '|':
+		c->right_alignment = 1;
+		return 1;
 	}
 
 	/* these depend on the commit */
@@ -962,13 +959,17 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 
 	switch (placeholder[0]) {
 	case 'H':		/* commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		strbuf_addstr(sb, sha1_to_hex(commit->object.sha1));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		return 1;
 	case 'h':		/* abbreviated commit hash */
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_COMMIT));
 		if (add_again(sb, &c->abbrev_commit_hash))
 			return 1;
 		strbuf_addstr(sb, find_unique_abbrev(commit->object.sha1,
 						     c->pretty_ctx->abbrev));
+		strbuf_addstr(sb, diff_get_color(c->use_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;
 	case 'T':		/* tree hash */
@@ -1005,7 +1006,7 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 		strbuf_addstr(sb, get_revision_mark(NULL, commit));
 		return 1;
 	case 'd':
-		format_decoration(sb, commit);
+		format_decoration(sb, commit, c->use_color);
 		return 1;
 	case 'g':		/* reflog info */
 		switch(placeholder[1]) {
@@ -1105,9 +1106,44 @@ static size_t format_commit_one(struct strbuf *sb, const char *placeholder,
 	return 0;	/* unknown placeholder */
 }
 
+static void right_align(struct strbuf *sb,
+			struct format_commit_context *c,
+			int flush)
+{
+	const char *p;
+	int llen, rlen, len, total = term_columns() - 1;
+	if (!c->right_alignment)
+		return;
+	p = strchr(c->right_sb->buf, '\n');
+	if (!p && flush)
+		p = c->right_sb->buf + c->right_sb->len;
+	if (!p)
+		return;
+
+	c->right_alignment = 0;
+	len = p - c->right_sb->buf;
+	if (!len)
+		return;
+	if (total > 110)
+		total = 110;
+	rlen = utf8_strnwidth(c->right_sb->buf, len);
+	p = strrchr(sb->buf, '\n');
+	if (!p)
+		p = sb->buf;
+	else
+		p++;
+	llen = utf8_strwidth(p);
+	strbuf_addf(sb, "%*s",
+		    total - llen + (len - rlen),
+		    c->right_sb->buf);
+	strbuf_reset(c->right_sb);
+}
+
 static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 				 void *context)
 {
+	struct format_commit_context *c = context;
+	struct strbuf *real_sb = NULL;
 	int consumed;
 	size_t orig_len;
 	enum {
@@ -1133,10 +1169,13 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 	if (magic != NO_MAGIC)
 		placeholder++;
 
+	if (c->right_alignment && c->right_sb) {
+		real_sb = sb;
+		sb = c->right_sb;
+	}
+
 	orig_len = sb->len;
 	consumed = format_commit_one(sb, placeholder, context);
-	if (magic == NO_MAGIC)
-		return consumed;
 
 	if ((orig_len == sb->len) && magic == DEL_LF_BEFORE_EMPTY) {
 		while (sb->len && sb->buf[sb->len - 1] == '\n')
@@ -1147,7 +1186,13 @@ static size_t format_commit_item(struct strbuf *sb, const char *placeholder,
 		else if (magic == ADD_SP_BEFORE_NON_EMPTY)
 			strbuf_insert(sb, orig_len, " ", 1);
 	}
-	return consumed + 1;
+
+	if (real_sb)
+		right_align(real_sb, c, 0);
+
+	if (magic != NO_MAGIC)
+		consumed++;
+	return consumed;
 }
 
 static size_t userformat_want_item(struct strbuf *sb, const char *placeholder,
@@ -1186,12 +1231,14 @@ void format_commit_message(const struct commit *commit,
 	struct format_commit_context context;
 	static const char utf8[] = "UTF-8";
 	const char *output_enc = pretty_ctx->output_encoding;
+	struct strbuf right_sb = STRBUF_INIT;
 
 	memset(&context, 0, sizeof(context));
 	context.commit = commit;
 	context.pretty_ctx = pretty_ctx;
 	context.wrap_start = sb->len;
 	context.message = commit->buffer;
+	context.right_sb = &right_sb;
 	if (output_enc) {
 		char *enc = get_header(commit, "encoding");
 		if (strcmp(enc ? enc : utf8, output_enc)) {
@@ -1203,8 +1250,11 @@ void format_commit_message(const struct commit *commit,
 	}
 
 	strbuf_expand(sb, format, format_commit_item, &context);
+	if (context.right_alignment)
+		right_align(sb, &context, 1);
 	rewrap_message_tail(sb, &context, 0, 0, 0);
 
+	strbuf_release(&right_sb);
 	if (context.message != commit->buffer)
 		free(context.message);
 	free(context.signature.gpg_output);
