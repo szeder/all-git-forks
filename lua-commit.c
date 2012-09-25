@@ -6,13 +6,13 @@
 
 static const char msg[] = "git was built without lua support";
 
-void lua_commit_init(const char *)
+void lua_commit_init(const char *unused_1)
 {
 	die(msg);
 }
 
-void lua_commit_format(struct strbuf *,
-		       struct format_commit_context *)
+void lua_commit_format(struct strbuf *unused_1,
+		       struct format_commit_context *unused_2)
 {
 	die(msg);
 }
