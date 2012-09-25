@@ -32,3 +32,5 @@ export GIT_TEST_HTTPD = Yes
 
 GNU_ROFF = Yes
 MAN_BOLD_LITERAL = Yes
+
+-include $(Meta)/config/config.mak.local
