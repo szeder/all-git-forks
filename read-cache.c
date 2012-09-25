@@ -1290,11 +1290,41 @@ static int verify_hdr_version(struct index_state *istate,
 
 int read_index(struct index_state *istate)
 {
-	return read_index_from(istate, get_index_file());
+	return read_index_filtered_from(istate, get_index_file(), NULL);
 }
 
-/* remember to discard_cache() before reading a different cache! */
-int read_index_from(struct index_state *istate, const char *path)
+int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
+{
+	return read_index_filtered_from(istate, get_index_file(), opts);
+}
+
+/*
+ * Execute fn for each index entry which is currently in istate.  Data
+ * can be given to the function using the cb_data parameter.
+ */
+int for_each_index_entry(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
+{
+	int i, ret = 0;
+	struct filter_opts *opts = istate->filter_opts;
+
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+
+		if (opts && !opts->read_staged && ce_stage(ce))
+			continue;
+
+		if (opts && !match_pathspec_depth(opts->pathspec, ce->name, ce_namelen(ce),
+						  opts->max_prefix_len, opts->seen))
+			continue;
+
+		if ((ret = fn(istate->cache[i], cb_data)))
+			break;
+	}
+	return ret;
+}
+
+int read_index_filtered_from(struct index_state *istate, const char *path,
+			     struct filter_opts *opts)
 {
 	int fd, err, i;
 	struct stat_validity sv;
@@ -1309,6 +1339,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	errno = ENOENT;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
+	istate->filter_opts = opts;
 	sv.sd = NULL;
 	for (i = 0; i < 50; i++) {
 		err = 0;
@@ -1339,7 +1370,7 @@ int read_index_from(struct index_state *istate, const char *path)
 		if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
 			err = 1;
 
-		if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
+		if (istate->ops->read_index(istate, mmap, mmap_size, opts) < 0)
 			err = 1;
 		istate->timestamp.sec = sv.sd->sd_mtime.sec;
 		istate->timestamp.nsec = sv.sd->sd_mtime.nsec;
@@ -1350,6 +1381,13 @@ int read_index_from(struct index_state *istate, const char *path)
 	}
 
 	die("index file corrupt");
+}
+
+
+/* remember to discard_cache() before reading a different cache! */
+int read_index_from(struct index_state *istate, const char *path)
+{
+	return read_index_filtered_from(istate, path, NULL);
 }
 
 int is_index_unborn(struct index_state *istate)
@@ -1376,6 +1414,7 @@ int discard_index(struct index_state *istate)
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
 	istate->ops = NULL;
+	istate->filter_opts = NULL;
 	return 0;
 }
 
