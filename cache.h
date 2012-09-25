@@ -1288,7 +1288,7 @@ extern int ws_blank_line(const char *line, int len, unsigned ws_rule);
 
 /* ls-files */
 int report_path_error(const char *ps_matched, const char **pathspec, const char *prefix);
-void overlay_tree_on_cache(const char *tree_name, const char *prefix);
+void overlay_tree_on_cache(const char *tree_name, const char *prefix, struct filter_opts *opts);
 
 char *alias_lookup(const char *alias);
 int split_cmdline(char *cmdline, const char ***argv);

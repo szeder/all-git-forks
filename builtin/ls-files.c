@@ -77,42 +77,42 @@ static void show_other_files(struct dir_struct *dir)
 	}
 }
 
-static void show_killed_files(struct dir_struct *dir)
+static void show_killed_files(struct dir_struct *dir, struct filter_opts *opts)
 {
 	int i;
 	for (i = 0; i < dir->nr; i++) {
 		struct dir_entry *ent = dir->entries[i];
 		char *cp, *sp;
-		int pos, len, killed = 0;
+		int len, killed = 0;
+		struct filter_opts *opts_copy;
 
+		opts_copy = xmalloc(sizeof(*opts));
+		memcpy(opts_copy, opts, sizeof(*opts));
+		opts_copy->read_staged = 0;
 		for (cp = ent->name; cp - ent->name < ent->len; cp = sp + 1) {
+			struct cache_entry *ce;
+
 			sp = strchr(cp, '/');
 			if (!sp) {
 				/* If ent->name is prefix of an entry in the
 				 * cache, it will be killed.
 				 */
-				pos = cache_name_pos(ent->name, ent->len);
-				if (0 <= pos)
-					die("bug in show-killed-files");
-				pos = -pos - 1;
-				while (pos < active_nr &&
-				       ce_stage(active_cache[pos]))
-					pos++; /* skip unmerged */
-				if (active_nr <= pos)
+				ce = get_cache_entry_by_name(ent->name, ent->len, opts_copy);
+				if (!ce)
 					break;
 				/* pos points at a name immediately after
 				 * ent->name in the cache.  Does it expect
 				 * ent->name to be a directory?
 				 */
-				len = ce_namelen(active_cache[pos]);
+				len = ce_namelen(ce);
 				if ((ent->len < len) &&
-				    !strncmp(active_cache[pos]->name,
+				    !strncmp(ce->name,
 					     ent->name, ent->len) &&
-				    active_cache[pos]->name[ent->len] == '/')
+				    ce->name[ent->len] == '/')
 					killed = 1;
 				break;
 			}
-			if (0 <= cache_name_pos(ent->name, sp - ent->name)) {
+			if (0 <= get_cache_entry_pos(ent->name, sp - ent->name, opts_copy)) {
 				/* If any of the leading directories in
 				 * ent->name is registered in the cache,
 				 * ent->name will be killed.
@@ -206,100 +206,104 @@ static int ce_excluded(struct path_exclude_check *check, struct cache_entry *ce)
 	return path_excluded(check, ce->name, ce_namelen(ce), &dtype);
 }
 
-static void show_files(struct dir_struct *dir)
+struct show_opts {
+	struct dir_struct *dir;
+	struct path_exclude_check *check;
+};
+
+static int show_cached_stage(struct cache_entry *ce, void *cb_data)
 {
-	int i;
+	struct show_opts *show_opts = cb_data;
+
+	if ((show_opts->dir->flags & DIR_SHOW_IGNORED) &&
+		!ce_excluded(show_opts->check, ce))
+		return 0;
+	if (show_unmerged && !ce_stage(ce))
+		return 0;
+	if (ce->ce_flags & CE_UPDATE)
+		return 0;
+	show_ce_entry(ce_stage(ce) ? tag_unmerged :
+		(ce_skip_worktree(ce) ? tag_skip_worktree : tag_cached), ce);
+	return 0;
+}
+
+static int show_deleted_modified(struct cache_entry *ce, void *cb_data)
+{
+	struct stat st;
+	int err;
+	struct show_opts *show_opts = cb_data;
+
+	if ((show_opts->dir->flags & DIR_SHOW_IGNORED) &&
+		!ce_excluded(show_opts->check, ce))
+		return 0;
+	if (ce->ce_flags & CE_UPDATE)
+		return 0;
+	if (ce_skip_worktree(ce))
+		return 0;
+	err = lstat(ce->name, &st);
+	if (show_deleted && err)
+		show_ce_entry(tag_removed, ce);
+	if (show_modified && ce_modified(ce, &st, 0))
+		show_ce_entry(tag_modified, ce);
+	return 0;
+}
+
+static void show_files(struct dir_struct *dir, struct filter_opts *opts)
+{
 	struct path_exclude_check check;
+	struct show_opts show_opts;
+
+	show_opts.dir = dir;
+	show_opts.check = &check;
 
 	if ((dir->flags & DIR_SHOW_IGNORED))
-		path_exclude_check_init(&check, dir);
+		path_exclude_check_init(show_opts.check, show_opts.dir);
 
 	/* For cached/deleted files we don't need to even do the readdir */
 	if (show_others || show_killed) {
-		fill_directory(dir, pathspec);
+		fill_directory(show_opts.dir, pathspec);
 		if (show_others)
-			show_other_files(dir);
+			show_other_files(show_opts.dir);
 		if (show_killed)
-			show_killed_files(dir);
+			show_killed_files(show_opts.dir, opts);
 	}
-	if (show_cached | show_stage) {
-		for (i = 0; i < active_nr; i++) {
-			struct cache_entry *ce = active_cache[i];
-			if ((dir->flags & DIR_SHOW_IGNORED) &&
-			    !ce_excluded(&check, ce))
-				continue;
-			if (show_unmerged && !ce_stage(ce))
-				continue;
-			if (ce->ce_flags & CE_UPDATE)
-				continue;
-			show_ce_entry(ce_stage(ce) ? tag_unmerged :
-				(ce_skip_worktree(ce) ? tag_skip_worktree : tag_cached), ce);
-		}
-	}
-	if (show_deleted | show_modified) {
-		for (i = 0; i < active_nr; i++) {
-			struct cache_entry *ce = active_cache[i];
-			struct stat st;
-			int err;
-			if ((dir->flags & DIR_SHOW_IGNORED) &&
-			    !ce_excluded(&check, ce))
-				continue;
-			if (ce->ce_flags & CE_UPDATE)
-				continue;
-			if (ce_skip_worktree(ce))
-				continue;
-			err = lstat(ce->name, &st);
-			if (show_deleted && err)
-				show_ce_entry(tag_removed, ce);
-			if (show_modified && ce_modified(ce, &st, 0))
-				show_ce_entry(tag_modified, ce);
-		}
-	}
+	if (show_cached | show_stage)
+		for_each_cache_entry_filtered(opts, show_cached_stage, &show_opts);
+	if (show_deleted | show_modified)
+		for_each_cache_entry_filtered(opts, show_deleted_modified, &show_opts);
 
-	if ((dir->flags & DIR_SHOW_IGNORED))
-		path_exclude_check_clear(&check);
+	if ((show_opts.dir->flags & DIR_SHOW_IGNORED))
+		path_exclude_check_clear(show_opts.check);
 }
 
-/*
- * Prune the index to only contain stuff starting with "prefix"
- */
-static void prune_cache(const char *prefix)
+static int hoist_unmerged(struct cache_entry *ce, void *cb_data)
 {
-	int pos = cache_name_pos(prefix, max_prefix_len);
-	unsigned int first, last;
-
-	if (pos < 0)
-		pos = -pos-1;
-	memmove(active_cache, active_cache + pos,
-		(active_nr - pos) * sizeof(struct cache_entry *));
-	active_nr -= pos;
-	first = 0;
-	last = active_nr;
-	while (last > first) {
-		int next = (last + first) >> 1;
-		struct cache_entry *ce = active_cache[next];
-		if (!strncmp(ce->name, prefix, max_prefix_len)) {
-			first = next+1;
-			continue;
-		}
-		last = next;
-	}
-	active_nr = last;
+	if (!ce_stage(ce))
+		return 0;
+	ce->ce_flags |= CE_STAGEMASK;
+	return 0;
 }
 
-static void strip_trailing_slash_from_submodules(void)
+int mark_entry_to_show(struct cache_entry *ce, void *cb_data)
 {
-	const char **p;
-
-	for (p = pathspec; *p != NULL; p++) {
-		int len = strlen(*p), pos;
-
-		if (len < 1 || (*p)[len - 1] != '/')
-			continue;
-		pos = cache_name_pos(*p, len - 1);
-		if (pos >= 0 && S_ISGITLINK(active_cache[pos]->ce_mode))
-			*p = xstrndup(*p, len - 1);
+	struct cache_entry **last_stage0 = cb_data;
+	switch (ce_stage(ce)) {
+	case 0:
+		*last_stage0 = ce;
+		/* fallthru */
+	default:
+		return 0;
+	case 1:
+		/*
+		 * If there is stage #0 entry for this, we do not
+		 * need to show it.  We use CE_UPDATE bit to mark
+		 * such an entry.
+		 */
+		if (*last_stage0 &&
+			!strcmp((*last_stage0)->name, ce->name))
+			ce->ce_flags |= CE_UPDATE;
 	}
+	return 0;
 }
 
 /*
@@ -310,13 +314,12 @@ static void strip_trailing_slash_from_submodules(void)
  * that were given from the command line.  We are not
  * going to write this index out.
  */
-void overlay_tree_on_cache(const char *tree_name, const char *prefix)
+void overlay_tree_on_cache(const char *tree_name, const char *prefix, struct filter_opts *opts)
 {
 	struct tree *tree;
 	unsigned char sha1[20];
 	struct pathspec pathspec;
 	struct cache_entry *last_stage0 = NULL;
-	int i;
 
 	if (get_sha1(tree_name, sha1))
 		die("tree-ish %s not found.", tree_name);
@@ -325,12 +328,7 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 		die("bad tree-ish %s", tree_name);
 
 	/* Hoist the unmerged entries up to stage #3 to make room */
-	for (i = 0; i < active_nr; i++) {
-		struct cache_entry *ce = active_cache[i];
-		if (!ce_stage(ce))
-			continue;
-		ce->ce_flags |= CE_STAGEMASK;
-	}
+	for_each_cache_entry_filtered(opts, hoist_unmerged, NULL);
 
 	if (prefix) {
 		static const char *(matchbuf[2]);
@@ -343,25 +341,7 @@ void overlay_tree_on_cache(const char *tree_name, const char *prefix)
 	if (read_tree(tree, 1, &pathspec))
 		die("unable to read tree entries %s", tree_name);
 
-	for (i = 0; i < active_nr; i++) {
-		struct cache_entry *ce = active_cache[i];
-		switch (ce_stage(ce)) {
-		case 0:
-			last_stage0 = ce;
-			/* fallthru */
-		default:
-			continue;
-		case 1:
-			/*
-			 * If there is stage #0 entry for this, we do not
-			 * need to show it.  We use CE_UPDATE bit to mark
-			 * such an entry.
-			 */
-			if (last_stage0 &&
-			    !strcmp(last_stage0->name, ce->name))
-				ce->ce_flags |= CE_UPDATE;
-		}
-	}
+	for_each_cache_entry_filtered(opts, mark_entry_to_show, &last_stage0);
 }
 
 int report_path_error(const char *ps_matched, const char **pathspec, const char *prefix)
@@ -453,8 +433,9 @@ static int option_parse_exclude_standard(const struct option *opt,
 int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 {
 	int require_work_tree = 0, show_tag = 0;
-	const char *max_prefix;
+	char *max_prefix;
 	struct dir_struct dir;
+	struct filter_opts *opts = xmalloc(sizeof(*opts));
 	struct option builtin_ls_files_options[] = {
 		{ OPTION_CALLBACK, 'z', NULL, NULL, NULL,
 			"paths are separated with NUL character",
@@ -520,9 +501,6 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		prefix_len = strlen(prefix);
 	git_config(git_default_config, NULL);
 
-	if (read_cache() < 0)
-		die("index file corrupt");
-
 	argc = parse_options(argc, argv, prefix, builtin_ls_files_options,
 			ls_files_usage, 0);
 	if (show_tag || show_valid_bit) {
@@ -551,14 +529,6 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 
 	pathspec = get_pathspec(prefix, argv);
 
-	/* be nice with submodule paths ending in a slash */
-	if (pathspec)
-		strip_trailing_slash_from_submodules();
-
-	/* Find common prefix for all pathspec's */
-	max_prefix = common_prefix(pathspec);
-	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
-
 	/* Treat unmatching pathspec elements as errors */
 	if (pathspec && error_unmatch) {
 		int num;
@@ -566,6 +536,17 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 			;
 		ps_matched = xcalloc(1, num);
 	}
+
+	memset(opts, 0, sizeof(*opts));
+	opts->pathspec = pathspec;
+	opts->read_staged = 1;
+	if (show_resolve_undo)
+		opts->read_resolve_undo = 1;
+	read_cache_filtered(opts);
+
+	/* Find common prefix for all pathspec's */
+	max_prefix = opts->max_prefix;
+	max_prefix_len = opts->max_prefix_len;
 
 	if ((dir.flags & DIR_SHOW_IGNORED) && !exc_given)
 		die("ls-files --ignored needs some exclude pattern");
@@ -575,8 +556,6 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	      show_killed | show_modified | show_resolve_undo))
 		show_cached = 1;
 
-	if (max_prefix)
-		prune_cache(max_prefix);
 	if (with_tree) {
 		/*
 		 * Basic sanity check; show-stages and show-unmerged
@@ -584,9 +563,9 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		 */
 		if (show_stage || show_unmerged)
 			die("ls-files --with-tree is incompatible with -s or -u");
-		overlay_tree_on_cache(with_tree, max_prefix);
+		overlay_tree_on_cache(with_tree, max_prefix, opts);
 	}
-	show_files(&dir);
+	show_files(&dir, opts);
 	if (show_resolve_undo)
 		show_ru_info();
 
