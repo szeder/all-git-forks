@@ -21,11 +21,15 @@ struct cache_version_header {
 	unsigned int hdr_version;
 };
 
+typedef int each_cache_entry_fn(struct cache_entry *ce, void *);
 struct index_ops {
 	int (*match_stat_basic)(struct cache_entry *ce, struct stat *st, int changed);
 	int (*verify_hdr)(void *mmap, unsigned long size);
 	int (*read_index)(struct index_state *istate, void *mmap, int mmap_size);
+	int (*read_index_filtered)(struct index_state *istate, struct filter_opts *opts);
 	int (*write_index)(struct index_state *istate, int newfd);
+	int (*for_each_index_entry)(struct index_state *istate, each_cache_entry_fn fn, void *cb_data);
+	int (*index_name_pos)(struct index_state *istate, const char *name, int namelen);
 };
 
 extern struct index_ops v2_ops;
@@ -55,3 +59,6 @@ extern int ce_match_stat_basic(struct index_state *istate,
 		struct cache_entry *ce, struct stat *st);
 extern int is_racy_timestamp(const struct index_state *istate, struct cache_entry *ce);
 extern void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce);
+extern void set_index_api_entry(struct index_state *istate, int *nr, struct cache_entry *ce);
+extern void strip_trailing_slash_from_submodules(struct cache_entry *ce,
+		const char **pathspec);

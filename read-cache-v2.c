@@ -3,6 +3,7 @@
 #include "resolve-undo.h"
 #include "cache-tree.h"
 #include "varint.h"
+#include "dir.h"
 
 /* Mask for the name length in ce_flags in the on-disk index */
 #define CE_NAMEMASK  (0x0fff)
@@ -297,6 +298,75 @@ unmap:
 	die("index file corrupt");
 }
 
+static int read_index_filtered_v2(struct index_state *istate, struct filter_opts *opts)
+{
+	int i;
+	unsigned long src_offset;
+	struct cache_version_header *hdr;
+	struct cache_header *hdr_v2;
+	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+
+	hdr = istate->mmap;
+	hdr_v2 = (struct cache_header *)((char *)istate->mmap + sizeof(*hdr));
+	istate->version = ntohl(hdr->hdr_version);
+	istate->cache_nr = ntohl(hdr_v2->hdr_entries);
+	istate->cache_alloc = ntohl(hdr_v2->hdr_entries);
+	istate->cache = xcalloc(istate->cache_alloc, sizeof(struct cache_entry *));
+	istate->initialized = 1;
+
+	if (istate->version == 4)
+		previous_name = &previous_name_buf;
+	else
+		previous_name = NULL;
+
+	src_offset = sizeof(*hdr) + sizeof(*hdr_v2);
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct ondisk_cache_entry *disk_ce;
+		struct cache_entry *ce;
+		unsigned long consumed;
+
+		disk_ce = (struct ondisk_cache_entry *)((char *)istate->mmap + src_offset);
+		ce = create_from_disk(disk_ce, &consumed, previous_name);
+
+		set_index_entry(istate, i, ce);
+		src_offset += consumed;
+	}
+	strbuf_release(&previous_name_buf);
+
+	while (src_offset <= istate->mmap_size - 20 - 8) {
+		/* After an array of active_nr index entries,
+		 * there can be arbitrary number of extended
+		 * sections, each of which is prefixed with
+		 * extension name (4-byte) and section length
+		 * in 4-byte network byte order.
+		 */
+		uint32_t extsize;
+		char *ext;
+
+		memcpy(&extsize, (char *)istate->mmap + src_offset + 4, 4);
+		extsize = ntohl(extsize);
+		ext = (char *)istate->mmap + src_offset;
+
+		if (CACHE_EXT(ext) == CACHE_EXT_TREE ||
+		    CACHE_EXT(ext) == CACHE_EXT_RESOLVE_UNDO) {
+			if (read_index_extension(istate, ext,
+						(char *) istate->mmap + src_offset + 8,
+						extsize) < 0)
+				goto unmap;
+		}
+		src_offset += 8;
+		src_offset += extsize;
+	}
+	istate->istate_version = 2;
+	/* Make sure no one writes a partially read index */
+	if (opts)
+		v2_ops.write_index = NULL;
+	return 0;
+unmap:
+	munmap(istate->mmap, istate->mmap_size);
+	die("index file corrupt");
+}
+
 #define WRITE_BUFFER_SIZE 8192
 static unsigned char write_buffer[WRITE_BUFFER_SIZE];
 static unsigned long write_buffer_len;
@@ -573,9 +643,59 @@ static int write_index_v2(struct index_state *istate, int newfd)
 	return 0;
 }
 
+int for_each_index_entry_v2(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
+{
+	int i, ret = 0;
+	struct filter_opts *opts= istate->filter_opts;
+
+	/*
+	 * We always load the whole index in index_v2, because
+	 * we cannot support partial writing, and filter the
+	 * unwanted entries out when iterating
+	 */
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+
+		if (opts && !opts->read_staged && ce_stage(ce))
+			continue;
+
+		if (opts && opts->pathspec && S_ISGITLINK(ce->ce_mode))
+			strip_trailing_slash_from_submodules(ce, opts->pathspec);
+
+		if (opts && !match_pathspec(opts->pathspec, ce->name, ce_namelen(ce),
+					opts->max_prefix_len, opts->seen))
+			continue;
+
+		if ((ret = fn(istate->cache[i], cb_data)))
+			break;
+	}
+	if (opts && !opts->max_prefix) {
+		opts->max_prefix = common_prefix(opts->pathspec);
+		opts->max_prefix_len = opts->max_prefix ? strlen(opts->max_prefix) : 0;
+	}
+
+	return ret;
+}
+
+int index_name_pos_v2(struct index_state *istate, const char *name, int namelen)
+{
+	int pos = index_name_pos(istate, name, namelen);
+	if (istate->filter_opts && istate->filter_opts->read_staged)
+		return pos;
+	pos = -pos - 1;
+	while (pos < istate->cache_nr && ce_stage(istate->cache[pos]))
+		pos++;
+	if (istate->cache_nr <= pos)
+		return 0;
+	return -pos - 1;
+}
+
 struct index_ops v2_ops = {
 	match_stat_basic,
 	verify_hdr,
 	read_index_v2,
-	write_index_v2
+	read_index_filtered_v2,
+	write_index_v2,
+	for_each_index_entry_v2,
+	index_name_pos_v2
 };
