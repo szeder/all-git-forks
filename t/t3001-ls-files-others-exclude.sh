@@ -214,4 +214,15 @@ test_expect_success 'subdirectory ignore (l1)' '
 	test_cmp expect actual
 '
 
+
+test_expect_success 'ls-files with "**" patterns' '
+	cat <<\EOF >expect &&
+one/a.1
+one/two/a.1
+three/a.1
+EOF
+	git ls-files -o -i --exclude "**/a.1" >actual
+	test_cmp expect actual
+'
+
 test_done
