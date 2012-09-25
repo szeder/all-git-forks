@@ -249,17 +249,33 @@ static inline unsigned int canon_mode(unsigned int mode)
 
 #define cache_entry_size(len) (offsetof(struct cache_entry,name) + (len) + 1)
 
+struct filter_opts {
+	const char **pathspec;
+	char *seen;
+	char *max_prefix;
+	int max_prefix_len;
+
+	int read_staged;
+	int read_cache_tree;
+	int read_resolve_undo;
+};
+
 struct index_state {
 	struct cache_entry **cache;
-	unsigned int version;
+	unsigned int version, internal_version;
 	unsigned int cache_nr, cache_alloc, cache_changed;
 	struct string_list *resolve_undo;
 	struct cache_tree *cache_tree;
 	struct cache_time timestamp;
 	unsigned name_hash_initialized : 1,
-		 initialized : 1;
+		 initialized : 1,
+		 open : 1;
 	struct hash_table name_hash;
 	struct index_ops *ops;
+	struct internal_ops *internal_ops;
+	void *mmap;
+	int mmap_size;
+	struct filter_opts *filter_opts;
 };
 
 extern struct index_state the_index;
@@ -311,6 +327,18 @@ static inline void remove_name_hash(struct cache_entry *ce)
 #define resolve_undo_clear() resolve_undo_clear_index(&the_index)
 #define unmerge_cache_entry_at(at) unmerge_index_entry_at(&the_index, at)
 #define unmerge_cache(pathspec) unmerge_index(&the_index, pathspec)
+
+/* index api */
+#define cache_open_from(path) index_open_from(&the_index, (path))
+#define read_cache_filtered(opts) read_index_filtered(&the_index, (opts))
+#define get_cache_entry_pos(name, namelen, opts) \
+	get_index_entry_pos(&the_index, (name), (namelen), (opts))
+#define get_cache_entry_by_name(name, namelen, opts) \
+	get_index_entry_by_name(&the_index, (name), (namelen), (opts))
+#define for_each_cache_entry(fn, cb_data) \
+	for_each_index_entry(&the_index, (fn), (cb_data))
+#define for_each_cache_entry_filtered(opts, fn, cb_data) \
+	for_each_index_entry_filtered(&the_index, (opts), (fn), (cb_data))
 #endif
 
 enum object_type {
@@ -423,6 +451,20 @@ extern int init_db(const char *template_dir, unsigned int flags);
 			x = xrealloc((x), alloc * sizeof(*(x))); \
 		} \
 	} while (0)
+
+/* index api */
+extern void index_open_from(struct index_state *, const char *path);
+extern int read_index_filtered(struct index_state *, struct filter_opts *opts);
+extern int get_index_entry_pos(struct index_state *, char *name, int namelen,
+		struct filter_opts *opts);
+extern struct cache_entry *get_index_entry_by_name(struct index_state *, char *name,
+		int namelen, struct filter_opts *opts);
+
+typedef int each_cache_entry_fn(struct cache_entry *ce, void *);
+extern int for_each_index_entry(struct index_state *istate,
+		each_cache_entry_fn, void *);
+extern int for_each_index_entry_filtered(struct index_state *istate,
+		struct filter_opts *opts, each_cache_entry_fn, void *);
 
 /* Initialize and use the cache information */
 extern int read_index(struct index_state *);

@@ -1165,9 +1165,131 @@ static int verify_hdr_version(struct index_state *istate,
 	return 0;
 }
 
+void index_open_from(struct index_state *istate, const char *path)
+{
+	int fd;
+	struct stat st;
+	struct cache_version_header *hdr;
+
+	errno = EBUSY;
+	if (istate->initialized)
+		return;
+
+	errno = ENOENT;
+	istate->timestamp.sec = 0;
+	istate->timestamp.nsec = 0;
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		if (errno == ENOENT) {
+			istate->ops = NULL;
+			return;
+		}
+		die_errno("index file open failed");
+	}
+
+	if (fstat(fd, &st))
+		die_errno("cannot stat the open index");
+
+	errno = EINVAL;
+	istate->mmap_size = xsize_t(st.st_size);
+	istate->mmap = xmmap(NULL, istate->mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (istate->mmap == MAP_FAILED)
+		die_errno("unable to map index file");
+
+	hdr = istate->mmap;
+	if (verify_hdr_version(istate, hdr, istate->mmap_size) < 0)
+		goto unmap;
+
+	if (istate->ops->verify_hdr(istate->mmap, istate->mmap_size) < 0)
+		goto unmap;
+	istate->open = 1;
+	return;
+unmap:
+	munmap(istate->mmap, istate->mmap_size);
+	die("index file corrupt");
+}
+
+static void index_open(struct index_state *istate)
+{
+	index_open_from(istate, get_index_file());
+}
+
 int read_index(struct index_state *istate)
 {
 	return read_index_from(istate, get_index_file());
+}
+
+int read_index_filtered(struct index_state *istate, struct filter_opts *opts)
+{
+	if (!istate->open)
+		index_open(istate);
+	/* The index has already been read */
+	if (istate->initialized == 1 && ((istate->filter_opts == NULL && opts == NULL)
+				|| !memcmp(istate->filter_opts, opts, sizeof(*opts))))
+		return 0;
+
+	/* if istate->ops is not set we don't have an index file */
+	if (!istate->ops)
+		return 0;
+
+	/* We need to re-read the index */
+	if (istate->initialized == 1)
+		discard_index(istate);
+
+	if (istate->ops->read_index_filtered(istate, opts) < 0) {
+		munmap(istate->mmap, istate->mmap_size);
+		return -1;
+	}
+	istate->filter_opts = opts;
+	if (istate->internal_version == 2)
+		istate->internal_ops = &v2_internal_ops;
+	else
+		die("read-cache: read to an internal format that is not supported");
+	return 0;
+}
+
+int for_each_index_entry(struct index_state *istate, each_cache_entry_fn fn, void *cb_data)
+{
+	read_index_filtered(istate, NULL);
+	if (!istate->internal_ops)
+		return 0;
+	return istate->internal_ops->for_each_index_entry(istate, fn, cb_data);
+}
+
+int for_each_index_entry_filtered(struct index_state *istate, struct filter_opts *opts,
+		each_cache_entry_fn fn, void *cb_data)
+{
+	read_index_filtered(istate, opts);
+	if (!istate->internal_ops)
+		return 0;
+	return istate->internal_ops->for_each_index_entry(istate, fn, cb_data);
+}
+
+int get_index_entry_pos(struct index_state *istate, char *name, int namelen,
+		struct filter_opts *opts)
+{
+	read_index_filtered(istate, opts);
+	if (!istate->internal_ops)
+		return 0;
+	return istate->internal_ops->index_name_pos(istate, name, namelen);
+}
+
+
+struct cache_entry *get_index_entry_by_name(struct index_state *istate, char *name,
+		int namelen, struct filter_opts *opts)
+{
+	int pos;
+
+	pos = get_index_entry_pos(istate, name, namelen, opts);
+	if (0 <= pos)
+		return NULL;
+		/* die("read-cache: internal error: name not in index"); */
+	pos = -pos - 1;
+	if (pos >= istate->cache_nr)
+		return NULL;
+	return istate->cache[pos];
 }
 
 static int index_changed(struct stat *st_old, struct stat *st_new)
@@ -1237,7 +1359,9 @@ int read_index_from(struct index_state *istate, const char *path)
 		if (istate->ops->verify_hdr(mmap, mmap_size) < 0)
 			err = 1;
 
-		if (istate->ops->read_index(istate, mmap, mmap_size) < 0)
+		istate->mmap = mmap;
+		istate->mmap_size = mmap_size;
+		if (istate->ops->read_index_full(istate) < 0)
 			err = 1;
 		istate->timestamp.sec = st_old.st_mtime;
 		istate->timestamp.nsec = ST_MTIME_NSEC(st_old);
@@ -1383,4 +1507,18 @@ int index_name_is_other(const struct index_state *istate, const char *name,
 			return 0; /* Yup, this one exists unmerged */
 	}
 	return 1;
+}
+
+void strip_trailing_slash_from_submodules(struct cache_entry *ce, const char **pathspec)
+{
+	const char **p;
+
+	for (p = pathspec; *p != NULL; p++) {
+		int len = strlen(*p);
+
+		if (len < 1 || (*p)[len - 1] != '/')
+			continue;
+		if (S_ISGITLINK(ce->ce_mode))
+			*p = xstrndup(*p, len - 1);
+	}
 }
