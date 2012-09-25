@@ -271,6 +271,12 @@ all::
 # Define USE_NED_ALLOCATOR if you want to replace the platforms default
 # memory allocators with the nedmalloc allocator written by Niall Douglas.
 #
+# Define USE_LUA to the package name pkg-config command knows your version
+# of Lua as (e.g. "make USE_LUA=lua5.2"). Alternatively, you can set it to
+# any non-empty string and define LUA_INCLUDE_ARG and LUA_LINK_ARG yourself
+# (e.g. "make USE_LUA=YesPlease LUA_INCLUDE_ARG=-I/usr/local/include/lua
+# LUA_LINK_ARG=-llua") appropriately.
+#
 # Define NO_REGEX if you have no or inferior regex support in your C library.
 #
 # Define HAVE_DEV_TTY if your system can open /dev/tty to interact with the
@@ -1898,8 +1904,10 @@ ifdef USE_NED_ALLOCATOR
 endif
 
 ifdef USE_LUA
-	BASIC_CFLAGS += -DUSE_LUA `pkg-config --cflags lua5.2`
-	EXTLIBS += `pkg-config --libs lua5.2`
+	LUA_INCLUDE_ARG ?= $(shell pkg-config --cflags $(USE_LUA))
+	LUA_LINK_ARG ?= $(shell pkg-config --libs $(USE_LUA))
+	BASIC_CFLAGS += -DUSE_LUA $(LUA_INCLUDE_ARG)
+	EXTLIBS += $(LUA_LINK_ARG)
 endif
 
 ifdef GIT_TEST_CMP_USE_COPIED_CONTEXT
