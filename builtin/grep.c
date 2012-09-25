@@ -368,41 +368,33 @@ static void run_pager(struct grep_opt *opt, const char *prefix)
 	free(argv);
 }
 
-static int grep_cache(struct grep_opt *opt, const struct pathspec *pathspec, int cached)
-{
-	int hit = 0;
-	int nr;
-	read_cache();
+struct grep_opts {
+	struct grep_opt *opt;
+	const struct pathspec *pathspec;
+	int cached;
+	int hit;
+};
 
-	for (nr = 0; nr < active_nr; nr++) {
-		struct cache_entry *ce = active_cache[nr];
-		if (!S_ISREG(ce->ce_mode))
-			continue;
-		if (!match_pathspec_depth(pathspec, ce->name, ce_namelen(ce), 0, NULL))
-			continue;
-		/*
-		 * If CE_VALID is on, we assume worktree file and its cache entry
-		 * are identical, even if worktree file has been modified, so use
-		 * cache version instead
-		 */
-		if (cached || (ce->ce_flags & CE_VALID) || ce_skip_worktree(ce)) {
-			if (ce_stage(ce))
-				continue;
-			hit |= grep_sha1(opt, ce->sha1, ce->name, 0, ce->name);
-		}
-		else
-			hit |= grep_file(opt, ce->name);
-		if (ce_stage(ce)) {
-			do {
-				nr++;
-			} while (nr < active_nr &&
-				 !strcmp(ce->name, active_cache[nr]->name));
-			nr--; /* compensate for loop control */
-		}
-		if (hit && opt->status_only)
-			break;
-	}
-	return hit;
+static int grep_cache(struct cache_entry *ce, void *cb_data)
+{
+	struct grep_opts *opts = cb_data;
+
+	if (!S_ISREG(ce->ce_mode))
+		return 0;
+	if (!match_pathspec_depth(opts->pathspec, ce->name, ce_namelen(ce), 0, NULL))
+		return 0;
+	/*
+	 * If CE_VALID is on, we assume worktree file and its cache entry
+	 * are identical, even if worktree file has been modified, so use
+	 * cache version instead
+	 */
+	if (opts->cached || (ce->ce_flags & CE_VALID) || ce_skip_worktree(ce))
+		opts->hit |= grep_sha1(opts->opt, ce->sha1, ce->name, 0, ce->name);
+	else
+		opts->hit |= grep_file(opts->opt, ce->name);
+	if (opts->hit && opts->opt->status_only)
+		return 1;
+	return 0;
 }
 
 static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
@@ -895,10 +887,21 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	} else if (0 <= opt_exclude) {
 		die(_("--[no-]exclude-standard cannot be used for tracked contents."));
 	} else if (!list.nr) {
+		struct grep_opts opts;
+		struct filter_opts *filter_opts = xmalloc(sizeof(*filter_opts));
+
 		if (!cached)
 			setup_work_tree();
 
-		hit = grep_cache(&opt, &pathspec, cached);
+		memset(filter_opts, 0, sizeof(*filter_opts));
+		filter_opts->pathspec = pathspec.raw;
+		opts.opt = &opt;
+		opts.pathspec = &pathspec;
+		opts.cached = cached;
+		opts.hit = 0;
+		read_cache_filtered(filter_opts);
+		for_each_cache_entry(grep_cache, &opts);
+		hit = opts.hit;
 	} else {
 		if (cached)
 			die(_("both --cached and trees are given."));
