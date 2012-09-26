@@ -18,7 +18,7 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 {
 	const unsigned char *data, *top;
 	unsigned char *dst_buf, *out, cmd;
-	unsigned long size;
+	long size;
 
 	if (delta_size < DELTA_SIZE_MIN)
 		return NULL;
@@ -33,13 +33,13 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 
 	/* now the result size */
 	size = get_delta_hdr_size(&data, top);
-	dst_buf = xmallocz(size);
+	dst_buf = xmallocz(size + 128);
 
 	out = dst_buf;
 	while (data < top) {
 		cmd = *data++;
 		if (cmd & 0x80) {
-			unsigned long cp_off = 0, cp_size = 0;
+			long cp_off = 0, cp_size = 0;
 			if (cmd & 0x01) cp_off = *data++;
 			if (cmd & 0x02) cp_off |= (*data++ << 8);
 			if (cmd & 0x04) cp_off |= (*data++ << 16);
@@ -48,17 +48,21 @@ void *patch_delta(const void *src_buf, unsigned long src_size,
 			if (cmd & 0x20) cp_size |= (*data++ << 8);
 			if (cmd & 0x40) cp_size |= (*data++ << 16);
 			if (cp_size == 0) cp_size = 0x10000;
-			if (unsigned_add_overflows(cp_off, cp_size) ||
+			if (signed_add_overflows(cp_off, cp_size) ||
 			    cp_off + cp_size > src_size ||
 			    cp_size > size)
 				break;
-			memcpy(out, (char *) src_buf + cp_off, cp_size);
-			out += cp_size;
+			while (cp_size > 0) {
+				memcpy(out, (char*)src_buf + cp_off, 8);
+				out += 8;
+				cp_off += 8;
+				cp_size -= 8;
+				size -= 8;
+			}
 			size -= cp_size;
+			out += cp_size;
 		} else if (cmd) {
-			if (cmd > size)
-				break;
-			memcpy(out, data, cmd);
+			memcpy(out, data, 128);
 			out += cmd;
 			data += cmd;
 			size -= cmd;
