@@ -9,7 +9,13 @@
 **  work differently than '*', and to fix the character-class code.
 */
 
-#include "rsync.h"
+#include <stddef.h>
+#include <ctype.h>
+#include <string.h>
+
+#include "wildmatch.h"
+
+typedef unsigned char uchar;
 
 /* What character marks an inverted character class? */
 #define NEGATE_CLASS	'!'
@@ -53,20 +59,12 @@
 #define ISUPPER(c) (ISASCII(c) && isupper(c))
 #define ISXDIGIT(c) (ISASCII(c) && isxdigit(c))
 
-#ifdef WILD_TEST_ITERATIONS
-int wildmatch_iteration_count;
-#endif
-
 /* Match pattern "p" against the a virtually-joined string consisting
  * of "text" and any strings in array "a". */
 static int dowild(const uchar *p, const uchar *text,
 		  const uchar*const *a, int force_lower_case)
 {
     uchar p_ch;
-
-#ifdef WILD_TEST_ITERATIONS
-    wildmatch_iteration_count++;
-#endif
 
     for ( ; (p_ch = *p) != '\0'; text++, p++) {
 	int matched, special;
@@ -289,9 +287,6 @@ static const uchar *trailing_N_elements(const uchar*const **a_ptr, int count)
 int wildmatch(const char *pattern, const char *text)
 {
     static const uchar *nomore[1]; /* A NULL pointer. */
-#ifdef WILD_TEST_ITERATIONS
-    wildmatch_iteration_count = 0;
-#endif
     return dowild((const uchar*)pattern, (const uchar*)text, nomore, 0) == TRUE;
 }
 
@@ -300,9 +295,6 @@ int iwildmatch(const char *pattern, const char *text)
 {
     static const uchar *nomore[1]; /* A NULL pointer. */
     int ret;
-#ifdef WILD_TEST_ITERATIONS
-    wildmatch_iteration_count = 0;
-#endif
     ret = dowild((const uchar*)pattern, (const uchar*)text, nomore, 1) == TRUE;
     return ret;
 }
@@ -318,10 +310,6 @@ int wildmatch_array(const char *pattern, const char*const *texts, int where)
     const uchar*const *a = (const uchar*const*)texts;
     const uchar *text;
     int matched;
-
-#ifdef WILD_TEST_ITERATIONS
-    wildmatch_iteration_count = 0;
-#endif
 
     if (where > 0)
 	text = trailing_N_elements(&a, where);
