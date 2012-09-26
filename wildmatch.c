@@ -57,11 +57,10 @@
 int wildmatch_iteration_count;
 #endif
 
-static int force_lower_case = 0;
-
 /* Match pattern "p" against the a virtually-joined string consisting
  * of "text" and any strings in array "a". */
-static int dowild(const uchar *p, const uchar *text, const uchar*const *a)
+static int dowild(const uchar *p, const uchar *text,
+		  const uchar*const *a, int force_lower_case)
 {
     uchar p_ch;
 
@@ -121,7 +120,7 @@ static int dowild(const uchar *p, const uchar *text, const uchar*const *a)
 		    t_ch = *text;
 		    continue;
 		}
-		if ((matched = dowild(p, text, a)) != FALSE) {
+		if ((matched = dowild(p, text, a, force_lower_case)) != FALSE) {
 		    if (!special || matched != ABORT_TO_STARSTAR)
 			return matched;
 		} else if (!special && t_ch == '/')
@@ -291,7 +290,7 @@ int wildmatch(const char *pattern, const char *text)
 #ifdef WILD_TEST_ITERATIONS
     wildmatch_iteration_count = 0;
 #endif
-    return dowild((const uchar*)pattern, (const uchar*)text, nomore) == TRUE;
+    return dowild((const uchar*)pattern, (const uchar*)text, nomore, 0) == TRUE;
 }
 
 /* Match the "pattern" against the forced-to-lower-case "text" string. */
@@ -302,9 +301,7 @@ int iwildmatch(const char *pattern, const char *text)
 #ifdef WILD_TEST_ITERATIONS
     wildmatch_iteration_count = 0;
 #endif
-    force_lower_case = 1;
-    ret = dowild((const uchar*)pattern, (const uchar*)text, nomore) == TRUE;
-    force_lower_case = 0;
+    ret = dowild((const uchar*)pattern, (const uchar*)text, nomore, 1) == TRUE;
     return ret;
 }
 
@@ -331,7 +328,7 @@ int wildmatch_array(const char *pattern, const char*const *texts, int where)
     if (!text)
 	return FALSE;
 
-    if ((matched = dowild(p, text, a)) != TRUE && where < 0
+    if ((matched = dowild(p, text, a, 0)) != TRUE && where < 0
      && matched != ABORT_ALL) {
 	while (1) {
 	    if (*text == '\0') {
@@ -339,7 +336,7 @@ int wildmatch_array(const char *pattern, const char*const *texts, int where)
 		    return FALSE;
 		continue;
 	    }
-	    if (*text++ == '/' && (matched = dowild(p, text, a)) != FALSE
+	    if (*text++ == '/' && (matched = dowild(p, text, a, 0)) != FALSE
 	     && matched != ABORT_TO_STARSTAR)
 		break;
 	}
