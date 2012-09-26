@@ -366,6 +366,10 @@ Use -f if you really want to add it." >&2
 
 	git config -f .gitmodules submodule."$sm_path".path "$sm_path" &&
 	git config -f .gitmodules submodule."$sm_path".url "$repo" &&
+	if test "$branch"
+	then
+		git config -f .gitmodules submodule."$sm_path".branch $branch
+	fi &&
 	git add --force .gitmodules ||
 	die "$(eval_gettext "Failed to register submodule '\$sm_path'")"
 }
@@ -488,6 +492,13 @@ cmd_init()
 		test -n "$(git config submodule."$name".update)" ||
 		git config submodule."$name".update "$upd" ||
 		die "$(eval_gettext "Failed to register update mode for submodule path '\$sm_path'")"
+
+		# Copy "branch" setting when it is not set yet
+		stb="$(git config -f .gitmodules submodule."$name".branch)"
+		test -z "$stb" ||
+		test -n "$(git config submodule."$name".branch)" ||
+		git config submodule."$name".branch "$stb" ||
+		die "$(eval_gettext "Failed to register branch for submodule path '\$sm_path'")"
 	done
 }
 
@@ -498,6 +509,7 @@ cmd_init()
 #
 cmd_update()
 {
+	echo 'branch is set to ' $branch
 	# parse $args after "submodule ... update".
 	orig_flags=
 	while test $# -ne 0
@@ -623,6 +635,7 @@ Maybe you want to use 'update --init'?")"
 			fi
 
 			# Is this something we just cloned?
+			forcebranchchange=
 			case ";$cloned_modules;" in
 			*";$name;"*)
 				# then there is no local change to integrate
@@ -630,6 +643,7 @@ Maybe you want to use 'update --init'?")"
 			esac
 
 			must_die_on_failure=
+			trackupstreamcommand=true
 			case "$update_module" in
 			rebase)
 				command="git rebase"
@@ -646,11 +660,40 @@ Maybe you want to use 'update --init'?")"
 			*)
 				command="git checkout $subforce -q"
 				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$sm_path'")"
-				say_msg="$(eval_gettext "Submodule path '\$sm_path': checked out '\$sha1'")"
+
+				# Check if we are supposed to set the branch.
+				echo 'branch is ' $branch
+				branch=$(git config submodule."$name".branch)
+				if test "$branch"
+				then
+					# Have git checkout set the branch name. If --force is specified this may result in a branch being reset. 
+					#
+					# If the repo is being checked out for the first time $subforce is set above; we need this special case so
+					# the branch 'master' can be reset.
+					#
+					# This non-force behavior is almost always safe, as either the branch is switched harmlessly, or an error
+					# is thrown. A detached head will be lost, but that is true even without changing the branch. With force
+					# set we get the expected behavior of overwriting data, although of course any lost commits are still in the
+					# reflog.
+					echo $subforce
+					if test "$subforce"
+					then
+						command="$command -B $branch"
+					else
+						# git merge --ff-only master remotes/origin/master
+						command="$command -b $branch"
+					fi
+
+					# Also attempt to make that branch track origin upstream, although we don't abort if part fails.
+					trackupstreamcommand="git branch -q --set-upstream-to=origin/$branch $branch"
+					say_msg="$(eval_gettext "Submodule path '\$sm_path': checked out '\$sha1' and branch set to '\$branch'")"
+				else
+					say_msg="$(eval_gettext "Submodule path '\$sm_path': checked out '\$sha1'")"
+				fi
 				;;
 			esac
 
-			if (clear_local_git_env; cd "$sm_path" && $command "$sha1")
+			if (clear_local_git_env; cd "$sm_path" && $command "$sha1" && ($trackupstreamcommand 2> /dev/null || true))
 			then
 				say "$say_msg"
 			elif test -n "$must_die_on_failure"

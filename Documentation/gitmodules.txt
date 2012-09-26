@@ -33,6 +33,11 @@ submodule.<name>.url::
 	linkgit:git-clone[1] or (if it begins with ./ or ../) a location
 	relative to the superproject's origin repository.
 
+submodule.<name>.branch:
+	When the submodule is checked out for the first time, create a branch
+	rather than leave a detached head. This branch is also set to track the
+	remote origin, if the origin has a branch of the same name.
+
 submodule.<name>.update::
 	Defines what to do when the submodule is updated by the superproject.
 	If 'checkout' (the default), the new commit specified in the

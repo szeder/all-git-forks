@@ -13,7 +13,7 @@ SYNOPSIS
 	      [--reference <repository>] [--] <repository> [<path>]
 'git submodule' [--quiet] status [--cached] [--recursive] [--] [<path>...]
 'git submodule' [--quiet] init [--] [<path>...]
-'git submodule' [--quiet] update [--init] [-N|--no-fetch] [--rebase]
+'git submodule' [--quiet] update [-f|--force] [--init] [-N|--no-fetch] [--rebase]
 	      [--reference <repository>] [--merge] [--recursive] [--] [<path>...]
 'git submodule' [--quiet] summary [--cached|--files] [(-n|--summary-limit) <n>]
 	      [commit] [--] [<path>...]
@@ -153,7 +153,9 @@ registered submodules, and update any nested submodules within.
 If `--force` is specified, the submodule will be checked out (using
 `git checkout --force` if appropriate), even if the commit specified in the
 index of the containing repository already matches the commit checked out in
-the submodule.
+the submodule. Also if a branch aready exists with the same name as the one
+specified by the key submodule.$name.branch it will be reset to the current
+revision.
 
 summary::
 	Show commit summary between the given commit (defaults to HEAD) and
@@ -208,7 +210,10 @@ OPTIONS
 
 -b::
 --branch::
-	Branch of repository to add as submodule.
+	Branch of repository to add as submodule. The branch name is saved in
+	.gitmodules. When the module is checked out the branch will be set
+	to that name, tracking the remote origin if a remote branch of the same
+	name exists.
 
 -f::
 --force::
@@ -218,6 +223,8 @@ OPTIONS
 	switching to a different commit; and always run a checkout operation
 	in the submodule, even if the commit listed in the index of the
 	containing repository matches the commit checked out in the submodule.
+	In addition a branch named in .gitmodules will be reset to a different 
+	revision.
 
 --cached::
 	This option is only valid for status and summary commands.  These
