@@ -568,6 +568,24 @@ int normalize_path_copy(char *dst, const char *src)
 	return 0;
 }
 
+static int normalize_path_callback(struct string_list_item *item, void *cb_data)
+{
+	char buf[PATH_MAX+1];
+	const char *ceil = item->string;
+	int len = strlen(ceil);
+
+	if (len == 0 || len > PATH_MAX || !is_absolute_path(ceil))
+		return 0;
+	if (normalize_path_copy(buf, ceil) < 0)
+		return 0;
+	len = strlen(buf);
+	if (len > 0 && buf[len-1] == '/')
+		buf[--len] = '\0';
+	free(item->string);
+	item->string = xstrdup(buf);
+	return 1;
+}
+
 /*
  * path = Canonical absolute path
  * prefix_list = Colon-separated list of absolute paths
@@ -584,27 +602,19 @@ int normalize_path_copy(char *dst, const char *src)
 int longest_ancestor_length(const char *path, const char *prefix_list)
 {
 	struct string_list prefixes = STRING_LIST_INIT_DUP;
-	char buf[PATH_MAX+1];
 	int i, max_len = -1;
 
 	if (prefix_list == NULL || !strcmp(path, "/"))
 		return -1;
 
 	string_list_split(&prefixes, prefix_list, PATH_SEP, -1);
+	filter_string_list(&prefixes, 0, normalize_path_callback, NULL);
 
 	for (i = 0; i < prefixes.nr; i++) {
 		const char *ceil = prefixes.items[i].string;
 		int len = strlen(ceil);
 
-		if (len == 0 || len > PATH_MAX || !is_absolute_path(ceil))
-			continue;
-		if (normalize_path_copy(buf, ceil) < 0)
-			continue;
-		len = strlen(buf);
-		if (len > 0 && buf[len-1] == '/')
-			buf[--len] = '\0';
-
-		if (!strncmp(path, buf, len) &&
+		if (!strncmp(path, ceil, len) &&
 		    path[len] == '/' &&
 		    len > max_len) {
 			max_len = len;
