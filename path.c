@@ -570,7 +570,7 @@ int normalize_path_copy(char *dst, const char *src)
 
 static int normalize_path_callback(struct string_list_item *item, void *cb_data)
 {
-	char buf[PATH_MAX+1];
+	char buf[PATH_MAX+2];
 	const char *ceil = item->string;
 	int len = strlen(ceil);
 
@@ -579,8 +579,10 @@ static int normalize_path_callback(struct string_list_item *item, void *cb_data)
 	if (normalize_path_copy(buf, ceil) < 0)
 		return 0;
 	len = strlen(buf);
-	if (len > 0 && buf[len-1] == '/')
-		buf[--len] = '\0';
+	if (len == 0 || buf[len-1] != '/') {
+		buf[len++] = '/';
+		buf[len++] = '\0';
+	}
 	free(item->string);
 	item->string = xstrdup(buf);
 	return 1;
@@ -615,9 +617,8 @@ int longest_ancestor_length(const char *path, const char *prefix_list)
 		int len = strlen(ceil);
 
 		if (!strncmp(path, ceil, len) &&
-		    path[len] == '/' &&
-		    len > max_len) {
-			max_len = len;
+		    len - 1 > max_len) {
+			max_len = len - 1;
 		}
 	}
 
