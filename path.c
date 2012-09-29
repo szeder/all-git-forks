@@ -604,23 +604,16 @@ static int normalize_path_callback(struct string_list_item *item, void *cb_data)
 int longest_ancestor_length(const char *path, const char *prefix_list)
 {
 	struct string_list prefixes = STRING_LIST_INIT_DUP;
-	int i, max_len = -1;
+	int max_len;
+	const char *longest_prefix;
 
 	if (prefix_list == NULL || !strcmp(path, "/"))
 		return -1;
 
 	string_list_split(&prefixes, prefix_list, PATH_SEP, -1);
 	filter_string_list(&prefixes, 0, normalize_path_callback, NULL);
-
-	for (i = 0; i < prefixes.nr; i++) {
-		const char *ceil = prefixes.items[i].string;
-		int len = strlen(ceil);
-
-		if (!strncmp(path, ceil, len) &&
-		    len - 1 > max_len) {
-			max_len = len - 1;
-		}
-	}
+	longest_prefix = string_list_longest_prefix(&prefixes, path);
+	max_len = longest_prefix ? strlen(longest_prefix) - 1 : -1;
 
 	string_list_clear(&prefixes, 0);
 	return max_len;
