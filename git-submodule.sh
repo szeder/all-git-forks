@@ -359,7 +359,8 @@ Use -f if you really want to add it." >&2
 		fi
 
 	else
-
+		test ! -d ".git/modules/$sm_name" ||
+		die "$(eval_gettext "Submodule name '\$sm_name' is already used. Please choose another name with the '--name' option.")"
 		module_clone "$sm_path" "$sm_name" "$realrepo" "$reference" || exit
 		(
 			clear_local_git_env
