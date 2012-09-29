@@ -570,21 +570,25 @@ int normalize_path_copy(char *dst, const char *src)
 
 static int normalize_path_callback(struct string_list_item *item, void *cb_data)
 {
-	char buf[PATH_MAX+2];
+	char *buf;
 	const char *ceil = item->string;
-	int len = strlen(ceil);
+	const char *realpath;
+	int len;
 
-	if (len == 0 || len > PATH_MAX || !is_absolute_path(ceil))
+	if (!*ceil || !is_absolute_path(ceil))
 		return 0;
-	if (normalize_path_copy(buf, ceil) < 0)
+	realpath = real_path_if_valid(ceil);
+	if (!realpath)
 		return 0;
-	len = strlen(buf);
+	len = strlen(realpath);
+	buf = xmalloc(len + 2); /* Leave space for possible trailing slash */
+	strcpy(buf, realpath);
 	if (len == 0 || buf[len-1] != '/') {
 		buf[len++] = '/';
-		buf[len++] = '\0';
+		buf[len] = '\0';
 	}
 	free(item->string);
-	item->string = xstrdup(buf);
+	item->string = buf;
 	return 1;
 }
 
