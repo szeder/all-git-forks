@@ -627,7 +627,7 @@ test_expect_success 'submodule add properly re-creates deeper level submodules' 
 	(cd super &&
 	 git reset --hard master &&
 	 rm -rf deeper/ &&
-	 git submodule add ../submodule deeper/submodule
+	 git submodule add --name deeper/submodule2 ../submodule deeper/submodule
 	)
 '
 
