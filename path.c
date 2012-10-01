@@ -12,6 +12,7 @@
  */
 #include "cache.h"
 #include "strbuf.h"
+#include "string-list.h"
 
 static char bad_path[] = "/bad-path/";
 
@@ -567,6 +568,30 @@ int normalize_path_copy(char *dst, const char *src)
 	return 0;
 }
 
+static int normalize_path_callback(struct string_list_item *item, void *cb_data)
+{
+	char *buf;
+	const char *ceil = item->string;
+	const char *realpath;
+	int len;
+
+	if (!*ceil || !is_absolute_path(ceil))
+		return 0;
+	realpath = real_path_if_valid(ceil);
+	if (!realpath)
+		return 0;
+	len = strlen(realpath);
+	buf = xmalloc(len + 2); /* Leave space for possible trailing slash */
+	strcpy(buf, realpath);
+	if (len == 0 || buf[len-1] != '/') {
+		buf[len++] = '/';
+		buf[len] = '\0';
+	}
+	free(item->string);
+	item->string = buf;
+	return 1;
+}
+
 /*
  * path = Canonical absolute path
  * prefix_list = Colon-separated list of absolute paths
@@ -582,32 +607,19 @@ int normalize_path_copy(char *dst, const char *src)
  */
 int longest_ancestor_length(const char *path, const char *prefix_list)
 {
-	char buf[PATH_MAX+1];
-	const char *ceil, *colon;
-	int len, max_len = -1;
+	struct string_list prefixes = STRING_LIST_INIT_DUP;
+	int max_len;
+	const char *longest_prefix;
 
 	if (prefix_list == NULL || !strcmp(path, "/"))
 		return -1;
 
-	for (colon = ceil = prefix_list; *colon; ceil = colon+1) {
-		for (colon = ceil; *colon && *colon != PATH_SEP; colon++);
-		len = colon - ceil;
-		if (len == 0 || len > PATH_MAX || !is_absolute_path(ceil))
-			continue;
-		strlcpy(buf, ceil, len+1);
-		if (normalize_path_copy(buf, buf) < 0)
-			continue;
-		len = strlen(buf);
-		if (len > 0 && buf[len-1] == '/')
-			buf[--len] = '\0';
+	string_list_split(&prefixes, prefix_list, PATH_SEP, -1);
+	filter_string_list(&prefixes, 0, normalize_path_callback, NULL);
+	longest_prefix = string_list_longest_prefix(&prefixes, path);
+	max_len = longest_prefix ? strlen(longest_prefix) - 1 : -1;
 
-		if (!strncmp(path, buf, len) &&
-		    path[len] == '/' &&
-		    len > max_len) {
-			max_len = len;
-		}
-	}
-
+	string_list_clear(&prefixes, 0);
 	return max_len;
 }
 
