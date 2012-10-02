@@ -3,6 +3,7 @@
 #include "string-list.h"
 #include "resolve-undo.h"
 #include "cache-tree.h"
+#include "dir.h"
 
 #define ptr_add(x,y) ((void *)(((char *)(x)) + (y)))
 
@@ -584,7 +585,7 @@ static void resolve_undo_convert_v5(struct index_state *istate,
 static int read_entries(struct index_state *istate, struct directory_entry **de,
 			unsigned long *entry_offset, void **mmap,
 			unsigned long mmap_size, int *nr,
-			unsigned int *foffsetblock)
+			unsigned int *foffsetblock, struct filter_opts *opts)
 {
 	struct cache_entry *head = NULL, *tail = NULL;
 	struct conflict_entry *conflict_queue;
@@ -592,9 +593,11 @@ static int read_entries(struct index_state *istate, struct directory_entry **de,
 	int i;
 
 	conflict_queue = NULL;
-	if (read_conflicts(&conflict_queue, *de, mmap, mmap_size) < 0)
-		return -1;
-	resolve_undo_convert_v5(istate, conflict_queue);
+	if (!opts || opts->read_staged)
+		if (read_conflicts(&conflict_queue, *de, mmap, mmap_size) < 0)
+			return -1;
+	if (!opts || opts->read_resolve_undo)
+		resolve_undo_convert_v5(istate, conflict_queue);
 	for (i = 0; i < (*de)->de_nfiles; i++) {
 		if (read_entry(&ce,
 				*de,
@@ -638,11 +641,18 @@ static int read_entries(struct index_state *istate, struct directory_entry **de,
 					mmap,
 					mmap_size,
 					nr,
-					foffsetblock);
+					foffsetblock,
+					opts);
 		} else {
 			ce = ce_queue_pop(&head);
-			set_index_entry(istate, *nr, ce);
-			(*nr)++;
+			if (opts && opts->pathspec && S_ISGITLINK(ce->ce_mode))
+				strip_trailing_slash_from_submodules(ce, opts->pathspec);
+
+			if (!opts || match_pathspec(opts->pathspec, ce->name,
+					ce_namelen(ce), opts->max_prefix, opts->seen)) {
+				set_index_entry(istate, *nr, ce);
+				(*nr)++;
+			}
 		}
 	}
 	return 0;
@@ -678,7 +688,7 @@ static int read_index_v5(struct index_state *istate, void *mmap, int mmap_size)
 	de = root_directory;
 	while (de)
 		if (read_entries(istate, &de, &entry_offset,
-				&mmap, mmap_size, &nr, &foffsetblock) < 0)
+				&mmap, mmap_size, &nr, &foffsetblock, NULL) < 0)
 			return -1;
 	istate->cache_tree = cache_tree_convert_v5(root_directory);
 	return 0;
@@ -1418,9 +1428,95 @@ static int write_index_v5(struct index_state *istate, int newfd)
 	return ce_flush(newfd);
 }
 
+static int read_index_filtered_v5(struct index_state *istate, struct filter_opts *opts)
+{
+	unsigned long entry_offset;
+	unsigned int dir_offset, dir_table_offset;
+	struct cache_version_header *hdr;
+	struct cache_header *hdr_v5;
+	struct directory_entry *root_directory, *de;
+	int n, i, nr = 0;
+	unsigned int foffsetblock;
+	char *seen;
+	const char **pathspec = NULL;
+
+	hdr = istate->mmap;
+	hdr_v5 = ptr_add(istate->mmap, sizeof(*hdr));
+	istate->version = ntohl(hdr->hdr_version);
+	istate->cache_nr = ntohl(hdr_v5->hdr_nfile);
+	istate->cache_alloc = alloc_nr(istate->cache_nr);
+	istate->cache = xcalloc(istate->cache_alloc, sizeof(struct cache_entry *));
+	istate->initialized = 1;
+
+	/* Skip size of the header + crc sum + size of offsets */
+	dir_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4 + (ntohl(hdr_v5->hdr_ndir) + 1) * 4;
+	dir_table_offset = sizeof(*hdr) + sizeof(*hdr_v5) + 4;
+	root_directory = read_directories(&dir_offset, &dir_table_offset, istate->mmap, istate->mmap_size);
+
+	foffsetblock = dir_offset;
+	entry_offset = ntohl(hdr_v5->hdr_fblockoffset);
+	if (opts->pathspec) {
+		seen = xcalloc(1, ntohl(hdr_v5->hdr_ndir));
+		for (de = root_directory; de; de = de->next)
+			match_pathspec(opts->pathspec, de->pathname, de->de_pathlen, 0, seen);
+		for (n = 0; opts->pathspec[n]; n++)
+			/* just count */;
+		pathspec = xmalloc((n + 1) * sizeof(char *));
+		pathspec[n] = NULL;
+		for (i = 0; i < n; i++) {
+			if (seen[i] == MATCHED_EXACTLY)
+				pathspec[i] = opts->pathspec[i];
+			else {
+				char *super = strdup(opts->pathspec[i]);
+				int len = strlen(super);
+				if (len && super[len - 1] == '/') /* strip trailing / */
+					super[--len] = '\0';
+				while (len && super[len - 1] != '/') /* scan backwards to next / */
+					len--;
+				if (len >= 0)
+					super[len--] = '\0';
+				if (len <= 0) {
+					pathspec = NULL;
+					break;
+				}
+				pathspec[i] = super;
+			}
+		}
+	}
+
+	de = root_directory;
+	while (de) {
+		char *oldpath;
+		if (!pathspec || match_pathspec(pathspec, de->pathname, de->de_pathlen, 0, NULL)) {
+			unsigned int subdir_foffsetblock = de->de_foffset + foffsetblock;
+			unsigned int *off = istate->mmap + subdir_foffsetblock;
+			unsigned long subdir_entry_offset = entry_offset + ntoh_l(*off);
+			oldpath = de->pathname;
+			do {
+				read_entries(istate, &de, &subdir_entry_offset,
+						&istate->mmap, istate->mmap_size, &nr,
+						&subdir_foffsetblock, opts);
+			} while (de && !prefixcmp(de->pathname, oldpath));
+		} else
+			de = de->next;
+	}
+	istate->cache_nr = nr;
+
+	/* Make sure no one writes a partially read index */
+	v5_ops.write_index = NULL;
+	return 0;
+}
+
+static int read_index_full_v5(struct index_state *istate)
+{
+	return read_index_filtered_v5(istate, NULL);
+}
+
 struct index_ops v5_ops = {
 	match_stat_basic,
 	verify_hdr,
 	read_index_v5,
-	write_index_v5
+	write_index_v5,
+	read_index_full_v5,
+	read_index_filtered_v5
 };
