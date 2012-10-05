@@ -355,6 +355,61 @@ static void command(char *cmd, char *arg) {
 	}
 }
 
+int cmd_remote_svn__update(int argc, const char **argv, const char *prefix) {
+	struct commit *svn = lookup_commit_reference_by_name(*(++argv));
+	const char *path = parse_svn_path(svn);
+	struct commit_list *cmts = NULL;
+	struct strbuf author = STRBUF_INIT;
+	struct strbuf ref = STRBUF_INIT;
+	int start = 0;
+
+	/* old setup is svn first, git second */
+	for (;;) {
+		struct commit *git;
+		int rev = parse_svn_revision(svn);
+		if (!rev) break;
+		start = rev;
+		if (svn->parents->next) {
+			git = svn->parents->next->item;
+			git->util = svn;
+			commit_list_insert(git, &cmts);
+		} else {
+			cmts = NULL;
+		}
+		svn = svn->parents->item;
+	}
+
+	svn = NULL;
+
+	/* delete single commit refs, so the tag gets recreated */
+	if (!cmts->next && cmts->item->parents)
+		return 0;
+
+	strbuf_addstr(&ref, *argv);
+	strbuf_setlen(&ref, ref.len - 4);
+	strbuf_addf(&ref, ".%d", start);
+
+	while (cmts) {
+		unsigned char sha1[20];
+		struct commit *git = cmts->item;
+		struct commit *oldsvn = git->util;
+		char *p = strstr(oldsvn->buffer, "\nauthor ") + strlen("\nauthor ");
+
+		strbuf_reset(&author);
+		strbuf_add(&author, p, strcspn(p, "\n"));
+
+		if (write_svn_commit(svn, git, cmt_tree(oldsvn), author.buf, path, parse_svn_revision(oldsvn), sha1))
+			die_errno("write svn commit");
+
+		update_ref("remote-svn", ref.buf, sha1, svn ? svn->object.sha1 : null_sha1, 0, DIE_ON_ERR);
+
+		svn = lookup_commit(sha1);
+		cmts = cmts->next;
+	}
+
+	return 0;
+}
+
 int cmd_remote_svn__helper(int argc, const char **argv, const char *prefix) {
 	struct strbuf buf = STRBUF_INIT;
 
