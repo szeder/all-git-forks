@@ -124,6 +124,7 @@
 /git-remote-ftps
 /git-remote-fd
 /git-remote-ext
+/git-remote-svn--helper
 /git-remote-testgit
 /git-repack
 /git-replace
