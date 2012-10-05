@@ -809,8 +809,11 @@ extern int for_each_abbrev(const char *prefix, each_abbrev_fn, void *);
  * null-terminated string.
  */
 extern int get_sha1_hex(const char *hex, unsigned char *sha1);
+extern int get_md5_hex(const char *hex, unsigned char *md5);
 
 extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
+extern char *md5_to_hex(const unsigned char *md5);
+
 extern int read_ref_full(const char *refname, unsigned char *sha1,
 			 int reading, int *flags);
 extern int read_ref(const char *refname, unsigned char *sha1);

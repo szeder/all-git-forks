@@ -35,10 +35,10 @@ const signed char hexval_table[256] = {
 	 -1, -1, -1, -1, -1, -1, -1, -1,		/* f8-ff */
 };
 
-int get_sha1_hex(const char *hex, unsigned char *sha1)
+static int get_hex(const char *hex, unsigned char *res, int len)
 {
 	int i;
-	for (i = 0; i < 20; i++) {
+	for (i = 0; i < len; i++) {
 		unsigned int val;
 		/*
 		 * hex[1]=='\0' is caught when val is checked below,
@@ -50,13 +50,19 @@ int get_sha1_hex(const char *hex, unsigned char *sha1)
 		val = (hexval(hex[0]) << 4) | hexval(hex[1]);
 		if (val & ~0xff)
 			return -1;
-		*sha1++ = val;
+		*res++ = val;
 		hex += 2;
 	}
 	return 0;
 }
 
-char *sha1_to_hex(const unsigned char *sha1)
+int get_sha1_hex(const char *hex, unsigned char *sha1)
+{ return get_hex(hex, sha1, 20); }
+
+int get_md5_hex(const char *hex, unsigned char *md5)
+{ return get_hex(hex, md5, 16); }
+
+static char *to_hex(const unsigned char *hash, int len)
 {
 	static int bufno;
 	static char hexbuffer[4][50];
@@ -64,8 +70,8 @@ char *sha1_to_hex(const unsigned char *sha1)
 	char *buffer = hexbuffer[3 & ++bufno], *buf = buffer;
 	int i;
 
-	for (i = 0; i < 20; i++) {
-		unsigned int val = *sha1++;
+	for (i = 0; i < len; i++) {
+		unsigned int val = *hash++;
 		*buf++ = hex[val >> 4];
 		*buf++ = hex[val & 0xf];
 	}
@@ -73,3 +79,9 @@ char *sha1_to_hex(const unsigned char *sha1)
 
 	return buffer;
 }
+
+char *sha1_to_hex(const unsigned char *sha1)
+{ return to_hex(sha1, 20); }
+
+char *md5_to_hex(const unsigned char *md5)
+{ return to_hex(md5, 16); }
