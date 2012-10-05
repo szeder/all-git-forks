@@ -26,6 +26,8 @@ struct text_stat {
 	/* NUL, CR, LF and CRLF counts */
 	unsigned nul, cr, lf, crlf;
 
+	unsigned trailing_space;
+
 	/* These are just approximations! */
 	unsigned printable, nonprintable;
 };
@@ -33,6 +35,7 @@ struct text_stat {
 static void gather_stats(const char *buf, unsigned long size, struct text_stat *stats)
 {
 	unsigned long i;
+	unsigned last_trailing_space = 0;
 
 	memset(stats, 0, sizeof(*stats));
 
@@ -45,16 +48,20 @@ static void gather_stats(const char *buf, unsigned long size, struct text_stat *
 			continue;
 		}
 		if (c == '\n') {
+			last_trailing_space = stats->trailing_space;
 			stats->lf++;
 			continue;
 		}
 		if (c == 127)
 			/* DEL */
 			stats->nonprintable++;
-		else if (c < 32) {
+		else if (c <= 32) {
 			switch (c) {
-				/* BS, HT, ESC and FF */
-			case '\b': case '\t': case '\033': case '\014':
+			case '\t': case ' ':
+				stats->trailing_space++;
+				/* fall through */
+				/* BS, ESC and FF */
+			case '\b': case '\033': case '\014':
 				stats->printable++;
 				break;
 			case 0:
@@ -63,9 +70,10 @@ static void gather_stats(const char *buf, unsigned long size, struct text_stat *
 			default:
 				stats->nonprintable++;
 			}
-		}
-		else
+		} else {
+			stats->trailing_space = last_trailing_space;
 			stats->printable++;
+		}
 	}
 
 	/* If file ends with EOF then don't count this EOF as non-printable. */
@@ -236,8 +244,8 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 
 	check_safe_crlf(path, crlf_action, &stats, checksafe);
 
-	/* Optimization: No CR? Nothing to convert, regardless. */
-	if (!stats.cr)
+	/* Optimization: Nothing to convert */
+	if (!stats.cr && !stats.trailing_space && (!len || src[len-1] == '\n'))
 		return 0;
 
 	/*
@@ -251,12 +259,8 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 	if (strbuf_avail(buf) + buf->len < len)
 		strbuf_grow(buf, len - buf->len);
 	dst = buf->buf;
-	if (crlf_action == CRLF_AUTO || crlf_action == CRLF_GUESS) {
-		/*
-		 * If we guessed, we already know we rejected a file with
-		 * lone CR, and we can strip a CR without looking at what
-		 * follow it.
-		 */
+	if (stats.cr == stats.crlf && !stats.trailing_space) {
+		/* Optimised version for the common case. */
 		do {
 			unsigned char c = *src++;
 			if (c != '\r')
@@ -265,11 +269,20 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 	} else {
 		do {
 			unsigned char c = *src++;
-			if (! (c == '\r' && (1 < len && *src == '\n')))
-				*dst++ = c;
+
+			if (c == '\n') {
+				while (dst >= buf->buf && (dst[-1] == ' ' || dst[-1] == '\t' || dst[-1] == '\r'))
+					dst--;
+			}
+
+			*dst++ = c;
 		} while (--len);
+
+		while (dst >= buf->buf && (dst[-1] == ' ' || dst[-1] == '\t' || dst[-1] == '\r'))
+			dst--;
 	}
 	strbuf_setlen(buf, dst - buf->buf);
+	strbuf_complete_line(buf);
 	return 1;
 }
 
