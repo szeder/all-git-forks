@@ -17,7 +17,7 @@
  */
 
 /* Return true iff ch is not allowed in reference names. */
-static inline int bad_ref_char(int ch)
+int bad_ref_char(int ch)
 {
 	if (((unsigned) ch) <= ' ' || ch == 0x7f ||
 	    ch == '~' || ch == '^' || ch == ':' || ch == '\\')
