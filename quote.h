@@ -54,6 +54,8 @@ struct argv_array;
 extern int sq_dequote_to_argv_array(char *arg, struct argv_array *);
 
 extern int unquote_c_style(struct strbuf *, const char *quoted, const char **endp);
+extern size_t quote_c_style_counted(const char *name, ssize_t maxlen,
+                                    struct strbuf *sb, FILE *fp, int no_dq);
 extern size_t quote_c_style(const char *name, struct strbuf *, FILE *, int no_dq);
 extern void quote_two_c_style(struct strbuf *, const char *, const char *, int);
 
