@@ -1,5 +1,6 @@
 #include "remote-svn.h"
 #include "exec_cmd.h"
+#include "refs.h"
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -10,11 +11,59 @@
 #endif
 
 int svndbg = 1;
-static const char *url;
+static const char *url, *relpath;
+static struct strbuf refdir = STRBUF_INIT;
+static struct strbuf uuid = STRBUF_INIT;
 static int verbose = 1;
 static int use_progress;
+static int listrev = INT_MAX;
+static struct svn_proto *proto;
 static struct remote *remote;
 static struct credential defcred;
+static struct refspec *refmap;
+static const char **refmap_str;
+static int refmap_nr, refmap_alloc;
+static struct string_list refs = STRING_LIST_INIT_DUP;
+static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
+
+/* svnref holds all the info we have about an svn branch starting at
+ * start with a given path. This info is stored in a ref in refs/svn
+ * (and an optional .tag). The start may not be valid until an
+ * associated ref is found (svn != NULL) or a copy has been found for
+ * the fetch. Refs are loaded on demand in workers and on the start of
+ * fetch/push in the main process. */
+struct svnref {
+	struct svnref *next;
+
+	const char *path;
+	struct commit *svn;
+	int rev, start;
+
+	unsigned int exists_at_head : 1;
+};
+
+static int config(const char *key, const char *value, void *dummy) {
+	if (!prefixcmp(key, "remote.")) {
+		const char *sub = key + strlen("remote.");
+		if (!prefixcmp(sub, remote->name)) {
+			sub += strlen(remote->name);
+
+			if (!strcmp(sub, ".maxrev")) {
+				listrev = git_config_int(key, value);
+				return 0;
+
+			} else if (!strcmp(sub, ".map")) {
+				if (!value) return -1;
+				ALLOC_GROW(refmap_str, refmap_nr+1, refmap_alloc);
+				refmap_str[refmap_nr++] = xstrdup(value);
+				return 0;
+			}
+		}
+	}
+
+	return git_default_config(key, value, dummy);
+}
+
 
 static void trypause(void) {
 	static int env = -1;
@@ -30,6 +79,132 @@ static void trypause(void) {
 		while (!stat("remote-svn-pause", &st)) {
 			sleep(1);
 		}
+	}
+}
+
+static const char *refpath(const char *s) {
+	static struct strbuf ref = STRBUF_INIT;
+	strbuf_reset(&ref);
+	s += strlen(relpath);
+	if (*s == '/')
+		s++;
+	while (*s) {
+		int ch = *(s++);
+		strbuf_addch(&ref, bad_ref_char(ch) ? '_' : ch);
+	}
+	return ref.buf;
+}
+
+static struct svnref *get_older_ref(struct svnref *r, int rev) {
+	struct svnref *s;
+	for (s = r; s != NULL; s = s->next) {
+		if (rev >= s->start) {
+			return s;
+		}
+	}
+
+	s = xcalloc(1, sizeof(*s));
+	s->path = r->path;
+
+	/* the ref couldn't be found above so it must be older then all
+	 * the existing refs */
+	while (r->next) {
+		r = r->next;
+	}
+
+	r->next = s;
+	return s;
+}
+/* By default assume this is a request for the newest ref that fits. If
+ * this later turns out false, we will split the ref, adding an older
+ * one.
+ */
+static struct svnref *get_ref(const char *path, int rev) {
+	struct string_list_item *item = string_list_insert(&refs, path);
+
+	if (item->util) {
+		return get_older_ref(item->util, rev);
+	} else {
+		struct svnref *r = xcalloc(1, sizeof(*r));
+		r->path = item->string;
+		item->util = r;
+		return r;
+	}
+}
+
+static void do_connect(void) {
+	struct strbuf urlb = STRBUF_INIT;
+	strbuf_addstr(&urlb, url);
+
+	die("don't know how to handle url %s", url);
+
+	if (prefixcmp(url, urlb.buf))
+		die("server returned different url (%s) then expected (%s)", urlb.buf, url);
+
+	relpath = url + urlb.len;
+	strbuf_addf(&refdir, "refs/svn/%s", uuid.buf);
+
+	strbuf_release(&urlb);
+}
+
+static void add_list_dir(const char *path) {
+	char *ref = apply_refspecs(refmap, refmap_nr, refpath(path));
+	struct string_list_item *item = string_list_insert(&path_for_ref, ref);
+	struct svnref *r = get_ref(path, listrev);
+	r->exists_at_head = 1;
+	item->util = (void*) r->path;
+	printf("? %s\n", ref);
+}
+
+static void list(void) {
+	int i, j, latest;
+	latest = proto->get_latest();
+	listrev = min(latest, listrev);
+
+	printf("@refs/heads/master HEAD\n");
+
+	if (!listrev)
+		return;
+
+	for (i = 0; i < refmap_nr; i++) {
+		struct strbuf buf = STRBUF_INIT;
+
+		strbuf_addstr(&buf, relpath);
+
+		if (*refmap[i].src) {
+			strbuf_addch(&buf, '/');
+			strbuf_addstr(&buf, refmap[i].src);
+			clean_svn_path(&buf);
+		}
+
+		if (refmap[i].pattern) {
+			struct string_list dirs = STRING_LIST_INIT_DUP;
+			char *after = strchr(refmap[i].src, '*') + 1;
+			int len = strrchr(buf.buf, '*') - buf.buf - 1;
+
+			strbuf_setlen(&buf, len);
+			proto->list(buf.buf, listrev, &dirs);
+
+			for (j = 0; j < dirs.nr; j++) {
+				if (!*dirs.items[j].string)
+					continue;
+
+				strbuf_setlen(&buf, len);
+				strbuf_addstr(&buf, dirs.items[j].string);
+				strbuf_addstr(&buf, after);
+
+				if (!*after || proto->isdir(buf.buf, listrev)) {
+					add_list_dir(buf.buf);
+				}
+			}
+
+			string_list_clear(&dirs, 0);
+
+		} else if (proto->isdir(buf.buf, listrev)) {
+			add_list_dir(buf.buf);
+		}
+
+		strbuf_release(&buf);
 	}
 }
 
@@ -66,6 +241,14 @@ static int command(char *cmd, char *arg) {
 			svndbg = verbose;
 		}
 
+	} else if (!strcmp(cmd, "list")) {
+		if (!strcmp(next_arg(arg, &arg), "for-push")) {
+			credential_fill(&defcred);
+		}
+		do_connect();
+		list();
+		printf("\n");
+
 	} else if (*cmd) {
 		die("unexpected command %s", cmd);
 	}
@@ -96,6 +279,8 @@ int main(int argc, const char **argv) {
 		die("no remote url");
 	}
 
+	git_config(&config, NULL);
+
 	/* svn commits are always in UTC, try and match them */
 	setenv("TZ", "", 1);
 
@@ -105,6 +290,15 @@ int main(int argc, const char **argv) {
 
 	credential_init(&defcred);
 	credential_from_url(&defcred, url);
+
+	if (refmap_nr) {
+		refmap = parse_fetch_refspec(refmap_nr, refmap_str);
+	} else {
+		refmap = xcalloc(1, sizeof(*refmap));
+		refmap->src = (char*) "";
+		refmap->dst = (char*) "refs/heads/master";
+		refmap_nr = 1;
+	}
 
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
 		char *arg = buf.buf;
