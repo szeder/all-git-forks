@@ -487,6 +487,45 @@ void remove_marked_cache_entries(struct index_state *istate)
 	istate->cache_nr = j;
 }
 
+int remove_path_from_index(struct index_state *idx, const char *path) {
+	int ret = 0;
+	int i = index_name_pos(idx, path, strlen(path));
+	struct strbuf buf = STRBUF_INIT;
+
+	if (i >= 0) {
+		/* file */
+		cache_tree_invalidate_path(idx->cache_tree, path);
+		remove_index_entry_at(idx, i);
+		return 0;
+	}
+
+	/* we've got to re-lookup the path as a < a.c < a/c */
+	strbuf_addstr(&buf, path);
+	strbuf_addch(&buf, '/');
+	i = -index_name_pos(idx, buf.buf, buf.len) - 1;
+
+	/* directory, index_name_pos returns -first-1
+	 * where first is the position the entry would
+	 * be added at, and the cache is sorted */
+	while (i < idx->cache_nr) {
+		struct cache_entry* ce = idx->cache[i];
+		if (ce_namelen(ce) < buf.len) break;
+		if (memcmp(ce->name, buf.buf, buf.len)) break;
+
+		ce->ce_flags |= CE_REMOVE;
+		i++;
+		ret++;
+	}
+
+	strbuf_release(&buf);
+
+	if (!ret) return -1;
+
+	cache_tree_invalidate_path(idx->cache_tree, path);
+	remove_marked_cache_entries(idx);
+	return 0;
+}
+
 int remove_file_from_index(struct index_state *istate, const char *path)
 {
 	int pos = index_name_pos(istate, path, strlen(path));
