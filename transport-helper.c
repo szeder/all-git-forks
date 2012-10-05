@@ -860,6 +860,8 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 		return transport->get_refs_list(transport, for_push);
 	}
 
+	standard_options(transport);
+
 	if (data->push && for_push)
 		write_str_in_full(helper->in, "list for-push\n");
 	else
