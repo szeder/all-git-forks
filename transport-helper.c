@@ -23,7 +23,8 @@ struct helper_data {
 		option : 1,
 		push : 1,
 		connect : 1,
-		no_disconnect_req : 1;
+		no_disconnect_req : 1,
+		fetch_unknown : 1;
 	char *export_marks;
 	char *import_marks;
 	/* These go from remote name (as in "list") to private name */
@@ -187,6 +188,8 @@ static struct child_process *get_helper(struct transport *transport)
 			refspecs[refspec_nr++] = xstrdup(capname + strlen("refspec "));
 		} else if (!strcmp(capname, "connect")) {
 			data->connect = 1;
+		} else if (!strcmp(capname, "fetch-unknown")) {
+			data->fetch_unknown = 1;
 		} else if (!prefixcmp(capname, "export-marks ")) {
 			struct strbuf arg = STRBUF_INIT;
 			strbuf_addstr(&arg, "--export-marks=");
@@ -355,6 +358,7 @@ static int fetch_with_fetch(struct transport *transport,
 	sendline(data, &buf);
 
 	while (1) {
+		unsigned char sha1[20];
 		recvline(data, &buf);
 
 		if (!prefixcmp(buf.buf, "lock ")) {
@@ -363,11 +367,21 @@ static int fetch_with_fetch(struct transport *transport,
 				warning("%s also locked %s", data->name, name);
 			else
 				transport->pack_lockfile = xstrdup(name);
-		}
-		else if (!buf.len)
+
+		} else if (!prefixcmp(buf.buf, "fetched ") && !get_sha1_hex(buf.buf + strlen("fetched "), sha1)) {
+			const char *name = buf.buf + strlen("fetched ") + 41;
+			for (i = 0; i < nr_heads; i++) {
+				struct ref *posn = to_fetch[i];
+				if (!strcmp(posn->name, name)) {
+					hashcpy(posn->old_sha1, sha1);
+				}
+			}
+
+		} else if (!buf.len) {
 			break;
-		else
+		} else {
 			warning("%s unexpectedly said: '%s'", data->name, buf.buf);
+		}
 	}
 	strbuf_release(&buf);
 	return 0;
