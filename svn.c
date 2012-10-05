@@ -1,9 +1,152 @@
 #include "svn.h"
+#include "commit.h"
+#include "attr.h"
+#include "cache-tree.h"
+#include "unpack-trees.h"
 #include <zlib.h>
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
+
+static const char *cmt_to_hex(struct commit *c) {
+	return sha1_to_hex(c ? c->object.sha1 : null_sha1);
+}
+
+static const unsigned char *cmt_tree(struct commit *c) {
+	if (parse_commit(c))
+		die("invalid commit %s", cmt_to_hex(c));
+	return c->tree->object.sha1;
+}
+
+void svn_checkout_index(struct index_state *idx, struct commit *c) {
+	if (c && idx->cache_tree
+		&& cache_tree_fully_valid(idx->cache_tree)
+		&& !hashcmp(idx->cache_tree->sha1, cmt_tree(c)))
+	{
+		return;
+	}
+
+	discard_index(idx);
+
+	if (c) {
+		struct unpack_trees_options op;
+		struct tree_desc desc;
+
+		if (parse_commit(c) || parse_tree(c->tree))
+			die("invalid commit %s", cmt_to_hex(c));
+
+		memset(&op, 0, sizeof(op));
+		op.src_index = idx;
+		op.dst_index = idx;
+		op.index_only = 1;
+
+		init_tree_desc(&desc, c->tree->buffer, c->tree->size);
+		unpack_trees(1, &desc, &op);
+	}
+
+	/* force a reset of the attr stack */
+	if (idx == &the_index) {
+		git_attr_set_direction(GIT_ATTR_INDEX, NULL);
+		git_attr_set_direction(GIT_ATTR_INDEX, idx);
+	}
+}
+
+/* cleans the path to how remote-svn uses paths. Either empty or:
+ * 1. Leading /
+ * 2. No trailing /
+ * 3. No //
+ */
+void clean_svn_path(struct strbuf *b) {
+	char* p;
+	while (b->len && b->buf[0] == '/') {
+		strbuf_remove(b, 0, 1);
+	}
+
+	while ((p = strstr(b->buf, "//")) != NULL) {
+		strbuf_remove(b, p - b->buf, 1);
+	}
+
+	while (b->len && b->buf[b->len-1] == '/') {
+		strbuf_setlen(b, b->len-1);
+	}
+
+	if (b->len) {
+		strbuf_insert(b, 0, "/", 1);
+	}
+}
+
+int parse_svn_revision(struct commit* c) {
+	char *p;
+
+	if (!c) return 0;
+	if (parse_commit(c)) goto err;
+
+	p = strstr(c->buffer, "\nrevision ");
+	if (!p) goto err;
+	p += strlen("\nrevision ");
+
+	return atoi(p);
+err:
+	die("invalid svn commit %s", cmt_to_hex(c));
+}
+
+const char *parse_svn_path(struct commit* c) {
+	static struct strbuf buf = STRBUF_INIT;
+	char *p;
+
+	if (!c) return NULL;
+	if (parse_commit(c)) goto err;
+
+	p = strstr(c->buffer, "\npath ");
+	if (!p) goto err;
+	p += strlen("\npath ");
+
+	strbuf_reset(&buf);
+	strbuf_add(&buf, p, strcspn(p, "\n"));
+	clean_svn_path(&buf);
+	return buf.buf;
+err:
+	die("invalid svn commit %s", cmt_to_hex(c));
+}
+
+struct commit* svn_commit(struct commit *c) {
+	if (parse_commit(c))
+		die("invalid svn commit %s", cmt_to_hex(c));
+	return c->parents ? c->parents->item : NULL;
+}
+
+struct commit* svn_parent(struct commit* c) {
+	if (parse_commit(c))
+		die("invalid svn commit %s", cmt_to_hex(c));
+	return c->parents && c->parents->next ? c->parents->next->item : NULL;
+}
+
+int write_svn_commit(
+	struct commit *svn, struct commit *git,
+	const unsigned char *tree, const char *ident,
+	const char *path, int rev, unsigned char *ret)
+{
+	int err;
+	struct strbuf buf = STRBUF_INIT;
+	strbuf_addf(&buf, "tree %s\nparent %s\n",
+			sha1_to_hex(tree), cmt_to_hex(git));
+
+	if (svn)
+		strbuf_addf(&buf, "parent %s\n", cmt_to_hex(svn));
+
+	strbuf_addf(&buf,
+		"author %s\n"
+		"committer %s\n"
+		"path %s\n"
+		"revision %d\n\n",
+		ident, ident, path, rev);
+
+	err = write_sha1_file(buf.buf, buf.len, "commit", ret);
+	strbuf_release(&buf);
+	return err;
+}
+
 
 #define MAX_VARINT_LEN 9
 
