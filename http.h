@@ -90,6 +90,7 @@ extern void http_init(struct remote *remote, const char *url,
 		      int proactive_auth);
 extern void http_cleanup(void);
 
+extern struct credential http_auth;
 extern int active_requests;
 extern int http_is_verbose;
 extern size_t http_post_buffer;
