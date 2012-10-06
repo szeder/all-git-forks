@@ -1,6 +1,7 @@
 #include "remote-svn.h"
 #include "exec_cmd.h"
 #include "refs.h"
+#include "progress.h"
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -20,11 +21,18 @@ static int listrev = INT_MAX;
 static struct svn_proto *proto;
 static struct remote *remote;
 static struct credential defcred;
+static struct progress *progress;
 static struct refspec *refmap;
 static const char **refmap_str;
 static int refmap_nr, refmap_alloc;
 static struct string_list refs = STRING_LIST_INIT_DUP;
 static struct string_list path_for_ref = STRING_LIST_INIT_NODUP;
+
+struct svn_entry {
+	struct svn_entry *next;
+	char *ident, *msg;
+	int mlen, rev;
+};
 
 /* svnref holds all the info we have about an svn branch starting at
  * start with a given path. This info is stored in a ref in refs/svn
@@ -39,7 +47,15 @@ struct svnref {
 	struct commit *svn;
 	int rev, start;
 
+	struct svn_entry *cmts, *cmts_last;
+	struct svnref *copysrc, *first_copier, *next_copier;
+	int logrev, copyrev;
+
 	unsigned int exists_at_head : 1;
+	unsigned int cmt_log_started : 1;
+	unsigned int cmt_log_finished : 1;
+	unsigned int need_copysrc_log : 1;
+	unsigned int copy_modified : 1;
 };
 
 static int config(const char *key, const char *value, void *dummy) {
@@ -83,6 +99,12 @@ static void trypause(void) {
 			sleep(1);
 		}
 	}
+}
+
+static void *map_lookup(struct string_list *list, const char *key) {
+	struct string_list_item *item;
+	item = string_list_lookup(list, key);
+	return item ? item->util : NULL;
 }
 
 static const char *refpath(const char *s) {
@@ -134,6 +156,47 @@ static struct svnref *get_ref(const char *path, int rev) {
 		return r;
 	}
 }
+
+static void set_ref_start(struct svnref *r, int start) {
+	struct svnref *s;
+
+	if (r->start == start)
+		return;
+
+	if (r->start) {
+		s = xcalloc(1, sizeof(*s));
+		s->path = r->path;
+		s->start = r->start;
+		s->svn = r->svn;
+		s->rev = r->rev;
+		s->next = r->next;
+		r->next = s;
+	}
+
+	r->svn = NULL;
+	r->rev = 0;
+	r->start = start;
+}
+
+static int load_ref_cb(const char* refname, const unsigned char* sha1, int flags, void* cb_data) {
+	struct commit *svn;
+	struct svnref *r;
+	const char *ext = strrchr(refname, '.');
+	int rev;
+
+	if (!ext || !strcmp(ext, ".tag"))
+		return 0;
+
+	svn = lookup_commit(sha1);
+	rev = parse_svn_revision(svn);
+	r = get_ref(parse_svn_path(svn), rev);
+	set_ref_start(r, atoi(ext + 1));
+	r->rev = rev;
+	r->svn = svn;
+
+	return 0;
+}
+
 
 
 
@@ -289,6 +352,9 @@ static void add_list_dir(const char *path) {
 
 static void list(void) {
 	int i, j, latest;
+
+	for_each_ref_in(refdir.buf, &load_ref_cb, NULL);
+
 	latest = proto->get_latest();
 	listrev = min(latest, listrev);
 
@@ -339,6 +405,184 @@ static void list(void) {
 	}
 }
 
+
+
+
+
+
+/* logs may appear multiple times in the the log list if there revision
+ * gets expanded
+ */
+static struct svnref **logs;
+static int log_nr, log_alloc;
+static int cmts_to_fetch;
+
+static void request_log(struct svnref *r, int rev) {
+	if (rev <= r->logrev)
+		return;
+
+	if (!r->logrev) {
+		ALLOC_GROW(logs, log_nr+1, log_alloc);
+		logs[log_nr++] = r;
+	} else if (r->cmt_log_finished) {
+		r->cmt_log_started = 0;
+	}
+
+	r->logrev = rev;
+}
+
+int next_log(struct svn_log *l) {
+	int i;
+	for (i = 0; i < log_nr; i++) {
+		struct svnref *r = logs[i];
+
+		if (r->logrev <= r->rev)
+			continue;
+
+		if (!r->cmt_log_started) {
+			memset(l, 0, sizeof(*l));
+			l->ref = r;
+			l->path = r->path;
+			/* include the last revision we have on disk, so
+			 * that we can distinguish a replace in the
+			 * following commit */
+			if (r->cmts_last) {
+				l->start = r->cmts_last->rev;
+			} else if (r->rev) {
+				l->start = r->rev;
+			} else {
+				l->start = 1;
+			}
+			l->start = r->rev ? r->rev : 1;
+			l->end = r->logrev;
+			l->get_copysrc = 0;
+			r->cmt_log_started = 1;
+			return 0;
+		}
+
+		if (r->need_copysrc_log) {
+			memset(l, 0, sizeof(*l));
+			l->ref = r;
+			l->path = r->path;
+			l->start = r->start;
+			l->end = r->start;
+			l->get_copysrc = 1;
+			l->copy_modified = 0;
+			r->need_copysrc_log = 0;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+void cmt_read(struct svn_log *l, int rev, const char *author, const char *time, const char *msg) {
+	const char *ident = svn_to_ident(author, time);
+	int ilen = strlen(ident), mlen = strlen(msg);
+	struct svn_entry *e;
+
+	e = malloc(sizeof(*e) + ilen + 1 + mlen + 1);
+	e->ident = (char*) (e + 1);
+	e->msg = e->ident + ilen + 1;
+	e->mlen = mlen;
+	e->rev = rev;
+
+	memcpy(e->ident, ident, ilen + 1);
+	memcpy(e->msg, msg, mlen + 1);
+
+	e->next = l->cmts;
+	l->cmts = e;
+	if (!l->cmts_last)
+		l->cmts_last = e;
+
+	display_progress(progress, ++cmts_to_fetch);
+}
+
+void log_read(struct svn_log* l) {
+	struct svnref *r = l->ref;
+
+	if (!l->get_copysrc) {
+		if (!r->cmt_log_started || !l->cmts)
+			die("bug: unexpected log");
+
+		r->need_copysrc_log = 0;
+
+		if (l->cmts->rev > l->start || !r->start) {
+			struct svnref *c, *next;
+
+			/* the log stopped early so we need to find the
+			 * copy src */
+			set_ref_start(r, l->cmts->rev);
+			r->need_copysrc_log = 1;
+			r->cmts = l->cmts;
+			r->cmts_last = l->cmts_last;
+
+			/* this ref may not cover all the copiers,
+			 * rebuild the copy list moving some of them to
+			 * an older ref */
+			c = r->first_copier;
+			r->first_copier = NULL;
+			while (c != NULL) {
+				c->copysrc = get_older_ref(r, c->copyrev);
+
+				next = c->next_copier;
+				c->next_copier = c->copysrc->first_copier;
+				c->copysrc->first_copier = c;
+
+				request_log(c->copysrc, c->copyrev);
+
+				c = next;
+			}
+
+		} else {
+			/* dump the extra commit that is a copy of the
+			 * last commit of the previous log */
+			struct svn_entry *next = l->cmts->next;
+
+			if (next && r->cmts_last) {
+				r->cmts_last->next = next;
+				r->cmts_last = l->cmts_last;
+			} else if (next) {
+				r->cmts = next;
+				r->cmts_last = l->cmts_last;
+			}
+
+			display_progress(progress, --cmts_to_fetch);
+		}
+
+		if (l->end < r->logrev) {
+			/* in the interim another ref has required more commits */
+			r->cmt_log_started = 0;
+		} else {
+			r->cmt_log_finished = 1;
+		}
+
+	} else {
+		r->copyrev = l->copyrev;
+		r->copy_modified = l->copy_modified;
+
+		if (l->copyrev) {
+			r->copysrc = get_ref(l->copysrc, l->copyrev);
+			r->next_copier = r->copysrc->first_copier;
+			r->copysrc->first_copier = r;
+			request_log(r->copysrc, l->copyrev);
+		}
+	}
+}
+
+static void read_logs(void) {
+	if (use_progress)
+		progress = start_progress("Counting commits", 0);
+
+	proto->read_logs();
+	stop_progress(&progress);
+}
+
+
+
+
+
+
 static char* next_arg(char *arg, char **endp) {
 	char *p;
 	arg += strspn(arg, " ");
@@ -349,8 +593,28 @@ static char* next_arg(char *arg, char **endp) {
 }
 
 static int command(char *cmd, char *arg) {
-	if (!strcmp(cmd, "capabilities")) {
+	if (!strcmp(cmd, "") && log_nr) {
+		read_logs();
+		printf("\n");
+		return 1;
+
+	} else if (!strcmp(cmd, "fetch")) {
+		char *ref, *path;
+		struct svnref *r;
+
+		next_arg(arg, &arg); /* sha1 */
+		ref = next_arg(arg, &arg);
+		path = map_lookup(&path_for_ref, strcmp(ref, "HEAD") ? ref : "refs/heads/master");
+
+		if (!path)
+			die("unexpected fetch ref %s", ref);
+
+		r = get_ref(path, listrev);
+		request_log(r, listrev);
+
+	} else if (!strcmp(cmd, "capabilities")) {
 		printf("option\n");
+		printf("fetch\n");
 		printf("\n");
 
 	} else if (!strcmp(cmd, "option")) {
