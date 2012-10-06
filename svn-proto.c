@@ -3,6 +3,14 @@
 #include "quote.h"
 #include <openssl/md5.h>
 
+#ifndef NO_PTHREADS
+#include <pthread.h>
+static pthread_mutex_t lock;
+#else
+#define pthread_mutex_lock(x)
+#define pthread_mutex_unlock(x)
+#endif
+
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
@@ -297,6 +305,32 @@ static int read_success(struct conn *c) {
 	return ret;
 }
 
+static int read_done(struct conn *c) {
+	const char* s = read_word(c);
+	if (!s || strcmp(s, "done"))
+		return -1;
+	read_newline(c);
+	return 0;
+}
+
+/* returns 0 if the list is missing or empty (and skips over it), 1 if
+ * its present and has values */
+static int have_optional(struct conn *c) {
+	if (read_list(c))
+		return 0;
+	for (;;) {
+		int ch = readc(c);
+		if (ch == ')') {
+			if (svndbg >= 2)
+				strbuf_addstr(&c->indbg, " )");
+			return 0;
+		} else if (ch != ' ' && ch != '\n') {
+			unreadc(c);
+			return 1;
+		}
+	}
+}
+
 static void cram_md5(struct conn *c, const char* user, const char* pass) {
 	const char *s;
 	unsigned char hash[16];
@@ -504,6 +538,135 @@ static void svn_list(const char *path, int rev, struct string_list *dirs) {
 	strbuf_release(&buf);
 }
 
+static int log_worker(struct conn *c) {
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf author = STRBUF_INIT;
+	struct strbuf time = STRBUF_INIT;
+	struct strbuf msg = STRBUF_INIT;
+	struct svn_log l;
+	size_t plen;
+	int ret;
+
+	pthread_mutex_lock(&lock);
+	ret = next_log(&l);
+	pthread_mutex_unlock(&lock);
+
+	if (ret) return ret;
+
+	plen = strlen(l.path);
+	do_connect(c, NULL);
+
+	sendf(c, "( log ( ( %d:%s ) " /* (path...) */
+		"( %d ) ( %d ) " /* start/end revno */
+		"%s true " /* changed-paths strict-node */
+		") )\n",
+		(int) plen,
+		l.path,
+		l.end,
+		l.start,
+		l.get_copysrc ? "true" : "false"
+	     );
+
+	if (read_success(c)) goto err;
+
+	/* svn log reply is of the form
+	 * ( ( ( n:changed-path A|D|R|M ( n:copy-path copy-rev ) ) ... ) rev n:author n:date n:message )
+	 * ....
+	 * done
+	 * ( success ( ) )
+	 */
+
+	for (;;) {
+		/* start of log entry */
+		if (read_list(c)) {
+			if (read_done(c)) goto err;
+			if (read_success(c)) goto err;
+			break;
+		}
+
+		/* start changed path entries */
+		if (read_list(c)) goto err;
+
+		while (l.get_copysrc && !read_list(c)) {
+			/* path A|D|R|M [copy-path copy-rev] */
+			if (read_string(c, &name)) goto err;
+			read_word(c);
+
+			clean_svn_path(&name);
+
+			if (name.len > plen && !memcmp(name.buf, l.path, plen)) {
+				l.copy_modified = 1;
+
+			} else if (name.len <= plen
+				&& !memcmp(name.buf, l.path, name.len)
+				&& have_optional(c))
+			{
+				struct strbuf copy = STRBUF_INIT;
+				int64_t copyrev;
+
+				/* copy-path, copy-rev */
+				if (read_string(c, &copy)) goto err;
+				copyrev = read_number(c);
+				if (copyrev <= 0 || copyrev > INT_MAX) goto err;
+				read_end(c);
+
+				clean_svn_path(&copy);
+				strbuf_addstr(&copy, l.path + name.len);
+
+				l.copysrc = strbuf_detach(&copy, NULL);
+				l.copyrev = (int) copyrev;
+			}
+
+			read_end(c);
+		}
+
+		/* end of changed path entries */
+		read_end(c);
+
+		if (!l.get_copysrc) {
+			/* rev number */
+			int64_t rev = read_number(c);
+			if (rev <= 0) goto err;
+
+			/* author */
+			if (read_list(c)) goto err;
+			read_string(c, &author);
+			read_end(c);
+
+			/* timestamp */
+			if (read_list(c)) goto err;
+			read_string(c, &time);
+			read_end(c);
+
+			/* log message */
+			if (read_list(c)) goto err;
+			read_string(c, &msg);
+			read_end(c);
+
+			pthread_mutex_lock(&lock);
+			cmt_read(&l, rev, author.buf, time.buf, msg.buf);
+			pthread_mutex_unlock(&lock);
+		}
+
+		read_end(c);
+		read_newline(c);
+	}
+
+	pthread_mutex_lock(&lock);
+	log_read(&l);
+	pthread_mutex_unlock(&lock);
+
+	strbuf_release(&name);
+	strbuf_release(&author);
+	strbuf_release(&time);
+	strbuf_release(&msg);
+	return 0;
+
+err:
+	die("malformed log");
+}
+
+
 static void init_connection(struct conn *c) {
 	memset(c, 0, sizeof(*c));
 	c->fd = -1;
@@ -512,10 +675,57 @@ static void init_connection(struct conn *c) {
 	strbuf_init(&c->word, 0);
 }
 
+typedef int (*worker_fn)(struct conn*);
+
+#ifndef NO_PTHREADS
+static void *run_worker(void *data) {
+	worker_fn fn = data;
+	struct conn c;
+	init_connection(&c);
+
+	while (!fn(&c)) {
+	}
+
+	strbuf_release(&c.word);
+	strbuf_release(&c.indbg);
+	strbuf_release(&c.buf);
+	close(c.fd);
+
+	return NULL;
+}
+#endif
+
+static void spawn_workers(worker_fn fn) {
+#ifndef NO_PTHREADS
+	int i;
+	pthread_t *threads = malloc((svn_max_requests - 1) * sizeof(threads[0]));
+	pthread_mutex_init(&lock, NULL);
+	for (i = 0; i < svn_max_requests-1; i++) {
+		pthread_create(&threads[i], NULL, &run_worker, fn);
+	}
+#endif
+
+	while (!fn(&main_connection)) {
+	}
+
+#ifndef NO_PTHREADS
+	for (i = 0; i < svn_max_requests-1; i++) {
+		pthread_join(threads[i], NULL);
+	}
+	pthread_mutex_destroy(&lock);
+	free(threads);
+#endif
+}
+
+static void svn_read_logs(void) {
+	spawn_workers(&log_worker);
+}
+
 struct svn_proto proto_svn = {
 	&svn_get_latest,
 	&svn_list,
 	&svn_isdir,
+	&svn_read_logs,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {

@@ -20,6 +20,7 @@
 #define MAX_CMTS_PER_WORKER 1000
 
 int svndbg = 1;
+int svn_max_requests = 1;
 static const char *url, *relpath, *authors_file, *empty_log_message;
 static struct strbuf refdir = STRBUF_INIT;
 static struct strbuf uuid = STRBUF_INIT;
@@ -84,6 +85,10 @@ static int config(const char *key, const char *value, void *dummy) {
 
 	} else if (!strcmp(key, "svn.emptymsg")) {
 		return git_config_string(&empty_log_message, key, value);
+
+	} else if (!strcmp(key, "svn.maxrequests")) {
+		svn_max_requests = git_config_int(key, value);
+		return 0;
 
 	} else if (!strcmp(key, "svn.authors")) {
 		return git_config_string(&authors_file, key, value);

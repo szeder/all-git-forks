@@ -7,6 +7,7 @@
 #include "svn.h"
 
 extern int svndbg;
+extern int svn_max_requests;
 
 void arg_quote(struct strbuf *buf, const char *arg);
 
