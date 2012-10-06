@@ -1034,6 +1034,45 @@ err:
 	die("commit failed");
 }
 
+static void svn_mkdir(const char *p) {
+	struct conn *c = &main_connection;
+	int dir = change_dir(p);
+	sendf(c, "( add-dir ( %d:%s 3:d%02X 3:d%02X ( ) ) )\n",
+			(int) strlen(p+1), p+1,
+			dir, dir+1);
+
+	dir_changed(++dir, p);
+}
+
+static void svn_send_file(const char *path, struct strbuf *diff, int create) {
+	struct conn *c = &main_connection;
+	int dir = change_dir(path);
+	size_t n = 0;
+
+	sendf(c, "( %s ( %d:%s 3:d%02X 1:f ( ) ) )\n",
+		create ? "add-file" : "open-file",
+		(int) strlen(path)-1, path+1, dir);
+
+	sendf(c, "( apply-textdelta ( 1:f ( ) ) )\n");
+
+	while (n < diff->len) {
+		size_t sz = min(diff->len - n, 64*1024);
+
+		strbuf_reset(&c->buf);
+		strbuf_addf(&c->buf, "( textdelta-chunk ( 1:f %d:", (int) sz);
+		strbuf_add(&c->buf, diff->buf + n, sz);
+		strbuf_addstr(&c->buf, " ) )\n");
+
+		sendbuf(c);
+		n += sz;
+	}
+
+	sendf(c, "( textdelta-end ( 1:f ) )\n");
+	sendf(c, "( close-file ( 1:f ( ) ) )\n");
+}
+
+
+
 struct svn_proto proto_svn = {
 	&svn_get_latest,
 	&svn_list,
@@ -1042,6 +1081,9 @@ struct svn_proto proto_svn = {
 	&svn_read_updates,
 	&svn_start_commit,
 	&svn_finish_commit,
+	&svn_mkdir,
+	&svn_send_file,
+	&svn_delete,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {

@@ -69,6 +69,22 @@ test_git_date () {
 	test "$commit_date" = "$date"
 }
 
+test_svn_subject () {
+	subject="$1"
+	revision=`test -n "$2" && echo "-r $2"`
+	commit_subject="`svn_cmd log -l 1 --xml $revision | grep '<msg>' | sed -re 's#<msg>(.*)#\1#g' | sed -re 's#(.*)</msg>#\1#g'`"
+	echo test_svn_subject "$commit_subject" "$subject"
+	test "$commit_subject" = "$subject"
+}
+
+test_svn_author () {
+	author="$1"
+	revision=`test -n "$2" && echo "-r $2"`
+	commit_author="`svn_cmd log -l 1 --xml $revision | grep '<author>' | sed -re 's#<author>(.*)</author>#\1#g'`"
+	echo test_svn_author "$commit_author" "$author"
+	test "$commit_author" = "$author"
+}
+
 show_ref () {
 	(git show-ref -s --head $1 | head -n 1) || echo $1
 }
