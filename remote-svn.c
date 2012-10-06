@@ -2,6 +2,8 @@
 #include "exec_cmd.h"
 #include "refs.h"
 #include "progress.h"
+#include "quote.h"
+#include "run-command.h"
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -10,6 +12,8 @@
 #ifndef max
 #define max(a,b) ((a) < (b) ? (b) : (a))
 #endif
+
+#define MAX_CMTS_PER_WORKER 1000
 
 int svndbg = 1;
 static const char *url, *relpath, *authors_file;
@@ -50,6 +54,8 @@ struct svnref {
 	struct svn_entry *cmts, *cmts_last;
 	struct svnref *copysrc, *first_copier, *next_copier;
 	int logrev, copyrev;
+
+	struct string_list gitrefs;
 
 	unsigned int exists_at_head : 1;
 	unsigned int cmt_log_started : 1;
@@ -105,6 +111,25 @@ static void *map_lookup(struct string_list *list, const char *key) {
 	struct string_list_item *item;
 	item = string_list_lookup(list, key);
 	return item ? item->util : NULL;
+}
+
+static const char *refname(struct svnref *r) {
+	static struct strbuf ref[2] = {STRBUF_INIT, STRBUF_INIT};
+	static int bufnr;
+
+	struct strbuf *b = &ref[bufnr++ & 1];
+	const char *path = r->path;
+
+	strbuf_reset(b);
+	strbuf_add(b, refdir.buf, refdir.len);
+
+	while (*path) {
+		int ch = *(path++);
+		strbuf_addch(b, bad_ref_char(ch) ? '_' : ch);
+	}
+
+	strbuf_addf(b, ".%d", r->start);
+	return b->buf;
 }
 
 static const char *refpath(const char *s) {
@@ -581,7 +606,229 @@ static void read_logs(void) {
 
 
 
+static int logs_fetched, cmts_fetched;
+static int updates_done, updates_nr;
 
+struct finished_update {
+	struct finished_update *next;
+	int nr;
+	struct strbuf buf;
+};
+
+static struct finished_update *finished_updates;
+static FILE *update_helper;
+
+static void send_to_helper(struct strbuf *b) {
+	if (b->len) {
+		if (svndbg >= 2) {
+			struct strbuf buf = STRBUF_INIT;
+			quote_path_fully = 1;
+			quote_c_style_counted(b->buf, b->len, &buf, NULL, 1);
+			fprintf(stderr, "to svn helper: %s\n", buf.buf);
+			strbuf_release(&buf);
+		}
+		fwrite(b->buf, 1, b->len, update_helper);
+	}
+}
+
+void update_read(struct svn_update *u) {
+	if (u->rev)
+		display_progress(progress, ++cmts_fetched);
+
+	if (u->nr == updates_done) {
+		struct finished_update *f = finished_updates;
+
+		send_to_helper(&u->head);
+		send_to_helper(&u->tail);
+		updates_done++;
+
+		while (f && f->nr == updates_done) {
+			struct finished_update *next = f->next;
+			send_to_helper(&f->buf);
+			strbuf_release(&f->buf);
+			free(f);
+			updates_done++;
+			f = next;
+		}
+
+		finished_updates = f;
+	} else {
+		struct finished_update *g, *f = xcalloc(1, sizeof(*f));
+		f->nr = u->nr;
+		strbuf_init(&f->buf, 0);
+		strbuf_add(&u->head, u->tail.buf, u->tail.len);
+		strbuf_swap(&f->buf, &u->head);
+
+		g = finished_updates;
+		if (g && f->nr > g->nr) {
+			while (g->next && f->nr > g->next->nr) {
+				g = g->next;
+			}
+			f->next = g->next;
+			g->next = f;
+		} else {
+			f->next = g;
+			finished_updates = f;
+		}
+	}
+}
+
+int next_update(struct svn_update *u) {
+	if (updates_nr >= MAX_CMTS_PER_WORKER)
+		return -1;
+
+	u->nr = updates_nr++;
+	u->rev = 0;
+
+	while (logs_fetched < log_nr) {
+		struct svnref *r = logs[logs_fetched];
+		struct strbuf *h = &u->head;
+		struct strbuf *t = &u->tail;
+
+		if (r->cmts) {
+			struct svn_entry *c = r->cmts;
+			struct svnref *copy = c->rev == r->start ? r->copysrc : NULL;
+
+			u->path = r->path;
+			u->rev = c->rev;
+			u->new_branch = !r->rev;
+			u->copy = copy ? copy->path : NULL;
+			u->copyrev = copy ? r->copyrev : 0;
+
+			if (copy && !r->copy_modified) {
+				strbuf_addf(h, "branch %s %d %s %d",
+					refname(copy), r->copyrev,
+					refname(r), c->rev);
+
+				arg_quote(h, r->path);
+				arg_quote(h, c->ident);
+				strbuf_addf(h, " %d\n", c->mlen);
+				strbuf_add(h, c->msg, c->mlen);
+				strbuf_complete_line(h);
+
+			} else {
+				if (copy) {
+					strbuf_addf(h, "checkout %s %d\n",
+						refname(copy), r->copyrev);
+				} else if (r->rev) {
+					strbuf_addf(h, "checkout %s %d\n",
+						refname(r), r->rev);
+				} else {
+					strbuf_addstr(h, "reset\n");
+				}
+
+
+				strbuf_addf(t, "commit %s %d %d",
+					refname(r), r->rev, c->rev);
+
+				arg_quote(t, r->path);
+				arg_quote(t, c->ident);
+				strbuf_addf(t, " %d\n", c->mlen);
+				strbuf_add(t, c->msg, c->mlen);
+				strbuf_complete_line(t);
+			}
+
+			if (!c->next)
+				r->cmts_last = NULL;
+
+			r->rev = c->rev;
+			r->cmts = c->next;
+			free(c);
+			return 0;
+		}
+
+		if (!r->cmts && r->gitrefs.nr) {
+			int i;
+			strbuf_addf(h, "report %s", refname(r));
+			for (i = 0; i < r->gitrefs.nr; i++) {
+				strbuf_addf(h, " %s", r->gitrefs.items[i].string);
+			}
+			strbuf_complete_line(h);
+			string_list_clear(&r->gitrefs, 0);
+		}
+
+		logs_fetched++;
+	}
+
+	if (u->head.len) {
+		update_read(u);
+	}
+
+	return -1;
+}
+
+static int cmp_svnref_start(const void *u, const void *v) {
+	struct svnref *const *a = u;
+	struct svnref *const *b = v;
+	return (*a)->start - (*b)->start;
+}
+
+static void fetch(void) {
+	/* sort by start so that copysrcs are requested first */
+	qsort(logs, log_nr, sizeof(logs[0]), &cmp_svnref_start);
+
+	logs_fetched = 0;
+	cmts_fetched = 0;
+
+	/* Farm the pending requests out to a subprocess so that we can
+	 * run git gc --auto after each chunk. Note that after calling
+	 * gc --auto, we can't rely on any locally loaded objects being
+	 * valid.
+	 */
+	while (logs_fetched < log_nr) {
+		static const char *gc_auto[] = {"gc", "--auto", NULL};
+		static const char *remote_svn_helper[] = {"remote-svn--helper", NULL};
+
+		struct child_process ch;
+
+		updates_done = 0;
+		updates_nr = 0;
+
+		memset(&ch, 0, sizeof(ch));
+		ch.argv = remote_svn_helper;
+		ch.in = -1;
+		ch.out = xdup(fileno(stdout));
+		ch.git_cmd = 1;
+
+		if (use_progress)
+			progress = start_progress("Fetching commits", cmts_to_fetch);
+
+		if (start_command(&ch))
+			die("failed to launch worker");
+
+		update_helper = xfdopen(ch.in, "wb");
+		proto->read_updates();
+
+		if (finished_updates)
+			die("bug: updates not flushed out");
+
+		fclose(update_helper);
+
+		stop_progress(&progress);
+
+		if (finish_command(&ch))
+			die_errno("worker failed");
+
+		memset(&ch, 0, sizeof(ch));
+		ch.argv = gc_auto;
+		ch.no_stdin = 1;
+		ch.no_stdout = 1;
+		ch.git_cmd = 1;
+		if (run_command(&ch))
+			die_errno("git gc --auto failed");
+	}
+}
+
+
+
+
+
+
+void arg_quote(struct strbuf *buf, const char *arg) {
+	strbuf_addstr(buf, " \"");
+	quote_c_style(arg, buf, NULL, 1);
+	strbuf_addstr(buf, "\"");
+}
 
 static char* next_arg(char *arg, char **endp) {
 	char *p;
@@ -595,6 +842,7 @@ static char* next_arg(char *arg, char **endp) {
 static int command(char *cmd, char *arg) {
 	if (!strcmp(cmd, "") && log_nr) {
 		read_logs();
+		fetch();
 		printf("\n");
 		return 1;
 
@@ -611,10 +859,13 @@ static int command(char *cmd, char *arg) {
 
 		r = get_ref(path, listrev);
 		request_log(r, listrev);
+		r->gitrefs.strdup_strings = 1;
+		string_list_insert(&r->gitrefs, ref);
 
 	} else if (!strcmp(cmd, "capabilities")) {
 		printf("option\n");
 		printf("fetch\n");
+		printf("*fetch-unknown\n");
 		printf("\n");
 
 	} else if (!strcmp(cmd, "option")) {

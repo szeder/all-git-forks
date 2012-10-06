@@ -8,6 +8,8 @@
 
 extern int svndbg;
 
+void arg_quote(struct strbuf *buf, const char *arg);
+
 struct svn_log {
 	/* input */
 	struct svnref *ref;
@@ -26,12 +28,24 @@ int next_log(struct svn_log *l);
 void cmt_read(struct svn_log *l, int rev, const char *author, const char *time, const char *msg);
 void log_read(struct svn_log *l);
 
+struct svn_update {
+	int nr;
+	struct strbuf head, tail;
+	const char *path, *copy;
+	int rev, copyrev;
+	unsigned int new_branch : 1;
+};
+
+void update_read(struct svn_update *u);
+int next_update(struct svn_update *u);
+
 struct svn_proto {
 	int (*get_latest)(void);
 	void (*list)(const char* /*path*/, int /*rev*/, struct string_list* /*dirs*/);
 	int (*isdir)(const char* /*path*/, int /*rev*/);
 
 	void (*read_logs)(void);
+	void (*read_updates)(void);
 };
 
 #endif
