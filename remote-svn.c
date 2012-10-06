@@ -1205,6 +1205,16 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 		return -1;
 	}
 
+	/* If we find any intermediate commits, we complain. They will
+	 * be picked up the next time the user does a pull.
+	 */
+	if (type == SVN_MODIFY && r->rev+1 < rev
+		&& proto->has_change(r->path, r->rev+1, rev-1))
+	{
+		printf("error %s non-fast forward\n", dst);
+		return -1;
+	}
+
 	/* update the svn ref */
 
 	if (!svn_index.cache_tree)
@@ -1329,6 +1339,12 @@ static void push(struct refspec *spec) {
 			type = SVN_ADD;
 		} else {
 			type = SVN_MODIFY;
+		}
+
+		if (type == SVN_MODIFY && r->rev < listrev) {
+			if (proto->has_change(r->path, r->rev+1, listrev)) {
+				type = SVN_REPLACE;
+			}
 		}
 
 		if (!spec->force && type == SVN_REPLACE) {

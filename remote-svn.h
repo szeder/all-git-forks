@@ -60,6 +60,7 @@ struct svn_proto {
 	void (*delete)(const char* /*path*/);
 
 	void (*change_user)(struct credential*);
+	int (*has_change)(const char* /*path*/, int /*from*/, int /*to*/);
 };
 
 #endif
