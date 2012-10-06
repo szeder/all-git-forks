@@ -208,6 +208,13 @@ static int read_string(struct conn *c, struct strbuf *s) {
 	return append_string(c, s);
 }
 
+static int skip_string(struct conn *c) {
+	struct strbuf buf = STRBUF_INIT;
+	int r = append_string(c, &buf);
+	strbuf_release(&buf);
+	return r;
+}
+
 static void read_end(struct conn *c) {
 	int parens = 1;
 	while (parens > 0) {
@@ -666,6 +673,181 @@ err:
 	die("malformed log");
 }
 
+static void read_text_delta(struct conn *c, struct strbuf *d) {
+	strbuf_reset(d);
+	for (;;) {
+		const char* s = read_command(c);
+
+		if (!strcmp(s, "textdelta-end")) {
+			read_command_end(c);
+			return;
+
+		} else if (!strcmp(s, "textdelta-chunk")) {
+			/* file-token, chunk */
+			if (skip_string(c) || append_string(c, d)) {
+				die("invalid textdelta command");
+			}
+		}
+
+		read_command_end(c);
+	}
+}
+
+static int update_worker(struct conn *c) {
+	struct strbuf name = STRBUF_INIT;
+	struct strbuf before = STRBUF_INIT;
+	struct strbuf after = STRBUF_INIT;
+	struct strbuf diff = STRBUF_INIT;
+	struct svn_update u;
+	int skip = 0, ret;
+	int create = 0;
+
+	strbuf_init(&u.head, 0);
+	strbuf_init(&u.tail, 0);
+
+	pthread_mutex_lock(&lock);
+	ret = next_update(&u);
+	pthread_mutex_unlock(&lock);
+
+	if (ret) return ret;
+
+	do_connect(c, NULL);
+
+	if (u.copyrev) {
+		/* [rev] target recurse target-url */
+		sendf(c, "( switch ( ( %d ) %d:%s true %d:%s%s ) )\n",
+				u.rev,
+				(int) strlen(u.copy),
+				u.copy,
+				(int) (url.len + strlen(u.path)),
+				url.buf,
+				u.path);
+
+		/* path rev start-empty */
+		sendf(c, "( set-path ( 0: %d false ) )\n", u.copyrev);
+
+		skip = strlen(u.copy) + 1;
+	} else {
+		/* [rev] target recurse */
+		sendf(c, "( update ( ( %d ) %d:%s true ) )\n",
+				u.rev,
+				(int) strlen(u.path),
+				u.path);
+
+		/* path rev start-empty */
+		if (u.new_branch) {
+			sendf(c, "( set-path ( 0: %d true ) )\n", u.rev);
+		} else {
+			sendf(c, "( set-path ( 0: %d false ) )\n", u.rev - 1);
+		}
+
+		skip = strlen(u.path);
+	}
+
+	sendf(c, "( finish-report ( ) )\n");
+
+	for (;;) {
+		const char *s = read_command(c);
+
+		if (!strcmp(s, "close-edit")) {
+			read_command_end(c);
+			break;
+
+		} else if (!strcmp(s, "abort-edit") || !strcmp(s, "failure")) {
+			read_command_end(c);
+			die("update aborted");
+
+		} else if (!strcmp(s, "add-dir")) {
+			/* path, parent-token, child-token, [copy-path, copy-rev] */
+			if (read_string(c, &name)) goto err;
+			read_command_end(c);
+			clean_svn_path(&name);
+
+			strbuf_addf(&u.head, "add-dir");
+			arg_quote(&u.head, name.buf + skip);
+			strbuf_addch(&u.head, '\n');
+
+		} else if (!strcmp(s, "open-file")) {
+			/* name, dir-token, file-token, rev */
+			if (read_string(c, &name)) goto err;
+			read_command_end(c);
+			clean_svn_path(&name);
+			create = 0;
+
+		} else if (!strcmp(s, "add-file")) {
+			/* name, dir-token, file-token, [copy-path, copy-rev] */
+			if (read_string(c, &name)) goto err;
+			read_command_end(c);
+			clean_svn_path(&name);
+			create = 1;
+
+		} else if (!strcmp(s, "apply-textdelta")) {
+			/* file-token, [base-checksum] */
+			if (skip_string(c)) goto err;
+			if (have_optional(c)) {
+				if (read_string(c, &before)) goto err;
+				read_end(c);
+			}
+			read_command_end(c);
+
+			read_text_delta(c, &diff);
+
+		} else if (!strcmp(s, "close-file")) {
+			/* file-token, [text-checksum] */
+			if (skip_string(c)) goto err;
+			if (have_optional(c)) {
+				if (read_string(c, &after)) goto err;
+				read_end(c);
+			}
+			read_command_end(c);
+
+			/* we need to ignore file changes that only
+			 * change the file metadata */
+			if (diff.len) {
+				strbuf_addstr(&u.head, create ? "add-file" : "open-file");
+				arg_quote(&u.head, name.buf + skip);
+				strbuf_addf(&u.head, " %d \"%s\" \"%s\"\n", (int) diff.len, before.buf, after.buf);
+				strbuf_add(&u.head, diff.buf, diff.len);
+				strbuf_complete_line(&u.head);
+			}
+
+			strbuf_release(&diff);
+			strbuf_reset(&before);
+			strbuf_reset(&after);
+
+		} else if (!strcmp(s, "delete-entry")) {
+			/* name, [revno], dir-token */
+			if (read_string(c, &name)) goto err;
+			read_command_end(c);
+			clean_svn_path(&name);
+
+			strbuf_addstr(&u.head, "delete-entry");
+			arg_quote(&u.head, name.buf + skip);
+			strbuf_addch(&u.head, '\n');
+
+		} else {
+			read_command_end(c);
+		}
+	}
+
+	sendf(c, "( success ( ) )\n");
+
+	pthread_mutex_lock(&lock);
+	update_read(&u);
+	pthread_mutex_unlock(&lock);
+
+	strbuf_release(&u.head);
+	strbuf_release(&u.tail);
+	strbuf_release(&name);
+	strbuf_release(&before);
+	strbuf_release(&after);
+	strbuf_release(&diff);
+	return 0;
+
+err:
+	die("malformed update");
+}
+
 
 static void init_connection(struct conn *c) {
 	memset(c, 0, sizeof(*c));
@@ -721,11 +903,16 @@ static void svn_read_logs(void) {
 	spawn_workers(&log_worker);
 }
 
+static void svn_read_updates(void) {
+	spawn_workers(&update_worker);
+}
+
 struct svn_proto proto_svn = {
 	&svn_get_latest,
 	&svn_list,
 	&svn_isdir,
 	&svn_read_logs,
+	&svn_read_updates,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {
