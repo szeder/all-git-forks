@@ -824,6 +824,114 @@ static void fetch(void) {
 
 
 
+
+#define SEEN_FROM_OBJ 1
+#define SEEN_FROM_SVN 2
+#define SEEN_FROM_BOTH (SEEN_FROM_OBJ | SEEN_FROM_SVN)
+#define SVNCMT 4
+
+static void insert_commit(struct commit *c, struct commit_list **cmts) {
+	if (parse_commit(c))
+		die("invalid commit %s", c->object.sha1);
+	commit_list_insert_by_date(c, cmts);
+}
+
+static void insert_svncmt(struct commit *sc, struct commit_list **cmts) {
+	struct commit *gc;
+	struct commit *sc2;
+	if (!sc) return;
+
+	sc->object.flags = SVNCMT;
+	insert_commit(sc, cmts);
+
+	/* If two or more svn commits point to the same git commit, then
+	 * we use the newest one. This is in line with using the newest
+	 * svn revision we can find. */
+	gc = svn_commit(sc);
+	if (!gc) return;
+
+	sc2 = (struct commit*) ((gc->object.flags & SEEN_FROM_SVN) ? gc->util : NULL);
+	if (!sc2 || sc->date > sc2->date) {
+		gc->object.flags |= SEEN_FROM_SVN;
+		gc->util = sc;
+		insert_commit(gc, cmts);
+	}
+}
+
+/* Searches back from the new object looking for the previous svn
+ * commit or failing that the newest svn commit.
+ */
+static struct commit *find_copy_source(struct commit* cmt, const char *path) {
+	struct commit *send = NULL, *ret = NULL, *end = NULL;
+	struct commit_list *cmts = NULL;
+	struct svnref *r;
+	int i;
+
+	cmt->object.flags = SEEN_FROM_OBJ;
+	insert_commit(cmt, &cmts);
+
+	r = map_lookup(&refs, path);
+	if (r && r->exists_at_head) {
+		send = r->svn;
+		end = svn_commit(send);
+	}
+
+	for (i = 0; i < refs.nr; i++) {
+		for (r = refs.items[i].util; r != NULL; r = r->next) {
+			insert_svncmt(r->svn, &cmts);
+		}
+	}
+
+	while (cmts) {
+		struct commit *c = pop_commit(&cmts);
+		int both = (c->object.flags & SEEN_FROM_BOTH) == SEEN_FROM_BOTH;
+
+		if (both && c == end) {
+			/* we've reached the previous svn commit from cmt */
+			ret = send;
+			break;
+
+		} else if (c == end) {
+			/* we've reached the previous svn commit, but
+			 * it isn't reachable from cmt */
+			end = NULL;
+			if (ret) break;
+
+		} else if (both && !ret) {
+			/* we've found the most recent commit in svn
+			 * reachable from cmt. Hold onto it in case we
+			 * can't reach the previous cmt on this path.
+			 */
+			ret = (struct commit*) c->util;
+			if (end == NULL) break;
+
+		} else if (c->object.flags & SVNCMT) {
+			insert_svncmt(svn_parent(c), &cmts);
+
+		} else if (c->object.flags & SEEN_FROM_OBJ) {
+			struct commit_list *p = c->parents;
+
+			while (p) {
+				c = p->item;
+				c->object.flags |= SEEN_FROM_OBJ;
+				insert_commit(c, &cmts);
+				p = p->next;
+			}
+		}
+	}
+
+	free_commit_list(cmts);
+	clear_object_flags(SEEN_FROM_BOTH | SVNCMT);
+
+	return ret;
+}
+
+
+
+
+
+
+
 void arg_quote(struct strbuf *buf, const char *arg) {
 	strbuf_addstr(buf, " \"");
 	quote_c_style(arg, buf, NULL, 1);
