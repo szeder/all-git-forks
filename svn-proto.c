@@ -907,12 +907,141 @@ static void svn_read_updates(void) {
 	spawn_workers(&update_worker);
 }
 
+static struct strbuf cpath = STRBUF_INIT;
+static int cdepth;
+
+static size_t common_directory(const char* a, const char* b, size_t max, int* depth) {
+	size_t i = 0, off = 0;
+
+	while (a[i] && a[i] == b[i] && i < max) {
+		if (a[i] == '/') {
+			if (depth) (*depth)++;
+			off = i;
+		}
+		i++;
+	}
+
+	if (i == max) {
+		off = max;
+	}
+
+	return off;
+}
+
+static int change_dir(const char* path) {
+	const char *p;
+	int depth = 0;
+	struct conn *c = &main_connection;
+	int off = common_directory(path, cpath.buf, cpath.len, &depth);
+
+	/* cd .. to the common root */
+	while (cdepth > depth) {
+		sendf(c, "( close-dir ( 3:d%02X ) )\n", cdepth);
+		cdepth--;
+	}
+
+	strbuf_setlen(&cpath, off);
+
+	/* cd down to the new path */
+	p = path + off;
+	while (*p == '/') {
+		const char *dir = p;
+		p = strchr(dir+1, '/');
+		if (!p) break;
+
+		sendf(c, "( open-dir ( %d:%.*s 3:d%02X 3:d%02X ( ) ) )\n",
+			(int) (p - (path+1)), (int) (p - (path+1)), path+1,
+			cdepth, cdepth+1);
+
+		strbuf_add(&cpath, dir, p - dir);
+		cdepth++;
+	}
+
+	return cdepth;
+}
+
+static void dir_changed(int dir, const char* path) {
+	strbuf_reset(&cpath);
+	strbuf_addstr(&cpath, path);
+	cdepth = dir;
+}
+
+static void svn_delete(const char *p) {
+	struct conn *c = &main_connection;
+	int dir = change_dir(p);
+	sendf(c, "( delete-entry ( %d:%s ( ) 3:d%02X ) )\n",
+			(int) strlen(p+1), p+1, dir);
+}
+
+static void svn_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
+	struct conn *c = &main_connection;
+	int dir;
+
+	sendf(c, "( commit ( %d:%s ) )\n", (int) strlen(log), log);
+	sendf(c, "( target-rev ( %d ) )\n", rev);
+	sendf(c, "( open-root ( ( ) 3:d00 ) )\n");
+
+	if (read_success(c) || read_success(c))
+		die("start commit failed");
+
+	dir = change_dir(path);
+
+	if (type == SVN_DELETE || type == SVN_REPLACE) {
+		svn_delete(path);
+	}
+
+	if (copyrev && (type == SVN_ADD || type == SVN_REPLACE)) {
+		sendf(c, "( add-dir ( %d:%s 3:d%02X 3:d%02X ( %d:%s%s %d ) ) )\n",
+				(int) strlen(path+1), path + 1,
+				dir, dir+1,
+				(int) (url.len + strlen(copy)),
+				url.buf, copy,
+				copyrev);
+
+		dir_changed(++dir, path);
+
+	} else if (*path && type != SVN_DELETE) {
+		sendf(c, "( %s ( %d:%s 3:d%02X 3:d%02X ( ) ) )\n",
+			type == SVN_ADD ? "add-dir" : "open-dir",
+			(int) strlen(path+1), path + 1,
+			dir, dir + 1);
+
+		dir_changed(++dir, path);
+	}
+}
+
+static int svn_finish_commit(struct strbuf *time) {
+	struct conn *c = &main_connection;
+	int rev;
+
+	change_dir("");
+	sendf(c, "( close-dir ( 3:d00 ) )\n");
+	sendf(c, "( close-edit ( ) )\n");
+	if (read_success(c)) return -1;
+	if (read_success(c)) return -1;
+
+	/* commit-info: ( new-rev:number date:string author:string ? ( post-commit-err:string ) ) */
+	if (read_list(c)) goto err;
+	rev = (int) read_number(c);
+	if (have_optional(c) && time) {
+		read_string(c, time);
+		read_end(c);
+	}
+	read_end(c);
+	read_newline(c);
+	return rev;
+err:
+	die("commit failed");
+}
+
 struct svn_proto proto_svn = {
 	&svn_get_latest,
 	&svn_list,
 	&svn_isdir,
 	&svn_read_logs,
 	&svn_read_updates,
+	&svn_start_commit,
+	&svn_finish_commit,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {
