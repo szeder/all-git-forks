@@ -4,6 +4,9 @@
 #include "progress.h"
 #include "quote.h"
 #include "run-command.h"
+#include "tag.h"
+#include "diff.h"
+#include "revision.h"
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -931,6 +934,214 @@ static struct commit *find_copy_source(struct commit* cmt, const char *path) {
 
 
 
+static int push_commit(struct svnref *r, int type, struct object *obj, struct commit *svnbase, const char *dst) {
+	static struct strbuf buf = STRBUF_INIT;
+
+	const char *ident, *log;
+	int rev, baserev = parse_svn_revision(svnbase);
+	const char *basepath = parse_svn_path(svnbase);
+	struct commit *git;
+	unsigned char sha1[20];
+
+	git = (struct commit*) deref_tag(obj, NULL, 0);
+	if (parse_commit(git) || git->object.type != OBJ_COMMIT)
+		die("invalid push object %s", sha1_to_hex(obj->sha1));
+
+	find_commit_subject(git->buffer, &log);
+
+	if (type == SVN_ADD || type == SVN_REPLACE) {
+		proto->start_commit(type, log, r->path, max(r->rev,baserev) + 1, basepath, baserev);
+	} else {
+		proto->start_commit(type, log, r->path, r->rev + 1, NULL, 0);
+	}
+
+	strbuf_reset(&buf);
+	rev = proto->finish_commit(&buf);
+	ident = svn_to_ident(defcred.username, buf.buf);
+
+	if (rev <= 0) {
+		/* TODO get the full error message */
+		printf("error %s commit failed\n", dst);
+		return -1;
+	}
+
+	/* update the svn ref */
+
+	if (write_svn_commit(r->svn, git, EMPTY_TREE_SHA1_BIN, ident, r->path, rev, sha1))
+		die("failed to write svn commit");
+
+	if (!r->start || type == SVN_ADD || type == SVN_REPLACE)
+		set_ref_start(r, rev);
+
+	strbuf_reset(&buf);
+	strbuf_addstr(&buf, refname(r));
+	update_ref("remote-svn", buf.buf, sha1,
+			r->svn ? r->svn->object.sha1 : null_sha1,
+			0, DIE_ON_ERR);
+
+	r->exists_at_head = 1;
+	r->rev = rev;
+	r->svn = lookup_commit(sha1);
+
+	/* update the svn tag ref */
+
+	strbuf_addstr(&buf, ".tag");
+
+	if (obj->type == OBJ_TAG) {
+		if (read_ref(buf.buf, sha1)) {
+			hashclr(sha1);
+		}
+		update_ref("remote-svn", buf.buf, obj->sha1, sha1, 0, DIE_ON_ERR);
+
+	} else if (!read_ref(buf.buf, sha1)) {
+		delete_ref(buf.buf, sha1, 0);
+	}
+
+	trypause();
+	return 0;
+}
+
+static int has_parent(struct commit *c, struct commit *parent) {
+	struct commit_list *p = c->parents;
+
+	/* null parents are only parents of root commits */
+	if (!parent) {
+		return p == NULL;
+	}
+
+	while (p) {
+		if (p->item == parent) {
+			return 1;
+		}
+		p = p->next;
+	}
+	return 0;
+}
+
+static struct refspec **pushv;
+static size_t pushn, pusha;
+
+static void push(struct refspec *spec) {
+	struct commit *cmt;
+	struct rev_info walk;
+	struct svnref *r = NULL;
+	const char *path = map_lookup(&path_for_ref, spec->dst);
+	struct strbuf buf = STRBUF_INIT;
+
+	if (!path) {
+		char *p = apply_refspecs(refmap, refmap_nr, spec->dst);
+		strbuf_addstr(&buf, relpath);
+		strbuf_addch(&buf, '/');
+		strbuf_addstr(&buf, p);
+		clean_svn_path(&buf);
+		free(p);
+
+		path = buf.buf;
+	}
+
+	r = get_ref(path, INT_MAX);
+
+	if (!*spec->src) {
+		proto->start_commit(SVN_DELETE, "", r->path, r->rev+1, NULL, 0);
+
+		if (proto->finish_commit(NULL) <= 0) {
+			printf("error %s commit failed\n", spec->dst);
+			goto error;
+		}
+
+		r->exists_at_head = 0;
+	} else {
+		/* add/modify/replace a ref */
+		unsigned char sha1[20];
+		int type;
+
+		struct object *onew;
+		struct commit *cnew, *svnbase;
+
+		if (read_ref(spec->src, sha1))
+			die("invalid ref %s", spec->src);
+
+		onew = parse_object(sha1);
+
+		if (onew->type == OBJ_TAG) {
+			cnew = (struct commit*) deref_tag(onew, NULL, 0);
+		} else {
+			cnew = (struct commit*) onew;
+		}
+
+		if (cnew->object.type != OBJ_COMMIT)
+			die("invalid ref %s", spec->src);
+
+		init_revisions(&walk, NULL);
+		add_pending_object(&walk, &cnew->object, "to");
+		walk.reverse = 1;
+
+		svnbase = find_copy_source(cnew, r->path);
+
+		if (r->exists_at_head && (r->svn != svnbase || !prefixcmp(spec->dst, "refs/tags/"))) {
+			type = SVN_REPLACE;
+		} else if (!r->exists_at_head) {
+			type = SVN_ADD;
+		} else {
+			type = SVN_MODIFY;
+		}
+
+		if (!spec->force && type == SVN_REPLACE) {
+			printf("error %s non-fast forward\n", spec->dst);
+			goto error;
+		}
+
+		/* we don't need to add the root on the initial commit */
+		if (!*r->path && type == SVN_ADD && !r->exists_at_head && !listrev) {
+			type = SVN_MODIFY;
+		}
+
+		if (svnbase) {
+			struct object* obj = &svn_commit(svnbase)->object;
+			obj->flags |= UNINTERESTING;
+			add_pending_object(&walk, obj, "from");
+		}
+
+		if (prepare_revision_walk(&walk))
+			die("prepare rev walk failed");
+
+		while ((cmt = get_revision(&walk)) != NULL) {
+			/* The revwalk gives us all paths that go from
+			 * copy to cnew. We can work with any of these
+			 * so pick one arbitrarily. On the last commit
+			 * use onew instead of cnew so we use the tag
+			 * message instead of the commit message.
+			 */
+			if (has_parent(cmt, svnbase ? svn_commit(svnbase) : NULL)) {
+				struct object *obj = (cmt == cnew) ? onew : &cmt->object;
+				if (push_commit(r, type, obj, svnbase, spec->dst))
+					goto error;
+
+				svnbase = r->svn;
+				type = SVN_MODIFY;
+			}
+		}
+
+		/* if there were no commits we have to force through a
+		 * commit to create/replace the branch/tag in svn. */
+
+		if (r->svn != svnbase && push_commit(r, type, onew, svnbase, spec->dst)) {
+			goto error;
+		}
+	}
+
+	printf("ok %s\n", spec->dst);
+
+error:
+	strbuf_release(&buf);
+	reset_revision_walk();
+}
+
+
+
+
+
+
 
 void arg_quote(struct strbuf *buf, const char *arg) {
 	strbuf_addstr(buf, " \"");
@@ -948,7 +1159,7 @@ static char* next_arg(char *arg, char **endp) {
 }
 
 static int command(char *cmd, char *arg) {
-	if (!strcmp(cmd, "") && log_nr) {
+	if (log_nr && !strcmp(cmd, "")) {
 		read_logs();
 		fetch();
 		printf("\n");
@@ -970,10 +1181,34 @@ static int command(char *cmd, char *arg) {
 		r->gitrefs.strdup_strings = 1;
 		string_list_insert(&r->gitrefs, ref);
 
+	} else if (pushn && !strcmp(cmd, "")) {
+		int i;
+
+		for (i = 0; i < refmap_nr; i++) {
+			char *tmp = refmap[i].src;
+			refmap[i].src = refmap[i].dst;
+			refmap[i].dst = tmp;
+		}
+
+		for (i = 0; i < pushn; i++) {
+			push(pushv[i]);
+		}
+
+		printf("\n");
+		return 1;
+
+	} else if (!strcmp(cmd, "push")) {
+		const char *ref = next_arg(arg, &arg);
+		struct refspec *spec = parse_push_refspec(1, &ref);
+
+		ALLOC_GROW(pushv, pushn+1, pusha);
+		pushv[pushn++] = spec;
+
 	} else if (!strcmp(cmd, "capabilities")) {
 		printf("option\n");
 		printf("fetch\n");
 		printf("*fetch-unknown\n");
+		printf("push\n");
 		printf("\n");
 
 	} else if (!strcmp(cmd, "option")) {

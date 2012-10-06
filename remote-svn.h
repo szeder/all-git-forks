@@ -39,6 +39,12 @@ struct svn_update {
 void update_read(struct svn_update *u);
 int next_update(struct svn_update *u);
 
+/* commit types */
+#define SVN_MODIFY 0
+#define SVN_ADD 1
+#define SVN_REPLACE 2
+#define SVN_DELETE 3
+
 struct svn_proto {
 	int (*get_latest)(void);
 	void (*list)(const char* /*path*/, int /*rev*/, struct string_list* /*dirs*/);
@@ -46,6 +52,9 @@ struct svn_proto {
 
 	void (*read_logs)(void);
 	void (*read_updates)(void);
+
+	void (*start_commit)(int /*type*/, const char* /*log*/, const char* /*path*/, int /*rev*/, const char* /*copy*/, int /*copyrev*/);
+	int (*finish_commit)(struct strbuf* /*time*/); /*returns rev*/
 };
 
 #endif
