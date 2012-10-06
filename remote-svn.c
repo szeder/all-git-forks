@@ -7,6 +7,7 @@
 #include "tag.h"
 #include "diff.h"
 #include "revision.h"
+#include "cache-tree.h"
 
 #ifndef min
 #define min(a,b) ((a) < (b) ? (a) : (b))
@@ -25,6 +26,8 @@ static struct strbuf uuid = STRBUF_INIT;
 static int verbose = 1;
 static int use_progress;
 static int listrev = INT_MAX;
+static enum eol svn_eol = EOL_UNSET;
+static struct index_state svn_index;
 static struct svn_proto *proto;
 static struct remote *remote;
 static struct credential defcred;
@@ -68,7 +71,18 @@ struct svnref {
 };
 
 static int config(const char *key, const char *value, void *dummy) {
-	if (!strcmp(key, "svn.authors")) {
+	if (!strcmp(key, "svn.eol")) {
+		if (value && !strcasecmp(value, "lf"))
+			svn_eol = EOL_LF;
+		else if (value && !strcasecmp(value, "crlf"))
+			svn_eol = EOL_CRLF;
+		else if (value && !strcasecmp(value, "native"))
+			svn_eol = EOL_NATIVE;
+		else
+			svn_eol = EOL_UNSET;
+		return 0;
+
+	} else if (!strcmp(key, "svn.authors")) {
 		return git_config_string(&authors_file, key, value);
 
 	} else if (!prefixcmp(key, "remote.")) {
@@ -932,7 +946,102 @@ static struct commit *find_copy_source(struct commit* cmt, const char *path) {
 
 
 
+static int pushoff;
 
+static void send_file(const char *path, const unsigned char *sha1, int create) {
+	struct strbuf diff = STRBUF_INIT;
+	struct strbuf buf = STRBUF_INIT;
+	char *data;
+	unsigned long sz;
+	enum object_type type;
+	struct cache_entry* ce;
+	unsigned char nsha1[20];
+
+	data = read_sha1_file(sha1, &type, &sz);
+	if (type != OBJ_BLOB)
+		die("unexpected object type for %s", sha1_to_hex(sha1));
+
+	if (svn_eol != EOL_UNSET && convert_to_working_tree(path + pushoff + 1, data, sz, &buf)) {
+		free(data);
+		data = strbuf_detach(&buf, &sz);
+
+		if (write_sha1_file(data, sz, "blob", nsha1)) {
+			die_errno("blob write");
+		}
+
+		sha1 = nsha1;
+	}
+
+	ce = make_cache_entry(0644, sha1, path + pushoff + 1, 0, 0);
+	add_index_entry(&svn_index, ce, ADD_CACHE_OK_TO_ADD);
+
+	create_svndiff(&diff, data, sz);
+	proto->send_file(path, &diff, create);
+
+	free(data);
+	strbuf_release(&diff);
+}
+
+static void change(struct diff_options* op,
+		unsigned omode,
+		unsigned nmode,
+		const unsigned char* osha1,
+		const unsigned char* nsha1,
+		int osha1_valid,
+		int nsha1_valid,
+		const char* path,
+		unsigned odsubmodule,
+		unsigned ndsubmodule)
+{
+	struct cache_entry *ce;
+
+	if (svndbg) fprintf(stderr, "change mode %x/%x sha1 %s/%s path %s\n",
+			omode, nmode, sha1_to_hex(osha1), sha1_to_hex(nsha1), path);
+
+	/* dont care about changed directories */
+	if (!S_ISREG(nmode)) return;
+
+	/* does the file exist in svn and not just git */
+	ce = index_name_exists(&svn_index, path + pushoff + 1, strlen(path+pushoff+1), 0);
+	if (!ce) return;
+
+	send_file(path, nsha1, 0);
+
+	/* TODO make this actually use diffcore */
+	diff_change(op, omode, nmode, osha1, nsha1, osha1_valid, nsha1_valid, path, odsubmodule, ndsubmodule);
+}
+
+static void addremove(struct diff_options *op,
+		int addrm,
+		unsigned mode,
+		const unsigned char *sha1,
+		int sha1_valid,
+		const char *path,
+		unsigned dsubmodule)
+{
+	if (svndbg) fprintf(stderr, "addrm %c mode %x sha1 %s path %s\n",
+			addrm, mode, sha1_to_hex(sha1), path);
+
+	if (addrm == '-') {
+		/* only push the delete if we have something to remove
+		 * in svn */
+		if (!remove_path_from_index(&svn_index, path + pushoff + 1)) {
+			proto->delete(path);
+		}
+
+	} else if (S_ISDIR(mode)) {
+		proto->mkdir(path);
+
+	} else if (prefixcmp(strrchr(path, '/'), "/.git")) {
+		/* files beginning with .git eg .gitempty,
+		 * .gitattributes, etc are filtered from svn
+		 */
+		send_file(path, sha1, 1);
+	}
+
+	/* TODO use diffcore to track renames */
+	diff_addremove(op, addrm, mode, sha1, sha1_valid, path, dsubmodule);
+}
 
 static int push_commit(struct svnref *r, int type, struct object *obj, struct commit *svnbase, const char *dst) {
 	static struct strbuf buf = STRBUF_INIT;
@@ -955,6 +1064,40 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 		proto->start_commit(type, log, r->path, r->rev + 1, NULL, 0);
 	}
 
+	/* need to checkout the git commit in order to get the
+	 * .gitattributes files used for eol conversion
+	 */
+	svn_checkout_index(&the_index, svnbase ? svn_commit(svnbase) : NULL);
+	svn_checkout_index(&svn_index, svnbase);
+
+	if (obj) {
+		struct diff_options op;
+		diff_setup(&op);
+		op.output_format = DIFF_FORMAT_NO_OUTPUT;
+		op.change = &change;
+		op.add_remove = &addremove;
+		DIFF_OPT_SET(&op, RECURSIVE);
+		DIFF_OPT_SET(&op, IGNORE_SUBMODULES);
+		DIFF_OPT_SET(&op, TREE_IN_RECURSIVE);
+
+		strbuf_reset(&buf);
+		strbuf_addstr(&buf, r->path);
+		strbuf_addch(&buf, '/');
+
+		pushoff = buf.len - 1;
+
+		if (svnbase) {
+			if (diff_tree_sha1(svn_commit(svnbase)->object.sha1, obj->sha1, buf.buf, &op))
+				die("diff tree failed");
+		} else {
+			if (diff_root_tree_sha1(obj->sha1, buf.buf, &op))
+				die("diff tree failed");
+		}
+
+		diffcore_std(&op);
+		diff_flush(&op);
+	}
+
 	strbuf_reset(&buf);
 	rev = proto->finish_commit(&buf);
 	ident = svn_to_ident(defcred.username, buf.buf);
@@ -967,7 +1110,11 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 
 	/* update the svn ref */
 
-	if (write_svn_commit(r->svn, git, EMPTY_TREE_SHA1_BIN, ident, r->path, rev, sha1))
+	if (!svn_index.cache_tree)
+		svn_index.cache_tree = cache_tree();
+	if (cache_tree_update(svn_index.cache_tree, svn_index.cache, svn_index.cache_nr, 0))
+		die("failed to update cache tree");
+	if (write_svn_commit(r->svn, git, svn_index.cache_tree->sha1, ident, r->path, rev, sha1))
 		die("failed to write svn commit");
 
 	if (!r->start || type == SVN_ADD || type == SVN_REPLACE)
@@ -1269,6 +1416,7 @@ int main(int argc, const char **argv) {
 	}
 
 	git_config(&config, NULL);
+	core_eol = svn_eol;
 
 	/* svn commits are always in UTC, try and match them */
 	setenv("TZ", "", 1);

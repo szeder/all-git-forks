@@ -55,6 +55,9 @@ struct svn_proto {
 
 	void (*start_commit)(int /*type*/, const char* /*log*/, const char* /*path*/, int /*rev*/, const char* /*copy*/, int /*copyrev*/);
 	int (*finish_commit)(struct strbuf* /*time*/); /*returns rev*/
+	void (*mkdir)(const char* /*path*/);
+	void (*send_file)(const char* /*path*/, struct strbuf* /*diff*/, int /*create*/);
+	void (*delete)(const char* /*path*/);
 };
 
 #endif
