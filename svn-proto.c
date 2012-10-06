@@ -1086,6 +1086,32 @@ static void svn_send_file(const char *path, struct strbuf *diff, int create) {
 	sendf(c, "( close-file ( 1:f ( ) ) )\n");
 }
 
+static int svn_has_change(const char *path, int from, int to) {
+	struct conn *c = &main_connection;
+	int ret = 0;
+
+	sendf(c, "( log ( ( %d:%s ) " /* (path...) */
+		"( %d ) ( %d ) " /* start/end revno */
+		"false true " /* changed-paths strict-node */
+		"1 ) )\n", /* limit */
+		(int) strlen(path),
+		path,
+		to, /* log end */
+		from /* log start */
+	     );
+
+	while (!read_list(c)) {
+		ret = 1;
+		read_end(c);
+	}
+
+	if (read_done(c) || read_success(c)) {
+		die("log failed");
+	}
+
+	return ret;
+}
+
 
 
 struct svn_proto proto_svn = {
@@ -1100,6 +1126,7 @@ struct svn_proto proto_svn = {
 	&svn_send_file,
 	&svn_delete,
 	&svn_change_user,
+	&svn_has_change,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {

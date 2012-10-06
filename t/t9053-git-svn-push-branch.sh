@@ -484,4 +484,69 @@ test_expect_success 'push right merge' '
 	cd ../../..
 '
 
+test_expect_success 'unseen new commit in svn' '
+	cd svnco &&
+	svn_cmd cp Trunk Branches/unseen &&
+	svn_cmd ci -m "make branch" &&
+	cd .. &&
+	git fetch -v svn &&
+	git checkout -t -b unseen svn/unseen &&
+	cd svnco/Branches/unseen &&
+	echo "foo" > unseen.txt &&
+	svn_cmd add unseen.txt &&
+	svn_cmd ci -m "unseen file" &&
+	cd ../../.. &&
+	echo "bar" > seen.txt &&
+	git add seen.txt &&
+	git commit -m "seen file" &&
+	test_must_fail git push -v svn unseen &&
+	git fetch -v svn &&
+	git rebase svn/unseen &&
+	test `show_ref svn/unseen` != `show_ref unseen` &&
+	git push -v svn unseen &&
+	cd svnco/Branches/unseen &&
+	svn_cmd up &&
+	test_file unseen.txt "foo" &&
+	test_file seen.txt "bar" &&
+	cd ../../..
+'
+
+test_expect_success 'intermingled commits' '
+	git checkout -b intermingled svn/trunk &&
+	echo "bar" > file1.txt &&
+	git add file1.txt &&
+	git commit -m "commit 1" &&
+	echo "foo" > file2.txt &&
+	git add file2.txt &&
+	git commit -m "commit 2" &&
+	GIT_REMOTE_SVN_PAUSE=1 git push -v svn intermingled &
+	push_pid=$! &&
+	# The first time is on launching git-remote-svn
+	until test -e remote-svn-pause; do sleep 1; done &&
+	rm remote-svn-pause &&
+	# Then it will pause after every commit
+	until test -e remote-svn-pause; do sleep 1; done &&
+	cd svnco &&
+	svn_cmd up &&
+	cd Branches/intermingled &&
+	echo "foobar" > file3.txt &&
+	svn_cmd add file3.txt &&
+	svn_cmd ci -m "svn commit" &&
+	cd ../../.. &&
+	rm remote-svn-pause &&
+	test_must_fail wait $push_pid &&
+	git fetch -v svn &&
+	git rebase svn/intermingled &&
+	git push -v svn intermingled &&
+	cd svnco &&
+	svn_cmd up &&
+	cd .. &&
+	rev=`latest_revision` &&
+	cd svnco/Branches/intermingled &&
+	test_svn_subject "commit 2" $rev &&
+	test_svn_subject "svn commit" $(($rev-1)) &&
+	test_svn_subject "commit 1" $(($rev-2)) &&
+	cd ../../..
+'
+
 test_done
