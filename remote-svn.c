@@ -365,6 +365,65 @@ end:
 	return fmt_ident(a->name, a->mail, time, 0);
 }
 
+static struct credential *push_credential(struct object* obj, struct commit *svnbase) {
+	struct ident_split s;
+	char *data = NULL, *author = NULL;
+	int i;
+
+	if (!authors_file)
+		return &defcred;
+
+	if (obj->type == OBJ_COMMIT) {
+		struct commit* cmt = (struct commit*) obj;
+		if (svnbase && cmt == svn_commit(svnbase)) {
+			return &defcred;
+		}
+		if (parse_commit(cmt)) {
+			goto err;
+		}
+		author = strstr(cmt->buffer, "\ncommitter ");
+		if (!author) {
+			author = strstr(cmt->buffer, "\nauthor ");
+		}
+	} else if (obj->type == OBJ_TAG) {
+		enum object_type type;
+		unsigned long size;
+		data = read_sha1_file(obj->sha1, &type, &size);
+		if (!data || type != OBJ_TAG) {
+			goto err;
+		}
+		author = strstr(data, "\ntagger ");
+	}
+
+	if (!author) goto err;
+
+	/* skip over "\ncommitter " etc */
+	author += strcspn(author, " ") + 1;
+
+	if (split_ident_line(&s, author, strcspn(author, "\n")))
+		goto err;
+
+	for (i = 0; i < authorn; i++) {
+		struct author* a = &authors[i];
+		int sz = s.mail_end - s.mail_begin;
+		if (strncasecmp(a->mail, s.mail_begin, sz) || a->mail[sz])
+			continue;
+
+		free(data);
+
+		/* use defcred as it should already have a password */
+		if (!strcmp(a->cred.username, defcred.username)) {
+			return &defcred;
+		}
+
+		credential_fill(&a->cred);
+		return &a->cred;
+	}
+
+err:
+	die("can not find author in %s", sha1_to_hex(obj->sha1));
+}
+
 
 
 
@@ -1086,12 +1145,15 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 	const char *ident, *log = push_message(obj, svnbase);
 	int rev, baserev = parse_svn_revision(svnbase);
 	const char *basepath = parse_svn_path(svnbase);
+	struct credential *cred = push_credential(obj, svnbase);
 	struct commit *git;
 	unsigned char sha1[20];
 
 	git = (struct commit*) deref_tag(obj, NULL, 0);
 	if (parse_commit(git) || git->object.type != OBJ_COMMIT)
 		die("invalid push object %s", sha1_to_hex(obj->sha1));
+
+	proto->change_user(cred);
 
 	if (type == SVN_ADD || type == SVN_REPLACE) {
 		proto->start_commit(type, log, r->path, max(r->rev,baserev) + 1, basepath, baserev);
@@ -1135,7 +1197,7 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 
 	strbuf_reset(&buf);
 	rev = proto->finish_commit(&buf);
-	ident = svn_to_ident(defcred.username, buf.buf);
+	ident = svn_to_ident(cred->username, buf.buf);
 
 	if (rev <= 0) {
 		/* TODO get the full error message */
@@ -1224,6 +1286,7 @@ static void push(struct refspec *spec) {
 	r = get_ref(path, INT_MAX);
 
 	if (!*spec->src) {
+		proto->change_user(&defcred);
 		proto->start_commit(SVN_DELETE, empty_log_message, r->path, r->rev+1, NULL, 0);
 
 		if (proto->finish_commit(NULL) <= 0) {

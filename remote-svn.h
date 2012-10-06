@@ -58,6 +58,8 @@ struct svn_proto {
 	void (*mkdir)(const char* /*path*/);
 	void (*send_file)(const char* /*path*/, struct strbuf* /*diff*/, int /*create*/);
 	void (*delete)(const char* /*path*/);
+
+	void (*change_user)(struct credential*);
 };
 
 #endif
