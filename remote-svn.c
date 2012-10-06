@@ -20,7 +20,7 @@
 #define MAX_CMTS_PER_WORKER 1000
 
 int svndbg = 1;
-static const char *url, *relpath, *authors_file;
+static const char *url, *relpath, *authors_file, *empty_log_message;
 static struct strbuf refdir = STRBUF_INIT;
 static struct strbuf uuid = STRBUF_INIT;
 static int verbose = 1;
@@ -81,6 +81,9 @@ static int config(const char *key, const char *value, void *dummy) {
 		else
 			svn_eol = EOL_UNSET;
 		return 0;
+
+	} else if (!strcmp(key, "svn.emptymsg")) {
+		return git_config_string(&empty_log_message, key, value);
 
 	} else if (!strcmp(key, "svn.authors")) {
 		return git_config_string(&authors_file, key, value);
@@ -1043,10 +1046,44 @@ static void addremove(struct diff_options *op,
 	diff_addremove(op, addrm, mode, sha1, sha1_valid, path, dsubmodule);
 }
 
+static const char *push_message(struct object *obj, struct commit *svnbase) {
+	static struct strbuf buf = STRBUF_INIT;
+
+	struct commit *cmt;
+	const char *log;
+	char *data;
+	unsigned long size;
+	enum object_type type;
+
+	switch (obj->type) {
+	case OBJ_COMMIT:
+		cmt = (struct commit*) obj;
+		if (svnbase && cmt == svn_commit(svnbase))
+			return empty_log_message;
+
+		if (parse_commit(cmt))
+			die("invalid commit %s", sha1_to_hex(cmt->object.sha1));
+
+		find_commit_subject(cmt->buffer, &log);
+		return log;
+
+	case OBJ_TAG:
+		data = read_sha1_file(obj->sha1, &type, &size);
+		find_commit_subject(data, &log);
+		strbuf_reset(&buf);
+		strbuf_add(&buf, log, parse_signature(log, data + size - log));
+		free(data);
+		return buf.buf;
+
+	default:
+		die("unexpected object type");
+	}
+}
+
 static int push_commit(struct svnref *r, int type, struct object *obj, struct commit *svnbase, const char *dst) {
 	static struct strbuf buf = STRBUF_INIT;
 
-	const char *ident, *log;
+	const char *ident, *log = push_message(obj, svnbase);
 	int rev, baserev = parse_svn_revision(svnbase);
 	const char *basepath = parse_svn_path(svnbase);
 	struct commit *git;
@@ -1055,8 +1092,6 @@ static int push_commit(struct svnref *r, int type, struct object *obj, struct co
 	git = (struct commit*) deref_tag(obj, NULL, 0);
 	if (parse_commit(git) || git->object.type != OBJ_COMMIT)
 		die("invalid push object %s", sha1_to_hex(obj->sha1));
-
-	find_commit_subject(git->buffer, &log);
 
 	if (type == SVN_ADD || type == SVN_REPLACE) {
 		proto->start_commit(type, log, r->path, max(r->rev,baserev) + 1, basepath, baserev);
@@ -1189,7 +1224,7 @@ static void push(struct refspec *spec) {
 	r = get_ref(path, INT_MAX);
 
 	if (!*spec->src) {
-		proto->start_commit(SVN_DELETE, "", r->path, r->rev+1, NULL, 0);
+		proto->start_commit(SVN_DELETE, empty_log_message, r->path, r->rev+1, NULL, 0);
 
 		if (proto->finish_commit(NULL) <= 0) {
 			printf("error %s commit failed\n", spec->dst);
