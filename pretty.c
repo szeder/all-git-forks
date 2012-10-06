@@ -1180,10 +1180,10 @@ void format_commit_message(const struct commit *commit,
 		free(enc);
 	}
 
-	if (pretty_ctx->fmt == CMIT_FMT_USERFORMAT)
-		strbuf_expand(sb, format, format_commit_item, &context);
-	else if (pretty_ctx->fmt == CMIT_FMT_LUA)
+	if (pretty_ctx->fmt == CMIT_FMT_LUA)
 		lua_commit_format(sb, &context);
+	else
+		strbuf_expand(sb, format, format_commit_item, &context);
 
 	rewrap_message_tail(sb, &context, 0, 0, 0);
 
