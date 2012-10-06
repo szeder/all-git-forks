@@ -478,6 +478,21 @@ err:
 	die("protocol error");
 }
 
+static void svn_change_user(struct credential *cred) {
+	struct conn *c = &main_connection;
+	struct credential *old = svn_auth;
+
+	svn_auth = cred;
+
+	if (c->fd >= 0 && old != cred) {
+		close(c->fd);
+		c->fd = -1;
+		c->b = c->e = 0;
+		strbuf_reset(&c->indbg);
+		do_connect(c, NULL);
+	}
+}
+
 static int svn_get_latest(void) {
 	struct conn *c = &main_connection;
 	int64_t n;
@@ -1084,6 +1099,7 @@ struct svn_proto proto_svn = {
 	&svn_mkdir,
 	&svn_send_file,
 	&svn_delete,
+	&svn_change_user,
 };
 
 struct svn_proto* svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid) {
