@@ -11,7 +11,7 @@
 #endif
 
 int svndbg = 1;
-static const char *url, *relpath;
+static const char *url, *relpath, *authors_file;
 static struct strbuf refdir = STRBUF_INIT;
 static struct strbuf uuid = STRBUF_INIT;
 static int verbose = 1;
@@ -43,7 +43,10 @@ struct svnref {
 };
 
 static int config(const char *key, const char *value, void *dummy) {
-	if (!prefixcmp(key, "remote.")) {
+	if (!strcmp(key, "svn.authors")) {
+		return git_config_string(&authors_file, key, value);
+
+	} else if (!prefixcmp(key, "remote.")) {
 		const char *sub = key + strlen("remote.");
 		if (!prefixcmp(sub, remote->name)) {
 			sub += strlen(remote->name);
@@ -131,6 +134,134 @@ static struct svnref *get_ref(const char *path, int rev) {
 		return r;
 	}
 }
+
+
+
+
+
+struct author {
+	char *name, *mail;
+	struct credential cred;
+};
+
+struct author* authors;
+size_t authorn, authora;
+
+static char *duptrim(const char *begin, const char *end) {
+	while (begin < end && isspace(begin[0]))
+		begin++;
+	while (end > begin && isspace(end[-1]))
+		end--;
+	return xmemdupz(begin, end - begin);
+}
+
+static void parse_authors(void) {
+	char *p, *data;
+	struct stat st;
+	int fd;
+
+	if (!authors_file)
+		return;
+
+	fd = open(authors_file, O_RDONLY);
+	if (fd < 0 || fstat(fd, &st))
+		die("authors file %s doesn't exist", authors_file);
+
+	p = data = xmallocz(st.st_size);
+	if (read_in_full(fd, data, st.st_size) != st.st_size)
+		die("read failed on authors");
+
+	while (p && *p) {
+		struct ident_split ident;
+		char *user_begin, *user_end;
+
+		/* skip over terminating condition of previous line */
+		if (p > data)
+			p++;
+
+		user_begin = p;
+		p += strcspn(p, "#\n=");
+
+		if (*p == '#') {
+			/* full line comment */
+			p = strchr(p, '\n');
+			continue;
+
+		} else if (*p == '\0' || *p == '\n') {
+			/* empty line */
+			continue;
+
+		} else if (*p == '=') {
+			/* have entry - user_end includes the = */
+			user_end = ++p;
+			p += strcspn(p, "#\n");
+		}
+
+
+		if (!split_ident_line(&ident, user_end, p - user_end)) {
+			struct author a;
+			credential_init(&a.cred);
+			credential_from_url(&a.cred, url);
+
+			a.cred.username = duptrim(user_begin, user_end-1);
+			a.name = duptrim(ident.name_begin, ident.name_end);
+			a.mail = duptrim(ident.mail_begin, ident.mail_end);
+
+			ALLOC_GROW(authors, authorn+1, authora);
+			authors[authorn++] = a;
+		}
+
+		/* comment after entry */
+		if (*p == '#') {
+			p = strchr(p, '\n');
+		}
+	}
+
+	free(data);
+	close(fd);
+}
+
+static const char *svn_to_ident(const char *username, const char *time) {
+	int i;
+	struct author *a;
+	struct strbuf buf = STRBUF_INIT;
+
+	for (i = 0; i < authorn; i++) {
+		a = &authors[i];
+		if (!strcasecmp(username, a->cred.username)) {
+			goto end;
+		}
+	}
+
+	if (authors_file) {
+		die("could not find username '%s' in %s\n"
+				"Add a line of the form:\n"
+				"%s = Full Name <email@example.com>\n",
+				username,
+				authors_file,
+				username);
+	}
+
+	ALLOC_GROW(authors, authorn+1, authora);
+	a = &authors[authorn++];
+	credential_init(&a->cred);
+	credential_from_url(&a->cred, url);
+
+	a->cred.username = xstrdup(username);
+	a->name = a->cred.username;
+
+	strbuf_addf(&buf, "%s@%s", username, uuid.buf);
+	a->mail = strbuf_detach(&buf, NULL);
+
+end:
+	return fmt_ident(a->name, a->mail, time, 0);
+}
+
+
+
+
+
+
 
 static void do_connect(void) {
 	struct strbuf urlb = STRBUF_INIT;
@@ -299,6 +430,8 @@ int main(int argc, const char **argv) {
 		refmap->dst = (char*) "refs/heads/master";
 		refmap_nr = 1;
 	}
+
+	parse_authors();
 
 	while (strbuf_getline(&buf, stdin, '\n') != EOF) {
 		char *arg = buf.buf;
