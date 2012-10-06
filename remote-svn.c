@@ -432,9 +432,14 @@ err:
 
 static void do_connect(void) {
 	struct strbuf urlb = STRBUF_INIT;
+	const char *p = defcred.protocol;
 	strbuf_addstr(&urlb, url);
 
-	die("don't know how to handle url %s", url);
+	if (!strcmp(p, "svn")) {
+		proto = svn_connect(&urlb, &defcred, &uuid);
+	} else {
+		die("don't know how to handle url %s", url);
+	}
 
 	if (prefixcmp(url, urlb.buf))
 		die("server returned different url (%s) then expected (%s)", urlb.buf, url);

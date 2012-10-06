@@ -63,4 +63,6 @@ struct svn_proto {
 	int (*has_change)(const char* /*path*/, int /*from*/, int /*to*/);
 };
 
+struct svn_proto *svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid);
+
 #endif
