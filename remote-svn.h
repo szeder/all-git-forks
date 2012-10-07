@@ -65,5 +65,6 @@ struct svn_proto {
 };
 
 struct svn_proto *svn_connect(struct strbuf *purl, struct credential *cred, struct strbuf *uuid);
+struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid);
 
 #endif

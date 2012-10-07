@@ -440,7 +440,9 @@ static void do_connect(void) {
 	const char *p = defcred.protocol;
 	strbuf_addstr(&urlb, url);
 
-	if (!strcmp(p, "svn")) {
+	if (!strcmp(p, "http") || !strcmp(p, "https")) {
+		proto = svn_http_connect(remote, &urlb, &defcred, &uuid);
+	} else if (!strcmp(p, "svn")) {
 		proto = svn_connect(&urlb, &defcred, &uuid);
 	} else {
 		die("don't know how to handle url %s", url);

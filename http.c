@@ -46,7 +46,8 @@ static const char *curl_cookie_file;
 static int http_proactive_auth;
 static const char *user_agent;
 
-struct credential http_auth = CREDENTIAL_INIT;
+struct credential def_http_auth = CREDENTIAL_INIT;
+struct credential *http_auth = &def_http_auth;
 
 #if LIBCURL_VERSION_NUM >= 0x071700
 /* Use CURLOPT_KEYPASSWD as is */
@@ -212,20 +213,20 @@ static int http_options(const char *var, const char *value, void *cb)
 
 static void init_curl_http_auth(CURL *result)
 {
-	if (!http_auth.username)
+	if (!http_auth || !http_auth->username)
 		return;
 
-	credential_fill(&http_auth);
+	credential_fill(http_auth);
 
 #if LIBCURL_VERSION_NUM >= 0x071301
-	curl_easy_setopt(result, CURLOPT_USERNAME, http_auth.username);
-	curl_easy_setopt(result, CURLOPT_PASSWORD, http_auth.password);
+	curl_easy_setopt(result, CURLOPT_USERNAME, http_auth->username);
+	curl_easy_setopt(result, CURLOPT_PASSWORD, http_auth->password);
 #else
 	{
 		static struct strbuf up = STRBUF_INIT;
 		strbuf_reset(&up);
 		strbuf_addf(&up, "%s:%s",
-			    http_auth.username, http_auth.password);
+			    http_auth->username, http_auth->password);
 		curl_easy_setopt(result, CURLOPT_USERPWD, up.buf);
 	}
 #endif
@@ -388,7 +389,8 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 		curl_ftp_no_epsv = 1;
 
 	if (url) {
-		credential_from_url(&http_auth, url);
+		if (http_auth)
+			credential_from_url(http_auth, url);
 		if (!ssl_cert_password_required &&
 		    getenv("GIT_SSL_CERT_PASSWORD_PROTECTED") &&
 		    !prefixcmp(url, "https://"))
@@ -505,7 +507,7 @@ struct active_request_slot *get_active_slot(void)
 	curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, NULL);
 	curl_easy_setopt(slot->curl, CURLOPT_UPLOAD, 0);
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
-	if (http_auth.password)
+	if (http_auth && http_auth->password)
 		init_curl_http_auth(slot->curl);
 
 	return slot;
@@ -751,16 +753,17 @@ int handle_curl_result(struct active_request_slot *slot)
 	struct slot_results *results = slot->results;
 
 	if (results->curl_result == CURLE_OK) {
-		credential_approve(&http_auth);
+		if (http_auth)
+			credential_approve(http_auth);
 		return HTTP_OK;
 	} else if (missing_target(results))
 		return HTTP_MISSING_TARGET;
-	else if (results->http_code == 401) {
-		if (http_auth.username && http_auth.password) {
-			credential_reject(&http_auth);
+	else if (http_auth && results->http_code == 401) {
+		if (http_auth->username && http_auth->password) {
+			credential_reject(http_auth);
 			return HTTP_NOAUTH;
 		} else {
-			credential_fill(&http_auth);
+			credential_fill(http_auth);
 			init_curl_http_auth(slot->curl);
 			return HTTP_REAUTH;
 		}
