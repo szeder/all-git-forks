@@ -912,6 +912,23 @@ static void http_mkdir(const char *svnpath) {
 		die("mkcol failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
 }
 
+static struct curl_slist *add_file_hdrs, *open_file_hdrs;
+
+static void http_send_file(const char *svnpath, struct strbuf *data, int create) {
+	struct request *h = &main_request;
+
+	reset_request(h);
+	h->hdrs = create ? add_file_hdrs : open_file_hdrs;
+	h->method = "PUT";
+
+	strbuf_addstr(&h->url, cmt_work_path.buf);
+	append_path(&h->url, svnpath);
+	strbuf_swap(&h->in.buf, data);
+
+	if (run_request(h))
+		die("put failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+}
+
 static void http_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
 	struct strbuf buf = STRBUF_INIT;
 	struct request *h = &main_request;
@@ -919,6 +936,15 @@ static void http_start_commit(int type, const char *log, const char *path, int r
 
 	strbuf_reset(&cmt_activity);
 	strbuf_reset(&cmt_work_path);
+
+	add_file_hdrs = curl_slist_append(add_file_hdrs, "Expect:");
+	add_file_hdrs = curl_slist_append(add_file_hdrs, "Content-Type: application/vnd.svn-svndiff");
+
+	strbuf_reset(&buf);
+	strbuf_addf(&buf, "X-SVN-Version-Name: %d", rev-1);
+	open_file_hdrs = curl_slist_append(open_file_hdrs, buf.buf);
+	open_file_hdrs = curl_slist_append(open_file_hdrs, "Expect:");
+	open_file_hdrs = curl_slist_append(open_file_hdrs, "Content-Type: application/vnd.svn-svndiff");
 
 	if (cmt_mkactivity) {
 		unsigned char actsha1[20];
@@ -1083,6 +1109,11 @@ static int http_finish_commit(struct strbuf *time) {
 		latest_rev = http_merge_rev;
 	}
 
+	curl_slist_free_all(add_file_hdrs);
+	curl_slist_free_all(open_file_hdrs);
+	add_file_hdrs = NULL;
+	open_file_hdrs = NULL;
+
 	return http_merge_rev;
 }
 
@@ -1100,6 +1131,9 @@ struct svn_proto proto_http = {
 	&http_read_updates,
 	&http_start_commit,
 	&http_finish_commit,
+	&http_mkdir,
+	&http_send_file,
+	&http_delete,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
