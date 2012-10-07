@@ -1117,6 +1117,10 @@ static int http_finish_commit(struct strbuf *time) {
 	return http_merge_rev;
 }
 
+static void http_change_user(struct credential *cred) {
+	http_auth = cred;
+}
+
 
 
 
@@ -1134,6 +1138,7 @@ struct svn_proto proto_http = {
 	&http_mkdir,
 	&http_send_file,
 	&http_delete,
+	&http_change_user,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
