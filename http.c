@@ -556,6 +556,18 @@ void add_fill_function(void *data, int (*fill)(void *))
 	*linkp = new;
 }
 
+void remove_fill_function(void *data, int (*fill)(void *))
+{
+	struct fill_chain **p;
+
+	for (p = &fill_cfg; *p != NULL; p = &(*p)->next) {
+		if ((*p)->data == data && (*p)->fill == fill) {
+			*p = (*p)->next;
+			break;
+		}
+	}
+}
+
 void fill_active_slots(void)
 {
 	struct active_request_slot *slot = active_queue_head;

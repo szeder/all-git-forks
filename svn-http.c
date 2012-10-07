@@ -430,10 +430,210 @@ static int http_isdir(const char *path, int rev) {
 	return ret;
 }
 
+
+
+
+
+
+
+struct log {
+	struct request req;
+	struct strbuf msg, author, time, copy;
+	int rev, copyrev;
+	struct svn_log svn;
+	struct log *next;
+};
+
+static void log_xml_start(void *user, const XML_Char *name, const XML_Char **attrs) {
+	struct log *l = user;
+	struct request *h = &l->req;
+
+	xml_start(h, name, attrs);
+
+	if (!strcmp(name, "svn:|log-item")) {
+		strbuf_reset(&l->msg);
+		strbuf_reset(&l->author);
+		strbuf_reset(&l->time);
+		l->rev = 0;
+	}
+}
+
+static void log_xml_end(void *user, const XML_Char *name) {
+	struct log *l = user;
+	struct request *h = &l->req;
+
+	xml_end(h, name);
+
+	if (!strcmp(name, "svn:|log-item")) {
+		cmt_read(&l->svn, l->rev, l->author.buf, l->time.buf, l->msg.buf);
+
+	} else if (!strcmp(name, "DAV:|version-name")) {
+		l->rev = atoi(h->cdata.buf);
+
+	} else if (!strcmp(name, "DAV:|comment")) {
+		strbuf_swap(&h->cdata, &l->msg);
+
+	} else if (!strcmp(name, "DAV:|creator-displayname")) {
+		strbuf_swap(&h->cdata, &l->author);
+
+	} else if (!strcmp(name, "svn:|date")) {
+		strbuf_swap(&h->cdata, &l->time);
+	}
+
+	strbuf_reset(&h->cdata);
+}
+
+static void copysrc_xml_start(void *user, const XML_Char *name, const XML_Char **attrs) {
+	struct log *l = user;
+	struct request *h = &l->req;
+	const char **p;
+
+	xml_start(h, name, attrs);
+
+	l->copyrev = 0;
+	strbuf_reset(&l->copy);
+
+	p = attrs;
+	while (p[0] && p[1]) {
+		const char *key = *(p++);
+		const char *val = *(p++);
+
+		if (!strcmp(key, "copyfrom-path")) {
+			strbuf_addstr(&l->copy, val);
+			clean_svn_path(&l->copy);
+		} else if (!strcmp(key, "copyfrom-rev")) {
+			l->copyrev = atoi(val);
+		}
+	}
+}
+
+static void copysrc_xml_end(void *user, const XML_Char *name) {
+	struct log *l = user;
+	struct request *h = &l->req;
+	struct svn_log *s = &l->svn;
+
+	xml_end(h, name);
+
+	if (!strcmp(name, "svn:|added-path")
+	|| !strcmp(name, "svn:|replaced-path")
+	|| !strcmp(name, "svn:|deleted-path")
+	|| !strcmp(name, "svn:|modified-path"))
+	{
+		size_t plen = strlen(s->path);
+		clean_svn_path(&h->cdata);
+
+		if (h->cdata.len > plen && !memcmp(h->cdata.buf, s->path, plen)) {
+			s->copy_modified = 1;
+
+		} else if (h->cdata.len <= plen
+			&& !memcmp(h->cdata.buf, s->path, h->cdata.len)
+			&& l->copyrev)
+		{
+			strbuf_addstr(&l->copy, s->path + h->cdata.len);
+			s->copysrc = strbuf_detach(&l->copy, NULL);
+			s->copyrev = l->copyrev;
+		}
+	}
+
+	strbuf_reset(&h->cdata);
+}
+
+static struct log *free_log;
+
+static void log_finished(void *user) {
+	struct log *l = user;
+	struct request *h = &l->req;
+
+	if (h->res.curl_result) {
+		die("log failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+	}
+
+	log_read(&l->svn);
+	l->next = free_log;
+	free_log = l;
+}
+
+static int fill_read_logs(void *user) {
+	struct strbuf *b;
+	struct request *h;
+	struct log *l;
+	struct svn_log *s;
+
+	if (free_log) {
+		l = free_log;
+		free_log = l->next;
+	} else {
+		l = xcalloc(1, sizeof(*l));
+		init_request(&l->req);
+		strbuf_init(&l->msg, 0);
+		strbuf_init(&l->author, 0);
+		strbuf_init(&l->time, 0);
+		strbuf_init(&l->copy, 0);
+	}
+
+	if (next_log(&l->svn)) {
+		l->next = free_log;
+		free_log = l;
+		return 0;
+	}
+
+	s = &l->svn;
+	h = &l->req;
+
+	reset_request(h);
+	h->method = "REPORT";
+
+	strbuf_addf(&h->url, "/!svn/ver/%d", s->end);
+	append_path(&h->url, s->path);
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<S:log-report xmlns:S=\"svn:\">\n");
+	strbuf_addstr(b, " <S:strict-node-history/>\n");
+	strbuf_addf(b, " <S:start-revision>%d</S:start-revision>\n", s->end);
+	strbuf_addf(b, " <S:end-revision>%d</S:end-revision>\n", s->start);
+
+	if (s->get_copysrc) {
+		strbuf_addstr(b, " <S:discover-changed-paths/>\n");
+		strbuf_addstr(b, " <S:no-revprops/>\n");
+	} else {
+		strbuf_addstr(b, " <S:revprop>svn:author</S:revprop>\n");
+		strbuf_addstr(b, " <S:revprop>svn:date</S:revprop>\n");
+		strbuf_addstr(b, " <S:revprop>svn:log</S:revprop>\n");
+	}
+
+	strbuf_addstr(b, " <S:path/>\n");
+	strbuf_addstr(b, "</S:log-report>\n");
+
+	if (s->get_copysrc) {
+		process_request(h, &copysrc_xml_start, &copysrc_xml_end);
+	} else {
+		process_request(h, &log_xml_start, &log_xml_end);
+	}
+
+	h->callback_func = &log_finished;
+	h->callback_data = l;
+
+	start_request(h);
+	return 1;
+}
+
+static void http_read_logs(void) {
+	add_fill_function(NULL, &fill_read_logs);
+	fill_active_slots();
+	finish_all_active_slots();
+	remove_fill_function(NULL, &fill_read_logs);
+}
+
+
+
+
+
+
 struct svn_proto proto_http = {
 	&http_get_latest,
 	&http_list,
 	&http_isdir,
+	&http_read_logs,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {

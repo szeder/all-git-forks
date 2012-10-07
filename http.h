@@ -83,6 +83,7 @@ extern int handle_curl_result(struct active_request_slot *slot);
 #ifdef USE_CURL_MULTI
 extern void fill_active_slots(void);
 extern void add_fill_function(void *data, int (*fill)(void *));
+extern void remove_fill_function(void *data, int (*fill)(void *));
 extern void step_active_slots(void);
 #endif
 
