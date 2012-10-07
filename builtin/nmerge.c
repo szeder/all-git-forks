@@ -101,7 +101,7 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 
 		if (cmp == 0) {
 			if (hashcmp(a->sha1, b->sha1))
-				kind = "change";
+				kind = "mod   ";
 			else
 				kind = "same  ";
 			name = a->name;
