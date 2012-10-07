@@ -106,7 +106,7 @@ void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 				kind = "same  ";
 			name = a->name;
 		} else if (cmp < 0) {
-			kind = "rm    ";
+			kind = "del   ";
 			name = a->name;
 		} else {
 			kind = "add   ";
