@@ -1121,6 +1121,48 @@ static void http_change_user(struct credential *cred) {
 	http_auth = cred;
 }
 
+static int have_change;
+
+static void change_xml_end(void *user, const char *name) {
+	struct request *h = user;
+	xml_end(h, name);
+
+	if (!strcmp(name, "svn:|log-item")) {
+		have_change = 1;
+	}
+
+	strbuf_reset(&h->cdata);
+}
+
+static int http_has_change(const char *path, int start, int end) {
+	struct request *h = &main_request;
+	struct strbuf *b;
+
+	reset_request(h);
+	h->method = "REPORT";
+
+	strbuf_addf(&h->url, "/!svn/ver/%d", end);
+	append_path(&h->url, path);
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<S:log-report xmlns:S=\"svn:\">\n");
+	strbuf_addf(b, " <S:start-revision>%d</S:start-revision>\n", end);
+	strbuf_addf(b, " <S:end-revision>%d</S:end-revision>\n", start);
+	strbuf_addstr(b, " <S:strict-node-history/>\n");
+	strbuf_addstr(b, " <S:limit>1</S:limit>\n");
+	strbuf_addstr(b, " <S:no-revprops/>\n");
+	strbuf_addstr(b, " <S:path/>\n");
+	strbuf_addstr(b, "</S:log-report>\n");
+
+	have_change = 0;
+	process_request(h, &xml_start, &change_xml_end);
+
+	if (run_request(h) && h->res.http_code != 404) {
+		die("log failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+	}
+
+	return have_change;
+}
 
 
 
@@ -1139,6 +1181,7 @@ struct svn_proto proto_http = {
 	&http_send_file,
 	&http_delete,
 	&http_change_user,
+	&http_has_change,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
