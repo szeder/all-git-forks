@@ -46,6 +46,33 @@ static void append_path(struct strbuf *buf, const char *p) {
 	}
 }
 
+static void encode_xml(struct strbuf *buf, const char *p) {
+	while (*p) {
+		switch (*p) {
+		case '"':
+			strbuf_addstr(buf, "&quot;");
+			break;
+		case '\'':
+			strbuf_addstr(buf, "&apos;");
+			break;
+		case '<':
+			strbuf_addstr(buf, "&lt;");
+			break;
+		case '>':
+			strbuf_addstr(buf, "&gt;");
+			break;
+		case '&':
+			strbuf_addstr(buf, "&amp;");
+			break;
+		default:
+			strbuf_addch(buf, *p);
+			break;
+		}
+
+		p++;
+	}
+}
+
 static const char* shorten_tag(const char* name) {
 	static struct strbuf buf = STRBUF_INIT;
 	strbuf_reset(&buf);
@@ -629,11 +656,198 @@ static void http_read_logs(void) {
 
 
 
+struct update {
+	struct request req;
+	struct strbuf path, diff, hash;
+	struct svn_update svn;
+	struct update *next;
+};
+
+static void add_name(struct strbuf *buf, const XML_Char **p) {
+	while (p[0] && p[1]) {
+		if (!strcmp(p[0], "name")) {
+			strbuf_addch(buf, '/');
+			strbuf_addstr(buf, p[1]);
+			clean_svn_path(buf);
+			return;
+		}
+		p += 2;
+	}
+}
+
+static void update_xml_start(void *user, const XML_Char *name, const XML_Char **attrs) {
+	struct update *u = user;
+	struct request *h = &u->req;
+	struct strbuf *b = &u->svn.head;
+
+	xml_start(h, name, attrs);
+
+	if (!strcmp(name, "svn:|open-directory")
+			|| !strcmp(name, "svn:|add-file")
+			|| !strcmp(name, "svn:|open-file"))
+	{
+		add_name(&u->path, attrs);
+
+	} else if (!strcmp(name, "svn:|add-directory")) {
+		add_name(&u->path, attrs);
+
+		strbuf_addf(b, "add-dir");
+		arg_quote(b, u->path.buf);
+		strbuf_addch(b, '\n');
+
+	} else if (!strcmp(name, "svn:|delete-entry")) {
+		add_name(&u->path, attrs);
+
+		strbuf_addf(b, "delete-entry");
+		arg_quote(b, u->path.buf);
+		strbuf_addch(b, '\n');
+	}
+}
+
+static void update_xml_end(void *user, const XML_Char *name) {
+	struct update *u = user;
+	struct request *h = &u->req;
+	struct strbuf *b = &u->svn.head;
+	char *p;
+
+	xml_end(h, name);
+
+	if (!strcmp(name, "svn:|txdelta") && h->cdata.len) {
+		decode_64(&h->cdata);
+		strbuf_swap(&h->cdata, &u->diff);
+
+	} else if (!strcmp(name, "http://subversion.tigris.org/xmlns/dav/|md5-checksum")) {
+		strbuf_swap(&u->hash, &h->cdata);
+
+	} else if (!strcmp(name, "svn:|add-directory")
+		|| !strcmp(name, "svn:|open-directory")
+		|| !strcmp(name, "svn:|delete-entry"))
+	{
+		p = strrchr(u->path.buf, '/');
+		if (p) strbuf_setlen(&u->path, p - u->path.buf);
+
+	} else if (!strcmp(name, "svn:|add-file") || !strcmp(name, "svn:|open-file")) {
+		if (u->diff.len) {
+			strbuf_addstr(b, name + strlen("svn:|"));
+			arg_quote(b, u->path.buf);
+			strbuf_addf(b, " %d \"\" %s\n", (int) u->diff.len, u->hash.buf);
+			strbuf_add(b, u->diff.buf, u->diff.len);
+		}
+
+		strbuf_reset(&u->hash);
+		strbuf_reset(&u->diff);
+
+		p = strrchr(u->path.buf, '/');
+		if (p) strbuf_setlen(&u->path, p - u->path.buf);
+	}
+
+	strbuf_reset(&h->cdata);
+}
+
+static struct update *free_update;
+
+static void update_finished(void *user) {
+	struct update *u = user;
+	struct request *h = &u->req;
+
+	if (h->res.curl_result) {
+		die("update failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+	}
+
+	update_read(&u->svn);
+	u->next = free_update;
+	free_update = u;
+}
+
+static int fill_read_updates(void *user) {
+	struct svn_update *s;
+	struct update *u;
+	struct request *h;
+	struct strbuf *b;
+
+	if (free_update) {
+		u = free_update;
+		free_update = u->next;
+		strbuf_reset(&u->svn.head);
+		strbuf_reset(&u->svn.tail);
+	} else {
+		u = xcalloc(1, sizeof(*u));
+		init_request(&u->req);
+		strbuf_init(&u->path, 0);
+		strbuf_init(&u->diff, 0);
+		strbuf_init(&u->hash, 0);
+		strbuf_init(&u->svn.head, 0);
+		strbuf_init(&u->svn.tail, 0);
+	}
+
+	if (next_update(&u->svn)) {
+		u->next = free_update;
+		free_update = u;
+		return 0;
+	}
+
+	s = &u->svn;
+	h = &u->req;
+
+	reset_request(h);
+	h->method = "REPORT";
+
+	b = &h->url;
+	strbuf_addstr(b, "/!svn/vcc/default");
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<S:update-report send-all=\"true\" xmlns:S=\"svn:\">\n");
+
+	strbuf_addstr(b, " <S:src-path>");
+	strbuf_add(b, url.buf, url.len);
+	encode_xml(b, s->copyrev ? s->copy : s->path);
+	strbuf_addstr(b, "</S:src-path>\n");
+
+	strbuf_addstr(b, " <S:dst-path>");
+	strbuf_add(b, url.buf, url.len);
+	encode_xml(b, s->path);
+	strbuf_addstr(b, "</S:dst-path>\n");
+
+	strbuf_addf(b, " <S:target-revision>%d</S:target-revision>\n", s->rev);
+	strbuf_addstr(b, " <S:depth>unknown</S:depth>\n");
+	strbuf_addstr(b, " <S:ignore-ancestry>yes</S:ignore-ancestry>\n");
+
+	if (s->copyrev) {
+		strbuf_addf(b, " <S:entry rev=\"%d\" depth=\"infinity\"/>\n", s->copyrev);
+	} else if (s->new_branch) {
+		strbuf_addf(b, " <S:entry rev=\"%d\" depth=\"infinity\" start-empty=\"true\"/>\n", s->rev);
+	} else {
+		strbuf_addf(b, " <S:entry rev=\"%d\" depth=\"infinity\"/>\n", s->rev - 1);
+	}
+
+	strbuf_addstr(b, "</S:update-report>\n");
+
+	process_request(h, &update_xml_start, &update_xml_end);
+
+	h->callback_func = &update_finished;
+	h->callback_data = u;
+
+	start_request(h);
+	return 1;
+}
+
+static void http_read_updates(void) {
+	add_fill_function(NULL, &fill_read_updates);
+	fill_active_slots();
+	finish_all_active_slots();
+	remove_fill_function(NULL, &fill_read_updates);
+}
+
+
+
+
+
 struct svn_proto proto_http = {
 	&http_get_latest,
 	&http_list,
 	&http_isdir,
 	&http_read_logs,
+	&http_read_updates,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {

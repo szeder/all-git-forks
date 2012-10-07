@@ -2,6 +2,7 @@
 
 . ./test-lib.sh
 
+export GIT_CURL_VERBOSE=1
 export GIT_TRANSPORT_HELPER_DEBUG=1
 
 if test -z "$SVNSERVE_PORT"
@@ -10,14 +11,24 @@ then
 	test_done
 fi
 
+if [ "$svn_proto" = "http" -a \( -z "$APACHE2" -o -z "$APACHE2_MODULES" \) ]
+then
+	skip_all='skipping remote-svn test. (set APACHE2 and APACHE2_MODULES)'
+	test_done
+fi
+
+if [ -z "$svn_proto" ]; then
+	svn_proto="svn"
+fi
+
 svnrepo=$PWD/svnrepo
 svnconf=$PWD/svnconf
-svnurl="svn://localhost:$SVNSERVE_PORT/svnrepo"
+svnurl="$svn_proto://localhost:$SVNSERVE_PORT/svnrepo"
 null_sha1=0000000000000000000000000000000000000000
 
-# We should pass an empty configuration directory to the 'svn commit' to
-# avoid automated property changes and other stuff that could be set
-# from user's configuration files in ~/.subversion.
+# We need this, because we should pass empty configuration directory to
+# the 'svn commit' to avoid automated property changes and other stuff
+# that could be set from user's configuration files in ~/.subversion.
 svn_cmd () {
 	[ -d "$svnconf" ] || mkdir "$svnconf"
 	cat > "$svnconf/servers" <<!
@@ -121,6 +132,37 @@ auth-access = write
 anon-access = read
 password-db = passwd
 !
+	cat > "$svnrepo/conf/httpd.conf" <<!
+LoadModule dav_module "$APACHE2_MODULES/mod_dav.so"
+LoadModule auth_basic_module "$APACHE2_MODULES/mod_auth_basic.so"
+LoadModule dav_svn_module "$APACHE2_MODULES/mod_dav_svn.so"
+LoadModule authn_file_module "$APACHE2_MODULES/mod_authn_file.so"
+LoadModule authz_svn_module "$APACHE2_MODULES/mod_authz_svn.so"
+ErrorLog "$svnrepo/error.log"
+LogLevel debug
+PidFile "$PWD/../svnserve.pid"
+LockFile "$PWD/accept.lock"
+CoreDumpDirectory "$PWD"
+
+Listen 127.0.0.1:$SVNSERVE_PORT
+<Location />
+DAV svn
+SVNParentPath "$svnrepo/.."
+Require valid-user
+AuthType Basic
+AuthName "SVN Repo"
+AuthBasicProvider file
+AuthUserFile "$svnrepo/conf/htpasswd"
+AuthzSVNAccessFile "$svnrepo/conf/access"
+Satisfy any
+</Location>
+!
+	htpasswd -bc "$svnrepo/conf/htpasswd" committer pass
+	cat > "$svnrepo/conf/access" <<!
+[/]
+* = r
+committer = rw
+!
 	cat > "$svnrepo/conf/passwd" <<!
 [users]
 committer = pass
@@ -129,12 +171,19 @@ committer = pass
  #committer = comment <foo@example.com>
 committer = C O Mitter <committer@example.com> # some comment
 !
-	svnserve --daemon \
-		--listen-port $SVNSERVE_PORT \
-		--root "$svnrepo/.." \
-		--listen-host localhost \
-		--pid-file=../svnserve.pid \
-		--log-file=log &&
+	case "$svn_proto" in
+		svn)
+			svnserve --daemon \
+				--listen-port $SVNSERVE_PORT \
+				--root "$svnrepo/.." \
+				--listen-host localhost \
+				--pid-file=../svnserve.pid \
+				--log-file=log
+			;;
+		http)
+			$APACHE2 -f "$svnrepo/conf/httpd.conf"
+			;;
+	esac
 	git remote add svn svn::$svnurl &&
 	git config user.name "C O Mitter" &&
 	git config user.email "committer@example.com" &&

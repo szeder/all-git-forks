@@ -1196,6 +1196,9 @@ extern const char *excludes_file;
 int decode_85(char *dst, const char *line, int linelen);
 void encode_85(char *buf, const unsigned char *data, int bytes);
 
+/* base64 */
+void decode_64(struct strbuf *buf);
+
 /* alloc.c */
 extern void *alloc_blob_node(void);
 extern void *alloc_tree_node(void);
