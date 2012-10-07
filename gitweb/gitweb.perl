@@ -2757,7 +2757,7 @@ sub git_get_hash_by_path {
 		# type doesn't match
 		return undef;
 	}
-	return $3;
+	return wantarray ? ($3, $2, $1) : $3;
 }
 
 # get path of entry with given hash at given tree-ish (ref)
@@ -3726,6 +3726,74 @@ sub git_get_tags_list {
 }
 
 ## ----------------------------------------------------------------------
+## submodules
+
+our %submodule_urls; # cache
+sub git_submodule_urls {
+	my $base = shift;
+
+	return $submodule_urls{$base} if exists $submodule_urls{$base};
+	$submodule_urls{$base} = {};
+
+	local $/ = "\0";
+	my $pid = open my $fh, '-|';
+	die_error(500, "Couldn't open pipe to read gitmodules") unless defined $pid;
+	unless ($pid) {
+		$pid = open STDIN, '-|';
+		exit(1) unless defined $pid;
+		exec git_cmd(), "cat-file", "blob", "$base:.gitmodules" or exit(1) unless $pid;
+		exec git_cmd(), "config", "-f/dev/stdin", "-z", "-l" or exit(1); # "--no-includes"
+	}
+
+	my %r;
+	my %urls;
+	while (my $keyval = <$fh>) {
+		chomp $keyval;
+		my ($key, $val) = split(/\n/, $keyval, 2);
+		my @key = split(/\./, $key);
+
+		next unless shift @key eq 'submodule' && $#key == 1;
+		if ($key[1] eq 'path') {
+			$r{$val} = $key[0];
+		} elsif ($key[1] eq 'url') {
+			$urls{$key[0]} = $val;
+		}
+	}
+	close $fh;
+
+	for my $name (values %r) {
+		$name = $urls{$name};
+	}
+
+	return $submodule_urls{$base} = \%r;
+}
+
+# if a (submodule) URL is a relative path, determine its project
+sub git_url_project {
+	local $_ = shift;
+	return unless defined && /^\./;
+	my $b = $project;
+	while (s-^\.(\.)?/+--) {
+		$b =~ s-(^|/)[^/]+$-- or return if $1;
+	}
+	$_ = "$b/$_" if $b ne "";
+	$_ .= ".git" unless /(\.git|\/)$/;
+	return $_;
+}
+
+# get the project associated with a submodule
+# aside from tree view, external submodules remain broken
+sub git_submodule {
+	my $base = shift;
+	my $path = shift;
+
+	my $urls = git_submodule_urls($base) or return;
+	my $url = $urls->{$path};
+	my $proj = git_url_project($url);
+	return wantarray ? ($proj, $url) : $proj;
+}
+
+## ----------------------------------------------------------------------
 ## filesystem-related functions
 
 sub get_file_owner {
@@ -4661,9 +4729,38 @@ sub git_print_tree_entry {
 			              "history");
 		}
 		print "</td>\n";
+	} elsif ($t->{'type'} eq "commit" and S_ISGITLINK(oct $t->{'mode'})) {
+		my ($subproj, $suburl) = git_submodule($hash_base, "$basedir$t->{'name'}");
+		print "<td class=\"list\">";
+		print esc_path($t->{'name'});
+		if (defined $suburl) {
+			print " -> ";
+			if (defined $subproj) {
+				print $cgi->a({-href => href(project=>$subproj, action=>"summary")},
+					esc_path($suburl));
+			} else {
+				print esc_path($suburl);
+			}
+		}
+		print "</td>\n";
+		print "<td class=\"link\">";
+		if (defined $subproj) {
+			print $cgi->a({-href => href(project=>$subproj, action=>"commit", hash=>$t->{'hash'})}, "commit") . " | " .
+			      $cgi->a({-href => href(project=>$subproj, action=>"commitdiff", hash=>$t->{'hash'})}, "commitdiff") . " | " .
+			      $cgi->a({-href => href(project=>$subproj, action=>"tree", hash=>$t->{'hash'}, hash_base=>$t->{'hash'})}, "tree");
+		} else {
+			print $t->{'hash'};
+		}
+		if (defined $hash_base) {
+			print " | " .
+			      $cgi->a({-href => href(action=>"history",
+			                             hash_base=>$hash_base,
+			                             file_name=>"$basedir$t->{'name'}")},
+			              "history");
+		}
+		print "</td>\n";
 	} else {
 		# unknown object: we can only present history for it
-		# (this includes 'commit' object, i.e. submodule support)
 		print "<td class=\"list\">" .
 		      esc_path($t->{'name'}) .
 		      "</td>\n";
@@ -4716,6 +4813,18 @@ sub is_patch_split {
 		&& $diffinfo->{'to_file'} eq $patchinfo->{'to_file'};
 }
 
+sub blob_link {
+	my ($base, $file, $hash, $mode) = @_;
+
+	my $subproj = git_submodule($base, $file) if S_ISGITLINK(oct $mode);
+	my $act = defined $subproj ? "commit" : "blob";
+	my $href = defined $subproj
+			? href(project=>$subproj, action=>$act,
+				hash=>$hash)
+			: href(action=>$act, file_name=>$file,
+				hash=>$hash, hash_base=>$base);
+	return wantarray ? ($href, $act) : $href;
+}
 
 sub git_difftree_body {
 	my ($difftree, $hash, @parents) = @_;
@@ -4767,12 +4876,11 @@ sub git_difftree_body {
 			fill_from_file_info($diff, @parents)
 				unless exists $diff->{'from_file'};
 
+			my ($blob_href, $blob_link) = blob_link($hash, $diff->{'to_file'}, $diff->{'to_id'}, $diff->{'to_mode'});
 			if (!is_deleted($diff)) {
 				# file exists in the result (child) commit
 				print "<td>" .
-				      $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-				                             file_name=>$diff->{'to_file'},
-				                             hash_base=>$hash),
+				      $cgi->a({-href => $blob_href,
 				              -class => "list"}, esc_path($diff->{'to_file'})) .
 				      "</td>\n";
 			} else {
@@ -4797,6 +4905,7 @@ sub git_difftree_body {
 				my $hash_parent = $parents[$i];
 				my $from_hash = $diff->{'from_id'}[$i];
 				my $from_path = $diff->{'from_file'}[$i];
+				my $from_mode = $diff->{'from_mode'}[$i];
 				my $status = $diff->{'status'}[$i];
 
 				$has_history ||= ($status ne 'A');
@@ -4805,12 +4914,9 @@ sub git_difftree_body {
 				if ($status eq 'A') {
 					print "<td  class=\"link\" align=\"right\"> | </td>\n";
 				} elsif ($status eq 'D') {
+					my ($href, $link) = blob_link($hash_parent, $from_path, $from_hash, $from_mode);
 					print "<td class=\"link\">" .
-					      $cgi->a({-href => href(action=>"blob",
-					                             hash_base=>$hash,
-					                             hash=>$from_hash,
-					                             file_name=>$from_path)},
-					              "blob" . ($i+1)) .
+					      $cgi->a({-href => $href}, $link . ($i+1)) .
 					      " | </td>\n";
 				} else {
 					if ($diff->{'to_id'} eq $from_hash) {
@@ -4832,11 +4938,7 @@ sub git_difftree_body {
 
 			print "<td class=\"link\">";
 			if ($not_deleted) {
-				print $cgi->a({-href => href(action=>"blob",
-				                             hash=>$diff->{'to_id'},
-				                             file_name=>$diff->{'to_file'},
-				                             hash_base=>$hash)},
-				              "blob");
+				print $cgi->a({-href => $blob_href}, $blob_link);
 				print " | " if ($has_history);
 			}
 			if ($has_history) {
@@ -4873,10 +4975,9 @@ sub git_difftree_body {
 			my $mode_chng = "<span class=\"file_status new\">[new $to_file_type";
 			$mode_chng   .= " with mode: $to_mode_str" if $to_mode_str;
 			$mode_chng   .= "]</span>";
+			my ($blob_href, $blob_link) = blob_link($hash, $diff->{'file'}, $diff->{'to_id'}, $diff->{'to_mode'});
 			print "<td>";
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-			                             hash_base=>$hash, file_name=>$diff->{'file'}),
-			              -class => "list"}, esc_path($diff->{'file'}));
+			print $cgi->a({-href => $blob_href, -class => "list"}, esc_path($diff->{'file'}));
 			print "</td>\n";
 			print "<td>$mode_chng</td>\n";
 			print "<td class=\"link\">";
@@ -4887,16 +4988,14 @@ sub git_difftree_body {
 				              "patch") .
 				      " | ";
 			}
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-			                             hash_base=>$hash, file_name=>$diff->{'file'})},
-			              "blob");
+			print $cgi->a({-href => $blob_href}, $blob_link);
 			print "</td>\n";
 
 		} elsif ($diff->{'status'} eq "D") { # deleted
 			my $mode_chng = "<span class=\"file_status deleted\">[deleted $from_file_type]</span>";
+			my ($blob_href, $blob_link) = blob_link($parent, $diff->{'file'}, $diff->{'from_id'}, $diff->{'from_mode'});
 			print "<td>";
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'from_id'},
-			                             hash_base=>$parent, file_name=>$diff->{'file'}),
+			print $cgi->a({-href => $blob_href,
 			               -class => "list"}, esc_path($diff->{'file'}));
 			print "</td>\n";
 			print "<td>$mode_chng</td>\n";
@@ -4908,9 +5007,7 @@ sub git_difftree_body {
 				              "patch") .
 				      " | ";
 			}
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'from_id'},
-			                             hash_base=>$parent, file_name=>$diff->{'file'})},
-			              "blob") . " | ";
+			print $cgi->a({-href => $blob_href}, $blob_link) . " | ";
 			if ($have_blame) {
 				print $cgi->a({-href => href(action=>"blame", hash_base=>$parent,
 				                             file_name=>$diff->{'file'})},
@@ -4937,9 +5034,9 @@ sub git_difftree_body {
 				}
 				$mode_chnge .= "]</span>\n";
 			}
+			my ($blob_href, $blob_link) = blob_link($hash, $diff->{'file'}, $diff->{'to_id'}, $diff->{'to_mode'});
 			print "<td>";
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-			                             hash_base=>$hash, file_name=>$diff->{'file'}),
+			print $cgi->a({-href => $blob_href,
 			              -class => "list"}, esc_path($diff->{'file'}));
 			print "</td>\n";
 			print "<td>$mode_chnge</td>\n";
@@ -4959,9 +5056,7 @@ sub git_difftree_body {
 				              "diff") .
 				      " | ";
 			}
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-			                             hash_base=>$hash, file_name=>$diff->{'file'})},
-			               "blob") . " | ";
+			print $cgi->a({-href => $blob_href}, $blob_link) . " | ";
 			if ($have_blame) {
 				print $cgi->a({-href => href(action=>"blame", hash_base=>$hash,
 				                             file_name=>$diff->{'file'})},
@@ -4980,13 +5075,12 @@ sub git_difftree_body {
 				# mode also for directories, so we cannot use $to_mode_str
 				$mode_chng = sprintf(", mode: %04o", $to_mode_oct & 0777);
 			}
+			my ($blob_href, $blob_link) = blob_link($hash, $diff->{'to_file'}, $diff->{'to_id'}, $diff->{'to_mode'});
 			print "<td>" .
-			      $cgi->a({-href => href(action=>"blob", hash_base=>$hash,
-			                             hash=>$diff->{'to_id'}, file_name=>$diff->{'to_file'}),
+			      $cgi->a({-href => $blob_href,
 			              -class => "list"}, esc_path($diff->{'to_file'})) . "</td>\n" .
 			      "<td><span class=\"file_status $nstatus\">[$nstatus from " .
-			      $cgi->a({-href => href(action=>"blob", hash_base=>$parent,
-			                             hash=>$diff->{'from_id'}, file_name=>$diff->{'from_file'}),
+			      $cgi->a({-href => blob_link($parent, $diff->{'from_file'}, $diff->{'from_id'}, $diff->{'from_mode'}),
 			              -class => "list"}, esc_path($diff->{'from_file'})) .
 			      " with " . (int $diff->{'similarity'}) . "% similarity$mode_chng]</span></td>\n" .
 			      "<td class=\"link\">";
@@ -5005,9 +5099,7 @@ sub git_difftree_body {
 				              "diff") .
 				      " | ";
 			}
-			print $cgi->a({-href => href(action=>"blob", hash=>$diff->{'to_id'},
-			                             hash_base=>$parent, file_name=>$diff->{'to_file'})},
-			              "blob") . " | ";
+			print $cgi->a({-href => $blob_href}, $blob_link) . " | ";
 			if ($have_blame) {
 				print $cgi->a({-href => href(action=>"blame", hash_base=>$hash,
 				                             file_name=>$diff->{'to_file'})},
@@ -5837,6 +5929,7 @@ sub git_history_body {
 		my $commit = $co{'id'};
 
 		my $ref = format_ref_marker($refs, $commit);
+		my $subproj = git_submodule($commit, $file_name) if $ftype eq 'commit';
 
 		if ($alternate) {
 			print "<tr class=\"dark\">\n";
@@ -5851,9 +5944,15 @@ sub git_history_body {
 		print format_subject_html($co{'title'}, $co{'title_short'},
 		                          href(action=>"commit", hash=>$commit), $ref);
 		print "</td>\n" .
-		      "<td class=\"link\">" .
-		      $cgi->a({-href => href(action=>$ftype, hash_base=>$commit, file_name=>$file_name)}, $ftype) . " | " .
-		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff");
+		      "<td class=\"link\">";
+		if (defined $subproj) {
+			my $hash = git_get_hash_by_path($commit, $file_name);
+			print $cgi->a({-href => href(project=>$subproj, action=>$ftype, hash=>$hash)}, $ftype) . " | " .
+			      $cgi->a({-href => href(project=>$subproj, action=>"tree", hash=>$hash, hash_base=>$hash)}, "tree") . " | ";
+		} elsif ($ftype ne "commit") {
+			print $cgi->a({-href => href(action=>$ftype, hash_base=>$commit, file_name=>$file_name)}, $ftype) . " | ";
+		}
+		print $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff");
 
 		if ($ftype eq 'blob') {
 			my $blob_current = $file_hash;
@@ -7283,11 +7382,11 @@ sub git_log_generic {
 		# some commits could have deleted file in question,
 		# and not have it in tree, but one of them has to have it
 		for (my $i = 0; $i < @commitlist; $i++) {
-			$file_hash = git_get_hash_by_path($commitlist[$i]{'id'}, $file_name);
+			($file_hash, $ftype) = git_get_hash_by_path($commitlist[$i]{'id'}, $file_name);
 			last if defined $file_hash;
 		}
 	}
-	if (defined $file_hash) {
+	if (defined $file_hash && !defined $ftype) {
 		$ftype = git_get_type($file_hash);
 	}
 	if (defined $file_name && !defined $ftype) {
