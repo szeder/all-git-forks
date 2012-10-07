@@ -1427,7 +1427,7 @@ ifneq (,$(SOCKLEN_T))
 	BASIC_CFLAGS += -Dsocklen_t=$(SOCKLEN_T)
 endif
 
-DEFAULT_DOC_TARGET ?= all
+DEFAULT_DOC_TARGET ?= html man
 
 ifeq ($(uname_S),Darwin)
 	ifndef NO_FINK
@@ -2382,7 +2382,7 @@ $(VCSSVN_LIB): $(VCSSVN_OBJS)
 export DEFAULT_EDITOR DEFAULT_PAGER DEFAULT_DOC_TARGET
 
 doc:
-	$(MAKE) -C Documentation $(DEFAULT_DOC_TARGET)
+	$(MAKE) -C Documentation all
 
 man:
 	$(MAKE) -C Documentation man
