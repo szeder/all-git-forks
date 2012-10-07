@@ -74,6 +74,78 @@ static struct cache_entry *next_entry_stage(struct index_state *index, int *i,
 	return ce;
 }
 
+static struct cache_entry *next_tree_entry(struct tree_desc *t)
+{
+	struct name_entry *n;
+	int len;
+	struct cache_entry *ce;
+
+	if (!t->size)
+		return NULL;
+
+	n = &t->entry;
+
+	len = tree_entry_len(n);
+	ce = xmalloc(cache_entry_size(len));
+
+	ce->ce_mode = create_ce_mode(n->mode);
+	ce->ce_flags = create_ce_flags(len, 0);
+	hashcpy(ce->sha1, n->sha1);
+	memcpy(&ce->name, n->path, len);
+	ce->name[len] = '\0';
+
+	update_tree_entry(t);
+
+	return ce;
+}
+
+void diff_tree_index(const unsigned char *tree, struct index_state *index_b)
+{
+	struct tree_desc t;
+	int pos_b;
+	int cmp = 0;
+
+	fill_tree_descriptor(&t, tree);
+
+	pos_b = 0;
+	while (1) {
+		struct cache_entry *a, *b;
+		const char *name;
+		const char *kind;
+
+		if (cmp <= 0)
+			a = next_tree_entry(&t);
+		if (cmp >= 0)
+			b = next_entry_stage(index_b, &pos_b, 0);
+		if (a && b)
+			cmp = cmp_name(a, b);
+		else if (a && !b)
+			cmp = -1;
+		else if (!a && b)
+			cmp = 1;
+		else
+			break;
+
+		if (cmp == 0) {
+			if (hashcmp(a->sha1, b->sha1))
+				kind = "mod   ";
+			else
+				kind = "same  ";
+			name = a->name;
+		} else if (cmp < 0) {
+			kind = "del   ";
+			name = a->name;
+		} else {
+			kind = "add   ";
+			name = b->name;
+		}
+
+		printf("%s %s\n", kind, name);
+
+		free(a);
+	}
+}
+
 void diff_index_index(struct index_state *index_a, struct index_state *index_b)
 {
 	int pos_a, pos_b;
@@ -121,6 +193,7 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 {
 	const char *dst_head = argv[1];
 	unsigned char sha1[20];
+	unsigned char head_sha1[20];
 	struct index_state result;
 
 	if (argc != 2)
@@ -132,7 +205,15 @@ int cmd_nmerge(int argc, const char **argv, const char *unused_prefix)
 	if (test_read_tree(&result, sha1))
 		die("Failed to read tree from %s", dst_head);
 
+	if (get_sha1("HEAD", head_sha1))
+		die("No such ref: HEAD");
+
 	read_cache();
+
+	printf("diff_tree_index\n");
+	diff_tree_index(head_sha1, &result);
+
+	printf("diff_index_index\n");
 	diff_index_index(&the_index, &result);
 
 	write_to_index(&result);
