@@ -2382,7 +2382,7 @@ $(VCSSVN_LIB): $(VCSSVN_OBJS)
 export DEFAULT_EDITOR DEFAULT_PAGER DEFAULT_DOC_TARGET
 
 doc:
-	$(MAKE) -C Documentation $(DEFAULT_DOC_TARGET)
+	$(MAKE) -C Documentation all
 
 man:
 	$(MAKE) -C Documentation man
