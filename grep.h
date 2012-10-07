@@ -145,6 +145,9 @@ extern void compile_grep_patterns(struct grep_opt *opt);
 extern void free_grep_patterns(struct grep_opt *opt);
 extern int grep_buffer(struct grep_opt *opt, char *buf, unsigned long size);
 
+void grep_set_pattern_type_option(enum grep_pattern_type, struct grep_opt *opt);
+int grep_config(const char *var, const char *value, void *cb);
+
 struct grep_source {
 	char *name;
 
