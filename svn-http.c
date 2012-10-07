@@ -9,6 +9,10 @@
 static struct strbuf url = STRBUF_INIT;
 static int pathoff;
 
+static struct strbuf cmt_work_path = STRBUF_INIT;
+static struct strbuf cmt_activity = STRBUF_INIT;
+static int cmt_mkactivity;
+
 struct request {
 	XML_Parser parser;
 	struct active_request_slot *slot;
@@ -360,6 +364,8 @@ static void http_get_options(void) {
 			goto err;
 
 		curl_slist_free_all(h->hdrs);
+
+		cmt_mkactivity = 1;
 	}
 
 	return;
@@ -842,12 +848,258 @@ static void http_read_updates(void) {
 
 
 
+
+static size_t create_commit_header(char *ptr, size_t size, size_t nmemb, void *userdata) {
+	size *= nmemb;
+
+	if (get_header(&cmt_activity, "SVN-Txn-Name: ", ptr, size)) {
+	}
+
+	return size;
+}
+
+static struct strbuf *location_header;
+static size_t get_location_header(char *ptr, size_t size, size_t nmemb, void *userdata) {
+	size *= nmemb;
+
+	if (get_header(location_header, "Location: ", ptr, size)) {
+		if (prefixcmp(location_header->buf, url.buf)) {
+			die("returned location %s points to a different url than %s", location_header->buf, url.buf);
+		}
+		strbuf_remove(location_header, 0, url.len);
+		clean_svn_path(location_header);
+	}
+
+	return size;
+}
+
+static void http_checkout(struct request *h, struct strbuf *dst) {
+	struct strbuf *b;
+
+	h->method = "CHECKOUT";
+	h->hdrfunc = &get_location_header;
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+	strbuf_addstr(b, "<D:checkout xmlns:D=\"DAV:\">\n");
+	strbuf_addf(b, " <D:activity-set><D:href>%s/!svn/act/%s</D:href></D:activity-set>\n", url.buf + pathoff, cmt_activity.buf);
+	strbuf_addstr(b, " <D:apply-to-version/>\n");
+	strbuf_addstr(b, "</D:checkout>\n");
+
+	location_header = dst;
+
+	if (run_request(h))
+		die("checkout failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+}
+
+static void http_delete(const char *svnpath) {
+	struct request *h = &main_request;
+	reset_request(h);
+	h->method = "DELETE";
+	strbuf_addstr(&h->url, cmt_work_path.buf);
+	append_path(&h->url, svnpath);
+	if (run_request(h))
+		die("delete failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+}
+
+static void http_mkdir(const char *svnpath) {
+	struct request *h = &main_request;
+	reset_request(h);
+	h->method = "MKCOL";
+	strbuf_addstr(&h->url, cmt_work_path.buf);
+	append_path(&h->url, svnpath);
+	if (run_request(h))
+		die("mkcol failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+}
+
+static void http_start_commit(int type, const char *log, const char *path, int rev, const char *copy, int copyrev) {
+	struct strbuf buf = STRBUF_INIT;
+	struct request *h = &main_request;
+	struct strbuf *b;
+
+	strbuf_reset(&cmt_activity);
+	strbuf_reset(&cmt_work_path);
+
+	if (cmt_mkactivity) {
+		unsigned char actsha1[20];
+		reset_request(h);
+		h->method = "MKACTIVITY";
+
+		/* need some uniqueish id for the activity */
+		strbuf_addf(&cmt_activity, "%s %d %s %d %d", path, rev, copy, copyrev, (int) time(NULL));
+		hash_sha1_file(cmt_activity.buf, cmt_activity.len, "blob", actsha1);
+		strbuf_reset(&cmt_activity);
+		strbuf_addstr(&cmt_activity, sha1_to_hex(actsha1));
+
+		strbuf_addf(&h->url, "/!svn/act/%s", cmt_activity.buf);
+
+		if (run_request(h))
+			die("mkactivity failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+
+		reset_request(h);
+		strbuf_addstr(&h->url, "/!svn/vcc/default");
+		strbuf_reset(&buf);
+		http_checkout(h, &buf);
+
+		reset_request(h);
+		strbuf_addf(&h->url, "/!svn/ver/%d", latest_rev);
+		http_checkout(h, &cmt_work_path);
+
+		reset_request(h);
+		strbuf_add(&h->url, buf.buf, buf.len);
+
+	} else {
+		static struct curl_slist *hdrs;
+
+		if (!hdrs) {
+			hdrs = curl_slist_append(hdrs, "Expect:");
+			hdrs = curl_slist_append(hdrs, "Content-Type: application/vnd.svn-skel");
+		}
+
+		reset_request(h);
+		h->method = "POST";
+		h->hdrs = hdrs;
+		h->hdrfunc = &create_commit_header;
+
+		strbuf_addstr(&h->url, "/!svn/me");
+		strbuf_addstr(&h->in.buf, "( create-txn )");
+
+		if (run_request(h))
+			die("post failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+
+		strbuf_addf(&cmt_work_path, "/!svn/txr/%s", cmt_activity.buf);
+
+		reset_request(h);
+		strbuf_addf(&h->url, "/!svn/txn/%s", cmt_activity.buf);
+	}
+
+	h->method = "PROPPATCH";
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+	strbuf_addstr(b, "<D:propertyupdate xmlns:D=\"DAV:\" xmlns:S=\"http://subversion.tigris.org/xmlns/svn/\">\n");
+	strbuf_addstr(b, " <D:set><D:prop><S:log>");
+	encode_xml(b, log);
+	strbuf_addstr(b, "</S:log></D:prop></D:set>\n");
+	strbuf_addstr(b, "</D:propertyupdate>\n");
+
+	if (run_request(h))
+		die("proppatch failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+
+	if (type == SVN_DELETE || type == SVN_REPLACE) {
+		http_delete(path);
+	}
+
+	if (type == SVN_ADD || type == SVN_REPLACE) {
+		if (copyrev) {
+			struct curl_slist *hdrs = NULL;
+
+			reset_request(h);
+			h->method = "COPY";
+
+			strbuf_reset(&buf);
+			strbuf_addf(&buf, "Destination: %s%s", url.buf, cmt_work_path.buf);
+			append_path(&buf, path);
+
+			hdrs = curl_slist_append(hdrs, buf.buf);
+			hdrs = curl_slist_append(hdrs, "Overwrite: T");
+			hdrs = curl_slist_append(hdrs, "Depth: infinity");
+			h->hdrs = hdrs;
+
+			strbuf_addf(&h->url, "/!svn/bc/%d", copyrev);
+			append_path(&h->url, copy);
+
+			if (run_request(h))
+				die("copy failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+
+			curl_slist_free_all(hdrs);
+		} else {
+			http_mkdir(path);
+		}
+	}
+
+	strbuf_release(&buf);
+}
+
+static int http_merge_rev;
+static struct strbuf *http_merge_time;
+
+static void merge_xml_end(void *user, const char *name) {
+	struct request *h = user;
+	xml_end(h, name);
+
+	if (!strcmp(name, "DAV:|status")) {
+		if (prefixcmp(h->cdata.buf, "HTTP/1.1 ")
+		|| atoi(h->cdata.buf + strlen("HTTP/1.1")) != 200) {
+			die("commit failed %s", h->cdata.buf);
+		}
+
+	} else if (http_merge_time && !strcmp(name, "DAV:|creationdate")) {
+		strbuf_swap(http_merge_time, &h->cdata);
+
+	} else if (!strcmp(name, "DAV:|version-name")) {
+		http_merge_rev = atoi(h->cdata.buf);
+	}
+
+	strbuf_reset(&h->cdata);
+}
+
+static int http_finish_commit(struct strbuf *time) {
+	struct request *h = &main_request;
+	struct strbuf *b;
+
+	reset_request(h);
+	h->method = "MERGE";
+
+	b = &h->in.buf;
+	strbuf_addstr(b, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
+	strbuf_addstr(b, "<D:merge xmlns:D=\"DAV:\">\n");
+	if (cmt_mkactivity) {
+		strbuf_addf(b, " <D:source><D:href>%s/!svn/act/%s</D:href></D:source>\n", url.buf + pathoff, cmt_activity.buf);
+	} else {
+		strbuf_addf(b, " <D:source><D:href>%s/!svn/txn/%s</D:href></D:source>\n", url.buf + pathoff, cmt_activity.buf);
+	}
+	strbuf_addstr(b, " <D:no-auto-merge/>\n");
+	strbuf_addstr(b, " <D:no-checkout/>\n");
+	strbuf_addstr(b, " <D:prop>\n");
+	strbuf_addstr(b, "  <D:version-name/>\n");
+	strbuf_addstr(b, "  <D:creationdate/>\n");
+	strbuf_addstr(b, " </D:prop>\n");
+	strbuf_addstr(b, "</D:merge>\n");
+
+	http_merge_rev = -1;
+	http_merge_time = time;
+
+	process_request(h, &xml_start, &merge_xml_end);
+	if (run_request(h))
+		die("merge failed %d %d", (int) h->res.curl_result, (int) h->res.http_code);
+
+	if (cmt_mkactivity) {
+		reset_request(h);
+		h->method = "DELETE";
+		strbuf_addf(&h->url, "/!svn/act/%s", cmt_activity.buf);
+		/* don't care whether this succeeds or not */
+		run_request(h);
+		latest_rev = http_merge_rev;
+	}
+
+	return http_merge_rev;
+}
+
+
+
+
+
+
+
 struct svn_proto proto_http = {
 	&http_get_latest,
 	&http_list,
 	&http_isdir,
 	&http_read_logs,
 	&http_read_updates,
+	&http_start_commit,
+	&http_finish_commit,
 };
 
 struct svn_proto *svn_http_connect(struct remote *remote, struct strbuf *purl, struct credential *cred, struct strbuf *puuid) {
