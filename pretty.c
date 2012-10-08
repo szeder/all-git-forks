@@ -263,13 +263,22 @@ static void add_rfc822_quoted(struct strbuf *out, const char *s, int len)
 
 static int is_rfc2047_special(char ch)
 {
+	/*
+	 * We encode ' ' using '=20' even though rfc2047
+	 * allows using '_' for readability.  Unfortunately,
+	 * many programs do not understand this and just
+	 * leave the underscore in place.
+	 */
+	if (ch == ' ' || ch == '\n')
+		return 1;
+
 	return (non_ascii(ch) || (ch == '=') || (ch == '?') || (ch == '_'));
 }
 
 static void add_rfc2047(struct strbuf *sb, const char *line, int len,
 		       const char *encoding)
 {
-	static const int max_length = 78; /* per rfc2822 */
+	static const int max_length = 76; /* per rfc2047 */
 	int i;
 	int line_len;
 
@@ -286,7 +295,7 @@ static void add_rfc2047(struct strbuf *sb, const char *line, int len,
 		if ((i + 1 < len) && (ch == '=' && line[i+1] == '?'))
 			goto needquote;
 	}
-	strbuf_add_wrapped_bytes(sb, line, len, -line_len, 1, max_length+1);
+	strbuf_add_wrapped_bytes(sb, line, len, -line_len, 1, 78+1);
 	return;
 
 needquote:
@@ -295,19 +304,14 @@ needquote:
 	line_len += strlen(encoding) + 5; /* 5 for =??q? */
 	for (i = 0; i < len; i++) {
 		unsigned ch = line[i] & 0xFF;
+		int is_special = is_rfc2047_special(ch);
 
-		if (line_len >= max_length - 2) {
+		if (line_len + 2 + (is_special ? 3 : 1) > max_length) {
 			strbuf_addf(sb, "?=\n =?%s?q?", encoding);
 			line_len = strlen(encoding) + 5 + 1; /* =??q? plus SP */
 		}
 
-		/*
-		 * We encode ' ' using '=20' even though rfc2047
-		 * allows using '_' for readability.  Unfortunately,
-		 * many programs do not understand this and just
-		 * leave the underscore in place.
-		 */
-		if (is_rfc2047_special(ch) || ch == ' ' || ch == '\n') {
+		if (is_special) {
 			strbuf_addf(sb, "=%02X", ch);
 			line_len += 3;
 		}
