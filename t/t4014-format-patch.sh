@@ -830,9 +830,16 @@ test_expect_success 'format-patch quotes double-quote in headers' '
 '
 
 cat >expect <<'EOF'
-From: =?UTF-8?q?"F=C3=B6o=20B.=20Bar"?= <author@example.com>
+From: =?UTF-8?q?F=C3=B6o=20Bar?= <author@example.com>
 EOF
-test_expect_success 'rfc2047-encoded headers also double-quote 822 specials' '
+test_expect_success 'format-patch uses rfc2047-encoded headers when necessary' '
+	check_author "Föo Bar"
+'
+
+cat >expect <<'EOF'
+From: =?UTF-8?q?F=C3=B6o=20B=2E=20Bar?= <author@example.com>
+EOF
+test_expect_success 'rfc2047-encoded headers leave no rfc822 specials' '
 	check_author "Föo B. Bar"
 '
 
