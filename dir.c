@@ -308,10 +308,10 @@ static int no_wildcard(const char *string)
 	return string[simple_length(string)] == '\0';
 }
 
-static void parse_exclude_pattern(const char **pattern,
-				  int *patternlen,
-				  int *flags,
-				  int *nowildcardlen)
+void parse_exclude_pattern(const char **pattern,
+			   int *patternlen,
+			   int *flags,
+			   int *nowildcardlen)
 {
 	const char *p = *pattern;
 	size_t i, len;
