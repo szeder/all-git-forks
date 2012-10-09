@@ -21,6 +21,7 @@ P,prefix=     the name of the subdir to split out
 m,message=    use the given message as the commit message for the merge commit
  options for 'split'
 annotate=     add a prefix to commit message of new commits
+unannotate=   remove a prefix from new commit messages (supports bash globbing)
 b,branch=     create a new branch from the split subtree
 ignore-joins  ignore prior --rejoin commits
 onto=         try connecting new tree to an existing one
@@ -43,6 +44,7 @@ onto=
 rejoin=
 ignore_joins=
 annotate=
+unannotate=
 squash=
 message=
 
@@ -80,6 +82,8 @@ while [ $# -gt 0 ]; do
 		-d) debug=1 ;;
 		--annotate) annotate="$1"; shift ;;
 		--no-annotate) annotate= ;;
+		--unannotate) unannotate="$1"; shift ;;
+		--no-unannotate) unannotate= ;;
 		-b) branch="$1"; shift ;;
 		-P) prefix="$1"; shift ;;
 		-m) message="$1"; shift ;;
@@ -310,8 +314,11 @@ copy_commit()
 			GIT_COMMITTER_NAME \
 			GIT_COMMITTER_EMAIL \
 			GIT_COMMITTER_DATE
-		(echo -n "$annotate"; cat ) |
-		git commit-tree "$2" $3  # reads the rest of stdin
+		(
+			read FIRST_LINE
+			echo "$annotate${FIRST_LINE#$unannotate}"
+			cat  # reads the rest of stdin
+		) | git commit-tree "$2" $3
 	) || die "Can't copy commit $1"
 }
 
