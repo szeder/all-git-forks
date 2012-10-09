@@ -546,6 +546,12 @@ our %feature = (
 		'sub' => sub { feature_bool('remote_heads', @_) },
 		'override' => 0,
 		'default' => [0]},
+
+	# Enable gitslave support by adding extra actions like shortlogs, etc.
+	'gitslave' => {
+		'sub' => sub { feature_bool('gitslave', @_) },
+		'override' => 0,
+		'default' => [0]},
 );
 
 sub gitweb_get_feature {
@@ -811,12 +817,14 @@ our %actions = (
 	"opml" => \&git_opml,
 	"project_list" => \&git_project_list,
 	"project_index" => \&git_project_index,
+	# gitslave support
+	"shortlogs" => \&git_shortlogs,
 );
 
 # finally, we have the hash of allowed extra_options for the commands that
 # allow them
 our %allowed_options = (
-	"--no-merges" => [ qw(rss atom log shortlog history) ],
+	"--no-merges" => [ qw(rss atom log shortlog history shortlogs) ],
 );
 
 # fill %input_params with the CGI parameters. All values except for 'opt'
@@ -2577,17 +2585,13 @@ sub git_get_short_hash {
 
 sub git_get_hash {
 	my ($project, $hash, @options) = @_;
-	my $o_git_dir = $git_dir;
+	local $git_dir = "$projectroot/$project";
 	my $retval = undef;
-	$git_dir = "$projectroot/$project";
 	if (open my $fd, '-|', git_cmd(), 'rev-parse',
 	    '--verify', '-q', @options, $hash) {
 		$retval = <$fd>;
 		chomp $retval if defined $retval;
 		close $fd;
-	}
-	if (defined $o_git_dir) {
-		$git_dir = $o_git_dir;
 	}
 	return $retval;
 }
@@ -3500,6 +3504,65 @@ sub parse_commits {
 	return wantarray ? @cos : \@cos;
 }
 
+sub parse_multi_commits {
+	my ($projects, $ref, $maxcount, $skip, @args) = @_;
+
+	$maxcount ||= 1;
+	$skip ||= 0;
+
+	local $/ = "\0";
+
+	my @fc;
+
+	my $getc = sub {
+		my ($project, $fd) = @_;
+		if (my $line = <$fd>) {
+			my %co = parse_commit_text($line);
+			$co{'fd'} = $fd;
+			$co{'project'} = $project;
+			# this is pretty inefficient and ridiculous but the alternatives are much messier:
+			push @fc, \%co;
+			@fc = sort { $a->{'committer_epoch'} <=> $b->{'committer_epoch'} } @fc;
+		}
+		else
+		{
+			close $fd;
+		}
+	};
+
+	for my $project (@$projects) {
+		local $git_dir = "$projectroot/$project";
+		open my $fd, "-|", git_cmd(), "rev-list",
+			"--header",
+			@args,
+			("--max-count=" . ($skip + $maxcount + 1)),
+			@extra_options,
+			$ref,
+			"--"
+			or die_error(500, "Open git-rev-list $project failed");
+		$getc->($project, $fd);
+	}
+
+	my @cos;
+	while (@cos < $maxcount and @fc)
+	{
+		my $co = pop @fc;
+		if ($skip)
+		{
+			$skip --;
+		}
+		else
+		{
+			push @cos, $co;
+		}
+		$getc->($co->{'project'}, delete $co->{'fd'});
+	}
+
+	map { close $_->{'fd'} } @fc;
+
+	return wantarray ? (\@cos, !!@fc) : \@cos;
+}
+
 # parse line of git-diff-tree "raw" output
 sub parse_difftree_raw_line {
 	my $line = shift;
@@ -3791,6 +3854,27 @@ sub git_submodule {
 	my $url = $urls->{$path};
 	my $proj = git_url_project($url);
 	return wantarray ? ($proj, $url) : $proj;
+}
+
+sub git_slaves {
+	my $base = shift // 'HEAD';
+
+	open my $fd, "-|", git_cmd(), "cat-file", "blob", "$base:.gitslave" or return;
+	my %slaves;
+	while (<$fd>)
+	{
+	    my ($baserel,$ckoutrel) = /^\"(.*)\" \"(.*)\"(?: ifpresent)?$/ or next;
+	    $slaves{$ckoutrel} = $baserel;
+	}
+
+	return wantarray ? (map { git_url_project($_) // () } values %slaves) : \%slaves;
+}
+
+sub get_projects {
+	my @projects = map { decode_utf8($_) } $cgi->param($cgi_param_mapping{'project'});
+	@projects = git_slaves($hash) if @projects <= 1;
+	@projects = ($project) unless @projects;
+	return wantarray ? @projects : \@projects;
 }
 
 ## ----------------------------------------------------------------------
@@ -4297,6 +4381,7 @@ sub git_print_page_nav {
 	$extra = '' if !defined $extra; # pager or formats
 
 	my @navs = qw(summary shortlog log commit commitdiff tree);
+	push @navs, qw(shortlogs) if gitweb_check_feature('gitslave');
 	if ($suppress) {
 		@navs = grep { $_ ne $suppress } @navs;
 	}
@@ -4306,9 +4391,14 @@ sub git_print_page_nav {
 		for (qw(commit commitdiff)) {
 			$arg{$_}{'hash'} = $head;
 		}
-		if ($current =~ m/^(tree | log | shortlog | commit | commitdiff | search)$/x) {
+		if ($current =~ m/^(tree | log | shortlog | commit | commitdiff | search | shortlogs)$/x) {
 			for (qw(shortlog log)) {
 				$arg{$_}{'hash'} = $head;
+			}
+			if ($head =~ m{^refs/}) {
+				for (qw(shortlogs)) {
+					$arg{$_}{'hash'} = $head;
+				}
 			}
 		}
 	}
@@ -5983,6 +6073,7 @@ sub git_tags_body {
 	my ($taglist, $from, $to, $extra) = @_;
 	$from = 0 unless defined $from;
 	$to = $#{$taglist} if (!defined $to || $#{$taglist} < $to);
+	my $gitslave = gitweb_check_feature('gitslave');
 
 	print "<table class=\"tags\">\n";
 	my $alternate = 1;
@@ -6027,6 +6118,8 @@ sub git_tags_body {
 		if ($tag{'reftype'} eq "commit") {
 			print " | " . $cgi->a({-href => href(action=>"shortlog", hash=>$tag{'fullname'})}, "shortlog") .
 			      " | " . $cgi->a({-href => href(action=>"log", hash=>$tag{'fullname'})}, "log");
+			print " | " . $cgi->a({-href => href(action=>"shortlogs", hash=>$tag{'fullname'})}, "shortlogs")
+			      if $gitslave;
 		} elsif ($tag{'reftype'} eq "blob") {
 			print " | " . $cgi->a({-href => href(action=>"blob_plain", hash=>$tag{'refid'})}, "raw");
 		}
@@ -6046,6 +6139,7 @@ sub git_heads_body {
 	my ($headlist, $head_at, $from, $to, $extra) = @_;
 	$from = 0 unless defined $from;
 	$to = $#{$headlist} if (!defined $to || $#{$headlist} < $to);
+	my $gitslave = gitweb_check_feature('gitslave');
 
 	print "<table class=\"heads\">\n";
 	my $alternate = 1;
@@ -6067,8 +6161,11 @@ sub git_heads_body {
 		      "<td class=\"link\">" .
 		      $cgi->a({-href => href(action=>"shortlog", hash=>$ref{'fullname'})}, "shortlog") . " | " .
 		      $cgi->a({-href => href(action=>"log", hash=>$ref{'fullname'})}, "log") . " | " .
-		      $cgi->a({-href => href(action=>"tree", hash=>$ref{'fullname'}, hash_base=>$ref{'fullname'})}, "tree") .
-		      "</td>\n" .
+		      $cgi->a({-href => href(action=>"tree", hash=>$ref{'fullname'}, hash_base=>$ref{'fullname'})}, "tree");
+		print " | " .
+		      $cgi->a({-href => href(action=>"shortlogs", hash=>$ref{'fullname'})}, "shortlogs")
+		      if $gitslave;
+		print "</td>\n" .
 		      "</tr>";
 	}
 	if (defined $extra) {
@@ -7420,7 +7517,7 @@ sub git_log_generic {
 	if (defined $file_name) {
 		git_print_header_div('commit', esc_html($co{'title'}), $base);
 	} else {
-		git_print_header_div('summary', $project)
+		git_print_header_div('summary', $project);
 	}
 	git_print_page_path($file_name, $ftype, $hash_base)
 		if (defined $file_name);
@@ -8096,6 +8193,71 @@ EOT
 sub git_shortlog {
 	git_log_generic('shortlog', \&git_shortlog_body,
 	                $hash, $hash_parent);
+}
+
+sub git_multilog {
+	my ($action, $projects, $ref) = @_;
+
+	$page //= 0;
+
+	my %refs;
+	for my $project (@$projects)
+	{
+		local $git_dir = "$projectroot/$project";
+		$refs{$project} = git_get_references();
+	}
+
+	my ($commitlist, $more) = parse_multi_commits($projects, $ref, 100, (100 * $page));
+
+	my $paging_nav;
+	{
+		local $project = $projects;
+		$paging_nav = format_paging_nav($action, $page, $more);
+	}
+
+	git_header_html();
+	git_print_page_nav($action,'', $hash,$hash,$hash, $paging_nav);
+	git_print_header_div('summary', $project);
+
+	print "<table class=\"$action\">\n";
+	my $alternate = 1;
+	for my $co (@$commitlist) {
+		local $project = $co->{'project'};
+		my $commit = $co->{'id'};
+		my $ref = format_ref_marker($refs{$project}, $commit);
+		if ($alternate) {
+			print "<tr class=\"dark\">\n";
+		} else {
+			print "<tr class=\"light\">\n";
+		}
+		$alternate ^= 1;
+		# git_summary() used print "<td><i>$co{'age_string'}</i></td>\n" .
+		print "<td title=\"$co->{'age_string_age'}\"><i>$co->{'age_string_date'}</i></td>\n" .
+		      format_author_html('td', $co, 10) . "<td>";
+		print format_subject_html($co->{'title'}, $co->{'title_short'},
+		                          href(action=>"commit", hash=>$commit), $ref);
+		print "</td>\n" .
+		      "<td>" . $cgi->a({-href => href(action=>"summary"), -class => "title"}, $project) . "</td>\n" .
+		      "<td class=\"link\">" .
+		      $cgi->a({-href => href(action=>"commit", hash=>$commit)}, "commit") . " | " .
+		      $cgi->a({-href => href(action=>"commitdiff", hash=>$commit)}, "commitdiff") . " | " .
+		      $cgi->a({-href => href(action=>"tree", hash=>$commit, hash_base=>$commit)}, "tree");
+		print "</td>\n" .
+		      "</tr>\n";
+	}
+	if ($more) {
+		print "<tr><td colspan=\"5\">" .
+		      $cgi->a({-href => href(-replay=>1, page=>$page+1),
+				      -accesskey => "n", -title => "Alt-n"}, "next") .
+		      "</td></tr>\n";
+	}
+	print "</table>\n";
+
+	git_footer_html();
+}
+
+sub git_shortlogs {
+	git_multilog('shortlogs', scalar(get_projects), $hash // 'HEAD');
 }
 
 ## ......................................................................
