@@ -115,6 +115,13 @@ struct attr_state {
 	const char *setto;
 };
 
+struct pattern {
+	const char *pattern;
+	int patternlen;
+	int nowildcardlen;
+	int flags;		/* EXC_FLAG_* */
+};
+
 /*
  * One rule, as from a .gitattributes file.
  *
@@ -131,7 +138,7 @@ struct attr_state {
  */
 struct match_attr {
 	union {
-		char *pattern;
+		struct pattern pat;
 		struct git_attr *attr;
 	} u;
 	char is_macro;
@@ -241,9 +248,16 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 	if (is_macro)
 		res->u.attr = git_attr_internal(name, namelen);
 	else {
-		res->u.pattern = (char *)&(res->state[num_attr]);
-		memcpy(res->u.pattern, name, namelen);
-		res->u.pattern[namelen] = 0;
+		char *p = (char *)&(res->state[num_attr]);
+		memcpy(p, name, namelen);
+		res->u.pat.pattern = p;
+		parse_exclude_pattern(&res->u.pat.pattern,
+				      &res->u.pat.patternlen,
+				      &res->u.pat.flags,
+				      &res->u.pat.nowildcardlen);
+		if (res->u.pat.flags & EXC_FLAG_NEGATIVE)
+			die(_("Negative patterns are forbidden in git attributes\n"
+			      "Use '\\!' for literal leading exclamation."));
 	}
 	res->is_macro = is_macro;
 	res->num_attr = num_attr;
@@ -640,25 +654,57 @@ static void prepare_attr_stack(const char *path)
 
 static int path_matches(const char *pathname, int pathlen,
 			const char *basename,
-			const char *pattern,
+			const struct pattern *pat,
 			const char *base, int baselen)
 {
-	if (!strchr(pattern, '/')) {
+	const char *pattern = pat->pattern;
+	int prefix = pat->nowildcardlen;
+	const char *name;
+	int namelen;
+
+	if (pat->flags & EXC_FLAG_NODIR) {
+		if (prefix == pat->patternlen &&
+		    !strcmp_icase(pattern, basename))
+			return 1;
+
+		if (pat->flags & EXC_FLAG_ENDSWITH &&
+		    pat->patternlen - 1 <= pathlen &&
+		    !strcmp_icase(pattern + 1, pathname +
+				  pathlen - pat->patternlen + 1))
+			return 1;
+
 		return (fnmatch_icase(pattern, basename, 0) == 0);
 	}
 	/*
 	 * match with FNM_PATHNAME; the pattern has base implicitly
 	 * in front of it.
 	 */
-	if (*pattern == '/')
+	if (*pattern == '/') {
 		pattern++;
-	if (pathlen < baselen ||
+		prefix--;
+	}
+
+	/*
+	 * note: unlike excluded_from_list, baselen here does not
+	 * count the trailing slash, and base[] does not end with
+	 * a trailing slash, either.
+	 */
+	if (pathlen < baselen + 1 ||
 	    (baselen && pathname[baselen] != '/') ||
-	    strncmp(pathname, base, baselen))
+	    strncmp_icase(pathname, base, baselen))
 		return 0;
-	if (baselen != 0)
-		baselen++;
-	return fnmatch_icase(pattern, pathname + baselen, FNM_PATHNAME) == 0;
+
+	namelen = baselen ? pathlen - baselen - 1 : pathlen;
+	name = pathname + pathlen - namelen;
+
+	/*
+	 * if the non-wildcard part is longer than the remaining
+	 * pathname, surely it cannot match.
+	 */
+	if (!namelen || prefix > namelen)
+		return 0;
+
+	return fnmatch_icase(pattern, name, FNM_PATHNAME) == 0;
 }
 
 static int macroexpand_one(int attr_nr, int rem);
@@ -696,7 +742,7 @@ static int fill(const char *path, int pathlen, const char *basename,
 		if (a->is_macro)
 			continue;
 		if (path_matches(path, pathlen, basename,
-				 a->u.pattern, base, stk->originlen))
+				 &a->u.pat, base, stk->originlen))
 			rem = fill_one("fill", a, rem);
 	}
 	return rem;
