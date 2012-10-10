@@ -10,9 +10,14 @@
 #    1) Copy this file to somewhere (e.g. ~/.git-prompt.sh).
 #    2) Add the following line to your .bashrc/.zshrc:
 #        source ~/.git-prompt.sh
-#    3) Change your PS1 to also show the current branch:
-#         Bash: PS1='[\u@\h \W$(__git_ps1 " (%s)")]\$ '
-#         ZSH:  PS1='[%n@%m %c$(__git_ps1 " (%s)")]\$ '
+#    3a) In ~/.bashrc set PROMPT_COMMAND=__git_ps1
+#        To customize the prompt, provide start/end arguments
+#        PROMPT_COMMAND='__git_ps1 "\u@\h:\w" "\\\$ "'
+#    3b) Alternatively change your PS1 to call __git_ps1 as
+#        command-substitution:
+#        Bash: PS1='[\u@\h \W$(__git_ps1 " (%s)")]\$ '
+#        ZSH:  PS1='[%n@%m %c$(__git_ps1 " (%s)")]\$ '
+#        the optional argument will be used as format string
 #
 # The argument to __git_ps1 will be displayed only if you are currently
 # in a git repository.  The %s token will be the name of the current
@@ -49,6 +54,12 @@
 # find one, or @{upstream} otherwise.  Once you have set
 # GIT_PS1_SHOWUPSTREAM, you can override it on a per-repository basis by
 # setting the bash.showUpstream config variable.
+#
+# If you would like a colored hint about the current dirty state, set
+# GIT_PS1_SHOWCOLORHINTS to a nonempty value. When tracked files are
+# modified, the branch name turns red, when all modifications are staged
+# the branch name turns yellow and when all changes are checked in, the
+# color changes to green. The colors are currently hardcoded in the function.
 
 # __gitdir accepts 0 or 1 arguments (i.e., location)
 # returns location of .git repo
@@ -195,11 +206,40 @@ __git_ps1_show_upstream ()
 
 
 # __git_ps1 accepts 0 or 1 arguments (i.e., format string)
-# returns text to add to bash PS1 prompt (includes branch name)
+# when called from PS1 using command substitution
+# in this mode it prints text to add to bash PS1 prompt (includes branch name)
+#
+# __git_ps1 requires 2 arguments when called from PROMPT_COMMAND (pc)
+# in that case it _sets_ PS1. The arguments are parts of a PS1 string.
+# when both arguments are given, the first is prepended and the second appended
+# to the state string when assigned to PS1.
+# In this mode you can request colored hints using GIT_PS1_SHOWCOLORHINTS=true
 __git_ps1 ()
 {
+	local pcmode=no
+	#defaults/examples:
+	local ps1pc_start='\u@\h:\w '
+	local ps1pc_end='\$ '
+	local printf_format=' (%s)'
+
+	case "$#" in
+		2)	pcmode=yes
+			ps1pc_start="$1"
+			ps1pc_end="$2"
+		;;
+		0|1)	printf_format="${1:-$printf_format}"
+		;;
+		*)	return
+		;;
+	esac
+
 	local g="$(__gitdir)"
-	if [ -n "$g" ]; then
+	if [ -z "$g" ]; then
+		if [ $pcmode = yes ]; then
+			#In PC mode PS1 always needs to be set
+			PS1="$ps1pc_start$ps1pc_end"
+		fi
+	else
 		local r=""
 		local b=""
 		if [ -f "$g/rebase-merge/interactive" ]; then
@@ -285,6 +325,39 @@ __git_ps1 ()
 		fi
 
 		local f="$w$i$s$u"
-		printf -- "${1:- (%s)}" "$c${b##refs/heads/}${f:+ $f}$r$p"
+		if [ $pcmode = yes ]; then
+			PS1="$ps1pc_start("
+			if [ -n "${GIT_PS1_SHOWCOLORHINT-}" ]; then
+				local c_red='\e[31m'
+				local c_green='\e[32m'
+				local c_yellow='\e[33m'
+				local c_lblue='\e[1;34m'
+				local c_purple='\e[35m'
+				local c_cyan='\e[36m'
+				local c_clear='\e[0m'
+				local branchstring="$c${b##refs/heads/}"
+				local branch_color="$c_green"
+				local flags_color="$c_cyan"
+
+				if [ "$w" = "*" ]; then
+					branch_color="$c_red"
+				elif [ -n "$i" ]; then
+					branch_color="$c_yellow"
+				fi
+
+				# Setting PS1 directly with \[ and \] around colors
+				# is necessary to prevent wrapping issues!
+				PS1="$PS1\[$branch_color\]$branchstring\[$c_clear\]"
+				if [ -n "$f" ]; then
+					PS1="$PS1 \[$flags_color\]$f\[$c_clear\]"
+				fi
+			else
+				PS1="$PS1$c${b##refs/heads/}${f:+ $f}$r$p"
+			fi
+			PS1="$PS1)$ps1pc_end"
+		else
+			# NO color option unless in PROMPT_COMMAND mode
+			printf -- "$printf_format" "$c${b##refs/heads/}${f:+ $f}$r$p"
+		fi
 	fi
 }
