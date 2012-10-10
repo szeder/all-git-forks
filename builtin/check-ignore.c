@@ -27,7 +27,7 @@ static const struct option check_ignore_options[] = {
 
 static void output_exclude(const char *path, struct exclude *exclude)
 {
-	char *bang = exclude->to_exclude ? "" : "!";
+	char *bang = !(exclude->flags & EXC_FLAG_NEGATIVE) ? "" : "!";
 	char *dir  = (exclude->flags & EXC_FLAG_MUSTBEDIR) ? "/" : "";
 	if (!null_term_line) {
 		if (!verbose) {
