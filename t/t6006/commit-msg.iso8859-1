@@ -1,0 +1,5 @@
+Test printing of complex bodies
+
+This commit message is much longer than the others,
+and it will be encoded in iso8859-1. We should therefore
+include an iso8859 character: ¡bueno!
