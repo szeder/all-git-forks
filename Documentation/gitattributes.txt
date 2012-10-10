@@ -58,6 +58,12 @@ attribute.  The rules how the pattern matches paths are the
 same as in `.gitignore` files; see linkgit:gitignore[5].
 Unlike `.gitignore`, negative patterns are forbidden.
 
+Note that if a .gitignore rule matches a directory, the directory
+is ignored, which may be seen as "ignore" attribute propagated to
+to all files and directories inside. If a .gitattributes rule
+matches a directory, it manipulates attributes on that directory
+only, not files and directories inside.
+
 When deciding what attributes are assigned to a path, git
 consults `$GIT_DIR/info/attributes` file (which has the highest
 precedence), `.gitattributes` file in the same directory as the
