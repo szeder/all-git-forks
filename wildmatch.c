@@ -59,11 +59,9 @@ typedef unsigned char uchar;
 #define ISUPPER(c) (ISASCII(c) && isupper(c))
 #define ISXDIGIT(c) (ISASCII(c) && isxdigit(c))
 
-static int force_lower_case = 0;
-
 /* Match pattern "p" against the a virtually-joined string consisting
  * of "text" and any strings in array "a". */
-static int dowild(const uchar *p, const uchar *text)
+static int dowild(const uchar *p, const uchar *text, int force_lower_case)
 {
     uchar p_ch;
 
@@ -107,7 +105,7 @@ static int dowild(const uchar *p, const uchar *text)
 	    while (1) {
 		if (t_ch == '\0')
 		    break;
-		if ((matched = dowild(p, text)) != NOMATCH) {
+		if ((matched = dowild(p, text, force_lower_case)) != NOMATCH) {
 		    if (!special || matched != ABORT_TO_STARSTAR)
 			return matched;
 		} else if (!special && t_ch == '/')
@@ -215,17 +213,8 @@ static int dowild(const uchar *p, const uchar *text)
 }
 
 /* Match the "pattern" against the "text" string. */
-int wildmatch(const char *pattern, const char *text)
+int wildmatch(const char *pattern, const char *text, int flags)
 {
-    return dowild((const uchar*)pattern, (const uchar*)text);
-}
-
-/* Match the "pattern" against the forced-to-lower-case "text" string. */
-int iwildmatch(const char *pattern, const char *text)
-{
-    int ret;
-    force_lower_case = 1;
-    ret = dowild((const uchar*)pattern, (const uchar*)text);
-    force_lower_case = 0;
-    return ret;
+    return dowild((const uchar*)pattern, (const uchar*)text,
+		  flags & FNM_CASEFOLD ? 1 : 0);
 }
