@@ -220,7 +220,7 @@ __git_ps1 ()
 	#defaults/examples:
 	local ps1pc_start='\u@\h:\w '
 	local ps1pc_end='\$ '
-	local printf_format='(%s)'
+	local printf_format=' (%s)'
 
 	case "$#" in
 		2)	pcmode=yes
