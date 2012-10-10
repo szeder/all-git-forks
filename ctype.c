@@ -26,6 +26,24 @@ const unsigned char sane_ctype[256] = {
 	/* Nothing in the 128.. range */
 };
 
+enum {
+	CN = GIT_CNTRL,
+	PU = GIT_PUNCT,
+	XD = GIT_XDIGIT,
+};
+
+const unsigned char sane_ctype2[256] = {
+	CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, /*    0..15 */
+	CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, /*   16..31 */
+	0,  PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, /*   32..47 */
+	XD, XD, XD, XD, XD, XD, XD, XD, XD, XD, PU, PU, PU, PU, PU, PU, /*   48..63 */
+	PU, 0,	XD, 0,	XD, 0,	XD, 0,	0,  0,	0,  0,	0,  0,	0,  0,	/*   64..79 */
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  PU, PU, PU, PU, PU, /*   80..95 */
+	PU, 0,	XD, 0,	XD, 0,	XD, 0,	0,  0,	0,  0,	0,  0,	0,  0,	/*  96..111 */
+	0,  0,	0,  0,	0,  0,	0,  0,	0,  0,	0,  PU, PU, PU, PU, CN, /* 112..127 */
+	/* Nothing in the 128.. range */
+};
+
 /* For case-insensitive kwset */
 const char tolower_trans_tbl[256] = {
 	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
