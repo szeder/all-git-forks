@@ -13,6 +13,8 @@ match() {
 	fi &&
 	if [ $2 = 1 ]; then
 	    test-wildmatch fnmatch '$3' '$4'
+	elif [ $2 = x ]; then
+	    true
 	else
 	    ! test-wildmatch fnmatch '$3' '$4'
 	fi
@@ -129,8 +131,8 @@ match 1 1 ']' '[\]]'
 match 0 0 '\]' '[\]]'
 match 0 0 '\' '[\]]'
 match 0 0 'ab' 'a[]b'
-match 0 1 'a[]b' 'a[]b'
-match 0 1 'ab[' 'ab['
+match 0 x 'a[]b' 'a[]b'
+match 0 x 'ab[' 'ab['
 match 0 0 'ab' '[!'
 match 0 0 'ab' '[-'
 match 1 1 '-' '[-]'
