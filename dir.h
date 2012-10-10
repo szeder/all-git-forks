@@ -1,6 +1,8 @@
 #ifndef DIR_H
 #define DIR_H
 
+/* See Documentation/technical/api-directory-listing.txt */
+
 #include "strbuf.h"
 
 struct dir_entry {
@@ -12,6 +14,12 @@ struct dir_entry {
 #define EXC_FLAG_ENDSWITH 4
 #define EXC_FLAG_MUSTBEDIR 8
 
+/*
+ * Each .gitignore file will be parsed into patterns which are then
+ * appended to the relevant exclude_list (either EXC_DIRS or
+ * EXC_FILE).  exclude_lists are also used to represent the list of
+ * --exclude values passed via CLI args (EXC_CMDL).
+ */
 struct exclude_list {
 	int nr;
 	int alloc;
@@ -23,12 +31,21 @@ struct exclude_list {
 		int baselen;
 		int to_exclude;
 		int flags;
+		const char *src;
+		int srcpos; /* counting starts from 1 for line numbers in ignore files,
+			       and from -1 decrementing for patterns from CLI (--exclude) */
 	} **excludes;
 };
 
+/*
+ * The contents of the per-directory exclude files are lazily read on
+ * demand and then cached in memory, one per exclude_stack struct, in
+ * order to avoid opening and parsing each one every time that
+ * directory is traversed.
+ */
 struct exclude_stack {
-	struct exclude_stack *prev;
-	char *filebuf;
+	struct exclude_stack *prev; /* the struct exclude_stack for the parent directory */
+	char *filebuf; /* remember pointer to per-directory exclude file contents so we can free() */
 	int baselen;
 	int exclude_ix;
 };
@@ -59,6 +76,14 @@ struct dir_struct {
 #define EXC_DIRS 1
 #define EXC_FILE 2
 
+	/*
+	 * Temporary variables which are used during loading of the
+	 * per-directory exclude lists.
+	 *
+	 * exclude_stack points to the top of the exclude_stack, and
+	 * basebuf contains the full path to the current
+	 * (sub)directory in the traversal.
+	 */
 	struct exclude_stack *exclude_stack;
 	char basebuf[PATH_MAX];
 };
@@ -76,30 +101,34 @@ extern int within_depth(const char *name, int namelen, int depth, int max_depth)
 extern int fill_directory(struct dir_struct *dir, const char **pathspec);
 extern int read_directory(struct dir_struct *, const char *path, int len, const char **pathspec);
 
-extern int excluded_from_list(const char *pathname, int pathlen, const char *basename,
-			      int *dtype, struct exclude_list *el);
+extern int is_excluded_from_list(const char *pathname, int pathlen, const char *basename,
+				 int *dtype, struct exclude_list *el);
 struct dir_entry *dir_add_ignored(struct dir_struct *dir, const char *pathname, int len);
 
 /*
- * The excluded() API is meant for callers that check each level of leading
- * directory hierarchies with excluded() to avoid recursing into excluded
+ * The is_excluded() API is meant for callers that check each level of leading
+ * directory hierarchies with is_excluded() to avoid recursing into excluded
  * directories.  Callers that do not do so should use this API instead.
  */
 struct path_exclude_check {
 	struct dir_struct *dir;
+	struct exclude *exclude;
 	struct strbuf path;
 };
 extern void path_exclude_check_init(struct path_exclude_check *, struct dir_struct *);
 extern void path_exclude_check_clear(struct path_exclude_check *);
-extern int path_excluded(struct path_exclude_check *, const char *, int namelen, int *dtype);
+extern struct exclude *last_exclude_matching_path(struct path_exclude_check *, const char *,
+						  int namelen, int *dtype);
+extern int is_path_excluded(struct path_exclude_check *, const char *, int namelen, int *dtype);
 
 
 extern int add_excludes_from_file_to_list(const char *fname, const char *base, int baselen,
-					  char **buf_p, struct exclude_list *which, int check_index);
+					  char **buf_p, struct exclude_list *el, int check_index);
 extern void add_excludes_from_file(struct dir_struct *, const char *fname);
 extern void add_exclude(const char *string, const char *base,
-			int baselen, struct exclude_list *which);
+			int baselen, struct exclude_list *el, const char *src, int srcpos);
 extern void free_excludes(struct exclude_list *el);
+extern void free_directory(struct dir_struct *dir);
 extern int file_exists(const char *);
 
 extern int is_inside_dir(const char *dir);
