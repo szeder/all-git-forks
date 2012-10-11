@@ -12,6 +12,7 @@
 #include "exec_cmd.h"
 #include "attr.h"
 #include "dir.h"
+#include "wildmatch.h"
 
 const char git_attr__true[] = "(builtin)true";
 const char git_attr__false[] = "\0(builtin)false";
@@ -711,8 +712,10 @@ static int path_matches(const char *pathname, int pathlen,
 	 */
 	if (!namelen || prefix > namelen)
 		return 0;
-
-	return fnmatch_icase(pattern, name, FNM_PATHNAME) == 0;
+	if (baselen != 0)
+		baselen++;
+	return wildmatch(pattern, pathname + baselen,
+			 ignore_case ? FNM_CASEFOLD : 0) == 0;
 }
 
 static int macroexpand_one(int attr_nr, int rem);
