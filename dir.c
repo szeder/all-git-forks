@@ -10,6 +10,7 @@
 #include "cache.h"
 #include "dir.h"
 #include "refs.h"
+#include "wildmatch.h"
 
 struct path_simplify {
 	int len;
@@ -629,7 +630,8 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 			namelen -= prefix;
 		}
 
-		if (!namelen || !fnmatch_icase(exclude, name, FNM_PATHNAME))
+		if (!namelen ||
+		    wildmatch(exclude, name, ignore_case ? FNM_CASEFOLD : 0) == 0)
 			return x;
 	}
 	return NULL; /* undecided */

@@ -14,7 +14,7 @@ enum {
 	P = GIT_PATHSPEC_MAGIC  /* other non-alnum, except for ] and } */
 };
 
-unsigned char sane_ctype[256] = {
+const unsigned char sane_ctype[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, S, S, 0, 0, S, 0, 0,		/*   0.. 15 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,		/*  16.. 31 */
 	S, P, P, P, R, P, P, P, R, R, G, R, P, P, R, P,		/*  32.. 47 */
@@ -23,6 +23,24 @@ unsigned char sane_ctype[256] = {
 	A, A, A, A, A, A, A, A, A, A, A, G, G, 0, R, P,		/*  80.. 95 */
 	P, A, A, A, A, A, A, A, A, A, A, A, A, A, A, A,		/*  96..111 */
 	A, A, A, A, A, A, A, A, A, A, A, R, R, 0, P, 0,		/* 112..127 */
+	/* Nothing in the 128.. range */
+};
+
+enum {
+	CN = GIT_CNTRL,
+	PU = GIT_PUNCT,
+	XD = GIT_XDIGIT,
+};
+
+const unsigned char sane_ctype2[256] = {
+	CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, /*    0..15 */
+	CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, CN, /*   16..31 */
+	0,  PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, PU, /*   32..47 */
+	XD, XD, XD, XD, XD, XD, XD, XD, XD, XD, PU, PU, PU, PU, PU, PU, /*   48..63 */
+	PU, 0,	XD, 0,	XD, 0,	XD, 0,	0,  0,	0,  0,	0,  0,	0,  0,	/*   64..79 */
+	0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  PU, PU, PU, PU, PU, /*   80..95 */
+	PU, 0,	XD, 0,	XD, 0,	XD, 0,	0,  0,	0,  0,	0,  0,	0,  0,	/*  96..111 */
+	0,  0,	0,  0,	0,  0,	0,  0,	0,  0,	0,  PU, PU, PU, PU, CN, /* 112..127 */
 	/* Nothing in the 128.. range */
 };
 
